@@ -4107,21 +4107,30 @@ static int send_fd(int sock, int fd)
 
 static int send_ttys_to_parent(struct lxc_handler *handler)
 {
+	int i, ret;
 	struct lxc_conf *conf = handler->conf;
 	const struct lxc_tty_info *tty_info = &conf->tty_info;
-	int i;
 	int sock = handler->ttysock[0];
 
 	for (i = 0; i < tty_info->nbtty; i++) {
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
-		if (send_fd(sock, pty_info->slave) < 0)
-			goto bad;
+		ret = send_fd(sock, pty_info->slave);
+		if (ret >= 0)
+			send_fd(sock, pty_info->master);
+		TRACE("sending pty \"%s\" with master fd %d and slave fd %d to "
+		      "parent",
+		      pty_info->name, pty_info->master, pty_info->slave);
 		close(pty_info->slave);
 		pty_info->slave = -1;
-		if (send_fd(sock, pty_info->master) < 0)
-			goto bad;
 		close(pty_info->master);
 		pty_info->master = -1;
+		if (ret < 0) {
+			ERROR("failed to send pty \"%s\" with master fd %d and "
+			      "slave fd %d to parent : %s",
+			      pty_info->name, pty_info->master, pty_info->slave,
+			      strerror(errno));
+			goto bad;
+		}
 	}
 
 	close(handler->ttysock[0]);
