@@ -1358,7 +1358,7 @@ static int set_config_hooks(const char *key, const char *value,
 	if (config_value_empty(value))
 		return lxc_clear_hooks(lxc_conf, key);
 
-	if (strcmp(key, "lxc.hook") == 0) {
+	if (strcmp(key + 4, "hook") == 0) {
 		ERROR("lxc.hook cannot take a value");
 		return -1;
 	}
@@ -1368,23 +1368,23 @@ static int set_config_hooks(const char *key, const char *value,
 		return -1;
 	}
 
-	if (strcmp(key, "lxc.hook.pre-start") == 0)
+	if (strcmp(key + 9, "pre-start") == 0)
 		return add_hook(lxc_conf, LXCHOOK_PRESTART, copy);
-	else if (strcmp(key, "lxc.hook.pre-mount") == 0)
+	else if (strcmp(key + 9, "pre-mount") == 0)
 		return add_hook(lxc_conf, LXCHOOK_PREMOUNT, copy);
-	else if (strcmp(key, "lxc.hook.autodev") == 0)
+	else if (strcmp(key + 9, "autodev") == 0)
 		return add_hook(lxc_conf, LXCHOOK_AUTODEV, copy);
-	else if (strcmp(key, "lxc.hook.mount") == 0)
+	else if (strcmp(key + 9, "mount") == 0)
 		return add_hook(lxc_conf, LXCHOOK_MOUNT, copy);
-	else if (strcmp(key, "lxc.hook.start") == 0)
+	else if (strcmp(key + 9, "start") == 0)
 		return add_hook(lxc_conf, LXCHOOK_START, copy);
-	else if (strcmp(key, "lxc.hook.stop") == 0)
+	else if (strcmp(key + 9, "stop") == 0)
 		return add_hook(lxc_conf, LXCHOOK_STOP, copy);
-	else if (strcmp(key, "lxc.hook.post-stop") == 0)
+	else if (strcmp(key + 9, "post-stop") == 0)
 		return add_hook(lxc_conf, LXCHOOK_POSTSTOP, copy);
-	else if (strcmp(key, "lxc.hook.clone") == 0)
+	else if (strcmp(key + 9, "clone") == 0)
 		return add_hook(lxc_conf, LXCHOOK_CLONE, copy);
-	else if (strcmp(key, "lxc.hook.destroy") == 0)
+	else if (strcmp(key + 9, "destroy") == 0)
 		return add_hook(lxc_conf, LXCHOOK_DESTROY, copy);
 
 	SYSERROR("Unknown key: %s", key);
@@ -1421,6 +1421,11 @@ static int set_config_pts(const char *key, const char *value,
 	return 0;
 }
 
+/* We only need to check whether the first byte of the key after the lxc.start.
+ * prefix matches our expectations since they fortunately all start with a
+ * different letter. If anything was wrong with the key we would have already
+ * noticed when the callback was called.
+ */
 static int set_config_start(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf)
 {
@@ -1428,7 +1433,7 @@ static int set_config_start(const char *key, const char *value,
 
 	is_empty = config_value_empty(value);
 
-	if (strcmp(key, "lxc.start.auto") == 0) {
+	if (*(key + 10) == 'a') { /* lxc.start.auto */
 		/* Set config value to default. */
 		if (is_empty) {
 			lxc_conf->start_auto = 0;
@@ -1443,7 +1448,7 @@ static int set_config_start(const char *key, const char *value,
 			return -1;
 
 		return 0;
-	} else if (strcmp(key, "lxc.start.delay") == 0) {
+	} else if (*(key + 10) == 'd') { /* lxc.start.delay */
 		/* Set config value to default. */
 		if (is_empty) {
 			lxc_conf->start_delay = 0;
@@ -1452,7 +1457,7 @@ static int set_config_start(const char *key, const char *value,
 
 		/* Parse new config value. */
 		return lxc_safe_uint(value, &lxc_conf->start_delay);
-	} else if (strcmp(key, "lxc.start.order") == 0) {
+	} else if (*(key + 10) == 'o') { /* lxc.start.order */
 		/* Set config value to default. */
 		if (is_empty) {
 			lxc_conf->start_order = 0;
@@ -1477,7 +1482,7 @@ static int set_config_monitor(const char *key, const char *value,
 	}
 
 	/* Parse new config value. */
-	if (strcmp(key, "lxc.monitor.unshare") == 0)
+	if (strcmp(key + 12, "unshare") == 0)
 		return lxc_safe_uint(value, &lxc_conf->monitor_unshare);
 
 	SYSERROR("Unknown key: %s", key);
