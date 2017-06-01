@@ -4142,7 +4142,7 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
-	NOTICE("'%s' is setup.", name);
+	NOTICE("Container \"%s\" is set up", name);
 
 	return 0;
 }

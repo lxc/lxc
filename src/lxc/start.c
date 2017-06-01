@@ -998,12 +998,6 @@ static int do_start(void *data)
 		     "standard file descriptors. Migration will not work.");
 	}
 
-	/* Setup the container, ip, names, utsname, ... */
-	if (lxc_setup(handler)) {
-		ERROR("Failed to setup container \"%s\".", handler->name);
-		goto out_warn_father;
-	}
-
 	/* Ask father to setup cgroups and wait for him to finish. */
 	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP))
 		goto out_error;
@@ -1026,6 +1020,12 @@ static int do_start(void *data)
 			goto out_warn_father;
 		}
 		INFO("Unshared CLONE_NEWCGROUP.");
+	}
+
+	/* Setup the container, ip, names, utsname, ... */
+	if (lxc_setup(handler)) {
+		ERROR("Failed to setup container \"%s\".", handler->name);
+		goto out_warn_father;
 	}
 
 	/* Set the label to change to when we exec(2) the container's init. */
@@ -1135,6 +1135,9 @@ static int do_start(void *data)
 	}
 
 	setsid();
+
+	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP_LIMITS))
+		goto out_warn_father;
 
 	/* After this call, we are in error because this ops should not return
 	 * as it execs.
@@ -1455,19 +1458,17 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_barrier_child(handler, LXC_SYNC_POST_CONFIGURE))
 		goto out_delete_net;
 
+	if (lxc_sync_barrier_child(handler, LXC_SYNC_CGROUP_UNSHARE))
+		goto out_delete_net;
+
 	if (!cgroup_setup_limits(handler, true)) {
 		ERROR("Failed to setup the devices cgroup for container \"%s\".", name);
 		goto out_delete_net;
 	}
+	TRACE("Set up cgroup device limits");
 
 	cgroup_disconnect();
 	cgroups_connected = false;
-
-	/* Read tty fds allocated by child. */
-	if (lxc_recv_ttys_from_child(handler) < 0) {
-		ERROR("Failed to receive tty info from child process.");
-		goto out_delete_net;
-	}
 
 	/* Tell the child to complete its initialization and wait for it to exec
 	 * or return an error. (The child will never return
@@ -1477,6 +1478,12 @@ static int lxc_spawn(struct lxc_handler *handler)
 	 */
 	if (lxc_sync_barrier_child(handler, LXC_SYNC_POST_CGROUP))
 		return -1;
+
+	/* Read tty fds allocated by child. */
+	if (lxc_recv_ttys_from_child(handler) < 0) {
+		ERROR("Failed to receive tty info from child process.");
+		goto out_delete_net;
+	}
 
 	if (handler->ops->post_start(handler, handler->data))
 		goto out_abort;
