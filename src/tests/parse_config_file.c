@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <string.h>
 
+#include "confile_utils.h"
 #include "lxc/state.h"
 #include "lxctest.h"
 
@@ -99,6 +100,57 @@ static int set_get_compare_clear_save_load(struct lxc_container *c,
 
 	c->clear_config(c);
 	c->lxc_conf = NULL;
+
+	return 0;
+}
+
+int test_idmap_parser(void)
+{
+	size_t i;
+	struct idmap_check {
+		bool is_valid;
+		const char *idmap;
+	};
+	static struct idmap_check idmaps[] = {
+		/* valid idmaps */
+		{ true, "u 0 0 1"                       },
+		{ true, "g 0 0 1"                       },
+		{ true, "u 1 100001 999999999"          },
+		{ true, "g 1 100001 999999999"          },
+		{ true, "u 0 0 0"                       },
+		{ true, "g 0 0 0"                       },
+		{ true, "u 1000 165536 65536"           },
+		{ true, "g 999 999 1"                   },
+		{ true, "u    0		5000	100000" },
+		{ true, "g		577	789 5"  },
+		{ true, "u 65536 65536 1	"       },
+		/* invalid idmaps */
+		{ false, "1u 0 0 0"                     },
+		{ false, "1g 0 0 0a"                    },
+		{ false, "1 u 0 0 0"                    },
+		{ false, "1g 0 0 0 1"                   },
+		{ false, "1u a0 b0 c0 d1"               },
+		{ false, "1g 0 b0 0 d1"                 },
+		{ false, "1u a0 0 c0 1"                 },
+		{ false, "g -1 0 -10"                   },
+		{ false, "a 1 0 10"                     },
+		{ false, "u 1 1 0 10"                   },
+		{ false, "g 1 0 10	 z "            },
+	};
+
+	for (i = 0; i < sizeof(idmaps) / sizeof(struct idmap_check); i++) {
+		unsigned long hostid, nsid, range;
+		char type;
+		int ret;
+		ret = parse_idmaps(idmaps[i].idmap, &type, &nsid, &hostid,
+				   &range);
+		if ((ret < 0 && idmaps[i].is_valid) ||
+		    (ret == 0 && !idmaps[i].is_valid)) {
+			lxc_error("failed to parse idmap \"%s\"\n",
+				  idmaps[i].idmap);
+			return -1;
+		}
+	}
 
 	return 0;
 }
@@ -468,6 +520,11 @@ int main(int argc, char *argv[])
 	/* lxc.ephemeral */
 	if (set_get_compare_clear_save_load(c, "lxc.ephemeral", "1", tmpf, true) < 0) {
 		lxc_error("%s\n", "lxc.ephemeral");
+		goto non_test_error;
+	}
+
+	if (test_idmap_parser() < 0) {
+		lxc_error("%s\n", "failed to test parser for \"lxc.id_map\"");
 		goto non_test_error;
 	}
 

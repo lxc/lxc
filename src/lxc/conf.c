@@ -4777,7 +4777,8 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 	/* idmap will now keep track of that memory. */
 	container_root_gid = NULL;
 
-	if (lxc_log_get_level() == LXC_LOG_PRIORITY_TRACE) {
+	if (lxc_log_get_level() == LXC_LOG_PRIORITY_TRACE ||
+	    conf->loglevel == LXC_LOG_PRIORITY_TRACE) {
 		lxc_list_for_each(it, idmap) {
 			map = it->elem;
 			TRACE("establishing %cid mapping for \"%d\" in new "
