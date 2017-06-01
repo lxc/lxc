@@ -1453,6 +1453,7 @@ static int lxc_setup_devpts(int num_pts)
 		SYSERROR("failed to mount new devpts instance");
 		return -1;
 	}
+	DEBUG("mount new devpts instance with options \"%s\"", devpts_mntopts);
 
 	/* Remove any pre-existing /dev/ptmx file. */
 	ret = access("/dev/ptmx", F_OK);
@@ -3387,27 +3388,33 @@ int lxc_assign_network(const char *lxcpath, char *lxcname,
 static int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 			    size_t buf_size)
 {
-	char path[PATH_MAX];
-	int ret, closeret;
-	FILE *f;
+	char path[MAXPATHLEN];
+	int fd, ret;
 
-	ret = snprintf(path, PATH_MAX, "/proc/%d/%cid_map", pid, idtype == ID_TYPE_UID ? 'u' : 'g');
-	if (ret < 0 || ret >= PATH_MAX) {
-		fprintf(stderr, "%s: path name too long\n", __func__);
+	ret = snprintf(path, MAXPATHLEN, "/proc/%d/%cid_map", pid,
+		       idtype == ID_TYPE_UID ? 'u' : 'g');
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		ERROR("failed to create path \"%s\"", path);
 		return -E2BIG;
 	}
-	f = fopen(path, "w");
-	if (!f) {
-		perror("open");
-		return -EINVAL;
+
+	fd = open(path, O_WRONLY);
+	if (fd < 0) {
+		SYSERROR("failed to open \"%s\"", path);
+		return -1;
 	}
-	ret = fwrite(buf, buf_size, 1, f);
-	if (ret < 0)
-		SYSERROR("writing id mapping");
-	closeret = fclose(f);
-	if (closeret)
-		SYSERROR("writing id mapping");
-	return ret < 0 ? ret : closeret;
+
+	errno = 0;
+	ret = lxc_write_nointr(fd, buf, buf_size);
+	if (ret != buf_size) {
+		SYSERROR("failed to write %cid mapping to \"%s\"",
+			 idtype == ID_TYPE_UID ? 'u' : 'g', path);
+		close(fd);
+		return -1;
+	}
+	close(fd);
+
+	return 0;
 }
 
 /* Check whether a binary exist and has either CAP_SETUID, CAP_SETGID or both. */
@@ -3470,18 +3477,35 @@ cleanup:
 	return fret;
 }
 
+int lxc_map_ids_exec_wrapper(void *args)
+{
+	execl("/bin/sh", "sh", "-c", (char *)args, (char *)NULL);
+	return -1;
+}
+
 int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 {
 	struct id_map *map;
 	struct lxc_list *iterator;
 	enum idtype type;
+	char u_or_g;
 	char *pos;
-	int euid;
-	int ret = 0, use_shadow = 0;
-	int uidmap = 0, gidmap = 0;
-	char *buf = NULL;
-
-	euid = geteuid();
+	int fill, left;
+	char cmd_output[MAXPATHLEN];
+	/* strlen("new@idmap") = 9
+	 * +
+	 * strlen(" ") = 1
+	 * +
+	 * LXC_NUMSTRLEN64
+	 * +
+	 * strlen(" ") = 1
+	 *
+	 * We add some additional space to make sure that we really have
+	 * LXC_IDMAPLEN bytes available for our the {g,u]id mapping.
+	 */
+	char mapbuf[9 + 1 + LXC_NUMSTRLEN64 + 1 + LXC_IDMAPLEN] = {0};
+	int ret = 0, uidmap = 0, gidmap = 0;
+	bool use_shadow = false, had_entry = false;
 
 	/* If new{g,u}idmap exists, that is, if shadow is handing out subuid
 	 * ranges, then insist that root also reserve ranges in subuid. This
@@ -3493,28 +3517,22 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	if (uidmap > 0 && gidmap > 0) {
 		DEBUG("Functional newuidmap and newgidmap binary found.");
 		use_shadow = true;
-	} else if (uidmap == -ENOENT && gidmap == -ENOENT && !euid) {
-		DEBUG("No newuidmap and newgidmap binary found. Trying to "
-		      "write directly with euid 0.");
-		use_shadow = false;
 	} else {
-		DEBUG("Either one or both of the newuidmap and newgidmap "
-		      "binaries do not exist or are missing necessary "
-		      "privilege.");
-		return -1;
+		/* In case unprivileged users run application containers via
+		 * execute() or a start*() there are valid cases where they may
+		 * only want to map their own {g,u}id. Let's not block them from
+		 * doing so by requiring geteuid() == 0.
+		 */
+		DEBUG("No newuidmap and newgidmap binary found. Trying to "
+		      "write directly with euid %d.", geteuid());
 	}
 
-	for (type = ID_TYPE_UID; type <= ID_TYPE_GID; type++) {
-		int left, fill;
-		bool had_entry = false;
-		if (!buf) {
-			buf = pos = malloc(LXC_IDMAPLEN);
-			if (!buf)
-				return -ENOMEM;
-		}
-		pos = buf;
+	for (type = ID_TYPE_UID, u_or_g = 'u'; type <= ID_TYPE_GID;
+	     type++, u_or_g = 'g') {
+		pos = mapbuf;
+
 		if (use_shadow)
-			pos += sprintf(buf, "new%cidmap %d", type == ID_TYPE_UID ? 'u' : 'g', pid);
+			pos += sprintf(mapbuf, "new%cidmap %d", u_or_g, pid);
 
 		lxc_list_for_each(iterator, idmap) {
 			/* The kernel only takes <= 4k for writes to
@@ -3526,7 +3544,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 
 			had_entry = true;
 
-			left = LXC_IDMAPLEN - (pos - buf);
+			left = LXC_IDMAPLEN - (pos - mapbuf);
 			fill = snprintf(pos, left, "%s%lu %lu %lu%s",
 					use_shadow ? " " : "", map->nsid,
 					map->hostid, map->range,
@@ -3539,22 +3557,28 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 		if (!had_entry)
 			continue;
 
-		if (!use_shadow) {
-			ret = write_id_mapping(type, pid, buf, pos - buf);
+		/* Try to catch the ouput of new{g,u}idmap to make debugging
+		 * easier.
+		 */
+		if (use_shadow) {
+			ret = run_command(cmd_output, sizeof(cmd_output),
+					  lxc_map_ids_exec_wrapper,
+					  (void *)mapbuf);
+			if (ret < 0) {
+				ERROR("new%cidmap failed to write mapping: %s",
+				      u_or_g, cmd_output);
+				return -1;
+			}
 		} else {
-			left = LXC_IDMAPLEN - (pos - buf);
-			fill = snprintf(pos, left, "\n");
-			if (fill <= 0 || fill >= left)
-				SYSERROR("Too many {g,u}id mappings defined.");
-			pos += fill;
-			ret = system(buf);
+			ret = write_id_mapping(type, pid, mapbuf, pos - mapbuf);
+			if (ret < 0)
+				return -1;
 		}
-		if (ret)
-			break;
+
+		memset(mapbuf, 0, sizeof(mapbuf));
 	}
 
-	free(buf);
-	return ret;
+	return 0;
 }
 
 /*
@@ -3730,6 +3754,13 @@ void lxc_delete_tty(struct lxc_tty_info *tty_info)
 	tty_info->nbtty = 0;
 }
 
+
+int chown_mapped_root_exec_wrapper(void *args)
+{
+	execvp("lxc-usernsexec", args);
+	return -1;
+}
+
 /*
  * chown_mapped_root: for an unprivileged user with uid/gid X to
  * chown a dir to subuid/subgid Y, he needs to run chown as root
@@ -3740,26 +3771,46 @@ void lxc_delete_tty(struct lxc_tty_info *tty_info)
  */
 int chown_mapped_root(char *path, struct lxc_conf *conf)
 {
-	uid_t rootuid;
-	gid_t rootgid;
-	pid_t pid;
+	uid_t rootuid, rootgid;
 	unsigned long val;
 	char *chownpath = path;
+	int hostuid, hostgid, ret;
+	struct stat sb;
+	char map1[100], map2[100], map3[100], map4[100], map5[100];
+	char ugid[100];
+	char *args1[] = {"lxc-usernsexec",
+			 "-m", map1,
+			 "-m", map2,
+			 "-m", map3,
+			 "-m", map5,
+			 "--", "chown", ugid, path,
+			 NULL};
+	char *args2[] = {"lxc-usernsexec",
+			 "-m", map1,
+			 "-m", map2,
+			 "-m", map3,
+			 "-m", map4,
+			 "-m", map5,
+			 "--", "chown", ugid, path,
+			 NULL};
+	char cmd_output[MAXPATHLEN];
+
+	hostuid = geteuid();
+	hostgid = getegid();
 
 	if (!get_mapped_rootid(conf, ID_TYPE_UID, &val)) {
-		ERROR("No mapping for container root");
+		ERROR("No uid mapping for container root");
 		return -1;
 	}
-	rootuid = (uid_t) val;
+	rootuid = (uid_t)val;
 	if (!get_mapped_rootid(conf, ID_TYPE_GID, &val)) {
-		ERROR("No mapping for container root");
+		ERROR("No gid mapping for container root");
 		return -1;
 	}
-	rootgid = (gid_t) val;
+	rootgid = (gid_t)val;
 
 	/*
-	 * In case of overlay, we want only the writeable layer
-	 * to be chowned
+	 * In case of overlay, we want only the writeable layer to be chowned
 	 */
 	if (strncmp(path, "overlayfs:", 10) == 0 || strncmp(path, "aufs:", 5) == 0) {
 		chownpath = strchr(path, ':');
@@ -3767,7 +3818,7 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 			ERROR("Bad overlay path: %s", path);
 			return -1;
 		}
-		chownpath = strchr(chownpath+1, ':');
+		chownpath = strchr(chownpath + 1, ':');
 		if (!chownpath) {
 			ERROR("Bad overlay path: %s", path);
 			return -1;
@@ -3775,7 +3826,7 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 		chownpath++;
 	}
 	path = chownpath;
-	if (geteuid() == 0) {
+	if (hostuid == 0) {
 		if (chown(path, rootuid, rootgid) < 0) {
 			ERROR("Error chowning %s", path);
 			return -1;
@@ -3783,97 +3834,85 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 		return 0;
 	}
 
-	if (rootuid == geteuid()) {
+	if (rootuid == hostuid) {
 		// nothing to do
 		INFO("%s: container root is our uid;  no need to chown" ,__func__);
 		return 0;
 	}
 
-	pid = fork();
-	if (pid < 0) {
-		SYSERROR("Failed forking");
+	// save the current gid of "path"
+	if (stat(path, &sb) < 0) {
+		ERROR("Error stat %s", path);
 		return -1;
 	}
-	if (!pid) {
-		int hostuid = geteuid(), hostgid = getegid(), ret;
-		struct stat sb;
-		char map1[100], map2[100], map3[100], map4[100], map5[100];
-		char ugid[100];
-		char *args1[] = { "lxc-usernsexec", "-m", map1, "-m", map2,
-				"-m", map3, "-m", map5,
-				"--", "chown", ugid, path, NULL };
-		char *args2[] = { "lxc-usernsexec", "-m", map1, "-m", map2,
-				"-m", map3, "-m", map4, "-m", map5,
-				"--", "chown", ugid, path, NULL };
 
-		// save the current gid of "path"
-		if (stat(path, &sb) < 0) {
-			ERROR("Error stat %s", path);
-			return -1;
-		}
-
-		/*
-		 * A file has to be group-owned by a gid mapped into the
-		 * container, or the container won't be privileged over it.
-		 */
-		if (sb.st_uid == geteuid() &&
-				mapped_hostid(sb.st_gid, conf, ID_TYPE_GID) < 0 &&
-				chown(path, -1, hostgid) < 0) {
-			ERROR("Failed chgrping %s", path);
-			return -1;
-		}
-
-		// "u:0:rootuid:1"
-		ret = snprintf(map1, 100, "u:0:%d:1", rootuid);
-		if (ret < 0 || ret >= 100) {
-			ERROR("Error uid printing map string");
-			return -1;
-		}
-
-		// "u:hostuid:hostuid:1"
-		ret = snprintf(map2, 100, "u:%d:%d:1", hostuid, hostuid);
-		if (ret < 0 || ret >= 100) {
-			ERROR("Error uid printing map string");
-			return -1;
-		}
-
-		// "g:0:rootgid:1"
-		ret = snprintf(map3, 100, "g:0:%d:1", rootgid);
-		if (ret < 0 || ret >= 100) {
-			ERROR("Error gid printing map string");
-			return -1;
-		}
-
-		// "g:pathgid:rootgid+pathgid:1"
-		ret = snprintf(map4, 100, "g:%d:%d:1", (gid_t)sb.st_gid,
-				rootgid + (gid_t)sb.st_gid);
-		if (ret < 0 || ret >= 100) {
-			ERROR("Error gid printing map string");
-			return -1;
-		}
-
-		// "g:hostgid:hostgid:1"
-		ret = snprintf(map5, 100, "g:%d:%d:1", hostgid, hostgid);
-		if (ret < 0 || ret >= 100) {
-			ERROR("Error gid printing map string");
-			return -1;
-		}
-
-		// "0:pathgid" (chown)
-		ret = snprintf(ugid, 100, "0:%d", (gid_t)sb.st_gid);
-		if (ret < 0 || ret >= 100) {
-			ERROR("Error owner printing format string for chown");
-			return -1;
-		}
-
-		if (hostgid == sb.st_gid)
-			ret = execvp("lxc-usernsexec", args1);
-		else
-			ret = execvp("lxc-usernsexec", args2);
-		SYSERROR("Failed executing usernsexec");
-		exit(1);
+	/*
+	 * A file has to be group-owned by a gid mapped into the
+	 * container, or the container won't be privileged over it.
+	 */
+	DEBUG("trying to chown \"%s\" to %d", path, hostgid);
+	if (sb.st_uid == hostuid &&
+	    mapped_hostid(sb.st_gid, conf, ID_TYPE_GID) < 0 &&
+	    chown(path, -1, hostgid) < 0) {
+		ERROR("Failed chgrping %s", path);
+		return -1;
 	}
-	return wait_for_pid(pid);
+
+	// "u:0:rootuid:1"
+	ret = snprintf(map1, 100, "u:0:%d:1", rootuid);
+	if (ret < 0 || ret >= 100) {
+		ERROR("Error uid printing map string");
+		return -1;
+	}
+
+	// "u:hostuid:hostuid:1"
+	ret = snprintf(map2, 100, "u:%d:%d:1", hostuid, hostuid);
+	if (ret < 0 || ret >= 100) {
+		ERROR("Error uid printing map string");
+		return -1;
+	}
+
+	// "g:0:rootgid:1"
+	ret = snprintf(map3, 100, "g:0:%d:1", rootgid);
+	if (ret < 0 || ret >= 100) {
+		ERROR("Error gid printing map string");
+		return -1;
+	}
+
+	// "g:pathgid:rootgid+pathgid:1"
+	ret = snprintf(map4, 100, "g:%d:%d:1", (gid_t)sb.st_gid,
+		       rootgid + (gid_t)sb.st_gid);
+	if (ret < 0 || ret >= 100) {
+		ERROR("Error gid printing map string");
+		return -1;
+	}
+
+	// "g:hostgid:hostgid:1"
+	ret = snprintf(map5, 100, "g:%d:%d:1", hostgid, hostgid);
+	if (ret < 0 || ret >= 100) {
+		ERROR("Error gid printing map string");
+		return -1;
+	}
+
+	// "0:pathgid" (chown)
+	ret = snprintf(ugid, 100, "0:%d", (gid_t)sb.st_gid);
+	if (ret < 0 || ret >= 100) {
+		ERROR("Error owner printing format string for chown");
+		return -1;
+	}
+
+	if (hostgid == sb.st_gid)
+		ret = run_command(cmd_output, sizeof(cmd_output),
+				  chown_mapped_root_exec_wrapper,
+				  (void *)args1);
+	else
+		ret = run_command(cmd_output, sizeof(cmd_output),
+				  chown_mapped_root_exec_wrapper,
+				  (void *)args2);
+	if (ret < 0)
+		ERROR("lxc-usernsexec failed: %s", cmd_output);
+
+	return ret;
 }
 
 int ttys_shift_ids(struct lxc_conf *c)
