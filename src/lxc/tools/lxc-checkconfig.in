@@ -28,15 +28,26 @@ is_enabled() {
 
     is_set $1
     RES=$?
-
+    RET=1
     if [ $RES -eq 0 ]; then
-        $SETCOLOR_SUCCESS && echo "enabled" && $SETCOLOR_NORMAL
+        $SETCOLOR_SUCCESS && echo -n "enabled" && $SETCOLOR_NORMAL
+        RET=0
     else
         if [ ! -z "$mandatory" ] && [ "$mandatory" = yes ]; then
-            $SETCOLOR_FAILURE && echo "required" && $SETCOLOR_NORMAL
+            $SETCOLOR_FAILURE && echo -n "required" && $SETCOLOR_NORMAL
         else
-            $SETCOLOR_WARNING && echo "missing" && $SETCOLOR_NORMAL
+            $SETCOLOR_WARNING && echo -n "missing" && $SETCOLOR_NORMAL
         fi
+    fi
+    return $RET
+}
+
+is_probed() {
+    lsmod | grep $1 > /dev/null
+    if [ $? -eq 0 ]; then
+        echo -n ", loaded"
+    else
+        echo -n ", not loaded"
     fi
 }
 
@@ -84,10 +95,15 @@ fi
 
 echo "--- Namespaces ---"
 echo -n "Namespaces: " && is_enabled CONFIG_NAMESPACES yes
+echo
 echo -n "Utsname namespace: " && is_enabled CONFIG_UTS_NS
+echo
 echo -n "Ipc namespace: " && is_enabled CONFIG_IPC_NS yes
+echo
 echo -n "Pid namespace: " && is_enabled CONFIG_PID_NS yes
+echo
 echo -n "User namespace: " && is_enabled CONFIG_USER_NS
+echo
 if is_set CONFIG_USER_NS; then
 	if type newuidmap > /dev/null 2>&1; then
 		f=`type -P newuidmap`
@@ -107,6 +123,7 @@ if is_set CONFIG_USER_NS; then
 	fi
 fi
 echo -n "Network namespace: " && is_enabled CONFIG_NET_NS
+echo
 if ([ $KVER_MAJOR -lt 4 ]) || ([ $KVER_MAJOR -eq 4 ] && [ $KVER_MINOR -lt 7 ]); then
 	echo -n "Multiple /dev/pts instances: " && is_enabled DEVPTS_MULTIPLE_INSTANCES
 fi
@@ -120,7 +137,8 @@ print_cgroups() {
 
 CGROUP_MNT_PATH=`print_cgroups cgroup /proc/self/mounts | head -n 1`
 
-echo -n "Cgroup: " && is_enabled CONFIG_CGROUPS yes
+echo -n "Cgroup: " && is_enabled CONFIG_CGROUPS
+echo
 
 if [ -f $CGROUP_MNT_PATH/cgroup.clone_children ]; then
     echo -n "Cgroup clone_children flag: " &&
@@ -129,40 +147,62 @@ else
     echo -n "Cgroup namespace: " && is_enabled CONFIG_CGROUP_NS yes
 fi
 echo -n "Cgroup device: " && is_enabled CONFIG_CGROUP_DEVICE
+echo
 echo -n "Cgroup sched: " && is_enabled CONFIG_CGROUP_SCHED
+echo
 echo -n "Cgroup cpu account: " && is_enabled CONFIG_CGROUP_CPUACCT
+echo
 echo -n "Cgroup memory controller: "
 if ([ $KVER_MAJOR -ge 3 ] && [ $KVER_MINOR -ge 6 ]) || ([ $KVER_MAJOR -gt 3 ]); then
     is_enabled CONFIG_MEMCG
 else
     is_enabled CONFIG_CGROUP_MEM_RES_CTLR
 fi
-is_set CONFIG_SMP && echo -n "Cgroup cpuset: " && is_enabled CONFIG_CPUSETS
+echo
+is_set CONFIG_SMP && echo -n "Cgroup cpuset: " && is_enabled CONFIG_CPUSETS && echo
 echo
 echo "--- Misc ---"
-echo -n "Veth pair device: " && is_enabled CONFIG_VETH
-echo -n "Macvlan: " && is_enabled CONFIG_MACVLAN
-echo -n "Vlan: " && is_enabled CONFIG_VLAN_8021Q
-echo -n "Bridges: " && is_enabled CONFIG_BRIDGE
-echo -n "Advanced netfilter: " && is_enabled CONFIG_NETFILTER_ADVANCED
-echo -n "CONFIG_NF_NAT_IPV4: " && is_enabled CONFIG_NF_NAT_IPV4
-echo -n "CONFIG_NF_NAT_IPV6: " && is_enabled CONFIG_NF_NAT_IPV6
-echo -n "CONFIG_IP_NF_TARGET_MASQUERADE: " && is_enabled CONFIG_IP_NF_TARGET_MASQUERADE
-echo -n "CONFIG_IP6_NF_TARGET_MASQUERADE: " && is_enabled CONFIG_IP6_NF_TARGET_MASQUERADE
-echo -n "CONFIG_NETFILTER_XT_TARGET_CHECKSUM: " && is_enabled CONFIG_NETFILTER_XT_TARGET_CHECKSUM
-echo -n "FUSE (for use with lxcfs): " && is_enabled CONFIG_FUSE_FS
+echo -n "Veth pair device: " && is_enabled CONFIG_VETH && is_probed veth
+echo
+echo -n "Macvlan: " && is_enabled CONFIG_MACVLAN && is_probed macvlan
+echo
+echo -n "Vlan: " && is_enabled CONFIG_VLAN_8021Q && is_probed 8021q
+echo
+echo -n "Bridges: " && is_enabled CONFIG_BRIDGE && is_probed bridge
+echo
+echo -n "Advanced netfilter: " && is_enabled CONFIG_NETFILTER_ADVANCED && is_probed nf_tables
+echo
+echo -n "CONFIG_NF_NAT_IPV4: " && is_enabled CONFIG_NF_NAT_IPV4 && is_probed nf_nat_ipv4
+echo
+echo -n "CONFIG_NF_NAT_IPV6: " && is_enabled CONFIG_NF_NAT_IPV6 && is_probed nf_nat_ipv6
+echo
+echo -n "CONFIG_IP_NF_TARGET_MASQUERADE: " && is_enabled CONFIG_IP_NF_TARGET_MASQUERADE && is_probed nf_nat_masquerade_ipv4
+echo
+echo -n "CONFIG_IP6_NF_TARGET_MASQUERADE: " && is_enabled CONFIG_IP6_NF_TARGET_MASQUERADE && is_probed nf_nat_masquerade_ipv6
+echo
+echo -n "CONFIG_NETFILTER_XT_TARGET_CHECKSUM: " && is_enabled CONFIG_NETFILTER_XT_TARGET_CHECKSUM && is_probed xt_CHECKSUM
+echo
+echo -n "FUSE (for use with lxcfs): " && is_enabled CONFIG_FUSE_FS && is_probed fuse
+echo
 
 echo
 echo "--- Checkpoint/Restore ---"
 echo -n "checkpoint restore: " && is_enabled CONFIG_CHECKPOINT_RESTORE
+echo
 echo -n "CONFIG_FHANDLE: " && is_enabled CONFIG_FHANDLE
+echo
 echo -n "CONFIG_EVENTFD: " && is_enabled CONFIG_EVENTFD
+echo
 echo -n "CONFIG_EPOLL: " && is_enabled CONFIG_EPOLL
+echo
 echo -n "CONFIG_UNIX_DIAG: " && is_enabled CONFIG_UNIX_DIAG
+echo
 echo -n "CONFIG_INET_DIAG: " && is_enabled CONFIG_INET_DIAG
+echo
 echo -n "CONFIG_PACKET_DIAG: " && is_enabled CONFIG_PACKET_DIAG
+echo
 echo -n "CONFIG_NETLINK_DIAG: " && is_enabled CONFIG_NETLINK_DIAG
-
+echo
 echo -n "File capabilities: " && \
     ( [ "${KVER_MAJOR}" = 2 ] && [ ${KVER_MINOR} -lt 33 ] && \
        is_enabled CONFIG_SECURITY_FILE_CAPABILITIES ) || \
