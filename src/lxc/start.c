@@ -996,8 +996,9 @@ static int recv_fd(int sock, int *fd)
 
 static int recv_ttys_from_child(struct lxc_handler *handler)
 {
+	int i, ret;
+	int sock = handler->ttysock[1];
 	struct lxc_conf *conf = handler->conf;
-	int i, sock = handler->ttysock[1];
 	struct lxc_tty_info *tty_info = &conf->tty_info;
 
 	if (!conf->tty)
@@ -1010,11 +1011,18 @@ static int recv_ttys_from_child(struct lxc_handler *handler)
 	for (i = 0; i < conf->tty; i++) {
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 		pty_info->busy = 0;
-		if (recv_fd(sock, &pty_info->slave) < 0 ||
-		    recv_fd(sock, &pty_info->master) < 0) {
-			ERROR("Error receiving tty info from child process.");
+		ret = recv_fd(sock, &pty_info->slave);
+		if (ret >= 0)
+			recv_fd(sock, &pty_info->master);
+		if (ret < 0) {
+			ERROR("failed to receive pty with master fd %d and "
+			      "slave fd %d from child: %s",
+			      pty_info->master, pty_info->slave,
+			      strerror(errno));
 			return -1;
 		}
+		TRACE("received pty with master fd %d and slave fd %d from child",
+		      pty_info->master, pty_info->slave);
 	}
 	tty_info->nbtty = conf->tty;
 
