@@ -3549,6 +3549,10 @@ int lxc_assign_network(struct lxc_list *network, pid_t pid)
 		if (netdev->type == LXC_NET_VETH && !am_root) {
 			if (unpriv_assign_nic(netdev, pid))
 				return -1;
+
+			if (netdev->mtu)
+				INFO("mtu ignored due to insufficient privilege");
+
 			// lxc-user-nic has moved the nic to the new ns.
 			// unpriv_assign_nic() fills in netdev->name.
 			// netdev->ifindex will be filed in at setup_netdev.
