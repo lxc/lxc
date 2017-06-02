@@ -469,7 +469,7 @@ extern int setup_resource_limits(struct lxc_list *limits, pid_t pid);
 
 extern void lxc_restore_phys_nics_to_netns(int netnsfd, struct lxc_conf *conf);
 
-extern int find_unmapped_nsuid(struct lxc_conf *conf, enum idtype idtype);
+extern int find_unmapped_nsid(struct lxc_conf *conf, enum idtype idtype);
 extern int mapped_hostid(unsigned id, struct lxc_conf *conf, enum idtype idtype);
 extern int chown_mapped_root(char *path, struct lxc_conf *conf);
 extern int ttys_shift_ids(struct lxc_conf *c);
