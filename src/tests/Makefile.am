@@ -25,6 +25,7 @@ lxc_test_device_add_remove_SOURCES = device_add_remove.c
 lxc_test_apparmor_SOURCES = aa.c
 lxc_test_utils_SOURCES = lxc-test-utils.c lxctest.h
 lxc_test_parse_config_file_SOURCES = parse_config_file.c lxctest.h
+lxc_test_config_jump_table_SOURCES = config_jump_table.c lxctest.h
 
 AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	-DLXCPATH=\"$(LXCPATH)\" \
@@ -52,7 +53,8 @@ bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-cgpath lxc-test-clonetest lxc-test-console \
 	lxc-test-snapshot lxc-test-concurrent lxc-test-may-control \
 	lxc-test-reboot lxc-test-list lxc-test-attach lxc-test-device-add-remove \
-	lxc-test-apparmor lxc-test-utils lxc-test-parse-config-file
+	lxc-test-apparmor lxc-test-utils lxc-test-parse-config-file \
+	lxc-test-config-jump-table
 
 bin_SCRIPTS = lxc-test-automount lxc-test-autostart lxc-test-cloneconfig \
 	lxc-test-createconfig
@@ -75,6 +77,7 @@ EXTRA_DIST = \
 	cgpath.c \
 	clonetest.c \
 	concurrent.c \
+	config_jump_table.c \
 	console.c \
 	containertests.c \
 	createtest.c \
