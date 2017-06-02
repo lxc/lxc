@@ -3519,7 +3519,7 @@ int mapped_hostid(unsigned id, struct lxc_conf *conf, enum idtype idtype)
 	return -1;
 }
 
-int find_unmapped_nsuid(struct lxc_conf *conf, enum idtype idtype)
+int find_unmapped_nsid(struct lxc_conf *conf, enum idtype idtype)
 {
 	struct lxc_list *it;
 	struct id_map *map;
@@ -4558,7 +4558,7 @@ static int run_userns_fn(void *data)
 	return d->fn(d->arg);
 }
 
-static struct id_map *mapped_hostid_entry(unsigned id, struct lxc_conf *conf,
+static struct id_map *mapped_hostid_entry(struct lxc_conf *conf, unsigned id,
 					  enum idtype idtype)
 {
 	struct lxc_list *it;

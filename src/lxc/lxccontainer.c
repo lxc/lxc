@@ -1220,7 +1220,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 			if (!n2)
 				exit(1);
 			if (hostid_mapped < 0) {
-				hostid_mapped = find_unmapped_nsuid(conf, ID_TYPE_UID);
+				hostid_mapped = find_unmapped_nsid(conf, ID_TYPE_UID);
 				n2[n2args++] = "-m";
 				if (hostid_mapped < 0) {
 					ERROR("Could not find free uid to map");
@@ -1244,7 +1244,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 			if (!n2)
 				exit(1);
 			if (hostgid_mapped < 0) {
-				hostgid_mapped = find_unmapped_nsuid(conf, ID_TYPE_GID);
+				hostgid_mapped = find_unmapped_nsid(conf, ID_TYPE_GID);
 				n2[n2args++] = "-m";
 				if (hostgid_mapped < 0) {
 					ERROR("Could not find free uid to map");
