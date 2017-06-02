@@ -4717,83 +4717,33 @@ static struct id_map *mapped_hostid_entry(struct lxc_conf *conf, unsigned id,
  * Allocate a new {g,u}id mapping for the given {g,u}id. Re-use an already
  * existing one or establish a new one.
  */
-static struct lxc_list *idmap_add_id(struct lxc_conf *conf, uid_t uid,
-				     gid_t gid)
+static struct id_map *idmap_add(struct lxc_conf *conf, uid_t id, enum idtype type)
 {
-	int hostuid_mapped, hostgid_mapped;
-	struct id_map *hostuid_idmap, *hostgid_idmap;
+	int hostid_mapped;
 	struct id_map *entry = NULL;
-	struct lxc_list *new = NULL;
-	struct lxc_list *tmp = NULL;
 
-	hostuid_idmap = mapped_hostid_entry(uid, conf, ID_TYPE_UID);
-	hostgid_idmap = mapped_hostid_entry(gid, conf, ID_TYPE_GID);
-
-	/* Allocate new {g,u}id map list. */
-	new = malloc(sizeof(*new));
-	if (!new)
-		goto on_error;
-	lxc_list_init(new);
-
-	tmp = malloc(sizeof(*tmp));
-	if (!tmp)
-		goto on_error;
-	entry = hostuid_idmap;
-	if (!hostuid_idmap) {
-		hostuid_mapped = find_unmapped_nsuid(conf, ID_TYPE_UID);
-		if (hostuid_mapped < 0)
-			goto on_error;
-
-		entry = malloc(sizeof(*entry));
-		if (!entry)
-			goto on_error;
-
-		tmp->elem = entry;
-		entry->idtype = ID_TYPE_UID;
-		entry->nsid = hostuid_mapped;
-		entry->hostid = (unsigned long)uid;
-		entry->range = 1;
-		DEBUG("adding uid mapping: nsid %lu hostid %lu range %lu",
-		      entry->nsid, entry->hostid, entry->range);
-	}
-	lxc_list_add_tail(new, tmp);
-	entry = NULL;
-	tmp = NULL;
-
-	tmp = malloc(sizeof(*tmp));
-	if (!tmp)
-		goto on_error;
-	entry = hostgid_idmap;
-	if (!hostgid_idmap) {
-		hostgid_mapped = find_unmapped_nsuid(conf, ID_TYPE_GID);
-		if (hostgid_mapped < 0)
-			goto on_error;
-
-		entry = malloc(sizeof(*entry));
-		if (!entry)
-			goto on_error;
-
-		tmp->elem = entry;
-		entry->idtype = ID_TYPE_GID;
-		entry->nsid = hostgid_mapped;
-		entry->hostid = (unsigned long)gid;
-		entry->range = 1;
-		DEBUG("adding gid mapping: nsid %lu hostid %lu range %lu",
-		      entry->nsid, entry->hostid, entry->range);
-	}
-	lxc_list_add_tail(new, tmp);
-
-	return new;
-
-on_error:
-	ERROR("failed to allocate memory for new id map");
-	if (new)
-		lxc_free_idmap(new);
-	free(new);
-	free(tmp);
+	/* Reuse existing mapping. */
+	entry = mapped_hostid_entry(conf, id, type);
 	if (entry)
-		free(entry);
-	return NULL;
+		return entry;
+
+	/* Find new mapping. */
+	hostid_mapped = find_unmapped_nsid(conf, type);
+	if (hostid_mapped < 0) {
+		DEBUG("failed to find free mapping for id %d", id);
+		return NULL;
+	}
+
+	entry = malloc(sizeof(*entry));
+	if (!entry)
+		return NULL;
+
+	entry->idtype = type;
+	entry->nsid = hostid_mapped;
+	entry->hostid = (unsigned long)id;
+	entry->range = 1;
+
+	return entry;
 }
 
 /* Run a function in a new user namespace.
@@ -4818,7 +4768,8 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 	char c = '1';
 	int ret = -1;
 	struct lxc_list *idmap = NULL, *tmplist = NULL;
-	struct id_map *container_root_uid = NULL, *container_root_gid = NULL;
+	struct id_map *container_root_uid = NULL, *container_root_gid = NULL,
+		      *host_uid_map = NULL, *host_gid_map = NULL;
 
 	ret = pipe(p);
 	if (ret < 0) {
@@ -4879,12 +4830,31 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 	/* Check whether the {g,u}id of the user has a mapping. */
 	euid = geteuid();
 	egid = getegid();
-	idmap = idmap_add_id(conf, euid, egid);
-	if (!idmap) {
-		ERROR("failed to prepare id mapping for uid %d and gid %d",
-		      euid, egid);
+	if (euid == container_root_uid->hostid)
+		host_uid_map = container_root_uid;
+	else
+		host_uid_map = idmap_add(conf, euid, ID_TYPE_UID);
+
+	if (egid == container_root_gid->hostid)
+		host_gid_map = container_root_gid;
+	else
+		host_gid_map = idmap_add(conf, egid, ID_TYPE_GID);
+
+	if (!host_uid_map) {
+		DEBUG("failed to find mapping for uid %d", euid);
 		goto on_error;
 	}
+
+	if (!host_gid_map) {
+		DEBUG("failed to find mapping for gid %d", egid);
+		goto on_error;
+	}
+
+	/* Allocate new {g,u}id map list. */
+	idmap = malloc(sizeof(*idmap));
+	if (!idmap)
+		goto on_error;
+	lxc_list_init(idmap);
 
 	/* Add container root to the map. */
 	tmplist = malloc(sizeof(*tmplist));
@@ -4892,16 +4862,39 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 		goto on_error;
 	lxc_list_add_elem(tmplist, container_root_uid);
 	lxc_list_add_tail(idmap, tmplist);
-	/* idmap will now keep track of that memory. */
-	container_root_uid = NULL;
+
+	if (host_uid_map != container_root_uid) {
+		/* idmap will now keep track of that memory. */
+		container_root_uid = NULL;
+
+		/* Add container root to the map. */
+		tmplist = malloc(sizeof(*tmplist));
+		if (!tmplist)
+			goto on_error;
+		lxc_list_add_elem(tmplist, host_uid_map);
+		lxc_list_add_tail(idmap, tmplist);
+		/* idmap will now keep track of that memory. */
+		host_uid_map = NULL;
+	}
 
 	tmplist = malloc(sizeof(*tmplist));
 	if (!tmplist)
 		goto on_error;
 	lxc_list_add_elem(tmplist, container_root_gid);
 	lxc_list_add_tail(idmap, tmplist);
-	/* idmap will now keep track of that memory. */
-	container_root_gid = NULL;
+
+	if (host_gid_map != container_root_gid) {
+		/* idmap will now keep track of that memory. */
+		container_root_gid = NULL;
+
+		tmplist = malloc(sizeof(*tmplist));
+		if (!tmplist)
+			goto on_error;
+		lxc_list_add_elem(tmplist, host_gid_map);
+		lxc_list_add_tail(idmap, tmplist);
+		/* idmap will now keep track of that memory. */
+		host_gid_map = NULL;
+	}
 
 	if (lxc_log_get_level() == LXC_LOG_PRIORITY_TRACE ||
 	    conf->loglevel == LXC_LOG_PRIORITY_TRACE) {
@@ -4937,6 +4930,8 @@ on_error:
 	lxc_free_idmap(idmap);
 	free(container_root_uid);
 	free(container_root_gid);
+	free(host_uid_map);
+	free(host_gid_map);
 
 	if (p[0] != -1)
 		close(p[0]);
