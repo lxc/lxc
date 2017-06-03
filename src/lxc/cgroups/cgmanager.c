@@ -497,7 +497,8 @@ static bool chown_cgroup(const char *cgroup_path, struct lxc_conf *conf)
 	/* Unpriv users can't chown it themselves, so chown from
 	 * a child namespace mapping both our own and the target uid
 	 */
-	if (userns_exec_1(conf, chown_cgroup_wrapper, &data) < 0) {
+	if (userns_exec_1(conf, chown_cgroup_wrapper, &data,
+			  "chown_cgroup_wrapper") < 0) {
 		ERROR("Error requesting cgroup chown in new namespace");
 		return false;
 	}

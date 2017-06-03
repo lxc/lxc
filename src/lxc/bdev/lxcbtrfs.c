@@ -398,7 +398,8 @@ int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 			return btrfs_snapshot(orig->dest, new->dest);
 		sdata.dest = new->dest;
 		sdata.src = orig->dest;
-		return userns_exec_1(conf, btrfs_snapshot_wrapper, &sdata);
+		return userns_exec_1(conf, btrfs_snapshot_wrapper, &sdata,
+				     "btrfs_snapshot_wrapper");
 	}
 
 	if (rmdir(new->dest) < 0 && errno != ENOENT) {

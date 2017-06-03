@@ -1511,7 +1511,8 @@ static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 	}
 
 	if (am_unpriv())
-		ret = userns_exec_1(handler->conf, lxc_rmdir_onedev_wrapper, destroy);
+		ret = userns_exec_1(handler->conf, lxc_rmdir_onedev_wrapper,
+				    destroy, "lxc_rmdir_onedev_wrapper");
 	else
 		ret = lxc_rmdir_onedev(destroy, NULL);
 
@@ -1530,7 +1531,8 @@ static int lxc_rmdir_onedev_wrapper(void *data)
 
 static bool do_destroy_container(struct lxc_conf *conf) {
 	if (am_unpriv()) {
-		if (userns_exec_1(conf, bdev_destroy_wrapper, conf) < 0)
+		if (userns_exec_1(conf, bdev_destroy_wrapper, conf,
+				  "bdev_destroy_wrapper") < 0)
 			return false;
 		return true;
 	}

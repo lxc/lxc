@@ -2339,7 +2339,8 @@ static bool has_snapshots(struct lxc_container *c)
 
 static bool do_destroy_container(struct lxc_conf *conf) {
 	if (am_unpriv()) {
-		if (userns_exec_1(conf, bdev_destroy_wrapper, conf) < 0)
+		if (userns_exec_1(conf, bdev_destroy_wrapper, conf,
+				  "bdev_destroy_wrapper") < 0)
 			return false;
 		return true;
 	}
@@ -2421,7 +2422,8 @@ static bool container_destroy(struct lxc_container *c)
 	char *path = alloca(strlen(p1) + strlen(c->name) + 2);
 	sprintf(path, "%s/%s", p1, c->name);
 	if (am_unpriv())
-		ret = userns_exec_1(conf, lxc_rmdir_onedev_wrapper, path);
+		ret = userns_exec_1(conf, lxc_rmdir_onedev_wrapper, path,
+				    "lxc_rmdir_onedev_wrapper");
 	else
 		ret = lxc_rmdir_onedev(path, "snaps");
 	if (ret < 0) {
@@ -3230,7 +3232,7 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	data.hookargs = hookargs;
 	if (am_unpriv())
 		ret = userns_exec_1(c->lxc_conf, clone_update_rootfs_wrapper,
-				&data);
+				    &data, "clone_update_rootfs_wrapper");
 	else
 		ret = clone_update_rootfs(&data);
 	if (ret < 0)

@@ -4543,6 +4543,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 
 struct userns_fn_data {
 	int (*fn)(void *);
+	const char *fn_name;
 	void *arg;
 	int p[2];
 };
@@ -4564,6 +4565,8 @@ static int run_userns_fn(void *data)
 	/* Close read end of the pipe. */
 	close(d->p[0]);
 
+	if (d->fn_name)
+		TRACE("calling function \"%s\"", d->fn_name);
 	/* Call function to run. */
 	return d->fn(d->arg);
 }
@@ -4641,7 +4644,8 @@ static struct id_map *idmap_add(struct lxc_conf *conf, uid_t id, enum idtype typ
  * retrieve from the ontainer's configured {g,u}id mappings as it must have been
  * there to start the container in the first place.
  */
-int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
+int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
+		  const char *fn_name)
 {
 	pid_t pid;
 	uid_t euid, egid;
@@ -4661,6 +4665,7 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 		return -1;
 	}
 	d.fn = fn;
+	d.fn_name = fn_name;
 	d.arg = data;
 	d.p[0] = p[0];
 	d.p[1] = p[1];
