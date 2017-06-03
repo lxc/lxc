@@ -4711,17 +4711,16 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 		goto on_error;
 	}
 
+	host_uid_map = container_root_uid;
+	host_gid_map = container_root_gid;
+
 	/* Check whether the {g,u}id of the user has a mapping. */
 	euid = geteuid();
 	egid = getegid();
-	if (euid == container_root_uid->hostid)
-		host_uid_map = container_root_uid;
-	else
+	if (euid != container_root_uid->hostid)
 		host_uid_map = idmap_add(conf, euid, ID_TYPE_UID);
 
-	if (egid == container_root_gid->hostid)
-		host_gid_map = container_root_gid;
-	else
+	if (egid != container_root_gid->hostid)
 		host_gid_map = idmap_add(conf, egid, ID_TYPE_GID);
 
 	if (!host_uid_map) {
@@ -4747,7 +4746,7 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 	lxc_list_add_elem(tmplist, container_root_uid);
 	lxc_list_add_tail(idmap, tmplist);
 
-	if (host_uid_map != container_root_uid) {
+	if (host_uid_map && (host_uid_map != container_root_uid)) {
 		/* idmap will now keep track of that memory. */
 		container_root_uid = NULL;
 
@@ -4757,9 +4756,11 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 			goto on_error;
 		lxc_list_add_elem(tmplist, host_uid_map);
 		lxc_list_add_tail(idmap, tmplist);
-		/* idmap will now keep track of that memory. */
-		host_uid_map = NULL;
 	}
+	/* idmap will now keep track of that memory. */
+	container_root_uid = NULL;
+	/* idmap will now keep track of that memory. */
+	host_uid_map = NULL;
 
 	tmplist = malloc(sizeof(*tmplist));
 	if (!tmplist)
@@ -4767,7 +4768,7 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 	lxc_list_add_elem(tmplist, container_root_gid);
 	lxc_list_add_tail(idmap, tmplist);
 
-	if (host_gid_map != container_root_gid) {
+	if (host_gid_map && (host_gid_map != container_root_gid)) {
 		/* idmap will now keep track of that memory. */
 		container_root_gid = NULL;
 
@@ -4776,9 +4777,11 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 			goto on_error;
 		lxc_list_add_elem(tmplist, host_gid_map);
 		lxc_list_add_tail(idmap, tmplist);
-		/* idmap will now keep track of that memory. */
-		host_gid_map = NULL;
 	}
+	/* idmap will now keep track of that memory. */
+	container_root_gid = NULL;
+	/* idmap will now keep track of that memory. */
+	host_gid_map = NULL;
 
 	if (lxc_log_get_level() == LXC_LOG_PRIORITY_TRACE ||
 	    conf->loglevel == LXC_LOG_PRIORITY_TRACE) {
@@ -4811,11 +4814,16 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 	ret = wait_for_pid(pid);
 
 on_error:
-	lxc_free_idmap(idmap);
-	free(container_root_uid);
-	free(container_root_gid);
-	free(host_uid_map);
-	free(host_gid_map);
+	if (idmap)
+		lxc_free_idmap(idmap);
+	if (container_root_uid)
+		free(container_root_uid);
+	if (container_root_gid)
+		free(container_root_gid);
+	if (host_uid_map && (host_uid_map != container_root_uid))
+		free(host_uid_map);
+	if (host_gid_map && (host_gid_map != container_root_gid))
+		free(host_gid_map);
 
 	if (p[0] != -1)
 		close(p[0]);
