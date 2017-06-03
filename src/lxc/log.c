@@ -139,6 +139,17 @@ static int log_append_stderr(const struct lxc_log_appender *appender,
 	return 0;
 }
 
+static int log_append_stdout(const struct lxc_log_appender *appender,
+			     struct lxc_log_event *event)
+{
+	fprintf(stdout, "[%s] ", lxc_log_priority_to_string(event->priority));
+	fprintf(stdout, "%s: %s%s", log_prefix, log_vmname ? log_vmname : "", log_vmname ? ": " : "");
+	fprintf(stdout, "%s: %s: %d ", event->locinfo->file, event->locinfo->func, event->locinfo->line);
+	vfprintf(stdout, event->fmt, *event->vap);
+	fprintf(stdout, "\n");
+	return 0;
+}
+
 /*---------------------------------------------------------------------------*/
 int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespec *time)
 {
@@ -307,6 +318,12 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 static struct lxc_log_appender log_appender_syslog = {
 	.name		= "syslog",
 	.append		= log_append_syslog,
+	.next		= NULL,
+};
+
+static struct lxc_log_appender log_appender_stdout = {
+	.name		= "stdout",
+	.append		= log_append_stdout,
 	.next		= NULL,
 };
 
@@ -686,4 +703,28 @@ extern void lxc_log_options_no_override()
 {
 	lxc_quiet_specified = 1;
 	lxc_loglevel_specified = 1;
+}
+
+static int lxc_log_stdout() {
+	struct lxc_log_appender *appender;
+
+	if (!lxc_log_category_lxc.appender) {
+		lxc_log_category_lxc.appender = &log_appender_stdout;
+		return 0;
+	}
+	appender = lxc_log_category_lxc.appender;
+	while (appender->next != NULL)
+		appender = appender->next;
+	appender->next = &log_appender_stdout;
+	return 0;
+}
+
+__attribute__((constructor))
+void init_log() {
+	char *level;
+	level = getenv("LXC_TRACE");
+	if (level) {
+		lxc_log_stdout();
+		lxc_log_category_lxc.priority = lxc_log_priority_to_int(level);
+	}
 }
