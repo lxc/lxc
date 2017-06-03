@@ -3512,8 +3512,10 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	 * will protected it by preventing another user from being handed the
 	 * range by shadow.
 	 */
+	#if HAVE_LIBCAP
 	uidmap = idmaptool_on_path_and_privileged("newuidmap", CAP_SETUID);
 	gidmap = idmaptool_on_path_and_privileged("newgidmap", CAP_SETGID);
+	#endif
 	if (uidmap > 0 && gidmap > 0) {
 		DEBUG("Functional newuidmap and newgidmap binary found.");
 		use_shadow = true;
