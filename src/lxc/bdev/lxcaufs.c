@@ -133,7 +133,8 @@ int aufs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		rdata.src = odelta;
 		rdata.dest = ndelta;
 		if (am_unpriv())
-			ret = userns_exec_1(conf, rsync_delta_wrapper, &rdata);
+			ret = userns_exec_1(conf, rsync_delta_wrapper, &rdata,
+					    "rsync_delta_wrapper");
 		else
 			ret = rsync_delta(&rdata);
 		if (ret) {

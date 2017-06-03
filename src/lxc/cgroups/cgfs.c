@@ -1874,7 +1874,8 @@ static int create_or_remove_cgroup(bool do_remove,
 			return 0;
 		if (recurse) {
 			if (conf && !lxc_list_empty(&conf->id_map))
-				r = userns_exec_1(conf, rmdir_wrapper, buf);
+				r = userns_exec_1(conf, rmdir_wrapper, buf,
+						  "rmdir_wrapper");
 			else
 				r = cgroup_rmdir(buf);
 		} else
@@ -2616,7 +2617,8 @@ static bool do_cgfs_chown(char *cgroup_path, struct lxc_conf *conf)
 	/* Unpriv users can't chown it themselves, so chown from
 	 * a child namespace mapping both our own and the target uid
 	 */
-	if (userns_exec_1(conf, chown_cgroup_wrapper, &data) < 0) {
+	if (userns_exec_1(conf, chown_cgroup_wrapper, &data,
+			  "chown_cgroup_wrapper") < 0) {
 		ERROR("Error requesting cgroup chown in new namespace");
 		return false;
 	}
