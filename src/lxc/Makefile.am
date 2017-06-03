@@ -20,6 +20,8 @@ noinst_HEADERS = \
 	cgroups/cgroup.h \
 	caps.h \
 	conf.h \
+	confile.h \
+	confile_utils.h \
 	console.h \
 	error.h \
 	initutils.h \
@@ -101,6 +103,7 @@ liblxc_la_SOURCES = \
 	namespace.h namespace.c \
 	conf.c conf.h \
 	confile.c confile.h \
+	confile_utils.c confile_utils.h \
 	list.h \
 	state.c state.h \
 	log.c log.h \
