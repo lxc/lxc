@@ -756,16 +756,16 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 		 * :mixed, because then the container can't remount it read-write. */
 		if (cg_flags == LXC_AUTO_CGROUP_NOSPEC || cg_flags == LXC_AUTO_CGROUP_FULL_NOSPEC) {
 			int has_sys_admin = 0;
-			if (!lxc_list_empty(&conf->keepcaps)) {
+
+			if (!lxc_list_empty(&conf->keepcaps))
 				has_sys_admin = in_caplist(CAP_SYS_ADMIN, &conf->keepcaps);
-			} else {
+			else
 				has_sys_admin = !in_caplist(CAP_SYS_ADMIN, &conf->caps);
-			}
-			if (cg_flags == LXC_AUTO_CGROUP_NOSPEC) {
+
+			if (cg_flags == LXC_AUTO_CGROUP_NOSPEC)
 				cg_flags = has_sys_admin ? LXC_AUTO_CGROUP_RW : LXC_AUTO_CGROUP_MIXED;
-			} else {
+			else
 				cg_flags = has_sys_admin ? LXC_AUTO_CGROUP_FULL_RW : LXC_AUTO_CGROUP_FULL_MIXED;
-			}
 		}
 
 		if (!cgroup_mount(conf->rootfs.path ? conf->rootfs.mount : "", handler, cg_flags)) {
@@ -2665,8 +2665,8 @@ struct lxc_conf *lxc_conf_init(void)
 
 static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
-	char veth1buf[IFNAMSIZ], *veth1;
-	char veth2buf[IFNAMSIZ], *veth2;
+	char *veth1, *veth2;
+	char veth1buf[IFNAMSIZ], veth2buf[IFNAMSIZ];
 	int bridge_index, err;
 	unsigned int mtu = 0;
 
@@ -2698,8 +2698,8 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 
 	err = lxc_veth_create(veth1, veth2);
 	if (err) {
-		ERROR("failed to create veth pair (%s and %s): %s", veth1, veth2,
-		      strerror(-err));
+		ERROR("failed to create veth pair \"%s\" and \"%s\": %s", veth1,
+		      veth2, strerror(-err));
 		goto out_delete;
 	}
 
@@ -2708,30 +2708,30 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	 * of a container */
 	err = setup_private_host_hw_addr(veth1);
 	if (err) {
-		ERROR("failed to change mac address of host interface '%s': %s",
-			veth1, strerror(-err));
+		ERROR("failed to change mac address of host interface \"%s\": %s",
+		      veth1, strerror(-err));
 		goto out_delete;
 	}
 
 	netdev->ifindex = if_nametoindex(veth2);
 	if (!netdev->ifindex) {
-		ERROR("failed to retrieve the index for %s", veth2);
+		ERROR("failed to retrieve the index for \"%s\"", veth2);
 		goto out_delete;
 	}
 
 	if (netdev->mtu) {
 		if (lxc_safe_uint(netdev->mtu, &mtu) < 0)
-			WARN("Failed to parse mtu from.");
+			WARN("failed to parse mtu from");
 		else
-			INFO("Retrieved mtu %d", mtu);
+			INFO("retrieved mtu %d", mtu);
 	} else if (netdev->link) {
 		bridge_index = if_nametoindex(netdev->link);
 		if (bridge_index) {
 			mtu = netdev_get_mtu(bridge_index);
-			INFO("Retrieved mtu %d from %s", mtu, netdev->link);
+			INFO("retrieved mtu %d from %s", mtu, netdev->link);
 		} else {
 			mtu = netdev_get_mtu(netdev->ifindex);
-			INFO("Retrieved mtu %d from %s", mtu, veth2);
+			INFO("retrieved mtu %d from %s", mtu, veth2);
 		}
 	}
 
@@ -2740,7 +2740,8 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		if (!err)
 			err = lxc_netdev_set_mtu(veth2, mtu);
 		if (err) {
-			ERROR("failed to set mtu '%i' for veth pair (%s and %s): %s",
+			ERROR("failed to set mtu \"%d\" for veth pair \"%s\" "
+			      "and \"%s\": %s",
 			      mtu, veth1, veth2, strerror(-err));
 			goto out_delete;
 		}
@@ -2749,16 +2750,16 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	if (netdev->link) {
 		err = lxc_bridge_attach(handler->lxcpath, handler->name, netdev->link, veth1);
 		if (err) {
-			ERROR("failed to attach '%s' to the bridge '%s': %s",
-				      veth1, netdev->link, strerror(-err));
+			ERROR("failed to attach \"%s\" to bridge \"%s\": %s",
+			      veth1, netdev->link, strerror(-err));
 			goto out_delete;
 		}
-		INFO("Attached '%s': to the bridge '%s': ", veth1, netdev->link);
+		INFO("attached \"%s\" to bridge \"%s\"", veth1, netdev->link);
 	}
 
 	err = lxc_netdev_up(veth1);
 	if (err) {
-		ERROR("failed to set %s up : %s", veth1, strerror(-err));
+		ERROR("failed to set \"%s\" up: %s", veth1, strerror(-err));
 		goto out_delete;
 	}
 
@@ -2769,8 +2770,8 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 			goto out_delete;
 	}
 
-	DEBUG("instantiated veth '%s/%s', index is '%d'",
-	      veth1, veth2, netdev->ifindex);
+	DEBUG("instantiated veth \"%s/%s\", index is \"%d\"", veth1, veth2,
+	      netdev->ifindex);
 
 	return 0;
 
