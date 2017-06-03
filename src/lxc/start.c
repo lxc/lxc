@@ -1021,8 +1021,9 @@ static int recv_fd(int sock, int *fd)
 
 static int recv_ttys_from_child(struct lxc_handler *handler)
 {
+	int i, ret;
+	int sock = handler->ttysock[1];
 	struct lxc_conf *conf = handler->conf;
-	int i, sock = handler->ttysock[1];
 	struct lxc_tty_info *tty_info = &conf->tty_info;
 
 	if (!conf->tty)
@@ -1035,11 +1036,18 @@ static int recv_ttys_from_child(struct lxc_handler *handler)
 	for (i = 0; i < conf->tty; i++) {
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 		pty_info->busy = 0;
-		if (recv_fd(sock, &pty_info->slave) < 0 ||
-		    recv_fd(sock, &pty_info->master) < 0) {
-			ERROR("Error receiving tty info from child process.");
+		ret = recv_fd(sock, &pty_info->slave);
+		if (ret >= 0)
+			recv_fd(sock, &pty_info->master);
+		if (ret < 0) {
+			ERROR("failed to receive pty with master fd %d and "
+			      "slave fd %d from child: %s",
+			      pty_info->master, pty_info->slave,
+			      strerror(errno));
 			return -1;
 		}
+		TRACE("received pty with master fd %d and slave fd %d from child",
+		      pty_info->master, pty_info->slave);
 	}
 	tty_info->nbtty = conf->tty;
 
@@ -1533,7 +1541,8 @@ static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 	}
 
 	if (am_unpriv())
-		ret = userns_exec_1(handler->conf, lxc_rmdir_onedev_wrapper, destroy);
+		ret = userns_exec_1(handler->conf, lxc_rmdir_onedev_wrapper,
+				    destroy, "lxc_rmdir_onedev_wrapper");
 	else
 		ret = lxc_rmdir_onedev(destroy, NULL);
 
@@ -1552,7 +1561,8 @@ static int lxc_rmdir_onedev_wrapper(void *data)
 
 static bool do_destroy_container(struct lxc_conf *conf) {
 	if (am_unpriv()) {
-		if (userns_exec_1(conf, bdev_destroy_wrapper, conf) < 0)
+		if (userns_exec_1(conf, bdev_destroy_wrapper, conf,
+				  "bdev_destroy_wrapper") < 0)
 			return false;
 		return true;
 	}

@@ -437,7 +437,7 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	data.orig = orig;
 	data.new = new;
 	if (am_unpriv())
-		ret = userns_exec_1(c0->lxc_conf, rsync_rootfs_wrapper, &data);
+		ret = userns_exec_1(c0->lxc_conf, rsync_rootfs_wrapper, &data, "rsync_rootfs_wrapper");
 	else
 		ret = rsync_rootfs(&data);
 

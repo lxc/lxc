@@ -1284,7 +1284,7 @@ void recursive_destroy(char *path, struct lxc_conf *conf)
 {
 	int r;
 	if (conf && !lxc_list_empty(&conf->id_map))
-		r = userns_exec_1(conf, rmdir_wrapper, path);
+		r = userns_exec_1(conf, rmdir_wrapper, path, "rmdir_wrapper");
 	else
 		r = cgroup_rmdir(path);
 
@@ -1507,7 +1507,8 @@ static bool cgfsns_chown(void *hdata, struct lxc_conf *conf)
 	wrap.d = d;
 	wrap.origuid = geteuid();
 
-	if (userns_exec_1(conf, chown_cgroup_wrapper, &wrap) < 0) {
+	if (userns_exec_1(conf, chown_cgroup_wrapper, &wrap,
+			  "chown_cgroup_wrapper") < 0) {
 		ERROR("Error requesting cgroup chown in new namespace");
 		return false;
 	}

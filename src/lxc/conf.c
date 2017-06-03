@@ -815,16 +815,16 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 		 * :mixed, because then the container can't remount it read-write. */
 		if (cg_flags == LXC_AUTO_CGROUP_NOSPEC || cg_flags == LXC_AUTO_CGROUP_FULL_NOSPEC) {
 			int has_sys_admin = 0;
-			if (!lxc_list_empty(&conf->keepcaps)) {
+
+			if (!lxc_list_empty(&conf->keepcaps))
 				has_sys_admin = in_caplist(CAP_SYS_ADMIN, &conf->keepcaps);
-			} else {
+			else
 				has_sys_admin = !in_caplist(CAP_SYS_ADMIN, &conf->caps);
-			}
-			if (cg_flags == LXC_AUTO_CGROUP_NOSPEC) {
+
+			if (cg_flags == LXC_AUTO_CGROUP_NOSPEC)
 				cg_flags = has_sys_admin ? LXC_AUTO_CGROUP_RW : LXC_AUTO_CGROUP_MIXED;
-			} else {
+			else
 				cg_flags = has_sys_admin ? LXC_AUTO_CGROUP_FULL_RW : LXC_AUTO_CGROUP_FULL_MIXED;
-			}
 		}
 
 		if (!cgroup_mount(conf->rootfs.path ? conf->rootfs.mount : "", handler, cg_flags)) {
@@ -2764,8 +2764,8 @@ struct lxc_conf *lxc_conf_init(void)
 
 static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
-	char veth1buf[IFNAMSIZ], *veth1;
-	char veth2buf[IFNAMSIZ], *veth2;
+	char *veth1, *veth2;
+	char veth1buf[IFNAMSIZ], veth2buf[IFNAMSIZ];
 	int bridge_index, err;
 	unsigned int mtu = 0;
 
@@ -2797,8 +2797,8 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 
 	err = lxc_veth_create(veth1, veth2);
 	if (err) {
-		ERROR("failed to create veth pair (%s and %s): %s", veth1, veth2,
-		      strerror(-err));
+		ERROR("failed to create veth pair \"%s\" and \"%s\": %s", veth1,
+		      veth2, strerror(-err));
 		goto out_delete;
 	}
 
@@ -2807,30 +2807,30 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	 * of a container */
 	err = setup_private_host_hw_addr(veth1);
 	if (err) {
-		ERROR("failed to change mac address of host interface '%s': %s",
-			veth1, strerror(-err));
+		ERROR("failed to change mac address of host interface \"%s\": %s",
+		      veth1, strerror(-err));
 		goto out_delete;
 	}
 
 	netdev->ifindex = if_nametoindex(veth2);
 	if (!netdev->ifindex) {
-		ERROR("failed to retrieve the index for %s", veth2);
+		ERROR("failed to retrieve the index for \"%s\"", veth2);
 		goto out_delete;
 	}
 
 	if (netdev->mtu) {
 		if (lxc_safe_uint(netdev->mtu, &mtu) < 0)
-			WARN("Failed to parse mtu from.");
+			WARN("failed to parse mtu from");
 		else
-			INFO("Retrieved mtu %d", mtu);
+			INFO("retrieved mtu %d", mtu);
 	} else if (netdev->link) {
 		bridge_index = if_nametoindex(netdev->link);
 		if (bridge_index) {
 			mtu = netdev_get_mtu(bridge_index);
-			INFO("Retrieved mtu %d from %s", mtu, netdev->link);
+			INFO("retrieved mtu %d from %s", mtu, netdev->link);
 		} else {
 			mtu = netdev_get_mtu(netdev->ifindex);
-			INFO("Retrieved mtu %d from %s", mtu, veth2);
+			INFO("retrieved mtu %d from %s", mtu, veth2);
 		}
 	}
 
@@ -2839,7 +2839,8 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		if (!err)
 			err = lxc_netdev_set_mtu(veth2, mtu);
 		if (err) {
-			ERROR("failed to set mtu '%i' for veth pair (%s and %s): %s",
+			ERROR("failed to set mtu \"%d\" for veth pair \"%s\" "
+			      "and \"%s\": %s",
 			      mtu, veth1, veth2, strerror(-err));
 			goto out_delete;
 		}
@@ -2848,16 +2849,16 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	if (netdev->link) {
 		err = lxc_bridge_attach(handler->lxcpath, handler->name, netdev->link, veth1);
 		if (err) {
-			ERROR("failed to attach '%s' to the bridge '%s': %s",
-				      veth1, netdev->link, strerror(-err));
+			ERROR("failed to attach \"%s\" to bridge \"%s\": %s",
+			      veth1, netdev->link, strerror(-err));
 			goto out_delete;
 		}
-		INFO("Attached '%s': to the bridge '%s': ", veth1, netdev->link);
+		INFO("attached \"%s\" to bridge \"%s\"", veth1, netdev->link);
 	}
 
 	err = lxc_netdev_up(veth1);
 	if (err) {
-		ERROR("failed to set %s up : %s", veth1, strerror(-err));
+		ERROR("failed to set \"%s\" up: %s", veth1, strerror(-err));
 		goto out_delete;
 	}
 
@@ -2868,8 +2869,8 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 			goto out_delete;
 	}
 
-	DEBUG("instantiated veth '%s/%s', index is '%d'",
-	      veth1, veth2, netdev->ifindex);
+	DEBUG("instantiated veth \"%s/%s\", index is \"%d\"", veth1, veth2,
+	      netdev->ifindex);
 
 	return 0;
 
@@ -4107,21 +4108,30 @@ static int send_fd(int sock, int fd)
 
 static int send_ttys_to_parent(struct lxc_handler *handler)
 {
+	int i, ret;
 	struct lxc_conf *conf = handler->conf;
 	const struct lxc_tty_info *tty_info = &conf->tty_info;
-	int i;
 	int sock = handler->ttysock[0];
 
 	for (i = 0; i < tty_info->nbtty; i++) {
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
-		if (send_fd(sock, pty_info->slave) < 0)
-			goto bad;
+		ret = send_fd(sock, pty_info->slave);
+		if (ret >= 0)
+			send_fd(sock, pty_info->master);
+		TRACE("sending pty \"%s\" with master fd %d and slave fd %d to "
+		      "parent",
+		      pty_info->name, pty_info->master, pty_info->slave);
 		close(pty_info->slave);
 		pty_info->slave = -1;
-		if (send_fd(sock, pty_info->master) < 0)
-			goto bad;
 		close(pty_info->master);
 		pty_info->master = -1;
+		if (ret < 0) {
+			ERROR("failed to send pty \"%s\" with master fd %d and "
+			      "slave fd %d to parent : %s",
+			      pty_info->name, pty_info->master, pty_info->slave,
+			      strerror(errno));
+			goto bad;
+		}
 	}
 
 	close(handler->ttysock[0]);
@@ -4659,6 +4669,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 
 struct userns_fn_data {
 	int (*fn)(void *);
+	const char *fn_name;
 	void *arg;
 	int p[2];
 };
@@ -4680,6 +4691,8 @@ static int run_userns_fn(void *data)
 	/* Close read end of the pipe. */
 	close(d->p[0]);
 
+	if (d->fn_name)
+		TRACE("calling function \"%s\"", d->fn_name);
 	/* Call function to run. */
 	return d->fn(d->arg);
 }
@@ -4757,7 +4770,8 @@ static struct id_map *idmap_add(struct lxc_conf *conf, uid_t id, enum idtype typ
  * retrieve from the ontainer's configured {g,u}id mappings as it must have been
  * there to start the container in the first place.
  */
-int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
+int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
+		  const char *fn_name)
 {
 	pid_t pid;
 	uid_t euid, egid;
@@ -4777,6 +4791,7 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 		return -1;
 	}
 	d.fn = fn;
+	d.fn_name = fn_name;
 	d.arg = data;
 	d.p[0] = p[0];
 	d.p[1] = p[1];
@@ -4827,17 +4842,16 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 		goto on_error;
 	}
 
+	host_uid_map = container_root_uid;
+	host_gid_map = container_root_gid;
+
 	/* Check whether the {g,u}id of the user has a mapping. */
 	euid = geteuid();
 	egid = getegid();
-	if (euid == container_root_uid->hostid)
-		host_uid_map = container_root_uid;
-	else
+	if (euid != container_root_uid->hostid)
 		host_uid_map = idmap_add(conf, euid, ID_TYPE_UID);
 
-	if (egid == container_root_gid->hostid)
-		host_gid_map = container_root_gid;
-	else
+	if (egid != container_root_gid->hostid)
 		host_gid_map = idmap_add(conf, egid, ID_TYPE_GID);
 
 	if (!host_uid_map) {
@@ -4863,7 +4877,7 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 	lxc_list_add_elem(tmplist, container_root_uid);
 	lxc_list_add_tail(idmap, tmplist);
 
-	if (host_uid_map != container_root_uid) {
+	if (host_uid_map && (host_uid_map != container_root_uid)) {
 		/* idmap will now keep track of that memory. */
 		container_root_uid = NULL;
 
@@ -4873,9 +4887,11 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 			goto on_error;
 		lxc_list_add_elem(tmplist, host_uid_map);
 		lxc_list_add_tail(idmap, tmplist);
-		/* idmap will now keep track of that memory. */
-		host_uid_map = NULL;
 	}
+	/* idmap will now keep track of that memory. */
+	container_root_uid = NULL;
+	/* idmap will now keep track of that memory. */
+	host_uid_map = NULL;
 
 	tmplist = malloc(sizeof(*tmplist));
 	if (!tmplist)
@@ -4883,7 +4899,7 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 	lxc_list_add_elem(tmplist, container_root_gid);
 	lxc_list_add_tail(idmap, tmplist);
 
-	if (host_gid_map != container_root_gid) {
+	if (host_gid_map && (host_gid_map != container_root_gid)) {
 		/* idmap will now keep track of that memory. */
 		container_root_gid = NULL;
 
@@ -4892,9 +4908,11 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 			goto on_error;
 		lxc_list_add_elem(tmplist, host_gid_map);
 		lxc_list_add_tail(idmap, tmplist);
-		/* idmap will now keep track of that memory. */
-		host_gid_map = NULL;
 	}
+	/* idmap will now keep track of that memory. */
+	container_root_gid = NULL;
+	/* idmap will now keep track of that memory. */
+	host_gid_map = NULL;
 
 	if (lxc_log_get_level() == LXC_LOG_PRIORITY_TRACE ||
 	    conf->loglevel == LXC_LOG_PRIORITY_TRACE) {
@@ -4927,11 +4945,16 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data)
 	ret = wait_for_pid(pid);
 
 on_error:
-	lxc_free_idmap(idmap);
-	free(container_root_uid);
-	free(container_root_gid);
-	free(host_uid_map);
-	free(host_gid_map);
+	if (idmap)
+		lxc_free_idmap(idmap);
+	if (container_root_uid)
+		free(container_root_uid);
+	if (container_root_gid)
+		free(container_root_gid);
+	if (host_uid_map && (host_uid_map != container_root_uid))
+		free(host_uid_map);
+	if (host_gid_map && (host_gid_map != container_root_gid))
+		free(host_gid_map);
 
 	if (p[0] != -1)
 		close(p[0]);
