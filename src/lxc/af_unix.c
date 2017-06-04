@@ -22,6 +22,8 @@
  */
 #include "config.h"
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
 #include <unistd.h>
@@ -133,49 +135,66 @@ int lxc_abstract_unix_connect(const char *path)
 	return fd;
 }
 
-int lxc_abstract_unix_send_fd(int fd, int sendfd, void *data, size_t size)
+int lxc_abstract_unix_send_fds(int fd, int *sendfds, int num_sendfds,
+			       void *data, size_t size)
 {
-	struct msghdr msg = { 0 };
+	int ret;
+	struct msghdr msg;
 	struct iovec iov;
-	struct cmsghdr *cmsg;
-	char cmsgbuf[CMSG_SPACE(sizeof(int))] = {0};
+	struct cmsghdr *cmsg = NULL;
 	char buf[1] = {0};
-	int *val;
+	char *cmsgbuf;
+	size_t cmsgbufsize = CMSG_SPACE(num_sendfds * sizeof(int));
+
+	memset(&msg, 0, sizeof(msg));
+	memset(&iov, 0, sizeof(iov));
+
+	cmsgbuf = malloc(cmsgbufsize);
+	if (!cmsgbuf)
+		return -1;
 
 	msg.msg_control = cmsgbuf;
-	msg.msg_controllen = sizeof(cmsgbuf);
+	msg.msg_controllen = cmsgbufsize;
 
 	cmsg = CMSG_FIRSTHDR(&msg);
-	cmsg->cmsg_len = CMSG_LEN(sizeof(int));
 	cmsg->cmsg_level = SOL_SOCKET;
 	cmsg->cmsg_type = SCM_RIGHTS;
-	val = (int *)(CMSG_DATA(cmsg));
-	*val = sendfd;
+	cmsg->cmsg_len = CMSG_LEN(num_sendfds * sizeof(int));
 
-	msg.msg_name = NULL;
-	msg.msg_namelen = 0;
+	msg.msg_controllen = cmsg->cmsg_len;
+
+	memcpy(CMSG_DATA(cmsg), sendfds, num_sendfds * sizeof(int));
 
 	iov.iov_base = data ? data : buf;
 	iov.iov_len = data ? size : sizeof(buf);
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 
-	return sendmsg(fd, &msg, MSG_NOSIGNAL);
+	ret = sendmsg(fd, &msg, MSG_NOSIGNAL);
+	free(cmsgbuf);
+	return ret;
 }
 
-int lxc_abstract_unix_recv_fd(int fd, int *recvfd, void *data, size_t size)
+int lxc_abstract_unix_recv_fds(int fd, int *recvfds, int num_recvfds,
+			       void *data, size_t size)
 {
-	struct msghdr msg = { 0 };
+	int ret;
+	struct msghdr msg;
 	struct iovec iov;
-	struct cmsghdr *cmsg;
-	int ret, *val;
-	char cmsgbuf[CMSG_SPACE(sizeof(int))] = {0};
+	struct cmsghdr *cmsg = NULL;
 	char buf[1] = {0};
+	char *cmsgbuf;
+	size_t cmsgbufsize = CMSG_SPACE(num_recvfds * sizeof(int));
 
-	msg.msg_name = NULL;
-	msg.msg_namelen = 0;
+	memset(&msg, 0, sizeof(msg));
+	memset(&iov, 0, sizeof(iov));
+
+	cmsgbuf = malloc(cmsgbufsize);
+	if (!cmsgbuf)
+		return -1;
+
 	msg.msg_control = cmsgbuf;
-	msg.msg_controllen = sizeof(cmsgbuf);
+	msg.msg_controllen = cmsgbufsize;
 
 	iov.iov_base = data ? data : buf;
 	iov.iov_len = data ? size : sizeof(buf);
@@ -188,17 +207,14 @@ int lxc_abstract_unix_recv_fd(int fd, int *recvfd, void *data, size_t size)
 
 	cmsg = CMSG_FIRSTHDR(&msg);
 
-	/* if the message is wrong the variable will not be
-	 * filled and the peer will notified about a problem */
-	*recvfd = -1;
-
-	if (cmsg && cmsg->cmsg_len == CMSG_LEN(sizeof(int)) &&
-			cmsg->cmsg_level == SOL_SOCKET &&
-			cmsg->cmsg_type == SCM_RIGHTS) {
-		val = (int *) CMSG_DATA(cmsg);
-		*recvfd = *val;
+	memset(recvfds, -1, num_recvfds * sizeof(int));
+	if (cmsg && cmsg->cmsg_len == CMSG_LEN(num_recvfds * sizeof(int)) &&
+	    cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
+		memcpy(recvfds, CMSG_DATA(cmsg), num_recvfds * sizeof(int));
 	}
+
 out:
+	free(cmsgbuf);
 	return ret;
 }
 

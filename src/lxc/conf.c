@@ -3994,55 +3994,46 @@ static bool verify_start_hooks(struct lxc_conf *conf)
 	return true;
 }
 
-static int send_fd(int sock, int fd)
+static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 {
-	int ret = lxc_abstract_unix_send_fd(sock, fd, NULL, 0);
-
-
-	if (ret < 0) {
-		SYSERROR("Error sending tty fd to parent");
-		return -1;
-	}
-
-	return 0;
-}
-
-static int send_ttys_to_parent(struct lxc_handler *handler)
-{
-	int i, ret;
+	int i;
+	int *ttyfds;
+	struct lxc_pty_info *pty_info;
 	struct lxc_conf *conf = handler->conf;
 	const struct lxc_tty_info *tty_info = &conf->tty_info;
 	int sock = handler->ttysock[0];
+	int ret = -1;
+	size_t num_ttyfds = (2 * conf->tty);
 
-	for (i = 0; i < tty_info->nbtty; i++) {
-		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
-		ret = send_fd(sock, pty_info->slave);
-		if (ret >= 0)
-			send_fd(sock, pty_info->master);
-		TRACE("sending pty \"%s\" with master fd %d and slave fd %d to "
+	ttyfds = malloc(num_ttyfds * sizeof(int));
+	if (!ttyfds)
+		return -1;
+
+	for (i = 0; i < num_ttyfds; i++) {
+		pty_info = &tty_info->pty_info[i / 2];
+		ttyfds[i++] = pty_info->slave;
+		ttyfds[i] = pty_info->master;
+		TRACE("send pty \"%s\" with master fd %d and slave fd %d to "
 		      "parent",
 		      pty_info->name, pty_info->master, pty_info->slave);
-		close(pty_info->slave);
-		pty_info->slave = -1;
-		close(pty_info->master);
-		pty_info->master = -1;
-		if (ret < 0) {
-			ERROR("failed to send pty \"%s\" with master fd %d and "
-			      "slave fd %d to parent : %s",
-			      pty_info->name, pty_info->master, pty_info->slave,
-			      strerror(errno));
-			goto bad;
-		}
 	}
+
+	ret = lxc_abstract_unix_send_fds(sock, ttyfds, num_ttyfds, NULL, 0);
+	if (ret < 0)
+		ERROR("failed to send %d ttys to parent: %s", conf->tty,
+		      strerror(errno));
+	else
+		TRACE("sent %d ttys to parent", conf->tty);
 
 	close(handler->ttysock[0]);
 	close(handler->ttysock[1]);
 
-	return 0;
+	for (i = 0; i < num_ttyfds; i++)
+		close(ttyfds[i]);
 
-bad:
-	ERROR("Error writing tty fd to parent");
-	return -1;
+	free(ttyfds);
+
+	return ret;
 }
 
 int lxc_setup(struct lxc_handler *handler)
@@ -4161,7 +4152,7 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
-	if (send_ttys_to_parent(handler) < 0) {
+	if (lxc_send_ttys_to_parent(handler) < 0) {
 		ERROR("failure sending console info to parent");
 		return -1;
 	}
