@@ -585,49 +585,6 @@ static int run_script(const char *name, const char *section, const char *script,
 	return run_buffer(buffer);
 }
 
-static int mount_rootfs_dir(const char *rootfs, const char *target,
-			    const char *options)
-{
-	unsigned long mntflags;
-	char *mntdata;
-	int ret;
-
-	if (parse_mntopts(options, &mntflags, &mntdata) < 0) {
-		free(mntdata);
-		return -1;
-	}
-
-	ret = mount(rootfs, target, "none", MS_BIND | MS_REC | mntflags, mntdata);
-	free(mntdata);
-
-	return ret;
-}
-
-static int lxc_mount_rootfs_file(const char *rootfs, const char *target,
-			     const char *options)
-{
-	int ret, loopfd;
-	char path[MAXPATHLEN];
-
-	loopfd = lxc_prepare_loop_dev(rootfs, path, LO_FLAGS_AUTOCLEAR);
-	if (loopfd < 0)
-		return -1;
-	DEBUG("prepared loop device \"%s\"", path);
-
-	ret = mount_unknown_fs(path, target, options);
-	close(loopfd);
-
-	DEBUG("mounted rootfs \"%s\" on loop device \"%s\" via loop device \"%s\"", rootfs, target, path);
-
-	return ret;
-}
-
-static int mount_rootfs_block(const char *rootfs, const char *target,
-			                  const char *options)
-{
-	return mount_unknown_fs(rootfs, target, options);
-}
-
 /*
  * pin_rootfs
  * if rootfs is a directory, then open ${rootfs}/lxc.hold for writing for
@@ -834,49 +791,6 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 	}
 
 	return 0;
-}
-
-static int mount_rootfs(const char *rootfs, const char *target, const char *options)
-{
-	char absrootfs[MAXPATHLEN];
-	struct stat s;
-	int i;
-
-	typedef int (*rootfs_cb)(const char *, const char *, const char *);
-
-	struct rootfs_type {
-		int type;
-		rootfs_cb cb;
-	} rtfs_type[] = {
-		{ S_IFDIR, mount_rootfs_dir },
-		{ S_IFBLK, mount_rootfs_block },
-		{ S_IFREG, lxc_mount_rootfs_file },
-	};
-
-	if (!realpath(rootfs, absrootfs)) {
-		SYSERROR("Failed to get real path for \"%s\".", rootfs);
-		return -1;
-	}
-
-	if (access(absrootfs, F_OK)) {
-		SYSERROR("The rootfs \"%s\" is not accessible.", absrootfs);
-		return -1;
-	}
-
-	if (stat(absrootfs, &s)) {
-		SYSERROR("Failed to stat the rootfs \"%s\".", absrootfs);
-		return -1;
-	}
-
-	for (i = 0; i < sizeof(rtfs_type)/sizeof(rtfs_type[0]); i++) {
-		if (!__S_ISTYPE(s.st_mode, rtfs_type[i].type))
-			continue;
-
-		return rtfs_type[i].cb(absrootfs, target, options);
-	}
-
-	ERROR("Unsupported rootfs type for rootfs \"%s\".", absrootfs);
-	return -1;
 }
 
 static int setup_utsname(struct utsname *utsname)
@@ -1258,8 +1172,9 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 	return 0;
 }
 
-static int setup_rootfs(struct lxc_conf *conf)
+static int lxc_setup_rootfs(struct lxc_conf *conf)
 {
+	int ret;
 	struct bdev *bdev;
 	const struct lxc_rootfs *rootfs;
 
@@ -1278,18 +1193,17 @@ static int setup_rootfs(struct lxc_conf *conf)
 		return -1;
 	}
 
-	/* First try mounting rootfs using a bdev. */
 	bdev = bdev_init(conf, rootfs->path, rootfs->mount, rootfs->options);
-	if (bdev && !bdev->ops->mount(bdev)) {
-		bdev_put(bdev);
-		DEBUG("Mounted rootfs \"%s\" onto \"%s\" with options \"%s\".",
+	if (!bdev) {
+		ERROR("Failed to mount rootfs \"%s\" onto \"%s\" with options \"%s\".",
 		      rootfs->path, rootfs->mount,
 		      rootfs->options ? rootfs->options : "(null)");
-		return 0;
+		return -1;
 	}
-	if (bdev)
-		bdev_put(bdev);
-	if (mount_rootfs(rootfs->path, rootfs->mount, rootfs->options)) {
+
+	ret = bdev->ops->mount(bdev);
+	bdev_put(bdev);
+	if (ret < 0) {
 		ERROR("Failed to mount rootfs \"%s\" onto \"%s\" with options \"%s\".",
 		      rootfs->path, rootfs->mount,
 		      rootfs->options ? rootfs->options : "(null)");
@@ -1299,6 +1213,7 @@ static int setup_rootfs(struct lxc_conf *conf)
 	DEBUG("Mounted rootfs \"%s\" onto \"%s\" with options \"%s\".",
 	      rootfs->path, rootfs->mount,
 	      rootfs->options ? rootfs->options : "(null)");
+
 	return 0;
 }
 
@@ -4059,7 +3974,7 @@ int do_rootfs_setup(struct lxc_conf *conf, const char *name, const char *lxcpath
 		return -1;
 	}
 
-	if (setup_rootfs(conf)) {
+	if (lxc_setup_rootfs(conf)) {
 		ERROR("failed to setup rootfs for '%s'", name);
 		return -1;
 	}
