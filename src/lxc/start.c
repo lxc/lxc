@@ -1008,23 +1008,16 @@ static int save_phys_nics(struct lxc_conf *conf)
 	return 0;
 }
 
-static int recv_fd(int sock, int *fd)
+static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 {
-	if (lxc_abstract_unix_recv_fd(sock, fd, NULL, 0) < 0) {
-		SYSERROR("Error receiving tty file descriptor from child process.");
-		return -1;
-	}
-	if (*fd == -1)
-		return -1;
-	return 0;
-}
-
-static int recv_ttys_from_child(struct lxc_handler *handler)
-{
-	int i, ret;
+	int i;
+	int *ttyfds;
+	struct lxc_pty_info *pty_info;
+	int ret = -1;
 	int sock = handler->ttysock[1];
 	struct lxc_conf *conf = handler->conf;
 	struct lxc_tty_info *tty_info = &conf->tty_info;
+	size_t num_ttyfds = (2 * conf->tty);
 
 	if (!conf->tty)
 		return 0;
@@ -1033,25 +1026,31 @@ static int recv_ttys_from_child(struct lxc_handler *handler)
 	if (!tty_info->pty_info)
 		return -1;
 
-	for (i = 0; i < conf->tty; i++) {
-		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
+	ttyfds = malloc(num_ttyfds * sizeof(int));
+	if (!ttyfds)
+		return -1;
+
+	ret = lxc_abstract_unix_recv_fds(sock, ttyfds, num_ttyfds, NULL, 0);
+	for (i = 0; (ret >= 0 && *ttyfds != -1) && (i < num_ttyfds); i++) {
+		pty_info = &tty_info->pty_info[i / 2];
 		pty_info->busy = 0;
-		ret = recv_fd(sock, &pty_info->slave);
-		if (ret >= 0)
-			recv_fd(sock, &pty_info->master);
-		if (ret < 0) {
-			ERROR("failed to receive pty with master fd %d and "
-			      "slave fd %d from child: %s",
-			      pty_info->master, pty_info->slave,
-			      strerror(errno));
-			return -1;
-		}
-		TRACE("received pty with master fd %d and slave fd %d from child",
-		      pty_info->master, pty_info->slave);
+		pty_info->slave = ttyfds[i++];
+		pty_info->master = ttyfds[i];
+		TRACE("received pty with master fd %d and slave fd %d from "
+		      "parent", pty_info->master, pty_info->slave);
 	}
+
 	tty_info->nbtty = conf->tty;
 
-	return 0;
+	free(ttyfds);
+
+	if (ret < 0)
+		ERROR("failed to receive %d ttys from child: %s", conf->tty,
+		      strerror(errno));
+	else
+		TRACE("received %d ttys from child", conf->tty);
+
+	return ret;
 }
 
 void resolve_clone_flags(struct lxc_handler *handler)
@@ -1294,7 +1293,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	cgroups_connected = false;
 
 	/* Read tty fds allocated by child. */
-	if (recv_ttys_from_child(handler) < 0) {
+	if (lxc_recv_ttys_from_child(handler) < 0) {
 		ERROR("Failed to receive tty info from child process.");
 		goto out_delete_net;
 	}

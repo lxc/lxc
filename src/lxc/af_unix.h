@@ -24,13 +24,17 @@
 #ifndef __LXC_AF_UNIX_H
 #define __LXC_AF_UNIX_H
 
+#include <stdio.h>
+
 /* does not enforce \0-termination */
 extern int lxc_abstract_unix_open(const char *path, int type, int flags);
 extern int lxc_abstract_unix_close(int fd);
 /* does not enforce \0-termination */
 extern int lxc_abstract_unix_connect(const char *path);
-extern int lxc_abstract_unix_send_fd(int fd, int sendfd, void *data, size_t size);
-extern int lxc_abstract_unix_recv_fd(int fd, int *recvfd, void *data, size_t size);
+extern int lxc_abstract_unix_send_fds(int fd, int *sendfds, int num_sendfds,
+				      void *data, size_t size);
+extern int lxc_abstract_unix_recv_fds(int fd, int *recvfds, int num_recvfds,
+				      void *data, size_t size);
 extern int lxc_abstract_unix_send_credential(int fd, void *data, size_t size);
 extern int lxc_abstract_unix_rcv_credential(int fd, void *data, size_t size);
 
