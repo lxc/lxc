@@ -131,7 +131,7 @@ int bdev_destroy_wrapper(void *data);
  */
 int blk_getsize(struct bdev *bdev, uint64_t *size);
 int detect_fs(struct bdev *bdev, char *type, int len);
-int do_mkfs(const char *path, const char *fstype);
+int do_mkfs_exec_wrapper(void *args);
 int is_blktype(struct bdev *b);
 int mount_unknown_fs(const char *rootfs, const char *target,
 		const char *options);

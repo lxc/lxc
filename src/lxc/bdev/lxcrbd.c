@@ -51,6 +51,8 @@ int rbd_create(struct bdev *bdev, const char *dest, const char *n,
 	int ret, len;
 	char sz[24];
 	pid_t pid;
+	const char *cmd_args[2];
+	char cmd_output[MAXPATHLEN];
 
 	if (!specs)
 		return -1;
@@ -104,11 +106,13 @@ int rbd_create(struct bdev *bdev, const char *dest, const char *n,
 	if (!fstype)
 		fstype = DEFAULT_FSTYPE;
 
-	if (do_mkfs(bdev->src, fstype) < 0) {
-		ERROR("Error creating filesystem type %s on %s", fstype,
-			bdev->src);
+	cmd_args[0] = fstype;
+	cmd_args[1] = bdev->src;
+	ret = run_command(cmd_output, sizeof(cmd_output), do_mkfs_exec_wrapper,
+			  (void *)cmd_args);
+	if (ret < 0)
 		return -1;
-	}
+
 	if (!(bdev->dest = strdup(dest)))
 		return -1;
 

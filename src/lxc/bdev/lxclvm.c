@@ -282,6 +282,8 @@ int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 	char fstype[100];
 	uint64_t size = newsize;
 	int len, ret;
+	const char *cmd_args[2];
+	char cmd_output[MAXPATHLEN];
 
 	if (!orig->src || !orig->dest)
 		return -1;
@@ -348,11 +350,14 @@ int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 			ERROR("Error creating new lvm blockdev");
 			return -1;
 		}
-		if (do_mkfs(new->src, fstype) < 0) {
-			ERROR("Error creating filesystem type %s on %s", fstype,
-				new->src);
+
+		cmd_args[0] = fstype;
+		cmd_args[1] = new->src;
+		// create an fs in the loopback file
+		ret = run_command(cmd_output, sizeof(cmd_output),
+				  do_mkfs_exec_wrapper, (void *)cmd_args);
+		if (ret < 0)
 			return -1;
-		}
 	}
 
 	return 0;
@@ -378,6 +383,8 @@ int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 	const char *vg, *thinpool, *fstype, *lv = n;
 	uint64_t sz;
 	int ret, len;
+	const char *cmd_args[2];
+	char cmd_output[MAXPATHLEN];
 
 	if (!specs)
 		return -1;
@@ -416,11 +423,14 @@ int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 	fstype = specs->fstype;
 	if (!fstype)
 		fstype = DEFAULT_FSTYPE;
-	if (do_mkfs(bdev->src, fstype) < 0) {
-		ERROR("Error creating filesystem type %s on %s", fstype,
-			bdev->src);
+
+	cmd_args[0] = fstype;
+	cmd_args[1] = bdev->src;
+	ret = run_command(cmd_output, sizeof(cmd_output), do_mkfs_exec_wrapper,
+			  (void *)cmd_args);
+	if (ret < 0)
 		return -1;
-	}
+
 	if (!(bdev->dest = strdup(dest)))
 		return -1;
 
