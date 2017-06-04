@@ -467,7 +467,7 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 		goto out_restore_sigmask;
 	}
 
-	if (ttys_shift_ids(conf) < 0) {
+	if (lxc_ttys_shift_ids(conf) < 0) {
 		ERROR("Failed to shift tty into container.");
 		goto out_restore_sigmask;
 	}
