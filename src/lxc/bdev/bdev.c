@@ -854,12 +854,16 @@ static const struct bdev_type *get_bdev_by_name(const char *name)
 	return NULL;
 }
 
-static const struct bdev_type *bdev_query(struct lxc_conf *conf, const char *src)
+static const struct bdev_type *bdev_query(struct lxc_conf *conf,
+					  const char *src)
 {
 	size_t i;
 
-	if (conf->rootfs.bdev_type)
+	if (conf->rootfs.bdev_type) {
+		DEBUG("config file specified rootfs type \"%s\"",
+		      conf->rootfs.bdev_type);
 		return get_bdev_by_name(conf->rootfs.bdev_type);
+	}
 
 	for (i = 0; i < numbdevs; i++) {
 		int r;
@@ -870,6 +874,9 @@ static const struct bdev_type *bdev_query(struct lxc_conf *conf, const char *src
 
 	if (i == numbdevs)
 		return NULL;
+
+	DEBUG("detected rootfs type \"%s\"", bdevs[i].name);
+
 	return &bdevs[i];
 }
 

@@ -28,6 +28,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <linux/loop.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 
 #include "bdev.h"
@@ -157,8 +158,19 @@ int loop_destroy(struct bdev *orig)
 
 int loop_detect(const char *path)
 {
+	int ret;
+	struct stat s;
+
 	if (strncmp(path, "loop:", 5) == 0)
 		return 1;
+
+	ret = stat(path, &s);
+	if (ret < 0)
+		return 0;
+
+	if (__S_ISTYPE(s.st_mode, S_IFREG))
+		return 1;
+
 	return 0;
 }
 
@@ -166,13 +178,19 @@ int loop_mount(struct bdev *bdev)
 {
 	int ret, loopfd;
 	char loname[MAXPATHLEN];
+	char *src = bdev->src;
 
 	if (strcmp(bdev->type, "loop"))
 		return -22;
+
 	if (!bdev->src || !bdev->dest)
 		return -22;
 
-	loopfd = lxc_prepare_loop_dev(bdev->src + 5, loname, LO_FLAGS_AUTOCLEAR);
+	/* skip prefix */
+	if (!strncmp(bdev->src, "loop:", 5))
+		src += 5;
+
+	loopfd = lxc_prepare_loop_dev(src, loname, LO_FLAGS_AUTOCLEAR);
 	if (loopfd < 0)
 		return -1;
 	DEBUG("prepared loop device \"%s\"", loname);
