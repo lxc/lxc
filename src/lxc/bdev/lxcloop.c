@@ -191,8 +191,10 @@ int loop_mount(struct bdev *bdev)
 		src += 5;
 
 	loopfd = lxc_prepare_loop_dev(src, loname, LO_FLAGS_AUTOCLEAR);
-	if (loopfd < 0)
+	if (loopfd < 0) {
+		ERROR("failed to prepare loop device for loop file \"%s\"", src);
 		return -1;
+	}
 	DEBUG("prepared loop device \"%s\"", loname);
 
 	ret = mount_unknown_fs(loname, bdev->dest, bdev->mntopts);
@@ -224,6 +226,9 @@ int loop_umount(struct bdev *bdev)
 static int do_loop_create(const char *path, uint64_t size, const char *fstype)
 {
 	int fd, ret;
+	const char *cmd_args[2] = {fstype, path};
+	char cmd_output[MAXPATHLEN];
+
 	// create the new loopback file.
 	fd = creat(path, S_IRUSR|S_IWUSR);
 	if (fd < 0)
@@ -245,11 +250,10 @@ static int do_loop_create(const char *path, uint64_t size, const char *fstype)
 	}
 
 	// create an fs in the loopback file
-	if (do_mkfs(path, fstype) < 0) {
-		ERROR("Error creating filesystem type %s on %s", fstype,
-			path);
+	ret = run_command(cmd_output, sizeof(cmd_output), do_mkfs_exec_wrapper,
+			  (void *)cmd_args);
+	if (ret < 0)
 		return -1;
-	}
 
 	return 0;
 }

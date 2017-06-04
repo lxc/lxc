@@ -736,24 +736,31 @@ int detect_fs(struct bdev *bdev, char *type, int len)
 	exit(1);
 }
 
-int do_mkfs(const char *path, const char *fstype)
+int do_mkfs_exec_wrapper(void *args)
 {
-	pid_t pid;
+	int ret;
+	char *mkfs;
+	char **data = args;
+	/* strlen("mkfs.")
+	 * +
+	 * strlen(data[0])
+	 * +
+	 * \0
+	 */
+	size_t len = 5 + strlen(data[0]) + 1;
 
-	if ((pid = fork()) < 0) {
-		ERROR("error forking");
+	mkfs = malloc(len);
+	if (!mkfs)
 		return -1;
-	}
-	if (pid > 0)
-		return wait_for_pid(pid);
 
-	// If the file is not a block device, we don't want mkfs to ask
-	// us about whether to proceed.
-	if (null_stdfds() < 0)
-		exit(EXIT_FAILURE);
+	ret = snprintf(mkfs, len, "mkfs.%s", data[0]);
+	if (ret < 0 || (size_t)ret >= len)
+		return -1;
 
-	execlp("mkfs", "mkfs", "-t", fstype, path, (char *)NULL);
-	exit(EXIT_FAILURE);
+	TRACE("executing \"%s %s\"", mkfs, data[1]);
+	execlp(mkfs, mkfs, data[1], (char *)NULL);
+	SYSERROR("failed to run \"%s %s \"", mkfs, data[1]);
+	return -1;
 }
 
 /*
