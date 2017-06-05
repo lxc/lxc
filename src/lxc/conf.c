@@ -3333,13 +3333,23 @@ static int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 	return 0;
 }
 
-/* Check whether a binary exist and has either CAP_SETUID, CAP_SETGID or both. */
+/* Check whether a binary exist and has either CAP_SETUID, CAP_SETGID or both.
+ *
+ * @return  1      if functional binary was found
+ * @return  0      if binary exists but is lacking privilege
+ * @return -ENOENT if binary does not exist
+ * @return -EINVAL if cap to check is neither CAP_SETUID nor CAP_SETGID
+ *
+ */
 static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 {
 	char *path;
 	int ret;
 	struct stat st;
 	int fret = 0;
+
+	if (cap != CAP_SETUID && cap != CAP_SETGID)
+		return -EINVAL;
 
 	path = on_path(binary, NULL);
 	if (!path)
@@ -3429,7 +3439,17 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	 * range by shadow.
 	 */
 	uidmap = idmaptool_on_path_and_privileged("newuidmap", CAP_SETUID);
+	if (uidmap == -ENOENT)
+		WARN("newuidmap binary is missing");
+	else if (!uidmap)
+		WARN("newuidmap is lacking necessary privileges");
+
 	gidmap = idmaptool_on_path_and_privileged("newgidmap", CAP_SETGID);
+	if (gidmap == -ENOENT)
+		WARN("newgidmap binary is missing");
+	else if (!gidmap)
+		WARN("newgidmap is lacking necessary privileges");
+
 	if (uidmap > 0 && gidmap > 0) {
 		DEBUG("Functional newuidmap and newgidmap binary found.");
 		use_shadow = true;
