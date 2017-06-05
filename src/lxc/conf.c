@@ -169,11 +169,6 @@ static int sethostname(const char * name, size_t len)
 }
 #endif
 
-/* Define __S_ISTYPE if missing from the C library */
-#ifndef __S_ISTYPE
-#define        __S_ISTYPE(mode, mask)  (((mode) & S_IFMT) == (mask))
-#endif
-
 #ifndef MS_PRIVATE
 #define MS_PRIVATE (1<<18)
 #endif
