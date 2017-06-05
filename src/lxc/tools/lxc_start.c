@@ -205,6 +205,7 @@ int main(int argc, char *argv[])
 {
 	int err = EXIT_FAILURE;
 	struct lxc_conf *conf;
+	struct lxc_log log;
 	char *const *args;
 	char *rcfile = NULL;
 	char *const default_args[] = {
@@ -226,8 +227,14 @@ int main(int argc, char *argv[])
 	else
 		args = my_args.argv;
 
-	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
-			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
+	log.name = my_args.name;
+	log.file = my_args.log_file;
+	log.priority = my_args.log_priority;
+	log.prefix = my_args.progname;
+	log.quiet = my_args.quiet;
+	log.lxcpath = my_args.lxcpath[0];
+
+	if (lxc_log_init(&log))
 		exit(err);
 	lxc_log_options_no_override();
 

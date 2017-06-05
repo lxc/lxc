@@ -44,6 +44,7 @@
 #include "log.h"
 #include "caps.h"
 #include "utils.h"
+#include "lxccontainer.h"
 
 /* We're logging in seconds and nanoseconds. Assuming that the underlying
  * datatype is currently at maximum a 64bit integer, we have a date string that
@@ -543,9 +544,7 @@ extern void lxc_log_enable_syslog(void)
  * Called from lxc front-end programs (like lxc-create, lxc-start) to
  * initalize the log defaults.
  */
-extern int lxc_log_init(const char *name, const char *file,
-			const char *priority, const char *prefix, int quiet,
-			const char *lxcpath)
+extern int lxc_log_init(struct lxc_log *log)
 {
 	int lxc_priority = LXC_LOG_PRIORITY_ERROR;
 	int ret;
@@ -555,8 +554,8 @@ extern int lxc_log_init(const char *name, const char *file,
 		return 0;
 	}
 
-	if (priority)
-		lxc_priority = lxc_log_priority_to_int(priority);
+	if (log->priority)
+		lxc_priority = lxc_log_priority_to_int(log->priority);
 
 	if (!lxc_loglevel_specified) {
 		lxc_log_category_lxc.priority = lxc_priority;
@@ -564,49 +563,49 @@ extern int lxc_log_init(const char *name, const char *file,
 	}
 
 	if (!lxc_quiet_specified) {
-		if (!quiet)
+		if (!log->quiet)
 			lxc_log_category_lxc.appender->next = &log_appender_stderr;
 	}
 
-	if (prefix)
-		lxc_log_set_prefix(prefix);
+	if (log->prefix)
+		lxc_log_set_prefix(log->prefix);
 
-	if (name)
-		log_vmname = strdup(name);
+	if (log->name)
+		log_vmname = strdup(log->name);
 
-	if (file) {
-		if (strcmp(file, "none") == 0)
+	if (log->file) {
+		if (strcmp(log->file, "none") == 0)
 			return 0;
-		ret = __lxc_log_set_file(file, 1);
+		ret = __lxc_log_set_file(log->file, 1);
 		lxc_log_use_global_fd = 1;
 	} else {
 		/* if no name was specified, there nothing to do */
-		if (!name)
+		if (!log->name)
 			return 0;
 
 		ret = -1;
 
-		if (!lxcpath)
-			lxcpath = LOGPATH;
+		if (!log->lxcpath)
+			log->lxcpath = LOGPATH;
 
 		/* try LOGPATH if lxcpath is the default for the privileged containers */
-		if (!geteuid() && strcmp(LXCPATH, lxcpath) == 0)
-			ret = _lxc_log_set_file(name, NULL, 0);
+		if (!geteuid() && strcmp(LXCPATH, log->lxcpath) == 0)
+			ret = _lxc_log_set_file(log->name, NULL, 0);
 
 		/* try in lxcpath */
 		if (ret < 0)
-			ret = _lxc_log_set_file(name, lxcpath, 1);
+			ret = _lxc_log_set_file(log->name, log->lxcpath, 1);
 
 		/* try LOGPATH in case its writable by the caller */
 		if (ret < 0)
-			ret = _lxc_log_set_file(name, NULL, 0);
+			ret = _lxc_log_set_file(log->name, NULL, 0);
 	}
 
 	/*
 	 * If !file, that is, if the user did not request this logpath, then
 	 * ignore failures and continue logging to console
 	 */
-	if (!file && ret != 0) {
+	if (!log->file && ret != 0) {
 		INFO("Ignoring failure to open default logfile.");
 		ret = 0;
 	}

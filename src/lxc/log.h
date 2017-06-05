@@ -348,10 +348,6 @@ ATTR_UNUSED static inline void LXC_##PRIORITY(struct lxc_log_locinfo* locinfo,	\
 
 extern int lxc_log_fd;
 
-extern int lxc_log_init(const char *name, const char *file,
-			const char *priority, const char *prefix, int quiet,
-			const char *lxcpath);
-
 extern int lxc_log_set_file(int *fd, const char *fname);
 extern int lxc_log_syslog(int facility);
 extern void lxc_log_enable_syslog(void);

@@ -37,6 +37,7 @@
 #include "caps.h"
 #include "error.h"
 #include "initutils.h"
+#include "lxccontainer.h"
 
 lxc_log_define(lxc_init, lxc);
 
@@ -83,6 +84,7 @@ int main(int argc, char *argv[])
 	int i, have_status = 0, shutdown = 0;
 	int opt;
 	char *lxcpath = NULL, *name = NULL, *logpriority = NULL;
+	struct lxc_log log;
 
 	while ((opt = getopt_long(argc, argv, "n:l:qP:", options, NULL)) != -1) {
 		switch(opt) {
@@ -94,7 +96,7 @@ int main(int argc, char *argv[])
 			break;
 		case 'q':
 			quiet = 1;
- 			break;
+			break;
 		case 'P':
 			lxcpath = optarg;
 			break;
@@ -104,8 +106,14 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	err = lxc_log_init(name, name ? NULL : "none", logpriority,
-			   basename(argv[0]), quiet, lxcpath);
+	log.name = name;
+	log.file = name ? NULL : "none";
+	log.priority = logpriority;
+	log.prefix = basename(argv[0]);
+	log.quiet = quiet;
+	log.lxcpath = lxcpath;
+
+	err = lxc_log_init(&log);
 	if (err < 0)
 		exit(EXIT_FAILURE);
 	lxc_log_options_no_override();

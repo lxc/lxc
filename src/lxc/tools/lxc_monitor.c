@@ -35,6 +35,7 @@
 #include "log.h"
 #include "monitor.h"
 #include "arguments.h"
+#include "lxccontainer.h"
 
 lxc_log_define(lxc_monitor_ui, lxc);
 
@@ -91,6 +92,7 @@ int main(int argc, char *argv[])
 	struct pollfd *fds;
 	nfds_t nfds;
 	int len, rc_main, rc_snp, i;
+	struct lxc_log log;
 
 	rc_main = EXIT_FAILURE;
 
@@ -100,8 +102,14 @@ int main(int argc, char *argv[])
 	if (!my_args.log_file)
 		my_args.log_file = "none";
 
-	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
-			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
+	log.name = my_args.name;
+	log.file = my_args.log_file;
+	log.priority = my_args.log_priority;
+	log.prefix = my_args.progname;
+	log.quiet = my_args.quiet;
+	log.lxcpath = my_args.lxcpath[0];
+
+	if (lxc_log_init(&log))
 		exit(rc_main);
 	lxc_log_options_no_override();
 
