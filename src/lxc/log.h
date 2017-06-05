@@ -54,6 +54,22 @@
 #define ATTR_UNUSED
 #endif
 
+struct lxc_log {
+	const char *name;
+	const char *lxcpath;
+	const char *file;
+	const char *priority;
+	const char *prefix;
+	bool quiet;
+};
+
+/*!
+ *\brief Initialize the log
+ *
+ *\param log lxc log configuration.
+ */
+int lxc_log_init(struct lxc_log *log);
+
 /* predefined priorities. */
 enum lxc_loglevel {
 	LXC_LOG_PRIORITY_TRACE,
@@ -312,10 +328,6 @@ ATTR_UNUSED static inline void LXC_##PRIORITY(struct lxc_log_locinfo* locinfo,	\
 } while (0)
 
 extern int lxc_log_fd;
-
-extern int lxc_log_init(const char *name, const char *file,
-			const char *priority, const char *prefix, int quiet,
-			const char *lxcpath);
 
 extern int lxc_log_set_file(int *fd, const char *fname);
 extern int lxc_log_set_level(int *dest, int level);
