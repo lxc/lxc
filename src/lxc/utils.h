@@ -39,6 +39,11 @@
 
 #include "initutils.h"
 
+/* Define __S_ISTYPE if missing from the C library. */
+#ifndef __S_ISTYPE
+#define __S_ISTYPE(mode, mask) (((mode)&S_IFMT) == (mask))
+#endif
+
 /* Useful macros */
 /* Maximum number for 64 bit integer is a string with 21 digits: 2^64 - 1 = 21 */
 #define LXC_NUMSTRLEN64 21
