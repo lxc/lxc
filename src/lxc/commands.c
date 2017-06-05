@@ -171,7 +171,7 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 	int ret,rspfd;
 	struct lxc_cmd_rsp *rsp = &cmd->rsp;
 
-	ret = lxc_abstract_unix_recv_fd(sock, &rspfd, rsp, sizeof(*rsp));
+	ret = lxc_abstract_unix_recv_fds(sock, &rspfd, 1, rsp, sizeof(*rsp));
 	if (ret < 0) {
 		WARN("Command %s failed to receive response: %s.",
 		     lxc_cmd_str(cmd->req.cmd), strerror(errno));
@@ -756,7 +756,7 @@ static int lxc_cmd_console_callback(int fd, struct lxc_cmd_req *req,
 
 	memset(&rsp, 0, sizeof(rsp));
 	rsp.data = INT_TO_PTR(ttynum);
-	if (lxc_abstract_unix_send_fd(fd, masterfd, &rsp, sizeof(rsp)) < 0) {
+	if (lxc_abstract_unix_send_fds(fd, &masterfd, 1, &rsp, sizeof(rsp)) < 0) {
 		ERROR("Failed to send tty to client.");
 		lxc_console_free(handler->conf, fd);
 		goto out_close;

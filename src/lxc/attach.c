@@ -986,7 +986,7 @@ int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_fun
 				goto on_error;
 
 			/* Send child fd of the LSM security module to write to. */
-			ret = lxc_abstract_unix_send_fd(ipc_sockets[0], labelfd, NULL, 0);
+			ret = lxc_abstract_unix_send_fds(ipc_sockets[0], &labelfd, 1, NULL, 0);
 			saved_errno = errno;
 			close(labelfd);
 			if (ret <= 0) {
@@ -1273,7 +1273,7 @@ static int attach_child_main(void* data)
 	if ((options->namespaces & CLONE_NEWNS) && (options->attach_flags & LXC_ATTACH_LSM) && init_ctx->lsm_label) {
 		int on_exec;
 		/* Receive fd for LSM security module. */
-		ret = lxc_abstract_unix_recv_fd(ipc_socket, &lsm_labelfd, NULL, 0);
+		ret = lxc_abstract_unix_recv_fds(ipc_socket, &lsm_labelfd, 1, NULL, 0);
 		if (ret <= 0) {
 			ERROR("Expected to receive file descriptor: %s.", strerror(errno));
 			shutdown(ipc_socket, SHUT_RDWR);

@@ -172,11 +172,6 @@ static int sethostname(const char * name, size_t len)
 }
 #endif
 
-/* Define __S_ISTYPE if missing from the C library */
-#ifndef __S_ISTYPE
-#define        __S_ISTYPE(mode, mask)  (((mode) & S_IFMT) == (mask))
-#endif
-
 #ifndef MS_PRIVATE
 #define MS_PRIVATE (1<<18)
 #endif
@@ -585,49 +580,6 @@ static int run_script(const char *name, const char *section, const char *script,
 	return run_buffer(buffer);
 }
 
-static int mount_rootfs_dir(const char *rootfs, const char *target,
-			    const char *options)
-{
-	unsigned long mntflags;
-	char *mntdata;
-	int ret;
-
-	if (parse_mntopts(options, &mntflags, &mntdata) < 0) {
-		free(mntdata);
-		return -1;
-	}
-
-	ret = mount(rootfs, target, "none", MS_BIND | MS_REC | mntflags, mntdata);
-	free(mntdata);
-
-	return ret;
-}
-
-static int lxc_mount_rootfs_file(const char *rootfs, const char *target,
-			     const char *options)
-{
-	int ret, loopfd;
-	char path[MAXPATHLEN];
-
-	loopfd = lxc_prepare_loop_dev(rootfs, path, LO_FLAGS_AUTOCLEAR);
-	if (loopfd < 0)
-		return -1;
-	DEBUG("prepared loop device \"%s\"", path);
-
-	ret = mount_unknown_fs(path, target, options);
-	close(loopfd);
-
-	DEBUG("mounted rootfs \"%s\" on loop device \"%s\" via loop device \"%s\"", rootfs, target, path);
-
-	return ret;
-}
-
-static int mount_rootfs_block(const char *rootfs, const char *target,
-			                  const char *options)
-{
-	return mount_unknown_fs(rootfs, target, options);
-}
-
 /*
  * pin_rootfs
  * if rootfs is a directory, then open ${rootfs}/lxc.hold for writing for
@@ -834,49 +786,6 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 	}
 
 	return 0;
-}
-
-static int mount_rootfs(const char *rootfs, const char *target, const char *options)
-{
-	char absrootfs[MAXPATHLEN];
-	struct stat s;
-	int i;
-
-	typedef int (*rootfs_cb)(const char *, const char *, const char *);
-
-	struct rootfs_type {
-		int type;
-		rootfs_cb cb;
-	} rtfs_type[] = {
-		{ S_IFDIR, mount_rootfs_dir },
-		{ S_IFBLK, mount_rootfs_block },
-		{ S_IFREG, lxc_mount_rootfs_file },
-	};
-
-	if (!realpath(rootfs, absrootfs)) {
-		SYSERROR("Failed to get real path for \"%s\".", rootfs);
-		return -1;
-	}
-
-	if (access(absrootfs, F_OK)) {
-		SYSERROR("The rootfs \"%s\" is not accessible.", absrootfs);
-		return -1;
-	}
-
-	if (stat(absrootfs, &s)) {
-		SYSERROR("Failed to stat the rootfs \"%s\".", absrootfs);
-		return -1;
-	}
-
-	for (i = 0; i < sizeof(rtfs_type)/sizeof(rtfs_type[0]); i++) {
-		if (!__S_ISTYPE(s.st_mode, rtfs_type[i].type))
-			continue;
-
-		return rtfs_type[i].cb(absrootfs, target, options);
-	}
-
-	ERROR("Unsupported rootfs type for rootfs \"%s\".", absrootfs);
-	return -1;
 }
 
 static int setup_utsname(struct utsname *utsname)
@@ -1258,8 +1167,9 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 	return 0;
 }
 
-static int setup_rootfs(struct lxc_conf *conf)
+static int lxc_setup_rootfs(struct lxc_conf *conf)
 {
+	int ret;
 	struct bdev *bdev;
 	const struct lxc_rootfs *rootfs;
 
@@ -1278,18 +1188,17 @@ static int setup_rootfs(struct lxc_conf *conf)
 		return -1;
 	}
 
-	/* First try mounting rootfs using a bdev. */
 	bdev = bdev_init(conf, rootfs->path, rootfs->mount, rootfs->options);
-	if (bdev && !bdev->ops->mount(bdev)) {
-		bdev_put(bdev);
-		DEBUG("Mounted rootfs \"%s\" onto \"%s\" with options \"%s\".",
+	if (!bdev) {
+		ERROR("Failed to mount rootfs \"%s\" onto \"%s\" with options \"%s\".",
 		      rootfs->path, rootfs->mount,
 		      rootfs->options ? rootfs->options : "(null)");
-		return 0;
+		return -1;
 	}
-	if (bdev)
-		bdev_put(bdev);
-	if (mount_rootfs(rootfs->path, rootfs->mount, rootfs->options)) {
+
+	ret = bdev->ops->mount(bdev);
+	bdev_put(bdev);
+	if (ret < 0) {
 		ERROR("Failed to mount rootfs \"%s\" onto \"%s\" with options \"%s\".",
 		      rootfs->path, rootfs->mount,
 		      rootfs->options ? rootfs->options : "(null)");
@@ -1299,6 +1208,7 @@ static int setup_rootfs(struct lxc_conf *conf)
 	DEBUG("Mounted rootfs \"%s\" onto \"%s\" with options \"%s\".",
 	      rootfs->path, rootfs->mount,
 	      rootfs->options ? rootfs->options : "(null)");
+
 	return 0;
 }
 
@@ -3418,13 +3328,23 @@ static int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 	return 0;
 }
 
-/* Check whether a binary exist and has either CAP_SETUID, CAP_SETGID or both. */
+/* Check whether a binary exist and has either CAP_SETUID, CAP_SETGID or both.
+ *
+ * @return  1      if functional binary was found
+ * @return  0      if binary exists but is lacking privilege
+ * @return -ENOENT if binary does not exist
+ * @return -EINVAL if cap to check is neither CAP_SETUID nor CAP_SETGID
+ *
+ */
 static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 {
 	char *path;
 	int ret;
 	struct stat st;
 	int fret = 0;
+
+	if (cap != CAP_SETUID && cap != CAP_SETGID)
+		return -EINVAL;
 
 	path = on_path(binary, NULL);
 	if (!path)
@@ -3514,7 +3434,17 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	 * range by shadow.
 	 */
 	uidmap = idmaptool_on_path_and_privileged("newuidmap", CAP_SETUID);
+	if (uidmap == -ENOENT)
+		WARN("newuidmap binary is missing");
+	else if (!uidmap)
+		WARN("newuidmap is lacking necessary privileges");
+
 	gidmap = idmaptool_on_path_and_privileged("newgidmap", CAP_SETGID);
+	if (gidmap == -ENOENT)
+		WARN("newgidmap binary is missing");
+	else if (!gidmap)
+		WARN("newgidmap is lacking necessary privileges");
+
 	if (uidmap > 0 && gidmap > 0) {
 		DEBUG("Functional newuidmap and newgidmap binary found.");
 		use_shadow = true;
@@ -3916,15 +3846,20 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 	return ret;
 }
 
-int ttys_shift_ids(struct lxc_conf *c)
+int lxc_ttys_shift_ids(struct lxc_conf *c)
 {
 	if (lxc_list_empty(&c->id_map))
 		return 0;
 
-	if (strcmp(c->console.name, "") !=0 && chown_mapped_root(c->console.name, c) < 0) {
-		ERROR("Failed to chown %s", c->console.name);
+	if (!strcmp(c->console.name, ""))
+		return 0;
+
+	if (chown_mapped_root(c->console.name, c) < 0) {
+		ERROR("failed to chown console \"%s\"", c->console.name);
 		return -1;
 	}
+
+	TRACE("chowned console \"%s\"", c->console.name);
 
 	return 0;
 }
@@ -4059,7 +3994,7 @@ int do_rootfs_setup(struct lxc_conf *conf, const char *name, const char *lxcpath
 		return -1;
 	}
 
-	if (setup_rootfs(conf)) {
+	if (lxc_setup_rootfs(conf)) {
 		ERROR("failed to setup rootfs for '%s'", name);
 		return -1;
 	}
@@ -4093,55 +4028,46 @@ static bool verify_start_hooks(struct lxc_conf *conf)
 	return true;
 }
 
-static int send_fd(int sock, int fd)
+static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 {
-	int ret = lxc_abstract_unix_send_fd(sock, fd, NULL, 0);
-
-
-	if (ret < 0) {
-		SYSERROR("Error sending tty fd to parent");
-		return -1;
-	}
-
-	return 0;
-}
-
-static int send_ttys_to_parent(struct lxc_handler *handler)
-{
-	int i, ret;
+	int i;
+	int *ttyfds;
+	struct lxc_pty_info *pty_info;
 	struct lxc_conf *conf = handler->conf;
 	const struct lxc_tty_info *tty_info = &conf->tty_info;
 	int sock = handler->ttysock[0];
+	int ret = -1;
+	size_t num_ttyfds = (2 * conf->tty);
 
-	for (i = 0; i < tty_info->nbtty; i++) {
-		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
-		ret = send_fd(sock, pty_info->slave);
-		if (ret >= 0)
-			send_fd(sock, pty_info->master);
-		TRACE("sending pty \"%s\" with master fd %d and slave fd %d to "
+	ttyfds = malloc(num_ttyfds * sizeof(int));
+	if (!ttyfds)
+		return -1;
+
+	for (i = 0; i < num_ttyfds; i++) {
+		pty_info = &tty_info->pty_info[i / 2];
+		ttyfds[i++] = pty_info->slave;
+		ttyfds[i] = pty_info->master;
+		TRACE("send pty \"%s\" with master fd %d and slave fd %d to "
 		      "parent",
 		      pty_info->name, pty_info->master, pty_info->slave);
-		close(pty_info->slave);
-		pty_info->slave = -1;
-		close(pty_info->master);
-		pty_info->master = -1;
-		if (ret < 0) {
-			ERROR("failed to send pty \"%s\" with master fd %d and "
-			      "slave fd %d to parent : %s",
-			      pty_info->name, pty_info->master, pty_info->slave,
-			      strerror(errno));
-			goto bad;
-		}
 	}
+
+	ret = lxc_abstract_unix_send_fds(sock, ttyfds, num_ttyfds, NULL, 0);
+	if (ret < 0)
+		ERROR("failed to send %d ttys to parent: %s", conf->tty,
+		      strerror(errno));
+	else
+		TRACE("sent %d ttys to parent", conf->tty);
 
 	close(handler->ttysock[0]);
 	close(handler->ttysock[1]);
 
-	return 0;
+	for (i = 0; i < num_ttyfds; i++)
+		close(ttyfds[i]);
 
-bad:
-	ERROR("Error writing tty fd to parent");
-	return -1;
+	free(ttyfds);
+
+	return ret;
 }
 
 int lxc_setup(struct lxc_handler *handler)
@@ -4260,7 +4186,7 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
-	if (send_ttys_to_parent(handler) < 0) {
+	if (lxc_send_ttys_to_parent(handler) < 0) {
 		ERROR("failure sending console info to parent");
 		return -1;
 	}
