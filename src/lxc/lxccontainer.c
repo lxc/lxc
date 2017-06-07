@@ -57,6 +57,7 @@
 #include "namespace.h"
 #include "network.h"
 #include "sync.h"
+#include "start.h"
 #include "state.h"
 #include "utils.h"
 #include "version.h"
@@ -715,6 +716,7 @@ static void free_init_cmd(char **argv)
 static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const argv[])
 {
 	int ret;
+	struct lxc_handler *handler;
 	struct lxc_conf *conf;
 	bool daemonize = false;
 	FILE *pid_fp = NULL;
@@ -731,7 +733,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	/* If anything fails before we set error_num, we want an error in there */
 	c->error_num = 1;
 
-	/* container has been setup */
+	/* container has not been setup */
 	if (!c->lxc_conf)
 		return false;
 
@@ -758,8 +760,16 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	daemonize = c->daemonize;
 	container_mem_unlock(c);
 
+	/* initialize handler */
+	handler = lxc_init_handler(c->name, conf, c->config_path);
+	if (!handler)
+		return false;
+
 	if (useinit) {
-		ret = lxc_execute(c->name, argv, 1, conf, c->config_path, daemonize);
+		TRACE("calling \"lxc_execute\"");
+		ret = lxc_execute(c->name, argv, 1, handler, c->config_path,
+				  daemonize);
+		c->error_num = ret;
 		return ret == 0 ? true : false;
 	}
 
@@ -791,6 +801,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			 * the PID file, child will do the free and unlink.
 			 */
 			c->pidfile = NULL;
+			close(c->lxc_conf->maincmd_fd);
 			return wait_on_daemonized_start(c, pid);
 		}
 
@@ -815,7 +826,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			SYSERROR("Error chdir()ing to /.");
 			exit(1);
 		}
-		lxc_check_inherited(conf, true, -1);
+		lxc_check_inherited(conf, true, handler->conf->maincmd_fd);
 		if (null_stdfds() < 0) {
 			ERROR("failed to close fds");
 			exit(1);
@@ -828,7 +839,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		}
 	}
 
-	/* We need to write PID file after daeminize, so we always
+	/* We need to write PID file after daemonize, so we always
 	 * write the right PID.
 	 */
 	if (c->pidfile) {
@@ -869,13 +880,20 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	}
 
 reboot:
-	if (lxc_check_inherited(conf, daemonize, -1)) {
+	if (conf->reboot == 2) {
+		/* initialize handler */
+		handler = lxc_init_handler(c->name, conf, c->config_path);
+		if (!handler)
+			goto out;
+	}
+
+	if (lxc_check_inherited(conf, daemonize, handler->conf->maincmd_fd)) {
 		ERROR("Inherited fds found");
 		ret = 1;
 		goto out;
 	}
 
-	ret = lxc_start(c->name, argv, conf, c->config_path, daemonize);
+	ret = lxc_start(c->name, argv, handler, c->config_path, daemonize);
 	c->error_num = ret;
 
 	if (conf->reboot == 1) {
@@ -890,13 +908,11 @@ out:
 		free(c->pidfile);
 		c->pidfile = NULL;
 	}
-
 	free_init_cmd(init_cmd);
 
 	if (daemonize)
-		exit (ret == 0 ? true : false);
-	else
-		return (ret == 0 ? true : false);
+		exit(ret == 0 ? true : false);
+	return (ret == 0 ? true : false);
 }
 
 static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv[])

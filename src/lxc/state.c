@@ -109,24 +109,16 @@ extern int lxc_wait(const char *lxcname, const char *states, int timeout,
 		    const char *lxcpath)
 {
 	struct lxc_msg msg;
-	int state, ret;
-	int s[MAX_STATE] = {0}, fd;
+	int state;
+	int s[MAX_STATE] = {0}, fd = -1, ret = -1;
 
 	if (fillwaitedstates(states, s))
-		return -1;
-
-	if (lxc_monitord_spawn(lxcpath))
-		return -1;
-
-	fd = lxc_monitor_open(lxcpath);
-	if (fd < 0)
 		return -1;
 
 	/*
 	 * if container present,
 	 * then check if already in requested state
 	 */
-	ret = -1;
 	state = lxc_getstate(lxcname, lxcpath);
 	if (state < 0) {
 		goto out_close;
@@ -134,6 +126,13 @@ extern int lxc_wait(const char *lxcname, const char *states, int timeout,
 		ret = 0;
 		goto out_close;
 	}
+
+	if (lxc_monitord_spawn(lxcpath))
+		return -1;
+
+	fd = lxc_monitor_open(lxcpath);
+	if (fd < 0)
+		return -1;
 
 	for (;;) {
 		int64_t elapsed_time, curtime = 0;
@@ -192,6 +191,7 @@ extern int lxc_wait(const char *lxcname, const char *states, int timeout,
 	}
 
 out_close:
-	lxc_monitor_close(fd);
+	if (fd >= 0)
+		lxc_monitor_close(fd);
 	return ret;
 }

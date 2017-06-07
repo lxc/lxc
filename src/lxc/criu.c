@@ -797,8 +797,11 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		close(fd);
 	}
 
-	handler = lxc_init(c->name, c->lxc_conf, c->config_path);
+	handler = lxc_init_handler(c->name, c->lxc_conf, c->config_path);
 	if (!handler)
+		goto out;
+
+	if (lxc_init(c->name, handler) < 0)
 		goto out;
 
 	if (!cgroup_init(handler)) {

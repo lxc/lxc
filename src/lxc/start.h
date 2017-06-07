@@ -27,11 +27,11 @@
 #include <sys/param.h>
 #include <stdbool.h>
 
+#include "conf.h"
 #include "config.h"
 #include "state.h"
 #include "namespace.h"
 
-struct lxc_conf;
 
 struct lxc_handler;
 
@@ -66,11 +66,14 @@ struct lxc_handler {
 extern int lxc_poll(const char *name, struct lxc_handler *handler);
 extern int lxc_set_state(const char *name, struct lxc_handler *handler, lxc_state_t state);
 extern void lxc_abort(const char *name, struct lxc_handler *handler);
-extern struct lxc_handler *lxc_init(const char *name, struct lxc_conf *, const char *);
+extern struct lxc_handler *lxc_init_handler(const char *name,
+					    struct lxc_conf *conf,
+					    const char *lxcpath);
+extern int lxc_init(const char *name, struct lxc_handler *handler);
 extern void lxc_fini(const char *name, struct lxc_handler *handler);
 
 extern int lxc_check_inherited(struct lxc_conf *conf, bool closeall, int fd_to_ignore);
-int __lxc_start(const char *, struct lxc_conf *, struct lxc_operations *,
+int __lxc_start(const char *, struct lxc_handler *, struct lxc_operations *,
 		void *, const char *, bool);
 
 extern void resolve_clone_flags(struct lxc_handler *handler);
