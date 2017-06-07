@@ -382,14 +382,17 @@ out_sigfd:
 	return -1;
 }
 
-struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char *lxcpath)
+struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
+				     const char *lxcpath)
 {
 	int i;
 	struct lxc_handler *handler;
 
 	handler = malloc(sizeof(*handler));
-	if (!handler)
+	if (!handler) {
+		ERROR("failed to allocate memory");
 		return NULL;
+	}
 
 	memset(handler, 0, sizeof(*handler));
 
@@ -401,16 +404,37 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 	for (i = 0; i < LXC_NS_MAX; i++)
 		handler->nsfd[i] = -1;
 
-	lsm_init();
-
 	handler->name = strdup(name);
 	if (!handler->name) {
-		ERROR("Failed to allocate memory.");
-		goto out_free;
+		ERROR("failed to allocate memory");
+		goto do_partial_cleanup;
 	}
 
-	if (lxc_cmd_init(name, handler, lxcpath))
-		goto out_free_name;
+	if (lxc_cmd_init(name, handler, lxcpath)) {
+		ERROR("failed to set up command socket");
+		goto do_full_cleanup;
+	}
+
+	TRACE("unix domain socket %d for command server is ready",
+	      handler->conf->maincmd_fd);
+
+	return handler;
+
+do_full_cleanup:
+	free(handler->name);
+
+do_partial_cleanup:
+	free(handler);
+
+	return NULL;
+}
+
+int lxc_init(const char *name, struct lxc_handler *handler)
+{
+	struct lxc_conf *conf = handler->conf;
+
+	lsm_init();
+	TRACE("initialized LSM");
 
 	if (lxc_read_seccomp_config(conf) != 0) {
 		ERROR("Failed loading seccomp policy.");
@@ -473,7 +497,7 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 	}
 
 	INFO("Container \"%s\" is initialized.", name);
-	return handler;
+	return 0;
 
 out_restore_sigmask:
 	sigprocmask(SIG_SETMASK, &handler->oldmask, NULL);
@@ -484,12 +508,7 @@ out_aborting:
 out_close_maincmd_fd:
 	close(conf->maincmd_fd);
 	conf->maincmd_fd = -1;
-out_free_name:
-	free(handler->name);
-	handler->name = NULL;
-out_free:
-	free(handler);
-	return NULL;
+	return -1;
 }
 
 void lxc_fini(const char *name, struct lxc_handler *handler)
@@ -1307,17 +1326,16 @@ out_abort:
 	return -1;
 }
 
-int __lxc_start(const char *name, struct lxc_conf *conf,
+int __lxc_start(const char *name, struct lxc_handler *handler,
 		struct lxc_operations* ops, void *data, const char *lxcpath,
 		bool backgrounded)
 {
-	struct lxc_handler *handler;
-	int err = -1;
 	int status;
+	int err = -1;
 	bool removed_all_netdevs = true;
+	struct lxc_conf *conf = handler->conf;
 
-	handler = lxc_init(name, conf, lxcpath);
-	if (!handler) {
+	if (lxc_init(name, handler) < 0) {
 		ERROR("Failed to initialize container \"%s\".", name);
 		return -1;
 	}
@@ -1464,15 +1482,15 @@ static struct lxc_operations start_ops = {
 	.post_start = post_start
 };
 
-int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf,
+int lxc_start(const char *name, char *const argv[], struct lxc_handler *handler,
 	      const char *lxcpath, bool backgrounded)
 {
 	struct start_args start_arg = {
 		.argv = argv,
 	};
 
-	conf->need_utmp_watch = 1;
-	return __lxc_start(name, conf, &start_ops, &start_arg, lxcpath, backgrounded);
+	handler->conf->need_utmp_watch = 1;
+	return __lxc_start(name, handler, &start_ops, &start_arg, lxcpath, backgrounded);
 }
 
 static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
