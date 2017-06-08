@@ -790,7 +790,6 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	*/
 	if (daemonize) {
 		char title[2048];
-		lxc_monitord_spawn(c->config_path);
 
 		pid_t pid = fork();
 		if (pid < 0)
