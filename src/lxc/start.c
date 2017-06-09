@@ -384,6 +384,7 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 			DEBUG("Not starting utmp handler as CAP_SYS_BOOT cannot be dropped without capabilities support.");
 		#endif
 	}
+	TRACE("lxc mainloop is ready");
 
 	return lxc_mainloop(&descr, -1);
 

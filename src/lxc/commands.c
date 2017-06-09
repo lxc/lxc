@@ -297,12 +297,20 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 		return -1;
 
 	sock = lxc_abstract_unix_connect(path);
+	TRACE("command %s tries to connect to \"@%s\"",
+	      lxc_cmd_str(cmd->req.cmd), offset);
 	if (sock < 0) {
-		if (errno == ECONNREFUSED)
+		if (errno == ECONNREFUSED) {
+			TRACE("command %s failed to connect to \"@%s\": %s",
+			      lxc_cmd_str(cmd->req.cmd), offset,
+			      strerror(errno));
 			*stopped = 1;
-		else
-			SYSERROR("Command %s failed to connect to \"@%s\".",
-				 lxc_cmd_str(cmd->req.cmd), offset);
+		} else {
+			SYSERROR("command %s failed to connect to \"@%s\": %s",
+				 lxc_cmd_str(cmd->req.cmd), offset,
+				 strerror(errno));
+		}
+
 		return -1;
 	}
 
@@ -462,19 +470,25 @@ char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
 	};
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
-	if (ret < 0)
+	if (ret < 0) {
+		TRACE("command %s failed for container \"%s\": %s.",
+		      lxc_cmd_str(cmd.req.cmd), name, strerror(errno));
 		return NULL;
+	}
 
 	if (!ret) {
-		WARN("Container \"%s\" has stopped before sending its state.", name);
+		WARN("container \"%s\" has stopped before sending its state", name);
 		return NULL;
 	}
 
 	if (cmd.rsp.ret < 0 || cmd.rsp.datalen < 0) {
-		ERROR("Command %s failed for container \"%s\": %s.",
+		ERROR("command %s failed for container \"%s\": %s",
 		      lxc_cmd_str(cmd.req.cmd), name, strerror(-cmd.rsp.ret));
 		return NULL;
 	}
+
+	TRACE("command %s successful for container \"%s\"",
+	      lxc_cmd_str(cmd.req.cmd), name);
 
 	return cmd.rsp.data;
 }
