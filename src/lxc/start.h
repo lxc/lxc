@@ -32,16 +32,6 @@
 #include "state.h"
 #include "namespace.h"
 
-
-struct lxc_handler;
-
-struct lxc_operations {
-	int (*start)(struct lxc_handler *, void *);
-	int (*post_start)(struct lxc_handler *, void *);
-};
-
-struct cgroup_desc;
-
 struct lxc_handler {
 	pid_t pid;
 	char *name;
@@ -60,8 +50,18 @@ struct lxc_handler {
 	bool backgrounded; // indicates whether should we close std{in,out,err} on start
 	int nsfd[LXC_NS_MAX];
 	int netnsfd;
+	struct lxc_list state_clients;
 };
 
+struct lxc_operations {
+	int (*start)(struct lxc_handler *, void *);
+	int (*post_start)(struct lxc_handler *, void *);
+};
+
+struct state_client {
+	int clientfd;
+	lxc_state_t states[MAX_STATE];
+};
 
 extern int lxc_poll(const char *name, struct lxc_handler *handler);
 extern int lxc_set_state(const char *name, struct lxc_handler *handler, lxc_state_t state);
