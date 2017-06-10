@@ -43,7 +43,9 @@
 #include "commands.h"
 #include "console.h"
 #include "confile.h"
+#include "lxclock.h"
 #include "mainloop.h"
+#include "monitor.h"
 #include "af_unix.h"
 #include "config.h"
 
@@ -142,6 +144,7 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 		[LXC_CMD_GET_CONFIG_ITEM] = "get_config_item",
 		[LXC_CMD_GET_NAME]        = "get_name",
 		[LXC_CMD_GET_LXCPATH]     = "get_lxcpath",
+		[LXC_CMD_STATE_SERVER]    = "state_server",
 	};
 
 	if (cmd >= LXC_CMD_MAX)
@@ -283,7 +286,11 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 	char path[sizeof(((struct sockaddr_un *)0)->sun_path)] = { 0 };
 	char *offset = &path[1];
 	size_t len;
-	int stay_connected = cmd->req.cmd == LXC_CMD_CONSOLE;
+	bool stay_connected = false;
+
+	if (cmd->req.cmd == LXC_CMD_CONSOLE ||
+	    cmd->req.cmd == LXC_CMD_STATE_SERVER)
+		stay_connected = true;
 
 	*stopped = 0;
 
@@ -581,7 +588,7 @@ out:
  *
  * Returns the state on success, < 0 on failure
  */
-lxc_state_t lxc_cmd_get_state(const char *name, const char *lxcpath)
+int lxc_cmd_get_state(const char *name, const char *lxcpath)
 {
 	int ret, stopped;
 	struct lxc_cmd_rr cmd = {
@@ -861,6 +868,145 @@ static int lxc_cmd_get_lxcpath_callback(int fd, struct lxc_cmd_req *req,
 	return lxc_cmd_rsp_send(fd, &rsp);
 }
 
+/*
+ * lxc_cmd_state_server: register a client fd in the handler list
+ *
+ * @name      : name of container to connect to
+ * @lxcpath   : the lxcpath in which the container is running
+ *
+ * Returns the lxcpath on success, NULL on failure.
+ */
+int lxc_cmd_state_server(const char *name, const char *lxcpath,
+			 lxc_state_t states[MAX_STATE])
+{
+	int stopped;
+	ssize_t ret;
+	int state = -1;
+	struct lxc_msg msg = {0};
+	struct lxc_cmd_rr cmd = {
+	    .req = {
+		.cmd     = LXC_CMD_STATE_SERVER,
+		.data    = states,
+		.datalen = (sizeof(lxc_state_t) * MAX_STATE)
+	    },
+	};
+
+	/* Lock the whole lxc_cmd_state_server_callback() call to ensure that
+	 * lxc_set_state() doesn't cause us to miss a state.
+	 */
+	process_lock();
+	/* Check if already in requested state. */
+	state = lxc_getstate(name, lxcpath);
+	if (state < 0) {
+		process_unlock();
+		TRACE("failed to retrieve state of container: %s",
+		      strerror(errno));
+		return -1;
+	} else if (states[state]) {
+		process_unlock();
+		TRACE("container is %s state", lxc_state2str(state));
+		return state;
+	}
+
+	if ((state == STARTING) && !states[RUNNING] && !states[STOPPING] && !states[STOPPED]) {
+		process_unlock();
+		TRACE("container is in %s state and caller requested to be "
+		      "informed about a previous state",
+		      lxc_state2str(state));
+		return state;
+	} else if ((state == RUNNING) && !states[STOPPING] && !states[STOPPED]) {
+		process_unlock();
+		TRACE("container is in %s state and caller requested to be "
+		      "informed about a previous state",
+		      lxc_state2str(state));
+		return state;
+	} else if ((state == STOPPING) && !states[STOPPED]) {
+		process_unlock();
+		TRACE("container is in %s state and caller requested to be "
+		      "informed about a previous state",
+		      lxc_state2str(state));
+		return state;
+	} else if ((state == STOPPED) || (state == ABORTING)) {
+		process_unlock();
+		TRACE("container is in %s state and caller requested to be "
+		      "informed about a previous state",
+		      lxc_state2str(state));
+		return state;
+	}
+
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
+	process_unlock();
+	if (ret < 0) {
+		ERROR("failed to execute command: %s", strerror(errno));
+		return -1;
+	}
+	/* We should now be guaranteed to get an answer from the state sending
+	 * function.
+	 */
+
+	if (cmd.rsp.ret < 0) {
+		ERROR("failed to receive socket fd");
+		return -1;
+	}
+
+again:
+	ret = recv(cmd.rsp.ret, &msg, sizeof(msg), 0);
+	if (ret < 0) {
+		if (errno == EINTR)
+			goto again;
+
+		ERROR("failed to receive message: %s", strerror(errno));
+		return -1;
+	}
+	if (ret == 0) {
+		ERROR("length of message was 0");
+		return -1;
+	}
+
+	TRACE("received state %s from state client %d",
+	      lxc_state2str(msg.value), cmd.rsp.ret);
+	return msg.value;
+}
+
+static int lxc_cmd_state_server_callback(int fd, struct lxc_cmd_req *req,
+					 struct lxc_handler *handler)
+{
+	struct lxc_cmd_rsp rsp = {0};
+	struct state_client *newclient;
+	struct lxc_list *tmplist;
+
+	if (req->datalen < 0) {
+		TRACE("requested datalen was < 0");
+		return -1;
+	}
+
+	if (!req->data) {
+		TRACE("no states requested");
+		return -1;
+	}
+
+	newclient = malloc(sizeof(*newclient));
+	if (!newclient)
+		return -1;
+
+	/* copy requested states */
+	memcpy(newclient->states, req->data, sizeof(newclient->states));
+	newclient->clientfd = fd;
+
+	tmplist = malloc(sizeof(*tmplist));
+	if (!tmplist) {
+		free(newclient);
+		return -1;
+	}
+
+	lxc_list_add_elem(tmplist, newclient);
+	lxc_list_add_tail(&handler->state_clients, tmplist);
+
+	TRACE("added state client %d to state client list", fd);
+
+	return lxc_cmd_rsp_send(fd, &rsp);
+}
+
 static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 			   struct lxc_handler *handler)
 {
@@ -877,6 +1023,7 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 		[LXC_CMD_GET_CONFIG_ITEM] = lxc_cmd_get_config_item_callback,
 		[LXC_CMD_GET_NAME]        = lxc_cmd_get_name_callback,
 		[LXC_CMD_GET_LXCPATH]     = lxc_cmd_get_lxcpath_callback,
+		[LXC_CMD_STATE_SERVER]    = lxc_cmd_state_server_callback,
 	};
 
 	if (req->cmd >= LXC_CMD_MAX) {

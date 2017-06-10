@@ -758,10 +758,10 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		return false;
 	conf = c->lxc_conf;
 	daemonize = c->daemonize;
-	container_mem_unlock(c);
 
 	/* initialize handler */
 	handler = lxc_init_handler(c->name, conf, c->config_path);
+	container_mem_unlock(c);
 	if (!handler)
 		return false;
 
@@ -800,7 +800,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			 * the PID file, child will do the free and unlink.
 			 */
 			c->pidfile = NULL;
-			close(c->lxc_conf->maincmd_fd);
+			close(handler->conf->maincmd_fd);
 			return wait_on_daemonized_start(c, pid);
 		}
 
