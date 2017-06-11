@@ -737,16 +737,16 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	if (!c->lxc_conf)
 		return false;
 
-	if ((ret = ongoing_create(c)) < 0) {
+	ret = ongoing_create(c);
+	if (ret < 0) {
 		ERROR("Error checking for incomplete creation");
-		return false;
-	}
-	if (ret == 2) {
-		ERROR("Error: %s creation was not completed", c->name);
-		do_lxcapi_destroy(c);
 		return false;
 	} else if (ret == 1) {
 		ERROR("Error: creation of %s is ongoing", c->name);
+		return false;
+	} else if (ret == 2) {
+		ERROR("Error: %s creation was not completed", c->name);
+		do_lxcapi_destroy(c);
 		return false;
 	}
 
@@ -790,9 +790,11 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	*/
 	if (daemonize) {
 		char title[2048];
+		pid_t pid;
 
-		pid_t pid = fork();
+		pid = fork();
 		if (pid < 0) {
+			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
 			return false;
 		}
@@ -849,6 +851,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		if (pid_fp == NULL) {
 			SYSERROR("Failed to create pidfile '%s' for '%s'",
 				 c->pidfile, c->name);
+			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
 			if (daemonize)
 				exit(1);
@@ -859,6 +862,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			SYSERROR("Failed to write '%s'", c->pidfile);
 			fclose(pid_fp);
 			pid_fp = NULL;
+			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
 			if (daemonize)
 				exit(1);
@@ -875,11 +879,13 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	if (conf->monitor_unshare) {
 		if (unshare(CLONE_NEWNS)) {
 			SYSERROR("failed to unshare mount namespace");
+			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
 			return false;
 		}
 		if (mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL)) {
 			SYSERROR("Failed to make / rslave at startup");
+			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
 			return false;
 		}
