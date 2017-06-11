@@ -69,6 +69,7 @@ extern void lxc_abort(const char *name, struct lxc_handler *handler);
 extern struct lxc_handler *lxc_init_handler(const char *name,
 					    struct lxc_conf *conf,
 					    const char *lxcpath);
+extern void lxc_free_handler(struct lxc_handler *handler);
 extern int lxc_init(const char *name, struct lxc_handler *handler);
 extern void lxc_fini(const char *name, struct lxc_handler *handler);
 

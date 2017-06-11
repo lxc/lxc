@@ -451,6 +451,18 @@ out_sigfd:
 	return -1;
 }
 
+void lxc_free_handler(struct lxc_handler *handler)
+{
+	if (handler->conf && handler->conf->maincmd_fd)
+		close(handler->conf->maincmd_fd);
+
+	if (handler->name)
+		free(handler->name);
+
+	handler->conf = NULL;
+	free(handler);
+}
+
 struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 				     const char *lxcpath)
 {
@@ -477,12 +489,12 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 	handler->name = strdup(name);
 	if (!handler->name) {
 		ERROR("failed to allocate memory");
-		goto do_partial_cleanup;
+		goto on_error;
 	}
 
 	if (lxc_cmd_init(name, handler, lxcpath)) {
 		ERROR("failed to set up command socket");
-		goto do_full_cleanup;
+		goto on_error;
 	}
 
 	TRACE("unix domain socket %d for command server is ready",
@@ -490,11 +502,8 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 
 	return handler;
 
-do_full_cleanup:
-	free(handler->name);
-
-do_partial_cleanup:
-	free(handler);
+on_error:
+	lxc_free_handler(handler);
 
 	return NULL;
 }

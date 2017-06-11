@@ -792,8 +792,10 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		char title[2048];
 
 		pid_t pid = fork();
-		if (pid < 0)
+		if (pid < 0) {
+			lxc_free_handler(handler);
 			return false;
+		}
 
 		if (pid != 0) {
 			/* Set to NULL because we don't want father unlink
@@ -834,6 +836,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	} else {
 		if (!am_single_threaded()) {
 			ERROR("Cannot start non-daemonized container when threaded");
+			lxc_free_handler(handler);
 			return false;
 		}
 	}
@@ -846,6 +849,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		if (pid_fp == NULL) {
 			SYSERROR("Failed to create pidfile '%s' for '%s'",
 				 c->pidfile, c->name);
+			lxc_free_handler(handler);
 			if (daemonize)
 				exit(1);
 			return false;
@@ -855,6 +859,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			SYSERROR("Failed to write '%s'", c->pidfile);
 			fclose(pid_fp);
 			pid_fp = NULL;
+			lxc_free_handler(handler);
 			if (daemonize)
 				exit(1);
 			return false;
@@ -870,10 +875,12 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	if (conf->monitor_unshare) {
 		if (unshare(CLONE_NEWNS)) {
 			SYSERROR("failed to unshare mount namespace");
+			lxc_free_handler(handler);
 			return false;
 		}
 		if (mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL)) {
 			SYSERROR("Failed to make / rslave at startup");
+			lxc_free_handler(handler);
 			return false;
 		}
 	}
@@ -888,6 +895,7 @@ reboot:
 
 	if (lxc_check_inherited(conf, daemonize, handler->conf->maincmd_fd)) {
 		ERROR("Inherited fds found");
+		lxc_free_handler(handler);
 		ret = 1;
 		goto out;
 	}
