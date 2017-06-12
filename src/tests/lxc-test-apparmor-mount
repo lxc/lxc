@@ -50,7 +50,7 @@ cleanup() {
 	run_cmd lxc-destroy -f -n $cname || true
 	umount -l $MOUNTSR || true
 	rmdir $dnam || true
-	pkill -u $(id -u $TUSER) -9
+	pkill -u $(id -u $TUSER) -9 || true
 	sed -i '/lxcunpriv/d' /run/lxc/nics /etc/lxc/lxc-usernet
 	sed -i '/^lxcunpriv:/d' /etc/subuid /etc/subgid
 	rm -Rf $HDIR /run/user/$(id -u $TUSER)
