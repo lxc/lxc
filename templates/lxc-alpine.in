@@ -43,7 +43,10 @@ readonly APK_KEYS_SHA256="\
 2adcf7ce224f476330b5360ca5edb92fd0bf91c92d83292ed028d7c4e26333ab  alpine-devel@lists.alpinelinux.org-4d07755e.rsa.pub
 ebf31683b56410ecc4c00acd9f6e2839e237a3b62b5ae7ef686705c7ba0396a9  alpine-devel@lists.alpinelinux.org-5243ef4b.rsa.pub
 1bb2a846c0ea4ca9d0e7862f970863857fc33c32f5506098c636a62a726a847b  alpine-devel@lists.alpinelinux.org-524d27bb.rsa.pub
-12f899e55a7691225603d6fb3324940fc51cd7f133e7ead788663c2b7eecb00c  alpine-devel@lists.alpinelinux.org-5261cecb.rsa.pub"
+12f899e55a7691225603d6fb3324940fc51cd7f133e7ead788663c2b7eecb00c  alpine-devel@lists.alpinelinux.org-5261cecb.rsa.pub
+73867d92083f2f8ab899a26ccda7ef63dfaa0032a938620eda605558958a8041  alpine-devel@lists.alpinelinux.org-58199dcc.rsa.pub
+9a4cd858d9710963848e6d5f555325dc199d1c952b01cf6e64da2c15deedbd97  alpine-devel@lists.alpinelinux.org-58cbb476.rsa.pub
+780b3ed41786772cbc7b68136546fa3f897f28a23b30c72dde6225319c44cfff  alpine-devel@lists.alpinelinux.org-58e4f17d.rsa.pub"
 
 readonly APK_KEYS_URI='http://alpinelinux.org/keys'
 readonly DEFAULT_MIRROR_URL='http://dl-cdn.alpinelinux.org/alpine'
@@ -126,6 +129,7 @@ parse_arch() {
 		aarch64 | arm64) echo 'aarch64';;
 		armv7) echo 'armv7';;
 		arm*) echo 'armhf';;
+		ppc64le) echo 'ppc64le';;
 		*) return 1;;
 	esac
 }
