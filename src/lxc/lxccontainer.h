@@ -1017,6 +1017,22 @@ int list_active_containers(const char *lxcpath, char ***names, struct lxc_contai
  */
 int list_all_containers(const char *lxcpath, char ***names, struct lxc_container ***cret);
 
+struct lxc_log {
+	const char *name;
+	const char *lxcpath;
+	const char *file;
+	const char *priority;
+	const char *prefix;
+	bool quiet;
+};
+
+/*!
+ *\brief Initialize the log
+ *
+ *\param log lxc log configuration.
+ */
+int lxc_log_init(struct lxc_log *log);
+
 /*!
  * \brief Close log file.
  */

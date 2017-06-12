@@ -40,6 +40,7 @@
 #include "config.h"
 #include "start.h"
 #include "utils.h"
+#include "lxccontainer.h"
 
 lxc_log_define(lxc_execute_ui, lxc);
 
@@ -106,6 +107,7 @@ int main(int argc, char *argv[])
 {
 	char *rcfile;
 	struct lxc_conf *conf;
+	struct lxc_log log;
 	int ret;
 
 	lxc_list_init(&defines);
@@ -116,8 +118,14 @@ int main(int argc, char *argv[])
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		exit(EXIT_FAILURE);
 
-	if (lxc_log_init(my_args.name, my_args.log_file, my_args.log_priority,
-			 my_args.progname, my_args.quiet, my_args.lxcpath[0]))
+	log.name = my_args.name;
+	log.file = my_args.log_file;
+	log.priority = my_args.log_priority;
+	log.prefix = my_args.progname;
+	log.quiet = my_args.quiet;
+	log.lxcpath = my_args.lxcpath[0];
+
+	if (lxc_log_init(&log))
 		exit(EXIT_FAILURE);
 	lxc_log_options_no_override();
 
