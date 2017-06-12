@@ -3672,11 +3672,15 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 		return 0;
 	}
 
-	// save the current gid of "path"
+	/* save the current gid of "path" */
 	if (stat(path, &sb) < 0) {
 		ERROR("Error stat %s", path);
 		return -1;
 	}
+
+	/* Update the path argument in case this was overlayfs. */
+	args1[sizeof(args1) / sizeof(args1[0]) - 2] = path;
+	args2[sizeof(args2) / sizeof(args2[0]) - 2] = path;
 
 	/*
 	 * A file has to be group-owned by a gid mapped into the
