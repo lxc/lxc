@@ -2511,7 +2511,7 @@ static bool set_config_item_locked(struct lxc_container *c, const char *key, con
 	config = lxc_getconfig(key);
 	if (!config)
 		return false;
-	if (config->set(key, v, c->lxc_conf) != 0)
+	if (config->set(key, v, c->lxc_conf, NULL) != 0)
 		return false;
 	return do_append_unexp_config_line(c->lxc_conf, key, v);
 }
