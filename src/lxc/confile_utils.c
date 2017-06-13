@@ -20,6 +20,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "conf.h"
+#include "log.h"
 #include "utils.h"
 
 int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
@@ -145,4 +147,12 @@ on_error:
 	free(dup);
 
 	return ret;
+}
+
+bool lxc_config_value_empty(const char *value)
+{
+	if (value && strlen(value) > 0)
+		return false;
+
+	return true;
 }
