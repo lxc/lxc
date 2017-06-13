@@ -55,186 +55,253 @@
 
 lxc_log_define(lxc_confile, lxc);
 
-static int set_config_personality(const char *, const char *, struct lxc_conf *);
+static int set_config_personality(const char *, const char *, struct lxc_conf *,
+				  void *);
 static int get_config_personality(const char *, char *, int, struct lxc_conf *);
 static int clr_config_personality(const char *, struct lxc_conf *);
 
-static int set_config_pts(const char *, const char *, struct lxc_conf *);
+static int set_config_pts(const char *, const char *, struct lxc_conf *,
+			  void *);
 static int get_config_pts(const char *, char *, int, struct lxc_conf *);
 static int clr_config_pts(const char *, struct lxc_conf *);
 
-static int set_config_tty(const char *, const char *, struct lxc_conf *);
+static int set_config_tty(const char *, const char *, struct lxc_conf *,
+			  void *);
 static int get_config_tty(const char *, char *, int, struct lxc_conf *);
 static int clr_config_tty(const char *, struct lxc_conf *);
 
-static int set_config_ttydir(const char *, const char *, struct lxc_conf *);
+static int set_config_ttydir(const char *, const char *, struct lxc_conf *,
+			     void *);
 static int get_config_ttydir(const char *, char *, int, struct lxc_conf *);
 static int clr_config_ttydir(const char *, struct lxc_conf *);
 
-static int set_config_kmsg(const char *, const char *, struct lxc_conf *);
+static int set_config_kmsg(const char *, const char *, struct lxc_conf *,
+			   void *);
 static int get_config_kmsg(const char *, char *, int, struct lxc_conf *);
 static int clr_config_kmsg(const char *, struct lxc_conf *);
 
-static int set_config_lsm_aa_profile(const char *, const char *, struct lxc_conf *);
-static int get_config_lsm_aa_profile(const char *, char *, int, struct lxc_conf *);
+static int set_config_lsm_aa_profile(const char *, const char *,
+				     struct lxc_conf *, void *);
+static int get_config_lsm_aa_profile(const char *, char *, int,
+				     struct lxc_conf *);
 static int clr_config_lsm_aa_profile(const char *, struct lxc_conf *);
 
-static int set_config_lsm_aa_incomplete(const char *, const char *, struct lxc_conf *);
-static int get_config_lsm_aa_incomplete(const char *, char *, int, struct lxc_conf *);
+static int set_config_lsm_aa_incomplete(const char *, const char *,
+					struct lxc_conf *, void *);
+static int get_config_lsm_aa_incomplete(const char *, char *, int,
+					struct lxc_conf *);
 static int clr_config_lsm_aa_incomplete(const char *, struct lxc_conf *);
 
-static int set_config_lsm_se_context(const char *, const char *, struct lxc_conf *);
-static int get_config_lsm_se_context(const char *, char *, int, struct lxc_conf *);
+static int set_config_lsm_se_context(const char *, const char *,
+				     struct lxc_conf *, void *);
+static int get_config_lsm_se_context(const char *, char *, int,
+				     struct lxc_conf *);
 static int clr_config_lsm_se_context(const char *, struct lxc_conf *);
 
-static int set_config_cgroup(const char *, const char *, struct lxc_conf *);
+static int set_config_cgroup(const char *, const char *, struct lxc_conf *,
+			     void *);
 static int get_config_cgroup(const char *, char *, int, struct lxc_conf *);
 static int clr_config_cgroup(const char *, struct lxc_conf *);
 
-static int set_config_idmaps(const char *, const char *, struct lxc_conf *);
+static int set_config_idmaps(const char *, const char *, struct lxc_conf *,
+			     void *);
 static int get_config_idmaps(const char *, char *, int, struct lxc_conf *);
 static int clr_config_idmaps(const char *, struct lxc_conf *);
 
-static int set_config_loglevel(const char *, const char *, struct lxc_conf *);
+static int set_config_loglevel(const char *, const char *, struct lxc_conf *,
+			       void *);
 static int get_config_loglevel(const char *, char *, int, struct lxc_conf *);
 static int clr_config_loglevel(const char *, struct lxc_conf *);
 
-static int set_config_logfile(const char *, const char *, struct lxc_conf *);
+static int set_config_logfile(const char *, const char *, struct lxc_conf *,
+			      void *);
 static int get_config_logfile(const char *, char *, int, struct lxc_conf *);
 static int clr_config_logfile(const char *, struct lxc_conf *);
 
-static int set_config_mount(const char *, const char *, struct lxc_conf *);
+static int set_config_mount(const char *, const char *, struct lxc_conf *,
+			    void *);
 static int get_config_mount(const char *, char *, int, struct lxc_conf *);
 static int clr_config_mount(const char *, struct lxc_conf *);
 
-static int set_config_mount_auto(const char *, const char *, struct lxc_conf *);
+static int set_config_mount_auto(const char *, const char *, struct lxc_conf *,
+				 void *);
 static int get_config_mount_auto(const char *, char *, int, struct lxc_conf *);
 static int clr_config_mount_auto(const char *, struct lxc_conf *);
 
-static int set_config_fstab(const char *, const char *, struct lxc_conf *);
+static int set_config_fstab(const char *, const char *, struct lxc_conf *,
+			    void *);
 static int get_config_fstab(const char *, char *, int, struct lxc_conf *);
 static int clr_config_fstab(const char *, struct lxc_conf *);
 
-static int set_config_rootfs_mount(const char *, const char *, struct lxc_conf *);
-static int get_config_rootfs_mount(const char *, char *, int, struct lxc_conf *);
+static int set_config_rootfs_mount(const char *, const char *,
+				   struct lxc_conf *, void *);
+static int get_config_rootfs_mount(const char *, char *, int,
+				   struct lxc_conf *);
 static int clr_config_rootfs_mount(const char *, struct lxc_conf *);
 
-static int set_config_rootfs_options(const char *, const char *, struct lxc_conf *);
-static int get_config_rootfs_options(const char *, char *, int, struct lxc_conf *);
+static int set_config_rootfs_options(const char *, const char *,
+				     struct lxc_conf *, void *);
+static int get_config_rootfs_options(const char *, char *, int,
+				     struct lxc_conf *);
 static int clr_config_rootfs_options(const char *, struct lxc_conf *);
 
-static int set_config_rootfs_backend(const char *, const char *, struct lxc_conf *);
-static int get_config_rootfs_backend(const char *, char *, int, struct lxc_conf *);
+static int set_config_rootfs_backend(const char *, const char *,
+				     struct lxc_conf *, void *);
+static int get_config_rootfs_backend(const char *, char *, int,
+				     struct lxc_conf *);
 static int clr_config_rootfs_backend(const char *, struct lxc_conf *);
 
-static int set_config_rootfs(const char *, const char *, struct lxc_conf *);
+static int set_config_rootfs(const char *, const char *, struct lxc_conf *,
+			     void *);
 static int get_config_rootfs(const char *, char *, int, struct lxc_conf *);
 static int clr_config_rootfs(const char *, struct lxc_conf *);
 
-static int set_config_pivotdir(const char *, const char *, struct lxc_conf *);
+static int set_config_pivotdir(const char *, const char *, struct lxc_conf *,
+			       void *);
 static int get_config_pivotdir(const char *, char *, int, struct lxc_conf *);
 static int clr_config_pivotdir(const char *, struct lxc_conf *);
 
-static int set_config_utsname(const char *, const char *, struct lxc_conf *);
+static int set_config_utsname(const char *, const char *, struct lxc_conf *,
+			      void *);
 static int get_config_utsname(const char *, char *, int, struct lxc_conf *);
 static int clr_config_utsname(const char *, struct lxc_conf *);
 
-static int set_config_hooks(const char *, const char *, struct lxc_conf *lxc_conf);
+static int set_config_hooks(const char *, const char *, struct lxc_conf *,
+			    void *);
 static int get_config_hooks(const char *, char *, int, struct lxc_conf *);
 static int clr_config_hooks(const char *, struct lxc_conf *);
 
-static int set_config_network_type(const char *, const char *, struct lxc_conf *);
-static int set_config_network_flags(const char *, const char *, struct lxc_conf *);
-static int set_config_network_link(const char *, const char *, struct lxc_conf *);
-static int set_config_network_name(const char *, const char *, struct lxc_conf *);
-static int set_config_network_veth_pair(const char *, const char *, struct lxc_conf *);
-static int set_config_network_macvlan_mode(const char *, const char *, struct lxc_conf *);
-static int set_config_network_hwaddr(const char *, const char *, struct lxc_conf *);
-static int set_config_network_vlan_id(const char *, const char *, struct lxc_conf *);
-static int set_config_network_mtu(const char *, const char *, struct lxc_conf *);
-static int set_config_network_ipv4(const char *, const char *, struct lxc_conf *);
-static int set_config_network_ipv4_gateway(const char *, const char *, struct lxc_conf *);
-static int set_config_network_script_up(const char *, const char *, struct lxc_conf *);
-static int set_config_network_script_down(const char *, const char *, struct lxc_conf *);
-static int set_config_network_ipv6(const char *, const char *, struct lxc_conf *);
-static int set_config_network_ipv6_gateway(const char *, const char *, struct lxc_conf *);
-static int set_config_network_nic(const char *, const char *, struct lxc_conf *);
-static int get_config_network_item(const char *, char *, int, struct lxc_conf *);
+static int set_config_network_type(const char *, const char *,
+				   struct lxc_conf *, void *);
+static int set_config_network_flags(const char *, const char *,
+				    struct lxc_conf *, void *);
+static int set_config_network_link(const char *, const char *,
+				   struct lxc_conf *, void *);
+static int set_config_network_name(const char *, const char *,
+				   struct lxc_conf *, void *);
+static int set_config_network_veth_pair(const char *, const char *,
+					struct lxc_conf *, void *);
+static int set_config_network_macvlan_mode(const char *, const char *,
+					   struct lxc_conf *, void *);
+static int set_config_network_hwaddr(const char *, const char *,
+				     struct lxc_conf *, void *);
+static int set_config_network_vlan_id(const char *, const char *,
+				      struct lxc_conf *, void *);
+static int set_config_network_mtu(const char *, const char *, struct lxc_conf *,
+				  void *);
+static int set_config_network_ipv4(const char *, const char *,
+				   struct lxc_conf *, void *);
+static int set_config_network_ipv4_gateway(const char *, const char *,
+					   struct lxc_conf *, void *);
+static int set_config_network_script_up(const char *, const char *,
+					struct lxc_conf *, void *);
+static int set_config_network_script_down(const char *, const char *,
+					  struct lxc_conf *, void *);
+static int set_config_network_ipv6(const char *, const char *,
+				   struct lxc_conf *, void *);
+static int set_config_network_ipv6_gateway(const char *, const char *,
+					   struct lxc_conf *, void *);
+static int set_config_network_nic(const char *, const char *, struct lxc_conf *,
+				  void *);
+static int get_config_network_item(const char *, char *, int,
+				   struct lxc_conf *);
 static int clr_config_network_item(const char *, struct lxc_conf *);
 
-static int set_config_network(const char *, const char *, struct lxc_conf *);
+static int set_config_network(const char *, const char *, struct lxc_conf *,
+			      void *);
 static int get_config_network(const char *, char *, int, struct lxc_conf *);
 static int clr_config_network(const char *, struct lxc_conf *);
 
-static int set_config_cap_drop(const char *, const char *, struct lxc_conf *);
+static int set_config_cap_drop(const char *, const char *, struct lxc_conf *,
+			       void *);
 static int get_config_cap_drop(const char *, char *, int, struct lxc_conf *);
 static int clr_config_cap_drop(const char *, struct lxc_conf *);
 
-static int set_config_cap_keep(const char *, const char *, struct lxc_conf *);
+static int set_config_cap_keep(const char *, const char *, struct lxc_conf *,
+			       void *);
 static int get_config_cap_keep(const char *, char *, int, struct lxc_conf *);
 static int clr_config_cap_keep(const char *, struct lxc_conf *);
 
-static int set_config_console_logfile(const char *, const char *, struct lxc_conf *);
-static int get_config_console_logfile(const char *, char *, int, struct lxc_conf *);
+static int set_config_console_logfile(const char *, const char *,
+				      struct lxc_conf *, void *);
+static int get_config_console_logfile(const char *, char *, int,
+				      struct lxc_conf *);
 static int clr_config_console_logfile(const char *, struct lxc_conf *);
 
-static int set_config_console(const char *, const char *, struct lxc_conf *);
+static int set_config_console(const char *, const char *, struct lxc_conf *,
+			      void *);
 static int get_config_console(const char *, char *, int, struct lxc_conf *);
 static int clr_config_console(const char *, struct lxc_conf *);
 
-static int set_config_seccomp(const char *, const char *, struct lxc_conf *);
+static int set_config_seccomp(const char *, const char *, struct lxc_conf *,
+			      void *);
 static int get_config_seccomp(const char *, char *, int, struct lxc_conf *);
 static int clr_config_seccomp(const char *, struct lxc_conf *);
 
-static int set_config_includefiles(const char *, const char *, struct lxc_conf *);
-static int get_config_includefiles(const char *, char *, int, struct lxc_conf *);
+static int set_config_includefiles(const char *, const char *,
+				   struct lxc_conf *, void *);
+static int get_config_includefiles(const char *, char *, int,
+				   struct lxc_conf *);
 static int clr_config_includefiles(const char *, struct lxc_conf *);
 
-static int set_config_autodev(const char *, const char *, struct lxc_conf *);
+static int set_config_autodev(const char *, const char *, struct lxc_conf *,
+			      void *);
 static int get_config_autodev(const char *, char *, int, struct lxc_conf *);
 static int clr_config_autodev(const char *, struct lxc_conf *);
 
-static int set_config_haltsignal(const char *, const char *, struct lxc_conf *);
+static int set_config_haltsignal(const char *, const char *, struct lxc_conf *,
+				 void *);
 static int get_config_haltsignal(const char *, char *, int, struct lxc_conf *);
 static int clr_config_haltsignal(const char *, struct lxc_conf *);
 
-static int set_config_rebootsignal(const char *, const char *, struct lxc_conf *);
-static int get_config_rebootsignal(const char *, char *, int, struct lxc_conf *);
+static int set_config_rebootsignal(const char *, const char *,
+				   struct lxc_conf *, void *);
+static int get_config_rebootsignal(const char *, char *, int,
+				   struct lxc_conf *);
 static int clr_config_rebootsignal(const char *, struct lxc_conf *);
 
-static int set_config_stopsignal(const char *, const char *, struct lxc_conf *);
+static int set_config_stopsignal(const char *, const char *, struct lxc_conf *,
+				 void *);
 static int get_config_stopsignal(const char *, char *, int, struct lxc_conf *);
 static int clr_config_stopsignal(const char *, struct lxc_conf *);
 
-static int set_config_start(const char *, const char *, struct lxc_conf *);
+static int set_config_start(const char *, const char *, struct lxc_conf *,
+			    void *);
 static int get_config_start(const char *, char *, int, struct lxc_conf *);
 static int clr_config_start(const char *, struct lxc_conf *);
 
-static int set_config_monitor(const char *, const char *, struct lxc_conf *);
+static int set_config_monitor(const char *, const char *, struct lxc_conf *,
+			      void *);
 static int get_config_monitor(const char *, char *, int, struct lxc_conf *);
 static int clr_config_monitor(const char *, struct lxc_conf *);
 
-static int set_config_group(const char *, const char *, struct lxc_conf *);
+static int set_config_group(const char *, const char *, struct lxc_conf *,
+			    void *);
 static int get_config_group(const char *, char *, int, struct lxc_conf *);
 static int clr_config_group(const char *, struct lxc_conf *);
 
-static int set_config_environment(const char *, const char *, struct lxc_conf *);
+static int set_config_environment(const char *, const char *, struct lxc_conf *,
+				  void *);
 static int get_config_environment(const char *, char *, int, struct lxc_conf *);
 static int clr_config_environment(const char *, struct lxc_conf *);
 
-static int set_config_init_cmd(const char *, const char *, struct lxc_conf *);
+static int set_config_init_cmd(const char *, const char *, struct lxc_conf *,
+			       void *);
 static int get_config_init_cmd(const char *, char *, int, struct lxc_conf *);
 static int clr_config_init_cmd(const char *, struct lxc_conf *);
 
-static int set_config_init_uid(const char *, const char *, struct lxc_conf *);
+static int set_config_init_uid(const char *, const char *, struct lxc_conf *,
+			       void *);
 static int get_config_init_uid(const char *, char *, int, struct lxc_conf *);
 static int clr_config_init_uid(const char *, struct lxc_conf *);
 
-static int set_config_init_gid(const char *, const char *, struct lxc_conf *);
+static int set_config_init_gid(const char *, const char *, struct lxc_conf *,
+			       void *);
 static int get_config_init_gid(const char *, char *, int, struct lxc_conf *);
 static int clr_config_init_gid(const char *, struct lxc_conf *);
 
-static int set_config_ephemeral(const char *, const char *, struct lxc_conf *);
+static int set_config_ephemeral(const char *, const char *, struct lxc_conf *,
+				void *);
 static int get_config_ephemeral(const char *, char *, int, struct lxc_conf *);
 static int clr_config_ephemeral(const char *, struct lxc_conf *);
 
@@ -486,7 +553,7 @@ static int set_config_path_item(char **conf_item, const char *value)
  * (by rewriting the key), and call it.
  */
 static int set_config_network_nic(const char *key, const char *value,
-				  struct lxc_conf *lxc_conf)
+				  struct lxc_conf *lxc_conf, void *data)
 {
 	char *copy = strdup(key), *p;
 	int ret = -1;
@@ -515,7 +582,7 @@ static int set_config_network_nic(const char *key, const char *value,
 		ERROR("unknown key %s", key);
 		goto out;
 	}
-	ret = config->set(key, value, lxc_conf);
+	ret = config->set(key, value, lxc_conf, data);
 
 out:
 	free(copy);
@@ -523,7 +590,7 @@ out:
 }
 
 static int set_config_network(const char *key, const char *value,
-			      struct lxc_conf *lxc_conf)
+			      struct lxc_conf *lxc_conf, void *data)
 {
 	if (!lxc_config_value_empty(value)) {
 		ERROR("lxc.network must not have a value");
@@ -536,7 +603,7 @@ static int set_config_network(const char *key, const char *value,
 static int macvlan_mode(int *valuep, const char *value);
 
 static int set_config_network_type(const char *key, const char *value,
-				   struct lxc_conf *lxc_conf)
+				   struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_list *network = &lxc_conf->network;
 	struct lxc_netdev *netdev;
@@ -795,7 +862,7 @@ static int rand_complete_hwaddr(char *hwaddr)
 }
 
 static int set_config_network_flags(const char *key, const char *value,
-				    struct lxc_conf *lxc_conf)
+				    struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
@@ -809,7 +876,7 @@ static int set_config_network_flags(const char *key, const char *value,
 }
 
 static int set_config_network_link(const char *key, const char *value,
-				   struct lxc_conf *lxc_conf)
+				   struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
@@ -821,7 +888,7 @@ static int set_config_network_link(const char *key, const char *value,
 }
 
 static int set_config_network_name(const char *key, const char *value,
-				   struct lxc_conf *lxc_conf)
+				   struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
@@ -833,7 +900,7 @@ static int set_config_network_name(const char *key, const char *value,
 }
 
 static int set_config_network_veth_pair(const char *key, const char *value,
-					struct lxc_conf *lxc_conf)
+					struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
@@ -850,7 +917,8 @@ static int set_config_network_veth_pair(const char *key, const char *value,
 }
 
 static int set_config_network_macvlan_mode(const char *key, const char *value,
-					   struct lxc_conf *lxc_conf)
+					   struct lxc_conf *lxc_conf,
+					   void *data)
 {
 	struct lxc_netdev *netdev;
 
@@ -867,7 +935,7 @@ static int set_config_network_macvlan_mode(const char *key, const char *value,
 }
 
 static int set_config_network_hwaddr(const char *key, const char *value,
-				     struct lxc_conf *lxc_conf)
+				     struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 	char *new_value;
@@ -896,7 +964,7 @@ static int set_config_network_hwaddr(const char *key, const char *value,
 }
 
 static int set_config_network_vlan_id(const char *key, const char *value,
-				      struct lxc_conf *lxc_conf)
+				      struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
@@ -916,7 +984,7 @@ static int set_config_network_vlan_id(const char *key, const char *value,
 }
 
 static int set_config_network_mtu(const char *key, const char *value,
-				  struct lxc_conf *lxc_conf)
+				  struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
@@ -928,7 +996,7 @@ static int set_config_network_mtu(const char *key, const char *value,
 }
 
 static int set_config_network_ipv4(const char *key, const char *value,
-				   struct lxc_conf *lxc_conf)
+				   struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 	struct lxc_inetdev *inetdev;
@@ -1020,7 +1088,8 @@ static int set_config_network_ipv4(const char *key, const char *value,
 }
 
 static int set_config_network_ipv4_gateway(const char *key, const char *value,
-					   struct lxc_conf *lxc_conf)
+					   struct lxc_conf *lxc_conf,
+					   void *data)
 {
 	struct lxc_netdev *netdev;
 
@@ -1058,7 +1127,7 @@ static int set_config_network_ipv4_gateway(const char *key, const char *value,
 }
 
 static int set_config_network_ipv6(const char *key, const char *value,
-				   struct lxc_conf *lxc_conf)
+				   struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 	struct lxc_inet6dev *inet6dev;
@@ -1121,7 +1190,8 @@ static int set_config_network_ipv6(const char *key, const char *value,
 }
 
 static int set_config_network_ipv6_gateway(const char *key, const char *value,
-					   struct lxc_conf *lxc_conf)
+					   struct lxc_conf *lxc_conf,
+					   void *data)
 {
 	struct lxc_netdev *netdev;
 
@@ -1159,7 +1229,7 @@ static int set_config_network_ipv6_gateway(const char *key, const char *value,
 }
 
 static int set_config_network_script_up(const char *key, const char *value,
-					struct lxc_conf *lxc_conf)
+					struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
@@ -1171,7 +1241,7 @@ static int set_config_network_script_up(const char *key, const char *value,
 }
 
 static int set_config_network_script_down(const char *key, const char *value,
-					  struct lxc_conf *lxc_conf)
+					  struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
@@ -1198,19 +1268,19 @@ static int add_hook(struct lxc_conf *lxc_conf, int which, char *hook)
 }
 
 static int set_config_seccomp(const char *key, const char *value,
-			      struct lxc_conf *lxc_conf)
+			      struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_path_item(&lxc_conf->seccomp, value);
 }
 
 static int set_config_init_cmd(const char *key, const char *value,
-			       struct lxc_conf *lxc_conf)
+			       struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_path_item(&lxc_conf->init_cmd, value);
 }
 
 static int set_config_init_uid(const char *key, const char *value,
-			       struct lxc_conf *lxc_conf)
+			       struct lxc_conf *lxc_conf, void *data)
 {
 	unsigned int init_uid;
 
@@ -1229,7 +1299,7 @@ static int set_config_init_uid(const char *key, const char *value,
 }
 
 static int set_config_init_gid(const char *key, const char *value,
-			       struct lxc_conf *lxc_conf)
+			       struct lxc_conf *lxc_conf, void *data)
 {
 	unsigned int init_gid;
 
@@ -1248,7 +1318,7 @@ static int set_config_init_gid(const char *key, const char *value,
 }
 
 static int set_config_hooks(const char *key, const char *value,
-			    struct lxc_conf *lxc_conf)
+			    struct lxc_conf *lxc_conf, void *data)
 {
 	char *copy;
 
@@ -1290,7 +1360,7 @@ static int set_config_hooks(const char *key, const char *value,
 }
 
 static int set_config_personality(const char *key, const char *value,
-				  struct lxc_conf *lxc_conf)
+				  struct lxc_conf *lxc_conf, void *data)
 {
 	signed long personality = lxc_config_parse_arch(value);
 
@@ -1303,7 +1373,7 @@ static int set_config_personality(const char *key, const char *value,
 }
 
 static int set_config_pts(const char *key, const char *value,
-			  struct lxc_conf *lxc_conf)
+			  struct lxc_conf *lxc_conf, void *data)
 {
 	/* Set config value to default. */
 	if (lxc_config_value_empty(value)) {
@@ -1324,7 +1394,7 @@ static int set_config_pts(const char *key, const char *value,
  * noticed when the callback was called.
  */
 static int set_config_start(const char *key, const char *value,
-			    struct lxc_conf *lxc_conf)
+			    struct lxc_conf *lxc_conf, void *data)
 {
 	bool is_empty;
 
@@ -1370,7 +1440,7 @@ static int set_config_start(const char *key, const char *value,
 }
 
 static int set_config_monitor(const char *key, const char *value,
-			      struct lxc_conf *lxc_conf)
+			      struct lxc_conf *lxc_conf, void *data)
 {
 	/* Set config value to default. */
 	if (lxc_config_value_empty(value)) {
@@ -1387,7 +1457,7 @@ static int set_config_monitor(const char *key, const char *value,
 }
 
 static int set_config_group(const char *key, const char *value,
-			    struct lxc_conf *lxc_conf)
+			    struct lxc_conf *lxc_conf, void *data)
 {
 	char *groups, *groupptr, *sptr, *token;
 	struct lxc_list *grouplist;
@@ -1433,7 +1503,7 @@ static int set_config_group(const char *key, const char *value,
 }
 
 static int set_config_environment(const char *key, const char *value,
-				  struct lxc_conf *lxc_conf)
+				  struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_list *list_item = NULL;
 
@@ -1459,7 +1529,7 @@ on_error:
 }
 
 static int set_config_tty(const char *key, const char *value,
-			  struct lxc_conf *lxc_conf)
+			  struct lxc_conf *lxc_conf, void *data)
 {
 	/* Set config value to default. */
 	if (lxc_config_value_empty(value)) {
@@ -1472,14 +1542,14 @@ static int set_config_tty(const char *key, const char *value,
 }
 
 static int set_config_ttydir(const char *key, const char *value,
-			     struct lxc_conf *lxc_conf)
+			     struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_string_item_max(&lxc_conf->ttydir, value,
 					  NAME_MAX + 1);
 }
 
 static int set_config_kmsg(const char *key, const char *value,
-			   struct lxc_conf *lxc_conf)
+			   struct lxc_conf *lxc_conf, void *data)
 {
 	/* Set config value to default. */
 	if (lxc_config_value_empty(value)) {
@@ -1498,13 +1568,13 @@ static int set_config_kmsg(const char *key, const char *value,
 }
 
 static int set_config_lsm_aa_profile(const char *key, const char *value,
-				     struct lxc_conf *lxc_conf)
+				     struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_string_item(&lxc_conf->lsm_aa_profile, value);
 }
 
 static int set_config_lsm_aa_incomplete(const char *key, const char *value,
-					struct lxc_conf *lxc_conf)
+					struct lxc_conf *lxc_conf, void *data)
 {
 	/* Set config value to default. */
 	if (lxc_config_value_empty(value)) {
@@ -1526,13 +1596,13 @@ static int set_config_lsm_aa_incomplete(const char *key, const char *value,
 }
 
 static int set_config_lsm_se_context(const char *key, const char *value,
-				     struct lxc_conf *lxc_conf)
+				     struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_string_item(&lxc_conf->lsm_se_context, value);
 }
 
 static int set_config_logfile(const char *key, const char *value,
-			      struct lxc_conf *c)
+			      struct lxc_conf *c, void *data)
 {
 	int ret;
 
@@ -1552,7 +1622,7 @@ static int set_config_logfile(const char *key, const char *value,
 }
 
 static int set_config_loglevel(const char *key, const char *value,
-			       struct lxc_conf *lxc_conf)
+			       struct lxc_conf *lxc_conf, void *data)
 {
 	int newlevel;
 
@@ -1578,7 +1648,7 @@ static int set_config_loglevel(const char *key, const char *value,
 }
 
 static int set_config_autodev(const char *key, const char *value,
-			      struct lxc_conf *lxc_conf)
+			      struct lxc_conf *lxc_conf, void *data)
 {
 	/* Set config value to default. */
 	if (lxc_config_value_empty(value)) {
@@ -1648,7 +1718,7 @@ static int sig_parse(const char *signame)
 }
 
 static int set_config_haltsignal(const char *key, const char *value,
-				 struct lxc_conf *lxc_conf)
+				 struct lxc_conf *lxc_conf, void *data)
 {
 	int sig_n;
 
@@ -1669,7 +1739,7 @@ static int set_config_haltsignal(const char *key, const char *value,
 }
 
 static int set_config_rebootsignal(const char *key, const char *value,
-				   struct lxc_conf *lxc_conf)
+				   struct lxc_conf *lxc_conf, void *data)
 {
 	int sig_n;
 
@@ -1689,7 +1759,7 @@ static int set_config_rebootsignal(const char *key, const char *value,
 }
 
 static int set_config_stopsignal(const char *key, const char *value,
-				 struct lxc_conf *lxc_conf)
+				 struct lxc_conf *lxc_conf, void *data)
 {
 	int sig_n;
 
@@ -1709,7 +1779,7 @@ static int set_config_stopsignal(const char *key, const char *value,
 }
 
 static int set_config_cgroup(const char *key, const char *value,
-			     struct lxc_conf *lxc_conf)
+			     struct lxc_conf *lxc_conf, void *data)
 {
 	char *subkey;
 	char *token = "lxc.cgroup.";
@@ -1767,7 +1837,7 @@ out:
 }
 
 static int set_config_idmaps(const char *key, const char *value,
-			     struct lxc_conf *lxc_conf)
+			     struct lxc_conf *lxc_conf, void *data)
 {
 	unsigned long hostid, nsid, range;
 	char type;
@@ -1816,7 +1886,7 @@ on_error:
 }
 
 static int set_config_fstab(const char *key, const char *value,
-			    struct lxc_conf *lxc_conf)
+			    struct lxc_conf *lxc_conf, void *data)
 {
 	if (lxc_config_value_empty(value)) {
 		clr_config_fstab(key, lxc_conf);
@@ -1827,7 +1897,7 @@ static int set_config_fstab(const char *key, const char *value,
 }
 
 static int set_config_mount_auto(const char *key, const char *value,
-				 struct lxc_conf *lxc_conf)
+				 struct lxc_conf *lxc_conf, void *data)
 {
 	char *autos, *autoptr, *sptr, *token;
 	int i;
@@ -1896,7 +1966,7 @@ static int set_config_mount_auto(const char *key, const char *value,
 }
 
 static int set_config_mount(const char *key, const char *value,
-			    struct lxc_conf *lxc_conf)
+			    struct lxc_conf *lxc_conf, void *data)
 {
 	char *mntelem;
 	struct lxc_list *mntlist;
@@ -1921,7 +1991,7 @@ static int set_config_mount(const char *key, const char *value,
 }
 
 static int set_config_cap_keep(const char *key, const char *value,
-			       struct lxc_conf *lxc_conf)
+			       struct lxc_conf *lxc_conf, void *data)
 {
 	char *keepcaps, *keepptr, *sptr, *token;
 	struct lxc_list *keeplist;
@@ -1971,7 +2041,7 @@ static int set_config_cap_keep(const char *key, const char *value,
 }
 
 static int set_config_cap_drop(const char *key, const char *value,
-			       struct lxc_conf *lxc_conf)
+			       struct lxc_conf *lxc_conf, void *data)
 {
 	char *dropcaps, *dropptr, *sptr, *token;
 	struct lxc_list *droplist;
@@ -2018,13 +2088,13 @@ static int set_config_cap_drop(const char *key, const char *value,
 }
 
 static int set_config_console(const char *key, const char *value,
-			      struct lxc_conf *lxc_conf)
+			      struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_path_item(&lxc_conf->console.path, value);
 }
 
 static int set_config_console_logfile(const char *key, const char *value,
-				      struct lxc_conf *lxc_conf)
+				      struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_path_item(&lxc_conf->console.log_path, value);
 }
@@ -2139,7 +2209,7 @@ out:
 }
 
 static int set_config_includefiles(const char *key, const char *value,
-				   struct lxc_conf *lxc_conf)
+				   struct lxc_conf *lxc_conf, void *data)
 {
 	/* Set config value to default. */
 	if (lxc_config_value_empty(value)) {
@@ -2155,25 +2225,25 @@ static int set_config_includefiles(const char *key, const char *value,
 }
 
 static int set_config_rootfs(const char *key, const char *value,
-			     struct lxc_conf *lxc_conf)
+			     struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_path_item(&lxc_conf->rootfs.path, value);
 }
 
 static int set_config_rootfs_mount(const char *key, const char *value,
-				   struct lxc_conf *lxc_conf)
+				   struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_path_item(&lxc_conf->rootfs.mount, value);
 }
 
 static int set_config_rootfs_options(const char *key, const char *value,
-				     struct lxc_conf *lxc_conf)
+				     struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_string_item(&lxc_conf->rootfs.options, value);
 }
 
 static int set_config_rootfs_backend(const char *key, const char *value,
-				     struct lxc_conf *lxc_conf)
+				     struct lxc_conf *lxc_conf, void *data)
 {
 	if (lxc_config_value_empty(value)) {
 		free(lxc_conf->rootfs.bdev_type);
@@ -2190,14 +2260,14 @@ static int set_config_rootfs_backend(const char *key, const char *value,
 }
 
 static int set_config_pivotdir(const char *key, const char *value,
-			       struct lxc_conf *lxc_conf)
+			       struct lxc_conf *lxc_conf, void *data)
 {
 	WARN("lxc.pivotdir is ignored.  It will soon become an error.");
 	return 0;
 }
 
 static int set_config_utsname(const char *key, const char *value,
-			      struct lxc_conf *lxc_conf)
+			      struct lxc_conf *lxc_conf, void *data)
 {
 	struct utsname *utsname;
 
@@ -2295,7 +2365,7 @@ static int parse_line(char *buffer, void *data)
 		goto out;
 	}
 
-	ret = config->set(key, value, plc->conf);
+	ret = config->set(key, value, plc->conf, data);
 
 out:
 	free(linep);
@@ -2838,7 +2908,7 @@ bool network_new_hwaddrs(struct lxc_conf *conf)
 }
 
 static int set_config_ephemeral(const char *key, const char *value,
-				struct lxc_conf *lxc_conf)
+				struct lxc_conf *lxc_conf, void *data)
 {
 	/* Set config value to default. */
 	if (lxc_config_value_empty(value)) {
