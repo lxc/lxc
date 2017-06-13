@@ -467,19 +467,11 @@ int lxc_listconfigs(char *retv, int inlen)
 	return fulllen;
 }
 
-static inline bool config_value_empty(const char *value)
-{
-	if (value && strlen(value) > 0)
-		return false;
-
-	return true;
-}
-
 static int set_config_string_item(char **conf_item, const char *value)
 {
 	char *new_value;
 
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		free(*conf_item);
 		*conf_item = NULL;
 		return 0;
@@ -557,7 +549,7 @@ out:
 static int set_config_network(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf)
 {
-	if (!config_value_empty(value)) {
+	if (!lxc_config_value_empty(value)) {
 		ERROR("lxc.network must not have a value");
 		return -1;
 	}
@@ -574,7 +566,7 @@ static int set_config_network_type(const char *key, const char *value,
 	struct lxc_netdev *netdev;
 	struct lxc_list *list;
 
-	if (config_value_empty(value))
+	if (lxc_config_value_empty(value))
 		return lxc_clear_config_network(lxc_conf);
 
 	netdev = malloc(sizeof(*netdev));
@@ -990,7 +982,7 @@ static int set_config_network_hwaddr(const char *key, const char *value,
 		return -1;
 	};
 
-	if (config_value_empty(new_value)) {
+	if (lxc_config_value_empty(new_value)) {
 		free(new_value);
 		netdev->hwaddr = NULL;
 		return 0;
@@ -1041,7 +1033,7 @@ static int set_config_network_ipv4(const char *key, const char *value,
 	char *cursor, *slash;
 	char *addr = NULL, *bcast = NULL, *prefix = NULL;
 
-	if (config_value_empty(value))
+	if (lxc_config_value_empty(value))
 		return clr_config_network_item(key, lxc_conf);
 
 	netdev = network_netdev(key, value, &lxc_conf->network);
@@ -1135,7 +1127,7 @@ static int set_config_network_ipv4_gateway(const char *key, const char *value,
 
 	free(netdev->ipv4_gateway);
 
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		netdev->ipv4_gateway = NULL;
 	} else if (!strcmp(value, "auto")) {
 		netdev->ipv4_gateway = NULL;
@@ -1170,7 +1162,7 @@ static int set_config_network_ipv6(const char *key, const char *value,
 	struct lxc_list *list;
 	char *slash, *valdup, *netmask;
 
-	if (config_value_empty(value))
+	if (lxc_config_value_empty(value))
 		return clr_config_network_item(key, lxc_conf);
 
 	netdev = network_netdev(key, value, &lxc_conf->network);
@@ -1236,7 +1228,7 @@ static int set_config_network_ipv6_gateway(const char *key, const char *value,
 
 	free(netdev->ipv6_gateway);
 
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		netdev->ipv6_gateway = NULL;
 	} else if (!strcmp(value, "auto")) {
 		netdev->ipv6_gateway = NULL;
@@ -1320,7 +1312,7 @@ static int set_config_init_uid(const char *key, const char *value,
 	unsigned int init_uid;
 
 	/* Set config value to default. */
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		lxc_conf->init_uid = 0;
 		return 0;
 	}
@@ -1339,7 +1331,7 @@ static int set_config_init_gid(const char *key, const char *value,
 	unsigned int init_gid;
 
 	/* Set config value to default. */
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		lxc_conf->init_gid = 0;
 		return 0;
 	}
@@ -1357,7 +1349,7 @@ static int set_config_hooks(const char *key, const char *value,
 {
 	char *copy;
 
-	if (config_value_empty(value))
+	if (lxc_config_value_empty(value))
 		return lxc_clear_hooks(lxc_conf, key);
 
 	if (strcmp(key + 4, "hook") == 0) {
@@ -1411,7 +1403,7 @@ static int set_config_pts(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
 	/* Set config value to default. */
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		lxc_conf->pts = 0;
 		return 0;
 	}
@@ -1433,7 +1425,7 @@ static int set_config_start(const char *key, const char *value,
 {
 	bool is_empty;
 
-	is_empty = config_value_empty(value);
+	is_empty = lxc_config_value_empty(value);
 
 	if (*(key + 10) == 'a') { /* lxc.start.auto */
 		/* Set config value to default. */
@@ -1478,7 +1470,7 @@ static int set_config_monitor(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf)
 {
 	/* Set config value to default. */
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		lxc_conf->monitor_unshare = 0;
 		return 0;
 	}
@@ -1498,7 +1490,7 @@ static int set_config_group(const char *key, const char *value,
 	struct lxc_list *grouplist;
 	int ret = -1;
 
-	if (config_value_empty(value))
+	if (lxc_config_value_empty(value))
 		return lxc_clear_groups(lxc_conf);
 
 	groups = strdup(value);
@@ -1542,7 +1534,7 @@ static int set_config_environment(const char *key, const char *value,
 {
 	struct lxc_list *list_item = NULL;
 
-	if (config_value_empty(value))
+	if (lxc_config_value_empty(value))
 		return lxc_clear_environment(lxc_conf);
 
 	list_item = malloc(sizeof(*list_item));
@@ -1567,7 +1559,7 @@ static int set_config_tty(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf)
 {
 	/* Set config value to default. */
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		lxc_conf->tty = 0;
 		return 0;
 	}
@@ -1587,7 +1579,7 @@ static int set_config_kmsg(const char *key, const char *value,
 			   struct lxc_conf *lxc_conf)
 {
 	/* Set config value to default. */
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		lxc_conf->kmsg = 0;
 		return 0;
 	}
@@ -1612,7 +1604,7 @@ static int set_config_lsm_aa_incomplete(const char *key, const char *value,
 					struct lxc_conf *lxc_conf)
 {
 	/* Set config value to default. */
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		lxc_conf->lsm_aa_allow_incomplete = 0;
 		return 0;
 	}
@@ -1641,7 +1633,7 @@ static int set_config_logfile(const char *key, const char *value,
 {
 	int ret;
 
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		free(c->logfile);
 		c->logfile = NULL;
 		return 0;
@@ -1662,7 +1654,7 @@ static int set_config_loglevel(const char *key, const char *value,
 	int newlevel;
 
 	/* Set config value to default. */
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		lxc_conf->loglevel = LXC_LOG_LEVEL_NOTSET;
 		return 0;
 	}
@@ -1686,7 +1678,7 @@ static int set_config_autodev(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf)
 {
 	/* Set config value to default. */
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		lxc_conf->autodev = 0;
 		return 0;
 	}
@@ -1758,7 +1750,7 @@ static int set_config_haltsignal(const char *key, const char *value,
 	int sig_n;
 
 	/* Set config value to default. */
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		lxc_conf->haltsignal = 0;
 		return 0;
 	}
@@ -1779,7 +1771,7 @@ static int set_config_rebootsignal(const char *key, const char *value,
 	int sig_n;
 
 	/* Set config value to default. */
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		lxc_conf->rebootsignal = 0;
 		return 0;
 	}
@@ -1799,7 +1791,7 @@ static int set_config_stopsignal(const char *key, const char *value,
 	int sig_n;
 
 	/* Set config value to default. */
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		lxc_conf->stopsignal = 0;
 		return 0;
 	}
@@ -1821,7 +1813,7 @@ static int set_config_cgroup(const char *key, const char *value,
 	struct lxc_list *cglist = NULL;
 	struct lxc_cgroup *cgelem = NULL;
 
-	if (config_value_empty(value))
+	if (lxc_config_value_empty(value))
 		return lxc_clear_cgroups(lxc_conf, key);
 
 	subkey = strstr(key, token);
@@ -1899,7 +1891,7 @@ static int set_config_limit(const char *key, const char *value,
 	struct lxc_list *limlist = NULL;
 	struct lxc_limit *limelem = NULL;
 
-	if (config_value_empty(value))
+	if (lxc_config_value_empty(value))
 		return lxc_clear_limits(lxc_conf, key);
 
 	if (strncmp(key, "lxc.limit.", sizeof("lxc.limit.") - 1) != 0)
@@ -1990,7 +1982,7 @@ static int set_config_idmaps(const char *key, const char *value,
 	struct lxc_list *idmaplist = NULL;
 	struct id_map *idmap = NULL;
 
-	if (config_value_empty(value))
+	if (lxc_config_value_empty(value))
 		return lxc_clear_idmaps(lxc_conf);
 
 	idmaplist = malloc(sizeof(*idmaplist));
@@ -2033,7 +2025,7 @@ on_error:
 static int set_config_fstab(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf)
 {
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		clr_config_fstab(key, lxc_conf);
 		return -1;
 	}
@@ -2074,7 +2066,7 @@ static int set_config_mount_auto(const char *key, const char *value,
 	    { NULL,                0,                    0                           }
 	};
 
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		lxc_conf->auto_mounts = 0;
 		return 0;
 	}
@@ -2116,7 +2108,7 @@ static int set_config_mount(const char *key, const char *value,
 	char *mntelem;
 	struct lxc_list *mntlist;
 
-	if (config_value_empty(value))
+	if (lxc_config_value_empty(value))
 		return lxc_clear_mount_entries(lxc_conf);
 
 	mntlist = malloc(sizeof(*mntlist));
@@ -2142,7 +2134,7 @@ static int set_config_cap_keep(const char *key, const char *value,
 	struct lxc_list *keeplist;
 	int ret = -1;
 
-	if (config_value_empty(value))
+	if (lxc_config_value_empty(value))
 		return lxc_clear_config_keepcaps(lxc_conf);
 
 	keepcaps = strdup(value);
@@ -2192,7 +2184,7 @@ static int set_config_cap_drop(const char *key, const char *value,
 	struct lxc_list *droplist;
 	int ret = -1;
 
-	if (config_value_empty(value))
+	if (lxc_config_value_empty(value))
 		return lxc_clear_config_caps(lxc_conf);
 
 	dropcaps = strdup(value);
@@ -2357,7 +2349,7 @@ static int set_config_includefiles(const char *key, const char *value,
 				   struct lxc_conf *lxc_conf)
 {
 	/* Set config value to default. */
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		clr_config_includefiles(key, lxc_conf);
 		return 0;
 	}
@@ -2390,7 +2382,7 @@ static int set_config_rootfs_options(const char *key, const char *value,
 static int set_config_rootfs_backend(const char *key, const char *value,
 				     struct lxc_conf *lxc_conf)
 {
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		free(lxc_conf->rootfs.bdev_type);
 		lxc_conf->rootfs.bdev_type = NULL;
 		return 0;
@@ -2416,7 +2408,7 @@ static int set_config_utsname(const char *key, const char *value,
 {
 	struct utsname *utsname;
 
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		clr_config_utsname(key, lxc_conf);
 		return 0;
 	}
@@ -2701,7 +2693,7 @@ bool do_append_unexp_config_line(struct lxc_conf *conf, const char *key,
 	len = strlen(key) + strlen(v) + 4;
 	tmp = alloca(len);
 
-	if (config_value_empty(v))
+	if (lxc_config_value_empty(v))
 		ret = snprintf(tmp, len, "%s =", key);
 	else
 		ret = snprintf(tmp, len, "%s = %s", key, v);
@@ -3056,7 +3048,7 @@ static int set_config_ephemeral(const char *key, const char *value,
 				struct lxc_conf *lxc_conf)
 {
 	/* Set config value to default. */
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		lxc_conf->ephemeral = 0;
 		return 0;
 	}
@@ -3086,7 +3078,7 @@ static int set_config_syslog(const char *key, const char *value,
 	}
 
 	/* Check if value is empty. */
-	if (config_value_empty(value))
+	if (lxc_config_value_empty(value))
 		return 0;
 
 	/* Parse value. */
@@ -3106,7 +3098,7 @@ static int set_config_no_new_privs(const char *key, const char *value,
 	unsigned int v;
 
 	/* Set config value to default. */
-	if (config_value_empty(value)) {
+	if (lxc_config_value_empty(value)) {
 		lxc_conf->no_new_privs = false;
 		return 0;
 	}

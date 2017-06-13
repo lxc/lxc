@@ -20,7 +20,11 @@
 #ifndef __LXC_CONFILE_UTILS_H
 #define __LXC_CONFILE_UTILS_H
 
+#include <stdbool.h>
+
 extern int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 			unsigned long *hostid, unsigned long *range);
+
+extern bool lxc_config_value_empty(const char *value);
 
 #endif /* __LXC_CONFILE_UTILS_H */
