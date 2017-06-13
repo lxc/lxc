@@ -118,8 +118,10 @@ union netdev_p {
  * @ipv6       : a list of ipv6 addresses to be set on the network device
  * @upscript   : a script filename to be executed during interface configuration
  * @downscript : a script filename to be executed during interface destruction
+ * @idx        : network counter
  */
 struct lxc_netdev {
+	unsigned int idx;
 	int type;
 	int flags;
 	int ifindex;
