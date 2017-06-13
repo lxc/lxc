@@ -27,6 +27,7 @@
 #include <libgen.h>
 #include <string.h>
 #include <unistd.h>
+#include <lxc/lxccontainer.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/param.h>
@@ -40,7 +41,6 @@
 #include "config.h"
 #include "start.h"
 #include "utils.h"
-#include "lxccontainer.h"
 
 lxc_log_define(lxc_execute_ui, lxc);
 
@@ -105,10 +105,10 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
-	char *rcfile;
-	struct lxc_conf *conf;
+	struct lxc_container *c;
 	struct lxc_log log;
 	int ret;
+	bool bret;
 
 	lxc_list_init(&defines);
 
@@ -129,50 +129,38 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	lxc_log_options_no_override();
 
-	/* rcfile is specified in the cli option */
-	if (my_args.rcfile)
-		rcfile = (char *)my_args.rcfile;
-	else {
-		int rc;
+	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
+	if (!c) {
+		ERROR("Failed to create lxc_container");
+		exit(EXIT_FAILURE);
+	}
 
-		rc = asprintf(&rcfile, "%s/%s/config", my_args.lxcpath[0], my_args.name);
-		if (rc == -1) {
-			SYSERROR("failed to allocate memory");
+	if (my_args.rcfile) {
+		c->clear_config(c);
+		if (!c->load_config(c, my_args.rcfile)) {
+			ERROR("Failed to load rcfile");
+			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
-
-		/* container configuration does not exist */
-		if (access(rcfile, F_OK)) {
-			free(rcfile);
-			rcfile = NULL;
+		c->configfile = strdup(my_args.rcfile);
+		if (!c->configfile) {
+			ERROR("Out of memory setting new config filename");
+			lxc_container_put(c);
+			exit(EXIT_FAILURE);
 		}
 	}
 
-	conf = lxc_conf_init();
-	if (!conf) {
-		ERROR("failed to initialize configuration");
-		exit(EXIT_FAILURE);
-	}
-
-	if (rcfile && lxc_config_read(rcfile, conf, NULL)) {
-		ERROR("failed to read configuration file");
-		exit(EXIT_FAILURE);
-	}
-
-	if (lxc_config_define_load(&defines, conf))
-		exit(EXIT_FAILURE);
-
 	if (my_args.uid)
-		conf->init_uid = my_args.uid;
+		c->lxc_conf->init_uid = my_args.uid;
 
 	if (my_args.gid)
-		conf->init_gid = my_args.gid;
+		c->lxc_conf->init_gid = my_args.gid;
 
-	ret = lxc_execute(my_args.name, my_args.argv, my_args.quiet, conf, my_args.lxcpath[0], false);
-
-	lxc_conf_free(conf);
-
-	if (ret < 0)
+	c->daemonize = false;
+	bret = c->start(c, 1, my_args.argv);
+	ret = c->error_num;
+	lxc_container_put(c);
+	if (!bret)
 		exit(EXIT_FAILURE);
 	exit(ret);
 }

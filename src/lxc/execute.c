@@ -111,16 +111,15 @@ static struct lxc_operations execute_start_ops = {
 };
 
 int lxc_execute(const char *name, char *const argv[], int quiet,
-		struct lxc_conf *conf, const char *lxcpath, bool backgrounded)
+		struct lxc_handler *handler, const char *lxcpath,
+		bool backgrounded)
 {
-	struct execute_args args = {
-		.argv = argv,
-		.quiet = quiet
-	};
+	struct execute_args args = {.argv = argv, .quiet = quiet};
 
-	if (lxc_check_inherited(conf, false, -1))
+	if (lxc_check_inherited(handler->conf, false, handler->conf->maincmd_fd))
 		return -1;
 
-	conf->is_execute = 1;
-	return __lxc_start(name, conf, &execute_start_ops, &args, lxcpath, backgrounded);
+	handler->conf->is_execute = 1;
+	return __lxc_start(name, handler, &execute_start_ops, &args, lxcpath,
+			   backgrounded);
 }

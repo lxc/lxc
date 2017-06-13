@@ -79,7 +79,7 @@ lxc_state_t lxc_getstate(const char *name, const char *lxcpath)
 	return state;
 }
 
-static int fillwaitedstates(const char *strstates, int *states)
+static int fillwaitedstates(const char *strstates, lxc_state_t *states)
 {
 	char *token, *saveptr = NULL;
 	char *strstates_dup = strdup(strstates);
@@ -108,90 +108,21 @@ static int fillwaitedstates(const char *strstates, int *states)
 extern int lxc_wait(const char *lxcname, const char *states, int timeout,
 		    const char *lxcpath)
 {
-	struct lxc_msg msg;
-	int state, ret;
-	int s[MAX_STATE] = {0}, fd;
+	int state;
+	lxc_state_t s[MAX_STATE] = {0};
 
 	if (fillwaitedstates(states, s))
 		return -1;
 
-	if (lxc_monitord_spawn(lxcpath))
-		return -1;
-
-	fd = lxc_monitor_open(lxcpath);
-	if (fd < 0)
-		return -1;
-
-	/*
-	 * if container present,
-	 * then check if already in requested state
-	 */
-	ret = -1;
-	state = lxc_getstate(lxcname, lxcpath);
+	state = lxc_cmd_state_server(lxcname, lxcpath, s);
 	if (state < 0) {
-		goto out_close;
-	} else if ((state >= 0) && (s[state])) {
-		ret = 0;
-		goto out_close;
+		SYSERROR("failed to receive state from monitor");
+		return -1;
 	}
 
-	for (;;) {
-		int64_t elapsed_time, curtime = 0;
-		struct timespec tspec;
-		int stop = 0;
-		int retval;
+	TRACE("retrieved state of container %s", lxc_state2str(state));
+	if (!s[state])
+		return -1;
 
-		if (timeout != -1) {
-			retval = clock_gettime(CLOCK_REALTIME, &tspec);
-			if (retval)
-				goto out_close;
-			curtime = tspec.tv_sec;
-		}
-		if (lxc_monitor_read_timeout(fd, &msg, timeout) < 0) {
-			/* try again if select interrupted by signal */
-			if (errno != EINTR)
-				goto out_close;
-		}
-
-		if (timeout != -1) {
-			retval = clock_gettime(CLOCK_REALTIME, &tspec);
-			if (retval)
-				goto out_close;
-			elapsed_time = tspec.tv_sec - curtime;
-			if (timeout - elapsed_time <= 0)
-				stop = 1;
-			timeout -= elapsed_time;
-		}
-
-		if (strcmp(lxcname, msg.name)) {
-			if (stop) {
-				ret = -2;
-				goto out_close;
-			}
-			continue;
-		}
-
-		switch (msg.type) {
-		case lxc_msg_state:
-			if (msg.value < 0 || msg.value >= MAX_STATE)
-				goto out_close;
-
-			if (s[msg.value]) {
-				ret = 0;
-				goto out_close;
-			}
-			break;
-		default:
-			if (stop) {
-				ret = -2;
-				goto out_close;
-			}
-			/* just ignore garbage */
-			break;
-		}
-	}
-
-out_close:
-	lxc_monitor_close(fd);
-	return ret;
+	return 0;
 }

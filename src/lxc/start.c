@@ -341,10 +341,64 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	return 1;
 }
 
-int lxc_set_state(const char *name, struct lxc_handler *handler, lxc_state_t state)
+int lxc_set_state(const char *name, struct lxc_handler *handler,
+		  lxc_state_t state)
 {
+	ssize_t ret;
+	struct lxc_list *cur, *next;
+	struct state_client *client;
+	struct lxc_msg msg = {.type = lxc_msg_state, .value = state};
+
+	process_lock();
+	/* Only set state under process lock held so that we don't cause
+	 * lxc_cmd_state_server() to miss a state.
+	 */
 	handler->state = state;
+	TRACE("set container state to %s", lxc_state2str(state));
+
+	if (lxc_list_empty(&handler->state_clients)) {
+		TRACE("no state clients registered");
+		process_unlock();
+		return 0;
+	}
+
+	strncpy(msg.name, name, sizeof(msg.name));
+	msg.name[sizeof(msg.name) - 1] = 0;
+
+	lxc_list_for_each_safe(cur, &handler->state_clients, next) {
+		client = cur->elem;
+
+		if (!client->states[state]) {
+			TRACE("state %s not registered for state client %d",
+			      lxc_state2str(state), client->clientfd);
+			continue;
+		}
+
+		TRACE("sending state %s to state client %d",
+		      lxc_state2str(state), client->clientfd);
+
+	again:
+		ret = send(client->clientfd, &msg, sizeof(msg), 0);
+		if (ret < 0) {
+			if (errno == EINTR)
+				goto again;
+
+			ERROR("failed to send message to client");
+		}
+
+		/* kick client from list */
+		close(client->clientfd);
+		lxc_list_del(cur);
+		free(cur->elem);
+		free(cur);
+	}
+	process_unlock();
+
+	/* This function will try to connect to the legacy lxc-monitord state
+	 * server and only exists for backwards compatibility.
+	 */
 	lxc_monitor_send_state(name, state, handler->lxcpath);
+
 	return 0;
 }
 
@@ -384,6 +438,7 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 			DEBUG("Not starting utmp handler as CAP_SYS_BOOT cannot be dropped without capabilities support.");
 		#endif
 	}
+	TRACE("lxc mainloop is ready");
 
 	return lxc_mainloop(&descr, -1);
 
@@ -396,14 +451,29 @@ out_sigfd:
 	return -1;
 }
 
-struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char *lxcpath)
+void lxc_free_handler(struct lxc_handler *handler)
+{
+	if (handler->conf && handler->conf->maincmd_fd)
+		close(handler->conf->maincmd_fd);
+
+	if (handler->name)
+		free(handler->name);
+
+	handler->conf = NULL;
+	free(handler);
+}
+
+struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
+				     const char *lxcpath)
 {
 	int i;
 	struct lxc_handler *handler;
 
 	handler = malloc(sizeof(*handler));
-	if (!handler)
+	if (!handler) {
+		ERROR("failed to allocate memory");
 		return NULL;
+	}
 
 	memset(handler, 0, sizeof(*handler));
 
@@ -411,31 +481,52 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 	handler->conf = conf;
 	handler->lxcpath = lxcpath;
 	handler->pinfd = -1;
+	lxc_list_init(&handler->state_clients);
 
 	for (i = 0; i < LXC_NS_MAX; i++)
 		handler->nsfd[i] = -1;
 
-	lsm_init();
-
 	handler->name = strdup(name);
 	if (!handler->name) {
-		ERROR("Failed to allocate memory.");
-		goto out_free;
+		ERROR("failed to allocate memory");
+		goto on_error;
 	}
 
-	if (lxc_cmd_init(name, handler, lxcpath))
-		goto out_free_name;
+	if (lxc_cmd_init(name, handler, lxcpath)) {
+		ERROR("failed to set up command socket");
+		goto on_error;
+	}
+
+	TRACE("unix domain socket %d for command server is ready",
+	      handler->conf->maincmd_fd);
+
+	return handler;
+
+on_error:
+	lxc_free_handler(handler);
+
+	return NULL;
+}
+
+int lxc_init(const char *name, struct lxc_handler *handler)
+{
+	struct lxc_conf *conf = handler->conf;
+
+	lsm_init();
+	TRACE("initialized LSM");
 
 	if (lxc_read_seccomp_config(conf) != 0) {
 		ERROR("Failed loading seccomp policy.");
 		goto out_close_maincmd_fd;
 	}
+	TRACE("read seccomp policy");
 
 	/* Begin by setting the state to STARTING. */
 	if (lxc_set_state(name, handler, STARTING)) {
 		ERROR("Failed to set state for container \"%s\" to \"%s\".", name, lxc_state2str(STARTING));
 		goto out_close_maincmd_fd;
 	}
+	TRACE("set container state to \"STARTING\"");
 
 	/* Start of environment variable setup for hooks. */
 	if (name && setenv("LXC_NAME", name, 1))
@@ -460,10 +551,13 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 		SYSERROR("Failed to set environment variable LXC_CGNS_AWARE=1.");
 	/* End of environment variable setup for hooks. */
 
+	TRACE("set environment variables");
+
 	if (run_lxc_hooks(name, "pre-start", conf, handler->lxcpath, NULL)) {
 		ERROR("Failed to run lxc.hook.pre-start for container \"%s\".", name);
 		goto out_aborting;
 	}
+	TRACE("ran pre-start hooks");
 
 	/* The signal fd has to be created before forking otherwise if the child
 	 * process exits before we setup the signal fd, the event will be lost
@@ -474,20 +568,23 @@ struct lxc_handler *lxc_init(const char *name, struct lxc_conf *conf, const char
 		ERROR("Failed to setup SIGCHLD fd handler.");
 		goto out_delete_tty;
 	}
+	TRACE("set up signal fd");
 
 	/* Do this after setting up signals since it might unblock SIGWINCH. */
 	if (lxc_console_create(conf)) {
 		ERROR("Failed to create console for container \"%s\".", name);
 		goto out_restore_sigmask;
 	}
+	TRACE("created console");
 
 	if (lxc_ttys_shift_ids(conf) < 0) {
 		ERROR("Failed to shift tty into container.");
 		goto out_restore_sigmask;
 	}
+	TRACE("shifted tty ids");
 
-	INFO("Container \"%s\" is initialized.", name);
-	return handler;
+	INFO("container \"%s\" is initialized", name);
+	return 0;
 
 out_restore_sigmask:
 	sigprocmask(SIG_SETMASK, &handler->oldmask, NULL);
@@ -498,19 +595,15 @@ out_aborting:
 out_close_maincmd_fd:
 	close(conf->maincmd_fd);
 	conf->maincmd_fd = -1;
-out_free_name:
-	free(handler->name);
-	handler->name = NULL;
-out_free:
-	free(handler);
-	return NULL;
+	return -1;
 }
 
 void lxc_fini(const char *name, struct lxc_handler *handler)
 {
 	int i, rc;
+	struct lxc_list *cur, *next;
 	pid_t self = getpid();
-	char *namespaces[LXC_NS_MAX+1];
+	char *namespaces[LXC_NS_MAX + 1];
 	size_t namespace_count = 0;
 
 	/* The STOPPING state is there for future cleanup code which can take
@@ -572,8 +665,23 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 
 	lxc_console_delete(&handler->conf->console);
 	lxc_delete_tty(&handler->conf->tty_info);
+
+	/* close the command socket */
 	close(handler->conf->maincmd_fd);
 	handler->conf->maincmd_fd = -1;
+
+	/* The command socket is now closed, no more state clients can register
+	 * themselves from now on. So free the list of state clients.
+	 */
+	lxc_list_for_each_safe(cur, &handler->state_clients, next) {
+		struct state_client *client = cur->elem;
+		/* close state client socket */
+		close(client->clientfd);
+		lxc_list_del(cur);
+		free(cur->elem);
+		free(cur);
+	}
+
 	free(handler->name);
 	if (handler->ttysock[0] != -1) {
 		close(handler->ttysock[0]);
@@ -1337,17 +1445,16 @@ out_abort:
 	return -1;
 }
 
-int __lxc_start(const char *name, struct lxc_conf *conf,
+int __lxc_start(const char *name, struct lxc_handler *handler,
 		struct lxc_operations* ops, void *data, const char *lxcpath,
 		bool backgrounded)
 {
-	struct lxc_handler *handler;
-	int err = -1;
 	int status;
+	int err = -1;
 	bool removed_all_netdevs = true;
+	struct lxc_conf *conf = handler->conf;
 
-	handler = lxc_init(name, conf, lxcpath);
-	if (!handler) {
+	if (lxc_init(name, handler) < 0) {
 		ERROR("Failed to initialize container \"%s\".", name);
 		return -1;
 	}
@@ -1494,15 +1601,15 @@ static struct lxc_operations start_ops = {
 	.post_start = post_start
 };
 
-int lxc_start(const char *name, char *const argv[], struct lxc_conf *conf,
+int lxc_start(const char *name, char *const argv[], struct lxc_handler *handler,
 	      const char *lxcpath, bool backgrounded)
 {
 	struct start_args start_arg = {
 		.argv = argv,
 	};
 
-	conf->need_utmp_watch = 1;
-	return __lxc_start(name, conf, &start_ops, &start_arg, lxcpath, backgrounded);
+	handler->conf->need_utmp_watch = 1;
+	return __lxc_start(name, handler, &start_ops, &start_arg, lxcpath, backgrounded);
 }
 
 static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
