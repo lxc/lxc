@@ -22,9 +22,15 @@
 
 #include <stdbool.h>
 
+#include "conf.h"
+
 extern int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 			unsigned long *hostid, unsigned long *range);
 
 extern bool lxc_config_value_empty(const char *value);
+extern struct lxc_netdev *lxc_find_netdev_by_idx(struct lxc_conf *conf,
+						 unsigned int idx);
+extern struct lxc_netdev *lxc_get_netdev_by_idx(struct lxc_conf *conf,
+						unsigned int idx);
 
 #endif /* __LXC_CONFILE_UTILS_H */
