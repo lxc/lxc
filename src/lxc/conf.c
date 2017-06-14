@@ -3047,6 +3047,21 @@ int lxc_create_network(struct lxc_handler *handler)
 
 		netdev = iterator->elem;
 
+		if (netdev->type != LXC_NET_MACVLAN && netdev->priv.macvlan_attr.mode) {
+			ERROR("Invalid macvlan.mode for a non-macvlan netdev");
+			return -1;
+		}
+
+		if (netdev->type != LXC_NET_VETH && netdev->priv.veth_attr.pair) {
+			ERROR("Invalid veth pair for a non-veth netdev");
+			return -1;
+		}
+
+		if (netdev->type != LXC_NET_VLAN && netdev->priv.vlan_attr.vid > 0) {
+			ERROR("Invalid vlan.id for a non-macvlan netdev");
+			return -1;
+		}
+
 		if (netdev->type < 0 || netdev->type > LXC_NET_MAXCONFTYPE) {
 			ERROR("invalid network configuration type '%d'",
 			      netdev->type);
