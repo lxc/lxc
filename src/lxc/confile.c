@@ -583,14 +583,19 @@ static int set_config_path_item(char **conf_item, const char *value)
 static int set_config_network_nic(const char *key, const char *value,
 				  struct lxc_conf *lxc_conf, void *data)
 {
-	char *copy = strdup(key), *p;
-	int ret = -1;
+	char *copy, *idx_start, *idx_end;
+	unsigned int idx;
 	struct lxc_config_t *config;
+	size_t numstrlen;
+	int ret = -1;
+	struct lxc_netdev *netdev = NULL;
 
+	copy = strdup(key);
 	if (!copy) {
 		SYSERROR("failed to allocate memory");
 		return -1;
 	}
+
 	/*
 	 * Ok we know that to get here we've got "lxc.network."
 	 * and it isn't any of the other network entries.  So
@@ -598,21 +603,57 @@ static int set_config_network_nic(const char *key, const char *value,
 	 * nic) followed by a valid entry.
 	 */
 	if (*(key + 12) < '0' || *(key + 12) > '9')
-		goto out;
+		goto on_error;
 
-	p = strchr(key + 12, '.');
-	if (!p)
-		goto out;
+	/* beginning index string */
+	idx_start = (copy + 11);
+	/* temporarily \o-terminate */
+	*idx_start = '\0';
 
-	strcpy(copy + 12, p + 1);
+	idx_end = strchr((copy + 12), '.');
+	if (!idx_end)
+		goto on_error;
+
+	/* temporarily \o-terminate */
+	*idx_end = '\0';
+
+	/* parse current index */
+	if (lxc_safe_uint((idx_start + 1), &idx) < 0)
+		goto on_error;
+
+	numstrlen = strlen((idx_start + 1));
+
+	/* repair configuration key */
+	*idx_start = '.';
+	*idx_end = '.';
+
+	/* lookup network key in jump table */
+	memmove(copy + 12, idx_end + 1, strlen(idx_end + 1));
+	copy[strlen(key) - numstrlen + 1] = '\0';
 	config = lxc_getconfig(copy);
 	if (!config) {
 		ERROR("unknown key %s", key);
-		goto out;
+		goto on_error;
 	}
-	ret = config->set(key, value, lxc_conf, data);
 
-out:
+	/* This, of course is utterly nonsensical on so many levels, but better
+	 * safe than sorry.
+	 */
+	if (idx == UINT_MAX) {
+		SYSERROR("number of configured networks would overflow the "
+			 "counter... what are you doing?");
+		goto on_error;
+	}
+
+	/* get netdev */
+	netdev = lxc_get_netdev_by_idx(lxc_conf, idx);
+	if (!netdev)
+		goto on_error;
+
+	/* set config item */
+	ret = config->set(key, value, lxc_conf, netdev);
+
+on_error:
 	free(copy);
 	return ret;
 }
@@ -633,52 +674,40 @@ static int macvlan_mode(int *valuep, const char *value);
 static int set_config_network_type(const char *key, const char *value,
 				   struct lxc_conf *lxc_conf, void *data)
 {
-	struct lxc_list *network = &lxc_conf->network;
 	struct lxc_netdev *netdev;
-	struct lxc_list *list;
 
+	/* If value is empty e.g. "lxc.network.type=", then clear the network
+	 * from the config.
+	 */
 	if (lxc_config_value_empty(value))
 		return lxc_clear_config_network(lxc_conf);
 
-	netdev = malloc(sizeof(*netdev));
-	if (!netdev) {
-		SYSERROR("failed to allocate memory");
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+	else
+		netdev = data;
+	if (!netdev)
 		return -1;
-	}
 
-	memset(netdev, 0, sizeof(*netdev));
-	lxc_list_init(&netdev->ipv4);
-	lxc_list_init(&netdev->ipv6);
-
-	list = malloc(sizeof(*list));
-	if (!list) {
-		SYSERROR("failed to allocate memory");
-		free(netdev);
-		return -1;
-	}
-
-	lxc_list_init(list);
-	list->elem = netdev;
-
-	lxc_list_add_tail(network, list);
-
-	if (!strcmp(value, "veth"))
+	if (!strcmp(value, "veth")) {
 		netdev->type = LXC_NET_VETH;
-	else if (!strcmp(value, "macvlan")) {
+	} else if (!strcmp(value, "macvlan")) {
 		netdev->type = LXC_NET_MACVLAN;
 		macvlan_mode(&netdev->priv.macvlan_attr.mode, "private");
-	} else if (!strcmp(value, "vlan"))
+	} else if (!strcmp(value, "vlan")) {
 		netdev->type = LXC_NET_VLAN;
-	else if (!strcmp(value, "phys"))
+	} else if (!strcmp(value, "phys")) {
 		netdev->type = LXC_NET_PHYS;
-	else if (!strcmp(value, "empty"))
+	} else if (!strcmp(value, "empty")) {
 		netdev->type = LXC_NET_EMPTY;
-	else if (!strcmp(value, "none"))
+	} else if (!strcmp(value, "none")) {
 		netdev->type = LXC_NET_NONE;
-	else {
+	} else {
 		ERROR("invalid network type %s", value);
 		return -1;
 	}
+
 	return 0;
 }
 
@@ -786,31 +815,6 @@ extern int lxc_list_nicconfigs(struct lxc_conf *c, const char *key, char *retv,
 	return fulllen;
 }
 
-static struct lxc_netdev *network_netdev(const char *key, const char *value,
-					 struct lxc_list *network)
-{
-	struct lxc_netdev *netdev = NULL;
-
-	if (lxc_list_empty(network)) {
-		ERROR("network is not created for '%s' = '%s' option", key,
-		      value);
-		return NULL;
-	}
-
-	if (get_network_netdev_idx(key + 12) == -1)
-		netdev = lxc_list_last_elem(network);
-	else
-		netdev = get_netdev_from_key(key + 12, network);
-
-	if (!netdev) {
-		ERROR("no network device defined for '%s' = '%s' option", key,
-		      value);
-		return NULL;
-	}
-
-	return netdev;
-}
-
 static int network_ifname(char **valuep, const char *value)
 {
 	return set_config_string_item_max(valuep, value, IFNAMSIZ);
@@ -894,7 +898,11 @@ static int set_config_network_flags(const char *key, const char *value,
 {
 	struct lxc_netdev *netdev;
 
-	netdev = network_netdev(key, value, &lxc_conf->network);
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+	else
+		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -908,7 +916,11 @@ static int set_network_link(const char *key, const char *value,
 {
 	struct lxc_netdev *netdev;
 
-	netdev = network_netdev(key, value, &lxc_conf->network);
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+	else
+		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -965,7 +977,11 @@ static int set_config_network_link(const char *key, const char *value,
 	struct lxc_list *it;
 	int ret = 0;
 
-	netdev = network_netdev(key, value, &lxc_conf->network);
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+	else
+		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -993,7 +1009,11 @@ static int set_config_network_name(const char *key, const char *value,
 {
 	struct lxc_netdev *netdev;
 
-	netdev = network_netdev(key, value, &lxc_conf->network);
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+	else
+		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -1005,14 +1025,13 @@ static int set_config_network_veth_pair(const char *key, const char *value,
 {
 	struct lxc_netdev *netdev;
 
-	netdev = network_netdev(key, value, &lxc_conf->network);
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+	else
+		netdev = data;
 	if (!netdev)
 		return -1;
-
-	if (netdev->type != LXC_NET_VETH) {
-		ERROR("Invalid veth pair for a non-veth netdev");
-		return -1;
-	}
 
 	return network_ifname(&netdev->priv.veth_attr.pair, value);
 }
@@ -1023,14 +1042,13 @@ static int set_config_network_macvlan_mode(const char *key, const char *value,
 {
 	struct lxc_netdev *netdev;
 
-	netdev = network_netdev(key, value, &lxc_conf->network);
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+	else
+		netdev = data;
 	if (!netdev)
 		return -1;
-
-	if (netdev->type != LXC_NET_MACVLAN) {
-		ERROR("Invalid macvlan.mode for a non-macvlan netdev");
-		return -1;
-	}
 
 	return macvlan_mode(&netdev->priv.macvlan_attr.mode, value);
 }
@@ -1048,11 +1066,15 @@ static int set_config_network_hwaddr(const char *key, const char *value,
 	}
 	rand_complete_hwaddr(new_value);
 
-	netdev = network_netdev(key, new_value, &lxc_conf->network);
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+	else
+		netdev = data;
 	if (!netdev) {
 		free(new_value);
 		return -1;
-	};
+	}
 
 	if (lxc_config_value_empty(new_value)) {
 		free(new_value);
@@ -1069,14 +1091,13 @@ static int set_config_network_vlan_id(const char *key, const char *value,
 {
 	struct lxc_netdev *netdev;
 
-	netdev = network_netdev(key, value, &lxc_conf->network);
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+	else
+		netdev = data;
 	if (!netdev)
 		return -1;
-
-	if (netdev->type != LXC_NET_VLAN) {
-		ERROR("Invalid vlan.id for a non-macvlan netdev");
-		return -1;
-	}
 
 	if (get_u16(&netdev->priv.vlan_attr.vid, value, 0))
 		return -1;
@@ -1089,7 +1110,11 @@ static int set_config_network_mtu(const char *key, const char *value,
 {
 	struct lxc_netdev *netdev;
 
-	netdev = network_netdev(key, value, &lxc_conf->network);
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+	else
+		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -1108,7 +1133,11 @@ static int set_config_network_ipv4(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return clr_config_network_item(key, lxc_conf);
 
-	netdev = network_netdev(key, value, &lxc_conf->network);
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+	else
+		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -1194,7 +1223,11 @@ static int set_config_network_ipv4_gateway(const char *key, const char *value,
 {
 	struct lxc_netdev *netdev;
 
-	netdev = network_netdev(key, value, &lxc_conf->network);
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+	else
+		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -1235,10 +1268,11 @@ static int set_config_network_ipv6(const char *key, const char *value,
 	struct lxc_list *list;
 	char *slash, *valdup, *netmask;
 
-	if (lxc_config_value_empty(value))
-		return clr_config_network_item(key, lxc_conf);
-
-	netdev = network_netdev(key, value, &lxc_conf->network);
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+	else
+		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -1296,7 +1330,11 @@ static int set_config_network_ipv6_gateway(const char *key, const char *value,
 {
 	struct lxc_netdev *netdev;
 
-	netdev = network_netdev(key, value, &lxc_conf->network);
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+	else
+		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -1334,7 +1372,11 @@ static int set_config_network_script_up(const char *key, const char *value,
 {
 	struct lxc_netdev *netdev;
 
-	netdev = network_netdev(key, value, &lxc_conf->network);
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+	else
+		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -1346,7 +1388,11 @@ static int set_config_network_script_down(const char *key, const char *value,
 {
 	struct lxc_netdev *netdev;
 
-	netdev = network_netdev(key, value, &lxc_conf->network);
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+	else
+		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -2576,7 +2622,7 @@ static int parse_line(char *buffer, void *data)
 		goto out;
 	}
 
-	ret = config->set(key, value, plc->conf, data);
+	ret = config->set(key, value, plc->conf, NULL);
 
 out:
 	free(linep);
