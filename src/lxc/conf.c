@@ -77,6 +77,7 @@
 #include "caps.h"       /* for lxc_caps_last_cap() */
 #include "cgroup.h"
 #include "conf.h"
+#include "confile_utils.h"
 #include "error.h"
 #include "log.h"
 #include "lxcaufs.h"
@@ -2943,6 +2944,8 @@ int lxc_create_network(struct lxc_handler *handler)
 
 	if (!am_root)
 		return 0;
+
+	lxc_log_configured_netdevs(handler->conf);
 
 	lxc_list_for_each(iterator, network) {
 
