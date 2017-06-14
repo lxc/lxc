@@ -32,5 +32,6 @@ extern struct lxc_netdev *lxc_find_netdev_by_idx(struct lxc_conf *conf,
 						 unsigned int idx);
 extern struct lxc_netdev *lxc_get_netdev_by_idx(struct lxc_conf *conf,
 						unsigned int idx);
+extern void lxc_log_configured_netdevs(const struct lxc_conf *conf);
 
 #endif /* __LXC_CONFILE_UTILS_H */
