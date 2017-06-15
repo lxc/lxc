@@ -576,89 +576,6 @@ static int set_config_path_item(char **conf_item, const char *value)
 	return set_config_string_item_max(conf_item, value, PATH_MAX);
 }
 
-/*
- * Config entry is something like "lxc.network.0.ipv4" the key 'lxc.network.'
- * was found.  So we make sure next comes an integer, find the right callback
- * (by rewriting the key), and call it.
- */
-static int set_config_network_nic(const char *key, const char *value,
-				  struct lxc_conf *lxc_conf, void *data)
-{
-	char *copy, *idx_start, *idx_end;
-	unsigned int idx;
-	struct lxc_config_t *config;
-	size_t numstrlen;
-	int ret = -1;
-	struct lxc_netdev *netdev = NULL;
-
-	copy = strdup(key);
-	if (!copy) {
-		SYSERROR("failed to allocate memory");
-		return -1;
-	}
-
-	/*
-	 * Ok we know that to get here we've got "lxc.network."
-	 * and it isn't any of the other network entries.  So
-	 * after the second . Should come an integer (# of defined
-	 * nic) followed by a valid entry.
-	 */
-	if (*(key + 12) < '0' || *(key + 12) > '9')
-		goto on_error;
-
-	/* beginning index string */
-	idx_start = (copy + 11);
-	/* temporarily \o-terminate */
-	*idx_start = '\0';
-
-	idx_end = strchr((copy + 12), '.');
-	if (!idx_end)
-		goto on_error;
-
-	/* temporarily \o-terminate */
-	*idx_end = '\0';
-
-	/* parse current index */
-	if (lxc_safe_uint((idx_start + 1), &idx) < 0)
-		goto on_error;
-
-	numstrlen = strlen((idx_start + 1));
-
-	/* repair configuration key */
-	*idx_start = '.';
-	*idx_end = '.';
-
-	/* lookup network key in jump table */
-	memmove(copy + 12, idx_end + 1, strlen(idx_end + 1));
-	copy[strlen(key) - numstrlen + 1] = '\0';
-	config = lxc_getconfig(copy);
-	if (!config) {
-		ERROR("unknown key %s", key);
-		goto on_error;
-	}
-
-	/* This, of course is utterly nonsensical on so many levels, but better
-	 * safe than sorry.
-	 */
-	if (idx == UINT_MAX) {
-		SYSERROR("number of configured networks would overflow the "
-			 "counter... what are you doing?");
-		goto on_error;
-	}
-
-	/* get netdev */
-	netdev = lxc_get_netdev_by_idx(lxc_conf, idx);
-	if (!netdev)
-		goto on_error;
-
-	/* set config item */
-	ret = config->set(key, value, lxc_conf, netdev);
-
-on_error:
-	free(copy);
-	return ret;
-}
-
 static int set_config_network(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf, void *data)
 {
@@ -4308,4 +4225,94 @@ static int get_config_includefiles(const char *key, char *retv, int inlen,
 				   struct lxc_conf *c)
 {
 	return -ENOSYS;
+}
+
+static struct lxc_config_t *
+get_network_config_ops(const char *key, struct lxc_conf *lxc_conf, ssize_t *idx)
+{
+	char *copy, *idx_start, *idx_end;
+	struct lxc_config_t *config = NULL;
+
+	/* check that this is a sensible network key */
+	if (strncmp("lxc.network.", key, 12))
+		return NULL;
+
+	copy = strdup(key);
+	if (!copy)
+		return NULL;
+
+	if (isdigit(*(key + 12))) {
+		int ret;
+		unsigned int tmpidx;
+		size_t numstrlen;
+
+		/* beginning of index string */
+		idx_start = (copy + 11);
+		*idx_start = '\0';
+
+		/* end of index string */
+		idx_end = strchr((copy + 12), '.');
+		if (!idx_end)
+			goto on_error;
+		*idx_end = '\0';
+
+		/* parse current index */
+		ret = lxc_safe_uint((idx_start + 1), &tmpidx);
+		if (ret < 0) {
+			*idx = ret;
+			goto on_error;
+		}
+
+		/* This, of course is utterly nonsensical on so many levels, but
+		* better
+		* safe than sorry.
+		 */
+		if (tmpidx == UINT_MAX) {
+			SYSERROR(
+			    "number of configured networks would overflow the "
+			    "counter... what are you doing?");
+			goto on_error;
+		}
+		*idx = tmpidx;
+
+		numstrlen = strlen((idx_start + 1));
+
+		/* repair configuration key */
+		*idx_start = '.';
+		*idx_end = '.';
+
+		memmove(copy + 12, idx_end + 1, strlen(idx_end + 1));
+		copy[strlen(key) - numstrlen + 1] = '\0';
+	}
+
+	config = lxc_getconfig(copy);
+	if (!config)
+		ERROR("unknown network configuration key %s", key);
+
+on_error:
+	free(copy);
+	return config;
+}
+
+/*
+ * Config entry is something like "lxc.network.0.ipv4" the key 'lxc.network.'
+ * was found.  So we make sure next comes an integer, find the right callback
+ * (by rewriting the key), and call it.
+ */
+static int set_config_network_nic(const char *key, const char *value,
+				  struct lxc_conf *lxc_conf, void *data)
+{
+	struct lxc_config_t *config;
+	struct lxc_netdev *netdev;
+	ssize_t idx = -1;
+
+	config = get_network_config_ops(key, lxc_conf, &idx);
+	if (!config || idx < 0)
+		return -1;
+
+	netdev = lxc_get_netdev_by_idx(lxc_conf, (unsigned int)idx);
+	if (!netdev)
+		return -1;
+
+	return config->set(key, value, lxc_conf, netdev);
 }
