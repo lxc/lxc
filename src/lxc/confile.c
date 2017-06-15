@@ -1566,7 +1566,7 @@ static int set_config_loglevel(const char *key, const char *value,
 
 	/* Set config value to default. */
 	if (config_value_empty(value)) {
-		lxc_conf->loglevel = LXC_LOG_PRIORITY_NOTSET;
+		lxc_conf->loglevel = LXC_LOG_LEVEL_NOTSET;
 		return 0;
 	}
 
@@ -3602,7 +3602,7 @@ static inline int clr_config_idmaps(const char *key, struct lxc_conf *c)
 
 static inline int clr_config_loglevel(const char *key, struct lxc_conf *c)
 {
-	c->loglevel = LXC_LOG_PRIORITY_NOTSET;
+	c->loglevel = LXC_LOG_LEVEL_NOTSET;
 	return 0;
 }
 
