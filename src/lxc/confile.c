@@ -4294,8 +4294,7 @@ get_network_config_ops(const char *key, struct lxc_conf *lxc_conf, ssize_t *idx)
 		}
 
 		/* This, of course is utterly nonsensical on so many levels, but
-		* better
-		* safe than sorry.
+		 * better safe than sorry.
 		 */
 		if (tmpidx == UINT_MAX) {
 			SYSERROR(
@@ -4355,9 +4354,31 @@ static int set_config_network_nic(const char *key, const char *value,
 static int clr_config_network_nic(const char *key, struct lxc_conf *lxc_conf,
 				  void *data)
 {
+	const char *idxstring;
 	struct lxc_config_t *config;
 	struct lxc_netdev *netdev;
-	ssize_t idx = -1;
+	ssize_t idx;
+
+	/* If we get passed "lxc.network.<n>" we clear the whole network. */
+	if (strncmp("lxc.network.", key, 12))
+		return -1;
+
+	idxstring = key + 12;
+	/* The left conjunct is pretty self-explanatory. The right conjunct
+	 * checks whether the two pointers are equal. If they are we now that
+	 * this is not a key that is namespaced any further and so we are
+	 * supposed to clear the whole network.
+	 */
+	if (isdigit(*idxstring) && (strrchr(key, '.') == (idxstring - 1))) {
+		unsigned int rmnetdevidx;
+
+		if (lxc_safe_uint(idxstring, &rmnetdevidx) < 0)
+			return -1;
+
+		/* Remove network from network list. */
+		lxc_remove_nic_by_idx(lxc_conf, rmnetdevidx);
+		return 0;
+	}
 
 	config = get_network_config_ops(key, lxc_conf, &idx);
 	if (!config || idx < 0)

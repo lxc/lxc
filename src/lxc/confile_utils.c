@@ -293,3 +293,47 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 			TRACE("downscript: %s", netdev->downscript);
 	}
 }
+
+bool lxc_remove_nic_by_idx(struct lxc_conf *conf, unsigned int idx)
+{
+	struct lxc_list *cur, *it, *next;
+	struct lxc_netdev *netdev;
+	bool found = false;
+
+	lxc_list_for_each_safe(cur, &conf->network, next) {
+		netdev = cur->elem;
+		if (netdev->idx != idx)
+			continue;
+
+		lxc_list_del(cur);
+		found = true;
+		break;
+	}
+
+	if (!found)
+		return false;
+
+	free(netdev->link);
+	free(netdev->name);
+	if (netdev->type == LXC_NET_VETH)
+		free(netdev->priv.veth_attr.pair);
+	free(netdev->upscript);
+	free(netdev->hwaddr);
+	free(netdev->mtu);
+	free(netdev->ipv4_gateway);
+	free(netdev->ipv6_gateway);
+	lxc_list_for_each_safe(it, &netdev->ipv4, next) {
+		lxc_list_del(it);
+		free(it->elem);
+		free(it);
+	}
+	lxc_list_for_each_safe(it, &netdev->ipv6, next) {
+		lxc_list_del(it);
+		free(it->elem);
+		free(it);
+	}
+	free(netdev);
+	free(cur);
+
+	return true;
+}
