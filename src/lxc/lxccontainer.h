@@ -1021,7 +1021,7 @@ struct lxc_log {
 	const char *name;
 	const char *lxcpath;
 	const char *file;
-	const char *priority;
+	const char *level;
 	const char *prefix;
 	bool quiet;
 };
