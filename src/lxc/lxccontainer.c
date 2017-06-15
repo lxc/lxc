@@ -1722,7 +1722,7 @@ static bool do_lxcapi_clear_config_item(struct lxc_container *c,
 	 * implemented.
 	 */
 	if (config && config->clr)
-		ret = config->clr(key, c->lxc_conf);
+		ret = config->clr(key, c->lxc_conf, NULL);
 	if (!ret)
 		do_clear_unexp_config_line(c->lxc_conf, key);
 
