@@ -4282,98 +4282,6 @@ int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
 	return 0;
 }
 
-static void lxc_remove_nic(struct lxc_list *it)
-{
-	struct lxc_netdev *netdev = it->elem;
-	struct lxc_list *it2,*next;
-
-	lxc_list_del(it);
-
-	free(netdev->link);
-	free(netdev->name);
-	if (netdev->type == LXC_NET_VETH)
-		free(netdev->priv.veth_attr.pair);
-	free(netdev->upscript);
-	free(netdev->hwaddr);
-	free(netdev->mtu);
-	free(netdev->ipv4_gateway);
-	free(netdev->ipv6_gateway);
-	lxc_list_for_each_safe(it2, &netdev->ipv4, next) {
-		lxc_list_del(it2);
-		free(it2->elem);
-		free(it2);
-	}
-	lxc_list_for_each_safe(it2, &netdev->ipv6, next) {
-		lxc_list_del(it2);
-		free(it2->elem);
-		free(it2);
-	}
-	free(netdev);
-	free(it);
-}
-
-/* we get passed in something like '0', '0.ipv4' or '1.ipv6' */
-int lxc_clear_nic(struct lxc_conf *c, const char *key)
-{
-	char *p1;
-	int ret, idx, i;
-	struct lxc_list *it;
-	struct lxc_netdev *netdev;
-
-	p1 = strchr(key, '.');
-	if (!p1 || *(p1+1) == '\0')
-		p1 = NULL;
-
-	ret = sscanf(key, "%d", &idx);
-	if (ret != 1) return -1;
-	if (idx < 0)
-		return -1;
-
-	i = 0;
-	lxc_list_for_each(it, &c->network) {
-		if (i == idx)
-			break;
-		i++;
-	}
-	if (i < idx)  // we don't have that many nics defined
-		return -1;
-
-	if (!it || !it->elem)
-		return -1;
-
-	netdev = it->elem;
-
-	if (!p1) {
-		lxc_remove_nic(it);
-	} else if (strcmp(p1, ".ipv4") == 0) {
-		struct lxc_list *it2,*next;
-		lxc_list_for_each_safe(it2, &netdev->ipv4, next) {
-			lxc_list_del(it2);
-			free(it2->elem);
-			free(it2);
-		}
-	} else if (strcmp(p1, ".ipv6") == 0) {
-		struct lxc_list *it2,*next;
-		lxc_list_for_each_safe(it2, &netdev->ipv6, next) {
-			lxc_list_del(it2);
-			free(it2->elem);
-			free(it2);
-		}
-	}
-		else return -1;
-
-	return 0;
-}
-
-int lxc_clear_config_network(struct lxc_conf *c)
-{
-	struct lxc_list *it,*next;
-	lxc_list_for_each_safe(it, &c->network, next) {
-		lxc_remove_nic(it);
-	}
-	return 0;
-}
-
 int lxc_clear_config_caps(struct lxc_conf *c)
 {
 	struct lxc_list *it,*next;
@@ -4596,7 +4504,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->unexpanded_config);
 	free(conf->pty_names);
 	free(conf->syslog);
-	lxc_clear_config_network(conf);
+	lxc_free_networks(conf);
 	free(conf->lsm_aa_profile);
 	free(conf->lsm_se_context);
 	lxc_seccomp_free(conf);
