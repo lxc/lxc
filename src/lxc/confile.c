@@ -197,74 +197,104 @@ static int clr_config_hooks(const char *, struct lxc_conf *, void *);
 
 static int set_config_network_type(const char *, const char *,
 				   struct lxc_conf *, void *);
+static int get_config_network_type(const char *, char *, int, struct lxc_conf *,
+				   void *);
 static int clr_config_network_type(const char *, struct lxc_conf *, void *);
 
 static int set_config_network_flags(const char *, const char *,
+				    struct lxc_conf *, void *);
+static int get_config_network_flags(const char *, char *, int,
 				    struct lxc_conf *, void *);
 static int clr_config_network_flags(const char *, struct lxc_conf *, void *);
 
 static int set_config_network_link(const char *, const char *,
 				   struct lxc_conf *, void *);
+static int get_config_network_link(const char *, char *, int, struct lxc_conf *,
+				   void *);
 static int clr_config_network_link(const char *, struct lxc_conf *, void *);
 
 static int set_config_network_name(const char *, const char *,
 				   struct lxc_conf *, void *);
+static int get_config_network_name(const char *, char *, int, struct lxc_conf *,
+				   void *);
 static int clr_config_network_name(const char *, struct lxc_conf *, void *);
 
 static int set_config_network_veth_pair(const char *, const char *,
+					struct lxc_conf *, void *);
+static int get_config_network_veth_pair(const char *, char *, int,
 					struct lxc_conf *, void *);
 static int clr_config_network_veth_pair(const char *, struct lxc_conf *,
 					void *);
 
 static int set_config_network_macvlan_mode(const char *, const char *,
 					   struct lxc_conf *, void *);
+static int get_config_network_macvlan_mode(const char *, char *, int,
+					   struct lxc_conf *, void *);
 static int clr_config_network_macvlan_mode(const char *, struct lxc_conf *,
 					   void *);
 
 static int set_config_network_hwaddr(const char *, const char *,
 				     struct lxc_conf *, void *);
+static int get_config_network_hwaddr(const char *, char *, int,
+				     struct lxc_conf *, void *);
 static int clr_config_network_hwaddr(const char *, struct lxc_conf *, void *);
 
 static int set_config_network_vlan_id(const char *, const char *,
+				      struct lxc_conf *, void *);
+static int get_config_network_vlan_id(const char *, char *, int,
 				      struct lxc_conf *, void *);
 static int clr_config_network_vlan_id(const char *, struct lxc_conf *, void *);
 
 static int set_config_network_mtu(const char *, const char *, struct lxc_conf *,
 				  void *);
+static int get_config_network_mtu(const char *, char *, int, struct lxc_conf *,
+				  void *);
 static int clr_config_network_mtu(const char *, struct lxc_conf *, void *);
 
 static int set_config_network_ipv4(const char *, const char *,
 				   struct lxc_conf *, void *);
+static int get_config_network_ipv4(const char *, char *, int, struct lxc_conf *,
+				   void *);
 static int clr_config_network_ipv4(const char *, struct lxc_conf *, void *);
 
 static int set_config_network_ipv4_gateway(const char *, const char *,
+					   struct lxc_conf *, void *);
+static int get_config_network_ipv4_gateway(const char *, char *, int,
 					   struct lxc_conf *, void *);
 static int clr_config_network_ipv4_gateway(const char *, struct lxc_conf *,
 					   void *);
 
 static int set_config_network_script_up(const char *, const char *,
 					struct lxc_conf *, void *);
+static int get_config_network_script_up(const char *, char *, int,
+					struct lxc_conf *, void *);
 static int clr_config_network_script_up(const char *, struct lxc_conf *,
 					void *);
 
 static int set_config_network_script_down(const char *, const char *,
+					  struct lxc_conf *, void *);
+static int get_config_network_script_down(const char *, char *, int,
 					  struct lxc_conf *, void *);
 static int clr_config_network_script_down(const char *, struct lxc_conf *,
 					  void *);
 
 static int set_config_network_ipv6(const char *, const char *,
 				   struct lxc_conf *, void *);
+static int get_config_network_ipv6(const char *, char *, int, struct lxc_conf *,
+				   void *);
 static int clr_config_network_ipv6(const char *, struct lxc_conf *, void *);
 
 static int set_config_network_ipv6_gateway(const char *, const char *,
+					   struct lxc_conf *, void *);
+static int get_config_network_ipv6_gateway(const char *, char *, int,
 					   struct lxc_conf *, void *);
 static int clr_config_network_ipv6_gateway(const char *, struct lxc_conf *,
 					   void *);
 
 static int set_config_network_nic(const char *, const char *, struct lxc_conf *,
 				  void *);
-static int get_config_network_item(const char *, char *, int, struct lxc_conf *,
-				   void *);
+static int get_config_network_nic(const char *, char *, int, struct lxc_conf *,
+				  void *);
 static int clr_config_network_nic(const char *, struct lxc_conf *, void *);
 
 static int set_config_network(const char *, const char *, struct lxc_conf *,
@@ -431,22 +461,22 @@ static struct lxc_config_t config[] = {
 	{ "lxc.hook.clone",           set_config_hooks,                get_config_hooks,             clr_config_hooks,             },
 	{ "lxc.hook.destroy",         set_config_hooks,                get_config_hooks,             clr_config_hooks,             },
 	{ "lxc.hook",                 set_config_hooks,                get_config_hooks,             clr_config_hooks,             },
-	{ "lxc.network.type",         set_config_network_type,         get_config_network_item,      clr_config_network_type,      },
-	{ "lxc.network.flags",        set_config_network_flags,        get_config_network_item,      clr_config_network_flags,     },
-	{ "lxc.network.link",         set_config_network_link,         get_config_network_item,      clr_config_network_link,      },
-	{ "lxc.network.name",         set_config_network_name,         get_config_network_item,      clr_config_network_name,      },
-	{ "lxc.network.macvlan.mode", set_config_network_macvlan_mode, get_config_network_item,      clr_config_network_macvlan_mode, },
-	{ "lxc.network.veth.pair",    set_config_network_veth_pair,    get_config_network_item,      clr_config_network_veth_pair,    },
-	{ "lxc.network.script.up",    set_config_network_script_up,    get_config_network_item,      clr_config_network_script_up,    },
-	{ "lxc.network.script.down",  set_config_network_script_down,  get_config_network_item,      clr_config_network_script_down,  },
-	{ "lxc.network.hwaddr",       set_config_network_hwaddr,       get_config_network_item,      clr_config_network_hwaddr,       },
-	{ "lxc.network.mtu",          set_config_network_mtu,          get_config_network_item,      clr_config_network_mtu,          },
-	{ "lxc.network.vlan.id",      set_config_network_vlan_id,      get_config_network_item,      clr_config_network_vlan_id,      },
-	{ "lxc.network.ipv4.gateway", set_config_network_ipv4_gateway, get_config_network_item,      clr_config_network_ipv4_gateway, },
-	{ "lxc.network.ipv4",         set_config_network_ipv4,         get_config_network_item,      clr_config_network_ipv4,         },
-	{ "lxc.network.ipv6.gateway", set_config_network_ipv6_gateway, get_config_network_item,      clr_config_network_ipv6_gateway, },
-	{ "lxc.network.ipv6",         set_config_network_ipv6,         get_config_network_item,      clr_config_network_ipv6,         },
-	{ "lxc.network.",             set_config_network_nic,          get_config_network_item,      clr_config_network_nic,          },
+	{ "lxc.network.type",         set_config_network_type,         get_config_network_type,         clr_config_network_type,         },
+	{ "lxc.network.flags",        set_config_network_flags,        get_config_network_flags,        clr_config_network_flags,        },
+	{ "lxc.network.link",         set_config_network_link,         get_config_network_link,         clr_config_network_link,         },
+	{ "lxc.network.name",         set_config_network_name,         get_config_network_name,         clr_config_network_name,         },
+	{ "lxc.network.macvlan.mode", set_config_network_macvlan_mode, get_config_network_macvlan_mode, clr_config_network_macvlan_mode, },
+	{ "lxc.network.veth.pair",    set_config_network_veth_pair,    get_config_network_veth_pair,    clr_config_network_veth_pair,    },
+	{ "lxc.network.script.up",    set_config_network_script_up,    get_config_network_script_up,    clr_config_network_script_up,    },
+	{ "lxc.network.script.down",  set_config_network_script_down,  get_config_network_script_down,  clr_config_network_script_down,  },
+	{ "lxc.network.hwaddr",       set_config_network_hwaddr,       get_config_network_hwaddr,       clr_config_network_hwaddr,       },
+	{ "lxc.network.mtu",          set_config_network_mtu,          get_config_network_mtu,          clr_config_network_mtu,          },
+	{ "lxc.network.vlan.id",      set_config_network_vlan_id,      get_config_network_vlan_id,      clr_config_network_vlan_id,      },
+	{ "lxc.network.ipv4.gateway", set_config_network_ipv4_gateway, get_config_network_ipv4_gateway, clr_config_network_ipv4_gateway, },
+	{ "lxc.network.ipv4",         set_config_network_ipv4,         get_config_network_ipv4,         clr_config_network_ipv4,         },
+	{ "lxc.network.ipv6.gateway", set_config_network_ipv6_gateway, get_config_network_ipv6_gateway, clr_config_network_ipv6_gateway, },
+	{ "lxc.network.ipv6",         set_config_network_ipv6,         get_config_network_ipv6,         clr_config_network_ipv6,         },
+	{ "lxc.network.",             set_config_network_nic,          get_config_network_nic,      clr_config_network_nic,          },
 	{ "lxc.network",              set_config_network,              get_config_network,           clr_config_network,           },
 	{ "lxc.cap.drop",             set_config_cap_drop,             get_config_cap_drop,          clr_config_cap_drop,          },
 	{ "lxc.cap.keep",             set_config_cap_keep,             get_config_cap_keep,          clr_config_cap_keep,          },
@@ -881,6 +911,9 @@ static int set_config_network_flags(const char *key, const char *value,
 {
 	struct lxc_netdev *netdev;
 
+	if (lxc_config_value_empty(value))
+		return clr_config_network_flags(key, lxc_conf, data);
+
 	/* lxc.network.* without an index */
 	if (!data)
 		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
@@ -898,9 +931,6 @@ static int set_network_link(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
-
-	if (lxc_config_value_empty(value))
-		return clr_config_network_flags(key, lxc_conf, data);
 
 	/* lxc.network.* without an index */
 	if (!data)
@@ -999,7 +1029,7 @@ static int set_config_network_name(const char *key, const char *value,
 	struct lxc_netdev *netdev;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_script_down(key, lxc_conf, data);
+		return clr_config_network_name(key, lxc_conf, data);
 
 	/* lxc.network.* without an index */
 	if (!data)
@@ -1038,7 +1068,7 @@ static int set_config_network_macvlan_mode(const char *key, const char *value,
 	struct lxc_netdev *netdev;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_name(key, lxc_conf, data);
+		return clr_config_network_macvlan_mode(key, lxc_conf, data);
 
 	/* lxc.network.* without an index */
 	if (!data)
@@ -1093,7 +1123,7 @@ static int set_config_network_vlan_id(const char *key, const char *value,
 	struct lxc_netdev *netdev;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_macvlan_mode(key, lxc_conf, data);
+		return clr_config_network_vlan_id(key, lxc_conf, data);
 
 	/* lxc.network.* without an index */
 	if (!data)
@@ -1115,7 +1145,7 @@ static int set_config_network_mtu(const char *key, const char *value,
 	struct lxc_netdev *netdev;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_vlan_id(key, lxc_conf, data);
+		return clr_config_network_mtu(key, lxc_conf, data);
 
 	/* lxc.network.* without an index */
 	if (!data)
@@ -1231,7 +1261,7 @@ static int set_config_network_ipv4_gateway(const char *key, const char *value,
 	struct lxc_netdev *netdev;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_mtu(key, lxc_conf, data);
+		return clr_config_network_ipv4_gateway(key, lxc_conf, data);
 
 	/* lxc.network.* without an index */
 	if (!data)
@@ -1344,7 +1374,7 @@ static int set_config_network_ipv6_gateway(const char *key, const char *value,
 	struct lxc_netdev *netdev;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_ipv4_gateway(key, lxc_conf, data);
+		return clr_config_network_ipv6_gateway(key, lxc_conf, data);
 
 	/* lxc.network.* without an index */
 	if (!data)
@@ -1389,7 +1419,7 @@ static int set_config_network_script_up(const char *key, const char *value,
 	struct lxc_netdev *netdev;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_ipv6_gateway(key, lxc_conf, data);
+		return clr_config_network_script_up(key, lxc_conf, data);
 
 	/* lxc.network.* without an index */
 	if (!data)
@@ -1408,7 +1438,7 @@ static int set_config_network_script_down(const char *key, const char *value,
 	struct lxc_netdev *netdev;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_script_up(key, lxc_conf, data);
+		return clr_config_network_script_down(key, lxc_conf, data);
 
 	/* lxc.network.* without an index */
 	if (!data)
@@ -3650,133 +3680,6 @@ static int get_config_network(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-/*
- * lxc.network.0.XXX, where XXX can be: name, type, link, flags, type,
- * macvlan.mode, veth.pair, vlan, ipv4, ipv6, script.up, hwaddr, mtu,
- * ipv4.gateway, ipv6.gateway.  ipvX.gateway can return 'auto' instead
- * of an address.  ipv4 and ipv6 return lists (newline-separated).
- * things like veth.pair return '' if invalid (i.e. if called for vlan
- * type).
- */
-static int get_config_network_item(const char *key, char *retv, int inlen,
-				   struct lxc_conf *c, void *data)
-{
-	char *p1;
-	int len, fulllen = 0;
-	struct lxc_netdev *netdev;
-
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
-	if (!strncmp(key, "lxc.network.", 12))
-		key += 12;
-	else
-		return -1;
-
-	p1 = strchr(key, '.');
-	if (!p1 || *(p1 + 1) == '\0')
-		return -1;
-	p1++;
-
-	netdev = get_netdev_from_key(key, &c->network);
-	if (!netdev)
-		return -1;
-	if (strcmp(p1, "name") == 0) {
-		if (netdev->name)
-			strprint(retv, inlen, "%s", netdev->name);
-	} else if (strcmp(p1, "type") == 0) {
-		strprint(retv, inlen, "%s", lxc_net_type_to_str(netdev->type));
-	} else if (strcmp(p1, "link") == 0) {
-		if (netdev->link)
-			strprint(retv, inlen, "%s", netdev->link);
-	} else if (strcmp(p1, "flags") == 0) {
-		if (netdev->flags & IFF_UP)
-			strprint(retv, inlen, "up");
-	} else if (strcmp(p1, "script.up") == 0) {
-		if (netdev->upscript)
-			strprint(retv, inlen, "%s", netdev->upscript);
-	} else if (strcmp(p1, "script.down") == 0) {
-		if (netdev->downscript)
-			strprint(retv, inlen, "%s", netdev->downscript);
-	} else if (strcmp(p1, "hwaddr") == 0) {
-		if (netdev->hwaddr)
-			strprint(retv, inlen, "%s", netdev->hwaddr);
-	} else if (strcmp(p1, "mtu") == 0) {
-		if (netdev->mtu)
-			strprint(retv, inlen, "%s", netdev->mtu);
-	} else if (strcmp(p1, "macvlan.mode") == 0) {
-		if (netdev->type == LXC_NET_MACVLAN) {
-			const char *mode;
-			switch (netdev->priv.macvlan_attr.mode) {
-			case MACVLAN_MODE_PRIVATE:
-				mode = "private";
-				break;
-			case MACVLAN_MODE_VEPA:
-				mode = "vepa";
-				break;
-			case MACVLAN_MODE_BRIDGE:
-				mode = "bridge";
-				break;
-			case MACVLAN_MODE_PASSTHRU:
-				mode = "passthru";
-				break;
-			default:
-				mode = "(invalid)";
-				break;
-			}
-			strprint(retv, inlen, "%s", mode);
-		}
-	} else if (strcmp(p1, "veth.pair") == 0) {
-		if (netdev->type == LXC_NET_VETH) {
-			strprint(retv, inlen, "%s",
-				 netdev->priv.veth_attr.pair
-				     ? netdev->priv.veth_attr.pair
-				     : netdev->priv.veth_attr.veth1);
-		}
-	} else if (strcmp(p1, "vlan") == 0) {
-		if (netdev->type == LXC_NET_VLAN) {
-			strprint(retv, inlen, "%d", netdev->priv.vlan_attr.vid);
-		}
-	} else if (strcmp(p1, "ipv4.gateway") == 0) {
-		if (netdev->ipv4_gateway_auto) {
-			strprint(retv, inlen, "auto");
-		} else if (netdev->ipv4_gateway) {
-			char buf[INET_ADDRSTRLEN];
-			inet_ntop(AF_INET, netdev->ipv4_gateway, buf,
-				  sizeof(buf));
-			strprint(retv, inlen, "%s", buf);
-		}
-	} else if (strcmp(p1, "ipv4") == 0) {
-		struct lxc_list *it2;
-		lxc_list_for_each(it2, &netdev->ipv4) {
-			struct lxc_inetdev *i = it2->elem;
-			char buf[INET_ADDRSTRLEN];
-			inet_ntop(AF_INET, &i->addr, buf, sizeof(buf));
-			strprint(retv, inlen, "%s/%d\n", buf, i->prefix);
-		}
-	} else if (strcmp(p1, "ipv6.gateway") == 0) {
-		if (netdev->ipv6_gateway_auto) {
-			strprint(retv, inlen, "auto");
-		} else if (netdev->ipv6_gateway) {
-			char buf[INET6_ADDRSTRLEN];
-			inet_ntop(AF_INET6, netdev->ipv6_gateway, buf,
-				  sizeof(buf));
-			strprint(retv, inlen, "%s", buf);
-		}
-	} else if (strcmp(p1, "ipv6") == 0) {
-		struct lxc_list *it2;
-		lxc_list_for_each(it2, &netdev->ipv6) {
-			struct lxc_inet6dev *i = it2->elem;
-			char buf[INET6_ADDRSTRLEN];
-			inet_ntop(AF_INET6, &i->addr, buf, sizeof(buf));
-			strprint(retv, inlen, "%s/%d\n", buf, i->prefix);
-		}
-	}
-	return fulllen;
-}
-
 static int get_config_cap_drop(const char *key, char *retv, int inlen,
 			       struct lxc_conf *c, void *data)
 {
@@ -4752,4 +4655,453 @@ static int clr_config_network_ipv6(const char *key, struct lxc_conf *lxc_conf,
 	}
 
 	return 0;
+}
+
+static int get_config_network_nic(const char *key, char *retv, int inlen,
+				  struct lxc_conf *c, void *data)
+{
+	struct lxc_config_t *config;
+	struct lxc_netdev *netdev;
+	ssize_t idx = -1;
+
+	config = get_network_config_ops(key, c, &idx);
+	if (!config || idx < 0)
+		return -1;
+
+	netdev = lxc_find_netdev_by_idx(c, (unsigned int)idx);
+	if (!netdev)
+		return -1;
+
+	return config->get(key, retv, inlen, c, netdev);
+}
+
+static int get_config_network_type(const char *key, char *retv, int inlen,
+				   struct lxc_conf *c, void *data)
+{
+	int len, fulllen = 0;
+	struct lxc_netdev *netdev;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_find_netdev_by_idx(c, 0);
+	else
+		netdev = data;
+	if (!netdev)
+		return -1;
+
+	strprint(retv, inlen, "%s", lxc_net_type_to_str(netdev->type));
+
+	return fulllen;
+}
+
+static int get_config_network_flags(const char *key, char *retv, int inlen,
+				    struct lxc_conf *c, void *data)
+{
+	int len, fulllen = 0;
+	struct lxc_netdev *netdev;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_find_netdev_by_idx(c, 0);
+	else
+		netdev = data;
+	if (!netdev)
+		return -1;
+
+	if (netdev->flags & IFF_UP)
+		strprint(retv, inlen, "up");
+
+	return fulllen;
+}
+
+static int get_config_network_link(const char *key, char *retv, int inlen,
+				   struct lxc_conf *c, void *data)
+{
+	int len, fulllen = 0;
+	struct lxc_netdev *netdev;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_find_netdev_by_idx(c, 0);
+	else
+		netdev = data;
+	if (!netdev)
+		return -1;
+
+	if (netdev->link)
+		strprint(retv, inlen, "%s", netdev->link);
+
+	return fulllen;
+}
+
+static int get_config_network_name(const char *key, char *retv, int inlen,
+				   struct lxc_conf *c, void *data)
+{
+	int len, fulllen = 0;
+	struct lxc_netdev *netdev;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_find_netdev_by_idx(c, 0);
+	else
+		netdev = data;
+	if (!netdev)
+		return -1;
+
+	if (netdev->name)
+		strprint(retv, inlen, "%s", netdev->name);
+
+	return fulllen;
+}
+
+static int get_config_network_macvlan_mode(const char *key, char *retv,
+					   int inlen, struct lxc_conf *c,
+					   void *data)
+{
+	const char *mode;
+	int len, fulllen = 0;
+	struct lxc_netdev *netdev;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_find_netdev_by_idx(c, 0);
+	else
+		netdev = data;
+	if (!netdev)
+		return -1;
+
+	if (netdev->type != LXC_NET_MACVLAN)
+		return 0;
+
+	switch (netdev->priv.macvlan_attr.mode) {
+	case MACVLAN_MODE_PRIVATE:
+		mode = "private";
+		break;
+	case MACVLAN_MODE_VEPA:
+		mode = "vepa";
+		break;
+	case MACVLAN_MODE_BRIDGE:
+		mode = "bridge";
+		break;
+	case MACVLAN_MODE_PASSTHRU:
+		mode = "passthru";
+		break;
+	default:
+		mode = "(invalid)";
+		break;
+	}
+
+	strprint(retv, inlen, "%s", mode);
+
+	return fulllen;
+}
+
+static int get_config_network_veth_pair(const char *key, char *retv, int inlen,
+					struct lxc_conf *c, void *data)
+{
+	int len, fulllen = 0;
+	struct lxc_netdev *netdev;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_find_netdev_by_idx(c, 0);
+	else
+		netdev = data;
+	if (!netdev)
+		return -1;
+
+	if (netdev->type != LXC_NET_VETH)
+		return 0;
+
+	strprint(retv, inlen, "%s",
+		 netdev->priv.veth_attr.pair ? netdev->priv.veth_attr.pair
+					     : netdev->priv.veth_attr.veth1);
+
+	return fulllen;
+}
+
+static int get_config_network_script_up(const char *key, char *retv, int inlen,
+					struct lxc_conf *c, void *data)
+{
+	int len, fulllen = 0;
+	struct lxc_netdev *netdev;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_find_netdev_by_idx(c, 0);
+	else
+		netdev = data;
+	if (!netdev)
+		return -1;
+
+	if (netdev->upscript)
+		strprint(retv, inlen, "%s", netdev->upscript);
+
+	return fulllen;
+}
+
+static int get_config_network_script_down(const char *key, char *retv,
+					  int inlen, struct lxc_conf *c,
+					  void *data)
+{
+	int len, fulllen = 0;
+	struct lxc_netdev *netdev;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_find_netdev_by_idx(c, 0);
+	else
+		netdev = data;
+	if (!netdev)
+		return -1;
+
+	if (netdev->downscript)
+		strprint(retv, inlen, "%s", netdev->downscript);
+
+	return fulllen;
+}
+
+static int get_config_network_hwaddr(const char *key, char *retv, int inlen,
+				     struct lxc_conf *c, void *data)
+{
+	int len, fulllen = 0;
+	struct lxc_netdev *netdev;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_find_netdev_by_idx(c, 0);
+	else
+		netdev = data;
+	if (!netdev)
+		return -1;
+
+	if (netdev->hwaddr)
+		strprint(retv, inlen, "%s", netdev->hwaddr);
+
+	return fulllen;
+}
+
+static int get_config_network_mtu(const char *key, char *retv, int inlen,
+				  struct lxc_conf *c, void *data)
+{
+	int len, fulllen = 0;
+	struct lxc_netdev *netdev;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_find_netdev_by_idx(c, 0);
+	else
+		netdev = data;
+	if (!netdev)
+		return -1;
+
+	if (netdev->mtu)
+		strprint(retv, inlen, "%s", netdev->mtu);
+
+	return fulllen;
+}
+
+static int get_config_network_vlan_id(const char *key, char *retv, int inlen,
+				      struct lxc_conf *c, void *data)
+{
+	int len, fulllen = 0;
+	struct lxc_netdev *netdev;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_find_netdev_by_idx(c, 0);
+	else
+		netdev = data;
+	if (!netdev)
+		return -1;
+
+	if (netdev->type != LXC_NET_VLAN)
+		return 0;
+
+	strprint(retv, inlen, "%d", netdev->priv.vlan_attr.vid);
+
+	return fulllen;
+}
+
+static int get_config_network_ipv4_gateway(const char *key, char *retv,
+					   int inlen, struct lxc_conf *c,
+					   void *data)
+{
+	int len, fulllen = 0;
+	char buf[INET_ADDRSTRLEN];
+	struct lxc_netdev *netdev;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_find_netdev_by_idx(c, 0);
+	else
+		netdev = data;
+	if (!netdev)
+		return -1;
+
+	if (netdev->ipv4_gateway_auto) {
+		strprint(retv, inlen, "auto");
+	} else if (netdev->ipv4_gateway) {
+		inet_ntop(AF_INET, netdev->ipv4_gateway, buf, sizeof(buf));
+		strprint(retv, inlen, "%s", buf);
+	}
+
+	return fulllen;
+}
+
+static int get_config_network_ipv4(const char *key, char *retv, int inlen,
+				   struct lxc_conf *c, void *data)
+{
+	int len, fulllen = 0;
+	size_t listlen;
+	char buf[INET_ADDRSTRLEN];
+	struct lxc_netdev *netdev;
+	struct lxc_list *it;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_find_netdev_by_idx(c, 0);
+	else
+		netdev = data;
+	if (!netdev)
+		return -1;
+
+	listlen = lxc_list_len(&netdev->ipv4);
+	lxc_list_for_each(it, &netdev->ipv4) {
+		struct lxc_inetdev *i = it->elem;
+		inet_ntop(AF_INET, &i->addr, buf, sizeof(buf));
+		strprint(retv, inlen, "%s/%d%s", buf, i->prefix,
+			 (listlen-- > 1) ? "\n" : "");
+	}
+
+	return fulllen;
+}
+
+static int get_config_network_ipv6_gateway(const char *key, char *retv,
+					   int inlen, struct lxc_conf *c,
+					   void *data)
+{
+	int len, fulllen = 0;
+	char buf[INET6_ADDRSTRLEN];
+	struct lxc_netdev *netdev;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_find_netdev_by_idx(c, 0);
+	else
+		netdev = data;
+	if (!netdev)
+		return -1;
+
+	if (netdev->ipv6_gateway_auto) {
+		strprint(retv, inlen, "auto");
+	} else if (netdev->ipv6_gateway) {
+		inet_ntop(AF_INET6, netdev->ipv6_gateway, buf, sizeof(buf));
+		strprint(retv, inlen, "%s", buf);
+	}
+
+	return fulllen;
+}
+
+static int get_config_network_ipv6(const char *key, char *retv, int inlen,
+				   struct lxc_conf *c, void *data)
+{
+	int len, fulllen = 0;
+	size_t listlen;
+	char buf[INET6_ADDRSTRLEN];
+	struct lxc_netdev *netdev;
+	struct lxc_list *it;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	/* lxc.network.* without an index */
+	if (!data)
+		netdev = lxc_find_netdev_by_idx(c, 0);
+	else
+		netdev = data;
+	if (!netdev)
+		return -1;
+
+	listlen = lxc_list_len(&netdev->ipv6);
+	lxc_list_for_each(it, &netdev->ipv6) {
+		struct lxc_inet6dev *i = it->elem;
+		inet_ntop(AF_INET6, &i->addr, buf, sizeof(buf));
+		strprint(retv, inlen, "%s/%d%s", buf, i->prefix,
+			 (listlen-- > 1) ? "\n" : "");
+	}
+
+	return fulllen;
 }
