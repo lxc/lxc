@@ -28,10 +28,8 @@ extern int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 			unsigned long *hostid, unsigned long *range);
 
 extern bool lxc_config_value_empty(const char *value);
-extern struct lxc_netdev *lxc_find_netdev_by_idx(struct lxc_conf *conf,
-						 unsigned int idx);
-extern struct lxc_netdev *lxc_get_netdev_by_idx(struct lxc_conf *conf,
-						unsigned int idx);
+extern struct lxc_netdev *
+lxc_get_netdev_by_idx(struct lxc_conf *conf, unsigned int idx, bool allocate);
 extern void lxc_log_configured_netdevs(const struct lxc_conf *conf);
 extern bool lxc_remove_nic_by_idx(struct lxc_conf *conf, unsigned int idx);
 extern void lxc_free_networks(struct lxc_conf *conf);

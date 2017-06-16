@@ -166,35 +166,11 @@ bool lxc_config_value_empty(const char *value)
 	return true;
 }
 
-struct lxc_netdev *lxc_find_netdev_by_idx(struct lxc_conf *conf,
-					  unsigned int idx)
-{
-	struct lxc_netdev *netdev = NULL;
-	struct lxc_list *networks = &conf->network;
-	struct lxc_list *insert = networks;
-
-	/* lookup network */
-	if (lxc_list_empty(networks))
-		return NULL;
-
-	lxc_list_for_each(insert, networks) {
-		netdev = insert->elem;
-		if (netdev->idx >= idx)
-			break;
-	}
-
-	/* network already exists */
-	if (netdev->idx == idx)
-		return netdev;
-
-	return NULL;
-}
-
 /* Takes care of finding the correct netdev struct in the networks list or
  * allocates a new one if it couldn't be found.
  */
 struct lxc_netdev *lxc_get_netdev_by_idx(struct lxc_conf *conf,
-					 unsigned int idx)
+					 unsigned int idx, bool allocate)
 {
 	struct lxc_list *newlist;
 	struct lxc_netdev *netdev = NULL;
@@ -202,9 +178,20 @@ struct lxc_netdev *lxc_get_netdev_by_idx(struct lxc_conf *conf,
 	struct lxc_list *insert = networks;
 
 	/* lookup network */
-	netdev = lxc_find_netdev_by_idx(conf, idx);
-	if (netdev)
-		return netdev;
+	if (!lxc_list_empty(networks)) {
+		lxc_list_for_each(insert, networks) {
+			netdev = insert->elem;
+			if (netdev->idx >= idx)
+				break;
+		}
+
+		/* network already exists */
+		if (netdev->idx == idx)
+			return netdev;
+	}
+
+	if (!allocate)
+		return NULL;
 
 	/* network does not exist */
 	netdev = malloc(sizeof(*netdev));

@@ -699,7 +699,7 @@ static int set_config_network_type(const char *key, const char *value,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.type\" without an index "
 		     "(e.g.\"lxc.network.0.type\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, true);
 	} else {
 		netdev = data;
 	}
@@ -921,7 +921,7 @@ static int set_config_network_flags(const char *key, const char *value,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.flags\" without an index "
 		     "(e.g.\"lxc.network.0.flags\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, true);
 	} else {
 		netdev = data;
 	}
@@ -940,7 +940,7 @@ static int set_network_link(const char *key, const char *value,
 
 	/* lxc.network.* without an index */
 	if (!data)
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, true);
 	else
 		netdev = data;
 	if (!netdev)
@@ -1006,7 +1006,7 @@ static int set_config_network_link(const char *key, const char *value,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.link\" without an index "
 		     "(e.g.\"lxc.network.0.link\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, true);
 	} else {
 		netdev = data;
 	}
@@ -1033,7 +1033,7 @@ static int set_config_network_name(const char *key, const char *value,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.name\" without an index "
 		     "(e.g.\"lxc.network.0.name\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, true);
 	} else {
 		netdev = data;
 	}
@@ -1055,7 +1055,7 @@ static int set_config_network_veth_pair(const char *key, const char *value,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.veth.pair\" without an "
 		     "index (e.g. \"lxc.network.0.veth.pair\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, true);
 	} else {
 		netdev = data;
 	}
@@ -1079,7 +1079,7 @@ static int set_config_network_macvlan_mode(const char *key, const char *value,
 		WARN("WARNING: using \"lxc.network.macvlan.mode\" without an "
 		     "index (e.g. \"lxc.network.0.macvlan.mode\" is "
 		     "DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, true);
 	} else {
 		netdev = data;
 	}
@@ -1102,7 +1102,7 @@ static int set_config_network_hwaddr(const char *key, const char *value,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.hwaddr\" without an index "
 		     "(e.g. \"lxc.network.0.hwaddr\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, true);
 	} else {
 		netdev = data;
 	}
@@ -1138,7 +1138,7 @@ static int set_config_network_vlan_id(const char *key, const char *value,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.vlan.id\" without an index "
 		     "(e.g. \"lxc.network.0.vlan.id\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, true);
 	} else {
 		netdev = data;
 	}
@@ -1163,7 +1163,7 @@ static int set_config_network_mtu(const char *key, const char *value,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.mtu\" without an index "
 		     "(e.g. \"lxc.network.0.mtu\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, true);
 	} else {
 		netdev = data;
 	}
@@ -1189,7 +1189,7 @@ static int set_config_network_ipv4(const char *key, const char *value,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.ipv4\" without an index "
 		     "(e.g. \"lxc.network.0.ipv4\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, true);
 	} else {
 		netdev = data;
 	}
@@ -1286,7 +1286,7 @@ static int set_config_network_ipv4_gateway(const char *key, const char *value,
 		WARN("WARNING: using \"lxc.network.ipv4.gateway\" without an "
 		     "index (e.g. \"lxc.network.0.ipv4.gateway\" is "
 		     "DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, true);
 	} else {
 		netdev = data;
 	}
@@ -1337,7 +1337,7 @@ static int set_config_network_ipv6(const char *key, const char *value,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.ipv6\" without an index "
 		     "(e.g. \"lxc.network.0.ipv6\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, true);
 	} else {
 		netdev = data;
 	}
@@ -1406,7 +1406,7 @@ static int set_config_network_ipv6_gateway(const char *key, const char *value,
 		WARN("WARNING: using \"lxc.network.ipv6.gateway\" without an "
 		     "index (e.g. \"lxc.network.0.ipv6.gateway\" is "
 		     "DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, true);
 	} else {
 		netdev = data;
 	}
@@ -1455,7 +1455,7 @@ static int set_config_network_script_up(const char *key, const char *value,
 		WARN("WARNING: using \"lxc.network.script.up\" without an "
 		     "index (e.g. \"lxc.network.0.script.up\" is "
 		     "DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, true);
 	} else {
 		netdev = data;
 	}
@@ -1478,7 +1478,7 @@ static int set_config_network_script_down(const char *key, const char *value,
 		WARN("WARNING: using \"lxc.network.script.down\" without an "
 		     "index (e.g. \"lxc.network.0.script.down\" is "
 		     "DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, true);
 	} else {
 		netdev = data;
 	}
@@ -4352,7 +4352,7 @@ static int set_config_network_nic(const char *key, const char *value,
 	if (!config || idx < 0)
 		return -1;
 
-	netdev = lxc_get_netdev_by_idx(lxc_conf, (unsigned int)idx);
+	netdev = lxc_get_netdev_by_idx(lxc_conf, (unsigned int)idx, true);
 	if (!netdev)
 		return -1;
 
@@ -4397,7 +4397,7 @@ static int clr_config_network_nic(const char *key, struct lxc_conf *lxc_conf,
 	if (!config || idx < 0)
 		return -1;
 
-	netdev = lxc_find_netdev_by_idx(lxc_conf, (unsigned int)idx);
+	netdev = lxc_get_netdev_by_idx(lxc_conf, (unsigned int)idx, false);
 	if (!netdev)
 		return -1;
 
@@ -4413,7 +4413,7 @@ static int clr_config_network_type(const char *key, struct lxc_conf *lxc_conf,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.type\" without an index "
 		     "(e.g. \"lxc.network.0.type\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -4434,7 +4434,7 @@ static int clr_config_network_name(const char *key, struct lxc_conf *lxc_conf,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.name\" without an index "
 		     "(e.g. \"lxc.network.0.name\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -4457,7 +4457,7 @@ static int clr_config_network_flags(const char *key, struct lxc_conf *lxc_conf,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.flags\" without an index "
 		     "(e.g. \"lxc.network.0.flags\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -4478,7 +4478,7 @@ static int clr_config_network_link(const char *key, struct lxc_conf *lxc_conf,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.link\" without an index "
 		     "(e.g. \"lxc.network.0.link\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -4502,7 +4502,7 @@ static int clr_config_network_macvlan_mode(const char *key,
 		WARN("WARNING: using \"lxc.network.macvlan.mode\" without an "
 		     "index (e.g. \"lxc.network.0.macvlan.mode\" is "
 		     "DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -4527,7 +4527,7 @@ static int clr_config_network_veth_pair(const char *key,
 		WARN("WARNING: using \"lxc.network.veth.pair\" without an "
 		     "index (e.g. \"lxc.network.0.veth.pair\" is "
 		     "DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -4550,7 +4550,7 @@ static int clr_config_network_script_up(const char *key,
 		WARN("WARNING: using \"lxc.network.script.up\" without an "
 		     "index (e.g. \"lxc.network.0.script.up\" is "
 		     "DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -4573,7 +4573,7 @@ static int clr_config_network_script_down(const char *key,
 		WARN("WARNING: using \"lxc.network.script.down\" without an "
 		     "index (e.g. \"lxc.network.0.script.down\" is "
 		     "DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -4595,7 +4595,7 @@ static int clr_config_network_hwaddr(const char *key, struct lxc_conf *lxc_conf,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.hwaddr\" without an index "
 		     "(e.g. \"lxc.network.0.hwaddr\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -4617,7 +4617,7 @@ static int clr_config_network_mtu(const char *key, struct lxc_conf *lxc_conf,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.mtu\" without an index "
 		     "(e.g. \"lxc.network.0.mtu\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -4639,7 +4639,7 @@ static int clr_config_network_vlan_id(const char *key,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.vlan.id\" without an index "
 		     "(e.g. \"lxc.network.0.vlan.id\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -4662,7 +4662,7 @@ static int clr_config_network_ipv4_gateway(const char *key,
 		WARN("WARNING: using \"lxc.network.ipv4.gateway\" without an "
 		     "index (e.g. \"lxc.network.0.ipv4.gateway\" is "
 		     "DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -4685,7 +4685,7 @@ static int clr_config_network_ipv4(const char *key, struct lxc_conf *lxc_conf,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.ipv4\" without an index "
 		     "(e.g. \"lxc.network.0.ipv4\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -4712,7 +4712,7 @@ static int clr_config_network_ipv6_gateway(const char *key,
 		WARN("WARNING: using \"lxc.network.ipv6.gateway\" without an "
 		     "index (e.g. \"lxc.network.0.ipv6.gateway\" is "
 		     "DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -4735,7 +4735,7 @@ static int clr_config_network_ipv6(const char *key, struct lxc_conf *lxc_conf,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.ipv6\" without an index "
 		     "(e.g. \"lxc.network.0.ipv6\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(lxc_conf, 0);
+		netdev = lxc_get_netdev_by_idx(lxc_conf, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -4762,7 +4762,7 @@ static int get_config_network_nic(const char *key, char *retv, int inlen,
 	if (!config || idx < 0)
 		return -1;
 
-	netdev = lxc_find_netdev_by_idx(c, (unsigned int)idx);
+	netdev = lxc_get_netdev_by_idx(c, (unsigned int)idx, false);
 	if (!netdev)
 		return -1;
 
@@ -4784,7 +4784,7 @@ static int get_config_network_type(const char *key, char *retv, int inlen,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.type\" without an index "
 		     "(e.g. \"lxc.network.0.type\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(c, 0);
+		netdev = lxc_get_netdev_by_idx(c, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -4811,7 +4811,7 @@ static int get_config_network_flags(const char *key, char *retv, int inlen,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.flags\" without an index "
 		     "(e.g. \"lxc.network.0.flags\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(c, 0);
+		netdev = lxc_get_netdev_by_idx(c, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -4839,7 +4839,7 @@ static int get_config_network_link(const char *key, char *retv, int inlen,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.link\" without an index "
 		     "(e.g. \"lxc.network.0.link\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(c, 0);
+		netdev = lxc_get_netdev_by_idx(c, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -4867,7 +4867,7 @@ static int get_config_network_name(const char *key, char *retv, int inlen,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.name\" without an index "
 		     "(e.g. \"lxc.network.0.name\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(c, 0);
+		netdev = lxc_get_netdev_by_idx(c, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -4898,7 +4898,7 @@ static int get_config_network_macvlan_mode(const char *key, char *retv,
 		WARN("WARNING: using \"lxc.network.macvlan.mode\" without an "
 		     "index (e.g. \"lxc.network.0.macvlan.mode\" is "
 		     "DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(c, 0);
+		netdev = lxc_get_netdev_by_idx(c, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -4947,7 +4947,7 @@ static int get_config_network_veth_pair(const char *key, char *retv, int inlen,
 		WARN("WARNING: using \"lxc.network.veth.pair\" without an "
 		     "index (e.g. \"lxc.network.0.veth.pair\" is "
 		     "DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(c, 0);
+		netdev = lxc_get_netdev_by_idx(c, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -4980,7 +4980,7 @@ static int get_config_network_script_up(const char *key, char *retv, int inlen,
 		WARN("WARNING: using \"lxc.network.script.up\" without an "
 		     "index (e.g. \"lxc.network.0.script.up\" is "
 		     "DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(c, 0);
+		netdev = lxc_get_netdev_by_idx(c, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -5010,7 +5010,7 @@ static int get_config_network_script_down(const char *key, char *retv,
 		WARN("WARNING: using \"lxc.network.script.down\" without an "
 		     "index (e.g. \"lxc.network.0.script.down\" is "
 		     "DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(c, 0);
+		netdev = lxc_get_netdev_by_idx(c, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -5038,7 +5038,7 @@ static int get_config_network_hwaddr(const char *key, char *retv, int inlen,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.hwaddr\" without an index "
 		     "(e.g. \"lxc.network.0.hwaddr\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(c, 0);
+		netdev = lxc_get_netdev_by_idx(c, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -5066,7 +5066,7 @@ static int get_config_network_mtu(const char *key, char *retv, int inlen,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.mtu\" without an index "
 		     "(e.g. \"lxc.network.0.mtu\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(c, 0);
+		netdev = lxc_get_netdev_by_idx(c, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -5094,7 +5094,7 @@ static int get_config_network_vlan_id(const char *key, char *retv, int inlen,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.vlan.id\" without an index "
 		     "(e.g. \"lxc.network.0.vlan.id\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(c, 0);
+		netdev = lxc_get_netdev_by_idx(c, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -5127,7 +5127,7 @@ static int get_config_network_ipv4_gateway(const char *key, char *retv,
 		WARN("WARNING: using \"lxc.network.ipv4.gateway\" without an "
 		     "index (e.g. \"lxc.network.0.ipv4.gateway\" is "
 		     "DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(c, 0);
+		netdev = lxc_get_netdev_by_idx(c, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -5162,7 +5162,7 @@ static int get_config_network_ipv4(const char *key, char *retv, int inlen,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.ipv4\" without an index "
 		     "(e.g. \"lxc.network.0.ipv4\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(c, 0);
+		netdev = lxc_get_netdev_by_idx(c, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -5198,7 +5198,7 @@ static int get_config_network_ipv6_gateway(const char *key, char *retv,
 		WARN("WARNING: using \"lxc.network.ipv6.gateway\" without an "
 		     "index (e.g. \"lxc.network.0.ipv6.gateway\" is "
 		     "DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(c, 0);
+		netdev = lxc_get_netdev_by_idx(c, 0, false);
 	} else {
 		netdev = data;
 	}
@@ -5233,7 +5233,7 @@ static int get_config_network_ipv6(const char *key, char *retv, int inlen,
 	if (!data) {
 		WARN("WARNING: using \"lxc.network.ipv6\" without an index "
 		     "(e.g. \"lxc.network.0.ipv6\") is DEPRECATED.");
-		netdev = lxc_get_netdev_by_idx(c, 0);
+		netdev = lxc_get_netdev_by_idx(c, 0, false);
 	} else {
 		netdev = data;
 	}
