@@ -943,7 +943,8 @@ static int set_network_link(const char *key, const char *value,
 	return network_ifname(&netdev->link, value);
 }
 
-static int create_matched_ifnames(const char *value, struct lxc_conf *lxc_conf)
+static int create_matched_ifnames(const char *value, struct lxc_conf *lxc_conf,
+				  struct lxc_netdev *netdev)
 {
 	struct ifaddrs *ifaddr, *ifa;
 	int n;
@@ -965,10 +966,10 @@ static int create_matched_ifnames(const char *value, struct lxc_conf *lxc_conf)
 
 		if (!strncmp(value, ifa->ifa_name, strlen(value) - 1)) {
 			ret = set_config_network_type(type_key, tmpvalue,
-						      lxc_conf, NULL);
+						      lxc_conf, netdev);
 			if (!ret) {
 				ret = set_network_link(link_key, ifa->ifa_name,
-						       lxc_conf, NULL);
+						       lxc_conf, netdev);
 				if (ret) {
 					ERROR("failed to create matched ifnames");
 					break;
@@ -990,7 +991,6 @@ static int set_config_network_link(const char *key, const char *value,
 				   struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
-	struct lxc_list *it;
 	int ret = 0;
 
 	if (lxc_config_value_empty(value))
@@ -1004,21 +1004,10 @@ static int set_config_network_link(const char *key, const char *value,
 	if (!netdev)
 		return -1;
 
-	if (value[strlen(value) - 1] == '+' && netdev->type == LXC_NET_PHYS) {
-		/* Get the last network list and remove it. */
-		it = lxc_conf->network.prev;
-		if (((struct lxc_netdev *)(it->elem))->type != LXC_NET_PHYS) {
-			ERROR("lxc config cannot support string pattern "
-			      "matching for this link type");
-			return -1;
-		}
-
-		lxc_list_del(it);
-		free(it);
-		ret = create_matched_ifnames(value, lxc_conf);
-	} else {
+	if (value[strlen(value) - 1] == '+' && netdev->type == LXC_NET_PHYS)
+		ret = create_matched_ifnames(value, lxc_conf, netdev);
+	else
 		ret = network_ifname(&netdev->link, value);
-	}
 
 	return ret;
 }
