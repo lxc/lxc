@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
 
 	log.name = my_args.name;
 	log.file = my_args.log_file;
-	log.priority = my_args.log_priority;
+	log.level = my_args.log_priority;
 	log.prefix = my_args.progname;
 	log.quiet = my_args.quiet;
 	log.lxcpath = my_args.lxcpath[0];

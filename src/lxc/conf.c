@@ -2621,7 +2621,7 @@ struct lxc_conf *lxc_conf_init(void)
 	}
 	memset(new, 0, sizeof(*new));
 
-	new->loglevel = LXC_LOG_PRIORITY_NOTSET;
+	new->loglevel = LXC_LOG_LEVEL_NOTSET;
 	new->personality = -1;
 	new->autodev = 1;
 	new->console.log_path = NULL;
@@ -4844,8 +4844,8 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	/* idmap will now keep track of that memory. */
 	host_gid_map = NULL;
 
-	if (lxc_log_get_level() == LXC_LOG_PRIORITY_TRACE ||
-	    conf->loglevel == LXC_LOG_PRIORITY_TRACE) {
+	if (lxc_log_get_level() == LXC_LOG_LEVEL_TRACE ||
+	    conf->loglevel == LXC_LOG_LEVEL_TRACE) {
 		lxc_list_for_each(it, idmap) {
 			map = it->elem;
 			TRACE("establishing %cid mapping for \"%d\" in new "

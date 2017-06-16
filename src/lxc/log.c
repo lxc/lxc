@@ -67,23 +67,23 @@ lxc_log_define(lxc_log, lxc);
 static int lxc_log_priority_to_syslog(int priority)
 {
 	switch (priority) {
-	case LXC_LOG_PRIORITY_FATAL:
+	case LXC_LOG_LEVEL_FATAL:
 		return LOG_EMERG;
-	case LXC_LOG_PRIORITY_ALERT:
+	case LXC_LOG_LEVEL_ALERT:
 		return LOG_ALERT;
-	case LXC_LOG_PRIORITY_CRIT:
+	case LXC_LOG_LEVEL_CRIT:
 		return LOG_CRIT;
-	case LXC_LOG_PRIORITY_ERROR:
+	case LXC_LOG_LEVEL_ERROR:
 		return LOG_ERR;
-	case LXC_LOG_PRIORITY_WARN:
+	case LXC_LOG_LEVEL_WARN:
 		return LOG_WARNING;
-	case LXC_LOG_PRIORITY_NOTICE:
-	case LXC_LOG_PRIORITY_NOTSET:
+	case LXC_LOG_LEVEL_NOTICE:
+	case LXC_LOG_LEVEL_NOTSET:
 		return LOG_NOTICE;
-	case LXC_LOG_PRIORITY_INFO:
+	case LXC_LOG_LEVEL_INFO:
 		return LOG_INFO;
-	case LXC_LOG_PRIORITY_TRACE:
-	case LXC_LOG_PRIORITY_DEBUG:
+	case LXC_LOG_LEVEL_TRACE:
+	case LXC_LOG_LEVEL_DEBUG:
 		return LOG_DEBUG;
 	}
 
@@ -130,7 +130,7 @@ static int log_append_syslog(const struct lxc_log_appender *appender,
 static int log_append_stderr(const struct lxc_log_appender *appender,
 			     struct lxc_log_event *event)
 {
-	if (event->priority < LXC_LOG_PRIORITY_ERROR)
+	if (event->priority < LXC_LOG_LEVEL_ERROR)
 		return 0;
 
 	fprintf(stderr, "%s: %s%s", log_prefix, log_vmname ? log_vmname : "", log_vmname ? ": " : "");
@@ -325,14 +325,14 @@ static struct lxc_log_appender log_appender_logfile = {
 
 static struct lxc_log_category log_root = {
 	.name		= "root",
-	.priority	= LXC_LOG_PRIORITY_ERROR,
+	.priority	= LXC_LOG_LEVEL_ERROR,
 	.appender	= NULL,
 	.parent		= NULL,
 };
 
 struct lxc_log_category lxc_log_category_lxc = {
 	.name		= "lxc",
-	.priority	= LXC_LOG_PRIORITY_ERROR,
+	.priority	= LXC_LOG_LEVEL_ERROR,
 	.appender	= &log_appender_logfile,
 	.parent		= &log_root
 };
@@ -546,7 +546,7 @@ extern void lxc_log_enable_syslog(void)
  */
 extern int lxc_log_init(struct lxc_log *log)
 {
-	int lxc_priority = LXC_LOG_PRIORITY_ERROR;
+	int lxc_priority = LXC_LOG_LEVEL_ERROR;
 	int ret;
 
 	if (lxc_log_fd != -1) {
@@ -554,8 +554,8 @@ extern int lxc_log_init(struct lxc_log *log)
 		return 0;
 	}
 
-	if (log->priority)
-		lxc_priority = lxc_log_priority_to_int(log->priority);
+	if (log->level)
+		lxc_priority = lxc_log_priority_to_int(log->level);
 
 	if (!lxc_loglevel_specified) {
 		lxc_log_category_lxc.priority = lxc_priority;
@@ -620,7 +620,7 @@ extern int lxc_log_init(struct lxc_log *log)
  */
 extern int lxc_log_set_level(int *dest, int level)
 {
-	if (level < 0 || level >= LXC_LOG_PRIORITY_NOTSET) {
+	if (level < 0 || level >= LXC_LOG_LEVEL_NOTSET) {
 		ERROR("invalid log priority %d", level);
 		return -1;
 	}
@@ -636,7 +636,7 @@ extern int lxc_log_get_level(void)
 extern bool lxc_log_has_valid_level(void)
 {
 	int log_level = lxc_log_get_level();
-	if (log_level < 0 || log_level >= LXC_LOG_PRIORITY_NOTSET)
+	if (log_level < 0 || log_level >= LXC_LOG_LEVEL_NOTSET)
 		return false;
 	return true;
 }

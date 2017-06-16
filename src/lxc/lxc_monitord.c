@@ -368,7 +368,7 @@ int main(int argc, char *argv[])
 
 	log.name = NULL;
 	log.file = logpath;
-	log.priority = "DEBUG";
+	log.level = "DEBUG";
 	log.prefix = "lxc-monitord";
 	log.quiet = 0;
 	log.lxcpath = lxcpath;

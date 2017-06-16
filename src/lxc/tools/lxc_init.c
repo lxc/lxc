@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 
 	log.name = name;
 	log.file = name ? NULL : "none";
-	log.priority = logpriority;
+	log.level = logpriority;
 	log.prefix = basename(argv[0]);
 	log.quiet = quiet;
 	log.lxcpath = lxcpath;
