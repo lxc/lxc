@@ -166,32 +166,10 @@ bool lxc_config_value_empty(const char *value)
 	return true;
 }
 
-/* Takes care of finding the correct netdev struct in the networks list or
- * allocates a new one if it couldn't be found.
- */
-struct lxc_netdev *lxc_get_netdev_by_idx(struct lxc_conf *conf,
-					 unsigned int idx, bool allocate)
+struct lxc_netdev *lxc_network_add(struct lxc_list *networks, int idx, bool tail)
 {
 	struct lxc_list *newlist;
 	struct lxc_netdev *netdev = NULL;
-	struct lxc_list *networks = &conf->network;
-	struct lxc_list *insert = networks;
-
-	/* lookup network */
-	if (!lxc_list_empty(networks)) {
-		lxc_list_for_each(insert, networks) {
-			netdev = insert->elem;
-			if (netdev->idx >= idx)
-				break;
-		}
-
-		/* network already exists */
-		if (netdev->idx == idx)
-			return netdev;
-	}
-
-	if (!allocate)
-		return NULL;
 
 	/* network does not exist */
 	netdev = malloc(sizeof(*netdev));
@@ -215,12 +193,38 @@ struct lxc_netdev *lxc_get_netdev_by_idx(struct lxc_conf *conf,
 	lxc_list_init(newlist);
 	newlist->elem = netdev;
 
-	/* Insert will now point to the correct position to insert the new
-	 * netdev.
-	 */
-	lxc_list_add_tail(insert, newlist);
-
+	if (tail)
+		lxc_list_add_tail(networks, newlist);
+	else
+		lxc_list_add(networks, newlist);
 	return netdev;
+}
+
+/* Takes care of finding the correct netdev struct in the networks list or
+ * allocates a new one if it couldn't be found.
+ */
+struct lxc_netdev *lxc_get_netdev_by_idx(struct lxc_conf *conf,
+					 unsigned int idx, bool allocate)
+{
+	struct lxc_netdev *netdev = NULL;
+	struct lxc_list *networks = &conf->network;
+	struct lxc_list *insert = networks;
+
+	/* lookup network */
+	if (!lxc_list_empty(networks)) {
+		lxc_list_for_each(insert, networks) {
+			netdev = insert->elem;
+			if (netdev->idx == idx)
+				return netdev;
+			else if (netdev->idx > idx)
+				break;
+		}
+	}
+
+	if (!allocate)
+		return NULL;
+
+	return lxc_network_add(insert, idx, true);
 }
 
 void lxc_log_configured_netdevs(const struct lxc_conf *conf)
@@ -240,7 +244,7 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 	lxc_list_for_each(it, &conf->network) {
 		netdev = it->elem;
 
-		TRACE("index: %d", netdev->idx);
+		TRACE("index: %zd", netdev->idx);
 		switch (netdev->type) {
 		case LXC_NET_VETH:
 			TRACE("type: veth");
@@ -336,17 +340,17 @@ bool lxc_remove_nic_by_idx(struct lxc_conf *conf, unsigned int idx)
 	return true;
 }
 
-void lxc_free_networks(struct lxc_conf *conf)
+void lxc_free_networks(struct lxc_list *networks)
 {
 	struct lxc_list *cur, *next;
 	struct lxc_netdev *netdev;
 
-	lxc_list_for_each_safe(cur, &conf->network, next) {
+	lxc_list_for_each_safe(cur, networks, next) {
 		netdev = cur->elem;
 		lxc_free_netdev(netdev);
 		free(cur);
 	}
 
 	/* prevent segfaults */
-	lxc_list_init(&conf->network);
+	lxc_list_init(networks);
 }

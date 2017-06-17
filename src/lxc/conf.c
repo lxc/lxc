@@ -2508,10 +2508,12 @@ static int setup_netdev(struct lxc_netdev *netdev)
 	return 0;
 }
 
-static int setup_network(struct lxc_list *network)
+static int setup_network(const struct lxc_conf *conf, struct lxc_list *network)
 {
 	struct lxc_list *iterator;
 	struct lxc_netdev *netdev;
+
+	lxc_log_configured_netdevs(conf);
 
 	lxc_list_for_each(iterator, network) {
 
@@ -3043,8 +3045,6 @@ int lxc_create_network(struct lxc_handler *handler)
 
 	if (!am_root)
 		return 0;
-
-	lxc_log_configured_netdevs(handler->conf);
 
 	lxc_list_for_each(iterator, network) {
 
@@ -4110,7 +4110,7 @@ int lxc_setup(struct lxc_handler *handler)
 		}
 	}
 
-	if (setup_network(&lxc_conf->network)) {
+	if (setup_network(lxc_conf, &lxc_conf->network)) {
 		ERROR("failed to setup the network for '%s'", name);
 		return -1;
 	}
@@ -4504,7 +4504,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->unexpanded_config);
 	free(conf->pty_names);
 	free(conf->syslog);
-	lxc_free_networks(conf);
+	lxc_free_networks(&conf->network);
 	free(conf->lsm_aa_profile);
 	free(conf->lsm_se_context);
 	lxc_seccomp_free(conf);
