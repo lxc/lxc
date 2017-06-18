@@ -561,12 +561,12 @@ static int lxc_cmd_get_config_item_callback(int fd, struct lxc_cmd_req *req,
 	item = lxc_getconfig(req->data);
 	if (!item)
 		goto err1;
-	cilen = item->get(req->data, NULL, 0, handler->conf);
+	cilen = item->get(req->data, NULL, 0, handler->conf, NULL);
 	if (cilen <= 0)
 		goto err1;
 
 	cidata = alloca(cilen + 1);
-	if (item->get(req->data, cidata, cilen + 1, handler->conf) != cilen)
+	if (item->get(req->data, cidata, cilen + 1, handler->conf, NULL) != cilen)
 		goto err1;
 	cidata[cilen] = '\0';
 	rsp.data = cidata;

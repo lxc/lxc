@@ -121,8 +121,10 @@ union netdev_p {
  * @ipv6       : a list of ipv6 addresses to be set on the network device
  * @upscript   : a script filename to be executed during interface configuration
  * @downscript : a script filename to be executed during interface destruction
+ * @idx        : network counter
  */
 struct lxc_netdev {
+	ssize_t idx;
 	int type;
 	int flags;
 	int ifindex;
@@ -430,7 +432,7 @@ extern void lxc_conf_free(struct lxc_conf *conf);
 extern int pin_rootfs(const char *rootfs);
 
 extern int lxc_requests_empty_network(struct lxc_handler *handler);
-extern int lxc_create_network(struct lxc_handler *handler);
+extern int lxc_setup_networks_in_parent_namespaces(struct lxc_handler *handler);
 extern bool lxc_delete_network(struct lxc_handler *handler);
 extern int lxc_assign_network(const char *lxcpath, char *lxcname,
 			      struct lxc_list *networks, pid_t pid);
@@ -440,8 +442,6 @@ extern int lxc_find_gateway_addresses(struct lxc_handler *handler);
 extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
 extern void lxc_delete_tty(struct lxc_tty_info *tty_info);
 
-extern int lxc_clear_config_network(struct lxc_conf *c);
-extern int lxc_clear_nic(struct lxc_conf *c, const char *key);
 extern int lxc_clear_config_caps(struct lxc_conf *c);
 extern int lxc_clear_config_keepcaps(struct lxc_conf *c);
 extern int lxc_clear_cgroups(struct lxc_conf *c, const char *key);

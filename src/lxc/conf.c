@@ -77,6 +77,7 @@
 #include "caps.h"       /* for lxc_caps_last_cap() */
 #include "cgroup.h"
 #include "conf.h"
+#include "confile_utils.h"
 #include "error.h"
 #include "log.h"
 #include "lxcaufs.h"
@@ -2325,11 +2326,12 @@ static int setup_ipv6_addr(struct lxc_list *ip, int ifindex)
 	return 0;
 }
 
-static int setup_netdev(struct lxc_netdev *netdev)
+static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 {
 	char ifname[IFNAMSIZ];
-	char *current_ifname = ifname;
 	int err;
+	const char *net_type_name;
+	char *current_ifname = ifname;
 
 	/* empty network namespace */
 	if (!netdev->ifindex) {
@@ -2341,8 +2343,21 @@ static int setup_netdev(struct lxc_netdev *netdev)
 				return -1;
 			}
 		}
-		if (netdev->type != LXC_NET_VETH)
+
+		if (netdev->type == LXC_NET_EMPTY)
 			return 0;
+
+		if (netdev->type == LXC_NET_NONE)
+			return 0;
+
+		if (netdev->type != LXC_NET_VETH) {
+			net_type_name = lxc_net_type_to_str(netdev->type);
+			ERROR("%s networks are not supported for containers "
+			      "not setup up by privileged users",
+			      net_type_name);
+			return -1;
+		}
+
 		netdev->ifindex = if_nametoindex(netdev->name);
 	}
 
@@ -2507,16 +2522,18 @@ static int setup_netdev(struct lxc_netdev *netdev)
 	return 0;
 }
 
-static int setup_network(struct lxc_list *network)
+static int lxc_setup_networks_in_child_namespaces(const struct lxc_conf *conf,
+						  struct lxc_list *network)
 {
 	struct lxc_list *iterator;
 	struct lxc_netdev *netdev;
 
-	lxc_list_for_each(iterator, network) {
+	lxc_log_configured_netdevs(conf);
 
+	lxc_list_for_each(iterator, network) {
 		netdev = iterator->elem;
 
-		if (setup_netdev(netdev)) {
+		if (lxc_setup_netdev_in_child_namespaces(netdev)) {
 			ERROR("failed to setup netdev");
 			return -1;
 		}
@@ -3033,23 +3050,42 @@ int lxc_requests_empty_network(struct lxc_handler *handler)
 	return 0;
 }
 
-int lxc_create_network(struct lxc_handler *handler)
+int lxc_setup_networks_in_parent_namespaces(struct lxc_handler *handler)
 {
-	struct lxc_list *network = &handler->conf->network;
-	struct lxc_list *iterator;
+	bool am_root;
 	struct lxc_netdev *netdev;
-	int am_root = (getuid() == 0);
+	struct lxc_list *iterator;
+	struct lxc_list *network = &handler->conf->network;
 
+	/* We need to be root. */
+	am_root = (getuid() == 0);
 	if (!am_root)
 		return 0;
 
 	lxc_list_for_each(iterator, network) {
-
 		netdev = iterator->elem;
 
 		if (netdev->type < 0 || netdev->type > LXC_NET_MAXCONFTYPE) {
 			ERROR("invalid network configuration type '%d'",
 			      netdev->type);
+			return -1;
+		}
+
+		if (netdev->type != LXC_NET_MACVLAN &&
+		    netdev->priv.macvlan_attr.mode) {
+			ERROR("Invalid macvlan.mode for a non-macvlan netdev");
+			return -1;
+		}
+
+		if (netdev->type != LXC_NET_VETH &&
+		    netdev->priv.veth_attr.pair) {
+			ERROR("Invalid veth pair for a non-veth netdev");
+			return -1;
+		}
+
+		if (netdev->type != LXC_NET_VLAN &&
+		    netdev->priv.vlan_attr.vid > 0) {
+			ERROR("Invalid vlan.id for a non-macvlan netdev");
 			return -1;
 		}
 
@@ -3267,9 +3303,11 @@ int lxc_assign_network(const char *lxcpath, char *lxcname,
 				INFO("mtu ignored due to insufficient privilege");
 			if (unpriv_assign_nic(lxcpath, lxcname, netdev, pid))
 				return -1;
-			// lxc-user-nic has moved the nic to the new ns.
-			// unpriv_assign_nic() fills in netdev->name.
-			// netdev->ifindex will be filed in at setup_netdev.
+			/* lxc-user-nic has moved the nic to the new ns.
+			 * unpriv_assign_nic() fills in netdev->name.
+			 * netdev->ifindex will be filed in at
+			 * lxc_setup_netdev_in_child_namespaces.
+			 */
 			continue;
 		}
 
@@ -4092,7 +4130,8 @@ int lxc_setup(struct lxc_handler *handler)
 		}
 	}
 
-	if (setup_network(&lxc_conf->network)) {
+	if (lxc_setup_networks_in_child_namespaces(lxc_conf,
+						   &lxc_conf->network)) {
 		ERROR("failed to setup the network for '%s'", name);
 		return -1;
 	}
@@ -4260,98 +4299,6 @@ int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
 		ret = run_script_argv(name, "lxc", hookname, hook, lxcpath, argv);
 		if (ret)
 			return ret;
-	}
-	return 0;
-}
-
-static void lxc_remove_nic(struct lxc_list *it)
-{
-	struct lxc_netdev *netdev = it->elem;
-	struct lxc_list *it2,*next;
-
-	lxc_list_del(it);
-
-	free(netdev->link);
-	free(netdev->name);
-	if (netdev->type == LXC_NET_VETH)
-		free(netdev->priv.veth_attr.pair);
-	free(netdev->upscript);
-	free(netdev->hwaddr);
-	free(netdev->mtu);
-	free(netdev->ipv4_gateway);
-	free(netdev->ipv6_gateway);
-	lxc_list_for_each_safe(it2, &netdev->ipv4, next) {
-		lxc_list_del(it2);
-		free(it2->elem);
-		free(it2);
-	}
-	lxc_list_for_each_safe(it2, &netdev->ipv6, next) {
-		lxc_list_del(it2);
-		free(it2->elem);
-		free(it2);
-	}
-	free(netdev);
-	free(it);
-}
-
-/* we get passed in something like '0', '0.ipv4' or '1.ipv6' */
-int lxc_clear_nic(struct lxc_conf *c, const char *key)
-{
-	char *p1;
-	int ret, idx, i;
-	struct lxc_list *it;
-	struct lxc_netdev *netdev;
-
-	p1 = strchr(key, '.');
-	if (!p1 || *(p1+1) == '\0')
-		p1 = NULL;
-
-	ret = sscanf(key, "%d", &idx);
-	if (ret != 1) return -1;
-	if (idx < 0)
-		return -1;
-
-	i = 0;
-	lxc_list_for_each(it, &c->network) {
-		if (i == idx)
-			break;
-		i++;
-	}
-	if (i < idx)  // we don't have that many nics defined
-		return -1;
-
-	if (!it || !it->elem)
-		return -1;
-
-	netdev = it->elem;
-
-	if (!p1) {
-		lxc_remove_nic(it);
-	} else if (strcmp(p1, ".ipv4") == 0) {
-		struct lxc_list *it2,*next;
-		lxc_list_for_each_safe(it2, &netdev->ipv4, next) {
-			lxc_list_del(it2);
-			free(it2->elem);
-			free(it2);
-		}
-	} else if (strcmp(p1, ".ipv6") == 0) {
-		struct lxc_list *it2,*next;
-		lxc_list_for_each_safe(it2, &netdev->ipv6, next) {
-			lxc_list_del(it2);
-			free(it2->elem);
-			free(it2);
-		}
-	}
-		else return -1;
-
-	return 0;
-}
-
-int lxc_clear_config_network(struct lxc_conf *c)
-{
-	struct lxc_list *it,*next;
-	lxc_list_for_each_safe(it, &c->network, next) {
-		lxc_remove_nic(it);
 	}
 	return 0;
 }
@@ -4578,7 +4525,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->unexpanded_config);
 	free(conf->pty_names);
 	free(conf->syslog);
-	lxc_clear_config_network(conf);
+	lxc_free_networks(&conf->network);
 	free(conf->lsm_aa_profile);
 	free(conf->lsm_se_context);
 	lxc_seccomp_free(conf);
