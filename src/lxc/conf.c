@@ -2329,8 +2329,9 @@ static int setup_ipv6_addr(struct lxc_list *ip, int ifindex)
 static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 {
 	char ifname[IFNAMSIZ];
-	char *current_ifname = ifname;
 	int err;
+	const char *net_type_name;
+	char *current_ifname = ifname;
 
 	/* empty network namespace */
 	if (!netdev->ifindex) {
@@ -2342,8 +2343,21 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 				return -1;
 			}
 		}
-		if (netdev->type != LXC_NET_VETH)
+
+		if (netdev->type == LXC_NET_EMPTY)
 			return 0;
+
+		if (netdev->type == LXC_NET_NONE)
+			return 0;
+
+		if (netdev->type != LXC_NET_VETH) {
+			net_type_name = lxc_net_type_to_str(netdev->type);
+			ERROR("%s networks are not supported for containers "
+			      "not setup up by privileged users",
+			      net_type_name);
+			return -1;
+		}
+
 		netdev->ifindex = if_nametoindex(netdev->name);
 	}
 
