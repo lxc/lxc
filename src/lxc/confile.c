@@ -700,8 +700,10 @@ static int set_config_network_type(const char *key, const char *value,
 
 		/* We maintain a negative count for legacy network devices. */
 		ssize_t negidx = -1;
-		WARN("WARNING: using \"lxc.network.type\" without an index "
-		     "(e.g.\"lxc.network.0.type\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.type\" without an index "
+		     "(e.g.\"lxc.network.0.type\"). LET US KNOW IF YOU NEED TO "
+		     "USE THIS!");
 		if (!lxc_list_empty(&lxc_conf->network)) {
 			struct lxc_netdev *ndv;
 			ndv = lxc_list_first_elem(&lxc_conf->network);
@@ -897,8 +899,10 @@ static int set_config_network_flags(const char *key, const char *value,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.flags\" without an index "
-		     "(e.g.\"lxc.network.0.flags\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.flags\" without an index "
+		     "(e.g.\"lxc.network.0.flags\"). LET US KNOW IF YOU NEED "
+		     "TO USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -968,8 +972,10 @@ static int set_config_network_link(const char *key, const char *value,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.link\" without an index "
-		     "(e.g.\"lxc.network.0.link\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.link\" without an index "
+		     "(e.g.\"lxc.network.0.link\"). LET US KNOW IF YOU NEED TO "
+		     "USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -997,8 +1003,10 @@ static int set_config_network_name(const char *key, const char *value,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.name\" without an index "
-		     "(e.g.\"lxc.network.0.name\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.name\" without an index "
+		     "(e.g.\"lxc.network.0.name\"). LET US KNOW IF YOU NEED TO "
+		     "USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -1021,8 +1029,10 @@ static int set_config_network_veth_pair(const char *key, const char *value,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.veth.pair\" without an "
-		     "index (e.g. \"lxc.network.0.veth.pair\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.veth.pair\" without an index "
+		     "(e.g.\"lxc.network.0.veth.pair\"). LET US KNOW IF YOU "
+		     "NEED TO USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -1047,9 +1057,10 @@ static int set_config_network_macvlan_mode(const char *key, const char *value,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.macvlan.mode\" without an "
-		     "index (e.g. \"lxc.network.0.macvlan.mode\" is "
-		     "DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.macvlan.mode\" without an index "
+		     "(e.g.\"lxc.network.0.macvlan.mode\"). LET US KNOW IF YOU "
+		     "NEED TO USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -1073,8 +1084,10 @@ static int set_config_network_hwaddr(const char *key, const char *value,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.hwaddr\" without an index "
-		     "(e.g. \"lxc.network.0.hwaddr\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.hwaddr\" without an index "
+		     "(e.g.\"lxc.network.0.hwaddr\"). LET US KNOW IF YOU NEED "
+		     "TO USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -1111,8 +1124,10 @@ static int set_config_network_vlan_id(const char *key, const char *value,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.vlan.id\" without an index "
-		     "(e.g. \"lxc.network.0.vlan.id\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.vlan.id\" without an index "
+		     "(e.g.\"lxc.network.0.vlan.id\"). LET US KNOW IF YOU NEED "
+		     "TO USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -1138,8 +1153,10 @@ static int set_config_network_mtu(const char *key, const char *value,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.mtu\" without an index "
-		     "(e.g. \"lxc.network.0.mtu\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.mtu\" without an index "
+		     "(e.g.\"lxc.network.0.mtu\"). LET US KNOW IF YOU NEED TO "
+		     "USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -1166,8 +1183,10 @@ static int set_config_network_ipv4(const char *key, const char *value,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.ipv4\" without an index "
-		     "(e.g. \"lxc.network.0.ipv4\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.ipv4\" without an index "
+		     "(e.g.\"lxc.network.0.ipv4\"). LET US KNOW IF YOU NEED TO "
+		     "USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -1264,9 +1283,10 @@ static int set_config_network_ipv4_gateway(const char *key, const char *value,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.ipv4.gateway\" without an "
-		     "index (e.g. \"lxc.network.0.ipv4.gateway\" is "
-		     "DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.ipv4.gateway\" without an index "
+		     "(e.g.\"lxc.network.0.ipv4.gateway\"). LET US KNOW IF YOU "
+		     "NEED TO USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -1318,8 +1338,10 @@ static int set_config_network_ipv6(const char *key, const char *value,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.ipv6\" without an index "
-		     "(e.g. \"lxc.network.0.ipv6\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.ipv6\" without an index "
+		     "(e.g.\"lxc.network.0.ipv6\"). LET US KNOW IF YOU NEED TO "
+		     "USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -1388,9 +1410,10 @@ static int set_config_network_ipv6_gateway(const char *key, const char *value,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.ipv6.gateway\" without an "
-		     "index (e.g. \"lxc.network.0.ipv6.gateway\" is "
-		     "DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.ipv6.gateway\" without an index "
+		     "(e.g.\"lxc.network.0.ipv6.gateway\"). LET US KNOW IF YOU "
+		     "NEED TO USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -1439,9 +1462,10 @@ static int set_config_network_script_up(const char *key, const char *value,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.script.up\" without an "
-		     "index (e.g. \"lxc.network.0.script.up\" is "
-		     "DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.script.up\" without an index "
+		     "(e.g.\"lxc.network.0.script.up\"). LET US KNOW IF YOU "
+		     "NEED TO USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -1464,9 +1488,10 @@ static int set_config_network_script_down(const char *key, const char *value,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.script.down\" without an "
-		     "index (e.g. \"lxc.network.0.script.down\" is "
-		     "DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.script.down\" without an index "
+		     "(e.g.\"lxc.network.0.script.down\"). LET US KNOW IF YOU "
+		     "NEED TO USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -4404,8 +4429,10 @@ static int clr_config_network_type(const char *key, struct lxc_conf *lxc_conf,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.type\" without an index "
-		     "(e.g. \"lxc.network.0.type\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.type\" without an index "
+		     "(e.g.\"lxc.network.0.type\"). LET US KNOW IF YOU NEED TO "
+		     "USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -4427,8 +4454,10 @@ static int clr_config_network_name(const char *key, struct lxc_conf *lxc_conf,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.name\" without an index "
-		     "(e.g. \"lxc.network.0.name\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.name\" without an index "
+		     "(e.g.\"lxc.network.0.name\"). LET US KNOW IF YOU NEED TO "
+		     "USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -4452,8 +4481,10 @@ static int clr_config_network_flags(const char *key, struct lxc_conf *lxc_conf,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.flags\" without an index "
-		     "(e.g. \"lxc.network.0.flags\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.flags\" without an index "
+		     "(e.g.\"lxc.network.0.flags\"). LET US KNOW IF YOU NEED "
+		     "TO USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -4475,8 +4506,10 @@ static int clr_config_network_link(const char *key, struct lxc_conf *lxc_conf,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.link\" without an index "
-		     "(e.g. \"lxc.network.0.link\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.link\" without an index "
+		     "(e.g.\"lxc.network.0.link\"). LET US KNOW IF YOU NEED TO "
+		     "USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -4500,9 +4533,10 @@ static int clr_config_network_macvlan_mode(const char *key,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.macvlan.mode\" without an "
-		     "index (e.g. \"lxc.network.0.macvlan.mode\" is "
-		     "DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.macvlan.mode\" without an index "
+		     "(e.g.\"lxc.network.0.macvlan.mode\"). LET US KNOW IF YOU "
+		     "NEED TO USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -4527,9 +4561,10 @@ static int clr_config_network_veth_pair(const char *key,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.veth.pair\" without an "
-		     "index (e.g. \"lxc.network.0.veth.pair\" is "
-		     "DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.veth.pair\" without an index "
+		     "(e.g.\"lxc.network.0.veth.pair\"). LET US KNOW IF YOU "
+		     "NEED TO USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -4552,9 +4587,10 @@ static int clr_config_network_script_up(const char *key,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.script.up\" without an "
-		     "index (e.g. \"lxc.network.0.script.up\" is "
-		     "DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.script.up\" without an index "
+		     "(e.g.\"lxc.network.0.script.up\"). LET US KNOW IF YOU "
+		     "NEED TO USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -4577,9 +4613,10 @@ static int clr_config_network_script_down(const char *key,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.script.down\" without an "
-		     "index (e.g. \"lxc.network.0.script.down\" is "
-		     "DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.script.down\" without an index "
+		     "(e.g.\"lxc.network.0.script.down\"). LET US KNOW IF YOU "
+		     "NEED TO USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -4602,8 +4639,10 @@ static int clr_config_network_hwaddr(const char *key, struct lxc_conf *lxc_conf,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.hwaddr\" without an index "
-		     "(e.g. \"lxc.network.0.hwaddr\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.hwaddr\" without an index "
+		     "(e.g.\"lxc.network.0.hwaddr\"). LET US KNOW IF YOU NEED "
+		     "TO USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -4626,8 +4665,10 @@ static int clr_config_network_mtu(const char *key, struct lxc_conf *lxc_conf,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.mtu\" without an index "
-		     "(e.g. \"lxc.network.0.mtu\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.mtu\" without an index "
+		     "(e.g.\"lxc.network.0.mtu\"). LET US KNOW IF YOU NEED TO "
+		     "USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -4650,8 +4691,10 @@ static int clr_config_network_vlan_id(const char *key,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.vlan.id\" without an index "
-		     "(e.g. \"lxc.network.0.vlan.id\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.vlan.id\" without an index "
+		     "(e.g.\"lxc.network.0.vlan.id\"). LET US KNOW IF YOU NEED "
+		     "TO USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -4674,9 +4717,10 @@ static int clr_config_network_ipv4_gateway(const char *key,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.ipv4.gateway\" without an "
-		     "index (e.g. \"lxc.network.0.ipv4.gateway\" is "
-		     "DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.ipv4.gateway\" without an index "
+		     "(e.g.\"lxc.network.0.ipv4.gateway\"). LET US KNOW IF YOU "
+		     "NEED TO USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -4700,8 +4744,10 @@ static int clr_config_network_ipv4(const char *key, struct lxc_conf *lxc_conf,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.ipv4\" without an index "
-		     "(e.g. \"lxc.network.0.ipv4\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.ipv4\" without an index "
+		     "(e.g.\"lxc.network.0.ipv4\"). LET US KNOW IF YOU NEED TO "
+		     "USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -4728,9 +4774,10 @@ static int clr_config_network_ipv6_gateway(const char *key,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.ipv6.gateway\" without an "
-		     "index (e.g. \"lxc.network.0.ipv6.gateway\" is "
-		     "DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.ipv6.gateway\" without an index "
+		     "(e.g.\"lxc.network.0.ipv6.gateway\"). LET US KNOW IF YOU "
+		     "NEED TO USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -4754,8 +4801,10 @@ static int clr_config_network_ipv6(const char *key, struct lxc_conf *lxc_conf,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.ipv6\" without an index "
-		     "(e.g. \"lxc.network.0.ipv6\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.ipv6\" without an index "
+		     "(e.g.\"lxc.network.0.ipv6\"). LET US KNOW IF YOU NEED TO "
+		     "USE THIS!");
 		netdev = lxc_list_first_elem(&lxc_conf->network);
 	} else {
 		netdev = data;
@@ -4805,8 +4854,10 @@ static int get_config_network_type(const char *key, char *retv, int inlen,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.type\" without an index "
-		     "(e.g. \"lxc.network.0.type\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.type\" without an index "
+		     "(e.g.\"lxc.network.0.type\"). LET US KNOW IF YOU NEED TO "
+		     "USE THIS!");
 		netdev = lxc_list_first_elem(&c->network);
 	} else {
 		netdev = data;
@@ -4834,8 +4885,10 @@ static int get_config_network_flags(const char *key, char *retv, int inlen,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.flags\" without an index "
-		     "(e.g. \"lxc.network.0.flags\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.flags\" without an index "
+		     "(e.g.\"lxc.network.0.flags\"). LET US KNOW IF YOU NEED "
+		     "TO USE THIS!");
 		netdev = lxc_list_first_elem(&c->network);
 	} else {
 		netdev = data;
@@ -4864,8 +4917,10 @@ static int get_config_network_link(const char *key, char *retv, int inlen,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.link\" without an index "
-		     "(e.g. \"lxc.network.0.link\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.link\" without an index "
+		     "(e.g.\"lxc.network.0.link\"). LET US KNOW IF YOU NEED TO "
+		     "USE THIS!");
 		netdev = lxc_list_first_elem(&c->network);
 	} else {
 		netdev = data;
@@ -4894,8 +4949,10 @@ static int get_config_network_name(const char *key, char *retv, int inlen,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.name\" without an index "
-		     "(e.g. \"lxc.network.0.name\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.name\" without an index "
+		     "(e.g.\"lxc.network.0.name\"). LET US KNOW IF YOU NEED TO "
+		     "USE THIS!");
 		netdev = lxc_list_first_elem(&c->network);
 	} else {
 		netdev = data;
@@ -4926,9 +4983,10 @@ static int get_config_network_macvlan_mode(const char *key, char *retv,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.macvlan.mode\" without an "
-		     "index (e.g. \"lxc.network.0.macvlan.mode\" is "
-		     "DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.macvlan.mode\" without an index "
+		     "(e.g.\"lxc.network.0.macvlan.mode\"). LET US KNOW IF YOU "
+		     "NEED TO USE THIS!");
 		netdev = lxc_list_first_elem(&c->network);
 	} else {
 		netdev = data;
@@ -4977,9 +5035,10 @@ static int get_config_network_veth_pair(const char *key, char *retv, int inlen,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.veth.pair\" without an "
-		     "index (e.g. \"lxc.network.0.veth.pair\" is "
-		     "DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.veth.pair\" without an index "
+		     "(e.g.\"lxc.network.0.veth.pair\"). LET US KNOW IF YOU "
+		     "NEED TO USE THIS!");
 		netdev = lxc_list_first_elem(&c->network);
 	} else {
 		netdev = data;
@@ -5012,9 +5071,10 @@ static int get_config_network_script_up(const char *key, char *retv, int inlen,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.script.up\" without an "
-		     "index (e.g. \"lxc.network.0.script.up\" is "
-		     "DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.script.up\" without an index "
+		     "(e.g.\"lxc.network.0.script.up\"). LET US KNOW IF YOU "
+		     "NEED TO USE THIS!");
 		netdev = lxc_list_first_elem(&c->network);
 	} else {
 		netdev = data;
@@ -5044,9 +5104,10 @@ static int get_config_network_script_down(const char *key, char *retv,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.script.down\" without an "
-		     "index (e.g. \"lxc.network.0.script.down\" is "
-		     "DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.script.down\" without an index "
+		     "(e.g.\"lxc.network.0.script.down\"). LET US KNOW IF YOU "
+		     "NEED TO USE THIS!");
 		netdev = lxc_list_first_elem(&c->network);
 	} else {
 		netdev = data;
@@ -5075,8 +5136,10 @@ static int get_config_network_hwaddr(const char *key, char *retv, int inlen,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.hwaddr\" without an index "
-		     "(e.g. \"lxc.network.0.hwaddr\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.hwaddr\" without an index "
+		     "(e.g.\"lxc.network.0.hwaddr\"). LET US KNOW IF YOU NEED "
+		     "TO USE THIS!");
 		netdev = lxc_list_first_elem(&c->network);
 	} else {
 		netdev = data;
@@ -5105,8 +5168,10 @@ static int get_config_network_mtu(const char *key, char *retv, int inlen,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.mtu\" without an index "
-		     "(e.g. \"lxc.network.0.mtu\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.mtu\" without an index "
+		     "(e.g.\"lxc.network.0.mtu\"). LET US KNOW IF YOU NEED TO "
+		     "USE THIS!");
 		netdev = lxc_list_first_elem(&c->network);
 	} else {
 		netdev = data;
@@ -5135,8 +5200,10 @@ static int get_config_network_vlan_id(const char *key, char *retv, int inlen,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.vlan.id\" without an index "
-		     "(e.g. \"lxc.network.0.vlan.id\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.vlan.id\" without an index "
+		     "(e.g.\"lxc.network.0.vlan.id\"). LET US KNOW IF YOU NEED "
+		     "TO USE THIS!");
 		netdev = lxc_list_first_elem(&c->network);
 	} else {
 		netdev = data;
@@ -5169,9 +5236,10 @@ static int get_config_network_ipv4_gateway(const char *key, char *retv,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.ipv4.gateway\" without an "
-		     "index (e.g. \"lxc.network.0.ipv4.gateway\" is "
-		     "DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.ipv4.gateway\" without an index "
+		     "(e.g.\"lxc.network.0.ipv4.gateway\"). LET US KNOW IF YOU "
+		     "NEED TO USE THIS!");
 		netdev = lxc_list_first_elem(&c->network);
 	} else {
 		netdev = data;
@@ -5207,8 +5275,10 @@ static int get_config_network_ipv4(const char *key, char *retv, int inlen,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.ipv4\" without an index "
-		     "(e.g. \"lxc.network.0.ipv4\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.ipv4\" without an index "
+		     "(e.g.\"lxc.network.0.ipv4\"). LET US KNOW IF YOU NEED TO "
+		     "USE THIS!");
 		netdev = lxc_list_first_elem(&c->network);
 	} else {
 		netdev = data;
@@ -5244,9 +5314,10 @@ static int get_config_network_ipv6_gateway(const char *key, char *retv,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.ipv6.gateway\" without an "
-		     "index (e.g. \"lxc.network.0.ipv6.gateway\" is "
-		     "DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.ipv6.gateway\" without an index "
+		     "(e.g.\"lxc.network.0.ipv6.gateway\"). LET US KNOW IF YOU "
+		     "NEED TO USE THIS!");
 		netdev = lxc_list_first_elem(&c->network);
 	} else {
 		netdev = data;
@@ -5282,8 +5353,10 @@ static int get_config_network_ipv6(const char *key, char *retv, int inlen,
 		/* REMOVE IN LXC 3.0:
 		 * lxc.network.* without an index
 		 */
-		WARN("WARNING: using \"lxc.network.ipv6\" without an index "
-		     "(e.g. \"lxc.network.0.ipv6\") is DEPRECATED.");
+		WARN("WARNING: We're considering DEPRECATING "
+		     "\"lxc.network.ipv6\" without an index "
+		     "(e.g.\"lxc.network.0.ipv6\"). LET US KNOW IF YOU NEED TO "
+		     "USE THIS!");
 		netdev = lxc_list_first_elem(&c->network);
 	} else {
 		netdev = data;
