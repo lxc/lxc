@@ -2326,7 +2326,7 @@ static int setup_ipv6_addr(struct lxc_list *ip, int ifindex)
 	return 0;
 }
 
-static int setup_netdev(struct lxc_netdev *netdev)
+static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 {
 	char ifname[IFNAMSIZ];
 	char *current_ifname = ifname;
@@ -2508,7 +2508,8 @@ static int setup_netdev(struct lxc_netdev *netdev)
 	return 0;
 }
 
-static int setup_network(const struct lxc_conf *conf, struct lxc_list *network)
+static int lxc_setup_networks_in_child_namespaces(const struct lxc_conf *conf,
+						  struct lxc_list *network)
 {
 	struct lxc_list *iterator;
 	struct lxc_netdev *netdev;
@@ -2516,10 +2517,9 @@ static int setup_network(const struct lxc_conf *conf, struct lxc_list *network)
 	lxc_log_configured_netdevs(conf);
 
 	lxc_list_for_each(iterator, network) {
-
 		netdev = iterator->elem;
 
-		if (setup_netdev(netdev)) {
+		if (lxc_setup_netdev_in_child_namespaces(netdev)) {
 			ERROR("failed to setup netdev");
 			return -1;
 		}
@@ -3036,38 +3036,42 @@ int lxc_requests_empty_network(struct lxc_handler *handler)
 	return 0;
 }
 
-int lxc_create_network(struct lxc_handler *handler)
+int lxc_setup_networks_in_parent_namespaces(struct lxc_handler *handler)
 {
-	struct lxc_list *network = &handler->conf->network;
-	struct lxc_list *iterator;
+	bool am_root;
 	struct lxc_netdev *netdev;
-	int am_root = (getuid() == 0);
+	struct lxc_list *iterator;
+	struct lxc_list *network = &handler->conf->network;
 
+	/* We need to be root. */
+	am_root = (getuid() == 0);
 	if (!am_root)
 		return 0;
 
 	lxc_list_for_each(iterator, network) {
-
 		netdev = iterator->elem;
-
-		if (netdev->type != LXC_NET_MACVLAN && netdev->priv.macvlan_attr.mode) {
-			ERROR("Invalid macvlan.mode for a non-macvlan netdev");
-			return -1;
-		}
-
-		if (netdev->type != LXC_NET_VETH && netdev->priv.veth_attr.pair) {
-			ERROR("Invalid veth pair for a non-veth netdev");
-			return -1;
-		}
-
-		if (netdev->type != LXC_NET_VLAN && netdev->priv.vlan_attr.vid > 0) {
-			ERROR("Invalid vlan.id for a non-macvlan netdev");
-			return -1;
-		}
 
 		if (netdev->type < 0 || netdev->type > LXC_NET_MAXCONFTYPE) {
 			ERROR("invalid network configuration type '%d'",
 			      netdev->type);
+			return -1;
+		}
+
+		if (netdev->type != LXC_NET_MACVLAN &&
+		    netdev->priv.macvlan_attr.mode) {
+			ERROR("Invalid macvlan.mode for a non-macvlan netdev");
+			return -1;
+		}
+
+		if (netdev->type != LXC_NET_VETH &&
+		    netdev->priv.veth_attr.pair) {
+			ERROR("Invalid veth pair for a non-veth netdev");
+			return -1;
+		}
+
+		if (netdev->type != LXC_NET_VLAN &&
+		    netdev->priv.vlan_attr.vid > 0) {
+			ERROR("Invalid vlan.id for a non-macvlan netdev");
 			return -1;
 		}
 
@@ -3285,9 +3289,11 @@ int lxc_assign_network(const char *lxcpath, char *lxcname,
 				INFO("mtu ignored due to insufficient privilege");
 			if (unpriv_assign_nic(lxcpath, lxcname, netdev, pid))
 				return -1;
-			// lxc-user-nic has moved the nic to the new ns.
-			// unpriv_assign_nic() fills in netdev->name.
-			// netdev->ifindex will be filed in at setup_netdev.
+			/* lxc-user-nic has moved the nic to the new ns.
+			 * unpriv_assign_nic() fills in netdev->name.
+			 * netdev->ifindex will be filed in at
+			 * lxc_setup_netdev_in_child_namespaces.
+			 */
 			continue;
 		}
 
@@ -4110,7 +4116,8 @@ int lxc_setup(struct lxc_handler *handler)
 		}
 	}
 
-	if (setup_network(lxc_conf, &lxc_conf->network)) {
+	if (lxc_setup_networks_in_child_namespaces(lxc_conf,
+						   &lxc_conf->network)) {
 		ERROR("failed to setup the network for '%s'", name);
 		return -1;
 	}

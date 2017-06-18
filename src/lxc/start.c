@@ -1239,7 +1239,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 			/* That should be done before the clone because we will
 			 * fill the netdev index and use them in the child.
 			 */
-			if (lxc_create_network(handler)) {
+			if (lxc_setup_networks_in_parent_namespaces(handler)) {
 				ERROR("Failed to create the network.");
 				lxc_sync_fini(handler);
 				return -1;

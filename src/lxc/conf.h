@@ -432,7 +432,7 @@ extern void lxc_conf_free(struct lxc_conf *conf);
 extern int pin_rootfs(const char *rootfs);
 
 extern int lxc_requests_empty_network(struct lxc_handler *handler);
-extern int lxc_create_network(struct lxc_handler *handler);
+extern int lxc_setup_networks_in_parent_namespaces(struct lxc_handler *handler);
 extern bool lxc_delete_network(struct lxc_handler *handler);
 extern int lxc_assign_network(const char *lxcpath, char *lxcname,
 			      struct lxc_list *networks, pid_t pid);
