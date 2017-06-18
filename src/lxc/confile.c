@@ -685,8 +685,6 @@ static int set_config_network(const char *key, const char *value,
 	return clr_config_network(key, lxc_conf, data);
 }
 
-static int macvlan_mode(int *valuep, const char *value);
-
 static int set_config_network_type(const char *key, const char *value,
 				   struct lxc_conf *lxc_conf, void *data)
 {
@@ -728,7 +726,8 @@ static int set_config_network_type(const char *key, const char *value,
 		netdev->type = LXC_NET_VETH;
 	} else if (!strcmp(value, "macvlan")) {
 		netdev->type = LXC_NET_MACVLAN;
-		macvlan_mode(&netdev->priv.macvlan_attr.mode, "private");
+		lxc_macvlan_mode_to_flag(&netdev->priv.macvlan_attr.mode,
+					 "private");
 	} else if (!strcmp(value, "vlan")) {
 		netdev->type = LXC_NET_VLAN;
 	} else if (!strcmp(value, "phys")) {
@@ -852,47 +851,6 @@ extern int lxc_list_nicconfigs(struct lxc_conf *c, const char *key, char *retv,
 static int network_ifname(char **valuep, const char *value)
 {
 	return set_config_string_item_max(valuep, value, IFNAMSIZ);
-}
-
-#ifndef MACVLAN_MODE_PRIVATE
-#define MACVLAN_MODE_PRIVATE 1
-#endif
-
-#ifndef MACVLAN_MODE_VEPA
-#define MACVLAN_MODE_VEPA 2
-#endif
-
-#ifndef MACVLAN_MODE_BRIDGE
-#define MACVLAN_MODE_BRIDGE 4
-#endif
-
-#ifndef MACVLAN_MODE_PASSTHRU
-#define MACVLAN_MODE_PASSTHRU 8
-#endif
-
-static int macvlan_mode(int *valuep, const char *value)
-{
-	struct mc_mode {
-		char *name;
-		int mode;
-	} m[] = {
-	    { "private",  MACVLAN_MODE_PRIVATE  },
-	    { "vepa",     MACVLAN_MODE_VEPA     },
-	    { "bridge",   MACVLAN_MODE_BRIDGE   },
-	    { "passthru", MACVLAN_MODE_PASSTHRU },
-	};
-
-	size_t i;
-
-	for (i = 0; i < sizeof(m) / sizeof(m[0]); i++) {
-		if (strcmp(m[i].name, value))
-			continue;
-
-		*valuep = m[i].mode;
-		return 0;
-	}
-
-	return -1;
 }
 
 static int rand_complete_hwaddr(char *hwaddr)
@@ -1099,7 +1057,7 @@ static int set_config_network_macvlan_mode(const char *key, const char *value,
 	if (!netdev)
 		return -1;
 
-	return macvlan_mode(&netdev->priv.macvlan_attr.mode, value);
+	return lxc_macvlan_mode_to_flag(&netdev->priv.macvlan_attr.mode, value);
 }
 
 static int set_config_network_hwaddr(const char *key, const char *value,

@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <arpa/inet.h>
 
 #include "conf.h"
 #include "confile.h"
@@ -242,18 +243,35 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 	}
 
 	lxc_list_for_each(it, &conf->network) {
+		struct lxc_list *cur, *next;
+		struct lxc_inetdev *inet4dev;
+		struct lxc_inet6dev *inet6dev;
+		char bufinet4[INET_ADDRSTRLEN], bufinet6[INET6_ADDRSTRLEN];
+
 		netdev = it->elem;
 
 		TRACE("index: %zd", netdev->idx);
 		switch (netdev->type) {
 		case LXC_NET_VETH:
 			TRACE("type: veth");
+			if (netdev->priv.veth_attr.pair)
+				TRACE("veth pair: %s",
+				      netdev->priv.veth_attr.pair);
 			break;
 		case LXC_NET_MACVLAN:
 			TRACE("type: macvlan");
+			if (netdev->priv.macvlan_attr.mode > 0) {
+				char *macvlan_mode;
+				macvlan_mode = lxc_macvlan_flag_to_mode(
+				    netdev->priv.macvlan_attr.mode);
+				TRACE("macvlan mode: %s",
+				      macvlan_mode ? macvlan_mode
+						   : "(invalid mode)");
+			}
 			break;
 		case LXC_NET_VLAN:
 			TRACE("type: vlan");
+			TRACE("vlan id: %d", netdev->priv.vlan_attr.vid);
 			break;
 		case LXC_NET_PHYS:
 			TRACE("type: phys");
@@ -269,19 +287,52 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 			return;
 		}
 
-		TRACE("flags: %s", netdev->flags == IFF_UP ? "up" : "none");
-		if (netdev->link)
-			TRACE("link: %s", netdev->link);
-		if (netdev->name)
-			TRACE("name: %s", netdev->name);
-		if (netdev->hwaddr)
-			TRACE("hwaddr: %s", netdev->hwaddr);
-		if (netdev->mtu)
-			TRACE("mtu: %s", netdev->mtu);
-		if (netdev->upscript)
-			TRACE("upscript: %s", netdev->upscript);
-		if (netdev->downscript)
-			TRACE("downscript: %s", netdev->downscript);
+		if (netdev->type != LXC_NET_EMPTY) {
+			TRACE("flags: %s",
+			      netdev->flags == IFF_UP ? "up" : "none");
+			if (netdev->link)
+				TRACE("link: %s", netdev->link);
+			if (netdev->name)
+				TRACE("name: %s", netdev->name);
+			if (netdev->hwaddr)
+				TRACE("hwaddr: %s", netdev->hwaddr);
+			if (netdev->mtu)
+				TRACE("mtu: %s", netdev->mtu);
+			if (netdev->upscript)
+				TRACE("upscript: %s", netdev->upscript);
+			if (netdev->downscript)
+				TRACE("downscript: %s", netdev->downscript);
+
+			TRACE("ipv4 gateway auto: %s",
+			      netdev->ipv4_gateway_auto ? "true" : "false");
+
+			if (netdev->ipv4_gateway) {
+				inet_ntop(AF_INET, netdev->ipv4_gateway,
+					  bufinet4, sizeof(bufinet4));
+				TRACE("ipv4 gateway: %s", bufinet4);
+			}
+
+			lxc_list_for_each_safe(cur, &netdev->ipv4, next) {
+				inet4dev = cur->elem;
+				inet_ntop(AF_INET, &inet4dev->addr, bufinet4,
+					  sizeof(bufinet4));
+				TRACE("ipv4 addr: %s", bufinet4);
+			}
+
+			TRACE("ipv6 gateway auto: %s",
+			      netdev->ipv6_gateway_auto ? "true" : "false");
+			if (netdev->ipv6_gateway) {
+				inet_ntop(AF_INET6, netdev->ipv6_gateway,
+					  bufinet6, sizeof(bufinet6));
+				TRACE("ipv6 gateway: %s", bufinet6);
+			}
+			lxc_list_for_each_safe(cur, &netdev->ipv6, next) {
+				inet6dev = cur->elem;
+				inet_ntop(AF_INET6, &inet6dev->addr, bufinet6,
+					  sizeof(bufinet6));
+				TRACE("ipv6 addr: %s", bufinet6);
+			}
+		}
 	}
 }
 
@@ -353,4 +404,43 @@ void lxc_free_networks(struct lxc_list *networks)
 
 	/* prevent segfaults */
 	lxc_list_init(networks);
+}
+
+static struct macvlan_mode {
+	char *name;
+	int mode;
+} macvlan_mode[] = {
+    { "private",  MACVLAN_MODE_PRIVATE  },
+    { "vepa",     MACVLAN_MODE_VEPA     },
+    { "bridge",   MACVLAN_MODE_BRIDGE   },
+    { "passthru", MACVLAN_MODE_PASSTHRU },
+};
+
+int lxc_macvlan_mode_to_flag(int *mode, const char *value)
+{
+	size_t i;
+
+	for (i = 0; i < sizeof(macvlan_mode) / sizeof(macvlan_mode[0]); i++) {
+		if (strcmp(macvlan_mode[i].name, value))
+			continue;
+
+		*mode = macvlan_mode[i].mode;
+		return 0;
+	}
+
+	return -1;
+}
+
+char *lxc_macvlan_flag_to_mode(int mode)
+{
+	size_t i;
+
+	for (i = 0; i < sizeof(macvlan_mode) / sizeof(macvlan_mode[0]); i++) {
+		if (macvlan_mode[i].mode == mode)
+			continue;
+
+		return macvlan_mode[i].name;
+	}
+
+	return NULL;
 }
