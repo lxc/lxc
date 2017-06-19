@@ -1928,7 +1928,7 @@ bool task_blocking_signal(pid_t pid, int signal)
 				goto out;
 	}
 
-	if (sigblk & signal)
+	if (sigblk & (1 << (signal - 1)))
 		bret = true;
 
 out:
