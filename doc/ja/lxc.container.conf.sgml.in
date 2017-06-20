@@ -56,61 +56,94 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
     <para>
       <!--
-      The linux containers (<command>lxc</command>) are always created
-      before being used. This creation defines a set of system
-      resources to be virtualized / isolated when a process is using
-      the container. By default, the pids, sysv ipc and mount points
-      are virtualized and isolated. The other system resources are
-      shared across containers, until they are explicitly defined in
-      the configuration file. For example, if there is no network
-      configuration, the network will be shared between the creator of
-      the container and the container itself, but if the network is
-      specified, a new network stack is created for the container and
-      the container can no longer use the network of its ancestor.
-      -->
-      linux コンテナ (<command>lxc</command>) は、常に使用する前に作成されます。
-      コンテナは、プロセスがコンテナを使う時に仮想化/隔離するシステムリソースのセットを定義することによって作成します。
-      デフォルトでは、pid, sysv ipc, マウントポイントが仮想化され、隔離されます。
-      他のシステムリソースは、設定ファイルで明確に定義されない限りは、コンテナをまたいで共有されます。
-      例えば、もしネットワークが設定されていなければ、コンテナを作成する側とコンテナでネットワークを共有します。
-      しかし、ネットワークが指定されれば、新しいネットワークスタックがコンテナ用に作成され、コンテナは作成元の環境のネットワークを使いません。
+      LXC is the well-known and heavily tested low-level Linux container
+      runtime. It is in active development since 2008 and has proven itself in
+      critical production environments world-wide. Some of its core contributors
+      are the same people that helped to implement various well-known
+      containerization features inside the Linux kernel.
+        -->
+      LXC は良く知られた、多くのテストが行われた Linux コンテナのランタイムです。LXC は、2008 年以来アクティブに開発されており、世界中の重要な本番環境で実証されています。開発への貢献者の中には、Linux カーネル内の良く知られた様々なコンテナ機能の実装に貢献した人と同じ人もいます。
     </para>
 
     <para>
       <!--
-      The configuration file defines the different system resources to
-      be assigned for the container. At present, the utsname, the
-      network, the mount points, the root file system, the user namespace,
-      and the control groups are supported.
-      -->
-      設定ファイルは、コンテナに割り当てられる様々なシステムリソースを定義します。
-      現時点では、utsname、ネットワーク、マウントポイント、root ファイルシステム、ユーザ名前空間、control groups がサポートされます。
+      LXC's main focus is system containers. That is, containers which offer an
+      environment as close as possible as the one you'd get from a VM but
+      without the overhead that comes with running a separate kernel and
+      simulating all the hardware.
+        -->
+      LXC は主にシステムコンテナにフォーカスを当てています。つまり、VM で得られる環境と可能な限り近い環境を提供を提供するにも関わらず、別々のカーネルを実行したり、ハードウェアをすべてシミュレートしたりすることによるオーバーヘッドがないコンテナのことです。
     </para>
 
     <para>
       <!--
-      Each option in the configuration file has the form <command>key
-      = value</command> fitting in one line. The '#' character means
-      the line is a comment. List options, like capabilities and cgroups
-      options, can be used with no value to clear any previously
-      defined values of that option.
+      This is achieved through a combination of kernel security features such as
+      namespaces, mandatory access control and control groups.
+        -->
+      このような環境は、名前空間 (namespace)、強制アクセスコントロール、cgroup といったカーネルのセキュリティ機能の組み合わせで実現しています。
+    </para>
+
+    <para>
+      <!--
+      LXC has supports unprivileged containers.  Unprivileged containers are
+      containers that are run without any privilege.  This requires support for
+      user namespaces in the kernel that the container is run on.  LXC was the
+      first runtime to support unprivileged containers after user namespaces
+      were merged into the mainline kernel.
+        -->
+      LXC は非特権コンテナをサポートしています。非特権コンテナは、いかなる特権も持たずに実行するコンテナです。非特権コンテナの実行には、コンテナを実行しているカーネルにユーザ名前空間 (user namespace) のサポートが必要です。LXC は、ユーザ名前空間がメインラインカーネルにマージされてから、初めて非特権コンテナをサポートしたランタイムです。
+    </para>
+
+    <para>
+      <!--
+      In essence, user namespaces isolate given sets of UIDs and GIDs. This is
+      achieved by establishing a mapping between a range of UIDs and GIDs on the
+      host to a different (unprivileged) range of UIDs and GIDs in the
+      container. The kernel will translate this mapping in such a way that
+      inside the container all UIDs and GIDs appear as you would expect from the
+      host whereas on the host these UIDs and GIDs are in fact unprivileged. For
+      example, a process running as UID and GID 0 inside the container might
+      appear as UID and GID 100000 on the host.  The implementation and working
+      details can be gathered from the corresponding user namespace man page.
+      UID and GID mappings can be defined with the <option>lxc.id_map</option>
+      key.
+        -->
+      本質的には、ユーザ名前空間は与えられた UID、GID の組を隔離します。ユーザ名前空間は、ホスト上の UID、GID のある範囲を、それとは異なるコンテナ上の UID、GID の範囲へマッピングすることで実現します。カーネルは、ホスト上では実際には UID、GID は特権を持たないにも関わらず、コンテナ内ではすべての UID、GID が期待されるように見えるように変換を行います。
+      例えば、コンテナ内では UID、GID が 0 として実行中のプロセスは、ホスト上では UID、GID が 100000 として見えるでしょう。実装と動作の詳細は、ユーザ名前空間の man ページから得られます。UID と GID のマッピングは <option>lxc.id_map</option> を使って定義できます。
+    </para>
+
+    <para>
+      <!--
+      Linux containers are defined with a simple configuration file.  Each
+      option in the configuration file has the form <command>key =
+      value</command> fitting in one line. The "#" character means the line is a
+      comment. List options, like capabilities and cgroups options, can be used
+      with no value to clear any previously defined values of that option.
+        -->
+      Linux コンテナは、簡単な設定ファイルで定義します。設定ファイル中のオプションは <command>key = value</command> の形で一行で表します。'#' は、その行はコメントであることを示します。ケーパビリティや cgroup のオプションのような、リスト形式で指定するオプションでは、value がない形式で指定でき、そのように使うと、それ以前に定義した値をすべてクリアします。
+    </para>
+
+    <para>
+      <!--
+      LXC namespaces configuration keys by using single dots. This means complex
+      configuration keys such as <option>lxc.network</option> expose various
+      subkeys such as <option>lxc.network.type</option>,
+      <option>lxc.network.link</option>, <option>lxc.network.ipv6</option>, and
+      others for even more fine-grained configuration.
       -->
-      設定ファイルのオプション一つを、<command>key = value</command> の形で一行で表します。
-      '#' は、その行はコメントであることを示します。
-      ケーパビリティや cgroup のオプションのような、リスト形式で指定するオプションでは、value がない形式で指定できます。このように使うと、それ以前に定義した値をすべてクリアします。
+      LXC は、シングルドットを使って設定キーの名前空間を表します。<option>lxc.network</option> のような複雑な設定キーは、<option>lxc.network.type</option>、<option>lxc.network.link</option>、<option>lxc.network.ipv6</option> や、さらに細分化された設定向けの色々なサブキーを持つことを意味します。
     </para>
 
     <refsect2>
       <title><!-- Configuration -->設定</title>
       <para>
         <!--
-	In order to ease administration of multiple related containers, it
-	is possible to have a container configuration file cause another
-	file to be loaded.  For instance, network configuration
-	can be defined in one common file which is included by multiple
-	containers.  Then, if the containers are moved to another host,
-	only one file may need to be updated.
-        -->
+        In order to ease administration of multiple related containers, it is
+        possible to have a container configuration file cause another file to be
+        loaded. For instance, network configuration can be defined in one common
+        file which is included by multiple containers. Then, if the containers
+        are moved to another host, only one file may need to be updated.
+          -->
         複数の関係するコンテナの管理を容易にするために、コンテナの設定ファイルに別のファイルをロードすることが可能です。
         例えば、ネットワークの設定を、複数のコンテナから include させるように 1 つのファイルに定義することが可能です。
         その場合、コンテナが他のホストに移動すると、そのファイルだけを更新する必要があるかもしれません。
@@ -139,11 +172,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <title><!-- Architecture -->アーキテクチャ</title>
       <para>
         <!--
-	Allows one to set the architecture for the container. For example,
-	set a 32bits architecture for a container running 32bits
-	binaries on a 64bits host. That fixes the container scripts
-	which rely on the architecture to do some work like
-	downloading the packages.
+        Allows one to set the architecture for the container. For example, set a
+        32bits architecture for a container running 32bits binaries on a 64bits
+        host. This fixes the container scripts which rely on the architecture to
+        do some work like downloading the packages.
         -->
         コンテナに対してアーキテクチャを設定することが可能です。
         例えば、64 ビットのホスト上で 32 ビットのバイナリを動かすために 32 ビットアーキテクチャを設定することが可能です。
@@ -164,20 +196,20 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    </para>
 	    <para>
               <!--
-	      Valid options are
-	      <option>x86</option>,
-	      <option>i686</option>,
-	      <option>x86_64</option>,
-	      <option>amd64</option>
+              Some valid options are
+              <option>x86</option>,
+              <option>i686</option>,
+              <option>x86_64</option>,
+              <option>amd64</option>
               -->
-              有効なオプションは以下です。
-	      <option>x86</option>,
-	      <option>i686</option>,
-	      <option>x86_64</option>,
-	      <option>amd64</option>
-	    </para>
-	  </listitem>
-	</varlistentry>
+              有効なオプションには以下のようなものがあります。
+              <option>x86</option>,
+              <option>i686</option>,
+              <option>x86_64</option>,
+              <option>amd64</option>
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
 
     </refsect2>
@@ -186,10 +218,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <title><!-- Hostname -->ホスト名</title>
       <para>
         <!--
-	The utsname section defines the hostname to be set for the
-	container. That means the container can set its own hostname
-	without changing the one from the system. That makes the
-	hostname private for the container.
+        The utsname section defines the hostname to be set for the container.
+        That means the container can set its own hostname without changing the
+        one from the system. That makes the hostname private for the container.
         -->
         utsname セクションは、コンテナに設定されるホスト名を定義します。
         コンテナは、システムのホスト名を変えることなく、自身のホスト名を持つ事が可能です。
@@ -215,17 +246,15 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <refsect2>
       <title><!-- Halt signal -->クリーンなシャットダウン時のシグナル</title>
       <para>
-        <!--
-        Allows one to specify signal name or number, sent by lxc-stop to the
-        container's init process to cleanly shutdown the container. Different
-        init systems could use different signals to perform clean shutdown
-        sequence. This option allows the signal to be specified in kill(1)
-        fashion, e.g. SIGPWR, SIGRTMIN+14, SIGRTMAX-10 or plain number. The
-        default signal is SIGPWR.
-          -->
-        lxc-stop がコンテナをクリーンにシャットダウンするためにコンテナの init プロセスに送るシグナル名か番号を指定できます。
-        init システムによって、クリーンなシャットダウンを行うために使うシグナルは異なります。
-        このオプションではシグナルとして kill(1) で使う形式を指定することができます。
+	<!--
+        Allows one to specify signal name or number sent to the container's
+        init process to cleanly shutdown the container. Different init systems
+        could use different signals to perform clean shutdown sequence. This
+        option allows the signal to be specified in kill(1) fashion, e.g.
+        SIGPWR, SIGRTMIN+14, SIGRTMAX-10 or plain number. The default signal is
+        SIGPWR.
+	  -->
+        コンテナをクリーンにシャットダウンするためにコンテナの init プロセスに送るシグナル名か番号を指定できます。init システムによって、クリーンなシャットダウンを行うために使うシグナルは異なります。このオプションではシグナルとして kill(1) で使う形式を指定できます。
         例えば SIGKILL, SIGRTMIN+14, SIGRTMAX-10 のような形式、もしくは数字を指定します。デフォルトのシグナルは SIGPWR です。
       </para>
       <variablelist>
@@ -249,13 +278,12 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <title>リブート時のシグナル <!-- Reboot signal --></title>
       <para>
         <!--
-        Allows one to specify signal name or number, sent by lxc-stop to
-        reboot the container. This option allows signal to be specified in
-        kill(1) fashion, e.g. SIGTERM, SIGRTMIN+14, SIGRTMAX-10 or plain number.
-        The default signal is SIGINT.
+        Allows one to specify signal name or number to reboot the container.
+        This option allows signal to be specified in kill(1) fashion, e.g.
+        SIGTERM, SIGRTMIN+14, SIGRTMAX-10 or plain number. The default signal
+        is SIGINT.
           -->
-        lxc-stop がコンテナをリブートするために送るシグナル名か番号を指定できます。
-        このオプションではシグナルとして kill(1) で使う形式を指定することができます。
+        コンテナをリブートするために送るシグナル名か番号を指定できます。このオプションではシグナルとして kill(1) で使う形式を指定できます。
         例えば SIGKILL, SIGRTMIN+14, SIGRTMAX-10 のような形式、もしくは数字を指定します。デフォルトのシグナルは SIGINT です。
           </para>
           <variablelist>
@@ -279,13 +307,12 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <title><!-- Stop signal -->強制停止時のシグナル</title>
       <para>
         <!--
-        Allows one to specify signal name or number, sent by lxc-stop to forcibly
-        shutdown the container. This option allows signal to be specified in
-        kill(1) fashion, e.g. SIGKILL, SIGRTMIN+14, SIGRTMAX-10 or plain number.
-        The default signal is SIGKILL.
+        Allows one to specify signal name or number to forcibly shutdown the
+        container. This option allows signal to be specified in kill(1) fashion,
+        e.g. SIGKILL, SIGRTMIN+14, SIGRTMAX-10 or plain number.  The default
+        signal is SIGKILL.
           -->
-        lxc-stop がコンテナを強制的にシャットダウンするために送るシグナル名か番号を指定することができます。
-        このオプションではシグナルとして kill(1) で使う形式を指定することができます。
+        コンテナを強制的にシャットダウンするために送るシグナル名か番号を指定できます。このオプションではシグナルとして kill(1) で使う形式を指定できます。
         例えば SIGKILL, SIGRTMIN+14, SIGRTMAX-10 のような形式、もしくは数字を指定します。デフォルトのシグナルは SIGKILL です。
       </para>
       <variablelist>
@@ -339,20 +366,17 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <refsect2>
       <title><!-- Init ID -->Init が使う ID</title>
       <para>
-        <!--
-        Sets the UID/GID to use for the init system, and subsequent command, executed by lxc-execute.
-        -->
-        lxc-execute が実行するコンテナの init と、その後に起動するコマンドが使用する UID/GID を設定します。
+	<!--
+        Sets the UID/GID to use for the init system, and subsequent commands.
+        Note that using a non-root uid when booting a system container will
+        likely not work due to missing privileges. Setting the UID/GID is mostly
+        useful when running application container.
 
-        <!--
-        These options are only used when lxc-execute is started in a private user namespace.
-        -->
-        このオプションは lxc-execute がユーザ名前空間内で起動するときのみ使われます。
-
-        <!--
         Defaults to: UID(0), GID(0)
-        -->
-        デフォルト値は UID(0), GID(0) です。
+	  -->
+	init と後続のコマンドが使う UID/GID を設定します。システムコンテナを起動するのに非 root な UID を使うと、特権がないために動作しないでしょう。UID/GID の指定は、通常はアプリケーションコンテナの動作の際に役に立ちます。
+
+	デフォルト値: UID(0)、GID(0)
       </para>
       <variablelist>
         <varlistentry>
@@ -361,10 +385,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           </term>
           <listitem>
             <para>
-              <!--
-              UID to use within a private user namesapce for init.
-                -->
-              ユーザ名前空間内で init が使う UID です。
+	      <!--
+	      UID to use for init.
+	      -->
+              init が使う UID です。
             </para>
           </listitem>
         </varlistentry>
@@ -375,9 +399,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <listitem>
             <para>
               <!--
-              GID to use within a private user namesapce for init.
+              GID to use for init.
                 -->
-              ユーザ名前空間内で init が使う GID です。
+              init が使う GID です。
             </para>
           </listitem>
         </varlistentry>
@@ -444,25 +468,28 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         </varlistentry>
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.type</option>
+            <option>lxc.network.[i].type</option>
 	  </term>
 	  <listitem>
-	    <para>
-              <!--
-	      specify what kind of network virtualization to be used
-	      for the container. Each time
-	      a <option>lxc.network.type</option> field is found a new
-	      round of network configuration begins. In this way,
-	      several network virtualization types can be specified
-	      for the same container, as well as assigning several
-	      network interfaces for one container. The different
-	      virtualization types can sbe:
-              -->
-              コンテナがどの種類のネットワーク仮想化を使うかを指定します。
-              一つのネットワークの設定ごとに <option>lxc.network.type</option> フィールドを指定します。
-              このように、一つのコンテナに複数のネットワークインターフェースを割り当てることができるだけでなく、同じコンテナに対して複数のネットワーク仮想化の種類を指定することが出来ます。
-              仮想化の種類は以下の値を取る事が出来ます:
-	    </para>
+            <para>
+	      <!--
+              specify what kind of network virtualization to be used
+              for the container.
+              Multiple networks can be specified by using an additional index
+              <option>i</option>
+              after all <option>lxc.network.*</option> keys. For example,
+              <option>lxc.network.0.type = veth</option> and
+              <option>lxc.network.1.type = veth</option> specify two different
+              networks of the same type. All keys sharing the same index
+              <option>i</option> will be treated as belonging to the same
+              network. For example, <option>lxc.network.0.link = br0</option>
+              will belong to <option>lxc.network.0.type</option>.
+              Currently, the different virtualization types can be:
+	      -->
+	      コンテナがどの種類のネットワーク仮想化を使うかを指定します。すべての <option>lxc.network.*</option> キーに、追加のインデックス <option>i</option> を使うと、複数のネットワークを指定できます。例えば、<option>lxc.network.0.type = veth</option> と <option>lxc.network.1.type = veth</option> は、同じタイプの異なるネットワークを 2 つ指定します。
+	      同じインデックスを指定したキーはすべて同じネットワークの指定になります。例えば、<option>lxc.network.0.link = br0</option> は <option>lxc.network.0.type</option> と同じネットワークの設定になります。
+	      現時点では、以下のネットワーク仮想化のタイプが使えます:
+            </para>
 
 	    <para>
               <!--
@@ -591,13 +618,12 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.flags</option>
+	    <option>lxc.network.[i].flags</option>
 	  </term>
 	  <listitem>
 	    <para>
               <!--
-	      specify an action to do for the
-	      network.
+              Specify an action to do for the network.
               -->
               ネットワークに対して行うアクションを指定します。
 	    </para>
@@ -613,13 +639,12 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.link</option>
+	    <option>lxc.network.[i].link</option>
 	  </term>
 	  <listitem>
 	    <para>
               <!--
-	      specify the interface to be used for real network
-	      traffic.
+              Specify the interface to be used for real network traffic.
               -->
               実際のネットワークトラフィックに使うインターフェースを指定します。
 	    </para>
@@ -628,12 +653,12 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.mtu</option>
+	    <option>lxc.network.[i].mtu</option>
 	  </term>
 	  <listitem>
 	    <para>
               <!--
-	      specify the maximum transfer unit for this interface.
+              Specify the maximum transfer unit for this interface.
               -->
               インターフェースに対する MTU を指定します。
 	    </para>
@@ -642,77 +667,64 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.name</option>
+	    <option>lxc.network.[i].name</option>
 	  </term>
 	  <listitem>
 	    <para>
               <!--
-	      the interface name is dynamically allocated, but if
-	      another name is needed because the configuration files
-	      being used by the container use a generic name,
-	      eg. eth0, this option will rename the interface in the
-	      container.
+              The interface name is dynamically allocated, but if another name
+              is needed because the configuration files being used by the
+              container use a generic name, eg. eth0, this option will rename
+              the interface in the container.
               -->
-              インターフェース名は動的に割り当てられます。
-              しかし、もしコンテナが使用する設定ファイルが一般的な名前を使用するために、他の特定の名前が必要であれば (例えば eth0 など)、コンテナ内のインターフェースは、このオプションで指定した名前にリネームされます。
+              インターフェース名は動的に割り当てられます。しかし、もしコンテナが使用する設定ファイルが一般的な名前を使用するために、他の特定の名前が必要であれば (例えば eth0 など)、コンテナ内のインターフェースは、このオプションで指定した名前にリネームされます。
 	    </para>
 	  </listitem>
 	</varlistentry>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.hwaddr</option>
+	    <option>lxc.network.[i].hwaddr</option>
 	  </term>
 	  <listitem>
 	    <para>
               <!--
-	      the interface mac address is dynamically allocated by
-	      default to the virtual interface, but in some cases,
-	      this is needed to resolve a mac address conflict or to
-	      always have the same link-local ipv6 address.
-	      Any "x" in address will be replaced by random value,
-	      this allows setting hwaddr templates.
+              The interface mac address is dynamically allocated by default to
+              the virtual interface, but in some cases, this is needed to
+              resolve a mac address conflict or to always have the same
+              link-local ipv6 address.  Any "x" in address will be replaced by
+              random value, this allows setting hwaddr templates.
               -->
-              仮想インターフェースの MAC アドレスは、デフォルトでは動的に割り当てられます。
-              しかし、MAC アドレスの衝突や、リンクローカルIPv6 アドレスを常に同じにした場合などは、このオプションが必要です。
-              アドレス中の "x" という文字は、ランダムな値に置き換えられます。
-              これによりテンプレートに hwaddr を設定することが可能になります。
+              仮想インターフェースの MAC アドレスは、デフォルトでは動的に割り当てられます。しかし、MAC アドレスの衝突や、リンクローカルIPv6 アドレスを常に同じにした場合などは、このオプションが必要です。アドレス中の "x" という文字は、ランダムな値に置き換えられます。これによりテンプレートに hwaddr を設定することが可能になります。
 	    </para>
 	  </listitem>
 	</varlistentry>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.ipv4</option>
+	    <option>lxc.network.[i].ipv4</option>
 	  </term>
 	  <listitem>
 	    <para>
               <!--
-	      specify the ipv4 address to assign to the virtualized
-	      interface. Several lines specify several ipv4 addresses.
-	      The address is in format x.y.z.t/m,
-	      eg. 192.168.1.123/24.The broadcast address should be
-	      specified on the same line, right after the ipv4
-	      address.
+              Specify the ipv4 address to assign to the virtualized interface.
+              Several lines specify several ipv4 addresses. The address is in
+              format x.y.z.t/m, eg. 192.168.1.123/24.
               -->
-              仮想インターフェースに割り当てる ipv4 アドレスを指定します。
-              複数行により複数の ipv4 アドレスを指定します。
-              このアドレスは x.y.z.t/m というフォーマットで指定します。
-              例えば、192.168.1.123/24。ブロードキャストアドレスも同じ行の ipv4 アドレスのすぐ後で指定しなくてはなりません。
+              仮想インターフェースに割り当てる ipv4 アドレスを指定します。複数行により複数の ipv4 アドレスを指定します。このアドレスは x.y.z.t/m というフォーマットで指定します。例) 192.168.1.123/24
 	    </para>
 	  </listitem>
 	</varlistentry>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.ipv4.gateway</option>
+	    <option>lxc.network.[i].ipv4.gateway</option>
 	  </term>
 	  <listitem>
 	    <para>
               <!--
 	      specify the ipv4 address to use as the gateway inside the
-	      container. The address is in format x.y.z.t, eg.
-	      192.168.1.123.
+	      container. The address is in format x.y.z.t, eg. 192.168.1.123.
 
 	      Can also have the special value <option>auto</option>,
 	      which means to take the primary address from the bridge
@@ -722,13 +734,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	      using the <option>veth</option> and
 	      <option>macvlan</option> network types.
               -->
-              コンテナでゲートウェイとして使う IPv4 アドレスを指定します。
-              アドレスは x.y.z.t というフォーマットです。
-              例えば、192.168.1.123。
-
-              <option>auto</option> という特別な値を記述する事も可能です。
-              これは (<option>lxc.network.link</option> で指定した) ブリッジインターフェースの最初のアドレスを使用し、それをゲートウェイに使うという意味になります。
-              <option>auto</option> はネットワークタイプとして <option>veth</option> と <option>macvlan</option> を指定している時だけ有効となります。
+              コンテナでゲートウェイとして使う IPv4 アドレスを指定します。アドレスは x.y.z.t というフォーマットです。例) 192.168.1.123
+              <option>auto</option> という特別な値を指定できます。これは (<option>lxc.network.link</option> で指定した) ブリッジインターフェースの最初のアドレスを使用し、それをゲートウェイに使うという意味になります。<option>auto</option> はネットワークタイプとして <option>veth</option> と <option>macvlan</option> を指定している時だけ有効となります。
 	    </para>
 	  </listitem>
 	</varlistentry>
@@ -736,34 +743,30 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.ipv6</option>
+	    <option>lxc.network.[i].ipv6</option>
 	  </term>
 	  <listitem>
 	    <para>
               <!--
-	      specify the ipv6 address to assign to the virtualized
-	      interface. Several lines specify several ipv6 addresses.
-	      The address is in format x::y/m,
-	      eg. 2003:db8:1:0:214:1234:fe0b:3596/64
+              Specify the ipv6 address to assign to the virtualized
+              interface. Several lines specify several ipv6 addresses. The
+              address is in format x::y/m, eg.
+              2003:db8:1:0:214:1234:fe0b:3596/64
               -->
-              仮想インターフェースに割り当てる ipv6 アドレスを指定します。
-              複数行により複数の ipv6 アドレスを指定します。
-              このアドレスは x::y/m というフォーマットで指定します。
-              例えば、2003:db8:1:0:214:1234:fe0b:3596/64。
+              仮想インターフェースに割り当てる ipv6 アドレスを指定します。複数行により複数の ipv6 アドレスを指定します。このアドレスは x::y/m というフォーマットで指定します。例) 2003:db8:1:0:214:1234:fe0b:3596/64
 	    </para>
 	  </listitem>
 	</varlistentry>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.ipv6.gateway</option>
+	    <option>lxc.network.[i].ipv6.gateway</option>
 	  </term>
 	  <listitem>
 	    <para>
               <!--
-	      specify the ipv6 address to use as the gateway inside the
-	      container. The address is in format x::y,
-	      eg. 2003:db8:1:0::1
+              Specify the ipv6 address to use as the gateway inside the
+              container. The address is in format x::y, eg. 2003:db8:1:0::1
 
 	      Can also have the special value <option>auto</option>,
 	      which means to take the primary address from the bridge
@@ -773,19 +776,15 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	      using the <option>veth</option> and
 	      <option>macvlan</option> network types.
               -->
-              コンテナでゲートウェイとして使う IPv6 アドレスを指定します。
-              アドレスは x::y というフォーマットです。例えば、2003:db8:1:0::1。
-
-              <option>auto</option> という特別な値を記述する事も可能です。
-              これは (<option>lxc.network.link</option> で指定した) ブリッジインターフェースの最初のアドレスを使用し、それをゲートウェイに使うという意味になります。
-              <option>auto</option> はネットワークタイプとして <option>veth</option> と <option>macvlan</option> を指定している時だけ有効となります。
+              コンテナでゲートウェイとして使う IPv6 アドレスを指定します。アドレスは x::y というフォーマットです。例) 2003:db8:1:0::1
+              <option>auto</option> という特別な値を記述する事も可能です。これは (<option>lxc.network.link</option> で指定した) ブリッジインターフェースの最初のアドレスを使用し、それをゲートウェイに使うという意味になります。<option>auto</option> はネットワークタイプとして <option>veth</option> と <option>macvlan</option> を指定している時だけ有効となります。
 	    </para>
 	  </listitem>
 	</varlistentry>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.script.up</option>
+	    <option>lxc.network.[i].script.up</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -801,10 +800,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	      type, other arguments may be passed:
 	      veth/macvlan/phys. And finally (host-sided) device name.
               -->
-              ホスト側から使われる、ネットワークの作成と設定が済んだ後に実行するスクリプトを指定します。
-              以下の引数がスクリプトに渡されます: コンテナ名、設定セクション名(net)。
-              その後の引数はスクリプトのフックで使われる設定セクションに依存します。
-              以下がネットワークシステムによって使われます: 実行コンテキスト (up)、ネットワークのタイプ (empty/veth/macvlan/phys)
+              ホスト側から使われる、ネットワークの作成と設定が済んだ後に実行するスクリプトを指定します。以下の引数がスクリプトに渡されます: コンテナ名、設定セクション名(net)。
+	      その後の引数はスクリプトのフックで使われる設定セクションに依存します。以下がネットワークシステムによって使われます: 実行コンテキスト (up)、ネットワークのタイプ (empty/veth/macvlan/phys)
               ネットワークのタイプによっては、更に別の引数が渡されるかもしれません: veth/macvlan/phys の場合 (ホスト側の) デバイス名
             </para>
 	    <para>
@@ -813,16 +810,14 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	      Standard error is not logged, but can be captured by the
 	      hook redirecting its standard error to standard output.
               -->
-              スクリプトからの標準出力は debug レベルでロギングされます。
-              標準エラー出力はロギングされません。
-              しかし、フックの標準エラー出力を標準出力にリダイレクトすることにより保存することは可能です。
+              スクリプトからの標準出力は debug レベルでロギングされます。標準エラー出力はロギングされません。しかし、フックの標準エラー出力を標準出力にリダイレクトすることにより保存することは可能です。
 	    </para>
 	  </listitem>
 	</varlistentry>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.script.down</option>
+	    <option>lxc.network.[i].script.down</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -838,10 +833,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	      type, other arguments may be passed:
 	      veth/macvlan/phys. And finally (host-sided) device name.
               -->
-              ホスト側から使われる、ネットワークを破壊する前に実行するスクリプトを指定します。
-              以下の引数がスクリプトに渡されます: コンテナ名、設定セクション名(net)。
-              その後の引数はスクリプトのフックで使われる設定セクションに依存します。
-              以下がネットワークシステムによって使われます: 実行コンテキスト (up)、ネットワークのタイプ (empty/veth/macvlan/phys)。
+              ホスト側から使われる、ネットワークを破壊する前に実行するスクリプトを指定します。以下の引数がスクリプトに渡されます: コンテナ名、設定セクション名(net)。
+              その後の引数はスクリプトのフックで使われる設定セクションに依存します。以下がネットワークシステムによって使われます: 実行コンテキスト (up)、ネットワークのタイプ (empty/veth/macvlan/phys)。
               ネットワークのタイプによっては、更に別の引数が渡されるかもしれません: veth/macvlan/phys。そして最後に (ホスト側の) デバイス名が渡されます。
             </para>
 	    <para>
@@ -850,9 +843,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	      Standard error is not logged, but can be captured by the
 	      hook redirecting its standard error to standard output.
               -->
-              スクリプトからの標準出力は debug レベルでロギングされます。
-              標準エラー出力はロギングされません。
-              しかし、フックの標準エラー出力を標準出力にリダイレクトすることにより保存することは可能です。
+              スクリプトからの標準出力は debug レベルでロギングされます。標準エラー出力はロギングされません。しかし、フックの標準エラー出力を標準出力にリダイレクトすることにより保存することは可能です。
 	    </para>
 	  </listitem>
 	</varlistentry>
@@ -1134,9 +1125,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               マウント情報の書かれた <filename>fstab</filename> フォーマットで書かれたファイルの場所を指定します。
               マウントする場所は相対バスで書くことができます。そして、ほとんどの場合にコンテナの root からの相対パスとなるはずです。例えば、以下のように書きます。
 	     </para>
-<screen>
-proc proc proc nodev,noexec,nosuid 0 0
-</screen>
+             <programlisting>
+             proc proc proc nodev,noexec,nosuid 0 0
+             </programlisting>
 	     <para>
                <!--
 	      Will mount a proc filesystem under the container's /proc,
@@ -1144,8 +1135,7 @@ proc proc proc nodev,noexec,nosuid 0 0
 	      is resilient to block device backed filesystems as well as
 	      container cloning.
               -->
-               この例は、root ファイルシステムがどこにあっても、コンテナの /proc 以下に proc ファイルシステムをマウントします。
-               これは、ブロックデバイスがバックエンドのファイルシステムだけでなく、コンテナのクローンにも柔軟に対応できます。
+               この例は、root ファイルシステムがどこにあっても、コンテナの /proc 以下に proc ファイルシステムをマウントします。これは、ブロックデバイスがバックエンドのファイルシステムだけでなく、コンテナのクローンにも柔軟に対応できます。
 	     </para>
 	     <para>
               <!--
@@ -1829,11 +1819,13 @@ proc proc proc nodev,noexec,nosuid 0 0
        -->
         以下にブラックリストのポリシーの例を示します。これは mknod 以外の全てのシステムコールが許可され、mknod が呼ばれると、何もせずに単に 0(成功) を返します。
       </para>
-<screen>
-2
-blacklist
-mknod errno 0
-</screen>
+
+      <programlisting>
+      2
+      blacklist
+      mknod errno 0
+      </programlisting>
+
       <variablelist>
 	<varlistentry>
 	  <term>
@@ -2631,37 +2623,37 @@ mknod errno 0
         この例は、control group を使って、複雑なネットワークスタックを作成し、新しいホスト名を指定し、いくつかの場所をマウントし、ルートファイルシステムを変更するような複雑な設定を示します。
       </para>
       <programlisting>
-	lxc.utsname = complex
-	lxc.network.type = veth
-	lxc.network.flags = up
-	lxc.network.link = br0
-	lxc.network.hwaddr = 4a:49:43:49:79:bf
-	lxc.network.ipv4 = 10.2.3.5/24 10.2.3.255
-	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
-	lxc.network.ipv6 = 2003:db8:1:0:214:5432:feab:3588
-	lxc.network.type = macvlan
-	lxc.network.flags = up
-	lxc.network.link = eth0
-	lxc.network.hwaddr = 4a:49:43:49:79:bd
-	lxc.network.ipv4 = 10.2.3.4/24
-	lxc.network.ipv4 = 192.168.10.125/24
-	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3596
-	lxc.network.type = phys
-	lxc.network.flags = up
-	lxc.network.link = dummy0
-	lxc.network.hwaddr = 4a:49:43:49:79:ff
-	lxc.network.ipv4 = 10.2.3.6/24
-	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3297
-	lxc.cgroup.cpuset.cpus = 0,1
-	lxc.cgroup.cpu.shares = 1234
-	lxc.cgroup.devices.deny = a
-	lxc.cgroup.devices.allow = c 1:3 rw
-	lxc.cgroup.devices.allow = b 8:0 rw
-	lxc.mount = /etc/fstab.complex
-	lxc.mount.entry = /lib /root/myrootfs/lib none ro,bind 0 0
-	lxc.rootfs = /mnt/rootfs.complex
-	lxc.cap.drop = sys_module mknod setuid net_raw
-	lxc.cap.drop = mac_override
+        lxc.utsname = complex
+        lxc.network.0.type = veth
+        lxc.network.0.flags = up
+        lxc.network.0.link = br0
+        lxc.network.0.hwaddr = 4a:49:43:49:79:bf
+        lxc.network.0.ipv4 = 10.2.3.5/24 10.2.3.255
+        lxc.network.0.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
+        lxc.network.0.ipv6 = 2003:db8:1:0:214:5432:feab:3588
+        lxc.network.1.type = macvlan
+        lxc.network.1.flags = up
+        lxc.network.1.link = eth0
+        lxc.network.1.hwaddr = 4a:49:43:49:79:bd
+        lxc.network.1.ipv4 = 10.2.3.4/24
+        lxc.network.1.ipv4 = 192.168.10.125/24
+        lxc.network.1.ipv6 = 2003:db8:1:0:214:1234:fe0b:3596
+        lxc.network.2.type = phys
+        lxc.network.2.flags = up
+        lxc.network.2.link = dummy0
+        lxc.network.2.hwaddr = 4a:49:43:49:79:ff
+        lxc.network.2.ipv4 = 10.2.3.6/24
+        lxc.network.2.ipv6 = 2003:db8:1:0:214:1234:fe0b:3297
+        lxc.cgroup.cpuset.cpus = 0,1
+        lxc.cgroup.cpu.shares = 1234
+        lxc.cgroup.devices.deny = a
+        lxc.cgroup.devices.allow = c 1:3 rw
+        lxc.cgroup.devices.allow = b 8:0 rw
+        lxc.mount = /etc/fstab.complex
+        lxc.mount.entry = /lib /root/myrootfs/lib none ro,bind 0 0
+        lxc.rootfs = /mnt/rootfs.complex
+        lxc.cap.drop = sys_module mknod setuid net_raw
+        lxc.cap.drop = mac_override
       </programlisting>
     </refsect2>
 
