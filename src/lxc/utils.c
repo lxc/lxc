@@ -1923,12 +1923,14 @@ bool task_blocking_signal(pid_t pid, int signal)
 		return bret;
 
 	while (getline(&line, &n, f) != -1) {
-		if (!strncmp(line, "SigBlk:\t", 8))
-			if (sscanf(line + 8, "%lx", &sigblk) != 1)
-				goto out;
+		if (strncmp(line, "SigBlk:\t", 8))
+			continue;
+
+		if (sscanf(line + 8, "%lx", &sigblk) != 1)
+			goto out;
 	}
 
-	if (sigblk & (1 << (signal - 1)))
+	if (sigblk & (1LU << (signal - 1)))
 		bret = true;
 
 out:
