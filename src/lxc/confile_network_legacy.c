@@ -229,13 +229,18 @@ static int get_network_netdev_idx(const char *key)
 	int ret, idx;
 
 	if (*key < '0' || *key > '9')
-		return -1;
+		return EINVAL;
 
 	ret = sscanf(key, "%d", &idx);
 	if (ret != 1)
-		return -1;
+		return EINVAL;
 
-	return idx;
+	/* Since we've implemented the new network parser legacy networks are
+	 * recorded using a negative index starting from -1. To preserve the old
+	 * behavior we need this function to return the appropriate negative
+	 * index.
+	 */
+	return -(++idx);
 }
 
 /*
@@ -247,21 +252,19 @@ static struct lxc_netdev *get_netdev_from_key(const char *key,
 {
 	int idx;
 	struct lxc_list *it;
-	int i = 0;
 	struct lxc_netdev *netdev = NULL;
 
 	idx = get_network_netdev_idx(key);
-	if (idx == -1)
+	if (idx == EINVAL)
 		return NULL;
 
 	lxc_list_for_each(it, network) {
-		if (idx == i++) {
-			netdev = it->elem;
-			break;
-		}
+		netdev = it->elem;
+		if (idx == netdev->idx)
+			return netdev;
 	}
 
-	return netdev;
+	return NULL;
 }
 
 int lxc_list_nicconfigs_legacy(struct lxc_conf *c, const char *key, char *retv,
@@ -323,7 +326,7 @@ static struct lxc_netdev *network_netdev(const char *key, const char *value,
 		return NULL;
 	}
 
-	if (get_network_netdev_idx(key + 12) == -1)
+	if (get_network_netdev_idx(key + 12) == EINVAL)
 		netdev = lxc_list_last_elem(network);
 	else
 		netdev = get_netdev_from_key(key + 12, network);
