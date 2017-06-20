@@ -45,6 +45,7 @@
 #include "parse.h"
 #include "config.h"
 #include "confile.h"
+#include "confile_network_legacy.h"
 #include "confile_utils.h"
 #include "utils.h"
 #include "log.h"
@@ -195,113 +196,106 @@ static int get_config_hooks(const char *, char *, int, struct lxc_conf *,
 			    void *);
 static int clr_config_hooks(const char *, struct lxc_conf *, void *);
 
-static int set_config_network_type(const char *, const char *,
-				   struct lxc_conf *, void *);
-static int get_config_network_type(const char *, char *, int, struct lxc_conf *,
-				   void *);
-static int clr_config_network_type(const char *, struct lxc_conf *, void *);
+static int set_config_net_type(const char *, const char *, struct lxc_conf *,
+			       void *);
+static int get_config_net_type(const char *, char *, int, struct lxc_conf *,
+			       void *);
+static int clr_config_net_type(const char *, struct lxc_conf *, void *);
 
-static int set_config_network_flags(const char *, const char *,
+static int set_config_net_flags(const char *, const char *, struct lxc_conf *,
+				void *);
+static int get_config_net_flags(const char *, char *, int, struct lxc_conf *,
+				void *);
+static int clr_config_net_flags(const char *, struct lxc_conf *, void *);
+
+static int set_config_net_link(const char *, const char *, struct lxc_conf *,
+			       void *);
+static int get_config_net_link(const char *, char *, int, struct lxc_conf *,
+			       void *);
+static int clr_config_net_link(const char *, struct lxc_conf *, void *);
+
+static int set_config_net_name(const char *, const char *, struct lxc_conf *,
+			       void *);
+static int get_config_net_name(const char *, char *, int, struct lxc_conf *,
+			       void *);
+static int clr_config_net_name(const char *, struct lxc_conf *, void *);
+
+static int set_config_net_veth_pair(const char *, const char *,
 				    struct lxc_conf *, void *);
-static int get_config_network_flags(const char *, char *, int,
+static int get_config_net_veth_pair(const char *, char *, int,
 				    struct lxc_conf *, void *);
-static int clr_config_network_flags(const char *, struct lxc_conf *, void *);
+static int clr_config_net_veth_pair(const char *, struct lxc_conf *, void *);
 
-static int set_config_network_link(const char *, const char *,
-				   struct lxc_conf *, void *);
-static int get_config_network_link(const char *, char *, int, struct lxc_conf *,
-				   void *);
-static int clr_config_network_link(const char *, struct lxc_conf *, void *);
+static int set_config_net_macvlan_mode(const char *, const char *,
+				       struct lxc_conf *, void *);
+static int get_config_net_macvlan_mode(const char *, char *, int,
+				       struct lxc_conf *, void *);
+static int clr_config_net_macvlan_mode(const char *, struct lxc_conf *, void *);
 
-static int set_config_network_name(const char *, const char *,
-				   struct lxc_conf *, void *);
-static int get_config_network_name(const char *, char *, int, struct lxc_conf *,
-				   void *);
-static int clr_config_network_name(const char *, struct lxc_conf *, void *);
+static int set_config_net_hwaddr(const char *, const char *, struct lxc_conf *,
+				 void *);
+static int get_config_net_hwaddr(const char *, char *, int, struct lxc_conf *,
+				 void *);
+static int clr_config_net_hwaddr(const char *, struct lxc_conf *, void *);
 
-static int set_config_network_veth_pair(const char *, const char *,
-					struct lxc_conf *, void *);
-static int get_config_network_veth_pair(const char *, char *, int,
-					struct lxc_conf *, void *);
-static int clr_config_network_veth_pair(const char *, struct lxc_conf *,
-					void *);
-
-static int set_config_network_macvlan_mode(const char *, const char *,
-					   struct lxc_conf *, void *);
-static int get_config_network_macvlan_mode(const char *, char *, int,
-					   struct lxc_conf *, void *);
-static int clr_config_network_macvlan_mode(const char *, struct lxc_conf *,
-					   void *);
-
-static int set_config_network_hwaddr(const char *, const char *,
-				     struct lxc_conf *, void *);
-static int get_config_network_hwaddr(const char *, char *, int,
-				     struct lxc_conf *, void *);
-static int clr_config_network_hwaddr(const char *, struct lxc_conf *, void *);
-
-static int set_config_network_vlan_id(const char *, const char *,
-				      struct lxc_conf *, void *);
-static int get_config_network_vlan_id(const char *, char *, int,
-				      struct lxc_conf *, void *);
-static int clr_config_network_vlan_id(const char *, struct lxc_conf *, void *);
-
-static int set_config_network_mtu(const char *, const char *, struct lxc_conf *,
+static int set_config_net_vlan_id(const char *, const char *, struct lxc_conf *,
 				  void *);
-static int get_config_network_mtu(const char *, char *, int, struct lxc_conf *,
+static int get_config_net_vlan_id(const char *, char *, int, struct lxc_conf *,
 				  void *);
-static int clr_config_network_mtu(const char *, struct lxc_conf *, void *);
+static int clr_config_net_vlan_id(const char *, struct lxc_conf *, void *);
 
-static int set_config_network_ipv4(const char *, const char *,
-				   struct lxc_conf *, void *);
-static int get_config_network_ipv4(const char *, char *, int, struct lxc_conf *,
-				   void *);
-static int clr_config_network_ipv4(const char *, struct lxc_conf *, void *);
-
-static int set_config_network_ipv4_gateway(const char *, const char *,
-					   struct lxc_conf *, void *);
-static int get_config_network_ipv4_gateway(const char *, char *, int,
-					   struct lxc_conf *, void *);
-static int clr_config_network_ipv4_gateway(const char *, struct lxc_conf *,
-					   void *);
-
-static int set_config_network_script_up(const char *, const char *,
-					struct lxc_conf *, void *);
-static int get_config_network_script_up(const char *, char *, int,
-					struct lxc_conf *, void *);
-static int clr_config_network_script_up(const char *, struct lxc_conf *,
-					void *);
-
-static int set_config_network_script_down(const char *, const char *,
-					  struct lxc_conf *, void *);
-static int get_config_network_script_down(const char *, char *, int,
-					  struct lxc_conf *, void *);
-static int clr_config_network_script_down(const char *, struct lxc_conf *,
-					  void *);
-
-static int set_config_network_ipv6(const char *, const char *,
-				   struct lxc_conf *, void *);
-static int get_config_network_ipv6(const char *, char *, int, struct lxc_conf *,
-				   void *);
-static int clr_config_network_ipv6(const char *, struct lxc_conf *, void *);
-
-static int set_config_network_ipv6_gateway(const char *, const char *,
-					   struct lxc_conf *, void *);
-static int get_config_network_ipv6_gateway(const char *, char *, int,
-					   struct lxc_conf *, void *);
-static int clr_config_network_ipv6_gateway(const char *, struct lxc_conf *,
-					   void *);
-
-static int set_config_network_nic(const char *, const char *, struct lxc_conf *,
-				  void *);
-static int get_config_network_nic(const char *, char *, int, struct lxc_conf *,
-				  void *);
-static int clr_config_network_nic(const char *, struct lxc_conf *, void *);
-
-static int set_config_network(const char *, const char *, struct lxc_conf *,
+static int set_config_net_mtu(const char *, const char *, struct lxc_conf *,
 			      void *);
-static int get_config_network(const char *, char *, int, struct lxc_conf *,
+static int get_config_net_mtu(const char *, char *, int, struct lxc_conf *,
 			      void *);
-static int clr_config_network(const char *, struct lxc_conf *, void *);
+static int clr_config_net_mtu(const char *, struct lxc_conf *, void *);
+
+static int set_config_net_ipv4(const char *, const char *, struct lxc_conf *,
+			       void *);
+static int get_config_net_ipv4(const char *, char *, int, struct lxc_conf *,
+			       void *);
+static int clr_config_net_ipv4(const char *, struct lxc_conf *, void *);
+
+static int set_config_net_ipv4_gateway(const char *, const char *,
+				       struct lxc_conf *, void *);
+static int get_config_net_ipv4_gateway(const char *, char *, int,
+				       struct lxc_conf *, void *);
+static int clr_config_net_ipv4_gateway(const char *, struct lxc_conf *, void *);
+
+static int set_config_net_script_up(const char *, const char *,
+				    struct lxc_conf *, void *);
+static int get_config_net_script_up(const char *, char *, int,
+				    struct lxc_conf *, void *);
+static int clr_config_net_script_up(const char *, struct lxc_conf *, void *);
+
+static int set_config_net_script_down(const char *, const char *,
+				      struct lxc_conf *, void *);
+static int get_config_net_script_down(const char *, char *, int,
+				      struct lxc_conf *, void *);
+static int clr_config_net_script_down(const char *, struct lxc_conf *, void *);
+
+static int set_config_net_ipv6(const char *, const char *, struct lxc_conf *,
+			       void *);
+static int get_config_net_ipv6(const char *, char *, int, struct lxc_conf *,
+			       void *);
+static int clr_config_net_ipv6(const char *, struct lxc_conf *, void *);
+
+static int set_config_net_ipv6_gateway(const char *, const char *,
+				       struct lxc_conf *, void *);
+static int get_config_net_ipv6_gateway(const char *, char *, int,
+				       struct lxc_conf *, void *);
+static int clr_config_net_ipv6_gateway(const char *, struct lxc_conf *, void *);
+
+static int set_config_net_nic(const char *, const char *, struct lxc_conf *,
+			      void *);
+static int get_config_net_nic(const char *, char *, int, struct lxc_conf *,
+			      void *);
+static int clr_config_net_nic(const char *, struct lxc_conf *, void *);
+
+static int set_config_net(const char *, const char *, struct lxc_conf *,
+			  void *);
+static int get_config_net(const char *, char *, int, struct lxc_conf *, void *);
+static int clr_config_net(const char *, struct lxc_conf *, void *);
 
 static int set_config_cap_drop(const char *, const char *, struct lxc_conf *,
 			       void *);
@@ -430,77 +424,98 @@ static int get_config_limit(const char *, char *, int, struct lxc_conf *,
 static int clr_config_limit(const char *, struct lxc_conf *, void *);
 
 static struct lxc_config_t config[] = {
-	{ "lxc.arch",                 set_config_personality,          get_config_personality,          clr_config_personality,          },
-	{ "lxc.pts",                  set_config_pts,                  get_config_pts,                  clr_config_pts,                  },
-	{ "lxc.tty",                  set_config_tty,                  get_config_tty,                  clr_config_tty,                  },
-	{ "lxc.devttydir",            set_config_ttydir,               get_config_ttydir,               clr_config_ttydir,               },
-	{ "lxc.kmsg",                 set_config_kmsg,                 get_config_kmsg,                 clr_config_kmsg,                 },
-	{ "lxc.aa_profile",           set_config_lsm_aa_profile,       get_config_lsm_aa_profile,       clr_config_lsm_aa_profile,       },
-	{ "lxc.aa_allow_incomplete",  set_config_lsm_aa_incomplete,    get_config_lsm_aa_incomplete,    clr_config_lsm_aa_incomplete,    },
-	{ "lxc.se_context",           set_config_lsm_se_context,       get_config_lsm_se_context,       clr_config_lsm_se_context,       },
-	{ "lxc.cgroup",               set_config_cgroup,               get_config_cgroup,               clr_config_cgroup,               },
-	{ "lxc.id_map",               set_config_idmaps,               get_config_idmaps,               clr_config_idmaps,               },
-	{ "lxc.loglevel",             set_config_loglevel,             get_config_loglevel,             clr_config_loglevel,             },
-	{ "lxc.logfile",              set_config_logfile,              get_config_logfile,              clr_config_logfile,              },
-	{ "lxc.mount.entry",          set_config_mount,                get_config_mount,                clr_config_mount,                },
-	{ "lxc.mount.auto",           set_config_mount_auto,           get_config_mount_auto,           clr_config_mount_auto,           },
-	{ "lxc.mount",                set_config_fstab,	               get_config_fstab,                clr_config_fstab,                },
-	{ "lxc.rootfs.mount",         set_config_rootfs_mount,         get_config_rootfs_mount,         clr_config_rootfs_mount,         },
-	{ "lxc.rootfs.options",       set_config_rootfs_options,       get_config_rootfs_options,       clr_config_rootfs_options,       },
-	{ "lxc.rootfs.backend",       set_config_rootfs_backend,       get_config_rootfs_backend,       clr_config_rootfs_backend,       },
-	{ "lxc.rootfs",               set_config_rootfs,               get_config_rootfs,               clr_config_rootfs,               },
-	{ "lxc.pivotdir",             set_config_pivotdir,             get_config_pivotdir,             clr_config_pivotdir,             },
-	{ "lxc.utsname",              set_config_utsname,              get_config_utsname,              clr_config_utsname,              },
-	{ "lxc.hook.pre-start",       set_config_hooks,                get_config_hooks,                clr_config_hooks,                },
-	{ "lxc.hook.pre-mount",       set_config_hooks,                get_config_hooks,                clr_config_hooks,                },
-	{ "lxc.hook.mount",           set_config_hooks,                get_config_hooks,                clr_config_hooks,                },
-	{ "lxc.hook.autodev",         set_config_hooks,                get_config_hooks,                clr_config_hooks,                },
-	{ "lxc.hook.start",           set_config_hooks,                get_config_hooks,                clr_config_hooks,                },
-	{ "lxc.hook.stop",            set_config_hooks,                get_config_hooks,                clr_config_hooks,                },
-	{ "lxc.hook.post-stop",       set_config_hooks,                get_config_hooks,                clr_config_hooks,                },
-	{ "lxc.hook.clone",           set_config_hooks,                get_config_hooks,                clr_config_hooks,                },
-	{ "lxc.hook.destroy",         set_config_hooks,                get_config_hooks,                clr_config_hooks,                },
-	{ "lxc.hook",                 set_config_hooks,                get_config_hooks,                clr_config_hooks,                },
-	{ "lxc.network.type",         set_config_network_type,         get_config_network_type,         clr_config_network_type,         },
-	{ "lxc.network.flags",        set_config_network_flags,        get_config_network_flags,        clr_config_network_flags,        },
-	{ "lxc.network.link",         set_config_network_link,         get_config_network_link,         clr_config_network_link,         },
-	{ "lxc.network.name",         set_config_network_name,         get_config_network_name,         clr_config_network_name,         },
-	{ "lxc.network.macvlan.mode", set_config_network_macvlan_mode, get_config_network_macvlan_mode, clr_config_network_macvlan_mode, },
-	{ "lxc.network.veth.pair",    set_config_network_veth_pair,    get_config_network_veth_pair,    clr_config_network_veth_pair,    },
-	{ "lxc.network.script.up",    set_config_network_script_up,    get_config_network_script_up,    clr_config_network_script_up,    },
-	{ "lxc.network.script.down",  set_config_network_script_down,  get_config_network_script_down,  clr_config_network_script_down,  },
-	{ "lxc.network.hwaddr",       set_config_network_hwaddr,       get_config_network_hwaddr,       clr_config_network_hwaddr,       },
-	{ "lxc.network.mtu",          set_config_network_mtu,          get_config_network_mtu,          clr_config_network_mtu,          },
-	{ "lxc.network.vlan.id",      set_config_network_vlan_id,      get_config_network_vlan_id,      clr_config_network_vlan_id,      },
-	{ "lxc.network.ipv4.gateway", set_config_network_ipv4_gateway, get_config_network_ipv4_gateway, clr_config_network_ipv4_gateway, },
-	{ "lxc.network.ipv4",         set_config_network_ipv4,         get_config_network_ipv4,         clr_config_network_ipv4,         },
-	{ "lxc.network.ipv6.gateway", set_config_network_ipv6_gateway, get_config_network_ipv6_gateway, clr_config_network_ipv6_gateway, },
-	{ "lxc.network.ipv6",         set_config_network_ipv6,         get_config_network_ipv6,         clr_config_network_ipv6,         },
-	{ "lxc.network.",             set_config_network_nic,          get_config_network_nic,          clr_config_network_nic,          },
-	{ "lxc.network",              set_config_network,              get_config_network,              clr_config_network,              },
-	{ "lxc.cap.drop",             set_config_cap_drop,             get_config_cap_drop,             clr_config_cap_drop,             },
-	{ "lxc.cap.keep",             set_config_cap_keep,             get_config_cap_keep,             clr_config_cap_keep,             },
-	{ "lxc.console.logfile",      set_config_console_logfile,      get_config_console_logfile,      clr_config_console_logfile,      },
-	{ "lxc.console",              set_config_console,              get_config_console,              clr_config_console,              },
-	{ "lxc.seccomp",              set_config_seccomp,              get_config_seccomp,              clr_config_seccomp,              },
-	{ "lxc.include",              set_config_includefiles,         get_config_includefiles,         clr_config_includefiles,         },
-	{ "lxc.autodev",              set_config_autodev,              get_config_autodev,              clr_config_autodev,              },
-	{ "lxc.haltsignal",           set_config_haltsignal,           get_config_haltsignal,           clr_config_haltsignal,           },
-	{ "lxc.rebootsignal",         set_config_rebootsignal,         get_config_rebootsignal,         clr_config_rebootsignal,         },
-	{ "lxc.stopsignal",           set_config_stopsignal,           get_config_stopsignal,           clr_config_stopsignal,           },
-	{ "lxc.start.auto",           set_config_start,                get_config_start,                clr_config_start,                },
-	{ "lxc.start.delay",          set_config_start,                get_config_start,                clr_config_start,                },
-	{ "lxc.start.order",          set_config_start,                get_config_start,                clr_config_start,                },
-	{ "lxc.monitor.unshare",      set_config_monitor,              get_config_monitor,              clr_config_monitor,              },
-	{ "lxc.group",                set_config_group,                get_config_group,                clr_config_group,                },
-	{ "lxc.environment",          set_config_environment,          get_config_environment,          clr_config_environment,          },
-	{ "lxc.init_cmd",             set_config_init_cmd,             get_config_init_cmd,             clr_config_init_cmd,             },
-	{ "lxc.init_uid",             set_config_init_uid,             get_config_init_uid,             clr_config_init_uid,             },
-	{ "lxc.init_gid",             set_config_init_gid,             get_config_init_gid,             clr_config_init_gid,             },
-	{ "lxc.ephemeral",            set_config_ephemeral,            get_config_ephemeral,            clr_config_ephemeral,            },
-	{ "lxc.syslog",               set_config_syslog,               get_config_syslog,               clr_config_syslog,               },
-	{ "lxc.no_new_privs",	      set_config_no_new_privs,         get_config_no_new_privs,         clr_config_no_new_privs,         },
-	{ "lxc.limit",                set_config_limit,                get_config_limit,                clr_config_limit,                },
+	{ "lxc.arch",                 set_config_personality,          get_config_personality,          clr_config_personality,       },
+	{ "lxc.pts",                  set_config_pts,                  get_config_pts,                  clr_config_pts,               },
+	{ "lxc.tty",                  set_config_tty,                  get_config_tty,                  clr_config_tty,               },
+	{ "lxc.devttydir",            set_config_ttydir,               get_config_ttydir,               clr_config_ttydir,            },
+	{ "lxc.kmsg",                 set_config_kmsg,                 get_config_kmsg,                 clr_config_kmsg,              },
+	{ "lxc.aa_profile",           set_config_lsm_aa_profile,       get_config_lsm_aa_profile,       clr_config_lsm_aa_profile,    },
+	{ "lxc.aa_allow_incomplete",  set_config_lsm_aa_incomplete,    get_config_lsm_aa_incomplete,    clr_config_lsm_aa_incomplete, },
+	{ "lxc.se_context",           set_config_lsm_se_context,       get_config_lsm_se_context,       clr_config_lsm_se_context,    },
+	{ "lxc.cgroup",               set_config_cgroup,               get_config_cgroup,               clr_config_cgroup,            },
+	{ "lxc.id_map",               set_config_idmaps,               get_config_idmaps,               clr_config_idmaps,            },
+	{ "lxc.loglevel",             set_config_loglevel,             get_config_loglevel,             clr_config_loglevel,          },
+	{ "lxc.logfile",              set_config_logfile,              get_config_logfile,              clr_config_logfile,           },
+	{ "lxc.mount.entry",          set_config_mount,                get_config_mount,                clr_config_mount,             },
+	{ "lxc.mount.auto",           set_config_mount_auto,           get_config_mount_auto,           clr_config_mount_auto,        },
+	{ "lxc.mount",                set_config_fstab,	               get_config_fstab,                clr_config_fstab,             },
+	{ "lxc.rootfs.mount",         set_config_rootfs_mount,         get_config_rootfs_mount,         clr_config_rootfs_mount,      },
+	{ "lxc.rootfs.options",       set_config_rootfs_options,       get_config_rootfs_options,       clr_config_rootfs_options,    },
+	{ "lxc.rootfs.backend",       set_config_rootfs_backend,       get_config_rootfs_backend,       clr_config_rootfs_backend,    },
+	{ "lxc.rootfs",               set_config_rootfs,               get_config_rootfs,               clr_config_rootfs,            },
+	{ "lxc.pivotdir",             set_config_pivotdir,             get_config_pivotdir,             clr_config_pivotdir,          },
+	{ "lxc.utsname",              set_config_utsname,              get_config_utsname,              clr_config_utsname,           },
+	{ "lxc.hook.pre-start",       set_config_hooks,                get_config_hooks,                clr_config_hooks,             },
+	{ "lxc.hook.pre-mount",       set_config_hooks,                get_config_hooks,                clr_config_hooks,             },
+	{ "lxc.hook.mount",           set_config_hooks,                get_config_hooks,                clr_config_hooks,             },
+	{ "lxc.hook.autodev",         set_config_hooks,                get_config_hooks,                clr_config_hooks,             },
+	{ "lxc.hook.start",           set_config_hooks,                get_config_hooks,                clr_config_hooks,             },
+	{ "lxc.hook.stop",            set_config_hooks,                get_config_hooks,                clr_config_hooks,             },
+	{ "lxc.hook.post-stop",       set_config_hooks,                get_config_hooks,                clr_config_hooks,             },
+	{ "lxc.hook.clone",           set_config_hooks,                get_config_hooks,                clr_config_hooks,             },
+	{ "lxc.hook.destroy",         set_config_hooks,                get_config_hooks,                clr_config_hooks,             },
+	{ "lxc.hook",                 set_config_hooks,                get_config_hooks,                clr_config_hooks,             },
+	/* legacy network keys */
+	{ "lxc.network.type",         set_config_network_legacy_type,         get_config_network_legacy_item,         clr_config_network_legacy_item, },
+	{ "lxc.network.flags",        set_config_network_legacy_flags,        get_config_network_legacy_item,         clr_config_network_legacy_item, },
+	{ "lxc.network.link",         set_config_network_legacy_link,         get_config_network_legacy_item,         clr_config_network_legacy_item, },
+	{ "lxc.network.name",         set_config_network_legacy_name,         get_config_network_legacy_item,         clr_config_network_legacy_item, },
+	{ "lxc.network.macvlan.mode", set_config_network_legacy_macvlan_mode, get_config_network_legacy_item,         clr_config_network_legacy_item, },
+	{ "lxc.network.veth.pair",    set_config_network_legacy_veth_pair,    get_config_network_legacy_item,         clr_config_network_legacy_item, },
+	{ "lxc.network.script.up",    set_config_network_legacy_script_up,    get_config_network_legacy_item,         clr_config_network_legacy_item, },
+	{ "lxc.network.script.down",  set_config_network_legacy_script_down,  get_config_network_legacy_item,         clr_config_network_legacy_item, },
+	{ "lxc.network.hwaddr",       set_config_network_legacy_hwaddr,       get_config_network_legacy_item,         clr_config_network_legacy_item, },
+	{ "lxc.network.mtu",          set_config_network_legacy_mtu,          get_config_network_legacy_item,         clr_config_network_legacy_item, },
+	{ "lxc.network.vlan.id",      set_config_network_legacy_vlan_id,      get_config_network_legacy_item,         clr_config_network_legacy_item, },
+	{ "lxc.network.ipv4.gateway", set_config_network_legacy_ipv4_gateway, get_config_network_legacy_item,         clr_config_network_legacy_item, },
+	{ "lxc.network.ipv4",         set_config_network_legacy_ipv4,         get_config_network_legacy_item,         clr_config_network_legacy_item, },
+	{ "lxc.network.ipv6.gateway", set_config_network_legacy_ipv6_gateway, get_config_network_legacy_item,         clr_config_network_legacy_item, },
+	{ "lxc.network.ipv6",         set_config_network_legacy_ipv6,         get_config_network_legacy_item,         clr_config_network_legacy_item, },
+	{ "lxc.network.",             set_config_network_legacy_nic,          get_config_network_legacy_item,         clr_config_network_legacy_item, },
+	{ "lxc.network",              set_config_network_legacy,              get_config_network_legacy,              clr_config_network_legacy,      },
+
+	{ "lxc.net.type",             set_config_net_type,             get_config_net_type,             clr_config_net_type,          },
+	{ "lxc.net.flags",            set_config_net_flags,            get_config_net_flags,            clr_config_net_flags,         },
+	{ "lxc.net.link",             set_config_net_link,             get_config_net_link,             clr_config_net_link,          },
+	{ "lxc.net.name",             set_config_net_name,             get_config_net_name,             clr_config_net_name,          },
+	{ "lxc.net.macvlan.mode",     set_config_net_macvlan_mode,     get_config_net_macvlan_mode,     clr_config_net_macvlan_mode,  },
+	{ "lxc.net.veth.pair",        set_config_net_veth_pair,        get_config_net_veth_pair,        clr_config_net_veth_pair,     },
+	{ "lxc.net.script.up",        set_config_net_script_up,        get_config_net_script_up,        clr_config_net_script_up,     },
+	{ "lxc.net.script.down",      set_config_net_script_down,      get_config_net_script_down,      clr_config_net_script_down,   },
+	{ "lxc.net.hwaddr",           set_config_net_hwaddr,           get_config_net_hwaddr,           clr_config_net_hwaddr,        },
+	{ "lxc.net.mtu",              set_config_net_mtu,              get_config_net_mtu,              clr_config_net_mtu,           },
+	{ "lxc.net.vlan.id",          set_config_net_vlan_id,          get_config_net_vlan_id,          clr_config_net_vlan_id,       },
+	{ "lxc.net.ipv4.gateway",     set_config_net_ipv4_gateway,     get_config_net_ipv4_gateway,     clr_config_net_ipv4_gateway,  },
+	{ "lxc.net.ipv4",             set_config_net_ipv4,             get_config_net_ipv4,             clr_config_net_ipv4,          },
+	{ "lxc.net.ipv6.gateway",     set_config_net_ipv6_gateway,     get_config_net_ipv6_gateway,     clr_config_net_ipv6_gateway,  },
+	{ "lxc.net.ipv6",             set_config_net_ipv6,             get_config_net_ipv6,             clr_config_net_ipv6,          },
+	{ "lxc.net.",                 set_config_net_nic,              get_config_net_nic,              clr_config_net_nic,           },
+	{ "lxc.net",                  set_config_net,                  get_config_net,                  clr_config_net,               },
+
+
+	{ "lxc.cap.drop",             set_config_cap_drop,             get_config_cap_drop,             clr_config_cap_drop,          },
+	{ "lxc.cap.keep",             set_config_cap_keep,             get_config_cap_keep,             clr_config_cap_keep,          },
+	{ "lxc.console.logfile",      set_config_console_logfile,      get_config_console_logfile,      clr_config_console_logfile,   },
+	{ "lxc.console",              set_config_console,              get_config_console,              clr_config_console,           },
+	{ "lxc.seccomp",              set_config_seccomp,              get_config_seccomp,              clr_config_seccomp,           },
+	{ "lxc.include",              set_config_includefiles,         get_config_includefiles,         clr_config_includefiles,      },
+	{ "lxc.autodev",              set_config_autodev,              get_config_autodev,              clr_config_autodev,           },
+	{ "lxc.haltsignal",           set_config_haltsignal,           get_config_haltsignal,           clr_config_haltsignal,        },
+	{ "lxc.rebootsignal",         set_config_rebootsignal,         get_config_rebootsignal,         clr_config_rebootsignal,      },
+	{ "lxc.stopsignal",           set_config_stopsignal,           get_config_stopsignal,           clr_config_stopsignal,        },
+	{ "lxc.start.auto",           set_config_start,                get_config_start,                clr_config_start,             },
+	{ "lxc.start.delay",          set_config_start,                get_config_start,                clr_config_start,             },
+	{ "lxc.start.order",          set_config_start,                get_config_start,                clr_config_start,             },
+	{ "lxc.monitor.unshare",      set_config_monitor,              get_config_monitor,              clr_config_monitor,           },
+	{ "lxc.group",                set_config_group,                get_config_group,                clr_config_group,             },
+	{ "lxc.environment",          set_config_environment,          get_config_environment,          clr_config_environment,       },
+	{ "lxc.init_cmd",             set_config_init_cmd,             get_config_init_cmd,             clr_config_init_cmd,          },
+	{ "lxc.init_uid",             set_config_init_uid,             get_config_init_uid,             clr_config_init_uid,          },
+	{ "lxc.init_gid",             set_config_init_gid,             get_config_init_gid,             clr_config_init_gid,          },
+	{ "lxc.ephemeral",            set_config_ephemeral,            get_config_ephemeral,            clr_config_ephemeral,         },
+	{ "lxc.syslog",               set_config_syslog,               get_config_syslog,               clr_config_syslog,            },
+	{ "lxc.no_new_privs",	      set_config_no_new_privs,         get_config_no_new_privs,         clr_config_no_new_privs,      },
+	{ "lxc.limit",                set_config_limit,                get_config_limit,                clr_config_limit,             },
 };
 
 struct signame {
@@ -599,23 +614,6 @@ extern struct lxc_config_t *lxc_getconfig(const char *key)
 	return NULL;
 }
 
-#define strprint(str, inlen, ...)                                              \
-	do {                                                                   \
-		len = snprintf(str, inlen, ##__VA_ARGS__);                     \
-		if (len < 0) {                                                 \
-			SYSERROR("failed to create string");                   \
-			return -1;                                             \
-		};                                                             \
-		fulllen += len;                                                \
-		if (inlen > 0) {                                               \
-			if (str)                                               \
-				str += len;                                    \
-			inlen -= len;                                          \
-			if (inlen < 0)                                         \
-				inlen = 0;                                     \
-		}                                                              \
-	} while (0);
-
 int lxc_listconfigs(char *retv, int inlen)
 {
 	size_t i;
@@ -637,90 +635,29 @@ int lxc_listconfigs(char *retv, int inlen)
 	return fulllen;
 }
 
-static int set_config_string_item(char **conf_item, const char *value)
-{
-	char *new_value;
-
-	if (lxc_config_value_empty(value)) {
-		free(*conf_item);
-		*conf_item = NULL;
-		return 0;
-	}
-
-	new_value = strdup(value);
-	if (!new_value) {
-		SYSERROR("failed to duplicate string \"%s\"", value);
-		return -1;
-	}
-
-	free(*conf_item);
-	*conf_item = new_value;
-	return 0;
-}
-
-static int set_config_string_item_max(char **conf_item, const char *value,
-				      size_t max)
-{
-	if (strlen(value) >= max) {
-		ERROR("%s is too long (>= %lu)", value, (unsigned long)max);
-		return -1;
-	}
-
-	return set_config_string_item(conf_item, value);
-}
-
-static int set_config_path_item(char **conf_item, const char *value)
-{
-	return set_config_string_item_max(conf_item, value, PATH_MAX);
-}
-
-static int set_config_network(const char *key, const char *value,
-			      struct lxc_conf *lxc_conf, void *data)
+static int set_config_net(const char *key, const char *value,
+			  struct lxc_conf *lxc_conf, void *data)
 {
 	if (!lxc_config_value_empty(value)) {
-		ERROR("lxc.network must not have a value");
+		ERROR("lxc.net must not have a value");
 		return -1;
 	}
 
-	return clr_config_network(key, lxc_conf, data);
+	return clr_config_net(key, lxc_conf, data);
 }
 
-static int set_config_network_type(const char *key, const char *value,
-				   struct lxc_conf *lxc_conf, void *data)
+static int set_config_net_type(const char *key, const char *value,
+			       struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_type(key, lxc_conf, data);
+		return clr_config_net_type(key, lxc_conf, data);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-
-		/* We maintain a negative count for legacy network devices. */
-		ssize_t negidx = -1;
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.type\" without an index "
-		     "(e.g.\"lxc.network.0.type\"). LET US KNOW IF YOU NEED TO "
-		     "USE THIS!");
-		if (!lxc_list_empty(&lxc_conf->network)) {
-			struct lxc_netdev *ndv;
-			ndv = lxc_list_first_elem(&lxc_conf->network);
-			if (ndv->idx < 0) {
-				negidx = ndv->idx;
-				negidx--;
-			}
-		}
-		if (negidx == INT_MIN) {
-			SYSERROR("number of configured networks would overflow "
-				 "the counter... what are you doing?");
-			return -1;
-		}
-		netdev = lxc_network_add(&lxc_conf->network, negidx, false);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -746,20 +683,8 @@ static int set_config_network_type(const char *key, const char *value,
 	return 0;
 }
 
-static int config_ip_prefix(struct in_addr *addr)
-{
-	if (IN_CLASSA(addr->s_addr))
-		return 32 - IN_CLASSA_NSHIFT;
-	if (IN_CLASSB(addr->s_addr))
-		return 32 - IN_CLASSB_NSHIFT;
-	if (IN_CLASSC(addr->s_addr))
-		return 32 - IN_CLASSC_NSHIFT;
-
-	return 0;
-}
-
 /*
- * If you have p="lxc.network.0.link", pass it p+12
+ * If you have p="lxc.net.0.link", pass it p+12
  * to get back '0' (the index of the nic).
  */
 static int get_network_netdev_idx(const char *key)
@@ -777,7 +702,7 @@ static int get_network_netdev_idx(const char *key)
 }
 
 /*
- * If you have p="lxc.network.0", pass this p+12 and it will return
+ * If you have p="lxc.net.0", pass this p+12 and it will return
  * the netdev of the first configured nic.
  */
 static struct lxc_netdev *get_netdev_from_key(const char *key,
@@ -809,7 +734,7 @@ extern int lxc_list_nicconfigs(struct lxc_conf *c, const char *key, char *retv,
 	int len;
 	int fulllen = 0;
 
-	netdev = get_netdev_from_key(key + 12, &c->network);
+	netdev = get_netdev_from_key(key + 8, &c->network);
 	if (!netdev)
 		return -1;
 
@@ -850,63 +775,18 @@ extern int lxc_list_nicconfigs(struct lxc_conf *c, const char *key, char *retv,
 	return fulllen;
 }
 
-static int network_ifname(char **valuep, const char *value)
-{
-	return set_config_string_item_max(valuep, value, IFNAMSIZ);
-}
-
-static int rand_complete_hwaddr(char *hwaddr)
-{
-	const char hex[] = "0123456789abcdef";
-	char *curs = hwaddr;
-
-#ifndef HAVE_RAND_R
-	randseed(true);
-#else
-	unsigned int seed;
-
-	seed = randseed(false);
-#endif
-	while (*curs != '\0' && *curs != '\n') {
-		if (*curs == 'x' || *curs == 'X') {
-			if (curs - hwaddr == 1) {
-				/* ensure address is unicast */
-#ifdef HAVE_RAND_R
-				*curs = hex[rand_r(&seed) & 0x0E];
-			} else {
-				*curs = hex[rand_r(&seed) & 0x0F];
-#else
-				*curs = hex[rand() & 0x0E];
-			} else {
-				*curs = hex[rand() & 0x0F];
-#endif
-			}
-		}
-		curs++;
-	}
-	return 0;
-}
-
-static int set_config_network_flags(const char *key, const char *value,
-				    struct lxc_conf *lxc_conf, void *data)
+static int set_config_net_flags(const char *key, const char *value,
+				struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_flags(key, lxc_conf, data);
+		return clr_config_net_flags(key, lxc_conf, data);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.flags\" without an index "
-		     "(e.g.\"lxc.network.0.flags\"). LET US KNOW IF YOU NEED "
-		     "TO USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -916,13 +796,13 @@ static int set_config_network_flags(const char *key, const char *value,
 }
 
 static int create_matched_ifnames(const char *value, struct lxc_conf *lxc_conf,
-				  struct lxc_netdev *netdev)
+			   struct lxc_netdev *netdev)
 {
 	struct ifaddrs *ifaddr, *ifa;
 	int n;
 	int ret = 0;
-	const char *type_key = "lxc.network.type";
-	const char *link_key = "lxc.network.link";
+	const char *type_key = "lxc.net.type";
+	const char *link_key = "lxc.net.link";
 	const char *tmpvalue = "phys";
 
 	if (getifaddrs(&ifaddr) == -1) {
@@ -937,10 +817,10 @@ static int create_matched_ifnames(const char *value, struct lxc_conf *lxc_conf,
 			continue;
 
 		if (!strncmp(value, ifa->ifa_name, strlen(value) - 1)) {
-			ret = set_config_network_type(type_key, tmpvalue,
-						      lxc_conf, netdev);
+			ret = set_config_net_type(type_key, tmpvalue, lxc_conf,
+						  netdev);
 			if (!ret) {
-				ret = set_config_network_link(
+				ret = set_config_net_link(
 				    link_key, ifa->ifa_name, lxc_conf, netdev);
 				if (ret) {
 					ERROR("failed to create matched ifnames");
@@ -959,27 +839,19 @@ static int create_matched_ifnames(const char *value, struct lxc_conf *lxc_conf,
 	return ret;
 }
 
-static int set_config_network_link(const char *key, const char *value,
-				   struct lxc_conf *lxc_conf, void *data)
+static int set_config_net_link(const char *key, const char *value,
+			       struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 	int ret = 0;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_link(key, lxc_conf, data);
+		return clr_config_net_link(key, lxc_conf, data);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.link\" without an index "
-		     "(e.g.\"lxc.network.0.link\"). LET US KNOW IF YOU NEED TO "
-		     "USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -991,107 +863,73 @@ static int set_config_network_link(const char *key, const char *value,
 	return ret;
 }
 
-static int set_config_network_name(const char *key, const char *value,
-				   struct lxc_conf *lxc_conf, void *data)
+static int set_config_net_name(const char *key, const char *value,
+			       struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_name(key, lxc_conf, data);
+		return clr_config_net_name(key, lxc_conf, data);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.name\" without an index "
-		     "(e.g.\"lxc.network.0.name\"). LET US KNOW IF YOU NEED TO "
-		     "USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
 	return network_ifname(&netdev->name, value);
 }
 
-static int set_config_network_veth_pair(const char *key, const char *value,
-					struct lxc_conf *lxc_conf, void *data)
+static int set_config_net_veth_pair(const char *key, const char *value,
+				    struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_veth_pair(key, lxc_conf, data);
+		return clr_config_net_veth_pair(key, lxc_conf, data);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.veth.pair\" without an index "
-		     "(e.g.\"lxc.network.0.veth.pair\"). LET US KNOW IF YOU "
-		     "NEED TO USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
 	return network_ifname(&netdev->priv.veth_attr.pair, value);
 }
 
-static int set_config_network_macvlan_mode(const char *key, const char *value,
-					   struct lxc_conf *lxc_conf,
-					   void *data)
+static int set_config_net_macvlan_mode(const char *key, const char *value,
+				       struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_macvlan_mode(key, lxc_conf, data);
+		return clr_config_net_macvlan_mode(key, lxc_conf, data);
 
-	/* lxc.network.* without an index */
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.macvlan.mode\" without an index "
-		     "(e.g.\"lxc.network.0.macvlan.mode\"). LET US KNOW IF YOU "
-		     "NEED TO USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
 	return lxc_macvlan_mode_to_flag(&netdev->priv.macvlan_attr.mode, value);
 }
 
-static int set_config_network_hwaddr(const char *key, const char *value,
-				     struct lxc_conf *lxc_conf, void *data)
+static int set_config_net_hwaddr(const char *key, const char *value,
+				 struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 	char *new_value;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_hwaddr(key, lxc_conf, data);
+		return clr_config_net_hwaddr(key, lxc_conf, data);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.hwaddr\" without an index "
-		     "(e.g.\"lxc.network.0.hwaddr\"). LET US KNOW IF YOU NEED "
-		     "TO USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -1112,26 +950,18 @@ static int set_config_network_hwaddr(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_network_vlan_id(const char *key, const char *value,
-				      struct lxc_conf *lxc_conf, void *data)
+static int set_config_net_vlan_id(const char *key, const char *value,
+				  struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_vlan_id(key, lxc_conf, data);
+		return clr_config_net_vlan_id(key, lxc_conf, data);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.vlan.id\" without an index "
-		     "(e.g.\"lxc.network.0.vlan.id\"). LET US KNOW IF YOU NEED "
-		     "TO USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -1141,34 +971,26 @@ static int set_config_network_vlan_id(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_network_mtu(const char *key, const char *value,
-				  struct lxc_conf *lxc_conf, void *data)
+static int set_config_net_mtu(const char *key, const char *value,
+			      struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_mtu(key, lxc_conf, data);
+		return clr_config_net_mtu(key, lxc_conf, data);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.mtu\" without an index "
-		     "(e.g.\"lxc.network.0.mtu\"). LET US KNOW IF YOU NEED TO "
-		     "USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
 	return set_config_string_item(&netdev->mtu, value);
 }
 
-static int set_config_network_ipv4(const char *key, const char *value,
-				   struct lxc_conf *lxc_conf, void *data)
+static int set_config_net_ipv4(const char *key, const char *value,
+			       struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 	struct lxc_inetdev *inetdev;
@@ -1177,20 +999,12 @@ static int set_config_network_ipv4(const char *key, const char *value,
 	char *addr = NULL, *bcast = NULL, *prefix = NULL;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_ipv4(key, lxc_conf, data);
+		return clr_config_net_ipv4(key, lxc_conf, data);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.ipv4\" without an index "
-		     "(e.g.\"lxc.network.0.ipv4\"). LET US KNOW IF YOU NEED TO "
-		     "USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -1270,27 +1084,18 @@ static int set_config_network_ipv4(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_network_ipv4_gateway(const char *key, const char *value,
-					   struct lxc_conf *lxc_conf,
-					   void *data)
+static int set_config_net_ipv4_gateway(const char *key, const char *value,
+				       struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_ipv4_gateway(key, lxc_conf, data);
+		return clr_config_net_ipv4_gateway(key, lxc_conf, data);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.ipv4.gateway\" without an index "
-		     "(e.g.\"lxc.network.0.ipv4.gateway\"). LET US KNOW IF YOU "
-		     "NEED TO USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -1323,8 +1128,8 @@ static int set_config_network_ipv4_gateway(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_network_ipv6(const char *key, const char *value,
-				   struct lxc_conf *lxc_conf, void *data)
+static int set_config_net_ipv6(const char *key, const char *value,
+			       struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 	struct lxc_inet6dev *inet6dev;
@@ -1332,20 +1137,12 @@ static int set_config_network_ipv6(const char *key, const char *value,
 	char *slash, *valdup, *netmask;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_ipv6(key, lxc_conf, data);
+		return clr_config_net_ipv6(key, lxc_conf, data);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.ipv6\" without an index "
-		     "(e.g.\"lxc.network.0.ipv6\"). LET US KNOW IF YOU NEED TO "
-		     "USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -1397,27 +1194,18 @@ static int set_config_network_ipv6(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_network_ipv6_gateway(const char *key, const char *value,
-					   struct lxc_conf *lxc_conf,
-					   void *data)
+static int set_config_net_ipv6_gateway(const char *key, const char *value,
+				       struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_ipv6_gateway(key, lxc_conf, data);
+		return clr_config_net_ipv6_gateway(key, lxc_conf, data);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.ipv6.gateway\" without an index "
-		     "(e.g.\"lxc.network.0.ipv6.gateway\"). LET US KNOW IF YOU "
-		     "NEED TO USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -1450,52 +1238,36 @@ static int set_config_network_ipv6_gateway(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_network_script_up(const char *key, const char *value,
-					struct lxc_conf *lxc_conf, void *data)
+static int set_config_net_script_up(const char *key, const char *value,
+				    struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_script_up(key, lxc_conf, data);
+		return clr_config_net_script_up(key, lxc_conf, data);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.script.up\" without an index "
-		     "(e.g.\"lxc.network.0.script.up\"). LET US KNOW IF YOU "
-		     "NEED TO USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
 	return set_config_string_item(&netdev->upscript, value);
 }
 
-static int set_config_network_script_down(const char *key, const char *value,
-					  struct lxc_conf *lxc_conf, void *data)
+static int set_config_net_script_down(const char *key, const char *value,
+				      struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_script_down(key, lxc_conf, data);
+		return clr_config_net_script_down(key, lxc_conf, data);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.script.down\" without an index "
-		     "(e.g.\"lxc.network.0.script.down\"). LET US KNOW IF YOU "
-		     "NEED TO USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -2459,40 +2231,6 @@ static int set_config_console_logfile(const char *key, const char *value,
 	return set_config_path_item(&lxc_conf->console.log_path, value);
 }
 
-/*
- * If we find a lxc.network.hwaddr in the original config file, we expand it in
- * the unexpanded_config, so that after a save_config we store the hwaddr for
- * re-use.
- * This is only called when reading the config file, not when executing a
- * lxc.include.
- * 'x' and 'X' are substituted in-place.
- */
-static void update_hwaddr(const char *line)
-{
-	char *p;
-
-	line += lxc_char_left_gc(line, strlen(line));
-	if (line[0] == '#')
-		return;
-
-	if (strncmp(line, "lxc.network.hwaddr", 18) != 0)
-		return;
-
-	/* Let config_network_hwaddr raise the error. */
-	p = strchr(line, '=');
-	if (!p)
-		return;
-	p++;
-
-	while (isblank(*p))
-		p++;
-
-	if (!*p)
-		return;
-
-	rand_complete_hwaddr(p);
-}
-
 int append_unexp_config_line(const char *line, struct lxc_conf *conf)
 {
 	size_t len = conf->unexpanded_len, linelen = strlen(line);
@@ -3177,22 +2915,6 @@ bool clone_update_unexp_hooks(struct lxc_conf *conf, const char *oldpath,
 		}                                                              \
 	}
 
-static bool new_hwaddr(char *hwaddr)
-{
-	int ret;
-
-	(void)randseed(true);
-
-	ret = snprintf(hwaddr, 18, "00:16:3e:%02x:%02x:%02x", rand() % 255,
-		       rand() % 255, rand() % 255);
-	if (ret < 0 || ret >= 18) {
-		SYSERROR("Failed to call snprintf().");
-		return false;
-	}
-
-	return true;
-}
-
 /*
  * This is called only from clone.  We wish to update all hwaddrs in the
  * unexpanded config file.  We can't/don't want to update any which come from
@@ -3711,8 +3433,8 @@ static int get_config_hooks(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-static int get_config_network(const char *key, char *retv, int inlen,
-			      struct lxc_conf *c, void *data)
+static int get_config_net(const char *key, char *retv, int inlen,
+			  struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
 	struct lxc_list *it;
@@ -4114,8 +3836,8 @@ static inline int clr_config_hooks(const char *key, struct lxc_conf *c,
 	return lxc_clear_hooks(c, key);
 }
 
-static inline int clr_config_network(const char *key, struct lxc_conf *c,
-				     void *data)
+static inline int clr_config_net(const char *key, struct lxc_conf *c,
+				 void *data)
 {
 	lxc_free_networks(&c->network);
 
@@ -4288,25 +4010,25 @@ get_network_config_ops(const char *key, struct lxc_conf *lxc_conf, ssize_t *idx)
 	struct lxc_config_t *config = NULL;
 
 	/* check that this is a sensible network key */
-	if (strncmp("lxc.network.", key, 12))
+	if (strncmp("lxc.net.", key, 8))
 		return NULL;
 
 	copy = strdup(key);
 	if (!copy)
 		return NULL;
 
-	/* lxc.network.<n> */
-	if (isdigit(*(key + 12))) {
+	/* lxc.net.<n> */
+	if (isdigit(*(key + 8))) {
 		int ret;
 		unsigned int tmpidx;
 		size_t numstrlen;
 
 		/* beginning of index string */
-		idx_start = (copy + 11);
+		idx_start = (copy + 7);
 		*idx_start = '\0';
 
 		/* end of index string */
-		idx_end = strchr((copy + 12), '.');
+		idx_end = strchr((copy + 8), '.');
 		if (!idx_end)
 			goto on_error;
 		*idx_end = '\0';
@@ -4336,7 +4058,7 @@ get_network_config_ops(const char *key, struct lxc_conf *lxc_conf, ssize_t *idx)
 		*idx_start = '.';
 		*idx_end = '.';
 
-		memmove(copy + 12, idx_end + 1, strlen(idx_end + 1));
+		memmove(copy + 8, idx_end + 1, strlen(idx_end + 1));
 		copy[strlen(key) - numstrlen + 1] = '\0';
 	}
 
@@ -4350,19 +4072,19 @@ on_error:
 }
 
 /*
- * Config entry is something like "lxc.network.0.ipv4" the key 'lxc.network.'
+ * Config entry is something like "lxc.net.0.ipv4" the key 'lxc.net.'
  * was found.  So we make sure next comes an integer, find the right callback
  * (by rewriting the key), and call it.
  */
-static int set_config_network_nic(const char *key, const char *value,
-				  struct lxc_conf *lxc_conf, void *data)
+static int set_config_net_nic(const char *key, const char *value,
+			      struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_config_t *config;
 	struct lxc_netdev *netdev;
 	ssize_t idx = -1;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_network_nic(key, lxc_conf, data);
+		return clr_config_net_nic(key, lxc_conf, data);
 
 	config = get_network_config_ops(key, lxc_conf, &idx);
 	if (!config || idx < 0)
@@ -4376,23 +4098,23 @@ static int set_config_network_nic(const char *key, const char *value,
 }
 
 /*
- * Config entry is something like "lxc.network.0.ipv4" the key 'lxc.network.'
+ * Config entry is something like "lxc.net.0.ipv4" the key 'lxc.net.'
  * was found.  So we make sure next comes an integer, find the right callback
  * (by rewriting the key), and call it.
  */
-static int clr_config_network_nic(const char *key, struct lxc_conf *lxc_conf,
-				  void *data)
+static int clr_config_net_nic(const char *key, struct lxc_conf *lxc_conf,
+			      void *data)
 {
 	const char *idxstring;
 	struct lxc_config_t *config;
 	struct lxc_netdev *netdev;
 	ssize_t idx;
 
-	/* If we get passed "lxc.network.<n>" we clear the whole network. */
-	if (strncmp("lxc.network.", key, 12))
+	/* If we get passed "lxc.net.<n>" we clear the whole network. */
+	if (strncmp("lxc.net.", key, 8))
 		return -1;
 
-	idxstring = key + 12;
+	idxstring = key + 8;
 	/* The left conjunct is pretty self-explanatory. The right conjunct
 	 * checks whether the two pointers are equal. If they are we now that
 	 * this is not a key that is namespaced any further and so we are
@@ -4420,23 +4142,15 @@ static int clr_config_network_nic(const char *key, struct lxc_conf *lxc_conf,
 	return config->clr(key, lxc_conf, netdev);
 }
 
-static int clr_config_network_type(const char *key, struct lxc_conf *lxc_conf,
-				   void *data)
+static int clr_config_net_type(const char *key, struct lxc_conf *lxc_conf,
+			       void *data)
 {
 	struct lxc_netdev *netdev;
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.type\" without an index "
-		     "(e.g.\"lxc.network.0.type\"). LET US KNOW IF YOU NEED TO "
-		     "USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -4445,23 +4159,15 @@ static int clr_config_network_type(const char *key, struct lxc_conf *lxc_conf,
 	return 0;
 }
 
-static int clr_config_network_name(const char *key, struct lxc_conf *lxc_conf,
-				   void *data)
+static int clr_config_net_name(const char *key, struct lxc_conf *lxc_conf,
+			       void *data)
 {
 	struct lxc_netdev *netdev;
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.name\" without an index "
-		     "(e.g.\"lxc.network.0.name\"). LET US KNOW IF YOU NEED TO "
-		     "USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -4471,24 +4177,15 @@ static int clr_config_network_name(const char *key, struct lxc_conf *lxc_conf,
 	return 0;
 }
 
-
-static int clr_config_network_flags(const char *key, struct lxc_conf *lxc_conf,
-				    void *data)
+static int clr_config_net_flags(const char *key, struct lxc_conf *lxc_conf,
+				void *data)
 {
 	struct lxc_netdev *netdev;
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.flags\" without an index "
-		     "(e.g.\"lxc.network.0.flags\"). LET US KNOW IF YOU NEED "
-		     "TO USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -4497,23 +4194,15 @@ static int clr_config_network_flags(const char *key, struct lxc_conf *lxc_conf,
 	return 0;
 }
 
-static int clr_config_network_link(const char *key, struct lxc_conf *lxc_conf,
-				   void *data)
+static int clr_config_net_link(const char *key, struct lxc_conf *lxc_conf,
+			       void *data)
 {
 	struct lxc_netdev *netdev;
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.link\" without an index "
-		     "(e.g.\"lxc.network.0.link\"). LET US KNOW IF YOU NEED TO "
-		     "USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -4523,24 +4212,15 @@ static int clr_config_network_link(const char *key, struct lxc_conf *lxc_conf,
 	return 0;
 }
 
-static int clr_config_network_macvlan_mode(const char *key,
-					   struct lxc_conf *lxc_conf,
-					   void *data)
+static int clr_config_net_macvlan_mode(const char *key,
+				       struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.macvlan.mode\" without an index "
-		     "(e.g.\"lxc.network.0.macvlan.mode\"). LET US KNOW IF YOU "
-		     "NEED TO USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -4552,23 +4232,15 @@ static int clr_config_network_macvlan_mode(const char *key,
 	return 0;
 }
 
-static int clr_config_network_veth_pair(const char *key,
-					struct lxc_conf *lxc_conf, void *data)
+static int clr_config_net_veth_pair(const char *key, struct lxc_conf *lxc_conf,
+				    void *data)
 {
 	struct lxc_netdev *netdev;
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.veth.pair\" without an index "
-		     "(e.g.\"lxc.network.0.veth.pair\"). LET US KNOW IF YOU "
-		     "NEED TO USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -4578,23 +4250,15 @@ static int clr_config_network_veth_pair(const char *key,
 	return 0;
 }
 
-static int clr_config_network_script_up(const char *key,
-					struct lxc_conf *lxc_conf, void *data)
+static int clr_config_net_script_up(const char *key, struct lxc_conf *lxc_conf,
+				    void *data)
 {
 	struct lxc_netdev *netdev;
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.script.up\" without an index "
-		     "(e.g.\"lxc.network.0.script.up\"). LET US KNOW IF YOU "
-		     "NEED TO USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -4604,23 +4268,15 @@ static int clr_config_network_script_up(const char *key,
 	return 0;
 }
 
-static int clr_config_network_script_down(const char *key,
-					  struct lxc_conf *lxc_conf, void *data)
+static int clr_config_net_script_down(const char *key,
+				      struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.script.down\" without an index "
-		     "(e.g.\"lxc.network.0.script.down\"). LET US KNOW IF YOU "
-		     "NEED TO USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -4630,23 +4286,15 @@ static int clr_config_network_script_down(const char *key,
 	return 0;
 }
 
-static int clr_config_network_hwaddr(const char *key, struct lxc_conf *lxc_conf,
-				     void *data)
+static int clr_config_net_hwaddr(const char *key, struct lxc_conf *lxc_conf,
+				 void *data)
 {
 	struct lxc_netdev *netdev;
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.hwaddr\" without an index "
-		     "(e.g.\"lxc.network.0.hwaddr\"). LET US KNOW IF YOU NEED "
-		     "TO USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -4656,23 +4304,15 @@ static int clr_config_network_hwaddr(const char *key, struct lxc_conf *lxc_conf,
 	return 0;
 }
 
-static int clr_config_network_mtu(const char *key, struct lxc_conf *lxc_conf,
-				  void *data)
+static int clr_config_net_mtu(const char *key, struct lxc_conf *lxc_conf,
+			      void *data)
 {
 	struct lxc_netdev *netdev;
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.mtu\" without an index "
-		     "(e.g.\"lxc.network.0.mtu\"). LET US KNOW IF YOU NEED TO "
-		     "USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -4682,23 +4322,15 @@ static int clr_config_network_mtu(const char *key, struct lxc_conf *lxc_conf,
 	return 0;
 }
 
-static int clr_config_network_vlan_id(const char *key,
-				      struct lxc_conf *lxc_conf, void *data)
+static int clr_config_net_vlan_id(const char *key, struct lxc_conf *lxc_conf,
+				  void *data)
 {
 	struct lxc_netdev *netdev;
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.vlan.id\" without an index "
-		     "(e.g.\"lxc.network.0.vlan.id\"). LET US KNOW IF YOU NEED "
-		     "TO USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -4707,24 +4339,15 @@ static int clr_config_network_vlan_id(const char *key,
 	return 0;
 }
 
-static int clr_config_network_ipv4_gateway(const char *key,
-					   struct lxc_conf *lxc_conf,
-					   void *data)
+static int clr_config_net_ipv4_gateway(const char *key,
+				       struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.ipv4.gateway\" without an index "
-		     "(e.g.\"lxc.network.0.ipv4.gateway\"). LET US KNOW IF YOU "
-		     "NEED TO USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -4734,24 +4357,16 @@ static int clr_config_network_ipv4_gateway(const char *key,
 	return 0;
 }
 
-static int clr_config_network_ipv4(const char *key, struct lxc_conf *lxc_conf,
-				   void *data)
+static int clr_config_net_ipv4(const char *key, struct lxc_conf *lxc_conf,
+			       void *data)
 {
 	struct lxc_netdev *netdev;
 	struct lxc_list *cur, *next;
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.ipv4\" without an index "
-		     "(e.g.\"lxc.network.0.ipv4\"). LET US KNOW IF YOU NEED TO "
-		     "USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -4764,24 +4379,15 @@ static int clr_config_network_ipv4(const char *key, struct lxc_conf *lxc_conf,
 	return 0;
 }
 
-static int clr_config_network_ipv6_gateway(const char *key,
-					   struct lxc_conf *lxc_conf,
-					   void *data)
+static int clr_config_net_ipv6_gateway(const char *key,
+				       struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.ipv6.gateway\" without an index "
-		     "(e.g.\"lxc.network.0.ipv6.gateway\"). LET US KNOW IF YOU "
-		     "NEED TO USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -4791,24 +4397,16 @@ static int clr_config_network_ipv6_gateway(const char *key,
 	return 0;
 }
 
-static int clr_config_network_ipv6(const char *key, struct lxc_conf *lxc_conf,
-				   void *data)
+static int clr_config_net_ipv6(const char *key, struct lxc_conf *lxc_conf,
+			       void *data)
 {
 	struct lxc_netdev *netdev;
 	struct lxc_list *cur, *next;
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.ipv6\" without an index "
-		     "(e.g.\"lxc.network.0.ipv6\"). LET US KNOW IF YOU NEED TO "
-		     "USE THIS!");
-		netdev = lxc_list_first_elem(&lxc_conf->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -4821,8 +4419,8 @@ static int clr_config_network_ipv6(const char *key, struct lxc_conf *lxc_conf,
 	return 0;
 }
 
-static int get_config_network_nic(const char *key, char *retv, int inlen,
-				  struct lxc_conf *c, void *data)
+static int get_config_net_nic(const char *key, char *retv, int inlen,
+			      struct lxc_conf *c, void *data)
 {
 	struct lxc_config_t *config;
 	struct lxc_netdev *netdev;
@@ -4839,8 +4437,8 @@ static int get_config_network_nic(const char *key, char *retv, int inlen,
 	return config->get(key, retv, inlen, c, netdev);
 }
 
-static int get_config_network_type(const char *key, char *retv, int inlen,
-				   struct lxc_conf *c, void *data)
+static int get_config_net_type(const char *key, char *retv, int inlen,
+			       struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
 	struct lxc_netdev *netdev;
@@ -4850,18 +4448,10 @@ static int get_config_network_type(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.type\" without an index "
-		     "(e.g.\"lxc.network.0.type\"). LET US KNOW IF YOU NEED TO "
-		     "USE THIS!");
-		netdev = lxc_list_first_elem(&c->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -4870,8 +4460,8 @@ static int get_config_network_type(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-static int get_config_network_flags(const char *key, char *retv, int inlen,
-				    struct lxc_conf *c, void *data)
+static int get_config_net_flags(const char *key, char *retv, int inlen,
+				struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
 	struct lxc_netdev *netdev;
@@ -4881,18 +4471,10 @@ static int get_config_network_flags(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.flags\" without an index "
-		     "(e.g.\"lxc.network.0.flags\"). LET US KNOW IF YOU NEED "
-		     "TO USE THIS!");
-		netdev = lxc_list_first_elem(&c->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -4902,8 +4484,8 @@ static int get_config_network_flags(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-static int get_config_network_link(const char *key, char *retv, int inlen,
-				   struct lxc_conf *c, void *data)
+static int get_config_net_link(const char *key, char *retv, int inlen,
+			       struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
 	struct lxc_netdev *netdev;
@@ -4913,18 +4495,10 @@ static int get_config_network_link(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.link\" without an index "
-		     "(e.g.\"lxc.network.0.link\"). LET US KNOW IF YOU NEED TO "
-		     "USE THIS!");
-		netdev = lxc_list_first_elem(&c->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -4934,8 +4508,8 @@ static int get_config_network_link(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-static int get_config_network_name(const char *key, char *retv, int inlen,
-				   struct lxc_conf *c, void *data)
+static int get_config_net_name(const char *key, char *retv, int inlen,
+			       struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
 	struct lxc_netdev *netdev;
@@ -4945,18 +4519,10 @@ static int get_config_network_name(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.name\" without an index "
-		     "(e.g.\"lxc.network.0.name\"). LET US KNOW IF YOU NEED TO "
-		     "USE THIS!");
-		netdev = lxc_list_first_elem(&c->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -4966,9 +4532,8 @@ static int get_config_network_name(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-static int get_config_network_macvlan_mode(const char *key, char *retv,
-					   int inlen, struct lxc_conf *c,
-					   void *data)
+static int get_config_net_macvlan_mode(const char *key, char *retv, int inlen,
+				       struct lxc_conf *c, void *data)
 {
 	const char *mode;
 	int len, fulllen = 0;
@@ -4979,18 +4544,10 @@ static int get_config_network_macvlan_mode(const char *key, char *retv,
 	else
 		memset(retv, 0, inlen);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.macvlan.mode\" without an index "
-		     "(e.g.\"lxc.network.0.macvlan.mode\"). LET US KNOW IF YOU "
-		     "NEED TO USE THIS!");
-		netdev = lxc_list_first_elem(&c->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -5020,8 +4577,8 @@ static int get_config_network_macvlan_mode(const char *key, char *retv,
 	return fulllen;
 }
 
-static int get_config_network_veth_pair(const char *key, char *retv, int inlen,
-					struct lxc_conf *c, void *data)
+static int get_config_net_veth_pair(const char *key, char *retv, int inlen,
+				    struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
 	struct lxc_netdev *netdev;
@@ -5031,18 +4588,10 @@ static int get_config_network_veth_pair(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.veth.pair\" without an index "
-		     "(e.g.\"lxc.network.0.veth.pair\"). LET US KNOW IF YOU "
-		     "NEED TO USE THIS!");
-		netdev = lxc_list_first_elem(&c->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -5056,8 +4605,8 @@ static int get_config_network_veth_pair(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-static int get_config_network_script_up(const char *key, char *retv, int inlen,
-					struct lxc_conf *c, void *data)
+static int get_config_net_script_up(const char *key, char *retv, int inlen,
+				    struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
 	struct lxc_netdev *netdev;
@@ -5067,18 +4616,10 @@ static int get_config_network_script_up(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.script.up\" without an index "
-		     "(e.g.\"lxc.network.0.script.up\"). LET US KNOW IF YOU "
-		     "NEED TO USE THIS!");
-		netdev = lxc_list_first_elem(&c->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -5088,104 +4629,7 @@ static int get_config_network_script_up(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-static int get_config_network_script_down(const char *key, char *retv,
-					  int inlen, struct lxc_conf *c,
-					  void *data)
-{
-	int len, fulllen = 0;
-	struct lxc_netdev *netdev;
-
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.script.down\" without an index "
-		     "(e.g.\"lxc.network.0.script.down\"). LET US KNOW IF YOU "
-		     "NEED TO USE THIS!");
-		netdev = lxc_list_first_elem(&c->network);
-	} else {
-		netdev = data;
-	}
-	if (!netdev)
-		return -1;
-
-	if (netdev->downscript)
-		strprint(retv, inlen, "%s", netdev->downscript);
-
-	return fulllen;
-}
-
-static int get_config_network_hwaddr(const char *key, char *retv, int inlen,
-				     struct lxc_conf *c, void *data)
-{
-	int len, fulllen = 0;
-	struct lxc_netdev *netdev;
-
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.hwaddr\" without an index "
-		     "(e.g.\"lxc.network.0.hwaddr\"). LET US KNOW IF YOU NEED "
-		     "TO USE THIS!");
-		netdev = lxc_list_first_elem(&c->network);
-	} else {
-		netdev = data;
-	}
-	if (!netdev)
-		return -1;
-
-	if (netdev->hwaddr)
-		strprint(retv, inlen, "%s", netdev->hwaddr);
-
-	return fulllen;
-}
-
-static int get_config_network_mtu(const char *key, char *retv, int inlen,
-				  struct lxc_conf *c, void *data)
-{
-	int len, fulllen = 0;
-	struct lxc_netdev *netdev;
-
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.mtu\" without an index "
-		     "(e.g.\"lxc.network.0.mtu\"). LET US KNOW IF YOU NEED TO "
-		     "USE THIS!");
-		netdev = lxc_list_first_elem(&c->network);
-	} else {
-		netdev = data;
-	}
-	if (!netdev)
-		return -1;
-
-	if (netdev->mtu)
-		strprint(retv, inlen, "%s", netdev->mtu);
-
-	return fulllen;
-}
-
-static int get_config_network_vlan_id(const char *key, char *retv, int inlen,
+static int get_config_net_script_down(const char *key, char *retv, int inlen,
 				      struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
@@ -5196,18 +4640,82 @@ static int get_config_network_vlan_id(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.vlan.id\" without an index "
-		     "(e.g.\"lxc.network.0.vlan.id\"). LET US KNOW IF YOU NEED "
-		     "TO USE THIS!");
-		netdev = lxc_list_first_elem(&c->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
+	if (!netdev)
+		return -1;
+
+	if (netdev->downscript)
+		strprint(retv, inlen, "%s", netdev->downscript);
+
+	return fulllen;
+}
+
+static int get_config_net_hwaddr(const char *key, char *retv, int inlen,
+				 struct lxc_conf *c, void *data)
+{
+	int len, fulllen = 0;
+	struct lxc_netdev *netdev;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	if (!data)
+		return -1;
+	else
+		netdev = data;
+	if (!netdev)
+		return -1;
+
+	if (netdev->hwaddr)
+		strprint(retv, inlen, "%s", netdev->hwaddr);
+
+	return fulllen;
+}
+
+static int get_config_net_mtu(const char *key, char *retv, int inlen,
+			      struct lxc_conf *c, void *data)
+{
+	int len, fulllen = 0;
+	struct lxc_netdev *netdev;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	if (!data)
+		return -1;
+	else
+		netdev = data;
+	if (!netdev)
+		return -1;
+
+	if (netdev->mtu)
+		strprint(retv, inlen, "%s", netdev->mtu);
+
+	return fulllen;
+}
+
+static int get_config_net_vlan_id(const char *key, char *retv, int inlen,
+				  struct lxc_conf *c, void *data)
+{
+	int len, fulllen = 0;
+	struct lxc_netdev *netdev;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	if (!data)
+		return -1;
+	else
+		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -5219,9 +4727,8 @@ static int get_config_network_vlan_id(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-static int get_config_network_ipv4_gateway(const char *key, char *retv,
-					   int inlen, struct lxc_conf *c,
-					   void *data)
+static int get_config_net_ipv4_gateway(const char *key, char *retv, int inlen,
+				       struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
 	char buf[INET_ADDRSTRLEN];
@@ -5232,18 +4739,10 @@ static int get_config_network_ipv4_gateway(const char *key, char *retv,
 	else
 		memset(retv, 0, inlen);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.ipv4.gateway\" without an index "
-		     "(e.g.\"lxc.network.0.ipv4.gateway\"). LET US KNOW IF YOU "
-		     "NEED TO USE THIS!");
-		netdev = lxc_list_first_elem(&c->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -5257,8 +4756,8 @@ static int get_config_network_ipv4_gateway(const char *key, char *retv,
 	return fulllen;
 }
 
-static int get_config_network_ipv4(const char *key, char *retv, int inlen,
-				   struct lxc_conf *c, void *data)
+static int get_config_net_ipv4(const char *key, char *retv, int inlen,
+			       struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
 	size_t listlen;
@@ -5271,18 +4770,10 @@ static int get_config_network_ipv4(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.ipv4\" without an index "
-		     "(e.g.\"lxc.network.0.ipv4\"). LET US KNOW IF YOU NEED TO "
-		     "USE THIS!");
-		netdev = lxc_list_first_elem(&c->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -5297,9 +4788,8 @@ static int get_config_network_ipv4(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-static int get_config_network_ipv6_gateway(const char *key, char *retv,
-					   int inlen, struct lxc_conf *c,
-					   void *data)
+static int get_config_net_ipv6_gateway(const char *key, char *retv, int inlen,
+				       struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
 	char buf[INET6_ADDRSTRLEN];
@@ -5310,18 +4800,10 @@ static int get_config_network_ipv6_gateway(const char *key, char *retv,
 	else
 		memset(retv, 0, inlen);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.ipv6.gateway\" without an index "
-		     "(e.g.\"lxc.network.0.ipv6.gateway\"). LET US KNOW IF YOU "
-		     "NEED TO USE THIS!");
-		netdev = lxc_list_first_elem(&c->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
@@ -5335,8 +4817,8 @@ static int get_config_network_ipv6_gateway(const char *key, char *retv,
 	return fulllen;
 }
 
-static int get_config_network_ipv6(const char *key, char *retv, int inlen,
-				   struct lxc_conf *c, void *data)
+static int get_config_net_ipv6(const char *key, char *retv, int inlen,
+			       struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
 	size_t listlen;
@@ -5349,18 +4831,10 @@ static int get_config_network_ipv6(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	if (!data) {
-		/* REMOVE IN LXC 3.0:
-		 * lxc.network.* without an index
-		 */
-		WARN("WARNING: We're considering DEPRECATING "
-		     "\"lxc.network.ipv6\" without an index "
-		     "(e.g.\"lxc.network.0.ipv6\"). LET US KNOW IF YOU NEED TO "
-		     "USE THIS!");
-		netdev = lxc_list_first_elem(&c->network);
-	} else {
+	if (!data)
+		return -1;
+	else
 		netdev = data;
-	}
 	if (!netdev)
 		return -1;
 
