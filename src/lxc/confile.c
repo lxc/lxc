@@ -1101,9 +1101,7 @@ static int set_config_net_ipv4_gateway(const char *key, const char *value,
 
 	free(netdev->ipv4_gateway);
 
-	if (lxc_config_value_empty(value)) {
-		netdev->ipv4_gateway = NULL;
-	} else if (!strcmp(value, "auto")) {
+	if (!strcmp(value, "auto")) {
 		netdev->ipv4_gateway = NULL;
 		netdev->ipv4_gateway_auto = true;
 	} else {
@@ -1211,9 +1209,7 @@ static int set_config_net_ipv6_gateway(const char *key, const char *value,
 
 	free(netdev->ipv6_gateway);
 
-	if (lxc_config_value_empty(value)) {
-		netdev->ipv6_gateway = NULL;
-	} else if (!strcmp(value, "auto")) {
+	if (!strcmp(value, "auto")) {
 		netdev->ipv6_gateway = NULL;
 		netdev->ipv6_gateway_auto = true;
 	} else {
