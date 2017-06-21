@@ -21,6 +21,7 @@ noinst_HEADERS = \
 	caps.h \
 	conf.h \
 	confile.h \
+	confile_network_legacy.h \
 	confile_utils.h \
 	console.h \
 	error.h \
@@ -103,6 +104,7 @@ liblxc_la_SOURCES = \
 	namespace.h namespace.c \
 	conf.c conf.h \
 	confile.c confile.h \
+	confile_network_legacy.c confile_network_legacy.h \
 	confile_utils.c confile_utils.h \
 	list.h \
 	state.c state.h \

@@ -298,7 +298,7 @@ int main(int argc, char *argv[])
 	}
 	printf("%d: get_config_item(lxc.network) returned %d %s\n", __LINE__, ret, v2);
 
-	if (!c->set_config_item(c, "lxc.network.0.ipv4", "10.2.3.4")) {
+	if (!c->set_config_item(c, "lxc.network.ipv4", "10.2.3.4")) {
 		fprintf(stderr, "%d: failed to set ipv4\n", __LINE__);
 		goto out;
 	}
@@ -318,7 +318,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if (!c->set_config_item(c, "lxc.network.0.ipv4.gateway", "10.2.3.254")) {
+	if (!c->set_config_item(c, "lxc.network.ipv4.gateway", "10.2.3.254")) {
 		fprintf(stderr, "%d: failed to set ipv4.gateway\n", __LINE__);
 		goto out;
 	}

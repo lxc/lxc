@@ -19,6 +19,7 @@
 
 #include "config.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,6 +31,7 @@
 #include "error.h"
 #include "log.h"
 #include "list.h"
+#include "parse.h"
 #include "utils.h"
 
 lxc_log_define(lxc_confile_utils, lxc);
@@ -443,4 +445,140 @@ char *lxc_macvlan_flag_to_mode(int mode)
 	}
 
 	return NULL;
+}
+
+int set_config_string_item(char **conf_item, const char *value)
+{
+	char *new_value;
+
+	if (lxc_config_value_empty(value)) {
+		free(*conf_item);
+		*conf_item = NULL;
+		return 0;
+	}
+
+	new_value = strdup(value);
+	if (!new_value) {
+		SYSERROR("failed to duplicate string \"%s\"", value);
+		return -1;
+	}
+
+	free(*conf_item);
+	*conf_item = new_value;
+	return 0;
+}
+
+int set_config_string_item_max(char **conf_item, const char *value, size_t max)
+{
+	if (strlen(value) >= max) {
+		ERROR("%s is too long (>= %lu)", value, (unsigned long)max);
+		return -1;
+	}
+
+	return set_config_string_item(conf_item, value);
+}
+
+int set_config_path_item(char **conf_item, const char *value)
+{
+	return set_config_string_item_max(conf_item, value, PATH_MAX);
+}
+
+int config_ip_prefix(struct in_addr *addr)
+{
+	if (IN_CLASSA(addr->s_addr))
+		return 32 - IN_CLASSA_NSHIFT;
+	if (IN_CLASSB(addr->s_addr))
+		return 32 - IN_CLASSB_NSHIFT;
+	if (IN_CLASSC(addr->s_addr))
+		return 32 - IN_CLASSC_NSHIFT;
+
+	return 0;
+}
+
+int network_ifname(char **valuep, const char *value)
+{
+	return set_config_string_item_max(valuep, value, IFNAMSIZ);
+}
+
+int rand_complete_hwaddr(char *hwaddr)
+{
+	const char hex[] = "0123456789abcdef";
+	char *curs = hwaddr;
+
+#ifndef HAVE_RAND_R
+	randseed(true);
+#else
+	unsigned int seed;
+
+	seed = randseed(false);
+#endif
+	while (*curs != '\0' && *curs != '\n') {
+		if (*curs == 'x' || *curs == 'X') {
+			if (curs - hwaddr == 1) {
+				/* ensure address is unicast */
+#ifdef HAVE_RAND_R
+				*curs = hex[rand_r(&seed) & 0x0E];
+			} else {
+				*curs = hex[rand_r(&seed) & 0x0F];
+#else
+				*curs = hex[rand() & 0x0E];
+			} else {
+				*curs = hex[rand() & 0x0F];
+#endif
+			}
+		}
+		curs++;
+	}
+	return 0;
+}
+
+/*
+ * If we find a lxc.network.hwaddr in the original config file, we expand it in
+ * the unexpanded_config, so that after a save_config we store the hwaddr for
+ * re-use.
+ * This is only called when reading the config file, not when executing a
+ * lxc.include.
+ * 'x' and 'X' are substituted in-place.
+ */
+void update_hwaddr(const char *line)
+{
+	char *p;
+
+	line += lxc_char_left_gc(line, strlen(line));
+	if (line[0] == '#')
+		return;
+
+	if ((strncmp(line, "lxc.network.hwaddr", 18) != 0) &&
+	    (strncmp(line, "lxc.net.hwaddr", 14) != 0))
+		return;
+
+	/* Let config_net_hwaddr raise the error. */
+	p = strchr(line, '=');
+	if (!p)
+		return;
+	p++;
+
+	while (isblank(*p))
+		p++;
+
+	if (!*p)
+		return;
+
+	rand_complete_hwaddr(p);
+}
+
+bool new_hwaddr(char *hwaddr)
+{
+	int ret;
+
+	(void)randseed(true);
+
+	ret = snprintf(hwaddr, 18, "00:16:3e:%02x:%02x:%02x", rand() % 255,
+		       rand() % 255, rand() % 255);
+	if (ret < 0 || ret >= 18) {
+		SYSERROR("Failed to call snprintf().");
+		return false;
+	}
+
+	return true;
 }

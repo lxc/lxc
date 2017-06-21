@@ -47,6 +47,7 @@
 #include "config.h"
 #include "commands.h"
 #include "confile.h"
+#include "confile_network_legacy.h"
 #include "console.h"
 #include "criu.h"
 #include "log.h"
@@ -1697,6 +1698,8 @@ static void do_clear_unexp_config_line(struct lxc_conf *conf, const char *key)
 		clear_unexp_config_line(conf, key, true);
 	else if (strcmp(key, "lxc.network") == 0)
 		clear_unexp_config_line(conf, key, true);
+	else if (strcmp(key, "lxc.net") == 0)
+		clear_unexp_config_line(conf, key, true);
 	else if (strcmp(key, "lxc.hook") == 0)
 		clear_unexp_config_line(conf, key, true);
 	else
@@ -2075,8 +2078,10 @@ static int do_lxcapi_get_keys(struct lxc_container *c, const char *key, char *re
 	if (container_mem_lock(c))
 		return -1;
 	int ret = -1;
-	if (strncmp(key, "lxc.network.", 12) == 0)
+	if (strncmp(key, "lxc.net.", 8) == 0)
 		ret = lxc_list_nicconfigs(c->lxc_conf, key, retv, inlen);
+	else if (strncmp(key, "lxc.network.", 12) == 0)
+		ret = lxc_list_nicconfigs_legacy(c->lxc_conf, key, retv, inlen);
 	container_mem_unlock(c);
 	return ret;
 }

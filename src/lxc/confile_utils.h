@@ -23,6 +23,7 @@
 #include <stdbool.h>
 
 #include "conf.h"
+#include "confile_utils.h"
 
 #ifndef MACVLAN_MODE_PRIVATE
 #define MACVLAN_MODE_PRIVATE 1
@@ -40,6 +41,23 @@
 #define MACVLAN_MODE_PASSTHRU 8
 #endif
 
+#define strprint(str, inlen, ...)                                              \
+	do {                                                                   \
+		len = snprintf(str, inlen, ##__VA_ARGS__);                     \
+		if (len < 0) {                                                 \
+			SYSERROR("failed to create string");                   \
+			return -1;                                             \
+		};                                                             \
+		fulllen += len;                                                \
+		if (inlen > 0) {                                               \
+			if (str)                                               \
+				str += len;                                    \
+			inlen -= len;                                          \
+			if (inlen < 0)                                         \
+				inlen = 0;                                     \
+		}                                                              \
+	} while (0);
+
 extern int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 			unsigned long *hostid, unsigned long *range);
 
@@ -53,5 +71,15 @@ extern bool lxc_remove_nic_by_idx(struct lxc_conf *conf, unsigned int idx);
 extern void lxc_free_networks(struct lxc_list *networks);
 extern int lxc_macvlan_mode_to_flag(int *mode, const char *value);
 extern char *lxc_macvlan_flag_to_mode(int mode);
+
+extern int set_config_string_item(char **conf_item, const char *value);
+extern int set_config_string_item_max(char **conf_item, const char *value,
+				      size_t max);
+extern int set_config_path_item(char **conf_item, const char *value);
+extern int config_ip_prefix(struct in_addr *addr);
+extern int network_ifname(char **valuep, const char *value);
+extern int rand_complete_hwaddr(char *hwaddr);
+extern void update_hwaddr(const char *line);
+extern bool new_hwaddr(char *hwaddr);
 
 #endif /* __LXC_CONFILE_UTILS_H */

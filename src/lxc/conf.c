@@ -2533,6 +2533,13 @@ static int lxc_setup_networks_in_child_namespaces(const struct lxc_conf *conf,
 	lxc_list_for_each(iterator, network) {
 		netdev = iterator->elem;
 
+		/* REMOVE in LXC 3.0 */
+		if (netdev->idx < 0) {
+			ERROR("WARNING: using \"lxc.network.*\" keys to define "
+			      "networks is DEPRECATED, please switch to using "
+			      "\"lxc.net.[i].* keys\"");
+		}
+
 		if (lxc_setup_netdev_in_child_namespaces(netdev)) {
 			ERROR("failed to setup netdev");
 			return -1;

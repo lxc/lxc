@@ -90,61 +90,61 @@ static int set_get_compare_clear_save_load(struct lxc_container *c,
 
 static int set_and_clear_complete_netdev(struct lxc_container *c)
 {
-	if (!c->set_config_item(c, "lxc.network.1.type", "veth")) {
-		lxc_error("%s\n", "lxc.network.1.type");
+	if (!c->set_config_item(c, "lxc.net.1.type", "veth")) {
+		lxc_error("%s\n", "lxc.net.1.type");
 		return -1;
 	}
 
-	if (!c->set_config_item(c, "lxc.network.1.ipv4", "10.0.2.3/24")) {
-		lxc_error("%s\n", "lxc.network.1.ipv4");
+	if (!c->set_config_item(c, "lxc.net.1.ipv4", "10.0.2.3/24")) {
+		lxc_error("%s\n", "lxc.net.1.ipv4");
 		return -1;
 	}
 
-	if (!c->set_config_item(c, "lxc.network.1.ipv4_gateway", "10.0.2.2")) {
-		lxc_error("%s\n", "lxc.network.1.ipv4");
+	if (!c->set_config_item(c, "lxc.net.1.ipv4_gateway", "10.0.2.2")) {
+		lxc_error("%s\n", "lxc.net.1.ipv4");
 		return -1;
 	}
 
-	if (!c->set_config_item(c, "lxc.network.1.ipv6",
+	if (!c->set_config_item(c, "lxc.net.1.ipv6",
 				"2003:db8:1:0:214:1234:fe0b:3596/64")) {
-		lxc_error("%s\n", "lxc.network.1.ipv6");
+		lxc_error("%s\n", "lxc.net.1.ipv6");
 		return -1;
 	}
 
-	if (!c->set_config_item(c, "lxc.network.1.ipv6_gateway",
+	if (!c->set_config_item(c, "lxc.net.1.ipv6_gateway",
 				"2003:db8:1:0::1")) {
-		lxc_error("%s\n", "lxc.network.1.ipv6");
+		lxc_error("%s\n", "lxc.net.1.ipv6");
 		return -1;
 	}
 
-	if (!c->set_config_item(c, "lxc.network.1.flags", "up")) {
-		lxc_error("%s\n", "lxc.network.1.flags");
+	if (!c->set_config_item(c, "lxc.net.1.flags", "up")) {
+		lxc_error("%s\n", "lxc.net.1.flags");
 		return -1;
 	}
 
-	if (!c->set_config_item(c, "lxc.network.1.link", "br0")) {
-		lxc_error("%s\n", "lxc.network.1.link");
+	if (!c->set_config_item(c, "lxc.net.1.link", "br0")) {
+		lxc_error("%s\n", "lxc.net.1.link");
 		return -1;
 	}
 
-	if (!c->set_config_item(c, "lxc.network.1.veth.pair", "bla")) {
-		lxc_error("%s\n", "lxc.network.1.veth.pair");
+	if (!c->set_config_item(c, "lxc.net.1.veth.pair", "bla")) {
+		lxc_error("%s\n", "lxc.net.1.veth.pair");
 		return -1;
 	}
 
-	if (!c->set_config_item(c, "lxc.network.1.hwaddr",
+	if (!c->set_config_item(c, "lxc.net.1.hwaddr",
 				"52:54:00:80:7a:5d")) {
-		lxc_error("%s\n", "lxc.network.1.hwaddr");
+		lxc_error("%s\n", "lxc.net.1.hwaddr");
 		return -1;
 	}
 
-	if (!c->set_config_item(c, "lxc.network.1.mtu", "2000")) {
-		lxc_error("%s\n", "lxc.network.1.mtu");
+	if (!c->set_config_item(c, "lxc.net.1.mtu", "2000")) {
+		lxc_error("%s\n", "lxc.net.1.mtu");
 		return -1;
 	}
 
-	if (!c->clear_config_item(c, "lxc.network.1")) {
-		lxc_error("%s", "failed to clear \"lxc.network.1\"\n");
+	if (!c->clear_config_item(c, "lxc.net.1")) {
+		lxc_error("%s", "failed to clear \"lxc.net.1\"\n");
 		return -1;
 	}
 
@@ -212,8 +212,8 @@ static int set_get_compare_clear_save_load_network(
 	char retval[4096] = {0};
 	int ret;
 
-	if (!c->set_config_item(c, "lxc.network.0.type", network_type)) {
-		lxc_error("%s\n", "lxc.network.0.type");
+	if (!c->set_config_item(c, "lxc.net.0.type", network_type)) {
+		lxc_error("%s\n", "lxc.net.0.type");
 		return -1;
 	}
 
@@ -260,8 +260,8 @@ static int set_get_compare_clear_save_load_network(
 		return -1;
 	}
 
-	if (!c->clear_config_item(c, "lxc.network.0.type")) {
-		lxc_error("%s\n", "lxc.network.0.type");
+	if (!c->clear_config_item(c, "lxc.net.0.type")) {
+		lxc_error("%s\n", "lxc.net.0.type");
 		return -1;
 	}
 
@@ -714,140 +714,140 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load(c, "lxc.network.0.type", "veth",
+	if (set_get_compare_clear_save_load(c, "lxc.net.0.type", "veth",
 					    tmpf, true)) {
-		lxc_error("%s\n", "lxc.network.0.type");
+		lxc_error("%s\n", "lxc.net.0.type");
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load(c, "lxc.network.2.type", "none",
+	if (set_get_compare_clear_save_load(c, "lxc.net.2.type", "none",
 					    tmpf, true)) {
-		lxc_error("%s\n", "lxc.network.2.type");
+		lxc_error("%s\n", "lxc.net.2.type");
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load(c, "lxc.network.3.type", "empty",
+	if (set_get_compare_clear_save_load(c, "lxc.net.3.type", "empty",
 					    tmpf, true)) {
-		lxc_error("%s\n", "lxc.network.3.type");
+		lxc_error("%s\n", "lxc.net.3.type");
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load(c, "lxc.network.4.type", "vlan",
+	if (set_get_compare_clear_save_load(c, "lxc.net.4.type", "vlan",
 					    tmpf, true)) {
-		lxc_error("%s\n", "lxc.network.4.type");
+		lxc_error("%s\n", "lxc.net.4.type");
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load(c, "lxc.network.0.type", "macvlan",
+	if (set_get_compare_clear_save_load(c, "lxc.net.0.type", "macvlan",
 					    tmpf, true)) {
-		lxc_error("%s\n", "lxc.network.0.type");
+		lxc_error("%s\n", "lxc.net.0.type");
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load(c, "lxc.network.1000.type", "phys",
+	if (set_get_compare_clear_save_load(c, "lxc.net.1000.type", "phys",
 					    tmpf, true)) {
-		lxc_error("%s\n", "lxc.network.1000.type");
+		lxc_error("%s\n", "lxc.net.1000.type");
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load(c, "lxc.network.0.flags", "up",
+	if (set_get_compare_clear_save_load(c, "lxc.net.0.flags", "up",
 					    tmpf, true)) {
-		lxc_error("%s\n", "lxc.network.0.flags");
+		lxc_error("%s\n", "lxc.net.0.flags");
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load(c, "lxc.network.0.name", "eth0",
+	if (set_get_compare_clear_save_load(c, "lxc.net.0.name", "eth0",
 					    tmpf, true)) {
-		lxc_error("%s\n", "lxc.network.0.name");
+		lxc_error("%s\n", "lxc.net.0.name");
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load(c, "lxc.network.0.link", "bla",
+	if (set_get_compare_clear_save_load(c, "lxc.net.0.link", "bla",
 					    tmpf, true)) {
-		lxc_error("%s\n", "lxc.network.0.link");
+		lxc_error("%s\n", "lxc.net.0.link");
 		goto non_test_error;
 	}
 
 	if (set_get_compare_clear_save_load_network(
-		c, "lxc.network.0.macvlan.mode", "private", tmpf, true,
+		c, "lxc.net.0.macvlan.mode", "private", tmpf, true,
 		"macvlan")) {
-		lxc_error("%s\n", "lxc.network.0.macvlan.mode");
+		lxc_error("%s\n", "lxc.net.0.macvlan.mode");
 		goto non_test_error;
 	}
 
 	if (set_get_compare_clear_save_load_network(
-		c, "lxc.network.0.macvlan.mode", "vepa", tmpf, true,
+		c, "lxc.net.0.macvlan.mode", "vepa", tmpf, true,
 		"macvlan")) {
-		lxc_error("%s\n", "lxc.network.0.macvlan.mode");
+		lxc_error("%s\n", "lxc.net.0.macvlan.mode");
 		goto non_test_error;
 	}
 
 	if (set_get_compare_clear_save_load_network(
-		c, "lxc.network.0.macvlan.mode", "bridge", tmpf, true,
+		c, "lxc.net.0.macvlan.mode", "bridge", tmpf, true,
 		"macvlan")) {
-		lxc_error("%s\n", "lxc.network.0.macvlan.mode");
+		lxc_error("%s\n", "lxc.net.0.macvlan.mode");
 		goto non_test_error;
 	}
 
 	if (set_get_compare_clear_save_load_network(
-		c, "lxc.network.0.veth.pair", "clusterfuck", tmpf, true,
+		c, "lxc.net.0.veth.pair", "clusterfuck", tmpf, true,
 		"veth")) {
-		lxc_error("%s\n", "lxc.network.0.veth.pair");
+		lxc_error("%s\n", "lxc.net.0.veth.pair");
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load(c, "lxc.network.0.script.up",
+	if (set_get_compare_clear_save_load(c, "lxc.net.0.script.up",
 					    "/some/up/path", tmpf, true)) {
-		lxc_error("%s\n", "lxc.network.0.script.up");
+		lxc_error("%s\n", "lxc.net.0.script.up");
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load(c, "lxc.network.0.script.down",
+	if (set_get_compare_clear_save_load(c, "lxc.net.0.script.down",
 					    "/some/down/path", tmpf, true)) {
-		lxc_error("%s\n", "lxc.network.0.script.down");
+		lxc_error("%s\n", "lxc.net.0.script.down");
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load(c, "lxc.network.0.hwaddr",
+	if (set_get_compare_clear_save_load(c, "lxc.net.0.hwaddr",
 					    "52:54:00:80:7a:5d", tmpf, true)) {
-		lxc_error("%s\n", "lxc.network.0.hwaddr");
+		lxc_error("%s\n", "lxc.net.0.hwaddr");
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load(c, "lxc.network.0.mtu", "2000",
+	if (set_get_compare_clear_save_load(c, "lxc.net.0.mtu", "2000",
 					    tmpf, true)) {
-		lxc_error("%s\n", "lxc.network.0.mtu");
+		lxc_error("%s\n", "lxc.net.0.mtu");
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load_network(c, "lxc.network.0.vlan.id",
+	if (set_get_compare_clear_save_load_network(c, "lxc.net.0.vlan.id",
 						    "2", tmpf, true, "vlan")) {
-		lxc_error("%s\n", "lxc.network.0.vlan.id");
+		lxc_error("%s\n", "lxc.net.0.vlan.id");
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load(c, "lxc.network.0.ipv4.gateway",
+	if (set_get_compare_clear_save_load(c, "lxc.net.0.ipv4.gateway",
 					    "10.0.2.2", tmpf, true)) {
-		lxc_error("%s\n", "lxc.network.0.ipv4.gateway");
+		lxc_error("%s\n", "lxc.net.0.ipv4.gateway");
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load(c, "lxc.network.0.ipv6.gateway",
+	if (set_get_compare_clear_save_load(c, "lxc.net.0.ipv6.gateway",
 					    "2003:db8:1::1", tmpf, true)) {
-		lxc_error("%s\n", "lxc.network.0.ipv6.gateway");
+		lxc_error("%s\n", "lxc.net.0.ipv6.gateway");
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load(c, "lxc.network.0.ipv4",
+	if (set_get_compare_clear_save_load(c, "lxc.net.0.ipv4",
 					    "10.0.2.3/24", tmpf, true)) {
-		lxc_error("%s\n", "lxc.network.0.ipv4");
+		lxc_error("%s\n", "lxc.net.0.ipv4");
 		goto non_test_error;
 	}
 
 	if (set_get_compare_clear_save_load(
-		c, "lxc.network.0.ipv6", "2003:db8:1:0:214:1234:fe0b:3596/64",
+		c, "lxc.net.0.ipv6", "2003:db8:1:0:214:1234:fe0b:3596/64",
 		tmpf, true)) {
-		lxc_error("%s\n", "lxc.network.0.ipv6");
+		lxc_error("%s\n", "lxc.net.0.ipv6");
 		goto non_test_error;
 	}
 
