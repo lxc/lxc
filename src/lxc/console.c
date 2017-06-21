@@ -135,6 +135,7 @@ struct lxc_tty_state *lxc_console_sigwinch_init(int srcfd, int dstfd)
 	if (sigprocmask(SIG_BLOCK, &mask, &ts->oldmask)) {
 		SYSERROR("failed to block SIGWINCH");
 		ts->sigfd = -1;
+		lxc_list_del(&ts->node);
 		return ts;
 	}
 
@@ -143,6 +144,7 @@ struct lxc_tty_state *lxc_console_sigwinch_init(int srcfd, int dstfd)
 		SYSERROR("failed to create signal fd");
 		sigprocmask(SIG_SETMASK, &ts->oldmask, NULL);
 		ts->sigfd = -1;
+		lxc_list_del(&ts->node);
 		return ts;
 	}
 
@@ -152,11 +154,12 @@ struct lxc_tty_state *lxc_console_sigwinch_init(int srcfd, int dstfd)
 
 void lxc_console_sigwinch_fini(struct lxc_tty_state *ts)
 {
-	if (ts->sigfd >= 0)
+	if (ts->sigfd >= 0) {
 		close(ts->sigfd);
+		lxc_list_del(&ts->node);
+		sigprocmask(SIG_SETMASK, &ts->oldmask, NULL);
+	}
 
-	lxc_list_del(&ts->node);
-	sigprocmask(SIG_SETMASK, &ts->oldmask, NULL);
 	free(ts);
 }
 
@@ -297,7 +300,7 @@ int lxc_setup_tios(int fd, struct termios *oldtios)
 
 static void lxc_console_peer_proxy_free(struct lxc_console *console)
 {
-	if (console->tty_state && console->tty_state->sigfd != -1) {
+	if (console->tty_state) {
 		lxc_console_sigwinch_fini(console->tty_state);
 		console->tty_state = NULL;
 	}
@@ -750,8 +753,7 @@ int lxc_console(struct lxc_container *c, int ttynum,
 err4:
 	lxc_mainloop_close(&descr);
 err3:
-	if (ts->sigfd != -1)
-		lxc_console_sigwinch_fini(ts);
+	lxc_console_sigwinch_fini(ts);
 err2:
 	close(masterfd);
 	close(ttyfd);
