@@ -172,12 +172,6 @@ static int get_config_rootfs(const char *, char *, int, struct lxc_conf *,
 			     void *);
 static int clr_config_rootfs(const char *, struct lxc_conf *, void *);
 
-static int set_config_pivotdir(const char *, const char *, struct lxc_conf *,
-			       void *);
-static int get_config_pivotdir(const char *, char *, int, struct lxc_conf *,
-			       void *);
-static int clr_config_pivotdir(const char *, struct lxc_conf *, void *);
-
 static int set_config_utsname(const char *, const char *, struct lxc_conf *,
 			      void *);
 static int get_config_utsname(const char *, char *, int, struct lxc_conf *,
@@ -444,7 +438,6 @@ static struct lxc_config_t config[] = {
 	{ "lxc.rootfs.options",            set_config_rootfs_options,              get_config_rootfs_options,              clr_config_rootfs_options,            },
 	{ "lxc.rootfs.backend",            set_config_rootfs_backend,              get_config_rootfs_backend,              clr_config_rootfs_backend,            },
 	{ "lxc.rootfs",                    set_config_rootfs,                      get_config_rootfs,                      clr_config_rootfs,                    },
-	{ "lxc.pivotdir",                  set_config_pivotdir,                    get_config_pivotdir,                    clr_config_pivotdir,                  },
 	{ "lxc.utsname",                   set_config_utsname,                     get_config_utsname,                     clr_config_utsname,                   },
 	{ "lxc.hook.pre-start",            set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook.pre-mount",            set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
@@ -2338,13 +2331,6 @@ static int set_config_rootfs_backend(const char *key, const char *value,
 	return set_config_string_item(&lxc_conf->rootfs.bdev_type, value);
 }
 
-static int set_config_pivotdir(const char *key, const char *value,
-			       struct lxc_conf *lxc_conf, void *data)
-{
-	WARN("lxc.pivotdir is ignored.  It will soon become an error.");
-	return 0;
-}
-
 static int set_config_utsname(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf, void *data)
 {
@@ -3337,12 +3323,6 @@ static int get_config_rootfs_backend(const char *key, char *retv, int inlen,
 	return lxc_get_conf_str(retv, inlen, c->rootfs.bdev_type);
 }
 
-static int get_config_pivotdir(const char *key, char *retv, int inlen,
-			       struct lxc_conf *c, void *data)
-{
-	return 0;
-}
-
 static int get_config_utsname(const char *key, char *retv, int inlen,
 			      struct lxc_conf *c, void *data)
 {
@@ -3762,12 +3742,6 @@ static inline int clr_config_rootfs_backend(const char *key, struct lxc_conf *c,
 {
 	free(c->rootfs.bdev_type);
 	c->rootfs.bdev_type = NULL;
-	return 0;
-}
-
-static inline int clr_config_pivotdir(const char *key, struct lxc_conf *c,
-				      void *data)
-{
 	return 0;
 }
 

@@ -285,7 +285,6 @@ enum {
 /*
  * Defines the global container configuration
  * @rootfs     : root directory to run the container
- * @pivotdir   : pivotdir path, if not set default will be used
  * @mount      : list of mount points
  * @tty        : numbers of tty
  * @pts        : new pts instance

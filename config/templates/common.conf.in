@@ -12,9 +12,6 @@ lxc.tty = 4
 # Drop some harmful capabilities
 lxc.cap.drop = mac_admin mac_override sys_time sys_module sys_rawio
 
-# Set the pivot directory
-lxc.pivotdir = lxc_putold
-
 # Ensure hostname is changed on clone
 lxc.hook.clone = @LXCHOOKDIR@/clonehostname
 
