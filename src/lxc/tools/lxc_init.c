@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
 		NOTICE("about to exec '%s'", aargv[0]);
 
 		execvp(aargv[0], aargv);
-		ERROR("failed to exec: '%s' : %m", aargv[0]);
+		ERROR("failed to exec: '%s' : %s", aargv[0], strerror(errno));
 		exit(err);
 	}
 

@@ -54,19 +54,19 @@ int lxc_caps_down(void)
 
 	caps = cap_get_proc();
 	if (!caps) {
-		ERROR("failed to cap_get_proc: %m");
+		ERROR("failed to cap_get_proc: %s", strerror(errno));
 		return -1;
 	}
 
 	ret = cap_clear_flag(caps, CAP_EFFECTIVE);
 	if (ret) {
-		ERROR("failed to cap_clear_flag: %m");
+		ERROR("failed to cap_clear_flag: %s", strerror(errno));
 		goto out;
 	}
 
 	ret = cap_set_proc(caps);
 	if (ret) {
-		ERROR("failed to cap_set_proc: %m");
+		ERROR("failed to cap_set_proc: %s", strerror(errno));
 		goto out;
 	}
 
@@ -88,7 +88,7 @@ int lxc_caps_up(void)
 
 	caps = cap_get_proc();
 	if (!caps) {
-		ERROR("failed to cap_get_proc: %m");
+		ERROR("failed to cap_get_proc: %s", strerror(errno));
 		return -1;
 	}
 
@@ -102,21 +102,22 @@ int lxc_caps_up(void)
 				INFO("Last supported cap was %d", cap-1);
 				break;
 			} else {
-				ERROR("failed to cap_get_flag: %m");
+				ERROR("failed to cap_get_flag: %s",
+				      strerror(errno));
 				goto out;
 			}
 		}
 
 		ret = cap_set_flag(caps, CAP_EFFECTIVE, 1, &cap, flag);
 		if (ret) {
-			ERROR("failed to cap_set_flag: %m");
+			ERROR("failed to cap_set_flag: %s", strerror(errno));
 			goto out;
 		}
 	}
 
 	ret = cap_set_proc(caps);
 	if (ret) {
-		ERROR("failed to cap_set_proc: %m");
+		ERROR("failed to cap_set_proc: %s", strerror(errno));
 		goto out;
 	}
 
@@ -140,22 +141,26 @@ int lxc_caps_init(void)
 		INFO("command is run as setuid root (uid : %d)", uid);
 
 		if (prctl(PR_SET_KEEPCAPS, 1)) {
-			ERROR("failed to 'PR_SET_KEEPCAPS': %m");
+			ERROR("failed to 'PR_SET_KEEPCAPS': %s",
+			      strerror(errno));
 			return -1;
 		}
 
 		if (setresgid(gid, gid, gid)) {
-			ERROR("failed to change gid to '%d': %m", gid);
+			ERROR("failed to change gid to '%d': %s", gid,
+			      strerror(errno));
 			return -1;
 		}
 
 		if (setresuid(uid, uid, uid)) {
-			ERROR("failed to change uid to '%d': %m", uid);
+			ERROR("failed to change uid to '%d': %s", uid,
+			      strerror(errno));
 			return -1;
 		}
 
 		if (lxc_caps_up()) {
-			ERROR("failed to restore capabilities: %m");
+			ERROR("failed to restore capabilities: %s",
+			      strerror(errno));
 			return -1;
 		}
 	}
