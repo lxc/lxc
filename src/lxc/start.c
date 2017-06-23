@@ -195,7 +195,7 @@ int lxc_check_inherited(struct lxc_conf *conf, int fd_to_ignore)
 restart:
 	dir = opendir("/proc/self/fd");
 	if (!dir) {
-		WARN("failed to open directory: %m");
+		WARN("Failed to open directory: %s.", strerror(errno));
 		return -1;
 	}
 
@@ -584,7 +584,7 @@ static int must_drop_cap_sys_boot(struct lxc_conf *conf)
 		return -1;
 	}
 	if (wait(&status) < 0) {
-		SYSERROR("unexpected wait error: %m");
+		SYSERROR("Unexpected wait error: %s.", strerror(errno));
 		return -1;
 	}
 
