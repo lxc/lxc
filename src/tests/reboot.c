@@ -21,6 +21,8 @@
 #include <sched.h>
 #include <unistd.h>
 #include <signal.h>
+#include <errno.h>
+#include <string.h>
 #include <sys/reboot.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -38,7 +40,7 @@ static int do_reboot(void *arg)
 	int *cmd = arg;
 
 	if (reboot(*cmd))
-		printf("failed to reboot(%d): %m\n", *cmd);
+		printf("failed to reboot(%d): %s\n", *cmd, strerror(errno));
 	return 0;
 }
 
@@ -51,12 +53,12 @@ static int test_reboot(int cmd, int sig)
 
 	ret = clone(do_reboot, stack, CLONE_NEWPID | SIGCHLD, &cmd);
 	if (ret < 0) {
-		printf("failed to clone: %m\n");
+		printf("failed to clone: %s\n", strerror(errno));
 		return -1;
 	}
 
 	if (wait(&status) < 0) {
-		printf("unexpected wait error: %m\n");
+		printf("unexpected wait error: %s\n", strerror(errno));
 		return -1;
 	}
 
