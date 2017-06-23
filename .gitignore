@@ -94,6 +94,8 @@ src/tests/lxc-test-startone
 src/tests/lxc-test-usernic
 src/tests/lxc-test-utils*
 src/tests/lxc-usernic-test
+src/tests/lxc-test-config-jump-table
+src/tests/lxc-test-parse-config-file
 
 config/compile
 config/config.guess
