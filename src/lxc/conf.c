@@ -2638,9 +2638,9 @@ struct lxc_conf *lxc_conf_init(void)
 	struct lxc_conf *new;
 	int i;
 
-	new = 	malloc(sizeof(*new));
+	new = malloc(sizeof(*new));
 	if (!new) {
-		ERROR("lxc_conf_init : %m");
+		ERROR("lxc_conf_init : %s", strerror(errno));
 		return NULL;
 	}
 	memset(new, 0, sizeof(*new));
@@ -2662,7 +2662,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->nbd_idx = -1;
 	new->rootfs.mount = strdup(default_rootfs_mount);
 	if (!new->rootfs.mount) {
-		ERROR("lxc_conf_init : %m");
+		ERROR("lxc_conf_init : %s", strerror(errno));
 		free(new);
 		return NULL;
 	}

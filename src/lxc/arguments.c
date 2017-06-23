@@ -259,7 +259,8 @@ int lxc_arguments_str_to_int(struct lxc_arguments *args, const char *str)
 	errno = 0;
 	val = strtol(str, &endptr, 10);
 	if (errno) {
-		lxc_error(args, "invalid statefd '%s' : %m", str);
+		lxc_error(args, "invalid statefd '%s' : %s", str,
+			  strerror(errno));
 		return -1;
 	}
 

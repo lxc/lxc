@@ -40,7 +40,7 @@ static int __sync_wait(int fd, int sequence)
 
 	ret = read(fd, &sync, sizeof(sync));
 	if (ret < 0) {
-		ERROR("sync wait failure : %m");
+		ERROR("sync wait failure : %s", strerror(errno));
 		return -1;
 	}
 
@@ -71,7 +71,7 @@ static int __sync_wake(int fd, int sequence)
 	int sync = sequence;
 
 	if (write(fd, &sync, sizeof(sync)) < 0) {
-		ERROR("sync wake failure : %m");
+		ERROR("sync wake failure : %s", strerror(errno));
 		return -1;
 	}
 	return 0;

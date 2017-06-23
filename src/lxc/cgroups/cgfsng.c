@@ -1254,13 +1254,13 @@ next:
 
 	if (rmdir(dirname) < 0) {
 		if (!r)
-			WARN("%s: failed to delete %s: %m", __func__, dirname);
+			WARN("failed to delete %s: %s", dirname, strerror(errno));
 		r = -1;
 	}
 
 	if (closedir(dir) < 0) {
 		if (!r)
-			WARN("%s: failed to delete %s: %m", __func__, dirname);
+			WARN("failed to delete %s: %s", dirname, strerror(errno));
 		r = -1;
 	}
 	return r;
@@ -1477,16 +1477,18 @@ static int chown_cgroup_wrapper(void *data)
 		 */
 		fullpath = must_make_path(path, "tasks", NULL);
 		if (chown(fullpath, destuid, 0) < 0 && errno != ENOENT)
-			WARN("Failed chowning %s to %d: %m", fullpath, (int) destuid);
+			WARN("Failed chowning %s to %d: %s", fullpath, (int) destuid,
+			     strerror(errno));
 		if (chmod(fullpath, 0664) < 0)
-			WARN("Error chmoding %s: %m", path);
+			WARN("Error chmoding %s: %s", path, strerror(errno));
 		free(fullpath);
 
 		fullpath = must_make_path(path, "cgroup.procs", NULL);
 		if (chown(fullpath, destuid, 0) < 0 && errno != ENOENT)
-			WARN("Failed chowning %s to %d: %m", fullpath, (int) destuid);
+			WARN("Failed chowning %s to %d: %s", fullpath, (int) destuid,
+			     strerror(errno));
 		if (chmod(fullpath, 0664) < 0)
-			WARN("Error chmoding %s: %m", path);
+			WARN("Error chmoding %s: %s", path, strerror(errno));
 		free(fullpath);
 	}
 
@@ -1549,7 +1551,8 @@ static int mount_cgroup_full(int type, struct hierarchy *h, char *dest,
 	char *source = must_make_path(h->mountpoint, h->base_cgroup, container_cgroup, NULL);
 	char *rwpath = must_make_path(dest, h->base_cgroup, container_cgroup, NULL);
 	if (mount(source, rwpath, "cgroup", MS_BIND, NULL) < 0)
-		WARN("Failed to mount %s read-write: %m", rwpath);
+		WARN("Failed to mount %s read-write: %s", rwpath,
+		     strerror(errno));
 	INFO("Made %s read-write", rwpath);
 	free(rwpath);
 	free(source);
