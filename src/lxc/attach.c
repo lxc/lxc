@@ -207,6 +207,7 @@ static struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 	info = calloc(1, sizeof(*info));
 	if (!info) {
 		SYSERROR("Could not allocate memory.");
+		fclose(proc_file);
 		return NULL;
 	}
 
