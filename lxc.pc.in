@@ -1,8 +1,7 @@
-prefix=@prefix@
 bindir=@BINDIR@
-libdir=${prefix}/@LIBDIR@
+libdir=@LIBDIR@
 localstatedir=@LOCALSTATEDIR@
-includedir=${prefix}/@INCLUDEDIR@
+includedir=@INCLUDEDIR@
 rootfsmountdir=@LXCROOTFSMOUNT@
 
 Name: lxc
