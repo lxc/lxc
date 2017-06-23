@@ -351,7 +351,6 @@ struct lxc_conf {
 	int haltsignal; // signal used to halt container
 	int rebootsignal; // signal used to reboot container
 	int stopsignal; // signal used to hard stop container
-	unsigned int kmsg;  // if 1, create /dev/kmsg symlink
 	char *rcfile;	// Copy of the top level rcfile we read
 
 	// Logfile and logleve can be set in a container config file.

@@ -321,13 +321,6 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.kmsg */
-	if (set_get_compare_clear_save_load(c, "lxc.kmsg", "1", tmpf, true) <
-	    0) {
-		lxc_error("%s\n", "lxc.kmsg");
-		goto non_test_error;
-	}
-
 	/* REMOVE IN LXC 3.0
 	   legacy security keys
 	 */

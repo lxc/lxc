@@ -87,12 +87,6 @@ static int get_config_ttydir(const char *, char *, int, struct lxc_conf *,
 			     void *);
 static int clr_config_ttydir(const char *, struct lxc_conf *, void *);
 
-static int set_config_kmsg(const char *, const char *, struct lxc_conf *,
-			   void *);
-static int get_config_kmsg(const char *, char *, int, struct lxc_conf *,
-			   void *);
-static int clr_config_kmsg(const char *, struct lxc_conf *, void *);
-
 static int set_config_apparmor_profile(const char *, const char *,
 				       struct lxc_conf *, void *);
 static int get_config_apparmor_profile(const char *, char *, int,
@@ -428,7 +422,6 @@ static struct lxc_config_t config[] = {
 	{ "lxc.pts",                       set_config_pts,                         get_config_pts,                         clr_config_pts,                       },
 	{ "lxc.tty",                       set_config_tty,                         get_config_tty,                         clr_config_tty,                       },
 	{ "lxc.devttydir",                 set_config_ttydir,                      get_config_ttydir,                      clr_config_ttydir,                    },
-	{ "lxc.kmsg",                      set_config_kmsg,                        get_config_kmsg,                        clr_config_kmsg,                      },
 	{ "lxc.apparmor.profile",          set_config_apparmor_profile,            get_config_apparmor_profile,            clr_config_apparmor_profile,          },
 	{ "lxc.apparmor.allow_incomplete", set_config_apparmor_allow_incomplete,   get_config_apparmor_allow_incomplete,   clr_config_apparmor_allow_incomplete, },
 	{ "lxc.selinux.context",           set_config_selinux_context,             get_config_selinux_context,             clr_config_selinux_context,           },
@@ -1573,25 +1566,6 @@ static int set_config_ttydir(const char *key, const char *value,
 {
 	return set_config_string_item_max(&lxc_conf->ttydir, value,
 					  NAME_MAX + 1);
-}
-
-static int set_config_kmsg(const char *key, const char *value,
-			   struct lxc_conf *lxc_conf, void *data)
-{
-	/* Set config value to default. */
-	if (lxc_config_value_empty(value)) {
-		lxc_conf->kmsg = 0;
-		return 0;
-	}
-
-	/* Parse new config value. */
-	if (lxc_safe_uint(value, &lxc_conf->kmsg) < 0)
-		return -1;
-
-	if (lxc_conf->kmsg > 1)
-		return -1;
-
-	return 0;
 }
 
 static int set_config_apparmor_profile(const char *key, const char *value,
@@ -3106,12 +3080,6 @@ static int get_config_ttydir(const char *key, char *retv, int inlen,
 	return lxc_get_conf_str(retv, inlen, c->ttydir);
 }
 
-static int get_config_kmsg(const char *key, char *retv, int inlen,
-			   struct lxc_conf *c, void *data)
-{
-	return lxc_get_conf_int(c, retv, inlen, c->kmsg);
-}
-
 static int get_config_apparmor_profile(const char *key, char *retv, int inlen,
 				       struct lxc_conf *c, void *data)
 {
@@ -3691,13 +3659,6 @@ static inline int clr_config_ttydir(const char *key, struct lxc_conf *c,
 {
 	free(c->ttydir);
 	c->ttydir = NULL;
-	return 0;
-}
-
-static inline int clr_config_kmsg(const char *key, struct lxc_conf *c,
-				  void *data)
-{
-	c->kmsg = 0;
 	return 0;
 }
 

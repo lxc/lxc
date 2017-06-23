@@ -1632,33 +1632,6 @@ static int lxc_setup_console(const struct lxc_rootfs *rootfs,
 	return lxc_setup_ttydir_console(rootfs, console, ttydir);
 }
 
-static int setup_kmsg(const struct lxc_rootfs *rootfs,
-		       const struct lxc_console *console)
-{
-	char kpath[MAXPATHLEN];
-	int ret;
-
-	if (!rootfs->path)
-		return 0;
-	ret = snprintf(kpath, sizeof(kpath), "%s/dev/kmsg", rootfs->mount);
-	if (ret < 0 || ret >= sizeof(kpath))
-		return -1;
-
-	ret = unlink(kpath);
-	if (ret && errno != ENOENT) {
-		SYSERROR("error unlinking %s", kpath);
-		return -1;
-	}
-
-	ret = symlink("console", kpath);
-	if (ret) {
-		SYSERROR("failed to create symlink for kmsg");
-		return -1;
-	}
-
-	return 0;
-}
-
 static void parse_mntopt(char *opt, unsigned long *flags, char **data)
 {
 	struct mount_opt *mo;
@@ -2667,7 +2640,6 @@ struct lxc_conf *lxc_conf_init(void)
 		free(new);
 		return NULL;
 	}
-	new->kmsg = 0;
 	new->logfd = -1;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->network);
@@ -4204,11 +4176,6 @@ int lxc_setup(struct lxc_handler *handler)
 	if (!lxc_conf->is_execute && lxc_setup_console(&lxc_conf->rootfs, &lxc_conf->console, lxc_conf->ttydir)) {
 		ERROR("failed to setup the console for '%s'", name);
 		return -1;
-	}
-
-	if (lxc_conf->kmsg) {
-		if (setup_kmsg(&lxc_conf->rootfs, &lxc_conf->console))  // don't fail
-			ERROR("failed to setup kmsg for '%s'", name);
 	}
 
 	if (!lxc_conf->is_execute && setup_dev_symlinks(&lxc_conf->rootfs)) {
