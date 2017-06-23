@@ -1455,6 +1455,7 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 		} else {
 			DEBUG("cleared all (%d) mounts from \"%s\"", ret, path);
 		}
+
 		ret = unlink(path);
 		if (ret < 0) {
 			SYSERROR("error unlinking %s", path);

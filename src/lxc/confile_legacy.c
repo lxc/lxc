@@ -46,7 +46,7 @@
 #include "config.h"
 #include "confile.h"
 #include "confile_utils.h"
-#include "confile_network_legacy.h"
+#include "confile_legacy.h"
 #include "utils.h"
 #include "log.h"
 #include "conf.h"
@@ -59,7 +59,7 @@
 #include <../include/ifaddrs.h>
 #endif
 
-lxc_log_define(lxc_confile_network_legacy, lxc);
+lxc_log_define(lxc_confile_legacy, lxc);
 
 /*
  * Config entry is something like "lxc.network.0.ipv4" the key 'lxc.network.'
@@ -1002,4 +1002,80 @@ inline int clr_config_network_legacy_item(const char *key, struct lxc_conf *c,
 inline int clr_config_network_legacy(const char *key, struct lxc_conf *c, void *data)
 {
 	return lxc_clear_config_network(c);
+}
+
+inline int clr_config_lsm_aa_profile(const char *key, struct lxc_conf *c,
+				     void *data)
+{
+	free(c->lsm_aa_profile);
+	c->lsm_aa_profile = NULL;
+	return 0;
+}
+
+inline int clr_config_lsm_aa_incomplete(const char *key, struct lxc_conf *c,
+					void *data)
+{
+	c->lsm_aa_allow_incomplete = 0;
+	return 0;
+}
+
+int get_config_lsm_aa_profile(const char *key, char *retv, int inlen,
+			      struct lxc_conf *c, void *data)
+{
+	return lxc_get_conf_str(retv, inlen, c->lsm_aa_profile);
+}
+
+int get_config_lsm_aa_incomplete(const char *key, char *retv, int inlen,
+				 struct lxc_conf *c, void *data)
+{
+	return lxc_get_conf_int(c, retv, inlen,
+				c->lsm_aa_allow_incomplete);
+}
+
+int set_config_lsm_aa_profile(const char *key, const char *value,
+			      struct lxc_conf *lxc_conf, void *data)
+{
+	return set_config_string_item(&lxc_conf->lsm_aa_profile, value);
+}
+
+int set_config_lsm_aa_incomplete(const char *key, const char *value,
+				 struct lxc_conf *lxc_conf, void *data)
+{
+	/* Set config value to default. */
+	if (lxc_config_value_empty(value)) {
+		lxc_conf->lsm_aa_allow_incomplete = 0;
+		return 0;
+	}
+
+	/* Parse new config value. */
+	if (lxc_safe_uint(value, &lxc_conf->lsm_aa_allow_incomplete) < 0)
+		return -1;
+
+	if (lxc_conf->lsm_aa_allow_incomplete > 1) {
+		ERROR("Wrong value for lxc.lsm_aa_allow_incomplete. Can only "
+		      "be set to 0 or 1");
+		return -1;
+	}
+
+	return 0;
+}
+
+int set_config_lsm_se_context(const char *key, const char *value,
+			      struct lxc_conf *lxc_conf, void *data)
+{
+	return set_config_string_item(&lxc_conf->lsm_se_context, value);
+}
+
+int get_config_lsm_se_context(const char *key, char *retv, int inlen,
+			      struct lxc_conf *c, void *data)
+{
+	return lxc_get_conf_str(retv, inlen, c->lsm_se_context);
+}
+
+inline int clr_config_lsm_se_context(const char *key, struct lxc_conf *c,
+				     void *data)
+{
+	free(c->lsm_se_context);
+	c->lsm_se_context = NULL;
+	return 0;
 }

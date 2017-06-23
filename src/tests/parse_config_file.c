@@ -328,17 +328,51 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.aa_profile */
+	/* REMOVE IN LXC 3.0
+	   legacy security keys
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.aa_profile", "unconfined",
 					    tmpf, true) < 0) {
 		lxc_error("%s\n", "lxc.aa_profile");
 		goto non_test_error;
 	}
 
-	/* lxc.aa_allow_incomplete */
+	/* REMOVE IN LXC 3.0
+	   legacy security keys
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.aa_allow_incomplete", "1",
 					    tmpf, true) < 0) {
 		lxc_error("%s\n", "lxc.aa_allow_incomplete");
+		goto non_test_error;
+	}
+
+	/* REMOVE IN LXC 3.0
+	   legacy security keys
+	 */
+	if (set_get_compare_clear_save_load(c, "lxc.se_context", "system_u:system_r:lxc_t:s0:c22",
+					    tmpf, true) < 0) {
+		lxc_error("%s\n", "lxc.apparmor.se_context");
+		goto non_test_error;
+	}
+
+	/* lxc.apparmor.profile */
+	if (set_get_compare_clear_save_load(c, "lxc.apparmor.profile", "unconfined",
+					    tmpf, true) < 0) {
+		lxc_error("%s\n", "lxc.apparmor.profile");
+		goto non_test_error;
+	}
+
+	/* lxc.apparmor.allow_incomplete */
+	if (set_get_compare_clear_save_load(c, "lxc.apparmor.allow_incomplete", "1",
+					    tmpf, true) < 0) {
+		lxc_error("%s\n", "lxc.apparmor.allow_incomplete");
+		goto non_test_error;
+	}
+
+	/* lxc.selinux.context */
+	if (set_get_compare_clear_save_load(c, "lxc.selinux.context", "system_u:system_r:lxc_t:s0:c22",
+					    tmpf, true) < 0) {
+		lxc_error("%s\n", "lxc.apparmor.selinux.context");
 		goto non_test_error;
 	}
 

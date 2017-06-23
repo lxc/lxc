@@ -21,8 +21,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef __LXC_CONFILE_NETWORK_LEGACY_H
-#define __LXC_CONFILE_NETWORK_LEGACY_H
+#ifndef __LXC_CONFILE_LEGACY_H
+#define __LXC_CONFILE_LEGACY_H
 
 #include <stdio.h>
 #include <lxc/attach_options.h>
@@ -78,4 +78,23 @@ extern int lxc_list_nicconfigs_legacy(struct lxc_conf *c, const char *key,
 extern int lxc_listconfigs(char *retv, int inlen);
 
 extern bool network_new_hwaddrs(struct lxc_conf *conf);
-#endif
+
+extern int set_config_lsm_aa_profile(const char *, const char *,
+				     struct lxc_conf *, void *);
+extern int get_config_lsm_aa_profile(const char *, char *, int,
+				     struct lxc_conf *, void *);
+extern int clr_config_lsm_aa_profile(const char *, struct lxc_conf *, void *);
+
+extern int set_config_lsm_aa_incomplete(const char *, const char *,
+ 				struct lxc_conf *, void *);
+extern int get_config_lsm_aa_incomplete(const char *, char *, int,
+ 				struct lxc_conf *, void *);
+extern int clr_config_lsm_aa_incomplete(const char *, struct lxc_conf *,
+					void *);
+
+extern int set_config_lsm_se_context(const char *, const char *,
+         		     struct lxc_conf *, void *);
+extern int get_config_lsm_se_context(const char *, char *, int,
+         		     struct lxc_conf *, void *);
+extern int clr_config_lsm_se_context(const char *, struct lxc_conf *, void *);
+#endif /* __LXC_CONFILE_LEGACY_H */
