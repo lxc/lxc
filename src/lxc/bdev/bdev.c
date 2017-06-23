@@ -754,8 +754,10 @@ int do_mkfs_exec_wrapper(void *args)
 		return -1;
 
 	ret = snprintf(mkfs, len, "mkfs.%s", data[0]);
-	if (ret < 0 || (size_t)ret >= len)
+	if (ret < 0 || (size_t)ret >= len) {
+		free(mkfs);
 		return -1;
+	}
 
 	TRACE("executing \"%s %s\"", mkfs, data[1]);
 	execlp(mkfs, mkfs, data[1], (char *)NULL);
