@@ -424,6 +424,9 @@ download_centos()
     PKG_LIST="yum initscripts passwd rsyslog vim-minimal openssh-server openssh-clients dhclient chkconfig rootfiles policycoreutils cronie"
 
     # use temporary repository definition
+    # always prefer the repo given by the user
+    # if no repo given, use mirrorlist.centos.org for i386 and x86_64
+    # and http://mirror.centos.org/altarch/ otherwise
     REPO_FILE=$INSTALL_ROOT/etc/yum.repos.d/lxc-centos-temp.repo
     mkdir -p $(dirname $REPO_FILE)
     if [ -n "$repo" ]; then
@@ -432,7 +435,7 @@ download_centos()
 name=local repository
 baseurl="$repo"
 EOF
-else
+    elif [ ${basearch} = 'i386' ] || [ ${basearch} = 'x86_64' ]; then
 	cat <<EOF > $REPO_FILE
 [base]
 name=CentOS-$release - Base
@@ -441,6 +444,16 @@ mirrorlist=http://mirrorlist.centos.org/?release=$release&arch=$basearch&repo=os
 [updates]
 name=CentOS-$release - Updates
 mirrorlist=http://mirrorlist.centos.org/?release=$release&arch=$basearch&repo=updates
+EOF
+    else
+	cat <<EOF > $REPO_FILE
+[base]
+name=CentOS-$release - Base
+baseurl=http://mirror.centos.org/altarch/7/os/$basearch/
+
+[updates]
+name=CentOS-$release - Updates
+baseurl=http://mirror.centos.org/altarch/7/updates/$basearch/
 EOF
     fi
 
