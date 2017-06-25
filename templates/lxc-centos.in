@@ -849,8 +849,8 @@ if [ -z "$release" ]; then
         # This is needed to clean out bullshit like 6workstation and 6server.
         release=$(expr $redhat_host_ver : '\([0-9.]*\)')
     else
-        echo "This is not a CentOS or Redhat host and release is missing, defaulting to 6 use -R|--release to specify release"
-        release=6
+        echo "This is not a CentOS or Red Hat host and release is missing, defaulting to 7, use -R|--release to specify release"
+        release=7
     fi
 fi
 
