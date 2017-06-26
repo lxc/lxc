@@ -526,7 +526,7 @@ if [ ! -e $configfile ]; then
 fi
 
 ## Extract all the network config entries
-sed -i -e "/lxc.network/{w ${LXC_PATH}/config-network" -e "d}" \
+sed -i -e "/lxc.net.0/{w ${LXC_PATH}/config-network" -e "d}" \
     ${LXC_PATH}/config
 
 ## Extract any other config entry

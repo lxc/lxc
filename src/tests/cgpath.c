@@ -143,7 +143,7 @@ static int test_container(const char *lxcpath,
 		c->destroy(c);
 		c = lxc_container_new(name, lxcpath);
 	}
-	c->set_config_item(c, "lxc.network.type", "empty");
+	c->set_config_item(c, "lxc.net.0.type", "empty");
 	if (!c->createl(c, template, NULL, NULL, 0, NULL)) {
 		TSTERR("creating container %s", name);
 		goto out2;

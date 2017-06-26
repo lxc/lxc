@@ -1,1 +1,1 @@
-lxc.network.type = empty
+lxc.net.0.type = empty

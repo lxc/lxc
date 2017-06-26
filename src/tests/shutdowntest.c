@@ -45,12 +45,12 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if (!c->set_config_item(c, "lxc.network.type", "veth")) {
+	if (!c->set_config_item(c, "lxc.net.0.type", "veth")) {
 		fprintf(stderr, "%d: failed to set network type\n", __LINE__);
 		goto out;
 	}
-	c->set_config_item(c, "lxc.network.link", "lxcbr0");
-	c->set_config_item(c, "lxc.network.flags", "up");
+	c->set_config_item(c, "lxc.net.0.link", "lxcbr0");
+	c->set_config_item(c, "lxc.net.0.flags", "up");
 	if (!c->createl(c, "busybox", NULL, NULL, 0, NULL)) {
 		fprintf(stderr, "%d: failed to create a container\n", __LINE__);
 		goto out;

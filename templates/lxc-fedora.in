@@ -463,13 +463,13 @@ lxc.rootfs = ${rootfs}
         # Seems that \s doesn't work in brackets.
         key=$(expr "${line}" : '\s*\([^	 ]*\)\s*=')
 
-        if [ "${key}" != "lxc.network.hwaddr" ]
+        if [ "${key}" != "lxc.net.0.hwaddr" ]
         then
             echo "${line}" >> "${config}"
 
-            if [ "${key}" == "lxc.network.link" ]
+            if [ "${key}" == "lxc.net.0.link" ]
             then
-                echo "lxc.network.hwaddr = $(create_hwaddr)" >> "${config}"
+                echo "lxc.net.0.hwaddr = $(create_hwaddr)" >> "${config}"
             fi
         fi
     done < "${config}.orig"
@@ -492,16 +492,16 @@ lxc.utsname = ${utsname}
 #lxc.aa_profile = unconfined
 
 # example simple networking setup, uncomment to enable
-#lxc.network.type = ${lxc_network_type}
-#lxc.network.flags = up
-#lxc.network.link = ${lxc_network_link}
-#lxc.network.name = eth0
+#lxc.net.0.type = ${lxc_network_type}
+#lxc.net.0.flags = up
+#lxc.net.0.link = ${lxc_network_link}
+#lxc.net.0.name = eth0
 # Additional example for veth network type
 #    static MAC address,
-#lxc.network.hwaddr = $(create_hwaddr)
+#lxc.net.0.hwaddr = $(create_hwaddr)
 #    persistent veth device name on host side
 #        Note: This may potentially collide with other containers of same name!
-#lxc.network.veth.pair = v-${name}-e0
+#lxc.net.0.veth.pair = v-${name}-e0
 EOF
 
     if [ $? -ne 0 ]

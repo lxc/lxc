@@ -56,7 +56,7 @@ wait_for_bridge()
     local BRNAME try flags br
     [ -f "$sysconfdir"/lxc/default.conf ] || { return 0; }
 
-    BRNAME=`grep '^[ 	]*lxc.network.link' "$sysconfdir"/lxc/default.conf | sed 's/^.*=[ 	]*//'`
+    BRNAME=`grep '^[ 	]*lxc.net.0.link' "$sysconfdir"/lxc/default.conf | sed 's/^.*=[ 	]*//'`
     if [ -z "$BRNAME" ]; then
         return 0
     fi

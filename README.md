@@ -83,8 +83,8 @@ LXC is configured via a simple set of keys. For example,
 - `lxc.mount.entry`
 
 LXC namespaces configuration keys by using single dots. This means complex
-configuration keys such as `lxc.network` expose various subkeys such as
-`lxc.network.type`, `lxc.network.link`, `lxc.network.ipv6`, and others for even
+configuration keys such as `lxc.net.0` expose various subkeys such as
+`lxc.net.0.type`, `lxc.net.0.link`, `lxc.net.0.ipv6`, and others for even
 more fine-grained configuration.
 
 LXC is used as the default runtime for [LXD](https://github.com/lxc/lxd),

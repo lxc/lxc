@@ -293,7 +293,7 @@ int main(int argc, char *argv[])
 	printf("%d: get_config_item(lxc.cap.drop) returned %d %s\n", __LINE__, ret, v2);
 	ret = c->get_config_item(c, "lxc.network", v2, 255);
 	if (ret < 0) {
-		fprintf(stderr, "%d: get_config_item returned %d\n", __LINE__, ret);
+		fprintf(stderr, "%d: get_config_item(lxc.network) returned %d\n", __LINE__, ret);
 		goto out;
 	}
 	printf("%d: get_config_item(lxc.network) returned %d %s\n", __LINE__, ret, v2);

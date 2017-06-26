@@ -220,7 +220,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       </varlistentry>
 
       <varlistentry>
-        <term>lxc-info -n foo -c lxc.network.0.veth.pair</term>
+        <term>lxc-info -n foo -c lxc.net.0.veth.pair</term>
         <listitem>
           <para>
             <!--

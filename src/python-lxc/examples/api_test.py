@@ -90,7 +90,7 @@ assert(capdrop == container.get_config_item("lxc.cap.drop"))
 print("Testing the networking")
 
 # A few basic checks of the current state
-assert("name" in container.get_keys("lxc.network.0"))
+assert("name" in container.get_keys("lxc.net.0"))
 assert(len(container.network) == 1)
 
 ## Starting the container

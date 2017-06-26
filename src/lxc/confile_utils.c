@@ -533,7 +533,7 @@ int rand_complete_hwaddr(char *hwaddr)
 }
 
 /*
- * If we find a lxc.network.hwaddr in the original config file, we expand it in
+ * If we find a lxc.net.hwaddr in the original config file, we expand it in
  * the unexpanded_config, so that after a save_config we store the hwaddr for
  * re-use.
  * This is only called when reading the config file, not when executing a

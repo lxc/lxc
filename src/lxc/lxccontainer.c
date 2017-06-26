@@ -2069,7 +2069,7 @@ static int do_lxcapi_get_keys(struct lxc_container *c, const char *key, char *re
 	if (!key)
 		return lxc_listconfigs(retv, inlen);
 	/*
-	 * Support 'lxc.network.<idx>', i.e. 'lxc.network.0'
+	 * Support 'lxc.net.<idx>', i.e. 'lxc.net.0'
 	 * This is an intelligent result to show which keys are valid given
 	 * the type of nic it is
 	 */

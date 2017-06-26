@@ -126,12 +126,12 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <para>
       <!--
       LXC namespaces configuration keys by using single dots. This means complex
-      configuration keys such as <option>lxc.network</option> expose various
-      subkeys such as <option>lxc.network.type</option>,
-      <option>lxc.network.link</option>, <option>lxc.network.ipv6</option>, and
+      configuration keys such as <option>lxc.net.0</option> expose various
+      subkeys such as <option>lxc.net.0.type</option>,
+      <option>lxc.net.0.link</option>, <option>lxc.net.0.ipv6</option>, and
       others for even more fine-grained configuration.
       -->
-      LXC は、シングルドットを使って設定キーの名前空間を表します。<option>lxc.network</option> のような複雑な設定キーは、<option>lxc.network.type</option>、<option>lxc.network.link</option>、<option>lxc.network.ipv6</option> や、さらに細分化された設定向けの色々なサブキーを持つことを意味します。
+      LXC は、シングルドットを使って設定キーの名前空間を表します。<option>lxc.net.0</option> のような複雑な設定キーは、<option>lxc.net.0.type</option>、<option>lxc.net.0.link</option>、<option>lxc.net.0.ipv6</option> や、さらに細分化された設定向けの色々なサブキーを持つことを意味します。
     </para>
 
     <refsect2>
@@ -455,7 +455,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.network</option>
+            <option>lxc.net</option>
           </term>
           <listitem>
             <para>
@@ -468,7 +468,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         </varlistentry>
         <varlistentry>
           <term>
-            <option>lxc.network.[i].type</option>
+            <option>lxc.net.[i].type</option>
           </term>
           <listitem>
             <para>
@@ -477,17 +477,17 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               for the container.
               Multiple networks can be specified by using an additional index
               <option>i</option>
-              after all <option>lxc.network.*</option> keys. For example,
-              <option>lxc.network.0.type = veth</option> and
-              <option>lxc.network.1.type = veth</option> specify two different
+              after all <option>lxc.net.*</option> keys. For example,
+              <option>lxc.net.0.type = veth</option> and
+              <option>lxc.net.1.type = veth</option> specify two different
               networks of the same type. All keys sharing the same index
               <option>i</option> will be treated as belonging to the same
-              network. For example, <option>lxc.network.0.link = br0</option>
-              will belong to <option>lxc.network.0.type</option>.
+              network. For example, <option>lxc.net.0.link = br0</option>
+              will belong to <option>lxc.net.0.type</option>.
               Currently, the different virtualization types can be:
               -->
-              コンテナがどの種類のネットワーク仮想化を使うかを指定します。すべての <option>lxc.network.*</option> キーに、追加のインデックス <option>i</option> を使うと、複数のネットワークを指定できます。例えば、<option>lxc.network.0.type = veth</option> と <option>lxc.network.1.type = veth</option> は、同じタイプの異なるネットワークを 2 つ指定します。
-              同じインデックスを指定したキーはすべて同じネットワークの指定になります。例えば、<option>lxc.network.0.link = br0</option> は <option>lxc.network.0.type</option> と同じネットワークの設定になります。
+              コンテナがどの種類のネットワーク仮想化を使うかを指定します。すべての <option>lxc.net.*</option> キーに、追加のインデックス <option>i</option> を使うと、複数のネットワークを指定できます。例えば、<option>lxc.net.0.type = veth</option> と <option>lxc.net.1.type = veth</option> は、同じタイプの異なるネットワークを 2 つ指定します。
+              同じインデックスを指定したキーはすべて同じネットワークの指定になります。例えば、<option>lxc.net.0.link = br0</option> は <option>lxc.net.0.type</option> と同じネットワークの設定になります。
               現時点では、以下のネットワーク仮想化のタイプが使えます:
             </para>
 
@@ -518,7 +518,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <option>veth:</option> a virtual ethernet pair
               device is created with one side assigned to the container
               and the other side attached to a bridge specified by
-              the <option>lxc.network.link</option> option.
+              the <option>lxc.net.[i].link</option> option.
               If the bridge is not specified, then the veth pair device
               will be created but not attached to any bridge.
               Otherwise, the bridge has to be created on the system
@@ -530,37 +530,37 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               container, but if you wish to handle
               this name yourselves, you can tell <command>lxc</command>
               to set a specific name with
-              the <option>lxc.network.veth.pair</option> option (except for
+              the <option>lxc.net.[i].veth.pair</option> option (except for
               unprivileged containers where this option is ignored for security
               reasons).
               -->
-              <option>veth:</option > 一方がコンテナに、もう一方が <option>lxc.network.link</option> オプションで指定されたブリッジに接続されるペアの仮想イーサネットデバイスを作成します。
+              <option>veth:</option > 一方がコンテナに、もう一方が <option>lxc.net.[i].link</option> オプションで指定されたブリッジに接続されるペアの仮想イーサネットデバイスを作成します。
               もし、ブリッジが指定されていない場合、veth ペアデバイスは作成されますが、ブリッジには接続されません。
               ブリッジはコンテナが開始する前にシステムで事前に設定しておく必要があります。
               <command>lxc</command> はコンテナ外の設定を扱うことはありません。
               デフォルトでは、<command>lxc</command> がコンテナの外部に属するネットワークデバイスに対する名前を決定します。
-              しかし、もしこの名前を自分で指定したい場合、<option>lxc.network.veth.pair</option> オプションを使って名前を設定し、lxc に対して指定をすることができます (非特権コンテナの場合をのぞきます。セキュリティ上の理由からこのオプションは無視されます)。
+              しかし、もしこの名前を自分で指定したい場合、<option>lxc.net.[i].veth.pair</option> オプションを使って名前を設定し、lxc に対して指定をすることができます (非特権コンテナの場合をのぞきます。セキュリティ上の理由からこのオプションは無視されます)。
             </para>
 
             <para>
               <!--
               <option>vlan:</option> a vlan interface is linked with
               the interface specified by
-              the <option>lxc.network.link</option> and assigned to
+              the <option>lxc.net.[i].link</option> and assigned to
               the container. The vlan identifier is specified with the
-              option <option>lxc.network.vlan.id</option>.
+              option <option>lxc.net.[i].vlan.id</option>.
               -->
-              <option>vlan:</option> vlan インターフェースは <option>lxc.network.link</option> で指定されたインターフェースとリンクし、コンテナに割り当てられます。
-              vlan の指定は <option>lxc.network.vlan.id</option> オプションで指定します。
+              <option>vlan:</option> vlan インターフェースは <option>lxc.net.[i].link</option> で指定されたインターフェースとリンクし、コンテナに割り当てられます。
+              vlan の指定は <option>lxc.net.[i].vlan.id</option> オプションで指定します。
             </para>
 
             <para>
               <!--
               <option>macvlan:</option> a macvlan interface is linked
               with the interface specified by
-              the <option>lxc.network.link</option> and assigned to
+              the <option>lxc.net.[i].link</option> and assigned to
               the container.
-              <option>lxc.network.macvlan.mode</option> specifies the
+              <option>lxc.net.[i].macvlan.mode</option> specifies the
               mode the macvlan will use to communicate between
               different macvlan on the same upper device. The accepted
               modes are <option>private</option>, <option>vepa</option>,
@@ -589,8 +589,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               interface. Only one macvlan interface in <option>passthru</option>
               mode is possible for one physical interface.
               -->
-              <option>macvlan:</option> macvlan インターフェースは <option>lxc.network.link</option> により指定されるインターフェースとリンクし、コンテナに割り当てられます。
-              <option>lxc.network.macvlan.mode</option> でモードを指定すると、その macvlan の指定を、同じ上位デバイスで異なる macvlan の間の通信をする時に使います。
+              <option>macvlan:</option> macvlan インターフェースは <option>lxc.net.[i].link</option> により指定されるインターフェースとリンクし、コンテナに割り当てられます。
+              <option>lxc.net.[i].macvlan.mode</option> でモードを指定すると、その macvlan の指定を、同じ上位デバイスで異なる macvlan の間の通信をする時に使います。
               指定できるモードは <option>private</option>、<option>vepa</option>、<option>bridge</option>、<option>passthru</option> のいずれかです。
               <option>private</option> モードの場合、デバイスは同じ上位デバイスの他のデバイスとの通信を行いません (デフォルト)。
               新しい仮想イーサネットポート集約モード (Virtual Ethernet Port Aggregator (VEPA)) である <option>vepa</option> モードの場合、隣接したポートが、ソースとデスティネーションの両方が macvlan ポートに対してローカルであるフレームを全て返すと仮定します。
@@ -608,17 +608,17 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <para>
               <!--
               <option>phys:</option> an already existing interface
-              specified by the <option>lxc.network.link</option> is
+              specified by the <option>lxc.net.[i].link</option> is
               assigned to the container.
               -->
-              <option>phys:</option> <option>lxc.network.link</option> で指定された、すでに存在しているインターフェースがコンテナに割り当てられます。
+              <option>phys:</option> <option>lxc.net.[i].link</option> で指定された、すでに存在しているインターフェースがコンテナに割り当てられます。
             </para>
           </listitem>
           </varlistentry>
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].flags</option>
+            <option>lxc.net.[i].flags</option>
           </term>
           <listitem>
             <para>
@@ -639,7 +639,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].link</option>
+            <option>lxc.net.[i].link</option>
           </term>
           <listitem>
             <para>
@@ -653,7 +653,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].mtu</option>
+            <option>lxc.net.[i].mtu</option>
           </term>
           <listitem>
             <para>
@@ -667,7 +667,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].name</option>
+            <option>lxc.net.[i].name</option>
           </term>
           <listitem>
             <para>
@@ -684,7 +684,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].hwaddr</option>
+            <option>lxc.net.[i].hwaddr</option>
           </term>
           <listitem>
             <para>
@@ -702,7 +702,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].ipv4</option>
+            <option>lxc.net.[i].ipv4</option>
           </term>
           <listitem>
             <para>
@@ -718,7 +718,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].ipv4.gateway</option>
+            <option>lxc.net.[i].ipv4.gateway</option>
           </term>
           <listitem>
             <para>
@@ -729,13 +729,13 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               Can also have the special value <option>auto</option>,
               which means to take the primary address from the bridge
               interface (as specified by the
-              <option>lxc.network.link</option> option) and use that as
+              <option>lxc.net.[i].link</option> option) and use that as
               the gateway. <option>auto</option> is only available when
               using the <option>veth</option> and
               <option>macvlan</option> network types.
               -->
               コンテナでゲートウェイとして使う IPv4 アドレスを指定します。アドレスは x.y.z.t というフォーマットです。例) 192.168.1.123
-              <option>auto</option> という特別な値を指定できます。これは (<option>lxc.network.link</option> で指定した) ブリッジインターフェースの最初のアドレスを使用し、それをゲートウェイに使うという意味になります。<option>auto</option> はネットワークタイプとして <option>veth</option> と <option>macvlan</option> を指定している時だけ有効となります。
+              <option>auto</option> という特別な値を指定できます。これは (<option>lxc.net.[i].link</option> で指定した) ブリッジインターフェースの最初のアドレスを使用し、それをゲートウェイに使うという意味になります。<option>auto</option> はネットワークタイプとして <option>veth</option> と <option>macvlan</option> を指定している時だけ有効となります。
             </para>
           </listitem>
         </varlistentry>
@@ -743,7 +743,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].ipv6</option>
+            <option>lxc.net.[i].ipv6</option>
           </term>
           <listitem>
             <para>
@@ -760,7 +760,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].ipv6.gateway</option>
+            <option>lxc.net.[i].ipv6.gateway</option>
           </term>
           <listitem>
             <para>
@@ -771,20 +771,20 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               Can also have the special value <option>auto</option>,
               which means to take the primary address from the bridge
               interface (as specified by the
-              <option>lxc.network.link</option> option) and use that as
+              <option>lxc.net.[i].link</option> option) and use that as
               the gateway. <option>auto</option> is only available when
               using the <option>veth</option> and
               <option>macvlan</option> network types.
               -->
               コンテナでゲートウェイとして使う IPv6 アドレスを指定します。アドレスは x::y というフォーマットです。例) 2003:db8:1:0::1
-              <option>auto</option> という特別な値を記述する事も可能です。これは (<option>lxc.network.link</option> で指定した) ブリッジインターフェースの最初のアドレスを使用し、それをゲートウェイに使うという意味になります。<option>auto</option> はネットワークタイプとして <option>veth</option> と <option>macvlan</option> を指定している時だけ有効となります。
+              <option>auto</option> という特別な値を記述する事も可能です。これは (<option>lxc.net.[i].link</option> で指定した) ブリッジインターフェースの最初のアドレスを使用し、それをゲートウェイに使うという意味になります。<option>auto</option> はネットワークタイプとして <option>veth</option> と <option>macvlan</option> を指定している時だけ有効となります。
             </para>
           </listitem>
         </varlistentry>
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].script.up</option>
+            <option>lxc.net.[i].script.up</option>
           </term>
           <listitem>
             <para>
@@ -817,7 +817,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].script.down</option>
+            <option>lxc.net.[i].script.down</option>
           </term>
           <listitem>
             <para>
@@ -2668,13 +2668,13 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       </para>
       <programlisting>
         lxc.utsname = myhostname
-        lxc.network.type = veth
-        lxc.network.flags = up
-        lxc.network.link = br0
-        lxc.network.name = eth0
-        lxc.network.hwaddr = 4a:49:43:49:79:bf
-        lxc.network.ipv4 = 1.2.3.5/24 1.2.3.255
-        lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
+        lxc.net.0.type = veth
+        lxc.net.0.flags = up
+        lxc.net.0.link = br0
+        lxc.net.0.name = eth0
+        lxc.net.0.hwaddr = 4a:49:43:49:79:bf
+        lxc.net.0.ipv4 = 1.2.3.5/24 1.2.3.255
+        lxc.net.0.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
       </programlisting>
     </refsect2>
 
@@ -2721,26 +2721,26 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       </para>
       <programlisting>
         lxc.utsname = complex
-        lxc.network.0.type = veth
-        lxc.network.0.flags = up
-        lxc.network.0.link = br0
-        lxc.network.0.hwaddr = 4a:49:43:49:79:bf
-        lxc.network.0.ipv4 = 10.2.3.5/24 10.2.3.255
-        lxc.network.0.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
-        lxc.network.0.ipv6 = 2003:db8:1:0:214:5432:feab:3588
-        lxc.network.1.type = macvlan
-        lxc.network.1.flags = up
-        lxc.network.1.link = eth0
-        lxc.network.1.hwaddr = 4a:49:43:49:79:bd
-        lxc.network.1.ipv4 = 10.2.3.4/24
-        lxc.network.1.ipv4 = 192.168.10.125/24
-        lxc.network.1.ipv6 = 2003:db8:1:0:214:1234:fe0b:3596
-        lxc.network.2.type = phys
-        lxc.network.2.flags = up
-        lxc.network.2.link = dummy0
-        lxc.network.2.hwaddr = 4a:49:43:49:79:ff
-        lxc.network.2.ipv4 = 10.2.3.6/24
-        lxc.network.2.ipv6 = 2003:db8:1:0:214:1234:fe0b:3297
+        lxc.net.0.type = veth
+        lxc.net.0.flags = up
+        lxc.net.0.link = br0
+        lxc.net.0.hwaddr = 4a:49:43:49:79:bf
+        lxc.net.0.ipv4 = 10.2.3.5/24 10.2.3.255
+        lxc.net.0.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
+        lxc.net.0.ipv6 = 2003:db8:1:0:214:5432:feab:3588
+        lxc.net.1.type = macvlan
+        lxc.net.1.flags = up
+        lxc.net.1.link = eth0
+        lxc.net.1.hwaddr = 4a:49:43:49:79:bd
+        lxc.net.1.ipv4 = 10.2.3.4/24
+        lxc.net.1.ipv4 = 192.168.10.125/24
+        lxc.net.1.ipv6 = 2003:db8:1:0:214:1234:fe0b:3596
+        lxc.net.2.type = phys
+        lxc.net.2.flags = up
+        lxc.net.2.link = dummy0
+        lxc.net.2.hwaddr = 4a:49:43:49:79:ff
+        lxc.net.2.ipv4 = 10.2.3.6/24
+        lxc.net.2.ipv6 = 2003:db8:1:0:214:1234:fe0b:3297
         lxc.cgroup.cpuset.cpus = 0,1
         lxc.cgroup.cpu.shares = 1234
         lxc.cgroup.devices.deny = a

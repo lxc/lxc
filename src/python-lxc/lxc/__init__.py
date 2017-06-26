@@ -40,7 +40,7 @@ class ContainerNetwork(object):
         self.container = container
         self.index = index
 
-        for key in self.container.get_keys("lxc.network.%s" % self.index):
+        for key in self.container.get_keys("lxc.net.%s" % self.index):
             if "." in key:
                 self.props[key.replace(".", "_")] = key
             else:
@@ -98,18 +98,18 @@ class ContainerNetwork(object):
 
     def __clear_network_item(self, key):
         if key in ("ipv4", "ipv6"):
-            return self.container.clear_config_item("lxc.network.%s.%s" % (
+            return self.container.clear_config_item("lxc.net.%s.%s" % (
                                                     self.index, key))
         else:
-            return self.container.set_config_item("lxc.network.%s.%s" % (
+            return self.container.set_config_item("lxc.net.%s.%s" % (
                                                     self.index, key), "")
 
     def __get_network_item(self, key):
-        return self.container.get_config_item("lxc.network.%s.%s" % (
+        return self.container.get_config_item("lxc.net.%s.%s" % (
                                               self.index, key))
 
     def __set_network_item(self, key, value):
-        return self.container.set_config_item("lxc.network.%s.%s" % (
+        return self.container.set_config_item("lxc.net.%s.%s" % (
                                               self.index, key), value)
 
 
@@ -124,7 +124,7 @@ class ContainerNetworkList():
         return ContainerNetwork(self.container, index)
 
     def __len__(self):
-        values = self.container.get_config_item("lxc.network")
+        values = self.container.get_config_item("lxc.net")
 
         if values:
             return len(values)
@@ -134,7 +134,7 @@ class ContainerNetworkList():
     def add(self, network_type):
         index = len(self)
 
-        return self.container.set_config_item("lxc.network.%s.type" % index,
+        return self.container.set_config_item("lxc.net.%s.type" % index,
                                               network_type)
 
     def remove(self, index):
@@ -142,7 +142,7 @@ class ContainerNetworkList():
         if index >= count:
             raise IndexError("list index out of range")
 
-        return self.container.clear_config_item("lxc.network.%s" % index)
+        return self.container.clear_config_item("lxc.net.%s" % index)
 
 
 class Container(_lxc.Container):

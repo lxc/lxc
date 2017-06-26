@@ -100,9 +100,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
     <para>
       LXC namespaces configuration keys by using single dots. This means complex
-      configuration keys such as <option>lxc.network</option> expose various
-      subkeys such as <option>lxc.network.type</option>,
-      <option>lxc.network.link</option>, <option>lxc.network.ipv6</option>, and
+      configuration keys such as <option>lxc.net.0</option> expose various
+      subkeys such as <option>lxc.net.0.type</option>,
+      <option>lxc.net.0.link</option>, <option>lxc.net.0.ipv6</option>, and
       others for even more fine-grained configuration.
     </para>
 
@@ -342,7 +342,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.network</option>
+            <option>lxc.net</option>
           </term>
           <listitem>
             <para>
@@ -352,7 +352,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         </varlistentry>
         <varlistentry>
           <term>
-            <option>lxc.network.[i].type</option>
+            <option>lxc.net.[i].type</option>
           </term>
           <listitem>
             <para>
@@ -360,13 +360,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               for the container.
               Multiple networks can be specified by using an additional index
               <option>i</option>
-              after all <option>lxc.network.*</option> keys. For example,
-              <option>lxc.network.0.type = veth</option> and
-              <option>lxc.network.1.type = veth</option> specify two different
+              after all <option>lxc.net.*</option> keys. For example,
+              <option>lxc.net.0.type = veth</option> and
+              <option>lxc.net.1.type = veth</option> specify two different
               networks of the same type. All keys sharing the same index
               <option>i</option> will be treated as belonging to the same
-              network. For example, <option>lxc.network.0.link = br0</option>
-              will belong to <option>lxc.network.0.type</option>.
+              network. For example, <option>lxc.net.0.link = br0</option>
+              will belong to <option>lxc.net.0.type</option>.
               Currently, the different virtualization types can be:
             </para>
 
@@ -388,7 +388,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               <option>veth:</option> a virtual ethernet pair
               device is created with one side assigned to the container
               and the other side attached to a bridge specified by
-              the <option>lxc.network.link</option> option.
+              the <option>lxc.net.[i].link</option> option.
               If the bridge is not specified, then the veth pair device
               will be created but not attached to any bridge.
               Otherwise, the bridge has to be created on the system
@@ -400,7 +400,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               container, but if you wish to handle
               this name yourselves, you can tell <command>lxc</command>
               to set a specific name with
-              the <option>lxc.network.veth.pair</option> option (except for
+              the <option>lxc.net.[i].veth.pair</option> option (except for
               unprivileged containers where this option is ignored for security
               reasons).
             </para>
@@ -408,17 +408,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             <para>
               <option>vlan:</option> a vlan interface is linked with
               the interface specified by
-              the <option>lxc.network.link</option> and assigned to
+              the <option>lxc.net.[i].link</option> and assigned to
               the container. The vlan identifier is specified with the
-              option <option>lxc.network.vlan.id</option>.
+              option <option>lxc.net.[i].vlan.id</option>.
             </para>
 
             <para>
               <option>macvlan:</option> a macvlan interface is linked
               with the interface specified by
-              the <option>lxc.network.link</option> and assigned to
+              the <option>lxc.net.[i].link</option> and assigned to
               the container.
-              <option>lxc.network.macvlan.mode</option> specifies the
+              <option>lxc.net.[i].macvlan.mode</option> specifies the
               mode the macvlan will use to communicate between
               different macvlan on the same upper device. The accepted
               modes are <option>private</option>, <option>vepa</option>,
@@ -450,7 +450,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
             <para>
               <option>phys:</option> an already existing interface
-              specified by the <option>lxc.network.link</option> is
+              specified by the <option>lxc.net.[i].link</option> is
               assigned to the container.
             </para>
           </listitem>
@@ -458,7 +458,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].flags</option>
+            <option>lxc.net.[i].flags</option>
           </term>
           <listitem>
             <para>
@@ -472,7 +472,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].link</option>
+            <option>lxc.net.[i].link</option>
           </term>
           <listitem>
             <para>
@@ -483,7 +483,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].mtu</option>
+            <option>lxc.net.[i].mtu</option>
           </term>
           <listitem>
             <para>
@@ -494,7 +494,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].name</option>
+            <option>lxc.net.[i].name</option>
           </term>
           <listitem>
             <para>
@@ -508,7 +508,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].hwaddr</option>
+            <option>lxc.net.[i].hwaddr</option>
           </term>
           <listitem>
             <para>
@@ -523,7 +523,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].ipv4</option>
+            <option>lxc.net.[i].ipv4</option>
           </term>
           <listitem>
             <para>
@@ -536,7 +536,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].ipv4.gateway</option>
+            <option>lxc.net.[i].ipv4.gateway</option>
           </term>
           <listitem>
             <para>
@@ -546,7 +546,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               Can also have the special value <option>auto</option>,
               which means to take the primary address from the bridge
               interface (as specified by the
-              <option>lxc.network.link</option> option) and use that as
+              <option>lxc.net.[i].link</option> option) and use that as
               the gateway. <option>auto</option> is only available when
               using the <option>veth</option> and
               <option>macvlan</option> network types.
@@ -557,7 +557,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].ipv6</option>
+            <option>lxc.net.[i].ipv6</option>
           </term>
           <listitem>
             <para>
@@ -571,7 +571,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].ipv6.gateway</option>
+            <option>lxc.net.[i].ipv6.gateway</option>
           </term>
           <listitem>
             <para>
@@ -581,7 +581,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               Can also have the special value <option>auto</option>,
               which means to take the primary address from the bridge
               interface (as specified by the
-              <option>lxc.network.link</option> option) and use that as
+              <option>lxc.net.[i].link</option> option) and use that as
               the gateway. <option>auto</option> is only available when
               using the <option>veth</option> and
               <option>macvlan</option> network types.
@@ -591,7 +591,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].script.up</option>
+            <option>lxc.net.[i].script.up</option>
           </term>
           <listitem>
             <para>
@@ -616,7 +616,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
         <varlistentry>
           <term>
-            <option>lxc.network.[i].script.down</option>
+            <option>lxc.net.[i].script.down</option>
           </term>
           <listitem>
             <para>
@@ -1933,13 +1933,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         eth0.</para>
       <programlisting>
         lxc.utsname = myhostname
-        lxc.network.type = veth
-        lxc.network.flags = up
-        lxc.network.link = br0
-        lxc.network.name = eth0
-        lxc.network.hwaddr = 4a:49:43:49:79:bf
-        lxc.network.ipv4 = 10.2.3.5/24 10.2.3.255
-        lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
+        lxc.net.0.type = veth
+        lxc.net.0.flags = up
+        lxc.net.0.link = br0
+        lxc.net.0.name = eth0
+        lxc.net.0.hwaddr = 4a:49:43:49:79:bf
+        lxc.net.0.ipv4 = 10.2.3.5/24 10.2.3.255
+        lxc.net.0.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
       </programlisting>
     </refsect2>
 
@@ -1976,26 +1976,26 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       mounting some locations and a changing root file system.</para>
       <programlisting>
         lxc.utsname = complex
-        lxc.network.0.type = veth
-        lxc.network.0.flags = up
-        lxc.network.0.link = br0
-        lxc.network.0.hwaddr = 4a:49:43:49:79:bf
-        lxc.network.0.ipv4 = 10.2.3.5/24 10.2.3.255
-        lxc.network.0.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
-        lxc.network.0.ipv6 = 2003:db8:1:0:214:5432:feab:3588
-        lxc.network.1.type = macvlan
-        lxc.network.1.flags = up
-        lxc.network.1.link = eth0
-        lxc.network.1.hwaddr = 4a:49:43:49:79:bd
-        lxc.network.1.ipv4 = 10.2.3.4/24
-        lxc.network.1.ipv4 = 192.168.10.125/24
-        lxc.network.1.ipv6 = 2003:db8:1:0:214:1234:fe0b:3596
-        lxc.network.2.type = phys
-        lxc.network.2.flags = up
-        lxc.network.2.link = dummy0
-        lxc.network.2.hwaddr = 4a:49:43:49:79:ff
-        lxc.network.2.ipv4 = 10.2.3.6/24
-        lxc.network.2.ipv6 = 2003:db8:1:0:214:1234:fe0b:3297
+        lxc.net.0.type = veth
+        lxc.net.0.flags = up
+        lxc.net.0.link = br0
+        lxc.net.0.hwaddr = 4a:49:43:49:79:bf
+        lxc.net.0.ipv4 = 10.2.3.5/24 10.2.3.255
+        lxc.net.0.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
+        lxc.net.0.ipv6 = 2003:db8:1:0:214:5432:feab:3588
+        lxc.net.1.type = macvlan
+        lxc.net.1.flags = up
+        lxc.net.1.link = eth0
+        lxc.net.1.hwaddr = 4a:49:43:49:79:bd
+        lxc.net.1.ipv4 = 10.2.3.4/24
+        lxc.net.1.ipv4 = 192.168.10.125/24
+        lxc.net.1.ipv6 = 2003:db8:1:0:214:1234:fe0b:3596
+        lxc.net.2.type = phys
+        lxc.net.2.flags = up
+        lxc.net.2.link = dummy0
+        lxc.net.2.hwaddr = 4a:49:43:49:79:ff
+        lxc.net.2.ipv4 = 10.2.3.6/24
+        lxc.net.2.ipv6 = 2003:db8:1:0:214:1234:fe0b:3297
         lxc.cgroup.cpuset.cpus = 0,1
         lxc.cgroup.cpu.shares = 1234
         lxc.cgroup.devices.deny = a

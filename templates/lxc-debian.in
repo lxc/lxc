@@ -493,9 +493,9 @@ copy_configuration()
     # Generate the configuration file
     # if there is exactly one veth network entry, make sure it has an
     # associated hwaddr.
-    nics=$(grep -ce '^lxc\.network\.type[ \t]*=[ \t]*veth' "$path/config")
+    nics=$(grep -ce '^lxc\.net\.0\.type[ \t]*=[ \t]*veth' "$path/config")
     if [ "$nics" -eq 1 ]; then
-        grep -q "^lxc.network.hwaddr" "$path/config" || sed -i -e "/^lxc\.network\.type[ \t]*=[ \t]*veth/a lxc.network.hwaddr = 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')" "$path/config"
+        grep -q "^lxc.net.0.hwaddr" "$path/config" || sed -i -e "/^lxc\.net\.0\.type[ \t]*=[ \t]*veth/a lxc.net.0.hwaddr = 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')" "$path/config"
     fi
 
     ## Add all the includes

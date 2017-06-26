@@ -523,7 +523,7 @@ static int lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
  * lxc_cmd_get_config_item: Get config item the running container
  *
  * @name     : name of container to connect to
- * @item     : the configuration item to retrieve (ex: lxc.network.0.veth.pair)
+ * @item     : the configuration item to retrieve (ex: lxc.net.0.veth.pair)
  * @lxcpath  : the lxcpath in which the container is running
  *
  * Returns the item on success, NULL on failure. The caller must free() the
