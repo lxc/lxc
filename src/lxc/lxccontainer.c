@@ -47,7 +47,7 @@
 #include "config.h"
 #include "commands.h"
 #include "confile.h"
-#include "confile_network_legacy.h"
+#include "confile_legacy.h"
 #include "console.h"
 #include "criu.h"
 #include "log.h"

@@ -45,7 +45,7 @@
 #include "parse.h"
 #include "config.h"
 #include "confile.h"
-#include "confile_network_legacy.h"
+#include "confile_legacy.h"
 #include "confile_utils.h"
 #include "utils.h"
 #include "log.h"
@@ -87,30 +87,24 @@ static int get_config_ttydir(const char *, char *, int, struct lxc_conf *,
 			     void *);
 static int clr_config_ttydir(const char *, struct lxc_conf *, void *);
 
-static int set_config_kmsg(const char *, const char *, struct lxc_conf *,
-			   void *);
-static int get_config_kmsg(const char *, char *, int, struct lxc_conf *,
-			   void *);
-static int clr_config_kmsg(const char *, struct lxc_conf *, void *);
+static int set_config_apparmor_profile(const char *, const char *,
+				       struct lxc_conf *, void *);
+static int get_config_apparmor_profile(const char *, char *, int,
+				       struct lxc_conf *, void *);
+static int clr_config_apparmor_profile(const char *, struct lxc_conf *, void *);
 
-static int set_config_lsm_aa_profile(const char *, const char *,
-				     struct lxc_conf *, void *);
-static int get_config_lsm_aa_profile(const char *, char *, int,
-				     struct lxc_conf *, void *);
-static int clr_config_lsm_aa_profile(const char *, struct lxc_conf *, void *);
+static int set_config_apparmor_allow_incomplete(const char *, const char *,
+						struct lxc_conf *, void *);
+static int get_config_apparmor_allow_incomplete(const char *, char *, int,
+						struct lxc_conf *, void *);
+static int clr_config_apparmor_allow_incomplete(const char *, struct lxc_conf *,
+						void *);
 
-static int set_config_lsm_aa_incomplete(const char *, const char *,
-					struct lxc_conf *, void *);
-static int get_config_lsm_aa_incomplete(const char *, char *, int,
-					struct lxc_conf *, void *);
-static int clr_config_lsm_aa_incomplete(const char *, struct lxc_conf *,
-					void *);
-
-static int set_config_lsm_se_context(const char *, const char *,
-				     struct lxc_conf *, void *);
-static int get_config_lsm_se_context(const char *, char *, int,
-				     struct lxc_conf *, void *);
-static int clr_config_lsm_se_context(const char *, struct lxc_conf *, void *);
+static int set_config_selinux_context(const char *, const char *,
+				      struct lxc_conf *, void *);
+static int get_config_selinux_context(const char *, char *, int,
+				      struct lxc_conf *, void *);
+static int clr_config_selinux_context(const char *, struct lxc_conf *, void *);
 
 static int set_config_cgroup(const char *, const char *, struct lxc_conf *,
 			     void *);
@@ -177,12 +171,6 @@ static int set_config_rootfs(const char *, const char *, struct lxc_conf *,
 static int get_config_rootfs(const char *, char *, int, struct lxc_conf *,
 			     void *);
 static int clr_config_rootfs(const char *, struct lxc_conf *, void *);
-
-static int set_config_pivotdir(const char *, const char *, struct lxc_conf *,
-			       void *);
-static int get_config_pivotdir(const char *, char *, int, struct lxc_conf *,
-			       void *);
-static int clr_config_pivotdir(const char *, struct lxc_conf *, void *);
 
 static int set_config_utsname(const char *, const char *, struct lxc_conf *,
 			      void *);
@@ -424,98 +412,105 @@ static int get_config_limit(const char *, char *, int, struct lxc_conf *,
 static int clr_config_limit(const char *, struct lxc_conf *, void *);
 
 static struct lxc_config_t config[] = {
-	{ "lxc.arch",                 set_config_personality,          get_config_personality,          clr_config_personality,       },
-	{ "lxc.pts",                  set_config_pts,                  get_config_pts,                  clr_config_pts,               },
-	{ "lxc.tty",                  set_config_tty,                  get_config_tty,                  clr_config_tty,               },
-	{ "lxc.devttydir",            set_config_ttydir,               get_config_ttydir,               clr_config_ttydir,            },
-	{ "lxc.kmsg",                 set_config_kmsg,                 get_config_kmsg,                 clr_config_kmsg,              },
-	{ "lxc.aa_profile",           set_config_lsm_aa_profile,       get_config_lsm_aa_profile,       clr_config_lsm_aa_profile,    },
-	{ "lxc.aa_allow_incomplete",  set_config_lsm_aa_incomplete,    get_config_lsm_aa_incomplete,    clr_config_lsm_aa_incomplete, },
-	{ "lxc.se_context",           set_config_lsm_se_context,       get_config_lsm_se_context,       clr_config_lsm_se_context,    },
-	{ "lxc.cgroup",               set_config_cgroup,               get_config_cgroup,               clr_config_cgroup,            },
-	{ "lxc.id_map",               set_config_idmaps,               get_config_idmaps,               clr_config_idmaps,            },
-	{ "lxc.loglevel",             set_config_loglevel,             get_config_loglevel,             clr_config_loglevel,          },
-	{ "lxc.logfile",              set_config_logfile,              get_config_logfile,              clr_config_logfile,           },
-	{ "lxc.mount.entry",          set_config_mount,                get_config_mount,                clr_config_mount,             },
-	{ "lxc.mount.auto",           set_config_mount_auto,           get_config_mount_auto,           clr_config_mount_auto,        },
-	{ "lxc.mount",                set_config_fstab,	               get_config_fstab,                clr_config_fstab,             },
-	{ "lxc.rootfs.mount",         set_config_rootfs_mount,         get_config_rootfs_mount,         clr_config_rootfs_mount,      },
-	{ "lxc.rootfs.options",       set_config_rootfs_options,       get_config_rootfs_options,       clr_config_rootfs_options,    },
-	{ "lxc.rootfs.backend",       set_config_rootfs_backend,       get_config_rootfs_backend,       clr_config_rootfs_backend,    },
-	{ "lxc.rootfs",               set_config_rootfs,               get_config_rootfs,               clr_config_rootfs,            },
-	{ "lxc.pivotdir",             set_config_pivotdir,             get_config_pivotdir,             clr_config_pivotdir,          },
-	{ "lxc.utsname",              set_config_utsname,              get_config_utsname,              clr_config_utsname,           },
-	{ "lxc.hook.pre-start",       set_config_hooks,                get_config_hooks,                clr_config_hooks,             },
-	{ "lxc.hook.pre-mount",       set_config_hooks,                get_config_hooks,                clr_config_hooks,             },
-	{ "lxc.hook.mount",           set_config_hooks,                get_config_hooks,                clr_config_hooks,             },
-	{ "lxc.hook.autodev",         set_config_hooks,                get_config_hooks,                clr_config_hooks,             },
-	{ "lxc.hook.start",           set_config_hooks,                get_config_hooks,                clr_config_hooks,             },
-	{ "lxc.hook.stop",            set_config_hooks,                get_config_hooks,                clr_config_hooks,             },
-	{ "lxc.hook.post-stop",       set_config_hooks,                get_config_hooks,                clr_config_hooks,             },
-	{ "lxc.hook.clone",           set_config_hooks,                get_config_hooks,                clr_config_hooks,             },
-	{ "lxc.hook.destroy",         set_config_hooks,                get_config_hooks,                clr_config_hooks,             },
-	{ "lxc.hook",                 set_config_hooks,                get_config_hooks,                clr_config_hooks,             },
-	/* legacy network keys */
-	{ "lxc.network.type",         set_config_network_legacy_type,         get_config_network_legacy_item,         clr_config_network_legacy_item, },
-	{ "lxc.network.flags",        set_config_network_legacy_flags,        get_config_network_legacy_item,         clr_config_network_legacy_item, },
-	{ "lxc.network.link",         set_config_network_legacy_link,         get_config_network_legacy_item,         clr_config_network_legacy_item, },
-	{ "lxc.network.name",         set_config_network_legacy_name,         get_config_network_legacy_item,         clr_config_network_legacy_item, },
-	{ "lxc.network.macvlan.mode", set_config_network_legacy_macvlan_mode, get_config_network_legacy_item,         clr_config_network_legacy_item, },
-	{ "lxc.network.veth.pair",    set_config_network_legacy_veth_pair,    get_config_network_legacy_item,         clr_config_network_legacy_item, },
-	{ "lxc.network.script.up",    set_config_network_legacy_script_up,    get_config_network_legacy_item,         clr_config_network_legacy_item, },
-	{ "lxc.network.script.down",  set_config_network_legacy_script_down,  get_config_network_legacy_item,         clr_config_network_legacy_item, },
-	{ "lxc.network.hwaddr",       set_config_network_legacy_hwaddr,       get_config_network_legacy_item,         clr_config_network_legacy_item, },
-	{ "lxc.network.mtu",          set_config_network_legacy_mtu,          get_config_network_legacy_item,         clr_config_network_legacy_item, },
-	{ "lxc.network.vlan.id",      set_config_network_legacy_vlan_id,      get_config_network_legacy_item,         clr_config_network_legacy_item, },
-	{ "lxc.network.ipv4.gateway", set_config_network_legacy_ipv4_gateway, get_config_network_legacy_item,         clr_config_network_legacy_item, },
-	{ "lxc.network.ipv4",         set_config_network_legacy_ipv4,         get_config_network_legacy_item,         clr_config_network_legacy_item, },
-	{ "lxc.network.ipv6.gateway", set_config_network_legacy_ipv6_gateway, get_config_network_legacy_item,         clr_config_network_legacy_item, },
-	{ "lxc.network.ipv6",         set_config_network_legacy_ipv6,         get_config_network_legacy_item,         clr_config_network_legacy_item, },
-	{ "lxc.network.",             set_config_network_legacy_nic,          get_config_network_legacy_item,         clr_config_network_legacy_item, },
-	{ "lxc.network",              set_config_network_legacy,              get_config_network_legacy,              clr_config_network_legacy,      },
+	{ "lxc.arch",                      set_config_personality,                 get_config_personality,                 clr_config_personality,               },
+	{ "lxc.pts",                       set_config_pts,                         get_config_pts,                         clr_config_pts,                       },
+	{ "lxc.tty",                       set_config_tty,                         get_config_tty,                         clr_config_tty,                       },
+	{ "lxc.devttydir",                 set_config_ttydir,                      get_config_ttydir,                      clr_config_ttydir,                    },
+	{ "lxc.apparmor.profile",          set_config_apparmor_profile,            get_config_apparmor_profile,            clr_config_apparmor_profile,          },
+	{ "lxc.apparmor.allow_incomplete", set_config_apparmor_allow_incomplete,   get_config_apparmor_allow_incomplete,   clr_config_apparmor_allow_incomplete, },
+	{ "lxc.selinux.context",           set_config_selinux_context,             get_config_selinux_context,             clr_config_selinux_context,           },
 
-	{ "lxc.net.type",             set_config_net_type,             get_config_net_type,             clr_config_net_type,          },
-	{ "lxc.net.flags",            set_config_net_flags,            get_config_net_flags,            clr_config_net_flags,         },
-	{ "lxc.net.link",             set_config_net_link,             get_config_net_link,             clr_config_net_link,          },
-	{ "lxc.net.name",             set_config_net_name,             get_config_net_name,             clr_config_net_name,          },
-	{ "lxc.net.macvlan.mode",     set_config_net_macvlan_mode,     get_config_net_macvlan_mode,     clr_config_net_macvlan_mode,  },
-	{ "lxc.net.veth.pair",        set_config_net_veth_pair,        get_config_net_veth_pair,        clr_config_net_veth_pair,     },
-	{ "lxc.net.script.up",        set_config_net_script_up,        get_config_net_script_up,        clr_config_net_script_up,     },
-	{ "lxc.net.script.down",      set_config_net_script_down,      get_config_net_script_down,      clr_config_net_script_down,   },
-	{ "lxc.net.hwaddr",           set_config_net_hwaddr,           get_config_net_hwaddr,           clr_config_net_hwaddr,        },
-	{ "lxc.net.mtu",              set_config_net_mtu,              get_config_net_mtu,              clr_config_net_mtu,           },
-	{ "lxc.net.vlan.id",          set_config_net_vlan_id,          get_config_net_vlan_id,          clr_config_net_vlan_id,       },
-	{ "lxc.net.ipv4.gateway",     set_config_net_ipv4_gateway,     get_config_net_ipv4_gateway,     clr_config_net_ipv4_gateway,  },
-	{ "lxc.net.ipv4",             set_config_net_ipv4,             get_config_net_ipv4,             clr_config_net_ipv4,          },
-	{ "lxc.net.ipv6.gateway",     set_config_net_ipv6_gateway,     get_config_net_ipv6_gateway,     clr_config_net_ipv6_gateway,  },
-	{ "lxc.net.ipv6",             set_config_net_ipv6,             get_config_net_ipv6,             clr_config_net_ipv6,          },
-	{ "lxc.net.",                 set_config_net_nic,              get_config_net_nic,              clr_config_net_nic,           },
-	{ "lxc.net",                  set_config_net,                  get_config_net,                  clr_config_net,               },
+	/* REMOVE IN LXC 3.0
+	   legacy security keys
+	 */
+	{ "lxc.aa_profile",                set_config_lsm_aa_profile,              get_config_lsm_aa_profile,              clr_config_lsm_aa_profile,            },
+	{ "lxc.aa_allow_incomplete",       set_config_lsm_aa_incomplete,           get_config_lsm_aa_incomplete,           clr_config_lsm_aa_incomplete,         },
+	{ "lxc.se_context",                set_config_lsm_se_context,              get_config_lsm_se_context,              clr_config_lsm_se_context,            },
 
+	{ "lxc.cgroup",                    set_config_cgroup,                      get_config_cgroup,                      clr_config_cgroup,                    },
+	{ "lxc.id_map",                    set_config_idmaps,                      get_config_idmaps,                      clr_config_idmaps,                    },
+	{ "lxc.loglevel",                  set_config_loglevel,                    get_config_loglevel,                    clr_config_loglevel,                  },
+	{ "lxc.logfile",                   set_config_logfile,                     get_config_logfile,                     clr_config_logfile,                   },
+	{ "lxc.mount.entry",               set_config_mount,                       get_config_mount,                       clr_config_mount,                     },
+	{ "lxc.mount.auto",                set_config_mount_auto,                  get_config_mount_auto,                  clr_config_mount_auto,                },
+	{ "lxc.mount",                     set_config_fstab,	                   get_config_fstab,                       clr_config_fstab,                     },
+	{ "lxc.rootfs.mount",              set_config_rootfs_mount,                get_config_rootfs_mount,                clr_config_rootfs_mount,              },
+	{ "lxc.rootfs.options",            set_config_rootfs_options,              get_config_rootfs_options,              clr_config_rootfs_options,            },
+	{ "lxc.rootfs.backend",            set_config_rootfs_backend,              get_config_rootfs_backend,              clr_config_rootfs_backend,            },
+	{ "lxc.rootfs",                    set_config_rootfs,                      get_config_rootfs,                      clr_config_rootfs,                    },
+	{ "lxc.utsname",                   set_config_utsname,                     get_config_utsname,                     clr_config_utsname,                   },
+	{ "lxc.hook.pre-start",            set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
+	{ "lxc.hook.pre-mount",            set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
+	{ "lxc.hook.mount",                set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
+	{ "lxc.hook.autodev",              set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
+	{ "lxc.hook.start",                set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
+	{ "lxc.hook.stop",                 set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
+	{ "lxc.hook.post-stop",            set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
+	{ "lxc.hook.clone",                set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
+	{ "lxc.hook.destroy",              set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
+	{ "lxc.hook",                      set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 
-	{ "lxc.cap.drop",             set_config_cap_drop,             get_config_cap_drop,             clr_config_cap_drop,          },
-	{ "lxc.cap.keep",             set_config_cap_keep,             get_config_cap_keep,             clr_config_cap_keep,          },
-	{ "lxc.console.logfile",      set_config_console_logfile,      get_config_console_logfile,      clr_config_console_logfile,   },
-	{ "lxc.console",              set_config_console,              get_config_console,              clr_config_console,           },
-	{ "lxc.seccomp",              set_config_seccomp,              get_config_seccomp,              clr_config_seccomp,           },
-	{ "lxc.include",              set_config_includefiles,         get_config_includefiles,         clr_config_includefiles,      },
-	{ "lxc.autodev",              set_config_autodev,              get_config_autodev,              clr_config_autodev,           },
-	{ "lxc.haltsignal",           set_config_haltsignal,           get_config_haltsignal,           clr_config_haltsignal,        },
-	{ "lxc.rebootsignal",         set_config_rebootsignal,         get_config_rebootsignal,         clr_config_rebootsignal,      },
-	{ "lxc.stopsignal",           set_config_stopsignal,           get_config_stopsignal,           clr_config_stopsignal,        },
-	{ "lxc.start.auto",           set_config_start,                get_config_start,                clr_config_start,             },
-	{ "lxc.start.delay",          set_config_start,                get_config_start,                clr_config_start,             },
-	{ "lxc.start.order",          set_config_start,                get_config_start,                clr_config_start,             },
-	{ "lxc.monitor.unshare",      set_config_monitor,              get_config_monitor,              clr_config_monitor,           },
-	{ "lxc.group",                set_config_group,                get_config_group,                clr_config_group,             },
-	{ "lxc.environment",          set_config_environment,          get_config_environment,          clr_config_environment,       },
-	{ "lxc.init_cmd",             set_config_init_cmd,             get_config_init_cmd,             clr_config_init_cmd,          },
-	{ "lxc.init_uid",             set_config_init_uid,             get_config_init_uid,             clr_config_init_uid,          },
-	{ "lxc.init_gid",             set_config_init_gid,             get_config_init_gid,             clr_config_init_gid,          },
-	{ "lxc.ephemeral",            set_config_ephemeral,            get_config_ephemeral,            clr_config_ephemeral,         },
-	{ "lxc.syslog",               set_config_syslog,               get_config_syslog,               clr_config_syslog,            },
-	{ "lxc.no_new_privs",	      set_config_no_new_privs,         get_config_no_new_privs,         clr_config_no_new_privs,      },
-	{ "lxc.limit",                set_config_limit,                get_config_limit,                clr_config_limit,             },
+	/* REMOVE IN LXC 3.0
+	   legacy security keys
+	 */
+	{ "lxc.network.type",              set_config_network_legacy_type,         get_config_network_legacy_item,         clr_config_network_legacy_item,       },
+	{ "lxc.network.flags",             set_config_network_legacy_flags,        get_config_network_legacy_item,         clr_config_network_legacy_item,       },
+	{ "lxc.network.link",              set_config_network_legacy_link,         get_config_network_legacy_item,         clr_config_network_legacy_item,       },
+	{ "lxc.network.name",              set_config_network_legacy_name,         get_config_network_legacy_item,         clr_config_network_legacy_item,       },
+	{ "lxc.network.macvlan.mode",      set_config_network_legacy_macvlan_mode, get_config_network_legacy_item,         clr_config_network_legacy_item,       },
+	{ "lxc.network.veth.pair",         set_config_network_legacy_veth_pair,    get_config_network_legacy_item,         clr_config_network_legacy_item,       },
+	{ "lxc.network.script.up",         set_config_network_legacy_script_up,    get_config_network_legacy_item,         clr_config_network_legacy_item,       },
+	{ "lxc.network.script.down",       set_config_network_legacy_script_down,  get_config_network_legacy_item,         clr_config_network_legacy_item,       },
+	{ "lxc.network.hwaddr",            set_config_network_legacy_hwaddr,       get_config_network_legacy_item,         clr_config_network_legacy_item,       },
+	{ "lxc.network.mtu",               set_config_network_legacy_mtu,          get_config_network_legacy_item,         clr_config_network_legacy_item,       },
+	{ "lxc.network.vlan.id",           set_config_network_legacy_vlan_id,      get_config_network_legacy_item,         clr_config_network_legacy_item,       },
+	{ "lxc.network.ipv4.gateway",      set_config_network_legacy_ipv4_gateway, get_config_network_legacy_item,         clr_config_network_legacy_item,       },
+	{ "lxc.network.ipv4",              set_config_network_legacy_ipv4,         get_config_network_legacy_item,         clr_config_network_legacy_item,       },
+	{ "lxc.network.ipv6.gateway",      set_config_network_legacy_ipv6_gateway, get_config_network_legacy_item,         clr_config_network_legacy_item,       },
+	{ "lxc.network.ipv6",              set_config_network_legacy_ipv6,         get_config_network_legacy_item,         clr_config_network_legacy_item,       },
+	{ "lxc.network.",                  set_config_network_legacy_nic,          get_config_network_legacy_item,         clr_config_network_legacy_item,       },
+	{ "lxc.network",                   set_config_network_legacy,              get_config_network_legacy,              clr_config_network_legacy,            },
+
+	{ "lxc.net.type",                  set_config_net_type,                    get_config_net_type,                    clr_config_net_type,                  },
+	{ "lxc.net.flags",                 set_config_net_flags,                   get_config_net_flags,                   clr_config_net_flags,                 },
+	{ "lxc.net.link",                  set_config_net_link,                    get_config_net_link,                    clr_config_net_link,                  },
+	{ "lxc.net.name",                  set_config_net_name,                    get_config_net_name,                    clr_config_net_name,                  },
+	{ "lxc.net.macvlan.mode",          set_config_net_macvlan_mode,            get_config_net_macvlan_mode,            clr_config_net_macvlan_mode,          },
+	{ "lxc.net.veth.pair",             set_config_net_veth_pair,               get_config_net_veth_pair,               clr_config_net_veth_pair,             },
+	{ "lxc.net.script.up",             set_config_net_script_up,               get_config_net_script_up,               clr_config_net_script_up,             },
+	{ "lxc.net.script.down",           set_config_net_script_down,             get_config_net_script_down,             clr_config_net_script_down,           },
+	{ "lxc.net.hwaddr",                set_config_net_hwaddr,                  get_config_net_hwaddr,                  clr_config_net_hwaddr,                },
+	{ "lxc.net.mtu",                   set_config_net_mtu,                     get_config_net_mtu,                     clr_config_net_mtu,                   },
+	{ "lxc.net.vlan.id",               set_config_net_vlan_id,                 get_config_net_vlan_id,                 clr_config_net_vlan_id,               },
+	{ "lxc.net.ipv4.gateway",          set_config_net_ipv4_gateway,            get_config_net_ipv4_gateway,            clr_config_net_ipv4_gateway,          },
+	{ "lxc.net.ipv4",                  set_config_net_ipv4,                    get_config_net_ipv4,                    clr_config_net_ipv4,                  },
+	{ "lxc.net.ipv6.gateway",          set_config_net_ipv6_gateway,            get_config_net_ipv6_gateway,            clr_config_net_ipv6_gateway,          },
+	{ "lxc.net.ipv6",                  set_config_net_ipv6,                    get_config_net_ipv6,                    clr_config_net_ipv6,                  },
+	{ "lxc.net.",                      set_config_net_nic,                     get_config_net_nic,                     clr_config_net_nic,                   },
+	{ "lxc.net",                       set_config_net,                         get_config_net,                         clr_config_net,                       },
+	{ "lxc.cap.drop",                  set_config_cap_drop,                    get_config_cap_drop,                    clr_config_cap_drop,                  },
+	{ "lxc.cap.keep",                  set_config_cap_keep,                    get_config_cap_keep,                    clr_config_cap_keep,                  },
+	{ "lxc.console.logfile",           set_config_console_logfile,             get_config_console_logfile,             clr_config_console_logfile,           },
+	{ "lxc.console",                   set_config_console,                     get_config_console,                     clr_config_console,                   },
+	{ "lxc.seccomp",                   set_config_seccomp,                     get_config_seccomp,                     clr_config_seccomp,                   },
+	{ "lxc.include",                   set_config_includefiles,                get_config_includefiles,                clr_config_includefiles,              },
+	{ "lxc.autodev",                   set_config_autodev,                     get_config_autodev,                     clr_config_autodev,                   },
+	{ "lxc.haltsignal",                set_config_haltsignal,                  get_config_haltsignal,                  clr_config_haltsignal,                },
+	{ "lxc.rebootsignal",              set_config_rebootsignal,                get_config_rebootsignal,                clr_config_rebootsignal,              },
+	{ "lxc.stopsignal",                set_config_stopsignal,                  get_config_stopsignal,                  clr_config_stopsignal,                },
+	{ "lxc.start.auto",                set_config_start,                       get_config_start,                       clr_config_start,                     },
+	{ "lxc.start.delay",               set_config_start,                       get_config_start,                       clr_config_start,                     },
+	{ "lxc.start.order",               set_config_start,                       get_config_start,                       clr_config_start,                     },
+	{ "lxc.monitor.unshare",           set_config_monitor,                     get_config_monitor,                     clr_config_monitor,                   },
+	{ "lxc.group",                     set_config_group,                       get_config_group,                       clr_config_group,                     },
+	{ "lxc.environment",               set_config_environment,                 get_config_environment,                 clr_config_environment,               },
+	{ "lxc.init_cmd",                  set_config_init_cmd,                    get_config_init_cmd,                    clr_config_init_cmd,                  },
+	{ "lxc.init_uid",                  set_config_init_uid,                    get_config_init_uid,                    clr_config_init_uid,                  },
+	{ "lxc.init_gid",                  set_config_init_gid,                    get_config_init_gid,                    clr_config_init_gid,                  },
+	{ "lxc.ephemeral",                 set_config_ephemeral,                   get_config_ephemeral,                   clr_config_ephemeral,                 },
+	{ "lxc.syslog",                    set_config_syslog,                      get_config_syslog,                      clr_config_syslog,                    },
+	{ "lxc.no_new_privs",	           set_config_no_new_privs,                get_config_no_new_privs,                clr_config_no_new_privs,              },
+	{ "lxc.limit",                     set_config_limit,                       get_config_limit,                       clr_config_limit,                     },
 };
 
 struct signame {
@@ -1566,33 +1561,16 @@ static int set_config_ttydir(const char *key, const char *value,
 					  NAME_MAX + 1);
 }
 
-static int set_config_kmsg(const char *key, const char *value,
-			   struct lxc_conf *lxc_conf, void *data)
-{
-	/* Set config value to default. */
-	if (lxc_config_value_empty(value)) {
-		lxc_conf->kmsg = 0;
-		return 0;
-	}
-
-	/* Parse new config value. */
-	if (lxc_safe_uint(value, &lxc_conf->kmsg) < 0)
-		return -1;
-
-	if (lxc_conf->kmsg > 1)
-		return -1;
-
-	return 0;
-}
-
-static int set_config_lsm_aa_profile(const char *key, const char *value,
-				     struct lxc_conf *lxc_conf, void *data)
+static int set_config_apparmor_profile(const char *key, const char *value,
+				       struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_string_item(&lxc_conf->lsm_aa_profile, value);
 }
 
-static int set_config_lsm_aa_incomplete(const char *key, const char *value,
-					struct lxc_conf *lxc_conf, void *data)
+static int set_config_apparmor_allow_incomplete(const char *key,
+						const char *value,
+						struct lxc_conf *lxc_conf,
+						void *data)
 {
 	/* Set config value to default. */
 	if (lxc_config_value_empty(value)) {
@@ -1613,8 +1591,8 @@ static int set_config_lsm_aa_incomplete(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_lsm_se_context(const char *key, const char *value,
-				     struct lxc_conf *lxc_conf, void *data)
+static int set_config_selinux_context(const char *key, const char *value,
+				      struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_string_item(&lxc_conf->lsm_se_context, value);
 }
@@ -2353,13 +2331,6 @@ static int set_config_rootfs_backend(const char *key, const char *value,
 	return set_config_string_item(&lxc_conf->rootfs.bdev_type, value);
 }
 
-static int set_config_pivotdir(const char *key, const char *value,
-			       struct lxc_conf *lxc_conf, void *data)
-{
-	WARN("lxc.pivotdir is ignored.  It will soon become an error.");
-	return 0;
-}
-
 static int set_config_utsname(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf, void *data)
 {
@@ -2613,17 +2584,6 @@ int lxc_fill_elevated_privileges(char *flaglist, int *flags)
 	}
 
 	return 0;
-}
-
-static inline int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen,
-				   int v)
-{
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
-	return snprintf(retv, inlen, "%d", v);
 }
 
 /* Write out a configuration file. */
@@ -3100,43 +3060,28 @@ static int get_config_tty(const char *key, char *retv, int inlen,
 	return lxc_get_conf_int(c, retv, inlen, c->tty);
 }
 
-static inline int lxc_get_conf_str(char *retv, int inlen, const char *value)
-{
-	if (!value)
-		return 0;
-	if (retv && inlen >= strlen(value) + 1)
-		strncpy(retv, value, strlen(value) + 1);
-
-	return strlen(value);
-}
-
 static int get_config_ttydir(const char *key, char *retv, int inlen,
 			     struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_str(retv, inlen, c->ttydir);
 }
 
-static int get_config_kmsg(const char *key, char *retv, int inlen,
-			   struct lxc_conf *c, void *data)
-{
-	return lxc_get_conf_int(c, retv, inlen, c->kmsg);
-}
-
-static int get_config_lsm_aa_profile(const char *key, char *retv, int inlen,
-				     struct lxc_conf *c, void *data)
+static int get_config_apparmor_profile(const char *key, char *retv, int inlen,
+				       struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_str(retv, inlen, c->lsm_aa_profile);
 }
 
-static int get_config_lsm_aa_incomplete(const char *key, char *retv, int inlen,
-					struct lxc_conf *c, void *data)
+static int get_config_apparmor_allow_incomplete(const char *key, char *retv,
+						int inlen, struct lxc_conf *c,
+						void *data)
 {
 	return lxc_get_conf_int(c, retv, inlen,
 				c->lsm_aa_allow_incomplete);
 }
 
-static int get_config_lsm_se_context(const char *key, char *retv, int inlen,
-				     struct lxc_conf *c, void *data)
+static int get_config_selinux_context(const char *key, char *retv, int inlen,
+				      struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_str(retv, inlen, c->lsm_se_context);
 }
@@ -3376,12 +3321,6 @@ static int get_config_rootfs_backend(const char *key, char *retv, int inlen,
 				     struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_str(retv, inlen, c->rootfs.bdev_type);
-}
-
-static int get_config_pivotdir(const char *key, char *retv, int inlen,
-			       struct lxc_conf *c, void *data)
-{
-	return 0;
 }
 
 static int get_config_utsname(const char *key, char *retv, int inlen,
@@ -3703,30 +3642,24 @@ static inline int clr_config_ttydir(const char *key, struct lxc_conf *c,
 	return 0;
 }
 
-static inline int clr_config_kmsg(const char *key, struct lxc_conf *c,
-				  void *data)
-{
-	c->kmsg = 0;
-	return 0;
-}
-
-static inline int clr_config_lsm_aa_profile(const char *key, struct lxc_conf *c,
-					    void *data)
+static inline int clr_config_apparmor_profile(const char *key,
+					      struct lxc_conf *c, void *data)
 {
 	free(c->lsm_aa_profile);
 	c->lsm_aa_profile = NULL;
 	return 0;
 }
 
-static inline int clr_config_lsm_aa_incomplete(const char *key,
-					       struct lxc_conf *c, void *data)
+static inline int clr_config_apparmor_allow_incomplete(const char *key,
+						       struct lxc_conf *c,
+						       void *data)
 {
 	c->lsm_aa_allow_incomplete = 0;
 	return 0;
 }
 
-static inline int clr_config_lsm_se_context(const char *key, struct lxc_conf *c,
-					    void *data)
+static inline int clr_config_selinux_context(const char *key,
+					     struct lxc_conf *c, void *data)
 {
 	free(c->lsm_se_context);
 	c->lsm_se_context = NULL;
@@ -3809,12 +3742,6 @@ static inline int clr_config_rootfs_backend(const char *key, struct lxc_conf *c,
 {
 	free(c->rootfs.bdev_type);
 	c->rootfs.bdev_type = NULL;
-	return 0;
-}
-
-static inline int clr_config_pivotdir(const char *key, struct lxc_conf *c,
-				      void *data)
-{
 	return 0;
 }
 

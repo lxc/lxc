@@ -81,5 +81,7 @@ extern int network_ifname(char **valuep, const char *value);
 extern int rand_complete_hwaddr(char *hwaddr);
 extern void update_hwaddr(const char *line);
 extern bool new_hwaddr(char *hwaddr);
+extern int lxc_get_conf_str(char *retv, int inlen, const char *value);
+extern int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen, int v);
 
 #endif /* __LXC_CONFILE_UTILS_H */

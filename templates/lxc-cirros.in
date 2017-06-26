@@ -119,7 +119,6 @@ cat >> "$path/config" <<EOF
 # Template used to create this container: cirros
 
 lxc.rootfs = $rootfs
-lxc.pivotdir = lxc_putold
 
 lxc.tty = 4
 lxc.pts = 1024

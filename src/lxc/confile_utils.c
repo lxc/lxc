@@ -582,3 +582,23 @@ bool new_hwaddr(char *hwaddr)
 
 	return true;
 }
+
+int lxc_get_conf_str(char *retv, int inlen, const char *value)
+{
+	if (!value)
+		return 0;
+	if (retv && inlen >= strlen(value) + 1)
+		strncpy(retv, value, strlen(value) + 1);
+
+	return strlen(value);
+}
+
+int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen, int v)
+{
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	return snprintf(retv, inlen, "%d", v);
+}

@@ -792,25 +792,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     </refsect2>
 
     <refsect2>
-      <title>Enable kmsg symlink</title>
-      <para>
-        Enable creating /dev/kmsg as symlink to /dev/console.  This defaults to 0.
-      </para>
-      <variablelist>
-    <varlistentry>
-      <term>
-        <option>lxc.kmsg</option>
-      </term>
-      <listitem>
-        <para>
-          Set this to 1 to enable /dev/kmsg symlinking.
-        </para>
-      </listitem>
-    </varlistentry>
-      </variablelist>
-    </refsect2>
-
-    <refsect2>
       <title>Mount points</title>
       <para>
         The mount points section specifies the different places to be
