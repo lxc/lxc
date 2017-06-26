@@ -395,7 +395,7 @@ static int do_chown_cgroup(const char *controller, const char *cgroup_path,
 		goto out;
 	}
 	if (send_creds(sv[0], getpid(), getuid(), getgid())) {
-		SYSERROR("%s: Error sending pid over SCM_CREDENTIAL", __func__);
+		SYSERROR("Error sending pid over SCM_CREDENTIAL");
 		goto out;
 	}
 	fds.fd = sv[0];
@@ -410,7 +410,7 @@ static int do_chown_cgroup(const char *controller, const char *cgroup_path,
 		goto out;
 	}
 	if (send_creds(sv[0], getpid(), newuid, 0)) {
-		SYSERROR("%s: Error sending pid over SCM_CREDENTIAL", __func__);
+		SYSERROR("Error sending pid over SCM_CREDENTIAL");
 		goto out;
 	}
 	fds.fd = sv[0];
