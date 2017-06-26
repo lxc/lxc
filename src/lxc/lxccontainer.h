@@ -408,8 +408,8 @@ struct lxc_container {
 	 *  \p retv by initially passing its value as \c NULL and considering the return value.
 	 *  This function can then be called again passing a newly-allocated suitably-sized buffer.
 	 * \note If \p retv is NULL, \p inlen is ignored.
-	 * \note If \p inlen is smaller than required, the value written
-	 *  to \p retv will be truncated.
+	 * \note If \p inlen is smaller than required, nothing will be written to \p retv and still return
+	 *  the length of config item value.
 	 */
 	int (*get_config_item)(struct lxc_container *c, const char *key, char *retv, int inlen);
 
