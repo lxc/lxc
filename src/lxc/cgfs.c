@@ -163,7 +163,7 @@ static int cgroup_rmdir(char *dirname)
 
 	dir = opendir(dirname);
 	if (!dir) {
-		ERROR("%s: failed to open %s", __func__, dirname);
+		ERROR("Failed to open %s", dirname);
 		return -1;
 	}
 
@@ -188,7 +188,7 @@ static int cgroup_rmdir(char *dirname)
 		}
 		ret = lstat(pathname, &mystat);
 		if (ret) {
-			SYSERROR("%s: failed to stat %s", __func__, pathname);
+			SYSERROR("Failed to stat %s", pathname);
 			failed=1;
 			if (!saved_errno)
 				saved_errno = errno;
@@ -204,7 +204,7 @@ static int cgroup_rmdir(char *dirname)
 	}
 
 	if (rmdir(dirname) < 0) {
-		SYSERROR("%s: failed to delete %s", __func__, dirname);
+		SYSERROR("Failed to delete %s", dirname);
 		if (!saved_errno)
 			saved_errno = errno;
 		failed=1;
@@ -212,7 +212,7 @@ static int cgroup_rmdir(char *dirname)
 
 	ret = closedir(dir);
 	if (ret) {
-		SYSERROR("%s: failed to close directory %s", __func__, dirname);
+		SYSERROR("Failed to close directory %s", dirname);
 		if (!saved_errno)
 			saved_errno = errno;
 		failed=1;
@@ -2204,7 +2204,7 @@ static int cgroup_read_from_file(const char *fn, char buf[], size_t bufsize)
 			return ret;
 		}
 		/* Callers don't do this, but regression/sanity check */
-		ERROR("%s: was not expecting 0 bufsize", __func__);
+		ERROR("was not expecting 0 bufsize");
 		return -1;
 	}
 	buf[ret] = '\0';
