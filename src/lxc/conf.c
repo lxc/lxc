@@ -3686,7 +3686,7 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 
 	if (rootuid == hostuid) {
 		// nothing to do
-		INFO("%s: container root is our uid;  no need to chown" ,__func__);
+		INFO("Container root is our uid; no need to chown");
 		return 0;
 	}
 

@@ -99,7 +99,7 @@ static int _recursive_rmdir(char *dirname, dev_t pdev,
 
 	dir = opendir(dirname);
 	if (!dir) {
-		ERROR("%s: failed to open %s", __func__, dirname);
+		ERROR("failed to open %s", dirname);
 		return -1;
 	}
 
@@ -132,10 +132,10 @@ static int _recursive_rmdir(char *dirname, dev_t pdev,
 				case ENOTDIR:
 					ret = unlink(pathname);
 					if (ret)
-						INFO("%s: failed to remove %s", __func__, pathname);
+						INFO("Failed to remove %s", pathname);
 					break;
 				default:
-					SYSERROR("%s: failed to rmdir %s", __func__, pathname);
+					SYSERROR("Failed to rmdir %s", pathname);
 					failed = 1;
 					break;
 				}
@@ -145,7 +145,7 @@ static int _recursive_rmdir(char *dirname, dev_t pdev,
 
 		ret = lstat(pathname, &mystat);
 		if (ret) {
-			ERROR("%s: failed to stat %s", __func__, pathname);
+			ERROR("Failed to stat %s", pathname);
 			failed = 1;
 			continue;
 		}
@@ -161,20 +161,20 @@ static int _recursive_rmdir(char *dirname, dev_t pdev,
 				failed=1;
 		} else {
 			if (unlink(pathname) < 0) {
-				SYSERROR("%s: failed to delete %s", __func__, pathname);
+				SYSERROR("Failed to delete %s", pathname);
 				failed=1;
 			}
 		}
 	}
 
 	if (rmdir(dirname) < 0 && !btrfs_try_remove_subvol(dirname) && !hadexclude) {
-		ERROR("%s: failed to delete %s", __func__, dirname);
+		ERROR("Failed to delete %s", dirname);
 		failed=1;
 	}
 
 	ret = closedir(dir);
 	if (ret) {
-		ERROR("%s: failed to close directory %s", __func__, dirname);
+		ERROR("Failed to close directory %s", dirname);
 		failed=1;
 	}
 
@@ -213,7 +213,7 @@ extern int lxc_rmdir_onedev(char *path, const char *exclude)
 	if (lstat(path, &mystat) < 0) {
 		if (errno == ENOENT)
 			return 0;
-		ERROR("%s: failed to stat %s", __func__, path);
+		ERROR("Failed to stat %s", path);
 		return -1;
 	}
 
