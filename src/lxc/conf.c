@@ -4455,6 +4455,7 @@ static void lxc_remove_nic(struct lxc_list *it)
 	if (netdev->type == LXC_NET_VETH)
 		free(netdev->priv.veth_attr.pair);
 	free(netdev->upscript);
+	free(netdev->downscript);
 	free(netdev->hwaddr);
 	free(netdev->mtu);
 	free(netdev->ipv4_gateway);
