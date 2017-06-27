@@ -68,33 +68,23 @@ extern int get_config_network_legacy_item(const char *, char *, int,
 extern int clr_config_network_legacy_item(const char *, struct lxc_conf *,
 					  void *);
 
-extern int set_config_network_legacy(const char *, const char *,
-				     struct lxc_conf *, void *);
-extern int get_config_network_legacy(const char *, char *, int,
-				     struct lxc_conf *, void *);
-extern int clr_config_network_legacy(const char *, struct lxc_conf *, void *);
 extern int lxc_list_nicconfigs_legacy(struct lxc_conf *c, const char *key,
 				      char *retv, int inlen);
 extern int lxc_listconfigs(char *retv, int inlen);
 
 extern bool network_new_hwaddrs(struct lxc_conf *conf);
 
-extern int set_config_lsm_aa_profile(const char *, const char *,
-				     struct lxc_conf *, void *);
-extern int get_config_lsm_aa_profile(const char *, char *, int,
-				     struct lxc_conf *, void *);
-extern int clr_config_lsm_aa_profile(const char *, struct lxc_conf *, void *);
+#define lxc_config_legacy_define(name)					\
+	extern int set_config_##name(const char *, const char *,	\
+			struct lxc_conf *, void *);			\
+	extern int get_config_##name(const char *, char *, int,		\
+			struct lxc_conf *, void *);			\
+	extern int clr_config_##name(const char *, struct lxc_conf *,	\
+			void *);
 
-extern int set_config_lsm_aa_incomplete(const char *, const char *,
- 				struct lxc_conf *, void *);
-extern int get_config_lsm_aa_incomplete(const char *, char *, int,
- 				struct lxc_conf *, void *);
-extern int clr_config_lsm_aa_incomplete(const char *, struct lxc_conf *,
-					void *);
+lxc_config_legacy_define(network_legacy);
+lxc_config_legacy_define(lsm_aa_profile);
+lxc_config_legacy_define(lsm_aa_incomplete);
+lxc_config_legacy_define(lsm_se_context);
 
-extern int set_config_lsm_se_context(const char *, const char *,
-         		     struct lxc_conf *, void *);
-extern int get_config_lsm_se_context(const char *, char *, int,
-         		     struct lxc_conf *, void *);
-extern int clr_config_lsm_se_context(const char *, struct lxc_conf *, void *);
 #endif /* __LXC_CONFILE_LEGACY_H */
