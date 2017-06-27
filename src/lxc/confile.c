@@ -401,7 +401,7 @@ static int set_config_net_type(const char *key, const char *value,
 }
 
 /*
- * If you have p="lxc.net.0.link", pass it p+12
+ * If you have p="lxc.net.0.link", pass it p+8
  * to get back '0' (the index of the nic).
  */
 static int get_network_netdev_idx(const char *key)
@@ -419,7 +419,7 @@ static int get_network_netdev_idx(const char *key)
 }
 
 /*
- * If you have p="lxc.net.0", pass this p+12 and it will return
+ * If you have p="lxc.net.0", pass this p+8 and it will return
  * the netdev of the first configured nic.
  */
 static struct lxc_netdev *get_netdev_from_key(const char *key,
