@@ -1370,11 +1370,11 @@ static inline bool cgfsng_create(void *hdata)
 		ERROR("Failed expanding cgroup name pattern");
 		return false;
 	}
-	len = strlen(tmp) + 5; // leave room for -NNN\0
+	len = strlen(tmp) + 6; // leave room for -NNN\0
 	cgname = must_alloc(len);
 	strcpy(cgname, tmp);
 	free(tmp);
-	offset = cgname + len - 5;
+	offset = cgname + len - 6;
 
 again:
 	if (idx == 1000) {
@@ -1382,7 +1382,7 @@ again:
 		goto out_free;
 	}
 	if (idx)
-		snprintf(offset, 5, "-%d", idx);
+		snprintf(offset, 6, "-%d", idx);
 	for (i = 0; hierarchies[i]; i++) {
 		if (!create_path_for_hierarchy(hierarchies[i], cgname)) {
 			int j;
