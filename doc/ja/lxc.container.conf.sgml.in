@@ -349,7 +349,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.init_cmd</option>
+            <option>lxc.init.cmd</option>
           </term>
           <listitem>
             <para>
@@ -381,7 +381,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.init_uid</option>
+            <option>lxc.init.uid</option>
           </term>
           <listitem>
             <para>
@@ -394,7 +394,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         </varlistentry>
         <varlistentry>
           <term>
-            <option>lxc.init_gid</option>
+            <option>lxc.init.gid</option>
           </term>
           <listitem>
             <para>

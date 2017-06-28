@@ -95,11 +95,11 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
     <para>
       <!--
       If no command is specified, <command>lxc-start</command> will
-      use the command defined in lxc.init_cmd or if not set, the default
+      use the command defined in lxc.init.cmd or if not set, the default
       <command>"/sbin/init"</command> command to run a system
       container.
       -->
-      만약 명령어가 지정되지 않았다면, <command>lxc-start</command>는 lxc.init_cmd에 정의된 명령어를 사용한다. 만약 그마저도 없다면 <command>"/sbin/init"</command>명령어를 사용한다.
+      만약 명령어가 지정되지 않았다면, <command>lxc-start</command>는 lxc.init.cmd에 정의된 명령어를 사용한다. 만약 그마저도 없다면 <command>"/sbin/init"</command>명령어를 사용한다.
     </para>
 
   </refsect1>

@@ -308,7 +308,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.init_cmd</option>
+            <option>lxc.init.cmd</option>
           </term>
           <listitem>
             <para>
@@ -343,7 +343,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.init_uid</option>
+            <option>lxc.init.uid</option>
           </term>
           <listitem>
             <para>
@@ -356,7 +356,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
         </varlistentry>
         <varlistentry>
           <term>
-            <option>lxc.init_gid</option>
+            <option>lxc.init.gid</option>
           </term>
           <listitem>
             <para>

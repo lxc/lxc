@@ -263,7 +263,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.init_cmd</option>
+            <option>lxc.init.cmd</option>
           </term>
           <listitem>
             <para>
@@ -287,7 +287,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.init_uid</option>
+            <option>lxc.init.uid</option>
           </term>
           <listitem>
             <para>
@@ -297,7 +297,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         </varlistentry>
         <varlistentry>
           <term>
-            <option>lxc.init_gid</option>
+            <option>lxc.init.gid</option>
           </term>
           <listitem>
             <para>

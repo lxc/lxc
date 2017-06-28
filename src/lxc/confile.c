@@ -226,18 +226,20 @@ static struct lxc_config_t config[] = {
 	{ "lxc.monitor.unshare",           set_config_monitor,                     get_config_monitor,                     clr_config_monitor,                   },
 	{ "lxc.group",                     set_config_group,                       get_config_group,                       clr_config_group,                     },
 	{ "lxc.environment",               set_config_environment,                 get_config_environment,                 clr_config_environment,               },
-	{ "lxc.init_cmd",                  set_config_init_cmd,                    get_config_init_cmd,                    clr_config_init_cmd,                  },
-	{ "lxc.init_uid",                  set_config_init_uid,                    get_config_init_uid,                    clr_config_init_uid,                  },
-	{ "lxc.init_gid",                  set_config_init_gid,                    get_config_init_gid,                    clr_config_init_gid,                  },
 	{ "lxc.ephemeral",                 set_config_ephemeral,                   get_config_ephemeral,                   clr_config_ephemeral,                 },
 	{ "lxc.syslog",                    set_config_syslog,                      get_config_syslog,                      clr_config_syslog,                    },
 	{ "lxc.no_new_privs",	           set_config_no_new_privs,                get_config_no_new_privs,                clr_config_no_new_privs,              },
 
-	/* REMOVE IN LXC 3.0
-	   legacy keys
-	 */
+	/* REMOVE IN LXC 3.0: legacy keys  [START]*/
+	{ "lxc.init_cmd",                  set_config_init_cmd,                    get_config_init_cmd,                    clr_config_init_cmd,                  },
+	{ "lxc.init_uid",                  set_config_init_uid,                    get_config_init_uid,                    clr_config_init_uid,                  },
+	{ "lxc.init_gid",                  set_config_init_gid,                    get_config_init_gid,                    clr_config_init_gid,                  },
 	{ "lxc.limit",                     set_config_limit,                       get_config_limit,                       clr_config_limit,                     },
+	/* REMOVE IN LXC 3.0: legacy keys  [END]*/
 
+	{ "lxc.init.cmd",                  set_config_init_cmd,                    get_config_init_cmd,                    clr_config_init_cmd,                  },
+	{ "lxc.init.uid",                  set_config_init_uid,                    get_config_init_uid,                    clr_config_init_uid,                  },
+	{ "lxc.init.gid",                  set_config_init_gid,                    get_config_init_gid,                    clr_config_init_gid,                  },
 	{ "lxc.prlimit",                   set_config_prlimit,                     get_config_prlimit,                     clr_config_prlimit,                   },
 };
 
