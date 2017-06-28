@@ -2410,7 +2410,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.loglevel</option>
+            <option>lxc.log.level</option>
           </term>
           <listitem>
             <para>
@@ -2440,7 +2440,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         </varlistentry>
         <varlistentry>
           <term>
-            <option>lxc.logfile</option>
+            <option>lxc.log</option>
           </term>
           <listitem>
             <para>
@@ -2453,17 +2453,17 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         </varlistentry>
         <varlistentry>
           <term>
-            <option>lxc.syslog</option>
+            <option>lxc.log.syslog</option>
           </term>
           <listitem>
             <para>
               <!--
             Send logging info to syslog. It respects the log level defined in
-            <command>lxc.loglevel</command>. The argument should be the syslog
+            <command>lxc.log.level</command>. The argument should be the syslog
             facility to use, valid ones are: daemon, local0, local1, local2,
             local3, local4, local5, local5, local7.
             -->
-              ログ情報を syslog に送ります。ログレベルとして <command>lxc.loglevel</command> の値を使用します。指定する値は使用する syslog の facility です。有効な値は daemon, local0, local1, local2, local3, local4, local5, local5, local6, local7 のいずれかです。
+              ログ情報を syslog に送ります。ログレベルとして <command>lxc.log.level</command> の値を使用します。指定する値は使用する syslog の facility です。有効な値は daemon, local0, local1, local2, local3, local4, local5, local5, local6, local7 のいずれかです。
             </para>
           </listitem>
         </varlistentry>

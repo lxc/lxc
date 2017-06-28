@@ -83,8 +83,8 @@ lxc_config_define(apparmor_allow_incomplete);
 lxc_config_define(selinux_context);
 lxc_config_define(cgroup);
 lxc_config_define(idmaps);
-lxc_config_define(loglevel);
-lxc_config_define(logfile);
+lxc_config_define(log_level);
+lxc_config_define(log_file);
 lxc_config_define(mount);
 lxc_config_define(mount_auto);
 lxc_config_define(fstab);
@@ -129,7 +129,7 @@ lxc_config_define(init_cmd);
 lxc_config_define(init_uid);
 lxc_config_define(init_gid);
 lxc_config_define(ephemeral);
-lxc_config_define(syslog);
+lxc_config_define(log_syslog);
 lxc_config_define(no_new_privs);
 lxc_config_define(prlimit);
 
@@ -151,8 +151,6 @@ static struct lxc_config_t config[] = {
 
 	{ "lxc.cgroup",                    set_config_cgroup,                      get_config_cgroup,                      clr_config_cgroup,                    },
 	{ "lxc.id_map",                    set_config_idmaps,                      get_config_idmaps,                      clr_config_idmaps,                    },
-	{ "lxc.loglevel",                  set_config_loglevel,                    get_config_loglevel,                    clr_config_loglevel,                  },
-	{ "lxc.logfile",                   set_config_logfile,                     get_config_logfile,                     clr_config_logfile,                   },
 	{ "lxc.mount.entry",               set_config_mount,                       get_config_mount,                       clr_config_mount,                     },
 	{ "lxc.mount.auto",                set_config_mount_auto,                  get_config_mount_auto,                  clr_config_mount_auto,                },
 	{ "lxc.mount",                     set_config_fstab,	                   get_config_fstab,                       clr_config_fstab,                     },
@@ -227,16 +225,21 @@ static struct lxc_config_t config[] = {
 	{ "lxc.group",                     set_config_group,                       get_config_group,                       clr_config_group,                     },
 	{ "lxc.environment",               set_config_environment,                 get_config_environment,                 clr_config_environment,               },
 	{ "lxc.ephemeral",                 set_config_ephemeral,                   get_config_ephemeral,                   clr_config_ephemeral,                 },
-	{ "lxc.syslog",                    set_config_syslog,                      get_config_syslog,                      clr_config_syslog,                    },
 	{ "lxc.no_new_privs",	           set_config_no_new_privs,                get_config_no_new_privs,                clr_config_no_new_privs,              },
 
 	/* REMOVE IN LXC 3.0: legacy keys  [START]*/
+	{ "lxc.syslog",                    set_config_log_syslog,                  get_config_log_syslog,                  clr_config_log_syslog,                },
+	{ "lxc.loglevel",                  set_config_log_level,                   get_config_log_level,                   clr_config_log_level,                 },
+	{ "lxc.logfile",                   set_config_log_file,                    get_config_log_file,                    clr_config_log_file,                  },
 	{ "lxc.init_cmd",                  set_config_init_cmd,                    get_config_init_cmd,                    clr_config_init_cmd,                  },
 	{ "lxc.init_uid",                  set_config_init_uid,                    get_config_init_uid,                    clr_config_init_uid,                  },
 	{ "lxc.init_gid",                  set_config_init_gid,                    get_config_init_gid,                    clr_config_init_gid,                  },
 	{ "lxc.limit",                     set_config_limit,                       get_config_limit,                       clr_config_limit,                     },
 	/* REMOVE IN LXC 3.0: legacy keys  [END]*/
 
+	{ "lxc.log.syslog",                set_config_log_syslog,                  get_config_log_syslog,                  clr_config_log_syslog,                },
+	{ "lxc.log.level",                 set_config_log_level,                   get_config_log_level,                   clr_config_log_level,                 },
+	{ "lxc.log.file",                  set_config_log_file,                    get_config_log_file,                    clr_config_log_file,                  },
 	{ "lxc.init.cmd",                  set_config_init_cmd,                    get_config_init_cmd,                    clr_config_init_cmd,                  },
 	{ "lxc.init.uid",                  set_config_init_uid,                    get_config_init_uid,                    clr_config_init_uid,                  },
 	{ "lxc.init.gid",                  set_config_init_gid,                    get_config_init_gid,                    clr_config_init_gid,                  },
@@ -1327,7 +1330,7 @@ static int set_config_selinux_context(const char *key, const char *value,
 	return set_config_string_item(&lxc_conf->lsm_se_context, value);
 }
 
-static int set_config_logfile(const char *key, const char *value,
+static int set_config_log_file(const char *key, const char *value,
 			      struct lxc_conf *c, void *data)
 {
 	int ret;
@@ -1347,7 +1350,7 @@ static int set_config_logfile(const char *key, const char *value,
 	return ret;
 }
 
-static int set_config_loglevel(const char *key, const char *value,
+static int set_config_log_level(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf, void *data)
 {
 	int newlevel;
@@ -2677,7 +2680,7 @@ static int set_config_ephemeral(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_syslog(const char *key, const char *value,
+static int set_config_log_syslog(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf, void *data)
 {
 	int facility;
@@ -2695,7 +2698,7 @@ static int set_config_syslog(const char *key, const char *value,
 	/* Parse value. */
 	facility = lxc_syslog_priority_to_int(value);
 	if (facility == -EINVAL) {
-		ERROR("Wrong value for lxc.syslog.");
+		ERROR("Wrong value for lxc.log.syslog.");
 		return -1;
 	}
 
@@ -2886,7 +2889,7 @@ static int get_config_idmaps(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-static int get_config_loglevel(const char *key, char *retv, int inlen,
+static int get_config_log_level(const char *key, char *retv, int inlen,
 			       struct lxc_conf *c, void *data)
 {
 	const char *v;
@@ -2894,7 +2897,7 @@ static int get_config_loglevel(const char *key, char *retv, int inlen,
 	return lxc_get_conf_str(retv, inlen, v);
 }
 
-static int get_config_logfile(const char *key, char *retv, int inlen,
+static int get_config_log_file(const char *key, char *retv, int inlen,
 			      struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_str(retv, inlen, c->logfile);
@@ -3187,7 +3190,7 @@ static int get_config_start(const char *key, char *retv, int inlen,
 	return -1;
 }
 
-static int get_config_syslog(const char *key, char *retv, int inlen,
+static int get_config_log_syslog(const char *key, char *retv, int inlen,
 			     struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_str(retv, inlen, c->syslog);
@@ -3388,14 +3391,14 @@ static inline int clr_config_idmaps(const char *key, struct lxc_conf *c,
 	return lxc_clear_idmaps(c);
 }
 
-static inline int clr_config_loglevel(const char *key, struct lxc_conf *c,
+static inline int clr_config_log_level(const char *key, struct lxc_conf *c,
 				      void *data)
 {
 	c->loglevel = LXC_LOG_LEVEL_NOTSET;
 	return 0;
 }
 
-static inline int clr_config_logfile(const char *key, struct lxc_conf *c,
+static inline int clr_config_log_file(const char *key, struct lxc_conf *c,
 				     void *data)
 {
 	free(c->logfile);
@@ -3554,7 +3557,7 @@ static inline int clr_config_start(const char *key, struct lxc_conf *c,
 	return 0;
 }
 
-static inline int clr_config_syslog(const char *key, struct lxc_conf *c,
+static inline int clr_config_log_syslog(const char *key, struct lxc_conf *c,
 				    void *data)
 {
 	free(c->syslog);

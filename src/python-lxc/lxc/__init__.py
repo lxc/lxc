@@ -387,7 +387,7 @@ class Container(_lxc.Container):
         new_value = self.get_config_item(key)
 
         # loglevel is special and won't match the string we set
-        if key == "lxc.loglevel":
+        if key == "lxc.log.level":
             new_value = value
 
         if (isinstance(value, str) and isinstance(new_value, str) and

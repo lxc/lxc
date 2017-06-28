@@ -431,17 +431,36 @@ int main(int argc, char *argv[])
 	c->clear_config(c);
 	c->lxc_conf = NULL;
 
-	/* lxc.loglevel */
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.loglevel key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.loglevel", "DEBUG", tmpf,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.loglevel");
 		goto non_test_error;
 	}
 
-	/* lxc.logfile */
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.logfile key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.logfile", "/some/path",
 					    tmpf, true) < 0) {
 		lxc_error("%s\n", "lxc.logfile");
+		goto non_test_error;
+	}
+
+
+	/* lxc.log.level */
+	if (set_get_compare_clear_save_load(c, "lxc.log.level", "DEBUG", tmpf,
+					    true) < 0) {
+		lxc_error("%s\n", "lxc.log.level");
+		goto non_test_error;
+	}
+
+	/* lxc.log */
+	if (set_get_compare_clear_save_load(c, "lxc.log.file", "/some/path",
+					    tmpf, true) < 0) {
+		lxc_error("%s\n", "lxc.log.file");
 		goto non_test_error;
 	}
 
@@ -659,10 +678,10 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.syslog */
-	if (set_get_compare_clear_save_load(c, "lxc.syslog", "local0", tmpf,
+	/* lxc.log.syslog */
+	if (set_get_compare_clear_save_load(c, "lxc.log.syslog", "local0", tmpf,
 					    true) < 0) {
-		lxc_error("%s\n", "lxc.syslog");
+		lxc_error("%s\n", "lxc.log.syslog");
 		goto non_test_error;
 	}
 
