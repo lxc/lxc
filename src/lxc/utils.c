@@ -23,11 +23,13 @@
 
 #include "config.h"
 
+#define __STDC_FORMAT_MACROS /* Required for PRIu64 to work. */
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
+#include <inttypes.h>
 #include <libgen.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -2335,4 +2337,63 @@ int run_command(char *buf, size_t buf_size, int (*child_fn)(void *), void *args)
 	close(pipefd[0]);
 
 	return fret;
+}
+
+int lxc_make_abstract_socket_name(char *path, int len, const char *lxcname,
+				  const char *lxcpath,
+				  const char *hashed_sock_name,
+				  const char *suffix)
+{
+	const char *name;
+	char *tmppath;
+	size_t tmplen;
+	uint64_t hash;
+	int ret;
+
+	name = lxcname;
+	if (!name)
+		name = "";
+
+	if (hashed_sock_name != NULL) {
+		ret =
+		    snprintf(path, len, "lxc/%s/%s", hashed_sock_name, suffix);
+		if (ret < 0 || ret >= len) {
+			ERROR("Failed to create abstract socket name");
+			return -1;
+		}
+		return 0;
+	}
+
+	if (!lxcpath) {
+		lxcpath = lxc_global_config_value("lxc.lxcpath");
+		if (!lxcpath) {
+			ERROR("Failed to allocate memory");
+			return -1;
+		}
+	}
+
+	ret = snprintf(path, len, "%s/%s/%s", lxcpath, name, suffix);
+	if (ret < 0) {
+		ERROR("Failed to create abstract socket name");
+		return -1;
+	}
+	if (ret < len)
+		return 0;
+
+	/* ret >= len; lxcpath or name is too long.  hash both */
+	tmplen = strlen(name) + strlen(lxcpath) + 2;
+	tmppath = alloca(tmplen);
+	ret = snprintf(tmppath, tmplen, "%s/%s", lxcpath, name);
+	if (ret < 0 || ret >= tmplen) {
+		ERROR("Failed to create abstract socket name");
+		return -1;
+	}
+	hash = fnv_64a_buf(tmppath, ret, FNV1A_64_INIT);
+	ret = snprintf(path, len, "lxc/%016" PRIx64 "/%s", hash, suffix);
+	if (ret < 0 || ret >= len) {
+		ERROR("Failed to create abstract socket name");
+		return -1;
+	}
+
+	return 0;
 }
