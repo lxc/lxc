@@ -547,7 +547,7 @@ fi
 if [ -e "$fstab" ]; then
     echo "lxc.mount = ${LXC_PATH}/fstab" >> ${LXC_PATH}/config
 fi
-echo "lxc.utsname = ${LXC_NAME}" >> ${LXC_PATH}/config
+echo "lxc.uts.name = ${LXC_NAME}" >> ${LXC_PATH}/config
 
 ## Re-add the previously removed network config
 if [ -e "${LXC_PATH}/config-network" ]; then

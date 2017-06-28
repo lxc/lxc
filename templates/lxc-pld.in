@@ -238,7 +238,7 @@ copy_configuration()
 	cat <<EOF >> $config_path/config
 # Most of below settings should be taken as defaults  from
 # lxc.include = /usr/share/lxc/config/common.conf
-lxc.utsname = $utsname
+lxc.uts.name = $utsname
 lxc.tty = 4
 lxc.pts = 1024
 # Consider if below line is right for systemd container

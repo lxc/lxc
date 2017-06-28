@@ -187,7 +187,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <variablelist>
 	<varlistentry>
 	  <term>
-	    <option>lxc.utsname</option>
+	    <option>lxc.uts.name</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -2563,7 +2563,7 @@ mknod errno 0
         이 설정은 컨테이너가 한 쪽은 (이전에 시스템에 이미 생성된) br0 브리지에 연결되어 있는 veth 장치 쌍을 사용하도록 세팅한다. 가상 네트워크 장치는 컨테이너 내에서 eth0라는 이름을 갖는다.
       </para>
       <programlisting>
-	lxc.utsname = myhostname
+	lxc.uts.name = myhostname
 	lxc.net.0.type = veth
 	lxc.net.0.flags = up
 	lxc.net.0.link = br0
@@ -2613,7 +2613,7 @@ mknod errno 0
         아래의 예제는 복잡한 네트워크 스택, 컨트롤 그룹 사용, 호스트 이름 설정, 몇몇 장소 마운트, 루트 파일시스템 변경 등의 복잡한 설정을 보여준다.
       </para>
       <programlisting>
-	lxc.utsname = complex
+	lxc.uts.name = complex
 	lxc.net.0.type = veth
 	lxc.net.0.flags = up
 	lxc.net.0.link = br0

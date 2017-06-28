@@ -350,7 +350,7 @@ lxc.include = @LXCTEMPLATECONFIG@/opensuse.common.conf
     # Append things which require expansion here...
     cat <<EOF >> $path/config
 lxc.arch = $arch
-lxc.utsname = $name
+lxc.uts.name = $name
 
 lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
 

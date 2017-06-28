@@ -531,10 +531,19 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.utsname */
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.utsname key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.utsname", "the-shire", tmpf,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.utsname");
+		goto non_test_error;
+	}
+
+	/* lxc.uts.name */
+	if (set_get_compare_clear_save_load(c, "lxc.uts.name", "the-shire", tmpf,
+					    true) < 0) {
+		lxc_error("%s\n", "lxc.uts.name");
 		goto non_test_error;
 	}
 

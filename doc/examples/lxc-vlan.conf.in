@@ -1,5 +1,5 @@
 # Container with network virtualized using the vlan device driver
-lxc.utsname = alpha
+lxc.uts.name = alpha
 lxc.net.0.type = vlan
 lxc.net.0.vlan.id = 1234
 lxc.net.0.flags = up

@@ -3211,8 +3211,9 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	// update utsname
 	if (!(flags & LXC_CLONE_KEEPNAME)) {
 		clear_unexp_config_line(c2->lxc_conf, "lxc.utsname", false);
+		clear_unexp_config_line(c2->lxc_conf, "lxc.uts.name", false);
 
-		if (!set_config_item_locked(c2, "lxc.utsname", newname)) {
+		if (!set_config_item_locked(c2, "lxc.uts.name", newname)) {
 			ERROR("Error setting new hostname");
 			goto out;
 		}

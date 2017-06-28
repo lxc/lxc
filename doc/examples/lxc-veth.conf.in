@@ -1,6 +1,6 @@
 # Container with network virtualized using a pre-configured bridge named br0 and
 # veth pair virtual network devices
-lxc.utsname = beta
+lxc.uts.name = beta
 lxc.net.0.type = veth
 lxc.net.0.flags = up
 lxc.net.0.link = br0

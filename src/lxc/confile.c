@@ -92,7 +92,7 @@ lxc_config_define(rootfs_mount);
 lxc_config_define(rootfs_options);
 lxc_config_define(rootfs_backend);
 lxc_config_define(rootfs);
-lxc_config_define(utsname);
+lxc_config_define(uts_name);
 lxc_config_define(hooks);
 lxc_config_define(net_type);
 lxc_config_define(net_flags);
@@ -164,7 +164,13 @@ static struct lxc_config_t config[] = {
 	{ "lxc.rootfs.options",            set_config_rootfs_options,              get_config_rootfs_options,              clr_config_rootfs_options,            },
 	{ "lxc.rootfs.backend",            set_config_rootfs_backend,              get_config_rootfs_backend,              clr_config_rootfs_backend,            },
 	{ "lxc.rootfs",                    set_config_rootfs,                      get_config_rootfs,                      clr_config_rootfs,                    },
-	{ "lxc.utsname",                   set_config_utsname,                     get_config_utsname,                     clr_config_utsname,                   },
+
+	/* REMOVE IN LXC 3.0
+	   legacy utsname key
+	 */
+	{ "lxc.utsname",                   set_config_uts_name,                    get_config_uts_name,                    clr_config_uts_name,                   },
+
+	{ "lxc.uts.name",                  set_config_uts_name,                    get_config_uts_name,                    clr_config_uts_name,                   },
 	{ "lxc.hook.pre-start",            set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook.pre-mount",            set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook.mount",                set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
@@ -2059,13 +2065,13 @@ static int set_config_rootfs_backend(const char *key, const char *value,
 	return set_config_string_item(&lxc_conf->rootfs.bdev_type, value);
 }
 
-static int set_config_utsname(const char *key, const char *value,
+static int set_config_uts_name(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf, void *data)
 {
 	struct utsname *utsname;
 
 	if (lxc_config_value_empty(value)) {
-		clr_config_utsname(key, lxc_conf, NULL);
+		clr_config_uts_name(key, lxc_conf, NULL);
 		return 0;
 	}
 
@@ -3050,7 +3056,7 @@ static int get_config_rootfs_backend(const char *key, char *retv, int inlen,
 	return lxc_get_conf_str(retv, inlen, c->rootfs.bdev_type);
 }
 
-static int get_config_utsname(const char *key, char *retv, int inlen,
+static int get_config_uts_name(const char *key, char *retv, int inlen,
 			      struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_str(
@@ -3472,7 +3478,7 @@ static inline int clr_config_rootfs_backend(const char *key, struct lxc_conf *c,
 	return 0;
 }
 
-static inline int clr_config_utsname(const char *key, struct lxc_conf *c,
+static inline int clr_config_uts_name(const char *key, struct lxc_conf *c,
 				     void *data)
 {
 	free(c->utsname);

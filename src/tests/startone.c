@@ -154,8 +154,8 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if (!c->set_config_item(c, "lxc.utsname", "bobo")) {
-		fprintf(stderr, "%d: failed setting lxc.utsname\n", __LINE__);
+	if (!c->set_config_item(c, "lxc.uts.name", "bobo")) {
+		fprintf(stderr, "%d: failed setting lxc.uts.name\n", __LINE__);
 		goto out;
 	}
 

@@ -482,7 +482,7 @@ container_config_create()
     cat <<EOF >> $cfg_dir/config || die "unable to create $cfg_dir/config"
 # Container configuration for Oracle Linux $container_release_major.$container_release_minor
 lxc.arch = $arch
-lxc.utsname = $name
+lxc.uts.name = $name
 EOF
     grep -q "^lxc.rootfs" $cfg_dir/config 2>/dev/null || echo "lxc.rootfs = $container_rootfs" >> $cfg_dir/config
 

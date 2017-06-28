@@ -486,7 +486,7 @@ lxc.include = ${lxc_template_config}/fedora.common.conf
     cat <<EOF >> "${path}/config"
 # Container specific configuration
 lxc.arch = ${basearch}
-lxc.utsname = ${utsname}
+lxc.uts.name = ${utsname}
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined

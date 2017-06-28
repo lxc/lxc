@@ -233,11 +233,11 @@ function test_config_items()
     log(0, "Test set/clear configuration items...")
 
     -- test setting a 'single type' item
-    assert(container:get_config_item("lxc.utsname") == optarg["n"])
-    container:set_config_item("lxc.utsname", "foobar")
-    assert(container:get_config_item("lxc.utsname") == "foobar")
-    container:set_config_item("lxc.utsname", optarg["n"])
-    assert(container:get_config_item("lxc.utsname") == optarg["n"])
+    assert(container:get_config_item("lxc.uts.name") == optarg["n"])
+    container:set_config_item("lxc.uts.name", "foobar")
+    assert(container:get_config_item("lxc.uts.name") == "foobar")
+    container:set_config_item("lxc.uts.name", optarg["n"])
+    assert(container:get_config_item("lxc.uts.name") == optarg["n"])
 
     -- test clearing/setting a 'list type' item
     container:clear_config_item("lxc.cap.drop")

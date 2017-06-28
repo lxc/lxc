@@ -705,7 +705,7 @@ container_conf()
 ${conf_arch_line}
 
 # set the hostname
-lxc.utsname = ${name}
+lxc.uts.name = ${name}
 lxc.tty = ${tty}
 
 ${conf_rootfs_line}

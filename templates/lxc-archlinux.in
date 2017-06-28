@@ -148,7 +148,7 @@ EOF
 copy_configuration() {
     mkdir -p "${config_path}"
     local config="${config_path}/config"
-    echo "lxc.utsname = ${name}" >> "${config}"
+    echo "lxc.uts.name = ${name}" >> "${config}"
     grep -q "^lxc.arch" "${config}" 2>/dev/null \
         || echo "lxc.arch = ${arch}" >> "${config}"
     grep -q "^lxc.rootfs" "${config}" 2>/dev/null \

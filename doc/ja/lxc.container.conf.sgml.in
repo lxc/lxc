@@ -229,7 +229,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.utsname</option>
+            <option>lxc.uts.name</option>
           </term>
           <listitem>
             <para>
@@ -2667,7 +2667,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         仮想ネットワークデバイスは、コンテナ内では eth0 とリネームされます。
       </para>
       <programlisting>
-        lxc.utsname = myhostname
+        lxc.uts.name = myhostname
         lxc.net.0.type = veth
         lxc.net.0.flags = up
         lxc.net.0.link = br0
@@ -2720,7 +2720,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         この例は、control group を使って、複雑なネットワークスタックを作成し、新しいホスト名を指定し、いくつかの場所をマウントし、ルートファイルシステムを変更するような複雑な設定を示します。
       </para>
       <programlisting>
-        lxc.utsname = complex
+        lxc.uts.name = complex
         lxc.net.0.type = veth
         lxc.net.0.flags = up
         lxc.net.0.link = br0

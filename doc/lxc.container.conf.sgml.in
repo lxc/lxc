@@ -172,7 +172,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.utsname</option>
+            <option>lxc.uts.name</option>
           </term>
           <listitem>
             <para>
@@ -1932,7 +1932,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         virtual network device visible in the container is renamed to
         eth0.</para>
       <programlisting>
-        lxc.utsname = myhostname
+        lxc.uts.name = myhostname
         lxc.net.0.type = veth
         lxc.net.0.flags = up
         lxc.net.0.link = br0
@@ -1975,7 +1975,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       network stack, using the control groups, setting a new hostname,
       mounting some locations and a changing root file system.</para>
       <programlisting>
-        lxc.utsname = complex
+        lxc.uts.name = complex
         lxc.net.0.type = veth
         lxc.net.0.flags = up
         lxc.net.0.link = br0
