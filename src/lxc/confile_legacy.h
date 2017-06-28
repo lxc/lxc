@@ -86,5 +86,6 @@ lxc_config_legacy_define(network_legacy);
 lxc_config_legacy_define(lsm_aa_profile);
 lxc_config_legacy_define(lsm_aa_incomplete);
 lxc_config_legacy_define(lsm_se_context);
+lxc_config_legacy_define(limit);
 
 #endif /* __LXC_CONFILE_LEGACY_H */

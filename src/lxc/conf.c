@@ -4350,10 +4350,13 @@ int lxc_clear_limits(struct lxc_conf *c, const char *key)
 	bool all = false;
 	const char *k = NULL;
 
-	if (strcmp(key, "lxc.limit") == 0)
+	if (strcmp(key, "lxc.limit") == 0
+	    || strcmp(key, "lxc.prlimit"))
 		all = true;
 	else if (strncmp(key, "lxc.limit.", sizeof("lxc.limit.")-1) == 0)
 		k = key + sizeof("lxc.limit.")-1;
+	else if (strncmp(key, "lxc.prlimit.", sizeof("lxc.prlimit.")-1) == 0)
+		k = key + sizeof("lxc.prlimit.")-1;
 	else
 		return -1;
 
@@ -4515,7 +4518,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_includes(conf);
 	lxc_clear_aliens(conf);
 	lxc_clear_environment(conf);
-	lxc_clear_limits(conf, "lxc.limit");
+	lxc_clear_limits(conf, "lxc.prlimit");
 	free(conf);
 }
 

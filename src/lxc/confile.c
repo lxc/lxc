@@ -131,7 +131,7 @@ lxc_config_define(init_gid);
 lxc_config_define(ephemeral);
 lxc_config_define(syslog);
 lxc_config_define(no_new_privs);
-lxc_config_define(limit);
+lxc_config_define(prlimit);
 
 static struct lxc_config_t config[] = {
 	{ "lxc.arch",                      set_config_personality,                 get_config_personality,                 clr_config_personality,               },
@@ -232,7 +232,13 @@ static struct lxc_config_t config[] = {
 	{ "lxc.ephemeral",                 set_config_ephemeral,                   get_config_ephemeral,                   clr_config_ephemeral,                 },
 	{ "lxc.syslog",                    set_config_syslog,                      get_config_syslog,                      clr_config_syslog,                    },
 	{ "lxc.no_new_privs",	           set_config_no_new_privs,                get_config_no_new_privs,                clr_config_no_new_privs,              },
+
+	/* REMOVE IN LXC 3.0
+	   legacy keys
+	 */
 	{ "lxc.limit",                     set_config_limit,                       get_config_limit,                       clr_config_limit,                     },
+
+	{ "lxc.prlimit",                   set_config_prlimit,                     get_config_prlimit,                     clr_config_prlimit,                   },
 };
 
 struct signame {
@@ -1554,26 +1560,7 @@ out:
 	return -1;
 }
 
-static bool parse_limit_value(const char **value, unsigned long *res)
-{
-	char *endptr = NULL;
-
-	if (strncmp(*value, "unlimited", sizeof("unlimited") - 1) == 0) {
-		*res = RLIM_INFINITY;
-		*value += sizeof("unlimited") - 1;
-		return true;
-	}
-
-	errno = 0;
-	*res = strtoul(*value, &endptr, 10);
-	if (errno || !endptr)
-		return false;
-	*value = endptr;
-
-	return true;
-}
-
-static int set_config_limit(const char *key, const char *value,
+static int set_config_prlimit(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_list *iter;
@@ -1585,10 +1572,10 @@ static int set_config_limit(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return lxc_clear_limits(lxc_conf, key);
 
-	if (strncmp(key, "lxc.limit.", sizeof("lxc.limit.") - 1) != 0)
+	if (strncmp(key, "lxc.prlimit.", sizeof("lxc.prlimit.") - 1) != 0)
 		return -1;
 
-	key += sizeof("lxc.limit.") - 1;
+	key += sizeof("lxc.prlimit.") - 1;
 
 	/* soft limit comes first in the value */
 	if (!parse_limit_value(&value, &limit_value))
@@ -3275,11 +3262,11 @@ static int get_config_no_new_privs(const char *key, char *retv, int inlen,
 }
 
 /*
- * If you ask for a specific value, i.e. lxc.limit.nofile, then just the value
- * will be printed. If you ask for 'lxc.limit', then all limit entries will be
- * printed, in 'lxc.limit.resource = value' format.
+ * If you ask for a specific value, i.e. lxc.prlimit.nofile, then just the value
+ * will be printed. If you ask for 'lxc.prlimit', then all limit entries will be
+ * printed, in 'lxc.prlimit.resource = value' format.
  */
-static int get_config_limit(const char *key, char *retv, int inlen,
+static int get_config_prlimit(const char *key, char *retv, int inlen,
 			    struct lxc_conf *c, void *data)
 {
 	int fulllen = 0, len;
@@ -3291,10 +3278,10 @@ static int get_config_limit(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	if (!strcmp(key, "lxc.limit"))
+	if (!strcmp(key, "lxc.prlimit"))
 		get_all = true;
-	else if (strncmp(key, "lxc.limit.", 10) == 0)
-		key += 10;
+	else if (strncmp(key, "lxc.prlimit.", 12) == 0)
+		key += 12;
 	else
 		return -1;
 
@@ -3323,7 +3310,7 @@ static int get_config_limit(const char *key, char *retv, int inlen,
 		}
 
 		if (get_all) {
-			strprint(retv, inlen, "lxc.limit.%s = %s\n",
+			strprint(retv, inlen, "lxc.prlimit.%s = %s\n",
 				 lim->resource, buf);
 		} else if (strcmp(lim->resource, key) == 0) {
 			strprint(retv, inlen, "%s", buf);
@@ -3628,7 +3615,7 @@ static inline int clr_config_no_new_privs(const char *key, struct lxc_conf *c,
 	return 0;
 }
 
-static inline int clr_config_limit(const char *key, struct lxc_conf *c,
+static inline int clr_config_prlimit(const char *key, struct lxc_conf *c,
 				   void *data)
 {
 	return lxc_clear_limits(c, key);

@@ -1684,7 +1684,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.limit.[limit name]</option>
+            <option>lxc.prlimit.[limit name]</option>
           </term>
           <listitem>
             <para>

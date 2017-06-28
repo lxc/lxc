@@ -729,10 +729,19 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.limit.nofile */
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.limit.* key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.limit.nofile", "65536",
 					    tmpf, true) < 0) {
 		lxc_error("%s\n", "lxc.limit.nofile");
+		goto non_test_error;
+	}
+
+	/* lxc.prlimit.nofile */
+	if (set_get_compare_clear_save_load(c, "lxc.prlimit.nofile", "65536",
+					    tmpf, true) < 0) {
+		lxc_error("%s\n", "lxc.prlimit.nofile");
 		goto non_test_error;
 	}
 

@@ -1201,7 +1201,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.limit.[limit name]</option>
+            <option>lxc.prlimit.[limit name]</option>
           </term>
           <listitem>
             <para>
