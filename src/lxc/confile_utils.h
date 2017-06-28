@@ -79,6 +79,7 @@ extern int set_config_path_item(char **conf_item, const char *value);
 extern int config_ip_prefix(struct in_addr *addr);
 extern int network_ifname(char **valuep, const char *value);
 extern int rand_complete_hwaddr(char *hwaddr);
+extern bool lxc_config_net_hwaddr(const char *line);
 extern void update_hwaddr(const char *line);
 extern bool new_hwaddr(char *hwaddr);
 extern int lxc_get_conf_str(char *retv, int inlen, const char *value);
