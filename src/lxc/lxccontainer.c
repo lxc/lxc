@@ -829,7 +829,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			SYSERROR("Error chdir()ing to /.");
 			exit(1);
 		}
-		lxc_check_inherited(conf, true, handler->conf->maincmd_fd);
+		lxc_check_inherited(conf, true, &handler->conf->maincmd_fd, 1);
 		if (null_stdfds() < 0) {
 			ERROR("failed to close fds");
 			exit(1);
@@ -899,7 +899,7 @@ reboot:
 			goto out;
 	}
 
-	if (lxc_check_inherited(conf, daemonize, handler->conf->maincmd_fd)) {
+	if (lxc_check_inherited(conf, daemonize, &handler->conf->maincmd_fd, 1)) {
 		ERROR("Inherited fds found");
 		lxc_free_handler(handler);
 		ret = 1;

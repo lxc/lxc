@@ -179,18 +179,12 @@ static int match_fd(int fd)
 	return (fd == 0 || fd == 1 || fd == 2);
 }
 
-/* Check for any fds we need to close.
- * - If fd_to_ignore != -1, then if we find that fd open we will ignore it.
- * - By default we warn about open fds we find.
- * - If closeall is true, we will close open fds.
- * - If lxc-start was passed "-C", then conf->close_all_fds will be true, in
- *   which case we also close all open fds.
- * - A daemonized container will always pass closeall=true.
- */
-int lxc_check_inherited(struct lxc_conf *conf, bool closeall, int fd_to_ignore)
+int lxc_check_inherited(struct lxc_conf *conf, bool closeall,
+			int *fds_to_ignore, size_t len_fds)
 {
 	struct dirent *direntp;
 	int fd, fddir;
+	size_t i;
 	DIR *dir;
 
 	if (conf && conf->close_all_fds)
@@ -220,7 +214,12 @@ restart:
 			continue;
 		}
 
-		if (fd == fddir || fd == lxc_log_fd || fd == fd_to_ignore)
+		for (i = 0; i < len_fds; i++)
+			if (fds_to_ignore[i] == fd)
+				break;
+
+		if (fd == fddir || fd == lxc_log_fd ||
+		    (i < len_fds && fd == fds_to_ignore[i]))
 			continue;
 
 		if (current_config && fd == current_config->logfd)
