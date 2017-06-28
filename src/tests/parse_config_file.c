@@ -314,10 +314,19 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.devttydir */
+	/* REMOVE IN LXC 3.0
+	   legacy devttydir keys
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.devttydir", "not-dev", tmpf,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.devttydir");
+		goto non_test_error;
+	}
+
+	/* lxc.tty.dir */
+	if (set_get_compare_clear_save_load(c, "lxc.tty.dir", "not-dev", tmpf,
+					    true) < 0) {
+		lxc_error("%s\n", "lxc.tty.dir");
 		goto non_test_error;
 	}
 

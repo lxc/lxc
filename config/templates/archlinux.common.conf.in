@@ -9,7 +9,7 @@ lxc.signal.halt=SIGRTMIN+4
 lxc.signal.stop=SIGRTMIN+14
 
 # Uncomment to disable creating tty devices subdirectory in /dev
-# lxc.devttydir =
+# lxc.tty.dir =
 
 # Capabilities
 # Uncomment these if you don't run anything that needs the capability, and

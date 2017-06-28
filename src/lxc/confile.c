@@ -77,7 +77,7 @@ lxc_log_define(lxc_confile, lxc);
 lxc_config_define(personality);
 lxc_config_define(pts);
 lxc_config_define(tty);
-lxc_config_define(ttydir);
+lxc_config_define(tty_dir);
 lxc_config_define(apparmor_profile);
 lxc_config_define(apparmor_allow_incomplete);
 lxc_config_define(selinux_context);
@@ -136,8 +136,14 @@ lxc_config_define(prlimit);
 static struct lxc_config_t config[] = {
 	{ "lxc.arch",                      set_config_personality,                 get_config_personality,                 clr_config_personality,               },
 	{ "lxc.pts",                       set_config_pts,                         get_config_pts,                         clr_config_pts,                       },
+	{ "lxc.tty.dir",                   set_config_tty_dir,                     get_config_tty_dir,                     clr_config_tty_dir,                   },
+
+	/* REMOVE IN LXC 3.0
+	   legacy devttydir key
+	 */
+	{ "lxc.devttydir",                 set_config_tty_dir,                     get_config_tty_dir,                     clr_config_tty_dir,                   },
+
 	{ "lxc.tty",                       set_config_tty,                         get_config_tty,                         clr_config_tty,                       },
-	{ "lxc.devttydir",                 set_config_ttydir,                      get_config_ttydir,                      clr_config_ttydir,                    },
 	{ "lxc.apparmor.profile",          set_config_apparmor_profile,            get_config_apparmor_profile,            clr_config_apparmor_profile,          },
 	{ "lxc.apparmor.allow_incomplete", set_config_apparmor_allow_incomplete,   get_config_apparmor_allow_incomplete,   clr_config_apparmor_allow_incomplete, },
 	{ "lxc.selinux.context",           set_config_selinux_context,             get_config_selinux_context,             clr_config_selinux_context,           },
@@ -1295,7 +1301,7 @@ static int set_config_tty(const char *key, const char *value,
 	return lxc_safe_uint(value, &lxc_conf->tty);
 }
 
-static int set_config_ttydir(const char *key, const char *value,
+static int set_config_tty_dir(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_string_item_max(&lxc_conf->ttydir, value,
@@ -2781,7 +2787,7 @@ static int get_config_tty(const char *key, char *retv, int inlen,
 	return lxc_get_conf_int(c, retv, inlen, c->tty);
 }
 
-static int get_config_ttydir(const char *key, char *retv, int inlen,
+static int get_config_tty_dir(const char *key, char *retv, int inlen,
 			     struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_str(retv, inlen, c->ttydir);
@@ -3355,7 +3361,7 @@ static inline int clr_config_tty(const char *key, struct lxc_conf *c,
 	return 0;
 }
 
-static inline int clr_config_ttydir(const char *key, struct lxc_conf *c,
+static inline int clr_config_tty_dir(const char *key, struct lxc_conf *c,
 				    void *data)
 {
 	free(c->ttydir);

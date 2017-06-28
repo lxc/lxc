@@ -7,7 +7,7 @@ lxc.include = @LXCTEMPLATECONFIG@/common.conf
 # Looking for more security, see gentoo.moresecure.conf
 
 # Doesn't support consoles in /dev/lxc/
-lxc.devttydir =
+lxc.tty.dir =
 
 # Extra cgroup device access
 ## rtc

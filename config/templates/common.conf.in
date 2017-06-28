@@ -1,7 +1,7 @@
 # Default configuration shared by all containers
 
 # Setup the LXC devices in /dev/lxc/
-lxc.devttydir = lxc
+lxc.tty.dir = lxc
 
 # Allow for 1024 pseudo terminals
 lxc.pts = 1024

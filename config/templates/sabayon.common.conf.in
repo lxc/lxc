@@ -13,7 +13,7 @@ lxc.tty = 1
 lxc.autodev = 1
 
 # Doesn't support consoles in /dev/lxc/
-lxc.devttydir =
+lxc.tty.dir =
 
 # CGroup whitelist
 lxc.cgroup.devices.deny = a
