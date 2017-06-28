@@ -73,7 +73,15 @@ extern void lxc_free_handler(struct lxc_handler *handler);
 extern int lxc_init(const char *name, struct lxc_handler *handler);
 extern void lxc_fini(const char *name, struct lxc_handler *handler);
 
-extern int lxc_check_inherited(struct lxc_conf *conf, bool closeall, int fd_to_ignore);
+/* lxc_check_inherited: Check for any open file descriptors and close them if
+ *                      requested.
+ * @param[in] conf          The container's configuration.
+ * @param[in] closeall      Whether we should close all open file descriptors.
+ * @param[in] fds_to_ignore Array of file descriptors to ignore.
+ * @param[in] len_fds       Length of fds_to_ignore array.
+ */
+extern int lxc_check_inherited(struct lxc_conf *conf, bool closeall,
+			       int *fds_to_ignore, size_t len_fds);
 int __lxc_start(const char *, struct lxc_handler *, struct lxc_operations *,
 		void *, const char *, bool);
 
