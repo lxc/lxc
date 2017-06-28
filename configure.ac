@@ -18,6 +18,8 @@ m4_define([lxc_version],
 
 AC_INIT([lxc], [lxc_version])
 
+AC_CONFIG_MACRO_DIRS([config])
+
 # We need pkg-config
 PKG_PROG_PKG_CONFIG
 
