@@ -593,9 +593,9 @@ bool lxc_config_net_hwaddr(const char *line)
 }
 
 /*
- * If we find a lxc.net.hwaddr in the original config file, we expand it in
- * the unexpanded_config, so that after a save_config we store the hwaddr for
- * re-use.
+ * If we find a lxc.net.[i].hwaddr or lxc.network.hwaddr in the original config
+ * file, we expand it in the unexpanded_config, so that after a save_config we
+ * store the hwaddr for re-use.
  * This is only called when reading the config file, not when executing a
  * lxc.include.
  * 'x' and 'X' are substituted in-place.
@@ -608,8 +608,7 @@ void update_hwaddr(const char *line)
 	if (line[0] == '#')
 		return;
 
-	if ((strncmp(line, "lxc.network.hwaddr", 18) != 0) &&
-	    (strncmp(line, "lxc.net.hwaddr", 14) != 0))
+	if (!lxc_config_net_hwaddr(line))
 		return;
 
 	/* Let config_net_hwaddr raise the error. */
