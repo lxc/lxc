@@ -118,9 +118,9 @@ lxc_config_define(console);
 lxc_config_define(seccomp);
 lxc_config_define(includefiles);
 lxc_config_define(autodev);
-lxc_config_define(haltsignal);
-lxc_config_define(rebootsignal);
-lxc_config_define(stopsignal);
+lxc_config_define(signal_halt);
+lxc_config_define(signal_reboot);
+lxc_config_define(signal_stop);
 lxc_config_define(start);
 lxc_config_define(monitor);
 lxc_config_define(group);
@@ -215,9 +215,17 @@ static struct lxc_config_t config[] = {
 	{ "lxc.seccomp",                   set_config_seccomp,                     get_config_seccomp,                     clr_config_seccomp,                   },
 	{ "lxc.include",                   set_config_includefiles,                get_config_includefiles,                clr_config_includefiles,              },
 	{ "lxc.autodev",                   set_config_autodev,                     get_config_autodev,                     clr_config_autodev,                   },
-	{ "lxc.haltsignal",                set_config_haltsignal,                  get_config_haltsignal,                  clr_config_haltsignal,                },
-	{ "lxc.rebootsignal",              set_config_rebootsignal,                get_config_rebootsignal,                clr_config_rebootsignal,              },
-	{ "lxc.stopsignal",                set_config_stopsignal,                  get_config_stopsignal,                  clr_config_stopsignal,                },
+
+	/* REMOVE IN LXC 3.0
+	   legacy singal keys
+	 */
+	{ "lxc.haltsignal",                set_config_signal_halt,                 get_config_signal_halt,                 clr_config_signal_halt,               },
+	{ "lxc.rebootsignal",              set_config_signal_reboot,               get_config_signal_reboot,               clr_config_signal_reboot,             },
+	{ "lxc.stopsignal",                set_config_signal_stop,                 get_config_signal_stop,                 clr_config_signal_stop,               },
+
+	{ "lxc.signal.halt",               set_config_signal_halt,                 get_config_signal_halt,                 clr_config_signal_halt,               },
+	{ "lxc.signal.reboot",             set_config_signal_reboot,               get_config_signal_reboot,               clr_config_signal_reboot,             },
+	{ "lxc.signal.stop",               set_config_signal_stop,                 get_config_signal_stop,                 clr_config_signal_stop,               },
 	{ "lxc.start.auto",                set_config_start,                       get_config_start,                       clr_config_start,                     },
 	{ "lxc.start.delay",               set_config_start,                       get_config_start,                       clr_config_start,                     },
 	{ "lxc.start.order",               set_config_start,                       get_config_start,                       clr_config_start,                     },
@@ -1446,7 +1454,7 @@ static int sig_parse(const char *signame)
 	return -1;
 }
 
-static int set_config_haltsignal(const char *key, const char *value,
+static int set_config_signal_halt(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf, void *data)
 {
 	int sig_n;
@@ -1467,7 +1475,7 @@ static int set_config_haltsignal(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_rebootsignal(const char *key, const char *value,
+static int set_config_signal_reboot(const char *key, const char *value,
 				   struct lxc_conf *lxc_conf, void *data)
 {
 	int sig_n;
@@ -1487,7 +1495,7 @@ static int set_config_rebootsignal(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_stopsignal(const char *key, const char *value,
+static int set_config_signal_stop(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf, void *data)
 {
 	int sig_n;
@@ -3159,19 +3167,19 @@ static int get_config_autodev(const char *key, char *retv, int inlen,
 	return lxc_get_conf_int(c, retv, inlen, c->autodev);
 }
 
-static int get_config_haltsignal(const char *key, char *retv, int inlen,
+static int get_config_signal_halt(const char *key, char *retv, int inlen,
 				 struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_int(c, retv, inlen, c->haltsignal);
 }
 
-static int get_config_rebootsignal(const char *key, char *retv, int inlen,
+static int get_config_signal_reboot(const char *key, char *retv, int inlen,
 				   struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_int(c, retv, inlen, c->rebootsignal);
 }
 
-static int get_config_stopsignal(const char *key, char *retv, int inlen,
+static int get_config_signal_stop(const char *key, char *retv, int inlen,
 				 struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_int(c, retv, inlen, c->stopsignal);
@@ -3523,21 +3531,21 @@ static inline int clr_config_autodev(const char *key, struct lxc_conf *c,
 	return 0;
 }
 
-static inline int clr_config_haltsignal(const char *key, struct lxc_conf *c,
+static inline int clr_config_signal_halt(const char *key, struct lxc_conf *c,
 					void *data)
 {
 	c->haltsignal = 0;
 	return 0;
 }
 
-static inline int clr_config_rebootsignal(const char *key, struct lxc_conf *c,
+static inline int clr_config_signal_reboot(const char *key, struct lxc_conf *c,
 					  void *data)
 {
 	c->rebootsignal = 0;
 	return 0;
 }
 
-static inline int clr_config_stopsignal(const char *key, struct lxc_conf *c,
+static inline int clr_config_signal_stop(const char *key, struct lxc_conf *c,
 					void *data)
 {
 	c->stopsignal = 0;

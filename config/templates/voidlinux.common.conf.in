@@ -8,7 +8,7 @@ lxc.tty = 6
 lxc.environment=VIRTUALIZATION=lxc
 
 # Set the halt/stop signals
-lxc.haltsignal=SIGCONT
+lxc.signal.halt=SIGCONT
 
 
 # Uncomment to disable creating tty devices subdirectory in /dev

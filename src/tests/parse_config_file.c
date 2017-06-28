@@ -636,24 +636,51 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.haltsignal */
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.haltsignal key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.haltsignal", "1", tmpf,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.haltsignal");
 		goto non_test_error;
 	}
 
-	/* lxc.rebootsignal */
+	/* lxc.signal.halt */
+	if (set_get_compare_clear_save_load(c, "lxc.signal.halt", "1", tmpf,
+					    true) < 0) {
+		lxc_error("%s\n", "lxc.signal.halt");
+		goto non_test_error;
+	}
+
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.rebootsignal key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.rebootsignal", "1", tmpf,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.rebootsignal");
 		goto non_test_error;
 	}
 
-	/* lxc.stopsignal */
+	/* lxc.signal.reboot */
+	if (set_get_compare_clear_save_load(c, "lxc.signal.reboot", "1", tmpf,
+					    true) < 0) {
+		lxc_error("%s\n", "lxc.signal.reboot");
+		goto non_test_error;
+	}
+
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.stopsignal key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.stopsignal", "1", tmpf,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.stopsignal");
+		goto non_test_error;
+	}
+
+	/* lxc.signal.stop */
+	if (set_get_compare_clear_save_load(c, "lxc.signal.stop", "1", tmpf,
+					    true) < 0) {
+		lxc_error("%s\n", "lxc.signal.stop");
 		goto non_test_error;
 	}
 

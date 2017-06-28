@@ -260,7 +260,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.haltsignal</option>
+            <option>lxc.signal.halt</option>
           </term>
           <listitem>
             <para>
@@ -289,7 +289,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.rebootsignal</option>
+            <option>lxc.signal.reboot</option>
           </term>
           <listitem>
             <para>
@@ -318,7 +318,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.stopsignal</option>
+            <option>lxc.signal.stop</option>
           </term>
           <listitem>
             <para>

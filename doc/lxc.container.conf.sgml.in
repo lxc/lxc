@@ -196,7 +196,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.haltsignal</option>
+            <option>lxc.signal.halt</option>
           </term>
           <listitem>
             <para>
@@ -218,7 +218,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.rebootsignal</option>
+            <option>lxc.signal.reboot</option>
           </term>
           <listitem>
             <para>
@@ -240,7 +240,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.stopsignal</option>
+            <option>lxc.signal.stop</option>
           </term>
           <listitem>
             <para>
