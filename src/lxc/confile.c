@@ -2606,7 +2606,6 @@ bool network_new_hwaddrs(struct lxc_conf *conf)
 {
 	char *lend, *p, *p2;
 	struct lxc_list *it;
-	const char *key = "lxc.network.hwaddr";
 	char *lstart = conf->unexpanded_config;
 
 	if (!conf->unexpanded_config)
@@ -2621,12 +2620,12 @@ bool network_new_hwaddrs(struct lxc_conf *conf)
 		else
 			lend++;
 
-		if (strncmp(lstart, key, strlen(key)) != 0) {
+		if (!lxc_config_net_hwaddr(lstart)) {
 			lstart = lend;
 			continue;
 		}
 
-		p = strchr(lstart + strlen(key), '=');
+		p = strchr(lstart, '=');
 		if (!p) {
 			lstart = lend;
 			continue;
