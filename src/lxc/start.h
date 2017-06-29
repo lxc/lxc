@@ -25,6 +25,8 @@
 
 #include <signal.h>
 #include <sys/param.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <stdbool.h>
 
 #include "conf.h"
@@ -50,6 +52,10 @@ struct lxc_handler {
 	bool backgrounded; // indicates whether should we close std{in,out,err} on start
 	int nsfd[LXC_NS_MAX];
 	int netnsfd;
+	/* The socketpair() fds used to wait on successful daemonized
+	 * startup.
+	 */
+	int state_socket_pair[2];
 	struct lxc_list state_clients;
 };
 
@@ -68,7 +74,8 @@ extern int lxc_set_state(const char *name, struct lxc_handler *handler, lxc_stat
 extern void lxc_abort(const char *name, struct lxc_handler *handler);
 extern struct lxc_handler *lxc_init_handler(const char *name,
 					    struct lxc_conf *conf,
-					    const char *lxcpath);
+					    const char *lxcpath,
+					    bool daemonize);
 extern void lxc_free_handler(struct lxc_handler *handler);
 extern int lxc_init(const char *name, struct lxc_handler *handler);
 extern void lxc_fini(const char *name, struct lxc_handler *handler);
