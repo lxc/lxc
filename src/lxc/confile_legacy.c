@@ -945,34 +945,33 @@ int get_config_network_legacy_item(const char *key, char *retv, int inlen,
 static int lxc_clear_nic(struct lxc_conf *c, const char *key)
 {
 	char *p1;
-	int ret, idx, i;
-	struct lxc_list *it;
-	struct lxc_netdev *netdev;
+	int idx;
+	struct lxc_list *it = NULL;
+	struct lxc_netdev *netdev = NULL;
+
+	if (lxc_list_empty(&c->network)) {
+		ERROR("network is not created for %s", key);
+		return -1;
+	}
+
+	if ((idx = get_network_netdev_idx(key)) == EINVAL)
+		netdev = lxc_list_last_elem(&c->network);
+	else {
+		lxc_list_for_each(it, &c->network) {
+			netdev = it->elem;
+			if (idx == netdev->idx)
+				break;
+			netdev = NULL;
+		}
+	}
+	if (!netdev)
+		return -1;
 
 	p1 = strchr(key, '.');
 	if (!p1 || *(p1+1) == '\0')
 		p1 = NULL;
 
-	ret = sscanf(key, "%d", &idx);
-	if (ret != 1) return -1;
-	if (idx < 0)
-		return -1;
-
-	i = 0;
-	lxc_list_for_each(it, &c->network) {
-		if (i == idx)
-			break;
-		i++;
-	}
-	if (i < idx)  // we don't have that many nics defined
-		return -1;
-
-	if (!it || !it->elem)
-		return -1;
-
-	netdev = it->elem;
-
-	if (!p1) {
+	if (!p1 && it) {
 		lxc_remove_nic(it);
 	} else if (strcmp(p1, ".ipv4") == 0) {
 		struct lxc_list *it2,*next;
@@ -989,7 +988,7 @@ static int lxc_clear_nic(struct lxc_conf *c, const char *key)
 			free(it2);
 		}
 	}
-		else return -1;
+	else return -1;
 
 	return 0;
 }
