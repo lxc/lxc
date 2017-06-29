@@ -782,31 +782,32 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	};
 	char **init_cmd = NULL;
 
-	/* container exists */
+	/* container does exist */
 	if (!c)
 		return false;
 
-	/* If anything fails before we set error_num, we want an error in there */
+	/* If anything fails before we set error_num, we want an error in there.
+	 */
 	c->error_num = 1;
 
-	/* container has not been setup */
+	/* Container has not been setup. */
 	if (!c->lxc_conf)
 		return false;
 
 	ret = ongoing_create(c);
 	if (ret < 0) {
-		ERROR("Error checking for incomplete creation");
+		ERROR("Failed checking for incomplete container creation");
 		return false;
 	} else if (ret == 1) {
-		ERROR("Error: creation of %s is ongoing", c->name);
+		ERROR("Ongoing container creation detected");
 		return false;
 	} else if (ret == 2) {
-		ERROR("Error: %s creation was not completed", c->name);
+		ERROR("Failed to create container");
 		do_lxcapi_destroy(c);
 		return false;
 	}
 
-	/* is this app meant to be run through lxcinit, as in lxc-execute? */
+	/* Is this app meant to be run through lxcinit, as in lxc-execute? */
 	if (useinit && !argv)
 		return false;
 
@@ -826,24 +827,27 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		ret = lxc_execute(c->name, argv, 1, handler, c->config_path,
 				  daemonize);
 		c->error_num = ret;
-		return ret == 0 ? true : false;
+
+		if (ret != 0)
+			return false;
+
+		return true;
 	}
 
-	/* if no argv was passed in, use lxc.init_cmd if provided in
-	 * configuration */
+	/* If no argv was passed in, use lxc.init_cmd if provided in the
+	 * configuration
+	 */
 	if (!argv)
 		argv = init_cmd = split_init_cmd(conf->init_cmd);
 
-	/* ... and otherwise use default_args */
+	/* ... otherwise use default_args. */
 	if (!argv)
 		argv = default_args;
 
-	/*
-	* say, I'm not sure - what locks do we want here?  Any?
-	* Is liblxc's locking enough here to protect the on disk
-	* container?  We don't want to exclude things like lxc_info
-	* while container is running...
-	*/
+	/* I'm not sure what locks we want here.Any? Is liblxc's locking enough
+	 * here to protect the on disk container?  We don't want to exclude
+	 * things like lxc_info while the container is running.
+	 */
 	if (daemonize) {
 		bool started;
 		char title[2048];
@@ -856,12 +860,16 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			return false;
 		}
 
+		/* first parent */
 		if (pid != 0) {
 			/* Set to NULL because we don't want father unlink
 			 * the PID file, child will do the free and unlink.
 			 */
 			c->pidfile = NULL;
 
+			/* Wait for container to tell us whether it started
+			 * successfully.
+			 */
 			started = wait_on_daemonized_start(handler, pid);
 
 			free_init_cmd(init_cmd);
@@ -869,42 +877,61 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			return started;
 		}
 
+		/* first child */
+
 		/* We don't really care if this doesn't print all the
-		 * characters; all that it means is that the proctitle will be
-		 * ugly. Similarly, we also don't care if setproctitle()
-		 * fails. */
+		 * characters. All that it means is that the proctitle will be
+		 * ugly. Similarly, we also don't care if setproctitle() fails.
+		 * */
 		snprintf(title, sizeof(title), "[lxc monitor] %s %s", c->config_path, c->name);
 		INFO("Attempting to set proc title to %s", title);
 		setproctitle(title);
 
-		/* second fork to be reparented by init */
+		/* We fork() a second time to be reparented to init. Like
+		 * POSIX's daemon() function we change to "/" and redirect
+		 * std{in,out,err} to /dev/null.
+		 */
 		pid = fork();
 		if (pid < 0) {
-			SYSERROR("Error doing dual-fork");
-			exit(1);
+			SYSERROR("Failed to fork first child process");
+			exit(EXIT_FAILURE);
 		}
 
+		/* second parent */
 		if (pid != 0) {
 			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
-			exit(0);
+			exit(EXIT_SUCCESS);
 		}
 
-		/* like daemon(), chdir to / and redirect 0,1,2 to /dev/null */
-		if (chdir("/")) {
-			SYSERROR("Error chdir()ing to /.");
-			exit(1);
+		/* second child */
+
+		/* change to / directory */
+		ret = chdir("/");
+		if (ret < 0) {
+			SYSERROR("Failed to change to \"/\" directory");
+			exit(EXIT_FAILURE);
 		}
-		lxc_check_inherited(conf, true,
-				    (int[]){handler->conf->maincmd_fd,
-					    handler->state_socket_pair[0],
-					    handler->state_socket_pair[1]},
+
+		ret = lxc_check_inherited(conf, true,
+				          (int[]){handler->conf->maincmd_fd,
+					          handler->state_socket_pair[0],
+					          handler->state_socket_pair[1]},
 				    3);
-		if (null_stdfds() < 0) {
-			ERROR("failed to close fds");
-			exit(1);
+		if (ret < 0)
+			exit(EXIT_FAILURE);
+
+		/* redirect std{in,out,err} to /dev/null */
+		ret = null_stdfds();
+		if (ret < 0) {
+			ERROR("Failed to redirect std{in,out,err} to /dev/null");
+			exit(EXIT_FAILURE);
 		}
-		setsid();
+
+		/* become session leader */
+		ret = setsid();
+		if (ret < 0)
+			TRACE("Process %d is already process group leader", getpid());
 	} else {
 		if (!am_single_threaded()) {
 			ERROR("Cannot start non-daemonized container when threaded");
@@ -925,7 +952,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
 			if (daemonize)
-				exit(1);
+				exit(EXIT_FAILURE);
 			return false;
 		}
 
@@ -936,7 +963,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
 			if (daemonize)
-				exit(1);
+				exit(EXIT_FAILURE);
 			return false;
 		}
 
@@ -948,17 +975,20 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 
 	/* Unshare the mount namespace if requested */
 	if (conf->monitor_unshare) {
-		if (unshare(CLONE_NEWNS)) {
+		ret = unshare(CLONE_NEWNS);
+		if (ret < 0) {
 			SYSERROR("failed to unshare mount namespace");
 			lxc_free_handler(handler);
 			ret = 1;
-			goto out;
+			goto on_error;
 		}
-		if (mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL)) {
+
+		ret = mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL);
+		if (ret < 0) {
 			SYSERROR("Failed to make / rslave at startup");
 			lxc_free_handler(handler);
 			ret = 1;
-			goto out;
+			goto on_error;
 		}
 	}
 
@@ -968,31 +998,31 @@ reboot:
 		handler = lxc_init_handler(c->name, conf, c->config_path, daemonize);
 		if (!handler) {
 			ret = 1;
-			goto out;
+			goto on_error;
 		}
 	}
 
-	if (lxc_check_inherited(conf, daemonize,
-				(int[]){handler->conf->maincmd_fd,
-					handler->state_socket_pair[0],
-					handler->state_socket_pair[1]},
-				3)) {
-		ERROR("Inherited fds found");
+	ret = lxc_check_inherited(conf, daemonize,
+				  (int[]){handler->conf->maincmd_fd,
+					  handler->state_socket_pair[0],
+					  handler->state_socket_pair[1]},
+				  3);
+	if (ret < 0) {
 		lxc_free_handler(handler);
 		ret = 1;
-		goto out;
+		goto on_error;
 	}
 
 	ret = lxc_start(c->name, argv, handler, c->config_path, daemonize);
 	c->error_num = ret;
 
 	if (conf->reboot == 1) {
-		INFO("container requested reboot");
+		INFO("Container requested reboot");
 		conf->reboot = 2;
 		goto reboot;
 	}
 
-out:
+on_error:
 	if (c->pidfile) {
 		unlink(c->pidfile);
 		free(c->pidfile);
@@ -1000,9 +1030,15 @@ out:
 	}
 	free_init_cmd(init_cmd);
 
-	if (daemonize)
-		exit(ret == 0 ? true : false);
-	return (ret == 0 ? true : false);
+	if (daemonize && ret != 0)
+		exit(EXIT_FAILURE);
+	else if (daemonize)
+		exit(EXIT_SUCCESS);
+
+	if (ret != 0)
+		return false;
+
+	return true;
 }
 
 static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv[])
