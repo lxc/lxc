@@ -845,6 +845,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	* while container is running...
 	*/
 	if (daemonize) {
+		bool started;
 		char title[2048];
 		pid_t pid;
 
@@ -861,11 +862,11 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			 */
 			c->pidfile = NULL;
 
-			/* Prevent leaking the command socket to the second
-			 * fork().
-			 */
-			close(handler->conf->maincmd_fd);
-			return wait_on_daemonized_start(handler, pid);
+			started = wait_on_daemonized_start(handler, pid);
+
+			free_init_cmd(init_cmd);
+			lxc_free_handler(handler);
+			return started;
 		}
 
 		/* We don't really care if this doesn't print all the
@@ -882,8 +883,13 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			SYSERROR("Error doing dual-fork");
 			exit(1);
 		}
-		if (pid != 0)
+
+		if (pid != 0) {
+			free_init_cmd(init_cmd);
+			lxc_free_handler(handler);
 			exit(0);
+		}
+
 		/* like daemon(), chdir to / and redirect 0,1,2 to /dev/null */
 		if (chdir("/")) {
 			SYSERROR("Error chdir()ing to /.");
@@ -902,6 +908,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	} else {
 		if (!am_single_threaded()) {
 			ERROR("Cannot start non-daemonized container when threaded");
+			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
 			return false;
 		}
@@ -943,15 +950,15 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	if (conf->monitor_unshare) {
 		if (unshare(CLONE_NEWNS)) {
 			SYSERROR("failed to unshare mount namespace");
-			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
-			return false;
+			ret = 1;
+			goto out;
 		}
 		if (mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL)) {
 			SYSERROR("Failed to make / rslave at startup");
-			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
-			return false;
+			ret = 1;
+			goto out;
 		}
 	}
 
@@ -959,8 +966,10 @@ reboot:
 	if (conf->reboot == 2) {
 		/* initialize handler */
 		handler = lxc_init_handler(c->name, conf, c->config_path, daemonize);
-		if (!handler)
+		if (!handler) {
+			ret = 1;
 			goto out;
+		}
 	}
 
 	if (lxc_check_inherited(conf, daemonize,
