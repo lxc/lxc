@@ -155,15 +155,15 @@ static void print_net_stats(struct lxc_container *c)
 	char buf[256];
 
 	for(netnr = 0; ;netnr++) {
-		sprintf(buf, "lxc.network.%d.type", netnr);
+		sprintf(buf, "lxc.net.%d.type", netnr);
 		type = c->get_running_config_item(c, buf);
 		if (!type)
 			break;
 
 		if (!strcmp(type, "veth")) {
-			sprintf(buf, "lxc.network.%d.veth.pair", netnr);
+			sprintf(buf, "lxc.net.%d.veth.pair", netnr);
 		} else {
-			sprintf(buf, "lxc.network.%d.link", netnr);
+			sprintf(buf, "lxc.net.%d.link", netnr);
 		}
 		free(type);
 		ifname = c->get_running_config_item(c, buf);

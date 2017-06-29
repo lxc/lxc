@@ -503,14 +503,14 @@ copy_configuration()
 
     # if there is exactly one veth network entry, make sure it has an
     # associated hwaddr.
-    nics=`grep -e '^lxc\.network\.type[ \t]*=[ \t]*veth' $path/config | wc -l`
+    nics=`grep -e '^lxc\.net\.0\.type[ \t]*=[ \t]*veth' $path/config | wc -l`
     if [ $nics -eq 1 ]; then
-        grep -q "^lxc.network.hwaddr" $path/config || sed -i -e "/^lxc\.network\.type[ \t]*=[ \t]*veth/a lxc.network.hwaddr = 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')" $path/config
+        grep -q "^lxc.net.0.hwaddr" $path/config || sed -i -e "/^lxc\.net\.0\.type[ \t]*=[ \t]*veth/a lxc.net.0.hwaddr = 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')" $path/config
     fi
 
     # Generate the configuration file
     ## Relocate all the network config entries
-    sed -i -e "/lxc.network/{w ${path}/config-network" -e "d}" $path/config
+    sed -i -e "/lxc.net.0/{w ${path}/config-network" -e "d}" $path/config
 
     ## Relocate any other config entries
     sed -i -e "/lxc./{w ${path}/config-auto" -e "d}" $path/config

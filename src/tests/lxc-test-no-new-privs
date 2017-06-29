@@ -38,8 +38,8 @@ trap cleanup EXIT SIGHUP SIGINT SIGTERM
 
 mkdir -p /etc/lxc/
 cat > /etc/lxc/default.conf << EOF
-lxc.network.type = veth
-lxc.network.link = lxcbr0
+lxc.net.0.type = veth
+lxc.net.0.link = lxcbr0
 EOF
 
 ARCH=i386

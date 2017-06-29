@@ -532,10 +532,70 @@ int rand_complete_hwaddr(char *hwaddr)
 	return 0;
 }
 
+bool lxc_config_net_hwaddr(const char *line)
+{
+	char *copy, *p;
+
+	if (strncmp(line, "lxc.net", 7) != 0)
+		return false;
+	if (strncmp(line, "lxc.network.hwaddr", 18) == 0)
+		return true;
+
+	/* We have to dup the line, if line is something like
+	 * "lxc.net.[i].xxx = xxxxx ", we need to remove
+	 * '[i]' and compare its key with 'lxc.net.hwaddr'*/
+	copy = strdup(line);
+	if (!copy) {
+		SYSERROR("failed to allocate memory");
+		return false;
+	}
+	if (*(copy + 8) >= '0' && *(copy + 8) <= '9') {
+		p = strchr(copy + 8, '.');
+		if (!p) {
+			free(copy);
+			return false;
+		}
+		/* strlen("hwaddr") = 6 */
+		strncpy(copy + 8, p + 1, 6);
+		copy[8 + 6] = '\0';
+	}
+	if (strncmp(copy, "lxc.net.hwaddr", 14) == 0) {
+		free(copy);
+		return true;
+	}
+	free(copy);
+
+	/* We have to dup the line second time, if line is something like
+	 * "lxc.network.[i].xxx = xxxxx ", we need to remove
+	 * '[i]' and compare its key with 'lxc.network.hwaddr'*/
+	copy = strdup(line);
+	if (!copy) {
+		SYSERROR("failed to allocate memory");
+		return false;
+	}
+	if (*(copy + 12) >= '0' && *(copy + 12) <= '9') {
+		p = strchr(copy + 12, '.');
+		if (!p) {
+			free(copy);
+			return false;
+		}
+		/* strlen("hwaddr") = 6 */
+		strncpy(copy + 12, p + 1, 6);
+		copy[12 + 6] = '\0';
+	}
+	if (strncmp(copy, "lxc.network.hwaddr", 18) == 0) {
+		free(copy);
+		return true;
+	}
+
+	free(copy);
+	return false;
+}
+
 /*
- * If we find a lxc.network.hwaddr in the original config file, we expand it in
- * the unexpanded_config, so that after a save_config we store the hwaddr for
- * re-use.
+ * If we find a lxc.net.[i].hwaddr or lxc.network.hwaddr in the original config
+ * file, we expand it in the unexpanded_config, so that after a save_config we
+ * store the hwaddr for re-use.
  * This is only called when reading the config file, not when executing a
  * lxc.include.
  * 'x' and 'X' are substituted in-place.
@@ -548,8 +608,7 @@ void update_hwaddr(const char *line)
 	if (line[0] == '#')
 		return;
 
-	if ((strncmp(line, "lxc.network.hwaddr", 18) != 0) &&
-	    (strncmp(line, "lxc.net.hwaddr", 14) != 0))
+	if (!lxc_config_net_hwaddr(line))
 		return;
 
 	/* Let config_net_hwaddr raise the error. */

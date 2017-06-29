@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%d: %s thought it was defined\n", __LINE__, MYNAME);
 		goto err;
 	}
-	if (!c->set_config_item(c, "lxc.network.type", "empty")) {
+	if (!c->set_config_item(c, "lxc.net.0.type", "empty")) {
 		fprintf(stderr, "%s: %d: failed to set network type\n", __FILE__, __LINE__);
 		goto err;
 	}

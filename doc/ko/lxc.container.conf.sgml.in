@@ -415,7 +415,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.network</option>
+            <option>lxc.net</option>
           </term>
           <listitem>
             <para>
@@ -428,14 +428,14 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
         </varlistentry>
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.type</option>
+	    <option>lxc.net.[i].type</option>
 	  </term>
 	  <listitem>
 	    <para>
               <!--
 	      specify what kind of network virtualization to be used
 	      for the container. Each time
-	      a <option>lxc.network.type</option> field is found a new
+	      a <option>lxc.net.[i].type</option> field is found a new
 	      round of network configuration begins. In this way,
 	      several network virtualization types can be specified
 	      for the same container, as well as assigning several
@@ -443,7 +443,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 	      virtualization types can be:
               -->
               컨테이너가 어떤 종류의 네트워크 가상화를 사용할지 지정한다.
-              <option>lxc.network.type</option> 필드부터 새로운 네트워크 설정이 시작된다. 이 방법으로 여러개의 네트워크 가상화 형태를 같은 컨테이너에 지정할 수 있다. 그리고 여러개의 네트워크 인터페이스를 하나의 컨테이너에 지정할 수도 있다.
+              <option>lxc.net.[i].type</option> 필드부터 새로운 네트워크 설정이 시작된다. 이 방법으로 여러개의 네트워크 가상화 형태를 같은 컨테이너에 지정할 수 있다. 그리고 여러개의 네트워크 인터페이스를 하나의 컨테이너에 지정할 수도 있다.
               지정 가능한 형태는 아래와 같다.
 	    </para>
 
@@ -473,7 +473,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
               <option>veth:</option> a virtual ethernet pair
               device is created with one side assigned to the container
               and the other side attached to a bridge specified by
-              the <option>lxc.network.link</option> option.
+              the <option>lxc.net.[i].link</option> option.
               If the bridge is not specified, then the veth pair device
               will be created but not attached to any bridge.
               Otherwise, the bridge has to be created on the system
@@ -485,33 +485,33 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
               container, but if you wish to handle
               this name yourselves, you can tell <command>lxc</command>
               to set a specific name with
-              the <option>lxc.network.veth.pair</option> option (except for
+              the <option>lxc.net.[i].veth.pair</option> option (except for
               unprivileged containers where this option is ignored for security
               reasons).
               -->
-              <option>veth:</option> 한 쪽은 컨테이너로, 다른 한쪽은 <option>lxc.network.link</option> 옵션으로 지정한 브리지로 붙은 가상 이더넷(veth) 장치 쌍을 생성한다.
+              <option>veth:</option> 한 쪽은 컨테이너로, 다른 한쪽은 <option>lxc.net.[i].link</option> 옵션으로 지정한 브리지로 붙은 가상 이더넷(veth) 장치 쌍을 생성한다.
               만약 브리지가 지정되지 않았다면, 어떤 브리지에도 붙지 않은  veth 장치 쌍을 만든다. 브리지는 컨테이너 시작전에 시스템에서 생성해야 한다.
-              <command>lxc</command>는 컨테이너 이외의 설정에 대해서는 다루지 않는다. 기본값으로 <command>lxc</command>는 컨테이너 바깥에 속할 네트워크 디바이스의 이름을 정해준다. 이름을 변경하기 원한다면, <command>lxc</command>가 지정한 이름으로 설정하도록 <option>lxc.network.veth.pair</option> 옵션을 사용하여야 한다. (비특권 컨테이너는 불가능하다. 이 옵션은 보안상의 이유로 무시될 것이다)
+              <command>lxc</command>는 컨테이너 이외의 설정에 대해서는 다루지 않는다. 기본값으로 <command>lxc</command>는 컨테이너 바깥에 속할 네트워크 디바이스의 이름을 정해준다. 이름을 변경하기 원한다면, <command>lxc</command>가 지정한 이름으로 설정하도록 <option>lxc.net.[i].veth.pair</option> 옵션을 사용하여야 한다. (비특권 컨테이너는 불가능하다. 이 옵션은 보안상의 이유로 무시될 것이다)
             </para>
 
 	    <para>
               <!--
 	      <option>vlan:</option> a vlan interface is linked with
 	      the interface specified by
-	      the <option>lxc.network.link</option> and assigned to
+	      the <option>lxc.net.[i].link</option> and assigned to
 	      the container. The vlan identifier is specified with the
-	      option <option>lxc.network.vlan.id</option>.
+	      option <option>lxc.net.[i].vlan.id</option>.
               -->
-              <option>vlan:</option> vlan 인터페이스는 <option>lxc.network.link</option>로 지정한 인터페이스에 연결되고, 컨테이너로 할당된다. vlan의 식별자는 <option>lxc.network.vlan.id</option> 옵션으로 지정한다.
+              <option>vlan:</option> vlan 인터페이스는 <option>lxc.net.[i].link</option>로 지정한 인터페이스에 연결되고, 컨테이너로 할당된다. vlan의 식별자는 <option>lxc.net.[i].vlan.id</option> 옵션으로 지정한다.
 	    </para>
 
 	    <para>
               <!--
 	      <option>macvlan:</option> a macvlan interface is linked
 	      with the interface specified by
-	      the <option>lxc.network.link</option> and assigned to
+	      the <option>lxc.net.[i].link</option> and assigned to
 	      the container.
-	      <option>lxc.network.macvlan.mode</option> specifies the
+	      <option>lxc.net.[i].macvlan.mode</option> specifies the
 	      mode the macvlan will use to communicate between
 	      different macvlan on the same upper device. The accepted
               modes are <option>private</option>, <option>vepa</option>,
@@ -540,8 +540,8 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
               interface. Only one macvlan interface in <option>passthru</option>
               mode is possible for one physical interface.
               -->
-              <option>macvlan:</option> macvlan 인터페이스는 <option>lxc.network.link</option>로 지정한 인터페이스에 연결되고, 컨테이너로 할당된다.
-              <option>lxc.network.macvlan.mode</option>은 같은 상위 디바이스에 있는 다른 macvlan과 통신할 때 사용하는 모드를 지정한다.
+              <option>macvlan:</option> macvlan 인터페이스는 <option>lxc.net.[i].link</option>로 지정한 인터페이스에 연결되고, 컨테이너로 할당된다.
+              <option>lxc.net.[i].macvlan.mode</option>은 같은 상위 디바이스에 있는 다른 macvlan과 통신할 때 사용하는 모드를 지정한다.
               지정할 수 있는 모드는 <option>private</option>、<option>vepa</option>、<option>bridge</option>、<option>passthru</option>이다.
               <option>private</option>모드는 디바이스가 같은 상위디바이스의 어떤 장치와도 통신하지 않는다. (기본값)
               새로운 가상 이더넷 포트 통합모드(Virtual Ethernet Port Aggregator), 즉 <option>vepa</option> 모드는 인접한 브리지가 소스와 목적지가 로컬인 모든 프레임들을 macvlan 포트로 반환한다고 가정한다. 즉,  브리지가 reflective relay로 설정되어 있다는 것이다.
@@ -558,17 +558,17 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 	    <para>
               <!--
 	      <option>phys:</option> an already existing interface
-	      specified by the <option>lxc.network.link</option> is
+	      specified by the <option>lxc.net.[i].link</option> is
 	      assigned to the container.
               -->
-              <option>phys:</option> <option>lxc.network.link</option>로 지정한 이미 존재하는 인터페이스를 컨테이너로 할당된다.
+              <option>phys:</option> <option>lxc.net.[i].link</option>로 지정한 이미 존재하는 인터페이스를 컨테이너로 할당된다.
 	    </para>
 	  </listitem>
 	  </varlistentry>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.flags</option>
+	    <option>lxc.net.[i].flags</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -590,7 +590,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.link</option>
+	    <option>lxc.net.[i].link</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -605,7 +605,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.mtu</option>
+	    <option>lxc.net.[i].mtu</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -619,7 +619,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.name</option>
+	    <option>lxc.net.[i].name</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -638,7 +638,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.hwaddr</option>
+	    <option>lxc.net.[i].hwaddr</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -658,7 +658,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.ipv4</option>
+	    <option>lxc.net.[i].ipv4</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -679,7 +679,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.ipv4.gateway</option>
+	    <option>lxc.net.[i].ipv4.gateway</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -691,7 +691,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 	      Can also have the special value <option>auto</option>,
 	      which means to take the primary address from the bridge
 	      interface (as specified by the
-	      <option>lxc.network.link</option> option) and use that as
+	      <option>lxc.net.[i].link</option> option) and use that as
 	      the gateway. <option>auto</option> is only available when
 	      using the <option>veth</option> and
 	      <option>macvlan</option> network types.
@@ -700,7 +700,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
               주소 형식은 x.y.z.t로, 예를 들면 192.168.1.123이다.
 
               <option>auto</option>라는 특별한 값을 지정할 수있다.
-              이것은 (<option>lxc.network.link</option> 에서 지정된) 브리지 인터페이스의 첫번째 주소를 가져와 게이트 주소로 사용한다.
+              이것은 (<option>lxc.net.[i].link</option> 에서 지정된) 브리지 인터페이스의 첫번째 주소를 가져와 게이트 주소로 사용한다.
               <option>auto</option>는 네트워크 형태가 <option>veth</option>나 <option>macvlan</option>일 때만 지정 가능하다.
 	    </para>
 	  </listitem>
@@ -709,7 +709,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.ipv6</option>
+	    <option>lxc.net.[i].ipv6</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -728,7 +728,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.ipv6.gateway</option>
+	    <option>lxc.net.[i].ipv6.gateway</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -740,7 +740,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 	      Can also have the special value <option>auto</option>,
 	      which means to take the primary address from the bridge
 	      interface (as specified by the
-	      <option>lxc.network.link</option> option) and use that as
+	      <option>lxc.net.[i].link</option> option) and use that as
 	      the gateway. <option>auto</option> is only available when
 	      using the <option>veth</option> and
 	      <option>macvlan</option> network types.
@@ -749,7 +749,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
               주소 형식은 x::y로, 예를 들면 2003:db8:1:0::1이다.
 
               <option>auto</option>라는 특별한 값을 지정할 수있다.
-              이것은 (<option>lxc.network.link</option> 에서 지정된) 브리지 인터페이스의 첫번째 주소를 가져와 게이트 주소로 사용한다.
+              이것은 (<option>lxc.net.[i].link</option> 에서 지정된) 브리지 인터페이스의 첫번째 주소를 가져와 게이트 주소로 사용한다.
 <option>auto</option>는 네트워크 형태가 <option>veth</option>나 <option>macvlan</option>일 때만 지정 가능하다.
 	    </para>
 	  </listitem>
@@ -757,7 +757,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.script.up</option>
+	    <option>lxc.net.[i].script.up</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -790,7 +790,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.network.script.down</option>
+	    <option>lxc.net.[i].script.down</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -2564,13 +2564,13 @@ mknod errno 0
       </para>
       <programlisting>
 	lxc.utsname = myhostname
-	lxc.network.type = veth
-	lxc.network.flags = up
-	lxc.network.link = br0
-	lxc.network.name = eth0
-	lxc.network.hwaddr = 4a:49:43:49:79:bf
-	lxc.network.ipv4 = 1.2.3.5/24 1.2.3.255
-	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
+	lxc.net.0.type = veth
+	lxc.net.0.flags = up
+	lxc.net.0.link = br0
+	lxc.net.0.name = eth0
+	lxc.net.0.hwaddr = 4a:49:43:49:79:bf
+	lxc.net.0.ipv4 = 1.2.3.5/24 1.2.3.255
+	lxc.net.0.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
       </programlisting>
     </refsect2>
 
@@ -2614,26 +2614,26 @@ mknod errno 0
       </para>
       <programlisting>
 	lxc.utsname = complex
-	lxc.network.type = veth
-	lxc.network.flags = up
-	lxc.network.link = br0
-	lxc.network.hwaddr = 4a:49:43:49:79:bf
-	lxc.network.ipv4 = 10.2.3.5/24 10.2.3.255
-	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
-	lxc.network.ipv6 = 2003:db8:1:0:214:5432:feab:3588
-	lxc.network.type = macvlan
-	lxc.network.flags = up
-	lxc.network.link = eth0
-	lxc.network.hwaddr = 4a:49:43:49:79:bd
-	lxc.network.ipv4 = 10.2.3.4/24
-	lxc.network.ipv4 = 192.168.10.125/24
-	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3596
-	lxc.network.type = phys
-	lxc.network.flags = up
-	lxc.network.link = dummy0
-	lxc.network.hwaddr = 4a:49:43:49:79:ff
-	lxc.network.ipv4 = 10.2.3.6/24
-	lxc.network.ipv6 = 2003:db8:1:0:214:1234:fe0b:3297
+	lxc.net.0.type = veth
+	lxc.net.0.flags = up
+	lxc.net.0.link = br0
+	lxc.net.0.hwaddr = 4a:49:43:49:79:bf
+	lxc.net.0.ipv4 = 10.2.3.5/24 10.2.3.255
+	lxc.net.0.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
+	lxc.net.0.ipv6 = 2003:db8:1:0:214:5432:feab:3588
+	lxc.net.1.type = macvlan
+	lxc.net.1.flags = up
+	lxc.net.1.link = eth0
+	lxc.net.1.hwaddr = 4a:49:43:49:79:bd
+	lxc.net.1.ipv4 = 10.2.3.4/24
+	lxc.net.1.ipv4 = 192.168.10.125/24
+	lxc.net.1.ipv6 = 2003:db8:1:0:214:1234:fe0b:3596
+	lxc.net.2.type = phys
+	lxc.net.2.flags = up
+	lxc.net.2.link = dummy0
+	lxc.net.2.hwaddr = 4a:49:43:49:79:ff
+	lxc.net.2.ipv4 = 10.2.3.6/24
+	lxc.net.2.ipv6 = 2003:db8:1:0:214:1234:fe0b:3297
 	lxc.cgroup.cpuset.cpus = 0,1
 	lxc.cgroup.cpu.shares = 1234
 	lxc.cgroup.devices.deny = a

@@ -34,8 +34,8 @@ cleanup() {
 trap cleanup EXIT
 
 cat > $f << EOF
-lxc.network.type = veth
-lxc.network.hwaddr = 00:16:3e:xx:xx:xx
+lxc.net.0.type = veth
+lxc.net.0.hwaddr = 00:16:3e:xx:xx:xx
 EOF
 lxc-create -t busybox -f $f -n lxctestc
 grep -q "xx:xx" /var/lib/lxc/lxctestc/config && { echo "hwaddr not expanded"; exit 1; }

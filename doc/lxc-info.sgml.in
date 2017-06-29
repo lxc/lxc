@@ -175,7 +175,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       </varlistentry>
 
       <varlistentry>
-        <term>lxc-info -n foo -c lxc.network.0.veth.pair</term>
+        <term>lxc-info -n foo -c lxc.net.0.veth.pair</term>
         <listitem>
           <para>
             prints the veth pair name of foo.

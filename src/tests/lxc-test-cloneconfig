@@ -48,12 +48,12 @@ cleanup() {
 }
 
 verify_numnics() {
-	verify_unchanged_number lxc.network.type "network defs"
+	verify_unchanged_number lxc.net.0.type "network defs"
 }
 
 verify_hwaddr() {
-	verify_unchanged_number lxc.network.hwaddr "hwaddr defs"
-	grep ^lxc.network.hwaddr $CONTAINER_PATH/config | while read line; do
+	verify_unchanged_number lxc.net.0.hwaddr "hwaddr defs"
+	grep ^lxc.net.0.hwaddr $CONTAINER_PATH/config | while read line; do
 		addr=`echo $line | awk -F= { print $2 }`
 		echo "looking for $addr in $CONTAINER2_PATH/config"
 		if grep -q $addr $CONTAINER2_PATH/config; then
@@ -80,20 +80,20 @@ trap cleanup EXIT
 
 # Simple nic
 cat > $s/1.conf << EOF
-lxc.network.type = veth
-lxc.network.link = lxcbr0
+lxc.net.0.type = veth
+lxc.net.0.link = lxcbr0
 EOF
 
 # Simple nic with hwaddr; verify hwaddr changed
 cat > $s/2.conf << EOF
-lxc.network.type = veth
-lxc.network.link = lxcbr0
+lxc.net.0.type = veth
+lxc.net.0.link = lxcbr0
 EOF
 
 # No nics, but nic from include
 cat > $s/1.include << EOF
-lxc.network.type = veth
-lxc.network.link = lxcbr0
+lxc.net.0.type = veth
+lxc.net.0.link = lxcbr0
 lxc.hook.start = /bin/bash
 EOF
 cat > $s/3.conf << EOF

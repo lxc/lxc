@@ -293,11 +293,27 @@ int main(int argc, char *argv[])
 	printf("%d: get_config_item(lxc.cap.drop) returned %d %s\n", __LINE__, ret, v2);
 	ret = c->get_config_item(c, "lxc.network", v2, 255);
 	if (ret < 0) {
-		fprintf(stderr, "%d: get_config_item returned %d\n", __LINE__, ret);
+		fprintf(stderr, "%d: get_config_item(lxc.network) returned %d\n", __LINE__, ret);
 		goto out;
 	}
 	printf("%d: get_config_item(lxc.network) returned %d %s\n", __LINE__, ret, v2);
 
+	if (!c->set_config_item(c, "lxc.network.type", "veth")) {
+		fprintf(stderr, "%d: failed to set network.type\n", __LINE__);
+		goto out;
+	}
+	if (!c->set_config_item(c, "lxc.network.link", "lxcbr0")) {
+		fprintf(stderr, "%d: failed to set network.link\n", __LINE__);
+		goto out;
+	}
+	if (!c->set_config_item(c, "lxc.network.flags", "up")) {
+		fprintf(stderr, "%d: failed to set network.flags\n", __LINE__);
+		goto out;
+	}
+	if (!c->set_config_item(c, "lxc.network.hwaddr", "00:16:3e:xx:xx:xx")) {
+		fprintf(stderr, "%d: failed to set network.hwaddr\n", __LINE__);
+		goto out;
+	}
 	if (!c->set_config_item(c, "lxc.network.ipv4", "10.2.3.4")) {
 		fprintf(stderr, "%d: failed to set ipv4\n", __LINE__);
 		goto out;

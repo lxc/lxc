@@ -1,3 +1,3 @@
 # Container with non-virtualized network
-lxc.network.type = none
+lxc.net.0.type = none
 lxc.utsname = delta

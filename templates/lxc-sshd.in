@@ -162,7 +162,7 @@ EOF
     fi
 
     # if no .ipv4 section in config, then have the container run dhcp
-    grep -q "^lxc.network.ipv4" $path/config || touch $rootfs/run-dhcp
+    grep -q "^lxc.net.0.ipv4" $path/config || touch $rootfs/run-dhcp
 
     if [ "$(uname -m)" = "x86_64" ]; then
         cat <<EOF >> $path/config

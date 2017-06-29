@@ -114,8 +114,8 @@ union netdev_p {
 
 /*
  * Defines a structure to configure a network device
- * @link       : lxc.network.link, name of bridge or host iface to attach if any
- * @name       : lxc.network.name, name of iface on the container side
+ * @link       : lxc.net.[i].link, name of bridge or host iface to attach if any
+ * @name       : lxc.net.[i].name, name of iface on the container side
  * @flags      : flag of the network device (IFF_UP, ... )
  * @ipv4       : a list of ipv4 addresses to be set on the network device
  * @ipv6       : a list of ipv6 addresses to be set on the network device
