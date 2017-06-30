@@ -178,6 +178,8 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 
 	if (!pid) {
+		int ret;
+
 		/* restore default signal handlers */
 		for (i = 1; i < NSIG; i++)
 			signal(i, SIG_DFL);
@@ -189,9 +191,9 @@ int main(int argc, char *argv[])
 
 		NOTICE("About to exec '%s'", aargv[0]);
 
-		execvp(aargv[0], aargv);
+		ret = execvp(aargv[0], aargv);
 		ERROR("Failed to exec: '%s' : %s", aargv[0], strerror(errno));
-		exit(err);
+		exit(ret);
 	}
 
 	/* let's process the signals now */
