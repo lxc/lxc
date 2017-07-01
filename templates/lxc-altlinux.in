@@ -166,6 +166,15 @@ EOF
 download_altlinux()
 {
 
+    if [ -z "$aptconfver" ]; then
+        case "$release" in
+            sisyphus)
+                aptconfver=apt-conf-sisyphus ;;
+            *)
+                aptconfver=apt-conf-branch ;;
+        esac
+    fi
+
     # check the mini altlinux was not already downloaded
     INSTALL_ROOT=$cache/partial
     mkdir -p $INSTALL_ROOT
@@ -179,7 +188,7 @@ download_altlinux()
     APT_GET="apt-get -o RPM::RootDir=$INSTALL_ROOT -y"
     PKG_LIST="$(grep -hs '^[^#]' "$profile_dir/$profile")"
     # if no configuration file $profile -- fall back to default list of packages
-    [ -z "$PKG_LIST" ] && PKG_LIST="interactivesystem apt apt-conf etcnet-full openssh-server systemd-sysvinit systemd-units systemd NetworkManager-daemon"
+    [ -z "$PKG_LIST" ] && PKG_LIST="interactivesystem apt $aptconfver etcnet-full openssh-server systemd-sysvinit systemd-units systemd NetworkManager-daemon"
 
     mkdir -p $INSTALL_ROOT/var/lib/rpm
     rpm --root $INSTALL_ROOT  --initdb
@@ -362,6 +371,7 @@ usage:
         [-4|--ipv4=<ipv4 address>] [-6|--ipv6=<ipv6 address>]
         [-g|--gw=<gw address>] [-d|--dns=<dns address>]
         [-P|--profile=<name of the profile>] [--rootfs=<path>]
+        [-a|--apt-conf=<apt-conf>]
         [-A|--arch=<arch of the container>]
         [-h|--help]
 Mandatory args:
@@ -375,6 +385,7 @@ Optional args:
   -g,--gw           specify the default gw, eg. 192.168.1.1
   -G,--gw6          specify the default gw, eg. 2003:db8:1:0:214:1234:fe0b:3596
   -d,--dns          specify the DNS server, eg. 192.168.1.2
+  -a,--apt-conf     specify preferred 'apt-conf' package, eg. 'apt-conf-branch'
   -P,--profile      Profile name is the file name in /etc/lxc/profiles contained packages name for install to cache.
   -A,--arch         NOT USED YET. Define what arch the container will be [i686,x86_64]
   ---rootfs         rootfs path
@@ -383,7 +394,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o hp:n:P:cR:4:6:g:d: -l help,rootfs:,path:,name:,profile:,clean,release:,ipv4:,ipv6:,gw:,dns: -- "$@")
+options=$(getopt -o hp:n:P:cR:4:6:g:d:a: -l help,rootfs:,path:,name:,profile:,clean,release:,ipv4:,ipv6:,gw:,dns:,apt-conf: -- "$@")
 if [ $? -ne 0 ]; then
     usage $(basename $0)
     exit 1
@@ -404,6 +415,7 @@ do
         -6|--ipv6)      ipv6=$2; shift 2;;
         -g|--gw)        gw=$2; shift 2;;
         -d|--dns)       dns=$2; shift 2;;
+        -a|--apt-conf)  aptconfver=$2; shift 2;;
         --)             shift 1; break ;;
         *)              break ;;
     esac
