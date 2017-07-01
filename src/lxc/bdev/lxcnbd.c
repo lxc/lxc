@@ -34,6 +34,7 @@
 #include "bdev.h"
 #include "log.h"
 #include "lxcnbd.h"
+#include "storage_utils.h"
 #include "utils.h"
 
 lxc_log_define(lxcnbd, lxc);

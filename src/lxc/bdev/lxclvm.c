@@ -36,6 +36,7 @@
 #include "config.h"
 #include "log.h"
 #include "lxclvm.h"
+#include "storage_utils.h"
 #include "utils.h"
 
 /* major()/minor() */

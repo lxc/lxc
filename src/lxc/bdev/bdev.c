@@ -65,6 +65,7 @@
 #include "lxczfs.h"
 #include "namespace.h"
 #include "parse.h"
+#include "storage_utils.h"
 #include "utils.h"
 
 #ifndef BLKGETSIZE64
@@ -200,86 +201,85 @@ static const struct bdev_type bdevs[] = {
 
 static const size_t numbdevs = sizeof(bdevs) / sizeof(struct bdev_type);
 
-/* helpers */
-static const struct bdev_type *bdev_query(struct lxc_conf *conf,
-					  const char *src);
-static struct bdev *bdev_get(const char *type);
-static struct bdev *do_bdev_create(const char *dest, const char *type,
-				   const char *cname, struct bdev_specs *specs);
-static int find_fstype_cb(char *buffer, void *data);
-static char *linkderef(char *path, char *dest);
-static bool unpriv_snap_allowed(struct bdev *b, const char *t, bool snap,
-				bool maybesnap);
-
-/* the bulk of this needs to become a common helper */
-char *dir_new_path(char *src, const char *oldname, const char *name,
-		   const char *oldpath, const char *lxcpath)
+static const struct bdev_type *get_bdev_by_name(const char *name)
 {
-	char *ret, *p, *p2;
-	int l1, l2, nlen;
+	size_t i, cmplen;
 
-	nlen = strlen(src) + 1;
-	l1 = strlen(oldpath);
-	p = src;
-	/* if src starts with oldpath, look for oldname only after
-	 * that path */
-	if (strncmp(src, oldpath, l1) == 0) {
-		p += l1;
-		nlen += (strlen(lxcpath) - l1);
-	}
-	l2 = strlen(oldname);
-	while ((p = strstr(p, oldname)) != NULL) {
-		p += l2;
-		nlen += strlen(name) - l2;
-	}
-
-	ret = malloc(nlen);
-	if (!ret)
+	cmplen = strcspn(name, ":");
+	if (cmplen == 0)
 		return NULL;
 
-	p = ret;
-	if (strncmp(src, oldpath, l1) == 0) {
-		p += sprintf(p, "%s", lxcpath);
-		src += l1;
-	}
+	for (i = 0; i < numbdevs; i++)
+		if (strncmp(bdevs[i].name, name, cmplen) == 0)
+			break;
 
-	while ((p2 = strstr(src, oldname)) != NULL) {
-		strncpy(p, src, p2 - src); // copy text up to oldname
-		p += p2 - src;		   // move target pointer (p)
-		p += sprintf(p, "%s",
-			     name); // print new name in place of oldname
-		src = p2 + l2;      // move src to end of oldname
-	}
-	sprintf(p, "%s", src); // copy the rest of src
-	return ret;
+	if (i == numbdevs)
+		return NULL;
+
+	DEBUG("Detected rootfs type \"%s\"", bdevs[i].name);
+	return &bdevs[i];
 }
 
-/*
- * attach_block_device returns true if all went well,
- * meaning either a block device was attached or was not
- * needed.  It returns false if something went wrong and
- * container startup should be stopped.
- */
-bool attach_block_device(struct lxc_conf *conf)
+const struct bdev_type *bdev_query(struct lxc_conf *conf, const char *src)
 {
-	char *path;
+	size_t i;
+	const struct bdev_type *bdev;
 
-	if (!conf->rootfs.path)
-		return true;
+	bdev = get_bdev_by_name(src);
+	if (bdev)
+		return bdev;
 
-	path = conf->rootfs.path;
-	if (!requires_nbd(path))
-		return true;
+	for (i = 0; i < numbdevs; i++)
+		if (bdevs[i].ops->detect(src))
+			break;
 
-	path = strchr(path, ':');
-	if (!path)
-		return false;
+	if (i == numbdevs)
+		return NULL;
 
-	path++;
-	if (!attach_nbd(path, conf))
-		return false;
+	DEBUG("Detected rootfs type \"%s\"", bdevs[i].name);
+	return &bdevs[i];
+}
 
-	return true;
+struct bdev *bdev_get(const char *type)
+{
+	size_t i;
+	struct bdev *bdev;
+
+	for (i = 0; i < numbdevs; i++) {
+		if (strcmp(bdevs[i].name, type) == 0)
+			break;
+	}
+
+	if (i == numbdevs)
+		return NULL;
+
+	bdev = malloc(sizeof(struct bdev));
+	if (!bdev)
+		return NULL;
+
+	memset(bdev, 0, sizeof(struct bdev));
+	bdev->ops = bdevs[i].ops;
+	bdev->type = bdevs[i].name;
+
+	return bdev;
+}
+
+static struct bdev *do_bdev_create(const char *dest, const char *type,
+				   const char *cname, struct bdev_specs *specs)
+{
+
+	struct bdev *bdev;
+
+	bdev = bdev_get(type);
+	if (!bdev)
+		return NULL;
+
+	if (bdev->ops->create(bdev, dest, cname, specs) < 0) {
+		bdev_put(bdev);
+		return NULL;
+	}
+
+	return bdev;
 }
 
 bool bdev_can_backup(struct lxc_conf *conf)
@@ -529,29 +529,6 @@ bool bdev_destroy(struct lxc_conf *conf)
 	return ret;
 }
 
-int bdev_destroy_wrapper(void *data)
-{
-	struct lxc_conf *conf = data;
-
-	if (setgid(0) < 0) {
-		ERROR("Failed to setgid to 0");
-		return -1;
-	}
-
-	if (setgroups(0, NULL) < 0)
-		WARN("Failed to clear groups");
-
-	if (setuid(0) < 0) {
-		ERROR("Failed to setuid to 0");
-		return -1;
-	}
-
-	if (!bdev_destroy(conf))
-		return -1;
-
-	return 0;
-}
-
 struct bdev *bdev_init(struct lxc_conf *conf, const char *src, const char *dst,
 		       const char *mntopts)
 {
@@ -607,219 +584,6 @@ void bdev_put(struct bdev *bdev)
 	free(bdev);
 }
 
-/*
- * return block size of dev->src in units of bytes
- */
-int blk_getsize(struct bdev *bdev, uint64_t *size)
-{
-	int fd, ret;
-	char *path = bdev->src;
-
-	if (strcmp(bdev->type, "loop") == 0)
-		path = bdev->src + 5;
-
-	fd = open(path, O_RDONLY);
-	if (fd < 0)
-		return -1;
-
-	ret = ioctl(fd, BLKGETSIZE64, size); // size of device in bytes
-	close(fd);
-	return ret;
-}
-
-void detach_block_device(struct lxc_conf *conf)
-{
-	if (conf->nbd_idx != -1)
-		detach_nbd_idx(conf->nbd_idx);
-}
-
-/*
- * Given a bdev (presumably blockdev-based), detect the fstype
- * by trying mounting (in a private mntns) it.
- * @bdev: bdev to investigate
- * @type: preallocated char* in which to write the fstype
- * @len: length of passed in char*
- * Returns length of fstype, of -1 on error
- */
-int detect_fs(struct bdev *bdev, char *type, int len)
-{
-	int p[2], ret;
-	size_t linelen;
-	pid_t pid;
-	FILE *f;
-	char *sp1, *sp2, *sp3, *line = NULL;
-	char *srcdev;
-
-	if (!bdev || !bdev->src || !bdev->dest)
-		return -1;
-
-	srcdev = bdev->src;
-	if (strcmp(bdev->type, "loop") == 0)
-		srcdev = bdev->src + 5;
-
-	ret = pipe(p);
-	if (ret < 0)
-		return -1;
-
-	if ((pid = fork()) < 0)
-		return -1;
-
-	if (pid > 0) {
-		int status;
-		close(p[1]);
-		memset(type, 0, len);
-		ret = read(p[0], type, len - 1);
-		close(p[0]);
-		if (ret < 0) {
-			SYSERROR("error reading from pipe");
-			wait(&status);
-			return -1;
-		} else if (ret == 0) {
-			ERROR("child exited early - fstype not found");
-			wait(&status);
-			return -1;
-		}
-		wait(&status);
-		type[len - 1] = '\0';
-		INFO("detected fstype %s for %s", type, srcdev);
-		return ret;
-	}
-
-	if (unshare(CLONE_NEWNS) < 0)
-		exit(1);
-
-	if (detect_shared_rootfs()) {
-		if (mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL)) {
-			SYSERROR("Failed to make / rslave");
-			ERROR("Continuing...");
-		}
-	}
-
-	ret = mount_unknown_fs(srcdev, bdev->dest, bdev->mntopts);
-	if (ret < 0) {
-		ERROR("failed mounting %s onto %s to detect fstype", srcdev,
-		      bdev->dest);
-		exit(1);
-	}
-
-	// if symlink, get the real dev name
-	char devpath[MAXPATHLEN];
-	char *l = linkderef(srcdev, devpath);
-	if (!l)
-		exit(1);
-	f = fopen("/proc/self/mounts", "r");
-	if (!f)
-		exit(1);
-
-	while (getline(&line, &linelen, f) != -1) {
-		sp1 = strchr(line, ' ');
-		if (!sp1)
-			exit(1);
-		*sp1 = '\0';
-		if (strcmp(line, l))
-			continue;
-		sp2 = strchr(sp1 + 1, ' ');
-		if (!sp2)
-			exit(1);
-		*sp2 = '\0';
-		sp3 = strchr(sp2 + 1, ' ');
-		if (!sp3)
-			exit(1);
-		*sp3 = '\0';
-		sp2++;
-		if (write(p[1], sp2, strlen(sp2)) != strlen(sp2))
-			exit(1);
-
-		exit(0);
-	}
-
-	exit(1);
-}
-
-int do_mkfs_exec_wrapper(void *args)
-{
-	int ret;
-	char *mkfs;
-	char **data = args;
-	/* strlen("mkfs.")
-	 * +
-	 * strlen(data[0])
-	 * +
-	 * \0
-	 */
-	size_t len = 5 + strlen(data[0]) + 1;
-
-	mkfs = malloc(len);
-	if (!mkfs)
-		return -1;
-
-	ret = snprintf(mkfs, len, "mkfs.%s", data[0]);
-	if (ret < 0 || (size_t)ret >= len) {
-		free(mkfs);
-		return -1;
-	}
-
-	TRACE("executing \"%s %s\"", mkfs, data[1]);
-	execlp(mkfs, mkfs, data[1], (char *)NULL);
-	SYSERROR("failed to run \"%s %s \"", mkfs, data[1]);
-	return -1;
-}
-
-/*
- * This will return 1 for physical disks, qemu-nbd, loop, etc right now only lvm
- * is a block device.
- */
-int is_blktype(struct bdev *b)
-{
-	if (strcmp(b->type, "lvm") == 0)
-		return 1;
-
-	return 0;
-}
-
-int mount_unknown_fs(const char *rootfs, const char *target,
-		     const char *options)
-{
-	size_t i;
-	int ret;
-	struct cbarg {
-		const char *rootfs;
-		const char *target;
-		const char *options;
-	} cbarg = {
-	    .rootfs = rootfs,
-	    .target = target,
-	    .options = options,
-	};
-
-	/*
-	 * find the filesystem type with brute force:
-	 * first we check with /etc/filesystems, in case the modules
-	 * are auto-loaded and fall back to the supported kernel fs
-	 */
-	char *fsfile[] = {
-	    "/etc/filesystems",
-	    "/proc/filesystems",
-	};
-
-	for (i = 0; i < sizeof(fsfile) / sizeof(fsfile[0]); i++) {
-		if (access(fsfile[i], F_OK))
-			continue;
-
-		ret = lxc_file_for_each_line(fsfile[i], find_fstype_cb, &cbarg);
-		if (ret < 0) {
-			ERROR("failed to parse '%s'", fsfile[i]);
-			return -1;
-		}
-
-		if (ret)
-			return 0;
-	}
-
-	ERROR("failed to determine fs type for '%s'", rootfs);
-	return -1;
-}
-
 bool rootfs_is_blockdev(struct lxc_conf *conf)
 {
 	const struct bdev_type *q;
@@ -841,207 +605,6 @@ bool rootfs_is_blockdev(struct lxc_conf *conf)
 	if (strcmp(q->name, "lvm") == 0 ||
 	    strcmp(q->name, "loop") == 0 ||
 	    strcmp(q->name, "nbd") == 0)
-		return true;
-
-	return false;
-}
-
-static struct bdev *do_bdev_create(const char *dest, const char *type,
-				   const char *cname, struct bdev_specs *specs)
-{
-
-	struct bdev *bdev;
-
-	bdev = bdev_get(type);
-	if (!bdev)
-		return NULL;
-
-	if (bdev->ops->create(bdev, dest, cname, specs) < 0) {
-		bdev_put(bdev);
-		return NULL;
-	}
-
-	return bdev;
-}
-
-static struct bdev *bdev_get(const char *type)
-{
-	size_t i;
-	struct bdev *bdev;
-
-	for (i = 0; i < numbdevs; i++) {
-		if (strcmp(bdevs[i].name, type) == 0)
-			break;
-	}
-
-	if (i == numbdevs)
-		return NULL;
-
-	bdev = malloc(sizeof(struct bdev));
-	if (!bdev)
-		return NULL;
-
-	memset(bdev, 0, sizeof(struct bdev));
-	bdev->ops = bdevs[i].ops;
-	bdev->type = bdevs[i].name;
-
-	return bdev;
-}
-
-static const struct bdev_type *get_bdev_by_name(const char *name)
-{
-	size_t i;
-
-	for (i = 0; i < numbdevs; i++) {
-		if (strcmp(bdevs[i].name, name) == 0)
-			return &bdevs[i];
-	}
-
-	ERROR("Backing store %s unknown but not caught earlier\n", name);
-	return NULL;
-}
-
-static const struct bdev_type *bdev_query(struct lxc_conf *conf,
-					  const char *src)
-{
-	size_t i;
-
-	if (conf->rootfs.bdev_type) {
-		DEBUG("config file specified rootfs type \"%s\"",
-		      conf->rootfs.bdev_type);
-		return get_bdev_by_name(conf->rootfs.bdev_type);
-	}
-
-	for (i = 0; i < numbdevs; i++) {
-		int r;
-		r = bdevs[i].ops->detect(src);
-		if (r)
-			break;
-	}
-
-	if (i == numbdevs)
-		return NULL;
-
-	DEBUG("detected rootfs type \"%s\"", bdevs[i].name);
-
-	return &bdevs[i];
-}
-
-/*
- * These are copied from conf.c.  However as conf.c will be moved to using
- * the callback system, they can be pulled from there eventually, so we
- * don't need to pollute utils.c with these low level functions
- */
-static int find_fstype_cb(char *buffer, void *data)
-{
-	struct cbarg {
-		const char *rootfs;
-		const char *target;
-		const char *options;
-	} *cbarg = data;
-
-	unsigned long mntflags;
-	char *mntdata;
-	char *fstype;
-
-	/* we don't try 'nodev' entries */
-	if (strstr(buffer, "nodev"))
-		return 0;
-
-	fstype = buffer;
-	fstype += lxc_char_left_gc(fstype, strlen(fstype));
-	fstype[lxc_char_right_gc(fstype, strlen(fstype))] = '\0';
-
-	DEBUG("trying to mount '%s'->'%s' with fstype '%s'", cbarg->rootfs,
-	      cbarg->target, fstype);
-
-	if (parse_mntopts(cbarg->options, &mntflags, &mntdata) < 0) {
-		free(mntdata);
-		return 0;
-	}
-
-	if (mount(cbarg->rootfs, cbarg->target, fstype, mntflags, mntdata)) {
-		DEBUG("mount failed with error: %s", strerror(errno));
-		free(mntdata);
-		return 0;
-	}
-
-	free(mntdata);
-
-	INFO("mounted '%s' on '%s', with fstype '%s'", cbarg->rootfs,
-	     cbarg->target, fstype);
-
-	return 1;
-}
-
-static char *linkderef(char *path, char *dest)
-{
-	struct stat sbuf;
-	ssize_t ret;
-
-	ret = stat(path, &sbuf);
-	if (ret < 0)
-		return NULL;
-
-	if (!S_ISLNK(sbuf.st_mode))
-		return path;
-
-	ret = readlink(path, dest, MAXPATHLEN);
-	if (ret < 0) {
-		SYSERROR("error reading link %s", path);
-		return NULL;
-	} else if (ret >= MAXPATHLEN) {
-		ERROR("link in %s too long", path);
-		return NULL;
-	}
-	dest[ret] = '\0';
-
-	return dest;
-}
-
-/*
- * is an unprivileged user allowed to make this kind of snapshot
- */
-static bool unpriv_snap_allowed(struct bdev *b, const char *t, bool snap,
-				bool maybesnap)
-{
-	if (!t) {
-		// new type will be same as original
-		// (unless snap && b->type == dir, in which case it will be
-		// overlayfs -- which is also allowed)
-		if (strcmp(b->type, "dir") == 0 ||
-		    strcmp(b->type, "aufs") == 0 ||
-		    strcmp(b->type, "overlayfs") == 0 ||
-		    strcmp(b->type, "btrfs") == 0 ||
-		    strcmp(b->type, "loop") == 0)
-			return true;
-
-		return false;
-	}
-
-	// unprivileged users can copy and snapshot dir, overlayfs,
-	// and loop.  In particular, not zfs, btrfs, or lvm.
-	if (strcmp(t, "dir") == 0 ||
-	    strcmp(t, "aufs") == 0 ||
-	    strcmp(t, "overlayfs") == 0 ||
-	    strcmp(t, "btrfs") == 0 ||
-	    strcmp(t, "loop") == 0)
-		return true;
-
-	return false;
-}
-
-bool is_valid_bdev_type(const char *type)
-{
-	if (strcmp(type, "dir") == 0 ||
-	    strcmp(type, "btrfs") == 0 ||
-	    strcmp(type, "aufs") == 0 ||
-	    strcmp(type, "loop") == 0 ||
-	    strcmp(type, "lvm") == 0 ||
-	    strcmp(type, "nbd") == 0 ||
-	    strcmp(type, "overlayfs") == 0 ||
-	    strcmp(type, "rbd") == 0 ||
-	    strcmp(type, "zfs") == 0)
 		return true;
 
 	return false;

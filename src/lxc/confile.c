@@ -39,6 +39,7 @@
 #include <dirent.h>
 
 #include "bdev.h"
+#include "bdev/storage_utils.h"
 #include "parse.h"
 #include "config.h"
 #include "confile.h"
