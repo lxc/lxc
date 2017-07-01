@@ -375,7 +375,7 @@ download_ubuntu()
     choose_container_proxy $cache/partial-$arch/ $arch
     # download a mini ubuntu into a cache
     echo "Downloading ubuntu $release minimal ..."
-    if [ -n "$(which qemu-debootstrap)" ]; then
+    if [ -n "$(which qemu-debootstrap 2>/dev/null || :)" ]; then
         qemu-debootstrap --verbose $debootstrap_parameters --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch $MIRROR
     else
         debootstrap --verbose $debootstrap_parameters --components=main,universe --arch=$arch --include=${packages_template} $release $cache/partial-$arch $MIRROR
