@@ -430,8 +430,16 @@ int main(int argc, char *argv[])
 	       getpid(), mon.lxcpath);
 	for (;;) {
 		ret = lxc_mainloop(&mon.descr, 1000 * 30);
+		if (ret) {
+			ERROR("mainloop returned an error");
+			break;
+		}
 		if (mon.clientfds_cnt <= 0) {
 			NOTICE("No remaining clients. lxc-monitord is exiting.");
+			break;
+		}
+		if (quit == 1) {
+			NOTICE("got quit command. lxc-monitord is exitting.");
 			break;
 		}
 	}
