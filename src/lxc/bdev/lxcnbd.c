@@ -116,17 +116,21 @@ int nbd_detect(const char *path)
 int nbd_mount(struct bdev *bdev)
 {
 	int ret = -1, partition;
+	char *src;
 	char path[50];
 
 	if (strcmp(bdev->type, "nbd"))
 		return -22;
+
 	if (!bdev->src || !bdev->dest)
 		return -22;
 
 	/* nbd_idx should have been copied by bdev_init from the lxc_conf */
 	if (bdev->nbd_idx < 0)
 		return -22;
-	partition = nbd_get_partition(bdev->src);
+
+	src = lxc_storage_get_path(bdev->src, bdev->type);
+	partition = nbd_get_partition(src);
 	if (partition)
 		ret = snprintf(path, 50, "/dev/nbd%dp%d", bdev->nbd_idx,
 				partition);
@@ -151,14 +155,13 @@ int nbd_mount(struct bdev *bdev)
 
 int nbd_umount(struct bdev *bdev)
 {
-	int ret;
-
 	if (strcmp(bdev->type, "nbd"))
 		return -22;
+
 	if (!bdev->src || !bdev->dest)
 		return -22;
-	ret = umount(bdev->dest);
-	return ret;
+
+	return umount(bdev->dest);
 }
 
 bool requires_nbd(const char *path)
