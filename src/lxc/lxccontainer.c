@@ -1265,8 +1265,10 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 				exit(1);
 			}
 		} else { // TODO come up with a better way here!
+			char *src;
 			free(bdev->dest);
-			bdev->dest = strdup(bdev->src);
+			src = lxc_storage_get_path(bdev->src, bdev->type);
+			bdev->dest = strdup(src);
 		}
 
 		/*
@@ -1431,7 +1433,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 		}
 		/* execute */
 		execvp(tpath, newargv);
-		SYSERROR("failed to execute template %s", tpath);
+		SYSERROR("Failed to execute template %s", tpath);
 		exit(1);
 	}
 
