@@ -125,5 +125,6 @@ bool bdev_destroy(struct lxc_conf *conf);
 /* callback function to be used with userns_exec_1() */
 int bdev_destroy_wrapper(void *data);
 extern bool rootfs_is_blockdev(struct lxc_conf *conf);
+extern char *lxc_storage_get_path(char *src, const char *prefix);
 
 #endif // __LXC_BDEV_H
