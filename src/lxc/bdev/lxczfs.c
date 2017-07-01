@@ -88,20 +88,23 @@ int zfs_detect(const char *path)
 
 int zfs_mount(struct bdev *bdev)
 {
+	int ret;
+	char *mntdata, *src;
+	unsigned long mntflags;
+
 	if (strcmp(bdev->type, "zfs"))
 		return -22;
 
 	if (!bdev->src || !bdev->dest)
 		return -22;
 
-	char *mntdata;
-	unsigned long mntflags;
 	if (parse_mntopts(bdev->mntopts, &mntflags, &mntdata) < 0) {
 		free(mntdata);
 		return -22;
 	}
 
-	int ret = mount(bdev->src, bdev->dest, "bind", MS_BIND | MS_REC | mntflags, mntdata);
+	src = lxc_storage_get_path(bdev->src, bdev->type);
+	ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC | mntflags, mntdata);
 	free(mntdata);
 
 	return ret;
@@ -208,6 +211,7 @@ int zfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
 		uint64_t newsize, struct lxc_conf *conf)
 {
+	char *origsrc, *newsrc;
 	int len, ret;
 
 	if (!orig->src || !orig->dest)
@@ -218,19 +222,22 @@ int zfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		return -1;
 	}
 
-	len = strlen(lxcpath) + strlen(cname) + strlen("rootfs") + 3;
+	len = strlen(lxcpath) + strlen(cname) + strlen("rootfs") + 4 + 3;
 	new->src = malloc(len);
 	if (!new->src)
 		return -1;
 
-	ret = snprintf(new->src, len, "%s/%s/rootfs", lxcpath, cname);
+	ret = snprintf(new->src, len, "zfs:%s/%s/rootfs", lxcpath, cname);
 	if (ret < 0 || ret >= len)
 		return -1;
 
-	if ((new->dest = strdup(new->src)) == NULL)
+	newsrc = lxc_storage_get_path(new->src, new->type);
+	new->dest = strdup(newsrc);
+	if (!new->dest)
 		return -1;
 
-	return zfs_clone(orig->src, new->src, oldname, cname, lxcpath, snap);
+	origsrc = lxc_storage_get_path(orig->src, orig->type);
+	return zfs_clone(origsrc, newsrc, oldname, cname, lxcpath, snap);
 }
 
 /*
@@ -242,14 +249,15 @@ int zfs_destroy(struct bdev *orig)
 {
 	pid_t pid;
 	char output[MAXPATHLEN];
-	char *p;
+	char *p, *src;
 
 	if ((pid = fork()) < 0)
 		return -1;
 	if (pid)
 		return wait_for_pid(pid);
 
-	if (!zfs_list_entry(orig->src, output, MAXPATHLEN)) {
+	src = lxc_storage_get_path(orig->src, orig->type);
+	if (!zfs_list_entry(src, output, MAXPATHLEN)) {
 		ERROR("Error: zfs entry for %s not found", orig->src);
 		return -1;
 	}
@@ -263,41 +271,64 @@ int zfs_destroy(struct bdev *orig)
 	exit(EXIT_FAILURE);
 }
 
+struct zfs_exec_args {
+	char *dataset;
+	char *options;
+};
+
+int zfs_create_exec_wrapper(void *args)
+{
+	struct zfs_exec_args *zfs_args = args;
+
+	execlp("zfs", "zfs", "create", zfs_args->options, zfs_args->dataset,
+	       (char *)NULL);
+	return -1;
+}
+
 int zfs_create(struct bdev *bdev, const char *dest, const char *n,
 		struct bdev_specs *specs)
 {
 	const char *zfsroot;
-	char option[MAXPATHLEN];
+	char cmd_output[MAXPATHLEN], dev[MAXPATHLEN], option[MAXPATHLEN];
 	int ret;
-	pid_t pid;
+	size_t len;
+	struct zfs_exec_args cmd_args;
 
 	if (!specs || !specs->zfs.zfsroot)
 		zfsroot = lxc_global_config_value("lxc.bdev.zfs.root");
 	else
 		zfsroot = specs->zfs.zfsroot;
 
-	if (!(bdev->dest = strdup(dest))) {
+	bdev->dest = strdup(dest);
+	if (!bdev->dest) {
 		ERROR("No mount target specified or out of memory");
 		return -1;
 	}
-	if (!(bdev->src = strdup(bdev->dest))) {
-		ERROR("out of memory");
+
+	len = strlen(bdev->dest) + 1;
+	/* strlen("zfs:") */
+	len += 4;
+	bdev->src = malloc(len);
+	if (!bdev->src)
 		return -1;
-	}
+
+	ret = snprintf(bdev->src, len, "zfs:%s", bdev->dest);
+	if (ret < 0 || (size_t)ret >= len)
+		return -1;
 
 	ret = snprintf(option, MAXPATHLEN, "-omountpoint=%s", bdev->dest);
 	if (ret < 0  || ret >= MAXPATHLEN)
 		return -1;
-	if ((pid = fork()) < 0)
-		return -1;
-	if (pid)
-		return wait_for_pid(pid);
 
-	char dev[MAXPATHLEN];
 	ret = snprintf(dev, MAXPATHLEN, "%s/%s", zfsroot, n);
 	if (ret < 0  || ret >= MAXPATHLEN)
-		exit(EXIT_FAILURE);
+		return -1;
 
-	execlp("zfs", "zfs", "create", option, dev, (char *)NULL);
-	exit(EXIT_FAILURE);
+	cmd_args.options = option;
+	cmd_args.dataset = dev;
+	ret = run_command(cmd_output, sizeof(cmd_output),
+			  zfs_create_exec_wrapper, (void *)&cmd_args);
+	if (ret < 0)
+		ERROR("Failed to create zfs dataset \"%s\": %s", dev, cmd_output);
+	return ret;
 }
