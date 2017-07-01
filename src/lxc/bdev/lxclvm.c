@@ -162,21 +162,30 @@ int lvm_detect(const char *path)
 
 int lvm_mount(struct bdev *bdev)
 {
+	char *src;
+
 	if (strcmp(bdev->type, "lvm"))
 		return -22;
+
 	if (!bdev->src || !bdev->dest)
 		return -22;
-	/* if we might pass in data sometime, then we'll have to enrich
-	 * mount_unknown_fs */
-	return mount_unknown_fs(bdev->src, bdev->dest, bdev->mntopts);
+
+	src = lxc_storage_get_path(bdev->src, bdev->type);
+
+	/* If we might pass in data sometime, then we'll have to enrich
+	 * mount_unknown_fs().
+	 */
+	return mount_unknown_fs(src, bdev->dest, bdev->mntopts);
 }
 
 int lvm_umount(struct bdev *bdev)
 {
 	if (strcmp(bdev->type, "lvm"))
 		return -22;
+
 	if (!bdev->src || !bdev->dest)
 		return -22;
+
 	return umount(bdev->dest);
 }
 
@@ -298,10 +307,12 @@ int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 			return -1;
 		}
 		vg = lxc_global_config_value("lxc.bdev.lvm.vg");
-		len = strlen("/dev/") + strlen(vg) + strlen(cname) + 2;
-		if ((new->src = malloc(len)) == NULL)
+		len = strlen("/dev/") + strlen(vg) + strlen(cname) + 4 + 2;
+		new->src = malloc(len);
+		if (new->src)
 			return -1;
-		ret = snprintf(new->src, len, "/dev/%s/%s", vg, cname);
+
+		ret = snprintf(new->src, len, "lvm:/dev/%s/%s", vg, cname);
 		if (ret < 0 || ret >= len)
 			return -1;
 	} else {
@@ -342,18 +353,26 @@ int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 	}
 
 	if (snap) {
-		if (lvm_snapshot(orig->src, new->src, size) < 0) {
+		char *newsrc, *origsrc;
+
+		origsrc = lxc_storage_get_path(orig->src, "lvm");
+		newsrc = lxc_storage_get_path(new->src, "lvm");
+
+		if (lvm_snapshot(origsrc, newsrc, size) < 0) {
 			ERROR("could not create %s snapshot of %s", new->src, orig->src);
 			return -1;
 		}
 	} else {
-		if (do_lvm_create(new->src, size, lxc_global_config_value("lxc.bdev.lvm.thin_pool")) < 0) {
+		char *src;
+
+		src = lxc_storage_get_path(new->src, "lvm");
+		if (do_lvm_create(src, size, lxc_global_config_value("lxc.bdev.lvm.thin_pool")) < 0) {
 			ERROR("Error creating new lvm blockdev");
 			return -1;
 		}
 
 		cmd_args[0] = fstype;
-		cmd_args[1] = new->src;
+		cmd_args[1] = src;
 		// create an fs in the loopback file
 		ret = run_command(cmd_output, sizeof(cmd_output),
 				  do_mkfs_exec_wrapper, (void *)cmd_args);
@@ -366,15 +385,20 @@ int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 
 int lvm_destroy(struct bdev *orig)
 {
+	char *src;
+
 	pid_t pid;
 
 	if ((pid = fork()) < 0)
 		return -1;
+
 	if (!pid) {
 		(void)setenv("LVM_SUPPRESS_FD_WARNINGS", "1", 1);
-		execlp("lvremove", "lvremove", "-f", orig->src, (char *)NULL);
+		src = lxc_storage_get_path(orig->src, "lvm");
+		execlp("lvremove", "lvremove", "-f", src, (char *)NULL);
 		exit(EXIT_FAILURE);
 	}
+
 	return wait_for_pid(pid);
 }
 
@@ -402,12 +426,12 @@ int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 	if (specs->lvm.lv)
 		lv = specs->lvm.lv;
 
-	len = strlen(vg) + strlen(lv) + 7;
+	len = strlen(vg) + strlen(lv) + 4 + 7;
 	bdev->src = malloc(len);
 	if (!bdev->src)
 		return -1;
 
-	ret = snprintf(bdev->src, len, "/dev/%s/%s", vg, lv);
+	ret = snprintf(bdev->src, len, "lvm:/dev/%s/%s", vg, lv);
 	if (ret < 0 || ret >= len)
 		return -1;
 
@@ -416,7 +440,7 @@ int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 	if (!sz)
 		sz = DEFAULT_FS_SIZE;
 
-	if (do_lvm_create(bdev->src, sz, thinpool) < 0) {
+	if (do_lvm_create(bdev->src + 4, sz, thinpool) < 0) {
 		ERROR("Error creating new lvm blockdev %s size %"PRIu64" bytes", bdev->src, sz);
 		return -1;
 	}
@@ -426,7 +450,7 @@ int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 		fstype = DEFAULT_FSTYPE;
 
 	cmd_args[0] = fstype;
-	cmd_args[1] = bdev->src;
+	cmd_args[1] = bdev->src + 4;
 	ret = run_command(cmd_output, sizeof(cmd_output), do_mkfs_exec_wrapper,
 			  (void *)cmd_args);
 	if (ret < 0)
