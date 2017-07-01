@@ -129,12 +129,10 @@ bool attach_block_device(struct lxc_conf *conf)
 int blk_getsize(struct bdev *bdev, uint64_t *size)
 {
 	int fd, ret;
-	char *path = bdev->src;
+	char *src;
 
-	if (strcmp(bdev->type, "loop") == 0)
-		path = bdev->src + 5;
-
-	fd = open(path, O_RDONLY);
+	src = lxc_storage_get_path(bdev->src, bdev->type);
+	fd = open(src, O_RDONLY);
 	if (fd < 0)
 		return -1;
 
@@ -163,15 +161,12 @@ int detect_fs(struct bdev *bdev, char *type, int len)
 	size_t linelen;
 	pid_t pid;
 	FILE *f;
-	char *sp1, *sp2, *sp3, *line = NULL;
-	char *srcdev;
+	char *sp1, *sp2, *sp3, *srcdev, *line = NULL;
 
 	if (!bdev || !bdev->src || !bdev->dest)
 		return -1;
 
-	srcdev = bdev->src;
-	if (strcmp(bdev->type, "loop") == 0)
-		srcdev = bdev->src + 5;
+	srcdev = lxc_storage_get_path(bdev->src, bdev->type);
 
 	ret = pipe(p);
 	if (ret < 0)
