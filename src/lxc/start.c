@@ -359,6 +359,7 @@ int lxc_set_state(const char *name, struct lxc_handler *handler,
 	if (lxc_list_empty(&handler->state_clients)) {
 		TRACE("no state clients registered");
 		process_unlock();
+		lxc_monitor_send_state(name, state, handler->lxcpath);
 		return 0;
 	}
 
