@@ -68,7 +68,7 @@ declare -a additional_packages
 copy_configuration() {
     mkdir -p "${config_path}"
     local config="${config_path}/config"
-    echo "lxc.utsname = ${name}" >> "${config}"
+    echo "lxc.uts.name = ${name}" >> "${config}"
     grep -q "^lxc.rootfs" "${config}" 2>/dev/null \
         || echo "lxc.rootfs = ${rootfs_path}" >> "${config}"
 

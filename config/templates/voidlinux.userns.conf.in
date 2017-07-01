@@ -5,4 +5,4 @@ lxc.include = @LXCTEMPLATECONFIG@/userns.conf
 lxc.environment=VIRTUALIZATION=lxc
 
 # Set the halt/stop signals
-lxc.haltsignal=SIGCONT
+lxc.signal.halt=SIGCONT

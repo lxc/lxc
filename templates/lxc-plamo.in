@@ -233,7 +233,7 @@ configure_plamo() {
 copy_configuration() {
   ret=0
   cat <<- EOF >> $path/config || let ret++
-	lxc.utsname = $name
+	lxc.uts.name = $name
 	lxc.arch = $arch
 	EOF
   if [ -f "@LXCTEMPLATECONFIG@/plamo.common.conf" ] ; then

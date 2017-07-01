@@ -2,7 +2,7 @@
 lxc.include = @LXCTEMPLATECONFIG@/common.conf
 
 # Doesn't support consoles in /dev/lxc/
-lxc.devttydir =
+lxc.tty.dir =
 
 # When using LXC with apparmor, the container will be confined by default.
 # If you wish for it to instead run unconfined, copy the following line

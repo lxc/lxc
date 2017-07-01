@@ -122,9 +122,9 @@ ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
 EOF
     # enable getty on active ttys
     local nttys=$(cat "${config_path}/config" ${shared_config} ${common_config} | grep "^lxc.tty" | head -n1 | cut -d= -f2 | tr -d "[:blank:]")
-    local devttydir=$(cat "${config_path}/config" ${shared_config} ${common_config} | grep "^lxc.devttydir" | head -n1 | cut -d= -f2 | tr -d "[:blank:]")
+    local devttydir=$(cat "${config_path}/config" ${shared_config} ${common_config} | grep "^lxc.tty.dir" | head -n1 | cut -d= -f2 | tr -d "[:blank:]")
     local devtty=""
-    # bind getty instances to /dev/<devttydir>/tty* if lxc.devttydir is set
+    # bind getty instances to /dev/<devttydir>/tty* if lxc.tty.dir is set
     [ -n "${devttydir}" ] && devtty="${devttydir}-"
     if [ ${nttys:-0} -gt 1 ]; then
       ( cd "${rootfs_path}/etc/systemd/system/getty.target.wants"
@@ -148,7 +148,7 @@ EOF
 copy_configuration() {
     mkdir -p "${config_path}"
     local config="${config_path}/config"
-    echo "lxc.utsname = ${name}" >> "${config}"
+    echo "lxc.uts.name = ${name}" >> "${config}"
     grep -q "^lxc.arch" "${config}" 2>/dev/null \
         || echo "lxc.arch = ${arch}" >> "${config}"
     grep -q "^lxc.rootfs" "${config}" 2>/dev/null \

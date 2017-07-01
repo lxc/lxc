@@ -638,7 +638,7 @@ name=$3
 
 cat <<EOF >> $path/config
 
-lxc.utsname = $name
+lxc.uts.name = $name
 lxc.arch = $arch
 
 lxc.mount = $rootfs/etc/fstab

@@ -359,7 +359,7 @@ EOF
     # /dev/tty[1-4] will be symlinks to the ptys /dev/lxc/console and
     # /dev/lxc/tty[1-4] so that package updates can overwrite the symlinks.
     # lxc will maintain these links and bind mount ptys over /dev/lxc/*
-    # since lxc.devttydir is specified in the config.
+    # since lxc.tty.dir is specified in the config.
 
     # allow root login on console, tty[1-4], and pts/0 for libvirt
     echo "# LXC (Linux Containers)" >>$container_rootfs/etc/securetty
@@ -482,7 +482,7 @@ container_config_create()
     cat <<EOF >> $cfg_dir/config || die "unable to create $cfg_dir/config"
 # Container configuration for Oracle Linux $container_release_major.$container_release_minor
 lxc.arch = $arch
-lxc.utsname = $name
+lxc.uts.name = $name
 EOF
     grep -q "^lxc.rootfs" $cfg_dir/config 2>/dev/null || echo "lxc.rootfs = $container_rootfs" >> $cfg_dir/config
 

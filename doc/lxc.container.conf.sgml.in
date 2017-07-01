@@ -172,7 +172,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.utsname</option>
+            <option>lxc.uts.name</option>
           </term>
           <listitem>
             <para>
@@ -196,7 +196,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.haltsignal</option>
+            <option>lxc.signal.halt</option>
           </term>
           <listitem>
             <para>
@@ -218,7 +218,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.rebootsignal</option>
+            <option>lxc.signal.reboot</option>
           </term>
           <listitem>
             <para>
@@ -240,7 +240,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.stopsignal</option>
+            <option>lxc.signal.stop</option>
           </term>
           <listitem>
             <para>
@@ -263,7 +263,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.init_cmd</option>
+            <option>lxc.init.cmd</option>
           </term>
           <listitem>
             <para>
@@ -287,7 +287,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.init_uid</option>
+            <option>lxc.init.uid</option>
           </term>
           <listitem>
             <para>
@@ -297,7 +297,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         </varlistentry>
         <varlistentry>
           <term>
-            <option>lxc.init_gid</option>
+            <option>lxc.init.gid</option>
           </term>
           <listitem>
             <para>
@@ -1201,7 +1201,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.limit.[limit name]</option>
+            <option>lxc.prlimit.[limit name]</option>
           </term>
           <listitem>
             <para>
@@ -1741,7 +1741,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.loglevel</option>
+            <option>lxc.log.level</option>
           </term>
           <listitem>
             <para>
@@ -1761,7 +1761,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         </varlistentry>
         <varlistentry>
           <term>
-            <option>lxc.logfile</option>
+            <option>lxc.log</option>
           </term>
           <listitem>
             <para>
@@ -1771,12 +1771,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         </varlistentry>
         <varlistentry>
           <term>
-            <option>lxc.syslog</option>
+            <option>lxc.log.syslog</option>
           </term>
           <listitem>
             <para>
             Send logging info to syslog. It respects the log level defined in
-            <command>lxc.loglevel</command>. The argument should be the syslog
+            <command>lxc.log.level</command>. The argument should be the syslog
             facility to use, valid ones are: daemon, local0, local1, local2,
             local3, local4, local5, local5, local6, local7.
             </para>
@@ -1932,7 +1932,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         virtual network device visible in the container is renamed to
         eth0.</para>
       <programlisting>
-        lxc.utsname = myhostname
+        lxc.uts.name = myhostname
         lxc.net.0.type = veth
         lxc.net.0.flags = up
         lxc.net.0.link = br0
@@ -1975,7 +1975,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       network stack, using the control groups, setting a new hostname,
       mounting some locations and a changing root file system.</para>
       <programlisting>
-        lxc.utsname = complex
+        lxc.uts.name = complex
         lxc.net.0.type = veth
         lxc.net.0.flags = up
         lxc.net.0.link = br0

@@ -463,10 +463,10 @@ extern void lxc_log_close(void)
 /*
  * This can be called:
  *   1. when a program calls lxc_log_init with no logfile parameter (in which
- *      case the default is used).  In this case lxc.logfile can override this.
+ *      case the default is used).  In this case lxc.loge can override this.
  *   2. when a program calls lxc_log_init with a logfile parameter.  In this
- *	case we don't want lxc.logfile to override this.
- *   3. When a lxc.logfile entry is found in config file.
+ *	case we don't want lxc.log to override this.
+ *   3. When a lxc.log entry is found in config file.
  */
 static int __lxc_log_set_file(const char *fname, int create_dirs)
 {
@@ -614,7 +614,7 @@ extern int lxc_log_init(struct lxc_log *log)
 }
 
 /*
- * This is called when we read a lxc.loglevel entry in a lxc.conf file.  This
+ * This is called when we read a lxc.log.level entry in a lxc.conf file.  This
  * happens after processing command line arguments, which override the .conf
  * settings.  So only set the level if previously unset.
  */

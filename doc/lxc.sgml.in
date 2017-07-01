@@ -376,7 +376,7 @@ rootfs
 	command into the container.
 	The pid of the first process is 1. If no command is
 	specified <command>lxc-start</command> will
-	run the command defined in lxc.init_cmd or if not set,
+	run the command defined in lxc.init.cmd or if not set,
 	<filename>/sbin/init</filename> .
       </para>
 

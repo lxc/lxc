@@ -1,6 +1,6 @@
 # Container with network a complex network mixing macvlan, veth and
 # physical network devices
-lxc.utsname = complex
+lxc.uts.name = complex
 lxc.net.0.type = veth
 lxc.net.0.flags = up
 lxc.net.0.link = br0

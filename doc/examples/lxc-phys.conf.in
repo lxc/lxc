@@ -1,6 +1,6 @@
 # Container with network virtualized using a physical network device with name
 # 'eth0'
-lxc.utsname = gamma
+lxc.uts.name = gamma
 lxc.net.0.type = phys
 lxc.net.0.flags = up
 lxc.net.0.link = eth0

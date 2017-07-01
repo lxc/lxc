@@ -71,7 +71,7 @@ container.create("download", 0,
 
 assert(container.defined)
 assert(container.name == CONTAINER_NAME
-       == container.get_config_item("lxc.utsname"))
+       == container.get_config_item("lxc.uts.name"))
 assert(container.name in lxc.list_containers())
 
 ## Test the config
@@ -131,8 +131,8 @@ assert(len(ips) > 0)
 
 ## Test running config
 assert(container.name == CONTAINER_NAME
-       == container.get_config_item("lxc.utsname")
-       == container.get_running_config_item("lxc.utsname"))
+       == container.get_config_item("lxc.uts.name")
+       == container.get_running_config_item("lxc.uts.name"))
 
 ## Testing cgroups a bit
 print("Testing cgroup API")

@@ -123,7 +123,7 @@ lxc.rootfs = $rootfs
 lxc.tty = 4
 lxc.pts = 1024
 
-lxc.utsname = $name
+lxc.uts.name = $name
 lxc.arch = $arch
 lxc.cap.drop = sys_module mac_admin mac_override sys_time
 

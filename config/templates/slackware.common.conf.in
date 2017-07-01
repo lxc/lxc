@@ -2,7 +2,7 @@
 lxc.include = @LXCTEMPLATECONFIG@/common.conf
 
 # Doesn't support consoles in /dev/lxc/
-lxc.devttydir =
+lxc.tty.dir =
 
 # Extra cgroup device access
 ## rtc

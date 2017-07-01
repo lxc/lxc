@@ -324,7 +324,7 @@ lxc.cgroup.devices.allow = c 10:229 rwm
 lxc.arch = $arch
 
 # Set hostname.
-lxc.utsname = $hostname
+lxc.uts.name = $hostname
 
 # Include common configuration.
 lxc.include = $LXC_TEMPLATE_CONFIG/sabayon.common.conf

@@ -1,5 +1,5 @@
 # Default console settings
-lxc.devttydir = lxc
+lxc.tty.dir = lxc
 lxc.tty = 4
 lxc.pts = 1024
 

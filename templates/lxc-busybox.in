@@ -341,9 +341,9 @@ copy_configuration()
 
 grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
 cat <<EOF >> $path/config
-lxc.haltsignal = SIGUSR1
+lxc.signal.halt = SIGUSR1
 lxc.rebootsignal = SIGTERM
-lxc.utsname = $name
+lxc.uts.name = $name
 lxc.tty = 1
 lxc.pts = 1
 lxc.cap.drop = sys_module mac_admin mac_override sys_time

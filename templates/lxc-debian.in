@@ -515,7 +515,7 @@ copy_configuration()
 
     cat <<EOF >> $path/config
 lxc.tty = $num_tty
-lxc.utsname = $hostname
+lxc.uts.name = $hostname
 lxc.arch = $arch
 lxc.pts=1023
 EOF

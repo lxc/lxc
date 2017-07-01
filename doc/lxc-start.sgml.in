@@ -80,7 +80,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     </para>
     <para>
       If no command is specified, <command>lxc-start</command> will
-      use the command defined in lxc.init_cmd or if not set, the default
+      use the command defined in lxc.init.cmd or if not set, the default
       <command>"/sbin/init"</command> command to run a system
       container.
     </para>

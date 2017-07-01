@@ -77,14 +77,14 @@ lxc_log_define(lxc_confile, lxc);
 lxc_config_define(personality);
 lxc_config_define(pts);
 lxc_config_define(tty);
-lxc_config_define(ttydir);
+lxc_config_define(tty_dir);
 lxc_config_define(apparmor_profile);
 lxc_config_define(apparmor_allow_incomplete);
 lxc_config_define(selinux_context);
 lxc_config_define(cgroup);
 lxc_config_define(idmaps);
-lxc_config_define(loglevel);
-lxc_config_define(logfile);
+lxc_config_define(log_level);
+lxc_config_define(log_file);
 lxc_config_define(mount);
 lxc_config_define(mount_auto);
 lxc_config_define(fstab);
@@ -92,7 +92,7 @@ lxc_config_define(rootfs_mount);
 lxc_config_define(rootfs_options);
 lxc_config_define(rootfs_backend);
 lxc_config_define(rootfs);
-lxc_config_define(utsname);
+lxc_config_define(uts_name);
 lxc_config_define(hooks);
 lxc_config_define(net_type);
 lxc_config_define(net_flags);
@@ -118,9 +118,9 @@ lxc_config_define(console);
 lxc_config_define(seccomp);
 lxc_config_define(includefiles);
 lxc_config_define(autodev);
-lxc_config_define(haltsignal);
-lxc_config_define(rebootsignal);
-lxc_config_define(stopsignal);
+lxc_config_define(signal_halt);
+lxc_config_define(signal_reboot);
+lxc_config_define(signal_stop);
 lxc_config_define(start);
 lxc_config_define(monitor);
 lxc_config_define(group);
@@ -129,15 +129,21 @@ lxc_config_define(init_cmd);
 lxc_config_define(init_uid);
 lxc_config_define(init_gid);
 lxc_config_define(ephemeral);
-lxc_config_define(syslog);
+lxc_config_define(log_syslog);
 lxc_config_define(no_new_privs);
-lxc_config_define(limit);
+lxc_config_define(prlimit);
 
 static struct lxc_config_t config[] = {
 	{ "lxc.arch",                      set_config_personality,                 get_config_personality,                 clr_config_personality,               },
 	{ "lxc.pts",                       set_config_pts,                         get_config_pts,                         clr_config_pts,                       },
+	{ "lxc.tty.dir",                   set_config_tty_dir,                     get_config_tty_dir,                     clr_config_tty_dir,                   },
+
+	/* REMOVE IN LXC 3.0
+	   legacy devttydir key
+	 */
+	{ "lxc.devttydir",                 set_config_tty_dir,                     get_config_tty_dir,                     clr_config_tty_dir,                   },
+
 	{ "lxc.tty",                       set_config_tty,                         get_config_tty,                         clr_config_tty,                       },
-	{ "lxc.devttydir",                 set_config_ttydir,                      get_config_ttydir,                      clr_config_ttydir,                    },
 	{ "lxc.apparmor.profile",          set_config_apparmor_profile,            get_config_apparmor_profile,            clr_config_apparmor_profile,          },
 	{ "lxc.apparmor.allow_incomplete", set_config_apparmor_allow_incomplete,   get_config_apparmor_allow_incomplete,   clr_config_apparmor_allow_incomplete, },
 	{ "lxc.selinux.context",           set_config_selinux_context,             get_config_selinux_context,             clr_config_selinux_context,           },
@@ -151,8 +157,6 @@ static struct lxc_config_t config[] = {
 
 	{ "lxc.cgroup",                    set_config_cgroup,                      get_config_cgroup,                      clr_config_cgroup,                    },
 	{ "lxc.id_map",                    set_config_idmaps,                      get_config_idmaps,                      clr_config_idmaps,                    },
-	{ "lxc.loglevel",                  set_config_loglevel,                    get_config_loglevel,                    clr_config_loglevel,                  },
-	{ "lxc.logfile",                   set_config_logfile,                     get_config_logfile,                     clr_config_logfile,                   },
 	{ "lxc.mount.entry",               set_config_mount,                       get_config_mount,                       clr_config_mount,                     },
 	{ "lxc.mount.auto",                set_config_mount_auto,                  get_config_mount_auto,                  clr_config_mount_auto,                },
 	{ "lxc.mount",                     set_config_fstab,	                   get_config_fstab,                       clr_config_fstab,                     },
@@ -160,7 +164,13 @@ static struct lxc_config_t config[] = {
 	{ "lxc.rootfs.options",            set_config_rootfs_options,              get_config_rootfs_options,              clr_config_rootfs_options,            },
 	{ "lxc.rootfs.backend",            set_config_rootfs_backend,              get_config_rootfs_backend,              clr_config_rootfs_backend,            },
 	{ "lxc.rootfs",                    set_config_rootfs,                      get_config_rootfs,                      clr_config_rootfs,                    },
-	{ "lxc.utsname",                   set_config_utsname,                     get_config_utsname,                     clr_config_utsname,                   },
+
+	/* REMOVE IN LXC 3.0
+	   legacy utsname key
+	 */
+	{ "lxc.utsname",                   set_config_uts_name,                    get_config_uts_name,                    clr_config_uts_name,                   },
+
+	{ "lxc.uts.name",                  set_config_uts_name,                    get_config_uts_name,                    clr_config_uts_name,                   },
 	{ "lxc.hook.pre-start",            set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook.pre-mount",            set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook.mount",                set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
@@ -217,22 +227,43 @@ static struct lxc_config_t config[] = {
 	{ "lxc.seccomp",                   set_config_seccomp,                     get_config_seccomp,                     clr_config_seccomp,                   },
 	{ "lxc.include",                   set_config_includefiles,                get_config_includefiles,                clr_config_includefiles,              },
 	{ "lxc.autodev",                   set_config_autodev,                     get_config_autodev,                     clr_config_autodev,                   },
-	{ "lxc.haltsignal",                set_config_haltsignal,                  get_config_haltsignal,                  clr_config_haltsignal,                },
-	{ "lxc.rebootsignal",              set_config_rebootsignal,                get_config_rebootsignal,                clr_config_rebootsignal,              },
-	{ "lxc.stopsignal",                set_config_stopsignal,                  get_config_stopsignal,                  clr_config_stopsignal,                },
+
+	/* REMOVE IN LXC 3.0
+	   legacy singal keys
+	 */
+	{ "lxc.haltsignal",                set_config_signal_halt,                 get_config_signal_halt,                 clr_config_signal_halt,               },
+	{ "lxc.rebootsignal",              set_config_signal_reboot,               get_config_signal_reboot,               clr_config_signal_reboot,             },
+	{ "lxc.stopsignal",                set_config_signal_stop,                 get_config_signal_stop,                 clr_config_signal_stop,               },
+
+	{ "lxc.signal.halt",               set_config_signal_halt,                 get_config_signal_halt,                 clr_config_signal_halt,               },
+	{ "lxc.signal.reboot",             set_config_signal_reboot,               get_config_signal_reboot,               clr_config_signal_reboot,             },
+	{ "lxc.signal.stop",               set_config_signal_stop,                 get_config_signal_stop,                 clr_config_signal_stop,               },
 	{ "lxc.start.auto",                set_config_start,                       get_config_start,                       clr_config_start,                     },
 	{ "lxc.start.delay",               set_config_start,                       get_config_start,                       clr_config_start,                     },
 	{ "lxc.start.order",               set_config_start,                       get_config_start,                       clr_config_start,                     },
 	{ "lxc.monitor.unshare",           set_config_monitor,                     get_config_monitor,                     clr_config_monitor,                   },
 	{ "lxc.group",                     set_config_group,                       get_config_group,                       clr_config_group,                     },
 	{ "lxc.environment",               set_config_environment,                 get_config_environment,                 clr_config_environment,               },
+	{ "lxc.ephemeral",                 set_config_ephemeral,                   get_config_ephemeral,                   clr_config_ephemeral,                 },
+	{ "lxc.no_new_privs",	           set_config_no_new_privs,                get_config_no_new_privs,                clr_config_no_new_privs,              },
+
+	/* REMOVE IN LXC 3.0: legacy keys  [START]*/
+	{ "lxc.syslog",                    set_config_log_syslog,                  get_config_log_syslog,                  clr_config_log_syslog,                },
+	{ "lxc.loglevel",                  set_config_log_level,                   get_config_log_level,                   clr_config_log_level,                 },
+	{ "lxc.logfile",                   set_config_log_file,                    get_config_log_file,                    clr_config_log_file,                  },
 	{ "lxc.init_cmd",                  set_config_init_cmd,                    get_config_init_cmd,                    clr_config_init_cmd,                  },
 	{ "lxc.init_uid",                  set_config_init_uid,                    get_config_init_uid,                    clr_config_init_uid,                  },
 	{ "lxc.init_gid",                  set_config_init_gid,                    get_config_init_gid,                    clr_config_init_gid,                  },
-	{ "lxc.ephemeral",                 set_config_ephemeral,                   get_config_ephemeral,                   clr_config_ephemeral,                 },
-	{ "lxc.syslog",                    set_config_syslog,                      get_config_syslog,                      clr_config_syslog,                    },
-	{ "lxc.no_new_privs",	           set_config_no_new_privs,                get_config_no_new_privs,                clr_config_no_new_privs,              },
 	{ "lxc.limit",                     set_config_limit,                       get_config_limit,                       clr_config_limit,                     },
+	/* REMOVE IN LXC 3.0: legacy keys  [END]*/
+
+	{ "lxc.log.syslog",                set_config_log_syslog,                  get_config_log_syslog,                  clr_config_log_syslog,                },
+	{ "lxc.log.level",                 set_config_log_level,                   get_config_log_level,                   clr_config_log_level,                 },
+	{ "lxc.log.file",                  set_config_log_file,                    get_config_log_file,                    clr_config_log_file,                  },
+	{ "lxc.init.cmd",                  set_config_init_cmd,                    get_config_init_cmd,                    clr_config_init_cmd,                  },
+	{ "lxc.init.uid",                  set_config_init_uid,                    get_config_init_uid,                    clr_config_init_uid,                  },
+	{ "lxc.init.gid",                  set_config_init_gid,                    get_config_init_gid,                    clr_config_init_gid,                  },
+	{ "lxc.prlimit",                   set_config_prlimit,                     get_config_prlimit,                     clr_config_prlimit,                   },
 };
 
 struct signame {
@@ -1276,7 +1307,7 @@ static int set_config_tty(const char *key, const char *value,
 	return lxc_safe_uint(value, &lxc_conf->tty);
 }
 
-static int set_config_ttydir(const char *key, const char *value,
+static int set_config_tty_dir(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_string_item_max(&lxc_conf->ttydir, value,
@@ -1319,7 +1350,7 @@ static int set_config_selinux_context(const char *key, const char *value,
 	return set_config_string_item(&lxc_conf->lsm_se_context, value);
 }
 
-static int set_config_logfile(const char *key, const char *value,
+static int set_config_log_file(const char *key, const char *value,
 			      struct lxc_conf *c, void *data)
 {
 	int ret;
@@ -1339,7 +1370,7 @@ static int set_config_logfile(const char *key, const char *value,
 	return ret;
 }
 
-static int set_config_loglevel(const char *key, const char *value,
+static int set_config_log_level(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf, void *data)
 {
 	int newlevel;
@@ -1435,7 +1466,7 @@ static int sig_parse(const char *signame)
 	return -1;
 }
 
-static int set_config_haltsignal(const char *key, const char *value,
+static int set_config_signal_halt(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf, void *data)
 {
 	int sig_n;
@@ -1456,7 +1487,7 @@ static int set_config_haltsignal(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_rebootsignal(const char *key, const char *value,
+static int set_config_signal_reboot(const char *key, const char *value,
 				   struct lxc_conf *lxc_conf, void *data)
 {
 	int sig_n;
@@ -1476,7 +1507,7 @@ static int set_config_rebootsignal(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_stopsignal(const char *key, const char *value,
+static int set_config_signal_stop(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf, void *data)
 {
 	int sig_n;
@@ -1554,26 +1585,7 @@ out:
 	return -1;
 }
 
-static bool parse_limit_value(const char **value, unsigned long *res)
-{
-	char *endptr = NULL;
-
-	if (strncmp(*value, "unlimited", sizeof("unlimited") - 1) == 0) {
-		*res = RLIM_INFINITY;
-		*value += sizeof("unlimited") - 1;
-		return true;
-	}
-
-	errno = 0;
-	*res = strtoul(*value, &endptr, 10);
-	if (errno || !endptr)
-		return false;
-	*value = endptr;
-
-	return true;
-}
-
-static int set_config_limit(const char *key, const char *value,
+static int set_config_prlimit(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_list *iter;
@@ -1585,10 +1597,10 @@ static int set_config_limit(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return lxc_clear_limits(lxc_conf, key);
 
-	if (strncmp(key, "lxc.limit.", sizeof("lxc.limit.") - 1) != 0)
+	if (strncmp(key, "lxc.prlimit.", sizeof("lxc.prlimit.") - 1) != 0)
 		return -1;
 
-	key += sizeof("lxc.limit.") - 1;
+	key += sizeof("lxc.prlimit.") - 1;
 
 	/* soft limit comes first in the value */
 	if (!parse_limit_value(&value, &limit_value))
@@ -2053,13 +2065,13 @@ static int set_config_rootfs_backend(const char *key, const char *value,
 	return set_config_string_item(&lxc_conf->rootfs.bdev_type, value);
 }
 
-static int set_config_utsname(const char *key, const char *value,
+static int set_config_uts_name(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf, void *data)
 {
 	struct utsname *utsname;
 
 	if (lxc_config_value_empty(value)) {
-		clr_config_utsname(key, lxc_conf, NULL);
+		clr_config_uts_name(key, lxc_conf, NULL);
 		return 0;
 	}
 
@@ -2688,7 +2700,7 @@ static int set_config_ephemeral(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_syslog(const char *key, const char *value,
+static int set_config_log_syslog(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf, void *data)
 {
 	int facility;
@@ -2706,7 +2718,7 @@ static int set_config_syslog(const char *key, const char *value,
 	/* Parse value. */
 	facility = lxc_syslog_priority_to_int(value);
 	if (facility == -EINVAL) {
-		ERROR("Wrong value for lxc.syslog.");
+		ERROR("Wrong value for lxc.log.syslog.");
 		return -1;
 	}
 
@@ -2781,7 +2793,7 @@ static int get_config_tty(const char *key, char *retv, int inlen,
 	return lxc_get_conf_int(c, retv, inlen, c->tty);
 }
 
-static int get_config_ttydir(const char *key, char *retv, int inlen,
+static int get_config_tty_dir(const char *key, char *retv, int inlen,
 			     struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_str(retv, inlen, c->ttydir);
@@ -2897,7 +2909,7 @@ static int get_config_idmaps(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-static int get_config_loglevel(const char *key, char *retv, int inlen,
+static int get_config_log_level(const char *key, char *retv, int inlen,
 			       struct lxc_conf *c, void *data)
 {
 	const char *v;
@@ -2905,7 +2917,7 @@ static int get_config_loglevel(const char *key, char *retv, int inlen,
 	return lxc_get_conf_str(retv, inlen, v);
 }
 
-static int get_config_logfile(const char *key, char *retv, int inlen,
+static int get_config_log_file(const char *key, char *retv, int inlen,
 			      struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_str(retv, inlen, c->logfile);
@@ -3044,7 +3056,7 @@ static int get_config_rootfs_backend(const char *key, char *retv, int inlen,
 	return lxc_get_conf_str(retv, inlen, c->rootfs.bdev_type);
 }
 
-static int get_config_utsname(const char *key, char *retv, int inlen,
+static int get_config_uts_name(const char *key, char *retv, int inlen,
 			      struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_str(
@@ -3167,19 +3179,19 @@ static int get_config_autodev(const char *key, char *retv, int inlen,
 	return lxc_get_conf_int(c, retv, inlen, c->autodev);
 }
 
-static int get_config_haltsignal(const char *key, char *retv, int inlen,
+static int get_config_signal_halt(const char *key, char *retv, int inlen,
 				 struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_int(c, retv, inlen, c->haltsignal);
 }
 
-static int get_config_rebootsignal(const char *key, char *retv, int inlen,
+static int get_config_signal_reboot(const char *key, char *retv, int inlen,
 				   struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_int(c, retv, inlen, c->rebootsignal);
 }
 
-static int get_config_stopsignal(const char *key, char *retv, int inlen,
+static int get_config_signal_stop(const char *key, char *retv, int inlen,
 				 struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_int(c, retv, inlen, c->stopsignal);
@@ -3198,7 +3210,7 @@ static int get_config_start(const char *key, char *retv, int inlen,
 	return -1;
 }
 
-static int get_config_syslog(const char *key, char *retv, int inlen,
+static int get_config_log_syslog(const char *key, char *retv, int inlen,
 			     struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_str(retv, inlen, c->syslog);
@@ -3275,11 +3287,11 @@ static int get_config_no_new_privs(const char *key, char *retv, int inlen,
 }
 
 /*
- * If you ask for a specific value, i.e. lxc.limit.nofile, then just the value
- * will be printed. If you ask for 'lxc.limit', then all limit entries will be
- * printed, in 'lxc.limit.resource = value' format.
+ * If you ask for a specific value, i.e. lxc.prlimit.nofile, then just the value
+ * will be printed. If you ask for 'lxc.prlimit', then all limit entries will be
+ * printed, in 'lxc.prlimit.resource = value' format.
  */
-static int get_config_limit(const char *key, char *retv, int inlen,
+static int get_config_prlimit(const char *key, char *retv, int inlen,
 			    struct lxc_conf *c, void *data)
 {
 	int fulllen = 0, len;
@@ -3291,10 +3303,10 @@ static int get_config_limit(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	if (!strcmp(key, "lxc.limit"))
+	if (!strcmp(key, "lxc.prlimit"))
 		get_all = true;
-	else if (strncmp(key, "lxc.limit.", 10) == 0)
-		key += 10;
+	else if (strncmp(key, "lxc.prlimit.", 12) == 0)
+		key += 12;
 	else
 		return -1;
 
@@ -3323,7 +3335,7 @@ static int get_config_limit(const char *key, char *retv, int inlen,
 		}
 
 		if (get_all) {
-			strprint(retv, inlen, "lxc.limit.%s = %s\n",
+			strprint(retv, inlen, "lxc.prlimit.%s = %s\n",
 				 lim->resource, buf);
 		} else if (strcmp(lim->resource, key) == 0) {
 			strprint(retv, inlen, "%s", buf);
@@ -3355,7 +3367,7 @@ static inline int clr_config_tty(const char *key, struct lxc_conf *c,
 	return 0;
 }
 
-static inline int clr_config_ttydir(const char *key, struct lxc_conf *c,
+static inline int clr_config_tty_dir(const char *key, struct lxc_conf *c,
 				    void *data)
 {
 	free(c->ttydir);
@@ -3399,14 +3411,14 @@ static inline int clr_config_idmaps(const char *key, struct lxc_conf *c,
 	return lxc_clear_idmaps(c);
 }
 
-static inline int clr_config_loglevel(const char *key, struct lxc_conf *c,
+static inline int clr_config_log_level(const char *key, struct lxc_conf *c,
 				      void *data)
 {
 	c->loglevel = LXC_LOG_LEVEL_NOTSET;
 	return 0;
 }
 
-static inline int clr_config_logfile(const char *key, struct lxc_conf *c,
+static inline int clr_config_log_file(const char *key, struct lxc_conf *c,
 				     void *data)
 {
 	free(c->logfile);
@@ -3466,7 +3478,7 @@ static inline int clr_config_rootfs_backend(const char *key, struct lxc_conf *c,
 	return 0;
 }
 
-static inline int clr_config_utsname(const char *key, struct lxc_conf *c,
+static inline int clr_config_uts_name(const char *key, struct lxc_conf *c,
 				     void *data)
 {
 	free(c->utsname);
@@ -3531,21 +3543,21 @@ static inline int clr_config_autodev(const char *key, struct lxc_conf *c,
 	return 0;
 }
 
-static inline int clr_config_haltsignal(const char *key, struct lxc_conf *c,
+static inline int clr_config_signal_halt(const char *key, struct lxc_conf *c,
 					void *data)
 {
 	c->haltsignal = 0;
 	return 0;
 }
 
-static inline int clr_config_rebootsignal(const char *key, struct lxc_conf *c,
+static inline int clr_config_signal_reboot(const char *key, struct lxc_conf *c,
 					  void *data)
 {
 	c->rebootsignal = 0;
 	return 0;
 }
 
-static inline int clr_config_stopsignal(const char *key, struct lxc_conf *c,
+static inline int clr_config_signal_stop(const char *key, struct lxc_conf *c,
 					void *data)
 {
 	c->stopsignal = 0;
@@ -3565,7 +3577,7 @@ static inline int clr_config_start(const char *key, struct lxc_conf *c,
 	return 0;
 }
 
-static inline int clr_config_syslog(const char *key, struct lxc_conf *c,
+static inline int clr_config_log_syslog(const char *key, struct lxc_conf *c,
 				    void *data)
 {
 	free(c->syslog);
@@ -3628,7 +3640,7 @@ static inline int clr_config_no_new_privs(const char *key, struct lxc_conf *c,
 	return 0;
 }
 
-static inline int clr_config_limit(const char *key, struct lxc_conf *c,
+static inline int clr_config_prlimit(const char *key, struct lxc_conf *c,
 				   void *data)
 {
 	return lxc_clear_limits(c, key);

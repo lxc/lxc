@@ -73,16 +73,16 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <command>lxc-stop</command> reboots, cleanly shuts down, or kills
       all the processes inside the container.  By default, it will
       request a clean shutdown of the container by sending
-      <command>lxc.haltsignal</command> (defaults to SIGPWR) to
+      <command>lxc.signal.halt</command> (defaults to SIGPWR) to
       the container's init process, waiting up to 60 seconds for the container
       to exit, and then returning. If the container fails to cleanly exit in
-      60 seconds, it will be sent the <command>lxc.stopsignal</command>
+      60 seconds, it will be sent the <command>lxc.signal.stop</command>
       (defaults to SIGKILL) to force it to shut down. A request to reboot will
-      send the <command>lxc.rebootsignal</command> (defaults to SIGINT) to the
+      send the <command>lxc.signal.reboot</command> (defaults to SIGINT) to the
       container's init process.
       -->
-      <command>lxc-stop</command> 는 재뷰탕, 종료, 또는 컨테이너 내의 모든 프로세스를 강제종료 시킨다. 기본 동작은 컨테이너에게 <command>lxc.haltsignal</command> 시그널(기본값은 SIGPWR)을 컨테이너 init 프로세스에게 날려, 컨테이너가 종료되게 요청하는 것이다. 60초 동안 컨테이너가 종료되는 것을 기다리고 리턴된다.
-만약 컨테이너가 60초안에 종료되지 않는다면 <command>lxc.stopsignal</command> 시그널(기본값은 SIGKILL)을 날려 강제로 종료시킨다. 재부팅 요청시에는 <command>lxc.rebootsignal</command> 시그널(기본값은 SIGINT)를 컨테이너 init 프로세스에게 날린다.
+      <command>lxc-stop</command> 는 재뷰탕, 종료, 또는 컨테이너 내의 모든 프로세스를 강제종료 시킨다. 기본 동작은 컨테이너에게 <command>lxc.signal.halt</command> 시그널(기본값은 SIGPWR)을 컨테이너 init 프로세스에게 날려, 컨테이너가 종료되게 요청하는 것이다. 60초 동안 컨테이너가 종료되는 것을 기다리고 리턴된다.
+만약 컨테이너가 60초안에 종료되지 않는다면 <command>lxc.signal.stop</command> 시그널(기본값은 SIGKILL)을 날려 강제로 종료시킨다. 재부팅 요청시에는 <command>lxc.signal.reboot</command> 시그널(기본값은 SIGINT)를 컨테이너 init 프로세스에게 날린다.
     </para>
 
     <para>

@@ -187,7 +187,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <variablelist>
 	<varlistentry>
 	  <term>
-	    <option>lxc.utsname</option>
+	    <option>lxc.uts.name</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -219,7 +219,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.haltsignal</option>
+            <option>lxc.signal.halt</option>
           </term>
           <listitem>
             <para>
@@ -248,7 +248,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
           <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.rebootsignal</option>
+            <option>lxc.signal.reboot</option>
           </term>
           <listitem>
             <para>
@@ -277,7 +277,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.stopsignal</option>
+            <option>lxc.signal.stop</option>
           </term>
           <listitem>
             <para>
@@ -308,7 +308,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.init_cmd</option>
+            <option>lxc.init.cmd</option>
           </term>
           <listitem>
             <para>
@@ -343,7 +343,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.init_uid</option>
+            <option>lxc.init.uid</option>
           </term>
           <listitem>
             <para>
@@ -356,7 +356,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
         </varlistentry>
         <varlistentry>
           <term>
-            <option>lxc.init_gid</option>
+            <option>lxc.init.gid</option>
           </term>
           <listitem>
             <para>
@@ -2308,7 +2308,7 @@ mknod errno 0
       <variablelist>
 	<varlistentry>
 	  <term>
-	    <option>lxc.loglevel</option>
+	    <option>lxc.log.level</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -2338,7 +2338,7 @@ mknod errno 0
 	</varlistentry>
 	<varlistentry>
 	  <term>
-	    <option>lxc.logfile</option>
+	    <option>lxc.log</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -2351,17 +2351,17 @@ mknod errno 0
 	</varlistentry>
 	<varlistentry>
 	  <term>
-	    <option>lxc.syslog</option>
+	    <option>lxc.log.syslog</option>
 	  </term>
 	  <listitem>
 	    <para>
 	      <!--
 		  Send logging info to syslog. It respects the log level defined in
-		  <command>lxc.loglevel</command>. The argument should be the syslog
+		  <command>lxc.log.level</command>. The argument should be the syslog
 		  facility to use, valid ones are: daemon, local0, local1, local2,
 		  local3, local4, local5, local5, local7.
 	      -->
-	      로그정보를 syslog에 보낸다. 로그 수준은 <command>lxc.loglevel</command>로 지정할 수 있다. 인자는 syslog에 정의된 값으로만 지정할 수 있다. 사용 가능한 값은 다음과 같다 : daemon, local0, local1, local2, local3, local4, local5, local5, local7 
+	      로그정보를 syslog에 보낸다. 로그 수준은 <command>lxc.log.level</command>로 지정할 수 있다. 인자는 syslog에 정의된 값으로만 지정할 수 있다. 사용 가능한 값은 다음과 같다 : daemon, local0, local1, local2, local3, local4, local5, local5, local7 
 	    </para>
 	  </listitem>
 	</varlistentry>
@@ -2563,7 +2563,7 @@ mknod errno 0
         이 설정은 컨테이너가 한 쪽은 (이전에 시스템에 이미 생성된) br0 브리지에 연결되어 있는 veth 장치 쌍을 사용하도록 세팅한다. 가상 네트워크 장치는 컨테이너 내에서 eth0라는 이름을 갖는다.
       </para>
       <programlisting>
-	lxc.utsname = myhostname
+	lxc.uts.name = myhostname
 	lxc.net.0.type = veth
 	lxc.net.0.flags = up
 	lxc.net.0.link = br0
@@ -2613,7 +2613,7 @@ mknod errno 0
         아래의 예제는 복잡한 네트워크 스택, 컨트롤 그룹 사용, 호스트 이름 설정, 몇몇 장소 마운트, 루트 파일시스템 변경 등의 복잡한 설정을 보여준다.
       </para>
       <programlisting>
-	lxc.utsname = complex
+	lxc.uts.name = complex
 	lxc.net.0.type = veth
 	lxc.net.0.flags = up
 	lxc.net.0.link = br0

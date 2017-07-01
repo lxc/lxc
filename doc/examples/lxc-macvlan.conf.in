@@ -1,5 +1,5 @@
 # Container with network virtualized using the macvlan device driver
-lxc.utsname = alpha
+lxc.uts.name = alpha
 lxc.net.0.type = macvlan
 lxc.net.0.flags = up
 lxc.net.0.link = eth0

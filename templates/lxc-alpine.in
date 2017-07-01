@@ -388,7 +388,7 @@ configure_container() {
 		lxc.arch = $arch
 
 		# Set hostname.
-		lxc.utsname = $hostname
+		lxc.uts.name = $hostname
 
 		# If something doesn't work, try to comment this out.
 		# Dropping sys_admin disables container root from doing a lot of things

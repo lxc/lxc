@@ -314,10 +314,19 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.devttydir */
+	/* REMOVE IN LXC 3.0
+	   legacy devttydir keys
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.devttydir", "not-dev", tmpf,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.devttydir");
+		goto non_test_error;
+	}
+
+	/* lxc.tty.dir */
+	if (set_get_compare_clear_save_load(c, "lxc.tty.dir", "not-dev", tmpf,
+					    true) < 0) {
+		lxc_error("%s\n", "lxc.tty.dir");
 		goto non_test_error;
 	}
 
@@ -431,17 +440,36 @@ int main(int argc, char *argv[])
 	c->clear_config(c);
 	c->lxc_conf = NULL;
 
-	/* lxc.loglevel */
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.loglevel key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.loglevel", "DEBUG", tmpf,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.loglevel");
 		goto non_test_error;
 	}
 
-	/* lxc.logfile */
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.logfile key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.logfile", "/some/path",
 					    tmpf, true) < 0) {
 		lxc_error("%s\n", "lxc.logfile");
+		goto non_test_error;
+	}
+
+
+	/* lxc.log.level */
+	if (set_get_compare_clear_save_load(c, "lxc.log.level", "DEBUG", tmpf,
+					    true) < 0) {
+		lxc_error("%s\n", "lxc.log.level");
+		goto non_test_error;
+	}
+
+	/* lxc.log */
+	if (set_get_compare_clear_save_load(c, "lxc.log.file", "/some/path",
+					    tmpf, true) < 0) {
+		lxc_error("%s\n", "lxc.log.file");
 		goto non_test_error;
 	}
 
@@ -503,10 +531,19 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.utsname */
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.utsname key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.utsname", "the-shire", tmpf,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.utsname");
+		goto non_test_error;
+	}
+
+	/* lxc.uts.name */
+	if (set_get_compare_clear_save_load(c, "lxc.uts.name", "the-shire", tmpf,
+					    true) < 0) {
+		lxc_error("%s\n", "lxc.uts.name");
 		goto non_test_error;
 	}
 
@@ -617,24 +654,51 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.haltsignal */
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.haltsignal key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.haltsignal", "1", tmpf,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.haltsignal");
 		goto non_test_error;
 	}
 
-	/* lxc.rebootsignal */
+	/* lxc.signal.halt */
+	if (set_get_compare_clear_save_load(c, "lxc.signal.halt", "1", tmpf,
+					    true) < 0) {
+		lxc_error("%s\n", "lxc.signal.halt");
+		goto non_test_error;
+	}
+
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.rebootsignal key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.rebootsignal", "1", tmpf,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.rebootsignal");
 		goto non_test_error;
 	}
 
-	/* lxc.stopsignal */
+	/* lxc.signal.reboot */
+	if (set_get_compare_clear_save_load(c, "lxc.signal.reboot", "1", tmpf,
+					    true) < 0) {
+		lxc_error("%s\n", "lxc.signal.reboot");
+		goto non_test_error;
+	}
+
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.stopsignal key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.stopsignal", "1", tmpf,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.stopsignal");
+		goto non_test_error;
+	}
+
+	/* lxc.signal.stop */
+	if (set_get_compare_clear_save_load(c, "lxc.signal.stop", "1", tmpf,
+					    true) < 0) {
+		lxc_error("%s\n", "lxc.signal.stop");
 		goto non_test_error;
 	}
 
@@ -659,10 +723,10 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.syslog */
-	if (set_get_compare_clear_save_load(c, "lxc.syslog", "local0", tmpf,
+	/* lxc.log.syslog */
+	if (set_get_compare_clear_save_load(c, "lxc.log.syslog", "local0", tmpf,
 					    true) < 0) {
-		lxc_error("%s\n", "lxc.syslog");
+		lxc_error("%s\n", "lxc.log.syslog");
 		goto non_test_error;
 	}
 
@@ -694,24 +758,51 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.init_cmd */
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.init_cmd key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.init_cmd", "/bin/bash",
 					    tmpf, true) < 0) {
 		lxc_error("%s\n", "lxc.init_cmd");
 		goto non_test_error;
 	}
 
-	/* lxc.init_uid */
+	/* lxc.init.cmd */
+	if (set_get_compare_clear_save_load(c, "lxc.init.cmd", "/bin/bash",
+					    tmpf, true) < 0) {
+		lxc_error("%s\n", "lxc.init.cmd");
+		goto non_test_error;
+	}
+
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.init_uid key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.init_uid", "1000", tmpf,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.init_uid");
 		goto non_test_error;
 	}
 
-	/* lxc.init_gid */
+	/* lxc.init.uid */
+	if (set_get_compare_clear_save_load(c, "lxc.init.uid", "1000", tmpf,
+					    true) < 0) {
+		lxc_error("%s\n", "lxc.init.uid");
+		goto non_test_error;
+	}
+
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.init_gid key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.init_gid", "1000", tmpf,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.init_gid");
+		goto non_test_error;
+	}
+
+	/* lxc.init.gid */
+	if (set_get_compare_clear_save_load(c, "lxc.init.gid", "1000", tmpf,
+					    true) < 0) {
+		lxc_error("%s\n", "lxc.init.gid");
 		goto non_test_error;
 	}
 
@@ -729,10 +820,19 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.limit.nofile */
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.limit.* key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.limit.nofile", "65536",
 					    tmpf, true) < 0) {
 		lxc_error("%s\n", "lxc.limit.nofile");
+		goto non_test_error;
+	}
+
+	/* lxc.prlimit.nofile */
+	if (set_get_compare_clear_save_load(c, "lxc.prlimit.nofile", "65536",
+					    tmpf, true) < 0) {
+		lxc_error("%s\n", "lxc.prlimit.nofile");
 		goto non_test_error;
 	}
 

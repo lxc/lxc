@@ -345,7 +345,7 @@ EOF
     # /dev/tty[1-4] will be symlinks to the ptys /dev/lxc/console and
     # /dev/lxc/tty[1-4] so that package updates can overwrite the symlinks.
     # lxc will maintain these links and bind mount ptys over /dev/lxc/*
-    # since lxc.devttydir is specified in the config.
+    # since lxc.tty.dir is specified in the config.
 
     # allow root login on console, tty[1-4], and pts/0 for libvirt
     cat <<EOF >> "${rootfs}/etc/securetty"
@@ -486,7 +486,7 @@ lxc.include = ${lxc_template_config}/fedora.common.conf
     cat <<EOF >> "${path}/config"
 # Container specific configuration
 lxc.arch = ${basearch}
-lxc.utsname = ${utsname}
+lxc.uts.name = ${utsname}
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 #lxc.aa_profile = unconfined

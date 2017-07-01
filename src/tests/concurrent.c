@@ -85,8 +85,8 @@ static void do_function(void *arguments)
     }
 
     if (debug) {
-        c->set_config_item(c, "lxc.loglevel", "DEBUG");
-        c->set_config_item(c, "lxc.logfile", name);
+        c->set_config_item(c, "lxc.log.level", "DEBUG");
+        c->set_config_item(c, "lxc.log", name);
     }
 
     if (strcmp(args->mode, "create") == 0) {
