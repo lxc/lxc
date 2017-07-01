@@ -162,7 +162,12 @@ static struct lxc_config_t config[] = {
 	{ "lxc.mount",                     set_config_fstab,	                   get_config_fstab,                       clr_config_fstab,                     },
 	{ "lxc.rootfs.mount",              set_config_rootfs_mount,                get_config_rootfs_mount,                clr_config_rootfs_mount,              },
 	{ "lxc.rootfs.options",            set_config_rootfs_options,              get_config_rootfs_options,              clr_config_rootfs_options,            },
+
+	/* REMOVE IN LXC 3.0
+	   legacy rootfs.backend key
+	 */
 	{ "lxc.rootfs.backend",            set_config_rootfs_backend,              get_config_rootfs_backend,              clr_config_rootfs_backend,            },
+
 	{ "lxc.rootfs",                    set_config_rootfs,                      get_config_rootfs,                      clr_config_rootfs,                    },
 
 	/* REMOVE IN LXC 3.0
@@ -2051,18 +2056,7 @@ static int set_config_rootfs_options(const char *key, const char *value,
 static int set_config_rootfs_backend(const char *key, const char *value,
 				     struct lxc_conf *lxc_conf, void *data)
 {
-	if (lxc_config_value_empty(value)) {
-		free(lxc_conf->rootfs.bdev_type);
-		lxc_conf->rootfs.bdev_type = NULL;
-		return 0;
-	}
-
-	if (!is_valid_bdev_type(value)) {
-		ERROR("Bad rootfs.backend: '%s'", value);
-		return -1;
-	}
-
-	return set_config_string_item(&lxc_conf->rootfs.bdev_type, value);
+	return 0;
 }
 
 static int set_config_uts_name(const char *key, const char *value,
@@ -3053,7 +3047,7 @@ static int get_config_rootfs_options(const char *key, char *retv, int inlen,
 static int get_config_rootfs_backend(const char *key, char *retv, int inlen,
 				     struct lxc_conf *c, void *data)
 {
-	return lxc_get_conf_str(retv, inlen, c->rootfs.bdev_type);
+	return 0;
 }
 
 static int get_config_uts_name(const char *key, char *retv, int inlen,
@@ -3473,8 +3467,6 @@ static inline int clr_config_rootfs_options(const char *key, struct lxc_conf *c,
 static inline int clr_config_rootfs_backend(const char *key, struct lxc_conf *c,
 					    void *data)
 {
-	free(c->rootfs.bdev_type);
-	c->rootfs.bdev_type = NULL;
 	return 0;
 }
 

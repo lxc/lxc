@@ -96,8 +96,9 @@ int dir_destroy(struct bdev *orig)
 
 int dir_detect(const char *path)
 {
-	if (strncmp(path, "dir:", 4) == 0)
-		return 1; // take their word for it
+	if (!strncmp(path, "dir:", 4))
+		return 1;
+
 	if (is_dir(path))
 		return 1;
 	return 0;

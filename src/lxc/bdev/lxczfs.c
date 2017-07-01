@@ -70,6 +70,9 @@ int zfs_list_entry(const char *path, char *output, size_t inlen)
 
 int zfs_detect(const char *path)
 {
+	if (!strncmp(path, "zfs:", 4))
+		return 1;
+
 	char *output = malloc(LXC_LOG_BUFFER_SIZE);
 
 	if (!output) {

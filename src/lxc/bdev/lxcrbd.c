@@ -154,8 +154,12 @@ int rbd_destroy(struct bdev *orig)
 
 int rbd_detect(const char *path)
 {
-	if ( memcmp(path, "/dev/rbd/", 9) == 0)
+	if (!strncmp(path, "rbd:", 4))
 		return 1;
+
+	if (!strncmp(path, "/dev/rbd/", 9))
+		return 1;
+
 	return 0;
 }
 

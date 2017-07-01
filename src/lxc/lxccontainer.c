@@ -1043,7 +1043,7 @@ static bool create_container_dir(struct lxc_container *c)
  * it returns a mounted bdev on success, NULL on error.
  */
 static struct bdev *do_bdev_create(struct lxc_container *c, const char *type,
-			 struct bdev_specs *specs)
+				   struct bdev_specs *specs)
 {
 	char *dest;
 	size_t len;
@@ -1051,7 +1051,7 @@ static struct bdev *do_bdev_create(struct lxc_container *c, const char *type,
 	int ret;
 
 	/* rootfs.path or lxcpath/lxcname/rootfs */
-	if (c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) == 0) {
+	if (c->lxc_conf->rootfs.path && !access(c->lxc_conf->rootfs.path, F_OK)) {
 		const char *rpath = c->lxc_conf->rootfs.path;
 		len = strlen(rpath) + 1;
 		dest = alloca(len);
@@ -1071,12 +1071,15 @@ static struct bdev *do_bdev_create(struct lxc_container *c, const char *type,
 		return NULL;
 	}
 
-	do_lxcapi_set_config_item(c, "lxc.rootfs", bdev->src);
-	do_lxcapi_set_config_item(c, "lxc.rootfs.backend", bdev->type);
+	if (!c->set_config_item(c, "lxc.rootfs", bdev->src)) {
+		ERROR("Failed to set config item \"lxc.rootfs\" to \"%s\"",
+		      bdev->src);
+		return NULL;
+	}
 
-	/* if we are not root, chown the rootfs dir to root in the
-	 * target uidmap */
-
+	/* If we are not root, chown the rootfs dir to root in the
+	 * target uidmap.
+	 */
 	if (geteuid() != 0 || (c->lxc_conf && !lxc_list_empty(&c->lxc_conf->id_map))) {
 		if (chown_mapped_root(bdev->dest, c->lxc_conf) < 0) {
 			ERROR("Error chowning %s to container root", bdev->dest);
@@ -2924,18 +2927,10 @@ static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 	/* Set new rootfs. */
 	free(c->lxc_conf->rootfs.path);
 	c->lxc_conf->rootfs.path = strdup(bdev->src);
-
-	/* Set new bdev type. */
-	free(c->lxc_conf->rootfs.bdev_type);
-	c->lxc_conf->rootfs.bdev_type = strdup(bdev->type);
 	bdev_put(bdev);
 
 	if (!c->lxc_conf->rootfs.path) {
 		ERROR("Out of memory while setting storage path.");
-		return -1;
-	}
-	if (!c->lxc_conf->rootfs.bdev_type) {
-		ERROR("Out of memory while setting rootfs backend.");
 		return -1;
 	}
 
@@ -2949,11 +2944,6 @@ static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 
 	/* Append a new lxc.rootfs.backend entry to the unexpanded config. */
 	clear_unexp_config_line(c->lxc_conf, "lxc.rootfs.backend", false);
-	if (!do_append_unexp_config_line(c->lxc_conf, "lxc.rootfs.backend",
-					 c->lxc_conf->rootfs.bdev_type)) {
-		ERROR("Error saving new rootfs backend to cloned config.");
-		return -1;
-	}
 
 	if (flags & LXC_CLONE_SNAPSHOT)
 		copy_rdepends(c, c0);

@@ -134,8 +134,8 @@ int lvm_detect(const char *path)
 	int ret;
 	struct stat statbuf;
 
-	if (strncmp(path, "lvm:", 4) == 0)
-		return 1; // take their word for it
+	if (!strncmp(path, "lvm:", 4))
+		return 1;
 
 	ret = stat(path, &statbuf);
 	if (ret != 0)

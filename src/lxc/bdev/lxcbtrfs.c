@@ -174,10 +174,13 @@ int btrfs_detect(const char *path)
 	struct stat st;
 	int ret;
 
+	if (!strncmp(path, "btrfs:", 6))
+		return 1;
+
 	if (!is_btrfs_fs(path))
 		return 0;
 
-	// and make sure it's a subvolume.
+	/* make sure it's a subvolume */
 	ret = stat(path, &st);
 	if (ret < 0)
 		return 0;

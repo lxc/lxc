@@ -107,8 +107,9 @@ int nbd_destroy(struct bdev *orig)
 
 int nbd_detect(const char *path)
 {
-	if (strncmp(path, "nbd:", 4) == 0)
+	if (!strncmp(path, "nbd:", 4))
 		return 1;
+
 	return 0;
 }
 

@@ -187,11 +187,11 @@ struct bdev_type {
 };
 
 static const struct bdev_type bdevs[] = {
+	{ .name = "dir",       .ops = &dir_ops,   },
 	{ .name = "zfs",       .ops = &zfs_ops,   },
 	{ .name = "lvm",       .ops = &lvm_ops,   },
 	{ .name = "rbd",       .ops = &rbd_ops,   },
 	{ .name = "btrfs",     .ops = &btrfs_ops, },
-	{ .name = "dir",       .ops = &dir_ops,   },
 	{ .name = "aufs",      .ops = &aufs_ops,  },
 	{ .name = "overlayfs", .ops = &ovl_ops,   },
 	{ .name = "loop",      .ops = &loop_ops,  },
@@ -890,40 +890,41 @@ static struct bdev *bdev_get(const char *type)
 
 static const struct bdev_type *get_bdev_by_name(const char *name)
 {
-	size_t i;
+	size_t i, cmplen;
 
-	for (i = 0; i < numbdevs; i++) {
-		if (strcmp(bdevs[i].name, name) == 0)
-			return &bdevs[i];
-	}
+	cmplen = strcspn(name, ":");
+	if (cmplen == 0)
+		return NULL;
 
-	ERROR("Backing store %s unknown but not caught earlier\n", name);
-	return NULL;
+	for (i = 0; i < numbdevs; i++)
+		if (strncmp(bdevs[i].name, name, cmplen) == 0)
+			break;
+
+	if (i == numbdevs)
+		return NULL;
+
+	DEBUG("Detected rootfs type \"%s\"", bdevs[i].name);
+	return &bdevs[i];
 }
 
 static const struct bdev_type *bdev_query(struct lxc_conf *conf,
 					  const char *src)
 {
 	size_t i;
+	const struct bdev_type *bdev;
 
-	if (conf->rootfs.bdev_type) {
-		DEBUG("config file specified rootfs type \"%s\"",
-		      conf->rootfs.bdev_type);
-		return get_bdev_by_name(conf->rootfs.bdev_type);
-	}
+	bdev = get_bdev_by_name(src);
+	if (bdev)
+		return bdev;
 
-	for (i = 0; i < numbdevs; i++) {
-		int r;
-		r = bdevs[i].ops->detect(src);
-		if (r)
+	for (i = 0; i < numbdevs; i++)
+		if (bdevs[i].ops->detect(src))
 			break;
-	}
 
 	if (i == numbdevs)
 		return NULL;
 
-	DEBUG("detected rootfs type \"%s\"", bdevs[i].name);
-
+	DEBUG("Detected rootfs type \"%s\"", bdevs[i].name);
 	return &bdevs[i];
 }
 
