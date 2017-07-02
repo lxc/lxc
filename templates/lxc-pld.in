@@ -242,7 +242,7 @@ lxc.uts.name = $utsname
 lxc.tty = 4
 lxc.pts = 1024
 # Consider if below line is right for systemd container
-lxc.mount = $config_path/fstab
+lxc.mount.fstab = $config_path/fstab
 lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
 lxc.autodev = $auto_dev

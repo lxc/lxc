@@ -473,10 +473,19 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.mount */
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.mount key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.mount", "/some/path", NULL,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.mount");
+		goto non_test_error;
+	}
+
+	/* lxc.mount.fstab */
+	if (set_get_compare_clear_save_load(c, "lxc.mount.fstab", "/some/path", NULL,
+					    true) < 0) {
+		lxc_error("%s\n", "lxc.mount.fstab");
 		goto non_test_error;
 	}
 

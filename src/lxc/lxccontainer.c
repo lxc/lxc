@@ -2803,7 +2803,12 @@ static int copy_fstab(struct lxc_container *oldc, struct lxc_container *c)
 	if (!oldpath)
 		return 0;
 
+	/* REMOVE IN LXC 3.0
+	   legacy mount key
+	 */
 	clear_unexp_config_line(c->lxc_conf, "lxc.mount", false);
+
+	clear_unexp_config_line(c->lxc_conf, "lxc.mount.fstab", false);
 
 	char *p = strrchr(oldpath, '/');
 	if (!p)
@@ -2829,7 +2834,7 @@ static int copy_fstab(struct lxc_container *oldc, struct lxc_container *c)
 		ERROR("error: allocating pathname");
 		return -1;
 	}
-	if (!do_append_unexp_config_line(c->lxc_conf, "lxc.mount", newpath)) {
+	if (!do_append_unexp_config_line(c->lxc_conf, "lxc.mount.fstab", newpath)) {
 		ERROR("error saving new lxctab");
 		return -1;
 	}

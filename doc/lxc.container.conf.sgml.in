@@ -815,7 +815,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.mount</option>
+            <option>lxc.mount.fstab</option>
           </term>
           <listitem>
             <para>
@@ -1987,7 +1987,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         lxc.cgroup.devices.deny = a
         lxc.cgroup.devices.allow = c 1:3 rw
         lxc.cgroup.devices.allow = b 8:0 rw
-        lxc.mount = /etc/fstab.complex
+        lxc.mount.fstab = /etc/fstab.complex
         lxc.mount.entry = /lib /root/myrootfs/lib none ro,bind 0 0
         lxc.rootfs.path = dir:/mnt/rootfs.complex
         lxc.cap.drop = sys_module mknod setuid net_raw

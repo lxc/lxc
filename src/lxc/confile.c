@@ -87,7 +87,7 @@ lxc_config_define(log_level);
 lxc_config_define(log_file);
 lxc_config_define(mount);
 lxc_config_define(mount_auto);
-lxc_config_define(fstab);
+lxc_config_define(mount_fstab);
 lxc_config_define(rootfs_mount);
 lxc_config_define(rootfs_options);
 lxc_config_define(rootfs_backend);
@@ -159,10 +159,15 @@ static struct lxc_config_t config[] = {
 	{ "lxc.id_map",                    set_config_idmaps,                      get_config_idmaps,                      clr_config_idmaps,                    },
 	{ "lxc.mount.entry",               set_config_mount,                       get_config_mount,                       clr_config_mount,                     },
 	{ "lxc.mount.auto",                set_config_mount_auto,                  get_config_mount_auto,                  clr_config_mount_auto,                },
-	{ "lxc.mount",                     set_config_fstab,	                   get_config_fstab,                       clr_config_fstab,                     },
+	{ "lxc.mount.fstab",               set_config_mount_fstab,                 get_config_mount_fstab,                 clr_config_mount_fstab,               },
 	{ "lxc.rootfs.mount",              set_config_rootfs_mount,                get_config_rootfs_mount,                clr_config_rootfs_mount,              },
 	{ "lxc.rootfs.options",            set_config_rootfs_options,              get_config_rootfs_options,              clr_config_rootfs_options,            },
 	{ "lxc.rootfs.path",               set_config_rootfs_path,                 get_config_rootfs_path,                 clr_config_rootfs_path,               },
+
+	/* REMOVE IN LXC 3.0
+	   legacy mount key
+	 */
+	{ "lxc.mount",                     set_config_mount_fstab,                 get_config_mount_fstab,                 clr_config_mount_fstab,               },
 
 	/* REMOVE IN LXC 3.0
 	   legacy rootfs.backend key
@@ -1739,11 +1744,11 @@ on_error:
 	return -1;
 }
 
-static int set_config_fstab(const char *key, const char *value,
-			    struct lxc_conf *lxc_conf, void *data)
+static int set_config_mount_fstab(const char *key, const char *value,
+				  struct lxc_conf *lxc_conf, void *data)
 {
 	if (lxc_config_value_empty(value)) {
-		clr_config_fstab(key, lxc_conf, NULL);
+		clr_config_mount_fstab(key, lxc_conf, NULL);
 		return -1;
 	}
 
@@ -2926,8 +2931,8 @@ static int get_config_log_file(const char *key, char *retv, int inlen,
 	return lxc_get_conf_str(retv, inlen, c->logfile);
 }
 
-static int get_config_fstab(const char *key, char *retv, int inlen,
-			    struct lxc_conf *c, void *data)
+static int get_config_mount_fstab(const char *key, char *retv, int inlen,
+				  struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_str(retv, inlen, c->fstab);
 }
@@ -3441,8 +3446,8 @@ static inline int clr_config_mount_auto(const char *key, struct lxc_conf *c,
 	return lxc_clear_automounts(c);
 }
 
-static inline int clr_config_fstab(const char *key, struct lxc_conf *c,
-				   void *data)
+static inline int clr_config_mount_fstab(const char *key, struct lxc_conf *c,
+					 void *data)
 {
 	free(c->fstab);
 	c->fstab = NULL;

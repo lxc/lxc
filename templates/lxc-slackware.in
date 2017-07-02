@@ -641,7 +641,7 @@ cat <<EOF >> $path/config
 lxc.uts.name = $name
 lxc.arch = $arch
 
-lxc.mount = $rootfs/etc/fstab
+lxc.mount.fstab = $rootfs/etc/fstab
 
 lxc.include = ${LXC_TEMPLATE_CONFIG}/slackware.common.conf
 EOF

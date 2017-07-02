@@ -545,7 +545,7 @@ if [ -e "${LXC_PATH}/config-auto" ]; then
     rm ${LXC_PATH}/config-auto
 fi
 if [ -e "$fstab" ]; then
-    echo "lxc.mount = ${LXC_PATH}/fstab" >> ${LXC_PATH}/config
+    echo "lxc.mount.fstab = ${LXC_PATH}/fstab" >> ${LXC_PATH}/config
 fi
 echo "lxc.uts.name = ${LXC_NAME}" >> ${LXC_PATH}/config
 
