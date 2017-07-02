@@ -339,7 +339,7 @@ copy_configuration()
     rootfs=$2
     name=$3
 
-grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
+grep -q "^lxc.rootfs.path" $path/config 2>/dev/null || echo "lxc.rootfs.path = $rootfs" >> $path/config
 cat <<EOF >> $path/config
 lxc.signal.halt = SIGUSR1
 lxc.rebootsignal = SIGTERM
@@ -427,8 +427,8 @@ fi
 # detect rootfs
 config="$path/config"
 if [ -z "$rootfs" ]; then
-    if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
-        rootfs=$(awk -F= '/^lxc.rootfs =/{ print $2 }' $config)
+    if grep -q '^lxc.rootfs.path' $config 2>/dev/null ; then
+        rootfs=$(awk -F= '/^lxc.rootfs.path =/{ print $2 }' $config)
     else
         rootfs=$path/rootfs
     fi

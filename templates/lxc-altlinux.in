@@ -274,7 +274,7 @@ copy_configuration()
 {
 
     mkdir -p $config_path
-    grep -q "^lxc.rootfs" $config_path/config 2>/dev/null || echo "lxc.rootfs = $rootfs_path" >> $config_path/config
+    grep -q "^lxc.rootfs.path" $config_path/config 2>/dev/null || echo "lxc.rootfs.path = $rootfs_path" >> $config_path/config
     cat <<EOF >> $config_path/config
 lxc.uts.name = $name
 lxc.tty = 4
@@ -460,10 +460,10 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
-# check for 'lxc.rootfs' passed in through default config by lxc-create
+# check for 'lxc.rootfs.path' passed in through default config by lxc-create
 if [ -z "$rootfs_path" ]; then
-    if grep -q '^lxc.rootfs' $path/config 2>/dev/null ; then
-        rootfs_path=$(awk -F= '/^lxc.rootfs =/{ print $2 }' $path/config)
+    if grep -q '^lxc.rootfs.path' $path/config 2>/dev/null ; then
+        rootfs_path=$(awk -F= '/^lxc.rootfs.path =/{ print $2 }' $path/config)
     else
         rootfs_path=$path/rootfs
     fi

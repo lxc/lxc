@@ -511,7 +511,7 @@ copy_configuration()
     ## Add the container-specific config
     echo "" >> "$path/config"
     echo "# Container specific configuration" >> "$path/config"
-    grep -q "^lxc.rootfs" "$path/config" 2> /dev/null || echo "lxc.rootfs = $rootfs" >> "$path/config"
+    grep -q "^lxc.rootfs.path" "$path/config" 2> /dev/null || echo "lxc.rootfs.path = $rootfs" >> "$path/config"
 
     cat <<EOF >> $path/config
 lxc.tty = $num_tty
@@ -787,8 +787,8 @@ fi
 # detect rootfs
 config="$path/config"
 if [ -z "$rootfs" ]; then
-    if grep -q '^lxc.rootfs' "$config" 2> /dev/null ; then
-        rootfs=$(awk -F= '/^lxc.rootfs[ \t]+=/{ print $2 }' "$config")
+    if grep -q '^lxc.rootfs.path' "$config" 2> /dev/null ; then
+        rootfs=$(awk -F= '/^lxc.rootfs.path[ \t]+=/{ print $2 }' "$config")
     else
         rootfs=$path/rootfs
     fi

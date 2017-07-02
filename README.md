@@ -79,7 +79,7 @@ quite restricted. Just to highlight the two most common problems:
 
 LXC is configured via a simple set of keys. For example,
 
-- `lxc.rootfs`
+- `lxc.rootfs.path`
 - `lxc.mount.entry`
 
 LXC namespaces configuration keys by using single dots. This means complex

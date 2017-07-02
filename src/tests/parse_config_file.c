@@ -503,10 +503,19 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.rootfs */
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.rootfs key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.rootfs", "/some/path", tmpf,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.rootfs");
+		goto non_test_error;
+	}
+
+	/* lxc.rootfs.path */
+	if (set_get_compare_clear_save_load(c, "lxc.rootfs.path", "/some/path", tmpf,
+					    true) < 0) {
+		lxc_error("%s\n", "lxc.rootfs.path");
 		goto non_test_error;
 	}
 

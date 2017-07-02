@@ -1071,8 +1071,8 @@ static struct bdev *do_bdev_create(struct lxc_container *c, const char *type,
 		return NULL;
 	}
 
-	if (!c->set_config_item(c, "lxc.rootfs", bdev->src)) {
-		ERROR("Failed to set config item \"lxc.rootfs\" to \"%s\"",
+	if (!c->set_config_item(c, "lxc.rootfs.path", bdev->src)) {
+		ERROR("Failed to set config item \"lxc.rootfs.path\" to \"%s\"",
 		      bdev->src);
 		return NULL;
 	}
@@ -2936,15 +2936,22 @@ static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 		return -1;
 	}
 
-	/* Append a new lxc.rootfs entry to the unexpanded config. */
+	/* REMOVE IN LXC 3.0
+	 * legacy rootfs key
+	 */
 	clear_unexp_config_line(c->lxc_conf, "lxc.rootfs", false);
-	if (!do_append_unexp_config_line(c->lxc_conf, "lxc.rootfs",
+
+	/* Append a new lxc.rootfs.path entry to the unexpanded config. */
+	clear_unexp_config_line(c->lxc_conf, "lxc.rootfs.path", false);
+	if (!do_append_unexp_config_line(c->lxc_conf, "lxc.rootfs.path",
 					 c->lxc_conf->rootfs.path)) {
 		ERROR("Error saving new rootfs to cloned config.");
 		return -1;
 	}
 
-	/* Append a new lxc.rootfs.backend entry to the unexpanded config. */
+	/* REMOVE IN LXC 3.0
+	 * legacy rootfs.backend key
+	 */
 	clear_unexp_config_line(c->lxc_conf, "lxc.rootfs.backend", false);
 
 	if (flags & LXC_CLONE_SNAPSHOT)
@@ -3165,7 +3172,13 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 		fclose(fout);
 		goto out;
 	}
+
+	/* REMOVE IN LXC 3.0
+	 * legacy rootfs key
+	 */
 	clear_unexp_config_line(c->lxc_conf, "lxc.rootfs", false);
+
+	clear_unexp_config_line(c->lxc_conf, "lxc.rootfs.path", false);
 	write_config(fout, c->lxc_conf);
 	fclose(fout);
 	c->lxc_conf->rootfs.path = origroot;

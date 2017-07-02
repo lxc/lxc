@@ -439,8 +439,8 @@ copy_configuration()
     # include configuration from default.conf if available
     grep -q "^lxc." "${lxc_default_conf}" > "${config}" 2>/dev/null
 
-    grep -q "^lxc.rootfs" "${config}" 2>/dev/null || echo "
-lxc.rootfs = ${rootfs}
+    grep -q "^lxc.rootfs.path" "${config}" 2>/dev/null || echo "
+lxc.rootfs.path = ${rootfs}
 " >> "${config}"
 
     # The following code is to create static MAC addresses for each
@@ -1185,10 +1185,10 @@ fi
 config="${path}/config"
 if [ -z "${rootfs}" ]
 then
-    # check for 'lxc.rootfs' passed in through default config by lxc-create
-    if grep -q '^lxc.rootfs' "${config}" 2>/dev/null
+    # check for 'lxc.rootfs.path' passed in through default config by lxc-create
+    if grep -q '^lxc.rootfs.path' "${config}" 2>/dev/null
     then
-        rootfs=$(awk -F= '/^lxc.rootfs =/{ print $2 }' "${config}")
+        rootfs=$(awk -F= '/^lxc.rootfs.path =/{ print $2 }' "${config}")
     else
         rootfs="${path}/rootfs"
     fi

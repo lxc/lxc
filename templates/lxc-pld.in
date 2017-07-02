@@ -234,7 +234,7 @@ copy_configuration()
 {
 
 	mkdir -p $config_path
-	grep -q "^lxc.rootfs" $config_path/config 2>/dev/null || echo "lxc.rootfs = $rootfs_path" >> $config_path/config
+	grep -q "^lxc.rootfs.path" $config_path/config 2>/dev/null || echo "lxc.rootfs.path = $rootfs_path" >> $config_path/config
 	cat <<EOF >> $config_path/config
 # Most of below settings should be taken as defaults  from
 # lxc.include = /usr/share/lxc/config/common.conf
@@ -423,10 +423,10 @@ fi
 
 if [ -z "$rootfs" ]; then
     rootfs_path=$path/rootfs
-    # check for 'lxc.rootfs' passed in through default config by lxc-create
+    # check for 'lxc.rootfs.path' passed in through default config by lxc-create
     # TODO: should be lxc.rootfs.mount used instead?
-    if grep -q '^lxc.rootfs' $path/config 2>/dev/null ; then
-            rootfs_path=$(awk -F= '/^lxc.rootfs =/{ print $2 }' $path/config)
+    if grep -q '^lxc.rootfs.path' $path/config 2>/dev/null ; then
+            rootfs_path=$(awk -F= '/^lxc.rootfs.path =/{ print $2 }' $path/config)
     fi
 else
     rootfs_path=$rootfs

@@ -91,7 +91,7 @@ lxc_config_define(fstab);
 lxc_config_define(rootfs_mount);
 lxc_config_define(rootfs_options);
 lxc_config_define(rootfs_backend);
-lxc_config_define(rootfs);
+lxc_config_define(rootfs_path);
 lxc_config_define(uts_name);
 lxc_config_define(hooks);
 lxc_config_define(net_type);
@@ -162,13 +162,17 @@ static struct lxc_config_t config[] = {
 	{ "lxc.mount",                     set_config_fstab,	                   get_config_fstab,                       clr_config_fstab,                     },
 	{ "lxc.rootfs.mount",              set_config_rootfs_mount,                get_config_rootfs_mount,                clr_config_rootfs_mount,              },
 	{ "lxc.rootfs.options",            set_config_rootfs_options,              get_config_rootfs_options,              clr_config_rootfs_options,            },
+	{ "lxc.rootfs.path",               set_config_rootfs_path,                 get_config_rootfs_path,                 clr_config_rootfs_path,               },
 
 	/* REMOVE IN LXC 3.0
 	   legacy rootfs.backend key
 	 */
 	{ "lxc.rootfs.backend",            set_config_rootfs_backend,              get_config_rootfs_backend,              clr_config_rootfs_backend,            },
 
-	{ "lxc.rootfs",                    set_config_rootfs,                      get_config_rootfs,                      clr_config_rootfs,                    },
+	/* REMOVE IN LXC 3.0
+	   legacy rootfs key
+	 */
+	{ "lxc.rootfs",                    set_config_rootfs_path,                 get_config_rootfs_path,                 clr_config_rootfs_path,               },
 
 	/* REMOVE IN LXC 3.0
 	   legacy utsname key
@@ -2035,8 +2039,8 @@ static int set_config_includefiles(const char *key, const char *value,
 	return lxc_config_read(value, lxc_conf, true);
 }
 
-static int set_config_rootfs(const char *key, const char *value,
-			     struct lxc_conf *lxc_conf, void *data)
+static int set_config_rootfs_path(const char *key, const char *value,
+				  struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_path_item(&lxc_conf->rootfs.path, value);
 }
@@ -3026,8 +3030,8 @@ static int get_config_mount(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-static int get_config_rootfs(const char *key, char *retv, int inlen,
-			     struct lxc_conf *c, void *data)
+static int get_config_rootfs_path(const char *key, char *retv, int inlen,
+				  struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_str(retv, inlen, c->rootfs.path);
 }
@@ -3440,8 +3444,8 @@ static inline int clr_config_fstab(const char *key, struct lxc_conf *c,
 	return 0;
 }
 
-static inline int clr_config_rootfs(const char *key, struct lxc_conf *c,
-				    void *data)
+static inline int clr_config_rootfs_path(const char *key, struct lxc_conf *c,
+					 void *data)
 {
 	free(c->rootfs.path);
 	c->rootfs.path = NULL;

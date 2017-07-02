@@ -598,8 +598,8 @@ copy_configuration()
 {
     mkdir -p $config_path
 
-    grep -q "^lxc.rootfs" $config_path/config 2>/dev/null || echo "
-lxc.rootfs = $rootfs_path
+    grep -q "^lxc.rootfs.path" $config_path/config 2>/dev/null || echo "
+lxc.rootfs.path = $rootfs_path
 " >> $config_path/config
 
     # The following code is to create static MAC addresses for each
@@ -861,10 +861,10 @@ fi
 
 if [ -z "$rootfs_path" ]; then
     rootfs_path=$path/rootfs
-    # check for 'lxc.rootfs' passed in through default config by lxc-create
-    if grep -q '^lxc.rootfs' $path/config 2>/dev/null ; then
-        rootfs_path=$(sed -e '/^lxc.rootfs\s*=/!d' -e 's/\s*#.*//' \
-            -e 's/^lxc.rootfs\s*=\s*//' -e q $path/config)
+    # check for 'lxc.rootfs.path' passed in through default config by lxc-create
+    if grep -q '^lxc.rootfs.path' $path/config 2>/dev/null ; then
+        rootfs_path=$(sed -e '/^lxc.rootfs.path\s*=/!d' -e 's/\s*#.*//' \
+            -e 's/^lxc.rootfs.path\s*=\s*//' -e q $path/config)
     fi
 fi
 config_path=$path

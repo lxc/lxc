@@ -127,7 +127,7 @@ copy_configuration()
 
     init_path=$(realpath --relative-to=/ $(readlink -f /sbin/init))
 
-    grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
+    grep -q "^lxc.rootfs.path" $path/config 2>/dev/null || echo "lxc.rootfs.path = $rootfs" >> $path/config
 cat <<EOF >> $path/config
 lxc.uts.name = $name
 lxc.pts = 1024
@@ -250,8 +250,8 @@ fi
 # detect rootfs
 config="$path/config"
 if [ -z "$rootfs" ]; then
-    if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
-        rootfs=$(awk -F= '/^lxc.rootfs =/{ print $2 }' $config)
+    if grep -q '^lxc.rootfs.path' $config 2>/dev/null ; then
+        rootfs=$(awk -F= '/^lxc.rootfs.path =/{ print $2 }' $config)
     else
         rootfs=$path/rootfs
     fi
