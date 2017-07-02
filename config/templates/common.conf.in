@@ -4,7 +4,7 @@
 lxc.tty.dir = lxc
 
 # Allow for 1024 pseudo terminals
-lxc.pts = 1024
+lxc.pty.max = 1024
 
 # Setup 4 tty devices
 lxc.tty.max = 4

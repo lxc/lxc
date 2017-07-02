@@ -121,7 +121,7 @@ cat >> "$path/config" <<EOF
 lxc.rootfs.path = $rootfs
 
 lxc.tty.max = 4
-lxc.pts = 1024
+lxc.pty.max = 1024
 
 lxc.uts.name = $name
 lxc.arch = $arch

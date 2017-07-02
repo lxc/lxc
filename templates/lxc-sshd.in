@@ -130,7 +130,7 @@ copy_configuration()
     grep -q "^lxc.rootfs.path" $path/config 2>/dev/null || echo "lxc.rootfs.path = $rootfs" >> $path/config
 cat <<EOF >> $path/config
 lxc.uts.name = $name
-lxc.pts = 1024
+lxc.pty.max = 1024
 lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:

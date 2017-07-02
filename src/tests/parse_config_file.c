@@ -300,10 +300,19 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.pts */
+	/* REMOVE IN LXC 3.0
+	   legacy ps keys
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.pts", "1000", tmpf, true) <
 	    0) {
 		lxc_error("%s\n", "lxc.pts");
+		goto non_test_error;
+	}
+
+	/* lxc.pty.max */
+	if (set_get_compare_clear_save_load(c, "lxc.pty.max", "1000", tmpf, true) <
+	    0) {
+		lxc_error("%s\n", "lxc.pty.max");
 		goto non_test_error;
 	}
 

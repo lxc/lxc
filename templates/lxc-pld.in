@@ -240,7 +240,7 @@ copy_configuration()
 # lxc.include = /usr/share/lxc/config/common.conf
 lxc.uts.name = $utsname
 lxc.tty.max = 4
-lxc.pts = 1024
+lxc.pty.max = 1024
 # Consider if below line is right for systemd container
 lxc.mount.fstab = $config_path/fstab
 lxc.cap.drop = sys_module mac_admin mac_override sys_time

@@ -230,7 +230,7 @@ copy_configuration()
     cat <<EOF >> $config_path/config
 lxc.uts.name = $name
 lxc.tty.max = 4
-lxc.pts = 1024
+lxc.pty.max = 1024
 lxc.cap.drop = sys_module mac_admin mac_override sys_time
 lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
 

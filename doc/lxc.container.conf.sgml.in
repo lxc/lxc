@@ -650,7 +650,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.pts</option>
+            <option>lxc.pty.max</option>
           </term>
           <listitem>
             <para>

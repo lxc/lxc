@@ -75,7 +75,7 @@ lxc_log_define(lxc_confile, lxc);
 
 
 lxc_config_define(personality);
-lxc_config_define(pts);
+lxc_config_define(pty_max);
 lxc_config_define(tty_max);
 lxc_config_define(tty_dir);
 lxc_config_define(apparmor_profile);
@@ -135,9 +135,14 @@ lxc_config_define(prlimit);
 
 static struct lxc_config_t config[] = {
 	{ "lxc.arch",                      set_config_personality,                 get_config_personality,                 clr_config_personality,               },
-	{ "lxc.pts",                       set_config_pts,                         get_config_pts,                         clr_config_pts,                       },
+	{ "lxc.pty.max",                   set_config_pty_max,                     get_config_pty_max,                     clr_config_pty_max,                   },
 	{ "lxc.tty.dir",                   set_config_tty_dir,                     get_config_tty_dir,                     clr_config_tty_dir,                   },
 	{ "lxc.tty.max",                   set_config_tty_max,                     get_config_tty_max,                     clr_config_tty_max,                   },
+
+	/* REMOVE IN LXC 3.0
+	   legacy pts key
+	 */
+	{ "lxc.pts",                       set_config_pty_max,                     get_config_pty_max,                     clr_config_pty_max,                   },
 
 	/* REMOVE IN LXC 3.0
 	   legacy devttydir key
@@ -1162,8 +1167,8 @@ static int set_config_personality(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_pts(const char *key, const char *value,
-			  struct lxc_conf *lxc_conf, void *data)
+static int set_config_pty_max(const char *key, const char *value,
+			      struct lxc_conf *lxc_conf, void *data)
 {
 	/* Set config value to default. */
 	if (lxc_config_value_empty(value)) {
@@ -2794,8 +2799,8 @@ static int get_config_personality(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-static int get_config_pts(const char *key, char *retv, int inlen,
-			  struct lxc_conf *c, void *data)
+static int get_config_pty_max(const char *key, char *retv, int inlen,
+			      struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_int(c, retv, inlen, c->pts);
 }
@@ -3366,8 +3371,8 @@ static inline int clr_config_personality(const char *key, struct lxc_conf *c,
 	return 0;
 }
 
-static inline int clr_config_pts(const char *key, struct lxc_conf *c,
-				 void *data)
+static inline int clr_config_pty_max(const char *key, struct lxc_conf *c,
+				     void *data)
 {
 	c->pts = 0;
 	return 0;

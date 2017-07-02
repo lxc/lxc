@@ -4,7 +4,7 @@
 lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
 
 # Allow for 1024 pseudo terminals
-lxc.pts = 1024
+lxc.pty.max = 1024
 
 # Setup 1 tty devices for lxc-console command
 lxc.tty.max = 1

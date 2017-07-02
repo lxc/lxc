@@ -1,7 +1,7 @@
 # Default console settings
 lxc.tty.dir = lxc
 lxc.tty.max = 4
-lxc.pts = 1024
+lxc.pty.max = 1024
 
 # Default capabilities
 lxc.cap.drop = mac_admin

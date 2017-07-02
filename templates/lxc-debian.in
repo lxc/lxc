@@ -517,7 +517,7 @@ copy_configuration()
 lxc.tty.max = $num_tty
 lxc.uts.name = $hostname
 lxc.arch = $arch
-lxc.pts=1023
+lxc.pty.max = 1024
 EOF
 
     if [ $? -ne 0 ]; then
