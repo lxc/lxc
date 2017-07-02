@@ -39,11 +39,6 @@
 
 #define MAX_STACKDEPTH 25
 
-#define OFLAG (O_CREAT | O_RDWR)
-#define SEMMODE 0660
-#define SEMVALUE 1
-#define SEMVALUE_LOCKED 0
-
 lxc_log_define(lxc_lock, lxc);
 
 #ifdef MUTEX_DEBUGGING
@@ -65,7 +60,7 @@ static inline void dump_stacktrace(void)
 	for (i = 0; i < size; i++)
 		fprintf(stderr, "\t\t%s\n", strings[i]);
 
-	free (strings);
+	free(strings);
 }
 #else
 static pthread_mutex_t thread_mutex = PTHREAD_MUTEX_INITIALIZER;
