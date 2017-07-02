@@ -24,6 +24,10 @@
 #ifndef __LXC_COMMANDS_H
 #define __LXC_COMMANDS_H
 
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/types.h>
+
 #include "state.h"
 
 #define LXC_CMD_DATA_MAX (MAXPATHLEN * 2)
@@ -85,8 +89,23 @@ extern char *lxc_cmd_get_lxcpath(const char *hashed_sock);
 extern pid_t lxc_cmd_get_init_pid(const char *name, const char *lxcpath);
 extern int lxc_cmd_get_state(const char *name, const char *lxcpath);
 extern int lxc_cmd_stop(const char *name, const char *lxcpath);
+
+/* lxc_cmd_add_state_client    Register a new state client fd in the container's
+ *                             in-memory handler.
+ *
+ * @param[in] name             Name of container to connect to.
+ * @param[in] lxcpath          The lxcpath in which the container is running.
+ * @param[in] states           The states to wait for.
+ * @param[out] state_client_fd The state client fd from which the state can be
+ *                             received.
+ * @return                     Return  < 0 on error
+ *                                    == MAX_STATE when state needs to retrieved
+ *                                                 via socket fd
+ *                                     < MAX_STATE current container state
+ */
 extern int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
-				    lxc_state_t states[MAX_STATE]);
+				    lxc_state_t states[MAX_STATE],
+				    int *state_client_fd);
 
 struct lxc_epoll_descr;
 struct lxc_handler;

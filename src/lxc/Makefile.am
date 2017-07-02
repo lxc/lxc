@@ -86,6 +86,7 @@ liblxc_la_SOURCES = \
 	cgroups/cgfsng.c \
 	cgroups/cgroup.c cgroups/cgroup.h \
 	commands.c commands.h \
+	commands_utils.c commands_utils.h \
 	start.c start.h \
 	execute.c \
 	monitor.c monitor.h \
