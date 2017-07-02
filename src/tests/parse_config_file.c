@@ -307,10 +307,19 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.tty */
+	/* REMOVE IN LXC 3.0
+	   legacy tty.max keys
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.tty", "4", tmpf, true) <
 	    0) {
 		lxc_error("%s\n", "lxc.tty");
+		goto non_test_error;
+	}
+
+	/* lxc.tty.max */
+	if (set_get_compare_clear_save_load(c, "lxc.tty.max", "4", tmpf, true) <
+	    0) {
+		lxc_error("%s\n", "lxc.tty.max");
 		goto non_test_error;
 	}
 

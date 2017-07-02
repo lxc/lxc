@@ -344,7 +344,7 @@ cat <<EOF >> $path/config
 lxc.signal.halt = SIGUSR1
 lxc.rebootsignal = SIGTERM
 lxc.uts.name = $name
-lxc.tty = 1
+lxc.tty.max = 1
 lxc.pts = 1
 lxc.cap.drop = sys_module mac_admin mac_override sys_time
 

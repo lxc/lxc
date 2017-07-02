@@ -138,7 +138,7 @@ configure_pld_systemd()
 	> ${rootfs_path}/etc/systemd/system/getty@.service
 
 	# Setup getty service on the 4 ttys we are going to allow in the
-	# default config. Number should match lxc.tty
+	# default config. Number should match lxc.tty.max
 	for i in 1 2 3 4; do
 		ln -sf ../getty@.service ${rootfs_path}/etc/systemd/system/getty.target.wants/getty@tty${i}.service
 	done
@@ -239,7 +239,7 @@ copy_configuration()
 # Most of below settings should be taken as defaults  from
 # lxc.include = /usr/share/lxc/config/common.conf
 lxc.uts.name = $utsname
-lxc.tty = 4
+lxc.tty.max = 4
 lxc.pts = 1024
 # Consider if below line is right for systemd container
 lxc.mount.fstab = $config_path/fstab

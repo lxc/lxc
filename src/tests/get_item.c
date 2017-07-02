@@ -83,6 +83,11 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 	fprintf(stderr, "%d: get_config_item(lxc.network) returned %d %s\n", __LINE__, ret, v2);
+
+
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.tty key
+	 */
 	if (!c->set_config_item(c, "lxc.tty", "4")) {
 		fprintf(stderr, "%d: failed to set tty\n", __LINE__);
 		goto out;

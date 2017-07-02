@@ -76,7 +76,7 @@ lxc_log_define(lxc_confile, lxc);
 
 lxc_config_define(personality);
 lxc_config_define(pts);
-lxc_config_define(tty);
+lxc_config_define(tty_max);
 lxc_config_define(tty_dir);
 lxc_config_define(apparmor_profile);
 lxc_config_define(apparmor_allow_incomplete);
@@ -137,13 +137,18 @@ static struct lxc_config_t config[] = {
 	{ "lxc.arch",                      set_config_personality,                 get_config_personality,                 clr_config_personality,               },
 	{ "lxc.pts",                       set_config_pts,                         get_config_pts,                         clr_config_pts,                       },
 	{ "lxc.tty.dir",                   set_config_tty_dir,                     get_config_tty_dir,                     clr_config_tty_dir,                   },
+	{ "lxc.tty.max",                   set_config_tty_max,                     get_config_tty_max,                     clr_config_tty_max,                   },
 
 	/* REMOVE IN LXC 3.0
 	   legacy devttydir key
 	 */
 	{ "lxc.devttydir",                 set_config_tty_dir,                     get_config_tty_dir,                     clr_config_tty_dir,                   },
 
-	{ "lxc.tty",                       set_config_tty,                         get_config_tty,                         clr_config_tty,                       },
+	/* REMOVE IN LXC 3.0
+	   legacy tty key
+	 */
+	{ "lxc.tty",                       set_config_tty_max,                     get_config_tty_max,                     clr_config_tty_max,                   },
+
 	{ "lxc.apparmor.profile",          set_config_apparmor_profile,            get_config_apparmor_profile,            clr_config_apparmor_profile,          },
 	{ "lxc.apparmor.allow_incomplete", set_config_apparmor_allow_incomplete,   get_config_apparmor_allow_incomplete,   clr_config_apparmor_allow_incomplete, },
 	{ "lxc.selinux.context",           set_config_selinux_context,             get_config_selinux_context,             clr_config_selinux_context,           },
@@ -1313,8 +1318,8 @@ on_error:
 	return -1;
 }
 
-static int set_config_tty(const char *key, const char *value,
-			  struct lxc_conf *lxc_conf, void *data)
+static int set_config_tty_max(const char *key, const char *value,
+			      struct lxc_conf *lxc_conf, void *data)
 {
 	/* Set config value to default. */
 	if (lxc_config_value_empty(value)) {
@@ -2795,8 +2800,8 @@ static int get_config_pts(const char *key, char *retv, int inlen,
 	return lxc_get_conf_int(c, retv, inlen, c->pts);
 }
 
-static int get_config_tty(const char *key, char *retv, int inlen,
-			  struct lxc_conf *c, void *data)
+static int get_config_tty_max(const char *key, char *retv, int inlen,
+			      struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_int(c, retv, inlen, c->tty);
 }
@@ -3368,8 +3373,8 @@ static inline int clr_config_pts(const char *key, struct lxc_conf *c,
 	return 0;
 }
 
-static inline int clr_config_tty(const char *key, struct lxc_conf *c,
-				 void *data)
+static inline int clr_config_tty_max(const char *key, struct lxc_conf *c,
+				     void *data)
 {
 	c->tty = 0;
 	return 0;

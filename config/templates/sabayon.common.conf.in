@@ -7,7 +7,7 @@ lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
 lxc.pts = 1024
 
 # Setup 1 tty devices for lxc-console command
-lxc.tty = 1
+lxc.tty.max = 1
 
 # Needed for systemd distro
 lxc.autodev = 1

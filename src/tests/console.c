@@ -145,7 +145,7 @@ static int test_console(const char *lxcpath,
 		goto out2;
 	}
 	c->load_config(c, NULL);
-	c->set_config_item(c, "lxc.tty", TTYCNT_STR);
+	c->set_config_item(c, "lxc.tty.max", TTYCNT_STR);
 	c->save_config(c, NULL);
 	c->want_daemonize(c, true);
 	if (!c->startl(c, 0, NULL)) {

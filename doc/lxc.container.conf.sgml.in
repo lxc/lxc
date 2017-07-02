@@ -718,7 +718,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.tty</option>
+            <option>lxc.tty.max</option>
           </term>
           <listitem>
             <para>
@@ -747,7 +747,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.devttydir</option>
+            <option>lxc.tty.dir</option>
           </term>
           <listitem>
             <para>

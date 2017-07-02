@@ -7,7 +7,7 @@ lxc.tty.dir = lxc
 lxc.pts = 1024
 
 # Setup 4 tty devices
-lxc.tty = 4
+lxc.tty.max = 4
 
 # Drop some harmful capabilities
 lxc.cap.drop = mac_admin mac_override sys_time sys_module sys_rawio

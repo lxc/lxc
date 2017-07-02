@@ -32,7 +32,7 @@ lxc-create -t ubuntu -n $name || FAIL "creating container"
 cat >> "$(lxc-config lxc.lxcpath)/$name/config" <<EOF
 # hax for criu
 lxc.console.path = none
-lxc.tty = 0
+lxc.tty.max = 0
 lxc.cgroup.devices.deny = c 5:1 rwm
 EOF
 
