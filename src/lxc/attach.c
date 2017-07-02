@@ -691,19 +691,24 @@ static bool fetch_seccomp(struct lxc_container *c,
 	}
 
 	/* Remove current setting. */
-	if (!c->set_config_item(c, "lxc.seccomp", "")) {
+	if (!c->set_config_item(c, "lxc.seccomp", "") &&
+	    !c->set_config_item(c, "lxc.seccomp.profile", "")) {
 		return false;
 	}
 
 	/* Fetch the current profile path over the cmd interface. */
-	path = c->get_running_config_item(c, "lxc.seccomp");
+	path = c->get_running_config_item(c, "lxc.seccomp.profile");
 	if (!path) {
-		INFO("Failed to get running config item for lxc.seccomp.");
+		INFO("Failed to get running config item for lxc.seccomp.profile");
+		path = c->get_running_config_item(c, "lxc.seccomp");
+	}
+	if (!path) {
+		INFO("Failed to get running config item for lxc.seccomp");
 		return true;
 	}
 
 	/* Copy the value into the new lxc_conf. */
-	if (!c->set_config_item(c, "lxc.seccomp", path)) {
+	if (!c->set_config_item(c, "lxc.seccomp.profile", path)) {
 		free(path);
 		return false;
 	}

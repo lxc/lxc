@@ -678,10 +678,19 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.seccomp */
+	/* REMOVE IN LXC 3.0
+	   legacy seccomp key
+	 */
 	if (set_get_compare_clear_save_load(
 		c, "lxc.seccomp", "/some/seccomp/file", tmpf, true) < 0) {
 		lxc_error("%s\n", "lxc.seccomp");
+		goto non_test_error;
+	}
+
+	/* lxc.seccomp.profile */
+	if (set_get_compare_clear_save_load(
+		c, "lxc.seccomp.profile", "/some/seccomp/file", tmpf, true) < 0) {
+		lxc_error("%s\n", "lxc.seccomp.profile");
 		goto non_test_error;
 	}
 

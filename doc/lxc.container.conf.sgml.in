@@ -1328,7 +1328,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.seccomp</option>
+            <option>lxc.seccomp.profile</option>
           </term>
           <listitem>
             <para>

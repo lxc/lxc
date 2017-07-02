@@ -47,4 +47,4 @@ lxc.cgroup.devices.allow = c 4:1 rwm
 
 # Blacklist some syscalls which are not safe in privileged
 # containers
-lxc.seccomp = /usr/share/lxc/config/common.seccomp
+lxc.seccomp.profile = /usr/share/lxc/config/common.seccomp

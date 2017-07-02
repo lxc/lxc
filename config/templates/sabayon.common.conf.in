@@ -73,7 +73,7 @@ lxc.mount.entry = none dev/shm tmpfs rw,nosuid,nodev,create=dir
 
 # Blacklist some syscalls which are not safe in privileged
 # containers
-lxc.seccomp = @LXCTEMPLATECONFIG@/common.seccomp
+lxc.seccomp.profile = @LXCTEMPLATECONFIG@/common.seccomp
 
 # Customize lxc options through common directory
 lxc.include = @LXCTEMPLATECONFIG@/common.conf.d/
