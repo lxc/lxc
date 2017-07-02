@@ -303,7 +303,7 @@ EOF
 fi
 if [ ! -z ${ipv6} ]; then
     cat <<EOF >> $config_path/config
-lxc.net.0.ipv6 = $ipv6
+lxc.net.0.ipv6.address = $ipv6
 EOF
 fi
 if [ ! -z ${gw6} ]; then

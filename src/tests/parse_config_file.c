@@ -105,15 +105,15 @@ static int set_and_clear_complete_netdev(struct lxc_container *c)
 		return -1;
 	}
 
-	if (!c->set_config_item(c, "lxc.net.1.ipv6",
+	if (!c->set_config_item(c, "lxc.net.1.ipv6.address",
 				"2003:db8:1:0:214:1234:fe0b:3596/64")) {
-		lxc_error("%s\n", "lxc.net.1.ipv6");
+		lxc_error("%s\n", "lxc.net.1.ipv6.address");
 		return -1;
 	}
 
-	if (!c->set_config_item(c, "lxc.net.1.ipv6_gateway",
+	if (!c->set_config_item(c, "lxc.net.1.ipv6.gateway",
 				"2003:db8:1:0::1")) {
-		lxc_error("%s\n", "lxc.net.1.ipv6");
+		lxc_error("%s\n", "lxc.net.1.ipv6.gateway");
 		return -1;
 	}
 
@@ -992,9 +992,9 @@ int main(int argc, char *argv[])
 	}
 
 	if (set_get_compare_clear_save_load(
-		c, "lxc.net.0.ipv6", "2003:db8:1:0:214:1234:fe0b:3596/64",
+		c, "lxc.net.0.ipv6.address", "2003:db8:1:0:214:1234:fe0b:3596/64",
 		tmpf, true)) {
-		lxc_error("%s\n", "lxc.net.0.ipv6");
+		lxc_error("%s\n", "lxc.net.0.ipv6.address");
 		goto non_test_error;
 	}
 
