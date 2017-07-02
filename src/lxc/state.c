@@ -114,7 +114,7 @@ extern int lxc_wait(const char *lxcname, const char *states, int timeout,
 	if (fillwaitedstates(states, s))
 		return -1;
 
-	state = lxc_cmd_state_server(lxcname, lxcpath, s);
+	state = lxc_cmd_add_state_client(lxcname, lxcpath, s);
 	if (state < 0) {
 		SYSERROR("failed to receive state from monitor");
 		return -1;

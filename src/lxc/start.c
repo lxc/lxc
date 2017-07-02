@@ -338,7 +338,7 @@ static int lxc_serve_state_clients(const char *name,
 	process_lock();
 
 	/* Only set state under process lock held so that we don't cause
-	 * lxc_cmd_state_server() to miss a state.
+	*  lxc_cmd_add_state_client() to miss a state.
 	 */
 	handler->state = state;
 	TRACE("set container state to %s", lxc_state2str(state));

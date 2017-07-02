@@ -78,16 +78,16 @@ lxc_log_define(lxc_commands, lxc);
 static const char *lxc_cmd_str(lxc_cmd_t cmd)
 {
 	static const char * const cmdname[LXC_CMD_MAX] = {
-		[LXC_CMD_CONSOLE]         = "console",
-		[LXC_CMD_STOP]            = "stop",
-		[LXC_CMD_GET_STATE]       = "get_state",
-		[LXC_CMD_GET_INIT_PID]    = "get_init_pid",
-		[LXC_CMD_GET_CLONE_FLAGS] = "get_clone_flags",
-		[LXC_CMD_GET_CGROUP]      = "get_cgroup",
-		[LXC_CMD_GET_CONFIG_ITEM] = "get_config_item",
-		[LXC_CMD_GET_NAME]        = "get_name",
-		[LXC_CMD_GET_LXCPATH]     = "get_lxcpath",
-		[LXC_CMD_STATE_SERVER]    = "state_server",
+		[LXC_CMD_CONSOLE]          = "console",
+		[LXC_CMD_STOP]             = "stop",
+		[LXC_CMD_GET_STATE]        = "get_state",
+		[LXC_CMD_GET_INIT_PID]     = "get_init_pid",
+		[LXC_CMD_GET_CLONE_FLAGS]  = "get_clone_flags",
+		[LXC_CMD_GET_CGROUP]       = "get_cgroup",
+		[LXC_CMD_GET_CONFIG_ITEM]  = "get_config_item",
+		[LXC_CMD_GET_NAME]         = "get_name",
+		[LXC_CMD_GET_LXCPATH]      = "get_lxcpath",
+		[LXC_CMD_ADD_STATE_CLIENT] = "add_state_client",
 	};
 
 	if (cmd >= LXC_CMD_MAX)
@@ -232,7 +232,7 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 	bool stay_connected = false;
 
 	if (cmd->req.cmd == LXC_CMD_CONSOLE ||
-	    cmd->req.cmd == LXC_CMD_STATE_SERVER)
+	    cmd->req.cmd == LXC_CMD_ADD_STATE_CLIENT)
 		stay_connected = true;
 
 	*stopped = 0;
@@ -813,15 +813,15 @@ static int lxc_cmd_get_lxcpath_callback(int fd, struct lxc_cmd_req *req,
 }
 
 /*
- * lxc_cmd_state_server: register a client fd in the handler list
+ * lxc_cmd_add_state_client: register a client fd in the handler list
  *
  * @name      : name of container to connect to
  * @lxcpath   : the lxcpath in which the container is running
  *
  * Returns the lxcpath on success, NULL on failure.
  */
-int lxc_cmd_state_server(const char *name, const char *lxcpath,
-			 lxc_state_t states[MAX_STATE])
+int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
+			     lxc_state_t states[MAX_STATE])
 {
 	int stopped;
 	ssize_t ret;
@@ -829,14 +829,14 @@ int lxc_cmd_state_server(const char *name, const char *lxcpath,
 	struct lxc_msg msg = {0};
 	struct lxc_cmd_rr cmd = {
 	    .req = {
-		.cmd     = LXC_CMD_STATE_SERVER,
+		.cmd     = LXC_CMD_ADD_STATE_CLIENT,
 		.data    = states,
 		.datalen = (sizeof(lxc_state_t) * MAX_STATE)
 	    },
 	};
 
-	/* Lock the whole lxc_cmd_state_server_callback() call to ensure that
-	 * lxc_set_state() doesn't cause us to miss a state.
+	/* Lock the whole lxc_cmd_add_state_client_callback() call to ensure
+	*  that lxc_set_state() doesn't cause us to miss a state.
 	 */
 	process_lock();
 	/* Check if already in requested state. */
@@ -912,8 +912,8 @@ again:
 	return msg.value;
 }
 
-static int lxc_cmd_state_server_callback(int fd, struct lxc_cmd_req *req,
-					 struct lxc_handler *handler)
+static int lxc_cmd_add_state_client_callback(int fd, struct lxc_cmd_req *req,
+					     struct lxc_handler *handler)
 {
 	struct lxc_cmd_rsp rsp = {0};
 	struct state_client *newclient;
@@ -957,17 +957,17 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 	typedef int (*callback)(int, struct lxc_cmd_req *, struct lxc_handler *);
 
 	callback cb[LXC_CMD_MAX] = {
-		[LXC_CMD_CONSOLE]         = lxc_cmd_console_callback,
-		[LXC_CMD_CONSOLE_WINCH]   = lxc_cmd_console_winch_callback,
-		[LXC_CMD_STOP]            = lxc_cmd_stop_callback,
-		[LXC_CMD_GET_STATE]       = lxc_cmd_get_state_callback,
-		[LXC_CMD_GET_INIT_PID]    = lxc_cmd_get_init_pid_callback,
-		[LXC_CMD_GET_CLONE_FLAGS] = lxc_cmd_get_clone_flags_callback,
-		[LXC_CMD_GET_CGROUP]      = lxc_cmd_get_cgroup_callback,
-		[LXC_CMD_GET_CONFIG_ITEM] = lxc_cmd_get_config_item_callback,
-		[LXC_CMD_GET_NAME]        = lxc_cmd_get_name_callback,
-		[LXC_CMD_GET_LXCPATH]     = lxc_cmd_get_lxcpath_callback,
-		[LXC_CMD_STATE_SERVER]    = lxc_cmd_state_server_callback,
+		[LXC_CMD_CONSOLE]          = lxc_cmd_console_callback,
+		[LXC_CMD_CONSOLE_WINCH]    = lxc_cmd_console_winch_callback,
+		[LXC_CMD_STOP]             = lxc_cmd_stop_callback,
+		[LXC_CMD_GET_STATE]        = lxc_cmd_get_state_callback,
+		[LXC_CMD_GET_INIT_PID]     = lxc_cmd_get_init_pid_callback,
+		[LXC_CMD_GET_CLONE_FLAGS]  = lxc_cmd_get_clone_flags_callback,
+		[LXC_CMD_GET_CGROUP]       = lxc_cmd_get_cgroup_callback,
+		[LXC_CMD_GET_CONFIG_ITEM]  = lxc_cmd_get_config_item_callback,
+		[LXC_CMD_GET_NAME]         = lxc_cmd_get_name_callback,
+		[LXC_CMD_GET_LXCPATH]      = lxc_cmd_get_lxcpath_callback,
+		[LXC_CMD_ADD_STATE_CLIENT] = lxc_cmd_add_state_client_callback,
 	};
 
 	if (req->cmd >= LXC_CMD_MAX) {
