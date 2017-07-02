@@ -246,7 +246,7 @@ lxc.net.0.mtu = 1500
 EOF
 if [ ! -z ${ipv4} ]; then
     cat <<EOF >> $config_path/config
-lxc.net.0.ipv4 = $ipv4
+lxc.net.0.ipv4.address = $ipv4
 EOF
 fi
 if [ ! -z ${gw} ]; then

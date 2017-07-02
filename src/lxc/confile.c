@@ -103,7 +103,7 @@ lxc_config_define(net_macvlan_mode);
 lxc_config_define(net_hwaddr);
 lxc_config_define(net_vlan_id);
 lxc_config_define(net_mtu);
-lxc_config_define(net_ipv4);
+lxc_config_define(net_ipv4_address);
 lxc_config_define(net_ipv4_gateway);
 lxc_config_define(net_script_up);
 lxc_config_define(net_script_down);
@@ -229,7 +229,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.net.mtu",                   set_config_net_mtu,                     get_config_net_mtu,                     clr_config_net_mtu,                   },
 	{ "lxc.net.vlan.id",               set_config_net_vlan_id,                 get_config_net_vlan_id,                 clr_config_net_vlan_id,               },
 	{ "lxc.net.ipv4.gateway",          set_config_net_ipv4_gateway,            get_config_net_ipv4_gateway,            clr_config_net_ipv4_gateway,          },
-	{ "lxc.net.ipv4",                  set_config_net_ipv4,                    get_config_net_ipv4,                    clr_config_net_ipv4,                  },
+	{ "lxc.net.ipv4.address",          set_config_net_ipv4_address,            get_config_net_ipv4_address,            clr_config_net_ipv4_address,          },
 	{ "lxc.net.ipv6.gateway",          set_config_net_ipv6_gateway,            get_config_net_ipv6_gateway,            clr_config_net_ipv6_gateway,          },
 	{ "lxc.net.ipv6",                  set_config_net_ipv6,                    get_config_net_ipv6,                    clr_config_net_ipv6,                  },
 	{ "lxc.net.",                      set_config_net_nic,                     get_config_net_nic,                     clr_config_net_nic,                   },
@@ -521,7 +521,7 @@ extern int lxc_list_nicconfigs(struct lxc_conf *c, const char *key, char *retv,
 		strprint(retv, inlen, "mtu\n");
 		strprint(retv, inlen, "ipv6\n");
 		strprint(retv, inlen, "ipv6.gateway\n");
-		strprint(retv, inlen, "ipv4\n");
+		strprint(retv, inlen, "ipv4.address\n");
 		strprint(retv, inlen, "ipv4.gateway\n");
 	}
 
@@ -756,8 +756,8 @@ static int set_config_net_mtu(const char *key, const char *value,
 	return set_config_string_item(&netdev->mtu, value);
 }
 
-static int set_config_net_ipv4(const char *key, const char *value,
-			       struct lxc_conf *lxc_conf, void *data)
+static int set_config_net_ipv4_address(const char *key, const char *value,
+				       struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 	struct lxc_inetdev *inetdev;
@@ -766,7 +766,7 @@ static int set_config_net_ipv4(const char *key, const char *value,
 	char *addr = NULL, *bcast = NULL, *prefix = NULL;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_net_ipv4(key, lxc_conf, data);
+		return clr_config_net_ipv4_address(key, lxc_conf, data);
 
 	if (!data)
 		return -1;
@@ -4019,8 +4019,8 @@ static int clr_config_net_ipv4_gateway(const char *key,
 	return 0;
 }
 
-static int clr_config_net_ipv4(const char *key, struct lxc_conf *lxc_conf,
-			       void *data)
+static int clr_config_net_ipv4_address(const char *key,
+				       struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 	struct lxc_list *cur, *next;
@@ -4418,8 +4418,8 @@ static int get_config_net_ipv4_gateway(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-static int get_config_net_ipv4(const char *key, char *retv, int inlen,
-			       struct lxc_conf *c, void *data)
+static int get_config_net_ipv4_address(const char *key, char *retv, int inlen,
+				       struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
 	size_t listlen;

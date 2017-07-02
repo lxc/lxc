@@ -95,13 +95,13 @@ static int set_and_clear_complete_netdev(struct lxc_container *c)
 		return -1;
 	}
 
-	if (!c->set_config_item(c, "lxc.net.1.ipv4", "10.0.2.3/24")) {
-		lxc_error("%s\n", "lxc.net.1.ipv4");
+	if (!c->set_config_item(c, "lxc.net.1.ipv4.address", "10.0.2.3/24")) {
+		lxc_error("%s\n", "lxc.net.1.ipv4.address");
 		return -1;
 	}
 
-	if (!c->set_config_item(c, "lxc.net.1.ipv4_gateway", "10.0.2.2")) {
-		lxc_error("%s\n", "lxc.net.1.ipv4");
+	if (!c->set_config_item(c, "lxc.net.1.ipv4.gateway", "10.0.2.2")) {
+		lxc_error("%s\n", "lxc.net.1.ipv4.gateway");
 		return -1;
 	}
 
@@ -985,9 +985,9 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load(c, "lxc.net.0.ipv4",
+	if (set_get_compare_clear_save_load(c, "lxc.net.0.ipv4.address",
 					    "10.0.2.3/24", tmpf, true)) {
-		lxc_error("%s\n", "lxc.net.0.ipv4");
+		lxc_error("%s\n", "lxc.net.0.ipv4.address");
 		goto non_test_error;
 	}
 

@@ -293,7 +293,7 @@ lxc.cap.drop = sys_module mac_admin mac_override sys_time
 EOF
 if [ ! -z ${ipv4} ]; then
     cat <<EOF >> $config_path/config
-lxc.net.0.ipv4 = $ipv4
+lxc.net.0.ipv4.address = $ipv4
 EOF
 fi
 if [ ! -z ${gw} ]; then
