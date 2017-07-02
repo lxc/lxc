@@ -918,7 +918,7 @@ int get_config_network_legacy_item(const char *key, char *retv, int inlen,
 			struct lxc_inetdev *i = it2->elem;
 			char buf[INET_ADDRSTRLEN];
 			inet_ntop(AF_INET, &i->addr, buf, sizeof(buf));
-			strprint(retv, inlen, "%s/%d\n", buf, i->prefix);
+			strprint(retv, inlen, "%s/%u\n", buf, i->prefix);
 		}
 	} else if (strcmp(p1, "ipv6.gateway") == 0) {
 		if (netdev->ipv6_gateway_auto) {
@@ -935,7 +935,7 @@ int get_config_network_legacy_item(const char *key, char *retv, int inlen,
 			struct lxc_inet6dev *i = it2->elem;
 			char buf[INET6_ADDRSTRLEN];
 			inet_ntop(AF_INET6, &i->addr, buf, sizeof(buf));
-			strprint(retv, inlen, "%s/%d\n", buf, i->prefix);
+			strprint(retv, inlen, "%s/%u\n", buf, i->prefix);
 		}
 	}
 	return fulllen;

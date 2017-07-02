@@ -116,18 +116,18 @@ static void size_humanize(unsigned long long val, char *buf, size_t bufsz)
 {
 	if (val > 1 << 30) {
 		snprintf(buf, bufsz, "%u.%2.2u GiB",
-			    (int)(val >> 30),
-			    (int)(val & ((1 << 30) - 1)) / 10737419);
+			    (unsigned int)(val >> 30),
+			    (unsigned int)(val & ((1 << 30) - 1)) / 10737419);
 	} else if (val > 1 << 20) {
-		int x = val + 5243;  /* for rounding */
+		unsigned int x = val + 5243;  /* for rounding */
 		snprintf(buf, bufsz, "%u.%2.2u MiB",
 			    x >> 20, ((x & ((1 << 20) - 1)) * 100) >> 20);
 	} else if (val > 1 << 10) {
-		int x = val + 5;  /* for rounding */
+		unsigned int x = val + 5;  /* for rounding */
 		snprintf(buf, bufsz, "%u.%2.2u KiB",
 			    x >> 10, ((x & ((1 << 10) - 1)) * 100) >> 10);
 	} else {
-		snprintf(buf, bufsz, "%u bytes", (int)val);
+		snprintf(buf, bufsz, "%u bytes", (unsigned int)val);
 	}
 }
 
