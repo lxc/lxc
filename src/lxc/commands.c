@@ -812,21 +812,13 @@ static int lxc_cmd_get_lxcpath_callback(int fd, struct lxc_cmd_req *req,
 	return lxc_cmd_rsp_send(fd, &rsp);
 }
 
-/*
- * lxc_cmd_add_state_client: register a client fd in the handler list
- *
- * @name      : name of container to connect to
- * @lxcpath   : the lxcpath in which the container is running
- *
- * Returns the lxcpath on success, NULL on failure.
- */
 int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
-			     lxc_state_t states[MAX_STATE])
+			     lxc_state_t states[MAX_STATE],
+			     int *state_client_fd)
 {
 	int stopped;
 	ssize_t ret;
 	int state = -1;
-	struct lxc_msg msg = {0};
 	struct lxc_cmd_rr cmd = {
 	    .req = {
 		.cmd     = LXC_CMD_ADD_STATE_CLIENT,
@@ -893,23 +885,8 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 		return -1;
 	}
 
-again:
-	ret = recv(cmd.rsp.ret, &msg, sizeof(msg), 0);
-	if (ret < 0) {
-		if (errno == EINTR)
-			goto again;
-
-		ERROR("failed to receive message: %s", strerror(errno));
-		return -1;
-	}
-	if (ret == 0) {
-		ERROR("length of message was 0");
-		return -1;
-	}
-
-	TRACE("received state %s from state client %d",
-	      lxc_state2str(msg.value), cmd.rsp.ret);
-	return msg.value;
+	*state_client_fd = cmd.rsp.ret;
+	return MAX_STATE;
 }
 
 static int lxc_cmd_add_state_client_callback(int fd, struct lxc_cmd_req *req,

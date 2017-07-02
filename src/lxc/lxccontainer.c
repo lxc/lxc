@@ -47,6 +47,7 @@
 #include "conf.h"
 #include "config.h"
 #include "commands.h"
+#include "commands_utils.h"
 #include "confile.h"
 #include "confile_legacy.h"
 #include "console.h"
@@ -1746,9 +1747,11 @@ WRAP_API(bool, lxcapi_reboot)
 
 static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 {
-	bool retv;
+	int ret, state_client_fd = -1;
+	bool retv = false;
 	pid_t pid;
 	int haltsignal = SIGPWR;
+	lxc_state_t states[MAX_STATE] = {0};
 
 	if (!c)
 		return false;
@@ -1768,10 +1771,33 @@ static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 
 	INFO("Using signal number '%d' as halt signal.", haltsignal);
 
+	/* Add a new state client before sending the shutdown signal so that we
+	 * don't miss a state.
+	 */
+	states[STOPPED] = 1;
+	ret = lxc_cmd_add_state_client(c->name, c->config_path, states,
+				       &state_client_fd);
+
+	/* Send shutdown signal to container. */
 	if (kill(pid, haltsignal) < 0)
 		WARN("Could not send signal %d to pid %d.", haltsignal, pid);
 
-	retv = do_lxcapi_wait(c, "STOPPED", timeout);
+	/* Retrieve the state. */
+	if (state_client_fd >= 0) {
+		int state;
+		state = lxc_cmd_sock_rcv_state(state_client_fd, timeout);
+		close(state_client_fd);
+		if (state != STOPPED)
+			return false;
+		retv = true;
+	} else if (ret == STOPPED) {
+		TRACE("Container is already stopped");
+		retv = true;
+	} else {
+		TRACE("Received state \"%s\" instead of expected \"STOPPED\"",
+		      lxc_state2str(ret));
+	}
+
 	return retv;
 }
 
