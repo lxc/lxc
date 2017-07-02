@@ -685,7 +685,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         </varlistentry>
         <varlistentry>
           <term>
-            <option>lxc.console</option>
+            <option>lxc.console.path</option>
           </term>
           <listitem>
             <para>
@@ -1619,7 +1619,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           <listitem>
             <para>
               The path to the console output of the container if not NULL.
-              [<option>-c</option>] [<option>lxc.console</option>]
+              [<option>-c</option>] [<option>lxc.console.path</option>]
             </para>
           </listitem>
         </varlistentry>

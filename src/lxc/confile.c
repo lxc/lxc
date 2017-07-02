@@ -114,7 +114,7 @@ lxc_config_define(net);
 lxc_config_define(cap_drop);
 lxc_config_define(cap_keep);
 lxc_config_define(console_logfile);
-lxc_config_define(console);
+lxc_config_define(console_path);
 lxc_config_define(seccomp);
 lxc_config_define(includefiles);
 lxc_config_define(autodev);
@@ -232,10 +232,15 @@ static struct lxc_config_t config[] = {
 	{ "lxc.cap.drop",                  set_config_cap_drop,                    get_config_cap_drop,                    clr_config_cap_drop,                  },
 	{ "lxc.cap.keep",                  set_config_cap_keep,                    get_config_cap_keep,                    clr_config_cap_keep,                  },
 	{ "lxc.console.logfile",           set_config_console_logfile,             get_config_console_logfile,             clr_config_console_logfile,           },
-	{ "lxc.console",                   set_config_console,                     get_config_console,                     clr_config_console,                   },
+	{ "lxc.console.path",              set_config_console_path,                get_config_console_path,                clr_config_console_path,              },
 	{ "lxc.seccomp",                   set_config_seccomp,                     get_config_seccomp,                     clr_config_seccomp,                   },
 	{ "lxc.include",                   set_config_includefiles,                get_config_includefiles,                clr_config_includefiles,              },
 	{ "lxc.autodev",                   set_config_autodev,                     get_config_autodev,                     clr_config_autodev,                   },
+
+	/* REMOVE IN LXC 3.0
+	   legacy console key
+	 */
+	{ "lxc.console",                   set_config_console_path,                get_config_console_path,                clr_config_console_path,              },
 
 	/* REMOVE IN LXC 3.0
 	   legacy singal keys
@@ -1936,8 +1941,8 @@ static int set_config_cap_drop(const char *key, const char *value,
 	return ret;
 }
 
-static int set_config_console(const char *key, const char *value,
-			      struct lxc_conf *lxc_conf, void *data)
+static int set_config_console_path(const char *key, const char *value,
+				   struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_path_item(&lxc_conf->console.path, value);
 }
@@ -3153,8 +3158,8 @@ static int get_config_cap_keep(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-static int get_config_console(const char *key, char *retv, int inlen,
-			      struct lxc_conf *c, void *data)
+static int get_config_console_path(const char *key, char *retv, int inlen,
+				   struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_str(retv, inlen, c->console.path);
 }
@@ -3508,8 +3513,8 @@ static inline int clr_config_cap_keep(const char *key, struct lxc_conf *c,
 	return lxc_clear_config_keepcaps(c);
 }
 
-static inline int clr_config_console(const char *key, struct lxc_conf *c,
-				     void *data)
+static inline int clr_config_console_path(const char *key, struct lxc_conf *c,
+					  void *data)
 {
 	free(c->console.path);
 	c->console.path = NULL;

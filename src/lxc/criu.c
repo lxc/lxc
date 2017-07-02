@@ -83,7 +83,7 @@ struct criu_opts {
 	/* The path that is bind mounted from /dev/console, if any. We don't
 	 * want to use `--ext-mount-map auto`'s result here because the pts
 	 * device may have a different path (e.g. if the pty number is
-	 * different) on the target host. NULL if lxc.console = "none".
+	 * different) on the target host. NULL if lxc.console.path = "none".
 	 */
 	char *console_name;
 
@@ -106,8 +106,8 @@ static int load_tty_major_minor(char *directory, char *output, int len)
 	f = fopen(path, "r");
 	if (!f) {
 		/* This means we're coming from a liblxc which didn't export
-		 * the tty info. In this case they had to have lxc.console =
-		 * none, so there's no problem restoring.
+		 * the tty info. In this case they had to have lxc.console.path
+		 * = * none, so there's no problem restoring.
 		 */
 		if (errno == ENOENT)
 			return 0;
@@ -450,7 +450,7 @@ static void exec_criu(struct criu_opts *opts)
 
 		if (tty_info[0]) {
 			if (opts->console_fd < 0) {
-				ERROR("lxc.console configured on source host but not target");
+				ERROR("lxc.console.path configured on source host but not target");
 				goto err;
 			}
 
