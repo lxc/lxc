@@ -791,7 +791,7 @@ static char *cgroup_rename_nsgroup(const char *mountpath, const char *oldname, p
 
 	len = strlen(oldname) + strlen(mountpath) + 22;
 	fulloldpath = alloca(len);
-	ret = snprintf(fulloldpath, len, "%s/%s/%ld", mountpath, oldname, (unsigned long)pid);
+	ret = snprintf(fulloldpath, len, "%s/%s/%lu", mountpath, oldname, (unsigned long)pid);
 	if (ret < 0 || ret >= len)
 		return NULL;
 
