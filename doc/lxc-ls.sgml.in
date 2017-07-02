@@ -55,6 +55,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">--frozen</arg>
       <arg choice="opt">--running</arg>
       <arg choice="opt">--stopped</arg>
+      <arg choice="opt">--defined</arg>
       <arg choice="opt">-f</arg>
       <arg choice="opt">-F <replaceable>format</replaceable></arg>
       <arg choice="opt">-g <replaceable>groups</replaceable></arg>
@@ -125,6 +126,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         <listitem>
           <para>
             List only stopped containers.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option>--defined</option>
+        </term>
+        <listitem>
+          <para>
+            List only defined containers.
           </para>
         </listitem>
       </varlistentry>

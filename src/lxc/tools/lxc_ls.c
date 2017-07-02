@@ -53,6 +53,7 @@ lxc_log_define(lxc_ls, lxc);
 #define LS_RUNNING 4
 #define LS_NESTING 5
 #define LS_FILTER 6
+#define LS_DEFINED 7
 
 #ifndef SOCK_CLOEXEC
 #  define SOCK_CLOEXEC                02000000
@@ -167,6 +168,7 @@ static const struct option my_longopts[] = {
 	{"running", no_argument, 0, LS_RUNNING},
 	{"frozen", no_argument, 0, LS_FROZEN},
 	{"stopped", no_argument, 0, LS_STOPPED},
+	{"defined", no_argument, 0, LS_DEFINED},
 	{"nesting", optional_argument, 0, LS_NESTING},
 	{"groups", required_argument, 0, 'g'},
 	{"filter", required_argument, 0, LS_FILTER},
@@ -192,6 +194,7 @@ Options :\n\
   --running          list only running containers\n\
   --frozen           list only frozen containers\n\
   --stopped          list only stopped containers\n\
+  --defined          list only defined containers\n\
   --nesting=NUM      list nested containers up to NUM (default is 5) levels of nesting\n\
   --filter=REGEX     filter container names by regular expression\n\
   -g --groups        comma separated list of groups a container must have to be displayed\n",
@@ -402,8 +405,9 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
  		else if (!c)
  			continue;
 
-		if (!c->is_defined(c))
+		if (args->ls_defined && !c->is_defined(c)){
 			goto put_and_next;
+		}
 
 		/* This does not allocate memory so no worries about freeing it
 		 * when we goto next or out. */
@@ -934,6 +938,9 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 		break;
 	case LS_STOPPED:
 		args->ls_stopped = true;
+		break;
+	case LS_DEFINED:
+		args->ls_defined = true;
 		break;
 	case LS_NESTING:
 		/* In case strtoul() receives a string that represents a
