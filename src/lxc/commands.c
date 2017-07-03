@@ -40,6 +40,7 @@
 #include "utils.h"
 #include "cgroup.h"
 #include "commands.h"
+#include "commands_utils.h"
 #include "console.h"
 #include "confile.h"
 #include "lxclock.h"
