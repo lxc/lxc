@@ -374,9 +374,5 @@ int lxc_unstack_mountpoint(const char *path, bool lazy);
  * @param[in] args     Arguments to be passed to child_fn.
  */
 int run_command(char *buf, size_t buf_size, int (*child_fn)(void *), void *args);
-int lxc_make_abstract_socket_name(char *path, int len, const char *lxcname,
-				  const char *lxcpath,
-				  const char *hashed_sock_name,
-				  const char *suffix);
 
 #endif /* __LXC_UTILS_H */

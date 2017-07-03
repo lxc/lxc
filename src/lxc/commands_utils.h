@@ -24,6 +24,11 @@
 
 #include "state.h"
 
+int lxc_make_abstract_socket_name(char *path, int len, const char *lxcname,
+				  const char *lxcpath,
+				  const char *hashed_sock_name,
+				  const char *suffix);
+
 /* lxc_cmd_sock_get_state      Register a new state client fd in the container's
  *                             in-memory handler and retrieve the requested
  *                             states.

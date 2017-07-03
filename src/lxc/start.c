@@ -67,6 +67,7 @@
 #include "caps.h"
 #include "cgroup.h"
 #include "commands.h"
+#include "commands_utils.h"
 #include "conf.h"
 #include "console.h"
 #include "error.h"
