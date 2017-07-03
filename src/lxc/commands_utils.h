@@ -23,6 +23,7 @@
 #include <stdio.h>
 
 #include "state.h"
+#include "commands.h"
 
 int lxc_make_abstract_socket_name(char *path, int len, const char *lxcname,
 				  const char *lxcpath,
@@ -52,5 +53,32 @@ extern int lxc_cmd_sock_get_state(const char *name, const char *lxcpath,
  *                                     < MAX_STATE current container state
  */
 extern int lxc_cmd_sock_rcv_state(int state_client_fd, int timeout);
+
+/* lxc_add_state_client        Add a new state client to the container's
+ *                             in-memory handler.
+ *
+ * @param[int] state_client_fd The state client fd to add.
+ * @param[int] handler         The container's in-memory handler.
+ * @param[in] states           The states to wait for.
+ *
+ * @return                     Return  < 0 on error
+ *                                       0 on success
+ */
+extern int lxc_add_state_client(int state_client_fd,
+				struct lxc_handler *handler,
+				lxc_state_t states[MAX_STATE]);
+
+/* lxc_cmd_connect             Connect to the container's command socket.
+ *
+ * @param[in] name             Name of container to connect to.
+ * @param[in] lxcpath          The lxcpath in which the container is running.
+ * @param[in] hashed_sock_name The hashed name of the socket (optional). Can be
+ *                             NULL.
+ *
+ * @return                     Return   < 0 on error
+ *                                     >= 0 client fd
+ */
+extern int lxc_cmd_connect(const char *name, const char *lxcpath,
+			   const char *hashed_sock_name);
 
 #endif /* __LXC_COMMANDS_UTILS_H */
