@@ -229,6 +229,7 @@ int lxclock(struct lxc_lock *l, int timeout)
 					S_IWUSR | S_IRUSR);
 			if (l->u.f.fd == -1) {
 				ERROR("Error opening %s", l->u.f.fname);
+				saved_errno = errno;
 				goto out;
 			}
 		}
