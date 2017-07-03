@@ -206,6 +206,60 @@ static int lxc_cmd_rsp_send(int fd, struct lxc_cmd_rsp *rsp)
 	return 0;
 }
 
+static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
+		 const char *lxcpath, const char *hashed_sock_name)
+{
+	int client_fd;
+	int ret = -1;
+
+	/* -2 here because this is an abstract unix socket so it needs a
+	 * leading \0, and we null terminate, so it needs a trailing \0.
+	 * Although null termination isn't required by the API, we do it anyway
+	 * because we print the sockname out sometimes.
+	 */
+	client_fd = lxc_cmd_connect(name, lxcpath, hashed_sock_name);
+	if (client_fd < 0 && client_fd == -ECONNREFUSED)
+		return -ECONNREFUSED;
+	else if (client_fd < 0)
+		return -1;
+
+	TRACE("Command \"%s\" connected to command socket",
+	      lxc_cmd_str(cmd->req.cmd));
+
+	ret = lxc_abstract_unix_send_credential(client_fd, &cmd->req, sizeof(cmd->req));
+	if (ret != sizeof(cmd->req)) {
+		close(client_fd);
+
+		if (errno == EPIPE)
+			return -EPIPE;
+
+		if (ret >= 0)
+			return -EMSGSIZE;
+
+		return -1;
+	}
+
+	TRACE("Command \"%s\" requested data of length %d",
+	      lxc_cmd_str(cmd->req.cmd), cmd->req.datalen);
+
+	if (cmd->req.datalen > 0) {
+		ret = send(client_fd, cmd->req.data, cmd->req.datalen, MSG_NOSIGNAL);
+		if (ret != cmd->req.datalen) {
+			close(client_fd);
+
+			if (errno == EPIPE)
+				return -EPIPE;
+
+			if (ret >= 0)
+				return -EMSGSIZE;
+
+			return -1;
+		}
+	}
+
+	return client_fd;
+}
+
 /*
  * lxc_cmd: Connect to the specified running container, send it a command
  * request and collect the response
@@ -228,10 +282,7 @@ static int lxc_cmd_rsp_send(int fd, struct lxc_cmd_rsp *rsp)
 static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 		   const char *lxcpath, const char *hashed_sock_name)
 {
-	int sock, ret = -1;
-	char path[sizeof(((struct sockaddr_un *)0)->sun_path)] = { 0 };
-	char *offset = &path[1];
-	size_t len;
+	int client_fd, ret = -1;
 	bool stay_connected = false;
 
 	if (cmd->req.cmd == LXC_CMD_CONSOLE ||
@@ -245,64 +296,34 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 	 * Although null termination isn't required by the API, we do it anyway
 	 * because we print the sockname out sometimes.
 	 */
-	len = sizeof(path)-2;
-	if (lxc_make_abstract_socket_name(offset, len, name, lxcpath,
-					  hashed_sock_name, "command"))
-		return -1;
+	TRACE("command %s tries to connect command socket",
+	      lxc_cmd_str(cmd->req.cmd));
 
-	sock = lxc_abstract_unix_connect(path);
-	TRACE("command %s tries to connect to \"@%s\"",
-	      lxc_cmd_str(cmd->req.cmd), offset);
-	if (sock < 0) {
-		if (errno == ECONNREFUSED) {
-			TRACE("command %s failed to connect to \"@%s\": %s",
-			      lxc_cmd_str(cmd->req.cmd), offset,
-			      strerror(errno));
+	client_fd = lxc_cmd_send(name, cmd, lxcpath, hashed_sock_name);
+	if (client_fd < 0) {
+		TRACE("command %s failed to connect command socket: %s",
+		      lxc_cmd_str(cmd->req.cmd), strerror(errno));
+		if (client_fd == -ECONNREFUSED) {
 			*stopped = 1;
-		} else {
-			SYSERROR("command %s failed to connect to \"@%s\": %s",
-				 lxc_cmd_str(cmd->req.cmd), offset,
-				 strerror(errno));
+			return -1;
 		}
 
-		return -1;
-	}
-
-	ret = lxc_abstract_unix_send_credential(sock, &cmd->req, sizeof(cmd->req));
-	if (ret != sizeof(cmd->req)) {
-		if (errno == EPIPE)
+		if (client_fd == -EPIPE)
 			goto epipe;
-		SYSERROR("Command %s failed to send req to \"@%s\" %d.",
-			 lxc_cmd_str(cmd->req.cmd), offset, ret);
-		if (ret >=0)
-			ret = -1;
+
 		goto out;
 	}
 
-	if (cmd->req.datalen > 0) {
-		ret = send(sock, cmd->req.data, cmd->req.datalen, MSG_NOSIGNAL);
-		if (ret != cmd->req.datalen) {
-			if (errno == EPIPE)
-				goto epipe;
-			SYSERROR("Command %s failed to send request data to \"@%s\" %d.",
-				 lxc_cmd_str(cmd->req.cmd), offset, ret);
-			if (ret >=0)
-				ret = -1;
-			goto out;
-		}
-	}
-
-	ret = lxc_cmd_rsp_recv(sock, cmd);
+	ret = lxc_cmd_rsp_recv(client_fd, cmd);
 out:
 	if (!stay_connected || ret <= 0)
-		close(sock);
+		close(client_fd);
 	if (stay_connected && ret > 0)
-		cmd->rsp.ret = sock;
+		cmd->rsp.ret = client_fd;
 
 	return ret;
 
 epipe:
-	close(sock);
 	*stopped = 1;
 	return 0;
 }
@@ -896,37 +917,27 @@ static int lxc_cmd_add_state_client_callback(int fd, struct lxc_cmd_req *req,
 					     struct lxc_handler *handler)
 {
 	struct lxc_cmd_rsp rsp = {0};
-	struct state_client *newclient;
-	struct lxc_list *tmplist;
 
 	if (req->datalen < 0) {
-		TRACE("requested datalen was < 0");
+		TRACE("Requested datalen was < 0");
+		return -1;
+	}
+
+	if (req->datalen > (sizeof(lxc_state_t) * MAX_STATE)) {
+		TRACE("Requested datalen was too large");
 		return -1;
 	}
 
 	if (!req->data) {
-		TRACE("no states requested");
+		TRACE("No states requested");
 		return -1;
 	}
 
-	newclient = malloc(sizeof(*newclient));
-	if (!newclient)
-		return -1;
-
-	/* copy requested states */
-	memcpy(newclient->states, req->data, sizeof(newclient->states));
-	newclient->clientfd = fd;
-
-	tmplist = malloc(sizeof(*tmplist));
-	if (!tmplist) {
-		free(newclient);
-		return -1;
-	}
-
-	lxc_list_add_elem(tmplist, newclient);
-	lxc_list_add_tail(&handler->state_clients, tmplist);
-
-	TRACE("added state client %d to state client list", fd);
+	rsp.ret = lxc_add_state_client(fd, handler, (lxc_state_t *)req->data);
+	if (rsp.ret < 0)
+		ERROR("Failed to add state client %d to state client list", fd);
+	else
+		TRACE("Added state client %d to state client list", fd);
 
 	return lxc_cmd_rsp_send(fd, &rsp);
 }
@@ -981,24 +992,30 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 		goto out_close;
 	}
 
+	TRACE("Processing \"%s\" command", lxc_cmd_str(req.cmd));
 	if (ret < 0) {
-		SYSERROR("Failed to receive data on command socket.");
+		SYSERROR("Failed to receive data on command socket for \"%s\"",
+			 lxc_cmd_str(req.cmd));
 		goto out_close;
 	}
 
 	if (!ret) {
-		DEBUG("Peer has disconnected.");
+		DEBUG("Peer has disconnected for \"%s\"", lxc_cmd_str(req.cmd));
 		goto out_close;
 	}
 
 	if (ret != sizeof(req)) {
-		WARN("Failed to receive full command request. Ignoring request.");
+		WARN("Failed to receive full command request. Ignoring request "
+		     "for \"%s\"",
+		     lxc_cmd_str(req.cmd));
 		ret = -1;
 		goto out_close;
 	}
 
 	if (req.datalen > LXC_CMD_DATA_MAX) {
-		ERROR("Received command data length %d is too large.", req.datalen);
+		ERROR("Received command data length %d is too large for "
+		      "command \"%s\"",
+		      req.datalen, lxc_cmd_str(req.cmd));
 		ret = -1;
 		goto out_close;
 	}
@@ -1009,7 +1026,9 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 		reqdata = alloca(req.datalen);
 		ret = recv(fd, reqdata, req.datalen, 0);
 		if (ret != req.datalen) {
-			WARN("Failed to receive full command request. Ignoring request.");
+			WARN("Failed to receive full command request. Ignoring "
+			     "request for \"%s\"",
+			     lxc_cmd_str(req.cmd));
 			ret = -1;
 			goto out_close;
 		}

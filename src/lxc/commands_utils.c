@@ -28,8 +28,10 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include "af_unix.h"
 #include "commands.h"
 #include "commands_utils.h"
+#include "initutils.h"
 #include "log.h"
 #include "monitor.h"
 #include "state.h"
@@ -150,6 +152,63 @@ int lxc_make_abstract_socket_name(char *path, int len, const char *lxcname,
 		ERROR("Failed to create abstract socket name");
 		return -1;
 	}
+
+	return 0;
+}
+
+int lxc_cmd_connect(const char *name, const char *lxcpath,
+		    const char *hashed_sock_name)
+{
+	int ret, client_fd;
+	char path[sizeof(((struct sockaddr_un *)0)->sun_path)] = {0};
+	char *offset = &path[1];
+	size_t len = sizeof(path) - 2;
+
+	/* -2 here because this is an abstract unix socket so it needs a
+	 * leading \0, and we null terminate, so it needs a trailing \0.
+	 * Although null termination isn't required by the API, we do it anyway
+	 * because we print the sockname out sometimes.
+	 */
+	ret = lxc_make_abstract_socket_name(offset, len, name, lxcpath,
+					    hashed_sock_name, "command");
+	if (ret < 0)
+		return -1;
+
+	/* Get new client fd. */
+	client_fd = lxc_abstract_unix_connect(path);
+	if (client_fd < 0) {
+		if (errno == ECONNREFUSED)
+			return -ECONNREFUSED;
+		return -1;
+	}
+
+	return client_fd;
+}
+
+int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
+			 lxc_state_t states[MAX_STATE])
+{
+	struct state_client *newclient;
+	struct lxc_list *tmplist;
+
+	newclient = malloc(sizeof(*newclient));
+	if (!newclient)
+		return -ENOMEM;
+
+	/* copy requested states */
+	memcpy(newclient->states, states, sizeof(newclient->states));
+	newclient->clientfd = state_client_fd;
+
+	tmplist = malloc(sizeof(*tmplist));
+	if (!tmplist) {
+		free(newclient);
+		return -ENOMEM;
+	}
+
+	lxc_list_add_elem(tmplist, newclient);
+	lxc_list_add_tail(&handler->state_clients, tmplist);
+
+	TRACE("added state client %d to state client list", state_client_fd);
 
 	return 0;
 }
