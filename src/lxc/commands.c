@@ -80,6 +80,7 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 {
 	static const char * const cmdname[LXC_CMD_MAX] = {
 		[LXC_CMD_CONSOLE]          = "console",
+		[LXC_CMD_CONSOLE_WINCH]    = "console_winch",
 		[LXC_CMD_STOP]             = "stop",
 		[LXC_CMD_GET_STATE]        = "get_state",
 		[LXC_CMD_GET_INIT_PID]     = "get_init_pid",
@@ -124,6 +125,7 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		     lxc_cmd_str(cmd->req.cmd), strerror(errno));
 		return -1;
 	}
+	TRACE("Command \"%s received response", lxc_cmd_str(cmd->req.cmd));
 
 	if (cmd->req.cmd == LXC_CMD_CONSOLE) {
 		struct lxc_cmd_console_rsp_data *rspdata;
