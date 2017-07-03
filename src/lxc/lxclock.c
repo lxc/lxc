@@ -19,7 +19,6 @@
  */
 
 #define _GNU_SOURCE
-#include "lxclock.h"
 #include <malloc.h>
 #include <stdio.h>
 #include <errno.h>
@@ -30,6 +29,7 @@
 
 #include <lxc/lxccontainer.h>
 
+#include "lxclock.h"
 #include "utils.h"
 #include "log.h"
 
@@ -80,7 +80,7 @@ static void lock_mutex(pthread_mutex_t *l)
 	if ((ret = pthread_mutex_lock(l)) != 0) {
 		fprintf(stderr, "pthread_mutex_lock returned:%d %s\n", ret, strerror(ret));
 		dump_stacktrace();
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -91,7 +91,7 @@ static void unlock_mutex(pthread_mutex_t *l)
 	if ((ret = pthread_mutex_unlock(l)) != 0) {
 		fprintf(stderr, "pthread_mutex_unlock returned:%d %s\n", ret, strerror(ret));
 		dump_stacktrace();
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -216,12 +216,10 @@ int lxclock(struct lxc_lock *l, int timeout)
 		ret = -2;
 		if (timeout) {
 			ERROR("Error: timeout not supported with flock");
-			ret = -2;
 			goto out;
 		}
 		if (!l->u.f.fname) {
 			ERROR("Error: filename not set for flock");
-			ret = -2;
 			goto out;
 		}
 		if (l->u.f.fd == -1) {
