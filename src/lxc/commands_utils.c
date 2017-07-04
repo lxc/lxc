@@ -45,13 +45,17 @@ int lxc_cmd_sock_rcv_state(int state_client_fd, int timeout)
 	struct lxc_msg msg;
 	struct timeval out;
 
-	memset(&out, 0, sizeof(out));
-	out.tv_sec = timeout;
-	ret = setsockopt(state_client_fd, SOL_SOCKET, SO_RCVTIMEO,
-			 (const void *)&out, sizeof(out));
-	if (ret < 0) {
-		SYSERROR("Failed to set %ds timeout on containter state socket", timeout);
-		return -1;
+	if (timeout >= 0) {
+		memset(&out, 0, sizeof(out));
+		out.tv_sec = timeout;
+		ret = setsockopt(state_client_fd, SOL_SOCKET, SO_RCVTIMEO,
+				(const void *)&out, sizeof(out));
+		if (ret < 0) {
+			SYSERROR("Failed to set %ds timeout on containter "
+				 "state socket",
+				 timeout);
+			return -1;
+		}
 	}
 
 	memset(&msg, 0, sizeof(msg));
@@ -59,8 +63,10 @@ int lxc_cmd_sock_rcv_state(int state_client_fd, int timeout)
 again:
 	ret = recv(state_client_fd, &msg, sizeof(msg), 0);
 	if (ret < 0) {
-		if (errno == EINTR)
+		if (errno == EINTR) {
+			TRACE("Caught EINTR; retrying");
 			goto again;
+		}
 
 		ERROR("failed to receive message: %s", strerror(errno));
 		return -1;

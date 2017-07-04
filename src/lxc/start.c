@@ -384,9 +384,11 @@ static int lxc_serve_state_clients(const char *name,
 
 	again:
 		ret = send(client->clientfd, &msg, sizeof(msg), 0);
-		if (ret < 0) {
-			if (errno == EINTR)
+		if (ret <= 0) {
+			if (errno == EINTR) {
+				TRACE("Caught EINTR; retrying");
 				goto again;
+			}
 
 			ERROR("failed to send message to client");
 		}
@@ -417,11 +419,16 @@ static int lxc_serve_state_socket_pair(const char *name,
 	close(handler->state_socket_pair[0]);
 	handler->state_socket_pair[0] = -1;
 
+again:
 	ret = lxc_abstract_unix_send_credential(handler->state_socket_pair[1],
 						&(int){state}, sizeof(int));
-	if (ret != sizeof(int))
+	if (ret != sizeof(int)) {
+		if (errno == EINTR)
+			goto again;
 		SYSERROR("Failed to send state to %d",
 			 handler->state_socket_pair[1]);
+		return -1;
+	}
 
 	TRACE("Sent container state \"%s\" to %d", lxc_state2str(state),
 	      handler->state_socket_pair[1]);
