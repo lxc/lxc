@@ -701,7 +701,7 @@ static void free_init_cmd(char **argv)
 static int lxc_rcv_status(int state_socket)
 {
         int ret;
-        lxc_state_t state = -1;
+        int state = -1;
         struct timeval timeout = {0};
 
         /* Set 5 second timeout to prevent hanging forever in case something
@@ -715,14 +715,16 @@ static int lxc_rcv_status(int state_socket)
                 return -1;
         }
 
+again:
         /* Receive container state. */
         ret = lxc_abstract_unix_rcv_credential(state_socket, &state,
-                                               sizeof(lxc_state_t));
-        /* Close container state client. */
-        close(state_socket);
-
-        if (ret <= 0)
-                return -1;
+                                               sizeof(int));
+        if (ret <= 0) {
+		if (errno != EINTR)
+			return -1;
+		TRACE("Caught EINTR; retrying");
+		goto again;
+	}
 
         return state;
 }
