@@ -160,7 +160,9 @@ int main(int argc, char *argv[])
 	bret = c->start(c, 1, my_args.argv);
 	ret = c->error_num;
 	lxc_container_put(c);
-	if (!bret)
+	if (!bret) {
+		ERROR("Failed run an application inside container");
 		exit(EXIT_FAILURE);
+	}
 	exit(ret);
 }
