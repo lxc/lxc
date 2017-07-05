@@ -1,14 +1,19 @@
+[![LXD](https://linuxcontainers.org/static/img/containers.png)](https://linuxcontainers.org/lxd)
 # LXC
-
-* [Core Infrastructure Initiative](https://bestpractices.coreinfrastructure.org/): [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/1087/badge)](https://bestpractices.coreinfrastructure.org/projects/1087)
-* Jenkins: [![Build Status](https://jenkins.linuxcontainers.org/job/lxc-github-commit/badge/icon)](https://jenkins.linuxcontainers.org/job/lxc-github-commit/)
-* Travis:  [![Build Status](https://travis-ci.org/lxc/lxc.svg?branch=master)](https://travis-ci.org/lxc/lxc/)
 
 LXC is the well-known and heavily tested low-level Linux container runtime. It
 is in active development since 2008 and has proven itself in critical
 production environments world-wide. Some of its core contributors are the same
 people that helped to implement various well-known containerization features
 inside the Linux kernel.
+
+## Status
+Type            | Service               | Status
+---             | ---                   | ---
+CI (Linux)      | Jenkins               | [![Build Status](https://jenkins.linuxcontainers.org/job/lxc-github-commit/badge/icon)](https://jenkins.linuxcontainers.org/job/lxc-github-commit/)
+CI (Linux)      | Travis                | [![Build Status](https://travis-ci.org/lxc/lxc.svg?branch=master)](https://travis-ci.org/lxc/lxc/)
+Project status  | CII Best Practices    | [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/1087/badge)](https://bestpractices.coreinfrastructure.org/projects/1087)
+
 
 ## System Containers
 
