@@ -403,6 +403,7 @@ int main(int argc, char *argv[])
 	if (ret < 0)
 		return EXIT_FAILURE;
 
+	(void)rmdir(LXCPATH "/alternate-path-test");
 	TSTOUT("All tests passed\n");
 	return EXIT_SUCCESS;
 }
