@@ -81,6 +81,7 @@ int main(int argc, char *argv[])
 	int err;
 	char **aargv;
 	sigset_t mask, omask;
+	struct sigaction act;
 	int i, have_status = 0, shutdown = 0;
 	int opt;
 	char *lxcpath = NULL, *name = NULL, *logpriority = NULL;
@@ -138,9 +139,19 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	for (i = 1; i < NSIG; i++) {
-		struct sigaction act;
+	if (sigfillset(&act.sa_mask) ||
+	    sigdelset(&act.sa_mask, SIGILL) ||
+	    sigdelset(&act.sa_mask, SIGSEGV) ||
+	    sigdelset(&act.sa_mask, SIGBUS) ||
+	    sigdelset(&act.sa_mask, SIGSTOP) ||
+	    sigdelset(&act.sa_mask, SIGKILL)) {
+		ERROR("Failed to set signal");
+		exit(EXIT_FAILURE);
+	}
+	act.sa_flags = 0;
+	act.sa_handler = interrupt_handler;
 
+	for (i = 1; i < NSIG; i++) {
 		/* Exclude some signals: ILL, SEGV and BUS are likely to
 		 * reveal a bug and we want a core. STOP and KILL cannot be
 		 * handled anyway: they're here for documentation. 32 and 33
@@ -154,18 +165,6 @@ int main(int argc, char *argv[])
 		    i == 32 || i == 33)
 			continue;
 
-		if (sigfillset(&act.sa_mask) ||
-		    sigdelset(&act.sa_mask, SIGILL) ||
-		    sigdelset(&act.sa_mask, SIGSEGV) ||
-		    sigdelset(&act.sa_mask, SIGBUS) ||
-		    sigdelset(&act.sa_mask, SIGSTOP) ||
-		    sigdelset(&act.sa_mask, SIGKILL)) {
-			ERROR("Failed to set signal");
-			exit(EXIT_FAILURE);
-		}
-
-		act.sa_flags = 0;
-		act.sa_handler = interrupt_handler;
 		if (sigaction(i, &act, NULL) && errno != EINVAL) {
 			SYSERROR("Failed to sigaction");
 			exit(EXIT_FAILURE);
