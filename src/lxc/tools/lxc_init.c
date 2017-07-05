@@ -143,7 +143,8 @@ int main(int argc, char *argv[])
 
 		/* Exclude some signals: ILL, SEGV and BUS are likely to
 		 * reveal a bug and we want a core. STOP and KILL cannot be
-		 * handled anyway: they're here for documentation.
+		 * handled anyway: they're here for documentation. 32 and 33
+		 * are not defined.
 		 */
 		if (i == SIGILL ||
 		    i == SIGSEGV ||
