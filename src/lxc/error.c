@@ -46,12 +46,12 @@ extern int  lxc_error_set_and_log(int pid, int status)
 	if (WIFEXITED(status)) {
 		ret = WEXITSTATUS(status);
 		if (ret)
-			INFO("Child <%d> ended on error (%d).", pid, ret);
+			INFO("Child <%d> ended on error (%d)", pid, ret);
 	}
 
 	if (WIFSIGNALED(status)) {
 		int signal = WTERMSIG(status);
-		INFO("Child <%d> ended on signal (%d).", pid, signal);
+		INFO("Child <%d> ended on signal (%d)", pid, signal);
 	}
 
 	return ret;
