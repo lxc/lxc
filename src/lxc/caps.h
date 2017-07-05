@@ -21,11 +21,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#ifndef __LXC_CAPS_H
+#define __LXC_CAPS_H
+
 #include "config.h"
 #include <stdbool.h>
 
-#ifndef __LXC_CAPS_H
-#define __LXC_CAPS_H
 
 #if HAVE_LIBCAP
 #include <sys/capability.h>
