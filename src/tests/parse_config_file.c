@@ -279,12 +279,6 @@ int main(int argc, char *argv[])
 	char tmpf[] = "lxc-parse-config-file-XXXXXX";
 	char retval[4096] = {0};
 
-	c = lxc_container_new(tmpf, NULL);
-	if (!c) {
-		lxc_error("%s\n", "failed to create new container");
-		exit(EXIT_FAILURE);
-	}
-
 	fd = mkstemp(tmpf);
 	if (fd < 0) {
 		lxc_error("%s\n", "Could not create temporary file");
@@ -292,6 +286,11 @@ int main(int argc, char *argv[])
 	}
 	close(fd);
 
+	c = lxc_container_new(tmpf, NULL);
+	if (!c) {
+		lxc_error("%s\n", "Failed to create new container");
+		exit(EXIT_FAILURE);
+	}
 
 	/* lxc.arch */
 	if (set_get_compare_clear_save_load(c, "lxc.arch", "x86_64", tmpf,
