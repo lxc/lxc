@@ -33,11 +33,11 @@
 #include <sys/wait.h>
 #include <getopt.h>
 
+#include <lxc/lxccontainer.h>
+
 #include "log.h"
-#include "caps.h"
 #include "error.h"
 #include "initutils.h"
-#include "lxccontainer.h"
 
 lxc_log_define(lxc_init, lxc);
 
