@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include <libgen.h>
 
 #include "confile_utils.h"
 #include "lxc/state.h"
@@ -530,7 +531,7 @@ int main(int argc, char *argv[])
 
 	ret = EXIT_SUCCESS;
 non_test_error:
-	c->destroy(c);
+	(void)rmdir(dirname(c->configfile));
 	lxc_container_put(c);
 	exit(ret);
 }
