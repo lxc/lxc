@@ -27,8 +27,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _getline_h
-#define _getline_h
+#ifndef _GETLINE_H
+#define _GETLINE_H
 
 #include <stdio.h>
 

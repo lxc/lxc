@@ -21,8 +21,8 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef _openpty_h
-#define _openpty_h
+#ifndef _OPENPTY_H
+#define _OPENPTY_H
 
 #include <termios.h>
 #include <sys/ioctl.h>
