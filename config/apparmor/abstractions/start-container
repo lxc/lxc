@@ -41,3 +41,4 @@
 
   change_profile -> lxc-*,
   change_profile -> unconfined,
+  change_profile -> :lxc-*:unconfined,
