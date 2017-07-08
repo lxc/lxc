@@ -42,9 +42,6 @@ int lxc_abstract_unix_open(const char *path, int type, int flags)
 	size_t len;
 	struct sockaddr_un addr;
 
-	if (flags & O_TRUNC)
-		unlink(path);
-
 	fd = socket(PF_UNIX, type, 0);
 	if (fd < 0)
 		return -1;
@@ -86,13 +83,6 @@ int lxc_abstract_unix_open(const char *path, int type, int flags)
 
 int lxc_abstract_unix_close(int fd)
 {
-	struct sockaddr_un addr;
-	socklen_t addrlen = sizeof(addr);
-
-	if (!getsockname(fd, (struct sockaddr *)&addr, &addrlen) &&
-			addr.sun_path[0])
-		unlink(addr.sun_path);
-
 	close(fd);
 
 	return 0;
