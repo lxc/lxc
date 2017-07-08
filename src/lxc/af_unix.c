@@ -113,12 +113,7 @@ int lxc_abstract_unix_connect(const char *path)
 	strncpy(&addr.sun_path[1], &path[1], strlen(&path[1]));
 
 	if (connect(fd, (struct sockaddr *)&addr, offsetof(struct sockaddr_un, sun_path) + len + 1)) {
-		int tmp = errno;
-		/* special case to connect to older containers */
-		if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) == 0)
-			return fd;
 		close(fd);
-		errno = tmp;
 		return -1;
 	}
 
