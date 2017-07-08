@@ -89,7 +89,7 @@ copy_configuration()
     echo "" >> $path/config
     echo "# Container specific configuration" >> $path/config
     [ -e "$path/config-auto" ] && cat $path/config-auto >> $path/config && rm $path/config-auto
-    grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
+    grep -q "^lxc.rootfs.path" $path/config 2>/dev/null || echo "lxc.rootfs.path = $rootfs" >> $path/config
     cat <<EOF >> $path/config
 lxc.uts.name = $name
 lxc.arch = $arch
@@ -263,8 +263,8 @@ fi
 # detect rootfs
 config="$path/config"
 if [ -z "$rootfs" ]; then
-    if grep -q '^lxc.rootfs' $config 2>/dev/null ; then
-        rootfs=$(awk -F= '/^lxc.rootfs =/{ print $2 }' $config)
+    if grep -q '^lxc.rootfs.path' $config 2>/dev/null ; then
+        rootfs=$(awk -F= '/^lxc.rootfs.path =/{ print $2 }' $config)
     else
         rootfs=$path/rootfs
     fi

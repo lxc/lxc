@@ -483,7 +483,7 @@ readonly MIRROR_URL="${mirror_url:-$DEFAULT_MIRROR_URL}"
 [ -n "$path" ] || die 1 'Missing required option --path'
 
 if [ -z "$rootfs" ] && [ -f "$path/config" ]; then
-	rootfs="$(sed -nE 's/^lxc.rootfs\s*=\s*(.*)$/\1/p' "$path/config")"
+	rootfs="$(sed -nE 's/^lxc.rootfs.path\s*=\s*(.*)$/\1/p' "$path/config")"
 fi
 if [ -z "$rootfs" ]; then
 	rootfs="$path/rootfs"

@@ -484,7 +484,7 @@ container_config_create()
 lxc.arch = $arch
 lxc.uts.name = $name
 EOF
-    grep -q "^lxc.rootfs" $cfg_dir/config 2>/dev/null || echo "lxc.rootfs = $container_rootfs" >> $cfg_dir/config
+    grep -q "^lxc.rootfs.path" $cfg_dir/config 2>/dev/null || echo "lxc.rootfs.path = $container_rootfs" >> $cfg_dir/config
 
     if [ $container_release_major != "4" ]; then
         echo "lxc.cap.drop = sys_resource" >>$cfg_dir/config

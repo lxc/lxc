@@ -274,11 +274,11 @@ copy_configuration()
 {
 
     mkdir -p $config_path
-    grep -q "^lxc.rootfs" $config_path/config 2>/dev/null || echo "lxc.rootfs = $rootfs_path" >> $config_path/config
+    grep -q "^lxc.rootfs.path" $config_path/config 2>/dev/null || echo "lxc.rootfs.path = $rootfs_path" >> $config_path/config
     cat <<EOF >> $config_path/config
 lxc.uts.name = $name
-lxc.tty = 4
-lxc.pts = 1024
+lxc.tty.max = 4
+lxc.pty.max = 1024
 lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
@@ -293,7 +293,7 @@ lxc.cap.drop = sys_module mac_admin mac_override sys_time
 EOF
 if [ ! -z ${ipv4} ]; then
     cat <<EOF >> $config_path/config
-lxc.net.0.ipv4 = $ipv4
+lxc.net.0.ipv4.address = $ipv4
 EOF
 fi
 if [ ! -z ${gw} ]; then
@@ -303,7 +303,7 @@ EOF
 fi
 if [ ! -z ${ipv6} ]; then
     cat <<EOF >> $config_path/config
-lxc.net.0.ipv6 = $ipv6
+lxc.net.0.ipv6.address = $ipv6
 EOF
 fi
 if [ ! -z ${gw6} ]; then
@@ -460,10 +460,10 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
-# check for 'lxc.rootfs' passed in through default config by lxc-create
+# check for 'lxc.rootfs.path' passed in through default config by lxc-create
 if [ -z "$rootfs_path" ]; then
-    if grep -q '^lxc.rootfs' $path/config 2>/dev/null ; then
-        rootfs_path=$(awk -F= '/^lxc.rootfs =/{ print $2 }' $path/config)
+    if grep -q '^lxc.rootfs.path' $path/config 2>/dev/null ; then
+        rootfs_path=$(awk -F= '/^lxc.rootfs.path =/{ print $2 }' $path/config)
     else
         rootfs_path=$path/rootfs
     fi

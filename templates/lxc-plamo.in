@@ -346,8 +346,8 @@ ptcache=$cache/partial-${prog##*-}-$release-$arch
 dlcache=$cache/cache-${prog##*-}-$release-$arch
 rtcache=$cache/rootfs-${prog##*-}-$release-$arch
 if [ -z "$rootfs" ] ; then
-  if grep -q "^lxc.rootfs" $path/config ; then
-    rootfs=`awk -F= '/^lxc.rootfs =/{ print $2 }' $path/config`
+  if grep -q "^lxc.rootfs.path" $path/config ; then
+    rootfs=`awk -F= '/^lxc.rootfs.path =/{ print $2 }' $path/config`
   else
     rootfs=$path/rootfs
   fi

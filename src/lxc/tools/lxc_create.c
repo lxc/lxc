@@ -30,6 +30,7 @@
 #include "bdev.h"
 #include "log.h"
 #include "lxc.h"
+#include "storage_utils.h"
 #include "utils.h"
 
 lxc_log_define(lxc_create_ui, lxc);

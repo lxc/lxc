@@ -1,7 +1,7 @@
 # Default console settings
 lxc.tty.dir = lxc
-lxc.tty = 4
-lxc.pts = 1024
+lxc.tty.max = 4
+lxc.pty.max = 1024
 
 # Default capabilities
 lxc.cap.drop = mac_admin
@@ -47,4 +47,4 @@ lxc.cgroup.devices.allow = c 4:1 rwm
 
 # Blacklist some syscalls which are not safe in privileged
 # containers
-lxc.seccomp = /usr/share/lxc/config/common.seccomp
+lxc.seccomp.profile = /usr/share/lxc/config/common.seccomp

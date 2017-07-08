@@ -108,8 +108,8 @@ EOF
 # Figure out container dirname
 # We need this in 5.conf
 lxc-destroy -n lxctestb || true
-lxc-create -t busybox -n lxctestb
-CONTAINER_PATH=$(dirname $(lxc-info -n lxctestb -c lxc.rootfs -H))
+lxc-create -t busybox -n lxctestb -B dir
+CONTAINER_PATH=$(dirname $(lxc-info -n lxctestb -c lxc.rootfs.path -H) | sed 's/dir://')
 lxc-destroy -n lxctestb
 
 # No nics, one clone hook in $container

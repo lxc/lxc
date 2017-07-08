@@ -229,8 +229,9 @@ int aufs_destroy(struct bdev *orig)
 
 int aufs_detect(const char *path)
 {
-	if (strncmp(path, "aufs:", 5) == 0)
-		return 1; // take their word for it
+	if (!strncmp(path, "aufs:", 5))
+		return 1;
+
 	return 0;
 }
 

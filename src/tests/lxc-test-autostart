@@ -55,8 +55,8 @@ if [ -f /etc/lsb-release ]; then
     done
 fi
 
-lxc-create -t download -n $CONTAINER_NAME -- -d ubuntu -r $release -a $ARCH
-CONTAINER_PATH=$(dirname $(lxc-info -n $CONTAINER_NAME -c lxc.rootfs -H))
+lxc-create -t download -n $CONTAINER_NAME -B dir -- -d ubuntu -r $release -a $ARCH
+CONTAINER_PATH=$(dirname $(lxc-info -n $CONTAINER_NAME -c lxc.rootfs.path -H) | sed -e 's/dir://')
 cp $CONTAINER_PATH/config $CONTAINER_PATH/config.bak
 
 # Ensure it's not in lxc-autostart

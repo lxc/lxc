@@ -138,7 +138,7 @@ configure_pld_systemd()
 	> ${rootfs_path}/etc/systemd/system/getty@.service
 
 	# Setup getty service on the 4 ttys we are going to allow in the
-	# default config. Number should match lxc.tty
+	# default config. Number should match lxc.tty.max
 	for i in 1 2 3 4; do
 		ln -sf ../getty@.service ${rootfs_path}/etc/systemd/system/getty.target.wants/getty@tty${i}.service
 	done
@@ -234,15 +234,15 @@ copy_configuration()
 {
 
 	mkdir -p $config_path
-	grep -q "^lxc.rootfs" $config_path/config 2>/dev/null || echo "lxc.rootfs = $rootfs_path" >> $config_path/config
+	grep -q "^lxc.rootfs.path" $config_path/config 2>/dev/null || echo "lxc.rootfs.path = $rootfs_path" >> $config_path/config
 	cat <<EOF >> $config_path/config
 # Most of below settings should be taken as defaults  from
 # lxc.include = /usr/share/lxc/config/common.conf
 lxc.uts.name = $utsname
-lxc.tty = 4
-lxc.pts = 1024
+lxc.tty.max = 4
+lxc.pty.max = 1024
 # Consider if below line is right for systemd container
-lxc.mount = $config_path/fstab
+lxc.mount.fstab = $config_path/fstab
 lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
 lxc.autodev = $auto_dev
@@ -423,10 +423,10 @@ fi
 
 if [ -z "$rootfs" ]; then
     rootfs_path=$path/rootfs
-    # check for 'lxc.rootfs' passed in through default config by lxc-create
+    # check for 'lxc.rootfs.path' passed in through default config by lxc-create
     # TODO: should be lxc.rootfs.mount used instead?
-    if grep -q '^lxc.rootfs' $path/config 2>/dev/null ; then
-            rootfs_path=$(awk -F= '/^lxc.rootfs =/{ print $2 }' $path/config)
+    if grep -q '^lxc.rootfs.path' $path/config 2>/dev/null ; then
+            rootfs_path=$(awk -F= '/^lxc.rootfs.path =/{ print $2 }' $path/config)
     fi
 else
     rootfs_path=$rootfs

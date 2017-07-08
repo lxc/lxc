@@ -4,5 +4,5 @@ lxc.net.0.type = macvlan
 lxc.net.0.flags = up
 lxc.net.0.link = eth0
 lxc.net.0.hwaddr = 4a:49:43:49:79:bd
-lxc.net.0.ipv4 = 10.2.3.4/24
-lxc.net.0.ipv6 = 2003:db8:1:0:214:1234:fe0b:3596
+lxc.net.0.ipv4.address = 10.2.3.4/24
+lxc.net.0.ipv6.address = 2003:db8:1:0:214:1234:fe0b:3596

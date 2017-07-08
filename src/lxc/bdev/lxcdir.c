@@ -39,7 +39,8 @@ int dir_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath,
 		int snap, uint64_t newsize, struct lxc_conf *conf)
 {
-	int len, ret;
+	int ret;
+	size_t len;
 
 	if (snap) {
 		ERROR("directories cannot be snapshotted.  Try aufs or overlayfs.");
@@ -49,38 +50,58 @@ int dir_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 	if (!orig->dest || !orig->src)
 		return -1;
 
-	len = strlen(lxcpath) + strlen(cname) + strlen("rootfs") + 3;
+	len = strlen(lxcpath) + strlen(cname) + strlen("rootfs") + 4 + 3;
 	new->src = malloc(len);
 	if (!new->src)
 		return -1;
-	ret = snprintf(new->src, len, "%s/%s/rootfs", lxcpath, cname);
-	if (ret < 0 || ret >= len)
+
+	ret = snprintf(new->src, len, "dir:%s/%s/rootfs", lxcpath, cname);
+	if (ret < 0 || (size_t)ret >= len)
 		return -1;
-	if ((new->dest = strdup(new->src)) == NULL)
+
+	new->dest = strdup(new->src + 4);
+	if (!new->dest)
 		return -1;
 
 	return 0;
 }
 
 int dir_create(struct bdev *bdev, const char *dest, const char *n,
-		struct bdev_specs *specs)
+	       struct bdev_specs *specs)
 {
+	int ret;
+	const char *src;
+	size_t len;
+
+	/* strlen("dir:") */
+	len = 4;
 	if (specs && specs->dir)
-		bdev->src = strdup(specs->dir);
+		src = specs->dir;
 	else
-		bdev->src = strdup(dest);
+		src = dest;
+
+	len += strlen(src) + 1;
+	bdev->src = malloc(len);
+	if (!bdev->src)
+		return -1;
+
+	ret = snprintf(bdev->src, len, "dir:%s", src);
+	if (ret < 0 || (size_t)ret >= len)
+		return -1;
+
 	bdev->dest = strdup(dest);
-	if (!bdev->src || !bdev->dest) {
-		ERROR("Out of memory");
+	if (!bdev->dest)
+		return -1;
+
+	ret = mkdir_p(src, 0755);
+	if (ret < 0) {
+		ERROR("Failed to create %s", src);
 		return -1;
 	}
 
-	if (mkdir_p(bdev->src, 0755) < 0) {
-		ERROR("Error creating %s", bdev->src);
-		return -1;
-	}
-	if (mkdir_p(bdev->dest, 0755) < 0) {
-		ERROR("Error creating %s", bdev->dest);
+	ret = mkdir_p(bdev->dest, 0755);
+	if (ret < 0) {
+		ERROR("Failed to create %s", bdev->dest);
 		return -1;
 	}
 
@@ -89,28 +110,36 @@ int dir_create(struct bdev *bdev, const char *dest, const char *n,
 
 int dir_destroy(struct bdev *orig)
 {
-	if (lxc_rmdir_onedev(orig->src, NULL) < 0)
+	char *src;
+
+	src = lxc_storage_get_path(orig->src, orig->src);
+
+	if (lxc_rmdir_onedev(src, NULL) < 0)
 		return -1;
+
 	return 0;
 }
 
 int dir_detect(const char *path)
 {
-	if (strncmp(path, "dir:", 4) == 0)
-		return 1; // take their word for it
+	if (!strncmp(path, "dir:", 4))
+		return 1;
+
 	if (is_dir(path))
 		return 1;
+
 	return 0;
 }
 
 int dir_mount(struct bdev *bdev)
 {
 	unsigned long mntflags;
-	char *mntdata;
+	char *src, *mntdata;
 	int ret;
 
 	if (strcmp(bdev->type, "dir"))
 		return -22;
+
 	if (!bdev->src || !bdev->dest)
 		return -22;
 
@@ -119,7 +148,9 @@ int dir_mount(struct bdev *bdev)
 		return -22;
 	}
 
-	ret = mount(bdev->src, bdev->dest, "bind", MS_BIND | MS_REC | mntflags, mntdata);
+	src = lxc_storage_get_path(bdev->src, bdev->type);
+
+	ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC | mntflags, mntdata);
 	free(mntdata);
 	return ret;
 }
@@ -128,7 +159,9 @@ int dir_umount(struct bdev *bdev)
 {
 	if (strcmp(bdev->type, "dir"))
 		return -22;
+
 	if (!bdev->src || !bdev->dest)
 		return -22;
+
 	return umount(bdev->dest);
 }

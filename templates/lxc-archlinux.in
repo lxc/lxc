@@ -121,7 +121,7 @@ systemctl enable systemd-resolved
 ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
 EOF
     # enable getty on active ttys
-    local nttys=$(cat "${config_path}/config" ${shared_config} ${common_config} | grep "^lxc.tty" | head -n1 | cut -d= -f2 | tr -d "[:blank:]")
+    local nttys=$(cat "${config_path}/config" ${shared_config} ${common_config} | grep "^lxc.tty.max" | head -n1 | cut -d= -f2 | tr -d "[:blank:]")
     local devttydir=$(cat "${config_path}/config" ${shared_config} ${common_config} | grep "^lxc.tty.dir" | head -n1 | cut -d= -f2 | tr -d "[:blank:]")
     local devtty=""
     # bind getty instances to /dev/<devttydir>/tty* if lxc.tty.dir is set
@@ -151,8 +151,8 @@ copy_configuration() {
     echo "lxc.uts.name = ${name}" >> "${config}"
     grep -q "^lxc.arch" "${config}" 2>/dev/null \
         || echo "lxc.arch = ${arch}" >> "${config}"
-    grep -q "^lxc.rootfs" "${config}" 2>/dev/null \
-        || echo "lxc.rootfs = ${rootfs_path}" >> "${config}"
+    grep -q "^lxc.rootfs.path" "${config}" 2>/dev/null \
+        || echo "lxc.rootfs.path = ${rootfs_path}" >> "${config}"
     [ -e "${shared_config}" ] \
         && echo "lxc.include = ${shared_config}" >> "${config}"
     if [ $? -ne 0 ]; then

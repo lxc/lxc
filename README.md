@@ -85,13 +85,13 @@ quite restricted. Just to highlight the two most common problems:
 
 LXC is configured via a simple set of keys. For example,
 
-- `lxc.rootfs`
+- `lxc.rootfs.path`
 - `lxc.mount.entry`
 
 LXC namespaces configuration keys by using single dots. This means complex
 configuration keys such as `lxc.net.0` expose various subkeys such as
-`lxc.net.0.type`, `lxc.net.0.link`, `lxc.net.0.ipv6`, and others for even
-more fine-grained configuration.
+`lxc.net.0.type`, `lxc.net.0.link`, `lxc.net.0.ipv6.address`, and others for
+even more fine-grained configuration.
 
 LXC is used as the default runtime for [LXD](https://github.com/lxc/lxd),
 a container hypervisor exposing a well-designed and stable REST-api on top of

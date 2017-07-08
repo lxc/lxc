@@ -282,9 +282,9 @@ container_setup() {
     echo '### lxc-gentoo template stuff starts here' >> "$path/config"
 
     #Determine rootfs
-    #If backingstore was specified, lxc.rootfs should be present or --rootfs did the rootfs var creation
+    #If backingstore was specified, lxc.rootfs.path should be present or --rootfs did the rootfs var creation
     if [ -z "${rootfs}" ]; then
-        rootfs=`awk -F= '$1 ~ /^lxc.rootfs/ { print $2 }' "$path/config" 2>/dev/null`
+        rootfs=`awk -F= '$1 ~ /^lxc.rootfs.path/ { print $2 }' "$path/config" 2>/dev/null`
         if [ -z "${rootfs}" ]; then
             #OK it's default
             rootfs="${path}/rootfs"
@@ -686,11 +686,11 @@ container_conf()
         grep -q "^lxc.net.0.hwaddr" ${conf_file} || sed -i -e "/^lxc\.net\.0\.type[ \t]*=[ \t]*veth/a lxc.net.0.hwaddr = 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')" ${conf_file}
     fi
 
-    if grep -q "^lxc.rootfs" "${conf_file}" ; then
+    if grep -q "^lxc.rootfs.path" "${conf_file}" ; then
         #lxc-create already provided one
         conf_rootfs_line=""
     else
-        conf_rootfs_line="lxc.rootfs = $(readlink -f "${rootfs}")"
+        conf_rootfs_line="lxc.rootfs.path = $(readlink -f "${rootfs}")"
     fi
     if [[ "${arch}" == "x86" || "${arch}" == "amd64" ]]; then
         local conf_arch_line="lxc.arch = ${arch}"
@@ -706,7 +706,7 @@ ${conf_arch_line}
 
 # set the hostname
 lxc.uts.name = ${name}
-lxc.tty = ${tty}
+lxc.tty.max = ${tty}
 
 ${conf_rootfs_line}
 ${portage_mount}

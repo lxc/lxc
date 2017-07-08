@@ -69,8 +69,8 @@ copy_configuration() {
     mkdir -p "${config_path}"
     local config="${config_path}/config"
     echo "lxc.uts.name = ${name}" >> "${config}"
-    grep -q "^lxc.rootfs" "${config}" 2>/dev/null \
-        || echo "lxc.rootfs = ${rootfs_path}" >> "${config}"
+    grep -q "^lxc.rootfs.path" "${config}" 2>/dev/null \
+        || echo "lxc.rootfs.path = ${rootfs_path}" >> "${config}"
 
     # Detect if were in a UserNS and include the right config
     if [ -z "${LXC_MAPPED_GID+x}" ] || [ -z "${LXC_MAPPED_UID+x}" ]; then

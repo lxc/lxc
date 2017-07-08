@@ -102,7 +102,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       LXC namespaces configuration keys by using single dots. This means complex
       configuration keys such as <option>lxc.net.0</option> expose various
       subkeys such as <option>lxc.net.0.type</option>,
-      <option>lxc.net.0.link</option>, <option>lxc.net.0.ipv6</option>, and
+      <option>lxc.net.0.link</option>, <option>lxc.net.0.ipv6.address</option>, and
       others for even more fine-grained configuration.
     </para>
 
@@ -523,7 +523,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
         <varlistentry>
           <term>
-            <option>lxc.net.[i].ipv4</option>
+            <option>lxc.net.[i].ipv4.address</option>
           </term>
           <listitem>
             <para>
@@ -557,7 +557,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
         <varlistentry>
           <term>
-            <option>lxc.net.[i].ipv6</option>
+            <option>lxc.net.[i].ipv6.address</option>
           </term>
           <listitem>
             <para>
@@ -650,7 +650,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.pts</option>
+            <option>lxc.pty.max</option>
           </term>
           <listitem>
             <para>
@@ -685,7 +685,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         </varlistentry>
         <varlistentry>
           <term>
-            <option>lxc.console</option>
+            <option>lxc.console.path</option>
           </term>
           <listitem>
             <para>
@@ -718,7 +718,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.tty</option>
+            <option>lxc.tty.max</option>
           </term>
           <listitem>
             <para>
@@ -747,7 +747,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.devttydir</option>
+            <option>lxc.tty.dir</option>
           </term>
           <listitem>
             <para>
@@ -815,7 +815,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.mount</option>
+            <option>lxc.mount.fstab</option>
           </term>
           <listitem>
             <para>
@@ -1042,7 +1042,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.rootfs</option>
+            <option>lxc.rootfs.path</option>
           </term>
           <listitem>
             <para>
@@ -1076,7 +1076,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           </term>
           <listitem>
             <para>
-              where to recursively bind <option>lxc.rootfs</option>
+              where to recursively bind <option>lxc.rootfs.path</option>
               before pivoting.  This is to ensure success of the
               <citerefentry>
                 <refentrytitle><command>pivot_root</command></refentrytitle>
@@ -1095,20 +1095,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           <listitem>
             <para>
               extra mount options to use when mounting the rootfs.
-            </para>
-          </listitem>
-        </varlistentry>
-
-        <varlistentry>
-          <term>
-            <option>lxc.rootfs.backend</option>
-          </term>
-          <listitem>
-            <para>
-              specify the rootfs backend type to use, for instance 'dir' or
-	      'zfs'.  While this can be guessed by lxc at container startup,
-	      doing so takes time.  Specifying it here avoids extra
-	      processing.
             </para>
           </listitem>
         </varlistentry>
@@ -1342,7 +1328,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.seccomp</option>
+            <option>lxc.seccomp.profile</option>
           </term>
           <listitem>
             <para>
@@ -1440,7 +1426,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           <listitem><para> LXC_ROOTFS_MOUNT: the path to the mounted root filesystem. </para></listitem>
           <listitem><para> LXC_CONFIG_FILE: the path to the container configuration file. </para></listitem>
           <listitem><para> LXC_SRC_NAME: in the case of the clone hook, this is the original container's name. </para></listitem>
-          <listitem><para> LXC_ROOTFS_PATH: this is the lxc.rootfs entry for the container.  Note this is likely not where the mounted rootfs is to be found, use LXC_ROOTFS_MOUNT for that. </para></listitem>
+          <listitem><para> LXC_ROOTFS_PATH: this is the lxc.rootfs.path entry for the container.  Note this is likely not where the mounted rootfs is to be found, use LXC_ROOTFS_MOUNT for that. </para></listitem>
         </itemizedlist>
       </para>
       <para>
@@ -1633,7 +1619,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           <listitem>
             <para>
               The path to the console output of the container if not NULL.
-              [<option>-c</option>] [<option>lxc.console</option>]
+              [<option>-c</option>] [<option>lxc.console.path</option>]
             </para>
           </listitem>
         </varlistentry>
@@ -1676,7 +1662,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             <para>
               The host relative path to the container root which has been
               mounted to the rootfs.mount location.
-              [<option>lxc.rootfs</option>]
+              [<option>lxc.rootfs.path</option>]
             </para>
           </listitem>
         </varlistentry>
@@ -1938,8 +1924,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         lxc.net.0.link = br0
         lxc.net.0.name = eth0
         lxc.net.0.hwaddr = 4a:49:43:49:79:bf
-        lxc.net.0.ipv4 = 10.2.3.5/24 10.2.3.255
-        lxc.net.0.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
+        lxc.net.0.ipv4.address = 10.2.3.5/24 10.2.3.255
+        lxc.net.0.ipv6.address = 2003:db8:1:0:214:1234:fe0b:3597
       </programlisting>
     </refsect2>
 
@@ -1980,30 +1966,30 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         lxc.net.0.flags = up
         lxc.net.0.link = br0
         lxc.net.0.hwaddr = 4a:49:43:49:79:bf
-        lxc.net.0.ipv4 = 10.2.3.5/24 10.2.3.255
-        lxc.net.0.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
-        lxc.net.0.ipv6 = 2003:db8:1:0:214:5432:feab:3588
+        lxc.net.0.ipv4.address = 10.2.3.5/24 10.2.3.255
+        lxc.net.0.ipv6.address = 2003:db8:1:0:214:1234:fe0b:3597
+        lxc.net.0.ipv6.address = 2003:db8:1:0:214:5432:feab:3588
         lxc.net.1.type = macvlan
         lxc.net.1.flags = up
         lxc.net.1.link = eth0
         lxc.net.1.hwaddr = 4a:49:43:49:79:bd
-        lxc.net.1.ipv4 = 10.2.3.4/24
-        lxc.net.1.ipv4 = 192.168.10.125/24
-        lxc.net.1.ipv6 = 2003:db8:1:0:214:1234:fe0b:3596
+        lxc.net.1.ipv4.address = 10.2.3.4/24
+        lxc.net.1.ipv4.address = 192.168.10.125/24
+        lxc.net.1.ipv6.address = 2003:db8:1:0:214:1234:fe0b:3596
         lxc.net.2.type = phys
         lxc.net.2.flags = up
         lxc.net.2.link = dummy0
         lxc.net.2.hwaddr = 4a:49:43:49:79:ff
-        lxc.net.2.ipv4 = 10.2.3.6/24
-        lxc.net.2.ipv6 = 2003:db8:1:0:214:1234:fe0b:3297
+        lxc.net.2.ipv4.address = 10.2.3.6/24
+        lxc.net.2.ipv6.address = 2003:db8:1:0:214:1234:fe0b:3297
         lxc.cgroup.cpuset.cpus = 0,1
         lxc.cgroup.cpu.shares = 1234
         lxc.cgroup.devices.deny = a
         lxc.cgroup.devices.allow = c 1:3 rw
         lxc.cgroup.devices.allow = b 8:0 rw
-        lxc.mount = /etc/fstab.complex
+        lxc.mount.fstab = /etc/fstab.complex
         lxc.mount.entry = /lib /root/myrootfs/lib none ro,bind 0 0
-        lxc.rootfs = /mnt/rootfs.complex
+        lxc.rootfs.path = dir:/mnt/rootfs.complex
         lxc.cap.drop = sys_module mknod setuid net_raw
         lxc.cap.drop = mac_override
       </programlisting>

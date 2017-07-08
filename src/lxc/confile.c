@@ -75,8 +75,8 @@ lxc_log_define(lxc_confile, lxc);
 
 
 lxc_config_define(personality);
-lxc_config_define(pts);
-lxc_config_define(tty);
+lxc_config_define(pty_max);
+lxc_config_define(tty_max);
 lxc_config_define(tty_dir);
 lxc_config_define(apparmor_profile);
 lxc_config_define(apparmor_allow_incomplete);
@@ -87,11 +87,11 @@ lxc_config_define(log_level);
 lxc_config_define(log_file);
 lxc_config_define(mount);
 lxc_config_define(mount_auto);
-lxc_config_define(fstab);
+lxc_config_define(mount_fstab);
 lxc_config_define(rootfs_mount);
 lxc_config_define(rootfs_options);
 lxc_config_define(rootfs_backend);
-lxc_config_define(rootfs);
+lxc_config_define(rootfs_path);
 lxc_config_define(uts_name);
 lxc_config_define(hooks);
 lxc_config_define(net_type);
@@ -103,19 +103,19 @@ lxc_config_define(net_macvlan_mode);
 lxc_config_define(net_hwaddr);
 lxc_config_define(net_vlan_id);
 lxc_config_define(net_mtu);
-lxc_config_define(net_ipv4);
+lxc_config_define(net_ipv4_address);
 lxc_config_define(net_ipv4_gateway);
 lxc_config_define(net_script_up);
 lxc_config_define(net_script_down);
-lxc_config_define(net_ipv6);
+lxc_config_define(net_ipv6_address);
 lxc_config_define(net_ipv6_gateway);
 lxc_config_define(net_nic);
 lxc_config_define(net);
 lxc_config_define(cap_drop);
 lxc_config_define(cap_keep);
 lxc_config_define(console_logfile);
-lxc_config_define(console);
-lxc_config_define(seccomp);
+lxc_config_define(console_path);
+lxc_config_define(seccomp_profile);
 lxc_config_define(includefiles);
 lxc_config_define(autodev);
 lxc_config_define(signal_halt);
@@ -135,15 +135,25 @@ lxc_config_define(prlimit);
 
 static struct lxc_config_t config[] = {
 	{ "lxc.arch",                      set_config_personality,                 get_config_personality,                 clr_config_personality,               },
-	{ "lxc.pts",                       set_config_pts,                         get_config_pts,                         clr_config_pts,                       },
+	{ "lxc.pty.max",                   set_config_pty_max,                     get_config_pty_max,                     clr_config_pty_max,                   },
 	{ "lxc.tty.dir",                   set_config_tty_dir,                     get_config_tty_dir,                     clr_config_tty_dir,                   },
+	{ "lxc.tty.max",                   set_config_tty_max,                     get_config_tty_max,                     clr_config_tty_max,                   },
+
+	/* REMOVE IN LXC 3.0
+	   legacy pts key
+	 */
+	{ "lxc.pts",                       set_config_pty_max,                     get_config_pty_max,                     clr_config_pty_max,                   },
 
 	/* REMOVE IN LXC 3.0
 	   legacy devttydir key
 	 */
 	{ "lxc.devttydir",                 set_config_tty_dir,                     get_config_tty_dir,                     clr_config_tty_dir,                   },
 
-	{ "lxc.tty",                       set_config_tty,                         get_config_tty,                         clr_config_tty,                       },
+	/* REMOVE IN LXC 3.0
+	   legacy tty key
+	 */
+	{ "lxc.tty",                       set_config_tty_max,                     get_config_tty_max,                     clr_config_tty_max,                   },
+
 	{ "lxc.apparmor.profile",          set_config_apparmor_profile,            get_config_apparmor_profile,            clr_config_apparmor_profile,          },
 	{ "lxc.apparmor.allow_incomplete", set_config_apparmor_allow_incomplete,   get_config_apparmor_allow_incomplete,   clr_config_apparmor_allow_incomplete, },
 	{ "lxc.selinux.context",           set_config_selinux_context,             get_config_selinux_context,             clr_config_selinux_context,           },
@@ -159,11 +169,25 @@ static struct lxc_config_t config[] = {
 	{ "lxc.id_map",                    set_config_idmaps,                      get_config_idmaps,                      clr_config_idmaps,                    },
 	{ "lxc.mount.entry",               set_config_mount,                       get_config_mount,                       clr_config_mount,                     },
 	{ "lxc.mount.auto",                set_config_mount_auto,                  get_config_mount_auto,                  clr_config_mount_auto,                },
-	{ "lxc.mount",                     set_config_fstab,	                   get_config_fstab,                       clr_config_fstab,                     },
+	{ "lxc.mount.fstab",               set_config_mount_fstab,                 get_config_mount_fstab,                 clr_config_mount_fstab,               },
 	{ "lxc.rootfs.mount",              set_config_rootfs_mount,                get_config_rootfs_mount,                clr_config_rootfs_mount,              },
 	{ "lxc.rootfs.options",            set_config_rootfs_options,              get_config_rootfs_options,              clr_config_rootfs_options,            },
+	{ "lxc.rootfs.path",               set_config_rootfs_path,                 get_config_rootfs_path,                 clr_config_rootfs_path,               },
+
+	/* REMOVE IN LXC 3.0
+	   legacy mount key
+	 */
+	{ "lxc.mount",                     set_config_mount_fstab,                 get_config_mount_fstab,                 clr_config_mount_fstab,               },
+
+	/* REMOVE IN LXC 3.0
+	   legacy rootfs.backend key
+	 */
 	{ "lxc.rootfs.backend",            set_config_rootfs_backend,              get_config_rootfs_backend,              clr_config_rootfs_backend,            },
-	{ "lxc.rootfs",                    set_config_rootfs,                      get_config_rootfs,                      clr_config_rootfs,                    },
+
+	/* REMOVE IN LXC 3.0
+	   legacy rootfs key
+	 */
+	{ "lxc.rootfs",                    set_config_rootfs_path,                 get_config_rootfs_path,                 clr_config_rootfs_path,               },
 
 	/* REMOVE IN LXC 3.0
 	   legacy utsname key
@@ -215,18 +239,28 @@ static struct lxc_config_t config[] = {
 	{ "lxc.net.mtu",                   set_config_net_mtu,                     get_config_net_mtu,                     clr_config_net_mtu,                   },
 	{ "lxc.net.vlan.id",               set_config_net_vlan_id,                 get_config_net_vlan_id,                 clr_config_net_vlan_id,               },
 	{ "lxc.net.ipv4.gateway",          set_config_net_ipv4_gateway,            get_config_net_ipv4_gateway,            clr_config_net_ipv4_gateway,          },
-	{ "lxc.net.ipv4",                  set_config_net_ipv4,                    get_config_net_ipv4,                    clr_config_net_ipv4,                  },
+	{ "lxc.net.ipv4.address",          set_config_net_ipv4_address,            get_config_net_ipv4_address,            clr_config_net_ipv4_address,          },
 	{ "lxc.net.ipv6.gateway",          set_config_net_ipv6_gateway,            get_config_net_ipv6_gateway,            clr_config_net_ipv6_gateway,          },
-	{ "lxc.net.ipv6",                  set_config_net_ipv6,                    get_config_net_ipv6,                    clr_config_net_ipv6,                  },
+	{ "lxc.net.ipv6.address",          set_config_net_ipv6_address,            get_config_net_ipv6_address,            clr_config_net_ipv6_address,          },
 	{ "lxc.net.",                      set_config_net_nic,                     get_config_net_nic,                     clr_config_net_nic,                   },
 	{ "lxc.net",                       set_config_net,                         get_config_net,                         clr_config_net,                       },
 	{ "lxc.cap.drop",                  set_config_cap_drop,                    get_config_cap_drop,                    clr_config_cap_drop,                  },
 	{ "lxc.cap.keep",                  set_config_cap_keep,                    get_config_cap_keep,                    clr_config_cap_keep,                  },
 	{ "lxc.console.logfile",           set_config_console_logfile,             get_config_console_logfile,             clr_config_console_logfile,           },
-	{ "lxc.console",                   set_config_console,                     get_config_console,                     clr_config_console,                   },
-	{ "lxc.seccomp",                   set_config_seccomp,                     get_config_seccomp,                     clr_config_seccomp,                   },
+	{ "lxc.console.path",              set_config_console_path,                get_config_console_path,                clr_config_console_path,              },
+	{ "lxc.seccomp.profile",           set_config_seccomp_profile,             get_config_seccomp_profile,             clr_config_seccomp_profile,           },
 	{ "lxc.include",                   set_config_includefiles,                get_config_includefiles,                clr_config_includefiles,              },
 	{ "lxc.autodev",                   set_config_autodev,                     get_config_autodev,                     clr_config_autodev,                   },
+
+	/* REMOVE IN LXC 3.0
+	   legacy seccomp key
+	 */
+	{ "lxc.seccomp",                   set_config_seccomp_profile,             get_config_seccomp_profile,             clr_config_seccomp_profile,           },
+
+	/* REMOVE IN LXC 3.0
+	   legacy console key
+	 */
+	{ "lxc.console",                   set_config_console_path,                get_config_console_path,                clr_config_console_path,              },
 
 	/* REMOVE IN LXC 3.0
 	   legacy singal keys
@@ -500,9 +534,9 @@ extern int lxc_list_nicconfigs(struct lxc_conf *c, const char *key, char *retv,
 		strprint(retv, inlen, "name\n");
 		strprint(retv, inlen, "hwaddr\n");
 		strprint(retv, inlen, "mtu\n");
-		strprint(retv, inlen, "ipv6\n");
+		strprint(retv, inlen, "ipv6.address\n");
 		strprint(retv, inlen, "ipv6.gateway\n");
-		strprint(retv, inlen, "ipv4\n");
+		strprint(retv, inlen, "ipv4.address\n");
 		strprint(retv, inlen, "ipv4.gateway\n");
 	}
 
@@ -737,8 +771,8 @@ static int set_config_net_mtu(const char *key, const char *value,
 	return set_config_string_item(&netdev->mtu, value);
 }
 
-static int set_config_net_ipv4(const char *key, const char *value,
-			       struct lxc_conf *lxc_conf, void *data)
+static int set_config_net_ipv4_address(const char *key, const char *value,
+				       struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 	struct lxc_inetdev *inetdev;
@@ -747,7 +781,7 @@ static int set_config_net_ipv4(const char *key, const char *value,
 	char *addr = NULL, *bcast = NULL, *prefix = NULL;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_net_ipv4(key, lxc_conf, data);
+		return clr_config_net_ipv4_address(key, lxc_conf, data);
 
 	if (!data)
 		return -1;
@@ -874,8 +908,8 @@ static int set_config_net_ipv4_gateway(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_net_ipv6(const char *key, const char *value,
-			       struct lxc_conf *lxc_conf, void *data)
+static int set_config_net_ipv6_address(const char *key, const char *value,
+				       struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 	struct lxc_inet6dev *inet6dev;
@@ -883,7 +917,7 @@ static int set_config_net_ipv6(const char *key, const char *value,
 	char *slash, *valdup, *netmask;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_net_ipv6(key, lxc_conf, data);
+		return clr_config_net_ipv6_address(key, lxc_conf, data);
 
 	if (!data)
 		return -1;
@@ -1033,8 +1067,8 @@ static int add_hook(struct lxc_conf *lxc_conf, int which, char *hook)
 	return 0;
 }
 
-static int set_config_seccomp(const char *key, const char *value,
-			      struct lxc_conf *lxc_conf, void *data)
+static int set_config_seccomp_profile(const char *key, const char *value,
+				      struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_path_item(&lxc_conf->seccomp, value);
 }
@@ -1138,8 +1172,8 @@ static int set_config_personality(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_pts(const char *key, const char *value,
-			  struct lxc_conf *lxc_conf, void *data)
+static int set_config_pty_max(const char *key, const char *value,
+			      struct lxc_conf *lxc_conf, void *data)
 {
 	/* Set config value to default. */
 	if (lxc_config_value_empty(value)) {
@@ -1294,8 +1328,8 @@ on_error:
 	return -1;
 }
 
-static int set_config_tty(const char *key, const char *value,
-			  struct lxc_conf *lxc_conf, void *data)
+static int set_config_tty_max(const char *key, const char *value,
+			      struct lxc_conf *lxc_conf, void *data)
 {
 	/* Set config value to default. */
 	if (lxc_config_value_empty(value)) {
@@ -1725,11 +1759,11 @@ on_error:
 	return -1;
 }
 
-static int set_config_fstab(const char *key, const char *value,
-			    struct lxc_conf *lxc_conf, void *data)
+static int set_config_mount_fstab(const char *key, const char *value,
+				  struct lxc_conf *lxc_conf, void *data)
 {
 	if (lxc_config_value_empty(value)) {
-		clr_config_fstab(key, lxc_conf, NULL);
+		clr_config_mount_fstab(key, lxc_conf, NULL);
 		return -1;
 	}
 
@@ -1927,8 +1961,8 @@ static int set_config_cap_drop(const char *key, const char *value,
 	return ret;
 }
 
-static int set_config_console(const char *key, const char *value,
-			      struct lxc_conf *lxc_conf, void *data)
+static int set_config_console_path(const char *key, const char *value,
+				   struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_path_item(&lxc_conf->console.path, value);
 }
@@ -2030,8 +2064,8 @@ static int set_config_includefiles(const char *key, const char *value,
 	return lxc_config_read(value, lxc_conf, true);
 }
 
-static int set_config_rootfs(const char *key, const char *value,
-			     struct lxc_conf *lxc_conf, void *data)
+static int set_config_rootfs_path(const char *key, const char *value,
+				  struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_path_item(&lxc_conf->rootfs.path, value);
 }
@@ -2051,18 +2085,7 @@ static int set_config_rootfs_options(const char *key, const char *value,
 static int set_config_rootfs_backend(const char *key, const char *value,
 				     struct lxc_conf *lxc_conf, void *data)
 {
-	if (lxc_config_value_empty(value)) {
-		free(lxc_conf->rootfs.bdev_type);
-		lxc_conf->rootfs.bdev_type = NULL;
-		return 0;
-	}
-
-	if (!is_valid_bdev_type(value)) {
-		ERROR("Bad rootfs.backend: '%s'", value);
-		return -1;
-	}
-
-	return set_config_string_item(&lxc_conf->rootfs.bdev_type, value);
+	return 0;
 }
 
 static int set_config_uts_name(const char *key, const char *value,
@@ -2781,14 +2804,14 @@ static int get_config_personality(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-static int get_config_pts(const char *key, char *retv, int inlen,
-			  struct lxc_conf *c, void *data)
+static int get_config_pty_max(const char *key, char *retv, int inlen,
+			      struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_int(c, retv, inlen, c->pts);
 }
 
-static int get_config_tty(const char *key, char *retv, int inlen,
-			  struct lxc_conf *c, void *data)
+static int get_config_tty_max(const char *key, char *retv, int inlen,
+			      struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_int(c, retv, inlen, c->tty);
 }
@@ -2923,8 +2946,8 @@ static int get_config_log_file(const char *key, char *retv, int inlen,
 	return lxc_get_conf_str(retv, inlen, c->logfile);
 }
 
-static int get_config_fstab(const char *key, char *retv, int inlen,
-			    struct lxc_conf *c, void *data)
+static int get_config_mount_fstab(const char *key, char *retv, int inlen,
+				  struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_str(retv, inlen, c->fstab);
 }
@@ -3032,8 +3055,8 @@ static int get_config_mount(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-static int get_config_rootfs(const char *key, char *retv, int inlen,
-			     struct lxc_conf *c, void *data)
+static int get_config_rootfs_path(const char *key, char *retv, int inlen,
+				  struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_str(retv, inlen, c->rootfs.path);
 }
@@ -3053,7 +3076,7 @@ static int get_config_rootfs_options(const char *key, char *retv, int inlen,
 static int get_config_rootfs_backend(const char *key, char *retv, int inlen,
 				     struct lxc_conf *c, void *data)
 {
-	return lxc_get_conf_str(retv, inlen, c->rootfs.bdev_type);
+	return 0;
 }
 
 static int get_config_uts_name(const char *key, char *retv, int inlen,
@@ -3155,8 +3178,8 @@ static int get_config_cap_keep(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-static int get_config_console(const char *key, char *retv, int inlen,
-			      struct lxc_conf *c, void *data)
+static int get_config_console_path(const char *key, char *retv, int inlen,
+				   struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_str(retv, inlen, c->console.path);
 }
@@ -3167,8 +3190,8 @@ static int get_config_console_logfile(const char *key, char *retv, int inlen,
 	return lxc_get_conf_str(retv, inlen, c->console.log_path);
 }
 
-static int get_config_seccomp(const char *key, char *retv, int inlen,
-			      struct lxc_conf *c, void *data)
+static int get_config_seccomp_profile(const char *key, char *retv, int inlen,
+				      struct lxc_conf *c, void *data)
 {
 	return lxc_get_conf_str(retv, inlen, c->seccomp);
 }
@@ -3353,15 +3376,15 @@ static inline int clr_config_personality(const char *key, struct lxc_conf *c,
 	return 0;
 }
 
-static inline int clr_config_pts(const char *key, struct lxc_conf *c,
-				 void *data)
+static inline int clr_config_pty_max(const char *key, struct lxc_conf *c,
+				     void *data)
 {
 	c->pts = 0;
 	return 0;
 }
 
-static inline int clr_config_tty(const char *key, struct lxc_conf *c,
-				 void *data)
+static inline int clr_config_tty_max(const char *key, struct lxc_conf *c,
+				     void *data)
 {
 	c->tty = 0;
 	return 0;
@@ -3438,16 +3461,16 @@ static inline int clr_config_mount_auto(const char *key, struct lxc_conf *c,
 	return lxc_clear_automounts(c);
 }
 
-static inline int clr_config_fstab(const char *key, struct lxc_conf *c,
-				   void *data)
+static inline int clr_config_mount_fstab(const char *key, struct lxc_conf *c,
+					 void *data)
 {
 	free(c->fstab);
 	c->fstab = NULL;
 	return 0;
 }
 
-static inline int clr_config_rootfs(const char *key, struct lxc_conf *c,
-				    void *data)
+static inline int clr_config_rootfs_path(const char *key, struct lxc_conf *c,
+					 void *data)
 {
 	free(c->rootfs.path);
 	c->rootfs.path = NULL;
@@ -3473,8 +3496,6 @@ static inline int clr_config_rootfs_options(const char *key, struct lxc_conf *c,
 static inline int clr_config_rootfs_backend(const char *key, struct lxc_conf *c,
 					    void *data)
 {
-	free(c->rootfs.bdev_type);
-	c->rootfs.bdev_type = NULL;
 	return 0;
 }
 
@@ -3512,8 +3533,8 @@ static inline int clr_config_cap_keep(const char *key, struct lxc_conf *c,
 	return lxc_clear_config_keepcaps(c);
 }
 
-static inline int clr_config_console(const char *key, struct lxc_conf *c,
-				     void *data)
+static inline int clr_config_console_path(const char *key, struct lxc_conf *c,
+					  void *data)
 {
 	free(c->console.path);
 	c->console.path = NULL;
@@ -3528,8 +3549,8 @@ static inline int clr_config_console_logfile(const char *key,
 	return 0;
 }
 
-static inline int clr_config_seccomp(const char *key, struct lxc_conf *c,
-				     void *data)
+static inline int clr_config_seccomp_profile(const char *key,
+					     struct lxc_conf *c, void *data)
 {
 	free(c->seccomp);
 	c->seccomp = NULL;
@@ -4013,8 +4034,8 @@ static int clr_config_net_ipv4_gateway(const char *key,
 	return 0;
 }
 
-static int clr_config_net_ipv4(const char *key, struct lxc_conf *lxc_conf,
-			       void *data)
+static int clr_config_net_ipv4_address(const char *key,
+				       struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 	struct lxc_list *cur, *next;
@@ -4053,8 +4074,8 @@ static int clr_config_net_ipv6_gateway(const char *key,
 	return 0;
 }
 
-static int clr_config_net_ipv6(const char *key, struct lxc_conf *lxc_conf,
-			       void *data)
+static int clr_config_net_ipv6_address(const char *key,
+				       struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev;
 	struct lxc_list *cur, *next;
@@ -4412,8 +4433,8 @@ static int get_config_net_ipv4_gateway(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-static int get_config_net_ipv4(const char *key, char *retv, int inlen,
-			       struct lxc_conf *c, void *data)
+static int get_config_net_ipv4_address(const char *key, char *retv, int inlen,
+				       struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
 	size_t listlen;
@@ -4473,8 +4494,8 @@ static int get_config_net_ipv6_gateway(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-static int get_config_net_ipv6(const char *key, char *retv, int inlen,
-			       struct lxc_conf *c, void *data)
+static int get_config_net_ipv6_address(const char *key, char *retv, int inlen,
+				       struct lxc_conf *c, void *data)
 {
 	int len, fulllen = 0;
 	size_t listlen;

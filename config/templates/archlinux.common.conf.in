@@ -2,7 +2,7 @@
 lxc.include = @LXCTEMPLATECONFIG@/common.conf
 
 # Allow for 6 tty devices by default
-lxc.tty = 6
+lxc.tty.max = 6
 
 # Set the halt/stop signals
 lxc.signal.halt=SIGRTMIN+4

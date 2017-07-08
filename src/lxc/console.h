@@ -110,7 +110,7 @@ extern int  lxc_console_mainloop_add(struct lxc_epoll_descr *, struct lxc_conf *
 extern void lxc_console_sigwinch(int sig);
 
 /*
- * Connect to one of the ptys given to the container via lxc.tty.
+ * Connect to one of the ptys given to the container via lxc.tty.max.
  * - allocates either the current controlling pty (default) or a user specified
  *   pty as peer pty for the containers tty
  * - sets up SIGWINCH handler, winsz, and new terminal settings
@@ -123,10 +123,10 @@ extern int  lxc_console(struct lxc_container *c, int ttynum,
 		        int escape);
 
 /*
- * Allocate one of the ptys given to the container via lxc.tty. Returns an open
- * fd to the allocated pty.
+ * Allocate one of the ptys given to the container via lxc.tty.max. Returns an
+ * open fd to the allocated pty.
  * Set ttynum to -1 to allocate the first available pty, or to a value within
- * the range specified by lxc.tty to allocate a specific pty.
+ * the range specified by lxc.tty.max to allocate a specific pty.
  */
 extern int  lxc_console_getfd(struct lxc_container *c, int *ttynum,
 			      int *masterfd);

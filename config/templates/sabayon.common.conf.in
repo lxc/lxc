@@ -4,10 +4,10 @@
 lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
 
 # Allow for 1024 pseudo terminals
-lxc.pts = 1024
+lxc.pty.max = 1024
 
 # Setup 1 tty devices for lxc-console command
-lxc.tty = 1
+lxc.tty.max = 1
 
 # Needed for systemd distro
 lxc.autodev = 1
@@ -73,7 +73,7 @@ lxc.mount.entry = none dev/shm tmpfs rw,nosuid,nodev,create=dir
 
 # Blacklist some syscalls which are not safe in privileged
 # containers
-lxc.seccomp = @LXCTEMPLATECONFIG@/common.seccomp
+lxc.seccomp.profile = @LXCTEMPLATECONFIG@/common.seccomp
 
 # Customize lxc options through common directory
 lxc.include = @LXCTEMPLATECONFIG@/common.conf.d/

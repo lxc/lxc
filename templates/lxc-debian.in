@@ -265,7 +265,7 @@ configure_debian_systemd()
     chroot "${rootfs}" ln -s /dev/null /etc/systemd/system/systemd-udevd.service
     chroot "${rootfs}" ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
     # Setup getty service on the ttys we are going to allow in the
-    # default config.  Number should match lxc.tty
+    # default config.  Number should match lxc.tty.max
     ( cd "${rootfs}/etc/systemd/system/getty.target.wants"
         for i in $(seq 1 "$num_tty") ; do ln -sf ../getty\@.service getty@tty"${i}".service; done )
 
@@ -511,13 +511,13 @@ copy_configuration()
     ## Add the container-specific config
     echo "" >> "$path/config"
     echo "# Container specific configuration" >> "$path/config"
-    grep -q "^lxc.rootfs" "$path/config" 2> /dev/null || echo "lxc.rootfs = $rootfs" >> "$path/config"
+    grep -q "^lxc.rootfs.path" "$path/config" 2> /dev/null || echo "lxc.rootfs.path = $rootfs" >> "$path/config"
 
     cat <<EOF >> $path/config
-lxc.tty = $num_tty
+lxc.tty.max = $num_tty
 lxc.uts.name = $hostname
 lxc.arch = $arch
-lxc.pts=1023
+lxc.pty.max = 1024
 EOF
 
     if [ $? -ne 0 ]; then
@@ -787,16 +787,16 @@ fi
 # detect rootfs
 config="$path/config"
 if [ -z "$rootfs" ]; then
-    if grep -q '^lxc.rootfs' "$config" 2> /dev/null ; then
-        rootfs=$(awk -F= '/^lxc.rootfs[ \t]+=/{ print $2 }' "$config")
+    if grep -q '^lxc.rootfs.path' "$config" 2> /dev/null ; then
+        rootfs=$(awk -F= '/^lxc.rootfs.path[ \t]+=/{ print $2 }' "$config")
     else
         rootfs=$path/rootfs
     fi
 fi
 
 # determine the number of ttys - default is 4
-if grep -q '^lxc.tty' "$config" 2> /dev/null ; then
-    num_tty=$(awk -F= '/^lxc.tty[ \t]+=/{ print $2 }' "$config")
+if grep -q '^lxc.tty.max' "$config" 2> /dev/null ; then
+    num_tty=$(awk -F= '/^lxc.tty.max[ \t]+=/{ print $2 }' "$config")
 else
     num_tty=4
 fi

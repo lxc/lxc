@@ -96,25 +96,25 @@ static int set_and_clear_complete_netdev(struct lxc_container *c)
 		return -1;
 	}
 
-	if (!c->set_config_item(c, "lxc.net.1.ipv4", "10.0.2.3/24")) {
-		lxc_error("%s\n", "lxc.net.1.ipv4");
+	if (!c->set_config_item(c, "lxc.net.1.ipv4.address", "10.0.2.3/24")) {
+		lxc_error("%s\n", "lxc.net.1.ipv4.address");
 		return -1;
 	}
 
-	if (!c->set_config_item(c, "lxc.net.1.ipv4_gateway", "10.0.2.2")) {
-		lxc_error("%s\n", "lxc.net.1.ipv4");
+	if (!c->set_config_item(c, "lxc.net.1.ipv4.gateway", "10.0.2.2")) {
+		lxc_error("%s\n", "lxc.net.1.ipv4.gateway");
 		return -1;
 	}
 
-	if (!c->set_config_item(c, "lxc.net.1.ipv6",
+	if (!c->set_config_item(c, "lxc.net.1.ipv6.address",
 				"2003:db8:1:0:214:1234:fe0b:3596/64")) {
-		lxc_error("%s\n", "lxc.net.1.ipv6");
+		lxc_error("%s\n", "lxc.net.1.ipv6.address");
 		return -1;
 	}
 
-	if (!c->set_config_item(c, "lxc.net.1.ipv6_gateway",
+	if (!c->set_config_item(c, "lxc.net.1.ipv6.gateway",
 				"2003:db8:1:0::1")) {
-		lxc_error("%s\n", "lxc.net.1.ipv6");
+		lxc_error("%s\n", "lxc.net.1.ipv6.gateway");
 		return -1;
 	}
 
@@ -300,17 +300,35 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.pts */
+	/* REMOVE IN LXC 3.0
+	   legacy ps keys
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.pts", "1000", tmpf, true) <
 	    0) {
 		lxc_error("%s\n", "lxc.pts");
 		goto non_test_error;
 	}
 
-	/* lxc.tty */
+	/* lxc.pty.max */
+	if (set_get_compare_clear_save_load(c, "lxc.pty.max", "1000", tmpf, true) <
+	    0) {
+		lxc_error("%s\n", "lxc.pty.max");
+		goto non_test_error;
+	}
+
+	/* REMOVE IN LXC 3.0
+	   legacy tty.max keys
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.tty", "4", tmpf, true) <
 	    0) {
 		lxc_error("%s\n", "lxc.tty");
+		goto non_test_error;
+	}
+
+	/* lxc.tty.max */
+	if (set_get_compare_clear_save_load(c, "lxc.tty.max", "4", tmpf, true) <
+	    0) {
+		lxc_error("%s\n", "lxc.tty.max");
 		goto non_test_error;
 	}
 
@@ -473,10 +491,19 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.mount */
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.mount key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.mount", "/some/path", NULL,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.mount");
+		goto non_test_error;
+	}
+
+	/* lxc.mount.fstab */
+	if (set_get_compare_clear_save_load(c, "lxc.mount.fstab", "/some/path", NULL,
+					    true) < 0) {
+		lxc_error("%s\n", "lxc.mount.fstab");
 		goto non_test_error;
 	}
 
@@ -503,10 +530,19 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.rootfs */
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.rootfs key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.rootfs", "/some/path", tmpf,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.rootfs");
+		goto non_test_error;
+	}
+
+	/* lxc.rootfs.path */
+	if (set_get_compare_clear_save_load(c, "lxc.rootfs.path", "/some/path", tmpf,
+					    true) < 0) {
+		lxc_error("%s\n", "lxc.rootfs.path");
 		goto non_test_error;
 	}
 
@@ -521,13 +557,6 @@ int main(int argc, char *argv[])
 	if (set_get_compare_clear_save_load(c, "lxc.rootfs.options",
 					    "ext4,discard", tmpf, true) < 0) {
 		lxc_error("%s\n", "lxc.rootfs.options");
-		goto non_test_error;
-	}
-
-	/* lxc.rootfs.backend */
-	if (set_get_compare_clear_save_load(c, "lxc.rootfs.backend", "btrfs",
-					    tmpf, true) < 0) {
-		lxc_error("%s\n", "lxc.rootfs.backend");
 		goto non_test_error;
 	}
 
@@ -626,10 +655,19 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.console */
+	/* REMOVE IN LXC 3.0
+	   legacy lxc.console key
+	 */
 	if (set_get_compare_clear_save_load(c, "lxc.console", "none", tmpf,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.console");
+		goto non_test_error;
+	}
+
+	/* lxc.console.path */
+	if (set_get_compare_clear_save_load(c, "lxc.console.path", "none", tmpf,
+					    true) < 0) {
+		lxc_error("%s\n", "lxc.console.path");
 		goto non_test_error;
 	}
 
@@ -640,10 +678,19 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.seccomp */
+	/* REMOVE IN LXC 3.0
+	   legacy seccomp key
+	 */
 	if (set_get_compare_clear_save_load(
 		c, "lxc.seccomp", "/some/seccomp/file", tmpf, true) < 0) {
 		lxc_error("%s\n", "lxc.seccomp");
+		goto non_test_error;
+	}
+
+	/* lxc.seccomp.profile */
+	if (set_get_compare_clear_save_load(
+		c, "lxc.seccomp.profile", "/some/seccomp/file", tmpf, true) < 0) {
+		lxc_error("%s\n", "lxc.seccomp.profile");
 		goto non_test_error;
 	}
 
@@ -965,16 +1012,16 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	if (set_get_compare_clear_save_load(c, "lxc.net.0.ipv4",
+	if (set_get_compare_clear_save_load(c, "lxc.net.0.ipv4.address",
 					    "10.0.2.3/24", tmpf, true)) {
-		lxc_error("%s\n", "lxc.net.0.ipv4");
+		lxc_error("%s\n", "lxc.net.0.ipv4.address");
 		goto non_test_error;
 	}
 
 	if (set_get_compare_clear_save_load(
-		c, "lxc.net.0.ipv6", "2003:db8:1:0:214:1234:fe0b:3596/64",
+		c, "lxc.net.0.ipv6.address", "2003:db8:1:0:214:1234:fe0b:3596/64",
 		tmpf, true)) {
-		lxc_error("%s\n", "lxc.net.0.ipv6");
+		lxc_error("%s\n", "lxc.net.0.ipv6.address");
 		goto non_test_error;
 	}
 

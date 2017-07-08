@@ -34,6 +34,7 @@
 #include "bdev.h"
 #include "log.h"
 #include "lxcloop.h"
+#include "storage_utils.h"
 #include "utils.h"
 
 lxc_log_define(lxcloop, lxc);
@@ -161,7 +162,7 @@ int loop_detect(const char *path)
 	int ret;
 	struct stat s;
 
-	if (strncmp(path, "loop:", 5) == 0)
+	if (!strncmp(path, "loop:", 5))
 		return 1;
 
 	ret = stat(path, &s);
