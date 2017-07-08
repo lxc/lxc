@@ -438,6 +438,9 @@ extern struct lxc_popen_FILE *lxc_popen(const char *command)
 		/* child */
 		int child_std_end = STDOUT_FILENO;
 
+		close(parent_end);
+		parent_end = -1;
+
 		if (child_end != child_std_end) {
 			/* dup2() doesn't dup close-on-exec flag */
 			dup2(child_end, child_std_end);
