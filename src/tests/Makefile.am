@@ -26,6 +26,7 @@ lxc_test_apparmor_SOURCES = aa.c
 lxc_test_utils_SOURCES = lxc-test-utils.c lxctest.h
 lxc_test_parse_config_file_SOURCES = parse_config_file.c lxctest.h
 lxc_test_config_jump_table_SOURCES = config_jump_table.c lxctest.h
+lxc_test_shortlived_SOURCES = shortlived.c
 
 AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	-DLXCPATH=\"$(LXCPATH)\" \
@@ -54,7 +55,7 @@ bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-snapshot lxc-test-concurrent lxc-test-may-control \
 	lxc-test-reboot lxc-test-list lxc-test-attach lxc-test-device-add-remove \
 	lxc-test-apparmor lxc-test-utils lxc-test-parse-config-file \
-	lxc-test-config-jump-table
+	lxc-test-config-jump-table lxc-test-shortlived
 
 bin_SCRIPTS = lxc-test-automount \
 	      lxc-test-autostart \
@@ -107,6 +108,7 @@ EXTRA_DIST = \
 	may_control.c \
 	parse_config_file.c \
 	saveconfig.c \
+	shortlived.c \
 	shutdowntest.c \
 	snapshot.c \
 	startone.c

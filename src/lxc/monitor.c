@@ -370,7 +370,7 @@ int lxc_monitord_spawn(const char *lxcpath)
 		exit(EXIT_FAILURE);
 	}
 
-	lxc_check_inherited(NULL, true, pipefd[1]);
+	lxc_check_inherited(NULL, true, &pipefd[1], 1);
 	if (null_stdfds() < 0) {
 		SYSERROR("Failed to dup2() standard file descriptors to /dev/null.");
 		exit(EXIT_FAILURE);

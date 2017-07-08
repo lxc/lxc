@@ -67,6 +67,7 @@
 #include "caps.h"
 #include "cgroup.h"
 #include "commands.h"
+#include "commands_utils.h"
 #include "conf.h"
 #include "console.h"
 #include "error.h"
@@ -189,18 +190,12 @@ static int match_fd(int fd)
 	return (fd == 0 || fd == 1 || fd == 2);
 }
 
-/* Check for any fds we need to close.
- * - If fd_to_ignore != -1, then if we find that fd open we will ignore it.
- * - By default we warn about open fds we find.
- * - If closeall is true, we will close open fds.
- * - If lxc-start was passed "-C", then conf->close_all_fds will be true, in
- *   which case we also close all open fds.
- * - A daemonized container will always pass closeall=true.
- */
-int lxc_check_inherited(struct lxc_conf *conf, bool closeall, int fd_to_ignore)
+int lxc_check_inherited(struct lxc_conf *conf, bool closeall,
+			int *fds_to_ignore, size_t len_fds)
 {
 	struct dirent *direntp;
 	int fd, fddir;
+	size_t i;
 	DIR *dir;
 
 	if (conf && conf->close_all_fds)
@@ -230,7 +225,12 @@ restart:
 			continue;
 		}
 
-		if (fd == fddir || fd == lxc_log_fd || fd == fd_to_ignore)
+		for (i = 0; i < len_fds; i++)
+			if (fds_to_ignore[i] == fd)
+				break;
+
+		if (fd == fddir || fd == lxc_log_fd ||
+		    (i < len_fds && fd == fds_to_ignore[i]))
 			continue;
 
 		if (current_config && fd == current_config->logfd)
@@ -343,8 +343,9 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	return 1;
 }
 
-int lxc_set_state(const char *name, struct lxc_handler *handler,
-		  lxc_state_t state)
+static int lxc_serve_state_clients(const char *name,
+				   struct lxc_handler *handler,
+				   lxc_state_t state)
 {
 	ssize_t ret;
 	struct lxc_list *cur, *next;
@@ -352,8 +353,9 @@ int lxc_set_state(const char *name, struct lxc_handler *handler,
 	struct lxc_msg msg = {.type = lxc_msg_state, .value = state};
 
 	process_lock();
+
 	/* Only set state under process lock held so that we don't cause
-	 * lxc_cmd_state_server() to miss a state.
+	*  lxc_cmd_add_state_client() to miss a state.
 	 */
 	handler->state = state;
 	TRACE("set container state to %s", lxc_state2str(state));
@@ -382,9 +384,11 @@ int lxc_set_state(const char *name, struct lxc_handler *handler,
 
 	again:
 		ret = send(client->clientfd, &msg, sizeof(msg), 0);
-		if (ret < 0) {
-			if (errno == EINTR)
+		if (ret <= 0) {
+			if (errno == EINTR) {
+				TRACE("Caught EINTR; retrying");
 				goto again;
+			}
 
 			ERROR("failed to send message to client");
 		}
@@ -396,6 +400,60 @@ int lxc_set_state(const char *name, struct lxc_handler *handler,
 		free(cur);
 	}
 	process_unlock();
+
+	return 0;
+}
+
+static int lxc_serve_state_socket_pair(const char *name,
+				       struct lxc_handler *handler,
+				       lxc_state_t state)
+{
+	ssize_t ret;
+
+	if (!handler->backgrounded ||
+            handler->state_socket_pair[1] < 0 ||
+	    state == STARTING)
+		return 0;
+
+	/* Close read end of the socket pair. */
+	close(handler->state_socket_pair[0]);
+	handler->state_socket_pair[0] = -1;
+
+again:
+	ret = lxc_abstract_unix_send_credential(handler->state_socket_pair[1],
+						&(int){state}, sizeof(int));
+	if (ret != sizeof(int)) {
+		if (errno == EINTR)
+			goto again;
+		SYSERROR("Failed to send state to %d",
+			 handler->state_socket_pair[1]);
+		return -1;
+	}
+
+	TRACE("Sent container state \"%s\" to %d", lxc_state2str(state),
+	      handler->state_socket_pair[1]);
+
+	/* Close write end of the socket pair. */
+	close(handler->state_socket_pair[1]);
+	handler->state_socket_pair[1] = -1;
+
+	return 0;
+}
+
+int lxc_set_state(const char *name, struct lxc_handler *handler,
+		  lxc_state_t state)
+{
+	int ret;
+
+	ret = lxc_serve_state_socket_pair(name, handler, state);
+	if (ret < 0) {
+		ERROR("Failed to synchronize via anonymous pair of unix sockets");
+		return -1;
+	}
+
+	ret = lxc_serve_state_clients(name, handler, state);
+	if (ret < 0)
+		return -1;
 
 	/* This function will try to connect to the legacy lxc-monitord state
 	 * server and only exists for backwards compatibility.
@@ -459,6 +517,12 @@ void lxc_free_handler(struct lxc_handler *handler)
 	if (handler->conf && handler->conf->maincmd_fd)
 		close(handler->conf->maincmd_fd);
 
+	if (handler->state_socket_pair[0] >= 0)
+		close(handler->state_socket_pair[0]);
+
+	if (handler->state_socket_pair[1] >= 0)
+		close(handler->state_socket_pair[1]);
+
 	if (handler->name)
 		free(handler->name);
 
@@ -467,9 +531,9 @@ void lxc_free_handler(struct lxc_handler *handler)
 }
 
 struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
-				     const char *lxcpath)
+				     const char *lxcpath, bool daemonize)
 {
-	int i;
+	int i, ret;
 	struct lxc_handler *handler;
 
 	handler = malloc(sizeof(*handler));
@@ -484,6 +548,7 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 	handler->conf = conf;
 	handler->lxcpath = lxcpath;
 	handler->pinfd = -1;
+	handler->state_socket_pair[0] = handler->state_socket_pair[1] = -1;
 	lxc_list_init(&handler->state_clients);
 
 	for (i = 0; i < LXC_NS_MAX; i++)
@@ -493,6 +558,22 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 	if (!handler->name) {
 		ERROR("failed to allocate memory");
 		goto on_error;
+	}
+
+	if (daemonize && !handler->conf->reboot) {
+		/* Create socketpair() to synchronize on daemonized startup.
+		 * When the container reboots we don't need to synchronize again
+		 * currently so don't open another socketpair().
+		 */
+		ret = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0,
+				 handler->state_socket_pair);
+		if (ret < 0) {
+			ERROR("Failed to create anonymous pair of unix sockets");
+			goto on_error;
+		}
+		TRACE("Created anonymous pair {%d,%d} of unix sockets",
+		      handler->state_socket_pair[0],
+		      handler->state_socket_pair[1]);
 	}
 
 	if (lxc_cmd_init(name, handler, lxcpath)) {

@@ -36,6 +36,7 @@
 
 #include "cgroup.h"
 #include "commands.h"
+#include "commands_utils.h"
 #include "config.h"
 #include "log.h"
 #include "lxc.h"
@@ -114,7 +115,7 @@ extern int lxc_wait(const char *lxcname, const char *states, int timeout,
 	if (fillwaitedstates(states, s))
 		return -1;
 
-	state = lxc_cmd_state_server(lxcname, lxcpath, s);
+	state = lxc_cmd_sock_get_state(lxcname, lxcpath, s, timeout);
 	if (state < 0) {
 		SYSERROR("failed to receive state from monitor");
 		return -1;

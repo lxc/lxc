@@ -23,11 +23,13 @@
 
 #include "config.h"
 
+#define __STDC_FORMAT_MACROS /* Required for PRIu64 to work. */
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
+#include <inttypes.h>
 #include <libgen.h>
 #include <stddef.h>
 #include <stdio.h>

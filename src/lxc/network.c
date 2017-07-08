@@ -1410,7 +1410,7 @@ static bool is_ovs_bridge(const char *bridge)
  */
 static void ovs_cleanup_nic(const char *lxcpath, const char *name, const char *bridge, const char *nic)
 {
-	if (lxc_check_inherited(NULL, true, -1) < 0)
+	if (lxc_check_inherited(NULL, true, &(int){-1}, 1) < 0)
 		return;
 	if (lxc_wait(name, "STOPPED", -1, lxcpath) < 0)
 		return;
