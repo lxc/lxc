@@ -116,7 +116,7 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
  */
 static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 {
-	int ret,rspfd;
+	int ret, rspfd;
 	struct lxc_cmd_rsp *rsp = &cmd->rsp;
 
 	ret = lxc_abstract_unix_recv_fds(sock, &rspfd, 1, rsp, sizeof(*rsp));
@@ -212,11 +212,6 @@ static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
 	int client_fd;
 	int ret = -1;
 
-	/* -2 here because this is an abstract unix socket so it needs a
-	 * leading \0, and we null terminate, so it needs a trailing \0.
-	 * Although null termination isn't required by the API, we do it anyway
-	 * because we print the sockname out sometimes.
-	 */
 	client_fd = lxc_cmd_connect(name, lxcpath, hashed_sock_name);
 	if (client_fd < 0 && client_fd == -ECONNREFUSED)
 		return -ECONNREFUSED;
@@ -291,11 +286,6 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 
 	*stopped = 0;
 
-	/* -2 here because this is an abstract unix socket so it needs a
-	 * leading \0, and we null terminate, so it needs a trailing \0.
-	 * Although null termination isn't required by the API, we do it anyway
-	 * because we print the sockname out sometimes.
-	 */
 	TRACE("command %s tries to connect command socket",
 	      lxc_cmd_str(cmd->req.cmd));
 
