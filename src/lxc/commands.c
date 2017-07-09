@@ -260,7 +260,7 @@ static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
  * request and collect the response
  *
  * @name           : name of container to connect to
- * @cmd            : command with initialized reqest to send
+ * @cmd            : command with initialized request to send
  * @stopped        : output indicator if the container was not running
  * @lxcpath        : the lxcpath in which the container is running
  *
