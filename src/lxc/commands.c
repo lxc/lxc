@@ -264,7 +264,7 @@ static int lxc_cmd_rsp_send(int fd, struct lxc_cmd_rsp *rsp)
  * request and collect the response
  *
  * @name           : name of container to connect to
- * @cmd            : command with initialized reqest to send
+ * @cmd            : command with initialized request to send
  * @stopped        : output indicator if the container was not running
  * @lxcpath        : the lxcpath in which the container is running
  *
