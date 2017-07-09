@@ -168,13 +168,13 @@ int lxc_cmd_connect(const char *name, const char *lxcpath,
 	int ret, client_fd;
 	char path[sizeof(((struct sockaddr_un *)0)->sun_path)] = {0};
 	char *offset = &path[1];
-	size_t len = sizeof(path) - 2;
 
 	/* -2 here because this is an abstract unix socket so it needs a
 	 * leading \0, and we null terminate, so it needs a trailing \0.
 	 * Although null termination isn't required by the API, we do it anyway
 	 * because we print the sockname out sometimes.
 	 */
+	size_t len = sizeof(path) - 2;
 	ret = lxc_make_abstract_socket_name(offset, len, name, lxcpath,
 					    hashed_sock_name, "command");
 	if (ret < 0)
