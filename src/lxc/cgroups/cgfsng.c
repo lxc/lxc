@@ -1979,9 +1979,8 @@ static bool cgfsng_setup_limits(void *hdata, struct lxc_list *cgroup_settings,
 				      cg->subsystem, cg->value, d->name);
 				goto out;
 			}
+			DEBUG("cgroup '%s' set to '%s'", cg->subsystem, cg->value);
 		}
-
-		DEBUG("cgroup '%s' set to '%s'", cg->subsystem, cg->value);
 	}
 
 	ret = true;
