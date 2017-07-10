@@ -751,8 +751,13 @@ static int do_start(void *data)
 	 * setup on its console ie. the pty allocated in lxc_console_create()
 	 * so make sure that that pty is stdin,stdout,stderr.
 	 */
-	if (lxc_console_set_stdfds(handler->conf->console.slave) < 0)
-		goto out_warn_father;
+	 if (handler->conf->console.slave >= 0)
+		 if (set_stdfds(handler->conf->console.slave) < 0) {
+			ERROR("Failed to redirect std{in,out,err} to pty file "
+			      "descriptor %d",
+			      handler->conf->console.slave);
+			goto out_warn_father;
+		 }
 
 	/* If we mounted a temporary proc, then unmount it now */
 	tmp_proc_unmount(handler->conf);
@@ -782,8 +787,11 @@ static int do_start(void *data)
 
 	close(handler->sigfd);
 
-	/* after this call, we are in error because this
-	 * ops should not return as it execs */
+	setsid();
+
+	/* After this call, we are in error because this ops should not return
+	 * as it execs.
+	 */
 	handler->ops->start(handler, handler->data);
 
 out_warn_father:
