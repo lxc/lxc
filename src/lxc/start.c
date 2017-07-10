@@ -1063,8 +1063,9 @@ static int do_start(void *data)
 	 * setup on its console ie. the pty allocated in lxc_console_create() so
 	 * make sure that that pty is stdin,stdout,stderr.
 	 */
-	if (lxc_console_set_stdfds(handler->conf->console.slave) < 0)
-		goto out_warn_father;
+	 if (handler->conf->console.slave >= 0)
+		 if (set_stdfds(handler->conf->console.slave) < 0)
+			goto out_warn_father;
 
 	/* If we mounted a temporary proc, then unmount it now. */
 	tmp_proc_unmount(handler->conf);
@@ -1142,7 +1143,7 @@ static int do_start(void *data)
 			goto out_warn_father;
 	}
 
-	if (handler->backgrounded && set_stdfds(devnull_fd))
+	if (handler->conf->console.slave < 0 && handler->backgrounded && set_stdfds(devnull_fd))
 		goto out_warn_father;
 
 	if (devnull_fd >= 0) {
