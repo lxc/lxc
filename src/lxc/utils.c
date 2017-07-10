@@ -1822,14 +1822,21 @@ int open_devnull(void)
 
 int set_stdfds(int fd)
 {
+	int ret;
+
 	if (fd < 0)
 		return -1;
 
-	if (dup2(fd, 0) < 0)
+	ret = dup2(fd, STDIN_FILENO);
+	if (ret < 0)
 		return -1;
-	if (dup2(fd, 1) < 0)
+
+	ret = dup2(fd, STDOUT_FILENO);
+	if (ret < 0)
 		return -1;
-	if (dup2(fd, 2) < 0)
+
+	ret = dup2(fd, STDERR_FILENO);
+	if (ret < 0)
 		return -1;
 
 	return 0;
