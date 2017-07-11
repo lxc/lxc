@@ -128,10 +128,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       LXC namespaces configuration keys by using single dots. This means complex
       configuration keys such as <option>lxc.net.0</option> expose various
       subkeys such as <option>lxc.net.0.type</option>,
-      <option>lxc.net.0.link</option>, <option>lxc.net.0.ipv6</option>, and
+      <option>lxc.net.0.link</option>, <option>lxc.net.0.ipv6.address</option>, and
       others for even more fine-grained configuration.
       -->
-      LXC は、シングルドットを使って設定キーの名前空間を表します。<option>lxc.net.0</option> のような複雑な設定キーは、<option>lxc.net.0.type</option>、<option>lxc.net.0.link</option>、<option>lxc.net.0.ipv6</option> や、さらに細分化された設定向けの色々なサブキーを持つことを意味します。
+      LXC は、シングルドットを使って設定キーの名前空間を表します。<option>lxc.net.0</option> のような複雑な設定キーは、<option>lxc.net.0.type</option>、<option>lxc.net.0.link</option>、<option>lxc.net.0.ipv6.address</option> や、さらに細分化された設定向けの色々なサブキーを持つことを意味します。
     </para>
 
     <refsect2>
@@ -702,7 +702,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
         <varlistentry>
           <term>
-            <option>lxc.net.[i].ipv4</option>
+            <option>lxc.net.[i].ipv4.address</option>
           </term>
           <listitem>
             <para>
@@ -743,7 +743,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
         <varlistentry>
           <term>
-            <option>lxc.net.[i].ipv6</option>
+            <option>lxc.net.[i].ipv6.address</option>
           </term>
           <listitem>
             <para>
@@ -863,7 +863,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.pts</option>
+            <option>lxc.pty.max</option>
           </term>
           <listitem>
             <para>
@@ -908,7 +908,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         </varlistentry>
         <varlistentry>
           <term>
-            <option>lxc.console</option>
+            <option>lxc.console.path</option>
           </term>
           <listitem>
             <para>
@@ -952,7 +952,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.tty</option>
+            <option>lxc.tty.max</option>
           </term>
           <listitem>
             <para>
@@ -993,7 +993,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.devttydir</option>
+            <option>lxc.tty.dir</option>
           </term>
           <listitem>
             <para>
@@ -1053,31 +1053,6 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </refsect2>
 
     <refsect2>
-      <title><!-- Enable kmsg symlink -->kmsg のシンボリックリンクの有効化</title>
-      <para>
-        <!--
-        Enable creating /dev/kmsg as symlink to /dev/console.  This defaults to 0.
-        -->
-        /dev/console へのシンボリックリンクとして /dev/kmsg を作成することを有効にします。デフォルトは 0 です。
-      </para>
-      <variablelist>
-    <varlistentry>
-      <term>
-        <option>lxc.kmsg</option>
-      </term>
-      <listitem>
-        <para>
-          <!--
-          Set this to 1 to enable /dev/kmsg symlinking.
-          -->
-          /dev/kmsg へのシンボリックリンクを有効にするには 1 を設定してください。
-        </para>
-      </listitem>
-    </varlistentry>
-      </variablelist>
-    </refsect2>
-
-    <refsect2>
       <title><!-- Mount points -->マウントポイント</title>
       <para>
         <!--
@@ -1111,7 +1086,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.mount</option>
+            <option>lxc.mount.fstab</option>
           </term>
           <listitem>
             <para>
@@ -1856,7 +1831,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.seccomp</option>
+            <option>lxc.seccomp.profile</option>
           </term>
           <listitem>
             <para>
@@ -2249,10 +2224,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <para>
               <!--
               The path to the console output of the container if not NULL.
-              [<option>-c</option>] [<option>lxc.console</option>]
+              [<option>-c</option>] [<option>lxc.console.path</option>]
               -->
               設定されている場合のコンテナのコンソール出力のパス。
-              [<option>-c</option>] [<option>lxc.console</option>]
+              [<option>-c</option>] [<option>lxc.console.path</option>]
             </para>
           </listitem>
         </varlistentry>
@@ -2655,8 +2630,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         lxc.net.0.link = br0
         lxc.net.0.name = eth0
         lxc.net.0.hwaddr = 4a:49:43:49:79:bf
-        lxc.net.0.ipv4 = 1.2.3.5/24 1.2.3.255
-        lxc.net.0.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
+        lxc.net.0.ipv4.address = 1.2.3.5/24 1.2.3.255
+        lxc.net.0.ipv6.address = 2003:db8:1:0:214:1234:fe0b:3597
       </programlisting>
     </refsect2>
 
@@ -2707,28 +2682,28 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         lxc.net.0.flags = up
         lxc.net.0.link = br0
         lxc.net.0.hwaddr = 4a:49:43:49:79:bf
-        lxc.net.0.ipv4 = 10.2.3.5/24 10.2.3.255
-        lxc.net.0.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
-        lxc.net.0.ipv6 = 2003:db8:1:0:214:5432:feab:3588
+        lxc.net.0.ipv4.address = 10.2.3.5/24 10.2.3.255
+        lxc.net.0.ipv6.address = 2003:db8:1:0:214:1234:fe0b:3597
+        lxc.net.0.ipv6.address = 2003:db8:1:0:214:5432:feab:3588
         lxc.net.1.type = macvlan
         lxc.net.1.flags = up
         lxc.net.1.link = eth0
         lxc.net.1.hwaddr = 4a:49:43:49:79:bd
-        lxc.net.1.ipv4 = 10.2.3.4/24
-        lxc.net.1.ipv4 = 192.168.10.125/24
-        lxc.net.1.ipv6 = 2003:db8:1:0:214:1234:fe0b:3596
+        lxc.net.1.ipv4.address = 10.2.3.4/24
+        lxc.net.1.ipv4.address = 192.168.10.125/24
+        lxc.net.1.ipv6.address = 2003:db8:1:0:214:1234:fe0b:3596
         lxc.net.2.type = phys
         lxc.net.2.flags = up
         lxc.net.2.link = dummy0
         lxc.net.2.hwaddr = 4a:49:43:49:79:ff
-        lxc.net.2.ipv4 = 10.2.3.6/24
-        lxc.net.2.ipv6 = 2003:db8:1:0:214:1234:fe0b:3297
+        lxc.net.2.ipv4.address = 10.2.3.6/24
+        lxc.net.2.ipv6.address = 2003:db8:1:0:214:1234:fe0b:3297
         lxc.cgroup.cpuset.cpus = 0,1
         lxc.cgroup.cpu.shares = 1234
         lxc.cgroup.devices.deny = a
         lxc.cgroup.devices.allow = c 1:3 rw
         lxc.cgroup.devices.allow = b 8:0 rw
-        lxc.mount = /etc/fstab.complex
+        lxc.mount.fstab = /etc/fstab.complex
         lxc.mount.entry = /lib /root/myrootfs/lib none ro,bind 0 0
         lxc.rootfs = /mnt/rootfs.complex
         lxc.cap.drop = sys_module mknod setuid net_raw
