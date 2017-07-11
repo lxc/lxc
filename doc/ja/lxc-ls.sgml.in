@@ -60,6 +60,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <arg choice="opt">--frozen</arg>
       <arg choice="opt">--running</arg>
       <arg choice="opt">--stopped</arg>
+      <arg choice="opt">--defined</arg>
       <arg choice="opt">-f</arg>
       <arg choice="opt">-F <replaceable>format</replaceable></arg>
       <arg choice="opt">-g <replaceable>groups</replaceable></arg>
@@ -148,6 +149,20 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             List only stopped containers.
             -->
             停止状態のコンテナのみをリスト表示します。
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option>--defined</option>
+        </term>
+        <listitem>
+          <para>
+            <!--
+            List only defined containers.
+              -->
+            定義済みのコンテナ (設定ファイルが存在するコンテナ) のみを表示します。
           </para>
         </listitem>
       </varlistentry>
