@@ -581,7 +581,6 @@ if [ -e "$(relevant_file templates)" ]; then
 fi
 
 # Replace variables in all templates
-for file in $TEMPLATE_FILES; do
 OLD_IFS=${IFS}
 IFS=";"
 for file in ${TEMPLATE_FILES}; do
