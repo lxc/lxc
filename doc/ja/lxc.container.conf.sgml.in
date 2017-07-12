@@ -1764,7 +1764,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.se_context</option>
+            <option>lxc.selinux.context</option>
           </term>
           <listitem>
             <para>
@@ -1774,7 +1774,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               -->
               コンテナが従うべき SELinux コンテキストを指定するか、<command>unconfined_t</command> を指定します。例えば以下のように設定します。
             </para>
-            <programlisting>lxc.se_context = system_u:system_r:lxc_t:s0:c22</programlisting>
+            <programlisting>lxc.selinux.context = system_u:system_r:lxc_t:s0:c22</programlisting>
           </listitem>
         </varlistentry>
       </variablelist>

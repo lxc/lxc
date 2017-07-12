@@ -1704,7 +1704,7 @@ proc proc proc nodev,noexec,nosuid 0 0
       <variablelist>
 	<varlistentry>
 	  <term>
-	    <option>lxc.se_context</option>
+	    <option>lxc.selinux.context</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -1714,7 +1714,7 @@ proc proc proc nodev,noexec,nosuid 0 0
               -->
               컨테이너가 따라야할 SELinux 컨텍스트를 지정하거나, <command>unconfined_t</command>를 지정할 수 있다. 예를 들어 아래와 같이 지정 가능하다.
 	    </para>
-	    <programlisting>lxc.se_context = system_u:system_r:lxc_t:s0:c22</programlisting>
+	    <programlisting>lxc.selinux.context = system_u:system_r:lxc_t:s0:c22</programlisting>
 	  </listitem>
 	</varlistentry>
       </variablelist>

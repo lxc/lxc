@@ -1278,14 +1278,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.se_context</option>
+            <option>lxc.selinux.context</option>
           </term>
           <listitem>
             <para>
               Specify the SELinux context under which the container should
               be run or <command>unconfined_t</command>. For example
             </para>
-            <programlisting>lxc.se_context = system_u:system_r:lxc_t:s0:c22</programlisting>
+            <programlisting>lxc.selinux.context = system_u:system_r:lxc_t:s0:c22</programlisting>
           </listitem>
         </varlistentry>
       </variablelist>

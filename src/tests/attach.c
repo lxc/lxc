@@ -51,7 +51,7 @@ static void test_lsm_detect(void)
 {
 	if (lsm_enabled()) {
 		if (!strcmp(lsm_name(), "SELinux")) {
-			lsm_config_key = "lxc.se_context";
+			lsm_config_key = "lxc.selinux.context";
 			lsm_label      = "unconfined_u:unconfined_r:lxc_t:s0-s0:c0.c1023";
 		}
 		else if (!strcmp(lsm_name(), "AppArmor")) {
