@@ -371,7 +371,7 @@ int main(int argc, char *argv[])
 	 */
 	if (set_get_compare_clear_save_load(c, "lxc.se_context", "system_u:system_r:lxc_t:s0:c22",
 					    tmpf, true) < 0) {
-		lxc_error("%s\n", "lxc.apparmor.se_context");
+		lxc_error("%s\n", "lxc.se_context");
 		goto non_test_error;
 	}
 
@@ -392,7 +392,7 @@ int main(int argc, char *argv[])
 	/* lxc.selinux.context */
 	if (set_get_compare_clear_save_load(c, "lxc.selinux.context", "system_u:system_r:lxc_t:s0:c22",
 					    tmpf, true) < 0) {
-		lxc_error("%s\n", "lxc.apparmor.selinux.context");
+		lxc_error("%s\n", "lxc.selinux.context");
 		goto non_test_error;
 	}
 
