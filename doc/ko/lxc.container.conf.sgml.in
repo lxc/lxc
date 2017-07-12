@@ -1426,7 +1426,7 @@ proc proc proc nodev,noexec,nosuid 0 0
       <variablelist>
 	<varlistentry>
 	  <term>
-	    <option>lxc.rootfs</option>
+	    <option>lxc.rootfs.path</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -1471,7 +1471,7 @@ proc proc proc nodev,noexec,nosuid 0 0
 	  <listitem>
 	    <para>
               <!--
-	      where to recursively bind <option>lxc.rootfs</option>
+	      where to recursively bind <option>lxc.rootfs.path</option>
 	      before pivoting.  This is to ensure success of the
 	      <citerefentry>
 		<refentrytitle><command>pivot_root</command></refentrytitle>
@@ -1480,7 +1480,7 @@ proc proc proc nodev,noexec,nosuid 0 0
 	      syscall.  Any directory suffices, the default should
 	      generally work.
               -->
-              루트 파일시스템을 변경하기 전에, <option>lxc.rootfs</option>을 어디에 재귀적으로 바인드할지 정한다. 이는 
+              루트 파일시스템을 변경하기 전에, <option>lxc.rootfs.path</option>을 어디에 재귀적으로 바인드할지 정한다. 이는 
 	      <citerefentry>
 		<refentrytitle><command>pivot_root</command></refentrytitle>
 		<manvolnum>8</manvolnum>
@@ -1889,7 +1889,7 @@ mknod errno 0
 	  <listitem><para> LXC_ROOTFS_MOUNT: the path to the mounted root filesystem. </para></listitem>
 	  <listitem><para> LXC_CONFIG_FILE: the path to the container configuration file. </para></listitem>
 	  <listitem><para> LXC_SRC_NAME: in the case of the clone hook, this is the original container's name. </para></listitem>
-	  <listitem><para> LXC_ROOTFS_PATH: this is the lxc.rootfs entry for the container.  Note this is likely not where the mounted rootfs is to be found, use LXC_ROOTFS_MOUNT for that. </para></listitem>
+	  <listitem><para> LXC_ROOTFS_PATH: this is the lxc.rootfs.path entry for the container.  Note this is likely not where the mounted rootfs is to be found, use LXC_ROOTFS_MOUNT for that. </para></listitem>
 	</itemizedlist>
         -->
         컨테이너 훅이 실행될 때, 정보는 명령어 인수나 환경 변수를 통해 넘겨진다.
@@ -1906,7 +1906,7 @@ mknod errno 0
 	  <listitem><para> LXC_ROOTFS_MOUNT: 마운트될 루트 파일시스템의 경로</para></listitem>
 	  <listitem><para> LXC_CONFIG_FILE: 컨테이너 설정파일의 경로</para></listitem>
 	  <listitem><para> LXC_SRC_NAME: clone 훅의 경우, 원본 컨테이너의 이름</para></listitem>
-	  <listitem><para> LXC_ROOTFS_PATH: 컨테이너의 lxc.rootfs 항목. 이 것은 마운트된 루트 파일시스템을 가리키는 것이 아님에 주의해야한다. 그 목적을 위해서는  LXC_ROOTFS_MOUNT를 사용해야 한다.</para></listitem>
+	  <listitem><para> LXC_ROOTFS_PATH: 컨테이너의 lxc.rootfs.path 항목. 이 것은 마운트된 루트 파일시스템을 가리키는 것이 아님에 주의해야한다. 그 목적을 위해서는  LXC_ROOTFS_MOUNT를 사용해야 한다.</para></listitem>
         </itemizedlist>
       </para>
       <para>
@@ -2206,10 +2206,10 @@ mknod errno 0
               <!--
 	      The host relative path to the container root which has been
 	      mounted to the rootfs.mount location.
-	      [<option>lxc.rootfs</option>]
+	      [<option>lxc.rootfs.path</option>]
               -->
               rootfs.mount에 마운트된 컨테이너 루트의 호스트에서의 경로이다.
-              [<option>lxc.rootfs</option>]
+              [<option>lxc.rootfs.path</option>]
 	    </para>
 	  </listitem>
 	</varlistentry>
@@ -2624,7 +2624,7 @@ mknod errno 0
 	lxc.cgroup.devices.allow = b 8:0 rw
 	lxc.mount = /etc/fstab.complex
 	lxc.mount.entry = /lib /root/myrootfs/lib none ro,bind 0 0
-	lxc.rootfs = /mnt/rootfs.complex
+	lxc.rootfs.path = dir:/mnt/rootfs.complex
 	lxc.cap.drop = sys_module mknod setuid net_raw
 	lxc.cap.drop = mac_override
       </programlisting>
