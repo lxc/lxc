@@ -1768,7 +1768,7 @@ mknod errno 0
       <variablelist>
 	<varlistentry>
 	  <term>
-	    <option>lxc.seccomp</option>
+	    <option>lxc.seccomp.profile</option>
 	  </term>
 	  <listitem>
 	    <para>
