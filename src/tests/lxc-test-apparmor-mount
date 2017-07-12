@@ -213,7 +213,7 @@ run_cmd lxc-stop -n $cname -k
 
 echo "testing override"
 sed -i '/aa_profile/d' $HDIR/.local/share/lxc/$cname/config
-echo "lxc.aa_allow_incomplete = 1" >> $HDIR/.local/share/lxc/$cname/config
+echo "lxc.apparmor.allow_incomplete = 1" >> $HDIR/.local/share/lxc/$cname/config
 run_cmd lxc-start -n $cname -d
 run_cmd lxc-wait -n $cname -s RUNNING
 pid=`run_cmd lxc-info -p -H -n $cname`

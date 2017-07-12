@@ -1370,7 +1370,7 @@ static int set_config_apparmor_allow_incomplete(const char *key,
 		return -1;
 
 	if (lxc_conf->lsm_aa_allow_incomplete > 1) {
-		ERROR("Wrong value for lxc.lsm_aa_allow_incomplete. Can only "
+		ERROR("Wrong value for lxc.apparmor.allow_incomplete. Can only "
 		      "be set to 0 or 1");
 		return -1;
 	}

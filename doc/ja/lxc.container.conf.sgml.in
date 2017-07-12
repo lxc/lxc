@@ -1715,7 +1715,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         </varlistentry>
         <varlistentry>
           <term>
-            <option>lxc.aa_allow_incomplete</option>
+            <option>lxc.apparmor.allow_incomplete</option>
           </term>
           <listitem>
             <para>
