@@ -881,7 +881,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 	</varlistentry>
 	<varlistentry>
 	  <term>
-	    <option>lxc.console</option>
+	    <option>lxc.console.path</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -2150,10 +2150,10 @@ mknod errno 0
 	    <para>
               <!--
 	      The path to the console output of the container if not NULL.
-	      [<option>-c</option>] [<option>lxc.console</option>]
+	      [<option>-c</option>] [<option>lxc.console.path</option>]
               -->
               NULL이 아니라면, 컨테이너의 콘솔의 출력이 저장될 경로.
-	      [<option>-c</option>] [<option>lxc.console</option>]
+	      [<option>-c</option>] [<option>lxc.console.path</option>]
 	    </para>
 	  </listitem>
 	</varlistentry>
