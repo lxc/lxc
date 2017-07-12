@@ -658,7 +658,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 
 	<varlistentry>
 	  <term>
-	    <option>lxc.net.[i].ipv4</option>
+	    <option>lxc.net.[i].ipv4.address</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -2552,7 +2552,7 @@ mknod errno 0
 	lxc.net.0.link = br0
 	lxc.net.0.name = eth0
 	lxc.net.0.hwaddr = 4a:49:43:49:79:bf
-	lxc.net.0.ipv4 = 1.2.3.5/24 1.2.3.255
+	lxc.net.0.ipv4.address = 1.2.3.5/24 1.2.3.255
 	lxc.net.0.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
       </programlisting>
     </refsect2>
@@ -2601,21 +2601,21 @@ mknod errno 0
 	lxc.net.0.flags = up
 	lxc.net.0.link = br0
 	lxc.net.0.hwaddr = 4a:49:43:49:79:bf
-	lxc.net.0.ipv4 = 10.2.3.5/24 10.2.3.255
+	lxc.net.0.ipv4.address = 10.2.3.5/24 10.2.3.255
 	lxc.net.0.ipv6 = 2003:db8:1:0:214:1234:fe0b:3597
 	lxc.net.0.ipv6 = 2003:db8:1:0:214:5432:feab:3588
 	lxc.net.1.type = macvlan
 	lxc.net.1.flags = up
 	lxc.net.1.link = eth0
 	lxc.net.1.hwaddr = 4a:49:43:49:79:bd
-	lxc.net.1.ipv4 = 10.2.3.4/24
-	lxc.net.1.ipv4 = 192.168.10.125/24
+	lxc.net.1.ipv4.address = 10.2.3.4/24
+	lxc.net.1.ipv4.address = 192.168.10.125/24
 	lxc.net.1.ipv6 = 2003:db8:1:0:214:1234:fe0b:3596
 	lxc.net.2.type = phys
 	lxc.net.2.flags = up
 	lxc.net.2.link = dummy0
 	lxc.net.2.hwaddr = 4a:49:43:49:79:ff
-	lxc.net.2.ipv4 = 10.2.3.6/24
+	lxc.net.2.ipv4.address = 10.2.3.6/24
 	lxc.net.2.ipv6 = 2003:db8:1:0:214:1234:fe0b:3297
 	lxc.cgroup.cpuset.cpus = 0,1
 	lxc.cgroup.cpu.shares = 1234
