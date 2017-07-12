@@ -837,7 +837,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <variablelist>
 	<varlistentry>
 	  <term>
-	    <option>lxc.pts</option>
+	    <option>lxc.pty.max</option>
 	  </term>
 	  <listitem>
 	    <para>
