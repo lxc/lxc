@@ -1821,13 +1821,6 @@ static char *build_full_cgpath_from_monitorpath(struct hierarchy *h,
 						const char *inpath,
 						const char *filename)
 {
-	/*
-	 * XXX Remove this case after 2.0 release.  It's for dealing with
-	 * containers spawned under the old buggy cgfsng which wasn't around
-	 * for long.
-	 */
-	if (strncmp(inpath, "/sys/fs/cgroup/", 15) == 0)
-		return must_make_path(inpath, filename, NULL);
 	return must_make_path(h->mountpoint, inpath, filename, NULL);
 }
 
