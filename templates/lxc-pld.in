@@ -248,7 +248,7 @@ lxc.cap.drop = sys_module mac_admin mac_override sys_time
 lxc.autodev = $auto_dev
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
-#lxc.aa_profile = unconfined
+#lxc.apparmor.profile = unconfined
 
 ## Devices
 # Allow all devices

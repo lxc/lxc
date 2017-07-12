@@ -489,7 +489,7 @@ lxc.arch = ${basearch}
 lxc.uts.name = ${utsname}
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
-#lxc.aa_profile = unconfined
+#lxc.apparmor.profile = unconfined
 
 # example simple networking setup, uncomment to enable
 #lxc.net.0.type = ${lxc_network_type}

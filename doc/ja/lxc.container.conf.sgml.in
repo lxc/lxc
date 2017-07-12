@@ -1438,7 +1438,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.rootfs</option>
+            <option>lxc.rootfs.path</option>
           </term>
           <listitem>
             <para>
@@ -1486,7 +1486,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <listitem>
             <para>
               <!--
-              where to recursively bind <option>lxc.rootfs</option>
+              where to recursively bind <option>lxc.rootfs.path</option>
               before pivoting.  This is to ensure success of the
               <citerefentry>
                 <refentrytitle><command>pivot_root</command></refentrytitle>
@@ -1495,7 +1495,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               syscall.  Any directory suffices, the default should
               generally work.
               -->
-              root ファイルシステムの変更の前に、<option>lxc.rootfs</option> を再帰的にどこにバインドするのかを指定します。これは
+              root ファイルシステムの変更の前に、<option>lxc.rootfs.path</option> を再帰的にどこにバインドするのかを指定します。これは
               <citerefentry>
                 <refentrytitle><command>pivot_root</command></refentrytitle>
                 <manvolnum>8</manvolnum>
@@ -1690,7 +1690,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.aa_profile</option>
+            <option>lxc.apparmor.profile</option>
           </term>
           <listitem>
             <para>
@@ -1702,7 +1702,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               コンテナが従うべき apparmor プロファイルを指定します。
               コンテナが apparmor による制限を受けないように設定するには、以下のように設定します。
             </para>
-              <programlisting>lxc.aa_profile = unconfined</programlisting>
+              <programlisting>lxc.apparmor.profile = unconfined</programlisting>
             <para>
               <!--
               If the apparmor profile should remain unchanged (i.e. if you
@@ -1710,12 +1710,12 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               -->
               もし apparmor プロファイルが変更されないままでなくてはならない場合 (ネストしたコンテナである場合や、すでに confined されている場合) は以下のように設定します。
             </para>
-              <programlisting>lxc.aa_profile = unchanged</programlisting>
+              <programlisting>lxc.apparmor.profile = unchanged</programlisting>
           </listitem>
         </varlistentry>
         <varlistentry>
           <term>
-            <option>lxc.aa_allow_incomplete</option>
+            <option>lxc.apparmor.allow_incomplete</option>
           </term>
           <listitem>
             <para>
@@ -1764,7 +1764,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.se_context</option>
+            <option>lxc.selinux.context</option>
           </term>
           <listitem>
             <para>
@@ -1774,7 +1774,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               -->
               コンテナが従うべき SELinux コンテキストを指定するか、<command>unconfined_t</command> を指定します。例えば以下のように設定します。
             </para>
-            <programlisting>lxc.se_context = system_u:system_r:lxc_t:s0:c22</programlisting>
+            <programlisting>lxc.selinux.context = system_u:system_r:lxc_t:s0:c22</programlisting>
           </listitem>
         </varlistentry>
       </variablelist>
@@ -1958,7 +1958,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <listitem><para> LXC_ROOTFS_MOUNT: the path to the mounted root filesystem. </para></listitem>
           <listitem><para> LXC_CONFIG_FILE: the path to the container configuration file. </para></listitem>
           <listitem><para> LXC_SRC_NAME: in the case of the clone hook, this is the original container's name. </para></listitem>
-          <listitem><para> LXC_ROOTFS_PATH: this is the lxc.rootfs entry for the container.  Note this is likely not where the mounted rootfs is to be found, use LXC_ROOTFS_MOUNT for that. </para></listitem>
+          <listitem><para> LXC_ROOTFS_PATH: this is the lxc.rootfs.path entry for the container.  Note this is likely not where the mounted rootfs is to be found, use LXC_ROOTFS_MOUNT for that. </para></listitem>
         </itemizedlist>
         -->
         コンテナのフックが実行されるとき、情報がコマンドライン引数と環境変数の両方を通して渡されます。引数は:
@@ -1974,7 +1974,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <listitem><para> LXC_ROOTFS_MOUNT: マウントされた root ファイルシステムへのパス</para></listitem>
           <listitem><para> LXC_CONFIG_FILE: コンテナの設定ファイルのパス </para></listitem>
           <listitem><para> LXC_SRC_NAME: clone フックの場合、元のコンテナの名前</para></listitem>
-          <listitem><para> LXC_ROOTFS_PATH: コンテナの lxc.rootfs エントリ。これはマウントされた rootfs が存在する場所にはならないでしょう。それには LXC_ROOTFS_MOUNT を使用してください。</para></listitem>
+          <listitem><para> LXC_ROOTFS_PATH: コンテナの lxc.rootfs.path エントリ。これはマウントされた rootfs が存在する場所にはならないでしょう。それには LXC_ROOTFS_MOUNT を使用してください。</para></listitem>
         </itemizedlist>
       </para>
       <para>
@@ -2280,10 +2280,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <!--
               The host relative path to the container root which has been
               mounted to the rootfs.mount location.
-              [<option>lxc.rootfs</option>]
+              [<option>lxc.rootfs.path</option>]
               -->
               rootfs.mount へマウントされるコンテナのルートへのホスト上のパスです。
-              [<option>lxc.rootfs</option>]
+              [<option>lxc.rootfs.path</option>]
             </para>
           </listitem>
         </varlistentry>
@@ -2705,7 +2705,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         lxc.cgroup.devices.allow = b 8:0 rw
         lxc.mount.fstab = /etc/fstab.complex
         lxc.mount.entry = /lib /root/myrootfs/lib none ro,bind 0 0
-        lxc.rootfs = /mnt/rootfs.complex
+        lxc.rootfs.path = dir:/mnt/rootfs.complex
         lxc.cap.drop = sys_module mknod setuid net_raw
         lxc.cap.drop = mac_override
       </programlisting>

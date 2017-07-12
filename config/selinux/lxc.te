@@ -7,7 +7,7 @@
 # semodule -i lxc.pp
 #
 # In your container's lxc config:
-#   lxc.se_context = system_u:system_r:lxc_t:s0:c62,c86,c150,c228
+#   lxc.selinux.context = system_u:system_r:lxc_t:s0:c62,c86,c150,c228
 #
 # Ensure your container's rootfs files are labeled:
 #   chcon -R system_u:object_r:lxc_file_t:s0:c62,c86,c150,c228 /path/to/rootfs

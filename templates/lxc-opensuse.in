@@ -355,7 +355,7 @@ lxc.uts.name = $name
 lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
-lxc.aa_profile = unconfined
+lxc.apparmor.profile = unconfined
 
 # example simple networking setup, uncomment to enable
 #lxc.net.0.type = $lxc_network_type
