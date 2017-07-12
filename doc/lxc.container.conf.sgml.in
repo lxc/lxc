@@ -1224,7 +1224,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.aa_profile</option>
+            <option>lxc.apparmor.profile</option>
           </term>
           <listitem>
             <para>
@@ -1232,12 +1232,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               be run.  To specify that the container should be unconfined,
               use
             </para>
-              <programlisting>lxc.aa_profile = unconfined</programlisting>
+              <programlisting>lxc.apparmor.profile = unconfined</programlisting>
             <para>
               If the apparmor profile should remain unchanged (i.e. if you
 	      are nesting containers and are already confined), then use
             </para>
-              <programlisting>lxc.aa_profile = unchanged</programlisting>
+              <programlisting>lxc.apparmor.profile = unchanged</programlisting>
           </listitem>
         </varlistentry>
         <varlistentry>

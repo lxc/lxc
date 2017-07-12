@@ -349,7 +349,7 @@ lxc.pty.max = 1
 lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
-#lxc.aa_profile = unconfined
+#lxc.apparmor.profile = unconfined
 
 lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
 lxc.mount.entry = shm /dev/shm tmpfs defaults 0 0

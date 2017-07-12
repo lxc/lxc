@@ -55,7 +55,7 @@ static void test_lsm_detect(void)
 			lsm_label      = "unconfined_u:unconfined_r:lxc_t:s0-s0:c0.c1023";
 		}
 		else if (!strcmp(lsm_name(), "AppArmor")) {
-			lsm_config_key = "lxc.aa_profile";
+			lsm_config_key = "lxc.apparmor.profile";
 			if (file_exists("/proc/self/ns/cgroup"))
 				lsm_label      = "lxc-container-default-cgns";
 			else

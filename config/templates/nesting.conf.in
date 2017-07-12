@@ -1,5 +1,5 @@
 # Use a profile which allows nesting
-lxc.aa_profile = lxc-container-default-with-nesting
+lxc.apparmor.profile = lxc-container-default-with-nesting
 
 # Add uncovered mounts of proc and sys, else unprivileged users
 # cannot remount those

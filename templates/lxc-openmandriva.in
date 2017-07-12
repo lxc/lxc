@@ -235,7 +235,7 @@ lxc.cap.drop = sys_module mac_admin mac_override sys_time
 lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
-#lxc.aa_profile = unconfined
+#lxc.apparmor.profile = unconfined
 
 #networking
 lxc.net.0.type = $lxc_network_type

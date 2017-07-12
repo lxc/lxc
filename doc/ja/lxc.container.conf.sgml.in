@@ -1690,7 +1690,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.aa_profile</option>
+            <option>lxc.apparmor.profile</option>
           </term>
           <listitem>
             <para>
@@ -1702,7 +1702,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               コンテナが従うべき apparmor プロファイルを指定します。
               コンテナが apparmor による制限を受けないように設定するには、以下のように設定します。
             </para>
-              <programlisting>lxc.aa_profile = unconfined</programlisting>
+              <programlisting>lxc.apparmor.profile = unconfined</programlisting>
             <para>
               <!--
               If the apparmor profile should remain unchanged (i.e. if you
@@ -1710,7 +1710,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               -->
               もし apparmor プロファイルが変更されないままでなくてはならない場合 (ネストしたコンテナである場合や、すでに confined されている場合) は以下のように設定します。
             </para>
-              <programlisting>lxc.aa_profile = unchanged</programlisting>
+              <programlisting>lxc.apparmor.profile = unchanged</programlisting>
           </listitem>
         </varlistentry>
         <varlistentry>

@@ -170,7 +170,7 @@ fi
 run_cmd lxc-stop -n $cname -k
 
 echo "test regular unconfined container"
-echo "lxc.aa_profile = unconfined" >> $HDIR/.local/share/lxc/$cname/config
+echo "lxc.apparmor.profile = unconfined" >> $HDIR/.local/share/lxc/$cname/config
 run_cmd lxc-start -n $cname -d
 run_cmd lxc-wait -n $cname -s RUNNING
 pid=`run_cmd lxc-info -p -H -n $cname`
@@ -185,7 +185,7 @@ echo "masking $MOUNTSR"
 mount --bind $dnam $MOUNTSR
 
 echo "test default confined container"
-sed -i '/aa_profile/d' $HDIR/.local/share/lxc/$cname/config
+sed -i '/apparmor.profile/d' $HDIR/.local/share/lxc/$cname/config
 run_cmd lxc-start -n $cname -d || true
 sleep 3
 pid=`run_cmd lxc-info -p -H -n $cname` || true
@@ -196,7 +196,7 @@ if [ -n "$pid" -a "$pid" != "-1" ]; then
 fi
 
 echo "test regular unconfined container"
-echo "lxc.aa_profile = unconfined" >> $HDIR/.local/share/lxc/$cname/config
+echo "lxc.apparmor.profile = unconfined" >> $HDIR/.local/share/lxc/$cname/config
 run_cmd lxc-start -n $cname -d
 run_cmd lxc-wait -n $cname -s RUNNING
 pid=`run_cmd lxc-info -p -H -n $cname`
@@ -212,7 +212,7 @@ fi
 run_cmd lxc-stop -n $cname -k
 
 echo "testing override"
-sed -i '/aa_profile/d' $HDIR/.local/share/lxc/$cname/config
+sed -i '/apparmor.profile/d' $HDIR/.local/share/lxc/$cname/config
 echo "lxc.apparmor.allow_incomplete = 1" >> $HDIR/.local/share/lxc/$cname/config
 run_cmd lxc-start -n $cname -d
 run_cmd lxc-wait -n $cname -s RUNNING
