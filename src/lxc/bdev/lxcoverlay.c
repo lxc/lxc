@@ -34,16 +34,13 @@
 #include "lxccontainer.h"
 #include "lxcoverlay.h"
 #include "lxcrsync.h"
+#include "storage_utils.h"
 #include "utils.h"
 
 lxc_log_define(lxcoverlay, lxc);
 
 static char *ovl_name;
 static char *ovl_version[] = {"overlay", "overlayfs"};
-
-/* defined in lxccontainer.c: needs to become common helper */
-extern char *dir_new_path(char *src, const char *oldname, const char *name,
-			  const char *oldpath, const char *lxcpath);
 
 static char *ovl_detect_name(void);
 static int ovl_do_rsync(struct bdev *orig, struct bdev *new,
@@ -61,16 +58,18 @@ int ovl_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
         char *src;
 
 	if (!snap) {
-		ERROR("overlayfs is only for snapshot clones");
+		ERROR("overlay is only for snapshot clones");
 		return -22;
 	}
 
 	if (!orig->src || !orig->dest)
 		return -1;
 
-	new->dest = dir_new_path(orig->dest, oldname, cname, oldpath, lxcpath);
+	new->dest = lxc_string_join(
+	    "/", (const char *[]){lxcpath, cname, "rootfs", NULL}, false);
 	if (!new->dest)
 		return -1;
+
 	if (mkdir_p(new->dest, 0755) < 0)
 		return -1;
 
@@ -143,11 +142,11 @@ int ovl_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 			free(delta);
 			return -ENOMEM;
 		}
-		ret = snprintf(new->src, len, "overlayfs:%s:%s", src, delta);
+		ret = snprintf(new->src, len, "overlay:%s:%s", src, delta);
 		free(delta);
 		if (ret < 0 || ret >= len)
-			return -ENOMEM;
-	} else if (strcmp(orig->type, "overlayfs") == 0) {
+			return -1;
+	} else if (!strcmp(orig->type, "overlayfs") || !strcmp(orig->type, "overlay")) {
 		/*
 		 * What exactly do we want to do here?  I think we want to use
 		 * the original lowerdir, with a private delta which is
@@ -156,26 +155,44 @@ int ovl_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		char *osrc, *odelta, *nsrc, *ndelta, *work;
 		char *lastslash;
 		int len, ret, lastslashidx;
-		if (!(osrc = strdup(orig->src)))
+
+		osrc = strdup(orig->src);
+		if (!osrc) {
+                        SYSERROR("Failed to duplicate \"%s\"", orig->src);
 			return -22;
+                }
+
 		nsrc = strchr(osrc, ':') + 1;
-		if (nsrc != osrc + 10 || (odelta = strchr(nsrc, ':')) == NULL) {
+		if ((nsrc != osrc + 8) && (nsrc != osrc + 10)) {
 			free(osrc);
+                        ERROR("Detected \":\" in \"%s\" at wrong position", osrc);
+			return -22;
+                }
+
+		odelta = strchr(nsrc, ':');
+		if (!odelta) {
+			free(osrc);
+                        ERROR("Failed to find \":\" in \"%s\"", nsrc);
 			return -22;
 		}
+
 		*odelta = '\0';
 		odelta++;
-		ndelta = dir_new_path(odelta, oldname, cname, oldpath, lxcpath);
-		if (!ndelta) {
+                ndelta = lxc_string_join("/", (const char *[]){lxcpath, cname, "rootfs", NULL}, false);
+                if (!ndelta) {
 			free(osrc);
+                        ERROR("Failed to create new path");
 			return -ENOMEM;
-		}
-		if ((ret = mkdir(ndelta, 0755)) < 0 && errno != EEXIST) {
-			SYSERROR("error: mkdir %s", ndelta);
+                }
+
+		ret = mkdir(ndelta, 0755);
+		if (ret < 0 && errno != EEXIST) {
 			free(osrc);
 			free(ndelta);
+			SYSERROR("Failed to create \"%s\"", ndelta);
 			return -1;
 		}
+
 		if (am_unpriv() && chown_mapped_root(ndelta, conf) < 0)
 			WARN("Failed to update ownership of %s", ndelta);
 
@@ -187,6 +204,7 @@ int ovl_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		if (!lastslash) {
 			free(osrc);
 			free(ndelta);
+			ERROR("Failed to detect \"/\" in \"%s\"", ndelta);
 			return -1;
 		}
 		lastslash++;
@@ -196,37 +214,43 @@ int ovl_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		if (!work) {
 			free(osrc);
 			free(ndelta);
+			ERROR("Failed to allocate memory");
 			return -1;
 		}
 		strncpy(work, ndelta, lastslashidx + 1);
 		strcpy(work + lastslashidx, "olwork");
-		if ((mkdir(work, 0755) < 0) && errno != EEXIST) {
-			SYSERROR("error: mkdir %s", work);
+		ret = mkdir(work, 0755);
+		if (ret < 0 && errno != EEXIST) {
 			free(osrc);
 			free(ndelta);
 			free(work);
+			SYSERROR("Failed to create \"%s\"", ndelta);
 			return -1;
 		}
+
 		if (am_unpriv() && chown_mapped_root(work, conf) < 0)
 			WARN("Failed to update ownership of %s", work);
 		free(work);
 
-		len = strlen(nsrc) + strlen(ndelta) + 12;
+		len = strlen(nsrc) + strlen(ndelta) + 10;
 		new->src = malloc(len);
 		if (!new->src) {
 			free(osrc);
 			free(ndelta);
+			ERROR("Failed to allocate memory");
 			return -ENOMEM;
 		}
-		ret = snprintf(new->src, len, "overlayfs:%s:%s", nsrc, ndelta);
+		ret = snprintf(new->src, len, "overlay:%s:%s", nsrc, ndelta);
 		free(osrc);
 		free(ndelta);
-		if (ret < 0 || ret >= len)
-			return -ENOMEM;
+		if (ret < 0 || ret >= len) {
+			ERROR("Failed to create string");
+			return -1;
+                }
 
 		return ovl_do_rsync(orig, new, conf);
 	} else {
-		ERROR("overlayfs clone of %s container is not yet supported",
+		ERROR("overlay clone of %s container is not yet supported",
 		      orig->type);
 		/*
 		 * Note, supporting this will require ovl_mount supporting
@@ -239,7 +263,7 @@ int ovl_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 }
 
 /*
- * to say 'lxc-create -t ubuntu -n o1 -B overlayfs' means you want
+ * to say 'lxc-create -t ubuntu -n o1 -B overlay' means you want
  * $lxcpath/$lxcname/rootfs to have the created container, while all
  * changes after starting the container are written to
  * $lxcpath/$lxcname/delta0
@@ -267,14 +291,14 @@ int ovl_create(struct bdev *bdev, const char *dest, const char *n,
 		return -1;
 	}
 
-	// overlayfs:lower:upper
-	newlen = (2 * len) + strlen("overlayfs:") + 2;
+	// overlay:lower:upper
+	newlen = (2 * len) + strlen("overlay:") + 2;
 	bdev->src = malloc(newlen);
 	if (!bdev->src) {
 		ERROR("Out of memory");
 		return -1;
 	}
-	ret = snprintf(bdev->src, newlen, "overlayfs:%s:%s", dest, delta);
+	ret = snprintf(bdev->src, newlen, "overlay:%s:%s", dest, delta);
 	if (ret < 0 || ret >= newlen)
 		return -1;
 
@@ -288,14 +312,23 @@ int ovl_create(struct bdev *bdev, const char *dest, const char *n,
 
 int ovl_destroy(struct bdev *orig)
 {
-	char *upper;
+        bool ovl;
+	char *upper = orig->src;
 
-	if (strncmp(orig->src, "overlayfs:", 10) != 0)
+        ovl = !strncmp(upper, "overlay:", 8);
+	if (!ovl && strncmp(upper, "overlayfs:", 10))
 		return -22;
-	upper = strchr(orig->src + 10, ':');
+
+        if (ovl)
+                upper += 8;
+        else
+                upper += 10;
+
+	upper = strchr(upper, ':');
 	if (!upper)
 		return -22;
 	upper++;
+
 	return lxc_rmdir_onedev(upper, NULL);
 }
 
@@ -304,14 +337,6 @@ int ovl_detect(const char *path)
 	if (strncmp(path, "overlayfs:", 10) == 0)
 		return 1; // take their word for it
 	return 0;
-}
-
-char *ovl_getlower(char *p)
-{
-	char *p1 = strchr(p, ':');
-	if (p1)
-		*p1 = '\0';
-	return p;
 }
 
 int ovl_mount(struct bdev *bdev)
@@ -324,8 +349,9 @@ int ovl_mount(struct bdev *bdev)
 	char *mntdata;
 	int ret, ret2;
 
-	if (strcmp(bdev->type, "overlayfs"))
+	if (strcmp(bdev->type, "overlay") && strcmp(bdev->type, "overlayfs"))
 		return -22;
+
 	if (!bdev->src || !bdev->dest)
 		return -22;
 
@@ -419,7 +445,7 @@ int ovl_mount(struct bdev *bdev)
 	ret = ovl_remount_on_enodev(lower, bdev->dest, ovl_name,
 				    MS_MGC_VAL | mntflags, options_work);
 	if (ret < 0) {
-		INFO("Overlayfs: Error mounting %s onto %s with options %s. "
+		INFO("Overlay: Error mounting %s onto %s with options %s. "
 		     "Retrying without workdir: %s.",
 		     lower, bdev->dest, options_work, strerror(errno));
 
@@ -427,15 +453,15 @@ int ovl_mount(struct bdev *bdev)
 		ret = ovl_remount_on_enodev(lower, bdev->dest, ovl_name,
 					  MS_MGC_VAL | mntflags, options);
 		if (ret < 0)
-			SYSERROR("Overlayfs: Error mounting %s onto %s with "
+			SYSERROR("Overlay: Error mounting %s onto %s with "
 				 "options %s: %s.",
 				 lower, bdev->dest, options,
 				 strerror(errno));
 		else
-			INFO("Overlayfs: Mounted %s onto %s with options %s.",
+			INFO("Overlay: Mounted %s onto %s with options %s.",
 			     lower, bdev->dest, options);
 	} else {
-		INFO("Overlayfs: Mounted %s onto %s with options %s.", lower,
+		INFO("Overlay: Mounted %s onto %s with options %s.", lower,
 		     bdev->dest, options_work);
 	}
 	return ret;
@@ -443,11 +469,29 @@ int ovl_mount(struct bdev *bdev)
 
 int ovl_umount(struct bdev *bdev)
 {
-	if (strcmp(bdev->type, "overlayfs"))
+	if (strcmp(bdev->type, "overlay") && strcmp(bdev->type, "overlayfs"))
 		return -22;
+
 	if (!bdev->src || !bdev->dest)
 		return -22;
+
 	return umount(bdev->dest);
+}
+
+char *ovl_get_lower(const char *rootfs_path)
+{
+	char *s1;
+	s1 = strstr(rootfs_path, ":/");
+	if (!s1)
+		return NULL;
+	s1++;
+
+	s1 = strstr(s1, ":/");
+	if (!s1)
+		return NULL;
+	s1++;
+
+	return s1;
 }
 
 char *ovl_get_rootfs(const char *rootfs_path, size_t *rootfslen)
@@ -758,7 +802,7 @@ static int ovl_do_rsync(struct bdev *orig, struct bdev *new, struct lxc_conf *co
 	else
 		ret = ovl_rsync(&rdata);
 	if (ret)
-		ERROR("copying overlayfs delta");
+		ERROR("copying overlay delta");
 
 	return ret;
 }

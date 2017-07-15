@@ -194,6 +194,7 @@ static const struct bdev_type bdevs[] = {
 	{ .name = "btrfs",     .ops = &btrfs_ops, },
 	{ .name = "dir",       .ops = &dir_ops,   },
 	{ .name = "aufs",      .ops = &aufs_ops,  },
+	{ .name = "overlay",   .ops = &ovl_ops,   },
 	{ .name = "overlayfs", .ops = &ovl_ops,   },
 	{ .name = "loop",      .ops = &loop_ops,  },
 	{ .name = "nbd",       .ops = &nbd_ops,   },
@@ -374,10 +375,11 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	 */
 	if (!bdevtype && !keepbdevtype && snap &&
 	    strcmp(orig->type, "dir") == 0)
-		bdevtype = "overlayfs";
+		bdevtype = "overlay";
 
 	if (am_unpriv() && !unpriv_snap_allowed(orig, bdevtype, snap, maybe_snap)) {
-		ERROR("Unsupported snapshot type for unprivileged users");
+		ERROR("Unsupported snapshot type \"%s\" for unprivileged users",
+		      bdevtype ? bdevtype : "(null)");
 		bdev_put(orig);
 		return NULL;
 	}
@@ -385,7 +387,8 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	*needs_rdep = 0;
 	if (bdevtype && strcmp(orig->type, "dir") == 0 &&
 	    (strcmp(bdevtype, "aufs") == 0 ||
-	     strcmp(bdevtype, "overlayfs") == 0)) {
+	     strcmp(bdevtype, "overlayfs") == 0 ||
+	     strcmp(bdevtype, "overlay") == 0)) {
 		*needs_rdep = 1;
 	} else if (snap && strcmp(orig->type, "lvm") == 0 &&
 		   !lvm_is_thin_volume(orig->src)) {
@@ -411,8 +414,10 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		goto err;
 	}
 
-	src_no_prefix = lxc_storage_get_path(new->src, new->type);
-
+	if (!strcmp(new->type, "overlay") || !strcmp(new->type, "overlayfs"))
+		src_no_prefix = ovl_get_lower(new->src);
+	else
+		src_no_prefix = lxc_storage_get_path(new->src, new->type);
 	if (am_unpriv() && chown_mapped_root(src_no_prefix, c0->lxc_conf) < 0)
 		WARN("Failed to update ownership of %s", new->dest);
 
