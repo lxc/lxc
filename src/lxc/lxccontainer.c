@@ -3319,7 +3319,11 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	saved_unexp_conf = NULL;
 	c->lxc_conf->unexpanded_len = saved_unexp_len;
 
-	sprintf(newpath, "%s/%s/rootfs", lxcpath, newname);
+	ret = snprintf(newpath, MAXPATHLEN, "%s/%s/rootfs", lxcpath, newname);
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		SYSERROR("clone: failed making rootfs pathname");
+		goto out;
+	}
 	if (mkdir(newpath, 0755) < 0) {
 		SYSERROR("error creating %s", newpath);
 		goto out;
