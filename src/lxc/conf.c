@@ -3722,7 +3722,6 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 {
 	uid_t rootuid, rootgid;
 	unsigned long val;
-	char *chownpath = path;
 	int hostuid, hostgid, ret;
 	struct stat sb;
 	char map1[100], map2[100], map3[100], map4[100], map5[100];
@@ -3758,23 +3757,6 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 	}
 	rootgid = (gid_t)val;
 
-	/*
-	 * In case of overlay, we want only the writeable layer to be chowned
-	 */
-	if (strncmp(path, "overlayfs:", 10) == 0 || strncmp(path, "aufs:", 5) == 0) {
-		chownpath = strchr(path, ':');
-		if (!chownpath) {
-			ERROR("Bad overlay path: %s", path);
-			return -1;
-		}
-		chownpath = strchr(chownpath + 1, ':');
-		if (!chownpath) {
-			ERROR("Bad overlay path: %s", path);
-			return -1;
-		}
-		chownpath++;
-	}
-	path = chownpath;
 	if (hostuid == 0) {
 		if (chown(path, rootuid, rootgid) < 0) {
 			ERROR("Error chowning %s", path);
