@@ -270,6 +270,9 @@ static struct bdev *do_bdev_create(const char *dest, const char *type,
 
 	struct bdev *bdev;
 
+	if (!type)
+		type = "dir";
+
 	bdev = bdev_get(type);
 	if (!bdev)
 		return NULL;
@@ -389,7 +392,11 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		*needs_rdep = 1;
 	}
 
-	new = bdev_get(bdevtype ? bdevtype : orig->type);
+	if (strcmp(oldpath, lxcpath) && !bdevtype)
+		bdevtype = "dir";
+	else if (!bdevtype)
+		bdevtype = orig->type;
+	new = bdev_get(bdevtype);
 	if (!new) {
 		ERROR("no such block device type: %s",
 		      bdevtype ? bdevtype : orig->type);
