@@ -47,23 +47,14 @@
 lxc_log_define(lxclvm, lxc);
 
 extern char *dir_new_path(char *src, const char *oldname, const char *name,
-		const char *oldpath, const char *lxcpath);
+			  const char *oldpath, const char *lxcpath);
 
-    /*
-     * LVM ops
-     */
-
-    /*
-     * path must be '/dev/$vg/$lv', $vg must be an existing VG, and $lv must not
-     * yet exist.  This function will attempt to create /dev/$vg/$lv of size
-     * $size. If thinpool is specified, we'll check for it's existence and if
-     * it's
-     * a valid thin pool, and if so, we'll create the requested lv from that
-     * thin
-     * pool.
-     */
-    static int do_lvm_create(const char *path, uint64_t size,
-			     const char *thinpool)
+/* Path must be '/dev/$vg/$lv', $vg must be an existing VG, and $lv must not yet
+ * exist.  This function will attempt to create /dev/$vg/$lv of size $size. If
+ * thinpool is specified, we'll check for it's existence and if it's a valid
+ * thin pool, and if so, we'll create the requested lv from that thin pool.
+ */
+static int do_lvm_create(const char *path, uint64_t size, const char *thinpool)
 {
 	int ret, pid, len;
 	char sz[24], *pathdup, *vg, *lv, *tp = NULL;
