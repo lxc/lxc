@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
 
@@ -39,13 +40,9 @@
 #include "log.h"
 #include "lxcbtrfs.h"
 #include "lxcrsync.h"
-#include "utils.h"
+#include "../utils.h"
 
 lxc_log_define(lxcbtrfs, lxc);
-
-/* defined in lxccontainer.c: needs to become common helper */
-extern char *dir_new_path(char *src, const char *oldname, const char *name,
-			  const char *oldpath, const char *lxcpath);
 
 /*
  * Return the full path of objid under dirid.  Let's say dirid is
@@ -380,29 +377,19 @@ int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 	if (!orig->dest || !orig->src)
 		return -1;
 
-	if (strcmp(orig->type, "btrfs")) {
-		int len, ret;
-		if (snap) {
-			ERROR("btrfs snapshot from %s backing store is not supported",
-				orig->type);
-			return -1;
-		}
-
-		len = strlen(lxcpath) + strlen(cname) + strlen("rootfs") + 6 + 3;
-		new->src = malloc(len);
-		if (!new->src)
-			return -1;
-
-		ret = snprintf(new->src, len, "btrfs:%s/%s/rootfs", lxcpath, cname);
-		if (ret < 0 || ret >= len)
-			return -1;
-	} else {
-		/* In case rootfs is in custom path, reuse it. */
-		new->src = dir_new_path(orig->src, oldname, cname, oldpath, lxcpath);
-		if (!new->src)
-			return -1;
-
+	if (strcmp(orig->type, "btrfs") && snap) {
+		ERROR("btrfs snapshot from %s backing store is not supported",
+		      orig->type);
+		return -1;
 	}
+
+	new->src = lxc_string_join(
+	    "/",
+	    (const char *[]){"btrfs:", *lxcpath != '/' ? lxcpath : ++lxcpath,
+			     cname, "rootfs", NULL},
+	    false);
+	if (!new->src)
+		return -1;
 
 	src = lxc_storage_get_path(new->src, "btrfs");
 	new->dest = strdup(src);
