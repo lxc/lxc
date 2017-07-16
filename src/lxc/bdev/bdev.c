@@ -406,6 +406,10 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	}
 	TRACE("Detected \"%s\" storage driver", new->type);
 
+	if (bdevtype && !strcmp(orig->type, "btrfs") &&
+	    !strcmp(new->type, "btrfs"))
+		snap = 1;
+
 	if (new->ops->clone_paths(orig, new, oldname, cname, oldpath, lxcpath,
 				  snap, newsize, c0->lxc_conf) < 0) {
 		ERROR("Failed getting pathnames for clone of \"%s\"", src);
@@ -426,36 +430,6 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 
 	if (snap)
 		return new;
-
-	/* https://github.com/lxc/lxc/issues/131
-	 * Use btrfs snapshot feature instead of rsync to restore if both orig
-	 * and new are btrfs.
-	 */
-	if (bdevtype && strcmp(orig->type, "btrfs") == 0 &&
-	    strcmp(new->type, "btrfs") == 0 &&
-	    btrfs_same_fs(orig->dest, new->dest) == 0) {
-		struct rsync_data_char arg;
-
-		if (btrfs_destroy(new) < 0) {
-			ERROR("Failed to destroy \"%s\" btrfs subvolume", new->dest);
-			goto err;
-		}
-
-		arg.src = orig->dest;
-		arg.dest = new->dest;
-		if (am_unpriv())
-			ret = userns_exec_1(c0->lxc_conf, btrfs_snapshot_wrapper,
-					  &arg, "btrfs_snapshot_wrapper");
-		else
-			ret = btrfs_snapshot(orig->dest, new->dest);
-		if (ret < 0) {
-			SYSERROR("Failed to create btrfs snapshot \"%s\" of \"%s\"",
-			         new->dest, orig->dest);
-			goto err;
-		}
-		bdev_put(orig);
-		return new;
-	}
 
 	pid = fork();
 	if (pid < 0) {
