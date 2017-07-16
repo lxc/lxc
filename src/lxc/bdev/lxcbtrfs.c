@@ -349,7 +349,7 @@ out:
 	return ret;
 }
 
-static int btrfs_snapshot_wrapper(void *data)
+int btrfs_snapshot_wrapper(void *data)
 {
 	char *src;
 	struct rsync_data_char *arg = data;
