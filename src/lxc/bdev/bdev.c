@@ -96,8 +96,8 @@ static const struct bdev_ops btrfs_ops = {
     .clone_paths = &btrfs_clonepaths,
     .destroy = &btrfs_destroy,
     .create = &btrfs_create,
-    .create_clone = NULL,
-    .create_snapshot = NULL,
+    .create_clone = &btrfs_create_clone,
+    .create_snapshot = &btrfs_create_snapshot,
     .can_snapshot = true,
     .can_backup = true,
 };
@@ -415,6 +415,8 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		bdevtype = "dir";
 	else if (!bdevtype)
 		bdevtype = orig->type;
+
+	/* get new bdev type */
 	new = bdev_get(bdevtype);
 	if (!new) {
 		ERROR("no such block device type: %s",
@@ -424,17 +426,24 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	}
 	TRACE("Detected \"%s\" storage driver", new->type);
 
-	if (bdevtype && !strcmp(orig->type, "btrfs") &&
-	    !strcmp(new->type, "btrfs"))
-		snap = 1;
-
+	/* create new paths */
 	if (new->ops->clone_paths(orig, new, oldname, cname, oldpath, lxcpath,
 				  snap, newsize, c0->lxc_conf) < 0) {
 		ERROR("Failed getting pathnames for clone of \"%s\"", src);
 		goto err;
 	}
 
-	/* If the storage driver is "btrfs" then the we will create snapshot. */
+	if (!strcmp(orig->type, "btrfs") && !strcmp(new->type, "btrfs")) {
+		bool bret = false;
+		if (snap || btrfs_same_fs(orig->dest, new->dest) == 0)
+			bret = new->ops->create_snapshot(c0->lxc_conf, orig, new);
+		else
+			bret = new->ops->create_clone(c0->lxc_conf, orig, new, 0);
+		if (!bret)
+			return NULL;
+		return new;
+	}
+
 	if (strcmp(bdevtype, "btrfs")) {
 		if (!strcmp(new->type, "overlay") ||
 		    !strcmp(new->type, "overlayfs"))
