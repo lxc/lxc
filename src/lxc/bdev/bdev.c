@@ -432,17 +432,28 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	if (bdevtype && strcmp(orig->type, "btrfs") == 0 &&
 	    strcmp(new->type, "btrfs") == 0 &&
 	    btrfs_same_fs(orig->dest, new->dest) == 0) {
+		struct rsync_data_char arg;
+
 		if (btrfs_destroy(new) < 0) {
 			ERROR("Error destroying %s subvolume", new->dest);
 			goto err;
 		}
+
 		if (mkdir_p(new->dest, 0755) < 0) {
 			ERROR("Error creating %s directory", new->dest);
 			goto err;
 		}
-		if (btrfs_snapshot(orig->dest, new->dest) < 0) {
-			ERROR("Error restoring %s to %s", orig->dest,
-			      new->dest);
+
+		arg.src = orig->dest;
+		arg.dest = new->dest;
+		if (am_unpriv())
+			ret = userns_exec_1(c0->lxc_conf, btrfs_snapshot_wrapper,
+					  &arg, "btrfs_snapshot_wrapper");
+		else
+			ret = btrfs_snapshot(orig->dest, new->dest);
+		if (ret < 0) {
+			SYSERROR("Failed to create btrfs snapshot \"%s\" of \"%s\"",
+			         new->dest, orig->dest);
 			goto err;
 		}
 		bdev_put(orig);
