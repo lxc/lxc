@@ -151,6 +151,12 @@ int dir_mount(struct bdev *bdev)
 	src = lxc_storage_get_path(bdev->src, bdev->type);
 
 	ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC | mntflags, mntdata);
+	if ((0 == ret) && (mntflags & MS_RDONLY)) {
+		DEBUG("remounting %s on %s with readonly options",
+			src ? src : "(none)", bdev->dest ? bdev->dest : "(none)");
+		ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC | mntflags | MS_REMOUNT, mntdata);
+	}
+
 	free(mntdata);
 	return ret;
 }
