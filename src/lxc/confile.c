@@ -937,6 +937,11 @@ static int set_config_network_macvlan_mode(const char *key, const char *value,
 		return -1;
 	}
 
+	if (lxc_config_value_empty(value)) {
+		netdev->priv.macvlan_attr.mode = 0;
+		return 0;
+	}
+
 	return macvlan_mode(&netdev->priv.macvlan_attr.mode, value);
 }
 
