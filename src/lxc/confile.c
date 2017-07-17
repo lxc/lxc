@@ -988,6 +988,11 @@ static int set_config_network_vlan_id(const char *key, const char *value,
 		return -1;
 	}
 
+	if (lxc_config_value_empty(value)) {
+		netdev->priv.vlan_attr.vid = 0;
+		return 0;
+	}
+
 	if (get_u16(&netdev->priv.vlan_attr.vid, value, 0))
 		return -1;
 
