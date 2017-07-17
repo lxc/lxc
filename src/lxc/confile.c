@@ -871,6 +871,11 @@ static int set_config_network_flags(const char *key, const char *value,
 	if (!netdev)
 		return -1;
 
+	if (lxc_config_value_empty(value)) {
+		netdev->flags = 0;
+		return 0;
+	}
+
 	netdev->flags |= IFF_UP;
 
 	return 0;
