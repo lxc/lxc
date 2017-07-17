@@ -871,6 +871,11 @@ static int set_config_network_flags(const char *key, const char *value,
 	if (!netdev)
 		return -1;
 
+	if (lxc_config_value_empty(value)) {
+		netdev->flags = 0;
+		return 0;
+	}
+
 	netdev->flags |= IFF_UP;
 
 	return 0;
@@ -932,6 +937,11 @@ static int set_config_network_macvlan_mode(const char *key, const char *value,
 		return -1;
 	}
 
+	if (lxc_config_value_empty(value)) {
+		netdev->priv.macvlan_attr.mode = 0;
+		return 0;
+	}
+
 	return macvlan_mode(&netdev->priv.macvlan_attr.mode, value);
 }
 
@@ -976,6 +986,11 @@ static int set_config_network_vlan_id(const char *key, const char *value,
 	if (netdev->type != LXC_NET_VLAN) {
 		ERROR("Invalid vlan.id for a non-macvlan netdev");
 		return -1;
+	}
+
+	if (lxc_config_value_empty(value)) {
+		netdev->priv.vlan_attr.vid = 0;
+		return 0;
 	}
 
 	if (get_u16(&netdev->priv.vlan_attr.vid, value, 0))
@@ -1100,6 +1115,11 @@ static int set_config_network_ipv4_gateway(const char *key, const char *value,
 
 	free(netdev->ipv4_gateway);
 
+	if (lxc_config_value_empty(value)) {
+		netdev->ipv4_gateway = NULL;
+		return 0;
+	}
+
 	if (!strcmp(value, "auto")) {
 		netdev->ipv4_gateway = NULL;
 		netdev->ipv4_gateway_auto = true;
@@ -1199,6 +1219,11 @@ static int set_config_network_ipv6_gateway(const char *key, const char *value,
 		return -1;
 
 	free(netdev->ipv6_gateway);
+
+	if (lxc_config_value_empty(value)) {
+		netdev->ipv6_gateway = NULL;
+		return 0;
+	}
 
 	if (!strcmp(value, "auto")) {
 		netdev->ipv6_gateway = NULL;
