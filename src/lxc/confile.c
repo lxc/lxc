@@ -1100,6 +1100,11 @@ static int set_config_network_ipv4_gateway(const char *key, const char *value,
 
 	free(netdev->ipv4_gateway);
 
+	if (lxc_config_value_empty(value)) {
+		netdev->ipv4_gateway = NULL;
+		return 0;
+	}
+
 	if (!strcmp(value, "auto")) {
 		netdev->ipv4_gateway = NULL;
 		netdev->ipv4_gateway_auto = true;
@@ -1199,6 +1204,11 @@ static int set_config_network_ipv6_gateway(const char *key, const char *value,
 		return -1;
 
 	free(netdev->ipv6_gateway);
+
+	if (lxc_config_value_empty(value)) {
+		netdev->ipv6_gateway = NULL;
+		return 0;
+	}
 
 	if (!strcmp(value, "auto")) {
 		netdev->ipv6_gateway = NULL;
