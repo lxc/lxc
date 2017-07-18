@@ -61,7 +61,8 @@ bin_SCRIPTS = lxc-test-automount \
 	      lxc-test-autostart \
 	      lxc-test-cloneconfig \
 	      lxc-test-createconfig \
-	      lxc-test-no-new-privs
+	      lxc-test-no-new-privs \
+	      lxc-test-rootfs
 
 if DISTRO_UBUNTU
 bin_SCRIPTS += \
@@ -94,6 +95,7 @@ EXTRA_DIST = \
 	lxcpath.c \
 	lxc-test-lxc-attach \
 	lxc-test-automount \
+	lxc-test-rootfs \
 	lxc-test-autostart \
 	lxc-test-apparmor-mount \
 	lxc-test-checkpoint-restore \
