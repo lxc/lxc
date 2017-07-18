@@ -57,8 +57,11 @@ bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-apparmor lxc-test-utils lxc-test-parse-config-file \
 	lxc-test-config-jump-table lxc-test-shortlived
 
-bin_SCRIPTS = lxc-test-automount lxc-test-autostart lxc-test-cloneconfig \
-	lxc-test-createconfig
+bin_SCRIPTS = lxc-test-automount \
+	      lxc-test-autostart \
+	      lxc-test-cloneconfig \
+	      lxc-test-createconfig
+	      lxc-test-rootfs
 
 if DISTRO_UBUNTU
 bin_SCRIPTS += \
@@ -91,6 +94,7 @@ EXTRA_DIST = \
 	lxcpath.c \
 	lxc-test-lxc-attach \
 	lxc-test-automount \
+	lxc-test-rootfs \
 	lxc-test-autostart \
 	lxc-test-apparmor-mount \
 	lxc-test-checkpoint-restore \
