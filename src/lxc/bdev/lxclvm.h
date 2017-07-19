@@ -25,6 +25,7 @@
 #define __LXC_LVM_H
 
 #define _GNU_SOURCE
+#include <stdbool.h>
 #include <stdint.h>
 
 /* defined in bdev.h */
@@ -52,5 +53,9 @@ int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 int lvm_destroy(struct bdev *orig);
 int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 		struct bdev_specs *specs);
+bool lvm_create_clone(struct lxc_conf *conf, struct bdev *orig,
+		      struct bdev *new, uint64_t newsize);
+bool lvm_create_snapshot(struct lxc_conf *conf, struct bdev *orig,
+			 struct bdev *new, uint64_t newsize);
 
 #endif /* __LXC_LVM_H */
