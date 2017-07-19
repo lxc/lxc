@@ -467,7 +467,7 @@ bool btrfs_create_clone(struct lxc_conf *conf, struct bdev *orig,
 }
 
 bool btrfs_create_snapshot(struct lxc_conf *conf, struct bdev *orig,
-			   struct bdev *new)
+			   struct bdev *new, uint64_t newsize)
 {
 	int ret;
 

@@ -436,7 +436,7 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	if (!strcmp(orig->type, "btrfs") && !strcmp(new->type, "btrfs")) {
 		bool bret = false;
 		if (snap || btrfs_same_fs(orig->dest, new->dest) == 0)
-			bret = new->ops->create_snapshot(c0->lxc_conf, orig, new);
+			bret = new->ops->create_snapshot(c0->lxc_conf, orig, new, 0);
 		else
 			bret = new->ops->create_clone(c0->lxc_conf, orig, new, 0);
 		if (!bret)
