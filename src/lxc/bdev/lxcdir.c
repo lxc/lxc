@@ -136,6 +136,7 @@ int dir_mount(struct bdev *bdev)
 	unsigned long mntflags;
 	char *src, *mntdata;
 	int ret;
+	unsigned long mflags;
 
 	if (strcmp(bdev->type, "dir"))
 		return -22;
@@ -154,7 +155,8 @@ int dir_mount(struct bdev *bdev)
 	if ((0 == ret) && (mntflags & MS_RDONLY)) {
 		DEBUG("remounting %s on %s with readonly options",
 			src ? src : "(none)", bdev->dest ? bdev->dest : "(none)");
-		ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC | mntflags | MS_REMOUNT, mntdata);
+		mflags = add_required_remount_flags(src, bdev->dest, MS_BIND | MS_REC | mntflags | MS_REMOUNT);
+		ret = mount(src, bdev->dest, "bind", mflags, mntdata);
 	}
 
 	free(mntdata);
