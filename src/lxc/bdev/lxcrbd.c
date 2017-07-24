@@ -23,7 +23,7 @@
 
 #define _GNU_SOURCE
 #define __STDC_FORMAT_MACROS /* Required for PRIu64 to work. */
-#include <inttypes.h> /* Required for PRIu64 to work. */
+#include <inttypes.h>	/* Required for PRIu64 to work. */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,15 +37,15 @@
 lxc_log_define(lxcrbd, lxc);
 
 int rbd_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath,
-		int snap, uint64_t newsize, struct lxc_conf *conf)
+		   const char *cname, const char *oldpath, const char *lxcpath,
+		   int snap, uint64_t newsize, struct lxc_conf *conf)
 {
 	ERROR("rbd clonepaths not implemented");
 	return -1;
 }
 
 int rbd_create(struct bdev *bdev, const char *dest, const char *n,
-		struct bdev_specs *specs)
+	       struct bdev_specs *specs)
 {
 	const char *rbdpool, *rbdname = n, *fstype;
 	uint64_t size;
@@ -75,20 +75,21 @@ int rbd_create(struct bdev *bdev, const char *dest, const char *n,
 	if (ret < 0 || ret >= len)
 		return -1;
 
-	// fssize is in bytes.
+	/* fssize is in bytes */
 	size = specs->fssize;
 	if (!size)
 		size = DEFAULT_FS_SIZE;
 
-	// in megabytes for rbd tool
-	ret = snprintf(sz, 24, "%"PRIu64, size / 1024 / 1024 );
+	/* in megabytes for rbd tool */
+	ret = snprintf(sz, 24, "%" PRIu64, size / 1024 / 1024);
 	if (ret < 0 || ret >= 24)
 		exit(1);
 
 	if ((pid = fork()) < 0)
 		return -1;
 	if (!pid) {
-		execlp("rbd", "rbd", "create" , "--pool", rbdpool, rbdname, "--size", sz, (char *)NULL);
+		execlp("rbd", "rbd", "create", "--pool", rbdpool, rbdname,
+		       "--size", sz, (char *)NULL);
 		exit(1);
 	}
 	if (wait_for_pid(pid) < 0)
@@ -97,7 +98,8 @@ int rbd_create(struct bdev *bdev, const char *dest, const char *n,
 	if ((pid = fork()) < 0)
 		return -1;
 	if (!pid) {
-		execlp("rbd", "rbd", "map", "--pool", rbdpool, rbdname, (char *)NULL);
+		execlp("rbd", "rbd", "map", "--pool", rbdpool, rbdname,
+		       (char *)NULL);
 		exit(1);
 	}
 	if (wait_for_pid(pid) < 0)
@@ -136,7 +138,7 @@ int rbd_destroy(struct bdev *orig)
 		if ((pid = fork()) < 0)
 			return -1;
 		if (!pid) {
-			execlp("rbd", "rbd", "unmap" , src, (char *)NULL);
+			execlp("rbd", "rbd", "unmap", src, (char *)NULL);
 			exit(1);
 		}
 		if (wait_for_pid(pid) < 0)
@@ -147,12 +149,11 @@ int rbd_destroy(struct bdev *orig)
 		return -1;
 	if (!pid) {
 		rbdfullname = alloca(strlen(src) - 8);
-		strcpy( rbdfullname, &src[9] );
-		execlp("rbd", "rbd", "rm" , rbdfullname, (char *)NULL);
+		strcpy(rbdfullname, &src[9]);
+		execlp("rbd", "rbd", "rm", rbdfullname, (char *)NULL);
 		exit(1);
 	}
 	return wait_for_pid(pid);
-
 }
 
 int rbd_detect(const char *path)
@@ -173,7 +174,9 @@ int rbd_mount(struct bdev *bdev)
 
 	src = lxc_storage_get_path(bdev->src, bdev->type);
 	if (!file_exists(src)) {
-		// if blkdev does not exist it should be mapped, because it is not persistent on reboot
+		/* If blkdev does not exist it should be mapped, because it is
+		 * not persistent on reboot.
+		 */
 		ERROR("Block device %s is not mapped.", bdev->src);
 		return -1;
 	}
