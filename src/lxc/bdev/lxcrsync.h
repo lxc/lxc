@@ -43,4 +43,9 @@ int rsync_delta(struct rsync_data_char *data);
 int rsync_rootfs(struct rsync_data *data);
 int rsync_rootfs_wrapper(void *data);
 
+/* new helpers */
+extern int lxc_rsync_exec_wrapper(void *data);
+extern int lxc_rsync_exec(const char *src, const char *dest);
+extern int lxc_rsync(struct rsync_data *data);
+
 #endif // __LXC_RSYNC_H
