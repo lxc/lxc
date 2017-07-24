@@ -451,4 +451,7 @@ void remount_all_slave(void);
 extern void suggest_default_idmap(void);
 FILE *make_anonymous_mount_file(struct lxc_list *mount);
 struct lxc_list *sort_cgroup_settings(struct lxc_list* cgroup_settings);
+unsigned long add_required_remount_flags(const char *s, const char *d,
+		unsigned long flags);
+
 #endif

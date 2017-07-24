@@ -569,7 +569,7 @@ int pin_rootfs(const char *rootfs)
  * If we are asking to remount something, make sure that any
  * NOEXEC etc are honored.
  */
-static unsigned long add_required_remount_flags(const char *s, const char *d,
+unsigned long add_required_remount_flags(const char *s, const char *d,
 		unsigned long flags)
 {
 #ifdef HAVE_STATVFS
