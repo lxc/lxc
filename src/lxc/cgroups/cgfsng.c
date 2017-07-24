@@ -1000,11 +1000,11 @@ static void trim(char *s)
 
 static void lxc_cgfsng_print_handler_data(const struct cgfsng_handler_data *d)
 {
-	printf("Cgroup information:\n");
-	printf("  container name: %s\n", d->name ? d->name : "(null)");
-	printf("  lxc.cgroup.use: %s\n", cgroup_use ? cgroup_use : "(null)");
-	printf("  lxc.cgroup.pattern: %s\n", d->cgroup_pattern ? d->cgroup_pattern : "(null)");
-	printf("  cgroup: %s\n", d->container_cgroup ? d->container_cgroup : "(null)");
+	printf("Cgroup information:\r\n");
+	printf("  container name: %s\r\n", d->name ? d->name : "(null)");
+	printf("  lxc.cgroup.use: %s\r\n", cgroup_use ? cgroup_use : "(null)");
+	printf("  lxc.cgroup.pattern: %s\r\n", d->cgroup_pattern ? d->cgroup_pattern : "(null)");
+	printf("  cgroup: %s\r\n", d->container_cgroup ? d->container_cgroup : "(null)");
 }
 
 static void lxc_cgfsng_print_hierarchies()
@@ -1013,18 +1013,18 @@ static void lxc_cgfsng_print_hierarchies()
 	int i;
 
 	if (!hierarchies) {
-		printf("  No hierarchies found.");
+		printf("  No hierarchies found.\r\n");
 		return;
 	}
-	printf("  Hierarchies:\n");
+	printf("  Hierarchies:\r\n");
 	for (i = 0, it = hierarchies; it && *it; it++, i++) {
 		char **cit;
 		int j;
-		printf("  %d: base_cgroup %s\n", i, (*it)->base_cgroup ? (*it)->base_cgroup : "(null)");
-		printf("      mountpoint %s\n", (*it)->mountpoint ? (*it)->mountpoint : "(null)");
-		printf("      controllers:\n");
+		printf("  %d: base_cgroup %s\r\n", i, (*it)->base_cgroup ? (*it)->base_cgroup : "(null)");
+		printf("      mountpoint %s\r\n", (*it)->mountpoint ? (*it)->mountpoint : "(null)");
+		printf("      controllers:\r\n");
 		for (j = 0, cit = (*it)->controllers; cit && *cit; cit++, j++)
-			printf("      %d: %s\n", j, *cit);
+			printf("      %d: %s\r\n", j, *cit);
 	}
 }
 
@@ -1033,13 +1033,13 @@ static void lxc_cgfsng_print_basecg_debuginfo(char *basecginfo, char **klist, ch
 	int k;
 	char **it;
 
-	printf("basecginfo is:\n");
-	printf("%s\n", basecginfo);
+	printf("basecginfo is:\r\n");
+	printf("%s\r\n", basecginfo);
 
 	for (k = 0, it = klist; it && *it; it++, k++)
-		printf("kernel subsystem %d: %s\n", k, *it);
+		printf("kernel subsystem %d: %s\r\n", k, *it);
 	for (k = 0, it = nlist; it && *it; it++, k++)
-		printf("named subsystem %d: %s\n", k, *it);
+		printf("named subsystem %d: %s\r\n", k, *it);
 }
 
 static void lxc_cgfsng_print_debuginfo(const struct cgfsng_handler_data *d)
