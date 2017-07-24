@@ -337,12 +337,12 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	const char *oldpath = c0->config_path;
 	struct rsync_data data;
 
-	/* if the container name doesn't show up in the rootfs path, then
-	 * we don't know how to come up with a new name
+	/* If the container name doesn't show up in the rootfs path, then we
+	 * don't know how to come up with a new name.
 	 */
 	if (!strstr(src, oldname)) {
-		ERROR("original rootfs path %s doesn't include container name %s",
-		      src, oldname);
+		ERROR("Original rootfs path \"%s\" does not include container "
+		      "name \"%s\"", src, oldname);
 		return NULL;
 	}
 
@@ -371,12 +371,13 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 			bdev_put(orig);
 			return NULL;
 		}
-		ret = stat(orig->dest, &sb);
 
-		if (ret < 0 && errno == ENOENT)
-			if (mkdir_p(orig->dest, 0755) < 0)
-				WARN("Failed to create directoy \"%s\"",
-				     orig->dest);
+		ret = stat(orig->dest, &sb);
+		if (ret < 0 && errno == ENOENT) {
+			ret = mkdir_p(orig->dest, 0755);
+			if (ret < 0)
+				WARN("Failed to create directoy \"%s\"", orig->dest);
+		}
 	}
 
 	/* Special case for snapshot. If the caller requested maybe_snapshot and
@@ -386,11 +387,8 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	if (maybe_snap && keepbdevtype && !bdevtype && !orig->ops->can_snapshot)
 		snap = false;
 
-	/*
-	 * If newtype is NULL and snapshot is set, then use overlayfs
-	 */
-	if (!bdevtype && !keepbdevtype && snap &&
-	    strcmp(orig->type, "dir") == 0)
+	/* If newtype is NULL and snapshot is set, then use overlay. */
+	if (!bdevtype && !keepbdevtype && snap && strcmp(orig->type, "dir") == 0)
 		bdevtype = "overlay";
 
 	if (am_unpriv() && !unpriv_snap_allowed(orig, bdevtype, snap, maybe_snap)) {
@@ -401,12 +399,12 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	}
 
 	*needs_rdep = 0;
-	if (bdevtype && strcmp(orig->type, "dir") == 0 &&
+	if (bdevtype && !strcmp(orig->type, "dir") &&
 	    (strcmp(bdevtype, "aufs") == 0 ||
 	     strcmp(bdevtype, "overlayfs") == 0 ||
 	     strcmp(bdevtype, "overlay") == 0)) {
 		*needs_rdep = 1;
-	} else if (snap && strcmp(orig->type, "lvm") == 0 &&
+	} else if (snap && !strcmp(orig->type, "lvm") &&
 		   !lvm_is_thin_volume(orig->src)) {
 		*needs_rdep = 1;
 	}
@@ -419,20 +417,22 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	/* get new bdev type */
 	new = bdev_get(bdevtype);
 	if (!new) {
-		ERROR("no such block device type: %s",
+		ERROR("Failed to initialize \"%s\" storage driver",
 		      bdevtype ? bdevtype : orig->type);
 		bdev_put(orig);
 		return NULL;
 	}
-	TRACE("Detected \"%s\" storage driver", new->type);
+	TRACE("Initialized \"%s\" storage driver", new->type);
 
 	/* create new paths */
-	if (new->ops->clone_paths(orig, new, oldname, cname, oldpath, lxcpath,
-				  snap, newsize, c0->lxc_conf) < 0) {
-		ERROR("Failed getting pathnames for clone of \"%s\"", src);
+	ret = new->ops->clone_paths(orig, new, oldname, cname, oldpath, lxcpath,
+				    snap, newsize, c0->lxc_conf);
+	if (ret < 0) {
+		ERROR("Failed creating new paths for clone of \"%s\"", src);
 		goto err;
 	}
 
+	/* btrfs */
 	if (!strcmp(orig->type, "btrfs") && !strcmp(new->type, "btrfs")) {
 		bool bret = false;
 		if (snap || btrfs_same_fs(orig->dest, new->dest) == 0)
@@ -444,6 +444,7 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		return new;
 	}
 
+	/* lvm */
 	if (!strcmp(orig->type, "lvm") && !strcmp(new->type, "lvm")) {
 		bool bret = false;
 		if (snap)
@@ -458,19 +459,22 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	}
 
 	if (strcmp(bdevtype, "btrfs")) {
-		if (!strcmp(new->type, "overlay") ||
-		    !strcmp(new->type, "overlayfs"))
+		if (!strcmp(new->type, "overlay") || !strcmp(new->type, "overlayfs"))
 			src_no_prefix = ovl_get_lower(new->src);
 		else
 			src_no_prefix = lxc_storage_get_path(new->src, new->type);
 
-		if (am_unpriv() && chown_mapped_root(src_no_prefix, c0->lxc_conf) < 0)
-			WARN("Failed to chown \"%s\"", src_no_prefix);
+		if (am_unpriv()) {
+			ret = chown_mapped_root(src_no_prefix, c0->lxc_conf);
+			if (ret < 0)
+				WARN("Failed to chown \"%s\"", new->src);
+		}
 	}
 
 	if (snap)
 		return new;
 
+	/* rsync the contents from source to target */
 	pid = fork();
 	if (pid < 0) {
 		SYSERROR("fork");
