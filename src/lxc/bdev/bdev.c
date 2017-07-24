@@ -326,7 +326,6 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		       const char *bdevdata, uint64_t newsize, int *needs_rdep)
 {
 	struct bdev *orig, *new;
-	pid_t pid;
 	int ret;
 	char *src_no_prefix;
 	bool snap = flags & LXC_CLONE_SNAPSHOT;
@@ -336,6 +335,7 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	const char *oldname = c0->name;
 	const char *oldpath = c0->config_path;
 	struct rsync_data data;
+	char cmd_output[MAXPATHLEN];
 
 	/* If the container name doesn't show up in the rootfs path, then we
 	 * don't know how to come up with a new name.
@@ -475,33 +475,28 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		return new;
 
 	/* rsync the contents from source to target */
-	pid = fork();
-	if (pid < 0) {
-		SYSERROR("fork");
-		goto err;
-	}
-
-	if (pid > 0) {
-		int ret = wait_for_pid(pid);
-		bdev_put(orig);
-		if (ret < 0) {
-			bdev_put(new);
-			return NULL;
-		}
-		return new;
-	}
-
 	data.orig = orig;
 	data.new = new;
-	if (am_unpriv())
-		ret = userns_exec_1(c0->lxc_conf, rsync_rootfs_wrapper, &data,
-				    "rsync_rootfs_wrapper");
-	else
-		ret = rsync_rootfs(&data);
-	if (ret < 0)
-		ERROR("Failed to rsync from");
+	if (am_unpriv()) {
+		ret = userns_exec_1(c0->lxc_conf, lxc_rsync_exec_wrapper, &data,
+				    "lxc_rsync_exec_wrapper");
+		if (ret < 0) {
+			ERROR("Failed to rsync from \"%s\" into \"%s\"",
+			      orig->dest, new->dest);
+			goto err;
+		}
+	} else {
+		ret = run_command(cmd_output, sizeof(cmd_output),
+				  lxc_rsync_exec_wrapper, (void *)&data);
+		if (ret < 0) {
+			ERROR("Failed to rsync from \"%s\" into \"%s\": %s",
+			      orig->dest, new->dest, cmd_output);
+			goto err;
+		}
+	}
 
-	exit(ret == 0 ? 0 : 1);
+	bdev_put(orig);
+	return new;
 
 err:
 	bdev_put(orig);
