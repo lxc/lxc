@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# lxc: linux Container library
+
+# Authors:
+# Feng Li <lifeng68@huawei.com>
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+set -ex
+
+cleanup() {
+	set +e
+	lxc-destroy -n lxc-test-rootfs -f
+	if [ $PHASE != "done" ]; then
+		echo "rootfs test failed at $PHASE"
+		exit 1
+	fi
+	echo "rootfs test passed"
+	exit 0
+}
+
+PHASE=setup
+trap cleanup EXIT
+
+lxc-destroy -n lxc-test-rootfs -f || true
+lxc-create -t busybox -n lxc-test-rootfs
+
+PHASE=ro_rootfs
+echo "Starting phase $PHASE"
+config=/var/lib/lxc/lxc-test-rootfs/config
+sed -i '/lxc.rootfs.options/d' $config
+echo "lxc.rootfs.options = ro" >> $config
+
+lxc-start -n lxc-test-rootfs
+pid=`lxc-info -n lxc-test-rootfs -p -H`
+ro=0
+mkdir /proc/$pid/root/rotest || ro=1
+[ $ro -ne 0 ]
+
+lxc-stop -n lxc-test-rootfs -k
+PHASE=rw_rootfs
+echo "Starting phase $PHASE"
+sed -i '/lxc.rootfs.options/d' $config
+echo "lxc.rootfs.options = rw" >> $config
+lxc-start -n lxc-test-rootfs
+pid=`lxc-info -n lxc-test-rootfs -p -H`
+ro=0
+mkdir /proc/$pid/root/rwtest || ro=1
+[ $ro -ne 1 ]
+rmdir /proc/$pid/root/rwtest
+ro=0
+
+PHASE=done
