@@ -22,6 +22,7 @@
  */
 
 #define _GNU_SOURCE
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,17 +33,77 @@
 #include "bdev.h"
 #include "config.h"
 #include "log.h"
+#include "lxcrsync.h"
 #include "lxczfs.h"
+#include "parse.h"
 #include "utils.h"
 
 lxc_log_define(lxczfs, lxc);
 
-/* There are two ways we could do this. We could always specify the 'zfs device'
- * (i.e. tank/lxc lxc/container) as rootfs. But instead (at least right now) we
- * have lxc-create specify <lxcpath>/<lxcname>/rootfs as the mountpoint, so that
- * it is always mounted. That means 'mount' is really never needed and could be
- * noop, but for the sake of flexibility let's always bind-mount.
- */
+struct zfs_args {
+	const char *dataset;
+	const char *snapshot;
+	const char *options;
+	void *argv;
+};
+
+int zfs_detect_exec_wrapper(void *data)
+{
+	struct zfs_args *args = data;
+
+	execlp("zfs", "zfs", "get", "type", "-H", "-o", "name", args->dataset,
+	       (char *)NULL);
+
+	return -1;
+}
+
+int zfs_create_exec_wrapper(void *args)
+{
+	struct zfs_args *zfs_args = args;
+
+	execvp("zfs", zfs_args->argv);
+
+	return -1;
+}
+
+int zfs_delete_exec_wrapper(void *args)
+{
+	struct zfs_args *zfs_args = args;
+
+	execlp("zfs", "zfs", "destroy", "-r", zfs_args->dataset, (char *)NULL);
+
+	return -1;
+}
+
+int zfs_snapshot_exec_wrapper(void *args)
+{
+	struct zfs_args *zfs_args = args;
+
+	execlp("zfs", "zfs", "snapshot", "-r", zfs_args->snapshot, (char *)NULL);
+
+	return -1;
+}
+
+int zfs_clone_exec_wrapper(void *args)
+{
+	struct zfs_args *zfs_args = args;
+
+	execlp("zfs", "zfs", "clone", "-p", "-o", "canmount=noauto", "-o",
+	       zfs_args->options, zfs_args->snapshot, zfs_args->dataset,
+	       (char *)NULL);
+
+	return -1;
+}
+
+int zfs_get_parent_snapshot_exec_wrapper(void *args)
+{
+	struct zfs_args *zfs_args = args;
+
+	execlp("zfs", "zfs", "get", "origin", "-o", "value", "-H",
+	       zfs_args->dataset, (char *)NULL);
+
+	return -1;
+}
 
 static bool zfs_list_entry(const char *path, char *output, size_t inlen)
 {
@@ -68,27 +129,60 @@ static bool zfs_list_entry(const char *path, char *output, size_t inlen)
 
 bool zfs_detect(const char *path)
 {
+	int ret;
+	char *dataset;
+	struct zfs_args cmd_args = {0};
+	char cmd_output[MAXPATHLEN] = {0};
+
 	if (!strncmp(path, "zfs:", 4))
 		return true;
 
-	char *output = malloc(LXC_LOG_BUFFER_SIZE);
+	/* This is a legacy zfs setup where the rootfs path
+	 * "<lxcpath>/<lxcname>/rootfs" is given.
+	 */
+	if (*path == '/') {
+		bool found;
+		char *output = malloc(LXC_LOG_BUFFER_SIZE);
 
-	if (!output) {
-		ERROR("out of memory");
+		if (!output) {
+			ERROR("out of memory");
+			return false;
+		}
+
+		found = zfs_list_entry(path, output, LXC_LOG_BUFFER_SIZE);
+		free(output);
+		return found;
+	}
+
+	cmd_args.dataset = path;
+	ret = run_command(cmd_output, sizeof(cmd_output),
+			  zfs_detect_exec_wrapper, (void *)&cmd_args);
+	if (ret < 0) {
+		ERROR("Failed to detect zfs dataset \"%s\": %s", path, cmd_output);
 		return false;
 	}
 
-	bool found = zfs_list_entry(path, output, LXC_LOG_BUFFER_SIZE);
-	free(output);
+	if (cmd_output[0] == '\0')
+		return false;
 
-	return found;
+	/* remove any possible leading and trailing whitespace */
+	dataset = cmd_output;
+	dataset += lxc_char_left_gc(dataset, strlen(dataset));
+	dataset[lxc_char_right_gc(dataset, strlen(dataset))] = '\0';
+
+	if (strcmp(dataset, path))
+		return false;
+
+	return true;
 }
 
 int zfs_mount(struct bdev *bdev)
 {
 	int ret;
-	char *mntdata, *src;
+	size_t oldlen, newlen, totallen;
+	char *mntdata, *src, *tmp;
 	unsigned long mntflags;
+	char cmd_output[MAXPATHLEN] = {0};
 
 	if (strcmp(bdev->type, "zfs"))
 		return -22;
@@ -96,126 +190,266 @@ int zfs_mount(struct bdev *bdev)
 	if (!bdev->src || !bdev->dest)
 		return -22;
 
-	if (parse_mntopts(bdev->mntopts, &mntflags, &mntdata) < 0) {
+	ret = parse_mntopts(bdev->mntopts, &mntflags, &mntdata);
+	if (ret < 0) {
+		ERROR("Failed to parse mount options");
 		free(mntdata);
 		return -22;
 	}
 
+	/* This is a legacy zfs setup where the rootfs path
+	 * "<lxcpath>/<lxcname>/rootfs" is given and we do a bind-mount.
+	 */
 	src = lxc_storage_get_path(bdev->src, bdev->type);
-	ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC | mntflags,
-		    mntdata);
-	free(mntdata);
+	if (*src == '/') {
+		bool found;
 
-	return ret;
+		found = zfs_list_entry(src, cmd_output, sizeof(cmd_output));
+		if (!found) {
+			ERROR("Failed to find zfs entry \"%s\"", src);
+			return -1;
+		}
+
+		tmp = strchr(cmd_output, ' ');
+		if (!tmp) {
+			ERROR("Failed to detect zfs dataset associated with "
+			      "\"%s\"", src);
+			return -1;
+		}
+		*tmp = '\0';
+		src = cmd_output;
+	}
+
+	/* ','
+	 * +
+	 * strlen("zfsutil")
+	 * +
+	 * ','
+	 * +
+	 * strlen(mntpoint=)
+	 * +
+	 * strlen(src)
+	 * +
+	 * '\0'
+	 */
+	newlen = 1 + 7 + 1 + 9 + strlen(src) + 1;
+	oldlen = mntdata ? strlen(mntdata) : 0;
+	totallen = (newlen + oldlen);
+	tmp = realloc(mntdata, totallen);
+	if (!tmp) {
+		ERROR("Failed to reallocate memory");
+		free(mntdata);
+		return -1;
+	}
+	mntdata = tmp;
+
+	ret = snprintf((mntdata + oldlen), newlen, ",zfsutil,mntpoint=%s", src);
+	if (ret < 0 || (size_t)ret >= newlen) {
+		ERROR("Failed to create string");
+		free(mntdata);
+		return -1;
+	}
+
+	ret = mount(src, bdev->dest, "zfs", mntflags, mntdata);
+	free(mntdata);
+	if (ret < 0 && errno != EBUSY) {
+		SYSERROR("Failed to mount \"%s\" on \"%s\"", src, bdev->dest);
+		return -1;
+	}
+
+	TRACE("Mounted \"%s\" on \"%s\"", src, bdev->dest);
+	return 0;
 }
 
 int zfs_umount(struct bdev *bdev)
 {
+	int ret;
+
 	if (strcmp(bdev->type, "zfs"))
 		return -22;
 
 	if (!bdev->src || !bdev->dest)
 		return -22;
 
-	return umount(bdev->dest);
+	ret = umount(bdev->dest);
+	if (ret < 0)
+		SYSERROR("Failed to unmount \"%s\"", bdev->dest);
+	else
+		TRACE("Unmounted \"%s\"", bdev->dest);
+
+	return ret;
 }
 
-int zfs_clone(const char *opath, const char *npath, const char *oname,
-	      const char *nname, const char *lxcpath, int snapshot)
+bool zfs_copy(struct lxc_conf *conf, struct bdev *orig, struct bdev *new,
+	      uint64_t newsize)
 {
-	// use the 'zfs list | grep opath' entry to get the zfsroot
-	char output[MAXPATHLEN], option[MAXPATHLEN];
-	char *p;
-	const char *zfsroot = output;
 	int ret;
-	pid_t pid;
+	char cmd_output[MAXPATHLEN], option[MAXPATHLEN];
+	struct rsync_data data = {0, 0};
+	struct zfs_args cmd_args = {0};
+	char *argv[] = {"zfs",			     /* 0    */
+			"create",		     /* 1    */
+			"-o",     "",		     /* 2, 3 */
+			"-o",     "canmount=noauto", /* 4, 5 */
+			"-p",			     /* 6    */
+			"",			     /* 7    */
+			NULL};
 
-	if (zfs_list_entry(opath, output, MAXPATHLEN)) {
-		// zfsroot is output up to ' '
-		if ((p = strchr(output, ' ')) == NULL)
-			return -1;
-		*p = '\0';
+	/* mountpoint */
+	ret = snprintf(option, MAXPATHLEN, "mountpoint=%s", new->dest);
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		ERROR("Failed to create string");
+		return false;
+	}
+	argv[3] = option;
+	argv[7] = lxc_storage_get_path(new->src, new->type);
 
-		if ((p = strrchr(output, '/')) == NULL)
-			return -1;
-		*p = '\0';
+	cmd_args.argv = argv;
+	ret = run_command(cmd_output, sizeof(cmd_output),
+			  zfs_create_exec_wrapper, (void *)&cmd_args);
+	if (ret < 0) {
+		ERROR("Failed to create zfs dataset \"%s\": %s", new->src, cmd_output);
+		return false;
+	} else if (cmd_output[0] != '\0') {
+		INFO("Created zfs dataset \"%s\": %s", new->src, cmd_output);
 	} else {
-		zfsroot = lxc_global_config_value("lxc.bdev.zfs.root");
+		TRACE("Created zfs dataset \"%s\"", new->src);
 	}
 
-	ret = snprintf(option, MAXPATHLEN, "-omountpoint=%s/%s/rootfs", lxcpath,
-		       nname);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		return -1;
+	ret = mkdir_p(new->dest, 0755);
+	if (ret < 0 && errno != EEXIST) {
+		SYSERROR("Failed to create directory \"%s\"", new->dest);
+		return false;
+	}
 
-	// zfs create -omountpoint=$lxcpath/$lxcname $zfsroot/$nname
+	data.orig = orig;
+	data.new = new;
+	ret = run_command(cmd_output, sizeof(cmd_output),
+			  lxc_rsync_exec_wrapper, (void *)&data);
+	if (ret < 0) {
+		ERROR("Failed to rsync from \"%s\" into \"%s\": %s", orig->dest,
+		      new->dest, cmd_output);
+		return false;
+	}
+	TRACE("Rsynced from \"%s\" to \"%s\"", orig->dest, new->dest);
+
+	return true;
+}
+
+/* create read-only snapshot and create a clone from it */
+bool zfs_snapshot(struct lxc_conf *conf, struct bdev *orig, struct bdev *new,
+		  uint64_t newsize)
+{
+	int ret;
+	size_t snapshot_len, len;
+	char *orig_src, *tmp, *snap_name, *snapshot;
+	struct zfs_args cmd_args = {0};
+	char cmd_output[MAXPATHLEN] = {0}, option[MAXPATHLEN];
+
+	orig_src = lxc_storage_get_path(orig->src, orig->type);
+	if (*orig_src == '/') {
+		bool found;
+
+		found = zfs_list_entry(orig_src, cmd_output, sizeof(cmd_output));
+		if (!found) {
+			ERROR("Failed to find zfs entry \"%s\"", orig_src);
+			return false;
+		}
+
+		tmp = strchr(cmd_output, ' ');
+		if (!tmp) {
+			ERROR("Failed to detect zfs dataset associated with "
+			      "\"%s\"", orig_src);
+			return false;
+		}
+		*tmp = '\0';
+		orig_src = cmd_output;
+	}
+
+	snapshot = strdup(orig_src);
 	if (!snapshot) {
-		if ((pid = fork()) < 0)
-			return -1;
-		if (!pid) {
-			char dev[MAXPATHLEN];
-			ret =
-			    snprintf(dev, MAXPATHLEN, "%s/%s", zfsroot, nname);
-			if (ret < 0 || ret >= MAXPATHLEN)
-				exit(EXIT_FAILURE);
-			execlp("zfs", "zfs", "create", option, dev,
-			       (char *)NULL);
-			exit(EXIT_FAILURE);
-		}
-		return wait_for_pid(pid);
-	} else {
-		// if snapshot, do
-		// 'zfs snapshot zfsroot/oname@nname
-		// zfs clone zfsroot/oname@nname zfsroot/nname
-		char path1[MAXPATHLEN], path2[MAXPATHLEN];
-
-		ret = snprintf(path1, MAXPATHLEN, "%s/%s@%s", zfsroot, oname,
-			       nname);
-		if (ret < 0 || ret >= MAXPATHLEN)
-			return -1;
-		(void)snprintf(path2, MAXPATHLEN, "%s/%s", zfsroot, nname);
-
-		// if the snapshot exists, delete it
-		if ((pid = fork()) < 0)
-			return -1;
-		if (!pid) {
-			int dev0 = open("/dev/null", O_WRONLY);
-			if (dev0 >= 0)
-				dup2(dev0, STDERR_FILENO);
-			execlp("zfs", "zfs", "destroy", path1, (char *)NULL);
-			exit(EXIT_FAILURE);
-		}
-		// it probably doesn't exist so destroy probably will fail.
-		(void)wait_for_pid(pid);
-
-		// run first (snapshot) command
-		if ((pid = fork()) < 0)
-			return -1;
-		if (!pid) {
-			execlp("zfs", "zfs", "snapshot", path1, (char *)NULL);
-			exit(EXIT_FAILURE);
-		}
-		if (wait_for_pid(pid) < 0)
-			return -1;
-
-		// run second (clone) command
-		if ((pid = fork()) < 0)
-			return -1;
-		if (!pid) {
-			execlp("zfs", "zfs", "clone", option, path1, path2,
-			       (char *)NULL);
-			exit(EXIT_FAILURE);
-		}
-		return wait_for_pid(pid);
+		ERROR("Failed to duplicate string \"%s\"", orig_src);
+		return false;
 	}
+
+	snap_name = strrchr(new->src, '/');
+	if (!snap_name) {
+		ERROR("Failed to detect \"/\" in \"%s\"", new->src);
+		free(snapshot);
+		return false;
+	}
+	snap_name++;
+
+	/* strlen(snapshot)
+	 * +
+	 * @
+	 * +
+	 * strlen(cname)
+	 * +
+	 * \0
+	 */
+	snapshot_len = strlen(snapshot);
+	len = snapshot_len + 1 + strlen(snap_name) + 1;
+	tmp = realloc(snapshot, len);
+	if (!tmp) {
+		ERROR("Failed to reallocate memory");
+		free(snapshot);
+		return false;
+	}
+	snapshot = tmp;
+
+	len -= snapshot_len;
+	ret = snprintf(snapshot + snapshot_len, len, "@%s", snap_name);
+	if (ret < 0 || ret >= len) {
+		ERROR("Failed to create string");
+		free(snapshot);
+		return false;
+	}
+
+	cmd_args.snapshot = snapshot;
+	ret = run_command(cmd_output, sizeof(cmd_output),
+			  zfs_snapshot_exec_wrapper, (void *)&cmd_args);
+	if (ret < 0) {
+		ERROR("Failed to create zfs snapshot \"%s\": %s", snapshot, cmd_output);
+		free(snapshot);
+		return false;
+	} else if (cmd_output[0] != '\0') {
+		INFO("Created zfs snapshot \"%s\": %s", snapshot, cmd_output);
+	} else {
+		TRACE("Created zfs snapshot \"%s\"", snapshot);
+	}
+
+	ret = snprintf(option, MAXPATHLEN, "mountpoint=%s", new->dest);
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		ERROR("Failed to create string");
+		free(snapshot);
+		return -1;
+	}
+
+	cmd_args.dataset = lxc_storage_get_path(new->src, new->type);
+	cmd_args.snapshot = snapshot;
+	cmd_args.options = option;
+	ret = run_command(cmd_output, sizeof(cmd_output),
+			  zfs_clone_exec_wrapper, (void *)&cmd_args);
+	if (ret < 0)
+		ERROR("Failed to create zfs dataset \"%s\": %s", new->src, cmd_output);
+	else if (cmd_output[0] != '\0')
+		INFO("Created zfs dataset \"%s\": %s", new->src, cmd_output);
+	else
+		TRACE("Created zfs dataset \"%s\"", new->src);
+
+	free(snapshot);
+	return true;
 }
 
 int zfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		   const char *cname, const char *oldpath, const char *lxcpath,
 		   int snap, uint64_t newsize, struct lxc_conf *conf)
 {
-	char *origsrc, *newsrc;
-	int len, ret;
+	char *dataset, *orig_src, *tmp;
+	int ret;
+	size_t dataset_len, len;
+	char cmd_output[MAXPATHLEN] = {0};
 
 	if (!orig->src || !orig->dest)
 		return -1;
@@ -226,77 +460,261 @@ int zfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		return -1;
 	}
 
-	len = strlen(lxcpath) + strlen(cname) + strlen("rootfs") + 4 + 3;
-	new->src = malloc(len);
-	if (!new->src)
+	orig_src = lxc_storage_get_path(orig->src, orig->type);
+	if (!strcmp(orig->type, "zfs")) {
+		size_t len;
+		if (*orig_src == '/') {
+			bool found;
+
+			found = zfs_list_entry(orig_src, cmd_output,
+					       sizeof(cmd_output));
+			if (!found) {
+				ERROR("Failed to find zfs entry \"%s\"", orig_src);
+				return -1;
+			}
+
+			tmp = strchr(cmd_output, ' ');
+			if (!tmp) {
+				ERROR("Failed to detect zfs dataset associated "
+				      "with \"%s\"", orig_src);
+				return -1;
+			}
+			*tmp = '\0';
+			orig_src = cmd_output;
+		}
+
+		tmp = strrchr(orig_src, '/');
+		if (!tmp) {
+			ERROR("Failed to detect \"/\" in \"%s\"", orig_src);
+			return -1;
+		}
+
+		len = tmp - orig_src;
+		dataset = strndup(orig_src, len);
+		if (!dataset) {
+			ERROR("Failed to duplicate string \"%zu\" "
+					"bytes of string \"%s\"", len, orig_src);
+			return -1;
+		}
+	} else {
+		tmp = (char *)lxc_global_config_value("lxc.bdev.zfs.root");
+		if (!tmp) {
+			ERROR("The \"lxc.bdev.zfs.root\" property is not set");
+			return -1;
+		}
+
+		dataset = strdup(tmp);
+		if (!dataset) {
+			ERROR("Failed to duplicate string \"%s\"", tmp);
+			return -1;
+		}
+	}
+
+	/* strlen("zfs:") = 4
+	 * +
+	 * strlen(dataset)
+	 * +
+	 * / = 1
+	 * +
+	 * strlen(cname)
+	 * +
+	 * \0
+	 */
+	dataset_len = strlen(dataset);
+	len = 4 + dataset_len + 1 + strlen(cname) + 1;
+	new->src = realloc(dataset, len);
+	if (!new->src) {
+		ERROR("Failed to reallocate memory");
+		free(dataset);
 		return -1;
+	}
+	memmove(new->src + 4, new->src, dataset_len);
+	memmove(new->src, "zfs:", 4);
 
-	ret = snprintf(new->src, len, "zfs:%s/%s/rootfs", lxcpath, cname);
-	if (ret < 0 || ret >= len)
-		return -1;
-
-	newsrc = lxc_storage_get_path(new->src, new->type);
-	new->dest = strdup(newsrc);
-	if (!new->dest)
-		return -1;
-
-	origsrc = lxc_storage_get_path(orig->src, orig->type);
-	return zfs_clone(origsrc, newsrc, oldname, cname, lxcpath, snap);
-}
-
-/*
- * TODO: detect whether this was a clone, and if so then also delete the
- * snapshot it was based on, so that we don't hold the original
- * container busy.
- */
-int zfs_destroy(struct bdev *orig)
-{
-	pid_t pid;
-	char output[MAXPATHLEN];
-	char *p, *src;
-
-	if ((pid = fork()) < 0)
-		return -1;
-	if (pid)
-		return wait_for_pid(pid);
-
-	src = lxc_storage_get_path(orig->src, orig->type);
-	if (!zfs_list_entry(src, output, MAXPATHLEN)) {
-		ERROR("Error: zfs entry for %s not found", orig->src);
+	len -= dataset_len - 4;
+	ret = snprintf(new->src + dataset_len + 4, len, "/%s", cname);
+	if (ret < 0 || ret >= len) {
+		ERROR("Failed to create string");
 		return -1;
 	}
 
-	// zfs mount is output up to ' '
-	if ((p = strchr(output, ' ')) == NULL)
+	/* strlen(lxcpath)
+	 * +
+	 * /
+	 * +
+	 * strlen(cname)
+	 * +
+	 * /
+	 * +
+	 * strlen("rootfs")
+	 * +
+	 * \0
+	 */
+	len = strlen(lxcpath) + 1 + strlen(cname) + 1 + strlen("rootfs") + 1;
+	new->dest = malloc(len);
+	if (!new->dest) {
+		ERROR("Failed to allocate memory");
 		return -1;
-	*p = '\0';
+	}
 
-	execlp("zfs", "zfs", "destroy", "-r", output, (char *)NULL);
-	exit(EXIT_FAILURE);
+	ret = snprintf(new->dest, len, "%s/%s/rootfs", lxcpath, cname);
+	if (ret < 0 || ret >= len) {
+		ERROR("Failed to create string \"%s/%s/rootfs\"", lxcpath, cname);
+		return -1;
+	}
+
+	ret = mkdir_p(new->dest, 0755);
+	if (ret < 0 && errno != EEXIST) {
+		SYSERROR("Failed to create directory \"%s\"", new->dest);
+		return -1;
+	}
+
+	return 0;
 }
 
-struct zfs_exec_args {
-	char *dataset;
-	char *options;
-};
-
-int zfs_create_exec_wrapper(void *args)
+int zfs_destroy(struct bdev *orig)
 {
-	struct zfs_exec_args *zfs_args = args;
+	int ret;
+	char *dataset, *src, *tmp;
+	bool found;
+	char *parent_snapshot = NULL;
+	struct zfs_args cmd_args = {0};
+	char cmd_output[MAXPATHLEN] = {0};
 
-	execlp("zfs", "zfs", "create", zfs_args->options, zfs_args->dataset,
-	       (char *)NULL);
-	return -1;
+	src = lxc_storage_get_path(orig->src, orig->type);
+
+	/* This is a legacy zfs setup where the rootfs path
+	 * "<lxcpath>/<lxcname>/rootfs" is given.
+	 */
+	if (*src == '/') {
+		char *tmp;
+
+		found = zfs_list_entry(src, cmd_output, sizeof(cmd_output));
+		if (!found) {
+			ERROR("Failed to find zfs entry \"%s\"", orig->src);
+			return -1;
+		}
+
+		tmp = strchr(cmd_output, ' ');
+		if (!tmp) {
+			ERROR("Failed to detect zfs dataset associated with "
+			      "\"%s\"", cmd_output);
+			return -1;
+		}
+		*tmp = '\0';
+		dataset = cmd_output;
+	} else {
+		cmd_args.dataset = src;
+		ret = run_command(cmd_output, sizeof(cmd_output),
+				  zfs_detect_exec_wrapper, (void *)&cmd_args);
+		if (ret < 0) {
+			ERROR("Failed to detect zfs dataset \"%s\": %s", src,
+			      cmd_output);
+			return -1;
+		}
+
+		if (cmd_output[0] == '\0') {
+			ERROR("Failed to detect zfs dataset \"%s\"", src);
+			return -1;
+		}
+
+		/* remove any possible leading and trailing whitespace */
+		dataset = cmd_output;
+		dataset += lxc_char_left_gc(dataset, strlen(dataset));
+		dataset[lxc_char_right_gc(dataset, strlen(dataset))] = '\0';
+
+		if (strcmp(dataset, src)) {
+			ERROR("Detected dataset \"%s\" does not match expected "
+			      "dataset \"%s\"", dataset, src);
+			return -1;
+		}
+	}
+
+	cmd_args.dataset = strdup(dataset);
+	if (!cmd_args.dataset) {
+		ERROR("Failed to duplicate string \"%s\"", dataset);
+		return -1;
+	}
+
+	ret = run_command(cmd_output, sizeof(cmd_output),
+			  zfs_get_parent_snapshot_exec_wrapper,
+			  (void *)&cmd_args);
+	if (ret < 0) {
+		ERROR("Failed to retrieve parent snapshot of zfs dataset "
+		      "\"%s\": %s", dataset, cmd_output);
+		free((void *)cmd_args.dataset);
+		return -1;
+	} else {
+		INFO("Retrieved parent snapshot of zfs dataset \"%s\": %s", src,
+		     cmd_output);
+	}
+
+	/* remove any possible leading and trailing whitespace */
+	tmp = cmd_output;
+	tmp += lxc_char_left_gc(tmp, strlen(tmp));
+	tmp[lxc_char_right_gc(tmp, strlen(tmp))] = '\0';
+
+	/* check whether the dataset has a parent snapshot */
+	if (*tmp != '-' && *(tmp + 1) != '\0') {
+		parent_snapshot = strdup(tmp);
+		if (!parent_snapshot) {
+			ERROR("Failed to duplicate string \"%s\"", tmp);
+			free((void *)cmd_args.dataset);
+			return -1;
+		}
+	}
+
+	/* delete dataset */
+	ret = run_command(cmd_output, sizeof(cmd_output),
+			  zfs_delete_exec_wrapper, (void *)&cmd_args);
+	if (ret < 0) {
+		ERROR("Failed to delete zfs dataset \"%s\": %s", dataset,
+		      cmd_output);
+		free((void *)cmd_args.dataset);
+		free(parent_snapshot);
+		return -1;
+	} else if (cmd_output[0] != '\0') {
+		INFO("Deleted zfs dataset \"%s\": %s", src, cmd_output);
+	} else {
+		INFO("Deleted zfs dataset \"%s\"", src);
+	}
+
+	free((void *)cmd_args.dataset);
+
+	/* Not a clone so nothing more to do. */
+	if (!parent_snapshot)
+		return 0;
+
+	/* delete parent snapshot */
+	cmd_args.dataset = parent_snapshot;
+	ret = run_command(cmd_output, sizeof(cmd_output),
+			  zfs_delete_exec_wrapper, (void *)&cmd_args);
+	if (ret < 0)
+		ERROR("Failed to delete zfs snapshot \"%s\": %s", dataset, cmd_output);
+	else if (cmd_output[0] != '\0')
+		INFO("Deleted zfs snapshot \"%s\": %s", src, cmd_output);
+	else
+		INFO("Deleted zfs snapshot \"%s\"", src);
+
+	free((void *)cmd_args.dataset);
+	return ret;
 }
 
 int zfs_create(struct bdev *bdev, const char *dest, const char *n,
 	       struct bdev_specs *specs)
 {
 	const char *zfsroot;
-	char cmd_output[MAXPATHLEN], dev[MAXPATHLEN], option[MAXPATHLEN];
 	int ret;
 	size_t len;
-	struct zfs_exec_args cmd_args;
+	struct zfs_args cmd_args = {0};
+	char cmd_output[MAXPATHLEN], option[MAXPATHLEN];
+	char *argv[] = {"zfs",                    /* 0    */
+			 "create",                /* 1    */
+			 "-o", "",                /* 2, 3 */
+			 "-o", "canmount=noauto", /* 4, 5 */
+			 "-p",                    /* 6    */
+			 "",                      /* 7    */
+			 NULL};
 
 	if (!specs || !specs->zfs.zfsroot)
 		zfsroot = lxc_global_config_value("lxc.bdev.zfs.root");
@@ -305,35 +723,48 @@ int zfs_create(struct bdev *bdev, const char *dest, const char *n,
 
 	bdev->dest = strdup(dest);
 	if (!bdev->dest) {
-		ERROR("No mount target specified or out of memory");
+		ERROR("Failed to duplicate string \"%s\"", dest);
 		return -1;
 	}
 
-	len = strlen(bdev->dest) + 1;
+	len = strlen(zfsroot) + 1 + strlen(n) + 1;
 	/* strlen("zfs:") */
 	len += 4;
 	bdev->src = malloc(len);
-	if (!bdev->src)
+	if (!bdev->src) {
+		ERROR("Failed to allocate memory");
 		return -1;
+	}
 
-	ret = snprintf(bdev->src, len, "zfs:%s", bdev->dest);
-	if (ret < 0 || (size_t)ret >= len)
+	ret = snprintf(bdev->src, len, "zfs:%s/%s", zfsroot, n);
+	if (ret < 0 || ret >= len) {
+		ERROR("Failed to create string");
 		return -1;
+	}
+	argv[7] = lxc_storage_get_path(bdev->src, bdev->type);
 
-	ret = snprintf(option, MAXPATHLEN, "-omountpoint=%s", bdev->dest);
-	if (ret < 0 || ret >= MAXPATHLEN)
+	ret = snprintf(option, MAXPATHLEN, "mountpoint=%s", bdev->dest);
+	if (ret < 0 || ret >= MAXPATHLEN) {
+		ERROR("Failed to create string");
 		return -1;
+	}
+	argv[3] = option;
 
-	ret = snprintf(dev, MAXPATHLEN, "%s/%s", zfsroot, n);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		return -1;
-
-	cmd_args.options = option;
-	cmd_args.dataset = dev;
+	cmd_args.argv = argv;
 	ret = run_command(cmd_output, sizeof(cmd_output),
 			  zfs_create_exec_wrapper, (void *)&cmd_args);
 	if (ret < 0)
-		ERROR("Failed to create zfs dataset \"%s\": %s", dev,
-		      cmd_output);
+		ERROR("Failed to create zfs dataset \"%s\": %s", bdev->src, cmd_output);
+	else if (cmd_output[0] != '\0')
+		INFO("Created zfs dataset \"%s\": %s", bdev->src, cmd_output);
+	else
+		TRACE("Created zfs dataset \"%s\"", bdev->src);
+
+	ret = mkdir_p(bdev->dest, 0755);
+	if (ret < 0 && errno != EEXIST) {
+		SYSERROR("Failed to create directory \"%s\"", bdev->dest);
+		return -1;
+	}
+
 	return ret;
 }

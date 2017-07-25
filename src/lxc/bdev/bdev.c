@@ -82,8 +82,8 @@ static const struct bdev_ops aufs_ops = {
     .clone_paths = &aufs_clonepaths,
     .destroy = &aufs_destroy,
     .create = &aufs_create,
-    .create_clone = NULL,
-    .create_snapshot = NULL,
+    .copy = NULL,
+    .snapshot = NULL,
     .can_snapshot = true,
     .can_backup = true,
 };
@@ -96,8 +96,8 @@ static const struct bdev_ops btrfs_ops = {
     .clone_paths = &btrfs_clonepaths,
     .destroy = &btrfs_destroy,
     .create = &btrfs_create,
-    .create_clone = &btrfs_create_clone,
-    .create_snapshot = &btrfs_create_snapshot,
+    .copy = &btrfs_create_clone,
+    .snapshot = &btrfs_create_snapshot,
     .can_snapshot = true,
     .can_backup = true,
 };
@@ -110,8 +110,8 @@ static const struct bdev_ops dir_ops = {
     .clone_paths = &dir_clonepaths,
     .destroy = &dir_destroy,
     .create = &dir_create,
-    .create_clone = NULL,
-    .create_snapshot = NULL,
+    .copy = NULL,
+    .snapshot = NULL,
     .can_snapshot = false,
     .can_backup = true,
 };
@@ -124,8 +124,8 @@ static const struct bdev_ops loop_ops = {
     .clone_paths = &loop_clonepaths,
     .destroy = &loop_destroy,
     .create = &loop_create,
-    .create_clone = NULL,
-    .create_snapshot = NULL,
+    .copy = NULL,
+    .snapshot = NULL,
     .can_snapshot = false,
     .can_backup = true,
 };
@@ -138,8 +138,8 @@ static const struct bdev_ops lvm_ops = {
     .clone_paths = &lvm_clonepaths,
     .destroy = &lvm_destroy,
     .create = &lvm_create,
-    .create_clone = &lvm_create_clone,
-    .create_snapshot = &lvm_create_snapshot,
+    .copy = &lvm_create_clone,
+    .snapshot = &lvm_create_snapshot,
     .can_snapshot = true,
     .can_backup = false,
 };
@@ -152,8 +152,8 @@ const struct bdev_ops nbd_ops = {
     .clone_paths = &nbd_clonepaths,
     .destroy = &nbd_destroy,
     .create = &nbd_create,
-    .create_clone = NULL,
-    .create_snapshot = NULL,
+    .copy = NULL,
+    .snapshot = NULL,
     .can_snapshot = true,
     .can_backup = false,
 };
@@ -166,8 +166,8 @@ static const struct bdev_ops ovl_ops = {
     .clone_paths = &ovl_clonepaths,
     .destroy = &ovl_destroy,
     .create = &ovl_create,
-    .create_clone = NULL,
-    .create_snapshot = NULL,
+    .copy = NULL,
+    .snapshot = NULL,
     .can_snapshot = true,
     .can_backup = true,
 };
@@ -180,8 +180,8 @@ static const struct bdev_ops rbd_ops = {
     .clone_paths = &rbd_clonepaths,
     .destroy = &rbd_destroy,
     .create = &rbd_create,
-    .create_clone = NULL,
-    .create_snapshot = NULL,
+    .copy = NULL,
+    .snapshot = NULL,
     .can_snapshot = false,
     .can_backup = false,
 };
@@ -194,8 +194,8 @@ static const struct bdev_ops zfs_ops = {
     .clone_paths = &zfs_clonepaths,
     .destroy = &zfs_destroy,
     .create = &zfs_create,
-    .create_clone = NULL,
-    .create_snapshot = NULL,
+    .copy = &zfs_copy,
+    .snapshot = &zfs_snapshot,
     .can_snapshot = true,
     .can_backup = true,
 };
@@ -436,9 +436,9 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	if (!strcmp(orig->type, "btrfs") && !strcmp(new->type, "btrfs")) {
 		bool bret = false;
 		if (snap || btrfs_same_fs(orig->dest, new->dest) == 0)
-			bret = new->ops->create_snapshot(c0->lxc_conf, orig, new, 0);
+			bret = new->ops->snapshot(c0->lxc_conf, orig, new, 0);
 		else
-			bret = new->ops->create_clone(c0->lxc_conf, orig, new, 0);
+			bret = new->ops->copy(c0->lxc_conf, orig, new, 0);
 		if (!bret)
 			return NULL;
 		return new;
@@ -448,11 +448,24 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	if (!strcmp(orig->type, "lvm") && !strcmp(new->type, "lvm")) {
 		bool bret = false;
 		if (snap)
-			bret = new->ops->create_snapshot(c0->lxc_conf, orig,
+			bret = new->ops->snapshot(c0->lxc_conf, orig,
 							 new, newsize);
 		else
-			bret = new->ops->create_clone(c0->lxc_conf, orig, new,
-						      newsize);
+			bret = new->ops->copy(c0->lxc_conf, orig, new, newsize);
+		if (!bret)
+			return NULL;
+		return new;
+	}
+
+	/* zfs */
+	if (!strcmp(orig->type, "zfs") && !strcmp(new->type, "zfs")) {
+		bool bret = false;
+
+		if (snap)
+			bret = new->ops->snapshot(c0->lxc_conf, orig, new,
+						  newsize);
+		else
+			bret = new->ops->copy(c0->lxc_conf, orig, new, newsize);
 		if (!bret)
 			return NULL;
 		return new;
