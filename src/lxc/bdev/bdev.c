@@ -643,7 +643,9 @@ bool rootfs_is_blockdev(struct lxc_conf *conf)
 
 	if (strcmp(q->name, "lvm") == 0 ||
 	    strcmp(q->name, "loop") == 0 ||
-	    strcmp(q->name, "nbd") == 0)
+	    strcmp(q->name, "nbd") == 0 ||
+	    strcmp(q->name, "rbd") == 0 ||
+	    strcmp(q->name, "zfs") == 0)
 		return true;
 
 	return false;
