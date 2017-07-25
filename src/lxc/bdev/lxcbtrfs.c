@@ -245,8 +245,8 @@ static int btrfs_subvolume_create(const char *path)
 	*p = '\0';
 
 	fd = open(newfull, O_RDONLY);
-	free(newfull);
 	if (fd < 0) {
+		free(newfull);
 		return -errno;
 	}
 
@@ -258,6 +258,7 @@ static int btrfs_subvolume_create(const char *path)
 	saved_errno = errno;
 
 	close(fd);
+	free(newfull);
 	errno = saved_errno;
 	return ret;
 }
@@ -419,8 +420,9 @@ int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 bool btrfs_create_clone(struct lxc_conf *conf, struct bdev *orig,
 			struct bdev *new, uint64_t newsize)
 {
-	int pid, ret;
-	struct rsync_data data;
+	int ret;
+	struct rsync_data data = {0, 0};
+	char cmd_output[MAXPATHLEN] = {0};
 
 	ret = rmdir(new->dest);
 	if (ret < 0 && errno != ENOENT)
@@ -432,37 +434,29 @@ bool btrfs_create_clone(struct lxc_conf *conf, struct bdev *orig,
 		return false;
 	}
 
-	/* rsync contents */
-	pid = fork();
-	if (pid < 0) {
-		SYSERROR("fork");
-		return false;
-	}
-
-	if (pid > 0) {
-		int ret = wait_for_pid(pid);
-		bdev_put(orig);
+	/* rsync the contents from source to target */
+	data.orig = orig;
+	data.new = new;
+	if (am_unpriv()) {
+		ret = userns_exec_1(conf, lxc_rsync_exec_wrapper, &data,
+				    "lxc_rsync_exec_wrapper");
 		if (ret < 0) {
-			bdev_put(new);
+			ERROR("Failed to rsync from \"%s\" into \"%s\"",
+			      orig->dest, new->dest);
 			return false;
 		}
+
 		return true;
 	}
 
-	data.orig = orig;
-	data.new = new;
-
-	if (am_unpriv())
-		ret = userns_exec_1(conf, rsync_rootfs_wrapper, &data,
-				    "rsync_rootfs_wrapper");
-	else
-		ret = rsync_rootfs(&data);
+	ret = run_command(cmd_output, sizeof(cmd_output),
+			lxc_rsync_exec_wrapper, (void *)&data);
 	if (ret < 0) {
-		ERROR("Failed to rsync");
+		ERROR("Failed to rsync from \"%s\" into \"%s\": %s", orig->dest,
+		      new->dest, cmd_output);
 		return false;
 	}
 
-	TRACE("Created btrfs subvolume \"%s\"", new->dest);
 	return true;
 }
 
@@ -848,16 +842,27 @@ int btrfs_create(struct bdev *bdev, const char *dest, const char *n,
 	/* strlen("btrfs:") */
 	len += 6;
 	bdev->src = malloc(len);
-	if (!bdev->src)
+	if (!bdev->src) {
+		ERROR("Failed to allocate memory");
 		return -1;
+	}
 
 	ret = snprintf(bdev->src, len, "btrfs:%s", dest);
-	if (ret < 0 || (size_t)ret >= len)
+	if (ret < 0 || (size_t)ret >= len) {
+		ERROR("Failed to create string");
 		return -1;
+	}
 
 	bdev->dest = strdup(dest);
-	if (!bdev->dest)
+	if (!bdev->dest) {
+		ERROR("Failed to duplicate string \"%s\"", dest);
 		return -1;
+	}
 
-	return btrfs_subvolume_create(bdev->dest);
+	ret = btrfs_subvolume_create(bdev->dest);
+	if (ret < 0) {
+		SYSERROR("Failed to create btrfs subvolume \"%s\"", bdev->dest);
+	}
+
+	return ret;
 }
