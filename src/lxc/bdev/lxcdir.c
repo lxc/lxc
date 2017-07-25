@@ -134,15 +134,15 @@ int dir_destroy(struct bdev *orig)
 	return 0;
 }
 
-int dir_detect(const char *path)
+bool dir_detect(const char *path)
 {
 	if (!strncmp(path, "dir:", 4))
-		return 1;
+		return true;
 
 	if (is_dir(path))
-		return 1;
+		return true;
 
-	return 0;
+	return false;
 }
 
 int dir_mount(struct bdev *bdev)

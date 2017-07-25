@@ -25,6 +25,7 @@
 #define __LXC_DIR_H
 
 #define _GNU_SOURCE
+#include <stdbool.h>
 #include <stdint.h>
 
 /* defined in bdev.h */
@@ -45,7 +46,7 @@ int dir_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 int dir_create(struct bdev *bdev, const char *dest, const char *n,
 		struct bdev_specs *specs);
 int dir_destroy(struct bdev *orig);
-int dir_detect(const char *path);
+bool dir_detect(const char *path);
 int dir_mount(struct bdev *bdev);
 int dir_umount(struct bdev *bdev);
 

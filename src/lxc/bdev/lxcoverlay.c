@@ -332,15 +332,15 @@ int ovl_destroy(struct bdev *orig)
 	return lxc_rmdir_onedev(upper, NULL);
 }
 
-int ovl_detect(const char *path)
+bool ovl_detect(const char *path)
 {
 	if (!strncmp(path, "overlayfs:", 10))
-		return 1;
+		return true;
 
 	if (!strncmp(path, "overlay:", 8))
-		return 1;
+		return true;
 
-	return 0;
+	return false;
 }
 
 int ovl_mount(struct bdev *bdev)

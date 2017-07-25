@@ -61,7 +61,7 @@ struct bdev;
 
 struct bdev_ops {
 	/* detect whether path is of this bdev type */
-	int (*detect)(const char *path);
+	bool (*detect)(const char *path);
 	// mount requires src and dest to be set.
 	int (*mount)(struct bdev *bdev);
 	int (*umount)(struct bdev *bdev);

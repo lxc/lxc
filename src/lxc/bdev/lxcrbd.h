@@ -25,6 +25,7 @@
 #define __LXC_RDB_H
 
 #define _GNU_SOURCE
+#include <stdbool.h>
 #include <stdint.h>
 
 /* defined in bdev.h */
@@ -45,7 +46,7 @@ int rbd_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 int rbd_create(struct bdev *bdev, const char *dest, const char *n,
 		struct bdev_specs *specs);
 int rbd_destroy(struct bdev *orig);
-int rbd_detect(const char *path);
+bool rbd_detect(const char *path);
 int rbd_mount(struct bdev *bdev);
 int rbd_umount(struct bdev *bdev);
 

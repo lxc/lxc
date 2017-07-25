@@ -227,12 +227,12 @@ int aufs_destroy(struct bdev *orig)
 	return lxc_rmdir_onedev(upper, NULL);
 }
 
-int aufs_detect(const char *path)
+bool aufs_detect(const char *path)
 {
 	if (!strncmp(path, "aufs:", 5))
-		return 1;
+		return true;
 
-	return 0;
+	return false;
 }
 
 int aufs_mount(struct bdev *bdev)

@@ -22,12 +22,12 @@
  */
 
 #define _GNU_SOURCE
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/mount.h>
+#include <unistd.h>
 
 #include "bdev.h"
 #include "config.h"
@@ -37,50 +37,48 @@
 
 lxc_log_define(lxczfs, lxc);
 
-/*
- * zfs ops:
- * There are two ways we could do this. We could always specify the 'zfs device'
+/* There are two ways we could do this. We could always specify the 'zfs device'
  * (i.e. tank/lxc lxc/container) as rootfs. But instead (at least right now) we
- * have lxc-create specify $lxcpath/$lxcname/rootfs as the mountpoint, so that
+ * have lxc-create specify <lxcpath>/<lxcname>/rootfs as the mountpoint, so that
  * it is always mounted. That means 'mount' is really never needed and could be
  * noop, but for the sake of flexibility let's always bind-mount.
  */
 
-int zfs_list_entry(const char *path, char *output, size_t inlen)
+static bool zfs_list_entry(const char *path, char *output, size_t inlen)
 {
 	struct lxc_popen_FILE *f;
-	int found=0;
+	bool found = false;
 
 	f = lxc_popen("zfs list 2> /dev/null");
 	if (f == NULL) {
 		SYSERROR("popen failed");
-		return 0;
+		return false;
 	}
 
 	while (fgets(output, inlen, f->f)) {
 		if (strstr(output, path)) {
-			found = 1;
+			found = true;
 			break;
 		}
 	}
-	(void) lxc_pclose(f);
+	(void)lxc_pclose(f);
 
 	return found;
 }
 
-int zfs_detect(const char *path)
+bool zfs_detect(const char *path)
 {
 	if (!strncmp(path, "zfs:", 4))
-		return 1;
+		return true;
 
 	char *output = malloc(LXC_LOG_BUFFER_SIZE);
 
 	if (!output) {
 		ERROR("out of memory");
-		return 0;
+		return false;
 	}
 
-	int found = zfs_list_entry(path, output, LXC_LOG_BUFFER_SIZE);
+	bool found = zfs_list_entry(path, output, LXC_LOG_BUFFER_SIZE);
 	free(output);
 
 	return found;
@@ -104,7 +102,8 @@ int zfs_mount(struct bdev *bdev)
 	}
 
 	src = lxc_storage_get_path(bdev->src, bdev->type);
-	ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC | mntflags, mntdata);
+	ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC | mntflags,
+		    mntdata);
 	free(mntdata);
 
 	return ret;
@@ -122,7 +121,7 @@ int zfs_umount(struct bdev *bdev)
 }
 
 int zfs_clone(const char *opath, const char *npath, const char *oname,
-		const char *nname, const char *lxcpath, int snapshot)
+	      const char *nname, const char *lxcpath, int snapshot)
 {
 	// use the 'zfs list | grep opath' entry to get the zfsroot
 	char output[MAXPATHLEN], option[MAXPATHLEN];
@@ -144,8 +143,9 @@ int zfs_clone(const char *opath, const char *npath, const char *oname,
 		zfsroot = lxc_global_config_value("lxc.bdev.zfs.root");
 	}
 
-	ret = snprintf(option, MAXPATHLEN, "-omountpoint=%s/%s/rootfs", lxcpath, nname);
-	if (ret < 0  || ret >= MAXPATHLEN)
+	ret = snprintf(option, MAXPATHLEN, "-omountpoint=%s/%s/rootfs", lxcpath,
+		       nname);
+	if (ret < 0 || ret >= MAXPATHLEN)
 		return -1;
 
 	// zfs create -omountpoint=$lxcpath/$lxcname $zfsroot/$nname
@@ -154,10 +154,12 @@ int zfs_clone(const char *opath, const char *npath, const char *oname,
 			return -1;
 		if (!pid) {
 			char dev[MAXPATHLEN];
-			ret = snprintf(dev, MAXPATHLEN, "%s/%s", zfsroot, nname);
-			if (ret < 0  || ret >= MAXPATHLEN)
+			ret =
+			    snprintf(dev, MAXPATHLEN, "%s/%s", zfsroot, nname);
+			if (ret < 0 || ret >= MAXPATHLEN)
 				exit(EXIT_FAILURE);
-			execlp("zfs", "zfs", "create", option, dev, (char *)NULL);
+			execlp("zfs", "zfs", "create", option, dev,
+			       (char *)NULL);
 			exit(EXIT_FAILURE);
 		}
 		return wait_for_pid(pid);
@@ -167,11 +169,11 @@ int zfs_clone(const char *opath, const char *npath, const char *oname,
 		// zfs clone zfsroot/oname@nname zfsroot/nname
 		char path1[MAXPATHLEN], path2[MAXPATHLEN];
 
-		ret = snprintf(path1, MAXPATHLEN, "%s/%s@%s", zfsroot,
-				oname, nname);
+		ret = snprintf(path1, MAXPATHLEN, "%s/%s@%s", zfsroot, oname,
+			       nname);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			return -1;
-		(void) snprintf(path2, MAXPATHLEN, "%s/%s", zfsroot, nname);
+		(void)snprintf(path2, MAXPATHLEN, "%s/%s", zfsroot, nname);
 
 		// if the snapshot exists, delete it
 		if ((pid = fork()) < 0)
@@ -184,7 +186,7 @@ int zfs_clone(const char *opath, const char *npath, const char *oname,
 			exit(EXIT_FAILURE);
 		}
 		// it probably doesn't exist so destroy probably will fail.
-		(void) wait_for_pid(pid);
+		(void)wait_for_pid(pid);
 
 		// run first (snapshot) command
 		if ((pid = fork()) < 0)
@@ -200,7 +202,8 @@ int zfs_clone(const char *opath, const char *npath, const char *oname,
 		if ((pid = fork()) < 0)
 			return -1;
 		if (!pid) {
-			execlp("zfs", "zfs", "clone", option, path1, path2, (char *)NULL);
+			execlp("zfs", "zfs", "clone", option, path1, path2,
+			       (char *)NULL);
 			exit(EXIT_FAILURE);
 		}
 		return wait_for_pid(pid);
@@ -208,8 +211,8 @@ int zfs_clone(const char *opath, const char *npath, const char *oname,
 }
 
 int zfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize, struct lxc_conf *conf)
+		   const char *cname, const char *oldpath, const char *lxcpath,
+		   int snap, uint64_t newsize, struct lxc_conf *conf)
 {
 	char *origsrc, *newsrc;
 	int len, ret;
@@ -218,7 +221,8 @@ int zfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		return -1;
 
 	if (snap && strcmp(orig->type, "zfs")) {
-		ERROR("zfs snapshot from %s backing store is not supported", orig->type);
+		ERROR("zfs snapshot from %s backing store is not supported",
+		      orig->type);
 		return -1;
 	}
 
@@ -286,7 +290,7 @@ int zfs_create_exec_wrapper(void *args)
 }
 
 int zfs_create(struct bdev *bdev, const char *dest, const char *n,
-		struct bdev_specs *specs)
+	       struct bdev_specs *specs)
 {
 	const char *zfsroot;
 	char cmd_output[MAXPATHLEN], dev[MAXPATHLEN], option[MAXPATHLEN];
@@ -317,11 +321,11 @@ int zfs_create(struct bdev *bdev, const char *dest, const char *n,
 		return -1;
 
 	ret = snprintf(option, MAXPATHLEN, "-omountpoint=%s", bdev->dest);
-	if (ret < 0  || ret >= MAXPATHLEN)
+	if (ret < 0 || ret >= MAXPATHLEN)
 		return -1;
 
 	ret = snprintf(dev, MAXPATHLEN, "%s/%s", zfsroot, n);
-	if (ret < 0  || ret >= MAXPATHLEN)
+	if (ret < 0 || ret >= MAXPATHLEN)
 		return -1;
 
 	cmd_args.options = option;
@@ -329,6 +333,7 @@ int zfs_create(struct bdev *bdev, const char *dest, const char *n,
 	ret = run_command(cmd_output, sizeof(cmd_output),
 			  zfs_create_exec_wrapper, (void *)&cmd_args);
 	if (ret < 0)
-		ERROR("Failed to create zfs dataset \"%s\": %s", dev, cmd_output);
+		ERROR("Failed to create zfs dataset \"%s\": %s", dev,
+		      cmd_output);
 	return ret;
 }

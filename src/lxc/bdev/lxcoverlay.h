@@ -25,6 +25,7 @@
 #define __LXC_OVERLAY_H
 
 #include <grp.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -56,7 +57,7 @@ int ovl_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 int ovl_create(struct bdev *bdev, const char *dest, const char *n,
 	       struct bdev_specs *specs);
 int ovl_destroy(struct bdev *orig);
-int ovl_detect(const char *path);
+bool ovl_detect(const char *path);
 int ovl_mount(struct bdev *bdev);
 int ovl_umount(struct bdev *bdev);
 

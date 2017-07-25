@@ -53,8 +53,7 @@ int zfs_create(struct bdev *bdev, const char *dest, const char *n,
  * container busy.
  */
 int zfs_destroy(struct bdev *orig);
-int zfs_detect(const char *path);
-int zfs_list_entry(const char *path, char *output, size_t inlen);
+bool zfs_detect(const char *path);
 int zfs_mount(struct bdev *bdev);
 int zfs_umount(struct bdev *bdev);
 

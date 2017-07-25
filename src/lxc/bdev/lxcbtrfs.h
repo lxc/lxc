@@ -397,7 +397,7 @@ int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 int btrfs_create(struct bdev *bdev, const char *dest, const char *n,
 		 struct bdev_specs *specs);
 int btrfs_destroy(struct bdev *orig);
-int btrfs_detect(const char *path);
+bool btrfs_detect(const char *path);
 int btrfs_mount(struct bdev *bdev);
 int btrfs_umount(struct bdev *bdev);
 

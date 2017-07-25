@@ -206,22 +206,22 @@ int loop_destroy(struct bdev *orig) {
 	return unlink(orig->src + 5);
 }
 
-int loop_detect(const char *path)
+bool loop_detect(const char *path)
 {
 	int ret;
 	struct stat s;
 
 	if (!strncmp(path, "loop:", 5))
-		return 1;
+		return true;
 
 	ret = stat(path, &s);
 	if (ret < 0)
-		return 0;
+		return false;
 
 	if (__S_ISTYPE(s.st_mode, S_IFREG))
-		return 1;
+		return true;
 
-	return 0;
+	return false;
 }
 
 int loop_mount(struct bdev *bdev)

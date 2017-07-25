@@ -25,6 +25,7 @@
 #define __LXC_AUFS_H
 
 #define _GNU_SOURCE
+#include <stdbool.h>
 #include <stdint.h>
 
 #if IS_BIONIC
@@ -54,7 +55,7 @@ int aufs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 int aufs_create(struct bdev *bdev, const char *dest, const char *n,
 		struct bdev_specs *specs);
 int aufs_destroy(struct bdev *orig);
-int aufs_detect(const char *path);
+bool aufs_detect(const char *path);
 int aufs_mount(struct bdev *bdev);
 int aufs_umount(struct bdev *bdev);
 

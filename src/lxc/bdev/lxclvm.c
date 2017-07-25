@@ -193,7 +193,7 @@ static int do_lvm_create(const char *path, uint64_t size, const char *thinpool)
 /* Look at "/sys/dev/block/maj:min/dm/uuid". If it contains the hardcoded LVM
  * prefix "LVM-" then this is an lvm2 LV.
  */
-int lvm_detect(const char *path)
+bool lvm_detect(const char *path)
 {
 	int fd;
 	ssize_t ret;
@@ -201,35 +201,35 @@ int lvm_detect(const char *path)
 	char devp[MAXPATHLEN], buf[4];
 
 	if (!strncmp(path, "lvm:", 4))
-		return 1;
+		return true;
 
 	ret = stat(path, &statbuf);
 	if (ret < 0)
-		return 0;
+		return false;
 
 	if (!S_ISBLK(statbuf.st_mode))
-		return 0;
+		return false;
 
 	ret = snprintf(devp, MAXPATHLEN, "/sys/dev/block/%d:%d/dm/uuid",
 		       major(statbuf.st_rdev), minor(statbuf.st_rdev));
 	if (ret < 0 || ret >= MAXPATHLEN) {
 		ERROR("Failed to create string");
-		return 0;
+		return false;
 	}
 
 	fd = open(devp, O_RDONLY);
 	if (fd < 0)
-		return 0;
+		return false;
 
 	ret = read(fd, buf, sizeof(buf));
 	close(fd);
 	if (ret != sizeof(buf))
-		return 0;
+		return false;
 
 	if (strncmp(buf, "LVM-", 4))
-		return 0;
+		return false;
 
-	return 1;
+	return true;
 }
 
 int lvm_mount(struct bdev *bdev)

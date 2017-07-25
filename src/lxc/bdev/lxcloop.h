@@ -25,6 +25,7 @@
 #define __LXC_LOOP_H
 
 #define _GNU_SOURCE
+#include <stdbool.h>
 #include <stdint.h>
 
 /* defined in bdev.h */
@@ -45,7 +46,7 @@ int loop_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 int loop_create(struct bdev *bdev, const char *dest, const char *n,
 		struct bdev_specs *specs);
 int loop_destroy(struct bdev *orig);
-int loop_detect(const char *path);
+bool loop_detect(const char *path);
 int loop_mount(struct bdev *bdev);
 int loop_umount(struct bdev *bdev);
 

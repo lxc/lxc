@@ -46,7 +46,7 @@ int nbd_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 int nbd_create(struct bdev *bdev, const char *dest, const char *n,
 		struct bdev_specs *specs);
 int nbd_destroy(struct bdev *orig);
-int nbd_detect(const char *path);
+bool nbd_detect(const char *path);
 int nbd_mount(struct bdev *bdev);
 int nbd_umount(struct bdev *bdev);
 

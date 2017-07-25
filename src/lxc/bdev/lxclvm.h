@@ -40,7 +40,7 @@ struct lxc_conf;
 /*
  * Functions associated with an lvm bdev struct.
  */
-int lvm_detect(const char *path);
+bool lvm_detect(const char *path);
 int lvm_mount(struct bdev *bdev);
 int lvm_umount(struct bdev *bdev);
 int lvm_compare_lv_attr(const char *path, int pos, const char expected);

@@ -166,26 +166,26 @@ int is_btrfs_subvol(const char *path)
 	return stfs.f_type == BTRFS_SUPER_MAGIC;
 }
 
-int btrfs_detect(const char *path)
+bool btrfs_detect(const char *path)
 {
 	struct stat st;
 	int ret;
 
 	if (!strncmp(path, "btrfs:", 6))
-		return 1;
+		return true;
 
 	if (!is_btrfs_fs(path))
-		return 0;
+		return false;
 
 	/* make sure it's a subvolume */
 	ret = stat(path, &st);
 	if (ret < 0)
-		return 0;
+		return false;
 
 	if (st.st_ino == 256 && S_ISDIR(st.st_mode))
-		return 1;
+		return true;
 
-	return 0;
+	return false;
 }
 
 int btrfs_mount(struct bdev *bdev)

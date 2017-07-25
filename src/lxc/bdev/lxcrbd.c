@@ -219,15 +219,15 @@ int rbd_destroy(struct bdev *orig)
 	return 0;
 }
 
-int rbd_detect(const char *path)
+bool rbd_detect(const char *path)
 {
 	if (!strncmp(path, "rbd:", 4))
-		return 1;
+		return true;
 
 	if (!strncmp(path, "/dev/rbd/", 9))
-		return 1;
+		return true;
 
-	return 0;
+	return false;
 }
 
 int rbd_mount(struct bdev *bdev)

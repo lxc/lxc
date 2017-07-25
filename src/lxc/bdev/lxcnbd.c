@@ -106,12 +106,12 @@ int nbd_destroy(struct bdev *orig)
 	return -ENOSYS;
 }
 
-int nbd_detect(const char *path)
+bool nbd_detect(const char *path)
 {
 	if (!strncmp(path, "nbd:", 4))
-		return 1;
+		return true;
 
-	return 0;
+	return false;
 }
 
 int nbd_mount(struct bdev *bdev)
