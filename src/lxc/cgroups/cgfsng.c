@@ -49,6 +49,7 @@
 
 #include "bdev.h"
 #include "cgroup.h"
+#include "cgroup_utils.h"
 #include "commands.h"
 #include "log.h"
 #include "utils.h"
@@ -72,6 +73,7 @@ struct hierarchy {
 	char *mountpoint;
 	char *base_cgroup;
 	char *fullcgpath;
+	bool is_cgroup_v2;
 };
 
 /*
@@ -118,34 +120,10 @@ static void free_string_list(char **clist)
 	}
 }
 
-/* Re-alllocate a pointer, do not fail */
-static void *must_realloc(void *orig, size_t sz)
-{
-	void *ret;
-
-	do {
-		ret = realloc(orig, sz);
-	} while (!ret);
-	return ret;
-}
-
 /* Allocate a pointer, do not fail */
 static void *must_alloc(size_t sz)
 {
 	return must_realloc(NULL, sz);
-}
-
-/* return copy of string @entry;  do not fail. */
-static char *must_copy_string(const char *entry)
-{
-	char *ret;
-
-	if (!entry)
-		return NULL;
-	do {
-		ret = strdup(entry);
-	} while (!ret);
-	return ret;
 }
 
 /*
@@ -258,8 +236,6 @@ struct hierarchy *get_hierarchy(const char *c)
 	}
 	return NULL;
 }
-
-static char *must_make_path(const char *first, ...) __attribute__((sentinel));
 
 #define BATCH_SIZE 50
 static void batch_realloc(char **mem, size_t oldlen, size_t newlen)
@@ -626,7 +602,8 @@ static bool handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 	}
 
 	clonechildrenpath = must_make_path(cgpath, "cgroup.clone_children", NULL);
-	if (!file_exists(clonechildrenpath)) { /* unified hierarchy doesn't have clone_children */
+	/* unified hierarchy doesn't have clone_children */
+	if (!file_exists(clonechildrenpath)) {
 		free(clonechildrenpath);
 		free(cgpath);
 		return true;
@@ -768,10 +745,14 @@ static bool is_lxcfs(const char *line)
  */
 static char **get_controllers(char **klist, char **nlist, char *line)
 {
-	// the fourth field is /sys/fs/cgroup/comma-delimited-controller-list
+	/* the fourth field is /sys/fs/cgroup/comma-delimited-controller-list */
 	int i;
 	char *p = line, *p2, *tok, *saveptr = NULL;
 	char **aret = NULL;
+	bool is_cgroup_v2;
+
+	/* handle cgroup v2 */
+	is_cgroup_v2 = is_cgroupfs_v2(line);
 
 	for (i = 0; i < 4; i++) {
 		p = strchr(p, ' ');
@@ -794,21 +775,19 @@ static char **get_controllers(char **klist, char **nlist, char *line)
 		return NULL;
 	}
 	*p2 = '\0';
+
+	/* cgroup v2 does not have separate mountpoints for controllers */
+	if (is_cgroup_v2) {
+		must_append_controller(klist, nlist, &aret, "cgroup2");
+		return aret;
+	}
+
 	for (tok = strtok_r(p, ",", &saveptr); tok;
 			tok = strtok_r(NULL, ",", &saveptr)) {
 		must_append_controller(klist, nlist, &aret, tok);
 	}
 
 	return aret;
-}
-
-/* return true if the fstype is cgroup */
-static bool is_cgroupfs(char *line)
-{
-	char *p = strstr(line, " - ");
-	if (!p)
-		return false;
-	return strncmp(p, " - cgroup ", 10) == 0;
 }
 
 /* Add a controller to our list of hierarchies */
@@ -822,6 +801,12 @@ static void add_controller(char **clist, char *mountpoint, char *base_cgroup)
 	new->mountpoint = mountpoint;
 	new->base_cgroup = base_cgroup;
 	new->fullcgpath = NULL;
+
+	/* record if this is the cgroup v2 hierarchy */
+	if (!strcmp(base_cgroup, "cgroup2"))
+		new->is_cgroup_v2 = true;
+	else
+		new->is_cgroup_v2 = false;
 
 	newentry = append_null_to_list((void ***)&hierarchies);
 	hierarchies[newentry] = new;
@@ -904,13 +889,21 @@ static bool controller_in_clist(char *cgline, char *c)
 static char *get_current_cgroup(char *basecginfo, char *controller)
 {
 	char *p = basecginfo;
+	bool is_cgroup_v2;
+	bool is_cgroup_v2_base_cgroup;
 
-	while (1) {
+	is_cgroup_v2 = !strcmp(controller, "cgroup2");
+	while (true) {
+		is_cgroup_v2_base_cgroup = false;
+		/* cgroup v2 entry in "/proc/<pid>/cgroup": "0::/some/path" */
+		if (is_cgroup_v2 && (*p == '0'))
+			is_cgroup_v2_base_cgroup = true;
+
 		p = strchr(p, ':');
 		if (!p)
 			return NULL;
 		p++;
-		if (controller_in_clist(p, controller)) {
+		if (is_cgroup_v2_base_cgroup || controller_in_clist(p, controller)) {
 			p = strchr(p, ':');
 			if (!p)
 				return NULL;
@@ -923,20 +916,6 @@ static char *get_current_cgroup(char *basecginfo, char *controller)
 			return NULL;
 		p++;
 	}
-}
-
-/*
- * Given a hierarchy @mountpoint and base @path, verify that we can create
- * directories underneath it.
- */
-static bool test_writeable(char *mountpoint, char *path)
-{
-	char *fullpath = must_make_path(mountpoint, path, NULL);
-	int ret;
-
-	ret = access(fullpath, W_OK);
-	free(fullpath);
-	return ret == 0;
 }
 
 static void must_append_string(char ***list, char *entry)
@@ -967,16 +946,17 @@ static void get_existing_subsystems(char ***klist, char ***nlist)
 			continue;
 		*p2 = '\0';
 
-		/* If we have a mixture between cgroup v1 and cgroup v2
-		 * hierarchies, then /proc/self/cgroup contains entries of the
-		 * form:
+		/* If the kernel has cgroup v2 support, then /proc/self/cgroup
+		 * contains an entry of the form:
 		 *
 		 *	0::/some/path
 		 *
-		 * We need to skip those.
+		 * In this case we use "cgroup2" as controller name.
 		 */
-		if ((p2 - p) == 0)
+		if ((p2 - p) == 0) {
+			must_append_string(klist, "cgroup2");
 			continue;
+		}
 
 		for (tok = strtok_r(p, ",", &saveptr); tok;
 				tok = strtok_r(NULL, ",", &saveptr)) {
@@ -1084,8 +1064,10 @@ static bool parse_hierarchies(void)
 	while (getline(&line, &len, f) != -1) {
 		char **controller_list = NULL;
 		char *mountpoint, *base_cgroup;
+		bool is_cgroup_v2, writeable;
 
-		if (!is_lxcfs(line) && !is_cgroupfs(line))
+		is_cgroup_v2 = is_cgroupfs_v2(line);
+		if (!is_lxcfs(line) && !is_cgroupfs_v1(line) && !is_cgroup_v2)
 			continue;
 
 		controller_list = get_controllers(klist, nlist, line);
@@ -1111,9 +1093,14 @@ static bool parse_hierarchies(void)
 			free(mountpoint);
 			continue;
 		}
+
 		trim(base_cgroup);
 		prune_init_scope(base_cgroup);
-		if (!test_writeable(mountpoint, base_cgroup)) {
+		if (is_cgroup_v2)
+			writeable = test_writeable_v2(mountpoint, base_cgroup);
+		else
+			writeable = test_writeable_v1(mountpoint, base_cgroup);
+		if (!writeable) {
 			free_string_list(controller_list);
 			free(mountpoint);
 			free(base_cgroup);
@@ -1185,33 +1172,6 @@ static void *cgfsng_init(const char *name)
 out_free:
 	free_handler_data(d);
 	return NULL;
-}
-
-/*
- * Concatenate all passed-in strings into one path.  Do not fail.  If any piece is
- * not prefixed with '/', add a '/'.
- */
-static char *must_make_path(const char *first, ...)
-{
-	va_list args;
-	char *cur, *dest;
-	size_t full_len = strlen(first);
-
-	dest = must_copy_string(first);
-
-	va_start(args, first);
-	while ((cur = va_arg(args, char *)) != NULL) {
-		full_len += strlen(cur);
-		if (cur[0] != '/')
-			full_len++;
-		dest = must_realloc(dest, full_len + 1);
-		if (cur[0] != '/')
-			strcat(dest, "/");
-		strcat(dest, cur);
-	}
-	va_end(args);
-
-	return dest;
 }
 
 static int cgroup_rmdir(char *dirname)

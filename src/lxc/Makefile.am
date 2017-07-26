@@ -19,6 +19,7 @@ noinst_HEADERS = \
 	bdev/lxczfs.h \
 	bdev/storage_utils.h \
 	cgroups/cgroup.h \
+	cgroups/cgroup_utils.h \
 	caps.h \
 	conf.h \
 	confile.h \
@@ -90,6 +91,7 @@ liblxc_la_SOURCES = \
 	bdev/storage_utils.c bdev/storage_utils.h \
 	cgroups/cgfs.c \
 	cgroups/cgfsng.c \
+	cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 	cgroups/cgroup.c cgroups/cgroup.h \
 	commands.c commands.h \
 	commands_utils.c commands_utils.h \
