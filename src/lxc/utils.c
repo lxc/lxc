@@ -2337,3 +2337,50 @@ int run_command(char *buf, size_t buf_size, int (*child_fn)(void *), void *args)
 
 	return fret;
 }
+
+char *must_make_path(const char *first, ...)
+{
+	va_list args;
+	char *cur, *dest;
+	size_t full_len = strlen(first);
+
+	dest = must_copy_string(first);
+
+	va_start(args, first);
+	while ((cur = va_arg(args, char *)) != NULL) {
+		full_len += strlen(cur);
+		if (cur[0] != '/')
+			full_len++;
+		dest = must_realloc(dest, full_len + 1);
+		if (cur[0] != '/')
+			strcat(dest, "/");
+		strcat(dest, cur);
+	}
+	va_end(args);
+
+	return dest;
+}
+
+char *must_copy_string(const char *entry)
+{
+	char *ret;
+
+	if (!entry)
+		return NULL;
+	do {
+		ret = strdup(entry);
+	} while (!ret);
+
+	return ret;
+}
+
+void *must_realloc(void *orig, size_t sz)
+{
+	void *ret;
+
+	do {
+		ret = realloc(orig, sz);
+	} while (!ret);
+
+	return ret;
+}

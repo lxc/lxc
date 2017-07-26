@@ -375,4 +375,15 @@ int lxc_unstack_mountpoint(const char *path, bool lazy);
  */
 int run_command(char *buf, size_t buf_size, int (*child_fn)(void *), void *args);
 
+/* Concatenate all passed-in strings into one path. Do not fail. If any piece
+ * is not prefixed with '/', add a '/'.
+ */
+char *must_make_path(const char *first, ...) __attribute__((sentinel));
+
+/* return copy of string @entry;  do not fail. */
+char *must_copy_string(const char *entry);
+
+/* Re-alllocate a pointer, do not fail */
+void *must_realloc(void *orig, size_t sz);
+
 #endif /* __LXC_UTILS_H */
