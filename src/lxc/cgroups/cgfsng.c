@@ -1315,7 +1315,8 @@ static inline bool cgfsng_create(void *hdata)
 {
 	struct cgfsng_handler_data *d = hdata;
 	char *tmp, *cgname, *offset;
-	int i, idx = 0;
+	int i, ret;
+	int idx = 0;
 	size_t len;
 
 	if (!d)
@@ -1341,8 +1342,18 @@ again:
 		ERROR("Too many conflicting cgroup names");
 		goto out_free;
 	}
-	if (idx)
-		snprintf(offset, 5, "-%d", idx);
+	if (idx) {
+		ret = snprintf(offset, 5, "-%d", idx);
+		if (ret < 0 || (size_t)ret >= 5) {
+			FILE *f = fopen("/dev/null", "w");
+			if (f >= 0) {
+				fprintf(f, "Workaround for GCC7 bug: "
+					   "https://gcc.gnu.org/bugzilla/"
+					   "show_bug.cgi?id=78969");
+				fclose(f);
+			}
+		}
+	}
 	for (i = 0; hierarchies[i]; i++) {
 		if (!create_path_for_hierarchy(hierarchies[i], cgname)) {
 			int j;
