@@ -433,7 +433,7 @@ copy_debian()
       btrfs subvolume snapshot "$cache/rootfs-$release-$arch" "$realrootfs" || return 1
       [ "$rootfs" = "$realrootfs" ] || mount --bind "$realrootfs" "$rootfs" || return 1
     else
-        rsync -Ha "$cache/rootfs-$release-$arch"/ "$rootfs"/ || return 1
+        rsync -SHaAX "$cache/rootfs-$release-$arch"/ $rootfs/ || return 1
     fi
     return 0
 }

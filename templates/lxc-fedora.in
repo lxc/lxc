@@ -520,7 +520,7 @@ copy_fedora()
     echo -n "Copying ${cache} to ${rootfs} ... "
 
     mkdir -p "${rootfs}" &&
-    rsync --archive --hard-links --sparse "${cache}/" "${rootfs}/" &&
+    rsync --archive --hard-links --sparse --acls --xattrs "${cache}/" "${rootfs}/" &&
     echo || return 1
 
     return 0
