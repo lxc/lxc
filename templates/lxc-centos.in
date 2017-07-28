@@ -533,7 +533,7 @@ copy_centos()
     #cp -a $cache/rootfs-$arch $rootfs_path || return 1
     # i prefer rsync (no reason really)
     mkdir -p $rootfs_path
-    rsync -a $cache/rootfs/ $rootfs_path/
+    rsync -SHaAX $cache/rootfs/ $rootfs_path/
     echo
     return 0
 }
