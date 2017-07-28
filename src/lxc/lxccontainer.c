@@ -1263,11 +1263,45 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 		if (strcmp(bdev->type, "dir") && strcmp(bdev->type, "btrfs")) {
 			if (geteuid() != 0) {
 				ERROR("non-root users can only create btrfs and directory-backed containers");
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
-			if (bdev->ops->mount(bdev) < 0) {
-				ERROR("Error mounting rootfs");
-				exit(1);
+
+			if (!strcmp(bdev->type, "overlay") || !strcmp(bdev->type, "overlayfs")) {
+				/* If we create an overlay container we need to
+				 * rsync the contents into
+				 * <container-path>/<container-name>/rootfs.
+				 * However, the overlay mount function will
+				 * mount will mount
+				 * <container-path>/<container-name>/delta0
+				 * over
+				 * <container-path>/<container-name>/rootfs
+				 * which means we would rsync the rootfs into
+				 * the delta directory. That doesn't make sense
+				 * since the delta directory only exists to
+				 * record the differences to
+				 * <container-path>/<container-name>/rootfs. So
+				 * let's simply bind-mount here and then rsync
+				 * directly into
+				 * <container-path>/<container-name>/rootfs.
+				 */
+				char *src;
+
+				src = ovl_get_rootfs(bdev->src, &(size_t){0});
+				if (!src) {
+					ERROR("Failed to get rootfs");
+					exit(EXIT_FAILURE);
+				}
+
+				ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC, NULL);
+				if (ret < 0) {
+					ERROR("Failed to mount rootfs");
+					return -1;
+				}
+			} else {
+				if (bdev->ops->mount(bdev) < 0) {
+					ERROR("Failed to mount rootfs");
+					exit(EXIT_FAILURE);
+				}
 			}
 		} else { // TODO come up with a better way here!
 			char *src;
