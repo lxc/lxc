@@ -307,6 +307,11 @@ int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 			return -1;
 		}
 		vg = lxc_global_config_value("lxc.bdev.lvm.vg");
+		if (!vg) {
+			ERROR("The \"lxc.bdev.lvm.vg\" key is not set");
+			return -1;
+		}
+
 		len = strlen("/dev/") + strlen(vg) + strlen(cname) + 4 + 2;
 		new->src = malloc(len);
 		if (new->src)
