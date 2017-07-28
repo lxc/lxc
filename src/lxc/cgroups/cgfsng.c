@@ -1315,7 +1315,7 @@ static inline bool cgfsng_create(void *hdata)
 {
 	struct cgfsng_handler_data *d = hdata;
 	char *tmp, *cgname, *offset;
-	int i, ret;
+	int i;
 	int idx = 0;
 	size_t len;
 
@@ -1343,6 +1343,8 @@ again:
 		goto out_free;
 	}
 	if (idx) {
+		int ret;
+
 		ret = snprintf(offset, 5, "-%d", idx);
 		if (ret < 0 || (size_t)ret >= 5) {
 			FILE *f = fopen("/dev/null", "w");
