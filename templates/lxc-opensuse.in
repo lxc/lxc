@@ -251,7 +251,7 @@ copy_opensuse()
     # make a local copy of the mini opensuse
     echo "Copying rootfs to $rootfs ..."
     mkdir -p $rootfs
-    rsync -Ha $cache/rootfs-$arch/ $rootfs/ || return 1
+    rsync -SHaAX $cache/rootfs-$arch/ $rootfs/ || return 1
     return 0
 }
 

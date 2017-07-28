@@ -439,7 +439,7 @@ copy_ubuntu()
       btrfs subvolume snapshot $cache/rootfs-$arch $realrootfs || return 1
       [ "$rootfs" = "$realrootfs" ] || mount --bind $realrootfs $rootfs || return 1
     else
-      rsync -Ha $cache/rootfs-$arch/ $rootfs/ || return 1
+      rsync -SHaAX $cache/rootfs-$arch/ $rootfs/ || return 1
     fi
     return 0
 }
