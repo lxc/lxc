@@ -728,47 +728,46 @@ char **lxc_normalize_path(const char *path)
 	return components;
 }
 
-bool lxc_deslashify(char **path)
+char *lxc_deslashify(const char *path)
 {
-	bool ret = false;
-	char *p;
+	char *dup, *p;
 	char **parts = NULL;
 	size_t n, len;
 
-	parts = lxc_normalize_path(*path);
-	if (!parts)
-		return false;
+	dup = strdup(path);
+	if (!dup)
+		return NULL;
+
+	parts = lxc_normalize_path(dup);
+	if (!parts) {
+		free(dup);
+		return NULL;
+	}
 
 	/* We'll end up here if path == "///" or path == "". */
 	if (!*parts) {
-		len = strlen(*path);
+		len = strlen(dup);
 		if (!len) {
-			ret = true;
-			goto out;
+			lxc_free_array((void **)parts, free);
+			return dup;
 		}
-		n = strcspn(*path, "/");
+		n = strcspn(dup, "/");
 		if (n == len) {
+			free(dup);
+			lxc_free_array((void **)parts, free);
+
 			p = strdup("/");
 			if (!p)
-				goto out;
-			free(*path);
-			*path = p;
-			ret = true;
-			goto out;
+				return NULL;
+
+			return p;
 		}
 	}
 
-	p = lxc_string_join("/", (const char **)parts, **path == '/');
-	if (!p)
-		goto out;
-
-	free(*path);
-	*path = p;
-	ret = true;
-
-out:
+	p = lxc_string_join("/", (const char **)parts, *dup == '/');
+	free(dup);
 	lxc_free_array((void **)parts, free);
-	return ret;
+	return p;
 }
 
 char *lxc_append_paths(const char *first, const char *second)

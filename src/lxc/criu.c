@@ -263,7 +263,7 @@ static void exec_criu(struct criu_opts *opts)
 
 	for (i = 0; i < cgroup_num_hierarchies(); i++) {
 		char **controllers = NULL, *fullname;
-		char *path;
+		char *path, *tmp;
 
 		if (!cgroup_get_hierarchies(i, &controllers)) {
 			ERROR("failed to get hierarchy %d", i);
@@ -296,11 +296,15 @@ static void exec_criu(struct criu_opts *opts)
 			}
 		}
 
-		if (!lxc_deslashify(&path)) {
-			ERROR("failed to deslashify %s", path);
+		tmp = lxc_deslashify(path);
+		if (!tmp) {
+			ERROR("Failed to remove extraneous slashes from \"%s\"",
+			      path);
 			free(path);
 			goto err;
 		}
+		free(path);
+		path = tmp;
 
 		fullname = lxc_string_join(",", (const char **) controllers, false);
 		if (!fullname) {
