@@ -73,20 +73,20 @@
 #endif
 
 #include "af_unix.h"
-#include "bdev.h"
 #include "caps.h"       /* for lxc_caps_last_cap() */
 #include "cgroup.h"
 #include "conf.h"
 #include "confile_utils.h"
 #include "error.h"
 #include "log.h"
-#include "lxcaufs.h"
 #include "lxclock.h"
-#include "lxcoverlay.h"
 #include "lxcseccomp.h"
 #include "namespace.h"
 #include "network.h"
 #include "parse.h"
+#include "storage.h"
+#include "storage/aufs.h"
+#include "storage/overlay.h"
 #include "utils.h"
 #include "lsm/lsm.h"
 

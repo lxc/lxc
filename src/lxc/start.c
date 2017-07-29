@@ -55,7 +55,6 @@
 #endif
 
 #include "af_unix.h"
-#include "bdev.h"
 #include "caps.h"
 #include "cgroup.h"
 #include "commands.h"
@@ -72,6 +71,7 @@
 #include "monitor.h"
 #include "namespace.h"
 #include "start.h"
+#include "storage.h"
 #include "storage_utils.h"
 #include "sync.h"
 #include "utils.h"

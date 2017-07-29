@@ -21,8 +21,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef __LXC_BDEV_H
-#define __LXC_BDEV_H
+#ifndef __LXC_STORAGE_H
+#define __LXC_STORAGE_H
 
 #include "config.h"
 #include <stdint.h>
@@ -126,4 +126,4 @@ bool bdev_destroy(struct lxc_conf *conf);
 int bdev_destroy_wrapper(void *data);
 extern bool rootfs_is_blockdev(struct lxc_conf *conf);
 
-#endif // __LXC_BDEV_H
+#endif // __LXC_STORAGE_H

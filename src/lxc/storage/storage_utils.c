@@ -39,10 +39,10 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
-#include "bdev.h"
 #include "log.h"
-#include "lxcnbd.h"
+#include "nbd.h"
 #include "parse.h"
+#include "storage.h"
 #include "storage_utils.h"
 #include "utils.h"
 

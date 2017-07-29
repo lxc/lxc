@@ -41,7 +41,6 @@
 #include <net/if.h>
 #include <poll.h>
 
-#include "bdev.h"
 #include "error.h"
 #include "commands.h"
 #include "list.h"
@@ -51,6 +50,7 @@
 #include "cgroup.h"
 #include "start.h"
 #include "state.h"
+#include "storage.h"
 
 #define CGM_SUPPORTS_GET_ABS 3
 #define CGM_SUPPORTS_NAMED 4

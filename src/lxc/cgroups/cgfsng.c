@@ -47,11 +47,11 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-#include "bdev.h"
 #include "cgroup.h"
 #include "cgroup_utils.h"
 #include "commands.h"
 #include "log.h"
+#include "storage.h"
 #include "utils.h"
 
 lxc_log_define(lxc_cgfsng, lxc);

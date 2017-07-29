@@ -25,8 +25,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "bdev.h"
 #include "log.h"
+#include "storage.h"
 #include "utils.h"
 
 lxc_log_define(lxcdir, lxc);

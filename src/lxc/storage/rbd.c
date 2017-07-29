@@ -29,8 +29,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "bdev.h"
 #include "log.h"
+#include "storage.h"
 #include "storage_utils.h"
 #include "utils.h"
 

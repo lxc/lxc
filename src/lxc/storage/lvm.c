@@ -32,10 +32,10 @@
 #include <sys/sysmacros.h>
 #include <sys/wait.h>
 
-#include "bdev.h"
 #include "config.h"
 #include "log.h"
-#include "lxclvm.h"
+#include "lvm.h"
+#include "storage.h"
 #include "storage_utils.h"
 #include "utils.h"
 

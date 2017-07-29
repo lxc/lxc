@@ -38,8 +38,7 @@
 #include <time.h>
 #include <dirent.h>
 
-#include "bdev.h"
-#include "bdev/storage_utils.h"
+#include "storage/storage_utils.h"
 #include "parse.h"
 #include "config.h"
 #include "confile.h"
@@ -49,6 +48,7 @@
 #include "conf.h"
 #include "network.h"
 #include "lxcseccomp.h"
+#include "storage.h"
 
 #if HAVE_SYS_PERSONALITY_H
 #include <sys/personality.h>

@@ -29,11 +29,11 @@
 #include <unistd.h>
 #include <sys/mount.h>
 
-#include "bdev.h"
 #include "config.h"
 #include "log.h"
-#include "lxczfs.h"
+#include "storage.h"
 #include "utils.h"
+#include "zfs.h"
 
 lxc_log_define(lxczfs, lxc);
 

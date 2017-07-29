@@ -40,9 +40,6 @@
 
 #include "af_unix.h"
 #include "attach.h"
-#include "bdev.h"
-#include "lxcoverlay.h"
-#include "lxcbtrfs.h"
 #include "cgroup.h"
 #include "conf.h"
 #include "config.h"
@@ -58,9 +55,12 @@
 #include "monitor.h"
 #include "namespace.h"
 #include "network.h"
-#include "sync.h"
 #include "start.h"
 #include "state.h"
+#include "storage.h"
+#include "storage/btrfs.h"
+#include "storage/overlay.h"
+#include "sync.h"
 #include "utils.h"
 #include "version.h"
 

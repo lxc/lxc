@@ -35,10 +35,10 @@
 #include <sys/types.h>
 #include <sys/vfs.h>
 
-#include "bdev.h"
 #include "log.h"
-#include "lxcbtrfs.h"
-#include "lxcrsync.h"
+#include "btrfs.h"
+#include "rsync.h"
+#include "storage.h"
 #include "utils.h"
 
 lxc_log_define(lxcbtrfs, lxc);
