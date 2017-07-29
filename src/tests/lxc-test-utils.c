@@ -41,33 +41,37 @@
 
 void test_lxc_deslashify(void)
 {
-	char *s = strdup("/A///B//C/D/E/");
-	if (!s)
-		exit(EXIT_FAILURE);
-	lxc_test_assert_abort(lxc_deslashify(&s));
-	lxc_test_assert_abort(strcmp(s, "/A/B/C/D/E") == 0);
-	free(s);
+	char *s = "/A///B//C/D/E/";
+	char *t;
 
-	s = strdup("/A");
-	if (!s)
+	t = lxc_deslashify(s);
+	if (!t)
 		exit(EXIT_FAILURE);
-	lxc_test_assert_abort(lxc_deslashify(&s));
-	lxc_test_assert_abort(strcmp(s, "/A") == 0);
-	free(s);
+	lxc_test_assert_abort(strcmp(t, "/A/B/C/D/E") == 0);
+	free(t);
 
-	s = strdup("");
-	if (!s)
-		exit(EXIT_FAILURE);
-	lxc_test_assert_abort(lxc_deslashify(&s));
-	lxc_test_assert_abort(strcmp(s, "") == 0);
-	free(s);
+	s = "/A";
 
-	s = strdup("//");
-	if (!s)
+	t = lxc_deslashify(s);
+	if (!t)
 		exit(EXIT_FAILURE);
-	lxc_test_assert_abort(lxc_deslashify(&s));
-	lxc_test_assert_abort(strcmp(s, "/") == 0);
-	free(s);
+	lxc_test_assert_abort(strcmp(t, "/A") == 0);
+	free(t);
+
+	s = "";
+	t = lxc_deslashify(s);
+	if (!t)
+		exit(EXIT_FAILURE);
+	lxc_test_assert_abort(strcmp(t, "") == 0);
+	free(t);
+
+	s = "//";
+
+	t = lxc_deslashify(s);
+	if (!t)
+		exit(EXIT_FAILURE);
+	lxc_test_assert_abort(strcmp(t, "/") == 0);
+	free(t);
 }
 
 /* /proc/int_as_str/ns/mnt\0 = (5 + 21 + 7 + 1) */
