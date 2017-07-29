@@ -40,11 +40,41 @@ lxc_log_define(aufs, lxc);
 extern char *dir_new_path(char *src, const char *oldname, const char *name,
 		const char *oldpath, const char *lxcpath);
 
+int lxc_rsync_delta(struct rsync_data_char *data)
+{
+	int ret;
+
+	ret = lxc_switch_uid_gid(0, 0);
+	if (ret < 0)
+		return -1;
+
+	ret = lxc_setgroups(0, NULL);
+	if (ret < 0)
+		return -1;
+
+	ret = lxc_rsync_exec(data->src, data->dest);
+	if (ret < 0) {
+		ERROR("Failed to rsync from \"%s\" into \"%s\"", data->src,
+		      data->dest);
+		return -1;
+	}
+
+	return 0;
+}
+
+int lxc_rsync_delta_wrapper(void *data)
+{
+	struct rsync_data_char *arg = data;
+	return lxc_rsync_delta(arg);
+}
+
 int aufs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 		    const char *oldname, const char *cname, const char *oldpath,
 		    const char *lxcpath, int snap, uint64_t newsize,
 		    struct lxc_conf *conf)
 {
+	char cmd_output[MAXPATHLEN];
+
 	if (!snap) {
 		ERROR("aufs is only for snapshot clones");
 		return -22;
@@ -134,10 +164,12 @@ int aufs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 		rdata.src = odelta;
 		rdata.dest = ndelta;
 		if (am_unpriv())
-			ret = userns_exec_1(conf, rsync_delta_wrapper, &rdata,
-					    "rsync_delta_wrapper");
+			ret = userns_exec_1(conf, lxc_rsync_delta_wrapper,
+					    &rdata, "lxc_rsync_delta_wrapper");
 		else
-			ret = rsync_delta(&rdata);
+			ret = run_command(cmd_output, sizeof(cmd_output),
+					  lxc_rsync_delta_wrapper,
+					  (void *)&rdata);
 		if (ret) {
 			free(osrc);
 			free(ndelta);

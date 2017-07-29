@@ -464,7 +464,7 @@ bool lvm_create_clone(struct lxc_conf *conf, struct lxc_storage *orig,
 	int ret;
 	struct rsync_data data;
 	char *cmd_args[2];
-	char cmd_output[MAXPATHLEN];
+	char cmd_output[MAXPATHLEN] = {0};
 	char fstype[100] = "ext4";
 	uint64_t size = newsize;
 
@@ -506,7 +506,8 @@ bool lvm_create_clone(struct lxc_conf *conf, struct lxc_storage *orig,
 
 	data.orig = orig;
 	data.new = new;
-	ret = rsync_rootfs(&data);
+	ret = run_command(cmd_output, sizeof(cmd_output),
+			  lxc_rsync_exec_wrapper, (void *)&data);
 	if (ret < 0) {
 		ERROR("Failed to rsync from \"%s\" to \"%s\"", orig->dest,
 		      new->dest);
