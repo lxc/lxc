@@ -186,10 +186,11 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 		}
 	} else if (!strcmp(orig->type, "overlayfs") ||
 		   !strcmp(orig->type, "overlay")) {
-		char *osrc, *odelta, *nsrc, *ndelta, *work;
-		char *lastslash;
+		char *clean_old_path, *clean_new_path;
+		char *lastslash, *ndelta, *nsrc, *odelta, *osrc, *s1, *s2, *s3,
+		    *work;
 		int ret, lastslashidx;
-		size_t len;
+		size_t len, name_len;
 
 		osrc = strdup(orig->src);
 		if (!osrc) {
@@ -298,7 +299,93 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 			return -1;
 		}
 
-		return ovl_do_rsync(orig, new, conf);
+		ret = ovl_do_rsync(orig, new, conf);
+		if (ret < 0)
+			return -1;
+
+		/* When we create an overlay snapshot of an overlay container in
+		 * the snapshot directory under "<lxcpath>/<name>/snaps/" we
+		 * don't need to record a dependency. If we would restore would
+		 * also fail.
+		 */
+		clean_old_path = lxc_deslashify(oldpath);
+		if (!clean_old_path)
+			return -1;
+
+		clean_new_path = lxc_deslashify(lxcpath);
+		if (!clean_new_path) {
+			free(clean_old_path);
+			return -1;
+		}
+
+		s1 = strrchr(clean_old_path, '/');
+		if (!s1) {
+			ERROR("Failed to detect \"/\" in string \"%s\"", s1);
+			free(clean_old_path);
+			free(clean_new_path);
+			return -1;
+		}
+
+		s2 = strrchr(clean_new_path, '/');
+		if (!s2) {
+			ERROR("Failed to detect \"/\" in string \"%s\"", s2);
+			free(clean_old_path);
+			free(clean_new_path);
+			return -1;
+		}
+
+		if (!strncmp(s1, "/snaps", sizeof("/snaps") - 1)) {
+			s1 = clean_new_path;
+			s2 = clean_old_path;
+			s3 = (char *)cname;
+			name_len = strlen(cname);
+			len = strlen(clean_new_path);
+		} else if (!strncmp(s2, "/snaps", sizeof("/snaps") - 1)) {
+			s1 = clean_old_path;
+			s2 = clean_new_path;
+			s3 = (char *)oldname;
+			name_len = strlen(oldname);
+			len = strlen(clean_old_path);
+		} else {
+			free(clean_old_path);
+			free(clean_new_path);
+			return 0;
+		}
+
+		if (!strncmp(s1, s2, len)) {
+			char *tmp;
+
+			tmp = (char *)(s2 + len + 1);
+			if (*tmp == '\0') {
+				free(clean_old_path);
+				free(clean_new_path);
+				return 0;
+			}
+
+			name_len = strlen(s3);
+			if (strncmp(s3, tmp, name_len)) {
+				free(clean_old_path);
+				free(clean_new_path);
+				return 0;
+			}
+
+			tmp += name_len + 1;
+			if (*tmp == '\0') {
+				free(clean_old_path);
+				free(clean_new_path);
+				return 0;
+			}
+
+			if (!strncmp(tmp, "snaps", sizeof("snaps") - 1)) {
+				free(clean_old_path);
+				free(clean_new_path);
+				return LXC_CLONE_SNAPSHOT;
+			}
+		}
+
+		free(clean_old_path);
+		free(clean_new_path);
+		return 0;
 	} else {
 		ERROR("overlay clone of %s container is not yet supported",
 		      orig->type);

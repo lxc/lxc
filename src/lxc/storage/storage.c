@@ -386,7 +386,7 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 		snap = false;
 
 	/* If newtype is NULL and snapshot is set, then use overlay. */
-	if (!bdevtype && !keepbdevtype && snap && strcmp(orig->type, "dir") == 0)
+	if (!bdevtype && !keepbdevtype && snap && !strcmp(orig->type, "dir"))
 		bdevtype = "overlay";
 
 	if (am_unpriv() && !unpriv_snap_allowed(orig, bdevtype, snap, maybe_snap)) {
@@ -396,20 +396,23 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 	}
 
 	*needs_rdep = false;
-	if (bdevtype && !strcmp(orig->type, "dir") &&
-	    (strcmp(bdevtype, "aufs") == 0 ||
-	     strcmp(bdevtype, "overlayfs") == 0 ||
-	     strcmp(bdevtype, "overlay") == 0)) {
-		*needs_rdep = true;
-	} else if (snap && !strcmp(orig->type, "lvm") &&
-		   !lvm_is_thin_volume(orig->src)) {
-		*needs_rdep = true;
-	}
+	if (bdevtype) {
+		if (snap && !strcmp(orig->type, "lvm") &&
+		    !lvm_is_thin_volume(orig->src))
+			*needs_rdep = true;
+		else if (!strcmp(bdevtype, "overlay") ||
+			 !strcmp(bdevtype, "overlayfs"))
+			*needs_rdep = true;
+	} else {
+		if (!snap && strcmp(oldpath, lxcpath))
+			bdevtype = "dir";
+		else
+			bdevtype = orig->type;
 
-	if (strcmp(oldpath, lxcpath) && !bdevtype && !snap)
-		bdevtype = "dir";
-	else if (!bdevtype)
-		bdevtype = orig->type;
+		if (!strcmp(bdevtype, "overlay") ||
+		    !strcmp(bdevtype, "overlayfs"))
+			*needs_rdep = true;
+	}
 
 	/* get new bdev type */
 	new = storage_get(bdevtype);
@@ -427,6 +430,15 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 		ERROR("Failed creating new paths for clone of \"%s\"", src);
 		goto on_error_put_new;
 	}
+
+	/* When we create an overlay snapshot of an overlay container in the
+	 * snapshot directory under "<lxcpath>/<name>/snaps/" we don't need to
+	 * record a dependency. If we would restore would also fail.
+	 */
+	if ((!strcmp(new->type, "overlay") ||
+	     !strcmp(new->type, "overlayfs")) &&
+	    ret == LXC_CLONE_SNAPSHOT)
+		*needs_rdep = false;
 
 	/* btrfs */
 	if (!strcmp(orig->type, "btrfs") && !strcmp(new->type, "btrfs")) {
