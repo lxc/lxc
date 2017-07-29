@@ -32,9 +32,9 @@
 #include <sys/types.h>
 #include <sys/mount.h>
 
-#include "bdev.h"
 #include "log.h"
-#include "lxcrsync.h"
+#include "rsync.h"
+#include "storage.h"
 #include "utils.h"
 
 lxc_log_define(lxcrsync, lxc);

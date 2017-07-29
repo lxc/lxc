@@ -28,10 +28,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "bdev.h"
+#include "aufs.h"
 #include "log.h"
-#include "lxcaufs.h"
-#include "lxcrsync.h"
+#include "rsync.h"
+#include "storage.h"
 #include "utils.h"
 
 lxc_log_define(lxcaufs, lxc);

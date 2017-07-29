@@ -27,9 +27,9 @@
 #include <sys/types.h>
 
 #include "arguments.h"
-#include "bdev.h"
 #include "log.h"
 #include "lxc.h"
+#include "storage.h"
 #include "storage_utils.h"
 #include "utils.h"
 

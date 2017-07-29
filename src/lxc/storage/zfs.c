@@ -30,13 +30,13 @@
 #include <sys/mount.h>
 #include <unistd.h>
 
-#include "bdev.h"
 #include "config.h"
 #include "log.h"
-#include "lxcrsync.h"
-#include "lxczfs.h"
 #include "parse.h"
+#include "rsync.h"
+#include "storage.h"
 #include "utils.h"
+#include "zfs.h"
 
 lxc_log_define(lxczfs, lxc);
 

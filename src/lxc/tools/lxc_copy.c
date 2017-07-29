@@ -37,13 +37,13 @@
 #include <lxc/lxccontainer.h>
 
 #include "attach.h"
-#include "bdev.h"
 #include "log.h"
 #include "confile.h"
 #include "arguments.h"
 #include "lxc.h"
 #include "conf.h"
 #include "state.h"
+#include "storage.h"
 #include "utils.h"
 
 #ifndef HAVE_GETSUBOPT

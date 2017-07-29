@@ -6,18 +6,18 @@ pkginclude_HEADERS = \
 noinst_HEADERS = \
 	arguments.h \
 	attach.h \
-	bdev/bdev.h \
-	bdev/lxcaufs.h \
-	bdev/lxcbtrfs.h \
-	bdev/lxcdir.h \
-	bdev/lxcloop.h \
-	bdev/lxclvm.h \
-	bdev/lxcnbd.h \
-	bdev/lxcoverlay.h \
-	bdev/lxcrbd.h \
-	bdev/lxcrsync.h \
-	bdev/lxczfs.h \
-	bdev/storage_utils.h \
+	storage/storage.h \
+	storage/aufs.h \
+	storage/btrfs.h \
+	storage/dir.h \
+	storage/loop.h \
+	storage/lvm.h \
+	storage/nbd.h \
+	storage/overlay.h \
+	storage/rbd.h \
+	storage/rsync.h \
+	storage/zfs.h \
+	storage/storage_utils.h \
 	cgroups/cgroup.h \
 	cgroups/cgroup_utils.h \
 	caps.h \
@@ -77,18 +77,18 @@ endif
 lib_LTLIBRARIES = liblxc.la
 liblxc_la_SOURCES = \
 	arguments.c arguments.h \
-	bdev/bdev.c bdev/bdev.h \
-	bdev/lxcaufs.c bdev/lxcaufs.h \
-	bdev/lxcbtrfs.c bdev/lxcbtrfs.h \
-	bdev/lxcdir.c bdev/lxcdir.h \
-	bdev/lxcloop.c bdev/lxcloop.h \
-	bdev/lxclvm.c bdev/lxclvm.h \
-	bdev/lxcnbd.c bdev/lxcnbd.h \
-	bdev/lxcoverlay.c bdev/lxcoverlay.h \
-	bdev/lxcrbd.c bdev/lxcrbd.h \
-	bdev/lxcrsync.c bdev/lxcrsync.h \
-	bdev/lxczfs.c bdev/lxczfs.h \
-	bdev/storage_utils.c bdev/storage_utils.h \
+	storage/storage.c storage/storage.h \
+	storage/aufs.c storage/aufs.h \
+	storage/btrfs.c storage/btrfs.h \
+	storage/dir.c storage/dir.h \
+	storage/loop.c storage/loop.h \
+	storage/lvm.c storage/lvm.h \
+	storage/nbd.c storage/nbd.h \
+	storage/overlay.c storage/overlay.h \
+	storage/rbd.c storage/rbd.h \
+	storage/rsync.c storage/rsync.h \
+	storage/zfs.c storage/zfs.h \
+	storage/storage_utils.c storage/storage_utils.h \
 	cgroups/cgfs.c \
 	cgroups/cgfsng.c \
 	cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -170,7 +170,7 @@ AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	-DSBINDIR=\"$(SBINDIR)\" \
 	-I $(top_srcdir)/src \
 	-I $(top_srcdir)/src/lxc \
-	-I $(top_srcdir)/src/lxc/bdev \
+	-I $(top_srcdir)/src/lxc/storage \
 	-I $(top_srcdir)/src/lxc/cgroups
 
 if ENABLE_APPARMOR

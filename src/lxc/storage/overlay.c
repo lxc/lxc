@@ -27,13 +27,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "bdev.h"
 #include "conf.h"
 #include "confile.h"
 #include "log.h"
 #include "lxccontainer.h"
-#include "lxcoverlay.h"
-#include "lxcrsync.h"
+#include "overlay.h"
+#include "rsync.h"
+#include "storage.h"
 #include "storage_utils.h"
 #include "utils.h"
 

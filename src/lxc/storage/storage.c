@@ -46,33 +46,33 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
-#include "bdev.h"
+#include "aufs.h"
+#include "btrfs.h"
 #include "conf.h"
 #include "config.h"
+#include "dir.h"
 #include "error.h"
 #include "log.h"
+#include "loop.h"
+#include "lvm.h"
 #include "lxc.h"
-#include "lxcaufs.h"
-#include "lxcbtrfs.h"
-#include "lxcdir.h"
 #include "lxclock.h"
-#include "lxclvm.h"
-#include "lxcloop.h"
-#include "lxcnbd.h"
-#include "lxcoverlay.h"
-#include "lxcrbd.h"
-#include "lxcrsync.h"
-#include "lxczfs.h"
+#include "nbd.h"
 #include "namespace.h"
+#include "overlay.h"
 #include "parse.h"
+#include "rbd.h"
+#include "rsync.h"
+#include "storage.h"
 #include "storage_utils.h"
 #include "utils.h"
+#include "zfs.h"
 
 #ifndef BLKGETSIZE64
 #define BLKGETSIZE64 _IOR(0x12, 114, size_t)
 #endif
 
-lxc_log_define(bdev, lxc);
+lxc_log_define(storage, lxc);
 
 /* aufs */
 static const struct bdev_ops aufs_ops = {
