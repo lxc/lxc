@@ -1895,13 +1895,87 @@ static int cgfsng_set(const char *filename, const char *value, const char *name,
 }
 
 /*
+ * take devices cgroup line
+ *    /dev/foo rwx
+ * and convert it to a valid
+ *    type major:minor mode
+ * line.  Return <0 on error.  Dest is a preallocated buffer
+ * long enough to hold the output.
+ */
+static int convert_devpath(const char *invalue, char *dest)
+{
+	char *p, *path, *mode, type = 0;
+	struct stat sb;
+	unsigned long minor, major;
+	int n_parts, ret;
+	dev_t dev;
+
+	path = must_copy_string(invalue);
+
+	/*
+	 * read path followed by mode;  ignore any trailing text.
+	 * A '    # comment' would be legal.  Technically other text
+	 * is not legal, we could check for that if we cared to
+	 */
+	for (n_parts = 1, p = path; *p && n_parts < 3; p++) {
+		if (*p == ' ') {
+			*p = '\0';
+			mode = p + 1;
+			n_parts++;
+			while (*p == ' ')
+				p++;
+		}
+	}
+	if (n_parts == 1) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = stat(path, &sb);
+	if (ret < 0)
+		goto out;
+
+	dev = sb.st_rdev;
+
+	mode_t m = sb.st_mode & S_IFMT;
+	switch (m) {
+	case S_IFBLK:
+		type = 'b';
+		break;
+	case S_IFCHR:
+		type = 'c';
+		break;
+	}
+
+	if (type == 0) {
+		ERROR("Unsupported device type %i for %s", m, path);
+		ret = -EINVAL;
+		goto out;
+	}
+	major = MAJOR(dev), minor = MINOR(dev);
+	ret = snprintf(dest, 50,
+			"%c %lu:%lu %s", type, major, minor, mode);
+	if (ret < 0 || ret >= 50) {
+		ERROR("Error on configuration value \"%c %lu:%lu %s\" (max 50 chars)",
+				type, major, minor, mode);
+		ret = -ENAMETOOLONG;
+		goto out;
+	}
+	ret = 0;
+
+out:
+	free(path);
+	return ret;
+}
+
+/*
  * Called from setup_limits - here we have the container's cgroup_data because
  * we created the cgroups
  */
 static int lxc_cgroup_set_data(const char *filename, const char *value, struct cgfsng_handler_data *d)
 {
 	char *subsystem = NULL, *p;
-	int ret = -1;
+	int ret = 0;
 	struct hierarchy *h;
 	char converted_value[50]; // "b|c <2^64-1>:<2^64-1> r|w|m" = 47 chars max
 
@@ -1911,97 +1985,17 @@ static int lxc_cgroup_set_data(const char *filename, const char *value, struct c
 		*p = '\0';
 
 	if (strcmp("devices.allow", filename) == 0 && value[0] == '/') {
-		char *to_split1 = strdup(value);
-		if (to_split1 == NULL) {
-			ret = -ENOMEM;
-		} else {
-			char *saveptr = NULL;
-			size_t n_parts = 0;
-			while (strtok_r(n_parts ? NULL : to_split1, " ", &saveptr) != NULL) {
-				++n_parts;
-			}
-			free(to_split1);
-
-			if (n_parts == 2) {
-				size_t i;
-				char **parts = malloc(sizeof(char*) * n_parts);
-				if (parts == NULL) {
-					ret = -ENOMEM;
-				} else {
-					ret = 0;
-					// We can't reuse to_split1 here, because strtok_r modifies its first argument
-					char *to_split2 = strdup(value);
-					if (to_split2 == NULL) {
-						ret = -ENOMEM;
-					} else {
-						for (i = 0; i < n_parts; ++i) {
-							char *part = strtok_r(i ? NULL : to_split2, " ", &saveptr);
-							char *subpart = strdup(part);
-							if (subpart == NULL) {
-								ret = -ENOMEM;
-							}
-							parts[i] = subpart;
-						}
-						free(to_split2);
-
-						if (ret >= 0) {
-							const char *path = parts[0];
-							const char *mode = parts[1];
-
-							struct stat sb;
-							stat(path, &sb);
-							dev_t dev = sb.st_rdev;
-
-							char type = 0;
-							mode_t m = sb.st_mode & S_IFMT;
-							switch (m) {
-							case S_IFBLK:
-								type = 'b';
-								break;
-							case S_IFCHR:
-								type = 'c';
-								break;
-							}
-
-							if (type == 0) {
-								ERROR("Unsupported device type %i for %s", m, path);
-								ret = -EINVAL;
-							} else {
-								unsigned long major = MAJOR(dev), minor = MINOR(dev);
-								ret = snprintf(converted_value, 50,
-										"%c %lu:%lu %s", type, major, minor, mode);
-								if (ret < 0 || ret >= 50) {
-									ERROR("Error on configuration value \"%c %lu:%lu %s\" (max 50 chars)",
-											type, major, minor, mode);
-									ret = -ENAMETOOLONG;
-								}
-							}
-						}
-
-						for (i = 0; i < n_parts; ++i) {
-							char *subpart = parts[i];
-							if (subpart != NULL) {
-								free(subpart);
-							}
-						}
-						free(parts);
-					}
-				}
-			} else {
-				strcpy(converted_value, value);
-			}
-		}
-		if (ret <= 0) {
+		ret = convert_devpath(value, converted_value);
+		if (ret < 0)
 			return ret;
-		}
-	} else {
-		strcpy(converted_value, value);
+		value = converted_value;
+
 	}
 
 	h = get_hierarchy(subsystem);
 	if (h) {
 		char *fullpath = must_make_path(h->fullcgpath, filename, NULL);
-		ret = lxc_write_to_file(fullpath, converted_value, strlen(converted_value), false);
+		ret = lxc_write_to_file(fullpath, value, strlen(value), false);
 		free(fullpath);
 	}
 	return ret;
