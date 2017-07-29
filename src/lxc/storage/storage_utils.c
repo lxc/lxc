@@ -126,7 +126,7 @@ bool attach_block_device(struct lxc_conf *conf)
 /*
  * return block size of dev->src in units of bytes
  */
-int blk_getsize(struct bdev *bdev, uint64_t *size)
+int blk_getsize(struct lxc_storage *bdev, uint64_t *size)
 {
 	int fd, ret;
 	char *path = bdev->src;
@@ -150,14 +150,14 @@ void detach_block_device(struct lxc_conf *conf)
 }
 
 /*
- * Given a bdev (presumably blockdev-based), detect the fstype
+ * Given a lxc_storage (presumably blockdev-based), detect the fstype
  * by trying mounting (in a private mntns) it.
- * @bdev: bdev to investigate
+ * @lxc_storage: bdev to investigate
  * @type: preallocated char* in which to write the fstype
  * @len: length of passed in char*
  * Returns length of fstype, of -1 on error
  */
-int detect_fs(struct bdev *bdev, char *type, int len)
+int detect_fs(struct lxc_storage *bdev, char *type, int len)
 {
 	int p[2], ret;
 	size_t linelen;
@@ -285,7 +285,7 @@ int do_mkfs_exec_wrapper(void *args)
  * This will return 1 for physical disks, qemu-nbd, loop, etc right now only lvm
  * is a block device.
  */
-int is_blktype(struct bdev *b)
+int is_blktype(struct lxc_storage *b)
 {
 	if (strcmp(b->type, "lvm") == 0)
 		return 1;
@@ -411,7 +411,7 @@ char *linkderef(char *path, char *dest)
 /*
  * is an unprivileged user allowed to make this kind of snapshot
  */
-bool unpriv_snap_allowed(struct bdev *b, const char *t, bool snap,
+bool unpriv_snap_allowed(struct lxc_storage *b, const char *t, bool snap,
 			 bool maybesnap)
 {
 	if (!t) {
@@ -440,7 +440,7 @@ bool unpriv_snap_allowed(struct bdev *b, const char *t, bool snap,
 	return false;
 }
 
-bool is_valid_bdev_type(const char *type)
+bool is_valid_storage_type(const char *type)
 {
 	if (strcmp(type, "dir") == 0 ||
 	    strcmp(type, "btrfs") == 0 ||
@@ -456,7 +456,7 @@ bool is_valid_bdev_type(const char *type)
 	return false;
 }
 
-int bdev_destroy_wrapper(void *data)
+int storage_destroy_wrapper(void *data)
 {
 	struct lxc_conf *conf = data;
 
@@ -473,7 +473,7 @@ int bdev_destroy_wrapper(void *data)
 		return -1;
 	}
 
-	if (!bdev_destroy(conf))
+	if (!storage_destroy(conf))
 		return -1;
 
 	return 0;

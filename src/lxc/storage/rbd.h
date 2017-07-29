@@ -27,26 +27,21 @@
 #define _GNU_SOURCE
 #include <stdint.h>
 
-/* defined in bdev.h */
-struct bdev;
+struct lxc_storage;
 
-/* defined in lxccontainer.h */
 struct bdev_specs;
 
-/* defined conf.h */
 struct lxc_conf;
 
-/*
- * Functions associated with an rdb bdev struct.
- */
-int rbd_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath,
-		int snap, uint64_t newsize, struct lxc_conf *conf);
-int rbd_create(struct bdev *bdev, const char *dest, const char *n,
-		struct bdev_specs *specs);
-int rbd_destroy(struct bdev *orig);
-int rbd_detect(const char *path);
-int rbd_mount(struct bdev *bdev);
-int rbd_umount(struct bdev *bdev);
+extern int rbd_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+			  const char *oldname, const char *cname,
+			  const char *oldpath, const char *lxcpath, int snap,
+			  uint64_t newsize, struct lxc_conf *conf);
+extern int rbd_create(struct lxc_storage *bdev, const char *dest, const char *n,
+		      struct bdev_specs *specs);
+extern int rbd_destroy(struct lxc_storage *orig);
+extern int rbd_detect(const char *path);
+extern int rbd_mount(struct lxc_storage *bdev);
+extern int rbd_umount(struct lxc_storage *bdev);
 
 #endif /* __LXC_RDB_H */

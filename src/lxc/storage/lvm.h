@@ -27,30 +27,29 @@
 #define _GNU_SOURCE
 #include <stdint.h>
 
-/* defined in bdev.h */
-struct bdev;
+struct lxc_storage;
 
-/* defined in lxccontainer.h */
 struct bdev_specs;
 
-/* defined conf.h */
 struct lxc_conf;
 
-/*
- * Functions associated with an lvm bdev struct.
- */
-int lvm_detect(const char *path);
-int lvm_mount(struct bdev *bdev);
-int lvm_umount(struct bdev *bdev);
-int lvm_compare_lv_attr(const char *path, int pos, const char expected);
-int lvm_is_thin_volume(const char *path);
-int lvm_is_thin_pool(const char *path);
-int lvm_snapshot(const char *orig, const char *path, uint64_t size);
-int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize, struct lxc_conf *conf);
-int lvm_destroy(struct bdev *orig);
-int lvm_create(struct bdev *bdev, const char *dest, const char *n,
-		struct bdev_specs *specs);
+extern int lvm_detect(const char *path);
+extern int lvm_mount(struct lxc_storage *bdev);
+extern int lvm_umount(struct lxc_storage *bdev);
+extern int lvm_compare_lv_attr(const char *path, int pos, const char expected);
+extern int lvm_is_thin_volume(const char *path);
+extern int lvm_is_thin_pool(const char *path);
+extern int lvm_snapshot(const char *orig, const char *path, uint64_t size);
+extern int lvm_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+			  const char *oldname, const char *cname,
+			  const char *oldpath, const char *lxcpath, int snap,
+			  uint64_t newsize, struct lxc_conf *conf);
+extern int lvm_destroy(struct lxc_storage *orig);
+extern int lvm_create(struct lxc_storage *bdev, const char *dest, const char *n,
+		      struct bdev_specs *specs);
+extern bool lvm_create_clone(struct lxc_conf *conf, struct lxc_storage *orig,
+			     struct lxc_storage *new, uint64_t newsize);
+extern bool lvm_create_snapshot(struct lxc_conf *conf, struct lxc_storage *orig,
+				struct lxc_storage *new, uint64_t newsize);
 
 #endif /* __LXC_LVM_H */

@@ -41,7 +41,7 @@
 #include "storage.h"
 #include "utils.h"
 
-lxc_log_define(lxcbtrfs, lxc);
+lxc_log_define(btrfs, lxc);
 
 /* defined in lxccontainer.c: needs to become common helper */
 extern char *dir_new_path(char *src, const char *oldname, const char *name,
@@ -188,7 +188,7 @@ int btrfs_detect(const char *path)
 	return 0;
 }
 
-int btrfs_mount(struct bdev *bdev)
+int btrfs_mount(struct lxc_storage *bdev)
 {
 	unsigned long mntflags;
 	char *mntdata;
@@ -209,7 +209,7 @@ int btrfs_mount(struct bdev *bdev)
 	return ret;
 }
 
-int btrfs_umount(struct bdev *bdev)
+int btrfs_umount(struct lxc_storage *bdev)
 {
 	if (strcmp(bdev->type, "btrfs"))
 		return -22;
@@ -341,7 +341,7 @@ out:
 	return ret;
 }
 
-static int btrfs_snapshot_wrapper(void *data)
+int btrfs_snapshot_wrapper(void *data)
 {
 	struct rsync_data_char *arg = data;
 	if (setgid(0) < 0) {
@@ -357,10 +357,10 @@ static int btrfs_snapshot_wrapper(void *data)
 	return btrfs_snapshot(arg->src, arg->dest);
 }
 
-int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		     const char *cname, const char *oldpath,
-		     const char *lxcpath, int snap, uint64_t newsize,
-		     struct lxc_conf *conf)
+int btrfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+		     const char *oldname, const char *cname,
+		     const char *oldpath, const char *lxcpath, int snap,
+		     uint64_t newsize, struct lxc_conf *conf)
 {
 	if (!orig->dest || !orig->src)
 		return -1;
@@ -383,7 +383,6 @@ int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		// in case rootfs is in custom path, reuse it
 		if ((new->src = dir_new_path(orig->src, oldname, cname, oldpath, lxcpath)) == NULL)
 			return -1;
-
 	}
 
 	if ((new->dest = strdup(new->src)) == NULL)
@@ -734,12 +733,12 @@ bool btrfs_try_remove_subvol(const char *path)
 	return btrfs_recursive_destroy(path) == 0;
 }
 
-int btrfs_destroy(struct bdev *orig)
+int btrfs_destroy(struct lxc_storage *orig)
 {
 	return btrfs_recursive_destroy(orig->src);
 }
 
-int btrfs_create(struct bdev *bdev, const char *dest, const char *n,
+int btrfs_create(struct lxc_storage *bdev, const char *dest, const char *n,
 		 struct bdev_specs *specs)
 {
 	bdev->src = strdup(dest);

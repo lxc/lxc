@@ -37,7 +37,7 @@
 #include "storage.h"
 #include "utils.h"
 
-lxc_log_define(lxcrsync, lxc);
+lxc_log_define(rsync, lxc);
 
 /* the bulk of this needs to become a common helper */
 int do_rsync(const char *src, const char *dest)
@@ -93,8 +93,7 @@ int rsync_delta_wrapper(void *data)
 
 int rsync_rootfs(struct rsync_data *data)
 {
-	struct bdev *orig = data->orig,
-		    *new = data->new;
+	struct lxc_storage *orig = data->orig, *new = data->new;
 
 	if (unshare(CLONE_NEWNS) < 0) {
 		SYSERROR("unshare CLONE_NEWNS");
@@ -139,4 +138,3 @@ int rsync_rootfs_wrapper(void *data)
 	struct rsync_data *arg = data;
 	return rsync_rootfs(arg);
 }
-

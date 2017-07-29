@@ -2274,7 +2274,7 @@ static int set_config_rootfs_backend(const char *key, const char *value,
 		return 0;
 	}
 
-	if (!is_valid_bdev_type(value)) {
+	if (!is_valid_storage_type(value)) {
 		ERROR("Bad rootfs.backend: '%s'", value);
 		return -1;
 	}

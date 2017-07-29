@@ -34,9 +34,9 @@
 #include "storage_utils.h"
 #include "utils.h"
 
-lxc_log_define(lxcrbd, lxc);
+lxc_log_define(rbd, lxc);
 
-int rbd_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
+int rbd_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath,
 		int snap, uint64_t newsize, struct lxc_conf *conf)
 {
@@ -44,8 +44,8 @@ int rbd_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 	return -1;
 }
 
-int rbd_create(struct bdev *bdev, const char *dest, const char *n,
-		struct bdev_specs *specs)
+int rbd_create(struct lxc_storage *bdev, const char *dest, const char *n,
+	       struct bdev_specs *specs)
 {
 	const char *rbdpool, *rbdname = n, *fstype;
 	uint64_t size;
@@ -125,7 +125,7 @@ int rbd_create(struct bdev *bdev, const char *dest, const char *n,
 	return 0;
 }
 
-int rbd_destroy(struct bdev *orig)
+int rbd_destroy(struct lxc_storage *orig)
 {
 	pid_t pid;
 	char *rbdfullname;
@@ -160,7 +160,7 @@ int rbd_detect(const char *path)
 	return 0;
 }
 
-int rbd_mount(struct bdev *bdev)
+int rbd_mount(struct lxc_storage *bdev)
 {
 	if (strcmp(bdev->type, "rbd"))
 		return -22;
@@ -176,7 +176,7 @@ int rbd_mount(struct bdev *bdev)
 	return mount_unknown_fs(bdev->src, bdev->dest, bdev->mntopts);
 }
 
-int rbd_umount(struct bdev *bdev)
+int rbd_umount(struct lxc_storage *bdev)
 {
 	if (strcmp(bdev->type, "rbd"))
 		return -22;

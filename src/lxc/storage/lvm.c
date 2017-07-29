@@ -44,7 +44,7 @@
 #    include <sys/mkdev.h>
 #endif
 
-lxc_log_define(lxclvm, lxc);
+lxc_log_define(lvm, lxc);
 
 extern char *dir_new_path(char *src, const char *oldname, const char *name,
 		const char *oldpath, const char *lxcpath);
@@ -160,7 +160,7 @@ int lvm_detect(const char *path)
 	return 1;
 }
 
-int lvm_mount(struct bdev *bdev)
+int lvm_mount(struct lxc_storage *bdev)
 {
 	if (strcmp(bdev->type, "lvm"))
 		return -22;
@@ -171,7 +171,7 @@ int lvm_mount(struct bdev *bdev)
 	return mount_unknown_fs(bdev->src, bdev->dest, bdev->mntopts);
 }
 
-int lvm_umount(struct bdev *bdev)
+int lvm_umount(struct lxc_storage *bdev)
 {
 	if (strcmp(bdev->type, "lvm"))
 		return -22;
@@ -276,9 +276,10 @@ int lvm_snapshot(const char *orig, const char *path, uint64_t size)
 	exit(EXIT_FAILURE);
 }
 
-int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize, struct lxc_conf *conf)
+int lvm_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+		   const char *oldname, const char *cname, const char *oldpath,
+		   const char *lxcpath, int snap, uint64_t newsize,
+		   struct lxc_conf *conf)
 {
 	char fstype[100];
 	uint64_t size = newsize;
@@ -364,7 +365,7 @@ int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 	return 0;
 }
 
-int lvm_destroy(struct bdev *orig)
+int lvm_destroy(struct lxc_storage *orig)
 {
 	pid_t pid;
 
@@ -378,8 +379,8 @@ int lvm_destroy(struct bdev *orig)
 	return wait_for_pid(pid);
 }
 
-int lvm_create(struct bdev *bdev, const char *dest, const char *n,
-		struct bdev_specs *specs)
+int lvm_create(struct lxc_storage *bdev, const char *dest, const char *n,
+	       struct bdev_specs *specs)
 {
 	const char *vg, *thinpool, *fstype, *lv = n;
 	uint64_t sz;

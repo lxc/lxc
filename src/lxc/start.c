@@ -1737,10 +1737,12 @@ static int lxc_rmdir_onedev_wrapper(void *data)
 
 static bool do_destroy_container(struct lxc_conf *conf) {
 	if (am_unpriv()) {
-		if (userns_exec_1(conf, bdev_destroy_wrapper, conf,
-				  "bdev_destroy_wrapper") < 0)
+		if (userns_exec_1(conf, storage_destroy_wrapper, conf,
+				  "storage_destroy_wrapper") < 0)
 			return false;
+
 		return true;
 	}
-	return bdev_destroy(conf);
+
+	return storage_destroy(conf);
 }

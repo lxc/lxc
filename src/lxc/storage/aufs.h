@@ -33,34 +33,27 @@
 #include <mntent.h>
 #endif
 
-/* defined in bdev.h */
-struct bdev;
+struct lxc_storage;
 
-/* defined in lxccontainer.h */
 struct bdev_specs;
 
-/* defined conf.h */
 struct lxc_conf;
 
-/* defined in conf.h */
 struct lxc_rootfs;
 
-/*
- * Functions associated with an aufs bdev struct.
- */
-int aufs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath,
-		int snap, uint64_t newsize, struct lxc_conf *conf);
-int aufs_create(struct bdev *bdev, const char *dest, const char *n,
+int aufs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+		    const char *oldname, const char *cname, const char *oldpath,
+		    const char *lxcpath, int snap, uint64_t newsize,
+		    struct lxc_conf *conf);
+int aufs_create(struct lxc_storage *bdev, const char *dest, const char *n,
 		struct bdev_specs *specs);
-int aufs_destroy(struct bdev *orig);
+int aufs_destroy(struct lxc_storage *orig);
 int aufs_detect(const char *path);
-int aufs_mount(struct bdev *bdev);
-int aufs_umount(struct bdev *bdev);
+int aufs_mount(struct lxc_storage *bdev);
+int aufs_umount(struct lxc_storage *bdev);
 
-/*
- * Get rootfs path for aufs backed containers. Allocated memory must be freed
- * by caller.
+/* Get rootfs path for aufs backed containers. Allocated memory must be freed by
+ * caller.
  */
 char *aufs_get_rootfs(const char *rootfs_path, size_t *rootfslen);
 

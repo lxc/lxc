@@ -35,7 +35,7 @@
 #include "utils.h"
 #include "zfs.h"
 
-lxc_log_define(lxczfs, lxc);
+lxc_log_define(zfs, lxc);
 
 /*
  * zfs ops:
@@ -83,7 +83,7 @@ int zfs_detect(const char *path)
 	return found;
 }
 
-int zfs_mount(struct bdev *bdev)
+int zfs_mount(struct lxc_storage *bdev)
 {
 	if (strcmp(bdev->type, "zfs"))
 		return -22;
@@ -104,7 +104,7 @@ int zfs_mount(struct bdev *bdev)
 	return ret;
 }
 
-int zfs_umount(struct bdev *bdev)
+int zfs_umount(struct lxc_storage *bdev)
 {
 	if (strcmp(bdev->type, "zfs"))
 		return -22;
@@ -201,7 +201,7 @@ int zfs_clone(const char *opath, const char *npath, const char *oname,
 	}
 }
 
-int zfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
+int zfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char *oldname,
 		const char *cname, const char *oldpath, const char *lxcpath, int snap,
 		uint64_t newsize, struct lxc_conf *conf)
 {
@@ -235,7 +235,7 @@ int zfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
  * snapshot it was based on, so that we don't hold the original
  * container busy.
  */
-int zfs_destroy(struct bdev *orig)
+int zfs_destroy(struct lxc_storage *orig)
 {
 	pid_t pid;
 	char output[MAXPATHLEN];
@@ -260,8 +260,8 @@ int zfs_destroy(struct bdev *orig)
 	exit(EXIT_FAILURE);
 }
 
-int zfs_create(struct bdev *bdev, const char *dest, const char *n,
-		struct bdev_specs *specs)
+int zfs_create(struct lxc_storage *bdev, const char *dest, const char *n,
+	       struct bdev_specs *specs)
 {
 	const char *zfsroot;
 	char option[MAXPATHLEN];
