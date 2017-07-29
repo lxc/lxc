@@ -274,6 +274,11 @@ struct lxc_storage *storage_get(const char *type)
 	bdev->ops = bdevs[i].ops;
 	bdev->type = bdevs[i].name;
 
+	if (!strcmp(bdev->type, "aufs"))
+		WARN("The \"aufs\" driver will is deprecated and will soon be "
+		     "removed. For similar functionality see the \"overlay\" "
+		     "storage driver");
+
 	return bdev;
 }
 
@@ -606,6 +611,11 @@ struct lxc_storage *storage_init(struct lxc_conf *conf, const char *src,
 		bdev->dest = strdup(dst);
 	if (strcmp(bdev->type, "nbd") == 0)
 		bdev->nbd_idx = conf->nbd_idx;
+
+	if (!strcmp(bdev->type, "aufs"))
+		WARN("The \"aufs\" driver will is deprecated and will soon be "
+		     "removed. For similar functionality see the \"overlay\" "
+		     "storage driver");
 
 	return bdev;
 }
