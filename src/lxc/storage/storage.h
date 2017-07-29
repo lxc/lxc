@@ -119,7 +119,7 @@ extern struct lxc_storage *storage_copy(struct lxc_container *c0,
 					const char *cname, const char *lxcpath,
 					const char *bdevtype, int flags,
 					const char *bdevdata, uint64_t newsize,
-					int *needs_rdep);
+					bool *needs_rdep);
 extern struct lxc_storage *storage_create(const char *dest, const char *type,
 					  const char *cname,
 					  struct bdev_specs *specs);

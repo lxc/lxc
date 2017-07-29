@@ -3116,7 +3116,7 @@ static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 			uint64_t newsize)
 {
 	struct lxc_storage *bdev;
-	int need_rdep;
+	bool need_rdep;
 
 	if (should_default_to_snapshot(c0, c))
 		flags |= LXC_CLONE_SNAPSHOT;

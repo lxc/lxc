@@ -315,22 +315,22 @@ bool storage_can_backup(struct lxc_conf *conf)
 /* If we're not snaphotting, then storage_copy becomes a simple case of mount
  * the original, mount the new, and rsync the contents.
  */
-struct lxc_storage *storage_copy(struct lxc_container *c0, const char *cname,
+struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 				 const char *lxcpath, const char *bdevtype,
 				 int flags, const char *bdevdata,
-				 uint64_t newsize, int *needs_rdep)
+				 uint64_t newsize, bool *needs_rdep)
 {
-	struct lxc_storage *orig, *new;
 	int ret;
+	struct lxc_storage *orig, *new;
 	char *src_no_prefix;
 	bool snap = flags & LXC_CLONE_SNAPSHOT;
 	bool maybe_snap = flags & LXC_CLONE_MAYBE_SNAPSHOT;
 	bool keepbdevtype = flags & LXC_CLONE_KEEPBDEVTYPE;
-	const char *src = c0->lxc_conf->rootfs.path;
-	const char *oldname = c0->name;
-	const char *oldpath = c0->config_path;
-	struct rsync_data data;
-	char cmd_output[MAXPATHLEN];
+	const char *src = c->lxc_conf->rootfs.path;
+	const char *oldname = c->name;
+	const char *oldpath = c->config_path;
+	struct rsync_data data = {0};
+	char cmd_output[MAXPATHLEN] = {0};
 
 	/* If the container name doesn't show up in the rootfs path, then we
 	 * don't know how to come up with a new name.
@@ -341,7 +341,7 @@ struct lxc_storage *storage_copy(struct lxc_container *c0, const char *cname,
 		return NULL;
 	}
 
-	orig = storage_init(c0->lxc_conf, src, NULL, NULL);
+	orig = storage_init(c->lxc_conf, src, NULL, NULL);
 	if (!orig) {
 		ERROR("Failed to detect storage driver for \"%s\"", src);
 		return NULL;
@@ -356,15 +356,13 @@ struct lxc_storage *storage_copy(struct lxc_container *c0, const char *cname,
 		orig->dest = malloc(len);
 		if (!orig->dest) {
 			ERROR("Failed to allocate memory");
-			storage_put(orig);
-			return NULL;
+			goto on_error_put_orig;
 		}
 
 		ret = snprintf(orig->dest, len, "%s/%s/rootfs", oldpath, oldname);
 		if (ret < 0 || (size_t)ret >= len) {
 			ERROR("Failed to create string");
-			storage_put(orig);
-			return NULL;
+			goto on_error_put_orig;
 		}
 
 		ret = stat(orig->dest, &sb);
@@ -389,19 +387,18 @@ struct lxc_storage *storage_copy(struct lxc_container *c0, const char *cname,
 	if (am_unpriv() && !unpriv_snap_allowed(orig, bdevtype, snap, maybe_snap)) {
 		ERROR("Unsupported snapshot type \"%s\" for unprivileged users",
 		      bdevtype ? bdevtype : "(null)");
-		storage_put(orig);
-		return NULL;
+		goto on_error_put_orig;
 	}
 
-	*needs_rdep = 0;
+	*needs_rdep = false;
 	if (bdevtype && !strcmp(orig->type, "dir") &&
 	    (strcmp(bdevtype, "aufs") == 0 ||
 	     strcmp(bdevtype, "overlayfs") == 0 ||
 	     strcmp(bdevtype, "overlay") == 0)) {
-		*needs_rdep = 1;
+		*needs_rdep = true;
 	} else if (snap && !strcmp(orig->type, "lvm") &&
 		   !lvm_is_thin_volume(orig->src)) {
-		*needs_rdep = 1;
+		*needs_rdep = true;
 	}
 
 	if (strcmp(oldpath, lxcpath) && !bdevtype && !snap)
@@ -414,42 +411,43 @@ struct lxc_storage *storage_copy(struct lxc_container *c0, const char *cname,
 	if (!new) {
 		ERROR("Failed to initialize \"%s\" storage driver",
 		      bdevtype ? bdevtype : orig->type);
-		storage_put(orig);
-		return NULL;
+		goto on_error_put_orig;
 	}
 	TRACE("Initialized \"%s\" storage driver", new->type);
 
 	/* create new paths */
 	ret = new->ops->clone_paths(orig, new, oldname, cname, oldpath, lxcpath,
-				    snap, newsize, c0->lxc_conf);
+				    snap, newsize, c->lxc_conf);
 	if (ret < 0) {
 		ERROR("Failed creating new paths for clone of \"%s\"", src);
-		goto err;
+		goto on_error_put_new;
 	}
 
 	/* btrfs */
 	if (!strcmp(orig->type, "btrfs") && !strcmp(new->type, "btrfs")) {
 		bool bret = false;
 		if (snap || btrfs_same_fs(orig->dest, new->dest) == 0)
-			bret = new->ops->snapshot(c0->lxc_conf, orig, new, 0);
+			bret = new->ops->snapshot(c->lxc_conf, orig, new, 0);
 		else
-			bret = new->ops->copy(c0->lxc_conf, orig, new, 0);
+			bret = new->ops->copy(c->lxc_conf, orig, new, 0);
 		if (!bret)
-			return NULL;
-		return new;
+			goto on_error_put_new;
+
+		goto on_success;
 	}
 
 	/* lvm */
 	if (!strcmp(orig->type, "lvm") && !strcmp(new->type, "lvm")) {
 		bool bret = false;
 		if (snap)
-			bret = new->ops->snapshot(c0->lxc_conf, orig,
+			bret = new->ops->snapshot(c->lxc_conf, orig,
 							 new, newsize);
 		else
-			bret = new->ops->copy(c0->lxc_conf, orig, new, newsize);
+			bret = new->ops->copy(c->lxc_conf, orig, new, newsize);
 		if (!bret)
-			return NULL;
-		return new;
+			goto on_error_put_new;
+
+		goto on_success;
 	}
 
 	/* zfs */
@@ -457,13 +455,14 @@ struct lxc_storage *storage_copy(struct lxc_container *c0, const char *cname,
 		bool bret = false;
 
 		if (snap)
-			bret = new->ops->snapshot(c0->lxc_conf, orig, new,
+			bret = new->ops->snapshot(c->lxc_conf, orig, new,
 						  newsize);
 		else
-			bret = new->ops->copy(c0->lxc_conf, orig, new, newsize);
+			bret = new->ops->copy(c->lxc_conf, orig, new, newsize);
 		if (!bret)
-			return NULL;
-		return new;
+			goto on_error_put_new;
+
+		goto on_success;
 	}
 
 	if (strcmp(bdevtype, "btrfs")) {
@@ -473,42 +472,43 @@ struct lxc_storage *storage_copy(struct lxc_container *c0, const char *cname,
 			src_no_prefix = lxc_storage_get_path(new->src, new->type);
 
 		if (am_unpriv()) {
-			ret = chown_mapped_root(src_no_prefix, c0->lxc_conf);
+			ret = chown_mapped_root(src_no_prefix, c->lxc_conf);
 			if (ret < 0)
 				WARN("Failed to chown \"%s\"", new->src);
 		}
 	}
 
 	if (snap)
-		return new;
+		goto on_success;
 
 	/* rsync the contents from source to target */
 	data.orig = orig;
 	data.new = new;
-	if (am_unpriv()) {
-		ret = userns_exec_1(c0->lxc_conf, lxc_rsync_exec_wrapper, &data,
+	if (am_unpriv())
+		ret = userns_exec_1(c->lxc_conf, lxc_rsync_exec_wrapper, &data,
 				    "lxc_rsync_exec_wrapper");
-		if (ret < 0) {
-			ERROR("Failed to rsync from \"%s\" into \"%s\"",
-			      orig->dest, new->dest);
-			goto err;
-		}
-	} else {
+	else
 		ret = run_command(cmd_output, sizeof(cmd_output),
 				  lxc_rsync_exec_wrapper, (void *)&data);
-		if (ret < 0) {
-			ERROR("Failed to rsync from \"%s\" into \"%s\": %s",
-			      orig->dest, new->dest, cmd_output);
-			goto err;
-		}
+	if (ret < 0) {
+		ERROR("Failed to rsync from \"%s\" into \"%s\"%s%s", orig->dest,
+		      new->dest,
+		      cmd_output[0] != '\0' ? ": " : "",
+		      cmd_output[0] != '\0' ? cmd_output : "");
+		goto on_error_put_new;
 	}
 
+on_success:
 	storage_put(orig);
+
 	return new;
 
-err:
-	storage_put(orig);
+on_error_put_new:
 	storage_put(new);
+
+on_error_put_orig:
+	storage_put(orig);
+
 	return NULL;
 }
 
