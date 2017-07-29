@@ -47,6 +47,9 @@
 #include <unistd.h>
 #include <sys/types.h>
 
+#include <linux/types.h>
+#include <linux/kdev_t.h>
+
 #include "bdev.h"
 #include "cgroup.h"
 #include "cgroup_utils.h"
@@ -1900,16 +1903,105 @@ static int lxc_cgroup_set_data(const char *filename, const char *value, struct c
 	char *subsystem = NULL, *p;
 	int ret = -1;
 	struct hierarchy *h;
+	char converted_value[50]; // "b|c <2^64-1>:<2^64-1> r|w|m" = 47 chars max
 
 	subsystem = alloca(strlen(filename) + 1);
 	strcpy(subsystem, filename);
 	if ((p = strchr(subsystem, '.')) != NULL)
 		*p = '\0';
 
+	if (strcmp("devices.allow", filename) == 0 && value[0] == '/') {
+		char *to_split1 = strdup(value);
+		if (to_split1 == NULL) {
+			ret = -ENOMEM;
+		} else {
+			char *saveptr = NULL;
+			size_t n_parts = 0;
+			while (strtok_r(n_parts ? NULL : to_split1, " ", &saveptr) != NULL) {
+				++n_parts;
+			}
+			free(to_split1);
+
+			if (n_parts == 2) {
+				size_t i;
+				char **parts = malloc(sizeof(char*) * n_parts);
+				if (parts == NULL) {
+					ret = -ENOMEM;
+				} else {
+					ret = 0;
+					// We can't reuse to_split1 here, because strtok_r modifies its first argument
+					char *to_split2 = strdup(value);
+					if (to_split2 == NULL) {
+						ret = -ENOMEM;
+					} else {
+						for (i = 0; i < n_parts; ++i) {
+							char *part = strtok_r(i ? NULL : to_split2, " ", &saveptr);
+							char *subpart = strdup(part);
+							if (subpart == NULL) {
+								ret = -ENOMEM;
+							}
+							parts[i] = subpart;
+						}
+						free(to_split2);
+
+						if (ret >= 0) {
+							const char *path = parts[0];
+							const char *mode = parts[1];
+
+							struct stat sb;
+							stat(path, &sb);
+							dev_t dev = sb.st_rdev;
+
+							char type = 0;
+							mode_t m = sb.st_mode & S_IFMT;
+							switch (m) {
+							case S_IFBLK:
+								type = 'b';
+								break;
+							case S_IFCHR:
+								type = 'c';
+								break;
+							}
+
+							if (type == 0) {
+								ERROR("Unsupported device type %i for %s", m, path);
+								ret = -EINVAL;
+							} else {
+								unsigned long major = MAJOR(dev), minor = MINOR(dev);
+								ret = snprintf(converted_value, 50,
+										"%c %lu:%lu %s", type, major, minor, mode);
+								if (ret < 0 || ret >= 50) {
+									ERROR("Error on configuration value \"%c %lu:%lu %s\" (max 50 chars)",
+											type, major, minor, mode);
+									ret = -ENAMETOOLONG;
+								}
+							}
+						}
+
+						for (i = 0; i < n_parts; ++i) {
+							char *subpart = parts[i];
+							if (subpart != NULL) {
+								free(subpart);
+							}
+						}
+						free(parts);
+					}
+				}
+			} else {
+				strcpy(converted_value, value);
+			}
+		}
+		if (ret <= 0) {
+			return ret;
+		}
+	} else {
+		strcpy(converted_value, value);
+	}
+
 	h = get_hierarchy(subsystem);
 	if (h) {
 		char *fullpath = must_make_path(h->fullcgpath, filename, NULL);
-		ret = lxc_write_to_file(fullpath, value, strlen(value), false);
+		ret = lxc_write_to_file(fullpath, converted_value, strlen(converted_value), false);
 		free(fullpath);
 	}
 	return ret;
