@@ -42,7 +42,7 @@
 #include "storage.h"
 #include "utils.h"
 
-lxc_log_define(lxcbtrfs, lxc);
+lxc_log_define(btrfs, lxc);
 
 /*
  * Return the full path of objid under dirid.  Let's say dirid is
@@ -188,7 +188,7 @@ bool btrfs_detect(const char *path)
 	return false;
 }
 
-int btrfs_mount(struct bdev *bdev)
+int btrfs_mount(struct lxc_storage *bdev)
 {
 	unsigned long mntflags;
 	char *mntdata, *src;
@@ -212,7 +212,7 @@ int btrfs_mount(struct bdev *bdev)
 	return ret;
 }
 
-int btrfs_umount(struct bdev *bdev)
+int btrfs_umount(struct lxc_storage *bdev)
 {
 	if (strcmp(bdev->type, "btrfs"))
 		return -22;
@@ -371,10 +371,10 @@ int btrfs_snapshot_wrapper(void *data)
 	return btrfs_snapshot(src, arg->dest);
 }
 
-int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		     const char *cname, const char *oldpath,
-		     const char *lxcpath, int snap, uint64_t newsize,
-		     struct lxc_conf *conf)
+int btrfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+		     const char *oldname, const char *cname,
+		     const char *oldpath, const char *lxcpath, int snap,
+		     uint64_t newsize, struct lxc_conf *conf)
 {
 	char *src;
 
@@ -417,8 +417,8 @@ int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 	return 0;
 }
 
-bool btrfs_create_clone(struct lxc_conf *conf, struct bdev *orig,
-			struct bdev *new, uint64_t newsize)
+bool btrfs_create_clone(struct lxc_conf *conf, struct lxc_storage *orig,
+			struct lxc_storage *new, uint64_t newsize)
 {
 	int ret;
 	struct rsync_data data = {0, 0};
@@ -460,8 +460,8 @@ bool btrfs_create_clone(struct lxc_conf *conf, struct bdev *orig,
 	return true;
 }
 
-bool btrfs_create_snapshot(struct lxc_conf *conf, struct bdev *orig,
-			   struct bdev *new, uint64_t newsize)
+bool btrfs_create_snapshot(struct lxc_conf *conf, struct lxc_storage *orig,
+			   struct lxc_storage *new, uint64_t newsize)
 {
 	int ret;
 
@@ -823,7 +823,7 @@ bool btrfs_try_remove_subvol(const char *path)
 	return btrfs_recursive_destroy(path) == 0;
 }
 
-int btrfs_destroy(struct bdev *orig)
+int btrfs_destroy(struct lxc_storage *orig)
 {
 	char *src;
 
@@ -832,7 +832,7 @@ int btrfs_destroy(struct bdev *orig)
 	return btrfs_recursive_destroy(src);
 }
 
-int btrfs_create(struct bdev *bdev, const char *dest, const char *n,
+int btrfs_create(struct lxc_storage *bdev, const char *dest, const char *n,
 		 struct bdev_specs *specs)
 {
 	int ret;

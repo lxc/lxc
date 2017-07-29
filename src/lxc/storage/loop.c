@@ -40,7 +40,7 @@
 #include "storage_utils.h"
 #include "utils.h"
 
-lxc_log_define(lxcloop, lxc);
+lxc_log_define(loop, lxc);
 
 static int do_loop_create(const char *path, uint64_t size, const char *fstype);
 
@@ -48,9 +48,10 @@ static int do_loop_create(const char *path, uint64_t size, const char *fstype);
  * No idea what the original blockdev will be called, but the copy will be
  * called $lxcpath/$lxcname/rootdev
  */
-int loop_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		    const char *cname, const char *oldpath, const char *lxcpath,
-		    int snap, uint64_t newsize, struct lxc_conf *conf)
+int loop_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+		    const char *oldname, const char *cname, const char *oldpath,
+		    const char *lxcpath, int snap, uint64_t newsize,
+		    struct lxc_conf *conf)
 {
 	uint64_t size = newsize;
 	int len, ret;
@@ -129,7 +130,7 @@ int loop_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 	return 0;
 }
 
-int loop_create(struct bdev *bdev, const char *dest, const char *n,
+int loop_create(struct lxc_storage *bdev, const char *dest, const char *n,
 		struct bdev_specs *specs)
 {
 	const char *fstype;
@@ -202,7 +203,7 @@ int loop_create(struct bdev *bdev, const char *dest, const char *n,
 	return 0;
 }
 
-int loop_destroy(struct bdev *orig) {
+int loop_destroy(struct lxc_storage *orig) {
 	return unlink(orig->src + 5);
 }
 
@@ -224,7 +225,7 @@ bool loop_detect(const char *path)
 	return false;
 }
 
-int loop_mount(struct bdev *bdev)
+int loop_mount(struct lxc_storage *bdev)
 {
 	int ret, loopfd;
 	char loname[MAXPATHLEN];
@@ -261,7 +262,7 @@ int loop_mount(struct bdev *bdev)
 	return 0;
 }
 
-int loop_umount(struct bdev *bdev)
+int loop_umount(struct lxc_storage *bdev)
 {
 	int ret, saved_errno;
 

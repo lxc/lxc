@@ -57,39 +57,37 @@
 #define DEFAULT_FS_SIZE 1073741824
 #define DEFAULT_FSTYPE "ext3"
 
-struct bdev;
+struct lxc_storage;
 
-struct bdev_ops {
+struct lxc_storage_ops {
 	/* detect whether path is of this bdev type */
 	bool (*detect)(const char *path);
 	// mount requires src and dest to be set.
-	int (*mount)(struct bdev *bdev);
-	int (*umount)(struct bdev *bdev);
-	int (*destroy)(struct bdev *bdev);
-	int (*create)(struct bdev *bdev, const char *dest, const char *n,
+	int (*mount)(struct lxc_storage *bdev);
+	int (*umount)(struct lxc_storage *bdev);
+	int (*destroy)(struct lxc_storage *bdev);
+	int (*create)(struct lxc_storage *bdev, const char *dest, const char *n,
 		      struct bdev_specs *specs);
 	/* given original mount, rename the paths for cloned container */
-	int (*clone_paths)(struct bdev *orig, struct bdev *new,
+	int (*clone_paths)(struct lxc_storage *orig, struct lxc_storage *new,
 			   const char *oldname, const char *cname,
 			   const char *oldpath, const char *lxcpath, int snap,
 			   uint64_t newsize, struct lxc_conf *conf);
-	bool (*copy)(struct lxc_conf *conf, struct bdev *orig, struct bdev *new,
-		     uint64_t newsize);
-	bool (*snapshot)(struct lxc_conf *conf, struct bdev *orig,
-			 struct bdev *new, uint64_t newsize);
+	bool (*copy)(struct lxc_conf *conf, struct lxc_storage *orig,
+		     struct lxc_storage *new, uint64_t newsize);
+	bool (*snapshot)(struct lxc_conf *conf, struct lxc_storage *orig,
+			 struct lxc_storage *new, uint64_t newsize);
 	bool can_snapshot;
 	bool can_backup;
 };
 
-/*
- * When lxc-start is mounting a rootfs, then src will be the "lxc.rootfs" value,
- * dest will be mount dir (i.e. $libdir/lxc)  When clone or create is doing so,
- * then dest will be $lxcpath/$lxcname/rootfs, since we may need to rsync from
- * one to the other.
- * data is so far unused.
+/* When lxc is mounting a rootfs, then src will be the "lxc.rootfs.path" value,
+ * dest will be the mount dir (i.e. "<libdir>/lxc")  When clone or create is
+ * doing so, then dest will be "<lxcpath>/<lxcname>/rootfs", since we may need
+ * to rsync from one to the other.
  */
-struct bdev {
-	const struct bdev_ops *ops;
+struct lxc_storage {
+	const struct lxc_storage_ops *ops;
 	const char *type;
 	char *src;
 	char *dest;
@@ -101,33 +99,35 @@ struct bdev {
 	int nbd_idx;
 };
 
-bool bdev_is_dir(struct lxc_conf *conf, const char *path);
-bool bdev_can_backup(struct lxc_conf *conf);
+extern bool storage_is_dir(struct lxc_conf *conf, const char *path);
+extern bool storage_can_backup(struct lxc_conf *conf);
 
-/*
- * Instantiate a bdev object. The src is used to determine which blockdev type
- * this should be. The dst and data are optional, and will be used in case of
- * mount/umount.
+/* Instantiate a lxc_storage object. The src is used to determine which blockdev
+ * type this should be. The dst and data are optional, and will be used in case
+ * of mount/umount.
  *
- * Optionally, src can be 'dir:/var/lib/lxc/c1' or 'lvm:/dev/lxc/c1'.  For
- * other backing stores, this will allow additional options. In particular,
- * "overlayfs:/var/lib/lxc/canonical/rootfs:/var/lib/lxc/c1/delta" will mean
- * use /var/lib/lxc/canonical/rootfs as lower dir, and /var/lib/lxc/c1/delta
- * as the upper, writeable layer.
+ * The source will be "dir:/var/lib/lxc/c1" or "lvm:/dev/lxc/c1". For other
+ * backing stores, this will allow additional options. In particular,
+ * "overlayfs:/var/lib/lxc/canonical/rootfs:/var/lib/lxc/c1/delta" will mean use
+ * /var/lib/lxc/canonical/rootfs as lower dir, and /var/lib/lxc/c1/delta as the
+ * upper, writeable layer.
  */
-struct bdev *bdev_init(struct lxc_conf *conf, const char *src, const char *dst,
-		       const char *data);
+extern struct lxc_storage *storage_init(struct lxc_conf *conf, const char *src,
+					const char *dst, const char *data);
 
-struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
-		       const char *lxcpath, const char *bdevtype, int flags,
-		       const char *bdevdata, uint64_t newsize, int *needs_rdep);
-struct bdev *bdev_create(const char *dest, const char *type, const char *cname,
-			 struct bdev_specs *specs);
-void bdev_put(struct bdev *bdev);
-bool bdev_destroy(struct lxc_conf *conf);
+extern struct lxc_storage *storage_copy(struct lxc_container *c0,
+					const char *cname, const char *lxcpath,
+					const char *bdevtype, int flags,
+					const char *bdevdata, uint64_t newsize,
+					int *needs_rdep);
+extern struct lxc_storage *storage_create(const char *dest, const char *type,
+					  const char *cname,
+					  struct bdev_specs *specs);
+extern void storage_put(struct lxc_storage *bdev);
+extern bool storage_destroy(struct lxc_conf *conf);
 
 /* callback function to be used with userns_exec_1() */
-int bdev_destroy_wrapper(void *data);
+extern int storage_destroy_wrapper(void *data);
 extern bool rootfs_is_blockdev(struct lxc_conf *conf);
 extern char *lxc_storage_get_path(char *src, const char *prefix);
 

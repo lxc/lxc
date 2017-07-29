@@ -37,19 +37,19 @@
 #include "storage_utils.h"
 #include "utils.h"
 
-lxc_log_define(lxcoverlay, lxc);
+lxc_log_define(overlay, lxc);
 
 static char *ovl_name;
 static char *ovl_version[] = {"overlay", "overlayfs"};
 
 static char *ovl_detect_name(void);
-static int ovl_do_rsync(struct bdev *orig, struct bdev *new,
+static int ovl_do_rsync(struct lxc_storage *orig, struct lxc_storage *new,
 			struct lxc_conf *conf);
 static int ovl_remount_on_enodev(const char *lower, const char *target,
 				 const char *name, unsigned long mountflags,
 				 const void *options);
 
-int ovl_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
+int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char *oldname,
 		   const char *cname, const char *oldpath, const char *lxcpath,
 		   int snap, uint64_t newsize, struct lxc_conf *conf)
 {
@@ -315,7 +315,7 @@ int ovl_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
  * "<lxcpath>/<lxcname>/rootfs" to have the created container, while all changes
  * after starting the container are written to "<lxcpath>/<lxcname>/delta0".
  */
-int ovl_create(struct bdev *bdev, const char *dest, const char *n,
+int ovl_create(struct lxc_storage *bdev, const char *dest, const char *n,
 	       struct bdev_specs *specs)
 {
 	char *delta;
@@ -378,7 +378,7 @@ int ovl_create(struct bdev *bdev, const char *dest, const char *n,
 	return 0;
 }
 
-int ovl_destroy(struct bdev *orig)
+int ovl_destroy(struct lxc_storage *orig)
 {
 	bool ovl;
 	char *upper = orig->src;
@@ -411,7 +411,7 @@ bool ovl_detect(const char *path)
 	return false;
 }
 
-int ovl_mount(struct bdev *bdev)
+int ovl_mount(struct lxc_storage *bdev)
 {
 	char *tmp, *options, *dup, *lower, *upper;
 	char *options_work, *work, *lastslash;
@@ -586,7 +586,7 @@ int ovl_mount(struct bdev *bdev)
 	return ret;
 }
 
-int ovl_umount(struct bdev *bdev)
+int ovl_umount(struct lxc_storage *bdev)
 {
 	int ret;
 
@@ -878,7 +878,7 @@ static char *ovl_detect_name(void)
 	return v;
 }
 
-static int ovl_do_rsync(struct bdev *orig, struct bdev *new,
+static int ovl_do_rsync(struct lxc_storage *orig, struct lxc_storage *new,
 			struct lxc_conf *conf)
 {
 	int ret = -1;

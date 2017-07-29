@@ -37,7 +37,7 @@
 #include "storage_utils.h"
 #include "utils.h"
 
-lxc_log_define(lxcnbd, lxc);
+lxc_log_define(nbd, lxc);
 
 struct nbd_attach_data {
 	const char *nbd;
@@ -88,20 +88,21 @@ void detach_nbd_idx(int idx)
 	nbd_detach(path);
 }
 
-int nbd_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath,
-		int snap, uint64_t newsize, struct lxc_conf *conf)
+int nbd_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+		   const char *oldname, const char *cname, const char *oldpath,
+		   const char *lxcpath, int snap, uint64_t newsize,
+		   struct lxc_conf *conf)
 {
 	return -ENOSYS;
 }
 
-int nbd_create(struct bdev *bdev, const char *dest, const char *n,
-		struct bdev_specs *specs)
+int nbd_create(struct lxc_storage *bdev, const char *dest, const char *n,
+	       struct bdev_specs *specs)
 {
 	return -ENOSYS;
 }
 
-int nbd_destroy(struct bdev *orig)
+int nbd_destroy(struct lxc_storage *orig)
 {
 	return -ENOSYS;
 }
@@ -114,7 +115,7 @@ bool nbd_detect(const char *path)
 	return false;
 }
 
-int nbd_mount(struct bdev *bdev)
+int nbd_mount(struct lxc_storage *bdev)
 {
 	int ret = -1, partition;
 	char *src;
@@ -154,7 +155,7 @@ int nbd_mount(struct bdev *bdev)
 	return ret;
 }
 
-int nbd_umount(struct bdev *bdev)
+int nbd_umount(struct lxc_storage *bdev)
 {
 	if (strcmp(bdev->type, "nbd"))
 		return -22;

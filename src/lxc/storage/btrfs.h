@@ -366,13 +366,10 @@ BTRFS_SETGET_STACK_FUNCS(stack_root_ref_sequence, struct btrfs_root_ref, sequenc
 /* defined as btrfs_stack_root_ref_name_len */
 BTRFS_SETGET_STACK_FUNCS(stack_root_ref_name_len, struct btrfs_root_ref, name_len, 16);
 
-/* defined in bdev.h */
-struct bdev;
+struct lxc_storage;
 
-/* defined in lxccontainer.h */
 struct bdev_specs;
 
-/* defined conf.h */
 struct lxc_conf;
 
 struct mytree_node {
@@ -387,35 +384,30 @@ struct my_btrfs_tree {
 	int num;
 };
 
-/*
- * Functions associated with a btrfs bdev struct.
- */
-int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		     const char *cname, const char *oldpath,
-		     const char *lxcpath, int snap, uint64_t newsize,
-		     struct lxc_conf *conf);
-int btrfs_create(struct bdev *bdev, const char *dest, const char *n,
-		 struct bdev_specs *specs);
-int btrfs_destroy(struct bdev *orig);
-bool btrfs_detect(const char *path);
-int btrfs_mount(struct bdev *bdev);
-int btrfs_umount(struct bdev *bdev);
+extern int btrfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+			    const char *oldname, const char *cname,
+			    const char *oldpath, const char *lxcpath, int snap,
+			    uint64_t newsize, struct lxc_conf *conf);
+extern int btrfs_create(struct lxc_storage *bdev, const char *dest,
+			const char *n, struct bdev_specs *specs);
+extern int btrfs_destroy(struct lxc_storage *orig);
+extern bool btrfs_detect(const char *path);
+extern int btrfs_mount(struct lxc_storage *bdev);
+extern int btrfs_umount(struct lxc_storage *bdev);
 
-/*
- * Helper functions
- */
-char *get_btrfs_subvol_path(int fd, u64 dir_id, u64 objid, char *name,
-			    int name_len);
-int btrfs_list_get_path_rootid(int fd, u64 *treeid);
-bool is_btrfs_fs(const char *path);
-int is_btrfs_subvol(const char *path);
-bool btrfs_try_remove_subvol(const char *path);
-int btrfs_same_fs(const char *orig, const char *new);
-int btrfs_snapshot(const char *orig, const char *new);
-int btrfs_snapshot_wrapper(void *data);
-bool btrfs_create_clone(struct lxc_conf *conf, struct bdev *orig,
-			struct bdev *new, uint64_t newsize);
-bool btrfs_create_snapshot(struct lxc_conf *conf, struct bdev *orig,
-			   struct bdev *new, uint64_t newsize);
+extern char *get_btrfs_subvol_path(int fd, u64 dir_id, u64 objid, char *name,
+				   int name_len);
+extern int btrfs_list_get_path_rootid(int fd, u64 *treeid);
+extern bool is_btrfs_fs(const char *path);
+extern int is_btrfs_subvol(const char *path);
+extern bool btrfs_try_remove_subvol(const char *path);
+extern int btrfs_same_fs(const char *orig, const char *new);
+extern int btrfs_snapshot(const char *orig, const char *new);
+extern int btrfs_snapshot_wrapper(void *data);
+extern bool btrfs_create_clone(struct lxc_conf *conf, struct lxc_storage *orig,
+			       struct lxc_storage *new, uint64_t newsize);
+extern bool btrfs_create_snapshot(struct lxc_conf *conf,
+				  struct lxc_storage *orig,
+				  struct lxc_storage *new, uint64_t newsize);
 
-#endif // __LXC_BTRFS_H
+#endif /* __LXC_BTRFS_H */

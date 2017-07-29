@@ -28,26 +28,21 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* defined in bdev.h */
-struct bdev;
+struct lxc_storage;
 
-/* defined in lxccontainer.h */
 struct bdev_specs;
 
-/* defined conf.h */
 struct lxc_conf;
 
-/*
- * functions associated with a loop bdev struct
- */
-int loop_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath,
-		int snap, uint64_t newsize, struct lxc_conf *conf);
-int loop_create(struct bdev *bdev, const char *dest, const char *n,
-		struct bdev_specs *specs);
-int loop_destroy(struct bdev *orig);
-bool loop_detect(const char *path);
-int loop_mount(struct bdev *bdev);
-int loop_umount(struct bdev *bdev);
+extern int loop_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+			   const char *oldname, const char *cname,
+			   const char *oldpath, const char *lxcpath, int snap,
+			   uint64_t newsize, struct lxc_conf *conf);
+extern int loop_create(struct lxc_storage *bdev, const char *dest,
+		       const char *n, struct bdev_specs *specs);
+extern int loop_destroy(struct lxc_storage *orig);
+extern bool loop_detect(const char *path);
+extern int loop_mount(struct lxc_storage *bdev);
+extern int loop_umount(struct lxc_storage *bdev);
 
 #endif /* __LXC_LOOP_H */

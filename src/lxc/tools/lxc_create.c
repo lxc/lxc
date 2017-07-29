@@ -251,7 +251,7 @@ int main(int argc, char *argv[])
 	// Final check whether the user gave use a valid bdev type.
 	if (strcmp(my_args.bdevtype, "best") &&
 	    strcmp(my_args.bdevtype, "_unset") &&
-	    !is_valid_bdev_type(my_args.bdevtype)) {
+	    !is_valid_storage_type(my_args.bdevtype)) {
 		fprintf(stderr, "%s is not a valid backing storage type.\n", my_args.bdevtype);
 		exit(EXIT_FAILURE);
 	}

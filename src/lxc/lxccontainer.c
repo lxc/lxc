@@ -1154,16 +1154,16 @@ static bool create_container_dir(struct lxc_container *c)
 	return ret == 0;
 }
 
-/*
- * do_bdev_create: thin wrapper around bdev_create().  Like bdev_create(),
- * it returns a mounted bdev on success, NULL on error.
+/* do_storage_create: thin wrapper around storage_create(). Like
+ * storage_create(), it returns a mounted bdev on success, NULL on error.
  */
-static struct bdev *do_bdev_create(struct lxc_container *c, const char *type,
-				   struct bdev_specs *specs)
+static struct lxc_storage *do_storage_create(struct lxc_container *c,
+					     const char *type,
+					     struct bdev_specs *specs)
 {
 	char *dest;
 	size_t len;
-	struct bdev *bdev;
+	struct lxc_storage *bdev;
 	int ret;
 
 	/* rootfs.path or lxcpath/lxcname/rootfs */
@@ -1181,7 +1181,7 @@ static struct bdev *do_bdev_create(struct lxc_container *c, const char *type,
 	if (ret < 0 || ret >= len)
 		return NULL;
 
-	bdev = bdev_create(dest, type, c->name, specs);
+	bdev = storage_create(dest, type, c->name, specs);
 	if (!bdev) {
 		ERROR("Failed to create backing store type %s", type);
 		return NULL;
@@ -1200,7 +1200,7 @@ static struct bdev *do_bdev_create(struct lxc_container *c, const char *type,
 		if (chown_mapped_root(bdev->dest, c->lxc_conf) < 0) {
 			ERROR("Error chowning %s to container root", bdev->dest);
 			suggest_default_idmap();
-			bdev_put(bdev);
+			storage_put(bdev);
 			return NULL;
 		}
 	}
@@ -1232,7 +1232,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 
 	if (pid == 0) { // child
 		char *patharg, *namearg, *rootfsarg;
-		struct bdev *bdev = NULL;
+		struct lxc_storage *bdev = NULL;
 		int i;
 		int ret, len, nargs = 0;
 		char **newargv;
@@ -1242,7 +1242,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 			exit(1);
 		}
 
-		bdev = bdev_init(c->lxc_conf, c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
+		bdev = storage_init(c->lxc_conf, c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 		if (!bdev) {
 			ERROR("Error opening rootfs");
 			exit(1);
@@ -1694,12 +1694,13 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 	}
 
 	if (pid == 0) { // child
-		struct bdev *bdev = NULL;
+		struct lxc_storage *bdev = NULL;
 
-		if (!(bdev = do_bdev_create(c, bdevtype, specs))) {
+		bdev = do_storage_create(c, bdevtype, specs);
+		if (!bdev) {
 			ERROR("Error creating backing store type %s for %s",
 				bdevtype ? bdevtype : "(none)", c->name);
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 		/* save config file again to store the new rootfs location */
@@ -1708,9 +1709,9 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 			// parent task won't see bdev in config so we delete it
 			bdev->ops->umount(bdev);
 			bdev->ops->destroy(bdev);
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
-		exit(0);
+		exit(EXIT_SUCCESS);
 	}
 	if (wait_for_pid(pid) != 0)
 		goto out_unlock;
@@ -2565,12 +2566,12 @@ static bool has_snapshots(struct lxc_container *c)
 
 static bool do_destroy_container(struct lxc_conf *conf) {
 	if (am_unpriv()) {
-		if (userns_exec_1(conf, bdev_destroy_wrapper, conf,
-				  "bdev_destroy_wrapper") < 0)
+		if (userns_exec_1(conf, storage_destroy_wrapper, conf,
+				  "storage_destroy_wrapper") < 0)
 			return false;
 		return true;
 	}
-	return bdev_destroy(conf);
+	return storage_destroy(conf);
 }
 
 static int lxc_rmdir_onedev_wrapper(void *data)
@@ -3114,14 +3115,14 @@ static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 			const char *newtype, int flags, const char *bdevdata,
 			uint64_t newsize)
 {
-	struct bdev *bdev;
+	struct lxc_storage *bdev;
 	int need_rdep;
 
 	if (should_default_to_snapshot(c0, c))
 		flags |= LXC_CLONE_SNAPSHOT;
 
-	bdev = bdev_copy(c0, c->name, c->config_path, newtype, flags, bdevdata,
-			 newsize, &need_rdep);
+	bdev = storage_copy(c0, c->name, c->config_path, newtype, flags,
+			    bdevdata, newsize, &need_rdep);
 	if (!bdev) {
 		ERROR("Error copying storage.");
 		return -1;
@@ -3130,7 +3131,7 @@ static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 	/* Set new rootfs. */
 	free(c->lxc_conf->rootfs.path);
 	c->lxc_conf->rootfs.path = strdup(bdev->src);
-	bdev_put(bdev);
+	storage_put(bdev);
 
 	if (!c->lxc_conf->rootfs.path) {
 		ERROR("Out of memory while setting storage path.");
@@ -3183,7 +3184,7 @@ static int clone_update_rootfs(struct clone_update_data *data)
 	char **hookargs = data->hookargs;
 	int ret = -1;
 	char path[MAXPATHLEN];
-	struct bdev *bdev;
+	struct lxc_storage *bdev;
 	FILE *fout;
 	struct lxc_conf *conf = c->lxc_conf;
 
@@ -3203,13 +3204,13 @@ static int clone_update_rootfs(struct clone_update_data *data)
 
 	if (unshare(CLONE_NEWNS) < 0)
 		return -1;
-	bdev = bdev_init(c->lxc_conf, c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
+	bdev = storage_init(c->lxc_conf, c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 	if (!bdev)
 		return -1;
 	if (strcmp(bdev->type, "dir") != 0) {
 		if (unshare(CLONE_NEWNS) < 0) {
 			ERROR("error unsharing mounts");
-			bdev_put(bdev);
+			storage_put(bdev);
 			return -1;
 		}
 		if (detect_shared_rootfs()) {
@@ -3219,7 +3220,7 @@ static int clone_update_rootfs(struct clone_update_data *data)
 			}
 		}
 		if (bdev->ops->mount(bdev) < 0) {
-			bdev_put(bdev);
+			storage_put(bdev);
 			return -1;
 		}
 	} else { // TODO come up with a better way
@@ -3247,14 +3248,14 @@ static int clone_update_rootfs(struct clone_update_data *data)
 
 		if (run_lxc_hooks(c->name, "clone", conf, c->get_config_path(c), hookargs)) {
 			ERROR("Error executing clone hook for %s", c->name);
-			bdev_put(bdev);
+			storage_put(bdev);
 			return -1;
 		}
 	}
 
 	if (!(flags & LXC_CLONE_KEEPNAME)) {
 		ret = snprintf(path, MAXPATHLEN, "%s/etc/hostname", bdev->dest);
-		bdev_put(bdev);
+		storage_put(bdev);
 
 		if (ret < 0 || ret >= MAXPATHLEN)
 			return -1;
@@ -3270,9 +3271,9 @@ static int clone_update_rootfs(struct clone_update_data *data)
 		}
 		if (fclose(fout) < 0)
 			return -1;
+	} else {
+		storage_put(bdev);
 	}
-	else
-		bdev_put(bdev);
 
 	return 0;
 }
@@ -3512,7 +3513,7 @@ static struct lxc_container *lxcapi_clone(struct lxc_container *c, const char *n
 
 static bool do_lxcapi_rename(struct lxc_container *c, const char *newname)
 {
-	struct bdev *bdev;
+	struct lxc_storage *bdev;
 	struct lxc_container *newc;
 
 	if (!c || !c->name || !c->config_path || !c->lxc_conf)
@@ -3522,14 +3523,14 @@ static bool do_lxcapi_rename(struct lxc_container *c, const char *newname)
 		ERROR("Renaming a container with snapshots is not supported");
 		return false;
 	}
-	bdev = bdev_init(c->lxc_conf, c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
+	bdev = storage_init(c->lxc_conf, c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 	if (!bdev) {
 		ERROR("Failed to find original backing store type");
 		return false;
 	}
 
 	newc = lxcapi_clone(c, newname, c->config_path, LXC_CLONE_KEEPMACADDR, NULL, bdev->type, 0, NULL);
-	bdev_put(bdev);
+	storage_put(bdev);
 	if (!newc) {
 		lxc_container_put(newc);
 		return false;
@@ -3641,7 +3642,7 @@ static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	if (!c || !lxcapi_is_defined(c))
 		return -1;
 
-	if (!bdev_can_backup(c->lxc_conf)) {
+	if (!storage_can_backup(c->lxc_conf)) {
 		ERROR("%s's backing store cannot be backed up.", c->name);
 		ERROR("Your container must use another backing store type.");
 		return -1;
@@ -3667,7 +3668,7 @@ static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	 */
 	flags = LXC_CLONE_SNAPSHOT | LXC_CLONE_KEEPMACADDR | LXC_CLONE_KEEPNAME |
 		LXC_CLONE_KEEPBDEVTYPE | LXC_CLONE_MAYBE_SNAPSHOT;
-	if (bdev_is_dir(c->lxc_conf, c->lxc_conf->rootfs.path)) {
+	if (storage_is_dir(c->lxc_conf, c->lxc_conf->rootfs.path)) {
 		ERROR("Snapshot of directory-backed container requested.");
 		ERROR("Making a copy-clone.  If you do want snapshots, then");
 		ERROR("please create an aufs or overlay clone first, snapshot that");
@@ -3861,7 +3862,7 @@ static bool do_lxcapi_snapshot_restore(struct lxc_container *c, const char *snap
 	char clonelxcpath[MAXPATHLEN];
 	int flags = 0;
 	struct lxc_container *snap, *rest;
-	struct bdev *bdev;
+	struct lxc_storage *bdev;
 	bool b = false;
 
 	if (!c || !c->name || !c->config_path)
@@ -3872,7 +3873,7 @@ static bool do_lxcapi_snapshot_restore(struct lxc_container *c, const char *snap
 		return false;
 	}
 
-	bdev = bdev_init(c->lxc_conf, c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
+	bdev = storage_init(c->lxc_conf, c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
 	if (!bdev) {
 		ERROR("Failed to find original backing store type");
 		return false;
@@ -3882,7 +3883,7 @@ static bool do_lxcapi_snapshot_restore(struct lxc_container *c, const char *snap
 		newname = c->name;
 
 	if (!get_snappath_dir(c, clonelxcpath)) {
-		bdev_put(bdev);
+		storage_put(bdev);
 		return false;
 	}
 	// how should we lock this?
@@ -3891,7 +3892,7 @@ static bool do_lxcapi_snapshot_restore(struct lxc_container *c, const char *snap
 	if (!snap || !lxcapi_is_defined(snap)) {
 		ERROR("Could not open snapshot %s", snapname);
 		if (snap) lxc_container_put(snap);
-		bdev_put(bdev);
+		storage_put(bdev);
 		return false;
 	}
 
@@ -3899,7 +3900,7 @@ static bool do_lxcapi_snapshot_restore(struct lxc_container *c, const char *snap
 		if (!container_destroy(c)) {
 			ERROR("Could not destroy existing container %s", newname);
 			lxc_container_put(snap);
-			bdev_put(bdev);
+			storage_put(bdev);
 			return false;
 		}
 	}
@@ -3908,7 +3909,7 @@ static bool do_lxcapi_snapshot_restore(struct lxc_container *c, const char *snap
 		flags = LXC_CLONE_SNAPSHOT | LXC_CLONE_MAYBE_SNAPSHOT;
 	rest = lxcapi_clone(snap, newname, c->config_path, flags,
 			bdev->type, NULL, 0, NULL);
-	bdev_put(bdev);
+	storage_put(bdev);
 	if (rest && lxcapi_is_defined(rest))
 		b = true;
 	if (rest)

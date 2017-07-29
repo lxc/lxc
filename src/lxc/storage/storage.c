@@ -21,13 +21,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-/*
- * this is all just a first shot for experiment.  If we go this route, much
- * should change.  bdev should be a directory with per-bdev file.  Things which
- * I'm doing by calling out to userspace should sometimes be done through
- * libraries like liblvm2
- */
-
 #define _GNU_SOURCE
 #include <dirent.h>
 #include <errno.h>
@@ -75,7 +68,7 @@
 lxc_log_define(storage, lxc);
 
 /* aufs */
-static const struct bdev_ops aufs_ops = {
+static const struct lxc_storage_ops aufs_ops = {
     .detect = &aufs_detect,
     .mount = &aufs_mount,
     .umount = &aufs_umount,
@@ -89,7 +82,7 @@ static const struct bdev_ops aufs_ops = {
 };
 
 /* btrfs */
-static const struct bdev_ops btrfs_ops = {
+static const struct lxc_storage_ops btrfs_ops = {
     .detect = &btrfs_detect,
     .mount = &btrfs_mount,
     .umount = &btrfs_umount,
@@ -103,7 +96,7 @@ static const struct bdev_ops btrfs_ops = {
 };
 
 /* dir */
-static const struct bdev_ops dir_ops = {
+static const struct lxc_storage_ops dir_ops = {
     .detect = &dir_detect,
     .mount = &dir_mount,
     .umount = &dir_umount,
@@ -117,7 +110,7 @@ static const struct bdev_ops dir_ops = {
 };
 
 /* loop */
-static const struct bdev_ops loop_ops = {
+static const struct lxc_storage_ops loop_ops = {
     .detect = &loop_detect,
     .mount = &loop_mount,
     .umount = &loop_umount,
@@ -131,7 +124,7 @@ static const struct bdev_ops loop_ops = {
 };
 
 /* lvm */
-static const struct bdev_ops lvm_ops = {
+static const struct lxc_storage_ops lvm_ops = {
     .detect = &lvm_detect,
     .mount = &lvm_mount,
     .umount = &lvm_umount,
@@ -145,7 +138,7 @@ static const struct bdev_ops lvm_ops = {
 };
 
 /* nbd */
-const struct bdev_ops nbd_ops = {
+const struct lxc_storage_ops nbd_ops = {
     .detect = &nbd_detect,
     .mount = &nbd_mount,
     .umount = &nbd_umount,
@@ -159,7 +152,7 @@ const struct bdev_ops nbd_ops = {
 };
 
 /* overlay */
-static const struct bdev_ops ovl_ops = {
+static const struct lxc_storage_ops ovl_ops = {
     .detect = &ovl_detect,
     .mount = &ovl_mount,
     .umount = &ovl_umount,
@@ -173,7 +166,7 @@ static const struct bdev_ops ovl_ops = {
 };
 
 /* rbd */
-static const struct bdev_ops rbd_ops = {
+static const struct lxc_storage_ops rbd_ops = {
     .detect = &rbd_detect,
     .mount = &rbd_mount,
     .umount = &rbd_umount,
@@ -187,7 +180,7 @@ static const struct bdev_ops rbd_ops = {
 };
 
 /* zfs */
-static const struct bdev_ops zfs_ops = {
+static const struct lxc_storage_ops zfs_ops = {
     .detect = &zfs_detect,
     .mount = &zfs_mount,
     .umount = &zfs_umount,
@@ -200,12 +193,12 @@ static const struct bdev_ops zfs_ops = {
     .can_backup = true,
 };
 
-struct bdev_type {
+struct lxc_storage_type {
 	const char *name;
-	const struct bdev_ops *ops;
+	const struct lxc_storage_ops *ops;
 };
 
-static const struct bdev_type bdevs[] = {
+static const struct lxc_storage_type bdevs[] = {
 	{ .name = "dir",       .ops = &dir_ops,   },
 	{ .name = "zfs",       .ops = &zfs_ops,   },
 	{ .name = "lvm",       .ops = &lvm_ops,   },
@@ -218,9 +211,9 @@ static const struct bdev_type bdevs[] = {
 	{ .name = "nbd",       .ops = &nbd_ops,   },
 };
 
-static const size_t numbdevs = sizeof(bdevs) / sizeof(struct bdev_type);
+static const size_t numbdevs = sizeof(bdevs) / sizeof(struct lxc_storage_type);
 
-static const struct bdev_type *get_bdev_by_name(const char *name)
+static const struct lxc_storage_type *get_storage_by_name(const char *name)
 {
 	size_t i, cmplen;
 
@@ -239,12 +232,13 @@ static const struct bdev_type *get_bdev_by_name(const char *name)
 	return &bdevs[i];
 }
 
-const struct bdev_type *bdev_query(struct lxc_conf *conf, const char *src)
+const struct lxc_storage_type *storage_query(struct lxc_conf *conf,
+					     const char *src)
 {
 	size_t i;
-	const struct bdev_type *bdev;
+	const struct lxc_storage_type *bdev;
 
-	bdev = get_bdev_by_name(src);
+	bdev = get_storage_by_name(src);
 	if (bdev)
 		return bdev;
 
@@ -259,10 +253,10 @@ const struct bdev_type *bdev_query(struct lxc_conf *conf, const char *src)
 	return &bdevs[i];
 }
 
-struct bdev *bdev_get(const char *type)
+struct lxc_storage *storage_get(const char *type)
 {
 	size_t i;
-	struct bdev *bdev;
+	struct lxc_storage *bdev;
 
 	for (i = 0; i < numbdevs; i++) {
 		if (strcmp(bdevs[i].name, type) == 0)
@@ -272,60 +266,61 @@ struct bdev *bdev_get(const char *type)
 	if (i == numbdevs)
 		return NULL;
 
-	bdev = malloc(sizeof(struct bdev));
+	bdev = malloc(sizeof(struct lxc_storage));
 	if (!bdev)
 		return NULL;
 
-	memset(bdev, 0, sizeof(struct bdev));
+	memset(bdev, 0, sizeof(struct lxc_storage));
 	bdev->ops = bdevs[i].ops;
 	bdev->type = bdevs[i].name;
 
 	return bdev;
 }
 
-static struct bdev *do_bdev_create(const char *dest, const char *type,
-				   const char *cname, struct bdev_specs *specs)
+static struct lxc_storage *do_storage_create(const char *dest, const char *type,
+					     const char *cname,
+					     struct bdev_specs *specs)
 {
 
-	struct bdev *bdev;
+	struct lxc_storage *bdev;
 
 	if (!type)
 		type = "dir";
 
-	bdev = bdev_get(type);
+	bdev = storage_get(type);
 	if (!bdev)
 		return NULL;
 
 	if (bdev->ops->create(bdev, dest, cname, specs) < 0) {
-		bdev_put(bdev);
+		storage_put(bdev);
 		return NULL;
 	}
 
 	return bdev;
 }
 
-bool bdev_can_backup(struct lxc_conf *conf)
+bool storage_can_backup(struct lxc_conf *conf)
 {
-	struct bdev *bdev = bdev_init(conf, NULL, NULL, NULL);
+	struct lxc_storage *bdev = storage_init(conf, NULL, NULL, NULL);
 	bool ret;
 
 	if (!bdev)
 		return false;
 
 	ret = bdev->ops->can_backup;
-	bdev_put(bdev);
+	storage_put(bdev);
 	return ret;
 }
 
-/*
- * If we're not snaphotting, then bdev_copy becomes a simple case of mount
+/* If we're not snaphotting, then storage_copy becomes a simple case of mount
  * the original, mount the new, and rsync the contents.
  */
-struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
-		       const char *lxcpath, const char *bdevtype, int flags,
-		       const char *bdevdata, uint64_t newsize, int *needs_rdep)
+struct lxc_storage *storage_copy(struct lxc_container *c0, const char *cname,
+				 const char *lxcpath, const char *bdevtype,
+				 int flags, const char *bdevdata,
+				 uint64_t newsize, int *needs_rdep)
 {
-	struct bdev *orig, *new;
+	struct lxc_storage *orig, *new;
 	int ret;
 	char *src_no_prefix;
 	bool snap = flags & LXC_CLONE_SNAPSHOT;
@@ -346,7 +341,7 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		return NULL;
 	}
 
-	orig = bdev_init(c0->lxc_conf, src, NULL, NULL);
+	orig = storage_init(c0->lxc_conf, src, NULL, NULL);
 	if (!orig) {
 		ERROR("Failed to detect storage driver for \"%s\"", src);
 		return NULL;
@@ -361,14 +356,14 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		orig->dest = malloc(len);
 		if (!orig->dest) {
 			ERROR("Failed to allocate memory");
-			bdev_put(orig);
+			storage_put(orig);
 			return NULL;
 		}
 
 		ret = snprintf(orig->dest, len, "%s/%s/rootfs", oldpath, oldname);
 		if (ret < 0 || (size_t)ret >= len) {
 			ERROR("Failed to create string");
-			bdev_put(orig);
+			storage_put(orig);
 			return NULL;
 		}
 
@@ -394,7 +389,7 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	if (am_unpriv() && !unpriv_snap_allowed(orig, bdevtype, snap, maybe_snap)) {
 		ERROR("Unsupported snapshot type \"%s\" for unprivileged users",
 		      bdevtype ? bdevtype : "(null)");
-		bdev_put(orig);
+		storage_put(orig);
 		return NULL;
 	}
 
@@ -415,11 +410,11 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		bdevtype = orig->type;
 
 	/* get new bdev type */
-	new = bdev_get(bdevtype);
+	new = storage_get(bdevtype);
 	if (!new) {
 		ERROR("Failed to initialize \"%s\" storage driver",
 		      bdevtype ? bdevtype : orig->type);
-		bdev_put(orig);
+		storage_put(orig);
 		return NULL;
 	}
 	TRACE("Initialized \"%s\" storage driver", new->type);
@@ -508,84 +503,83 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		}
 	}
 
-	bdev_put(orig);
+	storage_put(orig);
 	return new;
 
 err:
-	bdev_put(orig);
-	bdev_put(new);
+	storage_put(orig);
+	storage_put(new);
 	return NULL;
 }
 
-/*
- * bdev_create:
- * Create a backing store for a container.
+/* Create a backing store for a container.
  * If successful, return a struct bdev *, with the bdev mounted and ready
  * for use.  Before completing, the caller will need to call the
- * umount operation and bdev_put().
+ * umount operation and storage_put().
  * @dest: the mountpoint (i.e. /var/lib/lxc/$name/rootfs)
  * @type: the bdevtype (dir, btrfs, zfs, rbd, etc)
  * @cname: the container name
  * @specs: details about the backing store to create, like fstype
  */
-struct bdev *bdev_create(const char *dest, const char *type, const char *cname,
-			 struct bdev_specs *specs)
+struct lxc_storage *storage_create(const char *dest, const char *type,
+				   const char *cname, struct bdev_specs *specs)
 {
-	struct bdev *bdev;
+	struct lxc_storage *bdev;
 	char *best_options[] = {"btrfs", "zfs", "lvm", "dir", "rbd", NULL};
 
 	if (!type)
-		return do_bdev_create(dest, "dir", cname, specs);
+		return do_storage_create(dest, "dir", cname, specs);
 
 	if (strcmp(type, "best") == 0) {
 		int i;
-		// try for the best backing store type, according to our
-		// opinionated preferences
+		/* Try for the best backing store type, according to our
+		 * opinionated preferences.
+		 */
 		for (i = 0; best_options[i]; i++) {
-			if ((bdev = do_bdev_create(dest, best_options[i], cname,
-						   specs)))
+			bdev = do_storage_create(dest, best_options[i], cname,
+						 specs);
+			if (bdev)
 				return bdev;
 		}
 
-		return NULL; // 'dir' should never fail, so this shouldn't
-			     // happen
+		return NULL;
 	}
 
-	// -B lvm,dir
+	/* -B lvm,dir */
 	if (strchr(type, ',') != NULL) {
 		char *dup = alloca(strlen(type) + 1), *saveptr = NULL, *token;
 		strcpy(dup, type);
 		for (token = strtok_r(dup, ",", &saveptr); token;
 		     token = strtok_r(NULL, ",", &saveptr)) {
-			if ((bdev = do_bdev_create(dest, token, cname, specs)))
+			if ((bdev = do_storage_create(dest, token, cname, specs)))
 				return bdev;
 		}
 	}
 
-	return do_bdev_create(dest, type, cname, specs);
+	return do_storage_create(dest, type, cname, specs);
 }
 
-bool bdev_destroy(struct lxc_conf *conf)
+bool storage_destroy(struct lxc_conf *conf)
 {
-	struct bdev *r;
+	struct lxc_storage *r;
 	bool ret = false;
 
-	r = bdev_init(conf, conf->rootfs.path, conf->rootfs.mount, NULL);
+	r = storage_init(conf, conf->rootfs.path, conf->rootfs.mount, NULL);
 	if (!r)
 		return ret;
 
 	if (r->ops->destroy(r) == 0)
 		ret = true;
-	bdev_put(r);
 
+	storage_put(r);
 	return ret;
 }
 
-struct bdev *bdev_init(struct lxc_conf *conf, const char *src, const char *dst,
-		       const char *mntopts)
+struct lxc_storage *storage_init(struct lxc_conf *conf, const char *src,
+				 const char *dst, const char *mntopts)
 {
-	struct bdev *bdev;
-	const struct bdev_type *q;
+	struct lxc_storage *bdev;
+	const struct lxc_storage_type *q;
 
 	if (!src)
 		src = conf->rootfs.path;
@@ -593,15 +587,15 @@ struct bdev *bdev_init(struct lxc_conf *conf, const char *src, const char *dst,
 	if (!src)
 		return NULL;
 
-	q = bdev_query(conf, src);
+	q = storage_query(conf, src);
 	if (!q)
 		return NULL;
 
-	bdev = malloc(sizeof(struct bdev));
+	bdev = malloc(sizeof(struct lxc_storage));
 	if (!bdev)
 		return NULL;
 
-	memset(bdev, 0, sizeof(struct bdev));
+	memset(bdev, 0, sizeof(struct lxc_storage));
 	bdev->ops = q->ops;
 	bdev->type = q->name;
 	if (mntopts)
@@ -616,19 +610,23 @@ struct bdev *bdev_init(struct lxc_conf *conf, const char *src, const char *dst,
 	return bdev;
 }
 
-bool bdev_is_dir(struct lxc_conf *conf, const char *path)
+bool storage_is_dir(struct lxc_conf *conf, const char *path)
 {
-	struct bdev *orig = bdev_init(conf, path, NULL, NULL);
-	bool ret = false;
+	struct lxc_storage *orig;
+	bool bret = false;
+
+	orig = storage_init(conf, path, NULL, NULL);
 	if (!orig)
-		return ret;
+		return bret;
+
 	if (strcmp(orig->type, "dir") == 0)
-		ret = true;
-	bdev_put(orig);
-	return ret;
+		bret = true;
+
+	storage_put(orig);
+	return bret;
 }
 
-void bdev_put(struct bdev *bdev)
+void storage_put(struct lxc_storage *bdev)
 {
 	free(bdev->mntopts);
 	free(bdev->src);
@@ -638,7 +636,7 @@ void bdev_put(struct bdev *bdev)
 
 bool rootfs_is_blockdev(struct lxc_conf *conf)
 {
-	const struct bdev_type *q;
+	const struct lxc_storage_type *q;
 	struct stat st;
 	int ret;
 
@@ -650,7 +648,7 @@ bool rootfs_is_blockdev(struct lxc_conf *conf)
 	if (ret == 0 && S_ISBLK(st.st_mode))
 		return true;
 
-	q = bdev_query(conf, conf->rootfs.path);
+	q = storage_query(conf, conf->rootfs.path);
 	if (!q)
 		return false;
 

@@ -28,31 +28,25 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* defined in bdev.h */
-struct bdev;
+struct lxc_storage;
 
-/* defined in lxccontainer.h */
 struct bdev_specs;
 
-/* defined conf.h */
 struct lxc_conf;
 
-/*
- * Functions associated with an nbd bdev struct.
- */
-int nbd_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath,
-		int snap, uint64_t newsize, struct lxc_conf *conf);
-int nbd_create(struct bdev *bdev, const char *dest, const char *n,
-		struct bdev_specs *specs);
-int nbd_destroy(struct bdev *orig);
-bool nbd_detect(const char *path);
-int nbd_mount(struct bdev *bdev);
-int nbd_umount(struct bdev *bdev);
+extern int nbd_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+			  const char *oldname, const char *cname,
+			  const char *oldpath, const char *lxcpath, int snap,
+			  uint64_t newsize, struct lxc_conf *conf);
+extern int nbd_create(struct lxc_storage *bdev, const char *dest, const char *n,
+		      struct bdev_specs *specs);
+extern int nbd_destroy(struct lxc_storage *orig);
+extern bool nbd_detect(const char *path);
+extern int nbd_mount(struct lxc_storage *bdev);
+extern int nbd_umount(struct lxc_storage *bdev);
 
-/* helpers */
-bool attach_nbd(char *src, struct lxc_conf *conf);
-void detach_nbd_idx(int idx);
-bool requires_nbd(const char *path);
+extern bool attach_nbd(char *src, struct lxc_conf *conf);
+extern void detach_nbd_idx(int idx);
+extern bool requires_nbd(const char *path);
 
 #endif /* __LXC_NBD_H */

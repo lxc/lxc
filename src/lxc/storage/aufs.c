@@ -34,15 +34,16 @@
 #include "storage.h"
 #include "utils.h"
 
-lxc_log_define(lxcaufs, lxc);
+lxc_log_define(aufs, lxc);
 
 /* the bulk of this needs to become a common helper */
 extern char *dir_new_path(char *src, const char *oldname, const char *name,
 		const char *oldpath, const char *lxcpath);
 
-int aufs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath,
-		int snap, uint64_t newsize, struct lxc_conf *conf)
+int aufs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+		    const char *oldname, const char *cname, const char *oldpath,
+		    const char *lxcpath, int snap, uint64_t newsize,
+		    struct lxc_conf *conf)
 {
 	if (!snap) {
 		ERROR("aufs is only for snapshot clones");
@@ -172,7 +173,7 @@ int aufs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
  * changes after starting the container are written to
  * $lxcpath/$lxcname/delta0
  */
-int aufs_create(struct bdev *bdev, const char *dest, const char *n,
+int aufs_create(struct lxc_storage *bdev, const char *dest, const char *n,
 		struct bdev_specs *specs)
 {
 	char *delta;
@@ -214,7 +215,7 @@ int aufs_create(struct bdev *bdev, const char *dest, const char *n,
 	return 0;
 }
 
-int aufs_destroy(struct bdev *orig)
+int aufs_destroy(struct lxc_storage *orig)
 {
 	char *upper;
 
@@ -235,7 +236,7 @@ bool aufs_detect(const char *path)
 	return false;
 }
 
-int aufs_mount(struct bdev *bdev)
+int aufs_mount(struct lxc_storage *bdev)
 {
 	char *tmp, *options, *dup, *lower, *upper;
 	int len;
@@ -307,7 +308,7 @@ int aufs_mount(struct bdev *bdev)
 	return ret;
 }
 
-int aufs_umount(struct bdev *bdev)
+int aufs_umount(struct lxc_storage *bdev)
 {
 	if (strcmp(bdev->type, "aufs"))
 		return -22;

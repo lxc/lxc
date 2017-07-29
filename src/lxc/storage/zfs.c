@@ -38,7 +38,7 @@
 #include "utils.h"
 #include "zfs.h"
 
-lxc_log_define(lxczfs, lxc);
+lxc_log_define(zfs, lxc);
 
 struct zfs_args {
 	const char *dataset;
@@ -176,7 +176,7 @@ bool zfs_detect(const char *path)
 	return true;
 }
 
-int zfs_mount(struct bdev *bdev)
+int zfs_mount(struct lxc_storage *bdev)
 {
 	int ret;
 	size_t oldlen, newlen, totallen;
@@ -261,7 +261,7 @@ int zfs_mount(struct bdev *bdev)
 	return 0;
 }
 
-int zfs_umount(struct bdev *bdev)
+int zfs_umount(struct lxc_storage *bdev)
 {
 	int ret;
 
@@ -280,8 +280,8 @@ int zfs_umount(struct bdev *bdev)
 	return ret;
 }
 
-bool zfs_copy(struct lxc_conf *conf, struct bdev *orig, struct bdev *new,
-	      uint64_t newsize)
+bool zfs_copy(struct lxc_conf *conf, struct lxc_storage *orig,
+	      struct lxc_storage *new, uint64_t newsize)
 {
 	int ret;
 	char cmd_output[MAXPATHLEN], option[MAXPATHLEN];
@@ -337,8 +337,8 @@ bool zfs_copy(struct lxc_conf *conf, struct bdev *orig, struct bdev *new,
 }
 
 /* create read-only snapshot and create a clone from it */
-bool zfs_snapshot(struct lxc_conf *conf, struct bdev *orig, struct bdev *new,
-		  uint64_t newsize)
+bool zfs_snapshot(struct lxc_conf *conf, struct lxc_storage *orig,
+		  struct lxc_storage *new, uint64_t newsize)
 {
 	int ret;
 	size_t snapshot_len, len;
@@ -442,9 +442,10 @@ bool zfs_snapshot(struct lxc_conf *conf, struct bdev *orig, struct bdev *new,
 	return true;
 }
 
-int zfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		   const char *cname, const char *oldpath, const char *lxcpath,
-		   int snap, uint64_t newsize, struct lxc_conf *conf)
+int zfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+		   const char *oldname, const char *cname, const char *oldpath,
+		   const char *lxcpath, int snap, uint64_t newsize,
+		   struct lxc_conf *conf)
 {
 	char *dataset, *orig_src, *tmp;
 	int ret;
@@ -572,7 +573,7 @@ int zfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 	return 0;
 }
 
-int zfs_destroy(struct bdev *orig)
+int zfs_destroy(struct lxc_storage *orig)
 {
 	int ret;
 	char *dataset, *src, *tmp;
@@ -700,7 +701,7 @@ int zfs_destroy(struct bdev *orig)
 	return ret;
 }
 
-int zfs_create(struct bdev *bdev, const char *dest, const char *n,
+int zfs_create(struct lxc_storage *bdev, const char *dest, const char *n,
 	       struct bdev_specs *specs)
 {
 	const char *zfsroot;

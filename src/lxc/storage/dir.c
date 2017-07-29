@@ -29,15 +29,15 @@
 #include "storage.h"
 #include "utils.h"
 
-lxc_log_define(lxcdir, lxc);
+lxc_log_define(dir, lxc);
 
-/*
- * for a simple directory bind mount, we substitute the old container
- * name and paths for the new
+/* For a simple directory bind mount, we substitute the old container name and
+ * paths for the new.
  */
-int dir_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		   const char *cname, const char *oldpath, const char *lxcpath,
-		   int snap, uint64_t newsize, struct lxc_conf *conf)
+int dir_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+		   const char *oldname, const char *cname, const char *oldpath,
+		   const char *lxcpath, int snap, uint64_t newsize,
+		   struct lxc_conf *conf)
 {
 	char *src_no_prefix;
 	int ret;
@@ -75,7 +75,7 @@ int dir_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 	return 0;
 }
 
-int dir_create(struct bdev *bdev, const char *dest, const char *n,
+int dir_create(struct lxc_storage *bdev, const char *dest, const char *n,
 	       struct bdev_specs *specs)
 {
 	int ret;
@@ -118,7 +118,7 @@ int dir_create(struct bdev *bdev, const char *dest, const char *n,
 	return 0;
 }
 
-int dir_destroy(struct bdev *orig)
+int dir_destroy(struct lxc_storage *orig)
 {
 	int ret;
 	char *src;
@@ -145,7 +145,7 @@ bool dir_detect(const char *path)
 	return false;
 }
 
-int dir_mount(struct bdev *bdev)
+int dir_mount(struct lxc_storage *bdev)
 {
 	int ret;
 	unsigned long mflags, mntflags;
@@ -186,7 +186,7 @@ int dir_mount(struct bdev *bdev)
 	return ret;
 }
 
-int dir_umount(struct bdev *bdev)
+int dir_umount(struct lxc_storage *bdev)
 {
 	if (strcmp(bdev->type, "dir"))
 		return -22;

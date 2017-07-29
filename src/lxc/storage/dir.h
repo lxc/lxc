@@ -28,26 +28,21 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* defined in bdev.h */
-struct bdev;
+struct lxc_storage;
 
-/* defined in lxccontainer.h */
 struct bdev_specs;
 
-/* defined conf.h */
 struct lxc_conf;
 
-/*
- * Functions associated with a dir bdev struct.
- */
-int dir_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath,
-		int snap, uint64_t newsize, struct lxc_conf *conf);
-int dir_create(struct bdev *bdev, const char *dest, const char *n,
-		struct bdev_specs *specs);
-int dir_destroy(struct bdev *orig);
-bool dir_detect(const char *path);
-int dir_mount(struct bdev *bdev);
-int dir_umount(struct bdev *bdev);
+extern int dir_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+			  const char *oldname, const char *cname,
+			  const char *oldpath, const char *lxcpath, int snap,
+			  uint64_t newsize, struct lxc_conf *conf);
+extern int dir_create(struct lxc_storage *bdev, const char *dest, const char *n,
+		      struct bdev_specs *specs);
+extern int dir_destroy(struct lxc_storage *orig);
+extern bool dir_detect(const char *path);
+extern int dir_mount(struct lxc_storage *bdev);
+extern int dir_umount(struct lxc_storage *bdev);
 
 #endif /* __LXC_DIR_H */

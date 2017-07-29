@@ -44,7 +44,7 @@
 #include <sys/mkdev.h>
 #endif
 
-lxc_log_define(lxclvm, lxc);
+lxc_log_define(lvm, lxc);
 
 struct lvcreate_args {
 	const char *size;
@@ -232,7 +232,7 @@ bool lvm_detect(const char *path)
 	return true;
 }
 
-int lvm_mount(struct bdev *bdev)
+int lvm_mount(struct lxc_storage *bdev)
 {
 	char *src;
 
@@ -250,7 +250,7 @@ int lvm_mount(struct bdev *bdev)
 	return mount_unknown_fs(src, bdev->dest, bdev->mntopts);
 }
 
-int lvm_umount(struct bdev *bdev)
+int lvm_umount(struct lxc_storage *bdev)
 {
 	if (strcmp(bdev->type, "lvm"))
 		return -22;
@@ -371,9 +371,10 @@ int lvm_snapshot(const char *orig, const char *path, uint64_t size)
 	return 0;
 }
 
-int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize, struct lxc_conf *conf)
+int lvm_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+		   const char *oldname, const char *cname, const char *oldpath,
+		   const char *lxcpath, int snap, uint64_t newsize,
+		   struct lxc_conf *conf)
 {
 	int len, ret;
 	const char *vg;
@@ -455,8 +456,8 @@ int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 	return 0;
 }
 
-bool lvm_create_clone(struct lxc_conf *conf, struct bdev *orig,
-		      struct bdev *new, uint64_t newsize)
+bool lvm_create_clone(struct lxc_conf *conf, struct lxc_storage *orig,
+		      struct lxc_storage *new, uint64_t newsize)
 {
 	char *src;
 	const char *thinpool;
@@ -516,8 +517,8 @@ bool lvm_create_clone(struct lxc_conf *conf, struct bdev *orig,
 	return true;
 }
 
-bool lvm_create_snapshot(struct lxc_conf *conf, struct bdev *orig,
-			 struct bdev *new, uint64_t newsize)
+bool lvm_create_snapshot(struct lxc_conf *conf, struct lxc_storage *orig,
+			 struct lxc_storage *new, uint64_t newsize)
 {
 	int ret;
 	char *newsrc, *origsrc;
@@ -547,7 +548,7 @@ bool lvm_create_snapshot(struct lxc_conf *conf, struct bdev *orig,
 	return true;
 }
 
-int lvm_destroy(struct bdev *orig)
+int lvm_destroy(struct lxc_storage *orig)
 {
 	int ret;
 	char cmd_output[MAXPATHLEN];
@@ -566,7 +567,7 @@ int lvm_destroy(struct bdev *orig)
 	return 0;
 }
 
-int lvm_create(struct bdev *bdev, const char *dest, const char *n,
+int lvm_create(struct lxc_storage *bdev, const char *dest, const char *n,
 	       struct bdev_specs *specs)
 {
 	const char *vg, *thinpool, *fstype, *lv = n;

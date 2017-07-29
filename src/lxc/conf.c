@@ -1171,7 +1171,7 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 static int lxc_setup_rootfs(struct lxc_conf *conf)
 {
 	int ret;
-	struct bdev *bdev;
+	struct lxc_storage *bdev;
 	const struct lxc_rootfs *rootfs;
 
 	rootfs = &conf->rootfs;
@@ -1189,7 +1189,7 @@ static int lxc_setup_rootfs(struct lxc_conf *conf)
 		return -1;
 	}
 
-	bdev = bdev_init(conf, rootfs->path, rootfs->mount, rootfs->options);
+	bdev = storage_init(conf, rootfs->path, rootfs->mount, rootfs->options);
 	if (!bdev) {
 		ERROR("Failed to mount rootfs \"%s\" onto \"%s\" with options \"%s\".",
 		      rootfs->path, rootfs->mount,
@@ -1198,7 +1198,7 @@ static int lxc_setup_rootfs(struct lxc_conf *conf)
 	}
 
 	ret = bdev->ops->mount(bdev);
-	bdev_put(bdev);
+	storage_put(bdev);
 	if (ret < 0) {
 		ERROR("Failed to mount rootfs \"%s\" onto \"%s\" with options \"%s\".",
 		      rootfs->path, rootfs->mount,

@@ -28,8 +28,8 @@
 #include <stdio.h>
 
 struct rsync_data {
-	struct bdev *orig;
-	struct bdev *new;
+	struct lxc_storage *orig;
+	struct lxc_storage *new;
 };
 
 struct rsync_data_char {
