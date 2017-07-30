@@ -3680,72 +3680,88 @@ static int get_config_includefiles(const char *key, char *retv, int inlen,
 	return -ENOSYS;
 }
 
-static struct lxc_config_t *
-get_network_config_ops(const char *key, struct lxc_conf *lxc_conf, ssize_t *idx)
+static struct lxc_config_t *get_network_config_ops(const char *key,
+						   struct lxc_conf *lxc_conf,
+						   ssize_t *idx,
+						   char **deindexed_key)
 {
+	int ret;
+	unsigned int tmpidx;
+	size_t numstrlen;
 	char *copy, *idx_start, *idx_end;
 	struct lxc_config_t *config = NULL;
 
 	/* check that this is a sensible network key */
-	if (strncmp("lxc.net.", key, 8))
+	if (strncmp("lxc.net.", key, 8)) {
+		ERROR("Invalid network configuration key \"%s\"", key);
 		return NULL;
-
-	copy = strdup(key);
-	if (!copy)
-		return NULL;
-
-	/* lxc.net.<n> */
-	if (isdigit(*(key + 8))) {
-		int ret;
-		unsigned int tmpidx;
-		size_t numstrlen;
-
-		/* beginning of index string */
-		idx_start = (copy + 7);
-		*idx_start = '\0';
-
-		/* end of index string */
-		idx_end = strchr((copy + 8), '.');
-		if (!idx_end)
-			goto on_error;
-		*idx_end = '\0';
-
-		/* parse current index */
-		ret = lxc_safe_uint((idx_start + 1), &tmpidx);
-		if (ret < 0) {
-			*idx = ret;
-			goto on_error;
-		}
-
-		/* This, of course is utterly nonsensical on so many levels, but
-		 * better safe than sorry.
-		 * (Checking for INT_MAX here is intentional.)
-		 */
-		if (tmpidx == INT_MAX) {
-			SYSERROR(
-			    "number of configured networks would overflow the "
-			    "counter... what are you doing?");
-			goto on_error;
-		}
-		*idx = tmpidx;
-
-		numstrlen = strlen((idx_start + 1));
-
-		/* repair configuration key */
-		*idx_start = '.';
-		*idx_end = '.';
-
-		memmove(copy + 8, idx_end + 1, strlen(idx_end + 1));
-		copy[strlen(key) - numstrlen + 1] = '\0';
 	}
 
+	copy = strdup(key);
+	if (!copy) {
+		ERROR("Failed to duplicate string \"%s\"", key);
+		return NULL;
+	}
+
+	/* lxc.net.<n> */
+	if (!isdigit(*(key + 8))) {
+		ERROR("Failed to detect digit in string \"%s\"", key + 8);
+		goto on_error;
+	}
+
+	/* beginning of index string */
+	idx_start = (copy + 7);
+	*idx_start = '\0';
+
+	/* end of index string */
+	idx_end = strchr((copy + 8), '.');
+	if (!idx_end) {
+		ERROR("Failed to detect \".\" in string \"%s\"", (copy + 8));
+		goto on_error;
+	}
+	*idx_end = '\0';
+
+	/* parse current index */
+	ret = lxc_safe_uint((idx_start + 1), &tmpidx);
+	if (ret < 0) {
+		ERROR("Failed to parse usigned integer from string \"%s\": %s",
+		      idx_start + 1, strerror(-ret));
+		*idx = ret;
+		goto on_error;
+	}
+
+	/* This, of course is utterly nonsensical on so many levels, but
+	 * better safe than sorry.
+	 * (Checking for INT_MAX here is intentional.)
+	 */
+	if (tmpidx == INT_MAX) {
+		SYSERROR("number of configured networks would overflow the "
+			 "counter... what are you doing?");
+		goto on_error;
+	}
+	*idx = tmpidx;
+
+	numstrlen = strlen((idx_start + 1));
+
+	/* repair configuration key */
+	*idx_start = '.';
+	*idx_end = '.';
+
+	memmove(copy + 8, idx_end + 1, strlen(idx_end + 1));
+	copy[strlen(key) - numstrlen + 1] = '\0';
+
 	config = lxc_getconfig(copy);
-	if (!config)
+	if (!config) {
 		ERROR("unknown network configuration key %s", key);
+		goto on_error;
+	}
+
+	*deindexed_key = copy;
+	return config;
 
 on_error:
 	free(copy);
-	return config;
+	return NULL;
 }
 
 /*
@@ -3756,22 +3772,33 @@ on_error:
 static int set_config_net_nic(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf, void *data)
 {
+	int ret;
+	const char *idxstring;
 	struct lxc_config_t *config;
 	struct lxc_netdev *netdev;
 	ssize_t idx = -1;
+	char *deindexed_key = NULL;
+
+	idxstring = key + 8;
+	if (!isdigit(*idxstring))
+		return -1;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_nic(key, lxc_conf, data);
 
-	config = get_network_config_ops(key, lxc_conf, &idx);
+	config = get_network_config_ops(key, lxc_conf, &idx, &deindexed_key);
 	if (!config || idx < 0)
 		return -1;
 
 	netdev = lxc_get_netdev_by_idx(lxc_conf, (unsigned int)idx, true);
-	if (!netdev)
+	if (!netdev) {
+		free(deindexed_key);
 		return -1;
+	}
 
-	return config->set(key, value, lxc_conf, netdev);
+	ret = config->set(deindexed_key, value, lxc_conf, netdev);
+	free(deindexed_key);
+	return ret;
 }
 
 /*
@@ -3782,18 +3809,19 @@ static int set_config_net_nic(const char *key, const char *value,
 static int clr_config_net_nic(const char *key, struct lxc_conf *lxc_conf,
 			      void *data)
 {
+	int ret;
 	const char *idxstring;
 	struct lxc_config_t *config;
 	struct lxc_netdev *netdev;
-	ssize_t idx;
-
-	/* If we get passed "lxc.net.<n>" we clear the whole network. */
-	if (strncmp("lxc.net.", key, 8))
-		return -1;
+	ssize_t idx = -1;
+	char *deindexed_key = NULL;
 
 	idxstring = key + 8;
+	if (!isdigit(*idxstring))
+		return -1;
+
 	/* The left conjunct is pretty self-explanatory. The right conjunct
-	 * checks whether the two pointers are equal. If they are we now that
+	 * checks whether the two pointers are equal. If they are we know that
 	 * this is not a key that is namespaced any further and so we are
 	 * supposed to clear the whole network.
 	 */
@@ -3808,15 +3836,19 @@ static int clr_config_net_nic(const char *key, struct lxc_conf *lxc_conf,
 		return 0;
 	}
 
-	config = get_network_config_ops(key, lxc_conf, &idx);
+	config = get_network_config_ops(key, lxc_conf, &idx, &deindexed_key);
 	if (!config || idx < 0)
 		return -1;
 
 	netdev = lxc_get_netdev_by_idx(lxc_conf, (unsigned int)idx, false);
-	if (!netdev)
+	if (!netdev) {
+		free(deindexed_key);
 		return -1;
+	}
 
-	return config->clr(key, lxc_conf, netdev);
+	ret = config->clr(deindexed_key, lxc_conf, netdev);
+	free(deindexed_key);
+	return ret;
 }
 
 static int clr_config_net_type(const char *key, struct lxc_conf *lxc_conf,
@@ -4099,19 +4131,30 @@ static int clr_config_net_ipv6_address(const char *key,
 static int get_config_net_nic(const char *key, char *retv, int inlen,
 			      struct lxc_conf *c, void *data)
 {
+	int ret;
+	const char *idxstring;
 	struct lxc_config_t *config;
 	struct lxc_netdev *netdev;
 	ssize_t idx = -1;
+	char *deindexed_key = NULL;
 
-	config = get_network_config_ops(key, c, &idx);
+	idxstring = key + 8;
+	if (!isdigit(*idxstring))
+		return -1;
+
+	config = get_network_config_ops(key, c, &idx, &deindexed_key);
 	if (!config || idx < 0)
 		return -1;
 
 	netdev = lxc_get_netdev_by_idx(c, (unsigned int)idx, false);
-	if (!netdev)
+	if (!netdev) {
+		free(deindexed_key);
 		return -1;
+	}
 
-	return config->get(key, retv, inlen, c, netdev);
+	ret = config->get(deindexed_key, retv, inlen, c, netdev);
+	free(deindexed_key);
+	return ret;
 }
 
 static int get_config_net_type(const char *key, char *retv, int inlen,
