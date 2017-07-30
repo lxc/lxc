@@ -338,20 +338,17 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 			s1 = clean_new_path;
 			s2 = clean_old_path;
 			s3 = (char *)cname;
-			name_len = strlen(cname);
-			len = strlen(clean_new_path);
 		} else if (!strncmp(s2, "/snaps", sizeof("/snaps") - 1)) {
 			s1 = clean_old_path;
 			s2 = clean_new_path;
 			s3 = (char *)oldname;
-			name_len = strlen(oldname);
-			len = strlen(clean_old_path);
 		} else {
 			free(clean_old_path);
 			free(clean_new_path);
 			return 0;
 		}
 
+		len = strlen(s1);
 		if (!strncmp(s1, s2, len)) {
 			char *tmp;
 
@@ -369,18 +366,9 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 				return 0;
 			}
 
-			tmp += name_len + 1;
-			if (*tmp == '\0') {
-				free(clean_old_path);
-				free(clean_new_path);
-				return 0;
-			}
-
-			if (!strncmp(tmp, "snaps", sizeof("snaps") - 1)) {
-				free(clean_old_path);
-				free(clean_new_path);
-				return LXC_CLONE_SNAPSHOT;
-			}
+			free(clean_old_path);
+			free(clean_new_path);
+			return LXC_CLONE_SNAPSHOT;
 		}
 
 		free(clean_old_path);
