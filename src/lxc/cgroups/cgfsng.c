@@ -1904,11 +1904,10 @@ static int cgfsng_set(const char *filename, const char *value, const char *name,
  */
 static int convert_devpath(const char *invalue, char *dest)
 {
-	char *p, *path, *mode, type = 0;
+	char *p, *path, *mode, type;
 	struct stat sb;
 	unsigned long minor, major;
-	int n_parts, ret;
-	dev_t dev;
+	int n_parts, ret = -EINVAL;
 
 	path = must_copy_string(invalue);
 
@@ -1918,24 +1917,26 @@ static int convert_devpath(const char *invalue, char *dest)
 	 * is not legal, we could check for that if we cared to
 	 */
 	for (n_parts = 1, p = path; *p && n_parts < 3; p++) {
-		if (*p == ' ') {
-			*p = '\0';
-			mode = p + 1;
-			n_parts++;
-			while (*p == ' ')
-				p++;
-		}
+		if (*p != ' ')
+			continue;
+		*p = '\0';
+		if (n_parts != 1)
+			break;
+		p++;
+		n_parts++;
+		while (*p == ' ')
+			p++;
+		mode = p;
+		if (*p == '\0')
+			goto out;
 	}
-	if (n_parts == 1) {
-		ret = -EINVAL;
+
+	if (n_parts == 1)
 		goto out;
-	}
 
 	ret = stat(path, &sb);
 	if (ret < 0)
 		goto out;
-
-	dev = sb.st_rdev;
 
 	mode_t m = sb.st_mode & S_IFMT;
 	switch (m) {
@@ -1945,16 +1946,15 @@ static int convert_devpath(const char *invalue, char *dest)
 	case S_IFCHR:
 		type = 'c';
 		break;
-	}
-
-	if (type == 0) {
+	default:
 		ERROR("Unsupported device type %i for %s", m, path);
 		ret = -EINVAL;
 		goto out;
 	}
-	major = MAJOR(dev), minor = MINOR(dev);
-	ret = snprintf(dest, 50,
-			"%c %lu:%lu %s", type, major, minor, mode);
+
+	major = MAJOR(sb.st_rdev);
+	minor = MINOR(sb.st_rdev);
+	ret = snprintf(dest, 50, "%c %lu:%lu %s", type, major, minor, mode);
 	if (ret < 0 || ret >= 50) {
 		ERROR("Error on configuration value \"%c %lu:%lu %s\" (max 50 chars)",
 				type, major, minor, mode);
