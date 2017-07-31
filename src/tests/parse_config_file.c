@@ -942,6 +942,12 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
+	if (!set_get_compare_clear_save_load(c, "lxc.net.0.asdf", "veth",
+					    tmpf, true)) {
+		lxc_error("%s\n", "lxc.net.0.asdf");
+		goto non_test_error;
+	}
+
 	if (set_get_compare_clear_save_load_network(
 		c, "lxc.net.0.macvlan.mode", "private", tmpf, true,
 		"macvlan")) {
