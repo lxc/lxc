@@ -317,7 +317,6 @@ struct lxc_conf {
 	unsigned int tty;
 	unsigned int pts;
 	int reboot;
-	int need_utmp_watch;
 	signed long personality;
 	struct utsname *utsname;
 	struct lxc_list cgroup;

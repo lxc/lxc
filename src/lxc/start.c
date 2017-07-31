@@ -75,7 +75,6 @@
 #include "lxccontainer.h"
 #include "lxclock.h"
 #include "lxcseccomp.h"
-#include "lxcutmp.h"
 #include "mainloop.h"
 #include "monitor.h"
 #include "namespace.h"
@@ -489,16 +488,6 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 		goto out_mainloop_open;
 	}
 
-	if (handler->conf->need_utmp_watch) {
-		#if HAVE_LIBCAP
-		if (lxc_utmp_mainloop_add(&descr, handler)) {
-			ERROR("Failed to add utmp handler to LXC mainloop.");
-			goto out_mainloop_open;
-		}
-		#else
-			DEBUG("Not starting utmp handler as CAP_SYS_BOOT cannot be dropped without capabilities support.");
-		#endif
-	}
 	TRACE("lxc mainloop is ready");
 
 	return lxc_mainloop(&descr, -1);
@@ -791,75 +780,6 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 	}
 }
 
-#include <sys/reboot.h>
-#include <linux/reboot.h>
-
-/* reboot(LINUX_REBOOT_CMD_CAD_ON) will return -EINVAL in a child pid namespace
- * if container reboot support exists.  Otherwise, it will either succeed or
- * return -EPERM.
- */
-static int container_reboot_supported(void *arg)
-{
-	int *cmd = arg;
-	int ret;
-
-	ret = reboot(*cmd);
-	if (ret == -1 && errno == EINVAL)
-		return 1;
-	return 0;
-}
-
-static int must_drop_cap_sys_boot(struct lxc_conf *conf)
-{
-	FILE *f;
-	int ret, cmd, v, flags;
-	long stack_size = 4096;
-	void *stack = alloca(stack_size);
-	int status;
-	pid_t pid;
-
-	f = fopen("/proc/sys/kernel/ctrl-alt-del", "r");
-	if (!f) {
-		DEBUG("failed to open /proc/sys/kernel/ctrl-alt-del");
-		return 1;
-	}
-
-	ret = fscanf(f, "%d", &v);
-	fclose(f);
-	if (ret != 1) {
-		DEBUG("Failed to read /proc/sys/kernel/ctrl-alt-del.");
-		return 1;
-	}
-	cmd = v ? LINUX_REBOOT_CMD_CAD_ON : LINUX_REBOOT_CMD_CAD_OFF;
-
-	flags = CLONE_NEWPID | SIGCHLD;
-	if (!lxc_list_empty(&conf->id_map))
-		flags |= CLONE_NEWUSER;
-
-#ifdef __ia64__
-	pid = __clone2(container_reboot_supported, stack, stack_size, flags,  &cmd);
-#else
-	stack += stack_size;
-	pid = clone(container_reboot_supported, stack, flags, &cmd);
-#endif
-	if (pid < 0) {
-		if (flags & CLONE_NEWUSER)
-			ERROR("Failed to clone (%#x): %s (includes CLONE_NEWUSER).", flags, strerror(errno));
-		else
-			ERROR("Failed to clone (%#x): %s.", flags, strerror(errno));
-		return -1;
-	}
-	if (wait(&status) < 0) {
-		SYSERROR("Unexpected wait error: %s.", strerror(errno));
-		return -1;
-	}
-
-	if (WEXITSTATUS(status) != 1)
-		return 1;
-
-	return 0;
-}
-
 /* netpipe is used in the unprivileged case to transfer the ifindexes from
  * parent to child
  */
@@ -978,16 +898,6 @@ static int do_start(void *data)
 		print_top_failing_dir(handler->lxcpath);
 		goto out_warn_father;
 	}
-
-	#if HAVE_LIBCAP
-	if (handler->conf->need_utmp_watch) {
-		if (prctl(PR_CAPBSET_DROP, CAP_SYS_BOOT, 0, 0, 0)) {
-			SYSERROR("Failed to remove the CAP_SYS_BOOT capability.");
-			goto out_warn_father;
-		}
-		DEBUG("Dropped the CAP_SYS_BOOT capability.");
-	}
-	#endif
 
 	ret = snprintf(path, sizeof(path), "%s/dev/null", handler->conf->rootfs.mount);
 	if (ret < 0 || ret >= sizeof(path))
@@ -1563,17 +1473,6 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	handler->backgrounded = backgrounded;
 	handler->netnsfd = -1;
 
-	if (must_drop_cap_sys_boot(handler->conf)) {
-		#if HAVE_LIBCAP
-		DEBUG("Dropping CAP_SYS_BOOT capability.");
-		#else
-		DEBUG("Not dropping CAP_SYS_BOOT capability as capabilities aren't supported.");
-		#endif
-	} else {
-		DEBUG("Not dropping CAP_SYS_BOOT or watching utmp.");
-		handler->conf->need_utmp_watch = 0;
-	}
-
 	if (!attach_block_device(handler->conf)) {
 		ERROR("Failed to attach block device.");
 		goto out_fini_nonet;
@@ -1708,7 +1607,6 @@ int lxc_start(const char *name, char *const argv[], struct lxc_handler *handler,
 		.argv = argv,
 	};
 
-	handler->conf->need_utmp_watch = 1;
 	return __lxc_start(name, handler, &start_ops, &start_arg, lxcpath, backgrounded);
 }
 
