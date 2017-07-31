@@ -50,6 +50,7 @@
 #include "commands_utils.h"
 #include "confile.h"
 #include "confile_legacy.h"
+#include "confile_utils.h"
 #include "console.h"
 #include "criu.h"
 #include "log.h"
@@ -1839,18 +1840,30 @@ out:
 
 static void do_clear_unexp_config_line(struct lxc_conf *conf, const char *key)
 {
-	if (strcmp(key, "lxc.cgroup") == 0)
-		clear_unexp_config_line(conf, key, true);
-	else if (strcmp(key, "lxc.network") == 0)
-		clear_unexp_config_line(conf, key, true);
-	else if (strcmp(key, "lxc.net") == 0)
-		clear_unexp_config_line(conf, key, true);
-	else if (strcmp(key, "lxc.hook") == 0)
-		clear_unexp_config_line(conf, key, true);
-	else
-		clear_unexp_config_line(conf, key, false);
-	if (!do_append_unexp_config_line(conf, key, ""))
-		WARN("Error clearing configuration for %s", key);
+	if (!strcmp(key, "lxc.cgroup"))
+		return clear_unexp_config_line(conf, key, true);
+
+	if (!strcmp(key, "lxc.network"))
+		return clear_unexp_config_line(conf, key, true);
+
+	if (!strcmp(key, "lxc.net"))
+		return clear_unexp_config_line(conf, key, true);
+
+	/* Clear a network with a specific index. */
+	if (!strncmp(key, "lxc.net.", 8)) {
+		int ret;
+		const char *idx;
+
+		idx = key + 8;
+		ret = lxc_safe_uint(idx, &(unsigned int){0});
+		if (!ret)
+			return clear_unexp_config_line(conf, key, true);
+	}
+
+	if (!strcmp(key, "lxc.hook"))
+		return clear_unexp_config_line(conf, key, true);
+
+	return clear_unexp_config_line(conf, key, false);
 }
 
 static bool do_lxcapi_clear_config_item(struct lxc_container *c,
@@ -2656,13 +2669,22 @@ static bool set_config_item_locked(struct lxc_container *c, const char *key, con
 
 	if (!c->lxc_conf)
 		c->lxc_conf = lxc_conf_init();
+
 	if (!c->lxc_conf)
 		return false;
+
 	config = lxc_getconfig(key);
 	if (!config)
 		return false;
+
 	if (config->set(key, v, c->lxc_conf, NULL) != 0)
 		return false;
+
+	if (lxc_config_value_empty(v)) {
+		do_clear_unexp_config_line(c->lxc_conf, key);
+		return true;
+	}
+
 	return do_append_unexp_config_line(c->lxc_conf, key, v);
 }
 
