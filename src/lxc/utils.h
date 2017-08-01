@@ -36,6 +36,7 @@
 #include <linux/loop.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
+#include <sys/vfs.h>
 
 #include "initutils.h"
 
@@ -385,5 +386,10 @@ char *must_copy_string(const char *entry);
 
 /* Re-alllocate a pointer, do not fail */
 void *must_realloc(void *orig, size_t sz);
+
+/* __typeof__ should be safe to use with all compilers. */
+typedef __typeof__(((struct statfs *)NULL)->f_type) fs_type_magic;
+bool has_fs_type(const char *path, fs_type_magic magic_val);
+bool is_fs_type(const struct statfs *fs, fs_type_magic magic_val);
 
 #endif /* __LXC_UTILS_H */
