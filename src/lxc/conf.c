@@ -1788,44 +1788,52 @@ static void cull_mntent_opt(struct mntent *mntent)
 }
 
 static int mount_entry_create_dir_file(const struct mntent *mntent,
-				       const char* path, const struct lxc_rootfs *rootfs,
-				       const char *lxc_name, const char *lxc_path)
+				       const char *path,
+				       const struct lxc_rootfs *rootfs,
+				       const char *lxc_name,
+				       const char *lxc_path)
 {
-	char *pathdirname = NULL;
 	int ret = 0;
-	FILE *pathfile = NULL;
 
-	if (strncmp(mntent->mnt_type, "overlay", 7) == 0) {
-		if (ovl_mkdir(mntent, rootfs, lxc_name, lxc_path) < 0)
-			return -1;
-	} else if (strncmp(mntent->mnt_type, "aufs", 4) == 0) {
-		if (aufs_mkdir(mntent, rootfs, lxc_name, lxc_path) < 0)
-			return -1;
-	}
+	if (!strncmp(mntent->mnt_type, "overlay", 7))
+		ret = ovl_mkdir(mntent, rootfs, lxc_name, lxc_path);
+	else if (!strncmp(mntent->mnt_type, "aufs", 4))
+		ret = aufs_mkdir(mntent, rootfs, lxc_name, lxc_path);
+	if (ret < 0)
+		return -1;
 
 	if (hasmntopt(mntent, "create=dir")) {
-		if (mkdir_p(path, 0755) < 0) {
-			WARN("Failed to create mount target '%s'", path);
-			ret = -1;
+		ret = mkdir_p(path, 0755);
+		if (ret < 0 && errno != EEXIST) {
+			SYSERROR("Failed to create directory \"%s\"", path);
+			return -1;
 		}
 	}
 
 	if (hasmntopt(mntent, "create=file") && access(path, F_OK)) {
-		pathdirname = strdup(path);
-		pathdirname = dirname(pathdirname);
-		if (mkdir_p(pathdirname, 0755) < 0) {
-			WARN("Failed to create target directory");
+		int fd;
+		char *p1, *p2;
+
+		p1 = strdup(path);
+		if (!p1)
+			return -1;
+
+		p2 = dirname(p1);
+
+		ret = mkdir_p(p2, 0755);
+		free(p1);
+		if (ret < 0 && errno != EEXIST) {
+			SYSERROR("Failed to create directory \"%s\"", path);
+			return -1;
 		}
-		pathfile = fopen(path, "wb");
-		if (!pathfile) {
-			WARN("Failed to create mount target '%s'", path);
-			ret = -1;
-		} else {
-			fclose(pathfile);
-		}
+
+		fd = open(path, O_CREAT, 0644);
+		if (fd < 0)
+			return -1;
+		close(fd);
 	}
-	free(pathdirname);
-	return ret;
+
+	return 0;
 }
 
 /* rootfs, lxc_name, and lxc_path can be NULL when the container is created
