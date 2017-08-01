@@ -500,7 +500,11 @@ else
         42.2|leap/42.2|422)
             echo "Selected openSUSE Leap 42.2"
             DISTRO="leap/42.2"
-            ;; 
+            ;;
+        42.3|leap/42.3|423)
+            echo "Selected openSUSE Leap 42.3"
+            DISTRO="leap/42.3"
+            ;;
         tumbleweed|factory)
             echo "Selected openSUSE Leap Tumbleweed"
             DISTRO="tumbleweed"
