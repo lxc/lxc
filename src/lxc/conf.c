@@ -231,8 +231,9 @@ static int memfd_create(const char *name, unsigned int flags) {
 extern int memfd_create(const char *name, unsigned int flags);
 #endif
 
-char *lxchook_names[NUM_LXC_HOOKS] = {
-	"pre-start", "pre-mount", "mount", "autodev", "start", "stop", "post-stop", "clone", "destroy" };
+char *lxchook_names[NUM_LXC_HOOKS] = {"pre-start", "pre-mount", "mount",
+				      "autodev",   "start",     "stop",
+				      "post-stop", "clone",     "destroy"};
 
 typedef int (*instantiate_cb)(struct lxc_handler *, struct lxc_netdev *);
 
