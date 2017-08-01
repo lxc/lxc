@@ -1762,28 +1762,27 @@ skipremount:
 	return 0;
 }
 
-/*
- * Remove 'optional', 'create=dir', and 'create=file' from mntopt
- */
+/* Remove "optional", "create=dir", and "create=file" from mntopt */
 static void cull_mntent_opt(struct mntent *mntent)
 {
 	int i;
-	char *p, *p2;
-	char *list[] = {"create=dir",
-			"create=file",
-			"optional",
-			NULL };
+	char *list[] = {"create=dir", "create=file", "optional", NULL};
 
-	for (i=0; list[i]; i++) {
-		if (!(p = strstr(mntent->mnt_opts, list[i])))
+	for (i = 0; list[i]; i++) {
+		char *p, *p2;
+
+		p = strstr(mntent->mnt_opts, list[i]);
+		if (!p)
 			continue;
+
 		p2 = strchr(p, ',');
 		if (!p2) {
 			/* no more mntopts, so just chop it here */
 			*p = '\0';
 			continue;
 		}
-		memmove(p, p2+1, strlen(p2+1)+1);
+
+		memmove(p, p2 + 1, strlen(p2 + 1) + 1);
 	}
 }
 
