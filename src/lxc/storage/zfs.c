@@ -325,7 +325,7 @@ bool zfs_copy(struct lxc_conf *conf, struct lxc_storage *orig,
 	data.orig = orig;
 	data.new = new;
 	ret = run_command(cmd_output, sizeof(cmd_output),
-			  lxc_rsync_exec_wrapper, (void *)&data);
+			  lxc_storage_rsync_exec_wrapper, (void *)&data);
 	if (ret < 0) {
 		ERROR("Failed to rsync from \"%s\" into \"%s\": %s", orig->dest,
 		      new->dest, cmd_output);

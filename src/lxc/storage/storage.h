@@ -57,6 +57,8 @@
 #define DEFAULT_FS_SIZE 1073741824
 #define DEFAULT_FSTYPE "ext3"
 
+#define LXC_STORAGE_INTERNAL_OVERLAY_RESTORE  (1 << 6)
+
 struct lxc_storage;
 
 struct lxc_storage_ops {
@@ -97,6 +99,7 @@ struct lxc_storage {
 	int lofd;
 	/* index for the connected nbd device. */
 	int nbd_idx;
+	int flags;
 };
 
 extern bool storage_is_dir(struct lxc_conf *conf, const char *path);

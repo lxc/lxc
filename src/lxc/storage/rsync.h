@@ -39,6 +39,7 @@ struct rsync_data_char {
 
 /* new helpers */
 extern int lxc_rsync_exec_wrapper(void *data);
+extern int lxc_storage_rsync_exec_wrapper(void *data);
 extern int lxc_rsync_exec(const char *src, const char *dest);
 extern int lxc_rsync(struct rsync_data *data);
 

@@ -502,11 +502,11 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 	data.orig = orig;
 	data.new = new;
 	if (am_unpriv())
-		ret = userns_exec_1(c->lxc_conf, lxc_rsync_exec_wrapper, &data,
-				    "lxc_rsync_exec_wrapper");
+		ret = userns_exec_1(c->lxc_conf, lxc_storage_rsync_exec_wrapper,
+				    &data, "lxc_storage_rsync_exec_wrapper");
 	else
 		ret = run_command(cmd_output, sizeof(cmd_output),
-				  lxc_rsync_exec_wrapper, (void *)&data);
+				  lxc_storage_rsync_exec_wrapper, (void *)&data);
 	if (ret < 0) {
 		ERROR("Failed to rsync from \"%s\" into \"%s\"%s%s", orig->dest,
 		      new->dest,
@@ -597,6 +597,8 @@ struct lxc_storage *storage_init(struct lxc_conf *conf, const char *src,
 {
 	struct lxc_storage *bdev;
 	const struct lxc_storage_type *q;
+
+	BUILD_BUG_ON(LXC_STORAGE_INTERNAL_OVERLAY_RESTORE <= LXC_CLONE_MAXFLAGS);
 
 	if (!src)
 		src = conf->rootfs.path;

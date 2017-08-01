@@ -106,7 +106,8 @@ static bool do_lxcapi_destroy(struct lxc_container *c);
 static const char *lxcapi_get_config_path(struct lxc_container *c);
 #define do_lxcapi_get_config_path(c) lxcapi_get_config_path(c)
 static bool do_lxcapi_set_config_item(struct lxc_container *c, const char *key, const char *v);
-static bool container_destroy(struct lxc_container *c);
+static bool container_destroy(struct lxc_container *c,
+			      struct lxc_storage *storage);
 static bool get_snappath_dir(struct lxc_container *c, char *snappath);
 static bool lxcapi_snapshot_destroy_all(struct lxc_container *c);
 static bool do_lxcapi_save_config(struct lxc_container *c, const char *alt_file);
@@ -1742,7 +1743,7 @@ out_unlock:
 		remove_partial(c, partial_fd);
 out:
 	if (!ret)
-		container_destroy(c);
+		container_destroy(c, NULL);
 free_tpath:
 	free(tpath);
 	return ret;
@@ -2580,11 +2581,21 @@ static int lxc_rmdir_onedev_wrapper(void *data)
 	return lxc_rmdir_onedev(arg, "snaps");
 }
 
-static bool container_destroy(struct lxc_container *c)
+static int lxc_unlink_exec_wrapper(void *data)
 {
+	char *arg = data;
+	return unlink(arg);
+}
+
+static bool container_destroy(struct lxc_container *c,
+			      struct lxc_storage *storage)
+{
+	const char *p1;
+	size_t len;
+	struct lxc_conf *conf;
+	char *path = NULL;
 	bool bret = false;
 	int ret = 0;
-	struct lxc_conf *conf;
 
 	if (!c || !do_lxcapi_is_defined(c))
 		return false;
@@ -2601,28 +2612,27 @@ static bool container_destroy(struct lxc_container *c)
 
 	if (conf && !lxc_list_empty(&conf->hooks[LXCHOOK_DESTROY])) {
 		/* Start of environment variable setup for hooks */
-		if (c->name && setenv("LXC_NAME", c->name, 1)) {
-			SYSERROR("failed to set environment variable for container name");
-		}
-		if (conf->rcfile && setenv("LXC_CONFIG_FILE", conf->rcfile, 1)) {
-			SYSERROR("failed to set environment variable for config path");
-		}
-		if (conf->rootfs.mount && setenv("LXC_ROOTFS_MOUNT", conf->rootfs.mount, 1)) {
-			SYSERROR("failed to set environment variable for rootfs mount");
-		}
-		if (conf->rootfs.path && setenv("LXC_ROOTFS_PATH", conf->rootfs.path, 1)) {
-			SYSERROR("failed to set environment variable for rootfs mount");
-		}
-		if (conf->console.path && setenv("LXC_CONSOLE", conf->console.path, 1)) {
-			SYSERROR("failed to set environment variable for console path");
-		}
-		if (conf->console.log_path && setenv("LXC_CONSOLE_LOGPATH", conf->console.log_path, 1)) {
-			SYSERROR("failed to set environment variable for console log");
-		}
+		if (c->name && setenv("LXC_NAME", c->name, 1))
+			SYSERROR("Failed to set environment variable for container name");
+
+		if (conf->rcfile && setenv("LXC_CONFIG_FILE", conf->rcfile, 1))
+			SYSERROR("Failed to set environment variable for config path");
+
+		if (conf->rootfs.mount && setenv("LXC_ROOTFS_MOUNT", conf->rootfs.mount, 1))
+			SYSERROR("Failed to set environment variable for rootfs mount");
+
+		if (conf->rootfs.path && setenv("LXC_ROOTFS_PATH", conf->rootfs.path, 1))
+			SYSERROR("Failed to set environment variable for rootfs mount");
+
+		if (conf->console.path && setenv("LXC_CONSOLE", conf->console.path, 1))
+			SYSERROR("Failed to set environment variable for console path");
+
+		if (conf->console.log_path && setenv("LXC_CONSOLE_LOGPATH", conf->console.log_path, 1))
+			SYSERROR("Failed to set environment variable for console log");
 		/* End of environment variable setup for hooks */
 
 		if (run_lxc_hooks(c->name, "destroy", conf, c->get_config_path(c), NULL)) {
-			ERROR("Error executing clone hook for %s", c->name);
+			ERROR("Failed to execute clone hook for \"%s\"", c->name);
 			goto out;
 		}
 	}
@@ -2645,23 +2655,72 @@ static bool container_destroy(struct lxc_container *c)
 
 	mod_all_rdeps(c, false);
 
-	const char *p1 = do_lxcapi_get_config_path(c);
-	char *path = alloca(strlen(p1) + strlen(c->name) + 2);
-	sprintf(path, "%s/%s", p1, c->name);
+	p1 = do_lxcapi_get_config_path(c);
+	/* strlen(p1)
+	 * +
+	 * /
+	 * +
+	 * strlen(c->name)
+	 * +
+	 * /
+	 * +
+	 * strlen("config") = 6
+	 * +
+	 * \0
+	 */
+	len = strlen(p1) + 1 + strlen(c->name) + 1 + 6 + 1;
+	path = malloc(len);
+	if (!path) {
+		ERROR("Failed to allocate memory");
+		goto out;
+	}
+
+	/* For an overlay container the rootfs is considered immutable and
+	 * cannot be removed when restoring from a snapshot.
+	 */
+	if (storage && (!strcmp(storage->type, "overlay") ||
+			!strcmp(storage->type, "overlayfs")) &&
+	    (storage->flags & LXC_STORAGE_INTERNAL_OVERLAY_RESTORE)) {
+		ret = snprintf(path, len, "%s/%s/config", p1, c->name);
+		if (ret < 0 || (size_t)ret >= len)
+			goto out;
+
+		if (am_unpriv())
+			ret = userns_exec_1(conf, lxc_unlink_exec_wrapper, path,
+					    "lxc_unlink_exec_wrapper");
+		else
+			ret = unlink(path);
+		if (ret < 0) {
+			SYSERROR("Failed to destroy config file \"%s\" for \"%s\"",
+			         path, c->name);
+			goto out;
+		}
+		INFO("Destroyed config file \"%s\" for \"%s\"", path, c->name);
+
+		bret = true;
+		goto out;
+	}
+
+	ret = snprintf(path, len, "%s/%s", p1, c->name);
+	if (ret < 0 || (size_t)ret >= len)
+		goto out;
 	if (am_unpriv())
 		ret = userns_exec_1(conf, lxc_rmdir_onedev_wrapper, path,
 				    "lxc_rmdir_onedev_wrapper");
 	else
 		ret = lxc_rmdir_onedev(path, "snaps");
 	if (ret < 0) {
-		ERROR("Error destroying container directory for %s", c->name);
+		ERROR("Failed to destroy directory \"%s\" for \"%s\"", path,
+		      c->name);
 		goto out;
 	}
-	INFO("Destroyed directory for %s", c->name);
+	INFO("Destroyed directory \"%s\" for \"%s\"", path, c->name);
 
 	bret = true;
 
 out:
+	if (path)
+		free(path);
 	container_disk_unlock(c);
 	return bret;
 }
@@ -2680,7 +2739,7 @@ static bool do_lxcapi_destroy(struct lxc_container *c)
 		return false;
 	}
 
-	return container_destroy(c);
+	return container_destroy(c, NULL);
 }
 
 WRAP_API(bool, lxcapi_destroy)
@@ -3314,14 +3373,15 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 		const char *bdevtype, const char *bdevdata, uint64_t newsize,
 		char **hookargs)
 {
-	struct lxc_container *c2 = NULL;
 	char newpath[MAXPATHLEN];
-	int ret, storage_copied = 0;
-	char *origroot = NULL, *saved_unexp_conf = NULL;
+	int ret;
 	struct clone_update_data data;
 	size_t saved_unexp_len;
 	FILE *fout;
 	pid_t pid;
+	int storage_copied = 0;
+	char *origroot = NULL, *saved_unexp_conf = NULL;
+	struct lxc_container *c2 = NULL;
 
 	if (!c || !do_lxcapi_is_defined(c))
 		return NULL;
@@ -3344,6 +3404,7 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 		SYSERROR("clone: failed making config pathname");
 		goto out;
 	}
+
 	if (file_exists(newpath)) {
 		ERROR("error: clone: %s exists", newpath);
 		goto out;
@@ -3394,9 +3455,18 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 		SYSERROR("clone: failed making rootfs pathname");
 		goto out;
 	}
-	if (mkdir(newpath, 0755) < 0) {
-		SYSERROR("error creating %s", newpath);
-		goto out;
+
+	ret = mkdir(newpath, 0755);
+	if (ret < 0) {
+		/* For an overlay container the rootfs is considered immutable
+		 * and will not have been removed when restoring from a
+		 * snapshot.
+		 */
+		if (errno != ENOENT &&
+		    !(flags & LXC_STORAGE_INTERNAL_OVERLAY_RESTORE)) {
+			SYSERROR("Failed to create directory \"%s\"", newpath);
+			goto out;
+		}
 	}
 
 	if (am_unpriv()) {
@@ -3539,7 +3609,7 @@ static bool do_lxcapi_rename(struct lxc_container *c, const char *newname)
 	if (newc && lxcapi_is_defined(newc))
 		lxc_container_put(newc);
 
-	if (!container_destroy(c)) {
+	if (!container_destroy(c, NULL)) {
 		ERROR("Could not destroy existing container %s", c->name);
 		return false;
 	}
@@ -3873,11 +3943,20 @@ static bool do_lxcapi_snapshot_restore(struct lxc_container *c, const char *snap
 		return false;
 	}
 
-	bdev = storage_init(c->lxc_conf, c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
+	bdev = storage_init(c->lxc_conf, c->lxc_conf->rootfs.path,
+			    c->lxc_conf->rootfs.mount, NULL);
 	if (!bdev) {
 		ERROR("Failed to find original backing store type");
 		return false;
 	}
+
+	/* For an overlay container the rootfs is considered immutable
+	 * and cannot be removed when restoring from a snapshot. We pass this
+	 * internal flag along to communicate this to various parts of the
+	 * codebase.
+	 */
+	if (!strcmp(bdev->type, "overlay") || !strcmp(bdev->type, "overlayfs"))
+		bdev->flags |= LXC_STORAGE_INTERNAL_OVERLAY_RESTORE;
 
 	if (!newname)
 		newname = c->name;
@@ -3891,13 +3970,14 @@ static bool do_lxcapi_snapshot_restore(struct lxc_container *c, const char *snap
 	snap = lxc_container_new(snapname, clonelxcpath);
 	if (!snap || !lxcapi_is_defined(snap)) {
 		ERROR("Could not open snapshot %s", snapname);
-		if (snap) lxc_container_put(snap);
+		if (snap)
+			lxc_container_put(snap);
 		storage_put(bdev);
 		return false;
 	}
 
-	if (strcmp(c->name, newname) == 0) {
-		if (!container_destroy(c)) {
+	if (!strcmp(c->name, newname)) {
+		if (!container_destroy(c, bdev)) {
 			ERROR("Could not destroy existing container %s", newname);
 			lxc_container_put(snap);
 			storage_put(bdev);
@@ -3907,6 +3987,9 @@ static bool do_lxcapi_snapshot_restore(struct lxc_container *c, const char *snap
 
 	if (strcmp(bdev->type, "dir") != 0 && strcmp(bdev->type, "loop") != 0)
 		flags = LXC_CLONE_SNAPSHOT | LXC_CLONE_MAYBE_SNAPSHOT;
+
+	if (!strcmp(bdev->type, "overlay") || !strcmp(bdev->type, "overlayfs"))
+		flags |= LXC_STORAGE_INTERNAL_OVERLAY_RESTORE;
 	rest = lxcapi_clone(snap, newname, c->config_path, flags,
 			bdev->type, NULL, 0, NULL);
 	storage_put(bdev);
@@ -3914,6 +3997,7 @@ static bool do_lxcapi_snapshot_restore(struct lxc_container *c, const char *snap
 		b = true;
 	if (rest)
 		lxc_container_put(rest);
+
 	lxc_container_put(snap);
 	return b;
 }
@@ -4414,7 +4498,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 
 	if (ongoing_create(c) == 2) {
 		ERROR("Error: %s creation was not completed", c->name);
-		container_destroy(c);
+		container_destroy(c, NULL);
 		lxcapi_clear_config(c);
 	}
 	c->daemonize = true;

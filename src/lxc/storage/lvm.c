@@ -507,7 +507,7 @@ bool lvm_create_clone(struct lxc_conf *conf, struct lxc_storage *orig,
 	data.orig = orig;
 	data.new = new;
 	ret = run_command(cmd_output, sizeof(cmd_output),
-			  lxc_rsync_exec_wrapper, (void *)&data);
+			  lxc_storage_rsync_exec_wrapper, (void *)&data);
 	if (ret < 0) {
 		ERROR("Failed to rsync from \"%s\" to \"%s\"", orig->dest,
 		      new->dest);

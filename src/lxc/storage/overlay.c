@@ -43,7 +43,7 @@ static char *ovl_name;
 static char *ovl_version[] = {"overlay", "overlayfs"};
 
 static char *ovl_detect_name(void);
-static int ovl_do_rsync(struct lxc_storage *orig, struct lxc_storage *new,
+static int ovl_do_rsync(const char *src, const char *dest,
 			struct lxc_conf *conf);
 static int ovl_remount_on_enodev(const char *lower, const char *target,
 				 const char *name, unsigned long mountflags,
@@ -292,14 +292,16 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 			return -ENOMEM;
 		}
 		ret = snprintf(new->src, len, "overlay:%s:%s", nsrc, ndelta);
-		free(osrc);
-		free(ndelta);
 		if (ret < 0 || (size_t)ret >= len) {
 			ERROR("Failed to create string");
+			free(osrc);
+			free(ndelta);
 			return -1;
 		}
 
-		ret = ovl_do_rsync(orig, new, conf);
+		ret = ovl_do_rsync(odelta, ndelta, conf);
+		free(osrc);
+		free(ndelta);
 		if (ret < 0)
 			return -1;
 
@@ -461,6 +463,12 @@ int ovl_destroy(struct lxc_storage *orig)
 	ovl = !strncmp(upper, "overlay:", 8);
 	if (!ovl && strncmp(upper, "overlayfs:", 10))
 		return -22;
+
+	/* For an overlay container the rootfs is considered immutable
+	 * and cannot be removed when restoring from a snapshot.
+	 */
+	if (orig->flags & LXC_STORAGE_INTERNAL_OVERLAY_RESTORE)
+		return 0;
 
 	if (ovl)
 		upper += 8;
@@ -953,28 +961,25 @@ static char *ovl_detect_name(void)
 	return v;
 }
 
-static int ovl_do_rsync(struct lxc_storage *orig, struct lxc_storage *new,
+static int ovl_do_rsync(const char *src, const char *dest,
 			struct lxc_conf *conf)
 {
 	int ret = -1;
-	struct rsync_data rdata = {0, 0};
+	struct rsync_data_char rdata = {0};
 	char cmd_output[MAXPATHLEN] = {0};
 
-	rdata.orig = orig;
-	rdata.new = new;
-	if (am_unpriv()) {
+	rdata.src = (char *)src;
+	rdata.dest = (char *)dest;
+	if (am_unpriv())
 		ret = userns_exec_1(conf, lxc_rsync_exec_wrapper, &rdata,
 				    "lxc_rsync_exec_wrapper");
-		if (ret < 0)
-			ERROR("Failed to rsync from \"%s\" into \"%s\"",
-			      orig->dest, new->dest);
-	} else {
+	else
 		ret = run_command(cmd_output, sizeof(cmd_output),
 				  lxc_rsync_exec_wrapper, (void *)&rdata);
-		if (ret < 0)
-			ERROR("Failed to rsync from \"%s\" into \"%s\": %s",
-			      orig->dest, new->dest, cmd_output);
-	}
+	if (ret < 0)
+		ERROR("Failed to rsync from \"%s\" into \"%s\"%s%s", src, dest,
+		      cmd_output[0] != '\0' ? ": " : "",
+		      cmd_output[0] != '\0' ? cmd_output : "");
 
 	return ret;
 }

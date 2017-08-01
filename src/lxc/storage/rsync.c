@@ -39,10 +39,26 @@
 
 lxc_log_define(rsync, lxc);
 
-int lxc_rsync_exec_wrapper(void *data)
+int lxc_storage_rsync_exec_wrapper(void *data)
 {
 	struct rsync_data *arg = data;
 	return lxc_rsync(arg);
+}
+
+int lxc_rsync_exec_wrapper(void *data)
+{
+	int ret;
+	struct rsync_data_char *args = data;
+
+	ret = lxc_switch_uid_gid(0, 0);
+	if (ret < 0)
+		return -1;
+
+	ret = lxc_setgroups(0, NULL);
+	if (ret < 0)
+		return -1;
+
+	return lxc_rsync_exec(args->src, args->dest);
 }
 
 int lxc_rsync_exec(const char *src, const char *dest)
@@ -70,8 +86,8 @@ int lxc_rsync_exec(const char *src, const char *dest)
 int lxc_rsync(struct rsync_data *data)
 {
 	int ret;
-	struct lxc_storage *orig = data->orig, *new = data->new;
 	char *dest, *src;
+	struct lxc_storage *orig = data->orig, *new = data->new;
 
 	ret = unshare(CLONE_NEWNS);
 	if (ret < 0) {
@@ -101,6 +117,7 @@ int lxc_rsync(struct rsync_data *data)
 	ret = lxc_switch_uid_gid(0, 0);
 	if (ret < 0)
 		return -1;
+
 	ret = lxc_setgroups(0, NULL);
 	if (ret < 0)
 		return -1;
