@@ -2041,39 +2041,42 @@ FILE *make_anonymous_mount_file(struct lxc_list *mount)
 	int ret;
 	char *mount_entry;
 	struct lxc_list *iterator;
-	FILE *file;
+	FILE *f;
 	int fd = -1;
 
 	fd = memfd_create("lxc_mount_file", MFD_CLOEXEC);
 	if (fd < 0) {
 		if (errno != ENOSYS)
 			return NULL;
-		file = tmpfile();
+		f = tmpfile();
+		TRACE("Created temporary mount file");
 	} else {
-		file = fdopen(fd, "r+");
+		f = fdopen(fd, "r+");
+		TRACE("Created anonymous mount file");
 	}
 
-	if (!file) {
-		int saved_errno = errno;
+	if (!f) {
+		SYSERROR("Could not create mount file");
 		if (fd != -1)
 			close(fd);
-		ERROR("Could not create mount entry file: %s.", strerror(saved_errno));
 		return NULL;
 	}
 
 	lxc_list_for_each(iterator, mount) {
 		mount_entry = iterator->elem;
-		ret = fprintf(file, "%s\n", mount_entry);
+		ret = fprintf(f, "%s\n", mount_entry);
 		if (ret < strlen(mount_entry))
-			WARN("Could not write mount entry to anonymous mount file.");
+			WARN("Could not write mount entry to mount file");
 	}
 
-	if (fseek(file, 0, SEEK_SET) < 0) {
-		fclose(file);
+	ret = fseek(f, 0, SEEK_SET);
+	if (ret < 0) {
+		SYSERROR("Failed to seek mount file");
+		fclose(f);
 		return NULL;
 	}
 
-	return file;
+	return f;
 }
 
 static int setup_mount_entries(const struct lxc_rootfs *rootfs,
