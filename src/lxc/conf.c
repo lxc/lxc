@@ -1888,21 +1888,21 @@ static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
 					  const char *lxc_name,
 					  const char *lxc_path)
 {
+	int offset;
 	char *aux;
-	char path[MAXPATHLEN];
-	int r, ret = 0, offset;
 	const char *lxcpath;
+	char path[MAXPATHLEN];
+	int ret = 0;
 
 	lxcpath = lxc_global_config_value("lxc.lxcpath");
-	if (!lxcpath) {
-		ERROR("Out of memory");
+	if (!lxcpath)
 		return -1;
-	}
 
-	/* if rootfs->path is a blockdev path, allow container fstab to
-	 * use $lxcpath/CN/rootfs as the target prefix */
-	r = snprintf(path, MAXPATHLEN, "%s/%s/rootfs", lxcpath, lxc_name);
-	if (r < 0 || r >= MAXPATHLEN)
+	/* If rootfs->path is a blockdev path, allow container fstab to use
+	 * <lxcpath>/<name>/rootfs" as the target prefix.
+	 */
+	ret = snprintf(path, MAXPATHLEN, "%s/%s/rootfs", lxcpath, lxc_name);
+	if (ret < 0 || ret >= MAXPATHLEN)
 		goto skipvarlib;
 
 	aux = strstr(mntent->mnt_dir, path);
@@ -1914,19 +1914,15 @@ static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
 skipvarlib:
 	aux = strstr(mntent->mnt_dir, rootfs->path);
 	if (!aux) {
-		WARN("ignoring mount point '%s'", mntent->mnt_dir);
+		WARN("Ignoring mount point \"%s\"", mntent->mnt_dir);
 		return ret;
 	}
 	offset = strlen(rootfs->path);
 
 skipabs:
-
-	r = snprintf(path, MAXPATHLEN, "%s/%s", rootfs->mount,
-		 aux + offset);
-	if (r < 0 || r >= MAXPATHLEN) {
-		WARN("pathnme too long for '%s'", mntent->mnt_dir);
+	ret = snprintf(path, MAXPATHLEN, "%s/%s", rootfs->mount, aux + offset);
+	if (ret < 0 || ret >= MAXPATHLEN)
 		return -1;
-	}
 
 	return mount_entry_on_generic(mntent, path, rootfs, lxc_name, lxc_path);
 }
