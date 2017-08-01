@@ -1332,13 +1332,19 @@ static int setup_pivot_root(const struct lxc_rootfs *rootfs)
 static int lxc_setup_devpts(int num_pts)
 {
 	int ret;
-	const char *devpts_mntopts = "newinstance,ptmxmode=0666,mode=0620,gid=5";
+	const char *default_devpts_mntopts = "newinstance,ptmxmode=0666,mode=0620,gid=5";
+	char devpts_mntopts[256];
 
 	if (!num_pts) {
 		DEBUG("no new devpts instance will be mounted since no pts "
 		      "devices are requested");
 		return 0;
 	}
+
+	ret = snprintf(devpts_mntopts, sizeof(devpts_mntopts), "%s,max=%d",
+		       default_devpts_mntopts, num_pts);
+	if (ret < 0 || (size_t)ret >= sizeof(devpts_mntopts))
+		return -1;
 
 	/* Unmount old devpts instance. */
 	ret = access("/dev/pts/ptmx", F_OK);
