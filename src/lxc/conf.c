@@ -1831,30 +1831,36 @@ static int mount_entry_create_dir_file(const struct mntent *mntent,
 /* rootfs, lxc_name, and lxc_path can be NULL when the container is created
  * without a rootfs. */
 static inline int mount_entry_on_generic(struct mntent *mntent,
-                 const char* path, const struct lxc_rootfs *rootfs,
-		 const char *lxc_name, const char *lxc_path)
+					 const char *path,
+					 const struct lxc_rootfs *rootfs,
+					 const char *lxc_name,
+					 const char *lxc_path)
 {
+	int ret;
 	unsigned long mntflags;
 	char *mntdata;
-	int ret;
-	bool optional = hasmntopt(mntent, "optional") != NULL;
-	bool dev = hasmntopt(mntent, "dev") != NULL;
-
+	bool dev, optional;
 	char *rootfs_path = NULL;
+
+	optional = hasmntopt(mntent, "optional") != NULL;
+	dev = hasmntopt(mntent, "dev") != NULL;
+
 	if (rootfs && rootfs->path)
 		rootfs_path = rootfs->mount;
 
-	ret = mount_entry_create_dir_file(mntent, path, rootfs, lxc_name, lxc_path);
+	ret = mount_entry_create_dir_file(mntent, path, rootfs, lxc_name,
+					  lxc_path);
+	if (ret < 0) {
+		if (optional)
+			return 0;
 
-	if (ret < 0)
-		return optional ? 0 : -1;
-
-	cull_mntent_opt(mntent);
-
-	if (parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata) < 0) {
-		free(mntdata);
 		return -1;
 	}
+	cull_mntent_opt(mntent);
+
+	ret = parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata);
+	if (ret < 0)
+		return -1;
 
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type, mntflags,
 			  mntdata, optional, dev, rootfs_path);
