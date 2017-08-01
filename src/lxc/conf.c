@@ -2044,16 +2044,16 @@ static int setup_mount_entries(const struct lxc_rootfs *rootfs,
 			       struct lxc_list *mount, const char *lxc_name,
 			       const char *lxc_path)
 {
-	FILE *file;
+	FILE *f;
 	int ret;
 
-	file = make_anonymous_mount_file(mount);
-	if (!file)
+	f = make_anonymous_mount_file(mount);
+	if (!f)
 		return -1;
 
-	ret = mount_file_entries(rootfs, file, lxc_name, lxc_path);
+	ret = mount_file_entries(rootfs, f, lxc_name, lxc_path);
 
-	fclose(file);
+	fclose(f);
 	return ret;
 }
 
