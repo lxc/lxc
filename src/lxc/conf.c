@@ -1111,29 +1111,30 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 	int i;
 	mode_t cmask;
 
-	ret = snprintf(path, MAXPATHLEN, "%s/dev", rootfs->path ? rootfs->mount : "");
-	if (ret < 0 || ret >= MAXPATHLEN) {
-		ERROR("Error calculating container /dev location");
+	ret = snprintf(path, MAXPATHLEN, "%s/dev",
+		       rootfs->path ? rootfs->mount : "");
+	if (ret < 0 || ret >= MAXPATHLEN)
 		return -1;
-	}
 
 	/* ignore, just don't try to fill in */
 	if (!dir_exists(path))
 		return 0;
 
-	INFO("populating container /dev");
+	INFO("Populating \"/dev\"");
+
 	cmask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
 	for (i = 0; i < sizeof(lxc_devs) / sizeof(lxc_devs[0]); i++) {
 		const struct lxc_devs *d = &lxc_devs[i];
 
-		ret = snprintf(path, MAXPATHLEN, "%s/dev/%s", rootfs->path ? rootfs->mount : "", d->name);
+		ret = snprintf(path, MAXPATHLEN, "%s/dev/%s",
+			       rootfs->path ? rootfs->mount : "", d->name);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			return -1;
 
 		ret = mknod(path, d->mode, makedev(d->maj, d->min));
 		if (ret < 0) {
-			char hostpath[MAXPATHLEN];
 			FILE *pathfile;
+			char hostpath[MAXPATHLEN];
 
 			if (errno == EEXIST) {
 				DEBUG("\"%s\" device already existed", path);
@@ -1146,24 +1147,31 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 			ret = snprintf(hostpath, MAXPATHLEN, "/dev/%s", d->name);
 			if (ret < 0 || ret >= MAXPATHLEN)
 				return -1;
+
 			pathfile = fopen(path, "wb");
 			if (!pathfile) {
-				SYSERROR("Failed to create device mount target '%s'", path);
+				SYSERROR("Failed to create file \"%s\"", path);
 				return -1;
 			}
 			fclose(pathfile);
-			if (safe_mount(hostpath, path, 0, MS_BIND, NULL, rootfs->path ? rootfs->mount : NULL) != 0) {
-				SYSERROR("Failed bind mounting device %s from host into container", d->name);
+
+			ret = safe_mount(hostpath, path, 0, MS_BIND, NULL,
+					 rootfs->path ? rootfs->mount : NULL);
+			if (ret < 0) {
+				SYSERROR("Failed to bind mount \"%s\" from "
+					 "host into container",
+					 d->name);
 				return -1;
 			}
-			DEBUG("bind mounted \"%s\" onto \"%s\"", hostpath, path);
+			DEBUG("Bind mounted \"%s\" onto \"%s\"", hostpath,
+			      path);
 		} else {
-			DEBUG("created device node \"%s\"", path);
+			DEBUG("Created device node \"%s\"", path);
 		}
 	}
 	umask(cmask);
 
-	INFO("populated container /dev");
+	INFO("Populated \"/dev\"");
 	return 0;
 }
 
