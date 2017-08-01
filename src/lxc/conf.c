@@ -1950,35 +1950,27 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 }
 
 static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file,
-	const char *lxc_name, const char *lxc_path)
+			      const char *lxc_name, const char *lxc_path)
 {
 	struct mntent mntent;
 	char buf[4096];
 	int ret = -1;
 
 	while (getmntent_r(file, &mntent, buf, sizeof(buf))) {
-
-		if (!rootfs->path) {
-			if (mount_entry_on_systemfs(&mntent))
-				goto out;
-			continue;
-		}
-
-		/* We have a separate root, mounts are relative to it */
-		if (mntent.mnt_dir[0] != '/') {
-			if (mount_entry_on_relative_rootfs(&mntent, rootfs, lxc_name, lxc_path))
-				goto out;
-			continue;
-		}
-
-		if (mount_entry_on_absolute_rootfs(&mntent, rootfs, lxc_name, lxc_path))
-			goto out;
+		if (!rootfs->path)
+			ret = mount_entry_on_systemfs(&mntent);
+		else if (mntent.mnt_dir[0] != '/')
+			ret = mount_entry_on_relative_rootfs(&mntent, rootfs,
+							     lxc_name, lxc_path);
+		else
+			ret = mount_entry_on_absolute_rootfs(&mntent, rootfs,
+					                     lxc_name, lxc_path);
+		if (ret < 0)
+			return -1;
 	}
-
 	ret = 0;
 
-	INFO("mount points have been setup");
-out:
+	INFO("Set up mount entries");
 	return ret;
 }
 
