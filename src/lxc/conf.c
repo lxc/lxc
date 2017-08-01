@@ -1096,12 +1096,12 @@ struct lxc_devs {
 };
 
 static const struct lxc_devs lxc_devs[] = {
-	{ "null",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 3	},
-	{ "zero",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 5	},
-	{ "full",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 7	},
-	{ "urandom",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 9	},
-	{ "random",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 8	},
-	{ "tty",	S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 5, 0	},
+	{ "null",    S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 3 },
+	{ "zero",    S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 5 },
+	{ "full",    S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 7 },
+	{ "urandom", S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 9 },
+	{ "random",  S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 8 },
+	{ "tty",     S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 5, 0 },
 };
 
 static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
@@ -2016,7 +2016,76 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 	return mount_entry_on_generic(mntent, path, rootfs, lxc_name, lxc_path);
 }
 
-static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file,
+/* This logs a NOTICE() when a user specifies mounts that would conflict with
+ * devices liblxc sets up automatically.
+ */
+static void log_notice_on_conflict(const struct lxc_conf *conf, const char *src,
+				   const char *dest)
+{
+	char *clean_mnt_fsname, *clean_mnt_dir, *tmp;
+	bool needs_warning = false;
+
+	clean_mnt_fsname = lxc_deslashify(src);
+	if (!clean_mnt_fsname)
+		return;
+
+	clean_mnt_dir = lxc_deslashify(dest);
+	if (!clean_mnt_dir) {
+		free(clean_mnt_fsname);
+		return;
+	}
+
+	tmp = clean_mnt_dir;
+	if (*tmp == '/')
+		tmp++;
+
+	if (strncmp(src, "/dev", 4) || strncmp(tmp, "dev", 3)) {
+		free(clean_mnt_dir);
+		free(clean_mnt_fsname);
+		return;
+	}
+
+	if (!conf->autodev && !conf->pts && !conf->tty &&
+	    (!conf->console.path || !strcmp(conf->console.path, "none"))) {
+		free(clean_mnt_dir);
+		free(clean_mnt_fsname);
+		return;
+	}
+
+	if (!strcmp(tmp, "dev") && conf->autodev > 0)
+		needs_warning = true;
+	else if (!strcmp(tmp, "dev/pts") && (conf->autodev > 0 || conf->pts > 0))
+		needs_warning = true;
+	else if (!strcmp(tmp, "dev/ptmx") && (conf->autodev > 0 || conf->pts > 0))
+		needs_warning = true;
+	else if (!strcmp(tmp, "dev/pts/ptmx") && (conf->autodev > 0 || conf->pts > 0))
+		needs_warning = true;
+	else if (!strcmp(tmp, "dev/null") && conf->autodev > 0)
+		needs_warning = true;
+	else if (!strcmp(tmp, "dev/zero") && conf->autodev > 0)
+		needs_warning = true;
+	else if (!strcmp(tmp, "dev/full") && conf->autodev > 0)
+		needs_warning = true;
+	else if (!strcmp(tmp, "dev/urandom") && conf->autodev > 0)
+		needs_warning = true;
+	else if (!strcmp(tmp, "dev/random") && conf->autodev > 0)
+		needs_warning = true;
+	else if (!strcmp(tmp, "dev/tty") && conf->autodev > 0)
+		needs_warning = true;
+	else if (!strncmp(tmp, "dev/tty", 7) && (conf->autodev > 0 || conf->tty > 0))
+		needs_warning = true;
+
+	if (needs_warning)
+		NOTICE("Requesting to mount \"%s\" on \"%s\" while requesting "
+		       "automatic device setup under \"/dev\"",
+		       clean_mnt_fsname, clean_mnt_dir);
+
+	free(clean_mnt_dir);
+	free(clean_mnt_fsname);
+}
+
+static int mount_file_entries(const struct lxc_conf *conf,
+			      const struct lxc_rootfs *rootfs, FILE *file,
 			      const char *lxc_name, const char *lxc_path)
 {
 	struct mntent mntent;
@@ -2024,6 +2093,8 @@ static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file,
 	int ret = -1;
 
 	while (getmntent_r(file, &mntent, buf, sizeof(buf))) {
+		log_notice_on_conflict(conf, mntent.mnt_fsname, mntent.mnt_dir);
+
 		if (!rootfs->path)
 			ret = mount_entry_on_systemfs(&mntent);
 		else if (mntent.mnt_dir[0] != '/')
@@ -2041,7 +2112,8 @@ static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file,
 	return ret;
 }
 
-static int setup_mount(const struct lxc_rootfs *rootfs, const char *fstab,
+static int setup_mount(const struct lxc_conf *conf,
+		       const struct lxc_rootfs *rootfs, const char *fstab,
 		       const char *lxc_name, const char *lxc_path)
 {
 	FILE *f;
@@ -2056,7 +2128,7 @@ static int setup_mount(const struct lxc_rootfs *rootfs, const char *fstab,
 		return -1;
 	}
 
-	ret = mount_file_entries(rootfs, f, lxc_name, lxc_path);
+	ret = mount_file_entries(conf, rootfs, f, lxc_name, lxc_path);
 	if (ret < 0)
 		ERROR("Failed to set up mount entries");
 
@@ -2107,7 +2179,8 @@ FILE *make_anonymous_mount_file(struct lxc_list *mount)
 	return f;
 }
 
-static int setup_mount_entries(const struct lxc_rootfs *rootfs,
+static int setup_mount_entries(const struct lxc_conf *conf,
+			       const struct lxc_rootfs *rootfs,
 			       struct lxc_list *mount, const char *lxc_name,
 			       const char *lxc_path)
 {
@@ -2118,7 +2191,7 @@ static int setup_mount_entries(const struct lxc_rootfs *rootfs,
 	if (!f)
 		return -1;
 
-	ret = mount_file_entries(rootfs, f, lxc_name, lxc_path);
+	ret = mount_file_entries(conf, rootfs, f, lxc_name, lxc_path);
 
 	fclose(f);
 	return ret;
@@ -4162,12 +4235,12 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
-	if (setup_mount(&lxc_conf->rootfs, lxc_conf->fstab, name, lxcpath)) {
+	if (setup_mount(lxc_conf, &lxc_conf->rootfs, lxc_conf->fstab, name, lxcpath)) {
 		ERROR("failed to setup the mounts for '%s'", name);
 		return -1;
 	}
 
-	if (!lxc_list_empty(&lxc_conf->mount_list) && setup_mount_entries(&lxc_conf->rootfs, &lxc_conf->mount_list, name, lxcpath)) {
+	if (!lxc_list_empty(&lxc_conf->mount_list) && setup_mount_entries(lxc_conf, &lxc_conf->rootfs, &lxc_conf->mount_list, name, lxcpath)) {
 		ERROR("failed to setup the mount entries for '%s'", name);
 		return -1;
 	}
@@ -4198,6 +4271,7 @@ int lxc_setup(struct lxc_handler *handler)
 			ERROR("failed to run autodev hooks for container '%s'.", name);
 			return -1;
 		}
+
 		if (lxc_fill_autodev(&lxc_conf->rootfs)) {
 			ERROR("failed to populate /dev in the container");
 			return -1;
