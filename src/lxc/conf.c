@@ -1904,20 +1904,18 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 
 static inline int mount_entry_on_systemfs(struct mntent *mntent)
 {
-	char path[MAXPATHLEN];
 	int ret;
+	char path[MAXPATHLEN];
 
 	/* For containers created without a rootfs all mounts are treated as
-	 * absolute paths starting at / on the host. */
+	 * absolute paths starting at / on the host.
+	 */
 	if (mntent->mnt_dir[0] != '/')
 		ret = snprintf(path, sizeof(path), "/%s", mntent->mnt_dir);
 	else
 		ret = snprintf(path, sizeof(path), "%s", mntent->mnt_dir);
-
-	if (ret < 0 || ret >= sizeof(path)) {
-		ERROR("path name too long");
+	if (ret < 0 || ret >= sizeof(path))
 		return -1;
-	}
 
 	return mount_entry_on_generic(mntent, path, NULL, NULL, NULL);
 }
