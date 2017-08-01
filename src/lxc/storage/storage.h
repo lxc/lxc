@@ -30,6 +30,12 @@
 
 #include <lxc/lxccontainer.h>
 
+#if IS_BIONIC
+#include <../include/lxcmntent.h>
+#else
+#include <mntent.h>
+#endif
+
 #ifndef MS_DIRSYNC
 #define MS_DIRSYNC 128
 #endif
