@@ -1035,58 +1035,56 @@ fail:
 	return -1;
 }
 
-/*
- * Just create a path for /dev under $lxcpath/$name and in rootfs
- * If we hit an error, log it but don't fail yet.
+/* Just create a path for /dev under $lxcpath/$name and in rootfs If we hit an
+ * error, log it but don't fail yet.
  */
-static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs, const char *lxcpath)
+static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
+			 const char *lxcpath)
 {
 	int ret;
 	size_t clen;
 	char *path;
 
-	INFO("Mounting container /dev");
+	INFO("Preparing \"/dev\"");
 
 	/* $(rootfs->mount) + "/dev/pts" + '\0' */
 	clen = (rootfs->path ? strlen(rootfs->mount) : 0) + 9;
 	path = alloca(clen);
 
 	ret = snprintf(path, clen, "%s/dev", rootfs->path ? rootfs->mount : "");
-	if (ret < 0 || ret >= clen)
+	if (ret < 0 || (size_t)ret >= clen)
 		return -1;
 
 	if (!dir_exists(path)) {
-		WARN("No /dev in container.");
-		WARN("Proceeding without autodev setup");
+		WARN("\"/dev\" directory does not exist. Proceeding without "
+		     "autodev being set up");
 		return 0;
 	}
 
 	ret = safe_mount("none", path, "tmpfs", 0, "size=500000,mode=755",
-			rootfs->path ? rootfs->mount : NULL);
-	if (ret != 0) {
-		SYSERROR("Failed mounting tmpfs onto %s\n", path);
+			 rootfs->path ? rootfs->mount : NULL);
+	if (ret < 0) {
+		SYSERROR("Failed to mount tmpfs on \"%s\"", path);
 		return -1;
 	}
-
-	INFO("Mounted tmpfs onto %s",  path);
+	INFO("Mounted tmpfs on \"%s\"", path);
 
 	ret = snprintf(path, clen, "%s/dev/pts", rootfs->path ? rootfs->mount : "");
-	if (ret < 0 || ret >= clen)
+	if (ret < 0 || (size_t)ret >= clen)
 		return -1;
 
-	/*
-	 * If we are running on a devtmpfs mapping, dev/pts may already exist.
+	/* If we are running on a devtmpfs mapping, dev/pts may already exist.
 	 * If not, then create it and exit if that fails...
 	 */
 	if (!dir_exists(path)) {
 		ret = mkdir(path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
-		if (ret) {
-			SYSERROR("Failed to create /dev/pts in container");
+		if (ret < 0) {
+			SYSERROR("Failed to create directory \"%s\"", path);
 			return -1;
 		}
 	}
 
-	INFO("Mounted container /dev");
+	INFO("Prepared \"/dev\"");
 	return 0;
 }
 
