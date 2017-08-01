@@ -2014,23 +2014,25 @@ static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file,
 }
 
 static int setup_mount(const struct lxc_rootfs *rootfs, const char *fstab,
-	const char *lxc_name, const char *lxc_path)
+		       const char *lxc_name, const char *lxc_path)
 {
-	FILE *file;
+	FILE *f;
 	int ret;
 
 	if (!fstab)
 		return 0;
 
-	file = setmntent(fstab, "r");
-	if (!file) {
-		SYSERROR("failed to use '%s'", fstab);
+	f = setmntent(fstab, "r");
+	if (!f) {
+		SYSERROR("Failed to open \"%s\"", fstab);
 		return -1;
 	}
 
-	ret = mount_file_entries(rootfs, file, lxc_name, lxc_path);
+	ret = mount_file_entries(rootfs, f, lxc_name, lxc_path);
+	if (ret < 0)
+		ERROR("Failed to set up mount entries");
 
-	endmntent(file);
+	endmntent(f);
 	return ret;
 }
 
