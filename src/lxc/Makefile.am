@@ -127,7 +127,6 @@ liblxc_la_SOURCES = \
 	mainloop.c mainloop.h \
 	af_unix.c af_unix.h \
 	\
-	lxcutmp.c lxcutmp.h \
 	lxclock.h lxclock.c \
 	lxccontainer.c lxccontainer.h \
 	version.h \
