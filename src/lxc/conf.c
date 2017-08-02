@@ -4180,51 +4180,62 @@ static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 
 int lxc_setup(struct lxc_handler *handler)
 {
+	int ret;
 	const char *name = handler->name;
-	struct lxc_conf *lxc_conf = handler->conf;
 	const char *lxcpath = handler->lxcpath;
+	struct lxc_conf *lxc_conf = handler->conf;
 
-	if (do_rootfs_setup(lxc_conf, name, lxcpath) < 0) {
-		ERROR("Error setting up rootfs mount after spawn");
+	ret = do_rootfs_setup(lxc_conf, name, lxcpath);
+	if (ret < 0) {
+		ERROR("Failed to set up rootfs");
 		return -1;
 	}
 
 	if (lxc_conf->inherit_ns_fd[LXC_NS_UTS] == -1) {
-		if (setup_utsname(lxc_conf->utsname)) {
-			ERROR("failed to setup the utsname for '%s'", name);
+		ret = setup_utsname(lxc_conf->utsname);
+		if (ret < 0) {
+			ERROR("Failed to set up uts name");
 			return -1;
 		}
 	}
 
-	if (lxc_setup_networks_in_child_namespaces(lxc_conf,
-						   &lxc_conf->network)) {
-		ERROR("failed to setup the network for '%s'", name);
+	ret = lxc_setup_networks_in_child_namespaces(lxc_conf, &lxc_conf->network);
+	if (ret < 0) {
+		ERROR("Failed to set up networking");
 		return -1;
 	}
 
 	if (lxc_conf->autodev > 0) {
-		if (mount_autodev(name, &lxc_conf->rootfs, lxcpath)) {
-			ERROR("failed to mount /dev in the container");
+		ret = mount_autodev(name, &lxc_conf->rootfs, lxcpath);
+		if (ret < 0) {
+			ERROR("Failed to set up \"/dev\"");
 			return -1;
 		}
 	}
 
-	/* do automatic mounts (mainly /proc and /sys), but exclude
-	 * those that need to wait until other stuff has finished
+	/* Do automatic mounts (mainly /proc and /sys), but exclude those that
+	 * need to wait until other stuff has finished.
 	 */
-	if (lxc_mount_auto_mounts(lxc_conf, lxc_conf->auto_mounts & ~LXC_AUTO_CGROUP_MASK, handler) < 0) {
-		ERROR("failed to setup the automatic mounts for '%s'", name);
+	ret = lxc_mount_auto_mounts(lxc_conf, lxc_conf->auto_mounts & ~LXC_AUTO_CGROUP_MASK, handler);
+	if (ret < 0) {
+		ERROR("Failed to set up initial automatic mounts");
 		return -1;
 	}
 
-	if (setup_mount(lxc_conf, &lxc_conf->rootfs, lxc_conf->fstab, name, lxcpath)) {
-		ERROR("failed to setup the mounts for '%s'", name);
+	ret = setup_mount(lxc_conf, &lxc_conf->rootfs, lxc_conf->fstab, name,
+			  lxcpath);
+	if (ret < 0) {
+		ERROR("Failed to set up fstab mounts");
 		return -1;
 	}
 
-	if (!lxc_list_empty(&lxc_conf->mount_list) && setup_mount_entries(lxc_conf, &lxc_conf->rootfs, &lxc_conf->mount_list, name, lxcpath)) {
-		ERROR("failed to setup the mount entries for '%s'", name);
-		return -1;
+	if (!lxc_list_empty(&lxc_conf->mount_list)) {
+		ret = setup_mount_entries(lxc_conf, &lxc_conf->rootfs,
+					  &lxc_conf->mount_list, name, lxcpath);
+		if (ret < 0) {
+			ERROR("Failed to set up mount entries");
+			return -1;
+		}
 	}
 
 	/* Make sure any start hooks are in the container */
@@ -4238,94 +4249,121 @@ int lxc_setup(struct lxc_handler *handler)
 	 * before, /sys could not have been mounted
 	 * (is either mounted automatically or via fstab entries)
 	 */
-	if (lxc_mount_auto_mounts(lxc_conf, lxc_conf->auto_mounts & LXC_AUTO_CGROUP_MASK, handler) < 0) {
-		ERROR("failed to setup the automatic mounts for '%s'", name);
+	ret = lxc_mount_auto_mounts(lxc_conf, lxc_conf->auto_mounts & LXC_AUTO_CGROUP_MASK, handler);
+	if (ret < 0) {
+		ERROR("Failed to set up remaining automatic mounts");
 		return -1;
 	}
 
-	if (run_lxc_hooks(name, "mount", lxc_conf, lxcpath, NULL)) {
-		ERROR("failed to run mount hooks for container '%s'.", name);
+	ret = run_lxc_hooks(name, "mount", lxc_conf, lxcpath, NULL);
+	if (ret < 0) {
+		ERROR("Failed to run mount hooks");
 		return -1;
 	}
 
 	if (lxc_conf->autodev > 0) {
-		if (run_lxc_hooks(name, "autodev", lxc_conf, lxcpath, NULL)) {
-			ERROR("failed to run autodev hooks for container '%s'.", name);
+		ret = run_lxc_hooks(name, "autodev", lxc_conf, lxcpath, NULL);
+		if (ret < 0) {
+			ERROR("Failed to run autodev hooks");
 			return -1;
 		}
 
-		if (lxc_fill_autodev(&lxc_conf->rootfs)) {
-			ERROR("failed to populate /dev in the container");
+		ret = lxc_fill_autodev(&lxc_conf->rootfs);
+		if (ret < 0) {
+			ERROR("Failed to populate \"/dev\"");
 			return -1;
 		}
 	}
 
-	if (!lxc_conf->is_execute && lxc_setup_console(&lxc_conf->rootfs, &lxc_conf->console, lxc_conf->ttydir)) {
-		ERROR("failed to setup the console for '%s'", name);
-		return -1;
-	}
+	if (!lxc_conf->is_execute) {
+		ret = lxc_setup_console(&lxc_conf->rootfs, &lxc_conf->console,
+					lxc_conf->ttydir);
+		if (ret < 0) {
+			ERROR("Failed to set up console");
+			return -1;
+		}
 
-	if (!lxc_conf->is_execute && setup_dev_symlinks(&lxc_conf->rootfs)) {
-		ERROR("failed to setup /dev symlinks for '%s'", name);
-		return -1;
+		ret = setup_dev_symlinks(&lxc_conf->rootfs);
+		if (ret < 0) {
+			ERROR("Failed to setup \"/dev\" symlinks");
+			return -1;
+		}
 	}
 
 	/* mount /proc if it's not already there */
-	if (lxc_create_tmp_proc_mount(lxc_conf) < 0) {
-		ERROR("failed to LSM mount proc for '%s'", name);
+	ret = lxc_create_tmp_proc_mount(lxc_conf);
+	if (ret < 0) {
+		ERROR("Failed to create temporary proc mount for LSM");
 		return -1;
 	}
 
-	if (setup_pivot_root(&lxc_conf->rootfs)) {
-		ERROR("failed to set rootfs for '%s'", name);
+	ret = setup_pivot_root(&lxc_conf->rootfs);
+	if (ret < 0) {
+		ERROR("Failed to set up rootfs");
 		return -1;
 	}
 
-	if (lxc_setup_devpts(lxc_conf->pts)) {
-		ERROR("failed to setup the new pts instance");
+	ret = lxc_setup_devpts(lxc_conf->pts);
+	if (ret < 0) {
+		ERROR("Failed to set up new devpts instance");
 		return -1;
 	}
 
-	if (lxc_create_tty(name, lxc_conf)) {
-		ERROR("failed to create the ttys");
+	ret = lxc_create_tty(name, lxc_conf);
+	if (ret < 0) {
+		ERROR("Failed to allocate ttys");
 		return -1;
 	}
 
-	if (lxc_send_ttys_to_parent(handler) < 0) {
-		ERROR("failure sending console info to parent");
+	ret = lxc_send_ttys_to_parent(handler);
+	if (ret < 0) {
+		ERROR("Failed to send ttys to parent");
 		return -1;
 	}
 
-	if (!lxc_conf->is_execute && lxc_setup_tty(lxc_conf)) {
-		ERROR("failed to setup the ttys for '%s'", name);
-		return -1;
+	if (!lxc_conf->is_execute) {
+		ret = lxc_setup_tty(lxc_conf);
+		if (ret < 0) {
+			ERROR("Failed to set up ttys");
+			return -1;
+		}
 	}
 
-	if (lxc_conf->pty_names && setenv("container_ttys", lxc_conf->pty_names, 1))
-		SYSERROR("failed to set environment variable for container ptys");
+	if (lxc_conf->pty_names) {
+		ret = setenv("container_ttys", lxc_conf->pty_names, 1);
+		if (ret < 0)
+			SYSERROR("Failed to set environment variable for ptys");
+	}
 
 
-	if (setup_personality(lxc_conf->personality)) {
-		ERROR("failed to setup personality");
+	ret = setup_personality(lxc_conf->personality);
+	if (ret < 0) {
+		ERROR("Failed to setup personality");
 		return -1;
 	}
 
 	if (!lxc_list_empty(&lxc_conf->keepcaps)) {
 		if (!lxc_list_empty(&lxc_conf->caps)) {
-			ERROR("Container requests lxc.cap.drop and lxc.cap.keep: either use lxc.cap.drop or lxc.cap.keep, not both.");
+			ERROR("Container requests lxc.cap.drop and "
+			      "lxc.cap.keep: either use lxc.cap.drop or "
+			      "lxc.cap.keep, not both");
 			return -1;
 		}
-		if (dropcaps_except(&lxc_conf->keepcaps)) {
-			ERROR("failed to keep requested caps");
+
+		ret = dropcaps_except(&lxc_conf->keepcaps);
+		if (ret < 0) {
+			ERROR("Failed to keep requested capabilities");
 			return -1;
 		}
-	} else if (setup_caps(&lxc_conf->caps)) {
-		ERROR("failed to drop capabilities");
-		return -1;
+	} else {
+		ret = setup_caps(&lxc_conf->caps);
+		if (ret < 0) {
+			ERROR("Failed to drop requested capabilities");
+			return -1;
+		}
 	}
 
-	NOTICE("Container \"%s\" is set up", name);
-
+	NOTICE("Finished setting up container");
 	return 0;
 }
 
