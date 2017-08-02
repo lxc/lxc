@@ -34,8 +34,10 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <linux/loop.h>
+#include <linux/magic.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
+#include <sys/vfs.h>
 
 #include "initutils.h"
 
@@ -273,7 +275,7 @@ extern char *lxc_string_join(const char *sep, const char **parts, bool use_as_pr
  */
 extern char **lxc_normalize_path(const char *path);
 /* remove multiple slashes from the path, e.g. ///foo//bar -> /foo/bar */
-extern bool lxc_deslashify(char **path);
+extern char *lxc_deslashify(const char *path);
 extern char *lxc_append_paths(const char *first, const char *second);
 /* Note: the following two functions use strtok(), so they will never
  *       consider an empty element, even if two delimiters are next to
@@ -385,5 +387,10 @@ char *must_copy_string(const char *entry);
 
 /* Re-alllocate a pointer, do not fail */
 void *must_realloc(void *orig, size_t sz);
+
+/* __typeof__ should be safe to use with all compilers. */
+typedef __typeof__(((struct statfs *)NULL)->f_type) fs_type_magic;
+bool has_fs_type(const char *path, fs_type_magic magic_val);
+bool is_fs_type(const struct statfs *fs, fs_type_magic magic_val);
 
 #endif /* __LXC_UTILS_H */

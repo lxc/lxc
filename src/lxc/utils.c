@@ -42,7 +42,6 @@
 #include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/vfs.h>
 #include <sys/wait.h>
 
 #include "log.h"
@@ -183,22 +182,24 @@ static int _recursive_rmdir(char *dirname, dev_t pdev,
 	return failed ? -1 : 0;
 }
 
-/* we have two different magic values for overlayfs, yay */
+/* We have two different magic values for overlayfs, yay. */
+#ifndef OVERLAYFS_SUPER_MAGIC
 #define OVERLAYFS_SUPER_MAGIC 0x794c764f
+#endif
+
+#ifndef OVERLAY_SUPER_MAGIC
 #define OVERLAY_SUPER_MAGIC 0x794c7630
-/*
- * In overlayfs, st_dev is unreliable.  so on overlayfs we don't do
- * the lxc_rmdir_onedev()
+#endif
+
+/* In overlayfs, st_dev is unreliable. So on overlayfs we don't do the
+ * lxc_rmdir_onedev()
  */
 static bool is_native_overlayfs(const char *path)
 {
-	struct statfs sb;
-
-	if (statfs(path, &sb) < 0)
-		return false;
-	if (sb.f_type == OVERLAYFS_SUPER_MAGIC ||
-			sb.f_type == OVERLAY_SUPER_MAGIC)
+	if (has_fs_type(path, OVERLAY_SUPER_MAGIC) ||
+	    has_fs_type(path, OVERLAYFS_SUPER_MAGIC))
 		return true;
+
 	return false;
 }
 
@@ -728,47 +729,46 @@ char **lxc_normalize_path(const char *path)
 	return components;
 }
 
-bool lxc_deslashify(char **path)
+char *lxc_deslashify(const char *path)
 {
-	bool ret = false;
-	char *p;
+	char *dup, *p;
 	char **parts = NULL;
 	size_t n, len;
 
-	parts = lxc_normalize_path(*path);
-	if (!parts)
-		return false;
+	dup = strdup(path);
+	if (!dup)
+		return NULL;
+
+	parts = lxc_normalize_path(dup);
+	if (!parts) {
+		free(dup);
+		return NULL;
+	}
 
 	/* We'll end up here if path == "///" or path == "". */
 	if (!*parts) {
-		len = strlen(*path);
+		len = strlen(dup);
 		if (!len) {
-			ret = true;
-			goto out;
+			lxc_free_array((void **)parts, free);
+			return dup;
 		}
-		n = strcspn(*path, "/");
+		n = strcspn(dup, "/");
 		if (n == len) {
+			free(dup);
+			lxc_free_array((void **)parts, free);
+
 			p = strdup("/");
 			if (!p)
-				goto out;
-			free(*path);
-			*path = p;
-			ret = true;
-			goto out;
+				return NULL;
+
+			return p;
 		}
 	}
 
-	p = lxc_string_join("/", (const char **)parts, **path == '/');
-	if (!p)
-		goto out;
-
-	free(*path);
-	*path = p;
-	ret = true;
-
-out:
+	p = lxc_string_join("/", (const char **)parts, *dup == '/');
+	free(dup);
 	lxc_free_array((void **)parts, free);
-	return ret;
+	return p;
 }
 
 char *lxc_append_paths(const char *first, const char *second)
@@ -2383,4 +2383,26 @@ void *must_realloc(void *orig, size_t sz)
 	} while (!ret);
 
 	return ret;
+}
+
+bool is_fs_type(const struct statfs *fs, fs_type_magic magic_val)
+{
+	return (fs->f_type == (fs_type_magic)magic_val);
+}
+
+bool has_fs_type(const char *path, fs_type_magic magic_val)
+{
+	bool has_type;
+	int ret;
+	struct statfs sb;
+
+	ret = statfs(path, &sb);
+	if (ret < 0)
+		return false;
+
+	has_type = is_fs_type(&sb, magic_val);
+	if (!has_type && magic_val == RAMFS_MAGIC)
+		WARN("When the ramfs it a tmpfs statfs() might report tmpfs");
+
+	return has_type;
 }
