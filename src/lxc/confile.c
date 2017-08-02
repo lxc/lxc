@@ -41,7 +41,6 @@
 #include <dirent.h>
 #include <syslog.h>
 
-#include "bdev.h"
 #include "parse.h"
 #include "config.h"
 #include "confile.h"
@@ -52,6 +51,7 @@
 #include "conf.h"
 #include "network.h"
 #include "lxcseccomp.h"
+#include "storage.h"
 
 #if HAVE_IFADDRS_H
 #include <ifaddrs.h>

@@ -27,10 +27,10 @@
 
 #include <lxc/lxccontainer.h>
 
-#include "bdev.h"
 #include "lxc.h"
 #include "log.h"
 #include "arguments.h"
+#include "storage.h"
 #include "utils.h"
 
 lxc_log_define(lxc_snapshot_ui, lxc);

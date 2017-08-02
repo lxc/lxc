@@ -39,7 +39,6 @@
 #include <netinet/in.h>
 #include <net/if.h>
 
-#include "bdev.h"
 #include "error.h"
 #include "commands.h"
 #include "list.h"
@@ -49,6 +48,7 @@
 #include "cgroup.h"
 #include "start.h"
 #include "state.h"
+#include "storage.h"
 
 #if IS_BIONIC
 #include <../include/lxcmntent.h>

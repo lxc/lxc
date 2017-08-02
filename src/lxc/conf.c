@@ -73,20 +73,20 @@
 #endif
 
 #include "af_unix.h"
-#include "bdev.h"
 #include "caps.h"       /* for lxc_caps_last_cap() */
 #include "cgroup.h"
 #include "conf.h"
 #include "confile_utils.h"
 #include "error.h"
 #include "log.h"
-#include "lxcaufs.h"
 #include "lxclock.h"
-#include "lxcoverlay.h"
 #include "lxcseccomp.h"
 #include "namespace.h"
 #include "network.h"
 #include "parse.h"
+#include "storage.h"
+#include "storage/aufs.h"
+#include "storage/overlay.h"
 #include "utils.h"
 #include "lsm/lsm.h"
 
@@ -1178,7 +1178,7 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 static int lxc_setup_rootfs(struct lxc_conf *conf)
 {
 	int ret;
-	struct bdev *bdev;
+	struct lxc_storage *bdev;
 	const struct lxc_rootfs *rootfs;
 
 	rootfs = &conf->rootfs;
@@ -1196,7 +1196,7 @@ static int lxc_setup_rootfs(struct lxc_conf *conf)
 		return -1;
 	}
 
-	bdev = bdev_init(conf, rootfs->path, rootfs->mount, rootfs->options);
+	bdev = storage_init(conf, rootfs->path, rootfs->mount, rootfs->options);
 	if (!bdev) {
 		ERROR("Failed to mount rootfs \"%s\" onto \"%s\" with options \"%s\".",
 		      rootfs->path, rootfs->mount,
@@ -1205,7 +1205,7 @@ static int lxc_setup_rootfs(struct lxc_conf *conf)
 	}
 
 	ret = bdev->ops->mount(bdev);
-	bdev_put(bdev);
+	storage_put(bdev);
 	if (ret < 0) {
 		ERROR("Failed to mount rootfs \"%s\" onto \"%s\" with options \"%s\".",
 		      rootfs->path, rootfs->mount,
@@ -3826,7 +3826,6 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 {
 	uid_t rootuid, rootgid;
 	unsigned long val;
-	char *chownpath = path;
 	int hostuid, hostgid, ret;
 	struct stat sb;
 	char map1[100], map2[100], map3[100], map4[100], map5[100];
@@ -3862,23 +3861,6 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 	}
 	rootgid = (gid_t)val;
 
-	/*
-	 * In case of overlay, we want only the writeable layer to be chowned
-	 */
-	if (strncmp(path, "overlayfs:", 10) == 0 || strncmp(path, "aufs:", 5) == 0) {
-		chownpath = strchr(path, ':');
-		if (!chownpath) {
-			ERROR("Bad overlay path: %s", path);
-			return -1;
-		}
-		chownpath = strchr(chownpath + 1, ':');
-		if (!chownpath) {
-			ERROR("Bad overlay path: %s", path);
-			return -1;
-		}
-		chownpath++;
-	}
-	path = chownpath;
 	if (hostuid == 0) {
 		if (chown(path, rootuid, rootgid) < 0) {
 			ERROR("Error chowning %s", path);

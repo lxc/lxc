@@ -21,32 +21,26 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef __LXC_RDB_H
-#define __LXC_RDB_H
+#ifndef __LXC_RSYNC_H
+#define __LXC_RSYNC_H
 
 #define _GNU_SOURCE
-#include <stdint.h>
+#include <stdio.h>
 
-/* defined in bdev.h */
-struct bdev;
+struct rsync_data {
+	struct lxc_storage *orig;
+	struct lxc_storage *new;
+};
 
-/* defined in lxccontainer.h */
-struct bdev_specs;
+struct rsync_data_char {
+	char *src;
+	char *dest;
+};
 
-/* defined conf.h */
-struct lxc_conf;
+/* new helpers */
+extern int lxc_rsync_exec_wrapper(void *data);
+extern int lxc_storage_rsync_exec_wrapper(void *data);
+extern int lxc_rsync_exec(const char *src, const char *dest);
+extern int lxc_rsync(struct rsync_data *data);
 
-/*
- * Functions associated with an rdb bdev struct.
- */
-int rbd_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath,
-		int snap, uint64_t newsize, struct lxc_conf *conf);
-int rbd_create(struct bdev *bdev, const char *dest, const char *n,
-		struct bdev_specs *specs);
-int rbd_destroy(struct bdev *orig);
-int rbd_detect(const char *path);
-int rbd_mount(struct bdev *bdev);
-int rbd_umount(struct bdev *bdev);
-
-#endif /* __LXC_RDB_H */
+#endif // __LXC_RSYNC_H

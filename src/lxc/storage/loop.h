@@ -21,36 +21,28 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef __LXC_LVM_H
-#define __LXC_LVM_H
+#ifndef __LXC_LOOP_H
+#define __LXC_LOOP_H
 
 #define _GNU_SOURCE
+#include <stdbool.h>
 #include <stdint.h>
 
-/* defined in bdev.h */
-struct bdev;
+struct lxc_storage;
 
-/* defined in lxccontainer.h */
 struct bdev_specs;
 
-/* defined conf.h */
 struct lxc_conf;
 
-/*
- * Functions associated with an lvm bdev struct.
- */
-int lvm_detect(const char *path);
-int lvm_mount(struct bdev *bdev);
-int lvm_umount(struct bdev *bdev);
-int lvm_compare_lv_attr(const char *path, int pos, const char expected);
-int lvm_is_thin_volume(const char *path);
-int lvm_is_thin_pool(const char *path);
-int lvm_snapshot(const char *orig, const char *path, uint64_t size);
-int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath, int snap,
-		uint64_t newsize, struct lxc_conf *conf);
-int lvm_destroy(struct bdev *orig);
-int lvm_create(struct bdev *bdev, const char *dest, const char *n,
-		struct bdev_specs *specs);
+extern int loop_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+			   const char *oldname, const char *cname,
+			   const char *oldpath, const char *lxcpath, int snap,
+			   uint64_t newsize, struct lxc_conf *conf);
+extern int loop_create(struct lxc_storage *bdev, const char *dest,
+		       const char *n, struct bdev_specs *specs);
+extern int loop_destroy(struct lxc_storage *orig);
+extern bool loop_detect(const char *path);
+extern int loop_mount(struct lxc_storage *bdev);
+extern int loop_umount(struct lxc_storage *bdev);
 
-#endif /* __LXC_LVM_H */
+#endif /* __LXC_LOOP_H */

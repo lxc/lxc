@@ -34,7 +34,6 @@
 
 #include "config.h"
 
-#include "bdev.h"
 #include "cgroup.h"
 #include "conf.h"
 #include "commands.h"
@@ -43,6 +42,7 @@
 #include "lxc.h"
 #include "lxclock.h"
 #include "network.h"
+#include "storage.h"
 #include "utils.h"
 
 #if IS_BIONIC

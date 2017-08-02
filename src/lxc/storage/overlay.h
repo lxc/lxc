@@ -25,6 +25,7 @@
 #define __LXC_OVERLAY_H
 
 #include <grp.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -35,59 +36,50 @@
 #include <mntent.h>
 #endif
 
-/* defined in bdev.h */
-struct bdev;
+struct lxc_storage;
 
-/* defined in lxccontainer.h */
 struct bdev_specs;
 
-/* defined conf.h */
 struct lxc_conf;
 
-/* defined in conf.h */
 struct lxc_rootfs;
 
-/*
- * Functions associated with an overlay bdev struct.
- */
-int ovl_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		   const char *cname, const char *oldpath, const char *lxcpath,
-		   int snap, uint64_t newsize, struct lxc_conf *conf);
-int ovl_create(struct bdev *bdev, const char *dest, const char *n,
-	       struct bdev_specs *specs);
-int ovl_destroy(struct bdev *orig);
-int ovl_detect(const char *path);
-int ovl_mount(struct bdev *bdev);
-int ovl_umount(struct bdev *bdev);
+extern int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+			  const char *oldname, const char *cname,
+			  const char *oldpath, const char *lxcpath, int snap,
+			  uint64_t newsize, struct lxc_conf *conf);
+extern int ovl_create(struct lxc_storage *bdev, const char *dest, const char *n,
+		      struct bdev_specs *specs);
+extern int ovl_destroy(struct lxc_storage *orig);
+extern bool ovl_detect(const char *path);
+extern int ovl_mount(struct lxc_storage *bdev);
+extern int ovl_umount(struct lxc_storage *bdev);
 
-/*
- * To be called from lxcapi_clone() in lxccontainer.c: When we clone a container
+/* To be called from lxcapi_clone() in lxccontainer.c: When we clone a container
  * with overlay lxc.mount.entry entries we need to update absolute paths for
  * upper- and workdir. This update is done in two locations:
  * lxc_conf->unexpanded_config and lxc_conf->mount_list. Both updates are done
  * independent of each other since lxc_conf->mountlist may container more mount
  * entries (e.g. from other included files) than lxc_conf->unexpanded_config .
  */
-int ovl_update_abs_paths(struct lxc_conf *lxc_conf, const char *lxc_path,
-			 const char *lxc_name, const char *newpath,
-			 const char *newname);
+extern int ovl_update_abs_paths(struct lxc_conf *lxc_conf, const char *lxc_path,
+				const char *lxc_name, const char *newpath,
+				const char *newname);
 
-/*
- * To be called from functions in lxccontainer.c: Get lower directory for
+/* To be called from functions in lxccontainer.c: Get lower directory for
  * overlay rootfs.
  */
-char *ovl_getlower(char *p);
+extern char *ovl_get_lower(const char *rootfs_path);
 
-/*
- * Get rootfs path for overlay backed containers. Allocated memory must be freed
+/* Get rootfs path for overlay backed containers. Allocated memory must be freed
  * by caller.
  */
-char *ovl_get_rootfs(const char *rootfs_path, size_t *rootfslen);
+extern char *ovl_get_rootfs(const char *rootfs_path, size_t *rootfslen);
 
-/*
- * Create upper- and workdirs for overlay mounts.
+/* Create upper- and workdirs for overlay mounts.
  */
-int ovl_mkdir(const struct mntent *mntent, const struct lxc_rootfs *rootfs,
-	      const char *lxc_name, const char *lxc_path);
+extern int ovl_mkdir(const struct mntent *mntent,
+		     const struct lxc_rootfs *rootfs, const char *lxc_name,
+		     const char *lxc_path);
 
 #endif /* __LXC_OVERLAY_H */

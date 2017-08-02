@@ -21,38 +21,28 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef __LXC_NBD_H
-#define __LXC_NBD_H
+#ifndef __LXC_DIR_H
+#define __LXC_DIR_H
 
 #define _GNU_SOURCE
 #include <stdbool.h>
 #include <stdint.h>
 
-/* defined in bdev.h */
-struct bdev;
+struct lxc_storage;
 
-/* defined in lxccontainer.h */
 struct bdev_specs;
 
-/* defined conf.h */
 struct lxc_conf;
 
-/*
- * Functions associated with an nbd bdev struct.
- */
-int nbd_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath,
-		int snap, uint64_t newsize, struct lxc_conf *conf);
-int nbd_create(struct bdev *bdev, const char *dest, const char *n,
-		struct bdev_specs *specs);
-int nbd_destroy(struct bdev *orig);
-int nbd_detect(const char *path);
-int nbd_mount(struct bdev *bdev);
-int nbd_umount(struct bdev *bdev);
+extern int dir_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+			  const char *oldname, const char *cname,
+			  const char *oldpath, const char *lxcpath, int snap,
+			  uint64_t newsize, struct lxc_conf *conf);
+extern int dir_create(struct lxc_storage *bdev, const char *dest, const char *n,
+		      struct bdev_specs *specs);
+extern int dir_destroy(struct lxc_storage *orig);
+extern bool dir_detect(const char *path);
+extern int dir_mount(struct lxc_storage *bdev);
+extern int dir_umount(struct lxc_storage *bdev);
 
-/* helpers */
-bool attach_nbd(char *src, struct lxc_conf *conf);
-void detach_nbd_idx(int idx);
-bool requires_nbd(const char *path);
-
-#endif /* __LXC_NBD_H */
+#endif /* __LXC_DIR_H */

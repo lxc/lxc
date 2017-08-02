@@ -25,37 +25,30 @@
 #define __LXC_ZFS_H
 
 #define _GNU_SOURCE
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
 
-/* defined in bdev.h */
-struct bdev;
+struct lxc_storage;
 
-/* defined in lxccontainer.h */
 struct bdev_specs;
 
-/* defined conf.h */
 struct lxc_conf;
 
-/*
- * Functions associated with an zfs bdev struct.
- */
-int zfs_clone(const char *opath, const char *npath, const char *oname,
-		const char *nname, const char *lxcpath, int snapshot);
-int zfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		const char *cname, const char *oldpath, const char *lxcpath,
-		int snap, uint64_t newsize, struct lxc_conf *conf);
-int zfs_create(struct bdev *bdev, const char *dest, const char *n,
-		struct bdev_specs *specs);
-/*
- * TODO: detect whether this was a clone, and if so then also delete the
- * snapshot it was based on, so that we don't hold the original
- * container busy.
- */
-int zfs_destroy(struct bdev *orig);
-int zfs_detect(const char *path);
-int zfs_list_entry(const char *path, char *output, size_t inlen);
-int zfs_mount(struct bdev *bdev);
-int zfs_umount(struct bdev *bdev);
+extern int zfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+			  const char *oldname, const char *cname,
+			  const char *oldpath, const char *lxcpath, int snap,
+			  uint64_t newsize, struct lxc_conf *conf);
+extern int zfs_create(struct lxc_storage *bdev, const char *dest, const char *n,
+		      struct bdev_specs *specs);
+extern int zfs_destroy(struct lxc_storage *orig);
+extern bool zfs_detect(const char *path);
+extern int zfs_mount(struct lxc_storage *bdev);
+extern int zfs_umount(struct lxc_storage *bdev);
+
+extern bool zfs_copy(struct lxc_conf *conf, struct lxc_storage *orig,
+		     struct lxc_storage *new, uint64_t newsize);
+extern bool zfs_snapshot(struct lxc_conf *conf, struct lxc_storage *orig,
+			 struct lxc_storage *new, uint64_t newsize);
 
 #endif /* __LXC_ZFS_H */

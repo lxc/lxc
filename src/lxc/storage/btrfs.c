@@ -32,20 +32,17 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
 
-#include "bdev.h"
 #include "log.h"
-#include "lxcbtrfs.h"
-#include "lxcrsync.h"
+#include "btrfs.h"
+#include "rsync.h"
+#include "storage.h"
 #include "utils.h"
 
-lxc_log_define(lxcbtrfs, lxc);
-
-/* defined in lxccontainer.c: needs to become common helper */
-extern char *dir_new_path(char *src, const char *oldname, const char *name,
-			  const char *oldpath, const char *lxcpath);
+lxc_log_define(btrfs, lxc);
 
 /*
  * Return the full path of objid under dirid.  Let's say dirid is
@@ -169,29 +166,29 @@ int is_btrfs_subvol(const char *path)
 	return stfs.f_type == BTRFS_SUPER_MAGIC;
 }
 
-int btrfs_detect(const char *path)
+bool btrfs_detect(const char *path)
 {
 	struct stat st;
 	int ret;
 
 	if (!strncmp(path, "btrfs:", 6))
-		return 1;
+		return true;
 
 	if (!is_btrfs_fs(path))
-		return 0;
+		return false;
 
 	/* make sure it's a subvolume */
 	ret = stat(path, &st);
 	if (ret < 0)
-		return 0;
+		return false;
 
 	if (st.st_ino == 256 && S_ISDIR(st.st_mode))
-		return 1;
+		return true;
 
-	return 0;
+	return false;
 }
 
-int btrfs_mount(struct bdev *bdev)
+int btrfs_mount(struct lxc_storage *bdev)
 {
 	unsigned long mntflags;
 	char *mntdata, *src;
@@ -215,7 +212,7 @@ int btrfs_mount(struct bdev *bdev)
 	return ret;
 }
 
-int btrfs_umount(struct bdev *bdev)
+int btrfs_umount(struct lxc_storage *bdev)
 {
 	if (strcmp(bdev->type, "btrfs"))
 		return -22;
@@ -228,38 +225,41 @@ int btrfs_umount(struct bdev *bdev)
 
 static int btrfs_subvolume_create(const char *path)
 {
-	int ret, fd = -1;
-	struct btrfs_ioctl_vol_args  args;
-	char *p, *newfull = strdup(path);
+	int ret, saved_errno;
+	struct btrfs_ioctl_vol_args args;
+	char *p, *newfull;
+	int fd = -1;
 
+	newfull = strdup(path);
 	if (!newfull) {
-		ERROR("Error: out of memory");
-		return -1;
+		errno = ENOMEM;
+		return -ENOMEM;
 	}
 
 	p = strrchr(newfull, '/');
 	if (!p) {
-		ERROR("bad path: %s", path);
 		free(newfull);
-		return -1;
+		errno = EINVAL;
+		return -EINVAL;
 	}
 	*p = '\0';
 
 	fd = open(newfull, O_RDONLY);
 	if (fd < 0) {
-		ERROR("Error opening %s", newfull);
 		free(newfull);
-		return -1;
+		return -errno;
 	}
 
 	memset(&args, 0, sizeof(args));
-	strncpy(args.name, p+1, BTRFS_SUBVOL_NAME_MAX);
-	args.name[BTRFS_SUBVOL_NAME_MAX-1] = 0;
-	ret = ioctl(fd, BTRFS_IOC_SUBVOL_CREATE, &args);
-	INFO("btrfs: snapshot create ioctl returned %d", ret);
+	strncpy(args.name, p + 1, BTRFS_SUBVOL_NAME_MAX);
+	args.name[BTRFS_SUBVOL_NAME_MAX - 1] = 0;
 
-	free(newfull);
+	ret = ioctl(fd, BTRFS_IOC_SUBVOL_CREATE, &args);
+	saved_errno = errno;
+
 	close(fd);
+	free(newfull);
+	errno = saved_errno;
 	return ret;
 }
 
@@ -306,39 +306,37 @@ out:
 
 int btrfs_snapshot(const char *orig, const char *new)
 {
+	struct btrfs_ioctl_vol_args_v2 args;
+	char *newdir, *newname;
+	char *newfull = NULL;
+	int saved_errno = -1;
 	int fd = -1, fddst = -1, ret = -1;
-	struct btrfs_ioctl_vol_args_v2  args;
-	char *newdir, *newname, *newfull = NULL;
 
 	newfull = strdup(new);
-	if (!newfull) {
-		ERROR("Error: out of memory");
+	if (!newfull)
 		goto out;
-	}
-	// make sure the directory doesn't already exist
-	if (rmdir(newfull) < 0 && errno != ENOENT) {
-		SYSERROR("Error removing empty new rootfs");
+
+	ret = rmdir(newfull);
+	if (ret < 0 && errno != ENOENT)
 		goto out;
-	}
+
 	newname = basename(newfull);
-	newdir = dirname(newfull);
 	fd = open(orig, O_RDONLY);
-	if (fd < 0) {
-		SYSERROR("Error opening original rootfs %s", orig);
+	if (fd < 0)
 		goto out;
-	}
+
+	newdir = dirname(newfull);
 	fddst = open(newdir, O_RDONLY);
-	if (fddst < 0) {
-		SYSERROR("Error opening new container dir %s", newdir);
+	if (fddst < 0)
 		goto out;
-	}
 
 	memset(&args, 0, sizeof(args));
 	args.fd = fd;
 	strncpy(args.name, newname, BTRFS_SUBVOL_NAME_MAX);
-	args.name[BTRFS_SUBVOL_NAME_MAX-1] = 0;
+	args.name[BTRFS_SUBVOL_NAME_MAX - 1] = 0;
+
 	ret = ioctl(fddst, BTRFS_IOC_SNAP_CREATE_V2, &args);
-	INFO("btrfs: snapshot create ioctl returned %d", ret);
+	saved_errno = errno;
 
 out:
 	if (fddst != -1)
@@ -346,10 +344,13 @@ out:
 	if (fd != -1)
 		close(fd);
 	free(newfull);
+
+	if (saved_errno >= 0)
+		errno = saved_errno;
 	return ret;
 }
 
-static int btrfs_snapshot_wrapper(void *data)
+int btrfs_snapshot_wrapper(void *data)
 {
 	char *src;
 	struct rsync_data_char *arg = data;
@@ -360,74 +361,141 @@ static int btrfs_snapshot_wrapper(void *data)
 	}
 	if (setgroups(0, NULL) < 0)
 		WARN("Failed to clear groups");
+
 	if (setuid(0) < 0) {
 		ERROR("Failed to setuid to 0");
 		return -1;
 	}
 
 	src = lxc_storage_get_path(arg->src, "btrfs");
-
 	return btrfs_snapshot(src, arg->dest);
 }
 
-int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		     const char *cname, const char *oldpath,
-		     const char *lxcpath, int snap, uint64_t newsize,
-		     struct lxc_conf *conf)
+int btrfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+		     const char *oldname, const char *cname,
+		     const char *oldpath, const char *lxcpath, int snap,
+		     uint64_t newsize, struct lxc_conf *conf)
 {
 	char *src;
 
 	if (!orig->dest || !orig->src)
 		return -1;
 
-	if (strcmp(orig->type, "btrfs")) {
-		int len, ret;
-		if (snap) {
-			ERROR("btrfs snapshot from %s backing store is not supported",
-				orig->type);
-			return -1;
-		}
-
-		len = strlen(lxcpath) + strlen(cname) + strlen("rootfs") + 6 + 3;
-		new->src = malloc(len);
-		if (!new->src)
-			return -1;
-
-		ret = snprintf(new->src, len, "btrfs:%s/%s/rootfs", lxcpath, cname);
-		if (ret < 0 || ret >= len)
-			return -1;
-	} else {
-		/* In case rootfs is in custom path, reuse it. */
-		new->src = dir_new_path(orig->src, oldname, cname, oldpath, lxcpath);
-		if (!new->src)
-			return -1;
-
+	if (strcmp(orig->type, "btrfs") && snap) {
+		ERROR("btrfs snapshot from %s backing store is not supported",
+		      orig->type);
+		return -1;
 	}
+
+	new->src = lxc_string_join(
+	    "/",
+	    (const char *[]){"btrfs:", *lxcpath != '/' ? lxcpath : ++lxcpath,
+			     cname, "rootfs", NULL},
+	    false);
+	if (!new->src) {
+		ERROR("Failed to create new rootfs path");
+		return -1;
+	}
+	TRACE("Constructed new rootfs path \"%s\"", new->src);
 
 	src = lxc_storage_get_path(new->src, "btrfs");
 	new->dest = strdup(src);
-	if (!new->dest)
-		return -1;
-
-	if (orig->mntopts && (new->mntopts = strdup(orig->mntopts)) == NULL)
-		return -1;
-
-	if (snap) {
-		struct rsync_data_char sdata;
-		if (!am_unpriv())
-			return btrfs_snapshot(orig->dest, new->dest);
-		sdata.dest = new->dest;
-		sdata.src = orig->dest;
-		return userns_exec_1(conf, btrfs_snapshot_wrapper, &sdata,
-				     "btrfs_snapshot_wrapper");
-	}
-
-	if (rmdir(new->dest) < 0 && errno != ENOENT) {
-		SYSERROR("removing %s", new->dest);
+	if (!new->dest) {
+		ERROR("Failed to duplicate string \"%s\"", src);
 		return -1;
 	}
 
-	return btrfs_subvolume_create(new->dest);
+	if (orig->mntopts) {
+		new->mntopts = strdup(orig->mntopts);
+		if (!new->mntopts) {
+			ERROR("Failed to duplicate string \"%s\"",
+			      orig->mntopts);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+bool btrfs_create_clone(struct lxc_conf *conf, struct lxc_storage *orig,
+			struct lxc_storage *new, uint64_t newsize)
+{
+	int ret;
+	struct rsync_data data = {0, 0};
+	char cmd_output[MAXPATHLEN] = {0};
+
+	ret = rmdir(new->dest);
+	if (ret < 0 && errno != ENOENT)
+		return false;
+
+	ret = btrfs_subvolume_create(new->dest);
+	if (ret < 0) {
+		SYSERROR("Failed to create btrfs subvolume \"%s\"", new->dest);
+		return false;
+	}
+
+	/* rsync the contents from source to target */
+	data.orig = orig;
+	data.new = new;
+	if (am_unpriv()) {
+		ret = userns_exec_1(conf, lxc_storage_rsync_exec_wrapper, &data,
+				    "lxc_storage_rsync_exec_wrapper");
+		if (ret < 0) {
+			ERROR("Failed to rsync from \"%s\" into \"%s\"",
+			      orig->dest, new->dest);
+			return false;
+		}
+
+		return true;
+	}
+
+	ret = run_command(cmd_output, sizeof(cmd_output),
+			lxc_storage_rsync_exec_wrapper, (void *)&data);
+	if (ret < 0) {
+		ERROR("Failed to rsync from \"%s\" into \"%s\": %s", orig->dest,
+		      new->dest, cmd_output);
+		return false;
+	}
+
+	return true;
+}
+
+bool btrfs_create_snapshot(struct lxc_conf *conf, struct lxc_storage *orig,
+			   struct lxc_storage *new, uint64_t newsize)
+{
+	int ret;
+
+	ret = rmdir(new->dest);
+	if (ret < 0 && errno != ENOENT)
+		return false;
+
+	if (am_unpriv()) {
+		struct rsync_data_char args;
+
+		args.src = orig->dest;
+		args.dest = new->dest;
+
+		ret = userns_exec_1(conf, btrfs_snapshot_wrapper, &args,
+				"btrfs_snapshot_wrapper");
+		if (ret < 0) {
+			ERROR("Failed to run \"btrfs_snapshot_wrapper\"");
+			return false;
+		}
+
+		TRACE("Created btrfs snapshot \"%s\" from \"%s\"", new->dest,
+		      orig->dest);
+		return true;
+	}
+
+	ret = btrfs_snapshot(orig->dest, new->dest);
+	if (ret < 0) {
+		SYSERROR("Failed to create btrfs snapshot \"%s\" from \"%s\"",
+			 new->dest, orig->dest);
+		return false;
+	}
+
+	TRACE("Created btrfs snapshot \"%s\" from \"%s\"", new->dest, orig->dest);
+	return true;
 }
 
 static int btrfs_do_destroy_subvol(const char *path)
@@ -755,7 +823,7 @@ bool btrfs_try_remove_subvol(const char *path)
 	return btrfs_recursive_destroy(path) == 0;
 }
 
-int btrfs_destroy(struct bdev *orig)
+int btrfs_destroy(struct lxc_storage *orig)
 {
 	char *src;
 
@@ -764,7 +832,7 @@ int btrfs_destroy(struct bdev *orig)
 	return btrfs_recursive_destroy(src);
 }
 
-int btrfs_create(struct bdev *bdev, const char *dest, const char *n,
+int btrfs_create(struct lxc_storage *bdev, const char *dest, const char *n,
 		 struct bdev_specs *specs)
 {
 	int ret;
@@ -774,16 +842,27 @@ int btrfs_create(struct bdev *bdev, const char *dest, const char *n,
 	/* strlen("btrfs:") */
 	len += 6;
 	bdev->src = malloc(len);
-	if (!bdev->src)
+	if (!bdev->src) {
+		ERROR("Failed to allocate memory");
 		return -1;
+	}
 
 	ret = snprintf(bdev->src, len, "btrfs:%s", dest);
-	if (ret < 0 || (size_t)ret >= len)
+	if (ret < 0 || (size_t)ret >= len) {
+		ERROR("Failed to create string");
 		return -1;
+	}
 
 	bdev->dest = strdup(dest);
-	if (!bdev->dest)
+	if (!bdev->dest) {
+		ERROR("Failed to duplicate string \"%s\"", dest);
 		return -1;
+	}
 
-	return btrfs_subvolume_create(bdev->dest);
+	ret = btrfs_subvolume_create(bdev->dest);
+	if (ret < 0) {
+		SYSERROR("Failed to create btrfs subvolume \"%s\"", bdev->dest);
+	}
+
+	return ret;
 }

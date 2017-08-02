@@ -21,26 +21,32 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef __LXC_RSYNC_H
-#define __LXC_RSYNC_H
+#ifndef __LXC_NBD_H
+#define __LXC_NBD_H
 
 #define _GNU_SOURCE
-#include <stdio.h>
+#include <stdbool.h>
+#include <stdint.h>
 
-struct rsync_data {
-	struct bdev *orig;
-	struct bdev *new;
-};
+struct lxc_storage;
 
-struct rsync_data_char {
-	char *src;
-	char *dest;
-};
+struct bdev_specs;
 
-int do_rsync(const char *src, const char *dest);
-int rsync_delta_wrapper(void *data);
-int rsync_delta(struct rsync_data_char *data);
-int rsync_rootfs(struct rsync_data *data);
-int rsync_rootfs_wrapper(void *data);
+struct lxc_conf;
 
-#endif // __LXC_RSYNC_H
+extern int nbd_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+			  const char *oldname, const char *cname,
+			  const char *oldpath, const char *lxcpath, int snap,
+			  uint64_t newsize, struct lxc_conf *conf);
+extern int nbd_create(struct lxc_storage *bdev, const char *dest, const char *n,
+		      struct bdev_specs *specs);
+extern int nbd_destroy(struct lxc_storage *orig);
+extern bool nbd_detect(const char *path);
+extern int nbd_mount(struct lxc_storage *bdev);
+extern int nbd_umount(struct lxc_storage *bdev);
+
+extern bool attach_nbd(char *src, struct lxc_conf *conf);
+extern void detach_nbd_idx(int idx);
+extern bool requires_nbd(const char *path);
+
+#endif /* __LXC_NBD_H */
