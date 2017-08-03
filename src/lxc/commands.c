@@ -21,33 +21,35 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <stdio.h>
+#include "config.h"
+
 #include <errno.h>
-#include <unistd.h>
-#include <signal.h>
 #include <fcntl.h>
+#include <malloc.h>
 #include <poll.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <sys/param.h>
-#include <malloc.h>
-#include <stdlib.h>
 
-#include "log.h"
-#include "lxc.h"
-#include "conf.h"
-#include "start.h"	/* for struct lxc_handler */
-#include "utils.h"
+#include "af_unix.h"
 #include "cgroup.h"
 #include "commands.h"
 #include "commands_utils.h"
-#include "console.h"
+#include "conf.h"
+#include "config.h"
 #include "confile.h"
+#include "console.h"
+#include "log.h"
+#include "lxc.h"
 #include "lxclock.h"
 #include "mainloop.h"
 #include "monitor.h"
-#include "af_unix.h"
-#include "config.h"
+#include "start.h" /* for struct lxc_handler */
+#include "utils.h"
 
 /*
  * This file provides the different functions for clients to
