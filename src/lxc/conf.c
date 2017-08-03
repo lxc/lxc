@@ -1427,6 +1427,18 @@ static int lxc_setup_devpts(int num_pts)
 	return 0;
 }
 
+static int lxc_allocate_dev_ptmx_opath_fd(struct lxc_conf *conf)
+{
+	int fd;
+
+	fd = open("/dev/pts/ptmx", O_PATH);
+	if (fd < 0)
+		return -1;
+
+	conf->dev_ptmx.opath_fd = fd;
+	return 0;
+}
+
 static int setup_personality(int persona)
 {
 	#if HAVE_SYS_PERSONALITY_H
@@ -2769,6 +2781,7 @@ struct lxc_conf *lxc_conf_init(void)
 	 * default to running as UID/GID 0 when using lxc-execute */
 	new->init_uid = 0;
 	new->init_gid = 0;
+	new->dev_ptmx.opath_fd = -1;
 
 	return new;
 }
@@ -4309,6 +4322,21 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
+	/* Allocate "/dev/pts/ptmx" O_PATH file descriptor. */
+	ret = lxc_allocate_dev_ptmx_opath_fd(lxc_conf);
+	if (ret < 0) {
+		ERROR("Failed to allocate \"/dev/pts/ptmx\" file descriptor");
+		return -1;
+	}
+
+	/* Send "/dev/pts/ptmx" O_PATH file descriptor to parent. */
+	ret = lxc_abstract_unix_send_fds(handler->ttysock[0],
+					 &lxc_conf->dev_ptmx.opath_fd, 1, NULL, 0);
+	if (ret < 0) {
+		ERROR("Failed to send \"/dev/pts/ptmx\" file descriptor");
+		return -1;
+	}
+
 	ret = lxc_create_tty(name, lxc_conf);
 	if (ret < 0) {
 		ERROR("Failed to allocate ttys");
@@ -4644,6 +4672,8 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_aliens(conf);
 	lxc_clear_environment(conf);
 	lxc_clear_limits(conf, "lxc.prlimit");
+	if (conf->dev_ptmx.opath_fd >= 0)
+		close(conf->dev_ptmx.opath_fd);
 	free(conf);
 }
 

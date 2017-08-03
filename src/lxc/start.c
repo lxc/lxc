@@ -1419,6 +1419,14 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_barrier_child(handler, LXC_SYNC_POST_CGROUP))
 		return -1;
 
+	/* Receive "/dev/pts/ptmx" O_PATH file descriptor from child. */
+	if (lxc_abstract_unix_recv_fds(handler->ttysock[1],
+				       &handler->conf->dev_ptmx.opath_fd, 1, NULL,
+				       0) < 0) {
+		ERROR("Failed to send \"/dev/pts/ptmx\" file descriptor");
+		return -1;
+	}
+
 	/* Read tty fds allocated by child. */
 	if (lxc_recv_ttys_from_child(handler) < 0) {
 		ERROR("Failed to receive tty info from child process.");

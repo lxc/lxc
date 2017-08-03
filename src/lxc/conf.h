@@ -311,6 +311,11 @@ struct saved_nic {
 	char *orig_name;
 };
 
+/* O_PATH File descriptor */
+struct lxc_dev_ptmx {
+	int opath_fd;
+};
+
 struct lxc_conf {
 	int is_execute;
 	char *fstab;
@@ -425,6 +430,8 @@ struct lxc_conf {
 
 	/* RLIMIT_* limits */
 	struct lxc_list limits;
+
+	struct lxc_dev_ptmx dev_ptmx;
 };
 
 #ifdef HAVE_TLS
