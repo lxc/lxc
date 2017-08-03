@@ -720,7 +720,13 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		handler->netnsfd = -1;
 	}
 
+	cgroup_destroy(handler);
+
 	lxc_set_state(name, handler, STOPPED);
+
+	/* close command socket */
+	close(handler->conf->maincmd_fd);
+	handler->conf->maincmd_fd = -1;
 
 	if (run_lxc_hooks(name, "post-stop", handler->conf, handler->lxcpath, NULL)) {
 		ERROR("Failed to run lxc.hook.post-stop for container \"%s\".", name);
@@ -739,10 +745,6 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	lxc_console_delete(&handler->conf->console);
 	lxc_delete_tty(&handler->conf->tty_info);
 
-	/* close the command socket */
-	close(handler->conf->maincmd_fd);
-	handler->conf->maincmd_fd = -1;
-
 	/* The command socket is now closed, no more state clients can register
 	 * themselves from now on. So free the list of state clients.
 	 */
@@ -755,7 +757,6 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		free(cur);
 	}
 
-	free(handler->name);
 	if (handler->ttysock[0] != -1) {
 		close(handler->ttysock[0]);
 		close(handler->ttysock[1]);
@@ -764,7 +765,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	if (handler->conf->ephemeral == 1 && handler->conf->reboot != 1)
 		lxc_destroy_container_on_signal(handler, name);
 
-	cgroup_destroy(handler);
+	free(handler->name);
 	free(handler);
 }
 
