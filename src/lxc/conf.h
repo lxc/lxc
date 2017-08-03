@@ -329,8 +329,10 @@ struct lxc_conf {
 	struct lxc_list caps;
 	struct lxc_list keepcaps;
 	struct lxc_tty_info tty_info;
-	/* Comma-separated list of lxc.tty.max pty names. */
+
+	/* comma-separated list of lxc.tty.max pty names */
 	char *pty_names;
+
 	struct lxc_console console;
 	struct lxc_rootfs rootfs;
 	char *ttydir;
@@ -341,24 +343,35 @@ struct lxc_conf {
 	unsigned int lsm_aa_allow_incomplete;
 	char *lsm_se_context;
 	int tmp_umount_proc;
-	char *seccomp;  // filename with the seccomp rules
+	char *seccomp;
 #if HAVE_SCMP_FILTER_CTX
 	scmp_filter_ctx seccomp_ctx;
 #endif
 	int maincmd_fd;
-	unsigned int autodev;  // if 1, mount and fill a /dev at start
-	int haltsignal; // signal used to halt container
-	int rebootsignal; // signal used to reboot container
-	int stopsignal; // signal used to hard stop container
-	char *rcfile;	// Copy of the top level rcfile we read
 
-	// Logfile and logleve can be set in a container config file.
-	// Those function as defaults.  The defaults can be overriden
-	// by command line.  However we don't want the command line
-	// specified values to be saved on c->save_config().  So we
-	// store the config file specified values here.
-	char *logfile;  // the logfile as specifed in config
-	int loglevel;   // loglevel as specifed in config (if any)
+	/* if 1, mount and fill a /dev at start */
+	unsigned int autodev;
+
+	/* signal used to halt container */
+	int haltsignal;
+
+	/* signal used to reboot container */
+	int rebootsignal;
+
+	/* signal used to hard stop container */
+	int stopsignal;
+
+	/* Copy of the top level rcfile we read */
+	char *rcfile;
+
+	/* Logfile and loglevel can be set in a container config file. Those
+	 * function as defaults. The defaults can be overriden by command line.
+	 * However we don't want the command line specified values to be saved
+	 * on c->save_config(). So we store the config file specified values
+	 * here.
+	 */
+	char *logfile;
+	int loglevel;
 	int logfd;
 
 	int inherit_ns_fd[LXC_NS_MAX];
@@ -377,11 +390,13 @@ struct lxc_conf {
 
 	/* list of included files */
 	struct lxc_list includes;
+
 	/* config entries which are not "lxc.*" are aliens */
 	struct lxc_list aliens;
 
-	/* list of environment variables we'll add to the container when
-	 * started */
+	/* List of environment variables we'll add to the container when
+	 * started.
+	 */
 	struct lxc_list environment;
 
 	/* text representation of the config file */
@@ -391,8 +406,9 @@ struct lxc_conf {
 	/* init command */
 	char *init_cmd;
 
-	/* if running in a new user namespace, the UID/GID that init and COMMAND
-	 * should run under when using lxc-execute */
+	/* If running in a new user namespace, the UID/GID that init and COMMAND
+	 * should run under when using lxc-execute.
+	 */
 	uid_t init_uid;
 	gid_t init_gid;
 
@@ -400,7 +416,8 @@ struct lxc_conf {
 	unsigned int ephemeral;
 
 	/* The facility to pass to syslog. Let's users establish as what type of
-	 * program liblxc is supposed to write to the syslog. */
+	 * program liblxc is supposed to write to the syslog.
+	 */
 	char *syslog;
 
 	/* Whether PR_SET_NO_NEW_PRIVS will be set for the container. */
