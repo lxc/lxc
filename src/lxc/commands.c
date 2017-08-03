@@ -140,6 +140,7 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		if (!rspdata) {
 			ERROR("Command %s couldn't allocate response buffer.",
 			      lxc_cmd_str(cmd->req.cmd));
+			close(rspfd);
 			return -1;
 		}
 		rspdata->masterfd = rspfd;
