@@ -1431,7 +1431,7 @@ static int lxc_allocate_dev_ptmx_opath_fd(struct lxc_conf *conf)
 {
 	int fd;
 
-	fd = open("/dev/pts/ptmx", O_PATH);
+	fd = open("/dev/ptmx", O_PATH | O_CLOEXEC);
 	if (fd < 0)
 		return -1;
 
@@ -4325,15 +4325,17 @@ int lxc_setup(struct lxc_handler *handler)
 	/* Allocate "/dev/pts/ptmx" O_PATH file descriptor. */
 	ret = lxc_allocate_dev_ptmx_opath_fd(lxc_conf);
 	if (ret < 0) {
-		ERROR("Failed to allocate \"/dev/pts/ptmx\" file descriptor");
+		SYSERROR("Failed to allocate \"/dev/ptmx\" file descriptor");
 		return -1;
 	}
 
 	/* Send "/dev/pts/ptmx" O_PATH file descriptor to parent. */
 	ret = lxc_abstract_unix_send_fds(handler->ttysock[0],
 					 &lxc_conf->dev_ptmx.opath_fd, 1, NULL, 0);
+	close(lxc_conf->dev_ptmx.opath_fd);
+	lxc_conf->dev_ptmx.opath_fd = -1;
 	if (ret < 0) {
-		ERROR("Failed to send \"/dev/pts/ptmx\" file descriptor");
+		ERROR("Failed to send \"/dev/ptmx\" file descriptor");
 		return -1;
 	}
 

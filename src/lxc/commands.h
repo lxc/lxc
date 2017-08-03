@@ -48,6 +48,7 @@ typedef enum {
 	LXC_CMD_GET_NAME,
 	LXC_CMD_GET_LXCPATH,
 	LXC_CMD_ADD_STATE_CLIENT,
+	LXC_CMD_OPENPTY,
 	LXC_CMD_MAX,
 } lxc_cmd_t;
 
@@ -71,6 +72,11 @@ struct lxc_cmd_rr {
 struct lxc_cmd_console_rsp_data {
 	int masterfd;
 	int ttynum;
+};
+
+struct lxc_cmd_openpty_rsp_data {
+	int master;
+	int slave;
 };
 
 extern int lxc_cmd_console_winch(const char *name, const char *lxcpath);
@@ -115,5 +121,19 @@ extern int lxc_cmd_init(const char *name, struct lxc_handler *handler,
 extern int lxc_cmd_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
 				    struct lxc_handler *handler);
 extern int lxc_try_cmd(const char *name, const char *lxcpath);
+
+/* lxc_cmd_openpty     Allocate a {master,slave} pseudoterminal file descriptor
+ *                     pair from the container's devpts instance.
+ *
+ * @param[in] name     Name of container to connect to.
+ * @param[in] lxcpath  The lxcpath in which the container is running.
+ * @param[out] amaster The master pseudoterminal file descriptor.
+ * @param[out] aslave  The slave pseudoterminal file descriptor.
+ *
+ * @return             Return   0 on success
+ *                            < 0 on error
+ */
+extern int lxc_cmd_openpty(const char *name, const char *lxcpath, int *amaster,
+			   int *aslave);
 
 #endif /* __commands_h */
