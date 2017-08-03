@@ -10,7 +10,7 @@ script:
  - ./autogen.sh
  - mkdir build
  - cd build
- - ../configure --enable-tests
+ - ../configure --enable-tests --with-distro=unknown
  - make -j4
  - make DESTDIR=$TRAVIS_BUILD_DIR/install install
 notifications:
