@@ -24,14 +24,19 @@
 #include <unistd.h>
 #include <alloca.h>
 #include <errno.h>
+#include <sched.h>
 #include <signal.h>
+#include <stdlib.h>
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 
 #include "namespace.h"
 #include "log.h"
+
+int setresuid(uid_t ruid, uid_t euid, uid_t suid);
+int setresgid(gid_t rgid, gid_t egid, gid_t sgid);
+int setns(int fd, int nstype);
 
 lxc_log_define(lxc_namespace, lxc);
 
@@ -67,6 +72,77 @@ pid_t lxc_clone(int (*fn)(void *), void *arg, int flags)
 		ERROR("Failed to clone (%#x): %s.", flags, strerror(errno));
 
 	return ret;
+}
+
+/*
+ * like lxc_clone, but first attach to an existing user_ns
+ */
+pid_t lxc_clone_special_userns(int (*fn)(void *), void *arg, int flags)
+{
+	struct lxc_handler *handler = arg;
+	struct clone_arg clone_arg = {
+		.fn = fn,
+		.arg = arg,
+	};
+	size_t stack_size = sysconf(_SC_PAGESIZE);
+	void *stack = alloca(stack_size);
+	pid_t ret, pid;
+	int p[2];
+
+	if (handler->conf->inherit_ns_fd[LXC_NS_USER] == -1) {
+		ERROR("lxc_clone_special_userns: i shouldn't have been called");
+		return -1;
+	}
+	if (pipe(p) < 0)
+		return -1;
+
+	pid = fork();
+	if (pid < 0)
+		return pid;
+	if (pid > 0) {
+		close(p[1]);
+		ret = -1;
+		ret = read(p[0], &pid, sizeof(pid_t));
+		close(p[0]);
+		if (ret != sizeof(pid_t))
+			return -1;
+		return pid;
+	}
+	close(p[0]);
+
+	ret = setns(handler->conf->inherit_ns_fd[LXC_NS_USER], 0);
+	if (ret < 0) {
+		ERROR("Failed setting requested existing userns");
+		exit(1);
+	}
+	ret = setresgid(0, 0, 0);
+	if (ret < 0) {
+		ERROR("Failed setting gid to container 0");
+		exit(1);
+	}
+	ret = setresuid(0, 0, 0);
+	if (ret < 0) {
+		ERROR("Failed setting uid to container 0");
+		exit(1);
+	}
+	stack_size = sysconf(_SC_PAGESIZE);
+	stack = alloca(stack_size);
+	flags &= ~CLONE_NEWUSER;
+
+	close(handler->conf->inherit_ns_fd[LXC_NS_USER]);
+	handler->conf->inherit_ns_fd[LXC_NS_USER] = -1;
+#ifdef __ia64__
+	ret = __clone2(do_clone, stack,
+		       stack_size, flags | SIGCHLD, &clone_arg);
+#else
+	ret = clone(do_clone, stack  + stack_size, flags | SIGCHLD, &clone_arg);
+#endif
+	if (ret < 0)
+		ERROR("Failed to clone (%#x): %s.", flags, strerror(errno));
+
+	if (write(p[1], &ret, sizeof(pid_t)) != sizeof(pid_t))
+		exit(1);
+	exit(0);
 }
 
 /* Leave the user namespace at the first position in the array of structs so

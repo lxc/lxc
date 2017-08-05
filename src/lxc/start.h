@@ -92,6 +92,6 @@ extern int lxc_check_inherited(struct lxc_conf *conf, bool closeall,
 int __lxc_start(const char *, struct lxc_handler *, struct lxc_operations *,
 		void *, const char *, bool);
 
-extern void resolve_clone_flags(struct lxc_handler *handler);
+extern void resolve_clone_flags(struct lxc_handler *handler, bool wants_to_map_ids);
 #endif
 

@@ -80,6 +80,7 @@ int clone(int (*fn)(void *), void *child_stack,
 #endif
 
 extern pid_t lxc_clone(int (*fn)(void *), void *arg, int flags);
+extern pid_t lxc_clone_special_userns(int (*fn)(void *), void *arg, int flags);
 
 extern int lxc_namespace_2_cloneflag(char *namespace);
 extern int lxc_fill_namespace_flags(char *flaglist, int *flags);
