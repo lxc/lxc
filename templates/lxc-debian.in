@@ -359,8 +359,14 @@ openssh-server
             "wheezy")
                 gpgkeyname="archive-key-7.0"
                 ;;
-            *)
+            "jessie")
                 gpgkeyname="archive-key-8"
+                ;;
+            "stretch")
+                gpgkeyname="archive-key-9"
+                ;;
+            *)
+                gpgkeyname="archive-key-9"
                 ;;
         esac
         wget https://ftp-master.debian.org/keys/${gpgkeyname}.asc -O - --quiet \
