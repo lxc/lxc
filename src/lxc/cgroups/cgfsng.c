@@ -1904,10 +1904,12 @@ static int cgfsng_set(const char *filename, const char *value, const char *name,
  */
 static int convert_devpath(const char *invalue, char *dest)
 {
-	char *p, *path, *mode, type;
+	int n_parts;
+	char *p, *path, type;
 	struct stat sb;
 	unsigned long minor, major;
-	int n_parts, ret = -EINVAL;
+	int ret = -EINVAL;
+	char *mode = NULL;
 
 	path = must_copy_string(invalue);
 
@@ -1956,8 +1958,8 @@ static int convert_devpath(const char *invalue, char *dest)
 	minor = MINOR(sb.st_rdev);
 	ret = snprintf(dest, 50, "%c %lu:%lu %s", type, major, minor, mode);
 	if (ret < 0 || ret >= 50) {
-		ERROR("Error on configuration value \"%c %lu:%lu %s\" (max 50 chars)",
-				type, major, minor, mode);
+		ERROR("Error on configuration value \"%c %lu:%lu %s\" (max 50 "
+		      "chars)", type, major, minor, mode);
 		ret = -ENAMETOOLONG;
 		goto out;
 	}
