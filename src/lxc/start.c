@@ -839,6 +839,7 @@ static int do_start(void *data)
 	struct lxc_handler *handler = data;
 	int devnull_fd = -1, ret;
 	char path[PATH_MAX];
+	bool wants_to_map_ids = !lxc_list_empty(&handler->conf->id_map);
 
 	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL)) {
 		SYSERROR("Failed to set signal mask.");
@@ -866,7 +867,7 @@ static int do_start(void *data)
 	if (lxc_sync_wait_parent(handler, LXC_SYNC_STARTUP))
 		return -1;
 
-	if (attach_ns(handler->conf->inherit_ns_fd) < 0)
+	if (wants_to_map_ids && attach_ns(handler->conf->inherit_ns_fd) < 0)
 		return -1;
 
 	/* Unshare CLONE_NEWNET after CLONE_NEWUSER. See
