@@ -25,15 +25,12 @@
 #define __LXC_OVERLAY_H
 
 #include <grp.h>
+#include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <sys/types.h>
 
-#if IS_BIONIC
-#include <../include/lxcmntent.h>
-#else
-#include <mntent.h>
-#endif
+#include "storage.h"
 
 struct lxc_storage;
 
