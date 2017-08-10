@@ -3621,66 +3621,6 @@ on_error:
 	return NULL;
 }
 
-int lxc_list_net(struct lxc_conf *c, const char *key, char *retv, int inlen)
-{
-	int len;
-	const char *idxstring;
-	struct lxc_config_t *config;
-	struct lxc_netdev *netdev;
-	int fulllen = 0;
-	ssize_t idx = -1;
-	char *deindexed_key = NULL;
-
-	idxstring = key + 8;
-	if (!isdigit(*idxstring))
-		return -1;
-
-	config = get_network_config_ops(key, c, &idx, &deindexed_key);
-	if (!config || idx < 0)
-		return -1;
-
-	netdev = lxc_get_netdev_by_idx(c, (unsigned int)idx, false);
-	free(deindexed_key);
-	if (!netdev)
-		return -1;
-
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
-	strprint(retv, inlen, "type\n");
-	strprint(retv, inlen, "script.up\n");
-	strprint(retv, inlen, "script.down\n");
-	if (netdev->type != LXC_NET_EMPTY) {
-		strprint(retv, inlen, "flags\n");
-		strprint(retv, inlen, "link\n");
-		strprint(retv, inlen, "name\n");
-		strprint(retv, inlen, "hwaddr\n");
-		strprint(retv, inlen, "mtu\n");
-		strprint(retv, inlen, "ipv6.address\n");
-		strprint(retv, inlen, "ipv6.gateway\n");
-		strprint(retv, inlen, "ipv4.address\n");
-		strprint(retv, inlen, "ipv4.gateway\n");
-	}
-
-	switch (netdev->type) {
-	case LXC_NET_VETH:
-		strprint(retv, inlen, "veth.pair\n");
-		break;
-	case LXC_NET_MACVLAN:
-		strprint(retv, inlen, "macvlan.mode\n");
-		break;
-	case LXC_NET_VLAN:
-		strprint(retv, inlen, "vlan.id\n");
-		break;
-	case LXC_NET_PHYS:
-		break;
-	}
-
-	return fulllen;
-}
-
 /*
  * Config entry is something like "lxc.net.0.ipv4" the key 'lxc.net.'
  * was found.  So we make sure next comes an integer, find the right callback
@@ -4502,6 +4442,66 @@ int lxc_list_config_items(char *retv, int inlen)
 		if (s[strlen(s) - 1] == '.')
 			continue;
 		strprint(retv, inlen, "%s\n", s);
+	}
+
+	return fulllen;
+}
+
+int lxc_list_net(struct lxc_conf *c, const char *key, char *retv, int inlen)
+{
+	int len;
+	const char *idxstring;
+	struct lxc_config_t *config;
+	struct lxc_netdev *netdev;
+	int fulllen = 0;
+	ssize_t idx = -1;
+	char *deindexed_key = NULL;
+
+	idxstring = key + 8;
+	if (!isdigit(*idxstring))
+		return -1;
+
+	config = get_network_config_ops(key, c, &idx, &deindexed_key);
+	if (!config || idx < 0)
+		return -1;
+
+	netdev = lxc_get_netdev_by_idx(c, (unsigned int)idx, false);
+	free(deindexed_key);
+	if (!netdev)
+		return -1;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	strprint(retv, inlen, "type\n");
+	strprint(retv, inlen, "script.up\n");
+	strprint(retv, inlen, "script.down\n");
+	if (netdev->type != LXC_NET_EMPTY) {
+		strprint(retv, inlen, "flags\n");
+		strprint(retv, inlen, "link\n");
+		strprint(retv, inlen, "name\n");
+		strprint(retv, inlen, "hwaddr\n");
+		strprint(retv, inlen, "mtu\n");
+		strprint(retv, inlen, "ipv6.address\n");
+		strprint(retv, inlen, "ipv6.gateway\n");
+		strprint(retv, inlen, "ipv4.address\n");
+		strprint(retv, inlen, "ipv4.gateway\n");
+	}
+
+	switch (netdev->type) {
+	case LXC_NET_VETH:
+		strprint(retv, inlen, "veth.pair\n");
+		break;
+	case LXC_NET_MACVLAN:
+		strprint(retv, inlen, "macvlan.mode\n");
+		break;
+	case LXC_NET_VLAN:
+		strprint(retv, inlen, "vlan.id\n");
+		break;
+	case LXC_NET_PHYS:
+		break;
 	}
 
 	return fulllen;

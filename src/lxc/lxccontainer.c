@@ -2260,7 +2260,7 @@ static int do_lxcapi_get_keys(struct lxc_container *c, const char *key, char *re
 	if (container_mem_lock(c))
 		return -1;
 	int ret = -1;
-	if (strncmp(key, "lxc.net.", 8) == 0)
+	if (!strncmp(key, "lxc.net.", 8))
 		ret = lxc_list_net(c->lxc_conf, key, retv, inlen);
 	else if (strncmp(key, "lxc.network.", 12) == 0)
 		ret = lxc_list_nicconfigs_legacy(c->lxc_conf, key, retv, inlen);
