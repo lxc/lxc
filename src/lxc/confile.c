@@ -366,27 +366,6 @@ extern struct lxc_config_t *lxc_getconfig(const char *key)
 	return NULL;
 }
 
-int lxc_listconfigs(char *retv, int inlen)
-{
-	size_t i;
-	int len;
-	int fulllen = 0;
-
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
-	for (i = 0; i < config_size; i++) {
-		char *s = config[i].name;
-		if (s[strlen(s) - 1] == '.')
-			continue;
-		strprint(retv, inlen, "%s\n", s);
-	}
-
-	return fulllen;
-}
-
 static int set_config_net(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf, void *data)
 {
@@ -4502,6 +4481,27 @@ static int get_config_net_ipv6_address(const char *key, char *retv, int inlen,
 		inet_ntop(AF_INET6, &i->addr, buf, sizeof(buf));
 		strprint(retv, inlen, "%s/%u%s", buf, i->prefix,
 			 (listlen-- > 1) ? "\n" : "");
+	}
+
+	return fulllen;
+}
+
+int lxc_list_config_items(char *retv, int inlen)
+{
+	size_t i;
+	int len;
+	int fulllen = 0;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	for (i = 0; i < config_size; i++) {
+		char *s = config[i].name;
+		if (s[strlen(s) - 1] == '.')
+			continue;
+		strprint(retv, inlen, "%s\n", s);
 	}
 
 	return fulllen;

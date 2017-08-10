@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 	int fulllen = 0, inlen = 0, ret = EXIT_FAILURE;
 	char *key, *keys, *saveptr = NULL;
 
-	fulllen = lxc_listconfigs(NULL, inlen);
+	fulllen = lxc_list_config_items(NULL, inlen);
 
 	keys = malloc(sizeof(char) * fulllen + 1);
 	if (!keys) {
@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 		exit(ret);
 	}
 
-	if (lxc_listconfigs(keys, fulllen) != fulllen) {
+	if (lxc_list_config_items(keys, fulllen) != fulllen) {
 		lxc_error("%s\n", "failed to retrieve configuration keys");
 		goto on_error;
 	}
