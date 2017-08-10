@@ -705,18 +705,6 @@ static int lxc_rcv_status(int state_socket)
 {
         int ret;
         int state = -1;
-        struct timeval timeout = {0};
-
-        /* Set 5 second timeout to prevent hanging forever in case something
-         * goes wrong. 5 seconds is a long time to get into RUNNING state.
-         */
-        timeout.tv_sec = 5;
-        ret = setsockopt(state_socket, SOL_SOCKET, SO_RCVTIMEO,
-                         (const void *)&timeout, sizeof(timeout));
-        if (ret < 0) {
-                SYSERROR("Failed to set 5s timeout on containter state socket");
-                return -1;
-        }
 
 again:
         /* Receive container state. */
