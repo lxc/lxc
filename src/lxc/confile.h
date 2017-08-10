@@ -33,11 +33,12 @@
 struct lxc_conf;
 struct lxc_list;
 
-typedef int (*config_set_cb)(const char *, const char *, struct lxc_conf *,
+typedef int (*config_set_cb)(const char *key, const char *value,
+			     struct lxc_conf *conf, void *data);
+typedef int (*config_get_cb)(const char *key, char *value, int inlen,
+			     struct lxc_conf *conf, void *data);
+typedef int (*config_clr_cb)(const char *key, struct lxc_conf *conf,
 			     void *data);
-typedef int (*config_get_cb)(const char *, char *, int, struct lxc_conf *,
-			     void *);
-typedef int (*config_clr_cb)(const char *, struct lxc_conf *c, void *data);
 
 struct lxc_config_t {
 	char *name;
