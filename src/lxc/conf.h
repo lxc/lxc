@@ -46,6 +46,9 @@ typedef void * scmp_filter_ctx;
 #define subuidfile "/etc/subuid"
 #define subgidfile "/etc/subgid"
 
+#define LXC_DHCLIENT "/dhcpc.lxc.static"
+#define LXC_DHCLIENT_PATH SBINDIR LXC_DHCLIENT
+
 enum {
 	LXC_NET_EMPTY,
 	LXC_NET_VETH,
@@ -482,5 +485,5 @@ FILE *make_anonymous_mount_file(struct lxc_list *mount);
 struct lxc_list *sort_cgroup_settings(struct lxc_list* cgroup_settings);
 unsigned long add_required_remount_flags(const char *s, const char *d,
 		unsigned long flags);
-
+extern void lxc_net_setup_ip_addresses(struct lxc_conf *conf);
 #endif

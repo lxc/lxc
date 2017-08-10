@@ -1074,6 +1074,19 @@ bool dir_exists(const char *path)
 	return S_ISDIR(sb.st_mode);
 }
 
+bool executable_exists(const char *path)
+{
+	struct stat sb;
+	int ret;
+
+	ret = stat(path, &sb);
+	if (ret < 0)
+		// could be something other than eexist, just say no
+		return false;
+	if (!S_ISREG(sb.st_mode))
+		return false;
+	return (!!(sb.st_mode & S_IXUSR));
+}
 /* Note we don't use SHA-1 here as we don't want to depend on HAVE_GNUTLS.
  * FNV has good anti collision properties and we're not worried
  * about pre-image resistance or one-way-ness, we're just trying to make

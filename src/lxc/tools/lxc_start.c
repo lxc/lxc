@@ -356,6 +356,34 @@ int main(int argc, char *argv[])
 			goto out;
 		conf->inherit_ns_fd[i] = fd;
 	}
+	if (!lxc_list_empty(&conf->id_map) && conf->inherit_ns_fd[LXC_NS_USER] == -1) {
+		/*
+		 * If an unpriv user wants to share a netns, he can only do so
+		 * if he is privileged toward the userns which owns the netns.  So
+		 * we have to enter the userns as well, first.  Note - this means
+		 * that if the user asks for --share-net=X --share-ipc=Y and X and Y
+		 * have different owning user namespaces, this will likely fail.  We
+		 * could make the rare case of shared common ancestor work, but it's
+		 * not worth it.  After all noone's noticed that this was completely
+		 * broken for unpriv users for years.
+		 */
+		for (i = 0; i < LXC_NS_MAX; i++) {
+			if (i == LXC_NS_USER)
+				continue;
+			if (conf->inherit_ns_fd[i] == -1)
+				continue;
+			// we need to inherit userns as well
+			int pid = pid_from_lxcname(my_args.share_ns[i], lxcpath);
+			if (pid < 1)
+				goto out;
+			int fd = open_ns(pid, "user");
+			if (fd < 0)
+				goto out;
+			INFO("XXX Setting user ns in inherit_ns_fd");
+			conf->inherit_ns_fd[LXC_NS_USER] = fd;
+			break;
+		}
+	}
 
 	if (!my_args.daemonize) {
 		c->want_daemonize(c, false);

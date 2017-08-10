@@ -316,6 +316,7 @@ inline static bool am_unpriv(void) {
 extern uid_t get_ns_uid(uid_t orig);
 
 extern bool dir_exists(const char *path);
+extern bool executable_exists(const char *path);
 
 #define FNV1A_64_INIT ((uint64_t)0xcbf29ce484222325ULL)
 uint64_t fnv_64a_buf(void *buf, size_t len, uint64_t hval);

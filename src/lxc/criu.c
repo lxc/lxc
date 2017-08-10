@@ -823,7 +823,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		goto out_fini_handler;
 	}
 
-	resolve_clone_flags(handler);
+	resolve_clone_flags(handler, false); // TODO - fix second argument
 
 	if (pipe(pipes) < 0) {
 		SYSERROR("pipe() failed");

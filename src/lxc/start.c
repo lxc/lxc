@@ -168,20 +168,27 @@ error:
 }
 
 static int attach_ns(const int ns_fd[LXC_NS_MAX]) {
-	int i;
+	int i, ret = -1;
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
 		if (ns_fd[i] < 0)
 			continue;
 
+		INFO("Attaching to %s namespace.", ns_info[i].proc_name);
 		if (setns(ns_fd[i], 0) != 0)
 			goto error;
 	}
-	return 0;
+	ret = 0;
 
 error:
-	SYSERROR("Failed to attach %s namespace.", ns_info[i].proc_name);
-	return -1;
+	if (ret)
+		SYSERROR("Failed to attach %s namespace.", ns_info[i].proc_name);
+
+	for (i = 0; i < LXC_NS_MAX; i++) {
+		if (ns_fd[i] < 0)
+			close(ns_fd[i]);
+	}
+	return ret;
 }
 
 static int match_fd(int fd)
@@ -832,6 +839,7 @@ static int do_start(void *data)
 	struct lxc_handler *handler = data;
 	int devnull_fd = -1, ret;
 	char path[PATH_MAX];
+	bool wants_to_map_ids = !lxc_list_empty(&handler->conf->id_map);
 
 	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL)) {
 		SYSERROR("Failed to set signal mask.");
@@ -859,10 +867,14 @@ static int do_start(void *data)
 	if (lxc_sync_wait_parent(handler, LXC_SYNC_STARTUP))
 		return -1;
 
+	if (wants_to_map_ids && attach_ns(handler->conf->inherit_ns_fd) < 0)
+		return -1;
+
 	/* Unshare CLONE_NEWNET after CLONE_NEWUSER. See
 	 * https://github.com/lxc/lxd/issues/1978.
 	 */
-	if ((handler->clone_flags & (CLONE_NEWNET | CLONE_NEWUSER)) ==
+	if (handler->conf->inherit_ns_fd[LXC_NS_NET] == -1 &&
+	    (handler->clone_flags & (CLONE_NEWNET | CLONE_NEWUSER)) ==
 	    (CLONE_NEWNET | CLONE_NEWUSER)) {
 		ret = unshare(CLONE_NEWNET);
 		if (ret < 0) {
@@ -1075,6 +1087,9 @@ static int do_start(void *data)
 	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP_LIMITS))
 		goto out_warn_father;
 
+	//if (handler->conf->is_execute)
+		//lxc_net_setup_ip_addresses(handler->conf);
+
 	/* After this call, we are in error because this ops should not return
 	 * as it execs.
 	 */
@@ -1168,9 +1183,17 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 	return ret;
 }
 
-void resolve_clone_flags(struct lxc_handler *handler)
+void resolve_clone_flags(struct lxc_handler *handler, bool wants_to_map_ids)
 {
 	handler->clone_flags = CLONE_NEWPID | CLONE_NEWNS;
+
+	if (wants_to_map_ids) {
+		handler->clone_flags |= CLONE_NEWUSER | CLONE_NEWIPC | \
+		                        CLONE_NEWUTS;
+		if (!lxc_requests_empty_network(handler))
+			handler->clone_flags |= CLONE_NEWNET;
+		return ;
+	}
 
 	if (!lxc_list_empty(&handler->conf->id_map))
 		handler->clone_flags |= CLONE_NEWUSER;
@@ -1193,6 +1216,38 @@ void resolve_clone_flags(struct lxc_handler *handler)
 		INFO("Inheriting a UTS namespace.");
 }
 
+static bool enter_cgroup_in_ns(int ufd, struct lxc_handler *handler)
+{
+	int pid, ret;
+
+	INFO("switching to %d user_ns to set cgroups", handler->pid);
+	pid = fork();
+	if (pid < 0)
+		return -1;
+	if (pid > 0)
+		return wait_for_pid(pid);
+
+	ret = setns(ufd, CLONE_NEWUSER);
+	if (ret) {
+		SYSERROR("Failed to switch to ns to enter cgroup");
+		sleep(120);
+		exit(1);
+	}
+	ret = setresgid(0, 0, 0);
+	if (ret < 0) {
+		ERROR("Failed setting gid to container 0");
+		exit(1);
+	}
+	ret = setresuid(0, 0, 0);
+	if (ret < 0) {
+		ERROR("Failed setting uid to container 0");
+		exit(1);
+	}
+	if (!cgroup_enter(handler))
+		exit(1);
+	exit(0);
+}
+
 /* lxc_spawn() performs crucial setup tasks and clone()s the new process which
  * exec()s the requested container binary.
  * Note that lxc_spawn() runs in the parent namespaces. Any operations performed
@@ -1207,7 +1262,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	bool cgroups_connected = false;
 	int saved_ns_fd[LXC_NS_MAX];
 	int preserve_mask = 0, i, flags;
-	int netpipepair[2], nveths;
+	int netpipepair[2], nveths, joined_unpriv_userns = -1;
 	bool wants_to_map_ids;
 	struct lxc_list *id_map;
 
@@ -1215,9 +1270,11 @@ static int lxc_spawn(struct lxc_handler *handler)
 	id_map = &handler->conf->id_map;
 	wants_to_map_ids = !lxc_list_empty(id_map);
 
-	for (i = 0; i < LXC_NS_MAX; i++)
-		if (handler->conf->inherit_ns_fd[i] != -1)
-			preserve_mask |= ns_info[i].clone_flag;
+	if (!wants_to_map_ids) {
+		for (i = 0; i < LXC_NS_MAX; i++)
+			if (handler->conf->inherit_ns_fd[i] != -1)
+				preserve_mask |= ns_info[i].clone_flag;
+	}
 
 	if (lxc_sync_init(handler))
 		return -1;
@@ -1227,7 +1284,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		return -1;
 	}
 
-	resolve_clone_flags(handler);
+	resolve_clone_flags(handler, wants_to_map_ids);
 
 	if (handler->clone_flags & CLONE_NEWNET) {
 		if (!lxc_list_empty(&handler->conf->network)) {
@@ -1281,10 +1338,10 @@ static int lxc_spawn(struct lxc_handler *handler)
 			INFO("Failed to pin the rootfs for container \"%s\".", handler->name);
 	}
 
-	if (!preserve_ns(saved_ns_fd, preserve_mask, getpid()))
+	if (!wants_to_map_ids && !preserve_ns(saved_ns_fd, preserve_mask, getpid()))
 		goto out_delete_net;
 
-	if (attach_ns(handler->conf->inherit_ns_fd) < 0)
+	if (!wants_to_map_ids && attach_ns(handler->conf->inherit_ns_fd) < 0)
 		goto out_delete_net;
 
 	if (am_unpriv() && (nveths = count_veths(&handler->conf->network))) {
@@ -1306,7 +1363,12 @@ static int lxc_spawn(struct lxc_handler *handler)
 		 */
 		flags &= ~CLONE_NEWNET;
 	}
-	handler->pid = lxc_clone(do_start, handler, flags);
+	if (wants_to_map_ids && handler->conf->inherit_ns_fd[LXC_NS_USER] != -1) {
+		handler->pid = lxc_clone_special_userns(do_start, handler, flags);
+		joined_unpriv_userns = handler->conf->inherit_ns_fd[LXC_NS_USER];
+		handler->conf->inherit_ns_fd[LXC_NS_USER] = -1;
+	} else
+		handler->pid = lxc_clone(do_start, handler, flags);
 	if (handler->pid < 0) {
 		SYSERROR("Failed to clone a new set of namespaces.");
 		goto out_delete_net;
@@ -1318,7 +1380,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (!preserve_ns(handler->nsfd, handler->clone_flags | preserve_mask, handler->pid))
 		INFO("Failed to preserve namespace for lxc.hook.stop.");
 
-	if (attach_ns(saved_ns_fd))
+	if (!wants_to_map_ids && attach_ns(saved_ns_fd))
 		WARN("Failed to restore saved namespaces.");
 
 	lxc_sync_fini_child(handler);
@@ -1329,7 +1391,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	 * mapped to something else on the host.) later to become a valid uid
 	 * again.
 	 */
-	if (wants_to_map_ids && lxc_map_ids(id_map, handler->pid)) {
+	if (joined_unpriv_userns == -1 && wants_to_map_ids && lxc_map_ids(id_map, handler->pid)) {
 		ERROR("Failed to set up id mapping.");
 		goto out_delete_net;
 	}
@@ -1353,11 +1415,17 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 	}
 
-	if (!cgroup_enter(handler))
-		goto out_delete_net;
-
-	if (!cgroup_chown(handler))
-		goto out_delete_net;
+	if (joined_unpriv_userns != -1) {
+		if (!cgroup_chown(handler))
+			goto out_delete_net;
+		if (enter_cgroup_in_ns(joined_unpriv_userns, handler))
+			goto out_delete_net;
+	} else {
+		if (!cgroup_enter(handler))
+			goto out_delete_net;
+		if (!cgroup_chown(handler))
+			goto out_delete_net;
+	}
 
 	if (failed_before_rename)
 		goto out_delete_net;
@@ -1437,10 +1505,14 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 	lxc_sync_fini(handler);
 	handler->netnsfd = lxc_preserve_ns(handler->pid, "net");
+	if (joined_unpriv_userns != -1)
+		close(joined_unpriv_userns);
 
 	return 0;
 
 out_delete_net:
+	if (joined_unpriv_userns != -1)
+		close(joined_unpriv_userns);
 	if (cgroups_connected)
 		cgroup_disconnect();
 	if (handler->clone_flags & CLONE_NEWNET)
