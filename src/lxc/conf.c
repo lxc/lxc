@@ -4032,10 +4032,40 @@ void remount_all_slave(void)
 	free(line);
 }
 
-void lxc_execute_bind_init(struct lxc_conf *conf)
+void lxc_execute_bind(struct lxc_conf *conf, char *hostpath, char *contpath)
 {
 	int ret;
-	char path[PATH_MAX], destpath[PATH_MAX], *p;
+	char destpath[PATH_MAX];
+
+	if (!file_exists(hostpath)) {
+		INFO("%s does not exist on host", hostpath);
+		return;
+	}
+
+	ret = snprintf(destpath, PATH_MAX, "%s%s", conf->rootfs.mount, contpath);
+	if (ret < 0 || ret >= PATH_MAX) {
+		WARN("Path name too long for container's %s", contpath);
+		return;
+	}
+
+	if (!file_exists(destpath)) {
+		FILE *pathfile = fopen(destpath, "wb");
+		if (!pathfile) {
+			SYSERROR("Failed to create mount target '%s'", destpath);
+			return;
+		}
+		fclose(pathfile);
+	}
+
+	ret = safe_mount(hostpath, destpath, "none", MS_BIND, NULL, conf->rootfs.mount);
+	if (ret < 0)
+		SYSERROR("Failed to bind %s into container", hostpath);
+	INFO("%s bound into container at %s", hostpath, hostpath);
+}
+
+void lxc_execute_bind_init(struct lxc_conf *conf)
+{
+	char *p;
 
 	/* If init exists in the container, don't bind mount a static one */
 	p = choose_init(conf->rootfs.mount);
@@ -4044,36 +4074,12 @@ void lxc_execute_bind_init(struct lxc_conf *conf)
 		return;
 	}
 
-	ret = snprintf(path, PATH_MAX, SBINDIR "/init.lxc.static");
-	if (ret < 0 || ret >= PATH_MAX) {
-		WARN("Path name too long searching for lxc.init.static");
-		return;
-	}
+	return lxc_execute_bind(conf, SBINDIR "/init.lxc.static", "/init.lxc.static");
+}
 
-	if (!file_exists(path)) {
-		INFO("%s does not exist on host", path);
-		return;
-	}
-
-	ret = snprintf(destpath, PATH_MAX, "%s%s", conf->rootfs.mount, "/init.lxc.static");
-	if (ret < 0 || ret >= PATH_MAX) {
-		WARN("Path name too long for container's lxc.init.static");
-		return;
-	}
-
-	if (!file_exists(destpath)) {
-		FILE * pathfile = fopen(destpath, "wb");
-		if (!pathfile) {
-			SYSERROR("Failed to create mount target '%s'", destpath);
-			return;
-		}
-		fclose(pathfile);
-	}
-
-	ret = safe_mount(path, destpath, "none", MS_BIND, NULL, conf->rootfs.mount);
-	if (ret < 0)
-		SYSERROR("Failed to bind lxc.init.static into container");
-	INFO("lxc.init.static bound into container at %s", path);
+void lxc_execute_bind_dhclient(struct lxc_conf *conf)
+{
+	return lxc_execute_bind(conf, LXC_DHCLIENT_PATH, LXC_DHCLIENT);
 }
 
 /*
@@ -4178,6 +4184,54 @@ static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 	return ret;
 }
 
+/* TODO - generalize with va_args */
+
+void fork_and_exec(char *cmd, char *arg)
+{
+	pid_t pid;
+	int status;
+
+	pid = fork();
+	if (pid < 0)
+		return;
+	if (pid > 0) {
+		while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
+			continue;
+		return;
+	}
+
+	INFO("XXX Executing: %s %s", cmd, arg);
+	execl(cmd, basename(cmd), arg, NULL);
+}
+
+/* if running an application container (lxc-execute) then
+ * the container doesn't setup its own network.  So for any
+ * defined networks where no ipv4 address is configured,
+ * run dhclient in the container.
+ */
+void lxc_net_setup_ip_addresses(struct lxc_conf *conf)
+{
+	struct lxc_list *network = &conf->network, *iterator;
+	struct lxc_netdev *netdev;
+
+	if (!executable_exists(LXC_DHCLIENT))
+		return;
+
+	// TODO - should we bind in an empty resolv.conf?
+	lxc_list_for_each(iterator, network) {
+		netdev = iterator->elem;
+
+		if (netdev->type != LXC_NET_VETH)
+			continue;
+		if (!lxc_list_empty(&netdev->ipv4) || !lxc_list_empty(&netdev->ipv6))
+			continue;
+
+		fork_and_exec(LXC_DHCLIENT, netdev->name);
+	}
+
+	//umount2(LXC_DHCLIENT, MNT_DETACH);
+}
+
 int lxc_setup(struct lxc_handler *handler)
 {
 	const char *name = handler->name;
@@ -4231,8 +4285,10 @@ int lxc_setup(struct lxc_handler *handler)
 	if (!verify_start_hooks(lxc_conf))
 		return -1;
 
-	if (lxc_conf->is_execute)
+	if (lxc_conf->is_execute) {
 		lxc_execute_bind_init(lxc_conf);
+		lxc_execute_bind_dhclient(lxc_conf);
+	}
 
 	/* now mount only cgroup, if wanted;
 	 * before, /sys could not have been mounted

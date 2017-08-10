@@ -1087,6 +1087,9 @@ static int do_start(void *data)
 	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP_LIMITS))
 		goto out_warn_father;
 
+	//if (handler->conf->is_execute)
+		//lxc_net_setup_ip_addresses(handler->conf);
+
 	/* After this call, we are in error because this ops should not return
 	 * as it execs.
 	 */
