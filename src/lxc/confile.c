@@ -4,6 +4,8 @@
  *
  * Authors:
  * Daniel Lezcano <daniel.lezcano at free.fr>
+ * Serge Hallyn <serge@hallyn.com>
+ * Christian Brauner <christian.brauner@ubuntu.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -19,39 +21,40 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
 #define _GNU_SOURCE
-#define __STDC_FORMAT_MACROS /* Required for PRIu64 to work. */
+#define __STDC_FORMAT_MACROS
+#include <ctype.h>
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <inttypes.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <syslog.h>
+#include <time.h>
 #include <unistd.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <ctype.h>
-#include <inttypes.h> /* Required for PRIu64 to work. */
-#include <signal.h>
+#include <arpa/inet.h>
+#include <net/if.h>
+#include <netinet/in.h>
+#include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/param.h>
 #include <sys/utsname.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <net/if.h>
-#include <time.h>
-#include <dirent.h>
-#include <syslog.h>
 
-#include "parse.h"
+#include "conf.h"
 #include "config.h"
 #include "confile.h"
 #include "confile_legacy.h"
 #include "confile_utils.h"
-#include "utils.h"
 #include "log.h"
-#include "conf.h"
-#include "network.h"
 #include "lxcseccomp.h"
+#include "network.h"
+#include "parse.h"
 #include "storage.h"
+#include "utils.h"
 
 #if HAVE_IFADDRS_H
 #include <ifaddrs.h>
