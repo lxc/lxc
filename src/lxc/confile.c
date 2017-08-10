@@ -139,31 +139,21 @@ static struct lxc_config_t config[] = {
 	{ "lxc.tty.dir",                   set_config_tty_dir,                     get_config_tty_dir,                     clr_config_tty_dir,                   },
 	{ "lxc.tty.max",                   set_config_tty_max,                     get_config_tty_max,                     clr_config_tty_max,                   },
 
-	/* REMOVE IN LXC 3.0
-	   legacy pts key
-	 */
+	/* [START]: REMOVE IN LXC 3.0 */
 	{ "lxc.pts",                       set_config_pty_max,                     get_config_pty_max,                     clr_config_pty_max,                   },
-
-	/* REMOVE IN LXC 3.0
-	   legacy devttydir key
-	 */
 	{ "lxc.devttydir",                 set_config_tty_dir,                     get_config_tty_dir,                     clr_config_tty_dir,                   },
-
-	/* REMOVE IN LXC 3.0
-	   legacy tty key
-	 */
 	{ "lxc.tty",                       set_config_tty_max,                     get_config_tty_max,                     clr_config_tty_max,                   },
+	/* [END]: REMOVE IN LXC 3.0 */
 
 	{ "lxc.apparmor.profile",          set_config_apparmor_profile,            get_config_apparmor_profile,            clr_config_apparmor_profile,          },
 	{ "lxc.apparmor.allow_incomplete", set_config_apparmor_allow_incomplete,   get_config_apparmor_allow_incomplete,   clr_config_apparmor_allow_incomplete, },
 	{ "lxc.selinux.context",           set_config_selinux_context,             get_config_selinux_context,             clr_config_selinux_context,           },
 
-	/* REMOVE IN LXC 3.0
-	   legacy security keys
-	 */
+	/* [START]: REMOVE IN LXC 3.0 */
 	{ "lxc.aa_profile",                set_config_lsm_aa_profile,              get_config_lsm_aa_profile,              clr_config_lsm_aa_profile,            },
 	{ "lxc.aa_allow_incomplete",       set_config_lsm_aa_incomplete,           get_config_lsm_aa_incomplete,           clr_config_lsm_aa_incomplete,         },
 	{ "lxc.se_context",                set_config_lsm_se_context,              get_config_lsm_se_context,              clr_config_lsm_se_context,            },
+	/* [END]: REMOVE IN LXC 3.0 */
 
 	{ "lxc.cgroup",                    set_config_cgroup,                      get_config_cgroup,                      clr_config_cgroup,                    },
 	{ "lxc.id_map",                    set_config_idmaps,                      get_config_idmaps,                      clr_config_idmaps,                    },
@@ -174,27 +164,14 @@ static struct lxc_config_t config[] = {
 	{ "lxc.rootfs.options",            set_config_rootfs_options,              get_config_rootfs_options,              clr_config_rootfs_options,            },
 	{ "lxc.rootfs.path",               set_config_rootfs_path,                 get_config_rootfs_path,                 clr_config_rootfs_path,               },
 
-	/* REMOVE IN LXC 3.0
-	   legacy mount key
-	 */
+	/* [START]: REMOVE IN LXC 3.0 */
 	{ "lxc.mount",                     set_config_mount_fstab,                 get_config_mount_fstab,                 clr_config_mount_fstab,               },
-
-	/* REMOVE IN LXC 3.0
-	   legacy rootfs.backend key
-	 */
 	{ "lxc.rootfs.backend",            set_config_rootfs_backend,              get_config_rootfs_backend,              clr_config_rootfs_backend,            },
-
-	/* REMOVE IN LXC 3.0
-	   legacy rootfs key
-	 */
 	{ "lxc.rootfs",                    set_config_rootfs_path,                 get_config_rootfs_path,                 clr_config_rootfs_path,               },
+	{ "lxc.utsname",                   set_config_uts_name,                    get_config_uts_name,                    clr_config_uts_name,                  },
+	/* [END]: REMOVE IN LXC 3.0 */
 
-	/* REMOVE IN LXC 3.0
-	   legacy utsname key
-	 */
-	{ "lxc.utsname",                   set_config_uts_name,                    get_config_uts_name,                    clr_config_uts_name,                   },
-
-	{ "lxc.uts.name",                  set_config_uts_name,                    get_config_uts_name,                    clr_config_uts_name,                   },
+	{ "lxc.uts.name",                  set_config_uts_name,                    get_config_uts_name,                    clr_config_uts_name,                  },
 	{ "lxc.hook.pre-start",            set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook.pre-mount",            set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook.mount",                set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
@@ -206,9 +183,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.hook.destroy",              set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook",                      set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 
-	/* REMOVE IN LXC 3.0
-	   legacy security keys
-	 */
+	/* [START]: REMOVE IN LXC 3.0 */
 	{ "lxc.network.type",              set_config_network_legacy_type,         get_config_network_legacy_item,         clr_config_network_legacy_item,       },
 	{ "lxc.network.flags",             set_config_network_legacy_flags,        get_config_network_legacy_item,         clr_config_network_legacy_item,       },
 	{ "lxc.network.link",              set_config_network_legacy_link,         get_config_network_legacy_item,         clr_config_network_legacy_item,       },
@@ -226,6 +201,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.network.ipv6",              set_config_network_legacy_ipv6,         get_config_network_legacy_item,         clr_config_network_legacy_item,       },
 	{ "lxc.network.",                  set_config_network_legacy_nic,          get_config_network_legacy_item,         clr_config_network_legacy_item,       },
 	{ "lxc.network",                   set_config_network_legacy,              get_config_network_legacy,              clr_config_network_legacy,            },
+	/* [END]: REMOVE IN LXC 3.0 */
 
 	{ "lxc.net.type",                  set_config_net_type,                    get_config_net_type,                    clr_config_net_type,                  },
 	{ "lxc.net.flags",                 set_config_net_flags,                   get_config_net_flags,                   clr_config_net_flags,                 },
@@ -252,22 +228,13 @@ static struct lxc_config_t config[] = {
 	{ "lxc.include",                   set_config_includefiles,                get_config_includefiles,                clr_config_includefiles,              },
 	{ "lxc.autodev",                   set_config_autodev,                     get_config_autodev,                     clr_config_autodev,                   },
 
-	/* REMOVE IN LXC 3.0
-	   legacy seccomp key
-	 */
+	/* [START]: REMOVE IN LXC 3.0 */
 	{ "lxc.seccomp",                   set_config_seccomp_profile,             get_config_seccomp_profile,             clr_config_seccomp_profile,           },
-
-	/* REMOVE IN LXC 3.0
-	   legacy console key
-	 */
 	{ "lxc.console",                   set_config_console_path,                get_config_console_path,                clr_config_console_path,              },
-
-	/* REMOVE IN LXC 3.0
-	   legacy singal keys
-	 */
 	{ "lxc.haltsignal",                set_config_signal_halt,                 get_config_signal_halt,                 clr_config_signal_halt,               },
 	{ "lxc.rebootsignal",              set_config_signal_reboot,               get_config_signal_reboot,               clr_config_signal_reboot,             },
 	{ "lxc.stopsignal",                set_config_signal_stop,                 get_config_signal_stop,                 clr_config_signal_stop,               },
+	/* [END]: REMOVE IN LXC 3.0 */
 
 	{ "lxc.signal.halt",               set_config_signal_halt,                 get_config_signal_halt,                 clr_config_signal_halt,               },
 	{ "lxc.signal.reboot",             set_config_signal_reboot,               get_config_signal_reboot,               clr_config_signal_reboot,             },
@@ -281,7 +248,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.ephemeral",                 set_config_ephemeral,                   get_config_ephemeral,                   clr_config_ephemeral,                 },
 	{ "lxc.no_new_privs",	           set_config_no_new_privs,                get_config_no_new_privs,                clr_config_no_new_privs,              },
 
-	/* REMOVE IN LXC 3.0: legacy keys  [START]*/
+	/* [START]: REMOVE IN LXC 3.0 */
 	{ "lxc.syslog",                    set_config_log_syslog,                  get_config_log_syslog,                  clr_config_log_syslog,                },
 	{ "lxc.loglevel",                  set_config_log_level,                   get_config_log_level,                   clr_config_log_level,                 },
 	{ "lxc.logfile",                   set_config_log_file,                    get_config_log_file,                    clr_config_log_file,                  },
@@ -289,7 +256,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.init_uid",                  set_config_init_uid,                    get_config_init_uid,                    clr_config_init_uid,                  },
 	{ "lxc.init_gid",                  set_config_init_gid,                    get_config_init_gid,                    clr_config_init_gid,                  },
 	{ "lxc.limit",                     set_config_limit,                       get_config_limit,                       clr_config_limit,                     },
-	/* REMOVE IN LXC 3.0: legacy keys  [END]*/
+	/* [END]: REMOVE IN LXC 3.0 */
 
 	{ "lxc.log.syslog",                set_config_log_syslog,                  get_config_log_syslog,                  clr_config_log_syslog,                },
 	{ "lxc.log.level",                 set_config_log_level,                   get_config_log_level,                   clr_config_log_level,                 },
