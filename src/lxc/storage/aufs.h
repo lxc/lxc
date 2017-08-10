@@ -26,13 +26,10 @@
 
 #define _GNU_SOURCE
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdint.h>
 
-#if IS_BIONIC
-#include <../include/lxcmntent.h>
-#else
-#include <mntent.h>
-#endif
+#include "storage.h"
 
 struct lxc_storage;
 
