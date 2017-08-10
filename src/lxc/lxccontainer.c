@@ -2193,7 +2193,7 @@ WRAP_API_1(char *, lxcapi_get_running_config_item, const char *)
 static int do_lxcapi_get_keys(struct lxc_container *c, const char *key, char *retv, int inlen)
 {
 	if (!key)
-		return lxc_listconfigs(retv, inlen);
+		return lxc_list_config_items(retv, inlen);
 	/*
 	 * Support 'lxc.network.<idx>', i.e. 'lxc.network.0'
 	 * This is an intelligent result to show which keys are valid given

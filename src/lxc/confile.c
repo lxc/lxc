@@ -491,27 +491,6 @@ extern struct lxc_config_t *lxc_getconfig(const char *key)
 		}                                                              \
 	} while (0);
 
-int lxc_listconfigs(char *retv, int inlen)
-{
-	size_t i;
-	int len;
-	int fulllen = 0;
-
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
-	for (i = 0; i < config_size; i++) {
-		char *s = config[i].name;
-		if (s[strlen(s) - 1] == '.')
-			continue;
-		strprint(retv, inlen, "%s\n", s);
-	}
-
-	return fulllen;
-}
-
 static int set_config_string_item(char **conf_item, const char *value)
 {
 	char *new_value;
@@ -3929,4 +3908,25 @@ static int get_config_includefiles(const char *key, char *retv, int inlen,
 				   struct lxc_conf *c)
 {
 	return -ENOSYS;
+}
+
+int lxc_list_config_items(char *retv, int inlen)
+{
+	size_t i;
+	int len;
+	int fulllen = 0;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	for (i = 0; i < config_size; i++) {
+		char *s = config[i].name;
+		if (s[strlen(s) - 1] == '.')
+			continue;
+		strprint(retv, inlen, "%s\n", s);
+	}
+
+	return fulllen;
 }
