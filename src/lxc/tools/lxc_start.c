@@ -80,16 +80,11 @@ static int ensure_path(char **confpath, const char *path)
 			goto err;
 		}
 
-		*confpath = strdup(fullpath);
-		if (!*confpath) {
-			ERROR("failed to dup string '%s'", fullpath);
-			goto err;
-		}
+		*confpath = fullpath;
 	}
 	err = EXIT_SUCCESS;
 
 err:
-	free(fullpath);
 	return err;
 }
 
