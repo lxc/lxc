@@ -309,7 +309,6 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	struct bdev *orig, *new;
 	pid_t pid;
 	int ret;
-	char *src_no_prefix;
 	bool snap = flags & LXC_CLONE_SNAPSHOT;
 	bool maybe_snap = flags & LXC_CLONE_MAYBE_SNAPSHOT;
 	bool keepbdevtype = flags & LXC_CLONE_KEEPBDEVTYPE;
@@ -410,9 +409,7 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		goto err;
 	}
 
-	src_no_prefix = lxc_storage_get_path(new->src, new->type);
-
-	if (am_unpriv() && chown_mapped_root(src_no_prefix, c0->lxc_conf) < 0)
+	if (am_unpriv() && chown_mapped_root(new->src, c0->lxc_conf) < 0)
 		WARN("Failed to update ownership of %s", new->dest);
 
 	if (snap)
@@ -466,8 +463,6 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 				    "rsync_rootfs_wrapper");
 	else
 		ret = rsync_rootfs(&data);
-	if (ret < 0)
-		ERROR("Failed to rsync");
 
 	exit(ret == 0 ? 0 : 1);
 

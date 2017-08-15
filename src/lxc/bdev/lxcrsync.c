@@ -139,3 +139,4 @@ int rsync_rootfs_wrapper(void *data)
 	struct rsync_data *arg = data;
 	return rsync_rootfs(arg);
 }
+
