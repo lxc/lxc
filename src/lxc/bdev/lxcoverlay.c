@@ -58,8 +58,6 @@ int ovl_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		   const char *cname, const char *oldpath, const char *lxcpath,
 		   int snap, uint64_t newsize, struct lxc_conf *conf)
 {
-        char *src;
-
 	if (!snap) {
 		ERROR("overlayfs is only for snapshot clones");
 		return -22;
@@ -135,15 +133,14 @@ int ovl_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 			WARN("Failed to update ownership of %s", work);
 		free(work);
 
-		src = lxc_storage_get_path(orig->src, orig->type);
 		// the src will be 'overlayfs:lowerdir:upperdir'
-		len = strlen(delta) + strlen(src) + 12;
+		len = strlen(delta) + strlen(orig->src) + 12;
 		new->src = malloc(len);
 		if (!new->src) {
 			free(delta);
 			return -ENOMEM;
 		}
-		ret = snprintf(new->src, len, "overlayfs:%s:%s", src, delta);
+		ret = snprintf(new->src, len, "overlayfs:%s:%s", orig->src, delta);
 		free(delta);
 		if (ret < 0 || ret >= len)
 			return -ENOMEM;
