@@ -191,12 +191,11 @@ int btrfs_detect(const char *path)
 int btrfs_mount(struct bdev *bdev)
 {
 	unsigned long mntflags;
-	char *mntdata, *src;
+	char *mntdata;
 	int ret;
 
 	if (strcmp(bdev->type, "btrfs"))
 		return -22;
-
 	if (!bdev->src || !bdev->dest)
 		return -22;
 
@@ -205,9 +204,7 @@ int btrfs_mount(struct bdev *bdev)
 		return -22;
 	}
 
-	src = lxc_storage_get_path(bdev->src, "btrfs");
-
-	ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC | mntflags, mntdata);
+	ret = mount(bdev->src, bdev->dest, "bind", MS_BIND | MS_REC | mntflags, mntdata);
 	free(mntdata);
 	return ret;
 }
@@ -216,10 +213,8 @@ int btrfs_umount(struct bdev *bdev)
 {
 	if (strcmp(bdev->type, "btrfs"))
 		return -22;
-
 	if (!bdev->src || !bdev->dest)
 		return -22;
-
 	return umount(bdev->dest);
 }
 
@@ -348,9 +343,7 @@ out:
 
 static int btrfs_snapshot_wrapper(void *data)
 {
-	char *src;
 	struct rsync_data_char *arg = data;
-
 	if (setgid(0) < 0) {
 		ERROR("Failed to setgid to 0");
 		return -1;
@@ -361,10 +354,7 @@ static int btrfs_snapshot_wrapper(void *data)
 		ERROR("Failed to setuid to 0");
 		return -1;
 	}
-
-	src = lxc_storage_get_path(arg->src, "btrfs");
-
-	return btrfs_snapshot(src, arg->dest);
+	return btrfs_snapshot(arg->src, arg->dest);
 }
 
 int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
@@ -372,8 +362,6 @@ int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		     const char *lxcpath, int snap, uint64_t newsize,
 		     struct lxc_conf *conf)
 {
-	char *src;
-
 	if (!orig->dest || !orig->src)
 		return -1;
 
@@ -384,26 +372,21 @@ int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 				orig->type);
 			return -1;
 		}
-
-		len = strlen(lxcpath) + strlen(cname) + strlen("rootfs") + 6 + 3;
+		len = strlen(lxcpath) + strlen(cname) + strlen("rootfs") + 3;
 		new->src = malloc(len);
 		if (!new->src)
 			return -1;
-
-		ret = snprintf(new->src, len, "btrfs:%s/%s/rootfs", lxcpath, cname);
+		ret = snprintf(new->src, len, "%s/%s/rootfs", lxcpath, cname);
 		if (ret < 0 || ret >= len)
 			return -1;
 	} else {
-		/* In case rootfs is in custom path, reuse it. */
-		new->src = dir_new_path(orig->src, oldname, cname, oldpath, lxcpath);
-		if (!new->src)
+		// in case rootfs is in custom path, reuse it
+		if ((new->src = dir_new_path(orig->src, oldname, cname, oldpath, lxcpath)) == NULL)
 			return -1;
 
 	}
 
-	src = lxc_storage_get_path(new->src, "btrfs");
-	new->dest = strdup(src);
-	if (!new->dest)
+	if ((new->dest = strdup(new->src)) == NULL)
 		return -1;
 
 	if (orig->mntopts && (new->mntopts = strdup(orig->mntopts)) == NULL)
@@ -748,39 +731,21 @@ bool btrfs_try_remove_subvol(const char *path)
 {
 	if (!btrfs_detect(path))
 		return false;
-
 	return btrfs_recursive_destroy(path) == 0;
 }
 
 int btrfs_destroy(struct bdev *orig)
 {
-	char *src;
-
-	src = lxc_storage_get_path(orig->src, "btrfs");
-
-	return btrfs_recursive_destroy(src);
+	return btrfs_recursive_destroy(orig->src);
 }
 
 int btrfs_create(struct bdev *bdev, const char *dest, const char *n,
 		 struct bdev_specs *specs)
 {
-	int ret;
-	size_t len;
-
-	len = strlen(dest) + 1;
-	/* strlen("btrfs:") */
-	len += 6;
-	bdev->src = malloc(len);
-	if (!bdev->src)
-		return -1;
-
-	ret = snprintf(bdev->src, len, "btrfs:%s", dest);
-	if (ret < 0 || (size_t)ret >= len)
-		return -1;
-
+	bdev->src = strdup(dest);
 	bdev->dest = strdup(dest);
-	if (!bdev->dest)
+	if (!bdev->src || !bdev->dest)
 		return -1;
-
 	return btrfs_subvolume_create(bdev->dest);
 }
+
