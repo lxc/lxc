@@ -415,7 +415,6 @@ bool unpriv_snap_allowed(struct bdev *b, const char *t, bool snap,
 		// overlayfs -- which is also allowed)
 		if (strcmp(b->type, "dir") == 0 ||
 		    strcmp(b->type, "aufs") == 0 ||
-		    strcmp(b->type, "overlay") == 0 ||
 		    strcmp(b->type, "overlayfs") == 0 ||
 		    strcmp(b->type, "btrfs") == 0 ||
 		    strcmp(b->type, "loop") == 0)
@@ -428,7 +427,6 @@ bool unpriv_snap_allowed(struct bdev *b, const char *t, bool snap,
 	// and loop.  In particular, not zfs, btrfs, or lvm.
 	if (strcmp(t, "dir") == 0 ||
 	    strcmp(t, "aufs") == 0 ||
-	    strcmp(t, "overlay") == 0 ||
 	    strcmp(t, "overlayfs") == 0 ||
 	    strcmp(t, "btrfs") == 0 ||
 	    strcmp(t, "loop") == 0)

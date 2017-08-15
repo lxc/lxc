@@ -76,7 +76,7 @@ int ovl_update_abs_paths(struct lxc_conf *lxc_conf, const char *lxc_path,
  * To be called from functions in lxccontainer.c: Get lower directory for
  * overlay rootfs.
  */
-char *ovl_get_lower(const char *rootfs_path);
+char *ovl_getlower(char *p);
 
 /*
  * Get rootfs path for overlay backed containers. Allocated memory must be freed
