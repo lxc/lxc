@@ -392,7 +392,7 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		*needs_rdep = 1;
 	}
 
-	if (strcmp(oldpath, lxcpath) && !bdevtype && !snap)
+	if (strcmp(oldpath, lxcpath) && !bdevtype)
 		bdevtype = "dir";
 	else if (!bdevtype)
 		bdevtype = orig->type;
@@ -403,7 +403,6 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		bdev_put(orig);
 		return NULL;
 	}
-	TRACE("Detected \"%s\" storage driver", new->type);
 
 	if (new->ops->clone_paths(orig, new, oldname, cname, oldpath, lxcpath,
 				  snap, newsize, c0->lxc_conf) < 0) {
