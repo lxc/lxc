@@ -4,6 +4,8 @@
  *
  * Authors:
  * Daniel Lezcano <daniel.lezcano at free.fr>
+ * Serge Hallyn <serge@hallyn.com>
+ * Christian Brauner <christian.brauner@ubuntu.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -19,39 +21,40 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
 #define _GNU_SOURCE
-#define __STDC_FORMAT_MACROS /* Required for PRIu64 to work. */
+#define __STDC_FORMAT_MACROS
+#include <ctype.h>
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <inttypes.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <syslog.h>
+#include <time.h>
 #include <unistd.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <ctype.h>
-#include <inttypes.h> /* Required for PRIu64 to work. */
-#include <signal.h>
+#include <arpa/inet.h>
+#include <net/if.h>
+#include <netinet/in.h>
+#include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/param.h>
 #include <sys/utsname.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <net/if.h>
-#include <time.h>
-#include <dirent.h>
-#include <syslog.h>
 
-#include "parse.h"
+#include "conf.h"
 #include "config.h"
 #include "confile.h"
 #include "confile_legacy.h"
 #include "confile_utils.h"
-#include "utils.h"
 #include "log.h"
-#include "conf.h"
-#include "network.h"
 #include "lxcseccomp.h"
+#include "network.h"
+#include "parse.h"
 #include "storage.h"
+#include "utils.h"
 
 #if HAVE_IFADDRS_H
 #include <ifaddrs.h>
@@ -139,31 +142,21 @@ static struct lxc_config_t config[] = {
 	{ "lxc.tty.dir",                   set_config_tty_dir,                     get_config_tty_dir,                     clr_config_tty_dir,                   },
 	{ "lxc.tty.max",                   set_config_tty_max,                     get_config_tty_max,                     clr_config_tty_max,                   },
 
-	/* REMOVE IN LXC 3.0
-	   legacy pts key
-	 */
+	/* [START]: REMOVE IN LXC 3.0 */
 	{ "lxc.pts",                       set_config_pty_max,                     get_config_pty_max,                     clr_config_pty_max,                   },
-
-	/* REMOVE IN LXC 3.0
-	   legacy devttydir key
-	 */
 	{ "lxc.devttydir",                 set_config_tty_dir,                     get_config_tty_dir,                     clr_config_tty_dir,                   },
-
-	/* REMOVE IN LXC 3.0
-	   legacy tty key
-	 */
 	{ "lxc.tty",                       set_config_tty_max,                     get_config_tty_max,                     clr_config_tty_max,                   },
+	/* [END]: REMOVE IN LXC 3.0 */
 
 	{ "lxc.apparmor.profile",          set_config_apparmor_profile,            get_config_apparmor_profile,            clr_config_apparmor_profile,          },
 	{ "lxc.apparmor.allow_incomplete", set_config_apparmor_allow_incomplete,   get_config_apparmor_allow_incomplete,   clr_config_apparmor_allow_incomplete, },
 	{ "lxc.selinux.context",           set_config_selinux_context,             get_config_selinux_context,             clr_config_selinux_context,           },
 
-	/* REMOVE IN LXC 3.0
-	   legacy security keys
-	 */
+	/* [START]: REMOVE IN LXC 3.0 */
 	{ "lxc.aa_profile",                set_config_lsm_aa_profile,              get_config_lsm_aa_profile,              clr_config_lsm_aa_profile,            },
 	{ "lxc.aa_allow_incomplete",       set_config_lsm_aa_incomplete,           get_config_lsm_aa_incomplete,           clr_config_lsm_aa_incomplete,         },
 	{ "lxc.se_context",                set_config_lsm_se_context,              get_config_lsm_se_context,              clr_config_lsm_se_context,            },
+	/* [END]: REMOVE IN LXC 3.0 */
 
 	{ "lxc.cgroup",                    set_config_cgroup,                      get_config_cgroup,                      clr_config_cgroup,                    },
 	{ "lxc.id_map",                    set_config_idmaps,                      get_config_idmaps,                      clr_config_idmaps,                    },
@@ -174,27 +167,14 @@ static struct lxc_config_t config[] = {
 	{ "lxc.rootfs.options",            set_config_rootfs_options,              get_config_rootfs_options,              clr_config_rootfs_options,            },
 	{ "lxc.rootfs.path",               set_config_rootfs_path,                 get_config_rootfs_path,                 clr_config_rootfs_path,               },
 
-	/* REMOVE IN LXC 3.0
-	   legacy mount key
-	 */
+	/* [START]: REMOVE IN LXC 3.0 */
 	{ "lxc.mount",                     set_config_mount_fstab,                 get_config_mount_fstab,                 clr_config_mount_fstab,               },
-
-	/* REMOVE IN LXC 3.0
-	   legacy rootfs.backend key
-	 */
 	{ "lxc.rootfs.backend",            set_config_rootfs_backend,              get_config_rootfs_backend,              clr_config_rootfs_backend,            },
-
-	/* REMOVE IN LXC 3.0
-	   legacy rootfs key
-	 */
 	{ "lxc.rootfs",                    set_config_rootfs_path,                 get_config_rootfs_path,                 clr_config_rootfs_path,               },
+	{ "lxc.utsname",                   set_config_uts_name,                    get_config_uts_name,                    clr_config_uts_name,                  },
+	/* [END]: REMOVE IN LXC 3.0 */
 
-	/* REMOVE IN LXC 3.0
-	   legacy utsname key
-	 */
-	{ "lxc.utsname",                   set_config_uts_name,                    get_config_uts_name,                    clr_config_uts_name,                   },
-
-	{ "lxc.uts.name",                  set_config_uts_name,                    get_config_uts_name,                    clr_config_uts_name,                   },
+	{ "lxc.uts.name",                  set_config_uts_name,                    get_config_uts_name,                    clr_config_uts_name,                  },
 	{ "lxc.hook.pre-start",            set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook.pre-mount",            set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook.mount",                set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
@@ -206,9 +186,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.hook.destroy",              set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook",                      set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 
-	/* REMOVE IN LXC 3.0
-	   legacy security keys
-	 */
+	/* [START]: REMOVE IN LXC 3.0 */
 	{ "lxc.network.type",              set_config_network_legacy_type,         get_config_network_legacy_item,         clr_config_network_legacy_item,       },
 	{ "lxc.network.flags",             set_config_network_legacy_flags,        get_config_network_legacy_item,         clr_config_network_legacy_item,       },
 	{ "lxc.network.link",              set_config_network_legacy_link,         get_config_network_legacy_item,         clr_config_network_legacy_item,       },
@@ -226,6 +204,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.network.ipv6",              set_config_network_legacy_ipv6,         get_config_network_legacy_item,         clr_config_network_legacy_item,       },
 	{ "lxc.network.",                  set_config_network_legacy_nic,          get_config_network_legacy_item,         clr_config_network_legacy_item,       },
 	{ "lxc.network",                   set_config_network_legacy,              get_config_network_legacy,              clr_config_network_legacy,            },
+	/* [END]: REMOVE IN LXC 3.0 */
 
 	{ "lxc.net.type",                  set_config_net_type,                    get_config_net_type,                    clr_config_net_type,                  },
 	{ "lxc.net.flags",                 set_config_net_flags,                   get_config_net_flags,                   clr_config_net_flags,                 },
@@ -252,22 +231,13 @@ static struct lxc_config_t config[] = {
 	{ "lxc.include",                   set_config_includefiles,                get_config_includefiles,                clr_config_includefiles,              },
 	{ "lxc.autodev",                   set_config_autodev,                     get_config_autodev,                     clr_config_autodev,                   },
 
-	/* REMOVE IN LXC 3.0
-	   legacy seccomp key
-	 */
+	/* [START]: REMOVE IN LXC 3.0 */
 	{ "lxc.seccomp",                   set_config_seccomp_profile,             get_config_seccomp_profile,             clr_config_seccomp_profile,           },
-
-	/* REMOVE IN LXC 3.0
-	   legacy console key
-	 */
 	{ "lxc.console",                   set_config_console_path,                get_config_console_path,                clr_config_console_path,              },
-
-	/* REMOVE IN LXC 3.0
-	   legacy singal keys
-	 */
 	{ "lxc.haltsignal",                set_config_signal_halt,                 get_config_signal_halt,                 clr_config_signal_halt,               },
 	{ "lxc.rebootsignal",              set_config_signal_reboot,               get_config_signal_reboot,               clr_config_signal_reboot,             },
 	{ "lxc.stopsignal",                set_config_signal_stop,                 get_config_signal_stop,                 clr_config_signal_stop,               },
+	/* [END]: REMOVE IN LXC 3.0 */
 
 	{ "lxc.signal.halt",               set_config_signal_halt,                 get_config_signal_halt,                 clr_config_signal_halt,               },
 	{ "lxc.signal.reboot",             set_config_signal_reboot,               get_config_signal_reboot,               clr_config_signal_reboot,             },
@@ -281,7 +251,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.ephemeral",                 set_config_ephemeral,                   get_config_ephemeral,                   clr_config_ephemeral,                 },
 	{ "lxc.no_new_privs",	           set_config_no_new_privs,                get_config_no_new_privs,                clr_config_no_new_privs,              },
 
-	/* REMOVE IN LXC 3.0: legacy keys  [START]*/
+	/* [START]: REMOVE IN LXC 3.0 */
 	{ "lxc.syslog",                    set_config_log_syslog,                  get_config_log_syslog,                  clr_config_log_syslog,                },
 	{ "lxc.loglevel",                  set_config_log_level,                   get_config_log_level,                   clr_config_log_level,                 },
 	{ "lxc.logfile",                   set_config_log_file,                    get_config_log_file,                    clr_config_log_file,                  },
@@ -289,7 +259,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.init_uid",                  set_config_init_uid,                    get_config_init_uid,                    clr_config_init_uid,                  },
 	{ "lxc.init_gid",                  set_config_init_gid,                    get_config_init_gid,                    clr_config_init_gid,                  },
 	{ "lxc.limit",                     set_config_limit,                       get_config_limit,                       clr_config_limit,                     },
-	/* REMOVE IN LXC 3.0: legacy keys  [END]*/
+	/* [END]: REMOVE IN LXC 3.0 */
 
 	{ "lxc.log.syslog",                set_config_log_syslog,                  get_config_log_syslog,                  clr_config_log_syslog,                },
 	{ "lxc.log.level",                 set_config_log_level,                   get_config_log_level,                   clr_config_log_level,                 },
@@ -396,27 +366,6 @@ extern struct lxc_config_t *lxc_getconfig(const char *key)
 	return NULL;
 }
 
-int lxc_listconfigs(char *retv, int inlen)
-{
-	size_t i;
-	int len;
-	int fulllen = 0;
-
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
-	for (i = 0; i < config_size; i++) {
-		char *s = config[i].name;
-		if (s[strlen(s) - 1] == '.')
-			continue;
-		strprint(retv, inlen, "%s\n", s);
-	}
-
-	return fulllen;
-}
-
 static int set_config_net(const char *key, const char *value,
 			  struct lxc_conf *lxc_conf, void *data)
 {
@@ -463,98 +412,6 @@ static int set_config_net_type(const char *key, const char *value,
 	}
 
 	return 0;
-}
-
-/*
- * If you have p="lxc.net.0.link", pass it p+8
- * to get back '0' (the index of the nic).
- */
-static int get_network_netdev_idx(const char *key)
-{
-	int ret, idx;
-
-	if (*key < '0' || *key > '9')
-		return -1;
-
-	ret = sscanf(key, "%d", &idx);
-	if (ret != 1)
-		return -1;
-
-	return idx;
-}
-
-/*
- * If you have p="lxc.net.0", pass this p+8 and it will return
- * the netdev of the first configured nic.
- */
-static struct lxc_netdev *get_netdev_from_key(const char *key,
-					      struct lxc_list *network)
-{
-	int idx;
-	struct lxc_list *it;
-	int i = 0;
-	struct lxc_netdev *netdev = NULL;
-
-	idx = get_network_netdev_idx(key);
-	if (idx == -1)
-		return NULL;
-
-	lxc_list_for_each(it, network) {
-		if (idx == i++) {
-			netdev = it->elem;
-			break;
-		}
-	}
-
-	return netdev;
-}
-
-extern int lxc_list_nicconfigs(struct lxc_conf *c, const char *key, char *retv,
-			       int inlen)
-{
-	struct lxc_netdev *netdev;
-	int len;
-	int fulllen = 0;
-
-	netdev = get_netdev_from_key(key + 8, &c->network);
-	if (!netdev)
-		return -1;
-
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
-	strprint(retv, inlen, "type\n");
-	strprint(retv, inlen, "script.up\n");
-	strprint(retv, inlen, "script.down\n");
-	if (netdev->type != LXC_NET_EMPTY) {
-		strprint(retv, inlen, "flags\n");
-		strprint(retv, inlen, "link\n");
-		strprint(retv, inlen, "name\n");
-		strprint(retv, inlen, "hwaddr\n");
-		strprint(retv, inlen, "mtu\n");
-		strprint(retv, inlen, "ipv6.address\n");
-		strprint(retv, inlen, "ipv6.gateway\n");
-		strprint(retv, inlen, "ipv4.address\n");
-		strprint(retv, inlen, "ipv4.gateway\n");
-	}
-
-	switch (netdev->type) {
-	case LXC_NET_VETH:
-		strprint(retv, inlen, "veth.pair\n");
-		break;
-	case LXC_NET_MACVLAN:
-		strprint(retv, inlen, "macvlan.mode\n");
-		break;
-	case LXC_NET_VLAN:
-		strprint(retv, inlen, "vlan.id\n");
-		break;
-	case LXC_NET_PHYS:
-		break;
-	}
-
-	return fulllen;
 }
 
 static int set_config_net_flags(const char *key, const char *value,
@@ -3715,11 +3572,8 @@ static struct lxc_config_t *get_network_config_ops(const char *key,
 
 	/* end of index string */
 	idx_end = strchr((copy + 8), '.');
-	if (!idx_end) {
-		ERROR("Failed to detect \".\" in string \"%s\"", (copy + 8));
-		goto on_error;
-	}
-	*idx_end = '\0';
+	if (idx_end)
+		*idx_end = '\0';
 
 	/* parse current index */
 	ret = lxc_safe_uint((idx_start + 1), &tmpidx);
@@ -3745,18 +3599,24 @@ static struct lxc_config_t *get_network_config_ops(const char *key,
 
 	/* repair configuration key */
 	*idx_start = '.';
-	*idx_end = '.';
 
-	memmove(copy + 8, idx_end + 1, strlen(idx_end + 1));
-	copy[strlen(key) - numstrlen + 1] = '\0';
+	/* lxc.net.<idx>.<subkey> */
+	if (idx_end) {
+		*idx_end = '.';
 
-	config = lxc_getconfig(copy);
-	if (!config) {
-		ERROR("unknown network configuration key %s", key);
-		goto on_error;
+		memmove(copy + 8, idx_end + 1, strlen(idx_end + 1));
+		copy[strlen(key) - numstrlen + 1] = '\0';
+
+		config = lxc_getconfig(copy);
+		if (!config) {
+			ERROR("unknown network configuration key %s", key);
+			goto on_error;
+		}
 	}
 
-	*deindexed_key = copy;
+	if (deindexed_key)
+		*deindexed_key = copy;
+
 	return config;
 
 on_error:
@@ -4564,6 +4424,84 @@ static int get_config_net_ipv6_address(const char *key, char *retv, int inlen,
 		inet_ntop(AF_INET6, &i->addr, buf, sizeof(buf));
 		strprint(retv, inlen, "%s/%u%s", buf, i->prefix,
 			 (listlen-- > 1) ? "\n" : "");
+	}
+
+	return fulllen;
+}
+
+int lxc_list_config_items(char *retv, int inlen)
+{
+	size_t i;
+	int len;
+	int fulllen = 0;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	for (i = 0; i < config_size; i++) {
+		char *s = config[i].name;
+		if (s[strlen(s) - 1] == '.')
+			continue;
+		strprint(retv, inlen, "%s\n", s);
+	}
+
+	return fulllen;
+}
+
+int lxc_list_net(struct lxc_conf *c, const char *key, char *retv, int inlen)
+{
+	int len;
+	const char *idxstring;
+	struct lxc_netdev *netdev;
+	int fulllen = 0;
+	ssize_t idx = -1;
+
+	idxstring = key + 8;
+	if (!isdigit(*idxstring))
+		return -1;
+
+	(void)get_network_config_ops(key, c, &idx, NULL);
+	if (idx < 0)
+		return -1;
+
+	netdev = lxc_get_netdev_by_idx(c, (unsigned int)idx, false);
+	if (!netdev)
+		return -1;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	strprint(retv, inlen, "type\n");
+	strprint(retv, inlen, "script.up\n");
+	strprint(retv, inlen, "script.down\n");
+	if (netdev->type != LXC_NET_EMPTY) {
+		strprint(retv, inlen, "flags\n");
+		strprint(retv, inlen, "link\n");
+		strprint(retv, inlen, "name\n");
+		strprint(retv, inlen, "hwaddr\n");
+		strprint(retv, inlen, "mtu\n");
+		strprint(retv, inlen, "ipv6.address\n");
+		strprint(retv, inlen, "ipv6.gateway\n");
+		strprint(retv, inlen, "ipv4.address\n");
+		strprint(retv, inlen, "ipv4.gateway\n");
+	}
+
+	switch (netdev->type) {
+	case LXC_NET_VETH:
+		strprint(retv, inlen, "veth.pair\n");
+		break;
+	case LXC_NET_MACVLAN:
+		strprint(retv, inlen, "macvlan.mode\n");
+		break;
+	case LXC_NET_VLAN:
+		strprint(retv, inlen, "vlan.id\n");
+		break;
+	case LXC_NET_PHYS:
+		break;
 	}
 
 	return fulllen;

@@ -5,6 +5,8 @@
  *
  * Authors:
  * Daniel Lezcano <daniel.lezcano at free.fr>
+ * Serge Hallyn <serge@hallyn.com>
+ * Christian Brauner <christian.brauner@ubuntu.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -31,11 +33,13 @@
 struct lxc_conf;
 struct lxc_list;
 
-typedef int (*config_set_cb)(const char *, const char *, struct lxc_conf *,
+typedef int (*config_set_cb)(const char *key, const char *value,
+			     struct lxc_conf *conf, void *data);
+typedef int (*config_get_cb)(const char *key, char *value, int inlen,
+			     struct lxc_conf *conf, void *data);
+typedef int (*config_clr_cb)(const char *key, struct lxc_conf *conf,
 			     void *data);
-typedef int (*config_get_cb)(const char *, char *, int, struct lxc_conf *,
-			     void *);
-typedef int (*config_clr_cb)(const char *, struct lxc_conf *c, void *data);
+
 struct lxc_config_t {
 	char *name;
 	config_set_cb set;
@@ -44,8 +48,14 @@ struct lxc_config_t {
 };
 
 extern struct lxc_config_t *lxc_getconfig(const char *key);
-extern int lxc_list_nicconfigs(struct lxc_conf *c, const char *key, char *retv, int inlen);
-extern int lxc_listconfigs(char *retv, int inlen);
+
+/* List all configuration items associated with a given network. For example
+ * pass "lxc.net.[i]" to retrieve all configuration items associated with
+ * the network associated with index [i].
+ */
+extern int lxc_list_net(struct lxc_conf *c, const char *key, char *retv,
+			int inlen);
+extern int lxc_list_config_items(char *retv, int inlen);
 extern int lxc_config_read(const char *file, struct lxc_conf *conf, bool from_include);
 extern int append_unexp_config_line(const char *line, struct lxc_conf *conf);
 
