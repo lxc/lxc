@@ -66,12 +66,12 @@ int rbd_create(struct bdev *bdev, const char *dest, const char *n,
 		rbdname = specs->rbd.rbdname;
 
 	/* source device /dev/rbd/lxc/ctn */
-	len = strlen(rbdpool) + strlen(rbdname) + 4 + 11;
+	len = strlen(rbdpool) + strlen(rbdname) + 11;
 	bdev->src = malloc(len);
 	if (!bdev->src)
 		return -1;
 
-	ret = snprintf(bdev->src, len, "rbd:/dev/rbd/%s/%s", rbdpool, rbdname);
+	ret = snprintf(bdev->src, len, "/dev/rbd/%s/%s", rbdpool, rbdname);
 	if (ret < 0 || ret >= len)
 		return -1;
 
@@ -108,7 +108,7 @@ int rbd_create(struct bdev *bdev, const char *dest, const char *n,
 		fstype = DEFAULT_FSTYPE;
 
 	cmd_args[0] = fstype;
-	cmd_args[1] = bdev->src + 4;
+	cmd_args[1] = bdev->src;
 	ret = run_command(cmd_output, sizeof(cmd_output), do_mkfs_exec_wrapper,
 			  (void *)cmd_args);
 	if (ret < 0)
@@ -127,16 +127,14 @@ int rbd_create(struct bdev *bdev, const char *dest, const char *n,
 
 int rbd_destroy(struct bdev *orig)
 {
-	char *src;
 	pid_t pid;
 	char *rbdfullname;
 
-	src = lxc_storage_get_path(orig->src, orig->type);
-	if (file_exists(src)) {
+	if ( file_exists(orig->src) ) {
 		if ((pid = fork()) < 0)
 			return -1;
 		if (!pid) {
-			execlp("rbd", "rbd", "unmap" , src, (char *)NULL);
+			execlp("rbd", "rbd", "unmap" , orig->src, (char *)NULL);
 			exit(1);
 		}
 		if (wait_for_pid(pid) < 0)
@@ -146,8 +144,8 @@ int rbd_destroy(struct bdev *orig)
 	if ((pid = fork()) < 0)
 		return -1;
 	if (!pid) {
-		rbdfullname = alloca(strlen(src) - 8);
-		strcpy( rbdfullname, &src[9] );
+		rbdfullname = alloca(strlen(orig->src) - 8);
+		strcpy( rbdfullname, &orig->src[9] );
 		execlp("rbd", "rbd", "rm" , rbdfullname, (char *)NULL);
 		exit(1);
 	}
@@ -164,15 +162,12 @@ int rbd_detect(const char *path)
 
 int rbd_mount(struct bdev *bdev)
 {
-	char *src;
 	if (strcmp(bdev->type, "rbd"))
 		return -22;
-
 	if (!bdev->src || !bdev->dest)
 		return -22;
 
-	src = lxc_storage_get_path(bdev->src, bdev->type);
-	if (!file_exists(src)) {
+	if ( !file_exists(bdev->src) ) {
 		// if blkdev does not exist it should be mapped, because it is not persistent on reboot
 		ERROR("Block device %s is not mapped.", bdev->src);
 		return -1;
@@ -185,9 +180,7 @@ int rbd_umount(struct bdev *bdev)
 {
 	if (strcmp(bdev->type, "rbd"))
 		return -22;
-
 	if (!bdev->src || !bdev->dest)
 		return -22;
-
 	return umount(bdev->dest);
 }
