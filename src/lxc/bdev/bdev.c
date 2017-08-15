@@ -138,8 +138,8 @@ static const struct bdev_ops lvm_ops = {
     .clone_paths = &lvm_clonepaths,
     .destroy = &lvm_destroy,
     .create = &lvm_create,
-    .create_clone = &lvm_create_clone,
-    .create_snapshot = &lvm_create_snapshot,
+    .create_clone = NULL,
+    .create_snapshot = NULL,
     .can_snapshot = true,
     .can_backup = false,
 };
@@ -439,19 +439,6 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 			bret = new->ops->create_snapshot(c0->lxc_conf, orig, new, 0);
 		else
 			bret = new->ops->create_clone(c0->lxc_conf, orig, new, 0);
-		if (!bret)
-			return NULL;
-		return new;
-	}
-
-	if (!strcmp(orig->type, "lvm") && !strcmp(new->type, "lvm")) {
-		bool bret = false;
-		if (snap)
-			bret = new->ops->create_snapshot(c0->lxc_conf, orig,
-							 new, newsize);
-		else
-			bret = new->ops->create_clone(c0->lxc_conf, orig, new,
-						      newsize);
 		if (!bret)
 			return NULL;
 		return new;
