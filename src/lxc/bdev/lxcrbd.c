@@ -23,7 +23,7 @@
 
 #define _GNU_SOURCE
 #define __STDC_FORMAT_MACROS /* Required for PRIu64 to work. */
-#include <inttypes.h>	/* Required for PRIu64 to work. */
+#include <inttypes.h> /* Required for PRIu64 to work. */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,69 +36,24 @@
 
 lxc_log_define(lxcrbd, lxc);
 
-struct rbd_args {
-	const char *osd_pool_name;
-	const char *rbd_name;
-	const char *size;
-};
-
-int rbd_create_wrapper(void *data)
-{
-	struct rbd_args *args = data;
-
-	execlp("rbd", "rbd", "create", "--pool", args->osd_pool_name,
-	       args->rbd_name, "--size", args->size, (char *)NULL);
-
-	return -1;
-}
-
-int rbd_map_wrapper(void *data)
-{
-	struct rbd_args *args = data;
-
-	execlp("rbd", "rbd", "map", "--pool", args->osd_pool_name,
-	       args->rbd_name, (char *)NULL);
-
-	return -1;
-}
-
-int rbd_unmap_wrapper(void *data)
-{
-	struct rbd_args *args = data;
-
-	execlp("rbd", "rbd", "unmap", args->rbd_name, (char *)NULL);
-
-	return -1;
-}
-
-int rbd_delete_wrapper(void *data)
-{
-	struct rbd_args *args = data;
-
-	execlp("rbd", "rbd", "rm", args->rbd_name, (char *)NULL);
-
-	return -1;
-}
-
 int rbd_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		   const char *cname, const char *oldpath, const char *lxcpath,
-		   int snap, uint64_t newsize, struct lxc_conf *conf)
+		const char *cname, const char *oldpath, const char *lxcpath,
+		int snap, uint64_t newsize, struct lxc_conf *conf)
 {
 	ERROR("rbd clonepaths not implemented");
 	return -1;
 }
 
 int rbd_create(struct bdev *bdev, const char *dest, const char *n,
-	       struct bdev_specs *specs)
+		struct bdev_specs *specs)
 {
-	const char *rbdpool, *fstype;
+	const char *rbdpool, *rbdname = n, *fstype;
 	uint64_t size;
 	int ret, len;
 	char sz[24];
+	pid_t pid;
 	const char *cmd_args[2];
 	char cmd_output[MAXPATHLEN];
-	const char *rbdname = n;
-	struct rbd_args args = {0};
 
 	if (!specs)
 		return -1;
@@ -111,112 +66,91 @@ int rbd_create(struct bdev *bdev, const char *dest, const char *n,
 		rbdname = specs->rbd.rbdname;
 
 	/* source device /dev/rbd/lxc/ctn */
-	len = strlen(rbdpool) + strlen(rbdname) + 4 + 11;
+	len = strlen(rbdpool) + strlen(rbdname) + 11;
 	bdev->src = malloc(len);
-	if (!bdev->src) {
-		ERROR("Failed to allocate memory");
+	if (!bdev->src)
 		return -1;
-	}
 
-	ret = snprintf(bdev->src, len, "rbd:/dev/rbd/%s/%s", rbdpool, rbdname);
-	if (ret < 0 || ret >= len) {
-		ERROR("Failed to create string");
+	ret = snprintf(bdev->src, len, "/dev/rbd/%s/%s", rbdpool, rbdname);
+	if (ret < 0 || ret >= len)
 		return -1;
-	}
 
-	/* fssize is in bytes */
+	// fssize is in bytes.
 	size = specs->fssize;
 	if (!size)
 		size = DEFAULT_FS_SIZE;
 
-	/* in megabytes for rbd tool */
-	ret = snprintf(sz, 24, "%" PRIu64, size / 1024 / 1024);
-	if (ret < 0 || ret >= 24) {
-		ERROR("Failed to create string");
-		return -1;
-	}
+	// in megabytes for rbd tool
+	ret = snprintf(sz, 24, "%"PRIu64, size / 1024 / 1024 );
+	if (ret < 0 || ret >= 24)
+		exit(1);
 
-	args.osd_pool_name = rbdpool;
-	args.rbd_name = rbdname;
-	args.size = sz;
-	ret = run_command(cmd_output, sizeof(cmd_output), rbd_create_wrapper,
-			  (void *)&args);
-	if (ret < 0) {
-		ERROR("Failed to create rbd storage volume \"%s\": %s", rbdname,
-		      cmd_output);
+	if ((pid = fork()) < 0)
 		return -1;
+	if (!pid) {
+		execlp("rbd", "rbd", "create" , "--pool", rbdpool, rbdname, "--size", sz, (char *)NULL);
+		exit(1);
 	}
+	if (wait_for_pid(pid) < 0)
+		return -1;
 
-	ret = run_command(cmd_output, sizeof(cmd_output), rbd_map_wrapper,
-			  (void *)&args);
-	if (ret < 0) {
-		ERROR("Failed to map rbd storage volume \"%s\": %s", rbdname,
-		      cmd_output);
+	if ((pid = fork()) < 0)
 		return -1;
+	if (!pid) {
+		execlp("rbd", "rbd", "map", "--pool", rbdpool, rbdname, (char *)NULL);
+		exit(1);
 	}
+	if (wait_for_pid(pid) < 0)
+		return -1;
 
 	fstype = specs->fstype;
 	if (!fstype)
 		fstype = DEFAULT_FSTYPE;
 
 	cmd_args[0] = fstype;
-	cmd_args[1] = lxc_storage_get_path(bdev->src, bdev->type);
+	cmd_args[1] = bdev->src;
 	ret = run_command(cmd_output, sizeof(cmd_output), do_mkfs_exec_wrapper,
 			  (void *)cmd_args);
-	if (ret < 0) {
-		ERROR("Failed to map rbd storage volume \"%s\": %s", rbdname,
-		      cmd_output);
+	if (ret < 0)
+		return -1;
+
+	if (!(bdev->dest = strdup(dest)))
+		return -1;
+
+	if (mkdir_p(bdev->dest, 0755) < 0 && errno != EEXIST) {
+		ERROR("Error creating %s", bdev->dest);
 		return -1;
 	}
 
-	bdev->dest = strdup(dest);
-	if (!bdev->dest) {
-		ERROR("Failed to duplicate string \"%s\"", dest);
-		return -1;
-	}
-
-	ret = mkdir_p(bdev->dest, 0755);
-	if (ret < 0 && errno != EEXIST) {
-		ERROR("Failed to create directory \"%s\"", bdev->dest);
-		return -1;
-	}
-
-	TRACE("Created rbd storage volume \"%s\"", bdev->dest);
 	return 0;
 }
 
 int rbd_destroy(struct bdev *orig)
 {
-	int ret;
-	char *src;
+	pid_t pid;
 	char *rbdfullname;
-	char cmd_output[MAXPATHLEN];
-	struct rbd_args args = {0};
 
-	src = lxc_storage_get_path(orig->src, orig->type);
-	if (file_exists(src)) {
-		args.rbd_name = src;
-		ret = run_command(cmd_output, sizeof(cmd_output),
-				  rbd_unmap_wrapper, (void *)&args);
-		if (ret < 0) {
-			ERROR("Failed to map rbd storage volume \"%s\": %s",
-			      src, cmd_output);
+	if ( file_exists(orig->src) ) {
+		if ((pid = fork()) < 0)
 			return -1;
+		if (!pid) {
+			execlp("rbd", "rbd", "unmap" , orig->src, (char *)NULL);
+			exit(1);
 		}
+		if (wait_for_pid(pid) < 0)
+			return -1;
 	}
 
-	rbdfullname = alloca(strlen(src) - 8);
-	strcpy(rbdfullname, &src[9]);
-	args.rbd_name = rbdfullname;
-	ret = run_command(cmd_output, sizeof(cmd_output),
-			rbd_delete_wrapper, (void *)&args);
-	if (ret < 0) {
-		ERROR("Failed to delete rbd storage volume \"%s\": %s",
-		      rbdfullname, cmd_output);
+	if ((pid = fork()) < 0)
 		return -1;
+	if (!pid) {
+		rbdfullname = alloca(strlen(orig->src) - 8);
+		strcpy( rbdfullname, &orig->src[9] );
+		execlp("rbd", "rbd", "rm" , rbdfullname, (char *)NULL);
+		exit(1);
 	}
+	return wait_for_pid(pid);
 
-	return 0;
 }
 
 int rbd_detect(const char *path)
@@ -228,33 +162,25 @@ int rbd_detect(const char *path)
 
 int rbd_mount(struct bdev *bdev)
 {
-	char *src;
-
 	if (strcmp(bdev->type, "rbd"))
 		return -22;
-
 	if (!bdev->src || !bdev->dest)
 		return -22;
 
-	src = lxc_storage_get_path(bdev->src, bdev->type);
-	if (!file_exists(src)) {
-		/* If blkdev does not exist it should be mapped, because it is
-		 * not persistent on reboot.
-		 */
+	if ( !file_exists(bdev->src) ) {
+		// if blkdev does not exist it should be mapped, because it is not persistent on reboot
 		ERROR("Block device %s is not mapped.", bdev->src);
 		return -1;
 	}
 
-	return mount_unknown_fs(src, bdev->dest, bdev->mntopts);
+	return mount_unknown_fs(bdev->src, bdev->dest, bdev->mntopts);
 }
 
 int rbd_umount(struct bdev *bdev)
 {
 	if (strcmp(bdev->type, "rbd"))
 		return -22;
-
 	if (!bdev->src || !bdev->dest)
 		return -22;
-
 	return umount(bdev->dest);
 }

@@ -1265,10 +1265,8 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 				exit(1);
 			}
 		} else { // TODO come up with a better way here!
-			char *src;
 			free(bdev->dest);
-			src = lxc_storage_get_path(bdev->src, bdev->type);
-			bdev->dest = strdup(src);
+			bdev->dest = strdup(bdev->src);
 		}
 
 		/*
@@ -1433,7 +1431,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 		}
 		/* execute */
 		execvp(tpath, newargv);
-		SYSERROR("Failed to execute template %s", tpath);
+		SYSERROR("failed to execute template %s", tpath);
 		exit(1);
 	}
 
@@ -3225,8 +3223,8 @@ static int clone_update_rootfs_wrapper(void *data)
 sudo lxc-clone -o o1 -n n1 -s -L|-fssize fssize -v|--vgname vgname \
         -p|--lvprefix lvprefix -t|--fstype fstype  -B backingstore
 
--s [ implies overlay]
--s -B overlay
+-s [ implies overlayfs]
+-s -B overlayfs
 -s -B aufs
 
 only rootfs gets converted (copied/snapshotted) on clone.
@@ -3600,7 +3598,7 @@ static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	if (bdev_is_dir(c->lxc_conf, c->lxc_conf->rootfs.path)) {
 		ERROR("Snapshot of directory-backed container requested.");
 		ERROR("Making a copy-clone.  If you do want snapshots, then");
-		ERROR("please create an aufs or overlay clone first, snapshot that");
+		ERROR("please create an aufs or overlayfs clone first, snapshot that");
 		ERROR("and keep the original container pristine.");
 		flags &= ~LXC_CLONE_SNAPSHOT | LXC_CLONE_MAYBE_SNAPSHOT;
 	}

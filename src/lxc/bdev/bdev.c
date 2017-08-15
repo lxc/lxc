@@ -82,8 +82,6 @@ static const struct bdev_ops aufs_ops = {
     .clone_paths = &aufs_clonepaths,
     .destroy = &aufs_destroy,
     .create = &aufs_create,
-    .create_clone = NULL,
-    .create_snapshot = NULL,
     .can_snapshot = true,
     .can_backup = true,
 };
@@ -96,8 +94,6 @@ static const struct bdev_ops btrfs_ops = {
     .clone_paths = &btrfs_clonepaths,
     .destroy = &btrfs_destroy,
     .create = &btrfs_create,
-    .create_clone = &btrfs_create_clone,
-    .create_snapshot = &btrfs_create_snapshot,
     .can_snapshot = true,
     .can_backup = true,
 };
@@ -110,8 +106,6 @@ static const struct bdev_ops dir_ops = {
     .clone_paths = &dir_clonepaths,
     .destroy = &dir_destroy,
     .create = &dir_create,
-    .create_clone = NULL,
-    .create_snapshot = NULL,
     .can_snapshot = false,
     .can_backup = true,
 };
@@ -124,8 +118,6 @@ static const struct bdev_ops loop_ops = {
     .clone_paths = &loop_clonepaths,
     .destroy = &loop_destroy,
     .create = &loop_create,
-    .create_clone = NULL,
-    .create_snapshot = NULL,
     .can_snapshot = false,
     .can_backup = true,
 };
@@ -138,8 +130,6 @@ static const struct bdev_ops lvm_ops = {
     .clone_paths = &lvm_clonepaths,
     .destroy = &lvm_destroy,
     .create = &lvm_create,
-    .create_clone = &lvm_create_clone,
-    .create_snapshot = &lvm_create_snapshot,
     .can_snapshot = true,
     .can_backup = false,
 };
@@ -152,8 +142,6 @@ const struct bdev_ops nbd_ops = {
     .clone_paths = &nbd_clonepaths,
     .destroy = &nbd_destroy,
     .create = &nbd_create,
-    .create_clone = NULL,
-    .create_snapshot = NULL,
     .can_snapshot = true,
     .can_backup = false,
 };
@@ -166,8 +154,6 @@ static const struct bdev_ops ovl_ops = {
     .clone_paths = &ovl_clonepaths,
     .destroy = &ovl_destroy,
     .create = &ovl_create,
-    .create_clone = NULL,
-    .create_snapshot = NULL,
     .can_snapshot = true,
     .can_backup = true,
 };
@@ -180,8 +166,6 @@ static const struct bdev_ops rbd_ops = {
     .clone_paths = &rbd_clonepaths,
     .destroy = &rbd_destroy,
     .create = &rbd_create,
-    .create_clone = NULL,
-    .create_snapshot = NULL,
     .can_snapshot = false,
     .can_backup = false,
 };
@@ -194,8 +178,6 @@ static const struct bdev_ops zfs_ops = {
     .clone_paths = &zfs_clonepaths,
     .destroy = &zfs_destroy,
     .create = &zfs_create,
-    .create_clone = NULL,
-    .create_snapshot = NULL,
     .can_snapshot = true,
     .can_backup = true,
 };
@@ -212,7 +194,6 @@ static const struct bdev_type bdevs[] = {
 	{ .name = "btrfs",     .ops = &btrfs_ops, },
 	{ .name = "dir",       .ops = &dir_ops,   },
 	{ .name = "aufs",      .ops = &aufs_ops,  },
-	{ .name = "overlay",   .ops = &ovl_ops,   },
 	{ .name = "overlayfs", .ops = &ovl_ops,   },
 	{ .name = "loop",      .ops = &loop_ops,  },
 	{ .name = "nbd",       .ops = &nbd_ops,   },
@@ -326,8 +307,8 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		       const char *bdevdata, uint64_t newsize, int *needs_rdep)
 {
 	struct bdev *orig, *new;
+	pid_t pid;
 	int ret;
-	char *src_no_prefix;
 	bool snap = flags & LXC_CLONE_SNAPSHOT;
 	bool maybe_snap = flags & LXC_CLONE_MAYBE_SNAPSHOT;
 	bool keepbdevtype = flags & LXC_CLONE_KEEPBDEVTYPE;
@@ -335,20 +316,20 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	const char *oldname = c0->name;
 	const char *oldpath = c0->config_path;
 	struct rsync_data data;
-	char cmd_output[MAXPATHLEN];
 
-	/* If the container name doesn't show up in the rootfs path, then we
-	 * don't know how to come up with a new name.
+	/* if the container name doesn't show up in the rootfs path, then
+	 * we don't know how to come up with a new name
 	 */
-	if (!strstr(src, oldname)) {
-		ERROR("Original rootfs path \"%s\" does not include container "
-		      "name \"%s\"", src, oldname);
+	if (strstr(src, oldname) == NULL) {
+		ERROR(
+		    "original rootfs path %s doesn't include container name %s",
+		    src, oldname);
 		return NULL;
 	}
 
 	orig = bdev_init(c0->lxc_conf, src, NULL, NULL);
 	if (!orig) {
-		ERROR("Failed to detect storage driver for \"%s\"", src);
+		ERROR("failed to detect blockdev type for %s", src);
 		return NULL;
 	}
 
@@ -360,143 +341,128 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		len = strlen(oldpath) + strlen(oldname) + strlen("/rootfs") + 2;
 		orig->dest = malloc(len);
 		if (!orig->dest) {
-			ERROR("Failed to allocate memory");
+			ERROR("out of memory");
 			bdev_put(orig);
 			return NULL;
 		}
 
 		ret = snprintf(orig->dest, len, "%s/%s/rootfs", oldpath, oldname);
 		if (ret < 0 || (size_t)ret >= len) {
-			ERROR("Failed to create string");
+			ERROR("rootfs path too long");
 			bdev_put(orig);
 			return NULL;
 		}
-
 		ret = stat(orig->dest, &sb);
-		if (ret < 0 && errno == ENOENT) {
-			ret = mkdir_p(orig->dest, 0755);
-			if (ret < 0)
-				WARN("Failed to create directoy \"%s\"", orig->dest);
-		}
+
+		if (ret < 0 && errno == ENOENT)
+			if (mkdir_p(orig->dest, 0755) < 0)
+				WARN("Error creating '%s', continuing.",
+				     orig->dest);
 	}
 
-	/* Special case for snapshot. If the caller requested maybe_snapshot and
-	 * keepbdevtype and the backing store is directory, then proceed with a
-	 * a copy clone rather than returning error.
+	/*
+	 * special case for snapshot - if caller requested maybe_snapshot and
+	 * keepbdevtype and backing store is directory, then proceed with a copy
+	 * clone rather than returning error
 	 */
 	if (maybe_snap && keepbdevtype && !bdevtype && !orig->ops->can_snapshot)
 		snap = false;
 
-	/* If newtype is NULL and snapshot is set, then use overlay. */
-	if (!bdevtype && !keepbdevtype && snap && strcmp(orig->type, "dir") == 0)
-		bdevtype = "overlay";
+	/* If newtype is NULL and snapshot is set, then use overlayfs. */
+	if (!bdevtype && !keepbdevtype && snap && (!strcmp(orig->type, "dir") || !strcmp(orig->type, "overlayfs")))
+		bdevtype = "overlayfs";
 
 	if (am_unpriv() && !unpriv_snap_allowed(orig, bdevtype, snap, maybe_snap)) {
-		ERROR("Unsupported snapshot type \"%s\" for unprivileged users",
-		      bdevtype ? bdevtype : "(null)");
+		ERROR("Unsupported snapshot type for unprivileged users");
 		bdev_put(orig);
 		return NULL;
 	}
 
 	*needs_rdep = 0;
-	if (bdevtype && !strcmp(orig->type, "dir") &&
+	if (bdevtype && strcmp(orig->type, "dir") == 0 &&
 	    (strcmp(bdevtype, "aufs") == 0 ||
-	     strcmp(bdevtype, "overlayfs") == 0 ||
-	     strcmp(bdevtype, "overlay") == 0)) {
+	     strcmp(bdevtype, "overlayfs") == 0)) {
 		*needs_rdep = 1;
-	} else if (snap && !strcmp(orig->type, "lvm") &&
+	} else if (snap && strcmp(orig->type, "lvm") == 0 &&
 		   !lvm_is_thin_volume(orig->src)) {
 		*needs_rdep = 1;
 	}
 
-	if (strcmp(oldpath, lxcpath) && !bdevtype && !snap)
+	if (strcmp(oldpath, lxcpath) && !bdevtype && strcmp(orig->type, "overlayfs"))
 		bdevtype = "dir";
 	else if (!bdevtype)
 		bdevtype = orig->type;
 
-	/* get new bdev type */
 	new = bdev_get(bdevtype);
 	if (!new) {
-		ERROR("Failed to initialize \"%s\" storage driver",
+		ERROR("no such block device type: %s",
 		      bdevtype ? bdevtype : orig->type);
 		bdev_put(orig);
 		return NULL;
 	}
-	TRACE("Initialized \"%s\" storage driver", new->type);
 
-	/* create new paths */
-	ret = new->ops->clone_paths(orig, new, oldname, cname, oldpath, lxcpath,
-				    snap, newsize, c0->lxc_conf);
-	if (ret < 0) {
-		ERROR("Failed creating new paths for clone of \"%s\"", src);
+	if (new->ops->clone_paths(orig, new, oldname, cname, oldpath, lxcpath,
+				  snap, newsize, c0->lxc_conf) < 0) {
+		ERROR("failed getting pathnames for cloned storage: %s", src);
 		goto err;
 	}
 
-	/* btrfs */
-	if (!strcmp(orig->type, "btrfs") && !strcmp(new->type, "btrfs")) {
-		bool bret = false;
-		if (snap || btrfs_same_fs(orig->dest, new->dest) == 0)
-			bret = new->ops->create_snapshot(c0->lxc_conf, orig, new, 0);
-		else
-			bret = new->ops->create_clone(c0->lxc_conf, orig, new, 0);
-		if (!bret)
-			return NULL;
-		return new;
-	}
-
-	/* lvm */
-	if (!strcmp(orig->type, "lvm") && !strcmp(new->type, "lvm")) {
-		bool bret = false;
-		if (snap)
-			bret = new->ops->create_snapshot(c0->lxc_conf, orig,
-							 new, newsize);
-		else
-			bret = new->ops->create_clone(c0->lxc_conf, orig, new,
-						      newsize);
-		if (!bret)
-			return NULL;
-		return new;
-	}
-
-	if (strcmp(bdevtype, "btrfs")) {
-		if (!strcmp(new->type, "overlay") || !strcmp(new->type, "overlayfs"))
-			src_no_prefix = ovl_get_lower(new->src);
-		else
-			src_no_prefix = lxc_storage_get_path(new->src, new->type);
-
-		if (am_unpriv()) {
-			ret = chown_mapped_root(src_no_prefix, c0->lxc_conf);
-			if (ret < 0)
-				WARN("Failed to chown \"%s\"", new->src);
-		}
-	}
+	if (am_unpriv() && chown_mapped_root(new->src, c0->lxc_conf) < 0)
+		WARN("Failed to update ownership of %s", new->dest);
 
 	if (snap)
 		return new;
 
-	/* rsync the contents from source to target */
-	data.orig = orig;
-	data.new = new;
-	if (am_unpriv()) {
-		ret = userns_exec_1(c0->lxc_conf, lxc_rsync_exec_wrapper, &data,
-				    "lxc_rsync_exec_wrapper");
-		if (ret < 0) {
-			ERROR("Failed to rsync from \"%s\" into \"%s\"",
-			      orig->dest, new->dest);
+	/*
+	 * https://github.com/lxc/lxc/issues/131
+	 * Use btrfs snapshot feature instead of rsync to restore if both orig
+	 * and new are btrfs
+	 */
+	if (bdevtype && strcmp(orig->type, "btrfs") == 0 &&
+	    strcmp(new->type, "btrfs") == 0 &&
+	    btrfs_same_fs(orig->dest, new->dest) == 0) {
+		if (btrfs_destroy(new) < 0) {
+			ERROR("Error destroying %s subvolume", new->dest);
 			goto err;
 		}
-	} else {
-		ret = run_command(cmd_output, sizeof(cmd_output),
-				  lxc_rsync_exec_wrapper, (void *)&data);
-		if (ret < 0) {
-			ERROR("Failed to rsync from \"%s\" into \"%s\": %s",
-			      orig->dest, new->dest, cmd_output);
+		if (mkdir_p(new->dest, 0755) < 0) {
+			ERROR("Error creating %s directory", new->dest);
 			goto err;
 		}
+		if (btrfs_snapshot(orig->dest, new->dest) < 0) {
+			ERROR("Error restoring %s to %s", orig->dest,
+			      new->dest);
+			goto err;
+		}
+		bdev_put(orig);
+		return new;
 	}
 
-	bdev_put(orig);
-	return new;
+	pid = fork();
+	if (pid < 0) {
+		SYSERROR("fork");
+		goto err;
+	}
+
+	if (pid > 0) {
+		int ret = wait_for_pid(pid);
+		bdev_put(orig);
+		if (ret < 0) {
+			bdev_put(new);
+			return NULL;
+		}
+		return new;
+	}
+
+	data.orig = orig;
+	data.new = new;
+	if (am_unpriv())
+		ret = userns_exec_1(c0->lxc_conf, rsync_rootfs_wrapper, &data,
+				    "rsync_rootfs_wrapper");
+	else
+		ret = rsync_rootfs(&data);
+
+	exit(ret == 0 ? 0 : 1);
 
 err:
 	bdev_put(orig);
@@ -647,15 +613,4 @@ bool rootfs_is_blockdev(struct lxc_conf *conf)
 		return true;
 
 	return false;
-}
-
-char *lxc_storage_get_path(char *src, const char *prefix)
-{
-	size_t prefix_len;
-
-	prefix_len = strlen(prefix);
-	if (!strncmp(src, prefix, prefix_len) && (*(src + prefix_len) == ':'))
-		return (src + prefix_len + 1);
-
-	return src;
 }

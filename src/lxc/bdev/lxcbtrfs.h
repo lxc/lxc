@@ -412,10 +412,5 @@ int is_btrfs_subvol(const char *path);
 bool btrfs_try_remove_subvol(const char *path);
 int btrfs_same_fs(const char *orig, const char *new);
 int btrfs_snapshot(const char *orig, const char *new);
-int btrfs_snapshot_wrapper(void *data);
-bool btrfs_create_clone(struct lxc_conf *conf, struct bdev *orig,
-			struct bdev *new, uint64_t newsize);
-bool btrfs_create_snapshot(struct lxc_conf *conf, struct bdev *orig,
-			   struct bdev *new, uint64_t newsize);
 
 #endif // __LXC_BTRFS_H

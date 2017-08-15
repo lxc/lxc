@@ -129,10 +129,12 @@ bool attach_block_device(struct lxc_conf *conf)
 int blk_getsize(struct bdev *bdev, uint64_t *size)
 {
 	int fd, ret;
-	char *src;
+	char *path = bdev->src;
 
-	src = lxc_storage_get_path(bdev->src, bdev->type);
-	fd = open(src, O_RDONLY);
+	if (strcmp(bdev->type, "loop") == 0)
+		path = bdev->src + 5;
+
+	fd = open(path, O_RDONLY);
 	if (fd < 0)
 		return -1;
 
@@ -161,12 +163,15 @@ int detect_fs(struct bdev *bdev, char *type, int len)
 	size_t linelen;
 	pid_t pid;
 	FILE *f;
-	char *sp1, *sp2, *sp3, *srcdev, *line = NULL;
+	char *sp1, *sp2, *sp3, *line = NULL;
+	char *srcdev;
 
 	if (!bdev || !bdev->src || !bdev->dest)
 		return -1;
 
-	srcdev = lxc_storage_get_path(bdev->src, bdev->type);
+	srcdev = bdev->src;
+	if (strcmp(bdev->type, "loop") == 0)
+		srcdev = bdev->src + 5;
 
 	ret = pipe(p);
 	if (ret < 0)
@@ -415,7 +420,6 @@ bool unpriv_snap_allowed(struct bdev *b, const char *t, bool snap,
 		// overlayfs -- which is also allowed)
 		if (strcmp(b->type, "dir") == 0 ||
 		    strcmp(b->type, "aufs") == 0 ||
-		    strcmp(b->type, "overlay") == 0 ||
 		    strcmp(b->type, "overlayfs") == 0 ||
 		    strcmp(b->type, "btrfs") == 0 ||
 		    strcmp(b->type, "loop") == 0)
@@ -428,7 +432,6 @@ bool unpriv_snap_allowed(struct bdev *b, const char *t, bool snap,
 	// and loop.  In particular, not zfs, btrfs, or lvm.
 	if (strcmp(t, "dir") == 0 ||
 	    strcmp(t, "aufs") == 0 ||
-	    strcmp(t, "overlay") == 0 ||
 	    strcmp(t, "overlayfs") == 0 ||
 	    strcmp(t, "btrfs") == 0 ||
 	    strcmp(t, "loop") == 0)

@@ -171,7 +171,7 @@ static bool do_destroy(struct lxc_container *c)
 	if (ret < 0 || ret >= MAXPATHLEN)
 		return false;
 
-	if (rmdir(path) < 0 && errno != ENOENT) {
+	if (dir_exists(path)) {
 		if (!quiet)
 			fprintf(stdout, "Destroying %s failed: %s has snapshots.\n", c->name, c->name);
 		return false;
@@ -271,7 +271,7 @@ static bool do_destroy_with_snapshots(struct lxc_container *c)
 	if (ret < 0 || ret >= MAXPATHLEN)
 		return false;
 
-	if (rmdir(path) < 0 && errno != ENOENT)
+	if (dir_exists(path))
 		bret = c->destroy_with_snapshots(c);
 	else
 		bret = do_destroy(c);

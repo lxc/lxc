@@ -73,10 +73,6 @@ struct bdev_ops {
 			   const char *oldname, const char *cname,
 			   const char *oldpath, const char *lxcpath, int snap,
 			   uint64_t newsize, struct lxc_conf *conf);
-	bool (*create_clone)(struct lxc_conf *conf, struct bdev *orig,
-			     struct bdev *new, uint64_t newsize);
-	bool (*create_snapshot)(struct lxc_conf *conf, struct bdev *orig,
-				struct bdev *new, uint64_t newsize);
 	bool can_snapshot;
 	bool can_backup;
 };
@@ -129,6 +125,5 @@ bool bdev_destroy(struct lxc_conf *conf);
 /* callback function to be used with userns_exec_1() */
 int bdev_destroy_wrapper(void *data);
 extern bool rootfs_is_blockdev(struct lxc_conf *conf);
-extern char *lxc_storage_get_path(char *src, const char *prefix);
 
 #endif // __LXC_BDEV_H
