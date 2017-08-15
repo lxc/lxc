@@ -22,15 +22,12 @@
  */
 
 #define _GNU_SOURCE
-#define __STDC_FORMAT_MACROS
 #include <dirent.h>
-#include <errno.h>
-#include <inttypes.h>
-#include <linux/loop.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <linux/loop.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -49,16 +46,16 @@ static int do_loop_create(const char *path, uint64_t size, const char *fstype);
  * called $lxcpath/$lxcname/rootdev
  */
 int loop_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		    const char *cname, const char *oldpath, const char *lxcpath,
-		    int snap, uint64_t newsize, struct lxc_conf *conf)
+		const char *cname, const char *oldpath, const char *lxcpath,
+		int snap, uint64_t newsize, struct lxc_conf *conf)
 {
+	char fstype[100];
 	uint64_t size = newsize;
 	int len, ret;
 	char *srcdev;
-	char fstype[100] = "ext4";
 
 	if (snap) {
-		ERROR("The loop storage driver does not support snapshots");
+		ERROR("loop devices cannot be snapshotted.");
 		return -1;
 	}
 
@@ -68,65 +65,43 @@ int loop_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 	len = strlen(lxcpath) + strlen(cname) + strlen("rootdev") + 3;
 	srcdev = alloca(len);
 	ret = snprintf(srcdev, len, "%s/%s/rootdev", lxcpath, cname);
-	if (ret < 0 || ret >= len) {
-		ERROR("Failed to create string");
+	if (ret < 0 || ret >= len)
 		return -1;
-	}
 
 	new->src = malloc(len + 5);
-	if (!new->src) {
-		ERROR("Failed to allocate memory");
+	if (!new->src)
 		return -1;
-	}
-
-	ret = snprintf(new->src, (len + 5), "loop:%s", srcdev);
-	if (ret < 0 || ret >= (len + 5)) {
-		ERROR("Failed to create string");
+	ret = snprintf(new->src, len + 5, "loop:%s", srcdev);
+	if (ret < 0 || ret >= len + 5)
 		return -1;
-	}
 
 	new->dest = malloc(len);
-	if (!new->dest) {
-		ERROR("Failed to allocate memory");
+	if (!new->dest)
 		return -1;
-	}
-
 	ret = snprintf(new->dest, len, "%s/%s/rootfs", lxcpath, cname);
-	if (ret < 0 || ret >= len) {
-		ERROR("Failed to create string");
+	if (ret < 0 || ret >= len)
 		return -1;
-	}
 
-	/* It's tempting to say: if orig->src == loopback and !newsize, then
-	 * copy the loopback file. However, we'd have to make sure to correctly
-	 * keep holes! So punt for now.
-	 */
+	// it's tempting to say: if orig->src == loopback and !newsize, then
+	// copy the loopback file.  However, we'd have to make sure to
+	// correctly keep holes!  So punt for now.
+
 	if (is_blktype(orig)) {
-		/* detect size */
 		if (!newsize && blk_getsize(orig, &size) < 0) {
-			ERROR("Failed to detect size of loop file \"%s\"",
-			      orig->src);
+			ERROR("Error getting size of %s", orig->src);
 			return -1;
 		}
-
-		/* detect filesystem */
 		if (detect_fs(orig, fstype, 100) < 0) {
-			INFO("Failed to detect filesystem type for \"%s\"", orig->src);
+			INFO("could not find fstype for %s, using %s", orig->src,
+				DEFAULT_FSTYPE);
 			return -1;
 		}
-	} else if (!newsize) {
+	} else {
+		sprintf(fstype, "%s", DEFAULT_FSTYPE);
+		if (!newsize)
 			size = DEFAULT_FS_SIZE;
 	}
-
-	ret = do_loop_create(srcdev, size, fstype);
-	if (ret < 0) {
-		ERROR("Failed to create loop storage volume \"%s\" with "
-		      "filesystem \"%s\" and size \"%" PRIu64 "\"",
-		      srcdev, fstype, size);
-		return -1;
-	}
-
-	return 0;
+	return do_loop_create(srcdev, size, fstype);
 }
 
 int loop_create(struct bdev *bdev, const char *dest, const char *n,
@@ -140,35 +115,23 @@ int loop_create(struct bdev *bdev, const char *dest, const char *n,
 	if (!specs)
 		return -1;
 
-	/* <dest> is passed in as <lxcpath>/<lxcname>/rootfs, <srcdev> will
-	 * be <lxcpath>/<lxcname>/rootdev, and <src> will be "loop:<srcdev>".
-	 */
+	// dest is passed in as $lxcpath / $lxcname / rootfs
+	// srcdev will be:      $lxcpath / $lxcname / rootdev
+	// src will be 'loop:$srcdev'
 	len = strlen(dest) + 2;
 	srcdev = alloca(len);
 
 	ret = snprintf(srcdev, len, "%s", dest);
-	if (ret < 0 || ret >= len) {
-		ERROR("Failed to create string");
+	if (ret < 0 || ret >= len)
 		return -1;
-	}
-
-	ret = sprintf(srcdev + len - 4, "dev");
-	if (ret < 0) {
-		ERROR("Failed to create string");
-		return -1;
-	}
+	sprintf(srcdev + len - 4, "dev");
 
 	bdev->src = malloc(len + 5);
-	if (!bdev->src) {
-		ERROR("Failed to allocate memory");
+	if (!bdev->src)
 		return -1;
-	}
-
 	ret = snprintf(bdev->src, len + 5, "loop:%s", srcdev);
-	if (ret < 0 || ret >= len + 5) {
-		ERROR("Failed to create string");
+	if (ret < 0 || ret >= len + 5)
 		return -1;
-	}
 
 	sz = specs->fssize;
 	if (!sz)
@@ -178,31 +141,19 @@ int loop_create(struct bdev *bdev, const char *dest, const char *n,
 	if (!fstype)
 		fstype = DEFAULT_FSTYPE;
 
-	bdev->dest = strdup(dest);
-	if (!bdev->dest) {
-		ERROR("Failed to duplicate string \"%s\"", dest);
+	if (!(bdev->dest = strdup(dest)))
+		return -1;
+
+	if (mkdir_p(bdev->dest, 0755) < 0) {
+		ERROR("Error creating %s", bdev->dest);
 		return -1;
 	}
 
-	ret = mkdir_p(bdev->dest, 0755);
-	if (ret < 0) {
-		ERROR("Failed creating directory \"%s\"", bdev->dest);
-		return -1;
-	}
-
-
-	ret = do_loop_create(srcdev, sz, fstype);
-	if (ret < 0) {
-		ERROR("Failed to create loop storage volume \"%s\" with "
-		      "filesystem \"%s\" and size \"%" PRIu64 "\"",
-		      srcdev, fstype, sz);
-		return -1;
-	}
-
-	return 0;
+	return do_loop_create(srcdev, sz, fstype);
 }
 
-int loop_destroy(struct bdev *orig) {
+int loop_destroy(struct bdev *orig)
+{
 	return unlink(orig->src + 5);
 }
 
@@ -228,7 +179,7 @@ int loop_mount(struct bdev *bdev)
 {
 	int ret, loopfd;
 	char loname[MAXPATHLEN];
-	char *src;
+	char *src = bdev->src;
 
 	if (strcmp(bdev->type, "loop"))
 		return -22;
@@ -237,98 +188,73 @@ int loop_mount(struct bdev *bdev)
 		return -22;
 
 	/* skip prefix */
-	src = lxc_storage_get_path(bdev->src, bdev->type);
+	if (!strncmp(bdev->src, "loop:", 5))
+		src += 5;
 
 	loopfd = lxc_prepare_loop_dev(src, loname, LO_FLAGS_AUTOCLEAR);
 	if (loopfd < 0) {
-		ERROR("Failed to prepare loop device for loop file \"%s\"", src);
+		ERROR("failed to prepare loop device for loop file \"%s\"", src);
 		return -1;
 	}
-	DEBUG("Prepared loop device \"%s\"", loname);
+	DEBUG("prepared loop device \"%s\"", loname);
 
 	ret = mount_unknown_fs(loname, bdev->dest, bdev->mntopts);
-	if (ret < 0) {
-		ERROR("Failed to mount rootfs \"%s\" on \"%s\" via loop device \"%s\"",
-		      bdev->src, bdev->dest, loname);
-		close(loopfd);
-		return -1;
-	}
+	if (ret < 0)
+		ERROR("failed to mount rootfs \"%s\" onto \"%s\" via loop device \"%s\"", bdev->src, bdev->dest, loname);
+	else
+		bdev->lofd = loopfd;
+	DEBUG("mounted rootfs \"%s\" onto \"%s\" via loop device \"%s\"", bdev->src, bdev->dest, loname);
 
-	bdev->lofd = loopfd;
-	DEBUG("Mounted rootfs \"%s\" on \"%s\" via loop device \"%s\"",
-	      bdev->src, bdev->dest, loname);
-
-	return 0;
+	return ret;
 }
 
 int loop_umount(struct bdev *bdev)
 {
-	int ret, saved_errno;
+	int ret;
 
 	if (strcmp(bdev->type, "loop"))
 		return -22;
-
 	if (!bdev->src || !bdev->dest)
 		return -22;
-
 	ret = umount(bdev->dest);
-	saved_errno = errno;
 	if (bdev->lofd >= 0) {
 		close(bdev->lofd);
 		bdev->lofd = -1;
 	}
-	errno = saved_errno;
-
-	if (ret < 0) {
-		SYSERROR("Failed to umount \"%s\"", bdev->dest);
-		return -1;
-	}
-
-	return 0;
+	return ret;
 }
 
 static int do_loop_create(const char *path, uint64_t size, const char *fstype)
 {
 	int fd, ret;
-	char cmd_output[MAXPATHLEN];
 	const char *cmd_args[2] = {fstype, path};
+	char cmd_output[MAXPATHLEN];
 
-	/* create the new loopback file */
-	fd = creat(path, S_IRUSR | S_IWUSR);
-	if (fd < 0) {
-		SYSERROR("Failed to create new loop file \"%s\"", path);
+	// create the new loopback file.
+	fd = creat(path, S_IRUSR|S_IWUSR);
+	if (fd < 0)
 		return -1;
-	}
-
-	ret = lseek(fd, size, SEEK_SET);
-	if (ret < 0) {
-		SYSERROR("Failed to seek to set new loop file size for loop "
-			 "file \"%s\"", path);
+	if (lseek(fd, size, SEEK_SET) < 0) {
+		SYSERROR("Error seeking to set new loop file size");
 		close(fd);
 		return -1;
 	}
-
-	ret = write(fd, "1", 1);
-	if (ret != 1) {
-		SYSERROR("Failed creating new loop file \"%s\"", path);
+	if (write(fd, "1", 1) != 1) {
+		SYSERROR("Error creating new loop file");
 		close(fd);
 		return -1;
 	}
-
 	ret = close(fd);
 	if (ret < 0) {
-		SYSERROR("Failed to create new loop file \"%s\"", path);
+		SYSERROR("Error closing new loop file");
 		return -1;
 	}
 
 	// create an fs in the loopback file
 	ret = run_command(cmd_output, sizeof(cmd_output), do_mkfs_exec_wrapper,
 			  (void *)cmd_args);
-	if (ret < 0) {
-		ERROR("Failed to create new filesystem \"%s\" for loop file "
-		      "\"%s\": %s", fstype, path, cmd_output);
+	if (ret < 0)
 		return -1;
-	}
 
 	return 0;
 }
