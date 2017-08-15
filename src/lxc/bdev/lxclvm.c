@@ -389,10 +389,7 @@ int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 
 	if (strcmp(orig->type, "lvm")) {
 		vg = lxc_global_config_value("lxc.bdev.lvm.vg");
-		new->src = lxc_string_join(
-		    "/",
-		    (const char *[]){"lvm:", "dev", vg, cname, NULL},
-		    false);
+		new->src = lxc_string_join("/", (const char *[]){"dev", vg, cname, NULL}, false);
 	} else {
 		char *dup, *slider, *src;
 
@@ -413,11 +410,7 @@ int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		*slider = '\0';
 		slider = dup;
 
-		new->src = lxc_string_join(
-		    "/",
-		    (const char *[]){"lvm:", *slider == '/' ? ++slider : slider,
-				     cname, NULL},
-		    false);
+		new->src = lxc_string_join("/", (const char *[]){*slider == '/' ? ++slider : slider, cname, NULL}, false);
 		free(dup);
 	}
 	if (!new->src) {
@@ -590,14 +583,14 @@ int lvm_create(struct bdev *bdev, const char *dest, const char *n,
 	if (specs->lvm.lv)
 		lv = specs->lvm.lv;
 
-	len = strlen(vg) + strlen(lv) + 4 + 7;
+	len = strlen(vg) + strlen(lv) + 7;
 	bdev->src = malloc(len);
 	if (!bdev->src) {
 		ERROR("Failed to allocate memory");
 		return -1;
 	}
 
-	ret = snprintf(bdev->src, len, "lvm:/dev/%s/%s", vg, lv);
+	ret = snprintf(bdev->src, len, "/dev/%s/%s", vg, lv);
 	if (ret < 0 || ret >= len) {
 		ERROR("Failed to create string");
 		return -1;

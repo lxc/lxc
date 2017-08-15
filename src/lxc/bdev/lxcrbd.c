@@ -111,14 +111,14 @@ int rbd_create(struct bdev *bdev, const char *dest, const char *n,
 		rbdname = specs->rbd.rbdname;
 
 	/* source device /dev/rbd/lxc/ctn */
-	len = strlen(rbdpool) + strlen(rbdname) + 4 + 11;
+	len = strlen(rbdpool) + strlen(rbdname) + 11;
 	bdev->src = malloc(len);
 	if (!bdev->src) {
 		ERROR("Failed to allocate memory");
 		return -1;
 	}
 
-	ret = snprintf(bdev->src, len, "rbd:/dev/rbd/%s/%s", rbdpool, rbdname);
+	ret = snprintf(bdev->src, len, "/dev/rbd/%s/%s", rbdpool, rbdname);
 	if (ret < 0 || ret >= len) {
 		ERROR("Failed to create string");
 		return -1;

@@ -219,12 +219,12 @@ int zfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		return -1;
 	}
 
-	len = strlen(lxcpath) + strlen(cname) + strlen("rootfs") + 4 + 3;
+	len = strlen(lxcpath) + strlen(cname) + strlen("rootfs") + 3;
 	new->src = malloc(len);
 	if (!new->src)
 		return -1;
 
-	ret = snprintf(new->src, len, "zfs:%s/%s/rootfs", lxcpath, cname);
+	ret = snprintf(new->src, len, "%s/%s/rootfs", lxcpath, cname);
 	if (ret < 0 || ret >= len)
 		return -1;
 
@@ -303,13 +303,11 @@ int zfs_create(struct bdev *bdev, const char *dest, const char *n,
 	}
 
 	len = strlen(bdev->dest) + 1;
-	/* strlen("zfs:") */
-	len += 4;
 	bdev->src = malloc(len);
 	if (!bdev->src)
 		return -1;
 
-	ret = snprintf(bdev->src, len, "zfs:%s", bdev->dest);
+	ret = snprintf(bdev->src, len, "%s", bdev->dest);
 	if (ret < 0 || (size_t)ret >= len)
 		return -1;
 

@@ -51,14 +51,14 @@ int dir_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 	if (!orig->dest || !orig->src)
 		return -1;
 
-	len = strlen(lxcpath) + strlen(cname) + strlen("rootfs") + 4 + 3;
+	len = strlen(lxcpath) + strlen(cname) + strlen("rootfs") + 3;
 	new->src = malloc(len);
 	if (!new->src) {
 		ERROR("Failed to allocate memory");
 		return -1;
 	}
 
-	ret = snprintf(new->src, len, "dir:%s/%s/rootfs", lxcpath, cname);
+	ret = snprintf(new->src, len, "%s/%s/rootfs", lxcpath, cname);
 	if (ret < 0 || (size_t)ret >= len) {
 		ERROR("Failed to create string");
 		return -1;
@@ -82,21 +82,19 @@ int dir_create(struct bdev *bdev, const char *dest, const char *n,
 	const char *src;
 	size_t len;
 
-	/* strlen("dir:") */
-	len = 4;
 	if (specs && specs->dir)
 		src = specs->dir;
 	else
 		src = dest;
 
-	len += strlen(src) + 1;
+	len = strlen(src) + 1;
 	bdev->src = malloc(len);
 	if (!bdev->src) {
 		ERROR("Failed to allocate memory");
 		return -1;
 	}
 
-	ret = snprintf(bdev->src, len, "dir:%s", src);
+	ret = snprintf(bdev->src, len, "%s", src);
 	if (ret < 0 || (size_t)ret >= len) {
 		ERROR("Failed to create string");
 		return -1;

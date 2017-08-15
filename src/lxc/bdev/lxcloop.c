@@ -73,13 +73,13 @@ int loop_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		return -1;
 	}
 
-	new->src = malloc(len + 5);
+	new->src = malloc(len);
 	if (!new->src) {
 		ERROR("Failed to allocate memory");
 		return -1;
 	}
 
-	ret = snprintf(new->src, (len + 5), "loop:%s", srcdev);
+	ret = snprintf(new->src, len, "%s", srcdev);
 	if (ret < 0 || ret >= (len + 5)) {
 		ERROR("Failed to create string");
 		return -1;
@@ -158,13 +158,13 @@ int loop_create(struct bdev *bdev, const char *dest, const char *n,
 		return -1;
 	}
 
-	bdev->src = malloc(len + 5);
+	bdev->src = malloc(len);
 	if (!bdev->src) {
 		ERROR("Failed to allocate memory");
 		return -1;
 	}
 
-	ret = snprintf(bdev->src, len + 5, "loop:%s", srcdev);
+	ret = snprintf(bdev->src, len, "%s", srcdev);
 	if (ret < 0 || ret >= len + 5) {
 		ERROR("Failed to create string");
 		return -1;
