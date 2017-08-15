@@ -621,14 +621,3 @@ bool rootfs_is_blockdev(struct lxc_conf *conf)
 
 	return false;
 }
-
-char *lxc_storage_get_path(char *src, const char *prefix)
-{
-	size_t prefix_len;
-
-	prefix_len = strlen(prefix);
-	if (!strncmp(src, prefix, prefix_len) && (*(src + prefix_len) == ':'))
-		return (src + prefix_len + 1);
-
-	return src;
-}
