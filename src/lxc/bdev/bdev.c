@@ -368,11 +368,8 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	if (maybe_snap && keepbdevtype && !bdevtype && !orig->ops->can_snapshot)
 		snap = false;
 
-	/*
-	 * If newtype is NULL and snapshot is set, then use overlayfs
-	 */
-	if (!bdevtype && !keepbdevtype && snap &&
-	    strcmp(orig->type, "dir") == 0)
+	/* If newtype is NULL and snapshot is set, then use overlayfs. */
+	if (!bdevtype && !keepbdevtype && snap && (!strcmp(orig->type, "dir") || !strcmp(orig->type, "overlayfs")))
 		bdevtype = "overlayfs";
 
 	if (am_unpriv() && !unpriv_snap_allowed(orig, bdevtype, snap, maybe_snap)) {
@@ -391,10 +388,11 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		*needs_rdep = 1;
 	}
 
-	if (strcmp(oldpath, lxcpath) && !bdevtype)
+	if (strcmp(oldpath, lxcpath) && !bdevtype && strcmp(orig->type, "overlayfs"))
 		bdevtype = "dir";
 	else if (!bdevtype)
 		bdevtype = orig->type;
+
 	new = bdev_get(bdevtype);
 	if (!new) {
 		ERROR("no such block device type: %s",
