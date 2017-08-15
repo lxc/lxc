@@ -416,6 +416,6 @@ int btrfs_snapshot_wrapper(void *data);
 bool btrfs_create_clone(struct lxc_conf *conf, struct bdev *orig,
 			struct bdev *new, uint64_t newsize);
 bool btrfs_create_snapshot(struct lxc_conf *conf, struct bdev *orig,
-			   struct bdev *new, uint64_t newsize);
+			   struct bdev *new);
 
 #endif // __LXC_BTRFS_H

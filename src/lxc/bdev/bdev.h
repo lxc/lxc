@@ -76,7 +76,7 @@ struct bdev_ops {
 	bool (*create_clone)(struct lxc_conf *conf, struct bdev *orig,
 			     struct bdev *new, uint64_t newsize);
 	bool (*create_snapshot)(struct lxc_conf *conf, struct bdev *orig,
-				struct bdev *new, uint64_t newsize);
+				struct bdev *new);
 	bool can_snapshot;
 	bool can_backup;
 };
