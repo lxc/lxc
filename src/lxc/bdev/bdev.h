@@ -73,10 +73,6 @@ struct bdev_ops {
 			   const char *oldname, const char *cname,
 			   const char *oldpath, const char *lxcpath, int snap,
 			   uint64_t newsize, struct lxc_conf *conf);
-	bool (*create_clone)(struct lxc_conf *conf, struct bdev *orig,
-			     struct bdev *new, uint64_t newsize);
-	bool (*create_snapshot)(struct lxc_conf *conf, struct bdev *orig,
-				struct bdev *new);
 	bool can_snapshot;
 	bool can_backup;
 };
