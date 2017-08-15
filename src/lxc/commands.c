@@ -516,7 +516,7 @@ static int lxc_cmd_get_config_item_callback(int fd, struct lxc_cmd_req *req,
 	struct lxc_config_t *item;
 
 	memset(&rsp, 0, sizeof(rsp));
-	item = lxc_getconfig(req->data);
+	item = lxc_get_config(req->data);
 	if (!item)
 		goto err1;
 	cilen = item->get(req->data, NULL, 0, handler->conf, NULL);

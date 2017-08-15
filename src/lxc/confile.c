@@ -356,13 +356,14 @@ static const struct signame signames[] = {
 
 static const size_t config_size = sizeof(config) / sizeof(struct lxc_config_t);
 
-extern struct lxc_config_t *lxc_getconfig(const char *key)
+struct lxc_config_t *lxc_get_config(const char *key)
 {
 	size_t i;
 
 	for (i = 0; i < config_size; i++)
 		if (!strncmp(config[i].name, key, strlen(config[i].name)))
 			return &config[i];
+
 	return NULL;
 }
 
@@ -2038,7 +2039,7 @@ static int parse_line(char *buffer, void *data)
 		}
 	}
 
-	config = lxc_getconfig(key);
+	config = lxc_get_config(key);
 	if (!config) {
 		ERROR("unknown key %s", key);
 		goto out;
@@ -3607,7 +3608,7 @@ static struct lxc_config_t *get_network_config_ops(const char *key,
 		memmove(copy + 8, idx_end + 1, strlen(idx_end + 1));
 		copy[strlen(key) - numstrlen + 1] = '\0';
 
-		config = lxc_getconfig(copy);
+		config = lxc_get_config(copy);
 		if (!config) {
 			ERROR("unknown network configuration key %s", key);
 			goto on_error;
@@ -4442,8 +4443,10 @@ int lxc_list_config_items(char *retv, int inlen)
 
 	for (i = 0; i < config_size; i++) {
 		char *s = config[i].name;
+
 		if (s[strlen(s) - 1] == '.')
 			continue;
+
 		strprint(retv, inlen, "%s\n", s);
 	}
 

@@ -47,7 +47,7 @@ struct lxc_config_t {
 	config_clr_cb clr;
 };
 
-extern struct lxc_config_t *lxc_getconfig(const char *key);
+extern struct lxc_config_t *lxc_get_config(const char *key);
 
 /* List all configuration items associated with a given network. For example
  * pass "lxc.net.[i]" to retrieve all configuration items associated with
