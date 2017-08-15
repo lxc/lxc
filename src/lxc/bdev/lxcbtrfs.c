@@ -413,19 +413,8 @@ int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 
 	if (snap) {
 		struct rsync_data_char sdata;
-		if (!am_unpriv()) {
-			ret = btrfs_snapshot(orig->dest, new->dest);
-			if (ret < 0) {
-				SYSERROR("Failed to create btrfs snapshot "
-					 "\"%s\" from \"%s\"",
-					 new->dest, orig->dest);
-				return -1;
-			}
-			TRACE("Created btrfs snapshot \"%s\" from \"%s\"",
-			      new->dest, orig->dest);
-			return 0;
-		}
-
+		if (!am_unpriv())
+			return btrfs_snapshot(orig->dest, new->dest);
 		sdata.dest = new->dest;
 		sdata.src = orig->dest;
 		return userns_exec_1(conf, btrfs_snapshot_wrapper, &sdata,
@@ -441,8 +430,6 @@ int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 	ret = btrfs_subvolume_create(new->dest);
 	if (ret < 0)
 		SYSERROR("Failed to create btrfs subvolume \"%s\"", new->dest);
-	else
-		TRACE("Created btrfs subvolume \"%s\"", new->dest);
 	return ret;
 }
 

@@ -441,6 +441,11 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 			goto err;
 		}
 
+		if (mkdir_p(new->dest, 0755) < 0) {
+			ERROR("Failed to create directory \"%s\"", new->dest);
+			goto err;
+		}
+
 		arg.src = orig->dest;
 		arg.dest = new->dest;
 		if (am_unpriv())
