@@ -4453,6 +4453,67 @@ int lxc_list_config_items(char *retv, int inlen)
 	return fulllen;
 }
 
+int lxc_list_subkeys(struct lxc_conf *conf, const char *key, char *retv,
+		     int inlen)
+{
+	int len;
+	int fulllen = 0;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	if (!strcmp(key, "lxc.apparmor")) {
+		strprint(retv, inlen, "allow_incomplete\n");
+		strprint(retv, inlen, "profile\n");
+	} else if (!strcmp(key, "lxc.selinux")) {
+		strprint(retv, inlen, "context\n");
+	} else if (!strcmp(key, "lxc.mount")) {
+		strprint(retv, inlen, "auto\n");
+		strprint(retv, inlen, "entry\n");
+		strprint(retv, inlen, "fstab\n");
+	} else if (!strcmp(key, "lxc.rootfs")) {
+		strprint(retv, inlen, "mount\n");
+		strprint(retv, inlen, "options\n");
+		strprint(retv, inlen, "path\n");
+	} else if (!strcmp(key, "lxc.uts")) {
+		strprint(retv, inlen, "name\n");
+	} else if (!strcmp(key, "lxc.hook")) {
+		strprint(retv, inlen, "autodev\n");
+		strprint(retv, inlen, "clone\n");
+		strprint(retv, inlen, "destroy\n");
+		strprint(retv, inlen, "mount\n");
+		strprint(retv, inlen, "post-stop\n");
+		strprint(retv, inlen, "pre-mount\n");
+		strprint(retv, inlen, "pre-start\n");
+		strprint(retv, inlen, "start\n");
+		strprint(retv, inlen, "stop\n");
+	} else if (!strcmp(key, "lxc.cap")) {
+		strprint(retv, inlen, "drop\n");
+		strprint(retv, inlen, "keep\n");
+	} else if (!strcmp(key, "lxc.console")) {
+		strprint(retv, inlen, "logfile\n");
+		strprint(retv, inlen, "path\n");
+	} else if (!strcmp(key, "lxc.seccomp")) {
+		strprint(retv, inlen, "profile\n");
+	} else if (!strcmp(key, "lxc.signal")) {
+		strprint(retv, inlen, "halt\n");
+		strprint(retv, inlen, "reboot\n");
+		strprint(retv, inlen, "stop\n");
+	} else if (!strcmp(key, "lxc.start")) {
+		strprint(retv, inlen, "auto\n");
+		strprint(retv, inlen, "delay\n");
+		strprint(retv, inlen, "order\n");
+	} else if (!strcmp(key, "lxc.monitor")) {
+		strprint(retv, inlen, "unshare\n");
+	} else {
+		fulllen = -1;
+	}
+
+	return fulllen;
+}
+
 int lxc_list_net(struct lxc_conf *c, const char *key, char *retv, int inlen)
 {
 	int len;

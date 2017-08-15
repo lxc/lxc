@@ -2268,6 +2268,8 @@ static int do_lxcapi_get_keys(struct lxc_container *c, const char *key, char *re
 		ret = lxc_list_net(c->lxc_conf, key, retv, inlen);
 	else if (strncmp(key, "lxc.network.", 12) == 0)
 		ret = lxc_list_nicconfigs_legacy(c->lxc_conf, key, retv, inlen);
+	else
+		ret = lxc_list_subkeys(c->lxc_conf, key, retv, inlen);
 
 	container_mem_unlock(c);
 	return ret;
