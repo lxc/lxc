@@ -39,12 +39,12 @@ int dir_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		   const char *cname, const char *oldpath, const char *lxcpath,
 		   int snap, uint64_t newsize, struct lxc_conf *conf)
 {
-	char *src_no_prefix;
 	int ret;
 	size_t len;
 
 	if (snap) {
-		ERROR("Directories cannot be snapshotted");
+		ERROR("directories cannot be snapshotted.  Try aufs or "
+		      "overlayfs.");
 		return -1;
 	}
 
@@ -53,25 +53,17 @@ int dir_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 
 	len = strlen(lxcpath) + strlen(cname) + strlen("rootfs") + 4 + 3;
 	new->src = malloc(len);
-	if (!new->src) {
-		ERROR("Failed to allocate memory");
+	if (!new->src)
 		return -1;
-	}
 
 	ret = snprintf(new->src, len, "dir:%s/%s/rootfs", lxcpath, cname);
-	if (ret < 0 || (size_t)ret >= len) {
-		ERROR("Failed to create string");
+	if (ret < 0 || (size_t)ret >= len)
 		return -1;
-	}
 
-	src_no_prefix = lxc_storage_get_path(new->src, new->type);
-	new->dest = strdup(src_no_prefix);
-	if (!new->dest) {
-		ERROR("Failed to duplicate string \"%s\"", new->src);
+	new->dest = strdup(new->src + 4);
+	if (!new->dest)
 		return -1;
-	}
 
-	TRACE("Created new path \"%s\" for dir storage driver", new->dest);
 	return 0;
 }
 
@@ -91,45 +83,40 @@ int dir_create(struct bdev *bdev, const char *dest, const char *n,
 
 	len += strlen(src) + 1;
 	bdev->src = malloc(len);
-	if (!bdev->src) {
-		ERROR("Failed to allocate memory");
+	if (!bdev->src)
 		return -1;
-	}
 
 	ret = snprintf(bdev->src, len, "dir:%s", src);
-	if (ret < 0 || (size_t)ret >= len) {
-		ERROR("Failed to create string");
+	if (ret < 0 || (size_t)ret >= len)
 		return -1;
-	}
 
 	bdev->dest = strdup(dest);
-	if (!bdev->dest) {
-		ERROR("Failed to duplicate string \"%s\"", dest);
+	if (!bdev->dest)
+		return -1;
+
+	ret = mkdir_p(src, 0755);
+	if (ret < 0) {
+		ERROR("Failed to create %s", src);
 		return -1;
 	}
 
-	ret = mkdir_p(dest, 0755);
+	ret = mkdir_p(bdev->dest, 0755);
 	if (ret < 0) {
-		ERROR("Failed to create directory \"%s\"", dest);
+		ERROR("Failed to create %s", bdev->dest);
 		return -1;
 	}
-	TRACE("Created directory \"%s\"", dest);
 
 	return 0;
 }
 
 int dir_destroy(struct bdev *orig)
 {
-	int ret;
 	char *src;
 
 	src = lxc_storage_get_path(orig->src, orig->src);
 
-	ret = lxc_rmdir_onedev(src, NULL);
-	if (ret < 0) {
-		ERROR("Failed to delete \"%s\"", src);
+	if (lxc_rmdir_onedev(src, NULL) < 0)
 		return -1;
-	}
 
 	return 0;
 }
@@ -146,9 +133,10 @@ int dir_detect(const char *path)
 
 int dir_mount(struct bdev *bdev)
 {
-	int ret;
-	unsigned long mflags, mntflags;
+	unsigned long mntflags;
 	char *src, *mntdata;
+	int ret;
+	unsigned long mflags;
 
 	if (strcmp(bdev->type, "dir"))
 		return -22;
@@ -156,9 +144,7 @@ int dir_mount(struct bdev *bdev)
 	if (!bdev->src || !bdev->dest)
 		return -22;
 
-	ret = parse_mntopts(bdev->mntopts, &mntflags, &mntdata);
-	if (ret < 0) {
-		ERROR("Failed to parse mount options \"%s\"", bdev->mntopts);
+	if (parse_mntopts(bdev->mntopts, &mntflags, &mntdata) < 0) {
 		free(mntdata);
 		return -22;
 	}
@@ -168,19 +154,13 @@ int dir_mount(struct bdev *bdev)
 	ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC | mntflags,
 		    mntdata);
 	if ((0 == ret) && (mntflags & MS_RDONLY)) {
-		DEBUG("Remounting \"%s\" on \"%s\" readonly",
+		DEBUG("remounting %s on %s with readonly options",
 		      src ? src : "(none)", bdev->dest ? bdev->dest : "(none)");
-		mflags = add_required_remount_flags(src, bdev->dest, MS_BIND | MS_REC | mntflags | MS_REMOUNT);
+		mflags = add_required_remount_flags(
+		    src, bdev->dest, MS_BIND | MS_REC | mntflags | MS_REMOUNT);
 		ret = mount(src, bdev->dest, "bind", mflags, mntdata);
 	}
 
-	if (ret < 0) {
-		SYSERROR("Failed to mount \"%s\" on \"%s\"", src, bdev->dest);
-		free(mntdata);
-		return -1;
-	}
-
-	TRACE("Mounted \"%s\" on \"%s\"", src, bdev->dest);
 	free(mntdata);
 	return ret;
 }
