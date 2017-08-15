@@ -322,15 +322,16 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	/* if the container name doesn't show up in the rootfs path, then
 	 * we don't know how to come up with a new name
 	 */
-	if (!strstr(src, oldname)) {
-		ERROR("original rootfs path %s doesn't include container name %s",
-		      src, oldname);
+	if (strstr(src, oldname) == NULL) {
+		ERROR(
+		    "original rootfs path %s doesn't include container name %s",
+		    src, oldname);
 		return NULL;
 	}
 
 	orig = bdev_init(c0->lxc_conf, src, NULL, NULL);
 	if (!orig) {
-		ERROR("Failed to detect storage driver for \"%s\"", src);
+		ERROR("failed to detect blockdev type for %s", src);
 		return NULL;
 	}
 
@@ -342,14 +343,14 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		len = strlen(oldpath) + strlen(oldname) + strlen("/rootfs") + 2;
 		orig->dest = malloc(len);
 		if (!orig->dest) {
-			ERROR("Failed to allocate memory");
+			ERROR("out of memory");
 			bdev_put(orig);
 			return NULL;
 		}
 
 		ret = snprintf(orig->dest, len, "%s/%s/rootfs", oldpath, oldname);
 		if (ret < 0 || (size_t)ret >= len) {
-			ERROR("Failed to create string");
+			ERROR("rootfs path too long");
 			bdev_put(orig);
 			return NULL;
 		}
@@ -357,13 +358,14 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 
 		if (ret < 0 && errno == ENOENT)
 			if (mkdir_p(orig->dest, 0755) < 0)
-				WARN("Failed to create directoy \"%s\"",
+				WARN("Error creating '%s', continuing.",
 				     orig->dest);
 	}
 
-	/* Special case for snapshot. If the caller requested maybe_snapshot and
-	 * keepbdevtype and the backing store is directory, then proceed with a
-	 * a copy clone rather than returning error.
+	/*
+	 * special case for snapshot - if caller requested maybe_snapshot and
+	 * keepbdevtype and backing store is directory, then proceed with a copy
+	 * clone rather than returning error
 	 */
 	if (maybe_snap && keepbdevtype && !bdevtype && !orig->ops->can_snapshot)
 		snap = false;
@@ -408,7 +410,7 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 
 	if (new->ops->clone_paths(orig, new, oldname, cname, oldpath, lxcpath,
 				  snap, newsize, c0->lxc_conf) < 0) {
-		ERROR("Failed getting pathnames for clone of \"%s\"", src);
+		ERROR("failed getting pathnames for cloned storage: %s", src);
 		goto err;
 	}
 
@@ -422,9 +424,10 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	if (snap)
 		return new;
 
-	/* https://github.com/lxc/lxc/issues/131
+	/*
+	 * https://github.com/lxc/lxc/issues/131
 	 * Use btrfs snapshot feature instead of rsync to restore if both orig
-	 * and new are btrfs.
+	 * and new are btrfs
 	 */
 	if (bdevtype && strcmp(orig->type, "btrfs") == 0 &&
 	    strcmp(new->type, "btrfs") == 0 &&
@@ -432,12 +435,12 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		struct rsync_data_char arg;
 
 		if (btrfs_destroy(new) < 0) {
-			ERROR("Failed to destroy \"%s\" btrfs subvolume", new->dest);
+			ERROR("Error destroying %s subvolume", new->dest);
 			goto err;
 		}
 
 		if (mkdir_p(new->dest, 0755) < 0) {
-			ERROR("Failed to create directory \"%s\"", new->dest);
+			ERROR("Error creating %s directory", new->dest);
 			goto err;
 		}
 
@@ -481,7 +484,7 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 	else
 		ret = rsync_rootfs(&data);
 	if (ret < 0)
-		ERROR("Failed to rsync from");
+		ERROR("Failed to rsync");
 
 	exit(ret == 0 ? 0 : 1);
 
