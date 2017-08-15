@@ -412,17 +412,12 @@ struct bdev *bdev_copy(struct lxc_container *c0, const char *cname,
 		goto err;
 	}
 
-	/* If the storage driver is "btrfs" then the we will create snapshot. */
-	if (strcmp(bdevtype, "btrfs")) {
-		if (!strcmp(new->type, "overlay") ||
-		    !strcmp(new->type, "overlayfs"))
-			src_no_prefix = ovl_get_lower(new->src);
-		else
-			src_no_prefix = lxc_storage_get_path(new->src, new->type);
-
-		if (am_unpriv() && chown_mapped_root(src_no_prefix, c0->lxc_conf) < 0)
-			WARN("Failed to chown \"%s\"", src_no_prefix);
-	}
+	if (!strcmp(new->type, "overlay") || !strcmp(new->type, "overlayfs"))
+		src_no_prefix = ovl_get_lower(new->src);
+	else
+		src_no_prefix = lxc_storage_get_path(new->src, new->type);
+	if (am_unpriv() && chown_mapped_root(src_no_prefix, c0->lxc_conf) < 0)
+		WARN("Failed to update ownership of %s", new->dest);
 
 	if (snap)
 		return new;
