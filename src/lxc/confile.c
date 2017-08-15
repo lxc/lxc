@@ -3572,11 +3572,8 @@ static struct lxc_config_t *get_network_config_ops(const char *key,
 
 	/* end of index string */
 	idx_end = strchr((copy + 8), '.');
-	if (!idx_end) {
-		ERROR("Failed to detect \".\" in string \"%s\"", (copy + 8));
-		goto on_error;
-	}
-	*idx_end = '\0';
+	if (idx_end)
+		*idx_end = '\0';
 
 	/* parse current index */
 	ret = lxc_safe_uint((idx_start + 1), &tmpidx);
@@ -3602,18 +3599,24 @@ static struct lxc_config_t *get_network_config_ops(const char *key,
 
 	/* repair configuration key */
 	*idx_start = '.';
-	*idx_end = '.';
 
-	memmove(copy + 8, idx_end + 1, strlen(idx_end + 1));
-	copy[strlen(key) - numstrlen + 1] = '\0';
+	/* lxc.net.<idx>.<subkey> */
+	if (idx_end) {
+		*idx_end = '.';
 
-	config = lxc_getconfig(copy);
-	if (!config) {
-		ERROR("unknown network configuration key %s", key);
-		goto on_error;
+		memmove(copy + 8, idx_end + 1, strlen(idx_end + 1));
+		copy[strlen(key) - numstrlen + 1] = '\0';
+
+		config = lxc_getconfig(copy);
+		if (!config) {
+			ERROR("unknown network configuration key %s", key);
+			goto on_error;
+		}
 	}
 
-	*deindexed_key = copy;
+	if (deindexed_key)
+		*deindexed_key = copy;
+
 	return config;
 
 on_error:
@@ -4451,22 +4454,19 @@ int lxc_list_net(struct lxc_conf *c, const char *key, char *retv, int inlen)
 {
 	int len;
 	const char *idxstring;
-	struct lxc_config_t *config;
 	struct lxc_netdev *netdev;
 	int fulllen = 0;
 	ssize_t idx = -1;
-	char *deindexed_key = NULL;
 
 	idxstring = key + 8;
 	if (!isdigit(*idxstring))
 		return -1;
 
-	config = get_network_config_ops(key, c, &idx, &deindexed_key);
-	if (!config || idx < 0)
+	(void)get_network_config_ops(key, c, &idx, NULL);
+	if (idx < 0)
 		return -1;
 
 	netdev = lxc_get_netdev_by_idx(c, (unsigned int)idx, false);
-	free(deindexed_key);
 	if (!netdev)
 		return -1;
 
