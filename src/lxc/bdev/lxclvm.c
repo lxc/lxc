@@ -314,7 +314,7 @@ int lvm_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 
 		len = strlen("/dev/") + strlen(vg) + strlen(cname) + 4 + 2;
 		new->src = malloc(len);
-		if (!new->src)
+		if (new->src)
 			return -1;
 
 		ret = snprintf(new->src, len, "lvm:/dev/%s/%s", vg, cname);
