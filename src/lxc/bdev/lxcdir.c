@@ -36,15 +36,14 @@ lxc_log_define(lxcdir, lxc);
  * name and paths for the new
  */
 int dir_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
-		   const char *cname, const char *oldpath, const char *lxcpath,
-		   int snap, uint64_t newsize, struct lxc_conf *conf)
+		const char *cname, const char *oldpath, const char *lxcpath,
+		int snap, uint64_t newsize, struct lxc_conf *conf)
 {
 	int ret;
 	size_t len;
 
 	if (snap) {
-		ERROR("directories cannot be snapshotted.  Try aufs or "
-		      "overlayfs.");
+		ERROR("directories cannot be snapshotted.  Try aufs or overlayfs.");
 		return -1;
 	}
 
@@ -151,13 +150,11 @@ int dir_mount(struct bdev *bdev)
 
 	src = lxc_storage_get_path(bdev->src, bdev->type);
 
-	ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC | mntflags,
-		    mntdata);
+	ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC | mntflags, mntdata);
 	if ((0 == ret) && (mntflags & MS_RDONLY)) {
 		DEBUG("remounting %s on %s with readonly options",
-		      src ? src : "(none)", bdev->dest ? bdev->dest : "(none)");
-		mflags = add_required_remount_flags(
-		    src, bdev->dest, MS_BIND | MS_REC | mntflags | MS_REMOUNT);
+			src ? src : "(none)", bdev->dest ? bdev->dest : "(none)");
+		mflags = add_required_remount_flags(src, bdev->dest, MS_BIND | MS_REC | mntflags | MS_REMOUNT);
 		ret = mount(src, bdev->dest, "bind", mflags, mntdata);
 	}
 
