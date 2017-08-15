@@ -1917,6 +1917,8 @@ static int find_free_loopdev_no_control(int *retfd, char *namep)
 	}
 
 	while ((direntp = readdir(dir))) {
+		int ret;
+
 		if (!direntp)
 			break;
 		if (strncmp(direntp->d_name, "loop", 4) != 0)
@@ -1930,7 +1932,11 @@ static int find_free_loopdev_no_control(int *retfd, char *namep)
 			continue;
 		}
 		// We can use this fd
-		snprintf(namep, 100, "/dev/%s", direntp->d_name);
+		ret = snprintf(namep, 100, "/dev/%s", direntp->d_name);
+		if (ret < 0 || ret >= 100) {
+			close(fd);
+			fd = -1;
+		}
 		break;
 	}
 	closedir(dir);
