@@ -372,6 +372,7 @@ int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		     const char *lxcpath, int snap, uint64_t newsize,
 		     struct lxc_conf *conf)
 {
+	int ret;
 	char *src;
 
 	if (!orig->dest || !orig->src)
@@ -392,7 +393,7 @@ int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		ERROR("Failed to create new rootfs path");
 		return -1;
 	}
-	TRACE("Constructed new rootfs path \"%s\"", new->src);
+	TRACE("Created new rootfs path \"%s\"", new->src);
 
 	src = lxc_storage_get_path(new->src, "btrfs");
 	new->dest = strdup(src);
@@ -410,95 +411,39 @@ int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		}
 	}
 
-	return 0;
-}
+	if (snap) {
+		struct rsync_data_char sdata;
+		if (!am_unpriv()) {
+			ret = btrfs_snapshot(orig->dest, new->dest);
+			if (ret < 0) {
+				SYSERROR("Failed to create btrfs snapshot "
+					 "\"%s\" from \"%s\"",
+					 new->dest, orig->dest);
+				return -1;
+			}
+			TRACE("Created btrfs snapshot \"%s\" from \"%s\"",
+			      new->dest, orig->dest);
+			return 0;
+		}
 
-bool btrfs_create_clone(struct lxc_conf *conf, struct bdev *orig,
-			struct bdev *new, uint64_t newsize)
-{
-	int pid, ret;
-	struct rsync_data data;
+		sdata.dest = new->dest;
+		sdata.src = orig->dest;
+		return userns_exec_1(conf, btrfs_snapshot_wrapper, &sdata,
+				     "btrfs_snapshot_wrapper");
+	}
 
 	ret = rmdir(new->dest);
-	if (ret < 0 && errno != ENOENT)
-		return false;
+	if (ret < 0 && errno != ENOENT) {
+		SYSERROR("Failed to remove directory \"%s\"", new->dest);
+		return -1;
+	}
 
 	ret = btrfs_subvolume_create(new->dest);
-	if (ret < 0) {
+	if (ret < 0)
 		SYSERROR("Failed to create btrfs subvolume \"%s\"", new->dest);
-		return false;
-	}
-
-	/* rsync contents */
-	pid = fork();
-	if (pid < 0) {
-		SYSERROR("fork");
-		return false;
-	}
-
-	if (pid > 0) {
-		int ret = wait_for_pid(pid);
-		bdev_put(orig);
-		if (ret < 0) {
-			bdev_put(new);
-			return false;
-		}
-		return true;
-	}
-
-	data.orig = orig;
-	data.new = new;
-
-	if (am_unpriv())
-		ret = userns_exec_1(conf, rsync_rootfs_wrapper, &data,
-				    "rsync_rootfs_wrapper");
 	else
-		ret = rsync_rootfs(&data);
-	if (ret < 0) {
-		ERROR("Failed to rsync");
-		return false;
-	}
-
-	TRACE("Created btrfs subvolume \"%s\"", new->dest);
-	return true;
-}
-
-bool btrfs_create_snapshot(struct lxc_conf *conf, struct bdev *orig,
-			   struct bdev *new)
-{
-	int ret;
-
-	ret = rmdir(new->dest);
-	if (ret < 0 && errno != ENOENT)
-		return false;
-
-	if (am_unpriv()) {
-		struct rsync_data_char args;
-
-		args.src = orig->dest;
-		args.dest = new->dest;
-
-		ret = userns_exec_1(conf, btrfs_snapshot_wrapper, &args,
-				"btrfs_snapshot_wrapper");
-		if (ret < 0) {
-			ERROR("Failed to run \"btrfs_snapshot_wrapper\"");
-			return false;
-		}
-
-		TRACE("Created btrfs snapshot \"%s\" from \"%s\"", new->dest,
-		      orig->dest);
-		return true;
-	}
-
-	ret = btrfs_snapshot(orig->dest, new->dest);
-	if (ret < 0) {
-		SYSERROR("Failed to create btrfs snapshot \"%s\" from \"%s\"",
-			 new->dest, orig->dest);
-		return false;
-	}
-
-	TRACE("Created btrfs snapshot \"%s\" from \"%s\"", new->dest, orig->dest);
-	return true;
+		TRACE("Created btrfs subvolume \"%s\"", new->dest);
+	return ret;
 }
 
 static int btrfs_do_destroy_subvol(const char *path)
