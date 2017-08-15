@@ -384,10 +384,7 @@ int btrfs_clonepaths(struct bdev *orig, struct bdev *new, const char *oldname,
 		return -1;
 	}
 
-	new->src = lxc_string_join(
-	    "/",
-	    (const char *[]){"btrfs:", *lxcpath != '/' ? lxcpath : ++lxcpath,
-			     cname, "rootfs", NULL},
+	new->src = lxc_string_join("/", (const char *[]){*lxcpath != '/' ? lxcpath : ++lxcpath, cname, "rootfs", NULL},
 	    false);
 	if (!new->src) {
 		ERROR("Failed to create new rootfs path");
@@ -836,15 +833,13 @@ int btrfs_create(struct bdev *bdev, const char *dest, const char *n,
 	size_t len;
 
 	len = strlen(dest) + 1;
-	/* strlen("btrfs:") */
-	len += 6;
 	bdev->src = malloc(len);
 	if (!bdev->src) {
 		ERROR("Failed to allocate memory");
 		return -1;
 	}
 
-	ret = snprintf(bdev->src, len, "btrfs:%s", dest);
+	ret = snprintf(bdev->src, len, "%s", dest);
 	if (ret < 0 || (size_t)ret >= len) {
 		ERROR("Failed to create string");
 		return -1;
