@@ -37,6 +37,7 @@ src/lxc/lxc-attach
 src/lxc/lxc-autostart
 src/lxc/lxc-cgroup
 src/lxc/tools/lxc-checkconfig
+src/lxc/tools/lxc-update-config
 src/lxc/lxc-checkpoint
 src/lxc/lxc-clone
 src/lxc/lxc-console
