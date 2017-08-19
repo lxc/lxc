@@ -181,6 +181,7 @@ echo
 echo -n "CONFIG_IP6_NF_TARGET_MASQUERADE: " && is_enabled CONFIG_IP6_NF_TARGET_MASQUERADE && is_probed nf_nat_masquerade_ipv6
 echo
 echo -n "CONFIG_NETFILTER_XT_TARGET_CHECKSUM: " && is_enabled CONFIG_NETFILTER_XT_TARGET_CHECKSUM && is_probed xt_CHECKSUM
+echo -n "CONFIG_NETFILTER_XT_MATCH_COMMENT: " && is_enabled CONFIG_NETFILTER_XT_MATCH_COMMENT && is_probed xt_comment
 echo
 echo -n "FUSE (for use with lxcfs): " && is_enabled CONFIG_FUSE_FS && is_probed fuse
 echo
