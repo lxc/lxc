@@ -1418,7 +1418,15 @@ static int lxc_spawn(struct lxc_handler *handler)
 	 * value, causing us to error out).
 	 */
 	if (lxc_sync_barrier_child(handler, LXC_SYNC_POST_CGROUP))
-		return -1;
+		goto out_delete_net;
+
+	/* Receive "/dev/pts/ptmx" O_PATH file descriptor from child. */
+	if (lxc_abstract_unix_recv_fds(handler->ttysock[1],
+				       &handler->conf->dev_ptmx.opath_fd, 1,
+				       NULL, 0) < 0) {
+		ERROR("Failed to send \"/dev/ptmx\" file descriptor");
+		goto out_delete_net;
+	}
 
 	/* Read tty fds allocated by child. */
 	if (lxc_recv_ttys_from_child(handler) < 0) {

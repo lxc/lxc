@@ -21,33 +21,35 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <stdio.h>
+#include "config.h"
+
 #include <errno.h>
-#include <unistd.h>
-#include <signal.h>
 #include <fcntl.h>
+#include <malloc.h>
 #include <poll.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <sys/param.h>
-#include <malloc.h>
-#include <stdlib.h>
 
-#include "log.h"
-#include "lxc.h"
-#include "conf.h"
-#include "start.h"	/* for struct lxc_handler */
-#include "utils.h"
+#include "af_unix.h"
 #include "cgroup.h"
 #include "commands.h"
 #include "commands_utils.h"
-#include "console.h"
+#include "conf.h"
+#include "config.h"
 #include "confile.h"
+#include "console.h"
+#include "log.h"
+#include "lxc.h"
 #include "lxclock.h"
 #include "mainloop.h"
 #include "monitor.h"
-#include "af_unix.h"
-#include "config.h"
+#include "start.h" /* for struct lxc_handler */
+#include "utils.h"
 
 /*
  * This file provides the different functions for clients to
@@ -90,6 +92,7 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 		[LXC_CMD_GET_NAME]         = "get_name",
 		[LXC_CMD_GET_LXCPATH]      = "get_lxcpath",
 		[LXC_CMD_ADD_STATE_CLIENT] = "add_state_client",
+		[LXC_CMD_OPENPTY]          = "openpty",
 	};
 
 	if (cmd >= LXC_CMD_MAX)
@@ -116,10 +119,15 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
  */
 static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 {
-	int ret, rspfd;
+	int ret;
+	int rspfd = -1;
+	int pty_fds[2] = {-1, -1};
 	struct lxc_cmd_rsp *rsp = &cmd->rsp;
 
-	ret = lxc_abstract_unix_recv_fds(sock, &rspfd, 1, rsp, sizeof(*rsp));
+	if (cmd->req.cmd == LXC_CMD_OPENPTY)
+		ret = lxc_abstract_unix_recv_fds(sock, pty_fds, 2, rsp, sizeof(*rsp));
+	else
+		ret = lxc_abstract_unix_recv_fds(sock, &rspfd, 1, rsp, sizeof(*rsp));
 	if (ret < 0) {
 		WARN("Command %s failed to receive response: %s.",
 		     lxc_cmd_str(cmd->req.cmd), strerror(errno));
@@ -140,11 +148,26 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		if (!rspdata) {
 			ERROR("Command %s couldn't allocate response buffer.",
 			      lxc_cmd_str(cmd->req.cmd));
+			close(rspfd);
 			return -1;
 		}
 		rspdata->masterfd = rspfd;
 		rspdata->ttynum = PTR_TO_INT(rsp->data);
 		rsp->data = rspdata;
+	} else if (cmd->req.cmd == LXC_CMD_OPENPTY) {
+		struct lxc_cmd_openpty_rsp_data *openpty_rsp = NULL;
+
+		openpty_rsp = malloc(sizeof(*openpty_rsp));
+		if (!openpty_rsp) {
+			ERROR("Command %s couldn't allocate response buffer.",
+					lxc_cmd_str(cmd->req.cmd));
+			close(pty_fds[0]);
+			close(pty_fds[1]);
+			return -1;
+		}
+		openpty_rsp->master = pty_fds[0];
+		openpty_rsp->slave = pty_fds[1];
+		rsp->data = openpty_rsp;
 	}
 
 	if (rsp->datalen == 0) {
@@ -932,6 +955,105 @@ static int lxc_cmd_add_state_client_callback(int fd, struct lxc_cmd_req *req,
 	return lxc_cmd_rsp_send(fd, &rsp);
 }
 
+int lxc_cmd_openpty(const char *name, const char *lxcpath, int *amaster,
+		    int *aslave)
+{
+	int ret, stopped;
+	struct lxc_cmd_rr cmd = {
+	    .req = {
+		    .cmd = LXC_CMD_OPENPTY
+	    },
+	};
+	struct lxc_cmd_openpty_rsp_data *openpty_rsp;
+
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
+	if (ret < 0)
+		return -1;
+
+	if (cmd.rsp.ret < 0)
+		return -1;
+
+	openpty_rsp = cmd.rsp.data;
+
+	*amaster = openpty_rsp->master;
+	*aslave = openpty_rsp->slave;
+
+	return 0;
+}
+
+static int lxc_cmd_openpty_callback(int fd, struct lxc_cmd_req *req,
+				    struct lxc_handler *handler)
+{
+#ifdef TIOCGPTPEER
+	int ret;
+	struct lxc_cmd_rsp rsp;
+	char proc_self_path[LXC_PROC_SELF_LEN];
+	int pty_fds[2] = {-1, -1};
+
+	memset(&rsp, 0, sizeof(rsp));
+
+	ret = snprintf(proc_self_path, LXC_PROC_SELF_LEN, "/proc/self/fd/%d",
+		       handler->conf->dev_ptmx.opath_fd);
+	if (ret < 0 || (size_t)ret >= LXC_PROC_SELF_LEN) {
+		SYSERROR("Failed to create string: %d != %d", ret,
+			 LXC_PROC_SELF_LEN);
+		return -1;
+	}
+
+	/* open the pseudoterminal master */
+	pty_fds[0] = open(proc_self_path, O_RDWR | O_NOCTTY);
+	if (pty_fds[0] < 0) {
+		ERROR("%s - Failed to open \"%s\"", proc_self_path,
+		      strerror(errno));
+		return -1;
+	}
+
+	ret = grantpt(pty_fds[0]);
+	if (ret < 0) {
+		ERROR("%s - Failed to grant access to slave pseudoterminal",
+		      strerror(errno));
+		close(pty_fds[0]);
+		return -1;
+	}
+
+	ret = unlockpt(pty_fds[0]);
+	if (ret < 0) {
+		ERROR("%s - Failed to unlock slave pseudoterminal",
+		      strerror(errno));
+		close(pty_fds[0]);
+		return -1;
+	}
+
+	pty_fds[1] = ioctl(pty_fds[0], TIOCGPTPEER, O_RDWR | O_NOCTTY);
+	if (pty_fds[1] < 0) {
+		close(pty_fds[0]);
+		if (errno == EINVAL) {
+			DEBUG("Kernel does not support slave pseudoterminal "
+			      "file descriptor allocation via ioctl()");
+			return -EINVAL;
+		}
+
+		ERROR("%s - Failed to unlock slave pseudoterminal file "
+		      "descriptor",
+		      strerror(errno));
+		return -1;
+	}
+
+	ret = lxc_abstract_unix_send_fds(fd, pty_fds, 2, NULL, 0);
+	close(pty_fds[0]);
+	close(pty_fds[1]);
+	if (ret < 0) {
+		ERROR("Failed to send pseudoterminal file descriptors");
+		return -1;
+	}
+
+	return 0;
+#else
+	errno = EINVAL;
+	return -EINVAL;
+#endif
+}
+
 static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 			   struct lxc_handler *handler)
 {
@@ -949,6 +1071,7 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 		[LXC_CMD_GET_NAME]         = lxc_cmd_get_name_callback,
 		[LXC_CMD_GET_LXCPATH]      = lxc_cmd_get_lxcpath_callback,
 		[LXC_CMD_ADD_STATE_CLIENT] = lxc_cmd_add_state_client_callback,
+		[LXC_CMD_OPENPTY]          = lxc_cmd_openpty_callback,
 	};
 
 	if (req->cmd >= LXC_CMD_MAX) {

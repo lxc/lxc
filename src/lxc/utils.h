@@ -51,6 +51,15 @@
 #define LXC_NUMSTRLEN64 21
 #define LXC_LINELEN 4096
 #define LXC_IDMAPLEN 4096
+/* strlen("/proc/self/") = 11
+ * +
+ * uint64_t_as_string = 21
+ * +
+ * strlen("fd/") = 3;
+ * +
+ * \0
+ */
+#define LXC_PROC_SELF_LEN 36
 
 /* returns 1 on success, 0 if there were any failures */
 extern int lxc_rmdir_onedev(char *path, const char *exclude);
