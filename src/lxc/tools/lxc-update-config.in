@@ -1,0 +1,68 @@
+#!/bin/sh
+
+# Make sure the usual locations are in PATH
+export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
+
+set -e
+
+usage()
+{
+cat <<EOF
+$1 -h|--help [-c|--config]
+config: the container configuration to update
+EOF
+    return 0
+}
+
+OPTIONS=`getopt -o c:h --long config:,help -- "${@}"`
+eval set -- "${OPTIONS}"
+
+while true; do
+	case "${1}" in
+		-h|--help)
+			usage "${0}"
+			exit 0
+			;;
+		-c|--config)
+			CONFIGPATH="${2}"
+			shift 2
+			;;
+		--)
+			shift 1
+			break
+			;;
+		*)
+			break
+			;;
+	esac
+done
+
+echo "${CONFIGPATH}"
+sed -i".backup" \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.rootfs\)\([[:blank:]*]\|=\)/\1lxc\.rootfs\.path\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.id_map\)\([[:blank:]*]\|=\)/\1lxc\.idmap\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.pts\)\([[:blank:]*]\|=\)/\1lxc\.pty\.max\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.tty\)\([[:blank:]*]\|=\)/\1lxc\.tty\.max\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.devttydir\)\([[:blank:]*]\|=\)/\1lxc\.tty\.dir\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.aa_profile\)\([[:blank:]*]\|=\)/\1lxc\.apparmor\.profile\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.aa_allow_incomplete\)\([[:blank:]*]\|=\)/\1lxc\.apparmor\.allow_incomplete\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.se_context\)\([[:blank:]*]\|=\)/\1lxc\.selinux\.context\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.mount\)\([[:blank:]*]\|=\)/\1lxc\.mount\.fstab\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.utsname\)\([[:blank:]*]\|=\)/\1lxc\.uts\.name\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.rootfs\)\([[:blank:]*]\|=\)/\1lxc\.rootfs\.path\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.seccomp\)\([[:blank:]*]\|=\)/\1lxc\.seccomp\.profile\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.console\)\([[:blank:]*]\|=\)/\1lxc\.console\.path\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.haltsignal\)\([[:blank:]*]\|=\)/\1lxc\.signal\.halt\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.rebootsignal\)\([[:blank:]*]\|=\)/\1lxc\.signal\.reboot\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.stopsignal\)\([[:blank:]*]\|=\)/\1lxc\.signal\.stop\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.syslog\)\([[:blank:]*]\|=\)/\1lxc\.log\.syslog\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.loglevel\)\([[:blank:]*]\|=\)/\1lxc\.log\.level\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.logfile\)\([[:blank:]*]\|=\)/1lxc\.log\.file\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.init_cmd\)\([[:blank:]*]\|=\)/\1lxc\.init\.cmd\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.init_uid\)\([[:blank:]*]\|=\)/\1lxc\.init\.uid\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.init_gid\)\([[:blank:]*]\|=\)/\1lxc\.init\.gid\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.limit\)\([[:blank:]*]\|=\)/\1lxc\.prlimit\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.network\)\.\([^[:digit:]*]\)/\1lxc\.net\.0\.\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.network\)\(\.[[:digit:]*]\)/\1lxc\.net\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.network\)\([[:blank:]*]\|=\)/\1lxc\.net\3/g' \
+	"${CONFIGPATH}"

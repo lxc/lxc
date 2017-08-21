@@ -408,6 +408,12 @@ struct lxc_conf {
 
 	/* RLIMIT_* limits */
 	struct lxc_list limits;
+
+	/* REMOVE IN LXC 3.0
+	 * Indicator whether the current config file we're using contained any
+	 * legacy configuration keys.
+	 */
+	bool contains_legacy_key;
 };
 
 #ifdef HAVE_TLS

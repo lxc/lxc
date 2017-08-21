@@ -105,16 +105,16 @@ echo
 echo -n "User namespace: " && is_enabled CONFIG_USER_NS
 echo
 if is_set CONFIG_USER_NS; then
-	if type newuidmap > /dev/null 2>&1; then
-		f=`type -P newuidmap`
+	if which newuidmap > /dev/null 2>&1; then
+		f=`which newuidmap`
 		if [ ! -u "${f}" ]; then
 			echo "Warning: newuidmap is not setuid-root"
 		fi
 	else
 		echo "newuidmap is not installed"
 	fi
-	if type newgidmap > /dev/null 2>&1; then
-		f=`type -P newgidmap`
+	if which newgidmap > /dev/null 2>&1; then
+		f=`which newgidmap`
 		if [ ! -u "${f}" ]; then
 			echo "Warning: newgidmap is not setuid-root"
 		fi

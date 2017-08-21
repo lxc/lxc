@@ -914,6 +914,7 @@ AC_CONFIG_FILES([
 	src/lxc/lxc.functions
 	src/lxc/tools/lxc-checkconfig
 	src/lxc/tools/lxc-start-ephemeral
+	src/lxc/tools/lxc-update-config
 	src/lxc/version.h
 	src/python-lxc/Makefile
 

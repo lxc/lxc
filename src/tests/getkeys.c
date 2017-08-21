@@ -16,15 +16,17 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
-#include <lxc/lxccontainer.h>
 
-#include <unistd.h>
+#include <errno.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <stdlib.h>
-#include <errno.h>
+#include <lxc/lxccontainer.h>
+
 #include "lxc/state.h"
 
 #define MYNAME "lxctest1"
@@ -64,6 +66,103 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 	printf("get_keys for nic 1 returned %d\n%s", ret, v3);
+
+	ret = c->get_keys(c, "lxc.apparmor", v3, 2000);
+	if (ret < 0) {
+		fprintf(stderr, "%d: failed to get keys(%d)\n", __LINE__, ret);
+		ret = 1;
+		goto out;
+	}
+	printf("get_keys returned %d\n%s", ret, v3);
+
+	ret = c->get_keys(c, "lxc.selinux", v3, 2000);
+	if (ret < 0) {
+		fprintf(stderr, "%d: failed to get keys(%d)\n", __LINE__, ret);
+		ret = 1;
+		goto out;
+	}
+	printf("get_keys returned %d\n%s", ret, v3);
+
+	ret = c->get_keys(c, "lxc.mount", v3, 2000);
+	if (ret < 0) {
+		fprintf(stderr, "%d: failed to get keys(%d)\n", __LINE__, ret);
+		ret = 1;
+		goto out;
+	}
+	printf("get_keys returned %d\n%s", ret, v3);
+
+	ret = c->get_keys(c, "lxc.rootfs", v3, 2000);
+	if (ret < 0) {
+		fprintf(stderr, "%d: failed to get keys(%d)\n", __LINE__, ret);
+		ret = 1;
+		goto out;
+	}
+	printf("get_keys returned %d\n%s", ret, v3);
+
+	ret = c->get_keys(c, "lxc.uts", v3, 2000);
+	if (ret < 0) {
+		fprintf(stderr, "%d: failed to get keys(%d)\n", __LINE__, ret);
+		ret = 1;
+		goto out;
+	}
+	printf("get_keys returned %d\n%s", ret, v3);
+
+	ret = c->get_keys(c, "lxc.hook", v3, 2000);
+	if (ret < 0) {
+		fprintf(stderr, "%d: failed to get keys(%d)\n", __LINE__, ret);
+		ret = 1;
+		goto out;
+	}
+	printf("get_keys returned %d\n%s", ret, v3);
+
+	ret = c->get_keys(c, "lxc.cap", v3, 2000);
+	if (ret < 0) {
+		fprintf(stderr, "%d: failed to get keys(%d)\n", __LINE__, ret);
+		ret = 1;
+		goto out;
+	}
+	printf("get_keys returned %d\n%s", ret, v3);
+
+	ret = c->get_keys(c, "lxc.console", v3, 2000);
+	if (ret < 0) {
+		fprintf(stderr, "%d: failed to get keys(%d)\n", __LINE__, ret);
+		ret = 1;
+		goto out;
+	}
+	printf("get_keys returned %d\n%s", ret, v3);
+
+	ret = c->get_keys(c, "lxc.seccomp", v3, 2000);
+	if (ret < 0) {
+		fprintf(stderr, "%d: failed to get keys(%d)\n", __LINE__, ret);
+		ret = 1;
+		goto out;
+	}
+	printf("get_keys returned %d\n%s", ret, v3);
+
+	ret = c->get_keys(c, "lxc.signal", v3, 2000);
+	if (ret < 0) {
+		fprintf(stderr, "%d: failed to get keys(%d)\n", __LINE__, ret);
+		ret = 1;
+		goto out;
+	}
+	printf("get_keys returned %d\n%s", ret, v3);
+
+	ret = c->get_keys(c, "lxc.start", v3, 2000);
+	if (ret < 0) {
+		fprintf(stderr, "%d: failed to get keys(%d)\n", __LINE__, ret);
+		ret = 1;
+		goto out;
+	}
+	printf("get_keys returned %d\n%s", ret, v3);
+
+	ret = c->get_keys(c, "lxc.monitor", v3, 2000);
+	if (ret < 0) {
+		fprintf(stderr, "%d: failed to get keys(%d)\n", __LINE__, ret);
+		ret = 1;
+		goto out;
+	}
+	printf("get_keys returned %d\n%s", ret, v3);
+
 	ret = 0;
 
 out:

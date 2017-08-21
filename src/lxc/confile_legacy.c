@@ -91,7 +91,7 @@ int set_config_network_legacy_nic(const char *key, const char *value,
 		goto out;
 
 	strcpy(copy + 12, p + 1);
-	config = lxc_getconfig(copy);
+	config = lxc_get_config(copy);
 	if (!config) {
 		ERROR("unknown key %s", key);
 		goto out;

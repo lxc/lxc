@@ -1902,7 +1902,7 @@ static bool do_lxcapi_clear_config_item(struct lxc_container *c,
 	if (container_mem_lock(c))
 		return false;
 
-	config = lxc_getconfig(key);
+	config = lxc_get_config(key);
 	/* Verify that the config key exists and that it has a callback
 	 * implemented.
 	 */
@@ -2218,7 +2218,7 @@ static int do_lxcapi_get_config_item(struct lxc_container *c, const char *key, c
 	if (container_mem_lock(c))
 		return -1;
 
-	config = lxc_getconfig(key);
+	config = lxc_get_config(key);
 	/* Verify that the config key exists and that it has a callback
 	 * implemented.
 	 */
@@ -2248,22 +2248,29 @@ WRAP_API_1(char *, lxcapi_get_running_config_item, const char *)
 
 static int do_lxcapi_get_keys(struct lxc_container *c, const char *key, char *retv, int inlen)
 {
+	int ret = -1;
+
+	/* List all config items. */
 	if (!key)
 		return lxc_list_config_items(retv, inlen);
-	/*
-	 * Support 'lxc.net.<idx>', i.e. 'lxc.net.0'
-	 * This is an intelligent result to show which keys are valid given
-	 * the type of nic it is
-	 */
+
 	if (!c || !c->lxc_conf)
 		return -1;
+
 	if (container_mem_lock(c))
 		return -1;
-	int ret = -1;
+
+	/* Support 'lxc.net.<idx>', i.e. 'lxc.net.0'
+	 * This is an intelligent result to show which keys are valid given the
+	 * type of nic it is.
+	 */
 	if (!strncmp(key, "lxc.net.", 8))
 		ret = lxc_list_net(c->lxc_conf, key, retv, inlen);
 	else if (strncmp(key, "lxc.network.", 12) == 0)
 		ret = lxc_list_nicconfigs_legacy(c->lxc_conf, key, retv, inlen);
+	else
+		ret = lxc_list_subkeys(c->lxc_conf, key, retv, inlen);
+
 	container_mem_unlock(c);
 	return ret;
 }
@@ -2755,7 +2762,7 @@ static bool set_config_item_locked(struct lxc_container *c, const char *key, con
 	if (!c->lxc_conf)
 		return false;
 
-	config = lxc_getconfig(key);
+	config = lxc_get_config(key);
 	if (!config)
 		return false;
 
@@ -4867,5 +4874,5 @@ free_ct_name:
 
 bool lxc_config_item_is_supported(const char *key)
 {
-	return !!lxc_getconfig(key);
+	return !!lxc_get_config(key);
 }
