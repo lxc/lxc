@@ -159,7 +159,7 @@ static struct lxc_config_t config[] = {
 	/* [END]: REMOVE IN LXC 3.0 */
 
 	{ "lxc.cgroup",                    set_config_cgroup,                      get_config_cgroup,                      clr_config_cgroup,                    },
-	{ "lxc.id_map",                    set_config_idmaps,                      get_config_idmaps,                      clr_config_idmaps,                    },
+	{ "lxc.idmap",                     set_config_idmaps,                      get_config_idmaps,                      clr_config_idmaps,                    },
 	{ "lxc.mount.entry",               set_config_mount,                       get_config_mount,                       clr_config_mount,                     },
 	{ "lxc.mount.auto",                set_config_mount_auto,                  get_config_mount_auto,                  clr_config_mount_auto,                },
 	{ "lxc.mount.fstab",               set_config_mount_fstab,                 get_config_mount_fstab,                 clr_config_mount_fstab,               },
@@ -168,6 +168,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.rootfs.path",               set_config_rootfs_path,                 get_config_rootfs_path,                 clr_config_rootfs_path,               },
 
 	/* [START]: REMOVE IN LXC 3.0 */
+	{ "lxc.id_map",                    set_config_idmaps,                      get_config_idmaps,                      clr_config_idmaps,                    },
 	{ "lxc.mount",                     set_config_mount_fstab,                 get_config_mount_fstab,                 clr_config_mount_fstab,               },
 	{ "lxc.rootfs.backend",            set_config_rootfs_backend,              get_config_rootfs_backend,              clr_config_rootfs_backend,            },
 	{ "lxc.rootfs",                    set_config_rootfs_path,                 get_config_rootfs_path,                 clr_config_rootfs_path,               },
