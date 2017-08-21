@@ -53,6 +53,7 @@ typedef int (*config_clr_cb)(const char *key, struct lxc_conf *conf,
 
 struct lxc_config_t {
 	char *name;
+	bool is_legacy_key; /* REMOVE in LXC 3.0 */
 	config_set_cb set;
 	config_get_cb get;
 	config_clr_cb clr;
