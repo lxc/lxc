@@ -419,7 +419,7 @@ static int set_config_net_flags(const char *key, const char *value,
 }
 
 static int create_matched_ifnames(const char *value, struct lxc_conf *lxc_conf,
-			   struct lxc_netdev *netdev)
+				  struct lxc_netdev *netdev)
 {
 	struct ifaddrs *ifaddr, *ifa;
 	int n;
@@ -557,10 +557,9 @@ static int set_config_net_hwaddr(const char *key, const char *value,
 		return -1;
 
 	new_value = strdup(value);
-	if (!new_value) {
-		SYSERROR("failed to strdup \"%s\"", value);
+	if (!new_value)
 		return -1;
-	}
+
 	rand_complete_hwaddr(new_value);
 
 	if (lxc_config_value_empty(new_value)) {
@@ -576,6 +575,7 @@ static int set_config_net_hwaddr(const char *key, const char *value,
 static int set_config_net_vlan_id(const char *key, const char *value,
 				  struct lxc_conf *lxc_conf, void *data)
 {
+	int ret;
 	struct lxc_netdev *netdev;
 
 	if (lxc_config_value_empty(value))
@@ -588,7 +588,8 @@ static int set_config_net_vlan_id(const char *key, const char *value,
 	if (!netdev)
 		return -1;
 
-	if (get_u16(&netdev->priv.vlan_attr.vid, value, 0))
+	ret = get_u16(&netdev->priv.vlan_attr.vid, value, 0);
+	if (ret < 0)
 		return -1;
 
 	return 0;
@@ -615,6 +616,7 @@ static int set_config_net_mtu(const char *key, const char *value,
 static int set_config_net_ipv4_address(const char *key, const char *value,
 				       struct lxc_conf *lxc_conf, void *data)
 {
+	int ret;
 	struct lxc_netdev *netdev;
 	struct lxc_inetdev *inetdev;
 	struct lxc_list *list;
@@ -632,15 +634,13 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 		return -1;
 
 	inetdev = malloc(sizeof(*inetdev));
-	if (!inetdev) {
-		SYSERROR("failed to allocate ipv4 address");
+	if (!inetdev)
 		return -1;
-	}
+
 	memset(inetdev, 0, sizeof(*inetdev));
 
 	list = malloc(sizeof(*list));
 	if (!list) {
-		SYSERROR("failed to allocate memory");
 		free(inetdev);
 		return -1;
 	}
@@ -650,7 +650,6 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 
 	addr = strdup(value);
 	if (!addr) {
-		ERROR("no address specified");
 		free(inetdev);
 		free(list);
 		return -1;
@@ -668,25 +667,31 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 		prefix = slash + 1;
 	}
 
-	if (!inet_pton(AF_INET, addr, &inetdev->addr)) {
-		SYSERROR("invalid ipv4 address: %s", value);
+	ret = inet_pton(AF_INET, addr, &inetdev->addr);
+	if (!ret || ret < 0) {
+		SYSERROR("Invalid ipv4 address \"%s\"", value);
 		free(inetdev);
 		free(addr);
 		free(list);
 		return -1;
 	}
 
-	if (bcast && !inet_pton(AF_INET, bcast, &inetdev->bcast)) {
-		SYSERROR("invalid ipv4 broadcast address: %s", value);
-		free(inetdev);
-		free(list);
-		free(addr);
-		return -1;
+	if (bcast) {
+		ret = inet_pton(AF_INET, bcast, &inetdev->bcast);
+		if (!ret || ret < 0) {
+			SYSERROR("Invalid ipv4 broadcast address \"%s\"", value);
+			free(inetdev);
+			free(list);
+			free(addr);
+			return -1;
+		}
+
 	}
 
 	/* No prefix specified, determine it from the network class. */
 	if (prefix) {
-		if (lxc_safe_uint(prefix, &inetdev->prefix) < 0)
+		ret = lxc_safe_uint(prefix, &inetdev->prefix);
+		if (ret < 0)
 			return -1;
 	} else {
 		inetdev->prefix = config_ip_prefix(&inetdev->addr);
@@ -697,8 +702,7 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 	 */
 	if (!bcast) {
 		inetdev->bcast.s_addr = inetdev->addr.s_addr;
-		inetdev->bcast.s_addr |=
-		    htonl(INADDR_BROADCAST >> inetdev->prefix);
+		inetdev->bcast.s_addr |= htonl(INADDR_BROADCAST >> inetdev->prefix);
 	}
 
 	lxc_list_add_tail(&netdev->ipv4, list);
