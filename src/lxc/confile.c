@@ -68,14 +68,12 @@
 
 lxc_log_define(lxc_confile, lxc);
 
-#define lxc_config_define(name)						\
-	static int set_config_##name(const char *, const char *,	\
-			struct lxc_conf *, void *);			\
-	static int get_config_##name(const char *, char *, int,		\
-			struct lxc_conf *, void *);			\
-	static int clr_config_##name(const char *, struct lxc_conf *,	\
-			void *);
-
+#define lxc_config_define(name)                                                \
+	static int set_config_##name(const char *, const char *,               \
+				     struct lxc_conf *, void *);               \
+	static int get_config_##name(const char *, char *, int,                \
+				     struct lxc_conf *, void *);               \
+	static int clr_config_##name(const char *, struct lxc_conf *, void *);
 
 lxc_config_define(personality);
 lxc_config_define(pty_max);
@@ -2054,8 +2052,9 @@ static int parse_line(char *buffer, void *data)
 		 * legacy configuration item in the configuration file and then
 		 * an update is required.
 		 */
-		fprintf(stderr, "The configuration file contains legacy configuration keys.\n"
-				"Please update your configuration file!\n");
+		fprintf(stderr, "The configuration file contains legacy "
+				"configuration keys.\nPlease update your "
+				"configuration file!\n");
 	}
 	/* [END]: REMOVE IN LXC 3.0 */
 

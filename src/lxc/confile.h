@@ -26,9 +26,9 @@
 #ifndef __LXC_CONFILE_H
 #define __LXC_CONFILE_H
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <lxc/attach_options.h>
-#include <stdbool.h>
 
 struct lxc_conf;
 struct lxc_list;
