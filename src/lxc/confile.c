@@ -4419,6 +4419,8 @@ int lxc_list_subkeys(struct lxc_conf *conf, const char *key, char *retv,
 	if (!strcmp(key, "lxc.apparmor")) {
 		strprint(retv, inlen, "allow_incomplete\n");
 		strprint(retv, inlen, "profile\n");
+	} else if (!strcmp(key, "lxc.cgroup")) {
+		strprint(retv, inlen, "dir\n");
 	} else if (!strcmp(key, "lxc.selinux")) {
 		strprint(retv, inlen, "context\n");
 	} else if (!strcmp(key, "lxc.mount")) {
