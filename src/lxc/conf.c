@@ -1454,7 +1454,7 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 		SYSERROR("failed with errno %d to create %s", errno, path);
 		return -errno;
 	}
- 	DEBUG("created directory for console and tty devices at \%s\"", path);
+ 	DEBUG("Created directory for console and tty devices at \"%s\"", path);
 
 	ret = snprintf(lxcpath, sizeof(lxcpath), "%s/dev/%s/console", rootfs->mount, ttydir);
 	if (ret < 0 || (size_t)ret >= sizeof(lxcpath))
