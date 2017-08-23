@@ -156,7 +156,7 @@ static char * is_wlan(const char *ifname)
 		goto bad;
 	if (!(f = fopen(path, "r")))
 		goto bad;
-	// feh - sb.st_size is always 4096
+	/* Feh - sb.st_size is always 4096. */
 	fseek(f, 0, SEEK_END);
 	physlen = ftell(f);
 	fseek(f, 0, SEEK_SET);
@@ -223,7 +223,7 @@ lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid, const char* 
 		sprintf(pidstr, "%d", pid);
 		if (execlp("iw", "iw", "phy", physname, "set", "netns", pidstr, (char *)NULL))
 			exit(1);
-		exit(0); // notreached
+		exit(0); /* notreached */
 	}
 	if (wait_for_pid(fpid))
 		goto out1;
@@ -1438,7 +1438,7 @@ static int attach_to_ovs_bridge(const char *lxcpath, const char *name, const cha
 			return ret;
 		pid = fork();
 		if (pid < 0)
-			return -1;  // how to properly recover?
+			return -1;  /* how to properly recover? */
 		if (pid > 0)
 			return 0;
 		ovs_cleanup_nic(lxcpath, name, bridge, nic);
@@ -1447,13 +1447,12 @@ static int attach_to_ovs_bridge(const char *lxcpath, const char *name, const cha
 
 	if (execlp("ovs-vsctl", "ovs-vsctl", "add-port", bridge, nic, (char *)NULL))
 		exit(1);
-	// not reached
+	/* not reached */
 	exit(1);
 }
 
-/*
- * There is a lxc_bridge_attach, but no need of a bridge detach
- * as automatically done by kernel when a netdev is deleted.
+/* There is a lxc_bridge_attach, but no need of a bridge detach as automatically
+ * done by kernel when a netdev is deleted.
  */
 int lxc_bridge_attach(const char *lxcpath, const char *name, const char *bridge, const char *ifname)
 {

@@ -54,7 +54,7 @@ static inline void dump_stacktrace(void)
 	size = backtrace(array, MAX_STACKDEPTH);
 	strings = backtrace_symbols(array, size);
 
-	// Using fprintf here as our logging module is not thread safe
+	/* Using fprintf here as our logging module is not thread safe. */
 	fprintf(stderr, "\tObtained %zu stack frames.\n", size);
 
 	for (i = 0; i < size; i++)

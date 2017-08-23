@@ -1069,7 +1069,7 @@ bool dir_exists(const char *path)
 
 	ret = stat(path, &sb);
 	if (ret < 0)
-		// could be something other than eexist, just say no
+		/* Could be something other than eexist, just say "no". */
 		return false;
 	return S_ISDIR(sb.st_mode);
 }
@@ -1125,7 +1125,7 @@ int detect_shared_rootfs(void)
 			continue;
 		*p2 = '\0';
 		if (strcmp(p + 1, "/") == 0) {
-			// this is '/'.  is it shared?
+			/* This is '/'. Is it shared? */
 			p = strchr(p2 + 1, ' ');
 			if (p && strstr(p, "shared:")) {
 				fclose(f);
@@ -1191,7 +1191,7 @@ bool detect_ramfs_rootfs(void)
 			continue;
 		*p2 = '\0';
 		if (strcmp(p + 1, "/") == 0) {
-			// this is '/'.  is it the ramfs?
+			/* This is '/'. Is it the ramfs? */
 			p = strchr(p2 + 1, '-');
 			if (p && strncmp(p, "- rootfs rootfs ", 16) == 0) {
 				free(line);
@@ -1572,20 +1572,21 @@ static int check_symlink(int fd)
 static int open_if_safe(int dirfd, const char *nextpath)
 {
 	int newfd = openat(dirfd, nextpath, O_RDONLY | O_NOFOLLOW);
-	if (newfd >= 0) // was not a symlink, all good
+	if (newfd >= 0) /* Was not a symlink, all good. */
 		return newfd;
 
 	if (errno == ELOOP)
 		return newfd;
 
 	if (errno == EPERM || errno == EACCES) {
-		/* we're not root (cause we got EPERM) so
-		   try opening with O_PATH */
+		/* We're not root (cause we got EPERM) so try opening with
+		 * O_PATH.
+		 */
 		newfd = openat(dirfd, nextpath, O_PATH | O_NOFOLLOW);
 		if (newfd >= 0) {
-			/* O_PATH will return an fd for symlinks.  We know
-			 * nextpath wasn't a symlink at last openat, so if fd
-			 * is now a link, then something * fishy is going on
+			/* O_PATH will return an fd for symlinks. We know
+			 * nextpath wasn't a symlink at last openat, so if fd is
+			 * now a link, then something * fishy is going on.
 			 */
 			int ret = check_symlink(newfd);
 			if (ret < 0) {
@@ -1685,8 +1686,10 @@ out:
 int safe_mount(const char *src, const char *dest, const char *fstype,
 		unsigned long flags, const void *data, const char *rootfs)
 {
-	int srcfd = -1, destfd, ret, saved_errno;
-	char srcbuf[50], destbuf[50]; // only needs enough for /proc/self/fd/<fd>
+	int destfd, ret, saved_errno;
+	/* Only needs enough for /proc/self/fd/<fd>. */
+	char srcbuf[50], destbuf[50];
+	int srcfd = -1;
 	const char *mntsrc = src;
 
 	if (!rootfs)

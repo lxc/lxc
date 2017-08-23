@@ -53,7 +53,7 @@ static uint64_t get_fssize(char *s)
 	while (isblank(*end))
 		end++;
 	if (*end == '\0')
-		ret *= 1024ULL * 1024ULL; // MB by default
+		ret *= 1024ULL * 1024ULL; /* MB by default */
 	else if (*end == 'b' || *end == 'B')
 		ret *= 1ULL;
 	else if (*end == 'k' || *end == 'K')
@@ -163,9 +163,10 @@ int main(int argc, char *argv[])
 	if (keepname)  flags |= LXC_CLONE_KEEPNAME;
 	if (keepmac)   flags |= LXC_CLONE_KEEPMACADDR;
 
-	// vgname and fstype could be supported by sending them through the
-	// bdevdata.  However, they currently are not yet.  I'm not convinced
-	// they are worthwhile.
+	/* vgname and fstype could be supported by sending them through the
+	 * bdevdata.  However, they currently are not yet.  I'm not convinced
+	 * they are worthwhile.
+	 */
 	if (vgname) {
 		printf("Error: vgname not supported\n");
 		usage(argv[0]);

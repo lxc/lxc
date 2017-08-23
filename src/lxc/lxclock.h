@@ -33,21 +33,21 @@
 #define LXC_LOCK_ANON_SEM 1 /*!< Anonymous semaphore lock */
 #define LXC_LOCK_FLOCK    2 /*!< flock(2) lock */
 
-// private
+/* private */
 /*!
  * LXC Lock
 */
 struct lxc_lock {
-	short type; //!< Lock type
+	short type; /*!< Lock type */
 
 	union {
-		sem_t *sem; //!< Anonymous semaphore (LXC_LOCK_ANON_SEM)
+		sem_t *sem; /*!< Anonymous semaphore (LXC_LOCK_ANON_SEM) */
 		/*! LXC_LOCK_FLOCK details */
 		struct {
-			int   fd; //!< fd on which a lock is held (if not -1)
-			char *fname; //!< Name of lock
+			int   fd; /*!< fd on which a lock is held (if not -1) */
+			char *fname; /*!< Name of lock */
 		} f;
-	} u; //!< Container for lock type elements
+	} u; /*!< Container for lock type elements */
 };
 
 /*!

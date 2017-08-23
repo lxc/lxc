@@ -340,10 +340,11 @@ struct lxc_log_category lxc_log_category_lxc = {
 /*---------------------------------------------------------------------------*/
 static int build_dir(const char *name)
 {
-	char *n = strdup(name);  // because we'll be modifying it
-	char *p, *e;
 	int ret;
+	char *e, *n, *p;
 
+	/* Make copy of string since we'll be modifying it. */
+	n = strdup(name);
 	if (!n) {
 		ERROR("Out of memory while creating directory '%s'.", name);
 		return -1;
@@ -470,10 +471,9 @@ extern void lxc_log_close(void)
  */
 static int __lxc_log_set_file(const char *fname, int create_dirs)
 {
-	if (lxc_log_fd != -1) {
-		// we are overriding the default.
+	/* we are overriding the default. */
+	if (lxc_log_fd != -1)
 		lxc_log_close();
-	}
 
 	if (!fname)
 		return -1;
@@ -484,8 +484,9 @@ static int __lxc_log_set_file(const char *fname, int create_dirs)
 	}
 
 #if USE_CONFIGPATH_LOGS
-	// we don't build_dir for the default if the default is
-	// i.e. /var/lib/lxc/$container/$container.log
+	/* We don't build_dir for the default if the default is i.e.
+	 * /var/lib/lxc/$container/$container.log.
+	 */
 	if (create_dirs)
 #endif
 	if (build_dir(fname)) {

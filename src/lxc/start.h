@@ -48,13 +48,16 @@ struct lxc_handler {
 	int pinfd;
 	const char *lxcpath;
 	void *cgroup_data;
-	int ttysock[2]; // socketpair for child->parent tty fd passing
-	bool backgrounded; // indicates whether should we close std{in,out,err} on start
+
+	/* socketpair for child->parent tty fd passing */
+	int ttysock[2];
+
+	/* indicates whether should we close std{in,out,err} on start */
+	bool backgrounded;
 	int nsfd[LXC_NS_MAX];
 	int netnsfd;
-	/* The socketpair() fds used to wait on successful daemonized
-	 * startup.
-	 */
+
+	/* The socketpair() fds used to wait on successful daemonized startup. */
 	int state_socket_pair[2];
 	struct lxc_list state_clients;
 };

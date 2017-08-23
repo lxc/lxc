@@ -75,7 +75,7 @@ static uint32_t get_v2_default_action(char *line)
 
 	while (*line == ' ')
 		line++;
-	// after 'whitelist' or 'blacklist' comes default behavior
+	/* After 'whitelist' or 'blacklist' comes default behavior. */
 	if (strncmp(line, "kill", 4) == 0)
 		ret_action = SCMP_ACT_KILL;
 	else if (strncmp(line, "errno", 5) == 0) {
@@ -94,7 +94,7 @@ static uint32_t get_v2_default_action(char *line)
 
 static const char *get_action_name(uint32_t action)
 {
-	// The upper 16 bits indicate the type of the seccomp action
+	/* The upper 16 bits indicate the type of the seccomp action. */
 	switch(action & 0xffff0000){
 	case SCMP_ACT_KILL:
 		return "kill";
@@ -170,7 +170,7 @@ int get_hostarch(void)
 	}
 	if (strcmp(uts.machine, "i686") == 0)
 		return lxc_seccomp_arch_i386;
-	// no x32 kernels
+	/* no x32 kernels */
 	else if (strcmp(uts.machine, "x86_64") == 0)
 		return lxc_seccomp_arch_amd64;
 	else if (strncmp(uts.machine, "armv7", 5) == 0)
@@ -434,7 +434,7 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 		remove_trailing_newlines(line);
 		INFO("processing: .%s.", line);
 		if (line[0] == '[') {
-			// read the architecture for next set of rules
+			/* Read the architecture for next set of rules. */
 			if (strcmp(line, "[x86]") == 0 ||
 			    strcmp(line, "[X86]") == 0) {
 				if (native_arch != lxc_seccomp_arch_i386 &&

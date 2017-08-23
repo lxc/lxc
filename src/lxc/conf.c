@@ -2289,7 +2289,7 @@ static int dropcaps_except(struct lxc_list *caps)
 	if (numcaps <= 0 || numcaps > 200)
 		return -1;
 
-	// caplist[i] is 1 if we keep capability i
+	/* caplist[i] is 1 if we keep capability i */
 	int *caplist = alloca(numcaps * sizeof(int));
 	memset(caplist, 0, numcaps * sizeof(int));
 
@@ -3292,7 +3292,7 @@ static int unpriv_assign_nic(const char *lxcpath, char *lxcname,
 		return -1;
 	}
 
-	if (child == 0) { // child
+	if (child == 0) { /* child */
 		/* Call lxc-user-nic pid type bridge. */
 		int ret;
 		char pidstr[LXC_NUMSTRLEN64];
@@ -3870,7 +3870,7 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 	}
 
 	if (rootuid == hostuid) {
-		// nothing to do
+		/* nothing to do */
 		INFO("Container root is our uid; no need to chown");
 		return 0;
 	}
@@ -3897,28 +3897,28 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 		return -1;
 	}
 
-	// "u:0:rootuid:1"
+	/* "u:0:rootuid:1" */
 	ret = snprintf(map1, 100, "u:0:%d:1", rootuid);
 	if (ret < 0 || ret >= 100) {
 		ERROR("Error uid printing map string");
 		return -1;
 	}
 
-	// "u:hostuid:hostuid:1"
+	/* "u:hostuid:hostuid:1" */
 	ret = snprintf(map2, 100, "u:%d:%d:1", hostuid, hostuid);
 	if (ret < 0 || ret >= 100) {
 		ERROR("Error uid printing map string");
 		return -1;
 	}
 
-	// "g:0:rootgid:1"
+	/* "g:0:rootgid:1" */
 	ret = snprintf(map3, 100, "g:0:%d:1", rootgid);
 	if (ret < 0 || ret >= 100) {
 		ERROR("Error gid printing map string");
 		return -1;
 	}
 
-	// "g:pathgid:rootgid+pathgid:1"
+	/* "g:pathgid:rootgid+pathgid:1" */
 	ret = snprintf(map4, 100, "g:%d:%d:1", (gid_t)sb.st_gid,
 		       rootgid + (gid_t)sb.st_gid);
 	if (ret < 0 || ret >= 100) {
@@ -3926,14 +3926,14 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 		return -1;
 	}
 
-	// "g:hostgid:hostgid:1"
+	/* "g:hostgid:hostgid:1" */
 	ret = snprintf(map5, 100, "g:%d:%d:1", hostgid, hostgid);
 	if (ret < 0 || ret >= 100) {
 		ERROR("Error gid printing map string");
 		return -1;
 	}
 
-	// "0:pathgid" (chown)
+	/* "0:pathgid" (chown) */
 	ret = snprintf(ugid, 100, "0:%d", (gid_t)sb.st_gid);
 	if (ret < 0 || ret >= 100) {
 		ERROR("Error owner printing format string for chown");
@@ -4367,7 +4367,7 @@ int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
 
 int lxc_clear_config_caps(struct lxc_conf *c)
 {
-	struct lxc_list *it,*next;
+	struct lxc_list *it, *next;
 
 	lxc_list_for_each_safe(it, &c->caps, next) {
 		lxc_list_del(it);

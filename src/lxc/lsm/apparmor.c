@@ -189,10 +189,10 @@ static int apparmor_process_label_set(const char *inlabel, struct lxc_conf *conf
 	curlabel = apparmor_process_label_get(getpid());
 
 	if (!aa_stacking_supported() && aa_needs_transition(curlabel)) {
-		// we're already confined, and stacking isn't supported
+		/* we're already confined, and stacking isn't supported */
 
 		if (!label || strcmp(curlabel, label) == 0) {
-			// no change requested
+			/* no change requested */
 			free(curlabel);
 			return 0;
 		}

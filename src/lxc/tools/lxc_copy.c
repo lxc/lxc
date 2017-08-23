@@ -575,7 +575,7 @@ static uint64_t get_fssize(char *s)
 	while (isblank(*end))
 		end++;
 	if (*end == '\0') {
-		ret *= 1024ULL * 1024ULL; // MB by default
+		ret *= 1024ULL * 1024ULL; /* MB by default */
 	} else if (*end == 'b' || *end == 'B') {
 		ret *= 1ULL;
 	} else if (*end == 'k' || *end == 'K') {

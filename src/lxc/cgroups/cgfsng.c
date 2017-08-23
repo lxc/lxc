@@ -90,8 +90,8 @@ struct hierarchy {
  */
 struct cgfsng_handler_data {
 	char *cgroup_pattern;
-	char *container_cgroup; // cgroup we created for the container
-	char *name; // container name
+	char *container_cgroup; /* cgroup we created for the container */
+	char *name; /* container name */
 };
 
 /*
@@ -386,7 +386,7 @@ static ssize_t get_max_cpus(char *cpulist)
 		c2 = c1;
 	else if (c1 < c2)
 		c1 = c2;
-	else if (!c1 && c2) // The reverse case is obvs. not needed.
+	else if (!c1 && c2) /* The reverse case is obvs. not needed. */
 		c1 = c2;
 
 	/* If the above logic is correct, c1 should always hold a valid string
@@ -414,7 +414,7 @@ static bool filter_and_set_cpus(char *path, bool am_initialized)
 	bool bret = false, flipped_bit = false;
 
 	lastslash = strrchr(path, '/');
-	if (!lastslash) { // bug...  this shouldn't be possible
+	if (!lastslash) { /* bug...  this shouldn't be possible */
 		ERROR("Invalid path: %s.", path);
 		return bret;
 	}
@@ -546,7 +546,7 @@ static bool copy_parent_file(char *path, char *file)
 	int ret;
 
 	lastslash = strrchr(path, '/');
-	if (!lastslash) { // bug...  this shouldn't be possible
+	if (!lastslash) { /* bug...  this shouldn't be possible */
 		ERROR("cgfsng:copy_parent_file: bad path %s", path);
 		return false;
 	}
@@ -1141,7 +1141,7 @@ static bool collect_hierarchy_info(void)
 	const char *tmp;
 	errno = 0;
 	tmp = lxc_global_config_value("lxc.cgroup.use");
-	if (!cgroup_use && errno != 0) { // lxc.cgroup.use can be NULL
+	if (!cgroup_use && errno != 0) { /* lxc.cgroup.use can be NULL */
 		SYSERROR("cgfsng: error reading list of cgroups to use");
 		return false;
 	}
@@ -1161,7 +1161,7 @@ static void *cgfsng_init(const char *name)
 	d->name = must_copy_string(name);
 
 	cgroup_pattern = lxc_global_config_value("lxc.cgroup.pattern");
-	if (!cgroup_pattern) { // lxc.cgroup.pattern is only NULL on error
+	if (!cgroup_pattern) { /* lxc.cgroup.pattern is only NULL on error */
 		ERROR("Error getting cgroup pattern");
 		goto out_free;
 	}
@@ -1291,7 +1291,7 @@ struct cgroup_ops *cgfsng_ops_init(void)
 static bool create_path_for_hierarchy(struct hierarchy *h, char *cgname)
 {
 	h->fullcgpath = must_make_path(h->mountpoint, h->base_cgroup, cgname, NULL);
-	if (dir_exists(h->fullcgpath)) { // it must not already exist
+	if (dir_exists(h->fullcgpath)) { /* it must not already exist */
 		ERROR("Path \"%s\" already existed.", h->fullcgpath);
 		return false;
 	}
@@ -1334,7 +1334,7 @@ static inline bool cgfsng_create(void *hdata)
 		ERROR("Failed expanding cgroup name pattern");
 		return false;
 	}
-	len = strlen(tmp) + 5; // leave room for -NNN\0
+	len = strlen(tmp) + 5; /* leave room for -NNN\0 */
 	cgname = must_alloc(len);
 	strcpy(cgname, tmp);
 	free(tmp);
@@ -1362,7 +1362,7 @@ again:
 	for (i = 0; hierarchies[i]; i++) {
 		if (!create_path_for_hierarchy(hierarchies[i], cgname)) {
 			int j;
-			SYSERROR("Failed to create %s: %s", hierarchies[i]->fullcgpath, strerror(errno));
+			ERROR("Failed to create \"%s\"", hierarchies[i]->fullcgpath);
 			free(hierarchies[i]->fullcgpath);
 			hierarchies[i]->fullcgpath = NULL;
 			for (j = 0; j < i; j++)
@@ -1405,7 +1405,7 @@ static bool cgfsng_enter(void *hdata, pid_t pid)
 
 struct chown_data {
 	struct cgfsng_handler_data *d;
-	uid_t origuid; // target uid in parent namespace
+	uid_t origuid; /* target uid in parent namespace */
 };
 
 /*
@@ -1814,7 +1814,7 @@ static bool cgfsng_attach(const char *name, const char *lxcpath, pid_t pid)
 		struct hierarchy *h = hierarchies[i];
 
 		path = lxc_cmd_get_cgroup_path(name, lxcpath, h->controllers[0]);
-		if (!path) // not running
+		if (!path) /* not running */
 			continue;
 
 		fullpath = build_full_cgpath_from_monitorpath(h, path, "cgroup.procs");
@@ -1847,7 +1847,7 @@ static int cgfsng_get(const char *filename, char *value, size_t len, const char 
 		*p = '\0';
 
 	path = lxc_cmd_get_cgroup_path(name, lxcpath, subsystem);
-	if (!path) // not running
+	if (!path) /* not running */
 		return -1;
 
 	h = get_hierarchy(subsystem);
@@ -1879,7 +1879,7 @@ static int cgfsng_set(const char *filename, const char *value, const char *name,
 		*p = '\0';
 
 	path = lxc_cmd_get_cgroup_path(name, lxcpath, subsystem);
-	if (!path) // not running
+	if (!path) /* not running */
 		return -1;
 
 	h = get_hierarchy(subsystem);
@@ -1979,7 +1979,8 @@ static int lxc_cgroup_set_data(const char *filename, const char *value, struct c
 	char *subsystem = NULL, *p;
 	int ret = 0;
 	struct hierarchy *h;
-	char converted_value[50]; // "b|c <2^64-1>:<2^64-1> r|w|m" = 47 chars max
+	/* "b|c <2^64-1>:<2^64-1> r|w|m" = 47 chars max */
+	char converted_value[50];
 
 	subsystem = alloca(strlen(filename) + 1);
 	strcpy(subsystem, filename);

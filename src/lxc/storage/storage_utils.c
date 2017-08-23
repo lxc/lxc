@@ -85,13 +85,17 @@ char *dir_new_path(char *src, const char *oldname, const char *name,
 	}
 
 	while ((p2 = strstr(src, oldname)) != NULL) {
-		strncpy(p, src, p2 - src); // copy text up to oldname
-		p += p2 - src;		   // move target pointer (p)
-		p += sprintf(p, "%s",
-			     name); // print new name in place of oldname
-		src = p2 + l2;      // move src to end of oldname
+		/* copy text up to oldname */
+		strncpy(p, src, p2 - src);
+		/* move target pointer (p) */
+		p += p2 - src;
+		/* print new name in place of oldname */
+		p += sprintf(p, "%s", name);
+		/* move src to end of oldname */
+		src = p2 + l2;
 	}
-	sprintf(p, "%s", src); // copy the rest of src
+	/* copy the rest of src */
+	sprintf(p, "%s", src);
 	return ret;
 }
 
@@ -136,7 +140,8 @@ int blk_getsize(struct lxc_storage *bdev, uint64_t *size)
 	if (fd < 0)
 		return -1;
 
-	ret = ioctl(fd, BLKGETSIZE64, size); // size of device in bytes
+	/* size of device in bytes */
+	ret = ioctl(fd, BLKGETSIZE64, size);
 	close(fd);
 	return ret;
 }
@@ -213,7 +218,7 @@ int detect_fs(struct lxc_storage *bdev, char *type, int len)
 		exit(1);
 	}
 
-	// if symlink, get the real dev name
+	/* if symlink, get the real dev name */
 	char devpath[MAXPATHLEN];
 	char *l = linkderef(srcdev, devpath);
 	if (!l)
@@ -410,9 +415,10 @@ bool unpriv_snap_allowed(struct lxc_storage *b, const char *t, bool snap,
 			 bool maybesnap)
 {
 	if (!t) {
-		// new type will be same as original
-		// (unless snap && b->type == dir, in which case it will be
-		// overlayfs -- which is also allowed)
+		/* New type will be same as original (unless snap && b->type ==
+		 * dir, in which case it will be overlayfs -- which is also
+		 * allowed).
+		 */
 		if (strcmp(b->type, "dir") == 0 ||
 		    strcmp(b->type, "aufs") == 0 ||
 		    strcmp(b->type, "overlay") == 0 ||
@@ -424,8 +430,9 @@ bool unpriv_snap_allowed(struct lxc_storage *b, const char *t, bool snap,
 		return false;
 	}
 
-	// unprivileged users can copy and snapshot dir, overlayfs,
-	// and loop.  In particular, not zfs, btrfs, or lvm.
+	/* Unprivileged users can copy and snapshot dir, overlayfs, and loop.
+	 * In particular, not zfs, btrfs, or lvm.
+	 */
 	if (strcmp(t, "dir") == 0 ||
 	    strcmp(t, "aufs") == 0 ||
 	    strcmp(t, "overlay") == 0 ||

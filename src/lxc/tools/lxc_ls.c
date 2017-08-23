@@ -677,18 +677,22 @@ static char *ls_get_interface(struct lxc_container *c)
  */
 static double ls_get_swap(struct lxc_container *c)
 {
+	char *stat, *swap, *tmp;
 	unsigned long long int num = 0;
-	char *stat = ls_get_cgroup_item(c, "memory.stat");
+
+	stat = ls_get_cgroup_item(c, "memory.stat");
 	if (!stat)
 		goto out;
 
-	char *swap = strstr(stat, "\nswap");
+	swap = strstr(stat, "\nswap");
 	if (!swap)
 		goto out;
 
-	swap = 1 + swap + 4 + 1; // start_of_swap_value = '\n' + strlen(swap) + ' '
+	/* start_of_swap_value = '\n' + strlen(swap) + ' ' */
+	swap = 1 + swap + 4 + 1;
 
-	char *tmp = strchr(swap, '\n'); // find end of swap value
+	/* find end of swap value */
+	tmp = strchr(swap, '\n');
 	if (!tmp)
 		goto out;
 

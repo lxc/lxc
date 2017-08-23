@@ -208,7 +208,7 @@ static struct alloted_s *append_alloted(struct alloted_s **head, char *name, int
 	struct alloted_s *cur, *al;
 
 	if (!head || !name) {
-		// sanity check. parameters should not be null
+		/* sanity check. parameters should not be null */
 		usernic_error("%s\n", "Unexpected NULL argument.");
 		return NULL;
 	}
@@ -797,9 +797,10 @@ static int rename_in_ns(int pid, char *oldname, char **newnamep)
 			      "user id and real user id to %d, and saved user "
 			      "ID to 0: %s.\n",
 			      ruid, strerror(errno));
-		// COMMENT(brauner): It's ok to jump to do_full_cleanup here
-		// since setresuid() will succeed when trying to set real,
-		// effective, and saved to values they currently have.
+		/* It's ok to jump to do_full_cleanup here since setresuid()
+		 * will succeed when trying to set real, effective, and saved to
+		 * values they currently have.
+		 */
 		goto do_full_cleanup;
 	}
 
@@ -844,9 +845,6 @@ do_full_cleanup:
 			      "ID to %d: %s.\n",
 			      ruid, euid, suid, strerror(errno));
 		fret = -1;
-		// COMMENT(brauner): setns() should fail if setresuid() doesn't
-		// succeed but there's no harm in falling through; keeps the
-		// code cleaner.
 	}
 
 	ret = setns(ofd, CLONE_NEWNET);
@@ -865,10 +863,8 @@ do_partial_cleanup:
 	return fret;
 }
 
-/*
- * If the caller (real uid, not effective uid) may read the
- * /proc/[pid]/ns/net, then it is either the caller's netns or one
- * which it created.
+/* If the caller (real uid, not effective uid) may read the /proc/[pid]/ns/net,
+ * then it is either the caller's netns or one which it created.
  */
 static bool may_access_netns(int pid)
 {

@@ -137,7 +137,7 @@ static int do_start(void *arg)
 			exit(EXIT_FAILURE);
 		}
 
-	// Setuid is useful even without a new user id space
+	/* Setuid is useful even without a new user id space. */
 	if (start_arg->setuid && setuid(uid)) {
 		ERROR("failed to set uid %d: %s", uid, strerror(errno));
 		exit(EXIT_FAILURE);

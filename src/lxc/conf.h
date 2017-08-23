@@ -26,8 +26,8 @@
 #include "config.h"
 
 #include <stdio.h>
-#include <netinet/in.h>
 #include <net/if.h>
+#include <netinet/in.h>
 #include <sys/param.h>
 #include <sys/types.h>
 #if HAVE_SYS_RESOURCE_H
@@ -301,9 +301,17 @@ enum {
  * @lsm_se_context : selinux type to switch to or NULL
  */
 enum lxchooks {
-	LXCHOOK_PRESTART, LXCHOOK_PREMOUNT, LXCHOOK_MOUNT, LXCHOOK_AUTODEV,
-	LXCHOOK_START, LXCHOOK_STOP, LXCHOOK_POSTSTOP, LXCHOOK_CLONE, LXCHOOK_DESTROY,
-	NUM_LXC_HOOKS};
+	LXCHOOK_PRESTART,
+	LXCHOOK_PREMOUNT,
+	LXCHOOK_MOUNT,
+	LXCHOOK_AUTODEV,
+	LXCHOOK_START,
+	LXCHOOK_STOP,
+	LXCHOOK_POSTSTOP,
+	LXCHOOK_CLONE,
+	LXCHOOK_DESTROY,
+	NUM_LXC_HOOKS
+};
 extern char *lxchook_names[NUM_LXC_HOOKS];
 
 struct saved_nic {
@@ -341,24 +349,24 @@ struct lxc_conf {
 	unsigned int lsm_aa_allow_incomplete;
 	char *lsm_se_context;
 	int tmp_umount_proc;
-	char *seccomp;  // filename with the seccomp rules
+	char *seccomp;  /* filename with the seccomp rules */
 #if HAVE_SCMP_FILTER_CTX
 	scmp_filter_ctx seccomp_ctx;
 #endif
 	int maincmd_fd;
-	unsigned int autodev;  // if 1, mount and fill a /dev at start
-	int haltsignal; // signal used to halt container
-	int rebootsignal; // signal used to reboot container
-	int stopsignal; // signal used to hard stop container
-	char *rcfile;	// Copy of the top level rcfile we read
+	unsigned int autodev;  /* if 1, mount and fill a /dev at start */
+	int haltsignal; /* signal used to halt container */
+	int rebootsignal; /* signal used to reboot container */
+	int stopsignal; /* signal used to hard stop container */
+	char *rcfile;	/* Copy of the top level rcfile we read */
 
-	// Logfile and logleve can be set in a container config file.
-	// Those function as defaults.  The defaults can be overriden
-	// by command line.  However we don't want the command line
-	// specified values to be saved on c->save_config().  So we
-	// store the config file specified values here.
-	char *logfile;  // the logfile as specifed in config
-	int loglevel;   // loglevel as specifed in config (if any)
+	/* Logfile and logleve can be set in a container config file. Those
+	 * function as defaults. The defaults can be overriden by command line.
+	 * However we don't want the command line specified values to be saved
+	 * on c->save_config(). So we store the config file specified values
+	 * here. */
+	char *logfile; /* the logfile as specifed in config */
+	int loglevel; /* loglevel as specifed in config (if any) */
 	int logfd;
 
 	int inherit_ns_fd[LXC_NS_MAX];
@@ -422,19 +430,12 @@ extern __thread struct lxc_conf *current_config;
 extern struct lxc_conf *current_config;
 #endif
 
-int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
-		  const char *lxcpath, char *argv[]);
-
+extern int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
+			 const char *lxcpath, char *argv[]);
 extern int detect_shared_rootfs(void);
-
-/*
- * Initialize the lxc configuration structure
- */
 extern struct lxc_conf *lxc_conf_init(void);
 extern void lxc_conf_free(struct lxc_conf *conf);
-
 extern int pin_rootfs(const char *rootfs);
-
 extern int lxc_requests_empty_network(struct lxc_handler *handler);
 extern int lxc_setup_networks_in_parent_namespaces(struct lxc_handler *handler);
 extern bool lxc_delete_network(struct lxc_handler *handler);
@@ -442,10 +443,8 @@ extern int lxc_assign_network(const char *lxcpath, char *lxcname,
 			      struct lxc_list *networks, pid_t pid);
 extern int lxc_map_ids(struct lxc_list *idmap, pid_t pid);
 extern int lxc_find_gateway_addresses(struct lxc_handler *handler);
-
 extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
 extern void lxc_delete_tty(struct lxc_tty_info *tty_info);
-
 extern int lxc_clear_config_caps(struct lxc_conf *c);
 extern int lxc_clear_config_keepcaps(struct lxc_conf *c);
 extern int lxc_clear_cgroups(struct lxc_conf *c, const char *key);
@@ -458,23 +457,15 @@ extern int lxc_clear_environment(struct lxc_conf *c);
 extern int lxc_clear_limits(struct lxc_conf *c, const char *key);
 extern int lxc_delete_autodev(struct lxc_handler *handler);
 extern void lxc_clear_includes(struct lxc_conf *conf);
-
 extern int do_rootfs_setup(struct lxc_conf *conf, const char *name,
 			   const char *lxcpath);
-
-/*
- * Configure the container from inside
- */
-
 struct cgroup_process_info;
 extern int lxc_setup(struct lxc_handler *handler);
-
 extern int setup_resource_limits(struct lxc_list *limits, pid_t pid);
-
 extern void lxc_restore_phys_nics_to_netns(int netnsfd, struct lxc_conf *conf);
-
 extern int find_unmapped_nsid(struct lxc_conf *conf, enum idtype idtype);
-extern int mapped_hostid(unsigned id, struct lxc_conf *conf, enum idtype idtype);
+extern int mapped_hostid(unsigned id, struct lxc_conf *conf,
+			 enum idtype idtype);
 extern int chown_mapped_root(char *path, struct lxc_conf *conf);
 extern int lxc_ttys_shift_ids(struct lxc_conf *c);
 extern int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
@@ -482,11 +473,11 @@ extern int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 extern int parse_mntopts(const char *mntopts, unsigned long *mntflags,
 			 char **mntdata);
 extern void tmp_proc_unmount(struct lxc_conf *lxc_conf);
-void remount_all_slave(void);
+extern void remount_all_slave(void);
 extern void suggest_default_idmap(void);
-FILE *make_anonymous_mount_file(struct lxc_list *mount);
-struct lxc_list *sort_cgroup_settings(struct lxc_list* cgroup_settings);
-unsigned long add_required_remount_flags(const char *s, const char *d,
-		unsigned long flags);
+extern FILE *make_anonymous_mount_file(struct lxc_list *mount);
+extern struct lxc_list *sort_cgroup_settings(struct lxc_list *cgroup_settings);
+extern unsigned long add_required_remount_flags(const char *s, const char *d,
+						unsigned long flags);
 
-#endif
+#endif /* __LXC_CONF_H */

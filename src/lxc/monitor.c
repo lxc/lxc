@@ -262,7 +262,7 @@ int lxc_monitor_read_fdset(struct pollfd *fds, nfds_t nfds, struct lxc_msg *msg,
 	if (ret == -1)
 		return -1;
 	else if (ret == 0)
-		return -2;  // timed out
+		return -2;  /* timed out */
 
 	/* Only read from the first ready fd, the others will remain ready for
 	 * when this routine is called again.
