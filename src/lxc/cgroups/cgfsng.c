@@ -53,8 +53,9 @@
 #include "cgroup.h"
 #include "cgroup_utils.h"
 #include "commands.h"
+#include "conf.h"
 #include "log.h"
-#include "storage.h"
+#include "storage/storage.h"
 #include "utils.h"
 
 lxc_log_define(lxc_cgfsng, lxc);
@@ -81,17 +82,21 @@ struct hierarchy {
 
 /*
  * The cgroup data which is attached to the lxc_handler.
- * @cgroup_pattern - a copy of the lxc.cgroup.pattern
- * @container_cgroup - if not null, the cgroup which was created for
- *   the container.  For each hierarchy, it is created under the
- *   @hierarchy->base_cgroup directory.  Relative to the base_cgroup
- *   it is the same for all hierarchies.
- * @name - the container name
+ * @cgroup_pattern   : A copy of the lxc.cgroup.pattern
+ * @container_cgroup : If not null, the cgroup which was created for the
+ *                     container. For each hierarchy, it is created under the
+ *                     @hierarchy->base_cgroup directory. Relative to the
+ *                     base_cgroup it is the same for all hierarchies.
+ * @name             : The name of the container.
+ * @cgroup_meta      : A copy of the container's cgroup information. This
+ *                     overrides @cgroup_pattern.
  */
 struct cgfsng_handler_data {
 	char *cgroup_pattern;
 	char *container_cgroup; /* cgroup we created for the container */
 	char *name; /* container name */
+	/* per-container cgroup information */
+	struct lxc_cgroup cgroup_meta;
 };
 
 /*
@@ -220,6 +225,10 @@ static void free_handler_data(struct cgfsng_handler_data *d)
 	free(d->cgroup_pattern);
 	free(d->container_cgroup);
 	free(d->name);
+	if (d->cgroup_meta.dir)
+		free(d->cgroup_meta.dir);
+	if (d->cgroup_meta.controllers)
+		free(d->cgroup_meta.controllers);
 	free(d);
 }
 
@@ -986,8 +995,12 @@ static void lxc_cgfsng_print_handler_data(const struct cgfsng_handler_data *d)
 	printf("Cgroup information:\n");
 	printf("  container name: %s\n", d->name ? d->name : "(null)");
 	printf("  lxc.cgroup.use: %s\n", cgroup_use ? cgroup_use : "(null)");
-	printf("  lxc.cgroup.pattern: %s\n", d->cgroup_pattern ? d->cgroup_pattern : "(null)");
-	printf("  cgroup: %s\n", d->container_cgroup ? d->container_cgroup : "(null)");
+	printf("  lxc.cgroup.pattern: %s\n",
+	       d->cgroup_pattern ? d->cgroup_pattern : "(null)");
+	printf("  lxc.cgroup.dir: %s\n",
+	       d->cgroup_meta.dir ? d->cgroup_meta.dir : "(null)");
+	printf("  cgroup: %s\n",
+	       d->container_cgroup ? d->container_cgroup : "(null)");
 }
 
 static void lxc_cgfsng_print_hierarchies()
@@ -1150,18 +1163,25 @@ static bool collect_hierarchy_info(void)
 	return parse_hierarchies();
 }
 
-static void *cgfsng_init(const char *name)
+static void *cgfsng_init(struct lxc_handler *handler)
 {
-	struct cgfsng_handler_data *d;
 	const char *cgroup_pattern;
+	struct cgfsng_handler_data *d;
 
 	d = must_alloc(sizeof(*d));
 	memset(d, 0, sizeof(*d));
 
-	d->name = must_copy_string(name);
+	/* copy container name */
+	d->name = must_copy_string(handler->name);
 
+	/* copy per-container cgroup information */
+	d->cgroup_meta.dir = must_copy_string(handler->conf->cgroup_meta.dir);
+	d->cgroup_meta.controllers = must_copy_string(handler->conf->cgroup_meta.controllers);
+
+	/* copy system-wide cgroup information */
 	cgroup_pattern = lxc_global_config_value("lxc.cgroup.pattern");
-	if (!cgroup_pattern) { /* lxc.cgroup.pattern is only NULL on error */
+	if (!cgroup_pattern) {
+		/* lxc.cgroup.pattern is only NULL on error. */
 		ERROR("Error getting cgroup pattern");
 		goto out_free;
 	}
@@ -1324,12 +1344,16 @@ static inline bool cgfsng_create(void *hdata)
 
 	if (!d)
 		return false;
+
 	if (d->container_cgroup) {
 		WARN("cgfsng_create called a second time");
 		return false;
 	}
 
-	tmp = lxc_string_replace("%n", d->name, d->cgroup_pattern);
+	if (d->cgroup_meta.dir)
+		tmp = strdup(d->cgroup_meta.dir);
+	else
+		tmp = lxc_string_replace("%n", d->name, d->cgroup_pattern);
 	if (!tmp) {
 		ERROR("Failed expanding cgroup name pattern");
 		return false;

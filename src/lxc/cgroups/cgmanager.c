@@ -540,7 +540,7 @@ static void cgm_remove_cgroup(const char *controller, const char *path)
 		INFO("cgroup removal attempt: %s:%s did not exist", controller, path);
 }
 
-static void *cgm_init(const char *name)
+static void *cgm_init(struct lxc_handler *handler)
 {
 	struct cgm_data *d;
 
@@ -554,7 +554,7 @@ static void *cgm_init(const char *name)
 	}
 
 	memset(d, 0, sizeof(*d));
-	d->name = strdup(name);
+	d->name = strdup(handler->name);
 	if (!d->name) {
 		cgm_dbus_disconnect();
 		goto err1;

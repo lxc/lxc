@@ -65,7 +65,7 @@ bool cgroup_init(struct lxc_handler *handler)
 
 	if (ops) {
 		INFO("cgroup driver %s initing for %s", ops->name, handler->name);
-		handler->cgroup_data = ops->init(handler->name);
+		handler->cgroup_data = ops->init(handler);
 	}
 
 	return handler->cgroup_data != NULL;
@@ -209,7 +209,8 @@ int lxc_cgroup_get(const char *filename, char *value, size_t len,
 	return -1;
 }
 
-void cgroup_disconnect(void) {
+void cgroup_disconnect(void)
+{
 	if (ops && ops->disconnect)
 		ops->disconnect();
 }

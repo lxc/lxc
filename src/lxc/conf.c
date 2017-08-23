@@ -2769,6 +2769,7 @@ struct lxc_conf *lxc_conf_init(void)
 	 * default to running as UID/GID 0 when using lxc-execute */
 	new->init_uid = 0;
 	new->init_gid = 0;
+	memset(&new->cgroup_meta, 0, sizeof(struct lxc_cgroup));
 
 	return new;
 }
@@ -4606,6 +4607,8 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_aliens(conf);
 	lxc_clear_environment(conf);
 	lxc_clear_limits(conf, "lxc.prlimit");
+	free(conf->cgroup_meta.dir);
+	free(conf->cgroup_meta.controllers);
 	free(conf);
 }
 

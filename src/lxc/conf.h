@@ -144,14 +144,29 @@ struct lxc_netdev {
 };
 
 /*
- * Defines a generic struct to configure the control group.
- * It is up to the programmer to specify the right subsystem.
+ * Defines a generic struct to configure the control group. It is up to the
+ * programmer to specify the right subsystem.
  * @subsystem : the targeted subsystem
  * @value     : the value to set
+ *
+ * @controllers : The controllers to use for this container.
+ * @dir         : The name of the directory containing the container's cgroup.
+ *                Not that this is a per-container setting.
  */
 struct lxc_cgroup {
-	char *subsystem;
-	char *value;
+	union {
+		/* information about a specific controller */
+		struct /* controller */ {
+			char *subsystem;
+			char *value;
+		};
+
+		/* meta information about cgroup configuration */
+		struct /* meta */ {
+			char *controllers;
+			char *dir;
+		};
+	};
 };
 
 #if !HAVE_SYS_RESOURCE_H
@@ -422,6 +437,13 @@ struct lxc_conf {
 	 * legacy configuration keys.
 	 */
 	bool contains_legacy_key;
+
+	/* Contains generic info about the cgroup configuration for this
+	 * container. Note that struct lxc_cgroup contains a union. It is only
+	 * valid to access the members of the anonymous "meta" struct within
+	 * that union.
+	 */
+	struct lxc_cgroup cgroup_meta;
 };
 
 #ifdef HAVE_TLS
@@ -459,7 +481,6 @@ extern int lxc_delete_autodev(struct lxc_handler *handler);
 extern void lxc_clear_includes(struct lxc_conf *conf);
 extern int do_rootfs_setup(struct lxc_conf *conf, const char *name,
 			   const char *lxcpath);
-struct cgroup_process_info;
 extern int lxc_setup(struct lxc_handler *handler);
 extern int setup_resource_limits(struct lxc_list *limits, pid_t pid);
 extern void lxc_restore_phys_nics_to_netns(int netnsfd, struct lxc_conf *conf);

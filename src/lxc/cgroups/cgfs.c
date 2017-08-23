@@ -2343,7 +2343,7 @@ struct cgroup_ops *cgfs_ops_init(void)
 	return &cgfs_ops;
 }
 
-static void *cgfs_init(const char *name)
+static void *cgfs_init(struct lxc_handler *handler)
 {
 	struct cgfs_data *d;
 
@@ -2352,7 +2352,7 @@ static void *cgfs_init(const char *name)
 		return NULL;
 
 	memset(d, 0, sizeof(*d));
-	d->name = strdup(name);
+	d->name = strdup(handler->name);
 	if (!d->name)
 		goto err1;
 
