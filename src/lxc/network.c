@@ -92,12 +92,12 @@
 
 lxc_log_define(lxc_network, lxc);
 
-int lxc_netdev_move_by_index(int ifindex, pid_t pid, const char* ifname)
+int lxc_netdev_move_by_index(int ifindex, pid_t pid, const char *ifname)
 {
-	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL;
-	struct ifinfomsg *ifi;
 	int err;
+	struct nl_handler nlh;
+	struct ifinfomsg *ifi;
+	struct nlmsg *nlmsg = NULL;
 
 	err = netlink_open(&nlh, NETLINK_ROUTE);
 	if (err)
@@ -108,7 +108,7 @@ int lxc_netdev_move_by_index(int ifindex, pid_t pid, const char* ifname)
 	if (!nlmsg)
 		goto out;
 
-	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_REQUEST|NLM_F_ACK;
+	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
@@ -132,50 +132,56 @@ out:
 	return err;
 }
 
-/*
- * If we are asked to move a wireless interface, then
- * we must actually move its phyN device.  Detect
- * that condition and return the physname here.  The
- * physname will be passed to lxc_netdev_move_wlan()
- * which will free it when done
+/* If we are asked to move a wireless interface, then we must actually move its
+ * phyN device. Detect that condition and return the physname here. The physname
+ * will be passed to lxc_netdev_move_wlan() which will free it when done.
  */
 #define PHYSNAME "/sys/class/net/%s/phy80211/name"
-static char * is_wlan(const char *ifname)
+static char *is_wlan(const char *ifname)
 {
-	char *path, *physname = NULL;
-	size_t len = strlen(ifname) + strlen(PHYSNAME) - 1;
-	struct stat sb;
+	int i, ret;
 	long physlen;
+	size_t len;
+	char *path;
 	FILE *f;
-	int ret, i;
+	struct stat sb;
+	char *physname = NULL;
 
-	path = alloca(len+1);
+	len = strlen(ifname) + strlen(PHYSNAME) - 1;
+	path = alloca(len + 1);
 	ret = snprintf(path, len, PHYSNAME, ifname);
-	if (ret < 0 || ret >= len)
+	if (ret < 0 || (size_t)ret >= len)
 		goto bad;
+
 	ret = stat(path, &sb);
 	if (ret)
 		goto bad;
-	if (!(f = fopen(path, "r")))
+
+	f = fopen(path, "r");
+	if (!f)
 		goto bad;
+
 	/* Feh - sb.st_size is always 4096. */
 	fseek(f, 0, SEEK_END);
 	physlen = ftell(f);
 	fseek(f, 0, SEEK_SET);
-	physname = malloc(physlen+1);
+
+	physname = malloc(physlen + 1);
 	if (!physname) {
 		fclose(f);
 		goto bad;
 	}
-	memset(physname, 0, physlen+1);
+
+	memset(physname, 0, physlen + 1);
 	ret = fread(physname, 1, physlen, f);
 	fclose(f);
 	if (ret < 0)
 		goto bad;
 
-	for (i = 0;  i < physlen; i++) {
+	for (i = 0; i < physlen; i++) {
 		if (physname[i] == '\n')
 			physname[i] = '\0';
+
 		if (physname[i] == '\0')
 			break;
 	}
@@ -187,30 +193,34 @@ bad:
 	return NULL;
 }
 
-static int
-lxc_netdev_rename_by_name_in_netns(pid_t pid, const char *old, const char *new)
+static int lxc_netdev_rename_by_name_in_netns(pid_t pid, const char *old,
+					      const char *new)
 {
-	pid_t fpid = fork();
+	pid_t fpid;
 
+	fpid = fork();
 	if (fpid < 0)
 		return -1;
+
 	if (fpid != 0)
 		return wait_for_pid(fpid);
+
 	if (!switch_to_ns(pid, "net"))
 		return -1;
+
 	exit(lxc_netdev_rename_by_name(old, new));
 }
 
-static int
-lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid, const char* newname)
+static int lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid,
+				const char *newname)
 {
-	int err = -1;
-	pid_t fpid;
 	char *cmd;
+	pid_t fpid;
+	int err = -1;
 
 	/* Move phyN into the container.  TODO - do this using netlink.
-	 * However, IIUC this involves a bit more complicated work to
-	 * talk to the 80211 module, so for now just call out to iw
+	 * However, IIUC this involves a bit more complicated work to talk to
+	 * the 80211 module, so for now just call out to iw.
 	 */
 	cmd = on_path("iw", NULL);
 	if (!cmd)
@@ -220,13 +230,15 @@ lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid, const char* 
 	fpid = fork();
 	if (fpid < 0)
 		goto out1;
+
 	if (fpid == 0) {
 		char pidstr[30];
 		sprintf(pidstr, "%d", pid);
-		if (execlp("iw", "iw", "phy", physname, "set", "netns", pidstr, (char *)NULL))
-			exit(1);
-		exit(0); /* notreached */
+		execlp("iw", "iw", "phy", physname, "set", "netns", pidstr,
+		       (char *)NULL);
+		exit(EXIT_FAILURE);
 	}
+
 	if (wait_for_pid(fpid))
 		goto out1;
 
@@ -251,7 +263,8 @@ int lxc_netdev_move_by_name(const char *ifname, pid_t pid, const char* newname)
 	if (!index)
 		return -EINVAL;
 
-	if ((physname = is_wlan(ifname)))
+	physname = is_wlan(ifname);
+	if (physname)
 		return lxc_netdev_move_wlan(physname, ifname, pid, newname);
 
 	return lxc_netdev_move_by_index(index, pid, newname);
@@ -259,10 +272,10 @@ int lxc_netdev_move_by_name(const char *ifname, pid_t pid, const char* newname)
 
 int lxc_netdev_delete_by_index(int ifindex)
 {
-	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL, *answer = NULL;
-	struct ifinfomsg *ifi;
 	int err;
+	struct ifinfomsg *ifi;
+	struct nl_handler nlh;
+	struct nlmsg *answer = NULL, *nlmsg = NULL;
 
 	err = netlink_open(&nlh, NETLINK_ROUTE);
 	if (err)
@@ -277,7 +290,7 @@ int lxc_netdev_delete_by_index(int ifindex)
 	if (!answer)
 		goto out;
 
-	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_ACK|NLM_F_REQUEST;
+	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_ACK | NLM_F_REQUEST;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_DELLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
@@ -307,10 +320,10 @@ int lxc_netdev_delete_by_name(const char *name)
 
 int lxc_netdev_rename_by_index(int ifindex, const char *newname)
 {
-	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL, *answer = NULL;
+	int err, len;
 	struct ifinfomsg *ifi;
-	int len, err;
+	struct nl_handler nlh;
+	struct nlmsg *answer = NULL, *nlmsg = NULL;
 
 	err = netlink_open(&nlh, NETLINK_ROUTE);
 	if (err)
@@ -329,7 +342,7 @@ int lxc_netdev_rename_by_index(int ifindex, const char *newname)
 	if (!answer)
 		goto out;
 
-	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_ACK|NLM_F_REQUEST;
+	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_ACK | NLM_F_REQUEST;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
@@ -366,10 +379,10 @@ int lxc_netdev_rename_by_name(const char *oldname, const char *newname)
 
 int netdev_set_flag(const char *name, int flag)
 {
-	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL, *answer = NULL;
+	int err, index, len;
 	struct ifinfomsg *ifi;
-	int index, len, err;
+	struct nl_handler nlh;
+	struct nlmsg *answer = NULL, *nlmsg = NULL;
 
 	err = netlink_open(&nlh, NETLINK_ROUTE);
 	if (err)
@@ -394,7 +407,7 @@ int netdev_set_flag(const char *name, int flag)
 	if (!index)
 		goto out;
 
-	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_REQUEST|NLM_F_ACK;
+	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
@@ -415,12 +428,12 @@ out:
 	return err;
 }
 
-int netdev_get_flag(const char* name, int *flag)
+int netdev_get_flag(const char *name, int *flag)
 {
-	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL, *answer = NULL;
+	int err, index, len;
 	struct ifinfomsg *ifi;
-	int index, len, err;
+	struct nl_handler nlh;
+	struct nlmsg *answer = NULL, *nlmsg = NULL;
 
 	if (!name)
 		return -EINVAL;
@@ -483,30 +496,28 @@ out:
  * 1 means interface is up.
  * Others means error happened, and ret-value is the error number.
  */
-int lxc_netdev_isup(const char* name)
+int lxc_netdev_isup(const char *name)
 {
-	int flag;
-	int err;
+	int err, flag;
 
 	err = netdev_get_flag(name, &flag);
 	if (err)
-		goto out;
+		return err;
+
 	if (flag & IFF_UP)
 		return 1;
+
 	return 0;
-out:
-	return err;
 }
 
 int netdev_get_mtu(int ifindex)
 {
+	int answer_len, err, res;
 	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL, *answer = NULL;
 	struct ifinfomsg *ifi;
 	struct nlmsghdr *msg;
-	int err, res;
-	int recv_len = 0, answer_len;
-	int readmore = 0;
+	int readmore = 0, recv_len = 0;
+	struct nlmsg *answer = NULL, *nlmsg = NULL;
 
 	err = netlink_open(&nlh, NETLINK_ROUTE);
 	if (err)
@@ -523,10 +534,11 @@ int netdev_get_mtu(int ifindex)
 
 	/* Save the answer buffer length, since it will be overwritten
 	 * on the first receive (and we might need to receive more than
-	 * once. */
+	 * once.
+	 */
 	answer_len = answer->nlmsghdr->nlmsg_len;
 
-	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_REQUEST|NLM_F_DUMP;
+	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_GETLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
@@ -542,7 +554,8 @@ int netdev_get_mtu(int ifindex)
 
 	do {
 		/* Restore the answer buffer length, it might have been
-		 * overwritten by a previous receive. */
+		 * overwritten by a previous receive.
+		 */
 		answer->nlmsghdr->nlmsg_len = answer_len;
 
 		/* Get the (next) batch of reply messages */
@@ -560,7 +573,8 @@ int netdev_get_mtu(int ifindex)
 
 			/* Stop reading if we see an error message */
 			if (msg->nlmsg_type == NLMSG_ERROR) {
-				struct nlmsgerr *errmsg = (struct nlmsgerr*)NLMSG_DATA(msg);
+				struct nlmsgerr *errmsg =
+				    (struct nlmsgerr *)NLMSG_DATA(msg);
 				err = errmsg->error;
 				goto out;
 			}
@@ -574,32 +588,34 @@ int netdev_get_mtu(int ifindex)
 			ifi = NLMSG_DATA(msg);
 			if (ifi->ifi_index == ifindex) {
 				struct rtattr *rta = IFLA_RTA(ifi);
-				int attr_len = msg->nlmsg_len - NLMSG_LENGTH(sizeof(*ifi));
+				int attr_len =
+				    msg->nlmsg_len - NLMSG_LENGTH(sizeof(*ifi));
 				res = 0;
-				while(RTA_OK(rta, attr_len)) {
-					/* Found a local address for the requested interface,
-					 * return it. */
+				while (RTA_OK(rta, attr_len)) {
+					/* Found a local address for the
+					 * requested interface, return it.
+					 */
 					if (rta->rta_type == IFLA_MTU) {
-						memcpy(&res, RTA_DATA(rta), sizeof(int));
+						memcpy(&res, RTA_DATA(rta),
+						       sizeof(int));
 						err = res;
 						goto out;
 					}
 					rta = RTA_NEXT(rta, attr_len);
 				}
-
 			}
 
-			/* Keep reading more data from the socket if the
-			 * last message had the NLF_F_MULTI flag set */
+			/* Keep reading more data from the socket if the last
+			 * message had the NLF_F_MULTI flag set.
+			 */
 			readmore = (msg->nlmsg_flags & NLM_F_MULTI);
 
-			/* Look at the next message received in this buffer */
+			/* Look at the next message received in this buffer. */
 			msg = NLMSG_NEXT(msg, recv_len);
 		}
 	} while (readmore);
 
-	/* If we end up here, we didn't find any result, so signal an
-	 * error */
+	/* If we end up here, we didn't find any result, so signal an error. */
 	err = -1;
 
 out:
@@ -611,10 +627,10 @@ out:
 
 int lxc_netdev_set_mtu(const char *name, int mtu)
 {
-	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL, *answer = NULL;
+	int err, index, len;
 	struct ifinfomsg *ifi;
-	int index, len, err;
+	struct nl_handler nlh;
+	struct nlmsg *answer = NULL, *nlmsg = NULL;
 
 	err = netlink_open(&nlh, NETLINK_ROUTE);
 	if (err)
@@ -639,7 +655,7 @@ int lxc_netdev_set_mtu(const char *name, int mtu)
 	if (!index)
 		goto out;
 
-	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_REQUEST|NLM_F_ACK;
+	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
@@ -673,11 +689,11 @@ int lxc_netdev_down(const char *name)
 
 int lxc_veth_create(const char *name1, const char *name2)
 {
-	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL, *answer = NULL;
+	int err, len;
 	struct ifinfomsg *ifi;
+	struct nl_handler nlh;
 	struct rtattr *nest1, *nest2, *nest3;
-	int len, err;
+	struct nlmsg *answer = NULL, *nlmsg = NULL;
 
 	err = netlink_open(&nlh, NETLINK_ROUTE);
 	if (err)
@@ -702,7 +718,7 @@ int lxc_veth_create(const char *name1, const char *name2)
 		goto out;
 
 	nlmsg->nlmsghdr->nlmsg_flags =
-		NLM_F_REQUEST|NLM_F_CREATE|NLM_F_EXCL|NLM_F_ACK;
+	    NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL | NLM_F_ACK;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
@@ -736,9 +752,7 @@ int lxc_veth_create(const char *name1, const char *name2)
 		goto out;
 
 	nla_end_nested(nlmsg, nest3);
-
 	nla_end_nested(nlmsg, nest2);
-
 	nla_end_nested(nlmsg, nest1);
 
 	if (nla_put_string(nlmsg, IFLA_IFNAME, name1))
@@ -752,14 +766,14 @@ out:
 	return err;
 }
 
-/* XXX: merge with lxc_macvlan_create */
+/* TODO: merge with lxc_macvlan_create */
 int lxc_vlan_create(const char *master, const char *name, unsigned short vlanid)
 {
-	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL, *answer = NULL;
+	int err, len, lindex;
 	struct ifinfomsg *ifi;
+	struct nl_handler nlh;
 	struct rtattr *nest, *nest2;
-	int lindex, len, err;
+	struct nlmsg *answer = NULL, *nlmsg = NULL;
 
 	err = netlink_open(&nlh, NETLINK_ROUTE);
 	if (err)
@@ -789,7 +803,7 @@ int lxc_vlan_create(const char *master, const char *name, unsigned short vlanid)
 		goto err1;
 
 	nlmsg->nlmsghdr->nlmsg_flags =
-		NLM_F_REQUEST|NLM_F_CREATE|NLM_F_EXCL|NLM_F_ACK;
+	    NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL | NLM_F_ACK;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
@@ -814,7 +828,6 @@ int lxc_vlan_create(const char *master, const char *name, unsigned short vlanid)
 		goto err1;
 
 	nla_end_nested(nlmsg, nest2);
-
 	nla_end_nested(nlmsg, nest);
 
 	if (nla_put_u32(nlmsg, IFLA_LINK, lindex))
@@ -835,11 +848,11 @@ err3:
 
 int lxc_macvlan_create(const char *master, const char *name, int mode)
 {
-	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL, *answer = NULL;
+	int err, index, len;
 	struct ifinfomsg *ifi;
+	struct nl_handler nlh;
 	struct rtattr *nest, *nest2;
-	int index, len, err;
+	struct nlmsg *answer = NULL, *nlmsg = NULL;
 
 	err = netlink_open(&nlh, NETLINK_ROUTE);
 	if (err)
@@ -869,7 +882,7 @@ int lxc_macvlan_create(const char *master, const char *name, int mode)
 		goto out;
 
 	nlmsg->nlmsghdr->nlmsg_flags =
-		NLM_F_REQUEST|NLM_F_CREATE|NLM_F_EXCL|NLM_F_ACK;
+	    NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL | NLM_F_ACK;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
@@ -915,7 +928,8 @@ out:
 
 static int proc_sys_net_write(const char *path, const char *value)
 {
-	int fd, err = 0;
+	int fd;
+	int err = 0;
 
 	fd = open(path, O_WRONLY);
 	if (fd < 0)
@@ -930,18 +944,18 @@ static int proc_sys_net_write(const char *path, const char *value)
 
 static int ip_forward_set(const char *ifname, int family, int flag)
 {
-	char path[MAXPATHLEN];
 	int rc;
+	char path[MAXPATHLEN];
 
 	if (family != AF_INET && family != AF_INET6)
 		return -EINVAL;
 
 	rc = snprintf(path, MAXPATHLEN, "/proc/sys/net/%s/conf/%s/forwarding",
-		 family == AF_INET?"ipv4":"ipv6" , ifname);
-	if (rc >= MAXPATHLEN)
+		      family == AF_INET ? "ipv4" : "ipv6", ifname);
+	if (rc < 0 || (size_t)rc >= MAXPATHLEN)
 		return -E2BIG;
 
-	return proc_sys_net_write(path, flag?"1":"0");
+	return proc_sys_net_write(path, flag ? "1" : "0");
 }
 
 int lxc_ip_forward_on(const char *ifname, int family)
@@ -956,19 +970,19 @@ int lxc_ip_forward_off(const char *ifname, int family)
 
 static int neigh_proxy_set(const char *ifname, int family, int flag)
 {
-	char path[MAXPATHLEN];
 	int ret;
+	char path[MAXPATHLEN];
 
 	if (family != AF_INET && family != AF_INET6)
 		return -EINVAL;
 
 	ret = snprintf(path, MAXPATHLEN, "/proc/sys/net/%s/conf/%s/%s",
-		family == AF_INET?"ipv4":"ipv6" , ifname,
-		family == AF_INET?"proxy_arp":"proxy_ndp");
-	if (ret < 0 || ret >= MAXPATHLEN)
+		       family == AF_INET ? "ipv4" : "ipv6", ifname,
+		       family == AF_INET ? "proxy_arp" : "proxy_ndp");
+	if (ret < 0 || (size_t)ret >= MAXPATHLEN)
 		return -E2BIG;
 
-	return proc_sys_net_write(path, flag?"1":"0");
+	return proc_sys_net_write(path, flag ? "1" : "0");
 }
 
 int lxc_neigh_proxy_on(const char *name, int family)
@@ -983,62 +997,60 @@ int lxc_neigh_proxy_off(const char *name, int family)
 
 int lxc_convert_mac(char *macaddr, struct sockaddr *sockaddr)
 {
-	unsigned char *data;
-	char c;
 	int i = 0;
 	unsigned val;
+	char c;
+	unsigned char *data;
 
 	sockaddr->sa_family = ARPHRD_ETHER;
 	data = (unsigned char *)sockaddr->sa_data;
 
 	while ((*macaddr != '\0') && (i < ETH_ALEN)) {
-	    val = 0;
-	    c = *macaddr++;
-	    if (isdigit(c))
-		    val = c - '0';
-	    else if (c >= 'a' && c <= 'f')
-		    val = c - 'a' + 10;
-	    else if (c >= 'A' && c <= 'F')
-		    val = c - 'A' + 10;
-	    else {
-		    return -EINVAL;
-	    }
-	    val <<= 4;
-	    c = *macaddr;
-	    if (isdigit(c))
-		    val |= c - '0';
-	    else if (c >= 'a' && c <= 'f')
-		    val |= c - 'a' + 10;
-	    else if (c >= 'A' && c <= 'F')
-		    val |= c - 'A' + 10;
-	    else if (c == ':' || c == 0)
-		    val >>= 4;
-	    else {
-		    return -EINVAL;
-	    }
-	    if (c != 0)
-		    macaddr++;
-	    *data++ = (unsigned char) (val & 0377);
-	    i++;
+		val = 0;
+		c = *macaddr++;
+		if (isdigit(c))
+			val = c - '0';
+		else if (c >= 'a' && c <= 'f')
+			val = c - 'a' + 10;
+		else if (c >= 'A' && c <= 'F')
+			val = c - 'A' + 10;
+		else
+			return -EINVAL;
 
-	    if (*macaddr == ':')
-		    macaddr++;
+		val <<= 4;
+		c = *macaddr;
+		if (isdigit(c))
+			val |= c - '0';
+		else if (c >= 'a' && c <= 'f')
+			val |= c - 'a' + 10;
+		else if (c >= 'A' && c <= 'F')
+			val |= c - 'A' + 10;
+		else if (c == ':' || c == 0)
+			val >>= 4;
+		else
+			return -EINVAL;
+		if (c != 0)
+			macaddr++;
+		*data++ = (unsigned char)(val & 0377);
+		i++;
+
+		if (*macaddr == ':')
+			macaddr++;
 	}
 
 	return 0;
 }
 
-static int ip_addr_add(int family, int ifindex,
-		       void *addr, void *bcast, void *acast, int prefix)
+static int ip_addr_add(int family, int ifindex, void *addr, void *bcast,
+		       void *acast, int prefix)
 {
-	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL, *answer = NULL;
+	int addrlen, err;
 	struct ifaddrmsg *ifa;
-	int addrlen;
-	int err;
+	struct nl_handler nlh;
+	struct nlmsg *answer = NULL, *nlmsg = NULL;
 
-	addrlen = family == AF_INET ? sizeof(struct in_addr) :
-		sizeof(struct in6_addr);
+	addrlen = family == AF_INET ? sizeof(struct in_addr)
+				    : sizeof(struct in6_addr);
 
 	err = netlink_open(&nlh, NETLINK_ROUTE);
 	if (err)
@@ -1054,7 +1066,7 @@ static int ip_addr_add(int family, int ifindex,
 		goto out;
 
 	nlmsg->nlmsghdr->nlmsg_flags =
-		NLM_F_ACK|NLM_F_REQUEST|NLM_F_CREATE|NLM_F_EXCL;
+	    NLM_F_ACK | NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWADDR;
 
 	ifa = nlmsg_reserve(nlmsg, sizeof(struct ifaddrmsg));
@@ -1075,7 +1087,7 @@ static int ip_addr_add(int family, int ifindex,
 	if (nla_put_buffer(nlmsg, IFA_BROADCAST, bcast, addrlen))
 		goto out;
 
-	/* TODO : multicast, anycast with ipv6 */
+	/* TODO: multicast, anycast with ipv6 */
 	err = -EPROTONOSUPPORT;
 	if (family == AF_INET6 &&
 	    (memcmp(bcast, &in6addr_any, sizeof(in6addr_any)) ||
@@ -1091,48 +1103,52 @@ out:
 }
 
 int lxc_ipv6_addr_add(int ifindex, struct in6_addr *addr,
-		      struct in6_addr *mcast,
-		      struct in6_addr *acast, int prefix)
+		      struct in6_addr *mcast, struct in6_addr *acast,
+		      int prefix)
 {
 	return ip_addr_add(AF_INET6, ifindex, addr, mcast, acast, prefix);
 }
 
-int lxc_ipv4_addr_add(int ifindex, struct in_addr *addr,
-		      struct in_addr *bcast, int prefix)
+int lxc_ipv4_addr_add(int ifindex, struct in_addr *addr, struct in_addr *bcast,
+		      int prefix)
 {
 	return ip_addr_add(AF_INET, ifindex, addr, bcast, NULL, prefix);
 }
 
-/* Find an IFA_LOCAL (or IFA_ADDRESS if not IFA_LOCAL is present)
- * address from the given RTM_NEWADDR message.  Allocates memory for the
- * address and stores that pointer in *res (so res should be an
- * in_addr** or in6_addr**).
+/* Find an IFA_LOCAL (or IFA_ADDRESS if not IFA_LOCAL is present) address from
+ * the given RTM_NEWADDR message. Allocates memory for the address and stores
+ * that pointer in *res (so res should be an in_addr** or in6_addr**).
  */
-static int ifa_get_local_ip(int family, struct nlmsghdr *msg, void** res) {
+static int ifa_get_local_ip(int family, struct nlmsghdr *msg, void **res)
+{
+	int addrlen;
 	struct ifaddrmsg *ifa = NLMSG_DATA(msg);
 	struct rtattr *rta = IFA_RTA(ifa);
 	int attr_len = NLMSG_PAYLOAD(msg, sizeof(struct ifaddrmsg));
-	int addrlen;
 
 	if (ifa->ifa_family != family)
 		return 0;
 
-	addrlen = family == AF_INET ? sizeof(struct in_addr) :
-		sizeof(struct in6_addr);
+	addrlen = family == AF_INET ? sizeof(struct in_addr)
+				    : sizeof(struct in6_addr);
 
 	/* Loop over the rtattr's in this message */
-	while(RTA_OK(rta, attr_len)) {
+	while (RTA_OK(rta, attr_len)) {
 		/* Found a local address for the requested interface,
-		 * return it. */
-		if (rta->rta_type == IFA_LOCAL || rta->rta_type == IFA_ADDRESS) {
-			/* Sanity check. The family check above should
-			 * make sure the address length is correct, but
-			 * check here just in case */
+		 * return it.
+		 */
+		if (rta->rta_type == IFA_LOCAL ||
+		    rta->rta_type == IFA_ADDRESS) {
+			/* Sanity check. The family check above should make sure
+			 * the address length is correct, but check here just in
+			 * case.
+			 */
 			if (RTA_PAYLOAD(rta) != addrlen)
 				return -1;
 
-			/* We might have found an IFA_ADDRESS before,
-			 * which we now overwrite with an IFA_LOCAL. */
+			/* We might have found an IFA_ADDRESS before, which we
+			 * now overwrite with an IFA_LOCAL.
+			 */
 			if (!*res) {
 				*res = malloc(addrlen);
 				if (!*res)
@@ -1140,7 +1156,6 @@ static int ifa_get_local_ip(int family, struct nlmsghdr *msg, void** res) {
 			}
 
 			memcpy(*res, RTA_DATA(rta), addrlen);
-
 			if (rta->rta_type == IFA_LOCAL)
 				break;
 		}
@@ -1151,13 +1166,12 @@ static int ifa_get_local_ip(int family, struct nlmsghdr *msg, void** res) {
 
 static int ip_addr_get(int family, int ifindex, void **res)
 {
-	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL, *answer = NULL;
+	int answer_len, err;
 	struct ifaddrmsg *ifa;
+	struct nl_handler nlh;
 	struct nlmsghdr *msg;
-	int err;
-	int recv_len = 0, answer_len;
-	int readmore = 0;
+	int readmore = 0, recv_len = 0;
+	struct nlmsg *answer = NULL, *nlmsg = NULL;
 
 	err = netlink_open(&nlh, NETLINK_ROUTE);
 	if (err)
@@ -1172,12 +1186,12 @@ static int ip_addr_get(int family, int ifindex, void **res)
 	if (!answer)
 		goto out;
 
-	/* Save the answer buffer length, since it will be overwritten
-	 * on the first receive (and we might need to receive more than
-	 * once. */
+	/* Save the answer buffer length, since it will be overwritten on the
+	 * first receive (and we might need to receive more than once).
+	 */
 	answer_len = answer->nlmsghdr->nlmsg_len;
 
-	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_REQUEST|NLM_F_ROOT;
+	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ROOT;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_GETADDR;
 
 	ifa = nlmsg_reserve(nlmsg, sizeof(struct ifaddrmsg));
@@ -1185,18 +1199,20 @@ static int ip_addr_get(int family, int ifindex, void **res)
 		goto out;
 	ifa->ifa_family = family;
 
-	/* Send the request for addresses, which returns all addresses
-	 * on all interfaces. */
+	/* Send the request for addresses, which returns all addresses on all
+	 * interfaces.
+	 */
 	err = netlink_send(&nlh, nlmsg);
 	if (err < 0)
 		goto out;
 
 	do {
 		/* Restore the answer buffer length, it might have been
-		 * overwritten by a previous receive. */
+		 * overwritten by a previous receive.
+		 */
 		answer->nlmsghdr->nlmsg_len = answer_len;
 
-		/* Get the (next) batch of reply messages */
+		/* Get the (next) batch of reply messages. */
 		err = netlink_rcv(&nlh, answer);
 		if (err < 0)
 			goto out;
@@ -1204,18 +1220,19 @@ static int ip_addr_get(int family, int ifindex, void **res)
 		recv_len = err;
 		err = 0;
 
-		/* Satisfy the typing for the netlink macros */
+		/* Satisfy the typing for the netlink macros. */
 		msg = answer->nlmsghdr;
 
 		while (NLMSG_OK(msg, recv_len)) {
-			/* Stop reading if we see an error message */
+			/* Stop reading if we see an error message. */
 			if (msg->nlmsg_type == NLMSG_ERROR) {
-				struct nlmsgerr *errmsg = (struct nlmsgerr*)NLMSG_DATA(msg);
+				struct nlmsgerr *errmsg =
+				    (struct nlmsgerr *)NLMSG_DATA(msg);
 				err = errmsg->error;
 				goto out;
 			}
 
-			/* Stop reading if we see a NLMSG_DONE message */
+			/* Stop reading if we see a NLMSG_DONE message. */
 			if (msg->nlmsg_type == NLMSG_DONE) {
 				readmore = 0;
 				break;
@@ -1233,22 +1250,24 @@ static int ip_addr_get(int family, int ifindex, void **res)
 					goto out;
 				}
 
-				/* Found a result, stop searching */
+				/* Found a result, stop searching. */
 				if (*res)
 					goto out;
 			}
 
-			/* Keep reading more data from the socket if the
-			 * last message had the NLF_F_MULTI flag set */
+			/* Keep reading more data from the socket if the last
+			 * message had the NLF_F_MULTI flag set.
+			 */
 			readmore = (msg->nlmsg_flags & NLM_F_MULTI);
 
-			/* Look at the next message received in this buffer */
+			/* Look at the next message received in this buffer. */
 			msg = NLMSG_NEXT(msg, recv_len);
 		}
 	} while (readmore);
 
 	/* If we end up here, we didn't find any result, so signal an
-	 * error */
+	 * error.
+	 */
 	err = -1;
 
 out:
@@ -1260,24 +1279,23 @@ out:
 
 int lxc_ipv6_addr_get(int ifindex, struct in6_addr **res)
 {
-	return ip_addr_get(AF_INET6, ifindex, (void**)res);
+	return ip_addr_get(AF_INET6, ifindex, (void **)res);
 }
 
-int lxc_ipv4_addr_get(int ifindex, struct in_addr** res)
+int lxc_ipv4_addr_get(int ifindex, struct in_addr **res)
 {
-	return ip_addr_get(AF_INET, ifindex, (void**)res);
+	return ip_addr_get(AF_INET, ifindex, (void **)res);
 }
 
 static int ip_gateway_add(int family, int ifindex, void *gw)
 {
+	int addrlen, err;
 	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL, *answer = NULL;
 	struct rtmsg *rt;
-	int addrlen;
-	int err;
+	struct nlmsg *answer = NULL, *nlmsg = NULL;
 
-	addrlen = family == AF_INET ? sizeof(struct in_addr) :
-		sizeof(struct in6_addr);
+	addrlen = family == AF_INET ? sizeof(struct in_addr)
+				    : sizeof(struct in6_addr);
 
 	err = netlink_open(&nlh, NETLINK_ROUTE);
 	if (err)
@@ -1293,7 +1311,7 @@ static int ip_gateway_add(int family, int ifindex, void *gw)
 		goto out;
 
 	nlmsg->nlmsghdr->nlmsg_flags =
-		NLM_F_ACK|NLM_F_REQUEST|NLM_F_CREATE|NLM_F_EXCL;
+	    NLM_F_ACK | NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWROUTE;
 
 	rt = nlmsg_reserve(nlmsg, sizeof(struct rtmsg));
@@ -1312,7 +1330,8 @@ static int ip_gateway_add(int family, int ifindex, void *gw)
 		goto out;
 
 	/* Adding the interface index enables the use of link-local
-	 * addresses for the gateway */
+	 * addresses for the gateway.
+	 */
 	if (nla_put_u32(nlmsg, RTA_OIF, ifindex))
 		goto out;
 
@@ -1336,14 +1355,13 @@ int lxc_ipv6_gateway_add(int ifindex, struct in6_addr *gw)
 
 static int ip_route_dest_add(int family, int ifindex, void *dest)
 {
+	int addrlen, err;
 	struct nl_handler nlh;
-	struct nlmsg *nlmsg = NULL, *answer = NULL;
 	struct rtmsg *rt;
-	int addrlen;
-	int err;
+	struct nlmsg *answer = NULL, *nlmsg = NULL;
 
-	addrlen = family == AF_INET ? sizeof(struct in_addr) :
-		sizeof(struct in6_addr);
+	addrlen = family == AF_INET ? sizeof(struct in_addr)
+				    : sizeof(struct in6_addr);
 
 	err = netlink_open(&nlh, NETLINK_ROUTE);
 	if (err)
@@ -1359,7 +1377,7 @@ static int ip_route_dest_add(int family, int ifindex, void *dest)
 		goto out;
 
 	nlmsg->nlmsghdr->nlmsg_flags =
-		NLM_F_ACK|NLM_F_REQUEST|NLM_F_CREATE|NLM_F_EXCL;
+	    NLM_F_ACK | NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWROUTE;
 
 	rt = nlmsg_reserve(nlmsg, sizeof(struct rtmsg));
@@ -1370,7 +1388,7 @@ static int ip_route_dest_add(int family, int ifindex, void *dest)
 	rt->rtm_scope = RT_SCOPE_LINK;
 	rt->rtm_protocol = RTPROT_BOOT;
 	rt->rtm_type = RTN_UNICAST;
-	rt->rtm_dst_len = addrlen*8;
+	rt->rtm_dst_len = addrlen * 8;
 
 	err = -EINVAL;
 	if (nla_put_buffer(nlmsg, RTA_DST, dest, addrlen))
@@ -1397,12 +1415,19 @@ int lxc_ipv6_dest_add(int ifindex, struct in6_addr *dest)
 
 static bool is_ovs_bridge(const char *bridge)
 {
-	char brdirname[22 + IFNAMSIZ + 1] = {0};
+	int ret;
 	struct stat sb;
+	char brdirname[22 + IFNAMSIZ + 1] = {0};
 
-	snprintf(brdirname, 22 +IFNAMSIZ + 1, "/sys/class/net/%s/bridge", bridge);
-	if (stat(brdirname, &sb) == -1 && errno == ENOENT)
+	ret = snprintf(brdirname, 22 + IFNAMSIZ + 1, "/sys/class/net/%s/bridge",
+		       bridge);
+	if (ret < 0 || (size_t)ret >= 22 + IFNAMSIZ + 1)
+		return false;
+
+	ret = stat(brdirname, &sb);
+	if (ret < 0 && errno == ENOENT)
 		return true;
+
 	return false;
 }
 
@@ -1432,7 +1457,8 @@ static void ovs_cleanup_nic(const char *lxcpath, const char *name,
 	exit(EXIT_FAILURE);
 }
 
-static int attach_to_ovs_bridge(const char *lxcpath, const char *name, const char *bridge, const char *nic)
+static int attach_to_ovs_bridge(const char *lxcpath, const char *name,
+				const char *bridge, const char *nic)
 {
 	pid_t pid;
 	char *cmd;
@@ -1446,31 +1472,34 @@ static int attach_to_ovs_bridge(const char *lxcpath, const char *name, const cha
 	pid = fork();
 	if (pid < 0)
 		return -1;
+
 	if (pid > 0) {
 		ret = wait_for_pid(pid);
 		if (ret < 0)
 			return ret;
+
 		pid = fork();
 		if (pid < 0)
-			return -1;  /* how to properly recover? */
+			return -1;
+
 		if (pid > 0)
 			return 0;
+
 		ovs_cleanup_nic(lxcpath, name, bridge, nic);
-		exit(0);
+		exit(EXIT_SUCCESS);
 	}
 
-	if (execlp("ovs-vsctl", "ovs-vsctl", "add-port", bridge, nic, (char *)NULL))
-		exit(1);
-	/* not reached */
-	exit(1);
+	execlp("ovs-vsctl", "ovs-vsctl", "add-port", bridge, nic, (char *)NULL);
+	exit(EXIT_FAILURE);
 }
 
 /* There is a lxc_bridge_attach, but no need of a bridge detach as automatically
  * done by kernel when a netdev is deleted.
  */
-int lxc_bridge_attach(const char *lxcpath, const char *name, const char *bridge, const char *ifname)
+int lxc_bridge_attach(const char *lxcpath, const char *name, const char *bridge,
+		      const char *ifname)
 {
-	int fd, index, err;
+	int err, fd, index;
 	struct ifreq ifr;
 
 	if (strlen(ifname) >= IFNAMSIZ)
@@ -1487,8 +1516,8 @@ int lxc_bridge_attach(const char *lxcpath, const char *name, const char *bridge,
 	if (fd < 0)
 		return -errno;
 
-	strncpy(ifr.ifr_name, bridge, IFNAMSIZ-1);
-	ifr.ifr_name[IFNAMSIZ-1] = '\0';
+	strncpy(ifr.ifr_name, bridge, IFNAMSIZ - 1);
+	ifr.ifr_name[IFNAMSIZ - 1] = '\0';
 	ifr.ifr_ifindex = index;
 	err = ioctl(fd, SIOCBRADDIF, &ifr);
 	close(fd);
@@ -1498,7 +1527,7 @@ int lxc_bridge_attach(const char *lxcpath, const char *name, const char *bridge,
 	return err;
 }
 
-static const char* const lxc_network_types[LXC_NET_MAXCONFTYPE + 1] = {
+static const char *const lxc_network_types[LXC_NET_MAXCONFTYPE + 1] = {
 	[LXC_NET_EMPTY]   = "empty",
 	[LXC_NET_VETH]    = "veth",
 	[LXC_NET_MACVLAN] = "macvlan",
@@ -1511,40 +1540,40 @@ const char *lxc_net_type_to_str(int type)
 {
 	if (type < 0 || type > LXC_NET_MAXCONFTYPE)
 		return NULL;
+
 	return lxc_network_types[type];
 }
 
-static const char padchar[] =
-"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+static const char padchar[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 char *lxc_mkifname(char *template)
 {
-	char *name = NULL;
-	size_t i = 0;
-	FILE *urandom;
-	unsigned int seed;
-	struct ifaddrs *ifaddr, *ifa;
 	int ifexists = 0;
+	size_t i = 0;
+	char *name = NULL;
+	unsigned int seed;
+	FILE *urandom;
+	struct ifaddrs *ifa, *ifaddr;
 
-	/* Get all the network interfaces */
+	/* Get all the network interfaces. */
 	getifaddrs(&ifaddr);
 
-	/* Initialize the random number generator */
-	urandom = fopen ("/dev/urandom", "r");
+	/* Initialize the random number generator. */
+	urandom = fopen("/dev/urandom", "r");
 	if (urandom != NULL) {
-		if (fread (&seed, sizeof(seed), 1, urandom) <= 0)
+		if (fread(&seed, sizeof(seed), 1, urandom) <= 0)
 			seed = time(0);
 		fclose(urandom);
-	}
-	else
+	} else {
 		seed = time(0);
+	}
 
 #ifndef HAVE_RAND_R
 	srand(seed);
 #endif
 
-	/* Generate random names until we find one that doesn't exist */
-	while(1) {
+	/* Generate random names until we find one that doesn't exist. */
+	while (true) {
 		ifexists = 0;
 		name = strdup(template);
 
@@ -1554,7 +1583,8 @@ char *lxc_mkifname(char *template)
 		for (i = 0; i < strlen(name); i++) {
 			if (name[i] == 'X') {
 #ifdef HAVE_RAND_R
-				name[i] = padchar[rand_r(&seed) % (strlen(padchar) - 1)];
+				name[i] = padchar[rand_r(&seed) %
+						  (strlen(padchar) - 1)];
 #else
 				name[i] = padchar[rand() % (strlen(padchar) - 1)];
 #endif
@@ -1580,15 +1610,17 @@ char *lxc_mkifname(char *template)
 
 int setup_private_host_hw_addr(char *veth1)
 {
+	int err, sockfd;
 	struct ifreq ifr;
-	int err;
-	int sockfd;
 
 	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 	if (sockfd < 0)
 		return -errno;
 
-	snprintf((char *)ifr.ifr_name, IFNAMSIZ, "%s", veth1);
+	err = snprintf((char *)ifr.ifr_name, IFNAMSIZ, "%s", veth1);
+	if (err < 0 || (size_t)err >= IFNAMSIZ)
+		return -E2BIG;
+
 	err = ioctl(sockfd, SIOCGIFHWADDR, &ifr);
 	if (err < 0) {
 		close(sockfd);
