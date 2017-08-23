@@ -20,35 +20,36 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#define _GNU_SOURCE
-#include <stdio.h>
-#undef _GNU_SOURCe
-#include <stdlib.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <string.h>
-#include <stdio.h>
+
+#include "config.h"
+
 #include <ctype.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <time.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/socket.h>
-#include <sys/param.h>
-#include <sys/ioctl.h>
-#include <sys/inotify.h>
+#include <unistd.h>
 #include <arpa/inet.h>
-#include <net/if.h>
-#include <net/if_arp.h>
-#include <net/ethernet.h>
-#include <netinet/in.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <linux/sockios.h>
+#include <net/ethernet.h>
+#include <net/if.h>
+#include <net/if_arp.h>
+#include <netinet/in.h>
+#include <sys/inotify.h>
+#include <sys/ioctl.h>
+#include <sys/param.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
-#include "nl.h"
-#include "network.h"
 #include "conf.h"
+#include "log.h"
+#include "network.h"
+#include "nl.h"
 #include "utils.h"
 
 #if HAVE_IFADDRS_H
@@ -58,37 +59,38 @@
 #endif
 
 #ifndef IFLA_LINKMODE
-#  define IFLA_LINKMODE 17
+#define IFLA_LINKMODE 17
 #endif
 
 #ifndef IFLA_LINKINFO
-#  define IFLA_LINKINFO 18
+#define IFLA_LINKINFO 18
 #endif
 
 #ifndef IFLA_NET_NS_PID
-#  define IFLA_NET_NS_PID 19
+#define IFLA_NET_NS_PID 19
 #endif
 
 #ifndef IFLA_INFO_KIND
-# define IFLA_INFO_KIND 1
+#define IFLA_INFO_KIND 1
 #endif
 
 #ifndef IFLA_VLAN_ID
-# define IFLA_VLAN_ID 1
+#define IFLA_VLAN_ID 1
 #endif
 
 #ifndef IFLA_INFO_DATA
-#  define IFLA_INFO_DATA 2
+#define IFLA_INFO_DATA 2
 #endif
 
 #ifndef VETH_INFO_PEER
-# define VETH_INFO_PEER 1
+#define VETH_INFO_PEER 1
 #endif
 
 #ifndef IFLA_MACVLAN_MODE
-# define IFLA_MACVLAN_MODE 1
+#define IFLA_MACVLAN_MODE 1
 #endif
 
+lxc_log_define(lxc_network, lxc);
 
 int lxc_netdev_move_by_index(int ifindex, pid_t pid, const char* ifname)
 {
@@ -1404,18 +1406,30 @@ static bool is_ovs_bridge(const char *bridge)
 	return false;
 }
 
-/*
- * Called from a background thread - when nic goes away, remove
- * it from the bridge
+/* Called from a background thread - when nic goes away, remove it from the
+ * bridge.
  */
-static void ovs_cleanup_nic(const char *lxcpath, const char *name, const char *bridge, const char *nic)
+static void ovs_cleanup_nic(const char *lxcpath, const char *name,
+			    const char *bridge, const char *nic)
 {
-	if (lxc_check_inherited(NULL, true, &(int){-1}, 1) < 0)
+	int ret;
+
+	ret = lxc_check_inherited(NULL, true, &(int){-1}, 1);
+	if (ret < 0)
 		return;
-	if (lxc_wait(name, "STOPPED", -1, lxcpath) < 0)
+
+	TRACE("Registering cleanup thread to remove nic \"%s\" from "
+	      "openvswitch bridge \"%s\"", nic, bridge);
+
+	ret = lxc_wait(name, "STOPPED", -1, lxcpath);
+	if (ret < 0) {
+		ERROR("Failed to register cleanup thread to remove nic \"%s\" "
+		      "from  openvswitch bridge \"%s\"", nic, bridge);
 		return;
+	}
+
 	execlp("ovs-vsctl", "ovs-vsctl", "del-port", bridge, nic, (char *)NULL);
-	exit(1); /* not reached */
+	exit(EXIT_FAILURE);
 }
 
 static int attach_to_ovs_bridge(const char *lxcpath, const char *name, const char *bridge, const char *nic)
