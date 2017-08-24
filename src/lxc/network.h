@@ -109,7 +109,10 @@ extern int lxc_ipv6_gateway_add(int ifindex, struct in6_addr *gw);
 /*
  * Attach an interface to the bridge
  */
-extern int lxc_bridge_attach(const char *lxcpath, const char *name, const char *bridge, const char *ifname);
+extern int lxc_bridge_attach(const char *bridge, const char *ifname);
+extern int lxc_ovs_delete_port(const char *bridge, const char *nic);
+
+extern bool is_ovs_bridge(const char *bridge);
 
 /*
  * Create default gateway

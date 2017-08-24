@@ -1395,7 +1395,7 @@ int lxc_ipv6_dest_add(int ifindex, struct in6_addr *dest)
 	return ip_route_dest_add(AF_INET6, ifindex, dest);
 }
 
-static bool is_ovs_bridge(const char *bridge)
+bool is_ovs_bridge(const char *bridge)
 {
 	char brdirname[22 + IFNAMSIZ + 1] = {0};
 	struct stat sb;
@@ -1406,70 +1406,71 @@ static bool is_ovs_bridge(const char *bridge)
 	return false;
 }
 
+struct ovs_veth_args {
+	const char *bridge;
+	const char *nic;
+};
+
 /* Called from a background thread - when nic goes away, remove it from the
  * bridge.
  */
-static void ovs_cleanup_nic(const char *lxcpath, const char *name,
-			    const char *bridge, const char *nic)
+static int lxc_ovs_delete_port_exec(void *data)
+{
+	struct ovs_veth_args *args = data;
+
+	execlp("ovs-vsctl", "ovs-vsctl", "del-port", args->bridge, args->nic,
+	       (char *)NULL);
+	return -1;
+}
+
+int lxc_ovs_delete_port(const char *bridge, const char *nic)
 {
 	int ret;
+	char cmd_output[MAXPATHLEN];
+	struct ovs_veth_args args;
 
-	ret = lxc_check_inherited(NULL, true, &(int){-1}, 1);
-	if (ret < 0)
-		return;
-
-	TRACE("Registering cleanup thread to remove nic \"%s\" from "
-	      "openvswitch bridge \"%s\"", nic, bridge);
-
-	ret = lxc_wait(name, "STOPPED", -1, lxcpath);
+	args.bridge = bridge;
+	args.nic = nic;
+	ret = run_command(cmd_output, sizeof(cmd_output),
+			  lxc_ovs_delete_port_exec, (void *)&args);
 	if (ret < 0) {
-		ERROR("Failed to register cleanup thread to remove nic \"%s\" "
-		      "from  openvswitch bridge \"%s\"", nic, bridge);
-		return;
+		ERROR("Failed to delete \"%s\" from openvswitch bridge \"%s\": "
+		      "%s", bridge, nic, cmd_output);
+		return -1;
 	}
 
-	execlp("ovs-vsctl", "ovs-vsctl", "del-port", bridge, nic, (char *)NULL);
-	exit(EXIT_FAILURE);
+	return 0;
 }
 
-static int attach_to_ovs_bridge(const char *lxcpath, const char *name, const char *bridge, const char *nic)
+static int lxc_ovs_attach_bridge_exec(void *data)
 {
-	pid_t pid;
-	char *cmd;
-	int ret;
+	struct ovs_veth_args *args = data;
 
-	cmd = on_path("ovs-vsctl", NULL);
-	if (!cmd)
-		return -1;
-	free(cmd);
-
-	pid = fork();
-	if (pid < 0)
-		return -1;
-	if (pid > 0) {
-		ret = wait_for_pid(pid);
-		if (ret < 0)
-			return ret;
-		pid = fork();
-		if (pid < 0)
-			return -1;  // how to properly recover?
-		if (pid > 0)
-			return 0;
-		ovs_cleanup_nic(lxcpath, name, bridge, nic);
-		exit(0);
-	}
-
-	if (execlp("ovs-vsctl", "ovs-vsctl", "add-port", bridge, nic, (char *)NULL))
-		exit(1);
-	// not reached
-	exit(1);
+	execlp("ovs-vsctl", "ovs-vsctl", "add-port", args->bridge, args->nic,
+	       (char *)NULL);
+	return -1;
 }
 
-/*
- * There is a lxc_bridge_attach, but no need of a bridge detach
- * as automatically done by kernel when a netdev is deleted.
- */
-int lxc_bridge_attach(const char *lxcpath, const char *name, const char *bridge, const char *ifname)
+static int lxc_ovs_attach_bridge(const char *bridge, const char *nic)
+{
+	int ret;
+	char cmd_output[MAXPATHLEN];
+	struct ovs_veth_args args;
+
+	args.bridge = bridge;
+	args.nic = nic;
+	ret = run_command(cmd_output, sizeof(cmd_output),
+			  lxc_ovs_attach_bridge_exec, (void *)&args);
+	if (ret < 0) {
+		ERROR("Failed to attach \"%s\" to openvswitch bridge \"%s\": %s",
+		      bridge, nic, cmd_output);
+		return -1;
+	}
+
+	return 0;
+}
+
+int lxc_bridge_attach(const char *bridge, const char *ifname)
 {
 	int fd, index, err;
 	struct ifreq ifr;
@@ -1482,7 +1483,7 @@ int lxc_bridge_attach(const char *lxcpath, const char *name, const char *bridge,
 		return -EINVAL;
 
 	if (is_ovs_bridge(bridge))
-		return attach_to_ovs_bridge(lxcpath, name, bridge, ifname);
+		return lxc_ovs_attach_bridge(bridge, ifname);
 
 	fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (fd < 0)
