@@ -3208,7 +3208,7 @@ bool lxc_delete_network(struct lxc_handler *handler)
 		}
 
 		/* Recent kernel remove the virtual interfaces when the network
-		 * namespace is destroyed but in case we did not moved the
+		 * namespace is destroyed but in case we did not move the
 		 * interface to the network namespace, we have to destroy it
 		 */
 		if (netdev->ifindex != 0) {
@@ -3240,11 +3240,10 @@ bool lxc_delete_network(struct lxc_handler *handler)
 			if (netdev->priv.veth_attr.pair) {
 				hostveth = netdev->priv.veth_attr.pair;
 				ret = lxc_netdev_delete_by_name(hostveth);
-				if (ret < 0) {
+				if (ret < 0)
 					WARN("Failed to remove interface \"%s\" from host: %s.", hostveth, strerror(-ret));
-				} else {
+				else
 					INFO("Removed interface \"%s\" from host.", hostveth);
-				}
 			} else if (strlen(netdev->priv.veth_attr.veth1) > 0) {
 				hostveth = netdev->priv.veth_attr.veth1;
 				ret = lxc_netdev_delete_by_name(hostveth);
