@@ -3330,14 +3330,19 @@ static int unpriv_assign_nic(const char *lxcpath, char *lxcname,
 	close(pipefd[1]);
 
 	bytes = read(pipefd[0], &buffer, MAX_BUFFER_SIZE);
-	if (bytes < 0)
+	if (bytes < 0) {
 		SYSERROR("Failed to read from pipe file descriptor.");
-	buffer[bytes - 1] = '\0';
-
-	if (wait_for_pid(child) != 0) {
 		close(pipefd[0]);
 		return -1;
 	}
+	buffer[bytes - 1] = '\0';
+
+	if (wait_for_pid(child) != 0) {
+		TRACE("lxc-user-nic failed to configure requested network");
+		close(pipefd[0]);
+		return -1;
+	}
+	TRACE("Received output \"%s\" from lxc-user-nic", buffer);
 
 	/* close the read-end of the pipe */
 	close(pipefd[0]);
