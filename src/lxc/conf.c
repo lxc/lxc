@@ -3156,24 +3156,6 @@ int lxc_setup_networks_in_parent_namespaces(struct lxc_handler *handler)
 			return -1;
 		}
 
-		if (netdev->type != LXC_NET_MACVLAN &&
-		    netdev->priv.macvlan_attr.mode) {
-			ERROR("Invalid macvlan.mode for a non-macvlan netdev");
-			return -1;
-		}
-
-		if (netdev->type != LXC_NET_VETH &&
-		    netdev->priv.veth_attr.pair) {
-			ERROR("Invalid veth pair for a non-veth netdev");
-			return -1;
-		}
-
-		if (netdev->type != LXC_NET_VLAN &&
-		    netdev->priv.vlan_attr.vid > 0) {
-			ERROR("Invalid vlan.id for a non-macvlan netdev");
-			return -1;
-		}
-
 		if (netdev_conf[netdev->type](handler, netdev)) {
 			ERROR("failed to create netdev");
 			return -1;
@@ -3218,9 +3200,9 @@ bool lxc_delete_network(struct lxc_handler *handler)
 		if (ret < 0)
 			WARN("Failed to deconfigure network device");
 
-		/* Recent kernel remove the virtual interfaces when the network
+		/* Recent kernels remove the virtual interfaces when the network
 		 * namespace is destroyed but in case we did not move the
-		 * interface to the network namespace, we have to destroy it
+		 * interface to the network namespace, we have to destroy it.
 		 */
 		ret = lxc_netdev_delete_by_index(netdev->ifindex);
 		if (-ret == ENODEV) {
