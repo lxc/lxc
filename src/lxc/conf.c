@@ -2859,7 +2859,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	}
 
 	if (netdev->link) {
-		err = lxc_bridge_attach(handler->lxcpath, handler->name, netdev->link, veth1);
+		err = lxc_bridge_attach(netdev->link, veth1);
 		if (err) {
 			ERROR("failed to attach \"%s\" to bridge \"%s\": %s",
 			      veth1, netdev->link, strerror(-err));
@@ -3239,11 +3239,20 @@ bool lxc_delete_network(struct lxc_handler *handler)
 			char *hostveth;
 			if (netdev->priv.veth_attr.pair) {
 				hostveth = netdev->priv.veth_attr.pair;
+
 				ret = lxc_netdev_delete_by_name(hostveth);
 				if (ret < 0)
 					WARN("Failed to remove interface \"%s\" from host: %s.", hostveth, strerror(-ret));
 				else
 					INFO("Removed interface \"%s\" from host.", hostveth);
+
+				if (is_ovs_bridge(netdev->link)) {
+					ret = lxc_ovs_delete_port(netdev->link, hostveth);
+					if (ret < 0)
+						WARN("Failed to remove port \"%s\" from openvswitch bridge \"%s\"", hostveth, netdev->link);
+					else
+						INFO("Removed port \"%s\" from openvswitch bridge \"%s\"", hostveth, netdev->link);
+				}
 			} else if (strlen(netdev->priv.veth_attr.veth1) > 0) {
 				hostveth = netdev->priv.veth_attr.veth1;
 				ret = lxc_netdev_delete_by_name(hostveth);
@@ -3251,7 +3260,16 @@ bool lxc_delete_network(struct lxc_handler *handler)
 					WARN("Failed to remove \"%s\" from host: %s.", hostveth, strerror(-ret));
 				} else {
 					INFO("Removed interface \"%s\" from host.", hostveth);
-					memset((void *)&netdev->priv.veth_attr.veth1, 0, sizeof(netdev->priv.veth_attr.veth1));
+
+					if (is_ovs_bridge(netdev->link)) {
+						ret = lxc_ovs_delete_port(netdev->link, hostveth);
+						if (ret < 0) {
+							WARN("Failed to remove port \"%s\" from openvswitch bridge \"%s\"", hostveth, netdev->link);
+						} else {
+							INFO("Removed port \"%s\" from openvswitch bridge \"%s\"", hostveth, netdev->link);
+							memset((void *)&netdev->priv.veth_attr.veth1, 0, sizeof(netdev->priv.veth_attr.veth1));
+						}
+					}
 				}
 			}
 		}
