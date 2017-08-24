@@ -3083,92 +3083,96 @@ int lxc_create_network(struct lxc_handler *handler)
 bool lxc_delete_network(struct lxc_handler *handler)
 {
 	int ret;
-	struct lxc_list *network = &handler->conf->network;
 	struct lxc_list *iterator;
-	struct lxc_netdev *netdev;
+	struct lxc_list *network = &handler->conf->network;
 	bool deleted_all = true;
 
 	lxc_list_for_each(iterator, network) {
-		netdev = iterator->elem;
+		char *hostveth = NULL;
+		struct lxc_netdev *netdev = iterator->elem;
 
-		if (netdev->ifindex != 0 && netdev->type == LXC_NET_PHYS) {
-			if (lxc_netdev_rename_by_index(netdev->ifindex, netdev->link))
+		/* We can only delete devices whose ifindex we have. If we don't
+		 * have the index it means that we didn't create it.
+		 */
+		if (!netdev->ifindex)
+			continue;
+
+		if (netdev->type == LXC_NET_PHYS) {
+			ret = lxc_netdev_rename_by_index(netdev->ifindex, netdev->link);
+			if (ret < 0)
 				WARN("Failed to rename interface with index %d "
-				     "to its initial name \"%s\".",
+				     "to its initial name \"%s\"",
 				     netdev->ifindex, netdev->link);
+			else
+				TRACE("Renamed interface with index %d to its "
+				      "initial name \"%s\"",
+				      netdev->ifindex, netdev->link);
 			continue;
 		}
 
-		if (netdev_deconf[netdev->type](handler, netdev)) {
-			WARN("Failed to destroy netdev");
-		}
+		ret = netdev_deconf[netdev->type](handler, netdev);
+		if (ret < 0)
+			WARN("Failed to deconfigure network device");
 
 		/* Recent kernel remove the virtual interfaces when the network
 		 * namespace is destroyed but in case we did not move the
 		 * interface to the network namespace, we have to destroy it
 		 */
-		if (netdev->ifindex != 0) {
-			ret = lxc_netdev_delete_by_index(netdev->ifindex);
-			if (-ret == ENODEV) {
-				INFO("Interface \"%s\" with index %d already "
-				     "deleted or existing in different network "
-				     "namespace.",
-				     netdev->name ? netdev->name : "(null)",
-				     netdev->ifindex);
-			} else if (ret < 0) {
-				deleted_all = false;
-				WARN("Failed to remove interface \"%s\" with "
-				     "index %d: %s.",
-				     netdev->name ? netdev->name : "(null)",
-				     netdev->ifindex, strerror(-ret));
-			} else {
-				INFO("Removed interface \"%s\" with index %d.",
-				     netdev->name ? netdev->name : "(null)",
-				     netdev->ifindex);
-			}
+		ret = lxc_netdev_delete_by_index(netdev->ifindex);
+		if (-ret == ENODEV) {
+			INFO("Interface \"%s\" with index %d already deleted "
+			     "or existing in different network namespace",
+			     netdev->name ? netdev->name : "(null)", netdev->ifindex);
+		} else if (ret < 0) {
+			deleted_all = false;
+			WARN("Failed to remove interface \"%s\" with index %d: "
+			     "%s", netdev->name ? netdev->name : "(null)",
+			     netdev->ifindex, strerror(-ret));
+			continue;
 		}
+		INFO("Removed interface \"%s\" with index %d",
+		     netdev->name ? netdev->name : "(null)", netdev->ifindex);
+
+		if (netdev->type != LXC_NET_VETH)
+			continue;
+
+		if (am_unpriv())
+			continue;
 
 		/* Explicitly delete host veth device to prevent lingering
 		 * devices. We had issues in LXD around this.
 		 */
-		if (netdev->ifindex != 0 && netdev->type == LXC_NET_VETH && !am_unpriv()) {
-			char *hostveth;
-			if (netdev->priv.veth_attr.pair) {
-				hostveth = netdev->priv.veth_attr.pair;
+		if (netdev->priv.veth_attr.pair)
+			hostveth = netdev->priv.veth_attr.pair;
+		else
+			hostveth = netdev->priv.veth_attr.veth1;
+		if (*hostveth == '\0')
+			continue;
 
-				ret = lxc_netdev_delete_by_name(hostveth);
-				if (ret < 0)
-					WARN("Failed to remove interface \"%s\" from host: %s.", hostveth, strerror(-ret));
-				else
-					INFO("Removed interface \"%s\" from host.", hostveth);
-
-				if (is_ovs_bridge(netdev->link)) {
-					ret = lxc_ovs_delete_port(netdev->link, hostveth);
-					if (ret < 0)
-						WARN("Failed to remove port \"%s\" from openvswitch bridge \"%s\"", hostveth, netdev->link);
-					else
-						INFO("Removed port \"%s\" from openvswitch bridge \"%s\"", hostveth, netdev->link);
-				}
-			} else if (strlen(netdev->priv.veth_attr.veth1) > 0) {
-				hostveth = netdev->priv.veth_attr.veth1;
-				ret = lxc_netdev_delete_by_name(hostveth);
-				if (ret < 0) {
-					WARN("Failed to remove \"%s\" from host: %s.", hostveth, strerror(-ret));
-				} else {
-					INFO("Removed interface \"%s\" from host.", hostveth);
-
-					if (is_ovs_bridge(netdev->link)) {
-						ret = lxc_ovs_delete_port(netdev->link, hostveth);
-						if (ret < 0) {
-							WARN("Failed to remove port \"%s\" from openvswitch bridge \"%s\"", hostveth, netdev->link);
-						} else {
-							INFO("Removed port \"%s\" from openvswitch bridge \"%s\"", hostveth, netdev->link);
-							memset((void *)&netdev->priv.veth_attr.veth1, 0, sizeof(netdev->priv.veth_attr.veth1));
-						}
-					}
-				}
-			}
+		ret = lxc_netdev_delete_by_name(hostveth);
+		if (ret < 0) {
+			deleted_all = false;
+			WARN("Failed to remove interface \"%s\" from \"%s\": %s",
+			     hostveth, netdev->link, strerror(-ret));
+			continue;
 		}
+		INFO("Removed interface \"%s\" from \"%s\"", hostveth, netdev->link);
+
+		if (!is_ovs_bridge(netdev->link)) {
+			netdev->priv.veth_attr.veth1[0] = '\0';
+			continue;
+		}
+
+		/* Delete the openvswitch port. */
+		ret = lxc_ovs_delete_port(netdev->link, hostveth);
+		if (ret < 0)
+			WARN("Failed to remove port \"%s\" from openvswitch "
+			     "bridge \"%s\"", hostveth, netdev->link);
+		else
+			INFO("Removed port \"%s\" from openvswitch bridge \"%s\"",
+			     hostveth, netdev->link);
+
+		netdev->priv.veth_attr.veth1[0] = '\0';
 	}
 
 	return deleted_all;
