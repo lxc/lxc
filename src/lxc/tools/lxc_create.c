@@ -49,7 +49,7 @@ static uint64_t get_fssize(char *s)
 	while (isblank(*end))
 		end++;
 	if (*end == '\0')
-		ret *= 1024ULL * 1024ULL; // MB by default
+		ret *= 1024ULL * 1024ULL; /* MB by default */
 	else if (*end == 'b' || *end == 'B')
 		ret *= 1ULL;
 	else if (*end == 'k' || *end == 'K')
@@ -248,7 +248,7 @@ int main(int argc, char *argv[])
 	if (strcmp(my_args.bdevtype, "none") == 0)
 		my_args.bdevtype = "dir";
 
-	// Final check whether the user gave use a valid bdev type.
+	/* Final check whether the user gave use a valid bdev type. */
 	if (strcmp(my_args.bdevtype, "best") &&
 	    strcmp(my_args.bdevtype, "_unset") &&
 	    !is_valid_storage_type(my_args.bdevtype)) {

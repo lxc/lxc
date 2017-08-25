@@ -1520,7 +1520,7 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 		SYSERROR("failed with errno %d to create %s", errno, path);
 		return -errno;
 	}
- 	DEBUG("created directory for console and tty devices at \%s\"", path);
+ 	DEBUG("Created directory for console and tty devices at \"%s\"", path);
 
 	ret = snprintf(lxcpath, sizeof(lxcpath), "%s/dev/%s/console", rootfs->mount, ttydir);
 	if (ret < 0 || (size_t)ret >= sizeof(lxcpath))
@@ -2289,7 +2289,7 @@ static int dropcaps_except(struct lxc_list *caps)
 	if (numcaps <= 0 || numcaps > 200)
 		return -1;
 
-	// caplist[i] is 1 if we keep capability i
+	/* caplist[i] is 1 if we keep capability i */
 	int *caplist = alloca(numcaps * sizeof(int));
 	memset(caplist, 0, numcaps * sizeof(int));
 
@@ -2769,6 +2769,7 @@ struct lxc_conf *lxc_conf_init(void)
 	 * default to running as UID/GID 0 when using lxc-execute */
 	new->init_uid = 0;
 	new->init_gid = 0;
+	memset(&new->cgroup_meta, 0, sizeof(struct lxc_cgroup));
 
 	return new;
 }
@@ -2858,7 +2859,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	}
 
 	if (netdev->link) {
-		err = lxc_bridge_attach(handler->lxcpath, handler->name, netdev->link, veth1);
+		err = lxc_bridge_attach(netdev->link, veth1);
 		if (err) {
 			ERROR("failed to attach \"%s\" to bridge \"%s\": %s",
 			      veth1, netdev->link, strerror(-err));
@@ -3155,24 +3156,6 @@ int lxc_setup_networks_in_parent_namespaces(struct lxc_handler *handler)
 			return -1;
 		}
 
-		if (netdev->type != LXC_NET_MACVLAN &&
-		    netdev->priv.macvlan_attr.mode) {
-			ERROR("Invalid macvlan.mode for a non-macvlan netdev");
-			return -1;
-		}
-
-		if (netdev->type != LXC_NET_VETH &&
-		    netdev->priv.veth_attr.pair) {
-			ERROR("Invalid veth pair for a non-veth netdev");
-			return -1;
-		}
-
-		if (netdev->type != LXC_NET_VLAN &&
-		    netdev->priv.vlan_attr.vid > 0) {
-			ERROR("Invalid vlan.id for a non-macvlan netdev");
-			return -1;
-		}
-
 		if (netdev_conf[netdev->type](handler, netdev)) {
 			ERROR("failed to create netdev");
 			return -1;
@@ -3186,75 +3169,96 @@ int lxc_setup_networks_in_parent_namespaces(struct lxc_handler *handler)
 bool lxc_delete_network(struct lxc_handler *handler)
 {
 	int ret;
-	struct lxc_list *network = &handler->conf->network;
 	struct lxc_list *iterator;
-	struct lxc_netdev *netdev;
+	struct lxc_list *network = &handler->conf->network;
 	bool deleted_all = true;
 
 	lxc_list_for_each(iterator, network) {
-		netdev = iterator->elem;
+		char *hostveth = NULL;
+		struct lxc_netdev *netdev = iterator->elem;
 
-		if (netdev->ifindex != 0 && netdev->type == LXC_NET_PHYS) {
-			if (lxc_netdev_rename_by_index(netdev->ifindex, netdev->link))
+		/* We can only delete devices whose ifindex we have. If we don't
+		 * have the index it means that we didn't create it.
+		 */
+		if (!netdev->ifindex)
+			continue;
+
+		if (netdev->type == LXC_NET_PHYS) {
+			ret = lxc_netdev_rename_by_index(netdev->ifindex, netdev->link);
+			if (ret < 0)
 				WARN("Failed to rename interface with index %d "
-				     "to its initial name \"%s\".",
+				     "to its initial name \"%s\"",
 				     netdev->ifindex, netdev->link);
+			else
+				TRACE("Renamed interface with index %d to its "
+				      "initial name \"%s\"",
+				      netdev->ifindex, netdev->link);
 			continue;
 		}
 
-		if (netdev_deconf[netdev->type](handler, netdev)) {
-			WARN("Failed to destroy netdev");
-		}
+		ret = netdev_deconf[netdev->type](handler, netdev);
+		if (ret < 0)
+			WARN("Failed to deconfigure network device");
 
-		/* Recent kernel remove the virtual interfaces when the network
-		 * namespace is destroyed but in case we did not moved the
-		 * interface to the network namespace, we have to destroy it
+		/* Recent kernels remove the virtual interfaces when the network
+		 * namespace is destroyed but in case we did not move the
+		 * interface to the network namespace, we have to destroy it.
 		 */
-		if (netdev->ifindex != 0) {
-			ret = lxc_netdev_delete_by_index(netdev->ifindex);
-			if (-ret == ENODEV) {
-				INFO("Interface \"%s\" with index %d already "
-				     "deleted or existing in different network "
-				     "namespace.",
-				     netdev->name ? netdev->name : "(null)",
-				     netdev->ifindex);
-			} else if (ret < 0) {
-				deleted_all = false;
-				WARN("Failed to remove interface \"%s\" with "
-				     "index %d: %s.",
-				     netdev->name ? netdev->name : "(null)",
-				     netdev->ifindex, strerror(-ret));
-			} else {
-				INFO("Removed interface \"%s\" with index %d.",
-				     netdev->name ? netdev->name : "(null)",
-				     netdev->ifindex);
-			}
+		ret = lxc_netdev_delete_by_index(netdev->ifindex);
+		if (-ret == ENODEV) {
+			INFO("Interface \"%s\" with index %d already deleted "
+			     "or existing in different network namespace",
+			     netdev->name ? netdev->name : "(null)", netdev->ifindex);
+		} else if (ret < 0) {
+			deleted_all = false;
+			WARN("Failed to remove interface \"%s\" with index %d: "
+			     "%s", netdev->name ? netdev->name : "(null)",
+			     netdev->ifindex, strerror(-ret));
+			continue;
 		}
+		INFO("Removed interface \"%s\" with index %d",
+		     netdev->name ? netdev->name : "(null)", netdev->ifindex);
+
+		if (netdev->type != LXC_NET_VETH)
+			continue;
+
+		if (am_unpriv())
+			continue;
 
 		/* Explicitly delete host veth device to prevent lingering
 		 * devices. We had issues in LXD around this.
 		 */
-		if (netdev->ifindex != 0 && netdev->type == LXC_NET_VETH && !am_unpriv()) {
-			char *hostveth;
-			if (netdev->priv.veth_attr.pair) {
-				hostveth = netdev->priv.veth_attr.pair;
-				ret = lxc_netdev_delete_by_name(hostveth);
-				if (ret < 0) {
-					WARN("Failed to remove interface \"%s\" from host: %s.", hostveth, strerror(-ret));
-				} else {
-					INFO("Removed interface \"%s\" from host.", hostveth);
-				}
-			} else if (strlen(netdev->priv.veth_attr.veth1) > 0) {
-				hostveth = netdev->priv.veth_attr.veth1;
-				ret = lxc_netdev_delete_by_name(hostveth);
-				if (ret < 0) {
-					WARN("Failed to remove \"%s\" from host: %s.", hostveth, strerror(-ret));
-				} else {
-					INFO("Removed interface \"%s\" from host.", hostveth);
-					memset((void *)&netdev->priv.veth_attr.veth1, 0, sizeof(netdev->priv.veth_attr.veth1));
-				}
-			}
+		if (netdev->priv.veth_attr.pair)
+			hostveth = netdev->priv.veth_attr.pair;
+		else
+			hostveth = netdev->priv.veth_attr.veth1;
+		if (*hostveth == '\0')
+			continue;
+
+		ret = lxc_netdev_delete_by_name(hostveth);
+		if (ret < 0) {
+			deleted_all = false;
+			WARN("Failed to remove interface \"%s\" from \"%s\": %s",
+			     hostveth, netdev->link, strerror(-ret));
+			continue;
 		}
+		INFO("Removed interface \"%s\" from \"%s\"", hostveth, netdev->link);
+
+		if (!is_ovs_bridge(netdev->link)) {
+			netdev->priv.veth_attr.veth1[0] = '\0';
+			continue;
+		}
+
+		/* Delete the openvswitch port. */
+		ret = lxc_ovs_delete_port(netdev->link, hostveth);
+		if (ret < 0)
+			WARN("Failed to remove port \"%s\" from openvswitch "
+			     "bridge \"%s\"", hostveth, netdev->link);
+		else
+			INFO("Removed port \"%s\" from openvswitch bridge \"%s\"",
+			     hostveth, netdev->link);
+
+		netdev->priv.veth_attr.veth1[0] = '\0';
 	}
 
 	return deleted_all;
@@ -3292,7 +3296,7 @@ static int unpriv_assign_nic(const char *lxcpath, char *lxcname,
 		return -1;
 	}
 
-	if (child == 0) { // child
+	if (child == 0) { /* child */
 		/* Call lxc-user-nic pid type bridge. */
 		int ret;
 		char pidstr[LXC_NUMSTRLEN64];
@@ -3330,14 +3334,19 @@ static int unpriv_assign_nic(const char *lxcpath, char *lxcname,
 	close(pipefd[1]);
 
 	bytes = read(pipefd[0], &buffer, MAX_BUFFER_SIZE);
-	if (bytes < 0)
+	if (bytes < 0) {
 		SYSERROR("Failed to read from pipe file descriptor.");
-	buffer[bytes - 1] = '\0';
-
-	if (wait_for_pid(child) != 0) {
 		close(pipefd[0]);
 		return -1;
 	}
+	buffer[bytes - 1] = '\0';
+
+	if (wait_for_pid(child) != 0) {
+		TRACE("lxc-user-nic failed to configure requested network");
+		close(pipefd[0]);
+		return -1;
+	}
+	TRACE("Received output \"%s\" from lxc-user-nic", buffer);
 
 	/* close the read-end of the pipe */
 	close(pipefd[0]);
@@ -3870,7 +3879,7 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 	}
 
 	if (rootuid == hostuid) {
-		// nothing to do
+		/* nothing to do */
 		INFO("Container root is our uid; no need to chown");
 		return 0;
 	}
@@ -3897,28 +3906,28 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 		return -1;
 	}
 
-	// "u:0:rootuid:1"
+	/* "u:0:rootuid:1" */
 	ret = snprintf(map1, 100, "u:0:%d:1", rootuid);
 	if (ret < 0 || ret >= 100) {
 		ERROR("Error uid printing map string");
 		return -1;
 	}
 
-	// "u:hostuid:hostuid:1"
+	/* "u:hostuid:hostuid:1" */
 	ret = snprintf(map2, 100, "u:%d:%d:1", hostuid, hostuid);
 	if (ret < 0 || ret >= 100) {
 		ERROR("Error uid printing map string");
 		return -1;
 	}
 
-	// "g:0:rootgid:1"
+	/* "g:0:rootgid:1" */
 	ret = snprintf(map3, 100, "g:0:%d:1", rootgid);
 	if (ret < 0 || ret >= 100) {
 		ERROR("Error gid printing map string");
 		return -1;
 	}
 
-	// "g:pathgid:rootgid+pathgid:1"
+	/* "g:pathgid:rootgid+pathgid:1" */
 	ret = snprintf(map4, 100, "g:%d:%d:1", (gid_t)sb.st_gid,
 		       rootgid + (gid_t)sb.st_gid);
 	if (ret < 0 || ret >= 100) {
@@ -3926,14 +3935,14 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 		return -1;
 	}
 
-	// "g:hostgid:hostgid:1"
+	/* "g:hostgid:hostgid:1" */
 	ret = snprintf(map5, 100, "g:%d:%d:1", hostgid, hostgid);
 	if (ret < 0 || ret >= 100) {
 		ERROR("Error gid printing map string");
 		return -1;
 	}
 
-	// "0:pathgid" (chown)
+	/* "0:pathgid" (chown) */
 	ret = snprintf(ugid, 100, "0:%d", (gid_t)sb.st_gid);
 	if (ret < 0 || ret >= 100) {
 		ERROR("Error owner printing format string for chown");
@@ -4367,7 +4376,7 @@ int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
 
 int lxc_clear_config_caps(struct lxc_conf *c)
 {
-	struct lxc_list *it,*next;
+	struct lxc_list *it, *next;
 
 	lxc_list_for_each_safe(it, &c->caps, next) {
 		lxc_list_del(it);
@@ -4606,6 +4615,8 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_aliens(conf);
 	lxc_clear_environment(conf);
 	lxc_clear_limits(conf, "lxc.prlimit");
+	free(conf->cgroup_meta.dir);
+	free(conf->cgroup_meta.controllers);
 	free(conf);
 }
 

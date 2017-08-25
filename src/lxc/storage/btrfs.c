@@ -99,10 +99,6 @@ char *get_btrfs_subvol_path(int fd, u64 dir_id, u64 objid, char *name,
 	return retpath;
 }
 
-//
-// btrfs ops
-//
-
 int btrfs_list_get_path_rootid(int fd, u64 *treeid)
 {
 	int  ret;
@@ -126,7 +122,7 @@ bool is_btrfs_fs(const char *path)
 	int fd, ret;
 	struct btrfs_ioctl_space_args sargs;
 
-	// make sure this is a btrfs filesystem
+	/* Make sure this is a btrfs filesystem. */
 	fd = open(path, O_RDONLY);
 	if (fd < 0)
 		return false;

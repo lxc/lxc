@@ -1800,7 +1800,9 @@ static char **subsystems_from_mount_options(const char *mount_options,
 			goto out_free;
 		result[result_count + 1] = NULL;
 		if (strncmp(token, "name=", 5) && !lxc_string_in_array(token, (const char **)kernel_list)) {
-			// this is eg 'systemd' but the mount will be 'name=systemd'
+			/* this is eg 'systemd' but the mount will be
+			 * 'name=systemd'
+			 */
 			result[result_count] = malloc(strlen(token) + 6);
 			if (result[result_count])
 				sprintf(result[result_count], "name=%s", token);
@@ -2068,9 +2070,10 @@ static bool cgroup_devices_has_allow_or_deny(struct cgfs_data *d,
 		NULL
 	};
 
-	// XXX FIXME if users could use something other than 'lxc.devices.deny = a'.
-	// not sure they ever do, but they *could*
-	// right now, I'm assuming they do NOT
+	/* XXX FIXME if users could use something other than 'lxc.devices.deny =
+	 * a'.  not sure they ever do, but they *could* right now, I'm assuming
+	 * they do NOT
+	 */
 	if (!for_allow && strcmp(v, "a") != 0 && strcmp(v, "a *:* rwm") != 0)
 		return false;
 
@@ -2340,7 +2343,7 @@ struct cgroup_ops *cgfs_ops_init(void)
 	return &cgfs_ops;
 }
 
-static void *cgfs_init(const char *name)
+static void *cgfs_init(struct lxc_handler *handler)
 {
 	struct cgfs_data *d;
 
@@ -2349,7 +2352,7 @@ static void *cgfs_init(const char *name)
 		return NULL;
 
 	memset(d, 0, sizeof(*d));
-	d->name = strdup(name);
+	d->name = strdup(handler->name);
 	if (!d->name)
 		goto err1;
 

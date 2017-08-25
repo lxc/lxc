@@ -1031,6 +1031,12 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
+	if (set_get_compare_clear_save_load(c, "lxc.cgroup.dir", "lxd", tmpf,
+					    true)) {
+		lxc_error("%s\n", "lxc.cgroup.dir");
+		goto non_test_error;
+	}
+
 	if (set_and_clear_complete_netdev(c) < 0) {
 		lxc_error("%s\n", "failed to clear whole network");
 		goto non_test_error;

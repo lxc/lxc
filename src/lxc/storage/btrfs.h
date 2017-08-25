@@ -95,7 +95,7 @@ struct btrfs_ioctl_vol_args_v2 {
 	union {
 		struct {
 			unsigned long long size;
-			//struct btrfs_qgroup_inherit *qgroup_inherit;
+			/*struct btrfs_qgroup_inherit *qgroup_inherit; */
 			void *qgroup_inherit;
 		};
 		unsigned long long unused[4];

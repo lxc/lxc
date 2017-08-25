@@ -163,6 +163,14 @@ int main(int argc, char *argv[])
 	}
 	printf("get_keys returned %d\n%s", ret, v3);
 
+	ret = c->get_keys(c, "lxc.cgroup", v3, 2000);
+	if (ret < 0) {
+		fprintf(stderr, "%d: failed to get keys(%d)\n", __LINE__, ret);
+		ret = 1;
+		goto out;
+	}
+	printf("get_keys returned %d\n%s", ret, v3);
+
 	ret = 0;
 
 out:

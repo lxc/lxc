@@ -51,8 +51,9 @@ int lxc_file_for_each_line(const char *file, lxc_file_cb callback, void *data)
 	while (getline(&line, &len, f) != -1) {
 		err = callback(line, data);
 		if (err) {
-			// callback rv > 0 means stop here
-			// callback rv < 0 means error
+			/* Callback rv > 0 means stop here callback rv < 0 means
+			 * error.
+			 */
 			if (err < 0)
 				ERROR("Failed to parse config: %s", line);
 			break;

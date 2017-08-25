@@ -59,7 +59,7 @@ struct migrate_opts;
  * changes, whenever possible stick to simply appending new members.
  */
 struct lxc_container {
-	// private fields
+	/* private fields */
 	/*!
 	 * \private
 	 * Name of container.
@@ -105,7 +105,7 @@ struct lxc_container {
 	 */
 	struct lxc_conf *lxc_conf;
 
-	// public fields
+	/* public fields */
 	/*! Human-readable string representing last error */
 	char *error_string;
 

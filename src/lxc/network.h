@@ -23,64 +23,50 @@
 #ifndef __LXC_NETWORK_H
 #define __LXC_NETWORK_H
 
-/*
- * Convert a string mac address to a socket structure
- */
+#include <stdio.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+
+/* Convert a string mac address to a socket structure. */
 extern int lxc_convert_mac(char *macaddr, struct sockaddr *sockaddr);
 
-/*
- * Move a device between namespaces
- */
+/* Move a device between namespaces. */
 extern int lxc_netdev_move_by_index(int ifindex, pid_t pid, const char* ifname);
-extern int lxc_netdev_move_by_name(const char *ifname, pid_t pid, const char* newname);
+extern int lxc_netdev_move_by_name(const char *ifname, pid_t pid,
+				   const char *newname);
 
-/*
- * Delete a network device
- */
+/* Delete a network device. */
 extern int lxc_netdev_delete_by_name(const char *name);
 extern int lxc_netdev_delete_by_index(int ifindex);
 
-/*
- * Change the device name
- */
+/* Change the device name. */
 extern int lxc_netdev_rename_by_name(const char *oldname, const char *newname);
 extern int lxc_netdev_rename_by_index(int ifindex, const char *newname);
 
 extern int netdev_set_flag(const char *name, int flag);
 
-/*
- * Set the device network up or down
- */
-
+/* Set the device network up or down. */
 extern int lxc_netdev_isup(const char *name);
 extern int lxc_netdev_up(const char *name);
 extern int lxc_netdev_down(const char *name);
 
-/*
- * Change the mtu size for the specified device
- */
+/* Change the mtu size for the specified device. */
 extern int lxc_netdev_set_mtu(const char *name, int mtu);
 
-/*
- * Create a virtual network devices
- */
+/* Create a virtual network devices. */
 extern int lxc_veth_create(const char *name1, const char *name2);
 extern int lxc_macvlan_create(const char *master, const char *name, int mode);
-extern int lxc_vlan_create(const char *master, const char *name, unsigned short vid);
+extern int lxc_vlan_create(const char *master, const char *name,
+			   unsigned short vid);
 
-/*
- * Activate forwarding
- */
+/* Activate forwarding.*/
 extern int lxc_ip_forward_on(const char *name, int family);
 
-/*
- * Disable forwarding
- */
+/* Disable forwarding. */
 extern int lxc_ip_forward_off(const char *name, int family);
 
-/*
- * Set ip address
- */
+/* Set ip address. */
 extern int lxc_ipv6_addr_add(int ifindex, struct in6_addr *addr,
 			     struct in6_addr *mcast,
 			     struct in6_addr *acast, int prefix);
@@ -88,57 +74,43 @@ extern int lxc_ipv6_addr_add(int ifindex, struct in6_addr *addr,
 extern int lxc_ipv4_addr_add(int ifindex, struct in_addr *addr,
 			     struct in_addr *bcast, int prefix);
 
-/*
- * Get ip address
- */
+/* Get ip address. */
 extern int lxc_ipv4_addr_get(int ifindex, struct in_addr **res);
 extern int lxc_ipv6_addr_get(int ifindex, struct in6_addr **res);
 
-/*
- * Set a destination route to an interface
- */
+/* Set a destination route to an interface. */
 extern int lxc_ipv4_dest_add(int ifindex, struct in_addr *dest);
 extern int lxc_ipv6_dest_add(int ifindex, struct in6_addr *dest);
 
-/*
- * Set default route.
- */
+/* Set default route. */
 extern int lxc_ipv4_gateway_add(int ifindex, struct in_addr *gw);
 extern int lxc_ipv6_gateway_add(int ifindex, struct in6_addr *gw);
 
-/*
- * Attach an interface to the bridge
- */
-extern int lxc_bridge_attach(const char *lxcpath, const char *name, const char *bridge, const char *ifname);
+/* Attach an interface to the bridge. */
+extern int lxc_bridge_attach(const char *bridge, const char *ifname);
+extern int lxc_ovs_delete_port(const char *bridge, const char *nic);
 
-/*
- * Create default gateway
- */
+extern bool is_ovs_bridge(const char *bridge);
+
+/* Create default gateway. */
 extern int lxc_route_create_default(const char *addr, const char *ifname,
 				    int gateway);
 
-/*
- * Delete default gateway
- */
+/* Delete default gateway. */
 extern int lxc_route_delete_default(const char *addr, const char *ifname,
 				    int gateway);
 
-/*
- * Activate neighbor proxying
- */
+/* Activate neighbor proxying. */
 extern int lxc_neigh_proxy_on(const char *name, int family);
 
-/*
- * Disable neighbor proxying
- */
+/* Disable neighbor proxying. */
 extern int lxc_neigh_proxy_off(const char *name, int family);
 
-/*
- * Generate a new unique network interface name
- */
+/* Generate a new unique network interface name. */
 extern char *lxc_mkifname(char *template);
 
 extern const char *lxc_net_type_to_str(int type);
 extern int setup_private_host_hw_addr(char *veth1);
 extern int netdev_get_mtu(int ifindex);
-#endif
+
+#endif /* __LXC_NETWORK_H */

@@ -99,13 +99,13 @@ static void opentty(const char * tty, int which) {
 		close(fd);
 	}
 }
-// Code copy end
+/* Code copy end */
 
 static int do_child(void *vargv)
 {
 	char **argv = (char **)vargv;
 
-	// Assume we want to become root
+	/* Assume we want to become root */
 	if (setgid(0) < 0) {
 		perror("setgid");
 		return -1;
@@ -272,8 +272,8 @@ int main(int argc, char *argv[])
 	int pid;
 	char *default_args[] = {"/bin/sh", NULL};
 	char buf[1];
-	int pipe1[2],  // child tells parent it has unshared
-	    pipe2[2];  // parent tells child it is mapped and may proceed
+	int pipe1[2],  /* child tells parent it has unshared */
+	    pipe2[2];  /* parent tells child it is mapped and may proceed */
 
 	memset(ttyname0, '\0', sizeof(ttyname0));
 	memset(ttyname1, '\0', sizeof(ttyname1));
@@ -326,7 +326,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	if ((pid = fork()) == 0) {
-		// Child.
+		/* Child. */
 
 		close(pipe1[0]);
 		close(pipe2[1]);

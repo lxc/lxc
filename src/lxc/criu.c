@@ -779,8 +779,9 @@ out_unlock:
 	return !has_error;
 }
 
-// do_restore never returns, the calling process is used as the
-// monitor process. do_restore calls exit() if it fails.
+/* do_restore never returns, the calling process is used as the monitor process.
+ * do_restore calls exit() if it fails.
+ */
 static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_opts *opts, char *criu_version)
 {
 	pid_t pid;
@@ -1214,7 +1215,7 @@ bool __criu_restore(struct lxc_container *c, struct migrate_opts *opts)
 
 	if (pid == 0) {
 		close(pipefd[0]);
-		// this never returns
+		/* this never returns */
 		do_restore(c, pipefd[1], opts, criu_version);
 	}
 
@@ -1227,9 +1228,10 @@ bool __criu_restore(struct lxc_container *c, struct migrate_opts *opts)
 		goto err_wait;
 	}
 
-	// If the criu process was killed or exited nonzero, wait() for the
-	// handler, since the restore process died. Otherwise, we don't need to
-	// wait, since the child becomes the monitor process.
+	/* If the criu process was killed or exited nonzero, wait() for the
+	 * handler, since the restore process died. Otherwise, we don't need to
+	 * wait, since the child becomes the monitor process.
+	 */
 	if (!WIFEXITED(status) || WEXITSTATUS(status))
 		goto err_wait;
 	return true;

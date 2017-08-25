@@ -41,7 +41,7 @@ typedef enum {
 struct cgroup_ops {
 	const char *name;
 
-	void *(*init)(const char *name);
+	void *(*init)(struct lxc_handler *handler);
 	void (*destroy)(void *hdata, struct lxc_conf *conf);
 	bool (*create)(void *hdata);
 	bool (*enter)(void *hdata, pid_t pid);

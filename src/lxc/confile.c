@@ -82,7 +82,8 @@ lxc_config_define(tty_dir);
 lxc_config_define(apparmor_profile);
 lxc_config_define(apparmor_allow_incomplete);
 lxc_config_define(selinux_context);
-lxc_config_define(cgroup);
+lxc_config_define(cgroup_controller);
+lxc_config_define(cgroup_dir);
 lxc_config_define(idmaps);
 lxc_config_define(log_level);
 lxc_config_define(log_file);
@@ -142,7 +143,8 @@ static struct lxc_config_t config[] = {
 	{ "lxc.autodev",                   false,                  set_config_autodev,                     get_config_autodev,                     clr_config_autodev,                   },
 	{ "lxc.cap.drop",                  false,                  set_config_cap_drop,                    get_config_cap_drop,                    clr_config_cap_drop,                  },
 	{ "lxc.cap.keep",                  false,                  set_config_cap_keep,                    get_config_cap_keep,                    clr_config_cap_keep,                  },
-	{ "lxc.cgroup",                    false,                  set_config_cgroup,                      get_config_cgroup,                      clr_config_cgroup,                    },
+	{ "lxc.cgroup.dir",                false,                  set_config_cgroup_dir,                  get_config_cgroup_dir,                  clr_config_cgroup_dir,                },
+	{ "lxc.cgroup",                    false,                  set_config_cgroup_controller,           get_config_cgroup_controller,           clr_config_cgroup_controller,         },
 	{ "lxc.console.logfile",           false,                  set_config_console_logfile,             get_config_console_logfile,             clr_config_console_logfile,           },
 	{ "lxc.console.path",              false,                  set_config_console_path,                get_config_console_path,                clr_config_console_path,              },
 	{ "lxc.environment",               false,                  set_config_environment,                 get_config_environment,                 clr_config_environment,               },
@@ -1368,8 +1370,8 @@ static int set_config_signal_stop(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_cgroup(const char *key, const char *value,
-			     struct lxc_conf *lxc_conf, void *data)
+static int set_config_cgroup_controller(const char *key, const char *value,
+					struct lxc_conf *lxc_conf, void *data)
 {
 	char *subkey;
 	char *token = "lxc.cgroup.";
@@ -1421,6 +1423,18 @@ out:
 	}
 
 	return -1;
+}
+
+static int set_config_cgroup_dir(const char *key, const char *value,
+				 struct lxc_conf *lxc_conf, void *data)
+{
+	if (lxc_config_value_empty(value))
+		return clr_config_cgroup_dir(key, lxc_conf, NULL);
+
+	if (lxc_conf->cgroup_meta.dir)
+		clr_config_cgroup_dir(key, lxc_conf, NULL);
+
+	return set_config_string_item(&lxc_conf->cgroup_meta.dir, value);
 }
 
 static int set_config_prlimit(const char *key, const char *value,
@@ -2624,8 +2638,8 @@ static int get_config_selinux_context(const char *key, char *retv, int inlen,
  * If you ask for 'lxc.cgroup", then all cgroup entries will be printed, in
  * 'lxc.cgroup.subsystem.key = value' format.
  */
-static int get_config_cgroup(const char *key, char *retv, int inlen,
-			     struct lxc_conf *c, void *data)
+static int get_config_cgroup_controller(const char *key, char *retv, int inlen,
+					struct lxc_conf *c, void *data)
 {
 	struct lxc_list *it;
 	int len;
@@ -2654,6 +2668,22 @@ static int get_config_cgroup(const char *key, char *retv, int inlen,
 			strprint(retv, inlen, "%s\n", cg->value);
 		}
 	}
+
+	return fulllen;
+}
+
+static int get_config_cgroup_dir(const char *key, char *retv, int inlen,
+				 struct lxc_conf *lxc_conf, void *data)
+{
+	int len;
+	int fulllen = 0;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	strprint(retv, inlen, "%s", lxc_conf->cgroup_meta.dir);
 
 	return fulllen;
 }
@@ -3197,10 +3227,21 @@ static inline int clr_config_selinux_context(const char *key,
 	return 0;
 }
 
-static inline int clr_config_cgroup(const char *key, struct lxc_conf *c,
-				    void *data)
+static inline int clr_config_cgroup_controller(const char *key,
+					       struct lxc_conf *c, void *data)
 {
 	return lxc_clear_cgroups(c, key);
+}
+
+static int clr_config_cgroup_dir(const char *key, struct lxc_conf *lxc_conf,
+				 void *data)
+{
+	if (lxc_conf->cgroup_meta.dir) {
+		free(lxc_conf->cgroup_meta.dir);
+		lxc_conf->cgroup_meta.dir = NULL;
+	}
+
+	return 0;
 }
 
 static inline int clr_config_idmaps(const char *key, struct lxc_conf *c,
@@ -4378,6 +4419,8 @@ int lxc_list_subkeys(struct lxc_conf *conf, const char *key, char *retv,
 	if (!strcmp(key, "lxc.apparmor")) {
 		strprint(retv, inlen, "allow_incomplete\n");
 		strprint(retv, inlen, "profile\n");
+	} else if (!strcmp(key, "lxc.cgroup")) {
+		strprint(retv, inlen, "dir\n");
 	} else if (!strcmp(key, "lxc.selinux")) {
 		strprint(retv, inlen, "context\n");
 	} else if (!strcmp(key, "lxc.mount")) {

@@ -24,45 +24,44 @@
 #ifndef __LXC_LIST_H
 #define __LXC_LIST_H
 
+#include <stdio.h>
+
 struct lxc_list {
 	void *elem;
 	struct lxc_list *next;
 	struct lxc_list *prev;
 };
 
-#define lxc_init_list(l) { .next = l, .prev = l }
+#define lxc_init_list(l)                                                       \
+	{                                                                      \
+		.next = l, .prev = l                                           \
+	}
 
 /*
  * Iterate through an lxc list. An example for an idiom would be:
  *
  * struct lxc_list *iterator;
- * type *tmp; // where "type" can be an int, char * etc.
  * lxc_list_for_each(iterator, list) {
+ *        type *tmp;
  * 	  tmp = iterator->elem;
- *        // Do stuff with tmp.
  * }
- * free(iterator);
  */
-#define lxc_list_for_each(__iterator, __list)				\
-	for (__iterator = (__list)->next;				\
-	     __iterator != __list;					\
+#define lxc_list_for_each(__iterator, __list)                                  \
+	for (__iterator = (__list)->next; __iterator != __list;                \
 	     __iterator = __iterator->next)
 
-/*
- * Iterate safely through an lxc list. An example for an appropriate use case
+/* Iterate safely through an lxc list. An example for an appropriate use case
  * would be:
  *
- * struct lxc_list *iterator;
- * lxc_list_for_each_safe(iterator, list, list->next) {
- * 	  tmp = iterator->elem;
- *        // Do stuff with tmp.
+ * struct lxc_list *cur, *next;
+ * lxc_list_for_each_safe(cur, list, next) {
+ *        type *tmp;
+ * 	  tmp = cur->elem;
  * }
- * free(iterator);
  */
-#define lxc_list_for_each_safe(__iterator, __list, __next)		\
-	for (__iterator = (__list)->next, __next = __iterator->next;	\
-	     __iterator != __list;					\
-	     __iterator = __next, __next = __next->next)
+#define lxc_list_for_each_safe(__iterator, __list, __next)                     \
+	for (__iterator = (__list)->next, __next = __iterator->next;           \
+	     __iterator != __list; __iterator = __next, __next = __next->next)
 
 /* Initalize list. */
 static inline void lxc_list_init(struct lxc_list *list)
@@ -72,7 +71,8 @@ static inline void lxc_list_init(struct lxc_list *list)
 }
 
 /* Add an element to a list. See lxc_list_add() and lxc_list_add_tail() for an
- * idiom. */
+ * idiom.
+ */
 static inline void lxc_list_add_elem(struct lxc_list *list, void *elem)
 {
 	list->elem = elem;
@@ -97,8 +97,7 @@ static inline int lxc_list_empty(struct lxc_list *list)
 }
 
 /* Workhorse to be called from lxc_list_add() and lxc_list_add_tail(). */
-static inline void __lxc_list_add(struct lxc_list *new,
-				  struct lxc_list *prev,
+static inline void __lxc_list_add(struct lxc_list *new, struct lxc_list *prev,
 				  struct lxc_list *next)
 {
 	next->prev = new;
@@ -107,8 +106,7 @@ static inline void __lxc_list_add(struct lxc_list *new,
 	prev->next = new;
 }
 
-/*
- * Idiom to add an element to the beginning of an lxc list:
+/* Idiom to add an element to the beginning of an lxc list:
  *
  *	struct lxc_list *tmp = malloc(sizeof(*tmp));
  *	if (tmp == NULL)
@@ -121,8 +119,7 @@ static inline void lxc_list_add(struct lxc_list *head, struct lxc_list *list)
 	__lxc_list_add(list, head, head->next);
 }
 
-/*
- * Idiom to add an element to the end of an lxc list:
+/* Idiom to add an element to the end of an lxc list:
  *
  *	struct lxc_list *tmp = malloc(sizeof(*tmp));
  *	if (tmp == NULL)
@@ -136,14 +133,13 @@ static inline void lxc_list_add_tail(struct lxc_list *head,
 	__lxc_list_add(list, head->prev, head);
 }
 
-/*
- * Idiom to free an lxc list:
- *
- * lxc_list_for_each_safe(iterator, list, list->next) {
- * 	  lxc_list_del(iterator);
- * 	  free(iterator);
+/* Idiom to remove an element from a list:
+ * struct lxc_list *cur, *next;
+ * lxc_list_for_each_safe(cur, list, next) {
+ * 	  lxc_list_del(cur);
+ * 	  free(cur->elem);
+ * 	  free(cur);
  * }
- * free(iterator);
  */
 static inline void lxc_list_del(struct lxc_list *list)
 {
@@ -160,6 +156,7 @@ static inline size_t lxc_list_len(struct lxc_list *list)
 {
 	 size_t i = 0;
 	 struct lxc_list *iter;
+
 	 lxc_list_for_each(iter, list) {
 		i++;
 	 }
@@ -167,4 +164,4 @@ static inline size_t lxc_list_len(struct lxc_list *list)
 	 return i;
 }
 
-#endif
+#endif /* __LXC_LIST_H */

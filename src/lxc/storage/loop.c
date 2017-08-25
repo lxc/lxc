@@ -322,7 +322,7 @@ static int do_loop_create(const char *path, uint64_t size, const char *fstype)
 		return -1;
 	}
 
-	// create an fs in the loopback file
+	/* Create an fs in the loopback file. */
 	ret = run_command(cmd_output, sizeof(cmd_output), do_mkfs_exec_wrapper,
 			  (void *)cmd_args);
 	if (ret < 0) {

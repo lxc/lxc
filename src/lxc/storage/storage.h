@@ -70,7 +70,8 @@ struct lxc_storage;
 struct lxc_storage_ops {
 	/* detect whether path is of this bdev type */
 	bool (*detect)(const char *path);
-	// mount requires src and dest to be set.
+
+	/* mount requires src and dest to be set. */
 	int (*mount)(struct lxc_storage *bdev);
 	int (*umount)(struct lxc_storage *bdev);
 	int (*destroy)(struct lxc_storage *bdev);

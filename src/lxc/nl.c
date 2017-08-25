@@ -156,7 +156,7 @@ extern struct nlmsg *nlmsg_alloc_reserve(size_t size)
 	if (!nlmsg)
 		return NULL;
 
-	// just set message length to cap directly
+	/* Just set message length to cap directly. */
 	nlmsg->nlmsghdr->nlmsg_len = nlmsg->cap;
 	return nlmsg;
 }
@@ -178,14 +178,14 @@ extern int netlink_rcv(struct nl_handler *handler, struct nlmsg *answer)
 		.iov_base = answer->nlmsghdr,
 		.iov_len = answer->nlmsghdr->nlmsg_len,
 	};
-	
+
 	struct msghdr msg = {
 		.msg_name = &nladdr,
 		.msg_namelen = sizeof(nladdr),
 		.msg_iov = &iov,
 		.msg_iovlen = 1,
 	};
-	
+
 	memset(&nladdr, 0, sizeof(nladdr));
 	nladdr.nl_family = AF_NETLINK;
 	nladdr.nl_pid = 0;
@@ -223,7 +223,7 @@ extern int netlink_send(struct nl_handler *handler, struct nlmsg *nlmsg)
 		.msg_iovlen = 1,
 	};
 	int ret;
-	
+
 	memset(&nladdr, 0, sizeof(nladdr));
 	nladdr.nl_family = AF_NETLINK;
 	nladdr.nl_pid = 0;
