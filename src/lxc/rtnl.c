@@ -54,20 +54,24 @@ extern int rtnetlink_send(struct rtnl_handler *handler, struct rtnlmsg *rtnlmsg)
 }
 
 extern int rtnetlink_transaction(struct rtnl_handler *handler,
-			  struct rtnlmsg *request, struct rtnlmsg *answer)
+				 struct rtnlmsg *request,
+				 struct rtnlmsg *answer)
 {
-	return netlink_transaction(&handler->nlh, (struct nlmsg *)&request->nlmsghdr,
+	return netlink_transaction(&handler->nlh,
+				   (struct nlmsg *)&request->nlmsghdr,
 				   (struct nlmsg *)&answer->nlmsghdr);
 }
 
 extern struct rtnlmsg *rtnlmsg_alloc(size_t size)
 {
-/* 	size_t len = NLMSG_LENGTH(NLMSG_ALIGN(sizeof(struct rtnlmsghdr))) + size; */
-/* 	return  (struct rtnlmsg *)nlmsg_alloc(len); */
+	/*
+	size_t len;
+
+	len = NLMSG_LENGTH(NLMSG_ALIGN(sizeof(struct rtnlmsghdr))) + size;
+	return (struct rtnlmsg *)nlmsg_alloc(len);
+	*/
+
 	return NULL;
 }
 
-extern void rtnlmsg_free(struct rtnlmsg *rtnlmsg)
-{
-	free(rtnlmsg);
-}
+extern void rtnlmsg_free(struct rtnlmsg *rtnlmsg) { free(rtnlmsg); }

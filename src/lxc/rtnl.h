@@ -20,6 +20,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
 #ifndef __LXC_RTNL_H
 #define __LXC_RTNL_H
 
@@ -35,8 +36,7 @@
  *
  * @nlh: the netlink socket handler
  */
-struct rtnl_handler
-{
+struct rtnl_handler {
 	struct nl_handler nlh;
 };
 
@@ -59,7 +59,7 @@ struct rtnlmsg {
  *
  * Returns 0 on success, < 0 otherwise
  */
-int rtnetlink_open(struct rtnl_handler *handler);
+extern int rtnetlink_open(struct rtnl_handler *handler);
 
 /*
  * genetlink_close : close a route netlink socket
@@ -68,7 +68,7 @@ int rtnetlink_open(struct rtnl_handler *handler);
  *
  * Returns 0 on success, < 0 otherwise
  */
-int rtnetlink_close(struct rtnl_handler *handler);
+extern int rtnetlink_close(struct rtnl_handler *handler);
 
 /*
  * rtnetlink_rcv : receive a route netlink socket, it is up
@@ -79,7 +79,7 @@ int rtnetlink_close(struct rtnl_handler *handler);
  *
  * Returns 0 on success, < 0 otherwise
  */
-int rtnetlink_rcv(struct rtnl_handler *handler, struct rtnlmsg *rtnlmsg);
+extern int rtnetlink_rcv(struct rtnl_handler *handler, struct rtnlmsg *rtnlmsg);
 
 /*
  * rtnetlink_send : send a route netlink socket, it is up
@@ -90,11 +90,12 @@ int rtnetlink_rcv(struct rtnl_handler *handler, struct rtnlmsg *rtnlmsg);
  *
  * Returns 0 on success, < 0 otherwise
  */
-int rtnetlink_send(struct rtnl_handler *handler, struct rtnlmsg *rtnlmsg);
+extern int rtnetlink_send(struct rtnl_handler *handler,
+			  struct rtnlmsg *rtnlmsg);
 
 struct genlmsg *genlmsg_alloc(size_t size);
 
-void rtnlmsg_free(struct rtnlmsg *rtnlmsg);
+extern void rtnlmsg_free(struct rtnlmsg *rtnlmsg);
 
 /*
  * rtnetlink_transaction : send and receive a route netlink message in one shot
@@ -105,6 +106,8 @@ void rtnlmsg_free(struct rtnlmsg *rtnlmsg);
  *
  * Returns 0 on success, < 0 otherwise
  */
-int rtnetlink_transaction(struct rtnl_handler *handler,
-			  struct rtnlmsg *request, struct rtnlmsg *answer);
-#endif
+extern int rtnetlink_transaction(struct rtnl_handler *handler,
+				 struct rtnlmsg *request,
+				 struct rtnlmsg *answer);
+
+#endif /* __LXC_RTNL_H */
