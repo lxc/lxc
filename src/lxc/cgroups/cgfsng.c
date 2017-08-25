@@ -1345,11 +1345,11 @@ static void remove_path_for_hierarchy(struct hierarchy *h, char *cgname)
  */
 static inline bool cgfsng_create(void *hdata)
 {
-	struct cgfsng_handler_data *d = hdata;
-	char *tmp, *cgname, *offset;
 	int i;
-	int idx = 0;
 	size_t len;
+	char *cgname, *offset, *tmp;
+	int idx = 0;
+	struct cgfsng_handler_data *d = hdata;
 
 	if (!d)
 		return false;
@@ -1360,7 +1360,7 @@ static inline bool cgfsng_create(void *hdata)
 	}
 
 	if (d->cgroup_meta.dir)
-		tmp = strdup(d->cgroup_meta.dir);
+		tmp = lxc_string_join("/", (const char *[]){d->cgroup_meta.dir, d->name, NULL}, false);
 	else
 		tmp = lxc_string_replace("%n", d->name, d->cgroup_pattern);
 	if (!tmp) {
