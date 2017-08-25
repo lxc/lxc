@@ -1199,6 +1199,7 @@ out_free:
 
 static int cgroup_rmdir(char *dirname)
 {
+	int ret;
 	struct dirent *direntp;
 	DIR *dir;
 	int r = 0;
@@ -1208,8 +1209,8 @@ static int cgroup_rmdir(char *dirname)
 		return -1;
 
 	while ((direntp = readdir(dir))) {
-		struct stat mystat;
 		char *pathname;
+		struct stat mystat;
 
 		if (!direntp)
 			break;
@@ -1220,32 +1221,40 @@ static int cgroup_rmdir(char *dirname)
 
 		pathname = must_make_path(dirname, direntp->d_name, NULL);
 
-		if (lstat(pathname, &mystat)) {
+		ret = lstat(pathname, &mystat);
+		if (ret < 0) {
 			if (!r)
-				WARN("failed to stat %s", pathname);
+				WARN("Failed to stat %s", pathname);
 			r = -1;
 			goto next;
 		}
 
 		if (!S_ISDIR(mystat.st_mode))
 			goto next;
-		if (cgroup_rmdir(pathname) < 0)
+
+		ret = cgroup_rmdir(pathname);
+		if (ret < 0)
 			r = -1;
 next:
 		free(pathname);
 	}
 
-	if (rmdir(dirname) < 0) {
+	ret = rmdir(dirname);
+	if (ret < 0) {
 		if (!r)
-			WARN("failed to delete %s: %s", dirname, strerror(errno));
+			WARN("Failed to delete \"%s\": %s", dirname,
+			     strerror(errno));
 		r = -1;
 	}
 
-	if (closedir(dir) < 0) {
+	ret = closedir(dir);
+	if (ret < 0) {
 		if (!r)
-			WARN("failed to delete %s: %s", dirname, strerror(errno));
+			WARN("Failed to delete \"%s\": %s", dirname,
+			     strerror(errno));
 		r = -1;
 	}
+
 	return r;
 }
 
