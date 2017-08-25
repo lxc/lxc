@@ -32,14 +32,14 @@
 
 struct lxc_arguments;
 
-typedef int (*lxc_arguments_parser_t) (struct lxc_arguments *, int, char*);
-typedef int (*lxc_arguments_checker_t) (const struct lxc_arguments *);
+typedef int (*lxc_arguments_parser_t)(struct lxc_arguments *, int, char *);
+typedef int (*lxc_arguments_checker_t)(const struct lxc_arguments *);
 
 struct lxc_arguments {
 	const char *help;
-	void(*helpfn)(const struct lxc_arguments *);
+	void (*helpfn)(const struct lxc_arguments *);
 	const char *progname;
-	const struct option* options;
+	const struct option *options;
 	lxc_arguments_parser_t parser;
 	lxc_arguments_checker_t checker;
 
@@ -143,29 +143,31 @@ struct lxc_arguments {
 	void *data;
 };
 
-#define LXC_COMMON_OPTIONS \
-	{"name", required_argument, 0, 'n'}, \
-	{"help", no_argument, 0, 'h'}, \
-	{"usage", no_argument,	0, OPT_USAGE}, \
-	{"version", no_argument,	0, OPT_VERSION}, \
-	{"quiet", no_argument,	0, 'q'}, \
-	{"logfile", required_argument, 0, 'o'}, \
-	{"logpriority", required_argument, 0, 'l'}, \
-	{"lxcpath", required_argument, 0, 'P'}, \
-	{"rcfile", required_argument, 0, OPT_RCFILE}, \
-	{0, 0, 0, 0}
+#define LXC_COMMON_OPTIONS                                                     \
+	    { "name",        required_argument, 0, 'n'         },              \
+            { "help",        no_argument,       0, 'h'         },              \
+	    { "usage",       no_argument,       0, OPT_USAGE   },              \
+	    { "version",     no_argument,       0, OPT_VERSION },              \
+	    { "quiet",       no_argument,       0, 'q'         },              \
+	    { "logfile",     required_argument, 0, 'o'         },              \
+	    { "logpriority", required_argument, 0, 'l'         },              \
+	    { "lxcpath",     required_argument, 0, 'P'         },              \
+	    { "rcfile",      required_argument, 0, OPT_RCFILE  },              \
+	    { 0,             0,                 0, 0           }
 
 /* option keys for long only options */
-#define	OPT_USAGE 0x1000
-#define	OPT_VERSION OPT_USAGE-1
-#define	OPT_RCFILE OPT_USAGE-2
+#define OPT_USAGE 0x1000
+#define OPT_VERSION OPT_USAGE - 1
+#define OPT_RCFILE OPT_USAGE - 2
 
-extern int lxc_arguments_parse(struct lxc_arguments *args,
-			       int argc, char *const argv[]);
+extern int lxc_arguments_parse(struct lxc_arguments *args, int argc,
+			       char *const argv[]);
 
-extern int lxc_arguments_str_to_int(struct lxc_arguments *args, const char *str);
+extern int lxc_arguments_str_to_int(struct lxc_arguments *args,
+				    const char *str);
 
-#define lxc_error(arg, fmt, args...) if (!(arg)->quiet)			\
-	fprintf(stderr, "%s: " fmt "\n", (arg)->progname,  ## args)
+#define lxc_error(arg, fmt, args...)                                           \
+	if (!(arg)->quiet)                                                     \
+	fprintf(stderr, "%s: " fmt "\n", (arg)->progname, ##args)
 
-#endif
+#endif /* __LXC_ARGUMENTS_H */
