@@ -944,7 +944,7 @@ int main(int argc, char *argv[])
 {
 	int fd, n, pid, ret;
 	char *me;
-	char *cnic = NULL, *nicname = NULL, *vethname = NULL;
+	char *cnic = NULL, *nicname = NULL;
 	struct alloted_s *alloted = NULL;
 	struct user_nic_args args;
 

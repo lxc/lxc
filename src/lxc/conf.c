@@ -3170,8 +3170,8 @@ static int unpriv_assign_nic(const char *lxcpath, char *lxcname,
 	pid_t child;
 	int bytes, pipefd[2];
 	char *token, *saveptr = NULL;
-	char buffer[MAX_BUFFER_SIZE];
 	char netdev_link[IFNAMSIZ + 1];
+	char buffer[MAX_BUFFER_SIZE] = {0};
 
 	if (netdev->type != LXC_NET_VETH) {
 		ERROR("nic type %d not support for unprivileged use",
@@ -3201,6 +3201,8 @@ static int unpriv_assign_nic(const char *lxcpath, char *lxcname,
 
 		/* Redirect stdout to write-end of the pipe. */
 		ret = dup2(pipefd[1], STDOUT_FILENO);
+		if (ret >= 0)
+			ret = dup2(pipefd[1], STDERR_FILENO);
 		close(pipefd[1]); /* Close the write-end of the pipe. */
 		if (ret < 0) {
 			SYSERROR("Failed to dup2() to redirect stdout to pipe file descriptor.");
@@ -3244,7 +3246,8 @@ static int unpriv_assign_nic(const char *lxcpath, char *lxcname,
 	buffer[bytes - 1] = '\0';
 
 	if (wait_for_pid(child) != 0) {
-		TRACE("lxc-user-nic failed to configure requested network");
+		ERROR("lxc-user-nic failed to configure requested network: %s",
+		      buffer[0] != '\0' ? buffer : "(null)");
 		close(pipefd[0]);
 		return -1;
 	}
