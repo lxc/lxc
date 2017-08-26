@@ -59,12 +59,17 @@
 
 static void usage(char *me, bool fail)
 {
-	fprintf(stderr, "Usage: %s lxcpath name pid type bridge nicname\n", me);
-	fprintf(stderr, " nicname is the name to use inside the container\n");
-	exit(fail ? 1 : 0);
-}
+	fprintf(stderr, "Usage: %s create {lxcpath} {name} {pid} {type} "
+			"{bridge} {nicname}\n", me);
+	fprintf(stderr, "Usage: %s delete {lxcpath} {name} {pid} {type} "
+			"{bridge} {nicname}\n", me);
+	fprintf(stderr, "{nicname} is the name to use inside the container\n");
 
-static char *lxcpath, *lxcname;
+	if (fail)
+		exit(EXIT_FAILURE);
+
+	exit(EXIT_SUCCESS);
+}
 
 static int open_and_lock(char *path)
 {
@@ -921,12 +926,38 @@ static bool may_access_netns(int pid)
 	return may_access;
 }
 
+struct user_nic_args {
+	char *cmd;
+	char *lxc_path;
+	char *lxc_name;
+	char *pid;
+	char *type;
+	char *link;
+	char *veth_name;
+};
+
 int main(int argc, char *argv[])
 {
 	int fd, n, pid, ret;
 	char *me;
 	char *cnic = NULL, *nicname = NULL, *vethname = NULL;
 	struct alloted_s *alloted = NULL;
+	struct user_nic_args args;
+
+	if (argc < 7 || argc > 8) {
+		usage(argv[0], true);
+		exit(EXIT_FAILURE);
+	}
+
+	memset(&args, 0, sizeof(struct user_nic_args));
+	args.cmd = argv[1];
+	args.lxc_path = argv[2];
+	args.lxc_name = argv[3];
+	args.pid = argv[4];
+	args.type = argv[5];
+	args.link = argv[6];
+	if (argc >= 8)
+		args.veth_name = argv[7];
 
 	/* Set a sane env, because we are setuid-root. */
 	ret = clearenv();
@@ -947,18 +978,9 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (argc < 6)
-		usage(argv[0], true);
-
-	if (argc >= 7)
-		vethname = argv[6];
-
-	lxcpath = argv[1];
-	lxcname = argv[2];
-
-	ret = lxc_safe_int(argv[3], &pid);
+	ret = lxc_safe_int(args.pid, &pid);
 	if (ret < 0) {
-		usernic_error("Could not read pid: %s\n", argv[1]);
+		usernic_error("Could not read pid: %s\n", args.pid);
 		exit(EXIT_FAILURE);
 	}
 
@@ -978,10 +1000,10 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	n = get_alloted(me, argv[4], argv[5], &alloted);
+	n = get_alloted(me, args.type, args.link, &alloted);
 	if (n > 0)
-		nicname = get_nic_if_avail(fd, alloted, pid, argv[4],
-					   argv[5], n, &cnic);
+		nicname = get_nic_if_avail(fd, alloted, pid, args.type,
+					   args.link, n, &cnic);
 
 	close(fd);
 	free_alloted(&alloted);
@@ -991,7 +1013,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* Now rename the link. */
-	ret = rename_in_ns(pid, cnic, &vethname);
+	ret = rename_in_ns(pid, cnic, &args.veth_name);
 	if (ret < 0) {
 		usernic_error("%s", "Failed to rename the link\n");
 		ret = lxc_netdev_delete_by_name(cnic);
@@ -1002,7 +1024,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* Write the name of the interface pair to the stdout: eth0:veth9MT2L4 */
-	fprintf(stdout, "%s:%s\n", vethname, nicname);
+	fprintf(stdout, "%s:%s\n", args.veth_name, nicname);
 	free(nicname);
 	exit(EXIT_SUCCESS);
 }
