@@ -2455,7 +2455,10 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 		return -1;
 	}
 
-	/* default: let the system to choose one interface name */
+	/* Default: let the system to choose one interface name.
+	 * When the IFLA_IFNAME attribute is passed something like "<prefix>%d"
+	 * netlink will replace the format specifier with an appropriate index.
+	 */
 	if (!netdev->name)
 		netdev->name = netdev->type == LXC_NET_PHYS ?
 			netdev->link : "eth%d";
