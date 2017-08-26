@@ -3217,11 +3217,17 @@ static int unpriv_assign_nic(const char *lxcpath, char *lxcname,
 			exit(EXIT_FAILURE);
 		pidstr[LXC_NUMSTRLEN64 - 1] = '\0';
 
-		INFO("Execing lxc-user-nic %s %s %s veth %s %s", lxcpath,
-		     lxcname, pidstr, netdev_link, netdev->name);
-		execlp(LXC_USERNIC_PATH, LXC_USERNIC_PATH, lxcpath, lxcname,
-		       pidstr, "veth", netdev_link, netdev->name, NULL);
-
+		INFO("Execing lxc-user-nic create %s %s %s veth %s %s", lxcpath,
+		     lxcname, pidstr, netdev_link,
+		     netdev->name ? netdev->name : "(null)");
+		if (netdev->name)
+			execlp(LXC_USERNIC_PATH, LXC_USERNIC_PATH, "create",
+			       lxcpath, lxcname, pidstr, "veth", netdev_link,
+			       netdev->name, (char *)NULL);
+		else
+			execlp(LXC_USERNIC_PATH, LXC_USERNIC_PATH, "create",
+			       lxcpath, lxcname, pidstr, "veth", netdev_link,
+			       (char *)NULL);
 		SYSERROR("Failed to exec lxc-user-nic.");
 		exit(EXIT_FAILURE);
 	}
