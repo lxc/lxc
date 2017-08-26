@@ -914,31 +914,28 @@ static bool may_access_netns(int pid)
 
 int main(int argc, char *argv[])
 {
-	int n, fd;
+	int fd, n, pid, ret;
 	char *me;
-	char *nicname;
-	int pid;
-	char *cnic = NULL; /* Created nic name in container is returned here. */
-	char *vethname = NULL;
+	char nicname[100];
+	char *cnic = NULL, *vethname = NULL;
 	bool gotone = false;
 	struct alloted_s *alloted = NULL;
 
-	nicname = alloca(40);
-	if (!nicname) {
-		usernic_error("Failed allocate memory: %s\n", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
-
-	/* set a sane env, because we are setuid-root */
-	if (clearenv() < 0) {
+	/* Set a sane env, because we are setuid-root. */
+	ret = clearenv();
+	if (ret) {
 		usernic_error("%s", "Failed to clear environment\n");
 		exit(EXIT_FAILURE);
 	}
-	if (setenv("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", 1) < 0) {
+
+	ret = setenv("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", 1);
+	if (ret < 0) {
 		usernic_error("%s", "Failed to set PATH, exiting\n");
 		exit(EXIT_FAILURE);
 	}
-	if ((me = get_username()) == NULL) {
+
+	me = get_username();
+	if (!me) {
 		usernic_error("%s", "Failed to get username\n");
 		exit(EXIT_FAILURE);
 	}
@@ -952,9 +949,8 @@ int main(int argc, char *argv[])
 	lxcpath = argv[1];
 	lxcname = argv[2];
 
-	errno = 0;
-	pid = strtol(argv[3], NULL, 10);
-	if (errno) {
+	ret = lxc_safe_int(argv[3], &pid);
+	if (ret < 0) {
 		usernic_error("Could not read pid: %s\n", argv[1]);
 		exit(EXIT_FAILURE);
 	}
@@ -964,7 +960,8 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if ((fd = open_and_lock(LXC_USERNIC_DB)) < 0) {
+	fd = open_and_lock(LXC_USERNIC_DB);
+	if (fd < 0) {
 		usernic_error("Failed to lock %s\n", LXC_USERNIC_DB);
 		exit(EXIT_FAILURE);
 	}
@@ -976,7 +973,7 @@ int main(int argc, char *argv[])
 
 	n = get_alloted(me, argv[4], argv[5], &alloted);
 	if (n > 0)
-		gotone = get_nic_if_avail(fd, alloted, pid, argv[4], argv[5], n, &nicname, &cnic);
+		gotone = get_nic_if_avail(fd, alloted, pid, argv[4], argv[5], n, (char **)&nicname, &cnic);
 
 	close(fd);
 	free_alloted(&alloted);
@@ -986,16 +983,16 @@ int main(int argc, char *argv[])
 	}
 
 	/* Now rename the link. */
-	if (rename_in_ns(pid, cnic, &vethname) < 0) {
+	ret = rename_in_ns(pid, cnic, &vethname);
+	if (ret < 0) {
 		usernic_error("%s", "Failed to rename the link\n");
-		if (lxc_netdev_delete_by_name(cnic) < 0)
-			usernic_error("Failed to delete link \"%s\" the link. Manual cleanup needed\n", cnic);
+		ret = lxc_netdev_delete_by_name(cnic);
+		if (ret < 0)
+			usernic_error("Failed to delete \"%s\"\n", cnic);
 		exit(EXIT_FAILURE);
 	}
 
-	/* Write the name of the interface pair to the stdout - like
-	 * eth0:veth9MT2L4.
-	 */
+	/* Write the name of the interface pair to the stdout: eth0:veth9MT2L4 */
 	fprintf(stdout, "%s:%s\n", vethname, nicname);
 	exit(EXIT_SUCCESS);
 }
