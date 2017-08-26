@@ -767,18 +767,18 @@ again:
 	goto again;
 }
 
-#define VETH_DEF_NAME "eth%d"
-static int rename_in_ns(int pid, char *oldname, char **newnamep)
+static char *lxc_secure_rename_in_ns(int pid, char *oldname, char *newname)
 {
+	int ret;
 	uid_t ruid, suid, euid;
-	int fret = -1;
-	int fd = -1, ifindex = -1, ofd = -1, ret;
-	bool grab_newname = false;
+	char ifname[IFNAMSIZ];
+	char *string_ret = NULL, *name = NULL;
+	int fd = -1, ifindex = -1, ofd = -1;
 
 	ofd = lxc_preserve_ns(getpid(), "net");
 	if (ofd < 0) {
 		usernic_error("Failed opening network namespace path for %d", getpid());
-		return fret;
+		return NULL;
 	}
 
 	fd = lxc_preserve_ns(pid, "net");
@@ -818,63 +818,68 @@ static int rename_in_ns(int pid, char *oldname, char **newnamep)
 		goto do_full_cleanup;
 	}
 
-	if (!*newnamep) {
-		grab_newname = true;
-		*newnamep = VETH_DEF_NAME;
-
-		ifindex = if_nametoindex(oldname);
-		if (!ifindex) {
-			usernic_error("Failed to get netdev index: %s\n", strerror(errno));
-			goto do_full_cleanup;
-		}
-	}
-
-	ret = lxc_netdev_rename_by_name(oldname, *newnamep);
-	if (ret < 0) {
-		usernic_error("Error %d renaming netdev %s to %s in container\n", ret, oldname, *newnamep);
+	/* Check if old interface exists. */
+	ifindex = if_nametoindex(oldname);
+	if (!ifindex) {
+		usernic_error("Failed to get netdev index: %s\n", strerror(errno));
 		goto do_full_cleanup;
 	}
 
-	if (grab_newname) {
-		char ifname[IFNAMSIZ];
-		char *namep = ifname;
+	/* When the IFLA_IFNAME attribute is passed something like "<prefix>%d"
+	 * netlink will replace the format specifier with an appropriate index.
+	 * So we pass "eth%d".
+	 */
+	if (newname)
+		name = newname;
+	else
+		name = "eth%d";
 
-		if (!if_indextoname(ifindex, namep)) {
-			usernic_error("Failed to get new netdev name: %s\n", strerror(errno));
-			goto do_full_cleanup;
-		}
-
-		*newnamep = strdup(namep);
-		if (!*newnamep)
-			goto do_full_cleanup;
+	ret = lxc_netdev_rename_by_name(oldname, name);
+	if (ret < 0) {
+		usernic_error("Error %d renaming netdev %s to %s in container\n",
+			      ret, oldname, name);
+		goto do_full_cleanup;
 	}
 
-	fret = 0;
+	/* Retrieve new name for interface. */
+	if (!if_indextoname(ifindex, ifname)) {
+		usernic_error("Failed to get new netdev name: %s\n", strerror(errno));
+		goto do_full_cleanup;
+	}
+
+	/* Allocation failure for strdup() is checked below. */
+	name = strdup(ifname);
+	string_ret = name;
 
 do_full_cleanup:
 	ret = setresuid(ruid, euid, suid);
 	if (ret < 0) {
-		usernic_error("Failed to restore privilege by setting effective "
-			      "user id to %d, real user id to %d, and saved user "
-			      "ID to %d: %s\n",
-			      ruid, euid, suid, strerror(errno));
-		fret = -1;
+		usernic_error("Failed to restore privilege by setting "
+			      "effective user id to %d, real user id to %d, "
+			      "and saved user ID to %d: %s\n", ruid, euid, suid,
+			      strerror(errno));
+
+		string_ret = NULL;
 	}
 
 	ret = setns(ofd, CLONE_NEWNET);
 	if (ret < 0) {
 		usernic_error("Failed to setns() to original network namespace "
-			      "of PID %d: %s\n",
-			      ofd, strerror(errno));
-		fret = -1;
+			      "of PID %d: %s\n", ofd, strerror(errno));
+
+		string_ret = NULL;
 	}
 
 do_partial_cleanup:
 	if (fd >= 0)
 		close(fd);
+
+	if (!string_ret && name)
+		free(name);
+
 	close(ofd);
 
-	return fret;
+	return string_ret;
 }
 
 /* If the caller (real uid, not effective uid) may read the /proc/[pid]/ns/net,
@@ -939,7 +944,7 @@ struct user_nic_args {
 int main(int argc, char *argv[])
 {
 	int fd, n, pid, ret;
-	char *me;
+	char *me, *newname;
 	char *cnic = NULL, *nicname = NULL;
 	struct alloted_s *alloted = NULL;
 	struct user_nic_args args;
@@ -1013,8 +1018,8 @@ int main(int argc, char *argv[])
 	}
 
 	/* Now rename the link. */
-	ret = rename_in_ns(pid, cnic, &args.veth_name);
-	if (ret < 0) {
+	newname = lxc_secure_rename_in_ns(pid, cnic, args.veth_name);
+	if (!newname) {
 		usernic_error("%s", "Failed to rename the link\n");
 		ret = lxc_netdev_delete_by_name(cnic);
 		if (ret < 0)
@@ -1024,7 +1029,8 @@ int main(int argc, char *argv[])
 	}
 
 	/* Write the name of the interface pair to the stdout: eth0:veth9MT2L4 */
-	fprintf(stdout, "%s:%s\n", args.veth_name, nicname);
+	fprintf(stdout, "%s:%s\n", newname, nicname);
+	free(newname);
 	free(nicname);
 	exit(EXIT_SUCCESS);
 }
