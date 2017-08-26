@@ -510,25 +510,29 @@ out_del:
 	return false;
 }
 
-/*
- * Get a new nic.
- * *dest will contain the name (vethXXXXXX) which is attached
- * on the host to the lxc bridge
+/* get_new_nicname() will return the name (vethXXXXXX) which is attached on the
+ * host to the lxc bridge. The returned string must be freed by caller.
  */
-static bool get_new_nicname(char **dest, char *br, int pid, char **cnic)
+static char *get_new_nicname(char *br, int pid, char **cnic)
 {
 	int ret;
+	char *nicname;
 	char template[IFNAMSIZ];
 
 	ret = snprintf(template, sizeof(template), "vethXXXXXX");
 	if (ret < 0 || (size_t)ret >= sizeof(template))
-		return false;
+		return NULL;
 
-	*dest = lxc_mkifname(template);
-	if (!create_nic(*dest, br, pid, cnic))
-		return false;
+	nicname = lxc_mkifname(template);
+	if (!nicname)
+		return NULL;
 
-	return true;
+	if (!create_nic(nicname, br, pid, cnic)) {
+		free(nicname);
+		return NULL;
+	}
+
+	return nicname;
 }
 
 static bool get_nic_from_line(char *p, char **nic)
@@ -642,13 +646,12 @@ static int count_entries(char *buf, off_t len, char *me, char *t, char *br)
  * The dbfile has lines of the format:
  * user type bridge nicname
  */
-static bool get_nic_if_avail(int fd, struct alloted_s *names, int pid,
-			     char *intype, char *br, int allowed,
-			     char **nicname, char **cnic)
+static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
+			      char *intype, char *br, int allowed, char **cnic)
 {
 	int ret;
 	off_t len, slen;
-	char *newline, *owner;
+	char *newline, *nicname, *owner;
 	struct stat sb;
 	struct alloted_s *n;
 	int count = 0;
@@ -658,21 +661,21 @@ static bool get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 		cull_entries(fd, n->name, intype, br);
 
 	if (allowed == 0)
-		return false;
+		return NULL;
 
 	owner = names->name;
 
 	if (fstat(fd, &sb) < 0) {
-		usernic_error("Failed to fstat: %s.\n", strerror(errno));
-		return false;
+		usernic_error("Failed to fstat: %s\n", strerror(errno));
+		return NULL;
 	}
 
 	len = sb.st_size;
 	if (len > 0) {
 		buf = mmap(NULL, len, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 		if (buf == MAP_FAILED) {
-			usernic_error("Failed to establish shared memory mapping: %s.\n", strerror(errno));
-			return false;
+			usernic_error("Failed to establish shared memory mapping: %s\n", strerror(errno));
+			return NULL;
 		}
 
 		owner = NULL;
@@ -688,24 +691,29 @@ static bool get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 	}
 
 	if (owner == NULL)
-		return false;
+		return NULL;
 
-	if (!get_new_nicname(nicname, br, pid, cnic))
-		return false;
-
-	/* owner  ' ' intype ' ' br ' ' *nicname + '\n' + '\0' */
-	slen = strlen(owner) + strlen(intype) + strlen(br) + strlen(*nicname) + 5;
-	newline = alloca(slen);
-	if (!newline) {
-		usernic_error("Failed allocate memory: %s.\n", strerror(errno));
-		return false;
+	nicname = get_new_nicname(br, pid, cnic);
+	if (!nicname) {
+		usernic_error("%s", "Failed to get new nic name\n");
+		return NULL;
 	}
 
-	ret = snprintf(newline, slen, "%s %s %s %s\n", owner, intype, br, *nicname);
+	/* owner  ' ' intype ' ' br ' ' *nicname + '\n' + '\0' */
+	slen = strlen(owner) + strlen(intype) + strlen(br) + strlen(nicname) + 5;
+	newline = alloca(slen);
+	if (!newline) {
+		free(nicname);
+		usernic_error("Failed allocate memory: %s\n", strerror(errno));
+		return NULL;
+	}
+
+	ret = snprintf(newline, slen, "%s %s %s %s\n", owner, intype, br, nicname);
 	if (ret < 0 || ret >= slen) {
-		if (lxc_netdev_delete_by_name(*nicname) != 0)
-			usernic_error("Error unlinking %s.\n", *nicname);
-		return false;
+		if (lxc_netdev_delete_by_name(nicname) != 0)
+			usernic_error("Error unlinking %s\n", nicname);
+		free(nicname);
+		return NULL;
 	}
 	if (len)
 		munmap(buf, len);
@@ -715,16 +723,17 @@ static bool get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 
 	buf = mmap(NULL, len + slen, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 	if (buf == MAP_FAILED) {
-		usernic_error("Failed to establish shared memory mapping: %s.\n", strerror(errno));
-		if (lxc_netdev_delete_by_name(*nicname) != 0)
-			usernic_error("Error unlinking %s.\n", *nicname);
-		return false;
+		usernic_error("Failed to establish shared memory mapping: %s\n", strerror(errno));
+		if (lxc_netdev_delete_by_name(nicname) != 0)
+			usernic_error("Error unlinking %s\n", nicname);
+		free(nicname);
+		return NULL;
 	}
 
 	strcpy(buf + len, newline);
 	munmap(buf, len + slen);
 
-	return true;
+	return nicname;
 }
 
 static bool create_db_dir(char *fnam)
@@ -920,9 +929,7 @@ int main(int argc, char *argv[])
 {
 	int fd, n, pid, ret;
 	char *me;
-	char nicname[100];
-	char *cnic = NULL, *vethname = NULL;
-	bool gotone = false;
+	char *cnic = NULL, *nicname = NULL, *vethname = NULL;
 	struct alloted_s *alloted = NULL;
 
 	/* Set a sane env, because we are setuid-root. */
@@ -977,12 +984,13 @@ int main(int argc, char *argv[])
 
 	n = get_alloted(me, argv[4], argv[5], &alloted);
 	if (n > 0)
-		gotone = get_nic_if_avail(fd, alloted, pid, argv[4], argv[5], n, (char **)&nicname, &cnic);
+		nicname = get_nic_if_avail(fd, alloted, pid, argv[4],
+					   argv[5], n, &cnic);
 
 	close(fd);
 	free_alloted(&alloted);
-	if (!gotone) {
-		usernic_error("%s", "Quota reached.\n");
+	if (!nicname) {
+		usernic_error("%s", "Quota reached\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -993,10 +1001,12 @@ int main(int argc, char *argv[])
 		ret = lxc_netdev_delete_by_name(cnic);
 		if (ret < 0)
 			usernic_error("Failed to delete \"%s\"\n", cnic);
+		free(nicname);
 		exit(EXIT_FAILURE);
 	}
 
 	/* Write the name of the interface pair to the stdout: eth0:veth9MT2L4 */
 	fprintf(stdout, "%s:%s\n", vethname, nicname);
+	free(nicname);
 	exit(EXIT_SUCCESS);
 }
