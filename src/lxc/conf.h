@@ -449,9 +449,11 @@ extern int parse_mntopts(const char *mntopts, unsigned long *mntflags,
 extern void tmp_proc_unmount(struct lxc_conf *lxc_conf);
 void remount_all_slave(void);
 extern void suggest_default_idmap(void);
-FILE *make_anonymous_mount_file(struct lxc_list *mount);
-struct lxc_list *sort_cgroup_settings(struct lxc_list* cgroup_settings);
-unsigned long add_required_remount_flags(const char *s, const char *d,
-		unsigned long flags);
+extern FILE *make_anonymous_mount_file(struct lxc_list *mount);
+extern struct lxc_list *sort_cgroup_settings(struct lxc_list *cgroup_settings);
+extern unsigned long add_required_remount_flags(const char *s, const char *d,
+						unsigned long flags);
+extern int lxc_unpriv_delete_nic(const char *lxcpath, char *lxcname, char *type,
+				 struct lxc_netdev *netdev, pid_t pid);
 
-#endif
+#endif /* __LXC_CONF_H */
