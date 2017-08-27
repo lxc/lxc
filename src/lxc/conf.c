@@ -3127,7 +3127,7 @@ bool lxc_delete_network(struct lxc_handler *handler)
 		if (am_unpriv()) {
 			if (is_ovs_bridge(netdev->link)) {
 				ret = lxc_unpriv_delete_nic(handler->lxcpath,
-							    handler->name, "ovs",
+							    handler->name,
 							    netdev, getpid());
 				if (ret < 0)
 					WARN("Failed to remove port \"%s\" "
@@ -5117,12 +5117,11 @@ struct lxc_list *sort_cgroup_settings(struct lxc_list* cgroup_settings)
 	return result;
 }
 
-int lxc_unpriv_delete_nic(const char *lxcpath, char *lxcname, char *type,
+int lxc_unpriv_delete_nic(const char *lxcpath, char *lxcname,
 			  struct lxc_netdev *netdev, pid_t pid)
 {
 	pid_t child;
 	int bytes, pipefd[2];
-	char netdev_link[IFNAMSIZ + 1];
 	char buffer[MAX_BUFFER_SIZE] = {0};
 
 	if (netdev->type != LXC_NET_VETH) {
@@ -5161,20 +5160,19 @@ int lxc_unpriv_delete_nic(const char *lxcpath, char *lxcname, char *type,
 			exit(EXIT_FAILURE);
 		}
 
-		if (netdev->link)
-			strncpy(netdev_link, netdev->link, IFNAMSIZ);
-		else
-			strncpy(netdev_link, "none", IFNAMSIZ);
+		if (!netdev->link)
+			SYSERROR("Network link for network device \"%s\" is "
+				 "missing", netdev->priv.veth_attr.pair);
 
 		ret = snprintf(pidstr, LXC_NUMSTRLEN64, "%d", pid);
 		if (ret < 0 || ret >= LXC_NUMSTRLEN64)
 			exit(EXIT_FAILURE);
 		pidstr[LXC_NUMSTRLEN64 - 1] = '\0';
 
-		INFO("Execing lxc-user-nic delete %s %s %s ovs %s %s", lxcpath,
-		     lxcname, pidstr, netdev_link, netdev->priv.veth_attr.pair);
+		INFO("Execing lxc-user-nic delete %s %s %s veth %s %s", lxcpath,
+		     lxcname, pidstr, netdev->link, netdev->priv.veth_attr.pair);
 		execlp(LXC_USERNIC_PATH, LXC_USERNIC_PATH, "delete", lxcpath,
-		       lxcname, pidstr, "ovs", netdev_link,
+		       lxcname, pidstr, "veth", netdev->link,
 		       netdev->priv.veth_attr.pair, (char *)NULL);
 		SYSERROR("Failed to exec lxc-user-nic.");
 		exit(EXIT_FAILURE);
