@@ -3286,9 +3286,6 @@ bool lxc_delete_network(struct lxc_handler *handler)
 }
 
 #define LXC_USERNIC_PATH LIBEXECDIR "/lxc/lxc-user-nic"
-
-/* lxc-user-nic returns "interface_name:interface_name\n" */
-#define MAX_BUFFER_SIZE IFNAMSIZ * 2 + 2
 static int unpriv_assign_nic(const char *lxcpath, char *lxcname,
 			     struct lxc_netdev *netdev, pid_t pid)
 {
@@ -3297,7 +3294,7 @@ static int unpriv_assign_nic(const char *lxcpath, char *lxcname,
 	int bytes, pipefd[2];
 	char *token, *saveptr = NULL;
 	char netdev_link[IFNAMSIZ + 1];
-	char buffer[MAX_BUFFER_SIZE] = {0};
+	char buffer[MAXPATHLEN] = {0};
 
 	if (netdev->type != LXC_NET_VETH) {
 		ERROR("nic type %d not support for unprivileged use",
@@ -3363,7 +3360,7 @@ static int unpriv_assign_nic(const char *lxcpath, char *lxcname,
 	/* close the write-end of the pipe */
 	close(pipefd[1]);
 
-	bytes = read(pipefd[0], &buffer, MAX_BUFFER_SIZE);
+	bytes = read(pipefd[0], &buffer, MAXPATHLEN);
 	if (bytes < 0) {
 		SYSERROR("Failed to read from pipe file descriptor.");
 		close(pipefd[0]);
@@ -5148,7 +5145,7 @@ int lxc_unpriv_delete_nic(const char *lxcpath, char *lxcname,
 {
 	pid_t child;
 	int bytes, pipefd[2];
-	char buffer[MAX_BUFFER_SIZE] = {0};
+	char buffer[MAXPATHLEN] = {0};
 
 	if (netdev->type != LXC_NET_VETH) {
 		ERROR("nic type %d not support for unprivileged use",
@@ -5207,7 +5204,7 @@ int lxc_unpriv_delete_nic(const char *lxcpath, char *lxcname,
 	/* close the write-end of the pipe */
 	close(pipefd[1]);
 
-	bytes = read(pipefd[0], &buffer, MAX_BUFFER_SIZE);
+	bytes = read(pipefd[0], &buffer, MAXPATHLEN);
 	if (bytes < 0) {
 		SYSERROR("Failed to read from pipe file descriptor.");
 		close(pipefd[0]);
