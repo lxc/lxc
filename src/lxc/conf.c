@@ -3167,6 +3167,7 @@ bool lxc_delete_network(struct lxc_handler *handler)
 static int unpriv_assign_nic(const char *lxcpath, char *lxcname,
 			     struct lxc_netdev *netdev, pid_t pid)
 {
+	int ret;
 	pid_t child;
 	int bytes, pipefd[2];
 	char *token, *saveptr = NULL;
@@ -3277,6 +3278,17 @@ static int unpriv_assign_nic(const char *lxcpath, char *lxcname,
 	netdev->priv.veth_attr.pair = strdup(token);
 	if (!netdev->priv.veth_attr.pair) {
 		ERROR("Failed to allocate memory.");
+		return -1;
+	}
+
+	/* fill netdev->veth_attr.pair field */
+	token = strtok_r(NULL, ":", &saveptr);
+	if (!token)
+		return -1;
+
+	ret = lxc_safe_int(token, &netdev->ifindex);
+	if (ret < 0) {
+		ERROR("Failed to parse ifindex for network device \"%s\"", netdev->name);
 		return -1;
 	}
 
