@@ -3207,26 +3207,44 @@ bool lxc_delete_network(struct lxc_handler *handler)
 		 * namespace is destroyed but in case we did not move the
 		 * interface to the network namespace, we have to destroy it.
 		 */
-		ret = lxc_netdev_delete_by_index(netdev->ifindex);
-		if (-ret == ENODEV) {
-			INFO("Interface \"%s\" with index %d already deleted "
-			     "or existing in different network namespace",
-			     netdev->name ? netdev->name : "(null)", netdev->ifindex);
-		} else if (ret < 0) {
-			deleted_all = false;
-			WARN("Failed to remove interface \"%s\" with index %d: "
-			     "%s", netdev->name ? netdev->name : "(null)",
-			     netdev->ifindex, strerror(-ret));
-			continue;
+		if (!am_unpriv()) {
+			ret = lxc_netdev_delete_by_index(netdev->ifindex);
+			if (-ret == ENODEV) {
+				INFO("Interface \"%s\" with index %d already "
+				     "deleted or existing in different network "
+				     "namespace",
+				     netdev->name ? netdev->name : "(null)",
+				     netdev->ifindex);
+			} else if (ret < 0) {
+				deleted_all = false;
+				WARN("Failed to remove interface \"%s\" with "
+				     "index %d: %s",
+				     netdev->name ? netdev->name : "(null)",
+				     netdev->ifindex, strerror(-ret));
+				continue;
+			}
+			INFO("Removed interface \"%s\" with index %d",
+			     netdev->name ? netdev->name : "(null)",
+			     netdev->ifindex);
 		}
-		INFO("Removed interface \"%s\" with index %d",
-		     netdev->name ? netdev->name : "(null)", netdev->ifindex);
 
 		if (netdev->type != LXC_NET_VETH)
 			continue;
 
-		if (am_unpriv())
+		if (am_unpriv()) {
+			if (is_ovs_bridge(netdev->link)) {
+				ret = lxc_unpriv_delete_nic(handler->lxcpath,
+							    handler->name, "ovs",
+							    netdev, getpid());
+				if (ret < 0)
+					WARN("Failed to remove port \"%s\" "
+					     "from openvswitch bridge \"%s\"",
+					     netdev->priv.veth_attr.pair,
+					     netdev->link);
+			}
+
 			continue;
+		}
 
 		/* Explicitly delete host veth device to prevent lingering
 		 * devices. We had issues in LXD around this.
@@ -5123,4 +5141,92 @@ struct lxc_list *sort_cgroup_settings(struct lxc_list* cgroup_settings)
 	}
 
 	return result;
+}
+
+int lxc_unpriv_delete_nic(const char *lxcpath, char *lxcname, char *type,
+			  struct lxc_netdev *netdev, pid_t pid)
+{
+	pid_t child;
+	int bytes, pipefd[2];
+	char netdev_link[IFNAMSIZ + 1];
+	char buffer[MAX_BUFFER_SIZE] = {0};
+
+	if (netdev->type != LXC_NET_VETH) {
+		ERROR("nic type %d not support for unprivileged use",
+		      netdev->type);
+		return -1;
+	}
+
+	if (pipe(pipefd) < 0) {
+		SYSERROR("pipe failed");
+		return -1;
+	}
+
+	child = fork();
+	if (child < 0) {
+		SYSERROR("fork");
+		close(pipefd[0]);
+		close(pipefd[1]);
+		return -1;
+	}
+
+	if (child == 0) { /* child */
+		/* Call lxc-user-nic pid type bridge. */
+		int ret;
+		char pidstr[LXC_NUMSTRLEN64];
+
+		close(pipefd[0]); /* Close the read-end of the pipe. */
+
+		/* Redirect stdout to write-end of the pipe. */
+		ret = dup2(pipefd[1], STDOUT_FILENO);
+		if (ret >= 0)
+			ret = dup2(pipefd[1], STDERR_FILENO);
+		close(pipefd[1]); /* Close the write-end of the pipe. */
+		if (ret < 0) {
+			SYSERROR("Failed to dup2() to redirect stdout to pipe file descriptor.");
+			exit(EXIT_FAILURE);
+		}
+
+		if (netdev->link)
+			strncpy(netdev_link, netdev->link, IFNAMSIZ);
+		else
+			strncpy(netdev_link, "none", IFNAMSIZ);
+
+		ret = snprintf(pidstr, LXC_NUMSTRLEN64, "%d", pid);
+		if (ret < 0 || ret >= LXC_NUMSTRLEN64)
+			exit(EXIT_FAILURE);
+		pidstr[LXC_NUMSTRLEN64 - 1] = '\0';
+
+		INFO("Execing lxc-user-nic delete %s %s %s ovs %s %s", lxcpath,
+		     lxcname, pidstr, netdev_link, netdev->priv.veth_attr.pair);
+		execlp(LXC_USERNIC_PATH, LXC_USERNIC_PATH, "delete", lxcpath,
+		       lxcname, pidstr, "ovs", netdev_link,
+		       netdev->priv.veth_attr.pair, (char *)NULL);
+		SYSERROR("Failed to exec lxc-user-nic.");
+		exit(EXIT_FAILURE);
+	}
+
+	/* close the write-end of the pipe */
+	close(pipefd[1]);
+
+	bytes = read(pipefd[0], &buffer, MAX_BUFFER_SIZE);
+	if (bytes < 0) {
+		SYSERROR("Failed to read from pipe file descriptor.");
+		close(pipefd[0]);
+		return -1;
+	}
+	buffer[bytes - 1] = '\0';
+
+	if (wait_for_pid(child) != 0) {
+		ERROR("lxc-user-nic failed to delete requested network: %s",
+		      buffer[0] != '\0' ? buffer : "(null)");
+		close(pipefd[0]);
+		return -1;
+	}
+	TRACE("Received output \"%s\" from lxc-user-nic", buffer);
+
+	/* close the read-end of the pipe */
+	close(pipefd[0]);
+
+	return 0;
 }

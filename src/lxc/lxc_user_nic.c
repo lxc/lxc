@@ -836,9 +836,10 @@ static char *lxc_secure_rename_in_ns(int pid, char *oldname, char *newname,
 		name = "eth%d";
 
 	ret = lxc_netdev_rename_by_name(oldname, name);
+	name = NULL;
 	if (ret < 0) {
 		usernic_error("Error %d renaming netdev %s to %s in container\n",
-			      ret, oldname, name);
+			      ret, oldname, newname ? newname : "eth%d");
 		goto do_full_cleanup;
 	}
 
@@ -1005,6 +1006,25 @@ int main(int argc, char *argv[])
 	if (!may_access_netns(pid)) {
 		usernic_error("User %s may not modify netns for pid %d\n", me, pid);
 		exit(EXIT_FAILURE);
+	}
+
+	if (!strcmp(args.cmd, "delete")) {
+		close(fd);
+
+		if (strcmp(args.type, "ovs")) {
+			usernic_error("%s", "Deletion of non ovs type network "
+					    "devics not implemented\n");
+			exit(EXIT_FAILURE);
+		}
+
+		ret = lxc_ovs_delete_port(args.link, args.veth_name);
+		if (ret < 0) {
+			usernic_error("Failed to remove port \"%s\" from "
+				      "openvswitch bridge \"%s\"",
+				      args.veth_name, args.link);
+			exit(EXIT_FAILURE);
+		}
+		exit(EXIT_SUCCESS);
 	}
 
 	n = get_alloted(me, args.type, args.link, &alloted);
