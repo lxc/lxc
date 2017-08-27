@@ -572,19 +572,22 @@ struct entry_line {
 	bool keep;
 };
 
-static bool cull_entries(int fd, char *me, char *t, char *br)
+static bool cull_entries(int fd, char *me, char *t, char *br, char *nicname,
+			 bool *found_nicname)
 {
-	int i, n = 0;
+	int i, ret;
 	off_t len;
-	char *buf, *p, *e, *nic;
+	char *buf, *e, *nic, *p;
 	struct stat sb;
+	int n = 0;
 	struct entry_line *entry_lines = NULL;
 
 	nic = alloca(100);
 	if (!nic)
 		return false;
 
-	if (fstat(fd, &sb) < 0) {
+	ret = fstat(fd, &sb);
+	if (ret < 0) {
 		usernic_error("Failed to fstat: %s\n", strerror(errno));
 		return false;
 	}
@@ -593,7 +596,7 @@ static bool cull_entries(int fd, char *me, char *t, char *br)
 	if (len == 0)
 		return true;
 
-	buf = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	buf = lxc_strmmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if (buf == MAP_FAILED) {
 		usernic_error("Failed to establish shared memory mapping: %s\n",
 			      strerror(errno));
@@ -622,6 +625,10 @@ static bool cull_entries(int fd, char *me, char *t, char *br)
 		if (nic && !nic_exists(nic))
 			entry_lines[n - 1].keep = false;
 
+		if (nicname)
+			if (!strcmp(nic, nicname))
+				*found_nicname = true;
+
 		p += entry_lines[n - 1].len + 1;
 		if (p >= e)
 			break;
@@ -639,8 +646,9 @@ static bool cull_entries(int fd, char *me, char *t, char *br)
 	}
 	free(entry_lines);
 
-	munmap(buf, sb.st_size);
-	if (ftruncate(fd, p - buf))
+	lxc_strmunmap(buf, sb.st_size);
+	ret = ftruncate(fd, p - buf);
+	if (ret < 0)
 		usernic_error("Failed to set new file size: %s\n",
 			      strerror(errno));
 
@@ -676,7 +684,7 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 	char *buf = NULL;
 
 	for (n = names; n != NULL; n = n->next)
-		cull_entries(fd, n->name, intype, br);
+		cull_entries(fd, n->name, intype, br, NULL, NULL);
 
 	if (allowed == 0)
 		return NULL;
@@ -965,9 +973,12 @@ struct user_nic_args {
 	char *veth_name;
 };
 
+#define LXC_USERNIC_CREATE 0
+#define LXC_USERNIC_DELETE 1
+
 int main(int argc, char *argv[])
 {
-	int fd, ifindex, n, pid, ret;
+	int fd, ifindex, n, pid, request, ret;
 	char *me, *newname;
 	char *cnic = NULL, *nicname = NULL;
 	struct alloted_s *alloted = NULL;
@@ -987,6 +998,15 @@ int main(int argc, char *argv[])
 	args.link = argv[6];
 	if (argc >= 8)
 		args.veth_name = argv[7];
+
+	if (!strcmp(args.cmd, "create")) {
+		request = LXC_USERNIC_CREATE;
+	} else if (!strcmp(args.cmd, "delete")) {
+		request = LXC_USERNIC_DELETE;
+	} else {
+		usage(argv[0], true);
+		exit(EXIT_FAILURE);
+	}
 
 	/* Set a sane env, because we are setuid-root. */
 	ret = clearenv();
@@ -1029,12 +1049,36 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (!strcmp(args.cmd, "delete")) {
-		close(fd);
+	n = get_alloted(me, args.type, args.link, &alloted);
 
-		if (strcmp(args.type, "ovs")) {
+	if (request == LXC_USERNIC_DELETE) {
+		int ret;
+		struct alloted_s *it;
+		bool found_nicname = false;
+
+		if (!is_ovs_bridge(args.link)) {
 			usernic_error("%s", "Deletion of non ovs type network "
-					    "devics not implemented\n");
+					    "devices not implemented\n");
+			close(fd);
+			free_alloted(&alloted);
+			exit(EXIT_FAILURE);
+		}
+
+		/* Check whether the network device we are supposed to delete
+		 * exists in the db. If it doesn't we will not delete it as we
+		 * need to assume the network device is not under our control.
+		 * As a side effect we also clear any invalid entries from the
+		 * database.
+		 */
+		for (it = alloted; it; it = it->next)
+			cull_entries(fd, it->name, args.type, args.link,
+				     args.veth_name, &found_nicname);
+		close(fd);
+		free_alloted(&alloted);
+
+		if (!found_nicname) {
+			usernic_error("%s", "Caller is not allowed to delete "
+				      "network device\n");
 			exit(EXIT_FAILURE);
 		}
 
@@ -1045,10 +1089,9 @@ int main(int argc, char *argv[])
 				      args.veth_name, args.link);
 			exit(EXIT_FAILURE);
 		}
+
 		exit(EXIT_SUCCESS);
 	}
-
-	n = get_alloted(me, args.type, args.link, &alloted);
 	if (n > 0)
 		nicname = get_nic_if_avail(fd, alloted, pid, args.type,
 					   args.link, n, &cnic);
