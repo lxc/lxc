@@ -121,7 +121,7 @@ union netdev_p {
  * @idx        : network counter
  */
 struct lxc_netdev {
-	unsigned int idx;
+	ssize_t idx;
 	int type;
 	int flags;
 	int ifindex;
