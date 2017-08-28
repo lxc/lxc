@@ -29,6 +29,8 @@
 #include "error.h"
 #include "log.h"
 #include "list.h"
+#include "network.h"
+#include "parse.h"
 #include "utils.h"
 
 lxc_log_define(lxc_confile_utils, lxc);
