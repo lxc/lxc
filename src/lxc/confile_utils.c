@@ -31,6 +31,7 @@
 #include "error.h"
 #include "log.h"
 #include "list.h"
+#include "network.h"
 #include "parse.h"
 #include "utils.h"
 

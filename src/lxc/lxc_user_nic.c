@@ -17,7 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE             /* See feature_test_macros(7) */
+#define _GNU_SOURCE
 #include <alloca.h>
 #include <ctype.h>
 #include <errno.h>
