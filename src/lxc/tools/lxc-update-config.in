@@ -14,7 +14,7 @@ EOF
     return 0
 }
 
-OPTIONS=`getopt -o c:h --long config:,help -- "${@}"`
+OPTIONS=$(getopt -o c:h --long config:,help -- "${@}")
 eval set -- "${OPTIONS}"
 
 while true; do
@@ -37,8 +37,9 @@ while true; do
 	esac
 done
 
-echo "${CONFIGPATH}"
-sed -i".backup" \
+cp "${CONFIGPATH}" "${CONFIGPATH}.backup"
+
+sed -i \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.rootfs\)\([[:blank:]*]\|=\)/\1lxc\.rootfs\.path\3/g' \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.id_map\)\([[:blank:]*]\|=\)/\1lxc\.idmap\3/g' \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.pts\)\([[:blank:]*]\|=\)/\1lxc\.pty\.max\3/g' \
@@ -62,7 +63,36 @@ sed -i".backup" \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.init_uid\)\([[:blank:]*]\|=\)/\1lxc\.init\.uid\3/g' \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.init_gid\)\([[:blank:]*]\|=\)/\1lxc\.init\.gid\3/g' \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.limit\)\([[:blank:]*]\|=\)/\1lxc\.prlimit\3/g' \
--e 's/\([[:blank:]*]\|#*\)\(lxc\.network\)\.\([^[:digit:]*]\)/\1lxc\.net\.0\.\3/g' \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.network\)\(\.[[:digit:]*]\)/\1lxc\.net\3/g' \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.network\)\([[:blank:]*]\|=\)/\1lxc\.net\3/g' \
 	"${CONFIGPATH}"
+
+# Finally, deal with network definitions of the following form:
+#
+# lxc.network.type = veth
+# lxc.network.flags = up
+# lxc.network.link = lxdbr0
+# lxc.network.name= eth0
+#
+# lxc.network.type = veth
+# lxc.network.flags = up
+# lxc.network.link = lxdbr0
+# lxc.network.name = eth1
+
+set +e
+
+TMPFILE=$(mktemp -p "${PWD}" XXXXXXXXXX)
+cp "${CONFIGPATH}" "${TMPFILE}"
+
+LINE_NUM=0
+IDX=-1
+while read -r LINE; do
+	LINE_NUM=$((LINE_NUM+1))
+	# A "lxc.network.type" key defines a new network. So everytime we see
+	# one we bump IDX and replace any "lxc.network.<subkey>" keys we
+	# encounter with "lxc.network.<IDX>.<subkey>".
+	echo "${LINE}" | grep -q "lxc.network.type" && IDX=$((IDX+1))
+	sed -i -e "${LINE_NUM} s/\([[:blank:]*]\|#*\)\(lxc\.network\)\.\([^[:digit:]*]\)/\1lxc\.net\.${IDX}\.\3/g" "${CONFIGPATH}"
+done < "${TMPFILE}"
+
+rm "${TMPFILE}"
