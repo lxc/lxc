@@ -152,12 +152,19 @@ exit 101
 EOF
         chmod +x $rootfs/usr/sbin/policy-rc.d
 
+        if [ -f "$rootfs/etc/init/ssh.conf" ]; then
+            mv "$rootfs/etc/init/ssh.conf" "$rootfs/etc/init/ssh.conf.disabled"
+        fi
+
         rm -f $rootfs/etc/ssh/ssh_host_*key*
-        mv $rootfs/etc/init/ssh.conf $rootfs/etc/init/ssh.conf.disabled
+
         DPKG_MAINTSCRIPT_PACKAGE=openssh DPKG_MAINTSCRIPT_NAME=postinst chroot $rootfs /var/lib/dpkg/info/openssh-server.postinst configure
-        mv $rootfs/etc/init/ssh.conf.disabled $rootfs/etc/init/ssh.conf
 
         sed -i "s/root@$(hostname)/root@$hostname/g" $rootfs/etc/ssh/ssh_host_*.pub
+
+        if [ -f "$rootfs/etc/init/ssh.conf.disabled" ]; then
+            mv "$rootfs/etc/init/ssh.conf.disabled" "$rootfs/etc/init/ssh.conf"
+        fi
 
         rm -f $rootfs/usr/sbin/policy-rc.d
     fi
