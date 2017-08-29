@@ -70,6 +70,7 @@
 #include "mainloop.h"
 #include "monitor.h"
 #include "namespace.h"
+#include "network.h"
 #include "start.h"
 #include "storage.h"
 #include "storage_utils.h"
@@ -1311,7 +1312,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 			/* That should be done before the clone because we will
 			 * fill the netdev index and use them in the child.
 			 */
-			if (lxc_create_network(handler)) {
+			if (lxc_create_network_priv(handler)) {
 				ERROR("Failed to create the network.");
 				lxc_sync_fini(handler);
 				return -1;
@@ -1429,7 +1430,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 	/* Create the network configuration. */
 	if (handler->clone_flags & CLONE_NEWNET) {
-		if (lxc_assign_network(handler->lxcpath, handler->name,
+		if (lxc_create_network(handler->lxcpath, handler->name,
 				       &handler->conf->network, handler->pid)) {
 			ERROR("Failed to create the configured network.");
 			goto out_delete_net;

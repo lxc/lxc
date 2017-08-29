@@ -24,8 +24,8 @@
 #ifndef __LXC_ATTACH_H
 #define __LXC_ATTACH_H
 
-#include <sys/types.h>
 #include <lxc/attach_options.h>
+#include <sys/types.h>
 
 struct lxc_conf;
 
@@ -36,6 +36,8 @@ struct lxc_proc_context_info {
 	unsigned long long capability_mask;
 };
 
-extern int lxc_attach(const char* name, const char* lxcpath, lxc_attach_exec_t exec_function, void* exec_payload, lxc_attach_options_t* options, pid_t* attached_process);
+extern int lxc_attach(const char *name, const char *lxcpath,
+		      lxc_attach_exec_t exec_function, void *exec_payload,
+		      lxc_attach_options_t *options, pid_t *attached_process);
 
-#endif
+#endif /* __LXC_ATTACH_H */
