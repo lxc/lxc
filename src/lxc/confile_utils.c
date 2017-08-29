@@ -31,6 +31,7 @@
 #include "error.h"
 #include "log.h"
 #include "list.h"
+#include "network.h"
 #include "parse.h"
 #include "utils.h"
 
@@ -253,6 +254,7 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 		netdev = it->elem;
 
 		TRACE("index: %zd", netdev->idx);
+		TRACE("ifindex: %d", netdev->ifindex);
 		switch (netdev->type) {
 		case LXC_NET_VETH:
 			TRACE("type: veth");

@@ -1199,6 +1199,7 @@ out_free:
 
 static int cgroup_rmdir(char *dirname)
 {
+	int ret;
 	struct dirent *direntp;
 	DIR *dir;
 	int r = 0;
@@ -1208,8 +1209,8 @@ static int cgroup_rmdir(char *dirname)
 		return -1;
 
 	while ((direntp = readdir(dir))) {
-		struct stat mystat;
 		char *pathname;
+		struct stat mystat;
 
 		if (!direntp)
 			break;
@@ -1220,32 +1221,40 @@ static int cgroup_rmdir(char *dirname)
 
 		pathname = must_make_path(dirname, direntp->d_name, NULL);
 
-		if (lstat(pathname, &mystat)) {
+		ret = lstat(pathname, &mystat);
+		if (ret < 0) {
 			if (!r)
-				WARN("failed to stat %s", pathname);
+				WARN("Failed to stat %s", pathname);
 			r = -1;
 			goto next;
 		}
 
 		if (!S_ISDIR(mystat.st_mode))
 			goto next;
-		if (cgroup_rmdir(pathname) < 0)
+
+		ret = cgroup_rmdir(pathname);
+		if (ret < 0)
 			r = -1;
 next:
 		free(pathname);
 	}
 
-	if (rmdir(dirname) < 0) {
+	ret = rmdir(dirname);
+	if (ret < 0) {
 		if (!r)
-			WARN("failed to delete %s: %s", dirname, strerror(errno));
+			WARN("Failed to delete \"%s\": %s", dirname,
+			     strerror(errno));
 		r = -1;
 	}
 
-	if (closedir(dir) < 0) {
+	ret = closedir(dir);
+	if (ret < 0) {
 		if (!r)
-			WARN("failed to delete %s: %s", dirname, strerror(errno));
+			WARN("Failed to delete \"%s\": %s", dirname,
+			     strerror(errno));
 		r = -1;
 	}
+
 	return r;
 }
 
@@ -1263,35 +1272,91 @@ static int rmdir_wrapper(void *data)
 	return cgroup_rmdir(path);
 }
 
-void recursive_destroy(char *path, struct lxc_conf *conf)
+int recursive_destroy(char *path, struct lxc_conf *conf)
 {
 	int r;
+
 	if (conf && !lxc_list_empty(&conf->id_map))
 		r = userns_exec_1(conf, rmdir_wrapper, path, "rmdir_wrapper");
 	else
 		r = cgroup_rmdir(path);
-
 	if (r < 0)
 		ERROR("Error destroying %s", path);
+
+	return r;
 }
 
 static void cgfsng_destroy(void *hdata, struct lxc_conf *conf)
 {
+	int i;
+	char *clean_parent, *clean_fullcgpath;
+	char **fields;
+	size_t recurse_upwards = 0;
 	struct cgfsng_handler_data *d = hdata;
 
 	if (!d)
 		return;
 
-	if (d->container_cgroup && hierarchies) {
-		int i;
-		for (i = 0; hierarchies[i]; i++) {
-			struct hierarchy *h = hierarchies[i];
-			if (h->fullcgpath) {
-				recursive_destroy(h->fullcgpath, conf);
-				free(h->fullcgpath);
-				h->fullcgpath = NULL;
-			}
+	if (!d->container_cgroup || !hierarchies)
+		return;
+
+	if (d->cgroup_meta.dir)
+		clean_parent = d->cgroup_meta.dir;
+	else
+		clean_parent = d->cgroup_pattern;
+	fields = lxc_normalize_path(clean_parent);
+	if (fields) {
+		recurse_upwards = lxc_array_len((void **)fields);
+		if (recurse_upwards > 0 && clean_parent == d->cgroup_pattern)
+			recurse_upwards--;
+		lxc_free_array((void **)fields, free);
+	}
+
+	for (i = 0; hierarchies[i]; i++) {
+		int ret;
+		size_t j;
+		struct hierarchy *h = hierarchies[i];
+
+		if (!h->fullcgpath)
+			continue;
+
+		clean_fullcgpath = lxc_deslashify(h->fullcgpath);
+		if (!clean_fullcgpath)
+			clean_fullcgpath = h->fullcgpath;
+
+		/* Delete the container's cgroup */
+		ret = recursive_destroy(clean_fullcgpath, conf);
+		if (ret < 0)
+			goto next;
+
+		if (h->fullcgpath == clean_fullcgpath)
+			goto next;
+
+		/* Delete parent cgroups as specified in the containers config
+		 * file. This takes care of not having useless empty cgroups
+		 * around.
+		 */
+		for (j = 0; j < recurse_upwards; j++) {
+			char *s = clean_fullcgpath;
+
+			s = strrchr(s, '/');
+			if (!s)
+				break;
+			*s = '\0';
+
+			/* If we fail to delete a cgroup we know that any parent
+			 * cgroup also cannot be removed.
+			 */
+			ret = recursive_destroy(clean_fullcgpath, conf);
+			if (ret < 0)
+				break;
 		}
+
+next:
+		if (h->fullcgpath != clean_fullcgpath)
+			free(clean_fullcgpath);
+		free(h->fullcgpath);
+		h->fullcgpath = NULL;
 	}
 
 	free_handler_data(d);
@@ -1336,11 +1401,11 @@ static void remove_path_for_hierarchy(struct hierarchy *h, char *cgname)
  */
 static inline bool cgfsng_create(void *hdata)
 {
-	struct cgfsng_handler_data *d = hdata;
-	char *tmp, *cgname, *offset;
 	int i;
-	int idx = 0;
 	size_t len;
+	char *cgname, *offset, *tmp;
+	int idx = 0;
+	struct cgfsng_handler_data *d = hdata;
 
 	if (!d)
 		return false;
@@ -1351,7 +1416,7 @@ static inline bool cgfsng_create(void *hdata)
 	}
 
 	if (d->cgroup_meta.dir)
-		tmp = strdup(d->cgroup_meta.dir);
+		tmp = lxc_string_join("/", (const char *[]){d->cgroup_meta.dir, d->name, NULL}, false);
 	else
 		tmp = lxc_string_replace("%n", d->name, d->cgroup_pattern);
 	if (!tmp) {

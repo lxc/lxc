@@ -46,103 +46,6 @@ typedef void * scmp_filter_ctx;
 #define subuidfile "/etc/subuid"
 #define subgidfile "/etc/subgid"
 
-enum {
-	LXC_NET_EMPTY,
-	LXC_NET_VETH,
-	LXC_NET_MACVLAN,
-	LXC_NET_PHYS,
-	LXC_NET_VLAN,
-	LXC_NET_NONE,
-	LXC_NET_MAXCONFTYPE,
-};
-
-/*
- * Defines the structure to configure an ipv4 address
- * @address   : ipv4 address
- * @broadcast : ipv4 broadcast address
- * @mask      : network mask
- */
-struct lxc_inetdev {
-	struct in_addr addr;
-	struct in_addr bcast;
-	unsigned int prefix;
-};
-
-struct lxc_route {
-	struct in_addr addr;
-};
-
-/*
- * Defines the structure to configure an ipv6 address
- * @flags     : set the address up
- * @address   : ipv6 address
- * @broadcast : ipv6 broadcast address
- * @mask      : network mask
- */
-struct lxc_inet6dev {
-	struct in6_addr addr;
-	struct in6_addr mcast;
-	struct in6_addr acast;
-	unsigned int prefix;
-};
-
-struct lxc_route6 {
-	struct in6_addr addr;
-};
-
-struct ifla_veth {
-	char *pair; /* pair name */
-	char veth1[IFNAMSIZ]; /* needed for deconf */
-};
-
-struct ifla_vlan {
-	unsigned int   flags;
-	unsigned int   fmask;
-	unsigned short   vid;
-	unsigned short   pad;
-};
-
-struct ifla_macvlan {
-	int mode; /* private, vepa, bridge, passthru */
-};
-
-union netdev_p {
-	struct ifla_veth veth_attr;
-	struct ifla_vlan vlan_attr;
-	struct ifla_macvlan macvlan_attr;
-};
-
-/*
- * Defines a structure to configure a network device
- * @link       : lxc.net.[i].link, name of bridge or host iface to attach if any
- * @name       : lxc.net.[i].name, name of iface on the container side
- * @flags      : flag of the network device (IFF_UP, ... )
- * @ipv4       : a list of ipv4 addresses to be set on the network device
- * @ipv6       : a list of ipv6 addresses to be set on the network device
- * @upscript   : a script filename to be executed during interface configuration
- * @downscript : a script filename to be executed during interface destruction
- * @idx        : network counter
- */
-struct lxc_netdev {
-	ssize_t idx;
-	int type;
-	int flags;
-	int ifindex;
-	char *link;
-	char *name;
-	char *hwaddr;
-	char *mtu;
-	union netdev_p priv;
-	struct lxc_list ipv4;
-	struct lxc_list ipv6;
-	struct in_addr *ipv4_gateway;
-	bool ipv4_gateway_auto;
-	struct in6_addr *ipv6_gateway;
-	bool ipv6_gateway_auto;
-	char *upscript;
-	char *downscript;
-};
-
 /*
  * Defines a generic struct to configure the control group. It is up to the
  * programmer to specify the right subsystem.
@@ -327,12 +230,8 @@ enum lxchooks {
 	LXCHOOK_DESTROY,
 	NUM_LXC_HOOKS
 };
-extern char *lxchook_names[NUM_LXC_HOOKS];
 
-struct saved_nic {
-	int ifindex;
-	char *orig_name;
-};
+extern char *lxchook_names[NUM_LXC_HOOKS];
 
 struct lxc_conf {
 	int is_execute;
@@ -458,13 +357,7 @@ extern int detect_shared_rootfs(void);
 extern struct lxc_conf *lxc_conf_init(void);
 extern void lxc_conf_free(struct lxc_conf *conf);
 extern int pin_rootfs(const char *rootfs);
-extern int lxc_requests_empty_network(struct lxc_handler *handler);
-extern int lxc_setup_networks_in_parent_namespaces(struct lxc_handler *handler);
-extern bool lxc_delete_network(struct lxc_handler *handler);
-extern int lxc_assign_network(const char *lxcpath, char *lxcname,
-			      struct lxc_list *networks, pid_t pid);
 extern int lxc_map_ids(struct lxc_list *idmap, pid_t pid);
-extern int lxc_find_gateway_addresses(struct lxc_handler *handler);
 extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
 extern void lxc_delete_tty(struct lxc_tty_info *tty_info);
 extern int lxc_clear_config_caps(struct lxc_conf *c);
@@ -483,7 +376,6 @@ extern int do_rootfs_setup(struct lxc_conf *conf, const char *name,
 			   const char *lxcpath);
 extern int lxc_setup(struct lxc_handler *handler);
 extern int setup_resource_limits(struct lxc_list *limits, pid_t pid);
-extern void lxc_restore_phys_nics_to_netns(int netnsfd, struct lxc_conf *conf);
 extern int find_unmapped_nsid(struct lxc_conf *conf, enum idtype idtype);
 extern int mapped_hostid(unsigned id, struct lxc_conf *conf,
 			 enum idtype idtype);
@@ -500,5 +392,7 @@ extern FILE *make_anonymous_mount_file(struct lxc_list *mount);
 extern struct lxc_list *sort_cgroup_settings(struct lxc_list *cgroup_settings);
 extern unsigned long add_required_remount_flags(const char *s, const char *d,
 						unsigned long flags);
+extern int run_script(const char *name, const char *section, const char *script,
+		      ...);
 
 #endif /* __LXC_CONF_H */
