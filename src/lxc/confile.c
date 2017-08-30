@@ -1431,6 +1431,9 @@ static int set_config_cgroup_dir(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return clr_config_cgroup_dir(key, lxc_conf, NULL);
 
+	if (lxc_conf->cgroup_meta.dir)
+		clr_config_cgroup_dir(key, lxc_conf, NULL);
+
 	return set_config_string_item(&lxc_conf->cgroup_meta.dir, value);
 }
 
