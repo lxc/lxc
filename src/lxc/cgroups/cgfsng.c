@@ -1272,91 +1272,35 @@ static int rmdir_wrapper(void *data)
 	return cgroup_rmdir(path);
 }
 
-int recursive_destroy(char *path, struct lxc_conf *conf)
+void recursive_destroy(char *path, struct lxc_conf *conf)
 {
 	int r;
-
 	if (conf && !lxc_list_empty(&conf->id_map))
 		r = userns_exec_1(conf, rmdir_wrapper, path, "rmdir_wrapper");
 	else
 		r = cgroup_rmdir(path);
+
 	if (r < 0)
 		ERROR("Error destroying %s", path);
-
-	return r;
 }
 
 static void cgfsng_destroy(void *hdata, struct lxc_conf *conf)
 {
-	int i;
-	char *clean_parent, *clean_fullcgpath;
-	char **fields;
-	size_t recurse_upwards = 0;
 	struct cgfsng_handler_data *d = hdata;
 
 	if (!d)
 		return;
 
-	if (!d->container_cgroup || !hierarchies)
-		return;
-
-	if (d->cgroup_meta.dir)
-		clean_parent = d->cgroup_meta.dir;
-	else
-		clean_parent = d->cgroup_pattern;
-	fields = lxc_normalize_path(clean_parent);
-	if (fields) {
-		recurse_upwards = lxc_array_len((void **)fields);
-		if (recurse_upwards > 0 && clean_parent == d->cgroup_pattern)
-			recurse_upwards--;
-		lxc_free_array((void **)fields, free);
-	}
-
-	for (i = 0; hierarchies[i]; i++) {
-		int ret;
-		size_t j;
-		struct hierarchy *h = hierarchies[i];
-
-		if (!h->fullcgpath)
-			continue;
-
-		clean_fullcgpath = lxc_deslashify(h->fullcgpath);
-		if (!clean_fullcgpath)
-			clean_fullcgpath = h->fullcgpath;
-
-		/* Delete the container's cgroup */
-		ret = recursive_destroy(clean_fullcgpath, conf);
-		if (ret < 0)
-			goto next;
-
-		if (h->fullcgpath == clean_fullcgpath)
-			goto next;
-
-		/* Delete parent cgroups as specified in the containers config
-		 * file. This takes care of not having useless empty cgroups
-		 * around.
-		 */
-		for (j = 0; j < recurse_upwards; j++) {
-			char *s = clean_fullcgpath;
-
-			s = strrchr(s, '/');
-			if (!s)
-				break;
-			*s = '\0';
-
-			/* If we fail to delete a cgroup we know that any parent
-			 * cgroup also cannot be removed.
-			 */
-			ret = recursive_destroy(clean_fullcgpath, conf);
-			if (ret < 0)
-				break;
+	if (d->container_cgroup && hierarchies) {
+		int i;
+		for (i = 0; hierarchies[i]; i++) {
+			struct hierarchy *h = hierarchies[i];
+			if (h->fullcgpath) {
+				recursive_destroy(h->fullcgpath, conf);
+				free(h->fullcgpath);
+				h->fullcgpath = NULL;
+			}
 		}
-
-next:
-		if (h->fullcgpath != clean_fullcgpath)
-			free(clean_fullcgpath);
-		free(h->fullcgpath);
-		h->fullcgpath = NULL;
 	}
 
 	free_handler_data(d);
