@@ -976,13 +976,89 @@ struct user_nic_args {
 #define LXC_USERNIC_CREATE 0
 #define LXC_USERNIC_DELETE 1
 
+static bool is_privileged_over_netns(int netns_fd)
+{
+	int ret;
+	uid_t euid, ruid, suid;
+	bool bret = false;
+	int ofd = -1;
+
+	ofd = lxc_preserve_ns(getpid(), "net");
+	if (ofd < 0) {
+		usernic_error("Failed opening network namespace path for %d", getpid());
+		return false;
+	}
+
+	ret = getresuid(&ruid, &euid, &suid);
+	if (ret < 0) {
+		usernic_error("Failed to retrieve real, effective, and saved "
+			      "user IDs: %s\n",
+			      strerror(errno));
+		goto do_partial_cleanup;
+	}
+
+	ret = setns(netns_fd, CLONE_NEWNET);
+	if (ret < 0) {
+		usernic_error("Failed to setns() to network namespace %s\n",
+			      strerror(errno));
+		goto do_partial_cleanup;
+	}
+
+	ret = setresuid(ruid, ruid, 0);
+	if (ret < 0) {
+		usernic_error("Failed to drop privilege by setting effective "
+			      "user id and real user id to %d, and saved user "
+			      "ID to 0: %s\n",
+			      ruid, strerror(errno));
+		/* It's ok to jump to do_full_cleanup here since setresuid()
+		 * will succeed when trying to set real, effective, and saved to
+		 * values they currently have.
+		 */
+		goto do_full_cleanup;
+	}
+
+	/* Test whether we are privileged over the network namespace. To do this
+	 * we try to delete the loopback interface which is not possible. If we
+	 * are privileged over the network namespace we will get ENOTSUP. If we
+	 * are not privileged over the network namespace we will get EPERM.
+	 */
+	ret = lxc_netdev_delete_by_name("lo");
+	if (ret == -ENOTSUP)
+		bret = true;
+
+do_full_cleanup:
+	ret = setresuid(ruid, euid, suid);
+	if (ret < 0) {
+		usernic_error("Failed to restore privilege by setting "
+			      "effective user id to %d, real user id to %d, "
+			      "and saved user ID to %d: %s\n", ruid, euid, suid,
+			      strerror(errno));
+
+		bret = false;
+	}
+
+	ret = setns(ofd, CLONE_NEWNET);
+	if (ret < 0) {
+		usernic_error("Failed to setns() to original network namespace "
+			      "of PID %d: %s\n", ofd, strerror(errno));
+
+		bret = false;
+	}
+
+do_partial_cleanup:
+
+	close(ofd);
+	return bret;
+}
+
 int main(int argc, char *argv[])
 {
 	int fd, ifindex, n, pid, request, ret;
 	char *me, *newname;
+	struct user_nic_args args;
+	int netns_fd = -1;
 	char *cnic = NULL, *nicname = NULL;
 	struct alloted_s *alloted = NULL;
-	struct user_nic_args args;
 
 	if (argc < 7 || argc > 8) {
 		usage(argv[0], true);
@@ -1027,26 +1103,50 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	ret = lxc_safe_int(args.pid, &pid);
-	if (ret < 0) {
-		usernic_error("Could not read pid: %s\n", args.pid);
-		exit(EXIT_FAILURE);
+	if (request == LXC_USERNIC_CREATE) {
+		ret = lxc_safe_int(args.pid, &pid);
+		if (ret < 0) {
+			usernic_error("Could not read pid: %s\n", args.pid);
+			exit(EXIT_FAILURE);
+		}
+	} else if (request == LXC_USERNIC_DELETE) {
+		netns_fd = open(args.pid, O_RDONLY);
+		if (netns_fd < 0) {
+			usernic_error("Could not open \"%s\": %s\n", args.pid,
+				      strerror(errno));
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	if (!create_db_dir(LXC_USERNIC_DB)) {
 		usernic_error("%s", "Failed to create directory for db file\n");
+		if (netns_fd >= 0)
+			close(netns_fd);
 		exit(EXIT_FAILURE);
 	}
 
 	fd = open_and_lock(LXC_USERNIC_DB);
 	if (fd < 0) {
 		usernic_error("Failed to lock %s\n", LXC_USERNIC_DB);
+		if (netns_fd >= 0)
+			close(netns_fd);
 		exit(EXIT_FAILURE);
 	}
 
-	if (!may_access_netns(pid)) {
-		usernic_error("User %s may not modify netns for pid %d\n", me, pid);
-		exit(EXIT_FAILURE);
+	if (request == LXC_USERNIC_CREATE) {
+		if (!may_access_netns(pid)) {
+			usernic_error("User %s may not modify netns for pid %d\n", me, pid);
+			exit(EXIT_FAILURE);
+		}
+	} else if (request == LXC_USERNIC_DELETE) {
+		bool has_priv;
+		has_priv = is_privileged_over_netns(netns_fd);
+		close(netns_fd);
+		if (!has_priv) {
+			usernic_error("%s", "Process is not privileged over "
+					    "network namespace\n");
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	n = get_alloted(me, args.type, args.link, &alloted);

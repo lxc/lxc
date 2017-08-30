@@ -1312,6 +1312,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		SYSERROR("Failed to clone a new set of namespaces.");
 		goto out_delete_net;
 	}
+
 	for (i = 0; i < LXC_NS_MAX; i++)
 		if (flags & ns_info[i].clone_flag)
 			INFO("Cloned %s.", ns_info[i].flag_name);
@@ -1362,6 +1363,12 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 	if (failed_before_rename)
 		goto out_delete_net;
+
+	handler->netnsfd = lxc_preserve_ns(handler->pid, "net");
+	if (handler->netnsfd < 0) {
+		ERROR("Failed to preserve network namespace");
+		goto out_delete_net;
+	}
 
 	/* Create the network configuration. */
 	if (handler->clone_flags & CLONE_NEWNET) {
@@ -1437,21 +1444,33 @@ static int lxc_spawn(struct lxc_handler *handler)
 	}
 
 	lxc_sync_fini(handler);
-	handler->netnsfd = lxc_preserve_ns(handler->pid, "net");
 
 	return 0;
 
 out_delete_net:
 	if (cgroups_connected)
 		cgroup_disconnect();
-	if (handler->clone_flags & CLONE_NEWNET)
-		lxc_delete_network(handler);
+
+	if (handler->clone_flags & CLONE_NEWNET) {
+		DEBUG("Tearing down network devices");
+		if (!lxc_delete_network_priv(handler))
+			DEBUG("Failed tearing down network devices");
+
+		if (!lxc_delete_network_unpriv(handler))
+			DEBUG("Failed tearing down network devices");
+	}
+
 out_abort:
 	lxc_abort(name, handler);
 	lxc_sync_fini(handler);
 	if (handler->pinfd >= 0) {
 		close(handler->pinfd);
 		handler->pinfd = -1;
+	}
+
+	if (handler->netnsfd >= 0) {
+		close(handler->netnsfd);
+		handler->netnsfd = -1;
 	}
 
 	return -1;
@@ -1463,7 +1482,6 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 {
 	int status;
 	int err = -1;
-	bool removed_all_netdevs = true;
 	struct lxc_conf *conf = handler->conf;
 
 	if (lxc_init(name, handler) < 0) {
@@ -1509,10 +1527,6 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	err = lxc_poll(name, handler);
 	if (err) {
 		ERROR("LXC mainloop exited with error: %d.", err);
-		if (handler->netnsfd >= 0) {
-			close(handler->netnsfd);
-			handler->netnsfd = -1;
-		}
 		goto out_abort;
 	}
 
@@ -1544,9 +1558,6 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	DEBUG("Pushing physical nics back to host namespace");
 	lxc_restore_phys_nics_to_netns(handler->netnsfd, handler->conf);
 
-	DEBUG("Tearing down virtual network devices used by container \"%s\".", name);
-	removed_all_netdevs = lxc_delete_network(handler);
-
 	if (handler->pinfd >= 0) {
 		close(handler->pinfd);
 		handler->pinfd = -1;
@@ -1554,12 +1565,18 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 
 	lxc_monitor_send_exit_code(name, status, handler->lxcpath);
 	err =  lxc_error_set_and_log(handler->pid, status);
+
 out_fini:
-	if (!removed_all_netdevs) {
-		DEBUG("Failed tearing down network devices used by container. Trying again!");
-		removed_all_netdevs = lxc_delete_network(handler);
-		if (!removed_all_netdevs)
-			DEBUG("Failed tearing down network devices used by container. Not trying again!");
+	DEBUG("Tearing down network devices");
+	if (!lxc_delete_network_priv(handler))
+		DEBUG("Failed tearing down network devices");
+
+	if (!lxc_delete_network_unpriv(handler))
+		DEBUG("Failed tearing down network devices");
+
+	if (handler->netnsfd >= 0) {
+		close(handler->netnsfd);
+		handler->netnsfd = -1;
 	}
 
 out_detach_blockdev:
