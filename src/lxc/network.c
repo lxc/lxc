@@ -2132,8 +2132,9 @@ static int lxc_create_network_unpriv(const char *lxcpath, char *lxcname,
 	return 0;
 }
 
-static int lxc_delete_network_unpriv(const char *lxcpath, char *lxcname,
-				     struct lxc_netdev *netdev, pid_t pid)
+static int lxc_delete_network_unpriv_exec(const char *lxcpath, char *lxcname,
+					  struct lxc_netdev *netdev,
+					  const char *netns_path)
 {
 	int bytes, ret;
 	pid_t child;
@@ -2161,7 +2162,6 @@ static int lxc_delete_network_unpriv(const char *lxcpath, char *lxcname,
 
 	if (child == 0) {
 		int ret;
-		char pidstr[LXC_NUMSTRLEN64];
 
 		close(pipefd[0]);
 
@@ -2178,15 +2178,10 @@ static int lxc_delete_network_unpriv(const char *lxcpath, char *lxcname,
 			SYSERROR("Network link for network device \"%s\" is "
 				 "missing", netdev->priv.veth_attr.pair);
 
-		ret = snprintf(pidstr, LXC_NUMSTRLEN64, "%d", pid);
-		if (ret < 0 || ret >= LXC_NUMSTRLEN64)
-			exit(EXIT_FAILURE);
-		pidstr[LXC_NUMSTRLEN64 - 1] = '\0';
-
 		INFO("Execing lxc-user-nic delete %s %s %s veth %s %s", lxcpath,
-		     lxcname, pidstr, netdev->link, netdev->priv.veth_attr.pair);
+		     lxcname, netns_path, netdev->link, netdev->priv.veth_attr.pair);
 		execlp(LXC_USERNIC_PATH, LXC_USERNIC_PATH, "delete", lxcpath,
-		       lxcname, pidstr, "veth", netdev->link,
+		       lxcname, netns_path, "veth", netdev->link,
 		       netdev->priv.veth_attr.pair, (char *)NULL);
 		SYSERROR("Failed to exec lxc-user-nic.");
 		exit(EXIT_FAILURE);
@@ -2212,6 +2207,91 @@ static int lxc_delete_network_unpriv(const char *lxcpath, char *lxcname,
 	close(pipefd[0]);
 
 	return 0;
+}
+
+bool lxc_delete_network_unpriv(struct lxc_handler *handler)
+{
+	int ret;
+	struct lxc_list *iterator;
+	struct lxc_list *network = &handler->conf->network;
+	/* strlen("/proc/") = 6
+	 * +
+	 * LXC_NUMSTRLEN64
+	 * +
+	 * strlen("/fd/") = 4
+	 * +
+	 * LXC_NUMSTRLEN64
+	 * +
+	 * \0
+	 */
+	char netns_path[6 + LXC_NUMSTRLEN64 + 4 + LXC_NUMSTRLEN64 + 1];
+	bool deleted_all = true;
+
+	if (!am_unpriv())
+		return true;
+
+	*netns_path = '\0';
+
+	if (handler->netnsfd < 0) {
+		DEBUG("Cannot not guarantee safe deletion of network devices. "
+		      "Manual cleanup maybe needed");
+		return false;
+	}
+
+	ret = snprintf(netns_path, sizeof(netns_path), "/proc/%d/fd/%d",
+		       getpid(), handler->netnsfd);
+	if (ret < 0 || ret >= sizeof(netns_path))
+		return false;
+
+	lxc_list_for_each(iterator, network) {
+		char *hostveth = NULL;
+		struct lxc_netdev *netdev = iterator->elem;
+
+		/* We can only delete devices whose ifindex we have. If we don't
+		 * have the index it means that we didn't create it.
+		 */
+		if (!netdev->ifindex)
+			continue;
+
+		if (netdev->type == LXC_NET_PHYS) {
+			ret = lxc_netdev_rename_by_index(netdev->ifindex,
+							 netdev->link);
+			if (ret < 0)
+				WARN("Failed to rename interface with index %d "
+				     "to its initial name \"%s\"",
+				     netdev->ifindex, netdev->link);
+			else
+				TRACE("Renamed interface with index %d to its "
+				      "initial name \"%s\"",
+				      netdev->ifindex, netdev->link);
+			continue;
+		}
+
+		ret = netdev_deconf[netdev->type](handler, netdev);
+		if (ret < 0)
+			WARN("Failed to deconfigure network device");
+
+		if (netdev->type != LXC_NET_VETH)
+			continue;
+
+		if (!is_ovs_bridge(netdev->link))
+			continue;
+
+		ret = lxc_delete_network_unpriv_exec(handler->lxcpath,
+						     handler->name, netdev,
+						     netns_path);
+		if (ret < 0) {
+			deleted_all = false;
+			WARN("Failed to remove port \"%s\" from openvswitch "
+			     "bridge \"%s\"",
+			     netdev->priv.veth_attr.pair, netdev->link);
+			continue;
+		}
+		INFO("Removed interface \"%s\" from \"%s\"", hostveth,
+		     netdev->link);
+	}
+
+	return deleted_all;
 }
 
 int lxc_create_network_priv(struct lxc_handler *handler)
@@ -2296,12 +2376,15 @@ int lxc_create_network(const char *lxcpath, char *lxcname,
 	return 0;
 }
 
-bool lxc_delete_network(struct lxc_handler *handler)
+bool lxc_delete_network_priv(struct lxc_handler *handler)
 {
 	int ret;
 	struct lxc_list *iterator;
 	struct lxc_list *network = &handler->conf->network;
 	bool deleted_all = true;
+
+	if (am_unpriv())
+		return true;
 
 	lxc_list_for_each(iterator, network) {
 		char *hostveth = NULL;
@@ -2334,44 +2417,27 @@ bool lxc_delete_network(struct lxc_handler *handler)
 		 * namespace is destroyed but in case we did not move the
 		 * interface to the network namespace, we have to destroy it.
 		 */
-		if (!am_unpriv()) {
-			ret = lxc_netdev_delete_by_index(netdev->ifindex);
-			if (-ret == ENODEV) {
-				INFO("Interface \"%s\" with index %d already "
-				     "deleted or existing in different network "
-				     "namespace",
-				     netdev->name ? netdev->name : "(null)",
-				     netdev->ifindex);
-			} else if (ret < 0) {
-				deleted_all = false;
-				WARN("Failed to remove interface \"%s\" with "
-				     "index %d: %s",
-				     netdev->name ? netdev->name : "(null)",
-				     netdev->ifindex, strerror(-ret));
-				continue;
-			}
-			INFO("Removed interface \"%s\" with index %d",
-			     netdev->name ? netdev->name : "(null)",
-			     netdev->ifindex);
+		ret = lxc_netdev_delete_by_index(netdev->ifindex);
+		if (-ret == ENODEV) {
+			INFO("Interface \"%s\" with index %d already "
+					"deleted or existing in different network "
+					"namespace",
+					netdev->name ? netdev->name : "(null)",
+					netdev->ifindex);
+		} else if (ret < 0) {
+			deleted_all = false;
+			WARN("Failed to remove interface \"%s\" with "
+					"index %d: %s",
+					netdev->name ? netdev->name : "(null)",
+					netdev->ifindex, strerror(-ret));
+			continue;
 		}
+		INFO("Removed interface \"%s\" with index %d",
+				netdev->name ? netdev->name : "(null)",
+				netdev->ifindex);
 
 		if (netdev->type != LXC_NET_VETH)
 			continue;
-
-		if (am_unpriv()) {
-			if (is_ovs_bridge(netdev->link)) {
-				ret = lxc_delete_network_unpriv(handler->lxcpath,
-								handler->name,
-								netdev, getpid());
-				if (ret < 0)
-					WARN("Failed to remove port \"%s\" "
-					     "from openvswitch bridge \"%s\"",
-					     netdev->priv.veth_attr.pair,
-					     netdev->link);
-			}
-
-			continue;
-		}
 
 		/* Explicitly delete host veth device to prevent lingering
 		 * devices. We had issues in LXD around this.
