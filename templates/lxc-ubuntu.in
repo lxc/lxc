@@ -92,7 +92,15 @@ configure_ubuntu()
     password=$5
 
     # configure the network using the dhcp
-    cat <<EOF > $rootfs/etc/network/interfaces
+    if [ -d $rootfs/etc/netplan ]; then
+        cat <<EOF > $rootfs/etc/netplan/10-lxc.yaml
+network:
+  ethernets:
+    eth0: {dhcp4: true}
+  version: 2
+EOF
+    else
+        cat <<EOF > $rootfs/etc/network/interfaces
 # This file describes the network interfaces available on your system
 # and how to activate them. For more information, see interfaces(5).
 
@@ -103,6 +111,7 @@ iface lo inet loopback
 auto eth0
 iface eth0 inet dhcp
 EOF
+    fi
 
     # set the hostname
     cat <<EOF > $rootfs/etc/hostname
@@ -366,7 +375,13 @@ download_ubuntu()
         debootstrap_parameters="$debootstrap_parameters --variant=$variant"
     fi
     if [ "$variant" = 'minbase' ]; then
-        packages_template="${packages_template},sudo,ifupdown,isc-dhcp-client"
+        packages_template="${packages_template},sudo"
+        # Newer releases use netplan, EOL releases not supported
+        case $release in
+          trusty|xenial|zesty)
+                packages_template="${packages_template},ifupdown,isc-dhcp-client"
+                ;;
+        esac
     fi
 
     echo "Installing packages in template: ${packages_template}"
