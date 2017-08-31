@@ -92,7 +92,7 @@ configure_ubuntu()
     password=$5
 
     # configure the network using the dhcp
-    if [ -d $rootfs/etc/netplan ]; then
+    if chroot $rootfs which netplan >/dev/null 2>&1; then
         cat <<EOF > $rootfs/etc/netplan/10-lxc.yaml
 network:
   ethernets:
