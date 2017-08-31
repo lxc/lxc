@@ -47,7 +47,6 @@
 
 #include "conf.h"
 #include "config.h"
-#include "confile_utils.h"
 #include "log.h"
 #include "network.h"
 #include "nl.h"
@@ -2005,8 +2004,8 @@ int lxc_find_gateway_addresses(struct lxc_handler *handler)
 }
 
 #define LXC_USERNIC_PATH LIBEXECDIR "/lxc/lxc-user-nic"
-static int lxc_create_network_unpriv(const char *lxcpath, char *lxcname,
-				     struct lxc_netdev *netdev, pid_t pid)
+static int lxc_create_network_unpriv_exec(const char *lxcpath, char *lxcname,
+					  struct lxc_netdev *netdev, pid_t pid)
 {
 	int ret;
 	pid_t child;
@@ -2079,7 +2078,7 @@ static int lxc_create_network_unpriv(const char *lxcpath, char *lxcname,
 
 	bytes = read(pipefd[0], &buffer, MAXPATHLEN);
 	if (bytes < 0) {
-		SYSERROR("Failed to read from pipe file descriptor.");
+		SYSERROR("Failed to read from pipe file descriptor");
 		close(pipefd[0]);
 		return -1;
 	}
@@ -2096,36 +2095,58 @@ static int lxc_create_network_unpriv(const char *lxcpath, char *lxcname,
 
 	/* netdev->name */
 	token = strtok_r(buffer, ":", &saveptr);
-	if (!token)
+	if (!token) {
+		ERROR("Failed to parse lxc-user-nic output");
 		return -1;
+	}
 
 	netdev->name = malloc(IFNAMSIZ + 1);
 	if (!netdev->name) {
-		SYSERROR("Failed to allocate memory.");
+		SYSERROR("Failed to allocate memory");
 		return -1;
 	}
 	memset(netdev->name, 0, IFNAMSIZ + 1);
 	strncpy(netdev->name, token, IFNAMSIZ);
 
-	/* netdev->priv.veth_attr.pair */
+	/* netdev->ifindex */
 	token = strtok_r(NULL, ":", &saveptr);
-	if (!token)
-		return -1;
-
-	netdev->priv.veth_attr.pair = strdup(token);
-	if (!netdev->priv.veth_attr.pair) {
-		ERROR("Failed to allocate memory.");
+	if (!token) {
+		ERROR("Failed to parse lxc-user-nic output");
 		return -1;
 	}
 
-	/* netdev->ifindex */
-	token = strtok_r(NULL, ":", &saveptr);
-	if (!token)
-		return -1;
-
 	ret = lxc_safe_int(token, &netdev->ifindex);
 	if (ret < 0) {
-		ERROR("Failed to parse ifindex for network device \"%s\"", netdev->name);
+		ERROR("%s - Failed to convert string \"%s\" to integer",
+		      strerror(-ret), token);
+		return -1;
+	}
+
+	/* netdev->priv.veth_attr.veth1 */
+	token = strtok_r(NULL, ":", &saveptr);
+	if (!token) {
+		ERROR("Failed to parse lxc-user-nic output");
+		return -1;
+	}
+
+	if (strlen(token) >= IFNAMSIZ) {
+		ERROR("Host side veth device name returned by lxc-user-nic is "
+		      "too long");
+		return -E2BIG;
+	}
+	strcpy(netdev->priv.veth_attr.veth1, token);
+
+	/* netdev->priv.veth_attr.ifindex */
+	token = strtok_r(NULL, ":", &saveptr);
+	if (!token) {
+		ERROR("Failed to parse lxc-user-nic output");
+		return -1;
+	}
+
+	ret = lxc_safe_int(token, &netdev->priv.veth_attr.ifindex);
+	if (ret < 0) {
+		ERROR("%s - Failed to convert string \"%s\" to integer",
+		      strerror(-ret), token);
 		return -1;
 	}
 
@@ -2174,15 +2195,22 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, char *lxcname,
 			exit(EXIT_FAILURE);
 		}
 
-		if (!netdev->link)
+		if (netdev->priv.veth_attr.veth1[0] == '\0') {
+			SYSERROR("Host side veth device name is missing");
+			exit(EXIT_FAILURE);
+		}
+
+		if (!netdev->link) {
 			SYSERROR("Network link for network device \"%s\" is "
-				 "missing", netdev->priv.veth_attr.pair);
+				 "missing", netdev->priv.veth_attr.veth1);
+			exit(EXIT_FAILURE);
+		}
 
 		INFO("Execing lxc-user-nic delete %s %s %s veth %s %s", lxcpath,
-		     lxcname, netns_path, netdev->link, netdev->priv.veth_attr.pair);
+		     lxcname, netns_path, netdev->link, netdev->priv.veth_attr.veth1);
 		execlp(LXC_USERNIC_PATH, LXC_USERNIC_PATH, "delete", lxcpath,
 		       lxcname, netns_path, "veth", netdev->link,
-		       netdev->priv.veth_attr.pair, (char *)NULL);
+		       netdev->priv.veth_attr.veth1, (char *)NULL);
 		SYSERROR("Failed to exec lxc-user-nic.");
 		exit(EXIT_FAILURE);
 	}
@@ -2284,7 +2312,7 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 			deleted_all = false;
 			WARN("Failed to remove port \"%s\" from openvswitch "
 			     "bridge \"%s\"",
-			     netdev->priv.veth_attr.pair, netdev->link);
+			     netdev->priv.veth_attr.veth1, netdev->link);
 			continue;
 		}
 		INFO("Removed interface \"%s\" from \"%s\"", hostveth,
@@ -2323,33 +2351,19 @@ int lxc_create_network_priv(struct lxc_handler *handler)
 	return 0;
 }
 
-int lxc_create_network(const char *lxcpath, char *lxcname,
-		       struct lxc_list *network, pid_t pid)
+int lxc_network_move_created_netdev_priv(const char *lxcpath, char *lxcname,
+					 struct lxc_list *network, pid_t pid)
 {
 	int err;
-	bool am_root;
 	char ifname[IFNAMSIZ];
 	struct lxc_list *iterator;
 
-	am_root = (getuid() == 0);
+	if (am_unpriv())
+		return 0;
 
 	lxc_list_for_each(iterator, network) {
 		struct lxc_netdev *netdev = iterator->elem;
 
-		if (netdev->type == LXC_NET_VETH && !am_root) {
-			if (netdev->mtu)
-				INFO("mtu ignored due to insufficient privilege");
-			if (lxc_create_network_unpriv(lxcpath, lxcname, netdev, pid))
-				return -1;
-			/* lxc-user-nic has moved the nic to the new ns.
-			 * unpriv_assign_nic() fills in netdev->name.
-			 * netdev->ifindex will be filled in at
-			 * lxc_setup_netdev_in_child_namespaces().
-			 */
-			continue;
-		}
-
-		/* empty network namespace, nothing to move */
 		if (!netdev->ifindex)
 			continue;
 
@@ -2371,6 +2385,40 @@ int lxc_create_network(const char *lxcpath, char *lxcname,
 		DEBUG("Moved network device \"%s\"/\"%s\" to network namespace "
 		      "of %d:", ifname, netdev->name ? netdev->name : "(null)",
 		      pid);
+	}
+
+	return 0;
+}
+
+int lxc_create_network_unpriv(const char *lxcpath, char *lxcname,
+			      struct lxc_list *network, pid_t pid)
+{
+	struct lxc_list *iterator;
+
+	if (!am_unpriv())
+		return 0;
+
+	lxc_list_for_each(iterator, network) {
+		struct lxc_netdev *netdev = iterator->elem;
+
+		if (netdev->type == LXC_NET_EMPTY)
+			continue;
+
+		if (netdev->type == LXC_NET_NONE)
+			continue;
+
+		if (netdev->type != LXC_NET_VETH) {
+			ERROR("Networks of type %s are not supported by "
+			      "unprivileged containers",
+			      lxc_net_type_to_str(netdev->type));
+			return -1;
+		}
+
+		if (netdev->mtu)
+			INFO("mtu ignored due to insufficient privilege");
+
+		if (lxc_create_network_unpriv_exec(lxcpath, lxcname, netdev, pid))
+			return -1;
 	}
 
 	return 0;
@@ -2826,7 +2874,7 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 		}
 	}
 
-	DEBUG("Network devie \"%s\" has been setup", current_ifname);
+	DEBUG("Network device \"%s\" has been setup", current_ifname);
 
 	return 0;
 }
@@ -2836,8 +2884,6 @@ int lxc_setup_network_in_child_namespaces(const struct lxc_conf *conf,
 {
 	struct lxc_list *iterator;
 	struct lxc_netdev *netdev;
-
-	lxc_log_configured_netdevs(conf);
 
 	lxc_list_for_each(iterator, network) {
 		netdev = iterator->elem;

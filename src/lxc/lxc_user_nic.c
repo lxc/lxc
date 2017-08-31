@@ -797,7 +797,7 @@ again:
 }
 
 static char *lxc_secure_rename_in_ns(int pid, char *oldname, char *newname,
-				     int *ifidx)
+				     int *container_veth_ifidx)
 {
 	int ret;
 	uid_t ruid, suid, euid;
@@ -881,7 +881,7 @@ static char *lxc_secure_rename_in_ns(int pid, char *oldname, char *newname,
 	/* Allocation failure for strdup() is checked below. */
 	name = strdup(ifname);
 	string_ret = name;
-	*ifidx = ifindex;
+	*container_veth_ifidx = ifindex;
 
 do_full_cleanup:
 	ret = setresuid(ruid, euid, suid);
@@ -1053,7 +1053,7 @@ do_partial_cleanup:
 
 int main(int argc, char *argv[])
 {
-	int fd, ifindex, n, pid, request, ret;
+	int container_veth_ifidx, fd, host_veth_ifidx, n, pid, request, ret;
 	char *me, *newname;
 	struct user_nic_args args;
 	int netns_fd = -1;
@@ -1204,7 +1204,8 @@ int main(int argc, char *argv[])
 	}
 
 	/* Now rename the link. */
-	newname = lxc_secure_rename_in_ns(pid, cnic, args.veth_name, &ifindex);
+	newname = lxc_secure_rename_in_ns(pid, cnic, args.veth_name,
+					  &container_veth_ifidx);
 	if (!newname) {
 		usernic_error("%s", "Failed to rename the link\n");
 		ret = lxc_netdev_delete_by_name(cnic);
@@ -1213,9 +1214,13 @@ int main(int argc, char *argv[])
 		free(nicname);
 		exit(EXIT_FAILURE);
 	}
+	host_veth_ifidx = if_nametoindex(nicname);
 
-	/* Write the name of the interface pair to the stdout: eth0:veth9MT2L4 */
-	fprintf(stdout, "%s:%s:%d\n", newname, nicname, ifindex);
+	/* Write names of veth pairs and their ifindeces to stout:
+	 * (e.g. eth0:731:veth9MT2L4:730)
+	 */
+	fprintf(stdout, "%s:%d:%s:%d\n", newname, container_veth_ifidx, nicname,
+		host_veth_ifidx);
 	free(newname);
 	free(nicname);
 	exit(EXIT_SUCCESS);
