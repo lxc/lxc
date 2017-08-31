@@ -140,6 +140,18 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		goto out_delete;
 	}
 
+	/* Retrieve ifindex of the host's veth device. */
+	netdev->priv.veth_attr.ifindex = if_nametoindex(veth1);
+	if (!netdev->priv.veth_attr.ifindex) {
+		ERROR("Failed to retrieve ifindex for \"%s\"", veth1);
+		goto out_delete;
+	}
+
+	/* Note that we're retrieving the container's ifindex in the host's
+	 * network namespace because we need it to move the device from the
+	 * host's network namespace to the container's network namespace later
+	 * on.
+	 */
 	netdev->ifindex = if_nametoindex(veth2);
 	if (!netdev->ifindex) {
 		ERROR("Failed to retrieve ifindex for \"%s\"", veth2);
