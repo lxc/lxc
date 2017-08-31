@@ -1208,14 +1208,13 @@ void resolve_clone_flags(struct lxc_handler *handler)
  */
 static int lxc_spawn(struct lxc_handler *handler)
 {
-	int failed_before_rename = 0;
+	int i, flags, nveths;
 	const char *name = handler->name;
-	bool cgroups_connected = false;
-	int saved_ns_fd[LXC_NS_MAX];
-	int preserve_mask = 0, i, flags;
-	int netpipepair[2], nveths;
 	bool wants_to_map_ids;
+	int netpipepair[2], saved_ns_fd[LXC_NS_MAX];
 	struct lxc_list *id_map;
+	int failed_before_rename = 0, preserve_mask = 0;
+	bool cgroups_connected = false;
 
 	netpipe = -1;
 	id_map = &handler->conf->id_map;
