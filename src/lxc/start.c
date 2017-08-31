@@ -68,6 +68,7 @@
 #include "commands.h"
 #include "commands_utils.h"
 #include "conf.h"
+#include "confile_utils.h"
 #include "console.h"
 #include "error.h"
 #include "log.h"
@@ -809,15 +810,19 @@ static int read_unpriv_netifindex(struct lxc_list *network)
 
 	if (netpipe == -1)
 		return 0;
+
 	lxc_list_for_each(iterator, network) {
 		netdev = iterator->elem;
 		if (netdev->type != LXC_NET_VETH)
 			continue;
-		if (!(netdev->name = malloc(IFNAMSIZ))) {
+
+		netdev->name = malloc(IFNAMSIZ);
+		if (!netdev->name) {
 			ERROR("Out of memory.");
 			close(netpipe);
 			return -1;
 		}
+
 		if (read(netpipe, netdev->name, IFNAMSIZ) != IFNAMSIZ) {
 			close(netpipe);
 			return -1;
@@ -1372,11 +1377,26 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 	/* Create the network configuration. */
 	if (handler->clone_flags & CLONE_NEWNET) {
-		if (lxc_create_network(handler->lxcpath, handler->name,
-				       &handler->conf->network, handler->pid)) {
+		if (lxc_network_move_created_netdev_priv(handler->lxcpath,
+							 handler->name,
+							 &handler->conf->network,
+							 handler->pid)) {
 			ERROR("Failed to create the configured network.");
 			goto out_delete_net;
 		}
+
+		if (lxc_create_network_unpriv(handler->lxcpath, handler->name,
+					      &handler->conf->network,
+					      handler->pid)) {
+			ERROR("Failed to create the configured network.");
+			goto out_delete_net;
+		}
+
+		/* Now all networks are created and moved into place. The
+		 * corresponding structs have now all been filled. So log them
+		 * for debugging purposes.
+		 */
+		lxc_log_configured_netdevs(handler->conf);
 	}
 
 	if (netpipe != -1) {
