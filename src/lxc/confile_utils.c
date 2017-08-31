@@ -305,3 +305,14 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 			TRACE("downscript: %s", netdev->downscript);
 	}
 }
+
+int network_ifname(char *valuep, const char *value)
+{
+	if (strlen(value) >= IFNAMSIZ) {
+		ERROR("Network devie name \"%s\" is too long (>= %zu)", value,
+		      (size_t)IFNAMSIZ);
+	}
+
+	strcpy(valuep, value);
+	return 0;
+}

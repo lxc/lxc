@@ -101,7 +101,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	char veth1buf[IFNAMSIZ], veth2buf[IFNAMSIZ];
 	unsigned int mtu = 0;
 
-	if (netdev->priv.veth_attr.pair) {
+	if (netdev->priv.veth_attr.pair[0] != '\0') {
 		veth1 = netdev->priv.veth_attr.pair;
 		if (handler->conf->reboot)
 			lxc_netdev_delete_by_name(veth1);
@@ -163,7 +163,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 			WARN("Failed to parse mtu");
 		else
 			INFO("Retrieved mtu %d", mtu);
-	} else if (netdev->link) {
+	} else if (netdev->link[0] != '\0') {
 		bridge_index = if_nametoindex(netdev->link);
 		if (bridge_index) {
 			mtu = netdev_get_mtu(bridge_index);
@@ -186,7 +186,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		}
 	}
 
-	if (netdev->link) {
+	if (netdev->link[0] != '\0') {
 		err = lxc_bridge_attach(netdev->link, veth1);
 		if (err) {
 			ERROR("Failed to attach \"%s\" to bridge \"%s\": %s",
@@ -217,7 +217,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 out_delete:
 	if (netdev->ifindex != 0)
 		lxc_netdev_delete_by_name(veth1);
-	if (!netdev->priv.veth_attr.pair)
+	if (netdev->priv.veth_attr.pair != veth1)
 		free(veth1);
 	free(veth2);
 	return -1;
@@ -228,7 +228,7 @@ static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 	char peerbuf[IFNAMSIZ], *peer;
 	int err;
 
-	if (!netdev->link) {
+	if (netdev->link[0] == '\0') {
 		ERROR("No link for macvlan network device specified");
 		return -1;
 	}
@@ -279,7 +279,7 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 	static uint16_t vlan_cntr = 0;
 	unsigned int mtu = 0;
 
-	if (!netdev->link) {
+	if (netdev->link[0] == '\0') {
 		ERROR("No link for vlan network device specified");
 		return -1;
 	}
@@ -308,7 +308,7 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 		if (lxc_safe_uint(netdev->mtu, &mtu) < 0) {
 			ERROR("Failed to retrieve mtu from \"%d\"/\"%s\".",
 			      netdev->ifindex,
-			      netdev->name ? netdev->name : "(null)");
+			      netdev->name[0] != '\0' ? netdev->name : "(null)");
 			return -1;
 		}
 		err = lxc_netdev_set_mtu(peer, mtu);
@@ -325,7 +325,7 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 
 static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
-	if (!netdev->link) {
+	if (netdev->link[0] == '\0') {
 		ERROR("No link for physical interface specified");
 		return -1;
 	}
@@ -380,7 +380,7 @@ static int shutdown_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 	char *veth1;
 	int err;
 
-	if (netdev->priv.veth_attr.pair)
+	if (netdev->priv.veth_attr.pair[0] != '\0')
 		veth1 = netdev->priv.veth_attr.pair;
 	else
 		veth1 = netdev->priv.veth_attr.veth1;
@@ -1986,7 +1986,7 @@ int lxc_find_gateway_addresses(struct lxc_handler *handler)
 			return -1;
 		}
 
-		if (!netdev->link) {
+		if (netdev->link[0] == '\0') {
 			ERROR("Automatic gateway detection needs a link interface");
 			return -1;
 		}
@@ -2060,7 +2060,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, char *lxcname,
 			exit(EXIT_FAILURE);
 		}
 
-		if (netdev->link)
+		if (netdev->link[0] != '\0')
 			strncpy(netdev_link, netdev->link, IFNAMSIZ);
 		else
 			strncpy(netdev_link, "none", IFNAMSIZ);
@@ -2072,8 +2072,8 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, char *lxcname,
 
 		INFO("Execing lxc-user-nic create %s %s %s veth %s %s", lxcpath,
 		     lxcname, pidstr, netdev_link,
-		     netdev->name ? netdev->name : "(null)");
-		if (netdev->name)
+		     netdev->name[0] != '\0' ? netdev->name : "(null)");
+		if (netdev->name[0] != '\0')
 			execlp(LXC_USERNIC_PATH, LXC_USERNIC_PATH, "create",
 			       lxcpath, lxcname, pidstr, "veth", netdev_link,
 			       netdev->name, (char *)NULL);
@@ -2112,11 +2112,6 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, char *lxcname,
 		return -1;
 	}
 
-	netdev->name = malloc(IFNAMSIZ + 1);
-	if (!netdev->name) {
-		SYSERROR("Failed to allocate memory");
-		return -1;
-	}
 	memset(netdev->name, 0, IFNAMSIZ + 1);
 	strncpy(netdev->name, token, IFNAMSIZ);
 
@@ -2212,7 +2207,7 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, char *lxcname,
 			exit(EXIT_FAILURE);
 		}
 
-		if (!netdev->link) {
+		if (netdev->link[0] == '\0') {
 			SYSERROR("Network link for network device \"%s\" is "
 				 "missing", netdev->priv.veth_attr.veth1);
 			exit(EXIT_FAILURE);
@@ -2395,7 +2390,7 @@ int lxc_network_move_created_netdev_priv(const char *lxcpath, char *lxcname,
 		}
 
 		DEBUG("Moved network device \"%s\"/\"%s\" to network namespace "
-		      "of %d:", ifname, netdev->name ? netdev->name : "(null)",
+		      "of %d:", ifname, netdev->name[0] != '\0' ? netdev->name : "(null)",
 		      pid);
 	}
 
@@ -2482,18 +2477,18 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 			INFO("Interface \"%s\" with index %d already "
 					"deleted or existing in different network "
 					"namespace",
-					netdev->name ? netdev->name : "(null)",
+					netdev->name[0] != '\0' ? netdev->name : "(null)",
 					netdev->ifindex);
 		} else if (ret < 0) {
 			deleted_all = false;
 			WARN("Failed to remove interface \"%s\" with "
 					"index %d: %s",
-					netdev->name ? netdev->name : "(null)",
+					netdev->name[0] != '\0' ? netdev->name : "(null)",
 					netdev->ifindex, strerror(-ret));
 			continue;
 		}
 		INFO("Removed interface \"%s\" with index %d",
-				netdev->name ? netdev->name : "(null)",
+				netdev->name[0] != '\0' ? netdev->name : "(null)",
 				netdev->ifindex);
 
 		if (netdev->type != LXC_NET_VETH)
@@ -2502,11 +2497,11 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 		/* Explicitly delete host veth device to prevent lingering
 		 * devices. We had issues in LXD around this.
 		 */
-		if (netdev->priv.veth_attr.pair)
+		if (netdev->priv.veth_attr.pair[0] != '\0')
 			hostveth = netdev->priv.veth_attr.pair;
 		else
 			hostveth = netdev->priv.veth_attr.veth1;
-		if (*hostveth == '\0')
+		if (hostveth[0] == '\0')
 			continue;
 
 		ret = lxc_netdev_delete_by_name(hostveth);
@@ -2739,9 +2734,12 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 	 * When the IFLA_IFNAME attribute is passed something like "<prefix>%d"
 	 * netlink will replace the format specifier with an appropriate index.
 	 */
-	if (!netdev->name)
-		netdev->name = netdev->type == LXC_NET_PHYS ?
-			netdev->link : "eth%d";
+	if (netdev->name[0] == '\0') {
+		if (netdev->type == LXC_NET_PHYS)
+			strcpy(netdev->name, netdev->link);
+		else
+			strcpy(netdev->name, "eth%d");
+	}
 
 	/* rename the interface name */
 	if (strcmp(ifname, netdev->name) != 0) {

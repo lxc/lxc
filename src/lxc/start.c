@@ -882,13 +882,6 @@ static int read_unpriv_netifindex(struct lxc_list *network)
 		if (netdev->type != LXC_NET_VETH)
 			continue;
 
-		netdev->name = malloc(IFNAMSIZ);
-		if (!netdev->name) {
-			ERROR("Out of memory.");
-			close(netpipe);
-			return -1;
-		}
-
 		if (read(netpipe, netdev->name, IFNAMSIZ) != IFNAMSIZ) {
 			close(netpipe);
 			return -1;

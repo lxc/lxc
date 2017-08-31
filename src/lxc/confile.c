@@ -764,11 +764,6 @@ static struct lxc_netdev *network_netdev(const char *key, const char *value,
 	return netdev;
 }
 
-static int network_ifname(char **valuep, const char *value)
-{
-	return set_config_string_item_max(valuep, value, IFNAMSIZ);
-}
-
 #ifndef MACVLAN_MODE_PRIVATE
 #define MACVLAN_MODE_PRIVATE 1
 #endif
@@ -870,7 +865,7 @@ static int set_config_network_link(const char *key, const char *value,
 	if (!netdev)
 		return -1;
 
-	return network_ifname(&netdev->link, value);
+	return network_ifname(netdev->link, value);
 }
 
 static int set_config_network_name(const char *key, const char *value,
@@ -882,7 +877,7 @@ static int set_config_network_name(const char *key, const char *value,
 	if (!netdev)
 		return -1;
 
-	return network_ifname(&netdev->name, value);
+	return network_ifname(netdev->name, value);
 }
 
 static int set_config_network_veth_pair(const char *key, const char *value,
@@ -899,7 +894,7 @@ static int set_config_network_veth_pair(const char *key, const char *value,
 		return -1;
 	}
 
-	return network_ifname(&netdev->priv.veth_attr.pair, value);
+	return network_ifname(netdev->priv.veth_attr.pair, value);
 }
 
 static int set_config_network_macvlan_mode(const char *key, const char *value,

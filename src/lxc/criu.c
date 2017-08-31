@@ -523,7 +523,7 @@ static void exec_criu(struct criu_opts *opts)
 			case LXC_NET_VETH:
 				veth = n->priv.veth_attr.pair;
 
-				if (n->link) {
+				if (n->link[0] != '\0') {
 					if (external_not_veth)
 						fmt = "veth[%s]:%s@%s";
 					else
@@ -542,7 +542,7 @@ static void exec_criu(struct criu_opts *opts)
 					goto err;
 				break;
 			case LXC_NET_MACVLAN:
-				if (!n->link) {
+				if (n->link[0] == '\0') {
 					ERROR("no host interface for macvlan %s", n->name);
 					goto err;
 				}
@@ -764,11 +764,17 @@ static bool restore_net_info(struct lxc_container *c)
 
 		snprintf(template, sizeof(template), "vethXXXXXX");
 
-		if (!netdev->priv.veth_attr.pair)
-			netdev->priv.veth_attr.pair = lxc_mkifname(template);
+		if (netdev->priv.veth_attr.pair[0] == '\0' &&
+		    netdev->priv.veth_attr.veth1[0] == '\0') {
+			char *tmp;
 
-		if (!netdev->priv.veth_attr.pair)
-			goto out_unlock;
+			tmp = lxc_mkifname(template);
+			if (!tmp)
+				goto out_unlock;
+
+			strcpy(netdev->priv.veth_attr.veth1, tmp);
+			free(tmp);
+		}
 	}
 
 	has_error = false;
