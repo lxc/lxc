@@ -1055,10 +1055,10 @@ do_partial_cleanup:
 
 int main(int argc, char *argv[])
 {
-	int container_veth_ifidx, fd, host_veth_ifidx, n, pid, request, ret;
+	int fd, n, pid, request, ret;
 	char *me, *newname;
 	struct user_nic_args args;
-	int netns_fd = -1;
+	int container_veth_ifidx = -1, host_veth_ifidx = -1, netns_fd = -1;
 	char *cnic = NULL, *nicname = NULL;
 	struct alloted_s *alloted = NULL;
 
