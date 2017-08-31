@@ -115,20 +115,42 @@ union netdev_p {
 
 /*
  * Defines a structure to configure a network device
- * @link       : lxc.net.[i].link, name of bridge or host iface to attach if any
- * @name       : lxc.net.[i].name, name of iface on the container side
- * @flags      : flag of the network device (IFF_UP, ... )
- * @ipv4       : a list of ipv4 addresses to be set on the network device
- * @ipv6       : a list of ipv6 addresses to be set on the network device
- * @upscript   : a script filename to be executed during interface configuration
- * @downscript : a script filename to be executed during interface destruction
- * @idx        : network counter
+ * @idx               : network counter
+ * @ifindex           : ifindex of the network device
+ *                      Note that this is the ifindex of the network device in
+ *                      the container's network namespace. If the network device
+ *                      consists of a pair of network devices (e.g. veth pairs
+ *                      attached to a network bridge) then this index cannot be
+ *                      used to identify or modify the host veth device. See
+ *                      struct ifla_veth for the host side information.
+ * @type              : network type (veth, macvlan, vlan, ...)
+ * @flags             : flag of the network device (IFF_UP, ... )
+ * @link              : lxc.net.[i].link, name of bridge or host iface to attach
+ *                      if any
+ * @name              : lxc.net.[i].name, name of iface on the container side
+ * @hwaddr            : mac address
+ * @mtu               : maximum transmission unit
+ * @priv              : information specific to the specificed network type
+ *                      Note that this is a union so whether accessing a struct
+ *                      is possible is dependent on the network type.
+ * @ipv4              : a list of ipv4 addresses to be set on the network device
+ * @ipv6              : a list of ipv6 addresses to be set on the network device
+ * @ipv4_gateway_auto : whether the ipv4 gateway is to be automatically gathered
+ *                      from the associated @link
+ * @ipv4_gateway      : ipv4 gateway
+ * @ipv6_gateway_auto : whether the ipv6 gateway is to be automatically gathered
+ *                      from the associated @link
+ * @ipv6_gateway      : ipv6 gateway
+ * @upscript          : a script filename to be executed during interface
+ *                      configuration
+ * @downscript        : a script filename to be executed during interface
+ *                      destruction
  */
 struct lxc_netdev {
 	ssize_t idx;
+	int ifindex;
 	int type;
 	int flags;
-	int ifindex;
 	char *link;
 	char *name;
 	char *hwaddr;
@@ -136,10 +158,10 @@ struct lxc_netdev {
 	union netdev_p priv;
 	struct lxc_list ipv4;
 	struct lxc_list ipv6;
-	struct in_addr *ipv4_gateway;
 	bool ipv4_gateway_auto;
-	struct in6_addr *ipv6_gateway;
+	struct in_addr *ipv4_gateway;
 	bool ipv6_gateway_auto;
+	struct in6_addr *ipv6_gateway;
 	char *upscript;
 	char *downscript;
 };
