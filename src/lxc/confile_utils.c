@@ -266,6 +266,9 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 			if (netdev->priv.veth_attr.veth1[0] != '\0')
 				TRACE("veth1 : %s",
 				      netdev->priv.veth_attr.veth1);
+			if (netdev->priv.veth_attr.ifindex > 0)
+				TRACE("host side ifindex for veth device: %d",
+				      netdev->priv.veth_attr.ifindex);
 			break;
 		case LXC_NET_MACVLAN:
 			TRACE("type: macvlan");
