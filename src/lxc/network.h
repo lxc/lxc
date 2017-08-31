@@ -79,9 +79,21 @@ struct lxc_route6 {
 	struct in6_addr addr;
 };
 
+/* Contains information about the host side veth device.
+ * @pair    : Name of the host side veth device.
+ *            If the user requested that the host veth device be created with a
+ *            specific names this field will be set. If this field is set @veth1
+ *            is not set.
+ * @veth1   : Name of the host side veth device.
+ *            If the user did not request that the host veth device be created
+ *            with a specific name this field will be set. If this field is set
+ *            @pair is not set.
+ * @ifindex : Ifindex of the network device.
+ */
 struct ifla_veth {
-	char *pair; /* pair name */
-	char veth1[IFNAMSIZ]; /* needed for deconf */
+	char *pair;
+	char veth1[IFNAMSIZ];
+	int ifindex;
 };
 
 struct ifla_vlan {
