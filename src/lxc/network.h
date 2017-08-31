@@ -91,7 +91,7 @@ struct lxc_route6 {
  * @ifindex : Ifindex of the network device.
  */
 struct ifla_veth {
-	char *pair;
+	char pair[IFNAMSIZ];
 	char veth1[IFNAMSIZ];
 	int ifindex;
 };
@@ -151,8 +151,8 @@ struct lxc_netdev {
 	int ifindex;
 	int type;
 	int flags;
-	char *link;
-	char *name;
+	char link[IFNAMSIZ];
+	char name[IFNAMSIZ];
 	char *hwaddr;
 	char *mtu;
 	union netdev_p priv;

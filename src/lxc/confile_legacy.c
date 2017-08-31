@@ -110,10 +110,6 @@ static void lxc_remove_nic(struct lxc_list *it)
 
 	lxc_list_del(it);
 
-	free(netdev->link);
-	free(netdev->name);
-	if (netdev->type == LXC_NET_VETH)
-		free(netdev->priv.veth_attr.pair);
 	free(netdev->upscript);
 	free(netdev->downscript);
 	free(netdev->hwaddr);
@@ -173,6 +169,16 @@ int set_config_network_legacy_type(const char *key, const char *value,
 	memset(netdev, 0, sizeof(*netdev));
 	lxc_list_init(&netdev->ipv4);
 	lxc_list_init(&netdev->ipv6);
+
+	netdev->name[0] = '\0';
+	netdev->link[0] = '\0';
+	memset(&netdev->priv, 0, sizeof(netdev->priv));
+	/* I'm not completely sure if the memset takes care to zero the arrays
+	 * in the union as well. So let's make extra sure and set the first byte
+	 * to zero so that we don't have any surprises.
+	 */
+	netdev->priv.veth_attr.pair[0] = '\0';
+	netdev->priv.veth_attr.veth1[0] = '\0';
 
 	list = malloc(sizeof(*list));
 	if (!list) {
@@ -423,7 +429,7 @@ int set_config_network_legacy_link(const char *key, const char *value,
 		free(it);
 		ret = create_matched_ifnames(value, lxc_conf, NULL);
 	} else {
-		ret = network_ifname(&netdev->link, value);
+		ret = network_ifname(netdev->link, value);
 	}
 
 	return ret;
@@ -438,7 +444,7 @@ int set_config_network_legacy_name(const char *key, const char *value,
 	if (!netdev)
 		return -1;
 
-	return network_ifname(&netdev->name, value);
+	return network_ifname(netdev->name, value);
 }
 
 int set_config_network_legacy_veth_pair(const char *key, const char *value,
@@ -455,7 +461,7 @@ int set_config_network_legacy_veth_pair(const char *key, const char *value,
 		return -1;
 	}
 
-	return network_ifname(&netdev->priv.veth_attr.pair, value);
+	return network_ifname(netdev->priv.veth_attr.pair, value);
 }
 
 int set_config_network_legacy_macvlan_mode(const char *key, const char *value,
@@ -848,12 +854,12 @@ int get_config_network_legacy_item(const char *key, char *retv, int inlen,
 	if (!netdev)
 		return -1;
 	if (strcmp(p1, "name") == 0) {
-		if (netdev->name)
+		if (netdev->name[0] != '\0')
 			strprint(retv, inlen, "%s", netdev->name);
 	} else if (strcmp(p1, "type") == 0) {
 		strprint(retv, inlen, "%s", lxc_net_type_to_str(netdev->type));
 	} else if (strcmp(p1, "link") == 0) {
-		if (netdev->link)
+		if (netdev->link[0] != '\0')
 			strprint(retv, inlen, "%s", netdev->link);
 	} else if (strcmp(p1, "flags") == 0) {
 		if (netdev->flags & IFF_UP)
@@ -895,7 +901,7 @@ int get_config_network_legacy_item(const char *key, char *retv, int inlen,
 	} else if (strcmp(p1, "veth.pair") == 0) {
 		if (netdev->type == LXC_NET_VETH) {
 			strprint(retv, inlen, "%s",
-				 netdev->priv.veth_attr.pair
+				 netdev->priv.veth_attr.pair[0] != '\0'
 				     ? netdev->priv.veth_attr.pair
 				     : netdev->priv.veth_attr.veth1);
 		}

@@ -183,6 +183,15 @@ struct lxc_netdev *lxc_network_add(struct lxc_list *networks, int idx, bool tail
 	memset(netdev, 0, sizeof(*netdev));
 	lxc_list_init(&netdev->ipv4);
 	lxc_list_init(&netdev->ipv6);
+	netdev->name[0] = '\0';
+	netdev->link[0] = '\0';
+	memset(&netdev->priv, 0, sizeof(netdev->priv));
+	/* I'm not completely sure if the memset takes care to zero the arrays
+	 * in the union as well. So let's make extra sure and set the first byte
+	 * to zero so that we don't have any surprises.
+	 */
+	netdev->priv.veth_attr.pair[0] = '\0';
+	netdev->priv.veth_attr.veth1[0] = '\0';
 
 	/* give network a unique index */
 	netdev->idx = idx;
@@ -258,7 +267,7 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 		switch (netdev->type) {
 		case LXC_NET_VETH:
 			TRACE("type: veth");
-			if (netdev->priv.veth_attr.pair)
+			if (netdev->priv.veth_attr.pair[0] != '\0')
 				TRACE("veth pair: %s",
 				      netdev->priv.veth_attr.pair);
 			if (netdev->priv.veth_attr.veth1[0] != '\0')
@@ -300,9 +309,9 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 		if (netdev->type != LXC_NET_EMPTY) {
 			TRACE("flags: %s",
 			      netdev->flags == IFF_UP ? "up" : "none");
-			if (netdev->link)
+			if (netdev->link[0] != '\0')
 				TRACE("link: %s", netdev->link);
-			if (netdev->name)
+			if (netdev->name[0] != '\0')
 				TRACE("name: %s", netdev->name);
 			if (netdev->hwaddr)
 				TRACE("hwaddr: %s", netdev->hwaddr);
@@ -350,10 +359,6 @@ static void lxc_free_netdev(struct lxc_netdev *netdev)
 {
 	struct lxc_list *cur, *next;
 
-	free(netdev->link);
-	free(netdev->name);
-	if (netdev->type == LXC_NET_VETH)
-		free(netdev->priv.veth_attr.pair);
 	free(netdev->upscript);
 	free(netdev->downscript);
 	free(netdev->hwaddr);
@@ -503,9 +508,15 @@ int config_ip_prefix(struct in_addr *addr)
 	return 0;
 }
 
-int network_ifname(char **valuep, const char *value)
+int network_ifname(char *valuep, const char *value)
 {
-	return set_config_string_item_max(valuep, value, IFNAMSIZ);
+	if (strlen(value) >= IFNAMSIZ) {
+		ERROR("Network devie name \"%s\" is too long (>= %zu)", value,
+		      (size_t)IFNAMSIZ);
+	}
+
+	strcpy(valuep, value);
+	return 0;
 }
 
 int rand_complete_hwaddr(char *hwaddr)
