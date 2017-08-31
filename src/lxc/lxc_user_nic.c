@@ -453,6 +453,8 @@ static int get_mtu(char *name)
 	int idx;
 
 	idx = if_nametoindex(name);
+	if (idx < 0)
+		return -1;
 	return netdev_get_mtu(idx);
 }
 
@@ -1215,6 +1217,12 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	host_veth_ifidx = if_nametoindex(nicname);
+	if (!host_veth_ifidx) {
+		free(newname);
+		free(nicname);
+		usernic_error("Failed to get netdev index: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 
 	/* Write names of veth pairs and their ifindeces to stout:
 	 * (e.g. eth0:731:veth9MT2L4:730)
