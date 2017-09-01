@@ -89,7 +89,7 @@
 lxc_log_define(lxc_start, lxc);
 
 extern void mod_all_rdeps(struct lxc_container *c, bool inc);
-static bool do_destroy_container(struct lxc_conf *conf);
+static bool do_destroy_container(struct lxc_handler *handler);
 static int lxc_rmdir_onedev_wrapper(void *data);
 static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 					    const char *name);
@@ -535,6 +535,11 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 
 	memset(handler, 0, sizeof(*handler));
 
+	/* Note that am_unpriv() checks the effective uid. We probably don't
+	 * care if we are real root only if we are running as root so this
+	 * should be fine.
+	 */
+	handler->root = !am_unpriv();
 	handler->data_sock[0] = handler->data_sock[1] = -1;
 	handler->conf = conf;
 	handler->lxcpath = lxcpath;
@@ -1122,6 +1127,43 @@ static int save_phys_nics(struct lxc_conf *conf)
 	return 0;
 }
 
+static int lxc_network_recv_name_and_ifindex_from_child(struct lxc_handler *handler)
+{
+	struct lxc_list *iterator, *network;
+	int data_sock = handler->data_sock[1];
+
+	if (!handler->root)
+		return 0;
+
+	network = &handler->conf->network;
+	lxc_list_for_each(iterator, network) {
+		int ret;
+		struct lxc_netdev *netdev = iterator->elem;
+
+		/* Receive network device name in the child's namespace to
+		 * parent.
+		 */
+		ret = lxc_abstract_unix_rcv_credential(data_sock, netdev->name, IFNAMSIZ);
+		if (ret < 0)
+			goto on_error;
+
+		/* Receive network device ifindex in the child's namespace to
+		 * parent.
+		 */
+		ret = lxc_abstract_unix_rcv_credential(data_sock, &netdev->ifindex,
+						       sizeof(netdev->ifindex));
+		if (ret < 0)
+			goto on_error;
+	}
+
+	return 0;
+
+on_error:
+	close(handler->data_sock[0]);
+	close(handler->data_sock[1]);
+	return -1;
+}
+
 static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 {
 	int i;
@@ -1220,7 +1262,8 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_init(handler))
 		return -1;
 
-	ret = socketpair(AF_UNIX, SOCK_DGRAM, 0, handler->data_sock);
+	ret = socketpair(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0,
+			 handler->data_sock);
 	if (ret < 0) {
 		lxc_sync_fini(handler);
 		return -1;
@@ -1286,7 +1329,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (attach_ns(handler->conf->inherit_ns_fd) < 0)
 		goto out_delete_net;
 
-	if (am_unpriv() && (nveths = count_veths(&handler->conf->network))) {
+	if (!handler->root && (nveths = count_veths(&handler->conf->network))) {
 		if (pipe(netpipepair) < 0) {
 			SYSERROR("Failed to create pipe.");
 			goto out_delete_net;
@@ -1384,12 +1427,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 			ERROR("Failed to create the configured network.");
 			goto out_delete_net;
 		}
-
-		/* Now all networks are created and moved into place. The
-		 * corresponding structs have now all been filled. So log them
-		 * for debugging purposes.
-		 */
-		lxc_log_configured_netdevs(handler->conf);
 	}
 
 	if (netpipe != -1) {
@@ -1440,6 +1477,19 @@ static int lxc_spawn(struct lxc_handler *handler)
 	 */
 	if (lxc_sync_barrier_child(handler, LXC_SYNC_POST_CGROUP))
 		return -1;
+
+	if (lxc_network_recv_name_and_ifindex_from_child(handler) < 0) {
+		ERROR("Failed to receive names and ifindices for network "
+		      "devices from child");
+		goto out_delete_net;
+	}
+
+	/* Now all networks are created, network devices are moved into place,
+	 * and the correct names and ifindeces in the respective namespaces have
+	 * been recorded. The corresponding structs have now all been filled. So
+	 * log them for debugging purposes.
+	 */
+	lxc_log_configured_netdevs(handler->conf);
 
 	/* Read tty fds allocated by child. */
 	if (lxc_recv_ttys_from_child(handler) < 0) {
@@ -1650,7 +1700,7 @@ static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 	int ret = 0;
 	struct lxc_container *c;
 	if (handler->conf->rootfs.path && handler->conf->rootfs.mount) {
-		bret = do_destroy_container(handler->conf);
+		bret = do_destroy_container(handler);
 		if (!bret) {
 			ERROR("Error destroying rootfs for container \"%s\".", name);
 			return;
@@ -1676,7 +1726,7 @@ static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 		}
 	}
 
-	if (am_unpriv())
+	if (!handler->root)
 		ret = userns_exec_1(handler->conf, lxc_rmdir_onedev_wrapper,
 				    destroy, "lxc_rmdir_onedev_wrapper");
 	else
@@ -1695,14 +1745,14 @@ static int lxc_rmdir_onedev_wrapper(void *data)
 	return lxc_rmdir_onedev(arg, NULL);
 }
 
-static bool do_destroy_container(struct lxc_conf *conf) {
-	if (am_unpriv()) {
-		if (userns_exec_1(conf, storage_destroy_wrapper, conf,
-				  "storage_destroy_wrapper") < 0)
+static bool do_destroy_container(struct lxc_handler *handler) {
+	if (!handler->root) {
+		if (userns_exec_1(handler->conf, storage_destroy_wrapper,
+				  handler->conf, "storage_destroy_wrapper") < 0)
 			return false;
 
 		return true;
 	}
 
-	return storage_destroy(conf);
+	return storage_destroy(handler->conf);
 }

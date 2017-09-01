@@ -35,6 +35,7 @@
 #include "namespace.h"
 
 struct lxc_handler {
+	bool root;
 	pid_t pid;
 	char *name;
 	lxc_state_t state;
