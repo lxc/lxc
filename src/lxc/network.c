@@ -330,11 +330,23 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 		return -1;
 	}
 
+	/* Note that we're retrieving the container's ifindex in the host's
+	 * network namespace because we need it to move the device from the
+	 * host's network namespace to the container's network namespace later
+	 * on.
+	 * Note that netdev->link will contain the name of the physical network
+	 * device in the host's namespace.
+	 */
 	netdev->ifindex = if_nametoindex(netdev->link);
 	if (!netdev->ifindex) {
 		ERROR("Failed to retrieve ifindex for \"%s\"", netdev->link);
 		return -1;
 	}
+
+	/* Store the ifindex of the host's network device in the host's
+	 * namespace.
+	 */
+	netdev->priv.phys_attr.ifindex = netdev->ifindex;
 
 	if (netdev->upscript) {
 		int err;
@@ -2393,7 +2405,7 @@ int lxc_network_move_created_netdev_priv(const char *lxcpath, char *lxcname,
 		}
 
 		DEBUG("Moved network device \"%s\"/\"%s\" to network namespace "
-		      "of %d:",
+		      "of %d",
 		      ifname, netdev->name[0] != '\0' ? netdev->name : "(null)",
 		      pid);
 	}
@@ -2762,6 +2774,12 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 		      netdev->ifindex);
 		return -1;
 	}
+
+	/* Now update the recorded name of the network device to reflect the
+	 * name of the network device in the child's network namespace. We will
+	 * later on send this information back to the parent.
+	 */
+	strcpy(netdev->name, current_ifname);
 
 	/* set a mac address */
 	if (netdev->hwaddr) {

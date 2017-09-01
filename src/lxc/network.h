@@ -107,10 +107,19 @@ struct ifla_macvlan {
 	int mode; /* private, vepa, bridge, passthru */
 };
 
+/* Contains information about the physical network device as seen from the host.
+ * @ifindex : The ifindex of the physical network device in the host's network
+ *            namespace.
+ */
+struct ifla_phys {
+	int ifindex;
+};
+
 union netdev_p {
+	struct ifla_macvlan macvlan_attr;
+	struct ifla_phys phys_attr;
 	struct ifla_veth veth_attr;
 	struct ifla_vlan vlan_attr;
-	struct ifla_macvlan macvlan_attr;
 };
 
 /*
