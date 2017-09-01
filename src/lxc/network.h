@@ -175,7 +175,7 @@ struct saved_nic {
 extern int lxc_convert_mac(char *macaddr, struct sockaddr *sockaddr);
 
 /* Move a device between namespaces. */
-extern int lxc_netdev_move_by_index(int ifindex, pid_t pid, const char* ifname);
+extern int lxc_netdev_move_by_index(int ifindex, pid_t pid, const char *ifname);
 extern int lxc_netdev_move_by_name(const char *ifname, pid_t pid,
 				   const char *newname);
 

@@ -1914,6 +1914,9 @@ char *lxc_mkifname(const char *template)
 	FILE *urandom;
 	struct ifaddrs *ifa, *ifaddr;
 
+	if (strlen(template) >= IFNAMSIZ)
+		return NULL;
+
 	/* Get all the network interfaces. */
 	getifaddrs(&ifaddr);
 
@@ -2389,7 +2392,7 @@ int lxc_create_network_priv(struct lxc_handler *handler)
 int lxc_network_move_created_netdev_priv(const char *lxcpath, char *lxcname,
 					 struct lxc_list *network, pid_t pid)
 {
-	int err;
+	int ret;
 	char ifname[IFNAMSIZ];
 	struct lxc_list *iterator;
 
@@ -2409,16 +2412,17 @@ int lxc_network_move_created_netdev_priv(const char *lxcpath, char *lxcname,
 			return -1;
 		}
 
-		err = lxc_netdev_move_by_name(ifname, pid, NULL);
-		if (err) {
+		ret = lxc_netdev_move_by_name(ifname, pid, NULL);
+		if (ret) {
 			ERROR("Failed to move network device \"%s\" to "
 			      "network namespace %d: %s", ifname, pid,
-			      strerror(-err));
+			      strerror(-ret));
 			return -1;
 		}
 
 		DEBUG("Moved network device \"%s\"/\"%s\" to network namespace "
-		      "of %d:", ifname, netdev->name[0] != '\0' ? netdev->name : "(null)",
+		      "of %d:",
+		      ifname, netdev->name[0] != '\0' ? netdev->name : "(null)",
 		      pid);
 	}
 
@@ -2733,8 +2737,7 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 		if (netdev->type != LXC_NET_VETH) {
 			net_type_name = lxc_net_type_to_str(netdev->type);
 			ERROR("%s networks are not supported for containers "
-			      "not setup up by privileged users",
-			      net_type_name);
+			      "not setup up by privileged users", net_type_name);
 			return -1;
 		}
 
