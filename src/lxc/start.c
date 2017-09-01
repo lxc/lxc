@@ -1097,36 +1097,6 @@ out_error:
 	return -1;
 }
 
-static int save_phys_nics(struct lxc_conf *conf)
-{
-	struct lxc_list *iterator;
-	int am_root = (getuid() == 0);
-
-	if (!am_root)
-		return 0;
-
-	lxc_list_for_each(iterator, &conf->network) {
-		struct lxc_netdev *netdev = iterator->elem;
-
-		if (netdev->type != LXC_NET_PHYS)
-			continue;
-		conf->saved_nics = realloc(conf->saved_nics,
-				(conf->num_savednics+1)*sizeof(struct saved_nic));
-		if (!conf->saved_nics)
-			return -1;
-		conf->saved_nics[conf->num_savednics].ifindex = netdev->ifindex;
-		conf->saved_nics[conf->num_savednics].orig_name = strdup(netdev->link);
-		if (!conf->saved_nics[conf->num_savednics].orig_name)
-			return -1;
-		INFO("Stored saved_nic #%d idx %d name %s.", conf->num_savednics,
-			conf->saved_nics[conf->num_savednics].ifindex,
-			conf->saved_nics[conf->num_savednics].orig_name);
-		conf->num_savednics++;
-	}
-
-	return 0;
-}
-
 static int lxc_network_recv_name_and_ifindex_from_child(struct lxc_handler *handler)
 {
 	struct lxc_list *iterator, *network;
@@ -1293,11 +1263,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 				lxc_sync_fini(handler);
 				return -1;
 			}
-		}
-
-		if (save_phys_nics(handler->conf)) {
-			ERROR("Failed to save physical nic info.");
-			goto out_abort;
 		}
 	}
 
@@ -1618,8 +1583,10 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 		}
 	}
 
-	DEBUG("Pushing physical nics back to host namespace");
-	lxc_restore_phys_nics_to_netns(handler->netnsfd, handler->conf);
+	err = lxc_restore_phys_nics_to_netns(handler);
+	if (err < 0)
+		ERROR("Failed to move physical network devices back to parent "
+		      "network namespace");
 
 	if (handler->pinfd >= 0) {
 		close(handler->pinfd);

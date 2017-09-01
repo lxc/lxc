@@ -3502,17 +3502,6 @@ int lxc_clear_hooks(struct lxc_conf *c, const char *key)
 	return 0;
 }
 
-static void lxc_clear_saved_nics(struct lxc_conf *conf)
-{
-	int i;
-
-	if (!conf->saved_nics)
-		return;
-	for (i=0; i < conf->num_savednics; i++)
-		free(conf->saved_nics[i].orig_name);
-	free(conf->saved_nics);
-}
-
 static inline void lxc_clear_aliens(struct lxc_conf *conf)
 {
 	struct lxc_list *it,*next;
@@ -3567,7 +3556,6 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_cgroups(conf, "lxc.cgroup");
 	lxc_clear_hooks(conf, "lxc.hook");
 	lxc_clear_mount_entries(conf);
-	lxc_clear_saved_nics(conf);
 	lxc_clear_idmaps(conf);
 	lxc_clear_groups(conf);
 	lxc_clear_includes(conf);

@@ -175,11 +175,6 @@ struct lxc_netdev {
 	char *downscript;
 };
 
-struct saved_nic {
-	int ifindex;
-	char *orig_name;
-};
-
 /* Convert a string mac address to a socket structure. */
 extern int lxc_convert_mac(char *macaddr, struct sockaddr *sockaddr);
 
@@ -277,7 +272,7 @@ extern int lxc_find_gateway_addresses(struct lxc_handler *handler);
 extern int lxc_create_network_unpriv(const char *lxcpath, char *lxcname,
 				     struct lxc_list *network, pid_t pid);
 extern int lxc_requests_empty_network(struct lxc_handler *handler);
-extern void lxc_restore_phys_nics_to_netns(int netnsfd, struct lxc_conf *conf);
+extern int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler);
 extern int lxc_setup_network_in_child_namespaces(const struct lxc_conf *conf,
 						 struct lxc_list *network);
 

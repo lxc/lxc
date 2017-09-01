@@ -294,6 +294,10 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 			break;
 		case LXC_NET_PHYS:
 			TRACE("type: phys");
+			if (netdev->priv.phys_attr.ifindex > 0) {
+				TRACE("host side ifindex for phys device: %d",
+				      netdev->priv.phys_attr.ifindex);
+			}
 			break;
 		case LXC_NET_EMPTY:
 			TRACE("type: empty");
