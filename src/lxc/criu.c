@@ -126,6 +126,24 @@ static int load_tty_major_minor(char *directory, char *output, int len)
 	return 0;
 }
 
+ // Do not use strcmp to avoid incorrectly outputs that Criu 2.12.1 is less than 2.8
+ static int cmpVersion(const char *v1, const char *v2)
+ {
+     int i;
+     int oct_v1[3], oct_v2[3];
+     sscanf(v1, "%d.%d.%d", &oct_v1[0], &oct_v1[1], &oct_v1[2]);
+     sscanf(v2, "%d.%d.%d", &oct_v2[0], &oct_v2[1], &oct_v2[2]);
+
+     for (i = 0; i < 3; i++) {
+         if (oct_v1[i] > oct_v2[i])
+             return 1;
+         else if (oct_v1[i] < oct_v2[i])
+             return -1;
+     }
+
+     return 0;
+
+
 static void exec_criu(struct criu_opts *opts)
 {
 	char **argv, log[PATH_MAX];
@@ -500,7 +518,7 @@ static void exec_criu(struct criu_opts *opts)
 			struct lxc_netdev *n = it->elem;
 			bool external_not_veth;
 
-			if (strcmp(opts->criu_version, CRIU_EXTERNAL_NOT_VETH) >= 0) {
+			if (cmpVersion(opts->criu_version, CRIU_EXTERNAL_NOT_VETH) >= 0) {
 				/* Since criu version 2.8 the usage of --veth-pair
 				 * has been deprecated:
 				 * git tag --contains f2037e6d3445fc400
