@@ -500,7 +500,7 @@ static void exec_criu(struct criu_opts *opts)
 			struct lxc_netdev *n = it->elem;
 			bool external_not_veth;
 
-			if (strcmp(opts->criu_version, CRIU_EXTERNAL_NOT_VETH) >= 0) {
+			if (strverscmp(opts->criu_version, CRIU_EXTERNAL_NOT_VETH) >= 0) {
 				/* Since criu version 2.8 the usage of --veth-pair
 				 * has been deprecated:
 				 * git tag --contains f2037e6d3445fc400
