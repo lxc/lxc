@@ -2204,6 +2204,7 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, char *lxcname,
 	}
 
 	if (child == 0) {
+		char *hostveth;
 		int ret;
 
 		close(pipefd[0]);
@@ -2217,7 +2218,11 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, char *lxcname,
 			exit(EXIT_FAILURE);
 		}
 
-		if (netdev->priv.veth_attr.veth1[0] == '\0') {
+		if (netdev->priv.veth_attr.pair[0] != '\0')
+			hostveth = netdev->priv.veth_attr.pair;
+		else
+			hostveth = netdev->priv.veth_attr.veth1;
+		if (hostveth[0] == '\0') {
 			SYSERROR("Host side veth device name is missing");
 			exit(EXIT_FAILURE);
 		}
@@ -2229,10 +2234,10 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, char *lxcname,
 		}
 
 		INFO("Execing lxc-user-nic delete %s %s %s veth %s %s", lxcpath,
-		     lxcname, netns_path, netdev->link, netdev->priv.veth_attr.veth1);
+		     lxcname, netns_path, netdev->link, hostveth);
 		execlp(LXC_USERNIC_PATH, LXC_USERNIC_PATH, "delete", lxcpath,
-		       lxcname, netns_path, "veth", netdev->link,
-		       netdev->priv.veth_attr.veth1, (char *)NULL);
+		       lxcname, netns_path, "veth", netdev->link, hostveth,
+		       (char *)NULL);
 		SYSERROR("Failed to exec lxc-user-nic.");
 		exit(EXIT_FAILURE);
 	}
@@ -2327,14 +2332,20 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 		if (!is_ovs_bridge(netdev->link))
 			continue;
 
+		if (netdev->priv.veth_attr.pair[0] != '\0')
+			hostveth = netdev->priv.veth_attr.pair;
+		else
+			hostveth = netdev->priv.veth_attr.veth1;
+		if (hostveth[0] == '\0')
+			continue;
+
 		ret = lxc_delete_network_unpriv_exec(handler->lxcpath,
 						     handler->name, netdev,
 						     netns_path);
 		if (ret < 0) {
 			deleted_all = false;
 			WARN("Failed to remove port \"%s\" from openvswitch "
-			     "bridge \"%s\"",
-			     netdev->priv.veth_attr.veth1, netdev->link);
+			     "bridge \"%s\"", hostveth, netdev->link);
 			continue;
 		}
 		INFO("Removed interface \"%s\" from \"%s\"", hostveth,
