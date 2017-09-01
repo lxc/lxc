@@ -49,8 +49,10 @@ struct lxc_handler {
 	const char *lxcpath;
 	void *cgroup_data;
 
-	/* socketpair for child->parent tty fd passing */
-	int ttysock[2];
+	/* Abstract unix domain SOCK_DGRAM socketpair to pass arbitrary data
+	 * between child and parent.
+	 */
+	int data_sock[2];
 
 	/* indicates whether should we close std{in,out,err} on start */
 	bool backgrounded;

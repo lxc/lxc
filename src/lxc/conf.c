@@ -3071,7 +3071,7 @@ static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 	struct lxc_pty_info *pty_info;
 	struct lxc_conf *conf = handler->conf;
 	const struct lxc_tty_info *tty_info = &conf->tty_info;
-	int sock = handler->ttysock[0];
+	int sock = handler->data_sock[0];
 	int ret = -1;
 	size_t num_ttyfds = (2 * conf->tty);
 
@@ -3095,8 +3095,8 @@ static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 	else
 		TRACE("sent %d ttys to parent", conf->tty);
 
-	close(handler->ttysock[0]);
-	close(handler->ttysock[1]);
+	close(handler->data_sock[0]);
+	close(handler->data_sock[1]);
 
 	for (i = 0; i < num_ttyfds; i++)
 		close(ttyfds[i]);

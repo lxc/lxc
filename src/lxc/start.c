@@ -535,7 +535,7 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 
 	memset(handler, 0, sizeof(*handler));
 
-	handler->ttysock[0] = handler->ttysock[1] = -1;
+	handler->data_sock[0] = handler->data_sock[1] = -1;
 	handler->conf = conf;
 	handler->lxcpath = lxcpath;
 	handler->pinfd = -1;
@@ -759,9 +759,9 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		free(cur);
 	}
 
-	if (handler->ttysock[0] != -1) {
-		close(handler->ttysock[0]);
-		close(handler->ttysock[1]);
+	if (handler->data_sock[0] != -1) {
+		close(handler->data_sock[0]);
+		close(handler->data_sock[1]);
 	}
 
 	if (handler->conf->ephemeral == 1 && handler->conf->reboot != 1)
@@ -1128,7 +1128,7 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 	int *ttyfds;
 	struct lxc_pty_info *pty_info;
 	int ret = -1;
-	int sock = handler->ttysock[1];
+	int sock = handler->data_sock[1];
 	struct lxc_conf *conf = handler->conf;
 	struct lxc_tty_info *tty_info = &conf->tty_info;
 	size_t num_ttyfds = (2 * conf->tty);
@@ -1201,7 +1201,7 @@ void resolve_clone_flags(struct lxc_handler *handler)
  */
 static int lxc_spawn(struct lxc_handler *handler)
 {
-	int i, flags, nveths;
+	int i, flags, nveths, ret;
 	const char *name = handler->name;
 	bool wants_to_map_ids;
 	int netpipepair[2], saved_ns_fd[LXC_NS_MAX];
@@ -1220,7 +1220,8 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_init(handler))
 		return -1;
 
-	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, handler->ttysock) < 0) {
+	ret = socketpair(AF_UNIX, SOCK_DGRAM, 0, handler->data_sock);
+	if (ret < 0) {
 		lxc_sync_fini(handler);
 		return -1;
 	}
