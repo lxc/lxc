@@ -2277,7 +2277,7 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 	char netns_path[6 + LXC_NUMSTRLEN64 + 4 + LXC_NUMSTRLEN64 + 1];
 	bool deleted_all = true;
 
-	if (!am_unpriv())
+	if (handler->root)
 		return true;
 
 	*netns_path = '\0';
@@ -2346,13 +2346,10 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 
 int lxc_create_network_priv(struct lxc_handler *handler)
 {
-	bool am_root;
 	struct lxc_list *iterator;
 	struct lxc_list *network = &handler->conf->network;
 
-	/* We need to be root. */
-	am_root = (getuid() == 0);
-	if (!am_root)
+	if (!handler->root)
 		return 0;
 
 	lxc_list_for_each(iterator, network) {
@@ -2454,7 +2451,7 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 	struct lxc_list *network = &handler->conf->network;
 	bool deleted_all = true;
 
-	if (am_unpriv())
+	if (!handler->root)
 		return true;
 
 	lxc_list_for_each(iterator, network) {
@@ -2471,12 +2468,12 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 			ret = lxc_netdev_rename_by_index(netdev->ifindex, netdev->link);
 			if (ret < 0)
 				WARN("Failed to rename interface with index %d "
-				     "to its initial name \"%s\"",
-				     netdev->ifindex, netdev->link);
+				     "from \"%s\" to its initial name \"%s\"",
+				     netdev->ifindex, netdev->name, netdev->link);
 			else
 				TRACE("Renamed interface with index %d to its "
-				      "initial name \"%s\"",
-				      netdev->ifindex, netdev->link);
+				      "from \"%s\" to its initial name \"%s\"",
+				      netdev->ifindex, netdev->name, netdev->link);
 			continue;
 		}
 
@@ -2572,51 +2569,69 @@ int lxc_requests_empty_network(struct lxc_handler *handler)
 }
 
 /* try to move physical nics to the init netns */
-void lxc_restore_phys_nics_to_netns(int netnsfd, struct lxc_conf *conf)
+int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler)
 {
 	int ret;
-	int i, oldfd;
+	int oldfd;
 	char ifname[IFNAMSIZ];
+	struct lxc_list *iterator;
+	int netnsfd = handler->netnsfd;
+	struct lxc_conf *conf = handler->conf;
 
-	if (netnsfd < 0 || conf->num_savednics == 0)
-		return;
+	/* We need CAP_NET_ADMIN in the parent namespace in order to setns() to
+	 * the parent network namespace. We won't have this capability if we are
+	 * unprivileged.
+	 */
+	if (!handler->root)
+		return 0;
 
-	INFO("Trying to restore network device names in original namespace for "
-	     "%d network devices", conf->num_savednics);
+	TRACE("Moving physical network devices back to parent network namespace");
 
 	oldfd = lxc_preserve_ns(getpid(), "net");
 	if (oldfd < 0) {
 		SYSERROR("Failed to preserve network namespace");
-		return;
+		return -1;
 	}
 
-	ret = setns(netnsfd, 0);
+	ret = setns(netnsfd, CLONE_NEWNET);
 	if (ret < 0) {
 		SYSERROR("Failed to enter network namespace");
 		close(oldfd);
-		return;
+		return -1;
 	}
 
-	for (i = 0; i < conf->num_savednics; i++) {
-		struct saved_nic *s = &conf->saved_nics[i];
+	lxc_list_for_each(iterator, &conf->network) {
+		struct lxc_netdev *netdev = iterator->elem;
 
-		/* retrieve the name of the interface */
-		if (!if_indextoname(s->ifindex, ifname)) {
+		if (netdev->type != LXC_NET_PHYS)
+			continue;
+
+		/* Retrieve the name of the interface in the container's network
+		 * namespace.
+		 */
+		if (!if_indextoname(netdev->ifindex, ifname)) {
 			WARN("No interface corresponding to ifindex %d",
-			     s->ifindex);
+			     netdev->ifindex);
 			continue;
 		}
-		if (lxc_netdev_move_by_name(ifname, 1, s->orig_name))
+
+		ret = lxc_netdev_move_by_name(ifname, 1, netdev->link);
+		if (ret < 0)
 			WARN("Error moving network device \"%s\" back to "
 			     "network namespace", ifname);
-		free(s->orig_name);
+		else
+			TRACE("Moved network device \"%s\" back to network "
+			      "namespace", ifname);
 	}
-	conf->num_savednics = 0;
 
-	ret = setns(oldfd, 0);
-	if (ret < 0)
-		SYSERROR("Failed to enter network namespace");
+	ret = setns(oldfd, CLONE_NEWNET);
 	close(oldfd);
+	if (ret < 0) {
+		SYSERROR("Failed to enter network namespace");
+		return -1;
+	}
+
+	return 0;
 }
 
 static int setup_hw_addr(char *hwaddr, const char *ifname)
