@@ -174,15 +174,12 @@ struct saved_nic {
 /* Convert a string mac address to a socket structure. */
 extern int lxc_convert_mac(char *macaddr, struct sockaddr *sockaddr);
 
-/*
- * Move a device between namespaces
- */
-extern int lxc_netdev_move_by_index(int ifindex, pid_t pid, const char* ifname);
-extern int lxc_netdev_move_by_name(const char *ifname, pid_t pid, const char* newname);
+/* Move a device between namespaces. */
+extern int lxc_netdev_move_by_index(int ifindex, pid_t pid, const char *ifname);
+extern int lxc_netdev_move_by_name(const char *ifname, pid_t pid,
+				   const char *newname);
 
-/*
- * Delete a network device
- */
+/* Delete a network device. */
 extern int lxc_netdev_delete_by_name(const char *name);
 extern int lxc_netdev_delete_by_index(int ifindex);
 
