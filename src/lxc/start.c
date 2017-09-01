@@ -854,48 +854,6 @@ static int must_drop_cap_sys_boot(struct lxc_conf *conf)
 	return 0;
 }
 
-/* netpipe is used in the unprivileged case to transfer the ifindexes from
- * parent to child
- */
-static int netpipe = -1;
-
-static inline int count_veths(struct lxc_list *network)
-{
-	struct lxc_list *iterator;
-	struct lxc_netdev *netdev;
-	int count = 0;
-
-	lxc_list_for_each(iterator, network) {
-		netdev = iterator->elem;
-		if (netdev->type != LXC_NET_VETH)
-			continue;
-		count++;
-	}
-	return count;
-}
-
-static int read_unpriv_netifindex(struct lxc_list *network)
-{
-	struct lxc_list *iterator;
-	struct lxc_netdev *netdev;
-
-	if (netpipe == -1)
-		return 0;
-
-	lxc_list_for_each(iterator, network) {
-		netdev = iterator->elem;
-		if (netdev->type != LXC_NET_VETH)
-			continue;
-
-		if (read(netpipe, netdev->name, IFNAMSIZ) != IFNAMSIZ) {
-			close(netpipe);
-			return -1;
-		}
-	}
-	close(netpipe);
-	return 0;
-}
-
 static int do_start(void *data)
 {
 	struct lxc_list *iterator;
@@ -948,8 +906,10 @@ static int do_start(void *data)
 	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CONFIGURE))
 		return -1;
 
-	if (read_unpriv_netifindex(&handler->conf->network) < 0)
+	if (lxc_network_recv_veth_names_from_parent(handler) < 0) {
+		ERROR("Failed to receive veth names from parent");
 		goto out_warn_father;
+	}
 
 	/* If we are in a new user namespace, become root there to have
 	 * privilege over our namespace.
@@ -1278,15 +1238,14 @@ void resolve_clone_flags(struct lxc_handler *handler)
  */
 static int lxc_spawn(struct lxc_handler *handler)
 {
-	int i, flags, nveths, ret;
+	int i, flags, ret;
 	const char *name = handler->name;
 	bool wants_to_map_ids;
-	int netpipepair[2], saved_ns_fd[LXC_NS_MAX];
+	int saved_ns_fd[LXC_NS_MAX];
 	struct lxc_list *id_map;
 	int failed_before_rename = 0, preserve_mask = 0;
 	bool cgroups_connected = false;
 
-	netpipe = -1;
 	id_map = &handler->conf->id_map;
 	wants_to_map_ids = !lxc_list_empty(id_map);
 
@@ -1358,15 +1317,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 	if (attach_ns(handler->conf->inherit_ns_fd) < 0)
 		goto out_delete_net;
-
-	if (!handler->root && (nveths = count_veths(&handler->conf->network))) {
-		if (pipe(netpipepair) < 0) {
-			SYSERROR("Failed to create pipe.");
-			goto out_delete_net;
-		}
-		/* Store netpipe in the global var for do_start's use. */
-		netpipe = netpipepair[0];
-	}
 
 	/* Create a process in a new set of namespaces. */
 	flags = handler->clone_flags;
@@ -1459,21 +1409,9 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	if (netpipe != -1) {
-		struct lxc_list *iterator;
-		struct lxc_netdev *netdev;
-
-		close(netpipe);
-		lxc_list_for_each(iterator, &handler->conf->network) {
-			netdev = iterator->elem;
-			if (netdev->type != LXC_NET_VETH)
-				continue;
-			if (write(netpipepair[1], netdev->name, IFNAMSIZ) != IFNAMSIZ) {
-				ERROR("Error writing veth name to container.");
-				goto out_delete_net;
-			}
-		}
-		close(netpipepair[1]);
+	if (lxc_network_send_veth_names_to_child(handler) < 0) {
+		ERROR("Failed to send veth names to child");
+		goto out_delete_net;
 	}
 
 	/* Tell the child to continue its initialization. We'll get

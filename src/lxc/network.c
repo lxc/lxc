@@ -45,6 +45,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "af_unix.h"
 #include "conf.h"
 #include "config.h"
 #include "log.h"
@@ -2960,6 +2961,68 @@ int lxc_setup_network_in_child_namespaces(const struct lxc_conf *conf,
 
 	if (!lxc_list_empty(network))
 		INFO("network has been setup");
+
+	return 0;
+}
+
+int lxc_network_send_veth_names_to_child(struct lxc_handler *handler)
+{
+	struct lxc_list *iterator;
+	struct lxc_list *network = &handler->conf->network;
+	int data_sock = handler->data_sock[0];
+
+	if (handler->root)
+		return 0;
+
+	lxc_list_for_each(iterator, network) {
+		int ret;
+		struct lxc_netdev *netdev = iterator->elem;
+
+		if (netdev->type != LXC_NET_VETH)
+			continue;
+
+		ret = lxc_abstract_unix_send_credential(data_sock, netdev->name,
+							IFNAMSIZ);
+		if (ret < 0) {
+			close(handler->data_sock[0]);
+			close(handler->data_sock[1]);
+			return -1;
+		} else {
+			TRACE("Sent network device name \"%s\" to child",
+			      netdev->name);
+		}
+	}
+
+	return 0;
+}
+
+int lxc_network_recv_veth_names_from_parent(struct lxc_handler *handler)
+{
+	struct lxc_list *iterator;
+	struct lxc_list *network = &handler->conf->network;
+	int data_sock = handler->data_sock[1];
+
+	if (handler->root)
+		return 0;
+
+	lxc_list_for_each(iterator, network) {
+		int ret;
+		struct lxc_netdev *netdev = iterator->elem;
+
+		if (netdev->type != LXC_NET_VETH)
+			continue;
+
+		ret = lxc_abstract_unix_rcv_credential(data_sock, netdev->name,
+						       IFNAMSIZ);
+		if (ret < 0) {
+			close(handler->data_sock[0]);
+			close(handler->data_sock[1]);
+			return -1;
+		} else {
+			TRACE("Received network device name \"%s\" from parent",
+			      netdev->name);
+		}
+	}
 
 	return 0;
 }

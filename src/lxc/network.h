@@ -305,5 +305,7 @@ extern int lxc_requests_empty_network(struct lxc_handler *handler);
 extern int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler);
 extern int lxc_setup_network_in_child_namespaces(const struct lxc_conf *conf,
 						 struct lxc_list *network);
+extern int lxc_network_send_veth_names_to_child(struct lxc_handler *handler);
+extern int lxc_network_recv_veth_names_from_parent(struct lxc_handler *handler);
 
 #endif /* __LXC_NETWORK_H */
