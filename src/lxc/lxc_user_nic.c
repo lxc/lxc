@@ -370,27 +370,24 @@ static char *find_line(char *p, char *e, char *u, char *t, char *l)
 			p++;
 
 		p2 = get_eow(p, e);
-		if (!p2 || ((size_t)(p2 - p)) != strlen(u) ||
-		    strncmp(p, u, strlen(u)))
-			goto next;
+		if (!p2 || ((size_t)(p2 - p)) != strlen(u) || strncmp(p, u, strlen(u)))
+			return ret;
 
 		p = p2 + 1;
 		while ((p < e) && isblank(*p))
 			p++;
 
 		p2 = get_eow(p, e);
-		if (!p2 || ((size_t)(p2 - p)) != strlen(t) ||
-		    strncmp(p, t, strlen(t)))
-			goto next;
+		if (!p2 || ((size_t)(p2 - p)) != strlen(t) || strncmp(p, t, strlen(t)))
+			return ret;
 
 		p = p2 + 1;
 		while ((p < e) && isblank(*p))
 			p++;
 
 		p2 = get_eow(p, e);
-		if (!p2 || ((size_t)(p2 - p)) != strlen(l) ||
-		    strncmp(p, l, strlen(l)))
-			goto next;
+		if (!p2 || ((size_t)(p2 - p)) != strlen(l) || strncmp(p, l, strlen(l)))
+			return ret;
 
 		return ret;
 	next:
@@ -410,7 +407,7 @@ static bool nic_exists(char *nic)
 		return true;
 
 	ret = snprintf(path, MAXPATHLEN, "/sys/class/net/%s", nic);
-	if (ret < 0 || ret >= MAXPATHLEN)
+	if (ret < 0 || (size_t)ret >= MAXPATHLEN)
 		return false;
 
 	ret = stat(path, &sb);
@@ -562,8 +559,10 @@ static bool get_nic_from_line(char *p, char **nic)
 
 	ret = sscanf(p, "%99[^ \t\n] %99[^ \t\n] %99[^ \t\n] %99[^ \t\n]", user,
 		     type, br, *nic);
-	if (ret != 4)
+	if (ret != 4) {
+		*nic[0] = '\0';
 		return false;
+	}
 
 	return true;
 }
@@ -609,6 +608,7 @@ static bool cull_entries(int fd, char *me, char *t, char *br, char *nicname,
 	e = buf + len;
 	while ((p = find_line(p, e, me, t, br))) {
 		struct entry_line *newe;
+		bool exists = false;
 
 		newe = realloc(entry_lines, sizeof(*entry_lines) * (n + 1));
 		if (!newe) {
@@ -624,10 +624,13 @@ static bool cull_entries(int fd, char *me, char *t, char *br, char *nicname,
 		if (!get_nic_from_line(p, &nic))
 			continue;
 
-		if (nic && !nic_exists(nic))
+		if (nic[0] != '\0')
+			exists = nic_exists(nic);
+
+		if (!exists)
 			entry_lines[n - 1].keep = false;
 
-		if (nicname)
+		if (exists && nicname)
 			if (!strcmp(nic, nicname))
 				*found_nicname = true;
 
@@ -1206,8 +1209,8 @@ int main(int argc, char *argv[])
 		free_alloted(&alloted);
 
 		if (!found_nicname) {
-			usernic_error("%s", "Caller is not allowed to delete "
-				      "network device\n");
+			usernic_error("Caller is not allowed to delete network "
+				      "device \"%s\"\n", args.veth_name);
 			exit(EXIT_FAILURE);
 		}
 
