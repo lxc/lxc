@@ -61,8 +61,8 @@ static void usage(char *me, bool fail)
 {
 	fprintf(stderr, "Usage: %s create {lxcpath} {name} {pid} {type} "
 			"{bridge} {nicname}\n", me);
-	fprintf(stderr, "Usage: %s delete {lxcpath} {name} {pid} {type} "
-			"{bridge} {nicname}\n", me);
+	fprintf(stderr, "Usage: %s delete {lxcpath} {name} "
+			"{/proc/<pid>/ns/net} {type} {bridge} {nicname}\n", me);
 	fprintf(stderr, "{nicname} is the name to use inside the container\n");
 
 	if (fail)
@@ -450,32 +450,26 @@ static char *find_line(char *buf_start, char *buf_end, char *name,
 	return NULL;
 }
 
-static int instantiate_veth(char *n1, char **n2)
+static int instantiate_veth(char *veth1, char *veth2)
 {
-	int err;
+	int ret;
 
-	err = snprintf(*n2, IFNAMSIZ, "%sp", n1);
-	if (err < 0 || err >= IFNAMSIZ) {
-		usernic_error("%s\n", "Could not create nic name");
-		return -1;
-	}
-
-	err = lxc_veth_create(n1, *n2);
-	if (err) {
-		usernic_error("Failed to create %s-%s : %s.\n", n1, *n2,
-			      strerror(-err));
+	ret = lxc_veth_create(veth1, veth2);
+	if (ret < 0) {
+		usernic_error("Failed to create %s-%s : %s.\n", veth1, veth2,
+			      strerror(-ret));
 		return -1;
 	}
 
 	/* Changing the high byte of the mac address to 0xfe, the bridge
 	 * interface will always keep the host's mac address and not take the
 	 * mac address of a container. */
-	err = setup_private_host_hw_addr(n1);
-	if (err)
+	ret = setup_private_host_hw_addr(veth1);
+	if (ret < 0)
 		usernic_error("Failed to change mac address of host interface "
-			      "%s : %s\n", n1, strerror(-err));
+			      "%s : %s\n", veth1, strerror(-ret));
 
-	return netdev_set_flag(n1, IFF_UP);
+	return netdev_set_flag(veth1, IFF_UP);
 }
 
 static int get_mtu(char *name)
@@ -488,28 +482,27 @@ static int get_mtu(char *name)
 	return netdev_get_mtu(idx);
 }
 
-static bool create_nic(char *nic, char *br, int pid, char **cnic)
+static int create_nic(char *nic, char *br, int pid, char **cnic)
 {
-	char *veth1buf, *veth2buf;
+	char veth1buf[IFNAMSIZ], veth2buf[IFNAMSIZ];
 	int mtu, ret;
-
-	veth1buf = alloca(IFNAMSIZ);
-	veth2buf = alloca(IFNAMSIZ);
-	if (!veth1buf || !veth2buf) {
-		usernic_error("Failed allocate memory: %s\n", strerror(errno));
-		return false;
-	}
 
 	ret = snprintf(veth1buf, IFNAMSIZ, "%s", nic);
 	if (ret < 0 || ret >= IFNAMSIZ) {
 		usernic_error("%s", "Could not create nic name\n");
-		return false;
+		return -1;
 	}
 
+	ret = snprintf(veth2buf, IFNAMSIZ, "%sp", veth1buf);
+	if (ret < 0 || ret >= IFNAMSIZ) {
+		usernic_error("%s\n", "Could not create nic name");
+		return -1;
+	}
 	/* create the nics */
-	if (instantiate_veth(veth1buf, &veth2buf) < 0) {
+	ret = instantiate_veth(veth1buf, veth2buf);
+	if (ret < 0) {
 		usernic_error("%s", "Error creating veth tunnel\n");
-		return false;
+		return -1;
 	}
 
 	if (strcmp(br, "none")) {
@@ -550,36 +543,14 @@ static bool create_nic(char *nic, char *br, int pid, char **cnic)
 	*cnic = strdup(veth2buf);
 	if (!*cnic) {
 		usernic_error("Failed to copy string \"%s\"\n", veth2buf);
-		return false;
+		return -1;
 	}
 
-	return true;
+	return 0;
 
 out_del:
 	lxc_netdev_delete_by_name(veth1buf);
-	return false;
-}
-
-/* get_new_nicname() will return the name (vethXXXXXX) which is attached on the
- * host to the lxc bridge. The returned string must be freed by caller.
- */
-static char *get_new_nicname(char *br, int pid, char **cnic)
-{
-	int ret;
-	char nicname[IFNAMSIZ];
-
-	ret = snprintf(nicname, sizeof(nicname), "vethXXXXXX");
-	if (ret < 0 || (size_t)ret >= sizeof(nicname))
-		return NULL;
-
-	if (!lxc_mkifname(nicname))
-		return NULL;
-
-	if (!create_nic(nicname, br, pid, cnic)) {
-		return NULL;
-	}
-
-	return strdup(nicname);
+	return -1;
 }
 
 struct entry_line {
@@ -688,7 +659,8 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 {
 	int ret;
 	size_t slen;
-	char *newline, *nicname, *owner;
+	char *newline, *owner;
+	char nicname[IFNAMSIZ];
 	struct stat sb;
 	struct alloted_s *n;
 	int count = 0;
@@ -733,9 +705,16 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 	if (owner == NULL)
 		return NULL;
 
-	nicname = get_new_nicname(br, pid, cnic);
-	if (!nicname) {
-		usernic_error("%s", "Failed to get new nic name\n");
+	ret = snprintf(nicname, sizeof(nicname), "vethXXXXXX");
+	if (ret < 0 || (size_t)ret >= sizeof(nicname))
+		return NULL;
+
+	if (!lxc_mkifname(nicname))
+		return NULL;
+
+	ret = create_nic(nicname, br, pid, cnic);
+	if (ret < 0) {
+		usernic_error("%s", "Failed to create new nic\n");
 		return NULL;
 	}
 
@@ -760,7 +739,6 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 	slen = strlen(owner) + strlen(intype) + strlen(br) + strlen(nicname) + 4;
 	newline = malloc(slen + 1);
 	if (!newline) {
-		free(nicname);
 		free(newline);
 		usernic_error("Failed allocate memory: %s\n", strerror(errno));
 		return NULL;
@@ -770,7 +748,6 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 	if (ret < 0 || (size_t)ret >= (slen + 1)) {
 		if (lxc_netdev_delete_by_name(nicname) != 0)
 			usernic_error("Error unlinking %s\n", nicname);
-		free(nicname);
 		free(newline);
 		return NULL;
 	}
@@ -789,7 +766,6 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 			      strerror(errno));
 		if (lxc_netdev_delete_by_name(nicname) != 0)
 			usernic_error("Error unlinking %s\n", nicname);
-		free(nicname);
 		free(newline);
 		return NULL;
 	}
@@ -801,7 +777,7 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 	free(newline);
 	lxc_strmunmap(buf, sb.st_size + slen);
 
-	return nicname;
+	return strdup(nicname);
 }
 
 static bool create_db_dir(char *fnam)
@@ -1252,6 +1228,7 @@ int main(int argc, char *argv[])
 		free(nicname);
 		exit(EXIT_FAILURE);
 	}
+
 	host_veth_ifidx = if_nametoindex(nicname);
 	if (!host_veth_ifidx) {
 		free(newname);
