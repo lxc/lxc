@@ -218,9 +218,6 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 out_delete:
 	if (netdev->ifindex != 0)
 		lxc_netdev_delete_by_name(veth1);
-	if (netdev->priv.veth_attr.pair != veth1)
-		free(veth1);
-	free(veth2);
 	return -1;
 }
 
@@ -247,29 +244,29 @@ static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 	if (err) {
 		ERROR("Failed to create macvlan interface \"%s\" on \"%s\": %s",
 		      peer, netdev->link, strerror(-err));
-		goto out;
+		goto on_error;
 	}
 
 	netdev->ifindex = if_nametoindex(peer);
 	if (!netdev->ifindex) {
 		ERROR("Failed to retrieve ifindex for \"%s\"", peer);
-		goto out;
+		goto on_error;
 	}
 
 	if (netdev->upscript) {
 		err = run_script(handler->name, "net", netdev->upscript, "up",
 				 "macvlan", netdev->link, (char*) NULL);
 		if (err)
-			goto out;
+			goto on_error;
 	}
 
 	DEBUG("Instantiated macvlan \"%s\" with ifindex is %d and mode %d",
 	      peer, netdev->ifindex, netdev->priv.macvlan_attr.mode);
 
 	return 0;
-out:
+
+on_error:
 	lxc_netdev_delete_by_name(peer);
-	free(peer);
 	return -1;
 }
 
@@ -1890,17 +1887,16 @@ const char *lxc_net_type_to_str(int type)
 	return lxc_network_types[type];
 }
 
-static const char padchar[] =
-"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+static const char padchar[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-char *lxc_mkifname(const char *template)
+char *lxc_mkifname(char *template)
 {
-	char *name = NULL;
-	size_t i = 0;
-	FILE *urandom;
 	unsigned int seed;
-	struct ifaddrs *ifaddr, *ifa;
-	int ifexists = 0;
+	FILE *urandom;
+	struct ifaddrs *ifa, *ifaddr;
+	char name[IFNAMSIZ];
+	bool exists = false;
+	size_t i = 0;
 
 	if (strlen(template) >= IFNAMSIZ)
 		return NULL;
@@ -1908,28 +1904,26 @@ char *lxc_mkifname(const char *template)
 	/* Get all the network interfaces. */
 	getifaddrs(&ifaddr);
 
-	/* Initialize the random number generator */
-	urandom = fopen ("/dev/urandom", "r");
+	/* Initialize the random number generator. */
+	urandom = fopen("/dev/urandom", "r");
 	if (urandom != NULL) {
-		if (fread (&seed, sizeof(seed), 1, urandom) <= 0)
+		if (fread(&seed, sizeof(seed), 1, urandom) <= 0)
 			seed = time(0);
 		fclose(urandom);
-	}
-	else
+	} else {
 		seed = time(0);
+	}
 
 #ifndef HAVE_RAND_R
 	srand(seed);
 #endif
 
-	/* Generate random names until we find one that doesn't exist */
-	while(1) {
-		ifexists = 0;
-		name = strdup(template);
+	/* Generate random names until we find one that doesn't exist. */
+	while (true) {
+		name[0] = '\0';
+		strcpy(name, template);
 
-		if (name == NULL)
-			return NULL;
-
+		exists = false;
 		for (i = 0; i < strlen(name); i++) {
 			if (name[i] == 'X') {
 #ifdef HAVE_RAND_R
@@ -1941,20 +1935,18 @@ char *lxc_mkifname(const char *template)
 		}
 
 		for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-			if (strcmp(ifa->ifa_name, name) == 0) {
-				ifexists = 1;
+			if (!strcmp(ifa->ifa_name, name)) {
+				exists = true;
 				break;
 			}
 		}
 
-		if (ifexists == 0)
+		if (!exists)
 			break;
-
-		free(name);
 	}
 
 	freeifaddrs(ifaddr);
-	return name;
+	return strcpy(template, name);
 }
 
 int setup_private_host_hw_addr(char *veth1)

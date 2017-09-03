@@ -566,23 +566,20 @@ out_del:
 static char *get_new_nicname(char *br, int pid, char **cnic)
 {
 	int ret;
-	char *nicname;
-	char template[IFNAMSIZ];
+	char nicname[IFNAMSIZ];
 
-	ret = snprintf(template, sizeof(template), "vethXXXXXX");
-	if (ret < 0 || (size_t)ret >= sizeof(template))
+	ret = snprintf(nicname, sizeof(nicname), "vethXXXXXX");
+	if (ret < 0 || (size_t)ret >= sizeof(nicname))
 		return NULL;
 
-	nicname = lxc_mkifname(template);
-	if (!nicname)
+	if (!lxc_mkifname(nicname))
 		return NULL;
 
 	if (!create_nic(nicname, br, pid, cnic)) {
-		free(nicname);
 		return NULL;
 	}
 
-	return nicname;
+	return strdup(nicname);
 }
 
 struct entry_line {
