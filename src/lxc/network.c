@@ -2981,8 +2981,7 @@ int lxc_network_send_veth_names_to_child(struct lxc_handler *handler)
 		if (netdev->type != LXC_NET_VETH)
 			continue;
 
-		ret = lxc_abstract_unix_send_credential(data_sock, netdev->name,
-							IFNAMSIZ);
+		ret = send(data_sock, netdev->name, IFNAMSIZ, 0);
 		if (ret < 0) {
 			close(handler->data_sock[0]);
 			close(handler->data_sock[1]);
@@ -3012,8 +3011,7 @@ int lxc_network_recv_veth_names_from_parent(struct lxc_handler *handler)
 		if (netdev->type != LXC_NET_VETH)
 			continue;
 
-		ret = lxc_abstract_unix_rcv_credential(data_sock, netdev->name,
-						       IFNAMSIZ);
+		ret = recv(data_sock, netdev->name, IFNAMSIZ, 0);
 		if (ret < 0) {
 			close(handler->data_sock[0]);
 			close(handler->data_sock[1]);
@@ -3025,4 +3023,75 @@ int lxc_network_recv_veth_names_from_parent(struct lxc_handler *handler)
 	}
 
 	return 0;
+}
+
+int lxc_network_send_name_and_ifindex_to_parent(struct lxc_handler *handler)
+{
+	struct lxc_list *iterator, *network;
+	int data_sock = handler->data_sock[0];
+
+	if (!handler->am_root)
+		return 0;
+
+	network = &handler->conf->network;
+	lxc_list_for_each(iterator, network) {
+		int ret;
+		struct lxc_netdev *netdev = iterator->elem;
+
+		/* Send network device name in the child's namespace to parent. */
+		ret = send(data_sock, netdev->name, IFNAMSIZ, 0);
+		if (ret < 0)
+			goto on_error;
+
+		/* Send network device ifindex in the child's namespace to
+		 * parent.
+		 */
+		ret = send(data_sock, &netdev->ifindex, sizeof(netdev->ifindex), 0);
+		if (ret < 0)
+			goto on_error;
+	}
+
+	TRACE("Sent network device names and ifindeces to parent");
+	return 0;
+
+on_error:
+	close(handler->data_sock[0]);
+	close(handler->data_sock[1]);
+	return -1;
+}
+
+int lxc_network_recv_name_and_ifindex_from_child(struct lxc_handler *handler)
+{
+	struct lxc_list *iterator, *network;
+	int data_sock = handler->data_sock[1];
+
+	if (!handler->am_root)
+		return 0;
+
+	network = &handler->conf->network;
+	lxc_list_for_each(iterator, network) {
+		int ret;
+		struct lxc_netdev *netdev = iterator->elem;
+
+		/* Receive network device name in the child's namespace to
+		 * parent.
+		 */
+		ret = recv(data_sock, netdev->name, IFNAMSIZ, 0);
+		if (ret < 0)
+			goto on_error;
+
+		/* Receive network device ifindex in the child's namespace to
+		 * parent.
+		 */
+		ret = recv(data_sock, &netdev->ifindex, sizeof(netdev->ifindex), 0);
+		if (ret < 0)
+			goto on_error;
+	}
+
+	return 0;
+
+on_error:
+	close(handler->data_sock[0]);
+	close(handler->data_sock[1]);
+	return -1;
 }
