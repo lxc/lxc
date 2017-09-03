@@ -3106,43 +3106,6 @@ static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 	return ret;
 }
 
-static int lxc_network_send_name_and_ifindex_to_parent(struct lxc_handler *handler)
-{
-	struct lxc_list *iterator, *network;
-	int data_sock = handler->data_sock[0];
-
-	if (!handler->am_root)
-		return 0;
-
-	network = &handler->conf->network;
-	lxc_list_for_each(iterator, network) {
-		int ret;
-		struct lxc_netdev *netdev = iterator->elem;
-
-		/* Send network device name in the child's namespace to parent. */
-		ret = lxc_abstract_unix_send_credential(data_sock, netdev->name,
-							IFNAMSIZ);
-		if (ret < 0)
-			goto on_error;
-
-		/* Send network device ifindex in the child's namespace to
-		 * parent.
-		 */
-		ret = lxc_abstract_unix_send_credential(data_sock, &netdev->ifindex,
-							sizeof(netdev->ifindex));
-		if (ret < 0)
-			goto on_error;
-	}
-
-	TRACE("Sent network device names and ifindeces to parent");
-	return 0;
-
-on_error:
-	close(handler->data_sock[0]);
-	close(handler->data_sock[1]);
-	return -1;
-}
-
 int lxc_setup(struct lxc_handler *handler)
 {
 	const char *name = handler->name;

@@ -277,5 +277,7 @@ extern int lxc_setup_network_in_child_namespaces(const struct lxc_conf *conf,
 						 struct lxc_list *network);
 extern int lxc_network_send_veth_names_to_child(struct lxc_handler *handler);
 extern int lxc_network_recv_veth_names_from_parent(struct lxc_handler *handler);
+extern int lxc_network_send_name_and_ifindex_to_parent(struct lxc_handler *handler);
+extern int lxc_network_recv_name_and_ifindex_from_child(struct lxc_handler *handler);
 
 #endif /* __LXC_NETWORK_H */
