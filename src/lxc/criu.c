@@ -767,14 +767,10 @@ static bool restore_net_info(struct lxc_container *c)
 
 		if (netdev->priv.veth_attr.pair[0] == '\0' &&
 		    netdev->priv.veth_attr.veth1[0] == '\0') {
-			char *tmp;
-
-			tmp = lxc_mkifname(template);
-			if (!tmp)
+			if (!lxc_mkifname(template))
 				goto out_unlock;
 
-			strcpy(netdev->priv.veth_attr.veth1, tmp);
-			free(tmp);
+			strcpy(netdev->priv.veth_attr.veth1, template);
 		}
 	}
 
