@@ -3111,7 +3111,7 @@ static int lxc_network_send_name_and_ifindex_to_parent(struct lxc_handler *handl
 	struct lxc_list *iterator, *network;
 	int data_sock = handler->data_sock[0];
 
-	if (!handler->root)
+	if (!handler->am_root)
 		return 0;
 
 	network = &handler->conf->network;

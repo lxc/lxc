@@ -2311,7 +2311,7 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 	char netns_path[6 + LXC_NUMSTRLEN64 + 4 + LXC_NUMSTRLEN64 + 1];
 	bool deleted_all = true;
 
-	if (handler->root)
+	if (handler->am_root)
 		return true;
 
 	*netns_path = '\0';
@@ -2389,7 +2389,7 @@ int lxc_create_network_priv(struct lxc_handler *handler)
 	struct lxc_list *iterator;
 	struct lxc_list *network = &handler->conf->network;
 
-	if (!handler->root)
+	if (!handler->am_root)
 		return 0;
 
 	lxc_list_for_each(iterator, network) {
@@ -2491,7 +2491,7 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 	struct lxc_list *network = &handler->conf->network;
 	bool deleted_all = true;
 
-	if (!handler->root)
+	if (!handler->am_root)
 		return true;
 
 	lxc_list_for_each(iterator, network) {
@@ -2622,7 +2622,7 @@ int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler)
 	 * the parent network namespace. We won't have this capability if we are
 	 * unprivileged.
 	 */
-	if (!handler->root)
+	if (!handler->am_root)
 		return 0;
 
 	TRACE("Moving physical network devices back to parent network namespace");
@@ -2999,7 +2999,7 @@ int lxc_network_send_veth_names_to_child(struct lxc_handler *handler)
 	struct lxc_list *network = &handler->conf->network;
 	int data_sock = handler->data_sock[0];
 
-	if (handler->root)
+	if (handler->am_root)
 		return 0;
 
 	lxc_list_for_each(iterator, network) {
@@ -3030,7 +3030,7 @@ int lxc_network_recv_veth_names_from_parent(struct lxc_handler *handler)
 	struct lxc_list *network = &handler->conf->network;
 	int data_sock = handler->data_sock[1];
 
-	if (handler->root)
+	if (handler->am_root)
 		return 0;
 
 	lxc_list_for_each(iterator, network) {

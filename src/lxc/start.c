@@ -539,7 +539,7 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 	 * care if we are real root only if we are running as root so this
 	 * should be fine.
 	 */
-	handler->root = !am_unpriv();
+	handler->am_root = !am_unpriv();
 	handler->data_sock[0] = handler->data_sock[1] = -1;
 	handler->conf = conf;
 	handler->lxcpath = lxcpath;
@@ -1062,7 +1062,7 @@ static int lxc_network_recv_name_and_ifindex_from_child(struct lxc_handler *hand
 	struct lxc_list *iterator, *network;
 	int data_sock = handler->data_sock[1];
 
-	if (!handler->root)
+	if (!handler->am_root)
 		return 0;
 
 	network = &handler->conf->network;
@@ -1631,7 +1631,7 @@ static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 		}
 	}
 
-	if (!handler->root)
+	if (!handler->am_root)
 		ret = userns_exec_1(handler->conf, lxc_rmdir_onedev_wrapper,
 				    destroy, "lxc_rmdir_onedev_wrapper");
 	else
@@ -1651,7 +1651,7 @@ static int lxc_rmdir_onedev_wrapper(void *data)
 }
 
 static bool do_destroy_container(struct lxc_handler *handler) {
-	if (!handler->root) {
+	if (!handler->am_root) {
 		if (userns_exec_1(handler->conf, storage_destroy_wrapper,
 				  handler->conf, "storage_destroy_wrapper") < 0)
 			return false;
