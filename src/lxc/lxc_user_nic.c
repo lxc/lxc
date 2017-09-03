@@ -357,41 +357,94 @@ static char *get_eow(char *s, char *e)
 	return s;
 }
 
-static char *find_line(char *p, char *e, char *u, char *t, char *l)
+static char *find_line(char *buf_start, char *buf_end, char *name,
+		       char *net_type, char *net_link, char *net_dev,
+		       bool *owner, bool *found, bool *keep)
 {
-	char *p1, *p2, *ret;
+	char *end_of_line, *end_of_word, *line;
 
-	while ((p < e) && (p1 = get_eol(p, e)) < e) {
-		ret = p;
-		if (*p == '#')
+	while (buf_start < buf_end) {
+		size_t len;
+		char netdev_name[IFNAMSIZ];
+
+		*found = false;
+		*keep = true;
+		*owner = false;
+
+		end_of_line = get_eol(buf_start, buf_end);
+		if (end_of_line >= buf_end)
+			return NULL;
+
+		line = buf_start;
+		if (*buf_start == '#')
 			goto next;
 
-		while ((p < e) && isblank(*p))
-			p++;
+		while ((buf_start < buf_end) && isblank(*buf_start))
+			buf_start++;
 
-		p2 = get_eow(p, e);
-		if (!p2 || ((size_t)(p2 - p)) != strlen(u) || strncmp(p, u, strlen(u)))
-			return ret;
+		/* Check whether the line contains the caller's name. */
+		end_of_word = get_eow(buf_start, buf_end);
+		/* corrupt db */
+		if (!end_of_word)
+			return NULL;
 
-		p = p2 + 1;
-		while ((p < e) && isblank(*p))
-			p++;
+		if (strncmp(buf_start, name, strlen(name)))
+			*found = false;
 
-		p2 = get_eow(p, e);
-		if (!p2 || ((size_t)(p2 - p)) != strlen(t) || strncmp(p, t, strlen(t)))
-			return ret;
+		*owner = true;
 
-		p = p2 + 1;
-		while ((p < e) && isblank(*p))
-			p++;
+		buf_start = end_of_word + 1;
+		while ((buf_start < buf_end) && isblank(*buf_start))
+			buf_start++;
 
-		p2 = get_eow(p, e);
-		if (!p2 || ((size_t)(p2 - p)) != strlen(l) || strncmp(p, l, strlen(l)))
-			return ret;
+		/* Check whether line is of the right network type. */
+		end_of_word = get_eow(buf_start, buf_end);
+		/* corrupt db */
+		if (!end_of_word)
+			return NULL;
 
-		return ret;
+		if (strncmp(buf_start, net_type, strlen(net_type)))
+			*found = false;
+
+		buf_start = end_of_word + 1;
+		while ((buf_start < buf_end) && isblank(*buf_start))
+			buf_start++;
+
+		/* Check whether line is contains the right link. */
+		end_of_word = get_eow(buf_start, buf_end);
+		/* corrupt db */
+		if (!end_of_word)
+			return NULL;
+
+		if (strncmp(buf_start, net_link, strlen(net_link)))
+			*found = false;
+
+		buf_start = end_of_word + 1;
+		while ((buf_start < buf_end) && isblank(*buf_start))
+			buf_start++;
+
+		/* Check whether line contains the right network device. */
+		end_of_word = get_eow(buf_start, buf_end);
+		/* corrupt db */
+		if (!end_of_word)
+			return NULL;
+
+		len = end_of_word - buf_start;
+		/* corrupt db */
+		if (len >= IFNAMSIZ)
+			return NULL;
+
+		memcpy(netdev_name, buf_start, len);
+		netdev_name[len] = '\0';
+		*keep = lxc_nic_exists(netdev_name);
+
+		if (net_dev && !strcmp(netdev_name, net_dev))
+			*found = true;
+
+		return line;
+
 	next:
-		p = p1 + 1;
+		buf_start = end_of_line + 1;
 	}
 
 	return NULL;
@@ -532,40 +585,21 @@ static char *get_new_nicname(char *br, int pid, char **cnic)
 	return nicname;
 }
 
-static bool get_nic_from_line(char *p, char **nic)
-{
-	int ret;
-	char user[100], type[100], br[100];
-
-	ret = sscanf(p, "%99[^ \t\n] %99[^ \t\n] %99[^ \t\n] %99[^ \t\n]", user,
-		     type, br, *nic);
-	if (ret != 4) {
-		*nic[0] = '\0';
-		return false;
-	}
-
-	return true;
-}
-
 struct entry_line {
 	char *start;
 	int len;
 	bool keep;
 };
 
-static bool cull_entries(int fd, char *me, char *t, char *br, char *nicname,
-			 bool *found_nicname)
+static bool cull_entries(int fd, char *name, char *net_type, char *net_link,
+			 char *net_dev, bool *found_nicname)
 {
 	int i, ret;
-	off_t len;
-	char *buf, *e, *nic, *p;
+	char *buf, *buf_end, *buf_start;
 	struct stat sb;
 	int n = 0;
+	bool found, keep;
 	struct entry_line *entry_lines = NULL;
-
-	nic = alloca(100);
-	if (!nic)
-		return false;
 
 	ret = fstat(fd, &sb);
 	if (ret < 0) {
@@ -573,9 +607,8 @@ static bool cull_entries(int fd, char *me, char *t, char *br, char *nicname,
 		return false;
 	}
 
-	len = sb.st_size;
-	if (len == 0)
-		return true;
+	if (!sb.st_size)
+		return false;
 
 	buf = lxc_strmmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if (buf == MAP_FAILED) {
@@ -584,55 +617,48 @@ static bool cull_entries(int fd, char *me, char *t, char *br, char *nicname,
 		return false;
 	}
 
-	p = buf;
-	e = buf + len;
-	while ((p = find_line(p, e, me, t, br))) {
+	buf_start = buf;
+	buf_end = buf + sb.st_size;
+	while ((buf_start = find_line(buf_start, buf_end, name, net_type,
+				      net_link, net_dev, &(bool){true}, &found,
+				      &keep))) {
 		struct entry_line *newe;
-		bool exists = false;
 
 		newe = realloc(entry_lines, sizeof(*entry_lines) * (n + 1));
 		if (!newe) {
 			free(entry_lines);
+			lxc_strmunmap(buf, sb.st_size);
 			return false;
 		}
 
+		if (found)
+			*found_nicname = true;
+
 		entry_lines = newe;
-		entry_lines[n].start = p;
-		entry_lines[n].len = get_eol(p, e) - entry_lines[n].start;
-		entry_lines[n].keep = true;
+		entry_lines[n].start = buf_start;
+		entry_lines[n].len = get_eol(buf_start, buf_end) - entry_lines[n].start;
+		entry_lines[n].keep = keep;
 		n++;
-		if (!get_nic_from_line(p, &nic))
-			continue;
 
-		if (nic[0] != '\0')
-			exists = lxc_nic_exists(nic);
-
-		if (!exists)
-			entry_lines[n - 1].keep = false;
-
-		if (exists && nicname)
-			if (!strcmp(nic, nicname))
-				*found_nicname = true;
-
-		p += entry_lines[n - 1].len + 1;
-		if (p >= e)
+		buf_start += entry_lines[n - 1].len + 1;
+		if (buf_start >= buf_end)
 			break;
 	}
 
-	p = buf;
+	buf_start = buf;
 	for (i = 0; i < n; i++) {
 		if (!entry_lines[i].keep)
 			continue;
 
-		memcpy(p, entry_lines[i].start, entry_lines[i].len);
-		p += entry_lines[i].len;
-		*p = '\n';
-		p++;
+		memcpy(buf_start, entry_lines[i].start, entry_lines[i].len);
+		buf_start += entry_lines[i].len;
+		*buf_start = '\n';
+		buf_start++;
 	}
 	free(entry_lines);
 
 	lxc_strmunmap(buf, sb.st_size);
-	ret = ftruncate(fd, p - buf);
+	ret = ftruncate(fd, buf_start - buf);
 	if (ret < 0)
 		usernic_error("Failed to set new file size: %s\n",
 			      strerror(errno));
@@ -640,16 +666,19 @@ static bool cull_entries(int fd, char *me, char *t, char *br, char *nicname,
 	return true;
 }
 
-static int count_entries(char *buf, off_t len, char *me, char *t, char *br)
+static int count_entries(char *buf, off_t len, char *name, char *net_type, char *net_link)
 {
-	char *e;
 	int count = 0;
+	bool owner = false;;
+	char *buf_end = &buf[len];
 
-	e = &buf[len];
-	while ((buf = find_line(buf, e, me, t, br))) {
-		count++;
-		buf = get_eol(buf, e) + 1;
-		if (buf >= e)
+	buf_end = &buf[len];
+	while ((buf = find_line(buf, buf_end, name, net_type, net_link, NULL,
+				&owner, &(bool){true}, &(bool){true}))) {
+		if (owner)
+			count++;
+		buf = get_eol(buf, buf_end) + 1;
+		if (buf >= buf_end)
 			break;
 	}
 
