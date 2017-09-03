@@ -1150,7 +1150,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_init(handler))
 		return -1;
 
-	ret = socketpair(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0,
+	ret = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0,
 			 handler->data_sock);
 	if (ret < 0) {
 		lxc_sync_fini(handler);
