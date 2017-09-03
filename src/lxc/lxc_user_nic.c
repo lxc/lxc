@@ -397,26 +397,6 @@ static char *find_line(char *p, char *e, char *u, char *t, char *l)
 	return NULL;
 }
 
-static bool nic_exists(char *nic)
-{
-	char path[MAXPATHLEN];
-	int ret;
-	struct stat sb;
-
-	if (!strcmp(nic, "none"))
-		return true;
-
-	ret = snprintf(path, MAXPATHLEN, "/sys/class/net/%s", nic);
-	if (ret < 0 || (size_t)ret >= MAXPATHLEN)
-		return false;
-
-	ret = stat(path, &sb);
-	if (ret < 0)
-		return false;
-
-	return true;
-}
-
 static int instantiate_veth(char *n1, char **n2)
 {
 	int err;
@@ -625,7 +605,7 @@ static bool cull_entries(int fd, char *me, char *t, char *br, char *nicname,
 			continue;
 
 		if (nic[0] != '\0')
-			exists = nic_exists(nic);
+			exists = lxc_nic_exists(nic);
 
 		if (!exists)
 			entry_lines[n - 1].keep = false;
