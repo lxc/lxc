@@ -1060,13 +1060,11 @@ out_error:
 static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 {
 	int i;
-	int *ttyfds;
 	struct lxc_pty_info *pty_info;
 	int ret = -1;
 	int sock = handler->data_sock[1];
 	struct lxc_conf *conf = handler->conf;
 	struct lxc_tty_info *tty_info = &conf->tty_info;
-	size_t num_ttyfds = (2 * conf->tty);
 
 	if (!conf->tty)
 		return 0;
@@ -1075,29 +1073,27 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 	if (!tty_info->pty_info)
 		return -1;
 
-	ttyfds = malloc(num_ttyfds * sizeof(int));
-	if (!ttyfds)
-		return -1;
+	for (i = 0; i < conf->tty; i++) {
+		int ttyfds[2];
 
-	ret = lxc_abstract_unix_recv_fds(sock, ttyfds, num_ttyfds, NULL, 0);
-	for (i = 0; (ret >= 0 && *ttyfds != -1) && (i < num_ttyfds); i++) {
-		pty_info = &tty_info->pty_info[i / 2];
+		ret = lxc_abstract_unix_recv_fds(sock, ttyfds, 2, NULL, 0);
+		if (ret < 0)
+			break;
+
+		pty_info = &tty_info->pty_info[i];
 		pty_info->busy = 0;
-		pty_info->slave = ttyfds[i++];
-		pty_info->master = ttyfds[i];
-		TRACE("received pty with master fd %d and slave fd %d from "
+		pty_info->master = ttyfds[0];
+		pty_info->slave = ttyfds[1];
+		TRACE("Received pty with master fd %d and slave fd %d from "
 		      "parent", pty_info->master, pty_info->slave);
 	}
-
-	tty_info->nbtty = conf->tty;
-
-	free(ttyfds);
-
 	if (ret < 0)
-		ERROR("failed to receive %d ttys from child: %s", conf->tty,
+		ERROR("Failed to receive %d ttys from child: %s", conf->tty,
 		      strerror(errno));
 	else
-		TRACE("received %d ttys from child", conf->tty);
+		TRACE("Received %d ttys from child", conf->tty);
+
+	tty_info->nbtty = conf->tty;
 
 	return ret;
 }

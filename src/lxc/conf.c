@@ -3067,41 +3067,35 @@ static bool verify_start_hooks(struct lxc_conf *conf)
 static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 {
 	int i;
-	int *ttyfds;
-	struct lxc_pty_info *pty_info;
 	struct lxc_conf *conf = handler->conf;
-	const struct lxc_tty_info *tty_info = &conf->tty_info;
+	struct lxc_tty_info *tty_info = &conf->tty_info;
 	int sock = handler->data_sock[0];
 	int ret = -1;
-	size_t num_ttyfds = (2 * conf->tty);
 
-	ttyfds = malloc(num_ttyfds * sizeof(int));
-	if (!ttyfds)
-		return -1;
+	for (i = 0; i < conf->tty; i++) {
+		int ttyfds[2];
+		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 
-	for (i = 0; i < num_ttyfds; i++) {
-		pty_info = &tty_info->pty_info[i / 2];
-		ttyfds[i++] = pty_info->slave;
-		ttyfds[i] = pty_info->master;
-		TRACE("send pty \"%s\" with master fd %d and slave fd %d to "
-		      "parent",
-		      pty_info->name, pty_info->master, pty_info->slave);
+		ttyfds[0] = pty_info->master;
+		ttyfds[1] = pty_info->slave;
+
+		ret = lxc_abstract_unix_send_fds(sock, ttyfds, 2, NULL, 0);
+		if (ret < 0)
+			break;
+
+		TRACE("Send pty \"%s\" with master fd %d and slave fd %d to "
+		      "parent", pty_info->name, pty_info->master, pty_info->slave);
 	}
 
-	ret = lxc_abstract_unix_send_fds(sock, ttyfds, num_ttyfds, NULL, 0);
 	if (ret < 0)
-		ERROR("failed to send %d ttys to parent: %s", conf->tty,
+		ERROR("Failed to send %d ttys to parent: %s", conf->tty,
 		      strerror(errno));
 	else
-		TRACE("sent %d ttys to parent", conf->tty);
+		TRACE("Sent %d ttys to parent", conf->tty);
 
 	close(handler->data_sock[0]);
 	close(handler->data_sock[1]);
-
-	for (i = 0; i < num_ttyfds; i++)
-		close(ttyfds[i]);
-
-	free(ttyfds);
+	lxc_delete_tty(tty_info);
 
 	return ret;
 }
