@@ -2483,9 +2483,10 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 				     "from \"%s\" to its initial name \"%s\"",
 				     netdev->ifindex, netdev->name, netdev->link);
 			else
-				TRACE("Renamed interface with index %d to its "
-				      "from \"%s\" to its initial name \"%s\"",
-				      netdev->ifindex, netdev->name, netdev->link);
+				TRACE("Renamed interface with index %d from "
+				      "\"%s\" to its initial name \"%s\"",
+				      netdev->ifindex, netdev->name,
+				      netdev->link);
 			continue;
 		}
 
