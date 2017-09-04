@@ -78,7 +78,7 @@ static int open_and_lock(char *path)
 
 	fd = open(path, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
 	if (fd < 0) {
-		usernic_error("Failed to open %s: %s.\n", path,
+		usernic_error("Failed to open \"%s\": %s\n", path,
 			      strerror(errno));
 		return -1;
 	}
@@ -145,7 +145,7 @@ static char **get_groupnames(void)
 	group_ids = malloc(sizeof(gid_t) * ngroups);
 	if (!group_ids) {
 		usernic_error("Failed to allocate memory while getting groups "
-			      "the user belongs to: %s.\n",
+			      "the user belongs to: %s\n",
 			      strerror(errno));
 		return NULL;
 	}
@@ -153,7 +153,7 @@ static char **get_groupnames(void)
 	ret = getgroups(ngroups, group_ids);
 	if (ret < 0) {
 		free(group_ids);
-		usernic_error("Failed to get process groups: %s.\n",
+		usernic_error("Failed to get process groups: %s\n",
 			      strerror(errno));
 		return NULL;
 	}
@@ -162,7 +162,7 @@ static char **get_groupnames(void)
 	if (!groupnames) {
 		free(group_ids);
 		usernic_error("Failed to allocate memory while getting group "
-			      "names: %s.\n",
+			      "names: %s\n",
 			      strerror(errno));
 		return NULL;
 	}
@@ -172,7 +172,7 @@ static char **get_groupnames(void)
 	for (i = 0; i < ngroups; i++) {
 		gr = getgrgid(group_ids[i]);
 		if (!gr) {
-			usernic_error("Failed to get group name: %s.\n",
+			usernic_error("Failed to get group name: %s\n",
 				      strerror(errno));
 			free(group_ids);
 			free_groupnames(groupnames);
@@ -181,7 +181,7 @@ static char **get_groupnames(void)
 
 		groupnames[i] = strdup(gr->gr_name);
 		if (!groupnames[i]) {
-			usernic_error("Failed to copy group name \"%s\".",
+			usernic_error("Failed to copy group name \"%s\"",
 				      gr->gr_name);
 			free(group_ids);
 			free_groupnames(groupnames);
@@ -426,7 +426,7 @@ static int instantiate_veth(char *n1, char **n2)
 
 	err = snprintf(*n2, IFNAMSIZ, "%sp", n1);
 	if (err < 0 || err >= IFNAMSIZ) {
-		usernic_error("%s\n", "Could not create nic name.");
+		usernic_error("%s\n", "Could not create nic name");
 		return -1;
 	}
 
@@ -464,19 +464,19 @@ static bool create_nic(char *nic, char *br, int pid, char **cnic)
 	veth1buf = alloca(IFNAMSIZ);
 	veth2buf = alloca(IFNAMSIZ);
 	if (!veth1buf || !veth2buf) {
-		usernic_error("Failed allocate memory: %s.\n", strerror(errno));
+		usernic_error("Failed allocate memory: %s\n", strerror(errno));
 		return false;
 	}
 
 	ret = snprintf(veth1buf, IFNAMSIZ, "%s", nic);
 	if (ret < 0 || ret >= IFNAMSIZ) {
-		usernic_error("%s", "Could not create nic name.\n");
+		usernic_error("%s", "Could not create nic name\n");
 		return false;
 	}
 
 	/* create the nics */
 	if (instantiate_veth(veth1buf, &veth2buf) < 0) {
-		usernic_error("%s", "Error creating veth tunnel.\n");
+		usernic_error("%s", "Error creating veth tunnel\n");
 		return false;
 	}
 
@@ -502,7 +502,7 @@ static bool create_nic(char *nic, char *br, int pid, char **cnic)
 		/* attach veth1 to bridge */
 		ret = lxc_bridge_attach(br, veth1buf);
 		if (ret < 0) {
-			usernic_error("Error attaching %s to %s.\n", veth1buf, br);
+			usernic_error("Error attaching %s to %s\n", veth1buf, br);
 			goto out_del;
 		}
 	}
@@ -517,7 +517,7 @@ static bool create_nic(char *nic, char *br, int pid, char **cnic)
 
 	*cnic = strdup(veth2buf);
 	if (!*cnic) {
-		usernic_error("Failed to copy string \"%s\".\n", veth2buf);
+		usernic_error("Failed to copy string \"%s\"\n", veth2buf);
 		return false;
 	}
 
@@ -813,7 +813,7 @@ static char *lxc_secure_rename_in_ns(int pid, char *oldname, char *newname,
 
 	fd = lxc_preserve_ns(pid, "net");
 	if (fd < 0) {
-		usernic_error("Failed opening network namespace path for '%d'.", pid);
+		usernic_error("Failed opening network namespace path for %d", pid);
 		goto do_partial_cleanup;
 	}
 
@@ -830,7 +830,7 @@ static char *lxc_secure_rename_in_ns(int pid, char *oldname, char *newname,
 	fd = -1;
 	if (ret < 0) {
 		usernic_error("Failed to setns() to the network namespace of "
-			      "the container with PID %d: %s.\n",
+			      "the container with PID %d: %s\n",
 			      pid, strerror(errno));
 		goto do_partial_cleanup;
 	}
@@ -839,11 +839,12 @@ static char *lxc_secure_rename_in_ns(int pid, char *oldname, char *newname,
 	if (ret < 0) {
 		usernic_error("Failed to drop privilege by setting effective "
 			      "user id and real user id to %d, and saved user "
-			      "ID to 0: %s.\n",
+			      "ID to 0: %s\n",
 			      ruid, strerror(errno));
-		// COMMENT(brauner): It's ok to jump to do_full_cleanup here
-		// since setresuid() will succeed when trying to set real,
-		// effective, and saved to values they currently have.
+		/* It's ok to jump to do_full_cleanup here since setresuid()
+		 * will succeed when trying to set real, effective, and saved to
+		 * values they currently have.
+		 */
 		goto do_full_cleanup;
 	}
 
@@ -913,10 +914,8 @@ do_partial_cleanup:
 	return string_ret;
 }
 
-/*
- * If the caller (real uid, not effective uid) may read the
- * /proc/[pid]/ns/net, then it is either the caller's netns or one
- * which it created.
+/* If the caller (real uid, not effective uid) may read the /proc/[pid]/ns/net,
+ * then it is either the caller's netns or one which it created.
  */
 static bool may_access_netns(int pid)
 {
@@ -937,7 +936,7 @@ static bool may_access_netns(int pid)
 	if (ret < 0) {
 		usernic_error("Failed to drop privilege by setting effective "
 			      "user id and real user id to %d, and saved user "
-			      "ID to %d: %s.\n",
+			      "ID to %d: %s\n",
 			      ruid, euid, strerror(errno));
 		return false;
 	}
@@ -956,7 +955,7 @@ static bool may_access_netns(int pid)
 	ret = setresuid(ruid, euid, suid);
 	if (ret < 0) {
 		usernic_error("Failed to restore user id to %d, real user id "
-			      "to %d, and saved user ID to %d: %s.\n",
+			      "to %d, and saved user ID to %d: %s\n",
 			      ruid, euid, suid, strerror(errno));
 		may_access = false;
 	}
@@ -1035,7 +1034,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (!create_db_dir(LXC_USERNIC_DB)) {
-		usernic_error("%s", "Failed to create directory for db file.\n");
+		usernic_error("%s", "Failed to create directory for db file\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -1046,7 +1045,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (!may_access_netns(pid)) {
-		usernic_error("User %s may not modify netns for pid %d.\n", me, pid);
+		usernic_error("User %s may not modify netns for pid %d\n", me, pid);
 		exit(EXIT_FAILURE);
 	}
 
