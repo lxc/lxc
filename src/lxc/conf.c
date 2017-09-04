@@ -3096,8 +3096,6 @@ static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 	else
 		TRACE("Sent %d ttys to parent", conf->tty);
 
-	close(handler->data_sock[0]);
-	close(handler->data_sock[1]);
 	lxc_delete_tty(tty_info);
 
 	return ret;
