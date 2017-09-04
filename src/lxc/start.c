@@ -988,7 +988,10 @@ static int do_start(void *data)
 	}
 
 	/* Setup the container, ip, names, utsname, ... */
-	if (lxc_setup(handler)) {
+	ret = lxc_setup(handler);
+	close(handler->data_sock[0]);
+	close(handler->data_sock[1]);
+	if (ret < 0) {
 		ERROR("Failed to setup container \"%s\".", handler->name);
 		goto out_warn_father;
 	}
