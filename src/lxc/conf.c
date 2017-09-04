@@ -3072,6 +3072,9 @@ static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 	int sock = handler->data_sock[0];
 	int ret = -1;
 
+	if (!conf->tty)
+		return 0;
+
 	for (i = 0; i < conf->tty; i++) {
 		int ttyfds[2];
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
