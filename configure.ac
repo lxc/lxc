@@ -558,7 +558,7 @@ AC_ARG_WITH([cgroup-pattern],
 	[AC_HELP_STRING(
 		[--with-cgroup-pattern=pattern],
 		[pattern for container cgroups]
-	)], [], [with_cgroup_pattern=['/lxc/%n']])
+	)], [], [with_cgroup_pattern=['lxc/%n']])
 
 # Container log path.  By default, use $lxcpath.
 AC_MSG_CHECKING([Whether to place logfiles in container config path])
