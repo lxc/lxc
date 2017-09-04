@@ -402,5 +402,6 @@ extern void *must_realloc(void *orig, size_t sz);
 typedef __typeof__(((struct statfs *)NULL)->f_type) fs_type_magic;
 extern bool has_fs_type(const char *path, fs_type_magic magic_val);
 extern bool is_fs_type(const struct statfs *fs, fs_type_magic magic_val);
+extern bool lxc_nic_exists(char *nic);
 
 #endif /* __LXC_UTILS_H */

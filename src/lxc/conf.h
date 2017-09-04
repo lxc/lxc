@@ -244,8 +244,6 @@ struct lxc_conf {
 	struct lxc_list cgroup;
 	struct lxc_list id_map;
 	struct lxc_list network;
-	struct saved_nic *saved_nics;
-	int num_savednics;
 	int auto_mounts;
 	struct lxc_list mount_list;
 	struct lxc_list caps;

@@ -483,7 +483,7 @@ static int set_config_net_link(const char *key, const char *value,
 	if (value[strlen(value) - 1] == '+' && netdev->type == LXC_NET_PHYS)
 		ret = create_matched_ifnames(value, lxc_conf, netdev);
 	else
-		ret = network_ifname(&netdev->link, value);
+		ret = network_ifname(netdev->link, value);
 
 	return ret;
 }
@@ -503,7 +503,7 @@ static int set_config_net_name(const char *key, const char *value,
 	if (!netdev)
 		return -1;
 
-	return network_ifname(&netdev->name, value);
+	return network_ifname(netdev->name, value);
 }
 
 static int set_config_net_veth_pair(const char *key, const char *value,
@@ -521,7 +521,7 @@ static int set_config_net_veth_pair(const char *key, const char *value,
 	if (!netdev)
 		return -1;
 
-	return network_ifname(&netdev->priv.veth_attr.pair, value);
+	return network_ifname(netdev->priv.veth_attr.pair, value);
 }
 
 static int set_config_net_macvlan_mode(const char *key, const char *value,
@@ -3690,8 +3690,7 @@ static int clr_config_net_name(const char *key, struct lxc_conf *lxc_conf,
 	if (!netdev)
 		return -1;
 
-	free(netdev->name);
-	netdev->name = NULL;
+	netdev->name[0] = '\0';
 
 	return 0;
 }
@@ -3725,8 +3724,7 @@ static int clr_config_net_link(const char *key, struct lxc_conf *lxc_conf,
 	if (!netdev)
 		return -1;
 
-	free(netdev->link);
-	netdev->link = NULL;
+	netdev->link[0] = '\0';
 
 	return 0;
 }
@@ -3763,8 +3761,7 @@ static int clr_config_net_veth_pair(const char *key, struct lxc_conf *lxc_conf,
 	if (!netdev)
 		return -1;
 
-	free(netdev->priv.veth_attr.pair);
-	netdev->priv.veth_attr.pair = NULL;
+	netdev->priv.veth_attr.pair[0] = '\0';
 
 	return 0;
 }
@@ -4032,7 +4029,7 @@ static int get_config_net_link(const char *key, char *retv, int inlen,
 	if (!netdev)
 		return -1;
 
-	if (netdev->link)
+	if (netdev->link[0] != '\0')
 		strprint(retv, inlen, "%s", netdev->link);
 
 	return fulllen;
@@ -4056,7 +4053,7 @@ static int get_config_net_name(const char *key, char *retv, int inlen,
 	if (!netdev)
 		return -1;
 
-	if (netdev->name)
+	if (netdev->name[0] != '\0')
 		strprint(retv, inlen, "%s", netdev->name);
 
 	return fulllen;
@@ -4129,8 +4126,9 @@ static int get_config_net_veth_pair(const char *key, char *retv, int inlen,
 		return 0;
 
 	strprint(retv, inlen, "%s",
-		 netdev->priv.veth_attr.pair ? netdev->priv.veth_attr.pair
-					     : netdev->priv.veth_attr.veth1);
+		 netdev->priv.veth_attr.pair[0] != '\0'
+		     ? netdev->priv.veth_attr.pair
+		     : netdev->priv.veth_attr.veth1);
 
 	return fulllen;
 }
