@@ -5,6 +5,8 @@
  *
  * Authors:
  * Daniel Lezcano <daniel.lezcano at free.fr>
+ * Serge Hallyn <serge@hallyn.com>
+ * Christian Brauner <christian.brauner@ubuntu.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -24,45 +26,86 @@
 #define __LXC_START_H
 
 #include <signal.h>
+#include <stdbool.h>
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <stdbool.h>
 
 #include "conf.h"
 #include "config.h"
-#include "state.h"
 #include "namespace.h"
+#include "state.h"
 
 struct lxc_handler {
-	bool am_root;
-	pid_t pid;
-	char *name;
-	lxc_state_t state;
+	/* The clone flags that were requested. */
 	int clone_flags;
-	int sigfd;
-	sigset_t oldmask;
-	struct lxc_conf *conf;
-	struct lxc_operations *ops;
-	void *data;
-	int sv[2];
+
+	/* File descriptors referring to the network namespace of the container. */
+	int netnsfd;
+
+	/* File descriptor to pin the rootfs for privileged containers. */
 	int pinfd;
-	const char *lxcpath;
-	void *cgroup_data;
+
+	/* Signal file descriptor. */
+	int sigfd;
+
+	/* List of file descriptors referring to the namespaces of the
+	 * container. Note that these are not necessarily identical to
+	 * the "clone_flags" handler field in case namespace inheritance is
+	 * requested.
+	 */
+	int nsfd[LXC_NS_MAX];
 
 	/* Abstract unix domain SOCK_DGRAM socketpair to pass arbitrary data
 	 * between child and parent.
 	 */
 	int data_sock[2];
 
-	/* indicates whether should we close std{in,out,err} on start */
-	bool backgrounded;
-	int nsfd[LXC_NS_MAX];
-	int netnsfd;
-
 	/* The socketpair() fds used to wait on successful daemonized startup. */
 	int state_socket_pair[2];
+
+	/* Socketpair to synchronize processes during container creation. */
+	int sync_sock[2];
+
+	/* The name of the container. */
+	char *name;
+
+	/* The path the container is running in. */
+	const char *lxcpath;
+
+	/* Whether the container's startup process euid is 0. */
+	bool am_root;
+
+	/* Indicates whether should we close std{in,out,err} on start. */
+	bool backgrounded;
+
+	/* The child's pid. */
+	pid_t pid;
+
+	/* The signal mask prior to setting up the signal file descriptor. */
+	sigset_t oldmask;
+
+	/* The container's in-memory configuration. */
+	struct lxc_conf *conf;
+
+	/* A list of clients registered to be informed about a container state. */
 	struct lxc_list state_clients;
+
+	/* A set of operations to be performed at various stages of the
+	 * container's life.
+	 */
+	struct lxc_operations *ops;
+
+	/* This holds the cgroup information. Note that the data here is
+	 * specific to the cgroup driver used.
+	 */
+	void *cgroup_data;
+
+	/* Data to be passed to handler ops. */
+	void *data;
+
+	/* Current state of the container. */
+	lxc_state_t state;
 };
 
 struct lxc_operations {
@@ -95,8 +138,8 @@ extern void lxc_fini(const char *name, struct lxc_handler *handler);
  */
 extern int lxc_check_inherited(struct lxc_conf *conf, bool closeall,
 			       int *fds_to_ignore, size_t len_fds);
-int __lxc_start(const char *, struct lxc_handler *, struct lxc_operations *,
-		void *, const char *, bool);
+extern int __lxc_start(const char *, struct lxc_handler *,
+		       struct lxc_operations *, void *, const char *, bool);
 
 extern void resolve_clone_flags(struct lxc_handler *handler);
 #endif
