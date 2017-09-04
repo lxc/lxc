@@ -3003,14 +3003,9 @@ int lxc_network_send_veth_names_to_child(struct lxc_handler *handler)
 			continue;
 
 		ret = send(data_sock, netdev->name, IFNAMSIZ, 0);
-		if (ret < 0) {
-			close(handler->data_sock[0]);
-			close(handler->data_sock[1]);
+		if (ret < 0)
 			return -1;
-		} else {
-			TRACE("Sent network device name \"%s\" to child",
-			      netdev->name);
-		}
+		TRACE("Sent network device name \"%s\" to child", netdev->name);
 	}
 
 	return 0;
@@ -3033,14 +3028,9 @@ int lxc_network_recv_veth_names_from_parent(struct lxc_handler *handler)
 			continue;
 
 		ret = recv(data_sock, netdev->name, IFNAMSIZ, 0);
-		if (ret < 0) {
-			close(handler->data_sock[0]);
-			close(handler->data_sock[1]);
+		if (ret < 0)
 			return -1;
-		} else {
-			TRACE("Received network device name \"%s\" from parent",
-			      netdev->name);
-		}
+		TRACE("Received network device name \"%s\" from parent", netdev->name);
 	}
 
 	return 0;
@@ -3062,23 +3052,18 @@ int lxc_network_send_name_and_ifindex_to_parent(struct lxc_handler *handler)
 		/* Send network device name in the child's namespace to parent. */
 		ret = send(data_sock, netdev->name, IFNAMSIZ, 0);
 		if (ret < 0)
-			goto on_error;
+			return -1;
 
 		/* Send network device ifindex in the child's namespace to
 		 * parent.
 		 */
 		ret = send(data_sock, &netdev->ifindex, sizeof(netdev->ifindex), 0);
 		if (ret < 0)
-			goto on_error;
+			return -1;
 	}
 
 	TRACE("Sent network device names and ifindeces to parent");
 	return 0;
-
-on_error:
-	close(handler->data_sock[0]);
-	close(handler->data_sock[1]);
-	return -1;
 }
 
 int lxc_network_recv_name_and_ifindex_from_child(struct lxc_handler *handler)
@@ -3099,20 +3084,15 @@ int lxc_network_recv_name_and_ifindex_from_child(struct lxc_handler *handler)
 		 */
 		ret = recv(data_sock, netdev->name, IFNAMSIZ, 0);
 		if (ret < 0)
-			goto on_error;
+			return -1;
 
 		/* Receive network device ifindex in the child's namespace to
 		 * parent.
 		 */
 		ret = recv(data_sock, &netdev->ifindex, sizeof(netdev->ifindex), 0);
 		if (ret < 0)
-			goto on_error;
+			return -1;
 	}
 
 	return 0;
-
-on_error:
-	close(handler->data_sock[0]);
-	close(handler->data_sock[1]);
-	return -1;
 }
