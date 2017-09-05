@@ -854,23 +854,19 @@ static int lxc_setup_tty(struct lxc_conf *conf)
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 
 		ret = snprintf(path, sizeof(path), "/dev/tty%d", i + 1);
-		if (ret < 0 || (size_t)ret >= sizeof(path)) {
-			ERROR("pathname too long for ttys");
+		if (ret < 0 || (size_t)ret >= sizeof(path))
 			return -1;
-		}
 
 		if (ttydir) {
 			/* create dev/lxc/tty%d" */
 			ret = snprintf(lxcpath, sizeof(lxcpath),
 				       "/dev/%s/tty%d", ttydir, i + 1);
-			if (ret < 0 || (size_t)ret >= sizeof(lxcpath)) {
-				ERROR("pathname too long for ttys");
+			if (ret < 0 || (size_t)ret >= sizeof(lxcpath))
 				return -1;
-			}
 
 			ret = creat(lxcpath, 0660);
 			if (ret < 0 && errno != EEXIST) {
-				SYSERROR("failed to create \"%s\"", lxcpath);
+				SYSERROR("Failed to create \"%s\"", lxcpath);
 				return -1;
 			}
 			if (ret >= 0)
@@ -878,13 +874,13 @@ static int lxc_setup_tty(struct lxc_conf *conf)
 
 			ret = unlink(path);
 			if (ret < 0 && errno != ENOENT) {
-				SYSERROR("failed to unlink \"%s\"", path);
+				SYSERROR("Failed to unlink \"%s\"", path);
 				return -1;
 			}
 
 			ret = mount(pty_info->name, lxcpath, "none", MS_BIND, 0);
 			if (ret < 0) {
-				WARN("failed to bind mount \"%s\" onto \"%s\"",
+				WARN("Failed to bind mount \"%s\" onto \"%s\"",
 				     pty_info->name, path);
 				continue;
 			}
@@ -893,14 +889,12 @@ static int lxc_setup_tty(struct lxc_conf *conf)
 
 			ret = snprintf(lxcpath, sizeof(lxcpath), "%s/tty%d",
 				       ttydir, i + 1);
-			if (ret < 0 || (size_t)ret >= sizeof(lxcpath)) {
-				ERROR("tty pathname too long");
+			if (ret < 0 || (size_t)ret >= sizeof(lxcpath))
 				return -1;
-			}
 
 			ret = symlink(lxcpath, path);
 			if (ret < 0) {
-				SYSERROR("failed to create symlink \"%s\" -> \"%s\"",
+				SYSERROR("Failed to create symlink \"%s\" -> \"%s\"",
 				         path, lxcpath);
 				return -1;
 			}
@@ -912,7 +906,7 @@ static int lxc_setup_tty(struct lxc_conf *conf)
 			if (ret < 0) {
 				ret = creat(path, 0660);
 				if (ret < 0) {
-					SYSERROR("failed to create \"%s\"", path);
+					SYSERROR("Failed to create \"%s\"", path);
 					/* this isn't fatal, continue */
 				} else {
 					close(ret);
@@ -921,11 +915,11 @@ static int lxc_setup_tty(struct lxc_conf *conf)
 
 			ret = mount(pty_info->name, path, "none", MS_BIND, 0);
 			if (ret < 0) {
-				SYSERROR("failed to mount '%s'->'%s'", pty_info->name, path);
+				SYSERROR("Failed to mount '%s'->'%s'", pty_info->name, path);
 				continue;
 			}
 
-			DEBUG("bind mounted \"%s\" onto \"%s\"", pty_info->name,
+			DEBUG("Bind mounted \"%s\" onto \"%s\"", pty_info->name,
 			      path);
 		}
 
@@ -935,7 +929,7 @@ static int lxc_setup_tty(struct lxc_conf *conf)
 		}
 	}
 
-	INFO("finished setting up %d /dev/tty<N> device(s)", tty_info->nbtty);
+	INFO("Finished setting up %d /dev/tty<N> device(s)", tty_info->nbtty);
 	return 0;
 }
 
