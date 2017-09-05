@@ -171,7 +171,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 	The helper script <command>lxc-checkconfig</command> will give
 	you information about your kernel configuration.
 	-->
-	배포판들에 포함된 2.6.32 이상의 커널에서는  <command>lxc</command>가 동작한다. 매우 작은 기능만 있지만 충분히 사용할 수 있다.
+	배포판들에 포함된 3.10 이상의 커널에서는  <command>lxc</command>가 동작한다. 매우 작은 기능만 있지만 충분히 사용할 수 있다.
         <command>lxc-checkconfig</command> 스크립트를 사용하면 현재 커널 설정에 대한 정보를 얻을 수 있다.
       </para>
 

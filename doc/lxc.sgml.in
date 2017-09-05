@@ -135,7 +135,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <para>
 
-	The kernel version >= 2.6.32 shipped with the distros, will
+	The kernel version >= 3.10 shipped with the distros, will
 	work with <command>lxc</command>, this one will have less
 	functionalities but enough to be interesting.
 
