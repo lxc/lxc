@@ -3972,8 +3972,8 @@ void suggest_default_idmap(void)
 	ERROR("To pass uid mappings to lxc-create, you could create");
 	ERROR("~/.config/lxc/default.conf:");
 	ERROR("lxc.include = %s", LXC_DEFAULT_CONFIG);
-	ERROR("lxc.id_map = u 0 %u %u", uid, urange);
-	ERROR("lxc.id_map = g 0 %u %u", gid, grange);
+	ERROR("lxc.idmap = u 0 %u %u", uid, urange);
+	ERROR("lxc.idmap = g 0 %u %u", gid, grange);
 
 	free(gname);
 	free(uname);

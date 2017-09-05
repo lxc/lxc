@@ -287,8 +287,8 @@ configure_container() {
     if [[ $unprivileged && $unprivileged == true ]] ; then
         if [[ $flush_owner == true ]] ; then
             unprivileged_options="
-lxc.id_map = u 0 ${mapped_uid} 65536
-lxc.id_map = g 0 ${mapped_gid} 65536
+lxc.idmap = u 0 ${mapped_uid} 65536
+lxc.idmap = g 0 ${mapped_gid} 65536
 "
         fi
 

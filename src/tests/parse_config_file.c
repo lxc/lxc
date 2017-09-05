@@ -455,6 +455,34 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	/* lxc.idmap
+	 * We can't really save the config here since save_config() wants to
+	 * chown the container's directory but we haven't created an on-disk
+	 * container. So let's test set-get-clear.
+	 */
+	if (set_get_compare_clear_save_load(
+		c, "lxc.idmap", "u 0 100000 1000000000", NULL, false) < 0) {
+		lxc_error("%s\n", "lxc.idmap");
+		goto non_test_error;
+	}
+
+	if (!c->set_config_item(c, "lxc.idmap", "u 1 100000 10000000")) {
+		lxc_error("%s\n", "failed to set config item "
+				  "\"lxc.idmap\" to \"u 1 100000 10000000\"");
+		return -1;
+	}
+
+	if (!c->set_config_item(c, "lxc.idmap", "g 1 100000 10000000")) {
+		lxc_error("%s\n", "failed to set config item "
+				  "\"lxc.idmap\" to \"g 1 100000 10000000\"");
+		return -1;
+	}
+
+	if (!c->get_config_item(c, "lxc.idmap", retval, sizeof(retval))) {
+		lxc_error("%s\n", "failed to get config item \"lxc.cgroup\"");
+		return -1;
+	}
+
 	c->clear_config(c);
 	c->lxc_conf = NULL;
 

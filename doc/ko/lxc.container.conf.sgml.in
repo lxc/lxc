@@ -1839,7 +1839,7 @@ mknod errno 0
       <variablelist>
 	<varlistentry>
 	  <term>
-	    <option>lxc.id_map</option>
+	    <option>lxc.idmap</option>
 	  </term>
 	  <listitem>
 	    <para>
@@ -2564,8 +2564,8 @@ mknod errno 0
         이 설정은 UID와 GID 둘다를 컨테이너의 0 ~ 9999를 호스트의 100000 ~ 109999로 매핑한다.
       </para>
       <programlisting>
-	lxc.id_map = u 0 100000 10000
-	lxc.id_map = g 0 100000 10000
+	lxc.idmap = u 0 100000 10000
+	lxc.idmap = g 0 100000 10000
       </programlisting>
     </refsect2>
 

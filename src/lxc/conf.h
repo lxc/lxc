@@ -96,10 +96,10 @@ enum idtype {
 
 /*
  * id_map is an id map entry.  Form in confile is:
- * lxc.id_map = u 0    9800 100
- * lxc.id_map = u 1000 9900 100
- * lxc.id_map = g 0    9800 100
- * lxc.id_map = g 1000 9900 100
+ * lxc.idmap = u 0    9800 100
+ * lxc.idmap = u 1000 9900 100
+ * lxc.idmap = g 0    9800 100
+ * lxc.idmap = g 1000 9900 100
  * meaning the container can use uids and gids 0-99 and 1000-1099,
  * with [ug]id 0 mapping to [ug]id 9800 on the host, and [ug]id 1000 to
  * [ug]id 9900 on the host.

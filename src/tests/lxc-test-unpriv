@@ -118,8 +118,8 @@ mkdir -p $HDIR/.config/lxc/
 cat > $HDIR/.config/lxc/default.conf << EOF
 lxc.net.0.type = veth
 lxc.net.0.link = lxcbr0
-lxc.id_map = u 0 910000 9999
-lxc.id_map = g 0 910000 9999
+lxc.idmap = u 0 910000 9999
+lxc.idmap = g 0 910000 9999
 EOF
 chown -R $TUSER: $HDIR
 
