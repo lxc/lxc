@@ -105,11 +105,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       example, a process running as UID and GID 0 inside the container might
       appear as UID and GID 100000 on the host.  The implementation and working
       details can be gathered from the corresponding user namespace man page.
-      UID and GID mappings can be defined with the <option>lxc.id_map</option>
+      UID and GID mappings can be defined with the <option>lxc.idmap</option>
       key.
         -->
       本質的には、ユーザ名前空間は与えられた UID、GID の組を隔離します。ユーザ名前空間は、ホスト上の UID、GID のある範囲を、それとは異なるコンテナ上の UID、GID の範囲へマッピングすることで実現します。カーネルは、ホスト上では実際には UID、GID は特権を持たないにも関わらず、コンテナ内ではすべての UID、GID が期待されるように見えるように変換を行います。
-      例えば、コンテナ内では UID、GID が 0 として実行中のプロセスは、ホスト上では UID、GID が 100000 として見えるでしょう。実装と動作の詳細は、ユーザ名前空間の man ページから得られます。UID と GID のマッピングは <option>lxc.id_map</option> を使って定義できます。
+      例えば、コンテナ内では UID、GID が 0 として実行中のプロセスは、ホスト上では UID、GID が 100000 として見えるでしょう。実装と動作の詳細は、ユーザ名前空間の man ページから得られます。UID と GID のマッピングは <option>lxc.idmap</option> を使って定義できます。
     </para>
 
     <para>
@@ -1904,7 +1904,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.id_map</option>
+            <option>lxc.idmap</option>
           </term>
           <listitem>
             <para>
@@ -2642,8 +2642,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         この設定は、コンテナ内のユーザとグループ両方の id 0-9999 の範囲を、ホスト上の 100000-109999 へマッピングします。
       </para>
       <programlisting>
-        lxc.id_map = u 0 100000 10000
-        lxc.id_map = g 0 100000 10000
+        lxc.idmap = u 0 100000 10000
+        lxc.idmap = g 0 100000 10000
       </programlisting>
     </refsect2>
 

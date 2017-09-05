@@ -86,7 +86,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       example, a process running as UID and GID 0 inside the container might
       appear as UID and GID 100000 on the host.  The implementation and working
       details can be gathered from the corresponding user namespace man page.
-      UID and GID mappings can be defined with the <option>lxc.id_map</option>
+      UID and GID mappings can be defined with the <option>lxc.idmap</option>
       key.
     </para>
 
@@ -1129,6 +1129,25 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             </para>
           </listitem>
         </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.cgroup.dir</option>
+          </term>
+          <listitem>
+            <para>
+              specify a directory or path in which the container's cgroup will
+              be created. For example, setting
+              <option>lxc.cgroup.dir = my-cgroup/first</option> for a container
+              named "c1" will create the container's cgroup as a sub-cgroup of
+              "my-cgroup". For example, if the user's current cgroup "my-user"
+              is located in the root cgroup of the cpuset controllerin in a
+              cgroup v1 hierarchy this would create the cgroup
+              "/sys/fs/cgroup/cpuset/my-user/my-cgroup/first/c1" for the
+              container. Any missing cgroups will be created by LXC. This
+              presupposes that the user has write access to its current cgroup.
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
@@ -1383,7 +1402,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.id_map</option>
+            <option>lxc.idmap</option>
           </term>
           <listitem>
             <para>
@@ -1935,8 +1954,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         range 0-9999 in the container to the ids 100000-109999 on the host.
       </para>
       <programlisting>
-        lxc.id_map = u 0 100000 10000
-        lxc.id_map = g 0 100000 10000
+        lxc.idmap = u 0 100000 10000
+        lxc.idmap = g 0 100000 10000
       </programlisting>
     </refsect2>
 

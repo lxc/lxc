@@ -1559,7 +1559,7 @@ static bool cgm_chown(void *hdata, struct lxc_conf *conf)
 }
 
 /*
- * TODO: this should be re-written to use the get_config_item("lxc.id_map")
+ * TODO: this should be re-written to use the get_config_item("lxc.idmap")
  * cmd api instead of getting the idmap from c->lxc_conf.  The reason is
  * that the id_maps may be different if the container was started with a
  * -f or -s argument.
