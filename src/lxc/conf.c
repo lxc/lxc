@@ -817,9 +817,7 @@ static int setup_dev_symlinks(const struct lxc_rootfs *rootfs)
 	return 0;
 }
 
-/*
- * Build a space-separate list of ptys to pass to systemd.
- */
+/* Build a space-separate list of ptys to pass to systemd. */
 static bool append_ptyname(char **pp, char *name)
 {
 	char *p;
@@ -840,7 +838,7 @@ static bool append_ptyname(char **pp, char *name)
 	return true;
 }
 
-static int lxc_setup_tty(struct lxc_conf *conf)
+static int lxc_setup_ttys(struct lxc_conf *conf)
 {
 	int i, ret;
 	const struct lxc_tty_info *tty_info = &conf->tty_info;
@@ -854,23 +852,19 @@ static int lxc_setup_tty(struct lxc_conf *conf)
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 
 		ret = snprintf(path, sizeof(path), "/dev/tty%d", i + 1);
-		if (ret < 0 || (size_t)ret >= sizeof(path)) {
-			ERROR("pathname too long for ttys");
+		if (ret < 0 || (size_t)ret >= sizeof(path))
 			return -1;
-		}
 
 		if (ttydir) {
 			/* create dev/lxc/tty%d" */
 			ret = snprintf(lxcpath, sizeof(lxcpath),
 				       "/dev/%s/tty%d", ttydir, i + 1);
-			if (ret < 0 || (size_t)ret >= sizeof(lxcpath)) {
-				ERROR("pathname too long for ttys");
+			if (ret < 0 || (size_t)ret >= sizeof(lxcpath))
 				return -1;
-			}
 
 			ret = creat(lxcpath, 0660);
 			if (ret < 0 && errno != EEXIST) {
-				SYSERROR("failed to create \"%s\"", lxcpath);
+				SYSERROR("Failed to create \"%s\"", lxcpath);
 				return -1;
 			}
 			if (ret >= 0)
@@ -878,13 +872,13 @@ static int lxc_setup_tty(struct lxc_conf *conf)
 
 			ret = unlink(path);
 			if (ret < 0 && errno != ENOENT) {
-				SYSERROR("failed to unlink \"%s\"", path);
+				SYSERROR("Failed to unlink \"%s\"", path);
 				return -1;
 			}
 
 			ret = mount(pty_info->name, lxcpath, "none", MS_BIND, 0);
 			if (ret < 0) {
-				WARN("failed to bind mount \"%s\" onto \"%s\"",
+				WARN("Failed to bind mount \"%s\" onto \"%s\"",
 				     pty_info->name, path);
 				continue;
 			}
@@ -893,14 +887,12 @@ static int lxc_setup_tty(struct lxc_conf *conf)
 
 			ret = snprintf(lxcpath, sizeof(lxcpath), "%s/tty%d",
 				       ttydir, i + 1);
-			if (ret < 0 || (size_t)ret >= sizeof(lxcpath)) {
-				ERROR("tty pathname too long");
+			if (ret < 0 || (size_t)ret >= sizeof(lxcpath))
 				return -1;
-			}
 
 			ret = symlink(lxcpath, path);
 			if (ret < 0) {
-				SYSERROR("failed to create symlink \"%s\" -> \"%s\"",
+				SYSERROR("Failed to create symlink \"%s\" -> \"%s\"",
 				         path, lxcpath);
 				return -1;
 			}
@@ -912,7 +904,7 @@ static int lxc_setup_tty(struct lxc_conf *conf)
 			if (ret < 0) {
 				ret = creat(path, 0660);
 				if (ret < 0) {
-					SYSERROR("failed to create \"%s\"", path);
+					SYSERROR("Failed to create \"%s\"", path);
 					/* this isn't fatal, continue */
 				} else {
 					close(ret);
@@ -921,11 +913,11 @@ static int lxc_setup_tty(struct lxc_conf *conf)
 
 			ret = mount(pty_info->name, path, "none", MS_BIND, 0);
 			if (ret < 0) {
-				SYSERROR("failed to mount '%s'->'%s'", pty_info->name, path);
+				SYSERROR("Failed to mount '%s'->'%s'", pty_info->name, path);
 				continue;
 			}
 
-			DEBUG("bind mounted \"%s\" onto \"%s\"", pty_info->name,
+			DEBUG("Bind mounted \"%s\" onto \"%s\"", pty_info->name,
 			      path);
 		}
 
@@ -935,8 +927,152 @@ static int lxc_setup_tty(struct lxc_conf *conf)
 		}
 	}
 
-	INFO("finished setting up %d /dev/tty<N> device(s)", tty_info->nbtty);
+	INFO("Finished setting up %d /dev/tty<N> device(s)", tty_info->nbtty);
 	return 0;
+}
+
+int lxc_allocate_ttys(const char *name, struct lxc_conf *conf)
+{
+	struct lxc_tty_info *tty_info = &conf->tty_info;
+	int i, ret;
+
+	/* no tty in the configuration */
+	if (!conf->tty)
+		return 0;
+
+	tty_info->pty_info = malloc(sizeof(*tty_info->pty_info) * conf->tty);
+	if (!tty_info->pty_info) {
+		SYSERROR("failed to allocate struct *pty_info");
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < conf->tty; i++) {
+		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
+
+		process_lock();
+		ret = openpty(&pty_info->master, &pty_info->slave,
+			      pty_info->name, NULL, NULL);
+		process_unlock();
+		if (ret) {
+			SYSERROR("failed to create pty device number %d", i);
+			tty_info->nbtty = i;
+			lxc_delete_tty(tty_info);
+			return -ENOTTY;
+		}
+
+		DEBUG("allocated pty \"%s\" with master fd %d and slave fd %d",
+		      pty_info->name, pty_info->master, pty_info->slave);
+
+		/* Prevent leaking the file descriptors to the container */
+		ret = fcntl(pty_info->master, F_SETFD, FD_CLOEXEC);
+		if (ret < 0)
+			WARN("failed to set FD_CLOEXEC flag on master fd %d of "
+			     "pty device \"%s\": %s",
+			     pty_info->master, pty_info->name, strerror(errno));
+
+		ret = fcntl(pty_info->slave, F_SETFD, FD_CLOEXEC);
+		if (ret < 0)
+			WARN("failed to set FD_CLOEXEC flag on slave fd %d of "
+			     "pty device \"%s\": %s",
+			     pty_info->slave, pty_info->name, strerror(errno));
+
+		pty_info->busy = 0;
+	}
+
+	tty_info->nbtty = conf->tty;
+
+	INFO("finished allocating %d pts devices", conf->tty);
+	return 0;
+}
+
+void lxc_delete_tty(struct lxc_tty_info *tty_info)
+{
+	int i;
+
+	for (i = 0; i < tty_info->nbtty; i++) {
+		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
+
+		close(pty_info->master);
+		close(pty_info->slave);
+	}
+
+	free(tty_info->pty_info);
+	tty_info->pty_info = NULL;
+	tty_info->nbtty = 0;
+}
+
+static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
+{
+	int i;
+	struct lxc_conf *conf = handler->conf;
+	struct lxc_tty_info *tty_info = &conf->tty_info;
+	int sock = handler->data_sock[0];
+	int ret = -1;
+
+	if (!conf->tty)
+		return 0;
+
+	for (i = 0; i < conf->tty; i++) {
+		int ttyfds[2];
+		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
+
+		ttyfds[0] = pty_info->master;
+		ttyfds[1] = pty_info->slave;
+
+		ret = lxc_abstract_unix_send_fds(sock, ttyfds, 2, NULL, 0);
+		if (ret < 0)
+			break;
+
+		TRACE("Send pty \"%s\" with master fd %d and slave fd %d to "
+		      "parent", pty_info->name, pty_info->master, pty_info->slave);
+	}
+
+	if (ret < 0)
+		ERROR("Failed to send %d ttys to parent: %s", conf->tty,
+		      strerror(errno));
+	else
+		TRACE("Sent %d ttys to parent", conf->tty);
+
+	return ret;
+}
+
+static int lxc_create_ttys(struct lxc_handler *handler)
+{
+	int ret = -1;
+	struct lxc_conf *conf = handler->conf;
+
+	ret = lxc_allocate_ttys(handler->name, conf);
+	if (ret < 0) {
+		ERROR("Failed to allocate ttys");
+		goto on_error;
+	}
+
+	ret = lxc_send_ttys_to_parent(handler);
+	if (ret < 0) {
+		ERROR("Failed to send ttys to parent");
+		goto on_error;
+	}
+
+	if (!conf->is_execute) {
+		ret = lxc_setup_ttys(conf);
+		if (ret < 0) {
+			ERROR("Failed to setup ttys");
+			goto on_error;
+		}
+	}
+
+	if (conf->pty_names) {
+		ret = setenv("container_ttys", conf->pty_names, 1);
+		if (ret < 0)
+			SYSERROR("Failed to set \"container_ttys=%s\"", conf->pty_names);
+	}
+
+	ret = 0;
+
+on_error:
+	lxc_delete_tty(&conf->tty_info);
+
+	return ret;
 }
 
 static int setup_rootfs_pivot_root(const char *rootfs)
@@ -2602,8 +2738,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 		} else {
 			ret = write_id_mapping(type, pid, mapbuf, pos - mapbuf);
 			if (ret < 0) {
-				ERROR("Failed to write mapping \"%s\": %s",
-				      cmd_output, mapbuf);
+				ERROR("Failed to write mapping: %s", mapbuf);
 				return -1;
 			}
 			TRACE("Wrote mapping \"%s\"", mapbuf);
@@ -2669,77 +2804,6 @@ again:
 	}
 	return freeid;
 }
-
-int lxc_create_tty(const char *name, struct lxc_conf *conf)
-{
-	struct lxc_tty_info *tty_info = &conf->tty_info;
-	int i, ret;
-
-	/* no tty in the configuration */
-	if (!conf->tty)
-		return 0;
-
-	tty_info->pty_info = malloc(sizeof(*tty_info->pty_info) * conf->tty);
-	if (!tty_info->pty_info) {
-		SYSERROR("failed to allocate struct *pty_info");
-		return -ENOMEM;
-	}
-
-	for (i = 0; i < conf->tty; i++) {
-		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
-
-		process_lock();
-		ret = openpty(&pty_info->master, &pty_info->slave,
-			      pty_info->name, NULL, NULL);
-		process_unlock();
-		if (ret) {
-			SYSERROR("failed to create pty device number %d", i);
-			tty_info->nbtty = i;
-			lxc_delete_tty(tty_info);
-			return -ENOTTY;
-		}
-
-		DEBUG("allocated pty \"%s\" with master fd %d and slave fd %d",
-		      pty_info->name, pty_info->master, pty_info->slave);
-
-		/* Prevent leaking the file descriptors to the container */
-		ret = fcntl(pty_info->master, F_SETFD, FD_CLOEXEC);
-		if (ret < 0)
-			WARN("failed to set FD_CLOEXEC flag on master fd %d of "
-			     "pty device \"%s\": %s",
-			     pty_info->master, pty_info->name, strerror(errno));
-
-		ret = fcntl(pty_info->slave, F_SETFD, FD_CLOEXEC);
-		if (ret < 0)
-			WARN("failed to set FD_CLOEXEC flag on slave fd %d of "
-			     "pty device \"%s\": %s",
-			     pty_info->slave, pty_info->name, strerror(errno));
-
-		pty_info->busy = 0;
-	}
-
-	tty_info->nbtty = conf->tty;
-
-	INFO("finished allocating %d pts devices", conf->tty);
-	return 0;
-}
-
-void lxc_delete_tty(struct lxc_tty_info *tty_info)
-{
-	int i;
-
-	for (i = 0; i < tty_info->nbtty; i++) {
-		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
-
-		close(pty_info->master);
-		close(pty_info->slave);
-	}
-
-	free(tty_info->pty_info);
-	tty_info->pty_info = NULL;
-	tty_info->nbtty = 0;
-}
-
 
 int chown_mapped_root_exec_wrapper(void *args)
 {
@@ -3069,45 +3133,9 @@ static bool verify_start_hooks(struct lxc_conf *conf)
 	return true;
 }
 
-static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
-{
-	int i;
-	struct lxc_conf *conf = handler->conf;
-	struct lxc_tty_info *tty_info = &conf->tty_info;
-	int sock = handler->data_sock[0];
-	int ret = -1;
-
-	if (!conf->tty)
-		return 0;
-
-	for (i = 0; i < conf->tty; i++) {
-		int ttyfds[2];
-		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
-
-		ttyfds[0] = pty_info->master;
-		ttyfds[1] = pty_info->slave;
-
-		ret = lxc_abstract_unix_send_fds(sock, ttyfds, 2, NULL, 0);
-		if (ret < 0)
-			break;
-
-		TRACE("Send pty \"%s\" with master fd %d and slave fd %d to "
-		      "parent", pty_info->name, pty_info->master, pty_info->slave);
-	}
-
-	if (ret < 0)
-		ERROR("Failed to send %d ttys to parent: %s", conf->tty,
-		      strerror(errno));
-	else
-		TRACE("Sent %d ttys to parent", conf->tty);
-
-	lxc_delete_tty(tty_info);
-
-	return ret;
-}
-
 int lxc_setup(struct lxc_handler *handler)
 {
+	int ret;
 	const char *name = handler->name;
 	struct lxc_conf *lxc_conf = handler->conf;
 	const char *lxcpath = handler->lxcpath;
@@ -3218,24 +3246,9 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
-	if (lxc_create_tty(name, lxc_conf)) {
-		ERROR("failed to create the ttys");
+	ret = lxc_create_ttys(handler);
+	if (ret < 0)
 		return -1;
-	}
-
-	if (lxc_send_ttys_to_parent(handler) < 0) {
-		ERROR("failure sending console info to parent");
-		return -1;
-	}
-
-	if (!lxc_conf->is_execute && lxc_setup_tty(lxc_conf)) {
-		ERROR("failed to setup the ttys for '%s'", name);
-		return -1;
-	}
-
-	if (lxc_conf->pty_names && setenv("container_ttys", lxc_conf->pty_names, 1))
-		SYSERROR("failed to set environment variable for container ptys");
-
 
 	if (setup_personality(lxc_conf->personality)) {
 		ERROR("failed to setup personality");
@@ -3669,6 +3682,9 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	close(p[0]);
 	p[0] = -1;
 
+	euid = geteuid();
+	egid = getegid();
+
 	/* Find container root. */
 	lxc_list_for_each(it, &conf->id_map) {
 		map = it->elem;
@@ -3684,6 +3700,12 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 			container_root_uid->hostid = map->hostid;
 			container_root_uid->nsid = 0;
 			container_root_uid->range = map->range;
+
+			/* Check if container root mapping contains a mapping
+			 * for user's uid.
+			 */
+			if (euid >= map->hostid && euid < map->hostid + map->range)
+				host_uid_map = container_root_uid;
 		} else if (map->idtype == ID_TYPE_GID && container_root_gid == NULL) {
 			container_root_gid = malloc(sizeof(*container_root_gid));
 			if (!container_root_gid)
@@ -3692,6 +3714,12 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 			container_root_gid->hostid = map->hostid;
 			container_root_gid->nsid = 0;
 			container_root_gid->range = map->range;
+
+			/* Check if container root mapping contains a mapping
+			 * for user's gid.
+			 */
+			if (egid >= map->hostid && egid < map->hostid + map->range)
+				host_gid_map = container_root_gid;
 		}
 
 		/* Found container root. */
@@ -3705,16 +3733,11 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 		goto on_error;
 	}
 
-	host_uid_map = container_root_uid;
-	host_gid_map = container_root_gid;
-
 	/* Check whether the {g,u}id of the user has a mapping. */
-	euid = geteuid();
-	egid = getegid();
-	if (euid != container_root_uid->hostid)
+	if (!host_uid_map)
 		host_uid_map = idmap_add(conf, euid, ID_TYPE_UID);
 
-	if (egid != container_root_gid->hostid)
+	if (!host_gid_map)
 		host_gid_map = idmap_add(conf, egid, ID_TYPE_GID);
 
 	if (!host_uid_map) {
