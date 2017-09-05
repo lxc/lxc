@@ -2738,8 +2738,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 		} else {
 			ret = write_id_mapping(type, pid, mapbuf, pos - mapbuf);
 			if (ret < 0) {
-				ERROR("Failed to write mapping \"%s\": %s",
-				      cmd_output, mapbuf);
+				ERROR("Failed to write mapping: %s", mapbuf);
 				return -1;
 			}
 			TRACE("Wrote mapping \"%s\"", mapbuf);
