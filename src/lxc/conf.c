@@ -2594,14 +2594,19 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 					  lxc_map_ids_exec_wrapper,
 					  (void *)mapbuf);
 			if (ret < 0) {
-				ERROR("new%cidmap failed to write mapping: %s",
-				      u_or_g, cmd_output);
+				ERROR("new%cidmap failed to write mapping \"%s\": %s",
+				      u_or_g, cmd_output, mapbuf);
 				return -1;
 			}
+			TRACE("new%cidmap wrote mapping \"%s\"", u_or_g, mapbuf);
 		} else {
 			ret = write_id_mapping(type, pid, mapbuf, pos - mapbuf);
-			if (ret < 0)
+			if (ret < 0) {
+				ERROR("Failed to write mapping \"%s\": %s",
+				      cmd_output, mapbuf);
 				return -1;
+			}
+			TRACE("Wrote mapping \"%s\"", mapbuf);
 		}
 
 		memset(mapbuf, 0, sizeof(mapbuf));
