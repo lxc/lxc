@@ -183,15 +183,6 @@ struct lxc_netdev *lxc_network_add(struct lxc_list *networks, int idx, bool tail
 	memset(netdev, 0, sizeof(*netdev));
 	lxc_list_init(&netdev->ipv4);
 	lxc_list_init(&netdev->ipv6);
-	netdev->name[0] = '\0';
-	netdev->link[0] = '\0';
-	memset(&netdev->priv, 0, sizeof(netdev->priv));
-	/* I'm not completely sure if the memset takes care to zero the arrays
-	 * in the union as well. So let's make extra sure and set the first byte
-	 * to zero so that we don't have any surprises.
-	 */
-	netdev->priv.veth_attr.pair[0] = '\0';
-	netdev->priv.veth_attr.veth1[0] = '\0';
 
 	/* give network a unique index */
 	netdev->idx = idx;
