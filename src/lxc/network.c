@@ -2350,7 +2350,7 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 		if (netdev->type != LXC_NET_VETH)
 			continue;
 
-		if (!is_ovs_bridge(netdev->link))
+		if (netdev->link[0] == '\0' || !is_ovs_bridge(netdev->link))
 			continue;
 
 		if (netdev->priv.veth_attr.pair[0] != '\0')
@@ -2559,7 +2559,7 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 		}
 		INFO("Removed interface \"%s\" from \"%s\"", hostveth, netdev->link);
 
-		if (!is_ovs_bridge(netdev->link)) {
+		if (netdev->link[0] == '\0' || !is_ovs_bridge(netdev->link)) {
 			netdev->priv.veth_attr.veth1[0] = '\0';
 			continue;
 		}
