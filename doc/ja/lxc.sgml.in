@@ -58,217 +58,124 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
   </refnamediv>
 
   <refsect1>
-    <title><!-- Quick start -->クイックスタート</title>
-    <para>
-      <!--
-      You are in a hurry, and you don't want to read this man page. Ok,
-      without warranty, here are the commands to launch a shell inside
-      a container with a predefined configuration template, it may
-      work.
-      <command>@BINDIR@/lxc-execute -n foo -f
-      @DOCDIR@/examples/lxc-macvlan.conf /bin/bash</command>
-      -->
-      急いでいて、この man ページすら読みたくないという場合は、いいでしょう、
-      保証はないですが、あらかじめ準備されている設定テンプレートを使ったコンテナ内でシェルを動かすためのコマンドを紹介しましょう。
-      <command>@BINDIR@/lxc-execute -n foo -f
-      @DOCDIR@/examples/lxc-macvlan.conf /bin/bash</command>
-    </para>
-  </refsect1>
-
-  <refsect1>
     <title><!-- Overview -->概要</title>
     <para>
       <!--
-      The container technology is actively being pushed into the
-      mainstream linux kernel. It provides the resource management
-      through the control groups aka process containers and resource
-      isolation through the namespaces.
+      The container technology is actively being pushed into the mainstream
+      Linux kernel. It provides resource management through control groups and
+      resource isolation via namespaces.
       -->
-      コンテナ技術は、メインストリームの linux kernel で活発に開発が進んでいる技術です。
-      コンテナ技術は、process container という名前でも知られる control groups の機能を使って、リソース管理を提供し、名前空間を使って、リソースの隔離を提供します。
+      コンテナ技術は、メインストリームの Linux Kernel で活発に開発が進んでいる技術です。コンテナ技術は、cgroup によりリソースを管理する機能を提供し、名前空間によりリソースを隔離する機能を提供します。
     </para>
 
     <para>
       <!--
-      The linux containers, <command>lxc</command>, aims to use these
-      new functionalities to provide a userspace container object
-      which provides full resource isolation and resource control for
-      an applications or a system.
+      <command>lxc</command>, aims to use these new functionalities to provide a
+      userspace container object which provides full resource isolation and
+      resource control for an applications or a full system.
       -->
-      linux コンテナ (<command>lxc</command>) は、ユーザースペースのコンテナオブジェクトを提供するための新しい機能を使う事を目指しています。
-      この新しい機能とは、アプリケーションやシステムでの利用を目的とした、完全なリソースの隔離やリソースコントロールを提供する機能です。
+      <command>lxc</command> は、アプリケーションまたはシステムのために完全なリソースの隔離やコントロールを提供する、ユーザースペースのコンテナオブジェクトを提供するためのこれらの新しい機能を使う事を目指しています。
     </para>
 
     <para>
       <!--
-      The first objective of this project is to make the life easier
-      for the kernel developers involved in the containers project and
-      especially to continue working on the Checkpoint/Restart new
-      features. The <command>lxc</command> is small enough to easily
-      manage a container with simple command lines and complete enough
-      to be used for other purposes.
+      <command>lxc</command> is small enough to easily manage a container with
+      simple command lines and complete enough to be used for other purposes.
       -->
-      このプロジェクトの第一の目的は、コンテナプロジェクトに参加するカーネル開発者の作業を快適にすることと、特に新機能である Checkpoint/Restart 機能への取り組みを続ける事です。
-      <command>lxc</command> コマンドは、シンプルなコマンドでコンテナの管理を簡単に行えるように小さく、他の目的のために使うのに充分な機能を持っています。
+      <command>lxc</command> は、シンプルなコマンドラインでコンテナを簡単に管理できるほど軽量で、他の用途に使うのにも十分に機能がそろっています。
     </para>
   </refsect1>
 
   <refsect1>
-    <title><!-- Requirements -->必要条件</title>
+    <title><!-- Requirements -->動作条件</title>
     <para>
       <!--
-      The <command>lxc</command> relies on a set of functionalities
-      provided by the kernel which needs to be active. Depending of
-      the missing functionalities the <command>lxc</command> will
-      work with a restricted number of functionalities or will simply
-      fail.
+      The kernel version >= 3.10 shipped with the distros, will work with
+      <command>lxc</command>, this one will have less functionalities but enough
+      to be interesting.
       -->
-      <command>lxc</command> は、カーネルが提供するいくつかの機能に依存しており、その機能がアクティブになっている必要があります。
-      機能が足りない場合は、<command>lxc</command> は、いくつかの機能が制限されるか、単純に動作が失敗します。
+      カーネルのバージョンが 3.10 以上のディストリビューションであれば、<command>lxc</command> が動作するでしょう。このバージョンは機能は少ないですが、それでも十分楽しめるでしょう。
     </para>
 
     <para>
       <!--
-      The following list gives the kernel features to be enabled in
-      the kernel to have the full features container:
+      <command>lxc</command> relies on a set of functionalities provided by the
+      kernel. The helper script <command>lxc-checkconfig</command> will give
+      you information about your kernel configuration, required, and missing
+      features.
       -->
-      以下のリストは、コンテナの全機能を有効にするために、カーネルで有効にする必要のある機能の一覧です。
+      <command>lxc</command> はカーネルが提供する様々な機能に依存します。<command>lxc-checkconfig</command> がカーネルの設定や、必要な機能、足りない機能についての情報を提供してくれるでしょう。
     </para>
-      <programlisting>
-	    * General setup
-	      * Control Group support
-	        -> Namespace cgroup subsystem
-	        -> Freezer cgroup subsystem
-	        -> Cpuset support
-	        -> Simple CPU accounting cgroup subsystem
-	        -> Resource counters
-	          -> Memory resource controllers for Control Groups
-	      * Group CPU scheduler
-	        -> Basis for grouping tasks (Control Groups)
-	      * Namespaces support
-	        -> UTS namespace
-	        -> IPC namespace
-	        -> User namespace
-	        -> Pid namespace
-	        -> Network namespace
-	    * Device Drivers
-	      * Character devices
-	        -> Support multiple instances of devpts
-	      * Network device support
-	        -> MAC-VLAN support
-	        -> Virtual ethernet pair device
-	    * Networking
-	      * Networking options
-	        -> 802.1d Ethernet Bridging
-	    * Security options
-	      -> File POSIX Capabilities
-      </programlisting>
-
-      <para>
-	<!--
-	The kernel version >= 3.10 shipped with the distros, will
-	work with <command>lxc</command>, this one will have less
-	functionalities but enough to be interesting.
-
-	The helper script <command>lxc-checkconfig</command> will give
-	you information about your kernel configuration.
-	-->
-	3.10 以上のバージョンが採用されているディストリビューションならば、<command>lxc</command> は動作するでしょう。
-        機能的には若干少ない形ですが、充分に楽しめるはずです。
-        ヘルパースクリプトの <command>lxc-checkconfig</command> を使って、あなたのカーネルの設定に関する情報を取得できるでしょう。
-      </para>
-
-      <para>
-	<!--
-	  The control group can be mounted anywhere, eg:
-	  <command>mount -t cgroup cgroup /cgroup</command>.
-
-	  It is however recommended to use cgmanager, cgroup-lite or systemd
-	  to mount the cgroup hierarchy under /sys/fs/cgroup.
-	 -->
-	control group は、どこにでもマウント可能です。
-        例えば、<command>mount -t cgroup cgroup /cgroup</command> のようにです。
-
-	しかし、cgroup の階層構造を /sys/fs/cgroup 以下にマウントするために cgmanager や cgroup-lite や systemd の使用が推奨されています。
-      </para>
-
   </refsect1>
 
   <refsect1>
     <title><!-- Functional specification -->機能仕様</title>
     <para>
       <!--
-      A container is an object isolating some resources of the host,
-      for the application or system running in it.
+      A container is an object isolating some resources of the host, for the
+      application or system running in it.
       -->
-      コンテナは、コンテナ内で実行されているシステムやアプリケーションに対するホストのリソースのいくつかが、隔離されているオブジェクトです。
+      コンテナは、ホストのリソースのいくつかを隔離して、内部でアプリケーションやシステムを実行します。
     </para>
     <para>
       <!--
-      The application / system will be launched inside a
-      container specified by a configuration that is either
-      initially created or passed as parameter of the starting
-      commands.
+      The application / system will be launched inside a container specified by
+      a configuration that is either initially created or passed as a parameter
+      of the commands.
       -->
-      アプリケーション／システムは、あらかじめ作成された設定もしくは開始コマンドのパラメータで指定された設定で、コンテナ内で実行されます。
+      アプリケーションやシステムは、あらかじめ作成した設定や、コマンドへのパラメータで与えた設定で、コンテナ内で実行されます。
     </para>
 
     <para>
       <!--
-	  How to run an application in a container ?
-	-->
-      どうやってコンテナ内でアプリケーションを実行するのでしょう?
+      How to run an application in a container
+      -->
+      コンテナ内でアプリケーションを実行する方法
     </para>
     <para>
       <!--
-      Before running an application, you should know what are the
-      resources you want to isolate. The default configuration is to
-      isolate the pids, the sysv ipc and the mount points. If you want
-      to run a simple shell inside a container, a basic configuration
-      is needed, especially if you want to share the rootfs. If you
-      want to run an application like <command>sshd</command>, you
-      should provide a new network stack and a new hostname. If you
-      want to avoid conflicts with some files
-      eg. <filename>/var/run/httpd.pid</filename>, you should
-      remount <filename>/var/run</filename> with an empty
-      directory. If you want to avoid the conflicts in all the cases,
-      you can specify a rootfs for the container. The rootfs can be a
-      directory tree, previously bind mounted with the initial rootfs,
-      so you can still use your distro but with your
+      Before running an application, you should know what are the resources you
+      want to isolate. The default configuration is to isolate PIDs, the sysv
+      IPC and mount points. If you want to run a simple shell inside a
+      container, a basic configuration is needed, especially if you want to
+      share the rootfs. If you want to run an application like
+      <command>sshd</command>, you should provide a new network stack and a new
+      hostname. If you want to avoid conflicts with some files eg.
+      <filename>/var/run/httpd.pid</filename>, you should remount
+      <filename>/var/run</filename> with an empty directory. If you want to
+      avoid the conflicts in all the cases, you can specify a rootfs for the
+      container. The rootfs can be a directory tree, previously bind mounted
+      with the initial rootfs, so you can still use your distro but with your
       own <filename>/etc</filename> and <filename>/home</filename>
       -->
-      アプリケーションを実行する前に、隔離したいリソースについて知っておくべきです。
-      デフォルトの設定では、pid、sysv ipc、マウントポイントが隔離されます。
-      コンテナ内でシンプルなシェルを実行したい場合で、特に rootfs を共有したい場合、基本的な設定が必要です。
-      もし、<command>sshd</command> のようなアプリケーションを実行したい場合、新しいネットワークスタックと、新しいホスト名を準備しなくてはなりません。
-      もし、同じファイル (<filename>/var/run/httpd.pid</filename> 等) の衝突を避けたい場合、空の <filename>/var/run/</filename> を再度マウントしなければなりません。
-      どんな場合でも、衝突を避けたい場合、コンテナ専用の rootfs を指定することができます。
-      rootfs はディレクトリツリーとなる事も可能で、前もって元の rootfs を bind マウントし、しかし、自身の <filename>/etc</filename> や <filename>/home</filename>を使って。自身のディストリビューションを使うことが可能です。
+      アプリケーションを実行する前に、隔離したいリソースについて知っておくべきです。デフォルトの設定では、PID、sysv IPC、マウントポイントが隔離されます。コンテナ内でシンプルなシェルを実行したい場合で、特に rootfs を共有したい場合、基本的な設定が必要です。
+      もし、<command>sshd</command> のようなアプリケーションを実行したい場合、新しいネットワークスタックと、新しいホスト名を準備しなくてはなりません。もし、同じファイル (<filename>/var/run/httpd.pid</filename> 等) の衝突を避けたい場合、空の <filename>/var/run/</filename> を再度マウントしなければなりません。
+      どんな場合でも衝突を避けたい場合、コンテナ専用の rootfs を指定することができます。rootfs はディレクトリツリーとする事も可能で、前もって元の rootfs を bind マウントし、<filename>/etc</filename> や <filename>/home</filename>だけは自身のディレクトリを使って、自身のディストリビューションを使えます。
     </para>
     <para>
       <!--
       Here is an example of directory tree
       for <command>sshd</command>:
-      <programlisting>	
+      <programlisting>  
 [root@lxc sshd]$ tree -d rootfs
-	
-rootfs	
-|&#045;&#045; bin	
-|&#045;&#045; dev	
+        
+rootfs  
+|&#045;&#045; bin       
+|&#045;&#045; dev       
 |   |&#045;&#045; pts
 |   `&#045;&#045; shm
 |       `&#045;&#045; network
-|&#045;&#045; etc	
+|&#045;&#045; etc       
 |   `&#045;&#045; ssh
-|&#045;&#045; lib	
+|&#045;&#045; lib       
 |&#045;&#045; proc
 |&#045;&#045; root
 |&#045;&#045; sbin
-|&#045;&#045; sys	
-|&#045;&#045; usr	
-`&#045;&#045; var	
+|&#045;&#045; sys       
+|&#045;&#045; usr       
+`&#045;&#045; var       
     |&#045;&#045; empty
-    |   `&#045;&#045; sshd
+    |   `&#045;&#045; sshddd
     |&#045;&#045; lib
     |   `&#045;&#045; empty
     |       `&#045;&#045; sshd
@@ -278,33 +185,33 @@ rootfs
 
       and the mount points file associated with it:
       <programlisting>
-	[root@lxc sshd]$ cat fstab
+        [root@lxc sshd]$ cat fstab
 
-	/lib /home/root/sshd/rootfs/lib none ro,bind 0 0
-	/bin /home/root/sshd/rootfs/bin none ro,bind 0 0
-	/usr /home/root/sshd/rootfs/usr none ro,bind 0 0
-	/sbin /home/root/sshd/rootfs/sbin none ro,bind 0 0
+        /lib /home/root/sshd/rootfs/lib none ro,bind 0 0
+        /bin /home/root/sshd/rootfs/bin none ro,bind 0 0
+        /usr /home/root/sshd/rootfs/usr none ro,bind 0 0
+        /sbin /home/root/sshd/rootfs/sbin none ro,bind 0 0
       </programlisting>
       -->
-	ここで、<command>sshd</command> のためのディレクトリツリーのサンプルを示しましょう。
-      <programlisting>	
+        ここで、<command>sshd</command> のためのディレクトリツリーのサンプルを示しましょう。
+      <programlisting>  
 [root@lxc sshd]$ tree -d rootfs
-	
-rootfs	
-|-- bin	
-|-- dev	
+        
+rootfs  
+|-- bin         
+|-- dev         
 |   |-- pts
 |   `-- shm
 |       `-- network
-|-- etc	
+|-- etc         
 |   `-- ssh
-|-- lib	
+|-- lib         
 |-- proc
 |-- root
 |-- sbin
-|-- sys	
-|-- usr	
-`-- var	
+|-- sys         
+|-- usr         
+`-- var         
     |-- empty
     |   `-- sshd
     |-- lib
@@ -316,87 +223,63 @@ rootfs
 
       そして、それに対応するマウントポイントのファイルは以下のようになります。
       <programlisting>
-	[root@lxc sshd]$ cat fstab
+        [root@lxc sshd]$ cat fstab
 
-	/lib /home/root/sshd/rootfs/lib none ro,bind 0 0
-	/bin /home/root/sshd/rootfs/bin none ro,bind 0 0
-	/usr /home/root/sshd/rootfs/usr none ro,bind 0 0
-	/sbin /home/root/sshd/rootfs/sbin none ro,bind 0 0
+        /lib /home/root/sshd/rootfs/lib none ro,bind 0 0
+        /bin /home/root/sshd/rootfs/bin none ro,bind 0 0
+        /usr /home/root/sshd/rootfs/usr none ro,bind 0 0
+        /sbin /home/root/sshd/rootfs/sbin none ro,bind 0 0
       </programlisting>
     </para>
 
     <para>
       <!--
-      How to run a system in a container ?
+      How to run a system in a container
       -->
-      コンテナ内でシステムを実行する方法は?
+      コンテナ内でシステムを実行する方法
     </para>
 
     <para>
       <!--
-      Running a system inside a container is paradoxically easier
-    than running an application. Why ? Because you don't have to care
-    about the resources to be isolated, everything need to be
+    Running a system inside a container is paradoxically easier
+    than running an application. Why? Because you don't have to care
+    about the resources to be isolated, everything needs to be
     isolated, the other resources are specified as being isolated but
     without configuration because the container will set them
     up. eg. the ipv4 address will be setup by the system container
     init scripts. Here is an example of the mount points file:
-
-      <programlisting>
-	[root@lxc debian]$ cat fstab
-
-	/dev	/home/root/debian/rootfs/dev none bind 0 0
-	/dev/pts /home/root/debian/rootfs/dev/pts  none bind 0 0
-      </programlisting>
-
-      More information can be added to the container to facilitate the
-      configuration. For example, make accessible from the container
-      the resolv.conf file belonging to the host.
-
-      <programlisting>
-	/etc/resolv.conf /home/root/debian/rootfs/etc/resolv.conf none bind 0 0
-      </programlisting>
-      -->
-      コンテナ内でシステムを実行するのは、逆説的ではありますが、アプリケーションを実行するよりも簡単です。
-      それは、隔離するリソースについて考える必要がないからで、全てを隔離する必要があるからです。
-      他のリソースは、コンテナが設定を行うので、設定なしで隔離されるように指定されます。
-      例えば、IPv4 アドレスはコンテナの init スクリプトでシステムによってセットアップされるでしょう。
-      以下に、(システムを実行するときの) マウントポイントファイルを示します。
-
-      <programlisting>
-	[root@lxc debian]$ cat fstab
-
-	/dev	/home/root/debian/rootfs/dev none bind 0 0
-	/dev/pts /home/root/debian/rootfs/dev/pts  none bind 0 0
-      </programlisting>
-
-      設定を手助けするために、コンテナに更なる情報を追加することも可能です。
-      例えば、ホスト上に存在する resolv.conf ファイルをコンテナからアクセス可能にするには、以下のようにします。
-
-      <programlisting>
-	/etc/resolv.conf /home/root/debian/rootfs/etc/resolv.conf none bind 0 0
-      </programlisting>
+        -->
+    コンテナ内でシステムを実行するのは、逆説的ではありますが、アプリケーションを実行するよりも簡単です。
+    それは、隔離するリソースについて考える必要がないからで、全てを隔離する必要があるからです。
+    他のリソースは、コンテナが設定を行うので、設定なしで隔離されるように指定されます。
+    例えば、IPv4 アドレスはコンテナの init スクリプトでシステムによってセットアップされるでしょう。
+    以下に、(システムを実行するときの) マウントポイントファイルを示します。
     </para>
+
+      <programlisting>
+        [root@lxc debian]$ cat fstab
+
+        /dev    /home/root/debian/rootfs/dev none bind 0 0
+        /dev/pts /home/root/debian/rootfs/dev/pts  none bind 0 0
+      </programlisting>
 
     <refsect2>
       <title><!-- Container life cycle -->コンテナのライフサイクル</title>
       <para>
-	<!--
-	When the container is created, it contains the configuration
-	information. When a process is launched, the container will be
-	starting and running. When the last process running inside the
-	container exits, the container is stopped.
-	-->
-	コンテナが作成されるとき、コンテナは設定情報を含みます。
-        プロセスが生成されるとき、コンテナは開始し、実行されるでしょう。
-        コンテナ内で実行されている最後のプロセスが終了したとき、コンテナは停止します。
+        <!--
+        When the container is created, it contains the configuration
+        information. When a process is launched, the container will be starting
+        and running. When the last process running inside the container exits,
+        the container is stopped.
+        -->
+        コンテナが作成されるとき、コンテナは設定情報を含みます。プロセスが生成されるとき、コンテナは開始し、実行されるでしょう。コンテナ内で実行されている最後のプロセスが終了したとき、コンテナは停止します。
       </para>
       <para>
-	<!--
-	In case of failure when the container is initialized, it will
-	pass through the aborting state.
-	-->
-	コンテナの初期化時の失敗の場合は、(以下の図の) 中断の状態を通ります。
+        <!--
+        In case of failure when the container is initialized, it will pass
+        through the aborting state.
+        -->
+        コンテナの初期化時の失敗の場合は、(以下の図の) 中断の状態を通ります。
       </para>
 
       <programlisting>
@@ -432,158 +315,133 @@ rootfs
     <refsect2>
       <title><!-- Configuration -->設定</title>
       <para>
-	<!--
-	The container is configured through a configuration
-	file, the format of the configuration file is described in
+        <!--
+        The container is configured through a configuration
+        file, the format of the configuration file is described in
       <citerefentry>
-	<refentrytitle><filename>lxc.conf</filename></refentrytitle>
-	<manvolnum>5</manvolnum>
+        <refentrytitle><filename>lxc.conf</filename></refentrytitle>
+        <manvolnum>5</manvolnum>
       </citerefentry>
       -->
       </para>
-	コンテナは設定ファイル経由で設定します。設定の書式は以下で説明しています。
+      コンテナは設定ファイル経由で設定します。設定の書式は
       <citerefentry>
-	<refentrytitle><filename>lxc.conf</filename></refentrytitle>
-	<manvolnum>5</manvolnum>
+        <refentrytitle><filename>lxc.conf</filename></refentrytitle>
+        <manvolnum>5</manvolnum>
       </citerefentry>
+      で説明しています。
     </refsect2>
 
     <refsect2>
-      <title><!--Creating / Destroying container
-	(persistent container) -->コンテナの生成と終了 (持続性のコンテナ)</title>
-      <para>
-	<!--
-	A persistent container object can be
-	created via the <command>lxc-create</command>
-	command. It takes a container name as parameter and
-	optional configuration file and template.
-	The name is used by the different
-	commands to refer to this
-	container. The <command>lxc-destroy</command> command will
-	destroy the container object.
-	<programlisting>
-	  lxc-create -n foo
-	  lxc-destroy -n foo
-	</programlisting>
-	-->
-	持続性のコンテナオブジェクトは <command>lxc-create</command> コマンドで作成することができます。
-        コマンドにはコンテナ名をパラメータとして、オプションで設定ファイルとテンプレートを指定します。
-        ここで指定する名前は、他のコマンドからこのコンテナを参照する際に使います。
-        <command>lxc-destroy</command> コマンドはコンテナオブジェクトを破壊します。
-	<programlisting>
-	  lxc-create -n foo
-	  lxc-destroy -n foo
-	</programlisting>
-      </para>
-    </refsect2>
-
-    <refsect2>
-	<title><!-- Volatile container -->揮発性のコンテナ</title>
-	<para>
-          <!--
-          It is not mandatory to create a container object
-	before to start it.
-	The container can be directly started with a
-	configuration file as parameter.
-        -->
-          コンテナを開始する前にコンテナオブジェクトを作成する必要はありません。
-          コンテナを設定ファイルのパラメータで指定して直接開始することができます。
-	</para>
-    </refsect2>
-
-    <refsect2>
-      <title><!-- Starting / Stopping container -->コンテナの開始と終了</title>
+      <title><!-- Creating / Destroying containers -->コンテナの作成と削除</title>
       <para>
         <!--
-        When the container has been created, it is ready to run an
-      application / system.
-      This is the purpose of the <command>lxc-execute</command> and
-      <command>lxc-start</command> commands.
-      If the container was not created before
-      starting the application, the container will use the
-      configuration file passed as parameter to the command,
-      and if there is no such parameter either, then
-      it will use a default isolation.
-      If the application is ended, the container will be stopped also,
-      but if needed the <command>lxc-stop</command> command can
-      be used to kill the still running application.
-      -->
-        コンテナが作成されると、アプリケーションもしくはシステムとして実行することができます。
-        このために使用するのが <command>lxc-execute</command> と <command>lxc-start</command> コマンドです。
-        アプリケーションが開始する前にコンテナが作成されなかった場合、コンテナはコマンドへ与えるパラメータを取得するのに設定ファイルを使うでしょう。
-        もし、このようなパラメータもない場合は、デフォルトで指定されている通りに隔離されます。
-        アプリケーションが終了した場合、コンテナも停止しますが、実行中のアプリケーションを停止するには <command>lxc-stop</command> を使用する必要があります。
-      </para>
-
-      <para>
-        <!--
-	Running an application inside a container is not exactly the
-	same thing as running a system. For this reason, there are two
-	different commands to run an application into a container:
-	<programlisting>
-	  lxc-execute -n foo [-f config] /bin/bash
-	  lxc-start -n foo [-f config] [/bin/bash]
-	</programlisting>
+        A persistent container object can be created via the
+        <command>lxc-create</command> command. It takes a container name as
+        parameter and optional configuration file and template. The name is
+        used by the different commands to refer to this container. The
+        <command>lxc-destroy</command> command will destroy the container
+        object.
         -->
-        コンテナ内のアプリケーションの実行は、正確にはシステムとして実行するのとは異なります。
-        そのような理由で、コンテナ内でアプリケーションを実行するためのコマンドには、2 種類の違ったものがあります。
+        持続性のコンテナオブジェクトは <command>lxc-create</command> コマンドで作成できます。コマンドにはコンテナ名をパラメータとして与え、オプションで設定ファイルとテンプレートを指定します。ここで指定する名前は、他のコマンドからこのコンテナを参照する際に使います。
+        <command>lxc-destroy</command> コマンドはコンテナオブジェクトを削除します。
         <programlisting>
-	  lxc-execute -n foo [-f config] /bin/bash
-	  lxc-start -n foo [-f config] [/bin/bash]
-	</programlisting>
+          lxc-create -n foo
+          lxc-destroy -n foo
+        </programlisting>
+      </para>
+    </refsect2>
+
+    <refsect2>
+        <title><!-- Volatile container -->一時的な (揮発性の) コンテナ</title>
+        <para>
+          <!--
+          It is not mandatory to create a container object before starting it.
+          The container can be directly started with a configuration file as
+          parameter.
+          -->
+        コンテナを開始する前にコンテナオブジェクトを作成する必要はありません。パラメータとして設定ファイルを指定して、コンテナを直接起動できます。
+        </para>
+    </refsect2>
+
+    <refsect2>
+      <title><!-- Starting / Stopping container -->コンテナの起動と停止</title>
+      <para>
+        <!--
+        When the container has been created, it is ready to run an application /
+        system.  This is the purpose of the <command>lxc-execute</command> and
+        <command>lxc-start</command> commands.  If the container was not created
+        before starting the application, the container will use the
+        configuration file passed as parameter to the command, and if there is
+        no such parameter either, then it will use a default isolation.  If the
+        application ended, the container will be stopped, but if needed the
+        <command>lxc-stop</command> command can be used to stop the container.
+        -->
+        コンテナが作成されると、アプリケーションもしくはシステムを実行できます。このために使用するのが <command>lxc-execute</command> と <command>lxc-start</command> コマンドです。
+        アプリケーションを開始する前にコンテナを作成しなかった場合、コンテナはコマンドにパラメータとして渡した設定ファイルを使用します。もし、このようなパラメータもない場合は、デフォルトで指定されている通りに隔離されます。
+        アプリケーションが終了した場合、コンテナも停止します。<command>lxc-stop</command> コマンドを使って、実行中のアプリケーションを停止することもできます。
       </para>
 
       <para>
         <!--
-	<command>lxc-execute</command> command will run the
-	specified command into the container via an intermediate
-	process, <command>lxc-init</command>.
-	This lxc-init after launching  the specified command,
-	will wait for its end and all other reparented processes.
-        (to support daemons in the container).
-	In other words, in the
-	container, <command>lxc-init</command> has the pid 1 and the
-	first process of the application has the pid 2.
+        Running an application inside a container is not exactly the same thing
+        as running a system. For this reason, there are two different commands
+        to run an application into a container:
         -->
-        <command>lxc-execute</command> コマンドは、<command>lxc-init</command> プロセス経由で、コンテナ内で特定のコマンドを実行します。
+        コンテナ内でアプリケーションを実行することは、正確にはシステムとして実行するのとは異なります。このため、コンテナ内でアプリケーションを実行するためのコマンドには、2 種類の違ったものがあります。
+        <programlisting>
+          lxc-execute -n foo [-f config] /bin/bash
+          lxc-start -n foo [-f config] [/bin/bash]
+        </programlisting>
+      </para>
+
+      <para>
+        <!--
+        The <command>lxc-execute</command> command will run the specified command
+        into a container via an intermediate process,
+        <command>lxc-init</command>.
+        This lxc-init after launching  the specified command, will wait for its
+        end and all other reparented processes.  (to support daemons in the
+        container).  In other words, in the container,
+        <command>lxc-init</command> has PID 1 and the first process of the
+        application has PID 2.
+        -->
+        <command>lxc-execute</command> コマンドは、間に <command>lxc-init</command> プロセスを介して、コンテナ内で指定したコマンドを実行します。
         lxc-init はコマンドを実行した後、(コンテナ内でのデーモンの実行をサポートするために) 実行したコマンドと生成された全てのプロセスが終了するのを待ちます。
-        言いかえると、コンテナ内では <command>lxc-init</command> は pid 1 を持ち、アプリケーションの最初のプロセスは pid 2 をもちます。
+        言いかえると、コンテナ内では <command>lxc-init</command> は PID 1 を持ち、アプリケーションの最初のプロセスは PID 2 をもちます。
       </para>
 
       <para>
         <!--
-	<command>lxc-start</command> command will run directly the specified
-	command into the container.
-	The pid of the first process is 1. If no command is
-	specified <command>lxc-start</command> will
-	run the command defined in lxc.init.cmd or if not set,
-	<filename>/sbin/init</filename> .
+        The <command>lxc-start</command> command will directly run the specified
+        command in the container. The PID of the first process is 1. If no
+        command is specified <command>lxc-start</command> will run the command
+        defined in lxc.init.cmd or if not set, <filename>/sbin/init</filename> .
         -->
-        <command>lxc-start</command> コマンドは、コンテナ内の特定のコマンドを直接実行します。
-        最初のプロセスの pid が 1 となります。
-        もし、実行するコマンドが指定されない場合は、<command>lxc-start</command> は lxc.init.cmd で設定されたコマンドを実行します。もし lxc.init.cmd が設定されていない場合は <filename>/sbin/init</filename> を実行します。
+        <command>lxc-start</command> コマンドは、コンテナ内の特定のコマンドを直接実行します。最初のプロセスの PID が 1 となります。
+        もし、実行するコマンドが指定されていない場合は、<command>lxc-start</command> は lxc.init.cmd で設定されたコマンドを実行します。もし lxc.init.cmd が設定されていない場合は <filename>/sbin/init</filename> を実行します。
       </para>
 
       <para>
         <!--
-	To summarize, <command>lxc-execute</command> is for running
-	an application and <command>lxc-start</command> is better suited for
-	running a system.
+        To summarize, <command>lxc-execute</command> is for running an
+        application and <command>lxc-start</command> is better suited for
+        running a system.
         -->
         まとめると、<command>lxc-execute</command> はアプリケーションを実行するためのコマンドであり、<command>lxc-start</command> はシステムを実行するのにより適したコマンドです。
       </para>
 
       <para>
         <!--
-	If the application is no longer responding, is inaccessible or is
-	not able to finish by itself, a
-	wild <command>lxc-stop</command> command will kill all the
-	processes in the container without pity.
-	<programlisting>
-	  lxc-stop -n foo
-	</programlisting>
+        If the application is no longer responding, is inaccessible or is not
+        able to finish by itself, a wild <command>lxc-stop</command> command
+        will kill all the processes in the container without pity.
         -->
-        もしアプリケーションの反応がなくなった場合や、アクセスできなくなった場合、自分で終了することができない場合は、荒っぽいですが、<command>lxc-stop</command> コマンドがコンテナ内の全てのプロセスを容赦なく停止させてくれるでしょう。
+        もしアプリケーションの反応がなくなった場合や、アクセスできなくなった場合、自分で終了できない場合は、荒っぽいですが、<command>lxc-stop</command> コマンドがコンテナ内の全てのプロセスを容赦なく停止させてくれるでしょう。
+        <programlisting>
+          lxc-stop -n foo -k
+        </programlisting>
+
       </para>
     </refsect2>
 
@@ -591,21 +449,17 @@ rootfs
       <title><!-- Connect to an available tty -->利用可能な tty への接続</title>
       <para>
         <!--
-	If the container is configured with the ttys, it is possible
-	to access it through them. It is up to the container to
-	provide a set of available tty to be used by the following
-	command. When the tty is lost, it is possible to reconnect it
-	without login again.
-	<programlisting>
-	  lxc-console -n foo -t 3
-	</programlisting>
+        If the container is configured with ttys, it is possible to access it
+        through them. It is up to the container to provide a set of available
+        ttys to be used by the following command. When the tty is lost, it is
+        possible to reconnect to it without login again.
         -->
         コンテナが tty を持つように設定されているならば、tty を通してコンテナにアクセスすることができます。
-        それは以下のコマンドが使う tty がコンテナで利用可能に設定されているか次第です。
+        アクセスできるかどうかは、以下のコマンドが使う tty がコンテナで利用できるように設定されているか次第です。
         tty が失われたとき、再度のログインなしでその tty に再接続することが可能です。
-	<programlisting>
-	  lxc-console -n foo -t 3
-	</programlisting>
+        <programlisting>
+          lxc-console -n foo -t 3
+        </programlisting>
       </para>
     </refsect2>
 
@@ -613,40 +467,40 @@ rootfs
       <title><!-- Freeze / Unfreeze container -->コンテナの凍結と解凍</title>
       <para>
         <!--
-	Sometime, it is useful to stop all the processes belonging to
-	a container, eg. for job scheduling. The commands:
-	<programlisting>
-	  lxc-freeze -n foo
-	</programlisting>
+        Sometime, it is useful to stop all the processes belonging to
+        a container, eg. for job scheduling. The commands:
+        <programlisting>
+          lxc-freeze -n foo
+        </programlisting>
 
-	will put all the processes in an uninteruptible state and
+        will put all the processes in an uninteruptible state and
 
-	<programlisting>
-	  lxc-unfreeze -n foo
-	</programlisting>
+        <programlisting>
+          lxc-unfreeze -n foo
+        </programlisting>
 
-	will resume them.
+        will resume them.
         -->
         ジョブスケジューリングなどで、コンテナに属する全てのプロセスを停止する事が役に立つときがあります。
         コマンド
-	<programlisting>
-	  lxc-freeze -n foo
-	</programlisting>
+        <programlisting>
+          lxc-freeze -n foo
+        </programlisting>
         は、全てのプロセスを中断不可能な状態に置きます。そして、
 
-	<programlisting>
-	  lxc-unfreeze -n foo
-	</programlisting>
+        <programlisting>
+          lxc-unfreeze -n foo
+        </programlisting>
 
         その全てのプロセスを再開します。
       </para>
 
       <para>
         <!--
-	This feature is enabled if the cgroup freezer is enabled in the
-	kernel.
+        This feature is enabled if the freezer cgroup v1 controller is enabled
+        in the kernel.
         -->
-        この機能は、カーネルで cgroup freezer 機能が有効になっている場合に使用可能です。
+        この機能は、カーネルで cgroup v1 の freezer コントローラが有効になっている場合に使用できます。
       </para>
     </refsect2>
 
@@ -655,54 +509,41 @@ rootfs
         コンテナに関する情報の取得</title>
       <para>
         <!--
-        When there are a lot of containers, it is hard to follow
-      what has been created or destroyed, what is running or what are
-      the pids running into a specific container. For this reason, the
-      following commands may be useful:
-	<programlisting>
-	  lxc-ls
-	  lxc-info -n foo
-	</programlisting>
+      When there are a lot of containers, it is hard to follow what has been
+      created or destroyed, what is running or what are the PIDs running in a
+      specific container. For this reason, the following commands may be useful:
         -->
-        多数のコンテナが存在する場合、それらが実行されたり破壊されたりすること、何が実行されていて、特定のコンテナ内で実行されている pid が何であるかをフォローするのは大変です。
-        このような時には、以下のようなコマンドが役に立つかもしれません。
-	<programlisting>
-	  lxc-ls
-	  lxc-info -n foo
-	</programlisting>
+        多数のコンテナが存在する場合、それらが実行されたり削除されたりすること、何が実行されていて、特定のコンテナ内で実行されている PID が何であるかをフォローするのは大変です。このような時には、以下のようなコマンドが役に立つかもしれません。
+        <programlisting>
+          lxc-ls -f
+          lxc-info -n foo
+        </programlisting>
       </para>
       <para>
         <!--
-	<command>lxc-ls</command> lists the containers of the
-	system.
+        <command>lxc-ls</command> lists containers.
         -->
-        <command>lxc-ls</command> は、システムのコンテナを一覧します。
+        <command>lxc-ls</command> はコンテナをリスト表示します。
       </para>
 
       <para>
         <!--
-	<command>lxc-info</command> gives information for a specific
-	container.
+        <command>lxc-info</command> gives information for a specific container.
         -->
-        <command>lxc-info</command> は、指定したコンテナに関する情報を取得します。
+        <command>lxc-info</command> は、指定したコンテナに関する情報を表示します。
       </para>
 
       <para>
         <!--
-	Here is an example on how the combination of these commands
-	allows one to list all the containers and retrieve their state.
-	<programlisting>
-	  for i in $(lxc-ls -1); do
-	    lxc-info -n $i
-	  done
-	</programlisting>
+        Here is an example on how the combination of these commands
+        allows one to list all the containers and retrieve their state.
         -->
         ここで、以上のコマンドを組み合わせて、どのようにしたら全てのコンテナのリストと、それぞれの状態が得られるかの例を示します。
-	<programlisting>
-	  for i in $(lxc-ls -1); do
-	    lxc-info -n $i
-	  done
-	</programlisting>
+        <programlisting>
+          for i in $(lxc-ls -1); do
+            lxc-info -n $i
+          done
+        </programlisting>
       </para>
 
     </refsect2>
@@ -711,170 +552,117 @@ rootfs
       <title><!-- Monitoring container -->コンテナのモニタリング</title>
       <para>
         <!--
-        It is sometime useful to track the states of a container,
-      for example to monitor it or just to wait for a specific
-      state in a script.
+        It is sometime useful to track the states of a container, for example to
+        monitor it or just to wait for a specific state in a script.
         -->
-        時々、コンテナの状態を追跡することが出来ると便利な事があります。
-        例えば、状態をモニタリングしたり、スクリプト内で特定の状態を待ったりするような場合です。
+        時々、コンテナの状態を追跡することが出来ると便利な事があります。例えば、状態をモニタリングしたり、スクリプト内で特定の状態を待ったりするような場合です。
       </para>
 
       <para>
         <!--
-	<command>lxc-monitor</command> command will monitor one or
-	several containers. The parameter of this command accept a
-	regular expression for example:
-	<programlisting>
-	  lxc-monitor -n "foo|bar"
-	</programlisting>
-	will monitor the states of containers named 'foo' and 'bar', and:
-	<programlisting>
-	  lxc-monitor -n ".*"
-	</programlisting>
-	will monitor all the containers.
+        <command>lxc-monitor</command> command will monitor one or several
+        containers. The parameter of this command accepts a regular expression
+        for example:
         -->
-        <command>lxc-monitor</command> コマンドは、一つもしくはいくつかのコンテナをモニタリングします。
-        このコマンドのパラメータは、正規表現を受け付けます。例えば
-	<programlisting>
-	  lxc-monitor -n "foo|bar"
-	</programlisting>
+        <command>lxc-monitor</command> コマンドは、一つもしくは複数のコンテナをモニタリングします。このコマンドのパラメータは、正規表現を受け付けます。例えば
+        <programlisting>
+          lxc-monitor -n "foo|bar"
+        </programlisting>
+        <!--
+        will monitor the states of containers named 'foo' and 'bar', and:
+        -->
         は 'foo' と 'bar' という名前のコンテナの状態をモニタリングします。そして、
-	<programlisting>
-	  lxc-monitor -n ".*"
-	</programlisting>
+        <programlisting>
+          lxc-monitor -n ".*"
+        </programlisting>
+        <!--
+        will monitor all the containers.
+        -->
         は全てのコンテナの状態をモニタリングします。
       </para>
       <para>
         <!--
-	For a container 'foo' starting, doing some work and exiting,
-	the output will be in the form:
-	<programlisting>
-	  'foo' changed state to [STARTING]
-	  'foo' changed state to [RUNNING]
-	  'foo' changed state to [STOPPING]
-	  'foo' changed state to [STOPPED]
-	</programlisting>
+        For a container 'foo' starting, doing some work and exiting,
+        the output will be in the form:
         -->
         コンテナ 'foo' が開始され、いくつか処理を行い、終了した場合、出力は以下のようになります。
-	<programlisting>
-	  'foo' changed state to [STARTING]
-	  'foo' changed state to [RUNNING]
-	  'foo' changed state to [STOPPING]
-	  'foo' changed state to [STOPPED]
-	</programlisting>
+        <programlisting>
+          'foo' changed state to [STARTING]
+          'foo' changed state to [RUNNING]
+          'foo' changed state to [STOPPING]
+          'foo' changed state to [STOPPED]
+        </programlisting>
       </para>
       <para>
         <!--
-	<command>lxc-wait</command> command will wait for a specific
-	state change and exit. This is useful for scripting to
-	synchronize the launch of a container or the end. The
-	parameter is an ORed combination of different states. The
-	following example shows how to wait for a container if he went
-	to the background.
-
-	<programlisting>
-<![CDATA[
-	  # launch lxc-wait in background
-	  lxc-wait -n foo -s STOPPED &
-	  LXC_WAIT_PID=$!
-
-	  # this command goes in background
-	  lxc-execute -n foo mydaemon &
-
-	  # block until the lxc-wait exits
-	  # and lxc-wait exits when the container
-	  # is STOPPED
-	  wait $LXC_WAIT_PID
-	  echo "'foo' is finished"
-]]>
-	</programlisting>
+        <command>lxc-wait</command> command will wait for a specific
+        state change and exit. This is useful for scripting to
+        synchronize the launch of a container or the end. The
+        parameter is an ORed combination of different states. The
+        following example shows how to wait for a container if it successfully
+        started as a daemon.
         -->
-        <command>lxc-wait</command> コマンドは指定した状態を待って、終了します。
-        これは、コンテナの開始や終了に同期したいスクリプトで役に立ちます。
-        パラメータは、異なった状態の論理和 (OR) を指定します。
+        <command>lxc-wait</command> コマンドは指定した状態を待って終了します。これは、コンテナの開始や終了に同期したいスクリプトで役に立ちます。パラメータは、異なった状態の論理和 (OR) を指定します。
         以下の例は、バックグラウンドで実行されたコンテナをどのようにして待つかを示します。
 
-	<programlisting>
+        <programlisting>
 <![CDATA[
-	  # launch lxc-wait in background
-	  lxc-wait -n foo -s STOPPED &
-	  LXC_WAIT_PID=$!
+          # launch lxc-wait in background
+          lxc-wait -n foo -s STOPPED &
+          LXC_WAIT_PID=$!
 
-	  # this command goes in background
-	  lxc-execute -n foo mydaemon &
+          # this command goes in background
+          lxc-execute -n foo mydaemon &
 
-	  # block until the lxc-wait exits
-	  # and lxc-wait exits when the container
-	  # is STOPPED
-	  wait $LXC_WAIT_PID
-	  echo "'foo' is finished"
+          # block until the lxc-wait exits
+          # and lxc-wait exits when the container
+          # is STOPPED
+          wait $LXC_WAIT_PID
+          echo "'foo' is finished"
 ]]>
-	</programlisting>
+        </programlisting>
       </para>
     </refsect2>
 
     <refsect2>
-      <title><!-- Setting the control group for container -->
-        コンテナの control group の設定
-      </title>
+      <title><!-- cgroup settings for containers -->コンテナの cgroup の設定</title>
       <para>
         <!--
-        The container is tied with the control groups, when a
-	container is started a control group is created and associated
-	with it. The control group properties can be read and modified
-	when the container is running by using the lxc-cgroup command.
+        The container is tied with the control groups, when a container is
+        started a control group is created and associated with it. The control
+        group properties can be read and modified when the container is running
+        by using the lxc-cgroup command.
         -->
-        コンテナは control group と結合しています。
-        コンテナが開始すると control group が生成され、それと結びつけられます。
-        control group のプロパティは、lxc-cgroup コマンドを使って、コンテナが実行中に読み取ったり、変更したりすることができます。
+        コンテナは control group と結合しています。コンテナを開始すると cgroup が生成され、結びつけられます。
+        cgroup のプロパティは、lxc-cgroup コマンドを使って、コンテナが実行中に読み取ったり変更したりできます。
       </para>
       <para>
         <!--
-	<command>lxc-cgroup</command> command is used to set or get a
-	control group subsystem which is associated with a
-	container. The subsystem name is handled by the user, the
-	command won't do any syntax checking on the subsystem name, if
-	the subsystem name does not exists, the command will fail.
+        <command>lxc-cgroup</command> command is used to set or get a
+        control group subsystem which is associated with a
+        container. The subsystem name is handled by the user, the
+        command won't do any syntax checking on the subsystem name, if
+        the subsystem name does not exists, the command will fail.
         -->
-        <command>lxc-cgroup</command> コマンドは、コンテナと結びつけられている control group サブシステムを設定したり、取得したりするのに使います。
-        サブシステム名の指定はユーザが行ない、このコマンドはサブシステム名の文法チェックは一切行ないません。
-        もし、指定したサブシステム名が存在しない場合は、コマンドの実行は失敗します。
+        <command>lxc-cgroup</command> コマンドは、コンテナと結びつけられている control group サブシステムを設定したり、取得したりするのに使います。サブシステム名の指定はユーザが行ない、このコマンドはサブシステム名の文法チェックは一切行ないません。もし、指定したサブシステム名が存在しない場合は、コマンドの実行は失敗します。
       </para>
       <para>
+        <programlisting>
+          lxc-cgroup -n foo cpuset.cpus
+        </programlisting>
         <!--
-	<programlisting>
-	  lxc-cgroup -n foo cpuset.cpus
-	</programlisting>
-	will display the content of this subsystem.
-	<programlisting>
-	  lxc-cgroup -n foo cpu.shares 512
-	</programlisting>
-	will set the subsystem to the specified value.
+        will display the content of this subsystem.
         -->
-	<programlisting>
-	  lxc-cgroup -n foo cpuset.cpus
-	</programlisting>
         は、このサブシステムの内容を表示します。
-	<programlisting>
-	  lxc-cgroup -n foo cpu.shares 512
-	</programlisting>
+        <programlisting>
+          lxc-cgroup -n foo cpu.shares 512
+        </programlisting>
+        <!--
+        will set the subsystem to the specified value.
+        -->
         は、このサブシステムに指定した値を設定します。
       </para>
     </refsect2>
-  </refsect1>
-
-  <refsect1>
-    <title><!-- Bugs -->バグ</title>
-    <para>
-      <!--
-      The <command>lxc</command> is still in development, so the
-    command syntax and the API can change. The version 1.0.0 will be
-    the frozen version.
-      -->
-      <command>lxc</command> はまだ開発中です。
-      従って、コマンドの文法や API は変更される可能性があります。
-      バージョン 1.0.0 がそれらを凍結するバージョンとなるでしょう。
-    </para>
   </refsect1>
 
   &seealso;
@@ -882,6 +670,9 @@ rootfs
   <refsect1>
     <title><!-- Author -->作者</title>
     <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
+    <para>Christian Brauner <email>christian.brauner@ubuntu.com</email></para>
+    <para>Serge Hallyn <email>serge@hallyn.com</email></para>
+    <para>Stéphane Graber <email>stgraber@ubuntu.com</email></para>
   </refsect1>
 
 </refentry>
