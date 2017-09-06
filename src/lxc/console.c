@@ -174,6 +174,15 @@ static int lxc_console_cb_con(int fd, uint32_t events, void *data,
 	if (r <= 0) {
 		INFO("console client on fd %d has exited", fd);
 		lxc_mainloop_del_handler(descr, fd);
+		if (fd == console->peer) {
+			if (console->tty_state) {
+				lxc_console_sigwinch_fini(console->tty_state);
+				console->tty_state = NULL;
+			}
+			console->peer = -1;
+			close(fd);
+			return 0;
+		}
 		close(fd);
 		return 1;
 	}
