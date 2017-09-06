@@ -1140,7 +1140,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               <option>lxc.cgroup.dir = my-cgroup/first</option> for a container
               named "c1" will create the container's cgroup as a sub-cgroup of
               "my-cgroup". For example, if the user's current cgroup "my-user"
-              is located in the root cgroup of the cpuset controllerin in a
+              is located in the root cgroup of the cpuset controller in a
               cgroup v1 hierarchy this would create the cgroup
               "/sys/fs/cgroup/cpuset/my-user/my-cgroup/first/c1" for the
               container. Any missing cgroups will be created by LXC. This

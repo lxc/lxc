@@ -1561,6 +1561,31 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             </para>
           </listitem>
         </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.cgroup.dir</option>
+          </term>
+          <listitem>
+            <para>
+	      <!--
+              specify a directory or path in which the container's cgroup will
+              be created. For example, setting
+              <option>lxc.cgroup.dir = my-cgroup/first</option> for a container
+              named "c1" will create the container's cgroup as a sub-cgroup of
+              "my-cgroup". For example, if the user's current cgroup "my-user"
+              is located in the root cgroup of the cpuset controllerin in a
+              cgroup v1 hierarchy this would create the cgroup
+              "/sys/fs/cgroup/cpuset/my-user/my-cgroup/first/c1" for the
+              container. Any missing cgroups will be created by LXC. This
+              presupposes that the user has write access to its current cgroup.
+	      -->
+	      コンテナの cgroup を作成するパスやディレクトリを指定します。
+	      例えば、"c1" という名前のコンテナで <option>lxc.cgroup.dir = my-cgroup/first</option> のように設定すると、"my-cgroup" のサブ cgroup のようにコンテナの cgroup を作成します。
+	      例えば、ユーザのカレントの cgroup である "my-user" が cgroup v1 階層にある cpuset コントローラの root cgroup 内に存在する場合、この設定は "/sys/fs/cgroup/cpuset/my-user/my-cgroup/first/c1" という cgroup をこのコンテナ向けに作成します。
+	      存在しない cgroup は LXC が作成しますが、ユーザがカレントの cgroup に書き込み権を持っていることが前提となります。
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
