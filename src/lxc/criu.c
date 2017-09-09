@@ -551,7 +551,7 @@ static void exec_criu(struct criu_opts *opts)
 				external_not_veth = false;
 			}
 
-			if (n->name) {
+			if (n->name[0] != '\0') {
 				if (strlen(n->name) >= sizeof(eth))
 					goto err;
 				strncpy(eth, n->name, sizeof(eth));
