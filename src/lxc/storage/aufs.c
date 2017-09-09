@@ -164,8 +164,8 @@ int aufs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 		rdata.src = odelta;
 		rdata.dest = ndelta;
 		if (am_unpriv())
-			ret = userns_exec_1(conf, lxc_rsync_delta_wrapper,
-					    &rdata, "lxc_rsync_delta_wrapper");
+			ret = userns_exec_full(conf, lxc_rsync_delta_wrapper,
+					       &rdata, "lxc_rsync_delta_wrapper");
 		else
 			ret = run_command(cmd_output, sizeof(cmd_output),
 					  lxc_rsync_delta_wrapper,

@@ -434,8 +434,8 @@ bool btrfs_create_clone(struct lxc_conf *conf, struct lxc_storage *orig,
 	data.orig = orig;
 	data.new = new;
 	if (am_unpriv()) {
-		ret = userns_exec_1(conf, lxc_storage_rsync_exec_wrapper, &data,
-				    "lxc_storage_rsync_exec_wrapper");
+		ret = userns_exec_full(conf, lxc_storage_rsync_exec_wrapper,
+				       &data, "lxc_storage_rsync_exec_wrapper");
 		if (ret < 0) {
 			ERROR("Failed to rsync from \"%s\" into \"%s\"",
 			      orig->dest, new->dest);

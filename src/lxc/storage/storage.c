@@ -502,8 +502,9 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 	data.orig = orig;
 	data.new = new;
 	if (am_unpriv())
-		ret = userns_exec_1(c->lxc_conf, lxc_storage_rsync_exec_wrapper,
-				    &data, "lxc_storage_rsync_exec_wrapper");
+		ret = userns_exec_full(c->lxc_conf,
+				       lxc_storage_rsync_exec_wrapper, &data,
+				       "lxc_storage_rsync_exec_wrapper");
 	else
 		ret = run_command(cmd_output, sizeof(cmd_output),
 				  lxc_storage_rsync_exec_wrapper, (void *)&data);

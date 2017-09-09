@@ -971,8 +971,8 @@ static int ovl_do_rsync(const char *src, const char *dest,
 	rdata.src = (char *)src;
 	rdata.dest = (char *)dest;
 	if (am_unpriv())
-		ret = userns_exec_1(conf, lxc_rsync_exec_wrapper, &rdata,
-				    "lxc_rsync_exec_wrapper");
+		ret = userns_exec_full(conf, lxc_rsync_exec_wrapper, &rdata,
+				       "lxc_rsync_exec_wrapper");
 	else
 		ret = run_command(cmd_output, sizeof(cmd_output),
 				  lxc_rsync_exec_wrapper, (void *)&rdata);
