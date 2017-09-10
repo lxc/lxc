@@ -90,8 +90,6 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 
 	/* Move beyond \0. */
 	slide++;
-	/* align */
-	window = slide;
 	/* Validate that only whitespace follows. */
 	slide += strspn(slide, " \t\r");
 	/* If there was only one whitespace then we whiped it with our \0 above.
@@ -116,8 +114,6 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 
 	/* Move beyond \0. */
 	slide++;
-	/* align */
-	window = slide;
 	/* Validate that only whitespace follows. */
 	slide += strspn(slide, " \t\r");
 	/* If there was only one whitespace then we whiped it with our \0 above.
