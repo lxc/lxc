@@ -782,7 +782,7 @@ static const struct dev_symlinks dev_symlinks[] = {
 	{"/proc/self/fd/2",	"stderr"},
 };
 
-static int setup_dev_symlinks(const struct lxc_rootfs *rootfs)
+static int lxc_setup_dev_symlinks(const struct lxc_rootfs *rootfs)
 {
 	char path[MAXPATHLEN];
 	int ret,i;
@@ -3220,13 +3220,16 @@ int lxc_setup(struct lxc_handler *handler)
 		}
 	}
 
-	if (!lxc_conf->is_execute && lxc_setup_console(&lxc_conf->rootfs, &lxc_conf->console, lxc_conf->ttydir)) {
-		ERROR("failed to setup the console for '%s'", name);
+	ret = lxc_setup_console(&lxc_conf->rootfs, &lxc_conf->console,
+				lxc_conf->ttydir);
+	if (ret < 0) {
+		ERROR("Failed to setup console");
 		return -1;
 	}
 
-	if (!lxc_conf->is_execute && setup_dev_symlinks(&lxc_conf->rootfs)) {
-		ERROR("failed to setup /dev symlinks for '%s'", name);
+	ret = lxc_setup_dev_symlinks(&lxc_conf->rootfs);
+	if (ret < 0) {
+		ERROR("Failed to setup /dev symlinks");
 		return -1;
 	}
 
