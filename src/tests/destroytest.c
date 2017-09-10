@@ -38,10 +38,8 @@ static int create_container(void)
 		return -1;
 	}
 	if (pid == 0) {
-		ret = execlp("lxc-create", "lxc-create", "-t", "busybox", "-n", MYNAME, NULL);
-		// Should not return
-		perror("execl");
-		exit(1);
+		execlp("lxc-create", "lxc-create", "-t", "busybox", "-n", MYNAME, NULL);
+		exit(EXIT_FAILURE);
 	}
 again:
 	ret = waitpid(pid, &status, 0);
