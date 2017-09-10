@@ -935,7 +935,6 @@ int netdev_get_mtu(int ifindex)
 			goto out;
 
 		recv_len = err;
-		err = 0;
 
 		/* Satisfy the typing for the netlink macros */
 		msg = answer->nlmsghdr;
@@ -1377,7 +1376,6 @@ int lxc_convert_mac(char *macaddr, struct sockaddr *sockaddr)
 	data = (unsigned char *)sockaddr->sa_data;
 
 	while ((*macaddr != '\0') && (i < ETH_ALEN)) {
-		val = 0;
 		c = *macaddr++;
 		if (isdigit(c))
 			val = c - '0';
