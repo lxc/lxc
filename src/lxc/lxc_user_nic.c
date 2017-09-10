@@ -61,8 +61,8 @@ static void usage(char *me, bool fail)
 {
 	fprintf(stderr, "Usage: %s create {lxcpath} {name} {pid} {type} "
 			"{bridge} {nicname}\n", me);
-	fprintf(stderr, "Usage: %s delete {lxcpath} {name} {pid} {type} "
-			"{bridge} {nicname}\n", me);
+	fprintf(stderr, "Usage: %s delete {lxcpath} {name} "
+			"{/proc/<pid>/ns/net} {type} {bridge} {nicname}\n", me);
 	fprintf(stderr, "{nicname} is the name to use inside the container\n");
 
 	if (fail)
@@ -78,7 +78,7 @@ static int open_and_lock(char *path)
 
 	fd = open(path, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
 	if (fd < 0) {
-		usernic_error("Failed to open %s: %s.\n", path,
+		usernic_error("Failed to open \"%s\": %s\n", path,
 			      strerror(errno));
 		return -1;
 	}
@@ -145,7 +145,7 @@ static char **get_groupnames(void)
 	group_ids = malloc(sizeof(gid_t) * ngroups);
 	if (!group_ids) {
 		usernic_error("Failed to allocate memory while getting groups "
-			      "the user belongs to: %s.\n",
+			      "the user belongs to: %s\n",
 			      strerror(errno));
 		return NULL;
 	}
@@ -153,7 +153,7 @@ static char **get_groupnames(void)
 	ret = getgroups(ngroups, group_ids);
 	if (ret < 0) {
 		free(group_ids);
-		usernic_error("Failed to get process groups: %s.\n",
+		usernic_error("Failed to get process groups: %s\n",
 			      strerror(errno));
 		return NULL;
 	}
@@ -162,7 +162,7 @@ static char **get_groupnames(void)
 	if (!groupnames) {
 		free(group_ids);
 		usernic_error("Failed to allocate memory while getting group "
-			      "names: %s.\n",
+			      "names: %s\n",
 			      strerror(errno));
 		return NULL;
 	}
@@ -172,7 +172,7 @@ static char **get_groupnames(void)
 	for (i = 0; i < ngroups; i++) {
 		gr = getgrgid(group_ids[i]);
 		if (!gr) {
-			usernic_error("Failed to get group name: %s.\n",
+			usernic_error("Failed to get group name: %s\n",
 				      strerror(errno));
 			free(group_ids);
 			free_groupnames(groupnames);
@@ -181,7 +181,7 @@ static char **get_groupnames(void)
 
 		groupnames[i] = strdup(gr->gr_name);
 		if (!groupnames[i]) {
-			usernic_error("Failed to copy group name \"%s\".",
+			usernic_error("Failed to copy group name \"%s\"",
 				      gr->gr_name);
 			free(group_ids);
 			free_groupnames(groupnames);
@@ -357,95 +357,119 @@ static char *get_eow(char *s, char *e)
 	return s;
 }
 
-static char *find_line(char *p, char *e, char *u, char *t, char *l)
+static char *find_line(char *buf_start, char *buf_end, char *name,
+		       char *net_type, char *net_link, char *net_dev,
+		       bool *owner, bool *found, bool *keep)
 {
-	char *p1, *p2, *ret;
+	char *end_of_line, *end_of_word, *line;
 
-	while ((p < e) && (p1 = get_eol(p, e)) < e) {
-		ret = p;
-		if (*p == '#')
+	while (buf_start < buf_end) {
+		size_t len;
+		char netdev_name[IFNAMSIZ];
+
+		*found = false;
+		*keep = true;
+		*owner = false;
+
+		end_of_line = get_eol(buf_start, buf_end);
+		if (end_of_line >= buf_end)
+			return NULL;
+
+		line = buf_start;
+		if (*buf_start == '#')
 			goto next;
 
-		while ((p < e) && isblank(*p))
-			p++;
+		while ((buf_start < buf_end) && isblank(*buf_start))
+			buf_start++;
 
-		p2 = get_eow(p, e);
-		if (!p2 || ((size_t)(p2 - p)) != strlen(u) ||
-		    strncmp(p, u, strlen(u)))
-			goto next;
+		/* Check whether the line contains the caller's name. */
+		end_of_word = get_eow(buf_start, buf_end);
+		/* corrupt db */
+		if (!end_of_word)
+			return NULL;
 
-		p = p2 + 1;
-		while ((p < e) && isblank(*p))
-			p++;
+		if (strncmp(buf_start, name, strlen(name)))
+			*found = false;
 
-		p2 = get_eow(p, e);
-		if (!p2 || ((size_t)(p2 - p)) != strlen(t) ||
-		    strncmp(p, t, strlen(t)))
-			goto next;
+		*owner = true;
 
-		p = p2 + 1;
-		while ((p < e) && isblank(*p))
-			p++;
+		buf_start = end_of_word + 1;
+		while ((buf_start < buf_end) && isblank(*buf_start))
+			buf_start++;
 
-		p2 = get_eow(p, e);
-		if (!p2 || ((size_t)(p2 - p)) != strlen(l) ||
-		    strncmp(p, l, strlen(l)))
-			goto next;
+		/* Check whether line is of the right network type. */
+		end_of_word = get_eow(buf_start, buf_end);
+		/* corrupt db */
+		if (!end_of_word)
+			return NULL;
 
-		return ret;
+		if (strncmp(buf_start, net_type, strlen(net_type)))
+			*found = false;
+
+		buf_start = end_of_word + 1;
+		while ((buf_start < buf_end) && isblank(*buf_start))
+			buf_start++;
+
+		/* Check whether line is contains the right link. */
+		end_of_word = get_eow(buf_start, buf_end);
+		/* corrupt db */
+		if (!end_of_word)
+			return NULL;
+
+		if (strncmp(buf_start, net_link, strlen(net_link)))
+			*found = false;
+
+		buf_start = end_of_word + 1;
+		while ((buf_start < buf_end) && isblank(*buf_start))
+			buf_start++;
+
+		/* Check whether line contains the right network device. */
+		end_of_word = get_eow(buf_start, buf_end);
+		/* corrupt db */
+		if (!end_of_word)
+			return NULL;
+
+		len = end_of_word - buf_start;
+		/* corrupt db */
+		if (len >= IFNAMSIZ)
+			return NULL;
+
+		memcpy(netdev_name, buf_start, len);
+		netdev_name[len] = '\0';
+		*keep = lxc_nic_exists(netdev_name);
+
+		if (net_dev && !strcmp(netdev_name, net_dev))
+			*found = true;
+
+		return line;
+
 	next:
-		p = p1 + 1;
+		buf_start = end_of_line + 1;
 	}
 
 	return NULL;
 }
 
-static bool nic_exists(char *nic)
+static int instantiate_veth(char *veth1, char *veth2)
 {
-	char path[MAXPATHLEN];
 	int ret;
-	struct stat sb;
 
-	if (!strcmp(nic, "none"))
-		return true;
-
-	ret = snprintf(path, MAXPATHLEN, "/sys/class/net/%s", nic);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		return false;
-
-	ret = stat(path, &sb);
-	if (ret < 0)
-		return false;
-
-	return true;
-}
-
-static int instantiate_veth(char *n1, char **n2)
-{
-	int err;
-
-	err = snprintf(*n2, IFNAMSIZ, "%sp", n1);
-	if (err < 0 || err >= IFNAMSIZ) {
-		usernic_error("%s\n", "Could not create nic name.");
-		return -1;
-	}
-
-	err = lxc_veth_create(n1, *n2);
-	if (err) {
-		usernic_error("Failed to create %s-%s : %s.\n", n1, *n2,
-			      strerror(-err));
+	ret = lxc_veth_create(veth1, veth2);
+	if (ret < 0) {
+		usernic_error("Failed to create %s-%s : %s.\n", veth1, veth2,
+			      strerror(-ret));
 		return -1;
 	}
 
 	/* Changing the high byte of the mac address to 0xfe, the bridge
 	 * interface will always keep the host's mac address and not take the
 	 * mac address of a container. */
-	err = setup_private_host_hw_addr(n1);
-	if (err)
+	ret = setup_private_host_hw_addr(veth1);
+	if (ret < 0)
 		usernic_error("Failed to change mac address of host interface "
-			      "%s : %s\n", n1, strerror(-err));
+			      "%s : %s\n", veth1, strerror(-ret));
 
-	return netdev_set_flag(n1, IFF_UP);
+	return netdev_set_flag(veth1, IFF_UP);
 }
 
 static int get_mtu(char *name)
@@ -453,31 +477,32 @@ static int get_mtu(char *name)
 	int idx;
 
 	idx = if_nametoindex(name);
+	if (idx < 0)
+		return -1;
 	return netdev_get_mtu(idx);
 }
 
-static bool create_nic(char *nic, char *br, int pid, char **cnic)
+static int create_nic(char *nic, char *br, int pid, char **cnic)
 {
-	char *veth1buf, *veth2buf;
+	char veth1buf[IFNAMSIZ], veth2buf[IFNAMSIZ];
 	int mtu, ret;
-
-	veth1buf = alloca(IFNAMSIZ);
-	veth2buf = alloca(IFNAMSIZ);
-	if (!veth1buf || !veth2buf) {
-		usernic_error("Failed allocate memory: %s.\n", strerror(errno));
-		return false;
-	}
 
 	ret = snprintf(veth1buf, IFNAMSIZ, "%s", nic);
 	if (ret < 0 || ret >= IFNAMSIZ) {
-		usernic_error("%s", "Could not create nic name.\n");
-		return false;
+		usernic_error("%s", "Could not create nic name\n");
+		return -1;
 	}
 
+	ret = snprintf(veth2buf, IFNAMSIZ, "%sp", veth1buf);
+	if (ret < 0 || ret >= IFNAMSIZ) {
+		usernic_error("%s\n", "Could not create nic name");
+		return -1;
+	}
 	/* create the nics */
-	if (instantiate_veth(veth1buf, &veth2buf) < 0) {
-		usernic_error("%s", "Error creating veth tunnel.\n");
-		return false;
+	ret = instantiate_veth(veth1buf, veth2buf);
+	if (ret < 0) {
+		usernic_error("%s", "Error creating veth tunnel\n");
+		return -1;
 	}
 
 	if (strcmp(br, "none")) {
@@ -502,7 +527,7 @@ static bool create_nic(char *nic, char *br, int pid, char **cnic)
 		/* attach veth1 to bridge */
 		ret = lxc_bridge_attach(br, veth1buf);
 		if (ret < 0) {
-			usernic_error("Error attaching %s to %s.\n", veth1buf, br);
+			usernic_error("Error attaching %s to %s\n", veth1buf, br);
 			goto out_del;
 		}
 	}
@@ -517,53 +542,15 @@ static bool create_nic(char *nic, char *br, int pid, char **cnic)
 
 	*cnic = strdup(veth2buf);
 	if (!*cnic) {
-		usernic_error("Failed to copy string \"%s\".\n", veth2buf);
-		return false;
+		usernic_error("Failed to copy string \"%s\"\n", veth2buf);
+		return -1;
 	}
 
-	return true;
+	return 0;
 
 out_del:
 	lxc_netdev_delete_by_name(veth1buf);
-	return false;
-}
-
-/* get_new_nicname() will return the name (vethXXXXXX) which is attached on the
- * host to the lxc bridge. The returned string must be freed by caller.
- */
-static char *get_new_nicname(char *br, int pid, char **cnic)
-{
-	int ret;
-	char *nicname;
-	char template[IFNAMSIZ];
-
-	ret = snprintf(template, sizeof(template), "vethXXXXXX");
-	if (ret < 0 || (size_t)ret >= sizeof(template))
-		return NULL;
-
-	nicname = lxc_mkifname(template);
-	if (!nicname)
-		return NULL;
-
-	if (!create_nic(nicname, br, pid, cnic)) {
-		free(nicname);
-		return NULL;
-	}
-
-	return nicname;
-}
-
-static bool get_nic_from_line(char *p, char **nic)
-{
-	int ret;
-	char user[100], type[100], br[100];
-
-	ret = sscanf(p, "%99[^ \t\n] %99[^ \t\n] %99[^ \t\n] %99[^ \t\n]", user,
-		     type, br, *nic);
-	if (ret != 4)
-		return false;
-
-	return true;
+	return -1;
 }
 
 struct entry_line {
@@ -572,19 +559,15 @@ struct entry_line {
 	bool keep;
 };
 
-static bool cull_entries(int fd, char *me, char *t, char *br, char *nicname,
-			 bool *found_nicname)
+static bool cull_entries(int fd, char *name, char *net_type, char *net_link,
+			 char *net_dev, bool *found_nicname)
 {
 	int i, ret;
-	off_t len;
-	char *buf, *e, *nic, *p;
+	char *buf, *buf_end, *buf_start;
 	struct stat sb;
 	int n = 0;
+	bool found, keep;
 	struct entry_line *entry_lines = NULL;
-
-	nic = alloca(100);
-	if (!nic)
-		return false;
 
 	ret = fstat(fd, &sb);
 	if (ret < 0) {
@@ -592,9 +575,8 @@ static bool cull_entries(int fd, char *me, char *t, char *br, char *nicname,
 		return false;
 	}
 
-	len = sb.st_size;
-	if (len == 0)
-		return true;
+	if (!sb.st_size)
+		return false;
 
 	buf = lxc_strmmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if (buf == MAP_FAILED) {
@@ -603,51 +585,48 @@ static bool cull_entries(int fd, char *me, char *t, char *br, char *nicname,
 		return false;
 	}
 
-	p = buf;
-	e = buf + len;
-	while ((p = find_line(p, e, me, t, br))) {
+	buf_start = buf;
+	buf_end = buf + sb.st_size;
+	while ((buf_start = find_line(buf_start, buf_end, name, net_type,
+				      net_link, net_dev, &(bool){true}, &found,
+				      &keep))) {
 		struct entry_line *newe;
 
 		newe = realloc(entry_lines, sizeof(*entry_lines) * (n + 1));
 		if (!newe) {
 			free(entry_lines);
+			lxc_strmunmap(buf, sb.st_size);
 			return false;
 		}
 
+		if (found)
+			*found_nicname = true;
+
 		entry_lines = newe;
-		entry_lines[n].start = p;
-		entry_lines[n].len = get_eol(p, e) - entry_lines[n].start;
-		entry_lines[n].keep = true;
+		entry_lines[n].start = buf_start;
+		entry_lines[n].len = get_eol(buf_start, buf_end) - entry_lines[n].start;
+		entry_lines[n].keep = keep;
 		n++;
-		if (!get_nic_from_line(p, &nic))
-			continue;
 
-		if (nic && !nic_exists(nic))
-			entry_lines[n - 1].keep = false;
-
-		if (nicname)
-			if (!strcmp(nic, nicname))
-				*found_nicname = true;
-
-		p += entry_lines[n - 1].len + 1;
-		if (p >= e)
+		buf_start += entry_lines[n - 1].len + 1;
+		if (buf_start >= buf_end)
 			break;
 	}
 
-	p = buf;
+	buf_start = buf;
 	for (i = 0; i < n; i++) {
 		if (!entry_lines[i].keep)
 			continue;
 
-		memcpy(p, entry_lines[i].start, entry_lines[i].len);
-		p += entry_lines[i].len;
-		*p = '\n';
-		p++;
+		memcpy(buf_start, entry_lines[i].start, entry_lines[i].len);
+		buf_start += entry_lines[i].len;
+		*buf_start = '\n';
+		buf_start++;
 	}
 	free(entry_lines);
 
 	lxc_strmunmap(buf, sb.st_size);
-	ret = ftruncate(fd, p - buf);
+	ret = ftruncate(fd, buf_start - buf);
 	if (ret < 0)
 		usernic_error("Failed to set new file size: %s\n",
 			      strerror(errno));
@@ -655,16 +634,19 @@ static bool cull_entries(int fd, char *me, char *t, char *br, char *nicname,
 	return true;
 }
 
-static int count_entries(char *buf, off_t len, char *me, char *t, char *br)
+static int count_entries(char *buf, off_t len, char *name, char *net_type, char *net_link)
 {
-	char *e;
 	int count = 0;
+	bool owner = false;;
+	char *buf_end = &buf[len];
 
-	e = &buf[len];
-	while ((buf = find_line(buf, e, me, t, br))) {
-		count++;
-		buf = get_eol(buf, e) + 1;
-		if (buf >= e)
+	buf_end = &buf[len];
+	while ((buf = find_line(buf, buf_end, name, net_type, net_link, NULL,
+				&owner, &(bool){true}, &(bool){true}))) {
+		if (owner)
+			count++;
+		buf = get_eol(buf, buf_end) + 1;
+		if (buf >= buf_end)
 			break;
 	}
 
@@ -676,8 +658,9 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 			      char *intype, char *br, int allowed, char **cnic)
 {
 	int ret;
-	off_t len, slen;
-	char *newline, *nicname, *owner;
+	size_t slen;
+	char *newline, *owner;
+	char nicname[IFNAMSIZ];
 	struct stat sb;
 	struct alloted_s *n;
 	int count = 0;
@@ -691,79 +674,110 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 
 	owner = names->name;
 
-	if (fstat(fd, &sb) < 0) {
+	ret = fstat(fd, &sb);
+	if (ret < 0) {
 		usernic_error("Failed to fstat: %s\n", strerror(errno));
 		return NULL;
 	}
 
-	len = sb.st_size;
-	if (len > 0) {
-		buf =
-		    mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	if (sb.st_size > 0) {
+		buf = lxc_strmmap(NULL, sb.st_size, PROT_READ | PROT_WRITE,
+				  MAP_SHARED, fd, 0);
 		if (buf == MAP_FAILED) {
-			usernic_error("Failed to establish shared memory mapping: %s\n",
-				      strerror(errno));
+			usernic_error("Failed to establish shared memory "
+				      "mapping: %s\n", strerror(errno));
 			return NULL;
 		}
 
 		owner = NULL;
 		for (n = names; n != NULL; n = n->next) {
-			count = count_entries(buf, len, n->name, intype, br);
-
+			count = count_entries(buf, sb.st_size, n->name, intype, br);
 			if (count >= n->allowed)
 				continue;
 
 			owner = n->name;
 			break;
 		}
+
+		lxc_strmunmap(buf, sb.st_size);
 	}
 
 	if (owner == NULL)
 		return NULL;
 
-	nicname = get_new_nicname(br, pid, cnic);
-	if (!nicname) {
-		usernic_error("%s", "Failed to get new nic name\n");
+	ret = snprintf(nicname, sizeof(nicname), "vethXXXXXX");
+	if (ret < 0 || (size_t)ret >= sizeof(nicname))
+		return NULL;
+
+	if (!lxc_mkifname(nicname))
+		return NULL;
+
+	ret = create_nic(nicname, br, pid, cnic);
+	if (ret < 0) {
+		usernic_error("%s", "Failed to create new nic\n");
 		return NULL;
 	}
 
-	/* owner  ' ' intype ' ' br ' ' *nicname + '\n' + '\0' */
-	slen = strlen(owner) + strlen(intype) + strlen(br) + strlen(nicname) + 5;
-	newline = alloca(slen);
+	/* strlen(owner)
+	 * +
+	 * " "
+	 * +
+	 * strlen(intype)
+	 * +
+	 * " "
+	 * +
+	 * strlen(br)
+	 * +
+	 * " "
+	 * +
+	 * strlen(nicname)
+	 * +
+	 * \n
+	 * +
+	 * \0
+	 */
+	slen = strlen(owner) + strlen(intype) + strlen(br) + strlen(nicname) + 4;
+	newline = malloc(slen + 1);
 	if (!newline) {
-		free(nicname);
+		free(newline);
 		usernic_error("Failed allocate memory: %s\n", strerror(errno));
 		return NULL;
 	}
 
-	ret = snprintf(newline, slen, "%s %s %s %s\n", owner, intype, br, nicname);
-	if (ret < 0 || ret >= slen) {
+	ret = snprintf(newline, slen + 1, "%s %s %s %s\n", owner, intype, br, nicname);
+	if (ret < 0 || (size_t)ret >= (slen + 1)) {
 		if (lxc_netdev_delete_by_name(nicname) != 0)
 			usernic_error("Error unlinking %s\n", nicname);
-		free(nicname);
+		free(newline);
 		return NULL;
 	}
-	if (len)
-		munmap(buf, len);
 
-	if (ftruncate(fd, len + slen))
-		usernic_error("Failed to set new file size: %s\n",
-			      strerror(errno));
+	/* Note that the file needs to be truncated to the size **without** the
+	 * \0 byte! Files are not \0-terminated!
+	 */
+	ret = ftruncate(fd, sb.st_size + slen);
+	if (ret < 0)
+		usernic_error("Failed to truncate file: %s\n", strerror(errno));
 
-	buf = mmap(NULL, len + slen, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	buf = lxc_strmmap(NULL, sb.st_size + slen, PROT_READ | PROT_WRITE,
+			  MAP_SHARED, fd, 0);
 	if (buf == MAP_FAILED) {
 		usernic_error("Failed to establish shared memory mapping: %s\n",
 			      strerror(errno));
 		if (lxc_netdev_delete_by_name(nicname) != 0)
 			usernic_error("Error unlinking %s\n", nicname);
-		free(nicname);
+		free(newline);
 		return NULL;
 	}
 
-	strcpy(buf + len, newline);
-	munmap(buf, len + slen);
+	/* Note that the memory needs to be moved in the buffer **without** the
+	 * \0 byte! Files are not \0-terminated!
+	 */
+	memmove(buf + sb.st_size, newline, slen);
+	free(newline);
+	lxc_strmunmap(buf, sb.st_size + slen);
 
-	return nicname;
+	return strdup(nicname);
 }
 
 static bool create_db_dir(char *fnam)
@@ -797,7 +811,7 @@ again:
 }
 
 static char *lxc_secure_rename_in_ns(int pid, char *oldname, char *newname,
-				     int *ifidx)
+				     int *container_veth_ifidx)
 {
 	int ret;
 	uid_t ruid, suid, euid;
@@ -813,7 +827,7 @@ static char *lxc_secure_rename_in_ns(int pid, char *oldname, char *newname,
 
 	fd = lxc_preserve_ns(pid, "net");
 	if (fd < 0) {
-		usernic_error("Failed opening network namespace path for '%d'.", pid);
+		usernic_error("Failed opening network namespace path for %d", pid);
 		goto do_partial_cleanup;
 	}
 
@@ -830,7 +844,7 @@ static char *lxc_secure_rename_in_ns(int pid, char *oldname, char *newname,
 	fd = -1;
 	if (ret < 0) {
 		usernic_error("Failed to setns() to the network namespace of "
-			      "the container with PID %d: %s.\n",
+			      "the container with PID %d: %s\n",
 			      pid, strerror(errno));
 		goto do_partial_cleanup;
 	}
@@ -839,11 +853,12 @@ static char *lxc_secure_rename_in_ns(int pid, char *oldname, char *newname,
 	if (ret < 0) {
 		usernic_error("Failed to drop privilege by setting effective "
 			      "user id and real user id to %d, and saved user "
-			      "ID to 0: %s.\n",
+			      "ID to 0: %s\n",
 			      ruid, strerror(errno));
-		// COMMENT(brauner): It's ok to jump to do_full_cleanup here
-		// since setresuid() will succeed when trying to set real,
-		// effective, and saved to values they currently have.
+		/* It's ok to jump to do_full_cleanup here since setresuid()
+		 * will succeed when trying to set real, effective, and saved to
+		 * values they currently have.
+		 */
 		goto do_full_cleanup;
 	}
 
@@ -880,7 +895,7 @@ static char *lxc_secure_rename_in_ns(int pid, char *oldname, char *newname,
 	/* Allocation failure for strdup() is checked below. */
 	name = strdup(ifname);
 	string_ret = name;
-	*ifidx = ifindex;
+	*container_veth_ifidx = ifindex;
 
 do_full_cleanup:
 	ret = setresuid(ruid, euid, suid);
@@ -913,10 +928,8 @@ do_partial_cleanup:
 	return string_ret;
 }
 
-/*
- * If the caller (real uid, not effective uid) may read the
- * /proc/[pid]/ns/net, then it is either the caller's netns or one
- * which it created.
+/* If the caller (real uid, not effective uid) may read the /proc/[pid]/ns/net,
+ * then it is either the caller's netns or one which it created.
  */
 static bool may_access_netns(int pid)
 {
@@ -937,7 +950,7 @@ static bool may_access_netns(int pid)
 	if (ret < 0) {
 		usernic_error("Failed to drop privilege by setting effective "
 			      "user id and real user id to %d, and saved user "
-			      "ID to %d: %s.\n",
+			      "ID to %d: %s\n",
 			      ruid, euid, strerror(errno));
 		return false;
 	}
@@ -956,7 +969,7 @@ static bool may_access_netns(int pid)
 	ret = setresuid(ruid, euid, suid);
 	if (ret < 0) {
 		usernic_error("Failed to restore user id to %d, real user id "
-			      "to %d, and saved user ID to %d: %s.\n",
+			      "to %d, and saved user ID to %d: %s\n",
 			      ruid, euid, suid, strerror(errno));
 		may_access = false;
 	}
@@ -977,13 +990,89 @@ struct user_nic_args {
 #define LXC_USERNIC_CREATE 0
 #define LXC_USERNIC_DELETE 1
 
+static bool is_privileged_over_netns(int netns_fd)
+{
+	int ret;
+	uid_t euid, ruid, suid;
+	bool bret = false;
+	int ofd = -1;
+
+	ofd = lxc_preserve_ns(getpid(), "net");
+	if (ofd < 0) {
+		usernic_error("Failed opening network namespace path for %d", getpid());
+		return false;
+	}
+
+	ret = getresuid(&ruid, &euid, &suid);
+	if (ret < 0) {
+		usernic_error("Failed to retrieve real, effective, and saved "
+			      "user IDs: %s\n",
+			      strerror(errno));
+		goto do_partial_cleanup;
+	}
+
+	ret = setns(netns_fd, CLONE_NEWNET);
+	if (ret < 0) {
+		usernic_error("Failed to setns() to network namespace %s\n",
+			      strerror(errno));
+		goto do_partial_cleanup;
+	}
+
+	ret = setresuid(ruid, ruid, 0);
+	if (ret < 0) {
+		usernic_error("Failed to drop privilege by setting effective "
+			      "user id and real user id to %d, and saved user "
+			      "ID to 0: %s\n",
+			      ruid, strerror(errno));
+		/* It's ok to jump to do_full_cleanup here since setresuid()
+		 * will succeed when trying to set real, effective, and saved to
+		 * values they currently have.
+		 */
+		goto do_full_cleanup;
+	}
+
+	/* Test whether we are privileged over the network namespace. To do this
+	 * we try to delete the loopback interface which is not possible. If we
+	 * are privileged over the network namespace we will get ENOTSUP. If we
+	 * are not privileged over the network namespace we will get EPERM.
+	 */
+	ret = lxc_netdev_delete_by_name("lo");
+	if (ret == -ENOTSUP)
+		bret = true;
+
+do_full_cleanup:
+	ret = setresuid(ruid, euid, suid);
+	if (ret < 0) {
+		usernic_error("Failed to restore privilege by setting "
+			      "effective user id to %d, real user id to %d, "
+			      "and saved user ID to %d: %s\n", ruid, euid, suid,
+			      strerror(errno));
+
+		bret = false;
+	}
+
+	ret = setns(ofd, CLONE_NEWNET);
+	if (ret < 0) {
+		usernic_error("Failed to setns() to original network namespace "
+			      "of PID %d: %s\n", ofd, strerror(errno));
+
+		bret = false;
+	}
+
+do_partial_cleanup:
+
+	close(ofd);
+	return bret;
+}
+
 int main(int argc, char *argv[])
 {
-	int fd, ifindex, n, pid, request, ret;
+	int fd, n, pid, request, ret;
 	char *me, *newname;
+	struct user_nic_args args;
+	int container_veth_ifidx = -1, host_veth_ifidx = -1, netns_fd = -1;
 	char *cnic = NULL, *nicname = NULL;
 	struct alloted_s *alloted = NULL;
-	struct user_nic_args args;
 
 	if (argc < 7 || argc > 8) {
 		usage(argv[0], true);
@@ -1028,26 +1117,50 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	ret = lxc_safe_int(args.pid, &pid);
-	if (ret < 0) {
-		usernic_error("Could not read pid: %s\n", args.pid);
-		exit(EXIT_FAILURE);
+	if (request == LXC_USERNIC_CREATE) {
+		ret = lxc_safe_int(args.pid, &pid);
+		if (ret < 0) {
+			usernic_error("Could not read pid: %s\n", args.pid);
+			exit(EXIT_FAILURE);
+		}
+	} else if (request == LXC_USERNIC_DELETE) {
+		netns_fd = open(args.pid, O_RDONLY);
+		if (netns_fd < 0) {
+			usernic_error("Could not open \"%s\": %s\n", args.pid,
+				      strerror(errno));
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	if (!create_db_dir(LXC_USERNIC_DB)) {
-		usernic_error("%s", "Failed to create directory for db file.\n");
+		usernic_error("%s", "Failed to create directory for db file\n");
+		if (netns_fd >= 0)
+			close(netns_fd);
 		exit(EXIT_FAILURE);
 	}
 
 	fd = open_and_lock(LXC_USERNIC_DB);
 	if (fd < 0) {
 		usernic_error("Failed to lock %s\n", LXC_USERNIC_DB);
+		if (netns_fd >= 0)
+			close(netns_fd);
 		exit(EXIT_FAILURE);
 	}
 
-	if (!may_access_netns(pid)) {
-		usernic_error("User %s may not modify netns for pid %d.\n", me, pid);
-		exit(EXIT_FAILURE);
+	if (request == LXC_USERNIC_CREATE) {
+		if (!may_access_netns(pid)) {
+			usernic_error("User %s may not modify netns for pid %d\n", me, pid);
+			exit(EXIT_FAILURE);
+		}
+	} else if (request == LXC_USERNIC_DELETE) {
+		bool has_priv;
+		has_priv = is_privileged_over_netns(netns_fd);
+		close(netns_fd);
+		if (!has_priv) {
+			usernic_error("%s", "Process is not privileged over "
+					    "network namespace\n");
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	n = get_alloted(me, args.type, args.link, &alloted);
@@ -1078,8 +1191,8 @@ int main(int argc, char *argv[])
 		free_alloted(&alloted);
 
 		if (!found_nicname) {
-			usernic_error("%s", "Caller is not allowed to delete "
-				      "network device\n");
+			usernic_error("Caller is not allowed to delete network "
+				      "device \"%s\"\n", args.veth_name);
 			exit(EXIT_FAILURE);
 		}
 
@@ -1105,7 +1218,8 @@ int main(int argc, char *argv[])
 	}
 
 	/* Now rename the link. */
-	newname = lxc_secure_rename_in_ns(pid, cnic, args.veth_name, &ifindex);
+	newname = lxc_secure_rename_in_ns(pid, cnic, args.veth_name,
+					  &container_veth_ifidx);
 	if (!newname) {
 		usernic_error("%s", "Failed to rename the link\n");
 		ret = lxc_netdev_delete_by_name(cnic);
@@ -1115,8 +1229,19 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	/* Write the name of the interface pair to the stdout: eth0:veth9MT2L4 */
-	fprintf(stdout, "%s:%s:%d\n", newname, nicname, ifindex);
+	host_veth_ifidx = if_nametoindex(nicname);
+	if (!host_veth_ifidx) {
+		free(newname);
+		free(nicname);
+		usernic_error("Failed to get netdev index: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	/* Write names of veth pairs and their ifindeces to stout:
+	 * (e.g. eth0:731:veth9MT2L4:730)
+	 */
+	fprintf(stdout, "%s:%d:%s:%d\n", newname, container_veth_ifidx, nicname,
+		host_veth_ifidx);
 	free(newname);
 	free(nicname);
 	exit(EXIT_SUCCESS);

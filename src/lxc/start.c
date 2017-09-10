@@ -5,6 +5,8 @@
  *
  * Authors:
  * Daniel Lezcano <daniel.lezcano at free.fr>
+ * Serge Hallyn <serge@hallyn.com>
+ * Christian Brauner <christian.brauner@ubuntu.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -60,6 +62,7 @@
 #include "commands.h"
 #include "commands_utils.h"
 #include "conf.h"
+#include "confile_utils.h"
 #include "console.h"
 #include "error.h"
 #include "log.h"
@@ -81,7 +84,7 @@
 lxc_log_define(lxc_start, lxc);
 
 extern void mod_all_rdeps(struct lxc_container *c, bool inc);
-static bool do_destroy_container(struct lxc_conf *conf);
+static bool do_destroy_container(struct lxc_handler *handler);
 static int lxc_rmdir_onedev_wrapper(void *data);
 static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 					    const char *name);
@@ -531,7 +534,12 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 
 	memset(handler, 0, sizeof(*handler));
 
-	handler->ttysock[0] = handler->ttysock[1] = -1;
+	/* Note that am_unpriv() checks the effective uid. We probably don't
+	 * care if we are real root only if we are running as root so this
+	 * should be fine.
+	 */
+	handler->am_root = !am_unpriv();
+	handler->data_sock[0] = handler->data_sock[1] = -1;
 	handler->conf = conf;
 	handler->lxcpath = lxcpath;
 	handler->pinfd = -1;
@@ -755,9 +763,9 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		free(cur);
 	}
 
-	if (handler->ttysock[0] != -1) {
-		close(handler->ttysock[0]);
-		close(handler->ttysock[1]);
+	if (handler->data_sock[0] != -1) {
+		close(handler->data_sock[0]);
+		close(handler->data_sock[1]);
 	}
 
 	if (handler->conf->ephemeral == 1 && handler->conf->reboot != 1)
@@ -848,51 +856,6 @@ static int must_drop_cap_sys_boot(struct lxc_conf *conf)
 	return 0;
 }
 
-/* netpipe is used in the unprivileged case to transfer the ifindexes from
- * parent to child
- */
-static int netpipe = -1;
-
-static inline int count_veths(struct lxc_list *network)
-{
-	struct lxc_list *iterator;
-	struct lxc_netdev *netdev;
-	int count = 0;
-
-	lxc_list_for_each(iterator, network) {
-		netdev = iterator->elem;
-		if (netdev->type != LXC_NET_VETH)
-			continue;
-		count++;
-	}
-	return count;
-}
-
-static int read_unpriv_netifindex(struct lxc_list *network)
-{
-	struct lxc_list *iterator;
-	struct lxc_netdev *netdev;
-
-	if (netpipe == -1)
-		return 0;
-	lxc_list_for_each(iterator, network) {
-		netdev = iterator->elem;
-		if (netdev->type != LXC_NET_VETH)
-			continue;
-		if (!(netdev->name = malloc(IFNAMSIZ))) {
-			ERROR("Out of memory.");
-			close(netpipe);
-			return -1;
-		}
-		if (read(netpipe, netdev->name, IFNAMSIZ) != IFNAMSIZ) {
-			close(netpipe);
-			return -1;
-		}
-	}
-	close(netpipe);
-	return 0;
-}
-
 static int do_start(void *data)
 {
 	struct lxc_list *iterator;
@@ -945,8 +908,10 @@ static int do_start(void *data)
 	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CONFIGURE))
 		return -1;
 
-	if (read_unpriv_netifindex(&handler->conf->network) < 0)
+	if (lxc_network_recv_veth_names_from_parent(handler) < 0) {
+		ERROR("Failed to receive veth names from parent");
 		goto out_warn_father;
+	}
 
 	/* If we are in a new user namespace, become root there to have
 	 * privilege over our namespace.
@@ -1025,7 +990,10 @@ static int do_start(void *data)
 	}
 
 	/* Setup the container, ip, names, utsname, ... */
-	if (lxc_setup(handler)) {
+	ret = lxc_setup(handler);
+	close(handler->data_sock[0]);
+	close(handler->data_sock[1]);
+	if (ret < 0) {
 		ERROR("Failed to setup container \"%s\".", handler->name);
 		goto out_warn_father;
 	}
@@ -1159,46 +1127,14 @@ out_error:
 	return -1;
 }
 
-static int save_phys_nics(struct lxc_conf *conf)
-{
-	struct lxc_list *iterator;
-	int am_root = (getuid() == 0);
-
-	if (!am_root)
-		return 0;
-
-	lxc_list_for_each(iterator, &conf->network) {
-		struct lxc_netdev *netdev = iterator->elem;
-
-		if (netdev->type != LXC_NET_PHYS)
-			continue;
-		conf->saved_nics = realloc(conf->saved_nics,
-				(conf->num_savednics+1)*sizeof(struct saved_nic));
-		if (!conf->saved_nics)
-			return -1;
-		conf->saved_nics[conf->num_savednics].ifindex = netdev->ifindex;
-		conf->saved_nics[conf->num_savednics].orig_name = strdup(netdev->link);
-		if (!conf->saved_nics[conf->num_savednics].orig_name)
-			return -1;
-		INFO("Stored saved_nic #%d idx %d name %s.", conf->num_savednics,
-			conf->saved_nics[conf->num_savednics].ifindex,
-			conf->saved_nics[conf->num_savednics].orig_name);
-		conf->num_savednics++;
-	}
-
-	return 0;
-}
-
 static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 {
 	int i;
-	int *ttyfds;
 	struct lxc_pty_info *pty_info;
 	int ret = -1;
-	int sock = handler->ttysock[1];
+	int sock = handler->data_sock[1];
 	struct lxc_conf *conf = handler->conf;
 	struct lxc_tty_info *tty_info = &conf->tty_info;
-	size_t num_ttyfds = (2 * conf->tty);
 
 	if (!conf->tty)
 		return 0;
@@ -1207,29 +1143,27 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 	if (!tty_info->pty_info)
 		return -1;
 
-	ttyfds = malloc(num_ttyfds * sizeof(int));
-	if (!ttyfds)
-		return -1;
+	for (i = 0; i < conf->tty; i++) {
+		int ttyfds[2];
 
-	ret = lxc_abstract_unix_recv_fds(sock, ttyfds, num_ttyfds, NULL, 0);
-	for (i = 0; (ret >= 0 && *ttyfds != -1) && (i < num_ttyfds); i++) {
-		pty_info = &tty_info->pty_info[i / 2];
+		ret = lxc_abstract_unix_recv_fds(sock, ttyfds, 2, NULL, 0);
+		if (ret < 0)
+			break;
+
+		pty_info = &tty_info->pty_info[i];
 		pty_info->busy = 0;
-		pty_info->slave = ttyfds[i++];
-		pty_info->master = ttyfds[i];
-		TRACE("received pty with master fd %d and slave fd %d from "
+		pty_info->master = ttyfds[0];
+		pty_info->slave = ttyfds[1];
+		TRACE("Received pty with master fd %d and slave fd %d from "
 		      "parent", pty_info->master, pty_info->slave);
 	}
-
-	tty_info->nbtty = conf->tty;
-
-	free(ttyfds);
-
 	if (ret < 0)
-		ERROR("failed to receive %d ttys from child: %s", conf->tty,
+		ERROR("Failed to receive %d ttys from child: %s", conf->tty,
 		      strerror(errno));
 	else
-		TRACE("received %d ttys from child", conf->tty);
+		TRACE("Received %d ttys from child", conf->tty);
+
+	tty_info->nbtty = conf->tty;
 
 	return ret;
 }
@@ -1268,16 +1202,14 @@ void resolve_clone_flags(struct lxc_handler *handler)
  */
 static int lxc_spawn(struct lxc_handler *handler)
 {
-	int failed_before_rename = 0;
+	int i, flags, ret;
 	const char *name = handler->name;
-	bool cgroups_connected = false;
-	int saved_ns_fd[LXC_NS_MAX];
-	int preserve_mask = 0, i, flags;
-	int netpipepair[2], nveths;
 	bool wants_to_map_ids;
+	int saved_ns_fd[LXC_NS_MAX];
 	struct lxc_list *id_map;
+	int failed_before_rename = 0, preserve_mask = 0;
+	bool cgroups_connected = false;
 
-	netpipe = -1;
 	id_map = &handler->conf->id_map;
 	wants_to_map_ids = !lxc_list_empty(id_map);
 
@@ -1288,7 +1220,9 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_init(handler))
 		return -1;
 
-	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, handler->ttysock) < 0) {
+	ret = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0,
+			 handler->data_sock);
+	if (ret < 0) {
 		lxc_sync_fini(handler);
 		return -1;
 	}
@@ -1317,11 +1251,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 				lxc_sync_fini(handler);
 				return -1;
 			}
-		}
-
-		if (save_phys_nics(handler->conf)) {
-			ERROR("Failed to save physical nic info.");
-			goto out_abort;
 		}
 	}
 
@@ -1353,15 +1282,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (attach_ns(handler->conf->inherit_ns_fd) < 0)
 		goto out_delete_net;
 
-	if (am_unpriv() && (nveths = count_veths(&handler->conf->network))) {
-		if (pipe(netpipepair) < 0) {
-			SYSERROR("Failed to create pipe.");
-			goto out_delete_net;
-		}
-		/* Store netpipe in the global var for do_start's use. */
-		netpipe = netpipepair[0];
-	}
-
 	/* Create a process in a new set of namespaces. */
 	flags = handler->clone_flags;
 	if (handler->clone_flags & CLONE_NEWUSER) {
@@ -1377,6 +1297,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		SYSERROR("Failed to clone a new set of namespaces.");
 		goto out_delete_net;
 	}
+
 	for (i = 0; i < LXC_NS_MAX; i++)
 		if (flags & ns_info[i].clone_flag)
 			INFO("Cloned %s.", ns_info[i].flag_name);
@@ -1428,30 +1349,33 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (failed_before_rename)
 		goto out_delete_net;
 
+	handler->netnsfd = lxc_preserve_ns(handler->pid, "net");
+	if (handler->netnsfd < 0) {
+		ERROR("Failed to preserve network namespace");
+		goto out_delete_net;
+	}
+
 	/* Create the network configuration. */
 	if (handler->clone_flags & CLONE_NEWNET) {
-		if (lxc_create_network(handler->lxcpath, handler->name,
-				       &handler->conf->network, handler->pid)) {
+		if (lxc_network_move_created_netdev_priv(handler->lxcpath,
+							 handler->name,
+							 &handler->conf->network,
+							 handler->pid)) {
+			ERROR("Failed to create the configured network.");
+			goto out_delete_net;
+		}
+
+		if (lxc_create_network_unpriv(handler->lxcpath, handler->name,
+					      &handler->conf->network,
+					      handler->pid)) {
 			ERROR("Failed to create the configured network.");
 			goto out_delete_net;
 		}
 	}
 
-	if (netpipe != -1) {
-		struct lxc_list *iterator;
-		struct lxc_netdev *netdev;
-
-		close(netpipe);
-		lxc_list_for_each(iterator, &handler->conf->network) {
-			netdev = iterator->elem;
-			if (netdev->type != LXC_NET_VETH)
-				continue;
-			if (write(netpipepair[1], netdev->name, IFNAMSIZ) != IFNAMSIZ) {
-				ERROR("Error writing veth name to container.");
-				goto out_delete_net;
-			}
-		}
-		close(netpipepair[1]);
+	if (lxc_network_send_veth_names_to_child(handler) < 0) {
+		ERROR("Failed to send veth names to child");
+		goto out_delete_net;
 	}
 
 	/* Tell the child to continue its initialization. We'll get
@@ -1481,6 +1405,19 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_barrier_child(handler, LXC_SYNC_POST_CGROUP))
 		return -1;
 
+	if (lxc_network_recv_name_and_ifindex_from_child(handler) < 0) {
+		ERROR("Failed to receive names and ifindices for network "
+		      "devices from child");
+		goto out_delete_net;
+	}
+
+	/* Now all networks are created, network devices are moved into place,
+	 * and the correct names and ifindeces in the respective namespaces have
+	 * been recorded. The corresponding structs have now all been filled. So
+	 * log them for debugging purposes.
+	 */
+	lxc_log_configured_netdevs(handler->conf);
+
 	/* Read tty fds allocated by child. */
 	if (lxc_recv_ttys_from_child(handler) < 0) {
 		ERROR("Failed to receive tty info from child process.");
@@ -1497,21 +1434,33 @@ static int lxc_spawn(struct lxc_handler *handler)
 	}
 
 	lxc_sync_fini(handler);
-	handler->netnsfd = lxc_preserve_ns(handler->pid, "net");
 
 	return 0;
 
 out_delete_net:
 	if (cgroups_connected)
 		cgroup_disconnect();
-	if (handler->clone_flags & CLONE_NEWNET)
-		lxc_delete_network(handler);
+
+	if (handler->clone_flags & CLONE_NEWNET) {
+		DEBUG("Tearing down network devices");
+		if (!lxc_delete_network_priv(handler))
+			DEBUG("Failed tearing down network devices");
+
+		if (!lxc_delete_network_unpriv(handler))
+			DEBUG("Failed tearing down network devices");
+	}
+
 out_abort:
 	lxc_abort(name, handler);
 	lxc_sync_fini(handler);
 	if (handler->pinfd >= 0) {
 		close(handler->pinfd);
 		handler->pinfd = -1;
+	}
+
+	if (handler->netnsfd >= 0) {
+		close(handler->netnsfd);
+		handler->netnsfd = -1;
 	}
 
 	return -1;
@@ -1523,7 +1472,6 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 {
 	int status;
 	int err = -1;
-	bool removed_all_netdevs = true;
 	struct lxc_conf *conf = handler->conf;
 
 	if (lxc_init(name, handler) < 0) {
@@ -1580,10 +1528,6 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	err = lxc_poll(name, handler);
 	if (err) {
 		ERROR("LXC mainloop exited with error: %d.", err);
-		if (handler->netnsfd >= 0) {
-			close(handler->netnsfd);
-			handler->netnsfd = -1;
-		}
 		goto out_abort;
 	}
 
@@ -1612,11 +1556,10 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 		}
 	}
 
-	DEBUG("Pushing physical nics back to host namespace");
-	lxc_restore_phys_nics_to_netns(handler->netnsfd, handler->conf);
-
-	DEBUG("Tearing down virtual network devices used by container \"%s\".", name);
-	removed_all_netdevs = lxc_delete_network(handler);
+	err = lxc_restore_phys_nics_to_netns(handler);
+	if (err < 0)
+		ERROR("Failed to move physical network devices back to parent "
+		      "network namespace");
 
 	if (handler->pinfd >= 0) {
 		close(handler->pinfd);
@@ -1625,12 +1568,18 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 
 	lxc_monitor_send_exit_code(name, status, handler->lxcpath);
 	err =  lxc_error_set_and_log(handler->pid, status);
+
 out_fini:
-	if (!removed_all_netdevs) {
-		DEBUG("Failed tearing down network devices used by container. Trying again!");
-		removed_all_netdevs = lxc_delete_network(handler);
-		if (!removed_all_netdevs)
-			DEBUG("Failed tearing down network devices used by container. Not trying again!");
+	DEBUG("Tearing down network devices");
+	if (!lxc_delete_network_priv(handler))
+		DEBUG("Failed tearing down network devices");
+
+	if (!lxc_delete_network_unpriv(handler))
+		DEBUG("Failed tearing down network devices");
+
+	if (handler->netnsfd >= 0) {
+		close(handler->netnsfd);
+		handler->netnsfd = -1;
 	}
 
 out_detach_blockdev:
@@ -1692,7 +1641,7 @@ static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 	int ret = 0;
 	struct lxc_container *c;
 	if (handler->conf->rootfs.path && handler->conf->rootfs.mount) {
-		bret = do_destroy_container(handler->conf);
+		bret = do_destroy_container(handler);
 		if (!bret) {
 			ERROR("Error destroying rootfs for container \"%s\".", name);
 			return;
@@ -1718,7 +1667,7 @@ static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 		}
 	}
 
-	if (am_unpriv())
+	if (!handler->am_root)
 		ret = userns_exec_1(handler->conf, lxc_rmdir_onedev_wrapper,
 				    destroy, "lxc_rmdir_onedev_wrapper");
 	else
@@ -1737,14 +1686,14 @@ static int lxc_rmdir_onedev_wrapper(void *data)
 	return lxc_rmdir_onedev(arg, NULL);
 }
 
-static bool do_destroy_container(struct lxc_conf *conf) {
-	if (am_unpriv()) {
-		if (userns_exec_1(conf, storage_destroy_wrapper, conf,
-				  "storage_destroy_wrapper") < 0)
+static bool do_destroy_container(struct lxc_handler *handler) {
+	if (!handler->am_root) {
+		if (userns_exec_1(handler->conf, storage_destroy_wrapper,
+				  handler->conf, "storage_destroy_wrapper") < 0)
 			return false;
 
 		return true;
 	}
 
-	return storage_destroy(conf);
+	return storage_destroy(handler->conf);
 }

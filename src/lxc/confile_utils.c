@@ -260,6 +260,15 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 		switch (netdev->type) {
 		case LXC_NET_VETH:
 			TRACE("type: veth");
+			if (netdev->priv.veth_attr.pair)
+				TRACE("veth pair: %s",
+				      netdev->priv.veth_attr.pair);
+			if (netdev->priv.veth_attr.veth1[0] != '\0')
+				TRACE("veth1 : %s",
+				      netdev->priv.veth_attr.veth1);
+			if (netdev->priv.veth_attr.ifindex > 0)
+				TRACE("host side ifindex for veth device: %d",
+				      netdev->priv.veth_attr.ifindex);
 			break;
 		case LXC_NET_MACVLAN:
 			TRACE("type: macvlan");
@@ -269,6 +278,10 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 			break;
 		case LXC_NET_PHYS:
 			TRACE("type: phys");
+			if (netdev->priv.phys_attr.ifindex > 0) {
+				TRACE("host side ifindex for phys device: %d",
+				      netdev->priv.phys_attr.ifindex);
+			}
 			break;
 		case LXC_NET_EMPTY:
 			TRACE("type: empty");
@@ -295,4 +308,15 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 		if (netdev->downscript)
 			TRACE("downscript: %s", netdev->downscript);
 	}
+}
+
+int network_ifname(char *valuep, const char *value)
+{
+	if (strlen(value) >= IFNAMSIZ) {
+		ERROR("Network devie name \"%s\" is too long (>= %zu)", value,
+		      (size_t)IFNAMSIZ);
+	}
+
+	strcpy(valuep, value);
+	return 0;
 }

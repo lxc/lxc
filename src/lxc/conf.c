@@ -2515,14 +2515,19 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 					  lxc_map_ids_exec_wrapper,
 					  (void *)mapbuf);
 			if (ret < 0) {
-				ERROR("new%cidmap failed to write mapping: %s",
-				      u_or_g, cmd_output);
+				ERROR("new%cidmap failed to write mapping \"%s\": %s",
+				      u_or_g, cmd_output, mapbuf);
 				return -1;
 			}
+			TRACE("new%cidmap wrote mapping \"%s\"", u_or_g, mapbuf);
 		} else {
 			ret = write_id_mapping(type, pid, mapbuf, pos - mapbuf);
-			if (ret < 0)
+			if (ret < 0) {
+				ERROR("Failed to write mapping \"%s\": %s",
+				      cmd_output, mapbuf);
 				return -1;
+			}
+			TRACE("Wrote mapping \"%s\"", mapbuf);
 		}
 
 		memset(mapbuf, 0, sizeof(mapbuf));
@@ -3006,41 +3011,36 @@ static bool verify_start_hooks(struct lxc_conf *conf)
 static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 {
 	int i;
-	int *ttyfds;
-	struct lxc_pty_info *pty_info;
 	struct lxc_conf *conf = handler->conf;
-	const struct lxc_tty_info *tty_info = &conf->tty_info;
-	int sock = handler->ttysock[0];
+	struct lxc_tty_info *tty_info = &conf->tty_info;
+	int sock = handler->data_sock[0];
 	int ret = -1;
-	size_t num_ttyfds = (2 * conf->tty);
 
-	ttyfds = malloc(num_ttyfds * sizeof(int));
-	if (!ttyfds)
-		return -1;
+	if (!conf->tty)
+		return 0;
 
-	for (i = 0; i < num_ttyfds; i++) {
-		pty_info = &tty_info->pty_info[i / 2];
-		ttyfds[i++] = pty_info->slave;
-		ttyfds[i] = pty_info->master;
-		TRACE("send pty \"%s\" with master fd %d and slave fd %d to "
-		      "parent",
-		      pty_info->name, pty_info->master, pty_info->slave);
+	for (i = 0; i < conf->tty; i++) {
+		int ttyfds[2];
+		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
+
+		ttyfds[0] = pty_info->master;
+		ttyfds[1] = pty_info->slave;
+
+		ret = lxc_abstract_unix_send_fds(sock, ttyfds, 2, NULL, 0);
+		if (ret < 0)
+			break;
+
+		TRACE("Send pty \"%s\" with master fd %d and slave fd %d to "
+		      "parent", pty_info->name, pty_info->master, pty_info->slave);
 	}
 
-	ret = lxc_abstract_unix_send_fds(sock, ttyfds, num_ttyfds, NULL, 0);
 	if (ret < 0)
-		ERROR("failed to send %d ttys to parent: %s", conf->tty,
+		ERROR("Failed to send %d ttys to parent: %s", conf->tty,
 		      strerror(errno));
 	else
-		TRACE("sent %d ttys to parent", conf->tty);
+		TRACE("Sent %d ttys to parent", conf->tty);
 
-	close(handler->ttysock[0]);
-	close(handler->ttysock[1]);
-
-	for (i = 0; i < num_ttyfds; i++)
-		close(ttyfds[i]);
-
-	free(ttyfds);
+	lxc_delete_tty(tty_info);
 
 	return ret;
 }
@@ -3065,6 +3065,11 @@ int lxc_setup(struct lxc_handler *handler)
 
 	if (lxc_setup_network_in_child_namespaces(lxc_conf, &lxc_conf->network)) {
 		ERROR("failed to setup the network for '%s'", name);
+		return -1;
+	}
+
+	if (lxc_network_send_name_and_ifindex_to_parent(handler) < 0) {
+		ERROR("Failed to network device names and ifindices to parent");
 		return -1;
 	}
 
@@ -3243,10 +3248,6 @@ static void lxc_remove_nic(struct lxc_list *it)
 
 	lxc_list_del(it);
 
-	free(netdev->link);
-	free(netdev->name);
-	if (netdev->type == LXC_NET_VETH)
-		free(netdev->priv.veth_attr.pair);
 	free(netdev->upscript);
 	free(netdev->downscript);
 	free(netdev->hwaddr);
@@ -3469,17 +3470,6 @@ int lxc_clear_hooks(struct lxc_conf *c, const char *key)
 	return 0;
 }
 
-static void lxc_clear_saved_nics(struct lxc_conf *conf)
-{
-	int i;
-
-	if (!conf->saved_nics)
-		return;
-	for (i=0; i < conf->num_savednics; i++)
-		free(conf->saved_nics[i].orig_name);
-	free(conf->saved_nics);
-}
-
 static inline void lxc_clear_aliens(struct lxc_conf *conf)
 {
 	struct lxc_list *it,*next;
@@ -3533,7 +3523,6 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_cgroups(conf, "lxc.cgroup");
 	lxc_clear_hooks(conf, "lxc.hook");
 	lxc_clear_mount_entries(conf);
-	lxc_clear_saved_nics(conf);
 	lxc_clear_idmaps(conf);
 	lxc_clear_groups(conf);
 	lxc_clear_includes(conf);

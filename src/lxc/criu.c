@@ -126,6 +126,47 @@ static int load_tty_major_minor(char *directory, char *output, int len)
 	return 0;
 }
 
+static int cmp_version(const char *v1, const char *v2)
+{
+	int ret;
+	int oct_v1[3], oct_v2[3];
+
+	memset(oct_v1, -1, sizeof(oct_v1));
+	memset(oct_v2, -1, sizeof(oct_v2));
+
+	ret = sscanf(v1, "%d.%d.%d", &oct_v1[0], &oct_v1[1], &oct_v1[2]);
+	if (ret < 1)
+		return -1;
+
+	ret = sscanf(v2, "%d.%d.%d", &oct_v2[0], &oct_v2[1], &oct_v2[2]);
+	if (ret < 1)
+		return -1;
+
+	/* Major version is greater. */
+	if (oct_v1[0] > oct_v2[0])
+		return 1;
+
+	if (oct_v1[0] < oct_v2[0])
+		return -1;
+
+	/* Minor number is greater.*/
+	if (oct_v1[1] > oct_v2[1])
+		return 1;
+
+	if (oct_v1[1] < oct_v2[1])
+		return -1;
+
+	/* Patch number is greater. */
+	if (oct_v1[2] > oct_v2[2])
+		return 1;
+
+	/* Patch numbers are equal. */
+	if (oct_v1[2] == oct_v2[2])
+		return 0;
+
+	return -1;
+}
+
 static void exec_criu(struct criu_opts *opts)
 {
 	char **argv, log[PATH_MAX];
@@ -499,7 +540,7 @@ static void exec_criu(struct criu_opts *opts)
 			struct lxc_netdev *n = it->elem;
 			bool external_not_veth;
 
-			if (strcmp(opts->criu_version, CRIU_EXTERNAL_NOT_VETH) >= 0) {
+			if (cmp_version(opts->criu_version, CRIU_EXTERNAL_NOT_VETH) >= 0) {
 				/* Since criu version 2.8 the usage of --veth-pair
 				 * has been deprecated:
 				 * git tag --contains f2037e6d3445fc400
@@ -523,7 +564,7 @@ static void exec_criu(struct criu_opts *opts)
 			case LXC_NET_VETH:
 				veth = n->priv.veth_attr.pair;
 
-				if (n->link) {
+				if (n->link[0] != '\0') {
 					if (external_not_veth)
 						fmt = "veth[%s]:%s@%s";
 					else
@@ -542,7 +583,7 @@ static void exec_criu(struct criu_opts *opts)
 					goto err;
 				break;
 			case LXC_NET_MACVLAN:
-				if (!n->link) {
+				if (n->link[0] == '\0') {
 					ERROR("no host interface for macvlan %s", n->name);
 					goto err;
 				}
@@ -764,11 +805,13 @@ static bool restore_net_info(struct lxc_container *c)
 
 		snprintf(template, sizeof(template), "vethXXXXXX");
 
-		if (!netdev->priv.veth_attr.pair)
-			netdev->priv.veth_attr.pair = lxc_mkifname(template);
+		if (netdev->priv.veth_attr.pair[0] == '\0' &&
+		    netdev->priv.veth_attr.veth1[0] == '\0') {
+			if (!lxc_mkifname(template))
+				goto out_unlock;
 
-		if (!netdev->priv.veth_attr.pair)
-			goto out_unlock;
+			strcpy(netdev->priv.veth_attr.veth1, template);
+		}
 	}
 
 	has_error = false;
