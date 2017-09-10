@@ -188,7 +188,8 @@ int main(int argc, char *argv[]) {
                 }
                 modes[i] = tok;
             }
-            modes[i] = NULL;
+	    if (modes)
+		    modes[i] = NULL;
             break;
         }
         default: /* '?' */
