@@ -494,7 +494,6 @@ extern struct lxc_popen_FILE *lxc_popen(const char *command)
 		int child_std_end = STDOUT_FILENO;
 
 		close(parent_end);
-		parent_end = -1;
 
 		if (child_end != child_std_end) {
 			/* dup2() doesn't dup close-on-exec flag */
@@ -533,7 +532,6 @@ extern struct lxc_popen_FILE *lxc_popen(const char *command)
 	/* parent */
 
 	close(child_end);
-	child_end = -1;
 
 	if (child_pid < 0) {
 		ERROR("fork failure");
