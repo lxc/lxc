@@ -228,6 +228,9 @@ int main(int argc, char *argv[])
 	 *	dest: del + 1 == OUNT|PID
 	 *	src:  del + 3 == NT|PID
 	 */
+	if (!namespaces)
+		usage(argv[0]);
+
 	while ((del = strstr(namespaces, "MOUNT")))
 		memmove(del + 1, del + 3, strlen(del) - 2);
 
