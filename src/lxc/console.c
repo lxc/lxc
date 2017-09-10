@@ -228,11 +228,6 @@ extern int lxc_console_mainloop_add(struct lxc_epoll_descr *descr,
 {
 	struct lxc_console *console = &conf->console;
 
-	if (conf->is_execute) {
-		INFO("no console for lxc-execute.");
-		return 0;
-	}
-
 	if (!conf->rootfs.path) {
 		INFO("no rootfs, no console.");
 		return 0;
@@ -525,11 +520,6 @@ int lxc_console_create(struct lxc_conf *conf)
 {
 	struct lxc_console *console = &conf->console;
 	int ret;
-
-	if (conf->is_execute) {
-		INFO("not allocating a console device for lxc-execute.");
-		return 0;
-	}
 
 	if (!conf->rootfs.path) {
 		INFO("container does not have a rootfs, console device will be shared with the host");
