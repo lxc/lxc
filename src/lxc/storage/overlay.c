@@ -201,9 +201,8 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 
 		nsrc = strchr(osrc, ':') + 1;
 		if ((nsrc != osrc + 8) && (nsrc != osrc + 10)) {
+			ERROR("Detected \":\" in \"%s\" at wrong position", osrc);
 			free(osrc);
-			ERROR("Detected \":\" in \"%s\" at wrong position",
-			      osrc);
 			return -22;
 		}
 
@@ -220,9 +219,9 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 
 		ret = mkdir(ndelta, 0755);
 		if (ret < 0 && errno != EEXIST) {
+			SYSERROR("Failed to create directory \"%s\"", ndelta);
 			free(osrc);
 			free(ndelta);
-			SYSERROR("Failed to create directory \"%s\"", ndelta);
 			return -1;
 		}
 
@@ -238,9 +237,9 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 		 */
 		lastslash = strrchr(ndelta, '/');
 		if (!lastslash) {
+			ERROR("Failed to detect \"/\" in \"%s\"", ndelta);
 			free(osrc);
 			free(ndelta);
-			ERROR("Failed to detect \"/\" in \"%s\"", ndelta);
 			return -1;
 		}
 		lastslash++;
@@ -260,10 +259,10 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 
 		ret = mkdir(work, 0755);
 		if (ret < 0 && errno != EEXIST) {
+			SYSERROR("Failed to create directory \"%s\"", ndelta);
 			free(osrc);
 			free(ndelta);
 			free(work);
-			SYSERROR("Failed to create directory \"%s\"", ndelta);
 			return -1;
 		}
 
@@ -323,7 +322,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 
 		s1 = strrchr(clean_old_path, '/');
 		if (!s1) {
-			ERROR("Failed to detect \"/\" in string \"%s\"", s1);
+			ERROR("Failed to detect \"/\" in string \"%s\"", clean_old_path);
 			free(clean_old_path);
 			free(clean_new_path);
 			return -1;
@@ -331,7 +330,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 
 		s2 = strrchr(clean_new_path, '/');
 		if (!s2) {
-			ERROR("Failed to detect \"/\" in string \"%s\"", s2);
+			ERROR("Failed to detect \"/\" in string \"%s\"", clean_new_path);
 			free(clean_old_path);
 			free(clean_new_path);
 			return -1;
