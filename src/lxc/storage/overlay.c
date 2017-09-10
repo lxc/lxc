@@ -109,9 +109,9 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 			return -1;
 		}
 
-		strncpy(delta, new->dest, lastslashidx + 1);
-		strncpy(delta + lastslashidx, "delta0", sizeof("delta0") - 1);
-		delta[lastslashidx + sizeof("delta0")] = '\0';
+		memcpy(delta, new->dest, lastslashidx + 1);
+		memcpy(delta + lastslashidx, "delta0", sizeof("delta0") - 1);
+		delta[lastslashidx + sizeof("delta0") - 1] = '\0';
 
 		ret = mkdir(delta, 0755);
 		if (ret < 0 && errno != EEXIST) {
@@ -141,12 +141,13 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 			return -1;
 		}
 
-		strncpy(work, new->dest, lastslashidx + 1);
-		strncpy(work + lastslashidx, "olwork", sizeof("olwork") - 1);
-		work[lastslashidx + sizeof("olwork")] = '\0';
+		memcpy(work, new->dest, lastslashidx + 1);
+		memcpy(work + lastslashidx, "olwork", sizeof("olwork") - 1);
+		work[lastslashidx + sizeof("olwork") - 1] = '\0';
 
-		if (mkdir(work, 0755) < 0) {
-			SYSERROR("error: mkdir %s", work);
+		ret = mkdir(work, 0755);
+		if (ret < 0) {
+			SYSERROR("Failed to create directory \"%s\"", work);
 			free(delta);
 			free(work);
 			return -1;
@@ -200,9 +201,8 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 
 		nsrc = strchr(osrc, ':') + 1;
 		if ((nsrc != osrc + 8) && (nsrc != osrc + 10)) {
+			ERROR("Detected \":\" in \"%s\" at wrong position", osrc);
 			free(osrc);
-			ERROR("Detected \":\" in \"%s\" at wrong position",
-			      osrc);
 			return -22;
 		}
 
@@ -219,9 +219,9 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 
 		ret = mkdir(ndelta, 0755);
 		if (ret < 0 && errno != EEXIST) {
+			SYSERROR("Failed to create directory \"%s\"", ndelta);
 			free(osrc);
 			free(ndelta);
-			SYSERROR("Failed to create directory \"%s\"", ndelta);
 			return -1;
 		}
 
@@ -237,9 +237,9 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 		 */
 		lastslash = strrchr(ndelta, '/');
 		if (!lastslash) {
+			ERROR("Failed to detect \"/\" in \"%s\"", ndelta);
 			free(osrc);
 			free(ndelta);
-			ERROR("Failed to detect \"/\" in \"%s\"", ndelta);
 			return -1;
 		}
 		lastslash++;
@@ -253,16 +253,16 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 			return -1;
 		}
 
-		strncpy(work, ndelta, lastslashidx + 1);
-		strncpy(work + lastslashidx, "olwork", sizeof("olwork") - 1);
-		work[lastslashidx + sizeof("olwork")] = '\0';
+		memcpy(work, ndelta, lastslashidx + 1);
+		memcpy(work + lastslashidx, "olwork", sizeof("olwork") - 1);
+		work[lastslashidx + sizeof("olwork") - 1] = '\0';
 
 		ret = mkdir(work, 0755);
 		if (ret < 0 && errno != EEXIST) {
+			SYSERROR("Failed to create directory \"%s\"", ndelta);
 			free(osrc);
 			free(ndelta);
 			free(work);
-			SYSERROR("Failed to create directory \"%s\"", ndelta);
 			return -1;
 		}
 
@@ -322,7 +322,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 
 		s1 = strrchr(clean_old_path, '/');
 		if (!s1) {
-			ERROR("Failed to detect \"/\" in string \"%s\"", s1);
+			ERROR("Failed to detect \"/\" in string \"%s\"", clean_old_path);
 			free(clean_old_path);
 			free(clean_new_path);
 			return -1;
@@ -330,7 +330,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 
 		s2 = strrchr(clean_new_path, '/');
 		if (!s2) {
-			ERROR("Failed to detect \"/\" in string \"%s\"", s2);
+			ERROR("Failed to detect \"/\" in string \"%s\"", clean_new_path);
 			free(clean_old_path);
 			free(clean_new_path);
 			return -1;
@@ -417,8 +417,8 @@ int ovl_create(struct lxc_storage *bdev, const char *dest, const char *n,
 		return -1;
 	}
 
-	strncpy(delta, dest, len);
-	strncpy(delta + len - 6, "delta0", sizeof("delta0") - 1);
+	memcpy(delta, dest, len);
+	memcpy(delta + len - 6, "delta0", sizeof("delta0") - 1);
 	delta[len + sizeof("delta0")] = '\0';
 
 	ret = mkdir_p(delta, 0755);
@@ -575,9 +575,9 @@ int ovl_mount(struct lxc_storage *bdev)
 		return -22;
 	}
 
-	strncpy(work, upper, lastslashidx + 1);
-	strncpy(work + lastslashidx, "olwork", sizeof("olwork") - 1);
-	work[lastslashidx + sizeof("olwork")] = '\0';
+	memcpy(work, upper, lastslashidx + 1);
+	memcpy(work + lastslashidx, "olwork", sizeof("olwork") - 1);
+	work[lastslashidx + sizeof("olwork") - 1] = '\0';
 
 	ret = parse_mntopts(bdev->mntopts, &mntflags, &mntdata);
 	if (ret < 0) {
@@ -747,8 +747,9 @@ int ovl_mkdir(const struct mntent *mntent, const struct lxc_rootfs *rootfs,
 	char lxcpath[MAXPATHLEN];
 	char **opts;
 	int ret;
-	size_t arrlen, dirlen, i, len, rootfslen;
+	size_t arrlen, i, len, rootfslen;
 	int fret = -1;
+	size_t dirlen = 0;
 	char *rootfs_dir = NULL, *rootfs_path = NULL, *upperdir = NULL,
 	     *workdir = NULL;
 
@@ -772,8 +773,7 @@ int ovl_mkdir(const struct mntent *mntent, const struct lxc_rootfs *rootfs,
 	}
 
 	if (rootfs_path) {
-		ret =
-		    snprintf(lxcpath, MAXPATHLEN, "%s/%s", lxc_path, lxc_name);
+		ret = snprintf(lxcpath, MAXPATHLEN, "%s/%s", lxc_path, lxc_name);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			goto err;
 
@@ -971,8 +971,8 @@ static int ovl_do_rsync(const char *src, const char *dest,
 	rdata.src = (char *)src;
 	rdata.dest = (char *)dest;
 	if (am_unpriv())
-		ret = userns_exec_1(conf, lxc_rsync_exec_wrapper, &rdata,
-				    "lxc_rsync_exec_wrapper");
+		ret = userns_exec_full(conf, lxc_rsync_exec_wrapper, &rdata,
+				       "lxc_rsync_exec_wrapper");
 	else
 		ret = run_command(cmd_output, sizeof(cmd_output),
 				  lxc_rsync_exec_wrapper, (void *)&rdata);

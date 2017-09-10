@@ -2569,12 +2569,17 @@ static bool has_snapshots(struct lxc_container *c)
 }
 
 static bool do_destroy_container(struct lxc_conf *conf) {
+	int ret;
+
 	if (am_unpriv()) {
-		if (userns_exec_1(conf, storage_destroy_wrapper, conf,
-				  "storage_destroy_wrapper") < 0)
+		ret = userns_exec_full(conf, storage_destroy_wrapper, conf,
+				       "storage_destroy_wrapper");
+		if (ret < 0)
 			return false;
+
 		return true;
 	}
+
 	return storage_destroy(conf);
 }
 
@@ -2708,8 +2713,8 @@ static bool container_destroy(struct lxc_container *c,
 	if (ret < 0 || (size_t)ret >= len)
 		goto out;
 	if (am_unpriv())
-		ret = userns_exec_1(conf, lxc_rmdir_onedev_wrapper, path,
-				    "lxc_rmdir_onedev_wrapper");
+		ret = userns_exec_full(conf, lxc_rmdir_onedev_wrapper, path,
+				       "lxc_rmdir_onedev_wrapper");
 	else
 		ret = lxc_rmdir_onedev(path, "snaps");
 	if (ret < 0) {
@@ -3551,8 +3556,8 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	data.flags = flags;
 	data.hookargs = hookargs;
 	if (am_unpriv())
-		ret = userns_exec_1(c->lxc_conf, clone_update_rootfs_wrapper,
-				    &data, "clone_update_rootfs_wrapper");
+		ret = userns_exec_full(c->lxc_conf, clone_update_rootfs_wrapper,
+				       &data, "clone_update_rootfs_wrapper");
 	else
 		ret = clone_update_rootfs(&data);
 	if (ret < 0)

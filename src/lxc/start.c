@@ -1142,7 +1142,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	bool wants_to_map_ids;
 	int saved_ns_fd[LXC_NS_MAX];
 	struct lxc_list *id_map;
-	int failed_before_rename = 0, preserve_mask = 0;
+	int preserve_mask = 0;
 	bool cgroups_connected = false;
 
 	id_map = &handler->conf->id_map;
@@ -1256,15 +1256,11 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 	}
 
-	if (lxc_sync_wake_child(handler, LXC_SYNC_STARTUP)) {
-		failed_before_rename = 1;
+	if (lxc_sync_wake_child(handler, LXC_SYNC_STARTUP))
 		goto out_delete_net;
-	}
 
-	if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE)) {
-		failed_before_rename = 1;
+	if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE))
 		goto out_delete_net;
-	}
 
 	if (!cgroup_create_legacy(handler)) {
 		ERROR("Failed to setup legacy cgroups for container \"%s\".", name);
@@ -1279,9 +1275,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 
 	if (!cgroup_chown(handler))
-		goto out_delete_net;
-
-	if (failed_before_rename)
 		goto out_delete_net;
 
 	handler->netnsfd = lxc_preserve_ns(handler->pid, "net");
@@ -1596,8 +1589,8 @@ static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 	}
 
 	if (!handler->am_root)
-		ret = userns_exec_1(handler->conf, lxc_rmdir_onedev_wrapper,
-				    destroy, "lxc_rmdir_onedev_wrapper");
+		ret = userns_exec_full(handler->conf, lxc_rmdir_onedev_wrapper,
+				       destroy, "lxc_rmdir_onedev_wrapper");
 	else
 		ret = lxc_rmdir_onedev(destroy, NULL);
 
@@ -1615,9 +1608,12 @@ static int lxc_rmdir_onedev_wrapper(void *data)
 }
 
 static bool do_destroy_container(struct lxc_handler *handler) {
+	int ret;
+
 	if (!handler->am_root) {
-		if (userns_exec_1(handler->conf, storage_destroy_wrapper,
-				  handler->conf, "storage_destroy_wrapper") < 0)
+		ret = userns_exec_full(handler->conf, storage_destroy_wrapper,
+				       handler->conf, "storage_destroy_wrapper");
+		if (ret < 0)
 			return false;
 
 		return true;

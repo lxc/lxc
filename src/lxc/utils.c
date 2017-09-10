@@ -494,7 +494,6 @@ extern struct lxc_popen_FILE *lxc_popen(const char *command)
 		int child_std_end = STDOUT_FILENO;
 
 		close(parent_end);
-		parent_end = -1;
 
 		if (child_end != child_std_end) {
 			/* dup2() doesn't dup close-on-exec flag */
@@ -533,7 +532,6 @@ extern struct lxc_popen_FILE *lxc_popen(const char *command)
 	/* parent */
 
 	close(child_end);
-	child_end = -1;
 
 	if (child_pid < 0) {
 		ERROR("fork failure");
@@ -2330,9 +2328,11 @@ int run_command(char *buf, size_t buf_size, int (*child_fn)(void *), void *args)
 	/* close the write-end of the pipe */
 	close(pipefd[1]);
 
-	bytes = read(pipefd[0], buf, (buf_size > 0) ? (buf_size - 1) : 0);
-	if (bytes > 0)
-		buf[bytes - 1] = '\0';
+	if (buf && buf_size > 0) {
+		bytes = read(pipefd[0], buf, buf_size - 1);
+		if (bytes > 0)
+			buf[bytes - 1] = '\0';
+	}
 
 	fret = wait_for_pid(child);
 	/* close the read-end of the pipe */
