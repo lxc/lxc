@@ -316,10 +316,8 @@ int main(int argc, char *argv[])
 
 	argv = &argv[optind];
 	argc = argc - optind;
-	if (argc < 1) {
+	if (argc < 1)
 		argv = default_args;
-		argc = 1;
-	}
 
 	if (pipe(pipe1) < 0 || pipe(pipe2) < 0) {
 		perror("pipe");
@@ -367,10 +365,9 @@ int main(int argc, char *argv[])
 
 	buf[0] = '1';
 
-	if (lxc_map_ids(&active_map, pid)) {
+	if (lxc_map_ids(&active_map, pid))
 		fprintf(stderr, "error mapping child\n");
-		ret = 0;
-	}
+
 	if (write(pipe2[1], buf, 1) < 0) {
 		perror("write to pipe");
 		exit(EXIT_FAILURE);
