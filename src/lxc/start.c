@@ -962,33 +962,6 @@ static int do_start(void *data)
 		goto out_warn_father;
 	}
 
-	/* The container has been setup. We can now switch to an unprivileged
-	 * uid/gid.
-	 */
-	if (handler->conf->is_execute) {
-		bool have_cap_setgid;
-		uid_t new_uid = handler->conf->init_uid;
-		gid_t new_gid = handler->conf->init_gid;
-
-		/* If we are in a new user namespace we already dropped all
-		 * groups when we switched to root in the new user namespace
-		 * further above. Only drop groups if we can, so ensure that we
-		 * have necessary privilege.
-		 */
-		#if HAVE_LIBCAP
-		have_cap_setgid = lxc_proc_cap_is_set(CAP_SETGID, CAP_EFFECTIVE);
-		#else
-		have_cap_setgid = false;
-		#endif
-		if (lxc_list_empty(&handler->conf->id_map) && have_cap_setgid) {
-			if (lxc_setgroups(0, NULL) < 0)
-				goto out_warn_father;
-		}
-
-		if (lxc_switch_uid_gid(new_uid, new_gid) < 0)
-			goto out_warn_father;
-	}
-
 	/* The clearenv() and putenv() calls have been moved here to allow us to
 	 * use environment variables passed to the various hooks, such as the
 	 * start hook above. Not all of the variables like CONFIG_PATH or ROOTFS
@@ -1043,6 +1016,33 @@ static int do_start(void *data)
 
 	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP_LIMITS))
 		goto out_warn_father;
+
+	/* The container has been setup. We can now switch to an unprivileged
+	 * uid/gid.
+	 */
+	if (handler->conf->is_execute) {
+		bool have_cap_setgid;
+		uid_t new_uid = handler->conf->init_uid;
+		gid_t new_gid = handler->conf->init_gid;
+
+		/* If we are in a new user namespace we already dropped all
+		 * groups when we switched to root in the new user namespace
+		 * further above. Only drop groups if we can, so ensure that we
+		 * have necessary privilege.
+		 */
+		#if HAVE_LIBCAP
+		have_cap_setgid = lxc_proc_cap_is_set(CAP_SETGID, CAP_EFFECTIVE);
+		#else
+		have_cap_setgid = false;
+		#endif
+		if (lxc_list_empty(&handler->conf->id_map) && have_cap_setgid) {
+			if (lxc_setgroups(0, NULL) < 0)
+				goto out_warn_father;
+		}
+
+		if (lxc_switch_uid_gid(new_uid, new_gid) < 0)
+			goto out_warn_father;
+	}
 
 	/* After this call, we are in error because this ops should not return
 	 * as it execs.
