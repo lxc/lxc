@@ -337,6 +337,11 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 	struct rsync_data data = {0};
 	char cmd_output[MAXPATHLEN] = {0};
 
+	if (!src) {
+		ERROR("No rootfs specified");
+		return NULL;
+	}
+
 	/* If the container name doesn't show up in the rootfs path, then we
 	 * don't know how to come up with a new name.
 	 */
