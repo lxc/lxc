@@ -121,7 +121,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       </varlistentry>
 
       <varlistentry>
-	<term>lxc-monitor -n '[f|b].*'</term>
+	<term>lxc-monitor -n '[fb].*'</term>
 	<listitem>
 	<para>
 	  will monitor the different states for container with the
