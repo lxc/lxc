@@ -186,7 +186,8 @@ configure_plamo() {
   # glibc configure
   mv $rootfs/etc/ld.so.conf{.new,}
   chroot $rootfs ldconfig
-  echo "Please change root password!"
+
+  # delete unnecessary process from rc.S
   ed - $rootfs/etc/rc.d/rc.S <<- "EOF"
 	/^mount -w -n -t proc/;/^mkdir \/dev\/shm/-1d
 	/^mknod \/dev\/null/;/^# Clean \/etc\/mtab/-2d
@@ -194,13 +195,22 @@ configure_plamo() {
 	/^# Check the integrity/;/^# Clean up temporary/-1d
 	w
 	EOF
-  # /etc/rc.d/rc.M
+
+  # delete unnecessary process from rc.M
   ed - $rootfs/etc/rc.d/rc.M <<- "EOF"
 	/^# Screen blanks/;/^# Initialize ip6tables/-1d
 	/^# Initialize sysctl/;/^echo "Starting services/-1d
 	/^sync/;/^# All done/-1d
 	w
 	EOF
+
+  # delete unnecessary process from rc.6
+  ed - $rootfs/etc/rc.d/rc.6 <<- "EOF"
+	/^# Save system time/;/^# Unmount any remote filesystems/-1d
+	/^# Turn off swap/;/^# See if this is a powerfail situation/-1d
+	w
+	EOF
+
   # /etc/rc.d/rc.inet1.tradnet
   head -n-93 $rootfs/sbin/netconfig.tradnet > /tmp/netconfig.rconly
   cat <<- EOF >> /tmp/netconfig.rconly
