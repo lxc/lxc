@@ -989,6 +989,23 @@ static int do_start(void *data)
 		INFO("Unshared CLONE_NEWCGROUP.");
 	}
 
+	/* The clearenv() and putenv() calls have been moved here to allow us to
+	 * use environment variables passed to the various hooks, such as the
+	 * start hook above. Not all of the variables like CONFIG_PATH or ROOTFS
+	 * are valid in this context but others are.
+	 */
+	if (clearenv()) {
+		SYSERROR("Failed to clear environment.");
+		/* Don't error out though. */
+	}
+
+	lxc_list_for_each(iterator, &handler->conf->environment) {
+		if (putenv((char *)iterator->elem)) {
+			SYSERROR("Failed to set environment variable: %s.", (char *)iterator->elem);
+			goto out_warn_father;
+		}
+	}
+
 	/* Setup the container, ip, names, utsname, ... */
 	ret = lxc_setup(handler);
 	close(handler->data_sock[0]);
@@ -1027,35 +1044,6 @@ static int do_start(void *data)
 		goto out_warn_father;
 	}
 
-	/* The clearenv() and putenv() calls have been moved here to allow us to
-	 * use environment variables passed to the various hooks, such as the
-	 * start hook above. Not all of the variables like CONFIG_PATH or ROOTFS
-	 * are valid in this context but others are.
-	 */
-	if (clearenv()) {
-		SYSERROR("Failed to clear environment.");
-		/* Don't error out though. */
-	}
-
-	lxc_list_for_each(iterator, &handler->conf->environment) {
-		if (putenv((char *)iterator->elem)) {
-			SYSERROR("Failed to set environment variable: %s.", (char *)iterator->elem);
-			goto out_warn_father;
-		}
-	}
-
-	if (putenv("container=lxc")) {
-		SYSERROR("Failed to set environment variable: container=lxc.");
-		goto out_warn_father;
-	}
-
-	if (handler->conf->pty_names) {
-		if (putenv(handler->conf->pty_names)) {
-			SYSERROR("Failed to set environment variable for container ptys.");
-			goto out_warn_father;
-		}
-	}
-
 	close(handler->sigfd);
 
 	if (devnull_fd < 0) {
@@ -1081,6 +1069,18 @@ static int do_start(void *data)
 
 	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP_LIMITS))
 		goto out_warn_father;
+
+	if (putenv("container=lxc")) {
+		SYSERROR("Failed to set environment variable: container=lxc.");
+		goto out_warn_father;
+	}
+
+	if (handler->conf->pty_names) {
+		if (putenv(handler->conf->pty_names)) {
+			SYSERROR("Failed to set environment variable for container ptys.");
+			goto out_warn_father;
+		}
+	}
 
 	/* The container has been setup. We can now switch to an unprivileged
 	 * uid/gid.
