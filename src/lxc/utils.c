@@ -417,6 +417,7 @@ const char** lxc_va_arg_list_to_argv_const(va_list ap, size_t skip)
 
 extern struct lxc_popen_FILE *lxc_popen(const char *command)
 {
+	int ret;
 	struct lxc_popen_FILE *fp = NULL;
 	int parent_end = -1, child_end = -1;
 	int pipe_fds[2];
@@ -436,24 +437,40 @@ extern struct lxc_popen_FILE *lxc_popen(const char *command)
 
 	if (child_pid == 0) {
 		/* child */
-		int child_std_end = STDOUT_FILENO;
 
 		close(parent_end);
 
-		if (child_end != child_std_end) {
+		if (child_end != STDOUT_FILENO) {
 			/* dup2() doesn't dup close-on-exec flag */
-			dup2(child_end, child_std_end);
-
-			/* it's safe not to close child_end here
-			 * as it's marked close-on-exec anyway
-			 */
+			ret = dup2(child_end, STDOUT_FILENO);
+			if (ret < 0)
+				WARN("Failed to duplicate stdout fd");
 		} else {
 			/*
 			 * The descriptor is already the one we will use.
 			 * But it must not be marked close-on-exec.
 			 * Undo the effects.
 			 */
-			if (fcntl(child_end, F_SETFD, 0) != 0) {
+			ret = fcntl(child_end, F_SETFD, 0);
+			if (ret < 0) {
+				SYSERROR("Failed to remove FD_CLOEXEC from fd.");
+				exit(127);
+			}
+		}
+
+		if (child_end != STDERR_FILENO) {
+			/* dup2() doesn't dup close-on-exec flag */
+			ret = dup2(child_end, STDERR_FILENO);
+			if (ret < 0)
+				WARN("Failed to duplicate stdout fd");
+		} else {
+			/*
+			 * The descriptor is already the one we will use.
+			 * But it must not be marked close-on-exec.
+			 * Undo the effects.
+			 */
+			ret = fcntl(child_end, F_SETFD, 0);
+			if (ret < 0) {
 				SYSERROR("Failed to remove FD_CLOEXEC from fd.");
 				exit(127);
 			}
