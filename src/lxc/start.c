@@ -913,16 +913,10 @@ static int do_start(void *data)
 		INFO("Unshared CLONE_NEWCGROUP.");
 	}
 
-	/* The clearenv() and putenv() calls have been moved here to allow us to
-	 * use environment variables passed to the various hooks, such as the
-	 * start hook above. Not all of the variables like CONFIG_PATH or ROOTFS
-	 * are valid in this context but others are.
+	/* Add the requested environment variables to the current environment to
+	 * allow them to be used by the various hooks, such as the start hook
+	 * above.
 	 */
-	if (clearenv()) {
-		SYSERROR("Failed to clear environment.");
-		/* Don't error out though. */
-	}
-
 	lxc_list_for_each(iterator, &handler->conf->environment) {
 		if (putenv((char *)iterator->elem)) {
 			SYSERROR("Failed to set environment variable: %s.", (char *)iterator->elem);
@@ -1004,6 +998,21 @@ static int do_start(void *data)
 
 	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP_LIMITS))
 		goto out_warn_father;
+
+	/* Reset the environment variables the user requested in a clear
+	 * environment.
+	 */
+	if (clearenv()) {
+		SYSERROR("Failed to clear environment.");
+		/* Don't error out though. */
+	}
+
+	lxc_list_for_each(iterator, &handler->conf->environment) {
+		if (putenv((char *)iterator->elem)) {
+			SYSERROR("Failed to set environment variable: %s.", (char *)iterator->elem);
+			goto out_warn_father;
+		}
+	}
 
 	if (putenv("container=lxc")) {
 		SYSERROR("Failed to set environment variable: container=lxc.");
