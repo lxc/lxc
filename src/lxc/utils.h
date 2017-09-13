@@ -190,6 +190,7 @@ static inline int signalfd(int fd, const sigset_t *mask, int flags)
  * without additional wrappers.
  */
 struct lxc_popen_FILE {
+	int pipe;
 	FILE *f;
 	pid_t child_pid;
 };
