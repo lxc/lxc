@@ -1446,6 +1446,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           <listitem><para> LXC_CONFIG_FILE: the path to the container configuration file. </para></listitem>
           <listitem><para> LXC_SRC_NAME: in the case of the clone hook, this is the original container's name. </para></listitem>
           <listitem><para> LXC_ROOTFS_PATH: this is the lxc.rootfs.path entry for the container.  Note this is likely not where the mounted rootfs is to be found, use LXC_ROOTFS_MOUNT for that. </para></listitem>
+          <listitem><para> LXC_CGNS_AWARE: indicated whether the container is cgroup namespace aware.  </para></listitem>
+          <listitem><para> LXC_LOG_LEVEL: the container's log level.  </para></listitem>
         </itemizedlist>
       </para>
       <para>

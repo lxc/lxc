@@ -470,135 +470,105 @@ const char** lxc_va_arg_list_to_argv_const(va_list ap, size_t skip)
 	return (const char**)lxc_va_arg_list_to_argv(ap, skip, 0);
 }
 
-extern struct lxc_popen_FILE *lxc_popen(const char *command)
+struct lxc_popen_FILE *lxc_popen(const char *command)
 {
-	struct lxc_popen_FILE *fp = NULL;
-	int parent_end = -1, child_end = -1;
+	int ret;
 	int pipe_fds[2];
 	pid_t child_pid;
+	struct lxc_popen_FILE *fp = NULL;
 
-	int r = pipe2(pipe_fds, O_CLOEXEC);
-
-	if (r < 0) {
-		ERROR("pipe2 failure");
+	ret = pipe2(pipe_fds, O_CLOEXEC);
+	if (ret < 0)
 		return NULL;
-	}
-
-	parent_end = pipe_fds[0];
-	child_end = pipe_fds[1];
 
 	child_pid = fork();
+	if (child_pid < 0)
+		goto on_error;
 
-	if (child_pid == 0) {
-		/* child */
-		int child_std_end = STDOUT_FILENO;
+	if (!child_pid) {
+		sigset_t mask;
 
-		close(parent_end);
+		close(pipe_fds[0]);
 
-		if (child_end != child_std_end) {
-			/* dup2() doesn't dup close-on-exec flag */
-			dup2(child_end, child_std_end);
-
-			/* it's safe not to close child_end here
-			 * as it's marked close-on-exec anyway
-			 */
-		} else {
-			/*
-			 * The descriptor is already the one we will use.
-			 * But it must not be marked close-on-exec.
-			 * Undo the effects.
-			 */
-			if (fcntl(child_end, F_SETFD, 0) != 0) {
-				SYSERROR("Failed to remove FD_CLOEXEC from fd.");
-				exit(127);
-			}
+		/* duplicate stdout */
+		if (pipe_fds[1] != STDOUT_FILENO)
+			ret = dup2(pipe_fds[1], STDOUT_FILENO);
+		else
+			ret = fcntl(pipe_fds[1], F_SETFD, 0);
+		if (ret < 0) {
+			close(pipe_fds[1]);
+			exit(EXIT_FAILURE);
 		}
 
-		/*
-		 * Unblock signals.
-		 * This is the main/only reason
-		 * why we do our lousy popen() emulation.
-		 */
-		{
-			sigset_t mask;
-			sigfillset(&mask);
-			sigprocmask(SIG_UNBLOCK, &mask, NULL);
-		}
+		/* duplicate stderr */
+		if (pipe_fds[1] != STDERR_FILENO)
+			ret = dup2(pipe_fds[1], STDERR_FILENO);
+		else
+			ret = fcntl(pipe_fds[1], F_SETFD, 0);
+		close(pipe_fds[1]);
+		if (ret < 0)
+			exit(EXIT_FAILURE);
 
-		execl("/bin/sh", "sh", "-c", command, (char *) NULL);
+		/* unblock all signals */
+		ret = sigfillset(&mask);
+		if (ret < 0)
+			exit(EXIT_FAILURE);
+
+		ret = sigprocmask(SIG_UNBLOCK, &mask, NULL);
+		if (ret < 0)
+			exit(EXIT_FAILURE);
+
+		execl("/bin/sh", "sh", "-c", command, (char *)NULL);
 		exit(127);
 	}
 
-	/* parent */
+	close(pipe_fds[1]);
+	pipe_fds[1] = -1;
 
-	close(child_end);
-
-	if (child_pid < 0) {
-		ERROR("fork failure");
-		goto error;
-	}
-
-	fp = calloc(1, sizeof(*fp));
-	if (!fp) {
-		ERROR("failed to allocate memory");
-		goto error;
-	}
-
-	fp->f = fdopen(parent_end, "r");
-	if (!fp->f) {
-		ERROR("fdopen failure");
-		goto error;
-	}
+	fp = malloc(sizeof(*fp));
+	if (!fp)
+		goto on_error;
 
 	fp->child_pid = child_pid;
+	fp->pipe = pipe_fds[0];
+
+	fp->f = fdopen(pipe_fds[0], "r");
+	if (!fp->f)
+		goto on_error;
 
 	return fp;
 
-error:
-
-	if (fp) {
-		if (fp->f) {
-			fclose(fp->f);
-			parent_end = -1; /* so we do not close it second time */
-		}
-
+on_error:
+	if (fp)
 		free(fp);
-	}
 
-	if (parent_end != -1)
-		close(parent_end);
+	if (pipe_fds[0] >= 0)
+		close(pipe_fds[0]);
+
+	if (pipe_fds[1] >= 0)
+		close(pipe_fds[1]);
 
 	return NULL;
 }
 
-extern int lxc_pclose(struct lxc_popen_FILE *fp)
+int lxc_pclose(struct lxc_popen_FILE *fp)
 {
-	FILE *f = NULL;
-	pid_t child_pid = 0;
-	int wstatus = 0;
 	pid_t wait_pid;
+	int wstatus = 0;
 
-	if (fp) {
-		f = fp->f;
-		child_pid = fp->child_pid;
-		/* free memory (we still need to close file stream) */
-		free(fp);
-		fp = NULL;
-	}
-
-	if (!f || fclose(f)) {
-		ERROR("fclose failure");
+	if (!fp)
 		return -1;
-	}
 
 	do {
-		wait_pid = waitpid(child_pid, &wstatus, 0);
-	} while (wait_pid == -1 && errno == EINTR);
+		wait_pid = waitpid(fp->child_pid, &wstatus, 0);
+	} while (wait_pid < 0 && errno == EINTR);
 
-	if (wait_pid == -1) {
-		ERROR("waitpid failure");
+	close(fp->pipe);
+	fclose(fp->f);
+	free(fp);
+
+	if (wait_pid < 0)
 		return -1;
-	}
 
 	return wstatus;
 }
