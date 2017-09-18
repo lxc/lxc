@@ -185,7 +185,7 @@ fetch_apk_keys() {
 
 	echo "$APK_KEYS_SHA256" | while read -r line; do
 		keyname="${line##* }"
-		if [ ! -f "$keyname" ]; then
+		if [ ! -s "$keyname" ]; then
 			fetch "$APK_KEYS_URI/$keyname" > "$keyname"
 		fi
 		echo "$line" | sha256sum -c -
@@ -210,7 +210,7 @@ fetch_apk_static() {
 	fetch "$MIRROR_URL/latest-stable/main/$arch/${pkg_name}-${pkg_ver}.apk" \
 		| tar -xz -C "$dest" sbin/  # --extract --gzip --directory
 
-	[ -f "$dest/sbin/apk.static" ] || die 2 'apk.static not found'
+	[ -s "$dest/sbin/apk.static" ] || die 2 'apk.static not found'
 
 	local keyname=$(echo "$dest"/sbin/apk.static.*.pub | sed 's/.*\.SIGN\.RSA\.//')
 	openssl dgst -sha1 \
