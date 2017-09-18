@@ -379,7 +379,7 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 		if (ret < 0 && errno == ENOENT) {
 			ret = mkdir_p(orig->dest, 0755);
 			if (ret < 0)
-				WARN("Failed to create directoy \"%s\"", orig->dest);
+				WARN("Failed to create directory \"%s\"", orig->dest);
 		}
 	}
 
