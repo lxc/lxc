@@ -148,7 +148,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       </varlistentry>
 
       <varlistentry>
-	<term>lxc-monitor -n '[f|b].*'</term>
+	<term>lxc-monitor -n '[fb].*'</term>
 	<listitem>
 	<para>
           <!--
