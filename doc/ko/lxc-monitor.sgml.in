@@ -148,7 +148,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       </varlistentry>
 
       <varlistentry>
-	<term>lxc-monitor -n '[f|b].*'</term>
+	<term>lxc-monitor -n '[fb].*'</term>
 	<listitem>
 	<para>
           <!--
