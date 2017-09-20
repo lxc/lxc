@@ -754,12 +754,14 @@ int zfs_create(struct lxc_storage *bdev, const char *dest, const char *n,
 	cmd_args.argv = argv;
 	ret = run_command(cmd_output, sizeof(cmd_output),
 			  zfs_create_exec_wrapper, (void *)&cmd_args);
-	if (ret < 0)
+	if (ret < 0) {
 		ERROR("Failed to create zfs dataset \"%s\": %s", bdev->src, cmd_output);
-	else if (cmd_output[0] != '\0')
+		return -1;
+	} else if (cmd_output[0] != '\0') {
 		INFO("Created zfs dataset \"%s\": %s", bdev->src, cmd_output);
-	else
+	} else {
 		TRACE("Created zfs dataset \"%s\"", bdev->src);
+	}
 
 	ret = mkdir_p(bdev->dest, 0755);
 	if (ret < 0 && errno != EEXIST) {
