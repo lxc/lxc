@@ -236,7 +236,8 @@ extern int memfd_create(const char *name, unsigned int flags);
 
 char *lxchook_names[NUM_LXC_HOOKS] = {"pre-start", "pre-mount", "mount",
 				      "autodev",   "start",     "stop",
-				      "post-stop", "clone",     "destroy"};
+				      "post-stop", "clone",     "destroy",
+				      "start-host"};
 
 struct mount_opt {
 	char *name;
@@ -3285,6 +3286,8 @@ int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
 
 	if (strcmp(hook, "pre-start") == 0)
 		which = LXCHOOK_PRESTART;
+	else if (strcmp(hook, "start-host") == 0)
+		which = LXCHOOK_START_HOST;
 	else if (strcmp(hook, "pre-mount") == 0)
 		which = LXCHOOK_PREMOUNT;
 	else if (strcmp(hook, "mount") == 0)
