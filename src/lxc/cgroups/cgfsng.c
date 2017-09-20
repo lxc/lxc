@@ -2009,15 +2009,16 @@ out:
  */
 static int lxc_cgroup_set_data(const char *filename, const char *value, struct cgfsng_handler_data *d)
 {
-	char *subsystem = NULL, *p;
-	int ret = 0;
-	struct hierarchy *h;
+	char *fullpath, *p;
 	/* "b|c <2^64-1>:<2^64-1> r|w|m" = 47 chars max */
 	char converted_value[50];
+	struct hierarchy *h;
+	int ret = 0;
+	char *controller = NULL;
 
-	subsystem = alloca(strlen(filename) + 1);
-	strcpy(subsystem, filename);
-	if ((p = strchr(subsystem, '.')) != NULL)
+	controller = alloca(strlen(filename) + 1);
+	strcpy(controller, filename);
+	if ((p = strchr(controller, '.')) != NULL)
 		*p = '\0';
 
 	if (strcmp("devices.allow", filename) == 0 && value[0] == '/') {
@@ -2028,12 +2029,18 @@ static int lxc_cgroup_set_data(const char *filename, const char *value, struct c
 
 	}
 
-	h = get_hierarchy(subsystem);
-	if (h) {
-		char *fullpath = must_make_path(h->fullcgpath, filename, NULL);
-		ret = lxc_write_to_file(fullpath, value, strlen(value), false);
-		free(fullpath);
+	h = get_hierarchy(controller);
+	if (!h) {
+		ERROR("Failed to setup limits for the \"%s\" controller. "
+		      "The controller seems to be unused by \"cgfsng\" cgroup "
+		      "driver or not enabled on the cgroup hierarchy",
+		      controller);
+		return -1;
 	}
+
+	fullpath = must_make_path(h->fullcgpath, filename, NULL);
+	ret = lxc_write_to_file(fullpath, value, strlen(value), false);
+	free(fullpath);
 	return ret;
 }
 
