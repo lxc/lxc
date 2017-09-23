@@ -264,17 +264,18 @@ int lvm_umount(struct lxc_storage *bdev)
 int lvm_compare_lv_attr(const char *path, int pos, const char expected)
 {
 	struct lxc_popen_FILE *f;
-	int ret, len, status;
+	int ret, status;
+	size_t len;
 	char *cmd;
 	char output[12];
-	int start=0;
+	int start = 0;
 	const char *lvscmd = "lvs --unbuffered --noheadings -o lv_attr %s 2>/dev/null";
 
-	len = strlen(lvscmd) + strlen(path) - 1;
+	len = strlen(lvscmd) + strlen(path) + 1;
 	cmd = alloca(len);
 
 	ret = snprintf(cmd, len, lvscmd, path);
-	if (ret < 0 || ret >= len)
+	if (ret < 0 || (size_t)ret >= len)
 		return -1;
 
 	f = lxc_popen(cmd);
@@ -283,6 +284,7 @@ int lvm_compare_lv_attr(const char *path, int pos, const char expected)
 		return -1;
 	}
 
+	ret = 0;
 	if (!fgets(output, 12, f->f))
 		ret = 1;
 
