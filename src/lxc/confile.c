@@ -2299,44 +2299,51 @@ struct parse_line_conf {
 
 static int parse_line(char *buffer, void *data)
 {
-	struct lxc_config_t *config;
 	char *dot, *key, *line, *linep, *value;
-	struct parse_line_conf *plc = data;
+	bool empty_line;
+	struct lxc_config_t *config;
 	int ret = 0;
+	char *dup = buffer;
+	struct parse_line_conf *plc = data;
 
-	if (lxc_is_line_empty(buffer))
-		return 0;
+	/* If there are newlines in the config file we should keep them. */
+	empty_line = lxc_is_line_empty(dup);
+	if (empty_line)
+		dup = "\n";
 
 	/* we have to dup the buffer otherwise, at the re-exec for
 	 * reboot we modified the original string on the stack by
 	 * replacing '=' by '\0' below
 	 */
 	linep = line = strdup(buffer);
-	if (!line) {
-		SYSERROR("failed to allocate memory for '%s'", buffer);
+	if (!line)
 		return -1;
+
+	if (!plc->from_include) {
+		ret = append_unexp_config_line(line, plc->conf);
+		if (ret < 0)
+			goto on_error;
 	}
 
-	if (!plc->from_include)
-		if ((ret = append_unexp_config_line(line, plc->conf)))
-			goto out;
+	if (empty_line)
+		return 0;
 
 	line += lxc_char_left_gc(line, strlen(line));
 
 	/* ignore comments */
 	if (line[0] == '#')
-		goto out;
+		goto on_error;
 
 	/* martian option - don't add it to the config itself */
 	if (strncmp(line, "lxc.", 4))
-		goto out;
+		goto on_error;
 
 	ret = -1;
 
-	dot = strstr(line, "=");
+	dot = strchr(line, '=');
 	if (!dot) {
-		ERROR("invalid configuration line: %s", line);
-		goto out;
+		ERROR("Invalid configuration line: %s", line);
+		goto on_error;
 	}
 
 	*dot = '\0';
@@ -2358,13 +2365,13 @@ static int parse_line(char *buffer, void *data)
 
 	config = lxc_getconfig(key);
 	if (!config) {
-		ERROR("unknown key %s", key);
-		goto out;
+		ERROR("Unknown configuration key \"%s\"", key);
+		goto on_error;
 	}
 
 	ret = config->set(key, value, plc->conf, data);
 
-out:
+on_error:
 	free(linep);
 	return ret;
 }

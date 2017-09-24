@@ -1913,21 +1913,28 @@ static int cgfsng_set(const char *filename, const char *value, const char *name,
  */
 static int lxc_cgroup_set_data(const char *filename, const char *value, struct cgfsng_handler_data *d)
 {
-	char *subsystem = NULL, *p;
-	int ret = -1;
+	char *fullpath, *p;
 	struct hierarchy *h;
+	int ret = 0;
+	char *controller = NULL;
 
-	subsystem = alloca(strlen(filename) + 1);
-	strcpy(subsystem, filename);
-	if ((p = strchr(subsystem, '.')) != NULL)
+	controller = alloca(strlen(filename) + 1);
+	strcpy(controller, filename);
+	if ((p = strchr(controller, '.')) != NULL)
 		*p = '\0';
 
-	h = get_hierarchy(subsystem);
-	if (h) {
-		char *fullpath = must_make_path(h->fullcgpath, filename, NULL);
-		ret = lxc_write_to_file(fullpath, value, strlen(value), false);
-		free(fullpath);
+	h = get_hierarchy(controller);
+	if (!h) {
+		ERROR("Failed to setup limits for the \"%s\" controller. "
+		      "The controller seems to be unused by \"cgfsng\" cgroup "
+		      "driver or not enabled on the cgroup hierarchy",
+		      controller);
+		return -1;
 	}
+
+	fullpath = must_make_path(h->fullcgpath, filename, NULL);
+	ret = lxc_write_to_file(fullpath, value, strlen(value), false);
+	free(fullpath);
 	return ret;
 }
 
