@@ -752,8 +752,8 @@ static int ovl_do_rsync(struct lxc_storage *orig, struct lxc_storage *new,
 	rdata.orig = orig;
 	rdata.new = new;
 	if (am_unpriv())
-		ret = userns_exec_1(conf, ovl_rsync_wrapper, &rdata,
-				    "ovl_rsync_wrapper");
+		ret = userns_exec_full(conf, ovl_rsync_wrapper, &rdata,
+				       "ovl_rsync_wrapper");
 	else
 		ret = ovl_rsync(&rdata);
 	if (ret)
