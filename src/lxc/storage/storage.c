@@ -312,9 +312,14 @@ struct lxc_storage *storage_copy(struct lxc_container *c0, const char *cname,
 	const char *oldpath = c0->config_path;
 	struct rsync_data data;
 
-	/* if the container name doesn't show up in the rootfs path, then
-	 * we don't know how to come up with a new name
+	/* If the container name doesn't show up in the rootfs path, then we
+	 * don't know how to come up with a new name.
 	 */
+	if (!src) {
+		ERROR("No rootfs specified");
+		return NULL;
+	}
+
 	if (strstr(src, oldname) == NULL) {
 		ERROR(
 		    "original rootfs path %s doesn't include container name %s",
