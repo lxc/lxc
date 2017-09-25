@@ -1,0 +1,151 @@
+<!--
+
+lxc-update-config
+
+(C) Copyright 2017 Canonical Ltd.
+
+Authors:
+Christian Brauner <christian.brauner@ubuntu.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Translated into Japanese
+by KATOH Yasufumi <karma at jazz.email.ne.jp>
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+    <!ENTITY commonoptions SYSTEM "@builddir@/common_options.sgml">
+    <!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+    <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+    <refmeta>
+        <refentrytitle>lxc-update-config</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv>
+        <refname>lxc-update-config</refname>
+
+        <refpurpose>
+          <!--
+            update a legacy pre LXC 2.1 configuration file
+            -->
+          LXC 2.1 より前の古い形式の設定ファイルを新しい形式に更新する
+        </refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv>
+        <cmdsynopsis>
+            <command>lxc-update-config</command>
+            <arg choice="req">-c <replaceable>config</replaceable></arg>
+        </cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1>
+        <title><!-- Description -->説明</title>
+
+        <para>
+          <!--
+            <command>lxc-update-config</command> detects any legacy
+            configuration keys in the given <replaceable>config</replaceable>
+            file and will replace them with the appropriate new configuration
+            keys.
+            -->
+          <command>lxc-update-config</command> は、<replaceable>config</replaceable> で指定したファイルの古い形式の設定項目を検出し、適切な新しい設定項目に置き換えます。
+        </para>
+        <para>
+          <!--
+            <command>lxc-update-config</command> will first create a backup of
+            the old <replaceable>config</replaceable> file in the same directory
+            and name it <replaceable>config.backup</replaceable> and then update
+            the original <replaceable>config</replaceable> file in place. In
+            case the update fails to apply or leads to an invalid
+            <replaceable>config</replaceable> file that cannot be used to start
+            a container users can either compare
+            <replaceable>config</replaceable> with
+            <replaceable>config.backup</replaceable> and try to manually repair
+            any the invalid configuration keys or simply rollback to the legacy
+            configuration file by copying
+            <replaceable>config.backup</replaceable> to
+            <replaceable>config</replaceable>.
+            -->
+          <command>lxc-update-config</command> はまず、古い <replaceable>config</replaceable> ファイルのバックアップを <replaceable>config.backup</replaceable> という名前で同じディレクトリに作成します。そして、元の <replaceable>config</replaceable> ファイルを更新します。
+          更新が失敗した場合や、コンテナの起動ができない無効な <replaceable>config</replaceable> ファイルである場合は、ユーザが <replaceable>config</replaceable> と <replaceable>config.backup</replaceable> を比較して、手動で無効な設定項目を修正するか、<replaceable>config.backup</replaceable> を <replaceable>config</replaceable> にコピーして以前の設定ファイルに戻せます。
+        </para>
+        <para>
+          <!--
+            Any failures for <command>lxc-update-config</command> to generate a
+            useable <replaceable>config</replaceable> file are a bug and should
+            be reported upstream.
+            -->
+          <command>lxc-update-config</command> が使えない <replaceable>config</replaceable> ファイルを生成した場合はバグですので、開発元に報告してください。
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title><!-- Options -->オプション</title>
+        <variablelist>
+            <varlistentry>
+                <term>
+                    <option>-c, --config</option>
+                </term>
+                <listitem>
+                    <para>
+                      <!--
+                      Path to the configuration file to update.
+                        -->
+                      更新したい設定ファイルのパス
+                    </para>
+                </listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term>
+                    <option>-h, --help</option>
+                </term>
+                <listitem>
+                    <para>
+                    </para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    &seealso;
+
+    <refsect1>
+        <title><!-- Author -->作者</title>
+        <para>Christian Brauner <email>christian.brauner@ubuntu.com</email></para>
+    </refsect1>
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->
