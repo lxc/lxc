@@ -1175,8 +1175,10 @@ static void *cgfsng_init(struct lxc_handler *handler)
 	d->name = must_copy_string(handler->name);
 
 	/* copy per-container cgroup information */
-	d->cgroup_meta.dir = must_copy_string(handler->conf->cgroup_meta.dir);
-	d->cgroup_meta.controllers = must_copy_string(handler->conf->cgroup_meta.controllers);
+	if (handler->conf) {
+		d->cgroup_meta.dir = must_copy_string(handler->conf->cgroup_meta.dir);
+		d->cgroup_meta.controllers = must_copy_string(handler->conf->cgroup_meta.controllers);
+	}
 
 	/* copy system-wide cgroup information */
 	cgroup_pattern = lxc_global_config_value("lxc.cgroup.pattern");
