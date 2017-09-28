@@ -229,6 +229,15 @@ restart:
 		    (i < len_fds && fd == fds_to_ignore[i]))
 			continue;
 
+		if (conf) {
+			for (i = 0; i < LXC_NS_MAX; i++)
+				if (conf->inherit_ns_fd[i] == fd)
+					break;
+
+			if (i < LXC_NS_MAX)
+				continue;
+		}
+
 		if (current_config && fd == current_config->logfd)
 			continue;
 
