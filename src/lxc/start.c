@@ -1126,7 +1126,7 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 
 void resolve_clone_flags(struct lxc_handler *handler)
 {
-	handler->clone_flags = CLONE_NEWPID | CLONE_NEWNS;
+	handler->clone_flags = CLONE_NEWNS;
 
 	if (!lxc_list_empty(&handler->conf->id_map))
 		handler->clone_flags |= CLONE_NEWUSER;
@@ -1147,6 +1147,11 @@ void resolve_clone_flags(struct lxc_handler *handler)
 		handler->clone_flags |= CLONE_NEWUTS;
 	else
 		INFO("Inheriting a UTS namespace.");
+
+	if (handler->conf->inherit_ns_fd[LXC_NS_PID] == -1)
+		handler->clone_flags |= CLONE_NEWPID;
+	else
+		INFO("Inheriting a PID namespace.");
 }
 
 /* lxc_spawn() performs crucial setup tasks and clone()s the new process which
