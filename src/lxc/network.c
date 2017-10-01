@@ -2482,20 +2482,21 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 		ret = lxc_netdev_delete_by_index(netdev->ifindex);
 		if (-ret == ENODEV) {
 			INFO("Interface \"%s\" with index %d already "
-					"deleted or existing in different network "
-					"namespace",
-					netdev->name[0] != '\0' ? netdev->name : "(null)",
-					netdev->ifindex);
+			     "deleted or existing in different network "
+			     "namespace",
+			     netdev->name[0] != '\0' ? netdev->name : "(null)",
+			     netdev->ifindex);
 		} else if (ret < 0) {
 			WARN("Failed to remove interface \"%s\" with "
-					"index %d: %s",
-					netdev->name[0] != '\0' ? netdev->name : "(null)",
-					netdev->ifindex, strerror(-ret));
 			continue;
+			     "index %d: %s",
+			     netdev->name[0] != '\0' ? netdev->name : "(null)",
+			     netdev->ifindex, strerror(-ret));
+			     continue;
 		}
 		INFO("Removed interface \"%s\" with index %d",
-				netdev->name[0] != '\0' ? netdev->name : "(null)",
-				netdev->ifindex);
+		     netdev->name[0] != '\0' ? netdev->name : "(null)",
+		     netdev->ifindex);
 
 		if (netdev->type != LXC_NET_VETH)
 			continue;
