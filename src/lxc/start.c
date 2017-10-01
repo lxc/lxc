@@ -1455,14 +1455,8 @@ out_delete_net:
 	if (cgroups_connected)
 		cgroup_disconnect();
 
-	if (handler->clone_flags & CLONE_NEWNET) {
-		DEBUG("Tearing down network devices");
-		if (!lxc_delete_network_priv(handler))
-			DEBUG("Failed tearing down network devices");
-
-		if (!lxc_delete_network_unpriv(handler))
-			DEBUG("Failed tearing down network devices");
-	}
+	if (handler->clone_flags & CLONE_NEWNET)
+		lxc_delete_network(handler);
 
 out_abort:
 	lxc_abort(name, handler);
@@ -1584,17 +1578,7 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	err =  lxc_error_set_and_log(handler->pid, status);
 
 out_fini:
-	DEBUG("Tearing down network devices");
-	if (!lxc_delete_network_priv(handler))
-		DEBUG("Failed tearing down network devices");
-
-	if (!lxc_delete_network_unpriv(handler))
-		DEBUG("Failed tearing down network devices");
-
-	if (handler->netnsfd >= 0) {
-		close(handler->netnsfd);
-		handler->netnsfd = -1;
-	}
+	lxc_delete_network(handler);
 
 out_detach_blockdev:
 	detach_block_device(handler->conf);
