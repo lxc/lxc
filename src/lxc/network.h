@@ -266,8 +266,7 @@ extern int lxc_network_move_created_netdev_priv(const char *lxcpath,
 						char *lxcname,
 						struct lxc_list *network,
 						pid_t pid);
-extern bool lxc_delete_network_priv(struct lxc_handler *handler);
-extern bool lxc_delete_network_unpriv(struct lxc_handler *handler);
+extern void lxc_delete_network(struct lxc_handler *handler);
 extern int lxc_find_gateway_addresses(struct lxc_handler *handler);
 extern int lxc_create_network_unpriv(const char *lxcpath, char *lxcname,
 				     struct lxc_list *network, pid_t pid);
