@@ -1165,6 +1165,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 {
 	int i, flags, ret;
 	const char *name = handler->name;
+	char pidstr[20];
 	bool wants_to_map_ids;
 	int saved_ns_fd[LXC_NS_MAX];
 	struct lxc_list *id_map;
@@ -1355,13 +1356,23 @@ static int lxc_spawn(struct lxc_handler *handler)
 	cgroup_disconnect();
 	cgroups_connected = false;
 
+	snprintf(pidstr, 20, "%d", handler->pid);
+	if (setenv("LXC_PID", pidstr, 1))
+		SYSERROR("Failed to set environment variable: LXC_PID=%s.", pidstr);
+
+	/* Run any host-side start hooks */
+	if (run_lxc_hooks(name, "start-host", handler->conf, handler->lxcpath, NULL)) {
+		ERROR("Failed to run lxc.hook.start-host for container \"%s\".", name);
+		return -1;
+	}
+
 	/* Tell the child to complete its initialization and wait for it to exec
 	 * or return an error. (The child will never return
-	 * LXC_SYNC_POST_CGROUP+1. It will either close the sync pipe, causing
+	 * LXC_SYNC_READY_START+1. It will either close the sync pipe, causing
 	 * lxc_sync_barrier_child to return success, or return a different
 	 * value, causing us to error out).
 	 */
-	if (lxc_sync_barrier_child(handler, LXC_SYNC_POST_CGROUP))
+	if (lxc_sync_barrier_child(handler, LXC_SYNC_READY_START))
 		return -1;
 
 	if (lxc_network_recv_name_and_ifindex_from_child(handler) < 0) {

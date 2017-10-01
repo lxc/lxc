@@ -1522,6 +1522,20 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
+            <option>lxc.hook.start-host</option>
+          </term>
+          <listitem>
+            <para>
+              A hook to be run in the host's namespace after the
+              container has been setup, and immediately before starting
+	      the container init.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+      <variablelist>
+        <varlistentry>
+          <term>
             <option>lxc.hook.start</option>
           </term>
           <listitem>

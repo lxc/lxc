@@ -155,6 +155,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.hook.destroy",              false,                  set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook.mount",                false,                  set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook.post-stop",            false,                  set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
+	{ "lxc.hook.start-host",           false,                  set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook.pre-start",            false,                  set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook.pre-mount",            false,                  set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook.start",                false,                  set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
@@ -980,6 +981,8 @@ static int set_config_hooks(const char *key, const char *value,
 
 	if (strcmp(key + 9, "pre-start") == 0)
 		return add_hook(lxc_conf, LXCHOOK_PRESTART, copy);
+	else if (strcmp(key + 9, "start-host") == 0)
+		return add_hook(lxc_conf, LXCHOOK_START_HOST, copy);
 	else if (strcmp(key + 9, "pre-mount") == 0)
 		return add_hook(lxc_conf, LXCHOOK_PREMOUNT, copy);
 	else if (strcmp(key + 9, "autodev") == 0)
@@ -4445,6 +4448,7 @@ int lxc_list_subkeys(struct lxc_conf *conf, const char *key, char *retv,
 		strprint(retv, inlen, "post-stop\n");
 		strprint(retv, inlen, "pre-mount\n");
 		strprint(retv, inlen, "pre-start\n");
+		strprint(retv, inlen, "start-host\n");
 		strprint(retv, inlen, "start\n");
 		strprint(retv, inlen, "stop\n");
 	} else if (!strcmp(key, "lxc.cap")) {
