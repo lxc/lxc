@@ -2299,10 +2299,6 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 	 * \0
 	 */
 	char netns_path[6 + LXC_NUMSTRLEN64 + 4 + LXC_NUMSTRLEN64 + 1];
-	bool deleted_all = true;
-
-	if (handler->am_root)
-		return true;
 
 	*netns_path = '\0';
 
@@ -2362,7 +2358,6 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 						     handler->name, netdev,
 						     netns_path);
 		if (ret < 0) {
-			deleted_all = false;
 			WARN("Failed to remove port \"%s\" from openvswitch "
 			     "bridge \"%s\"", hostveth, netdev->link);
 			continue;
@@ -2371,7 +2366,7 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 		     netdev->link);
 	}
 
-	return deleted_all;
+	return true;
 }
 
 int lxc_create_network_priv(struct lxc_handler *handler)
@@ -2479,10 +2474,6 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 	int ret;
 	struct lxc_list *iterator;
 	struct lxc_list *network = &handler->conf->network;
-	bool deleted_all = true;
-
-	if (!handler->am_root)
-		return true;
 
 	lxc_list_for_each(iterator, network) {
 		char *hostveth = NULL;
@@ -2524,7 +2515,6 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 					netdev->name[0] != '\0' ? netdev->name : "(null)",
 					netdev->ifindex);
 		} else if (ret < 0) {
-			deleted_all = false;
 			WARN("Failed to remove interface \"%s\" with "
 					"index %d: %s",
 					netdev->name[0] != '\0' ? netdev->name : "(null)",
@@ -2550,7 +2540,6 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 
 		ret = lxc_netdev_delete_by_name(hostveth);
 		if (ret < 0) {
-			deleted_all = false;
 			WARN("Failed to remove interface \"%s\" from \"%s\": %s",
 			     hostveth, netdev->link, strerror(-ret));
 			continue;
@@ -2574,7 +2563,7 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 		netdev->priv.veth_attr.veth1[0] = '\0';
 	}
 
-	return deleted_all;
+	return true;
 }
 
 int lxc_requests_empty_network(struct lxc_handler *handler)
@@ -3093,4 +3082,18 @@ int lxc_network_recv_name_and_ifindex_from_child(struct lxc_handler *handler)
 	}
 
 	return 0;
+}
+
+void lxc_delete_network(struct lxc_handler *handler)
+{
+	bool bret;
+
+	if (handler->am_root)
+		bret = lxc_delete_network_priv(handler);
+	else
+		bret = lxc_delete_network_unpriv(handler);
+	if (!bret)
+		DEBUG("Failed to delete network devices");
+	else
+		DEBUG("Deleted network devices");
 }
