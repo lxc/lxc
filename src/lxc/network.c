@@ -2299,10 +2299,6 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 	 * \0
 	 */
 	char netns_path[6 + LXC_NUMSTRLEN64 + 4 + LXC_NUMSTRLEN64 + 1];
-	bool deleted_all = true;
-
-	if (handler->am_root)
-		return true;
 
 	*netns_path = '\0';
 
@@ -2338,7 +2334,7 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 				TRACE("Renamed interface with index %d to its "
 				      "initial name \"%s\"",
 				      netdev->ifindex, netdev->link);
-			continue;
+			goto clear_ifindices;
 		}
 
 		ret = netdev_deconf[netdev->type](handler, netdev);
@@ -2346,32 +2342,44 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 			WARN("Failed to deconfigure network device");
 
 		if (netdev->type != LXC_NET_VETH)
-			continue;
+			goto clear_ifindices;
 
 		if (netdev->link[0] == '\0' || !is_ovs_bridge(netdev->link))
-			continue;
+			goto clear_ifindices;
 
 		if (netdev->priv.veth_attr.pair[0] != '\0')
 			hostveth = netdev->priv.veth_attr.pair;
 		else
 			hostveth = netdev->priv.veth_attr.veth1;
 		if (hostveth[0] == '\0')
-			continue;
+			goto clear_ifindices;
 
 		ret = lxc_delete_network_unpriv_exec(handler->lxcpath,
 						     handler->name, netdev,
 						     netns_path);
 		if (ret < 0) {
-			deleted_all = false;
 			WARN("Failed to remove port \"%s\" from openvswitch "
 			     "bridge \"%s\"", hostveth, netdev->link);
-			continue;
+			goto clear_ifindices;
 		}
 		INFO("Removed interface \"%s\" from \"%s\"", hostveth,
 		     netdev->link);
+
+clear_ifindices:
+		/* We need to clear any ifindeces we recorded so liblxc won't
+		 * have cached stale data which would cause it to fail on reboot
+		 * we're we don't re-read the on-disk config file.
+		 */
+		netdev->ifindex = 0;
+		if (netdev->type == LXC_NET_PHYS) {
+			netdev->priv.phys_attr.ifindex = 0;
+		} else if (netdev->type == LXC_NET_VETH) {
+			netdev->priv.veth_attr.veth1[0] = '\0';
+			netdev->priv.veth_attr.ifindex = 0;
+		}
 	}
 
-	return deleted_all;
+	return true;
 }
 
 int lxc_create_network_priv(struct lxc_handler *handler)
@@ -2479,10 +2487,6 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 	int ret;
 	struct lxc_list *iterator;
 	struct lxc_list *network = &handler->conf->network;
-	bool deleted_all = true;
-
-	if (!handler->am_root)
-		return true;
 
 	lxc_list_for_each(iterator, network) {
 		char *hostveth = NULL;
@@ -2505,7 +2509,7 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 				      "\"%s\" to its initial name \"%s\"",
 				      netdev->ifindex, netdev->name,
 				      netdev->link);
-			continue;
+			goto clear_ifindices;
 		}
 
 		ret = netdev_deconf[netdev->type](handler, netdev);
@@ -2519,24 +2523,23 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 		ret = lxc_netdev_delete_by_index(netdev->ifindex);
 		if (-ret == ENODEV) {
 			INFO("Interface \"%s\" with index %d already "
-					"deleted or existing in different network "
-					"namespace",
-					netdev->name[0] != '\0' ? netdev->name : "(null)",
-					netdev->ifindex);
+			     "deleted or existing in different network "
+			     "namespace",
+			     netdev->name[0] != '\0' ? netdev->name : "(null)",
+			     netdev->ifindex);
 		} else if (ret < 0) {
-			deleted_all = false;
 			WARN("Failed to remove interface \"%s\" with "
-					"index %d: %s",
-					netdev->name[0] != '\0' ? netdev->name : "(null)",
-					netdev->ifindex, strerror(-ret));
-			continue;
+			     "index %d: %s",
+			     netdev->name[0] != '\0' ? netdev->name : "(null)",
+			     netdev->ifindex, strerror(-ret));
+			goto clear_ifindices;
 		}
 		INFO("Removed interface \"%s\" with index %d",
-				netdev->name[0] != '\0' ? netdev->name : "(null)",
-				netdev->ifindex);
+		     netdev->name[0] != '\0' ? netdev->name : "(null)",
+		     netdev->ifindex);
 
 		if (netdev->type != LXC_NET_VETH)
-			continue;
+			goto clear_ifindices;
 
 		/* Explicitly delete host veth device to prevent lingering
 		 * devices. We had issues in LXD around this.
@@ -2546,20 +2549,21 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 		else
 			hostveth = netdev->priv.veth_attr.veth1;
 		if (hostveth[0] == '\0')
-			continue;
+			goto clear_ifindices;
 
 		ret = lxc_netdev_delete_by_name(hostveth);
 		if (ret < 0) {
-			deleted_all = false;
 			WARN("Failed to remove interface \"%s\" from \"%s\": %s",
 			     hostveth, netdev->link, strerror(-ret));
-			continue;
+			goto clear_ifindices;
 		}
 		INFO("Removed interface \"%s\" from \"%s\"", hostveth, netdev->link);
 
 		if (netdev->link[0] == '\0' || !is_ovs_bridge(netdev->link)) {
 			netdev->priv.veth_attr.veth1[0] = '\0';
-			continue;
+			netdev->ifindex = 0;
+			netdev->priv.veth_attr.ifindex = 0;
+			goto clear_ifindices;
 		}
 
 		/* Delete the openvswitch port. */
@@ -2571,10 +2575,21 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 			INFO("Removed port \"%s\" from openvswitch bridge \"%s\"",
 			     hostveth, netdev->link);
 
-		netdev->priv.veth_attr.veth1[0] = '\0';
+clear_ifindices:
+		/* We need to clear any ifindeces we recorded so liblxc won't
+		 * have cached stale data which would cause it to fail on reboot
+		 * we're we don't re-read the on-disk config file.
+		 */
+		netdev->ifindex = 0;
+		if (netdev->type == LXC_NET_PHYS) {
+			netdev->priv.phys_attr.ifindex = 0;
+		} else if (netdev->type == LXC_NET_VETH) {
+			netdev->priv.veth_attr.veth1[0] = '\0';
+			netdev->priv.veth_attr.ifindex = 0;
+		}
 	}
 
-	return deleted_all;
+	return true;
 }
 
 int lxc_requests_empty_network(struct lxc_handler *handler)
@@ -3093,4 +3108,18 @@ int lxc_network_recv_name_and_ifindex_from_child(struct lxc_handler *handler)
 	}
 
 	return 0;
+}
+
+void lxc_delete_network(struct lxc_handler *handler)
+{
+	bool bret;
+
+	if (handler->am_root)
+		bret = lxc_delete_network_priv(handler);
+	else
+		bret = lxc_delete_network_unpriv(handler);
+	if (!bret)
+		DEBUG("Failed to delete network devices");
+	else
+		DEBUG("Deleted network devices");
 }
