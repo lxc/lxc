@@ -46,16 +46,6 @@ lxc_log_define(lxc_execute_ui, lxc);
 
 static struct lxc_list defines;
 
-static int my_checker(const struct lxc_arguments* args)
-{
-	if (!args->argc) {
-		lxc_error(args, "missing command to execute !");
-		return -1;
-	}
-
-	return 0;
-}
-
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
@@ -100,8 +90,28 @@ Options :\n\
   -g, --gid=GID        Execute COMMAND with GID inside the container\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
-	.checker  = my_checker,
 };
+
+static bool set_argv(struct lxc_conf *conf, struct lxc_arguments *args)
+{
+	char **components, **p;
+
+	if (!conf->execute_cmd)
+		return false;
+
+	/* TODO -
+	   we should honor '"' etc; This seems worth a new helper in utils.c.
+	 */
+	components = lxc_string_split(conf->execute_cmd, ' ');
+	if (!components)
+		return false;
+
+	args->argv = components;
+	for (p = components; *p; p++)
+		args->argc++;
+
+	return true;
+}
 
 int main(int argc, char *argv[])
 {
@@ -145,6 +155,14 @@ int main(int argc, char *argv[])
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
 			ERROR("Out of memory setting new config filename");
+			lxc_container_put(c);
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	if (my_args.argc == 0) {
+		if (!set_argv(c->lxc_conf, &my_args)) {
+			ERROR("missing command to execute!");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}

@@ -3525,6 +3525,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->ttydir);
 	free(conf->fstab);
 	free(conf->rcfile);
+	free(conf->execute_cmd);
 	free(conf->init_cmd);
 	free(conf->unexpanded_config);
 	free(conf->pty_names);

@@ -263,6 +263,19 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
+            <option>lxc.execute.cmd</option>
+          </term>
+          <listitem>
+            <para>
+              Absolute path from container rootfs to the binary to run by default.  This
+	      mostly makes sense for lxc-execute.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+      <variablelist>
+        <varlistentry>
+          <term>
             <option>lxc.init.cmd</option>
           </term>
           <listitem>
