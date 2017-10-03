@@ -309,6 +309,9 @@ struct lxc_conf {
 	char *unexpanded_config;
 	size_t unexpanded_len, unexpanded_alloced;
 
+	/* default command for lxc-execute */
+	char *execute_cmd;
+
 	/* init command */
 	char *init_cmd;
 

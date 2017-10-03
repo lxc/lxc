@@ -127,6 +127,7 @@ lxc_config_define(start);
 lxc_config_define(monitor);
 lxc_config_define(group);
 lxc_config_define(environment);
+lxc_config_define(execute_cmd);
 lxc_config_define(init_cmd);
 lxc_config_define(init_uid);
 lxc_config_define(init_gid);
@@ -149,6 +150,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.console.path",              false,                  set_config_console_path,                get_config_console_path,                clr_config_console_path,              },
 	{ "lxc.environment",               false,                  set_config_environment,                 get_config_environment,                 clr_config_environment,               },
 	{ "lxc.ephemeral",                 false,                  set_config_ephemeral,                   get_config_ephemeral,                   clr_config_ephemeral,                 },
+	{ "lxc.execute.cmd",               false,                  set_config_execute_cmd,                 get_config_execute_cmd,                 clr_config_execute_cmd,                  },
 	{ "lxc.group",                     false,                  set_config_group,                       get_config_group,                       clr_config_group,                     },
 	{ "lxc.hook.autodev",              false,                  set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook.clone",                false,                  set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
@@ -918,6 +920,12 @@ static int set_config_seccomp_profile(const char *key, const char *value,
 				      struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_path_item(&lxc_conf->seccomp, value);
+}
+
+static int set_config_execute_cmd(const char *key, const char *value,
+			       struct lxc_conf *lxc_conf, void *data)
+{
+	return set_config_path_item(&lxc_conf->execute_cmd, value);
 }
 
 static int set_config_init_cmd(const char *key, const char *value,
@@ -3095,6 +3103,12 @@ static int get_config_environment(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
+static int get_config_execute_cmd(const char *key, char *retv, int inlen,
+			       struct lxc_conf *c, void *data)
+{
+	return lxc_get_conf_str(retv, inlen, c->execute_cmd);
+}
+
 static int get_config_init_cmd(const char *key, char *retv, int inlen,
 			       struct lxc_conf *c, void *data)
 {
@@ -3448,6 +3462,14 @@ static inline int clr_config_environment(const char *key, struct lxc_conf *c,
 					 void *data)
 {
 	return lxc_clear_environment(c);
+}
+
+static inline int clr_config_execute_cmd(const char *key, struct lxc_conf *c,
+				      void *data)
+{
+	free(c->execute_cmd);
+	c->execute_cmd = NULL;
+	return 0;
 }
 
 static inline int clr_config_init_cmd(const char *key, struct lxc_conf *c,
