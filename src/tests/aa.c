@@ -105,7 +105,7 @@ char *files_to_allow[] = { "/sys/class/net/lo/ifalias",
 		"/proc/sys/kernel/shmmax",
 		NULL };
 
-char *files_to_deny[] = { "/proc/mem", "/proc/kmem",
+char *files_to_deny[] = {
 		"/sys/kernel/uevent_helper",
 		"/proc/sys/fs/file-nr",
 		"/sys/kernel/mm/ksm/pages_to_scan",
