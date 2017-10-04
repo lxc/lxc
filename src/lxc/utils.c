@@ -816,6 +816,74 @@ error_out:
 	return NULL;
 }
 
+static bool complete_word(char ***result, char *start, char *end, size_t *cap, size_t *cnt)
+{
+	int r;
+
+	r = lxc_grow_array((void ***)result, cap, 2 + *cnt, 16);
+	if (r < 0)
+		return false;
+	(*result)[*cnt] = strndup(start, end - start);
+	if (!(*result)[*cnt])
+		return false;
+	(*cnt)++;
+
+	return true;
+}
+
+/*
+ * Given a a string 'one two "three four"', split into three words,
+ * one, two, and "three four"
+ */
+char **lxc_string_split_quoted(char *string)
+{
+	char *nextword = string, *p, state;
+	char **result = NULL;
+	size_t result_capacity = 0;
+	size_t result_count = 0;
+
+	if (!string || !*string)
+		return calloc(1, sizeof(char *));
+
+	// TODO I'm *not* handling escaped quote
+	state = ' ';
+	for (p = string; *p; p++) {
+		switch(state) {
+		case ' ':
+			if (isspace(*p))
+				continue;
+			else if (*p == '"' || *p == '\'') {
+				nextword = p;
+				state = *p;
+				continue;
+			}
+			nextword = p;
+			state = 'a';
+			continue;
+		case 'a':
+			if (isspace(*p)) {
+				complete_word(&result, nextword, p, &result_capacity, &result_count);
+				state = ' ';
+				continue;
+			}
+			continue;
+		case '"':
+		case '\'':
+			if (*p == state) {
+				complete_word(&result, nextword+1, p, &result_capacity, &result_count);
+				state = ' ';
+				continue;
+			}
+			continue;
+		}
+	}
+
+	if (state == 'a')
+		complete_word(&result, nextword, p, &result_capacity, &result_count);
+
+	return realloc(result, (result_count + 1) * sizeof(char *));
+}
+
 char **lxc_string_split_and_trim(const char *string, char _sep)
 {
 	char *token, *str, *saveptr = NULL;
