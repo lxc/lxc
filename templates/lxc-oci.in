@@ -197,7 +197,7 @@ entrypoint=$(getep ${DOWNLOAD_TEMP} latest)
 rm -rf "${LXC_ROOTFS}.tmp"
 
 LXC_CONF_FILE="${LXC_PATH}/config"
-echo "lxc.execute.cmd = ${entrypoint}" >> "${LXC_CONF_FILE}"
+echo "lxc.execute.cmd = '${entrypoint}'" >> "${LXC_CONF_FILE}"
 echo "lxc.mount.auto = proc:mixed sys:mixed cgroup:mixed" >> "${LXC_CONF_FILE}"
 
 echo "lxc.uts.name = ${LXC_NAME}" >> ${LXC_PATH}/config

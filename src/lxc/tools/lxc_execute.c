@@ -99,10 +99,7 @@ static bool set_argv(struct lxc_conf *conf, struct lxc_arguments *args)
 	if (!conf->execute_cmd)
 		return false;
 
-	/* TODO -
-	   we should honor '"' etc; This seems worth a new helper in utils.c.
-	 */
-	components = lxc_string_split(conf->execute_cmd, ' ');
+	components = lxc_string_split_quoted(conf->execute_cmd);
 	if (!components)
 		return false;
 
