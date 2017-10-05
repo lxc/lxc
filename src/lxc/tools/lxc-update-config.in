@@ -67,6 +67,8 @@ sed -i \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.network\)\(\.[[:digit:]*]\)/\1lxc\.net\3/g' \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.network\)\([[:blank:]*]\|=\)/\1lxc\.net\3/g' \
 -e '/\([[:blank:]*]\|#*\)\(lxc\.rootfs\.backend\)\([[:blank:]*]\|=\)/d' \
+-e '/\([[:blank:]*]\|#*\)\(lxc\.pivotdir\)\([[:blank:]*]\|=\)/d' \
+-e '/\([[:blank:]*]\|#*\)\(lxc\.kmsg\)\([[:blank:]*]\|=\)/d' \
 	"${CONFIGPATH}"
 
 # Finally, deal with network definitions of the following form:
