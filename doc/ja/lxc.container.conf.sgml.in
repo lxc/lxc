@@ -337,15 +337,25 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <para>
         <!--
         Sets the command to use as the init system for the containers.
-
-        This option is ignored when using lxc-execute.
-
-        Defaults to: /sbin/init
           -->
         コンテナの init として使うコマンドを設定します。
-        このオプションは lxc-execute では無視されます。
-        デフォルトは /sbin/init です。
       </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.execute.cmd</option>
+          </term>
+          <listitem>
+            <para>
+	      <!--
+              Absolute path from container rootfs to the binary to run by default.  This
+	      mostly makes sense for lxc-execute.
+	      -->
+	      デフォルトで実行するバイナリのコンテナの root からの絶対パスを指定します。これは <command>lxc-execute</command> のための設定です。
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
       <variablelist>
         <varlistentry>
           <term>
@@ -354,9 +364,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <listitem>
             <para>
               <!--
-                  Absolute path from container rootfs to the binary to use as init.
+                  Absolute path from container rootfs to the binary to use as init. This
+		  mostly makes sense for lxc-start. Default is /sbin/init.
                 -->
-              init として使うバイナリの、コンテナの rootfs からの絶対パスを指定します。
+              init として使うバイナリの、コンテナの root からの絶対パスを指定します。これは <command>lxc-start</command> のための設定です。デフォルトは <command>/sbin/init</command> です。
             </para>
           </listitem>
         </varlistentry>
