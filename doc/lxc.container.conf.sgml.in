@@ -255,10 +255,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <title>Init command</title>
       <para>
         Sets the command to use as the init system for the containers.
-
-        This option is ignored when using lxc-execute.
-
-        Defaults to: /sbin/init
       </para>
       <variablelist>
         <varlistentry>
@@ -268,7 +264,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           <listitem>
             <para>
               Absolute path from container rootfs to the binary to run by default.  This
-	      mostly makes sense for lxc-execute.
+	      mostly makes sense for <command>lxc-execute</command>.
             </para>
           </listitem>
         </varlistentry>
@@ -280,7 +276,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           </term>
           <listitem>
             <para>
-              Absolute path from container rootfs to the binary to use as init.
+              Absolute path from container rootfs to the binary to use as init. This
+	      mostly makes sense for <command>lxc-start</command>. Default is <command>/sbin/init</command>.
             </para>
           </listitem>
         </varlistentry>

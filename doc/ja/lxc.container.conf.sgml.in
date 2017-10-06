@@ -337,15 +337,25 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <para>
         <!--
         Sets the command to use as the init system for the containers.
-
-        This option is ignored when using lxc-execute.
-
-        Defaults to: /sbin/init
           -->
         コンテナの init として使うコマンドを設定します。
-        このオプションは lxc-execute では無視されます。
-        デフォルトは /sbin/init です。
       </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.execute.cmd</option>
+          </term>
+          <listitem>
+            <para>
+	      <!--
+              Absolute path from container rootfs to the binary to run by default.  This
+	      mostly makes sense for lxc-execute.
+	      -->
+	      デフォルトで実行するバイナリのコンテナの root からの絶対パスを指定します。これは <command>lxc-execute</command> のための設定です。
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
       <variablelist>
         <varlistentry>
           <term>
@@ -354,9 +364,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <listitem>
             <para>
               <!--
-                  Absolute path from container rootfs to the binary to use as init.
+                  Absolute path from container rootfs to the binary to use as init. This
+		  mostly makes sense for lxc-start. Default is /sbin/init.
                 -->
-              init として使うバイナリの、コンテナの rootfs からの絶対パスを指定します。
+              init として使うバイナリの、コンテナの root からの絶対パスを指定します。これは <command>lxc-start</command> のための設定です。デフォルトは <command>/sbin/init</command> です。
             </para>
           </listitem>
         </varlistentry>
@@ -2089,6 +2100,23 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               -->
               <option>lxc.autodev</option> == 1 が設定されている場合で、マウントが完了し、マウント時のフックも実行された後ですが、pivot_root の前にコンテナの名前空間で実行するフック。
               このフックの目的は、systemd ベースのコンテナ向けの autodev オプションが設定されている時に、コンテナの /dev ディレクトリを設定するのを支援することです。コンテナの /dev ディレクトリは、このフックが実行される時有効な ${<option>LXC_ROOTFS_MOUNT</option>} 環境変数からの相対パスとなります。
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.hook.start-host</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              A hook to be run in the host's namespace after the
+              container has been setup, and immediately before starting
+              the container init.
+              -->
+              コンテナのセットアップが済んだあと、コンテナの init を実行する直前に、ホストの名前空間で実行するためのフックです。
             </para>
           </listitem>
         </varlistentry>
