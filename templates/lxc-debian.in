@@ -238,14 +238,6 @@ configure_debian_systemd()
     config=$3
     num_tty=$4
 
-    # this only works if we have getty@.service to manipulate
-    if [ -f "${rootfs}/lib/systemd/system/getty@.service" ]; then
-       sed -e 's/^ConditionPathExists=/# ConditionPathExists=/' \
-           -e 's/After=dev-%i.device/After=/' \
-           < "${rootfs}/lib/systemd/system/getty@.service" \
-           > "${rootfs}/etc/systemd/system/getty@.service"
-    fi
-
     # just in case systemd is not installed
     mkdir -p "${rootfs}/lib/systemd/system"
     mkdir -p "${rootfs}/etc/systemd/system/getty.target.wants"
