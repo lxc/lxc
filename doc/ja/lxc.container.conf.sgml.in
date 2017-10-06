@@ -2096,6 +2096,23 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
+            <option>lxc.hook.start-host</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              A hook to be run in the host's namespace after the
+              container has been setup, and immediately before starting
+              the container init.
+              -->
+              コンテナのセットアップが済んだあと、コンテナの init を実行する直前に、ホストの名前空間で実行するためのフックです。
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+      <variablelist>
+        <varlistentry>
+          <term>
             <option>lxc.hook.start</option>
           </term>
           <listitem>
