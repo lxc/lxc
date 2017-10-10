@@ -48,6 +48,7 @@
 #include "confile.h"
 #include "console.h"
 #include "criu.h"
+#include "initutils.h"
 #include "log.h"
 #include "lxc.h"
 #include "lxccontainer.h"

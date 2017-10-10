@@ -289,8 +289,7 @@ endif
 if HAVE_STATIC_LIBCAP
 sbin_PROGRAMS += init.lxc.static
 
-init_lxc_static_SOURCES = lxc_init.c error.c log.c initutils.c caps.c \
-			  tools/arguments.c
+init_lxc_static_SOURCES = lxc_init.c error.c log.c initutils.c caps.c
 
 if !HAVE_GETLINE
 if HAVE_FGETLN
