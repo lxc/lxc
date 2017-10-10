@@ -1998,13 +1998,15 @@ static int parse_line(char *buffer, void *data)
 	/* [START]: REMOVE IN LXC 3.0 */
 	if (config->is_legacy_key && !plc->conf->contains_legacy_key) {
 		plc->conf->contains_legacy_key = true;
-		/* Warn the user once loud and clear that there is at least one
-		 * legacy configuration item in the configuration file and then
-		 * an update is required.
-		 */
-		fprintf(stderr, "The configuration file contains legacy "
-				"configuration keys.\nPlease update your "
-				"configuration file!\n");
+		if (getenv("LXC_UPDATE_CONFIG_FORMAT")) {
+			/* Warn the user once loud and clear that there is at
+			 * least one legacy configuration item in the
+			 * configuration file and then an update is required.
+			 */
+			fprintf(stderr, "The configuration file contains "
+					"legacy configuration keys.\nPlease "
+					"update your configuration file!\n");
+		}
 	}
 	/* [END]: REMOVE IN LXC 3.0 */
 

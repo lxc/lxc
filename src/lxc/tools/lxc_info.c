@@ -413,6 +413,9 @@ int main(int argc, char *argv[])
 		exit(ret);
 	lxc_log_options_no_override();
 
+	/* REMOVE IN LXC 3.0 */
+	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
+
 	if (print_info(my_args.name, my_args.lxcpath[0]) == 0)
 		ret = EXIT_SUCCESS;
 
