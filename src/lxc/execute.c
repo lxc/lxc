@@ -64,33 +64,36 @@ static int execute_start(struct lxc_handler *handler, void* data)
 
 	initpath = choose_init(NULL);
 	if (!initpath) {
-		ERROR("Failed to find an lxc-init or init.lxc");
+		ERROR("Failed to find an init.lxc or init.lxc.static");
 		goto out2;
 	}
 	argv[i++] = initpath;
+
+	argv[i++] = "-n";
+	argv[i++] = (char *)handler->name;
+
+	if (lxc_log_has_valid_level()) {
+		argv[i++] = "-l";
+		argv[i++] = (char *)lxc_log_priority_to_string(lxc_log_get_level());
+	}
+
 	if (my_args->quiet)
 		argv[i++] = "--quiet";
-	if (!handler->conf->rootfs.path) {
-		argv[i++] = "--name";
-		argv[i++] = (char *)handler->name;
-		argv[i++] = "--lxcpath";
-		argv[i++] = (char *)handler->lxcpath;
 
-		if (lxc_log_has_valid_level()) {
-			argv[i++] = "--logpriority";
-			argv[i++] = (char *)
-				lxc_log_priority_to_string(lxc_log_get_level());
-		}
+	if (!handler->conf->rootfs.path) {
+		argv[i++] = "-P";
+		argv[i++] = (char *)handler->lxcpath;
 	}
+
 	argv[i++] = "--";
 	for (j = 0; j < argc; j++)
 		argv[i++] = my_args->argv[j];
 	argv[i++] = NULL;
 
-	NOTICE("exec'ing '%s'", my_args->argv[0]);
+	NOTICE("Exec'ing \"%s\"", my_args->argv[0]);
 
 	execvp(argv[0], argv);
-	SYSERROR("failed to exec %s", argv[0]);
+	SYSERROR("Failed to exec %s", argv[0]);
 	free(initpath);
 out2:
 	free(argv);
