@@ -233,6 +233,9 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	lxc_log_options_no_override();
 
+	/* REMOVE IN LXC 3.0 */
+	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
+
 	struct lengths max_len = {
 		/* default header length */
 		.name_length = 4,      /* NAME */
