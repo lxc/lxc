@@ -77,7 +77,7 @@ static void usage(void) {
 
 int main(int argc, char *argv[])
 {
-	pid_t pid;
+	pid_t pid, sid;
 	int err;
 	char **aargv;
 	sigset_t mask, omask;
@@ -188,6 +188,10 @@ int main(int argc, char *argv[])
 			SYSERROR("Failed to set signal mask");
 			exit(EXIT_FAILURE);
 		}
+
+		sid = setsid();
+		if (sid < 0)
+			DEBUG("Failed to make child session leader");
 
 		NOTICE("About to exec '%s'", aargv[0]);
 
