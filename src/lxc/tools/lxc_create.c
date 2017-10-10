@@ -229,6 +229,9 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	lxc_log_options_no_override();
 
+	/* REMOVE IN LXC 3.0 */
+	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
+
 	if (!my_args.template) {
 		fprintf(stderr, "A template must be specified.\n");
 		fprintf(stderr, "Use \"none\" if you really want a container without a rootfs.\n");

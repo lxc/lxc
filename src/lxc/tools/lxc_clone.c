@@ -176,6 +176,8 @@ int main(int argc, char *argv[])
 		usage(argv[0]);
 	}
 
+	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
+
 	c1 = lxc_container_new(orig, lxcpath);
 	if (!c1)
 		exit(EXIT_FAILURE);
