@@ -84,6 +84,7 @@ src/tests/lxc-test-destroytest
 src/tests/lxc-test-get_item
 src/tests/lxc-test-getkeys
 src/tests/lxc-test-list
+src/tests/lxc-test-livepatch
 src/tests/lxc-test-locktests
 src/tests/lxc-test-lxcpath
 src/tests/lxc-test-may-control

@@ -2838,7 +2838,7 @@ static bool do_lxcapi_set_running_config_item(struct lxc_container *c, const cha
 
 	ret = lxc_cmd_set_config_item(c->name, key, v, do_lxcapi_get_config_path(c));
 	if (ret < 0)
-		ERROR("Failed to live patch container");
+		SYSERROR("%s - Failed to live patch container", strerror(-ret));
 
 	container_mem_unlock(c);
 	return ret == 0;
