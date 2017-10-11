@@ -149,6 +149,13 @@ extern int lxc_get_wait_states(const char **states);
  */
 extern int add_rdepend(struct lxc_conf *lxc_conf, char *rdepend);
 
+/*
+ * Set a key/value configuration option. Requires that to take a lock on the
+ * in-memory config of the container.
+ */
+extern int lxc_set_config_item_locked(struct lxc_conf *conf, const char *key,
+				      const char *v);
+
 #ifdef __cplusplus
 }
 #endif

@@ -2765,9 +2765,35 @@ static bool do_lxcapi_destroy_with_snapshots(struct lxc_container *c)
 
 WRAP_API(bool, lxcapi_destroy_with_snapshots)
 
-static bool set_config_item_locked(struct lxc_container *c, const char *key, const char *v)
+int lxc_set_config_item_locked(struct lxc_conf *conf, const char *key,
+			       const char *v)
 {
+	int ret;
 	struct lxc_config_t *config;
+	bool bret = true;
+
+	config = lxc_get_config(key);
+	if (!config)
+		return -EINVAL;
+
+	ret = config->set(key, v, conf, NULL);
+	if (ret < 0)
+		return -EINVAL;
+
+	if (lxc_config_value_empty(v))
+		do_clear_unexp_config_line(conf, key);
+	else
+		bret = do_append_unexp_config_line(conf, key, v);
+	if (!bret)
+		return -ENOMEM;
+
+	return 0;
+}
+
+static bool do_set_config_item_locked(struct lxc_container *c, const char *key,
+				      const char *v)
+{
+	int ret;
 
 	if (!c->lxc_conf)
 		c->lxc_conf = lxc_conf_init();
@@ -2775,19 +2801,11 @@ static bool set_config_item_locked(struct lxc_container *c, const char *key, con
 	if (!c->lxc_conf)
 		return false;
 
-	config = lxc_get_config(key);
-	if (!config)
+	ret = lxc_set_config_item_locked(c->lxc_conf, key, v);
+	if (ret < 0)
 		return false;
 
-	if (config->set(key, v, c->lxc_conf, NULL) != 0)
-		return false;
-
-	if (lxc_config_value_empty(v)) {
-		do_clear_unexp_config_line(c->lxc_conf, key);
-		return true;
-	}
-
-	return do_append_unexp_config_line(c->lxc_conf, key, v);
+	return true;
 }
 
 static bool do_lxcapi_set_config_item(struct lxc_container *c, const char *key, const char *v)
@@ -2800,13 +2818,33 @@ static bool do_lxcapi_set_config_item(struct lxc_container *c, const char *key, 
 	if (container_mem_lock(c))
 		return false;
 
-	b = set_config_item_locked(c, key, v);
+	b = do_set_config_item_locked(c, key, v);
 
 	container_mem_unlock(c);
 	return b;
 }
 
 WRAP_API_2(bool, lxcapi_set_config_item, const char *, const char *)
+
+static bool do_lxcapi_set_running_config_item(struct lxc_container *c, const char *key, const char *v)
+{
+	int ret;
+
+	if (!c)
+		return false;
+
+	if (container_mem_lock(c))
+		return false;
+
+	ret = lxc_cmd_set_config_item(c->name, key, v, do_lxcapi_get_config_path(c));
+	if (ret < 0)
+		SYSERROR("%s - Failed to live patch container", strerror(-ret));
+
+	container_mem_unlock(c);
+	return ret == 0;
+}
+
+WRAP_API_2(bool, lxcapi_set_running_config_item, const char *, const char *)
 
 static char *lxcapi_config_file_name(struct lxc_container *c)
 {
@@ -3502,7 +3540,7 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 		clear_unexp_config_line(c2->lxc_conf, "lxc.utsname", false);
 		clear_unexp_config_line(c2->lxc_conf, "lxc.uts.name", false);
 
-		if (!set_config_item_locked(c2, "lxc.uts.name", newname)) {
+		if (!do_set_config_item_locked(c2, "lxc.uts.name", newname)) {
 			ERROR("Error setting new hostname");
 			goto out;
 		}
@@ -4544,6 +4582,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->clear_config_item = lxcapi_clear_config_item;
 	c->get_config_item = lxcapi_get_config_item;
 	c->get_running_config_item = lxcapi_get_running_config_item;
+	c->set_running_config_item = lxcapi_set_running_config_item;
 	c->get_cgroup_item = lxcapi_get_cgroup_item;
 	c->set_cgroup_item = lxcapi_set_cgroup_item;
 	c->get_config_path = lxcapi_get_config_path;
