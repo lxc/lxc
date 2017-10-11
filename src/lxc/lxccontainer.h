@@ -280,6 +280,17 @@ struct lxc_container {
 	bool (*set_config_item)(struct lxc_container *c, const char *key, const char *value);
 
 	/*!
+	 * \brief Set a key/value configuration option on a running container.
+	 *
+	 * \param c Container.
+	 * \param key Name of option to set.
+	 * \param value Value of \p name to set.
+	 *
+	 * \return \c true on success, else \c false.
+	 */
+	bool (*set_running_config_item)(struct lxc_container *c, const char *key, const char *value);
+
+	/*!
 	 * \brief Delete the container.
 	 *
 	 * \param c Container.

@@ -90,6 +90,7 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 		[LXC_CMD_GET_NAME]         = "get_name",
 		[LXC_CMD_GET_LXCPATH]      = "get_lxcpath",
 		[LXC_CMD_ADD_STATE_CLIENT] = "add_state_client",
+		[LXC_CMD_SET_CONFIG_ITEM]  = "set_config_item",
 	};
 
 	if (cmd >= LXC_CMD_MAX)
@@ -539,6 +540,59 @@ out:
 }
 
 /*
+ * lxc_cmd_set_config_item: Get config item the running container
+ *
+ * @name     : name of container to connect to
+ * @item     : the configuration item to set (ex: lxc.net.0.veth.pair)
+ * @value    : the value to set (ex: "eth0")
+ * @lxcpath  : the lxcpath in which the container is running
+ *
+ * Returns 0 on success, negative errno on failure.
+ */
+int lxc_cmd_set_config_item(const char *name, const char *item,
+			    const char *value, const char *lxcpath)
+{
+	int ret, stopped;
+	struct lxc_cmd_set_config_item_req_data data;
+	struct lxc_cmd_rr cmd;
+
+	/* pre-validate request
+	   Currently we only support live-patching network configurations.
+	 */
+	if (strncmp(item, "lxc.net.", 8))
+		return -EINVAL;
+
+	data.item = item;
+	data.value = (void *)value;
+
+	cmd.req.cmd = LXC_CMD_SET_CONFIG_ITEM;
+	cmd.req.data = &data;
+	cmd.req.datalen = sizeof(data);
+
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
+	if (ret < 0)
+		return ret;
+
+	return cmd.rsp.ret;
+}
+
+static int lxc_cmd_set_config_item_callback(int fd, struct lxc_cmd_req *req,
+					    struct lxc_handler *handler)
+{
+	const char *key, *value;
+	struct lxc_cmd_rsp rsp;
+	const struct lxc_cmd_set_config_item_req_data *data;
+
+	data = req->data;
+	key = data->item;
+	value = data->value;
+
+	memset(&rsp, 0, sizeof(rsp));
+	rsp.ret = lxc_set_config_item_locked(handler->conf, key, value);
+	return lxc_cmd_rsp_send(fd, &rsp);
+}
+
+/*
  * lxc_cmd_get_state: Get current state of the container
  *
  * @name      : name of container to connect to
@@ -949,6 +1003,7 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 		[LXC_CMD_GET_NAME]         = lxc_cmd_get_name_callback,
 		[LXC_CMD_GET_LXCPATH]      = lxc_cmd_get_lxcpath_callback,
 		[LXC_CMD_ADD_STATE_CLIENT] = lxc_cmd_add_state_client_callback,
+		[LXC_CMD_SET_CONFIG_ITEM]  = lxc_cmd_set_config_item_callback,
 	};
 
 	if (req->cmd >= LXC_CMD_MAX) {
