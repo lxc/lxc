@@ -1442,7 +1442,7 @@ static int set_config_prlimit(const char *key, const char *value,
 {
 	struct lxc_list *iter;
 	struct rlimit limit;
-	unsigned long limit_value;
+	rlim_t limit_value;
 	struct lxc_list *limlist = NULL;
 	struct lxc_limit *limelem = NULL;
 
