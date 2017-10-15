@@ -84,5 +84,5 @@ extern void update_hwaddr(const char *line);
 extern bool new_hwaddr(char *hwaddr);
 extern int lxc_get_conf_str(char *retv, int inlen, const char *value);
 extern int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen, int v);
-extern bool parse_limit_value(const char **value, unsigned long *res);
+extern bool parse_limit_value(const char **value, rlim_t *res);
 #endif /* __LXC_CONFILE_UTILS_H */
