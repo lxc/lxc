@@ -2700,9 +2700,6 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 			pos += sprintf(mapbuf, "new%cidmap %d", u_or_g, pid);
 
 		lxc_list_for_each(iterator, idmap) {
-			/* The kernel only takes <= 4k for writes to
-			 * /proc/<nr>/[ug]id_map
-			 */
 			map = iterator->elem;
 			if (map->idtype != type)
 				continue;
@@ -2714,8 +2711,13 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 					use_shadow ? " " : "", map->nsid,
 					map->hostid, map->range,
 					use_shadow ? "" : "\n");
-			if (fill <= 0 || fill >= left)
-				SYSERROR("Too many {g,u}id mappings defined.");
+			if (fill <= 0 || fill >= left) {
+				/* The kernel only takes <= 4k for writes to
+				 * /proc/<pid>/{g,u}id_map
+				 */
+				SYSERROR("Too many %cid mappings defined", u_or_g);
+				return -1;
+			}
 
 			pos += fill;
 		}
