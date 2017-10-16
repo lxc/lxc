@@ -297,7 +297,8 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 
 	if ((size_t)n < (sizeof(buffer) - 1))
 		n += vsnprintf(buffer + n, sizeof(buffer) - n, event->fmt, *event->vap);
-	else
+
+	if ((size_t)n >= sizeof(buffer))
 		n = sizeof(buffer) - 1;
 
 	buffer[n] = '\n';
