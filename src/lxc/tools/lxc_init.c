@@ -22,26 +22,34 @@
  */
 
 #define _GNU_SOURCE
-#include <errno.h>
-#include <getopt.h>
-#include <libgen.h>
-#include <signal.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <signal.h>
+#include <libgen.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <getopt.h>
 
 #include <lxc/lxccontainer.h>
 
-#include "arguments.h"
+#include "log.h"
 #include "error.h"
 #include "initutils.h"
-#include "log.h"
 
 lxc_log_define(lxc_init, lxc);
+
+static int quiet;
+
+static const struct option options[] = {
+	{ "name",        required_argument, NULL, 'n' },
+	{ "logpriority", required_argument, NULL, 'l' },
+	{ "quiet",       no_argument,       NULL, 'q' },
+	{ "lxcpath",     required_argument, NULL, 'P' },
+	{ 0, 0, 0, 0 },
+};
 
 static sig_atomic_t was_interrupted = 0;
 
@@ -51,124 +59,114 @@ static void interrupt_handler(int sig)
 		was_interrupted = sig;
 }
 
-static const struct option my_longopts[] = {
-	LXC_COMMON_OPTIONS
-};
-
-static int my_parser(struct lxc_arguments *args, int c, char *arg)
-{
-	return 0;
+static void usage(void) {
+	fprintf(stderr, "Usage: lxc-init [OPTION]...\n\n"
+		"Common options :\n"
+		"  -n, --name=NAME          NAME of the container\n"
+		"  -l, --logpriority=LEVEL  Set log priority to LEVEL\n"
+		"  -q, --quiet              Don't produce any output\n"
+		"  -P, --lxcpath=PATH       Use specified container path\n"
+		"  -?, --help               Give this help list\n"
+		"\n"
+		"Mandatory or optional arguments to long options are also mandatory or optional\n"
+		"for any corresponding short options.\n"
+		"\n"
+		"NOTE: lxc-init is intended for use by lxc internally\n"
+		"      and does not need to be run by hand\n\n");
 }
-
-static struct lxc_arguments my_args = {
-	.progname = "lxc-init",
-	.help     = "\
---name=NAME -- COMMAND\n\
-\n\
-lxc-init start a COMMAND as PID 2 inside a container\n\
-\n\
-Options :\n\
-  -n, --name=NAME        NAME of the container\n\
-",
-	.options   = my_longopts,
-	.parser    = my_parser,
-};
 
 int main(int argc, char *argv[])
 {
-	int i, ret;
 	pid_t pid, sid;
-	struct sigaction act;
-	struct lxc_log log;
+	int err;
+	char **aargv;
 	sigset_t mask, omask;
-	int have_status = 0, shutdown = 0;
+	struct sigaction act;
+	int i, have_status = 0, shutdown = 0;
+	int opt;
+	char *lxcpath = NULL, *name = NULL, *logpriority = NULL;
+	struct lxc_log log;
 
-	if (lxc_arguments_parse(&my_args, argc, argv))
-		exit(EXIT_FAILURE);
+	while ((opt = getopt_long(argc, argv, "n:l:qP:", options, NULL)) != -1) {
+		switch(opt) {
+		case 'n':
+			name = optarg;
+			break;
+		case 'l':
+			logpriority = optarg;
+			break;
+		case 'q':
+			quiet = 1;
+			break;
+		case 'P':
+			lxcpath = optarg;
+			break;
+		default: /* '?' */
+			usage();
+			exit(EXIT_FAILURE);
+		}
+	}
 
-	log.name = my_args.name;
-	log.file = my_args.log_file;
-	log.level = my_args.log_priority;
-	log.prefix = my_args.progname;
-	log.quiet = my_args.quiet;
-	log.lxcpath = my_args.lxcpath[0];
+	log.name = name;
+	log.file = name ? NULL : "none";
+	log.level = logpriority;
+	log.prefix = basename(argv[0]);
+	log.quiet = quiet;
+	log.lxcpath = lxcpath;
 
-	ret = lxc_log_init(&log);
-	if (ret < 0)
+	err = lxc_log_init(&log);
+	if (err < 0)
 		exit(EXIT_FAILURE);
 	lxc_log_options_no_override();
 
-	if (!my_args.argc) {
-		ERROR("Please specify a command to execute");
+	if (!argv[optind]) {
+		ERROR("Missing command to launch");
 		exit(EXIT_FAILURE);
 	}
 
-	/* Mask all the signals so we are safe to install a signal handler and
-	 * to fork.
+	aargv = &argv[optind];
+
+	/*
+	 * mask all the signals so we are safe to install a
+	 * signal handler and to fork
 	 */
-	ret = sigfillset(&mask);
-	if (ret < 0)
+	if (sigfillset(&mask) ||
+	    sigdelset(&mask, SIGILL) ||
+	    sigdelset(&mask, SIGSEGV) ||
+	    sigdelset(&mask, SIGBUS) ||
+	    sigprocmask(SIG_SETMASK, &mask, &omask)) {
+		SYSERROR("Failed to set signal mask");
 		exit(EXIT_FAILURE);
+	}
 
-	ret = sigdelset(&mask, SIGILL);
-	if (ret < 0)
+	if (sigfillset(&act.sa_mask) ||
+	    sigdelset(&act.sa_mask, SIGILL) ||
+	    sigdelset(&act.sa_mask, SIGSEGV) ||
+	    sigdelset(&act.sa_mask, SIGBUS) ||
+	    sigdelset(&act.sa_mask, SIGSTOP) ||
+	    sigdelset(&act.sa_mask, SIGKILL)) {
+		ERROR("Failed to set signal");
 		exit(EXIT_FAILURE);
-
-	ret = sigdelset(&mask, SIGSEGV);
-	if (ret < 0)
-		exit(EXIT_FAILURE);
-
-	ret = sigdelset(&mask, SIGBUS);
-	if (ret < 0)
-		exit(EXIT_FAILURE);
-
-	ret = sigprocmask(SIG_SETMASK, &mask, &omask);
-	if (ret < 0)
-		exit(EXIT_FAILURE);
-
-	ret = sigfillset(&act.sa_mask);
-	if (ret < 0)
-		exit(EXIT_FAILURE);
-
-	ret = sigdelset(&act.sa_mask, SIGILL);
-	if (ret < 0)
-		exit(EXIT_FAILURE);
-
-	ret = sigdelset(&act.sa_mask, SIGSEGV);
-	if (ret < 0)
-		exit(EXIT_FAILURE);
-
-	ret = sigdelset(&act.sa_mask, SIGBUS);
-	if (ret < 0)
-		exit(EXIT_FAILURE);
-
-	ret = sigdelset(&act.sa_mask, SIGSTOP);
-	if (ret < 0)
-		exit(EXIT_FAILURE);
-
-	ret = sigdelset(&act.sa_mask, SIGKILL);
-	if (ret < 0)
-		exit(EXIT_FAILURE);
-
+	}
 	act.sa_flags = 0;
 	act.sa_handler = interrupt_handler;
 
 	for (i = 1; i < NSIG; i++) {
-		/* Exclude some signals: ILL, SEGV and BUS are likely to reveal
-		 * a bug and we want a core. STOP and KILL cannot be handled
-		 * anyway: they're here for documentation. 32 and 33 are not
-		 * defined.
+		/* Exclude some signals: ILL, SEGV and BUS are likely to
+		 * reveal a bug and we want a core. STOP and KILL cannot be
+		 * handled anyway: they're here for documentation. 32 and 33
+		 * are not defined.
 		 */
-		if (i == SIGILL || i == SIGSEGV || i == SIGBUS ||
-		    i == SIGSTOP || i == SIGKILL || i == 32 || i == 33)
+		if (i == SIGILL ||
+		    i == SIGSEGV ||
+		    i == SIGBUS ||
+		    i == SIGSTOP ||
+		    i == SIGKILL ||
+		    i == 32 || i == 33)
 			continue;
 
-		ret = sigaction(i, &act, NULL);
-		if (ret < 0) {
-			if (errno == EINVAL)
-				continue;
-
-			SYSERROR("Failed to change signal action");
+		if (sigaction(i, &act, NULL) && errno != EINVAL) {
+			SYSERROR("Failed to sigaction");
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -180,19 +178,13 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 
 	if (!pid) {
-		/* restore default signal handlers */
-		for (i = 1; i < NSIG; i++) {
-			sighandler_t sigerr;
-			sigerr = signal(i, SIG_DFL);
-			if (sigerr == SIG_ERR) {
-				DEBUG("%s - Failed to reset to default action "
-				      "for signal \"%d\": %d", strerror(errno),
-				      i, pid);
-			}
-		}
+		int ret;
 
-		ret = sigprocmask(SIG_SETMASK, &omask, NULL);
-		if (ret < 0) {
+		/* restore default signal handlers */
+		for (i = 1; i < NSIG; i++)
+			signal(i, SIG_DFL);
+
+		if (sigprocmask(SIG_SETMASK, &omask, NULL)) {
 			SYSERROR("Failed to set signal mask");
 			exit(EXIT_FAILURE);
 		}
@@ -201,31 +193,25 @@ int main(int argc, char *argv[])
 		if (sid < 0)
 			DEBUG("Failed to make child session leader");
 
-		NOTICE("Exec'ing \"%s\"", my_args.argv[0]);
+		NOTICE("About to exec '%s'", aargv[0]);
 
-		ret = execvp(my_args.argv[0], my_args.argv);
-		ERROR("%s - Failed to exec \"%s\"", strerror(errno), my_args.argv[0]);
+		ret = execvp(aargv[0], aargv);
+		ERROR("Failed to exec: '%s' : %s", aargv[0], strerror(errno));
 		exit(ret);
 	}
 
-	INFO("Attempting to set proc title to \"init\"");
-	setproctitle("init");
-
-	/* Let's process the signals now. */
-	ret = sigdelset(&omask, SIGALRM);
-	if (ret < 0)
-		exit(EXIT_FAILURE);
-
-	ret = sigprocmask(SIG_SETMASK, &omask, NULL);
-	if (ret < 0) {
+	/* let's process the signals now */
+	if (sigdelset(&omask, SIGALRM) ||
+	    sigprocmask(SIG_SETMASK, &omask, NULL)) {
 		SYSERROR("Failed to set signal mask");
 		exit(EXIT_FAILURE);
 	}
 
-	/* No need of other inherited fds but stderr. */
-	close(STDIN_FILENO);
-	close(STDOUT_FILENO);
+	/* no need of other inherited fds but stderr */
+	close(fileno(stdin));
+	close(fileno(stdout));
 
+	err = EXIT_SUCCESS;
 	for (;;) {
 		int status;
 		pid_t waited_pid;
@@ -237,56 +223,47 @@ int main(int argc, char *argv[])
 		case SIGTERM:
 			if (!shutdown) {
 				shutdown = 1;
-				ret = kill(-1, SIGTERM);
-				if (ret < 0)
-					DEBUG("%s - Failed to send SIGTERM to "
-					      "all children", strerror(errno));
+				kill(-1, SIGTERM);
 				alarm(1);
 			}
 			break;
 		case SIGALRM:
-			ret = kill(-1, SIGKILL);
-			if (ret < 0)
-				DEBUG("%s - Failed to send SIGKILL to all "
-				      "children", strerror(errno));
+			kill(-1, SIGKILL);
 			break;
 		default:
-			ret = kill(pid, was_interrupted);
-			if (ret < 0)
-				DEBUG("%s - Failed to send signal \"%d\" to "
-				      "%d", strerror(errno), was_interrupted, pid);
+			kill(pid, was_interrupted);
 			break;
 		}
-		ret = EXIT_SUCCESS;
 
 		was_interrupted = 0;
 		waited_pid = wait(&status);
 		if (waited_pid < 0) {
 			if (errno == ECHILD)
 				goto out;
-
 			if (errno == EINTR)
 				continue;
 
-			ERROR("%s - Failed to wait on child %d",
-			      strerror(errno), pid);
+			ERROR("Failed to wait child : %s",
+			      strerror(errno));
 			goto out;
 		}
 
-		/* Reset timer each time a process exited. */
+		/* reset timer each time a process exited */
 		if (shutdown)
 			alarm(1);
 
-		/* Keep the exit code of the started application (not wrapped
-		 * pid) and continue to wait for the end of the orphan group.
+		/*
+		 * keep the exit code of started application
+		 * (not wrapped pid) and continue to wait for
+		 * the end of the orphan group.
 		 */
 		if (waited_pid == pid && !have_status) {
-			ret = lxc_error_set_and_log(waited_pid, status);
+			err = lxc_error_set_and_log(waited_pid, status);
 			have_status = 1;
 		}
 	}
 out:
-	if (ret < 0)
+	if (err < 0)
 		exit(EXIT_FAILURE);
-	exit(ret);
+	exit(err);
 }

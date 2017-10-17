@@ -21,8 +21,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <sys/prctl.h>
-
 #include "initutils.h"
 #include "log.h"
 
@@ -296,109 +294,5 @@ FILE *fopen_cloexec(const char *path, const char *mode)
 	if (!ret)
 		close(fd);
 	errno = saved_errno;
-	return ret;
-}
-
-/*
- * Sets the process title to the specified title. Note that this may fail if
- * the kernel doesn't support PR_SET_MM_MAP (kernels <3.18).
- */
-int setproctitle(char *title)
-{
-	static char *proctitle = NULL;
-	char buf[2048], *tmp;
-	FILE *f;
-	int i, len, ret = 0;
-
-	/* We don't really need to know all of this stuff, but unfortunately
-	 * PR_SET_MM_MAP requires us to set it all at once, so we have to
-	 * figure it out anyway.
-	 */
-	unsigned long start_data, end_data, start_brk, start_code, end_code,
-			start_stack, arg_start, arg_end, env_start, env_end,
-			brk_val;
-	struct prctl_mm_map prctl_map;
-
-	f = fopen_cloexec("/proc/self/stat", "r");
-	if (!f) {
-		return -1;
-	}
-
-	tmp = fgets(buf, sizeof(buf), f);
-	fclose(f);
-	if (!tmp) {
-		return -1;
-	}
-
-	/* Skip the first 25 fields, column 26-28 are start_code, end_code,
-	 * and start_stack */
-	tmp = strchr(buf, ' ');
-	for (i = 0; i < 24; i++) {
-		if (!tmp)
-			return -1;
-		tmp = strchr(tmp+1, ' ');
-	}
-	if (!tmp)
-		return -1;
-
-	i = sscanf(tmp, "%lu %lu %lu", &start_code, &end_code, &start_stack);
-	if (i != 3)
-		return -1;
-
-	/* Skip the next 19 fields, column 45-51 are start_data to arg_end */
-	for (i = 0; i < 19; i++) {
-		if (!tmp)
-			return -1;
-		tmp = strchr(tmp+1, ' ');
-	}
-
-	if (!tmp)
-		return -1;
-
-	i = sscanf(tmp, "%lu %lu %lu %*u %*u %lu %lu",
-		&start_data,
-		&end_data,
-		&start_brk,
-		&env_start,
-		&env_end);
-	if (i != 5)
-		return -1;
-
-	/* Include the null byte here, because in the calculations below we
-	 * want to have room for it. */
-	len = strlen(title) + 1;
-
-	proctitle = realloc(proctitle, len);
-	if (!proctitle)
-		return -1;
-
-	arg_start = (unsigned long) proctitle;
-	arg_end = arg_start + len;
-
-	brk_val = syscall(__NR_brk, 0);
-
-	prctl_map = (struct prctl_mm_map) {
-		.start_code = start_code,
-		.end_code = end_code,
-		.start_stack = start_stack,
-		.start_data = start_data,
-		.end_data = end_data,
-		.start_brk = start_brk,
-		.brk = brk_val,
-		.arg_start = arg_start,
-		.arg_end = arg_end,
-		.env_start = env_start,
-		.env_end = env_end,
-		.auxv = NULL,
-		.auxv_size = 0,
-		.exe_fd = -1,
-	};
-
-	ret = prctl(PR_SET_MM, PR_SET_MM_MAP, (long) &prctl_map, sizeof(prctl_map), 0);
-	if (ret == 0)
-		strcpy((char*)arg_start, title);
-	else
-		INFO("setting cmdline failed - %s", strerror(errno));
-
 	return ret;
 }
