@@ -41,7 +41,7 @@ export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
 # defaults
 arch=$(uname -m)
 default_path="@LXCPATH@"
-default_locale="en-US.UTF-8"
+default_locale="en_US.UTF-8"
 pacman_config="/etc/pacman.conf"
 common_config="@LXCTEMPLATECONFIG@/common.conf"
 shared_config="@LXCTEMPLATECONFIG@/archlinux.common.conf"
