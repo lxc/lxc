@@ -43,7 +43,7 @@ arch=$(uname -m)
 lxc_network_type="veth"
 lxc_network_link="br0"
 default_path="@LXCPATH@"
-default_locale="en-US.UTF-8"
+default_locale="en_US.UTF-8"
 default_timezone="UTC"
 pacman_config="/etc/pacman.conf"
 
