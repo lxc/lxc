@@ -241,6 +241,11 @@ static inline int memfd_create(const char *name, unsigned int flags) {
 extern int memfd_create(const char *name, unsigned int flags);
 #endif
 
+static inline int lxc_set_cloexec(int fd)
+{
+	return fcntl(fd, F_SETFD, FD_CLOEXEC);
+}
+
 /* Struct to carry child pid from lxc_popen() to lxc_pclose().
  * Not an opaque struct to allow direct access to the underlying FILE *
  * (i.e., struct lxc_popen_FILE *file; fgets(buf, sizeof(buf), file->f))
