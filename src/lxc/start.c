@@ -937,7 +937,7 @@ static int do_start(void *data)
 	}
 
 	/* Setup the container, ip, names, utsname, ... */
-	ret = lxc_setup(handler);
+	ret = lxc_setup_child(handler);
 	close(handler->data_sock[0]);
 	close(handler->data_sock[1]);
 	if (ret < 0) {
