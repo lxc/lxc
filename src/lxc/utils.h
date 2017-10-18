@@ -419,6 +419,7 @@ extern bool task_blocking_signal(pid_t pid, int signal);
 extern int lxc_safe_uint(const char *numstr, unsigned int *converted);
 extern int lxc_safe_int(const char *numstr, int *converted);
 extern int lxc_safe_long(const char *numstr, long int *converted);
+extern int lxc_safe_long_long(const char *numstr, long long int *converted);
 extern int lxc_safe_ulong(const char *numstr, unsigned long *converted);
 
 /* Switch to a new uid and gid. */
