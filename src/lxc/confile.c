@@ -3357,12 +3357,12 @@ static int get_config_network_item(const char *key, char *retv, int inlen,
 	if (!netdev)
 		return -1;
 	if (strcmp(p1, "name") == 0) {
-		if (netdev->name)
+		if (netdev->name[0] != '\0')
 			strprint(retv, inlen, "%s", netdev->name);
 	} else if (strcmp(p1, "type") == 0) {
 		strprint(retv, inlen, "%s", lxc_net_type_to_str(netdev->type));
 	} else if (strcmp(p1, "link") == 0) {
-		if (netdev->link)
+		if (netdev->link[0] != '\0')
 			strprint(retv, inlen, "%s", netdev->link);
 	} else if (strcmp(p1, "flags") == 0) {
 		if (netdev->flags & IFF_UP)
@@ -3404,7 +3404,7 @@ static int get_config_network_item(const char *key, char *retv, int inlen,
 	} else if (strcmp(p1, "veth.pair") == 0) {
 		if (netdev->type == LXC_NET_VETH) {
 			strprint(retv, inlen, "%s",
-				 netdev->priv.veth_attr.pair
+				 netdev->priv.veth_attr.pair[0] != '\0'
 				     ? netdev->priv.veth_attr.pair
 				     : netdev->priv.veth_attr.veth1);
 		}
