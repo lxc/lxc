@@ -3078,7 +3078,7 @@ static bool verify_start_hooks(struct lxc_conf *conf)
 	return true;
 }
 
-int lxc_setup(struct lxc_handler *handler)
+int lxc_setup_child(struct lxc_handler *handler)
 {
 	int ret;
 	const char *name = handler->name;
