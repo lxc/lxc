@@ -36,6 +36,7 @@
 #include <stdbool.h>
 
 #include "list.h"
+#include "ringbuf.h"
 #include "start.h" /* for lxc_handler */
 
 #if HAVE_SCMP_FILTER_CTX
@@ -153,6 +154,7 @@ struct lxc_console {
 	struct termios *tios;
 	struct lxc_tty_state *tty_state;
 	uint64_t log_size;
+	struct lxc_ringbuf ringbuf;
 };
 
 /*
@@ -378,6 +380,7 @@ extern void lxc_clear_includes(struct lxc_conf *conf);
 extern int do_rootfs_setup(struct lxc_conf *conf, const char *name,
 			   const char *lxcpath);
 extern int lxc_setup_child(struct lxc_handler *handler);
+extern int lxc_setup_parent(struct lxc_handler *handler);
 extern int setup_resource_limits(struct lxc_list *limits, pid_t pid);
 extern int find_unmapped_nsid(struct lxc_conf *conf, enum idtype idtype);
 extern int mapped_hostid(unsigned id, struct lxc_conf *conf,

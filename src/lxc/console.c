@@ -51,6 +51,8 @@
 #include <../include/openpty.h>
 #endif
 
+#define LXC_CONSOLE_BUFFER_SIZE 1024
+
 lxc_log_define(console, lxc);
 
 static struct lxc_list lxc_ttys;
@@ -167,12 +169,12 @@ static int lxc_console_cb_con(int fd, uint32_t events, void *data,
 			      struct lxc_epoll_descr *descr)
 {
 	struct lxc_console *console = (struct lxc_console *)data;
-	char buf[1024];
-	int r, w;
+	char buf[LXC_CONSOLE_BUFFER_SIZE];
+	int r, w, w_log, w_rbuf;
 
 	w = r = lxc_read_nointr(fd, buf, sizeof(buf));
 	if (r <= 0) {
-		INFO("console client on fd %d has exited", fd);
+		INFO("Console client on fd %d has exited", fd);
 		lxc_mainloop_del_handler(descr, fd);
 		if (fd == console->peer) {
 			if (console->tty_state) {
@@ -190,16 +192,30 @@ static int lxc_console_cb_con(int fd, uint32_t events, void *data,
 	if (fd == console->peer)
 		w = lxc_write_nointr(console->master, buf, r);
 
+	w_rbuf = w_log = 0;
 	if (fd == console->master) {
-		if (console->log_fd >= 0)
-			w = lxc_write_nointr(console->log_fd, buf, r);
-
+		/* write to peer first */
 		if (console->peer >= 0)
 			w = lxc_write_nointr(console->peer, buf, r);
+
+		/* write to console ringbuffer */
+		if (console->log_size > 0)
+			w_rbuf = lxc_ringbuf_write(&console->ringbuf, buf, r);
+
+		/* write to console log */
+		if (console->log_fd >= 0)
+			w_log = lxc_write_nointr(console->log_fd, buf, r);
 	}
 
 	if (w != r)
-		WARN("console short write r:%d w:%d", r, w);
+		WARN("Console short write r:%d != w:%d", r, w);
+
+	if (w_rbuf < 0)
+		TRACE("%s - Failed to write %d bytes to console ringbuffer",
+		      strerror(-w_rbuf), r);
+
+	if (w_log < 0)
+		TRACE("Failed to write %d bytes to console log", r);
 
 	return 0;
 }
@@ -632,7 +648,7 @@ int lxc_console_cb_tty_master(int fd, uint32_t events, void *cbdata,
 		struct lxc_epoll_descr *descr)
 {
 	struct lxc_tty_state *ts = cbdata;
-	char buf[1024];
+	char buf[LXC_CONSOLE_BUFFER_SIZE];
 	int r, w;
 
 	if (fd != ts->masterfd)
