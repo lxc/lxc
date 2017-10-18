@@ -462,4 +462,14 @@ extern bool lxc_nic_exists(char *nic);
 extern int lxc_make_tmpfile(char *template, bool rm);
 extern uint64_t lxc_getpagesize(void);
 
+/* If n is not a power of 2 this function will return the next power of 2
+ * greater than that number. Note that this function always returns the *next*
+ * power of 2 *greater* that number not the *nearest*. For example, passing 1025
+ * as argument this function will return 2048 although the closest power of 2
+ * would be 1024.
+ * If the caller passes in 0 they will receive 0 in return since this is invalid
+ * input and 0 is not a power of 2.
+ */
+extern uint64_t lxc_find_next_power2(uint64_t n);
+
 #endif /* __LXC_UTILS_H */
