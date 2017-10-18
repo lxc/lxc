@@ -39,6 +39,10 @@
 #include <sys/types.h>
 #include <sys/vfs.h>
 
+#ifdef HAVE_LINUX_MEMFD_H
+#include <linux/memfd.h>
+#endif
+
 #include "initutils.h"
 
 /* Define __S_ISTYPE if missing from the C library. */
@@ -182,6 +186,59 @@ static inline int signalfd(int fd, const sigset_t *mask, int flags)
 
 #ifndef LOOP_CTL_GET_FREE
 #define LOOP_CTL_GET_FREE 0x4C82
+#endif
+
+/* memfd_create() */
+#ifndef MFD_CLOEXEC
+#define MFD_CLOEXEC 0x0001U
+#endif
+
+#ifndef MFD_ALLOW_SEALING
+#define MFD_ALLOW_SEALING 0x0002U
+#endif
+
+#ifndef HAVE_MEMFD_CREATE
+static inline int memfd_create(const char *name, unsigned int flags) {
+	#ifndef __NR_memfd_create
+		#if defined __i386__
+			#define __NR_memfd_create 356
+		#elif defined __x86_64__
+			#define __NR_memfd_create 319
+		#elif defined __arm__
+			#define __NR_memfd_create 385
+		#elif defined __aarch64__
+			#define __NR_memfd_create 279
+		#elif defined __s390__
+			#define __NR_memfd_create 350
+		#elif defined __powerpc__
+			#define __NR_memfd_create 360
+		#elif defined __sparc__
+			#define __NR_memfd_create 348
+		#elif defined __blackfin__
+			#define __NR_memfd_create 390
+		#elif defined __ia64__
+			#define __NR_memfd_create 1340
+		#elif defined _MIPS_SIM
+			#if _MIPS_SIM == _MIPS_SIM_ABI32
+				#define __NR_memfd_create 4354
+			#endif
+			#if _MIPS_SIM == _MIPS_SIM_NABI32
+				#define __NR_memfd_create 6318
+			#endif
+			#if _MIPS_SIM == _MIPS_SIM_ABI64
+				#define __NR_memfd_create 5314
+			#endif
+		#endif
+	#endif
+	#ifdef __NR_memfd_create
+	return syscall(__NR_memfd_create, name, flags);
+	#else
+	errno = ENOSYS;
+	return -1;
+	#endif
+}
+#else
+extern int memfd_create(const char *name, unsigned int flags);
 #endif
 
 /* Struct to carry child pid from lxc_popen() to lxc_pclose().
