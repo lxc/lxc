@@ -256,7 +256,7 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 		switch (netdev->type) {
 		case LXC_NET_VETH:
 			TRACE("type: veth");
-			if (netdev->priv.veth_attr.pair)
+			if (netdev->priv.veth_attr.pair[0] != '\0')
 				TRACE("veth pair: %s",
 				      netdev->priv.veth_attr.pair);
 			if (netdev->priv.veth_attr.veth1[0] != '\0')
@@ -291,9 +291,9 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 		}
 
 		TRACE("flags: %s", netdev->flags == IFF_UP ? "up" : "none");
-		if (netdev->link)
+		if (netdev->link[0] != '\0')
 			TRACE("link: %s", netdev->link);
-		if (netdev->name)
+		if (netdev->name[0] != '\0')
 			TRACE("name: %s", netdev->name);
 		if (netdev->hwaddr)
 			TRACE("hwaddr: %s", netdev->hwaddr);
