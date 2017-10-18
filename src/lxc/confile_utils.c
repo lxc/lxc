@@ -17,9 +17,11 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define __STDC_FORMAT_MACROS
 #include "config.h"
 
 #include <ctype.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -670,6 +672,16 @@ int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen, int v)
 		memset(retv, 0, inlen);
 
 	return snprintf(retv, inlen, "%d", v);
+}
+
+int lxc_get_conf_uint64(struct lxc_conf *c, char *retv, int inlen, uint64_t v)
+{
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	return snprintf(retv, inlen, "%"PRIu64, v);
 }
 
 bool parse_limit_value(const char **value, rlim_t *res)
