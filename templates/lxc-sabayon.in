@@ -39,13 +39,11 @@ readonly LXC_TEMPLATE_CONFIG='@LXCTEMPLATECONFIG@'
 readonly MIRRORS_LIST="
 http://mirror.it.sabayon.org/
 http://dl.sabayon.org/
-http://ftp.kddilabs.jp/Linux/packages/sabayonlinux/
 ftp://ftp.klid.dk/sabayonlinux/
 http://ftp.fsn.hu/pub/linux/distributions/sabayon/
 http://ftp.cc.uoc.gr/mirrors/linux/SabayonLinux/
 http://ftp.rnl.ist.utl.pt/pub/sabayon/
 ftp://ftp.nluug.nl/pub/os/Linux/distr/sabayonlinux/
-http://ftp.surfnet.nl/pub/os/Linux/distr/sabayonlinux/
 http://mirror.internode.on.net/pub/sabayon/
 http://mirror.yandex.ru/sabayon/
 http://sabayon.c3sl.ufpr.br/
@@ -294,6 +292,11 @@ lxc.idmap = g 0 ${mapped_gid} 65536
 
         unprivileged_options="
 $unprivileged_options
+
+# Force use of cgroup v1. Currently systemd doesn't support
+# correctly cgroup v2. See: https://github.com/lxc/lxc/issues/1669
+# about discussion of default-hierarchy option.
+lxc.init.cmd = /sbin/init systemd.legacy_systemd_cgroup_controller=yes
 
 # Include common configuration.
 lxc.include = $LXC_TEMPLATE_CONFIG/sabayon.userns.conf
