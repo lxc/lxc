@@ -467,5 +467,6 @@ extern bool has_fs_type(const char *path, fs_type_magic magic_val);
 extern bool is_fs_type(const struct statfs *fs, fs_type_magic magic_val);
 extern bool lxc_nic_exists(char *nic);
 extern int lxc_make_tmpfile(char *template, bool rm);
+extern uint64_t lxc_getpagesize(void);
 
 #endif /* __LXC_UTILS_H */
