@@ -2420,3 +2420,14 @@ int lxc_make_tmpfile(char *template, bool rm)
 
 	return fd;
 }
+
+uint64_t lxc_getpagesize(void)
+{
+	int64_t pgsz;
+
+	pgsz = sysconf(_SC_PAGESIZE);
+	if (pgsz <= 0)
+		pgsz = 1 << 12;
+
+	return pgsz;
+}
