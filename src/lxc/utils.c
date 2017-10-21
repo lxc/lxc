@@ -47,6 +47,7 @@
 #include "log.h"
 #include "lxclock.h"
 #include "namespace.h"
+#include "parse.h"
 #include "utils.h"
 
 #ifndef O_PATH
@@ -2003,6 +2004,26 @@ int lxc_safe_long(const char *numstr, long int *converted)
 	return 0;
 }
 
+int lxc_safe_long_long(const char *numstr, long long int *converted)
+{
+	char *err = NULL;
+	signed long long int sli;
+
+	errno = 0;
+	sli = strtoll(numstr, &err, 0);
+	if (errno == ERANGE && (sli == LLONG_MAX || sli == LLONG_MIN))
+		return -ERANGE;
+
+	if (errno != 0 && sli == 0)
+		return -EINVAL;
+
+	if (err == numstr || *err != '\0')
+		return -EINVAL;
+
+	*converted = sli;
+	return 0;
+}
+
 int lxc_switch_uid_gid(uid_t uid, gid_t gid)
 {
 	if (setgid(gid) < 0) {
@@ -2338,4 +2359,119 @@ bool lxc_nic_exists(char *nic)
 		return false;
 
 	return true;
+}
+
+int lxc_make_tmpfile(char *template, bool rm)
+{
+	int fd, ret;
+
+	fd = mkstemp(template);
+	if (fd < 0)
+		return -1;
+
+	if (!rm)
+		return fd;
+
+	ret = unlink(template);
+	if (ret < 0) {
+		close(fd);
+		return -1;
+	}
+
+	return fd;
+}
+
+uint64_t lxc_getpagesize(void)
+{
+	int64_t pgsz;
+
+	pgsz = sysconf(_SC_PAGESIZE);
+	if (pgsz <= 0)
+		pgsz = 1 << 12;
+
+	return pgsz;
+}
+
+int parse_byte_size_string(const char *s, int64_t *converted)
+{
+	int ret, suffix_len;
+	long long int conv;
+	int64_t mltpl, overflow;
+	char *end;
+	char dup[LXC_NUMSTRLEN64 + 2];
+	char suffix[3];
+
+	if (!s || !strcmp(s, ""))
+		return -EINVAL;
+
+	end = stpncpy(dup, s, sizeof(dup));
+	if (*end != '\0')
+		return -EINVAL;
+
+	if (isdigit(*(end - 1)))
+		suffix_len = 0;
+	else if (isalpha(*(end - 1)))
+		suffix_len = 1;
+	else
+		return -EINVAL;
+
+	if ((end - 2) == dup && !isdigit(*(end - 2)))
+		return -EINVAL;
+
+	if (isalpha(*(end - 2))) {
+		if (suffix_len == 1)
+			suffix_len++;
+		else
+			return -EINVAL;
+	}
+
+	if (suffix_len > 0) {
+		memcpy(suffix, end - suffix_len, suffix_len);
+		*(suffix + suffix_len) = '\0';
+		*(end - suffix_len) = '\0';
+	}
+	dup[lxc_char_right_gc(dup, strlen(dup))] = '\0';
+
+	ret = lxc_safe_long_long(dup, &conv);
+	if (ret < 0)
+		return -ret;
+
+	if (suffix_len != 2) {
+		*converted = conv;
+		return 0;
+	}
+
+	if (!strcmp(suffix, "kB"))
+		mltpl = 1024;
+	else if (!strcmp(suffix, "MB"))
+		mltpl = 1024 * 1024;
+	else if (!strcmp(suffix, "GB"))
+		mltpl = 1024 * 1024 * 1024;
+	else
+		return -EINVAL;
+
+	overflow = conv * mltpl;
+	if (conv != 0 && (overflow / conv) != mltpl)
+		return -ERANGE;
+
+	*converted = overflow;
+	return 0;
+}
+
+uint64_t lxc_find_next_power2(uint64_t n)
+{
+	/* 0 is not valid input. We return 0 to the caller since 0 is not a
+	 * valid power of two.
+	 */
+	if (n == 0)
+		return 0;
+
+	if (!(n & (n - 1)))
+		return n;
+
+	while (n & (n - 1))
+		n = n & (n - 1);
+
+	n = n << 1;
+	return n;
 }

@@ -68,10 +68,6 @@
 #include <../include/openpty.h>
 #endif
 
-#ifdef HAVE_LINUX_MEMFD_H
-#include <linux/memfd.h>
-#endif
-
 #include "af_unix.h"
 #include "caps.h"       /* for lxc_caps_last_cap() */
 #include "cgroup.h"
@@ -84,6 +80,7 @@
 #include "namespace.h"
 #include "network.h"
 #include "parse.h"
+#include "ringbuf.h"
 #include "storage.h"
 #include "storage/aufs.h"
 #include "storage/overlay.h"
@@ -179,59 +176,6 @@ static int sethostname(const char * name, size_t len)
 
 #ifndef MS_LAZYTIME
 #define MS_LAZYTIME (1<<25)
-#endif
-
-/* memfd_create() */
-#ifndef MFD_CLOEXEC
-#define MFD_CLOEXEC 0x0001U
-#endif
-
-#ifndef MFD_ALLOW_SEALING
-#define MFD_ALLOW_SEALING 0x0002U
-#endif
-
-#ifndef HAVE_MEMFD_CREATE
-static int memfd_create(const char *name, unsigned int flags) {
-	#ifndef __NR_memfd_create
-		#if defined __i386__
-			#define __NR_memfd_create 356
-		#elif defined __x86_64__
-			#define __NR_memfd_create 319
-		#elif defined __arm__
-			#define __NR_memfd_create 385
-		#elif defined __aarch64__
-			#define __NR_memfd_create 279
-		#elif defined __s390__
-			#define __NR_memfd_create 350
-		#elif defined __powerpc__
-			#define __NR_memfd_create 360
-		#elif defined __sparc__
-			#define __NR_memfd_create 348
-		#elif defined __blackfin__
-			#define __NR_memfd_create 390
-		#elif defined __ia64__
-			#define __NR_memfd_create 1340
-		#elif defined _MIPS_SIM
-			#if _MIPS_SIM == _MIPS_SIM_ABI32
-				#define __NR_memfd_create 4354
-			#endif
-			#if _MIPS_SIM == _MIPS_SIM_NABI32
-				#define __NR_memfd_create 6318
-			#endif
-			#if _MIPS_SIM == _MIPS_SIM_ABI64
-				#define __NR_memfd_create 5314
-			#endif
-		#endif
-	#endif
-	#ifdef __NR_memfd_create
-	return syscall(__NR_memfd_create, name, flags);
-	#else
-	errno = ENOSYS;
-	return -1;
-	#endif
-}
-#else
-extern int memfd_create(const char *name, unsigned int flags);
 #endif
 
 char *lxchook_names[NUM_LXC_HOOKS] = {"pre-start", "pre-mount", "mount",
@@ -2485,6 +2429,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->autodev = 1;
 	new->console.log_path = NULL;
 	new->console.log_fd = -1;
+	new->console.log_size = 0;
 	new->console.path = NULL;
 	new->console.peer = -1;
 	new->console.peerpty.busy = -1;
@@ -2493,6 +2438,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->console.master = -1;
 	new->console.slave = -1;
 	new->console.name[0] = '\0';
+	memset(&new->console.ringbuf, 0, sizeof(struct lxc_ringbuf));
 	new->maincmd_fd = -1;
 	new->nbd_idx = -1;
 	new->rootfs.mount = strdup(default_rootfs_mount);
@@ -3136,7 +3082,65 @@ static bool verify_start_hooks(struct lxc_conf *conf)
 	return true;
 }
 
-int lxc_setup(struct lxc_handler *handler)
+/**
+ * Note that this function needs to run before the mainloop starts. Since we
+ * register a handler for the console's masterfd when we create the mainloop
+ * the console handler needs to see an allocated ringbuffer.
+ */
+static int lxc_setup_console_ringbuf(struct lxc_console *console)
+{
+	int ret;
+	struct lxc_ringbuf *buf = &console->ringbuf;
+	uint64_t size = console->log_size;
+
+	/* no ringbuffer previously allocated and no ringbuffer requested */
+	if (!buf->addr && size <= 0)
+		return 0;
+
+	/* ringbuffer allocated but no new ringbuffer requested */
+	if (buf->addr && size <= 0) {
+		lxc_ringbuf_release(buf);
+		buf->addr = NULL;
+		buf->r_off = 0;
+		buf->w_off = 0;
+		buf->size = 0;
+		TRACE("Deallocated console ringbuffer");
+		return 0;
+	}
+
+	if (size <= 0)
+		return 0;
+
+	/* check wether the requested size for the ringbuffer has changed */
+	if (buf->addr && buf->size != size) {
+		TRACE("Console ringbuffer size changed from %" PRIu64
+		      " to %" PRIu64 " bytes. Deallocating console ringbuffer",
+		      buf->size, size);
+		lxc_ringbuf_release(buf);
+	}
+
+	ret = lxc_ringbuf_create(buf, size);
+	if (ret < 0) {
+		ERROR("Failed to setup %" PRIu64 " byte console ringbuffer", size);
+		return -1;
+	}
+
+	TRACE("Allocated %" PRIu64 " byte console ringbuffer", size);
+	return 0;
+}
+
+int lxc_setup_parent(struct lxc_handler *handler)
+{
+	int ret;
+
+	ret = lxc_setup_console_ringbuf(&handler->conf->console);
+	if (ret < 0)
+		return -1;
+
+	return 0;
+}
+
+int lxc_setup_child(struct lxc_handler *handler)
 {
 	int ret;
 	const char *name = handler->name;
@@ -3516,6 +3520,8 @@ void lxc_conf_free(struct lxc_conf *conf)
 		current_config = NULL;
 	free(conf->console.log_path);
 	free(conf->console.path);
+	if (conf->console.log_size > 0 && conf->console.ringbuf.addr)
+		lxc_ringbuf_release(&conf->console.ringbuf);
 	free(conf->rootfs.mount);
 	free(conf->rootfs.bdev_type);
 	free(conf->rootfs.options);

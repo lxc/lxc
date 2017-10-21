@@ -380,6 +380,88 @@ void test_lxc_string_in_array(void)
 	lxc_test_assert_abort(lxc_string_in_array("XYZ", (const char *[]){"BERTA", "ARQWE(9", "C8Zhkd", "7U", "XYZ", "UOIZ9", "=)()", NULL}));
 }
 
+void test_parse_byte_size_string(void)
+{
+	int ret;
+	int64_t n;
+
+	ret = parse_byte_size_string("0", &n);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+	if (n != 0)
+		exit(EXIT_FAILURE);
+
+	ret = parse_byte_size_string("1", &n);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+	if (n != 1)
+		exit(EXIT_FAILURE);
+
+	ret = parse_byte_size_string("1 ", &n);
+	if (ret == 0)
+		exit(EXIT_FAILURE);
+
+	ret = parse_byte_size_string("1B", &n);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+	if (n != 1)
+		exit(EXIT_FAILURE);
+
+	ret = parse_byte_size_string("1kB", &n);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+	if (n != 1024)
+		exit(EXIT_FAILURE);
+
+	ret = parse_byte_size_string("1MB", &n);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+	if (n != 1048576)
+		exit(EXIT_FAILURE);
+
+	ret = parse_byte_size_string("1GB", &n);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+	if (n != 1073741824)
+		exit(EXIT_FAILURE);
+
+	ret = parse_byte_size_string("1TB", &n);
+	if (ret == 0)
+		exit(EXIT_FAILURE);
+
+	ret = parse_byte_size_string("1 B", &n);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+	if (n != 1)
+		exit(EXIT_FAILURE);
+
+	ret = parse_byte_size_string("1 kB", &n);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+	if (n != 1024)
+		exit(EXIT_FAILURE);
+
+	ret = parse_byte_size_string("1 MB", &n);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+	if (n != 1048576)
+		exit(EXIT_FAILURE);
+
+	ret = parse_byte_size_string("1 GB", &n);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+	if (n != 1073741824)
+		exit(EXIT_FAILURE);
+
+	ret = parse_byte_size_string("1 TB", &n);
+	if (ret == 0)
+		exit(EXIT_FAILURE);
+
+	ret = parse_byte_size_string("asdf", &n);
+	if (ret == 0)
+		exit(EXIT_FAILURE);
+}
+
 int main(int argc, char *argv[])
 {
 	test_lxc_string_replace();
@@ -389,6 +471,7 @@ int main(int argc, char *argv[])
 	test_lxc_safe_uint();
 	test_lxc_safe_int();
 	test_lxc_safe_long();
+	test_parse_byte_size_string();
 
 	exit(EXIT_SUCCESS);
 }

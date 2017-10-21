@@ -39,6 +39,10 @@
 #include <sys/types.h>
 #include <sys/vfs.h>
 
+#ifdef HAVE_LINUX_MEMFD_H
+#include <linux/memfd.h>
+#endif
+
 #include "initutils.h"
 
 /* Define __S_ISTYPE if missing from the C library. */
@@ -183,6 +187,64 @@ static inline int signalfd(int fd, const sigset_t *mask, int flags)
 #ifndef LOOP_CTL_GET_FREE
 #define LOOP_CTL_GET_FREE 0x4C82
 #endif
+
+/* memfd_create() */
+#ifndef MFD_CLOEXEC
+#define MFD_CLOEXEC 0x0001U
+#endif
+
+#ifndef MFD_ALLOW_SEALING
+#define MFD_ALLOW_SEALING 0x0002U
+#endif
+
+#ifndef HAVE_MEMFD_CREATE
+static inline int memfd_create(const char *name, unsigned int flags) {
+	#ifndef __NR_memfd_create
+		#if defined __i386__
+			#define __NR_memfd_create 356
+		#elif defined __x86_64__
+			#define __NR_memfd_create 319
+		#elif defined __arm__
+			#define __NR_memfd_create 385
+		#elif defined __aarch64__
+			#define __NR_memfd_create 279
+		#elif defined __s390__
+			#define __NR_memfd_create 350
+		#elif defined __powerpc__
+			#define __NR_memfd_create 360
+		#elif defined __sparc__
+			#define __NR_memfd_create 348
+		#elif defined __blackfin__
+			#define __NR_memfd_create 390
+		#elif defined __ia64__
+			#define __NR_memfd_create 1340
+		#elif defined _MIPS_SIM
+			#if _MIPS_SIM == _MIPS_SIM_ABI32
+				#define __NR_memfd_create 4354
+			#endif
+			#if _MIPS_SIM == _MIPS_SIM_NABI32
+				#define __NR_memfd_create 6318
+			#endif
+			#if _MIPS_SIM == _MIPS_SIM_ABI64
+				#define __NR_memfd_create 5314
+			#endif
+		#endif
+	#endif
+	#ifdef __NR_memfd_create
+	return syscall(__NR_memfd_create, name, flags);
+	#else
+	errno = ENOSYS;
+	return -1;
+	#endif
+}
+#else
+extern int memfd_create(const char *name, unsigned int flags);
+#endif
+
+static inline int lxc_set_cloexec(int fd)
+{
+	return fcntl(fd, F_SETFD, FD_CLOEXEC);
+}
 
 /* Struct to carry child pid from lxc_popen() to lxc_pclose().
  * Not an opaque struct to allow direct access to the underlying FILE *
@@ -357,7 +419,10 @@ extern bool task_blocking_signal(pid_t pid, int signal);
 extern int lxc_safe_uint(const char *numstr, unsigned int *converted);
 extern int lxc_safe_int(const char *numstr, int *converted);
 extern int lxc_safe_long(const char *numstr, long int *converted);
+extern int lxc_safe_long_long(const char *numstr, long long int *converted);
 extern int lxc_safe_ulong(const char *numstr, unsigned long *converted);
+/* Handles B, kb, MB, GB. Detects overflows and reports -ERANGE. */
+extern int parse_byte_size_string(const char *s, int64_t *converted);
 
 /* Switch to a new uid and gid. */
 extern int lxc_switch_uid_gid(uid_t uid, gid_t gid);
@@ -404,5 +469,17 @@ typedef __typeof__(((struct statfs *)NULL)->f_type) fs_type_magic;
 extern bool has_fs_type(const char *path, fs_type_magic magic_val);
 extern bool is_fs_type(const struct statfs *fs, fs_type_magic magic_val);
 extern bool lxc_nic_exists(char *nic);
+extern int lxc_make_tmpfile(char *template, bool rm);
+extern uint64_t lxc_getpagesize(void);
+
+/* If n is not a power of 2 this function will return the next power of 2
+ * greater than that number. Note that this function always returns the *next*
+ * power of 2 *greater* that number not the *nearest*. For example, passing 1025
+ * as argument this function will return 2048 although the closest power of 2
+ * would be 1024.
+ * If the caller passes in 0 they will receive 0 in return since this is invalid
+ * input and 0 is not a power of 2.
+ */
+extern uint64_t lxc_find_next_power2(uint64_t n);
 
 #endif /* __LXC_UTILS_H */

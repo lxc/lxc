@@ -116,6 +116,7 @@ liblxc_la_SOURCES = \
 	log.c log.h \
 	attach.c attach.h \
 	criu.c criu.h \
+	ringbuf.c ringbuf.h \
 	\
 	network.c network.h \
 	nl.c nl.h \
