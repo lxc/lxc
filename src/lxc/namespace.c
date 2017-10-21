@@ -21,17 +21,18 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <unistd.h>
 #include <alloca.h>
 #include <errno.h>
-#include <signal.h>
-#include <sys/param.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <signal.h>
+#include <unistd.h>
+#include <sys/param.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
-#include "namespace.h"
 #include "log.h"
+#include "namespace.h"
+#include "utils.h"
 
 lxc_log_define(lxc_namespace, lxc);
 
@@ -53,7 +54,7 @@ pid_t lxc_clone(int (*fn)(void *), void *arg, int flags)
 		.arg = arg,
 	};
 
-	size_t stack_size = sysconf(_SC_PAGESIZE);
+	size_t stack_size = lxc_getpagesize();
 	void *stack = alloca(stack_size);
 	pid_t ret;
 
