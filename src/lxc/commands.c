@@ -92,6 +92,7 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 		[LXC_CMD_GET_LXCPATH]      = "get_lxcpath",
 		[LXC_CMD_ADD_STATE_CLIENT] = "add_state_client",
 		[LXC_CMD_SET_CONFIG_ITEM]  = "set_config_item",
+		[LXC_CMD_CONSOLE_LOG]      = "console_log",
 	};
 
 	if (cmd >= LXC_CMD_MAX)
@@ -156,7 +157,8 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		return ret;
 	}
 
-	if (rsp->datalen > LXC_CMD_DATA_MAX) {
+	if ((rsp->datalen > LXC_CMD_DATA_MAX) &&
+	    (cmd->req.cmd != LXC_CMD_CONSOLE_LOG)) {
 		errno = EFBIG;
 		ERROR("%s - Response data for command \"%s\" is too long: %d "
 		      "bytes > %d", strerror(errno), lxc_cmd_str(cmd->req.cmd),
@@ -164,7 +166,12 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		return -EFBIG;
 	}
 
-	rsp->data = malloc(rsp->datalen);
+	if (cmd->req.cmd == LXC_CMD_CONSOLE_LOG) {
+		rsp->data = malloc(rsp->datalen + 1);
+		((char *)rsp->data)[rsp->datalen] = '\0';
+	} else {
+		rsp->data = malloc(rsp->datalen);
+	}
 	if (!rsp->data) {
 		errno = ENOMEM;
 		ERROR("%s - Failed to allocate response buffer for command "
@@ -977,6 +984,79 @@ static int lxc_cmd_add_state_client_callback(int fd, struct lxc_cmd_req *req,
 	return lxc_cmd_rsp_send(fd, &rsp);
 }
 
+int lxc_cmd_console_log(const char *name, const char *lxcpath,
+			struct lxc_console_log *log)
+{
+	int ret, stopped;
+	struct lxc_cmd_console_log data;
+	struct lxc_cmd_rr cmd;
+
+	data.clear = log->clear;
+	data.read = log->read;
+	data.read_max = *log->read_max;
+
+	cmd.req.cmd = LXC_CMD_CONSOLE_LOG;
+	cmd.req.data = &data;
+	cmd.req.datalen = sizeof(struct lxc_cmd_console_log);
+
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
+	if (ret < 0)
+		return ret;
+
+	/* There is nothing to be read from the buffer. So clear any values we
+	 * where passed to clearly indicate to the user that nothing went wrong.
+	 */
+	if (cmd.rsp.ret == -ENODATA || cmd.rsp.ret == -EFAULT) {
+		*log->read_max = 0;
+		log->data = NULL;
+	}
+
+	/* This is a proper error so don't touch any values we were passed. */
+	if (cmd.rsp.ret < 0)
+		return cmd.rsp.ret;
+
+	*log->read_max = cmd.rsp.datalen;
+	log->data = cmd.rsp.data;
+
+	return 0;
+}
+
+static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
+					struct lxc_handler *handler)
+{
+	struct lxc_cmd_rsp rsp;
+	uint64_t logsize = handler->conf->console.log_size;
+	const struct lxc_cmd_console_log *log = req->data;
+	struct lxc_ringbuf *buf = &handler->conf->console.ringbuf;
+
+	rsp.ret = -EFAULT;
+	rsp.datalen = 0;
+	rsp.data = NULL;
+	if (logsize <= 0)
+		goto out;
+
+	rsp.datalen = lxc_ringbuf_used(buf);
+	if (log->read)
+		rsp.data = lxc_ringbuf_get_read_addr(buf);
+
+	if (log->read_max > 0 && (log->read_max <= rsp.datalen))
+		rsp.datalen = log->read_max;
+
+	/* there's nothing to read */
+	if (log->read && (buf->r_off == buf->w_off))
+		rsp.ret = -ENODATA;
+	else
+		rsp.ret = 0;
+
+	if (log->clear)
+		lxc_ringbuf_clear(buf);
+	else if (rsp.datalen > 0)
+		lxc_ringbuf_move_read_addr(buf, rsp.datalen);
+
+out:
+	return lxc_cmd_rsp_send(fd, &rsp);
+}
+
 static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 			   struct lxc_handler *handler)
 {
@@ -995,6 +1075,7 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 		[LXC_CMD_GET_LXCPATH]      = lxc_cmd_get_lxcpath_callback,
 		[LXC_CMD_ADD_STATE_CLIENT] = lxc_cmd_add_state_client_callback,
 		[LXC_CMD_SET_CONFIG_ITEM]  = lxc_cmd_set_config_item_callback,
+		[LXC_CMD_CONSOLE_LOG]      = lxc_cmd_console_log_callback,
 	};
 
 	if (req->cmd >= LXC_CMD_MAX) {
@@ -1017,6 +1098,7 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 {
 	int ret;
 	struct lxc_cmd_req req;
+	void *reqdata = NULL;
 	struct lxc_handler *handler = data;
 
 	ret = lxc_abstract_unix_rcv_credential(fd, &req, sizeof(req));
@@ -1044,7 +1126,8 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 		goto out_close;
 	}
 
-	if (req.datalen > LXC_CMD_DATA_MAX) {
+	if ((req.datalen > LXC_CMD_DATA_MAX) &&
+	    (req.cmd != LXC_CMD_CONSOLE_LOG)) {
 		ERROR("Received command data length %d is too large for "
 		      "command \"%s\"", req.datalen, lxc_cmd_str(req.cmd));
 		errno = EFBIG;
@@ -1053,9 +1136,21 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 	}
 
 	if (req.datalen > 0) {
-		void *reqdata;
+		/* LXC_CMD_CONSOLE_LOG needs to be able to allocate data
+		 * that exceeds LXC_CMD_DATA_MAX: use malloc() for that.
+		 */
+		if (req.cmd == LXC_CMD_CONSOLE_LOG)
+			reqdata = malloc(req.datalen);
+		else
+			reqdata = alloca(req.datalen);
+		if (!reqdata) {
+			ERROR("Failed to allocate memory for \"%s\" command",
+			      lxc_cmd_str(req.cmd));
+			errno = ENOMEM;
+			ret = -ENOMEM;
+			goto out_close;
+		}
 
-		reqdata = alloca(req.datalen);
 		ret = recv(fd, reqdata, req.datalen, 0);
 		if (ret != req.datalen) {
 			WARN("Failed to receive full command request. Ignoring "
@@ -1075,6 +1170,9 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 	}
 
 out:
+	if (req.cmd == LXC_CMD_CONSOLE_LOG && reqdata)
+		free(reqdata);
+
 	return ret;
 
 out_close:

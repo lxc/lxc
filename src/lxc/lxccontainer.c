@@ -516,6 +516,25 @@ static int lxcapi_console(struct lxc_container *c, int ttynum, int stdinfd,
 	return ret;
 }
 
+static int do_lxcapi_console_log(struct lxc_container *c, struct lxc_console_log *log)
+{
+	int ret;
+
+	ret = lxc_cmd_console_log(c->name, do_lxcapi_get_config_path(c), log);
+	if (ret < 0) {
+		if (ret == -ENODATA)
+			NOTICE("%s - The console log is empty", strerror(-ret));
+		else if (ret == -EFAULT)
+			NOTICE("%s - The container does not have a console log configured", strerror(-ret));
+		else
+			ERROR("%s - Failed to retrieve console log", strerror(-ret));
+	}
+
+	return ret;
+}
+
+WRAP_API_1(int, lxcapi_console_log, struct lxc_console_log *)
+
 static pid_t do_lxcapi_init_pid(struct lxc_container *c)
 {
 	if (!c)
@@ -4607,6 +4626,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->checkpoint = lxcapi_checkpoint;
 	c->restore = lxcapi_restore;
 	c->migrate = lxcapi_migrate;
+	c->console_log = lxcapi_console_log;
 
 	return c;
 

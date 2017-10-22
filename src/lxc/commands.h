@@ -29,6 +29,7 @@
 #include <sys/types.h>
 
 #include "state.h"
+#include "lxccontainer.h"
 
 #define LXC_CMD_DATA_MAX (MAXPATHLEN * 2)
 
@@ -49,6 +50,7 @@ typedef enum {
 	LXC_CMD_GET_LXCPATH,
 	LXC_CMD_ADD_STATE_CLIENT,
 	LXC_CMD_SET_CONFIG_ITEM,
+	LXC_CMD_CONSOLE_LOG,
 	LXC_CMD_MAX,
 } lxc_cmd_t;
 
@@ -77,6 +79,13 @@ struct lxc_cmd_console_rsp_data {
 struct lxc_cmd_set_config_item_req_data {
 	const char *item;
 	void *value;
+};
+
+struct lxc_cmd_console_log {
+	bool clear;
+	bool read;
+	uint64_t read_max;
+
 };
 
 extern int lxc_cmd_console_winch(const char *name, const char *lxcpath);
@@ -124,5 +133,7 @@ extern int lxc_try_cmd(const char *name, const char *lxcpath);
 
 extern int lxc_cmd_set_config_item(const char *name, const char *item,
 				   const char *value, const char *lxcpath);
+extern int lxc_cmd_console_log(const char *name, const char *lxcpath,
+			       struct lxc_console_log *log);
 
 #endif /* __commands_h */
