@@ -535,6 +535,53 @@ void lxc_console_delete(struct lxc_console *console)
 	console->log_fd = -1;
 }
 
+/**
+ * Note that this function needs to run before the mainloop starts. Since we
+ * register a handler for the console's masterfd when we create the mainloop
+ * the console handler needs to see an allocated ringbuffer.
+ */
+static int lxc_setup_console_ringbuf(struct lxc_console *console)
+{
+	int ret;
+	struct lxc_ringbuf *buf = &console->ringbuf;
+	uint64_t size = console->log_size;
+
+	/* no ringbuffer previously allocated and no ringbuffer requested */
+	if (!buf->addr && size <= 0)
+		return 0;
+
+	/* ringbuffer allocated but no new ringbuffer requested */
+	if (buf->addr && size <= 0) {
+		lxc_ringbuf_release(buf);
+		buf->addr = NULL;
+		buf->r_off = 0;
+		buf->w_off = 0;
+		buf->size = 0;
+		TRACE("Deallocated console ringbuffer");
+		return 0;
+	}
+
+	if (size <= 0)
+		return 0;
+
+	/* check wether the requested size for the ringbuffer has changed */
+	if (buf->addr && buf->size != size) {
+		TRACE("Console ringbuffer size changed from %" PRIu64
+		      " to %" PRIu64 " bytes. Deallocating console ringbuffer",
+		      buf->size, size);
+		lxc_ringbuf_release(buf);
+	}
+
+	ret = lxc_ringbuf_create(buf, size);
+	if (ret < 0) {
+		ERROR("Failed to setup %" PRIu64 " byte console ringbuffer", size);
+		return -1;
+	}
+
+	TRACE("Allocated %" PRIu64 " byte console ringbuffer", size);
+	return 0;
+}
+
 int lxc_console_create(struct lxc_conf *conf)
 {
 	int ret, saved_errno;
@@ -586,6 +633,10 @@ int lxc_console_create(struct lxc_conf *conf)
 		}
 		DEBUG("Using \"%s\" as console log file", console->log_path);
 	}
+
+	ret = lxc_setup_console_ringbuf(console);
+	if (ret < 0)
+		goto err;
 
 	return 0;
 

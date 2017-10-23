@@ -379,7 +379,7 @@ extern int lxc_delete_autodev(struct lxc_handler *handler);
 extern void lxc_clear_includes(struct lxc_conf *conf);
 extern int do_rootfs_setup(struct lxc_conf *conf, const char *name,
 			   const char *lxcpath);
-extern int lxc_setup_child(struct lxc_handler *handler);
+extern int lxc_setup(struct lxc_handler *handler);
 extern int lxc_setup_parent(struct lxc_handler *handler);
 extern int setup_resource_limits(struct lxc_list *limits, pid_t pid);
 extern int find_unmapped_nsid(struct lxc_conf *conf, enum idtype idtype);

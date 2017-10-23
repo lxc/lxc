@@ -904,7 +904,7 @@ static int do_start(void *data)
 	}
 
 	/* Setup the container, ip, names, utsname, ... */
-	ret = lxc_setup_child(handler);
+	ret = lxc_setup(handler);
 	close(handler->data_sock[0]);
 	close(handler->data_sock[1]);
 	if (ret < 0) {
@@ -1265,10 +1265,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 		 */
 		flags &= ~CLONE_NEWNET;
 	}
-
-	ret = lxc_setup_parent(handler);
-	if (ret < 0)
-		goto out_delete_net;
 
 	if (fork_before_clone)
 		handler->pid = lxc_fork_attach_clone(do_start, handler, flags | CLONE_PARENT);
