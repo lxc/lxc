@@ -514,9 +514,13 @@ out:
 
 void lxc_console_delete(struct lxc_console *console)
 {
-	if (console->tios && console->peer >= 0 &&
-	    tcsetattr(console->peer, TCSAFLUSH, console->tios))
-		WARN("failed to set old terminal settings");
+	int ret;
+
+	if (console->tios && console->peer >= 0) {
+		ret = tcsetattr(console->peer, TCSAFLUSH, console->tios);
+		if (ret < 0)
+			WARN("%s - Failed to set old terminal settings", strerror(errno));
+	}
 	free(console->tios);
 	console->tios = NULL;
 
@@ -525,7 +529,6 @@ void lxc_console_delete(struct lxc_console *console)
 	close(console->slave);
 	if (console->log_fd >= 0)
 		close(console->log_fd);
-
 	console->peer = -1;
 	console->master = -1;
 	console->slave = -1;
@@ -534,57 +537,61 @@ void lxc_console_delete(struct lxc_console *console)
 
 int lxc_console_create(struct lxc_conf *conf)
 {
+	int ret, saved_errno;
 	struct lxc_console *console = &conf->console;
-	int ret;
 
 	if (!conf->rootfs.path) {
-		INFO("container does not have a rootfs, console device will be shared with the host");
+		INFO("Container does not have a rootfs. The console will be "
+		     "shared with the host");
 		return 0;
 	}
 
 	if (console->path && !strcmp(console->path, "none")) {
-		INFO("no console requested");
+		INFO("No console was requested");
 		return 0;
 	}
 
 	process_lock();
 	ret = openpty(&console->master, &console->slave, console->name, NULL, NULL);
+	saved_errno = errno;
 	process_unlock();
 	if (ret < 0) {
-		SYSERROR("failed to allocate a pty");
+		ERROR("%s - Failed to allocate a pty", strerror(saved_errno));
 		return -1;
 	}
 
-	if (fcntl(console->master, F_SETFD, FD_CLOEXEC)) {
-		SYSERROR("failed to set console master to close-on-exec");
+	ret = fcntl(console->master, F_SETFD, FD_CLOEXEC);
+	if (ret < 0) {
+		SYSERROR("Failed to set FD_CLOEXEC flag on console master");
 		goto err;
 	}
 
-	if (fcntl(console->slave, F_SETFD, FD_CLOEXEC)) {
-		SYSERROR("failed to set console slave to close-on-exec");
+	ret = fcntl(console->slave, F_SETFD, FD_CLOEXEC);
+	if (ret < 0) {
+		SYSERROR("Failed to set FD_CLOEXEC flag on console slave");
 		goto err;
 	}
 
 	ret = lxc_console_peer_default(console);
 	if (ret < 0) {
-		ERROR("failed to allocate peer tty device");
+		ERROR("Failed to allocate a peer pty device");
 		goto err;
 	}
 
 	if (console->log_path) {
 		console->log_fd = lxc_unpriv(open(console->log_path, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600));
 		if (console->log_fd < 0) {
-			SYSERROR("failed to open console log file \"%s\"", console->log_path);
+			SYSERROR("Failed to open console log file \"%s\"", console->log_path);
 			goto err;
 		}
-		DEBUG("using \"%s\" as console log file", console->log_path);
+		DEBUG("Using \"%s\" as console log file", console->log_path);
 	}
 
 	return 0;
 
 err:
 	lxc_console_delete(console);
-	return -1;
+	return -ENODEV;
 }
 
 int lxc_console_set_stdfds(int fd)
