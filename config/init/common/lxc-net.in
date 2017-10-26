@@ -114,7 +114,7 @@ start() {
         LXC_DOMAIN_ARG="-s $LXC_DOMAIN -S /$LXC_DOMAIN/"
     fi
 
-    LXD_DHCP_CONFILE_ARG=""
+    LXC_DHCP_CONFILE_ARG=""
     if [ -n "$LXC_DHCP_CONFILE" ]; then
         LXC_DHCP_CONFILE_ARG="--conf-file=${LXC_DHCP_CONFILE}"
     fi
