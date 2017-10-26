@@ -678,18 +678,16 @@ int lxc_console(struct lxc_container *c, int ttynum,
 	istty = isatty(stdinfd);
 	if (istty) {
 		ret = lxc_setup_tios(stdinfd, &oldtios);
-		if (ret) {
-			ERROR("failed to setup terminal properties");
+		if (ret < 0)
 			return -1;
-		}
 	} else {
-		INFO("fd %d does not refer to a tty device", stdinfd);
+		INFO("File descriptor %d does not refer to a tty device", stdinfd);
 	}
 
 	ttyfd = lxc_cmd_console(c->name, &ttynum, &masterfd, c->config_path);
 	if (ttyfd < 0) {
 		ret = ttyfd;
-		goto err1;
+		goto restore_tios;
 	}
 
 	fprintf(stderr, "\n"
@@ -699,13 +697,13 @@ int lxc_console(struct lxc_container *c, int ttynum,
 			ttynum, 'a' + escape - 1);
 
 	ret = setsid();
-	if (ret)
-		INFO("already group leader");
+	if (ret < 0)
+		TRACE("Process is already group leader");
 
 	ts = lxc_console_sigwinch_init(stdinfd, masterfd);
 	if (!ts) {
 		ret = -1;
-		goto err2;
+		goto close_fds;
 	}
 	ts->escape = escape;
 	ts->winch_proxy = c->name;
@@ -719,52 +717,57 @@ int lxc_console(struct lxc_container *c, int ttynum,
 
 	ret = lxc_mainloop_open(&descr);
 	if (ret) {
-		ERROR("failed to create mainloop");
-		goto err3;
+		ERROR("Failed to create mainloop");
+		goto sigwinch_fini;
 	}
 
 	if (ts->sigfd != -1) {
 		ret = lxc_mainloop_add_handler(&descr, ts->sigfd,
-				lxc_console_cb_sigwinch_fd, ts);
-		if (ret) {
-			ERROR("failed to add handler for SIGWINCH fd");
-			goto err4;
+					       lxc_console_cb_sigwinch_fd, ts);
+		if (ret < 0) {
+			ERROR("Failed to add SIGWINCH handler");
+			goto close_mainloop;
 		}
 	}
 
 	ret = lxc_mainloop_add_handler(&descr, ts->stdinfd,
 				       lxc_console_cb_tty_stdin, ts);
-	if (ret) {
-		ERROR("failed to add handler for stdinfd");
-		goto err4;
+	if (ret < 0) {
+		ERROR("Failed to add stdin handler");
+		goto close_mainloop;
 	}
 
 	ret = lxc_mainloop_add_handler(&descr, ts->masterfd,
 				       lxc_console_cb_tty_master, ts);
-	if (ret) {
-		ERROR("failed to add handler for masterfd");
-		goto err4;
+	if (ret < 0) {
+		ERROR("Failed to add master handler");
+		goto close_mainloop;
 	}
 
 	ret = lxc_mainloop(&descr, -1);
-	if (ret) {
-		ERROR("mainloop returned an error");
-		goto err4;
+	if (ret < 0) {
+		ERROR("The mainloop returned an error");
+		goto close_mainloop;
 	}
 
 	ret = 0;
 
-err4:
+close_mainloop:
 	lxc_mainloop_close(&descr);
-err3:
+
+sigwinch_fini:
 	lxc_console_sigwinch_fini(ts);
-err2:
+
+close_fds:
 	close(masterfd);
 	close(ttyfd);
-err1:
+
+restore_tios:
 	if (istty) {
-		if (tcsetattr(stdinfd, TCSAFLUSH, &oldtios) < 0)
-			WARN("failed to reset terminal properties: %s.", strerror(errno));
+		istty = tcsetattr(stdinfd, TCSAFLUSH, &oldtios);
+		if (istty < 0)
+			WARN("%s - Failed to restore terminal properties",
+			     strerror(errno));
 	}
 
 	return ret;
