@@ -770,7 +770,7 @@ fi
 
 current_release=$(wget "${MIRROR}/dists/stable/Release" -O - 2> /dev/null | head |awk '/^Codename: (.*)$/ { print $2; }')
 release=${release:-${current_release}}
-valid_releases=('wheezy' 'jessie' 'stretch' 'buster' 'sid')
+valid_releases=('wheezy' 'jessie' 'stretch' 'buster' 'testing' 'sid' 'unstable')
 if [[ ! "${valid_releases[*]}" =~ (^|[^[:alpha:]])$release([^[:alpha:]]|$) ]]; then
     echo "Invalid release ${release}, valid ones are: ${valid_releases[*]}"
     exit 1
