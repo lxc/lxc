@@ -512,9 +512,44 @@ out:
 	return ret;
 }
 
+static int lxc_console_write_ringbuffer(struct lxc_console *console)
+{
+	int fd;
+	char *r_addr;
+	ssize_t ret;
+	uint64_t used;
+	struct lxc_ringbuf *buf = &console->ringbuf;
+
+	if (!console->log_path)
+		return 0;
+
+	used = lxc_ringbuf_used(buf);
+	if (used == 0)
+		return 0;
+
+	fd = lxc_unpriv(open(console->log_path, O_CLOEXEC | O_RDWR | O_CREAT, 0600));
+	if (fd < 0) {
+		SYSERROR("Failed to open console log file \"%s\"", console->log_path);
+		return -1;
+	}
+	DEBUG("Using \"%s\" as console log file", console->log_path);
+
+	r_addr = lxc_ringbuf_get_read_addr(buf);
+	ret = lxc_write_nointr(fd, r_addr, used);
+	close(fd);
+	if (ret < 0)
+		return -1;
+
+	return 0;
+}
+
 void lxc_console_delete(struct lxc_console *console)
 {
 	int ret;
+
+	ret = lxc_console_write_ringbuffer(console);
+	if (ret < 0)
+		WARN("Failed to write console log to disk");
 
 	if (console->tios && console->peer >= 0) {
 		ret = tcsetattr(console->peer, TCSAFLUSH, console->tios);
@@ -625,7 +660,7 @@ int lxc_console_create(struct lxc_conf *conf)
 		goto err;
 	}
 
-	if (console->log_path) {
+	if (console->log_path && console->log_size <= 0) {
 		console->log_fd = lxc_unpriv(open(console->log_path, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600));
 		if (console->log_fd < 0) {
 			SYSERROR("Failed to open console log file \"%s\"", console->log_path);
