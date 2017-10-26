@@ -215,4 +215,6 @@ extern int lxc_console_cb_sigwinch_fd(int fd, uint32_t events, void *cbdata,
  */
 extern void lxc_console_sigwinch_fini(struct lxc_tty_state *ts);
 
+extern int lxc_console_write_ringbuffer(struct lxc_console *console);
+
 #endif

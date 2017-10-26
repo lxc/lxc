@@ -523,11 +523,15 @@ static int do_lxcapi_console_log(struct lxc_container *c, struct lxc_console_log
 	ret = lxc_cmd_console_log(c->name, do_lxcapi_get_config_path(c), log);
 	if (ret < 0) {
 		if (ret == -ENODATA)
-			NOTICE("%s - The console log is empty", strerror(-ret));
+			NOTICE("The console log is empty");
 		else if (ret == -EFAULT)
-			NOTICE("%s - The container does not have a console log configured", strerror(-ret));
+			NOTICE("The container does not keep a console log");
+		else if (ret == -ENOENT)
+			NOTICE("The container does not keep a console log file");
+		else if (ret == -EIO)
+			NOTICE("Failed to write console log to log file");
 		else
-			ERROR("%s - Failed to retrieve console log", strerror(-ret));
+			ERROR("Failed to retrieve console log");
 	}
 
 	return ret;

@@ -994,6 +994,7 @@ int lxc_cmd_console_log(const char *name, const char *lxcpath,
 	data.clear = log->clear;
 	data.read = log->read;
 	data.read_max = *log->read_max;
+	data.write_logfile = log->write_logfile;
 
 	cmd.req.cmd = LXC_CMD_CONSOLE_LOG;
 	cmd.req.data = &data;
@@ -1006,7 +1007,7 @@ int lxc_cmd_console_log(const char *name, const char *lxcpath,
 	/* There is nothing to be read from the buffer. So clear any values we
 	 * where passed to clearly indicate to the user that nothing went wrong.
 	 */
-	if (cmd.rsp.ret == -ENODATA || cmd.rsp.ret == -EFAULT) {
+	if (cmd.rsp.ret == -ENODATA || cmd.rsp.ret == -EFAULT || cmd.rsp.ret == -ENOENT) {
 		*log->read_max = 0;
 		log->data = NULL;
 	}
@@ -1027,6 +1028,7 @@ static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
 	struct lxc_cmd_rsp rsp;
 	uint64_t logsize = handler->conf->console.log_size;
 	const struct lxc_cmd_console_log *log = req->data;
+	struct lxc_console *console = &handler->conf->console;
 	struct lxc_ringbuf *buf = &handler->conf->console.ringbuf;
 
 	rsp.ret = -EFAULT;
@@ -1043,10 +1045,21 @@ static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
 		rsp.datalen = log->read_max;
 
 	/* there's nothing to read */
+	rsp.ret = -ENODATA;
 	if (log->read && (buf->r_off == buf->w_off))
-		rsp.ret = -ENODATA;
-	else
-		rsp.ret = 0;
+		goto out;
+
+	if (log->write_logfile && rsp.datalen > 0) {
+		rsp.ret = -ENOENT;
+		if (!console->log_path)
+			goto out;
+
+		rsp.ret = lxc_console_write_ringbuffer(console);
+		if (rsp.ret < 0)
+			goto out;
+	}
+
+	rsp.ret = 0;
 
 	if (log->clear)
 		lxc_ringbuf_clear(buf);

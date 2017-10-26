@@ -953,6 +953,12 @@ struct lxc_console_log {
 	 * "data" is invalid.
 	 */
 	char *data;
+
+	/* If a console log file was specified this flag indicates whether the
+	 * contents of the ringbuffer should be written to the logfile when a
+	 * request is sent to the ringbuffer.
+	 */
+	bool write_logfile;
 };
 
 /*!

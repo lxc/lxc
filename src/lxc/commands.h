@@ -85,6 +85,7 @@ struct lxc_cmd_console_log {
 	bool clear;
 	bool read;
 	uint64_t read_max;
+	bool write_logfile;
 
 };
 

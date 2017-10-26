@@ -512,7 +512,7 @@ out:
 	return ret;
 }
 
-static int lxc_console_write_ringbuffer(struct lxc_console *console)
+int lxc_console_write_ringbuffer(struct lxc_console *console)
 {
 	int fd;
 	char *r_addr;
@@ -527,10 +527,10 @@ static int lxc_console_write_ringbuffer(struct lxc_console *console)
 	if (used == 0)
 		return 0;
 
-	fd = lxc_unpriv(open(console->log_path, O_CLOEXEC | O_RDWR | O_CREAT, 0600));
+	fd = lxc_unpriv(open(console->log_path, O_CLOEXEC | O_RDWR | O_CREAT | O_TRUNC, 0600));
 	if (fd < 0) {
 		SYSERROR("Failed to open console log file \"%s\"", console->log_path);
-		return -1;
+		return -EIO;
 	}
 	DEBUG("Using \"%s\" as console log file", console->log_path);
 
@@ -538,7 +538,7 @@ static int lxc_console_write_ringbuffer(struct lxc_console *console)
 	ret = lxc_write_nointr(fd, r_addr, used);
 	close(fd);
 	if (ret < 0)
-		return -1;
+		return -EIO;
 
 	return 0;
 }
