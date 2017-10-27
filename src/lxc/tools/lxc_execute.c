@@ -150,6 +150,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (lxc_config_define_load(&defines, c->lxc_conf))
+		exit(EXIT_FAILURE);
+
 	if (my_args.uid)
 		c->lxc_conf->init_uid = my_args.uid;
 
