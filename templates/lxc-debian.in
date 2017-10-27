@@ -99,7 +99,7 @@ EOF
     # reconfigure some services
 
     # but first reconfigure locales - so we get no noisy perl-warnings
-    if [ -z "$LANG" ]; then
+    if [ -z "$LANG" ] || echo $LANG | grep -E -q "^C(\..+)*$"; then
         cat >> "$rootfs/etc/locale.gen" << EOF
 en_US.UTF-8 UTF-8
 EOF
