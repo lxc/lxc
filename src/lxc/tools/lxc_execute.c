@@ -168,6 +168,12 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	ret = lxc_config_define_load(&defines, c->lxc_conf);
+	if (ret) {
+		lxc_container_put(c);
+		exit(EXIT_FAILURE);
+	}
+
 	if (my_args.uid)
 		c->lxc_conf->init_uid = my_args.uid;
 
