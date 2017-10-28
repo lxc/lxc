@@ -326,16 +326,6 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if (ensure_path(&conf->console.path, my_args.console) < 0) {
-		ERROR("failed to ensure console path '%s'", my_args.console);
-		goto out;
-	}
-
-	if (ensure_path(&conf->console.log_path, my_args.console_log) < 0) {
-		ERROR("failed to ensure console log '%s'", my_args.console_log);
-		goto out;
-	}
-
 	if (my_args.pidfile != NULL) {
 		if (ensure_path(&c->pidfile, my_args.pidfile) < 0) {
 			ERROR("failed to ensure pidfile '%s'", my_args.pidfile);
