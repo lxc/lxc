@@ -525,9 +525,6 @@ void lxc_free_handler(struct lxc_handler *handler)
 	if (handler->state_socket_pair[1] >= 0)
 		close(handler->state_socket_pair[1]);
 
-	if (handler->name)
-		free(handler->name);
-
 	handler->conf = NULL;
 	free(handler);
 }
@@ -561,11 +558,7 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 	for (i = 0; i < LXC_NS_MAX; i++)
 		handler->nsfd[i] = -1;
 
-	handler->name = strdup(name);
-	if (!handler->name) {
-		ERROR("failed to allocate memory");
-		goto on_error;
-	}
+	handler->name = name;
 
 	if (daemonize && !handler->conf->reboot) {
 		/* Create socketpair() to synchronize on daemonized startup.
@@ -786,7 +779,6 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	if (handler->conf->ephemeral == 1 && handler->conf->reboot != 1)
 		lxc_destroy_container_on_signal(handler, name);
 
-	free(handler->name);
 	free(handler);
 }
 

@@ -67,10 +67,10 @@ struct lxc_handler {
 	/* Socketpair to synchronize processes during container creation. */
 	int sync_sock[2];
 
-	/* The name of the container. */
-	char *name;
+	/* Pointer to the name of the container. Do not free! */
+	const char *name;
 
-	/* The path the container is running in. */
+	/* Pointer to the path the container. Do not free! */
 	const char *lxcpath;
 
 	/* Whether the container's startup process euid is 0. */
