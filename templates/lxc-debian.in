@@ -122,7 +122,7 @@ EOF
     # reconfigure some services
 
     # but first reconfigure locales - so we get no noisy perl-warnings
-    if [ -z "$LANG" ]; then
+    if [ -z "$LANG" ] || echo $LANG | grep -E -q "^C(\..+)*$"; then
         cat >> "$rootfs/etc/locale.gen" << EOF
 en_US.UTF-8 UTF-8
 EOF
@@ -768,12 +768,13 @@ if [ -n "$authkey" ]; then
     fi
 fi
 
-current_release=$(wget "${MIRROR}/dists/stable/Release" -O - 2> /dev/null | head |awk '/^Codename: (.*)$/ { print $2; }')
-release=${release:-${current_release}}
-valid_releases=('wheezy' 'jessie' 'stretch' 'buster' 'testing' 'sid' 'unstable')
-if [[ ! "${valid_releases[*]}" =~ (^|[^[:alpha:]])$release([^[:alpha:]]|$) ]]; then
-    echo "Invalid release ${release}, valid ones are: ${valid_releases[*]}"
-    exit 1
+release=${release:-stable}
+permanent_releases=('stable' 'testing' 'sid' 'unstable')
+if [[ ! "${permanent_releases[*]}" =~ (^|[^[:alpha:]])$release([^[:alpha:]]|$) ]]; then
+    if ! wget "${MIRROR}/dists/${release}/Release" -O /dev/null 2> /dev/null; then
+	echo "Invalid release ${release} (not found in mirror)"
+	exit 1
+    fi
 fi
 
 # detect rootfs
