@@ -285,8 +285,6 @@ struct lxc_conf {
 	int loglevel; /* loglevel as specifed in config (if any) */
 	int logfd;
 
-	int inherit_ns_fd[LXC_NS_MAX];
-
 	unsigned int start_auto;
 	unsigned int start_delay;
 	int start_order;
@@ -348,6 +346,8 @@ struct lxc_conf {
 	 * that union.
 	 */
 	struct lxc_cgroup cgroup_meta;
+
+	char *inherit_ns[LXC_NS_MAX];
 };
 
 #ifdef HAVE_TLS

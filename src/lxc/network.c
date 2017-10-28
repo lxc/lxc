@@ -2302,14 +2302,14 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 
 	*netns_path = '\0';
 
-	if (handler->netnsfd < 0) {
+	if (handler->nsfd[LXC_NS_NET] < 0) {
 		DEBUG("Cannot not guarantee safe deletion of network devices. "
 		      "Manual cleanup maybe needed");
 		return false;
 	}
 
 	ret = snprintf(netns_path, sizeof(netns_path), "/proc/%d/fd/%d",
-		       getpid(), handler->netnsfd);
+		       getpid(), handler->nsfd[LXC_NS_NET]);
 	if (ret < 0 || ret >= sizeof(netns_path))
 		return false;
 
@@ -2621,7 +2621,7 @@ int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler)
 	int oldfd;
 	char ifname[IFNAMSIZ];
 	struct lxc_list *iterator;
-	int netnsfd = handler->netnsfd;
+	int netnsfd = handler->nsfd[LXC_NS_NET];
 	struct lxc_conf *conf = handler->conf;
 
 	/* We need CAP_NET_ADMIN in the parent namespace in order to setns() to

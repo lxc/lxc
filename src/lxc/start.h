@@ -40,9 +40,6 @@ struct lxc_handler {
 	/* The clone flags that were requested. */
 	int clone_flags;
 
-	/* File descriptors referring to the network namespace of the container. */
-	int netnsfd;
-
 	/* File descriptor to pin the rootfs for privileged containers. */
 	int pinfd;
 

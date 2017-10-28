@@ -2461,21 +2461,19 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->aliens);
 	lxc_list_init(&new->environment);
 	lxc_list_init(&new->limits);
-	for (i=0; i<NUM_LXC_HOOKS; i++)
+	for (i = 0; i < NUM_LXC_HOOKS; i++)
 		lxc_list_init(&new->hooks[i]);
 	lxc_list_init(&new->groups);
 	new->lsm_aa_profile = NULL;
 	new->lsm_se_context = NULL;
 	new->tmp_umount_proc = 0;
 
-	for (i = 0; i < LXC_NS_MAX; i++)
-		new->inherit_ns_fd[i] = -1;
-
 	/* if running in a new user namespace, init and COMMAND
 	 * default to running as UID/GID 0 when using lxc-execute */
 	new->init_uid = 0;
 	new->init_gid = 0;
 	memset(&new->cgroup_meta, 0, sizeof(struct lxc_cgroup));
+	memset(&new->inherit_ns, 0, sizeof(char *) * LXC_NS_MAX);
 
 	return new;
 }
@@ -3155,7 +3153,7 @@ int lxc_setup_child(struct lxc_handler *handler)
 		return -1;
 	}
 
-	if (lxc_conf->inherit_ns_fd[LXC_NS_UTS] == -1) {
+	if (handler->nsfd[LXC_NS_UTS] == -1) {
 		if (setup_utsname(lxc_conf->utsname)) {
 			ERROR("failed to setup the utsname for '%s'", name);
 			return -1;
