@@ -2050,7 +2050,7 @@ int lxc_find_gateway_addresses(struct lxc_handler *handler)
 }
 
 #define LXC_USERNIC_PATH LIBEXECDIR "/lxc/lxc-user-nic"
-static int lxc_create_network_unpriv_exec(const char *lxcpath, char *lxcname,
+static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcname,
 					  struct lxc_netdev *netdev, pid_t pid)
 {
 	int ret;
@@ -2194,7 +2194,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, char *lxcname,
 	return 0;
 }
 
-static int lxc_delete_network_unpriv_exec(const char *lxcpath, char *lxcname,
+static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcname,
 					  struct lxc_netdev *netdev,
 					  const char *netns_path)
 {
@@ -2408,7 +2408,7 @@ int lxc_create_network_priv(struct lxc_handler *handler)
 	return 0;
 }
 
-int lxc_network_move_created_netdev_priv(const char *lxcpath, char *lxcname,
+int lxc_network_move_created_netdev_priv(const char *lxcpath, const char *lxcname,
 					 struct lxc_list *network, pid_t pid)
 {
 	int ret;
@@ -2448,7 +2448,7 @@ int lxc_network_move_created_netdev_priv(const char *lxcpath, char *lxcname,
 	return 0;
 }
 
-int lxc_create_network_unpriv(const char *lxcpath, char *lxcname,
+int lxc_create_network_unpriv(const char *lxcpath, const char *lxcname,
 			      struct lxc_list *network, pid_t pid)
 {
 	struct lxc_list *iterator;
