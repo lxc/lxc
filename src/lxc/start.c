@@ -1149,6 +1149,11 @@ int __lxc_start(const char *name, struct lxc_conf *conf,
 		ERROR("failed to spawn '%s'", name);
 		goto out_fini_nonet;
 	}
+	/* close parent side of data socket */
+	close(handler->data_sock[0]);
+	handler->data_sock[0] = -1;
+	close(handler->data_sock[1]);
+	handler->data_sock[1] = -1;
 
 	handler->conf->reboot = 0;
 
