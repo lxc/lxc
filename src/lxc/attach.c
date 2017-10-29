@@ -249,24 +249,89 @@ static void lxc_proc_put_context_info(struct lxc_proc_context_info *ctx)
 	free(ctx);
 }
 
+/**
+ * in_same_namespace - Check whether two processes are in the same namespace.
+ * @pid1 - PID of the first process.
+ * @pid2 - PID of the second process.
+ * @ns   - Name of the namespace to check. Must correspond to one of the names
+ *         for the namespaces as shown in /proc/<pid/ns/
+ *
+ * If the two processes are not in the same namespace returns an fd to the
+ * namespace of the second process identified by @pid2. If the two processes are
+ * in the same namespace returns -EINVAL, -1 if an error occurred.
+ */
+static int in_same_namespace(pid_t pid1, pid_t pid2, const char *ns)
+{
+	int ns_fd1 = -1, ns_fd2 = -1, ret = -1;
+	struct stat ns_st1, ns_st2;
+
+	ns_fd1 = lxc_preserve_ns(pid1, ns);
+	if (ns_fd1 < 0)
+		goto out;
+
+	ns_fd2 = lxc_preserve_ns(pid2, ns);
+	if (ns_fd2 < 0)
+		goto out;
+
+	ret = fstat(ns_fd1, &ns_st1);
+	if (ret < 0)
+		goto out;
+
+	ret = fstat(ns_fd2, &ns_st2);
+	if (ret < 0)
+		goto out;
+
+	/* processes are in the same namespace */
+	ret = -EINVAL;
+	if ((ns_st1.st_dev == ns_st2.st_dev ) && (ns_st1.st_ino == ns_st2.st_ino))
+		goto out;
+
+	/* processes are in different namespaces */
+	ret = ns_fd2;
+	ns_fd2 = -1;
+
+out:
+
+	if (ns_fd1 >= 0)
+		close(ns_fd1);
+	if (ns_fd2 >= 0)
+		close(ns_fd2);
+
+	return ret;
+}
+
 static int lxc_attach_to_ns(pid_t pid, int which)
 {
 	int fd[LXC_NS_MAX];
-	int i, j, saved_errno;
+	int i, j, ret, saved_errno;
 
-	if (access("/proc/self/ns", X_OK)) {
+	ret = access("/proc/self/ns", X_OK);
+	if (ret) {
 		ERROR("Does this kernel version support namespaces?");
 		return -1;
 	}
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
+		fd[i] = -EINVAL;
+
 		/* Ignore if we are not supposed to attach to that namespace. */
 		if (which != -1 && !(which & ns_info[i].clone_flag)) {
-			fd[i] = -1;
-			continue;
+			/* We likely inherited the namespace from someone. We
+			 * need to check whether we are already in the same
+			 * namespace. If we are then there's nothing for us to
+			 * do. If we are not then we need to attach to it.
+			 */
+			fd[i] = in_same_namespace(getpid(), pid, ns_info[i].proc_name);
+			/* we are in the same namespace */
+			if (fd[i] == -EINVAL) {
+				DEBUG("Inheriting %s namespace from %d",
+				      ns_info[i].proc_name, pid);
+				continue;
+			}
 		}
 
-		fd[i] = lxc_preserve_ns(pid, ns_info[i].proc_name);
+		if (fd[i] == -EINVAL)
+			fd[i] = lxc_preserve_ns(pid, ns_info[i].proc_name);
 		if (fd[i] < 0) {
 			saved_errno = errno;
 
@@ -277,8 +342,8 @@ static int lxc_attach_to_ns(pid_t pid, int which)
 				close(fd[j]);
 
 			errno = saved_errno;
-			SYSERROR("Failed to open namespace: \"%s\".",
-				 ns_info[i].proc_name);
+			SYSERROR("Failed to attach to %s namespace of %d",
+				 ns_info[i].proc_name, pid);
 			return -1;
 		}
 	}
@@ -294,12 +359,12 @@ static int lxc_attach_to_ns(pid_t pid, int which)
 				close(fd[j]);
 
 			errno = saved_errno;
-			SYSERROR("Failed to attach to namespace \"%s\".",
-				 ns_info[i].proc_name);
+			SYSERROR("Failed to attach to %s namespace of %d",
+				 ns_info[i].proc_name, pid);
 			return -1;
 		}
 
-		DEBUG("Attached to namespace \"%s\".", ns_info[i].proc_name);
+		DEBUG("Attached to %s namespace of %d", ns_info[i].proc_name, pid);
 
 		close(fd[i]);
 	}
