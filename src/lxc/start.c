@@ -1479,6 +1479,11 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 		ERROR("Failed to spawn container \"%s\".", name);
 		goto out_detach_blockdev;
 	}
+	/* close parent side of data socket */
+	close(handler->data_sock[0]);
+	handler->data_sock[0] = -1;
+	close(handler->data_sock[1]);
+	handler->data_sock[1] = -1;
 
 	handler->conf->reboot = 0;
 
