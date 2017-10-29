@@ -159,6 +159,8 @@ static bool preserve_ns(int ns_fd[LXC_NS_MAX], int clone_flags, pid_t pid)
 		ns_fd[i] = lxc_preserve_ns(pid, ns_info[i].proc_name);
 		if (ns_fd[i] < 0)
 			goto error;
+
+		DEBUG("Preserved %s namespace via fd %d", ns_info[i].proc_name, ns_fd[i]);
 	}
 
 	return true;
@@ -170,23 +172,6 @@ error:
 		SYSERROR("Failed to open file descriptor for %s namespace: %s.", ns_info[i].proc_name, strerror(errno));
 	close_ns(ns_fd);
 	return false;
-}
-
-static int attach_ns(const int ns_fd[LXC_NS_MAX]) {
-	int i;
-
-	for (i = 0; i < LXC_NS_MAX; i++) {
-		if (ns_fd[i] < 0)
-			continue;
-
-		if (setns(ns_fd[i], 0) != 0)
-			goto error;
-	}
-	return 0;
-
-error:
-	SYSERROR("Failed to attach %s namespace.", ns_info[i].proc_name);
-	return -1;
 }
 
 static int match_fd(int fd)
@@ -785,10 +770,11 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 
 static int do_start(void *data)
 {
+	int ret;
 	struct lxc_list *iterator;
-	struct lxc_handler *handler = data;
-	int devnull_fd = -1, ret;
 	char path[PATH_MAX];
+	int devnull_fd = -1;
+	struct lxc_handler *handler = data;
 
 	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL)) {
 		SYSERROR("Failed to set signal mask.");
@@ -1109,8 +1095,12 @@ void resolve_clone_flags(struct lxc_handler *handler)
 {
 	handler->clone_flags = CLONE_NEWNS;
 
-	if (!lxc_list_empty(&handler->conf->id_map))
-		handler->clone_flags |= CLONE_NEWUSER;
+	if (!handler->conf->inherit_ns[LXC_NS_USER]) {
+		if (!lxc_list_empty(&handler->conf->id_map))
+			handler->clone_flags |= CLONE_NEWUSER;
+	} else {
+		INFO("Inheriting user namespace");
+	}
 
 	if (!handler->conf->inherit_ns[LXC_NS_NET]) {
 		if (!lxc_requests_empty_network(handler))
@@ -1135,6 +1125,45 @@ void resolve_clone_flags(struct lxc_handler *handler)
 		INFO("Inheriting pid namespace");
 }
 
+static pid_t lxc_fork_attach_clone(int (*fn)(void *), void *arg, int flags)
+{
+	int i, r, ret;
+	pid_t pid, init_pid;
+	struct lxc_handler *handler = arg;
+
+	pid = fork();
+	if (pid < 0)
+		return -1;
+
+	if (!pid) {
+		for (i = 0; i < LXC_NS_MAX; i++) {
+			if (handler->nsfd[i] < 0)
+				continue;
+
+			ret = setns(handler->nsfd[i], 0);
+			if (ret < 0)
+				exit(EXIT_FAILURE);
+
+			DEBUG("Inherited %s namespace", ns_info[i].proc_name);
+		}
+
+		init_pid = lxc_clone(do_start, handler, flags);
+		ret = lxc_write_nointr(handler->data_sock[1], &init_pid,
+				       sizeof(init_pid));
+		if (ret < 0)
+			exit(EXIT_FAILURE);
+
+		exit(EXIT_SUCCESS);
+	}
+
+	r = lxc_read_nointr(handler->data_sock[0], &init_pid, sizeof(init_pid));
+	ret = wait_for_pid(pid);
+	if (ret < 0 || r < 0)
+		return -1;
+
+	return init_pid;
+}
+
 /* lxc_spawn() performs crucial setup tasks and clone()s the new process which
  * exec()s the requested container binary.
  * Note that lxc_spawn() runs in the parent namespaces. Any operations performed
@@ -1147,27 +1176,24 @@ static int lxc_spawn(struct lxc_handler *handler)
 	int i, flags, ret;
 	char pidstr[20];
 	bool wants_to_map_ids;
-	int saved_ns_fd[LXC_NS_MAX];
 	struct lxc_list *id_map;
-	int preserve_mask = 0;
 	const char *name = handler->name;
 	const char *lxcpath = handler->lxcpath;
-	bool cgroups_connected = false;
+	bool cgroups_connected = false, fork_before_clone = false;
 	struct lxc_conf *conf = handler->conf;
 
 	id_map = &conf->id_map;
 	wants_to_map_ids = !lxc_list_empty(id_map);
-	memset(saved_ns_fd, -1, sizeof(int) * LXC_NS_MAX);
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
 		if (!conf->inherit_ns[i])
 			continue;
 
-		preserve_mask |= ns_info[i].clone_flag;
-
 		handler->nsfd[i] = lxc_inherit_namespace(conf->inherit_ns[i], lxcpath, ns_info[i].proc_name);
 		if (handler->nsfd[i] < 0)
 			return -1;
+
+		fork_before_clone = true;
 	}
 
 	if (lxc_sync_init(handler))
@@ -1229,20 +1255,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 			INFO("Failed to pin the rootfs for container \"%s\".", handler->name);
 	}
 
-	if (!preserve_ns(saved_ns_fd, preserve_mask, getpid()))
-		goto out_delete_net;
-	else
-		TRACE("Preserved inherited namespaces");
-
-	for (i = 0; i < LXC_NS_MAX; i++) {
-		if (handler->nsfd[i] < 0)
-			continue;
-
-		ret = setns(handler->nsfd[i], 0);
-		if (ret < 0)
-			goto out_delete_net;
-	}
-
 	/* Create a process in a new set of namespaces. */
 	flags = handler->clone_flags;
 	if (handler->clone_flags & CLONE_NEWUSER) {
@@ -1258,23 +1270,22 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (ret < 0)
 		goto out_delete_net;
 
-	handler->pid = lxc_clone(do_start, handler, flags);
+	if (fork_before_clone)
+		handler->pid = lxc_fork_attach_clone(do_start, handler, flags | CLONE_PARENT);
+	else
+		handler->pid = lxc_clone(do_start, handler, flags);
 	if (handler->pid < 0) {
 		SYSERROR("Failed to clone a new set of namespaces.");
 		goto out_delete_net;
 	}
+	TRACE("Cloned child process %d", handler->pid);
 
 	for (i = 0; i < LXC_NS_MAX; i++)
 		if (flags & ns_info[i].clone_flag)
 			INFO("Cloned %s", ns_info[i].flag_name);
 
-	if (!preserve_ns(handler->nsfd, handler->clone_flags, handler->pid)) {
+	if (!preserve_ns(handler->nsfd, handler->clone_flags & ~CLONE_NEWNET, handler->pid)) {
 		ERROR("Failed to preserve cloned namespaces for lxc.hook.stop");
-		goto out_delete_net;
-	}
-
-	if (attach_ns(saved_ns_fd)) {
-		ERROR("Failed to restore saved namespaces");
 		goto out_delete_net;
 	}
 
@@ -1286,9 +1297,14 @@ static int lxc_spawn(struct lxc_handler *handler)
 	 * mapped to something else on the host.) later to become a valid uid
 	 * again.
 	 */
-	if (wants_to_map_ids && lxc_map_ids(id_map, handler->pid)) {
-		ERROR("Failed to set up id mapping.");
-		goto out_delete_net;
+	if (wants_to_map_ids) {
+		if (!handler->conf->inherit_ns[LXC_NS_USER]) {
+			ret = lxc_map_ids(id_map, handler->pid);
+			if (ret < 0) {
+				ERROR("Failed to set up id mapping.");
+				goto out_delete_net;
+			}
+		}
 	}
 
 	if (lxc_sync_wake_child(handler, LXC_SYNC_STARTUP))
@@ -1311,6 +1327,15 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 	if (!cgroup_chown(handler))
 		goto out_delete_net;
+
+	/* Now we're ready to preserve the network namespace */
+	ret = lxc_preserve_ns(handler->pid, "net");
+	if (ret < 0) {
+		ERROR("%s - Failed to preserve net namespace", strerror(errno));
+		goto out_delete_net;
+	}
+	handler->nsfd[LXC_NS_NET] = ret;
+	DEBUG("Preserved net namespace via fd %d", ret);
 
 	/* Create the network configuration. */
 	if (handler->clone_flags & CLONE_NEWNET) {
@@ -1377,6 +1402,14 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_barrier_child(handler, LXC_SYNC_READY_START))
 		return -1;
 
+	ret = lxc_preserve_ns(handler->pid, "cgroup");
+	if (ret < 0) {
+		ERROR("%s - Failed to preserve cgroup namespace", strerror(errno));
+		goto out_delete_net;
+	}
+	handler->nsfd[LXC_NS_CGROUP] = ret;
+	DEBUG("Preserved cgroup namespace via fd %d", ret);
+
 	if (lxc_network_recv_name_and_ifindex_from_child(handler) < 0) {
 		ERROR("Failed to receive names and ifindices for network "
 		      "devices from child");
@@ -1407,17 +1440,9 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 	lxc_sync_fini(handler);
 
-	for (i = 0; i < LXC_NS_MAX; i++)
-		if (saved_ns_fd[i] != -1)
-			close(saved_ns_fd[i]);
-
 	return 0;
 
 out_delete_net:
-	for (i = 0; i < LXC_NS_MAX; i++)
-		if (saved_ns_fd[i] != -1)
-			close(saved_ns_fd[i]);
-
 	if (cgroups_connected)
 		cgroup_disconnect();
 
