@@ -105,10 +105,10 @@ static void lxc_monitor_fifo_send(struct lxc_msg *msg, const char *lxcpath)
 		/* It is normal for this open() to fail with ENXIO when there is
 		 * no monitor running, so we don't log it.
 		 */
-		if (errno == ENXIO)
+		if (errno == ENXIO || errno == ENOENT)
 			return;
 
-		WARN("Failed to open fifo to send message: %s.", strerror(errno));
+		WARN("%s - Failed to open fifo to send message", strerror(errno));
 		return;
 	}
 
