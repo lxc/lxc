@@ -1224,15 +1224,16 @@ void resolve_clone_flags(struct lxc_handler *handler)
 static int lxc_spawn(struct lxc_handler *handler)
 {
 	int i, flags, ret;
-	const char *name = handler->name;
 	bool wants_to_map_ids;
 	int saved_ns_fd[LXC_NS_MAX];
 	struct lxc_list *id_map;
 	int preserve_mask = 0;
+	const char *name = handler->name;
 	bool cgroups_connected = false;
 
 	id_map = &handler->conf->id_map;
 	wants_to_map_ids = !lxc_list_empty(id_map);
+	memset(saved_ns_fd, -1, sizeof(int) * LXC_NS_MAX);
 
 	for (i = 0; i < LXC_NS_MAX; i++)
 		if (handler->conf->inherit_ns_fd[i] != -1)
@@ -1449,9 +1450,17 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 	lxc_sync_fini(handler);
 
+	for (i = 0; i < LXC_NS_MAX; i++)
+		if (saved_ns_fd[i] != -1)
+			close(saved_ns_fd[i]);
+
 	return 0;
 
 out_delete_net:
+	for (i = 0; i < LXC_NS_MAX; i++)
+		if (saved_ns_fd[i] != -1)
+			close(saved_ns_fd[i]);
+
 	if (cgroups_connected)
 		cgroup_disconnect();
 
