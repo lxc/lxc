@@ -38,6 +38,7 @@
 #include "attach.h"
 #include "arguments.h"
 #include "caps.h"
+#include "conf.h"
 #include "confile.h"
 #include "console.h"
 #include "log.h"
@@ -279,20 +280,46 @@ static int get_pty_on_host_callback(void *p)
 
 static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *pid)
 {
-	int ret = -1;
-	struct wrapargs *args = wrap;
 	struct lxc_epoll_descr descr;
 	struct lxc_conf *conf;
 	struct lxc_tty_state *ts;
+	int ret = -1;
+	struct wrapargs *args = wrap;
 
 	INFO("Trying to allocate a pty on the host");
 
 	if (!isatty(args->ptyfd)) {
-		ERROR("Standard file descriptor does not refer to a pty\n.");
+		ERROR("Standard file descriptor does not refer to a pty");
 		return -1;
 	}
 
-	conf = c->lxc_conf;
+	if (c->lxc_conf) {
+		conf = c->lxc_conf;
+	} else {
+		/* If the container is not defined and the user didn't specify a
+		 * config file to load we will simply init a dummy config here.
+		 */
+		conf = lxc_conf_init();
+		if (!conf) {
+			ERROR("Failed to allocate dummy config file for the container");
+			return -1;
+		}
+
+		/* We also need a dummy rootfs path otherwise
+		 * lxc_console_create() will not let us create a console. Note,
+		 * I don't want this change to make it into
+		 * lxc_console_create()'s since this function will only be
+		 * responsible for proper /dev/{console,tty<n>} devices.
+		 * lxc-attach is just abusing it to also handle the pty case
+		 * because it is very similar. However, with LXC 3.0 lxc-attach
+		 * will need to move away from using lxc_console_create() since
+		 * this is actually an internal symbol and we only want the
+		 * tools to use the API with LXC 3.0.
+		 */
+		conf->rootfs.path = strdup("dummy");
+		if (!conf->rootfs.path)
+			return -1;
+	}
 	free(conf->console.log_path);
 	if (my_args.console_log)
 		conf->console.log_path = strdup(my_args.console_log);
@@ -431,12 +458,6 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (!c->is_defined(c)) {
-		fprintf(stderr, "Error: container %s is not defined\n", c->name);
-		lxc_container_put(c);
-		exit(EXIT_FAILURE);
-	}
-
 	if (remount_sys_proc)
 		attach_options.attach_flags |= LXC_ATTACH_REMOUNT_PROC_SYS;
 	if (elevated_privileges)
@@ -454,7 +475,7 @@ int main(int argc, char *argv[])
 
 	struct wrapargs wrap = (struct wrapargs){
 		.command = &command,
-			.options = &attach_options
+		.options = &attach_options
 	};
 
 	wrap.ptyfd = stdfd_is_pty();
