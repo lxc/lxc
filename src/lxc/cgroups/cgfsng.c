@@ -815,7 +815,7 @@ static void add_controller(char **clist, char *mountpoint, char *base_cgroup)
 	new->fullcgpath = NULL;
 
 	/* record if this is the cgroup v2 hierarchy */
-	if (!strcmp(base_cgroup, "cgroup2"))
+	if (clist && !strcmp(*clist, "cgroup2"))
 		new->is_cgroup_v2 = true;
 	else
 		new->is_cgroup_v2 = false;
