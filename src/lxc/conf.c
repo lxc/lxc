@@ -210,9 +210,6 @@ __thread struct lxc_conf *current_config;
 struct lxc_conf *current_config;
 #endif
 
-/* Declare this here, since we don't want to reshuffle the whole file. */
-static int in_caplist(int cap, struct lxc_list *caps);
-
 static struct mount_opt mount_opt[] = {
 	{ "async",         1, MS_SYNCHRONOUS },
 	{ "atime",         1, MS_NOATIME     },

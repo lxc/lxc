@@ -1418,11 +1418,12 @@ static bool cgroupfs_mount_cgroup(void *hdata, const char *root, int type)
 	struct cgfs_data *cgfs_d;
 	struct cgroup_process_info *info, *base_info;
 	int r, saved_errno = 0;
+	struct lxc_handler *handler = hdata;
 
 	if (cgns_supported())
 		return true;
 
-	cgfs_d = hdata;
+	cgfs_d = handler->cgroup_data;
 	if (!cgfs_d)
 		return false;
 	base_info = cgfs_d->info;
