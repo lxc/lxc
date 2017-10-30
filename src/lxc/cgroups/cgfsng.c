@@ -50,6 +50,7 @@
 #include <linux/types.h>
 #include <linux/kdev_t.h>
 
+#include "caps.h"
 #include "cgroup.h"
 #include "cgroup_utils.h"
 #include "commands.h"
@@ -1616,17 +1617,49 @@ do_secondstage_mounts_if_needed(int type, struct hierarchy *h,
 	return 0;
 }
 
+static int mount_cgroup_cgns_supported(struct hierarchy *h, const char *controllerpath)
+{
+	 int ret;
+	 char *controllers = NULL;
+	 char *type = "cgroup2";
+
+	if (!h->is_cgroup_v2) {
+		controllers = lxc_string_join(",", (const char **)h->controllers, false);
+		if (!controllers)
+			return -ENOMEM;
+		type = "cgroup";
+	}
+
+	ret = mount("cgroup", controllerpath, type, MS_NOSUID|MS_NOEXEC|MS_NODEV|MS_RELATIME, controllers);
+	free(controllers);
+	if (ret < 0) {
+		SYSERROR("Failed to mount %s with cgroup filesystem type %s", controllerpath, type);
+		return -1;
+	}
+
+	DEBUG("Mounted %s with cgroup filesystem type %s", controllerpath, type);
+	return 0;
+}
+
 static bool cgfsng_mount(void *hdata, const char *root, int type)
 {
-	struct cgfsng_handler_data *d = hdata;
+	int i;
 	char *tmpfspath = NULL;
 	bool retval = false;
-	int i;
+	struct lxc_handler *handler = hdata;
+	struct cgfsng_handler_data *d = handler->cgroup_data;
+	bool has_cgns = false, has_sys_admin = true;
 
 	if ((type & LXC_AUTO_CGROUP_MASK) == 0)
 		return true;
 
-	if (cgns_supported())
+	has_cgns = cgns_supported();
+	if (!lxc_list_empty(&handler->conf->keepcaps))
+		has_sys_admin = in_caplist(CAP_SYS_ADMIN, &handler->conf->keepcaps);
+	else
+		has_sys_admin = !in_caplist(CAP_SYS_ADMIN, &handler->conf->caps);
+
+	if (has_cgns && has_sys_admin)
 		return true;
 
 	tmpfspath = must_make_path(root, "/sys/fs/cgroup", NULL);
@@ -1662,6 +1695,19 @@ static bool cgfsng_mount(void *hdata, const char *root, int type)
 			free(controllerpath);
 			goto bad;
 		}
+
+		if (has_cgns && !has_sys_admin) {
+			/* If cgroup namespaces are supported but the container
+			 * will not have CAP_SYS_ADMIN after it has started we
+			 * need to mount the cgroups manually.
+			 */
+			r = mount_cgroup_cgns_supported(h, controllerpath);
+			free(controllerpath);
+			if (r < 0)
+				goto bad;
+			continue;
+		}
+
 		if (mount_cgroup_full(type, h, controllerpath, d->container_cgroup) < 0) {
 			free(controllerpath);
 			goto bad;
