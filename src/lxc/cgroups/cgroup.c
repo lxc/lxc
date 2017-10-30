@@ -166,7 +166,7 @@ bool cgroup_chown(struct lxc_handler *handler)
 bool cgroup_mount(const char *root, struct lxc_handler *handler, int type)
 {
 	if (ops)
-		return ops->mount_cgroup(handler->cgroup_data, root, type);
+		return ops->mount_cgroup(handler, root, type);
 
 	return false;
 }
