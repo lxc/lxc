@@ -394,5 +394,6 @@ extern unsigned long add_required_remount_flags(const char *s, const char *d,
 						unsigned long flags);
 extern int run_script(const char *name, const char *section, const char *script,
 		      ...);
+extern int in_caplist(int cap, struct lxc_list *caps);
 
 #endif /* __LXC_CONF_H */
