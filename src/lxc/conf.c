@@ -1384,6 +1384,7 @@ static int lxc_setup_devpts(int num_pts)
 	int ret;
 	const char *default_devpts_mntopts = "newinstance,ptmxmode=0666,mode=0620,gid=5";
 	char devpts_mntopts[256];
+	struct stat ptmx;
 
 	if (!num_pts) {
 		DEBUG("no new devpts instance will be mounted since no pts "
@@ -1433,30 +1434,37 @@ static int lxc_setup_devpts(int num_pts)
 		DEBUG("removed existing \"/dev/ptmx\"");
 	}
 
-	/* Create dummy /dev/ptmx file as bind mountpoint for /dev/pts/ptmx. */
-	ret = open("/dev/ptmx", O_CREAT, 0666);
-	if (ret < 0) {
-		SYSERROR("failed to create dummy \"/dev/ptmx\" file as bind mount target");
+	/* Read attributes of /dev/pts/ptmx */
+	ret = stat("/dev/pts/ptmx", &ptmx);
+	if (ret) {
+		SYSERROR("failed to stat \"/dev/pts/ptmx\"");
+		return -1;
+	} else if (!S_ISCHR(ptmx.st_mode)) {
+		SYSERROR("\"/dev/pts/ptmx\" isn't a character device!");
 		return -1;
 	}
-	close(ret);
-	DEBUG("created dummy \"/dev/ptmx\" file as bind mount target");
 
-	/* Fallback option: create symlink /dev/ptmx -> /dev/pts/ptmx  */
-	ret = mount("/dev/pts/ptmx", "/dev/ptmx", NULL, MS_BIND, NULL);
-	if (!ret) {
-		DEBUG("bind mounted \"/dev/pts/ptmx\" to \"/dev/ptmx\"");
-		return 0;
+	/* Create doppelganger of /dev/pts/ptmx at /dev/ptmx */
+	ret = mknod("/dev/ptmx", ptmx.st_mode, ptmx.st_rdev);
+	if (ret) {
+		SYSERROR("failed to mknod \"/dev/ptmx\"");
+		/* Fall through to symlink code below */
 	} else {
-		/* Fallthrough and try to create a symlink. */
-		ERROR("failed to bind mount \"/dev/pts/ptmx\" to \"/dev/ptmx\"");
-	}
-
-	/* Remove the dummy /dev/ptmx file we created above. */
-	ret = remove("/dev/ptmx");
-	if (ret < 0) {
-		SYSERROR("failed to remove existing \"/dev/ptmx\"");
-		return -1;
+		/* Set ownership and mode on doppelganger */
+		ret = chown("/dev/ptmx", ptmx.st_uid, ptmx.st_gid);
+		if (ret)
+		{
+			SYSERROR("failed to chown \"/dev/ptmx\"");
+			return -1;
+		}
+		ret = chmod("/dev/ptmx", ptmx.st_mode);
+		if (ret)
+		{
+			SYSERROR("failed to chmod \"/dev/ptmx\"");
+			return -1;
+		}
+		/* Our work is done here */
+		return 0;
 	}
 
 	/* Fallback option: Create symlink /dev/ptmx -> /dev/pts/ptmx. */
