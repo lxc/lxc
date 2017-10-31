@@ -777,7 +777,7 @@ static char **get_controllers(char **klist, char **nlist, char *line)
 	/* cgroup v2 does not have separate mountpoints for controllers */
 	if (is_cgroup_v2) {
 		must_append_controller(klist, nlist, &aret, "cgroup2");
-		return NULL;
+		return aret;
 	}
 
 	/* strdup() here for v1 hierarchies. Otherwise strtok_r() will destroy
