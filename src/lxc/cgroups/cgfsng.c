@@ -1630,27 +1630,36 @@ do_secondstage_mounts_if_needed(int type, struct hierarchy *h,
 	return 0;
 }
 
-static int mount_cgroup_cgns_supported(struct hierarchy *h, const char *controllerpath)
+static int mount_cgroup_cgns_supported(int type, struct hierarchy *h, const char *controllerpath)
 {
 	 int ret;
 	 char *controllers = NULL;
-	 char *type = "cgroup2";
+	 char *fstype = "cgroup2";
+	 unsigned long flags = 0;
 
-	if (!h->is_cgroup_v2) {
-		controllers = lxc_string_join(",", (const char **)h->controllers, false);
-		if (!controllers)
-			return -ENOMEM;
-		type = "cgroup";
+	 flags |= MS_NOSUID;
+	 flags |= MS_NOEXEC;
+	 flags |= MS_NODEV;
+	 flags |= MS_RELATIME;
+
+	 if (type == LXC_AUTO_CGROUP_RO || type == LXC_AUTO_CGROUP_FULL_RO)
+		 flags |= MS_RDONLY;
+
+	 if (!h->is_cgroup_v2) {
+		 controllers = lxc_string_join(",", (const char **)h->controllers, false);
+		 if (!controllers)
+			 return -ENOMEM;
+		 fstype = "cgroup";
 	}
 
-	ret = mount("cgroup", controllerpath, type, MS_NOSUID|MS_NOEXEC|MS_NODEV|MS_RELATIME, controllers);
+	ret = mount("cgroup", controllerpath, fstype, flags, controllers);
 	free(controllers);
 	if (ret < 0) {
-		SYSERROR("Failed to mount %s with cgroup filesystem type %s", controllerpath, type);
+		SYSERROR("Failed to mount %s with cgroup filesystem type %s", controllerpath, fstype);
 		return -1;
 	}
 
-	DEBUG("Mounted %s with cgroup filesystem type %s", controllerpath, type);
+	DEBUG("Mounted %s with cgroup filesystem type %s", controllerpath, fstype);
 	return 0;
 }
 
@@ -1714,7 +1723,7 @@ static bool cgfsng_mount(void *hdata, const char *root, int type)
 			 * will not have CAP_SYS_ADMIN after it has started we
 			 * need to mount the cgroups manually.
 			 */
-			r = mount_cgroup_cgns_supported(h, controllerpath);
+			r = mount_cgroup_cgns_supported(type, h, controllerpath);
 			free(controllerpath);
 			if (r < 0)
 				goto bad;
