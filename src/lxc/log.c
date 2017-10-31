@@ -197,7 +197,7 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 {
 	char buffer[LXC_LOG_BUFFER_SIZE];
 	char date_time[LXC_LOG_TIME_SIZE];
-	int n;
+	int n, ret;
 	int fd_to_use = -1;
 
 #ifndef NO_LXC_CONF
@@ -226,8 +226,13 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 	if (n < 0)
 		return n;
 
-	if ((size_t)n < (sizeof(buffer) - 1))
-		n += vsnprintf(buffer + n, sizeof(buffer) - n, event->fmt, *event->vap);
+	if ((size_t)n < (sizeof(buffer) - 1)) {
+		ret = vsnprintf(buffer + n, sizeof(buffer) - n, event->fmt, *event->vap);
+		if (ret < 0)
+			return 0;
+
+		n += ret;
+	}
 
 	if ((size_t)n >= sizeof(buffer))
 		n = sizeof(buffer) - 1;
