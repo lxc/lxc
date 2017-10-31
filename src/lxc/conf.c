@@ -1446,10 +1446,7 @@ static int lxc_setup_devpts(int num_pts)
 
 	/* Create doppelganger of /dev/pts/ptmx at /dev/ptmx */
 	ret = mknod("/dev/ptmx", ptmx.st_mode, ptmx.st_rdev);
-	if (ret) {
-		SYSERROR("failed to mknod \"/dev/ptmx\"");
-		/* Fall through to symlink code below */
-	} else {
+	if (!ret) {
 		/* Set ownership and mode on doppelganger */
 		ret = chown("/dev/ptmx", ptmx.st_uid, ptmx.st_gid);
 		if (ret)
@@ -1464,10 +1461,40 @@ static int lxc_setup_devpts(int num_pts)
 			return -1;
 		}
 		/* Our work is done here */
+		DEBUG("made copy of \"/dev/pts/ptmx\" at \"/dev/ptmx\"");
 		return 0;
+	} else {
+		/* Fallthrough and try to bind mount */
+		SYSERROR("failed to mknod \"/dev/ptmx\"");
 	}
 
-	/* Fallback option: Create symlink /dev/ptmx -> /dev/pts/ptmx. */
+	/* Create dummy /dev/ptmx file as bind mountpoint for /dev/pts/ptmx. */
+	ret = open("/dev/ptmx", O_CREAT, 0666);
+	if (ret < 0) {
+		SYSERROR("failed to create dummy \"/dev/ptmx\" file as bind mount target");
+		return -1;
+	}
+	close(ret);
+	DEBUG("created dummy \"/dev/ptmx\" file as bind mount target");
+
+	/* Fallback option 1: bind mount /dev/ptmx -> /dev/pts/ptmx  */
+	ret = mount("/dev/pts/ptmx", "/dev/ptmx", NULL, MS_BIND, NULL);
+	if (!ret) {
+		DEBUG("bind mounted \"/dev/pts/ptmx\" to \"/dev/ptmx\"");
+		return 0;
+	} else {
+		/* Fallthrough and try to create a symlink. */
+		ERROR("failed to bind mount \"/dev/pts/ptmx\" to \"/dev/ptmx\"");
+	}
+
+	/* Remove the dummy /dev/ptmx file we created above. */
+	ret = remove("/dev/ptmx");
+	if (ret < 0) {
+		SYSERROR("failed to remove existing \"/dev/ptmx\"");
+		return -1;
+	}
+
+	/* Fallback option 2: Create symlink /dev/ptmx -> /dev/pts/ptmx. */
 	ret = symlink("/dev/pts/ptmx", "/dev/ptmx");
 	if (ret < 0) {
 		SYSERROR("failed to create symlink \"/dev/ptmx\" -> \"/dev/pts/ptmx\"");
