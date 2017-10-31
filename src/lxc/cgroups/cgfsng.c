@@ -1492,7 +1492,7 @@ static int chown_cgroup_wrapper(void *data)
 	return 0;
 }
 
-static bool cgfsns_chown(void *hdata, struct lxc_conf *conf)
+static bool cgfsng_chown(void *hdata, struct lxc_conf *conf)
 {
 	struct cgfsng_handler_data *d = hdata;
 	struct chown_data wrap;
@@ -2058,7 +2058,7 @@ static struct cgroup_ops cgfsng_ops = {
 	.setup_limits = cgfsng_setup_limits,
 	.name = "cgroupfs-ng",
 	.attach = cgfsng_attach,
-	.chown = cgfsns_chown,
+	.chown = cgfsng_chown,
 	.mount_cgroup = cgfsng_mount,
 	.nrtasks = cgfsng_nrtasks,
 	.driver = CGFSNG,
