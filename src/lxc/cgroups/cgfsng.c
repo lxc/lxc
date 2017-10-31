@@ -751,9 +751,10 @@ static char **get_controllers(char **klist, char **nlist, char *line)
 {
 	/* the fourth field is /sys/fs/cgroup/comma-delimited-controller-list */
 	int i;
-	char *p = line, *p2, *tok, *saveptr = NULL;
-	char **aret = NULL;
+	char *dup, *p2, *tok;
 	bool is_cgroup_v2;
+	char *p = line, *saveptr = NULL;
+	char **aret = NULL;
 
 	/* handle cgroup v2 */
 	is_cgroup_v2 = is_cgroupfs_v2(line);
@@ -783,14 +784,24 @@ static char **get_controllers(char **klist, char **nlist, char *line)
 	/* cgroup v2 does not have separate mountpoints for controllers */
 	if (is_cgroup_v2) {
 		must_append_controller(klist, nlist, &aret, "cgroup2");
-		return aret;
+		return NULL;
 	}
 
-	for (tok = strtok_r(p, ",", &saveptr); tok;
+	/* strdup() here for v1 hierarchies. Otherwise strtok_r() will destroy
+	 * mountpoints such as "/sys/fs/cgroup/cpu,cpuacct".
+	 */
+	dup = strdup(p);
+	if (!dup) {
+		SYSERROR("Failed to duplicate string");
+		return NULL;
+	}
+
+	for (tok = strtok_r(dup, ",", &saveptr); tok;
 			tok = strtok_r(NULL, ",", &saveptr)) {
 		must_append_controller(klist, nlist, &aret, tok);
 	}
 
+	free(dup);
 	return aret;
 }
 
