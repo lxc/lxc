@@ -32,6 +32,17 @@
 #include "cgroup_utils.h"
 #include "utils.h"
 
+int get_cgroup_version(char *line)
+{
+	if (is_cgroupfs_v1(line))
+		return CGROUP_V1;
+
+	if (is_cgroupfs_v2(line))
+		return CGROUP_V2;
+
+	return -1;
+}
+
 bool is_cgroupfs_v1(char *line)
 {
 	char *p = strstr(line, " - ");
@@ -67,20 +78,39 @@ bool test_writeable_v2(char *mountpoint, char *path)
 	 * file.
 	 */
 	int ret;
-	char *cgroup_path, *cgroup_procs_file;
+	char *cgroup_path, *cgroup_procs_file, *cgroup_threads_file;
 
 	cgroup_path = must_make_path(mountpoint, path, NULL);
 	cgroup_procs_file = must_make_path(cgroup_path, "cgroup.procs", NULL);
 
 	ret = access(cgroup_path, W_OK);
-	free(cgroup_path);
 	if (ret < 0) {
+		free(cgroup_path);
 		free(cgroup_procs_file);
 		return false;
 	}
 
 	ret = access(cgroup_procs_file, W_OK);
 	free(cgroup_procs_file);
+	if (ret < 0) {
+		free(cgroup_path);
+		return false;
+	}
+
+	/* Newer versions of cgroup2 now also require write access to the
+	 * "cgroup.threads" file.
+	 */
+	cgroup_threads_file = must_make_path(cgroup_path, "cgroup.threads", NULL);
+	free(cgroup_path);
+	if (!file_exists(cgroup_threads_file)) {
+		free(cgroup_threads_file);
+		return true;
+	}
+
+	ret = access(cgroup_threads_file, W_OK);
+	free(cgroup_threads_file);
+	if (ret < 0)
+		return false;
 
 	return ret == 0;
 }
