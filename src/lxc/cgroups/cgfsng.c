@@ -215,6 +215,8 @@ static void must_append_controller(char **klist, char **nlist, char ***clist, ch
 		copy = must_copy_string(entry);
 	else if (string_in_list(klist, entry))
 		copy = must_copy_string(entry);
+	else if (!strcmp(entry, "cgroup2"))
+		copy = must_copy_string(entry);
 	else
 		copy = must_prefix_named(entry);
 
@@ -749,17 +751,13 @@ static bool all_controllers_found(void)
  * options.  But we simply assume that the mountpoint must be
  * /sys/fs/cgroup/controller-list
  */
-static char **get_controllers(char **klist, char **nlist, char *line)
+static char **get_controllers(char **klist, char **nlist, char *line, int type)
 {
 	/* the fourth field is /sys/fs/cgroup/comma-delimited-controller-list */
 	int i;
 	char *dup, *p2, *tok;
-	bool is_cgroup_v2;
 	char *p = line, *saveptr = NULL;
 	char **aret = NULL;
-
-	/* handle cgroup v2 */
-	is_cgroup_v2 = is_cgroupfs_v2(line);
 
 	for (i = 0; i < 4; i++) {
 		p = strchr(p, ' ');
@@ -784,7 +782,7 @@ static char **get_controllers(char **klist, char **nlist, char *line)
 	*p2 = '\0';
 
 	/* cgroup v2 does not have separate mountpoints for controllers */
-	if (is_cgroup_v2) {
+	if (type == CGROUP_V2) {
 		must_append_controller(klist, nlist, &aret, "cgroup2");
 		return aret;
 	}
@@ -1083,13 +1081,14 @@ static bool parse_hierarchies(void)
 	while (getline(&line, &len, f) != -1) {
 		char **controller_list = NULL;
 		char *mountpoint, *base_cgroup;
-		bool is_cgroup_v2, writeable;
+		bool writeable;
+		int type;
 
-		is_cgroup_v2 = is_cgroupfs_v2(line);
-		if (!is_cgroupfs_v1(line) && !is_cgroup_v2)
+		type = get_cgroup_version(line);
+		if (type < 0)
 			continue;
 
-		controller_list = get_controllers(klist, nlist, line);
+		controller_list = get_controllers(klist, nlist, line, type);
 		if (!controller_list)
 			continue;
 
@@ -1115,7 +1114,7 @@ static bool parse_hierarchies(void)
 
 		trim(base_cgroup);
 		prune_init_scope(base_cgroup);
-		if (is_cgroup_v2)
+		if (type == CGROUP_V2)
 			writeable = test_writeable_v2(mountpoint, base_cgroup);
 		else
 			writeable = test_writeable_v1(mountpoint, base_cgroup);
