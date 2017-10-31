@@ -204,7 +204,7 @@ static void must_append_controller(char **klist, char **nlist, char ***clist, ch
 	char *copy;
 
 	if (string_in_list(klist, entry) && string_in_list(nlist, entry)) {
-		ERROR("Refusing to use ambiguous controller '%s'", entry);
+		ERROR("Refusing to use ambiguous controller \"%s\"", entry);
 		ERROR("It is both a named and kernel subsystem");
 		return;
 	}
@@ -724,19 +724,21 @@ static bool all_controllers_found(void)
 	struct hierarchy ** hlist = hierarchies;
 
 	if (!controller_found(hlist, "freezer")) {
-		ERROR("no freezer controller mountpoint found");
+		ERROR("No freezer controller mountpoint found");
 		return false;
 	}
 
 	if (!cgroup_use)
 		return true;
+
 	for (p = strtok_r(cgroup_use, ",", &saveptr); p;
 			p = strtok_r(NULL, ",", &saveptr)) {
 		if (!controller_found(hlist, p)) {
-			ERROR("no %s controller mountpoint found", p);
+			ERROR("No %s controller mountpoint found", p);
 			return false;
 		}
 	}
+
 	return true;
 }
 
@@ -778,14 +780,14 @@ static char **get_controllers(char **klist, char **nlist, char *line)
 		return NULL;
 	/* note - if we change how mountinfo works, then our caller
 	 * will need to verify /sys/fs/cgroup/ in this field */
-	if (strncmp(p, "/sys/fs/cgroup/", 15) != 0) {
-		INFO("cgfsng: found hierarchy not under /sys/fs/cgroup: \"%s\"", p);
+	if (strncmp(p, "/sys/fs/cgroup/", 15)) {
+		INFO("Found hierarchy not under /sys/fs/cgroup: \"%s\"", p);
 		return NULL;
 	}
 	p += 15;
 	p2 = strchr(p, ' ');
 	if (!p2) {
-		ERROR("corrupt mountinfo");
+		ERROR("Corrupt mountinfo");
 		return NULL;
 	}
 	*p2 = '\0';
@@ -800,10 +802,8 @@ static char **get_controllers(char **klist, char **nlist, char *line)
 	 * mountpoints such as "/sys/fs/cgroup/cpu,cpuacct".
 	 */
 	dup = strdup(p);
-	if (!dup) {
-		SYSERROR("Failed to duplicate string");
+	if (!dup)
 		return NULL;
-	}
 
 	for (tok = strtok_r(dup, ",", &saveptr); tok;
 			tok = strtok_r(NULL, ",", &saveptr)) {
@@ -1021,15 +1021,15 @@ static void lxc_cgfsng_print_hierarchies()
 	int i;
 
 	if (!hierarchies) {
-		printf("  No hierarchies found.");
+		printf("  No hierarchies found\n");
 		return;
 	}
 	printf("  Hierarchies:\n");
 	for (i = 0, it = hierarchies; it && *it; it++, i++) {
 		char **cit;
 		int j;
-		printf("  %d: base_cgroup %s\n", i, (*it)->base_cgroup ? (*it)->base_cgroup : "(null)");
-		printf("      mountpoint %s\n", (*it)->mountpoint ? (*it)->mountpoint : "(null)");
+		printf("  %d: base_cgroup: %s\n", i, (*it)->base_cgroup ? (*it)->base_cgroup : "(null)");
+		printf("      mountpoint:  %s\n", (*it)->mountpoint ? (*it)->mountpoint : "(null)");
 		printf("      controllers:\n");
 		for (j = 0, cit = (*it)->controllers; cit && *cit; cit++, j++)
 			printf("      %d: %s\n", j, *cit);
@@ -1079,7 +1079,7 @@ static bool parse_hierarchies(void)
 		return false;
 
 	if ((f = fopen("/proc/self/mountinfo", "r")) == NULL) {
-		SYSERROR("Failed opening /proc/self/mountinfo");
+		SYSERROR("Failed to open \"/proc/self/mountinfo\"");
 		return false;
 	}
 
@@ -1109,14 +1109,14 @@ static bool parse_hierarchies(void)
 
 		mountpoint = get_mountpoint(line);
 		if (!mountpoint) {
-			ERROR("Error reading mountinfo: bad line '%s'", line);
+			ERROR("Failed parsing mountpoint from \"%s\"", line);
 			free_string_list(controller_list);
 			continue;
 		}
 
 		base_cgroup = get_current_cgroup(basecginfo, controller_list[0]);
 		if (!base_cgroup) {
-			ERROR("Failed to find current cgroup for controller '%s'", controller_list[0]);
+			ERROR("Failed to find current cgroup for controller \"%s\"", controller_list[0]);
 			free_string_list(controller_list);
 			free(mountpoint);
 			continue;
@@ -1153,10 +1153,8 @@ static bool parse_hierarchies(void)
 	/* verify that all controllers in cgroup.use and all crucial
 	 * controllers are accounted for
 	 */
-	if (!all_controllers_found()) {
-		INFO("cgfsng: not all controllers were find, deferring to cgfs driver");
+	if (!all_controllers_found())
 		return false;
-	}
 
 	return true;
 }
@@ -1167,7 +1165,7 @@ static bool collect_hierarchy_info(void)
 	errno = 0;
 	tmp = lxc_global_config_value("lxc.cgroup.use");
 	if (!cgroup_use && errno != 0) { /* lxc.cgroup.use can be NULL */
-		SYSERROR("cgfsng: error reading list of cgroups to use");
+		ERROR("Failed to retrieve list of cgroups to use");
 		return false;
 	}
 	cgroup_use = must_copy_string(tmp);
