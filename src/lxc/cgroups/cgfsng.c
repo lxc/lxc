@@ -733,15 +733,6 @@ static bool all_controllers_found(void)
 	return true;
 }
 
-/* Return true if the fs type is fuse.lxcfs */
-static bool is_lxcfs(const char *line)
-{
-	char *p = strstr(line, " - ");
-	if (!p)
-		return false;
-	return strncmp(p, " - fuse.lxcfs ", 14) == 0;
-}
-
 /*
  * Get the controllers from a mountinfo line
  * There are other ways we could get this info.  For lxcfs, field 3
@@ -1082,7 +1073,7 @@ static bool parse_hierarchies(void)
 		bool is_cgroup_v2, writeable;
 
 		is_cgroup_v2 = is_cgroupfs_v2(line);
-		if (!is_lxcfs(line) && !is_cgroupfs_v1(line) && !is_cgroup_v2)
+		if (!is_cgroupfs_v1(line) && !is_cgroup_v2)
 			continue;
 
 		controller_list = get_controllers(klist, nlist, line);
