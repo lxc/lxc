@@ -2126,13 +2126,13 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	if (bytes < 0) {
 		SYSERROR("Failed to read from pipe file descriptor");
 		close(pipefd[0]);
-		return -1;
+	} else {
+		buffer[bytes - 1] = '\0';
 	}
-	buffer[bytes - 1] = '\0';
 
 	ret = wait_for_pid(child);
 	close(pipefd[0]);
-	if (ret != 0) {
+	if (ret != 0 || bytes < 0) {
 		ERROR("lxc-user-nic failed to configure requested network: %s",
 		      buffer[0] != '\0' ? buffer : "(null)");
 		return -1;
@@ -2267,18 +2267,17 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	if (bytes < 0) {
 		SYSERROR("Failed to read from pipe file descriptor.");
 		close(pipefd[0]);
-		return -1;
+	} else {
+		buffer[bytes - 1] = '\0';
 	}
-	buffer[bytes - 1] = '\0';
 
-	if (wait_for_pid(child) != 0) {
+	ret = wait_for_pid(child);
+	close(pipefd[0]);
+	if (ret != 0 || bytes < 0) {
 		ERROR("lxc-user-nic failed to delete requested network: %s",
 		      buffer[0] != '\0' ? buffer : "(null)");
-		close(pipefd[0]);
 		return -1;
 	}
-
-	close(pipefd[0]);
 
 	return 0;
 }
