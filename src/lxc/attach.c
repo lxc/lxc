@@ -233,6 +233,8 @@ static struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 	}
 
 	info->lsm_label = lsm_process_label_get(pid);
+	info->ns_inherited = 0;
+	memset(info->ns_fd, -1, sizeof(int) * LXC_NS_MAX);
 
 	return info;
 
@@ -241,11 +243,24 @@ on_error:
 	return NULL;
 }
 
+static inline void lxc_proc_close_ns_fd(struct lxc_proc_context_info *ctx)
+{
+	int i;
+
+	for (i = 0; i < LXC_NS_MAX; i++) {
+		if (ctx->ns_fd[i] < 0)
+			continue;
+		close(ctx->ns_fd[i]);
+		ctx->ns_fd[i] = -EBADF;
+	}
+}
+
 static void lxc_proc_put_context_info(struct lxc_proc_context_info *ctx)
 {
 	free(ctx->lsm_label);
 	if (ctx->container)
 		lxc_container_put(ctx->container);
+	lxc_proc_close_ns_fd(ctx);
 	free(ctx);
 }
 
@@ -300,73 +315,22 @@ out:
 	return ret;
 }
 
-static int lxc_attach_to_ns(pid_t pid, int which)
+static int lxc_attach_to_ns(pid_t pid, struct lxc_proc_context_info *ctx)
 {
-	int fd[LXC_NS_MAX];
-	int i, j, ret, saved_errno;
-
-	ret = access("/proc/self/ns", X_OK);
-	if (ret) {
-		ERROR("Does this kernel version support namespaces?");
-		return -1;
-	}
+	int i, ret;
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
-		fd[i] = -EINVAL;
-
-		/* Ignore if we are not supposed to attach to that namespace. */
-		if (which != -1 && !(which & ns_info[i].clone_flag)) {
-			/* We likely inherited the namespace from someone. We
-			 * need to check whether we are already in the same
-			 * namespace. If we are then there's nothing for us to
-			 * do. If we are not then we need to attach to it.
-			 */
-			fd[i] = in_same_namespace(getpid(), pid, ns_info[i].proc_name);
-			/* we are in the same namespace */
-			if (fd[i] == -EINVAL) {
-				DEBUG("Inheriting %s namespace from %d",
-				      ns_info[i].proc_name, pid);
-				continue;
-			}
-		}
-
-		if (fd[i] == -EINVAL)
-			fd[i] = lxc_preserve_ns(pid, ns_info[i].proc_name);
-		if (fd[i] < 0) {
-			saved_errno = errno;
-
-			/* Close all already opened file descriptors before we
-			 * return an error, so we don't leak them.
-			 */
-			for (j = 0; j < i; j++)
-				close(fd[j]);
-
-			errno = saved_errno;
-			SYSERROR("Failed to attach to %s namespace of %d",
-				 ns_info[i].proc_name, pid);
-			return -1;
-		}
-	}
-
-	for (i = 0; i < LXC_NS_MAX; i++) {
-		if (fd[i] < 0)
+		if (ctx->ns_fd[i] < 0)
 			continue;
 
-		if (setns(fd[i], 0) < 0) {
-			saved_errno = errno;
-
-			for (j = i; j < LXC_NS_MAX; j++)
-				close(fd[j]);
-
-			errno = saved_errno;
+		ret = setns(ctx->ns_fd[i], ns_info[i].clone_flag);
+		if (ret < 0) {
 			SYSERROR("Failed to attach to %s namespace of %d",
 				 ns_info[i].proc_name, pid);
 			return -1;
 		}
 
 		DEBUG("Attached to %s namespace of %d", ns_info[i].proc_name, pid);
-
-		close(fd[i]);
 	}
 
 	return 0;
@@ -844,12 +808,18 @@ int lxc_attach(const char *name, const char *lxcpath,
 	       lxc_attach_exec_t exec_function, void *exec_payload,
 	       lxc_attach_options_t *options, pid_t *attached_process)
 {
-	int ret, status;
+	int i, ret, status;
 	int ipc_sockets[2];
 	char *cwd, *new_cwd;
 	signed long personality;
 	pid_t attached_pid, expected, init_pid, pid;
 	struct lxc_proc_context_info *init_ctx;
+
+	ret = access("/proc/self/ns", X_OK);
+	if (ret) {
+		ERROR("Does this kernel version support namespaces?");
+		return -1;
+	}
 
 	if (!options)
 		options = &attach_static_default_options;
@@ -894,11 +864,59 @@ int lxc_attach(const char *name, const char *lxcpath,
 		/* call failed */
 		if (options->namespaces == -1) {
 			ERROR("Failed to automatically determine the "
-			      "namespaces which the container uses.");
+			      "namespaces which the container uses");
 			free(cwd);
 			lxc_proc_put_context_info(init_ctx);
 			return -1;
 		}
+
+		for (i = 0; i < LXC_NS_MAX; i++) {
+			if (ns_info[i].clone_flag & CLONE_NEWCGROUP)
+				if (!(options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) ||
+				    !cgns_supported())
+					continue;
+
+			if (ns_info[i].clone_flag & options->namespaces)
+				continue;
+
+			init_ctx->ns_inherited |= ns_info[i].clone_flag;
+		}
+	}
+
+	pid = getpid();
+	for (i = 0; i < LXC_NS_MAX; i++) {
+		int j, saved_errno;
+
+		if (options->namespaces & ns_info[i].clone_flag)
+			init_ctx->ns_fd[i] = lxc_preserve_ns(init_pid, ns_info[i].proc_name);
+		else if (init_ctx->ns_inherited & ns_info[i].clone_flag)
+			init_ctx->ns_fd[i] = in_same_namespace(pid, init_pid, ns_info[i].proc_name);
+		else
+			continue;
+		if (init_ctx->ns_fd[i] >= 0)
+			continue;
+
+		if (init_ctx->ns_fd[i] == -EINVAL) {
+			DEBUG("Inheriting %s namespace from %d",
+			      ns_info[i].proc_name, pid);
+			init_ctx->ns_inherited &= ~ns_info[i].clone_flag;
+			continue;
+		}
+
+		/* We failed to preserve the namespace. */
+		saved_errno = errno;
+		/* Close all already opened file descriptors before we return an
+		 * error, so we don't leak them.
+		 */
+		for (j = 0; j < i; j++)
+			close(init_ctx->ns_fd[j]);
+
+		errno = saved_errno;
+		SYSERROR("Failed to attach to %s namespace of %d",
+			 ns_info[i].proc_name, pid);
+		free(cwd);
+		lxc_proc_put_context_info(init_ctx);
+		return -1;
 	}
 
 	/* Create a socket pair for IPC communication; set SOCK_CLOEXEC in order
@@ -963,6 +981,9 @@ int lxc_attach(const char *name, const char *lxcpath,
 	if (pid) {
 		int procfd = -1;
 		pid_t to_cleanup_pid = pid;
+
+		/* close file namespace descriptors */
+		lxc_proc_close_ns_fd(init_ctx);
 
 		/* Initial thread, we close the socket that is for the
 		 * subprocesses.
@@ -1128,18 +1149,17 @@ int lxc_attach(const char *name, const char *lxcpath,
 		rexit(-1);
 	}
 
-	if ((options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) && cgns_supported())
-		options->namespaces |= CLONE_NEWCGROUP;
-
 	/* Attach now, create another subprocess later, since pid namespaces
 	 * only really affect the children of the current process.
 	 */
-	ret = lxc_attach_to_ns(init_pid, options->namespaces);
+	ret = lxc_attach_to_ns(init_pid, init_ctx);
 	if (ret < 0) {
 		ERROR("Failed to enter namespaces.");
 		shutdown(ipc_sockets[1], SHUT_RDWR);
 		rexit(-1);
 	}
+	/* close namespace file descriptors */
+	lxc_proc_close_ns_fd(init_ctx);
 
 	/* Attach succeeded, try to cwd. */
 	if (options->initial_cwd)
