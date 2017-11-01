@@ -3672,7 +3672,7 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	struct lxc_list *it;
 	struct id_map *map;
 	char c = '1';
-	int ret = -1;
+	int ret = -1, status = -1;
 	struct lxc_list *idmap = NULL, *tmplist = NULL;
 	struct id_map *container_root_uid = NULL, *container_root_gid = NULL,
 		      *host_uid_map = NULL, *host_gid_map = NULL;
@@ -3842,10 +3842,11 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 		goto on_error;
 	}
 
-	/* Wait for child to finish. */
-	ret = wait_for_pid(pid);
-
 on_error:
+	/* Wait for child to finish. */
+	if (pid > 0)
+		status = wait_for_pid(pid);
+
 	if (idmap)
 		lxc_free_idmap(idmap);
 	if (container_root_uid)
@@ -3860,6 +3861,9 @@ on_error:
 	if (p[0] != -1)
 		close(p[0]);
 	close(p[1]);
+
+	if (status < 0)
+		ret = -1;
 
 	return ret;
 }
@@ -4024,10 +4028,11 @@ int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
 		goto on_error;
 	}
 
-	/* Wait for child to finish. */
-	ret = wait_for_pid(pid);
-
 on_error:
+	/* Wait for child to finish. */
+	if (pid > 0)
+		ret = wait_for_pid(pid);
+
 	if (idmap)
 		lxc_free_idmap(idmap);
 	if (host_uid_map && (host_uid_map != container_root_uid))
