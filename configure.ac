@@ -671,6 +671,10 @@ AC_CHECK_FUNCS([prlimit],
 	AM_CONDITIONAL(HAVE_PRLIMIT, true)
 	AC_DEFINE(HAVE_PRLIMIT,1,[Have prlimit]),
 	AM_CONDITIONAL(HAVE_PRLIMIT, false))
+AC_CHECK_FUNCS([prlimit64],
+	AM_CONDITIONAL(HAVE_PRLIMIT64, true)
+	AC_DEFINE(HAVE_PRLIMIT64,1,[Have prlimit64]),
+	AM_CONDITIONAL(HAVE_PRLIMIT64, false))
 
 # Check for some libraries
 AC_SEARCH_LIBS(sem_open, [rt pthread])
