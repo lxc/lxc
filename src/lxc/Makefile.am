@@ -45,7 +45,10 @@ noinst_HEADERS += \
 	../include/ifaddrs.h \
 	../include/openpty.h \
 	../include/lxcmntent.h
+endif
+
 if !HAVE_PRLIMIT
+if HAVE_PRLIMIT64
 noinst_HEADERS += ../include/prlimit.h
 endif
 endif
@@ -142,7 +145,10 @@ liblxc_la_SOURCES += \
 	../include/ifaddrs.c ../include/ifaddrs.h \
 	../include/openpty.c ../include/openpty.h \
 	../include/lxcmntent.c ../include/lxcmntent.h
+endif
+
 if !HAVE_PRLIMIT
+if HAVE_PRLIMIT64
 liblxc_la_SOURCES += ../include/prlimit.c ../include/prlimit.h
 endif
 endif

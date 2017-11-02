@@ -96,11 +96,12 @@
 
 #if IS_BIONIC
 #include <../include/lxcmntent.h>
-#ifndef HAVE_PRLIMIT
-#include <../include/prlimit.h>
-#endif
 #else
 #include <mntent.h>
+#endif
+
+#if !defined(HAVE_PRLIMIT) && defined(HAVE_PRLIMIT64)
+#include <../include/prlimit.h>
 #endif
 
 lxc_log_define(lxc_conf, lxc);
@@ -2397,10 +2398,15 @@ int setup_resource_limits(struct lxc_list *limits, pid_t pid) {
 			return -1;
 		}
 
+#if HAVE_PRLIMIT || HAVE_PRLIMIT64
 		if (prlimit(pid, resid, &lim->limit, NULL) != 0) {
 			ERROR("failed to set limit %s: %s", lim->resource, strerror(errno));
 			return -1;
 		}
+#else
+		ERROR("Cannot set limit %s as prlimit is missing", lim->resource);
+		return -1;
+#endif
 	}
 	return 0;
 }
