@@ -96,15 +96,26 @@ const struct ns_info ns_info[LXC_NS_MAX] = {
 	[LXC_NS_CGROUP] = {"cgroup", CLONE_NEWCGROUP, "CLONE_NEWCGROUP"}
 };
 
-int lxc_namespace_2_cloneflag(char *namespace)
+int lxc_namespace_2_cloneflag(const char *namespace)
 {
 	int i;
 	for (i = 0; i < LXC_NS_MAX; i++)
 		if (!strcasecmp(ns_info[i].proc_name, namespace))
 			return ns_info[i].clone_flag;
 
-	ERROR("Invalid namespace name: %s.", namespace);
-	return -1;
+	ERROR("Invalid namespace name \"%s\"", namespace);
+	return -EINVAL;
+}
+
+int lxc_namespace_2_ns_idx(const char *namespace)
+{
+	int i;
+	for (i = 0; i < LXC_NS_MAX; i++)
+		if (!strcmp(ns_info[i].proc_name, namespace))
+			return i;
+
+	ERROR("Invalid namespace name \"%s\"", namespace);
+	return -EINVAL;
 }
 
 int lxc_fill_namespace_flags(char *flaglist, int *flags)

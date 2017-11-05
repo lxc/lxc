@@ -263,12 +263,12 @@ extern int setup_private_host_hw_addr(char *veth1);
 extern int netdev_get_mtu(int ifindex);
 extern int lxc_create_network_priv(struct lxc_handler *handler);
 extern int lxc_network_move_created_netdev_priv(const char *lxcpath,
-						char *lxcname,
+						const char *lxcname,
 						struct lxc_list *network,
 						pid_t pid);
 extern void lxc_delete_network(struct lxc_handler *handler);
 extern int lxc_find_gateway_addresses(struct lxc_handler *handler);
-extern int lxc_create_network_unpriv(const char *lxcpath, char *lxcname,
+extern int lxc_create_network_unpriv(const char *lxcpath, const char *lxcname,
 				     struct lxc_list *network, pid_t pid);
 extern int lxc_requests_empty_network(struct lxc_handler *handler);
 extern int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler);

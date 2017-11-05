@@ -835,7 +835,7 @@ static int lxc_cmd_get_name_callback(int fd, struct lxc_cmd_req *req,
 
 	memset(&rsp, 0, sizeof(rsp));
 
-	rsp.data = handler->name;
+	rsp.data = (char *)handler->name;
 	rsp.datalen = strlen(handler->name) + 1;
 	rsp.ret = 0;
 

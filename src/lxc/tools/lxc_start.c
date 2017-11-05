@@ -89,53 +89,6 @@ err:
 	return err;
 }
 
-static int pid_from_lxcname(const char *lxcname_or_pid, const char *lxcpath) {
-	char *eptr;
-	int pid = strtol(lxcname_or_pid, &eptr, 10);
-	if (*eptr != '\0' || pid < 1) {
-		struct lxc_container *s;
-		s = lxc_container_new(lxcname_or_pid, lxcpath);
-		if (!s) {
-			SYSERROR("'%s' is not a valid pid nor a container name", lxcname_or_pid);
-			return -1;
-		}
-
-		if (!s->may_control(s)) {
-			SYSERROR("Insufficient privileges to control container '%s'", s->name);
-			lxc_container_put(s);
-			return -1;
-		}
-
-		pid = s->init_pid(s);
-		if (pid < 1) {
-			SYSERROR("Is container '%s' running?", s->name);
-			lxc_container_put(s);
-			return -1;
-		}
-
-		lxc_container_put(s);
-	}
-	if (kill(pid, 0) < 0) {
-		SYSERROR("Can't send signal to pid %d", pid);
-		return -1;
-	}
-
-	return pid;
-}
-
-static int open_ns(int pid, const char *ns_proc_name) {
-	int fd;
-	char path[MAXPATHLEN];
-	snprintf(path, MAXPATHLEN, "/proc/%d/ns/%s", pid, ns_proc_name);
-
-	fd = open(path, O_RDONLY);
-	if (fd < 0) {
-		SYSERROR("failed to open %s", path);
-		return -1;
-	}
-	return fd;
-}
-
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
@@ -201,16 +154,18 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
-	int err = EXIT_FAILURE;
+	int i;
 	struct lxc_conf *conf;
 	struct lxc_log log;
+	const char *lxcpath;
 	char *const *args;
+	struct lxc_container *c;
+	int err = EXIT_FAILURE;
 	char *rcfile = NULL;
 	char *const default_args[] = {
 		"/sbin/init",
 		NULL,
 	};
-	struct lxc_container *c;
 
 	lxc_list_init(&defines);
 
@@ -236,13 +191,12 @@ int main(int argc, char *argv[])
 		exit(err);
 	lxc_log_options_no_override();
 
-	if (access(my_args.lxcpath[0], O_RDONLY) < 0) {
+	lxcpath = my_args.lxcpath[0];
+	if (access(lxcpath, O_RDONLY) < 0) {
 		if (!my_args.quiet)
-			fprintf(stderr, "You lack access to %s\n", my_args.lxcpath[0]);
+			fprintf(stderr, "You lack access to %s\n", lxcpath);
 		exit(err);
 	}
-
-	const char *lxcpath = my_args.lxcpath[0];
 
 	/* REMOVE IN LXC 3.0 */
 	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
@@ -326,16 +280,6 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if (ensure_path(&conf->console.path, my_args.console) < 0) {
-		ERROR("failed to ensure console path '%s'", my_args.console);
-		goto out;
-	}
-
-	if (ensure_path(&conf->console.log_path, my_args.console_log) < 0) {
-		ERROR("failed to ensure console log '%s'", my_args.console_log);
-		goto out;
-	}
-
 	if (my_args.pidfile != NULL) {
 		if (ensure_path(&c->pidfile, my_args.pidfile) < 0) {
 			ERROR("failed to ensure pidfile '%s'", my_args.pidfile);
@@ -343,19 +287,26 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	int i;
 	for (i = 0; i < LXC_NS_MAX; i++) {
-		if (my_args.share_ns[i] == NULL)
+		const char *key, *value;
+
+		value = my_args.share_ns[i];
+		if (!value)
 			continue;
 
-		int pid = pid_from_lxcname(my_args.share_ns[i], lxcpath);
-		if (pid < 1)
-			goto out;
+		if (i == LXC_NS_NET)
+			key = "lxc.namespace.net";
+		else if (i == LXC_NS_IPC)
+			key = "lxc.namespace.ipc";
+		else if (i == LXC_NS_UTS)
+			key = "lxc.namespace.uts";
+		else if (i == LXC_NS_PID)
+			key = "lxc.namespace.pid";
+		else
+			continue;
 
-		int fd = open_ns(pid, ns_info[i].proc_name);
-		if (fd < 0)
+		if (!c->set_config_item(c, key, value))
 			goto out;
-		conf->inherit_ns_fd[i] = fd;
 	}
 
 	if (!my_args.daemonize) {

@@ -2050,7 +2050,7 @@ int lxc_find_gateway_addresses(struct lxc_handler *handler)
 }
 
 #define LXC_USERNIC_PATH LIBEXECDIR "/lxc/lxc-user-nic"
-static int lxc_create_network_unpriv_exec(const char *lxcpath, char *lxcname,
+static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcname,
 					  struct lxc_netdev *netdev, pid_t pid)
 {
 	int ret;
@@ -2126,13 +2126,13 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, char *lxcname,
 	if (bytes < 0) {
 		SYSERROR("Failed to read from pipe file descriptor");
 		close(pipefd[0]);
-		return -1;
+	} else {
+		buffer[bytes - 1] = '\0';
 	}
-	buffer[bytes - 1] = '\0';
 
 	ret = wait_for_pid(child);
 	close(pipefd[0]);
-	if (ret != 0) {
+	if (ret != 0 || bytes < 0) {
 		ERROR("lxc-user-nic failed to configure requested network: %s",
 		      buffer[0] != '\0' ? buffer : "(null)");
 		return -1;
@@ -2194,7 +2194,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, char *lxcname,
 	return 0;
 }
 
-static int lxc_delete_network_unpriv_exec(const char *lxcpath, char *lxcname,
+static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcname,
 					  struct lxc_netdev *netdev,
 					  const char *netns_path)
 {
@@ -2267,18 +2267,17 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, char *lxcname,
 	if (bytes < 0) {
 		SYSERROR("Failed to read from pipe file descriptor.");
 		close(pipefd[0]);
-		return -1;
+	} else {
+		buffer[bytes - 1] = '\0';
 	}
-	buffer[bytes - 1] = '\0';
 
-	if (wait_for_pid(child) != 0) {
+	ret = wait_for_pid(child);
+	close(pipefd[0]);
+	if (ret != 0 || bytes < 0) {
 		ERROR("lxc-user-nic failed to delete requested network: %s",
 		      buffer[0] != '\0' ? buffer : "(null)");
-		close(pipefd[0]);
 		return -1;
 	}
-
-	close(pipefd[0]);
 
 	return 0;
 }
@@ -2302,14 +2301,14 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 
 	*netns_path = '\0';
 
-	if (handler->netnsfd < 0) {
+	if (handler->nsfd[LXC_NS_NET] < 0) {
 		DEBUG("Cannot not guarantee safe deletion of network devices. "
 		      "Manual cleanup maybe needed");
 		return false;
 	}
 
 	ret = snprintf(netns_path, sizeof(netns_path), "/proc/%d/fd/%d",
-		       getpid(), handler->netnsfd);
+		       getpid(), handler->nsfd[LXC_NS_NET]);
 	if (ret < 0 || ret >= sizeof(netns_path))
 		return false;
 
@@ -2408,7 +2407,7 @@ int lxc_create_network_priv(struct lxc_handler *handler)
 	return 0;
 }
 
-int lxc_network_move_created_netdev_priv(const char *lxcpath, char *lxcname,
+int lxc_network_move_created_netdev_priv(const char *lxcpath, const char *lxcname,
 					 struct lxc_list *network, pid_t pid)
 {
 	int ret;
@@ -2448,7 +2447,7 @@ int lxc_network_move_created_netdev_priv(const char *lxcpath, char *lxcname,
 	return 0;
 }
 
-int lxc_create_network_unpriv(const char *lxcpath, char *lxcname,
+int lxc_create_network_unpriv(const char *lxcpath, const char *lxcname,
 			      struct lxc_list *network, pid_t pid)
 {
 	struct lxc_list *iterator;
@@ -2621,7 +2620,7 @@ int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler)
 	int oldfd;
 	char ifname[IFNAMSIZ];
 	struct lxc_list *iterator;
-	int netnsfd = handler->netnsfd;
+	int netnsfd = handler->nsfd[LXC_NS_NET];
 	struct lxc_conf *conf = handler->conf;
 
 	/* We need CAP_NET_ADMIN in the parent namespace in order to setns() to
