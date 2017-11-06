@@ -1402,13 +1402,15 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_sync_barrier_child(handler, LXC_SYNC_READY_START))
 		return -1;
 
-	ret = lxc_preserve_ns(handler->pid, "cgroup");
-	if (ret < 0) {
-		ERROR("%s - Failed to preserve cgroup namespace", strerror(errno));
-		goto out_delete_net;
+	if (cgns_supported()) {
+		ret = lxc_preserve_ns(handler->pid, "cgroup");
+		if (ret < 0) {
+			ERROR("%s - Failed to preserve cgroup namespace", strerror(errno));
+			goto out_delete_net;
+		}
+		handler->nsfd[LXC_NS_CGROUP] = ret;
+		DEBUG("Preserved cgroup namespace via fd %d", ret);
 	}
-	handler->nsfd[LXC_NS_CGROUP] = ret;
-	DEBUG("Preserved cgroup namespace via fd %d", ret);
 
 	if (lxc_network_recv_name_and_ifindex_from_child(handler) < 0) {
 		ERROR("Failed to receive names and ifindices for network "
