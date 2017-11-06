@@ -61,7 +61,7 @@
 #endif
 
 #define DEFAULT_FS_SIZE 1073741824
-#define DEFAULT_FSTYPE "ext3"
+#define DEFAULT_FSTYPE "ext4"
 
 struct lxc_storage;
 
