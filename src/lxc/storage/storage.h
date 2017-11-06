@@ -61,7 +61,7 @@
 #endif
 
 #define DEFAULT_FS_SIZE 1073741824
-#define DEFAULT_FSTYPE "ext3"
+#define DEFAULT_FSTYPE "ext4"
 
 #define LXC_STORAGE_INTERNAL_OVERLAY_RESTORE  (1 << 6)
 
