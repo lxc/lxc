@@ -163,7 +163,7 @@ Options :\n\
 \n\
   BDEV options for LVM or Loop (with -B/--bdev lvm/loop) :\n\
       --fstype=TYPE             Create fstype TYPE\n\
-                                (Default: ext3)\n\
+                                (Default: ext4)\n\
       --fssize=SIZE[U]          Create filesystem of\n\
                                 size SIZE * unit U (bBkKmMgGtT)\n\
                                 (Default: 1G, default unit: M)\n",
