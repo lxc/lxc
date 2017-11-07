@@ -6,7 +6,6 @@ lxc.tty.max = 6
 
 # Set the halt/stop signals
 lxc.signal.halt=SIGRTMIN+4
-lxc.signal.stop=SIGRTMIN+14
 
 # Uncomment to disable creating tty devices subdirectory in /dev
 # lxc.tty.dir =

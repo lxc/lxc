@@ -204,7 +204,7 @@ static void must_append_controller(char **klist, char **nlist, char ***clist, ch
 	char *copy;
 
 	if (string_in_list(klist, entry) && string_in_list(nlist, entry)) {
-		ERROR("Refusing to use ambiguous controller '%s'", entry);
+		ERROR("Refusing to use ambiguous controller \"%s\"", entry);
 		ERROR("It is both a named and kernel subsystem");
 		return;
 	}
@@ -214,6 +214,8 @@ static void must_append_controller(char **klist, char **nlist, char ***clist, ch
 	if (strncmp(entry, "name=", 5) == 0)
 		copy = must_copy_string(entry);
 	else if (string_in_list(klist, entry))
+		copy = must_copy_string(entry);
+	else if (!strcmp(entry, "cgroup2"))
 		copy = must_copy_string(entry);
 	else
 		copy = must_prefix_named(entry);
@@ -724,29 +726,22 @@ static bool all_controllers_found(void)
 	struct hierarchy ** hlist = hierarchies;
 
 	if (!controller_found(hlist, "freezer")) {
-		ERROR("no freezer controller mountpoint found");
+		ERROR("No freezer controller mountpoint found");
 		return false;
 	}
 
 	if (!cgroup_use)
 		return true;
+
 	for (p = strtok_r(cgroup_use, ",", &saveptr); p;
 			p = strtok_r(NULL, ",", &saveptr)) {
 		if (!controller_found(hlist, p)) {
-			ERROR("no %s controller mountpoint found", p);
+			ERROR("No %s controller mountpoint found", p);
 			return false;
 		}
 	}
-	return true;
-}
 
-/* Return true if the fs type is fuse.lxcfs */
-static bool is_lxcfs(const char *line)
-{
-	char *p = strstr(line, " - ");
-	if (!p)
-		return false;
-	return strncmp(p, " - fuse.lxcfs ", 14) == 0;
+	return true;
 }
 
 /*
@@ -756,16 +751,13 @@ static bool is_lxcfs(const char *line)
  * options.  But we simply assume that the mountpoint must be
  * /sys/fs/cgroup/controller-list
  */
-static char **get_controllers(char **klist, char **nlist, char *line)
+static char **get_controllers(char **klist, char **nlist, char *line, int type)
 {
 	/* the fourth field is /sys/fs/cgroup/comma-delimited-controller-list */
 	int i;
-	char *p = line, *p2, *tok, *saveptr = NULL;
+	char *dup, *p2, *tok;
+	char *p = line, *saveptr = NULL;
 	char **aret = NULL;
-	bool is_cgroup_v2;
-
-	/* handle cgroup v2 */
-	is_cgroup_v2 = is_cgroupfs_v2(line);
 
 	for (i = 0; i < 4; i++) {
 		p = strchr(p, ' ');
@@ -777,29 +769,37 @@ static char **get_controllers(char **klist, char **nlist, char *line)
 		return NULL;
 	/* note - if we change how mountinfo works, then our caller
 	 * will need to verify /sys/fs/cgroup/ in this field */
-	if (strncmp(p, "/sys/fs/cgroup/", 15) != 0) {
-		INFO("cgfsng: found hierarchy not under /sys/fs/cgroup: \"%s\"", p);
+	if (strncmp(p, "/sys/fs/cgroup/", 15)) {
+		INFO("Found hierarchy not under /sys/fs/cgroup: \"%s\"", p);
 		return NULL;
 	}
 	p += 15;
 	p2 = strchr(p, ' ');
 	if (!p2) {
-		ERROR("corrupt mountinfo");
+		ERROR("Corrupt mountinfo");
 		return NULL;
 	}
 	*p2 = '\0';
 
 	/* cgroup v2 does not have separate mountpoints for controllers */
-	if (is_cgroup_v2) {
+	if (type == CGROUP_V2) {
 		must_append_controller(klist, nlist, &aret, "cgroup2");
 		return aret;
 	}
 
-	for (tok = strtok_r(p, ",", &saveptr); tok;
+	/* strdup() here for v1 hierarchies. Otherwise strtok_r() will destroy
+	 * mountpoints such as "/sys/fs/cgroup/cpu,cpuacct".
+	 */
+	dup = strdup(p);
+	if (!dup)
+		return NULL;
+
+	for (tok = strtok_r(dup, ",", &saveptr); tok;
 			tok = strtok_r(NULL, ",", &saveptr)) {
 		must_append_controller(klist, nlist, &aret, tok);
 	}
 
+	free(dup);
 	return aret;
 }
 
@@ -1010,15 +1010,15 @@ static void lxc_cgfsng_print_hierarchies()
 	int i;
 
 	if (!hierarchies) {
-		printf("  No hierarchies found.");
+		printf("  No hierarchies found\n");
 		return;
 	}
 	printf("  Hierarchies:\n");
 	for (i = 0, it = hierarchies; it && *it; it++, i++) {
 		char **cit;
 		int j;
-		printf("  %d: base_cgroup %s\n", i, (*it)->base_cgroup ? (*it)->base_cgroup : "(null)");
-		printf("      mountpoint %s\n", (*it)->mountpoint ? (*it)->mountpoint : "(null)");
+		printf("  %d: base_cgroup: %s\n", i, (*it)->base_cgroup ? (*it)->base_cgroup : "(null)");
+		printf("      mountpoint:  %s\n", (*it)->mountpoint ? (*it)->mountpoint : "(null)");
 		printf("      controllers:\n");
 		for (j = 0, cit = (*it)->controllers; cit && *cit; cit++, j++)
 			printf("      %d: %s\n", j, *cit);
@@ -1068,7 +1068,7 @@ static bool parse_hierarchies(void)
 		return false;
 
 	if ((f = fopen("/proc/self/mountinfo", "r")) == NULL) {
-		SYSERROR("Failed opening /proc/self/mountinfo");
+		SYSERROR("Failed to open \"/proc/self/mountinfo\"");
 		return false;
 	}
 
@@ -1081,13 +1081,14 @@ static bool parse_hierarchies(void)
 	while (getline(&line, &len, f) != -1) {
 		char **controller_list = NULL;
 		char *mountpoint, *base_cgroup;
-		bool is_cgroup_v2, writeable;
+		bool writeable;
+		int type;
 
-		is_cgroup_v2 = is_cgroupfs_v2(line);
-		if (!is_lxcfs(line) && !is_cgroupfs_v1(line) && !is_cgroup_v2)
+		type = get_cgroup_version(line);
+		if (type < 0)
 			continue;
 
-		controller_list = get_controllers(klist, nlist, line);
+		controller_list = get_controllers(klist, nlist, line, type);
 		if (!controller_list)
 			continue;
 
@@ -1098,14 +1099,14 @@ static bool parse_hierarchies(void)
 
 		mountpoint = get_mountpoint(line);
 		if (!mountpoint) {
-			ERROR("Error reading mountinfo: bad line '%s'", line);
+			ERROR("Failed parsing mountpoint from \"%s\"", line);
 			free_string_list(controller_list);
 			continue;
 		}
 
 		base_cgroup = get_current_cgroup(basecginfo, controller_list[0]);
 		if (!base_cgroup) {
-			ERROR("Failed to find current cgroup for controller '%s'", controller_list[0]);
+			ERROR("Failed to find current cgroup for controller \"%s\"", controller_list[0]);
 			free_string_list(controller_list);
 			free(mountpoint);
 			continue;
@@ -1113,7 +1114,7 @@ static bool parse_hierarchies(void)
 
 		trim(base_cgroup);
 		prune_init_scope(base_cgroup);
-		if (is_cgroup_v2)
+		if (type == CGROUP_V2)
 			writeable = test_writeable_v2(mountpoint, base_cgroup);
 		else
 			writeable = test_writeable_v1(mountpoint, base_cgroup);
@@ -1142,10 +1143,8 @@ static bool parse_hierarchies(void)
 	/* verify that all controllers in cgroup.use and all crucial
 	 * controllers are accounted for
 	 */
-	if (!all_controllers_found()) {
-		INFO("cgfsng: not all controllers were find, deferring to cgfs driver");
+	if (!all_controllers_found())
 		return false;
-	}
 
 	return true;
 }
@@ -1156,7 +1155,7 @@ static bool collect_hierarchy_info(void)
 	errno = 0;
 	tmp = lxc_global_config_value("lxc.cgroup.use");
 	if (!cgroup_use && errno != 0) { /* lxc.cgroup.use can be NULL */
-		SYSERROR("cgfsng: error reading list of cgroups to use");
+		ERROR("Failed to retrieve list of cgroups to use");
 		return false;
 	}
 	cgroup_use = must_copy_string(tmp);
@@ -1176,6 +1175,8 @@ static void *cgfsng_init(struct lxc_handler *handler)
 	d->name = must_copy_string(handler->name);
 
 	/* copy per-container cgroup information */
+	d->cgroup_meta.dir = NULL;
+	d->cgroup_meta.controllers = NULL;
 	if (handler->conf) {
 		d->cgroup_meta.dir = must_copy_string(handler->conf->cgroup_meta.dir);
 		d->cgroup_meta.controllers = must_copy_string(handler->conf->cgroup_meta.controllers);
@@ -1507,7 +1508,7 @@ static int chown_cgroup_wrapper(void *data)
 	return 0;
 }
 
-static bool cgfsns_chown(void *hdata, struct lxc_conf *conf)
+static bool cgfsng_chown(void *hdata, struct lxc_conf *conf)
 {
 	struct cgfsng_handler_data *d = hdata;
 	struct chown_data wrap;
@@ -1617,27 +1618,36 @@ do_secondstage_mounts_if_needed(int type, struct hierarchy *h,
 	return 0;
 }
 
-static int mount_cgroup_cgns_supported(struct hierarchy *h, const char *controllerpath)
+static int mount_cgroup_cgns_supported(int type, struct hierarchy *h, const char *controllerpath)
 {
 	 int ret;
 	 char *controllers = NULL;
-	 char *type = "cgroup2";
+	 char *fstype = "cgroup2";
+	 unsigned long flags = 0;
 
-	if (!h->is_cgroup_v2) {
-		controllers = lxc_string_join(",", (const char **)h->controllers, false);
-		if (!controllers)
-			return -ENOMEM;
-		type = "cgroup";
+	 flags |= MS_NOSUID;
+	 flags |= MS_NOEXEC;
+	 flags |= MS_NODEV;
+	 flags |= MS_RELATIME;
+
+	 if (type == LXC_AUTO_CGROUP_RO || type == LXC_AUTO_CGROUP_FULL_RO)
+		 flags |= MS_RDONLY;
+
+	 if (!h->is_cgroup_v2) {
+		 controllers = lxc_string_join(",", (const char **)h->controllers, false);
+		 if (!controllers)
+			 return -ENOMEM;
+		 fstype = "cgroup";
 	}
 
-	ret = mount("cgroup", controllerpath, type, MS_NOSUID|MS_NOEXEC|MS_NODEV|MS_RELATIME, controllers);
+	ret = mount("cgroup", controllerpath, fstype, flags, controllers);
 	free(controllers);
 	if (ret < 0) {
-		SYSERROR("Failed to mount %s with cgroup filesystem type %s", controllerpath, type);
+		SYSERROR("Failed to mount %s with cgroup filesystem type %s", controllerpath, fstype);
 		return -1;
 	}
 
-	DEBUG("Mounted %s with cgroup filesystem type %s", controllerpath, type);
+	DEBUG("Mounted %s with cgroup filesystem type %s", controllerpath, fstype);
 	return 0;
 }
 
@@ -1701,7 +1711,7 @@ static bool cgfsng_mount(void *hdata, const char *root, int type)
 			 * will not have CAP_SYS_ADMIN after it has started we
 			 * need to mount the cgroups manually.
 			 */
-			r = mount_cgroup_cgns_supported(h, controllerpath);
+			r = mount_cgroup_cgns_supported(type, h, controllerpath);
 			free(controllerpath);
 			if (r < 0)
 				goto bad;
@@ -2152,7 +2162,7 @@ static struct cgroup_ops cgfsng_ops = {
 	.setup_limits = cgfsng_setup_limits,
 	.name = "cgroupfs-ng",
 	.attach = cgfsng_attach,
-	.chown = cgfsns_chown,
+	.chown = cgfsng_chown,
 	.mount_cgroup = cgfsng_mount,
 	.nrtasks = cgfsng_nrtasks,
 	.driver = CGFSNG,
