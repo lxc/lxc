@@ -1476,6 +1476,25 @@ static int chown_cgroup_wrapper(void *data)
 		if (chmod(fullpath, 0664) < 0)
 			WARN("Error chmoding %s: %s", path, strerror(errno));
 		free(fullpath);
+
+		if (!hierarchies[i]->is_cgroup_v2)
+			continue;
+
+		fullpath = must_make_path(path, "cgroup.subtree_control", NULL);
+		if (chown(fullpath, destuid, 0) < 0 && errno != ENOENT)
+			WARN("Failed chowning %s to %d: %s", fullpath, (int) destuid,
+			     strerror(errno));
+		if (chmod(fullpath, 0664) < 0)
+			WARN("Error chmoding %s: %s", path, strerror(errno));
+		free(fullpath);
+
+		fullpath = must_make_path(path, "cgroup.threads", NULL);
+		if (chown(fullpath, destuid, 0) < 0 && errno != ENOENT)
+			WARN("Failed chowning %s to %d: %s", fullpath, (int) destuid,
+			     strerror(errno));
+		if (chmod(fullpath, 0664) < 0)
+			WARN("Error chmoding %s: %s", path, strerror(errno));
+		free(fullpath);
 	}
 
 	return 0;
