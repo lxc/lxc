@@ -39,8 +39,8 @@ if modprobe -q overlayfs; then
 
         mount -t tmpfs none ${MOUNTDIR}
 
-        mkdir "${MOUNTDIR}/lowerdir" "${MOUNTDIR}/upperdir" "${MOUNTDIR}/overlayfs"
-        mount -t overlayfs -o lowerdir="${MOUNTDIR}/lowerdir",upperdir="${MOUNTDIR}/upperdir" none "${MOUNTDIR}/overlayfs"
+        mkdir ${MOUNTDIR}/{lowerdir,upperdir,workdir,overlayfs}
+        mount -t overlayfs -o lowerdir="${MOUNTDIR}/lowerdir",upperdir="${MOUNTDIR}/upperdir",workdir="${MOUNTDIR}/workdir" none "${MOUNTDIR}/overlayfs"
 
         CORRECT_LINK_TARGET="${MOUNTDIR}/overlayfs/dummy_file"
         exec 9> "${CORRECT_LINK_TARGET}"
