@@ -51,6 +51,8 @@ struct lxc_lock;
 
 struct migrate_opts;
 
+struct lxc_console_log;
+
 /*!
  * An LXC container.
  *
@@ -834,6 +836,16 @@ struct lxc_container {
 	 * \return \c true on success, else \c false.
 	 */
 	bool (*set_running_config_item)(struct lxc_container *c, const char *key, const char *value);
+
+	/*!
+	 * \brief Query the console log of a container.
+	 *
+	 * \param c Container.
+	 * \param opts A lxc_console_log struct filled with relevant options.
+	 *
+	 * \return \c 0 on success, nonzero on failure.
+	 */
+	int (*console_log)(struct lxc_container *c, struct lxc_console_log *log);
 };
 
 /*!
@@ -919,6 +931,34 @@ struct migrate_opts {
 	 * which at this time is 1MB.
 	 */
 	uint64_t ghost_limit;
+};
+
+struct lxc_console_log {
+	/* Clear the console log. */
+	bool clear;
+
+	/* Retrieve the console log. */
+	bool read;
+
+	/* This specifies the maximum size to read from the ringbuffer. Setting
+	 * it to 0 means that the a read can be as big as the whole ringbuffer.
+	 * On return callers can check how many bytes were actually read.
+	 * If "read" and "clear" are set to false and a non-zero value is
+	 * specified then up to "read_max" bytes of data will be discarded from
+	 * the ringbuffer.
+	 */
+	uint64_t *read_max;
+
+	/* Data that was read from the ringbuffer. If "read_max" is 0 on return
+	 * "data" is invalid.
+	 */
+	char *data;
+
+	/* If a console log file was specified this flag indicates whether the
+	 * contents of the ringbuffer should be written to the logfile when a
+	 * request is sent to the ringbuffer.
+	 */
+	bool write_logfile;
 };
 
 /*!

@@ -15,6 +15,7 @@ lxc_test_lxcpath_SOURCES = lxcpath.c
 lxc_test_cgpath_SOURCES = cgpath.c
 lxc_test_clonetest_SOURCES = clonetest.c
 lxc_test_console_SOURCES = console.c
+lxc_test_console_log_SOURCES = console_log.c lxctest.h
 lxc_test_snapshot_SOURCES = snapshot.c
 lxc_test_concurrent_SOURCES = concurrent.c
 lxc_test_may_control_SOURCES = may_control.c
@@ -52,7 +53,7 @@ endif
 bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-destroytest lxc-test-saveconfig lxc-test-createtest \
 	lxc-test-shutdowntest lxc-test-get_item lxc-test-getkeys lxc-test-lxcpath \
-	lxc-test-cgpath lxc-test-clonetest lxc-test-console \
+	lxc-test-cgpath lxc-test-clonetest lxc-test-console lxc-test-console-log \
 	lxc-test-snapshot lxc-test-concurrent lxc-test-may-control \
 	lxc-test-reboot lxc-test-list lxc-test-attach lxc-test-device-add-remove \
 	lxc-test-apparmor lxc-test-utils lxc-test-parse-config-file \
@@ -85,6 +86,7 @@ EXTRA_DIST = \
 	concurrent.c \
 	config_jump_table.c \
 	console.c \
+	console_log.c \
 	containertests.c \
 	createtest.c \
 	destroytest.c \

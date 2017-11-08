@@ -512,11 +512,50 @@ out:
 	return ret;
 }
 
+int lxc_console_write_ringbuffer(struct lxc_console *console)
+{
+	int fd;
+	char *r_addr;
+	ssize_t ret;
+	uint64_t used;
+	struct lxc_ringbuf *buf = &console->ringbuf;
+
+	if (!console->log_path)
+		return 0;
+
+	used = lxc_ringbuf_used(buf);
+	if (used == 0)
+		return 0;
+
+	fd = lxc_unpriv(open(console->log_path, O_CLOEXEC | O_RDWR | O_CREAT | O_TRUNC, 0600));
+	if (fd < 0) {
+		SYSERROR("Failed to open console log file \"%s\"", console->log_path);
+		return -EIO;
+	}
+	DEBUG("Using \"%s\" as console log file", console->log_path);
+
+	r_addr = lxc_ringbuf_get_read_addr(buf);
+	ret = lxc_write_nointr(fd, r_addr, used);
+	close(fd);
+	if (ret < 0)
+		return -EIO;
+
+	return 0;
+}
+
 void lxc_console_delete(struct lxc_console *console)
 {
-	if (console->tios && console->peer >= 0 &&
-	    tcsetattr(console->peer, TCSAFLUSH, console->tios))
-		WARN("failed to set old terminal settings");
+	int ret;
+
+	ret = lxc_console_write_ringbuffer(console);
+	if (ret < 0)
+		WARN("Failed to write console log to disk");
+
+	if (console->tios && console->peer >= 0) {
+		ret = tcsetattr(console->peer, TCSAFLUSH, console->tios);
+		if (ret < 0)
+			WARN("%s - Failed to set old terminal settings", strerror(errno));
+	}
 	free(console->tios);
 	console->tios = NULL;
 
@@ -525,66 +564,120 @@ void lxc_console_delete(struct lxc_console *console)
 	close(console->slave);
 	if (console->log_fd >= 0)
 		close(console->log_fd);
-
 	console->peer = -1;
 	console->master = -1;
 	console->slave = -1;
 	console->log_fd = -1;
 }
 
+/**
+ * Note that this function needs to run before the mainloop starts. Since we
+ * register a handler for the console's masterfd when we create the mainloop
+ * the console handler needs to see an allocated ringbuffer.
+ */
+static int lxc_setup_console_ringbuf(struct lxc_console *console)
+{
+	int ret;
+	struct lxc_ringbuf *buf = &console->ringbuf;
+	uint64_t size = console->log_size;
+
+	/* no ringbuffer previously allocated and no ringbuffer requested */
+	if (!buf->addr && size <= 0)
+		return 0;
+
+	/* ringbuffer allocated but no new ringbuffer requested */
+	if (buf->addr && size <= 0) {
+		lxc_ringbuf_release(buf);
+		buf->addr = NULL;
+		buf->r_off = 0;
+		buf->w_off = 0;
+		buf->size = 0;
+		TRACE("Deallocated console ringbuffer");
+		return 0;
+	}
+
+	if (size <= 0)
+		return 0;
+
+	/* check wether the requested size for the ringbuffer has changed */
+	if (buf->addr && buf->size != size) {
+		TRACE("Console ringbuffer size changed from %" PRIu64
+		      " to %" PRIu64 " bytes. Deallocating console ringbuffer",
+		      buf->size, size);
+		lxc_ringbuf_release(buf);
+	}
+
+	ret = lxc_ringbuf_create(buf, size);
+	if (ret < 0) {
+		ERROR("Failed to setup %" PRIu64 " byte console ringbuffer", size);
+		return -1;
+	}
+
+	TRACE("Allocated %" PRIu64 " byte console ringbuffer", size);
+	return 0;
+}
+
 int lxc_console_create(struct lxc_conf *conf)
 {
+	int ret, saved_errno;
 	struct lxc_console *console = &conf->console;
-	int ret;
 
 	if (!conf->rootfs.path) {
-		INFO("container does not have a rootfs, console device will be shared with the host");
+		INFO("Container does not have a rootfs. The console will be "
+		     "shared with the host");
 		return 0;
 	}
 
 	if (console->path && !strcmp(console->path, "none")) {
-		INFO("no console requested");
+		INFO("No console was requested");
 		return 0;
 	}
 
 	process_lock();
 	ret = openpty(&console->master, &console->slave, console->name, NULL, NULL);
+	saved_errno = errno;
 	process_unlock();
 	if (ret < 0) {
-		SYSERROR("failed to allocate a pty");
+		ERROR("%s - Failed to allocate a pty", strerror(saved_errno));
 		return -1;
 	}
 
-	if (fcntl(console->master, F_SETFD, FD_CLOEXEC)) {
-		SYSERROR("failed to set console master to close-on-exec");
+	ret = fcntl(console->master, F_SETFD, FD_CLOEXEC);
+	if (ret < 0) {
+		SYSERROR("Failed to set FD_CLOEXEC flag on console master");
 		goto err;
 	}
 
-	if (fcntl(console->slave, F_SETFD, FD_CLOEXEC)) {
-		SYSERROR("failed to set console slave to close-on-exec");
+	ret = fcntl(console->slave, F_SETFD, FD_CLOEXEC);
+	if (ret < 0) {
+		SYSERROR("Failed to set FD_CLOEXEC flag on console slave");
 		goto err;
 	}
 
 	ret = lxc_console_peer_default(console);
 	if (ret < 0) {
-		ERROR("failed to allocate peer tty device");
+		ERROR("Failed to allocate a peer pty device");
 		goto err;
 	}
 
-	if (console->log_path) {
+	if (console->log_path && console->log_size <= 0) {
 		console->log_fd = lxc_unpriv(open(console->log_path, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600));
 		if (console->log_fd < 0) {
-			SYSERROR("failed to open console log file \"%s\"", console->log_path);
+			SYSERROR("Failed to open console log file \"%s\"", console->log_path);
 			goto err;
 		}
-		DEBUG("using \"%s\" as console log file", console->log_path);
+		DEBUG("Using \"%s\" as console log file", console->log_path);
 	}
+
+	ret = lxc_setup_console_ringbuf(console);
+	if (ret < 0)
+		goto err;
 
 	return 0;
 
 err:
 	lxc_console_delete(console);
-	return -1;
+	return -ENODEV;
 }
 
 int lxc_console_set_stdfds(int fd)
@@ -687,18 +780,16 @@ int lxc_console(struct lxc_container *c, int ttynum,
 	istty = isatty(stdinfd);
 	if (istty) {
 		ret = lxc_setup_tios(stdinfd, &oldtios);
-		if (ret) {
-			ERROR("failed to setup terminal properties");
+		if (ret < 0)
 			return -1;
-		}
 	} else {
-		INFO("fd %d does not refer to a tty device", stdinfd);
+		INFO("File descriptor %d does not refer to a tty device", stdinfd);
 	}
 
 	ttyfd = lxc_cmd_console(c->name, &ttynum, &masterfd, c->config_path);
 	if (ttyfd < 0) {
 		ret = ttyfd;
-		goto err1;
+		goto restore_tios;
 	}
 
 	fprintf(stderr, "\n"
@@ -708,13 +799,13 @@ int lxc_console(struct lxc_container *c, int ttynum,
 			ttynum, 'a' + escape - 1);
 
 	ret = setsid();
-	if (ret)
-		INFO("already group leader");
+	if (ret < 0)
+		TRACE("Process is already group leader");
 
 	ts = lxc_console_sigwinch_init(stdinfd, masterfd);
 	if (!ts) {
 		ret = -1;
-		goto err2;
+		goto close_fds;
 	}
 	ts->escape = escape;
 	ts->winch_proxy = c->name;
@@ -728,52 +819,57 @@ int lxc_console(struct lxc_container *c, int ttynum,
 
 	ret = lxc_mainloop_open(&descr);
 	if (ret) {
-		ERROR("failed to create mainloop");
-		goto err3;
+		ERROR("Failed to create mainloop");
+		goto sigwinch_fini;
 	}
 
 	if (ts->sigfd != -1) {
 		ret = lxc_mainloop_add_handler(&descr, ts->sigfd,
-				lxc_console_cb_sigwinch_fd, ts);
-		if (ret) {
-			ERROR("failed to add handler for SIGWINCH fd");
-			goto err4;
+					       lxc_console_cb_sigwinch_fd, ts);
+		if (ret < 0) {
+			ERROR("Failed to add SIGWINCH handler");
+			goto close_mainloop;
 		}
 	}
 
 	ret = lxc_mainloop_add_handler(&descr, ts->stdinfd,
 				       lxc_console_cb_tty_stdin, ts);
-	if (ret) {
-		ERROR("failed to add handler for stdinfd");
-		goto err4;
+	if (ret < 0) {
+		ERROR("Failed to add stdin handler");
+		goto close_mainloop;
 	}
 
 	ret = lxc_mainloop_add_handler(&descr, ts->masterfd,
 				       lxc_console_cb_tty_master, ts);
-	if (ret) {
-		ERROR("failed to add handler for masterfd");
-		goto err4;
+	if (ret < 0) {
+		ERROR("Failed to add master handler");
+		goto close_mainloop;
 	}
 
 	ret = lxc_mainloop(&descr, -1);
-	if (ret) {
-		ERROR("mainloop returned an error");
-		goto err4;
+	if (ret < 0) {
+		ERROR("The mainloop returned an error");
+		goto close_mainloop;
 	}
 
 	ret = 0;
 
-err4:
+close_mainloop:
 	lxc_mainloop_close(&descr);
-err3:
+
+sigwinch_fini:
 	lxc_console_sigwinch_fini(ts);
-err2:
+
+close_fds:
 	close(masterfd);
 	close(ttyfd);
-err1:
+
+restore_tios:
 	if (istty) {
-		if (tcsetattr(stdinfd, TCSAFLUSH, &oldtios) < 0)
-			WARN("failed to reset terminal properties: %s.", strerror(errno));
+		istty = tcsetattr(stdinfd, TCSAFLUSH, &oldtios);
+		if (istty < 0)
+			WARN("%s - Failed to restore terminal properties",
+			     strerror(errno));
 	}
 
 	return ret;
