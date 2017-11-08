@@ -5,6 +5,9 @@ hooks_SCRIPTS = \
 	clonehostname \
 	mountecryptfsroot \
 	ubuntu-cloud-prep \
+	dhclient-script \
+	dhclient-start \
+	dhclient-stop \
 	squid-deb-proxy-client
 
 binhooks_PROGRAMS = \
