@@ -848,6 +848,12 @@ int lxc_attach(const char *name, const char *lxcpath,
 	if (!init_ctx->container)
 		return -1;
 
+	if (!init_ctx->container->lxc_conf) {
+		init_ctx->container->lxc_conf = lxc_conf_init();
+		if (!init_ctx->container->lxc_conf)
+			return -ENOMEM;
+	}
+
 	if (!fetch_seccomp(init_ctx->container, options))
 		WARN("Failed to get seccomp policy.");
 
