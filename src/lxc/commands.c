@@ -23,6 +23,7 @@
 
 #include "config.h"
 
+#include <caps.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <malloc.h>
@@ -1062,11 +1063,32 @@ static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
 	}
 
 	rsp.ret = 0;
-
-	if (log->clear)
+	if (log->clear) {
+		/* clear the ringbuffer */
 		lxc_ringbuf_clear(buf);
-	else if (rsp.datalen > 0)
+
+		/* truncate the ringbuffer log file */
+		if (console->buffer_log_file) {
+			rsp.ret = -ENOENT;
+			if (!file_exists(console->buffer_log_file))
+				goto out;
+
+			/* be very certain things are kosher */
+			rsp.ret = -EBADF;
+			if (console->buffer_log_file_fd < 0)
+				goto out;
+
+			rsp.ret = lxc_unpriv(ftruncate(console->buffer_log_file_fd, 0));
+			if (rsp.ret < 0) {
+				ERROR("%s - Failed to truncate console "
+				      "ringbuffer log file \"%s\"",
+				      strerror(errno), console->buffer_log_file);
+				goto out;
+			}
+		}
+	} else if (rsp.datalen > 0) {
 		lxc_ringbuf_move_read_addr(buf, rsp.datalen);
+	}
 
 out:
 	return lxc_cmd_rsp_send(fd, &rsp);
