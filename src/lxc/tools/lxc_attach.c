@@ -52,8 +52,6 @@
 #include <../include/openpty.h>
 #endif
 
-lxc_log_define(lxc_attach_ui, lxc);
-
 static const struct option my_longopts[] = {
 	{"elevated-privileges", optional_argument, 0, 'e'},
 	{"arch", required_argument, 0, 'a'},
@@ -286,10 +284,8 @@ static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *
 	int ret = -1;
 	struct wrapargs *args = wrap;
 
-	INFO("Trying to allocate a pty on the host");
-
 	if (!isatty(args->ptyfd)) {
-		ERROR("Standard file descriptor does not refer to a pty");
+		fprintf(stderr, "Standard file descriptor does not refer to a pty\n");
 		return -1;
 	}
 
@@ -301,7 +297,7 @@ static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *
 		 */
 		conf = lxc_conf_init();
 		if (!conf) {
-			ERROR("Failed to allocate dummy config file for the container");
+			fprintf(stderr, "Failed to allocate dummy config file for the container\n");
 			return -1;
 		}
 
@@ -343,7 +339,7 @@ static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *
 
 	/* Shift ttys to container. */
 	if (lxc_ttys_shift_ids(conf) < 0) {
-		ERROR("Failed to shift tty into container");
+		fprintf(stderr, "Failed to shift tty into container\n");
 		goto err1;
 	}
 
@@ -355,18 +351,18 @@ static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *
 
 	ret = lxc_mainloop_open(&descr);
 	if (ret) {
-		ERROR("failed to create mainloop");
+		fprintf(stderr, "failed to create mainloop\n");
 		goto err2;
 	}
 
 	if (lxc_console_mainloop_add(&descr, conf) < 0) {
-		ERROR("Failed to add handlers to lxc mainloop.");
+		fprintf(stderr, "Failed to add handlers to lxc mainloop.\n");
 		goto err3;
 	}
 
 	ret = lxc_mainloop(&descr, -1);
 	if (ret) {
-		ERROR("mainloop returned an error");
+		fprintf(stderr, "mainloop returned an error\n");
 		goto err3;
 	}
 	ret = 0;
@@ -440,13 +436,13 @@ int main(int argc, char *argv[])
 	if (my_args.rcfile) {
 		c->clear_config(c);
 		if (!c->load_config(c, my_args.rcfile)) {
-			ERROR("Failed to load rcfile");
+			fprintf(stderr, "Failed to load rcfile\n");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
-			ERROR("Out of memory setting new config filename");
+			fprintf(stderr, "Out of memory setting new config filename\n");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
