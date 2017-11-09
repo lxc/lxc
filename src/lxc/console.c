@@ -660,6 +660,10 @@ int lxc_console_create(struct lxc_conf *conf)
 		goto err;
 	}
 
+	/* Only open the console log file in O_APPEND if no console ringbuffer
+	 * has been requested. Otherwise the log file will be opened when the
+	 * a request is sent to dump the contents of the ringbuffer to disk.
+	 */
 	if (console->log_path && console->log_size <= 0) {
 		console->log_fd = lxc_unpriv(open(console->log_path, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600));
 		if (console->log_fd < 0) {
