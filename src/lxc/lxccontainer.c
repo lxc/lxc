@@ -818,18 +818,6 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	if (!handler)
 		return false;
 
-	if (useinit) {
-		TRACE("calling \"lxc_execute\"");
-		ret = lxc_execute(c->name, argv, 1, handler, c->config_path,
-				  daemonize);
-		c->error_num = ret;
-
-		if (ret != 0)
-			return false;
-
-		return true;
-	}
-
 	/* If no argv was passed in, use lxc.init_cmd if provided in the
 	 * configuration
 	 */
@@ -1009,7 +997,10 @@ reboot:
 		goto on_error;
 	}
 
-	ret = lxc_start(c->name, argv, handler, c->config_path, daemonize);
+	if (useinit)
+		ret = lxc_execute(c->name, argv, 1, handler, c->config_path, daemonize);
+	else
+		ret = lxc_start(c->name, argv, handler, c->config_path, daemonize);
 	c->error_num = ret;
 
 	if (conf->reboot == 1) {
