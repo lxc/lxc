@@ -675,26 +675,9 @@ int lxc_console(struct lxc_container *c, int ttynum,
 	struct lxc_tty_state *ts;
 	int istty = 0;
 
-	istty = isatty(stdinfd);
-	if (istty) {
-		ret = lxc_setup_tios(stdinfd, &oldtios);
-		if (ret < 0)
-			return -1;
-	} else {
-		INFO("File descriptor %d does not refer to a tty device", stdinfd);
-	}
-
 	ttyfd = lxc_cmd_console(c->name, &ttynum, &masterfd, c->config_path);
-	if (ttyfd < 0) {
-		ret = ttyfd;
-		goto restore_tios;
-	}
-
-	fprintf(stderr, "\n"
-			"Connected to tty %1$d\n"
-			"Type <Ctrl+%2$c q> to exit the console, "
-			"<Ctrl+%2$c Ctrl+%2$c> to enter Ctrl+%2$c itself\n",
-			ttynum, 'a' + escape - 1);
+	if (ttyfd < 0)
+		return -1;
 
 	ret = setsid();
 	if (ret < 0)
@@ -710,9 +693,12 @@ int lxc_console(struct lxc_container *c, int ttynum,
 	ts->winch_proxy_lxcpath = c->config_path;
 	ts->stdoutfd = stdoutfd;
 
+	istty = isatty(stdinfd);
 	if (istty) {
 		lxc_console_winsz(stdinfd, masterfd);
 		lxc_cmd_console_winch(ts->winch_proxy, ts->winch_proxy_lxcpath);
+	} else {
+		INFO("File descriptor %d does not refer to a tty device", stdinfd);
 	}
 
 	ret = lxc_mainloop_open(&descr);
@@ -744,13 +730,33 @@ int lxc_console(struct lxc_container *c, int ttynum,
 		goto close_mainloop;
 	}
 
+	fprintf(stderr, "\n"
+			"Connected to tty %1$d\n"
+			"Type <Ctrl+%2$c q> to exit the console, "
+			"<Ctrl+%2$c Ctrl+%2$c> to enter Ctrl+%2$c itself\n",
+			ttynum, 'a' + escape - 1);
+
+	if (istty) {
+		ret = lxc_setup_tios(stdinfd, &oldtios);
+		if (ret < 0)
+			goto close_mainloop;
+	}
+
 	ret = lxc_mainloop(&descr, -1);
 	if (ret < 0) {
 		ERROR("The mainloop returned an error");
-		goto close_mainloop;
+		goto restore_tios;
 	}
 
 	ret = 0;
+
+restore_tios:
+	if (istty) {
+		istty = tcsetattr(stdinfd, TCSAFLUSH, &oldtios);
+		if (istty < 0)
+			WARN("%s - Failed to restore terminal properties",
+			     strerror(errno));
+	}
 
 close_mainloop:
 	lxc_mainloop_close(&descr);
@@ -761,14 +767,6 @@ sigwinch_fini:
 close_fds:
 	close(masterfd);
 	close(ttyfd);
-
-restore_tios:
-	if (istty) {
-		istty = tcsetattr(stdinfd, TCSAFLUSH, &oldtios);
-		if (istty < 0)
-			WARN("%s - Failed to restore terminal properties",
-			     strerror(errno));
-	}
 
 	return ret;
 }
