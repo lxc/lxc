@@ -665,11 +665,13 @@ int lxc_console(struct lxc_container *c, int ttynum,
 		goto err1;
 	}
 
-	fprintf(stderr, "\n"
+	if (ts->escape >= 1) {
+		fprintf(stderr, "\n"
 			"Connected to tty %1$d\n"
 			"Type <Ctrl+%2$c q> to exit the console, "
 			"<Ctrl+%2$c Ctrl+%2$c> to enter Ctrl+%2$c itself\n",
 			ttynum, 'a' + escape - 1);
+	}
 
 	ret = setsid();
 	if (ret)
