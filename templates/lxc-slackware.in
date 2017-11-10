@@ -565,6 +565,7 @@ gnupg
 grep
 gzip
 iputils
+libunistring
 logrotate
 mpfr
 net-tools
