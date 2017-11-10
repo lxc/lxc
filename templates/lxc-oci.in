@@ -118,7 +118,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o u:h -l help,name:,path:,\
+options=$(getopt -o u:h -l help,url:,name:,path:,\
 rootfs:,mapped-uid:,mapped-gid: -- "$@")
 
 if [ $? -ne 0 ]; then
