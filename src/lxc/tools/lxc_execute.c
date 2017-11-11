@@ -49,6 +49,9 @@ static struct lxc_list defines;
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
 	switch (c) {
+	case 'd':
+		args->daemonize = 1;
+		break;
 	case 'f':
 		args->rcfile = arg;
 		break;
@@ -67,6 +70,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 }
 
 static const struct option my_longopts[] = {
+	{"daemon", no_argument, 0, 'd'},
 	{"rcfile", required_argument, 0, 'f'},
 	{"define", required_argument, 0, 's'},
 	{"uid", required_argument, 0, 'u'},
@@ -90,6 +94,7 @@ Options :\n\
   -g, --gid=GID        Execute COMMAND with GID inside the container\n",
 	.options  = my_longopts,
 	.parser   = my_parser,
+	.daemonize = 0,
 };
 
 static bool set_argv(struct lxc_conf *conf, struct lxc_arguments *args)
@@ -180,7 +185,7 @@ int main(int argc, char *argv[])
 	if (my_args.gid)
 		c->lxc_conf->init_gid = my_args.gid;
 
-	c->daemonize = false;
+	c->daemonize = my_args.daemonize == 1;
 	bret = c->start(c, 1, my_args.argv);
 	ret = c->error_num;
 	lxc_container_put(c);
