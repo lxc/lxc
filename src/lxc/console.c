@@ -616,7 +616,7 @@ int lxc_console_cb_tty_stdin(int fd, uint32_t events, void *cbdata,
 	if (lxc_read_nointr(ts->stdinfd, &c, 1) <= 0)
 		return 1;
 
-	if (ts->escape != -1) {
+	if (ts->escape >= 1) {
 		/* we want to exit the console with Ctrl+a q */
 		if (c == ts->escape && !ts->saw_escape) {
 			ts->saw_escape = 1;
