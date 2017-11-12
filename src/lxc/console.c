@@ -59,25 +59,39 @@ static struct lxc_list lxc_ttys;
 
 typedef void (*sighandler_t)(int);
 
-__attribute__((constructor))
-void lxc_console_init(void)
+__attribute__((constructor)) void lxc_console_init(void)
 {
 	lxc_list_init(&lxc_ttys);
 }
 
 void lxc_console_winsz(int srcfd, int dstfd)
 {
+	int ret;
 	struct winsize wsz;
-	if (isatty(srcfd) && ioctl(srcfd, TIOCGWINSZ, &wsz) == 0) {
-		DEBUG("set winsz dstfd:%d cols:%d rows:%d", dstfd,
-		      wsz.ws_col, wsz.ws_row);
-		ioctl(dstfd, TIOCSWINSZ, &wsz);
+
+	if (!isatty(srcfd))
+		return;
+
+	ret = ioctl(srcfd, TIOCGWINSZ, &wsz);
+	if (ret < 0) {
+		WARN("Failed to get window size");
+		return;
 	}
+
+	ret = ioctl(dstfd, TIOCSWINSZ, &wsz);
+	if (ret < 0)
+		WARN("Failed to set window size");
+	else
+		DEBUG("Set window size to %d columns and %d rows", wsz.ws_col,
+		      wsz.ws_row);
+
+	return;
 }
 
 static void lxc_console_winch(struct lxc_tty_state *ts)
 {
 	lxc_console_winsz(ts->stdinfd, ts->masterfd);
+
 	if (ts->winch_proxy)
 		lxc_cmd_console_winch(ts->winch_proxy, ts->winch_proxy_lxcpath);
 }
@@ -93,15 +107,15 @@ void lxc_console_sigwinch(int sig)
 	}
 }
 
-int lxc_console_cb_sigwinch_fd(int fd, uint32_t events, void *cbdata,
-		struct lxc_epoll_descr *descr)
+int lxc_console_cb_signal_fd(int fd, uint32_t events, void *cbdata,
+			       struct lxc_epoll_descr *descr)
 {
 	struct signalfd_siginfo siginfo;
 	struct lxc_tty_state *ts = cbdata;
 
 	ssize_t ret = read(fd, &siginfo, sizeof(siginfo));
 	if (ret < 0 || (size_t)ret < sizeof(siginfo)) {
-		ERROR("failed to read signal info");
+		ERROR("Failed to read signal info");
 		return -1;
 	}
 
@@ -109,8 +123,9 @@ int lxc_console_cb_sigwinch_fd(int fd, uint32_t events, void *cbdata,
 	return 0;
 }
 
-struct lxc_tty_state *lxc_console_sigwinch_init(int srcfd, int dstfd)
+struct lxc_tty_state *lxc_console_signal_init(int srcfd, int dstfd)
 {
+	bool istty;
 	sigset_t mask;
 	struct lxc_tty_state *ts;
 
@@ -123,7 +138,8 @@ struct lxc_tty_state *lxc_console_sigwinch_init(int srcfd, int dstfd)
 	ts->masterfd = dstfd;
 	ts->sigfd = -1;
 
-	if (!isatty(srcfd)) {
+	istty = isatty(srcfd) == 1;
+	if (!istty) {
 		INFO("fd %d does not refer to a tty device", srcfd);
 		return ts;
 	}
@@ -135,7 +151,7 @@ struct lxc_tty_state *lxc_console_sigwinch_init(int srcfd, int dstfd)
 	sigemptyset(&mask);
 	sigaddset(&mask, SIGWINCH);
 	if (sigprocmask(SIG_BLOCK, &mask, &ts->oldmask)) {
-		SYSERROR("failed to block SIGWINCH");
+		SYSERROR("Failed to block SIGWINCH signal");
 		ts->sigfd = -1;
 		lxc_list_del(&ts->node);
 		return ts;
@@ -143,18 +159,18 @@ struct lxc_tty_state *lxc_console_sigwinch_init(int srcfd, int dstfd)
 
 	ts->sigfd = signalfd(-1, &mask, 0);
 	if (ts->sigfd < 0) {
-		SYSERROR("failed to create signal fd");
+		SYSERROR("Failed to create signal fd");
 		sigprocmask(SIG_SETMASK, &ts->oldmask, NULL);
 		ts->sigfd = -1;
 		lxc_list_del(&ts->node);
 		return ts;
 	}
 
-	DEBUG("process %d created signal fd %d to handle SIGWINCH events", getpid(), ts->sigfd);
+	DEBUG("Process %d created signal fd %d", getpid(), ts->sigfd);
 	return ts;
 }
 
-void lxc_console_sigwinch_fini(struct lxc_tty_state *ts)
+void lxc_console_signal_fini(struct lxc_tty_state *ts)
 {
 	if (ts->sigfd >= 0) {
 		close(ts->sigfd);
@@ -178,7 +194,7 @@ static int lxc_console_cb_con(int fd, uint32_t events, void *data,
 		lxc_mainloop_del_handler(descr, fd);
 		if (fd == console->peer) {
 			if (console->tty_state) {
-				lxc_console_sigwinch_fini(console->tty_state);
+				lxc_console_signal_fini(console->tty_state);
 				console->tty_state = NULL;
 			}
 			console->peer = -1;
@@ -225,16 +241,15 @@ static void lxc_console_mainloop_add_peer(struct lxc_console *console)
 	if (console->peer >= 0) {
 		if (lxc_mainloop_add_handler(console->descr, console->peer,
 					     lxc_console_cb_con, console))
-			WARN("console peer not added to mainloop");
+			WARN("Failed to add console peer handler to mainloop");
 	}
 
 	if (console->tty_state && console->tty_state->sigfd != -1) {
 		if (lxc_mainloop_add_handler(console->descr,
 					     console->tty_state->sigfd,
-					     lxc_console_cb_sigwinch_fd,
+					     lxc_console_cb_signal_fd,
 					     console->tty_state)) {
-			WARN("failed to add to mainloop SIGWINCH handler for '%d'",
-			     console->tty_state->sigfd);
+			WARN("Failed to add signal handler to mainloop");
 		}
 	}
 }
@@ -321,7 +336,7 @@ int lxc_setup_tios(int fd, struct termios *oldtios)
 static void lxc_console_peer_proxy_free(struct lxc_console *console)
 {
 	if (console->tty_state) {
-		lxc_console_sigwinch_fini(console->tty_state);
+		lxc_console_signal_fini(console->tty_state);
 		console->tty_state = NULL;
 	}
 	close(console->peerpty.master);
@@ -367,7 +382,7 @@ static int lxc_console_peer_proxy_alloc(struct lxc_console *console, int sockfd)
 	if (lxc_setup_tios(console->peerpty.slave, &oldtermio) < 0)
 		goto err1;
 
-	ts = lxc_console_sigwinch_init(console->peerpty.master, console->master);
+	ts = lxc_console_signal_init(console->peerpty.master, console->master);
 	if (!ts)
 		goto err1;
 
@@ -479,10 +494,10 @@ static int lxc_console_peer_default(struct lxc_console *console)
 		goto on_error1;
 	}
 
-	ts = lxc_console_sigwinch_init(console->peer, console->master);
+	ts = lxc_console_signal_init(console->peer, console->master);
 	console->tty_state = ts;
 	if (!ts) {
-		WARN("unable to install SIGWINCH handler");
+		WARN("Failed to install signal handler");
 		goto on_error1;
 	}
 
@@ -785,7 +800,7 @@ int lxc_console(struct lxc_container *c, int ttynum,
 	if (ret < 0)
 		TRACE("Process is already group leader");
 
-	ts = lxc_console_sigwinch_init(stdinfd, masterfd);
+	ts = lxc_console_signal_init(stdinfd, masterfd);
 	if (!ts) {
 		ret = -1;
 		goto close_fds;
@@ -811,9 +826,9 @@ int lxc_console(struct lxc_container *c, int ttynum,
 
 	if (ts->sigfd != -1) {
 		ret = lxc_mainloop_add_handler(&descr, ts->sigfd,
-					       lxc_console_cb_sigwinch_fd, ts);
+					       lxc_console_cb_signal_fd, ts);
 		if (ret < 0) {
-			ERROR("Failed to add SIGWINCH handler");
+			ERROR("Failed to add signal handler to mainloop");
 			goto close_mainloop;
 		}
 	}
@@ -867,7 +882,7 @@ close_mainloop:
 	lxc_mainloop_close(&descr);
 
 sigwinch_fini:
-	lxc_console_sigwinch_fini(ts);
+	lxc_console_signal_fini(ts);
 
 close_fds:
 	close(masterfd);
