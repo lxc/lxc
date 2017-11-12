@@ -371,7 +371,7 @@ err3:
 	lxc_mainloop_close(&descr);
 err2:
 	if (ts && ts->sigfd != -1)
-		lxc_console_sigwinch_fini(ts);
+		lxc_console_signal_fini(ts);
 err1:
 	lxc_console_delete(&conf->console);
 
