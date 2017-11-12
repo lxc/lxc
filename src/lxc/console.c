@@ -110,21 +110,30 @@ void lxc_console_sigwinch(int sig)
 int lxc_console_cb_signal_fd(int fd, uint32_t events, void *cbdata,
 			       struct lxc_epoll_descr *descr)
 {
+	ssize_t ret;
 	struct signalfd_siginfo siginfo;
 	struct lxc_tty_state *ts = cbdata;
 
-	ssize_t ret = read(fd, &siginfo, sizeof(siginfo));
+	ret = read(fd, &siginfo, sizeof(siginfo));
 	if (ret < 0 || (size_t)ret < sizeof(siginfo)) {
 		ERROR("Failed to read signal info");
 		return -1;
 	}
 
-	lxc_console_winch(ts);
+	if (siginfo.ssi_signo == SIGTERM) {
+		DEBUG("Received SIGTERM. Detaching from the console");
+		return 1;
+	}
+
+	if (siginfo.ssi_signo == SIGWINCH)
+		lxc_console_winch(ts);
+
 	return 0;
 }
 
 struct lxc_tty_state *lxc_console_signal_init(int srcfd, int dstfd)
 {
+	int ret;
 	bool istty;
 	sigset_t mask;
 	struct lxc_tty_state *ts;
@@ -138,35 +147,45 @@ struct lxc_tty_state *lxc_console_signal_init(int srcfd, int dstfd)
 	ts->masterfd = dstfd;
 	ts->sigfd = -1;
 
+	sigemptyset(&mask);
+
 	istty = isatty(srcfd) == 1;
 	if (!istty) {
 		INFO("fd %d does not refer to a tty device", srcfd);
-		return ts;
+	} else {
+		/* Add tty to list to be scanned at SIGWINCH time. */
+		lxc_list_add_elem(&ts->node, ts);
+		lxc_list_add_tail(&lxc_ttys, &ts->node);
+		sigaddset(&mask, SIGWINCH);
 	}
 
-	/* add tty to list to be scanned at SIGWINCH time */
-	lxc_list_add_elem(&ts->node, ts);
-	lxc_list_add_tail(&lxc_ttys, &ts->node);
+	/* Exit the mainloop cleanly on SIGTERM. */
+	sigaddset(&mask, SIGTERM);
 
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGWINCH);
-	if (sigprocmask(SIG_BLOCK, &mask, &ts->oldmask)) {
-		SYSERROR("Failed to block SIGWINCH signal");
-		ts->sigfd = -1;
-		lxc_list_del(&ts->node);
-		return ts;
+	ret = sigprocmask(SIG_BLOCK, &mask, &ts->oldmask);
+	if (ret < 0) {
+		WARN("Failed to block signals");
+		goto on_error;
 	}
 
 	ts->sigfd = signalfd(-1, &mask, 0);
 	if (ts->sigfd < 0) {
-		SYSERROR("Failed to create signal fd");
+		WARN("Failed to create signal fd");
 		sigprocmask(SIG_SETMASK, &ts->oldmask, NULL);
-		ts->sigfd = -1;
-		lxc_list_del(&ts->node);
-		return ts;
+		goto on_error;
 	}
 
-	DEBUG("Process %d created signal fd %d", getpid(), ts->sigfd);
+	DEBUG("Created signal fd %d", ts->sigfd);
+	return ts;
+
+on_error:
+	ERROR("Failed to create signal fd");
+	if (ts->sigfd >= 0) {
+		close(ts->sigfd);
+		ts->sigfd = -1;
+	}
+	if (istty)
+		lxc_list_del(&ts->node);
 	return ts;
 }
 
@@ -174,9 +193,13 @@ void lxc_console_signal_fini(struct lxc_tty_state *ts)
 {
 	if (ts->sigfd >= 0) {
 		close(ts->sigfd);
-		lxc_list_del(&ts->node);
-		sigprocmask(SIG_SETMASK, &ts->oldmask, NULL);
+
+		if (sigprocmask(SIG_SETMASK, &ts->oldmask, NULL) < 0)
+			WARN("%s - Failed to restore signal mask", strerror(errno));
 	}
+
+	if (isatty(ts->stdinfd))
+		lxc_list_del(&ts->node);
 
 	free(ts);
 }
