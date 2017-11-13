@@ -23,6 +23,7 @@
 
 #include "config.h"
 
+#include <caps.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <malloc.h>
@@ -1060,11 +1061,24 @@ static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
 	}
 
 	rsp.ret = 0;
-
-	if (log->clear)
+	if (log->clear) {
+		/* clear the ringbuffer */
 		lxc_ringbuf_clear(buf);
-	else if (rsp.datalen > 0)
+
+		/* truncate the on-disk log file */
+		if (!console->log_path)
+			goto out;
+
+		if (!file_exists(console->log_path))
+			goto out;
+
+		rsp.ret = lxc_unpriv(ftruncate(console->log_fd, 0));
+		if (rsp.ret < 0)
+			ERROR("%s - Failed to truncate console log file \"%s\"",
+			      strerror(errno), console->log_path);
+	} else if (rsp.datalen > 0) {
 		lxc_ringbuf_move_read_addr(buf, rsp.datalen);
+	}
 
 out:
 	return lxc_cmd_rsp_send(fd, &rsp);
