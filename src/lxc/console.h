@@ -24,6 +24,9 @@
 #ifndef __LXC_CONSOLE_H
 #define __LXC_CONSOLE_H
 
+#include <signal.h>
+#include <stdio.h>
+
 #include "conf.h"
 #include "list.h"
 
@@ -38,18 +41,21 @@ struct lxc_tty_state
 	/* Escape sequence to use for exiting the pty. A single char can be
 	 * specified. The pty can then exited by doing: Ctrl + specified_char + q.
 	 * This field is checked by lxc_console_cb_tty_stdin(). Set to -1 to
-	 * disable exiting the pty via a escape sequence. */
+	 * disable exiting the pty via a escape sequence.
+	 */
 	int escape;
 	/* Used internally by lxc_console_cb_tty_stdin() to check whether an
-	 * escape sequence has been received. */
+	 * escape sequence has been received.
+	 */
 	int saw_escape;
 	/* Name of the container to forward the SIGWINCH event to. */
 	const char *winch_proxy;
 	/* Path of the container to forward the SIGWINCH event to. */
 	const char *winch_proxy_lxcpath;
-	/* File descriptor that accepts SIGWINCH signals. If set to -1 no
-	 * SIGWINCH handler could be installed. This also means that
-	 * the sigset_t oldmask member is meaningless. */
+	/* File descriptor that accepts signals. If set to -1 no signal handler
+	 * could be installed. This also means that the sigset_t oldmask member
+	 * is meaningless.
+	 */
 	int sigfd;
 	sigset_t oldmask;
 };
@@ -172,48 +178,48 @@ extern int lxc_setup_tios(int fd, struct termios *oldtios);
 extern void lxc_console_winsz(int srcfd, int dstfd);
 
 /*
- * lxc_console_sigwinch_init: install SIGWINCH handler
+ * lxc_console_signal_init: install signal handler
  *
  * @srcfd  : src for winsz in SIGWINCH handler
  * @dstfd  : dst for winsz in SIGWINCH handler
  *
  * Returns lxc_tty_state structure on success or NULL on failure. The sigfd
  * member of the returned lxc_tty_state can be select()/poll()ed/epoll()ed
- * on (ie added to a mainloop) for SIGWINCH.
+ * on (ie added to a mainloop) for signals.
  *
  * Must be called with process_lock held to protect the lxc_ttys list, or
  * from a non-threaded context.
  *
- * Note that SIGWINCH isn't installed as a classic asychronous handler,
- * rather signalfd(2) is used so that we can handle the signal when we're
- * ready for it. This avoids deadlocks since a signal handler
- * (ie lxc_console_sigwinch()) would need to take the thread mutex to
- * prevent lxc_ttys list corruption, but using the fd we can provide the
- * tty_state needed to the callback (lxc_console_cb_sigwinch_fd()).
+ * Note that the signal handler isn't installed as a classic asychronous
+ * handler, rather signalfd(2) is used so that we can handle the signal when
+ * we're ready for it. This avoids deadlocks since a signal handler (ie
+ * lxc_console_sigwinch()) would need to take the thread mutex to prevent
+ * lxc_ttys list corruption, but using the fd we can provide the tty_state
+ * needed to the callback (lxc_console_cb_signal_fd()).
  *
  * This function allocates memory. It is up to the caller to free it.
  */
-extern struct lxc_tty_state *lxc_console_sigwinch_init(int srcfd, int dstfd);
+extern struct lxc_tty_state *lxc_console_signal_init(int srcfd, int dstfd);
 
 /*
- * Handler for SIGWINCH events. To be registered via the corresponding functions
+ * Handler for signal events. To be registered via the corresponding functions
  * declared and defined in mainloop.{c,h} or lxc_console_mainloop_add().
  */
-extern int lxc_console_cb_sigwinch_fd(int fd, uint32_t events, void *cbdata,
-		struct lxc_epoll_descr *descr);
+extern int lxc_console_cb_signal_fd(int fd, uint32_t events, void *cbdata,
+				    struct lxc_epoll_descr *descr);
 
 /*
- * lxc_console_sigwinch_fini: uninstall SIGWINCH handler
+ * lxc_console_signal_fini: uninstall signal handler
  *
- * @ts  : the lxc_tty_state returned by lxc_console_sigwinch_init
+ * @ts  : the lxc_tty_state returned by lxc_console_signal_init
  *
  * Restore the saved signal handler that was in effect at the time
- * lxc_console_sigwinch_init() was called.
+ * lxc_console_signal_init() was called.
  *
  * Must be called with process_lock held to protect the lxc_ttys list, or
  * from a non-threaded context.
  */
-extern void lxc_console_sigwinch_fini(struct lxc_tty_state *ts);
+extern void lxc_console_signal_fini(struct lxc_tty_state *ts);
 
 extern int lxc_console_write_ringbuffer(struct lxc_console *console);
 
