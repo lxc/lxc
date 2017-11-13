@@ -40,7 +40,6 @@ extern int lvm_umount(struct lxc_storage *bdev);
 extern int lvm_compare_lv_attr(const char *path, int pos, const char expected);
 extern int lvm_is_thin_volume(const char *path);
 extern int lvm_is_thin_pool(const char *path);
-extern int lvm_snapshot(const char *orig, const char *path, uint64_t size);
 extern int lvm_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 			  const char *oldname, const char *cname,
 			  const char *oldpath, const char *lxcpath, int snap,
