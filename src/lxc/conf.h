@@ -153,7 +153,17 @@ struct lxc_console {
 	char name[MAXPATHLEN];
 	struct termios *tios;
 	struct lxc_tty_state *tty_state;
+
+	/* size of the ringbuffer */
 	uint64_t buffer_size;
+
+	/* path to the log file for the ringbuffer */
+	char *buffer_log_file;
+
+	/* fd to the log file for the ringbuffer */
+	int buffer_log_file_fd;
+
+	/* the in-memory ringbuffer */
 	struct lxc_ringbuf ringbuf;
 };
 

@@ -709,6 +709,26 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
         <varlistentry>
           <term>
+            <option>lxc.console.buffer.logfile</option>
+          </term>
+          <listitem>
+            <para>
+            Setting this option instructs liblxc to write the in-memory
+            ringbuffer to disk. For performance reasons liblxc will only write
+            the in-memory ringbuffer to disk when requested. Note that the this
+            option is only used by liblxc when
+            <option>lxc.console.buffer.size</option> is set.
+
+            By default liblxc will dump the contents of the in-memory ringbuffer
+            to disk when the container terminates. This allows users to diagnose
+            boot failures when the container crashed before an API request to
+            retrieve the in-memory ringbuffer could be sent or handled.
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
             <option>lxc.console.logfile</option>
           </term>
           <listitem>

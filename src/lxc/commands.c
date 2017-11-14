@@ -1051,7 +1051,7 @@ static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
 
 	if (log->write_logfile && rsp.datalen > 0) {
 		rsp.ret = -ENOENT;
-		if (!console->log_path)
+		if (!console->buffer_log_file)
 			goto out;
 
 		rsp.ret = lxc_console_write_ringbuffer(console);
