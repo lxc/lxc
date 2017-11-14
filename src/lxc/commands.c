@@ -1026,7 +1026,7 @@ static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
 					struct lxc_handler *handler)
 {
 	struct lxc_cmd_rsp rsp;
-	uint64_t logsize = handler->conf->console.log_size;
+	uint64_t buffer_size = handler->conf->console.buffer_size;
 	const struct lxc_cmd_console_log *log = req->data;
 	struct lxc_console *console = &handler->conf->console;
 	struct lxc_ringbuf *buf = &handler->conf->console.ringbuf;
@@ -1034,7 +1034,7 @@ static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
 	rsp.ret = -EFAULT;
 	rsp.datalen = 0;
 	rsp.data = NULL;
-	if (logsize <= 0)
+	if (buffer_size <= 0)
 		goto out;
 
 	rsp.datalen = lxc_ringbuf_used(buf);

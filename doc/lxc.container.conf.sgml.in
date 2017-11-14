@@ -682,6 +682,31 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         where the output of this console goes.
       </para>
       <variablelist>
+
+        <varlistentry>
+          <term>
+            <option>lxc.console.buffer.size</option>
+          </term>
+          <listitem>
+            <para>
+            Setting this option instructs liblxc to allocate an in-memory
+            ringbuffer. The container's console output will be written to the
+            ringbuffer. Note that ringbuffer must be at least as big as a
+            standard page size. When passed a value smaller than a single page
+            size liblxc will allocate a ringbuffer of a single page size. A page
+            size is usually 4kB.
+
+            The keyword 'auto' will cause liblxc to allocate a ringbuffer of
+            128kB.
+
+            When manually specifying a size for the ringbuffer the value should
+            be a power of 2 when converted to bytes. Valid size prefixes are
+            'kB', 'MB', 'GB'. (Note that all conversions are based on multiples
+            of 1024. That means 'kb' == 'KiB', 'MB' == 'MiB', 'GB' == 'GiB'.)
+            </para>
+          </listitem>
+        </varlistentry>
+
         <varlistentry>
           <term>
             <option>lxc.console.logfile</option>

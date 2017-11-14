@@ -2432,7 +2432,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->autodev = 1;
 	new->console.log_path = NULL;
 	new->console.log_fd = -1;
-	new->console.log_size = 0;
+	new->console.buffer_size = 0;
 	new->console.path = NULL;
 	new->console.peer = -1;
 	new->console.peerpty.busy = -1;
@@ -3463,7 +3463,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 		current_config = NULL;
 	free(conf->console.log_path);
 	free(conf->console.path);
-	if (conf->console.log_size > 0 && conf->console.ringbuf.addr)
+	if (conf->console.buffer_size > 0 && conf->console.ringbuf.addr)
 		lxc_ringbuf_release(&conf->console.ringbuf);
 	free(conf->rootfs.mount);
 	free(conf->rootfs.bdev_type);

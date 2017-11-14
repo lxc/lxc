@@ -238,7 +238,7 @@ static int lxc_console_cb_con(int fd, uint32_t events, void *data,
 			w = lxc_write_nointr(console->peer, buf, r);
 
 		/* write to console ringbuffer */
-		if (console->log_size > 0)
+		if (console->buffer_size > 0)
 			w_rbuf = lxc_ringbuf_write(&console->ringbuf, buf, r);
 
 		/* write to console log */
@@ -617,7 +617,7 @@ static int lxc_setup_console_ringbuf(struct lxc_console *console)
 {
 	int ret;
 	struct lxc_ringbuf *buf = &console->ringbuf;
-	uint64_t size = console->log_size;
+	uint64_t size = console->buffer_size;
 
 	/* no ringbuffer previously allocated and no ringbuffer requested */
 	if (!buf->addr && size <= 0)
@@ -698,7 +698,7 @@ int lxc_console_create(struct lxc_conf *conf)
 		goto err;
 	}
 
-	if (console->log_path && console->log_size <= 0) {
+	if (console->log_path && console->buffer_size <= 0) {
 		console->log_fd = lxc_unpriv(open(console->log_path, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600));
 		if (console->log_fd < 0) {
 			SYSERROR("Failed to open console log file \"%s\"", console->log_path);
