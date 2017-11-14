@@ -150,6 +150,7 @@ struct lxc_console {
 	char *path;
 	char *log_path;
 	int log_fd;
+	unsigned int log_rotate;
 	char name[MAXPATHLEN];
 	struct termios *tios;
 	struct lxc_tty_state *tty_state;

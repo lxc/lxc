@@ -733,11 +733,37 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           </term>
           <listitem>
             <para>
-              Specify a path to a file where the console output will
-              be written.
+              Specify a path to a file where the console output will be written.
+              Note that in contrast to the on-disk ringbuffer logfile this file
+              will keep growing potentially filling up the users disks if not
+              rotated and deleted. This problem can also be avoided by using the
+              in-memory ringbuffer options
+              <option>lxc.console.buffer.size</option> and
+              <option>lxc.console.buffer.logfile</option>.
             </para>
           </listitem>
         </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.console.rotate</option>
+          </term>
+          <listitem>
+            <para>
+              Whether to rotate the console logfile specified in
+              <option>lxc.console.logfile</option>. Users can send an API
+              request to rotate the logfile. Note that the old logfile will have
+              the same name as the original with the suffix ".1" appended.
+
+              Users wishing to prevent the console log file from filling the
+              disk should rotate the logfile and delete it if unneeded. This
+              problem can also be avoided by using the in-memory ringbuffer
+              options <option>lxc.console.buffer.size</option> and
+              <option>lxc.console.buffer.logfile</option>.
+            </para>
+          </listitem>
+        </varlistentry>
+
         <varlistentry>
           <term>
             <option>lxc.console.path</option>
