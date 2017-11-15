@@ -552,7 +552,6 @@ out:
 
 int lxc_console_write_ringbuffer(struct lxc_console *console)
 {
-	int fd;
 	char *r_addr;
 	ssize_t ret;
 	uint64_t used;
@@ -565,16 +564,8 @@ int lxc_console_write_ringbuffer(struct lxc_console *console)
 	if (used == 0)
 		return 0;
 
-	fd = lxc_unpriv(open(console->buffer_log_file, O_CLOEXEC | O_RDWR | O_CREAT | O_TRUNC, 0600));
-	if (fd < 0) {
-		SYSERROR("Failed to open console log file \"%s\"", console->buffer_log_file);
-		return -EIO;
-	}
-	DEBUG("Using \"%s\" as console log file", console->buffer_log_file);
-
 	r_addr = lxc_ringbuf_get_read_addr(buf);
-	ret = lxc_write_nointr(fd, r_addr, used);
-	close(fd);
+	ret = lxc_write_nointr(console->buffer_log_file_fd, r_addr, used);
 	if (ret < 0)
 		return -EIO;
 
@@ -606,6 +597,30 @@ void lxc_console_delete(struct lxc_console *console)
 	console->master = -1;
 	console->slave = -1;
 	console->log_fd = -1;
+	if (console->buffer_log_file_fd >= 0)
+		close(console->buffer_log_file_fd);
+	console->buffer_log_file_fd = -1;
+}
+
+/* This is the console ringbuffer log file. Please note that the console
+ * ringbuffer log file is (implementation wise not content wise) independent of
+ * the console log file.
+ */
+static int lxc_console_create_ringbuf_log_file(struct lxc_console *console)
+{
+	if (!console->buffer_log_file)
+		return 0;
+
+	console->buffer_log_file_fd = lxc_unpriv(open(console->buffer_log_file,
+			    O_CLOEXEC | O_RDWR | O_CREAT | O_TRUNC, 0600));
+	if (console->buffer_log_file_fd < 0) {
+		SYSERROR("Failed to open console ringbuffer log file \"%s\"",
+			 console->buffer_log_file);
+		return -EIO;
+	}
+
+	DEBUG("Using \"%s\" as console ringbuffer log file", console->buffer_log_file);
+	return 0;
 }
 
 /**
@@ -613,7 +628,7 @@ void lxc_console_delete(struct lxc_console *console)
  * register a handler for the console's masterfd when we create the mainloop
  * the console handler needs to see an allocated ringbuffer.
  */
-static int lxc_setup_console_ringbuf(struct lxc_console *console)
+static int lxc_console_create_ringbuf(struct lxc_console *console)
 {
 	int ret;
 	struct lxc_ringbuf *buf = &console->ringbuf;
@@ -652,6 +667,25 @@ static int lxc_setup_console_ringbuf(struct lxc_console *console)
 	}
 
 	TRACE("Allocated %" PRIu64 " byte console ringbuffer", size);
+	return 0;
+}
+
+/**
+ * This is the console log file. Please note that the console log file is
+ * (implementation wise not content wise) independent of the console ringbuffer.
+ */
+static int lxc_console_create_log_file(struct lxc_console *console)
+{
+	if (!console->log_path)
+		return 0;
+
+	console->log_fd = lxc_unpriv(open(console->log_path, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600));
+	if (console->log_fd < 0) {
+		SYSERROR("Failed to open console log file \"%s\"", console->log_path);
+		return -1;
+	}
+
+	DEBUG("Using \"%s\" as console log file", console->log_path);
 	return 0;
 }
 
@@ -698,16 +732,18 @@ int lxc_console_create(struct lxc_conf *conf)
 		goto err;
 	}
 
-	if (console->log_path) {
-		console->log_fd = lxc_unpriv(open(console->log_path, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600));
-		if (console->log_fd < 0) {
-			SYSERROR("Failed to open console log file \"%s\"", console->log_path);
-			goto err;
-		}
-		DEBUG("Using \"%s\" as console log file", console->log_path);
-	}
+	/* create console log file */
+	ret = lxc_console_create_log_file(console);
+	if (ret < 0)
+		goto err;
 
-	ret = lxc_setup_console_ringbuf(console);
+	/* create console ringbuffer */
+	ret = lxc_console_create_ringbuf(console);
+	if (ret < 0)
+		goto err;
+
+	/* create console ringbuffer log file */
+	ret = lxc_console_create_ringbuf_log_file(console);
 	if (ret < 0)
 		goto err;
 
