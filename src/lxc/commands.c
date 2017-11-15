@@ -1037,7 +1037,9 @@ static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
 	if (buffer_size <= 0)
 		goto out;
 
-	rsp.datalen = lxc_ringbuf_used(buf);
+	if (log->read || log->write_logfile)
+		rsp.datalen = lxc_ringbuf_used(buf);
+
 	if (log->read)
 		rsp.data = lxc_ringbuf_get_read_addr(buf);
 
