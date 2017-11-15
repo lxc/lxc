@@ -1064,6 +1064,10 @@ static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
 
 	rsp.ret = 0;
 	if (log->clear) {
+		int ret;
+		size_t len;
+		char *tmp;
+
 		/* clear the ringbuffer */
 		lxc_ringbuf_clear(buf);
 
@@ -1086,6 +1090,31 @@ static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
 				goto out;
 			}
 		}
+
+		/* rotate the console log file */
+		if (!console->log_path || console->log_rotate == 0)
+			goto out;
+
+		/* be very certain things are kosher */
+		rsp.ret = -EBADF;
+		if (console->log_fd < 0)
+			goto out;
+
+		len = strlen(console->log_path) + sizeof(".1");
+		tmp = alloca(len);
+
+		rsp.ret = -EFBIG;
+		ret = snprintf(tmp, len, "%s.1", console->log_path);
+		if (ret < 0 || (size_t)ret >= len)
+			goto out;
+
+		close(console->log_fd);
+		console->log_fd = -1;
+		rsp.ret = lxc_unpriv(rename(console->log_path, tmp));
+		if (rsp.ret < 0)
+			goto out;
+
+		rsp.ret = lxc_console_create_log_file(console);
 	} else if (rsp.datalen > 0) {
 		lxc_ringbuf_move_read_addr(buf, rsp.datalen);
 	}

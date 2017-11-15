@@ -1803,8 +1803,11 @@ static int set_config_console_rotate(const char *key, const char *value,
 	if (lxc_safe_uint(value, &lxc_conf->console.log_rotate) < 0)
 		return -1;
 
-	if (lxc_conf->console.log_rotate > 1)
+	if (lxc_conf->console.log_rotate > 1) {
+		ERROR("The \"lxc.console.rotate\" config key can only be set "
+		      "to 0 or 1");
 		return -1;
+	}
 
 	return 0;
 }
