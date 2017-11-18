@@ -23,6 +23,7 @@
 
 #include "config.h"
 
+#include <caps.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <malloc.h>
@@ -1026,7 +1027,7 @@ static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
 					struct lxc_handler *handler)
 {
 	struct lxc_cmd_rsp rsp;
-	uint64_t logsize = handler->conf->console.log_size;
+	uint64_t buffer_size = handler->conf->console.buffer_size;
 	const struct lxc_cmd_console_log *log = req->data;
 	struct lxc_console *console = &handler->conf->console;
 	struct lxc_ringbuf *buf = &handler->conf->console.ringbuf;
@@ -1034,10 +1035,12 @@ static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
 	rsp.ret = -EFAULT;
 	rsp.datalen = 0;
 	rsp.data = NULL;
-	if (logsize <= 0)
+	if (buffer_size <= 0)
 		goto out;
 
-	rsp.datalen = lxc_ringbuf_used(buf);
+	if (log->read || log->write_logfile)
+		rsp.datalen = lxc_ringbuf_used(buf);
+
 	if (log->read)
 		rsp.data = lxc_ringbuf_get_read_addr(buf);
 
@@ -1051,7 +1054,7 @@ static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
 
 	if (log->write_logfile && rsp.datalen > 0) {
 		rsp.ret = -ENOENT;
-		if (!console->log_path)
+		if (!console->buffer_log_file)
 			goto out;
 
 		rsp.ret = lxc_console_write_ringbuffer(console);
@@ -1060,11 +1063,61 @@ static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
 	}
 
 	rsp.ret = 0;
+	if (log->clear) {
+		int ret;
+		size_t len;
+		char *tmp;
 
-	if (log->clear)
+		/* clear the ringbuffer */
 		lxc_ringbuf_clear(buf);
-	else if (rsp.datalen > 0)
+
+		/* truncate the ringbuffer log file */
+		if (console->buffer_log_file) {
+			rsp.ret = -ENOENT;
+			if (!file_exists(console->buffer_log_file))
+				goto out;
+
+			/* be very certain things are kosher */
+			rsp.ret = -EBADF;
+			if (console->buffer_log_file_fd < 0)
+				goto out;
+
+			rsp.ret = lxc_unpriv(ftruncate(console->buffer_log_file_fd, 0));
+			if (rsp.ret < 0) {
+				ERROR("%s - Failed to truncate console "
+				      "ringbuffer log file \"%s\"",
+				      strerror(errno), console->buffer_log_file);
+				goto out;
+			}
+		}
+
+		/* rotate the console log file */
+		if (!console->log_path || console->log_rotate == 0)
+			goto out;
+
+		/* be very certain things are kosher */
+		rsp.ret = -EBADF;
+		if (console->log_fd < 0)
+			goto out;
+
+		len = strlen(console->log_path) + sizeof(".1");
+		tmp = alloca(len);
+
+		rsp.ret = -EFBIG;
+		ret = snprintf(tmp, len, "%s.1", console->log_path);
+		if (ret < 0 || (size_t)ret >= len)
+			goto out;
+
+		close(console->log_fd);
+		console->log_fd = -1;
+		rsp.ret = lxc_unpriv(rename(console->log_path, tmp));
+		if (rsp.ret < 0)
+			goto out;
+
+		rsp.ret = lxc_console_create_log_file(console);
+	} else if (rsp.datalen > 0) {
 		lxc_ringbuf_move_read_addr(buf, rsp.datalen);
+	}
 
 out:
 	return lxc_cmd_rsp_send(fd, &rsp);
