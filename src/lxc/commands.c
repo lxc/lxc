@@ -949,11 +949,32 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 }
 
 static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
-			       struct lxc_epoll_descr *descr)
+			       struct lxc_epoll_descr *descr,
+			       const lxc_cmd_t cmd)
 {
+	struct state_client *client;
+	struct lxc_list *cur, *next;
+
 	lxc_console_free(handler->conf, fd);
 	lxc_mainloop_del_handler(descr, fd);
-	close(fd);
+	if (cmd != LXC_CMD_ADD_STATE_CLIENT) {
+		close(fd);
+		return;
+	}
+
+	process_lock();
+	lxc_list_for_each_safe(cur, &handler->state_clients, next) {
+		client = cur->elem;
+		if (client->clientfd != fd)
+			continue;
+
+		/* kick client from list */
+		close(client->clientfd);
+		lxc_list_del(cur);
+		free(cur->elem);
+		free(cur);
+	}
+	process_unlock();
 }
 
 static int lxc_cmd_handler(int fd, uint32_t events, void *data,
@@ -1022,7 +1043,7 @@ out:
 	return ret;
 
 out_close:
-	lxc_cmd_fd_cleanup(fd, handler, descr);
+	lxc_cmd_fd_cleanup(fd, handler, descr, req.cmd);
 	goto out;
 }
 
