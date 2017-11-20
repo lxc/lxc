@@ -150,6 +150,8 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		rspdata->masterfd = rspfd;
 		rspdata->ttynum = PTR_TO_INT(rsp->data);
 		rsp->data = rspdata;
+	} else if (cmd->req.cmd == LXC_CMD_ADD_STATE_CLIENT) {
+		rsp->ret = rspfd;
 	}
 
 	if (rsp->datalen == 0) {
@@ -965,6 +967,8 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 static int lxc_cmd_add_state_client_callback(int fd, struct lxc_cmd_req *req,
 					     struct lxc_handler *handler)
 {
+	int ret;
+	int clientfds[2];
 	struct lxc_cmd_rsp rsp = {0};
 
 	if (req->datalen < 0)
@@ -976,13 +980,30 @@ static int lxc_cmd_add_state_client_callback(int fd, struct lxc_cmd_req *req,
 	if (!req->data)
 		return -1;
 
-	rsp.ret = lxc_add_state_client(fd, handler, (lxc_state_t *)req->data);
-	if (rsp.ret < 0)
-		ERROR("Failed to add state client %d to state client list", fd);
-	else
-		TRACE("Added state client %d to state client list", fd);
+	ret = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, clientfds);
+	if (ret < 0) {
+		ERROR("Failed to create anonymous pair of unix sockets");
+		return -1;
+	}
 
-	return lxc_cmd_rsp_send(fd, &rsp);
+	rsp.ret = lxc_add_state_client(clientfds[1], handler, (lxc_state_t *)req->data);
+	if (rsp.ret < 0) {
+		ERROR("Failed to add state client %d to state client list", clientfds[1]);
+		close(clientfds[0]);
+		close(clientfds[1]);
+		return -1;
+	}
+	TRACE("Added state client %d to state client list", clientfds[1]);
+
+	ret = lxc_abstract_unix_send_fds(fd, &clientfds[0], 1, &rsp, sizeof(rsp));
+	close(clientfds[0]);
+	if (ret < 0) {
+		SYSERROR("Failed to send state client %d to the caller", clientfds[0]);
+		close(clientfds[1]);
+		return -1;
+	}
+
+	return 0;
 }
 
 int lxc_cmd_console_log(const char *name, const char *lxcpath,
