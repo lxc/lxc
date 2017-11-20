@@ -759,8 +759,8 @@ int lxc_inherit_namespace(const char *lxcname_or_pid, const char *lxcpath,
 		if (!dup)
 			return -ENOMEM;
 
-		*lastslash = '\0';
-		pid = lxc_container_name_to_pid(lastslash, dup);
+		dup[lastslash - lxcname_or_pid] = '\0';
+		pid = lxc_container_name_to_pid(lastslash + 1, dup);
 		free(dup);
 	} else {
 		pid = lxc_container_name_to_pid(lxcname_or_pid, lxcpath);
