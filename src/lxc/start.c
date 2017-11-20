@@ -357,10 +357,10 @@ static int lxc_serve_state_clients(const char *name,
 	*  lxc_cmd_add_state_client() to miss a state.
 	 */
 	handler->state = state;
-	TRACE("set container state to %s", lxc_state2str(state));
+	TRACE("Set container state to %s", lxc_state2str(state));
 
 	if (lxc_list_empty(&handler->state_clients)) {
-		TRACE("no state clients registered");
+		TRACE("No state clients registered");
 		process_unlock();
 		lxc_monitor_send_state(name, state, handler->lxcpath);
 		return 0;
@@ -373,12 +373,12 @@ static int lxc_serve_state_clients(const char *name,
 		client = cur->elem;
 
 		if (!client->states[state]) {
-			TRACE("state %s not registered for state client %d",
+			TRACE("State %s not registered for state client %d",
 			      lxc_state2str(state), client->clientfd);
 			continue;
 		}
 
-		TRACE("sending state %s to state client %d",
+		TRACE("Sending state %s to state client %d",
 		      lxc_state2str(state), client->clientfd);
 
 	again:
@@ -389,7 +389,8 @@ static int lxc_serve_state_clients(const char *name,
 				goto again;
 			}
 
-			ERROR("failed to send message to client");
+			ERROR("%s - Failed to send message to client",
+			      strerror(errno));
 		}
 
 		/* kick client from list */
@@ -573,12 +574,12 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 		      handler->state_socket_pair[1]);
 	}
 
-	if (lxc_cmd_init(name, handler, lxcpath)) {
-		ERROR("failed to set up command socket");
+	handler->conf->maincmd_fd = lxc_cmd_init(name, lxcpath, "command");
+	if (handler->conf->maincmd_fd < 0) {
+		ERROR("Failed to set up command socket");
 		goto on_error;
 	}
-
-	TRACE("unix domain socket %d for command server is ready",
+	TRACE("Unix domain socket %d for command server is ready",
 	      handler->conf->maincmd_fd);
 
 	return handler;
