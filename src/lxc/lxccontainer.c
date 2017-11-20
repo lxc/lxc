@@ -777,6 +777,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		NULL,
 	};
 	char **init_cmd = NULL;
+	int keepfds[3] = {-1, -1, -1};
 
 	/* container does exist */
 	if (!c)
@@ -897,11 +898,11 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			exit(EXIT_FAILURE);
 		}
 
-		ret = lxc_check_inherited(conf, true,
-				          (int[]){handler->conf->maincmd_fd,
-					          handler->state_socket_pair[0],
-					          handler->state_socket_pair[1]},
-				    3);
+		keepfds[0] = handler->conf->maincmd_fd;
+		keepfds[1] = handler->state_socket_pair[0];
+		keepfds[2] = handler->state_socket_pair[1];
+		ret = lxc_check_inherited(conf, true, keepfds,
+					  sizeof(keepfds) / sizeof(keepfds[0]));
 		if (ret < 0)
 			exit(EXIT_FAILURE);
 
@@ -986,11 +987,11 @@ reboot:
 		}
 	}
 
-	ret = lxc_check_inherited(conf, daemonize,
-				  (int[]){handler->conf->maincmd_fd,
-					  handler->state_socket_pair[0],
-					  handler->state_socket_pair[1]},
-				  3);
+	keepfds[0] = handler->conf->maincmd_fd;
+	keepfds[1] = handler->state_socket_pair[0];
+	keepfds[2] = handler->state_socket_pair[1];
+	ret = lxc_check_inherited(conf, daemonize, keepfds,
+				  sizeof(keepfds) / sizeof(keepfds[0]));
 	if (ret < 0) {
 		lxc_free_handler(handler);
 		ret = 1;
@@ -1792,7 +1793,7 @@ static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 	if (c->lxc_conf && c->lxc_conf->haltsignal)
 		haltsignal = c->lxc_conf->haltsignal;
 
-	INFO("Using signal number '%d' as halt signal.", haltsignal);
+	INFO("Using signal number '%d' as halt signal", haltsignal);
 
 	/* Add a new state client before sending the shutdown signal so that we
 	 * don't miss a state.
@@ -1803,13 +1804,14 @@ static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 
 	/* Send shutdown signal to container. */
 	if (kill(pid, haltsignal) < 0)
-		WARN("Could not send signal %d to pid %d.", haltsignal, pid);
+		WARN("Could not send signal %d to pid %d", haltsignal, pid);
 
 	/* Retrieve the state. */
 	if (state_client_fd >= 0) {
 		int state;
 		state = lxc_cmd_sock_rcv_state(state_client_fd, timeout);
 		close(state_client_fd);
+		TRACE("Received state \"%s\"", lxc_state2str(state));
 		if (state != STOPPED)
 			return false;
 		retv = true;
