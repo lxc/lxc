@@ -79,6 +79,6 @@ extern int lxc_add_state_client(int state_client_fd,
  *                                     >= 0 client fd
  */
 extern int lxc_cmd_connect(const char *name, const char *lxcpath,
-			   const char *hashed_sock_name);
+			   const char *hashed_sock_name, const char *suffix);
 
 #endif /* __LXC_COMMANDS_UTILS_H */

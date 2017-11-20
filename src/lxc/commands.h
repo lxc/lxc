@@ -110,8 +110,7 @@ extern int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 struct lxc_epoll_descr;
 struct lxc_handler;
 
-extern int lxc_cmd_init(const char *name, struct lxc_handler *handler,
-			    const char *lxcpath);
+extern int lxc_cmd_init(const char *name, const char *lxcpath, const char *suffix);
 extern int lxc_cmd_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
 				    struct lxc_handler *handler);
 extern int lxc_try_cmd(const char *name, const char *lxcpath);
