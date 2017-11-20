@@ -229,7 +229,7 @@ static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
 	int client_fd;
 	ssize_t ret = -1;
 
-	client_fd = lxc_cmd_connect(name, lxcpath, hashed_sock_name);
+	client_fd = lxc_cmd_connect(name, lxcpath, hashed_sock_name, "command");
 	if (client_fd < 0) {
 		if (client_fd == -ECONNREFUSED)
 			return -ECONNREFUSED;
@@ -1152,11 +1152,32 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 }
 
 static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
-			       struct lxc_epoll_descr *descr)
+			       struct lxc_epoll_descr *descr,
+			       const lxc_cmd_t cmd)
 {
+	struct state_client *client;
+	struct lxc_list *cur, *next;
+
 	lxc_console_free(handler->conf, fd);
 	lxc_mainloop_del_handler(descr, fd);
-	close(fd);
+	if (cmd != LXC_CMD_ADD_STATE_CLIENT) {
+		close(fd);
+		return;
+	}
+
+	process_lock();
+	lxc_list_for_each_safe(cur, &handler->state_clients, next) {
+		client = cur->elem;
+		if (client->clientfd != fd)
+			continue;
+
+		/* kick client from list */
+		close(client->clientfd);
+		lxc_list_del(cur);
+		free(cur->elem);
+		free(cur);
+	}
+	process_unlock();
 }
 
 static int lxc_cmd_handler(int fd, uint32_t events, void *data,
@@ -1242,7 +1263,7 @@ out:
 	return ret;
 
 out_close:
-	lxc_cmd_fd_cleanup(fd, handler, descr);
+	lxc_cmd_fd_cleanup(fd, handler, descr, req.cmd);
 	goto out;
 }
 
@@ -1284,8 +1305,7 @@ out_close:
 	goto out;
 }
 
-int lxc_cmd_init(const char *name, struct lxc_handler *handler,
-		 const char *lxcpath)
+int lxc_cmd_init(const char *name, const char *lxcpath, const char *suffix)
 {
 	int fd, len, ret;
 	char path[sizeof(((struct sockaddr_un *)0)->sun_path)] = {0};
@@ -1297,9 +1317,10 @@ int lxc_cmd_init(const char *name, struct lxc_handler *handler,
 	 * because we print the sockname out sometimes.
 	 */
 	len = sizeof(path) - 2;
-	ret = lxc_make_abstract_socket_name(offset, len, name, lxcpath, NULL, "command");
+	ret = lxc_make_abstract_socket_name(offset, len, name, lxcpath, NULL, suffix);
 	if (ret < 0)
 		return -1;
+	TRACE("Creating abstract unix socket \"%s\"", offset);
 
 	fd = lxc_abstract_unix_open(path, SOCK_STREAM, 0);
 	if (fd < 0) {
@@ -1317,8 +1338,7 @@ int lxc_cmd_init(const char *name, struct lxc_handler *handler,
 		return -1;
 	}
 
-	handler->conf->maincmd_fd = fd;
-	return 0;
+	return fd;
 }
 
 int lxc_cmd_mainloop_add(const char *name, struct lxc_epoll_descr *descr,

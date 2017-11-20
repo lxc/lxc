@@ -68,16 +68,14 @@ again:
 			goto again;
 		}
 
-		ERROR("failed to receive message: %s", strerror(errno));
+		ERROR("Failed to receive message: %s", strerror(errno));
 		return -1;
 	}
 
-	if (ret == 0) {
-		ERROR("length of message was 0");
+	if (ret < 0)
 		return -1;
-	}
 
-	TRACE("received state %s from state client %d",
+	TRACE("Received state %s from state client %d",
 	      lxc_state2str(msg.value), state_client_fd);
 
 	return msg.value;
@@ -163,7 +161,7 @@ int lxc_make_abstract_socket_name(char *path, int len, const char *lxcname,
 }
 
 int lxc_cmd_connect(const char *name, const char *lxcpath,
-		    const char *hashed_sock_name)
+		    const char *hashed_sock_name, const char *suffix)
 {
 	int ret, client_fd;
 	char path[sizeof(((struct sockaddr_un *)0)->sun_path)] = {0};
@@ -176,7 +174,7 @@ int lxc_cmd_connect(const char *name, const char *lxcpath,
 	 */
 	size_t len = sizeof(path) - 2;
 	ret = lxc_make_abstract_socket_name(offset, len, name, lxcpath,
-					    hashed_sock_name, "command");
+					    hashed_sock_name, suffix);
 	if (ret < 0)
 		return -1;
 
