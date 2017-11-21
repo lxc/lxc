@@ -193,7 +193,7 @@ int lxc_cmd_connect(const char *name, const char *lxcpath,
 int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
 			 lxc_state_t states[MAX_STATE])
 {
-	struct state_client *newclient;
+	struct lxc_state_client *newclient;
 	struct lxc_list *tmplist;
 
 	newclient = malloc(sizeof(*newclient));
@@ -212,7 +212,7 @@ int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
 
 	process_lock();
 	lxc_list_add_elem(tmplist, newclient);
-	lxc_list_add_tail(&handler->state_clients, tmplist);
+	lxc_list_add_tail(&handler->conf->state_clients, tmplist);
 	process_unlock();
 
 	TRACE("added state client %d to state client list", state_client_fd);

@@ -909,8 +909,8 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 	if (state < 0) {
 		TRACE("%s - Failed to retrieve state of container", strerror(errno));
 		return -1;
-	} else if (states[state]) {
-		TRACE("Container is %s state", lxc_state2str(state));
+	} else if (states[state] == 1) {
+		TRACE("Container is in %s state", lxc_state2str(state));
 		return state;
 	}
 
@@ -1125,7 +1125,7 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 			       struct lxc_epoll_descr *descr,
 			       const lxc_cmd_t cmd)
 {
-	struct state_client *client;
+	struct lxc_state_client *client;
 	struct lxc_list *cur, *next;
 
 	lxc_console_free(handler->conf, fd);
@@ -1136,7 +1136,7 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 	}
 
 	process_lock();
-	lxc_list_for_each_safe(cur, &handler->state_clients, next) {
+	lxc_list_for_each_safe(cur, &handler->conf->state_clients, next) {
 		client = cur->elem;
 		if (client->clientfd != fd)
 			continue;

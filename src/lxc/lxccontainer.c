@@ -1793,6 +1793,73 @@ static bool do_lxcapi_reboot(struct lxc_container *c)
 
 WRAP_API(bool, lxcapi_reboot)
 
+static bool do_lxcapi_reboot2(struct lxc_container *c, int timeout)
+{
+	int killret, ret;
+	pid_t pid;
+	int rebootsignal = SIGINT, state_client_fd = -1;
+	lxc_state_t states[MAX_STATE] = {0};
+
+	if (!c)
+		return false;
+
+	if (!do_lxcapi_is_running(c))
+		return true;
+
+	pid = do_lxcapi_init_pid(c);
+	if (pid <= 0)
+		return true;
+
+	if (c->lxc_conf && c->lxc_conf->rebootsignal)
+		rebootsignal = c->lxc_conf->rebootsignal;
+
+	/* Add a new state client before sending the shutdown signal so that we
+	 * don't miss a state.
+	 */
+	if (timeout != 0) {
+		states[RUNNING] = 2;
+		ret = lxc_cmd_add_state_client(c->name, c->config_path, states,
+					       &state_client_fd);
+		if (ret < 0)
+			return false;
+
+		if (state_client_fd < 0)
+			return false;
+
+		if (ret == RUNNING)
+			return true;
+
+		if (ret < MAX_STATE)
+			return false;
+	}
+
+	/* Send reboot signal to container. */
+	killret = kill(pid, rebootsignal);
+	if (killret < 0) {
+		WARN("Could not send signal %d to pid %d", rebootsignal, pid);
+		if (state_client_fd >= 0)
+			close(state_client_fd);
+		return false;
+	}
+	TRACE("Sent signal %d to pid %d", rebootsignal, pid);
+
+	if (timeout == 0)
+		return true;
+
+	ret = lxc_cmd_sock_rcv_state(state_client_fd, timeout);
+	close(state_client_fd);
+	if (ret < 0)
+		return false;
+
+	TRACE("Received state \"%s\"", lxc_state2str(ret));
+	if (ret != RUNNING)
+		return false;
+
+	return true;
+}
+
+WRAP_API_1(bool, lxcapi_reboot2, int)
+
 static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 {
 	int ret, state_client_fd = -1;
@@ -4595,6 +4662,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->createl = lxcapi_createl;
 	c->shutdown = lxcapi_shutdown;
 	c->reboot = lxcapi_reboot;
+	c->reboot2 = lxcapi_reboot2;
 	c->clear_config = lxcapi_clear_config;
 	c->clear_config_item = lxcapi_clear_config_item;
 	c->get_config_item = lxcapi_get_config_item;

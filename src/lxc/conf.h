@@ -248,6 +248,11 @@ enum lxchooks {
 
 extern char *lxchook_names[NUM_LXC_HOOKS];
 
+struct lxc_state_client {
+	int clientfd;
+	lxc_state_t states[MAX_STATE];
+};
+
 struct lxc_conf {
 	int is_execute;
 	char *fstab;
@@ -363,6 +368,8 @@ struct lxc_conf {
 	/* init working directory */
        char* init_cwd;
 
+	/* A list of clients registered to be informed about a container state. */
+	struct lxc_list state_clients;
 };
 
 int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,

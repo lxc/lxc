@@ -846,6 +846,17 @@ struct lxc_container {
 	 * \return \c 0 on success, nonzero on failure.
 	 */
 	int (*console_log)(struct lxc_container *c, struct lxc_console_log *log);
+
+	/*!
+	 * \brief Request the container reboot by sending it \c SIGINT.
+	 *
+	 * \param c Container.
+	 * \param timeout Seconds to wait before returning false.
+	 *  (-1 to wait forever, 0 to avoid waiting).
+	 *
+	 * \return \c true if the container was rebooted successfully, else \c false.
+	 */
+	bool (*reboot2)(struct lxc_container *c, int timeout);
 };
 
 /*!

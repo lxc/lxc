@@ -85,9 +85,6 @@ struct lxc_handler {
 	/* The container's in-memory configuration. */
 	struct lxc_conf *conf;
 
-	/* A list of clients registered to be informed about a container state. */
-	struct lxc_list state_clients;
-
 	/* A set of operations to be performed at various stages of the
 	 * container's life.
 	 */
@@ -108,11 +105,6 @@ struct lxc_handler {
 struct lxc_operations {
 	int (*start)(struct lxc_handler *, void *);
 	int (*post_start)(struct lxc_handler *, void *);
-};
-
-struct state_client {
-	int clientfd;
-	lxc_state_t states[MAX_STATE];
 };
 
 extern int lxc_poll(const char *name, struct lxc_handler *handler);
