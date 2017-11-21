@@ -105,6 +105,21 @@ getep() {
 	return
 }
 
+# get environment from oci image.
+getenv() {
+	if [ "$#" -eq 0 ]; then
+		return
+	fi
+
+	configpath="$1"
+
+	cat "${configpath}" > /tmp/config
+	env=`cat "${configpath}" | jq -c '.config.Env[]'`
+
+	echo "${env}"
+	return
+}
+
 usage() {
     cat <<EOF
 LXC container template for OCI images
@@ -212,6 +227,11 @@ LXC_CONF_FILE="${LXC_PATH}/config"
 entrypoint=$(getep ${OCI_CONF_FILE})
 echo "lxc.execute.cmd = '${entrypoint}'" >> "${LXC_CONF_FILE}"
 echo "lxc.mount.auto = proc:mixed sys:mixed cgroup:mixed" >> "${LXC_CONF_FILE}"
+
+environment=$(getenv ${OCI_CONF_FILE})
+while read -r line; do
+    echo "lxc.environment = ${line}" >> "${LXC_CONF_FILE}"
+done <<< "${environment}"
 
 echo "lxc.uts.name = ${LXC_NAME}" >> "${LXC_CONF_FILE}"
 # set the hostname
