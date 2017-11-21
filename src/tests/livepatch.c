@@ -203,13 +203,10 @@ int main(int argc, char *argv[])
 	}
 	free(value);
 
-	if (!c->reboot(c)) {
+	if (!c->reboot2(c, -1)) {
 		lxc_error("%s", "Failed to create container \"livepatch\"");
 		goto on_error_stop;
 	}
-
-	/* Busybox shouldn't take long to reboot. Sleep for 5s. */
-	sleep(5);
 
 	if (!c->is_running(c)) {
 		lxc_error("%s\n", "Failed to reboot container \"livepatch\"");

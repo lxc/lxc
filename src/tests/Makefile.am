@@ -20,6 +20,7 @@ lxc_test_snapshot_SOURCES = snapshot.c
 lxc_test_concurrent_SOURCES = concurrent.c
 lxc_test_may_control_SOURCES = may_control.c
 lxc_test_reboot_SOURCES = reboot.c
+lxc_test_api_reboot_SOURCES = api_reboot.c
 lxc_test_list_SOURCES = list.c
 lxc_test_attach_SOURCES = attach.c
 lxc_test_device_add_remove_SOURCES = device_add_remove.c
@@ -57,7 +58,8 @@ bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-snapshot lxc-test-concurrent lxc-test-may-control \
 	lxc-test-reboot lxc-test-list lxc-test-attach lxc-test-device-add-remove \
 	lxc-test-apparmor lxc-test-utils lxc-test-parse-config-file \
-	lxc-test-config-jump-table lxc-test-shortlived lxc-test-livepatch
+	lxc-test-config-jump-table lxc-test-shortlived lxc-test-livepatch \
+	lxc-test-api-reboot
 
 bin_SCRIPTS = lxc-test-automount \
 	      lxc-test-autostart \
