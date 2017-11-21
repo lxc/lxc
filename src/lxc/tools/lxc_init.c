@@ -201,6 +201,9 @@ int main(int argc, char *argv[])
 		if (sid < 0)
 			DEBUG("Failed to make child session leader");
 
+                if (ioctl(STDIN_FILENO, TIOCSCTTY, 0) < 0)
+                        DEBUG("Failed to set controlling terminal");
+
 		NOTICE("Exec'ing \"%s\"", my_args.argv[0]);
 
 		ret = execvp(my_args.argv[0], my_args.argv);
