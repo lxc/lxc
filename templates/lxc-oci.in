@@ -204,7 +204,11 @@ LXC_CONF_FILE="${LXC_PATH}/config"
 echo "lxc.execute.cmd = '${entrypoint}'" >> "${LXC_CONF_FILE}"
 echo "lxc.mount.auto = proc:mixed sys:mixed cgroup:mixed" >> "${LXC_CONF_FILE}"
 
-echo "lxc.uts.name = ${LXC_NAME}" >> ${LXC_PATH}/config
+echo "lxc.uts.name = ${LXC_NAME}" >> "${LXC_CONF_FILE}"
+# set the hostname
+cat <<EOF > ${LXC_ROOTFS}/etc/hostname
+${LXC_NAME}
+EOF
 
 if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
     chown $LXC_MAPPED_UID $LXC_PATH/config $LXC_PATH/fstab >/dev/null 2>&1 || true
