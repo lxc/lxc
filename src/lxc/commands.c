@@ -850,24 +850,6 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 		return state;
 	}
 
-	if ((state == STARTING) && !states[RUNNING] && !states[STOPPING] && !states[STOPPED]) {
-		TRACE("Container is in %s state and caller requested to be "
-		      "informed about a previous state", lxc_state2str(state));
-		return state;
-	} else if ((state == RUNNING) && !states[STOPPING] && !states[STOPPED]) {
-		TRACE("Container is in %s state and caller requested to be "
-		      "informed about a previous state", lxc_state2str(state));
-		return state;
-	} else if ((state == STOPPING) && !states[STOPPED]) {
-		TRACE("Container is in %s state and caller requested to be "
-		      "informed about a previous state", lxc_state2str(state));
-		return state;
-	} else if ((state == STOPPED) || (state == ABORTING)) {
-		TRACE("Container is in %s state and caller requested to be "
-		      "informed about a previous state", lxc_state2str(state));
-		return state;
-	}
-
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0) {
 		ERROR("%s - Failed to execute command", strerror(errno));
@@ -877,7 +859,6 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 	/* We should now be guaranteed to get an answer from the state sending
 	 * function.
 	 */
-
 	if (cmd.rsp.ret < 0) {
 		ERROR("Failed to receive socket fd");
 		return -1;
