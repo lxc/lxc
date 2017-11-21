@@ -210,6 +210,12 @@ cat <<EOF > ${LXC_ROOTFS}/etc/hostname
 ${LXC_NAME}
 EOF
 
+# set minimal hosts
+cat <<EOF > ${LXC_ROOTFS}/etc/hosts
+127.0.0.1   localhost
+127.0.1.1   ${LXC_NAME}
+EOF
+
 if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
     chown $LXC_MAPPED_UID $LXC_PATH/config $LXC_PATH/fstab >/dev/null 2>&1 || true
 fi
