@@ -190,7 +190,11 @@ skopeo copy "${OCI_URL}" "oci:${DOWNLOAD_TEMP}:latest"
 # Unpack the rootfs
 echo "Unpacking the rootfs"
 
-umoci unpack --image "${DOWNLOAD_TEMP}:latest" "${LXC_ROOTFS}.tmp"
+umoci_args=("")
+if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
+    umoci_args+=(--rootless)
+fi
+umoci unpack ${umoci_args[@]} --image "${DOWNLOAD_TEMP}:latest" "${LXC_ROOTFS}.tmp"
 rmdir "${LXC_ROOTFS}"
 mv "${LXC_ROOTFS}.tmp/rootfs" "${LXC_ROOTFS}"
 entrypoint=$(getep ${DOWNLOAD_TEMP} latest)
