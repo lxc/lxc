@@ -34,6 +34,8 @@ for bin in skopeo umoci jq; do
     fi
 done
 
+LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
+
 # Some useful functions
 cleanup() {
     if [ -d "$DOWNLOAD_TEMP" ]; then
@@ -232,6 +234,14 @@ environment=$(getenv ${OCI_CONF_FILE})
 while read -r line; do
     echo "lxc.environment = ${line}" >> "${LXC_CONF_FILE}"
 done <<< "${environment}"
+
+if [ -e "${LXC_TEMPLATE_CONFIG}/common.conf" ]; then
+    echo "lxc.include = ${LXC_TEMPLATE_CONFIG}/common.conf" >> "${LXC_CONF_FILE}"
+fi
+
+if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ] && [ -e "${LXC_TEMPLATE_CONFIG}/userns.conf" ]; then
+    echo "lxc.include = ${LXC_TEMPLATE_CONFIG}/userns.conf" >> "${LXC_CONF_FILE}"
+fi
 
 echo "lxc.uts.name = ${LXC_NAME}" >> "${LXC_CONF_FILE}"
 # set the hostname
