@@ -104,7 +104,7 @@ fi
 trap cleanup EXIT SIGHUP SIGINT SIGTERM
 set -eu
 
-deluser $TUSER && rm -Rf $HDIR || true
+id $TUSER &> /dev/null && deluser -q --remove-home $TUSER
 useradd $TUSER
 
 mkdir -p $HDIR
