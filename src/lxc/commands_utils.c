@@ -33,6 +33,7 @@
 #include "commands_utils.h"
 #include "initutils.h"
 #include "log.h"
+#include "lxclock.h"
 #include "monitor.h"
 #include "state.h"
 #include "utils.h"
@@ -209,8 +210,10 @@ int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
 		return -ENOMEM;
 	}
 
+	process_lock();
 	lxc_list_add_elem(tmplist, newclient);
 	lxc_list_add_tail(&handler->state_clients, tmplist);
+	process_unlock();
 
 	TRACE("added state client %d to state client list", state_client_fd);
 
