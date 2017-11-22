@@ -351,14 +351,10 @@ static int lxc_serve_state_clients(const char *name,
 	struct state_client *client;
 	struct lxc_msg msg = {.type = lxc_msg_state, .value = state};
 
-	process_lock();
-
-	/* Only set state under process lock held so that we don't cause
-	*  lxc_cmd_add_state_client() to miss a state.
-	 */
 	handler->state = state;
 	TRACE("Set container state to %s", lxc_state2str(state));
 
+	process_lock();
 	if (lxc_list_empty(&handler->state_clients)) {
 		TRACE("No state clients registered");
 		process_unlock();
