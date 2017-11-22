@@ -904,44 +904,35 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 	    },
 	};
 
-	/* Lock the whole lxc_cmd_add_state_client_callback() call to ensure
-	*  that lxc_set_state() doesn't cause us to miss a state.
-	 */
-	process_lock();
 	/* Check if already in requested state. */
 	state = lxc_getstate(name, lxcpath);
 	if (state < 0) {
-		process_unlock();
 		TRACE("%s - Failed to retrieve state of container", strerror(errno));
 		return -1;
 	} else if (states[state]) {
-		process_unlock();
 		TRACE("Container is %s state", lxc_state2str(state));
 		return state;
 	}
 
 	if ((state == STARTING) && !states[RUNNING] && !states[STOPPING] && !states[STOPPED]) {
-		process_unlock();
 		TRACE("Container is in %s state and caller requested to be "
 		      "informed about a previous state", lxc_state2str(state));
 		return state;
 	} else if ((state == RUNNING) && !states[STOPPING] && !states[STOPPED]) {
-		process_unlock();
 		TRACE("Container is in %s state and caller requested to be "
 		      "informed about a previous state", lxc_state2str(state));
 		return state;
 	} else if ((state == STOPPING) && !states[STOPPED]) {
-		process_unlock();
 		TRACE("Container is in %s state and caller requested to be "
 		      "informed about a previous state", lxc_state2str(state));
 		return state;
 	} else if ((state == STOPPED) || (state == ABORTING)) {
-		process_unlock();
 		TRACE("Container is in %s state and caller requested to be "
 		      "informed about a previous state", lxc_state2str(state));
 		return state;
 	}
 
+	process_lock();
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	process_unlock();
 	if (ret < 0) {
