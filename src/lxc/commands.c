@@ -868,9 +868,7 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 		return state;
 	}
 
-	process_lock();
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
-	process_unlock();
 	if (ret < 0) {
 		ERROR("%s - Failed to execute command", strerror(errno));
 		return -1;
