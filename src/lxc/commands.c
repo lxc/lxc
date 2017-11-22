@@ -973,6 +973,10 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 		lxc_list_del(cur);
 		free(cur->elem);
 		free(cur);
+		/* No need to walk the whole list. If we found the state client
+		 * fd there can't be a second one.
+		 */
+		break;
 	}
 	process_unlock();
 }
