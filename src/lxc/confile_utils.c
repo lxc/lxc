@@ -567,7 +567,8 @@ bool lxc_config_net_hwaddr(const char *line)
 			return false;
 		}
 		/* strlen("hwaddr") = 6 */
-		strncpy(copy + 8, p + 1, 6);
+		if (strlen(p + 1) >= 6)
+			 memmove(copy + 8, p + 1, 6);
 		copy[8 + 6] = '\0';
 	}
 	if (strncmp(copy, "lxc.net.hwaddr", 14) == 0) {
@@ -591,7 +592,8 @@ bool lxc_config_net_hwaddr(const char *line)
 			return false;
 		}
 		/* strlen("hwaddr") = 6 */
-		strncpy(copy + 12, p + 1, 6);
+		if (strlen(p + 1) >= 6)
+			memmove(copy + 12, p + 1, 6);
 		copy[12 + 6] = '\0';
 	}
 	if (strncmp(copy, "lxc.network.hwaddr", 18) == 0) {
