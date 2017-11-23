@@ -54,17 +54,13 @@ in_userns() {
     echo yes
 }
 
-# get entrypoint from oci image.  Use sh if unspecified
-# TODO - we can get other things like resource limits here
-getep() {
+getconfigpath() {
 	basedir="$1"
 	q="$2"
-
 
 	digest=`cat "${basedir}/index.json" | jq --arg q "$q" '.manifests[] | if .annotations."org.opencontainers.image.ref.name" == $q then .digest else null end' | sed -e 's/"//g'`
 	if [ -z "${digest}" ]; then
 		echo "$q not found in index.json" >&2
-		echo "/bin/sh"
 		return
 	fi
 
@@ -73,13 +69,25 @@ getep() {
 	cdigest=`cat "${basedir}/blobs/sha256/${d}" | jq '.config.digest' | sed -e 's/"//g'`
 	if [ -z "${cdigest}" ]; then
 		echo "container config not found" >&2
-		echo "/bin/sh"
 		return
 	fi
 
 	d2=${cdigest:7}
-	ep=`cat "${basedir}/blobs/sha256/${d2}" | jq -c '.config.Entrypoint' | sed -e 's/^\[//; s/\]$//; s/","/" "/'`
-	cmd=`cat "${basedir}/blobs/sha256/${d2}" | jq -c '.config.Cmd' | sed -e 's/^\[//; s/\]$//; s/","/" "/'`
+	echo "${basedir}/blobs/sha256/${d2}"
+	return
+}
+
+# get entrypoint from oci image.  Use sh if unspecified
+getep() {
+	if [ "$#" -eq 0 ]; then
+		echo "/bin/sh"
+		return
+	fi
+
+	configpath="$1"
+
+	ep=`cat "${configpath}" | jq -c '.config.Entrypoint' | sed -e 's/^\[//; s/\]$//; s/","/" "/'`
+	cmd=`cat "${configpath}" | jq -c '.config.Cmd' | sed -e 's/^\[//; s/\]$//; s/","/" "/'`
 	if [ "${ep}" = "null" ]; then
 		ep="${cmd}"
 		if [ "${ep}" = "null" ]; then
@@ -197,10 +205,11 @@ fi
 umoci unpack ${umoci_args[@]} --image "${DOWNLOAD_TEMP}:latest" "${LXC_ROOTFS}.tmp"
 rmdir "${LXC_ROOTFS}"
 mv "${LXC_ROOTFS}.tmp/rootfs" "${LXC_ROOTFS}"
-entrypoint=$(getep ${DOWNLOAD_TEMP} latest)
 rm -rf "${LXC_ROOTFS}.tmp"
 
+OCI_CONF_FILE=$(getconfigpath ${DOWNLOAD_TEMP} latest)
 LXC_CONF_FILE="${LXC_PATH}/config"
+entrypoint=$(getep ${OCI_CONF_FILE})
 echo "lxc.execute.cmd = '${entrypoint}'" >> "${LXC_CONF_FILE}"
 echo "lxc.mount.auto = proc:mixed sys:mixed cgroup:mixed" >> "${LXC_CONF_FILE}"
 
