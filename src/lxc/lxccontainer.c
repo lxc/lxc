@@ -4408,11 +4408,10 @@ static int do_lxcapi_migrate(struct lxc_container *c, unsigned int cmd,
 	 * to initialize.
 	 */
 	if (size < sizeof(*opts)) {
-		valid_opts = malloc(sizeof(*opts));
+		valid_opts = calloc(1, sizeof(*opts));
 		if (!valid_opts)
 			return -ENOMEM;
 
-		memset(valid_opts, 0, sizeof(*opts));
 		memcpy(valid_opts, opts, size);
 	}
 
@@ -4516,12 +4515,11 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	if (!name)
 		return NULL;
 
-	c = malloc(sizeof(*c));
+	c = calloc(1, sizeof(*c));
 	if (!c) {
 		fprintf(stderr, "failed to malloc lxc_container\n");
 		return NULL;
 	}
-	memset(c, 0, sizeof(*c));
 
 	if (configpath)
 		c->config_path = strdup(configpath);
