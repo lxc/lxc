@@ -55,6 +55,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">-p, --newpath <replaceable>newpath</replaceable></arg>
       <arg choice="opt">-B, --backingstorage <replaceable>backingstorage</replaceable></arg>
       <arg choice="opt">-s, --snapshot</arg>
+      <arg choice="opt">-a, --allowrunning</arg>
       <arg choice="opt">-K, --keepname</arg>
       <arg choice="opt">-D, --keepdata</arg>
       <arg choice="opt">-M, --keepmac</arg>
@@ -70,6 +71,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="req">-e, --ephemeral</arg>
       <arg choice="opt">-B, --backingstorage <replaceable>backingstorage</replaceable></arg>
       <arg choice="opt">-s, --snapshot</arg>
+      <arg choice="opt">-a, --allowrunning</arg>
       <arg choice="opt">-K, --keepname</arg>
       <arg choice="opt">-D, --keepdata</arg>
       <arg choice="opt">-M, --keepmac</arg>
@@ -205,6 +207,15 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             <para> Create a snapshot of the original container. The backing
             storage for the copy must support snapshots. This currently includes
             btrfs, lvm, overlay, and zfs. </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-a,--allowrunning </option> </term>
+	   <listitem>
+	    <para> Allow the creation of a Snapshot of an already running container.
+	    This may cause data corruption or data loss depending on the used
+	    filesystem and applications. Use with care. </para>
 	   </listitem>
 	  </varlistentry>
 
