@@ -2115,7 +2115,10 @@ static int parse_line(char *buffer, void *data)
 			 */
 			fprintf(stderr, "The configuration file contains "
 					"legacy configuration keys.\nPlease "
-					"update your configuration file!\n");
+					"update your configuration file!\nThe "
+					"update script lxc-update-config -c "
+					"<path-to-config> can be used for "
+					"this.\n");
 		}
 	}
 	/* [END]: REMOVE IN LXC 3.0 */

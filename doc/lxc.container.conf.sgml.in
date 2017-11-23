@@ -1278,6 +1278,65 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     </refsect2>
 
     <refsect2>
+      <title>Namespace Inheritance</title>
+      <para>
+        The capabilities can be dropped in the container if this one
+        is run as root.
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.namespace.[namespace identifier]</option>
+          </term>
+          <listitem>
+            <para>
+            Specify a namespace to inherit from another container or process.
+            The <option>[namespace identifier]</option> suffix needs to be
+            replaced with one of the namespaces that appear in the
+            <filename>/proc/PID/ns</filename> directory.
+            </para>
+
+            <para>
+            To inherit the namespace from another process set the
+            <option>lxc.namespace.[namespace identifier]</option> to the PID of
+            the process, e.g. <option>lxc.namespace.net=42</option>.
+            </para>
+
+            <para>
+            To inherit the namespace from another container set the 
+            <option>lxc.namespace.[namespace identifier]</option> to the name of
+            the container, e.g. <option>lxc.namespace.pid=c3</option>.
+            </para>
+
+            <para>
+            To inherit the namespace from another container located in a
+            different path than the standard liblxc path set the
+            <option>lxc.namespace.[namespace identifier]</option> to the full
+            path to the container, e.g.
+            <option>lxc.namespace.user=/opt/c3</option>.
+            </para>
+
+            <para>
+            In order to inherit namespaces the caller needs to have sufficient
+            privilege over the process or container.
+            </para>
+
+            <para>
+            Note that sharing pid namespaces between system containers will
+            likely not work with most init systems.
+            </para>
+
+            <para>
+            Note that if two processes are in different user namespaces and one
+            process wants to inherit the other's network namespace it usually
+            needs to inherit the user namespace as well.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Resource limits</title>
       <para>
         The soft and hard resource limits for the container can be changed.
