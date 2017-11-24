@@ -358,10 +358,10 @@ static int lxc_serve_state_clients(const char *name,
 	struct lxc_state_client *client;
 	struct lxc_msg msg = {.type = lxc_msg_state, .value = state};
 
+	process_lock();
 	handler->state = state;
 	TRACE("Set container state to %s", lxc_state2str(state));
 
-	process_lock();
 	if (lxc_list_empty(&handler->conf->state_clients)) {
 		TRACE("No state clients registered");
 		process_unlock();
