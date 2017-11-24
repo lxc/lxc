@@ -1732,10 +1732,9 @@ WRAP_API(bool, lxcapi_reboot)
 
 static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 {
-	int ret, state_client_fd = -1;
-	bool retv = false;
+	int killret, ret;
 	pid_t pid;
-	int haltsignal = SIGPWR;
+	int haltsignal = SIGPWR, state_client_fd = -1;
 	lxc_state_t states[MAX_STATE] = {0};
 
 	if (!c)
@@ -1743,6 +1742,7 @@ static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 
 	if (!do_lxcapi_is_running(c))
 		return true;
+
 	pid = do_lxcapi_init_pid(c);
 	if (pid <= 0)
 		return true;
@@ -1754,37 +1754,49 @@ static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 	if (c->lxc_conf && c->lxc_conf->haltsignal)
 		haltsignal = c->lxc_conf->haltsignal;
 
-	INFO("Using signal number '%d' as halt signal", haltsignal);
-
 	/* Add a new state client before sending the shutdown signal so that we
 	 * don't miss a state.
 	 */
-	states[STOPPED] = 1;
-	ret = lxc_cmd_add_state_client(c->name, c->config_path, states,
-				       &state_client_fd);
-
-	/* Send shutdown signal to container. */
-	if (kill(pid, haltsignal) < 0)
-		WARN("Could not send signal %d to pid %d", haltsignal, pid);
-
-	/* Retrieve the state. */
-	if (state_client_fd >= 0) {
-		int state;
-		state = lxc_cmd_sock_rcv_state(state_client_fd, timeout);
-		close(state_client_fd);
-		TRACE("Received state \"%s\"", lxc_state2str(state));
-		if (state != STOPPED)
+	if (timeout != 0) {
+		states[STOPPED] = 1;
+		ret = lxc_cmd_add_state_client(c->name, c->config_path, states,
+					       &state_client_fd);
+		if (ret < 0)
 			return false;
-		retv = true;
-	} else if (ret == STOPPED) {
-		TRACE("Container is already stopped");
-		retv = true;
-	} else {
-		TRACE("Received state \"%s\" instead of expected \"STOPPED\"",
-		      lxc_state2str(ret));
+
+		if (state_client_fd < 0)
+			return false;
+
+		if (ret == STOPPED)
+			return true;
+
+		if (ret < MAX_STATE)
+			return false;
 	}
 
-	return retv;
+	/* Send shutdown signal to container. */
+	killret = kill(pid, haltsignal);
+	if (killret < 0) {
+		WARN("Could not send signal %d to pid %d", haltsignal, pid);
+		if (state_client_fd >= 0)
+			close(state_client_fd);
+		return false;
+	}
+	TRACE("Sent signal %d to pid %d", haltsignal, pid);
+
+	if (timeout == 0)
+		return true;
+
+	ret = lxc_cmd_sock_rcv_state(state_client_fd, timeout);
+	close(state_client_fd);
+	if (ret < 0)
+		return false;
+
+	TRACE("Received state \"%s\"", lxc_state2str(ret));
+	if (ret != STOPPED)
+		return false;
+
+	return true;
 }
 
 WRAP_API_1(bool, lxcapi_shutdown, int)
