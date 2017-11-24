@@ -797,10 +797,14 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 
 static int do_start(void *data)
 {
+	int ret;
 	struct lxc_list *iterator;
-	struct lxc_handler *handler = data;
-	int devnull_fd = -1, ret;
 	char path[PATH_MAX];
+	struct lxc_handler *handler = data;
+	bool have_cap_setgid;
+	uid_t new_uid;
+	gid_t new_gid;
+	int devnull_fd = -1;
 
 	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL)) {
 		SYSERROR("Failed to set signal mask.");
@@ -1034,29 +1038,26 @@ static int do_start(void *data)
 	/* The container has been setup. We can now switch to an unprivileged
 	 * uid/gid.
 	 */
-	if (handler->conf->is_execute) {
-		bool have_cap_setgid;
-		uid_t new_uid = handler->conf->init_uid;
-		gid_t new_gid = handler->conf->init_gid;
+	new_uid = handler->conf->init_uid;
+	new_gid = handler->conf->init_gid;
 
-		/* If we are in a new user namespace we already dropped all
-		 * groups when we switched to root in the new user namespace
-		 * further above. Only drop groups if we can, so ensure that we
-		 * have necessary privilege.
-		 */
-		#if HAVE_LIBCAP
-		have_cap_setgid = lxc_proc_cap_is_set(CAP_SETGID, CAP_EFFECTIVE);
-		#else
-		have_cap_setgid = false;
-		#endif
-		if (lxc_list_empty(&handler->conf->id_map) && have_cap_setgid) {
-			if (lxc_setgroups(0, NULL) < 0)
-				goto out_warn_father;
-		}
-
-		if (lxc_switch_uid_gid(new_uid, new_gid) < 0)
+	/* If we are in a new user namespace we already dropped all
+	 * groups when we switched to root in the new user namespace
+	 * further above. Only drop groups if we can, so ensure that we
+	 * have necessary privilege.
+	 */
+	#if HAVE_LIBCAP
+	have_cap_setgid = lxc_proc_cap_is_set(CAP_SETGID, CAP_EFFECTIVE);
+	#else
+	have_cap_setgid = false;
+	#endif
+	if (lxc_list_empty(&handler->conf->id_map) && have_cap_setgid) {
+		if (lxc_setgroups(0, NULL) < 0)
 			goto out_warn_father;
 	}
+
+	if (lxc_switch_uid_gid(new_uid, new_gid) < 0)
+		goto out_warn_father;
 
 	/* After this call, we are in error because this ops should not return
 	 * as it execs.
