@@ -50,6 +50,42 @@
 #define __S_ISTYPE(mode, mask) (((mode)&S_IFMT) == (mask))
 #endif
 
+#if HAVE_LIBCAP
+#ifndef CAP_SETFCAP
+#define CAP_SETFCAP 31
+#endif
+
+#ifndef CAP_MAC_OVERRIDE
+#define CAP_MAC_OVERRIDE 32
+#endif
+
+#ifndef CAP_MAC_ADMIN
+#define CAP_MAC_ADMIN 33
+#endif
+#endif
+
+#ifndef PR_CAPBSET_DROP
+#define PR_CAPBSET_DROP 24
+#endif
+
+#ifndef LO_FLAGS_AUTOCLEAR
+#define LO_FLAGS_AUTOCLEAR 4
+#endif
+
+#ifndef CAP_SETUID
+#define CAP_SETUID 7
+#endif
+
+#ifndef CAP_SETGID
+#define CAP_SETGID 6
+#endif
+
+/* needed for cgroup automount checks, regardless of whether we
+ * have included linux/capability.h or not */
+#ifndef CAP_SYS_ADMIN
+#define CAP_SYS_ADMIN 21
+#endif
+
 /* Useful macros */
 /* Maximum number for 64 bit integer is a string with 21 digits: 2^64 - 1 = 21 */
 #define LXC_NUMSTRLEN64 21

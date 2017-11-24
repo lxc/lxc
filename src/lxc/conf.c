@@ -106,42 +106,6 @@
 
 lxc_log_define(lxc_conf, lxc);
 
-#if HAVE_LIBCAP
-#ifndef CAP_SETFCAP
-#define CAP_SETFCAP 31
-#endif
-
-#ifndef CAP_MAC_OVERRIDE
-#define CAP_MAC_OVERRIDE 32
-#endif
-
-#ifndef CAP_MAC_ADMIN
-#define CAP_MAC_ADMIN 33
-#endif
-#endif
-
-#ifndef PR_CAPBSET_DROP
-#define PR_CAPBSET_DROP 24
-#endif
-
-#ifndef LO_FLAGS_AUTOCLEAR
-#define LO_FLAGS_AUTOCLEAR 4
-#endif
-
-#ifndef CAP_SETUID
-#define CAP_SETUID 7
-#endif
-
-#ifndef CAP_SETGID
-#define CAP_SETGID 6
-#endif
-
-/* needed for cgroup automount checks, regardless of whether we
- * have included linux/capability.h or not */
-#ifndef CAP_SYS_ADMIN
-#define CAP_SYS_ADMIN 21
-#endif
-
 /* Define pivot_root() if missing from the C library */
 #ifndef HAVE_PIVOT_ROOT
 static int pivot_root(const char * new_root, const char * put_old)
