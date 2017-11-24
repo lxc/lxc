@@ -364,6 +364,7 @@ static int lxc_serve_state_clients(const char *name,
 	struct state_client *client;
 	struct lxc_msg msg = {.type = lxc_msg_state, .value = state};
 
+	process_lock();
 	handler->state = state;
 	TRACE("Set container state to %s", lxc_state2str(state));
 

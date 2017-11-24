@@ -193,6 +193,7 @@ int lxc_cmd_connect(const char *name, const char *lxcpath,
 int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
 			 lxc_state_t states[MAX_STATE])
 {
+	int state;
 	struct state_client *newclient;
 	struct lxc_list *tmplist;
 
@@ -211,11 +212,17 @@ int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
 	}
 
 	process_lock();
-	lxc_list_add_elem(tmplist, newclient);
-	lxc_list_add_tail(&handler->state_clients, tmplist);
-	process_unlock();
+	state = handler->state;
+	if (states[state] != 1) {
+		lxc_list_add_elem(tmplist, newclient);
+		lxc_list_add_tail(&handler->state_clients, tmplist);
+		process_unlock();
+	} else {
+		process_unlock();
+		free(newclient);
+		return state;
+	}
 
 	TRACE("added state client %d to state client list", state_client_fd);
-
-	return 0;
+	return MAX_STATE;
 }

@@ -830,9 +830,8 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 			     lxc_state_t states[MAX_STATE],
 			     int *state_client_fd)
 {
-	int stopped;
+	int state, stopped;
 	ssize_t ret;
-	int state = -1;
 	struct lxc_cmd_rr cmd = {
 	    .req = {
 		.cmd     = LXC_CMD_ADD_STATE_CLIENT,
@@ -841,17 +840,10 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 	    },
 	};
 
-	/* Check if already in requested state. */
-	state = lxc_getstate(name, lxcpath);
-	if (state < 0) {
-		TRACE("%s - Failed to retrieve state of container", strerror(errno));
-		return -1;
-	} else if (states[state]) {
-		TRACE("Container is %s state", lxc_state2str(state));
-		return state;
-	}
-
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
+	if (states[STOPPED] != 0 && stopped != 0)
+		return STOPPED;
+
 	if (ret < 0) {
 		ERROR("%s - Failed to execute command", strerror(errno));
 		return -1;
@@ -861,11 +853,19 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 	 * function.
 	 */
 	if (cmd.rsp.ret < 0) {
-		ERROR("Failed to receive socket fd");
+		ERROR("%s - Failed to receive socket fd", strerror(-cmd.rsp.ret));
 		return -1;
 	}
 
+	state = PTR_TO_INT(cmd.rsp.data);
+	if (state < MAX_STATE) {
+		TRACE("Container is already in requested state %s",
+		      lxc_state2str(state));
+		return state;
+	}
+
 	*state_client_fd = cmd.rsp.ret;
+	TRACE("Added state client %d to state client list", cmd.rsp.ret);
 	return MAX_STATE;
 }
 
@@ -884,10 +884,7 @@ static int lxc_cmd_add_state_client_callback(int fd, struct lxc_cmd_req *req,
 		return -1;
 
 	rsp.ret = lxc_add_state_client(fd, handler, (lxc_state_t *)req->data);
-	if (rsp.ret < 0)
-		ERROR("Failed to add state client %d to state client list", fd);
-	else
-		TRACE("Added state client %d to state client list", fd);
+	rsp.data = INT_TO_PTR(rsp.ret);
 
 	return lxc_cmd_rsp_send(fd, &rsp);
 }
