@@ -858,8 +858,8 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 
 	state = PTR_TO_INT(cmd.rsp.data);
 	if (state < MAX_STATE) {
-		TRACE("Container is already in requested state %s",
-		      lxc_state2str(state));
+		TRACE("Container is already in requested state %s", lxc_state2str(state));
+		close(cmd.rsp.ret);
 		return state;
 	}
 
@@ -871,21 +871,35 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 static int lxc_cmd_add_state_client_callback(int fd, struct lxc_cmd_req *req,
 					     struct lxc_handler *handler)
 {
+	int ret;
 	struct lxc_cmd_rsp rsp = {0};
 
 	if (req->datalen < 0)
-		return -1;
+		goto reap_client_fd;
 
 	if (req->datalen > (sizeof(lxc_state_t) * MAX_STATE))
-		return -1;
+		goto reap_client_fd;
 
 	if (!req->data)
-		return -1;
+		goto reap_client_fd;
 
 	rsp.ret = lxc_add_state_client(fd, handler, (lxc_state_t *)req->data);
+	if (rsp.ret < 0)
+		goto reap_client_fd;
+
 	rsp.data = INT_TO_PTR(rsp.ret);
 
-	return lxc_cmd_rsp_send(fd, &rsp);
+	ret = lxc_cmd_rsp_send(fd, &rsp);
+	if (ret < 0)
+		goto reap_client_fd;
+
+	return 0;
+
+reap_client_fd:
+	/* Special indicator to lxc_cmd_handler() to close the fd and do related
+	 * cleanup.
+	 */
+	return 1;
 }
 
 static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,

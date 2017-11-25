@@ -219,6 +219,7 @@ int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
 	} else {
 		process_unlock();
 		free(newclient);
+		free(tmplist);
 		return state;
 	}
 
