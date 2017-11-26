@@ -677,7 +677,7 @@ AC_CHECK_FUNCS([prlimit64],
 	AM_CONDITIONAL(HAVE_PRLIMIT64, false))
 
 # Check for some libraries
-AC_SEARCH_LIBS(sem_open, [rt pthread])
+AX_PTHREAD
 AC_SEARCH_LIBS(clock_gettime, [rt])
 
 # Check for some standard binaries
