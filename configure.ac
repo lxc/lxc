@@ -661,7 +661,7 @@ AC_CHECK_FUNCS([fgetln],
 	AM_CONDITIONAL(HAVE_FGETLN, false))
 
 # Check for some libraries
-AC_SEARCH_LIBS(sem_open, [rt pthread])
+AX_PTHREAD
 AC_SEARCH_LIBS(clock_gettime, [rt])
 
 # Check for some standard binaries
