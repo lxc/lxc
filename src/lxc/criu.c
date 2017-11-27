@@ -564,6 +564,8 @@ static void exec_criu(struct criu_opts *opts)
 			switch (n->type) {
 			case LXC_NET_VETH:
 				veth = n->priv.veth_attr.pair;
+				if (veth[0] == '\0')
+					veth = n->priv.veth_attr.veth1;
 
 				if (n->link[0] != '\0') {
 					if (external_not_veth)
