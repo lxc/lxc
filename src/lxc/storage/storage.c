@@ -213,17 +213,27 @@ static const struct lxc_storage_type bdevs[] = {
 
 static const size_t numbdevs = sizeof(bdevs) / sizeof(struct lxc_storage_type);
 
-static const struct lxc_storage_type *get_storage_by_name(const char *name)
+static const struct lxc_storage_type *get_storage_by_name(const char *name,
+							  const char *type)
 {
+	int ret;
 	size_t i, cmplen;
 
-	cmplen = strcspn(name, ":");
+	if (type)
+		cmplen = strlen(type);
+	else
+		cmplen = strcspn(name, ":");
 	if (cmplen == 0)
 		return NULL;
 
-	for (i = 0; i < numbdevs; i++)
-		if (strncmp(bdevs[i].name, name, cmplen) == 0)
+	for (i = 0; i < numbdevs; i++) {
+		if (type)
+			ret = strncmp(bdevs[i].name, type, cmplen);
+		else
+			ret = strncmp(bdevs[i].name, name, cmplen);
+		if (ret == 0)
 			break;
+	}
 
 	if (i == numbdevs)
 		return NULL;
@@ -238,7 +248,7 @@ const struct lxc_storage_type *storage_query(struct lxc_conf *conf,
 	size_t i;
 	const struct lxc_storage_type *bdev;
 
-	bdev = get_storage_by_name(src);
+	bdev = get_storage_by_name(src, conf->rootfs.bdev_type);
 	if (bdev)
 		return bdev;
 
