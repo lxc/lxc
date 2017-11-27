@@ -1869,7 +1869,41 @@ static int set_config_includefiles(const char *key, const char *value,
 static int set_config_rootfs_path(const char *key, const char *value,
 				  struct lxc_conf *lxc_conf, void *data)
 {
-	return set_config_path_item(&lxc_conf->rootfs.path, value);
+	int ret;
+	char *dup, *tmp;
+	const char *container_path;
+
+	if (lxc_config_value_empty(value)) {
+		free(lxc_conf->rootfs.path);
+		lxc_conf->rootfs.path = NULL;
+		return 0;
+	}
+
+	dup = strdup(value);
+	if (!dup)
+		return -1;
+
+	/* Split <storage type>:<container path> into <storage type> and
+	 * <container path>. Set "rootfs.bdev_type" to <storage type> and
+	 * "rootfs.path" to <container path>.
+	 */
+	tmp = strchr(dup, ':');
+	if (tmp) {
+		*tmp = '\0';
+		ret = set_config_path_item(&lxc_conf->rootfs.bdev_type, dup);
+		if (ret < 0) {
+			free(dup);
+			return -1;
+		}
+		tmp++;
+		container_path = tmp;
+	} else {
+		container_path = value;
+	}
+
+	ret = set_config_path_item(&lxc_conf->rootfs.path, container_path);
+	free(dup);
+	return ret;
 }
 
 static int set_config_rootfs_mount(const char *key, const char *value,
