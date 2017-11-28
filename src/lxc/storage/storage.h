@@ -126,7 +126,7 @@ extern bool storage_can_backup(struct lxc_conf *conf);
 
 extern struct lxc_storage *storage_init(struct lxc_conf *conf);
 
-extern struct lxc_storage *storage_copy(struct lxc_container *c0,
+extern struct lxc_storage *storage_copy(struct lxc_container *c,
 					const char *cname, const char *lxcpath,
 					const char *bdevtype, int flags,
 					const char *bdevdata, uint64_t newsize,
