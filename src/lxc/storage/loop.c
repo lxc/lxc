@@ -235,7 +235,7 @@ int loop_mount(struct lxc_storage *bdev)
 {
 	int ret, loopfd;
 	char loname[MAXPATHLEN];
-	char *src;
+	const char *src;
 
 	if (strcmp(bdev->type, "loop"))
 		return -22;

@@ -45,7 +45,7 @@ extern int is_blktype(struct lxc_storage *b);
 extern int mount_unknown_fs(const char *rootfs, const char *target,
 			    const char *options);
 extern int find_fstype_cb(char *buffer, void *data);
-extern char *linkderef(char *path, char *dest);
+extern const char *linkderef(const char *path, char *dest);
 extern bool unpriv_snap_allowed(struct lxc_storage *b, const char *t, bool snap,
 				bool maybesnap);
 extern bool is_valid_storage_type(const char *type);

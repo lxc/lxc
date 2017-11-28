@@ -1315,7 +1315,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 				}
 			}
 		} else { /* TODO come up with a better way here! */
-			char *src;
+			const char *src;
 			free(bdev->dest);
 			src = lxc_storage_get_path(bdev->src, bdev->type);
 			bdev->dest = strdup(src);

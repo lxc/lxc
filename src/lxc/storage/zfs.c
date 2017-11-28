@@ -180,7 +180,8 @@ int zfs_mount(struct lxc_storage *bdev)
 {
 	int ret;
 	size_t oldlen, newlen, totallen;
-	char *mntdata, *src, *tmp;
+	char *mntdata, *tmp;
+	const char *src;
 	unsigned long mntflags;
 	char cmd_output[MAXPATHLEN] = {0};
 
@@ -287,13 +288,13 @@ bool zfs_copy(struct lxc_conf *conf, struct lxc_storage *orig,
 	char cmd_output[MAXPATHLEN], option[MAXPATHLEN];
 	struct rsync_data data = {0, 0};
 	struct zfs_args cmd_args = {0};
-	char *argv[] = {"zfs",			     /* 0    */
-			"create",		     /* 1    */
-			"-o",     "",		     /* 2, 3 */
-			"-o",     "canmount=noauto", /* 4, 5 */
-			"-p",			     /* 6    */
-			"",			     /* 7    */
-			NULL};
+	const char *argv[] = {"zfs",			   /* 0    */
+			      "create",			   /* 1    */
+			      "-o",     "",		   /* 2, 3 */
+			      "-o",     "canmount=noauto", /* 4, 5 */
+			      "-p",			   /* 6    */
+			      "",			   /* 7    */
+			      NULL};
 
 	/* mountpoint */
 	ret = snprintf(option, MAXPATHLEN, "mountpoint=%s", new->dest);
@@ -342,7 +343,8 @@ bool zfs_snapshot(struct lxc_conf *conf, struct lxc_storage *orig,
 {
 	int ret;
 	size_t snapshot_len, len;
-	char *orig_src, *tmp, *snap_name, *snapshot;
+	char *tmp, *snap_name, *snapshot;
+	const char *orig_src;
 	struct zfs_args cmd_args = {0};
 	char cmd_output[MAXPATHLEN] = {0}, option[MAXPATHLEN];
 
@@ -447,8 +449,9 @@ int zfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 		   const char *lxcpath, int snap, uint64_t newsize,
 		   struct lxc_conf *conf)
 {
-	char *dataset, *orig_src, *tmp;
 	int ret;
+	char *dataset, *tmp;
+	const char *orig_src;
 	size_t dataset_len, len;
 	char cmd_output[MAXPATHLEN] = {0};
 
@@ -576,7 +579,8 @@ int zfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 int zfs_destroy(struct lxc_storage *orig)
 {
 	int ret;
-	char *dataset, *src, *tmp;
+	char *dataset, *tmp;
+	const char *src;
 	bool found;
 	char *parent_snapshot = NULL;
 	struct zfs_args cmd_args = {0};
@@ -709,13 +713,13 @@ int zfs_create(struct lxc_storage *bdev, const char *dest, const char *n,
 	size_t len;
 	struct zfs_args cmd_args = {0};
 	char cmd_output[MAXPATHLEN], option[MAXPATHLEN];
-	char *argv[] = {"zfs",                    /* 0    */
-			 "create",                /* 1    */
-			 "-o", "",                /* 2, 3 */
-			 "-o", "canmount=noauto", /* 4, 5 */
-			 "-p",                    /* 6    */
-			 "",                      /* 7    */
-			 NULL};
+	const char *argv[] = {"zfs",			   /* 0    */
+			      "create",			   /* 1    */
+			      "-o",     "",		   /* 2, 3 */
+			      "-o",     "canmount=noauto", /* 4, 5 */
+			      "-p",			   /* 6    */
+			      "",			   /* 7    */
+			      NULL};
 
 	if (!specs || !specs->zfs.zfsroot)
 		zfsroot = lxc_global_config_value("lxc.bdev.zfs.root");

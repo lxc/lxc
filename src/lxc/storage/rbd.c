@@ -189,7 +189,7 @@ int rbd_create(struct lxc_storage *bdev, const char *dest, const char *n,
 int rbd_destroy(struct lxc_storage *orig)
 {
 	int ret;
-	char *src;
+	const char *src;
 	char *rbdfullname;
 	char cmd_output[MAXPATHLEN];
 	struct rbd_args args = {0};
@@ -233,7 +233,7 @@ bool rbd_detect(const char *path)
 
 int rbd_mount(struct lxc_storage *bdev)
 {
-	char *src;
+	const char *src;
 
 	if (strcmp(bdev->type, "rbd"))
 		return -22;
