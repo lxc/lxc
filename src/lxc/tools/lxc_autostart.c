@@ -28,7 +28,6 @@
 #include "log.h"
 #include "utils.h"
 
-lxc_log_define(lxc_autostart_ui, lxc);
 static struct lxc_list *accumulate_list(char *input, char *delimiter, struct lxc_list *str_list);
 
 struct lxc_list *cmd_groups_list = NULL;
@@ -309,7 +308,7 @@ static int get_config_integer(struct lxc_container *c, char *key) {
 	}
 
 	if (lxc_safe_int(value, &ret) < 0)
-		DEBUG("Could not parse config item.");
+		printf("Could not parse config item.\n");
 
 	free(value);
 
