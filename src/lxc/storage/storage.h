@@ -127,8 +127,6 @@ extern struct lxc_storage *storage_create(const char *dest, const char *type,
 					  struct bdev_specs *specs);
 extern void storage_put(struct lxc_storage *bdev);
 extern bool storage_destroy(struct lxc_conf *conf);
-
-extern int storage_destroy_wrapper(void *data);
 extern bool rootfs_is_blockdev(struct lxc_conf *conf);
 
 #endif // __LXC_STORAGE_H
