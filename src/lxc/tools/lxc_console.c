@@ -46,8 +46,6 @@
 #include "mainloop.h"
 #include "utils.h"
 
-lxc_log_define(lxc_console_ui, lxc);
-
 static char etoc(const char *expr)
 {
 	/* returns "control code" of given expression */
