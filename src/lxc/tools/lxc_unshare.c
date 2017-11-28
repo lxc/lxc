@@ -44,8 +44,6 @@
 #include "network.h"
 #include "utils.h"
 
-lxc_log_define(lxc_unshare_ui, lxc);
-
 struct my_iflist
 {
 	char *mi_ifname;
@@ -81,14 +79,14 @@ static bool lookup_user(const char *optarg, uid_t *uid)
 
 		pwent = getpwnam(name);
 		if (!pwent) {
-			ERROR("invalid username %s", name);
+			fprintf(stderr, "invalid username %s\n", name);
 			return false;
 		}
 		*uid = pwent->pw_uid;
 	} else {
 		pwent = getpwuid(*uid);
 		if (!pwent) {
-			ERROR("invalid uid %u", *uid);
+			fprintf(stderr, "invalid uid %u\n", *uid);
 			return false;
 		}
 	}
@@ -119,19 +117,19 @@ static int do_start(void *arg)
 
 	if ((flags & CLONE_NEWUTS) && want_hostname)
 		if (sethostname(want_hostname, strlen(want_hostname)) < 0) {
-			ERROR("failed to set hostname %s: %s", want_hostname, strerror(errno));
+			fprintf(stderr, "failed to set hostname %s: %s\n", want_hostname, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
 
 	// Setuid is useful even without a new user id space
 	if (start_arg->setuid && setuid(uid)) {
-		ERROR("failed to set uid %d: %s", uid, strerror(errno));
+		fprintf(stderr, "failed to set uid %d: %s\n", uid, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
 	execvp(args[0], args);
 
-	ERROR("failed to exec: '%s': %s", args[0], strerror(errno));
+	fprintf(stderr, "failed to exec: '%s': %s\n", args[0], strerror(errno));
 	return 1;
 }
 
@@ -189,7 +187,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (argv[optind] == NULL) {
-		ERROR("a command to execute in the new namespace is required");
+		fprintf(stderr, "a command to execute in the new namespace is required\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -229,23 +227,23 @@ int main(int argc, char *argv[])
 		usage(argv[0]);
 
 	if (!(flags & CLONE_NEWNET) && my_iflist) {
-		ERROR("-i <interfacename> needs -s NETWORK option");
+		fprintf(stderr, "-i <interfacename> needs -s NETWORK option\n");
 		exit(EXIT_FAILURE);
 	}
 
 	if (!(flags & CLONE_NEWUTS) && start_arg.want_hostname) {
-		ERROR("-H <hostname> needs -s UTSNAME option");
+		fprintf(stderr, "-H <hostname> needs -s UTSNAME option\n");
 		exit(EXIT_FAILURE);
 	}
 
 	if (!(flags & CLONE_NEWNS) && start_arg.want_default_mounts) {
-		ERROR("-M needs -s MOUNT option");
+		fprintf(stderr, "-M needs -s MOUNT option\n");
 		exit(EXIT_FAILURE);
 	}
 
 	pid = lxc_clone(do_start, &start_arg, flags);
 	if (pid < 0) {
-		ERROR("failed to clone");
+		fprintf(stderr, "failed to clone\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -260,7 +258,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_SUCCESS);
 
 	if (waitpid(pid, &status, 0) < 0) {
-		ERROR("failed to wait for '%d'", pid);
+		fprintf(stderr, "failed to wait for '%d'\n", pid);
 		exit(EXIT_FAILURE);
 	}
 
