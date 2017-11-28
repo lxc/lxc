@@ -36,8 +36,6 @@
 #include "conf.h"
 #include "state.h"
 
-lxc_log_define(lxc_clone_ui, lxc);
-
 /* we pass fssize in bytes */
 static uint64_t get_fssize(char *s)
 {
