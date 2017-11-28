@@ -3802,7 +3802,7 @@ static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	 */
 	flags = LXC_CLONE_SNAPSHOT | LXC_CLONE_KEEPMACADDR | LXC_CLONE_KEEPNAME |
 		LXC_CLONE_KEEPBDEVTYPE | LXC_CLONE_MAYBE_SNAPSHOT;
-	if (storage_is_dir(c->lxc_conf, c->lxc_conf->rootfs.path)) {
+	if (storage_is_dir(c->lxc_conf)) {
 		ERROR("Snapshot of directory-backed container requested.");
 		ERROR("Making a copy-clone.  If you do want snapshots, then");
 		ERROR("please create an aufs or overlay clone first, snapshot that");
