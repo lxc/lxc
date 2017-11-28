@@ -50,8 +50,6 @@
 #include <../include/getsubopt.h>
 #endif
 
-lxc_log_define(lxc_copy_ui, lxc);
-
 enum mnttype {
 	LXC_MNT_BIND,
 	LXC_MNT_AUFS,
@@ -394,8 +392,6 @@ static int do_clone(struct lxc_container *c, char *newname, char *newpath,
 		return -1;
 	}
 
-	INFO("Created %s as %s of %s\n", newname, task ? "snapshot" : "copy", c->name);
-
 	lxc_container_put(clone);
 
 	return 0;
@@ -515,11 +511,9 @@ destroy_and_put:
 static int do_clone_rename(struct lxc_container *c, char *newname)
 {
 	if (!c->rename(c, newname)) {
-		ERROR("Error: Renaming container %s to %s failed\n", c->name, newname);
+		fprintf(stderr, "Error: Renaming container %s to %s failed\n", c->name, newname);
 		return -1;
 	}
-
-	INFO("Renamed container %s to %s\n", c->name, newname);
 
 	return 0;
 }
@@ -679,7 +673,7 @@ static int parse_aufs_mnt(char *mntstring, enum mnttype type)
 	else if (len == 2) /* aufs=src:dest */
 		m->dest = construct_path(mntarray[1], false);
 	else
-		INFO("Excess elements in mount specification");
+		printf("Excess elements in mount specification\n");
 
 	if (!m->dest)
 		goto err;
@@ -733,7 +727,7 @@ static int parse_bind_mnt(char *mntstring, enum mnttype type)
 			m->dest = construct_path(mntarray[1], false);
 			m->options = strdup(mntarray[2]);
 	} else {
-		INFO("Excess elements in mount specification");
+		printf("Excess elements in mount specification\n");
 	}
 
 	if (!m->dest)
@@ -802,7 +796,7 @@ static int parse_ovl_mnt(char *mntstring, enum mnttype type)
 	else if (len == 2) /* overlay=src:dest */
 		m->dest = construct_path(mntarray[1], false);
 	else
-		INFO("Excess elements in mount specification");
+		printf("Excess elements in mount specification\n");
 
 	if (!m->dest)
 		goto err;
@@ -863,7 +857,7 @@ static char *mount_tmpfs(const char *oldname, const char *newname,
 		goto err_free;
 
 	if (fcntl(fd, F_SETFD, FD_CLOEXEC)) {
-		SYSERROR("Failed to set close-on-exec on file descriptor.");
+		fprintf(stderr, "Failed to set close-on-exec on file descriptor.\n");
 		goto err_close;
 	}
 
