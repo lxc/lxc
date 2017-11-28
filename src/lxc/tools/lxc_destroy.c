@@ -32,8 +32,6 @@
 #include "lxc.h"
 #include "utils.h"
 
-lxc_log_define(lxc_destroy_ui, lxc);
-
 static int my_parser(struct lxc_arguments* args, int c, char* arg);
 static bool quiet;
 
@@ -233,14 +231,14 @@ static bool do_destroy_with_snapshots(struct lxc_container *c)
 		/* Make sure that the string is \0 terminated. */
 		buf = calloc(fbuf.st_size + 1, sizeof(char));
 		if (!buf) {
-			SYSERROR("failed to allocate memory");
+			fprintf(stderr, "failed to allocate memory\n");
 			close(fd);
 			return false;
 		}
 
 		ret = read(fd, buf, fbuf.st_size);
 		if (ret < 0) {
-			ERROR("could not read %s", path);
+			fprintf(stderr, "could not read %s\n", path);
 			close(fd);
 			free(buf);
 			return false;
