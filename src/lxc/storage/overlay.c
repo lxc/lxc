@@ -199,12 +199,11 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 			return -22;
 		}
 
-		nsrc = strchr(osrc, ':') + 1;
-		if ((nsrc != osrc + 8) && (nsrc != osrc + 10)) {
-			ERROR("Detected \":\" in \"%s\" at wrong position", osrc);
-			free(osrc);
-			return -22;
-		}
+		nsrc = osrc;
+		if (strncmp(osrc, "overlay:", 8) == 0)
+			nsrc += 8;
+		else if (strncmp(osrc, "overlayfs:", 10) == 0)
+			nsrc += 10;
 
 		odelta = strchr(nsrc, ':');
 		if (!odelta) {
@@ -457,12 +456,7 @@ int ovl_create(struct lxc_storage *bdev, const char *dest, const char *n,
 
 int ovl_destroy(struct lxc_storage *orig)
 {
-	bool ovl;
 	char *upper = orig->src;
-
-	ovl = !strncmp(upper, "overlay:", 8);
-	if (!ovl && strncmp(upper, "overlayfs:", 10))
-		return -22;
 
 	/* For an overlay container the rootfs is considered immutable
 	 * and cannot be removed when restoring from a snapshot.
@@ -470,9 +464,9 @@ int ovl_destroy(struct lxc_storage *orig)
 	if (orig->flags & LXC_STORAGE_INTERNAL_OVERLAY_RESTORE)
 		return 0;
 
-	if (ovl)
+	if (strncmp(upper, "overlay:", 8) == 0)
 		upper += 8;
-	else
+	else if (strncmp(upper, "overlayfs:", 10) == 0)
 		upper += 10;
 
 	upper = strchr(upper, ':');
@@ -485,10 +479,10 @@ int ovl_destroy(struct lxc_storage *orig)
 
 bool ovl_detect(const char *path)
 {
-	if (!strncmp(path, "overlayfs:", 10))
+	if (!strncmp(path, "overlay:", 8))
 		return true;
 
-	if (!strncmp(path, "overlay:", 8))
+	if (!strncmp(path, "overlayfs:", 10))
 		return true;
 
 	return false;
@@ -521,18 +515,19 @@ int ovl_mount(struct lxc_storage *bdev)
 		ERROR("Failed to allocate memory");
 		return -1;
 	}
+	upper = dup;
+	lower = dup;
+
+	if (strncmp(dup, "overlay:", 8) == 0)
+		lower += 8;
+	else if (strncmp(dup, "overlayfs:", 10) == 0)
+		lower += 10;
+	if (upper != lower)
+		upper = lower;
 
 	/* support multiple lower layers */
-	lower = strstr(dup, ":/");
-	if (!lower) {
-		ERROR("Failed to detect \":/\" in string \"%s\"", dup);
-		free(dup);
-		return -22;
-	}
-
-	lower++;
-	upper = lower;
-	while ((tmp = strstr(++upper, ":/"))) {
+	while ((tmp = strstr(upper, ":/"))) {
+		tmp++;
 		upper = tmp;
 	}
 

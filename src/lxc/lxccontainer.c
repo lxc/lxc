@@ -3992,8 +3992,8 @@ static bool do_lxcapi_snapshot_restore(struct lxc_container *c, const char *snap
 
 	if (!strcmp(bdev->type, "overlay") || !strcmp(bdev->type, "overlayfs"))
 		flags |= LXC_STORAGE_INTERNAL_OVERLAY_RESTORE;
-	rest = lxcapi_clone(snap, newname, c->config_path, flags,
-			bdev->type, NULL, 0, NULL);
+	rest = lxcapi_clone(snap, newname, c->config_path, flags, bdev->type,
+			    NULL, 0, NULL);
 	storage_put(bdev);
 	if (rest && lxcapi_is_defined(rest))
 		b = true;
