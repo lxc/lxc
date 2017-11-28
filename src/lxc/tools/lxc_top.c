@@ -38,8 +38,6 @@
 #include "mainloop.h"
 #include "utils.h"
 
-lxc_log_define(lxc_top_ui, lxc);
-
 #define USER_HZ   100
 #define ESC       "\033"
 #define TERMCLEAR ESC "[H" ESC "[J"
@@ -129,12 +127,12 @@ static int stdin_tios_setup(void)
 	struct termios newtios;
 
 	if (!isatty(0)) {
-		ERROR("stdin is not a tty");
+		fprintf(stderr, "stdin is not a tty\n");
 		return -1;
 	}
 
 	if (tcgetattr(0, &oldtios)) {
-		SYSERROR("failed to get current terminal settings");
+		fprintf(stderr, "failed to get current terminal settings\n");
 		return -1;
 	}
 
@@ -148,7 +146,7 @@ static int stdin_tios_setup(void)
 	newtios.c_cc[VTIME] = 0;
 
 	if (tcsetattr(0, TCSAFLUSH, &newtios)) {
-		ERROR("failed to set new terminal settings");
+		fprintf(stderr, "failed to set new terminal settings\n");
 		return -1;
 	}
 
@@ -213,7 +211,7 @@ static uint64_t stat_get_int(struct lxc_container *c, const char *item)
 
 	len = c->get_cgroup_item(c, item, buf, sizeof(buf));
 	if (len <= 0) {
-		ERROR("unable to read cgroup item %s", item);
+		fprintf(stderr, "unable to read cgroup item %s\n", item);
 		return 0;
 	}
 
@@ -232,7 +230,7 @@ static uint64_t stat_match_get_int(struct lxc_container *c, const char *item,
 
 	len = c->get_cgroup_item(c, item, buf, sizeof(buf));
 	if (len <= 0) {
-		ERROR("unable to read cgroup item %s", item);
+		fprintf(stderr, "unable to read cgroup item %s\n", item);
 		goto out;
 	}
 
@@ -411,13 +409,13 @@ static void ct_realloc(int active_cnt)
 		ct_free();
 		ct = realloc(ct, sizeof(*ct) * active_cnt);
 		if (!ct) {
-			ERROR("cannot alloc mem");
+			fprintf(stderr, "cannot alloc mem\n");
 			exit(EXIT_FAILURE);
 		}
 		for (i = 0; i < active_cnt; i++) {
 			ct[i].stats = malloc(sizeof(*ct[0].stats));
 			if (!ct[i].stats) {
-				ERROR("cannot alloc mem");
+				fprintf(stderr, "cannot alloc mem\n");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -437,7 +435,7 @@ int main(int argc, char *argv[])
 
 	ct_print_cnt = stdin_tios_rows() - 3; /* 3 -> header and total */
 	if (stdin_tios_setup() < 0) {
-		ERROR("failed to setup terminal");
+		fprintf(stderr, "failed to setup terminal\n");
 		goto out;
 	}
 
@@ -447,13 +445,13 @@ int main(int argc, char *argv[])
 	signal(SIGQUIT, sig_handler);
 
 	if (lxc_mainloop_open(&descr)) {
-		ERROR("failed to create mainloop");
+		fprintf(stderr, "failed to create mainloop\n");
 		goto out;
 	}
 
 	ret = lxc_mainloop_add_handler(&descr, 0, stdin_handler, &in_char);
 	if (ret) {
-		ERROR("failed to add stdin handler");
+		fprintf(stderr, "failed to add stdin handler\n");
 		ret = EXIT_FAILURE;
 		goto err1;
 	}
