@@ -42,8 +42,6 @@
 #include "start.h"
 #include "utils.h"
 
-lxc_log_define(lxc_execute_ui, lxc);
-
 static struct lxc_list defines;
 
 static int my_checker(const struct lxc_arguments* args)
@@ -131,20 +129,20 @@ int main(int argc, char *argv[])
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {
-		ERROR("Failed to create lxc_container");
+		fprintf(stderr, "Failed to create lxc_container\n");
 		exit(EXIT_FAILURE);
 	}
 
 	if (my_args.rcfile) {
 		c->clear_config(c);
 		if (!c->load_config(c, my_args.rcfile)) {
-			ERROR("Failed to load rcfile");
+			fprintf(stderr, "Failed to load rcfile\n");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
-			ERROR("Out of memory setting new config filename");
+			fprintf(stderr, "Out of memory setting new config filename\n");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
@@ -167,7 +165,7 @@ int main(int argc, char *argv[])
 	ret = c->error_num;
 	lxc_container_put(c);
 	if (!bret) {
-		ERROR("Failed run an application inside container");
+		fprintf(stderr, "Failed run an application inside container\n");
 		exit(EXIT_FAILURE);
 	}
 	exit(ret);
