@@ -1189,7 +1189,7 @@ static int lxc_setup_rootfs(struct lxc_conf *conf)
 		return -1;
 	}
 
-	bdev = storage_init(conf, rootfs->path, rootfs->mount, rootfs->options);
+	bdev = storage_init(conf);
 	if (!bdev) {
 		ERROR("Failed to mount rootfs \"%s\" onto \"%s\" with options \"%s\".",
 		      rootfs->path, rootfs->mount,
