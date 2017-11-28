@@ -204,7 +204,13 @@ int loop_create(struct lxc_storage *bdev, const char *dest, const char *n,
 }
 
 int loop_destroy(struct lxc_storage *orig) {
-	return unlink(orig->src + 5);
+	char *dir;
+
+	dir = orig->src;
+	if (strncmp(orig->src, "loop:", 5) == 0)
+		dir += 5;
+
+	return unlink(dir);
 }
 
 bool loop_detect(const char *path)
