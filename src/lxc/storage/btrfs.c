@@ -484,7 +484,7 @@ bool btrfs_create_snapshot(struct lxc_conf *conf, struct lxc_storage *orig,
 		return true;
 	}
 
-	ret = btrfs_snapshot(orig->dest, new->dest);
+	ret = btrfs_snapshot(orig->src, new->dest);
 	if (ret < 0) {
 		SYSERROR("Failed to create btrfs snapshot \"%s\" from \"%s\"",
 			 new->dest, orig->dest);
