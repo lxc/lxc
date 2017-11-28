@@ -33,8 +33,6 @@
 #include "storage.h"
 #include "utils.h"
 
-lxc_log_define(lxc_snapshot_ui, lxc);
-
 static int my_parser(struct lxc_arguments *args, int c, char *arg);
 
 static const struct option my_longopts[] = {
@@ -208,11 +206,9 @@ static int do_snapshot(struct lxc_container *c, char *commentfile)
 
 	ret = c->snapshot(c, commentfile);
 	if (ret < 0) {
-		ERROR("Error creating a snapshot");
+		fprintf(stderr, "Error creating a snapshot\n");
 		return -1;
 	}
-
-	INFO("Created snapshot snap%d", ret);
 
 	return 0;
 }
@@ -227,7 +223,7 @@ static int do_snapshot_destroy(struct lxc_container *c, char *snapname)
 		ret = c->snapshot_destroy(c, snapname);
 
 	if (!ret) {
-		ERROR("Error destroying snapshot %s", snapname);
+		fprintf(stderr, "Error destroying snapshot %s\n", snapname);
 		return -1;
 	}
 
@@ -241,7 +237,7 @@ static int do_snapshot_list(struct lxc_container *c, int print_comments)
 
 	n = c->snapshot_list(c, &s);
 	if (n < 0) {
-		ERROR("Error listing snapshots");
+		fprintf(stderr, "Error listing snapshots\n");
 		return -1;
 	}
 	if (n == 0) {
@@ -281,7 +277,7 @@ static int do_snapshot_restore(struct lxc_container *c,
 
 	bret = c->snapshot_restore(c, args->snapname, args->newname);
 	if (!bret) {
-		ERROR("Error restoring snapshot %s", args->snapname);
+		fprintf(stderr, "Error restoring snapshot %s\n", args->snapname);
 		return -1;
 	}
 
