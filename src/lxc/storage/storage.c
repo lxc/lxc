@@ -559,20 +559,21 @@ on_error_put_orig:
 struct lxc_storage *storage_create(const char *dest, const char *type,
 				   const char *cname, struct bdev_specs *specs)
 {
+	int ret;
 	struct lxc_storage *bdev;
 	char *best_options[] = {"btrfs", "zfs", "lvm", "dir", "rbd", NULL};
 
 	if (!type)
 		return do_storage_create(dest, "dir", cname, specs);
 
-	if (strcmp(type, "best") == 0) {
+	ret = strcmp(type, "best");
+	if (ret == 0) {
 		int i;
 		/* Try for the best backing store type, according to our
 		 * opinionated preferences.
 		 */
 		for (i = 0; best_options[i]; i++) {
-			bdev = do_storage_create(dest, best_options[i], cname,
-						 specs);
+			bdev = do_storage_create(dest, best_options[i], cname, specs);
 			if (bdev)
 				return bdev;
 		}
@@ -581,12 +582,16 @@ struct lxc_storage *storage_create(const char *dest, const char *type,
 	}
 
 	/* -B lvm,dir */
-	if (strchr(type, ',') != NULL) {
-		char *dup = alloca(strlen(type) + 1), *saveptr = NULL, *token;
+	if (strchr(type, ',')) {
+		char *dup, *token;
+		char *saveptr = NULL;
+
+		dup = alloca(strlen(type) + 1);
 		strcpy(dup, type);
 		for (token = strtok_r(dup, ",", &saveptr); token;
 		     token = strtok_r(NULL, ",", &saveptr)) {
-			if ((bdev = do_storage_create(dest, token, cname, specs)))
+			bdev = do_storage_create(dest, token, cname, specs);
+			if (bdev)
 				return bdev;
 		}
 	}
