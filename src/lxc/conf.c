@@ -122,19 +122,6 @@ static int pivot_root(const char * new_root, const char * put_old)
 extern int pivot_root(const char * new_root, const char * put_old);
 #endif
 
-/* Define sethostname() if missing from the C library */
-#ifndef HAVE_SETHOSTNAME
-static int sethostname(const char * name, size_t len)
-{
-#ifdef __NR_sethostname
-	return syscall(__NR_sethostname, name, len);
-#else
-	errno = ENOSYS;
-	return -1;
-#endif
-}
-#endif
-
 #ifndef MS_PRIVATE
 #define MS_PRIVATE (1<<18)
 #endif
