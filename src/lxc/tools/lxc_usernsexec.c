@@ -124,7 +124,7 @@ static int do_child(void *vargv)
 	}
 	if (detect_shared_rootfs()) {
 		if (mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL)) {
-			printf("Failed to make / rslave");
+			printf("Failed to make / rslave\n");
 			return -1;
 		}
 	}
@@ -286,12 +286,12 @@ int main(int argc, char *argv[])
 		}
 		ret = readlink("/proc/self/fd/1", ttyname1, sizeof(ttyname1));
 		if (ret < 0) {
-			printf("Warning: unable to open stdout, continuing.");
+			printf("Warning: unable to open stdout, continuing.\n");
 			memset(ttyname1, '\0', sizeof(ttyname1));
 		}
 		ret = readlink("/proc/self/fd/2", ttyname2, sizeof(ttyname2));
 		if (ret < 0) {
-			printf("Warning: unable to open stderr, continuing.");
+			printf("Warning: unable to open stderr, continuing.\n");
 			memset(ttyname2, '\0', sizeof(ttyname2));
 		}
 	}
