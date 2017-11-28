@@ -37,8 +37,6 @@
 #include "arguments.h"
 #include "lxccontainer.h"
 
-lxc_log_define(lxc_monitor_ui, lxc);
-
 static bool quit_monitord;
 
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
@@ -123,12 +121,12 @@ int main(int argc, char *argv[])
 
 			fd = lxc_monitor_open(my_args.lxcpath[i]);
 			if (fd < 0) {
-				ERROR("Unable to open monitor on path: %s", my_args.lxcpath[i]);
+				fprintf(stderr, "Unable to open monitor on path: %s\n", my_args.lxcpath[i]);
 				ret = EXIT_FAILURE;
 				continue;
 			}
 			if (write(fd, "quit", 4) < 0) {
-				SYSERROR("Unable to close monitor on path: %s", my_args.lxcpath[i]);
+				fprintf(stderr, "Unable to close monitor on path: %s\n", my_args.lxcpath[i]);
 				ret = EXIT_FAILURE;
 				close(fd);
 				continue;
@@ -141,23 +139,23 @@ int main(int argc, char *argv[])
 	len = strlen(my_args.name) + 3;
 	regexp = malloc(len + 3);
 	if (!regexp) {
-		ERROR("failed to allocate memory");
+		fprintf(stderr, "failed to allocate memory\n");
 		exit(rc_main);
 	}
 	rc_snp = snprintf(regexp, len, "^%s$", my_args.name);
 	if (rc_snp < 0 || rc_snp >= len) {
-		ERROR("Name too long");
+		fprintf(stderr, "Name too long\n");
 		goto error;
 	}
 
 	if (regcomp(&preg, regexp, REG_NOSUB|REG_EXTENDED)) {
-		ERROR("failed to compile the regex '%s'", my_args.name);
+		fprintf(stderr, "failed to compile the regex '%s'\n", my_args.name);
 		goto error;
 	}
 
 	fds = malloc(my_args.lxcpath_cnt * sizeof(struct pollfd));
 	if (!fds) {
-		SYSERROR("out of memory");
+		fprintf(stderr, "out of memory\n");
 		goto cleanup;
 	}
 
