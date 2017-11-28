@@ -60,6 +60,7 @@
 #include "start.h"
 #include "state.h"
 #include "storage.h"
+#include "storage_utils.h"
 #include "storage/btrfs.h"
 #include "storage/overlay.h"
 #include "sync.h"
