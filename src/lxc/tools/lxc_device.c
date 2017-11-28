@@ -39,8 +39,6 @@
 #include <../include/ifaddrs.h>
 #endif
 
-lxc_log_define(lxc_device, lxc);
-
 static const struct option my_longopts[] = {
 	LXC_COMMON_OPTIONS
 };
@@ -65,7 +63,7 @@ static bool is_interface(const char* dev_name, pid_t pid)
 	pid_t p = fork();
 
 	if (p < 0) {
-		SYSERROR("failed to fork task.");
+		fprintf(stderr, "failed to fork task.\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -73,13 +71,13 @@ static bool is_interface(const char* dev_name, pid_t pid)
 		struct ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
 
 		if (!switch_to_ns(pid, "net")) {
-			ERROR("failed to enter netns of container.");
+			fprintf(stderr, "failed to enter netns of container.\n");
 			exit(-1);
 		}
 
 		/* Grab the list of interfaces */
 		if (getifaddrs(&interfaceArray)) {
-			ERROR("failed to get interfaces list");
+			fprintf(stderr, "failed to get interfaces list\n");
 			exit(-1);
 		}
 
@@ -106,7 +104,7 @@ int main(int argc, char *argv[])
 	bool ret = false;
 
 	if (geteuid() != 0) {
-		ERROR("%s must be run as root", argv[0]);
+		fprintf(stderr, "%s must be run as root\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
@@ -129,30 +127,30 @@ int main(int argc, char *argv[])
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {
-		ERROR("%s doesn't exist", my_args.name);
+		fprintf(stderr, "%s doesn't exist\n", my_args.name);
 		goto err;
 	}
 
 	if (my_args.rcfile) {
 		c->clear_config(c);
 		if (!c->load_config(c, my_args.rcfile)) {
-			ERROR("Failed to load rcfile");
+			fprintf(stderr, "Failed to load rcfile\n");
 			goto err1;
 		}
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
-			ERROR("Out of memory setting new config filename");
+			fprintf(stderr, "Out of memory setting new config filename\n");
 			goto err1;
 		}
 	}
 
 	if (!c->is_running(c)) {
-		ERROR("Container %s is not running.", c->name);
+		fprintf(stderr, "Container %s is not running.\n", c->name);
 		goto err1;
 	}
 
 	if (my_args.argc < 2) {
-		ERROR("Error: no command given (Please see --help output)");
+		fprintf(stderr, "Error: no command given (Please see --help output)\n");
 		goto err1;
 	}
 
@@ -170,10 +168,9 @@ int main(int argc, char *argv[])
 			ret = c->add_device_node(c, dev_name, dst_name);
 		}
 		if (ret != true) {
-			ERROR("Failed to add %s to %s.", dev_name, c->name);
+			fprintf(stderr, "Failed to add %s to %s.\n", dev_name, c->name);
 			goto err1;
 		}
-		INFO("Add %s to %s.", dev_name, c->name);
 	} else if (strcmp(cmd, "del") == 0) {
 		if (is_interface(dev_name, c->init_pid(c))) {
 			ret = c->detach_interface(c, dev_name, dst_name);
@@ -181,12 +178,11 @@ int main(int argc, char *argv[])
 			ret = c->remove_device_node(c, dev_name, dst_name);
 		}
 		if (ret != true) {
-			ERROR("Failed to del %s from %s.", dev_name, c->name);
+			fprintf(stderr, "Failed to del %s from %s.\n", dev_name, c->name);
 			goto err1;
 		}
-		INFO("Delete %s from %s.", dev_name, c->name);
 	} else {
-		ERROR("Error: Please use add or del (Please see --help output)");
+		fprintf(stderr, "Error: Please use add or del (Please see --help output)\n");
 		goto err1;
 	}
 	exit(EXIT_SUCCESS);
