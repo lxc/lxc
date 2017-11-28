@@ -33,8 +33,6 @@
 #include "storage_utils.h"
 #include "utils.h"
 
-lxc_log_define(lxc_create_ui, lxc);
-
 static uint64_t get_fssize(char *s)
 {
 	uint64_t ret;
@@ -124,7 +122,7 @@ static void create_helpfn(const struct lxc_arguments *args)
 	argv[2] = NULL;
 
 	execv(path, argv);
-	ERROR("Error executing %s -h", path);
+	fprintf(stderr, "Error executing %s -h\n", path);
 	exit(EXIT_FAILURE);
 }
 
@@ -323,12 +321,11 @@ int main(int argc, char *argv[])
 		flags = LXC_CREATE_QUIET;
 
 	if (!c->create(c, my_args.template, my_args.bdevtype, &spec, flags, &argv[optind])) {
-		ERROR("Error creating container %s", c->name);
+		fprintf(stderr, "Error creating container %s\n", c->name);
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
 
 	lxc_container_put(c);
-	INFO("container %s created", c->name);
 	exit(EXIT_SUCCESS);
 }
