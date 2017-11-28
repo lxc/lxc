@@ -1250,7 +1250,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 			exit(1);
 		}
 
-		bdev = storage_init(c->lxc_conf, c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
+		bdev = storage_init(c->lxc_conf);
 		if (!bdev) {
 			ERROR("Error opening rootfs");
 			exit(1);
@@ -3326,7 +3326,7 @@ static int clone_update_rootfs(struct clone_update_data *data)
 
 	if (unshare(CLONE_NEWNS) < 0)
 		return -1;
-	bdev = storage_init(c->lxc_conf, c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
+	bdev = storage_init(c->lxc_conf);
 	if (!bdev)
 		return -1;
 	if (strcmp(bdev->type, "dir") != 0) {
@@ -3657,7 +3657,7 @@ static bool do_lxcapi_rename(struct lxc_container *c, const char *newname)
 		ERROR("Renaming a container with snapshots is not supported");
 		return false;
 	}
-	bdev = storage_init(c->lxc_conf, c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
+	bdev = storage_init(c->lxc_conf);
 	if (!bdev) {
 		ERROR("Failed to find original backing store type");
 		return false;
@@ -4007,8 +4007,7 @@ static bool do_lxcapi_snapshot_restore(struct lxc_container *c, const char *snap
 		return false;
 	}
 
-	bdev = storage_init(c->lxc_conf, c->lxc_conf->rootfs.path,
-			    c->lxc_conf->rootfs.mount, NULL);
+	bdev = storage_init(c->lxc_conf);
 	if (!bdev) {
 		ERROR("Failed to find original backing store type");
 		return false;

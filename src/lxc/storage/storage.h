@@ -124,18 +124,7 @@ struct lxc_storage {
 extern bool storage_is_dir(struct lxc_conf *conf);
 extern bool storage_can_backup(struct lxc_conf *conf);
 
-/* Instantiate a lxc_storage object. The src is used to determine which blockdev
- * type this should be. The dst and data are optional, and will be used in case
- * of mount/umount.
- *
- * The source will be "dir:/var/lib/lxc/c1" or "lvm:/dev/lxc/c1". For other
- * backing stores, this will allow additional options. In particular,
- * "overlayfs:/var/lib/lxc/canonical/rootfs:/var/lib/lxc/c1/delta" will mean use
- * /var/lib/lxc/canonical/rootfs as lower dir, and /var/lib/lxc/c1/delta as the
- * upper, writeable layer.
- */
-extern struct lxc_storage *storage_init(struct lxc_conf *conf, const char *src,
-					const char *dst, const char *data);
+extern struct lxc_storage *storage_init(struct lxc_conf *conf);
 
 extern struct lxc_storage *storage_copy(struct lxc_container *c0,
 					const char *cname, const char *lxcpath,
