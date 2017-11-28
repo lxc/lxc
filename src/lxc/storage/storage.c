@@ -268,10 +268,9 @@ struct lxc_storage *storage_get(const char *type)
 	size_t i;
 	struct lxc_storage *bdev;
 
-	for (i = 0; i < numbdevs; i++) {
+	for (i = 0; i < numbdevs; i++)
 		if (strcmp(bdevs[i].name, type) == 0)
 			break;
-	}
 
 	if (i == numbdevs)
 		return NULL;
@@ -284,7 +283,7 @@ struct lxc_storage *storage_get(const char *type)
 	bdev->ops = bdevs[i].ops;
 	bdev->type = bdevs[i].name;
 
-	if (!strcmp(bdev->type, "aufs"))
+	if (strcmp(bdev->type, "aufs") == 0)
 		WARN("The \"aufs\" driver will is deprecated and will soon be "
 		     "removed. For similar functionality see the \"overlay\" "
 		     "storage driver");
@@ -296,7 +295,7 @@ static struct lxc_storage *do_storage_create(const char *dest, const char *type,
 					     const char *cname,
 					     struct bdev_specs *specs)
 {
-
+	int ret;
 	struct lxc_storage *bdev;
 
 	if (!type)
@@ -306,7 +305,8 @@ static struct lxc_storage *do_storage_create(const char *dest, const char *type,
 	if (!bdev)
 		return NULL;
 
-	if (bdev->ops->create(bdev, dest, cname, specs) < 0) {
+	ret = bdev->ops->create(bdev, dest, cname, specs);
+	if (ret < 0) {
 		storage_put(bdev);
 		return NULL;
 	}
