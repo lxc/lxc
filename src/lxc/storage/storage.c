@@ -338,16 +338,16 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 				 uint64_t newsize, bool *needs_rdep)
 {
 	int ret;
-	struct lxc_storage *orig, *new;
 	char *src_no_prefix;
-	bool snap = flags & LXC_CLONE_SNAPSHOT;
-	bool maybe_snap = flags & LXC_CLONE_MAYBE_SNAPSHOT;
-	bool keepbdevtype = flags & LXC_CLONE_KEEPBDEVTYPE;
+	struct lxc_storage *new, *orig;
+	bool snap = (flags & LXC_CLONE_SNAPSHOT);
+	bool maybe_snap = (flags & LXC_CLONE_MAYBE_SNAPSHOT);
+	bool keepbdevtype = (flags & LXC_CLONE_KEEPBDEVTYPE);
 	const char *src = c->lxc_conf->rootfs.path;
 	const char *oldname = c->name;
 	const char *oldpath = c->config_path;
-	struct rsync_data data = {0};
 	char cmd_output[MAXPATHLEN] = {0};
+	struct rsync_data data = {0};
 
 	if (!src) {
 		ERROR("No rootfs specified");
@@ -365,7 +365,7 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 
 	orig = storage_init(c->lxc_conf);
 	if (!orig) {
-		ERROR("Failed to detect storage driver for \"%s\"", src);
+		ERROR("Failed to detect storage driver for \"%s\"", oldname);
 		return NULL;
 	}
 
@@ -434,11 +434,11 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 	/* get new bdev type */
 	new = storage_get(bdevtype);
 	if (!new) {
-		ERROR("Failed to initialize \"%s\" storage driver",
+		ERROR("Failed to initialize %s storage driver",
 		      bdevtype ? bdevtype : orig->type);
 		goto on_error_put_orig;
 	}
-	TRACE("Initialized \"%s\" storage driver", new->type);
+	TRACE("Initialized %s storage driver", new->type);
 
 	/* create new paths */
 	ret = new->ops->clone_paths(orig, new, oldname, cname, oldpath, lxcpath,
@@ -452,14 +452,15 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 	 * snapshot directory under "<lxcpath>/<name>/snaps/" we don't need to
 	 * record a dependency. If we would restore would also fail.
 	 */
-	if ((!strcmp(new->type, "overlay") ||
-	     !strcmp(new->type, "overlayfs")) &&
+	if ((strcmp(new->type, "overlay") == 0 ||
+	     strcmp(new->type, "overlayfs") == 0) &&
 	    ret == LXC_CLONE_SNAPSHOT)
 		*needs_rdep = false;
 
 	/* btrfs */
 	if (!strcmp(orig->type, "btrfs") && !strcmp(new->type, "btrfs")) {
-		bool bret = false;
+		bool bret;
+
 		if (snap || btrfs_same_fs(orig->dest, new->dest) == 0)
 			bret = new->ops->snapshot(c->lxc_conf, orig, new, 0);
 		else
@@ -472,10 +473,10 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 
 	/* lvm */
 	if (!strcmp(orig->type, "lvm") && !strcmp(new->type, "lvm")) {
-		bool bret = false;
+		bool bret;
+
 		if (snap)
-			bret = new->ops->snapshot(c->lxc_conf, orig,
-							 new, newsize);
+			bret = new->ops->snapshot(c->lxc_conf, orig, new, newsize);
 		else
 			bret = new->ops->copy(c->lxc_conf, orig, new, newsize);
 		if (!bret)
@@ -486,11 +487,10 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 
 	/* zfs */
 	if (!strcmp(orig->type, "zfs") && !strcmp(new->type, "zfs")) {
-		bool bret = false;
+		bool bret;
 
 		if (snap)
-			bret = new->ops->snapshot(c->lxc_conf, orig, new,
-						  newsize);
+			bret = new->ops->snapshot(c->lxc_conf, orig, new, newsize);
 		else
 			bret = new->ops->copy(c->lxc_conf, orig, new, newsize);
 		if (!bret)
