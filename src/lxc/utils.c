@@ -90,7 +90,7 @@ lxc_log_define(lxc_utils, lxc);
  */
 extern bool btrfs_try_remove_subvol(const char *path);
 
-static int _recursive_rmdir(char *dirname, dev_t pdev,
+static int _recursive_rmdir(const char *dirname, dev_t pdev,
 			    const char *exclude, int level, bool onedev)
 {
 	struct dirent *direntp;
@@ -205,18 +205,18 @@ static bool is_native_overlayfs(const char *path)
 }
 
 /* returns 0 on success, -1 if there were any failures */
-extern int lxc_rmdir_onedev(char *path, const char *exclude)
+extern int lxc_rmdir_onedev(const char *path, const char *exclude)
 {
 	struct stat mystat;
 	bool onedev = true;
 
-	if (is_native_overlayfs(path)) {
+	if (is_native_overlayfs(path))
 		onedev = false;
-	}
 
 	if (lstat(path, &mystat) < 0) {
 		if (errno == ENOENT)
 			return 0;
+
 		ERROR("Failed to stat %s", path);
 		return -1;
 	}

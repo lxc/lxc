@@ -54,7 +54,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 		   int snap, uint64_t newsize, struct lxc_conf *conf)
 {
 	int ret;
-	char *src;
+	const char *src;
 
 	if (!snap) {
 		ERROR("The overlay storage driver can only be used for "
@@ -683,14 +683,14 @@ int ovl_umount(struct lxc_storage *bdev)
 	return ret;
 }
 
-char *ovl_get_lower(const char *rootfs_path)
+const char *ovl_get_lower(const char *rootfs_path)
 {
-	char *s1;
+	const char *s1 = rootfs_path;
 
-	s1 = strstr(rootfs_path, ":/");
-	if (!s1)
-		return NULL;
-	s1++;
+	if (strncmp(rootfs_path, "overlay:", 8) == 0)
+		s1 += 8;
+	else if (strncmp(rootfs_path, "overlayfs:", 10) == 0)
+		s1 += 10;
 
 	s1 = strstr(s1, ":/");
 	if (!s1)
@@ -714,16 +714,20 @@ char *ovl_get_rootfs(const char *rootfs_path, size_t *rootfslen)
 	if (!s1)
 		return NULL;
 
-	s2 = strstr(s1, ":/");
-	if (s2) {
-		s2 = s2 + 1;
-		if ((s3 = strstr(s2, ":/")))
-			*s3 = '\0';
-		rootfsdir = strdup(s2);
-		if (!rootfsdir) {
-			free(s1);
-			return NULL;
-		}
+	s2 = s1;
+	if (strncmp(rootfs_path, "overlay:", 8) == 0)
+		s2 += 8;
+	else if (strncmp(rootfs_path, "overlayfs:", 10) == 0)
+		s2 += 10;
+
+	s3 = strstr(s2, ":/");
+	if (s3)
+		*s3 = '\0';
+
+	rootfsdir = strdup(s2);
+	if (!rootfsdir) {
+		free(s1);
+		return NULL;
 	}
 
 	if (!rootfsdir)

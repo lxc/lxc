@@ -338,7 +338,7 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 				 uint64_t newsize, bool *needs_rdep)
 {
 	int ret;
-	char *src_no_prefix;
+	const char *src_no_prefix;
 	struct lxc_storage *new, *orig;
 	bool snap = (flags & LXC_CLONE_SNAPSHOT);
 	bool maybe_snap = (flags & LXC_CLONE_MAYBE_SNAPSHOT);
@@ -718,7 +718,7 @@ bool rootfs_is_blockdev(struct lxc_conf *conf)
 	return false;
 }
 
-char *lxc_storage_get_path(char *src, const char *prefix)
+const char *lxc_storage_get_path(char *src, const char *prefix)
 {
 	size_t prefix_len;
 

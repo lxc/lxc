@@ -133,7 +133,7 @@ bool attach_block_device(struct lxc_conf *conf)
 int blk_getsize(struct lxc_storage *bdev, uint64_t *size)
 {
 	int fd, ret;
-	char *src;
+	const char *src;
 
 	src = lxc_storage_get_path(bdev->src, bdev->type);
 	fd = open(src, O_RDONLY);
@@ -162,11 +162,15 @@ void detach_block_device(struct lxc_conf *conf)
  */
 int detect_fs(struct lxc_storage *bdev, char *type, int len)
 {
-	int p[2], ret;
+	int ret;
+	int p[2];
 	size_t linelen;
 	pid_t pid;
 	FILE *f;
-	char *sp1, *sp2, *sp3, *srcdev, *line = NULL;
+	char *sp1, *sp2, *sp3;
+	const char *l, *srcdev;
+	char devpath[MAXPATHLEN];
+	char *line = NULL;
 
 	if (!bdev || !bdev->src || !bdev->dest)
 		return -1;
@@ -218,9 +222,7 @@ int detect_fs(struct lxc_storage *bdev, char *type, int len)
 		exit(1);
 	}
 
-	/* if symlink, get the real dev name */
-	char devpath[MAXPATHLEN];
-	char *l = linkderef(srcdev, devpath);
+	l = linkderef(srcdev, devpath);
 	if (!l)
 		exit(1);
 	f = fopen("/proc/self/mounts", "r");
@@ -383,7 +385,7 @@ int find_fstype_cb(char *buffer, void *data)
 	return 1;
 }
 
-char *linkderef(char *path, char *dest)
+const char *linkderef(const char *path, char *dest)
 {
 	struct stat sbuf;
 	ssize_t ret;
