@@ -41,8 +41,6 @@
 #include "lxc.h"
 #include "utils.h"
 
-lxc_log_define(lxc_ls, lxc);
-
 /* Per default we only allow five levels of recursion to protect the stack at
  * least a little bit. */
 #define MAX_NESTLVL 5
@@ -475,9 +473,9 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 			if (tmp) {
 				unsigned int astart = 0;
 				if (lxc_safe_uint(tmp, &astart) < 0)
-					WARN("Could not parse value for 'lxc.start.auto'.");
+					printf("Could not parse value for 'lxc.start.auto'.\n");
 				if (astart > 1)
-					DEBUG("Wrong value for 'lxc.start.auto = %d'.", astart);
+					printf("Wrong value for 'lxc.start.auto = %d'.\n", astart);
 				l->autostart = astart == 1 ? true : false;
 			}
 			free(tmp);
