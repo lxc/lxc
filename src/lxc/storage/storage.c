@@ -650,12 +650,16 @@ struct lxc_storage *storage_init(struct lxc_conf *conf, const char *src,
 	return bdev;
 }
 
-bool storage_is_dir(struct lxc_conf *conf, const char *path)
+bool storage_is_dir(struct lxc_conf *conf)
 {
 	struct lxc_storage *orig;
+	char *type = conf->rootfs.bdev_type;
 	bool bret = false;
 
-	orig = storage_init(conf, path, NULL, NULL);
+	if (type)
+		return (strcmp(type, "dir") == 0);
+
+	orig = storage_init(conf, conf->lxc_rootfs.path, NULL, NULL);
 	if (!orig)
 		return bret;
 

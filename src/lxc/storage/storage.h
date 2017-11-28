@@ -109,7 +109,19 @@ struct lxc_storage {
 	int flags;
 };
 
-extern bool storage_is_dir(struct lxc_conf *conf, const char *path);
+/**
+ * storage_is_dir : Check whether the roots is a directory. This function will
+ *                  trust the config file. If the config file key
+ *                  lxc.rootfs.path is set to <storage type>:<container path>
+ *                  the confile parser will have split this into <storage type>
+ *                  and <container path> and set the <bdev_type> member in the
+ *                  lxc_rootfs struct to <storage type> and the <path> member
+ *                  will be set to a clean <container path> without the <storage
+ *                  type> prefix. This is the new, clean way of handling storage
+ *                  type specifications.  If the <storage type> prefix is not
+ *                  detected liblxc will try to detect the storage type.
+ */
+extern bool storage_is_dir(struct lxc_conf *conf);
 extern bool storage_can_backup(struct lxc_conf *conf);
 
 /* Instantiate a lxc_storage object. The src is used to determine which blockdev
