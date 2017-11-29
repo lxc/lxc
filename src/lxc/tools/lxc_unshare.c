@@ -31,6 +31,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/eventfd.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -93,24 +94,37 @@ static bool lookup_user(const char *optarg, uid_t *uid)
 	return true;
 }
 
-
 struct start_arg {
 	char ***args;
 	int *flags;
 	uid_t *uid;
 	bool setuid;
 	int want_default_mounts;
+	int wait_fd;
 	const char *want_hostname;
 };
 
 static int do_start(void *arg)
 {
+	int ret;
+	uint64_t wait_val;
 	struct start_arg *start_arg = arg;
 	char **args = *start_arg->args;
 	int flags = *start_arg->flags;
 	uid_t uid = *start_arg->uid;
 	int want_default_mounts = start_arg->want_default_mounts;
 	const char *want_hostname = start_arg->want_hostname;
+	int wait_fd = start_arg->wait_fd;
+
+	if (start_arg->setuid) {
+		/* waiting until uid maps is set */
+		ret = read(wait_fd, &wait_val, sizeof(wait_val));
+		if (ret == -1) {
+			close(wait_fd);
+			fprintf(stderr, "read eventfd failed\n");
+			exit(EXIT_FAILURE);
+		}
+	}
 
 	if ((flags & CLONE_NEWNS) && want_default_mounts)
 		lxc_setup_fs();
@@ -143,6 +157,7 @@ int main(int argc, char *argv[])
 	int flags = 0, daemonize = 0;
 	uid_t uid = 0; /* valid only if (flags & CLONE_NEWUSER) */
 	pid_t pid;
+	uint64_t wait_val = 1;
 	struct my_iflist *tmpif, *my_iflist = NULL;
 	struct start_arg start_arg = {
 		.args = &args,
@@ -241,10 +256,47 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	if (start_arg.setuid) {
+		start_arg.wait_fd = eventfd(0, EFD_CLOEXEC);
+		if (start_arg.wait_fd < 0) {
+			fprintf(stderr, "failed to create eventfd\n");
+			exit(EXIT_FAILURE);
+		}
+	}
+
 	pid = lxc_clone(do_start, &start_arg, flags);
 	if (pid < 0) {
 		fprintf(stderr, "failed to clone\n");
 		exit(EXIT_FAILURE);
+	}
+
+	if (start_arg.setuid) {
+		/* enough space to accommodate uids */
+		char *umap = (char *)alloca(100);
+
+		/* create new uid mapping using current UID and the one
+		 * specified as parameter
+		 */
+		ret = snprintf(umap, 100, "%d %d 1\n" , *(start_arg.uid), getuid());
+		if (ret < 0 || ret >= 100) {
+			close(start_arg.wait_fd);
+			fprintf(stderr, "snprintf failed");
+			exit(EXIT_FAILURE);
+		}
+
+		ret = write_id_mapping(ID_TYPE_UID, pid, umap, strlen(umap));
+		if (ret < 0) {
+			close(start_arg.wait_fd);
+			fprintf(stderr, "uid mapping failed\n");
+			exit(EXIT_FAILURE);
+		}
+
+		ret = write(start_arg.wait_fd, &wait_val, sizeof(wait_val));
+		if (ret < 0) {
+			close(start_arg.wait_fd);
+			fprintf(stderr, "write to eventfd failed\n");
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	if (my_iflist) {

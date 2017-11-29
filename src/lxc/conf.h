@@ -343,6 +343,9 @@ struct lxc_conf {
 	struct lxc_cgroup cgroup_meta;
 };
 
+int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
+			    size_t buf_size);
+
 #ifdef HAVE_TLS
 extern __thread struct lxc_conf *current_config;
 #else
