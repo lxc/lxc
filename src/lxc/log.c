@@ -533,6 +533,17 @@ extern int lxc_log_syslog(int facility)
 		lxc_log_category_lxc.appender = &log_appender_syslog;
 		return 0;
 	}
+
+	appender = lxc_log_category_lxc.appender;
+	/* Check if syslog was already added, to avoid creating a loop */
+	while (appender) {
+		if (appender == &log_appender_syslog) {
+			/* not an error: openlog re-opened the connection */
+			return 0;
+		}
+		appender = appender->next;
+	}
+
 	appender = lxc_log_category_lxc.appender;
 	while (appender->next != NULL)
 		appender = appender->next;
