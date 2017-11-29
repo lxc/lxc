@@ -2431,7 +2431,7 @@ struct lxc_conf *lxc_conf_init(void)
 	return new;
 }
 
-static int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
+int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 			    size_t buf_size)
 {
 	char path[MAXPATHLEN];
