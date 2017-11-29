@@ -90,6 +90,10 @@ int set_config_network_legacy_nic(const char *key, const char *value,
 	if (!p)
 		goto out;
 
+	if (strlen(p + 1) == 0) {
+	    ERROR("No subkey in network configuration key \"%s\"", key);
+	    goto out;
+	}
 	strcpy(copy + 12, p + 1);
 	config = lxc_get_config(copy);
 	if (!config) {

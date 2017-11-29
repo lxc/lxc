@@ -155,6 +155,33 @@ static int set_and_clear_complete_netdev(struct lxc_container *c)
 	return 0;
 }
 
+static int set_invalid_netdev(struct lxc_container *c) {
+	if (c->set_config_item(c, "lxc.net.0.asdf", "veth")) {
+		lxc_error("%s\n", "lxc.net.0.asdf should be invalid");
+		return -1;
+	}
+
+	if (c->set_config_item(c, "lxc.net.2147483647.type", "veth")) {
+		lxc_error("%s\n", "lxc.net.2147483647.type should be invalid");
+		return -1;
+	}
+
+	if (c->set_config_item(c, "lxc.net.0.", "veth")) {
+		lxc_error("%s\n", "lxc.net.0. should be invalid");
+		return -1;
+	}
+
+	if (c->set_config_item(c, "lxc.network.0.", "veth")) {
+		lxc_error("%s\n", "lxc.network.0. should be invalid");
+		return -1;
+	}
+
+	c->clear_config(c);
+	c->lxc_conf = NULL;
+
+	return 0;
+}
+
 int test_idmap_parser(void)
 {
 	size_t i;
@@ -970,12 +997,6 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	if (!set_get_compare_clear_save_load(c, "lxc.net.0.asdf", "veth",
-					    tmpf, true)) {
-		lxc_error("%s\n", "lxc.net.0.asdf");
-		goto non_test_error;
-	}
-
 	if (set_get_compare_clear_save_load_network(
 		c, "lxc.net.0.macvlan.mode", "private", tmpf, true,
 		"macvlan")) {
@@ -1067,6 +1088,11 @@ int main(int argc, char *argv[])
 
 	if (set_and_clear_complete_netdev(c) < 0) {
 		lxc_error("%s\n", "failed to clear whole network");
+		goto non_test_error;
+	}
+
+	if (set_invalid_netdev(c) < 0) {
+		lxc_error("%s\n", "failed to reject invalid configuration");
 		goto non_test_error;
 	}
 

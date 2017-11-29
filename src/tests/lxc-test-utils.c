@@ -462,6 +462,29 @@ void test_parse_byte_size_string(void)
 		exit(EXIT_FAILURE);
 }
 
+void test_lxc_config_net_hwaddr(void)
+{
+	bool lxc_config_net_hwaddr(const char *line);
+
+	if (!lxc_config_net_hwaddr("lxc.net.0.hwaddr = 00:16:3e:04:65:b8\n"))
+		exit(EXIT_FAILURE);
+	if (!lxc_config_net_hwaddr("lxc.network.hwaddr = 00:16:3e:04:65:b8\n"))
+		exit(EXIT_FAILURE);
+	if (!lxc_config_net_hwaddr("lxc.net.hwaddr = 00:16:3e:04:65:b8\n"))
+		exit(EXIT_FAILURE);
+
+	if (lxc_config_net_hwaddr("lxc.net"))
+		exit(EXIT_FAILURE);
+	if (lxc_config_net_hwaddr("lxc.net."))
+		exit(EXIT_FAILURE);
+	if (lxc_config_net_hwaddr("lxc.net.0."))
+		exit(EXIT_FAILURE);
+	if (lxc_config_net_hwaddr("lxc.network"))
+	       exit(EXIT_FAILURE);
+	if (lxc_config_net_hwaddr("lxc.network.0."))
+	       exit(EXIT_FAILURE);
+}
+
 int main(int argc, char *argv[])
 {
 	test_lxc_string_replace();
@@ -472,6 +495,7 @@ int main(int argc, char *argv[])
 	test_lxc_safe_int();
 	test_lxc_safe_long();
 	test_parse_byte_size_string();
+	test_lxc_config_net_hwaddr();
 
 	exit(EXIT_SUCCESS);
 }
