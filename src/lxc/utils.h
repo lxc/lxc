@@ -294,4 +294,5 @@ int null_stdfds(void);
 
 int safe_mount(const char *src, const char *dest, const char *fstype,
 		unsigned long flags, const void *data, const char *rootfs);
+int set_stdfds(int fd);
 #endif /* __LXC_UTILS_H */
