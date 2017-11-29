@@ -36,8 +36,6 @@
 #define OPT_NO_LOCK OPT_USAGE + 1
 #define OPT_NO_KILL OPT_USAGE + 2
 
-lxc_log_define(lxc_stop_ui, lxc);
-
 static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
 	switch (c) {
