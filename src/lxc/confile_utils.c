@@ -546,63 +546,18 @@ int rand_complete_hwaddr(char *hwaddr)
 
 bool lxc_config_net_hwaddr(const char *line)
 {
-	char *copy, *p;
+	unsigned index;
+	char tmp[7];
 
 	if (strncmp(line, "lxc.net", 7) != 0)
 		return false;
+	if (strncmp(line, "lxc.net.hwaddr", 14) == 0)
+		return true;
 	if (strncmp(line, "lxc.network.hwaddr", 18) == 0)
 		return true;
+	if (sscanf(line, "lxc.net.%u.%6s", &index, tmp) == 2 || sscanf(line, "lxc.network.%u.%6s", &index, tmp) == 2)
+		return strncmp(tmp, "hwaddr", 6) == 0;
 
-	/* We have to dup the line, if line is something like
-	 * "lxc.net.[i].xxx = xxxxx ", we need to remove
-	 * '[i]' and compare its key with 'lxc.net.hwaddr'*/
-	copy = strdup(line);
-	if (!copy) {
-		SYSERROR("failed to allocate memory");
-		return false;
-	}
-	if (*(copy + 8) >= '0' && *(copy + 8) <= '9') {
-		p = strchr(copy + 8, '.');
-		if (!p) {
-			free(copy);
-			return false;
-		}
-		/* strlen("hwaddr") = 6 */
-		if (strlen(p + 1) >= 6)
-			 memmove(copy + 8, p + 1, 6);
-		copy[8 + 6] = '\0';
-	}
-	if (strncmp(copy, "lxc.net.hwaddr", 14) == 0) {
-		free(copy);
-		return true;
-	}
-	free(copy);
-
-	/* We have to dup the line second time, if line is something like
-	 * "lxc.network.[i].xxx = xxxxx ", we need to remove
-	 * '[i]' and compare its key with 'lxc.network.hwaddr'*/
-	copy = strdup(line);
-	if (!copy) {
-		SYSERROR("failed to allocate memory");
-		return false;
-	}
-	if (*(copy + 12) >= '0' && *(copy + 12) <= '9') {
-		p = strchr(copy + 12, '.');
-		if (!p) {
-			free(copy);
-			return false;
-		}
-		/* strlen("hwaddr") = 6 */
-		if (strlen(p + 1) >= 6)
-			memmove(copy + 12, p + 1, 6);
-		copy[12 + 6] = '\0';
-	}
-	if (strncmp(copy, "lxc.network.hwaddr", 18) == 0) {
-		free(copy);
-		return true;
-	}
-
-	free(copy);
 	return false;
 }
 
