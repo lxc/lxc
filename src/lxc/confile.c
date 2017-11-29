@@ -1984,7 +1984,7 @@ static int parse_line(char *buffer, void *data)
 	}
 
 	if (empty_line)
-		return 0;
+		goto on_error;
 
 	line += lxc_char_left_gc(line, strlen(line));
 
