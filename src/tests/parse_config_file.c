@@ -166,6 +166,16 @@ static int set_invalid_netdev(struct lxc_container *c) {
 		return -1;
 	}
 
+	if (c->set_config_item(c, "lxc.net.0.", "veth")) {
+		lxc_error("%s\n", "lxc.net.0. should be invalid");
+		return -1;
+	}
+
+	if (c->set_config_item(c, "lxc.network.0.", "veth")) {
+		lxc_error("%s\n", "lxc.network.0. should be invalid");
+		return -1;
+	}
+
 	c->clear_config(c);
 	c->lxc_conf = NULL;
 

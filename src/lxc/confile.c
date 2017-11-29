@@ -3801,6 +3801,10 @@ static struct lxc_config_t *get_network_config_ops(const char *key,
 	/* lxc.net.<idx>.<subkey> */
 	if (idx_end) {
 		*idx_end = '.';
+		if (strlen(idx_end + 1) == 0) {
+			ERROR("No subkey in network configuration key \"%s\"", key);
+			goto on_error;
+		}
 
 		memmove(copy + 8, idx_end + 1, strlen(idx_end + 1));
 		copy[strlen(key) - numstrlen + 1] = '\0';
