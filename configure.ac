@@ -889,6 +889,8 @@ AC_CONFIG_FILES([
 	doc/ko/see_also.sgml
 
 	hooks/Makefile
+	hooks/dhclient-start
+	hooks/dhclient-stop
 
 	templates/Makefile
 	templates/lxc-alpine

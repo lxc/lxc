@@ -1,0 +1,13 @@
+#! /bin/bash
+
+set -e
+
+LXC_HOOK_DIR="@LXCHOOKDIR@"
+
+rootfs="${LXC_ROOTFS_PATH##*:}"
+pidfile="${rootfs%/*}/dhclient.pid"
+
+mkdir -p "${rootfs}/var/lib/dhclient"
+
+nsenter -u -U -n -t "${LXC_PID}" -- \
+  /sbin/dhclient -nw -1 -pf ${pidfile} -lf ${rootfs}/var/lib/dhclient/dhclient.leases -e ROOTFS=${rootfs} -sf ${LXC_HOOK_DIR}/dhclient-script

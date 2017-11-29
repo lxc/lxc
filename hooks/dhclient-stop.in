@@ -1,0 +1,15 @@
+#! /bin/bash
+
+set -e
+
+LXC_HOOK_DIR="@LXCHOOKDIR@"
+
+rootfs="${LXC_ROOTFS_PATH##*:}"
+pidfile="${rootfs%/*}/dhclient.pid"
+
+# XXX Stop hook namespace arguments are wrong for some reason, those are the host namespaces not the container ones.
+# Retrieve the namespaces from the dhclient pidfile instead.
+nsenter -u -U -n -t $(< ${pidfile}) -- \
+  /sbin/dhclient -r -pf ${pidfile} -lf ${rootfs}/var/lib/dhclient/dhclient.leases -e ROOTFS=${rootfs} -sf ${LXC_HOOK_DIR}/dhclient-script
+
+rm -f ${pidfile}
