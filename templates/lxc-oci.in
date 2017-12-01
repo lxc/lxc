@@ -38,8 +38,11 @@ LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
 
 # Some useful functions
 cleanup() {
-    if [ -d "$DOWNLOAD_TEMP" ]; then
-        rm -Rf $DOWNLOAD_TEMP
+    if [ -d "${DOWNLOAD_TEMP}" ]; then
+        rm -Rf "${DOWNLOAD_TEMP}"
+    fi
+    if [ -d "${LXC_ROOTFS}.tmp" ]; then
+        rm -Rf "${LXC_ROOTFS}.tmp"
     fi
 }
 
@@ -244,7 +247,6 @@ fi
 umoci unpack ${umoci_args[@]} --image "${DOWNLOAD_TEMP}:latest" "${LXC_ROOTFS}.tmp"
 rmdir "${LXC_ROOTFS}"
 mv "${LXC_ROOTFS}.tmp/rootfs" "${LXC_ROOTFS}"
-rm -rf "${LXC_ROOTFS}.tmp"
 
 OCI_CONF_FILE=$(getconfigpath ${DOWNLOAD_TEMP} latest)
 LXC_CONF_FILE="${LXC_PATH}/config"
