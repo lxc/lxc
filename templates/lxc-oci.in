@@ -63,7 +63,7 @@ getconfigpath() {
 	basedir="$1"
 	q="$2"
 
-	digest=`cat "${basedir}/index.json" | jq --arg q "$q" '.manifests[] | if .annotations."org.opencontainers.image.ref.name" == $q then .digest else null end' | sed -e 's/"//g'`
+	digest=`cat "${basedir}/index.json" | jq -c -r --arg q "$q" '.manifests[] | if .annotations."org.opencontainers.image.ref.name" == $q then .digest else null end'`
 	if [ -z "${digest}" ]; then
 		echo "$q not found in index.json" >&2
 		return
@@ -71,7 +71,7 @@ getconfigpath() {
 
 	# Ok we have the image config digest, now get the config from that,
 	d=${digest:7}
-	cdigest=`cat "${basedir}/blobs/sha256/${d}" | jq '.config.digest' | sed -e 's/"//g'`
+	cdigest=`cat "${basedir}/blobs/sha256/${d}" | jq -c -r '.config.digest'`
 	if [ -z "${cdigest}" ]; then
 		echo "container config not found" >&2
 		return
@@ -91,22 +91,18 @@ getep() {
 
 	configpath="$1"
 
-	ep=`cat "${configpath}" | jq -c '.config.Entrypoint' | sed -e 's/^\[//; s/\]$//; s/","/" "/'`
-	cmd=`cat "${configpath}" | jq -c '.config.Cmd' | sed -e 's/^\[//; s/\]$//; s/","/" "/'`
-	if [ "${ep}" = "null" ]; then
+	ep=`cat "${configpath}" | jq -c -r '.config.Entrypoint[]?'`
+	cmd=`cat "${configpath}" | jq -c -r '.config.Cmd[]?'`
+	if [ -z "${ep}" ]; then
 		ep="${cmd}"
-		if [ "${ep}" = "null" ]; then
+		if [ -z "${ep}" ]; then
 			ep="/bin/sh"
 		fi
-	elif [ "${cmd}" != "null" ]; then
+	elif [ -n "${cmd}" ]; then
 		ep="${ep} ${cmd}"
 	fi
 
-	if [ -z "${ep}" ]; then
-		echo "/bin/sh"
-		return
-	fi
-	echo "${ep}"
+	echo ${ep}
 	return
 }
 
@@ -118,8 +114,7 @@ getenv() {
 
 	configpath="$1"
 
-	cat "${configpath}" > /tmp/config
-	env=`cat "${configpath}" | jq -c '.config.Env[]'`
+	env=`cat "${configpath}" | jq -c -r '.config.Env[]'`
 
 	echo "${env}"
 	return
