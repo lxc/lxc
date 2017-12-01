@@ -237,9 +237,7 @@ if [ -n "$OCI_USERNAME" ]; then
 fi
 skopeo copy ${skopeo_args[@]} "${OCI_URL}" "oci:${DOWNLOAD_TEMP}:latest"
 
-# Unpack the rootfs
 echo "Unpacking the rootfs"
-
 umoci_args=("")
 if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
     umoci_args+=(--rootless)
