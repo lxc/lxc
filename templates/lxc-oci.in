@@ -63,7 +63,7 @@ getconfigpath() {
 	basedir="$1"
 	q="$2"
 
-	digest=`cat "${basedir}/index.json" | jq -c -r --arg q "$q" '.manifests[] | if .annotations."org.opencontainers.image.ref.name" == $q then .digest else null end'`
+	digest=`cat "${basedir}/index.json" | jq -c -r --arg q "$q" '.manifests[] | if .annotations."org.opencontainers.image.ref.name" == $q then .digest else empty end'`
 	if [ -z "${digest}" ]; then
 		echo "$q not found in index.json" >&2
 		return
