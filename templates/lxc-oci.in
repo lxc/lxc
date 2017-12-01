@@ -34,12 +34,16 @@ for bin in skopeo umoci jq; do
     fi
 done
 
+LOCALSTATEDIR="@LOCALSTATEDIR@"
 LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
 
 # Some useful functions
 cleanup() {
-    if [ -d "$DOWNLOAD_TEMP" ]; then
-        rm -Rf $DOWNLOAD_TEMP
+    if [ -d "${DOWNLOAD_TEMP}" ]; then
+        rm -Rf "${DOWNLOAD_TEMP}"
+    fi
+    if [ -d "${LXC_ROOTFS}.tmp" ]; then
+        rm -Rf "${LXC_ROOTFS}.tmp"
     fi
 }
 
@@ -60,7 +64,7 @@ getconfigpath() {
 	basedir="$1"
 	q="$2"
 
-	digest=`cat "${basedir}/index.json" | jq --arg q "$q" '.manifests[] | if .annotations."org.opencontainers.image.ref.name" == $q then .digest else null end' | sed -e 's/"//g'`
+	digest=`cat "${basedir}/index.json" | jq -c -r --arg q "$q" '.manifests[] | if .annotations."org.opencontainers.image.ref.name" == $q then .digest else empty end'`
 	if [ -z "${digest}" ]; then
 		echo "$q not found in index.json" >&2
 		return
@@ -68,7 +72,7 @@ getconfigpath() {
 
 	# Ok we have the image config digest, now get the config from that,
 	d=${digest:7}
-	cdigest=`cat "${basedir}/blobs/sha256/${d}" | jq '.config.digest' | sed -e 's/"//g'`
+	cdigest=`cat "${basedir}/blobs/sha256/${d}" | jq -c -r '.config.digest'`
 	if [ -z "${cdigest}" ]; then
 		echo "container config not found" >&2
 		return
@@ -88,22 +92,18 @@ getep() {
 
 	configpath="$1"
 
-	ep=`cat "${configpath}" | jq -c '.config.Entrypoint' | sed -e 's/^\[//; s/\]$//; s/","/" "/'`
-	cmd=`cat "${configpath}" | jq -c '.config.Cmd' | sed -e 's/^\[//; s/\]$//; s/","/" "/'`
-	if [ "${ep}" = "null" ]; then
+	ep=`cat "${configpath}" | jq -c -r '.config.Entrypoint[]?'`
+	cmd=`cat "${configpath}" | jq -c -r '.config.Cmd[]?'`
+	if [ -z "${ep}" ]; then
 		ep="${cmd}"
-		if [ "${ep}" = "null" ]; then
+		if [ -z "${ep}" ]; then
 			ep="/bin/sh"
 		fi
-	elif [ "${cmd}" != "null" ]; then
+	elif [ -n "${cmd}" ]; then
 		ep="${ep} ${cmd}"
 	fi
 
-	if [ -z "${ep}" ]; then
-		echo "/bin/sh"
-		return
-	fi
-	echo "${ep}"
+	echo ${ep}
 	return
 }
 
@@ -115,8 +115,7 @@ getenv() {
 
 	configpath="$1"
 
-	cat "${configpath}" > /tmp/config
-	env=`cat "${configpath}" | jq -c '.config.Env[]'`
+	env=`cat "${configpath}" | jq -c -r '.config.Env[]'`
 
 	echo "${env}"
 	return
@@ -147,7 +146,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o u:h -l help,url:,username:,password:,\
+options=$(getopt -o u:h -l help,url:,username:,password:,no-cache,\
 name:,path:,rootfs:,mapped-uid:,mapped-gid: -- "$@")
 
 if [ $? -ne 0 ]; then
@@ -159,6 +158,7 @@ eval set -- "$options"
 OCI_URL=""
 OCI_USERNAME=
 OCI_PASSWORD=
+OCI_USE_CACHE="true"
 
 LXC_MAPPED_GID=
 LXC_MAPPED_UID=
@@ -172,6 +172,7 @@ while :; do
         -u|--url)           OCI_URL=$2; shift 2;;
         --username)         OCI_USERNAME=$2; shift 2;;
         --password)         OCI_PASSWORD=$2; shift 2;;
+        --no-cache)         OCI_USE_CACHE="false"; shift 1;;
         --name)             LXC_NAME=$2; shift 2;;
         --path)             LXC_PATH=$2; shift 2;;
         --rootfs)           LXC_ROOTFS=$2; shift 2;;
@@ -197,33 +198,43 @@ if [ -n "$OCI_PASSWORD" ] && [ -z "$OCI_USERNAME" ]; then
     exit 1
 fi
 
+if [ "${OCI_USE_CACHE}" = "true" ]; then
+    if ! skopeo copy --help | grep -q 'dest-shared-blob-dir'; then
+        echo "INFO: skopeo doesn't support blob caching"
+        OCI_USE_CACHE="false"
+    fi
+fi
+
 USERNS=$(in_userns)
 
-if [ "$USERNS" != "no" ]; then
-    if [ "$USERNS" = "yes" ]; then
-        if [ -z "$LXC_MAPPED_UID" ] || [ "$LXC_MAPPED_UID" = "-1" ]; then
-            echo "ERROR: In a user namespace without a map." 1>&2
-            exit 1
-        fi
-        DOWNLOAD_MODE="user"
-        DOWNLOAD_TARGET="user"
-    else
-        DOWNLOAD_MODE="user"
-        DOWNLOAD_TARGET="system"
+if [ "$USERNS" = "yes" ]; then
+    if [ -z "$LXC_MAPPED_UID" ] || [ "$LXC_MAPPED_UID" = "-1" ]; then
+        echo "ERROR: In a user namespace without a map." 1>&2
+        exit 1
     fi
+fi
+
+if [ "${OCI_USE_CACHE}" = "true" ]; then
+    if [ "$USERNS" = "yes" ]; then
+        DOWNLOAD_BASE="${HOME}/.cache/lxc"
+    else
+        DOWNLOAD_BASE="${LOCALSTATEDIR}/cache/lxc"
+    fi
+else
+    DOWNLOAD_BASE=/tmp
 fi
 
 # Trap all exit signals
 trap cleanup EXIT HUP INT TERM
 
 if ! type mktemp >/dev/null 2>&1; then
-    DOWNLOAD_TEMP=/tmp/lxc-oci.$$
+    DOWNLOAD_TEMP="${DOWNLOAD_BASE}/lxc-oci.$$"
     mkdir -p $DOWNLOAD_TEMP
 else
-    DOWNLOAD_TEMP=$(mktemp -d)
+    DOWNLOAD_TEMP=$(mktemp -d -p "${DOWNLOAD_BASE}")
 fi
 
-# Download the image - TODO - cache
+# Download the image
 skopeo_args=("")
 if [ -n "$OCI_USERNAME" ]; then
     CREDENTIALS="${OCI_USERNAME}"
@@ -232,11 +243,15 @@ if [ -n "$OCI_USERNAME" ]; then
     fi
     skopeo_args+=(--src-creds "${CREDENTIALS}")
 fi
-skopeo copy ${skopeo_args[@]} "${OCI_URL}" "oci:${DOWNLOAD_TEMP}:latest"
+if [ "${OCI_USE_CACHE}" = "true" ]; then
+    skopeo_args+=(--dest-shared-blob-dir "${DOWNLOAD_BASE}")
+    skopeo copy ${skopeo_args[@]} "${OCI_URL}" "oci:${DOWNLOAD_TEMP}:latest"
+    ln -s "${DOWNLOAD_BASE}/sha256" "${DOWNLOAD_TEMP}/blobs/sha256"
+else
+    skopeo copy ${skopeo_args[@]} "${OCI_URL}" "oci:${DOWNLOAD_TEMP}:latest"
+fi
 
-# Unpack the rootfs
 echo "Unpacking the rootfs"
-
 umoci_args=("")
 if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
     umoci_args+=(--rootless)
@@ -244,7 +259,6 @@ fi
 umoci unpack ${umoci_args[@]} --image "${DOWNLOAD_TEMP}:latest" "${LXC_ROOTFS}.tmp"
 rmdir "${LXC_ROOTFS}"
 mv "${LXC_ROOTFS}.tmp/rootfs" "${LXC_ROOTFS}"
-rm -rf "${LXC_ROOTFS}.tmp"
 
 OCI_CONF_FILE=$(getconfigpath ${DOWNLOAD_TEMP} latest)
 LXC_CONF_FILE="${LXC_PATH}/config"
