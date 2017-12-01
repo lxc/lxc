@@ -26,12 +26,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <string.h>
+#include <sys/param.h>
 
 #include <lxc/lxccontainer.h>
 
-#include "arguments.h"
-#include "log.h"
-#include "lxc.h"
+#include "tools/arguments.h"
 
 static int my_checker(const struct lxc_arguments* args)
 {
@@ -83,7 +83,6 @@ int main(int argc, char *argv[])
 
 	if (lxc_log_init(&log))
 		exit(EXIT_FAILURE);
-	lxc_log_options_no_override();
 
 	/* REMOVE IN LXC 3.0 */
 	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
