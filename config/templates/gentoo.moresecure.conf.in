@@ -30,7 +30,8 @@ lxc.mount.entry=run run tmpfs rw,nosuid,nodev,relatime,mode=755 0 0
 # lxc.cap.drop = audit_write
 # lxc.cap.drop = setpcap          # breaks journald
 # lxc.cap.drop = sys_resource     # breaks systemd
-lxc.cap.drop = audit_control audit_write dac_read_search fsetid ipc_owner linux_immutable mknod setfcap setpcap sys_admin sys_boot sys_nice sys_pacct sys_ptrace sys_rawio sys_resource sys_tty_config syslog
+# lxc.cap.drop = sys_boot         # breaks sysvinit
+lxc.cap.drop = audit_control audit_write dac_read_search fsetid ipc_owner linux_immutable mknod setfcap setpcap sys_admin sys_nice sys_pacct sys_ptrace sys_rawio sys_resource sys_tty_config syslog
 
 # WARNING: the security vulnerability reported for 'cap_net_admin' at
 # http://mainisusuallyafunction.blogspot.com/2012/11/attacking-hardened-linux-systems-with.html
