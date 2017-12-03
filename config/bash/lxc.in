@@ -11,6 +11,10 @@ _have lxc-start && {
         COMPREPLY=( $( compgen -W "$(ls @LXCTEMPLATEDIR@/ | sed -e 's|^lxc-||' )" "$cur" ) )
     }
 
+    _lxc_backing_stores() {
+        COMPREPLY=( $( compgen -W "dir lvm loop btrfs zfs rbd best" "$cur" ) )
+    }
+
     _lxc_generic_n() {
         local cur prev
 
@@ -57,6 +61,11 @@ _have lxc-start && {
         case $prev in
             -t)
                 _lxc_templates "$cur"
+                return 0
+            ;;
+
+            -B)
+                _lxc_backing_stores "$cur"
                 return 0
             ;;
         esac
