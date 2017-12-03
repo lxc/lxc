@@ -126,6 +126,7 @@ echo -n "Network namespace: " && is_enabled CONFIG_NET_NS
 echo
 if ([ $KVER_MAJOR -lt 4 ]) || ([ $KVER_MAJOR -eq 4 ] && [ $KVER_MINOR -lt 7 ]); then
 	echo -n "Multiple /dev/pts instances: " && is_enabled DEVPTS_MULTIPLE_INSTANCES
+	echo
 fi
 echo
 
@@ -170,6 +171,7 @@ if [ -f $CGROUP_MNT_PATH/cgroup.clone_children ]; then
     $SETCOLOR_SUCCESS && echo "enabled" && $SETCOLOR_NORMAL
 else
     echo -n "Cgroup namespace: " && is_enabled CONFIG_CGROUP_NS yes
+    echo
 fi
 
 echo -n "Cgroup device: " && is_enabled CONFIG_CGROUP_DEVICE
@@ -212,6 +214,7 @@ echo
 echo -n "CONFIG_IP6_NF_TARGET_MASQUERADE: " && is_enabled CONFIG_IP6_NF_TARGET_MASQUERADE && is_probed nf_nat_masquerade_ipv6
 echo
 echo -n "CONFIG_NETFILTER_XT_TARGET_CHECKSUM: " && is_enabled CONFIG_NETFILTER_XT_TARGET_CHECKSUM && is_probed xt_CHECKSUM
+echo
 echo -n "CONFIG_NETFILTER_XT_MATCH_COMMENT: " && is_enabled CONFIG_NETFILTER_XT_MATCH_COMMENT && is_probed xt_comment
 echo
 echo -n "FUSE (for use with lxcfs): " && is_enabled CONFIG_FUSE_FS && is_probed fuse
@@ -237,7 +240,7 @@ echo -n "CONFIG_NETLINK_DIAG: " && is_enabled CONFIG_NETLINK_DIAG
 echo
 echo -n "File capabilities: " && \
     ( [ "${KVER_MAJOR}" = 2 ] && [ ${KVER_MINOR} -lt 33 ] && \
-       is_enabled CONFIG_SECURITY_FILE_CAPABILITIES ) || \
+       is_enabled CONFIG_SECURITY_FILE_CAPABILITIES; echo ) || \
     ( ( [ "${KVER_MAJOR}" = "2" ] && [ ${KVER_MINOR} -gt 32 ] ) || \
          [ ${KVER_MAJOR} -gt 2 ] && $SETCOLOR_SUCCESS && \
          echo "enabled" && $SETCOLOR_NORMAL )
