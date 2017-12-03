@@ -153,14 +153,14 @@ echo
 CGROUP_SYSTEMD_MNTPT=`echo "$CGROUP_V1_MNTS" | grep "/systemd"`
 if [ -z "$CGROUP_SYSTEMD_MNTPT" ]; then
     echo -n "Cgroup v1 systemd controller: "
-    "$SETCOLOR_FAILURE" && echo -n "missing" && $SETCOLOR_NORMAL
+    $SETCOLOR_FAILURE && echo -n "missing" && $SETCOLOR_NORMAL
     echo
 fi
 
 CGROUP_FREEZER_MNTPT=`echo "$CGROUP_V1_MNTS" | grep "/freezer"`
 if [ -z "$CGROUP_FREEZER_MNTPT" ]; then
     echo -n "Cgroup v1 freezer controller: "
-    "$SETCOLOR_FAILURE" && echo -n "missing" && $SETCOLOR_NORMAL
+    $SETCOLOR_FAILURE && echo -n "missing" && $SETCOLOR_NORMAL
     echo
 fi
 
