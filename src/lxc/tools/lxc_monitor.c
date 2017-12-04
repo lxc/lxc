@@ -34,7 +34,7 @@
 #include "lxc.h"
 #include "log.h"
 #include "monitor.h"
-#include "arguments.h"
+#include "tools/arguments.h"
 #include "lxccontainer.h"
 
 static bool quit_monitord;
