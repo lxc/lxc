@@ -32,7 +32,7 @@
 
 #include "lxc.h"
 #include "log.h"
-#include "arguments.h"
+#include "tools/arguments.h"
 
 static int my_checker(const struct lxc_arguments* args)
 {
