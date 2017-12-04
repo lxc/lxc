@@ -122,7 +122,7 @@ static inline int setns(int fd, int nstype)
 
 /* Define sethostname() if missing from the C library */
 #ifndef HAVE_SETHOSTNAME
-static int sethostname(const char * name, size_t len)
+static inline int sethostname(const char * name, size_t len)
 {
 #ifdef __NR_sethostname
 return syscall(__NR_sethostname, name, len);
