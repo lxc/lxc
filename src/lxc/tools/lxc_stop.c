@@ -29,7 +29,7 @@
 
 #include "lxc.h"
 #include "log.h"
-#include "arguments.h"
+#include "tools/arguments.h"
 #include "commands.h"
 #include "utils.h"
 
