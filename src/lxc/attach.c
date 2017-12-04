@@ -273,8 +273,15 @@ static int in_same_namespace(pid_t pid1, pid_t pid2, const char *ns)
 	struct stat ns_st1, ns_st2;
 
 	ns_fd1 = lxc_preserve_ns(pid1, ns);
-	if (ns_fd1 < 0)
+	if (ns_fd1 < 0) {
+		/* The kernel does not support this namespace. This is not an
+		 * error.
+		 */
+		if (errno == ENOENT)
+			return -EINVAL;
+
 		goto out;
+	}
 
 	ns_fd2 = lxc_preserve_ns(pid2, ns);
 	if (ns_fd2 < 0)
