@@ -2,7 +2,20 @@ language: c
 compiler:
  - gcc
  - clang
+env:
+  global:
+   - secure: "HRhoQBAke8QGGm8C8qH8cJ/vOB8x+ouDcKVL7iw6K6gLFBqSNF0Ikr/71lxof1nI2T3dk8shH5vv1i0OFhT2obHSQSYjs0fdO/B+4K/PXsj2BCmVtSketFK0xljU7RXzL+kS9V2A4R0SERygs2XahmbU0peePS2G+DbLTkWoxS8="
+addons:
+  coverity_scan:
+    project:
+      name: "lxc/lxc"
+      description: "LXC - Linux Containers https://linuxcontainers.org/lxc"
+    notification_email: lxc-devel@lists.linuxcontainers.org
+    build_command_prepend: "./autogen.sh && mkdir build && cd build && ../configure --enable-tests --with-distro=unknown"
+    build_command: "make -j4"
+    branch_pattern: master
 before_install:
+ - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
  - sudo add-apt-repository ppa:ubuntu-lxc/daily -y
  - sudo apt-get update -qq
  - sudo apt-get install -qq libapparmor-dev libcap-dev libseccomp-dev python3-dev docbook2x libgnutls-dev liblua5.2-dev libselinux1-dev libcgmanager-dev
