@@ -31,7 +31,7 @@
 #include "lxc.h"
 #include "log.h"
 
-#include "arguments.h"
+#include "tools/arguments.h"
 
 #if HAVE_IFADDRS_H
 #include <ifaddrs.h>
