@@ -35,7 +35,7 @@
 #include "log.h"
 #include "utils.h"
 #include "commands.h"
-#include "arguments.h"
+#include "tools/arguments.h"
 
 static bool ips;
 static bool state;
