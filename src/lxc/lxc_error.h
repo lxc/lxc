@@ -1,6 +1,52 @@
 #ifndef __LXC_ERRORS_H
 #define __LXC_ERRORS_H
 
+/* Overview 
+ *
+ * 1. Error codes defined based on grepping for "error" in tools/
+ *
+ * 2. lxc_error_dump() has intelligence to know when/if to dump errors and concat,
+ *    or just concatenate, thus only needing to add one lxc_error_dump call per
+ *    error to capture, and all that needs to be known is what type of error it is.
+ *
+ * 3. lxc_error_concat() is called by lxc_error_dump and has logic for appropriately
+ *    concatenating past/new error strings. Used '~' as delimiter since it's the least
+ *    used ASCII character, reduces need for escaping. If not sufficient can use, "~~" :)
+ *
+ * 4. lxc_error_handle() can be called to look at the most recent error_num and run
+ *    some code to "handle" it in some way, then return success/failure
+ *
+ * 5. main() and test_dump() are only there for testing at this point, it will be removed
+ *
+ * Example:
+ *   if (something_did_not_work) {
+ *     char *lxc_error = "<some-error>";
+ *     SYSERROR("%s", lxc_error);
+ *     lxc_error_dump(c, lxc_error, <LXC_ERROR_CODE>);
+ *   }
+ *
+ * Issues:
+ * 1. Can only store errors where a struct lxc_container *c is accessible, this
+ *    means lots of liblxc files cannot use this. How to resolve this/is this a
+ *    problem? Shouldn't the container try to handle errors from functions it can't
+ *    see inside of?
+ *
+ * 2. Would like to be able to identify which file the error occurred in. i.e.
+ *    "lxc_attach: Out of memory", but not sure how to do it (aside from manually).
+ *    Trying to figure out a way to use my_args.progname, but any other suggestions
+ *    welcome.
+ *
+ * 3. Need a better ordering for macros, and way to determine which are considered
+ *    leaf vs non-leaf
+ *
+ * 4. Need to figure out how/which errors should/can be handled/ignored.
+ *
+ * 5. Incorporate into Makefile and build, handle dependencies and decide #includes
+ *
+ * 6. 3 memory leaks from lxc_error_concat
+ *
+ */
+
 // These should be organized in a way that makes more sense
 
 // lxc_copy.c:518:		ERROR("Error: Renaming container %s to %s failed\n", c->name, newname);
@@ -148,6 +194,7 @@
 // lxc_start.c:327:			ERROR("To get more details, run the container in foreground mode.");
 // lxc_start.c:328:		ERROR("Additional information can be obtained by setting the "
 
+/* temporary placeholder for testing */
 struct lxc_container {
   char *name;
   char *error_string;
@@ -158,5 +205,6 @@ struct lxc_container {
 extern void *lxc_error_concat(struct lxc_container *c, char *lxc_error, int LXC_ERROR_CODE);
 extern void lxc_error_dump(struct lxc_container *c, char *lxc_error, int LXC_ERROR_CODE);
 extern int lxc_error_handle(struct lxc_container *c);
+extern void test_dump(struct lxc_container *c);
 
 #endif /* __LXC_ERRORS_H */

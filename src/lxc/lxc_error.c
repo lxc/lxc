@@ -42,10 +42,8 @@
 #define DEBUG 0
 #define LXC_MALLOC_ERR "Malloc failed"
 
-/* need to work on memory leaks */
-
 /* concatenate error numbers for later dumping, could just as easily use a queue
- * to store them, but struct element is char * and I haven't asked them about it */
+ * to store them, but struct element is char */
 void *lxc_error_concat(struct lxc_container *c, char *lxc_error, int LXC_ERROR_CODE)
 {
   char *error_string = c->error_string;
@@ -216,11 +214,6 @@ int main(void)
     /* how it looks now */
     //fprintf(stderr, "failed to fork task\n"); OR SYSERROR("failed to fork task");
 
-    /* these next 3 lines are the goal, to get added everywhere */
-    //lxc_error = "failed to fork task";
-    //SYSERROR(%s, lxc_error);
-    //lxc_error_dump(c, lxc_error, LXC_FORK_ERR);
-
     test_dump(c);
 
     free(c);
@@ -239,9 +232,3 @@ int main(void)
  *    Resolution: Only use codes for error_num, lxc_error passed instead
  *
  * 2. Tried to mirror format of existing *.h files with #ifdef/etc
- * 
- * 3. Could come up with a better ordering for macros (by file?)
- *
- * 4. Way to pinpoint file + error together (my_args.progname)
- *
- */
