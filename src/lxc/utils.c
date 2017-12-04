@@ -1702,7 +1702,7 @@ int safe_mount(const char *src, const char *dest, const char *fstype,
 	close(destfd);
 	if (ret < 0) {
 		errno = saved_errno;
-		SYSERROR("Failed to mount %s onto %s", src, dest);
+		SYSERROR("Failed to mount %s onto %s", src ? src : "(null)", dest);
 		return ret;
 	}
 
