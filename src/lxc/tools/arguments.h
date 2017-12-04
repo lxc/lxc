@@ -22,8 +22,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef __LXC_ARGUMENTS_H
-#define __LXC_ARGUMENTS_H
+#ifndef __TOOLS_ARGUMENTS_H
+#define __TOOLS_ARGUMENTS_H
 
 #include <getopt.h>
 #include <stdbool.h>
@@ -170,4 +170,5 @@ extern int lxc_arguments_str_to_int(struct lxc_arguments *args,
 	if (!(arg)->quiet)                                                     \
 	fprintf(stderr, "%s: " fmt "\n", (arg)->progname, ##args)
 
-#endif /* __LXC_ARGUMENTS_H */
+#endif /* __TOOLS_ARGUMENTS_H */
+
