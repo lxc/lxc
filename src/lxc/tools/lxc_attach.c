@@ -36,7 +36,7 @@
 #include <lxc/lxccontainer.h>
 
 #include "attach.h"
-#include "arguments.h"
+#include "tools/arguments.h"
 #include "caps.h"
 #include "conf.h"
 #include "confile.h"

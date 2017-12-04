@@ -32,8 +32,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "arguments.h"
-#include "utils.h"
+#include <lxc/lxccontainer.h>
+
+#include "tools/arguments.h"
+#include "tools/utils.h"
 #include "version.h"
 
 static int build_shortopts(const struct option *a_options, char *a_shortopts,
@@ -249,7 +251,7 @@ extern int lxc_arguments_parse(struct lxc_arguments *args, int argc,
 	/* If no lxcpaths were given, use default */
 	if (!args->lxcpath_cnt) {
 		ret = lxc_arguments_lxcpath_add(
-		    args, lxc_global_config_value("lxc.lxcpath"));
+		    args, lxc_get_global_config_item("lxc.lxcpath"));
 		if (ret < 0)
 			return ret;
 	}

@@ -28,7 +28,7 @@
 #include "log.h"
 #include "config.h"
 #include "lxc.h"
-#include "arguments.h"
+#include "tools/arguments.h"
 #include "utils.h"
 
 static char *checkpoint_dir = NULL;

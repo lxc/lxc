@@ -39,7 +39,7 @@
 #include "attach.h"
 #include "log.h"
 #include "confile.h"
-#include "arguments.h"
+#include "tools/arguments.h"
 #include "lxc.h"
 #include "conf.h"
 #include "state.h"

@@ -37,7 +37,7 @@
 #include "log.h"
 #include "conf.h"
 #include "confile.h"
-#include "arguments.h"
+#include "tools/arguments.h"
 #include "config.h"
 #include "start.h"
 #include "utils.h"

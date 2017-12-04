@@ -29,7 +29,7 @@
 
 #include "lxc.h"
 #include "log.h"
-#include "arguments.h"
+#include "tools/arguments.h"
 
 static const struct option my_longopts[] = {
 	LXC_COMMON_OPTIONS
