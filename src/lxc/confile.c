@@ -2934,35 +2934,27 @@ static int get_config_mount_auto(const char *key, char *retv, int inlen,
 	switch (c->auto_mounts & LXC_AUTO_CGROUP_MASK) {
 	case LXC_AUTO_CGROUP_NOSPEC:
 		strprint(retv, inlen, "%scgroup", sep);
-		sep = " ";
 		break;
 	case LXC_AUTO_CGROUP_MIXED:
 		strprint(retv, inlen, "%scgroup:mixed", sep);
-		sep = " ";
 		break;
 	case LXC_AUTO_CGROUP_RO:
 		strprint(retv, inlen, "%scgroup:ro", sep);
-		sep = " ";
 		break;
 	case LXC_AUTO_CGROUP_RW:
 		strprint(retv, inlen, "%scgroup:rw", sep);
-		sep = " ";
 		break;
 	case LXC_AUTO_CGROUP_FULL_NOSPEC:
 		strprint(retv, inlen, "%scgroup-full", sep);
-		sep = " ";
 		break;
 	case LXC_AUTO_CGROUP_FULL_MIXED:
 		strprint(retv, inlen, "%scgroup-full:mixed", sep);
-		sep = " ";
 		break;
 	case LXC_AUTO_CGROUP_FULL_RO:
 		strprint(retv, inlen, "%scgroup-full:ro", sep);
-		sep = " ";
 		break;
 	case LXC_AUTO_CGROUP_FULL_RW:
 		strprint(retv, inlen, "%scgroup-full:rw", sep);
-		sep = " ";
 		break;
 	default:
 		break;
