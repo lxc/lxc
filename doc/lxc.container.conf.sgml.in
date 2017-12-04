@@ -285,6 +285,26 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     </refsect2>
 
     <refsect2>
+      <title>Init working directory</title>
+      <para>
+        Sets the absolute path inside the container as the working directory for the containers.
+        LXC will switch to this directory before executing init.
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.init.cwd</option>
+          </term>
+          <listitem>
+            <para>
+              Absolute path inside the container to use as the working directory.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Init ID</title>
       <para>
         Sets the UID/GID to use for the init system, and subsequent commands.

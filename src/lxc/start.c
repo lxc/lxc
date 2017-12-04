@@ -979,6 +979,11 @@ static int do_start(void *data)
 
 	setsid();
 
+	if (handler->conf->init_cwd && chdir(handler->conf->init_cwd)) {
+		SYSERROR("Could not change directory to \"%s\"", handler->conf->init_cwd);
+		goto out_warn_father;
+	}
+
 	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP_LIMITS))
 		goto out_warn_father;
 

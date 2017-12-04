@@ -95,6 +95,7 @@ lxc_config_define(hooks);
 lxc_config_define(idmaps);
 lxc_config_define(includefiles);
 lxc_config_define(init_cmd);
+lxc_config_define(init_cwd);
 lxc_config_define(init_gid);
 lxc_config_define(init_uid);
 lxc_config_define(log_file);
@@ -176,6 +177,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.init.cmd",                  false,                  set_config_init_cmd,                    get_config_init_cmd,                    clr_config_init_cmd,                  },
 	{ "lxc.init.gid",                  false,                  set_config_init_gid,                    get_config_init_gid,                    clr_config_init_gid,                  },
 	{ "lxc.init.uid",                  false,                  set_config_init_uid,                    get_config_init_uid,                    clr_config_init_uid,                  },
+	{ "lxc.init.cwd",                  false,                  set_config_init_cwd,                    get_config_init_cwd,                    clr_config_init_cwd,                  },
 	{ "lxc.log.file",                  false,                  set_config_log_file,                    get_config_log_file,                    clr_config_log_file,                  },
 	{ "lxc.log.level",                 false,                  set_config_log_level,                   get_config_log_level,                   clr_config_log_level,                 },
 	{ "lxc.log.syslog",                false,                  set_config_log_syslog,                  get_config_log_syslog,                  clr_config_log_syslog,                },
@@ -943,6 +945,12 @@ static int set_config_init_cmd(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_path_item(&lxc_conf->init_cmd, value);
+}
+
+static int set_config_init_cwd(const char *key, const char *value,
+			       struct lxc_conf *lxc_conf, void *data)
+{
+	return set_config_path_item(&lxc_conf->init_cwd, value);
 }
 
 static int set_config_init_uid(const char *key, const char *value,
@@ -3249,6 +3257,12 @@ static int get_config_init_cmd(const char *key, char *retv, int inlen,
 	return lxc_get_conf_str(retv, inlen, c->init_cmd);
 }
 
+static int get_config_init_cwd(const char *key, char *retv, int inlen,
+			       struct lxc_conf *c, void *data)
+{
+	return lxc_get_conf_str(retv, inlen, c->init_cwd);
+}
+
 static int get_config_init_uid(const char *key, char *retv, int inlen,
 			       struct lxc_conf *c, void *data)
 {
@@ -3662,6 +3676,14 @@ static inline int clr_config_init_cmd(const char *key, struct lxc_conf *c,
 {
 	free(c->init_cmd);
 	c->init_cmd = NULL;
+	return 0;
+}
+
+static inline int clr_config_init_cwd(const char *key, struct lxc_conf *c,
+				      void *data)
+{
+	free(c->init_cwd);
+	c->init_cwd = NULL;
 	return 0;
 }
 
