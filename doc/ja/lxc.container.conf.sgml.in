@@ -375,6 +375,32 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </refsect2>
 
     <refsect2>
+      <title>Init のワーキングディレクトリ <!-- Init working directory --></title>
+      <para>
+	<!--
+        Sets the absolute path inside the container as the working directory for the containers.
+        LXC will switch to this directory before executing init.
+	  -->
+	コンテナのワーキングディレクトリとして、コンテナ内の絶対パスを設定します。LXC は init を実行する前に、このディレクトリに移動します。
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.init.cwd</option>
+          </term>
+          <listitem>
+            <para>
+	      <!--
+              Absolute path inside the container to use as the working directory.
+		-->
+	      ワーキングディレクトリとして使うコンテナ内の絶対パス
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title><!-- Init ID -->Init が使う ID</title>
       <para>
         <!--
@@ -903,6 +929,66 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         コンテナでルートファイルシステムを持つように設定されており、inittab ファイルでコンソールの使用が設定されている場合、このコンソールの出力がどこになされるのかを指定したいと思うでしょう。
       </para>
       <variablelist>
+
+        <varlistentry>
+          <term>
+            <option>lxc.console.buffer.size</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+            Setting this option instructs liblxc to allocate an in-memory
+            ringbuffer. The container's console output will be written to the
+            ringbuffer. Note that ringbuffer must be at least as big as a
+            standard page size. When passed a value smaller than a single page
+            size liblxc will allocate a ringbuffer of a single page size. A page
+            size is usually 4kB.
+                -->
+              このオプションを設定すると、liblxc はインメモリのリングバッファを割り当てます。コンテナのコンソールはリングバッファに出力されます。リングバッファは少なくとも標準ページサイズの大きさでなければなりません。ページサイズより小さい値を与えた場合は、liblxc  はページサイズのリングバッファを割り当てます。ページサイズは通常は 4kB です。
+
+              <!--
+            The keyword 'auto' will cause liblxc to allocate a ringbuffer of
+            128kB.
+                -->
+              'auto' を指定すると、liblxc は 128kB のリングバッファを割り当てます。
+
+              <!--
+            When manually specifying a size for the ringbuffer the value should
+            be a power of 2 when converted to bytes. Valid size prefixes are
+            'kB', 'MB', 'GB'. (Note that all conversions are based on multiples
+            of 1024. That means 'kb' == 'KiB', 'MB' == 'MiB', 'GB' == 'GiB'.)
+                -->
+              リングバッファサイズを数値指定する場合、値がバイトに変換されるときに 2 の累乗になります。サイズ接頭辞付きの単位として 'kB'、'MB'、'GB' が使えます。(この場合の変換は 1024 の倍数に基づいています。つまり 'kB' == 'KiB'、'MB' == 'MiB'、'GB' == 'GiB' という意味です。)
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.console.buffer.logfile</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+            Setting this option instructs liblxc to write the in-memory
+            ringbuffer to disk. For performance reasons liblxc will only write
+            the in-memory ringbuffer to disk when requested. Note that the this
+            option is only used by liblxc when
+            <option>lxc.console.buffer.size</option> is set.
+            -->
+              このオプションを設定すると、liblxc はインメモリのリングバッファをディスクに書き込みます。パフォーマンスを考慮して、liblxc は指定をした場合に限り、インメモリのリングバッファをディスクに書き込みます。liblxc はこのオプションを、<option>lxc.console.buffer.size</option> が指定された場合のみ使います。
+
+              <!--
+            By default liblxc will dump the contents of the in-memory ringbuffer
+            to disk when the container terminates. This allows users to diagnose
+            boot failures when the container crashed before an API request to
+            retrieve the in-memory ringbuffer could be sent or handled.
+                -->
+              デフォルトでは liblxc は、コンテナが終了した際にインメモリのリングバッファの内容をディスクに書き出します。これによりユーザは、インメモリのリングバッファを取得する API リクエストが送られたり処理される前に、コンテナがクラッシュした場合、ブートの失敗を調査できます。
+            </para>
+          </listitem>
+        </varlistentry>
+
         <varlistentry>
           <term>
             <option>lxc.console.logfile</option>
@@ -910,13 +996,45 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <listitem>
             <para>
               <!--
-              Specify a path to a file where the console output will
-              be written.
+              Specify a path to a file where the console output will be written.
+              Note that in contrast to the on-disk ringbuffer logfile this file
+              will keep growing potentially filling up the users disks if not
+              rotated and deleted. This problem can also be avoided by using the
+              in-memory ringbuffer options
+              <option>lxc.console.buffer.size</option> and
+              <option>lxc.console.buffer.logfile</option>.
               -->
-              コンソール出力を書き込むファイルのパスを指定します。
+              コンソール出力を書き込むファイルのパスを指定します。ディスクに保存されるリングバッファログと異なり、このファイルはサイズが大きくなり続けるので、ファイルがローテートや削除されない限りは、ユーザのディスクをいっぱいにしてしまう可能性があります。この問題は、インメモリのリングバッファオプションである、<option>lxc.console.buffer.size</option> と <option>lxc.console.buffer.logfile</option> を使うことでも回避できます。
             </para>
           </listitem>
         </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.console.rotate</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              Whether to rotate the console logfile specified in
+              <option>lxc.console.logfile</option>. Users can send an API
+              request to rotate the logfile. Note that the old logfile will have
+              the same name as the original with the suffix ".1" appended.
+              -->
+              <option>lxc.console.logfile</option> で指定したコンソールログファイルをローテートするかどうかを指定します。ユーザはログファイルをローテートするように API リクエストを送ることができます。古いログファイルは、元のファイル名と同じ名前のファイルに ".1" というサフィックスが付け加わります。
+
+              <!--
+              Users wishing to prevent the console log file from filling the
+              disk should rotate the logfile and delete it if unneeded. This
+              problem can also be avoided by using the in-memory ringbuffer
+              options <option>lxc.console.buffer.size</option> and
+              <option>lxc.console.buffer.logfile</option>.
+              -->
+              ユーザがコンソールログでディスクがいっぱいになるのを防ぐには、ログファイルをローテートし、不要なログファイルを削除してください。この問題はインメモリのリングバッファオプションである <option>lxc.console.buffer.size</option> と <option>lxc.console.buffer.logfile</option> を使うことでも防げます。
+            </para>
+          </listitem>
+        </varlistentry>
+
         <varlistentry>
           <term>
             <option>lxc.console.path</option>
@@ -1658,6 +1776,88 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               -->
               コンテナ内で維持するケーパビリティを指定します。指定した以外の全てのケーパビリティはドロップされます。
               特別な値 "none" が指定されている時点で、lxc はこの時点で保持することになっている全てのケーパビリティをクリアします。"none" を単独で使用するとすべてのケーパビリティを削除できます。
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title>名前空間の継承 <!-- Namespace Inheritance --></title>
+      <para>
+        <!--
+        A namespace can be inherited from another container or process.
+          -->
+        他のコンテナやプロセスから名前空間を継承できます。
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.namespace.[namespace identifier]</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+            Specify a namespace to inherit from another container or process.
+            The <option>[namespace identifier]</option> suffix needs to be
+            replaced with one of the namespaces that appear in the
+            <filename>/proc/PID/ns</filename> directory.
+            -->
+              他のコンテナやプロセスから継承する名前空間を指定します。<option>[namespace identifier]</option> には、<filename>/proc/PID/ns</filename> ディレクトリ内に現れる名前空間のひとつが入ります。
+            </para>
+
+            <para>
+              <!--
+            To inherit the namespace from another process set the
+            <option>lxc.namespace.[namespace identifier]</option> to the PID of
+            the process, e.g. <option>lxc.namespace.net=42</option>.
+            -->
+              他のプロセスから名前空間を継承するには、<option>lxc.namespace.[namespace identifier]</option> の値をプロセスの PID に設定します。例えば <option>lxc.namespace.net=42</option> のようになります。
+            </para>
+
+            <para>
+              <!--
+            To inherit the namespace from another container set the 
+            <option>lxc.namespace.[namespace identifier]</option> to the name of
+            the container, e.g. <option>lxc.namespace.pid=c3</option>.
+            -->
+              他のコンテナから名前空間を継承するには、<option>lxc.namespace.[namespace identifier]</option> の値をコンテナ名に設定します。例えば <option>lxc.namespace.pid=c3</option> のようになります。
+            </para>
+
+            <para>
+              <!--
+            To inherit the namespace from another container located in a
+            different path than the standard liblxc path set the
+            <option>lxc.namespace.[namespace identifier]</option> to the full
+            path to the container, e.g.
+            <option>lxc.namespace.user=/opt/c3</option>.
+            -->
+              標準の liblxc のパスとは異なるコンテナパスに存在する他のコンテナから名前空間を継承するには、<option>lxc.namespace.[namespace identifier]</option> をそのコンテナのフルパスで指定します。例えば <option>lxc.namespace.user=/opt/c3</option> のようになります。
+            </para>
+
+            <para>
+              <!--
+            In order to inherit namespaces the caller needs to have sufficient
+            privilege over the process or container.
+                -->
+              名前空間を継承するためには、呼び出し元が継承元のプロセスまたはコンテナに対して十分な権限を持っている必要があります。
+            </para>
+
+            <para>
+              <!--
+            Note that sharing pid namespaces between system containers will
+            likely not work with most init systems.
+                -->
+              システムコンテナ間での PID 名前空間の共有は、ほとんどの init システムではうまく動作しない可能性があることに注意が必要です。
+            </para>
+
+            <para>
+              <!--
+            Note that if two processes are in different user namespaces and one
+            process wants to inherit the other's network namespace it usually
+            needs to inherit the user namespace as well.
+                -->
+              ふたつのプロセスが異なるユーザ名前空間に存在し、そのうちのひとつが他のネットワーク名前空間を継承したい場合、通常はユーザ名前空間も同様に継承する必要があることに注意が必要です。
             </para>
           </listitem>
         </varlistentry>
