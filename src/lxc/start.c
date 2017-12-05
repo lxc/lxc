@@ -972,10 +972,8 @@ static int do_start(void *data)
 			goto out_warn_father;
 		}
 
-	if (devnull_fd >= 0) {
-		close(devnull_fd);
-		devnull_fd = -1;
-	}
+	close(devnull_fd);
+	devnull_fd = -1;
 
 	setsid();
 

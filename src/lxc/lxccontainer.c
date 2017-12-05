@@ -4420,21 +4420,24 @@ static int do_lxcapi_migrate(struct lxc_container *c, unsigned int cmd,
 	case MIGRATE_PRE_DUMP:
 		if (!do_lxcapi_is_running(c)) {
 			ERROR("container is not running");
-			return false;
+			ret = false;
+			break;
 		}
 		ret = !__criu_pre_dump(c, valid_opts);
 		break;
 	case MIGRATE_DUMP:
 		if (!do_lxcapi_is_running(c)) {
 			ERROR("container is not running");
-			return false;
+			ret = false;
+			break;
 		}
 		ret = !__criu_dump(c, valid_opts);
 		break;
 	case MIGRATE_RESTORE:
 		if (do_lxcapi_is_running(c)) {
 			ERROR("container is already running");
-			return false;
+			ret = false;
+			break;
 		}
 		ret = !__criu_restore(c, valid_opts);
 		break;

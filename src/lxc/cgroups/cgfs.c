@@ -656,7 +656,7 @@ static struct cgroup_hierarchy *lxc_cgroup_find_hierarchy(struct cgroup_meta_dat
 		struct cgroup_hierarchy *h = meta_data->hierarchies[i];
 		if (!h)
 			continue;
-		if (h && lxc_string_in_array(subsystem, (const char **)h->subsystems))
+		if (lxc_string_in_array(subsystem, (const char **)h->subsystems))
 			return h;
 	}
 	return NULL;
@@ -1770,8 +1770,7 @@ lxc_cgroup_process_info_getx(const char *proc_pid_cgroup_str,
 
 out_error:
 	saved_errno = errno;
-	if (proc_pid_cgroup)
-		fclose(proc_pid_cgroup);
+	fclose(proc_pid_cgroup);
 	lxc_cgroup_process_info_free(result);
 	lxc_cgroup_process_info_free(entry);
 	free(line);
