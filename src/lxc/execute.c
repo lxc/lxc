@@ -119,14 +119,14 @@ static int execute_start(struct lxc_handler *handler, void* data)
 
 	while (my_args->argv[argc++]);
 
-	argc_add = 4;
+	/* lxc-init -n name -- [argc] NULL -> 5 */
+	argc_add = 5;
 	if (my_args->quiet)
 		argc_add++;
-	if (!handler->conf->rootfs.path) {
-		argc_add += 4;
-		if (lxc_log_has_valid_level())
-			argc_add += 2;
-	}
+	if (!handler->conf->rootfs.path)
+		argc_add += 2;
+	if (lxc_log_has_valid_level())
+		argc_add += 2;
 
 	argv = malloc((argc + argc_add) * sizeof(*argv));
 	if (!argv)
