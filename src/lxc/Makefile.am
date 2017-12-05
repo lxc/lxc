@@ -4,7 +4,7 @@ pkginclude_HEADERS = \
 	version.h
 
 noinst_HEADERS = \
-	arguments.h \
+	tools/arguments.h \
 	attach.h \
 	storage/storage.h \
 	storage/aufs.h \
@@ -79,7 +79,6 @@ endif
 
 lib_LTLIBRARIES = liblxc.la
 liblxc_la_SOURCES = \
-	arguments.c arguments.h \
 	storage/storage.c storage/storage.h \
 	storage/aufs.c storage/aufs.h \
 	storage/btrfs.c storage/btrfs.h \
@@ -266,35 +265,35 @@ AM_LDFLAGS += -Wl,-rpath -Wl,$(libdir)
 endif
 LDADD=liblxc.la @CAP_LIBS@ @APPARMOR_LIBS@ @SELINUX_LIBS@ @SECCOMP_LIBS@
 
-lxc_attach_SOURCES = tools/lxc_attach.c
-lxc_autostart_SOURCES = tools/lxc_autostart.c
-lxc_cgroup_SOURCES = tools/lxc_cgroup.c
-lxc_config_SOURCES = tools/lxc_config.c
-lxc_console_SOURCES = tools/lxc_console.c
-lxc_destroy_SOURCES = tools/lxc_destroy.c
-lxc_device_SOURCES = tools/lxc_device.c
-lxc_execute_SOURCES = tools/lxc_execute.c
-lxc_freeze_SOURCES = tools/lxc_freeze.c
-lxc_info_SOURCES = tools/lxc_info.c
-init_lxc_SOURCES = tools/lxc_init.c
-lxc_monitor_SOURCES = tools/lxc_monitor.c
-lxc_ls_SOURCES = tools/lxc_ls.c
-lxc_copy_SOURCES = tools/lxc_copy.c
-lxc_start_SOURCES = tools/lxc_start.c
-lxc_stop_SOURCES = tools/lxc_stop.c
-lxc_top_SOURCES = tools/lxc_top.c
-lxc_unfreeze_SOURCES = tools/lxc_unfreeze.c
-lxc_unshare_SOURCES = tools/lxc_unshare.c
-lxc_wait_SOURCES = tools/lxc_wait.c
-lxc_create_SOURCES = tools/lxc_create.c
-lxc_snapshot_SOURCES = tools/lxc_snapshot.c
-lxc_usernsexec_SOURCES = tools/lxc_usernsexec.c
-lxc_checkpoint_SOURCES = tools/lxc_checkpoint.c
-lxc_user_nic_SOURCES = lxc_user_nic.c network.c network.h
-lxc_monitord_SOURCES = lxc_monitord.c
+lxc_attach_SOURCES = tools/lxc_attach.c tools/arguments.c
+lxc_autostart_SOURCES = tools/lxc_autostart.c tools/arguments.c
+lxc_cgroup_SOURCES = tools/lxc_cgroup.c tools/arguments.c
+lxc_config_SOURCES = tools/lxc_config.c tools/arguments.c
+lxc_console_SOURCES = tools/lxc_console.c tools/arguments.c
+lxc_destroy_SOURCES = tools/lxc_destroy.c tools/arguments.c
+lxc_device_SOURCES = tools/lxc_device.c tools/arguments.c
+lxc_execute_SOURCES = tools/lxc_execute.c tools/arguments.c
+lxc_freeze_SOURCES = tools/lxc_freeze.c tools/arguments.c
+lxc_info_SOURCES = tools/lxc_info.c tools/arguments.c
+init_lxc_SOURCES = tools/lxc_init.c tools/arguments.c
+lxc_monitor_SOURCES = tools/lxc_monitor.c tools/arguments.c
+lxc_ls_SOURCES = tools/lxc_ls.c tools/arguments.c
+lxc_copy_SOURCES = tools/lxc_copy.c tools/arguments.c
+lxc_start_SOURCES = tools/lxc_start.c tools/arguments.c
+lxc_stop_SOURCES = tools/lxc_stop.c tools/arguments.c
+lxc_top_SOURCES = tools/lxc_top.c tools/arguments.c
+lxc_unfreeze_SOURCES = tools/lxc_unfreeze.c tools/arguments.c
+lxc_unshare_SOURCES = tools/lxc_unshare.c tools/arguments.c
+lxc_wait_SOURCES = tools/lxc_wait.c tools/arguments.c
+lxc_create_SOURCES = tools/lxc_create.c tools/arguments.c
+lxc_snapshot_SOURCES = tools/lxc_snapshot.c tools/arguments.c
+lxc_usernsexec_SOURCES = tools/lxc_usernsexec.c tools/arguments.c
+lxc_checkpoint_SOURCES = tools/lxc_checkpoint.c tools/arguments.c
+lxc_user_nic_SOURCES = lxc_user_nic.c network.c network.h tools/arguments.c
+lxc_monitord_SOURCES = lxc_monitord.c tools/arguments.c
 
 if ENABLE_DEPRECATED
-lxc_clone_SOURCES = tools/lxc_clone.c
+lxc_clone_SOURCES = tools/lxc_clone.c tools/arguments.c
 endif
 
 if !HAVE_GETSUBOPT
@@ -304,7 +303,8 @@ endif
 if HAVE_STATIC_LIBCAP
 sbin_PROGRAMS += init.lxc.static
 
-init_lxc_static_SOURCES = tools/lxc_init.c error.c log.c initutils.c caps.c
+init_lxc_static_SOURCES = tools/lxc_init.c error.c log.c initutils.c caps.c \
+			  tools/arguments.c
 
 if !HAVE_GETLINE
 if HAVE_FGETLN
