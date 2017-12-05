@@ -1300,8 +1300,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <refsect2>
       <title>Namespace Inheritance</title>
       <para>
-        The capabilities can be dropped in the container if this one
-        is run as root.
+        A namespace can be inherited from another container or process.
       </para>
       <variablelist>
         <varlistentry>

@@ -1757,6 +1757,88 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </refsect2>
 
     <refsect2>
+      <title>名前空間の継承 <!-- Namespace Inheritance --></title>
+      <para>
+        <!--
+        A namespace can be inherited from another container or process.
+          -->
+        他のコンテナやプロセスから名前空間を継承できます。
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.namespace.[namespace identifier]</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+            Specify a namespace to inherit from another container or process.
+            The <option>[namespace identifier]</option> suffix needs to be
+            replaced with one of the namespaces that appear in the
+            <filename>/proc/PID/ns</filename> directory.
+            -->
+              他のコンテナやプロセスから継承する名前空間を指定します。<option>[namespace identifier]</option> には、<filename>/proc/PID/ns</filename> ディレクトリ内に現れる名前空間のひとつが入ります。
+            </para>
+
+            <para>
+              <!--
+            To inherit the namespace from another process set the
+            <option>lxc.namespace.[namespace identifier]</option> to the PID of
+            the process, e.g. <option>lxc.namespace.net=42</option>.
+            -->
+              他のプロセスから名前空間を継承するには、<option>lxc.namespace.[namespace identifier]</option> の値をプロセスの PID に設定します。例えば <option>lxc.namespace.net=42</option> のようになります。
+            </para>
+
+            <para>
+              <!--
+            To inherit the namespace from another container set the 
+            <option>lxc.namespace.[namespace identifier]</option> to the name of
+            the container, e.g. <option>lxc.namespace.pid=c3</option>.
+            -->
+              他のコンテナから名前空間を継承するには、<option>lxc.namespace.[namespace identifier]</option> の値をコンテナ名に設定します。例えば <option>lxc.namespace.pid=c3</option> のようになります。
+            </para>
+
+            <para>
+              <!--
+            To inherit the namespace from another container located in a
+            different path than the standard liblxc path set the
+            <option>lxc.namespace.[namespace identifier]</option> to the full
+            path to the container, e.g.
+            <option>lxc.namespace.user=/opt/c3</option>.
+            -->
+              標準の liblxc のパスとは異なるコンテナパスに存在する他のコンテナから名前空間を継承するには、<option>lxc.namespace.[namespace identifier]</option> をそのコンテナのフルパスで指定します。例えば <option>lxc.namespace.user=/opt/c3</option> のようになります。
+            </para>
+
+            <para>
+              <!--
+            In order to inherit namespaces the caller needs to have sufficient
+            privilege over the process or container.
+                -->
+              名前空間を継承するためには、呼び出し元が継承元のプロセスまたはコンテナに対して十分な権限を持っている必要があります。
+            </para>
+
+            <para>
+              <!--
+            Note that sharing pid namespaces between system containers will
+            likely not work with most init systems.
+                -->
+              システムコンテナ間での PID 名前空間の共有は、ほとんどの init システムではうまく動作しない可能性があることに注意が必要です。
+            </para>
+
+            <para>
+              <!--
+            Note that if two processes are in different user namespaces and one
+            process wants to inherit the other's network namespace it usually
+            needs to inherit the user namespace as well.
+                -->
+              ふたつのプロセスが異なるユーザ名前空間に存在し、そのうちのひとつが他のネットワーク名前空間を継承したい場合、通常はユーザ名前空間も同様に継承する必要があることに注意が必要です。
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>リソース制限 <!-- Resource limits --></title>
       <para>
         <!--
