@@ -592,6 +592,7 @@ on_error:
 
 int lxc_init(const char *name, struct lxc_handler *handler)
 {
+	const char *loglevel;
 	struct lxc_conf *conf = handler->conf;
 
 	lsm_init();
@@ -632,8 +633,9 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	if (setenv("LXC_CGNS_AWARE", "1", 1))
 		SYSERROR("Failed to set environment variable LXC_CGNS_AWARE=1.");
 
-	if (setenv("LXC_LOG_LEVEL", lxc_log_priority_to_string(handler->conf->loglevel), 1))
-		SYSERROR("Failed to set environment variable LXC_CGNS_AWARE=1.");
+	loglevel = lxc_log_priority_to_string(lxc_log_get_level());
+	if (setenv("LXC_LOG_LEVEL", loglevel, 1))
+		SYSERROR("Failed to set environment variable LXC_LOG_LEVEL=%s", loglevel);
 	/* End of environment variable setup for hooks. */
 
 	TRACE("set environment variables");
