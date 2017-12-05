@@ -3432,6 +3432,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->rcfile);
 	free(conf->execute_cmd);
 	free(conf->init_cmd);
+	free(conf->init_cwd);
 	free(conf->unexpanded_config);
 	free(conf->pty_names);
 	free(conf->syslog);

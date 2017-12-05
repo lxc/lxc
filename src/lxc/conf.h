@@ -359,6 +359,10 @@ struct lxc_conf {
 	struct lxc_cgroup cgroup_meta;
 
 	char *inherit_ns[LXC_NS_MAX];
+
+	/* init working directory */
+       char* init_cwd;
+
 };
 
 int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
