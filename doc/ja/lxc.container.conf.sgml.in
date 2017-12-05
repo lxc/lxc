@@ -375,6 +375,32 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </refsect2>
 
     <refsect2>
+      <title>Init のワーキングディレクトリ <!-- Init working directory --></title>
+      <para>
+	<!--
+        Sets the absolute path inside the container as the working directory for the containers.
+        LXC will switch to this directory before executing init.
+	  -->
+	コンテナのワーキングディレクトリとして、コンテナ内の絶対パスを設定します。LXC は init を実行する前に、このディレクトリに移動します。
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.init.cwd</option>
+          </term>
+          <listitem>
+            <para>
+	      <!--
+              Absolute path inside the container to use as the working directory.
+		-->
+	      ワーキングディレクトリとして使うコンテナ内の絶対パス
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title><!-- Init ID -->Init が使う ID</title>
       <para>
         <!--
