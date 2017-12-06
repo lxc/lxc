@@ -713,8 +713,12 @@ int set_config_network_legacy_ipv6(const char *key, const char *value,
 	if (slash) {
 		*slash = '\0';
 		netmask = slash + 1;
-		if (lxc_safe_uint(netmask, &inet6dev->prefix) < 0)
+		if (lxc_safe_uint(netmask, &inet6dev->prefix) < 0) {
+			free(list);
+			free(inet6dev);
+			free(valdup);
 			return -1;
+		}
 	}
 
 	if (!inet_pton(AF_INET6, valdup, &inet6dev->addr)) {

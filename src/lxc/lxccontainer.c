@@ -4463,7 +4463,7 @@ WRAP_API_2(bool, lxcapi_detach_interface, const char *, const char *)
 static int do_lxcapi_migrate(struct lxc_container *c, unsigned int cmd,
 			     struct migrate_opts *opts, unsigned int size)
 {
-	int ret;
+	int ret = -1;
 	struct migrate_opts *valid_opts = opts;
 
 	/* If the caller has a bigger (newer) struct migrate_opts, let's make
@@ -4500,21 +4500,21 @@ static int do_lxcapi_migrate(struct lxc_container *c, unsigned int cmd,
 	case MIGRATE_PRE_DUMP:
 		if (!do_lxcapi_is_running(c)) {
 			ERROR("container is not running");
-			return false;
+			goto on_error;
 		}
 		ret = !__criu_pre_dump(c, valid_opts);
 		break;
 	case MIGRATE_DUMP:
 		if (!do_lxcapi_is_running(c)) {
 			ERROR("container is not running");
-			return false;
+			goto on_error;
 		}
 		ret = !__criu_dump(c, valid_opts);
 		break;
 	case MIGRATE_RESTORE:
 		if (do_lxcapi_is_running(c)) {
 			ERROR("container is already running");
-			return false;
+			goto on_error;
 		}
 		ret = !__criu_restore(c, valid_opts);
 		break;
@@ -4523,6 +4523,7 @@ static int do_lxcapi_migrate(struct lxc_container *c, unsigned int cmd,
 		ret = -EINVAL;
 	}
 
+on_error:
 	if (size < sizeof(*opts))
 		free(valid_opts);
 
