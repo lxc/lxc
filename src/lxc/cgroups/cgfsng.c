@@ -1388,7 +1388,7 @@ again:
 		ret = snprintf(offset, 5, "-%d", idx);
 		if (ret < 0 || (size_t)ret >= 5) {
 			FILE *f = fopen("/dev/null", "w");
-			if (f >= 0) {
+			if (f) {
 				fprintf(f, "Workaround for GCC7 bug: "
 					   "https://gcc.gnu.org/bugzilla/"
 					   "show_bug.cgi?id=78969");
