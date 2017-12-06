@@ -25,17 +25,16 @@
 #define __LXC_INITUTILS_H
 
 #include <errno.h>
-#include <stdio.h>
+#include <fcntl.h>
+#include <inttypes.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mount.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <fcntl.h>
-
 
 #include "config.h"
 
@@ -44,11 +43,37 @@
 #define DEFAULT_ZFSROOT "lxc"
 #define DEFAULT_RBDPOOL "lxc"
 
+#ifndef PR_SET_MM
+#define PR_SET_MM 35
+#endif
+
+#ifndef PR_SET_MM_MAP
+#define PR_SET_MM_MAP 14
+
+struct prctl_mm_map {
+	uint64_t start_code;
+	uint64_t end_code;
+	uint64_t start_data;
+	uint64_t end_data;
+	uint64_t start_brk;
+	uint64_t brk;
+	uint64_t start_stack;
+	uint64_t arg_start;
+	uint64_t arg_end;
+	uint64_t env_start;
+	uint64_t env_end;
+	uint64_t *auxv;
+	uint32_t auxv_size;
+	uint32_t exe_fd;
+};
+#endif
+
 extern void lxc_setup_fs(void);
 extern const char *lxc_global_config_value(const char *option_name);
 
 /* open a file with O_CLOEXEC */
 extern void remove_trailing_slashes(char *p);
-FILE *fopen_cloexec(const char *path, const char *mode);
+extern FILE *fopen_cloexec(const char *path, const char *mode);
+extern int setproctitle(char *title);
 
 #endif /* __LXC_INITUTILS_H */

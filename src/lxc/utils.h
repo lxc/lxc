@@ -450,7 +450,6 @@ extern int print_to_file(const char *file, const char *content);
 extern bool switch_to_ns(pid_t pid, const char *ns);
 extern int is_dir(const char *path);
 extern char *get_template_path(const char *t);
-extern int setproctitle(char *title);
 extern int safe_mount(const char *src, const char *dest, const char *fstype,
 		      unsigned long flags, const void *data,
 		      const char *rootfs);
