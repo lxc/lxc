@@ -1644,7 +1644,7 @@ int safe_mount(const char *src, const char *dest, const char *fstype,
 	close(destfd);
 	if (ret < 0) {
 		errno = saved_errno;
-		SYSERROR("Failed to mount %s onto %s", src, dest);
+		SYSERROR("Failed to mount %s onto %s", src ? src : "(null)", dest);
 		return ret;
 	}
 
@@ -1906,8 +1906,9 @@ int lxc_preserve_ns(const int pid, const char *ns)
 	ret = snprintf(path, __NS_PATH_LEN, "/proc/%d/ns%s%s", pid,
 		       !ns || strcmp(ns, "") == 0 ? "" : "/",
 		       !ns || strcmp(ns, "") == 0 ? "" : ns);
+	errno = EFBIG;
 	if (ret < 0 || (size_t)ret >= __NS_PATH_LEN)
-		return -1;
+		return -EFBIG;
 
 	return open(path, O_RDONLY | O_CLOEXEC);
 }

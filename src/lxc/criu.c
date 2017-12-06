@@ -827,9 +827,10 @@ out_unlock:
  */
 static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_opts *opts, char *criu_version)
 {
+	int fd;
 	pid_t pid;
 	struct lxc_handler *handler;
-	int status, fd;
+	int status = 0;
 	int pipes[2] = {-1, -1};
 
 	/* Try to detach from the current controlling tty if it exists.
@@ -1024,7 +1025,12 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		 * assign the return here to silence potential.
 		 */
 		ret = snprintf(title, sizeof(title), "[lxc monitor] %s %s", c->config_path, c->name);
+		if (ret < 0 || (size_t)ret >= sizeof(title))
+			INFO("Setting truncated process name");
+
 		ret = setproctitle(title);
+		if (ret < 0)
+			INFO("Failed to set process name");
 
 		ret = lxc_poll(c->name, handler);
 		if (ret)
@@ -1049,9 +1055,9 @@ out:
 		 */
 		if (!status)
 			status = 1;
-		if (write(status_pipe, &status, sizeof(status)) != sizeof(status)) {
+
+		if (write(status_pipe, &status, sizeof(status)) != sizeof(status))
 			SYSERROR("writing status failed");
-		}
 		close(status_pipe);
 	}
 

@@ -1741,11 +1741,12 @@ static int mount_entry(const char *fsname, const char *target,
 	if (ret < 0) {
 		if (optional) {
 			INFO("Failed to mount \"%s\" on \"%s\" (optional): %s",
-			     fsname, target, strerror(errno));
+			     fsname ? fsname : "(null)", target, strerror(errno));
 			return 0;
 		}
 
-		SYSERROR("Failed to mount \"%s\" on \"%s\"", fsname, target);
+		SYSERROR("Failed to mount \"%s\" on \"%s\"",
+			 fsname ? fsname : "(null)", target);
 		return -1;
 	}
 
@@ -1753,13 +1754,12 @@ static int mount_entry(const char *fsname, const char *target,
 		unsigned long rqd_flags = 0;
 
 		DEBUG("Remounting \"%s\" on \"%s\" to respect bind or remount "
-		      "options",
-		      fsname ? fsname : "(none)", target ? target : "(none)");
+		      "options", fsname ? fsname : "(none)", target ? target : "(none)");
 
 		if (mountflags & MS_RDONLY)
 			rqd_flags |= MS_RDONLY;
 #ifdef HAVE_STATVFS
-		if (statvfs(fsname, &sb) == 0) {
+		if (fsname && statvfs(fsname, &sb) == 0) {
 			unsigned long required_flags = rqd_flags;
 
 			if (sb.f_flag & MS_NOSUID)
@@ -1798,12 +1798,14 @@ static int mount_entry(const char *fsname, const char *target,
 		if (ret < 0) {
 			if (optional) {
 				INFO("Failed to mount \"%s\" on \"%s\" "
-				     "(optional): %s", fsname, target,
+				     "(optional): %s",
+				     fsname ? fsname : "(null)", target,
 				     strerror(errno));
 				return 0;
 			}
 
-			SYSERROR("Failed to mount \"%s\" on \"%s\"", fsname, target);
+			SYSERROR("Failed to mount \"%s\" on \"%s\"",
+				 fsname ? fsname : "(null)", target);
 			return -1;
 		}
 	}
@@ -1811,8 +1813,8 @@ static int mount_entry(const char *fsname, const char *target,
 #ifdef HAVE_STATVFS
 skipremount:
 #endif
-	DEBUG("Mounted \"%s\" on \"%s\" with filesystem type \"%s\"", fsname,
-	      target, fstype);
+	DEBUG("Mounted \"%s\" on \"%s\" with filesystem type \"%s\"",
+	      fsname ? fsname : "(null)", target, fstype);
 
 	return 0;
 }

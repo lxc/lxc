@@ -969,7 +969,7 @@ static int lxc_clear_nic(struct lxc_conf *c, const char *key)
 
 	p1 = strchr(key, '.');
 	if (!p1 || *(p1+1) == '\0')
-		p1 = NULL;
+		return -1;
 
 	if (!p1 && it) {
 		lxc_remove_nic(it);
@@ -987,8 +987,9 @@ static int lxc_clear_nic(struct lxc_conf *c, const char *key)
 			free(it2->elem);
 			free(it2);
 		}
+	} else {
+		return -1;
 	}
-	else return -1;
 
 	return 0;
 }
