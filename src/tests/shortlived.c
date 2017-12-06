@@ -28,6 +28,9 @@
 #include <errno.h>
 #include <fcntl.h>
 
+#include "lxctest.h"
+#include "utils.h"
+
 #define MYNAME "shortlived"
 
 static int destroy_container(void)
@@ -92,11 +95,32 @@ again:
 
 int main(int argc, char *argv[])
 {
-	struct lxc_container *c;
+	int i;
 	const char *s;
 	bool b;
-	int i;
+	struct lxc_container *c;
+	struct lxc_log log;
+	char template[sizeof(P_tmpdir"/shortlived_XXXXXX")];
 	int ret = 0;
+
+	strcpy(template, P_tmpdir"/shortlived_XXXXXX");
+	i = lxc_make_tmpfile(template, false);
+	if (i < 0) {
+		lxc_error("Failed to create temporary log file for container %s\n", MYNAME);
+		exit(EXIT_FAILURE);
+	} else {
+		lxc_debug("Using \"%s\" as temporary log file for container %s\n", template, MYNAME);
+		close(i);
+	}
+
+	log.name = MYNAME;
+	log.file = template;
+	log.level = "TRACE";
+	log.prefix = "shortlived";
+	log.quiet = false;
+	log.lxcpath = NULL;
+	if (lxc_log_init(&log))
+		exit(EXIT_FAILURE);
 
 	ret = 1;
 	/* test a real container */
@@ -143,14 +167,44 @@ int main(int argc, char *argv[])
 
 	c->want_daemonize(c, true);
 
-	/* Test whether we can start a really short-lived daemonized container.
-	 */
+	/* Test whether we can start a really short-lived daemonized container. */
 	for (i = 0; i < 10; i++) {
 		if (!c->startl(c, 0, NULL)) {
-			fprintf(stderr, "%d: %s failed to start\n", __LINE__, c->name);
+			fprintf(stderr, "%d: %s failed to start on %dth iteration\n", __LINE__, c->name, i);
 			goto out;
 		}
-		sleep(1);
+
+		/* The container needs to exit with a successful error code. */
+		if (c->error_num != 0) {
+			fprintf(stderr, "%d: %s exited successfully on %dth iteration\n", __LINE__, c->name, i);
+			goto out;
+		}
+		fprintf(stderr, "%d: %s exited correctly with error code %d on %dth iteration\n", __LINE__, c->name, c->error_num, i);
+
+		if (!c->wait(c, "STOPPED", 30)) {
+			fprintf(stderr, "%d: %s failed to wait on %dth iteration\n", __LINE__, c->name, i);
+			goto out;
+		}
+	}
+
+	/* Test whether we can start a really short-lived daemonized container with lxc-init. */
+	for (i = 0; i < 10; i++) {
+		if (!c->startl(c, 1, NULL)) {
+			fprintf(stderr, "%d: %s failed to start on %dth iteration\n", __LINE__, c->name, i);
+			goto out;
+		}
+
+		/* The container needs to exit with a successful error code. */
+		if (c->error_num != 0) {
+			fprintf(stderr, "%d: %s exited successfully on %dth iteration\n", __LINE__, c->name, i);
+			goto out;
+		}
+		fprintf(stderr, "%d: %s exited correctly with error code %d on %dth iteration\n", __LINE__, c->name, c->error_num, i);
+
+		if (!c->wait(c, "STOPPED", 30)) {
+			fprintf(stderr, "%d: %s failed to wait on %dth iteration\n", __LINE__, c->name, i);
+			goto out;
+		}
 	}
 
 	if (!c->set_config_item(c, "lxc.init.cmd", "you-shall-fail")) {
@@ -158,15 +212,47 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	/* Test whether we catch the start failure of a really short-lived
-	 * daemonized container.
-	 */
+	/* Test whether we can start a really short-lived daemonized container. */
 	for (i = 0; i < 10; i++) {
 		if (c->startl(c, 0, NULL)) {
-			fprintf(stderr, "%d: %s failed to start\n", __LINE__, c->name);
+			fprintf(stderr, "%d: %s failed to start on %dth iteration\n", __LINE__, c->name, i);
 			goto out;
 		}
-		sleep(1);
+
+		/* The container needs to exit with an error code.*/
+		if (c->error_num == 0) {
+			fprintf(stderr, "%d: %s exited successfully on %dth iteration\n", __LINE__, c->name, i);
+			goto out;
+		}
+		fprintf(stderr, "%d: %s exited correctly with error code %d on %dth iteration\n", __LINE__, c->name, c->error_num, i);
+
+		if (!c->wait(c, "STOPPED", 30)) {
+			fprintf(stderr, "%d: %s failed to wait on %dth iteration\n", __LINE__, c->name, i);
+			goto out;
+		}
+	}
+
+	/* Test whether we can start a really short-lived daemonized container with lxc-init. */
+	for (i = 0; i < 10; i++) {
+		/* An container started with lxc-init will always start
+		 * succesfully unless lxc-init has a bug.
+		 */
+		if (!c->startl(c, 1, NULL)) {
+			fprintf(stderr, "%d: %s failed to start on %dth iteration\n", __LINE__, c->name, i);
+			goto out;
+		}
+
+		/* The container needs to exit with an error code.*/
+		if (c->error_num == 0) {
+			fprintf(stderr, "%d: %s exited successfully on %dth iteration\n", __LINE__, c->name, i);
+			goto out;
+		}
+		fprintf(stderr, "%d: %s exited correctly with error code %d on %dth iteration\n", __LINE__, c->name, c->error_num, i);
+
+		if (!c->wait(c, "STOPPED", 30)) {
+			fprintf(stderr, "%d: %s failed to wait on %dth iteration\n", __LINE__, c->name, i);
+			goto out;
+		}
 	}
 
 	c->stop(c);
@@ -180,5 +266,6 @@ out:
 		destroy_container();
 	}
 	lxc_container_put(c);
+	unlink(template);
 	exit(ret);
 }
