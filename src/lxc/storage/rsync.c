@@ -80,6 +80,7 @@ int lxc_rsync_exec(const char *src, const char *dest)
 	s[l - 1] = '\0';
 
 	execlp("rsync", "rsync", "-aHXS", "--delete", s, dest, (char *)NULL);
+	free(s);
 	return -1;
 }
 
