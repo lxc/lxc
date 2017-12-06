@@ -55,6 +55,10 @@ static void try_to_remove(void)
 
 int main(int argc, char *argv[])
 {
+	int i, n, ret;
+	char path[1024];
+	struct stat sb;
+	struct lxc_snapshot *s;
 	struct lxc_container *c, *c2 = NULL;
 	char *template = "busybox";
 
@@ -89,18 +93,17 @@ int main(int argc, char *argv[])
 	}
 
 	// rootfs should be ${lxcpath}${lxcname}/snaps/snap0/rootfs
-	struct stat sb;
-	int ret;
-	char path[1024];
-	snprintf(path, 1024, "%s/%s/snaps/snap0/rootfs", lxc_get_global_config_item("lxc.lxcpath"), MYNAME);
+	ret = snprintf(path, 1024, "%s/%s/snaps/snap0/rootfs", lxc_get_global_config_item("lxc.lxcpath"), MYNAME);
+	if (ret < 0 || (size_t)ret >= 1024) {
+		fprintf(stderr, "%s: %d: failed to create string\n", __FILE__, __LINE__);
+		goto err;
+	}
+
 	ret = stat(path, &sb);
 	if (ret != 0) {
 		fprintf(stderr, "%s: %d: snapshot was not actually created\n", __FILE__, __LINE__);
 		goto err;
 	}
-
-	struct lxc_snapshot *s;
-	int i, n;
 
 	n = c->snapshot_list(c, &s);
 	if (n < 1) {
