@@ -36,6 +36,7 @@
 #include <lxc/lxccontainer.h>
 
 #include "log.h"
+#include "tools/arguments.h"
 #include "error.h"
 #include "initutils.h"
 
