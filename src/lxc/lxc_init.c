@@ -76,7 +76,7 @@ struct arguments {
 	const char *name;
 	char *log_file;
 	char *log_priority;
-	int quiet;
+	bool quiet;
 	const char *lxcpath;
 
 	/* remaining arguments */
@@ -317,44 +317,8 @@ out:
 static void print_usage(const struct option longopts[])
 
 {
-	int i;
-	const struct option *opt;
-
-	fprintf(stderr, "Usage: lxc-init ");
-
-	for (opt = longopts, i = 1; opt->name; opt++, i++) {
-		int j;
-		char *uppername;
-
-		uppername = strdup(opt->name);
-		if (!uppername)
-			exit(-ENOMEM);
-
-		for (j = 0; uppername[j]; j++)
-			uppername[j] = toupper(uppername[j]);
-
-		fprintf(stderr, "[");
-
-		if (isprint(opt->val))
-			fprintf(stderr, "-%c|", opt->val);
-
-		fprintf(stderr, "--%s", opt->name);
-
-		if (opt->has_arg == required_argument)
-			fprintf(stderr, "=%s", uppername);
-
-		if (opt->has_arg == optional_argument)
-			fprintf(stderr, "[=%s]", uppername);
-
-		fprintf(stderr, "] ");
-
-		if (!(i % 4))
-			fprintf(stderr, "\n\t");
-
-		free(uppername);
-	}
-
-	fprintf(stderr, "\n");
+	fprintf(stderr, "Usage: lxc-init [-n|--name=NAME] [-h|--help] [--usage] [--version] \n\
+		[-q|--quiet] [-o|--logfile=LOGFILE] [-l|--logpriority=LOGPRIORITY] [-P|--lxcpath=LXCPATH]\n");
 	exit(0);
 }
 
@@ -364,7 +328,7 @@ static void print_version()
 	exit(0);
 }
 
-static void print_help(int code)
+static void print_help()
 {
 	fprintf(stderr, "\
 Usage: lxc-init --name=NAME -- COMMAND\n\
@@ -386,7 +350,6 @@ for any corresponding short options.\n\
 \n\
 See the lxc-init man page for further information.\n\n");
 
-	exit(code);
 }
 
 static int arguments_parse(struct arguments *args, int argc,
@@ -410,7 +373,7 @@ static int arguments_parse(struct arguments *args, int argc,
 			args->log_priority = optarg;
 			break;
 		case 'q':
-			args->quiet = 1;
+			args->quiet = true;
 			break;
 		case 'P':
 			remove_trailing_slashes(optarg);
@@ -421,9 +384,11 @@ static int arguments_parse(struct arguments *args, int argc,
 		case OPT_VERSION:
 			print_version();
 		case '?':
-			print_help(1);
+			print_help();
+			exit(EXIT_FAILURE);
 		case 'h':
-			print_help(0);
+			print_help();
+			exit(EXIT_SUCCESS);
 		}
 	}
 
