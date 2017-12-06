@@ -369,15 +369,11 @@ static int set_config_net(const char *key, const char *value,
 static int set_config_net_type(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf, void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_type(key, lxc_conf, data);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -406,15 +402,11 @@ static int set_config_net_type(const char *key, const char *value,
 static int set_config_net_flags(const char *key, const char *value,
 				struct lxc_conf *lxc_conf, void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_flags(key, lxc_conf, data);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -470,16 +462,12 @@ static int create_matched_ifnames(const char *value, struct lxc_conf *lxc_conf,
 static int set_config_net_link(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf, void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 	int ret = 0;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_link(key, lxc_conf, data);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -494,15 +482,11 @@ static int set_config_net_link(const char *key, const char *value,
 static int set_config_net_name(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf, void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_name(key, lxc_conf, data);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -512,15 +496,11 @@ static int set_config_net_name(const char *key, const char *value,
 static int set_config_net_veth_pair(const char *key, const char *value,
 				    struct lxc_conf *lxc_conf, void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_veth_pair(key, lxc_conf, data);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -530,15 +510,11 @@ static int set_config_net_veth_pair(const char *key, const char *value,
 static int set_config_net_macvlan_mode(const char *key, const char *value,
 				       struct lxc_conf *lxc_conf, void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_macvlan_mode(key, lxc_conf, data);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -548,16 +524,12 @@ static int set_config_net_macvlan_mode(const char *key, const char *value,
 static int set_config_net_hwaddr(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf, void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 	char *new_value;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_hwaddr(key, lxc_conf, data);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -581,15 +553,11 @@ static int set_config_net_vlan_id(const char *key, const char *value,
 				  struct lxc_conf *lxc_conf, void *data)
 {
 	int ret;
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_vlan_id(key, lxc_conf, data);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -603,15 +571,11 @@ static int set_config_net_vlan_id(const char *key, const char *value,
 static int set_config_net_mtu(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf, void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_mtu(key, lxc_conf, data);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -622,7 +586,7 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 				       struct lxc_conf *lxc_conf, void *data)
 {
 	int ret;
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 	struct lxc_inetdev *inetdev;
 	struct lxc_list *list;
 	char *cursor, *slash;
@@ -631,10 +595,6 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return clr_config_net_ipv4_address(key, lxc_conf, data);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -719,15 +679,11 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 static int set_config_net_ipv4_gateway(const char *key, const char *value,
 				       struct lxc_conf *lxc_conf, void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_ipv4_gateway(key, lxc_conf, data);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -762,7 +718,7 @@ static int set_config_net_ipv6_address(const char *key, const char *value,
 				       struct lxc_conf *lxc_conf, void *data)
 {
 	int ret;
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 	struct lxc_inet6dev *inet6dev;
 	struct lxc_list *list;
 	char *slash, *valdup, *netmask;
@@ -770,10 +726,6 @@ static int set_config_net_ipv6_address(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return clr_config_net_ipv6_address(key, lxc_conf, data);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -826,15 +778,11 @@ static int set_config_net_ipv6_address(const char *key, const char *value,
 static int set_config_net_ipv6_gateway(const char *key, const char *value,
 				       struct lxc_conf *lxc_conf, void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_ipv6_gateway(key, lxc_conf, data);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -868,15 +816,11 @@ static int set_config_net_ipv6_gateway(const char *key, const char *value,
 static int set_config_net_script_up(const char *key, const char *value,
 				    struct lxc_conf *lxc_conf, void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_script_up(key, lxc_conf, data);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -886,15 +830,11 @@ static int set_config_net_script_up(const char *key, const char *value,
 static int set_config_net_script_down(const char *key, const char *value,
 				      struct lxc_conf *lxc_conf, void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_script_down(key, lxc_conf, data);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -3729,12 +3669,8 @@ static int clr_config_net_nic(const char *key, struct lxc_conf *lxc_conf,
 static int clr_config_net_type(const char *key, struct lxc_conf *lxc_conf,
 			       void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -3746,12 +3682,8 @@ static int clr_config_net_type(const char *key, struct lxc_conf *lxc_conf,
 static int clr_config_net_name(const char *key, struct lxc_conf *lxc_conf,
 			       void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -3763,12 +3695,8 @@ static int clr_config_net_name(const char *key, struct lxc_conf *lxc_conf,
 static int clr_config_net_flags(const char *key, struct lxc_conf *lxc_conf,
 				void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -3780,12 +3708,8 @@ static int clr_config_net_flags(const char *key, struct lxc_conf *lxc_conf,
 static int clr_config_net_link(const char *key, struct lxc_conf *lxc_conf,
 			       void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -3797,12 +3721,8 @@ static int clr_config_net_link(const char *key, struct lxc_conf *lxc_conf,
 static int clr_config_net_macvlan_mode(const char *key,
 				       struct lxc_conf *lxc_conf, void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -3817,12 +3737,8 @@ static int clr_config_net_macvlan_mode(const char *key,
 static int clr_config_net_veth_pair(const char *key, struct lxc_conf *lxc_conf,
 				    void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -3834,12 +3750,8 @@ static int clr_config_net_veth_pair(const char *key, struct lxc_conf *lxc_conf,
 static int clr_config_net_script_up(const char *key, struct lxc_conf *lxc_conf,
 				    void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -3852,12 +3764,8 @@ static int clr_config_net_script_up(const char *key, struct lxc_conf *lxc_conf,
 static int clr_config_net_script_down(const char *key,
 				      struct lxc_conf *lxc_conf, void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -3870,12 +3778,8 @@ static int clr_config_net_script_down(const char *key,
 static int clr_config_net_hwaddr(const char *key, struct lxc_conf *lxc_conf,
 				 void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -3888,12 +3792,8 @@ static int clr_config_net_hwaddr(const char *key, struct lxc_conf *lxc_conf,
 static int clr_config_net_mtu(const char *key, struct lxc_conf *lxc_conf,
 			      void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -3906,12 +3806,8 @@ static int clr_config_net_mtu(const char *key, struct lxc_conf *lxc_conf,
 static int clr_config_net_vlan_id(const char *key, struct lxc_conf *lxc_conf,
 				  void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -3923,12 +3819,8 @@ static int clr_config_net_vlan_id(const char *key, struct lxc_conf *lxc_conf,
 static int clr_config_net_ipv4_gateway(const char *key,
 				       struct lxc_conf *lxc_conf, void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -3941,13 +3833,9 @@ static int clr_config_net_ipv4_gateway(const char *key,
 static int clr_config_net_ipv4_address(const char *key,
 				       struct lxc_conf *lxc_conf, void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 	struct lxc_list *cur, *next;
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -3963,12 +3851,8 @@ static int clr_config_net_ipv4_address(const char *key,
 static int clr_config_net_ipv6_gateway(const char *key,
 				       struct lxc_conf *lxc_conf, void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -3981,13 +3865,9 @@ static int clr_config_net_ipv6_gateway(const char *key,
 static int clr_config_net_ipv6_address(const char *key,
 				       struct lxc_conf *lxc_conf, void *data)
 {
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 	struct lxc_list *cur, *next;
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -4032,18 +3912,15 @@ static int get_config_net_nic(const char *key, char *retv, int inlen,
 static int get_config_net_type(const char *key, char *retv, int inlen,
 			       struct lxc_conf *c, void *data)
 {
-	int len, fulllen = 0;
-	struct lxc_netdev *netdev;
+	int len;
+	int fulllen = 0;
+	struct lxc_netdev *netdev = data;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -4055,18 +3932,15 @@ static int get_config_net_type(const char *key, char *retv, int inlen,
 static int get_config_net_flags(const char *key, char *retv, int inlen,
 				struct lxc_conf *c, void *data)
 {
-	int len, fulllen = 0;
-	struct lxc_netdev *netdev;
+	int len;
+	int fulllen = 0;
+	struct lxc_netdev *netdev = data;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -4079,18 +3953,15 @@ static int get_config_net_flags(const char *key, char *retv, int inlen,
 static int get_config_net_link(const char *key, char *retv, int inlen,
 			       struct lxc_conf *c, void *data)
 {
-	int len, fulllen = 0;
-	struct lxc_netdev *netdev;
+	int len;
+	int fulllen = 0;
+	struct lxc_netdev *netdev = data;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -4103,18 +3974,15 @@ static int get_config_net_link(const char *key, char *retv, int inlen,
 static int get_config_net_name(const char *key, char *retv, int inlen,
 			       struct lxc_conf *c, void *data)
 {
-	int len, fulllen = 0;
-	struct lxc_netdev *netdev;
+	int len;
+	int fulllen = 0;
+	struct lxc_netdev *netdev = data;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -4127,19 +3995,16 @@ static int get_config_net_name(const char *key, char *retv, int inlen,
 static int get_config_net_macvlan_mode(const char *key, char *retv, int inlen,
 				       struct lxc_conf *c, void *data)
 {
+	int len;
+	int fulllen = 0;
 	const char *mode;
-	int len, fulllen = 0;
-	struct lxc_netdev *netdev;
+	struct lxc_netdev *netdev = data;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -4172,18 +4037,15 @@ static int get_config_net_macvlan_mode(const char *key, char *retv, int inlen,
 static int get_config_net_veth_pair(const char *key, char *retv, int inlen,
 				    struct lxc_conf *c, void *data)
 {
-	int len, fulllen = 0;
-	struct lxc_netdev *netdev;
+	int len;
+	int fulllen = 0;
+	struct lxc_netdev *netdev = data;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -4201,18 +4063,15 @@ static int get_config_net_veth_pair(const char *key, char *retv, int inlen,
 static int get_config_net_script_up(const char *key, char *retv, int inlen,
 				    struct lxc_conf *c, void *data)
 {
-	int len, fulllen = 0;
-	struct lxc_netdev *netdev;
+	int len;
+	int fulllen = 0;
+	struct lxc_netdev *netdev = data;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -4225,18 +4084,15 @@ static int get_config_net_script_up(const char *key, char *retv, int inlen,
 static int get_config_net_script_down(const char *key, char *retv, int inlen,
 				      struct lxc_conf *c, void *data)
 {
-	int len, fulllen = 0;
-	struct lxc_netdev *netdev;
+	int len;
+	int fulllen = 0;
+	struct lxc_netdev *netdev = data;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -4249,18 +4105,15 @@ static int get_config_net_script_down(const char *key, char *retv, int inlen,
 static int get_config_net_hwaddr(const char *key, char *retv, int inlen,
 				 struct lxc_conf *c, void *data)
 {
-	int len, fulllen = 0;
-	struct lxc_netdev *netdev;
+	int len;
+	int fulllen = 0;
+	struct lxc_netdev *netdev = data;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -4273,18 +4126,15 @@ static int get_config_net_hwaddr(const char *key, char *retv, int inlen,
 static int get_config_net_mtu(const char *key, char *retv, int inlen,
 			      struct lxc_conf *c, void *data)
 {
-	int len, fulllen = 0;
-	struct lxc_netdev *netdev;
+	int len;
+	int fulllen = 0;
+	struct lxc_netdev *netdev = data;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -4297,18 +4147,15 @@ static int get_config_net_mtu(const char *key, char *retv, int inlen,
 static int get_config_net_vlan_id(const char *key, char *retv, int inlen,
 				  struct lxc_conf *c, void *data)
 {
-	int len, fulllen = 0;
-	struct lxc_netdev *netdev;
+	int len;
+	int fulllen = 0;
+	struct lxc_netdev *netdev = data;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -4323,19 +4170,16 @@ static int get_config_net_vlan_id(const char *key, char *retv, int inlen,
 static int get_config_net_ipv4_gateway(const char *key, char *retv, int inlen,
 				       struct lxc_conf *c, void *data)
 {
-	int len, fulllen = 0;
+	int len;
 	char buf[INET_ADDRSTRLEN];
-	struct lxc_netdev *netdev;
+	int fulllen = 0;
+	struct lxc_netdev *netdev = data;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -4352,21 +4196,18 @@ static int get_config_net_ipv4_gateway(const char *key, char *retv, int inlen,
 static int get_config_net_ipv4_address(const char *key, char *retv, int inlen,
 				       struct lxc_conf *c, void *data)
 {
-	int len, fulllen = 0;
+	int len;
 	size_t listlen;
 	char buf[INET_ADDRSTRLEN];
-	struct lxc_netdev *netdev;
 	struct lxc_list *it;
+	int fulllen = 0;
+	struct lxc_netdev *netdev = data;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -4384,19 +4225,16 @@ static int get_config_net_ipv4_address(const char *key, char *retv, int inlen,
 static int get_config_net_ipv6_gateway(const char *key, char *retv, int inlen,
 				       struct lxc_conf *c, void *data)
 {
-	int len, fulllen = 0;
+	int len;
 	char buf[INET6_ADDRSTRLEN];
-	struct lxc_netdev *netdev;
+	int fulllen = 0;
+	struct lxc_netdev *netdev = data;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
@@ -4413,21 +4251,18 @@ static int get_config_net_ipv6_gateway(const char *key, char *retv, int inlen,
 static int get_config_net_ipv6_address(const char *key, char *retv, int inlen,
 				       struct lxc_conf *c, void *data)
 {
-	int len, fulllen = 0;
+	int len;
 	size_t listlen;
 	char buf[INET6_ADDRSTRLEN];
-	struct lxc_netdev *netdev;
 	struct lxc_list *it;
+	int fulllen = 0;
+	struct lxc_netdev *netdev = data;
 
 	if (!retv)
 		inlen = 0;
 	else
 		memset(retv, 0, inlen);
 
-	if (!data)
-		return -1;
-	else
-		netdev = data;
 	if (!netdev)
 		return -1;
 
