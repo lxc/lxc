@@ -545,7 +545,7 @@ int ovl_mount(struct lxc_storage *bdev)
 	upper++;
 
 	/* if delta doesn't yet exist, create it */
-	ret = mkdir_p(upper, 0755) < 0;
+	ret = mkdir_p(upper, 0755);
 	if (ret < 0 && errno != EEXIST) {
 		SYSERROR("Failed to create directory \"%s\"", upper);
 		free(dup);
