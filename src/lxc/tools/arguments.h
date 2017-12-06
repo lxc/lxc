@@ -29,6 +29,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
+#include <lxc/lxccontainer.h>
 
 struct lxc_arguments;
 
@@ -160,6 +161,11 @@ struct lxc_arguments {
 #define OPT_VERSION OPT_USAGE - 1
 #define OPT_RCFILE OPT_USAGE - 2
 
+#define OPT_SHARE_NET OPT_USAGE + 1
+#define OPT_SHARE_IPC OPT_USAGE + 2
+#define OPT_SHARE_UTS OPT_USAGE + 3
+#define OPT_SHARE_PID OPT_USAGE + 4
+
 extern int lxc_arguments_parse(struct lxc_arguments *args, int argc,
 			       char *const argv[]);
 
@@ -169,5 +175,7 @@ extern int lxc_arguments_str_to_int(struct lxc_arguments *args,
 #define lxc_error(arg, fmt, args...)                                           \
 	if (!(arg)->quiet)                                                     \
 	fprintf(stderr, "%s: " fmt "\n", (arg)->progname, ##args)
+
+extern bool lxc_setup_shared_ns(struct lxc_arguments *args, struct lxc_container *c);
 
 #endif /* __LXC_ARGUMENTS_H */
