@@ -261,7 +261,7 @@ lxc_device_SOURCES = tools/lxc_device.c tools/arguments.c
 lxc_execute_SOURCES = tools/lxc_execute.c tools/arguments.c
 lxc_freeze_SOURCES = tools/lxc_freeze.c tools/arguments.c
 lxc_info_SOURCES = tools/lxc_info.c tools/arguments.c
-init_lxc_SOURCES = tools/lxc_init.c tools/arguments.c
+init_lxc_SOURCES = lxc_init.c tools/arguments.c
 lxc_monitor_SOURCES = tools/lxc_monitor.c tools/arguments.c
 lxc_ls_SOURCES = tools/lxc_ls.c tools/arguments.c
 lxc_copy_SOURCES = tools/lxc_copy.c tools/arguments.c
@@ -289,7 +289,7 @@ endif
 if HAVE_STATIC_LIBCAP
 sbin_PROGRAMS += init.lxc.static
 
-init_lxc_static_SOURCES = tools/lxc_init.c error.c log.c initutils.c caps.c \
+init_lxc_static_SOURCES = lxc_init.c error.c log.c initutils.c caps.c \
 			  tools/arguments.c
 
 if !HAVE_GETLINE
