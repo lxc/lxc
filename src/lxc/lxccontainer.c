@@ -828,10 +828,6 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		return false;
 	}
 
-	/* Is this app meant to be run through lxcinit, as in lxc-execute? */
-	if (useinit && !argv)
-		return false;
-
 	if (container_mem_lock(c))
 		return false;
 	conf = c->lxc_conf;
@@ -843,15 +839,20 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	if (!handler)
 		return false;
 
-	/* If no argv was passed in, use lxc.init_cmd if provided in the
-	 * configuration
-	 */
-	if (!argv)
-		argv = init_cmd = split_init_cmd(conf->init_cmd);
+	if (!argv) {
+		if (useinit && conf->execute_cmd)
+			argv = init_cmd = split_init_cmd(conf->execute_cmd);
+		else
+			argv = init_cmd = split_init_cmd(conf->init_cmd);
+	}
 
 	/* ... otherwise use default_args. */
-	if (!argv)
-		argv = default_args;
+	if (!argv) {
+		if (useinit)
+			return false;
+		else
+			argv = default_args;
+	}
 
 	/* I'm not sure what locks we want here.Any? Is liblxc's locking enough
 	 * here to protect the on disk container?  We don't want to exclude
