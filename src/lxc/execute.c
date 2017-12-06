@@ -77,6 +77,11 @@ static int execute_start(struct lxc_handler *handler, void* data)
 		argv[i++] = (char *)lxc_log_priority_to_string(lxc_log_get_level());
 	}
 
+	if (handler->conf->logfile) {
+		argv[i++] = "-o";
+		argv[i++] = (char *)handler->conf->logfile;
+	}
+
 	if (my_args->quiet)
 		argv[i++] = "--quiet";
 

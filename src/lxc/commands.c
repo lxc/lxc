@@ -128,6 +128,9 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 	if (ret < 0) {
 		WARN("%s - Failed to receive response for command \"%s\"",
 		     strerror(errno), lxc_cmd_str(cmd->req.cmd));
+		if (errno == ECONNRESET)
+			return -ECONNRESET;
+
 		return -1;
 	}
 	TRACE("Command \"%s\" received response", lxc_cmd_str(cmd->req.cmd));
@@ -318,6 +321,8 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 	}
 
 	ret = lxc_cmd_rsp_recv(client_fd, cmd);
+	if (ret == -ECONNRESET)
+		*stopped = 1;
 out:
 	if (!stay_connected || ret <= 0)
 		close(client_fd);
@@ -893,9 +898,8 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 			     lxc_state_t states[MAX_STATE],
 			     int *state_client_fd)
 {
-	int stopped;
+	int state, stopped;
 	ssize_t ret;
-	int state = -1;
 	struct lxc_cmd_rr cmd = {
 	    .req = {
 		.cmd     = LXC_CMD_ADD_STATE_CLIENT,
@@ -904,46 +908,10 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 	    },
 	};
 
-	/* Lock the whole lxc_cmd_add_state_client_callback() call to ensure
-	*  that lxc_set_state() doesn't cause us to miss a state.
-	 */
-	process_lock();
-	/* Check if already in requested state. */
-	state = lxc_getstate(name, lxcpath);
-	if (state < 0) {
-		process_unlock();
-		TRACE("%s - Failed to retrieve state of container", strerror(errno));
-		return -1;
-	} else if (states[state]) {
-		process_unlock();
-		TRACE("Container is %s state", lxc_state2str(state));
-		return state;
-	}
-
-	if ((state == STARTING) && !states[RUNNING] && !states[STOPPING] && !states[STOPPED]) {
-		process_unlock();
-		TRACE("Container is in %s state and caller requested to be "
-		      "informed about a previous state", lxc_state2str(state));
-		return state;
-	} else if ((state == RUNNING) && !states[STOPPING] && !states[STOPPED]) {
-		process_unlock();
-		TRACE("Container is in %s state and caller requested to be "
-		      "informed about a previous state", lxc_state2str(state));
-		return state;
-	} else if ((state == STOPPING) && !states[STOPPED]) {
-		process_unlock();
-		TRACE("Container is in %s state and caller requested to be "
-		      "informed about a previous state", lxc_state2str(state));
-		return state;
-	} else if ((state == STOPPED) || (state == ABORTING)) {
-		process_unlock();
-		TRACE("Container is in %s state and caller requested to be "
-		      "informed about a previous state", lxc_state2str(state));
-		return state;
-	}
-
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
-	process_unlock();
+	if (states[STOPPED] != 0 && stopped != 0)
+		return STOPPED;
+
 	if (ret < 0) {
 		ERROR("%s - Failed to execute command", strerror(errno));
 		return -1;
@@ -952,37 +920,55 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 	/* We should now be guaranteed to get an answer from the state sending
 	 * function.
 	 */
-
 	if (cmd.rsp.ret < 0) {
-		ERROR("Failed to receive socket fd");
+		ERROR("%s - Failed to receive socket fd", strerror(-cmd.rsp.ret));
 		return -1;
 	}
 
+	state = PTR_TO_INT(cmd.rsp.data);
+	if (state < MAX_STATE) {
+		TRACE("Container is already in requested state %s", lxc_state2str(state));
+		close(cmd.rsp.ret);
+		return state;
+	}
+
 	*state_client_fd = cmd.rsp.ret;
+	TRACE("Added state client %d to state client list", cmd.rsp.ret);
 	return MAX_STATE;
 }
 
 static int lxc_cmd_add_state_client_callback(int fd, struct lxc_cmd_req *req,
 					     struct lxc_handler *handler)
 {
+	int ret;
 	struct lxc_cmd_rsp rsp = {0};
 
 	if (req->datalen < 0)
-		return -1;
+		goto reap_client_fd;
 
 	if (req->datalen > (sizeof(lxc_state_t) * MAX_STATE))
-		return -1;
+		goto reap_client_fd;
 
 	if (!req->data)
-		return -1;
+		goto reap_client_fd;
 
 	rsp.ret = lxc_add_state_client(fd, handler, (lxc_state_t *)req->data);
 	if (rsp.ret < 0)
-		ERROR("Failed to add state client %d to state client list", fd);
-	else
-		TRACE("Added state client %d to state client list", fd);
+		goto reap_client_fd;
 
-	return lxc_cmd_rsp_send(fd, &rsp);
+	rsp.data = INT_TO_PTR(rsp.ret);
+
+	ret = lxc_cmd_rsp_send(fd, &rsp);
+	if (ret < 0)
+		goto reap_client_fd;
+
+	return 0;
+
+reap_client_fd:
+	/* Special indicator to lxc_cmd_handler() to close the fd and do related
+	 * cleanup.
+	 */
+	return 1;
 }
 
 int lxc_cmd_console_log(const char *name, const char *lxcpath,
@@ -1155,7 +1141,7 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 			       struct lxc_epoll_descr *descr,
 			       const lxc_cmd_t cmd)
 {
-	struct state_client *client;
+	struct lxc_state_client *client;
 	struct lxc_list *cur, *next;
 
 	lxc_console_free(handler->conf, fd);
@@ -1166,7 +1152,7 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 	}
 
 	process_lock();
-	lxc_list_for_each_safe(cur, &handler->state_clients, next) {
+	lxc_list_for_each_safe(cur, &handler->conf->state_clients, next) {
 		client = cur->elem;
 		if (client->clientfd != fd)
 			continue;
@@ -1176,6 +1162,10 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 		lxc_list_del(cur);
 		free(cur->elem);
 		free(cur);
+		/* No need to walk the whole list. If we found the state client
+		 * fd there can't be a second one.
+		 */
+		break;
 	}
 	process_unlock();
 }

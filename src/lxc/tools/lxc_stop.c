@@ -94,62 +94,6 @@ Options :\n\
 	.timeout  = -2,
 };
 
-/* returns -1 on failure, 0 on success */
-static int do_reboot_and_check(struct lxc_arguments *a, struct lxc_container *c)
-{
-	int ret;
-	pid_t pid;
-	pid_t newpid;
-	int timeout = a->timeout;
-
-	pid = c->init_pid(c);
-	if (pid == -1)
-		return -1;
-	if (!c->reboot(c))
-		return -1;
-	if (a->nowait)
-		return 0;
-	if (timeout == 0)
-		goto out;
-
-	for (;;) {
-		/* can we use c-> wait for this, assuming it will
-		 * re-enter RUNNING?  For now just sleep */
-		int elapsed_time, curtime = 0;
-		struct timeval tv;
-
-		newpid = c->init_pid(c);
-		if (newpid != -1 && newpid != pid)
-			return 0;
-
-		if (timeout != -1) {
-			ret = gettimeofday(&tv, NULL);
-			if (ret)
-				break;
-			curtime = tv.tv_sec;
-		}
-
-		sleep(1);
-		if (timeout != -1) {
-			ret = gettimeofday(&tv, NULL);
-			if (ret)
-				break;
-			elapsed_time = tv.tv_sec - curtime;
-			if (timeout - elapsed_time <= 0)
-				break;
-			timeout -= elapsed_time;
-		}
-	}
-
-out:
-	newpid = c->init_pid(c);
-	if (newpid == -1 || newpid == pid) {
-		printf("Reboot did not complete before timeout\n");
-		return -1;
-	}
-	return 0;
-}
-
 int main(int argc, char *argv[])
 {
 	struct lxc_container *c;
@@ -259,7 +203,11 @@ int main(int argc, char *argv[])
 
 	/* reboot */
 	if (my_args.reboot) {
-		ret = do_reboot_and_check(&my_args, c) < 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+		ret = c->reboot2(c, my_args.timeout);
+		if (ret < 0)
+			ret = EXIT_FAILURE;
+		else
+			ret = EXIT_SUCCESS;
 		goto out;
 	}
 

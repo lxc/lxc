@@ -33,6 +33,7 @@
 #include "commands_utils.h"
 #include "initutils.h"
 #include "log.h"
+#include "lxclock.h"
 #include "monitor.h"
 #include "state.h"
 #include "utils.h"
@@ -192,7 +193,8 @@ int lxc_cmd_connect(const char *name, const char *lxcpath,
 int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
 			 lxc_state_t states[MAX_STATE])
 {
-	struct state_client *newclient;
+	int state;
+	struct lxc_state_client *newclient;
 	struct lxc_list *tmplist;
 
 	newclient = malloc(sizeof(*newclient));
@@ -209,10 +211,19 @@ int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
 		return -ENOMEM;
 	}
 
-	lxc_list_add_elem(tmplist, newclient);
-	lxc_list_add_tail(&handler->state_clients, tmplist);
+	process_lock();
+	state = handler->state;
+	if (states[state] != 1) {
+		lxc_list_add_elem(tmplist, newclient);
+		lxc_list_add_tail(&handler->conf->state_clients, tmplist);
+		process_unlock();
+	} else {
+		process_unlock();
+		free(newclient);
+		free(tmplist);
+		return state;
+	}
 
 	TRACE("added state client %d to state client list", state_client_fd);
-
-	return 0;
+	return MAX_STATE;
 }

@@ -200,6 +200,9 @@ restart:
 	fddir = dirfd(dir);
 
 	while ((direntp = readdir(dir))) {
+		struct lxc_list *cur;
+		bool matched = false;
+
 		if (!direntp)
 			break;
 
@@ -220,6 +223,20 @@ restart:
 
 		if (fd == fddir || fd == lxc_log_fd ||
 		    (i < len_fds && fd == fds_to_ignore[i]))
+			continue;
+
+		/* Keep state clients that wait on reboots. */
+		lxc_list_for_each(cur, &conf->state_clients) {
+			struct lxc_state_client *client = cur->elem;
+
+			if (client->clientfd != fd)
+				continue;
+
+			matched = true;
+			break;
+		}
+
+		if (matched)
 			continue;
 
 		if (current_config && fd == current_config->logfd)
@@ -338,18 +355,14 @@ static int lxc_serve_state_clients(const char *name,
 {
 	ssize_t ret;
 	struct lxc_list *cur, *next;
-	struct state_client *client;
+	struct lxc_state_client *client;
 	struct lxc_msg msg = {.type = lxc_msg_state, .value = state};
 
 	process_lock();
-
-	/* Only set state under process lock held so that we don't cause
-	*  lxc_cmd_add_state_client() to miss a state.
-	 */
 	handler->state = state;
 	TRACE("Set container state to %s", lxc_state2str(state));
 
-	if (lxc_list_empty(&handler->state_clients)) {
+	if (lxc_list_empty(&handler->conf->state_clients)) {
 		TRACE("No state clients registered");
 		process_unlock();
 		lxc_monitor_send_state(name, state, handler->lxcpath);
@@ -359,10 +372,10 @@ static int lxc_serve_state_clients(const char *name,
 	strncpy(msg.name, name, sizeof(msg.name));
 	msg.name[sizeof(msg.name) - 1] = 0;
 
-	lxc_list_for_each_safe(cur, &handler->state_clients, next) {
+	lxc_list_for_each_safe(cur, &handler->conf->state_clients, next) {
 		client = cur->elem;
 
-		if (!client->states[state]) {
+		if (client->states[state] == 0) {
 			TRACE("State %s not registered for state client %d",
 			      lxc_state2str(state), client->clientfd);
 			continue;
@@ -531,7 +544,8 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 	handler->lxcpath = lxcpath;
 	handler->pinfd = -1;
 	handler->state_socket_pair[0] = handler->state_socket_pair[1] = -1;
-	lxc_list_init(&handler->state_clients);
+	if (handler->conf->reboot == 0)
+		lxc_list_init(&handler->conf->state_clients);
 
 	for (i = 0; i < LXC_NS_MAX; i++)
 		handler->nsfd[i] = -1;
@@ -554,10 +568,12 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 		      handler->state_socket_pair[1]);
 	}
 
-	handler->conf->maincmd_fd = lxc_cmd_init(name, lxcpath, "command");
-	if (handler->conf->maincmd_fd < 0) {
-		ERROR("Failed to set up command socket");
-		goto on_error;
+	if (handler->conf->reboot == 0) {
+		handler->conf->maincmd_fd = lxc_cmd_init(name, lxcpath, "command");
+		if (handler->conf->maincmd_fd < 0) {
+			ERROR("Failed to set up command socket");
+			goto on_error;
+		}
 	}
 	TRACE("Unix domain socket %d for command server is ready",
 	      handler->conf->maincmd_fd);
@@ -715,9 +731,11 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 
 	lxc_set_state(name, handler, STOPPED);
 
-	/* close command socket */
-	close(handler->conf->maincmd_fd);
-	handler->conf->maincmd_fd = -1;
+	if (handler->conf->reboot == 0) {
+		/* close command socket */
+		close(handler->conf->maincmd_fd);
+		handler->conf->maincmd_fd = -1;
+	}
 
 	if (run_lxc_hooks(name, "post-stop", handler->conf, handler->lxcpath, NULL)) {
 		ERROR("Failed to run lxc.hook.post-stop for container \"%s\".", name);
@@ -739,8 +757,13 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	/* The command socket is now closed, no more state clients can register
 	 * themselves from now on. So free the list of state clients.
 	 */
-	lxc_list_for_each_safe(cur, &handler->state_clients, next) {
-		struct state_client *client = cur->elem;
+	lxc_list_for_each_safe(cur, &handler->conf->state_clients, next) {
+		struct lxc_state_client *client = cur->elem;
+
+		/* Keep state clients that want to be notified about reboots. */
+		if ((handler->conf->reboot > 0) && (client->states[RUNNING] == 2))
+			continue;
+
 		/* close state client socket */
 		close(client->clientfd);
 		lxc_list_del(cur);
@@ -801,9 +824,8 @@ static int do_start(void *data)
 	lxc_sync_fini_parent(handler);
 
 	/* Don't leak the pinfd to the container. */
-	if (handler->pinfd >= 0) {
+	if (handler->pinfd >= 0)
 		close(handler->pinfd);
-	}
 
 	if (lxc_sync_wait_parent(handler, LXC_SYNC_STARTUP))
 		return -1;
