@@ -128,6 +128,9 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 	if (ret < 0) {
 		WARN("%s - Failed to receive response for command \"%s\"",
 		     strerror(errno), lxc_cmd_str(cmd->req.cmd));
+		if (errno == ECONNRESET)
+			return -ECONNRESET;
+
 		return -1;
 	}
 	TRACE("Command \"%s\" received response", lxc_cmd_str(cmd->req.cmd));
@@ -318,6 +321,8 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 	}
 
 	ret = lxc_cmd_rsp_recv(client_fd, cmd);
+	if (ret == -ECONNRESET)
+		*stopped = 1;
 out:
 	if (!stay_connected || ret <= 0)
 		close(client_fd);
