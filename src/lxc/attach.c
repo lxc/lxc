@@ -591,6 +591,7 @@ static char *lxc_attach_getpwshell(uid_t uid)
 		if (waitpid(pid, &status, 0) < 0) {
 			if (errno == EINTR)
 				goto again;
+			free(result);
 			return NULL;
 		}
 
@@ -599,14 +600,20 @@ static char *lxc_attach_getpwshell(uid_t uid)
 		 * don't.
 		 */
 
-		if (!WIFEXITED(status))
+		if (!WIFEXITED(status)) {
+			free(result);
 			return NULL;
+		}
 
-		if (WEXITSTATUS(status) != 0)
+		if (WEXITSTATUS(status) != 0) {
+			free(result);
 			return NULL;
+		}
 
-		if (!found)
+		if (!found) {
+			free(result);
 			return NULL;
+		}
 
 		return result;
 	} else {
