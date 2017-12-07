@@ -975,7 +975,7 @@ static int lxc_clear_nic(struct lxc_conf *c, const char *key)
 	if (!p1 || *(p1+1) == '\0')
 		return -1;
 
-	if (!p1 && it) {
+	if (it) {
 		lxc_remove_nic(it);
 	} else if (strcmp(p1, ".ipv4") == 0) {
 		struct lxc_list *it2,*next;
