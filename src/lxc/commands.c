@@ -325,7 +325,8 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 		*stopped = 1;
 out:
 	if (!stay_connected || ret <= 0)
-		close(client_fd);
+		if (client_fd >= 0)
+			close(client_fd);
 
 	if (stay_connected && ret > 0)
 		cmd->rsp.ret = client_fd;
