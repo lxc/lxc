@@ -517,6 +517,7 @@ static bool filter_and_set_cpus(char *path, bool am_initialized)
 
 copy_parent:
 	*lastslash = oldv;
+	free(fpath);
 	fpath = must_make_path(path, "cpuset.cpus", NULL);
 	ret = lxc_write_to_file(fpath, cpulist, strlen(cpulist), false);
 	if (ret < 0) {
