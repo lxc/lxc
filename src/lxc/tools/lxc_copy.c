@@ -402,7 +402,7 @@ static int do_clone_ephemeral(struct lxc_container *c,
 		if (!mkdtemp(randname))
 			return -1;
 		if (chmod(randname, 0770) < 0) {
-			remove(randname);
+			(void)remove(randname);
 			return -1;
 		}
 		arg->newname = randname + strlen(arg->newpath) + 1;
