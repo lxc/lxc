@@ -816,10 +816,12 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 
 	/* ... otherwise use default_args. */
 	if (!argv) {
-		if (useinit)
+		if (useinit) {
+			ERROR("No valid init detected");
+			lxc_free_handler(handler);
 			return false;
-		else
-			argv = default_args;
+		}
+		argv = default_args;
 	}
 
 	/* I'm not sure what locks we want here.Any? Is liblxc's locking enough
