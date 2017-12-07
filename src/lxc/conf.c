@@ -2398,6 +2398,38 @@ int setup_sysctl_parameters(struct lxc_list *sysctls)
 	return 0;
 }
 
+int setup_proc_filesystem(struct lxc_list *procs, pid_t pid)
+{
+	struct lxc_list *it;
+	struct lxc_proc *elem;
+	char *tmp = NULL;
+	char filename[MAXPATHLEN] = {0};
+	int ret = 0;
+
+	lxc_list_for_each(it, procs) {
+		elem = it->elem;
+		tmp = lxc_string_replace(".", "/", elem->filename);
+		if (!tmp) {
+			ERROR("Failed to replace key %s", elem->filename);
+			return -1;
+		}
+
+		ret = snprintf(filename, sizeof(filename), "/proc/%d/%s", pid, tmp);
+		free(tmp);
+		if (ret < 0 || (size_t)ret >= sizeof(filename)) {
+			ERROR("Error setting up proc filesystem path");
+			return -1;
+		}
+
+		ret = lxc_write_to_file(filename, elem->value, strlen(elem->value), false);
+		if (ret < 0) {
+			ERROR("Failed to setup proc filesystem %s to %s", elem->filename, elem->value);
+			return -1;
+		}
+	}
+	return 0;
+}
+
 static char *default_rootfs_mount = LXCROOTFSMOUNT;
 
 struct lxc_conf *lxc_conf_init(void)
@@ -2449,6 +2481,7 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->environment);
 	lxc_list_init(&new->limits);
 	lxc_list_init(&new->sysctls);
+	lxc_list_init(&new->procs);
 	for (i = 0; i < NUM_LXC_HOOKS; i++)
 		lxc_list_init(&new->hooks[i]);
 	lxc_list_init(&new->groups);
@@ -3384,6 +3417,33 @@ int lxc_clear_sysctls(struct lxc_conf *c, const char *key)
 	return 0;
 }
 
+int lxc_clear_procs(struct lxc_conf *c, const char *key)
+{
+	struct lxc_list *it,*next;
+	bool all = false;
+	const char *k = NULL;
+
+	if (strcmp(key, "lxc.proc") == 0)
+		all = true;
+	else if (strncmp(key, "lxc.proc.", sizeof("lxc.proc.") - 1) == 0)
+		k = key + sizeof("lxc.proc.") - 1;
+	else
+		return -1;
+
+	lxc_list_for_each_safe(it, &c->procs, next) {
+		struct lxc_proc *proc = it->elem;
+		if (!all && strcmp(proc->filename, k) != 0)
+			continue;
+		lxc_list_del(it);
+		free(proc->filename);
+		free(proc->value);
+		free(proc);
+		free(it);
+	}
+
+	return 0;
+}
+
 int lxc_clear_groups(struct lxc_conf *c)
 {
 	struct lxc_list *it,*next;
@@ -3524,6 +3584,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_environment(conf);
 	lxc_clear_limits(conf, "lxc.prlimit");
 	lxc_clear_sysctls(conf, "lxc.sysctl");
+	lxc_clear_procs(conf, "lxc.proc");
 	free(conf->cgroup_meta.dir);
 	free(conf->cgroup_meta.controllers);
 	free(conf);

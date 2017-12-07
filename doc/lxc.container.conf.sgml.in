@@ -339,6 +339,30 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     </refsect2>
 
     <refsect2>
+      <title>Proc</title>
+      <para>
+        Configure proc filesystem for the container.
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.proc.[proc file name]</option>
+          </term>
+          <listitem>
+            <para>
+              Specify the proc file name to be set. The file name available
+              are those listed under /proc/PID/.
+              Example:
+            </para>
+            <programlisting>
+              lxc.proc.oom_score_adj = 10
+            </programlisting>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Ephemeral</title>
       <para>
         Allows one to specify whether a container will be destroyed on shutdown.
