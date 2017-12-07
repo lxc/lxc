@@ -922,6 +922,13 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
+	/* lxc.sysctl */
+	if (set_get_compare_clear_save_load(c, "lxc.sysctl.net.core.somaxconn", "256", tmpf,
+					    true) < 0) {
+		lxc_error("%s\n", "lxc.sysctl.net.core.somaxconn");
+		goto non_test_error;
+	}
+
 	/* REMOVE IN LXC 3.0
 	   legacy lxc.limit.* key
 	 */
