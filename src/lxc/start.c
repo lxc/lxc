@@ -226,14 +226,16 @@ restart:
 			continue;
 
 		/* Keep state clients that wait on reboots. */
-		lxc_list_for_each(cur, &conf->state_clients) {
-			struct lxc_state_client *client = cur->elem;
+		if (conf) {
+			lxc_list_for_each(cur, &conf->state_clients) {
+				struct lxc_state_client *client = cur->elem;
 
-			if (client->clientfd != fd)
-				continue;
+				if (client->clientfd != fd)
+					continue;
 
-			matched = true;
-			break;
+				matched = true;
+				break;
+			}
 		}
 
 		if (matched)
