@@ -1889,6 +1889,7 @@ static const char padchar[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 char *lxc_mkifname(char *template)
 {
+	int ret;
 	unsigned int seed;
 	FILE *urandom;
 	struct ifaddrs *ifa, *ifaddr;
@@ -1900,7 +1901,11 @@ char *lxc_mkifname(char *template)
 		return NULL;
 
 	/* Get all the network interfaces. */
-	getifaddrs(&ifaddr);
+	ret = getifaddrs(&ifaddr);
+	if (ret < 0) {
+		ERROR("%s - Failed to get network interfaces", strerror(errno));
+		return NULL;
+	}
 
 	/* Initialize the random number generator. */
 	urandom = fopen("/dev/urandom", "r");
