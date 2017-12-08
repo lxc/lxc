@@ -1,0 +1,96 @@
+#! /bin/bash
+
+set -eu
+
+LXC_DHCP_SCRIPT="@LXCHOOKDIR@/dhclient-script"
+LXC_DHCP_CONFIG="@SYSCONFDIR@/lxc/dhclient.conf"
+
+rootfs_path="${LXC_ROOTFS_PATH#*:}"
+hookdir="${rootfs_path/%rootfs/hook}"
+
+conffile_arg=""
+if [ -e "${LXC_DHCP_CONFIG}" ]; then
+    conffile_arg="-cf ${LXC_DHCP_CONFIG}"
+fi
+
+debugfile="/dev/null"
+if [ "${LXC_LOG_LEVEL}" = "DEBUG" ] || [ "${LXC_LOG_LEVEL}" = "TRACE" ]; then
+    debugfile="${hookdir}/dhclient.log"
+    echo "INFO: Writing dhclient log at ${debugfile}." >&2
+fi
+
+pidfile="${hookdir}/dhclient.pid"
+leasefile="${hookdir}/dhclient.leases"
+
+usage() {
+    echo "Usage: ${0##*/} <name> lxc {start-host|stop}"
+}
+
+dhclient_start() {
+    ns_args=("--uts" "--net")
+    if [ -z "$(readlink /proc/${LXC_PID}/ns/user /proc/self/ns/user | uniq -d)" ]; then
+        ns_args+=("--user")
+    fi
+
+    mkdir -p "${hookdir}"
+
+    if [ -e "${pidfile}" ]; then
+        echo "WARN: DHCP client is already running, skipping start hook." >> "${debugfile}"
+    else
+        echo "INFO: Starting DHCP client and acquiring a lease..." >> "${debugfile}"
+        nsenter ${ns_args[@]} --target "${LXC_PID}" -- \
+          /sbin/dhclient -1 ${conffile_arg} -pf "${pidfile}" -lf "${leasefile}" -e "ROOTFS=${rootfs_path}" -sf "${LXC_DHCP_SCRIPT}" -v >> "${debugfile}" 2>&1
+    fi
+}
+
+dhclient_stop() {
+    # We can't use LXC_PID here since the container process has exited,
+    # use the namespace file descriptors in the hook arguments instead.
+    ns_args=("")
+    if [ "${LXC_HOOK_VERSION:-0}" -eq 0 ]; then
+        for arg in "$@"; do
+            case "${arg}" in
+                uts:* | user:* | net:*) ns_args+=("--${arg/:/=}") ;;
+                *) ;;
+            esac
+        done
+    else
+        ns_args+=("--uts=${LXC_UTS_NS}")
+        ns_args+=("--net=${LXC_NET_NS}")
+        [ -n "${LXC_USER_NS:+x}" ] && ns_args+=("--user=${LXC_USER_NS}")
+    fi
+
+    if [ -e "${pidfile}" ]; then
+        echo "INFO: Stopping DHCP client and releasing leases..." >> "${debugfile}"
+        nsenter ${ns_args[@]} -- \
+          /sbin/dhclient -r ${conffile_arg} -pf "${pidfile}" -lf "${leasefile}" -e "ROOTFS=${rootfs_path}" -sf "${LXC_DHCP_SCRIPT}" -v >> "${debugfile}" 2>&1
+    else
+        echo "WARN: DHCP client is not running, skipping stop hook." >> "${debugfile}"
+    fi
+
+    # dhclient could fail to release the lease and shutdown, try to cleanup after ourselves just in case.
+    nsenter ${ns_args[@]} -- \
+      /bin/sh -c 'pkill --ns $$ --nslist net -f "^/sbin/dhclient"' || true
+    rm -f "${pidfile}"
+}
+
+HOOK_SECTION=
+HOOK_TYPE=
+case "${LXC_HOOK_VERSION:-0}" in
+    0) HOOK_SECTION="${2:-}"; HOOK_TYPE="${3:-}"; shift 3;;
+    1) HOOK_SECTION="${LXC_HOOK_SECTION:-}"; HOOK_TYPE="${LXC_HOOK_TYPE:-}";;
+    *) echo "ERROR: Unsupported hook version: ${LXC_HOOK_VERSION}." >&2; exit 1;;
+esac
+
+if [ "${HOOK_SECTION}" != "lxc" ]; then
+    echo "ERROR: Not running through LXC." >&2
+    exit 1
+fi
+
+case "${HOOK_TYPE}" in
+    start-host) dhclient_start $@;;
+    stop) dhclient_stop $@;;
+    *) usage; exit 1;;
+esac
+
+exit 0
