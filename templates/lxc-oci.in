@@ -313,6 +313,10 @@ if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ] && [ -e "${LXC_TEMP
     echo "lxc.include = ${LXC_TEMPLATE_CONFIG}/userns.conf" >> "${LXC_CONF_FILE}"
 fi
 
+if [ -e "${LXC_TEMPLATE_CONFIG}/oci.common.conf" ]; then
+    echo "lxc.include = ${LXC_TEMPLATE_CONFIG}/oci.common.conf" >> "${LXC_CONF_FILE}"
+fi
+
 echo "lxc.uts.name = ${LXC_NAME}" >> "${LXC_CONF_FILE}"
 # set the hostname
 cat <<EOF > ${LXC_ROOTFS}/etc/hostname
