@@ -1139,9 +1139,11 @@ int lxc_attach(const char *name, const char *lxcpath,
 		new_cwd = options->initial_cwd;
 	else
 		new_cwd = cwd;
-	ret = chdir(new_cwd);
-	if (ret < 0)
-		WARN("Could not change directory to \"%s\".", new_cwd);
+	if (new_cwd) {
+		ret = chdir(new_cwd);
+		if (ret < 0)
+			WARN("Could not change directory to \"%s\"", new_cwd);
+	}
 	free(cwd);
 
 	/* Now create the real child process. */
