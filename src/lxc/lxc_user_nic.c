@@ -625,8 +625,8 @@ static bool cull_entries(int fd, char *name, char *net_type, char *net_link,
 	}
 	free(entry_lines);
 
-	lxc_strmunmap(buf, sb.st_size);
 	ret = ftruncate(fd, buf_start - buf);
+	lxc_strmunmap(buf, sb.st_size);
 	if (ret < 0)
 		usernic_error("Failed to set new file size: %s\n",
 			      strerror(errno));
