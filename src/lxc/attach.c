@@ -1443,7 +1443,6 @@ int lxc_attach_run_shell(void* payload)
 		user_shell = lxc_attach_getpwshell(uid);
 	else
 		user_shell = passwd->pw_shell;
-
 	if (user_shell)
 		execlp(user_shell, user_shell, (char *)NULL);
 
@@ -1451,6 +1450,8 @@ int lxc_attach_run_shell(void* payload)
 	 * on /bin/sh as a default shell.
 	 */
 	execlp("/bin/sh", "/bin/sh", (char *)NULL);
-	SYSERROR("Failed to exec shell.");
+	SYSERROR("Failed to execute shell");
+	if (!passwd)
+		free(user_shell);
 	return -1;
 }
