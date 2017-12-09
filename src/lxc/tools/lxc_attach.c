@@ -348,6 +348,7 @@ static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *
 	if (c->attach(c, get_pty_on_host_callback, wrap, wrap->options, pid) < 0)
 		goto err1;
 	close(conf->console.slave); /* Close slave side. */
+	conf->console.slave = -1;
 
 	ret = lxc_mainloop_open(&descr);
 	if (ret) {
