@@ -207,8 +207,8 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 
 		odelta = strchr(nsrc, ':');
 		if (!odelta) {
-			free(osrc);
 			ERROR("Failed to find \":\" in \"%s\"", nsrc);
+			free(osrc);
 			return -22;
 		}
 
