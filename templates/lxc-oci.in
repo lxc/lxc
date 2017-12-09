@@ -140,6 +140,21 @@ getuidgid() {
 	return
 }
 
+# get cwd from oci image.
+getcwd() {
+	if [ "$#" -eq 0 ]; then
+		echo "/"
+		return
+	fi
+
+	configpath="$1"
+
+	cwd=`cat "${configpath}" | jq -c -r '.config.WorkingDir // "/"'`
+
+	echo "${cwd}"
+	return
+}
+
 usage() {
     cat <<EOF
 LXC container template for OCI images
@@ -318,6 +333,9 @@ EOF
 uidgid=($(getuidgid ${OCI_CONF_FILE}))
 echo "lxc.init.uid = ${uidgid[0]}" >> "${LXC_CONF_FILE}"
 echo "lxc.init.gid = ${uidgid[1]}" >> "${LXC_CONF_FILE}"
+
+cwd=$(getcwd ${OCI_CONF_FILE})
+echo "lxc.init.cwd = ${cwd}" >> "${LXC_CONF_FILE}"
 
 if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
     chown $LXC_MAPPED_UID $LXC_PATH/config $LXC_PATH/fstab >/dev/null 2>&1 || true
