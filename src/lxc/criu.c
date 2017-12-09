@@ -1120,14 +1120,16 @@ static int save_tty_major_minor(char *directory, struct lxc_container *c, char *
 /* do one of either predump or a regular dump */
 static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *opts)
 {
+	int ret;
 	pid_t pid;
-	char *criu_version = NULL;
 	int criuout[2];
+	char *criu_version = NULL;
 
 	if (!criu_ok(c, &criu_version))
 		return false;
 
-	if (pipe(criuout) < 0) {
+	ret = pipe(criuout);
+	if (ret < 0) {
 		SYSERROR("pipe() failed");
 		return false;
 	}
@@ -1162,12 +1164,16 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 		os.console_name = c->lxc_conf->console.path;
 		os.criu_version = criu_version;
 
-		if (save_tty_major_minor(opts->directory, c, os.tty_id, sizeof(os.tty_id)) < 0)
-			exit(1);
+		ret = save_tty_major_minor(opts->directory, c, os.tty_id, sizeof(os.tty_id));
+		if (ret < 0) {
+			free(criu_version);
+			exit(EXIT_FAILURE);
+		}
 
 		/* exec_criu() returning is an error */
 		exec_criu(&os);
-		exit(1);
+		free(criu_version);
+		exit(EXIT_FAILURE);
 	} else {
 		int status;
 		ssize_t n;
@@ -1214,6 +1220,7 @@ fail:
 	close(criuout[0]);
 	close(criuout[1]);
 	rmdir(opts->directory);
+	free(criu_version);
 	return false;
 }
 
