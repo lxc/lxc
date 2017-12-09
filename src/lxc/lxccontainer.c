@@ -4250,22 +4250,27 @@ static bool do_lxcapi_may_control(struct lxc_container *c)
 WRAP_API(bool, lxcapi_may_control)
 
 static bool do_add_remove_node(pid_t init_pid, const char *path, bool add,
-		struct stat *st)
+			       struct stat *st)
 {
+	int ret;
+	char *tmp;
+	pid_t pid;
 	char chrootpath[MAXPATHLEN];
 	char *directory_path = NULL;
-	pid_t pid;
-	int ret;
 
-	if ((pid = fork()) < 0) {
-		SYSERROR("failed to fork a child helper");
+	pid = fork();
+	if (pid < 0) {
+		SYSERROR("Failed to fork()");
 		return false;
 	}
+
 	if (pid) {
-		if (wait_for_pid(pid) != 0) {
-			ERROR("Failed to create note in guest");
+		ret = wait_for_pid(pid);
+		if (ret != 0) {
+			ERROR("Failed to create device node");
 			return false;
 		}
+
 		return true;
 	}
 
@@ -4274,34 +4279,44 @@ static bool do_add_remove_node(pid_t init_pid, const char *path, bool add,
 	if (ret < 0 || ret >= MAXPATHLEN)
 		return false;
 
-	if (chroot(chrootpath) < 0)
-		exit(1);
-	if (chdir("/") < 0)
-		exit(1);
+	ret = chroot(chrootpath);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+
+	ret = chdir("/");
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+
 	/* remove path if it exists */
-	if(faccessat(AT_FDCWD, path, F_OK, AT_SYMLINK_NOFOLLOW) == 0) {
-		if (unlink(path) < 0) {
-			ERROR("unlink failed");
-			exit(1);
-		}
+	ret = faccessat(AT_FDCWD, path, F_OK, AT_SYMLINK_NOFOLLOW);
+	if(ret == 0) {
+		ret = unlink(path);
+		if (ret < 0)
+			exit(EXIT_FAILURE);
 	}
+
 	if (!add)
-		exit(0);
+		exit(EXIT_SUCCESS);
 
 	/* create any missing directories */
-	directory_path = dirname(strdup(path));
-	if (mkdir_p(directory_path, 0755) < 0 && errno != EEXIST) {
-		ERROR("failed to create directory");
-		exit(1);
+	tmp = strdup(path);
+	if (!tmp)
+		exit(EXIT_FAILURE);
+
+	directory_path = dirname(tmp);
+	ret = mkdir_p(directory_path, 0755);
+	if (ret < 0 && errno != EEXIST) {
+		free(tmp);
+		exit(EXIT_FAILURE);
 	}
 
 	/* create the device node */
-	if (mknod(path, st->st_mode, st->st_rdev) < 0) {
-		ERROR("mknod failed");
-		exit(1);
-	}
+	ret = mknod(path, st->st_mode, st->st_rdev);
+	free(tmp);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
 
-	exit(0);
+	exit(EXIT_SUCCESS);
 }
 
 static bool add_remove_device_node(struct lxc_container *c, const char *src_path, const char *dest_path, bool add)
