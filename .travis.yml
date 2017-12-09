@@ -21,6 +21,7 @@ before_install:
  - sudo apt-get install -qq libapparmor-dev libcap-dev libseccomp-dev python3-dev docbook2x libgnutls-dev liblua5.2-dev libselinux1-dev libcgmanager-dev
 script:
  - ./autogen.sh
+ - rm -Rf build
  - mkdir build
  - cd build
  - ../configure --enable-tests --with-distro=unknown
