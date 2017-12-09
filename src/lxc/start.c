@@ -203,9 +203,6 @@ restart:
 		struct lxc_list *cur;
 		bool matched = false;
 
-		if (!direntp)
-			break;
-
 		if (!strcmp(direntp->d_name, "."))
 			continue;
 
