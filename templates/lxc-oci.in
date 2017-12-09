@@ -121,6 +121,25 @@ getenv() {
 	return
 }
 
+# FIXME 1: only support numerical values in the configuration file.
+# FIXME 2: from the OCI image spec: "If group/gid is not specified,
+# the default group and supplementary groups of the given user/uid in
+# /etc/passwd from the container are applied."
+getuidgid() {
+	if [ "$#" -eq 0 ]; then
+		echo "0 0"
+		return
+	fi
+
+	configpath="$1"
+
+	uidgid=`cat "${configpath}" | jq -c -r '.config.User // "0:0"'`
+	uidgid=(${uidgid//:/ })
+
+	printf '%d %d' ${uidgid[0]:-0} ${uidgid[1]:-0} 2>/dev/null || true
+	return
+}
+
 usage() {
     cat <<EOF
 LXC container template for OCI images
@@ -290,6 +309,10 @@ cat <<EOF > ${LXC_ROOTFS}/etc/hosts
 127.0.0.1   localhost
 127.0.1.1   ${LXC_NAME}
 EOF
+
+uidgid=($(getuidgid ${OCI_CONF_FILE}))
+echo "lxc.init.uid = ${uidgid[0]}" >> "${LXC_CONF_FILE}"
+echo "lxc.init.gid = ${uidgid[1]}" >> "${LXC_CONF_FILE}"
 
 if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
     chown $LXC_MAPPED_UID $LXC_PATH/config $LXC_PATH/fstab >/dev/null 2>&1 || true
