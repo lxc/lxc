@@ -528,9 +528,6 @@ static bool am_single_threaded(void)
 	}
 
 	while ((direntp = readdir(dir))) {
-		if (!direntp)
-			break;
-
 		if (!strcmp(direntp->d_name, "."))
 			continue;
 
