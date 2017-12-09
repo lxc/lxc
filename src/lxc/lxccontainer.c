@@ -4192,8 +4192,6 @@ static bool remove_all_snapshots(const char *path)
 		return false;
 	}
 	while ((direntp = readdir(dir))) {
-		if (!direntp)
-			break;
 		if (!strcmp(direntp->d_name, "."))
 			continue;
 		if (!strcmp(direntp->d_name, ".."))
