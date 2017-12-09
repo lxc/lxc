@@ -722,15 +722,9 @@ char *ovl_get_rootfs(const char *rootfs_path, size_t *rootfslen)
 		*s3 = '\0';
 
 	rootfsdir = strdup(s2);
-	if (!rootfsdir) {
-		free(s1);
-		return NULL;
-	}
-
+	free(s1);
 	if (!rootfsdir)
-		rootfsdir = s1;
-	else
-		free(s1);
+		return NULL;
 
 	*rootfslen = strlen(rootfsdir);
 
