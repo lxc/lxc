@@ -59,7 +59,7 @@ int lxc_abstract_unix_open(const char *path, int type, int flags)
 		return -1;
 	}
 	/* addr.sun_path[0] has already been set to 0 by memset() */
-	strncpy(&addr.sun_path[1], &path[1], strlen(&path[1]));
+	strncpy(&addr.sun_path[1], &path[1], len);
 
 	if (bind(fd, (struct sockaddr *)&addr, offsetof(struct sockaddr_un, sun_path) + len)) {
 		int tmp = errno;
