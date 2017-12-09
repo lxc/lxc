@@ -859,13 +859,17 @@ int lxc_attach(const char *name, const char *lxcpath,
 	init_ctx->personality = personality;
 
 	init_ctx->container = lxc_container_new(name, lxcpath);
-	if (!init_ctx->container)
+	if (!init_ctx->container) {
+		lxc_proc_put_context_info(init_ctx);
 		return -1;
+	}
 
 	if (!init_ctx->container->lxc_conf) {
 		init_ctx->container->lxc_conf = lxc_conf_init();
-		if (!init_ctx->container->lxc_conf)
+		if (!init_ctx->container->lxc_conf) {
+			lxc_proc_put_context_info(init_ctx);
 			return -ENOMEM;
+		}
 	}
 
 	if (!fetch_seccomp(init_ctx->container, options))
@@ -1166,6 +1170,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 	if (ret <= 0) {
 		ERROR("Expected to receive sequence number 0: %s.", strerror(errno));
 		shutdown(ipc_sockets[1], SHUT_RDWR);
+		lxc_proc_put_context_info(init_ctx);
 		rexit(-1);
 	}
 
@@ -1176,6 +1181,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 	if (ret < 0) {
 		ERROR("Failed to enter namespaces.");
 		shutdown(ipc_sockets[1], SHUT_RDWR);
+		lxc_proc_put_context_info(init_ctx);
 		rexit(-1);
 	}
 	/* close namespace file descriptors */
@@ -1214,6 +1220,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 	if (pid <= 0) {
 		SYSERROR("Failed to create subprocess.");
 		shutdown(ipc_sockets[1], SHUT_RDWR);
+		lxc_proc_put_context_info(init_ctx);
 		rexit(-1);
 	}
 
@@ -1228,10 +1235,12 @@ int lxc_attach(const char *name, const char *lxcpath,
 		 */
 		ERROR("Intended to send pid %d: %s.", pid, strerror(errno));
 		shutdown(ipc_sockets[1], SHUT_RDWR);
+		lxc_proc_put_context_info(init_ctx);
 		rexit(-1);
 	}
 
 	/* The rest is in the hands of the initial and the attached process. */
+	lxc_proc_put_context_info(init_ctx);
 	rexit(0);
 }
 
