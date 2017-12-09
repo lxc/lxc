@@ -278,6 +278,7 @@ int do_mkfs_exec_wrapper(void *args)
 	TRACE("executing \"%s %s\"", mkfs, data[1]);
 	execlp(mkfs, mkfs, data[1], (char *)NULL);
 	SYSERROR("failed to run \"%s %s \"", mkfs, data[1]);
+	free(mkfs);
 	return -1;
 }
 
