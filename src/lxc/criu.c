@@ -1147,6 +1147,8 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 
 		close(criuout[0]);
 
+		lxc_zero_handler(&h);
+
 		h.name = c->name;
 		if (!cgroup_init(&h)) {
 			ERROR("failed to cgroup_init()");
