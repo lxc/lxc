@@ -410,7 +410,7 @@ extern int setup_resource_limits(struct lxc_list *limits, pid_t pid);
 extern int find_unmapped_nsid(struct lxc_conf *conf, enum idtype idtype);
 extern int mapped_hostid(unsigned id, struct lxc_conf *conf,
 			 enum idtype idtype);
-extern int chown_mapped_root(char *path, struct lxc_conf *conf);
+extern int chown_mapped_root(const char *path, struct lxc_conf *conf);
 extern int lxc_ttys_shift_ids(struct lxc_conf *c);
 extern int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 			 const char *fn_name);

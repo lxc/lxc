@@ -109,23 +109,24 @@ struct lxc_storage {
 	int flags;
 };
 
-extern bool storage_is_dir(struct lxc_conf *conf, const char *path);
+/**
+ * storage_is_dir : Check whether the roots is a directory. This function will
+ *                  trust the config file. If the config file key
+ *                  lxc.rootfs.path is set to <storage type>:<container path>
+ *                  the confile parser will have split this into <storage type>
+ *                  and <container path> and set the <bdev_type> member in the
+ *                  lxc_rootfs struct to <storage type> and the <path> member
+ *                  will be set to a clean <container path> without the <storage
+ *                  type> prefix. This is the new, clean way of handling storage
+ *                  type specifications.  If the <storage type> prefix is not
+ *                  detected liblxc will try to detect the storage type.
+ */
+extern bool storage_is_dir(struct lxc_conf *conf);
 extern bool storage_can_backup(struct lxc_conf *conf);
 
-/* Instantiate a lxc_storage object. The src is used to determine which blockdev
- * type this should be. The dst and data are optional, and will be used in case
- * of mount/umount.
- *
- * The source will be "dir:/var/lib/lxc/c1" or "lvm:/dev/lxc/c1". For other
- * backing stores, this will allow additional options. In particular,
- * "overlayfs:/var/lib/lxc/canonical/rootfs:/var/lib/lxc/c1/delta" will mean use
- * /var/lib/lxc/canonical/rootfs as lower dir, and /var/lib/lxc/c1/delta as the
- * upper, writeable layer.
- */
-extern struct lxc_storage *storage_init(struct lxc_conf *conf, const char *src,
-					const char *dst, const char *data);
+extern struct lxc_storage *storage_init(struct lxc_conf *conf);
 
-extern struct lxc_storage *storage_copy(struct lxc_container *c0,
+extern struct lxc_storage *storage_copy(struct lxc_container *c,
 					const char *cname, const char *lxcpath,
 					const char *bdevtype, int flags,
 					const char *bdevdata, uint64_t newsize,
@@ -135,9 +136,7 @@ extern struct lxc_storage *storage_create(const char *dest, const char *type,
 					  struct bdev_specs *specs);
 extern void storage_put(struct lxc_storage *bdev);
 extern bool storage_destroy(struct lxc_conf *conf);
-
-extern int storage_destroy_wrapper(void *data);
 extern bool rootfs_is_blockdev(struct lxc_conf *conf);
-extern char *lxc_storage_get_path(char *src, const char *prefix);
+extern const char *lxc_storage_get_path(char *src, const char *prefix);
 
 #endif /* #define __LXC_STORAGE_H */

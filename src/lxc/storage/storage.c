@@ -213,17 +213,27 @@ static const struct lxc_storage_type bdevs[] = {
 
 static const size_t numbdevs = sizeof(bdevs) / sizeof(struct lxc_storage_type);
 
-static const struct lxc_storage_type *get_storage_by_name(const char *name)
+static const struct lxc_storage_type *get_storage_by_name(const char *path,
+							  const char *type)
 {
+	int ret;
 	size_t i, cmplen;
 
-	cmplen = strcspn(name, ":");
+	if (type)
+		cmplen = strlen(type);
+	else
+		cmplen = strcspn(path, ":");
 	if (cmplen == 0)
 		return NULL;
 
-	for (i = 0; i < numbdevs; i++)
-		if (strncmp(bdevs[i].name, name, cmplen) == 0)
+	for (i = 0; i < numbdevs; i++) {
+		if (type)
+			ret = strncmp(bdevs[i].name, type, cmplen);
+		else
+			ret = strncmp(bdevs[i].name, path, cmplen);
+		if (ret == 0)
 			break;
+	}
 
 	if (i == numbdevs)
 		return NULL;
@@ -232,18 +242,19 @@ static const struct lxc_storage_type *get_storage_by_name(const char *name)
 	return &bdevs[i];
 }
 
-const struct lxc_storage_type *storage_query(struct lxc_conf *conf,
-					     const char *src)
+static const struct lxc_storage_type *storage_query(struct lxc_conf *conf)
 {
 	size_t i;
 	const struct lxc_storage_type *bdev;
+	const char *path = conf->rootfs.path;
+	const char *type = conf->rootfs.bdev_type;
 
-	bdev = get_storage_by_name(src);
+	bdev = get_storage_by_name(path, type);
 	if (bdev)
 		return bdev;
 
 	for (i = 0; i < numbdevs; i++)
-		if (bdevs[i].ops->detect(src))
+		if (bdevs[i].ops->detect(path))
 			break;
 
 	if (i == numbdevs)
@@ -258,10 +269,9 @@ struct lxc_storage *storage_get(const char *type)
 	size_t i;
 	struct lxc_storage *bdev;
 
-	for (i = 0; i < numbdevs; i++) {
+	for (i = 0; i < numbdevs; i++)
 		if (strcmp(bdevs[i].name, type) == 0)
 			break;
-	}
 
 	if (i == numbdevs)
 		return NULL;
@@ -274,7 +284,7 @@ struct lxc_storage *storage_get(const char *type)
 	bdev->ops = bdevs[i].ops;
 	bdev->type = bdevs[i].name;
 
-	if (!strcmp(bdev->type, "aufs"))
+	if (strcmp(bdev->type, "aufs") == 0)
 		WARN("The \"aufs\" driver will is deprecated and will soon be "
 		     "removed. For similar functionality see the \"overlay\" "
 		     "storage driver");
@@ -286,7 +296,7 @@ static struct lxc_storage *do_storage_create(const char *dest, const char *type,
 					     const char *cname,
 					     struct bdev_specs *specs)
 {
-
+	int ret;
 	struct lxc_storage *bdev;
 
 	if (!type)
@@ -296,7 +306,8 @@ static struct lxc_storage *do_storage_create(const char *dest, const char *type,
 	if (!bdev)
 		return NULL;
 
-	if (bdev->ops->create(bdev, dest, cname, specs) < 0) {
+	ret = bdev->ops->create(bdev, dest, cname, specs);
+	if (ret < 0) {
 		storage_put(bdev);
 		return NULL;
 	}
@@ -306,9 +317,10 @@ static struct lxc_storage *do_storage_create(const char *dest, const char *type,
 
 bool storage_can_backup(struct lxc_conf *conf)
 {
-	struct lxc_storage *bdev = storage_init(conf, NULL, NULL, NULL);
 	bool ret;
+	struct lxc_storage *bdev;
 
+	bdev = storage_init(conf);
 	if (!bdev)
 		return false;
 
@@ -326,16 +338,16 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 				 uint64_t newsize, bool *needs_rdep)
 {
 	int ret;
-	struct lxc_storage *orig, *new;
-	char *src_no_prefix;
-	bool snap = flags & LXC_CLONE_SNAPSHOT;
-	bool maybe_snap = flags & LXC_CLONE_MAYBE_SNAPSHOT;
-	bool keepbdevtype = flags & LXC_CLONE_KEEPBDEVTYPE;
+	const char *src_no_prefix;
+	struct lxc_storage *new, *orig;
+	bool snap = (flags & LXC_CLONE_SNAPSHOT);
+	bool maybe_snap = (flags & LXC_CLONE_MAYBE_SNAPSHOT);
+	bool keepbdevtype = (flags & LXC_CLONE_KEEPBDEVTYPE);
 	const char *src = c->lxc_conf->rootfs.path;
 	const char *oldname = c->name;
 	const char *oldpath = c->config_path;
-	struct rsync_data data = {0};
 	char cmd_output[MAXPATHLEN] = {0};
+	struct rsync_data data = {0};
 
 	if (!src) {
 		ERROR("No rootfs specified");
@@ -351,9 +363,9 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 		return NULL;
 	}
 
-	orig = storage_init(c->lxc_conf, src, NULL, NULL);
+	orig = storage_init(c->lxc_conf);
 	if (!orig) {
-		ERROR("Failed to detect storage driver for \"%s\"", src);
+		ERROR("Failed to detect storage driver for \"%s\"", oldname);
 		return NULL;
 	}
 
@@ -422,11 +434,11 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 	/* get new bdev type */
 	new = storage_get(bdevtype);
 	if (!new) {
-		ERROR("Failed to initialize \"%s\" storage driver",
+		ERROR("Failed to initialize %s storage driver",
 		      bdevtype ? bdevtype : orig->type);
 		goto on_error_put_orig;
 	}
-	TRACE("Initialized \"%s\" storage driver", new->type);
+	TRACE("Initialized %s storage driver", new->type);
 
 	/* create new paths */
 	ret = new->ops->clone_paths(orig, new, oldname, cname, oldpath, lxcpath,
@@ -440,14 +452,15 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 	 * snapshot directory under "<lxcpath>/<name>/snaps/" we don't need to
 	 * record a dependency. If we would restore would also fail.
 	 */
-	if ((!strcmp(new->type, "overlay") ||
-	     !strcmp(new->type, "overlayfs")) &&
+	if ((strcmp(new->type, "overlay") == 0 ||
+	     strcmp(new->type, "overlayfs") == 0) &&
 	    ret == LXC_CLONE_SNAPSHOT)
 		*needs_rdep = false;
 
 	/* btrfs */
 	if (!strcmp(orig->type, "btrfs") && !strcmp(new->type, "btrfs")) {
-		bool bret = false;
+		bool bret;
+
 		if (snap || btrfs_same_fs(orig->dest, new->dest) == 0)
 			bret = new->ops->snapshot(c->lxc_conf, orig, new, 0);
 		else
@@ -460,10 +473,10 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 
 	/* lvm */
 	if (!strcmp(orig->type, "lvm") && !strcmp(new->type, "lvm")) {
-		bool bret = false;
+		bool bret;
+
 		if (snap)
-			bret = new->ops->snapshot(c->lxc_conf, orig,
-							 new, newsize);
+			bret = new->ops->snapshot(c->lxc_conf, orig, new, newsize);
 		else
 			bret = new->ops->copy(c->lxc_conf, orig, new, newsize);
 		if (!bret)
@@ -474,11 +487,10 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 
 	/* zfs */
 	if (!strcmp(orig->type, "zfs") && !strcmp(new->type, "zfs")) {
-		bool bret = false;
+		bool bret;
 
 		if (snap)
-			bret = new->ops->snapshot(c->lxc_conf, orig, new,
-						  newsize);
+			bret = new->ops->snapshot(c->lxc_conf, orig, new, newsize);
 		else
 			bret = new->ops->copy(c->lxc_conf, orig, new, newsize);
 		if (!bret)
@@ -547,20 +559,21 @@ on_error_put_orig:
 struct lxc_storage *storage_create(const char *dest, const char *type,
 				   const char *cname, struct bdev_specs *specs)
 {
+	int ret;
 	struct lxc_storage *bdev;
 	char *best_options[] = {"btrfs", "zfs", "lvm", "dir", "rbd", NULL};
 
 	if (!type)
 		return do_storage_create(dest, "dir", cname, specs);
 
-	if (strcmp(type, "best") == 0) {
+	ret = strcmp(type, "best");
+	if (ret == 0) {
 		int i;
 		/* Try for the best backing store type, according to our
 		 * opinionated preferences.
 		 */
 		for (i = 0; best_options[i]; i++) {
-			bdev = do_storage_create(dest, best_options[i], cname,
-						 specs);
+			bdev = do_storage_create(dest, best_options[i], cname, specs);
 			if (bdev)
 				return bdev;
 		}
@@ -569,12 +582,16 @@ struct lxc_storage *storage_create(const char *dest, const char *type,
 	}
 
 	/* -B lvm,dir */
-	if (strchr(type, ',') != NULL) {
-		char *dup = alloca(strlen(type) + 1), *saveptr = NULL, *token;
+	if (strchr(type, ',')) {
+		char *dup, *token;
+		char *saveptr = NULL;
+
+		dup = alloca(strlen(type) + 1);
 		strcpy(dup, type);
 		for (token = strtok_r(dup, ",", &saveptr); token;
 		     token = strtok_r(NULL, ",", &saveptr)) {
-			if ((bdev = do_storage_create(dest, token, cname, specs)))
+			bdev = do_storage_create(dest, token, cname, specs);
+			if (bdev)
 				return bdev;
 		}
 	}
@@ -587,32 +604,32 @@ bool storage_destroy(struct lxc_conf *conf)
 	struct lxc_storage *r;
 	bool ret = false;
 
-	r = storage_init(conf, conf->rootfs.path, conf->rootfs.mount, NULL);
+	r = storage_init(conf);
 	if (!r)
 		return ret;
 
-	if (r->ops->destroy(r) == 0)
+	ret = r->ops->destroy(r);
+	if (ret == 0)
 		ret = true;
 
 	storage_put(r);
 	return ret;
 }
 
-struct lxc_storage *storage_init(struct lxc_conf *conf, const char *src,
-				 const char *dst, const char *mntopts)
+struct lxc_storage *storage_init(struct lxc_conf *conf)
 {
 	struct lxc_storage *bdev;
 	const struct lxc_storage_type *q;
+	const char *src = conf->rootfs.path;
+	const char *dst = conf->rootfs.mount;
+	const char *mntopts = conf->rootfs.options;
 
 	BUILD_BUG_ON(LXC_STORAGE_INTERNAL_OVERLAY_RESTORE <= LXC_CLONE_MAXFLAGS);
 
 	if (!src)
-		src = conf->rootfs.path;
-
-	if (!src)
 		return NULL;
 
-	q = storage_query(conf, src);
+	q = storage_query(conf);
 	if (!q)
 		return NULL;
 
@@ -621,18 +638,23 @@ struct lxc_storage *storage_init(struct lxc_conf *conf, const char *src,
 		return NULL;
 
 	memset(bdev, 0, sizeof(struct lxc_storage));
+
 	bdev->ops = q->ops;
 	bdev->type = q->name;
+
 	if (mntopts)
 		bdev->mntopts = strdup(mntopts);
+
 	if (src)
 		bdev->src = strdup(src);
+
 	if (dst)
 		bdev->dest = strdup(dst);
+
 	if (strcmp(bdev->type, "nbd") == 0)
 		bdev->nbd_idx = conf->nbd_idx;
 
-	if (!strcmp(bdev->type, "aufs"))
+	if (strcmp(bdev->type, "aufs") == 0)
 		WARN("The \"aufs\" driver will is deprecated and will soon be "
 		     "removed. For similar functionality see the \"overlay\" "
 		     "storage driver");
@@ -640,12 +662,16 @@ struct lxc_storage *storage_init(struct lxc_conf *conf, const char *src,
 	return bdev;
 }
 
-bool storage_is_dir(struct lxc_conf *conf, const char *path)
+bool storage_is_dir(struct lxc_conf *conf)
 {
 	struct lxc_storage *orig;
+	char *type = conf->rootfs.bdev_type;
 	bool bret = false;
 
-	orig = storage_init(conf, path, NULL, NULL);
+	if (type)
+		return (strcmp(type, "dir") == 0);
+
+	orig = storage_init(conf);
 	if (!orig)
 		return bret;
 
@@ -678,7 +704,7 @@ bool rootfs_is_blockdev(struct lxc_conf *conf)
 	if (ret == 0 && S_ISBLK(st.st_mode))
 		return true;
 
-	q = storage_query(conf, conf->rootfs.path);
+	q = storage_query(conf);
 	if (!q)
 		return false;
 
@@ -692,7 +718,7 @@ bool rootfs_is_blockdev(struct lxc_conf *conf)
 	return false;
 }
 
-char *lxc_storage_get_path(char *src, const char *prefix)
+const char *lxc_storage_get_path(char *src, const char *prefix)
 {
 	size_t prefix_len;
 

@@ -87,7 +87,7 @@ int lxc_rsync_exec(const char *src, const char *dest)
 int lxc_rsync(struct rsync_data *data)
 {
 	int ret;
-	char *dest, *src;
+	const char *dest, *src;
 	struct lxc_storage *orig = data->orig, *new = data->new;
 
 	ret = unshare(CLONE_NEWNS);

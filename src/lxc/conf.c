@@ -1191,7 +1191,7 @@ static int lxc_setup_rootfs(struct lxc_conf *conf)
 		return -1;
 	}
 
-	bdev = storage_init(conf, rootfs->path, rootfs->mount, rootfs->options);
+	bdev = storage_init(conf);
 	if (!bdev) {
 		ERROR("Failed to mount rootfs \"%s\" onto \"%s\" with options \"%s\".",
 		      rootfs->path, rootfs->mount,
@@ -2725,7 +2725,7 @@ int chown_mapped_root_exec_wrapper(void *args)
  * root is privileged with respect to hostuid/hostgid X, allowing
  * him to do the chown.
  */
-int chown_mapped_root(char *path, struct lxc_conf *conf)
+int chown_mapped_root(const char *path, struct lxc_conf *conf)
 {
 	uid_t rootuid, rootgid;
 	unsigned long val;
@@ -2733,14 +2733,14 @@ int chown_mapped_root(char *path, struct lxc_conf *conf)
 	struct stat sb;
 	char map1[100], map2[100], map3[100], map4[100], map5[100];
 	char ugid[100];
-	char *args1[] = {"lxc-usernsexec",
+	const char *args1[] = {"lxc-usernsexec",
 			 "-m", map1,
 			 "-m", map2,
 			 "-m", map3,
 			 "-m", map5,
 			 "--", "chown", ugid, path,
 			 NULL};
-	char *args2[] = {"lxc-usernsexec",
+	const char *args2[] = {"lxc-usernsexec",
 			 "-m", map1,
 			 "-m", map2,
 			 "-m", map3,

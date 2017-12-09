@@ -39,7 +39,7 @@ int dir_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 		   const char *lxcpath, int snap, uint64_t newsize,
 		   struct lxc_conf *conf)
 {
-	char *src_no_prefix;
+	const char *src_no_prefix;
 	int ret;
 	size_t len;
 
@@ -121,7 +121,7 @@ int dir_create(struct lxc_storage *bdev, const char *dest, const char *n,
 int dir_destroy(struct lxc_storage *orig)
 {
 	int ret;
-	char *src;
+	const char *src;
 
 	src = lxc_storage_get_path(orig->src, orig->src);
 
@@ -149,7 +149,8 @@ int dir_mount(struct lxc_storage *bdev)
 {
 	int ret;
 	unsigned long mflags, mntflags;
-	char *src, *mntdata;
+	char *mntdata;
+	const char *src;
 
 	if (strcmp(bdev->type, "dir"))
 		return -22;

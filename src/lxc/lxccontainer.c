@@ -61,6 +61,7 @@
 #include "start.h"
 #include "state.h"
 #include "storage.h"
+#include "storage_utils.h"
 #include "storage/btrfs.h"
 #include "storage/overlay.h"
 #include "sync.h"
@@ -1172,13 +1173,14 @@ static struct lxc_storage *do_storage_create(struct lxc_container *c,
 					     const char *type,
 					     struct bdev_specs *specs)
 {
-	char *dest;
-	size_t len;
-	struct lxc_storage *bdev;
 	int ret;
+	size_t len;
+	char *dest;
+	struct lxc_storage *bdev;
 
 	/* rootfs.path or lxcpath/lxcname/rootfs */
-	if (c->lxc_conf->rootfs.path && !access(c->lxc_conf->rootfs.path, F_OK)) {
+	if (c->lxc_conf->rootfs.path &&
+	    (access(c->lxc_conf->rootfs.path, F_OK) == 0)) {
 		const char *rpath = c->lxc_conf->rootfs.path;
 		len = strlen(rpath) + 1;
 		dest = alloca(len);
@@ -1189,27 +1191,28 @@ static struct lxc_storage *do_storage_create(struct lxc_container *c,
 		dest = alloca(len);
 		ret = snprintf(dest, len, "%s/%s/rootfs", lxcpath, c->name);
 	}
-	if (ret < 0 || ret >= len)
+	if (ret < 0 || (size_t)ret >= len)
 		return NULL;
 
 	bdev = storage_create(dest, type, c->name, specs);
 	if (!bdev) {
-		ERROR("Failed to create backing store type %s", type);
+		ERROR("Failed to create \"%s\" storage", type);
 		return NULL;
 	}
 
 	if (!c->set_config_item(c, "lxc.rootfs.path", bdev->src)) {
-		ERROR("Failed to set config item \"lxc.rootfs.path\" to \"%s\"",
-		      bdev->src);
+		ERROR("Failed to set \"lxc.rootfs.path = %s\"", bdev->src);
 		return NULL;
 	}
 
-	/* If we are not root, chown the rootfs dir to root in the
-	 * target uidmap.
+	/* If we are not root, chown the rootfs dir to root in the target user
+	 * namespace.
 	 */
-	if (geteuid() != 0 || (c->lxc_conf && !lxc_list_empty(&c->lxc_conf->id_map))) {
-		if (chown_mapped_root(bdev->dest, c->lxc_conf) < 0) {
-			ERROR("Error chowning %s to container root", bdev->dest);
+	ret = geteuid();
+	if (ret != 0 || (c->lxc_conf && !lxc_list_empty(&c->lxc_conf->id_map))) {
+		ret = chown_mapped_root(bdev->dest, c->lxc_conf);
+		if (ret < 0) {
+			ERROR("Error chowning \"%s\" to container root", bdev->dest);
 			suggest_default_idmap();
 			storage_put(bdev);
 			return NULL;
@@ -1253,7 +1256,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 			exit(1);
 		}
 
-		bdev = storage_init(c->lxc_conf, c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
+		bdev = storage_init(c->lxc_conf);
 		if (!bdev) {
 			ERROR("Error opening rootfs");
 			exit(1);
@@ -1315,7 +1318,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 				}
 			}
 		} else { /* TODO come up with a better way here! */
-			char *src;
+			const char *src;
 			free(bdev->dest);
 			src = lxc_storage_get_path(bdev->src, bdev->type);
 			bdev->dest = strdup(src);
@@ -1623,10 +1626,10 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 		const char *bdevtype, struct bdev_specs *specs, int flags,
 		char *const argv[])
 {
-	bool ret = false;
-	pid_t pid;
-	char *tpath = NULL;
 	int partial_fd;
+	pid_t pid;
+	bool ret = false;
+	char *tpath = NULL;
 
 	if (!c)
 		return false;
@@ -1634,26 +1637,26 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 	if (t) {
 		tpath = get_template_path(t);
 		if (!tpath) {
-			ERROR("bad template: %s", t);
+			ERROR("Unknown template \"%s\"", t);
 			goto out;
 		}
 	}
 
-	/*
-	 * If a template is passed in, and the rootfs already is defined in
-	 * the container config and exists, then * caller is trying to create
-	 * an existing container.  Return an error, but do NOT delete the
-	 * container.
+	/* If a template is passed in, and the rootfs already is defined in the
+	 * container config and exists, then the caller is trying to create an
+	 * existing container. Return an error, but do NOT delete the container.
 	 */
 	if (do_lxcapi_is_defined(c) && c->lxc_conf && c->lxc_conf->rootfs.path &&
 			access(c->lxc_conf->rootfs.path, F_OK) == 0 && tpath) {
-		ERROR("Container %s:%s already exists", c->config_path, c->name);
+		ERROR("Container \"%s\" already exists in \"%s\"", c->name,
+		      c->config_path);
 		goto free_tpath;
 	}
 
 	if (!c->lxc_conf) {
 		if (!do_lxcapi_load_config(c, lxc_global_config_value("lxc.default_config"))) {
-			ERROR("Error loading default configuration file %s", lxc_global_config_value("lxc.default_config"));
+			ERROR("Error loading default configuration file %s",
+			      lxc_global_config_value("lxc.default_config"));
 			goto free_tpath;
 		}
 	}
@@ -1661,39 +1664,42 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 	if (!create_container_dir(c))
 		goto free_tpath;
 
-	/*
-	 * if both template and rootfs.path are set, template is setup as rootfs.path.
-	 * container is already created if we have a config and rootfs.path is accessible
+	/* If both template and rootfs.path are set, template is setup as
+	 * rootfs.path. The container is already created if we have a config and
+	 * rootfs.path is accessible
 	 */
 	if (!c->lxc_conf->rootfs.path && !tpath) {
-		/* no template passed in and rootfs does not exist */
+		/* No template passed in and rootfs does not exist. */
 		if (!c->save_config(c, NULL)) {
-			ERROR("failed to save starting configuration for %s\n", c->name);
+			ERROR("Failed to save initial config for \"%s\"", c->name);
 			goto out;
 		}
 		ret = true;
 		goto out;
 	}
+
+	/* Rootfs passed into configuration, but does not exist. */
 	if (c->lxc_conf->rootfs.path && access(c->lxc_conf->rootfs.path, F_OK) != 0)
-		/* rootfs passed into configuration, but does not exist: error */
 		goto out;
+
 	if (do_lxcapi_is_defined(c) && c->lxc_conf->rootfs.path && !tpath) {
-		/* Rootfs already existed, user just wanted to save the
-		 * loaded configuration */
+		/* Rootfs already existed, user just wanted to save the loaded
+		 * configuration.
+		 */
 		if (!c->save_config(c, NULL))
-			ERROR("failed to save starting configuration for %s\n", c->name);
+			ERROR("Failed to save initial config for \"%s\"", c->name);
 		ret = true;
 		goto out;
 	}
 
 	/* Mark that this container is being created */
-	if ((partial_fd = create_partial(c)) < 0)
+	partial_fd = create_partial(c);
+	if (partial_fd < 0)
 		goto out;
 
-	/* no need to get disk lock bc we have the partial locked */
+	/* No need to get disk lock bc we have the partial lock. */
 
-	/*
-	 * Create the backing store
+	/* Create the storage.
 	 * Note we can't do this in the same task as we use to execute the
 	 * template because of the way zfs works.
 	 * After you 'zfs create', zfs mounts the fs only in the initial
@@ -1701,7 +1707,7 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 	 */
 	pid = fork();
 	if (pid < 0) {
-		SYSERROR("failed to fork task for container creation template");
+		SYSERROR("Failed to fork task for container creation template");
 		goto out_unlock;
 	}
 
@@ -1710,15 +1716,17 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 
 		bdev = do_storage_create(c, bdevtype, specs);
 		if (!bdev) {
-			ERROR("Error creating backing store type %s for %s",
-				bdevtype ? bdevtype : "(none)", c->name);
+			ERROR("Failed to create %s storage for %s",
+			      bdevtype ? bdevtype : "(none)", c->name);
 			exit(EXIT_FAILURE);
 		}
 
-		/* save config file again to store the new rootfs location */
+		/* Save config file again to store the new rootfs location. */
 		if (!do_lxcapi_save_config(c, NULL)) {
-			ERROR("failed to save starting configuration for %s", c->name);
-			/* Parent task won't see bdev in config so we delete it. */
+			ERROR("Failed to save initial config for %s", c->name);
+			/* Parent task won't see the storage driver in the
+			 * config so we delete it.
+			 */
 			bdev->ops->umount(bdev);
 			bdev->ops->destroy(bdev);
 			exit(EXIT_FAILURE);
@@ -1728,7 +1736,7 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 	if (wait_for_pid(pid) != 0)
 		goto out_unlock;
 
-	/* reload config to get the rootfs */
+	/* Reload config to get the rootfs. */
 	lxc_conf_free(c->lxc_conf);
 	c->lxc_conf = NULL;
 	if (!load_config_locked(c, c->configfile))
@@ -1744,7 +1752,7 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 
 	if (t) {
 		if (!prepend_lxc_header(c->configfile, tpath, argv)) {
-			ERROR("Error prepending header to configuration file");
+			ERROR("Failed to prepend header to config file");
 			goto out_unlock;
 		}
 	}
@@ -1762,8 +1770,8 @@ free_tpath:
 }
 
 static bool lxcapi_create(struct lxc_container *c, const char *t,
-		const char *bdevtype, struct bdev_specs *specs, int flags,
-		char *const argv[])
+			  const char *bdevtype, struct bdev_specs *specs,
+			  int flags, char *const argv[])
 {
 	bool ret;
 	current_config = c ? c->lxc_conf : NULL;
@@ -1954,7 +1962,7 @@ static bool lxcapi_createl(struct lxc_container *c, const char *t,
 	args = lxc_va_arg_list_to_argv(ap, 0, 0);
 	va_end(ap);
 	if (!args) {
-		ERROR("Memory allocation error.");
+		ERROR("Failed to allocate memory");
 		goto out;
 	}
 
@@ -3408,7 +3416,7 @@ static int clone_update_rootfs(struct clone_update_data *data)
 
 	if (unshare(CLONE_NEWNS) < 0)
 		return -1;
-	bdev = storage_init(c->lxc_conf, c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
+	bdev = storage_init(c->lxc_conf);
 	if (!bdev)
 		return -1;
 	if (strcmp(bdev->type, "dir") != 0) {
@@ -3739,7 +3747,7 @@ static bool do_lxcapi_rename(struct lxc_container *c, const char *newname)
 		ERROR("Renaming a container with snapshots is not supported");
 		return false;
 	}
-	bdev = storage_init(c->lxc_conf, c->lxc_conf->rootfs.path, c->lxc_conf->rootfs.mount, NULL);
+	bdev = storage_init(c->lxc_conf);
 	if (!bdev) {
 		ERROR("Failed to find original backing store type");
 		return false;
@@ -3884,7 +3892,7 @@ static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	 */
 	flags = LXC_CLONE_SNAPSHOT | LXC_CLONE_KEEPMACADDR | LXC_CLONE_KEEPNAME |
 		LXC_CLONE_KEEPBDEVTYPE | LXC_CLONE_MAYBE_SNAPSHOT;
-	if (storage_is_dir(c->lxc_conf, c->lxc_conf->rootfs.path)) {
+	if (storage_is_dir(c->lxc_conf)) {
 		ERROR("Snapshot of directory-backed container requested.");
 		ERROR("Making a copy-clone.  If you do want snapshots, then");
 		ERROR("please create an aufs or overlay clone first, snapshot that");
@@ -4089,8 +4097,7 @@ static bool do_lxcapi_snapshot_restore(struct lxc_container *c, const char *snap
 		return false;
 	}
 
-	bdev = storage_init(c->lxc_conf, c->lxc_conf->rootfs.path,
-			    c->lxc_conf->rootfs.mount, NULL);
+	bdev = storage_init(c->lxc_conf);
 	if (!bdev) {
 		ERROR("Failed to find original backing store type");
 		return false;
@@ -4136,8 +4143,8 @@ static bool do_lxcapi_snapshot_restore(struct lxc_container *c, const char *snap
 
 	if (!strcmp(bdev->type, "overlay") || !strcmp(bdev->type, "overlayfs"))
 		flags |= LXC_STORAGE_INTERNAL_OVERLAY_RESTORE;
-	rest = lxcapi_clone(snap, newname, c->config_path, flags,
-			bdev->type, NULL, 0, NULL);
+	rest = lxcapi_clone(snap, newname, c->config_path, flags, bdev->type,
+			    NULL, 0, NULL);
 	storage_put(bdev);
 	if (rest && lxcapi_is_defined(rest))
 		b = true;
@@ -4601,7 +4608,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 
 	c = malloc(sizeof(*c));
 	if (!c) {
-		fprintf(stderr, "failed to malloc lxc_container\n");
+		fprintf(stderr, "Failed to allocate memory for %s\n", name);
 		return NULL;
 	}
 	memset(c, 0, sizeof(*c));
@@ -4612,39 +4619,43 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 		c->config_path = strdup(lxc_global_config_value("lxc.lxcpath"));
 
 	if (!c->config_path) {
-		fprintf(stderr, "Out of memory\n");
+		fprintf(stderr, "Failed to allocate memory for %s\n", name);
 		goto err;
 	}
 
 	remove_trailing_slashes(c->config_path);
 	c->name = malloc(strlen(name)+1);
 	if (!c->name) {
-		fprintf(stderr, "Error allocating lxc_container name\n");
+		fprintf(stderr, "Failed to allocate memory for %s\n", name);
 		goto err;
 	}
 	strcpy(c->name, name);
 
 	c->numthreads = 1;
-	if (!(c->slock = lxc_newlock(c->config_path, name))) {
-		fprintf(stderr, "failed to create lock\n");
+	c->slock = lxc_newlock(c->config_path, name);
+	if (!c->slock) {
+		fprintf(stderr, "Failed to create lock for %s\n", name);
 		goto err;
 	}
 
-	if (!(c->privlock = lxc_newlock(NULL, NULL))) {
-		fprintf(stderr, "failed to alloc privlock\n");
+	c->privlock = lxc_newlock(NULL, NULL);
+	if (!c->privlock) {
+		fprintf(stderr, "Failed to create private lock for %s\n", name);
 		goto err;
 	}
 
 	if (!set_config_filename(c)) {
-		fprintf(stderr, "Error allocating config file pathname\n");
+		fprintf(stderr, "Failed to create config file name for %s\n", name);
 		goto err;
 	}
 
-	if (file_exists(c->configfile) && !lxcapi_load_config(c, NULL))
+	if (file_exists(c->configfile) && !lxcapi_load_config(c, NULL)) {
+		fprintf(stderr, "Failed to load config for %s\n", name);
 		goto err;
+	}
 
 	if (ongoing_create(c) == 2) {
-		ERROR("Error: %s creation was not completed", c->name);
+		ERROR("Failed to complete container creation for %s", c->name);
 		container_destroy(c, NULL);
 		lxcapi_clear_config(c);
 	}

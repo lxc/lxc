@@ -235,7 +235,7 @@ bool lvm_detect(const char *path)
 
 int lvm_mount(struct lxc_storage *bdev)
 {
-	char *src;
+	const char *src;
 
 	if (strcmp(bdev->type, "lvm"))
 		return -22;
@@ -330,11 +330,12 @@ static int lvm_snapshot_create_new_uuid_wrapper(void *data)
 static int lvm_snapshot(struct lxc_storage *orig, const char *path, uint64_t size)
 {
 	int ret;
-	char *origsrc, *pathdup, *lv;
+	char *lv, *pathdup;
 	char sz[24];
 	char fstype[100];
 	char cmd_output[MAXPATHLEN];
 	char repairchar;
+	const char *origsrc;
 	struct lvcreate_args cmd_args = {0};
 
 	ret = snprintf(sz, 24, "%" PRIu64 "b", size);
@@ -433,7 +434,8 @@ int lvm_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 		    (const char *[]){"lvm:", "dev", vg, cname, NULL},
 		    false);
 	} else {
-		char *dup, *slider, *src;
+		const char *src;
+		char *dup, *slider;
 
 		src = lxc_storage_get_path(orig->src, orig->type);
 
@@ -497,11 +499,11 @@ int lvm_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 bool lvm_create_clone(struct lxc_conf *conf, struct lxc_storage *orig,
 		      struct lxc_storage *new, uint64_t newsize)
 {
-	char *src;
-	const char *thinpool;
 	int ret;
+	const char *src;
+	const char *thinpool;
 	struct rsync_data data;
-	char *cmd_args[2];
+	const char *cmd_args[2];
 	char cmd_output[MAXPATHLEN] = {0};
 	char fstype[100] = "ext4";
 	uint64_t size = newsize;
@@ -560,7 +562,7 @@ bool lvm_create_snapshot(struct lxc_conf *conf, struct lxc_storage *orig,
 			 struct lxc_storage *new, uint64_t newsize)
 {
 	int ret;
-	char *newsrc;
+	const char *newsrc;
 	uint64_t size = newsize;
 
 	if (is_blktype(orig)) {

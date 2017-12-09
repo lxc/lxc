@@ -187,7 +187,8 @@ bool btrfs_detect(const char *path)
 int btrfs_mount(struct lxc_storage *bdev)
 {
 	unsigned long mntflags;
-	char *mntdata, *src;
+	char *mntdata;
+	const char *src;
 	int ret;
 
 	if (strcmp(bdev->type, "btrfs"))
@@ -348,7 +349,7 @@ out:
 
 int btrfs_snapshot_wrapper(void *data)
 {
-	char *src;
+	const char *src;
 	struct rsync_data_char *arg = data;
 
 	if (setgid(0) < 0) {
@@ -372,7 +373,7 @@ int btrfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 		     const char *oldpath, const char *lxcpath, int snap,
 		     uint64_t newsize, struct lxc_conf *conf)
 {
-	char *src;
+	const char *src;
 
 	if (!orig->dest || !orig->src)
 		return -1;
@@ -483,7 +484,7 @@ bool btrfs_create_snapshot(struct lxc_conf *conf, struct lxc_storage *orig,
 		return true;
 	}
 
-	ret = btrfs_snapshot(orig->dest, new->dest);
+	ret = btrfs_snapshot(orig->src, new->dest);
 	if (ret < 0) {
 		SYSERROR("Failed to create btrfs snapshot \"%s\" from \"%s\"",
 			 new->dest, orig->dest);
@@ -821,7 +822,7 @@ bool btrfs_try_remove_subvol(const char *path)
 
 int btrfs_destroy(struct lxc_storage *orig)
 {
-	char *src;
+	const char *src;
 
 	src = lxc_storage_get_path(orig->src, "btrfs");
 

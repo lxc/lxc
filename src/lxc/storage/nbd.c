@@ -118,7 +118,7 @@ bool nbd_detect(const char *path)
 int nbd_mount(struct lxc_storage *bdev)
 {
 	int ret = -1, partition;
-	char *src;
+	const char *src;
 	char path[50];
 
 	if (strcmp(bdev->type, "nbd"))
