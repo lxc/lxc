@@ -588,15 +588,22 @@ void lxc_console_delete(struct lxc_console *console)
 	free(console->tios);
 	console->tios = NULL;
 
-	close(console->peer);
-	close(console->master);
-	close(console->slave);
+	if (console->peer >= 0)
+		close(console->peer);
+	console->peer = -1;
+
+	if (console->master >= 0)
+		close(console->master);
+	console->master = -1;
+
+	if (console->slave >= 0)
+		close(console->slave);
+	console->slave = -1;
+
 	if (console->log_fd >= 0)
 		close(console->log_fd);
-	console->peer = -1;
-	console->master = -1;
-	console->slave = -1;
 	console->log_fd = -1;
+
 	if (console->buffer_log_file_fd >= 0)
 		close(console->buffer_log_file_fd);
 	console->buffer_log_file_fd = -1;
