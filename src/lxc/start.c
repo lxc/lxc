@@ -214,9 +214,6 @@ restart:
 	fddir = dirfd(dir);
 
 	while ((direntp = readdir(dir))) {
-		if (!direntp)
-			break;
-
 		if (!strcmp(direntp->d_name, "."))
 			continue;
 
