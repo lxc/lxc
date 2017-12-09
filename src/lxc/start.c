@@ -505,6 +505,31 @@ out_sigfd:
 	return -1;
 }
 
+void lxc_zero_handler(struct lxc_handler *handler)
+{
+	int i;
+
+	memset(handler, 0, sizeof(struct lxc_handler));
+
+	handler->clone_flags = -1;
+
+	handler->pinfd = -1;
+
+	handler->sigfd = -1;
+
+	for (i = 0; i < LXC_NS_MAX; i++)
+		handler->nsfd[i] = -1;
+
+	handler->data_sock[0] = -1;
+	handler->data_sock[1] = -1;
+
+	handler->state_socket_pair[0] = -1;
+	handler->state_socket_pair[1] = -1;
+
+	handler->sync_sock[0] = -1;
+	handler->sync_sock[1] = -1;
+}
+
 void lxc_free_handler(struct lxc_handler *handler)
 {
 	if (handler->conf && handler->conf->maincmd_fd)
