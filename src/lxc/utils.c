@@ -717,10 +717,12 @@ char *lxc_deslashify(const char *path)
 
 char *lxc_append_paths(const char *first, const char *second)
 {
-	size_t len = strlen(first) + strlen(second) + 1;
-	const char *pattern = "%s%s";
+	int ret;
+	size_t len;
 	char *result = NULL;
+	const char *pattern = "%s%s";
 
+	len = strlen(first) + strlen(second) + 1;
 	if (second[0] != '/') {
 		len += 1;
 		pattern = "%s/%s";
@@ -730,7 +732,12 @@ char *lxc_append_paths(const char *first, const char *second)
 	if (!result)
 		return NULL;
 
-	snprintf(result, len, pattern, first, second);
+	ret = snprintf(result, len, pattern, first, second);
+	if (ret < 0 || (size_t)ret >= len) {
+		free(result);
+		return NULL;
+	}
+
 	return result;
 }
 
