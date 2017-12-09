@@ -2177,11 +2177,14 @@ static char ** do_lxcapi_get_interfaces(struct lxc_container *c)
 	close(pipefd[1]);
 
 	while (read(pipefd[0], &interface, IFNAMSIZ) == IFNAMSIZ) {
+		interface[IFNAMSIZ - 1] = '\0';
+
 		if (array_contains(&interfaces, interface, count))
 				continue;
 
 		if(!add_to_array(&interfaces, interface, count))
-			ERROR("PARENT: add_to_array failed");
+			ERROR("Failed to add \"%s\" to array", interface);
+
 		count++;
 	}
 
