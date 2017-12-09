@@ -186,21 +186,26 @@ static void sig_handler(int sig)
 
 static void size_humanize(unsigned long long val, char *buf, size_t bufsz)
 {
+	int ret;
+
 	if (val > 1 << 30) {
-		snprintf(buf, bufsz, "%u.%2.2u GiB",
+		ret = snprintf(buf, bufsz, "%u.%2.2u GiB",
 			    (unsigned int)(val >> 30),
 			    (unsigned int)(val & ((1 << 30) - 1)) / 10737419);
 	} else if (val > 1 << 20) {
 		unsigned int x = val + 5243;  /* for rounding */
-		snprintf(buf, bufsz, "%u.%2.2u MiB",
+		ret = snprintf(buf, bufsz, "%u.%2.2u MiB",
 			    x >> 20, ((x & ((1 << 20) - 1)) * 100) >> 20);
 	} else if (val > 1 << 10) {
 		unsigned int x = val + 5;  /* for rounding */
-		snprintf(buf, bufsz, "%u.%2.2u KiB",
+		ret = snprintf(buf, bufsz, "%u.%2.2u KiB",
 			    x >> 10, ((x & ((1 << 10) - 1)) * 100) >> 10);
 	} else {
-		snprintf(buf, bufsz, "%3u.00   ", (unsigned int)val);
+		ret = snprintf(buf, bufsz, "%3u.00   ", (unsigned int)val);
 	}
+
+	if (ret < 0 || (size_t)ret >= bufsz)
+		fprintf(stderr, "Failed to create string\n");
 }
 
 static uint64_t stat_get_int(struct lxc_container *c, const char *item)
