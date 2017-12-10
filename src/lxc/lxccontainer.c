@@ -3991,8 +3991,10 @@ static bool do_add_remove_node(pid_t init_pid, const char *path, bool add,
 	ret = faccessat(AT_FDCWD, path, F_OK, AT_SYMLINK_NOFOLLOW);
 	if(ret == 0) {
 		ret = unlink(path);
-		if (ret < 0)
+		if (ret < 0) {
+			ERROR("%s - Failed to remove \"%s\"", strerror(errno), path);
 			exit(EXIT_FAILURE);
+		}
 	}
 
 	if (!add)
@@ -4006,6 +4008,7 @@ static bool do_add_remove_node(pid_t init_pid, const char *path, bool add,
 	directory_path = dirname(tmp);
 	ret = mkdir_p(directory_path, 0755);
 	if (ret < 0 && errno != EEXIST) {
+		ERROR("%s - Failed to create path \"%s\"", strerror(errno), directory_path);
 		free(tmp);
 		exit(EXIT_FAILURE);
 	}
@@ -4013,8 +4016,10 @@ static bool do_add_remove_node(pid_t init_pid, const char *path, bool add,
 	/* create the device node */
 	ret = mknod(path, st->st_mode, st->st_rdev);
 	free(tmp);
-	if (ret < 0)
+	if (ret < 0) {
+		ERROR("%s - Failed to create device node at \"%s\"", strerror(errno), path);
 		exit(EXIT_FAILURE);
+	}
 
 	exit(EXIT_SUCCESS);
 }
@@ -4092,10 +4097,13 @@ static bool do_lxcapi_remove_device_node(struct lxc_container *c, const char *sr
 
 WRAP_API_2(bool, lxcapi_remove_device_node, const char *, const char *)
 
-static bool do_lxcapi_attach_interface(struct lxc_container *c, const char *ifname,
-				const char *dst_ifname)
+static bool do_lxcapi_attach_interface(struct lxc_container *c,
+				       const char *ifname,
+				       const char *dst_ifname)
 {
+	pid_t init_pid;
 	int ret = 0;
+
 	if (am_unpriv()) {
 		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
 		return false;
@@ -4107,7 +4115,6 @@ static bool do_lxcapi_attach_interface(struct lxc_container *c, const char *ifna
 	}
 
 	ret = lxc_netdev_isup(ifname);
-
 	if (ret > 0) {
 		/* netdev of ifname is up. */
 		ret = lxc_netdev_down(ifname);
@@ -4115,10 +4122,12 @@ static bool do_lxcapi_attach_interface(struct lxc_container *c, const char *ifna
 			goto err;
 	}
 
-	ret = lxc_netdev_move_by_name(ifname, do_lxcapi_init_pid(c), dst_ifname);
+	init_pid = do_lxcapi_init_pid(c);
+	ret = lxc_netdev_move_by_name(ifname, init_pid, dst_ifname);
 	if (ret)
 		goto err;
 
+	INFO("Moved network device \"%s\" to network namespace of %d", ifname, init_pid);
 	return true;
 
 err:
@@ -4127,9 +4136,11 @@ err:
 
 WRAP_API_2(bool, lxcapi_attach_interface, const char *, const char *)
 
-static bool do_lxcapi_detach_interface(struct lxc_container *c, const char *ifname,
-					const char *dst_ifname)
+static bool do_lxcapi_detach_interface(struct lxc_container *c,
+				       const char *ifname,
+				       const char *dst_ifname)
 {
+	int ret;
 	pid_t pid, pid_outside;
 
 	if (am_unpriv()) {
@@ -4145,7 +4156,7 @@ static bool do_lxcapi_detach_interface(struct lxc_container *c, const char *ifna
 	pid_outside = getpid();
 	pid = fork();
 	if (pid < 0) {
-		ERROR("failed to fork task to get interfaces information");
+		ERROR("Failed to fork");
 		return false;
 	}
 
@@ -4159,28 +4170,38 @@ static bool do_lxcapi_detach_interface(struct lxc_container *c, const char *ifna
 		}
 
 		ret = lxc_netdev_isup(ifname);
-		if (ret < 0)
-			exit(ret);
+		if (ret < 0) {
+			ERROR("Failed to determine whether network device \"%s\" is up", ifname);
+			exit(EXIT_FAILURE);
+		}
 
 		/* netdev of ifname is up. */
 		if (ret) {
 			ret = lxc_netdev_down(ifname);
-			if (ret)
-				exit(ret);
+			if (ret) {
+				ERROR("Failed to set network device \"%s\" down", ifname);
+				exit(EXIT_FAILURE);
+			}
 		}
 
 		ret = lxc_netdev_move_by_name(ifname, pid_outside, dst_ifname);
-
-		/* -EINVAL means there is no netdev named as ifanme. */
-		if (ret == -EINVAL) {
-			ERROR("No network device named as %s.", ifname);
+		/* -EINVAL means there is no netdev named as ifname. */
+		if (ret < 0) {
+			if (ret == -EINVAL)
+				ERROR("Network device \"%s\" not found", ifname);
+			else
+				ERROR("Failed to remove network device \"%s\"", ifname);
+			exit(EXIT_FAILURE);
 		}
-		exit(ret);
+
+		exit(EXIT_SUCCESS);
 	}
 
-	if (wait_for_pid(pid) != 0)
+	ret = wait_for_pid(pid);
+	if (ret != 0)
 		return false;
 
+	INFO("Moved network device \"%s\" to network namespace of %d", ifname, pid_outside);
 	return true;
 }
 
