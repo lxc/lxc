@@ -68,6 +68,7 @@ extern const struct ns_info {
 	const char *proc_name;
 	int clone_flag;
 	const char *flag_name;
+	const char *env_name;
 } ns_info[LXC_NS_MAX];
 
 #if defined(__ia64__)

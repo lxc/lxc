@@ -1674,6 +1674,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           used. </para></listitem>
           <listitem><para> LXC_LOG_LEVEL: the container's log level. </para></listitem>
           <listitem><para> LXC_NAME: is the container's name. </para></listitem>
+          <listitem><para> LXC_[NAMESPACE IDENTIFIER]_NS: path under
+          /proc/PID/fd/ to a file descriptor referring to the container's
+          namespace. For each preserved namespace type there will be a separate
+          environment variable. These environment variables will only be set if
+          <option>lxc.hook.version</option> is set to 1. </para></listitem>
           <listitem><para> LXC_ROOTFS_MOUNT: the path to the mounted root filesystem. </para></listitem>
           <listitem><para> LXC_ROOTFS_PATH: this is the lxc.rootfs.path entry
           for the container. Note this is likely not where the mounted rootfs is
@@ -1705,6 +1710,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             independently of the value used for this config item.) The section
             will be set in LXC_HOOK_SECTION and the hook type will be set in
             LXC_HOOK_TYPE.
+            It also affects how the paths to file descriptors referring to the
+            container's namespaces are passed. If set to 1 then for each
+            namespace a separate environment variable LXC_[NAMESPACE
+            IDENTIFIER]_NS will be set. If set to 0 then the paths will be
+            passed as arguments to the stop hook.
             </para>
           </listitem>
         </varlistentry>
