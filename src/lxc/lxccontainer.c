@@ -4450,10 +4450,12 @@ static bool do_lxcapi_detach_interface(struct lxc_container *c, const char *ifna
 	}
 
 	if (pid == 0) { /* child */
-		int ret = 0;
-		if (!enter_net_ns(c)) {
-			ERROR("failed to enter namespace");
-			exit(-1);
+		pid_t init_pid;
+
+		init_pid = do_lxcapi_init_pid(c);
+		if (!switch_to_ns(init_pid, "net")) {
+			ERROR("Failed to enter network namespace");
+			exit(EXIT_FAILURE);
 		}
 
 		ret = lxc_netdev_isup(ifname);
