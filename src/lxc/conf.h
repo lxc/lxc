@@ -376,7 +376,7 @@ struct lxc_conf {
 	char *inherit_ns[LXC_NS_MAX];
 
 	/* init working directory */
-       char* init_cwd;
+	char *init_cwd;
 
 	/* A list of clients registered to be informed about a container state. */
 	struct lxc_list state_clients;
