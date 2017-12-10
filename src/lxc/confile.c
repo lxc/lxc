@@ -92,6 +92,7 @@ lxc_config_define(ephemeral);
 lxc_config_define(execute_cmd);
 lxc_config_define(group);
 lxc_config_define(hooks);
+lxc_config_define(hooks_version);
 lxc_config_define(idmaps);
 lxc_config_define(includefiles);
 lxc_config_define(init_cmd);
@@ -168,11 +169,12 @@ static struct lxc_config_t config[] = {
 	{ "lxc.hook.destroy",              false,                  set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook.mount",                false,                  set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook.post-stop",            false,                  set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
-	{ "lxc.hook.start-host",           false,                  set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
-	{ "lxc.hook.pre-start",            false,                  set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook.pre-mount",            false,                  set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
+	{ "lxc.hook.pre-start",            false,                  set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook.start",                false,                  set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
+	{ "lxc.hook.start-host",           false,                  set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook.stop",                 false,                  set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
+	{ "lxc.hook.version",              false,                  set_config_hooks_version,               get_config_hooks_version,               clr_config_hooks_version,             },
 	{ "lxc.hook",                      false,                  set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.idmap",                     false,                  set_config_idmaps,                      get_config_idmaps,                      clr_config_idmaps,                    },
 	{ "lxc.include",                   false,                  set_config_includefiles,                get_config_includefiles,                clr_config_includefiles,              },
@@ -978,6 +980,29 @@ static int set_config_hooks(const char *key, const char *value,
 
 	free(copy);
 	return -1;
+}
+
+static int set_config_hooks_version(const char *key, const char *value,
+				    struct lxc_conf *lxc_conf, void *data)
+{
+	int ret;
+	unsigned int tmp;
+
+	if (lxc_config_value_empty(value))
+		return clr_config_hooks_version(key, lxc_conf, NULL);
+
+	ret = lxc_safe_uint(value, &tmp);
+	if (ret < 0)
+		return -1;
+
+	if (tmp > 1) {
+		ERROR("Invalid hook version specified. Currently only 0 "
+		      "(legacy) and 1 are supported");
+		return -1;
+	}
+
+	lxc_conf->hooks_version = tmp;
+	return 0;
 }
 
 static int set_config_personality(const char *key, const char *value,
@@ -3154,6 +3179,12 @@ static int get_config_hooks(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
+static int get_config_hooks_version(const char *key, char *retv, int inlen,
+				    struct lxc_conf *c, void *data)
+{
+	return lxc_get_conf_int(c, retv, inlen, c->hooks_version);
+}
+
 static int get_config_net(const char *key, char *retv, int inlen,
 			  struct lxc_conf *c, void *data)
 {
@@ -3686,6 +3717,14 @@ static inline int clr_config_hooks(const char *key, struct lxc_conf *c,
 				   void *data)
 {
 	return lxc_clear_hooks(c, key);
+}
+
+static inline int clr_config_hooks_version(const char *key, struct lxc_conf *c,
+					   void *data)
+{
+	/* default to legacy hooks version */
+	c->hooks_version = 0;
+	return 0;
 }
 
 static inline int clr_config_net(const char *key, struct lxc_conf *c,

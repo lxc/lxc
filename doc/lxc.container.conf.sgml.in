@@ -1636,9 +1636,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         at various times in a container's lifetime.
       </para>
       <para>
-        When a container hook is executed, information is passed both
-        as command line arguments and through environment variables.
-        The arguments are:
+        When a container hook is executed, additional information is passed
+        along. The <option>lxc.hook.version</option> argument can be used to
+        determine if the following arguments are passed as command line
+        arguments or through environment variables. The arguments are:
         <itemizedlist>
           <listitem><para> Container name. </para></listitem>
           <listitem><para> Section (always 'lxc'). </para></listitem>
@@ -1652,13 +1653,28 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         </itemizedlist>
         The following environment variables are set:
         <itemizedlist>
+          <listitem><para> LXC_CGNS_AWARE: indicator whether the container is
+          cgroup namespace aware. </para></listitem>
+          <listitem><para> LXC_CONFIG_FILE: the path to the container
+          configuration file. </para></listitem>
+          <listitem><para> LXC_HOOK_TYPE: the hook type (e.g. 'clone', 'mount',
+          'pre-mount'). Note that the existence of this environment variable is
+          conditional on the value of <option>lxc.hook.version</option>. If it
+          is set to 1 then LXC_HOOK_TYPE will be set.
+          </para></listitem>
+          <listitem><para> LXC_HOOK_SECTION: the section type (e.g. 'lxc',
+          'net'). Note that the existence of this environment variable is
+          conditional on the value of <option>lxc.hook.version</option>. If it
+          is set to 1 then LXC_HOOK_SECTION will be set.
+          </para></listitem>
+          <listitem><para> LXC_LOG_LEVEL: the container's log level. </para></listitem>
           <listitem><para> LXC_NAME: is the container's name. </para></listitem>
           <listitem><para> LXC_ROOTFS_MOUNT: the path to the mounted root filesystem. </para></listitem>
-          <listitem><para> LXC_CONFIG_FILE: the path to the container configuration file. </para></listitem>
-          <listitem><para> LXC_SRC_NAME: in the case of the clone hook, this is the original container's name. </para></listitem>
-          <listitem><para> LXC_ROOTFS_PATH: this is the lxc.rootfs.path entry for the container.  Note this is likely not where the mounted rootfs is to be found, use LXC_ROOTFS_MOUNT for that. </para></listitem>
-          <listitem><para> LXC_CGNS_AWARE: indicated whether the container is cgroup namespace aware.  </para></listitem>
-          <listitem><para> LXC_LOG_LEVEL: the container's log level.  </para></listitem>
+          <listitem><para> LXC_ROOTFS_PATH: this is the lxc.rootfs.path entry
+          for the container. Note this is likely not where the mounted rootfs is
+          to be found, use LXC_ROOTFS_MOUNT for that. </para></listitem>
+          <listitem><para> LXC_SRC_NAME: in the case of the clone hook, this is
+          the original container's name. </para></listitem>
         </itemizedlist>
       </para>
       <para>
@@ -1666,6 +1682,28 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         Standard error is not logged, but can be captured by the
         hook redirecting its standard error to standard output.
       </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.hook.version</option>
+          </term>
+          <listitem>
+            <para>
+            To pass the arguments in new style via environment variables set to
+            1 otherwise set to 0 to pass them as arguments.
+            This setting affects all hooks arguments that were traditionally
+            passed as arguments to the script. Specifically, it affects the
+            container name, section (e.g. 'lxc', 'net') and hook type (e.g.
+            'clone', 'mount', 'pre-mount') arguments. If new-style hooks are
+            used then the arguments will be available as environment variables.
+            The container name will be set in LXC_NAME. (This is set
+            independently of the value used for this config item.) The section
+            will be set in LXC_HOOK_SECTION and the hook type will be set in
+            LXC_HOOK_TYPE.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
       <variablelist>
         <varlistentry>
           <term>

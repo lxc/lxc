@@ -301,16 +301,16 @@ static int set_get_compare_clear_save_load_network(
 
 int main(int argc, char *argv[])
 {
+	int ret;
 	struct lxc_container *c;
-	int fd = -1;
-	int ret = EXIT_FAILURE;
+	int fd = -1, fret = EXIT_FAILURE;
 	char tmpf[] = "lxc-parse-config-file-XXXXXX";
 	char retval[4096] = {0};
 
 	fd = mkstemp(tmpf);
 	if (fd < 0) {
 		lxc_error("%s\n", "Could not create temporary file");
-		exit(ret);
+		exit(fret);
 	}
 	close(fd);
 
@@ -1110,10 +1110,23 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	ret = EXIT_SUCCESS;
+	ret = set_get_compare_clear_save_load(c, "lxc.hook.version", "1", tmpf, true);
+	if (ret < 0) {
+		lxc_error("%s\n", "lxc.hook.version");
+		goto non_test_error;
+	}
+
+	ret = set_get_compare_clear_save_load(c, "lxc.hook.version", "2", tmpf, true);
+	if (ret == 0) {
+		lxc_error("%s\n", "lxc.hook.version");
+		goto non_test_error;
+	}
+
+	fret = EXIT_SUCCESS;
+
 non_test_error:
 	(void)unlink(tmpf);
 	(void)rmdir(dirname(c->configfile));
 	lxc_container_put(c);
-	exit(ret);
+	exit(fret);
 }

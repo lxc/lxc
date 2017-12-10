@@ -295,7 +295,11 @@ struct lxc_conf {
 	struct lxc_rootfs rootfs;
 	char *ttydir;
 	int close_all_fds;
-	struct lxc_list hooks[NUM_LXC_HOOKS];
+
+	struct {
+		unsigned int hooks_version;
+		struct lxc_list hooks[NUM_LXC_HOOKS];
+	};
 
 	char *lsm_aa_profile;
 	unsigned int lsm_aa_allow_incomplete;

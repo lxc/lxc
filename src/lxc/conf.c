@@ -2484,6 +2484,7 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->limits);
 	lxc_list_init(&new->sysctls);
 	lxc_list_init(&new->procs);
+	new->hooks_version = 0;
 	for (i = 0; i < NUM_LXC_HOOKS; i++)
 		lxc_list_init(&new->hooks[i]);
 	lxc_list_init(&new->groups);
