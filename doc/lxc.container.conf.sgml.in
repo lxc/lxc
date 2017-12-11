@@ -1667,6 +1667,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           conditional on the value of <option>lxc.hook.version</option>. If it
           is set to 1 then LXC_HOOK_SECTION will be set.
           </para></listitem>
+          <listitem><para> LXC_HOOK_VERSION: the version of the hooks. This
+          value is identical to the value of the container's
+          <option>lxc.hook.version</option> config item. If it is set to 0 then
+          old-style hooks are used. If it is set to 1 then new-style hooks are
+          used. </para></listitem>
           <listitem><para> LXC_LOG_LEVEL: the container's log level. </para></listitem>
           <listitem><para> LXC_NAME: is the container's name. </para></listitem>
           <listitem><para> LXC_ROOTFS_MOUNT: the path to the mounted root filesystem. </para></listitem>

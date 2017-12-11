@@ -612,6 +612,7 @@ on_error:
 
 int lxc_init(const char *name, struct lxc_handler *handler)
 {
+	int ret;
 	const char *loglevel;
 	struct lxc_conf *conf = handler->conf;
 
@@ -656,6 +657,13 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	loglevel = lxc_log_priority_to_string(lxc_log_get_level());
 	if (setenv("LXC_LOG_LEVEL", loglevel, 1))
 		SYSERROR("Failed to set environment variable LXC_LOG_LEVEL=%s", loglevel);
+
+	if (conf->hooks_version == 0)
+		ret = setenv("LXC_HOOK_VERSION", "0", 1);
+	else
+		ret = setenv("LXC_HOOK_VERSION", "1", 1);
+	if (ret < 0)
+		SYSERROR("Failed to set environment variable LXC_HOOK_VERSION=%u", conf->hooks_version);
 	/* End of environment variable setup for hooks. */
 
 	TRACE("set environment variables");
