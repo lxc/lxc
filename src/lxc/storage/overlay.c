@@ -410,15 +410,12 @@ int ovl_create(struct lxc_storage *bdev, const char *dest, const char *n,
 		return -1;
 	}
 
-	delta = malloc(len + 1);
+	delta = strdup(dest);
 	if (!delta) {
 		ERROR("Failed to allocate memory");
 		return -1;
 	}
-
-	memcpy(delta, dest, len);
 	memcpy(delta + len - 6, "delta0", sizeof("delta0") - 1);
-	delta[len + sizeof("delta0")] = '\0';
 
 	ret = mkdir_p(delta, 0755);
 	if (ret < 0) {
