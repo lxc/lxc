@@ -3311,8 +3311,8 @@ int lxc_clear_cgroups(struct lxc_conf *c, const char *key)
 
 	if (strcmp(key, "lxc.cgroup") == 0)
 		all = true;
-	else if (strncmp(key, "lxc.cgroup.", sizeof("lxc.cgroup.")-1) == 0)
-		k = key + sizeof("lxc.cgroup.")-1;
+	else if (strncmp(key, "lxc.cgroup.", sizeof("lxc.cgroup.") - 1) == 0)
+		k = key + sizeof("lxc.cgroup.") - 1;
 	else
 		return -1;
 
@@ -3326,6 +3326,7 @@ int lxc_clear_cgroups(struct lxc_conf *c, const char *key)
 		free(cg);
 		free(it);
 	}
+
 	return 0;
 }
 

@@ -1403,7 +1403,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             <para>
               Specify the kernel parameters to be set. The parameters available 
               are those listed under /proc/sys/.
-              Note that not all sysctls are namespaced.Changing Non-namespaced
+              Note that not all sysctls are namespaced. Changing Non-namespaced
               sysctls will cause the system-wide setting to be modified.
               <citerefentry>
                 <refentrytitle><command>sysctl</command></refentrytitle>

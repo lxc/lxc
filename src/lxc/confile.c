@@ -1500,12 +1500,12 @@ static int set_config_sysctl(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_list *iter;
+	char *replace_value = NULL;
 	struct lxc_list *sysctl_list = NULL;
 	struct lxc_sysctl *sysctl_elem = NULL;
-	char *replace_value = NULL;
 
 	if (lxc_config_value_empty(value))
-		return lxc_clear_sysctls(lxc_conf, key);
+		return clr_config_sysctl(key, lxc_conf, NULL);
 
 	if (strncmp(key, "lxc.sysctl.", sizeof("lxc.sysctl.") - 1) != 0)
 		return -1;
@@ -1515,14 +1515,17 @@ static int set_config_sysctl(const char *key, const char *value,
 	/* find existing list element */
 	lxc_list_for_each(iter, &lxc_conf->sysctls) {
 		sysctl_elem = iter->elem;
-		if (strcmp(key, sysctl_elem->key) == 0) {
-			replace_value = strdup(value);
-			if (!replace_value)
-				return -1;
-			free(sysctl_elem->value);
-			sysctl_elem->value = replace_value;
-			return 0;
-		}
+
+		if (strcmp(key, sysctl_elem->key) != 0)
+			continue;
+
+		replace_value = strdup(value);
+		if (!replace_value)
+			return -1;
+
+		free(sysctl_elem->value);
+		sysctl_elem->value = replace_value;
+		return 0;
 	}
 
 	/* allocate list element */
@@ -1557,8 +1560,6 @@ on_error:
 		free(sysctl_elem);
 	}
 	return -1;
-
-
 }
 
 static int set_config_idmaps(const char *key, const char *value,
@@ -3376,9 +3377,9 @@ static int get_config_prlimit(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
-/* If you ask for a specific value, i.e. lxc.sysctl.net.ipv4.ip_forward, then just the value
- * will be printed. If you ask for 'lxc.sysctl', then all sysctl entries will be
- * printed, in 'lxc.sysctl.key = value' format.
+/* If you ask for a specific value, i.e. lxc.sysctl.net.ipv4.ip_forward, then
+ * just the value will be printed. If you ask for 'lxc.sysctl', then all sysctl
+ * entries will be printed, in 'lxc.sysctl.key = value' format.
  */
 static int get_config_sysctl(const char *key, char *retv, int inlen,
 			    struct lxc_conf *c, void *data)
