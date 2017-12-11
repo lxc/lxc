@@ -1157,43 +1157,41 @@ void resolve_clone_flags(struct lxc_handler *handler)
 		INFO("Inheriting pid namespace");
 }
 
-static pid_t lxc_fork_attach_clone(int (*fn)(void *), void *arg, int flags)
+/* Note that this function is used with clone(CLONE_VM). Some glibc versions
+ * used to reset the pid/tid to -1 when CLONE_VM was used without CLONE_THREAD.
+ * But since the memory between parent and child is shared on CLONE_VM this
+ * would invalidate the getpid() cache that glibc used to maintain and so
+ * getpid() in the child would return the parent's pid. This is all fixed in
+ * newer glibc versions where the getpid() cache is removed and the pid/tid is
+ * not reset anymore.
+ * However, if for whatever reason you - dear commiter - somehow need to get the
+ * pid of the dummy intermediate process for do_share_ns() you need to call
+ * syscall(__NR_getpid) directly. The next lxc_clone() call does not employ
+ * CLONE_VM and will be fine.
+ */
+static inline int do_share_ns(void *arg)
 {
-	int i, r, ret;
-	pid_t pid, init_pid;
+	int i, flags, ret;
 	struct lxc_handler *handler = arg;
 
-	pid = fork();
-	if (pid < 0)
-		return -1;
+	for (i = 0; i < LXC_NS_MAX; i++) {
+		if (handler->nsfd[i] < 0)
+			continue;
 
-	if (!pid) {
-		for (i = 0; i < LXC_NS_MAX; i++) {
-			if (handler->nsfd[i] < 0)
-				continue;
-
-			ret = setns(handler->nsfd[i], 0);
-			if (ret < 0)
-				exit(EXIT_FAILURE);
-
-			DEBUG("Inherited %s namespace", ns_info[i].proc_name);
-		}
-
-		init_pid = lxc_clone(do_start, handler, flags);
-		ret = lxc_write_nointr(handler->data_sock[1], &init_pid,
-				       sizeof(init_pid));
+		ret = setns(handler->nsfd[i], 0);
 		if (ret < 0)
-			exit(EXIT_FAILURE);
+			return -1;
 
-		exit(EXIT_SUCCESS);
+		DEBUG("Inherited %s namespace", ns_info[i].proc_name);
 	}
 
-	r = lxc_read_nointr(handler->data_sock[0], &init_pid, sizeof(init_pid));
-	ret = wait_for_pid(pid);
-	if (ret < 0 || r < 0)
+	flags = handler->on_clone_flags;
+	flags |= CLONE_PARENT;
+	handler->pid = lxc_clone(do_start, handler, flags);
+	if (handler->pid < 0)
 		return -1;
 
-	return init_pid;
+	return 0;
 }
 
 /* lxc_spawn() performs crucial setup tasks and clone()s the new process which
@@ -1205,13 +1203,13 @@ static pid_t lxc_fork_attach_clone(int (*fn)(void *), void *arg, int flags)
  */
 static int lxc_spawn(struct lxc_handler *handler)
 {
-	int i, flags, ret;
+	int i, ret;
 	char pidstr[20];
 	bool wants_to_map_ids;
 	struct lxc_list *id_map;
 	const char *name = handler->name;
 	const char *lxcpath = handler->lxcpath;
-	bool cgroups_connected = false, fork_before_clone = false;
+	bool cgroups_connected = false, share_ns = false;
 	struct lxc_conf *conf = handler->conf;
 
 	id_map = &conf->id_map;
@@ -1225,7 +1223,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		if (handler->nsfd[i] < 0)
 			return -1;
 
-		fork_before_clone = true;
+		share_ns = true;
 	}
 
 	if (lxc_sync_init(handler))
@@ -1288,28 +1286,28 @@ static int lxc_spawn(struct lxc_handler *handler)
 	}
 
 	/* Create a process in a new set of namespaces. */
-	flags = handler->clone_flags;
+	handler->on_clone_flags = handler->clone_flags;
 	if (handler->clone_flags & CLONE_NEWUSER) {
 		/* If CLONE_NEWUSER and CLONE_NEWNET was requested, we need to
 		 * clone a new user namespace first and only later unshare our
 		 * network namespace to ensure that network devices ownership is
 		 * set up correctly.
 		 */
-		flags &= ~CLONE_NEWNET;
+		handler->on_clone_flags &= ~CLONE_NEWNET;
 	}
 
-	if (fork_before_clone)
-		handler->pid = lxc_fork_attach_clone(do_start, handler, flags | CLONE_PARENT);
+	if (share_ns)
+		ret = lxc_clone(do_share_ns, handler, CLONE_VFORK | CLONE_VM | CLONE_FILES);
 	else
-		handler->pid = lxc_clone(do_start, handler, flags);
-	if (handler->pid < 0) {
+		handler->pid = lxc_clone(do_start, handler, handler->on_clone_flags);
+	if (handler->pid < 0 || ret < 0) {
 		SYSERROR("Failed to clone a new set of namespaces.");
 		goto out_delete_net;
 	}
 	TRACE("Cloned child process %d", handler->pid);
 
 	for (i = 0; i < LXC_NS_MAX; i++)
-		if (flags & ns_info[i].clone_flag)
+		if (handler->on_clone_flags & ns_info[i].clone_flag)
 			INFO("Cloned %s", ns_info[i].flag_name);
 
 	if (!preserve_ns(handler->nsfd, handler->clone_flags & ~CLONE_NEWNET, handler->pid)) {

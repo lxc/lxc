@@ -40,6 +40,12 @@ struct lxc_handler {
 	/* The clone flags that were requested. */
 	int clone_flags;
 
+	/* The clone flags to actually use when calling lxc_clone(). They may
+	 * differ from clone_flags because of ordering requirements (e.g.
+	 * CLONE_NEWNET and CLONE_NEWUSER).
+	 */
+	int on_clone_flags;
+
 	/* File descriptor to pin the rootfs for privileged containers. */
 	int pinfd;
 
