@@ -293,10 +293,11 @@ static int run_script_argv(const char *name, const char *section,
 
 	size += strlen(hook) + 1;
 
+	size += strlen("exec");
 	size += strlen(script);
 	size += strlen(name);
 	size += strlen(section);
-	size += 3;
+	size += 4;
 
 	if (size > INT_MAX)
 		return -1;
@@ -308,7 +309,7 @@ static int run_script_argv(const char *name, const char *section,
 	}
 
 	ret =
-	    snprintf(buffer, size, "%s %s %s %s", script, name, section, hook);
+	    snprintf(buffer, size, "exec %s %s %s %s", script, name, section, hook);
 	if (ret < 0 || (size_t)ret >= size) {
 		ERROR("Script name too long.");
 		return -1;
@@ -343,10 +344,11 @@ int run_script(const char *name, const char *section, const char *script, ...)
 		size += strlen(p) + 1;
 	va_end(ap);
 
+	size += strlen("exec");
 	size += strlen(script);
 	size += strlen(name);
 	size += strlen(section);
-	size += 3;
+	size += 4;
 
 	if (size > INT_MAX)
 		return -1;
@@ -357,7 +359,7 @@ int run_script(const char *name, const char *section, const char *script, ...)
 		return -1;
 	}
 
-	ret = snprintf(buffer, size, "%s %s %s", script, name, section);
+	ret = snprintf(buffer, size, "exec %s %s %s", script, name, section);
 	if (ret < 0 || ret >= size) {
 		ERROR("Script name too long.");
 		return -1;
