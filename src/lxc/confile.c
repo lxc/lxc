@@ -141,6 +141,7 @@ lxc_config_define(start);
 lxc_config_define(tty_max);
 lxc_config_define(tty_dir);
 lxc_config_define(uts_name);
+lxc_config_define(sysctl);
 
 static struct lxc_config_t config[] = {
                                            /* REMOVE in LXC 3.0 */
@@ -241,6 +242,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.tty.dir",                   false,                  set_config_tty_dir,                     get_config_tty_dir,                     clr_config_tty_dir,                   },
 	{ "lxc.tty.max",                   false,                  set_config_tty_max,                     get_config_tty_max,                     clr_config_tty_max,                   },
 	{ "lxc.uts.name",                  false,                  set_config_uts_name,                    get_config_uts_name,                    clr_config_uts_name,                  },
+	{ "lxc.sysctl",                    false,                  set_config_sysctl,                      get_config_sysctl,                      clr_config_sysctl,                    },
 
 	/* [START]: REMOVE IN LXC 3.0 */
 	{ "lxc.pts",                       true,                   set_config_pty_max,                     get_config_pty_max,                     clr_config_pty_max,                   },
@@ -1456,8 +1458,7 @@ static int set_config_prlimit(const char *key, const char *value,
 	}
 
 	/* find existing list element */
-	lxc_list_for_each(iter, &lxc_conf->limits)
-	{
+	lxc_list_for_each(iter, &lxc_conf->limits) {
 		limelem = iter->elem;
 		if (!strcmp(key, limelem->resource)) {
 			limelem->limit = limit;
@@ -1468,31 +1469,96 @@ static int set_config_prlimit(const char *key, const char *value,
 	/* allocate list element */
 	limlist = malloc(sizeof(*limlist));
 	if (!limlist)
-		goto out;
+		goto on_error;
 
 	limelem = malloc(sizeof(*limelem));
 	if (!limelem)
-		goto out;
+		goto on_error;
 	memset(limelem, 0, sizeof(*limelem));
 
 	limelem->resource = strdup(key);
 	if (!limelem->resource)
-		goto out;
+		goto on_error;
 	limelem->limit = limit;
 
-	limlist->elem = limelem;
+	lxc_list_add_elem(limlist, limelem);;
 
 	lxc_list_add_tail(&lxc_conf->limits, limlist);
 
 	return 0;
 
-out:
+on_error:
 	free(limlist);
 	if (limelem) {
 		free(limelem->resource);
 		free(limelem);
 	}
 	return -1;
+}
+
+static int set_config_sysctl(const char *key, const char *value,
+			    struct lxc_conf *lxc_conf, void *data)
+{
+	struct lxc_list *iter;
+	struct lxc_list *sysctl_list = NULL;
+	struct lxc_sysctl *sysctl_elem = NULL;
+	char *replace_value = NULL;
+
+	if (lxc_config_value_empty(value))
+		return lxc_clear_sysctls(lxc_conf, key);
+
+	if (strncmp(key, "lxc.sysctl.", sizeof("lxc.sysctl.") - 1) != 0)
+		return -1;
+
+	key += sizeof("lxc.sysctl.") - 1;
+
+	/* find existing list element */
+	lxc_list_for_each(iter, &lxc_conf->sysctls) {
+		sysctl_elem = iter->elem;
+		if (strcmp(key, sysctl_elem->key) == 0) {
+			replace_value = strdup(value);
+			if (!replace_value)
+				return -1;
+			free(sysctl_elem->value);
+			sysctl_elem->value = replace_value;
+			return 0;
+		}
+	}
+
+	/* allocate list element */
+	sysctl_list = malloc(sizeof(*sysctl_list));
+	if (!sysctl_list)
+		goto on_error;
+
+	sysctl_elem = malloc(sizeof(*sysctl_elem));
+	if (!sysctl_elem)
+		goto on_error;
+	memset(sysctl_elem, 0, sizeof(*sysctl_elem));
+
+	sysctl_elem->key = strdup(key);
+	if (!sysctl_elem->key)
+		goto on_error;
+
+	sysctl_elem->value = strdup(value);
+	if (!sysctl_elem->value)
+		goto on_error;
+
+	lxc_list_add_elem(sysctl_list, sysctl_elem);
+
+	lxc_list_add_tail(&lxc_conf->sysctls, sysctl_list);
+
+	return 0;
+
+on_error:
+	free(sysctl_list);
+	if (sysctl_elem) {
+		free(sysctl_elem->key);
+		free(sysctl_elem->value);
+		free(sysctl_elem);
+	}
+	return -1;
+
+
 }
 
 static int set_config_idmaps(const char *key, const char *value,
@@ -3310,6 +3376,43 @@ static int get_config_prlimit(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
+/* If you ask for a specific value, i.e. lxc.sysctl.net.ipv4.ip_forward, then just the value
+ * will be printed. If you ask for 'lxc.sysctl', then all sysctl entries will be
+ * printed, in 'lxc.sysctl.key = value' format.
+ */
+static int get_config_sysctl(const char *key, char *retv, int inlen,
+			    struct lxc_conf *c, void *data)
+{
+	int len;
+	struct lxc_list *it;
+	int fulllen = 0;
+	bool get_all = false;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	if (strcmp(key, "lxc.sysctl") == 0)
+		get_all = true;
+	else if (strncmp(key, "lxc.sysctl.", sizeof("lxc.sysctl.") - 1) == 0)
+		key += sizeof("lxc.sysctl.") - 1;
+	else
+		return -1;
+
+	lxc_list_for_each(it, &c->sysctls) {
+		struct lxc_sysctl *elem = it->elem;
+		if (get_all) {
+			strprint(retv, inlen, "lxc.sysctl.%s = %s\n",
+				 elem->key, elem->value);
+		} else if (strcmp(elem->key, key) == 0) {
+			strprint(retv, inlen, "%s", elem->value);
+		}
+	}
+
+	return fulllen;
+}
+
 static int get_config_noop(const char *key, char *retv, int inlen,
 			   struct lxc_conf *c, void *data)
 {
@@ -3685,6 +3788,12 @@ static inline int clr_config_prlimit(const char *key, struct lxc_conf *c,
 				   void *data)
 {
 	return lxc_clear_limits(c, key);
+}
+
+static inline int clr_config_sysctl(const char *key, struct lxc_conf *c,
+				   void *data)
+{
+	return lxc_clear_sysctls(c, key);
 }
 
 static inline int clr_config_includefiles(const char *key, struct lxc_conf *c,

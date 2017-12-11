@@ -2366,6 +2366,38 @@ int setup_resource_limits(struct lxc_list *limits, pid_t pid) {
 	return 0;
 }
 
+int setup_sysctl_parameters(struct lxc_list *sysctls)
+{
+	struct lxc_list *it;
+	struct lxc_sysctl *elem;
+	char *tmp = NULL;
+	char filename[MAXPATHLEN] = {0};
+	int ret = 0;
+
+	lxc_list_for_each(it, sysctls) {
+		elem = it->elem;
+		tmp = lxc_string_replace(".", "/", elem->key);
+		if (!tmp) {
+			ERROR("Failed to replace key %s", elem->key);
+			return -1;
+		}
+
+		ret = snprintf(filename, sizeof(filename), "/proc/sys/%s", tmp);
+		free(tmp);
+		if (ret < 0 || (size_t)ret >= sizeof(filename)) {
+			ERROR("Error setting up sysctl parameters path");
+			return -1;
+		}
+
+		ret = lxc_write_to_file(filename, elem->value, strlen(elem->value), false);
+		if (ret < 0) {
+			ERROR("Failed to setup sysctl parameters %s to %s", elem->key, elem->value);
+			return -1;
+		}
+	}
+	return 0;
+}
+
 static char *default_rootfs_mount = LXCROOTFSMOUNT;
 
 struct lxc_conf *lxc_conf_init(void)
@@ -2416,6 +2448,7 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->aliens);
 	lxc_list_init(&new->environment);
 	lxc_list_init(&new->limits);
+	lxc_list_init(&new->sysctls);
 	for (i = 0; i < NUM_LXC_HOOKS; i++)
 		lxc_list_init(&new->hooks[i]);
 	lxc_list_init(&new->groups);
@@ -3164,6 +3197,15 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
+	/* set sysctl value to a path under /proc/sys as determined from the key.
+	 * For e.g. net.ipv4.ip_forward translated to /proc/sys/net/ipv4/ip_forward.
+	 */
+	if (!lxc_list_empty(&lxc_conf->sysctls)) {
+		ret = setup_sysctl_parameters(&lxc_conf->sysctls);
+		if (ret < 0)
+			return -1;
+	}
+
 	if (!lxc_list_empty(&lxc_conf->keepcaps)) {
 		if (!lxc_list_empty(&lxc_conf->caps)) {
 			ERROR("Container requests lxc.cap.drop and lxc.cap.keep: either use lxc.cap.drop or lxc.cap.keep, not both.");
@@ -3315,6 +3357,32 @@ int lxc_clear_limits(struct lxc_conf *c, const char *key)
 	return 0;
 }
 
+int lxc_clear_sysctls(struct lxc_conf *c, const char *key)
+{
+	struct lxc_list *it, *next;
+	bool all = false;
+	const char *k = NULL;
+
+	if (strcmp(key, "lxc.sysctl") == 0)
+		all = true;
+	else if (strncmp(key, "lxc.sysctl.", sizeof("lxc.sysctl.") - 1) == 0)
+		k = key + sizeof("lxc.sysctl.") - 1;
+	else
+		return -1;
+
+	lxc_list_for_each_safe(it, &c->sysctls, next) {
+		struct lxc_sysctl *elem = it->elem;
+		if (!all && strcmp(elem->key, k) != 0)
+			continue;
+		lxc_list_del(it);
+		free(elem->key);
+		free(elem->value);
+		free(elem);
+		free(it);
+	}
+	return 0;
+}
+
 int lxc_clear_groups(struct lxc_conf *c)
 {
 	struct lxc_list *it,*next;
@@ -3454,6 +3522,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_aliens(conf);
 	lxc_clear_environment(conf);
 	lxc_clear_limits(conf, "lxc.prlimit");
+	lxc_clear_sysctls(conf, "lxc.sysctl");
 	free(conf->cgroup_meta.dir);
 	free(conf->cgroup_meta.controllers);
 	free(conf);

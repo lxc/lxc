@@ -34,8 +34,9 @@
 
 int main(int argc, char *argv[])
 {
-	int ret = EXIT_FAILURE;
+	int ret;
 	struct lxc_container *c;
+	int fret = EXIT_FAILURE;
 	char v1[2], v2[256], v3[2048];
 
 	if ((c = lxc_container_new("testxyz", NULL)) == NULL) {
@@ -243,6 +244,71 @@ int main(int argc, char *argv[])
 	}
 	printf("lxc.limit returned %d %s\n", ret, v3);
 
+#define SYSCTL_SOMAXCONN "lxc.sysctl.net.core.somaxconn = 256\n"
+#define ALL_SYSCTLS "lxc.sysctl.net.ipv4.ip_forward = 1\n" SYSCTL_SOMAXCONN
+
+	ret = c->get_config_item(c, "lxc.sysctl", v3, 2047);
+	if (ret != 0) {
+		fprintf(stderr, "%d: get_config_item(sysctl) returned %d\n", __LINE__, ret);
+		goto out;
+	}
+
+	if (!c->set_config_item(c, "lxc.sysctl.net.ipv4.ip_forward", "1")) {
+		fprintf(stderr, "%d: failed to set lxc.sysctl.net.ipv4.ip_forward\n", __LINE__);
+		goto out;
+	}
+	ret = c->get_config_item(c, "lxc.sysctl.net.ipv4.ip_forward", v2, 255);
+	if (ret < 0) {
+		fprintf(stderr, "%d: get_config_item(lxc.sysctl.net.ipv4.ip_forward) returned %d\n", __LINE__, ret);
+		goto out;
+	}
+	if (strcmp(v2, "1")) {
+		fprintf(stderr, "%d: lxc.sysctl.net.ipv4.ip_forward returned wrong value: %d %s not 1\n", __LINE__, ret, v2);
+		goto out;
+	}
+	printf("lxc.sysctl.net.ipv4.ip_forward returned %d %s\n", ret, v2);
+
+	if (!c->set_config_item(c, "lxc.sysctl.net.core.somaxconn", "256")) {
+		fprintf(stderr, "%d: failed to set lxc.sysctl.net.core.somaxconn\n", __LINE__);
+		goto out;
+	}
+	ret = c->get_config_item(c, "lxc.sysctl.net.core.somaxconn", v2, 255);
+	if (ret < 0) {
+		fprintf(stderr, "%d: get_config_item(lxc.sysctl.net.core.somaxconn) returned %d\n", __LINE__, ret);
+		goto out;
+	}
+	if (strcmp(v2, "256")) {
+		fprintf(stderr, "%d: lxc.sysctl.net.core.somaxconn returned wrong value: %d %s not 256\n", __LINE__, ret, v2);
+		goto out;
+	}
+	printf("lxc.sysctl.net.core.somaxconn returned %d %s\n", ret, v2);
+
+	ret = c->get_config_item(c, "lxc.sysctl", v3, 2047);
+	if (ret != sizeof(ALL_SYSCTLS)-1) {
+		fprintf(stderr, "%d: get_config_item(sysctl) returned %d\n", __LINE__, ret);
+		goto out;
+	}
+	if (strcmp(v3, ALL_SYSCTLS)) {
+		fprintf(stderr, "%d: lxc.sysctl returned wrong value: %d %s not %d %s\n", __LINE__, ret, v3, (int)sizeof(ALL_SYSCTLS) - 1, ALL_SYSCTLS);
+		goto out;
+	}
+	printf("lxc.sysctl returned %d %s\n", ret, v3);
+
+	if (!c->clear_config_item(c, "lxc.sysctl.net.ipv4.ip_forward")) {
+		fprintf(stderr, "%d: failed clearing lxc.sysctl.net.ipv4.ip_forward\n", __LINE__);
+		goto out;
+	}
+	ret = c->get_config_item(c, "lxc.sysctl", v3, 2047);
+	if (ret != sizeof(SYSCTL_SOMAXCONN) - 1) {
+		fprintf(stderr, "%d: get_config_item(sysctl) returned %d\n", __LINE__, ret);
+		goto out;
+	}
+	if (strcmp(v3, SYSCTL_SOMAXCONN)) {
+		fprintf(stderr, "%d: lxc.sysctl returned wrong value: %d %s not %d %s\n", __LINE__, ret, v3, (int)sizeof(SYSCTL_SOMAXCONN) - 1, SYSCTL_SOMAXCONN);
+		goto out;
+	}
+	printf("lxc.sysctl returned %d %s\n", ret, v3);
+
 	if (!c->set_config_item(c, "lxc.aa_profile", "unconfined")) {
 		fprintf(stderr, "%d: failed to set aa_profile\n", __LINE__);
 		goto out;
@@ -424,9 +490,9 @@ int main(int argc, char *argv[])
 	}
 
 	printf("All get_item tests passed\n");
-	ret = EXIT_SUCCESS;
+	fret = EXIT_SUCCESS;
 out:
 	c->destroy(c);
 	lxc_container_put(c);
-	exit(ret);
+	exit(fret);
 }

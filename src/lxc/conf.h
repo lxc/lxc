@@ -96,6 +96,16 @@ enum idtype {
 };
 
 /*
+ * Defines a structure to configure kernel parameters at runtime.
+ * @key      : the kernel parameters will be configured without the "lxc.sysctl" prefix
+ * @value    : the value to set
+ */
+struct lxc_sysctl {
+	char *key;
+	char *value;
+};
+
+/*
  * id_map is an id map entry.  Form in confile is:
  * lxc.idmap = u 0    9800 100
  * lxc.idmap = u 1000 9900 100
@@ -370,6 +380,9 @@ struct lxc_conf {
 
 	/* A list of clients registered to be informed about a container state. */
 	struct lxc_list state_clients;
+
+	/* sysctls */
+	struct lxc_list sysctls;
 };
 
 int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
@@ -428,5 +441,7 @@ extern unsigned long add_required_remount_flags(const char *s, const char *d,
 extern int run_script(const char *name, const char *section, const char *script,
 		      ...);
 extern int in_caplist(int cap, struct lxc_list *caps);
+extern int setup_sysctl_parameters(struct lxc_list *sysctls);
+extern int lxc_clear_sysctls(struct lxc_conf *c, const char *key);
 
 #endif /* __LXC_CONF_H */

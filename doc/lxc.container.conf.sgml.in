@@ -1390,6 +1390,34 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     </refsect2>
 
     <refsect2>
+      <title>Sysctl</title>
+      <para>
+        Configure kernel parameters for the container.
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.sysctl.[kernel parameters name]</option>
+          </term>
+          <listitem>
+            <para>
+              Specify the kernel parameters to be set. The parameters available 
+              are those listed under /proc/sys/.
+              Note that not all sysctls are namespaced.Changing Non-namespaced
+              sysctls will cause the system-wide setting to be modified.
+              <citerefentry>
+                <refentrytitle><command>sysctl</command></refentrytitle>
+                <manvolnum>8</manvolnum>
+              </citerefentry>.
+              If used with no value, lxc will clear the parameters specified up 
+              to this point.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Apparmor profile</title>
       <para>
         If lxc was compiled and installed with apparmor support, and the host
