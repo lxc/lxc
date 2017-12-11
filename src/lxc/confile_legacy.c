@@ -182,7 +182,7 @@ int set_config_network_legacy_type(const char *key, const char *value,
 	}
 
 	lxc_list_init(list);
-	list->elem = netdev;
+	lxc_list_add_elem(list, netdev);
 
 	/* We maintain a negative count for legacy networks. */
 	netdev->idx = -1;
@@ -568,7 +568,7 @@ int set_config_network_legacy_ipv4(const char *key, const char *value,
 	}
 
 	lxc_list_init(list);
-	list->elem = inetdev;
+	lxc_list_add_elem(list, inetdev);
 
 	addr = strdup(value);
 	if (!addr) {
@@ -590,7 +590,7 @@ int set_config_network_legacy_ipv4(const char *key, const char *value,
 		prefix = slash + 1;
 	}
 
-	if (!inet_pton(AF_INET, addr, &inetdev->addr)) {
+	if (inet_pton(AF_INET, addr, &inetdev->addr) != 1) {
 		SYSERROR("invalid ipv4 address: %s", value);
 		free(inetdev);
 		free(addr);
@@ -598,7 +598,7 @@ int set_config_network_legacy_ipv4(const char *key, const char *value,
 		return -1;
 	}
 
-	if (bcast && !inet_pton(AF_INET, bcast, &inetdev->bcast)) {
+	if (bcast && inet_pton(AF_INET, bcast, &inetdev->bcast) != 1) {
 		SYSERROR("invalid ipv4 broadcast address: %s", value);
 		free(inetdev);
 		free(list);
@@ -655,7 +655,7 @@ int set_config_network_legacy_ipv4_gateway(const char *key, const char *value,
 			return -1;
 		}
 
-		if (!inet_pton(AF_INET, value, gw)) {
+		if (inet_pton(AF_INET, value, gw) != 1) {
 			SYSERROR("invalid ipv4 gateway address: %s", value);
 			free(gw);
 			return -1;
@@ -721,7 +721,7 @@ int set_config_network_legacy_ipv6(const char *key, const char *value,
 		}
 	}
 
-	if (!inet_pton(AF_INET6, valdup, &inet6dev->addr)) {
+	if (inet_pton(AF_INET6, valdup, &inet6dev->addr) != 1) {
 		SYSERROR("invalid ipv6 address: %s", valdup);
 		free(list);
 		free(inet6dev);
@@ -761,7 +761,7 @@ int set_config_network_legacy_ipv6_gateway(const char *key, const char *value,
 			return -1;
 		}
 
-		if (!inet_pton(AF_INET6, value, gw)) {
+		if (inet_pton(AF_INET6, value, gw) != 1) {
 			SYSERROR("invalid ipv6 gateway address: %s", value);
 			free(gw);
 			return -1;
@@ -838,19 +838,18 @@ int get_config_network_legacy_item(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	if (!strncmp(key, "lxc.network.", 12))
-		key += 12;
-	else
+	if (strncmp(key, "lxc.network.", 12) != 0)
 		return -1;
 
-	p1 = strchr(key, '.');
+	p1 = strchr(key + 12, '.');
 	if (!p1 || *(p1 + 1) == '\0')
 		return -1;
 	p1++;
 
-	netdev = get_netdev_from_key(key, &c->network);
+	netdev = network_netdev(key, "", &c->network);
 	if (!netdev)
 		return -1;
+
 	if (strcmp(p1, "name") == 0) {
 		if (netdev->name[0] != '\0')
 			strprint(retv, inlen, "%s", netdev->name);
@@ -972,10 +971,7 @@ static int lxc_clear_nic(struct lxc_conf *c, const char *key)
 		return -1;
 
 	p1 = strchr(key, '.');
-	if (!p1 || *(p1+1) == '\0')
-		return -1;
-
-	if (it) {
+	if (!p1 && it) {
 		lxc_remove_nic(it);
 	} else if (strcmp(p1, ".ipv4") == 0) {
 		struct lxc_list *it2,*next;
