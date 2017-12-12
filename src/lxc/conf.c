@@ -339,10 +339,9 @@ static int run_buffer(char *buffer)
 	return 0;
 }
 
-static int run_script_argv(const char *name, unsigned int hook_version,
-			   const char *section, const char *script,
-			   const char *hookname, const char *lxcpath,
-			   char **argsin)
+int run_script_argv(const char *name, unsigned int hook_version,
+		    const char *section, const char *script,
+		    const char *hookname, char **argsin)
 {
 	int buf_pos, i, ret;
 	char *buffer;
@@ -405,6 +404,59 @@ static int run_script_argv(const char *name, unsigned int hook_version,
 			return -1;
 		}
 		TRACE("Set environment variable: LXC_HOOK_SECTION=%s", section);
+
+		if (strcmp(section, "net") == 0) {
+			char *parent;
+
+			if (!argsin[0])
+				return -EINVAL;
+
+			ret = setenv("LXC_NET_TYPE", argsin[0], 1);
+			if (ret < 0) {
+				SYSERROR("Failed to set environment variable: "
+					 "LXC_NET_TYPE=%s", argsin[0]);
+				return -1;
+			}
+			TRACE("Set environment variable: LXC_NET_TYPE=%s", argsin[0]);
+
+			parent = argsin[1] ? argsin[1] : "";
+
+			if (strcmp(argsin[0], "macvlan")) {
+				ret = setenv("LXC_NET_PARENT", parent, 1);
+				if (ret < 0) {
+					SYSERROR("Failed to set environment "
+						 "variable: LXC_NET_PARENT=%s", parent);
+					return -1;
+				}
+				TRACE("Set environment variable: LXC_NET_PARENT=%s", parent);
+			} else if (strcmp(argsin[0], "phys")) {
+				ret = setenv("LXC_NET_PARENT", parent, 1);
+				if (ret < 0) {
+					SYSERROR("Failed to set environment "
+						 "variable: LXC_NET_PARENT=%s", parent);
+					return -1;
+				}
+				TRACE("Set environment variable: LXC_NET_PARENT=%s", parent);
+			} else if (strcmp(argsin[0], "veth")) {
+				char *peer = argsin[2] ? argsin[2] : "";
+
+				ret = setenv("LXC_NET_PEER", peer, 1);
+				if (ret < 0) {
+					SYSERROR("Failed to set environment "
+						 "variable: LXC_NET_PEER=%s", peer);
+					return -1;
+				}
+				TRACE("Set environment variable: LXC_NET_PEER=%s", peer);
+
+				ret = setenv("LXC_NET_PARENT", parent, 1);
+				if (ret < 0) {
+					SYSERROR("Failed to set environment "
+						 "variable: LXC_NET_PARENT=%s", parent);
+					return -1;
+				}
+				TRACE("Set environment variable: LXC_NET_PARENT=%s", parent);
+			}
+		}
 	}
 
 	for (i = 0; argsin && argsin[i]; i++) {
@@ -3099,7 +3151,7 @@ int do_rootfs_setup(struct lxc_conf *conf, const char *name, const char *lxcpath
 
 	remount_all_slave();
 
-	if (run_lxc_hooks(name, "pre-mount", conf, lxcpath, NULL)) {
+	if (run_lxc_hooks(name, "pre-mount", conf, NULL)) {
 		ERROR("failed to run pre-mount hooks for container '%s'.", name);
 		return -1;
 	}
@@ -3208,13 +3260,13 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
-	if (run_lxc_hooks(name, "mount", lxc_conf, lxcpath, NULL)) {
+	if (run_lxc_hooks(name, "mount", lxc_conf, NULL)) {
 		ERROR("failed to run mount hooks for container '%s'.", name);
 		return -1;
 	}
 
 	if (lxc_conf->autodev > 0) {
-		if (run_lxc_hooks(name, "autodev", lxc_conf, lxcpath, NULL)) {
+		if (run_lxc_hooks(name, "autodev", lxc_conf, NULL)) {
 			ERROR("failed to run autodev hooks for container '%s'.", name);
 			return -1;
 		}
@@ -3292,7 +3344,7 @@ int lxc_setup(struct lxc_handler *handler)
 }
 
 int run_lxc_hooks(const char *name, char *hookname, struct lxc_conf *conf,
-		  const char *lxcpath, char *argv[])
+		  char *argv[])
 {
 	struct lxc_list *it;
 	int which = -1;
@@ -3325,7 +3377,7 @@ int run_lxc_hooks(const char *name, char *hookname, struct lxc_conf *conf,
 		char *hook = it->elem;
 
 		ret = run_script_argv(name, conf->hooks_version, "lxc", hook,
-				      hookname, lxcpath, argv);
+				      hookname, argv);
 		if (ret < 0)
 			return -1;
 	}

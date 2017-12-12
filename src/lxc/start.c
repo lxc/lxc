@@ -668,7 +668,7 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 
 	TRACE("set environment variables");
 
-	if (run_lxc_hooks(name, "pre-start", conf, handler->lxcpath, NULL)) {
+	if (run_lxc_hooks(name, "pre-start", conf, NULL)) {
 		ERROR("Failed to run lxc.hook.pre-start for container \"%s\".", name);
 		goto out_aborting;
 	}
@@ -767,9 +767,9 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		SYSERROR("Failed to set environment variable: LXC_TARGET=stop.");
 
 	if (handler->conf->hooks_version == 0)
-		rc = run_lxc_hooks(name, "stop", handler->conf, handler->lxcpath, namespaces);
+		rc = run_lxc_hooks(name, "stop", handler->conf, namespaces);
 	else
-		rc = run_lxc_hooks(name, "stop", handler->conf, handler->lxcpath, NULL);
+		rc = run_lxc_hooks(name, "stop", handler->conf, NULL);
 
 	while (namespace_count--)
 		free(namespaces[namespace_count]);
@@ -792,7 +792,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		handler->conf->maincmd_fd = -1;
 	}
 
-	if (run_lxc_hooks(name, "post-stop", handler->conf, handler->lxcpath, NULL)) {
+	if (run_lxc_hooks(name, "post-stop", handler->conf, NULL)) {
 		ERROR("Failed to run lxc.hook.post-stop for container \"%s\".", name);
 		if (handler->conf->reboot) {
 			WARN("Container will be stopped instead of rebooted.");
@@ -1053,7 +1053,7 @@ static int do_start(void *data)
 	if (lxc_seccomp_load(handler->conf) != 0)
 		goto out_warn_father;
 
-	if (run_lxc_hooks(handler->name, "start", handler->conf, handler->lxcpath, NULL)) {
+	if (run_lxc_hooks(handler->name, "start", handler->conf, NULL)) {
 		ERROR("Failed to run lxc.hook.start for container \"%s\".", handler->name);
 		goto out_warn_father;
 	}
@@ -1513,7 +1513,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		SYSERROR("Failed to set environment variable: LXC_PID=%s.", pidstr);
 
 	/* Run any host-side start hooks */
-	if (run_lxc_hooks(name, "start-host", conf, handler->lxcpath, NULL)) {
+	if (run_lxc_hooks(name, "start-host", conf, NULL)) {
 		ERROR("Failed to run lxc.hook.start-host for container \"%s\".", name);
 		return -1;
 	}
