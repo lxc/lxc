@@ -191,7 +191,10 @@ int main(int argc, char *argv[])
 
 	c->daemonize = my_args.daemonize == 1;
 	bret = c->start(c, 1, my_args.argv);
-	ret = c->error_num;
+	if (c->daemonize)
+		ret = EXIT_SUCCESS;
+	else
+		ret = c->error_num;
 	lxc_container_put(c);
 	if (!bret) {
 		fprintf(stderr, "Failed run an application inside container\n");
