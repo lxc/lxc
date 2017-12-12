@@ -151,6 +151,12 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (!c->lxc_conf) {
+		fprintf(stderr, "Executing a container with no configuration file may crash the host\n");
+		lxc_container_put(c);
+		exit(EXIT_FAILURE);
+	}
+
 	ret = lxc_config_define_load(&defines, c->lxc_conf);
 	if (ret) {
 		lxc_container_put(c);
