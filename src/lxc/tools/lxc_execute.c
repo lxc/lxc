@@ -163,6 +163,12 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (!c->lxc_conf) {
+		fprintf(stderr, "Executing a container with no configuration file may crash the host\n");
+		lxc_container_put(c);
+		exit(EXIT_FAILURE);
+	}
+
 	if (my_args.argc == 0) {
 		if (!set_argv(c->lxc_conf, &my_args)) {
 			fprintf(stderr, "missing command to execute!\n");
