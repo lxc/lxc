@@ -883,13 +883,14 @@ static int must_drop_cap_sys_boot(struct lxc_conf *conf)
 
 static int do_start(void *data)
 {
+	int fd, ret;
 	struct lxc_list *iterator;
-	struct lxc_handler *handler = data;
-	int devnull_fd = -1, ret;
 	char path[PATH_MAX];
 	bool have_cap_setgid;
 	uid_t new_uid;
 	gid_t new_gid;
+	int devnull_fd = -1;
+	struct lxc_handler *handler = data;
 
 	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL)) {
 		SYSERROR("Failed to set signal mask.");
@@ -1009,7 +1010,7 @@ static int do_start(void *data)
 	 *
 	 *	8:cpuset:/
 	 */
-	if (cgns_supported()) {
+	if (handler->clone_flags & CLONE_NEWCGROUP) {
 		if (unshare(CLONE_NEWCGROUP) < 0) {
 			INFO("Failed to unshare CLONE_NEWCGROUP.");
 			goto out_warn_father;
@@ -1030,12 +1031,30 @@ static int do_start(void *data)
 
 	/* Setup the container, ip, names, utsname, ... */
 	ret = lxc_setup(handler);
-	close(handler->data_sock[0]);
 	close(handler->data_sock[1]);
 	if (ret < 0) {
 		ERROR("Failed to setup container \"%s\".", handler->name);
+		close(handler->data_sock[0]);
 		goto out_warn_father;
 	}
+
+	if (handler->clone_flags & CLONE_NEWCGROUP) {
+		fd = lxc_preserve_ns(syscall(SYS_getpid), "cgroup");
+		if (fd < 0) {
+			ERROR("%s - Failed to preserve cgroup namespace", strerror(errno));
+			close(handler->data_sock[0]);
+			goto out_warn_father;
+		}
+
+		ret = lxc_abstract_unix_send_fds(handler->data_sock[0], &fd, 1, NULL, 0);
+		close(fd);
+		if (ret < 0) {
+			ERROR("%s - Failed to preserve cgroup namespace", strerror(errno));
+			close(handler->data_sock[0]);
+			goto out_warn_father;
+		}
+	}
+	close(handler->data_sock[0]);
 
 	/* Set the label to change to when we exec(2) the container's init. */
 	if (lsm_process_label_set(NULL, handler->conf, 1, 1) < 0)
@@ -1207,7 +1226,7 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 	return ret;
 }
 
-void resolve_clone_flags(struct lxc_handler *handler)
+int resolve_clone_flags(struct lxc_handler *handler)
 {
 	handler->clone_flags = CLONE_NEWPID | CLONE_NEWNS;
 
@@ -1218,18 +1237,34 @@ void resolve_clone_flags(struct lxc_handler *handler)
 		if (!lxc_requests_empty_network(handler))
 			handler->clone_flags |= CLONE_NEWNET;
 	} else {
-		INFO("Inheriting a NET namespace.");
+		INFO("Inheriting a net namespace.");
 	}
 
 	if (handler->conf->inherit_ns_fd[LXC_NS_IPC] == -1)
 		handler->clone_flags |= CLONE_NEWIPC;
 	else
-		INFO("Inheriting an IPC namespace.");
+		INFO("Inheriting an ipc namespace.");
 
 	if (handler->conf->inherit_ns_fd[LXC_NS_UTS] == -1)
 		handler->clone_flags |= CLONE_NEWUTS;
 	else
-		INFO("Inheriting a UTS namespace.");
+		INFO("Inheriting a uts namespace.");
+
+	if (handler->conf->inherit_ns_fd[LXC_NS_PID] == -1)
+		handler->clone_flags |= CLONE_NEWPID;
+	else
+		INFO("Inheriting pid namespace");
+
+	if (cgns_supported()) {
+		if (handler->conf->inherit_ns_fd[LXC_NS_CGROUP] == -1)
+			handler->clone_flags |= CLONE_NEWCGROUP;
+		else
+			INFO("Inheriting cgroup namespace");
+	} else if (handler->conf->inherit_ns_fd[LXC_NS_CGROUP] >= 0) {
+			return -EINVAL;
+	}
+
+	return 0;
 }
 
 /* lxc_spawn() performs crucial setup tasks and clone()s the new process which
@@ -1267,7 +1302,11 @@ static int lxc_spawn(struct lxc_handler *handler)
 		return -1;
 	}
 
-	resolve_clone_flags(handler);
+	ret = resolve_clone_flags(handler);
+	if (ret < 0) {
+		lxc_sync_fini(handler);
+		return -1;
+	}
 
 	if (handler->clone_flags & CLONE_NEWNET) {
 		if (!lxc_list_empty(&handler->conf->network)) {
@@ -1332,6 +1371,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		 */
 		flags &= ~CLONE_NEWNET;
 	}
+
 	handler->pid = lxc_clone(do_start, handler, flags);
 	if (handler->pid < 0) {
 		SYSERROR("Failed to clone a new set of namespaces.");
@@ -1455,6 +1495,17 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (lxc_recv_ttys_from_child(handler) < 0) {
 		ERROR("Failed to receive tty info from child process.");
 		goto out_delete_net;
+	}
+
+	if (handler->clone_flags & CLONE_NEWCGROUP) {
+		ret = lxc_abstract_unix_recv_fds(handler->data_sock[1],
+						 &handler->nsfd[LXC_NS_CGROUP],
+						 1, NULL, 0);
+		if (ret < 0) {
+			ERROR("%s - Failed to preserve cgroup namespace", strerror(errno));
+			goto out_delete_net;
+		}
+		DEBUG("Preserved cgroup namespace via fd %d", handler->nsfd[LXC_NS_CGROUP]);
 	}
 
 	if (handler->ops->post_start(handler, handler->data))

@@ -99,35 +99,12 @@ int main(int argc, char *argv[])
 	const char *s;
 	bool b;
 	struct lxc_container *c;
-	struct lxc_log log;
-	char template[sizeof(P_tmpdir"/shortlived_XXXXXX")];
-	int ret = 0;
+	int ret = EXIT_FAILURE;
 
-	strcpy(template, P_tmpdir"/shortlived_XXXXXX");
-	i = lxc_make_tmpfile(template, false);
-	if (i < 0) {
-		lxc_error("Failed to create temporary log file for container %s\n", MYNAME);
-		exit(EXIT_FAILURE);
-	} else {
-		lxc_debug("Using \"%s\" as temporary log file for container %s\n", template, MYNAME);
-		close(i);
-	}
-
-	log.name = MYNAME;
-	log.file = template;
-	log.level = "TRACE";
-	log.prefix = "shortlived";
-	log.quiet = false;
-	log.lxcpath = NULL;
-	if (lxc_log_init(&log))
-		exit(EXIT_FAILURE);
-
-	ret = 1;
 	/* test a real container */
 	c = lxc_container_new(MYNAME, NULL);
 	if (!c) {
 		fprintf(stderr, "%d: error creating lxc_container %s\n", __LINE__, MYNAME);
-		ret = 1;
 		goto out;
 	}
 
@@ -136,8 +113,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	ret = create_container();
-	if (ret) {
+	if (create_container() < 0) {
 		fprintf(stderr, "%d: failed to create a container\n", __LINE__);
 		goto out;
 	}
@@ -174,13 +150,6 @@ int main(int argc, char *argv[])
 			goto out;
 		}
 
-		/* The container needs to exit with a successful error code. */
-		if (c->error_num != 0) {
-			fprintf(stderr, "%d: %s exited successfully on %dth iteration\n", __LINE__, c->name, i);
-			goto out;
-		}
-		fprintf(stderr, "%d: %s exited correctly with error code %d on %dth iteration\n", __LINE__, c->name, c->error_num, i);
-
 		if (!c->wait(c, "STOPPED", 30)) {
 			fprintf(stderr, "%d: %s failed to wait on %dth iteration\n", __LINE__, c->name, i);
 			goto out;
@@ -193,13 +162,6 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "%d: %s failed to start on %dth iteration\n", __LINE__, c->name, i);
 			goto out;
 		}
-
-		/* The container needs to exit with a successful error code. */
-		if (c->error_num != 0) {
-			fprintf(stderr, "%d: %s exited successfully on %dth iteration\n", __LINE__, c->name, i);
-			goto out;
-		}
-		fprintf(stderr, "%d: %s exited correctly with error code %d on %dth iteration\n", __LINE__, c->name, c->error_num, i);
 
 		if (!c->wait(c, "STOPPED", 30)) {
 			fprintf(stderr, "%d: %s failed to wait on %dth iteration\n", __LINE__, c->name, i);
@@ -219,13 +181,6 @@ int main(int argc, char *argv[])
 			goto out;
 		}
 
-		/* The container needs to exit with an error code.*/
-		if (c->error_num == 0) {
-			fprintf(stderr, "%d: %s exited successfully on %dth iteration\n", __LINE__, c->name, i);
-			goto out;
-		}
-		fprintf(stderr, "%d: %s exited correctly with error code %d on %dth iteration\n", __LINE__, c->name, c->error_num, i);
-
 		if (!c->wait(c, "STOPPED", 30)) {
 			fprintf(stderr, "%d: %s failed to wait on %dth iteration\n", __LINE__, c->name, i);
 			goto out;
@@ -242,13 +197,6 @@ int main(int argc, char *argv[])
 			goto out;
 		}
 
-		/* The container needs to exit with an error code.*/
-		if (c->error_num == 0) {
-			fprintf(stderr, "%d: %s exited successfully on %dth iteration\n", __LINE__, c->name, i);
-			goto out;
-		}
-		fprintf(stderr, "%d: %s exited correctly with error code %d on %dth iteration\n", __LINE__, c->name, c->error_num, i);
-
 		if (!c->wait(c, "STOPPED", 30)) {
 			fprintf(stderr, "%d: %s failed to wait on %dth iteration\n", __LINE__, c->name, i);
 			goto out;
@@ -258,7 +206,7 @@ int main(int argc, char *argv[])
 	c->stop(c);
 
 	fprintf(stderr, "all lxc_container tests passed for %s\n", c->name);
-	ret = 0;
+	ret = EXIT_SUCCESS;
 
 out:
 	if (c) {
@@ -266,6 +214,5 @@ out:
 		destroy_container();
 	}
 	lxc_container_put(c);
-	unlink(template);
 	exit(ret);
 }
