@@ -4250,22 +4250,27 @@ static bool do_lxcapi_may_control(struct lxc_container *c)
 WRAP_API(bool, lxcapi_may_control)
 
 static bool do_add_remove_node(pid_t init_pid, const char *path, bool add,
-		struct stat *st)
+			       struct stat *st)
 {
+	int ret;
+	char *tmp;
+	pid_t pid;
 	char chrootpath[MAXPATHLEN];
 	char *directory_path = NULL;
-	pid_t pid;
-	int ret;
 
-	if ((pid = fork()) < 0) {
-		SYSERROR("failed to fork a child helper");
+	pid = fork();
+	if (pid < 0) {
+		SYSERROR("Failed to fork()");
 		return false;
 	}
+
 	if (pid) {
-		if (wait_for_pid(pid) != 0) {
-			ERROR("Failed to create note in guest");
+		ret = wait_for_pid(pid);
+		if (ret != 0) {
+			ERROR("Failed to create device node");
 			return false;
 		}
+
 		return true;
 	}
 
@@ -4274,34 +4279,49 @@ static bool do_add_remove_node(pid_t init_pid, const char *path, bool add,
 	if (ret < 0 || ret >= MAXPATHLEN)
 		return false;
 
-	if (chroot(chrootpath) < 0)
-		exit(1);
-	if (chdir("/") < 0)
-		exit(1);
+	ret = chroot(chrootpath);
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+
+	ret = chdir("/");
+	if (ret < 0)
+		exit(EXIT_FAILURE);
+
 	/* remove path if it exists */
-	if(faccessat(AT_FDCWD, path, F_OK, AT_SYMLINK_NOFOLLOW) == 0) {
-		if (unlink(path) < 0) {
-			ERROR("unlink failed");
-			exit(1);
+	ret = faccessat(AT_FDCWD, path, F_OK, AT_SYMLINK_NOFOLLOW);
+	if(ret == 0) {
+		ret = unlink(path);
+		if (ret < 0) {
+			ERROR("%s - Failed to remove \"%s\"", strerror(errno), path);
+			exit(EXIT_FAILURE);
 		}
 	}
+
 	if (!add)
-		exit(0);
+		exit(EXIT_SUCCESS);
 
 	/* create any missing directories */
-	directory_path = dirname(strdup(path));
-	if (mkdir_p(directory_path, 0755) < 0 && errno != EEXIST) {
-		ERROR("failed to create directory");
-		exit(1);
+	tmp = strdup(path);
+	if (!tmp)
+		exit(EXIT_FAILURE);
+
+	directory_path = dirname(tmp);
+	ret = mkdir_p(directory_path, 0755);
+	if (ret < 0 && errno != EEXIST) {
+		ERROR("%s - Failed to create path \"%s\"", strerror(errno), directory_path);
+		free(tmp);
+		exit(EXIT_FAILURE);
 	}
 
 	/* create the device node */
-	if (mknod(path, st->st_mode, st->st_rdev) < 0) {
-		ERROR("mknod failed");
-		exit(1);
+	ret = mknod(path, st->st_mode, st->st_rdev);
+	free(tmp);
+	if (ret < 0) {
+		ERROR("%s - Failed to create device node at \"%s\"", strerror(errno), path);
+		exit(EXIT_FAILURE);
 	}
 
-	exit(0);
+	exit(EXIT_SUCCESS);
 }
 
 static bool add_remove_device_node(struct lxc_container *c, const char *src_path, const char *dest_path, bool add)
@@ -4377,10 +4397,13 @@ static bool do_lxcapi_remove_device_node(struct lxc_container *c, const char *sr
 
 WRAP_API_2(bool, lxcapi_remove_device_node, const char *, const char *)
 
-static bool do_lxcapi_attach_interface(struct lxc_container *c, const char *ifname,
-				const char *dst_ifname)
+static bool do_lxcapi_attach_interface(struct lxc_container *c,
+				       const char *ifname,
+				       const char *dst_ifname)
 {
+	pid_t init_pid;
 	int ret = 0;
+
 	if (am_unpriv()) {
 		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
 		return false;
@@ -4392,7 +4415,6 @@ static bool do_lxcapi_attach_interface(struct lxc_container *c, const char *ifna
 	}
 
 	ret = lxc_netdev_isup(ifname);
-
 	if (ret > 0) {
 		/* netdev of ifname is up. */
 		ret = lxc_netdev_down(ifname);
@@ -4400,10 +4422,12 @@ static bool do_lxcapi_attach_interface(struct lxc_container *c, const char *ifna
 			goto err;
 	}
 
-	ret = lxc_netdev_move_by_name(ifname, do_lxcapi_init_pid(c), dst_ifname);
+	init_pid = do_lxcapi_init_pid(c);
+	ret = lxc_netdev_move_by_name(ifname, init_pid, dst_ifname);
 	if (ret)
 		goto err;
 
+	INFO("Moved network device \"%s\" to network namespace of %d", ifname, init_pid);
 	return true;
 
 err:
@@ -4412,9 +4436,11 @@ err:
 
 WRAP_API_2(bool, lxcapi_attach_interface, const char *, const char *)
 
-static bool do_lxcapi_detach_interface(struct lxc_container *c, const char *ifname,
-					const char *dst_ifname)
+static bool do_lxcapi_detach_interface(struct lxc_container *c,
+				       const char *ifname,
+				       const char *dst_ifname)
 {
+	int ret;
 	pid_t pid, pid_outside;
 
 	if (am_unpriv()) {
@@ -4430,40 +4456,52 @@ static bool do_lxcapi_detach_interface(struct lxc_container *c, const char *ifna
 	pid_outside = getpid();
 	pid = fork();
 	if (pid < 0) {
-		ERROR("failed to fork task to get interfaces information");
+		ERROR("Failed to fork");
 		return false;
 	}
 
 	if (pid == 0) { /* child */
-		int ret = 0;
-		if (!enter_net_ns(c)) {
-			ERROR("failed to enter namespace");
-			exit(-1);
+		pid_t init_pid;
+
+		init_pid = do_lxcapi_init_pid(c);
+		if (!switch_to_ns(init_pid, "net")) {
+			ERROR("Failed to enter network namespace");
+			exit(EXIT_FAILURE);
 		}
 
 		ret = lxc_netdev_isup(ifname);
-		if (ret < 0)
-			exit(ret);
+		if (ret < 0) {
+			ERROR("Failed to determine whether network device \"%s\" is up", ifname);
+			exit(EXIT_FAILURE);
+		}
 
 		/* netdev of ifname is up. */
 		if (ret) {
 			ret = lxc_netdev_down(ifname);
-			if (ret)
-				exit(ret);
+			if (ret) {
+				ERROR("Failed to set network device \"%s\" down", ifname);
+				exit(EXIT_FAILURE);
+			}
 		}
 
 		ret = lxc_netdev_move_by_name(ifname, pid_outside, dst_ifname);
-
-		/* -EINVAL means there is no netdev named as ifanme. */
-		if (ret == -EINVAL) {
-			ERROR("No network device named as %s.", ifname);
+		/* -EINVAL means there is no netdev named as ifname. */
+		if (ret < 0) {
+			if (ret == -EINVAL)
+				ERROR("Network device \"%s\" not found", ifname);
+			else
+				ERROR("Failed to remove network device \"%s\"", ifname);
+			exit(EXIT_FAILURE);
 		}
-		exit(ret);
+
+		exit(EXIT_SUCCESS);
 	}
 
-	if (wait_for_pid(pid) != 0)
+	ret = wait_for_pid(pid);
+	if (ret != 0)
 		return false;
 
+	INFO("Moved network device \"%s\" to network namespace of %d", ifname, pid_outside);
 	return true;
 }
 
