@@ -766,8 +766,7 @@ static char **get_controllers(char **klist, char **nlist, char *line, int type)
 			return NULL;
 		p++;
 	}
-	if (!p)
-		return NULL;
+
 	/* note - if we change how mountinfo works, then our caller
 	 * will need to verify /sys/fs/cgroup/ in this field */
 	if (strncmp(p, "/sys/fs/cgroup/", 15)) {

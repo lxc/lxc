@@ -773,8 +773,13 @@ static int set_config_net_ipv6_address(const char *key, const char *value,
 	if (slash) {
 		*slash = '\0';
 		netmask = slash + 1;
-		if (lxc_safe_uint(netmask, &inet6dev->prefix) < 0)
+		ret = lxc_safe_uint(netmask, &inet6dev->prefix);
+		if (ret < 0) {
+			free(list);
+			free(inet6dev);
+			free(valdup);
 			return -1;
+		}
 	}
 
 	ret = inet_pton(AF_INET6, valdup, &inet6dev->addr);

@@ -207,8 +207,8 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 
 		odelta = strchr(nsrc, ':');
 		if (!odelta) {
-			free(osrc);
 			ERROR("Failed to find \":\" in \"%s\"", nsrc);
+			free(osrc);
 			return -22;
 		}
 
@@ -722,15 +722,9 @@ char *ovl_get_rootfs(const char *rootfs_path, size_t *rootfslen)
 		*s3 = '\0';
 
 	rootfsdir = strdup(s2);
-	if (!rootfsdir) {
-		free(s1);
-		return NULL;
-	}
-
+	free(s1);
 	if (!rootfsdir)
-		rootfsdir = s1;
-	else
-		free(s1);
+		return NULL;
 
 	*rootfslen = strlen(rootfsdir);
 
