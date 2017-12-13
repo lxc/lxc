@@ -30,5 +30,6 @@
 bool __criu_pre_dump(struct lxc_container *c, struct migrate_opts *opts);
 bool __criu_dump(struct lxc_container *c, struct migrate_opts *opts);
 bool __criu_restore(struct lxc_container *c, struct migrate_opts *opts);
+bool __criu_check_feature(uint64_t *features_to_check);
 
 #endif
