@@ -142,6 +142,7 @@ lxc_config_define(tty_max);
 lxc_config_define(tty_dir);
 lxc_config_define(uts_name);
 lxc_config_define(sysctl);
+lxc_config_define(proc);
 
 static struct lxc_config_t config[] = {
                                            /* REMOVE in LXC 3.0 */
@@ -243,6 +244,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.tty.max",                   false,                  set_config_tty_max,                     get_config_tty_max,                     clr_config_tty_max,                   },
 	{ "lxc.uts.name",                  false,                  set_config_uts_name,                    get_config_uts_name,                    clr_config_uts_name,                  },
 	{ "lxc.sysctl",                    false,                  set_config_sysctl,                      get_config_sysctl,                      clr_config_sysctl,                    },
+	{ "lxc.proc",                      false,                  set_config_proc,                        get_config_proc,                        clr_config_proc,                      },
 
 	/* [START]: REMOVE IN LXC 3.0 */
 	{ "lxc.pts",                       true,                   set_config_pty_max,                     get_config_pty_max,                     clr_config_pty_max,                   },
@@ -1559,6 +1561,55 @@ on_error:
 		free(sysctl_elem->value);
 		free(sysctl_elem);
 	}
+	return -1;
+}
+
+static int set_config_proc(const char *key, const char *value,
+			    struct lxc_conf *lxc_conf, void *data)
+{
+	const char *subkey;
+	struct lxc_list *proclist = NULL;
+	struct lxc_proc *procelem = NULL;
+
+	if (lxc_config_value_empty(value))
+		return clr_config_proc(key, lxc_conf, NULL);
+
+	if (strncmp(key, "lxc.proc.", sizeof("lxc.proc.") -1) != 0)
+		return -1;
+
+	subkey = key + sizeof("lxc.proc.") - 1;
+	if (*subkey == '\0')
+		return -EINVAL;
+
+	proclist = malloc(sizeof(*proclist));
+	if (!proclist)
+		goto on_error;
+
+	procelem = malloc(sizeof(*procelem));
+	if (!procelem)
+		goto on_error;
+	memset(procelem, 0, sizeof(*procelem));
+
+	procelem->filename = strdup(subkey);
+	procelem->value = strdup(value);
+
+	if (!procelem->filename || !procelem->value)
+		goto on_error;
+
+	proclist->elem = procelem;
+
+	lxc_list_add_tail(&lxc_conf->procs, proclist);
+
+	return 0;
+
+on_error:
+	free(proclist);
+	if (procelem) {
+		free(procelem->filename);
+		free(procelem->value);
+		free(procelem);
+	}
+
 	return -1;
 }
 
@@ -3414,6 +3465,40 @@ static int get_config_sysctl(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
+static int get_config_proc(const char *key, char *retv, int inlen,
+			    struct lxc_conf *c, void *data)
+{
+	struct lxc_list *it;
+	int len;
+	int fulllen = 0;
+	bool get_all = false;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	if (strcmp(key, "lxc.proc") == 0)
+		get_all = true;
+	else if (strncmp(key, "lxc.proc.", sizeof("lxc.proc.") - 1) == 0)
+		key += sizeof("lxc.proc.") - 1;
+	else
+		return -1;
+
+	lxc_list_for_each(it, &c->procs) {
+		struct lxc_proc *proc = it->elem;
+
+		if (get_all) {
+			strprint(retv, inlen, "lxc.proc.%s = %s\n",
+				 proc->filename, proc->value);
+		} else if (strcmp(proc->filename, key) == 0) {
+			strprint(retv, inlen, "%s", proc->value);
+		}
+	}
+
+	return fulllen;
+}
+
 static int get_config_noop(const char *key, char *retv, int inlen,
 			   struct lxc_conf *c, void *data)
 {
@@ -3795,6 +3880,12 @@ static inline int clr_config_sysctl(const char *key, struct lxc_conf *c,
 				   void *data)
 {
 	return lxc_clear_sysctls(c, key);
+}
+
+static inline int clr_config_proc(const char *key, struct lxc_conf *c,
+				   void *data)
+{
+	return lxc_clear_procs(c, key);
 }
 
 static inline int clr_config_includefiles(const char *key, struct lxc_conf *c,

@@ -1386,6 +1386,12 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 	}
 
+	if (!lxc_list_empty(&conf->procs)) {
+		ret = setup_proc_filesystem(&conf->procs, handler->pid);
+		if (ret < 0)
+			goto out_delete_net;
+	}
+
 	/* Tell the child to continue its initialization. We'll get
 	 * LXC_SYNC_CGROUP when it is ready for us to setup cgroups.
 	 */

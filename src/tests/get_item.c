@@ -309,6 +309,73 @@ int main(int argc, char *argv[])
 	}
 	printf("lxc.sysctl returned %d %s\n", ret, v3);
 
+#define PROC_OOM_SCORE_ADJ "lxc.proc.oom_score_adj = 10\n"
+#define ALL_PROCS "lxc.proc.setgroups = allow\n" PROC_OOM_SCORE_ADJ
+
+	ret = c->get_config_item(c, "lxc.proc", v3, 2047);
+	if (ret != 0) {
+		fprintf(stderr, "%d: get_config_item(proc) returned %d\n", __LINE__, ret);
+		goto out;
+	}
+
+	if (!c->set_config_item(c, "lxc.proc.setgroups", "allow")) {
+		fprintf(stderr, "%d: failed to set lxc.proc.setgroups\n", __LINE__);
+		goto out;
+	}
+
+	ret = c->get_config_item(c, "lxc.proc.setgroups", v2, 255);
+	if (ret < 0) {
+		fprintf(stderr, "%d: get_config_item(lxc.proc.setgroups) returned %d\n", __LINE__, ret);
+		goto out;
+	}
+	if (strcmp(v2, "allow")) {
+		fprintf(stderr, "%d: lxc.proc.setgroups returned wrong value: %d %s not 10\n", __LINE__, ret, v2);
+		goto out;
+	}
+	printf("lxc.proc.setgroups returned %d %s\n", ret, v2);
+
+	if (!c->set_config_item(c, "lxc.proc.oom_score_adj", "10")) {
+		fprintf(stderr, "%d: failed to set lxc.proc.oom_score_adj\n", __LINE__);
+		goto out;
+	}
+
+	ret = c->get_config_item(c, "lxc.proc.oom_score_adj", v2, 255);
+	if (ret < 0) {
+		fprintf(stderr, "%d: get_config_item(lxc.proc.oom_score_adj) returned %d\n", __LINE__, ret);
+		goto out;
+	}
+	if (strcmp(v2, "10")) {
+		fprintf(stderr, "%d: lxc.proc.oom_score_adj returned wrong value: %d %s not 10\n", __LINE__, ret, v2);
+		goto out;
+	}
+	printf("lxc.proc.oom_score_adj returned %d %s\n", ret, v2);
+
+	ret = c->get_config_item(c, "lxc.proc", v3, 2047);
+	if (ret != sizeof(ALL_PROCS)-1) {
+		fprintf(stderr, "%d: get_config_item(proc) returned %d\n", __LINE__, ret);
+		goto out;
+	}
+	if (strcmp(v3, ALL_PROCS)) {
+		fprintf(stderr, "%d: lxc.proc returned wrong value: %d %s not %d %s\n", __LINE__, ret, v3, (int)sizeof(ALL_PROCS) - 1, ALL_PROCS);
+		goto out;
+	}
+	printf("lxc.proc returned %d %s\n", ret, v3);
+
+	if (!c->clear_config_item(c, "lxc.proc.setgroups")) {
+		fprintf(stderr, "%d: failed clearing lxc.proc.setgroups\n", __LINE__);
+		goto out;
+	}
+	ret = c->get_config_item(c, "lxc.proc", v3, 2047);
+	if (ret < 0) {
+		fprintf(stderr, "%d: get_config_item(proc) returned %d\n", __LINE__, ret);
+		goto out;
+	}
+	if (strcmp(v3, PROC_OOM_SCORE_ADJ)) {
+		fprintf(stderr, "%d: lxc.proc returned wrong value: %d %s not %d %s\n", __LINE__, ret, v3, (int)sizeof(PROC_OOM_SCORE_ADJ) - 1, PROC_OOM_SCORE_ADJ);
+		goto out;
+	}
+	printf("lxc.proc returned %d %s\n", ret, v3);
+
 	if (!c->set_config_item(c, "lxc.aa_profile", "unconfined")) {
 		fprintf(stderr, "%d: failed to set aa_profile\n", __LINE__);
 		goto out;

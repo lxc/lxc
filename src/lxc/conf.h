@@ -106,6 +106,16 @@ struct lxc_sysctl {
 };
 
 /*
+ * Defines a structure to configure proc filesystem at runtime.
+ * @filename : the proc filesystem will be configured without the "lxc.proc" prefix
+ * @value    : the value to set
+ */
+struct lxc_proc {
+	char *filename;
+	char *value;
+};
+
+/*
  * id_map is an id map entry.  Form in confile is:
  * lxc.idmap = u 0    9800 100
  * lxc.idmap = u 1000 9900 100
@@ -383,6 +393,9 @@ struct lxc_conf {
 
 	/* sysctls */
 	struct lxc_list sysctls;
+
+	/* procs */
+	struct lxc_list procs;
 };
 
 int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
@@ -443,5 +456,7 @@ extern int run_script(const char *name, const char *section, const char *script,
 extern int in_caplist(int cap, struct lxc_list *caps);
 extern int setup_sysctl_parameters(struct lxc_list *sysctls);
 extern int lxc_clear_sysctls(struct lxc_conf *c, const char *key);
+extern int setup_proc_filesystem(struct lxc_list *procs, pid_t pid);
+extern int lxc_clear_procs(struct lxc_conf *c, const char *key);
 
 #endif /* __LXC_CONF_H */
