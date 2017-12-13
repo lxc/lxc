@@ -163,6 +163,12 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (!c->lxc_conf) {
+		fprintf(stderr, "Executing a container with no configuration file may crash the host\n");
+		lxc_container_put(c);
+		exit(EXIT_FAILURE);
+	}
+
 	if (my_args.argc == 0) {
 		if (!set_argv(c->lxc_conf, &my_args)) {
 			fprintf(stderr, "missing command to execute!\n");
@@ -185,7 +191,10 @@ int main(int argc, char *argv[])
 
 	c->daemonize = my_args.daemonize == 1;
 	bret = c->start(c, 1, my_args.argv);
-	ret = c->error_num;
+	if (c->daemonize)
+		ret = EXIT_SUCCESS;
+	else
+		ret = c->error_num;
 	lxc_container_put(c);
 	if (!bret) {
 		fprintf(stderr, "Failed run an application inside container\n");
