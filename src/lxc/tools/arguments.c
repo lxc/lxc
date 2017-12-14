@@ -314,7 +314,7 @@ bool lxc_setup_shared_ns(struct lxc_arguments *args, struct lxc_container *c)
 			continue;
 
 		if (!c->set_config_item(c, key, value)) {
-			fprintf(stderr, "failed to set %s\n", key);
+			lxc_error(args, "Failed to set \"%s = %s\"", key, value);
 			return false;
 		}
 	}

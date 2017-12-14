@@ -46,6 +46,9 @@
 #define OPT_USAGE 0x1000
 #define OPT_VERSION OPT_USAGE - 1   
 
+#define QUOTE(macro) #macro
+#define QUOTEVAL(macro) QUOTE(macro)
+
 lxc_log_define(lxc_init, lxc);
 
 static sig_atomic_t was_interrupted = 0;
@@ -95,40 +98,49 @@ static struct arguments my_args = {
 static void prevent_forking(void)
 {
 	FILE *f;
-	char name[PATH_MAX], path[PATH_MAX];
+	char name[MAXPATHLEN], path[MAXPATHLEN];
 	int ret;
 
 	f = fopen("/proc/self/cgroup", "r");
 	if (!f) {
-		SYSERROR("opening /proc/self/cgroup");
+		SYSERROR("Failed to open \"/proc/self/cgroup\"");
 		return;
 	}
 
 	while (!feof(f)) {
-		int fd;
+		int fd, i;
 
-		if (2 != fscanf(f, "%*d:%[^:]:%s", name, path)) {
-			ERROR("didn't scan the right number of things");
+		if (1 != fscanf(f, "%*d:%" QUOTEVAL(MAXPATHLEN) "s", name)) {
+			ERROR("Failed to parse \"/proc/self/cgroup\"");
 			goto out;
+		}
+		path[0] = 0;
+
+		for (i = 0; i < sizeof(name); i++) {
+			if (name[i] == ':') {
+				name[i] = 0;
+				strncpy(path, name + i + 1, sizeof(path));
+				break;
+			}
 		}
 
 		if (strcmp(name, "pids"))
 			continue;
 
 		ret = snprintf(name, sizeof(name), "/sys/fs/cgroup/pids/%s/pids.max", path);
-		if (ret < 0 || ret >= sizeof(path)) {
-			ERROR("failed snprintf");
+		if (ret < 0 || (size_t)ret >= sizeof(path)) {
+			ERROR("Failed to create string");
 			goto out;
 		}
 
 		fd = open(name, O_WRONLY);
 		if (fd < 0) {
-			SYSERROR("open");
+			SYSERROR("Failed to open \"%s\"", name);
 			goto out;
 		}
 
 		if (write(fd, "1", 1) != 1)
-			SYSERROR("write");
+			SYSERROR("Failed to write to \"%s\"", name);
 
 		close(fd);
 		break;
@@ -145,14 +157,14 @@ static void kill_children(pid_t pid)
 	int ret;
 
 	ret = snprintf(path, sizeof(path), "/proc/%d/task/%d/children", pid, pid);
-	if (ret < 0 || ret >= sizeof(path)) {
-		ERROR("failed snprintf");
+	if (ret < 0 || (size_t)ret >= sizeof(path)) {
+		ERROR("Failed to create string");
 		return;
 	}
 
 	f = fopen(path, "r");
 	if (!f) {
-		SYSERROR("couldn't open %s", path);
+		SYSERROR("Failed to open %s", path);
 		return;
 	}
 
@@ -160,7 +172,7 @@ static void kill_children(pid_t pid)
 		pid_t pid;
 
 		if (fscanf(f, "%d ", &pid) != 1) {
-			ERROR("couldn't scan pid");
+			ERROR("Failed to retrieve pid");
 			fclose(f);
 			return;
 		}
@@ -337,10 +349,12 @@ int main(int argc, char *argv[])
 		case SIGPWR:
 		case SIGTERM:
 			if (!shutdown) {
+				pid_t mypid = getpid();
+
 				shutdown = 1;
 				prevent_forking();
-				if (getpid() != 1) {
-					kill_children(getpid());
+				if (mypid != 1) {
+					kill_children(mypid);
 				} else {
 					ret = kill(-1, SIGTERM);
 					if (ret < 0)
@@ -350,10 +364,12 @@ int main(int argc, char *argv[])
 				alarm(1);
 			}
 			break;
-		case SIGALRM:
+		case SIGALRM: {
+			pid_t mypid = getpid();
+
 			prevent_forking();
-			if (getpid() != 1) {
-				kill_children(getpid());
+			if (mypid != 1) {
+				kill_children(mypid);
 			} else {
 				ret = kill(-1, SIGTERM);
 				if (ret < 0)
@@ -361,6 +377,7 @@ int main(int argc, char *argv[])
 					      "all children", strerror(errno));
 			}
 			break;
+		}
 		default:
 			ret = kill(pid, was_interrupted);
 			if (ret < 0)
