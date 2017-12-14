@@ -207,7 +207,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		char *argv[] = {
 		    "veth",
 		    netdev->link,
-		    "veth1",
+		    veth1,
 		    NULL,
 		};
 
