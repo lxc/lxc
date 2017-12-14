@@ -63,6 +63,10 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	case 'g':
 		if (lxc_safe_uint(arg, &args->gid) < 0)
 			return -1;
+	case OPT_SHARE_NET: args->share_ns[LXC_NS_NET] = arg; break;
+	case OPT_SHARE_IPC: args->share_ns[LXC_NS_IPC] = arg; break;
+	case OPT_SHARE_UTS: args->share_ns[LXC_NS_UTS] = arg; break;
+	case OPT_SHARE_PID: args->share_ns[LXC_NS_PID] = arg; break;
 	}
 	return 0;
 }
@@ -73,6 +77,10 @@ static const struct option my_longopts[] = {
 	{"define", required_argument, 0, 's'},
 	{"uid", required_argument, 0, 'u'},
 	{"gid", required_argument, 0, 'g'},
+	{"share-net", required_argument, 0, OPT_SHARE_NET},
+	{"share-ipc", required_argument, 0, OPT_SHARE_IPC},
+	{"share-uts", required_argument, 0, OPT_SHARE_UTS},
+	{"share-pid", required_argument, 0, OPT_SHARE_PID},
 	LXC_COMMON_OPTIONS
 };
 
@@ -188,6 +196,11 @@ int main(int argc, char *argv[])
 
 	if (my_args.gid)
 		c->lxc_conf->init_gid = my_args.gid;
+
+	if (!lxc_setup_shared_ns(&my_args, c)) {
+		lxc_container_put(c);
+		exit(EXIT_FAILURE);
+	}
 
 	c->daemonize = my_args.daemonize == 1;
 	bret = c->start(c, 1, my_args.argv);

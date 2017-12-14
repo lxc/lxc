@@ -35,6 +35,7 @@
 #include "arguments.h"
 #include "utils.h"
 #include "version.h"
+#include "namespace.h"
 
 static int build_shortopts(const struct option *a_options, char *a_shortopts,
 			   size_t a_size)
@@ -288,4 +289,35 @@ int lxc_arguments_str_to_int(struct lxc_arguments *args, const char *str)
 	}
 
 	return (int)val;
+}
+
+bool lxc_setup_shared_ns(struct lxc_arguments *args, struct lxc_container *c)
+{
+	int i;
+
+	for (i = 0; i < LXC_NS_MAX; i++) {
+		const char *key, *value;
+
+		value = args->share_ns[i];
+		if (!value)
+			continue;
+
+		if (i == LXC_NS_NET)
+			key = "lxc.namespace.net";
+		else if (i == LXC_NS_IPC)
+			key = "lxc.namespace.ipc";
+		else if (i == LXC_NS_UTS)
+			key = "lxc.namespace.uts";
+		else if (i == LXC_NS_PID)
+			key = "lxc.namespace.pid";
+		else
+			continue;
+
+		if (!c->set_config_item(c, key, value)) {
+			lxc_error(args, "Failed to set \"%s = %s\"", key, value);
+			return false;
+		}
+	}
+
+	return true;
 }

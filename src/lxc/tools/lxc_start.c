@@ -50,11 +50,6 @@
 #include "confile.h"
 #include "arguments.h"
 
-#define OPT_SHARE_NET OPT_USAGE + 1
-#define OPT_SHARE_IPC OPT_USAGE + 2
-#define OPT_SHARE_UTS OPT_USAGE + 3
-#define OPT_SHARE_PID OPT_USAGE + 4
-
 static struct lxc_list defines;
 
 static int ensure_path(char **confpath, const char *path)
@@ -152,7 +147,6 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
-	int i;
 	struct lxc_conf *conf;
 	struct lxc_log log;
 	const char *lxcpath;
@@ -284,27 +278,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	for (i = 0; i < LXC_NS_MAX; i++) {
-		const char *key, *value;
-
-		value = my_args.share_ns[i];
-		if (!value)
-			continue;
-
-		if (i == LXC_NS_NET)
-			key = "lxc.namespace.net";
-		else if (i == LXC_NS_IPC)
-			key = "lxc.namespace.ipc";
-		else if (i == LXC_NS_UTS)
-			key = "lxc.namespace.uts";
-		else if (i == LXC_NS_PID)
-			key = "lxc.namespace.pid";
-		else
-			continue;
-
-		if (!c->set_config_item(c, key, value))
-			goto out;
-	}
+	if (!lxc_setup_shared_ns(&my_args, c))
+		goto out;
 
 	if (!my_args.daemonize) {
 		c->want_daemonize(c, false);
