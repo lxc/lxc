@@ -829,7 +829,7 @@ out_unlock:
  */
 static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_opts *opts, char *criu_version)
 {
-	int fd;
+	int fd, ret;
 	pid_t pid;
 	struct lxc_handler *handler;
 	int status = 0;
@@ -870,7 +870,11 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		goto out_fini_handler;
 	}
 
-	resolve_clone_flags(handler);
+	ret = resolve_clone_flags(handler);
+	if (ret < 0) {
+		ERROR("%s - Unsupported clone flag specified", strerror(errno));
+		goto out_fini_handler;
+	}
 
 	if (pipe(pipes) < 0) {
 		SYSERROR("pipe() failed");
