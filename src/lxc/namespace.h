@@ -28,6 +28,38 @@
 
 #include "config.h"
 
+#ifndef CLONE_PARENT_SETTID
+#define CLONE_PARENT_SETTID 0x00100000
+#endif
+
+#ifndef CLONE_CHILD_CLEARTID
+#define CLONE_CHILD_CLEARTID 0x00200000
+#endif
+
+#ifndef CLONE_CHILD_SETTID
+#define CLONE_CHILD_SETTID 0x01000000
+#endif
+
+#ifndef CLONE_VFORK
+#define CLONE_VFORK 0x00004000
+#endif
+
+#ifndef CLONE_THREAD
+#define CLONE_THREAD 0x00010000
+#endif
+
+#ifndef CLONE_SETTLS
+#define CLONE_SETTLS 0x00080000
+#endif
+
+#ifndef CLONE_VM
+#define CLONE_VM 0x00000100
+#endif
+
+#ifndef CLONE_FILES
+#define CLONE_FILES 0x00000400
+#endif
+
 #ifndef CLONE_FS
 #  define CLONE_FS                0x00000200
 #endif
@@ -81,6 +113,7 @@ int clone(int (*fn)(void *), void *child_stack,
 #endif
 
 extern pid_t lxc_clone(int (*fn)(void *), void *arg, int flags);
+extern pid_t lxc_raw_clone(unsigned long flags);
 
 extern int lxc_namespace_2_cloneflag(const char *namespace);
 extern int lxc_namespace_2_ns_idx(const char *namespace);
