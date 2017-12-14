@@ -41,6 +41,7 @@
 #include "initutils.h"
 #include "log.h"
 #include "utils.h"
+#include "parse.h"
 #include "version.h"
 
 /* option keys for long only options */
@@ -96,46 +97,64 @@ static struct arguments my_args = {
 static void prevent_forking(void)
 {
 	FILE *f;
-	char name[PATH_MAX], path[PATH_MAX];
-	int ret;
+	int fd = -1;
+	size_t len = 0;
+	char *line = NULL;
+	char path[MAXPATHLEN];
 
 	f = fopen("/proc/self/cgroup", "r");
-	if (!f) {
-		SYSERROR("opening /proc/self/cgroup");
+	if (!f)
 		return;
-	}
 
-	while (!feof(f)) {
-		int fd;
+	while (getline(&line, &len, f) != -1) {
+		int ret;
+		char *p, *p2;
 
-		if (2 != fscanf(f, "%*d:%[^:]:%s", name, path)) {
-			ERROR("didn't scan the right number of things");
-			goto out;
-		}
+		p = strchr(line, ':');
+		if (!p)
+			continue;
+		p++;
+		p2 = strchr(p, ':');
+		if (!p2)
+			continue;
+		*p2 = '\0';
 
-		if (strcmp(name, "pids"))
+		/* This is a cgroup v2 entry. Skip it. */
+		if ((p2 - p) == 0)
 			continue;
 
-		ret = snprintf(name, sizeof(name), "/sys/fs/cgroup/pids/%s/pids.max", path);
-		if (ret < 0 || ret >= sizeof(path)) {
-			ERROR("failed snprintf");
-			goto out;
+		if (strcmp(p, "pids") != 0)
+			continue;
+		p2++;
+
+		p2 += lxc_char_left_gc(p2, strlen(p2));
+		p2[lxc_char_right_gc(p2, strlen(p2))] = '\0';
+
+		ret = snprintf(path, sizeof(path),
+			       "/sys/fs/cgroup/pids/%s/pids.max", p2);
+		if (ret < 0 || (size_t)ret >= sizeof(path)) {
+			ERROR("Failed to create string");
+			goto on_error;
 		}
 
-		fd = open(name, O_WRONLY);
+		fd = open(path, O_WRONLY);
 		if (fd < 0) {
-			SYSERROR("open");
-			goto out;
+			SYSERROR("Failed to open \"%s\"", path);
+			goto on_error;
 		}
 
 		if (write(fd, "1", 1) != 1)
-			SYSERROR("write");
+			SYSERROR("Failed to write to \"%s\"", path);
 
 		close(fd);
+		fd = -1;
 		break;
 	}
 
-out:
+on_error:
+	if (fd >= 0)
+		close(fd);
+	free(line);
 	fclose(f);
 }
 
@@ -146,7 +165,7 @@ static void kill_children(pid_t pid)
 	int ret;
 
 	ret = snprintf(path, sizeof(path), "/proc/%d/task/%d/children", pid, pid);
-	if (ret < 0 || ret >= sizeof(path)) {
+	if (ret < 0 || (size_t)ret >= sizeof(path)) {
 		ERROR("failed snprintf");
 		return;
 	}
@@ -402,8 +421,6 @@ out:
 		exit(EXIT_FAILURE);
 	exit(ret);
 }
-
-
 
 static void print_usage(const struct option longopts[])
 
