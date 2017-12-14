@@ -63,10 +63,19 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 	case 'g':
 		if (lxc_safe_uint(arg, &args->gid) < 0)
 			return -1;
-	case OPT_SHARE_NET: args->share_ns[LXC_NS_NET] = arg; break;
-	case OPT_SHARE_IPC: args->share_ns[LXC_NS_IPC] = arg; break;
-	case OPT_SHARE_UTS: args->share_ns[LXC_NS_UTS] = arg; break;
-	case OPT_SHARE_PID: args->share_ns[LXC_NS_PID] = arg; break;
+		break;
+	case OPT_SHARE_NET:
+		args->share_ns[LXC_NS_NET] = arg;
+		break;
+	case OPT_SHARE_IPC:
+		args->share_ns[LXC_NS_IPC] = arg;
+		break;
+	case OPT_SHARE_UTS:
+		args->share_ns[LXC_NS_UTS] = arg;
+		break;
+	case OPT_SHARE_PID:
+		args->share_ns[LXC_NS_PID] = arg;
+		break;
 	}
 	return 0;
 }
