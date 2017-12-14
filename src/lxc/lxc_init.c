@@ -40,6 +40,7 @@
 #include "error.h"
 #include "initutils.h"
 #include "log.h"
+#include "parse.h"
 #include "version.h"
 
 /* option keys for long only options */
@@ -98,55 +99,64 @@ static struct arguments my_args = {
 static void prevent_forking(void)
 {
 	FILE *f;
-	char name[MAXPATHLEN], path[MAXPATHLEN];
-	int ret;
+	int fd = -1;
+	size_t len = 0;
+	char *line = NULL;
+	char path[MAXPATHLEN];
 
 	f = fopen("/proc/self/cgroup", "r");
-	if (!f) {
-		SYSERROR("Failed to open \"/proc/self/cgroup\"");
+	if (!f)
 		return;
-	}
 
-	while (!feof(f)) {
-		int fd, i;
+	while (getline(&line, &len, f) != -1) {
+		int ret;
+		char *p, *p2;
 
-		if (1 != fscanf(f, "%*d:%" QUOTEVAL(MAXPATHLEN) "s", name)) {
-			ERROR("Failed to parse \"/proc/self/cgroup\"");
-			goto out;
-		}
-		path[0] = 0;
+		p = strchr(line, ':');
+		if (!p)
+			continue;
+		p++;
+		p2 = strchr(p, ':');
+		if (!p2)
+			continue;
+		*p2 = '\0';
 
-		for (i = 0; i < sizeof(name); i++) {
-			if (name[i] == ':') {
-				name[i] = 0;
-				strncpy(path, name + i + 1, sizeof(path));
-				break;
-			}
-		}
-
-		if (strcmp(name, "pids"))
+		/* This is a cgroup v2 entry. Skip it. */
+		if ((p2 - p) == 0)
 			continue;
 
-		ret = snprintf(name, sizeof(name), "/sys/fs/cgroup/pids/%s/pids.max", path);
+		if (strcmp(p, "pids") != 0)
+			continue;
+		p2++;
+
+		p2 += lxc_char_left_gc(p2, strlen(p2));
+		p2[lxc_char_right_gc(p2, strlen(p2))] = '\0';
+
+		ret = snprintf(path, sizeof(path),
+			       "/sys/fs/cgroup/pids/%s/pids.max", p2);
 		if (ret < 0 || (size_t)ret >= sizeof(path)) {
 			ERROR("Failed to create string");
-			goto out;
+			goto on_error;
 		}
 
-		fd = open(name, O_WRONLY);
+		fd = open(path, O_WRONLY);
 		if (fd < 0) {
-			SYSERROR("Failed to open \"%s\"", name);
-			goto out;
+			SYSERROR("Failed to open \"%s\"", path);
+			goto on_error;
 		}
 
 		if (write(fd, "1", 1) != 1)
-			SYSERROR("Failed to write to \"%s\"", name);
+			SYSERROR("Failed to write to \"%s\"", path);
 
 		close(fd);
+		fd = -1;
 		break;
 	}
 
-out:
+on_error:
+	if (fd >= 0)
+		close(fd);
+	free(line);
 	fclose(f);
 }
 
@@ -418,8 +428,6 @@ out:
 		exit(EXIT_FAILURE);
 	exit(ret);
 }
-
-
 
 static void print_usage(const struct option longopts[])
 
