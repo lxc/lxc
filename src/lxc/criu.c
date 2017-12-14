@@ -653,6 +653,104 @@ err:
 }
 
 /*
+ * Function to check if the checks activated in 'features_to_check' are
+ * available with the current architecture/kernel/criu combination.
+ *
+ * Parameter features_to_check is a bit mask of all features that should be
+ * checked (see feature check defines in lxc/lxccontainer.h).
+ *
+ * If the return value is true, all requested features are supported. If
+ * the return value is false the features_to_check parameter is updated
+ * to reflect which features are available. '0' means no feature but
+ * also that something went totally wrong.
+ *
+ * Some of the code flow of criu_version_ok() is duplicated and maybe it
+ * is a good candidate for refactoring.
+ */
+bool __criu_check_feature(uint64_t *features_to_check)
+{
+	pid_t pid;
+	uint64_t current_bit = 0;
+	int ret;
+	int features = *features_to_check;
+	/* Feature checking is currently always like
+	 * criu check --feature <feature-name>
+	 */
+	char *args[] = { "criu", "check", "--feature", NULL, NULL };
+
+	if ((features & ~FEATURE_MEM_TRACK & ~FEATURE_LAZY_PAGES) != 0) {
+		/* There are feature bits activated we do not understand.
+		 * Refusing to answer at all */
+		*features_to_check = 0;
+		return false;
+	}
+
+	while (current_bit < sizeof(uint64_t) * 8) {
+		/* only test requested features */
+		if (!(features & (1ULL << current_bit))) {
+			/* skip this */
+			current_bit++;
+			continue;
+		}
+
+		pid = fork();
+		if (pid < 0) {
+			SYSERROR("fork() failed");
+			*features_to_check = 0;
+			return false;
+		}
+
+		if (pid == 0) {
+			if ((1ULL << current_bit) == FEATURE_MEM_TRACK)
+				/* This is needed for pre-dump support, which
+				 * enables pre-copy migration. */
+				args[3] = "mem_dirty_track";
+			else if ((1ULL << current_bit) == FEATURE_LAZY_PAGES)
+				/* CRIU has two checks for userfaultfd support.
+				 *
+				 * The simpler check is only for 'uffd'. If the
+				 * kernel supports userfaultfd without noncoop
+				 * then only process can be lazily restored
+				 * which do not fork. With 'uffd-noncoop'
+				 * it is also possible to lazily restore processes
+				 * which do fork. For a container runtime like
+				 * LXC checking only for 'uffd' makes not much sense. */
+				args[3] = "uffd-noncoop";
+			else
+				exit(1);
+
+			null_stdfds();
+
+			execvp("criu", args);
+			SYSERROR("Failed to exec \"criu\"");
+			exit(1);
+		}
+
+		ret = wait_for_pid(pid);
+
+		if (ret == -1) {
+			/* It is not known why CRIU failed. Either
+			 * CRIU is not available, the feature check
+			 * does not exist or the feature is not
+			 * supported. */
+			INFO("feature not supported");
+			/* Clear not supported feature bit */
+			features &= ~(1ULL << current_bit);
+		}
+
+		current_bit++;
+		/* no more checks requested; exit check loop */
+		if (!(features & ~((1ULL << current_bit)-1)))
+			break;
+	}
+	if (features != *features_to_check) {
+		*features_to_check = features;
+		return false;
+	}
+	return true;
+}
+
+/*
  * Check to see if the criu version is recent enough for all the features we
  * use. This version allows either CRIU_VERSION or (CRIU_GITID_VERSION and
  * CRIU_GITID_PATCHLEVEL) to work, enabling users building from git to c/r

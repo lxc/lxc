@@ -32,6 +32,7 @@ lxc_test_shortlived_SOURCES = shortlived.c
 lxc_test_livepatch_SOURCES = livepatch.c lxctest.h
 lxc_test_state_server_SOURCES = state_server.c lxctest.h
 lxc_test_share_ns_SOURCES = share_ns.c lxctest.h
+lxc_test_criu_check_feature_SOURCES = criu_check_feature.c lxctest.h
 
 AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	-DLXCPATH=\"$(LXCPATH)\" \
@@ -61,7 +62,8 @@ bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-reboot lxc-test-list lxc-test-attach lxc-test-device-add-remove \
 	lxc-test-apparmor lxc-test-utils lxc-test-parse-config-file \
 	lxc-test-config-jump-table lxc-test-shortlived lxc-test-livepatch \
-	lxc-test-api-reboot lxc-test-state-server lxc-test-share-ns
+	lxc-test-api-reboot lxc-test-state-server lxc-test-share-ns \
+	lxc-test-criu-check-feature
 
 bin_SCRIPTS = lxc-test-automount \
 	      lxc-test-autostart \
@@ -93,6 +95,7 @@ EXTRA_DIST = \
 	console_log.c \
 	containertests.c \
 	createtest.c \
+	criu_check_feature.c \
 	destroytest.c \
 	device_add_remove.c \
 	get_item.c \

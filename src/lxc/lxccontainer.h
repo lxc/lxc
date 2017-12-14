@@ -904,7 +904,14 @@ enum {
 	MIGRATE_PRE_DUMP,
 	MIGRATE_DUMP,
 	MIGRATE_RESTORE,
+	MIGRATE_FEATURE_CHECK,
 };
+
+/*!
+ * \brief Available feature checks.
+ */
+#define FEATURE_MEM_TRACK    (1ULL << 0)
+#define FEATURE_LAZY_PAGES   (1ULL << 1)
 
 /*!
  * \brief Options for the migrate API call.
@@ -942,6 +949,13 @@ struct migrate_opts {
 	 * which at this time is 1MB.
 	 */
 	uint64_t ghost_limit;
+
+	/* Some features cannot be checked by comparing the CRIU version.
+	 * Features like dirty page tracking or userfaultfd depend on
+	 * the architecture/kernel/criu combination. This is a bitmask
+	 * in which the desired feature checks can be encoded.
+	 */
+	uint64_t features_to_check;
 };
 
 struct lxc_console_log {

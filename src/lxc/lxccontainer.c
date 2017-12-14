@@ -4510,6 +4510,7 @@ static int do_lxcapi_migrate(struct lxc_container *c, unsigned int cmd,
 {
 	int ret = -1;
 	struct migrate_opts *valid_opts = opts;
+	uint64_t features_to_check = 0;
 
 	/* If the caller has a bigger (newer) struct migrate_opts, let's make
 	 * sure that the stuff on the end is zero, i.e. that they didn't ask us
@@ -4562,6 +4563,15 @@ static int do_lxcapi_migrate(struct lxc_container *c, unsigned int cmd,
 			goto on_error;
 		}
 		ret = !__criu_restore(c, valid_opts);
+		break;
+	case MIGRATE_FEATURE_CHECK:
+		features_to_check = valid_opts->features_to_check;
+		ret = !__criu_check_feature(&features_to_check);
+		if (ret) {
+			/* Something went wrong. Let's let the caller
+			 * know which feature checks failed. */
+			valid_opts->features_to_check = features_to_check;
+		}
 		break;
 	default:
 		ERROR("invalid migrate command %u", cmd);
