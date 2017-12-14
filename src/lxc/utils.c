@@ -2162,7 +2162,7 @@ int run_command(char *buf, size_t buf_size, int (*child_fn)(void *), void *args)
 		return -1;
 	}
 
-	child = fork();
+	child = lxc_raw_clone(0);
 	if (child < 0) {
 		close(pipefd[0]);
 		close(pipefd[1]);
