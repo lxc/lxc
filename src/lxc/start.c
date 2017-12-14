@@ -612,6 +612,7 @@ on_error:
 
 int lxc_init(const char *name, struct lxc_handler *handler)
 {
+	int ret;
 	const char *loglevel;
 	struct lxc_conf *conf = handler->conf;
 
@@ -656,11 +657,18 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	loglevel = lxc_log_priority_to_string(lxc_log_get_level());
 	if (setenv("LXC_LOG_LEVEL", loglevel, 1))
 		SYSERROR("Failed to set environment variable LXC_LOG_LEVEL=%s", loglevel);
+
+	if (conf->hooks_version == 0)
+		ret = setenv("LXC_HOOK_VERSION", "0", 1);
+	else
+		ret = setenv("LXC_HOOK_VERSION", "1", 1);
+	if (ret < 0)
+		SYSERROR("Failed to set environment variable LXC_HOOK_VERSION=%u", conf->hooks_version);
 	/* End of environment variable setup for hooks. */
 
 	TRACE("set environment variables");
 
-	if (run_lxc_hooks(name, "pre-start", conf, handler->lxcpath, NULL)) {
+	if (run_lxc_hooks(name, "pre-start", conf, NULL)) {
 		ERROR("Failed to run lxc.hook.pre-start for container \"%s\".", name);
 		goto out_aborting;
 	}
@@ -708,8 +716,8 @@ out_close_maincmd_fd:
 void lxc_fini(const char *name, struct lxc_handler *handler)
 {
 	int i, rc;
+	pid_t self;
 	struct lxc_list *cur, *next;
-	pid_t self = getpid();
 	char *namespaces[LXC_NS_MAX + 1];
 	size_t namespace_count = 0;
 
@@ -718,16 +726,37 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	 */
 	lxc_set_state(name, handler, STOPPING);
 
+	self = getpid();
 	for (i = 0; i < LXC_NS_MAX; i++) {
-		if (handler->nsfd[i] != -1) {
-			rc = asprintf(&namespaces[namespace_count], "%s:/proc/%d/fd/%d",
-			              ns_info[i].proc_name, self, handler->nsfd[i]);
-			if (rc == -1) {
-				SYSERROR("Failed to allocate memory.");
-				break;
-			}
-			++namespace_count;
+		if (handler->nsfd[i] < 0)
+			continue;
+
+		if (handler->conf->hooks_version == 0)
+			rc = asprintf(&namespaces[namespace_count],
+				      "%s:/proc/%d/fd/%d", ns_info[i].proc_name,
+				      self, handler->nsfd[i]);
+		else
+			rc = asprintf(&namespaces[namespace_count],
+				      "/proc/%d/fd/%d", self, handler->nsfd[i]);
+		if (rc == -1) {
+			SYSERROR("Failed to allocate memory.");
+			break;
 		}
+
+		if (handler->conf->hooks_version == 0) {
+			namespace_count++;
+			continue;
+		}
+
+		rc = setenv(ns_info[i].env_name, namespaces[namespace_count], 1);
+		if (rc < 0)
+			SYSERROR("Failed to set environment variable %s=%s",
+				 ns_info[i].env_name, namespaces[namespace_count]);
+		else
+			TRACE("Set environment variable %s=%s",
+			      ns_info[i].env_name, namespaces[namespace_count]);
+
+		namespace_count++;
 	}
 	namespaces[namespace_count] = NULL;
 
@@ -737,8 +766,10 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	if (!handler->conf->reboot && setenv("LXC_TARGET", "stop", 1))
 		SYSERROR("Failed to set environment variable: LXC_TARGET=stop.");
 
-	if (run_lxc_hooks(name, "stop", handler->conf, handler->lxcpath, namespaces))
-		ERROR("Failed to run lxc.hook.stop for container \"%s\".", name);
+	if (handler->conf->hooks_version == 0)
+		rc = run_lxc_hooks(name, "stop", handler->conf, namespaces);
+	else
+		rc = run_lxc_hooks(name, "stop", handler->conf, NULL);
 
 	while (namespace_count--)
 		free(namespaces[namespace_count]);
@@ -761,7 +792,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		handler->conf->maincmd_fd = -1;
 	}
 
-	if (run_lxc_hooks(name, "post-stop", handler->conf, handler->lxcpath, NULL)) {
+	if (run_lxc_hooks(name, "post-stop", handler->conf, NULL)) {
 		ERROR("Failed to run lxc.hook.post-stop for container \"%s\".", name);
 		if (handler->conf->reboot) {
 			WARN("Container will be stopped instead of rebooted.");
@@ -1022,7 +1053,7 @@ static int do_start(void *data)
 	if (lxc_seccomp_load(handler->conf) != 0)
 		goto out_warn_father;
 
-	if (run_lxc_hooks(handler->name, "start", handler->conf, handler->lxcpath, NULL)) {
+	if (run_lxc_hooks(handler->name, "start", handler->conf, NULL)) {
 		ERROR("Failed to run lxc.hook.start for container \"%s\".", handler->name);
 		goto out_warn_father;
 	}
@@ -1482,7 +1513,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		SYSERROR("Failed to set environment variable: LXC_PID=%s.", pidstr);
 
 	/* Run any host-side start hooks */
-	if (run_lxc_hooks(name, "start-host", conf, handler->lxcpath, NULL)) {
+	if (run_lxc_hooks(name, "start-host", conf, NULL)) {
 		ERROR("Failed to run lxc.hook.start-host for container \"%s\".", name);
 		return -1;
 	}

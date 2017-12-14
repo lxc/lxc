@@ -2746,7 +2746,7 @@ static bool container_destroy(struct lxc_container *c,
 			SYSERROR("Failed to set environment variable for console log");
 		/* End of environment variable setup for hooks */
 
-		if (run_lxc_hooks(c->name, "destroy", conf, c->get_config_path(c), NULL)) {
+		if (run_lxc_hooks(c->name, "destroy", conf, NULL)) {
 			ERROR("Failed to execute clone hook for \"%s\"", c->name);
 			goto out;
 		}
@@ -3458,7 +3458,7 @@ static int clone_update_rootfs(struct clone_update_data *data)
 			SYSERROR("failed to set environment variable for rootfs mount");
 		}
 
-		if (run_lxc_hooks(c->name, "clone", conf, c->get_config_path(c), hookargs)) {
+		if (run_lxc_hooks(c->name, "clone", conf, hookargs)) {
 			ERROR("Error executing clone hook for %s", c->name);
 			storage_put(bdev);
 			return -1;

@@ -308,84 +308,167 @@ static int run_buffer(char *buffer)
 
 	f = lxc_popen(buffer);
 	if (!f) {
-		SYSERROR("Failed to popen() %s.", buffer);
+		SYSERROR("Failed to popen() %s", buffer);
 		return -1;
 	}
 
 	output = malloc(LXC_LOG_BUFFER_SIZE);
 	if (!output) {
-		ERROR("Failed to allocate memory for %s.", buffer);
+		ERROR("Failed to allocate memory for %s", buffer);
 		lxc_pclose(f);
 		return -1;
 	}
 
 	while (fgets(output, LXC_LOG_BUFFER_SIZE, f->f))
-		DEBUG("Script %s with output: %s.", buffer, output);
+		DEBUG("Script %s with output: %s", buffer, output);
 
 	free(output);
 
 	ret = lxc_pclose(f);
 	if (ret == -1) {
-		SYSERROR("Script exited with error.");
+		SYSERROR("Script exited with error");
 		return -1;
 	} else if (WIFEXITED(ret) && WEXITSTATUS(ret) != 0) {
-		ERROR("Script exited with status %d.", WEXITSTATUS(ret));
+		ERROR("Script exited with status %d", WEXITSTATUS(ret));
 		return -1;
 	} else if (WIFSIGNALED(ret)) {
-		ERROR("Script terminated by signal %d.", WTERMSIG(ret));
+		ERROR("Script terminated by signal %d", WTERMSIG(ret));
 		return -1;
 	}
 
 	return 0;
 }
 
-static int run_script_argv(const char *name, const char *section,
-			   const char *script, const char *hook,
-			   const char *lxcpath, char **argsin)
+int run_script_argv(const char *name, unsigned int hook_version,
+		    const char *section, const char *script,
+		    const char *hookname, char **argsin)
 {
-	int ret, i;
+	int buf_pos, i, ret;
 	char *buffer;
 	size_t size = 0;
 
-	INFO("Executing script \"%s\" for container \"%s\", config section \"%s\".",
-	     script, name, section);
+	if (hook_version == 0)
+		INFO("Executing script \"%s\" for container \"%s\", config "
+		     "section \"%s\"", script, name, section);
+	else
+		INFO("Executing script \"%s\" for container \"%s\"", script, name);
 
 	for (i = 0; argsin && argsin[i]; i++)
 		size += strlen(argsin[i]) + 1;
 
-	size += strlen(hook) + 1;
-
-	size += strlen("exec");
+	size += sizeof("exec");
 	size += strlen(script);
-	size += strlen(name);
-	size += strlen(section);
-	size += 4;
+	size++;
 
 	if (size > INT_MAX)
-		return -1;
+		return -EFBIG;
 
 	buffer = alloca(size);
-	if (!buffer) {
-		ERROR("Failed to allocate memory.");
-		return -1;
-	}
 
-	ret =
-	    snprintf(buffer, size, "exec %s %s %s %s", script, name, section, hook);
-	if (ret < 0 || (size_t)ret >= size) {
-		ERROR("Script name too long.");
-		return -1;
+	if (hook_version == 0) {
+		size += strlen(hookname);
+		size++;
+
+		size += strlen(name);
+		size++;
+
+		size += strlen(section);
+		size++;
+
+		if (size > INT_MAX)
+			return -EFBIG;
+
+		buf_pos = snprintf(buffer, size, "exec %s %s %s %s", script, name, section, hookname);
+		if (buf_pos < 0 || (size_t)buf_pos >= size) {
+			ERROR("Failed to create command line for script \"%s\"", script);
+			return -1;
+		}
+	} else {
+		buf_pos = snprintf(buffer, size, "exec %s", script);
+		if (buf_pos < 0 || (size_t)buf_pos >= size) {
+			ERROR("Failed to create command line for script \"%s\"", script);
+			return -1;
+		}
+
+		ret = setenv("LXC_HOOK_TYPE", hookname, 1);
+		if (ret < 0) {
+			SYSERROR("Failed to set environment variable: "
+				 "LXC_HOOK_TYPE=%s", hookname);
+			return -1;
+		}
+		TRACE("Set environment variable: LXC_HOOK_TYPE=%s", section);
+
+		ret = setenv("LXC_HOOK_SECTION", section, 1);
+		if (ret < 0) {
+			SYSERROR("Failed to set environment variable: "
+				 "LXC_HOOK_SECTION=%s", section);
+			return -1;
+		}
+		TRACE("Set environment variable: LXC_HOOK_SECTION=%s", section);
+
+		if (strcmp(section, "net") == 0) {
+			char *parent;
+
+			if (!argsin[0])
+				return -EINVAL;
+
+			ret = setenv("LXC_NET_TYPE", argsin[0], 1);
+			if (ret < 0) {
+				SYSERROR("Failed to set environment variable: "
+					 "LXC_NET_TYPE=%s", argsin[0]);
+				return -1;
+			}
+			TRACE("Set environment variable: LXC_NET_TYPE=%s", argsin[0]);
+
+			parent = argsin[1] ? argsin[1] : "";
+
+			if (strcmp(argsin[0], "macvlan")) {
+				ret = setenv("LXC_NET_PARENT", parent, 1);
+				if (ret < 0) {
+					SYSERROR("Failed to set environment "
+						 "variable: LXC_NET_PARENT=%s", parent);
+					return -1;
+				}
+				TRACE("Set environment variable: LXC_NET_PARENT=%s", parent);
+			} else if (strcmp(argsin[0], "phys")) {
+				ret = setenv("LXC_NET_PARENT", parent, 1);
+				if (ret < 0) {
+					SYSERROR("Failed to set environment "
+						 "variable: LXC_NET_PARENT=%s", parent);
+					return -1;
+				}
+				TRACE("Set environment variable: LXC_NET_PARENT=%s", parent);
+			} else if (strcmp(argsin[0], "veth")) {
+				char *peer = argsin[2] ? argsin[2] : "";
+
+				ret = setenv("LXC_NET_PEER", peer, 1);
+				if (ret < 0) {
+					SYSERROR("Failed to set environment "
+						 "variable: LXC_NET_PEER=%s", peer);
+					return -1;
+				}
+				TRACE("Set environment variable: LXC_NET_PEER=%s", peer);
+
+				ret = setenv("LXC_NET_PARENT", parent, 1);
+				if (ret < 0) {
+					SYSERROR("Failed to set environment "
+						 "variable: LXC_NET_PARENT=%s", parent);
+					return -1;
+				}
+				TRACE("Set environment variable: LXC_NET_PARENT=%s", parent);
+			}
+		}
 	}
 
 	for (i = 0; argsin && argsin[i]; i++) {
-		int len = size - ret;
-		int rc;
-		rc = snprintf(buffer + ret, len, " %s", argsin[i]);
-		if (rc < 0 || rc >= len) {
-			ERROR("Script args too long.");
+		size_t len = size - buf_pos;
+
+		ret = snprintf(buffer + buf_pos, len, " %s", argsin[i]);
+		if (ret < 0 || (size_t)ret >= len) {
+			ERROR("Failed to create command line for script \"%s\"", script);
 			return -1;
 		}
-		ret += rc;
+		buf_pos += ret;
 	}
 
 	return run_buffer(buffer);
@@ -2484,6 +2567,7 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->limits);
 	lxc_list_init(&new->sysctls);
 	lxc_list_init(&new->procs);
+	new->hooks_version = 0;
 	for (i = 0; i < NUM_LXC_HOOKS; i++)
 		lxc_list_init(&new->hooks[i]);
 	lxc_list_init(&new->groups);
@@ -3068,7 +3152,7 @@ int do_rootfs_setup(struct lxc_conf *conf, const char *name, const char *lxcpath
 
 	remount_all_slave();
 
-	if (run_lxc_hooks(name, "pre-mount", conf, lxcpath, NULL)) {
+	if (run_lxc_hooks(name, "pre-mount", conf, NULL)) {
 		ERROR("failed to run pre-mount hooks for container '%s'.", name);
 		return -1;
 	}
@@ -3177,13 +3261,13 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
-	if (run_lxc_hooks(name, "mount", lxc_conf, lxcpath, NULL)) {
+	if (run_lxc_hooks(name, "mount", lxc_conf, NULL)) {
 		ERROR("failed to run mount hooks for container '%s'.", name);
 		return -1;
 	}
 
 	if (lxc_conf->autodev > 0) {
-		if (run_lxc_hooks(name, "autodev", lxc_conf, lxcpath, NULL)) {
+		if (run_lxc_hooks(name, "autodev", lxc_conf, NULL)) {
 			ERROR("failed to run autodev hooks for container '%s'.", name);
 			return -1;
 		}
@@ -3260,41 +3344,45 @@ int lxc_setup(struct lxc_handler *handler)
 	return 0;
 }
 
-int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
-		  const char *lxcpath, char *argv[])
+int run_lxc_hooks(const char *name, char *hookname, struct lxc_conf *conf,
+		  char *argv[])
 {
-	int which = -1;
 	struct lxc_list *it;
+	int which = -1;
 
-	if (strcmp(hook, "pre-start") == 0)
+	if (strcmp(hookname, "pre-start") == 0)
 		which = LXCHOOK_PRESTART;
-	else if (strcmp(hook, "start-host") == 0)
+	else if (strcmp(hookname, "start-host") == 0)
 		which = LXCHOOK_START_HOST;
-	else if (strcmp(hook, "pre-mount") == 0)
+	else if (strcmp(hookname, "pre-mount") == 0)
 		which = LXCHOOK_PREMOUNT;
-	else if (strcmp(hook, "mount") == 0)
+	else if (strcmp(hookname, "mount") == 0)
 		which = LXCHOOK_MOUNT;
-	else if (strcmp(hook, "autodev") == 0)
+	else if (strcmp(hookname, "autodev") == 0)
 		which = LXCHOOK_AUTODEV;
-	else if (strcmp(hook, "start") == 0)
+	else if (strcmp(hookname, "start") == 0)
 		which = LXCHOOK_START;
-	else if (strcmp(hook, "stop") == 0)
+	else if (strcmp(hookname, "stop") == 0)
 		which = LXCHOOK_STOP;
-	else if (strcmp(hook, "post-stop") == 0)
+	else if (strcmp(hookname, "post-stop") == 0)
 		which = LXCHOOK_POSTSTOP;
-	else if (strcmp(hook, "clone") == 0)
+	else if (strcmp(hookname, "clone") == 0)
 		which = LXCHOOK_CLONE;
-	else if (strcmp(hook, "destroy") == 0)
+	else if (strcmp(hookname, "destroy") == 0)
 		which = LXCHOOK_DESTROY;
 	else
 		return -1;
+
 	lxc_list_for_each(it, &conf->hooks[which]) {
 		int ret;
-		char *hookname = it->elem;
-		ret = run_script_argv(name, "lxc", hookname, hook, lxcpath, argv);
-		if (ret)
-			return ret;
+		char *hook = it->elem;
+
+		ret = run_script_argv(name, conf->hooks_version, "lxc", hook,
+				      hookname, argv);
+		if (ret < 0)
+			return -1;
 	}
+
 	return 0;
 }
 

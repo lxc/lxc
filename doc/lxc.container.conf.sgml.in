@@ -308,9 +308,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <title>Init ID</title>
       <para>
         Sets the UID/GID to use for the init system, and subsequent commands.
-        Note that using a non-root uid when booting a system container will
+        Note that using a non-root UID when booting a system container will
         likely not work due to missing privileges. Setting the UID/GID is mostly
-        useful when running application container.
+        useful when running application containers.
 
         Defaults to: UID(0), GID(0)
       </para>
@@ -608,7 +608,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           </listitem>
         </varlistentry>
 
-
         <varlistentry>
           <term>
             <option>lxc.net.[i].ipv6.address</option>
@@ -651,15 +650,56 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             <para>
               Add a configuration option to specify a script to be
               executed after creating and configuring the network used
-              from the host side. The following arguments are passed
-              to the script: container name and config section name
-              (net) Additional arguments depend on the config section
-              employing a script hook; the following are used by the
-              network system: execution context (up), network type
-              (empty/veth/macvlan/phys), Depending on the network
-              type, other arguments may be passed:
-              veth/macvlan/phys. And finally (host-sided) device name.
+              from the host side.
             </para>
+
+            <para>
+              In addition to the information available to all hooks. The
+              following information is provided to the script:
+              <itemizedlist>
+                <listitem>
+                 <para>
+                 LXC_HOOK_TYPE: the hook type. This is either 'up' or 'down'.
+                  </para>
+                </listitem>
+
+                <listitem>
+                 <para>
+                 LXC_HOOK_SECTION: the section type 'net'.
+                  </para>
+                </listitem>
+
+                <listitem>
+                 <para>
+                 LXC_NET_TYPE: the network type. This is one of the valid
+                 network types listed here (e.g. 'macvlan', 'veth').
+                  </para>
+                </listitem>
+
+                <listitem>
+                 <para>
+                 LXC_NET_PARENT: the parent device on the host. This is only
+                 set for network types 'mavclan', 'veth', 'phys'.
+                  </para>
+                </listitem>
+
+                <listitem>
+                 <para>
+                 LXC_NET_PEER: the name of the peer device on the host. This is
+                 only set for 'veth' network types. Note that this information
+                 is only available when <option>lxc.hook.version</option> is set
+                 to 1.
+                  </para>
+                </listitem>
+              </itemizedlist>
+
+              Whether this information is provided in the form of environment
+              variables or as arguments to the script depends on the value of
+              <option>lxc.hook.version</option>. If set to 1 then information is
+              provided in the form of environment variables. If set to 0
+              information is provided as arguments to the script.
+            </para>
+
             <para>
               Standard output from the script is logged at debug level.
               Standard error is not logged, but can be captured by the
@@ -676,15 +716,56 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             <para>
               Add a configuration option to specify a script to be
               executed before destroying the network used from the
-              host side. The following arguments are passed to the
-              script: container name and config section name (net)
-              Additional arguments depend on the config section
-              employing a script hook; the following are used by the
-              network system: execution context (down), network type
-              (empty/veth/macvlan/phys), Depending on the network
-              type, other arguments may be passed:
-              veth/macvlan/phys. And finally (host-sided) device name.
+              host side.
             </para>
+
+            <para>
+              In addition to the information available to all hooks. The
+              following information is provided to the script:
+              <itemizedlist>
+                <listitem>
+                 <para>
+                 LXC_HOOK_TYPE: the hook type. This is either 'up' or 'down'.
+                  </para>
+                </listitem>
+
+                <listitem>
+                 <para>
+                 LXC_HOOK_SECTION: the section type 'net'.
+                  </para>
+                </listitem>
+
+                <listitem>
+                 <para>
+                 LXC_NET_TYPE: the network type. This is one of the valid
+                 network types listed here (e.g. 'macvlan', 'veth').
+                  </para>
+                </listitem>
+
+                <listitem>
+                 <para>
+                 LXC_NET_PARENT: the parent device on the host. This is only
+                 set for network types 'mavclan', 'veth', 'phys'.
+                  </para>
+                </listitem>
+
+                <listitem>
+                 <para>
+                 LXC_NET_PEER: the name of the peer device on the host. This is
+                 only set for 'veth' network types. Note that this information
+                 is only available when <option>lxc.hook.version</option> is set
+                 to 1.
+                  </para>
+                </listitem>
+              </itemizedlist>
+
+              Whether this information is provided in the form of environment
+              variables or as arguments to the script depends on the value of
+              <option>lxc.hook.version</option>. If set to 1 then information is
+              provided in the form of environment variables. If set to 0
+              information is provided as arguments to the script.
+            </para>
+
             <para>
               Standard output from the script is logged at debug level.
               Standard error is not logged, but can be captured by the
@@ -1636,9 +1717,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         at various times in a container's lifetime.
       </para>
       <para>
-        When a container hook is executed, information is passed both
-        as command line arguments and through environment variables.
-        The arguments are:
+        When a container hook is executed, additional information is passed
+        along. The <option>lxc.hook.version</option> argument can be used to
+        determine if the following arguments are passed as command line
+        arguments or through environment variables. The arguments are:
         <itemizedlist>
           <listitem><para> Container name. </para></listitem>
           <listitem><para> Section (always 'lxc'). </para></listitem>
@@ -1652,13 +1734,38 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         </itemizedlist>
         The following environment variables are set:
         <itemizedlist>
+          <listitem><para> LXC_CGNS_AWARE: indicator whether the container is
+          cgroup namespace aware. </para></listitem>
+          <listitem><para> LXC_CONFIG_FILE: the path to the container
+          configuration file. </para></listitem>
+          <listitem><para> LXC_HOOK_TYPE: the hook type (e.g. 'clone', 'mount',
+          'pre-mount'). Note that the existence of this environment variable is
+          conditional on the value of <option>lxc.hook.version</option>. If it
+          is set to 1 then LXC_HOOK_TYPE will be set.
+          </para></listitem>
+          <listitem><para> LXC_HOOK_SECTION: the section type (e.g. 'lxc',
+          'net'). Note that the existence of this environment variable is
+          conditional on the value of <option>lxc.hook.version</option>. If it
+          is set to 1 then LXC_HOOK_SECTION will be set.
+          </para></listitem>
+          <listitem><para> LXC_HOOK_VERSION: the version of the hooks. This
+          value is identical to the value of the container's
+          <option>lxc.hook.version</option> config item. If it is set to 0 then
+          old-style hooks are used. If it is set to 1 then new-style hooks are
+          used. </para></listitem>
+          <listitem><para> LXC_LOG_LEVEL: the container's log level. </para></listitem>
           <listitem><para> LXC_NAME: is the container's name. </para></listitem>
+          <listitem><para> LXC_[NAMESPACE IDENTIFIER]_NS: path under
+          /proc/PID/fd/ to a file descriptor referring to the container's
+          namespace. For each preserved namespace type there will be a separate
+          environment variable. These environment variables will only be set if
+          <option>lxc.hook.version</option> is set to 1. </para></listitem>
           <listitem><para> LXC_ROOTFS_MOUNT: the path to the mounted root filesystem. </para></listitem>
-          <listitem><para> LXC_CONFIG_FILE: the path to the container configuration file. </para></listitem>
-          <listitem><para> LXC_SRC_NAME: in the case of the clone hook, this is the original container's name. </para></listitem>
-          <listitem><para> LXC_ROOTFS_PATH: this is the lxc.rootfs.path entry for the container.  Note this is likely not where the mounted rootfs is to be found, use LXC_ROOTFS_MOUNT for that. </para></listitem>
-          <listitem><para> LXC_CGNS_AWARE: indicated whether the container is cgroup namespace aware.  </para></listitem>
-          <listitem><para> LXC_LOG_LEVEL: the container's log level.  </para></listitem>
+          <listitem><para> LXC_ROOTFS_PATH: this is the lxc.rootfs.path entry
+          for the container. Note this is likely not where the mounted rootfs is
+          to be found, use LXC_ROOTFS_MOUNT for that. </para></listitem>
+          <listitem><para> LXC_SRC_NAME: in the case of the clone hook, this is
+          the original container's name. </para></listitem>
         </itemizedlist>
       </para>
       <para>
@@ -1666,6 +1773,33 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         Standard error is not logged, but can be captured by the
         hook redirecting its standard error to standard output.
       </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.hook.version</option>
+          </term>
+          <listitem>
+            <para>
+            To pass the arguments in new style via environment variables set to
+            1 otherwise set to 0 to pass them as arguments.
+            This setting affects all hooks arguments that were traditionally
+            passed as arguments to the script. Specifically, it affects the
+            container name, section (e.g. 'lxc', 'net') and hook type (e.g.
+            'clone', 'mount', 'pre-mount') arguments. If new-style hooks are
+            used then the arguments will be available as environment variables.
+            The container name will be set in LXC_NAME. (This is set
+            independently of the value used for this config item.) The section
+            will be set in LXC_HOOK_SECTION and the hook type will be set in
+            LXC_HOOK_TYPE.
+            It also affects how the paths to file descriptors referring to the
+            container's namespaces are passed. If set to 1 then for each
+            namespace a separate environment variable LXC_[NAMESPACE
+            IDENTIFIER]_NS will be set. If set to 0 then the paths will be
+            passed as arguments to the stop hook.
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
       <variablelist>
         <varlistentry>
           <term>

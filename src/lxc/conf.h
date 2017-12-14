@@ -295,7 +295,11 @@ struct lxc_conf {
 	struct lxc_rootfs rootfs;
 	char *ttydir;
 	int close_all_fds;
-	struct lxc_list hooks[NUM_LXC_HOOKS];
+
+	struct {
+		unsigned int hooks_version;
+		struct lxc_list hooks[NUM_LXC_HOOKS];
+	};
 
 	char *lsm_aa_profile;
 	unsigned int lsm_aa_allow_incomplete;
@@ -408,7 +412,7 @@ extern struct lxc_conf *current_config;
 #endif
 
 extern int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
-			 const char *lxcpath, char *argv[]);
+			 char *argv[]);
 extern int detect_shared_rootfs(void);
 extern struct lxc_conf *lxc_conf_init(void);
 extern void lxc_conf_free(struct lxc_conf *conf);
@@ -453,6 +457,9 @@ extern unsigned long add_required_remount_flags(const char *s, const char *d,
 						unsigned long flags);
 extern int run_script(const char *name, const char *section, const char *script,
 		      ...);
+extern int run_script_argv(const char *name, unsigned int hook_version,
+			   const char *section, const char *script,
+			   const char *hookname, char **argsin);
 extern int in_caplist(int cap, struct lxc_list *caps);
 extern int setup_sysctl_parameters(struct lxc_list *sysctls);
 extern int lxc_clear_sysctls(struct lxc_conf *c, const char *key);
