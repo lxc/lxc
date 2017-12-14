@@ -345,7 +345,7 @@ int run_script_argv(const char *name, unsigned int hook_version,
 {
 	int buf_pos, i, ret;
 	char *buffer;
-	size_t size = 0, size_legacy_args = 0;
+	size_t size = 0;
 
 	if (hook_version == 0)
 		INFO("Executing script \"%s\" for container \"%s\", config "
@@ -360,22 +360,23 @@ int run_script_argv(const char *name, unsigned int hook_version,
 	size += strlen(script);
 	size++;
 
-	size_legacy_args += strlen(section);
-	size_legacy_args++;
-
-	size_legacy_args += strlen(name);
-	size_legacy_args++;
-
-	size_legacy_args += strlen(hookname);
-	size_legacy_args++;
-
 	if (size > INT_MAX)
 		return -EFBIG;
 
 	buffer = alloca(size);
 
 	if (hook_version == 0) {
-		size += size_legacy_args;
+		size += strlen(hookname);
+		size++;
+
+		size += strlen(name);
+		size++;
+
+		size += strlen(section);
+		size++;
+
+		if (size > INT_MAX)
+			return -EFBIG;
 
 		buf_pos = snprintf(buffer, size, "exec %s %s %s %s", script, name, section, hookname);
 		if (buf_pos < 0 || (size_t)buf_pos >= size) {
