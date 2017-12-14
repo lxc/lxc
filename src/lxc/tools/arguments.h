@@ -160,11 +160,10 @@ struct lxc_arguments {
 #define OPT_USAGE 0x1000
 #define OPT_VERSION OPT_USAGE - 1
 #define OPT_RCFILE OPT_USAGE - 2
-
-#define OPT_SHARE_NET OPT_USAGE + 1
-#define OPT_SHARE_IPC OPT_USAGE + 2
-#define OPT_SHARE_UTS OPT_USAGE + 3
-#define OPT_SHARE_PID OPT_USAGE + 4
+#define OPT_SHARE_NET OPT_USAGE - 3
+#define OPT_SHARE_IPC OPT_USAGE - 4
+#define OPT_SHARE_UTS OPT_USAGE - 5
+#define OPT_SHARE_PID OPT_USAGE - 6
 
 extern int lxc_arguments_parse(struct lxc_arguments *args, int argc,
 			       char *const argv[]);
