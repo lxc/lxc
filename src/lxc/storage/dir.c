@@ -136,10 +136,19 @@ int dir_destroy(struct lxc_storage *orig)
 
 bool dir_detect(const char *path)
 {
+	struct stat statbuf;
+	int ret;
+
 	if (!strncmp(path, "dir:", 4))
 		return true;
 
-	if (is_dir(path))
+	ret = stat(path, &statbuf);
+	if (ret == -1 && errno == EPERM) {
+		SYSERROR("dir_detect: failed to look at \"%s\"", path);
+		return false;
+	}
+
+	if (ret == 0 && S_ISDIR(statbuf.st_mode))
 		return true;
 
 	return false;
