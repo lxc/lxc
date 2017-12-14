@@ -33,6 +33,7 @@ lxc_test_livepatch_SOURCES = livepatch.c lxctest.h
 lxc_test_state_server_SOURCES = state_server.c lxctest.h
 lxc_test_share_ns_SOURCES = share_ns.c lxctest.h
 lxc_test_criu_check_feature_SOURCES = criu_check_feature.c lxctest.h
+lxc_test_raw_clone_SOURCES = lxc_raw_clone.c lxctest.h
 
 AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	-DLXCPATH=\"$(LXCPATH)\" \
@@ -63,7 +64,7 @@ bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-apparmor lxc-test-utils lxc-test-parse-config-file \
 	lxc-test-config-jump-table lxc-test-shortlived lxc-test-livepatch \
 	lxc-test-api-reboot lxc-test-state-server lxc-test-share-ns \
-	lxc-test-criu-check-feature
+	lxc-test-criu-check-feature lxc-test-raw-clone
 
 bin_SCRIPTS = lxc-test-automount \
 	      lxc-test-autostart \
@@ -104,6 +105,7 @@ EXTRA_DIST = \
 	livepatch.c \
 	locktests.c \
 	lxcpath.c \
+	lxc_raw_clone.c \
 	lxc-test-lxc-attach \
 	lxc-test-automount \
 	lxc-test-rootfs \
