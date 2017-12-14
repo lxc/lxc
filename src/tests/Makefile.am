@@ -28,6 +28,7 @@ lxc_test_parse_config_file_SOURCES = parse_config_file.c lxctest.h
 lxc_test_config_jump_table_SOURCES = config_jump_table.c lxctest.h
 lxc_test_shortlived_SOURCES = shortlived.c
 lxc_test_state_server_SOURCES = state_server.c lxctest.h
+lxc_test_raw_clone_SOURCES = lxc_raw_clone.c lxctest.h
 
 AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	-DLXCPATH=\"$(LXCPATH)\" \
@@ -56,7 +57,8 @@ bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-snapshot lxc-test-concurrent lxc-test-may-control \
 	lxc-test-reboot lxc-test-list lxc-test-attach lxc-test-device-add-remove \
 	lxc-test-apparmor lxc-test-utils lxc-test-parse-config-file \
-	lxc-test-config-jump-table lxc-test-shortlived lxc-test-state-server
+	lxc-test-config-jump-table lxc-test-shortlived lxc-test-state-server \
+	lxc-test-raw-clone
 
 bin_SCRIPTS = lxc-test-automount \
 	      lxc-test-autostart \
@@ -93,6 +95,7 @@ EXTRA_DIST = \
 	list.c \
 	locktests.c \
 	lxcpath.c \
+	lxc_raw_clone.c \
 	lxc-test-lxc-attach \
 	lxc-test-automount \
 	lxc-test-rootfs \

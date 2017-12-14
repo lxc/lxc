@@ -24,10 +24,12 @@
 #include <alloca.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <sched.h>
 #include <signal.h>
 #include <unistd.h>
 #include <sys/param.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/types.h>
 
 #include "log.h"
@@ -59,8 +61,7 @@ pid_t lxc_clone(int (*fn)(void *), void *arg, int flags)
 	pid_t ret;
 
 #ifdef __ia64__
-	ret = __clone2(do_clone, stack,
-		       stack_size, flags | SIGCHLD, &clone_arg);
+	ret = __clone2(do_clone, stack, stack_size, flags | SIGCHLD, &clone_arg);
 #else
 	ret = clone(do_clone, stack  + stack_size, flags | SIGCHLD, &clone_arg);
 #endif
@@ -68,6 +69,62 @@ pid_t lxc_clone(int (*fn)(void *), void *arg, int flags)
 		ERROR("Failed to clone (%#x): %s.", flags, strerror(errno));
 
 	return ret;
+}
+
+/**
+ * This is based on raw_clone in systemd but adapted to our needs. This uses
+ * copy on write semantics and doesn't pass a stack. CLONE_VM is tricky and
+ * doesn't really matter to us so disallow it.
+ *
+ * The nice thing about this is that we get fork() behavior. That is
+ * lxc_raw_clone() returns 0 in the child and the child pid in the parent.
+ */
+pid_t lxc_raw_clone(unsigned long flags)
+{
+
+	/* These flags don't interest at all so we don't jump through any hoopes
+	 * of retrieving them and passing them to the kernel.
+	 */
+	errno = EINVAL;
+	if ((flags & (CLONE_VM | CLONE_PARENT_SETTID | CLONE_CHILD_SETTID |
+		      CLONE_CHILD_CLEARTID | CLONE_SETTLS)))
+		return -EINVAL;
+
+#if defined(__s390x__) || defined(__s390__) || defined(__CRIS__)
+	/* On s390/s390x and cris the order of the first and second arguments
+	 * of the system call is reversed.
+	 */
+	return (int)syscall(__NR_clone, NULL, flags | SIGCHLD);
+#elif defined(__sparc__) && defined(__arch64__)
+	{
+		/**
+		 * sparc64 always returns the other process id in %o0, and
+		 * a boolean flag whether this is the child or the parent in
+		 * %o1. Inline assembly is needed to get the flag returned
+		 * in %o1.
+		 */
+		int in_child;
+		int child_pid;
+		asm volatile("mov %2, %%g1\n\t"
+			     "mov %3, %%o0\n\t"
+			     "mov 0 , %%o1\n\t"
+			     "t 0x6d\n\t"
+			     "mov %%o1, %0\n\t"
+			     "mov %%o0, %1"
+			     : "=r"(in_child), "=r"(child_pid)
+			     : "i"(__NR_clone), "r"(flags | SIGCHLD)
+			     : "%o1", "%o0", "%g1");
+		if (in_child)
+			return 0;
+		else
+			return child_pid;
+	}
+#elif defined(__ia64__)
+	/* On ia64 the stack and stack size are passed as separate arguments. */
+	return (int)syscall(__NR_clone, flags | SIGCHLD, NULL, 0);
+#else
+	return (int)syscall(__NR_clone, flags | SIGCHLD, NULL);
+#endif
 }
 
 /* Leave the user namespace at the first position in the array of structs so
