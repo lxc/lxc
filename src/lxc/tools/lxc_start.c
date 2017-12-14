@@ -50,10 +50,6 @@
 #include "confile.h"
 #include "arguments.h"
 
-#define OPT_SHARE_NET OPT_USAGE + 1
-#define OPT_SHARE_IPC OPT_USAGE + 2
-#define OPT_SHARE_UTS OPT_USAGE + 3
-
 static struct lxc_list defines;
 
 static int ensure_path(char **confpath, const char *path)
