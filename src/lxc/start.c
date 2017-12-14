@@ -758,11 +758,23 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 
 	cgroup_destroy(handler);
 
-	lxc_set_state(name, handler, STOPPED);
+	/* This function will try to connect to the legacy lxc-monitord state
+	 * server and only exists for backwards compatibility.
+	 */
+	lxc_monitor_send_state(name, STOPPED, handler->lxcpath);
 
-	/* close command socket */
-	close(handler->conf->maincmd_fd);
-	handler->conf->maincmd_fd = -1;
+	if (handler->conf->reboot == 0) {
+		/* For all new state clients simply close the command socket.
+		 * This will inform all state clients that the container is
+		 * STOPPED and also prevents a race between a open()/close() on
+		 * the command socket causing a new process to get ECONNREFUSED
+		 * because we haven't yet closed the command socket.
+		 */
+		close(handler->conf->maincmd_fd);
+		handler->conf->maincmd_fd = -1;
+	} else {
+		lxc_set_state(name, handler, STOPPED);
+	}
 
 	if (run_lxc_hooks(name, "post-stop", handler->conf, handler->lxcpath, NULL)) {
 		ERROR("Failed to run lxc.hook.post-stop for container \"%s\".", name);
