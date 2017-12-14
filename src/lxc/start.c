@@ -357,13 +357,11 @@ static int lxc_serve_state_clients(const char *name,
 	struct lxc_state_client *client;
 	struct lxc_msg msg = {.type = lxc_msg_state, .value = state};
 
-	process_lock();
 	handler->state = state;
 	TRACE("Set container state to %s", lxc_state2str(state));
 
 	if (lxc_list_empty(&handler->conf->state_clients)) {
 		TRACE("No state clients registered");
-		process_unlock();
 		lxc_monitor_send_state(name, state, handler->lxcpath);
 		return 0;
 	}
@@ -401,7 +399,6 @@ static int lxc_serve_state_clients(const char *name,
 		free(cur->elem);
 		free(cur);
 	}
-	process_unlock();
 
 	return 0;
 }
@@ -442,6 +439,38 @@ again:
 	return 0;
 }
 
+/* This locks the command socket so that when we inform a caller that the
+ * container is STOPPED the caller can actually immediately restart the
+ * container without racing against the close() call on the command socket fd.
+ */
+int lxc_set_state_stopped_close_cmd_socket(const char *name,
+					   struct lxc_handler *handler)
+{
+	int ret;
+
+	process_lock();
+	ret = lxc_serve_state_socket_pair(name, handler, STOPPED);
+	if (ret < 0) {
+		process_unlock();
+		ERROR("Failed to synchronize via anonymous pair of unix sockets");
+		return -1;
+	}
+
+	ret = lxc_serve_state_clients(name, handler, STOPPED);
+
+	if (handler->conf->reboot == 0) {
+		/* close command socket */
+		close(handler->conf->maincmd_fd);
+		handler->conf->maincmd_fd = -1;
+	}
+
+	process_unlock();
+	if (ret < 0)
+		return -1;
+
+	return 0;
+}
+
 int lxc_set_state(const char *name, struct lxc_handler *handler,
 		  lxc_state_t state)
 {
@@ -453,7 +482,9 @@ int lxc_set_state(const char *name, struct lxc_handler *handler,
 		return -1;
 	}
 
+	process_lock();
 	ret = lxc_serve_state_clients(name, handler, state);
+	process_unlock();
 	if (ret < 0)
 		return -1;
 
@@ -784,13 +815,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 
 	cgroup_destroy(handler);
 
-	lxc_set_state(name, handler, STOPPED);
-
-	if (handler->conf->reboot == 0) {
-		/* close command socket */
-		close(handler->conf->maincmd_fd);
-		handler->conf->maincmd_fd = -1;
-	}
+	lxc_set_state_stopped_close_cmd_socket(name, handler);
 
 	if (run_lxc_hooks(name, "post-stop", handler->conf, NULL)) {
 		ERROR("Failed to run lxc.hook.post-stop for container \"%s\".", name);

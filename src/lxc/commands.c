@@ -1313,7 +1313,9 @@ int lxc_cmd_init(const char *name, const char *lxcpath, const char *suffix)
 		return -1;
 	TRACE("Creating abstract unix socket \"%s\"", offset);
 
+	process_lock();
 	fd = lxc_abstract_unix_open(path, SOCK_STREAM, 0);
+	process_unlock();
 	if (fd < 0) {
 		ERROR("%s - Failed to create command socket %s",
 		      strerror(errno), offset);
