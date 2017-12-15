@@ -1380,7 +1380,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		flags &= ~CLONE_NEWNET;
 	}
 
-	handler->pid = lxc_clone(do_start, handler, flags);
+	handler->pid = lxc_raw_clone_cb(do_start, handler, flags);
 	if (handler->pid < 0) {
 		SYSERROR("Failed to clone a new set of namespaces.");
 		goto out_delete_net;
