@@ -127,6 +127,23 @@ pid_t lxc_raw_clone(unsigned long flags)
 #endif
 }
 
+pid_t lxc_raw_clone_cb(int (*fn)(void *), void *args, unsigned long flags)
+{
+	pid_t pid;
+
+	pid = lxc_raw_clone(flags);
+	if (pid < 0)
+		return -1;
+
+	/* exit() is not thread-safe and might mess with the parent's signal
+	 * handlers and other stuff when exec() fails.
+	 */
+	if (pid == 0)
+		_exit(fn(args));
+
+	return pid;
+}
+
 /* Leave the user namespace at the first position in the array of structs so
  * that we always attach to it first when iterating over the struct and using
  * setns() to switch namespaces. This especially affects lxc_attach(): Suppose
