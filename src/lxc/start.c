@@ -1284,7 +1284,7 @@ static inline int do_share_ns(void *arg)
 
 	flags = handler->on_clone_flags;
 	flags |= CLONE_PARENT;
-	handler->pid = lxc_clone(do_start, handler, flags);
+	handler->pid = lxc_raw_clone_cb(do_start, handler, flags);
 	if (handler->pid < 0)
 		return -1;
 
@@ -1414,7 +1414,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 			goto out_delete_net;
 		}
 	} else {
-		handler->pid = lxc_clone(do_start, handler, handler->on_clone_flags);
+		handler->pid = lxc_raw_clone_cb(do_start, handler, handler->on_clone_flags);
 	}
 	if (handler->pid < 0) {
 		SYSERROR(LXC_CLONE_ERROR);
