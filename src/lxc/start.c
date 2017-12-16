@@ -762,11 +762,18 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	 */
 	close(handler->conf->maincmd_fd);
 	handler->conf->maincmd_fd = -1;
+	TRACE("Closed command socket");
 
-	/* This function will try to connect to the legacy lxc-monitord state
-	 * server and only exists for backwards compatibility.
+	/* This function will try to connect to the legacy lxc-monitord
+	 * state server and only exists for backwards compatibility.
 	 */
 	lxc_monitor_send_state(name, STOPPED, handler->lxcpath);
+
+	/* The command socket is closed so no one can acces the command
+	 * socket anymore so there's no need to lock it.
+	 */
+	handler->state = STOPPED;
+	TRACE("Set container state to \"STOPPED\"");
 
 	if (run_lxc_hooks(name, "post-stop", handler->conf, handler->lxcpath, NULL)) {
 		ERROR("Failed to run lxc.hook.post-stop for container \"%s\".", name);
