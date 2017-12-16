@@ -46,6 +46,7 @@
 #include <sys/types.h>
 
 #include "config.h"
+#include "namespace.h"
 #include "network.h"
 #include "utils.h"
 
@@ -814,14 +815,16 @@ static char *lxc_secure_rename_in_ns(int pid, char *oldname, char *newname,
 				     int *container_veth_ifidx)
 {
 	int ret;
+	pid_t pid_self;
 	uid_t ruid, suid, euid;
 	char ifname[IFNAMSIZ];
 	char *string_ret = NULL, *name = NULL;
 	int fd = -1, ifindex = -1, ofd = -1;
 
-	ofd = lxc_preserve_ns(getpid(), "net");
+	pid_self = lxc_raw_getpid();
+	ofd = lxc_preserve_ns(pid_self, "net");
 	if (ofd < 0) {
-		usernic_error("Failed opening network namespace path for %d", getpid());
+		usernic_error("Failed opening network namespace path for %d", pid_self);
 		return NULL;
 	}
 
@@ -993,13 +996,15 @@ struct user_nic_args {
 static bool is_privileged_over_netns(int netns_fd)
 {
 	int ret;
+	pid_t pid_self;
 	uid_t euid, ruid, suid;
 	bool bret = false;
 	int ofd = -1;
 
-	ofd = lxc_preserve_ns(getpid(), "net");
+	pid_self = lxc_raw_getpid();
+	ofd = lxc_preserve_ns(pid_self, "net");
 	if (ofd < 0) {
-		usernic_error("Failed opening network namespace path for %d", getpid());
+		usernic_error("Failed opening network namespace path for %d", pid_self);
 		return false;
 	}
 

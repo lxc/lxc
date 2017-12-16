@@ -941,7 +941,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		/* become session leader */
 		ret = setsid();
 		if (ret < 0)
-			TRACE("Process %d is already process group leader", getpid());
+			TRACE("Process %d is already process group leader", lxc_raw_getpid());
 	} else {
 		if (!am_single_threaded()) {
 			ERROR("Cannot start non-daemonized container when threaded");
@@ -966,7 +966,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			return false;
 		}
 
-		if (fprintf(pid_fp, "%d\n", getpid()) < 0) {
+		if (fprintf(pid_fp, "%d\n", lxc_raw_getpid()) < 0) {
 			SYSERROR("Failed to write '%s'", c->pidfile);
 			fclose(pid_fp);
 			pid_fp = NULL;
@@ -4451,7 +4451,7 @@ static bool do_lxcapi_detach_interface(struct lxc_container *c,
 		return false;
 	}
 
-	pid_outside = getpid();
+	pid_outside = lxc_raw_getpid();
 	pid = fork();
 	if (pid < 0) {
 		ERROR("Failed to fork");

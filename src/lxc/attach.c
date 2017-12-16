@@ -1121,7 +1121,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 		}
 	}
 
-	pid = syscall(SYS_getpid);
+	pid = lxc_raw_getpid();
 	for (i = 0; i < LXC_NS_MAX; i++) {
 		int j, saved_errno;
 

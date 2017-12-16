@@ -290,7 +290,7 @@ lxc_create_SOURCES = tools/lxc_create.c tools/arguments.c
 lxc_snapshot_SOURCES = tools/lxc_snapshot.c tools/arguments.c
 lxc_usernsexec_SOURCES = tools/lxc_usernsexec.c tools/arguments.c
 lxc_checkpoint_SOURCES = tools/lxc_checkpoint.c tools/arguments.c
-lxc_user_nic_SOURCES = lxc_user_nic.c network.c network.h tools/arguments.c
+lxc_user_nic_SOURCES = lxc_user_nic.c namespace.c network.c tools/arguments.c
 lxc_monitord_SOURCES = lxc_monitord.c tools/arguments.c
 
 if ENABLE_DEPRECATED
@@ -304,7 +304,7 @@ endif
 if HAVE_STATIC_LIBCAP
 sbin_PROGRAMS += init.lxc.static
 
-init_lxc_static_SOURCES = lxc_init.c error.c log.c initutils.c caps.c parse.c
+init_lxc_static_SOURCES = lxc_init.c error.c log.c initutils.c caps.c parse.c namespace.c
 
 if !HAVE_GETLINE
 if HAVE_FGETLN

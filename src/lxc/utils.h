@@ -519,7 +519,17 @@ extern bool has_fs_type(const char *path, fs_type_magic magic_val);
 extern bool is_fs_type(const struct statfs *fs, fs_type_magic magic_val);
 extern bool lxc_nic_exists(char *nic);
 extern int lxc_make_tmpfile(char *template, bool rm);
-extern uint64_t lxc_getpagesize(void);
+
+static inline uint64_t lxc_getpagesize(void)
+{
+	int64_t pgsz;
+
+	pgsz = sysconf(_SC_PAGESIZE);
+	if (pgsz <= 0)
+		pgsz = 1 << 12;
+
+	return pgsz;
+}
 
 /* If n is not a power of 2 this function will return the next power of 2
  * greater than that number. Note that this function always returns the *next*

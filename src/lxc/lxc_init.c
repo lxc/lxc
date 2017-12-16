@@ -40,12 +40,13 @@
 #include "error.h"
 #include "initutils.h"
 #include "log.h"
+#include "namespace.h"
 #include "parse.h"
 #include "version.h"
 
 /* option keys for long only options */
 #define OPT_USAGE 0x1000
-#define OPT_VERSION OPT_USAGE - 1   
+#define OPT_VERSION OPT_USAGE - 1
 
 #define QUOTE(macro) #macro
 #define QUOTEVAL(macro) QUOTE(macro)
@@ -61,14 +62,14 @@ static void interrupt_handler(int sig)
 }
 
 static struct option long_options[] = {
-	    { "name",        required_argument, 0, 'n'         }, 
-     	    { "help",        no_argument,       0, 'h'         }, 
-	    { "usage",       no_argument,       0, OPT_USAGE   }, 
-	    { "version",     no_argument,       0, OPT_VERSION }, 
-	    { "quiet",       no_argument,       0, 'q'         }, 
-	    { "logfile",     required_argument, 0, 'o'         }, 
-	    { "logpriority", required_argument, 0, 'l'         }, 
-	    { "lxcpath",     required_argument, 0, 'P'         }, 
+	    { "name",        required_argument, 0, 'n'         },
+     	    { "help",        no_argument,       0, 'h'         },
+	    { "usage",       no_argument,       0, OPT_USAGE   },
+	    { "version",     no_argument,       0, OPT_VERSION },
+	    { "quiet",       no_argument,       0, 'q'         },
+	    { "logfile",     required_argument, 0, 'o'         },
+	    { "logpriority", required_argument, 0, 'l'         },
+	    { "lxcpath",     required_argument, 0, 'P'         },
 	    { 0,             0,                 0, 0           }
 	};
 static char short_options[] = "n:hqo:l:P:";
@@ -359,7 +360,7 @@ int main(int argc, char *argv[])
 		case SIGPWR:
 		case SIGTERM:
 			if (!shutdown) {
-				pid_t mypid = getpid();
+				pid_t mypid = lxc_raw_getpid();
 
 				shutdown = 1;
 				prevent_forking();
@@ -375,7 +376,7 @@ int main(int argc, char *argv[])
 			}
 			break;
 		case SIGALRM: {
-			pid_t mypid = getpid();
+			pid_t mypid = lxc_raw_getpid();
 
 			prevent_forking();
 			if (mypid != 1) {

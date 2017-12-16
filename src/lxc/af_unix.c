@@ -34,6 +34,7 @@
 #include <sys/un.h>
 
 #include "log.h"
+#include "utils.h"
 
 lxc_log_define(lxc_af_unix, lxc);
 
@@ -217,7 +218,7 @@ int lxc_abstract_unix_send_credential(int fd, void *data, size_t size)
 	struct iovec iov;
 	struct cmsghdr *cmsg;
 	struct ucred cred = {
-	    .pid = getpid(), .uid = getuid(), .gid = getgid(),
+	    .pid = lxc_raw_getpid(), .uid = getuid(), .gid = getgid(),
 	};
 	char cmsgbuf[CMSG_SPACE(sizeof(cred))] = {0};
 	char buf[1] = {0};

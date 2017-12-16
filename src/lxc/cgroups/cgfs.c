@@ -764,7 +764,7 @@ static struct cgroup_process_info *lxc_cgroup_process_info_get_self(struct cgrou
 	struct cgroup_process_info *i;
 	i = lxc_cgroup_process_info_getx("/proc/self/cgroup", meta);
 	if (!i)
-		i = lxc_cgroup_process_info_get(getpid(), meta);
+		i = lxc_cgroup_process_info_get(lxc_raw_getpid(), meta);
 	return i;
 }
 
@@ -2480,7 +2480,7 @@ static bool cgfs_escape(void *hdata)
 		if (!f)
 			goto out;
 
-		written = fprintf(f, "%d\n", getpid());
+		written = fprintf(f, "%d\n", lxc_raw_getpid());
 		fclose(f);
 		if (written < 0) {
 			SYSERROR("writing tasks failed\n");
