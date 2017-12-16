@@ -192,13 +192,13 @@ static int do_attach_nbd(void *d)
 
 	if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1) {
 		SYSERROR("Error blocking signals for nbd watcher");
-		exit(1);
+		_exit(1);
 	}
 
 	sfd = signalfd(-1, &mask, 0);
 	if (sfd == -1) {
 		SYSERROR("Error opening signalfd for nbd task");
-		exit(1);
+		_exit(1);
 	}
 
 	if (prctl(PR_SET_PDEATHSIG, SIGHUP, 0, 0, 0) < 0)
@@ -214,7 +214,7 @@ static int do_attach_nbd(void *d)
 			if (fdsi.ssi_signo == SIGHUP) {
 				/* container has exited */
 				nbd_detach(nbd);
-				exit(0);
+				_exit(0);
 			} else if (fdsi.ssi_signo == SIGCHLD) {
 				int status;
 				/* If qemu-nbd fails, or is killed by a signal,
@@ -223,7 +223,7 @@ static int do_attach_nbd(void *d)
 					if ((WIFEXITED(status) && WEXITSTATUS(status) != 0) ||
 							WIFSIGNALED(status)) {
 						nbd_detach(nbd);
-						exit(1);
+						_exit(1);
 					}
 				}
 			}
@@ -236,7 +236,7 @@ static int do_attach_nbd(void *d)
 
 	execlp("qemu-nbd", "qemu-nbd", "-c", nbd, path, (char *)NULL);
 	SYSERROR("Error executing qemu-nbd");
-	exit(1);
+	_exit(1);
 }
 
 static bool clone_attach_nbd(const char *nbd, const char *path)
@@ -281,7 +281,7 @@ static void nbd_detach(const char *path)
 	}
 	execlp("qemu-nbd", "qemu-nbd", "-d", path, (char *)NULL);
 	SYSERROR("Error executing qemu-nbd");
-	exit(1);
+	_exit(1);
 }
 
 /*

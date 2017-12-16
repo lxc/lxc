@@ -123,7 +123,7 @@ static void create_helpfn(const struct lxc_arguments *args)
 
 	execv(path, argv);
 	fprintf(stderr, "Error executing %s -h\n", path);
-	exit(EXIT_FAILURE);
+	_exit(EXIT_FAILURE);
 }
 
 static struct lxc_arguments my_args = {

@@ -122,7 +122,7 @@ static int do_start(void *arg)
 		if (ret == -1) {
 			close(wait_fd);
 			fprintf(stderr, "read eventfd failed\n");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 	}
 
@@ -132,13 +132,13 @@ static int do_start(void *arg)
 	if ((flags & CLONE_NEWUTS) && want_hostname)
 		if (sethostname(want_hostname, strlen(want_hostname)) < 0) {
 			fprintf(stderr, "failed to set hostname %s: %s\n", want_hostname, strerror(errno));
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 	/* Setuid is useful even without a new user id space. */
 	if (start_arg->setuid && setuid(uid)) {
 		fprintf(stderr, "failed to set uid %d: %s\n", uid, strerror(errno));
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	}
 
 	execvp(args[0], args);

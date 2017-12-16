@@ -79,7 +79,7 @@ static void lock_mutex(pthread_mutex_t *l)
 
 	if ((ret = pthread_mutex_lock(l)) != 0) {
 		fprintf(stderr, "pthread_mutex_lock returned:%d %s\n", ret, strerror(ret));
-		exit(1);
+		_exit(1);
 	}
 }
 
@@ -90,7 +90,7 @@ static void unlock_mutex(pthread_mutex_t *l)
 	if ((ret = pthread_mutex_unlock(l)) != 0) {
 		fprintf(stderr, "%s: pthread_mutex_unlock returned:%d %s\n",
 				__FILE__, ret, strerror(ret));
-		exit(1);
+		_exit(1);
 	}
 }
 
@@ -869,7 +869,7 @@ static void do_cgm_get(const char *name, const char *lxcpath, const char *filena
 		ret = write(outp, &len, sizeof(len));
 		if (ret != sizeof(len))
 			WARN("Failed to warn cgm_get of error; parent may hang");
-		exit(1);
+		_exit(1);
 	}
 	*key = '\0';
 
@@ -878,7 +878,7 @@ static void do_cgm_get(const char *name, const char *lxcpath, const char *filena
 		ret = write(outp, &len, sizeof(len));
 		if (ret != sizeof(len))
 			WARN("Failed to warn cgm_get of error; parent may hang");
-		exit(1);
+		_exit(1);
 	}
 	cgroup = try_get_abs_cgroup(name, lxcpath, controller);
 	if (!cgroup) {
@@ -886,7 +886,7 @@ static void do_cgm_get(const char *name, const char *lxcpath, const char *filena
 		ret = write(outp, &len, sizeof(len));
 		if (ret != sizeof(len))
 			WARN("Failed to warn cgm_get of error; parent may hang");
-		exit(1);
+		_exit(1);
 	}
 	cglast = strrchr(cgroup, '/');
 	if (!cglast) {
@@ -895,7 +895,7 @@ static void do_cgm_get(const char *name, const char *lxcpath, const char *filena
 		ret = write(outp, &len, sizeof(len));
 		if (ret != sizeof(len))
 			WARN("Failed to warn cgm_get of error; parent may hang");
-		exit(1);
+		_exit(1);
 	}
 	*cglast = '\0';
 	if (!lxc_cgmanager_enter(getpid(), controller, cgroup, abs_cgroup_supported())) {
@@ -905,7 +905,7 @@ static void do_cgm_get(const char *name, const char *lxcpath, const char *filena
 			WARN("Failed to warn cgm_get of error; parent may hang");
 		cgm_dbus_disconnect();
 		free_abs_cgroup(cgroup);
-		exit(1);
+		_exit(1);
 	}
 	if (cgmanager_get_value_sync(NULL, cgroup_manager, controller, cglast+1, filename, &result) != 0) {
 		NihError *nerr;
@@ -916,7 +916,7 @@ static void do_cgm_get(const char *name, const char *lxcpath, const char *filena
 		ret = write(outp, &len, sizeof(len));
 		if (ret != sizeof(len))
 			WARN("Failed to warn cgm_get of error; parent may hang");
-		exit(1);
+		_exit(1);
 	}
 	free_abs_cgroup(cgroup);
 	cgm_dbus_disconnect();
@@ -924,15 +924,15 @@ static void do_cgm_get(const char *name, const char *lxcpath, const char *filena
 	ret = write(outp, &len, sizeof(len));
 	if (ret != sizeof(len)) {
 		WARN("Failed to send length to parent");
-		exit(1);
+		_exit(1);
 	}
 	if (!len || !sendvalue) {
-		exit(0);
+		_exit(0);
 	}
 	ret = write(outp, result, len);
 	if (ret < 0)
-		exit(1);
-	exit(0);
+		_exit(1);
+	_exit(0);
 }
 
 /* cgm_get is called to get container cgroup settings, not during startup */
@@ -1009,7 +1009,7 @@ static void do_cgm_set(const char *name, const char *lxcpath, const char *filena
 		ret = write(outp, &retval, sizeof(retval));
 		if (ret != sizeof(retval))
 			WARN("Failed to warn cgm_set of error; parent may hang");
-		exit(1);
+		_exit(1);
 	}
 	*key = '\0';
 
@@ -1018,7 +1018,7 @@ static void do_cgm_set(const char *name, const char *lxcpath, const char *filena
 		ret = write(outp, &retval, sizeof(retval));
 		if (ret != sizeof(retval))
 			WARN("Failed to warn cgm_set of error; parent may hang");
-		exit(1);
+		_exit(1);
 	}
 	cgroup = try_get_abs_cgroup(name, lxcpath, controller);
 	if (!cgroup) {
@@ -1026,7 +1026,7 @@ static void do_cgm_set(const char *name, const char *lxcpath, const char *filena
 		ret = write(outp, &retval, sizeof(retval));
 		if (ret != sizeof(retval))
 			WARN("Failed to warn cgm_set of error; parent may hang");
-		exit(1);
+		_exit(1);
 	}
 	cglast = strrchr(cgroup, '/');
 	if (!cglast) {
@@ -1035,7 +1035,7 @@ static void do_cgm_set(const char *name, const char *lxcpath, const char *filena
 		ret = write(outp, &retval, sizeof(retval));
 		if (ret != sizeof(retval))
 			WARN("Failed to warn cgm_set of error; parent may hang");
-		exit(1);
+		_exit(1);
 	}
 	*cglast = '\0';
 	if (!lxc_cgmanager_enter(getpid(), controller, cgroup, abs_cgroup_supported())) {
@@ -1045,7 +1045,7 @@ static void do_cgm_set(const char *name, const char *lxcpath, const char *filena
 			WARN("Failed to warn cgm_set of error; parent may hang");
 		cgm_dbus_disconnect();
 		free_abs_cgroup(cgroup);
-		exit(1);
+		_exit(1);
 	}
 	if (cgmanager_set_value_sync(NULL, cgroup_manager, controller, cglast+1, filename, value) != 0) {
 		NihError *nerr;
@@ -1058,7 +1058,7 @@ static void do_cgm_set(const char *name, const char *lxcpath, const char *filena
 		ret = write(outp, &retval, sizeof(retval));
 		if (ret != sizeof(retval))
 			WARN("Failed to warn cgm_set of error; parent may hang");
-		exit(1);
+		_exit(1);
 	}
 	free_abs_cgroup(cgroup);
 	cgm_dbus_disconnect();
@@ -1066,9 +1066,9 @@ static void do_cgm_set(const char *name, const char *lxcpath, const char *filena
 	retval = 1;
 	ret = write(outp, &retval, sizeof(retval));
 	if (ret != sizeof(retval)) {
-		exit(1);
+		_exit(1);
 	}
-	exit(0);
+	_exit(0);
 }
 
 /* cgm_set is called to change cgroup settings, not during startup */
@@ -1216,7 +1216,7 @@ static void drop_subsystem(int which)
 
 	if (which < 0 || which >= nr_subsystems) {
 		ERROR("code error: dropping invalid subsystem index\n");
-		exit(1);
+		_exit(1);
 	}
 
 	free(subsystems[which]);
