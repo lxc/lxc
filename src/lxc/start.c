@@ -707,7 +707,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 {
 	int i, rc;
 	struct lxc_list *cur, *next;
-	pid_t self = getpid();
+	pid_t self = lxc_raw_getpid();
 	char *namespaces[LXC_NS_MAX + 1];
 	size_t namespace_count = 0;
 
@@ -1047,7 +1047,7 @@ static int do_start(void *data)
 	}
 
 	if (handler->clone_flags & CLONE_NEWCGROUP) {
-		fd = lxc_preserve_ns(syscall(SYS_getpid), "cgroup");
+		fd = lxc_preserve_ns(lxc_raw_getpid(), "cgroup");
 		if (fd < 0) {
 			ERROR("%s - Failed to preserve cgroup namespace", strerror(errno));
 			close(handler->data_sock[0]);
@@ -1363,7 +1363,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 			INFO("Failed to pin the rootfs for container \"%s\".", handler->name);
 	}
 
-	if (!preserve_ns(saved_ns_fd, preserve_mask, getpid()))
+	if (!preserve_ns(saved_ns_fd, preserve_mask, lxc_raw_getpid()))
 		goto out_delete_net;
 
 	if (attach_ns(handler->conf->inherit_ns_fd) < 0)

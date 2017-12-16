@@ -359,8 +359,8 @@ int main(int argc, char *argv[])
 			if (!shutdown) {
 				shutdown = 1;
 				prevent_forking();
-				if (getpid() != 1) {
-					kill_children(getpid());
+				if (lxc_raw_getpid() != 1) {
+					kill_children(lxc_raw_getpid());
 				} else {
 					ret = kill(-1, SIGTERM);
 					if (ret < 0)
@@ -372,8 +372,8 @@ int main(int argc, char *argv[])
 			break;
 		case SIGALRM:
 			prevent_forking();
-			if (getpid() != 1) {
-				kill_children(getpid());
+			if (lxc_raw_getpid() != 1) {
+				kill_children(lxc_raw_getpid());
 			} else {
 				ret = kill(-1, SIGTERM);
 				if (ret < 0)

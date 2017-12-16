@@ -398,7 +398,7 @@ static int lxc_console_peer_proxy_alloc(struct lxc_console *console, int sockfd)
 	console->peerpty.busy = sockfd;
 	lxc_console_mainloop_add_peer(console);
 
-	DEBUG("%d %s peermaster:%d sockfd:%d", getpid(), __FUNCTION__, console->peerpty.master, sockfd);
+	DEBUG("%d %s peermaster:%d sockfd:%d", lxc_raw_getpid(), __FUNCTION__, console->peerpty.master, sockfd);
 	return 0;
 
 err1:

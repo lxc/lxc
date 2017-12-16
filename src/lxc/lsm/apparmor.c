@@ -135,7 +135,7 @@ again:
  */
 static bool apparmor_am_unconfined(void)
 {
-	char *p = apparmor_process_label_get(getpid());
+	char *p = apparmor_process_label_get(lxc_raw_getpid());
 	bool ret = false;
 	if (!p || strcmp(p, "unconfined") == 0)
 		ret = true;
@@ -186,7 +186,7 @@ static int apparmor_process_label_set(const char *inlabel, struct lxc_conf *conf
 		return 0;
 	}
 
-	curlabel = apparmor_process_label_get(getpid());
+	curlabel = apparmor_process_label_get(lxc_raw_getpid());
 
 	if (!aa_stacking_supported() && aa_needs_transition(curlabel)) {
 		// we're already confined, and stacking isn't supported
