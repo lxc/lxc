@@ -136,8 +136,8 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if (!c->set_config_item(c, "lxc.init.cmd", "echo hello")) {
-		fprintf(stderr, "%d: failed setting lxc.init.cmd\n", __LINE__);
+	if (!c->set_config_item(c, "lxc.init_cmd", "echo hello")) {
+		fprintf(stderr, "%d: failed setting lxc.init_cmd\n", __LINE__);
 		goto out;
 	}
 
@@ -169,8 +169,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (!c->set_config_item(c, "lxc.init.cmd", "you-shall-fail")) {
-		fprintf(stderr, "%d: failed setting lxc.init.cmd\n", __LINE__);
+	if (!c->set_config_item(c, "lxc.init_cmd", "you-shall-fail")) {
+		fprintf(stderr, "%d: failed setting lxc.init_cmd\n", __LINE__);
 		goto out;
 	}
 
