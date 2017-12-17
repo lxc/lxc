@@ -86,103 +86,6 @@
 
 lxc_log_define(lxc_attach, lxc);
 
-/* /proc/pid-to-str/current\0 = (5 + 21 + 7 + 1) */
-#define __LSMATTRLEN (5 + (LXC_NUMSTRLEN64) + 7 + 1)
-static int lsm_openat(int procfd, pid_t pid, int on_exec)
-{
-	int ret = -1;
-	int labelfd = -1;
-	const char *name;
-	char path[__LSMATTRLEN];
-
-	name = lsm_name();
-
-	if (strcmp(name, "nop") == 0)
-		return 0;
-
-	if (strcmp(name, "none") == 0)
-		return 0;
-
-	/* We don't support on-exec with AppArmor */
-	if (strcmp(name, "AppArmor") == 0)
-		on_exec = 0;
-
-	if (on_exec)
-		ret = snprintf(path, __LSMATTRLEN, "%d/attr/exec", pid);
-	else
-		ret = snprintf(path, __LSMATTRLEN, "%d/attr/current", pid);
-	if (ret < 0 || ret >= __LSMATTRLEN)
-		return -1;
-
-	labelfd = openat(procfd, path, O_RDWR);
-	if (labelfd < 0) {
-		SYSERROR("Unable to open file descriptor to set LSM label.");
-		return -1;
-	}
-
-	return labelfd;
-}
-
-static int lsm_set_label_at(int lsm_labelfd, int on_exec, char *lsm_label)
-{
-	int fret = -1;
-	const char *name;
-	char *command = NULL;
-
-	name = lsm_name();
-
-	if (strcmp(name, "nop") == 0)
-		return 0;
-
-	if (strcmp(name, "none") == 0)
-		return 0;
-
-	/* We don't support on-exec with AppArmor */
-	if (strcmp(name, "AppArmor") == 0)
-		on_exec = 0;
-
-	if (strcmp(name, "AppArmor") == 0) {
-		int size;
-
-		command =
-		    malloc(strlen(lsm_label) + strlen("changeprofile ") + 1);
-		if (!command) {
-			SYSERROR("Failed to write apparmor profile.");
-			goto out;
-		}
-
-		size = sprintf(command, "changeprofile %s", lsm_label);
-		if (size < 0) {
-			SYSERROR("Failed to write apparmor profile.");
-			goto out;
-		}
-
-		if (write(lsm_labelfd, command, size + 1) < 0) {
-			SYSERROR("Unable to set LSM label: %s.", command);
-			goto out;
-		}
-		INFO("Set LSM label to: %s.", command);
-	} else if (strcmp(name, "SELinux") == 0) {
-		if (write(lsm_labelfd, lsm_label, strlen(lsm_label) + 1) < 0) {
-			SYSERROR("Unable to set LSM label: %s.", lsm_label);
-			goto out;
-		}
-		INFO("Set LSM label to: %s.", lsm_label);
-	} else {
-		ERROR("Unable to restore label for unknown LSM: %s.", name);
-		goto out;
-	}
-	fret = 0;
-
-out:
-	free(command);
-
-	if (lsm_labelfd != -1)
-		close(lsm_labelfd);
-
-	return fret;
-}
-
 /* /proc/pid-to-str/status\0 = (5 + 21 + 7 + 1) */
 #define __PROC_STATUS_LEN (5 + (LXC_NUMSTRLEN64) + 7 + 1)
 static struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
@@ -958,23 +861,23 @@ int lxc_attach(const char *name, const char *lxcpath,
 	 * closed and cannot assume that the child exiting will automatically do
 	 * that.
 	 *
-	 * IPC mechanism: (X is receiver)
-	 *   initial process        intermediate          attached
-	 *        X           <---  send pid of
-	 *                          attached proc,
-	 *                          then exit
-	 *    send 0 ------------------------------------>    X
-	 *                                              [do initialization]
-	 *        X  <------------------------------------  send 1
+	 * IPC mechanism:
+	 *
+	 *   initial process        intermediate process        attached process
+	 *
+	 *                  <------ send pid of attached
+	 *                          process
+	 *                          exit(intermediate process)
+	 *
+	 *   send 0 ------------------------------------------>
+	 *                                                      [initialize]
+	 *
+	 *          <------------------------------------------ send 1
 	 *   [add to cgroup, ...]
-	 *    send 2 ------------------------------------>    X
-	 *						[set LXC_ATTACH_NO_NEW_PRIVS]
-	 *        X  <------------------------------------  send 3
-	 *   [open LSM label fd]
-	 *    send 4 ------------------------------------>    X
-	 *   						[set LSM label]
-	 *   close socket                                 close socket
-	 *                                                run program
+	 *
+	 *   send 2 ------------------------------------------>
+	 *   [close socket]                                     [close socket]
+	 *                                                      [run program]
 	 */
 	ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, ipc_sockets);
 	if (ret < 0) {
@@ -1003,7 +906,6 @@ int lxc_attach(const char *name, const char *lxcpath,
 	}
 
 	if (pid) {
-		int procfd = -1;
 		pid_t to_cleanup_pid = pid;
 
 		/* close file namespace descriptors */
@@ -1025,15 +927,6 @@ int lxc_attach(const char *name, const char *lxcpath,
 		if (!lxc_list_empty(&init_ctx->container->lxc_conf->limits))
 			if (setup_resource_limits(&init_ctx->container->lxc_conf->limits, pid) < 0)
 				goto on_error;
-
-		/* Open /proc before setns() to the containers namespace so we
-		 * don't rely on any information from inside the container.
-		 */
-		procfd = open("/proc", O_DIRECTORY | O_RDONLY | O_CLOEXEC);
-		if (procfd < 0) {
-			SYSERROR("Unable to open /proc.");
-			goto on_error;
-		}
 
 		/* Let the child process know to go ahead. */
 		status = 0;
@@ -1093,43 +986,6 @@ int lxc_attach(const char *name, const char *lxcpath,
 			goto on_error;
 		}
 
-		/* Wait for the (grand)child to tell us that it's ready to set
-		 * up its LSM labels.
-		 */
-		expected = 3;
-		ret = lxc_read_nointr_expect(ipc_sockets[0], &status,
-					     sizeof(status), &expected);
-		if (ret <= 0) {
-			ERROR("Expected to receive sequence number 3: %s.",
-			      strerror(errno));
-			goto on_error;
-		}
-
-		/* Open LSM fd and send it to child. */
-		if ((options->namespaces & CLONE_NEWNS) &&
-		    (options->attach_flags & LXC_ATTACH_LSM) &&
-		    init_ctx->lsm_label) {
-			int on_exec, saved_errno;
-			int labelfd = -1;
-
-			on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? 1 : 0;
-			/* Open fd for the LSM security module. */
-			labelfd = lsm_openat(procfd, attached_pid, on_exec);
-			if (labelfd < 0)
-				goto on_error;
-
-			/* Send child fd of the LSM security module to write to. */
-			ret = lxc_abstract_unix_send_fds(ipc_sockets[0], &labelfd, 1, NULL, 0);
-			saved_errno = errno;
-			close(labelfd);
-			if (ret <= 0) {
-				ERROR("Intended to send file descriptor %d: %s.", labelfd, strerror(saved_errno));
-				goto on_error;
-			}
-		}
-
-		if (procfd >= 0)
-			close(procfd);
 		/* Now shut down communication with child, we're done. */
 		shutdown(ipc_sockets[0], SHUT_RDWR);
 		close(ipc_sockets[0]);
@@ -1147,8 +1003,6 @@ int lxc_attach(const char *name, const char *lxcpath,
 		/* First shut down the socket, then wait for the pid, otherwise
 		 * the pid we're waiting for may never exit.
 		 */
-		if (procfd >= 0)
-			close(procfd);
 		shutdown(ipc_sockets[0], SHUT_RDWR);
 		close(ipc_sockets[0]);
 		if (to_cleanup_pid)
@@ -1246,7 +1100,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 
 static int attach_child_main(void* data)
 {
-	int expected, fd, lsm_labelfd, ret, status;
+	int expected, fd, ret, status;
 	long flags;
 #if HAVE_SYS_PERSONALITY_H
 	long new_personality;
@@ -1401,35 +1255,24 @@ static int attach_child_main(void* data)
 		     "gainable privileges.");
 	}
 
-	/* Tell the (grand)parent to send us LSM label fd. */
-	status = 3;
-	ret = lxc_write_nointr(ipc_socket, &status, sizeof(status));
-	if (ret <= 0) {
-		ERROR("Intended to send sequence number 3: %s.", strerror(errno));
-		shutdown(ipc_socket, SHUT_RDWR);
-		rexit(-1);
-	}
-
 	if ((options->namespaces & CLONE_NEWNS) &&
 	    (options->attach_flags & LXC_ATTACH_LSM) && init_ctx->lsm_label) {
 		int on_exec;
-		/* Receive fd for LSM security module. */
-		ret = lxc_abstract_unix_recv_fds(ipc_socket, &lsm_labelfd, 1, NULL, 0);
-		if (ret <= 0) {
-			ERROR("Expected to receive file descriptor: %s.", strerror(errno));
-			shutdown(ipc_socket, SHUT_RDWR);
-			rexit(-1);
-		}
 
-		/* Change into our new LSM profile. */
+		lsm_init();
+
 		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? 1 : 0;
-		if (lsm_set_label_at(lsm_labelfd, on_exec, init_ctx->lsm_label) < 0) {
-			SYSERROR("Failed to set LSM label.");
+		ret = lsm_process_label_set(init_ctx->lsm_label,
+					    init_ctx->container->lxc_conf, 1,
+					    on_exec);
+		if (ret < 0) {
+			SYSERROR("Failed to set LSM label to \"%s\"",
+				 init_ctx->lsm_label);
 			shutdown(ipc_socket, SHUT_RDWR);
-			close(lsm_labelfd);
 			rexit(-1);
 		}
-		close(lsm_labelfd);
+		TRACE("Successfully changed LSM label to \"%s\"",
+		      init_ctx->lsm_label);
 	}
 
 	if (init_ctx->container && init_ctx->container->lxc_conf &&
