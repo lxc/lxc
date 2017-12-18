@@ -1066,6 +1066,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               <option>optional</option> don't fail if mount does not work.
               <option>create=dir</option> or <option>create=file</option>
               to create dir (or file) when the point will be mounted.
+              <option>relative</option> source path is taken to be relative to
+              the mounted container root. For instance,
+             </para>
+<screen>
+dev/null proc/kcore none bind,relative 0 0
+</screen>
+             <para>
+              Will expand dev/null to ${<option>LXC_ROOTFS_MOUNT</option>}/dev/null,
+              and mount it to proc/kcore inside the container.
+             </para>
+             <para>
             </para>
           </listitem>
         </varlistentry>

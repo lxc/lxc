@@ -1814,24 +1814,35 @@ static char *get_field(char *src, int nfields)
 static int mount_entry(const char *fsname, const char *target,
 		       const char *fstype, unsigned long mountflags,
 		       const char *data, int optional, int dev,
-		       const char *rootfs)
+		       int relative, const char *rootfs)
 {
 	int ret;
+	char srcbuf[MAXPATHLEN];
+	const char *srcpath = fsname;
 #ifdef HAVE_STATVFS
 	struct statvfs sb;
 #endif
 
-	ret = safe_mount(fsname, target, fstype, mountflags & ~MS_REMOUNT, data,
+	if (relative) {
+		ret = snprintf(srcbuf, MAXPATHLEN, "%s/%s", rootfs ? rootfs : "/", fsname ? fsname : "");
+		if (ret < 0 || ret >= MAXPATHLEN) {
+			ERROR("source path is too long");
+			return -1;
+		}
+		srcpath = srcbuf;
+	}
+
+	ret = safe_mount(srcpath, target, fstype, mountflags & ~MS_REMOUNT, data,
 			 rootfs);
 	if (ret < 0) {
 		if (optional) {
 			INFO("Failed to mount \"%s\" on \"%s\" (optional): %s",
-			     fsname ? fsname : "(null)", target, strerror(errno));
+			     srcpath ? srcpath : "(null)", target, strerror(errno));
 			return 0;
 		}
 
 		SYSERROR("Failed to mount \"%s\" on \"%s\"",
-			 fsname ? fsname : "(null)", target);
+			 srcpath ? srcpath : "(null)", target);
 		return -1;
 	}
 
@@ -1839,12 +1850,12 @@ static int mount_entry(const char *fsname, const char *target,
 		unsigned long rqd_flags = 0;
 
 		DEBUG("Remounting \"%s\" on \"%s\" to respect bind or remount "
-		      "options", fsname ? fsname : "(none)", target ? target : "(none)");
+		      "options", srcpath ? srcpath : "(none)", target ? target : "(none)");
 
 		if (mountflags & MS_RDONLY)
 			rqd_flags |= MS_RDONLY;
 #ifdef HAVE_STATVFS
-		if (fsname && statvfs(fsname, &sb) == 0) {
+		if (srcpath && statvfs(srcpath, &sb) == 0) {
 			unsigned long required_flags = rqd_flags;
 
 			if (sb.f_flag & MS_NOSUID)
@@ -1860,7 +1871,7 @@ static int mount_entry(const char *fsname, const char *target,
 				required_flags |= MS_NOEXEC;
 
 			DEBUG("Flags for \"%s\" were %lu, required extra flags "
-			      "are %lu", fsname, sb.f_flag, required_flags);
+			      "are %lu", srcpath, sb.f_flag, required_flags);
 
 			/* If this was a bind mount request, and required_flags
 			 * does not have any flags which are not already in
@@ -1879,18 +1890,18 @@ static int mount_entry(const char *fsname, const char *target,
 		}
 #endif
 
-		ret = mount(fsname, target, fstype, mountflags | MS_REMOUNT, data);
+		ret = mount(srcpath, target, fstype, mountflags | MS_REMOUNT, data);
 		if (ret < 0) {
 			if (optional) {
 				INFO("Failed to mount \"%s\" on \"%s\" "
 				     "(optional): %s",
-				     fsname ? fsname : "(null)", target,
+				     srcpath ? srcpath : "(null)", target,
 				     strerror(errno));
 				return 0;
 			}
 
 			SYSERROR("Failed to mount \"%s\" on \"%s\"",
-				 fsname ? fsname : "(null)", target);
+				 srcpath ? srcpath : "(null)", target);
 			return -1;
 		}
 	}
@@ -1899,7 +1910,7 @@ static int mount_entry(const char *fsname, const char *target,
 skipremount:
 #endif
 	DEBUG("Mounted \"%s\" on \"%s\" with filesystem type \"%s\"",
-	      fsname ? fsname : "(null)", target, fstype);
+	      srcpath ? srcpath : "(null)", target, fstype);
 
 	return 0;
 }
@@ -1908,7 +1919,7 @@ skipremount:
 static void cull_mntent_opt(struct mntent *mntent)
 {
 	int i;
-	char *list[] = {"create=dir", "create=file", "optional", NULL};
+	char *list[] = {"create=dir", "create=file", "optional", "relative", NULL};
 
 	for (i = 0; list[i]; i++) {
 		char *p, *p2;
@@ -1988,11 +1999,12 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 	int ret;
 	unsigned long mntflags;
 	char *mntdata;
-	bool dev, optional;
+	bool dev, optional, relative;
 	char *rootfs_path = NULL;
 
 	optional = hasmntopt(mntent, "optional") != NULL;
 	dev = hasmntopt(mntent, "dev") != NULL;
+	relative = hasmntopt(mntent, "relative") != NULL;
 
 	if (rootfs && rootfs->path)
 		rootfs_path = rootfs->mount;
@@ -2012,7 +2024,7 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 		return -1;
 
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type, mntflags,
-			  mntdata, optional, dev, rootfs_path);
+			  mntdata, optional, dev, relative, rootfs_path);
 
 	free(mntdata);
 	return ret;
@@ -3240,11 +3252,6 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
-	if (!lxc_list_empty(&lxc_conf->mount_list) && setup_mount_entries(lxc_conf, &lxc_conf->rootfs, &lxc_conf->mount_list, name, lxcpath)) {
-		ERROR("failed to setup the mount entries for '%s'", name);
-		return -1;
-	}
-
 	/* Make sure any start hooks are in the container */
 	if (!verify_start_hooks(lxc_conf))
 		return -1;
@@ -3276,6 +3283,11 @@ int lxc_setup(struct lxc_handler *handler)
 			ERROR("failed to populate /dev in the container");
 			return -1;
 		}
+	}
+
+	if (!lxc_list_empty(&lxc_conf->mount_list) && setup_mount_entries(lxc_conf, &lxc_conf->rootfs, &lxc_conf->mount_list, name, lxcpath)) {
+		ERROR("failed to setup the mount entries for '%s'", name);
+		return -1;
 	}
 
 	ret = lxc_setup_console(&lxc_conf->rootfs, &lxc_conf->console,
