@@ -211,6 +211,7 @@ int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
 		return -ENOMEM;
 	}
 
+	process_lock();
 	state = handler->state;
 	if (states[state] != 1) {
 		lxc_list_add_elem(tmplist, newclient);
