@@ -25,9 +25,10 @@
 
 #include <sys/types.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <errno.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
+#include <errno.h>
 
 #define TSTNAME    "lxc-attach-test"
 #define TSTOUT(fmt, ...) do { \
@@ -78,7 +79,7 @@ static void test_attach_lsm_set_config(struct lxc_container *ct)
 
 static int test_attach_lsm_func_func(void* payload)
 {
-	TSTOUT("%s", lsm_process_label_get(getpid()));
+	TSTOUT("%s", lsm_process_label_get(syscall(SYS_getpid)));
 	return 0;
 }
 
@@ -189,7 +190,7 @@ static int  test_attach_lsm_cmd(struct lxc_container *ct) { return 0; }
 
 static int test_attach_func_func(void* payload)
 {
-	TSTOUT("%d", getpid());
+	TSTOUT("%d", (int)syscall(SYS_getpid));
 	return 0;
 }
 
