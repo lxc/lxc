@@ -22,14 +22,15 @@
  */
 #include "config.h"
 
+#include <errno.h>
+#include <fcntl.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stddef.h>
 #include <string.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
 #include <sys/socket.h>
+#include <sys/syscall.h>
 #include <sys/un.h>
 
 #include "log.h"
