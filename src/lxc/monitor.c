@@ -232,7 +232,7 @@ int lxc_monitor_open(const char *lxcpath)
 
 	for (retry = 0; retry < sizeof(backoff_ms) / sizeof(backoff_ms[0]); retry++) {
 		fd = lxc_abstract_unix_connect(addr.sun_path);
-		if (fd < 0 || errno != ECONNREFUSED)
+		if (fd != -1 || errno != ECONNREFUSED)
 			break;
 		ERROR("Failed to connect to monitor socket. Retrying in %d ms: %s", backoff_ms[retry], strerror(errno));
 		usleep(backoff_ms[retry] * 1000);
