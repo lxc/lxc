@@ -1399,14 +1399,28 @@ static int lxc_spawn(struct lxc_handler *handler)
 	/* The cgroup namespace gets unshare()ed not clone()ed. */
 	handler->on_clone_flags &= ~CLONE_NEWCGROUP;
 
-	if (share_ns)
-		ret = lxc_clone(do_share_ns, handler, CLONE_VFORK | CLONE_VM | CLONE_FILES);
-	else
+	if (share_ns) {
+		pid_t attacher_pid;
+
+		attacher_pid = lxc_clone(do_share_ns, handler, CLONE_VFORK | CLONE_VM | CLONE_FILES);
+		if (attacher_pid < 0) {
+			SYSERROR(LXC_CLONE_ERROR);
+			goto out_delete_net;
+		}
+
+		ret = wait_for_pid(attacher_pid);
+		if (ret < 0) {
+			SYSERROR("Intermediate process failed");
+			goto out_delete_net;
+		}
+	} else {
 		handler->pid = lxc_clone(do_start, handler, handler->on_clone_flags);
-	if (handler->pid < 0 || ret < 0) {
-		SYSERROR("Failed to clone a new set of namespaces.");
+	}
+	if (handler->pid < 0) {
+		SYSERROR(LXC_CLONE_ERROR);
 		goto out_delete_net;
 	}
+
 	TRACE("Cloned child process %d", handler->pid);
 
 	for (i = 0; i < LXC_NS_MAX; i++)
