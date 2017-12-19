@@ -8,7 +8,8 @@ hooks_SCRIPTS = \
 	dhclient-script \
 	dhclient-start \
 	dhclient-stop \
-	squid-deb-proxy-client
+	squid-deb-proxy-client \
+	nvidia
 
 binhooks_PROGRAMS = \
 	unmount-namespace
