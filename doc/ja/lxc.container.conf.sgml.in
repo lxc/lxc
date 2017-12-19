@@ -347,11 +347,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           </term>
           <listitem>
             <para>
-	      <!--
+              <!--
               Absolute path from container rootfs to the binary to run by default.  This
-	      mostly makes sense for lxc-execute.
-	      -->
-	      デフォルトで実行するバイナリのコンテナの root からの絶対パスを指定します。これは <command>lxc-execute</command> のための設定です。
+              mostly makes sense for lxc-execute.
+              -->
+              デフォルトで実行するバイナリのコンテナの root からの絶対パスを指定します。これは <command>lxc-execute</command> のための設定です。
             </para>
           </listitem>
         </varlistentry>
@@ -365,7 +365,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <para>
               <!--
                   Absolute path from container rootfs to the binary to use as init. This
-		  mostly makes sense for lxc-start. Default is /sbin/init.
+                  mostly makes sense for lxc-start. Default is /sbin/init.
                 -->
               init として使うバイナリの、コンテナの root からの絶対パスを指定します。これは <command>lxc-start</command> のための設定です。デフォルトは <command>/sbin/init</command> です。
             </para>
@@ -377,11 +377,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <refsect2>
       <title>Init のワーキングディレクトリ <!-- Init working directory --></title>
       <para>
-	<!--
+        <!--
         Sets the absolute path inside the container as the working directory for the containers.
         LXC will switch to this directory before executing init.
-	  -->
-	コンテナのワーキングディレクトリとして、コンテナ内の絶対パスを設定します。LXC は init を実行する前に、このディレクトリに移動します。
+          -->
+        コンテナのワーキングディレクトリとして、コンテナ内の絶対パスを設定します。LXC は init を実行する前に、このディレクトリに移動します。
       </para>
       <variablelist>
         <varlistentry>
@@ -390,10 +390,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           </term>
           <listitem>
             <para>
-	      <!--
+              <!--
               Absolute path inside the container to use as the working directory.
-		-->
-	      ワーキングディレクトリとして使うコンテナ内の絶対パス
+                -->
+              ワーキングディレクトリとして使うコンテナ内の絶対パス
             </para>
           </listitem>
         </varlistentry>
@@ -440,6 +440,37 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                 -->
               init が使う GID です。
             </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title>Proc</title>
+      <para>
+        <!--
+        Configure proc filesystem for the container.
+          -->
+        コンテナ内の proc ファイルシステムで設定できるパラメータを設定します。
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.proc.[proc file name]</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              Specify the proc file name to be set. The file name available
+              are those listed under /proc/PID/.
+              Example:
+                -->
+              設定したい proc ファイルシステムのファイル名を指定します。指定できるファイル名は /proc/PID/ 以下に存在するものです。
+              例:
+            </para>
+            <programlisting>
+              lxc.proc.oom_score_adj = 10
+            </programlisting>
           </listitem>
         </varlistentry>
       </variablelist>
@@ -826,21 +857,67 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <listitem>
             <para>
               <!--
-              add a configuration option to specify a script to be
+              Add a configuration option to specify a script to be
               executed after creating and configuring the network used
-              from the host side. The following arguments are passed
-              to the script: container name and config section name
-              (net) Additional arguments depend on the config section
-              employing a script hook; the following are used by the
-              network system: execution context (up), network type
-              (empty/veth/macvlan/phys), Depending on the network
-              type, other arguments may be passed:
-              veth/macvlan/phys. And finally (host-sided) device name.
-              -->
-              ホスト側から使われる、ネットワークの作成と設定が済んだ後に実行するスクリプトを指定します。以下の引数がスクリプトに渡されます: コンテナ名、設定セクション名(net)。
-              その後の引数はスクリプトのフックで使われる設定セクションに依存します。以下がネットワークシステムによって使われます: 実行コンテキスト (up)、ネットワークのタイプ (empty/veth/macvlan/phys)
-              ネットワークのタイプによっては、更に別の引数が渡されるかもしれません: veth/macvlan/phys の場合 (ホスト側の) デバイス名
+              from the host side.
+                -->
+              ホスト側から使われる、ネットワークの作成と設定が済んだ後に実行するスクリプトを指定します。
             </para>
+
+            <para>
+              <!--
+              In addition to the information available to all hooks. The
+              following information is provided to the script:
+                -->
+              すべてのフックで追加の情報が使えます。以下の情報がスクリプトに提供されます:
+              <itemizedlist>
+                <listitem>
+                 <para>
+                 LXC_HOOK_TYPE: フックタイプ。'up' か 'down' のいずれかです <!-- the hook type. This is either 'up' or 'down'. -->
+                  </para>
+                </listitem>
+
+                <listitem>
+                 <para>
+                 LXC_HOOK_SECTION: セクションタイプとして 'net' が設定されます<!-- the section type 'net'. -->
+                  </para>
+                </listitem>
+
+                <listitem>
+                 <para>
+                 LXC_NET_TYPE: ネットワークタイプ。有効なネットワークタイプのうちのひとつです (例: 'macvlan', 'veth') <!-- the network type. This is one of the valid
+                 network types listed here (e.g. 'macvlan', 'veth'). -->
+                  </para>
+                </listitem>
+
+                <listitem>
+                 <para>
+                 LXC_NET_PARENT: ホスト上の親デバイス名。これはネットワークタイプが 'macvlan'、'veth'、'phys' のどれかのときだけ設定されます <!-- the parent device on the host. This is only
+                 set for network types 'mavclan', 'veth', 'phys'. -->
+                  </para>
+                </listitem>
+
+                <listitem>
+                 <para>
+                   LXC_NET_PEER: ホスト上のピアデバイス名。これはネットワークタイプが 'veth' の場合のみ設定されます。この情報は <option>lxc.hook.version</option> が 1 に設定されている場合のみ設定されます
+                   <!-- the name of the peer device on the host. This is
+                 only set for 'veth' network types. Note that this information
+                 is only available when <option>lxc.hook.version</option> is set
+                 to 1. -->
+                  </para>
+                </listitem>
+              </itemizedlist>
+
+              <!--
+              Whether this information is provided in the form of environment
+              variables or as arguments to the script depends on the value of
+              <option>lxc.hook.version</option>. If set to 1 then information is
+              provided in the form of environment variables. If set to 0
+              information is provided as arguments to the script.
+              -->
+              この情報が環境変数の形で提供されるか、スクリプトへの引数の形で提供されるかは <option>lxc.hook.version</option> の値によって決まります。もし <option>lxc.hook.version</option> が 1 に設定されている場合は、環境変数の形で提供されます。もし 0 が設定されている場合は、スクリプトへの引数として提供されます。
+            </para>
+
             <para>
               <!--
               Standard output from the script is logged at debug level.
@@ -859,21 +936,67 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <listitem>
             <para>
               <!--
-              add a configuration option to specify a script to be
+              Add a configuration option to specify a script to be
               executed before destroying the network used from the
-              host side. The following arguments are passed to the
-              script: container name and config section name (net)
-              Additional arguments depend on the config section
-              employing a script hook; the following are used by the
-              network system: execution context (down), network type
-              (empty/veth/macvlan/phys), Depending on the network
-              type, other arguments may be passed:
-              veth/macvlan/phys. And finally (host-sided) device name.
-              -->
-              ホスト側から使われる、ネットワークを破壊する前に実行するスクリプトを指定します。以下の引数がスクリプトに渡されます: コンテナ名、設定セクション名(net)。
-              その後の引数はスクリプトのフックで使われる設定セクションに依存します。以下がネットワークシステムによって使われます: 実行コンテキスト (up)、ネットワークのタイプ (empty/veth/macvlan/phys)。
-              ネットワークのタイプによっては、更に別の引数が渡されるかもしれません: veth/macvlan/phys。そして最後に (ホスト側の) デバイス名が渡されます。
+              host side.
+                -->
+              ホスト側から使われる、ネットワークを破壊する前に実行するスクリプトを指定します。
             </para>
+
+            <para>
+              <!--
+              In addition to the information available to all hooks. The
+              following information is provided to the script:
+                -->
+              すべてのフックで追加の情報が使えます。以下の情報がスクリプトに提供されます:
+              <itemizedlist>
+                <listitem>
+                 <para>
+                 LXC_HOOK_TYPE: フックタイプ。'up' か 'down' のいずれかです <!-- the hook type. This is either 'up' or 'down'. -->
+                  </para>
+                </listitem>
+
+                <listitem>
+                 <para>
+                 LXC_HOOK_SECTION: セクションタイプとして 'net' が設定されます<!-- the section type 'net'. -->
+                  </para>
+                </listitem>
+
+                <listitem>
+                 <para>
+                 LXC_NET_TYPE: ネットワークタイプ。有効なネットワークタイプのうちのひとつです (例: 'macvlan', 'veth') <!-- the network type. This is one of the valid
+                 network types listed here (e.g. 'macvlan', 'veth'). -->
+                  </para>
+                </listitem>
+
+                <listitem>
+                 <para>
+                 LXC_NET_PARENT: ホスト上の親デバイス名。これはネットワークタイプが 'macvlan'、'veth'、'phys' のどれかのときだけ設定されます <!-- the parent device on the host. This is only
+                 set for network types 'mavclan', 'veth', 'phys'. -->
+                  </para>
+                </listitem>
+
+                <listitem>
+                 <para>
+                   LXC_NET_PEER: ホスト上のピアデバイス名。これはネットワークタイプが 'veth' の場合のみ設定されます。この情報は <option>lxc.hook.version</option> が 1 に設定されている場合のみ設定されます
+                   <!-- the name of the peer device on the host. This is
+                 only set for 'veth' network types. Note that this information
+                 is only available when <option>lxc.hook.version</option> is set
+                 to 1. -->
+                  </para>
+                </listitem>
+              </itemizedlist>
+
+              <!--
+              Whether this information is provided in the form of environment
+              variables or as arguments to the script depends on the value of
+              <option>lxc.hook.version</option>. If set to 1 then information is
+              provided in the form of environment variables. If set to 0
+              information is provided as arguments to the script.
+              -->
+              この情報が環境変数の形で提供されるか、スクリプトへの引数の形で提供されるかは <option>lxc.hook.version</option> の値によって決まります。もし <option>lxc.hook.version</option> が 1 に設定されている場合は、環境変数の形で提供されます。もし 0 が設定されている場合は、スクリプトへの引数として提供されます。
+            </para>
+
             <para>
               <!--
               Standard output from the script is logged at debug level.
@@ -1279,11 +1402,24 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <option>optional</option> don't fail if mount does not work.
               <option>create=dir</option> or <option>create=file</option>
               to create dir (or file) when the point will be mounted.
+              <option>relative</option> source path is taken to be relative to
+              the mounted container root. For instance,
               -->
               fstab フォーマットに加えて、LXC ではマウントに対して独自の 2 つのオプションが使えます。
               <option>optional</option> は、マウントが失敗しても失敗を返さずに無視します。
               <option>create=dir</option> と <option>create=file</option> は、マウントポイントをマウントする際にディレクトリもしくはファイルを作成します。
+              <option>relative</option> を指定すると、マウントされたコンテナルートからの相対パスとして取得されます。
             </para>
+            <screen>
+              dev/null proc/kcore none bind,relative 0 0
+            </screen>
+            <para>
+              <!--
+              Will expand dev/null to ${<option>LXC_ROOTFS_MOUNT</option>}/dev/null,
+              and mount it to proc/kcore inside the container.
+                -->
+              は dev/null を ${<option>LXC_ROOTFS_MOUNT</option>}/dev/null と展開し、コンテナ内の proc/kcore にマウントします。
+             </para>
           </listitem>
         </varlistentry>
 
@@ -1696,7 +1832,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           </term>
           <listitem>
             <para>
-	      <!--
+              <!--
               specify a directory or path in which the container's cgroup will
               be created. For example, setting
               <option>lxc.cgroup.dir = my-cgroup/first</option> for a container
@@ -1707,11 +1843,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               "/sys/fs/cgroup/cpuset/my-user/my-cgroup/first/c1" for the
               container. Any missing cgroups will be created by LXC. This
               presupposes that the user has write access to its current cgroup.
-	      -->
-	      コンテナの cgroup を作成するパスやディレクトリを指定します。
-	      例えば、"c1" という名前のコンテナで <option>lxc.cgroup.dir = my-cgroup/first</option> のように設定すると、"my-cgroup" のサブ cgroup のようにコンテナの cgroup を作成します。
-	      例えば、ユーザのカレントの cgroup である "my-user" が cgroup v1 階層にある cpuset コントローラの root cgroup 内に存在する場合、この設定は "/sys/fs/cgroup/cpuset/my-user/my-cgroup/first/c1" という cgroup をこのコンテナ向けに作成します。
-	      存在しない cgroup は LXC が作成しますが、ユーザがカレントの cgroup に書き込み権を持っていることが前提となります。
+              -->
+              コンテナの cgroup を作成するパスやディレクトリを指定します。
+              例えば、"c1" という名前のコンテナで <option>lxc.cgroup.dir = my-cgroup/first</option> のように設定すると、"my-cgroup" のサブ cgroup のようにコンテナの cgroup を作成します。
+              例えば、ユーザのカレントの cgroup である "my-user" が cgroup v1 階層にある cpuset コントローラの root cgroup 内に存在する場合、この設定は "/sys/fs/cgroup/cpuset/my-user/my-cgroup/first/c1" という cgroup をこのコンテナ向けに作成します。
+              存在しない cgroup は LXC が作成しますが、ユーザがカレントの cgroup に書き込み権を持っていることが前提となります。
             </para>
           </listitem>
         </varlistentry>
@@ -1903,6 +2039,44 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                 <manvolnum>2</manvolnum>
               </citerefentry> を参照してください。
               値を指定せずに使用した場合、lxc はこの指定以前に設定されたリソース制限をクリアします。明示的に制限が設定されていないリソースについては、コンテナを起動したプロセスから継承します。
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title>Sysctl</title>
+      <para>
+        <!--
+        Configure kernel parameters for the container.
+          -->
+        コンテナ用のカーネルパラメータを設定します。
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.sysctl.[kernel parameters name]</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              Specify the kernel parameters to be set. The parameters available 
+              are those listed under /proc/sys/.
+              Note that not all sysctls are namespaced. Changing Non-namespaced
+              sysctls will cause the system-wide setting to be modified.
+                -->
+              設定したいカーネルパラメータを指定します。指定できるパラメータは /proc/sys 以下に存在するものです。
+              すべての sysctl パラメータが仮想化（名前空間化）されているわけではないことに注意してください。仮想化されていない sysctl を設定すると、システムワイドで設定が変更されてしまいます。
+              <citerefentry>
+                <refentrytitle><command>sysctl</command></refentrytitle>
+                <manvolnum>8</manvolnum>
+              </citerefentry>.
+              <!--
+              If used with no value, lxc will clear the parameters specified up 
+              to this point.
+                -->
+              値を指定しないでこの設定を指定した場合は、この設定より前に設定されたパラメータをクリアします。
             </para>
           </listitem>
         </varlistentry>
@@ -2169,48 +2343,69 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         <!--
         Container hooks are programs or scripts which can be executed
         at various times in a container's lifetime.
-        -->
+          -->
         コンテナのフックは、コンテナの存続期間の色々な場面で実行することのできるプログラムやスクリプトです。
       </para>
       <para>
         <!--
-        When a container hook is executed, information is passed both
-        as command line arguments and through environment variables.
-        The arguments are:
+        When a container hook is executed, additional information is passed
+        along. The <option>lxc.hook.version</option> argument can be used to
+        determine if the following arguments are passed as command line
+        arguments or through environment variables. The arguments are:
+          -->
+        コンテナフックが実行されるとき、追加の情報が渡されます。追加の引数がコマンドライン引数で渡されるか、環境変数経由で渡されるかを判断するのに、<option>lxc.hook.version</option> が使えます。引数は:
         <itemizedlist>
-          <listitem><para> Container name. </para></listitem>
-          <listitem><para> Section (always 'lxc'). </para></listitem>
-          <listitem><para> The hook type (i.e. 'clone' or 'pre-mount'). </para></listitem>
-          <listitem><para> Additional arguments. In the
+          <listitem><para> コンテナ名 <!-- Container name.--></para></listitem>
+          <listitem><para> セクション (常に 'lxc') <!-- Section (always 'lxc'). --></para></listitem>
+          <listitem><para> フックのタイプ ('clone' や 'pre-mount' など) <!-- The hook type (i.e. 'clone' or 'pre-mount'). --></para></listitem>
+          <listitem><para> 追加の引数。clone フックの場合、lxc-clone に渡される追加の引数は、フックへの引数として追加されます。stop フックの場合は、コンテナの名前空間のそれぞれに対するファイルディスクリプタへのパスが、名前空間名とともに渡されます。 <!-- Additional arguments. In the
           case of the clone hook, any extra arguments passed to
           lxc-clone will appear as further arguments to the hook.
           In the case of the stop hook, paths to filedescriptors
           for each of the container's namespaces along with their types
-          are passed. </para></listitem>
+          are passed. --></para></listitem>
         </itemizedlist>
+        <!--
         The following environment variables are set:
+          -->
+        次の環境変数がセットされます。
         <itemizedlist>
-          <listitem><para> LXC_NAME: is the container's name. </para></listitem>
-          <listitem><para> LXC_ROOTFS_MOUNT: the path to the mounted root filesystem. </para></listitem>
-          <listitem><para> LXC_CONFIG_FILE: the path to the container configuration file. </para></listitem>
-          <listitem><para> LXC_SRC_NAME: in the case of the clone hook, this is the original container's name. </para></listitem>
-          <listitem><para> LXC_ROOTFS_PATH: this is the lxc.rootfs.path entry for the container.  Note this is likely not where the mounted rootfs is to be found, use LXC_ROOTFS_MOUNT for that. </para></listitem>
-        </itemizedlist>
-        -->
-        コンテナのフックが実行されるとき、情報がコマンドライン引数と環境変数の両方を通して渡されます。引数は:
-        <itemizedlist>
-          <listitem><para>コンテナ名</para></listitem>
-          <listitem><para>セクション (常に 'lxc')</para></listitem>
-          <listitem><para>フックのタイプ ('clone' や 'pre-mount' など)</para></listitem>
-          <listitem><para>追加の引数。clone フックの場合、lxc-clone に渡される追加の引数は、フックへの引数として追加されます。stop フックの場合は、コンテナの名前空間のそれぞれに対するファイルディスクリプタへのパスが、名前空間名とともに渡されます。</para></listitem>
-        </itemizedlist>
-        以下の環境変数がセットされます。
-        <itemizedlist>
-          <listitem><para> LXC_NAME: コンテナ名</para></listitem>
-          <listitem><para> LXC_ROOTFS_MOUNT: マウントされた root ファイルシステムへのパス</para></listitem>
-          <listitem><para> LXC_CONFIG_FILE: コンテナの設定ファイルのパス </para></listitem>
-          <listitem><para> LXC_SRC_NAME: clone フックの場合、元のコンテナの名前</para></listitem>
-          <listitem><para> LXC_ROOTFS_PATH: コンテナの lxc.rootfs.path エントリ。これはマウントされた rootfs が存在する場所にはならないでしょう。それには LXC_ROOTFS_MOUNT を使用してください。</para></listitem>
+          <listitem><para> LXC_CGNS_AWARE: コンテナで cgroup namespace が使えるかどうか <!-- indicator whether the container is
+          cgroup namespace aware. --></para></listitem>
+          <listitem><para> LXC_CONFIG_FILE: コンテナの設定ファイルのパス <!-- the path to the container
+          configuration file. --></para></listitem>
+          <listitem><para> LXC_HOOK_TYPE: フックのタイプ (例えば 'clone'、'mount'、'pre-mount')。この環境変数が存在するかどうかは <option>lxc.hook.version</option> の値次第です。この値が 1 なら、LXC_HOOK_TYPE が設定されています。
+              <!-- the hook type (e.g. 'clone', 'mount',
+          'pre-mount'). Note that the existence of this environment variable is
+          conditional on the value of <option>lxc.hook.version</option>. If it
+          is set to 1 then LXC_HOOK_TYPE will be set. -->
+          </para></listitem>
+          <listitem><para> LXC_HOOK_SECTION: セクションタイプ (例えば 'lxc'、'net')。この環境変数が存在するかどうかは <option>lxc.hook.version</option> の値次第です。この値が 1 なら、LXC_HOOK_TYPE が設定されています。
+              <!-- the section type (e.g. 'lxc',
+          'net'). Note that the existence of this environment variable is
+          conditional on the value of <option>lxc.hook.version</option>. If it
+          is set to 1 then LXC_HOOK_SECTION will be set. -->
+          </para></listitem>
+          <listitem><para> LXC_HOOK_VERSION: フックのバージョン。この値は、コンテナの <option>lxc.hook.version</option> の値と同じです。もし、この値が 0 に設定されているなら、古いスタイルのフックが使われます。もし 1 に設定されているなら、新しいスタイルのフックが使われます。
+              <!-- the version of the hooks. This
+          value is identical to the value of the container's
+          <option>lxc.hook.version</option> config item. If it is set to 0 then
+          old-style hooks are used. If it is set to 1 then new-style hooks are
+          used. --></para></listitem>
+          <listitem><para> LXC_LOG_LEVEL: コンテナのログレベル <!-- the container's log level. --></para></listitem>
+          <listitem><para> LXC_NAME: コンテナ名 <!-- is the container's name. --></para></listitem>
+          <listitem><para> LXC_[NAMESPACE IDENTIFIER]_NS: コンテナの名前空間が参照する /proc/PID/fd/ 以下のファイルディスクリプタのパス。それぞれの名前空間ごとに別々の環境変数になります。これらの環境変数は <option>lxc.hook.version</option> が 1 に設定されてる場合のみ設定されます。
+              <!-- path under
+          /proc/PID/fd/ to a file descriptor referring to the container's
+          namespace. For each preserved namespace type there will be a separate
+          environment variable. These environment variables will only be set if
+          <option>lxc.hook.version</option> is set to 1. --></para></listitem>
+          <listitem><para> LXC_ROOTFS_MOUNT: マウントされた root ファイルシステムへのパス <!-- the path to the mounted root filesystem. --></para></listitem>
+          <listitem><para> LXC_ROOTFS_PATH: コンテナの lxc.rootfs.path エントリ。これはマウントされた rootfs が存在する場所にはならないでしょう。それには LXC_ROOTFS_MOUNT を使用してください。 <!-- this is the lxc.rootfs.path entry
+          for the container. Note this is likely not where the mounted rootfs is
+          to be found, use LXC_ROOTFS_MOUNT for that. --></para></listitem>
+          <listitem><para> LXC_SRC_NAME: clone フックの場合、元のコンテナの名前 <!-- in the case of the clone hook, this is
+          the original container's name. --></para></listitem>
         </itemizedlist>
       </para>
       <para>
@@ -2218,11 +2413,43 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         Standard output from the hooks is logged at debug level.
         Standard error is not logged, but can be captured by the
         hook redirecting its standard error to standard output.
-        -->
+          -->
         スクリプトからの標準出力は debug レベルでロギングされます。
         標準エラー出力はロギングされません。
         しかし、フックの標準エラー出力を標準出力にリダイレクトすることにより保存することは可能です。
       </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.hook.version</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+            To pass the arguments in new style via environment variables set to
+            1 otherwise set to 0 to pass them as arguments.
+            This setting affects all hooks arguments that were traditionally
+            passed as arguments to the script. Specifically, it affects the
+            container name, section (e.g. 'lxc', 'net') and hook type (e.g.
+            'clone', 'mount', 'pre-mount') arguments. If new-style hooks are
+            used then the arguments will be available as environment variables.
+            The container name will be set in LXC_NAME. (This is set
+            independently of the value used for this config item.) The section
+            will be set in LXC_HOOK_SECTION and the hook type will be set in
+            LXC_HOOK_TYPE.
+            It also affects how the paths to file descriptors referring to the
+            container's namespaces are passed. If set to 1 then for each
+            namespace a separate environment variable LXC_[NAMESPACE
+            IDENTIFIER]_NS will be set. If set to 0 then the paths will be
+            passed as arguments to the stop hook.
+                -->
+              環境変数経由の新しいスタイルで引数を渡すには 1 に設定します。そうでなく、引数として渡すには 0 に設定します。この設定は、古い方法でスクリプトに引数として渡されているすべてのフック引数に影響します。特に、コンテナ名のセクション (例: 'lxc', 'net') とフックタイプ (例: 'clone', 'mount', 'pre-mount') 引数に影響します。新しいスタイルのフックが使われる場合、引数は環境変数として利用できます。
+              コンテナ名は LXC_NAME に設定されます(これはこの設定項目に設定されている値とは関係なく設定されます)。セクションは LXC_HOOK_SECTION に設定されます。そしてフックタイプは LXC_HOOK_TYPE に設定されます。
+              この設定は、コンテナの名前空間を参照するファイルディスクリプタのパスをどのように渡すかにも影響します。1 に設定した場合、名前空間ごとに別の環境変数 LXC_[NAMESPACE IDENTIFIER]_NS に設定されます。0 に設定すると、パスは stop フックの引数として渡されます。
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
       <variablelist>
         <varlistentry>
           <term>

@@ -1076,8 +1076,6 @@ dev/null proc/kcore none bind,relative 0 0
               Will expand dev/null to ${<option>LXC_ROOTFS_MOUNT</option>}/dev/null,
               and mount it to proc/kcore inside the container.
              </para>
-             <para>
-            </para>
           </listitem>
         </varlistentry>
 
