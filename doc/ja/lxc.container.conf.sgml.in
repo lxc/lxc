@@ -1910,6 +1910,44 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </refsect2>
 
     <refsect2>
+      <title>Sysctl</title>
+      <para>
+	<!--
+        Configure kernel parameters for the container.
+	  -->
+	コンテナ用のカーネルパラメータを設定します。
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.sysctl.[kernel parameters name]</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              Specify the kernel parameters to be set. The parameters available 
+              are those listed under /proc/sys/.
+              Note that not all sysctls are namespaced. Changing Non-namespaced
+              sysctls will cause the system-wide setting to be modified.
+                -->
+              設定したいカーネルパラメータを指定します。指定できるパラメータは /proc/sys 以下に存在するものです。
+              すべての sysctl パラメータが仮想化（名前空間化）されているわけではないことに注意してください。仮想化されていない sysctl を設定すると、システムワイドで設定が変更されてしまいます。
+              <citerefentry>
+                <refentrytitle><command>sysctl</command></refentrytitle>
+                <manvolnum>8</manvolnum>
+              </citerefentry>.
+              <!--
+              If used with no value, lxc will clear the parameters specified up 
+              to this point.
+                -->
+              値を指定しないでこの設定を指定した場合は、この設定より前に設定されたパラメータをクリアします。
+            </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title><!-- Apparmor profile -->Apparmor プロファイル</title>
       <para>
         <!--
