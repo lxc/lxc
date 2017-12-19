@@ -478,7 +478,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (!c->get_config_item(c, "lxc.id_map", retval, sizeof(retval))) {
-		lxc_error("%s\n", "failed to get config item \"lxc.cgroup\"");
+		lxc_error("%s\n", "failed to get config item \"lxc.id_map\"");
 		return -1;
 	}
 
@@ -506,7 +506,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (!c->get_config_item(c, "lxc.idmap", retval, sizeof(retval))) {
-		lxc_error("%s\n", "failed to get config item \"lxc.cgroup\"");
+		lxc_error("%s\n", "failed to get config item \"lxc.idmap\"");
 		return -1;
 	}
 
