@@ -1813,8 +1813,8 @@ static char *get_field(char *src, int nfields)
 
 static int mount_entry(const char *fsname, const char *target,
 		       const char *fstype, unsigned long mountflags,
-		       const char *data, int optional, int dev,
-		       int relative, const char *rootfs)
+		       const char *data, bool optional, bool dev,
+		       bool relative, const char *rootfs)
 {
 	int ret;
 	char srcbuf[MAXPATHLEN];
