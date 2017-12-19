@@ -347,11 +347,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           </term>
           <listitem>
             <para>
-	      <!--
+              <!--
               Absolute path from container rootfs to the binary to run by default.  This
-	      mostly makes sense for lxc-execute.
-	      -->
-	      デフォルトで実行するバイナリのコンテナの root からの絶対パスを指定します。これは <command>lxc-execute</command> のための設定です。
+              mostly makes sense for lxc-execute.
+              -->
+              デフォルトで実行するバイナリのコンテナの root からの絶対パスを指定します。これは <command>lxc-execute</command> のための設定です。
             </para>
           </listitem>
         </varlistentry>
@@ -365,7 +365,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <para>
               <!--
                   Absolute path from container rootfs to the binary to use as init. This
-		  mostly makes sense for lxc-start. Default is /sbin/init.
+                  mostly makes sense for lxc-start. Default is /sbin/init.
                 -->
               init として使うバイナリの、コンテナの root からの絶対パスを指定します。これは <command>lxc-start</command> のための設定です。デフォルトは <command>/sbin/init</command> です。
             </para>
@@ -377,11 +377,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <refsect2>
       <title>Init のワーキングディレクトリ <!-- Init working directory --></title>
       <para>
-	<!--
+        <!--
         Sets the absolute path inside the container as the working directory for the containers.
         LXC will switch to this directory before executing init.
-	  -->
-	コンテナのワーキングディレクトリとして、コンテナ内の絶対パスを設定します。LXC は init を実行する前に、このディレクトリに移動します。
+          -->
+        コンテナのワーキングディレクトリとして、コンテナ内の絶対パスを設定します。LXC は init を実行する前に、このディレクトリに移動します。
       </para>
       <variablelist>
         <varlistentry>
@@ -390,10 +390,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           </term>
           <listitem>
             <para>
-	      <!--
+              <!--
               Absolute path inside the container to use as the working directory.
-		-->
-	      ワーキングディレクトリとして使うコンテナ内の絶対パス
+                -->
+              ワーキングディレクトリとして使うコンテナ内の絶対パス
             </para>
           </listitem>
         </varlistentry>
@@ -440,6 +440,37 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                 -->
               init が使う GID です。
             </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title>Proc</title>
+      <para>
+        <!--
+        Configure proc filesystem for the container.
+          -->
+        コンテナ内の proc ファイルシステムで設定できるパラメータを設定します。
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.proc.[proc file name]</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              Specify the proc file name to be set. The file name available
+              are those listed under /proc/PID/.
+              Example:
+                -->
+              設定したい proc ファイルシステムのファイル名を指定します。指定できるファイル名は /proc/PID/ 以下に存在するものです。
+              例:
+            </para>
+            <programlisting>
+              lxc.proc.oom_score_adj = 10
+            </programlisting>
           </listitem>
         </varlistentry>
       </variablelist>
@@ -1696,7 +1727,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           </term>
           <listitem>
             <para>
-	      <!--
+              <!--
               specify a directory or path in which the container's cgroup will
               be created. For example, setting
               <option>lxc.cgroup.dir = my-cgroup/first</option> for a container
@@ -1707,11 +1738,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               "/sys/fs/cgroup/cpuset/my-user/my-cgroup/first/c1" for the
               container. Any missing cgroups will be created by LXC. This
               presupposes that the user has write access to its current cgroup.
-	      -->
-	      コンテナの cgroup を作成するパスやディレクトリを指定します。
-	      例えば、"c1" という名前のコンテナで <option>lxc.cgroup.dir = my-cgroup/first</option> のように設定すると、"my-cgroup" のサブ cgroup のようにコンテナの cgroup を作成します。
-	      例えば、ユーザのカレントの cgroup である "my-user" が cgroup v1 階層にある cpuset コントローラの root cgroup 内に存在する場合、この設定は "/sys/fs/cgroup/cpuset/my-user/my-cgroup/first/c1" という cgroup をこのコンテナ向けに作成します。
-	      存在しない cgroup は LXC が作成しますが、ユーザがカレントの cgroup に書き込み権を持っていることが前提となります。
+              -->
+              コンテナの cgroup を作成するパスやディレクトリを指定します。
+              例えば、"c1" という名前のコンテナで <option>lxc.cgroup.dir = my-cgroup/first</option> のように設定すると、"my-cgroup" のサブ cgroup のようにコンテナの cgroup を作成します。
+              例えば、ユーザのカレントの cgroup である "my-user" が cgroup v1 階層にある cpuset コントローラの root cgroup 内に存在する場合、この設定は "/sys/fs/cgroup/cpuset/my-user/my-cgroup/first/c1" という cgroup をこのコンテナ向けに作成します。
+              存在しない cgroup は LXC が作成しますが、ユーザがカレントの cgroup に書き込み権を持っていることが前提となります。
             </para>
           </listitem>
         </varlistentry>
@@ -1912,10 +1943,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <refsect2>
       <title>Sysctl</title>
       <para>
-	<!--
+        <!--
         Configure kernel parameters for the container.
-	  -->
-	コンテナ用のカーネルパラメータを設定します。
+          -->
+        コンテナ用のカーネルパラメータを設定します。
       </para>
       <variablelist>
         <varlistentry>
