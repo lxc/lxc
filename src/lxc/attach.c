@@ -781,7 +781,7 @@ struct attach_clone_payload {
 
 static int attach_child_main(struct attach_clone_payload *payload)
 {
-	int fd, ret;
+	int fd, lsm_fd, ret;
 	long flags;
 #if HAVE_SYS_PERSONALITY_H
 	long new_personality;
@@ -791,6 +791,9 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	int ipc_socket = payload->ipc_socket;
 	lxc_attach_options_t* options = payload->options;
 	struct lxc_proc_context_info* init_ctx = payload->init_ctx;
+	bool needs_lsm = (options->namespaces & CLONE_NEWNS) &&
+			 (options->attach_flags & LXC_ATTACH_LSM) &&
+			 init_ctx->lsm_label;
 
 	/* A description of the purpose of this functionality is provided in the
 	 * lxc-attach(1) manual page. We have to remount here and not in the
@@ -844,6 +847,26 @@ static int attach_child_main(struct attach_clone_payload *payload)
 		rexit(-1);
 	}
 
+	/* This remark only affects fully unprivileged containers:
+	 * Receive fd for LSM security module before we set{g,u}id(). The reason
+	 * is that on set{g,u}id() the kernel will a) make us undumpable and b)
+	 * we will change our effective uid. This means our effective uid will
+	 * be different from the effective uid of the process that created us
+	 * which means that this processs no longer has capabilities in our
+	 * namespace including CAP_SYS_PTRACE. This means we will not be able to
+	 * read and /proc/<pid> files for the process anymore when /proc is
+	 * mounted with hidepid={1,2}. So let's get the lsm label fd before the
+	 * set{g,u}id().
+	 */
+	if (needs_lsm) {
+		ret = lxc_abstract_unix_recv_fds(ipc_socket, &lsm_fd, 1, NULL, 0);
+		if (ret <= 0) {
+			shutdown(ipc_socket, SHUT_RDWR);
+			rexit(-1);
+		}
+		TRACE("Received LSM label file descriptor %d from parent", lsm_fd);
+	}
+
 	/* Set {u,g}id. */
 	new_uid = 0;
 	new_gid = 0;
@@ -888,27 +911,19 @@ static int attach_child_main(struct attach_clone_payload *payload)
 		rexit(-1);
 	}
 
-	if ((options->namespaces & CLONE_NEWNS) &&
-	    (options->attach_flags & LXC_ATTACH_LSM) && init_ctx->lsm_label) {
-		int lsm_labelfd, on_exec;
-
-		/* Receive fd for LSM security module. */
-		ret = lxc_abstract_unix_recv_fds(ipc_socket, &lsm_labelfd, 1, NULL, 0);
-		if (ret <= 0) {
-			shutdown(ipc_socket, SHUT_RDWR);
-			rexit(-1);
-		}
-		TRACE("Received LSM label file descriptor %d from parent", lsm_labelfd);
+	if (needs_lsm) {
+		int on_exec;
 
 		/* Change into our new LSM profile. */
 		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? 1 : 0;
-		if (lsm_set_label_at(lsm_labelfd, on_exec, init_ctx->lsm_label) < 0) {
+		ret = lsm_set_label_at(lsm_fd, on_exec, init_ctx->lsm_label);
+		if (ret < 0) {
 			SYSERROR("Failed to set LSM label.");
 			shutdown(ipc_socket, SHUT_RDWR);
-			close(lsm_labelfd);
+			close(lsm_fd);
 			rexit(-1);
 		}
-		close(lsm_labelfd);
+		close(lsm_fd);
 	}
 
 	if (init_ctx->container && init_ctx->container->lxc_conf &&
