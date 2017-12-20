@@ -705,16 +705,6 @@ static void lxc_attach_get_init_uidgid(uid_t *init_uid, gid_t *init_gid)
 	 */
 }
 
-struct attach_clone_payload {
-	int ipc_socket;
-	lxc_attach_options_t *options;
-	struct lxc_proc_context_info *init_ctx;
-	lxc_attach_exec_t exec_function;
-	void *exec_payload;
-};
-
-static int attach_child_main(void *data);
-
 /* Help the optimizer along if it doesn't know that exit always exits. */
 #define rexit(c)                                                               \
 	do {                                                                   \
@@ -781,6 +771,198 @@ static signed long get_personality(const char *name, const char *lxcpath)
 	return ret;
 }
 
+struct attach_clone_payload {
+	int ipc_socket;
+	lxc_attach_options_t *options;
+	struct lxc_proc_context_info *init_ctx;
+	lxc_attach_exec_t exec_function;
+	void *exec_payload;
+};
+
+static int attach_child_main(struct attach_clone_payload *payload)
+{
+	int fd, ret;
+	long flags;
+#if HAVE_SYS_PERSONALITY_H
+	long new_personality;
+#endif
+	uid_t new_uid;
+	gid_t new_gid;
+	int ipc_socket = payload->ipc_socket;
+	lxc_attach_options_t* options = payload->options;
+	struct lxc_proc_context_info* init_ctx = payload->init_ctx;
+
+	/* A description of the purpose of this functionality is provided in the
+	 * lxc-attach(1) manual page. We have to remount here and not in the
+	 * parent process, otherwise /proc may not properly reflect the new pid
+	 * namespace.
+	 */
+	if (!(options->namespaces & CLONE_NEWNS) &&
+	    (options->attach_flags & LXC_ATTACH_REMOUNT_PROC_SYS)) {
+		ret = lxc_attach_remount_sys_proc();
+		if (ret < 0) {
+			shutdown(ipc_socket, SHUT_RDWR);
+			rexit(-1);
+		}
+	}
+
+	/* Now perform additional attachments. */
+#if HAVE_SYS_PERSONALITY_H
+	if (options->personality < 0)
+		new_personality = init_ctx->personality;
+	else
+		new_personality = options->personality;
+
+	if (options->attach_flags & LXC_ATTACH_SET_PERSONALITY) {
+		ret = personality(new_personality);
+		if (ret < 0) {
+			SYSERROR("Could not ensure correct architecture");
+			shutdown(ipc_socket, SHUT_RDWR);
+			rexit(-1);
+		}
+	}
+#endif
+
+	if (options->attach_flags & LXC_ATTACH_DROP_CAPABILITIES) {
+		ret = lxc_attach_drop_privs(init_ctx);
+		if (ret < 0) {
+			ERROR("Could not drop privileges");
+			shutdown(ipc_socket, SHUT_RDWR);
+			rexit(-1);
+		}
+	}
+
+	/* Always set the environment (specify (LXC_ATTACH_KEEP_ENV, NULL, NULL)
+	 * if you want this to be a no-op).
+	 */
+	ret = lxc_attach_set_environment(options->env_policy,
+					 options->extra_env_vars,
+					 options->extra_keep_env);
+	if (ret < 0) {
+		ERROR("Failed to set initial environment for attached process");
+		shutdown(ipc_socket, SHUT_RDWR);
+		rexit(-1);
+	}
+
+	/* Set {u,g}id. */
+	new_uid = 0;
+	new_gid = 0;
+	/* Ignore errors, we will fall back to root in that case (/proc was not
+	 * mounted etc.).
+	 */
+	if (options->namespaces & CLONE_NEWUSER)
+		lxc_attach_get_init_uidgid(&new_uid, &new_gid);
+
+	if (options->uid != (uid_t)-1)
+		new_uid = options->uid;
+	if (options->gid != (gid_t)-1)
+		new_gid = options->gid;
+
+	/* Setup the controlling tty. */
+	if (options->stdin_fd && isatty(options->stdin_fd)) {
+		if (setsid() < 0) {
+			SYSERROR("Unable to setsid.");
+			shutdown(ipc_socket, SHUT_RDWR);
+			rexit(-1);
+		}
+
+		if (ioctl(options->stdin_fd, TIOCSCTTY, (char *)NULL) < 0) {
+			SYSERROR("Unable to set TIOCSTTY.");
+			shutdown(ipc_socket, SHUT_RDWR);
+			rexit(-1);
+		}
+	}
+
+	/* Try to set the {u,g}id combination. */
+	if ((new_gid != 0 || options->namespaces & CLONE_NEWUSER)) {
+		if (setgid(new_gid) || setgroups(0, NULL)) {
+			SYSERROR("Switching to container gid.");
+			shutdown(ipc_socket, SHUT_RDWR);
+			rexit(-1);
+		}
+	}
+	if ((new_uid != 0 || options->namespaces & CLONE_NEWUSER) &&
+	    setuid(new_uid)) {
+		SYSERROR("Switching to container uid.");
+		shutdown(ipc_socket, SHUT_RDWR);
+		rexit(-1);
+	}
+
+	if ((options->namespaces & CLONE_NEWNS) &&
+	    (options->attach_flags & LXC_ATTACH_LSM) && init_ctx->lsm_label) {
+		int lsm_labelfd, on_exec;
+
+		/* Receive fd for LSM security module. */
+		ret = lxc_abstract_unix_recv_fds(ipc_socket, &lsm_labelfd, 1, NULL, 0);
+		if (ret <= 0) {
+			shutdown(ipc_socket, SHUT_RDWR);
+			rexit(-1);
+		}
+		TRACE("Received LSM label file descriptor %d from parent", lsm_labelfd);
+
+		/* Change into our new LSM profile. */
+		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? 1 : 0;
+		if (lsm_set_label_at(lsm_labelfd, on_exec, init_ctx->lsm_label) < 0) {
+			SYSERROR("Failed to set LSM label.");
+			shutdown(ipc_socket, SHUT_RDWR);
+			close(lsm_labelfd);
+			rexit(-1);
+		}
+		close(lsm_labelfd);
+	}
+
+	if (init_ctx->container && init_ctx->container->lxc_conf &&
+	    init_ctx->container->lxc_conf->seccomp &&
+	    (lxc_seccomp_load(init_ctx->container->lxc_conf) != 0)) {
+		ERROR("Failed to load seccomp policy.");
+		shutdown(ipc_socket, SHUT_RDWR);
+		rexit(-1);
+	}
+
+	shutdown(ipc_socket, SHUT_RDWR);
+	close(ipc_socket);
+	lxc_proc_put_context_info(init_ctx);
+
+	/* The following is done after the communication socket is shut down.
+	 * That way, all errors that might (though unlikely) occur up until this
+	 * point will have their messages printed to the original stderr (if
+	 * logging is so configured) and not the fd the user supplied, if any.
+	 */
+
+	/* Fd handling for stdin, stdout and stderr; ignore errors here, user
+	 * may want to make sure the fds are closed, for example.
+	 */
+	if (options->stdin_fd >= 0 && options->stdin_fd != 0)
+		dup2(options->stdin_fd, 0);
+	if (options->stdout_fd >= 0 && options->stdout_fd != 1)
+		dup2(options->stdout_fd, 1);
+	if (options->stderr_fd >= 0 && options->stderr_fd != 2)
+		dup2(options->stderr_fd, 2);
+
+	/* close the old fds */
+	if (options->stdin_fd > 2)
+		close(options->stdin_fd);
+	if (options->stdout_fd > 2)
+		close(options->stdout_fd);
+	if (options->stderr_fd > 2)
+		close(options->stderr_fd);
+
+	/* Try to remove FD_CLOEXEC flag from stdin/stdout/stderr, but also
+	 * here, ignore errors.
+	 */
+	for (fd = 0; fd <= 2; fd++) {
+		flags = fcntl(fd, F_GETFL);
+		if (flags < 0)
+			continue;
+		if (flags & FD_CLOEXEC)
+			if (fcntl(fd, F_SETFL, flags & ~FD_CLOEXEC) < 0)
+				SYSERROR("Unable to clear FD_CLOEXEC from file descriptor.");
+	}
+
+	/* We're done, so we can now do whatever the user intended us to do. */
+	rexit(payload->exec_function(payload->exec_payload));
+}
+
 int lxc_attach(const char *name, const char *lxcpath,
 	       lxc_attach_exec_t exec_function, void *exec_payload,
 	       lxc_attach_options_t *options, pid_t *attached_process)
@@ -791,6 +973,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 	signed long personality;
 	pid_t attached_pid, expected, init_pid, pid;
 	struct lxc_proc_context_info *init_ctx;
+	struct attach_clone_payload payload = {0};
 
 	ret = access("/proc/self/ns", X_OK);
 	if (ret) {
@@ -867,7 +1050,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 		}
 	}
 
-	pid = getpid();
+	pid = syscall(SYS_getpid);
 	for (i = 0; i < LXC_NS_MAX; i++) {
 		int j, saved_errno;
 
@@ -1095,31 +1278,27 @@ int lxc_attach(const char *name, const char *lxcpath,
 	}
 	free(cwd);
 
-	/* Now create the real child process. */
-	{
-		struct attach_clone_payload payload = {
-			.ipc_socket = ipc_sockets[1],
-			.options = options,
-			.init_ctx = init_ctx,
-			.exec_function = exec_function,
-			.exec_payload = exec_payload,
-		};
-		/* We use clone_parent here to make this subprocess a direct
-		 * child of the initial process. Then this intermediate process
-		 * can exit and the parent can directly track the attached
-		 * process.
-		 */
-		pid = lxc_clone(attach_child_main, &payload, CLONE_PARENT);
-	}
+	/* Create attached process. */
+	payload.ipc_socket = ipc_sockets[1];
+	payload.options = options;
+	payload.init_ctx = init_ctx;
+	payload.exec_function = exec_function;
+	payload.exec_payload = exec_payload;
 
-	/* Shouldn't happen, clone() should always return positive pid. */
-	if (pid <= 0) {
+	pid = lxc_raw_clone(CLONE_PARENT);
+	if (pid < 0) {
 		SYSERROR("Failed to clone attached process");
 		shutdown(ipc_sockets[1], SHUT_RDWR);
 		lxc_proc_put_context_info(init_ctx);
 		rexit(-1);
 	}
-	TRACE("Cloned attached process %d", pid);
+
+	if (pid == 0) {
+		ret = attach_child_main(&payload);
+		if (ret < 0)
+			ERROR("Failed to exec");
+		_exit(EXIT_FAILURE);
+	}
 
 	/* Tell grandparent the pid of the pid of the newly created child. */
 	ret = lxc_write_nointr(ipc_sockets[1], &pid, sizeof(pid));
@@ -1139,191 +1318,6 @@ int lxc_attach(const char *name, const char *lxcpath,
 	/* The rest is in the hands of the initial and the attached process. */
 	lxc_proc_put_context_info(init_ctx);
 	rexit(0);
-}
-
-static int attach_child_main(void* data)
-{
-	int fd, ret;
-	long flags;
-#if HAVE_SYS_PERSONALITY_H
-	long new_personality;
-#endif
-	uid_t new_uid;
-	gid_t new_gid;
-	struct attach_clone_payload* payload = (struct attach_clone_payload*)data;
-	int ipc_socket = payload->ipc_socket;
-	lxc_attach_options_t* options = payload->options;
-	struct lxc_proc_context_info* init_ctx = payload->init_ctx;
-
-	/* A description of the purpose of this functionality is provided in the
-	 * lxc-attach(1) manual page. We have to remount here and not in the
-	 * parent process, otherwise /proc may not properly reflect the new pid
-	 * namespace.
-	 */
-	if (!(options->namespaces & CLONE_NEWNS) &&
-	    (options->attach_flags & LXC_ATTACH_REMOUNT_PROC_SYS)) {
-		ret = lxc_attach_remount_sys_proc();
-		if (ret < 0) {
-			shutdown(ipc_socket, SHUT_RDWR);
-			rexit(-1);
-		}
-	}
-
-	/* Now perform additional attachments. */
-#if HAVE_SYS_PERSONALITY_H
-	if (options->personality < 0)
-		new_personality = init_ctx->personality;
-	else
-		new_personality = options->personality;
-
-	if (options->attach_flags & LXC_ATTACH_SET_PERSONALITY) {
-		ret = personality(new_personality);
-		if (ret < 0) {
-			SYSERROR("Could not ensure correct architecture");
-			shutdown(ipc_socket, SHUT_RDWR);
-			rexit(-1);
-		}
-	}
-#endif
-
-	if (options->attach_flags & LXC_ATTACH_DROP_CAPABILITIES) {
-		ret = lxc_attach_drop_privs(init_ctx);
-		if (ret < 0) {
-			ERROR("Could not drop privileges");
-			shutdown(ipc_socket, SHUT_RDWR);
-			rexit(-1);
-		}
-	}
-
-	/* Always set the environment (specify (LXC_ATTACH_KEEP_ENV, NULL, NULL)
-	 * if you want this to be a no-op).
-	 */
-	ret = lxc_attach_set_environment(options->env_policy,
-					 options->extra_env_vars,
-					 options->extra_keep_env);
-	if (ret < 0) {
-		ERROR("Failed to set initial environment for attached process");
-		shutdown(ipc_socket, SHUT_RDWR);
-		rexit(-1);
-	}
-
-	/* Set {u,g}id. */
-	new_uid = 0;
-	new_gid = 0;
-	/* Ignore errors, we will fall back to root in that case (/proc was not
-	 * mounted etc.).
-	 */
-	if (options->namespaces & CLONE_NEWUSER)
-		lxc_attach_get_init_uidgid(&new_uid, &new_gid);
-
-	if (options->uid != (uid_t)-1)
-		new_uid = options->uid;
-	if (options->gid != (gid_t)-1)
-		new_gid = options->gid;
-
-	/* Setup the controlling tty. */
-	if (options->stdin_fd && isatty(options->stdin_fd)) {
-		if (setsid() < 0) {
-			SYSERROR("Unable to setsid.");
-			shutdown(ipc_socket, SHUT_RDWR);
-			rexit(-1);
-		}
-
-		if (ioctl(options->stdin_fd, TIOCSCTTY, (char *)NULL) < 0) {
-			SYSERROR("Unable to set TIOCSTTY.");
-			shutdown(ipc_socket, SHUT_RDWR);
-			rexit(-1);
-		}
-	}
-
-	/* Try to set the {u,g}id combination. */
-	if ((new_gid != 0 || options->namespaces & CLONE_NEWUSER)) {
-		if (setgid(new_gid) || setgroups(0, NULL)) {
-			SYSERROR("Switching to container gid.");
-			shutdown(ipc_socket, SHUT_RDWR);
-			rexit(-1);
-		}
-	}
-	if ((new_uid != 0 || options->namespaces & CLONE_NEWUSER) &&
-	    setuid(new_uid)) {
-		SYSERROR("Switching to container uid.");
-		shutdown(ipc_socket, SHUT_RDWR);
-		rexit(-1);
-	}
-
-	if ((options->namespaces & CLONE_NEWNS) &&
-	    (options->attach_flags & LXC_ATTACH_LSM) && init_ctx->lsm_label) {
-		int lsm_labelfd, on_exec;
-
-		/* Receive fd for LSM security module. */
-		ret = lxc_abstract_unix_recv_fds(ipc_socket, &lsm_labelfd, 1, NULL, 0);
-		if (ret <= 0) {
-			shutdown(ipc_socket, SHUT_RDWR);
-			rexit(-1);
-		}
-		TRACE("Received LSM label file descriptor %d from parent", lsm_labelfd);
-
-		/* Change into our new LSM profile. */
-		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? 1 : 0;
-		if (lsm_set_label_at(lsm_labelfd, on_exec, init_ctx->lsm_label) < 0) {
-			SYSERROR("Failed to set LSM label.");
-			shutdown(ipc_socket, SHUT_RDWR);
-			close(lsm_labelfd);
-			rexit(-1);
-		}
-		close(lsm_labelfd);
-	}
-
-	if (init_ctx->container && init_ctx->container->lxc_conf &&
-	    init_ctx->container->lxc_conf->seccomp &&
-	    (lxc_seccomp_load(init_ctx->container->lxc_conf) != 0)) {
-		ERROR("Failed to load seccomp policy.");
-		shutdown(ipc_socket, SHUT_RDWR);
-		rexit(-1);
-	}
-
-	shutdown(ipc_socket, SHUT_RDWR);
-	close(ipc_socket);
-	lxc_proc_put_context_info(init_ctx);
-
-	/* The following is done after the communication socket is shut down.
-	 * That way, all errors that might (though unlikely) occur up until this
-	 * point will have their messages printed to the original stderr (if
-	 * logging is so configured) and not the fd the user supplied, if any.
-	 */
-
-	/* Fd handling for stdin, stdout and stderr; ignore errors here, user
-	 * may want to make sure the fds are closed, for example.
-	 */
-	if (options->stdin_fd >= 0 && options->stdin_fd != 0)
-		dup2(options->stdin_fd, 0);
-	if (options->stdout_fd >= 0 && options->stdout_fd != 1)
-		dup2(options->stdout_fd, 1);
-	if (options->stderr_fd >= 0 && options->stderr_fd != 2)
-		dup2(options->stderr_fd, 2);
-
-	/* close the old fds */
-	if (options->stdin_fd > 2)
-		close(options->stdin_fd);
-	if (options->stdout_fd > 2)
-		close(options->stdout_fd);
-	if (options->stderr_fd > 2)
-		close(options->stderr_fd);
-
-	/* Try to remove FD_CLOEXEC flag from stdin/stdout/stderr, but also
-	 * here, ignore errors.
-	 */
-	for (fd = 0; fd <= 2; fd++) {
-		flags = fcntl(fd, F_GETFL);
-		if (flags < 0)
-			continue;
-		if (flags & FD_CLOEXEC)
-			if (fcntl(fd, F_SETFL, flags & ~FD_CLOEXEC) < 0)
-				SYSERROR("Unable to clear FD_CLOEXEC from file descriptor.");
-	}
-
-	/* We're done, so we can now do whatever the user intended us to do. */
-	rexit(payload->exec_function(payload->exec_payload));
 }
 
 int lxc_attach_run_command(void* payload)
