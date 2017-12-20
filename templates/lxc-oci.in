@@ -36,6 +36,7 @@ done
 
 LOCALSTATEDIR="@LOCALSTATEDIR@"
 LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
+LXC_HOOK_DIR="@LXCHOOKDIR@"
 
 # Some useful functions
 cleanup() {
@@ -180,7 +181,7 @@ EOF
     return 0
 }
 
-options=$(getopt -o u:h -l help,url:,username:,password:,no-cache,\
+options=$(getopt -o u:h -l help,url:,username:,password:,no-cache,dhcp,\
 name:,path:,rootfs:,mapped-uid:,mapped-gid: -- "$@")
 
 if [ $? -ne 0 ]; then
@@ -193,6 +194,7 @@ OCI_URL=""
 OCI_USERNAME=
 OCI_PASSWORD=
 OCI_USE_CACHE="true"
+OCI_USE_DHCP="false"
 
 LXC_MAPPED_GID=
 LXC_MAPPED_UID=
@@ -207,6 +209,7 @@ while :; do
         --username)         OCI_USERNAME=$2; shift 2;;
         --password)         OCI_PASSWORD=$2; shift 2;;
         --no-cache)         OCI_USE_CACHE="false"; shift 1;;
+        --dhcp)             OCI_USE_DHCP="true"; shift 1;;
         --name)             LXC_NAME=$2; shift 2;;
         --path)             LXC_PATH=$2; shift 2;;
         --rootfs)           LXC_ROOTFS=$2; shift 2;;
@@ -311,6 +314,15 @@ fi
 
 if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ] && [ -e "${LXC_TEMPLATE_CONFIG}/userns.conf" ]; then
     echo "lxc.include = ${LXC_TEMPLATE_CONFIG}/userns.conf" >> "${LXC_CONF_FILE}"
+fi
+
+if [ -e "${LXC_TEMPLATE_CONFIG}/oci.common.conf" ]; then
+    echo "lxc.include = ${LXC_TEMPLATE_CONFIG}/oci.common.conf" >> "${LXC_CONF_FILE}"
+fi
+
+if [ "${OCI_USE_DHCP}" = "true" ]; then
+    echo "lxc.hook.start-host = ${LXC_HOOK_DIR}/dhclient" >> "${LXC_CONF_FILE}"
+    echo "lxc.hook.stop = ${LXC_HOOK_DIR}/dhclient" >> "${LXC_CONF_FILE}"
 fi
 
 echo "lxc.uts.name = ${LXC_NAME}" >> "${LXC_CONF_FILE}"

@@ -16,6 +16,7 @@ LXC_NETWORK="10.0.3.0/24"
 LXC_DHCP_RANGE="10.0.3.2,10.0.3.254"
 LXC_DHCP_MAX="253"
 LXC_DHCP_CONFILE=""
+LXC_DHCP_PING="true"
 LXC_DOMAIN=""
 
 LXC_IPV6_ADDR=""
@@ -127,7 +128,12 @@ start() {
         fi
     done
 
-    dnsmasq $LXC_DHCP_CONFILE_ARG $LXC_DOMAIN_ARG -u ${DNSMASQ_USER} \
+    LXC_DHCP_PING_ARG=""
+    if [ "x$LXC_DHCP_PING" = "xfalse" ]; then
+        LXC_DHCP_PING_ARG="--no-ping"
+    fi
+
+    dnsmasq $LXC_DHCP_CONFILE_ARG $LXC_DOMAIN_ARG $LXC_DHCP_PING_ARG -u ${DNSMASQ_USER} \
             --strict-order --bind-interfaces --pid-file="${varrun}"/dnsmasq.pid \
             --listen-address ${LXC_ADDR} --dhcp-range ${LXC_DHCP_RANGE} \
             --dhcp-lease-max=${LXC_DHCP_MAX} --dhcp-no-override \

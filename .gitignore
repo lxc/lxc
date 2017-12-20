@@ -136,8 +136,7 @@ doc/manpage.refs
 doc/api/html/*
 
 hooks/unmount-namespace
-hooks/dhclient-start
-hooks/dhclient-stop
+hooks/dhclient
 
 m4/
 

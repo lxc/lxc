@@ -1,0 +1,3 @@
+# Uncomment the following if you want to use DHCP for OCI containers
+#lxc.hook.start-host = @LXCHOOKDIR@/dhclient
+#lxc.hook.stop = @LXCHOOKDIR@/dhclient

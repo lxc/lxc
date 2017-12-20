@@ -737,6 +737,7 @@ AC_CONFIG_FILES([
 	config/templates/gentoo.moresecure.conf
 	config/templates/gentoo.userns.conf
 	config/templates/nesting.conf
+	config/templates/oci.common.conf
 	config/templates/opensuse.common.conf
 	config/templates/opensuse.userns.conf
 	config/templates/oracle.common.conf
@@ -889,8 +890,7 @@ AC_CONFIG_FILES([
 	doc/ko/see_also.sgml
 
 	hooks/Makefile
-	hooks/dhclient-start
-	hooks/dhclient-stop
+	hooks/dhclient
 
 	templates/Makefile
 	templates/lxc-alpine

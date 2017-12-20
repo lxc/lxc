@@ -6,8 +6,7 @@ hooks_SCRIPTS = \
 	mountecryptfsroot \
 	ubuntu-cloud-prep \
 	dhclient-script \
-	dhclient-start \
-	dhclient-stop \
+	dhclient \
 	squid-deb-proxy-client \
 	nvidia
 
