@@ -74,6 +74,30 @@ static void usage(void) {
 		"      and does not need to be run by hand\n\n");
 }
 
+static void remove_self(void)
+{
+	char path[PATH_MAX];
+	ssize_t n;
+
+	n = readlink("/proc/self/exe", path, sizeof(path));
+	if (n < 0) {
+		SYSERROR("Failed to readlink \"/proc/self/exe\"");
+		return;
+	}
+
+	path[n] = 0;
+
+	if (umount2(path, MNT_DETACH) < 0) {
+		SYSERROR("Failed to unmount \"%s\"", path);
+		return;
+	}
+
+	if (unlink(path) < 0) {
+		SYSERROR("Failed to unlink \"%s\"", path);
+		return;
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	pid_t pid;
@@ -165,6 +189,8 @@ int main(int argc, char *argv[])
 	}
 
 	lxc_setup_fs();
+
+	remove_self();
 
 	pid = fork();
 
