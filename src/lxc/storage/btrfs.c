@@ -469,11 +469,11 @@ bool btrfs_create_snapshot(struct lxc_conf *conf, struct lxc_storage *orig,
 	if (am_unpriv()) {
 		struct rsync_data_char args;
 
-		args.src = orig->dest;
+		args.src = orig->src;
 		args.dest = new->dest;
 
 		ret = userns_exec_1(conf, btrfs_snapshot_wrapper, &args,
-				"btrfs_snapshot_wrapper");
+				    "btrfs_snapshot_wrapper");
 		if (ret < 0) {
 			ERROR("Failed to run \"btrfs_snapshot_wrapper\"");
 			return false;
