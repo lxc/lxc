@@ -1701,7 +1701,7 @@ int lxc_mount_proc_if_needed(const char *rootfs)
 		return -1;
 	}
 
-	mypid = getpid();
+	mypid = lxc_raw_getpid();
 	INFO("I am %d, /proc/self points to \"%s\"", mypid, link);
 
 	if (lxc_safe_int(link, &link_to_pid) < 0)
@@ -2387,17 +2387,6 @@ int lxc_make_tmpfile(char *template, bool rm)
 	}
 
 	return fd;
-}
-
-uint64_t lxc_getpagesize(void)
-{
-	int64_t pgsz;
-
-	pgsz = sysconf(_SC_PAGESIZE);
-	if (pgsz <= 0)
-		pgsz = 1 << 12;
-
-	return pgsz;
 }
 
 int parse_byte_size_string(const char *s, int64_t *converted)

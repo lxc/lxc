@@ -427,7 +427,7 @@ int main(int argc, char *argv[])
 	}
 
 	NOTICE("lxc-monitord with pid %d is now monitoring lxcpath %s.",
-	       getpid(), mon.lxcpath);
+	       lxc_raw_getpid(), mon.lxcpath);
 	for (;;) {
 		ret = lxc_mainloop(&mon.descr, 1000 * 30);
 		if (ret) {

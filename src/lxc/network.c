@@ -2369,7 +2369,7 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 	}
 
 	ret = snprintf(netns_path, sizeof(netns_path), "/proc/%d/fd/%d",
-		       getpid(), handler->nsfd[LXC_NS_NET]);
+		       lxc_raw_getpid(), handler->nsfd[LXC_NS_NET]);
 	if (ret < 0 || ret >= sizeof(netns_path))
 		return false;
 
@@ -2693,7 +2693,7 @@ int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler)
 
 	TRACE("Moving physical network devices back to parent network namespace");
 
-	oldfd = lxc_preserve_ns(getpid(), "net");
+	oldfd = lxc_preserve_ns(lxc_raw_getpid(), "net");
 	if (oldfd < 0) {
 		SYSERROR("Failed to preserve network namespace");
 		return -1;

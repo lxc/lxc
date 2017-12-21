@@ -44,6 +44,7 @@
 #include "error.h"
 #include "commands.h"
 #include "list.h"
+#include "namespace.h"
 #include "conf.h"
 #include "utils.h"
 #include "log.h"
@@ -303,7 +304,7 @@ static bool lxc_cgmanager_create(const char *controller, const char *cgroup_path
 static bool cgm_escape(void *hdata)
 {
 	bool ret = true, cgm_needs_disconnect = false;
-	pid_t me = getpid();
+	pid_t me = lxc_raw_getpid();
 	char **slist = subsystems;
 	int i;
 
@@ -359,6 +360,7 @@ static int do_chown_cgroup(const char *controller, const char *cgroup_path,
 		uid_t newuid)
 {
 	int sv[2] = {-1, -1}, optval = 1, ret = -1;
+	pid_t pid_self;
 	char buf[1];
 	struct pollfd fds;
 
@@ -395,7 +397,9 @@ static int do_chown_cgroup(const char *controller, const char *cgroup_path,
 		ERROR("Error getting reply from server over socketpair");
 		goto out;
 	}
-	if (send_creds(sv[0], getpid(), getuid(), getgid())) {
+
+	pid_self = lxc_raw_getpid();
+	if (send_creds(sv[0], pid_self, getuid(), getgid())) {
 		SYSERROR("Error sending pid over SCM_CREDENTIAL");
 		goto out;
 	}
@@ -410,7 +414,7 @@ static int do_chown_cgroup(const char *controller, const char *cgroup_path,
 		ERROR("Error getting reply from server over socketpair");
 		goto out;
 	}
-	if (send_creds(sv[0], getpid(), newuid, 0)) {
+	if (send_creds(sv[0], pid_self, newuid, 0)) {
 		SYSERROR("Error sending pid over SCM_CREDENTIAL");
 		goto out;
 	}
@@ -898,7 +902,7 @@ static void do_cgm_get(const char *name, const char *lxcpath, const char *filena
 		exit(1);
 	}
 	*cglast = '\0';
-	if (!lxc_cgmanager_enter(getpid(), controller, cgroup, abs_cgroup_supported())) {
+	if (!lxc_cgmanager_enter(lxc_raw_getpid(), controller, cgroup, abs_cgroup_supported())) {
 		WARN("Failed to enter container cgroup %s:%s", controller, cgroup);
 		ret = write(outp, &len, sizeof(len));
 		if (ret != sizeof(len))
@@ -1038,7 +1042,7 @@ static void do_cgm_set(const char *name, const char *lxcpath, const char *filena
 		exit(1);
 	}
 	*cglast = '\0';
-	if (!lxc_cgmanager_enter(getpid(), controller, cgroup, abs_cgroup_supported())) {
+	if (!lxc_cgmanager_enter(lxc_raw_getpid(), controller, cgroup, abs_cgroup_supported())) {
 		ERROR("Failed to enter container cgroup %s:%s", controller, cgroup);
 		ret = write(outp, &retval, sizeof(retval));
 		if (ret != sizeof(retval))
@@ -1278,7 +1282,7 @@ static bool verify_final_subsystems(const char *cgroup_use)
 	}
 
 	cgroup_pattern = lxc_global_config_value("lxc.cgroup.pattern");
-	i = snprintf(tmpnam, 50, "lxcprobe-%d", getpid());
+	i = snprintf(tmpnam, 50, "lxcprobe-%d", lxc_raw_getpid());
 	if (i < 0 || i >= 50) {
 		ERROR("Attack - format string modified?");
 		return false;

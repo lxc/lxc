@@ -23,8 +23,9 @@
 #ifndef __LXC_NAMESPACE_H
 #define __LXC_NAMESPACE_H
 
-#include <sys/syscall.h>
 #include <sched.h>
+#include <unistd.h>
+#include <sys/syscall.h>
 
 #include "config.h"
 
@@ -112,11 +113,83 @@ int clone(int (*fn)(void *), void *child_stack,
 	/* pid_t *ptid, struct user_desc *tls, pid_t *ctid */ );
 #endif
 
+/**
+ * lxc_clone() - create a new process
+ *
+ * - allocate stack:
+ *   This function allocates a new stack the size of page and passes it to the
+ *   kernel.
+ *
+ * - support all CLONE_*flags:
+ *   This function supports all CLONE_* flags. If in doubt or not sufficiently
+ *   familiar with process creation in the kernel and interactions with libcs
+ *   this function should be used.
+ *
+ * - pthread_atfork() handlers depending on libc:
+ *   Whether this function runs pthread_atfork() handlers depends on the
+ *   corresponding libc wrapper. glibc currently does not run pthread_atfork()
+ *   handlers but does not guarantee that they are not. Other libcs might or
+ *   might not run pthread_atfork() handlers. If you require guarantees please
+ *   refer to the lxc_raw_clone*() functions below.
+ *
+ * - should call lxc_raw_getpid():
+ *   The child should use lxc_raw_getpid() to retrieve its pid.
+ */
 extern pid_t lxc_clone(int (*fn)(void *), void *arg, int flags);
+
+/**
+ * lxc_raw_clone() - create a new process
+ *
+ * - fork() behavior:
+ *   This function returns 0 in the child and > 0 in the parent.
+ *
+ * - copy-on-write:
+ *   This function does not allocate a new stack and relies on copy-on-write
+ *   semantics.
+ *
+ * - supports subset of ClONE_* flags:
+ *   lxc_raw_clone() intentionally only supports a subset of the flags available
+ *   to the actual system call. Please refer to the implementation what flags
+ *   cannot be used. Also, please don't assume that just because a flag isn't
+ *   explicitly checked for as being unsupported that it is supported. If in
+ *   doubt or not sufficiently familiar with process creation in the kernel and
+ *   interactions with libcs this function should be used.
+ *
+ * - no pthread_atfork() handlers:
+ *   This function circumvents - as much as this this is possible - any libc
+ *   wrappers and thus does not run any pthread_atfork() handlers. Make sure
+ *   that this is safe to do in the context you are trying to call this
+ *   function.
+ *
+ * - must call lxc_raw_getpid():
+ *   The child must use lxc_raw_getpid() to retrieve its pid.
+ */
 extern pid_t lxc_raw_clone(unsigned long flags);
+/**
+ * lxc_raw_clone_cb() - create a new process
+ *
+ * - non-fork() behavior:
+ *   Function does return pid of the child or -1 on error. Pass in a callback
+ *   function via the "fn" argument that gets executed in the child process. The
+ *   "args" argument is passed to "fn".
+ *
+ * All other comments that apply to lxc_raw_clone() apply to lxc_raw_clone_cb()
+ * as well.
+ */
+extern pid_t lxc_raw_clone_cb(int (*fn)(void *), void *args,
+			      unsigned long flags);
 
 extern int lxc_namespace_2_cloneflag(const char *namespace);
 extern int lxc_namespace_2_ns_idx(const char *namespace);
 extern int lxc_fill_namespace_flags(char *flaglist, int *flags);
+
+/**
+ * Because of older glibc's pid cache (up to 2.25) whenever clone() is called
+ * the child must must retrieve it's own pid via lxc_raw_getpid().
+ */
+static inline pid_t lxc_raw_getpid(void)
+{
+	return (pid_t) syscall(SYS_getpid);
+}
 
 #endif

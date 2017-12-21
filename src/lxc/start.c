@@ -726,7 +726,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	 */
 	lxc_set_state(name, handler, STOPPING);
 
-	self = getpid();
+	self = lxc_raw_getpid();
 	for (i = 0; i < LXC_NS_MAX; i++) {
 		if (handler->nsfd[i] < 0)
 			continue;
@@ -784,11 +784,6 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 
 	cgroup_destroy(handler);
 
-	/* This function will try to connect to the legacy lxc-monitord state
-	 * server and only exists for backwards compatibility.
-	 */
-	lxc_monitor_send_state(name, STOPPED, handler->lxcpath);
-
 	if (handler->conf->reboot == 0) {
 		/* For all new state clients simply close the command socket.
 		 * This will inform all state clients that the container is
@@ -798,6 +793,18 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		 */
 		close(handler->conf->maincmd_fd);
 		handler->conf->maincmd_fd = -1;
+		TRACE("Closed command socket");
+
+		/* This function will try to connect to the legacy lxc-monitord
+		 * state server and only exists for backwards compatibility.
+		 */
+		lxc_monitor_send_state(name, STOPPED, handler->lxcpath);
+
+		/* The command socket is closed so no one can acces the command
+		 * socket anymore so there's no need to lock it.
+		 */
+		handler->state = STOPPED;
+		TRACE("Set container state to \"STOPPED\"");
 	} else {
 		lxc_set_state(name, handler, STOPPED);
 	}
@@ -1006,7 +1013,7 @@ static int do_start(void *data)
 	}
 
 	if (handler->clone_flags & CLONE_NEWCGROUP) {
-		fd = lxc_preserve_ns(syscall(SYS_getpid), "cgroup");
+		fd = lxc_preserve_ns(lxc_raw_getpid(), "cgroup");
 		if (fd < 0) {
 			ERROR("%s - Failed to preserve cgroup namespace", strerror(errno));
 			close(handler->data_sock[0]);
@@ -1263,8 +1270,8 @@ int resolve_clone_flags(struct lxc_handler *handler)
  * not reset anymore.
  * However, if for whatever reason you - dear commiter - somehow need to get the
  * pid of the dummy intermediate process for do_share_ns() you need to call
- * syscall(__NR_getpid) directly. The next lxc_clone() call does not employ
- * CLONE_VM and will be fine.
+ * lxc_raw_getpid(). The next lxc_raw_clone() call does not employ CLONE_VM and
+ * will be fine.
  */
 static inline int do_share_ns(void *arg)
 {
@@ -1284,7 +1291,7 @@ static inline int do_share_ns(void *arg)
 
 	flags = handler->on_clone_flags;
 	flags |= CLONE_PARENT;
-	handler->pid = lxc_clone(do_start, handler, flags);
+	handler->pid = lxc_raw_clone_cb(do_start, handler, flags);
 	if (handler->pid < 0)
 		return -1;
 
@@ -1414,7 +1421,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 			goto out_delete_net;
 		}
 	} else {
-		handler->pid = lxc_clone(do_start, handler, handler->on_clone_flags);
+		handler->pid = lxc_raw_clone_cb(do_start, handler, handler->on_clone_flags);
 	}
 	if (handler->pid < 0) {
 		SYSERROR(LXC_CLONE_ERROR);
