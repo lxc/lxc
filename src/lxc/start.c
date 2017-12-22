@@ -961,14 +961,22 @@ static int do_start(void *data)
 	 * privilege over our namespace.
 	 */
 	if (!lxc_list_empty(&handler->conf->id_map)) {
-		if (lxc_switch_uid_gid(0, 0) < 0)
+		ret = lxc_switch_uid_gid(0, 0);
+		if (ret < 0)
 			goto out_warn_father;
 
 		/* Drop groups only after we switched to a valid gid in the new
 		 * user namespace.
 		 */
-		if (lxc_setgroups(0, NULL) < 0)
+		ret = lxc_setgroups(0, NULL);
+		if (ret < 0)
 			goto out_warn_father;
+
+		if (!handler->am_root) {
+			ret = prctl(PR_SET_DUMPABLE, 1, 0, 0, 0);
+			if (ret < 0)
+				goto out_warn_father;
+		}
 	}
 
 	if (access(handler->lxcpath, X_OK)) {
