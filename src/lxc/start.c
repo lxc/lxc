@@ -866,6 +866,32 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 	}
 }
 
+static int lxc_set_death_signal(int signal)
+{
+	int ret;
+	pid_t ppid;
+
+	ret = prctl(PR_SET_PDEATHSIG, signal, 0, 0, 0);
+
+	/* Check whether we have been orphaned. */
+	ppid = (pid_t)syscall(SYS_getppid);
+	if (ppid == 1) {
+		pid_t self;
+
+		self = lxc_raw_getpid();
+		ret = kill(self, SIGKILL);
+		if (ret < 0)
+			return -1;
+	}
+
+	if (ret < 0) {
+		SYSERROR("Failed to set PR_SET_PDEATHSIG to %d", signal);
+		return -1;
+	}
+
+	return 0;
+}
+
 static int do_start(void *data)
 {
 	int ret;
@@ -877,10 +903,7 @@ static int do_start(void *data)
 	gid_t new_gid;
 	int devnull_fd = -1;
 
-	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL)) {
-		SYSERROR("Failed to set signal mask.");
-		return -1;
-	}
+	lxc_sync_fini_parent(handler);
 
 	/* This prctl must be before the synchro, so if the parent dies before
 	 * we set the parent death signal, we will detect its death with the
@@ -888,19 +911,25 @@ static int do_start(void *data)
 	 * exit before we set the pdeath signal leading to a unsupervized
 	 * container.
 	 */
-	if (prctl(PR_SET_PDEATHSIG, SIGKILL, 0, 0, 0)) {
-		SYSERROR("Failed to set PR_SET_PDEATHSIG to SIGKILL.");
-		return -1;
+	ret = lxc_set_death_signal(SIGKILL);
+	if (ret < 0) {
+		SYSERROR("Failed to set PR_SET_PDEATHSIG to SIGKILL");
+		goto out_warn_father;
 	}
 
-	lxc_sync_fini_parent(handler);
+	ret = sigprocmask(SIG_SETMASK, &handler->oldmask, NULL);
+	if (ret < 0) {
+		SYSERROR("Failed to set signal mask");
+		goto out_warn_father;
+	}
 
 	/* Don't leak the pinfd to the container. */
 	if (handler->pinfd >= 0)
 		close(handler->pinfd);
 
-	if (lxc_sync_wait_parent(handler, LXC_SYNC_STARTUP))
-		return -1;
+	ret = lxc_sync_wait_parent(handler, LXC_SYNC_STARTUP);
+	if (ret < 0)
+		goto out_warn_father;
 
 	/* Unshare CLONE_NEWNET after CLONE_NEWUSER. See
 	 * https://github.com/lxc/lxd/issues/1978.
@@ -945,6 +974,13 @@ static int do_start(void *data)
 			ret = prctl(PR_SET_DUMPABLE, 1, 0, 0, 0);
 			if (ret < 0)
 				goto out_warn_father;
+		}
+
+		/* set{g,u}id() clears deathsignal */
+		ret = lxc_set_death_signal(SIGKILL);
+		if (ret < 0) {
+			SYSERROR("Failed to set PR_SET_PDEATHSIG to SIGKILL");
+			goto out_warn_father;
 		}
 	}
 
@@ -1417,7 +1453,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 		SYSERROR(LXC_CLONE_ERROR);
 		goto out_delete_net;
 	}
-
 	TRACE("Cloned child process %d", handler->pid);
 
 	for (i = 0; i < LXC_NS_MAX; i++)
