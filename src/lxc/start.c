@@ -918,8 +918,9 @@ static int do_start(void *data)
 	 * exit before we set the pdeath signal leading to a unsupervized
 	 * container.
 	 */
-	if (prctl(PR_SET_PDEATHSIG, SIGKILL, 0, 0, 0)) {
-		SYSERROR("Failed to set PR_SET_PDEATHSIG to SIGKILL.");
+	ret = prctl(PR_SET_PDEATHSIG, SIGKILL, 0, 0, 0);
+	if (ret < 0) {
+		SYSERROR("Failed to set PR_SET_PDEATHSIG to SIGKILL");
 		return -1;
 	}
 
@@ -976,6 +977,13 @@ static int do_start(void *data)
 			ret = prctl(PR_SET_DUMPABLE, 1, 0, 0, 0);
 			if (ret < 0)
 				goto out_warn_father;
+		}
+
+		/* set{g,u}id() clears deathsignal */
+		ret = prctl(PR_SET_PDEATHSIG, SIGKILL, 0, 0, 0);
+		if (ret < 0) {
+			SYSERROR("Failed to set PR_SET_PDEATHSIG to SIGKILL");
+			goto out_warn_father;
 		}
 	}
 
