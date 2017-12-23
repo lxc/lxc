@@ -61,6 +61,7 @@
 #include "conf.h"
 #include "config.h"
 #include "confile.h"
+#include "console.h"
 #include "log.h"
 #include "lsm/lsm.h"
 #include "lxclock.h"
@@ -821,13 +822,8 @@ struct attach_clone_payload {
 static int attach_child_main(struct attach_clone_payload *payload)
 {
 	int fd, lsm_fd, ret;
-	long flags;
-#if HAVE_SYS_PERSONALITY_H
-	long new_personality;
-#endif
 	uid_t new_uid;
 	gid_t new_gid;
-	int ipc_socket = payload->ipc_socket;
 	lxc_attach_options_t* options = payload->options;
 	struct lxc_proc_context_info* init_ctx = payload->init_ctx;
 	bool needs_lsm = (options->namespaces & CLONE_NEWNS) &&
@@ -842,36 +838,32 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	if (!(options->namespaces & CLONE_NEWNS) &&
 	    (options->attach_flags & LXC_ATTACH_REMOUNT_PROC_SYS)) {
 		ret = lxc_attach_remount_sys_proc();
-		if (ret < 0) {
-			shutdown(ipc_socket, SHUT_RDWR);
-			rexit(-1);
-		}
+		if (ret < 0)
+			goto on_error;
+		TRACE("Remounted \"/proc\" and \"/sys\"");
 	}
 
-	/* Now perform additional attachments. */
+/* Now perform additional attachments. */
 #if HAVE_SYS_PERSONALITY_H
-	if (options->personality < 0)
-		new_personality = init_ctx->personality;
-	else
-		new_personality = options->personality;
-
 	if (options->attach_flags & LXC_ATTACH_SET_PERSONALITY) {
+		long new_personality;
+
+		if (options->personality < 0)
+			new_personality = init_ctx->personality;
+		else
+			new_personality = options->personality;
 		ret = personality(new_personality);
-		if (ret < 0) {
-			SYSERROR("Could not ensure correct architecture");
-			shutdown(ipc_socket, SHUT_RDWR);
-			rexit(-1);
-		}
+		if (ret < 0)
+			goto on_error;
+		TRACE("Set new personality");
 	}
 #endif
 
 	if (options->attach_flags & LXC_ATTACH_DROP_CAPABILITIES) {
 		ret = lxc_attach_drop_privs(init_ctx);
-		if (ret < 0) {
-			ERROR("Could not drop privileges");
-			shutdown(ipc_socket, SHUT_RDWR);
-			rexit(-1);
-		}
+		if (ret < 0)
+			goto on_error;
+		TRACE("Dropped capabilities");
 	}
 
 	/* Always set the environment (specify (LXC_ATTACH_KEEP_ENV, NULL, NULL)
@@ -880,11 +872,9 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	ret = lxc_attach_set_environment(options->env_policy,
 					 options->extra_env_vars,
 					 options->extra_keep_env);
-	if (ret < 0) {
-		ERROR("Failed to set initial environment for attached process");
-		shutdown(ipc_socket, SHUT_RDWR);
-		rexit(-1);
-	}
+	if (ret < 0)
+		goto on_error;
+	TRACE("Set up environment");
 
 	/* This remark only affects fully unprivileged containers:
 	 * Receive fd for LSM security module before we set{g,u}id(). The reason
@@ -898,11 +888,9 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	 * set{g,u}id().
 	 */
 	if (needs_lsm) {
-		ret = lxc_abstract_unix_recv_fds(ipc_socket, &lsm_fd, 1, NULL, 0);
-		if (ret <= 0) {
-			shutdown(ipc_socket, SHUT_RDWR);
-			rexit(-1);
-		}
+		ret = lxc_abstract_unix_recv_fds(payload->ipc_socket, &lsm_fd, 1, NULL, 0);
+		if (ret <= 0)
+			goto on_error;
 		TRACE("Received LSM label file descriptor %d from parent", lsm_fd);
 	}
 
@@ -920,48 +908,36 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	if (options->gid != (gid_t)-1)
 		new_gid = options->gid;
 
-	/* Setup the controlling tty. */
 	if (options->stdin_fd && isatty(options->stdin_fd)) {
-		if (setsid() < 0) {
-			SYSERROR("Unable to setsid.");
-			shutdown(ipc_socket, SHUT_RDWR);
-			rexit(-1);
-		}
+		ret = setsid();
+		if (ret < 0)
+			goto on_error;
+		TRACE("Became session leader");
 
-		if (ioctl(options->stdin_fd, TIOCSCTTY, (char *)NULL) < 0) {
-			SYSERROR("Unable to set TIOCSTTY.");
-			shutdown(ipc_socket, SHUT_RDWR);
-			rexit(-1);
-		}
+		ret = ioctl(options->stdin_fd, TIOCSCTTY, (char *)NULL);
+		if (ret < 0)
+			goto on_error;
+		TRACE("Set controlling terminal");
 	}
 
 	/* Try to set the {u,g}id combination. */
-	if ((new_gid != 0 || options->namespaces & CLONE_NEWUSER)) {
-		if (setgid(new_gid) || setgroups(0, NULL)) {
-			SYSERROR("Switching to container gid.");
-			shutdown(ipc_socket, SHUT_RDWR);
-			rexit(-1);
-		}
-	}
-	if ((new_uid != 0 || options->namespaces & CLONE_NEWUSER) &&
-	    setuid(new_uid)) {
-		SYSERROR("Switching to container uid.");
-		shutdown(ipc_socket, SHUT_RDWR);
-		rexit(-1);
+	if (new_uid != 0 || new_gid != 0 || options->namespaces & CLONE_NEWUSER) {
+		ret = lxc_switch_uid_gid(new_uid, new_gid);
+		if (ret < 0)
+			goto on_error;
+
+		ret = lxc_setgroups(0, NULL);
+		if (ret < 0)
+			goto on_error;
 	}
 
 	if ((init_ctx->container && init_ctx->container->lxc_conf &&
 	     init_ctx->container->lxc_conf->no_new_privs) ||
 	    (options->attach_flags & LXC_ATTACH_NO_NEW_PRIVS)) {
-		if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) < 0) {
-			SYSERROR("PR_SET_NO_NEW_PRIVS could not be set. "
-				 "Process can use execve() gainable "
-				 "privileges.");
-			shutdown(ipc_socket, SHUT_RDWR);
-			rexit(-1);
-		}
-		INFO("PR_SET_NO_NEW_PRIVS is set. Process cannot use execve() "
-		     "gainable privileges.");
+		ret = prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
+		if (ret < 0)
+			goto on_error;
+		TRACE("Set PR_SET_NO_NEW_PRIVS");
 	}
 
 	if (needs_lsm) {
@@ -970,26 +946,22 @@ static int attach_child_main(struct attach_clone_payload *payload)
 		/* Change into our new LSM profile. */
 		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? 1 : 0;
 		ret = lsm_set_label_at(lsm_fd, on_exec, init_ctx->lsm_label);
-		if (ret < 0) {
-			SYSERROR("Failed to set LSM label.");
-			shutdown(ipc_socket, SHUT_RDWR);
-			close(lsm_fd);
-			rexit(-1);
-		}
 		close(lsm_fd);
+		if (ret < 0)
+			goto on_error;
+		TRACE("Set LSM label");
 	}
 
 	if (init_ctx->container && init_ctx->container->lxc_conf &&
-	    init_ctx->container->lxc_conf->seccomp &&
-	    (lxc_seccomp_load(init_ctx->container->lxc_conf) != 0)) {
-		ERROR("Failed to load seccomp policy.");
-		shutdown(ipc_socket, SHUT_RDWR);
-		rexit(-1);
+	    init_ctx->container->lxc_conf->seccomp) {
+		ret = lxc_seccomp_load(init_ctx->container->lxc_conf);
+		if (ret < 0)
+			goto on_error;
+		TRACE("Loaded seccomp profile");
 	}
-
-	shutdown(ipc_socket, SHUT_RDWR);
-	close(ipc_socket);
-	lxc_proc_put_context_info(init_ctx);
+	shutdown(payload->ipc_socket, SHUT_RDWR);
+	close(payload->ipc_socket);
+	payload->ipc_socket = -1;
 
 	/* The following is done after the communication socket is shut down.
 	 * That way, all errors that might (though unlikely) occur up until this
@@ -1018,17 +990,34 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	/* Try to remove FD_CLOEXEC flag from stdin/stdout/stderr, but also
 	 * here, ignore errors.
 	 */
-	for (fd = 0; fd <= 2; fd++) {
+	for (fd = STDIN_FILENO; fd <= STDERR_FILENO; fd++) {
+		int flags;
+
 		flags = fcntl(fd, F_GETFL);
 		if (flags < 0)
 			continue;
-		if (flags & FD_CLOEXEC)
-			if (fcntl(fd, F_SETFL, flags & ~FD_CLOEXEC) < 0)
-				SYSERROR("Unable to clear FD_CLOEXEC from file descriptor.");
+
+		if ((flags & FD_CLOEXEC) == 0)
+			continue;
+
+		ret = fcntl(fd, F_SETFL, flags & ~FD_CLOEXEC);
+		if (ret < 0) {
+			SYSERROR("Failed to clear FD_CLOEXEC from file descriptor %d", fd);
+			goto on_error;
+		}
 	}
 
 	/* We're done, so we can now do whatever the user intended us to do. */
 	rexit(payload->exec_function(payload->exec_payload));
+
+on_error:
+	if (payload->ipc_socket >= 0) {
+		shutdown(payload->ipc_socket, SHUT_RDWR);
+		close(payload->ipc_socket);
+		payload->ipc_socket = -1;
+	}
+	lxc_proc_put_context_info(init_ctx);
+	rexit(EXIT_FAILURE);
 }
 
 int lxc_attach(const char *name, const char *lxcpath,
