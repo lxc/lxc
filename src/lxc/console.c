@@ -269,31 +269,25 @@ static int lxc_console_mainloop_add_peer(struct lxc_console *console)
 	return 0;
 }
 
-extern int lxc_console_mainloop_add(struct lxc_epoll_descr *descr,
-				    struct lxc_conf *conf)
+int lxc_console_mainloop_add(struct lxc_epoll_descr *descr,
+			     struct lxc_console *console)
 {
 	int ret;
-	struct lxc_console *console = &conf->console;
-
-	if (!conf->rootfs.path) {
-		INFO("no rootfs, no console.");
-		return 0;
-	}
 
 	if (console->master < 0) {
 		INFO("no console");
 		return 0;
 	}
 
-	if (lxc_mainloop_add_handler(descr, console->master,
-				     lxc_console_cb_con, console)) {
-		ERROR("failed to add to mainloop console handler for '%d'",
-		      console->master);
+	ret = lxc_mainloop_add_handler(descr, console->master,
+				       lxc_console_cb_con, console);
+	if (ret < 0) {
+		ERROR("Failed to add handler for %d to mainloop", console->master);
 		return -1;
 	}
 
-	/* we cache the descr so that we can add an fd to it when someone
-	 * does attach to it in lxc_console_allocate()
+	/* We cache the descr so that we can add an fd to it when someone
+	 * does attach to it in lxc_console_allocate().
 	 */
 	console->descr = descr;
 	ret = lxc_console_mainloop_add_peer(console);
