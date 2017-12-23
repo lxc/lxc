@@ -665,6 +665,7 @@ on_error:
 
 int lxc_init(const char *name, struct lxc_handler *handler)
 {
+	int ret;
 	const char *loglevel;
 	struct lxc_conf *conf = handler->conf;
 

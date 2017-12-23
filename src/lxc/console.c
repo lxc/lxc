@@ -861,3 +861,58 @@ close_fds:
 
 	return ret;
 }
+
+int lxc_make_controlling_pty(int fd)
+{
+	int ret;
+
+	setsid();
+
+	ret = ioctl(fd, TIOCSCTTY, (char *)NULL);
+	if (ret < 0)
+		return -1;
+
+	return 0;
+}
+
+int lxc_login_pty(int fd)
+{
+	int ret;
+
+	ret = lxc_make_controlling_pty(fd);
+	if (ret < 0)
+		return -1;
+
+	ret = lxc_console_set_stdfds(fd);
+	if (ret < 0)
+		return -1;
+
+	if (fd > STDERR_FILENO)
+		close(fd);
+
+	return 0;
+}
+
+void lxc_pty_info_init(struct lxc_pty_info *pty)
+{
+	pty->name[0] = '\0';
+	pty->master = -EBADF;
+	pty->slave = -EBADF;
+	pty->busy = -1;
+}
+
+void lxc_pty_init(struct lxc_console *pty)
+{
+	memset(pty, 0, sizeof(*pty));
+	pty->slave = -EBADF;
+	pty->master = -EBADF;
+	pty->peer = -EBADF;
+	pty->log_fd = -EBADF;
+	lxc_pty_info_init(&pty->peerpty);
+}
+
+void lxc_pty_conf_free(struct lxc_console *console)
+{
+	free(console->log_path);
+	free(console->path);
+}

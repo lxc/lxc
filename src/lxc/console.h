@@ -230,4 +230,10 @@ extern void lxc_console_signal_fini(struct lxc_tty_state *ts);
 extern int lxc_console_cb_con(int fd, uint32_t events, void *data,
 			      struct lxc_epoll_descr *descr);
 
+extern int lxc_make_controlling_pty(int fd);
+extern int lxc_login_pty(int fd);
+extern void lxc_pty_conf_free(struct lxc_console *console);
+extern void lxc_pty_info_init(struct lxc_pty_info *pty);
+extern void lxc_pty_init(struct lxc_console *pty);
+
 #endif
