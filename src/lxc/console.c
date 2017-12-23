@@ -709,24 +709,13 @@ int lxc_console_create_log_file(struct lxc_console *console)
 	return 0;
 }
 
-int lxc_console_create(struct lxc_conf *conf)
+int lxc_pty_create(struct lxc_console *console)
 {
 	int ret, saved_errno;
-	struct lxc_console *console = &conf->console;
-
-	if (!conf->rootfs.path) {
-		INFO("Container does not have a rootfs. The console will be "
-		     "shared with the host");
-		return 0;
-	}
-
-	if (console->path && !strcmp(console->path, "none")) {
-		INFO("No console was requested");
-		return 0;
-	}
 
 	process_lock();
-	ret = openpty(&console->master, &console->slave, console->name, NULL, NULL);
+	ret = openpty(&console->master, &console->slave, console->name, NULL,
+		      NULL);
 	saved_errno = errno;
 	process_unlock();
 	if (ret < 0) {
@@ -751,6 +740,33 @@ int lxc_console_create(struct lxc_conf *conf)
 		ERROR("Failed to allocate a peer pty device");
 		goto err;
 	}
+
+	return 0;
+
+err:
+	lxc_console_delete(console);
+	return -ENODEV;
+}
+
+int lxc_console_create(struct lxc_conf *conf)
+{
+	int ret;
+	struct lxc_console *console = &conf->console;
+
+	if (!conf->rootfs.path) {
+		INFO("Container does not have a rootfs. The console will be "
+		     "shared with the host");
+		return 0;
+	}
+
+	if (console->path && !strcmp(console->path, "none")) {
+		INFO("No console was requested");
+		return 0;
+	}
+
+	ret = lxc_pty_create(console);
+	if (ret < 0)
+		return -1;
 
 	/* create console log file */
 	ret = lxc_console_create_log_file(console);
