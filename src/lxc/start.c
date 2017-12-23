@@ -731,11 +731,12 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	TRACE("set up signal fd");
 
 	/* Do this after setting up signals since it might unblock SIGWINCH. */
-	if (lxc_console_create(conf)) {
-		ERROR("Failed to create console for container \"%s\".", name);
+	ret = lxc_console_create(conf);
+	if (ret < 0) {
+		ERROR("Failed to create console");
 		goto out_restore_sigmask;
 	}
-	TRACE("created console");
+	TRACE("Created console");
 
 	if (lxc_ttys_shift_ids(conf) < 0) {
 		ERROR("Failed to shift tty into container.");
