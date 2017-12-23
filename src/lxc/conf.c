@@ -73,6 +73,7 @@
 #include "cgroup.h"
 #include "conf.h"
 #include "confile_utils.h"
+#include "console.h"
 #include "error.h"
 #include "log.h"
 #include "lxclock.h"
@@ -3720,11 +3721,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 		return;
 	if (current_config == conf)
 		current_config = NULL;
-	free(conf->console.buffer_log_file);
-	free(conf->console.log_path);
-	free(conf->console.path);
-	if (conf->console.buffer_size > 0 && conf->console.ringbuf.addr)
-		lxc_ringbuf_release(&conf->console.ringbuf);
+	lxc_pty_conf_free(&conf->console);
 	free(conf->rootfs.mount);
 	free(conf->rootfs.bdev_type);
 	free(conf->rootfs.options);
