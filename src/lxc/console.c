@@ -576,24 +576,32 @@ void lxc_console_delete(struct lxc_console *console)
 	console->log_fd = -1;
 }
 
-int lxc_console_create(struct lxc_conf *conf)
+/**
+ * This is the console log file. Please note that the console log file is
+ * (implementation wise not content wise) independent of the console ringbuffer.
+ */
+int lxc_console_create_log_file(struct lxc_console *console)
+{
+	if (!console->log_path)
+		return 0;
+
+	console->log_fd = lxc_unpriv(open(console->log_path, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600));
+	if (console->log_fd < 0) {
+		SYSERROR("Failed to open console log file \"%s\"", console->log_path);
+		return -1;
+	}
+
+	DEBUG("Using \"%s\" as console log file", console->log_path);
+	return 0;
+}
+
+int lxc_pty_create(struct lxc_console *console)
 {
 	int ret, saved_errno;
-	struct lxc_console *console = &conf->console;
-
-	if (!conf->rootfs.path) {
-		INFO("Container does not have a rootfs. The console will be "
-		     "shared with the host");
-		return 0;
-	}
-
-	if (console->path && !strcmp(console->path, "none")) {
-		INFO("No console was requested");
-		return 0;
-	}
 
 	process_lock();
-	ret = openpty(&console->master, &console->slave, console->name, NULL, NULL);
+	ret = openpty(&console->master, &console->slave, console->name, NULL,
+		      NULL);
 	saved_errno = errno;
 	process_unlock();
 	if (ret < 0) {
@@ -619,14 +627,37 @@ int lxc_console_create(struct lxc_conf *conf)
 		goto err;
 	}
 
-	if (console->log_path) {
-		console->log_fd = lxc_unpriv(open(console->log_path, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600));
-		if (console->log_fd < 0) {
-			SYSERROR("Failed to open console log file \"%s\"", console->log_path);
-			goto err;
-		}
-		DEBUG("Using \"%s\" as console log file", console->log_path);
+	return 0;
+
+err:
+	lxc_console_delete(console);
+	return -ENODEV;
+}
+
+int lxc_console_create(struct lxc_conf *conf)
+{
+	int ret;
+	struct lxc_console *console = &conf->console;
+
+	if (!conf->rootfs.path) {
+		INFO("Container does not have a rootfs. The console will be "
+		     "shared with the host");
+		return 0;
 	}
+
+	if (console->path && !strcmp(console->path, "none")) {
+		INFO("No console was requested");
+		return 0;
+	}
+
+	ret = lxc_pty_create(console);
+	if (ret < 0)
+		return -1;
+
+	/* create console log file */
+	ret = lxc_console_create_log_file(console);
+	if (ret < 0)
+		goto err;
 
 	return 0;
 
