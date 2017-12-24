@@ -348,7 +348,6 @@ extern int lxc_setup(struct lxc_handler *handler);
 extern int find_unmapped_nsid(struct lxc_conf *conf, enum idtype idtype);
 extern int mapped_hostid(unsigned id, struct lxc_conf *conf, enum idtype idtype);
 extern int chown_mapped_root(char *path, struct lxc_conf *conf);
-extern int lxc_ttys_shift_ids(struct lxc_conf *c);
 extern int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 			 const char *fn_name);
 extern int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *),

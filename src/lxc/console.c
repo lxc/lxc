@@ -910,3 +910,25 @@ void lxc_pty_conf_free(struct lxc_console *console)
 	free(console->log_path);
 	free(console->path);
 }
+
+int lxc_pty_map_ids(struct lxc_conf *c, struct lxc_console *pty)
+{
+	int ret;
+
+	if (lxc_list_empty(&c->id_map))
+		return 0;
+
+	ret = strcmp(pty->name, "");
+	if (ret == 0)
+		return 0;
+
+	ret = chown_mapped_root(pty->name, c);
+	if (ret < 0) {
+		ERROR("Failed to chown \"%s\"", pty->name);
+		return -1;
+	}
+
+	TRACE("Chowned \"%s\"", pty->name);
+
+	return 0;
+}

@@ -338,7 +338,8 @@ static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *
 	conf->console.descr = &descr;
 
 	/* Shift ttys to container. */
-	if (lxc_ttys_shift_ids(conf) < 0) {
+	ret = lxc_pty_map_ids(conf, &conf->console);
+	if (ret < 0) {
 		fprintf(stderr, "Failed to shift tty into container\n");
 		goto err1;
 	}
