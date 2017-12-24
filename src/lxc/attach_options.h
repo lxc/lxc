@@ -51,6 +51,7 @@ enum {
 	LXC_ATTACH_LSM_NOW               = 0x00020000, /*!< FIXME: unknown */
 	/* Set PR_SET_NO_NEW_PRIVS to block execve() gainable privileges. */
 	LXC_ATTACH_NO_NEW_PRIVS		 = 0x00040000, /*!< PR_SET_NO_NEW_PRIVS */
+	LXC_ATTACH_ALLOCATE_PTY          = 0x00080000, /*!< Allocate new pty for attached process. */
 
 	/* We have 16 bits for things that are on by default and 16 bits that
 	 * are off by default, that should be sufficient to keep binary

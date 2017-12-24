@@ -19,16 +19,18 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <lxc/lxccontainer.h>
-#include "lxc/utils.h"
-#include "lxc/lsm/lsm.h"
-
-#include <sys/types.h>
+#include <errno.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
-#include <errno.h>
+#include <sys/types.h>
+
+#include "lxctest.h"
+#include "utils.h"
+#include "lsm/lsm.h"
+
+#include <lxc/lxccontainer.h>
 
 #define TSTNAME    "lxc-attach-test"
 #define TSTOUT(fmt, ...) do { \
@@ -392,19 +394,60 @@ err1:
 
 int main(int argc, char *argv[])
 {
-	int ret;
+	int i, ret;
+	struct lxc_log log;
+	char template[sizeof(P_tmpdir"/attach_XXXXXX")];
+	int fret = EXIT_FAILURE;
+
+	strcpy(template, P_tmpdir"/attach_XXXXXX");
+	i = lxc_make_tmpfile(template, false);
+	if (i < 0) {
+		lxc_error("Failed to create temporary log file for container %s\n", TSTNAME);
+		exit(EXIT_FAILURE);
+	} else {
+		lxc_debug("Using \"%s\" as temporary log file for container %s\n", template, TSTNAME);
+		close(i);
+	}
+
+	log.name = TSTNAME;
+	log.file = template;
+	log.level = "TRACE";
+	log.prefix = "attach";
+	log.quiet = false;
+	log.lxcpath = NULL;
+	if (lxc_log_init(&log))
+		goto on_error;
 
 	test_lsm_detect();
 	ret = test_attach(NULL, TSTNAME, "busybox");
 	if (ret < 0)
-		return EXIT_FAILURE;
+		goto on_error;
 
 	TSTOUT("\n");
 	ret = test_attach(LXCPATH "/alternate-path-test", TSTNAME, "busybox");
 	if (ret < 0)
-		return EXIT_FAILURE;
+		goto on_error;
 
-	(void)rmdir(LXCPATH "/alternate-path-test");
 	TSTOUT("All tests passed\n");
-	return EXIT_SUCCESS;
+	fret = EXIT_SUCCESS;
+
+on_error:
+	if (fret != EXIT_SUCCESS) {
+		int fd;
+
+		fd = open(template, O_RDONLY);
+		if (fd >= 0) {
+			char buf[4096];
+			ssize_t buflen;
+			while ((buflen = read(fd, buf, 1024)) > 0) {
+				buflen = write(STDERR_FILENO, buf, buflen);
+				if (buflen <= 0)
+					break;
+			}
+			close(fd);
+		}
+	}
+	(void)rmdir(LXCPATH "/alternate-path-test");
+	(void)unlink(template);
+	exit(fret);
 }
