@@ -260,10 +260,16 @@ static inline void lxc_proc_close_ns_fd(struct lxc_proc_context_info *ctx)
 static void lxc_proc_put_context_info(struct lxc_proc_context_info *ctx)
 {
 	free(ctx->lsm_label);
-	if (ctx->container)
+	ctx->lsm_label = NULL;
+
+	if (ctx->container) {
 		lxc_container_put(ctx->container);
+		ctx->container = NULL;
+	}
+
 	lxc_proc_close_ns_fd(ctx);
 	free(ctx);
+	ctx = NULL;
 }
 
 /**
@@ -894,6 +900,12 @@ static int attach_child_main(struct attach_clone_payload *payload)
 		TRACE("Received LSM label file descriptor %d from parent", lsm_fd);
 	}
 
+	if (options->stdin_fd > 0 && isatty(options->stdin_fd)) {
+		ret = lxc_make_controlling_pty(options->stdin_fd);
+		if (ret < 0)
+			goto on_error;
+	}
+
 	/* Set {u,g}id. */
 	new_uid = 0;
 	new_gid = 0;
@@ -907,18 +919,6 @@ static int attach_child_main(struct attach_clone_payload *payload)
 		new_uid = options->uid;
 	if (options->gid != (gid_t)-1)
 		new_gid = options->gid;
-
-	if (options->stdin_fd && isatty(options->stdin_fd)) {
-		ret = setsid();
-		if (ret < 0)
-			goto on_error;
-		TRACE("Became session leader");
-
-		ret = ioctl(options->stdin_fd, TIOCSCTTY, (char *)NULL);
-		if (ret < 0)
-			goto on_error;
-		TRACE("Set controlling terminal");
-	}
 
 	/* Try to set the {u,g}id combination. */
 	if (new_uid != 0 || new_gid != 0 || options->namespaces & CLONE_NEWUSER) {
@@ -972,19 +972,23 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	/* Fd handling for stdin, stdout and stderr; ignore errors here, user
 	 * may want to make sure the fds are closed, for example.
 	 */
-	if (options->stdin_fd >= 0 && options->stdin_fd != 0)
-		dup2(options->stdin_fd, 0);
-	if (options->stdout_fd >= 0 && options->stdout_fd != 1)
-		dup2(options->stdout_fd, 1);
-	if (options->stderr_fd >= 0 && options->stderr_fd != 2)
-		dup2(options->stderr_fd, 2);
+	if (options->stdin_fd >= 0 && options->stdin_fd != STDIN_FILENO)
+		dup2(options->stdin_fd, STDIN_FILENO);
+
+	if (options->stdout_fd >= 0 && options->stdout_fd != STDOUT_FILENO)
+		dup2(options->stdout_fd, STDOUT_FILENO);
+
+	if (options->stderr_fd >= 0 && options->stderr_fd != STDERR_FILENO)
+		dup2(options->stderr_fd, STDERR_FILENO);
 
 	/* close the old fds */
-	if (options->stdin_fd > 2)
+	if (options->stdin_fd > STDERR_FILENO)
 		close(options->stdin_fd);
-	if (options->stdout_fd > 2)
+
+	if (options->stdout_fd > STDERR_FILENO)
 		close(options->stdout_fd);
-	if (options->stderr_fd > 2)
+
+	if (options->stderr_fd > STDERR_FILENO)
 		close(options->stderr_fd);
 
 	/* Try to remove FD_CLOEXEC flag from stdin/stdout/stderr, but also
