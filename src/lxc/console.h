@@ -237,5 +237,6 @@ extern int lxc_login_pty(int fd);
 extern void lxc_pty_conf_free(struct lxc_console *console);
 extern void lxc_pty_info_init(struct lxc_pty_info *pty);
 extern void lxc_pty_init(struct lxc_console *pty);
+extern int lxc_pty_map_ids(struct lxc_conf *c, struct lxc_console *pty);
 
 #endif

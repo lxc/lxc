@@ -3092,24 +3092,6 @@ int chown_mapped_root(const char *path, struct lxc_conf *conf)
 	return ret;
 }
 
-int lxc_ttys_shift_ids(struct lxc_conf *c)
-{
-	if (lxc_list_empty(&c->id_map))
-		return 0;
-
-	if (!strcmp(c->console.name, ""))
-		return 0;
-
-	if (chown_mapped_root(c->console.name, c) < 0) {
-		ERROR("failed to chown console \"%s\"", c->console.name);
-		return -1;
-	}
-
-	TRACE("chowned console \"%s\"", c->console.name);
-
-	return 0;
-}
-
 /* NOTE: Must not be called from inside the container namespace! */
 int lxc_create_tmp_proc_mount(struct lxc_conf *conf)
 {

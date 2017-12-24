@@ -757,7 +757,8 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	}
 	TRACE("Created console");
 
-	if (lxc_ttys_shift_ids(conf) < 0) {
+	ret = lxc_pty_map_ids(conf, &conf->console);
+	if (ret < 0) {
 		ERROR("Failed to shift tty into container.");
 		goto out_restore_sigmask;
 	}
