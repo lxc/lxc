@@ -143,5 +143,5 @@ extern int __lxc_start(const char *, struct lxc_handler *,
 		       struct lxc_operations *, void *, const char *, bool);
 
 extern int resolve_clone_flags(struct lxc_handler *handler);
-#endif
 
+#endif

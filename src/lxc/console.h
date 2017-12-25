@@ -221,4 +221,7 @@ extern int lxc_console_cb_signal_fd(int fd, uint32_t events, void *cbdata,
  */
 extern void lxc_console_signal_fini(struct lxc_tty_state *ts);
 
+extern int lxc_console_cb_con(int fd, uint32_t events, void *data,
+			      struct lxc_epoll_descr *descr);
+
 #endif
