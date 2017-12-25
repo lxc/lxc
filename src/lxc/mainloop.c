@@ -40,12 +40,11 @@ struct mainloop_handler {
 
 int lxc_mainloop(struct lxc_epoll_descr *descr, int timeout_ms)
 {
-	int i, nfds;
+	int i, nfds, ret;
 	struct mainloop_handler *handler;
 	struct epoll_event events[MAX_EVENTS];
 
 	for (;;) {
-
 		nfds = epoll_wait(descr->epfd, events, MAX_EVENTS, timeout_ms);
 		if (nfds < 0) {
 			if (errno == EINTR)
@@ -54,13 +53,13 @@ int lxc_mainloop(struct lxc_epoll_descr *descr, int timeout_ms)
 		}
 
 		for (i = 0; i < nfds; i++) {
-			handler =
-				(struct mainloop_handler *) events[i].data.ptr;
+			handler = events[i].data.ptr;
 
-			/* If the handler returns a positive value, exit
-			   the mainloop */
-			if (handler->callback(handler->fd, events[i].events,
-					      handler->data, descr) > 0)
+			/* If the handler returns a positive value, exit the
+			 * mainloop. */
+			ret = handler->callback(handler->fd, events[i].events,
+						handler->data, descr);
+			if (ret == LXC_MAINLOOP_CLOSE)
 				return 0;
 		}
 
