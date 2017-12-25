@@ -278,6 +278,14 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (my_args.console)
+		if (!c->set_config_item(c, "lxc.console.path", my_args.console))
+			goto out;
+
+	if (my_args.console_log)
+		if (!c->set_config_item(c, "lxc.console.logfile", my_args.console_log))
+			goto out;
+
 	if (!lxc_setup_shared_ns(&my_args, c))
 		goto out;
 
