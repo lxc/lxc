@@ -290,11 +290,10 @@ static int setup_signal_fd(sigset_t *oldmask)
 static int signal_handler(int fd, uint32_t events, void *data,
 			  struct lxc_epoll_descr *descr)
 {
-	struct signalfd_siginfo siginfo;
-	siginfo_t info;
 	int ret;
-	pid_t *pid = data;
-	bool init_died = false;
+	siginfo_t info;
+	struct signalfd_siginfo siginfo;
+	struct lxc_handler *hdlr = data;
 
 	ret = read(fd, &siginfo, sizeof(siginfo));
 	if (ret < 0) {
@@ -309,34 +308,34 @@ static int signal_handler(int fd, uint32_t events, void *data,
 
 	/* Check whether init is running. */
 	info.si_pid = 0;
-	ret = waitid(P_PID, *pid, &info, WEXITED | WNOWAIT | WNOHANG);
-	if (ret == 0 && info.si_pid == *pid)
-		init_died = true;
+	ret = waitid(P_PID, hdlr->pid, &info, WEXITED | WNOWAIT | WNOHANG);
+	if (ret == 0 && info.si_pid == hdlr->pid)
+		hdlr->init_died = true;
 
 	if (siginfo.ssi_signo != SIGCHLD) {
-		kill(*pid, siginfo.ssi_signo);
-		INFO("Forwarded signal %d to pid %d.", siginfo.ssi_signo, *pid);
-		return init_died ? 1 : 0;
+		kill(hdlr->pid, siginfo.ssi_signo);
+		INFO("Forwarded signal %d to pid %d.", siginfo.ssi_signo, hdlr->pid);
+		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
 	}
 
 	if (siginfo.ssi_code == CLD_STOPPED) {
 		INFO("Container init process was stopped.");
-		return init_died ? 1 : 0;
+		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
 	} else if (siginfo.ssi_code == CLD_CONTINUED) {
 		INFO("Container init process was continued.");
-		return init_died ? 1 : 0;
+		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
 	}
 
 	/* More robustness, protect ourself from a SIGCHLD sent
 	 * by a process different from the container init.
 	 */
-	if (siginfo.ssi_pid != *pid) {
-		NOTICE("Received SIGCHLD from pid %d instead of container init %d.", siginfo.ssi_pid, *pid);
-		return init_died ? 1 : 0;
+	if (siginfo.ssi_pid != hdlr->pid) {
+		NOTICE("Received SIGCHLD from pid %d instead of container init %d.", siginfo.ssi_pid, hdlr->pid);
+		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
 	}
 
-	DEBUG("Container init process %d exited.", *pid);
-	return 1;
+	DEBUG("Container init process %d exited.", hdlr->pid);
+	return LXC_MAINLOOP_CLOSE;
 }
 
 static int lxc_serve_state_clients(const char *name,
@@ -458,35 +457,39 @@ int lxc_set_state(const char *name, struct lxc_handler *handler,
 
 int lxc_poll(const char *name, struct lxc_handler *handler)
 {
+	int ret;
+	struct lxc_epoll_descr descr, descr_console;
 	int sigfd = handler->sigfd;
-	int pid = handler->pid;
-	struct lxc_epoll_descr descr;
 
-	if (lxc_mainloop_open(&descr)) {
-		ERROR("Failed to create LXC mainloop.");
+	ret = lxc_mainloop_open(&descr);
+	if (ret < 0) {
+		ERROR("Failed to create mainloop");
 		goto out_sigfd;
 	}
 
-	if (lxc_mainloop_add_handler(&descr, sigfd, signal_handler, &pid)) {
-		ERROR("Failed to add signal handler with file descriptor %d to LXC mainloop.", sigfd);
-		goto out_mainloop_open;
+	ret = lxc_mainloop_open(&descr_console);
+	if (ret < 0) {
+		ERROR("Failed to create console mainloop");
+		goto out_mainloop;
 	}
 
-	if (lxc_console_mainloop_add(&descr, handler->conf)) {
-		ERROR("Failed to add console handler to LXC mainloop.");
-		goto out_mainloop_open;
+	ret = lxc_mainloop_add_handler(&descr, sigfd, signal_handler, handler);
+	if (ret < 0) {
+		ERROR("Failed to add signal handler for %d to mainloop", sigfd);
+		goto out_mainloop_console;
 	}
 
-	if (lxc_cmd_mainloop_add(name, &descr, handler)) {
-		ERROR("Failed to add command handler to LXC mainloop.");
-		goto out_mainloop_open;
+	ret = lxc_console_mainloop_add(&descr, handler->conf);
+	if (ret < 0) {
+		ERROR("Failed to add console handlers to mainloop");
+		goto out_mainloop_console;
 	}
 
 	if (handler->conf->need_utmp_watch) {
 		#if HAVE_LIBCAP
 		if (lxc_utmp_mainloop_add(&descr, handler)) {
 			ERROR("Failed to add utmp handler to LXC mainloop.");
-			goto out_mainloop_open;
+			goto out_mainloop_console;
 		}
 		#else
 			DEBUG("Not starting utmp handler as CAP_SYS_BOOT cannot be dropped without capabilities support.");
@@ -494,10 +497,32 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 	}
 	TRACE("lxc mainloop is ready");
 
-	return lxc_mainloop(&descr, -1);
+	ret = lxc_console_mainloop_add(&descr_console, handler->conf);
+	if (ret < 0) {
+		ERROR("Failed to add console handlers to console mainloop");
+		goto out_mainloop_console;
+	}
 
-out_mainloop_open:
+	ret = lxc_cmd_mainloop_add(name, &descr, handler);
+	if (ret < 0) {
+		ERROR("Failed to add command handler to mainloop");
+		goto out_mainloop_console;
+	}
+
+	TRACE("Mainloop is ready");
+
+	ret = lxc_mainloop(&descr, -1);
+	if (ret < 0)
+		return -1;
+	if (handler->init_died)
+		return lxc_mainloop(&descr_console, 0);
+	return ret;
+
+out_mainloop:
 	lxc_mainloop_close(&descr);
+
+out_mainloop_console:
+	lxc_mainloop_close(&descr_console);
 
 out_sigfd:
 	close(sigfd);

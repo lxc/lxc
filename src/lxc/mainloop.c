@@ -20,11 +20,12 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+
 #include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/epoll.h>
 
@@ -49,6 +50,7 @@ int lxc_mainloop(struct lxc_epoll_descr *descr, int timeout_ms)
 		if (nfds < 0) {
 			if (errno == EINTR)
 				continue;
+
 			return -1;
 		}
 
@@ -56,14 +58,15 @@ int lxc_mainloop(struct lxc_epoll_descr *descr, int timeout_ms)
 			handler = events[i].data.ptr;
 
 			/* If the handler returns a positive value, exit the
-			 * mainloop. */
+			 * mainloop.
+			 */
 			ret = handler->callback(handler->fd, events[i].events,
 						handler->data, descr);
 			if (ret == LXC_MAINLOOP_CLOSE)
 				return 0;
 		}
 
-		if (nfds == 0 && timeout_ms != 0)
+		if (nfds == 0)
 			return 0;
 
 		if (lxc_list_empty(&descr->handlers))
