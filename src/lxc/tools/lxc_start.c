@@ -192,7 +192,7 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
-	int err = EXIT_FAILURE;
+	int i, err = EXIT_FAILURE;
 	struct lxc_conf *conf;
 	struct lxc_log log;
 	char *const *args;
@@ -320,7 +320,14 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	int i;
+	if (my_args.console)
+		if (!c->set_config_item(c, "lxc.console.path", my_args.console))
+			goto out;
+
+	if (my_args.console_log)
+		if (!c->set_config_item(c, "lxc.console.logfile", my_args.console_log))
+			goto out;
+
 	for (i = 0; i < LXC_NS_MAX; i++) {
 		if (my_args.share_ns[i] == NULL)
 			continue;
