@@ -73,6 +73,7 @@
 #include "confile_utils.h"
 #include "console.h"
 #include "error.h"
+#include "list.h"
 #include "log.h"
 #include "lxccontainer.h"
 #include "lxclock.h"
@@ -468,7 +469,6 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 {
 	int ret;
 	struct lxc_epoll_descr descr, descr_console;
-	int sigfd = handler->sigfd;
 
 	ret = lxc_mainloop_open(&descr);
 	if (ret < 0) {
@@ -482,9 +482,9 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 		goto out_mainloop;
 	}
 
-	ret = lxc_mainloop_add_handler(&descr, sigfd, signal_handler, handler);
+	ret = lxc_mainloop_add_handler(&descr, handler->sigfd, signal_handler, handler);
 	if (ret < 0) {
-		ERROR("Failed to add signal handler for %d to mainloop", sigfd);
+		ERROR("Failed to add signal handler for %d to mainloop", handler->sigfd);
 		goto out_mainloop_console;
 	}
 
@@ -509,22 +509,27 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 	TRACE("Mainloop is ready");
 
 	ret = lxc_mainloop(&descr, -1);
-	if (ret < 0)
-		return -1;
-	if (handler->init_died)
-		return lxc_mainloop(&descr_console, 0);
-	return ret;
+	close(descr.epfd);
+	descr.epfd = -EBADF;
+	if (ret < 0 || !handler->init_died)
+		goto out_mainloop;
+
+	ret = lxc_mainloop(&descr_console, 0);
 
 out_mainloop:
 	lxc_mainloop_close(&descr);
+	TRACE("Closed mainloop");
 
 out_mainloop_console:
 	lxc_mainloop_close(&descr_console);
+	TRACE("Closed console mainloop");
 
 out_sigfd:
-	close(sigfd);
+	close(handler->sigfd);
+	TRACE("Closed signal file descriptor %d", handler->sigfd);
+	handler->sigfd = -EBADF;
 
-	return -1;
+	return ret;
 }
 
 void lxc_zero_handler(struct lxc_handler *handler)
@@ -552,10 +557,32 @@ void lxc_zero_handler(struct lxc_handler *handler)
 	handler->sync_sock[1] = -1;
 }
 
+static void lxc_put_nsfds(struct lxc_handler *handler)
+{
+	int i;
+
+	for (i = 0; i < LXC_NS_MAX; i++) {
+		if (handler->nsfd[i] < 0)
+			continue;
+
+		close(handler->nsfd[i]);
+		handler->nsfd[i] = -EBADF;
+	}
+}
+
 void lxc_free_handler(struct lxc_handler *handler)
 {
-	if (handler->conf && handler->conf->maincmd_fd)
-		close(handler->conf->maincmd_fd);
+	if (handler->pinfd >= 0)
+		close(handler->pinfd);
+
+	if (handler->sigfd >= 0)
+		close(handler->sigfd);
+
+	lxc_put_nsfds(handler);
+
+	if (handler->conf && handler->conf->reboot == 0)
+		if (handler->conf->maincmd_fd)
+			close(handler->conf->maincmd_fd);
 
 	if (handler->state_socket_pair[0] >= 0)
 		close(handler->state_socket_pair[0]);
@@ -565,6 +592,7 @@ void lxc_free_handler(struct lxc_handler *handler)
 
 	handler->conf = NULL;
 	free(handler);
+	handler = NULL;
 }
 
 struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
@@ -590,6 +618,8 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 	handler->conf = conf;
 	handler->lxcpath = lxcpath;
 	handler->pinfd = -1;
+	handler->sigfd = -EBADF;
+	handler->init_died = false;
 	handler->state_socket_pair[0] = handler->state_socket_pair[1] = -1;
 	if (handler->conf->reboot == 0)
 		lxc_list_init(&handler->conf->state_clients);
@@ -797,14 +827,6 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	while (namespace_count--)
 		free(namespaces[namespace_count]);
 
-	for (i = 0; i < LXC_NS_MAX; i++) {
-		if (handler->nsfd[i] < 0)
-			continue;
-
-		close(handler->nsfd[i]);
-		handler->nsfd[i] = -1;
-	}
-
 	cgroup_destroy(handler);
 
 	if (handler->conf->reboot == 0) {
@@ -866,15 +888,10 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		free(cur);
 	}
 
-	if (handler->data_sock[0] != -1) {
-		close(handler->data_sock[0]);
-		close(handler->data_sock[1]);
-	}
-
 	if (handler->conf->ephemeral == 1 && handler->conf->reboot != 1)
 		lxc_destroy_container_on_signal(handler, name);
 
-	free(handler);
+	lxc_free_handler(handler);
 }
 
 void lxc_abort(const char *name, struct lxc_handler *handler)
