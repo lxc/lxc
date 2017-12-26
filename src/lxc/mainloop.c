@@ -161,5 +161,8 @@ int lxc_mainloop_close(struct lxc_epoll_descr *descr)
 		iterator = next;
 	}
 
-	return close(descr->epfd);
+	if (descr->epfd >= 0)
+		return close(descr->epfd);
+
+	return 0;
 }
