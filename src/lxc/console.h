@@ -223,5 +223,7 @@ extern void lxc_console_signal_fini(struct lxc_tty_state *ts);
 
 extern int lxc_console_write_ringbuffer(struct lxc_console *console);
 extern int lxc_console_create_log_file(struct lxc_console *console);
+extern int lxc_console_cb_con(int fd, uint32_t events, void *data,
+			      struct lxc_epoll_descr *descr);
 
 #endif

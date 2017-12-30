@@ -85,6 +85,9 @@ struct lxc_handler {
 	/* The child's pid. */
 	pid_t pid;
 
+	/* Whether the child has already exited. */
+	bool init_died;
+
 	/* The signal mask prior to setting up the signal file descriptor. */
 	sigset_t oldmask;
 
@@ -138,5 +141,5 @@ extern int __lxc_start(const char *, struct lxc_handler *,
 		       struct lxc_operations *, void *, const char *, bool);
 
 extern int resolve_clone_flags(struct lxc_handler *handler);
-#endif
 
+#endif

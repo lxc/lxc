@@ -122,7 +122,7 @@ int lxc_console_cb_signal_fd(int fd, uint32_t events, void *cbdata,
 
 	if (siginfo.ssi_signo == SIGTERM) {
 		DEBUG("Received SIGTERM. Detaching from the console");
-		return 1;
+		return LXC_MAINLOOP_CLOSE;
 	}
 
 	if (siginfo.ssi_signo == SIGWINCH)
@@ -204,8 +204,8 @@ void lxc_console_signal_fini(struct lxc_tty_state *ts)
 	free(ts);
 }
 
-static int lxc_console_cb_con(int fd, uint32_t events, void *data,
-			      struct lxc_epoll_descr *descr)
+int lxc_console_cb_con(int fd, uint32_t events, void *data,
+		       struct lxc_epoll_descr *descr)
 {
 	struct lxc_console *console = (struct lxc_console *)data;
 	char buf[LXC_CONSOLE_BUFFER_SIZE];
@@ -225,7 +225,7 @@ static int lxc_console_cb_con(int fd, uint32_t events, void *data,
 			return 0;
 		}
 		close(fd);
-		return 1;
+		return LXC_MAINLOOP_CLOSE;
 	}
 
 	if (fd == console->peer)
@@ -259,27 +259,36 @@ static int lxc_console_cb_con(int fd, uint32_t events, void *data,
 	return 0;
 }
 
-static void lxc_console_mainloop_add_peer(struct lxc_console *console)
+static int lxc_console_mainloop_add_peer(struct lxc_console *console)
 {
-	if (console->peer >= 0) {
-		if (lxc_mainloop_add_handler(console->descr, console->peer,
-					     lxc_console_cb_con, console))
-			WARN("Failed to add console peer handler to mainloop");
-	}
+	int ret;
 
-	if (console->tty_state && console->tty_state->sigfd != -1) {
-		if (lxc_mainloop_add_handler(console->descr,
-					     console->tty_state->sigfd,
-					     lxc_console_cb_signal_fd,
-					     console->tty_state)) {
-			WARN("Failed to add signal handler to mainloop");
+	if (console->peer >= 0) {
+		ret = lxc_mainloop_add_handler(console->descr, console->peer,
+					       lxc_console_cb_con, console);
+		if (ret < 0) {
+			WARN("Failed to add console peer handler to mainloop");
+			return -1;
 		}
 	}
+
+	if (!console->tty_state || console->tty_state->sigfd < 0)
+		return 0;
+
+	ret = lxc_mainloop_add_handler(console->descr, console->tty_state->sigfd,
+				       lxc_console_cb_signal_fd, console->tty_state);
+	if (ret < 0) {
+		WARN("Failed to add signal handler to mainloop");
+		return -1;
+	}
+
+	return 0;
 }
 
 extern int lxc_console_mainloop_add(struct lxc_epoll_descr *descr,
 				    struct lxc_conf *conf)
 {
+	int ret;
 	struct lxc_console *console = &conf->console;
 
 	if (!conf->rootfs.path) {
@@ -303,7 +312,9 @@ extern int lxc_console_mainloop_add(struct lxc_epoll_descr *descr,
 	 * does attach to it in lxc_console_allocate()
 	 */
 	console->descr = descr;
-	lxc_console_mainloop_add_peer(console);
+	ret = lxc_console_mainloop_add_peer(console);
+	if (ret < 0)
+		return -1;
 
 	return 0;
 }
@@ -412,7 +423,9 @@ static int lxc_console_peer_proxy_alloc(struct lxc_console *console, int sockfd)
 	console->tty_state = ts;
 	console->peer = console->peerpty.slave;
 	console->peerpty.busy = sockfd;
-	lxc_console_mainloop_add_peer(console);
+	ret = lxc_console_mainloop_add_peer(console);
+	if (ret < 0)
+		goto err1;
 
 	DEBUG("%d %s peermaster:%d sockfd:%d", lxc_raw_getpid(), __FUNCTION__, console->peerpty.master, sockfd);
 	return 0;
@@ -505,9 +518,9 @@ static int lxc_console_peer_default(struct lxc_console *console)
 		goto out;
 	}
 
-	console->peer = lxc_unpriv(open(path, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600));
+	console->peer = lxc_unpriv(open(path, O_RDWR | O_CLOEXEC));
 	if (console->peer < 0) {
-		ERROR("failed to open \"%s\": %s", path, strerror(errno));
+		ERROR("Failed to open \"%s\": %s", path, strerror(errno));
 		return -ENOTTY;
 	}
 	DEBUG("using \"%s\" as peer tty device", path);
@@ -794,10 +807,10 @@ int lxc_console_cb_tty_stdin(int fd, uint32_t events, void *cbdata,
 	char c;
 
 	if (fd != ts->stdinfd)
-		return 1;
+		return LXC_MAINLOOP_CLOSE;
 
 	if (lxc_read_nointr(ts->stdinfd, &c, 1) <= 0)
-		return 1;
+		return LXC_MAINLOOP_CLOSE;
 
 	if (ts->escape >= 1) {
 		/* we want to exit the console with Ctrl+a q */
@@ -807,13 +820,13 @@ int lxc_console_cb_tty_stdin(int fd, uint32_t events, void *cbdata,
 		}
 
 		if (c == 'q' && ts->saw_escape)
-			return 1;
+			return LXC_MAINLOOP_CLOSE;
 
 		ts->saw_escape = 0;
 	}
 
 	if (lxc_write_nointr(ts->masterfd, &c, 1) <= 0)
-		return 1;
+		return LXC_MAINLOOP_CLOSE;
 
 	return 0;
 }
@@ -826,17 +839,17 @@ int lxc_console_cb_tty_master(int fd, uint32_t events, void *cbdata,
 	int r, w;
 
 	if (fd != ts->masterfd)
-		return 1;
+		return LXC_MAINLOOP_CLOSE;
 
 	r = lxc_read_nointr(fd, buf, sizeof(buf));
 	if (r <= 0)
-		return 1;
+		return LXC_MAINLOOP_CLOSE;
 
 	w = lxc_write_nointr(ts->stdoutfd, buf, r);
 	if (w <= 0) {
-		return 1;
+		return LXC_MAINLOOP_CLOSE;
 	} else if (w != r) {
-		SYSERROR("failed to write");
+		SYSERROR("Failed to write");
 		return 1;
 	}
 

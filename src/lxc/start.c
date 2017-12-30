@@ -73,6 +73,7 @@
 #include "confile_utils.h"
 #include "console.h"
 #include "error.h"
+#include "list.h"
 #include "log.h"
 #include "lxccontainer.h"
 #include "lxclock.h"
@@ -299,11 +300,10 @@ static int setup_signal_fd(sigset_t *oldmask)
 static int signal_handler(int fd, uint32_t events, void *data,
 			  struct lxc_epoll_descr *descr)
 {
-	struct signalfd_siginfo siginfo;
-	siginfo_t info;
 	int ret;
-	pid_t *pid = data;
-	bool init_died = false;
+	siginfo_t info;
+	struct signalfd_siginfo siginfo;
+	struct lxc_handler *hdlr = data;
 
 	ret = read(fd, &siginfo, sizeof(siginfo));
 	if (ret < 0) {
@@ -318,34 +318,34 @@ static int signal_handler(int fd, uint32_t events, void *data,
 
 	/* Check whether init is running. */
 	info.si_pid = 0;
-	ret = waitid(P_PID, *pid, &info, WEXITED | WNOWAIT | WNOHANG);
-	if (ret == 0 && info.si_pid == *pid)
-		init_died = true;
+	ret = waitid(P_PID, hdlr->pid, &info, WEXITED | WNOWAIT | WNOHANG);
+	if (ret == 0 && info.si_pid == hdlr->pid)
+		hdlr->init_died = true;
 
 	if (siginfo.ssi_signo != SIGCHLD) {
-		kill(*pid, siginfo.ssi_signo);
-		INFO("Forwarded signal %d to pid %d.", siginfo.ssi_signo, *pid);
-		return init_died ? 1 : 0;
+		kill(hdlr->pid, siginfo.ssi_signo);
+		INFO("Forwarded signal %d to pid %d.", siginfo.ssi_signo, hdlr->pid);
+		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
 	}
 
 	if (siginfo.ssi_code == CLD_STOPPED) {
 		INFO("Container init process was stopped.");
-		return init_died ? 1 : 0;
+		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
 	} else if (siginfo.ssi_code == CLD_CONTINUED) {
 		INFO("Container init process was continued.");
-		return init_died ? 1 : 0;
+		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
 	}
 
 	/* More robustness, protect ourself from a SIGCHLD sent
 	 * by a process different from the container init.
 	 */
-	if (siginfo.ssi_pid != *pid) {
-		NOTICE("Received SIGCHLD from pid %d instead of container init %d.", siginfo.ssi_pid, *pid);
-		return init_died ? 1 : 0;
+	if (siginfo.ssi_pid != hdlr->pid) {
+		NOTICE("Received SIGCHLD from pid %d instead of container init %d.", siginfo.ssi_pid, hdlr->pid);
+		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
 	}
 
-	DEBUG("Container init process %d exited.", *pid);
-	return 1;
+	DEBUG("Container init process %d exited.", hdlr->pid);
+	return LXC_MAINLOOP_CLOSE;
 }
 
 static int lxc_serve_state_clients(const char *name,
@@ -467,41 +467,69 @@ int lxc_set_state(const char *name, struct lxc_handler *handler,
 
 int lxc_poll(const char *name, struct lxc_handler *handler)
 {
-	int sigfd = handler->sigfd;
-	int pid = handler->pid;
-	struct lxc_epoll_descr descr;
+	int ret;
+	struct lxc_epoll_descr descr, descr_console;
 
-	if (lxc_mainloop_open(&descr)) {
-		ERROR("Failed to create LXC mainloop.");
+	ret = lxc_mainloop_open(&descr);
+	if (ret < 0) {
+		ERROR("Failed to create mainloop");
 		goto out_sigfd;
 	}
 
-	if (lxc_mainloop_add_handler(&descr, sigfd, signal_handler, &pid)) {
-		ERROR("Failed to add signal handler with file descriptor %d to LXC mainloop.", sigfd);
-		goto out_mainloop_open;
+	ret = lxc_mainloop_open(&descr_console);
+	if (ret < 0) {
+		ERROR("Failed to create console mainloop");
+		goto out_mainloop;
 	}
 
-	if (lxc_console_mainloop_add(&descr, handler->conf)) {
-		ERROR("Failed to add console handler to LXC mainloop.");
-		goto out_mainloop_open;
+	ret = lxc_mainloop_add_handler(&descr, handler->sigfd, signal_handler, handler);
+	if (ret < 0) {
+		ERROR("Failed to add signal handler for %d to mainloop", handler->sigfd);
+		goto out_mainloop_console;
 	}
 
-	if (lxc_cmd_mainloop_add(name, &descr, handler)) {
-		ERROR("Failed to add command handler to LXC mainloop.");
-		goto out_mainloop_open;
+	ret = lxc_console_mainloop_add(&descr, handler->conf);
+	if (ret < 0) {
+		ERROR("Failed to add console handlers to mainloop");
+		goto out_mainloop_console;
 	}
 
-	TRACE("lxc mainloop is ready");
+	ret = lxc_console_mainloop_add(&descr_console, handler->conf);
+	if (ret < 0) {
+		ERROR("Failed to add console handlers to console mainloop");
+		goto out_mainloop_console;
+	}
 
-	return lxc_mainloop(&descr, -1);
+	ret = lxc_cmd_mainloop_add(name, &descr, handler);
+	if (ret < 0) {
+		ERROR("Failed to add command handler to mainloop");
+		goto out_mainloop_console;
+	}
 
-out_mainloop_open:
+	TRACE("Mainloop is ready");
+
+	ret = lxc_mainloop(&descr, -1);
+	close(descr.epfd);
+	descr.epfd = -EBADF;
+	if (ret < 0 || !handler->init_died)
+		goto out_mainloop;
+
+	ret = lxc_mainloop(&descr_console, 0);
+
+out_mainloop:
 	lxc_mainloop_close(&descr);
+	TRACE("Closed mainloop");
+
+out_mainloop_console:
+	lxc_mainloop_close(&descr_console);
+	TRACE("Closed console mainloop");
 
 out_sigfd:
-	close(sigfd);
+	close(handler->sigfd);
+	TRACE("Closed signal file descriptor %d", handler->sigfd);
+	handler->sigfd = -EBADF;
 
-	return -1;
+	return ret;
 }
 
 void lxc_zero_handler(struct lxc_handler *handler)
@@ -529,10 +557,32 @@ void lxc_zero_handler(struct lxc_handler *handler)
 	handler->sync_sock[1] = -1;
 }
 
+static void lxc_put_nsfds(struct lxc_handler *handler)
+{
+	int i;
+
+	for (i = 0; i < LXC_NS_MAX; i++) {
+		if (handler->nsfd[i] < 0)
+			continue;
+
+		close(handler->nsfd[i]);
+		handler->nsfd[i] = -EBADF;
+	}
+}
+
 void lxc_free_handler(struct lxc_handler *handler)
 {
-	if (handler->conf && handler->conf->maincmd_fd)
-		close(handler->conf->maincmd_fd);
+	if (handler->pinfd >= 0)
+		close(handler->pinfd);
+
+	if (handler->sigfd >= 0)
+		close(handler->sigfd);
+
+	lxc_put_nsfds(handler);
+
+	if (handler->conf && handler->conf->reboot == 0)
+		if (handler->conf->maincmd_fd)
+			close(handler->conf->maincmd_fd);
 
 	if (handler->state_socket_pair[0] >= 0)
 		close(handler->state_socket_pair[0]);
@@ -542,6 +592,7 @@ void lxc_free_handler(struct lxc_handler *handler)
 
 	handler->conf = NULL;
 	free(handler);
+	handler = NULL;
 }
 
 struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
@@ -567,6 +618,8 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 	handler->conf = conf;
 	handler->lxcpath = lxcpath;
 	handler->pinfd = -1;
+	handler->sigfd = -EBADF;
+	handler->init_died = false;
 	handler->state_socket_pair[0] = handler->state_socket_pair[1] = -1;
 	if (handler->conf->reboot == 0)
 		lxc_list_init(&handler->conf->state_clients);
@@ -774,14 +827,6 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	while (namespace_count--)
 		free(namespaces[namespace_count]);
 
-	for (i = 0; i < LXC_NS_MAX; i++) {
-		if (handler->nsfd[i] < 0)
-			continue;
-
-		close(handler->nsfd[i]);
-		handler->nsfd[i] = -1;
-	}
-
 	cgroup_destroy(handler);
 
 	if (handler->conf->reboot == 0) {
@@ -843,15 +888,10 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		free(cur);
 	}
 
-	if (handler->data_sock[0] != -1) {
-		close(handler->data_sock[0]);
-		close(handler->data_sock[1]);
-	}
-
 	if (handler->conf->ephemeral == 1 && handler->conf->reboot != 1)
 		lxc_destroy_container_on_signal(handler, name);
 
-	free(handler);
+	lxc_free_handler(handler);
 }
 
 void lxc_abort(const char *name, struct lxc_handler *handler)
