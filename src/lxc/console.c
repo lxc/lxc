@@ -139,7 +139,7 @@ struct lxc_tty_state *lxc_console_sigwinch_init(int srcfd, int dstfd)
 		return ts;
 	}
 
-	ts->sigfd = signalfd(-1, &mask, 0);
+	ts->sigfd = signalfd(-1, &mask, SFD_CLOEXEC);
 	if (ts->sigfd < 0) {
 		SYSERROR("failed to create signal fd");
 		sigprocmask(SIG_SETMASK, &ts->oldmask, NULL);
