@@ -166,7 +166,7 @@ struct lxc_tty_state *lxc_console_signal_init(int srcfd, int dstfd)
 		goto on_error;
 	}
 
-	ts->sigfd = signalfd(-1, &mask, 0);
+	ts->sigfd = signalfd(-1, &mask, SFD_CLOEXEC);
 	if (ts->sigfd < 0) {
 		WARN("Failed to create signal fd");
 		sigprocmask(SIG_SETMASK, &ts->oldmask, NULL);
