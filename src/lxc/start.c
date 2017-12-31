@@ -266,35 +266,36 @@ restart:
 
 static int setup_signal_fd(sigset_t *oldmask)
 {
+	int ret, sig;
 	sigset_t mask;
-	int fd;
+	int signals[] = {SIGBUS, SIGILL, SIGSEGV, SIGWINCH};
 
 	/* Block everything except serious error signals. */
-	if (sigfillset(&mask) ||
-	    sigdelset(&mask, SIGILL) ||
-	    sigdelset(&mask, SIGSEGV) ||
-	    sigdelset(&mask, SIGBUS) ||
-	    sigdelset(&mask, SIGWINCH) ||
-	    sigprocmask(SIG_BLOCK, &mask, oldmask)) {
-		SYSERROR("Failed to set signal mask.");
-		return -1;
+	ret = sigfillset(&mask);
+	if (ret < 0)
+		return -EBADF;
+
+	for (sig = 0; sig < (sizeof(signals) / sizeof(signals[0])); sig++) {
+		ret = sigdelset(&mask, signals[sig]);
+		if (ret < 0)
+			return -EBADF;
 	}
 
-	fd = signalfd(-1, &mask, 0);
-	if (fd < 0) {
-		SYSERROR("Failed to create signal file descriptor.");
-		return -1;
+	ret = sigprocmask(SIG_BLOCK, &mask, oldmask);
+	if (ret < 0) {
+		SYSERROR("Failed to set signal mask");
+		return -EBADF;
 	}
 
-	if (fcntl(fd, F_SETFD, FD_CLOEXEC)) {
-		SYSERROR("Failed to set FD_CLOEXEC on the signal file descriptor: %d.", fd);
-		close(fd);
-		return -1;
+	ret = signalfd(-1, &mask, SFD_CLOEXEC);
+	if (ret < 0) {
+		SYSERROR("Failed to create signal file descriptor");
+		return -EBADF;
 	}
 
-	DEBUG("Set SIGCHLD handler with file descriptor: %d.", fd);
+	TRACE("Created signal file descriptor %d", ret);
 
-	return fd;
+	return ret;
 }
 
 static int signal_handler(int fd, uint32_t events, void *data,
