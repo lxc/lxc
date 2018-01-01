@@ -827,17 +827,6 @@ struct lxc_container {
 	int (*migrate)(struct lxc_container *c, unsigned int cmd, struct migrate_opts *opts, unsigned int size);
 
 	/*!
-	 * \brief Set a key/value configuration option on a running container.
-	 *
-	 * \param c Container.
-	 * \param key Name of option to set.
-	 * \param value Value of \p name to set.
-	 *
-	 * \return \c true on success, else \c false.
-	 */
-	bool (*set_running_config_item)(struct lxc_container *c, const char *key, const char *value);
-
-	/*!
 	 * \brief Query the console log of a container.
 	 *
 	 * \param c Container.

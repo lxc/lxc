@@ -2933,26 +2933,6 @@ static bool do_lxcapi_set_config_item(struct lxc_container *c, const char *key, 
 
 WRAP_API_2(bool, lxcapi_set_config_item, const char *, const char *)
 
-static bool do_lxcapi_set_running_config_item(struct lxc_container *c, const char *key, const char *v)
-{
-	int ret;
-
-	if (!c)
-		return false;
-
-	if (container_mem_lock(c))
-		return false;
-
-	ret = lxc_cmd_set_config_item(c->name, key, v, do_lxcapi_get_config_path(c));
-	if (ret < 0)
-		SYSERROR("%s - Failed to live patch container", strerror(-ret));
-
-	container_mem_unlock(c);
-	return ret == 0;
-}
-
-WRAP_API_2(bool, lxcapi_set_running_config_item, const char *, const char *)
-
 static char *lxcapi_config_file_name(struct lxc_container *c)
 {
 	if (!c || !c->configfile)
@@ -4740,7 +4720,6 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->clear_config_item = lxcapi_clear_config_item;
 	c->get_config_item = lxcapi_get_config_item;
 	c->get_running_config_item = lxcapi_get_running_config_item;
-	c->set_running_config_item = lxcapi_set_running_config_item;
 	c->get_cgroup_item = lxcapi_get_cgroup_item;
 	c->set_cgroup_item = lxcapi_set_cgroup_item;
 	c->get_config_path = lxcapi_get_config_path;
