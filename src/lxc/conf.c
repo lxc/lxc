@@ -2573,6 +2573,8 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->caps);
 	lxc_list_init(&new->keepcaps);
 	lxc_list_init(&new->id_map);
+	new->root_nsuid_map = NULL;
+	new->root_nsgid_map = NULL;
 	lxc_list_init(&new->includes);
 	lxc_list_init(&new->aliens);
 	lxc_list_init(&new->environment);
