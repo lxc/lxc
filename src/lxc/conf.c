@@ -1271,16 +1271,48 @@ static int setup_pivot_root(const struct lxc_rootfs *rootfs)
 	return 0;
 }
 
-static int lxc_setup_devpts(int num_pts)
+static struct id_map *find_mapped_nsid_entry(struct lxc_conf *conf, unsigned id,
+					     enum idtype idtype)
+{
+	struct lxc_list *it;
+	struct id_map *map;
+	struct id_map *retmap = NULL;
+
+	lxc_list_for_each(it, &conf->id_map) {
+		map = it->elem;
+		if (map->idtype != idtype)
+			continue;
+
+		if (id >= map->nsid && id < map->nsid + map->range) {
+			retmap = map;
+			break;
+		}
+	}
+
+	return retmap;
+}
+
+static int lxc_setup_devpts(struct lxc_conf *conf)
 {
 	int ret;
-	const char *devpts_mntopts = "newinstance,ptmxmode=0666,mode=0620,gid=5";
+	const char *default_devpts_mntopts;
+	char devpts_mntopts[256];
 
-	if (!num_pts) {
+	if (conf->pts <= 0) {
 		DEBUG("no new devpts instance will be mounted since no pts "
 		      "devices are requested");
 		return 0;
 	}
+
+	if (!find_mapped_nsid_entry(conf, 5, ID_TYPE_GID))
+		default_devpts_mntopts = "newinstance,ptmxmode=0666,mode=0620";
+	else
+		default_devpts_mntopts = "newinstance,ptmxmode=0666,mode=0620,gid=5";
+
+	ret = snprintf(devpts_mntopts, sizeof(devpts_mntopts), "%s,max=%d",
+		       default_devpts_mntopts, conf->pts);
+	if (ret < 0 || (size_t)ret >= sizeof(devpts_mntopts))
+		return -1;
 
 	/* Unmount old devpts instance. */
 	ret = access("/dev/pts/ptmx", F_OK);
@@ -1301,7 +1333,7 @@ static int lxc_setup_devpts(int num_pts)
 	}
 
 	/* Mount new devpts instance. */
-	ret = mount("devpts", "/dev/pts", "devpts", MS_MGC_VAL, devpts_mntopts);
+	ret = mount("devpts", "/dev/pts", "devpts", MS_NOSUID | MS_NOEXEC, devpts_mntopts);
 	if (ret < 0) {
 		SYSERROR("failed to mount new devpts instance");
 		return -1;
@@ -3094,7 +3126,7 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
-	if (lxc_setup_devpts(lxc_conf->pts)) {
+	if (lxc_setup_devpts(lxc_conf)) {
 		ERROR("failed to setup the new pts instance");
 		return -1;
 	}
@@ -3481,27 +3513,6 @@ static int run_userns_fn(void *data)
 		TRACE("calling function \"%s\"", d->fn_name);
 	/* Call function to run. */
 	return d->fn(d->arg);
-}
-
-static struct id_map *find_mapped_nsid_entry(struct lxc_conf *conf, unsigned id,
-					     enum idtype idtype)
-{
-	struct lxc_list *it;
-	struct id_map *map;
-	struct id_map *retmap = NULL;
-
-	lxc_list_for_each(it, &conf->id_map) {
-		map = it->elem;
-		if (map->idtype != idtype)
-			continue;
-
-		if (id >= map->nsid && id < map->nsid + map->range) {
-			retmap = map;
-			break;
-		}
-	}
-
-	return retmap;
 }
 
 static struct id_map *mapped_nsid_add(struct lxc_conf *conf, unsigned id,
