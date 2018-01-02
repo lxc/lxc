@@ -999,7 +999,14 @@ static int do_start(void *data)
 	 * privilege over our namespace.
 	 */
 	if (!lxc_list_empty(&handler->conf->id_map)) {
-		ret = lxc_switch_uid_gid(0, 0);
+		uid_t nsuid = (handler->conf->root_nsuid_map != NULL)
+				  ? 0
+				  : handler->conf->init_uid;
+		gid_t nsgid = (handler->conf->root_nsgid_map != NULL)
+				  ? 0
+				  : handler->conf->init_gid;
+
+		ret = lxc_switch_uid_gid(nsuid, nsgid);
 		if (ret < 0)
 			goto out_warn_father;
 

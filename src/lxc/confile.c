@@ -1687,7 +1687,7 @@ static int set_config_idmaps(const char *key, const char *value,
 			lxc_conf->root_nsuid_map = idmap;
 
 
-	if (!lxc_conf->root_nsuid_map && idmap->idtype == ID_TYPE_GID)
+	if (!lxc_conf->root_nsgid_map && idmap->idtype == ID_TYPE_GID)
 		if (idmap->nsid == 0)
 			lxc_conf->root_nsgid_map = idmap;
 
