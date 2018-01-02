@@ -3474,6 +3474,44 @@ static int run_userns_fn(void *data)
 	return d->fn(d->arg);
 }
 
+static struct id_map *find_mapped_nsid_entry(struct lxc_conf *conf, unsigned id,
+					     enum idtype idtype)
+{
+	struct lxc_list *it;
+	struct id_map *map;
+	struct id_map *retmap = NULL;
+
+	lxc_list_for_each(it, &conf->id_map) {
+		map = it->elem;
+		if (map->idtype != idtype)
+			continue;
+
+		if (id >= map->nsid && id < map->nsid + map->range) {
+			retmap = map;
+			break;
+		}
+	}
+
+	return retmap;
+}
+
+static struct id_map *mapped_nsid_add(struct lxc_conf *conf, unsigned id,
+				      enum idtype idtype)
+{
+	struct id_map *map, *retmap;
+
+	map = find_mapped_nsid_entry(conf, id, idtype);
+	if (!map)
+		return NULL;
+
+	retmap = malloc(sizeof(*retmap));
+	if (!retmap)
+		return NULL;
+
+	memcpy(retmap, map, sizeof(*retmap));
+	return retmap;
+}
+
 static struct id_map *find_mapped_hostid_entry(struct lxc_conf *conf,
 					       unsigned id, enum idtype idtype)
 {
@@ -3576,56 +3614,24 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	close(p[0]);
 	p[0] = -1;
 
+	/* Find container root mappings. */
 	euid = geteuid();
-	egid = getegid();
-
-	/* Find container root. */
-	lxc_list_for_each(it, &conf->id_map) {
-		map = it->elem;
-
-		if (map->nsid != 0)
-			continue;
-
-		if (map->idtype == ID_TYPE_UID && container_root_uid == NULL) {
-			container_root_uid = malloc(sizeof(*container_root_uid));
-			if (!container_root_uid)
-				goto on_error;
-			container_root_uid->idtype = map->idtype;
-			container_root_uid->hostid = map->hostid;
-			container_root_uid->nsid = 0;
-			container_root_uid->range = map->range;
-
-			/* Check if container root mapping contains a mapping
-			 * for user's uid.
-			 */
-			if (euid >= map->hostid && euid < map->hostid + map->range)
-				host_uid_map = container_root_uid;
-		} else if (map->idtype == ID_TYPE_GID && container_root_gid == NULL) {
-			container_root_gid = malloc(sizeof(*container_root_gid));
-			if (!container_root_gid)
-				goto on_error;
-			container_root_gid->idtype = map->idtype;
-			container_root_gid->hostid = map->hostid;
-			container_root_gid->nsid = 0;
-			container_root_gid->range = map->range;
-
-			/* Check if container root mapping contains a mapping
-			 * for user's gid.
-			 */
-			if (egid >= map->hostid && egid < map->hostid + map->range)
-				host_gid_map = container_root_gid;
-		}
-
-		/* Found container root. */
-		if (container_root_uid && container_root_gid)
-			break;
-	}
-
-	/* This is actually checked earlier but it can't hurt. */
-	if (!container_root_uid || !container_root_gid) {
-		ERROR("no mapping for container root found");
+	container_root_uid = mapped_nsid_add(conf, 0, ID_TYPE_UID);
+	if (!container_root_uid) {
+		DEBUG("Failed to find mapping for container root uid %d", 0);
 		goto on_error;
 	}
+	if (euid >= container_root_uid->hostid && euid < container_root_uid->hostid + container_root_uid->range)
+		host_uid_map = container_root_uid;
+
+	egid = getegid();
+	container_root_gid = mapped_nsid_add(conf, 0, ID_TYPE_GID);
+	if (!container_root_gid) {
+		DEBUG("Failed to find mapping for container root gid %d", 0);
+		goto on_error;
+	}
+	if (egid >= container_root_gid->hostid && egid < container_root_gid->hostid + container_root_gid->range)
+		host_gid_map = container_root_gid;
 
 	/* Check whether the {g,u}id of the user has a mapping. */
 	if (!host_uid_map)
@@ -3635,12 +3641,12 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 		host_gid_map = mapped_hostid_add(conf, egid, ID_TYPE_GID);
 
 	if (!host_uid_map) {
-		DEBUG("failed to find mapping for uid %d", euid);
+		DEBUG("Failed to find mapping for uid %d", euid);
 		goto on_error;
 	}
 
 	if (!host_gid_map) {
-		DEBUG("failed to find mapping for gid %d", egid);
+		DEBUG("Failed to find mapping for gid %d", egid);
 		goto on_error;
 	}
 
