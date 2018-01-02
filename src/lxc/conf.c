@@ -3722,8 +3722,8 @@ static int run_userns_fn(void *data)
 	return d->fn(d->arg);
 }
 
-static struct id_map *mapped_hostid_entry(struct lxc_conf *conf, unsigned id,
-					  enum idtype idtype)
+static struct id_map *find_mapped_hostid_entry(struct lxc_conf *conf,
+					       unsigned id, enum idtype idtype)
 {
 	struct lxc_list *it;
 	struct id_map *map;
@@ -3740,14 +3740,6 @@ static struct id_map *mapped_hostid_entry(struct lxc_conf *conf, unsigned id,
 		}
 	}
 
-	if (!retmap)
-		return NULL;
-
-	retmap = malloc(sizeof(*retmap));
-	if (!retmap)
-		return NULL;
-
-	memcpy(retmap, map, sizeof(*retmap));
 	return retmap;
 }
 
@@ -3755,26 +3747,27 @@ static struct id_map *mapped_hostid_entry(struct lxc_conf *conf, unsigned id,
  * Allocate a new {g,u}id mapping for the given {g,u}id. Re-use an already
  * existing one or establish a new one.
  */
-static struct id_map *idmap_add(struct lxc_conf *conf, uid_t id, enum idtype type)
+static struct id_map *mapped_hostid_add(struct lxc_conf *conf, uid_t id, enum idtype type)
 {
 	int hostid_mapped;
-	struct id_map *entry = NULL;
-
-	/* Reuse existing mapping. */
-	entry = mapped_hostid_entry(conf, id, type);
-	if (entry)
-		return entry;
-
-	/* Find new mapping. */
-	hostid_mapped = find_unmapped_nsid(conf, type);
-	if (hostid_mapped < 0) {
-		DEBUG("failed to find free mapping for id %d", id);
-		return NULL;
-	}
+	struct id_map *entry = NULL, *tmp = NULL;
 
 	entry = malloc(sizeof(*entry));
 	if (!entry)
 		return NULL;
+
+	/* Reuse existing mapping. */
+	tmp = find_mapped_hostid_entry(conf, id, type);
+	if (tmp)
+		return memcpy(entry, tmp, sizeof(*entry));
+
+	/* Find new mapping. */
+	hostid_mapped = find_unmapped_nsid(conf, type);
+	if (hostid_mapped < 0) {
+		DEBUG("Failed to find free mapping for id %d", id);
+		free(entry);
+		return NULL;
+	}
 
 	entry->idtype = type;
 	entry->nsid = hostid_mapped;
@@ -3884,10 +3877,10 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 
 	/* Check whether the {g,u}id of the user has a mapping. */
 	if (!host_uid_map)
-		host_uid_map = idmap_add(conf, euid, ID_TYPE_UID);
+		host_uid_map = mapped_hostid_add(conf, euid, ID_TYPE_UID);
 
 	if (!host_gid_map)
-		host_gid_map = idmap_add(conf, egid, ID_TYPE_GID);
+		host_gid_map = mapped_hostid_add(conf, egid, ID_TYPE_GID);
 
 	if (!host_uid_map) {
 		DEBUG("failed to find mapping for uid %d", euid);
@@ -4095,12 +4088,12 @@ int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
 
 	/* Check whether the {g,u}id of the user has a mapping. */
 	if (!host_uid_map)
-		host_uid_map = idmap_add(conf, euid, ID_TYPE_UID);
+		host_uid_map = mapped_hostid_add(conf, euid, ID_TYPE_UID);
 	else
 		host_uid_map = container_root_uid;
 
 	if (!host_gid_map)
-		host_gid_map = idmap_add(conf, egid, ID_TYPE_GID);
+		host_gid_map = mapped_hostid_add(conf, egid, ID_TYPE_GID);
 	else
 		host_gid_map = container_root_gid;
 
