@@ -209,7 +209,15 @@ struct lxc_conf {
 	signed long personality;
 	struct utsname *utsname;
 	struct lxc_list cgroup;
-	struct lxc_list id_map;
+	struct {
+		struct lxc_list id_map;
+		/* Pointer to the idmap entry for the container's root uid in
+		 * the id_map list. Do not free! */
+		struct id_map *root_nsuid_map;
+		/* Pointer to the idmap entry for the container's root gid in
+		 * the id_map list. Do not free! */
+		struct id_map *root_nsgid_map;
+	};
 	struct lxc_list network;
 	int auto_mounts;
 	struct lxc_list mount_list;

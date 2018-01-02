@@ -1858,7 +1858,7 @@ static int set_config_idmaps(const char *key, const char *value,
 	if (ret < 0)
 		goto on_error;
 
-	INFO("read uid map: type %c nsid %lu hostid %lu range %lu", type, nsid, hostid, range);
+	INFO("Read uid map: type %c nsid %lu hostid %lu range %lu", type, nsid, hostid, range);
 	if (type == 'u')
 		idmap->idtype = ID_TYPE_UID;
 	else if (type == 'g')
@@ -1871,6 +1871,16 @@ static int set_config_idmaps(const char *key, const char *value,
 	idmap->range = range;
 	idmaplist->elem = idmap;
 	lxc_list_add_tail(&lxc_conf->id_map, idmaplist);
+
+	if (!lxc_conf->root_nsuid_map && idmap->idtype == ID_TYPE_UID)
+		if (idmap->nsid == 0)
+			lxc_conf->root_nsuid_map = idmap;
+
+
+	if (!lxc_conf->root_nsuid_map && idmap->idtype == ID_TYPE_GID)
+		if (idmap->nsid == 0)
+			lxc_conf->root_nsgid_map = idmap;
+
 	idmap = NULL;
 
 	return 0;
