@@ -1261,7 +1261,7 @@ static int rmdir_wrapper(void *data)
 		SYSERROR("Failed to setgid to 0");
 	if (setresuid(nsuid, nsuid, nsuid) < 0)
 		SYSERROR("Failed to setuid to 0");
-	if (setgroups(0, NULL) < 0)
+	if (setgroups(0, NULL) < 0 && errno != EPERM)
 		SYSERROR("Failed to clear groups");
 
 	return cgroup_rmdir(arg->path);
@@ -1459,7 +1459,7 @@ static int chown_cgroup_wrapper(void *data)
 		SYSERROR("Failed to setgid to 0");
 	if (setresuid(nsuid, nsuid, nsuid) < 0)
 		SYSERROR("Failed to setuid to 0");
-	if (setgroups(0, NULL) < 0)
+	if (setgroups(0, NULL) < 0 && errno != EPERM)
 		SYSERROR("Failed to clear groups");
 
 	destuid = get_ns_uid(arg->origuid);

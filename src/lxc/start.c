@@ -1056,7 +1056,7 @@ static int do_start(void *data)
 		 * user namespace.
 		 */
 		ret = lxc_setgroups(0, NULL);
-		if (ret < 0)
+		if (ret < 0 && (handler->am_root || errno != EPERM))
 			goto out_warn_father;
 
 		if (!handler->am_root) {
