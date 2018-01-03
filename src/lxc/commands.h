@@ -49,7 +49,7 @@ typedef enum {
 	LXC_CMD_GET_NAME,
 	LXC_CMD_GET_LXCPATH,
 	LXC_CMD_ADD_STATE_CLIENT,
-	LXC_CMD_SET_CONFIG_ITEM,
+	LXC_CMD_NOOP,
 	LXC_CMD_CONSOLE_LOG,
 	LXC_CMD_MAX,
 } lxc_cmd_t;
@@ -74,11 +74,6 @@ struct lxc_cmd_rr {
 struct lxc_cmd_console_rsp_data {
 	int masterfd;
 	int ttynum;
-};
-
-struct lxc_cmd_set_config_item_req_data {
-	const char *item;
-	void *value;
 };
 
 struct lxc_cmd_console_log {
@@ -130,9 +125,6 @@ extern int lxc_cmd_init(const char *name, const char *lxcpath, const char *suffi
 extern int lxc_cmd_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
 				    struct lxc_handler *handler);
 extern int lxc_try_cmd(const char *name, const char *lxcpath);
-
-extern int lxc_cmd_set_config_item(const char *name, const char *item,
-				   const char *value, const char *lxcpath);
 extern int lxc_cmd_console_log(const char *name, const char *lxcpath,
 			       struct lxc_console_log *log);
 

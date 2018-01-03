@@ -29,7 +29,6 @@ lxc_test_utils_SOURCES = lxc-test-utils.c lxctest.h
 lxc_test_parse_config_file_SOURCES = parse_config_file.c lxctest.h
 lxc_test_config_jump_table_SOURCES = config_jump_table.c lxctest.h
 lxc_test_shortlived_SOURCES = shortlived.c
-lxc_test_livepatch_SOURCES = livepatch.c lxctest.h
 lxc_test_state_server_SOURCES = state_server.c lxctest.h
 lxc_test_share_ns_SOURCES = share_ns.c lxctest.h
 lxc_test_criu_check_feature_SOURCES = criu_check_feature.c lxctest.h
@@ -62,7 +61,7 @@ bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-snapshot lxc-test-concurrent lxc-test-may-control \
 	lxc-test-reboot lxc-test-list lxc-test-attach lxc-test-device-add-remove \
 	lxc-test-apparmor lxc-test-utils lxc-test-parse-config-file \
-	lxc-test-config-jump-table lxc-test-shortlived lxc-test-livepatch \
+	lxc-test-config-jump-table lxc-test-shortlived \
 	lxc-test-api-reboot lxc-test-state-server lxc-test-share-ns \
 	lxc-test-criu-check-feature lxc-test-raw-clone
 
@@ -102,7 +101,6 @@ EXTRA_DIST = \
 	get_item.c \
 	getkeys.c \
 	list.c \
-	livepatch.c \
 	locktests.c \
 	lxcpath.c \
 	lxc_raw_clone.c \
