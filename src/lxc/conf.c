@@ -1416,20 +1416,46 @@ static int setup_pivot_root(const struct lxc_rootfs *rootfs)
 	return 0;
 }
 
-static int lxc_setup_devpts(int num_pts)
+static struct id_map *find_mapped_nsid_entry(struct lxc_conf *conf, unsigned id,
+					     enum idtype idtype)
+{
+	struct lxc_list *it;
+	struct id_map *map;
+	struct id_map *retmap = NULL;
+
+	lxc_list_for_each(it, &conf->id_map) {
+		map = it->elem;
+		if (map->idtype != idtype)
+			continue;
+
+		if (id >= map->nsid && id < map->nsid + map->range) {
+			retmap = map;
+			break;
+		}
+	}
+
+	return retmap;
+}
+
+static int lxc_setup_devpts(struct lxc_conf *conf)
 {
 	int ret;
-	const char *default_devpts_mntopts = "newinstance,ptmxmode=0666,mode=0620,gid=5";
+	const char *default_devpts_mntopts;
 	char devpts_mntopts[256];
 
-	if (!num_pts) {
+	if (conf->pts <= 0) {
 		DEBUG("no new devpts instance will be mounted since no pts "
 		      "devices are requested");
 		return 0;
 	}
 
+	if (!find_mapped_nsid_entry(conf, 5, ID_TYPE_GID))
+		default_devpts_mntopts = "newinstance,ptmxmode=0666,mode=0620";
+	else
+		default_devpts_mntopts = "newinstance,ptmxmode=0666,mode=0620,gid=5";
+
 	ret = snprintf(devpts_mntopts, sizeof(devpts_mntopts), "%s,max=%d",
-		       default_devpts_mntopts, num_pts);
+		       default_devpts_mntopts, conf->pts);
 	if (ret < 0 || (size_t)ret >= sizeof(devpts_mntopts))
 		return -1;
 
@@ -1452,7 +1478,7 @@ static int lxc_setup_devpts(int num_pts)
 	}
 
 	/* Mount new devpts instance. */
-	ret = mount("devpts", "/dev/pts", "devpts", MS_MGC_VAL, devpts_mntopts);
+	ret = mount("devpts", "/dev/pts", "devpts", MS_NOSUID | MS_NOEXEC, devpts_mntopts);
 	if (ret < 0) {
 		SYSERROR("failed to mount new devpts instance");
 		return -1;
@@ -2573,6 +2599,8 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->caps);
 	lxc_list_init(&new->keepcaps);
 	lxc_list_init(&new->id_map);
+	new->root_nsuid_map = NULL;
+	new->root_nsgid_map = NULL;
 	lxc_list_init(&new->includes);
 	lxc_list_init(&new->aliens);
 	lxc_list_init(&new->environment);
@@ -2826,20 +2854,27 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
  * Return true if id was found, false otherwise.
  */
 bool get_mapped_rootid(struct lxc_conf *conf, enum idtype idtype,
-			unsigned long *val)
+		       unsigned long *val)
 {
 	struct lxc_list *it;
 	struct id_map *map;
+	unsigned nsid;
+
+	if (idtype == ID_TYPE_UID)
+		nsid = (conf->root_nsuid_map != NULL) ? 0 : conf->init_uid;
+	else
+		nsid = (conf->root_nsgid_map != NULL) ? 0 : conf->init_gid;
 
 	lxc_list_for_each(it, &conf->id_map) {
 		map = it->elem;
 		if (map->idtype != idtype)
 			continue;
-		if (map->nsid != 0)
+		if (map->nsid != nsid)
 			continue;
 		*val = map->hostid;
 		return true;
 	}
+
 	return false;
 }
 
@@ -3314,7 +3349,7 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
-	if (lxc_setup_devpts(lxc_conf->pts)) {
+	if (lxc_setup_devpts(lxc_conf)) {
 		ERROR("failed to setup the new pts instance");
 		return -1;
 	}
@@ -3722,8 +3757,25 @@ static int run_userns_fn(void *data)
 	return d->fn(d->arg);
 }
 
-static struct id_map *mapped_hostid_entry(struct lxc_conf *conf, unsigned id,
-					  enum idtype idtype)
+static struct id_map *mapped_nsid_add(struct lxc_conf *conf, unsigned id,
+				      enum idtype idtype)
+{
+	struct id_map *map, *retmap;
+
+	map = find_mapped_nsid_entry(conf, id, idtype);
+	if (!map)
+		return NULL;
+
+	retmap = malloc(sizeof(*retmap));
+	if (!retmap)
+		return NULL;
+
+	memcpy(retmap, map, sizeof(*retmap));
+	return retmap;
+}
+
+static struct id_map *find_mapped_hostid_entry(struct lxc_conf *conf,
+					       unsigned id, enum idtype idtype)
 {
 	struct lxc_list *it;
 	struct id_map *map;
@@ -3740,14 +3792,6 @@ static struct id_map *mapped_hostid_entry(struct lxc_conf *conf, unsigned id,
 		}
 	}
 
-	if (!retmap)
-		return NULL;
-
-	retmap = malloc(sizeof(*retmap));
-	if (!retmap)
-		return NULL;
-
-	memcpy(retmap, map, sizeof(*retmap));
 	return retmap;
 }
 
@@ -3755,26 +3799,27 @@ static struct id_map *mapped_hostid_entry(struct lxc_conf *conf, unsigned id,
  * Allocate a new {g,u}id mapping for the given {g,u}id. Re-use an already
  * existing one or establish a new one.
  */
-static struct id_map *idmap_add(struct lxc_conf *conf, uid_t id, enum idtype type)
+static struct id_map *mapped_hostid_add(struct lxc_conf *conf, uid_t id, enum idtype type)
 {
 	int hostid_mapped;
-	struct id_map *entry = NULL;
-
-	/* Reuse existing mapping. */
-	entry = mapped_hostid_entry(conf, id, type);
-	if (entry)
-		return entry;
-
-	/* Find new mapping. */
-	hostid_mapped = find_unmapped_nsid(conf, type);
-	if (hostid_mapped < 0) {
-		DEBUG("failed to find free mapping for id %d", id);
-		return NULL;
-	}
+	struct id_map *entry = NULL, *tmp = NULL;
 
 	entry = malloc(sizeof(*entry));
 	if (!entry)
 		return NULL;
+
+	/* Reuse existing mapping. */
+	tmp = find_mapped_hostid_entry(conf, id, type);
+	if (tmp)
+		return memcpy(entry, tmp, sizeof(*entry));
+
+	/* Find new mapping. */
+	hostid_mapped = find_unmapped_nsid(conf, type);
+	if (hostid_mapped < 0) {
+		DEBUG("Failed to find free mapping for id %d", id);
+		free(entry);
+		return NULL;
+	}
 
 	entry->idtype = type;
 	entry->nsid = hostid_mapped;
@@ -3806,6 +3851,8 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	struct id_map *map;
 	char c = '1';
 	int ret = -1, status = -1;
+	uid_t nsuid = (conf->root_nsuid_map != NULL) ? 0 : conf->init_uid;
+	gid_t nsgid = (conf->root_nsgid_map != NULL) ? 0 : conf->init_gid;
 	struct lxc_list *idmap = NULL, *tmplist = NULL;
 	struct id_map *container_root_uid = NULL, *container_root_gid = NULL,
 		      *host_uid_map = NULL, *host_gid_map = NULL;
@@ -3831,71 +3878,39 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	close(p[0]);
 	p[0] = -1;
 
+	/* Find container root mappings. */
 	euid = geteuid();
-	egid = getegid();
-
-	/* Find container root. */
-	lxc_list_for_each(it, &conf->id_map) {
-		map = it->elem;
-
-		if (map->nsid != 0)
-			continue;
-
-		if (map->idtype == ID_TYPE_UID && container_root_uid == NULL) {
-			container_root_uid = malloc(sizeof(*container_root_uid));
-			if (!container_root_uid)
-				goto on_error;
-			container_root_uid->idtype = map->idtype;
-			container_root_uid->hostid = map->hostid;
-			container_root_uid->nsid = 0;
-			container_root_uid->range = map->range;
-
-			/* Check if container root mapping contains a mapping
-			 * for user's uid.
-			 */
-			if (euid >= map->hostid && euid < map->hostid + map->range)
-				host_uid_map = container_root_uid;
-		} else if (map->idtype == ID_TYPE_GID && container_root_gid == NULL) {
-			container_root_gid = malloc(sizeof(*container_root_gid));
-			if (!container_root_gid)
-				goto on_error;
-			container_root_gid->idtype = map->idtype;
-			container_root_gid->hostid = map->hostid;
-			container_root_gid->nsid = 0;
-			container_root_gid->range = map->range;
-
-			/* Check if container root mapping contains a mapping
-			 * for user's gid.
-			 */
-			if (egid >= map->hostid && egid < map->hostid + map->range)
-				host_gid_map = container_root_gid;
-		}
-
-		/* Found container root. */
-		if (container_root_uid && container_root_gid)
-			break;
-	}
-
-	/* This is actually checked earlier but it can't hurt. */
-	if (!container_root_uid || !container_root_gid) {
-		ERROR("no mapping for container root found");
+	container_root_uid = mapped_nsid_add(conf, nsuid, ID_TYPE_UID);
+	if (!container_root_uid) {
+		DEBUG("Failed to find mapping for container root uid %d", 0);
 		goto on_error;
 	}
+	if (euid >= container_root_uid->hostid && euid < container_root_uid->hostid + container_root_uid->range)
+		host_uid_map = container_root_uid;
+
+	egid = getegid();
+	container_root_gid = mapped_nsid_add(conf, nsgid, ID_TYPE_GID);
+	if (!container_root_gid) {
+		DEBUG("Failed to find mapping for container root gid %d", 0);
+		goto on_error;
+	}
+	if (egid >= container_root_gid->hostid && egid < container_root_gid->hostid + container_root_gid->range)
+		host_gid_map = container_root_gid;
 
 	/* Check whether the {g,u}id of the user has a mapping. */
 	if (!host_uid_map)
-		host_uid_map = idmap_add(conf, euid, ID_TYPE_UID);
+		host_uid_map = mapped_hostid_add(conf, euid, ID_TYPE_UID);
 
 	if (!host_gid_map)
-		host_gid_map = idmap_add(conf, egid, ID_TYPE_GID);
+		host_gid_map = mapped_hostid_add(conf, egid, ID_TYPE_GID);
 
 	if (!host_uid_map) {
-		DEBUG("failed to find mapping for uid %d", euid);
+		DEBUG("Failed to find mapping for uid %d", euid);
 		goto on_error;
 	}
 
 	if (!host_gid_map) {
-		DEBUG("failed to find mapping for gid %d", egid);
+		DEBUG("Failed to find mapping for gid %d", egid);
 		goto on_error;
 	}
 
@@ -4095,12 +4110,12 @@ int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
 
 	/* Check whether the {g,u}id of the user has a mapping. */
 	if (!host_uid_map)
-		host_uid_map = idmap_add(conf, euid, ID_TYPE_UID);
+		host_uid_map = mapped_hostid_add(conf, euid, ID_TYPE_UID);
 	else
 		host_uid_map = container_root_uid;
 
 	if (!host_gid_map)
-		host_gid_map = idmap_add(conf, egid, ID_TYPE_GID);
+		host_gid_map = mapped_hostid_add(conf, egid, ID_TYPE_GID);
 	else
 		host_gid_map = container_root_gid;
 

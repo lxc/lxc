@@ -1267,25 +1267,41 @@ next:
 	return r;
 }
 
+struct generic_userns_exec_data {
+	struct cgfsng_handler_data *d;
+	struct lxc_conf *conf;
+	uid_t origuid; /* target uid in parent namespace */
+	char *path;
+};
+
 static int rmdir_wrapper(void *data)
 {
-	char *path = data;
+	struct generic_userns_exec_data *arg = data;
+	uid_t nsuid = (arg->conf->root_nsuid_map != NULL) ? 0 : arg->conf->init_uid;
+	gid_t nsgid = (arg->conf->root_nsgid_map != NULL) ? 0 : arg->conf->init_gid;
 
-	if (setresgid(0,0,0) < 0)
+	if (setresgid(nsgid, nsgid, nsgid) < 0)
 		SYSERROR("Failed to setgid to 0");
-	if (setresuid(0,0,0) < 0)
+	if (setresuid(nsuid, nsuid, nsuid) < 0)
 		SYSERROR("Failed to setuid to 0");
 	if (setgroups(0, NULL) < 0)
 		SYSERROR("Failed to clear groups");
 
-	return cgroup_rmdir(path);
+	return cgroup_rmdir(arg->path);
 }
 
 void recursive_destroy(char *path, struct lxc_conf *conf)
 {
 	int r;
+	struct generic_userns_exec_data wrap;
+
+	wrap.origuid = 0;
+	wrap.d = NULL;
+	wrap.path = path;
+	wrap.conf = conf;
+
 	if (conf && !lxc_list_empty(&conf->id_map))
-		r = userns_exec_1(conf, rmdir_wrapper, path, "rmdir_wrapper");
+		r = userns_exec_1(conf, rmdir_wrapper, &wrap, "rmdir_wrapper");
 	else
 		r = cgroup_rmdir(path);
 
@@ -1445,11 +1461,6 @@ static bool cgfsng_enter(void *hdata, pid_t pid)
 	return true;
 }
 
-struct chown_data {
-	struct cgfsng_handler_data *d;
-	uid_t origuid; /* target uid in parent namespace */
-};
-
 /*
  * chgrp the container cgroups to container group.  We leave
  * the container owner as cgroup owner.  So we must make the
@@ -1460,13 +1471,15 @@ struct chown_data {
  */
 static int chown_cgroup_wrapper(void *data)
 {
-	struct chown_data *arg = data;
-	uid_t destuid;
 	int i;
+	uid_t destuid;
+	struct generic_userns_exec_data *arg = data;
+	uid_t nsuid = (arg->conf->root_nsuid_map != NULL) ? 0 : arg->conf->init_uid;
+	gid_t nsgid = (arg->conf->root_nsgid_map != NULL) ? 0 : arg->conf->init_gid;
 
-	if (setresgid(0,0,0) < 0)
+	if (setresgid(nsgid, nsgid, nsgid) < 0)
 		SYSERROR("Failed to setgid to 0");
-	if (setresuid(0,0,0) < 0)
+	if (setresuid(nsuid, nsuid, nsuid) < 0)
 		SYSERROR("Failed to setuid to 0");
 	if (setgroups(0, NULL) < 0)
 		SYSERROR("Failed to clear groups");
@@ -1476,7 +1489,7 @@ static int chown_cgroup_wrapper(void *data)
 	for (i = 0; hierarchies[i]; i++) {
 		char *fullpath, *path = hierarchies[i]->fullcgpath;
 
-		if (chown(path, destuid, 0) < 0) {
+		if (chown(path, destuid, nsgid) < 0) {
 			SYSERROR("Error chowning %s to %d", path, (int) destuid);
 			return -1;
 		}
@@ -1494,7 +1507,7 @@ static int chown_cgroup_wrapper(void *data)
 		 * insists on doing)
 		 */
 		fullpath = must_make_path(path, "tasks", NULL);
-		if (chown(fullpath, destuid, 0) < 0 && errno != ENOENT)
+		if (chown(fullpath, destuid, nsgid) < 0 && errno != ENOENT)
 			WARN("Failed chowning %s to %d: %s", fullpath, (int) destuid,
 			     strerror(errno));
 		if (chmod(fullpath, 0664) < 0)
@@ -1513,7 +1526,7 @@ static int chown_cgroup_wrapper(void *data)
 			continue;
 
 		fullpath = must_make_path(path, "cgroup.subtree_control", NULL);
-		if (chown(fullpath, destuid, 0) < 0 && errno != ENOENT)
+		if (chown(fullpath, destuid, nsgid) < 0 && errno != ENOENT)
 			WARN("Failed chowning %s to %d: %s", fullpath, (int) destuid,
 			     strerror(errno));
 		if (chmod(fullpath, 0664) < 0)
@@ -1521,7 +1534,7 @@ static int chown_cgroup_wrapper(void *data)
 		free(fullpath);
 
 		fullpath = must_make_path(path, "cgroup.threads", NULL);
-		if (chown(fullpath, destuid, 0) < 0 && errno != ENOENT)
+		if (chown(fullpath, destuid, nsgid) < 0 && errno != ENOENT)
 			WARN("Failed chowning %s to %d: %s", fullpath, (int) destuid,
 			     strerror(errno));
 		if (chmod(fullpath, 0664) < 0)
@@ -1535,7 +1548,7 @@ static int chown_cgroup_wrapper(void *data)
 static bool cgfsng_chown(void *hdata, struct lxc_conf *conf)
 {
 	struct cgfsng_handler_data *d = hdata;
-	struct chown_data wrap;
+	struct generic_userns_exec_data wrap;
 
 	if (!d)
 		return false;
@@ -1543,8 +1556,10 @@ static bool cgfsng_chown(void *hdata, struct lxc_conf *conf)
 	if (lxc_list_empty(&conf->id_map))
 		return true;
 
-	wrap.d = d;
 	wrap.origuid = geteuid();
+	wrap.path = NULL;
+	wrap.d = d;
+	wrap.conf = conf;
 
 	if (userns_exec_1(conf, chown_cgroup_wrapper, &wrap,
 			  "chown_cgroup_wrapper") < 0) {
