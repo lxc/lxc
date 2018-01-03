@@ -2627,28 +2627,54 @@ struct lxc_conf *lxc_conf_init(void)
 }
 
 int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
-			    size_t buf_size)
+		     size_t buf_size)
 {
 	char path[MAXPATHLEN];
 	int fd, ret;
 
+	if (geteuid() != 0 && idtype == ID_TYPE_GID) {
+		size_t buflen;
+
+		ret = snprintf(path, MAXPATHLEN, "/proc/%d/setgroups", pid);
+		if (ret < 0 || ret >= MAXPATHLEN) {
+			ERROR("Failed to create string");
+			return -E2BIG;
+		}
+
+		fd = open(path, O_WRONLY);
+		if (fd < 0 && errno != ENOENT) {
+			SYSERROR("Failed to open \"%s\"", path);
+			return -1;
+		}
+
+		buflen = sizeof("deny\n") - 1;
+		errno = 0;
+		ret = lxc_write_nointr(fd, "deny\n", buflen);
+		if (ret != buflen) {
+			SYSERROR("Failed to write \"deny\" to \"/proc/%d/setgroups\"", pid);
+			close(fd);
+			return -1;
+		}
+		close(fd);
+	}
+
 	ret = snprintf(path, MAXPATHLEN, "/proc/%d/%cid_map", pid,
 		       idtype == ID_TYPE_UID ? 'u' : 'g');
 	if (ret < 0 || ret >= MAXPATHLEN) {
-		ERROR("failed to create path \"%s\"", path);
+		ERROR("Failed to create string");
 		return -E2BIG;
 	}
 
 	fd = open(path, O_WRONLY);
 	if (fd < 0) {
-		SYSERROR("failed to open \"%s\"", path);
+		SYSERROR("Failed to open \"%s\"", path);
 		return -1;
 	}
 
 	errno = 0;
 	ret = lxc_write_nointr(fd, buf, buf_size);
 	if (ret != buf_size) {
-		SYSERROR("failed to write %cid mapping to \"%s\"",
+		SYSERROR("Failed to write %cid mapping to \"%s\"",
 			 idtype == ID_TYPE_UID ? 'u' : 'g', path);
 		close(fd);
 		return -1;

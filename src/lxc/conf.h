@@ -410,7 +410,7 @@ struct lxc_conf {
 	struct lxc_list procs;
 };
 
-int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
+extern int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 			    size_t buf_size);
 
 #ifdef HAVE_TLS
