@@ -166,8 +166,14 @@ cache_stage3()
         printf " => Got: %s\n" "${stage3_latest_tarball}"
 
         printf "Downloading/untarring the actual stage3 tarball...\n"
+
+        compressor="j"
+        if echo ${stage3_latest_tarball} | grep ".xz$"; then
+            compressor="J"
+        fi
+
         wget -O - "${stage3_baseurl}/${stage3_latest_tarball}" \
-            | tar -xjpf - --numeric-owner -C "${partialfs}" \
+            | tar -x${compressor}pf - --numeric-owner -C "${partialfs}" \
             || die 6 "Error: unable to fetch or untar\n"
         printf " => extracted to: %s\n" "${partialfs}"
     else
