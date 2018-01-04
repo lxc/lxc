@@ -3322,7 +3322,8 @@ int lxc_clear_config_caps(struct lxc_conf *c)
 	return 0;
 }
 
-static int lxc_free_idmap(struct lxc_list *id_map) {
+static int lxc_free_idmap(struct lxc_list *id_map)
+{
 	struct lxc_list *it, *next;
 
 	lxc_list_for_each_safe(it, id_map, next) {
@@ -3330,6 +3331,7 @@ static int lxc_free_idmap(struct lxc_list *id_map) {
 		free(it->elem);
 		free(it);
 	}
+
 	return 0;
 }
 
