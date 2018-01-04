@@ -343,16 +343,32 @@ else
 	AC_MSG_RESULT([no])
 fi
 
+AC_MSG_CHECKING(for static libcap)
 # Check for static libcap, make sure the function checked for differs from the
 # the one checked below so the cache doesn't give a wrong answer
 OLD_CFLAGS="$CFLAGS"
-CFLAGS="$CFLAGS -static"
-AC_CHECK_LIB([cap],[cap_init],[have_static_libcap=yes],[have_static_libcap=no])
+OLD_CPPFLAGS="$CPPFLAGS"
+OLD_LDFLAGS="$LDFLAGS"
+OLD_LIBS="$LIBS"
+CFLAGS=""
+CPPFLAGS=""
+LDFLAGS="-static"
+LIBS="-lcap"
+AC_LINK_IFELSE([
+  AC_LANG_SOURCE(
+    [[int main() { return 0; }]]
+  )],[have_static_libcap=yes],[have_static_libcap=no])
 AM_CONDITIONAL([HAVE_STATIC_LIBCAP], [test "x$have_static_libcap" = "xyes"])
 if test "x$have_static_libcap" = "xyes"; then
 	AC_DEFINE([HAVE_STATIC_LIBCAP], 1, [Have static libcap])
+	AC_MSG_RESULT([yes])
+else
+	AC_MSG_RESULT([no])
 fi
+CPPFLAGS="$OLD_CPPFLAGS"
 CFLAGS="$OLD_CFLAGS"
+LDFLAGS="$OLD_LDFLAGS"
+LIBS="$OLD_LIBS"
 
 
 # Linux capabilities
