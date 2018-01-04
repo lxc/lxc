@@ -92,7 +92,6 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 		[LXC_CMD_GET_NAME]         = "get_name",
 		[LXC_CMD_GET_LXCPATH]      = "get_lxcpath",
 		[LXC_CMD_ADD_STATE_CLIENT] = "add_state_client",
-		[LXC_CMD_NOOP]             = "noop",
 		[LXC_CMD_CONSOLE_LOG]      = "console_log",
 	};
 
@@ -1056,12 +1055,6 @@ out:
 	return lxc_cmd_rsp_send(fd, &rsp);
 }
 
-static int lxc_cmd_noop_callback(int fd, struct lxc_cmd_req *req,
-				 struct lxc_handler *handler)
-{
-	return 0;
-}
-
 static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 			   struct lxc_handler *handler)
 {
@@ -1079,7 +1072,6 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 		[LXC_CMD_GET_NAME]         = lxc_cmd_get_name_callback,
 		[LXC_CMD_GET_LXCPATH]      = lxc_cmd_get_lxcpath_callback,
 		[LXC_CMD_ADD_STATE_CLIENT] = lxc_cmd_add_state_client_callback,
-		[LXC_CMD_NOOP]             = lxc_cmd_noop_callback,
 		[LXC_CMD_CONSOLE_LOG]      = lxc_cmd_console_log_callback,
 	};
 
