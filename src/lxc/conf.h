@@ -284,9 +284,11 @@ struct lxc_conf {
 	struct lxc_list cgroup;
 	struct {
 		struct lxc_list id_map;
+
 		/* Pointer to the idmap entry for the container's root uid in
 		 * the id_map list. Do not free! */
 		struct id_map *root_nsuid_map;
+
 		/* Pointer to the idmap entry for the container's root gid in
 		 * the id_map list. Do not free! */
 		struct id_map *root_nsgid_map;
