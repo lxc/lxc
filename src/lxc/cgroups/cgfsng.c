@@ -1206,7 +1206,7 @@ out_free:
 	return NULL;
 }
 
-static int cgroup_rmdir(char *dirname)
+static int recursive_destroy(char *dirname)
 {
 	int ret;
 	struct dirent *direntp;
@@ -1241,30 +1241,55 @@ static int cgroup_rmdir(char *dirname)
 		if (!S_ISDIR(mystat.st_mode))
 			goto next;
 
-		ret = cgroup_rmdir(pathname);
+		ret = recursive_destroy(pathname);
 		if (ret < 0)
 			r = -1;
-next:
+	next:
 		free(pathname);
 	}
 
 	ret = rmdir(dirname);
 	if (ret < 0) {
 		if (!r)
-			WARN("Failed to delete \"%s\": %s", dirname,
-			     strerror(errno));
+			WARN("%s - Failed to delete \"%s\"", strerror(errno),
+			     dirname);
 		r = -1;
 	}
 
 	ret = closedir(dir);
 	if (ret < 0) {
 		if (!r)
-			WARN("Failed to delete \"%s\": %s", dirname,
-			     strerror(errno));
+			WARN("%s - Failed to delete \"%s\"", strerror(errno),
+			     dirname);
 		r = -1;
 	}
 
 	return r;
+}
+
+static int cgroup_rmdir(char *container_cgroup)
+{
+	int i;
+
+	if (!container_cgroup || !hierarchies)
+		return 0;
+
+	for (i = 0; hierarchies[i]; i++) {
+		int ret;
+		struct hierarchy *h = hierarchies[i];
+
+		if (!h->fullcgpath)
+			continue;
+
+		ret = recursive_destroy(h->fullcgpath);
+		if (ret < 0)
+			WARN("Failed to destroy \"%s\"", h->fullcgpath);
+
+		free(h->fullcgpath);
+		h->fullcgpath = NULL;
+	}
+
+	return 0;
 }
 
 struct generic_userns_exec_data {
@@ -1274,7 +1299,7 @@ struct generic_userns_exec_data {
 	char *path;
 };
 
-static int rmdir_wrapper(void *data)
+static int cgroup_rmdir_wrapper(void *data)
 {
 	struct generic_userns_exec_data *arg = data;
 	uid_t nsuid = (arg->conf->root_nsuid_map != NULL) ? 0 : arg->conf->init_uid;
@@ -1284,48 +1309,33 @@ static int rmdir_wrapper(void *data)
 		SYSERROR("Failed to setgid to 0");
 	if (setresuid(nsuid, nsuid, nsuid) < 0)
 		SYSERROR("Failed to setuid to 0");
-	if (setgroups(0, NULL) < 0)
+	if (setgroups(0, NULL) < 0 && errno != EPERM)
 		SYSERROR("Failed to clear groups");
 
-	return cgroup_rmdir(arg->path);
-}
-
-void recursive_destroy(char *path, struct lxc_conf *conf)
-{
-	int r;
-	struct generic_userns_exec_data wrap;
-
-	wrap.origuid = 0;
-	wrap.d = NULL;
-	wrap.path = path;
-	wrap.conf = conf;
-
-	if (conf && !lxc_list_empty(&conf->id_map))
-		r = userns_exec_1(conf, rmdir_wrapper, &wrap, "rmdir_wrapper");
-	else
-		r = cgroup_rmdir(path);
-
-	if (r < 0)
-		ERROR("Error destroying %s", path);
+	return cgroup_rmdir(arg->d->container_cgroup);
 }
 
 static void cgfsng_destroy(void *hdata, struct lxc_conf *conf)
 {
+	int ret;
 	struct cgfsng_handler_data *d = hdata;
+	struct generic_userns_exec_data wrap;
 
 	if (!d)
 		return;
 
-	if (d->container_cgroup && hierarchies) {
-		int i;
-		for (i = 0; hierarchies[i]; i++) {
-			struct hierarchy *h = hierarchies[i];
-			if (h->fullcgpath) {
-				recursive_destroy(h->fullcgpath, conf);
-				free(h->fullcgpath);
-				h->fullcgpath = NULL;
-			}
-		}
+	wrap.origuid = 0;
+	wrap.d = hdata;
+	wrap.conf = conf;
+
+	if (conf && !lxc_list_empty(&conf->id_map))
+		ret = userns_exec_1(conf, cgroup_rmdir_wrapper, &wrap,
+				    "cgroup_rmdir_wrapper");
+	else
+		ret = cgroup_rmdir(d->container_cgroup);
+	if (ret < 0) {
+		WARN("Failed to destroy cgroups");
+		return;
 	}
 
 	free_handler_data(d);
@@ -1481,7 +1491,7 @@ static int chown_cgroup_wrapper(void *data)
 		SYSERROR("Failed to setgid to 0");
 	if (setresuid(nsuid, nsuid, nsuid) < 0)
 		SYSERROR("Failed to setuid to 0");
-	if (setgroups(0, NULL) < 0)
+	if (setgroups(0, NULL) < 0 && errno != EPERM)
 		SYSERROR("Failed to clear groups");
 
 	destuid = get_ns_uid(arg->origuid);

@@ -1423,6 +1423,15 @@ static struct id_map *find_mapped_nsid_entry(struct lxc_conf *conf, unsigned id,
 	struct id_map *map;
 	struct id_map *retmap = NULL;
 
+	/* Shortcut for container's root mappings. */
+	if (id == 0) {
+		if (idtype == ID_TYPE_UID)
+			return conf->root_nsuid_map;
+
+		if (idtype == ID_TYPE_GID)
+			return conf->root_nsgid_map;
+	}
+
 	lxc_list_for_each(it, &conf->id_map) {
 		map = it->elem;
 		if (map->idtype != idtype)
@@ -2627,28 +2636,54 @@ struct lxc_conf *lxc_conf_init(void)
 }
 
 int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
-			    size_t buf_size)
+		     size_t buf_size)
 {
 	char path[MAXPATHLEN];
 	int fd, ret;
 
+	if (geteuid() != 0 && idtype == ID_TYPE_GID) {
+		size_t buflen;
+
+		ret = snprintf(path, MAXPATHLEN, "/proc/%d/setgroups", pid);
+		if (ret < 0 || ret >= MAXPATHLEN) {
+			ERROR("Failed to create string");
+			return -E2BIG;
+		}
+
+		fd = open(path, O_WRONLY);
+		if (fd < 0 && errno != ENOENT) {
+			SYSERROR("Failed to open \"%s\"", path);
+			return -1;
+		}
+
+		buflen = sizeof("deny\n") - 1;
+		errno = 0;
+		ret = lxc_write_nointr(fd, "deny\n", buflen);
+		if (ret != buflen) {
+			SYSERROR("Failed to write \"deny\" to \"/proc/%d/setgroups\"", pid);
+			close(fd);
+			return -1;
+		}
+		close(fd);
+	}
+
 	ret = snprintf(path, MAXPATHLEN, "/proc/%d/%cid_map", pid,
 		       idtype == ID_TYPE_UID ? 'u' : 'g');
 	if (ret < 0 || ret >= MAXPATHLEN) {
-		ERROR("failed to create path \"%s\"", path);
+		ERROR("Failed to create string");
 		return -E2BIG;
 	}
 
 	fd = open(path, O_WRONLY);
 	if (fd < 0) {
-		SYSERROR("failed to open \"%s\"", path);
+		SYSERROR("Failed to open \"%s\"", path);
 		return -1;
 	}
 
 	errno = 0;
 	ret = lxc_write_nointr(fd, buf, buf_size);
 	if (ret != buf_size) {
-		SYSERROR("failed to write %cid mapping to \"%s\"",
+		SYSERROR("Failed to write %cid mapping to \"%s\"",
 			 idtype == ID_TYPE_UID ? 'u' : 'g', path);
 		close(fd);
 		return -1;
@@ -3445,7 +3480,8 @@ int lxc_clear_config_caps(struct lxc_conf *c)
 	return 0;
 }
 
-static int lxc_free_idmap(struct lxc_list *id_map) {
+static int lxc_free_idmap(struct lxc_list *id_map)
+{
 	struct lxc_list *it, *next;
 
 	lxc_list_for_each_safe(it, id_map, next) {
@@ -3453,6 +3489,7 @@ static int lxc_free_idmap(struct lxc_list *id_map) {
 		free(it->elem);
 		free(it);
 	}
+
 	return 0;
 }
 
@@ -3829,86 +3866,46 @@ static struct id_map *mapped_hostid_add(struct lxc_conf *conf, uid_t id, enum id
 	return entry;
 }
 
-/* Run a function in a new user namespace.
- * The caller's euid/egid will be mapped if it is not already.
- * Afaict, userns_exec_1() is only used to operate based on privileges for the
- * user's own {g,u}id on the host and for the container root's unmapped {g,u}id.
- * This means we require only to establish a mapping from:
- * - the container root {g,u}id as seen from the host > user's host {g,u}id
- * - the container root -> some sub{g,u}id
- * The former we add, if the user did not specifiy a mapping. The latter we
- * retrieve from the ontainer's configured {g,u}id mappings as it must have been
- * there to start the container in the first place.
- */
-int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
-		  const char *fn_name)
+struct lxc_list *get_minimal_idmap(struct lxc_conf *conf)
 {
-	pid_t pid;
 	uid_t euid, egid;
-	struct userns_fn_data d;
-	int p[2];
-	struct lxc_list *it;
-	struct id_map *map;
-	char c = '1';
-	int ret = -1, status = -1;
 	uid_t nsuid = (conf->root_nsuid_map != NULL) ? 0 : conf->init_uid;
 	gid_t nsgid = (conf->root_nsgid_map != NULL) ? 0 : conf->init_gid;
 	struct lxc_list *idmap = NULL, *tmplist = NULL;
 	struct id_map *container_root_uid = NULL, *container_root_gid = NULL,
 		      *host_uid_map = NULL, *host_gid_map = NULL;
 
-	ret = pipe(p);
-	if (ret < 0) {
-		SYSERROR("opening pipe");
-		return -1;
-	}
-	d.fn = fn;
-	d.fn_name = fn_name;
-	d.arg = data;
-	d.p[0] = p[0];
-	d.p[1] = p[1];
-
-	/* Clone child in new user namespace. */
-	pid = lxc_clone(run_userns_fn, &d, CLONE_NEWUSER);
-	if (pid < 0) {
-		ERROR("failed to clone child process in new user namespace");
-		goto on_error;
-	}
-
-	close(p[0]);
-	p[0] = -1;
-
 	/* Find container root mappings. */
-	euid = geteuid();
 	container_root_uid = mapped_nsid_add(conf, nsuid, ID_TYPE_UID);
 	if (!container_root_uid) {
-		DEBUG("Failed to find mapping for container root uid %d", 0);
+		DEBUG("Failed to find mapping for namespace uid %d", 0);
 		goto on_error;
 	}
-	if (euid >= container_root_uid->hostid && euid < container_root_uid->hostid + container_root_uid->range)
+	euid = geteuid();
+	if (euid >= container_root_uid->hostid &&
+	    euid < (container_root_uid->hostid + container_root_uid->range))
 		host_uid_map = container_root_uid;
 
-	egid = getegid();
 	container_root_gid = mapped_nsid_add(conf, nsgid, ID_TYPE_GID);
 	if (!container_root_gid) {
-		DEBUG("Failed to find mapping for container root gid %d", 0);
+		DEBUG("Failed to find mapping for namespace gid %d", 0);
 		goto on_error;
 	}
-	if (egid >= container_root_gid->hostid && egid < container_root_gid->hostid + container_root_gid->range)
+	egid = getegid();
+	if (egid >= container_root_gid->hostid &&
+	    egid < (container_root_gid->hostid + container_root_gid->range))
 		host_gid_map = container_root_gid;
 
 	/* Check whether the {g,u}id of the user has a mapping. */
 	if (!host_uid_map)
 		host_uid_map = mapped_hostid_add(conf, euid, ID_TYPE_UID);
-
-	if (!host_gid_map)
-		host_gid_map = mapped_hostid_add(conf, egid, ID_TYPE_GID);
-
 	if (!host_uid_map) {
 		DEBUG("Failed to find mapping for uid %d", euid);
 		goto on_error;
 	}
 
+	if (!host_gid_map)
+		host_gid_map = mapped_hostid_add(conf, egid, ID_TYPE_GID);
 	if (!host_gid_map) {
 		DEBUG("Failed to find mapping for gid %d", egid);
 		goto on_error;
@@ -3964,37 +3961,10 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	/* idmap will now keep track of that memory. */
 	host_gid_map = NULL;
 
-	if (lxc_log_get_level() == LXC_LOG_LEVEL_TRACE ||
-	    conf->loglevel == LXC_LOG_LEVEL_TRACE) {
-		lxc_list_for_each(it, idmap) {
-			map = it->elem;
-			TRACE("establishing %cid mapping for \"%d\" in new "
-			      "user namespace: nsuid %lu - hostid %lu - range "
-			      "%lu",
-			      (map->idtype == ID_TYPE_UID) ? 'u' : 'g', pid,
-			      map->nsid, map->hostid, map->range);
-		}
-	}
-
-	/* Set up {g,u}id mapping for user namespace of child process. */
-	ret = lxc_map_ids(idmap, pid);
-	if (ret < 0) {
-		ERROR("error setting up {g,u}id mappings for child process "
-		      "\"%d\"", pid);
-		goto on_error;
-	}
-
-	/* Tell child to proceed. */
-	if (write(p[1], &c, 1) != 1) {
-		SYSERROR("failed telling child process \"%d\" to proceed", pid);
-		goto on_error;
-	}
+	TRACE("Allocated minimal idmapping");
+	return idmap;
 
 on_error:
-	/* Wait for child to finish. */
-	if (pid > 0)
-		status = wait_for_pid(pid);
-
 	if (idmap)
 		lxc_free_idmap(idmap);
 	if (container_root_uid)
@@ -4005,6 +3975,88 @@ on_error:
 		free(host_uid_map);
 	if (host_gid_map && (host_gid_map != container_root_gid))
 		free(host_gid_map);
+
+	return NULL;
+}
+
+/* Run a function in a new user namespace.
+ * The caller's euid/egid will be mapped if it is not already.
+ * Afaict, userns_exec_1() is only used to operate based on privileges for the
+ * user's own {g,u}id on the host and for the container root's unmapped {g,u}id.
+ * This means we require only to establish a mapping from:
+ * - the container root {g,u}id as seen from the host > user's host {g,u}id
+ * - the container root -> some sub{g,u}id
+ * The former we add, if the user did not specifiy a mapping. The latter we
+ * retrieve from the ontainer's configured {g,u}id mappings as it must have been
+ * there to start the container in the first place.
+ */
+int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
+		  const char *fn_name)
+{
+	pid_t pid;
+	struct userns_fn_data d;
+	int p[2];
+	char c = '1';
+	int ret = -1, status = -1;
+	struct lxc_list *idmap;
+
+	idmap = get_minimal_idmap(conf);
+	if (!idmap)
+		return -1;
+
+	ret = pipe(p);
+	if (ret < 0) {
+		SYSERROR("Failed to create pipe");
+		return -1;
+	}
+	d.fn = fn;
+	d.fn_name = fn_name;
+	d.arg = data;
+	d.p[0] = p[0];
+	d.p[1] = p[1];
+
+	/* Clone child in new user namespace. */
+	pid = lxc_raw_clone_cb(run_userns_fn, &d, CLONE_NEWUSER);
+	if (pid < 0) {
+		ERROR("failed to clone child process in new user namespace");
+		goto on_error;
+	}
+
+	close(p[0]);
+	p[0] = -1;
+
+	if (lxc_log_get_level() == LXC_LOG_LEVEL_TRACE ||
+	    conf->loglevel == LXC_LOG_LEVEL_TRACE) {
+		struct lxc_list *it;
+		struct id_map *map;
+
+		lxc_list_for_each(it, idmap) {
+			map = it->elem;
+			TRACE("Establishing %cid mapping for \"%d\" in new "
+			      "user namespace: nsuid %lu - hostid %lu - range "
+			      "%lu", (map->idtype == ID_TYPE_UID) ? 'u' : 'g',
+			      pid, map->nsid, map->hostid, map->range);
+		}
+	}
+
+	/* Set up {g,u}id mapping for user namespace of child process. */
+	ret = lxc_map_ids(idmap, pid);
+	if (ret < 0) {
+		ERROR("Error setting up {g,u}id mappings for child process "
+		      "\"%d\"", pid);
+		goto on_error;
+	}
+
+	/* Tell child to proceed. */
+	if (write(p[1], &c, 1) != 1) {
+		SYSERROR("Failed telling child process \"%d\" to proceed", pid);
+		goto on_error;
+	}
+
+on_error:
+	/* Wait for child to finish. */
+	if (pid > 0)
+		status = wait_for_pid(pid);
 
 	if (p[0] != -1)
 		close(p[0]);
