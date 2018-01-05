@@ -32,9 +32,11 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <lxc/lxccontainer.h>
+#include <lxc/version.h>
+
 #include "arguments.h"
 #include "utils.h"
-#include "version.h"
 
 static int build_shortopts(const struct option *a_options, char *a_shortopts,
 			   size_t a_size)
@@ -131,7 +133,7 @@ static void print_usage(const struct option longopts[],
 
 static void print_version()
 {
-	printf("%s%s\n", LXC_VERSION, LXC_DEVEL ? "-devel" : "");
+	printf("%s\n", lxc_get_version());
 	exit(0);
 }
 
