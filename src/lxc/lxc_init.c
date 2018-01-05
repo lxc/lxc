@@ -440,7 +440,7 @@ static void print_usage(const struct option longopts[])
 
 static void print_version()
 {
-	printf("%s%s\n", LXC_VERSION, LXC_DEVEL ? "-devel" : "");
+	printf("%s\n", LXC_VERSION);
 	exit(0);
 }
 
