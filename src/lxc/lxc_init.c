@@ -63,7 +63,7 @@ static void interrupt_handler(int sig)
 
 static struct option long_options[] = {
 	    { "name",        required_argument, 0, 'n'         },
-     	    { "help",        no_argument,       0, 'h'         },
+	    { "help",        no_argument,       0, 'h'         },
 	    { "usage",       no_argument,       0, OPT_USAGE   },
 	    { "version",     no_argument,       0, OPT_VERSION },
 	    { "quiet",       no_argument,       0, 'q'         },
@@ -440,7 +440,7 @@ static void print_usage(const struct option longopts[])
 
 static void print_version()
 {
-	printf("%s%s\n", LXC_VERSION, LXC_DEVEL ? "-devel" : "");
+	printf("%s\n", LXC_VERSION);
 	exit(0);
 }
 
