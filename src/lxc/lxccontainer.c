@@ -4913,6 +4913,8 @@ int list_active_containers(const char *lxcpath, char ***nret,
 			if (strncmp(lxcpath, recvpath, lxcpath_len) != 0)
 				continue;
 			p = lxc_cmd_get_name(p);
+			if (!p)
+				continue;
 		}
 
 		if (array_contains(&ct_name, p, ct_name_cnt))
