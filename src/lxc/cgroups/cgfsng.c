@@ -1203,9 +1203,6 @@ static int recursive_destroy(char *dirname)
 		char *pathname;
 		struct stat mystat;
 
-		if (!direntp)
-			break;
-
 		if (!strcmp(direntp->d_name, ".") ||
 		    !strcmp(direntp->d_name, ".."))
 			continue;
