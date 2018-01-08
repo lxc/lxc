@@ -71,7 +71,6 @@ static void usage(const char *name)
 	printf("  Note: This program uses newuidmap(2) and newgidmap(2).\n");
 	printf("        As such, /etc/subuid and /etc/subgid must grant the\n");
 	printf("        calling user permission to use the mapped ranges\n");
-	exit(EXIT_SUCCESS);
 }
 
 static void opentty(const char * tty, int which) {
@@ -300,10 +299,18 @@ int main(int argc, char *argv[])
 
 	while ((c = getopt(argc, argv, "m:h")) != EOF) {
 		switch (c) {
-			case 'm': if (parse_map(optarg)) usage(argv[0]); break;
+			case 'm':
+				if (parse_map(optarg)) {
+					usage(argv[0]);
+					exit(EXIT_FAILURE);
+				}
+				break;
 			case 'h':
+				  usage(argv[0]);
+				  exit(EXIT_SUCCESS);
 			default:
 				  usage(argv[0]);
+				  exit(EXIT_FAILURE);
 		}
 	};
 
