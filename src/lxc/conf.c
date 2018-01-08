@@ -2656,15 +2656,17 @@ int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 			return -1;
 		}
 
-		buflen = sizeof("deny\n") - 1;
-		errno = 0;
-		ret = lxc_write_nointr(fd, "deny\n", buflen);
-		if (ret != buflen) {
-			SYSERROR("Failed to write \"deny\" to \"/proc/%d/setgroups\"", pid);
+		if (fd >= 0) {
+			buflen = sizeof("deny\n") - 1;
+			errno = 0;
+			ret = lxc_write_nointr(fd, "deny\n", buflen);
+			if (ret != buflen) {
+				SYSERROR("Failed to write \"deny\" to \"/proc/%d/setgroups\"", pid);
+				close(fd);
+				return -1;
+			}
 			close(fd);
-			return -1;
 		}
-		close(fd);
 	}
 
 	ret = snprintf(path, MAXPATHLEN, "/proc/%d/%cid_map", pid,
