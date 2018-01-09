@@ -1666,7 +1666,7 @@ static int set_config_idmaps(const char *key, const char *value,
 
 	ret = parse_idmaps(value, &type, &nsid, &hostid, &range);
 	if (ret < 0) {
-		ERROR("error parsing id maps");
+		ERROR("Failed to parse id mappings");
 		goto on_error;
 	}
 

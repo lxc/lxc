@@ -63,7 +63,7 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 
 	/* Validate type. */
 	if (*slide != 'u' && *slide != 'g') {
-		ERROR("invalid mapping type: %c", *slide);
+		ERROR("Invalid id mapping type: %c", *slide);
 		goto on_error;
 	}
 
@@ -80,19 +80,19 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 	if (slide == window)
 		goto on_error;
 
-	/* Mark beginning of nsuid. */
+	/* Mark beginning of nsid. */
 	window = slide;
 	/* Validate that non-whitespace follows. */
 	slide += strcspn(slide, " \t\r");
 	/* There must be non-whitespace. */
 	if (slide == window || *slide == '\0')
 		goto on_error;
-	/* Mark end of nsuid. */
+	/* Mark end of nsid. */
 	*slide = '\0';
 
-	/* Parse nsuid. */
+	/* Parse nsid. */
 	if (lxc_safe_ulong(window, &tmp_nsid) < 0) {
-		ERROR("couldn't parse nsuid: %s", window);
+		ERROR("Failed to parse nsid: %s", window);
 		goto on_error;
 	}
 
@@ -113,12 +113,12 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 	/* There must be non-whitespace. */
 	if (slide == window || *slide == '\0')
 		goto on_error;
-	/* Mark end of nsuid. */
+	/* Mark end of nsid. */
 	*slide = '\0';
 
 	/* Parse hostid. */
 	if (lxc_safe_ulong(window, &tmp_hostid) < 0) {
-		ERROR("couldn't parse hostid: %s", window);
+		ERROR("Failed to parse hostid: %s", window);
 		goto on_error;
 	}
 
@@ -141,7 +141,7 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 		goto on_error;
 
 	/* The range is the last valid entry we expect. So make sure that there
-	 * is not trailing garbage and if there is, error out.
+	 * is no trailing garbage and if there is, error out.
 	 */
 	if (*(slide + strspn(slide, " \t\r\n")) != '\0')
 		goto on_error;
@@ -150,7 +150,7 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 
 	/* Parse range. */
 	if (lxc_safe_ulong(window, &tmp_range) < 0) {
-		ERROR("couldn't parse range: %s", window);
+		ERROR("Failed to parse id mapping range: %s", window);
 		goto on_error;
 	}
 
