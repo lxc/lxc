@@ -1665,8 +1665,10 @@ static int set_config_idmaps(const char *key, const char *value,
 	memset(idmap, 0, sizeof(*idmap));
 
 	ret = parse_idmaps(value, &type, &nsid, &hostid, &range);
-	if (ret < 0)
+	if (ret < 0) {
+		ERROR("error parsing id maps");
 		goto on_error;
+	}
 
 	INFO("Read uid map: type %c nsid %lu hostid %lu range %lu", type, nsid, hostid, range);
 	if (type == 'u')
