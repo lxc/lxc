@@ -131,6 +131,9 @@ typedef struct lxc_attach_options_t {
 	int stdout_fd; /*!< stdout file descriptor */
 	int stderr_fd; /*!< stderr file descriptor */
 	/**@}*/
+
+	/*! File descriptor to log output. */
+	int log_fd;
 } lxc_attach_options_t;
 
 /*! Default attach options to use */
@@ -145,7 +148,10 @@ typedef struct lxc_attach_options_t {
 		/* .env_policy = */     LXC_ATTACH_KEEP_ENV,                   \
 		/* .extra_env_vars = */ NULL,                                  \
 		/* .extra_keep_env = */ NULL,                                  \
-		/* .stdin_fd = */       0, 1, 2                                \
+		/* .stdin_fd = */       0,                                     \
+		/* .stdout_fd = */      1,                                     \
+		/* .stderr_fd = */      2,                                     \
+		/* .log_fd    = */      -EBADF,                                \
 	}
 
 /*!
