@@ -62,8 +62,11 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 		goto on_error;
 
 	/* Validate type. */
-	if (*slide != 'u' && *slide != 'g')
+	if (*slide != 'u' && *slide != 'g') {
+		ERROR("invalid mapping type: %c", *slide);
 		goto on_error;
+	}
+
 	/* Assign type. */
 	tmp_type = *slide;
 
@@ -88,8 +91,10 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 	*slide = '\0';
 
 	/* Parse nsuid. */
-	if (lxc_safe_ulong(window, &tmp_nsid) < 0)
+	if (lxc_safe_ulong(window, &tmp_nsid) < 0) {
+		ERROR("couldn't parse nsuid: %s", window);
 		goto on_error;
+	}
 
 	/* Move beyond \0. */
 	slide++;
@@ -112,8 +117,10 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 	*slide = '\0';
 
 	/* Parse hostid. */
-	if (lxc_safe_ulong(window, &tmp_hostid) < 0)
+	if (lxc_safe_ulong(window, &tmp_hostid) < 0) {
+		ERROR("couldn't parse hostid: %s", window);
 		goto on_error;
+	}
 
 	/* Move beyond \0. */
 	slide++;
@@ -142,8 +149,10 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 	*slide = '\0';
 
 	/* Parse range. */
-	if (lxc_safe_ulong(window, &tmp_range) < 0)
+	if (lxc_safe_ulong(window, &tmp_range) < 0) {
+		ERROR("couldn't parse range: %s", window);
 		goto on_error;
+	}
 
 	*type = tmp_type;
 	*nsid = tmp_nsid;
