@@ -1,5 +1,4 @@
 /*
- *
  * Copyright © 2014 Tycho Andersen <tycho.andersen@canonical.com>.
  * Copyright © 2014 Canonical Ltd.
  *
@@ -17,19 +16,18 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <stdio.h>
+#define _GNU_SOURCE
 #include <errno.h>
+#include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
 #include <lxc/lxccontainer.h>
 
-#include "log.h"
-#include "config.h"
-#include "lxc.h"
 #include "arguments.h"
-#include "utils.h"
+#include "tool_utils.h"
 
 static char *checkpoint_dir = NULL;
 static bool stop = false;
@@ -252,8 +250,6 @@ int main(int argc, char *argv[])
 
 	if (lxc_log_init(&log))
 		exit(EXIT_FAILURE);
-
-	lxc_log_options_no_override();
 
 	/* REMOVE IN LXC 3.0 */
 	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
