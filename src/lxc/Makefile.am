@@ -217,7 +217,7 @@ liblxc_la_CFLAGS += $(CGMANAGER_CFLAGS) $(DBUS_CFLAGS) $(NIH_CFLAGS) $(NIH_DBUS_
 endif
 
 bin_SCRIPTS = cmd/lxc-checkconfig \
-	      tools/lxc-update-config
+	      cmd/lxc-update-config
 
 EXTRA_DIST = \
 	tools/lxc-top.lua
