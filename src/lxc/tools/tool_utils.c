@@ -20,6 +20,7 @@
 #define _GNU_SOURCE
 #define __STDC_FORMAT_MACROS /* Required for PRIu64 to work. */
 #include <ctype.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -848,5 +849,285 @@ int lxc_read_from_file(const char *filename, void* buf, size_t count)
 	saved_errno = errno;
 	close(fd);
 	errno = saved_errno;
+	return ret;
+}
+
+char **lxc_string_split_and_trim(const char *string, char _sep)
+{
+	char *token, *str, *saveptr = NULL;
+	char sep[2] = { _sep, '\0' };
+	char **result = NULL;
+	size_t result_capacity = 0;
+	size_t result_count = 0;
+	int r, saved_errno;
+	size_t i = 0;
+
+	if (!string)
+		return calloc(1, sizeof(char *));
+
+	str = alloca(strlen(string)+1);
+	strcpy(str, string);
+	for (; (token = strtok_r(str, sep, &saveptr)); str = NULL) {
+		while (token[0] == ' ' || token[0] == '\t')
+			token++;
+		i = strlen(token);
+		while (i > 0 && (token[i - 1] == ' ' || token[i - 1] == '\t')) {
+			token[i - 1] = '\0';
+			i--;
+		}
+		r = lxc_grow_array((void ***)&result, &result_capacity, result_count + 1, 16);
+		if (r < 0)
+			goto error_out;
+		result[result_count] = strdup(token);
+		if (!result[result_count])
+			goto error_out;
+		result_count++;
+	}
+
+	/* if we allocated too much, reduce it */
+	return realloc(result, (result_count + 1) * sizeof(char *));
+error_out:
+	saved_errno = errno;
+	lxc_free_array((void **)result, free);
+	errno = saved_errno;
+	return NULL;
+}
+
+char *lxc_append_paths(const char *first, const char *second)
+{
+	int ret;
+	size_t len;
+	char *result = NULL;
+	const char *pattern = "%s%s";
+
+	len = strlen(first) + strlen(second) + 1;
+	if (second[0] != '/') {
+		len += 1;
+		pattern = "%s/%s";
+	}
+
+	result = calloc(1, len);
+	if (!result)
+		return NULL;
+
+	ret = snprintf(result, len, pattern, first, second);
+	if (ret < 0 || (size_t)ret >= len) {
+		free(result);
+		return NULL;
+	}
+
+	return result;
+}
+
+bool dir_exists(const char *path)
+{
+	struct stat sb;
+	int ret;
+
+	ret = stat(path, &sb);
+	if (ret < 0)
+		/* Could be something other than eexist, just say "no". */
+		return false;
+	return S_ISDIR(sb.st_mode);
+}
+
+char *lxc_string_replace(const char *needle, const char *replacement,
+			 const char *haystack)
+{
+	ssize_t len = -1, saved_len = -1;
+	char *result = NULL;
+	size_t replacement_len = strlen(replacement);
+	size_t needle_len = strlen(needle);
+
+	/* should be executed exactly twice */
+	while (len == -1 || result == NULL) {
+		char *p;
+		char *last_p;
+		ssize_t part_len;
+
+		if (len != -1) {
+			result = calloc(1, len + 1);
+			if (!result)
+				return NULL;
+			saved_len = len;
+		}
+
+		len = 0;
+
+		for (last_p = (char *)haystack, p = strstr(last_p, needle); p; last_p = p, p = strstr(last_p, needle)) {
+			part_len = (ssize_t)(p - last_p);
+			if (result && part_len > 0)
+				memcpy(&result[len], last_p, part_len);
+			len += part_len;
+			if (result && replacement_len > 0)
+				memcpy(&result[len], replacement, replacement_len);
+			len += replacement_len;
+			p += needle_len;
+		}
+		part_len = strlen(last_p);
+		if (result && part_len > 0)
+			memcpy(&result[len], last_p, part_len);
+		len += part_len;
+	}
+
+	/* make sure we did the same thing twice,
+	 * once for calculating length, the other
+	 * time for copying data */
+	if (saved_len != len) {
+		free(result);
+		return NULL;
+	}
+	/* make sure we didn't overwrite any buffer,
+	 * due to calloc the string should be 0-terminated */
+	if (result[len] != '\0') {
+		free(result);
+		return NULL;
+	}
+
+	return result;
+}
+
+ssize_t lxc_write_nointr(int fd, const void* buf, size_t count)
+{
+	ssize_t ret;
+again:
+	ret = write(fd, buf, count);
+	if (ret < 0 && errno == EINTR)
+		goto again;
+	return ret;
+}
+
+char *get_rundir()
+{
+	char *rundir;
+	const char *homedir;
+
+	if (geteuid() == 0) {
+		rundir = strdup(RUNTIME_PATH);
+		return rundir;
+	}
+
+	rundir = getenv("XDG_RUNTIME_DIR");
+	if (rundir) {
+		rundir = strdup(rundir);
+		return rundir;
+	}
+
+	homedir = getenv("HOME");
+	if (!homedir)
+		return NULL;
+
+	rundir = malloc(sizeof(char) * (17 + strlen(homedir)));
+	sprintf(rundir, "%s/.cache/lxc/run/", homedir);
+
+	return rundir;
+}
+
+char *must_copy_string(const char *entry)
+{
+	char *ret;
+
+	if (!entry)
+		return NULL;
+	do {
+		ret = strdup(entry);
+	} while (!ret);
+
+	return ret;
+}
+
+
+void *must_realloc(void *orig, size_t sz)
+{
+	void *ret;
+
+	do {
+		ret = realloc(orig, sz);
+	} while (!ret);
+
+	return ret;
+}
+
+char *must_make_path(const char *first, ...)
+{
+	va_list args;
+	char *cur, *dest;
+	size_t full_len = strlen(first);
+
+	dest = must_copy_string(first);
+
+	va_start(args, first);
+	while ((cur = va_arg(args, char *)) != NULL) {
+		full_len += strlen(cur);
+		if (cur[0] != '/')
+			full_len++;
+		dest = must_realloc(dest, full_len + 1);
+		if (cur[0] != '/')
+			strcat(dest, "/");
+		strcat(dest, cur);
+	}
+	va_end(args);
+
+	return dest;
+}
+
+int rm_r(char *dirname)
+{
+	int ret;
+	struct dirent *direntp;
+	DIR *dir;
+	int r = 0;
+
+	dir = opendir(dirname);
+	if (!dir)
+		return -1;
+
+	while ((direntp = readdir(dir))) {
+		char *pathname;
+		struct stat mystat;
+
+		if (!direntp)
+			break;
+
+		if (!strcmp(direntp->d_name, ".") ||
+		    !strcmp(direntp->d_name, ".."))
+			continue;
+
+		pathname = must_make_path(dirname, direntp->d_name, NULL);
+
+		ret = lstat(pathname, &mystat);
+		if (ret < 0) {
+			r = -1;
+			goto next;
+		}
+
+		if (!S_ISDIR(mystat.st_mode))
+			goto next;
+
+		ret = rm_r(pathname);
+		if (ret < 0)
+			r = -1;
+	next:
+		free(pathname);
+	}
+
+	ret = rmdir(dirname);
+	if (ret < 0)
+		r = -1;
+
+	ret = closedir(dir);
+	if (ret < 0)
+		r = -1;
+
+	return r;
+}
+
+ssize_t lxc_read_nointr(int fd, void* buf, size_t count)
+{
+	ssize_t ret;
+again:
+	ret = read(fd, buf, count);
+	if (ret < 0 && errno == EINTR)
+		goto again;
 	return ret;
 }

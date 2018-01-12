@@ -139,9 +139,18 @@ extern char **lxc_normalize_path(const char *path);
 extern char *lxc_string_join(const char *sep, const char **parts,
 			     bool use_as_prefix);
 extern char **lxc_string_split_quoted(char *string);
+extern char **lxc_string_split_and_trim(const char *string, char _sep);
+extern char *lxc_append_paths(const char *first, const char *second);
+extern char *lxc_string_replace(const char *needle, const char *replacement,
+				const char *haystack);
+extern char *must_copy_string(const char *entry);
+extern void *must_realloc(void *orig, size_t sz);
+extern char *must_make_path(const char *first, ...);
 
 extern int mkdir_p(const char *dir, mode_t mode);
+extern int rm_r(char *dirname);
 extern bool file_exists(const char *f);
+extern bool dir_exists(const char *path);
 extern int is_dir(const char *path);
 extern int lxc_read_from_file(const char *filename, void* buf, size_t count);
 
@@ -161,5 +170,10 @@ struct new_config_item {
         char *val;
 };
 extern struct new_config_item *parse_line(char *buffer);
+
+extern ssize_t lxc_read_nointr(int fd, void* buf, size_t count);
+extern ssize_t lxc_write_nointr(int fd, const void* buf, size_t count);
+
+extern char *get_rundir();
 
 #endif /* __LXC_UTILS_H */
