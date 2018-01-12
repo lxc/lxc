@@ -20,18 +20,18 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#include <stdio.h>
+
+#define _GNU_SOURCE
 #include <libgen.h>
-#include <unistd.h>
+#include <stdio.h>
+#include <string.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include <lxc/lxccontainer.h>
 
-#include "lxc.h"
-#include "log.h"
 #include "arguments.h"
-#include "commands.h"
-#include "utils.h"
+#include "tool_utils.h"
 
 #define OPT_NO_LOCK OPT_USAGE + 1
 #define OPT_NO_KILL OPT_USAGE + 2
@@ -113,7 +113,6 @@ int main(int argc, char *argv[])
 
 	if (lxc_log_init(&log))
 		exit(ret);
-	lxc_log_options_no_override();
 
 	/* REMOVE IN LXC 3.0 */
 	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
@@ -152,13 +151,6 @@ int main(int argc, char *argv[])
 
 	if (my_args.nolock && !my_args.hardstop) {
 		fprintf(stderr, "--nolock may only be used with -k\n");
-		exit(ret);
-	}
-
-	/* shortcut - if locking is bogus, we should be able to kill
-	 * containers at least */
-	if (my_args.nolock) {
-		ret = lxc_cmd_stop(my_args.name, my_args.lxcpath[0]);
 		exit(ret);
 	}
 
