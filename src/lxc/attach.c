@@ -305,9 +305,10 @@ static int in_same_namespace(pid_t pid1, pid_t pid2, const char *ns)
 		goto out;
 
 	/* processes are in the same namespace */
-	ret = -EINVAL;
-	if ((ns_st1.st_dev == ns_st2.st_dev ) && (ns_st1.st_ino == ns_st2.st_ino))
+	if ((ns_st1.st_dev == ns_st2.st_dev ) && (ns_st1.st_ino == ns_st2.st_ino)) {
+		ret = -EINVAL;
 		goto out;
+	}
 
 	/* processes are in different namespaces */
 	ret = ns_fd2;
