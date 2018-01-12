@@ -20,35 +20,30 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#include "config.h"
 
-#include <stdio.h>
-#include <libgen.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
+#define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
+#include <libgen.h>
+#include <net/if.h>
 #include <signal.h>
-#include <sys/param.h>
-#include <sys/utsname.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <net/if.h>
+#include <sys/param.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/utsname.h>
 
 #include <lxc/lxccontainer.h>
 
-#include "log.h"
-#include "caps.h"
-#include "lxc.h"
-#include "conf.h"
-#include "cgroup.h"
-#include "utils.h"
-#include "confile.h"
 #include "arguments.h"
+#include "tool_list.h"
+#include "tool_utils.h"
 
 static struct lxc_list defines;
 
@@ -82,21 +77,44 @@ err:
 	return err;
 }
 
-static int my_parser(struct lxc_arguments* args, int c, char* arg)
+static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
 	switch (c) {
-	case 'c': args->console = arg; break;
-	case 'L': args->console_log = arg; break;
-	case 'd': args->daemonize = 1; break;
-	case 'F': args->daemonize = 0; break;
-	case 'f': args->rcfile = arg; break;
-	case 'C': args->close_all_fds = 1; break;
-	case 's': return lxc_config_define_add(&defines, arg);
-	case 'p': args->pidfile = arg; break;
-	case OPT_SHARE_NET: args->share_ns[LXC_NS_NET] = arg; break;
-	case OPT_SHARE_IPC: args->share_ns[LXC_NS_IPC] = arg; break;
-	case OPT_SHARE_UTS: args->share_ns[LXC_NS_UTS] = arg; break;
-	case OPT_SHARE_PID: args->share_ns[LXC_NS_PID] = arg; break;
+	case 'c':
+		args->console = arg;
+		break;
+	case 'L':
+		args->console_log = arg;
+		break;
+	case 'd':
+		args->daemonize = 1;
+		break;
+	case 'F':
+		args->daemonize = 0;
+		break;
+	case 'f':
+		args->rcfile = arg;
+		break;
+	case 'C':
+		args->close_all_fds = 1;
+		break;
+	case 's':
+		return lxc_config_define_add(&defines, arg);
+	case 'p':
+		args->pidfile = arg;
+		break;
+	case OPT_SHARE_NET:
+		args->share_ns[LXC_NS_NET] = arg;
+		break;
+	case OPT_SHARE_IPC:
+		args->share_ns[LXC_NS_IPC] = arg;
+		break;
+	case OPT_SHARE_UTS:
+		args->share_ns[LXC_NS_UTS] = arg;
+		break;
+	case OPT_SHARE_PID:
+		args->share_ns[LXC_NS_PID] = arg;
+		break;
 	}
 	return 0;
 }
@@ -147,11 +165,10 @@ Options :\n\
 
 int main(int argc, char *argv[])
 {
-	struct lxc_conf *conf;
-	struct lxc_log log;
 	const char *lxcpath;
 	char *const *args;
 	struct lxc_container *c;
+	struct lxc_log log;
 	int err = EXIT_FAILURE;
 	char *rcfile = NULL;
 	char *const default_args[] = {
@@ -181,7 +198,6 @@ int main(int argc, char *argv[])
 
 	if (lxc_log_init(&log))
 		exit(err);
-	lxc_log_options_no_override();
 
 	lxcpath = my_args.lxcpath[0];
 	if (access(lxcpath, O_RDONLY) < 0) {
@@ -259,11 +275,12 @@ int main(int argc, char *argv[])
 	 * We should use set_config_item() over &defines, which would handle
 	 * unset c->lxc_conf for us and let us not use lxc_config_define_load()
 	 */
-	if (!c->lxc_conf)
-		c->lxc_conf = lxc_conf_init();
-	conf = c->lxc_conf;
+	if (!c->lxc_conf) {
+		fprintf(stderr, "No container config specified\n");
+		goto out;
+	}
 
-	if (lxc_config_define_load(&defines, conf))
+	if (lxc_config_define_load(&defines, c))
 		goto out;
 
 	if (!rcfile && !strcmp("/sbin/init", args[0])) {
