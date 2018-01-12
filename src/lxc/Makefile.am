@@ -290,10 +290,12 @@ lxc_unshare_SOURCES = tools/lxc_unshare.c tools/arguments.c
 lxc_wait_SOURCES = tools/lxc_wait.c tools/arguments.c
 lxc_create_SOURCES = tools/lxc_create.c tools/arguments.c
 lxc_snapshot_SOURCES = tools/lxc_snapshot.c tools/arguments.c
-lxc_usernsexec_SOURCES = tools/lxc_usernsexec.c tools/arguments.c
 lxc_checkpoint_SOURCES = tools/lxc_checkpoint.c tools/arguments.c
 lxc_user_nic_SOURCES = lxc_user_nic.c namespace.c network.c tools/arguments.c
 lxc_monitord_SOURCES = lxc_monitord.c tools/arguments.c
+
+# Binaries shipping with liblxc
+lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c
 
 if ENABLE_DEPRECATED
 lxc_clone_SOURCES = tools/lxc_clone.c tools/arguments.c
