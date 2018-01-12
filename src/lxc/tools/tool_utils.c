@@ -596,3 +596,10 @@ int mkdir_p(const char *dir, mode_t mode)
 
 	return 0;
 }
+
+bool file_exists(const char *f)
+{
+	struct stat statbuf;
+
+	return stat(f, &statbuf) == 0;
+}
