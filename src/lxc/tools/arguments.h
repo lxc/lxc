@@ -31,6 +31,7 @@
 #include <sys/types.h>
 #include <lxc/lxccontainer.h>
 
+#define TOOL_MAXPATHLEN 4096
 struct lxc_arguments;
 
 typedef int (*lxc_arguments_parser_t)(struct lxc_arguments *, int, char *);

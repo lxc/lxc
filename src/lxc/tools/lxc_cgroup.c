@@ -21,17 +21,17 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#define _GNU_SOURCE
 #include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
 
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
-#include "log.h"
-#include "lxc.h"
 
 static int my_checker(const struct lxc_arguments* args)
 {
@@ -39,6 +39,7 @@ static int my_checker(const struct lxc_arguments* args)
 		lxc_error(args, "missing state object");
 		return -1;
 	}
+
 	return 0;
 }
 
@@ -83,7 +84,6 @@ int main(int argc, char *argv[])
 
 	if (lxc_log_init(&log))
 		exit(EXIT_FAILURE);
-	lxc_log_options_no_override();
 
 	/* REMOVE IN LXC 3.0 */
 	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
@@ -130,8 +130,8 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 	} else {
-		char buffer[MAXPATHLEN];
-		int ret = c->get_cgroup_item(c, state_object, buffer, MAXPATHLEN);
+		char buffer[TOOL_MAXPATHLEN];
+		int ret = c->get_cgroup_item(c, state_object, buffer, TOOL_MAXPATHLEN);
 		if (ret < 0) {
 			fprintf(stderr, "failed to retrieve value of '%s' for '%s:%s'\n",
 			      state_object, my_args.lxcpath[0], my_args.name);
