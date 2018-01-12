@@ -22,16 +22,14 @@
 #include <libgen.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
-#include <lxc/lxccontainer.h>
 #include <sys/types.h>
 
+#include <lxc/lxccontainer.h>
+
 #include "arguments.h"
-#include "log.h"
-#include "lxc.h"
-#include "storage.h"
-#include "storage_utils.h"
-#include "utils.h"
+#include "tool_utils.h"
 
 static uint64_t get_fssize(char *s)
 {
@@ -203,6 +201,23 @@ static bool validate_bdev_args(struct lxc_arguments *a)
 	return true;
 }
 
+static bool is_valid_storage_type(const char *type)
+{
+	if (strcmp(type, "dir") == 0 ||
+	    strcmp(type, "btrfs") == 0 ||
+	    strcmp(type, "aufs") == 0 ||
+	    strcmp(type, "loop") == 0 ||
+	    strcmp(type, "lvm") == 0 ||
+	    strcmp(type, "nbd") == 0 ||
+	    strcmp(type, "overlay") == 0 ||
+	    strcmp(type, "overlayfs") == 0 ||
+	    strcmp(type, "rbd") == 0 ||
+	    strcmp(type, "zfs") == 0)
+		return true;
+
+	return false;
+}
+
 int main(int argc, char *argv[])
 {
 	struct lxc_container *c;
@@ -225,7 +240,6 @@ int main(int argc, char *argv[])
 
 	if (lxc_log_init(&log))
 		exit(EXIT_FAILURE);
-	lxc_log_options_no_override();
 
 	/* REMOVE IN LXC 3.0 */
 	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
@@ -286,7 +300,7 @@ int main(int argc, char *argv[])
 	if (my_args.configfile)
 		c->load_config(c, my_args.configfile);
 	else
-		c->load_config(c, lxc_global_config_value("lxc.default_config"));
+		c->load_config(c, lxc_get_global_config_item("lxc.default_config"));
 
 	if (my_args.fstype)
 		spec.fstype = my_args.fstype;

@@ -539,3 +539,60 @@ size_t lxc_array_len(void **array)
 
 	return result;
 }
+
+/*
+ * Given the '-t' template option to lxc-create, figure out what to
+ * do.  If the template is a full executable path, use that.  If it
+ * is something like 'sshd', then return $templatepath/lxc-sshd.
+ * On success return the template, on error return NULL.
+ */
+char *get_template_path(const char *t)
+{
+	int ret, len;
+	char *tpath;
+
+	if (t[0] == '/' && access(t, X_OK) == 0) {
+		tpath = strdup(t);
+		return tpath;
+	}
+
+	len = strlen(LXCTEMPLATEDIR) + strlen(t) + strlen("/lxc-") + 1;
+	tpath = malloc(len);
+	if (!tpath)
+		return NULL;
+	ret = snprintf(tpath, len, "%s/lxc-%s", LXCTEMPLATEDIR, t);
+	if (ret < 0 || ret >= len) {
+		free(tpath);
+		return NULL;
+	}
+	if (access(tpath, X_OK) < 0) {
+		fprintf(stderr, "Bad template: %s\n", t);
+		free(tpath);
+		return NULL;
+	}
+
+	return tpath;
+}
+
+int mkdir_p(const char *dir, mode_t mode)
+{
+	const char *tmp = dir;
+	const char *orig = dir;
+	char *makeme;
+
+	do {
+		dir = tmp + strspn(tmp, "/");
+		tmp = dir + strcspn(dir, "/");
+		makeme = strndup(orig, dir - orig);
+		if (*makeme) {
+			if (mkdir(makeme, mode) && errno != EEXIST) {
+				fprintf(stderr, "Failed to create directory \"%s\"\n", makeme);
+				free(makeme);
+				return -1;
+			}
+		}
+		free(makeme);
+	} while(tmp != dir);
+
+	return 0;
+}

@@ -139,6 +139,9 @@ extern char **lxc_normalize_path(const char *path);
 extern char *lxc_string_join(const char *sep, const char **parts,
 			     bool use_as_prefix);
 
+extern int mkdir_p(const char *dir, mode_t mode);
 extern int is_dir(const char *path);
+
+extern char *get_template_path(const char *t);
 
 #endif /* __LXC_UTILS_H */
