@@ -20,16 +20,18 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#include <stdio.h>
-#include <unistd.h>
+
+#define _GNU_SOURCE
 #include <libgen.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 #include <sys/types.h>
 
 #include <lxc/lxccontainer.h>
 
-#include "lxc.h"
-#include "log.h"
 #include "arguments.h"
+#include "tool_utils.h"
 
 static const struct option my_longopts[] = {
 	LXC_COMMON_OPTIONS
@@ -71,7 +73,6 @@ int main(int argc, char *argv[])
 
 	if (lxc_log_init(&log))
 		exit(EXIT_FAILURE);
-	lxc_log_options_no_override();
 
 	/* REMOVE IN LXC 3.0 */
 	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
