@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <linux/sched.h>
 #include <sys/prctl.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -379,4 +380,162 @@ int lxc_safe_long(const char *numstr, long int *converted)
 
 	*converted = sli;
 	return 0;
+}
+
+void lxc_free_array(void **array, lxc_free_fn element_free_fn)
+{
+	void **p;
+	for (p = array; p && *p; p++)
+		element_free_fn(*p);
+	free((void*)array);
+}
+
+int lxc_grow_array(void ***array, size_t* capacity, size_t new_size, size_t capacity_increment)
+{
+	size_t new_capacity;
+	void **new_array;
+
+	/* first time around, catch some trivial mistakes of the user
+	 * only initializing one of these */
+	if (!*array || !*capacity) {
+		*array = NULL;
+		*capacity = 0;
+	}
+
+	new_capacity = *capacity;
+	while (new_size + 1 > new_capacity)
+		new_capacity += capacity_increment;
+	if (new_capacity != *capacity) {
+		/* we have to reallocate */
+		new_array = realloc(*array, new_capacity * sizeof(void *));
+		if (!new_array)
+			return -1;
+		memset(&new_array[*capacity], 0, (new_capacity - (*capacity)) * sizeof(void *));
+		*array = new_array;
+		*capacity = new_capacity;
+	}
+
+	/* array has sufficient elements */
+	return 0;
+}
+
+char **lxc_string_split(const char *string, char _sep)
+{
+	char *token, *str, *saveptr = NULL;
+	char sep[2] = {_sep, '\0'};
+	char **tmp = NULL, **result = NULL;
+	size_t result_capacity = 0;
+	size_t result_count = 0;
+	int r, saved_errno;
+
+	if (!string)
+		return calloc(1, sizeof(char *));
+
+	str = alloca(strlen(string) + 1);
+	strcpy(str, string);
+	for (; (token = strtok_r(str, sep, &saveptr)); str = NULL) {
+		r = lxc_grow_array((void ***)&result, &result_capacity, result_count + 1, 16);
+		if (r < 0)
+			goto error_out;
+		result[result_count] = strdup(token);
+		if (!result[result_count])
+			goto error_out;
+		result_count++;
+	}
+
+	/* if we allocated too much, reduce it */
+	tmp = realloc(result, (result_count + 1) * sizeof(char *));
+	if (!tmp)
+		goto error_out;
+	result = tmp;
+	/* Make sure we don't return uninitialized memory. */
+	if (result_count == 0)
+		*result = NULL;
+	return result;
+error_out:
+	saved_errno = errno;
+	lxc_free_array((void **)result, free);
+	errno = saved_errno;
+	return NULL;
+}
+
+char **lxc_normalize_path(const char *path)
+{
+	char **components;
+	char **p;
+	size_t components_len = 0;
+	size_t pos = 0;
+
+	components = lxc_string_split(path, '/');
+	if (!components)
+		return NULL;
+	for (p = components; *p; p++)
+		components_len++;
+
+	/* resolve '.' and '..' */
+	for (pos = 0; pos < components_len; ) {
+		if (!strcmp(components[pos], ".") || (!strcmp(components[pos], "..") && pos == 0)) {
+			/* eat this element */
+			free(components[pos]);
+			memmove(&components[pos], &components[pos+1], sizeof(char *) * (components_len - pos));
+			components_len--;
+		} else if (!strcmp(components[pos], "..")) {
+			/* eat this and the previous element */
+			free(components[pos - 1]);
+			free(components[pos]);
+			memmove(&components[pos-1], &components[pos+1], sizeof(char *) * (components_len - pos));
+			components_len -= 2;
+			pos--;
+		} else {
+			pos++;
+		}
+	}
+
+	return components;
+}
+
+char *lxc_string_join(const char *sep, const char **parts, bool use_as_prefix)
+{
+	char *result;
+	char **p;
+	size_t sep_len = strlen(sep);
+	size_t result_len = use_as_prefix * sep_len;
+
+	/* calculate new string length */
+	for (p = (char **)parts; *p; p++)
+		result_len += (p > (char **)parts) * sep_len + strlen(*p);
+
+	result = calloc(result_len + 1, 1);
+	if (!result)
+		return NULL;
+
+	if (use_as_prefix)
+		strcpy(result, sep);
+	for (p = (char **)parts; *p; p++) {
+		if (p > (char **)parts)
+			strcat(result, sep);
+		strcat(result, *p);
+	}
+
+	return result;
+}
+
+int is_dir(const char *path)
+{
+	struct stat statbuf;
+	int ret = stat(path, &statbuf);
+	if (ret == 0 && S_ISDIR(statbuf.st_mode))
+		return 1;
+	return 0;
+}
+
+size_t lxc_array_len(void **array)
+{
+	void **p;
+	size_t result = 0;
+
+	for (p = array; p && *p; p++)
+		result++;
+
+	return result;
 }

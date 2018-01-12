@@ -129,4 +129,16 @@ extern int lxc_safe_uint(const char *numstr, unsigned int *converted);
 extern int lxc_safe_int(const char *numstr, int *converted);
 extern int lxc_safe_long(const char *numstr, long int *converted);
 
+typedef void (*lxc_free_fn)(void *);
+extern void lxc_free_array(void **array, lxc_free_fn element_free_fn);
+extern size_t lxc_array_len(void **array);
+extern int lxc_grow_array(void ***array, size_t *capacity, size_t new_size,
+			  size_t capacity_increment);
+extern char **lxc_string_split(const char *string, char _sep);
+extern char **lxc_normalize_path(const char *path);
+extern char *lxc_string_join(const char *sep, const char **parts,
+			     bool use_as_prefix);
+
+extern int is_dir(const char *path);
+
 #endif /* __LXC_UTILS_H */
