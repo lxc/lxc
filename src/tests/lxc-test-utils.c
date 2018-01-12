@@ -180,6 +180,7 @@ void test_detect_ramfs_rootfs(void)
 	}
 	fclose(fp1);
 	fp1 = NULL;
+	fd1 = -1;
 
 	/* Test if it correctly fails to detect when no - rootfs rootfs */
 	for (i = 0; i < sizeof(mountinfo) / sizeof(mountinfo[0]); i++) {
@@ -192,6 +193,7 @@ void test_detect_ramfs_rootfs(void)
 	}
 	fclose(fp2);
 	fp2 = NULL;
+	fd2 = -1;
 
 	if (mount(tmpf1, "/proc/self/mountinfo", NULL, MS_BIND, 0) < 0) {
 		lxc_error("%s\n", "Could not overmount \"/proc/self/mountinfo\".");
@@ -419,12 +421,6 @@ void test_parse_byte_size_string(void)
 	if (n != 1048576)
 		exit(EXIT_FAILURE);
 
-	ret = parse_byte_size_string("1GB", &n);
-	if (ret < 0)
-		exit(EXIT_FAILURE);
-	if (n != 1073741824)
-		exit(EXIT_FAILURE);
-
 	ret = parse_byte_size_string("1TB", &n);
 	if (ret == 0)
 		exit(EXIT_FAILURE);
@@ -445,12 +441,6 @@ void test_parse_byte_size_string(void)
 	if (ret < 0)
 		exit(EXIT_FAILURE);
 	if (n != 1048576)
-		exit(EXIT_FAILURE);
-
-	ret = parse_byte_size_string("1 GB", &n);
-	if (ret < 0)
-		exit(EXIT_FAILURE);
-	if (n != 1073741824)
 		exit(EXIT_FAILURE);
 
 	ret = parse_byte_size_string("1 TB", &n);
