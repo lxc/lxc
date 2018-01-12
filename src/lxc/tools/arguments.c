@@ -22,6 +22,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#define _GNU_SOURCE
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
@@ -32,10 +33,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <lxc/version.h>
+
 #include "arguments.h"
-#include "utils.h"
-#include "version.h"
-#include "namespace.h"
+#include "tool_utils.h"
 
 static int build_shortopts(const struct option *a_options, char *a_shortopts,
 			   size_t a_size)

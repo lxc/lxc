@@ -138,6 +138,7 @@ extern char **lxc_string_split(const char *string, char _sep);
 extern char **lxc_normalize_path(const char *path);
 extern char *lxc_string_join(const char *sep, const char **parts,
 			     bool use_as_prefix);
+extern char **lxc_string_split_quoted(char *string);
 
 extern int mkdir_p(const char *dir, mode_t mode);
 extern bool file_exists(const char *f);
@@ -146,5 +147,18 @@ extern int is_dir(const char *path);
 extern char *get_template_path(const char *t);
 
 extern bool switch_to_ns(pid_t pid, const char *ns);
+
+extern int lxc_config_define_add(struct lxc_list *defines, char *arg);
+extern int lxc_config_define_load(struct lxc_list *defines,
+				  struct lxc_container *c);
+extern void lxc_config_define_free(struct lxc_list *defines);
+extern int lxc_char_left_gc(const char *buffer, size_t len);
+extern int lxc_char_right_gc(const char *buffer, size_t len);
+
+struct new_config_item {
+        char *key;
+        char *val;
+};
+extern struct new_config_item *parse_line(char *buffer);
 
 #endif /* __LXC_UTILS_H */

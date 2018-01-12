@@ -20,6 +20,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
 #define _GNU_SOURCE
 #include <errno.h>
 #include <libgen.h>
@@ -35,19 +36,15 @@
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
-#include "caps.h"
-#include "conf.h"
-#include "config.h"
-#include "confile.h"
-#include "log.h"
-#include "lxc.h"
-#include "start.h"
-#include "utils.h"
+#include "tool_list.h"
+#include "tool_utils.h"
 
 static struct lxc_list defines;
 
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
 {
+	int ret;
+
 	switch (c) {
 	case 'd':
 		args->daemonize = 1;
@@ -56,7 +53,9 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 		args->rcfile = arg;
 		break;
 	case 's':
-		return lxc_config_define_add(&defines, arg);
+		ret = lxc_config_define_add(&defines, arg);
+		if (ret < 0)
+			lxc_config_define_free(&defines);
 		break;
 	case 'u':
 		if (lxc_safe_uint(arg, &args->uid) < 0)
@@ -114,14 +113,17 @@ Options :\n\
 	.daemonize = 0,
 };
 
-static bool set_argv(struct lxc_conf *conf, struct lxc_arguments *args)
+static bool set_argv(struct lxc_container *c, struct lxc_arguments *args)
 {
+	int ret;
+	char buf[TOOL_MAXPATHLEN];
 	char **components, **p;
 
-	if (!conf->execute_cmd)
+	ret = c->get_config_item(c, "lxc.execute.cmd", buf, TOOL_MAXPATHLEN);
+	if (ret < 0)
 		return false;
 
-	components = lxc_string_split_quoted(conf->execute_cmd);
+	components = lxc_string_split_quoted(buf);
 	if (!components)
 		return false;
 
@@ -156,7 +158,6 @@ int main(int argc, char *argv[])
 
 	if (lxc_log_init(&log))
 		exit(EXIT_FAILURE);
-	lxc_log_options_no_override();
 
 	/* REMOVE IN LXC 3.0 */
 	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
@@ -189,24 +190,50 @@ int main(int argc, char *argv[])
 	}
 
 	if (my_args.argc == 0) {
-		if (!set_argv(c->lxc_conf, &my_args)) {
+		if (!set_argv(c, &my_args)) {
 			fprintf(stderr, "missing command to execute!\n");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
 	}
 
-	ret = lxc_config_define_load(&defines, c->lxc_conf);
+	ret = lxc_config_define_load(&defines, c);
 	if (ret) {
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
 
-	if (my_args.uid)
-		c->lxc_conf->init_uid = my_args.uid;
+	if (my_args.uid) {
+		char buf[256];
 
-	if (my_args.gid)
-		c->lxc_conf->init_gid = my_args.gid;
+		ret = snprintf(buf, 256, "%d", my_args.uid);
+		if (ret < 0 || (size_t)ret >= 256) {
+			lxc_container_put(c);
+			exit(EXIT_FAILURE);
+		}
+
+		ret = c->set_config_item(c, "lxc.init.uid", buf);
+		if (ret < 0) {
+			lxc_container_put(c);
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	if (my_args.gid) {
+		char buf[256];
+
+		ret = snprintf(buf, 256, "%d", my_args.gid);
+		if (ret < 0 || (size_t)ret >= 256) {
+			lxc_container_put(c);
+			exit(EXIT_FAILURE);
+		}
+
+		ret = c->set_config_item(c, "lxc.init.gid", buf);
+		if (ret < 0) {
+			lxc_container_put(c);
+			exit(EXIT_FAILURE);
+		}
+	}
 
 	if (!lxc_setup_shared_ns(&my_args, c)) {
 		lxc_container_put(c);

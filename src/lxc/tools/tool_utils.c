@@ -131,17 +131,6 @@ signed long lxc_config_parse_arch(const char *arch)
 	return -1;
 }
 
-enum {
-	LXC_NS_USER,
-	LXC_NS_MNT,
-	LXC_NS_PID,
-	LXC_NS_UTS,
-	LXC_NS_IPC,
-	LXC_NS_NET,
-	LXC_NS_CGROUP,
-	LXC_NS_MAX
-};
-
 const static struct ns_info {
 	const char *proc_name;
 	int clone_flag;
@@ -629,4 +618,208 @@ bool switch_to_ns(pid_t pid, const char *ns) {
 	}
 	close(fd);
 	return true;
+}
+
+static bool complete_word(char ***result, char *start, char *end, size_t *cap, size_t *cnt)
+{
+	int r;
+
+	r = lxc_grow_array((void ***)result, cap, 2 + *cnt, 16);
+	if (r < 0)
+		return false;
+	(*result)[*cnt] = strndup(start, end - start);
+	if (!(*result)[*cnt])
+		return false;
+	(*cnt)++;
+
+	return true;
+}
+
+/*
+ * Given a a string 'one two "three four"', split into three words,
+ * one, two, and "three four"
+ */
+char **lxc_string_split_quoted(char *string)
+{
+	char *nextword = string, *p, state;
+	char **result = NULL;
+	size_t result_capacity = 0;
+	size_t result_count = 0;
+
+	if (!string || !*string)
+		return calloc(1, sizeof(char *));
+
+	// TODO I'm *not* handling escaped quote
+	state = ' ';
+	for (p = string; *p; p++) {
+		switch(state) {
+		case ' ':
+			if (isspace(*p))
+				continue;
+			else if (*p == '"' || *p == '\'') {
+				nextword = p;
+				state = *p;
+				continue;
+			}
+			nextword = p;
+			state = 'a';
+			continue;
+		case 'a':
+			if (isspace(*p)) {
+				complete_word(&result, nextword, p, &result_capacity, &result_count);
+				state = ' ';
+				continue;
+			}
+			continue;
+		case '"':
+		case '\'':
+			if (*p == state) {
+				complete_word(&result, nextword+1, p, &result_capacity, &result_count);
+				state = ' ';
+				continue;
+			}
+			continue;
+		}
+	}
+
+	if (state == 'a')
+		complete_word(&result, nextword, p, &result_capacity, &result_count);
+
+	return realloc(result, (result_count + 1) * sizeof(char *));
+}
+
+int lxc_char_left_gc(const char *buffer, size_t len)
+{
+	size_t i;
+	for (i = 0; i < len; i++) {
+		if (buffer[i] == ' ' ||
+		    buffer[i] == '\t')
+			continue;
+		return i;
+	}
+	return 0;
+}
+
+int lxc_char_right_gc(const char *buffer, size_t len)
+{
+	int i;
+	for (i = len - 1; i >= 0; i--) {
+		if (buffer[i] == ' '  ||
+		    buffer[i] == '\t' ||
+		    buffer[i] == '\n' ||
+		    buffer[i] == '\0')
+			continue;
+		return i + 1;
+	}
+	return 0;
+}
+
+struct new_config_item *parse_line(char *buffer)
+{
+	char *dot, *key, *line, *linep, *value;
+	int ret = 0;
+	char *dup = buffer;
+    struct new_config_item *new = NULL;
+
+	linep = line = strdup(dup);
+	if (!line)
+		return NULL;
+
+	line += lxc_char_left_gc(line, strlen(line));
+
+	/* martian option - don't add it to the config itself */
+	if (strncmp(line, "lxc.", 4))
+		goto on_error;
+
+	ret = -1;
+	dot = strchr(line, '=');
+	if (!dot) {
+		fprintf(stderr, "Invalid configuration item: %s\n", line);
+		goto on_error;
+	}
+
+	*dot = '\0';
+	value = dot + 1;
+
+	key = line;
+	key[lxc_char_right_gc(key, strlen(key))] = '\0';
+
+	value += lxc_char_left_gc(value, strlen(value));
+	value[lxc_char_right_gc(value, strlen(value))] = '\0';
+
+	if (*value == '\'' || *value == '\"') {
+		size_t len;
+
+		len = strlen(value);
+		if (len > 1 && value[len - 1] == *value) {
+			value[len - 1] = '\0';
+			value++;
+		}
+	}
+
+    ret = -1;
+    new = malloc(sizeof(struct new_config_item));
+    if (!new)
+            goto on_error;
+
+    new->key = strdup(key);
+    new->val = strdup(value);
+    if (!new->val || !new->key)
+            goto on_error;
+    ret = 0;
+
+on_error:
+	free(linep);
+    if (ret < 0 && new) {
+            free(new->key);
+            free(new->val);
+            free(new);
+            new = NULL;
+    }
+
+	return new;
+}
+
+int lxc_config_define_add(struct lxc_list *defines, char *arg)
+{
+	struct lxc_list *dent;
+
+	dent = malloc(sizeof(struct lxc_list));
+	if (!dent)
+		return -1;
+
+	dent->elem = parse_line(arg);
+	if (!dent->elem)
+		return -1;
+	lxc_list_add_tail(defines, dent);
+	return 0;
+}
+
+int lxc_config_define_load(struct lxc_list *defines, struct lxc_container *c)
+{
+	struct lxc_list *it;
+	int ret = 0;
+
+	lxc_list_for_each(it, defines) {
+		struct new_config_item *new_item = it->elem;
+		ret = c->set_config_item(c, new_item->key, new_item->val);
+		if (ret < 0)
+			break;
+	}
+
+	lxc_config_define_free(defines);
+	return ret;
+}
+
+void lxc_config_define_free(struct lxc_list *defines)
+{
+	struct lxc_list *it, *next;
+
+	lxc_list_for_each_safe(it, defines, next) {
+		struct new_config_item *new_item = it->elem;
+		free(new_item->key);
+		free(new_item->val);
+		lxc_list_del(it);
+		free(it);
+	}
 }
