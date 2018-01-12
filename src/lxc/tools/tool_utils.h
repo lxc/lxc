@@ -143,6 +143,7 @@ extern char **lxc_string_split_quoted(char *string);
 extern int mkdir_p(const char *dir, mode_t mode);
 extern bool file_exists(const char *f);
 extern int is_dir(const char *path);
+extern int lxc_read_from_file(const char *filename, void* buf, size_t count);
 
 extern char *get_template_path(const char *t);
 

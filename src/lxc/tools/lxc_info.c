@@ -21,21 +21,20 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <stdio.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <limits.h>
+#define _GNU_SOURCE
 #include <libgen.h>
+#include <limits.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 #include <sys/types.h>
 
 #include <lxc/lxccontainer.h>
 
-#include "lxc.h"
-#include "log.h"
-#include "utils.h"
-#include "commands.h"
 #include "arguments.h"
+#include "tool_utils.h"
 
 static bool ips;
 static bool state;
@@ -205,7 +204,7 @@ static void print_stats(struct lxc_container *c)
 	char buf[4096];
 
 	ret = c->get_cgroup_item(c, "cpuacct.usage", buf, sizeof(buf));
-	if (ret > 0 && ret < sizeof(buf)) {
+	if (ret > 0 && (size_t)ret < sizeof(buf)) {
 		str_chomp(buf);
 		if (humanize) {
 			float seconds = strtof(buf, NULL) / 1000000000.0;
@@ -217,7 +216,7 @@ static void print_stats(struct lxc_container *c)
 	}
 
 	ret = c->get_cgroup_item(c, "blkio.throttle.io_service_bytes", buf, sizeof(buf));
-	if (ret > 0 && ret < sizeof(buf)) {
+	if (ret > 0 && (size_t)ret < sizeof(buf)) {
 		char *ch;
 
 		/* put ch on last "Total" line */
@@ -247,7 +246,7 @@ static void print_stats(struct lxc_container *c)
 
 	for (i = 0; lxstat[i].name; i++) {
 		ret = c->get_cgroup_item(c, lxstat[i].file, buf, sizeof(buf));
-		if (ret > 0 && ret < sizeof(buf)) {
+		if (ret > 0 && (size_t)ret < sizeof(buf)) {
 			str_chomp(buf);
 			str_size_humanize(buf, sizeof(buf));
 			printf("%-15s %s\n", lxstat[i].name, buf);
@@ -409,7 +408,6 @@ int main(int argc, char *argv[])
 
 	if (lxc_log_init(&log))
 		exit(ret);
-	lxc_log_options_no_override();
 
 	/* REMOVE IN LXC 3.0 */
 	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
