@@ -216,7 +216,7 @@ liblxc_la_LIBADD += $(CGMANAGER_LIBS) $(DBUS_LIBS) $(NIH_LIBS) $(NIH_DBUS_LIBS)
 liblxc_la_CFLAGS += $(CGMANAGER_CFLAGS) $(DBUS_CFLAGS) $(NIH_CFLAGS) $(NIH_DBUS_CFLAGS)
 endif
 
-bin_SCRIPTS = tools/lxc-checkconfig \
+bin_SCRIPTS = cmd/lxc-checkconfig \
 	      tools/lxc-update-config
 
 EXTRA_DIST = \
