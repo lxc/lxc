@@ -145,4 +145,6 @@ extern int is_dir(const char *path);
 
 extern char *get_template_path(const char *t);
 
+extern bool switch_to_ns(pid_t pid, const char *ns);
+
 #endif /* __LXC_UTILS_H */

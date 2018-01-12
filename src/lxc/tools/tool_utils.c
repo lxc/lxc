@@ -21,7 +21,9 @@
 #define __STDC_FORMAT_MACROS /* Required for PRIu64 to work. */
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <limits.h>
+#include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -602,4 +604,29 @@ bool file_exists(const char *f)
 	struct stat statbuf;
 
 	return stat(f, &statbuf) == 0;
+}
+
+bool switch_to_ns(pid_t pid, const char *ns) {
+	int fd, ret;
+	char nspath[TOOL_MAXPATHLEN];
+
+	/* Switch to new ns */
+	ret = snprintf(nspath, TOOL_MAXPATHLEN, "/proc/%d/ns/%s", pid, ns);
+	if (ret < 0 || ret >= TOOL_MAXPATHLEN)
+		return false;
+
+	fd = open(nspath, O_RDONLY);
+	if (fd < 0) {
+		fprintf(stderr, "Failed to open %s\n", nspath);
+		return false;
+	}
+
+	ret = setns(fd, 0);
+	if (ret) {
+		fprintf(stderr, "Failed to set process %d to %s of %d\n", pid, ns, fd);
+		close(fd);
+		return false;
+	}
+	close(fd);
+	return true;
 }

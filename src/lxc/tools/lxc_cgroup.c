@@ -32,6 +32,7 @@
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
+#include "tool_utils.h"
 
 static int my_checker(const struct lxc_arguments* args)
 {
