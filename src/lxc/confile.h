@@ -92,8 +92,6 @@ extern int lxc_config_define_load(struct lxc_list *defines,
 /* needed for lxc-attach */
 extern signed long lxc_config_parse_arch(const char *arch);
 
-extern int lxc_fill_elevated_privileges(char *flaglist, int *flags);
-
 extern int lxc_clear_config_item(struct lxc_conf *c, const char *key);
 
 extern void write_config(FILE *fout, struct lxc_conf *c);

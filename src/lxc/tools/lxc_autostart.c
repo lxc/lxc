@@ -24,7 +24,6 @@
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
-#include "list.h"
 #include "log.h"
 #include "utils.h"
 

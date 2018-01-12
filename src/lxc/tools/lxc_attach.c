@@ -27,6 +27,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <termios.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
@@ -36,16 +37,8 @@
 
 #include <lxc/lxccontainer.h>
 
-#include "attach.h"
 #include "arguments.h"
-#include "caps.h"
-#include "conf.h"
-#include "confile.h"
-#include "console.h"
-#include "log.h"
-#include "list.h"
-#include "mainloop.h"
-#include "utils.h"
+#include "tool_utils.h"
 
 static const struct option my_longopts[] = {
 	{"elevated-privileges", optional_argument, 0, 'e'},
@@ -290,7 +283,6 @@ int main(int argc, char *argv[])
 	r = lxc_log_init(&log);
 	if (r)
 		exit(EXIT_FAILURE);
-	lxc_log_options_no_override();
 
 	if (geteuid()) {
 		if (access(my_args.lxcpath[0], O_RDONLY) < 0) {

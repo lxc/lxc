@@ -182,6 +182,13 @@ static int lxc_arguments_lxcpath_add(struct lxc_arguments *args,
 	return 0;
 }
 
+void remove_trailing_slashes(char *p)
+{
+	int l = strlen(p);
+	while (--l >= 0 && (p[l] == '/' || p[l] == '\n'))
+		p[l] = '\0';
+}
+
 extern int lxc_arguments_parse(struct lxc_arguments *args, int argc,
 			       char *const argv[])
 {
@@ -250,7 +257,7 @@ extern int lxc_arguments_parse(struct lxc_arguments *args, int argc,
 	/* If no lxcpaths were given, use default */
 	if (!args->lxcpath_cnt) {
 		ret = lxc_arguments_lxcpath_add(
-		    args, lxc_global_config_value("lxc.lxcpath"));
+		    args, lxc_get_global_config_item("lxc.lxcpath"));
 		if (ret < 0)
 			return ret;
 	}

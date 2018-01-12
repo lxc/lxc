@@ -4,7 +4,6 @@ pkginclude_HEADERS = \
 	version.h
 
 noinst_HEADERS = \
-	tools/arguments.h \
 	attach.h \
 	storage/storage.h \
 	storage/aufs.h \
@@ -18,6 +17,9 @@ noinst_HEADERS = \
 	storage/rsync.h \
 	storage/zfs.h \
 	storage/storage_utils.h \
+	tools/arguments.h \
+	tools/tool_utils.h \
+	tools/tool_list.h \
 	cgroups/cgroup.h \
 	cgroups/cgroup_utils.h \
 	caps.h \
@@ -266,7 +268,7 @@ AM_LDFLAGS += -Wl,-rpath -Wl,$(libdir)
 endif
 LDADD=liblxc.la @CAP_LIBS@ @SELINUX_LIBS@ @SECCOMP_LIBS@
 
-lxc_attach_SOURCES = tools/lxc_attach.c tools/arguments.c
+lxc_attach_SOURCES = tools/lxc_attach.c tools/arguments.c tools/tool_utils.c
 lxc_autostart_SOURCES = tools/lxc_autostart.c tools/arguments.c
 lxc_cgroup_SOURCES = tools/lxc_cgroup.c tools/arguments.c
 lxc_config_SOURCES = tools/lxc_config.c tools/arguments.c

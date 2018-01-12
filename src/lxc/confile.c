@@ -2409,47 +2409,6 @@ signed long lxc_config_parse_arch(const char *arch)
 	return -1;
 }
 
-int lxc_fill_elevated_privileges(char *flaglist, int *flags)
-{
-	char *token, *saveptr = NULL;
-	int i, aflag;
-	struct {
-		const char *token;
-		int flag;
-	} all_privs[] = {
-		{ "CGROUP", LXC_ATTACH_MOVE_TO_CGROUP    },
-		{ "CAP",    LXC_ATTACH_DROP_CAPABILITIES },
-		{ "LSM",    LXC_ATTACH_LSM_EXEC          },
-		{ NULL,     0                            }
-	};
-
-	if (!flaglist) {
-		/* For the sake of backward compatibility, drop all privileges
-		*  if none is specified.
-		 */
-		for (i = 0; all_privs[i].token; i++)
-			*flags |= all_privs[i].flag;
-
-		return 0;
-	}
-
-	token = strtok_r(flaglist, "|", &saveptr);
-	while (token) {
-		aflag = -1;
-		for (i = 0; all_privs[i].token; i++)
-			if (!strcmp(all_privs[i].token, token))
-				aflag = all_privs[i].flag;
-		if (aflag < 0)
-			return -1;
-
-		*flags |= aflag;
-
-		token = strtok_r(NULL, "|", &saveptr);
-	}
-
-	return 0;
-}
-
 /* Write out a configuration file. */
 void write_config(FILE *fout, struct lxc_conf *c)
 {
