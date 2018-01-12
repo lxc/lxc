@@ -125,6 +125,7 @@ static inline int lxc_caps_init(void) {
 
 extern int wait_for_pid(pid_t pid);
 extern int lxc_wait_for_pid_status(pid_t pid);
+extern int lxc_safe_uint(const char *numstr, unsigned int *converted);
 extern int lxc_safe_int(const char *numstr, int *converted);
 extern int lxc_safe_long(const char *numstr, long int *converted);
 
