@@ -18,6 +18,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,8 +27,8 @@
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
-#include "log.h"
-#include "utils.h"
+#include "tool_list.h"
+#include "tool_utils.h"
 
 static struct lxc_list *accumulate_list(char *input, char *delimiter, struct lxc_list *str_list);
 
@@ -355,7 +356,6 @@ int main(int argc, char *argv[])
 
 	if (lxc_log_init(&log))
 		exit(EXIT_FAILURE);
-	lxc_log_options_no_override();
 
 	/* REMOVE IN LXC 3.0 */
 	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
