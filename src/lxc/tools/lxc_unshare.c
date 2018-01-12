@@ -20,30 +20,27 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#include "config.h"
 
-#include <stdio.h>
+#define _GNU_SOURCE
 #include <errno.h>
+#include <fcntl.h>
 #include <getopt.h>
 #include <libgen.h>
-#include <netinet/in.h>
 #include <pwd.h>
+#include <sched.h>
 #include <signal.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <netinet/in.h>
+#include <unistd.h>
 #include <sys/eventfd.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <unistd.h>
 
-#include "caps.h"
-#include "cgroup.h"
-#include "error.h"
-#include "log.h"
-#include "namespace.h"
-#include "network.h"
-#include "utils.h"
+#include "arguments.h"
+#include "tool_utils.h"
 
 struct my_iflist
 {
@@ -67,7 +64,7 @@ static void usage(char *cmd)
 
 static bool lookup_user(const char *optarg, uid_t *uid)
 {
-	char name[MAXPATHLEN];
+	char name[TOOL_MAXPATHLEN];
 	struct passwd *pwent = NULL;
 
 	if (!optarg || (optarg[0] == '\0'))
@@ -147,11 +144,34 @@ static int do_start(void *arg)
 	return 1;
 }
 
+int write_id_mapping(pid_t pid, const char *buf, size_t buf_size)
+{
+	char path[TOOL_MAXPATHLEN];
+	int fd, ret;
+
+
+	ret = snprintf(path, TOOL_MAXPATHLEN, "/proc/%d/uid_map", pid);
+	if (ret < 0 || ret >= TOOL_MAXPATHLEN)
+		return -E2BIG;
+
+	fd = open(path, O_WRONLY);
+	if (fd < 0)
+		return -1;
+
+	errno = 0;
+	ret = lxc_write_nointr(fd, buf, buf_size);
+	close(fd);
+	if (ret < 0 || (size_t)ret != buf_size)
+		return -1;
+
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	char *del;
 	char **it, **args;
-	int opt, status;
+	int opt;
 	int ret;
 	char *namespaces = NULL;
 	int flags = 0, daemonize = 0;
@@ -284,7 +304,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		ret = write_id_mapping(ID_TYPE_UID, pid, umap, strlen(umap));
+		ret = write_id_mapping(pid, umap, strlen(umap));
 		if (ret < 0) {
 			close(start_arg.wait_fd);
 			fprintf(stderr, "uid mapping failed\n");
@@ -301,19 +321,40 @@ int main(int argc, char *argv[])
 
 	if (my_iflist) {
 		for (tmpif = my_iflist; tmpif; tmpif = tmpif->mi_next) {
-			if (lxc_netdev_move_by_name(tmpif->mi_ifname, pid, NULL) < 0)
-				fprintf(stderr,"Could not move interface %s into container %d: %s\n", tmpif->mi_ifname, pid, strerror(errno));
+			pid_t pid;
+
+			pid = fork();
+			if (pid < 0)
+				fprintf(stderr, "Failed to move network device "
+						"\"%s\" to network namespace\n",
+					tmpif->mi_ifname);
+
+			if (pid == 0) {
+				char buf[256];
+
+				ret = snprintf(buf, 256, "%d", pid);
+				if (ret < 0 || ret >= 256)
+					exit(EXIT_FAILURE);
+
+				execlp("ip", "ip", "link", "set", "dev", tmpif->mi_ifname, "netns", buf, (char *)NULL);
+				exit(EXIT_FAILURE);
+			}
+
+			if (wait_for_pid(pid) != 0)
+				fprintf(stderr, "Could not move interface %s "
+						"into container %d: %s\n",
+					tmpif->mi_ifname, pid, strerror(errno));
 		}
 	}
 
 	if (daemonize)
 		exit(EXIT_SUCCESS);
 
-	if (waitpid(pid, &status, 0) < 0) {
+	if (wait_for_pid(pid) != 0) {
 		fprintf(stderr, "failed to wait for '%d'\n", pid);
 		exit(EXIT_FAILURE);
 	}
 
 	/* Call exit() directly on this function because it retuns an exit code. */
-	exit(lxc_error_set_and_log(pid, status));
+	exit(EXIT_SUCCESS);
 }

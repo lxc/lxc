@@ -176,4 +176,28 @@ extern ssize_t lxc_write_nointr(int fd, const void* buf, size_t count);
 
 extern char *get_rundir();
 
+extern void lxc_setup_fs(void);
+
+static inline uint64_t lxc_getpagesize(void)
+{
+	int64_t pgsz;
+
+	pgsz = sysconf(_SC_PAGESIZE);
+	if (pgsz <= 0)
+		pgsz = 1 << 12;
+
+	return pgsz;
+}
+
+#if defined(__ia64__)
+int __clone2(int (*__fn) (void *__arg), void *__child_stack_base,
+             size_t __child_stack_size, int __flags, void *__arg, ...);
+#else
+int clone(int (*fn)(void *), void *child_stack,
+	int flags, void *arg, ...
+	/* pid_t *ptid, struct user_desc *tls, pid_t *ctid */ );
+#endif
+
+extern pid_t lxc_clone(int (*fn)(void *), void *arg, int flags);
+
 #endif /* __LXC_UTILS_H */

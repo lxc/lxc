@@ -31,6 +31,7 @@
 #include <strings.h>
 #include <unistd.h>
 #include <linux/sched.h>
+#include <sys/mount.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -42,6 +43,7 @@
 
 #include <lxc/lxccontainer.h>
 
+#include "arguments.h"
 #include "tool_utils.h"
 
 int lxc_fill_elevated_privileges(char *flaglist, int *flags)
@@ -1129,5 +1131,66 @@ again:
 	ret = read(fd, buf, count);
 	if (ret < 0 && errno == EINTR)
 		goto again;
+	return ret;
+}
+
+static int mount_fs(const char *source, const char *target, const char *type)
+{
+	/* the umount may fail */
+	if (umount(target) < 0)
+
+	if (mount(source, target, type, 0, NULL) < 0)
+		return -1;
+
+	return 0;
+}
+
+void lxc_setup_fs(void)
+{
+	(void)mount_fs("proc", "/proc", "proc");
+
+	/* if /dev has been populated by us, /dev/shm does not exist */
+	if (access("/dev/shm", F_OK))
+		(void)mkdir("/dev/shm", 0777);
+
+	/* if we can't mount /dev/shm, continue anyway */
+	(void)mount_fs("shmfs", "/dev/shm", "tmpfs");
+
+	/* If we were able to mount /dev/shm, then /dev exists */
+	/* Sure, but it's read-only per config :) */
+	if (access("/dev/mqueue", F_OK))
+		(void)mkdir("/dev/mqueue", 0666);
+
+	/* continue even without posix message queue support */
+	(void)mount_fs("mqueue", "/dev/mqueue", "mqueue");
+}
+
+struct clone_arg {
+	int (*fn)(void *);
+	void *arg;
+};
+
+static int do_clone(void *arg)
+{
+	struct clone_arg *clone_arg = arg;
+	return clone_arg->fn(clone_arg->arg);
+}
+
+pid_t lxc_clone(int (*fn)(void *), void *arg, int flags)
+{
+	struct clone_arg clone_arg = {
+		.fn = fn,
+		.arg = arg,
+	};
+
+	size_t stack_size = lxc_getpagesize();
+	void *stack = alloca(stack_size);
+	pid_t ret;
+
+#ifdef __ia64__
+	ret = __clone2(do_clone, stack, stack_size, flags | SIGCHLD, &clone_arg);
+#else
+	ret = clone(do_clone, stack  + stack_size, flags | SIGCHLD, &clone_arg);
+#endif
 	return ret;
 }
