@@ -11,7 +11,6 @@ lxc.cap.drop = mknod
 lxc.cap.drop = setpcap
 lxc.cap.drop = sys_nice
 lxc.cap.drop = sys_pacct
-lxc.cap.drop = sys_ptrace
 lxc.cap.drop = sys_rawio
 lxc.cap.drop = sys_resource
 lxc.cap.drop = sys_tty_config
