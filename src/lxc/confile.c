@@ -3276,7 +3276,7 @@ static int get_config_console_buffer_size(const char *key, char *retv,
 					  int inlen, struct lxc_conf *c,
 					  void *data)
 {
-	return lxc_get_conf_uint64(c, retv, inlen, c->autodev);
+	return lxc_get_conf_uint64(c, retv, inlen, c->console.buffer_size);
 }
 
 static int get_config_console_buffer_logfile(const char *key, char *retv,
