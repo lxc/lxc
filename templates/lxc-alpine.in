@@ -396,6 +396,9 @@ configure_container() {
 		# hostname(1).
 		lxc.cap.drop = sys_admin
 
+		# Comment this out if you have to debug processes by tracing.
+		lxc.cap.drop = sys_ptrace
+
 		# Include common configuration.
 		lxc.include = $LXC_TEMPLATE_CONFIG/alpine.common.conf
 	EOF
