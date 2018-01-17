@@ -2341,10 +2341,10 @@ int parse_byte_size_string(const char *s, int64_t *converted)
 	else
 		return -EINVAL;
 
-	if ((end - 2) == dup && !isdigit(*(end - 2)))
+	if (suffix_len > 0 && (end - 2) == dup && !isdigit(*(end - 2)))
 		return -EINVAL;
 
-	if (isalpha(*(end - 2))) {
+	if (suffix_len > 0 && isalpha(*(end - 2))) {
 		if (suffix_len == 1)
 			suffix_len++;
 		else
