@@ -31,57 +31,74 @@
 #include <sys/types.h>
 #include <sys/param.h>
 
+#include "commands.h"
 #include "error.h"
-#include "state.h"
-#include "monitor.h"
 #include "log.h"
 #include "lxc.h"
+#include "monitor.h"
+#include "parse.h"
+#include "state.h"
 
 lxc_log_define(lxc_freezer, lxc);
 
 lxc_state_t freezer_state(const char *name, const char *lxcpath)
 {
+	int ret;
 	char v[100];
-	if (lxc_cgroup_get("freezer.state", v, 100, name, lxcpath) < 0)
+
+	ret = lxc_cgroup_get("freezer.state", v, sizeof(v), name, lxcpath);
+	if (ret < 0)
 		return -1;
 
-	if (v[strlen(v)-1] == '\n')
-		v[strlen(v)-1] = '\0';
+	v[99] = '\0';
+	v[lxc_char_right_gc(v, strlen(v))] = '\0';
+
 	return lxc_str2state(v);
 }
 
-static int do_freeze_thaw(int freeze, const char *name, const char *lxcpath)
+static int do_freeze_thaw(bool freeze, const char *name, const char *lxcpath)
 {
+	int ret;
 	char v[100];
 	const char *state = freeze ? "FROZEN" : "THAWED";
+	size_t state_len = 6;
+	lxc_state_t new_state = freeze ? FROZEN : THAWED;
 
-	if (lxc_cgroup_set("freezer.state", state, name, lxcpath) < 0) {
-		ERROR("Failed to freeze %s:%s", lxcpath, name);
+	ret = lxc_cgroup_set("freezer.state", state, name, lxcpath);
+	if (ret < 0) {
+		ERROR("Failed to freeze %s", name);
 		return -1;
 	}
-	while (1) {
-		if (lxc_cgroup_get("freezer.state", v, 100, name, lxcpath) < 0) {
-			ERROR("Failed to get new freezer state for %s:%s", lxcpath, name);
+
+	for (;;) {
+		ret = lxc_cgroup_get("freezer.state", v, sizeof(v), name, lxcpath);
+		if (ret < 0) {
+			ERROR("Failed to get freezer state of %s", name);
 			return -1;
 		}
-		if (v[strlen(v)-1] == '\n')
-			v[strlen(v)-1] = '\0';
-		if (strncmp(v, state, strlen(state)) == 0) {
-			if (name)
-				lxc_monitor_send_state(name, freeze ? FROZEN : THAWED, lxcpath);
+
+		v[99] = '\0';
+		v[lxc_char_right_gc(v, strlen(v))] = '\0';
+
+		ret = strncmp(v, state, state_len);
+		if (ret == 0) {
+			lxc_cmd_serve_state_clients(name, lxcpath, new_state);
+			lxc_monitor_send_state(name, new_state, lxcpath);
 			return 0;
 		}
+
 		sleep(1);
 	}
 }
 
 int lxc_freeze(const char *name, const char *lxcpath)
 {
+	lxc_cmd_serve_state_clients(name, lxcpath, FREEZING);
 	lxc_monitor_send_state(name, FREEZING, lxcpath);
-	return do_freeze_thaw(1, name, lxcpath);
+	return do_freeze_thaw(true, name, lxcpath);
 }
 
 int lxc_unfreeze(const char *name, const char *lxcpath)
 {
-	return do_freeze_thaw(0, name, lxcpath);
+	return do_freeze_thaw(false, name, lxcpath);
 }

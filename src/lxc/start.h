@@ -117,7 +117,11 @@ struct lxc_operations {
 };
 
 extern int lxc_poll(const char *name, struct lxc_handler *handler);
-extern int lxc_set_state(const char *name, struct lxc_handler *handler, lxc_state_t state);
+extern int lxc_set_state(const char *name, struct lxc_handler *handler,
+			 lxc_state_t state);
+extern int lxc_serve_state_clients(const char *name,
+				   struct lxc_handler *handler,
+				   lxc_state_t state);
 extern void lxc_abort(const char *name, struct lxc_handler *handler);
 extern struct lxc_handler *lxc_init_handler(const char *name,
 					    struct lxc_conf *conf,
