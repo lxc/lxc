@@ -850,7 +850,8 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 		return STOPPED;
 
 	if (ret < 0) {
-		ERROR("%s - Failed to execute command", strerror(errno));
+		if (errno != ECONNREFUSED)
+			ERROR("%s - Failed to execute command", strerror(errno));
 		return -1;
 	}
 

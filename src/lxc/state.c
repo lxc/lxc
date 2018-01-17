@@ -115,13 +115,26 @@ extern int lxc_wait(const char *lxcname, const char *states, int timeout,
 	if (fillwaitedstates(states, s))
 		return -1;
 
-	state = lxc_cmd_sock_get_state(lxcname, lxcpath, s, timeout);
-	if (state < 0) {
-		SYSERROR("failed to receive state from monitor");
-		return -1;
+	for (;;) {
+		state = lxc_cmd_sock_get_state(lxcname, lxcpath, s, timeout);
+		if (state >= 0)
+			break;
+
+		if (errno != ECONNREFUSED) {
+			SYSERROR("Failed to receive state from monitor");
+			return -1;
+		}
+
+		sleep(1);
+
+		if (timeout > 0)
+			timeout--;
+
+		if (timeout == 0)
+			return -1;
 	}
 
-	TRACE("retrieved state of container %s", lxc_state2str(state));
+	TRACE("Retrieved state of container %s", lxc_state2str(state));
 	if (!s[state])
 		return -1;
 
