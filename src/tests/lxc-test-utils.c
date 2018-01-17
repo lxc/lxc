@@ -388,68 +388,108 @@ void test_parse_byte_size_string(void)
 	int64_t n;
 
 	ret = parse_byte_size_string("0", &n);
-	if (ret < 0)
+	if (ret < 0) {
+		lxc_error("%s\n", "Failed to parse \"0\"");
 		exit(EXIT_FAILURE);
-	if (n != 0)
+	}
+	if (n != 0) {
+		lxc_error("%s\n", "Failed to parse \"0\"");
 		exit(EXIT_FAILURE);
+	}
 
 	ret = parse_byte_size_string("1", &n);
-	if (ret < 0)
+	if (ret < 0) {
+		lxc_error("%s\n", "Failed to parse \"1\"");
 		exit(EXIT_FAILURE);
-	if (n != 1)
+	}
+	if (n != 1) {
+		lxc_error("%s\n", "Failed to parse \"1\"");
 		exit(EXIT_FAILURE);
+	}
 
 	ret = parse_byte_size_string("1 ", &n);
-	if (ret == 0)
+	if (ret == 0) {
+		lxc_error("%s\n", "Failed to parse \"1 \"");
 		exit(EXIT_FAILURE);
+	}
 
 	ret = parse_byte_size_string("1B", &n);
-	if (ret < 0)
+	if (ret < 0) {
+		lxc_error("%s\n", "Failed to parse \"1B\"");
 		exit(EXIT_FAILURE);
-	if (n != 1)
+	}
+	if (n != 1) {
+		lxc_error("%s\n", "Failed to parse \"1B\"");
 		exit(EXIT_FAILURE);
+	}
 
 	ret = parse_byte_size_string("1kB", &n);
-	if (ret < 0)
+	if (ret < 0) {
+		lxc_error("%s\n", "Failed to parse \"1kB\"");
 		exit(EXIT_FAILURE);
-	if (n != 1024)
+	}
+	if (n != 1024) {
+		lxc_error("%s\n", "Failed to parse \"1kB\"");
 		exit(EXIT_FAILURE);
+	}
 
 	ret = parse_byte_size_string("1MB", &n);
-	if (ret < 0)
+	if (ret < 0) {
+		lxc_error("%s\n", "Failed to parse \"1MB\"");
 		exit(EXIT_FAILURE);
-	if (n != 1048576)
+	}
+	if (n != 1048576) {
+		lxc_error("%s\n", "Failed to parse \"1MB\"");
 		exit(EXIT_FAILURE);
+	}
 
 	ret = parse_byte_size_string("1TB", &n);
-	if (ret == 0)
+	if (ret == 0) {
+		lxc_error("%s\n", "Failed to parse \"1TB\"");
 		exit(EXIT_FAILURE);
+	}
 
 	ret = parse_byte_size_string("1 B", &n);
-	if (ret < 0)
+	if (ret < 0) {
+		lxc_error("%s\n", "Failed to parse \"1 B\"");
 		exit(EXIT_FAILURE);
-	if (n != 1)
+	}
+	if (n != 1) {
+		lxc_error("%s\n", "Failed to parse \"1 B\"");
 		exit(EXIT_FAILURE);
+	}
 
 	ret = parse_byte_size_string("1 kB", &n);
-	if (ret < 0)
+	if (ret < 0) {
+		lxc_error("%s\n", "Failed to parse \"1 kB\"");
 		exit(EXIT_FAILURE);
-	if (n != 1024)
+	}
+	if (n != 1024) {
+		lxc_error("%s\n", "Failed to parse \"1 kB\"");
 		exit(EXIT_FAILURE);
+	}
 
 	ret = parse_byte_size_string("1 MB", &n);
-	if (ret < 0)
+	if (ret < 0) {
+		lxc_error("%s\n", "Failed to parse \"1 MB\"");
 		exit(EXIT_FAILURE);
-	if (n != 1048576)
+	}
+	if (n != 1048576) {
+		lxc_error("%s\n", "Failed to parse \"1 MB\"");
 		exit(EXIT_FAILURE);
+	}
 
 	ret = parse_byte_size_string("1 TB", &n);
-	if (ret == 0)
+	if (ret == 0) {
+		lxc_error("%s\n", "Failed to parse \"1 TB\"");
 		exit(EXIT_FAILURE);
+	}
 
 	ret = parse_byte_size_string("asdf", &n);
-	if (ret == 0)
+	if (ret == 0) {
+		lxc_error("%s\n", "Failed to parse \"asdf\"");
 		exit(EXIT_FAILURE);
+	}
 }
 
 void test_lxc_config_net_hwaddr(void)
