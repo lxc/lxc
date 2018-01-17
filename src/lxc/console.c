@@ -168,7 +168,7 @@ struct lxc_tty_state *lxc_console_signal_init(int srcfd, int dstfd)
 		goto on_error;
 	}
 
-	ts->sigfd = signalfd(-1, &mask, 0);
+	ts->sigfd = signalfd(-1, &mask, SFD_CLOEXEC);
 	if (ts->sigfd < 0) {
 		WARN("Failed to create signal fd");
 		sigprocmask(SIG_SETMASK, &ts->oldmask, NULL);
@@ -285,31 +285,25 @@ static int lxc_console_mainloop_add_peer(struct lxc_console *console)
 	return 0;
 }
 
-extern int lxc_console_mainloop_add(struct lxc_epoll_descr *descr,
-				    struct lxc_conf *conf)
+int lxc_console_mainloop_add(struct lxc_epoll_descr *descr,
+			     struct lxc_console *console)
 {
 	int ret;
-	struct lxc_console *console = &conf->console;
-
-	if (!conf->rootfs.path) {
-		INFO("no rootfs, no console.");
-		return 0;
-	}
 
 	if (console->master < 0) {
 		INFO("no console");
 		return 0;
 	}
 
-	if (lxc_mainloop_add_handler(descr, console->master,
-				     lxc_console_cb_con, console)) {
-		ERROR("failed to add to mainloop console handler for '%d'",
-		      console->master);
+	ret = lxc_mainloop_add_handler(descr, console->master,
+				       lxc_console_cb_con, console);
+	if (ret < 0) {
+		ERROR("Failed to add handler for %d to mainloop", console->master);
 		return -1;
 	}
 
-	/* we cache the descr so that we can add an fd to it when someone
-	 * does attach to it in lxc_console_allocate()
+	/* We cache the descr so that we can add an fd to it when someone
+	 * does attach to it in lxc_console_allocate().
 	 */
 	console->descr = descr;
 	ret = lxc_console_mainloop_add_peer(console);
@@ -709,24 +703,13 @@ int lxc_console_create_log_file(struct lxc_console *console)
 	return 0;
 }
 
-int lxc_console_create(struct lxc_conf *conf)
+int lxc_pty_create(struct lxc_console *console)
 {
 	int ret, saved_errno;
-	struct lxc_console *console = &conf->console;
-
-	if (!conf->rootfs.path) {
-		INFO("Container does not have a rootfs. The console will be "
-		     "shared with the host");
-		return 0;
-	}
-
-	if (console->path && !strcmp(console->path, "none")) {
-		INFO("No console was requested");
-		return 0;
-	}
 
 	process_lock();
-	ret = openpty(&console->master, &console->slave, console->name, NULL, NULL);
+	ret = openpty(&console->master, &console->slave, console->name, NULL,
+		      NULL);
 	saved_errno = errno;
 	process_unlock();
 	if (ret < 0) {
@@ -751,6 +734,33 @@ int lxc_console_create(struct lxc_conf *conf)
 		ERROR("Failed to allocate a peer pty device");
 		goto err;
 	}
+
+	return 0;
+
+err:
+	lxc_console_delete(console);
+	return -ENODEV;
+}
+
+int lxc_console_create(struct lxc_conf *conf)
+{
+	int ret;
+	struct lxc_console *console = &conf->console;
+
+	if (!conf->rootfs.path) {
+		INFO("Container does not have a rootfs. The console will be "
+		     "shared with the host");
+		return 0;
+	}
+
+	if (console->path && !strcmp(console->path, "none")) {
+		INFO("No console was requested");
+		return 0;
+	}
+
+	ret = lxc_pty_create(console);
+	if (ret < 0)
+		return -1;
 
 	/* create console log file */
 	ret = lxc_console_create_log_file(console);
@@ -968,4 +978,85 @@ close_fds:
 	close(ttyfd);
 
 	return ret;
+}
+
+int lxc_make_controlling_pty(int fd)
+{
+	int ret;
+
+	setsid();
+
+	ret = ioctl(fd, TIOCSCTTY, (char *)NULL);
+	if (ret < 0)
+		return -1;
+
+	return 0;
+}
+
+int lxc_login_pty(int fd)
+{
+	int ret;
+
+	ret = lxc_make_controlling_pty(fd);
+	if (ret < 0)
+		return -1;
+
+	ret = lxc_console_set_stdfds(fd);
+	if (ret < 0)
+		return -1;
+
+	if (fd > STDERR_FILENO)
+		close(fd);
+
+	return 0;
+}
+
+void lxc_pty_info_init(struct lxc_pty_info *pty)
+{
+	pty->name[0] = '\0';
+	pty->master = -EBADF;
+	pty->slave = -EBADF;
+	pty->busy = -1;
+}
+
+void lxc_pty_init(struct lxc_console *pty)
+{
+	memset(pty, 0, sizeof(*pty));
+	pty->slave = -EBADF;
+	pty->master = -EBADF;
+	pty->peer = -EBADF;
+	pty->log_fd = -EBADF;
+	pty->buffer_log_file_fd = -EBADF;
+	lxc_pty_info_init(&pty->peerpty);
+}
+
+void lxc_pty_conf_free(struct lxc_console *console)
+{
+	free(console->buffer_log_file);
+	free(console->log_path);
+	free(console->path);
+	if (console->buffer_size > 0 && console->ringbuf.addr)
+		lxc_ringbuf_release(&console->ringbuf);
+}
+
+int lxc_pty_map_ids(struct lxc_conf *c, struct lxc_console *pty)
+{
+	int ret;
+
+	if (lxc_list_empty(&c->id_map))
+		return 0;
+
+	ret = strcmp(pty->name, "");
+	if (ret == 0)
+		return 0;
+
+	ret = chown_mapped_root(pty->name, c);
+	if (ret < 0) {
+		ERROR("Failed to chown \"%s\"", pty->name);
+		return -1;
+	}
+
+	TRACE("Chowned \"%s\"", pty->name);
+
+	return 0;
 }

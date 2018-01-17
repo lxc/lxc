@@ -190,17 +190,6 @@ fi
 
 rm -f $out $err
 
-if [ $allocate_pty = "pty" ]; then
-	# Test whether logging pty output to a file works.
-	trap "rm -f /tmp/ptylog" EXIT INT QUIT PIPE
-	lxc-attach -n busy -L /tmp/ptylog -- hostname || FAIL "to allocate or setup pty"
-	if [ ! -s /tmp/ptylog ]; then
-		FAIL "lxc-attach -n busy -L /tmp/ptylog -- hostname"
-	fi
-
-	rm -f /tmp/ptylog
-fi
-
 lxc-destroy -n busy -f
 
 exit 0

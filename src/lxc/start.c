@@ -266,35 +266,36 @@ restart:
 
 static int setup_signal_fd(sigset_t *oldmask)
 {
+	int ret, sig;
 	sigset_t mask;
-	int fd;
+	int signals[] = {SIGBUS, SIGILL, SIGSEGV, SIGWINCH};
 
 	/* Block everything except serious error signals. */
-	if (sigfillset(&mask) ||
-	    sigdelset(&mask, SIGILL) ||
-	    sigdelset(&mask, SIGSEGV) ||
-	    sigdelset(&mask, SIGBUS) ||
-	    sigdelset(&mask, SIGWINCH) ||
-	    sigprocmask(SIG_BLOCK, &mask, oldmask)) {
-		SYSERROR("Failed to set signal mask.");
-		return -1;
+	ret = sigfillset(&mask);
+	if (ret < 0)
+		return -EBADF;
+
+	for (sig = 0; sig < (sizeof(signals) / sizeof(signals[0])); sig++) {
+		ret = sigdelset(&mask, signals[sig]);
+		if (ret < 0)
+			return -EBADF;
 	}
 
-	fd = signalfd(-1, &mask, 0);
-	if (fd < 0) {
-		SYSERROR("Failed to create signal file descriptor.");
-		return -1;
+	ret = sigprocmask(SIG_BLOCK, &mask, oldmask);
+	if (ret < 0) {
+		SYSERROR("Failed to set signal mask");
+		return -EBADF;
 	}
 
-	if (fcntl(fd, F_SETFD, FD_CLOEXEC)) {
-		SYSERROR("Failed to set FD_CLOEXEC on the signal file descriptor: %d.", fd);
-		close(fd);
-		return -1;
+	ret = signalfd(-1, &mask, SFD_CLOEXEC);
+	if (ret < 0) {
+		SYSERROR("Failed to create signal file descriptor");
+		return -EBADF;
 	}
 
-	DEBUG("Set SIGCHLD handler with file descriptor: %d.", fd);
+	TRACE("Created signal file descriptor %d", ret);
 
-	return fd;
+	return ret;
 }
 
 static int signal_handler(int fd, uint32_t events, void *data,
@@ -468,6 +469,7 @@ int lxc_set_state(const char *name, struct lxc_handler *handler,
 int lxc_poll(const char *name, struct lxc_handler *handler)
 {
 	int ret;
+	bool has_console = (handler->conf->rootfs.path != NULL);
 	struct lxc_epoll_descr descr, descr_console;
 
 	ret = lxc_mainloop_open(&descr);
@@ -476,10 +478,12 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 		goto out_sigfd;
 	}
 
-	ret = lxc_mainloop_open(&descr_console);
-	if (ret < 0) {
-		ERROR("Failed to create console mainloop");
-		goto out_mainloop;
+	if (has_console) {
+		ret = lxc_mainloop_open(&descr_console);
+		if (ret < 0) {
+			ERROR("Failed to create console mainloop");
+			goto out_mainloop;
+		}
 	}
 
 	ret = lxc_mainloop_add_handler(&descr, handler->sigfd, signal_handler, handler);
@@ -488,16 +492,20 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 		goto out_mainloop_console;
 	}
 
-	ret = lxc_console_mainloop_add(&descr, handler->conf);
-	if (ret < 0) {
-		ERROR("Failed to add console handlers to mainloop");
-		goto out_mainloop_console;
-	}
+	if (has_console) {
+		struct lxc_console *console = &handler->conf->console;
 
-	ret = lxc_console_mainloop_add(&descr_console, handler->conf);
-	if (ret < 0) {
-		ERROR("Failed to add console handlers to console mainloop");
-		goto out_mainloop_console;
+		ret = lxc_console_mainloop_add(&descr, console);
+		if (ret < 0) {
+			ERROR("Failed to add console handlers to mainloop");
+			goto out_mainloop_console;
+		}
+
+		ret = lxc_console_mainloop_add(&descr_console, console);
+		if (ret < 0) {
+			ERROR("Failed to add console handlers to console mainloop");
+			goto out_mainloop_console;
+		}
 	}
 
 	ret = lxc_cmd_mainloop_add(name, &descr, handler);
@@ -514,15 +522,19 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 	if (ret < 0 || !handler->init_died)
 		goto out_mainloop;
 
-	ret = lxc_mainloop(&descr_console, 0);
+	if (has_console)
+		ret = lxc_mainloop(&descr_console, 0);
+
 
 out_mainloop:
 	lxc_mainloop_close(&descr);
 	TRACE("Closed mainloop");
 
 out_mainloop_console:
-	lxc_mainloop_close(&descr_console);
-	TRACE("Closed console mainloop");
+	if (has_console) {
+		lxc_mainloop_close(&descr_console);
+		TRACE("Closed console mainloop");
+	}
 
 out_sigfd:
 	close(handler->sigfd);
@@ -739,13 +751,15 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	TRACE("set up signal fd");
 
 	/* Do this after setting up signals since it might unblock SIGWINCH. */
-	if (lxc_console_create(conf)) {
-		ERROR("Failed to create console for container \"%s\".", name);
+	ret = lxc_console_create(conf);
+	if (ret < 0) {
+		ERROR("Failed to create console");
 		goto out_restore_sigmask;
 	}
-	TRACE("created console");
+	TRACE("Created console");
 
-	if (lxc_ttys_shift_ids(conf) < 0) {
+	ret = lxc_pty_map_ids(conf, &conf->console);
+	if (ret < 0) {
 		ERROR("Failed to shift tty into container.");
 		goto out_restore_sigmask;
 	}

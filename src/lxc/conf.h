@@ -174,18 +174,19 @@ struct lxc_console {
 	char name[MAXPATHLEN];
 	struct termios *tios;
 	struct lxc_tty_state *tty_state;
+	struct /* lxc_console_ringbuf */ {
+		/* size of the ringbuffer */
+		uint64_t buffer_size;
 
-	/* size of the ringbuffer */
-	uint64_t buffer_size;
+		/* path to the log file for the ringbuffer */
+		char *buffer_log_file;
 
-	/* path to the log file for the ringbuffer */
-	char *buffer_log_file;
+		/* fd to the log file for the ringbuffer */
+		int buffer_log_file_fd;
 
-	/* fd to the log file for the ringbuffer */
-	int buffer_log_file_fd;
-
-	/* the in-memory ringbuffer */
-	struct lxc_ringbuf ringbuf;
+		/* the in-memory ringbuffer */
+		struct lxc_ringbuf ringbuf;
+	};
 };
 
 /*
@@ -451,7 +452,6 @@ extern int find_unmapped_nsid(struct lxc_conf *conf, enum idtype idtype);
 extern int mapped_hostid(unsigned id, struct lxc_conf *conf,
 			 enum idtype idtype);
 extern int chown_mapped_root(const char *path, struct lxc_conf *conf);
-extern int lxc_ttys_shift_ids(struct lxc_conf *c);
 extern int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 			 const char *fn_name);
 extern int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *),

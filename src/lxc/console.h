@@ -82,6 +82,12 @@ extern int  lxc_console_allocate(struct lxc_conf *conf, int sockfd, int *ttynum)
  * automatically chowned to the uid/gid of the unprivileged user. For this
  * ttys_shift_ids() can be called.)
  */
+extern int lxc_pty_create(struct lxc_console *console);
+
+/**
+ * lxc_console_create: Create a new pty.
+ * - In addition to lxc_pty_create() also sets up all pty logs.
+ */
 extern int  lxc_console_create(struct lxc_conf *);
 
 /*
@@ -108,7 +114,7 @@ extern void lxc_console_free(struct lxc_conf *conf, int fd);
 /*
  * Register pty event handlers in an open mainloop
  */
-extern int  lxc_console_mainloop_add(struct lxc_epoll_descr *, struct lxc_conf *);
+extern int  lxc_console_mainloop_add(struct lxc_epoll_descr *, struct lxc_console *);
 
 /*
  * Handle SIGWINCH events on the allocated ptys.
@@ -225,5 +231,12 @@ extern int lxc_console_write_ringbuffer(struct lxc_console *console);
 extern int lxc_console_create_log_file(struct lxc_console *console);
 extern int lxc_console_cb_con(int fd, uint32_t events, void *data,
 			      struct lxc_epoll_descr *descr);
+
+extern int lxc_make_controlling_pty(int fd);
+extern int lxc_login_pty(int fd);
+extern void lxc_pty_conf_free(struct lxc_console *console);
+extern void lxc_pty_info_init(struct lxc_pty_info *pty);
+extern void lxc_pty_init(struct lxc_console *pty);
+extern int lxc_pty_map_ids(struct lxc_conf *c, struct lxc_console *pty);
 
 #endif

@@ -27,11 +27,12 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/ioctl.h>
-#include <sys/types.h>
-#include <sys/wait.h>
 #include <termios.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include <lxc/lxccontainer.h>
 
@@ -45,12 +46,6 @@
 #include "list.h"
 #include "mainloop.h"
 #include "utils.h"
-
-#if HAVE_PTY_H
-#include <pty.h>
-#else
-#include <../include/openpty.h>
-#endif
 
 static const struct option my_longopts[] = {
 	{"elevated-privileges", optional_argument, 0, 'e'},
@@ -241,154 +236,29 @@ Options :\n\
 	.checker  = NULL,
 };
 
-struct wrapargs {
-	lxc_attach_options_t *options;
-	lxc_attach_command_t *command;
-	struct lxc_console *console;
-	int ptyfd;
-};
-
-/* Minimalistic login_tty() implementation. */
-static int login_pty(int fd)
-{
-	setsid();
-	if (ioctl(fd, TIOCSCTTY, NULL) < 0)
-		return -1;
-	if (lxc_console_set_stdfds(fd) < 0)
-		return -1;
-	if (fd > STDERR_FILENO)
-		close(fd);
-	return 0;
-}
-
-static int get_pty_on_host_callback(void *p)
-{
-	struct wrapargs *wrap = p;
-
-	close(wrap->console->master);
-	if (login_pty(wrap->console->slave) < 0)
-		return -1;
-
-	if (wrap->command->program)
-		lxc_attach_run_command(wrap->command);
-	else
-		lxc_attach_run_shell(NULL);
-	return -1;
-}
-
-static int get_pty_on_host(struct lxc_container *c, struct wrapargs *wrap, int *pid)
-{
-	struct lxc_epoll_descr descr;
-	struct lxc_conf *conf;
-	struct lxc_tty_state *ts;
-	int ret = -1;
-	struct wrapargs *args = wrap;
-
-	if (!isatty(args->ptyfd)) {
-		fprintf(stderr, "Standard file descriptor does not refer to a pty\n");
-		return -1;
-	}
-
-	if (c->lxc_conf) {
-		conf = c->lxc_conf;
-	} else {
-		/* If the container is not defined and the user didn't specify a
-		 * config file to load we will simply init a dummy config here.
-		 */
-		conf = lxc_conf_init();
-		if (!conf) {
-			fprintf(stderr, "Failed to allocate dummy config file for the container\n");
-			return -1;
-		}
-
-		/* We also need a dummy rootfs path otherwise
-		 * lxc_console_create() will not let us create a console. Note,
-		 * I don't want this change to make it into
-		 * lxc_console_create()'s since this function will only be
-		 * responsible for proper /dev/{console,tty<n>} devices.
-		 * lxc-attach is just abusing it to also handle the pty case
-		 * because it is very similar. However, with LXC 3.0 lxc-attach
-		 * will need to move away from using lxc_console_create() since
-		 * this is actually an internal symbol and we only want the
-		 * tools to use the API with LXC 3.0.
-		 */
-		conf->rootfs.path = strdup("dummy");
-		if (!conf->rootfs.path)
-			return -1;
-	}
-	free(conf->console.log_path);
-	if (my_args.console_log)
-		conf->console.log_path = strdup(my_args.console_log);
-	else
-		conf->console.log_path = NULL;
-
-	/* In the case of lxc-attach our peer pty will always be the current
-	 * controlling terminal. We clear whatever was set by the user for
-	 * lxc.console.path here and set it NULL. lxc_console_peer_default()
-	 * will then try to open /dev/tty. If the process doesn't have a
-	 * controlling terminal we should still proceed.
-	 */
-	free(conf->console.path);
-	conf->console.path = NULL;
-
-	/* Create pty on the host. */
-	if (lxc_console_create(conf) < 0)
-		return -1;
-	ts = conf->console.tty_state;
-	conf->console.descr = &descr;
-
-	/* Shift ttys to container. */
-	if (lxc_ttys_shift_ids(conf) < 0) {
-		fprintf(stderr, "Failed to shift tty into container\n");
-		goto err1;
-	}
-
-	/* Send wrapper function on its way. */
-	wrap->console = &conf->console;
-	if (c->attach(c, get_pty_on_host_callback, wrap, wrap->options, pid) < 0)
-		goto err1;
-	close(conf->console.slave); /* Close slave side. */
-	conf->console.slave = -1;
-
-	ret = lxc_mainloop_open(&descr);
-	if (ret) {
-		fprintf(stderr, "failed to create mainloop\n");
-		goto err2;
-	}
-
-	if (lxc_console_mainloop_add(&descr, conf) < 0) {
-		fprintf(stderr, "Failed to add handlers to lxc mainloop.\n");
-		goto err3;
-	}
-
-	ret = lxc_mainloop(&descr, -1);
-	if (ret) {
-		fprintf(stderr, "mainloop returned an error\n");
-		goto err3;
-	}
-	ret = 0;
-
-err3:
-	lxc_mainloop_close(&descr);
-err2:
-	if (ts && ts->sigfd != -1)
-		lxc_console_signal_fini(ts);
-err1:
-	lxc_console_delete(&conf->console);
-
-	return ret;
-}
-
-static int stdfd_is_pty(void)
+static bool stdfd_is_pty(void)
 {
 	if (isatty(STDIN_FILENO))
-		return STDIN_FILENO;
+		return true;
 	if (isatty(STDOUT_FILENO))
-		return STDOUT_FILENO;
+		return true;
 	if (isatty(STDERR_FILENO))
-		return STDERR_FILENO;
+		return true;
 
-	return -1;
+	return false;
+}
+
+int lxc_attach_create_log_file(const char *log_file)
+{
+	int fd;
+
+	fd = open(log_file, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600);
+	if (fd < 0) {
+		fprintf(stderr, "Failed to open log file \"%s\"\n", log_file);
+		return -1;
+	}
+
+	return fd;
 }
 
 int main(int argc, char *argv[])
@@ -462,6 +332,8 @@ int main(int argc, char *argv[])
 		attach_options.attach_flags |= LXC_ATTACH_REMOUNT_PROC_SYS;
 	if (elevated_privileges)
 		attach_options.attach_flags &= ~(elevated_privileges);
+	if (stdfd_is_pty())
+		attach_options.attach_flags |= LXC_ATTACH_ALLOCATE_PTY;
 	attach_options.namespaces = namespace_flags;
 	attach_options.personality = new_personality;
 	attach_options.env_policy = env_policy;
@@ -473,28 +345,16 @@ int main(int argc, char *argv[])
 		command.argv = (char**)my_args.argv;
 	}
 
-	struct wrapargs wrap = (struct wrapargs){
-		.command = &command,
-		.options = &attach_options
-	};
-
-	wrap.ptyfd = stdfd_is_pty();
-	if (wrap.ptyfd >= 0) {
-		if ((!isatty(STDOUT_FILENO) || !isatty(STDERR_FILENO)) && my_args.console_log) {
-			fprintf(stderr, "-L/--pty-log can only be used when stdout and stderr refer to a pty.\n");
+	if (my_args.console_log) {
+		attach_options.log_fd = lxc_attach_create_log_file(my_args.console_log);
+		if (attach_options.log_fd < 0)
 			goto out;
-		}
-		ret = get_pty_on_host(c, &wrap, &pid);
-	} else {
-		if (my_args.console_log) {
-			fprintf(stderr, "-L/--pty-log can only be used when stdout and stderr refer to a pty.\n");
-			goto out;
-		}
-		if (command.program)
-			ret = c->attach(c, lxc_attach_run_command, &command, &attach_options, &pid);
-		else
-			ret = c->attach(c, lxc_attach_run_shell, NULL, &attach_options, &pid);
 	}
+
+	if (command.program)
+		ret = c->attach(c, lxc_attach_run_command, &command, &attach_options, &pid);
+	else
+		ret = c->attach(c, lxc_attach_run_shell, NULL, &attach_options, &pid);
 
 	if (ret < 0)
 		goto out;

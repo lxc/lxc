@@ -51,6 +51,7 @@ enum {
 	LXC_ATTACH_LSM_NOW               = 0x00020000, /*!< FIXME: unknown */
 	/* Set PR_SET_NO_NEW_PRIVS to block execve() gainable privileges. */
 	LXC_ATTACH_NO_NEW_PRIVS		 = 0x00040000, /*!< PR_SET_NO_NEW_PRIVS */
+	LXC_ATTACH_ALLOCATE_PTY          = 0x00080000, /*!< Allocate new pty for attached process. */
 
 	/* We have 16 bits for things that are on by default and 16 bits that
 	 * are off by default, that should be sufficient to keep binary
@@ -131,6 +132,9 @@ typedef struct lxc_attach_options_t {
 	int stdout_fd; /*!< stdout file descriptor */
 	int stderr_fd; /*!< stderr file descriptor */
 	/**@}*/
+
+	/*! File descriptor to log output. */
+	int log_fd;
 } lxc_attach_options_t;
 
 /*! Default attach options to use */
@@ -145,7 +149,10 @@ typedef struct lxc_attach_options_t {
 		/* .env_policy = */     LXC_ATTACH_KEEP_ENV,                   \
 		/* .extra_env_vars = */ NULL,                                  \
 		/* .extra_keep_env = */ NULL,                                  \
-		/* .stdin_fd = */       0, 1, 2                                \
+		/* .stdin_fd = */       0,                                     \
+		/* .stdout_fd = */      1,                                     \
+		/* .stderr_fd = */      2,                                     \
+		/* .log_fd    = */      -EBADF,                                \
 	}
 
 /*!

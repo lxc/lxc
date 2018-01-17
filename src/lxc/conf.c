@@ -73,6 +73,7 @@
 #include "cgroup.h"
 #include "conf.h"
 #include "confile_utils.h"
+#include "console.h"
 #include "error.h"
 #include "log.h"
 #include "lxclock.h"
@@ -3091,24 +3092,6 @@ int chown_mapped_root(const char *path, struct lxc_conf *conf)
 	return ret;
 }
 
-int lxc_ttys_shift_ids(struct lxc_conf *c)
-{
-	if (lxc_list_empty(&c->id_map))
-		return 0;
-
-	if (!strcmp(c->console.name, ""))
-		return 0;
-
-	if (chown_mapped_root(c->console.name, c) < 0) {
-		ERROR("failed to chown console \"%s\"", c->console.name);
-		return -1;
-	}
-
-	TRACE("chowned console \"%s\"", c->console.name);
-
-	return 0;
-}
-
 /* NOTE: Must not be called from inside the container namespace! */
 int lxc_create_tmp_proc_mount(struct lxc_conf *conf)
 {
@@ -3720,11 +3703,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 		return;
 	if (current_config == conf)
 		current_config = NULL;
-	free(conf->console.buffer_log_file);
-	free(conf->console.log_path);
-	free(conf->console.path);
-	if (conf->console.buffer_size > 0 && conf->console.ringbuf.addr)
-		lxc_ringbuf_release(&conf->console.ringbuf);
+	lxc_pty_conf_free(&conf->console);
 	free(conf->rootfs.mount);
 	free(conf->rootfs.bdev_type);
 	free(conf->rootfs.options);
