@@ -125,13 +125,13 @@ extern int lxc_wait(const char *lxcname, const char *states, int timeout,
 			return -1;
 		}
 
-		sleep(1);
-
 		if (timeout > 0)
 			timeout--;
 
 		if (timeout == 0)
 			return -1;
+
+		sleep(1);
 	}
 
 	TRACE("Retrieved state of container %s", lxc_state2str(state));
