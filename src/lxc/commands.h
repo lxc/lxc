@@ -48,6 +48,8 @@ typedef enum {
 	LXC_CMD_GET_NAME,
 	LXC_CMD_GET_LXCPATH,
 	LXC_CMD_ADD_STATE_CLIENT,
+	LXC_CMD_CONSOLE_LOG,
+	LXC_CMD_SERVE_STATE_CLIENTS,
 	LXC_CMD_MAX,
 } lxc_cmd_t;
 
@@ -106,6 +108,8 @@ extern int lxc_cmd_stop(const char *name, const char *lxcpath);
 extern int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 				    lxc_state_t states[MAX_STATE],
 				    int *state_client_fd);
+extern int lxc_cmd_serve_state_clients(const char *name, const char *lxcpath,
+				       lxc_state_t state);
 
 struct lxc_epoll_descr;
 struct lxc_handler;

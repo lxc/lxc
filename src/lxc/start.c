@@ -340,9 +340,8 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	return LXC_MAINLOOP_CLOSE;
 }
 
-static int lxc_serve_state_clients(const char *name,
-				   struct lxc_handler *handler,
-				   lxc_state_t state)
+int lxc_serve_state_clients(const char *name, struct lxc_handler *handler,
+			    lxc_state_t state)
 {
 	ssize_t ret;
 	struct lxc_list *cur, *next;
@@ -350,7 +349,11 @@ static int lxc_serve_state_clients(const char *name,
 	struct lxc_msg msg = {.type = lxc_msg_state, .value = state};
 
 	process_lock();
-	handler->state = state;
+	if (state == THAWED)
+		handler->state = RUNNING;
+	else
+		handler->state = state;
+
 	TRACE("Set container state to %s", lxc_state2str(state));
 
 	if (lxc_list_empty(&handler->state_clients)) {
