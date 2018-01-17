@@ -2396,7 +2396,7 @@ int parse_byte_size_string(const char *s, int64_t *converted)
 	int64_t mltpl, overflow;
 	char *end;
 	char dup[LXC_NUMSTRLEN64 + 2];
-	char suffix[3];
+	char suffix[3] = {0};
 
 	if (!s || !strcmp(s, ""))
 		return -EINVAL;
