@@ -472,7 +472,7 @@ int lxc_set_state(const char *name, struct lxc_handler *handler,
 int lxc_poll(const char *name, struct lxc_handler *handler)
 {
 	int ret;
-	bool has_console = (handler->conf->rootfs.path != NULL);
+	struct lxc_console *console = &handler->conf->console;
 	struct lxc_epoll_descr descr, descr_console;
 
 	ret = lxc_mainloop_open(&descr);
@@ -481,12 +481,10 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 		goto out_sigfd;
 	}
 
-	if (has_console) {
-		ret = lxc_mainloop_open(&descr_console);
-		if (ret < 0) {
-			ERROR("Failed to create console mainloop");
-			goto out_mainloop;
-		}
+	ret = lxc_mainloop_open(&descr_console);
+	if (ret < 0) {
+		ERROR("Failed to create console mainloop");
+		goto out_mainloop;
 	}
 
 	ret = lxc_mainloop_add_handler(&descr, handler->sigfd, signal_handler, handler);
@@ -495,20 +493,16 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 		goto out_mainloop_console;
 	}
 
-	if (has_console) {
-		struct lxc_console *console = &handler->conf->console;
+	ret = lxc_console_mainloop_add(&descr, console);
+	if (ret < 0) {
+		ERROR("Failed to add console handlers to mainloop");
+		goto out_mainloop_console;
+	}
 
-		ret = lxc_console_mainloop_add(&descr, console);
-		if (ret < 0) {
-			ERROR("Failed to add console handlers to mainloop");
-			goto out_mainloop_console;
-		}
-
-		ret = lxc_console_mainloop_add(&descr_console, console);
-		if (ret < 0) {
-			ERROR("Failed to add console handlers to console mainloop");
-			goto out_mainloop_console;
-		}
+	ret = lxc_console_mainloop_add(&descr_console, console);
+	if (ret < 0) {
+		ERROR("Failed to add console handlers to console mainloop");
+		goto out_mainloop_console;
 	}
 
 	ret = lxc_cmd_mainloop_add(name, &descr, handler);
@@ -525,19 +519,15 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 	if (ret < 0 || !handler->init_died)
 		goto out_mainloop;
 
-	if (has_console)
-		ret = lxc_mainloop(&descr_console, 0);
-
+	ret = lxc_mainloop(&descr_console, 0);
 
 out_mainloop:
 	lxc_mainloop_close(&descr);
 	TRACE("Closed mainloop");
 
 out_mainloop_console:
-	if (has_console) {
-		lxc_mainloop_close(&descr_console);
-		TRACE("Closed console mainloop");
-	}
+	lxc_mainloop_close(&descr_console);
+	TRACE("Closed console mainloop");
 
 out_sigfd:
 	close(handler->sigfd);
