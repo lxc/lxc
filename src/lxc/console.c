@@ -209,7 +209,7 @@ int lxc_console_cb_con(int fd, uint32_t events, void *data,
 {
 	struct lxc_console *console = (struct lxc_console *)data;
 	char buf[LXC_CONSOLE_BUFFER_SIZE];
-	int r, w, w_log, w_rbuf;
+	int r, w, w_log, w_rbuf, free;
 
 	w = r = lxc_read_nointr(fd, buf, sizeof(buf));
 	if (r <= 0) {
@@ -231,15 +231,25 @@ int lxc_console_cb_con(int fd, uint32_t events, void *data,
 	if (fd == console->peer)
 		w = lxc_write_nointr(console->master, buf, r);
 
-	w_rbuf = w_log = 0;
+	free = w_rbuf = w_log = 0;
 	if (fd == console->master) {
 		/* write to peer first */
 		if (console->peer >= 0)
 			w = lxc_write_nointr(console->peer, buf, r);
 
 		/* write to console ringbuffer */
-		if (console->buffer_size > 0)
+		if (console->buffer_size > 0) {
+			if (console->buffer_log_file_fd > 0 && console->buffer_rotate) {
+				free = lxc_ringbuf_free(&console->ringbuf);
+				if (r <= console->buffer_size && r > free) {
+					if (lxc_console_write_ringbuffer(console))
+						WARN("when rotate, write ringbuffer into file failed.");
+					else
+						lxc_ringbuf_clear(&console->ringbuf);
+				}
+			}
 			w_rbuf = lxc_ringbuf_write(&console->ringbuf, buf, r);
+		}
 
 		/* write to console log */
 		if (console->log_fd >= 0)
