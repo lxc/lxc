@@ -85,6 +85,7 @@ lxc_config_define(cgroup_dir);
 lxc_config_define(console_logfile);
 lxc_config_define(console_rotate);
 lxc_config_define(console_buffer_logfile);
+lxc_config_define(console_buffer_rotate);
 lxc_config_define(console_buffer_size);
 lxc_config_define(console_path);
 lxc_config_define(environment);
@@ -156,6 +157,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.cgroup.dir",                false,                  set_config_cgroup_dir,                  get_config_cgroup_dir,                  clr_config_cgroup_dir,                },
 	{ "lxc.cgroup",                    false,                  set_config_cgroup_controller,           get_config_cgroup_controller,           clr_config_cgroup_controller,         },
 	{ "lxc.console.buffer.logfile",    false,                  set_config_console_buffer_logfile,      get_config_console_buffer_logfile,      clr_config_console_buffer_logfile,    },
+	{ "lxc.console.buffer.rotate",	   false,                  set_config_console_buffer_rotate,	   get_config_console_buffer_rotate,       clr_config_console_buffer_rotate,	 },
 	{ "lxc.console.buffer.size",       false,                  set_config_console_buffer_size,         get_config_console_buffer_size,         clr_config_console_buffer_size,       },
 	{ "lxc.console.logfile",           false,                  set_config_console_logfile,             get_config_console_logfile,             clr_config_console_logfile,           },
 	{ "lxc.console.path",              false,                  set_config_console_path,                get_config_console_path,                clr_config_console_path,              },
@@ -1973,6 +1975,26 @@ static int set_config_console_buffer_size(const char *key, const char *value,
 	return 0;
 }
 
+static int set_config_console_buffer_rotate(const char *key, const char *value,
+				     struct lxc_conf *lxc_conf, void *data)
+{
+	if (lxc_config_value_empty(value)) {
+		lxc_conf->console.buffer_rotate = 0;
+		return 0;
+	}
+
+	if (lxc_safe_uint(value, &lxc_conf->console.buffer_rotate) < 0)
+		return -1;
+
+	if (lxc_conf->console.buffer_rotate > 1) {
+		ERROR("The \"lxc.console.buffer.rotate\" config key can only be set "
+		      "to 0 or 1");
+		return -1;
+	}
+
+	return 0;
+}
+
 static int set_config_console_buffer_logfile(const char *key, const char *value,
 					     struct lxc_conf *lxc_conf,
 					     void *data)
@@ -3279,6 +3301,12 @@ static int get_config_console_buffer_size(const char *key, char *retv,
 	return lxc_get_conf_uint64(c, retv, inlen, c->console.buffer_size);
 }
 
+static int get_config_console_buffer_rotate(const char *key, char *retv, int inlen,
+				     struct lxc_conf *c, void *data)
+{
+	return lxc_get_conf_int(c, retv, inlen, c->console.buffer_rotate);
+}
+
 static int get_config_console_buffer_logfile(const char *key, char *retv,
 					     int inlen, struct lxc_conf *c,
 					     void *data)
@@ -3786,6 +3814,13 @@ static inline int clr_config_console_buffer_size(const char *key,
 						 struct lxc_conf *c, void *data)
 {
 	c->console.buffer_size = 0;
+	return 0;
+}
+
+static inline int clr_config_console_buffer_rotate(const char *key, struct lxc_conf *c,
+					    void *data)
+{
+	c->console.buffer_rotate = 0;
 	return 0;
 }
 

@@ -834,6 +834,20 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
         <varlistentry>
           <term>
+            <option>lxc.console.buffer.rotate</option>
+          </term>
+          <listitem>
+            <para>
+              Whether to rotate the buffer logfile specified in
+              <option>lxc.console.buffer.logfile</option>. When ringbuffer is full, 
+              will to rotate the logfile and dump the contents of the in-memory 
+              ringbuffer to disk, and clear ringbuffer. 
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
             <option>lxc.console.buffer.logfile</option>
           </term>
           <listitem>
