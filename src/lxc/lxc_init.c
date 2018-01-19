@@ -202,7 +202,7 @@ int main(int argc, char *argv[])
 	struct sigaction act;
 	struct lxc_log log;
 	sigset_t mask, omask;
-	int have_status = 0, shutdown = 0;
+	int have_status = 0, exit_with = 1, shutdown = 0;
 
 	if (arguments_parse(&my_args, argc, argv))
 		exit(EXIT_FAILURE);
@@ -420,14 +420,14 @@ int main(int argc, char *argv[])
 		 * pid) and continue to wait for the end of the orphan group.
 		 */
 		if (waited_pid == pid && !have_status) {
-			ret = lxc_error_set_and_log(waited_pid, status);
+			exit_with = lxc_error_set_and_log(waited_pid, status);
 			have_status = 1;
 		}
 	}
 out:
 	if (ret < 0)
 		exit(EXIT_FAILURE);
-	exit(ret);
+	exit(exit_with);
 }
 
 static void print_usage(const struct option longopts[])
