@@ -2136,7 +2136,7 @@ dev/null proc/kcore none bind,relative 0 0
         </varlistentry>
         <varlistentry>
           <term>
-            <option>lxc.log</option>
+            <option>lxc.log.file</option>
           </term>
           <listitem>
             <para>
