@@ -168,14 +168,20 @@ int main(int argc, char *argv[])
 
 	c->daemonize = false;
 	bret = c->start(c, 1, my_args.argv);
-	if (c->daemonize)
-		ret = EXIT_SUCCESS;
-	else
-		ret = c->error_num;
 	lxc_container_put(c);
 	if (!bret) {
 		fprintf(stderr, "Failed run an application inside container\n");
 		exit(EXIT_FAILURE);
 	}
-	exit(ret);
+	if (c->daemonize)
+		exit(EXIT_SUCCESS);
+	else {
+		if (WIFEXITED(c->error_num)) {
+			exit(WEXITSTATUS(c->error_num));
+		} else {
+			/* Try to die with the same signal the task did. */
+			kill(0, WTERMSIG(c->error_num));
+			exit(EXIT_FAILURE);
+		}
+	}
 }
