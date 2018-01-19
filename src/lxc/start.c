@@ -314,6 +314,14 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	if (ret == 0 && info.si_pid == hdlr->pid)
 		hdlr->init_died = true;
 
+	/* More robustness, protect ourself from a SIGCHLD sent
+	 * by a process different from the container init.
+	 */
+	if (siginfo.ssi_pid != hdlr->pid) {
+		NOTICE("Received %d from pid %d instead of container init %d.", siginfo.ssi_signo, siginfo.ssi_pid, hdlr->pid);
+		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
+	}
+
 	if (siginfo.ssi_signo != SIGCHLD) {
 		kill(hdlr->pid, siginfo.ssi_signo);
 		INFO("Forwarded signal %d to pid %d.", siginfo.ssi_signo, hdlr->pid);
@@ -325,14 +333,6 @@ static int signal_handler(int fd, uint32_t events, void *data,
 		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
 	} else if (siginfo.ssi_code == CLD_CONTINUED) {
 		INFO("Container init process was continued.");
-		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
-	}
-
-	/* More robustness, protect ourself from a SIGCHLD sent
-	 * by a process different from the container init.
-	 */
-	if (siginfo.ssi_pid != hdlr->pid) {
-		NOTICE("Received SIGCHLD from pid %d instead of container init %d.", siginfo.ssi_pid, hdlr->pid);
 		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
 	}
 
