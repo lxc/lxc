@@ -314,6 +314,27 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	if (ret == 0 && info.si_pid == hdlr->pid)
 		hdlr->init_died = true;
 
+	/* Try to figure out a reasonable exit status to report. */
+	if (hdlr->init_died) {
+		switch (info.si_code) {
+		case CLD_EXITED:
+			hdlr->exit_status = info.si_status << 8;
+			break;
+		case CLD_KILLED:
+		case CLD_DUMPED:
+		case CLD_STOPPED:
+			hdlr->exit_status = info.si_status << 8 | 0x7f;
+			break;
+		case CLD_CONTINUED:
+			/* Huh? The waitid() told us it's dead *and* continued? */
+			WARN("Init %d dead and continued?", hdlr->pid);
+			hdlr->exit_status = 1;
+			break;
+		default:
+			ERROR("Unknown si_code: %d", hdlr->init_died);
+		}
+	}
+
 	/* More robustness, protect ourself from a SIGCHLD sent
 	 * by a process different from the container init.
 	 */
