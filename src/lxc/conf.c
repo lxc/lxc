@@ -1569,7 +1569,7 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	if (console->path && !strcmp(console->path, "none"))
 		return 0;
 
-	ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs->mount);
+	ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs->path ? rootfs->mount : "");
 	if (ret < 0 || (size_t)ret >= sizeof(path))
 		return -1;
 
@@ -1583,12 +1583,6 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 			return -ret;
 		} else {
 			DEBUG("cleared all (%d) mounts from \"%s\"", ret, path);
-		}
-
-		ret = unlink(path);
-		if (ret < 0) {
-			SYSERROR("error unlinking %s", path);
-			return -errno;
 		}
 	}
 
@@ -1610,7 +1604,7 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 		return -errno;
 	}
 
-	if (safe_mount(console->name, path, "none", MS_BIND, 0, rootfs->mount) < 0) {
+	if (safe_mount(console->name, path, "none", MS_BIND, 0, rootfs->path ? rootfs->mount : "") < 0) {
 		ERROR("failed to mount '%s' on '%s'", console->name, path);
 		return -1;
 	}
@@ -1623,11 +1617,14 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 				    const struct lxc_console *console,
 				    char *ttydir)
 {
-	int ret;
+	int ret, fd;
 	char path[MAXPATHLEN], lxcpath[MAXPATHLEN];
 
+	if (console->path && !strcmp(console->path, "none"))
+		return 0;
+
 	/* create rootfs/dev/<ttydir> directory */
-	ret = snprintf(path, sizeof(path), "%s/dev/%s", rootfs->mount, ttydir);
+	ret = snprintf(path, sizeof(path), "%s/dev/%s", rootfs->path ? rootfs->mount : "", ttydir);
 	if (ret < 0 || (size_t)ret >= sizeof(path))
 		return -1;
 
@@ -1638,7 +1635,7 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 	}
  	DEBUG("Created directory for console and tty devices at \"%s\"", path);
 
-	ret = snprintf(lxcpath, sizeof(lxcpath), "%s/dev/%s/console", rootfs->mount, ttydir);
+	ret = snprintf(lxcpath, sizeof(lxcpath), "%s/dev/%s/console", rootfs->path ? rootfs->mount : "", ttydir);
 	if (ret < 0 || (size_t)ret >= sizeof(lxcpath))
 		return -1;
 
@@ -1650,56 +1647,11 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 	if (ret >= 0)
 		close(ret);
 
-	ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs->mount);
-	if (ret < 0 || (size_t)ret >= sizeof(lxcpath))
+	ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs->path ? rootfs->mount : "");
+	if (ret < 0 || (size_t)ret >= sizeof(path))
 		return -1;
 
-	/* When we are asked to setup a console we remove any previous
-	 * /dev/console bind-mounts.
-	 */
-	if (console->path && !strcmp(console->path, "none")) {
-		struct stat st;
-		ret = stat(path, &st);
-		if (ret < 0) {
-			if (errno == ENOENT)
-				return 0;
-			SYSERROR("failed stat() \"%s\"", path);
-			return -errno;
-		}
-
-		/* /dev/console must be character device with major number 5 and
-		 * minor number 1. If not, give benefit of the doubt and assume
-		 * the user has mounted something else right there on purpose.
-		 */
-		if (((st.st_mode & S_IFMT) != S_IFCHR) || major(st.st_rdev) != 5 || minor(st.st_rdev) != 1)
-			return 0;
-
-		/* In case the user requested a bind-mount for /dev/console and
-		 * requests a ttydir we move the mount to the
-		 * /dev/<ttydir/console.
-		 * Note, we only move the uppermost mount and clear all other
-		 * mounts underneath for safety.
-		 * If it is a character device created via mknod() we simply
-		 * rename it.
-		 */
-		ret = safe_mount(path, lxcpath, "none", MS_MOVE, NULL, rootfs->mount);
-		if (ret < 0) {
-			if (errno != EINVAL) {
-				ERROR("failed to MS_MOVE \"%s\" to \"%s\": %s", path, lxcpath, strerror(errno));
-				return -errno;
-			}
-			/* path was not a mountpoint */
-			ret = rename(path, lxcpath);
-			if (ret < 0) {
-				ERROR("failed to rename \"%s\" to \"%s\": %s", path, lxcpath, strerror(errno));
-				return -errno;
-			}
-			DEBUG("renamed \"%s\" to \"%s\"", path, lxcpath);
-		} else {
-			DEBUG("moved mount \"%s\" to \"%s\"", path, lxcpath);
-		}
-
-		/* Clear all remaining bind-mounts. */
+	if (file_exists(path)) {
 		ret = lxc_unstack_mountpoint(path, false);
 		if (ret < 0) {
 			ERROR("failed to unmount \"%s\": %s", path, strerror(errno));
@@ -1707,53 +1659,45 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 		} else {
 			DEBUG("cleared all (%d) mounts from \"%s\"", ret, path);
 		}
-	} else {
-		if (file_exists(path)) {
-			ret = lxc_unstack_mountpoint(path, false);
-			if (ret < 0) {
-				ERROR("failed to unmount \"%s\": %s", path, strerror(errno));
-				return -ret;
-			} else {
-				DEBUG("cleared all (%d) mounts from \"%s\"", ret, path);
-			}
-		}
-
-		if (safe_mount(console->name, lxcpath, "none", MS_BIND, 0, rootfs->mount) < 0) {
-			ERROR("failed to mount '%s' on '%s'", console->name, lxcpath);
-			return -1;
-		}
-		DEBUG("mounted \"%s\" onto \"%s\"", console->name, lxcpath);
 	}
 
-	/* create symlink from rootfs /dev/console to '<ttydir>/console' */
-	ret = snprintf(lxcpath, sizeof(lxcpath), "%s/console", ttydir);
-	if (ret < 0 || (size_t)ret >= sizeof(lxcpath))
-		return -1;
+	fd = open(path, O_CREAT | O_EXCL, S_IXUSR | S_IXGRP | S_IXOTH);
+	if (fd < 0) {
+		if (errno != EEXIST) {
+			SYSERROR("failed to create console");
+			return -errno;
+		}
+	} else {
+		close(fd);
+	}
 
-	ret = unlink(path);
-	if (ret && errno != ENOENT) {
-		SYSERROR("error unlinking %s", path);
+	if (chmod(console->name, S_IXUSR | S_IXGRP | S_IXOTH)) {
+		SYSERROR("failed to set mode '0%o' to '%s'", S_IXUSR | S_IXGRP | S_IXOTH, console->name);
 		return -errno;
 	}
 
-	ret = symlink(lxcpath, path);
-	if (ret < 0) {
-		SYSERROR("failed to create symlink for console from \"%s\" to \"%s\"", lxcpath, path);
+	/* bind mount console->name to '/dev/<ttydir>/console' */
+	if (safe_mount(console->name, lxcpath, "none", MS_BIND, 0, rootfs->path ? rootfs->mount : "") < 0) {
+		ERROR("failed to mount '%s' on '%s'", console->name, lxcpath);
 		return -1;
 	}
+	DEBUG("mounted \"%s\" onto \"%s\"", console->name, lxcpath);
 
-	DEBUG("console has been setup under \"%s\" and symlinked to \"%s\"", lxcpath, path);
+	/* bind mount '/dev/<ttydir>/console'  to '/dev/console'  */
+	if (safe_mount(lxcpath, path, "none", MS_BIND, 0, rootfs->path ? rootfs->mount : "") < 0) {
+		ERROR("failed to mount '%s' on '%s'", console->name, lxcpath);
+		return -1;
+	}
+	DEBUG("mounted \"%s\" onto \"%s\"", console->name, lxcpath);
+
+	DEBUG("console has been setup under \"%s\" and mounted to \"%s\"", lxcpath, path);
+
 	return 0;
 }
 
 static int lxc_setup_console(const struct lxc_rootfs *rootfs,
 			     const struct lxc_console *console, char *ttydir)
 {
-	/* We don't have a rootfs, /dev/console will be shared. */
-	if (!rootfs->path) {
-		DEBUG("/dev/console will be shared with the host");
-		return 0;
-	}
 
 	if (!ttydir)
 		return lxc_setup_dev_console(rootfs, console);
