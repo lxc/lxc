@@ -323,6 +323,36 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	if (ret == 0 && info.si_pid == hdlr->pid)
 		hdlr->init_died = true;
 
+	/* Try to figure out a reasonable exit status to report. */
+	if (hdlr->init_died) {
+		switch (info.si_code) {
+		case CLD_EXITED:
+			hdlr->exit_status = info.si_status << 8;
+			break;
+		case CLD_KILLED:
+		case CLD_DUMPED:
+		case CLD_STOPPED:
+			hdlr->exit_status = info.si_status << 8 | 0x7f;
+			break;
+		case CLD_CONTINUED:
+			/* Huh? The waitid() told us it's dead *and* continued? */
+			WARN("Init %d dead and continued?", hdlr->pid);
+			hdlr->exit_status = 1;
+			break;
+		default:
+			ERROR("Unknown si_code: %d", hdlr->init_died);
+			hdlr->exit_status = 1;
+		}
+	}
+
+	/* More robustness, protect ourself from a SIGCHLD sent
+	 * by a process different from the container init.
+	 */
+	if (siginfo.ssi_pid != hdlr->pid) {
+		NOTICE("Received %d from pid %d instead of container init %d.", siginfo.ssi_signo, siginfo.ssi_pid, hdlr->pid);
+		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
+	}
+
 	if (siginfo.ssi_signo != SIGCHLD) {
 		kill(hdlr->pid, siginfo.ssi_signo);
 		INFO("Forwarded signal %d to pid %d.", siginfo.ssi_signo, hdlr->pid);
@@ -334,14 +364,6 @@ static int signal_handler(int fd, uint32_t events, void *data,
 		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
 	} else if (siginfo.ssi_code == CLD_CONTINUED) {
 		INFO("Container init process was continued.");
-		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
-	}
-
-	/* More robustness, protect ourself from a SIGCHLD sent
-	 * by a process different from the container init.
-	 */
-	if (siginfo.ssi_pid != hdlr->pid) {
-		NOTICE("Received SIGCHLD from pid %d instead of container init %d.", siginfo.ssi_pid, hdlr->pid);
 		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
 	}
 
@@ -1802,7 +1824,7 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	}
 
 	lxc_monitor_send_exit_code(name, status, handler->lxcpath);
-	err =  lxc_error_set_and_log(handler->pid, status);
+	lxc_error_set_and_log(handler->pid, status);
 
 out_fini:
 	lxc_delete_network(handler);

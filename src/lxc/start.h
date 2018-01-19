@@ -109,6 +109,11 @@ struct lxc_handler {
 
 	/* Current state of the container. */
 	lxc_state_t state;
+
+	/* The exit status of the container; not defined unless ->init_died ==
+	 * true.
+	 */
+	int exit_status;
 };
 
 struct lxc_operations {
