@@ -35,27 +35,26 @@ extern "C" {
  * LXC environment policy.
  */
 typedef enum lxc_attach_env_policy_t {
-	LXC_ATTACH_KEEP_ENV,   //!< Retain the environment
-	LXC_ATTACH_CLEAR_ENV   //!< Clear the environment
+	LXC_ATTACH_KEEP_ENV,   /*!< Retain the environment */
+	LXC_ATTACH_CLEAR_ENV   /*!< Clear the environment */
 } lxc_attach_env_policy_t;
 
 enum {
-	/* the following are on by default: */
-	LXC_ATTACH_MOVE_TO_CGROUP        = 0x00000001, //!< Move to cgroup
-	LXC_ATTACH_DROP_CAPABILITIES     = 0x00000002, //!< Drop capabilities
-	LXC_ATTACH_SET_PERSONALITY       = 0x00000004, //!< Set personality
-	LXC_ATTACH_LSM_EXEC              = 0x00000008, //!< Execute under a Linux Security Module
+	/* The following are on by default: */
+	LXC_ATTACH_MOVE_TO_CGROUP        = 0x00000001, /*!< Move to cgroup */
+	LXC_ATTACH_DROP_CAPABILITIES     = 0x00000002, /*!< Drop capabilities */
+	LXC_ATTACH_SET_PERSONALITY       = 0x00000004, /*!< Set personality */
+	LXC_ATTACH_LSM_EXEC              = 0x00000008, /*!< Execute under a Linux Security Module */
 
-	/* the following are off by default */
-	LXC_ATTACH_REMOUNT_PROC_SYS      = 0x00010000, //!< Remount /proc filesystem
-	LXC_ATTACH_LSM_NOW               = 0x00020000, //!< FIXME: unknown
+	/* The following are off by default: */
+	LXC_ATTACH_REMOUNT_PROC_SYS      = 0x00010000, /*!< Remount /proc filesystem */
+	LXC_ATTACH_LSM_NOW               = 0x00020000, /*!< FIXME: unknown */
 
-	/* we have 16 bits for things that are on by default
-	 * and 16 bits that are off by default, that should
-	 * be sufficient to keep binary compatibility for
-	 * a while
+	/* We have 16 bits for things that are on by default and 16 bits that
+	 * are off by default, that should be sufficient to keep binary
+	 * compatibility for a while
 	 */
-	LXC_ATTACH_DEFAULT               = 0x0000FFFF  //!< Mask of flags to apply by default
+	LXC_ATTACH_DEFAULT               = 0x0000FFFF  /*!< Mask of flags to apply by default */
 };
 
 /*! All Linux Security Module flags */
@@ -82,13 +81,14 @@ typedef struct lxc_attach_options_t {
 	int namespaces;
 
 	/*! Initial personality (\c -1 to autodetect).
-	 * \warning This may be ignored if lxc is compiled without personality support)
+	 * \warning This may be ignored if lxc is compiled without personality
+	 * support)
 	 */
 	long personality;
 
 	/*! Initial current directory, use \c NULL to use cwd.
-	 * If the current directory does not exist in the container, the
-	 * root directory will be used instead because of kernel defaults.
+	 * If the current directory does not exist in the container, the root
+	 * directory will be used instead because of kernel defaults.
 	 */
 	char* initial_cwd;
 
@@ -132,18 +132,20 @@ typedef struct lxc_attach_options_t {
 } lxc_attach_options_t;
 
 /*! Default attach options to use */
-#define LXC_ATTACH_OPTIONS_DEFAULT \
-	{ \
-		/* .attach_flags = */   LXC_ATTACH_DEFAULT, \
-		/* .namespaces = */     -1, \
-		/* .personality = */    -1, \
-		/* .initial_cwd = */    NULL, \
-		/* .uid = */            (uid_t)-1, \
-		/* .gid = */            (gid_t)-1, \
-		/* .env_policy = */     LXC_ATTACH_KEEP_ENV, \
-		/* .extra_env_vars = */ NULL, \
-		/* .extra_keep_env = */ NULL, \
-		/* .stdin_fd = */       0, 1, 2 \
+#define LXC_ATTACH_OPTIONS_DEFAULT                                             \
+	{                                                                      \
+		/* .attach_flags = */   LXC_ATTACH_DEFAULT,                    \
+		/* .namespaces = */     -1,                                    \
+		/* .personality = */    -1,                                    \
+		/* .initial_cwd = */    NULL,                                  \
+		/* .uid = */            (uid_t)-1,                             \
+		/* .gid = */            (gid_t)-1,                             \
+		/* .env_policy = */     LXC_ATTACH_KEEP_ENV,                   \
+		/* .extra_env_vars = */ NULL,                                  \
+		/* .extra_keep_env = */ NULL,                                  \
+		/* .stdin_fd = */       0,                                     \
+		/* .stdout_fd = */      1,                                     \
+		/* .stderr_fd = */      2,                                     \
 	}
 
 /*!
