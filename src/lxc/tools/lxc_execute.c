@@ -21,24 +21,26 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #define _GNU_SOURCE
-#include <stdio.h>
-#include <stdlib.h>
 #include <errno.h>
 #include <libgen.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <lxc/lxccontainer.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <sys/param.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
-#include "caps.h"
-#include "lxc.h"
-#include "log.h"
-#include "conf.h"
-#include "confile.h"
+#include <lxc/lxccontainer.h>
+
 #include "arguments.h"
+#include "caps.h"
+#include "conf.h"
 #include "config.h"
+#include "confile.h"
+#include "log.h"
+#include "lxc.h"
 #include "start.h"
 #include "utils.h"
 
