@@ -603,13 +603,14 @@ bool storage_destroy(struct lxc_conf *conf)
 {
 	struct lxc_storage *r;
 	bool ret = false;
+	int destroy_rv = 0;
 
 	r = storage_init(conf);
 	if (!r)
 		return ret;
 
-	ret = r->ops->destroy(r);
-	if (ret == 0)
+	destroy_rv = r->ops->destroy(r);
+	if (destroy_rv == 0)
 		ret = true;
 
 	storage_put(r);
