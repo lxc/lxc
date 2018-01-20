@@ -2344,12 +2344,8 @@ int parse_byte_size_string(const char *s, int64_t *converted)
 	if (suffix_len > 0 && (end - 2) == dup && !isdigit(*(end - 2)))
 		return -EINVAL;
 
-	if (suffix_len > 0 && isalpha(*(end - 2))) {
-		if (suffix_len == 1)
-			suffix_len++;
-		else
-			return -EINVAL;
-	}
+	if (suffix_len > 0 && isalpha(*(end - 2)))
+		suffix_len++;
 
 	if (suffix_len > 0) {
 		memcpy(suffix, end - suffix_len, suffix_len);
