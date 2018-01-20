@@ -803,8 +803,10 @@ static void lxc_put_attach_clone_payload(struct attach_clone_payload *p)
 		p->pty_fd = -EBADF;
 	}
 
-	if (p->init_ctx)
+	if (p->init_ctx) {
 		lxc_proc_put_context_info(p->init_ctx);
+		p->init_ctx = NULL;
+	}
 }
 
 static int attach_child_main(struct attach_clone_payload *payload)
