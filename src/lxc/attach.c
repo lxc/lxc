@@ -1269,6 +1269,8 @@ int lxc_attach(const char *name, const char *lxcpath,
 		}
 
 		pty.log_fd = options->log_fd;
+	} else {
+		lxc_pty_init(&pty);
 	}
 
 	/* Create a socket pair for IPC communication; set SOCK_CLOEXEC in order
