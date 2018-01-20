@@ -54,9 +54,8 @@
 #include "cgroup.h"
 #include "cgroup_utils.h"
 #include "commands.h"
-#include "conf.h"
 #include "log.h"
-#include "storage/storage.h"
+#include "storage.h"
 #include "utils.h"
 
 lxc_log_define(lxc_cgfsng, lxc);
@@ -395,7 +394,7 @@ static ssize_t get_max_cpus(char *cpulist)
 		c2 = c1;
 	else if (c1 < c2)
 		c1 = c2;
-	else if (!c1 && c2) /* The reverse case is obvs. not needed. */
+	else if (!c1 && c2) // The reverse case is obvs. not needed.
 		c1 = c2;
 
 	/* If the above logic is correct, c1 should always hold a valid string
@@ -423,7 +422,7 @@ static bool filter_and_set_cpus(char *path, bool am_initialized)
 	bool bret = false, flipped_bit = false;
 
 	lastslash = strrchr(path, '/');
-	if (!lastslash) { /* bug...  this shouldn't be possible */
+	if (!lastslash) { // bug...  this shouldn't be possible
 		ERROR("Invalid path: %s.", path);
 		return bret;
 	}
@@ -556,7 +555,7 @@ static bool copy_parent_file(char *path, char *file)
 	int ret;
 
 	lastslash = strrchr(path, '/');
-	if (!lastslash) { /* bug...  this shouldn't be possible */
+	if (!lastslash) { // bug...  this shouldn't be possible
 		ERROR("cgfsng:copy_parent_file: bad path %s", path);
 		return false;
 	}
@@ -993,10 +992,8 @@ static void lxc_cgfsng_print_handler_data(const struct cgfsng_handler_data *d)
 	printf("Cgroup information:\n");
 	printf("  container name: %s\n", d->name ? d->name : "(null)");
 	printf("  lxc.cgroup.use: %s\n", cgroup_use ? cgroup_use : "(null)");
-	printf("  lxc.cgroup.pattern: %s\n",
-	       d->cgroup_pattern ? d->cgroup_pattern : "(null)");
-	printf("  cgroup: %s\n",
-	       d->container_cgroup ? d->container_cgroup : "(null)");
+	printf("  lxc.cgroup.pattern: %s\n", d->cgroup_pattern ? d->cgroup_pattern : "(null)");
+	printf("  cgroup: %s\n", d->container_cgroup ? d->container_cgroup : "(null)");
 }
 
 static void lxc_cgfsng_print_hierarchies()
@@ -1149,6 +1146,7 @@ static bool collect_hierarchy_info(void)
 	const char *tmp;
 	errno = 0;
 	tmp = lxc_global_config_value("lxc.cgroup.use");
+
 	if (!cgroup_use && errno != 0) { /* lxc.cgroup.use can be NULL */
 		CGFSNG_DEBUG("Failed to retrieve list of cgroups to use\n");
 		return false;
@@ -1158,21 +1156,18 @@ static bool collect_hierarchy_info(void)
 	return parse_hierarchies();
 }
 
-static void *cgfsng_init(struct lxc_handler *handler)
+static void *cgfsng_init(const char *name)
 {
-	const char *cgroup_pattern;
 	struct cgfsng_handler_data *d;
+	const char *cgroup_pattern;
 
 	d = must_alloc(sizeof(*d));
 	memset(d, 0, sizeof(*d));
 
-	/* copy container name */
-	d->name = must_copy_string(handler->name);
+	d->name = must_copy_string(name);
 
-	/* copy system-wide cgroup information */
 	cgroup_pattern = lxc_global_config_value("lxc.cgroup.pattern");
-	if (!cgroup_pattern) {
-		/* lxc.cgroup.pattern is only NULL on error. */
+	if (!cgroup_pattern) { // lxc.cgroup.pattern is only NULL on error
 		ERROR("Error getting cgroup pattern");
 		goto out_free;
 	}
@@ -1337,7 +1332,7 @@ struct cgroup_ops *cgfsng_ops_init(void)
 static bool create_path_for_hierarchy(struct hierarchy *h, char *cgname)
 {
 	h->fullcgpath = must_make_path(h->mountpoint, h->base_cgroup, cgname, NULL);
-	if (dir_exists(h->fullcgpath)) { /* it must not already exist */
+	if (dir_exists(h->fullcgpath)) { // it must not already exist
 		ERROR("Path \"%s\" already existed.", h->fullcgpath);
 		return false;
 	}
@@ -1362,15 +1357,14 @@ static void remove_path_for_hierarchy(struct hierarchy *h, char *cgname)
  */
 static inline bool cgfsng_create(void *hdata)
 {
-	int i;
-	size_t len;
-	char *cgname, *offset, *tmp;
-	int idx = 0;
 	struct cgfsng_handler_data *d = hdata;
+	char *tmp, *cgname, *offset;
+	int i;
+	int idx = 0;
+	size_t len;
 
 	if (!d)
 		return false;
-
 	if (d->container_cgroup) {
 		WARN("cgfsng_create called a second time");
 		return false;
@@ -1381,7 +1375,7 @@ static inline bool cgfsng_create(void *hdata)
 		ERROR("Failed expanding cgroup name pattern");
 		return false;
 	}
-	len = strlen(tmp) + 5; /* leave room for -NNN\0 */
+	len = strlen(tmp) + 5; // leave room for -NNN\0
 	cgname = must_alloc(len);
 	strcpy(cgname, tmp);
 	free(tmp);
@@ -1409,7 +1403,7 @@ again:
 	for (i = 0; hierarchies[i]; i++) {
 		if (!create_path_for_hierarchy(hierarchies[i], cgname)) {
 			int j;
-			ERROR("Failed to create \"%s\"", hierarchies[i]->fullcgpath);
+			SYSERROR("Failed to create %s: %s", hierarchies[i]->fullcgpath, strerror(errno));
 			free(hierarchies[i]->fullcgpath);
 			hierarchies[i]->fullcgpath = NULL;
 			for (j = 0; j < i; j++)
@@ -1449,6 +1443,11 @@ static bool cgfsng_enter(void *hdata, pid_t pid)
 
 	return true;
 }
+
+struct chown_data {
+	struct cgfsng_handler_data *d;
+	uid_t origuid; // target uid in parent namespace
+};
 
 /*
  * chgrp the container cgroups to container group.  We leave
@@ -1917,6 +1916,13 @@ static char *build_full_cgpath_from_monitorpath(struct hierarchy *h,
 						const char *inpath,
 						const char *filename)
 {
+	/*
+	 * XXX Remove this case after 2.0 release.  It's for dealing with
+	 * containers spawned under the old buggy cgfsng which wasn't around
+	 * for long.
+	 */
+	if (strncmp(inpath, "/sys/fs/cgroup/", 15) == 0)
+		return must_make_path(inpath, filename, NULL);
 	return must_make_path(h->mountpoint, inpath, filename, NULL);
 }
 
@@ -1934,7 +1940,7 @@ static bool cgfsng_attach(const char *name, const char *lxcpath, pid_t pid)
 		struct hierarchy *h = hierarchies[i];
 
 		path = lxc_cmd_get_cgroup_path(name, lxcpath, h->controllers[0]);
-		if (!path) /* not running */
+		if (!path) // not running
 			continue;
 
 		fullpath = build_full_cgpath_from_monitorpath(h, path, "cgroup.procs");
@@ -1967,7 +1973,7 @@ static int cgfsng_get(const char *filename, char *value, size_t len, const char 
 		*p = '\0';
 
 	path = lxc_cmd_get_cgroup_path(name, lxcpath, subsystem);
-	if (!path) /* not running */
+	if (!path) // not running
 		return -1;
 
 	h = get_hierarchy(subsystem);
@@ -1999,7 +2005,7 @@ static int cgfsng_set(const char *filename, const char *value, const char *name,
 		*p = '\0';
 
 	path = lxc_cmd_get_cgroup_path(name, lxcpath, subsystem);
-	if (!path) /* not running */
+	if (!path) // not running
 		return -1;
 
 	h = get_hierarchy(subsystem);
@@ -2015,90 +2021,12 @@ static int cgfsng_set(const char *filename, const char *value, const char *name,
 }
 
 /*
- * take devices cgroup line
- *    /dev/foo rwx
- * and convert it to a valid
- *    type major:minor mode
- * line.  Return <0 on error.  Dest is a preallocated buffer
- * long enough to hold the output.
- */
-static int convert_devpath(const char *invalue, char *dest)
-{
-	int n_parts;
-	char *p, *path, type;
-	struct stat sb;
-	unsigned long minor, major;
-	int ret = -EINVAL;
-	char *mode = NULL;
-
-	path = must_copy_string(invalue);
-
-	/*
-	 * read path followed by mode;  ignore any trailing text.
-	 * A '    # comment' would be legal.  Technically other text
-	 * is not legal, we could check for that if we cared to
-	 */
-	for (n_parts = 1, p = path; *p && n_parts < 3; p++) {
-		if (*p != ' ')
-			continue;
-		*p = '\0';
-		if (n_parts != 1)
-			break;
-		p++;
-		n_parts++;
-		while (*p == ' ')
-			p++;
-		mode = p;
-		if (*p == '\0')
-			goto out;
-	}
-
-	if (n_parts == 1)
-		goto out;
-
-	ret = stat(path, &sb);
-	if (ret < 0)
-		goto out;
-
-	mode_t m = sb.st_mode & S_IFMT;
-	switch (m) {
-	case S_IFBLK:
-		type = 'b';
-		break;
-	case S_IFCHR:
-		type = 'c';
-		break;
-	default:
-		ERROR("Unsupported device type %i for %s", m, path);
-		ret = -EINVAL;
-		goto out;
-	}
-
-	major = MAJOR(sb.st_rdev);
-	minor = MINOR(sb.st_rdev);
-	ret = snprintf(dest, 50, "%c %lu:%lu %s", type, major, minor, mode);
-	if (ret < 0 || ret >= 50) {
-		ERROR("Error on configuration value \"%c %lu:%lu %s\" (max 50 "
-		      "chars)", type, major, minor, mode);
-		ret = -ENAMETOOLONG;
-		goto out;
-	}
-	ret = 0;
-
-out:
-	free(path);
-	return ret;
-}
-
-/*
  * Called from setup_limits - here we have the container's cgroup_data because
  * we created the cgroups
  */
 static int lxc_cgroup_set_data(const char *filename, const char *value, struct cgfsng_handler_data *d)
 {
 	char *fullpath, *p;
-	/* "b|c <2^64-1>:<2^64-1> r|w|m" = 47 chars max */
-	char converted_value[50];
 	struct hierarchy *h;
 	int ret = 0;
 	char *controller = NULL;
@@ -2107,14 +2035,6 @@ static int lxc_cgroup_set_data(const char *filename, const char *value, struct c
 	strcpy(controller, filename);
 	if ((p = strchr(controller, '.')) != NULL)
 		*p = '\0';
-
-	if (strcmp("devices.allow", filename) == 0 && value[0] == '/') {
-		ret = convert_devpath(value, converted_value);
-		if (ret < 0)
-			return ret;
-		value = converted_value;
-
-	}
 
 	h = get_hierarchy(controller);
 	if (!h) {
