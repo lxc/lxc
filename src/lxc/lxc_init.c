@@ -155,8 +155,6 @@ static void prevent_forking(void)
 	}
 
 on_error:
-	if (fd >= 0)
-		close(fd);
 	free(line);
 	fclose(f);
 }
