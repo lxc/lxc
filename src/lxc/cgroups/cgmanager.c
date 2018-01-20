@@ -141,7 +141,7 @@ static bool cgm_dbus_connect(void)
 
 	cgm_lock();
 	if (!dbus_threads_initialized) {
-		// tell dbus to do struct locking for thread safety
+		/* tell dbus to do struct locking for thread safety */
 		dbus_threads_init_default();
 		dbus_threads_initialized = true;
 	}
@@ -171,7 +171,7 @@ static bool cgm_dbus_connect(void)
 		return false;
 	}
 
-	// get the api version
+	/* get the api version */
 	if (cgmanager_get_api_version_sync(NULL, cgroup_manager, &api_version) != 0) {
 		NihError *nerr;
 		nerr = nih_error_get();
@@ -545,7 +545,7 @@ static void cgm_remove_cgroup(const char *controller, const char *path)
 		INFO("cgroup removal attempt: %s:%s did not exist", controller, path);
 }
 
-static void *cgm_init(const char *name)
+static void *cgm_init(struct lxc_handler *handler)
 {
 	struct cgm_data *d;
 
@@ -559,7 +559,7 @@ static void *cgm_init(const char *name)
 	}
 
 	memset(d, 0, sizeof(*d));
-	d->name = strdup(name);
+	d->name = strdup(handler->name);
 	if (!d->name) {
 		cgm_dbus_disconnect();
 		goto err1;
@@ -567,7 +567,7 @@ static void *cgm_init(const char *name)
 
 	d->cgroup_pattern = lxc_global_config_value("lxc.cgroup.pattern");
 
-	// cgm_create immediately gets called so keep the connection open
+	/* cgm_create immediately gets called so keep the connection open */
 	return d;
 
 err1:
@@ -625,10 +625,10 @@ static inline bool cgm_create(void *hdata)
 
 	if (!d)
 		return false;
-// XXX we should send a hint to the cgmanager that when these
-// cgroups become empty they should be deleted.  Requires a cgmanager
-// extension
 
+	/* XXX we should send a hint to the cgmanager that when these cgroups
+	 * become empty they should be deleted. Requires a cgmanager extension.
+	 */
 	memset(result, 0, MAXPATHLEN);
 	tmp = lxc_string_replace("%n", d->name, d->cgroup_pattern);
 	if (!tmp)
@@ -644,7 +644,7 @@ static inline bool cgm_create(void *hdata)
 	while (*tmp == '/')
 		tmp++;
 again:
-	if (index == 100) { // turn this into a warn later
+	if (index == 100) { /* turn this into a warn later */
 		ERROR("cgroup error?  100 cgroups with this name already running");
 		goto bad;
 	}
@@ -667,7 +667,7 @@ again:
 		if (existed == 1)
 			goto next;
 	}
-	// success
+	/* success */
 	cgroup_path = strdup(tmp);
 	if (!cgroup_path) {
 		cleanup_cgroups(tmp);
@@ -952,7 +952,7 @@ static int cgm_get(const char *filename, char *value, size_t len, const char *na
 		close(p[1]);
 		return -1;
 	}
-	if (!pid) // do_cgm_get exits
+	if (!pid) /* do_cgm_get exits */
 		do_cgm_get(name, lxcpath, filename, p[1], len && value);
 	close(p[1]);
 	ret = read(p[0], &newlen, sizeof(newlen));
@@ -967,12 +967,12 @@ static int cgm_get(const char *filename, char *value, size_t len, const char *na
 		goto out;
 	}
 	memset(value, 0, len);
-	if (newlen < 0) { // child is reporting an error
+	if (newlen < 0) { /* child is reporting an error */
 		close(p[0]);
 		ret = -1;
 		goto out;
 	}
-	if (newlen == 0) { // empty read
+	if (newlen == 0) { /* empty read */
 		close(p[0]);
 		ret = 0;
 		goto out;
@@ -988,7 +988,7 @@ static int cgm_get(const char *filename, char *value, size_t len, const char *na
 		value[len-1] = '\0';
 		newlen = len-1;
 	} else if (newlen+1 < len) {
-		// cgmanager doesn't add eol to last entry
+		/* cgmanager doesn't add eol to last entry */
 		value[newlen++] = '\n';
 		value[newlen] = '\0';
 	}
@@ -1002,7 +1002,7 @@ out:
 static void do_cgm_set(const char *name, const char *lxcpath, const char *filename, const char *value, int outp)
 {
 	char *controller, *key, *cgroup = NULL;
-	int retval = 0;  // value we are sending to the parent over outp
+	int retval = 0;  /* value we are sending to the parent over outp */
 	int ret;
 	char *cglast;
 
@@ -1088,7 +1088,7 @@ static int cgm_set(const char *filename, const char *value, const char *name, co
 		close(p[0]);
 		return -1;
 	}
-	if (!pid) // do_cgm_set exits
+	if (!pid) /* do_cgm_set exits */
 		do_cgm_set(name, lxcpath, filename, value, p[1]);
 	close(p[1]);
 	ret = read(p[0], &v, sizeof(v));
@@ -1333,7 +1333,7 @@ static bool collect_subsystems(void)
 	size_t sz = 0;
 	FILE *f = NULL;
 
-	if (subsystems) // already initialized
+	if (subsystems) /* already initialized */
 		return true;
 
 	subsystems_inone = malloc(2 * sizeof(char *));
@@ -1444,7 +1444,7 @@ struct cgroup_ops *cgm_ops_init(void)
 	if (api_version < CGM_SUPPORTS_MULT_CONTROLLERS)
 		cgm_all_controllers_same = false;
 
-	// if root, try to escape to root cgroup
+	/* if root, try to escape to root cgroup */
 	if (geteuid() == 0 && !cgm_escape(NULL)) {
 		free_subsystems();
 		return NULL;
@@ -1507,7 +1507,7 @@ static bool cgm_setup_limits(void *hdata, struct lxc_list *cgroup_settings, bool
 		cg = iterator->elem;
 		if (do_devices != !strncmp("devices", cg->subsystem, 7))
 			continue;
-		if (strlen(cg->subsystem) > 100) // i smell a rat
+		if (strlen(cg->subsystem) > 100) /* i smell a rat */
 			goto out;
 		strcpy(controller, cg->subsystem);
 		p = strchr(controller, '.');
@@ -1564,7 +1564,7 @@ static bool cgm_chown(void *hdata, struct lxc_conf *conf)
 }
 
 /*
- * TODO: this should be re-written to use the get_config_item("lxc.id_map")
+ * TODO: this should be re-written to use the get_config_item("lxc.idmap")
  * cmd api instead of getting the idmap from c->lxc_conf.  The reason is
  * that the id_maps may be different if the container was started with a
  * -f or -s argument.
@@ -1653,7 +1653,7 @@ static bool cgm_mount_cgroup(void *hdata, const char *root, int type)
 		return cgm_bind_dir(root, CGMANAGER_LOWER_SOCK);
 	if (dir_exists(CGMANAGER_UPPER_SOCK))
 		return cgm_bind_dir(root, CGMANAGER_UPPER_SOCK);
-	// Host doesn't have cgmanager running?  Then how did we get here?
+	/* Host doesn't have cgmanager running?  Then how did we get here? */
 	return false;
 }
 
