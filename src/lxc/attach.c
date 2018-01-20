@@ -58,6 +58,7 @@
 #include "lsm/lsm.h"
 #include "lxclock.h"
 #include "lxcseccomp.h"
+#include "mainloop.h"
 #include "namespace.h"
 #include "utils.h"
 
@@ -76,6 +77,8 @@
 #ifndef MS_SLAVE
 #define MS_SLAVE (1 << 19)
 #endif
+
+#define LXC_ATTACH_ALLOCATE_PTY 0x00000000
 
 lxc_log_define(lxc_attach, lxc);
 
@@ -780,11 +783,29 @@ static signed long get_personality(const char *name, const char *lxcpath)
 
 struct attach_clone_payload {
 	int ipc_socket;
+	int pty_fd;
 	lxc_attach_options_t *options;
 	struct lxc_proc_context_info *init_ctx;
 	lxc_attach_exec_t exec_function;
 	void *exec_payload;
 };
+
+static void lxc_put_attach_clone_payload(struct attach_clone_payload *p)
+{
+	if (p->ipc_socket >= 0) {
+		shutdown(p->ipc_socket, SHUT_RDWR);
+		close(p->ipc_socket);
+		p->ipc_socket = -EBADF;
+	}
+
+	if (p->pty_fd >= 0) {
+		close(p->pty_fd);
+		p->pty_fd = -EBADF;
+	}
+
+	if (p->init_ctx)
+		lxc_proc_put_context_info(p->init_ctx);
+}
 
 static int attach_child_main(struct attach_clone_payload *payload)
 {
@@ -913,7 +934,8 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	}
 	shutdown(payload->ipc_socket, SHUT_RDWR);
 	close(payload->ipc_socket);
-	payload->ipc_socket = -1;
+	payload->ipc_socket = -EBADF;
+	lxc_proc_put_context_info(init_ctx);
 
 	/* The following is done after the communication socket is shut down.
 	 * That way, all errors that might (though unlikely) occur up until this
@@ -963,17 +985,105 @@ static int attach_child_main(struct attach_clone_payload *payload)
 		}
 	}
 
+	if (options->attach_flags & LXC_ATTACH_ALLOCATE_PTY) {
+		ret = lxc_login_pty(payload->pty_fd);
+		if (ret < 0) {
+			SYSERROR("Failed to prepare pty file descriptor %d", payload->pty_fd);
+			goto on_error;
+		}
+		TRACE("Prepared pty file descriptor %d", payload->pty_fd);
+	}
+
 	/* We're done, so we can now do whatever the user intended us to do. */
 	rexit(payload->exec_function(payload->exec_payload));
 
 on_error:
-	if (payload->ipc_socket >= 0) {
-		shutdown(payload->ipc_socket, SHUT_RDWR);
-		close(payload->ipc_socket);
-		payload->ipc_socket = -1;
-	}
-	lxc_proc_put_context_info(init_ctx);
+	lxc_put_attach_clone_payload(payload);
 	rexit(EXIT_FAILURE);
+}
+
+static int lxc_attach_pty(struct lxc_conf *conf, struct lxc_console *pty)
+{
+	int ret;
+
+	lxc_pty_init(pty);
+
+	ret = lxc_pty_create(pty);
+	if (ret < 0) {
+		SYSERROR("Failed to create pty");
+		return -1;
+	}
+
+	/* Shift ttys to container. */
+	ret = lxc_pty_map_ids(conf, pty);
+	if (ret < 0) {
+		ERROR("Failed to shift pty");
+		goto on_error;
+	}
+
+	return 0;
+
+on_error:
+	lxc_console_delete(pty);
+	lxc_pty_conf_free(pty);
+	return -1;
+}
+
+static int lxc_attach_pty_mainloop_init(struct lxc_console *pty,
+					struct lxc_epoll_descr *descr)
+{
+	int ret;
+
+	ret = lxc_mainloop_open(descr);
+	if (ret < 0) {
+		ERROR("Failed to create mainloop");
+		return -1;
+	}
+
+	ret = lxc_console_mainloop_add(descr, pty);
+	if (ret < 0) {
+		ERROR("Failed to add handlers to mainloop");
+		lxc_mainloop_close(descr);
+		return -1;
+	}
+
+	return 0;
+}
+
+static inline void lxc_attach_pty_close_master(struct lxc_console *pty)
+{
+	if (pty->master < 0)
+		return;
+
+	close(pty->master);
+	pty->master = -EBADF;
+}
+
+static inline void lxc_attach_pty_close_slave(struct lxc_console *pty)
+{
+	if (pty->slave < 0)
+		return;
+
+	close(pty->slave);
+	pty->slave = -EBADF;
+}
+
+static inline void lxc_attach_pty_close_peer(struct lxc_console *pty)
+{
+	if (pty->peer < 0)
+		return;
+
+	close(pty->peer);
+	pty->peer = -EBADF;
+}
+
+static inline void lxc_attach_pty_close_log(struct lxc_console *pty)
+{
+	if (pty->log_fd < 0)
+		return;
+
+	close(pty->log_fd);
+	pty->log_fd = -EBADF;
 }
 
 int lxc_attach(const char *name, const char *lxcpath,
@@ -984,8 +1094,9 @@ int lxc_attach(const char *name, const char *lxcpath,
 	int ipc_sockets[2];
 	char *cwd, *new_cwd;
 	signed long personality;
-	pid_t attached_pid, expected, init_pid, pid;
+	pid_t attached_pid, init_pid, pid;
 	struct lxc_proc_context_info *init_ctx;
+	struct lxc_console pty;
 	struct attach_clone_payload payload = {0};
 
 	ret = access("/proc/self/ns", X_OK);
@@ -1099,6 +1210,18 @@ int lxc_attach(const char *name, const char *lxcpath,
 		return -1;
 	}
 
+	if (options->attach_flags & LXC_ATTACH_ALLOCATE_PTY) {
+		ret = lxc_attach_pty(init_ctx->container->lxc_conf, &pty);
+		if (ret < 0) {
+			ERROR("Failed to allocate pty");
+			free(cwd);
+			lxc_proc_put_context_info(init_ctx);
+			return -1;
+		}
+	} else {
+		lxc_pty_init(&pty);
+	}
+
 	/* Create a socket pair for IPC communication; set SOCK_CLOEXEC in order
 	 * to make sure we don't irritate other threads that want to fork+exec
 	 * away
@@ -1159,13 +1282,16 @@ int lxc_attach(const char *name, const char *lxcpath,
 	}
 
 	if (pid) {
+		int ret_parent = -1;
 		pid_t to_cleanup_pid = pid;
+		struct lxc_epoll_descr descr = {0};
 
-		/* Initial thread, we close the socket that is for the
-		 * subprocesses.
-		 */
+		/* close unneeded file descriptors */
 		close(ipc_sockets[1]);
 		free(cwd);
+		lxc_proc_close_ns_fd(init_ctx);
+		if (options->attach_flags & LXC_ATTACH_ALLOCATE_PTY)
+			lxc_attach_pty_close_slave(&pty);
 
 		/* Attach to cgroup, if requested. */
 		if (options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) {
@@ -1175,17 +1301,24 @@ int lxc_attach(const char *name, const char *lxcpath,
 			      "cgroups", pid);
 		}
 
+		if (options->attach_flags & LXC_ATTACH_ALLOCATE_PTY) {
+			ret = lxc_attach_pty_mainloop_init(&pty, &descr);
+			if (ret < 0)
+				goto on_error;
+			TRACE("Initalized pty mainloop");
+		}
+
 		/* Let the child process know to go ahead. */
 		status = 0;
 		ret = lxc_write_nointr(ipc_sockets[0], &status, sizeof(status));
 		if (ret != sizeof(status))
-			goto on_error;
+			goto close_mainloop;
 		TRACE("Told intermediate process to start initializing");
 
 		/* Get pid of attached process from intermediate process. */
 		ret = lxc_read_nointr(ipc_sockets[0], &attached_pid, sizeof(attached_pid));
 		if (ret != sizeof(attached_pid))
-			goto on_error;
+			goto close_mainloop;
 		TRACE("Received pid %d of attached process in parent pid namespace", attached_pid);
 
 		/* Ignore SIGKILL (CTRL-C) and SIGQUIT (CTRL-\) - issue #313. */
@@ -1197,7 +1330,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 		/* Reap intermediate process. */
 		ret = wait_for_pid(pid);
 		if (ret < 0)
-			goto on_error;
+			goto close_mainloop;
 		TRACE("Intermediate process %d exited", pid);
 
 		/* We will always have to reap the attached process now. */
@@ -1213,7 +1346,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 			on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? 1 : 0;
 			labelfd = lsm_open(attached_pid, on_exec);
 			if (labelfd < 0)
-				goto on_error;
+				goto close_mainloop;
 			TRACE("Opened LSM label file descriptor %d", labelfd);
 
 			/* Send child fd of the LSM security module to write to. */
@@ -1221,15 +1354,10 @@ int lxc_attach(const char *name, const char *lxcpath,
 			close(labelfd);
 			if (ret <= 0) {
 				SYSERROR("%d", (int)ret);
-				goto on_error;
+				goto close_mainloop;
 			}
 			TRACE("Sent LSM label file descriptor %d to child", labelfd);
 		}
-
-		/* Now shut down communication with child, we're done. */
-		shutdown(ipc_sockets[0], SHUT_RDWR);
-		close(ipc_sockets[0]);
-		lxc_proc_put_context_info(init_ctx);
 
 		/* We're done, the child process should now execute whatever it
 		 * is that the user requested. The parent can now track it with
@@ -1237,29 +1365,55 @@ int lxc_attach(const char *name, const char *lxcpath,
 		 */
 
 		*attached_process = attached_pid;
-		return 0;
 
-	on_error:
-		/* First shut down the socket, then wait for the pid, otherwise
-		 * the pid we're waiting for may never exit.
-		 */
+		/* Now shut down communication with child, we're done. */
 		shutdown(ipc_sockets[0], SHUT_RDWR);
 		close(ipc_sockets[0]);
-		if (to_cleanup_pid)
+		ipc_sockets[0] = -1;
+
+		ret_parent = 0;
+		to_cleanup_pid = -1;
+		if (options->attach_flags & LXC_ATTACH_ALLOCATE_PTY) {
+			ret = lxc_mainloop(&descr, -1);
+			if (ret < 0) {
+				ret_parent = -1;
+				to_cleanup_pid = attached_pid;
+			}
+		}
+
+	close_mainloop:
+		if (options->attach_flags & LXC_ATTACH_ALLOCATE_PTY)
+			lxc_mainloop_close(&descr);
+
+	on_error:
+		if (ipc_sockets[0] >= 0) {
+			shutdown(ipc_sockets[0], SHUT_RDWR);
+			close(ipc_sockets[0]);
+		}
+
+		if (to_cleanup_pid > 0)
 			(void)wait_for_pid(to_cleanup_pid);
+
+		if (options->attach_flags & LXC_ATTACH_ALLOCATE_PTY) {
+			lxc_console_delete(&pty);
+			lxc_pty_conf_free(&pty);
+		}
 		lxc_proc_put_context_info(init_ctx);
-		return -1;
+		return ret_parent;
 	}
 
-	/* First subprocess begins here, we close the socket that is for the
-	 * initial thread.
-	 */
+	/* close unneeded file descriptors */
 	close(ipc_sockets[0]);
+	ipc_sockets[0] = -EBADF;
+	if (options->attach_flags & LXC_ATTACH_ALLOCATE_PTY) {
+		lxc_attach_pty_close_master(&pty);
+		lxc_attach_pty_close_peer(&pty);
+		lxc_attach_pty_close_log(&pty);
+	}
 
 	/* Wait for the parent to have setup cgroups. */
-	expected = 0;
 	ret = lxc_read_nointr(ipc_sockets[1], &status, sizeof(status));
-	if (ret != sizeof(status) || status != expected) {
+	if (ret != sizeof(status)) {
 		shutdown(ipc_sockets[1], SHUT_RDWR);
 		lxc_proc_put_context_info(init_ctx);
 		rexit(-1);
@@ -1295,6 +1449,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 	payload.ipc_socket = ipc_sockets[1];
 	payload.options = options;
 	payload.init_ctx = init_ctx;
+	payload.pty_fd = pty.slave;
 	payload.exec_function = exec_function;
 	payload.exec_payload = exec_payload;
 
@@ -1312,6 +1467,8 @@ int lxc_attach(const char *name, const char *lxcpath,
 			ERROR("Failed to exec");
 		_exit(EXIT_FAILURE);
 	}
+	if (options->attach_flags & LXC_ATTACH_ALLOCATE_PTY)
+		lxc_attach_pty_close_slave(&pty);
 
 	/* Tell grandparent the pid of the pid of the newly created child. */
 	ret = lxc_write_nointr(ipc_sockets[1], &pid, sizeof(pid));
