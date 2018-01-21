@@ -62,7 +62,7 @@ endif
 endif
 
 if !HAVE_GETSUBOPT
-noinst_HEADERS += ../include/getsubopt.h
+noinst_HEADERS += tools/include/getsubopt.h
 endif
 
 sodir=$(libdir)
@@ -302,7 +302,7 @@ lxc_clone_SOURCES = tools/lxc_clone.c tools/arguments.c
 endif
 
 if !HAVE_GETSUBOPT
-lxc_copy_SOURCES += ../include/getsubopt.c ../include/getsubopt.h
+lxc_copy_SOURCES += tools/include/getsubopt.c tools/include/getsubopt.h
 endif
 
 if HAVE_STATIC_LIBCAP
