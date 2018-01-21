@@ -39,12 +39,13 @@
 #include <sys/types.h>
 #include <sys/un.h>
 
+#include <lxc/lxccontainer.h>
+
 #include "af_unix.h"
 #include "log.h"
 #include "mainloop.h"
 #include "monitor.h"
 #include "utils.h"
-#include "lxccontainer.h"
 
 #define CLIENTFDS_CHUNK 64
 
