@@ -34,6 +34,7 @@
 #include "tool_list.h"
 
 #define TOOL_MAXPATHLEN 4096
+#define TOOL_NUMSTRLEN64 21
 
 #ifndef CLONE_PARENT_SETTID
 #define CLONE_PARENT_SETTID 0x00100000
