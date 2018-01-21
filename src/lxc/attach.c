@@ -1354,6 +1354,13 @@ int lxc_attach(const char *name, const char *lxcpath,
 			      "cgroups", pid);
 		}
 
+		/* Setup /proc limits */
+		if (!lxc_list_empty(&init_ctx->container->lxc_conf->procs)) {
+			ret = setup_proc_filesystem(&init_ctx->container->lxc_conf->procs, pid);
+			if (ret < 0)
+				goto on_error;
+		}
+
 		/* Setup resource limits */
 		if (!lxc_list_empty(&init_ctx->container->lxc_conf->limits)) {
 			ret = setup_resource_limits(&init_ctx->container->lxc_conf->limits, pid);
