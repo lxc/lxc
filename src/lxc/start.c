@@ -541,17 +541,17 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 	close(descr.epfd);
 	descr.epfd = -EBADF;
 	if (ret < 0 || !handler->init_died)
-		goto out_mainloop;
+		goto out_mainloop_console;
 
 	ret = lxc_mainloop(&descr_console, 0);
-
-out_mainloop:
-	lxc_mainloop_close(&descr);
-	TRACE("Closed mainloop");
 
 out_mainloop_console:
 	lxc_mainloop_close(&descr_console);
 	TRACE("Closed console mainloop");
+
+out_mainloop:
+	lxc_mainloop_close(&descr);
+	TRACE("Closed mainloop");
 
 out_sigfd:
 	close(handler->sigfd);
