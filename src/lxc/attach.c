@@ -1145,6 +1145,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 	pid_t attached_pid, init_pid, pid;
 	struct lxc_proc_context_info *init_ctx;
 	struct lxc_console pty;
+	struct lxc_conf *conf;
 	struct attach_clone_payload payload = {0};
 
 	ret = access("/proc/self/ns", X_OK);
@@ -1189,6 +1190,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 			return -ENOMEM;
 		}
 	}
+	conf = init_ctx->container->lxc_conf;
 
 	if (!fetch_seccomp(init_ctx->container, options))
 		WARN("Failed to get seccomp policy.");
@@ -1262,7 +1264,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 	}
 
 	if (options->attach_flags & LXC_ATTACH_ALLOCATE_PTY) {
-		ret = lxc_attach_pty(init_ctx->container->lxc_conf, &pty);
+		ret = lxc_attach_pty(conf, &pty);
 		if (ret < 0) {
 			ERROR("Failed to allocate pty");
 			free(cwd);
@@ -1355,15 +1357,15 @@ int lxc_attach(const char *name, const char *lxcpath,
 		}
 
 		/* Setup /proc limits */
-		if (!lxc_list_empty(&init_ctx->container->lxc_conf->procs)) {
-			ret = setup_proc_filesystem(&init_ctx->container->lxc_conf->procs, pid);
+		if (!lxc_list_empty(&conf->procs)) {
+			ret = setup_proc_filesystem(&conf->procs, pid);
 			if (ret < 0)
 				goto on_error;
 		}
 
 		/* Setup resource limits */
-		if (!lxc_list_empty(&init_ctx->container->lxc_conf->limits)) {
-			ret = setup_resource_limits(&init_ctx->container->lxc_conf->limits, pid);
+		if (!lxc_list_empty(&conf->limits)) {
+			ret = setup_resource_limits(&conf->limits, pid);
 			if (ret < 0)
 				goto on_error;
 		}
