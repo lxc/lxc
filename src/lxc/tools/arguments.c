@@ -33,6 +33,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <lxc/lxccontainer.h>
 #include <lxc/version.h>
 
 #include "arguments.h"
