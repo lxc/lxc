@@ -1565,11 +1565,12 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 {
 	char path[MAXPATHLEN];
 	int ret, fd;
+	char *rootfs_path = rootfs->path ? rootfs->mount : "";
 
 	if (console->path && !strcmp(console->path, "none"))
 		return 0;
 
-	ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs->path ? rootfs->mount : "");
+	ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs_path);
 	if (ret < 0 || (size_t)ret >= sizeof(path))
 		return -1;
 
@@ -1579,10 +1580,10 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	if (file_exists(path)) {
 		ret = lxc_unstack_mountpoint(path, false);
 		if (ret < 0) {
-			ERROR("failed to unmount \"%s\": %s", path, strerror(errno));
+			ERROR("Failed to unmount \"%s\": %s", path, strerror(errno));
 			return -ret;
 		} else {
-			DEBUG("cleared all (%d) mounts from \"%s\"", ret, path);
+			DEBUG("Cleared all (%d) mounts from \"%s\"", ret, path);
 		}
 	}
 
@@ -1592,24 +1593,26 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	fd = open(path, O_CREAT | O_EXCL, S_IXUSR | S_IXGRP | S_IXOTH);
 	if (fd < 0) {
 		if (errno != EEXIST) {
-			SYSERROR("failed to create console");
+			SYSERROR("Failed to create console");
 			return -errno;
 		}
 	} else {
 		close(fd);
 	}
 
-	if (chmod(console->name, S_IXUSR | S_IXGRP | S_IXOTH)) {
-		SYSERROR("failed to set mode '0%o' to '%s'", S_IXUSR | S_IXGRP | S_IXOTH, console->name);
+	ret = chmod(console->name, S_IXUSR | S_IXGRP | S_IXOTH);
+	if (ret < 0) {
+		SYSERROR("Failed to set mode '0%o' to '%s'", S_IXUSR | S_IXGRP | S_IXOTH, console->name);
 		return -errno;
 	}
 
-	if (safe_mount(console->name, path, "none", MS_BIND, 0, rootfs->path ? rootfs->mount : "") < 0) {
-		ERROR("failed to mount '%s' on '%s'", console->name, path);
+	ret = safe_mount(console->name, path, "none", MS_BIND, 0, rootfs_path);
+	if (ret < 0) {
+		ERROR("Failed to mount '%s' on '%s'", console->name, path);
 		return -1;
 	}
 
-	DEBUG("mounted pts device \"%s\" onto \"%s\"", console->name, path);
+	DEBUG("Mounted pts device \"%s\" onto \"%s\"", console->name, path);
 	return 0;
 }
 
@@ -1619,78 +1622,82 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 {
 	int ret, fd;
 	char path[MAXPATHLEN], lxcpath[MAXPATHLEN];
+	char *rootfs_path = rootfs->path ? rootfs->mount : "";
 
 	if (console->path && !strcmp(console->path, "none"))
 		return 0;
 
 	/* create rootfs/dev/<ttydir> directory */
-	ret = snprintf(path, sizeof(path), "%s/dev/%s", rootfs->path ? rootfs->mount : "", ttydir);
+	ret = snprintf(path, sizeof(path), "%s/dev/%s", rootfs_path, ttydir);
 	if (ret < 0 || (size_t)ret >= sizeof(path))
 		return -1;
 
 	ret = mkdir(path, 0755);
 	if (ret && errno != EEXIST) {
-		SYSERROR("failed with errno %d to create %s", errno, path);
+		SYSERROR("Failed with errno %d to create %s", errno, path);
 		return -errno;
 	}
  	DEBUG("Created directory for console and tty devices at \"%s\"", path);
 
-	ret = snprintf(lxcpath, sizeof(lxcpath), "%s/dev/%s/console", rootfs->path ? rootfs->mount : "", ttydir);
+	ret = snprintf(lxcpath, sizeof(lxcpath), "%s/dev/%s/console", rootfs_path, ttydir);
 	if (ret < 0 || (size_t)ret >= sizeof(lxcpath))
 		return -1;
 
 	ret = creat(lxcpath, 0660);
 	if (ret == -1 && errno != EEXIST) {
-		SYSERROR("error %d creating %s", errno, lxcpath);
+		SYSERROR("Error %d creating %s", errno, lxcpath);
 		return -errno;
 	}
 	if (ret >= 0)
 		close(ret);
 
-	ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs->path ? rootfs->mount : "");
+	ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs_path);
 	if (ret < 0 || (size_t)ret >= sizeof(path))
 		return -1;
 
 	if (file_exists(path)) {
 		ret = lxc_unstack_mountpoint(path, false);
 		if (ret < 0) {
-			ERROR("failed to unmount \"%s\": %s", path, strerror(errno));
+			ERROR("Failed to unmount \"%s\": %s", path, strerror(errno));
 			return -ret;
 		} else {
-			DEBUG("cleared all (%d) mounts from \"%s\"", ret, path);
+			DEBUG("Cleared all (%d) mounts from \"%s\"", ret, path);
 		}
 	}
 
 	fd = open(path, O_CREAT | O_EXCL, S_IXUSR | S_IXGRP | S_IXOTH);
 	if (fd < 0) {
 		if (errno != EEXIST) {
-			SYSERROR("failed to create console");
+			SYSERROR("Failed to create console");
 			return -errno;
 		}
 	} else {
 		close(fd);
 	}
 
-	if (chmod(console->name, S_IXUSR | S_IXGRP | S_IXOTH)) {
-		SYSERROR("failed to set mode '0%o' to '%s'", S_IXUSR | S_IXGRP | S_IXOTH, console->name);
+	ret = chmod(console->name, S_IXUSR | S_IXGRP | S_IXOTH);
+	if (ret < 0) {
+		SYSERROR("Failed to set mode '0%o' to '%s'", S_IXUSR | S_IXGRP | S_IXOTH, console->name);
 		return -errno;
 	}
 
 	/* bind mount console->name to '/dev/<ttydir>/console' */
-	if (safe_mount(console->name, lxcpath, "none", MS_BIND, 0, rootfs->path ? rootfs->mount : "") < 0) {
-		ERROR("failed to mount '%s' on '%s'", console->name, lxcpath);
+	ret = safe_mount(console->name, lxcpath, "none", MS_BIND, 0, rootfs_path);
+	if (ret < 0) {
+		ERROR("Failed to mount '%s' on '%s'", console->name, lxcpath);
 		return -1;
 	}
-	DEBUG("mounted \"%s\" onto \"%s\"", console->name, lxcpath);
+	DEBUG("Mounted \"%s\" onto \"%s\"", console->name, lxcpath);
 
 	/* bind mount '/dev/<ttydir>/console'  to '/dev/console'  */
-	if (safe_mount(lxcpath, path, "none", MS_BIND, 0, rootfs->path ? rootfs->mount : "") < 0) {
-		ERROR("failed to mount '%s' on '%s'", console->name, lxcpath);
+	ret = safe_mount(lxcpath, path, "none", MS_BIND, 0, rootfs_path);
+	if (ret < 0) {
+		ERROR("Failed to mount '%s' on '%s'", console->name, lxcpath);
 		return -1;
 	}
-	DEBUG("mounted \"%s\" onto \"%s\"", console->name, lxcpath);
+	DEBUG("Mounted \"%s\" onto \"%s\"", console->name, lxcpath);
 
-	DEBUG("console has been setup under \"%s\" and mounted to \"%s\"", lxcpath, path);
+	DEBUG("Console has been setup under \"%s\" and mounted to \"%s\"", lxcpath, path);
 
 	return 0;
 }
