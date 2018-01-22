@@ -49,6 +49,8 @@ extern char *lsm_process_label_get(pid_t pid);
 extern int lsm_process_label_set(const char *label, struct lxc_conf *conf,
 				 bool use_default, bool on_exec);
 extern int lsm_process_label_fd_get(pid_t pid, bool on_exec);
+extern int lsm_process_label_set_at(int label_fd, const char *label,
+				    bool on_exec);
 #else
 static inline void lsm_init(void)
 {
@@ -77,6 +79,12 @@ static inline int lsm_process_label_set(const char *label,
 }
 
 static inline int lsm_process_label_fd_get(pid_t pid, bool on_exec)
+{
+	return 0;
+}
+
+extern int lsm_process_label_set_at(int label_fd, const char *label,
+				    bool on_exec)
 {
 	return 0;
 }

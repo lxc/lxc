@@ -121,6 +121,59 @@ int lsm_process_label_fd_get(pid_t pid, bool on_exec)
 	return labelfd;
 }
 
+int lsm_process_label_set_at(int label_fd, const char *label, bool on_exec)
+{
+	int ret = -1;
+	const char *name;
+
+	name = lsm_name();
+
+	if (strcmp(name, "nop") == 0)
+		return 0;
+
+	if (strcmp(name, "none") == 0)
+		return 0;
+
+	/* We don't support on-exec with AppArmor */
+	if (strcmp(name, "AppArmor") == 0)
+		on_exec = false;
+
+	if (strcmp(name, "AppArmor") == 0) {
+		size_t len;
+		char *command;
+
+		if (on_exec) {
+			ERROR("Changing AppArmor profile on exec not supported");
+			return -EINVAL;
+		}
+
+		len = strlen(label) + strlen("changeprofile ") + 1;
+		command = malloc(len);
+		if (!command)
+			return -1;
+
+		ret = snprintf(command, len, "changeprofile %s", label);
+		if (ret < 0 || (size_t)ret >= len) {
+			free(command);
+			return -1;
+		}
+
+		ret = lxc_write_nointr(label_fd, command, len - 1);
+		free(command);
+	} else if (strcmp(name, "SELinux") == 0) {
+		ret = lxc_write_nointr(label_fd, label, strlen(label));
+	} else {
+		ret = -EINVAL;
+	}
+	if (ret < 0) {
+		SYSERROR("Failed to set %s label \"%s\"", name, label);
+		return -1;
+	}
+
+	INFO("Set %s label to \"%s\"", name, label);
+	return 0;
+}
+
 int lsm_process_label_set(const char *label, struct lxc_conf *conf,
 			  bool use_default, bool on_exec)
 {
