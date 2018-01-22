@@ -28,29 +28,52 @@ struct lxc_conf;
 
 #include <sys/types.h>
 
+#include "../utils.h"
+
+#define LXC_LSMATTRLEN (5 + (LXC_NUMSTRLEN64) + 7 + 1)
+
 struct lsm_drv {
 	const char *name;
 
-	int   (*enabled)(void);
+	int (*enabled)(void);
 	char *(*process_label_get)(pid_t pid);
-	int   (*process_label_set)(const char *label, struct lxc_conf *conf,
-				   int use_default, int on_exec);
+	int (*process_label_set)(const char *label, struct lxc_conf *conf,
+				 bool use_default, bool on_exec);
 };
 
 #if HAVE_APPARMOR || HAVE_SELINUX
-void        lsm_init(void);
-int         lsm_enabled(void);
-const char *lsm_name(void);
-char       *lsm_process_label_get(pid_t pid);
-int         lsm_process_label_set(const char *label, struct lxc_conf *conf,
-		int use_default, int on_exec);
+extern void lsm_init(void);
+extern int lsm_enabled(void);
+extern const char *lsm_name(void);
+extern char *lsm_process_label_get(pid_t pid);
+extern int lsm_process_label_set(const char *label, struct lxc_conf *conf,
+				 bool use_default, bool on_exec);
 #else
-static inline void        lsm_init(void) { }
-static inline int         lsm_enabled(void) { return 0; }
-static inline const char *lsm_name(void) { return "none"; }
-static inline char       *lsm_process_label_get(pid_t pid) { return NULL; }
-static inline int         lsm_process_label_set(const char *label,
-		struct lxc_conf *conf, int use_default, int on_exec) { return 0; }
+static inline void lsm_init(void)
+{
+	return;
+}
+
+static inline int lsm_enabled(void) {
+	return 0;
+}
+
+static inline const char *lsm_name(void)
+{
+	return "none";
+}
+
+static inline char *lsm_process_label_get(pid_t pid)
+{
+	return NULL;
+}
+
+static inline int lsm_process_label_set(const char *label,
+					struct lxc_conf *conf, bool use_default,
+					bool on_exec)
+{
+	return 0;
+}
 #endif
 
 #endif
