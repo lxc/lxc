@@ -85,6 +85,42 @@ char *lsm_process_label_get(pid_t pid)
 	return drv->process_label_get(pid);
 }
 
+int lsm_process_label_fd_get(pid_t pid, bool on_exec)
+{
+	int ret = -1;
+	int labelfd = -1;
+	const char *name;
+	char path[LXC_LSMATTRLEN];
+
+	name = lsm_name();
+
+	if (strcmp(name, "nop") == 0)
+		return 0;
+
+	if (strcmp(name, "none") == 0)
+		return 0;
+
+	/* We don't support on-exec with AppArmor */
+	if (strcmp(name, "AppArmor") == 0)
+		on_exec = 0;
+
+	if (on_exec)
+		ret = snprintf(path, LXC_LSMATTRLEN, "/proc/%d/attr/exec", pid);
+	else
+		ret = snprintf(path, LXC_LSMATTRLEN, "/proc/%d/attr/current", pid);
+	if (ret < 0 || ret >= LXC_LSMATTRLEN)
+		return -1;
+
+	labelfd = open(path, O_RDWR);
+	if (labelfd < 0) {
+		SYSERROR("%s - Unable to %s LSM label file descriptor",
+			 name, strerror(errno));
+		return -1;
+	}
+
+	return labelfd;
+}
+
 int lsm_process_label_set(const char *label, struct lxc_conf *conf,
 			  bool use_default, bool on_exec)
 {

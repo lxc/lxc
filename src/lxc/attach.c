@@ -82,44 +82,6 @@
 
 lxc_log_define(lxc_attach, lxc);
 
-/* /proc/pid-to-str/current\0 = (5 + 21 + 7 + 1) */
-#define __LSMATTRLEN (5 + (LXC_NUMSTRLEN64) + 7 + 1)
-static int lsm_open(pid_t pid, int on_exec)
-{
-	const char *name;
-	char path[__LSMATTRLEN];
-	int ret = -1;
-	int labelfd = -1;
-
-	name = lsm_name();
-
-	if (strcmp(name, "nop") == 0)
-		return 0;
-
-	if (strcmp(name, "none") == 0)
-		return 0;
-
-	/* We don't support on-exec with AppArmor */
-	if (strcmp(name, "AppArmor") == 0)
-		on_exec = 0;
-
-	if (on_exec)
-		ret = snprintf(path, __LSMATTRLEN, "/proc/%d/attr/exec", pid);
-	else
-		ret = snprintf(path, __LSMATTRLEN, "/proc/%d/attr/current", pid);
-	if (ret < 0 || ret >= __LSMATTRLEN)
-		return -1;
-
-	labelfd = open(path, O_RDWR);
-	if (labelfd < 0) {
-		SYSERROR("%s - Unable to open file descriptor to set LSM label",
-			 strerror(errno));
-		return -1;
-	}
-
-	return labelfd;
-}
-
 static int lsm_set_label_at(int lsm_labelfd, int on_exec, char *lsm_label)
 {
 	int fret = -1;
@@ -1342,11 +1304,12 @@ int lxc_attach(const char *name, const char *lxcpath,
 		if ((options->namespaces & CLONE_NEWNS) &&
 		    (options->attach_flags & LXC_ATTACH_LSM) &&
 		    init_ctx->lsm_label) {
-			int labelfd, on_exec;
 			int ret = -1;
+			int labelfd;
+			bool on_exec;
 
-			on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? 1 : 0;
-			labelfd = lsm_open(attached_pid, on_exec);
+			on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? true : false;
+			labelfd = lsm_process_label_fd_get(attached_pid, on_exec);
 			if (labelfd < 0)
 				goto close_mainloop;
 			TRACE("Opened LSM label file descriptor %d", labelfd);
