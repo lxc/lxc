@@ -63,7 +63,6 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <arg choice="opt">-R, --remount-sys-proc</arg>
       <arg choice="opt">--keep-env</arg>
       <arg choice="opt">--clear-env</arg>
-      <arg choice="opt">-L, --pty-log <replaceable>file</replaceable></arg>
       <arg choice="opt">-v, --set-var <replaceable>variable</replaceable></arg>
       <arg choice="opt">--keep-var <replaceable>variable</replaceable></arg>
       <arg choice="opt">-- <replaceable>command</replaceable></arg>
@@ -336,28 +335,6 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             変数 container=lxc のみがアタッチするプログラムの開始の時の環境変数となります。
 	  </para>
 	</listitem>
-      </varlistentry>
-
-      <varlistentry>
-        <term>
-          <option>-L, --pty-log <replaceable>file</replaceable></option>
-        </term>
-        <listitem>
-          <para>
-            <!--
-            Specify a file where the output of <command>lxc-attach</command> will be
-            logged.
-              -->
-            <command>lxc-attach</command> の出力を記録するファイルを指定します。
-          </para>
-          <para>
-            <!--
-            <emphasis>Important:</emphasis>  When a standard file descriptor
-            does not refer to a pty output produced on it will not be logged.
-            -->
-            <emphasis>重要:</emphasis> 標準ファイルディスクリプタが pty を参照していない場合、それらに対する出力は記録されないでしょう。
-          </para>
-        </listitem>
       </varlistentry>
 
       <varlistentry>

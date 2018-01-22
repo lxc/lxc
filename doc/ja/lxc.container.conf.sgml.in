@@ -2877,7 +2877,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         </varlistentry>
         <varlistentry>
           <term>
-            <option>lxc.log</option>
+            <option>lxc.log.file</option>
           </term>
           <listitem>
             <para>
