@@ -541,4 +541,13 @@ static inline uint64_t lxc_getpagesize(void)
  */
 extern uint64_t lxc_find_next_power2(uint64_t n);
 
+static inline pid_t lxc_raw_gettid(void)
+{
+#ifdef SYS_gettid
+	return syscall(SYS_gettid);
+#else
+	return lxc_raw_getpid();
+#endif
+}
+
 #endif /* __LXC_UTILS_H */

@@ -25,11 +25,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mount.h>
-#include <sys/apparmor.h>
 #include <sys/vfs.h>
 
 #include "log.h"
-#include "lsm/lsm.h"
+#include "lsm.h"
 #include "conf.h"
 #include "utils.h"
 
@@ -174,6 +173,8 @@ static bool aa_needs_transition(char *curlabel)
 static int apparmor_process_label_set(const char *inlabel, struct lxc_conf *conf,
 				      bool use_default, bool on_exec)
 {
+	int label_fd, ret;
+	pid_t tid;
 	const char *label = inlabel ? inlabel : conf->lsm_aa_profile;
 	char *curlabel;
 
@@ -230,12 +231,21 @@ static int apparmor_process_label_set(const char *inlabel, struct lxc_conf *conf
 		return 0;
 	}
 
-	if (aa_change_profile(label) < 0) {
-		SYSERROR("failed to change apparmor profile to %s", label);
+	tid = lxc_raw_gettid();
+	label_fd = lsm_process_label_fd_get(tid, on_exec);
+	if (label_fd < 0) {
+		SYSERROR("Failed to change apparmor profile to %s", label);
 		return -1;
 	}
 
-	INFO("changed apparmor profile to %s", label);
+	ret = lsm_process_label_set_at(label_fd, label, on_exec);
+	close(label_fd);
+	if (ret < 0) {
+		SYSERROR("Failed to change apparmor profile to %s", label);
+		return -1;
+	}
+
+	INFO("Changed apparmor profile to %s", label);
 	return 0;
 }
 
