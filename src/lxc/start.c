@@ -494,8 +494,11 @@ int lxc_set_state(const char *name, struct lxc_handler *handler,
 int lxc_poll(const char *name, struct lxc_handler *handler)
 {
 	int ret;
-	bool has_console = (handler->conf->rootfs.path != NULL);
+	bool has_console = true;
 	struct lxc_epoll_descr descr, descr_console;
+
+	if (handler->conf->console.path && !strcmp(handler->conf->console.path, "none"))
+		has_console = false;
 
 	ret = lxc_mainloop_open(&descr);
 	if (ret < 0) {

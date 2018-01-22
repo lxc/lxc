@@ -747,12 +747,6 @@ int lxc_console_create(struct lxc_conf *conf)
 	int ret;
 	struct lxc_console *console = &conf->console;
 
-	if (!conf->rootfs.path) {
-		INFO("Container does not have a rootfs. The console will be "
-		     "shared with the host");
-		return 0;
-	}
-
 	if (console->path && !strcmp(console->path, "none")) {
 		INFO("No console was requested");
 		return 0;
