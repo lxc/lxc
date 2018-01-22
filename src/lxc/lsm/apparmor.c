@@ -172,7 +172,7 @@ static bool aa_needs_transition(char *curlabel)
  * Notes: This relies on /proc being available.
  */
 static int apparmor_process_label_set(const char *inlabel, struct lxc_conf *conf,
-				      int use_default, int on_exec)
+				      bool use_default, bool on_exec)
 {
 	const char *label = inlabel ? inlabel : conf->lsm_aa_profile;
 	char *curlabel;

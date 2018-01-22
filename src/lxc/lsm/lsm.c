@@ -86,7 +86,7 @@ char *lsm_process_label_get(pid_t pid)
 }
 
 int lsm_process_label_set(const char *label, struct lxc_conf *conf,
-		int use_default, int on_exec)
+			  bool use_default, bool on_exec)
 {
 	if (!drv) {
 		ERROR("LSM driver not inited");
