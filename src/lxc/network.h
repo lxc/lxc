@@ -207,12 +207,6 @@ extern int lxc_macvlan_create(const char *master, const char *name, int mode);
 extern int lxc_vlan_create(const char *master, const char *name,
 			   unsigned short vid);
 
-/* Activate forwarding.*/
-extern int lxc_ip_forward_on(const char *name, int family);
-
-/* Disable forwarding. */
-extern int lxc_ip_forward_off(const char *name, int family);
-
 /* Set ip address. */
 extern int lxc_ipv6_addr_add(int ifindex, struct in6_addr *addr,
 			     struct in6_addr *mcast,
