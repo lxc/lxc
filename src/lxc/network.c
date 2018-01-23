@@ -1298,36 +1298,10 @@ static int proc_sys_net_write(const char *path, const char *value)
 	return err;
 }
 
-static int ip_forward_set(const char *ifname, int family, int flag)
-{
-	char path[MAXPATHLEN];
-	int rc;
-
-	if (family != AF_INET && family != AF_INET6)
-		return -EINVAL;
-
-	rc = snprintf(path, MAXPATHLEN, "/proc/sys/net/%s/conf/%s/forwarding",
-		 family == AF_INET?"ipv4":"ipv6" , ifname);
-	if (rc >= MAXPATHLEN)
-		return -E2BIG;
-
-	return proc_sys_net_write(path, flag?"1":"0");
-}
-
-int lxc_ip_forward_on(const char *ifname, int family)
-{
-	return ip_forward_set(ifname, family, 1);
-}
-
-int lxc_ip_forward_off(const char *ifname, int family)
-{
-	return ip_forward_set(ifname, family, 0);
-}
-
 static int neigh_proxy_set(const char *ifname, int family, int flag)
 {
-	char path[MAXPATHLEN];
 	int ret;
+	char path[MAXPATHLEN];
 
 	if (family != AF_INET && family != AF_INET6)
 		return -EINVAL;
