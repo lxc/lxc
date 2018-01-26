@@ -427,7 +427,7 @@ extern int lxc_strmunmap(void *addr, size_t length);
 /* initialize rand with urandom */
 extern int randseed(bool);
 
-inline static bool am_unpriv(void)
+inline static bool am_host_unpriv(void)
 {
 	FILE *f;
 	uid_t user, host, count;

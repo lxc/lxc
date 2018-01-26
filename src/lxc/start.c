@@ -648,11 +648,11 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 
 	memset(handler, 0, sizeof(*handler));
 
-	/* Note that am_unpriv() checks the effective uid. We probably don't
+	/* Note that am_host_unpriv() checks the effective uid. We probably don't
 	 * care if we are real root only if we are running as root so this
 	 * should be fine.
 	 */
-	handler->am_root = !am_unpriv();
+	handler->am_root = !am_host_unpriv();
 	handler->data_sock[0] = handler->data_sock[1] = -1;
 	handler->conf = conf;
 	handler->lxcpath = lxcpath;

@@ -434,7 +434,7 @@ bool btrfs_create_clone(struct lxc_conf *conf, struct lxc_storage *orig,
 	/* rsync the contents from source to target */
 	data.orig = orig;
 	data.new = new;
-	if (am_unpriv()) {
+	if (am_host_unpriv()) {
 		ret = userns_exec_full(conf, lxc_storage_rsync_exec_wrapper,
 				       &data, "lxc_storage_rsync_exec_wrapper");
 		if (ret < 0) {
@@ -466,7 +466,7 @@ bool btrfs_create_snapshot(struct lxc_conf *conf, struct lxc_storage *orig,
 	if (ret < 0 && errno != ENOENT)
 		return false;
 
-	if (am_unpriv()) {
+	if (am_host_unpriv()) {
 		struct rsync_data_char args;
 
 		args.src = orig->src;

@@ -406,7 +406,7 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 	if (!bdevtype && !keepbdevtype && snap && !strcmp(orig->type, "dir"))
 		bdevtype = "overlay";
 
-	if (am_unpriv() && !unpriv_snap_allowed(orig, bdevtype, snap, maybe_snap)) {
+	if (am_host_unpriv() && !unpriv_snap_allowed(orig, bdevtype, snap, maybe_snap)) {
 		ERROR("Unsupported snapshot type \"%s\" for unprivileged users",
 		      bdevtype ? bdevtype : "(null)");
 		goto on_error_put_orig;
@@ -505,7 +505,7 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 		else
 			src_no_prefix = lxc_storage_get_path(new->src, new->type);
 
-		if (am_unpriv()) {
+		if (am_host_unpriv()) {
 			ret = chown_mapped_root(src_no_prefix, c->lxc_conf);
 			if (ret < 0)
 				WARN("Failed to chown \"%s\"", new->src);
@@ -518,7 +518,7 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 	/* rsync the contents from source to target */
 	data.orig = orig;
 	data.new = new;
-	if (am_unpriv())
+	if (am_host_unpriv())
 		ret = userns_exec_full(c->lxc_conf,
 				       lxc_storage_rsync_exec_wrapper, &data,
 				       "lxc_storage_rsync_exec_wrapper");

@@ -2449,7 +2449,7 @@ int lxc_network_move_created_netdev_priv(const char *lxcpath, const char *lxcnam
 	char ifname[IFNAMSIZ];
 	struct lxc_list *iterator;
 
-	if (am_unpriv())
+	if (am_host_unpriv())
 		return 0;
 
 	lxc_list_for_each(iterator, network) {
@@ -2487,7 +2487,7 @@ int lxc_create_network_unpriv(const char *lxcpath, const char *lxcname,
 {
 	struct lxc_list *iterator;
 
-	if (!am_unpriv())
+	if (!am_host_unpriv())
 		return 0;
 
 	lxc_list_for_each(iterator, network) {
