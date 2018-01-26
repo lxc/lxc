@@ -427,8 +427,32 @@ extern int lxc_strmunmap(void *addr, size_t length);
 /* initialize rand with urandom */
 extern int randseed(bool);
 
-inline static bool am_unpriv(void) {
-	return geteuid() != 0;
+inline static bool am_unpriv(void)
+{
+	FILE *f;
+	uid_t user, host, count;
+	int ret;
+
+	if (geteuid() != 0)
+		return true;
+
+	/* Now: are we in a user namespace? Because then we're also
+	 * unprivileged.
+	 */
+	f = fopen("/proc/self/uid_map", "r");
+	if (!f) {
+		return false;
+	}
+
+	ret = fscanf(f, "%u %u %u", &user, &host, &count);
+	fclose(f);
+	if (ret != 3) {
+		return false;
+	}
+
+	if (user != 0 || host != 0 || count != UINT32_MAX)
+		return true;
+	return false;
 }
 
 /*
