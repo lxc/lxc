@@ -2143,6 +2143,7 @@ static int lxc_cgroup_set_data(const char *filename, const char *value, struct c
 		      "The controller seems to be unused by \"cgfsng\" cgroup "
 		      "driver or not enabled on the cgroup hierarchy",
 		      controller);
+		errno = ENOENT;
 		return -1;
 	}
 
