@@ -245,8 +245,13 @@ char *get_rundir()
 {
 	char *rundir;
 	const char *homedir;
+	struct stat sb;
 
-	if (geteuid() == 0) {
+	if (stat(RUNTIME_PATH, &sb) < 0) {
+		return NULL;
+	}
+
+	if (geteuid() == sb.st_uid || getegid() == sb.st_gid) {
 		rundir = strdup(RUNTIME_PATH);
 		return rundir;
 	}
