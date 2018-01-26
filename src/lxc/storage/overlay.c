@@ -73,7 +73,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 		return -1;
 	}
 
-	if (am_unpriv()) {
+	if (am_host_unpriv()) {
 		ret = chown_mapped_root(new->dest, conf);
 		if (ret < 0)
 			WARN("Failed to update ownership of %s", new->dest);
@@ -120,7 +120,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 			return -1;
 		}
 
-		if (am_unpriv()) {
+		if (am_host_unpriv()) {
 			ret = chown_mapped_root(delta, conf);
 			if (ret < 0)
 				WARN("Failed to update ownership of %s", delta);
@@ -153,7 +153,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 			return -1;
 		}
 
-		if (am_unpriv()) {
+		if (am_host_unpriv()) {
 			ret = chown_mapped_root(work, conf);
 			if (ret < 0)
 				WARN("Failed to update ownership of %s", work);
@@ -224,7 +224,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 			return -1;
 		}
 
-		if (am_unpriv()) {
+		if (am_host_unpriv()) {
 			ret = chown_mapped_root(ndelta, conf);
 			if (ret < 0)
 				WARN("Failed to update ownership of %s",
@@ -265,7 +265,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 			return -1;
 		}
 
-		if (am_unpriv()) {
+		if (am_host_unpriv()) {
 			ret = chown_mapped_root(work, conf);
 			if (ret < 0)
 				WARN("Failed to update ownership of %s", work);
@@ -960,7 +960,7 @@ static int ovl_do_rsync(const char *src, const char *dest,
 
 	rdata.src = (char *)src;
 	rdata.dest = (char *)dest;
-	if (am_unpriv())
+	if (am_host_unpriv())
 		ret = userns_exec_full(conf, lxc_rsync_exec_wrapper, &rdata,
 				       "lxc_rsync_exec_wrapper");
 	else

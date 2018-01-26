@@ -89,7 +89,7 @@ int aufs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 	if (mkdir_p(new->dest, 0755) < 0)
 		return -1;
 
-	if (am_unpriv() && chown_mapped_root(new->dest, conf) < 0)
+	if (am_host_unpriv() && chown_mapped_root(new->dest, conf) < 0)
 		WARN("Failed to update ownership of %s", new->dest);
 
 	if (strcmp(orig->type, "dir") == 0) {
@@ -116,7 +116,7 @@ int aufs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 			free(delta);
 			return -1;
 		}
-		if (am_unpriv() && chown_mapped_root(delta, conf) < 0)
+		if (am_host_unpriv() && chown_mapped_root(delta, conf) < 0)
 			WARN("Failed to update ownership of %s", delta);
 
 		// the src will be 'aufs:lowerdir:upperdir'
@@ -157,13 +157,13 @@ int aufs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 			free(ndelta);
 			return -1;
 		}
-		if (am_unpriv() && chown_mapped_root(ndelta, conf) < 0)
+		if (am_host_unpriv() && chown_mapped_root(ndelta, conf) < 0)
 			WARN("Failed to update ownership of %s", ndelta);
 
 		struct rsync_data_char rdata;
 		rdata.src = odelta;
 		rdata.dest = ndelta;
-		if (am_unpriv())
+		if (am_host_unpriv())
 			ret = userns_exec_full(conf, lxc_rsync_delta_wrapper,
 					       &rdata, "lxc_rsync_delta_wrapper");
 		else
