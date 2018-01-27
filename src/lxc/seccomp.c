@@ -144,26 +144,22 @@ struct seccomp_v2_rule {
 
 static enum scmp_compare parse_v2_rule_op(char *s)
 {
-	enum scmp_compare ret;
-
 	if (strcmp(s, "SCMP_CMP_NE") == 0 || strcmp(s, "!=") == 0)
-		ret = SCMP_CMP_NE;
+		return SCMP_CMP_NE;
 	else if (strcmp(s, "SCMP_CMP_LT") == 0 || strcmp(s, "<") == 0)
-		ret = SCMP_CMP_LT;
+		return SCMP_CMP_LT;
 	else if (strcmp(s, "SCMP_CMP_LE") == 0 || strcmp(s, "<=") == 0)
-		ret = SCMP_CMP_LE;
+		return SCMP_CMP_LE;
 	else if (strcmp(s, "SCMP_CMP_EQ") == 0 || strcmp(s, "==") == 0)
-		ret = SCMP_CMP_EQ;
+		return SCMP_CMP_EQ;
 	else if (strcmp(s, "SCMP_CMP_GE") == 0 || strcmp(s, ">=") == 0)
-		ret = SCMP_CMP_GE;
+		return SCMP_CMP_GE;
 	else if (strcmp(s, "SCMP_CMP_GT") == 0 || strcmp(s, ">") == 0)
-		ret = SCMP_CMP_GT;
+		return SCMP_CMP_GT;
 	else if (strcmp(s, "SCMP_CMP_MASKED_EQ") == 0 || strcmp(s, "&=") == 0)
-		ret = SCMP_CMP_MASKED_EQ;
-	else
-		ret = _SCMP_CMP_MAX;
+		return SCMP_CMP_MASKED_EQ;
 
-	return ret;
+	return _SCMP_CMP_MAX;
 }
 
 /* This function is used to parse the args string into the structure.
