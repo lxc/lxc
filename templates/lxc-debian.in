@@ -263,7 +263,7 @@ dialog,\
 isc-dhcp-client,\
 netbase,\
 net-tools,\
-iproute,\
+iproute2,\
 openssh-server
 
     cache=$1
