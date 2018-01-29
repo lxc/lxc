@@ -88,104 +88,6 @@
 
 lxc_log_define(lxc_attach, lxc);
 
-/* /proc/pid-to-str/current\0 = (5 + 21 + 7 + 1) */
-#define __LSMATTRLEN (5 + (LXC_NUMSTRLEN64) + 7 + 1)
-static int lsm_open(pid_t pid, int on_exec)
-{
-	const char *name;
-	char path[__LSMATTRLEN];
-	int ret = -1;
-	int labelfd = -1;
-
-	name = lsm_name();
-
-	if (strcmp(name, "nop") == 0)
-		return 0;
-
-	if (strcmp(name, "none") == 0)
-		return 0;
-
-	/* We don't support on-exec with AppArmor */
-	if (strcmp(name, "AppArmor") == 0)
-		on_exec = 0;
-
-	if (on_exec)
-		ret = snprintf(path, __LSMATTRLEN, "/proc/%d/attr/exec", pid);
-	else
-		ret = snprintf(path, __LSMATTRLEN, "/proc/%d/attr/current", pid);
-	if (ret < 0 || ret >= __LSMATTRLEN)
-		return -1;
-
-	labelfd = open(path, O_RDWR);
-	if (labelfd < 0) {
-		SYSERROR("%s - Unable to open file descriptor to set LSM label",
-			 strerror(errno));
-		return -1;
-	}
-
-	return labelfd;
-}
-
-static int lsm_set_label_at(int lsm_labelfd, int on_exec, char *lsm_label)
-{
-	int fret = -1;
-	const char *name;
-	char *command = NULL;
-
-	name = lsm_name();
-
-	if (strcmp(name, "nop") == 0)
-		return 0;
-
-	if (strcmp(name, "none") == 0)
-		return 0;
-
-	/* We don't support on-exec with AppArmor */
-	if (strcmp(name, "AppArmor") == 0)
-		on_exec = 0;
-
-	if (strcmp(name, "AppArmor") == 0) {
-		int size;
-
-		command =
-		    malloc(strlen(lsm_label) + strlen("changeprofile ") + 1);
-		if (!command) {
-			SYSERROR("Failed to write apparmor profile.");
-			goto out;
-		}
-
-		size = sprintf(command, "changeprofile %s", lsm_label);
-		if (size < 0) {
-			SYSERROR("Failed to write apparmor profile.");
-			goto out;
-		}
-
-		if (write(lsm_labelfd, command, size + 1) < 0) {
-			SYSERROR("Unable to set LSM label: %s.", command);
-			goto out;
-		}
-		INFO("Set LSM label to: %s.", command);
-	} else if (strcmp(name, "SELinux") == 0) {
-		if (write(lsm_labelfd, lsm_label, strlen(lsm_label) + 1) < 0) {
-			SYSERROR("Unable to set LSM label: %s.", lsm_label);
-			goto out;
-		}
-		INFO("Set LSM label to: %s.", lsm_label);
-	} else {
-		ERROR("Unable to restore label for unknown LSM: %s.", name);
-		goto out;
-	}
-	fret = 0;
-
-out:
-	free(command);
-
-	if (lsm_labelfd != -1)
-		close(lsm_labelfd);
-
-	return fret;
-}
-
 /* /proc/pid-to-str/status\0 = (5 + 21 + 7 + 1) */
 #define __PROC_STATUS_LEN (5 + (LXC_NUMSTRLEN64) + 7 + 1)
 static struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
@@ -962,15 +864,15 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	}
 
 	if (needs_lsm) {
-		int on_exec;
+		bool on_exec;
 
 		/* Change into our new LSM profile. */
-		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? 1 : 0;
-		ret = lsm_set_label_at(lsm_fd, on_exec, init_ctx->lsm_label);
+		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? true : false;
+		ret = lsm_process_label_set_at(lsm_fd, init_ctx->lsm_label, on_exec);
 		close(lsm_fd);
 		if (ret < 0)
 			goto on_error;
-		TRACE("Set LSM label");
+		TRACE("Set %s LSM label to \"%s\"", lsm_name(), init_ctx->lsm_label);
 	}
 
 	if (init_ctx->container && init_ctx->container->lxc_conf &&
@@ -1409,11 +1311,12 @@ int lxc_attach(const char *name, const char *lxcpath,
 		if ((options->namespaces & CLONE_NEWNS) &&
 		    (options->attach_flags & LXC_ATTACH_LSM) &&
 		    init_ctx->lsm_label) {
-			int labelfd, on_exec;
 			int ret = -1;
+			int labelfd;
+			bool on_exec;
 
-			on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? 1 : 0;
-			labelfd = lsm_open(attached_pid, on_exec);
+			on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? true : false;
+			labelfd = lsm_process_label_fd_get(attached_pid, on_exec);
 			if (labelfd < 0)
 				goto close_mainloop;
 			TRACE("Opened LSM label file descriptor %d", labelfd);

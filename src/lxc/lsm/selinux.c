@@ -72,7 +72,7 @@ static char *selinux_process_label_get(pid_t pid)
  * Notes: This relies on /proc being available.
  */
 static int selinux_process_label_set(const char *inlabel, struct lxc_conf *conf,
-				     int use_default, int on_exec)
+				     bool use_default, bool on_exec)
 {
 	const char *label = inlabel ? inlabel : conf->lsm_se_context;
 	if (!label) {

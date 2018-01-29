@@ -258,11 +258,6 @@ if test "$enable_apparmor" = "auto" ; then
 fi
 AM_CONDITIONAL([ENABLE_APPARMOR], [test "x$enable_apparmor" = "xyes"])
 
-AM_COND_IF([ENABLE_APPARMOR],
-	[AC_CHECK_HEADER([sys/apparmor.h],[],[AC_MSG_ERROR([You must install the AppArmor development package in order to compile lxc])])
-	AC_CHECK_LIB([apparmor], [aa_change_profile],[],[AC_MSG_ERROR([You must install the AppArmor development package in order to compile lxc])])
-	AC_SUBST([APPARMOR_LIBS], [-lapparmor])])
-
 # GnuTLS
 AC_ARG_ENABLE([gnutls],
 	[AC_HELP_STRING([--enable-gnutls], [enable GnuTLS support [default=auto]])],
