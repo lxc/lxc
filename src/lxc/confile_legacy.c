@@ -154,73 +154,6 @@ int set_config_network_legacy(const char *key, const char *value,
 	return lxc_clear_config_network(lxc_conf);
 }
 
-int set_config_network_legacy_type(const char *key, const char *value,
-				   struct lxc_conf *lxc_conf, void *data)
-{
-	struct lxc_list *network = &lxc_conf->network;
-	struct lxc_netdev *netdev, *prevnetdev;
-	struct lxc_list *list;
-
-	if (lxc_config_value_empty(value))
-		return lxc_clear_config_network(lxc_conf);
-
-	netdev = malloc(sizeof(*netdev));
-	if (!netdev) {
-		SYSERROR("failed to allocate memory");
-		return -1;
-	}
-
-	memset(netdev, 0, sizeof(*netdev));
-	lxc_list_init(&netdev->ipv4);
-	lxc_list_init(&netdev->ipv6);
-
-	list = malloc(sizeof(*list));
-	if (!list) {
-		SYSERROR("failed to allocate memory");
-		free(netdev);
-		return -1;
-	}
-
-	lxc_list_init(list);
-	lxc_list_add_elem(list, netdev);
-
-	/* We maintain a negative count for legacy networks. */
-	netdev->idx = -1;
-	if (!lxc_list_empty(network)) {
-		prevnetdev = lxc_list_last_elem(network);
-		netdev->idx = prevnetdev->idx;
-		if (netdev->idx == INT_MIN) {
-			ERROR("number of requested networks would underflow "
-			      "counter");
-			free(netdev);
-			free(list);
-			return -1;
-		}
-		netdev->idx--;
-	}
-
-	lxc_list_add_tail(network, list);
-
-	if (!strcmp(value, "veth"))
-		netdev->type = LXC_NET_VETH;
-	else if (!strcmp(value, "macvlan")) {
-		netdev->type = LXC_NET_MACVLAN;
-		lxc_macvlan_mode_to_flag(&netdev->priv.macvlan_attr.mode, "private");
-	} else if (!strcmp(value, "vlan"))
-		netdev->type = LXC_NET_VLAN;
-	else if (!strcmp(value, "phys"))
-		netdev->type = LXC_NET_PHYS;
-	else if (!strcmp(value, "empty"))
-		netdev->type = LXC_NET_EMPTY;
-	else if (!strcmp(value, "none"))
-		netdev->type = LXC_NET_NONE;
-	else {
-		ERROR("invalid network type %s", value);
-		return -1;
-	}
-	return 0;
-}
-
 /*
  * If you have p="lxc.network.0.link", pass it p+12
  * to get back '0' (the index of the nic).
@@ -266,6 +199,79 @@ static struct lxc_netdev *get_netdev_from_key(const char *key,
 	}
 
 	return NULL;
+}
+
+int set_config_network_legacy_type(const char *key, const char *value,
+				   struct lxc_conf *lxc_conf, void *data)
+{
+	struct lxc_list *network = &lxc_conf->network;
+	struct lxc_netdev *netdev, *prevnetdev;
+	struct lxc_list *list;
+
+	if (lxc_config_value_empty(value))
+		return lxc_clear_config_network(lxc_conf);
+
+	netdev = get_netdev_from_key(key + 12, network);
+	if (netdev) {
+		ERROR("Network already exists");
+		return -EEXIST;
+	}
+
+	netdev = malloc(sizeof(*netdev));
+	if (!netdev) {
+		SYSERROR("failed to allocate memory");
+		return -1;
+	}
+
+	memset(netdev, 0, sizeof(*netdev));
+	lxc_list_init(&netdev->ipv4);
+	lxc_list_init(&netdev->ipv6);
+
+	list = malloc(sizeof(*list));
+	if (!list) {
+		SYSERROR("failed to allocate memory");
+		free(netdev);
+		return -1;
+	}
+
+	lxc_list_init(list);
+	lxc_list_add_elem(list, netdev);
+
+	/* We maintain a negative count for legacy networks. */
+	netdev->idx = -1;
+	if (!lxc_list_empty(network)) {
+		prevnetdev = lxc_list_first_elem(network);
+		netdev->idx = prevnetdev->idx;
+		if (netdev->idx == INT_MIN) {
+			ERROR("number of requested networks would underflow "
+			      "counter");
+			free(netdev);
+			free(list);
+			return -1;
+		}
+		netdev->idx--;
+	}
+
+	lxc_list_add(network, list);
+
+	if (!strcmp(value, "veth"))
+		netdev->type = LXC_NET_VETH;
+	else if (!strcmp(value, "macvlan")) {
+		netdev->type = LXC_NET_MACVLAN;
+		lxc_macvlan_mode_to_flag(&netdev->priv.macvlan_attr.mode, "private");
+	} else if (!strcmp(value, "vlan"))
+		netdev->type = LXC_NET_VLAN;
+	else if (!strcmp(value, "phys"))
+		netdev->type = LXC_NET_PHYS;
+	else if (!strcmp(value, "empty"))
+		netdev->type = LXC_NET_EMPTY;
+	else if (!strcmp(value, "none"))
+		netdev->type = LXC_NET_NONE;
+	else {
+		ERROR("invalid network type %s", value);
+		return -1;
+	}
+	return 0;
 }
 
 int lxc_list_nicconfigs_legacy(struct lxc_conf *c, const char *key, char *retv,
@@ -328,7 +334,7 @@ static struct lxc_netdev *network_netdev(const char *key, const char *value,
 	}
 
 	if (get_network_netdev_idx(key + 12) == EINVAL)
-		netdev = lxc_list_last_elem(network);
+		netdev = lxc_list_first_elem(network);
 	else
 		netdev = get_netdev_from_key(key + 12, network);
 
@@ -958,7 +964,7 @@ static int lxc_clear_nic(struct lxc_conf *c, const char *key)
 	}
 
 	if ((idx = get_network_netdev_idx(key)) == EINVAL)
-		netdev = lxc_list_last_elem(&c->network);
+		netdev = lxc_list_first_elem(&c->network);
 	else {
 		lxc_list_for_each(it, &c->network) {
 			netdev = it->elem;
