@@ -2233,26 +2233,110 @@ static char *build_full_cgpath_from_monitorpath(struct hierarchy *h,
 	return must_make_path(h->mountpoint, inpath, filename, NULL);
 }
 
+/* Technically, we're always at a delegation boundary here. (This is especially
+ * true when cgroup namespaces are available.) The reasoning is that in order
+ * for us to have been able to start a container in the first place the root
+ * cgroup must have been a leaf node.  Now, either the container's init system
+ * has populated the cgroup and kept it as a leaf node or it has created
+ * subtrees. In the former case we will simply attach to the leaf node we
+ * created when we started the container in the latter case we create our own
+ * cgroup for the attaching process.
+ */
+static int cg_attach_unified(const struct hierarchy *h, const char *name,
+			     const char *lxcpath, const char *pidstr,
+			     size_t pidstr_len, const char *controller)
+{
+	int ret;
+	size_t len;
+	int fret = -1, idx = 0;
+	char *base_path = NULL, *container_cgroup = NULL, *full_path = NULL;
+
+	container_cgroup = lxc_cmd_get_cgroup_path(name, lxcpath, controller);
+	/* not running */
+	if (!container_cgroup)
+		return 0;
+
+	base_path = must_make_path(h->mountpoint, container_cgroup, NULL);
+	full_path = must_make_path(base_path, "cgroup.procs", NULL);
+	/* cgroup is populated */
+	ret = lxc_write_to_file(full_path, pidstr, pidstr_len, false);
+	if (ret < 0 && errno != EBUSY)
+		goto on_error;
+
+	if (ret == 0)
+		goto on_success;
+
+	free(full_path);
+
+	len = strlen(base_path) + sizeof("/lxc-1000") - 1 +
+	      sizeof("/cgroup-procs") - 1;
+	full_path = must_alloc(len + 1);
+	do {
+		if (idx)
+			ret = snprintf(full_path, len + 1, "%s/lxc-%d",
+				       base_path, idx);
+		else
+			ret = snprintf(full_path, len + 1, "%s/lxc", base_path);
+		if (ret < 0 || (size_t)ret >= len + 1)
+			goto on_error;
+
+		ret = mkdir_p(full_path, 0755);
+		if (ret < 0 && errno != EEXIST)
+			goto on_error;
+
+		strcat(full_path, "/cgroup.procs");
+		ret = lxc_write_to_file(full_path, pidstr, len, false);
+		if (ret == 0)
+			goto on_success;
+
+		/* this is a non-leaf node */
+		if (errno != EBUSY)
+			goto on_error;
+
+	} while (++idx > 0 && idx < 1000);
+
+on_success:
+	if (idx < 1000)
+		fret = 0;
+
+on_error:
+	free(base_path);
+	free(container_cgroup);
+	free(full_path);
+
+	return fret;
+}
+
 static bool cgfsng_attach(const char *name, const char *lxcpath, pid_t pid)
 {
+	int i, len, ret;
 	char pidstr[25];
-	int i, len;
 
 	len = snprintf(pidstr, 25, "%d", pid);
 	if (len < 0 || len > 25)
 		return false;
 
 	for (i = 0; hierarchies[i]; i++) {
-		char *path, *fullpath;
+		char *path;
+		char *fullpath = NULL;
 		struct hierarchy *h = hierarchies[i];
 
+		if (h->version == CGROUP2_SUPER_MAGIC) {
+			ret = cg_attach_unified(h, name, lxcpath, pidstr, len, h->controllers[0]);
+			if (ret < 0)
+				return false;
+
+			continue;
+		}
+
 		path = lxc_cmd_get_cgroup_path(name, lxcpath, h->controllers[0]);
-		if (!path) /* not running */
+		/* not running */
+		if (!path)
 			continue;
 
 		fullpath = build_full_cgpath_from_monitorpath(h, path, "cgroup.procs");
-		free(path);
-		if (lxc_write_to_file(fullpath, pidstr, len, false) != 0) {
+		ret = lxc_write_to_file(fullpath, pidstr, len, false);
+		if (ret < 0) {
 			SYSERROR("Failed to attach %d to %s", (int)pid, fullpath);
 			free(fullpath);
 			return false;
