@@ -438,10 +438,15 @@ char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
 	struct lxc_cmd_rr cmd = {
 		.req = {
 			.cmd = LXC_CMD_GET_CGROUP,
-			.datalen = strlen(subsystem) + 1,
 			.data = subsystem,
+			.datalen = 0,
 		},
 	};
+
+	cmd.req.data = subsystem;
+	cmd.req.datalen = 0;
+	if (subsystem)
+		cmd.req.datalen = strlen(subsystem) + 1;
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
@@ -462,10 +467,10 @@ static int lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
 	const char *path;
 	struct lxc_cmd_rsp rsp;
 
-	if (req->datalen < 1)
-		return -1;
-
-	path = cgroup_get_cgroup(handler, req->data);
+	if (req->datalen > 0)
+		path = cgroup_get_cgroup(handler, req->data);
+	else
+		path = cgroup_get_cgroup(handler, NULL);
 	if (!path)
 		return -1;
 
