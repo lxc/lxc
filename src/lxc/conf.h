@@ -52,6 +52,8 @@ typedef void * scmp_filter_ctx;
  * programmer to specify the right subsystem.
  * @subsystem : the targeted subsystem
  * @value     : the value to set
+ * @version   : The version of the cgroup filesystem on which the controller
+ *              resides.
  *
  * @controllers : The controllers to use for this container.
  * @dir         : The name of the directory containing the container's cgroup.
@@ -61,6 +63,7 @@ struct lxc_cgroup {
 	union {
 		/* information about a specific controller */
 		struct /* controller */ {
+			int version;
 			char *subsystem;
 			char *value;
 		};
@@ -282,7 +285,10 @@ struct lxc_conf {
 	int reboot;
 	signed long personality;
 	struct utsname *utsname;
-	struct lxc_list cgroup;
+	struct {
+		struct lxc_list cgroup;
+		struct lxc_list cgroup2;
+	};
 	struct {
 		struct lxc_list id_map;
 
@@ -433,7 +439,7 @@ extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
 extern void lxc_delete_tty(struct lxc_tty_info *tty_info);
 extern int lxc_clear_config_caps(struct lxc_conf *c);
 extern int lxc_clear_config_keepcaps(struct lxc_conf *c);
-extern int lxc_clear_cgroups(struct lxc_conf *c, const char *key);
+extern int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version);
 extern int lxc_clear_mount_entries(struct lxc_conf *c);
 extern int lxc_clear_automounts(struct lxc_conf *c);
 extern int lxc_clear_hooks(struct lxc_conf *c, const char *key);
