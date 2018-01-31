@@ -2140,6 +2140,7 @@ static bool cgfsng_escape()
 	return true;
 }
 
+/* TODO: handle the unified cgroup hierarchy */
 static int cgfsng_num_hierarchies(void)
 {
 	int i;
@@ -2150,15 +2151,15 @@ static int cgfsng_num_hierarchies(void)
 	return i;
 }
 
+/* TODO: handle the unified cgroup hierarchy */
 static bool cgfsng_get_hierarchies(int n, char ***out)
 {
 	int i;
 
 	/* sanity check n */
-	for (i = 0; i < n; i++) {
+	for (i = 0; i < n; i++)
 		if (!hierarchies[i])
 			return false;
-	}
 
 	*out = hierarchies[i]->controllers;
 
@@ -2520,8 +2521,9 @@ static int lxc_cgroup_set_data(const char *filename, const char *value, struct c
 	return ret;
 }
 
-static bool cgfsng_setup_limits(void *hdata, struct lxc_list *cgroup_settings,
-				  bool do_devices)
+static bool __cgfsng_setup_limits_legacy(void *hdata,
+					 struct lxc_list *cgroup_settings,
+					 bool do_devices)
 {
 	struct cgfsng_handler_data *d = hdata;
 	struct lxc_list *iterator, *sorted_cgroup_settings, *next;
@@ -2532,9 +2534,8 @@ static bool cgfsng_setup_limits(void *hdata, struct lxc_list *cgroup_settings,
 		return true;
 
 	sorted_cgroup_settings = sort_cgroup_settings(cgroup_settings);
-	if (!sorted_cgroup_settings) {
+	if (!sorted_cgroup_settings)
 		return false;
-	}
 
 	lxc_list_for_each(iterator, sorted_cgroup_settings) {
 		cg = iterator->elem;
@@ -2555,7 +2556,7 @@ static bool cgfsng_setup_limits(void *hdata, struct lxc_list *cgroup_settings,
 	}
 
 	ret = true;
-	INFO("cgroup has been setup");
+	INFO("Limits for the legacy cgroup hierarchies have been setup");
 out:
 	lxc_list_for_each_safe(iterator, sorted_cgroup_settings, next) {
 		lxc_list_del(iterator);
@@ -2563,6 +2564,25 @@ out:
 	}
 	free(sorted_cgroup_settings);
 	return ret;
+}
+
+static bool __cgfsng_setup_limits_unified(void *hdata,
+					  struct lxc_list *cgroup_settings)
+{
+	INFO("Setting limits on the unified cgroup hierarchy is not supported");
+	return true;
+}
+
+static bool cgfsng_setup_limits(void *hdata, struct lxc_conf *conf,
+				bool do_devices)
+{
+	bool bret;
+
+	bret = __cgfsng_setup_limits_legacy(hdata, &conf->cgroup, do_devices);
+	if (!bret)
+		return false;
+
+	return __cgfsng_setup_limits_unified(NULL, NULL);
 }
 
 static struct cgroup_ops cgfsng_ops = {

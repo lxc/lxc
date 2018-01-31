@@ -1479,11 +1479,12 @@ static bool cgm_unfreeze(void *hdata)
 	return ret;
 }
 
-static bool cgm_setup_limits(void *hdata, struct lxc_list *cgroup_settings, bool do_devices)
+static bool cgm_setup_limits(void *hdata, struct lxc_conf *conf, bool do_devices)
 {
 	struct cgm_data *d = hdata;
 	struct lxc_list *iterator, *sorted_cgroup_settings, *next;
 	struct lxc_cgroup *cg;
+	struct lxc_list *cgroup_settings = &conf->cgroup;
 	bool ret = false;
 
 	if (lxc_list_empty(cgroup_settings))
