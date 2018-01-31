@@ -78,7 +78,7 @@ struct hierarchy {
 	char *mountpoint;
 	char *base_cgroup;
 	char *fullcgpath;
-	bool is_cgroup_v2;
+	int version;
 };
 
 /*
@@ -98,14 +98,17 @@ struct cgfsng_handler_data {
 	char *name; /* container name */
 	/* per-container cgroup information */
 	struct lxc_cgroup cgroup_meta;
+	cgroup_layout_t cgroup_layout;
 };
 
 /*
  * @hierarchies - a NULL-terminated array of struct hierarchy, one per
- *   hierarchy.  No duplicates.  First sufficient, writeable mounted
- *   hierarchy wins
+ *                legacy hierarchy. No duplicates. First sufficient, writeable
+ *                mounted hierarchy wins
  */
 struct hierarchy **hierarchies;
+struct hierarchy *unified;
+cgroup_layout_t cgroup_layout;
 
 /*
  * @cgroup_use - a copy of the lxc.cgroup.use
@@ -183,6 +186,7 @@ static bool string_in_list(char **list, const char *entry)
 
 	if (!list)
 		return false;
+
 	for (i = 0; list[i]; i++)
 		if (strcmp(list[i], entry) == 0)
 			return true;
@@ -220,8 +224,6 @@ static void must_append_controller(char **klist, char **nlist, char ***clist, ch
 		copy = must_copy_string(entry);
 	else if (string_in_list(klist, entry))
 		copy = must_copy_string(entry);
-	else if (!strcmp(entry, "cgroup2"))
-		copy = must_copy_string(entry);
 	else
 		copy = must_prefix_named(entry);
 
@@ -250,10 +252,21 @@ struct hierarchy *get_hierarchy(const char *c)
 
 	if (!hierarchies)
 		return NULL;
+
 	for (i = 0; hierarchies[i]; i++) {
+		if (!c) {
+			/* This is the empty unified hierarchy. */
+			if (hierarchies[i]->controllers &&
+			    !hierarchies[i]->controllers[0])
+				return hierarchies[i];
+
+			return NULL;
+		}
+
 		if (string_in_list(hierarchies[i]->controllers, c))
 			return hierarchies[i];
 	}
+
 	return NULL;
 }
 
@@ -278,7 +291,7 @@ static void append_line(char **dest, size_t oldlen, char *new, size_t newlen)
 }
 
 /* Slurp in a whole file */
-static char *read_file(char *fnam)
+static char *read_file(const char *fnam)
 {
 	FILE *f;
 	char *line = NULL, *buf = NULL;
@@ -713,12 +726,14 @@ static bool controller_list_is_dup(struct hierarchy **hlist, char **clist)
 static bool controller_found(struct hierarchy **hlist, char *entry)
 {
 	int i;
+
 	if (!hlist)
 		return false;
 
 	for (i = 0; hlist[i]; i++)
 		if (string_in_list(hlist[i]->controllers, entry))
 			return true;
+
 	return false;
 }
 
@@ -757,12 +772,13 @@ static bool all_controllers_found(void)
  * options.  But we simply assume that the mountpoint must be
  * /sys/fs/cgroup/controller-list
  */
-static char **get_controllers(char **klist, char **nlist, char *line, int type)
+static char **get_controllers_on_hybrid_layout(char **klist, char **nlist,
+					       char *line, int type)
 {
 	/* the fourth field is /sys/fs/cgroup/comma-delimited-controller-list */
 	int i;
 	char *dup, *p2, *tok;
-	char *p = line, *saveptr = NULL;
+	char *p = line, *saveptr = NULL, *sep = ",";
 	char **aret = NULL;
 
 	for (i = 0; i < 4; i++) {
@@ -778,6 +794,7 @@ static char **get_controllers(char **klist, char **nlist, char *line, int type)
 		CGFSNG_DEBUG("Found hierarchy not under /sys/fs/cgroup: \"%s\"\n", p);
 		return NULL;
 	}
+
 	p += 15;
 	p2 = strchr(p, ' ');
 	if (!p2) {
@@ -786,30 +803,60 @@ static char **get_controllers(char **klist, char **nlist, char *line, int type)
 	}
 	*p2 = '\0';
 
-	/* cgroup v2 does not have separate mountpoints for controllers */
-	if (type == CGROUP_V2) {
-		must_append_controller(klist, nlist, &aret, "cgroup2");
-		return aret;
+	if (type == CGROUP_SUPER_MAGIC) {
+		/* strdup() here for v1 hierarchies. Otherwise strtok_r() will
+		 * destroy mountpoints such as "/sys/fs/cgroup/cpu,cpuacct".
+		 */
+		dup = strdup(p);
+		if (!dup)
+			return NULL;
+
+		for (tok = strtok_r(dup, sep, &saveptr); tok;
+		     tok = strtok_r(NULL, sep, &saveptr))
+			must_append_controller(klist, nlist, &aret, tok);
+
+		free(dup);
 	}
-
-	/* strdup() here for v1 hierarchies. Otherwise strtok_r() will destroy
-	 * mountpoints such as "/sys/fs/cgroup/cpu,cpuacct".
-	 */
-	dup = strdup(p);
-	if (!dup)
-		return NULL;
-
-	for (tok = strtok_r(dup, ",", &saveptr); tok;
-			tok = strtok_r(NULL, ",", &saveptr)) {
-		must_append_controller(klist, nlist, &aret, tok);
-	}
-
-	free(dup);
+	*p2 = ' ';
 	return aret;
 }
 
-/* Add a controller to our list of hierarchies */
-static void add_controller(char **clist, char *mountpoint, char *base_cgroup)
+static char **cg_unified_make_empty_controller(void)
+{
+	int newentry;
+	char **aret = NULL;
+
+	newentry = append_null_to_list((void ***)&aret);
+	aret[newentry] = NULL;
+	return aret;
+}
+
+static char **cg_unified_get_controllers(const char *file)
+{
+	char *buf, *tok;
+	char *saveptr = NULL, *sep = " \t\n";
+	char **aret = NULL;
+
+	buf = read_file(file);
+	if (!buf)
+		return NULL;
+
+	for (tok = strtok_r(buf, sep, &saveptr); tok;
+	     tok = strtok_r(NULL, sep, &saveptr)) {
+		int newentry;
+		char *copy;
+
+		newentry = append_null_to_list((void ***)&aret);
+		copy = must_copy_string(tok);
+		aret[newentry] = copy;
+	}
+
+	free(buf);
+	return aret;
+}
+
+static struct hierarchy *add_hierarchy(char **clist, char *mountpoint,
+				       char *base_cgroup, int type)
 {
 	struct hierarchy *new;
 	int newentry;
@@ -819,26 +866,24 @@ static void add_controller(char **clist, char *mountpoint, char *base_cgroup)
 	new->mountpoint = mountpoint;
 	new->base_cgroup = base_cgroup;
 	new->fullcgpath = NULL;
-
-	/* record if this is the cgroup v2 hierarchy */
-	if (clist && !strcmp(*clist, "cgroup2"))
-		new->is_cgroup_v2 = true;
-	else
-		new->is_cgroup_v2 = false;
+	new->version = type;
 
 	newentry = append_null_to_list((void ***)&hierarchies);
 	hierarchies[newentry] = new;
+	return new;
 }
 
 /*
  * Get a copy of the mountpoint from @line, which is a line from
  * /proc/self/mountinfo
  */
-static char *get_mountpoint(char *line)
+static char *get_mountpoint_on_hybrid_layout(char *line)
 {
 	int i;
-	char *p = line, *sret;
+	char *p2;
 	size_t len;
+	char *p = line;
+	char *sret = NULL;
 
 	for (i = 0; i < 4; i++) {
 		p = strchr(p, ' ');
@@ -846,7 +891,15 @@ static char *get_mountpoint(char *line)
 			return NULL;
 		p++;
 	}
-	/* we've already stuck a \0 after the mountpoint */
+
+	if (strncmp(p, "/sys/fs/cgroup/", 15))
+		return NULL;
+
+	p2 = strchr(p + 15, ' ');
+	if (!p2)
+		return NULL;
+	*p2 = '\0';
+
 	len = strlen(p);
 	sret = must_alloc(len + 1);
 	memcpy(sret, p, len);
@@ -893,10 +946,11 @@ static bool controller_in_clist(char *cgline, char *c)
 	tmp[len] = '\0';
 
 	for (tok = strtok_r(tmp, ",", &saveptr); tok;
-			tok = strtok_r(NULL, ",", &saveptr)) {
+	     tok = strtok_r(NULL, ",", &saveptr)) {
 		if (strcmp(tok, c) == 0)
 			return true;
 	}
+
 	return false;
 }
 
@@ -904,24 +958,23 @@ static bool controller_in_clist(char *cgline, char *c)
  * @basecginfo is a copy of /proc/$$/cgroup.  Return the current
  * cgroup for @controller
  */
-static char *get_current_cgroup(char *basecginfo, char *controller)
+static char *get_current_cgroup(char *basecginfo, char *controller, int type)
 {
 	char *p = basecginfo;
-	bool is_cgroup_v2;
-	bool is_cgroup_v2_base_cgroup;
 
-	is_cgroup_v2 = !strcmp(controller, "cgroup2");
-	while (true) {
-		is_cgroup_v2_base_cgroup = false;
+	for (;;) {
+		bool is_cgv2_base_cgroup = false;
+
 		/* cgroup v2 entry in "/proc/<pid>/cgroup": "0::/some/path" */
-		if (is_cgroup_v2 && (*p == '0'))
-			is_cgroup_v2_base_cgroup = true;
+		if ((type == CGROUP2_SUPER_MAGIC) && (*p == '0'))
+			is_cgv2_base_cgroup = true;
 
 		p = strchr(p, ':');
 		if (!p)
 			return NULL;
 		p++;
-		if (is_cgroup_v2_base_cgroup || controller_in_clist(p, controller)) {
+
+		if (is_cgv2_base_cgroup || (controller && controller_in_clist(p, controller))) {
 			p = strchr(p, ':');
 			if (!p)
 				return NULL;
@@ -945,14 +998,16 @@ static void must_append_string(char ***list, char *entry)
 	(*list)[newentry] = copy;
 }
 
-static void get_existing_subsystems(char ***klist, char ***nlist)
+static int get_existing_subsystems(char ***klist, char ***nlist)
 {
 	FILE *f;
 	char *line = NULL;
 	size_t len = 0;
 
-	if ((f = fopen("/proc/self/cgroup", "r")) == NULL)
-		return;
+	f = fopen("/proc/self/cgroup", "r");
+	if (!f)
+		return -1;
+
 	while (getline(&line, &len, f) != -1) {
 		char *p, *p2, *tok, *saveptr = NULL;
 		p = strchr(line, ':');
@@ -977,7 +1032,7 @@ static void get_existing_subsystems(char ***klist, char ***nlist)
 		}
 
 		for (tok = strtok_r(p, ",", &saveptr); tok;
-				tok = strtok_r(NULL, ",", &saveptr)) {
+		     tok = strtok_r(NULL, ",", &saveptr)) {
 			if (strncmp(tok, "name=", 5) == 0)
 				must_append_string(nlist, tok);
 			else
@@ -987,6 +1042,7 @@ static void get_existing_subsystems(char ***klist, char ***nlist)
 
 	free(line);
 	fclose(f);
+	return 0;
 }
 
 static void trim(char *s)
@@ -1054,82 +1110,125 @@ static void lxc_cgfsng_print_debuginfo(const struct cgfsng_handler_data *d)
  * At startup, parse_hierarchies finds all the info we need about
  * cgroup mountpoints and current cgroups, and stores it in @d.
  */
-static bool parse_hierarchies(void)
+static bool cg_init_hybrid(void)
 {
+	int ret;
+	char *basecginfo;
+	bool will_escape;
 	FILE *f;
-	char * line = NULL, *basecginfo;
-	char **klist = NULL, **nlist = NULL;
 	size_t len = 0;
+	char *line = NULL;
+	char **klist = NULL, **nlist = NULL;
 
 	/*
 	 * Root spawned containers escape the current cgroup, so use init's
 	 * cgroups as our base in that case.
 	 */
-	if (geteuid())
-		basecginfo = read_file("/proc/self/cgroup");
-	else
+	will_escape = (geteuid() == 0);
+	if (will_escape)
 		basecginfo = read_file("/proc/1/cgroup");
+	else
+		basecginfo = read_file("/proc/self/cgroup");
 	if (!basecginfo)
 		return false;
 
-	if ((f = fopen("/proc/self/mountinfo", "r")) == NULL) {
+	ret = get_existing_subsystems(&klist, &nlist);
+	if (ret < 0) {
+		CGFSNG_DEBUG("Failed to retrieve available cgroup v1 controllers\n");
+		free(basecginfo);
+		return false;
+	}
+
+	f = fopen("/proc/self/mountinfo", "r");
+	if (!f) {
 		CGFSNG_DEBUG("Failed to open \"/proc/self/mountinfo\"\n");
 		return false;
 	}
 
-	get_existing_subsystems(&klist, &nlist);
-
 	if (lxc_cgfsng_debug)
 		lxc_cgfsng_print_basecg_debuginfo(basecginfo, klist, nlist);
 
-	/* we support simple cgroup mounts and lxcfs mounts */
 	while (getline(&line, &len, f) != -1) {
-		char **controller_list = NULL;
-		char *mountpoint, *base_cgroup;
-		bool writeable;
 		int type;
+		bool writeable;
+		struct hierarchy *new;
+		char *mountpoint = NULL, *base_cgroup = NULL;
+		char **controller_list = NULL;
 
 		type = get_cgroup_version(line);
-		if (type < 0)
+		if (type == 0)
 			continue;
 
-		controller_list = get_controllers(klist, nlist, line, type);
-		if (!controller_list)
+		if (type == CGROUP2_SUPER_MAGIC && unified)
 			continue;
 
-		if (controller_list_is_dup(hierarchies, controller_list)) {
-			free(controller_list);
-			continue;
+		if (cgroup_layout == CGROUP_LAYOUT_UNKNOWN) {
+			if (type == CGROUP2_SUPER_MAGIC)
+				cgroup_layout = CGROUP_LAYOUT_UNIFIED;
+			else if (type == CGROUP_SUPER_MAGIC)
+				cgroup_layout = CGROUP_LAYOUT_LEGACY;
+		} else if (cgroup_layout == CGROUP_LAYOUT_UNIFIED) {
+			if (type == CGROUP_SUPER_MAGIC)
+				cgroup_layout = CGROUP_LAYOUT_HYBRID;
+		} else if (cgroup_layout == CGROUP_LAYOUT_LEGACY) {
+			if (type == CGROUP2_SUPER_MAGIC)
+				cgroup_layout = CGROUP_LAYOUT_HYBRID;
 		}
 
-		mountpoint = get_mountpoint(line);
+		controller_list = get_controllers_on_hybrid_layout(klist, nlist, line, type);
+		if (!controller_list && type == CGROUP_SUPER_MAGIC)
+			continue;
+
+		if (type == CGROUP_SUPER_MAGIC)
+			if (controller_list_is_dup(hierarchies, controller_list))
+				goto next;
+
+		mountpoint = get_mountpoint_on_hybrid_layout(line);
 		if (!mountpoint) {
 			CGFSNG_DEBUG("Failed parsing mountpoint from \"%s\"\n", line);
-			free_string_list(controller_list);
-			continue;
+			goto next;
 		}
 
-		base_cgroup = get_current_cgroup(basecginfo, controller_list[0]);
+		if (type == CGROUP_SUPER_MAGIC)
+			base_cgroup = get_current_cgroup(basecginfo, controller_list[0], CGROUP_SUPER_MAGIC);
+		else
+			base_cgroup = get_current_cgroup(basecginfo, NULL, CGROUP2_SUPER_MAGIC);
 		if (!base_cgroup) {
-			CGFSNG_DEBUG("Failed to find current cgroup for controller \"%s\"\n", controller_list[0]);
-			free_string_list(controller_list);
-			free(mountpoint);
-			continue;
+			CGFSNG_DEBUG("Failed to find current cgroup\n");
+			goto next;
 		}
 
 		trim(base_cgroup);
 		prune_init_scope(base_cgroup);
-		if (type == CGROUP_V2)
+		if (type == CGROUP2_SUPER_MAGIC)
 			writeable = test_writeable_v2(mountpoint, base_cgroup);
 		else
 			writeable = test_writeable_v1(mountpoint, base_cgroup);
-		if (!writeable) {
-			free_string_list(controller_list);
-			free(mountpoint);
-			free(base_cgroup);
-			continue;
+		if (!writeable)
+			goto next;
+
+		if (type == CGROUP2_SUPER_MAGIC) {
+			char *cgv2_ctrl_path;
+
+			cgv2_ctrl_path = must_make_path(mountpoint, base_cgroup,
+							"cgroup.controllers",
+							NULL);
+
+			controller_list = cg_unified_get_controllers(cgv2_ctrl_path);
+			free(cgv2_ctrl_path);
+			if (!controller_list)
+				controller_list = cg_unified_make_empty_controller();
 		}
-		add_controller(controller_list, mountpoint, base_cgroup);
+		new = add_hierarchy(controller_list, mountpoint, base_cgroup, type);
+		if (type == CGROUP2_SUPER_MAGIC && !unified)
+			unified = new;
+
+		continue;
+
+	next:
+		free_string_list(controller_list);
+		free(mountpoint);
+		free(base_cgroup);
 	}
 
 	free_string_list(klist);
@@ -1154,9 +1253,106 @@ static bool parse_hierarchies(void)
 	return true;
 }
 
-static bool collect_hierarchy_info(void)
+static int cg_is_pure_unified(void) {
+
+	int ret;
+        struct statfs fs;
+
+        ret = statfs("/sys/fs/cgroup", &fs);
+        if (ret < 0)
+                return -ENOMEDIUM;
+
+        if (is_fs_type(&fs, CGROUP2_SUPER_MAGIC))
+		return CGROUP2_SUPER_MAGIC;
+
+        return 0;
+}
+
+/* Get current cgroup from /proc/self/cgroup for the cgroupfs v2 hierarchy. */
+static char *cg_get_current_cgroup_unified(void)
 {
+	char *basecginfo;
+	char *base_cgroup;
+	bool will_escape;
+	char *copy = NULL;
+
+	will_escape = (geteuid() == 0);
+	if (will_escape)
+		basecginfo = read_file("/proc/1/cgroup");
+	else
+		basecginfo = read_file("/proc/self/cgroup");
+	if (!basecginfo)
+		return NULL;
+
+	base_cgroup = strstr(basecginfo, "0::/");
+	if (!base_cgroup)
+		goto cleanup_on_err;
+
+	base_cgroup = base_cgroup + 3;
+	copy = copy_to_eol(base_cgroup);
+	if (!copy)
+		goto cleanup_on_err;
+
+cleanup_on_err:
+	free(basecginfo);
+	if (copy)
+		trim(copy);
+
+	return copy;
+}
+
+static int cg_init_unified(void)
+{
+	int ret;
+	char *mountpoint, *subtree_path;
+	char **delegatable;
+	char *base_cgroup = NULL;
+
+	ret = cg_is_pure_unified();
+	if (ret == -ENOMEDIUM)
+		return -ENOMEDIUM;
+
+	if (ret != CGROUP2_SUPER_MAGIC)
+		return 0;
+
+	base_cgroup = cg_get_current_cgroup_unified();
+	if (!base_cgroup)
+		return -EINVAL;
+	prune_init_scope(base_cgroup);
+
+	/* We assume that we have already been given controllers to delegate
+	 * further down the hierarchy. If not it is up to the user to delegate
+	 * them to us.
+	 */
+	mountpoint = must_copy_string("/sys/fs/cgroup");
+	subtree_path = must_make_path(mountpoint, base_cgroup,
+				      "cgroup.subtree_control", NULL);
+	delegatable = cg_unified_get_controllers(subtree_path);
+	free(subtree_path);
+	if (!delegatable)
+		delegatable = cg_unified_make_empty_controller();
+	if (!delegatable[0])
+		CGFSNG_DEBUG("No controllers are enabled for delegation\n");
+
+	/* TODO: If the user requested specific controllers via lxc.cgroup.use
+	 * we should verify here. The reason I'm not doing it right is that I'm
+	 * not convinced that lxc.cgroup.use will be the future since it is a
+	 * global property. I much rather have an option that lets you request
+	 * controllers per container.
+	 */
+
+	add_hierarchy(delegatable, mountpoint, base_cgroup, CGROUP2_SUPER_MAGIC);
+	unified = hierarchies[0];
+
+	cgroup_layout = CGROUP_LAYOUT_UNIFIED;
+	return CGROUP2_SUPER_MAGIC;
+}
+
+static bool cg_init(void)
+{
+	int ret;
 	const char *tmp;
+
 	errno = 0;
 	tmp = lxc_global_config_value("lxc.cgroup.use");
 	if (!cgroup_use && errno != 0) { /* lxc.cgroup.use can be NULL */
@@ -1165,7 +1361,14 @@ static bool collect_hierarchy_info(void)
 	}
 	cgroup_use = must_copy_string(tmp);
 
-	return parse_hierarchies();
+	ret = cg_init_unified();
+	if (ret < 0)
+		return false;
+
+	if (ret == CGROUP2_SUPER_MAGIC)
+		return true;
+
+	return cg_init_hybrid();
 }
 
 static void *cgfsng_init(struct lxc_handler *handler)
@@ -1195,6 +1398,16 @@ static void *cgfsng_init(struct lxc_handler *handler)
 		goto out_free;
 	}
 	d->cgroup_pattern = must_copy_string(cgroup_pattern);
+
+	d->cgroup_layout = cgroup_layout;
+	if (d->cgroup_layout == CGROUP_LAYOUT_LEGACY)
+		TRACE("Running with legacy cgroup layout");
+	else if (d->cgroup_layout == CGROUP_LAYOUT_HYBRID)
+		TRACE("Running with hybrid cgroup layout");
+	else if (d->cgroup_layout == CGROUP_LAYOUT_UNIFIED)
+		TRACE("Running with unified cgroup layout");
+	else
+		WARN("Running with unknown cgroup layout");
 
 	if (lxc_cgfsng_debug)
 		lxc_cgfsng_print_debuginfo(d);
@@ -1343,7 +1556,7 @@ struct cgroup_ops *cgfsng_ops_init(void)
 	if (getenv("LXC_DEBUG_CGFSNG"))
 		lxc_cgfsng_debug = true;
 
-	if (!collect_hierarchy_info())
+	if (!cg_init())
 		return NULL;
 
 	return &cgfsng_ops;
@@ -1529,7 +1742,7 @@ static int chown_cgroup_wrapper(void *data)
 			WARN("Error chmoding %s: %s", path, strerror(errno));
 		free(fullpath);
 
-		if (!hierarchies[i]->is_cgroup_v2)
+		if (hierarchies[i]->version != CGROUP2_SUPER_MAGIC)
 			continue;
 
 		fullpath = must_make_path(path, "cgroup.subtree_control", NULL);
@@ -1679,7 +1892,7 @@ static int mount_cgroup_cgns_supported(int type, struct hierarchy *h, const char
 	 if (type == LXC_AUTO_CGROUP_RO || type == LXC_AUTO_CGROUP_FULL_RO)
 		 flags |= MS_RDONLY;
 
-	 if (!h->is_cgroup_v2) {
+	 if (h->version != CGROUP2_SUPER_MAGIC) {
 		 controllers = lxc_string_join(",", (const char **)h->controllers, false);
 		 if (!controllers)
 			 return -ENOMEM;
@@ -1902,25 +2115,33 @@ static bool cgfsng_get_hierarchies(int n, char ***out)
 #define THAWED "THAWED"
 #define THAWED_LEN (strlen(THAWED))
 
+/* TODO: If the unified cgroup hierarchy grows a freezer controller this needs
+ * to be adapted.
+ */
 static bool cgfsng_unfreeze(void *hdata)
 {
+	int ret;
 	char *fullpath;
-	struct hierarchy *h = get_hierarchy("freezer");
+	struct hierarchy *h;
 
+	h = get_hierarchy("freezer");
 	if (!h)
 		return false;
+
 	fullpath = must_make_path(h->fullcgpath, "freezer.state", NULL);
-	if (lxc_write_to_file(fullpath, THAWED, THAWED_LEN, false) != 0) {
-		free(fullpath);
-		return false;
-	}
+	ret = lxc_write_to_file(fullpath, THAWED, THAWED_LEN, false);
 	free(fullpath);
+	if (ret < 0)
+		return false;
+
 	return true;
 }
 
 static const char *cgfsng_get_cgroup(void *hdata, const char *subsystem)
 {
-	struct hierarchy *h = get_hierarchy(subsystem);
+	struct hierarchy *h;
+
+	h = get_hierarchy(subsystem);
 	if (!h)
 		return NULL;
 
