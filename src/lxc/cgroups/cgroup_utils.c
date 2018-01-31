@@ -35,12 +35,12 @@
 int get_cgroup_version(char *line)
 {
 	if (is_cgroupfs_v1(line))
-		return CGROUP_V1;
+		return CGROUP_SUPER_MAGIC;
 
 	if (is_cgroupfs_v2(line))
-		return CGROUP_V2;
+		return CGROUP2_SUPER_MAGIC;
 
-	return -1;
+	return 0;
 }
 
 bool is_cgroupfs_v1(char *line)

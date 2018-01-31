@@ -33,6 +33,13 @@ struct lxc_conf;
 struct lxc_list;
 
 typedef enum {
+        CGROUP_LAYOUT_UNKNOWN = -1,
+        CGROUP_LAYOUT_LEGACY  =  0,
+        CGROUP_LAYOUT_HYBRID  =  1,
+        CGROUP_LAYOUT_UNIFIED =  2,
+} cgroup_layout_t;
+
+typedef enum {
 	CGFS,
 	CGMANAGER,
 	CGFSNG,
