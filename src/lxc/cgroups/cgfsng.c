@@ -2352,28 +2352,34 @@ static bool cgfsng_attach(const char *name, const char *lxcpath, pid_t pid)
  * Here we don't have a cgroup_data set up, so we ask the running
  * container through the commands API for the cgroup path
  */
-static int cgfsng_get(const char *filename, char *value, size_t len, const char *name, const char *lxcpath)
+static int cgfsng_get(const char *filename, char *value, size_t len,
+		      const char *name, const char *lxcpath)
 {
-	char *subsystem, *p, *path;
-	struct hierarchy *h;
 	int ret = -1;
+	size_t controller_len;
+	char *controller, *p, *path;
+	struct hierarchy *h;
 
-	subsystem = alloca(strlen(filename) + 1);
-	strcpy(subsystem, filename);
-	if ((p = strchr(subsystem, '.')) != NULL)
+	controller_len = strlen(filename);
+	controller = alloca(controller_len + 1);
+	strcpy(controller, filename);
+	p = strchr(controller, '.');
+	if (p)
 		*p = '\0';
 
-	path = lxc_cmd_get_cgroup_path(name, lxcpath, subsystem);
-	if (!path) /* not running */
+	path = lxc_cmd_get_cgroup_path(name, lxcpath, controller);
+	/* not running */
+	if (!path)
 		return -1;
 
-	h = get_hierarchy(subsystem);
+	h = get_hierarchy(controller);
 	if (h) {
-		char *fullpath = build_full_cgpath_from_monitorpath(h, path, filename);
+		char *fullpath;
+
+		fullpath = build_full_cgpath_from_monitorpath(h, path, filename);
 		ret = lxc_read_from_file(fullpath, value, len);
 		free(fullpath);
 	}
-
 	free(path);
 
 	return ret;
