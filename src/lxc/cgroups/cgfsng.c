@@ -1544,18 +1544,92 @@ struct cgroup_ops *cgfsng_ops_init(void)
 	return &cgfsng_ops;
 }
 
+static bool handle_unified_hierarchy(struct hierarchy *h, char *cgname)
+{
+	char **it;
+	size_t i, parts_len;
+	size_t full_len = 0;
+	char *add_controllers = NULL, *cgroup = NULL;
+	char **parts = NULL;
+	bool bret = false;
+
+	if (h->version != CGROUP2_SUPER_MAGIC)
+		return true;
+
+	if (!h->controllers)
+		return true;
+
+	/* For now we simply enable all controllers that we have detected by
+	 * creating a string like "+memory +pids +cpu +io".
+	 * TODO: In the near future we might want to support "-<controller>"
+	 * etc. but whether supporting semantics like this make sense will need
+	 * some thinking.
+	 */
+	for (it = h->controllers; it && *it; it++) {
+                full_len += strlen(*it) + 2;
+                add_controllers = must_realloc(add_controllers, full_len + 1);
+                if (h->controllers[0] == *it)
+                        add_controllers[0] = '\0';
+                strcat(add_controllers, "+");
+                strcat(add_controllers, *it);
+                if ((it + 1) && *(it + 1))
+                        strcat(add_controllers, " ");
+	}
+
+	parts = lxc_string_split(cgname, '/');
+	if (!parts)
+		goto on_error;
+	parts_len = lxc_array_len((void **)parts);
+	if (parts_len > 0)
+		parts_len--;
+
+	cgroup = must_make_path(h->mountpoint, h->base_cgroup, NULL);
+	for (i = 0; i < parts_len; i++) {
+		int ret;
+		char *target;
+
+		cgroup = must_append_path(cgroup, parts[i], NULL);
+		target = must_make_path(cgroup, "cgroup.subtree_control", NULL);
+		ret = lxc_write_to_file(target, add_controllers, full_len, false);
+		free(target);
+		if (ret < 0) {
+			SYSERROR("Could not enable \"%s\" controllers in the "
+				 "unified cgroup \"%s\"", add_controllers, cgroup);
+			goto on_error;
+		}
+	}
+
+	bret = true;
+
+on_error:
+	lxc_free_array((void **)parts, free);
+	free(add_controllers);
+	free(cgroup);
+	return bret;
+}
+
 static bool create_path_for_hierarchy(struct hierarchy *h, char *cgname)
 {
+	int ret;
+
 	h->fullcgpath = must_make_path(h->mountpoint, h->base_cgroup, cgname, NULL);
 	if (dir_exists(h->fullcgpath)) { /* it must not already exist */
-		ERROR("Path \"%s\" already existed.", h->fullcgpath);
+		ERROR("cgroup \"%s\" already existed", h->fullcgpath);
 		return false;
 	}
+
 	if (!handle_cpuset_hierarchy(h, cgname)) {
-		ERROR("Failed to handle cgroupfs v1 cpuset controller.");
+		ERROR("Failed to handle cgroupfs v1 cpuset controller");
 		return false;
 	}
-	return mkdir_p(h->fullcgpath, 0755) == 0;
+
+	ret = mkdir_p(h->fullcgpath, 0755);
+	if (ret < 0) {
+		ERROR("Failed to create cgroup \"%s\"", h->fullcgpath);
+		return false;
+	}
+
+	return handle_unified_hierarchy(h, cgname);
 }
 
 static void remove_path_for_hierarchy(struct hierarchy *h, char *cgname)
@@ -1574,7 +1648,7 @@ static inline bool cgfsng_create(void *hdata)
 {
 	int i;
 	size_t len;
-	char *cgname, *offset, *tmp;
+	char *container_cgroup, *offset, *tmp;
 	int idx = 0;
 	struct cgfsng_handler_data *d = hdata;
 
@@ -1592,10 +1666,10 @@ static inline bool cgfsng_create(void *hdata)
 		return false;
 	}
 	len = strlen(tmp) + 5; /* leave room for -NNN\0 */
-	cgname = must_alloc(len);
-	strcpy(cgname, tmp);
+	container_cgroup = must_alloc(len);
+	strcpy(container_cgroup, tmp);
 	free(tmp);
-	offset = cgname + len - 5;
+	offset = container_cgroup + len - 5;
 
 again:
 	if (idx == 1000) {
@@ -1617,23 +1691,23 @@ again:
 		}
 	}
 	for (i = 0; hierarchies[i]; i++) {
-		if (!create_path_for_hierarchy(hierarchies[i], cgname)) {
+		if (!create_path_for_hierarchy(hierarchies[i], container_cgroup)) {
 			int j;
 			ERROR("Failed to create \"%s\"", hierarchies[i]->fullcgpath);
 			free(hierarchies[i]->fullcgpath);
 			hierarchies[i]->fullcgpath = NULL;
 			for (j = 0; j < i; j++)
-				remove_path_for_hierarchy(hierarchies[j], cgname);
+				remove_path_for_hierarchy(hierarchies[j], container_cgroup);
 			idx++;
 			goto again;
 		}
 	}
 	/* Done */
-	d->container_cgroup = cgname;
+	d->container_cgroup = container_cgroup;
 	return true;
 
 out_free:
-	free(cgname);
+	free(container_cgroup);
 	return false;
 }
 
