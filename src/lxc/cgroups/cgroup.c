@@ -150,7 +150,7 @@ bool cgroup_setup_limits(struct lxc_handler *handler, bool with_devices)
 {
 	if (ops)
 		return ops->setup_limits(handler->cgroup_data,
-					 &handler->conf->cgroup, with_devices);
+					 handler->conf, with_devices);
 
 	return false;
 }
