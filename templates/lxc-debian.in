@@ -250,9 +250,11 @@ download_debian()
     case "$release" in
       wheezy)
         init=sysvinit
+        iproute=iproute
         ;;
       *)
         init=init
+        iproute=iproute2
         ;;
     esac
     packages=\
@@ -263,7 +265,7 @@ dialog,\
 isc-dhcp-client,\
 netbase,\
 net-tools,\
-iproute2,\
+$iproute,\
 openssh-server
 
     cache=$1
