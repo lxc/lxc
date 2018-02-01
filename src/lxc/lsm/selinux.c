@@ -28,7 +28,7 @@
 #include <selinux/selinux.h>
 
 #include "log.h"
-#include "lsm/lsm.h"
+#include "lsm.h"
 #include "conf.h"
 
 #define DEFAULT_LABEL "unconfined_t"
