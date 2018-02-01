@@ -21,8 +21,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#if HAVE_APPARMOR || HAVE_SELINUX
-
 #include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -31,7 +29,7 @@
 
 #include "conf.h"
 #include "log.h"
-#include "lsm/lsm.h"
+#include "lsm.h"
 
 lxc_log_define(lxc_lsm, lxc);
 
@@ -183,5 +181,3 @@ int lsm_process_label_set(const char *label, struct lxc_conf *conf,
 	}
 	return drv->process_label_set(label, conf, use_default, on_exec);
 }
-
-#endif
