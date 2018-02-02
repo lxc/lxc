@@ -1338,44 +1338,31 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 
 int resolve_clone_flags(struct lxc_handler *handler)
 {
-	handler->clone_flags = CLONE_NEWNS;
+	int i;
+	struct lxc_conf *conf = handler->conf;
 
-	if (!handler->conf->ns_share[LXC_NS_USER]) {
-		if (!lxc_list_empty(&handler->conf->id_map))
-			handler->clone_flags |= CLONE_NEWUSER;
-	} else {
-		INFO("Inheriting user namespace");
-	}
+	for (i = 0; i < LXC_NS_MAX; i++) {
+		if (conf->ns_keep != 0) {
+			if ((conf->ns_keep & ns_info[i].clone_flag) == 0)
+				handler->clone_flags |= ns_info[i].clone_flag;
+		} else if (conf->ns_clone != 0) {
+			if ((conf->ns_clone & ns_info[i].clone_flag) > 0)
+				handler->clone_flags |= ns_info[i].clone_flag;
+		} else {
+			if (i == LXC_NS_USER && lxc_list_empty(&handler->conf->id_map))
+				continue;
 
-	if (!handler->conf->ns_share[LXC_NS_NET]) {
-		if (!lxc_requests_empty_network(handler))
-			handler->clone_flags |= CLONE_NEWNET;
-	} else {
-		INFO("Inheriting net namespace");
-	}
+			if (i == LXC_NS_NET && lxc_requests_empty_network(handler))
+				continue;
 
-	if (!handler->conf->ns_share[LXC_NS_IPC])
-		handler->clone_flags |= CLONE_NEWIPC;
-	else
-		INFO("Inheriting ipc namespace");
+			handler->clone_flags |= ns_info[i].clone_flag;
+		}
 
-	if (!handler->conf->ns_share[LXC_NS_UTS])
-		handler->clone_flags |= CLONE_NEWUTS;
-	else
-		INFO("Inheriting uts namespace");
+		if (!conf->ns_share[i])
+			continue;
 
-	if (!handler->conf->ns_share[LXC_NS_PID])
-		handler->clone_flags |= CLONE_NEWPID;
-	else
-		INFO("Inheriting pid namespace");
-
-	if (cgns_supported()) {
-		if (!handler->conf->ns_share[LXC_NS_CGROUP])
-			handler->clone_flags |= CLONE_NEWCGROUP;
-		else
-			INFO("Inheriting cgroup namespace");
-	} else if (handler->conf->ns_share[LXC_NS_CGROUP]) {
-			return -EINVAL;
+		handler->clone_flags &= ~ns_info[i].clone_flag;
+		TRACE("Sharing %s namespace", ns_info[i].proc_name);
 	}
 
 	return 0;
@@ -1567,7 +1554,8 @@ static int lxc_spawn(struct lxc_handler *handler)
 	 * again.
 	 */
 	if (wants_to_map_ids) {
-		if (!handler->conf->ns_share[LXC_NS_USER]) {
+		if (!handler->conf->ns_share[LXC_NS_USER] ||
+		    (handler->conf->ns_keep & CLONE_NEWUSER) > 0) {
 			ret = lxc_map_ids(id_map, handler->pid);
 			if (ret < 0) {
 				ERROR("Failed to set up id mapping.");
