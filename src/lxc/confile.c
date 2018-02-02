@@ -108,6 +108,7 @@ lxc_config_define(mount);
 lxc_config_define(mount_auto);
 lxc_config_define(mount_fstab);
 lxc_config_define(namespace_clone);
+lxc_config_define(namespace_keep);
 lxc_config_define(namespace_share);
 lxc_config_define(net);
 lxc_config_define(net_flags);
@@ -193,6 +194,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.mount.entry",               false,                  set_config_mount,                       get_config_mount,                       clr_config_mount,                     },
 	{ "lxc.mount.fstab",               false,                  set_config_mount_fstab,                 get_config_mount_fstab,                 clr_config_mount_fstab,               },
 	{ "lxc.namespace.clone",           false,                  set_config_namespace_clone,             get_config_namespace_clone,             clr_config_namespace_clone,           },
+	{ "lxc.namespace.keep",            false,                  set_config_namespace_keep,              get_config_namespace_keep,              clr_config_namespace_keep,            },
 	{ "lxc.namespace.share",           false,                  set_config_namespace_share,             get_config_namespace_share,             clr_config_namespace_share,           },
 
 	/* [START]: REMOVE IN LXC 3.0 */
@@ -2212,6 +2214,36 @@ static int set_config_namespace_clone(const char *key, const char *value,
 	return 0;
 }
 
+static int set_config_namespace_keep(const char *key, const char *value,
+				     struct lxc_conf *lxc_conf, void *data)
+{
+	char *ns, *nsptr, *token;
+	int cloneflag = 0;
+	char *saveptr = NULL;
+
+	if (lxc_config_value_empty(value))
+		return clr_config_namespace_keep(key, lxc_conf, data);
+
+	ns = strdup(value);
+	if (!ns)
+		return -1;
+	nsptr = ns;
+
+	for (; (token = strtok_r(nsptr, " \t", &saveptr)); nsptr = NULL) {
+		token += lxc_char_left_gc(token, strlen(token));
+		token[lxc_char_right_gc(token, strlen(token))] = '\0';
+		cloneflag = lxc_namespace_2_cloneflag(token);
+		if (cloneflag < 0) {
+			free(ns);
+			return -EINVAL;
+		}
+		lxc_conf->ns_keep |= cloneflag;
+	}
+	free(ns);
+
+	return 0;
+}
+
 static int set_config_namespace_share(const char *key, const char *value,
 				      struct lxc_conf *lxc_conf, void *data)
 {
@@ -3665,6 +3697,25 @@ static int get_config_namespace_clone(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
+static int get_config_namespace_keep(const char *key, char *retv, int inlen,
+				     struct lxc_conf *c, void *data)
+{
+	int i, len;
+	int fulllen = 0;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	for (i = 0; i < LXC_NS_MAX; i++) {
+		if (c->ns_keep & ns_info[i].clone_flag)
+			strprint(retv, inlen, "%s\n", ns_info[i].proc_name);
+	}
+
+	return fulllen;
+}
+
 static int get_config_namespace_share(const char *key, char *retv, int inlen,
 				      struct lxc_conf *c, void *data)
 {
@@ -4079,6 +4130,13 @@ static int clr_config_namespace_clone(const char *key,
 				      struct lxc_conf *lxc_conf, void *data)
 {
 	lxc_conf->ns_clone = 0;
+	return 0;
+}
+
+static int clr_config_namespace_keep(const char *key, struct lxc_conf *lxc_conf,
+				     void *data)
+{
+	lxc_conf->ns_keep = 0;
 	return 0;
 }
 

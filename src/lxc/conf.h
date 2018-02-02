@@ -406,6 +406,7 @@ struct lxc_conf {
 
 	struct {
 		int ns_clone;
+		int ns_keep;
 		char *ns_share[LXC_NS_MAX];
 	};
 
