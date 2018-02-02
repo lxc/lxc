@@ -4675,7 +4675,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 		goto err;
 	}
 
-	if (file_exists(c->configfile) && !lxcapi_load_config(c, NULL)) {
+	if (!file_exists(c->configfile) && !lxcapi_load_config(c, NULL)) {
 		fprintf(stderr, "Failed to load config for %s\n", name);
 		goto err;
 	}
