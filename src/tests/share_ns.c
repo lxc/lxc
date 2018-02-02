@@ -80,14 +80,14 @@ void *ns_sharing_wrapper(void *data)
 	}
 
 	/* share ipc namespace by container name */
-	if (!c->set_config_item(c, "lxc.namespace.ipc", "owning-ns")) {
-		lxc_error("Failed to set \"lxc.namespace.ipc=owning-ns\" for container \"%s\"\n", name);
+	if (!c->set_config_item(c, "lxc.namespace.share.ipc", "owning-ns")) {
+		lxc_error("Failed to set \"lxc.namespace.share.ipc=owning-ns\" for container \"%s\"\n", name);
 		goto out;
 	}
 
 	/* clear all network configuration */
 	if (!c->set_config_item(c, "lxc.net", "")) {
-		lxc_error("Failed to set \"lxc.namespace.ipc=owning-ns\" for container \"%s\"\n", name);
+		lxc_error("Failed to set \"lxc.namespace.share.ipc=owning-ns\" for container \"%s\"\n", name);
 		goto out;
 	}
 
@@ -98,8 +98,8 @@ void *ns_sharing_wrapper(void *data)
 
 	sprintf(owning_ns_init_pid, "%d", args->init_pid);
 	/* share net namespace by pid */
-	if (!c->set_config_item(c, "lxc.namespace.net", owning_ns_init_pid)) {
-		lxc_error("Failed to set \"lxc.namespace.net=%s\" for container \"%s\"\n", owning_ns_init_pid, name);
+	if (!c->set_config_item(c, "lxc.namespace.share.net", owning_ns_init_pid)) {
+		lxc_error("Failed to set \"lxc.namespace.share.net=%s\" for container \"%s\"\n", owning_ns_init_pid, name);
 		goto out;
 	}
 

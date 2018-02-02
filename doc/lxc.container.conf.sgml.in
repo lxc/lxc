@@ -1433,7 +1433,7 @@ dev/null proc/kcore none bind,relative 0 0
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.namespace.[namespace identifier]</option>
+            <option>lxc.namespace.share.[namespace identifier]</option>
           </term>
           <listitem>
             <para>
@@ -1445,22 +1445,22 @@ dev/null proc/kcore none bind,relative 0 0
 
             <para>
             To inherit the namespace from another process set the
-            <option>lxc.namespace.[namespace identifier]</option> to the PID of
-            the process, e.g. <option>lxc.namespace.net=42</option>.
+            <option>lxc.namespace.share.[namespace identifier]</option> to the PID of
+            the process, e.g. <option>lxc.namespace.share.net=42</option>.
             </para>
 
             <para>
             To inherit the namespace from another container set the 
-            <option>lxc.namespace.[namespace identifier]</option> to the name of
-            the container, e.g. <option>lxc.namespace.pid=c3</option>.
+            <option>lxc.namespace.share.[namespace identifier]</option> to the name of
+            the container, e.g. <option>lxc.namespace.share.pid=c3</option>.
             </para>
 
             <para>
             To inherit the namespace from another container located in a
             different path than the standard liblxc path set the
-            <option>lxc.namespace.[namespace identifier]</option> to the full
+            <option>lxc.namespace.share.[namespace identifier]</option> to the full
             path to the container, e.g.
-            <option>lxc.namespace.user=/opt/c3</option>.
+            <option>lxc.namespace.share.user=/opt/c3</option>.
             </para>
 
             <para>

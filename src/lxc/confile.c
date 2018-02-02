@@ -107,7 +107,7 @@ lxc_config_define(monitor);
 lxc_config_define(mount);
 lxc_config_define(mount_auto);
 lxc_config_define(mount_fstab);
-lxc_config_define(namespace);
+lxc_config_define(namespace_share);
 lxc_config_define(net);
 lxc_config_define(net_flags);
 lxc_config_define(net_hwaddr);
@@ -191,7 +191,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.mount.auto",                false,                  set_config_mount_auto,                  get_config_mount_auto,                  clr_config_mount_auto,                },
 	{ "lxc.mount.entry",               false,                  set_config_mount,                       get_config_mount,                       clr_config_mount,                     },
 	{ "lxc.mount.fstab",               false,                  set_config_mount_fstab,                 get_config_mount_fstab,                 clr_config_mount_fstab,               },
-	{ "lxc.namespace",                 false,                  set_config_namespace,                   get_config_namespace,                   clr_config_namespace,                 },
+	{ "lxc.namespace.share",           false,                  set_config_namespace_share,             get_config_namespace_share,             clr_config_namespace_share,           },
 
 	/* [START]: REMOVE IN LXC 3.0 */
 	{ "lxc.network.type",              true,                   set_config_network_legacy_type,         get_config_network_legacy_item,         clr_config_network_legacy_item,       },
@@ -2180,21 +2180,21 @@ static int set_config_uts_name(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_namespace(const char *key, const char *value,
-				struct lxc_conf *lxc_conf, void *data)
+static int set_config_namespace_share(const char *key, const char *value,
+				      struct lxc_conf *lxc_conf, void *data)
 {
 	int ns_idx;
 	const char *namespace;
 
 	if (lxc_config_value_empty(value))
-		return clr_config_namespace(key, lxc_conf, data);
+		return clr_config_namespace_share(key, lxc_conf, data);
 
-	namespace = key + sizeof("lxc.namespace.") - 1;
+	namespace = key + sizeof("lxc.namespace.share.") - 1;
 	ns_idx = lxc_namespace_2_ns_idx(namespace);
 	if (ns_idx < 0)
 		return ns_idx;
 
-	return set_config_string_item(&lxc_conf->inherit_ns[ns_idx], value);
+	return set_config_string_item(&lxc_conf->ns_share[ns_idx], value);
 }
 
 struct parse_line_conf {
@@ -3614,8 +3614,8 @@ static int get_config_noop(const char *key, char *retv, int inlen,
 	return 0;
 }
 
-static int get_config_namespace(const char *key, char *retv, int inlen,
-				struct lxc_conf *c, void *data)
+static int get_config_namespace_share(const char *key, char *retv, int inlen,
+				      struct lxc_conf *c, void *data)
 {
 	int len, ns_idx;
 	const char *namespace;
@@ -3626,12 +3626,12 @@ static int get_config_namespace(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	namespace = key + sizeof("lxc.namespace.") - 1;
+	namespace = key + sizeof("lxc.namespace.share.") - 1;
 	ns_idx = lxc_namespace_2_ns_idx(namespace);
 	if (ns_idx < 0)
 		return ns_idx;
 
-	strprint(retv, inlen, "%s", c->inherit_ns[ns_idx]);
+	strprint(retv, inlen, "%s", c->ns_share[ns_idx]);
 
 	return fulllen;
 }
@@ -4024,19 +4024,19 @@ static inline int clr_config_noop(const char *key, struct lxc_conf *c,
 	return 0;
 }
 
-static int clr_config_namespace(const char *key, struct lxc_conf *lxc_conf,
-				void *data)
+static int clr_config_namespace_share(const char *key,
+				      struct lxc_conf *lxc_conf, void *data)
 {
 	int ns_idx;
 	const char *namespace;
 
-	namespace = key + sizeof("lxc.namespace.") - 1;
+	namespace = key + sizeof("lxc.namespace.share.") - 1;
 	ns_idx = lxc_namespace_2_ns_idx(namespace);
 	if (ns_idx < 0)
 		return ns_idx;
 
-	free(lxc_conf->inherit_ns[ns_idx]);
-	lxc_conf->inherit_ns[ns_idx] = NULL;
+	free(lxc_conf->ns_share[ns_idx]);
+	lxc_conf->ns_share[ns_idx] = NULL;
 
 	return 0;
 }

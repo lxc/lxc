@@ -311,13 +311,13 @@ bool lxc_setup_shared_ns(struct lxc_arguments *args, struct lxc_container *c)
 			continue;
 
 		if (i == LXC_NS_NET)
-			key = "lxc.namespace.net";
+			key = "lxc.namespace.share.net";
 		else if (i == LXC_NS_IPC)
-			key = "lxc.namespace.ipc";
+			key = "lxc.namespace.share.ipc";
 		else if (i == LXC_NS_UTS)
-			key = "lxc.namespace.uts";
+			key = "lxc.namespace.share.uts";
 		else if (i == LXC_NS_PID)
-			key = "lxc.namespace.pid";
+			key = "lxc.namespace.share.pid";
 		else
 			continue;
 
