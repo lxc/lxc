@@ -4,9 +4,30 @@
 
 set -eu
 
-if [ -z "${CUDA_VERSION+x}" ] && [ -z "${NVIDIA_VISIBLE_DEVICES+x}" ]; then
-    # Not a GPU container, nothing to do, exit early.
+# NVIDIA_VISIBLE_DEVICES="" *or* NVIDIA_VISIBLE_DEVICES="void"
+# GPU support was explicitly disabled, exit early.
+if [ -z "${NVIDIA_VISIBLE_DEVICES-x}" ] || [ "${NVIDIA_VISIBLE_DEVICES:-}" = "void" ]; then
     exit 0
+fi
+
+# https://github.com/nvidia/nvidia-container-runtime#cuda_version
+if [ -n "${CUDA_VERSION:-}" ] && [ -z "${NVIDIA_REQUIRE_CUDA:-}" ]; then
+    # Legacy CUDA image: default to all devices and all driver capabilities.
+    if [ -z "${NVIDIA_VISIBLE_DEVICES+x}" ]; then
+	NVIDIA_VISIBLE_DEVICES="all"
+    fi
+    if [ -z "${NVIDIA_DRIVER_CAPABILITIES:-}" ]; then
+	NVIDIA_DRIVER_CAPABILITIES="all"
+    fi
+    if [[ "${CUDA_VERSION}" =~ ^[0-9]+\.[0-9]+ ]]; then
+        NVIDIA_REQUIRE_CUDA="cuda>=${BASH_REMATCH[0]}"
+    fi
+else
+    # NVIDIA_VISIBLE_DEVICES unset and it's not a legacy CUDA image.
+    # This is not a GPU image, exit early.
+    if [ -z "${NVIDIA_VISIBLE_DEVICES+x}" ]; then
+	exit 0
+    fi
 fi
 
 export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
@@ -128,7 +149,7 @@ if [ "${USERNS}" = "yes" ]; then
 fi
 
 # https://github.com/nvidia/nvidia-container-runtime#nvidia_disable_require
-if [ -n "${NVIDIA_DISABLE_REQUIRE+x}" ]; then
+if [ -n "${NVIDIA_DISABLE_REQUIRE:-}" ]; then
     if [ "$(parse_bool "${NVIDIA_DISABLE_REQUIRE}")" = "true" ]; then
         CLI_DISABLE_REQUIRE="true"
     fi
@@ -152,15 +173,12 @@ if [ -z "${CLI_LDCONFIG}" ]; then
 fi
 
 # https://github.com/nvidia/nvidia-container-runtime#nvidia_visible_devices
-CLI_DEVICES=
-if [ -n "${NVIDIA_VISIBLE_DEVICES+x}" ]; then
-    CLI_DEVICES="${NVIDIA_VISIBLE_DEVICES}"
-fi
+CLI_DEVICES="${NVIDIA_VISIBLE_DEVICES}"
 
 # https://github.com/nvidia/nvidia-container-runtime#nvidia_driver_capabilities
 CLI_CAPABILITIES=
-if [ -n "${NVIDIA_DRIVER_CAPABILITIES+x}" ]; then
-    CLI_CAPABILITIES="${NVIDIA_DRIVER_CAPABILITIES//,/ }"
+if [ -n "${NVIDIA_DRIVER_CAPABILITIES:-}" ]; then
+     CLI_CAPABILITIES="${NVIDIA_DRIVER_CAPABILITIES//,/ }"
 fi
 
 # https://github.com/nvidia/nvidia-container-runtime#nvidia_require_
@@ -168,23 +186,6 @@ CLI_REQUIREMENTS=
 for req in $(compgen -e "NVIDIA_REQUIRE_"); do
     CLI_REQUIREMENTS="${CLI_REQUIREMENTS} ${!req}"
 done
-
-# https://github.com/nvidia/nvidia-container-runtime#cuda_version
-if [ -n "${CUDA_VERSION+x}" ] && [ -z "${NVIDIA_REQUIRE_CUDA+x}" ]; then
-    # Legacy CUDA image detected, default to all devices and all driver capabilities.
-    if [ -z "${CLI_DEVICES}" ]; then
-        CLI_DEVICES="all"
-    fi
-
-    if [ -z "${CLI_CAPABILITIES}" ]; then
-        CLI_CAPABILITIES="all"
-    fi
-
-    # Transform CUDA_VERSION=X.Y to a "cuda>=X.Y" constraint for nvidia-container-cli.
-    if [[ "${CUDA_VERSION}" =~ ^[0-9]+\.[0-9]+ ]]; then
-        CLI_REQUIREMENTS="${CLI_REQUIREMENTS} cuda>=${BASH_REMATCH[0]}"
-    fi
-fi
 
 if [ "${CLI_CAPABILITIES}" = "all" ]; then
     CLI_CAPABILITIES="compute compat32 graphics utility video"
