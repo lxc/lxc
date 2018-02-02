@@ -405,6 +405,7 @@ struct lxc_conf {
 	struct lxc_cgroup cgroup_meta;
 
 	struct {
+		int ns_clone;
 		char *ns_share[LXC_NS_MAX];
 	};
 
