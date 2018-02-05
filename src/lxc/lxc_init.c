@@ -408,7 +408,7 @@ int main(int argc, char *argv[])
 			if (mypid != 1) {
 				kill_children(mypid);
 			} else {
-				ret = kill(-1, SIGTERM);
+				ret = kill(-1, SIGKILL);
 				if (ret < 0)
 					DEBUG("%s - Failed to send SIGTERM to "
 					      "all children", strerror(errno));
