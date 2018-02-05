@@ -39,7 +39,6 @@ extern struct lsm_drv *lsm_apparmor_drv_init(void);
 extern struct lsm_drv *lsm_selinux_drv_init(void);
 extern struct lsm_drv *lsm_nop_drv_init(void);
 
-__attribute__((constructor))
 void lsm_init(void)
 {
 	if (drv) {
