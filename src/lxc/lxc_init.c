@@ -379,6 +379,17 @@ int main(int argc, char *argv[])
 
 		switch (was_interrupted) {
 		case 0:
+		/* Some applications send SIGHUP in order to get init to reload
+		 * its configuration. We don't want to forward this onto the
+		 * application itself, because it probably isn't expecting this
+		 * signal since it was expecting init to do something with it.
+		 *
+		 * Instead, let's explicitly ignore it here. The actual
+		 * terminal case is handled in the monitor's handler, which
+		 * sends this task a SIGTERM in the case of a SIGHUP, which is
+		 * what we want.
+		 */
+		case SIGHUP:
 			break;
 		case SIGPWR:
 		case SIGTERM:
