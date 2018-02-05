@@ -1426,11 +1426,70 @@ dev/null proc/kcore none bind,relative 0 0
     </refsect2>
 
     <refsect2>
-      <title>Namespace Inheritance</title>
+      <title>Namespaces</title>
       <para>
-        A namespace can be inherited from another container or process.
+        A namespace can be cloned (<option>lxc.namespace.clone</option>),
+        kept (<option>lxc.namespace.keep</option>) or shared
+        (<option>lxc.namespace.share.[namespace identifier]</option>).
       </para>
       <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.namespace.clone</option>
+          </term>
+          <listitem>
+            <para>
+            Specify namespaces which the container is supposed to be created
+            with. The namespaces to create are specified as a space separated
+            list. Each namespace must correspond to one of the standard
+            namespace identifiers as seen in the
+            <filename>/proc/PID/ns</filename> directory.
+            When <option>lxc.namespace.clone</option> is not explicitly set all
+            namespaces supported by the kernel and the current configuration
+            will be used.
+            </para>
+
+            <para>
+            To create a new mount, net and ipc namespace set
+            <option>lxc.namespace.clone=mount net ipc</option>.
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.namespace.keep</option>
+          </term>
+          <listitem>
+            <para>
+            Specify namespaces which the container is supposed to inherit from
+            the process that created it. The namespaces to keep are specified as
+            a space separated list. Each namespace must correspond to one of the
+            standard namespace identifiers as seen in the
+            <filename>/proc/PID/ns</filename> directory.
+            The <option>lxc.namespace.keep</option> is a
+            blacklist option, i.e. it is useful when enforcing that containers
+            must keep a specific set of namespaces.
+            </para>
+
+            <para>
+            To keep the network, user and ipc namespace set
+            <option>lxc.namespace.keep=user net ipc</option>.
+            </para>
+
+            <para>
+            Note that sharing pid namespaces will likely not work with most init
+            systems.
+            </para>
+
+            <para>
+            Note that if the container requests a new user namespace and the
+            container wants to inherit the network namespace it needs to inherit
+            the user namespace as well.
+            </para>
+          </listitem>
+        </varlistentry>
+
         <varlistentry>
           <term>
             <option>lxc.namespace.share.[namespace identifier]</option>
