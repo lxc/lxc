@@ -401,7 +401,7 @@ int main(int argc, char *argv[])
 			if (lxc_raw_getpid() != 1) {
 				kill_children(lxc_raw_getpid());
 			} else {
-				ret = kill(-1, SIGTERM);
+				ret = kill(-1, SIGKILL);
 				if (ret < 0)
 					DEBUG("%s - Failed to send SIGTERM to "
 					      "all children", strerror(errno));
