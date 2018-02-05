@@ -345,6 +345,12 @@ static int signal_handler(int fd, uint32_t events, void *data,
 		}
 	}
 
+	if (siginfo.ssi_signo == SIGHUP) {
+		kill(hdlr->pid, SIGTERM);
+		INFO("Killing %d since terminal hung up", hdlr->pid);
+		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
+	}
+
 	/* More robustness, protect ourself from a SIGCHLD sent
 	 * by a process different from the container init.
 	 */
