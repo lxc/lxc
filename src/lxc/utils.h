@@ -86,6 +86,14 @@
 #define CAP_SYS_ADMIN 21
 #endif
 
+#ifndef CGROUP_SUPER_MAGIC
+#define CGROUP_SUPER_MAGIC 0x27e0eb
+#endif
+
+#ifndef CGROUP2_SUPER_MAGIC
+#define CGROUP2_SUPER_MAGIC 0x63677270
+#endif
+
 /* Useful macros */
 /* Maximum number for 64 bit integer is a string with 21 digits: 2^64 - 1 = 21 */
 #define LXC_NUMSTRLEN64 21
@@ -529,7 +537,8 @@ extern int run_command(char *buf, size_t buf_size, int (*child_fn)(void *),
 /* Concatenate all passed-in strings into one path. Do not fail. If any piece
  * is not prefixed with '/', add a '/'.
  */
-extern char *must_make_path(const char *first, ...) __attribute__((sentinel));
+__attribute__((sentinel)) extern char *must_make_path(const char *first, ...);
+__attribute__((sentinel)) extern char *must_append_path(char *first, ...);
 
 /* return copy of string @entry;  do not fail. */
 extern char *must_copy_string(const char *entry);

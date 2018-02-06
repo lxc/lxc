@@ -28,10 +28,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#define CGROUP_V1 0
-#define CGROUP_V2 1
-#define LXCFS_CGROUP 2
-
 /* Retrieve the cgroup version of a given entry from /proc/<pid>/mountinfo. */
 extern int get_cgroup_version(char *line);
 

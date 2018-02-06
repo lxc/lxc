@@ -1330,17 +1330,31 @@ dev/null proc/kcore none bind,relative 0 0
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.cgroup.[subsystem name]</option>
+            <option>lxc.cgroup.[controller name]</option>
           </term>
           <listitem>
             <para>
-              specify the control group value to be set.  The
-              subsystem name is the literal name of the control group
-              subsystem.  The permitted names and the syntax of their
-              values is not dictated by LXC, instead it depends on the
-              features of the Linux kernel running at the time the
-              container is started,
-              eg. <option>lxc.cgroup.cpuset.cpus</option>
+              Specify the control group value to be set on a legacy cgroup
+              hierarchy. The controller name is the literal name of the control
+              group. The permitted names and the syntax of their values is not
+              dictated by LXC, instead it depends on the features of the Linux
+              kernel running at the time the container is started, eg.
+              <option>lxc.cgroup.cpuset.cpus</option>
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.cgroup2.[controller name]</option>
+          </term>
+          <listitem>
+            <para>
+              Specify the control group value to be set on the unified cgroup
+              shierarchy. The controller name is the literal name of the control
+              group. The permitted names and the syntax of their values is not
+              dictated by LXC, instead it depends on the features of the Linux
+              kernel running at the time the container is started, eg.
+              <option>lxc.cgroup2.memory.high</option>
             </para>
           </listitem>
         </varlistentry>

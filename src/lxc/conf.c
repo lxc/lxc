@@ -2555,6 +2555,7 @@ struct lxc_conf *lxc_conf_init(void)
 	}
 	new->logfd = -1;
 	lxc_list_init(&new->cgroup);
+	lxc_list_init(&new->cgroup2);
 	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
 	lxc_list_init(&new->caps);
@@ -3446,23 +3447,38 @@ int lxc_clear_config_keepcaps(struct lxc_conf *c)
 	return 0;
 }
 
-int lxc_clear_cgroups(struct lxc_conf *c, const char *key)
+int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version)
 {
-	struct lxc_list *it,*next;
-	bool all = false;
+	char *global_token, *namespaced_token;
+	struct lxc_list *it, *next, *list;
 	const char *k = NULL;
+	bool all = false;
 
-	if (strcmp(key, "lxc.cgroup") == 0)
+	if (version == CGROUP2_SUPER_MAGIC) {
+		global_token = "lxc.cgroup2";
+		namespaced_token = "lxc.cgroup2.";
+		list = &c->cgroup2;
+	} else if (version == CGROUP_SUPER_MAGIC) {
+		global_token = "lxc.cgroup";
+		namespaced_token = "lxc.cgroup.";
+		list = &c->cgroup;
+	} else {
+		return -1;
+	}
+
+	if (strcmp(key, global_token) == 0)
 		all = true;
-	else if (strncmp(key, "lxc.cgroup.", sizeof("lxc.cgroup.") - 1) == 0)
-		k = key + sizeof("lxc.cgroup.") - 1;
+	else if (strncmp(key, namespaced_token, sizeof(namespaced_token) - 1) == 0)
+		k = key + sizeof(namespaced_token) - 1;
 	else
 		return -1;
 
-	lxc_list_for_each_safe(it, &c->cgroup, next) {
+	lxc_list_for_each_safe(it, list, next) {
 		struct lxc_cgroup *cg = it->elem;
+
 		if (!all && strcmp(cg->subsystem, k) != 0)
 			continue;
+
 		lxc_list_del(it);
 		free(cg->subsystem);
 		free(cg->value);
@@ -3680,7 +3696,8 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_seccomp_free(conf);
 	lxc_clear_config_caps(conf);
 	lxc_clear_config_keepcaps(conf);
-	lxc_clear_cgroups(conf, "lxc.cgroup");
+	lxc_clear_cgroups(conf, "lxc.cgroup", CGROUP_SUPER_MAGIC);
+	lxc_clear_cgroups(conf, "lxc.cgroup2", CGROUP2_SUPER_MAGIC);
 	lxc_clear_hooks(conf, "lxc.hook");
 	lxc_clear_mount_entries(conf);
 	lxc_clear_idmaps(conf);

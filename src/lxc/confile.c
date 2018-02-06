@@ -81,6 +81,7 @@ lxc_config_define(apparmor_profile);
 lxc_config_define(cap_drop);
 lxc_config_define(cap_keep);
 lxc_config_define(cgroup_controller);
+lxc_config_define(cgroup2_controller);
 lxc_config_define(cgroup_dir);
 lxc_config_define(console_logfile);
 lxc_config_define(console_rotate);
@@ -153,6 +154,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.autodev",                   false,                  set_config_autodev,                     get_config_autodev,                     clr_config_autodev,                   },
 	{ "lxc.cap.drop",                  false,                  set_config_cap_drop,                    get_config_cap_drop,                    clr_config_cap_drop,                  },
 	{ "lxc.cap.keep",                  false,                  set_config_cap_keep,                    get_config_cap_keep,                    clr_config_cap_keep,                  },
+	{ "lxc.cgroup2",                   false,                  set_config_cgroup2_controller,          get_config_cgroup2_controller,          clr_config_cgroup2_controller,        },
 	{ "lxc.cgroup.dir",                false,                  set_config_cgroup_dir,                  get_config_cgroup_dir,                  clr_config_cgroup_dir,                },
 	{ "lxc.cgroup",                    false,                  set_config_cgroup_controller,           get_config_cgroup_controller,           clr_config_cgroup_controller,         },
 	{ "lxc.console.buffer.logfile",    false,                  set_config_console_buffer_logfile,      get_config_console_buffer_logfile,      clr_config_console_buffer_logfile,    },
@@ -1374,28 +1376,33 @@ static int set_config_signal_stop(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_cgroup_controller(const char *key, const char *value,
-					struct lxc_conf *lxc_conf, void *data)
+static int __set_config_cgroup_controller(const char *key, const char *value,
+					  struct lxc_conf *lxc_conf, int version)
 {
-	char *subkey;
-	char *token = "lxc.cgroup.";
+	const char *subkey, *token;
+	size_t token_len;
 	struct lxc_list *cglist = NULL;
 	struct lxc_cgroup *cgelem = NULL;
 
 	if (lxc_config_value_empty(value))
-		return lxc_clear_cgroups(lxc_conf, key);
+		return lxc_clear_cgroups(lxc_conf, key, version);
 
-	subkey = strstr(key, token);
-	if (!subkey)
-		return -1;
+	if (version == CGROUP2_SUPER_MAGIC) {
+		token = "lxc.cgroup2.";
+		token_len = 12;
+	} else if (version == CGROUP_SUPER_MAGIC) {
+		token = "lxc.cgroup.";
+		token_len = 11;
+	} else {
+		return -EINVAL;
+	}
 
-	if (!strlen(subkey))
-		return -1;
+	if (strncmp(key, token, token_len) != 0)
+		return -EINVAL;
 
-	if (strlen(subkey) == strlen(token))
-		return -1;
-
-	subkey += strlen(token);
+	subkey = key + token_len;
+	if (*subkey == '\0')
+		return -EINVAL;
 
 	cglist = malloc(sizeof(*cglist));
 	if (!cglist)
@@ -1407,14 +1414,21 @@ static int set_config_cgroup_controller(const char *key, const char *value,
 	memset(cgelem, 0, sizeof(*cgelem));
 
 	cgelem->subsystem = strdup(subkey);
-	cgelem->value = strdup(value);
-
-	if (!cgelem->subsystem || !cgelem->value)
+	if (!cgelem->subsystem)
 		goto out;
 
-	cglist->elem = cgelem;
+	cgelem->value = strdup(value);
+	if (!cgelem->value)
+		goto out;
 
-	lxc_list_add_tail(&lxc_conf->cgroup, cglist);
+	cgelem->version = version;
+
+	lxc_list_add_elem(cglist, cgelem);
+
+	if (version == CGROUP2_SUPER_MAGIC)
+		lxc_list_add_tail(&lxc_conf->cgroup2, cglist);
+	else
+		lxc_list_add_tail(&lxc_conf->cgroup, cglist);
 
 	return 0;
 
@@ -1428,6 +1442,21 @@ out:
 
 	return -1;
 }
+
+static int set_config_cgroup_controller(const char *key, const char *value,
+					struct lxc_conf *lxc_conf, void *data)
+{
+	return __set_config_cgroup_controller(key, value, lxc_conf,
+					      CGROUP_SUPER_MAGIC);
+}
+
+static int set_config_cgroup2_controller(const char *key, const char *value,
+					 struct lxc_conf *lxc_conf, void *data)
+{
+	return __set_config_cgroup_controller(key, value, lxc_conf,
+					      CGROUP2_SUPER_MAGIC);
+}
+
 
 static int set_config_cgroup_dir(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf, void *data)
@@ -2910,11 +2939,14 @@ static int get_config_selinux_context(const char *key, char *retv, int inlen,
  * If you ask for 'lxc.cgroup", then all cgroup entries will be printed, in
  * 'lxc.cgroup.subsystem.key = value' format.
  */
-static int get_config_cgroup_controller(const char *key, char *retv, int inlen,
-					struct lxc_conf *c, void *data)
+static int __get_config_cgroup_controller(const char *key, char *retv,
+					  int inlen, struct lxc_conf *c,
+					  int version)
 {
-	struct lxc_list *it;
 	int len;
+	size_t namespaced_token_len;
+	char *global_token, *namespaced_token;
+	struct lxc_list *it;
 	int fulllen = 0;
 	bool get_all = false;
 
@@ -2923,10 +2955,22 @@ static int get_config_cgroup_controller(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	if (!strcmp(key, "lxc.cgroup"))
+	if (version == CGROUP2_SUPER_MAGIC) {
+		global_token = "lxc.cgroup2";
+		namespaced_token = "lxc.cgroup2.";
+		namespaced_token_len = sizeof("lxc.cgroup2.") - 1;;
+	} else if (version == CGROUP_SUPER_MAGIC) {
+		global_token = "lxc.cgroup";
+		namespaced_token = "lxc.cgroup.";
+		namespaced_token_len = sizeof("lxc.cgroup.") - 1;;
+	} else {
+		return -1;
+	}
+
+	if (strcmp(key, global_token) == 0)
 		get_all = true;
-	else if (!strncmp(key, "lxc.cgroup.", 11))
-		key += 11;
+	else if (strncmp(key, namespaced_token, namespaced_token_len) == 0)
+		key += namespaced_token_len;
 	else
 		return -1;
 
@@ -2934,14 +2978,31 @@ static int get_config_cgroup_controller(const char *key, char *retv, int inlen,
 		struct lxc_cgroup *cg = it->elem;
 
 		if (get_all) {
-			strprint(retv, inlen, "lxc.cgroup.%s = %s\n",
-				 cg->subsystem, cg->value);
+			if (version != cg->version)
+				continue;
+
+			strprint(retv, inlen, "%s.%s = %s\n",
+				 global_token, cg->subsystem, cg->value);
 		} else if (!strcmp(cg->subsystem, key)) {
 			strprint(retv, inlen, "%s\n", cg->value);
 		}
 	}
 
 	return fulllen;
+}
+
+static int get_config_cgroup_controller(const char *key, char *retv, int inlen,
+					struct lxc_conf *c, void *data)
+{
+	return __get_config_cgroup_controller(key, retv, inlen, c,
+					      CGROUP_SUPER_MAGIC);
+}
+
+static int get_config_cgroup2_controller(const char *key, char *retv, int inlen,
+					 struct lxc_conf *c, void *data)
+{
+	return __get_config_cgroup_controller(key, retv, inlen, c,
+					      CGROUP2_SUPER_MAGIC);
 }
 
 static int get_config_cgroup_dir(const char *key, char *retv, int inlen,
@@ -3632,7 +3693,13 @@ static inline int clr_config_selinux_context(const char *key,
 static inline int clr_config_cgroup_controller(const char *key,
 					       struct lxc_conf *c, void *data)
 {
-	return lxc_clear_cgroups(c, key);
+	return lxc_clear_cgroups(c, key, CGROUP_SUPER_MAGIC);
+}
+
+static inline int clr_config_cgroup2_controller(const char *key,
+						struct lxc_conf *c, void *data)
+{
+	return lxc_clear_cgroups(c, key, CGROUP2_SUPER_MAGIC);
 }
 
 static int clr_config_cgroup_dir(const char *key, struct lxc_conf *lxc_conf,
