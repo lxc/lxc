@@ -31,6 +31,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <linux/net_namespace.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <linux/sockios.h>
@@ -93,6 +94,14 @@
 
 #ifndef IFLA_MACVLAN_MODE
 #define IFLA_MACVLAN_MODE 1
+#endif
+
+#ifndef IFLA_NEW_NETNSID
+#define IFLA_NEW_NETNSID 45
+#endif
+
+#ifndef IFLA_IF_NETNSID
+#define IFLA_IF_NETNSID 46
 #endif
 
 lxc_log_define(network, lxc);
@@ -3194,4 +3203,64 @@ void lxc_delete_network(struct lxc_handler *handler)
 		DEBUG("Failed to delete network devices");
 	else
 		DEBUG("Deleted network devices");
+}
+
+int addattr(struct nlmsghdr *n, int maxlen, int type, const void *data, int alen)
+{
+	int len = RTA_LENGTH(alen);
+	struct rtattr *rta;
+
+	if (NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(len) > maxlen)
+		return -1;
+
+	rta = NLMSG_TAIL(n);
+	rta->rta_type = type;
+	rta->rta_len = len;
+	if (alen)
+		memcpy(RTA_DATA(rta), data, alen);
+	n->nlmsg_len = NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(len);
+
+	return 0;
+}
+
+int lxc_netns_set_nsid(int fd)
+{
+	ssize_t ret;
+	char l_buffer[NLMSG_ALIGN(sizeof(struct nlmsghdr)) +
+		      NLMSG_ALIGN(sizeof(struct rtgenmsg)) +
+		      NLMSG_ALIGN(1024)];
+	struct nl_handler nlh;
+	struct nlmsghdr *l_hdr;
+	struct rtgenmsg *l_msg;
+	struct sockaddr_nl l_addr;
+	int nsid = -1;
+
+	ret = netlink_open(&nlh, NETLINK_ROUTE);
+	if (ret < 0)
+		return ret;
+
+	memset(l_buffer, 0, sizeof(l_buffer));
+	l_hdr = (struct nlmsghdr *)l_buffer;
+	l_msg = (struct rtgenmsg *)NLMSG_DATA(l_hdr);
+
+	l_hdr->nlmsg_len = NLMSG_LENGTH(sizeof(*l_msg));
+	l_hdr->nlmsg_type = RTM_NEWNSID;
+	l_hdr->nlmsg_flags = NLM_F_REQUEST;
+	l_hdr->nlmsg_pid = 0;
+	l_hdr->nlmsg_seq = RTM_NEWNSID;
+	l_msg->rtgen_family = AF_UNSPEC;
+
+	addattr(l_hdr, 1024, NETNSA_FD, &fd, sizeof(__u32));
+	addattr(l_hdr, 1024, NETNSA_NSID, &nsid, sizeof(__u32));
+
+	memset(&l_addr, 0, sizeof(l_addr));
+	l_addr.nl_family = AF_NETLINK;
+
+	ret = sendto(nlh.fd, l_hdr, l_hdr->nlmsg_len, 0,
+		     (struct sockaddr *)&l_addr, sizeof(l_addr));
+	netlink_close(&nlh);
+	if (ret < 0)
+		return -1;
+
+	return 0;
 }
