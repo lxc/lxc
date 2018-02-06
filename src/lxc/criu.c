@@ -717,13 +717,13 @@ bool __criu_check_feature(uint64_t *features_to_check)
 				 * LXC checking only for 'uffd' makes not much sense. */
 				args[3] = "uffd-noncoop";
 			else
-				exit(1);
+				_exit(1);
 
 			null_stdfds();
 
 			execvp("criu", args);
 			SYSERROR("Failed to exec \"criu\"");
-			exit(1);
+			_exit(1);
 		}
 
 		ret = wait_for_pid(pid);
@@ -785,14 +785,14 @@ static bool criu_version_ok(char **version)
 
 		close(STDERR_FILENO);
 		if (dup2(pipes[1], STDOUT_FILENO) < 0)
-			exit(1);
+			_exit(1);
 
 		path = on_path("criu", NULL);
 		if (!path)
-			exit(1);
+			_exit(1);
 
 		execv(path, args);
-		exit(1);
+		_exit(1);
 	} else {
 		FILE *f;
 		char *tmp;
@@ -1140,7 +1140,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		if (ret)
 			lxc_abort(c->name, handler);
 		lxc_fini(c->name, handler);
-		exit(ret);
+		_exit(ret);
 	}
 
 out_fini_handler:
@@ -1165,7 +1165,7 @@ out:
 		close(status_pipe);
 	}
 
-	exit(1);
+	_exit(1);
 }
 
 static int save_tty_major_minor(char *directory, struct lxc_container *c, char *tty_id, int len)
@@ -1256,7 +1256,7 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 		h.name = c->name;
 		if (!cgroup_init(&h)) {
 			ERROR("failed to cgroup_init()");
-			exit(1);
+			_exit(1);
 		}
 
 		os.pipefd = criuout[1];
@@ -1269,13 +1269,13 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 		ret = save_tty_major_minor(opts->directory, c, os.tty_id, sizeof(os.tty_id));
 		if (ret < 0) {
 			free(criu_version);
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		/* exec_criu() returning is an error */
 		exec_criu(&os);
 		free(criu_version);
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	} else {
 		int status;
 		ssize_t n;

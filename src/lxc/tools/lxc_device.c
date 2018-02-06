@@ -72,22 +72,22 @@ static bool is_interface(const char* dev_name, pid_t pid)
 
 		if (!switch_to_ns(pid, "net")) {
 			fprintf(stderr, "failed to enter netns of container.\n");
-			exit(-1);
+			_exit(-1);
 		}
 
 		/* Grab the list of interfaces */
 		if (getifaddrs(&interfaceArray)) {
 			fprintf(stderr, "failed to get interfaces list\n");
-			exit(-1);
+			_exit(-1);
 		}
 
 		/* Iterate through the interfaces */
-		for (tempIfAddr = interfaceArray; tempIfAddr != NULL; tempIfAddr = tempIfAddr->ifa_next) {
-			if (strcmp(tempIfAddr->ifa_name, dev_name) == 0) {
-				exit(EXIT_SUCCESS);
-			}
-		}
-		exit(EXIT_FAILURE);
+		for (tempIfAddr = interfaceArray; tempIfAddr != NULL;
+		     tempIfAddr = tempIfAddr->ifa_next)
+			if (strcmp(tempIfAddr->ifa_name, dev_name) == 0)
+				_exit(EXIT_SUCCESS);
+
+		_exit(EXIT_FAILURE);
 	}
 
 	if (wait_for_pid(p) == 0) {

@@ -214,7 +214,7 @@ static bool restore(struct lxc_container *c)
 			close(0);
 			close(1);
 
-			exit(!restore_finalize(c));
+			_exit(!restore_finalize(c));
 		} else {
 			return wait_for_pid(pid) == 0;
 		}

@@ -466,7 +466,7 @@ struct lxc_popen_FILE *lxc_popen(const char *command)
 	if (child_pid < 0)
 		goto on_error;
 
-	if (!child_pid) {
+	if (child_pid == 0) {
 		sigset_t mask;
 
 		close(pipe_fds[0]);
@@ -478,7 +478,7 @@ struct lxc_popen_FILE *lxc_popen(const char *command)
 			ret = fcntl(pipe_fds[1], F_SETFD, 0);
 		if (ret < 0) {
 			close(pipe_fds[1]);
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		/* duplicate stderr */
@@ -488,19 +488,19 @@ struct lxc_popen_FILE *lxc_popen(const char *command)
 			ret = fcntl(pipe_fds[1], F_SETFD, 0);
 		close(pipe_fds[1]);
 		if (ret < 0)
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 
 		/* unblock all signals */
 		ret = sigfillset(&mask);
 		if (ret < 0)
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 
 		ret = sigprocmask(SIG_UNBLOCK, &mask, NULL);
 		if (ret < 0)
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 
 		execl("/bin/sh", "sh", "-c", command, (char *)NULL);
-		exit(127);
+		_exit(127);
 	}
 
 	close(pipe_fds[1]);
@@ -2259,13 +2259,13 @@ int run_command(char *buf, size_t buf_size, int (*child_fn)(void *), void *args)
 
 		if (ret < 0) {
 			SYSERROR("failed to duplicate std{err,out} file descriptor");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		/* Does not return. */
 		child_fn(args);
 		ERROR("failed to exec command");
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	}
 
 	/* close the write-end of the pipe */

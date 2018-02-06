@@ -347,15 +347,15 @@ int main(int argc, char *argv[])
 		buf[0] = '1';
 		if (write(pipe1[1], buf, 1) < 1) {
 			perror("write pipe");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 		if (read(pipe2[0], buf, 1) < 1) {
 			perror("read pipe");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 		if (buf[0] != '1') {
 			fprintf(stderr, "parent had an error, child exiting\n");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		close(pipe1[1]);

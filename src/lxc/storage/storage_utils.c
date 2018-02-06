@@ -206,7 +206,7 @@ int detect_fs(struct lxc_storage *bdev, char *type, int len)
 	}
 
 	if (unshare(CLONE_NEWNS) < 0)
-		exit(1);
+		_exit(1);
 
 	if (detect_shared_rootfs()) {
 		if (mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL)) {
@@ -219,39 +219,39 @@ int detect_fs(struct lxc_storage *bdev, char *type, int len)
 	if (ret < 0) {
 		ERROR("failed mounting %s onto %s to detect fstype", srcdev,
 		      bdev->dest);
-		exit(1);
+		_exit(1);
 	}
 
 	l = linkderef(srcdev, devpath);
 	if (!l)
-		exit(1);
+		_exit(1);
 	f = fopen("/proc/self/mounts", "r");
 	if (!f)
-		exit(1);
+		_exit(1);
 
 	while (getline(&line, &linelen, f) != -1) {
 		sp1 = strchr(line, ' ');
 		if (!sp1)
-			exit(1);
+			_exit(1);
 		*sp1 = '\0';
 		if (strcmp(line, l))
 			continue;
 		sp2 = strchr(sp1 + 1, ' ');
 		if (!sp2)
-			exit(1);
+			_exit(1);
 		*sp2 = '\0';
 		sp3 = strchr(sp2 + 1, ' ');
 		if (!sp3)
-			exit(1);
+			_exit(1);
 		*sp3 = '\0';
 		sp2++;
 		if (write(p[1], sp2, strlen(sp2)) != strlen(sp2))
-			exit(1);
+			_exit(1);
 
-		exit(0);
+		_exit(0);
 	}
 
-	exit(1);
+	_exit(1);
 }
 
 int do_mkfs_exec_wrapper(void *args)

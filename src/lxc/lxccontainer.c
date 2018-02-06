@@ -904,14 +904,14 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		pid = fork();
 		if (pid < 0) {
 			SYSERROR("Failed to fork first child process");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		/* second parent */
 		if (pid != 0) {
 			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
-			exit(EXIT_SUCCESS);
+			_exit(EXIT_SUCCESS);
 		}
 
 		/* second child */
@@ -920,7 +920,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		ret = chdir("/");
 		if (ret < 0) {
 			SYSERROR("Failed to change to \"/\" directory");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		keepfds[0] = handler->conf->maincmd_fd;
@@ -929,13 +929,13 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		ret = lxc_check_inherited(conf, true, keepfds,
 					  sizeof(keepfds) / sizeof(keepfds[0]));
 		if (ret < 0)
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 
 		/* redirect std{in,out,err} to /dev/null */
 		ret = null_stdfds();
 		if (ret < 0) {
 			ERROR("Failed to redirect std{in,out,err} to /dev/null");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		/* become session leader */
@@ -962,7 +962,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
 			if (daemonize)
-				exit(EXIT_FAILURE);
+				_exit(EXIT_FAILURE);
 			return false;
 		}
 
@@ -973,7 +973,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
 			if (daemonize)
-				exit(EXIT_FAILURE);
+				_exit(EXIT_FAILURE);
 			return false;
 		}
 
@@ -1044,9 +1044,9 @@ on_error:
 	free_init_cmd(init_cmd);
 
 	if (daemonize && ret != 0)
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	else if (daemonize)
-		exit(EXIT_SUCCESS);
+		_exit(EXIT_SUCCESS);
 
 	if (ret != 0)
 		return false;
@@ -1249,20 +1249,19 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 		char **newargv;
 		struct lxc_conf *conf = c->lxc_conf;
 
-		if (need_null_stdfds && null_stdfds() < 0) {
-			exit(1);
-		}
+		if (need_null_stdfds && null_stdfds() < 0)
+			_exit(1);
 
 		bdev = storage_init(c->lxc_conf);
 		if (!bdev) {
 			ERROR("Error opening rootfs");
-			exit(1);
+			_exit(1);
 		}
 
 		if (geteuid() == 0) {
 			if (unshare(CLONE_NEWNS) < 0) {
 				ERROR("error unsharing mounts");
-				exit(1);
+				_exit(1);
 			}
 			if (detect_shared_rootfs()) {
 				if (mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL)) {
@@ -1274,7 +1273,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 		if (strcmp(bdev->type, "dir") && strcmp(bdev->type, "btrfs")) {
 			if (geteuid() != 0) {
 				ERROR("non-root users can only create btrfs and directory-backed containers");
-				exit(EXIT_FAILURE);
+				_exit(EXIT_FAILURE);
 			}
 
 			if (!strcmp(bdev->type, "overlay") || !strcmp(bdev->type, "overlayfs")) {
@@ -1300,7 +1299,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 				src = ovl_get_rootfs(bdev->src, &(size_t){0});
 				if (!src) {
 					ERROR("Failed to get rootfs");
-					exit(EXIT_FAILURE);
+					_exit(EXIT_FAILURE);
 				}
 
 				ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC, NULL);
@@ -1311,7 +1310,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 			} else {
 				if (bdev->ops->mount(bdev) < 0) {
 					ERROR("Failed to mount rootfs");
-					exit(EXIT_FAILURE);
+					_exit(EXIT_FAILURE);
 				}
 			}
 		} else { /* TODO come up with a better way here! */
@@ -1331,33 +1330,33 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 
 		newargv = malloc(nargs * sizeof(*newargv));
 		if (!newargv)
-			exit(1);
+			_exit(1);
 		newargv[0] = lxcbasename(tpath);
 
 		len = strlen(c->config_path) + strlen(c->name) + strlen("--path=") + 2;
 		patharg = malloc(len);
 		if (!patharg)
-			exit(1);
+			_exit(1);
 		ret = snprintf(patharg, len, "--path=%s/%s", c->config_path, c->name);
 		if (ret < 0 || ret >= len)
-			exit(1);
+			_exit(1);
 		newargv[1] = patharg;
 		len = strlen("--name=") + strlen(c->name) + 1;
 		namearg = malloc(len);
 		if (!namearg)
-			exit(1);
+			_exit(1);
 		ret = snprintf(namearg, len, "--name=%s", c->name);
 		if (ret < 0 || ret >= len)
-			exit(1);
+			_exit(1);
 		newargv[2] = namearg;
 
 		len = strlen("--rootfs=") + 1 + strlen(bdev->dest);
 		rootfsarg = malloc(len);
 		if (!rootfsarg)
-			exit(1);
+			_exit(1);
 		ret = snprintf(rootfsarg, len, "--rootfs=%s", bdev->dest);
 		if (ret < 0 || ret >= len)
-			exit(1);
+			_exit(1);
 		newargv[3] = rootfsarg;
 
 		/* add passed-in args */
@@ -1369,7 +1368,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 		nargs++;
 		newargv = realloc(newargv, nargs * sizeof(*newargv));
 		if (!newargv)
-			exit(1);
+			_exit(1);
 		newargv[nargs - 1] = NULL;
 
 		/*
@@ -1389,7 +1388,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 
 			if (!n2) {
 				SYSERROR("out of memory");
-				exit(1);
+				_exit(1);
 			}
 			newargv[0] = tpath;
 			tpath = "lxc-usernsexec";
@@ -1399,63 +1398,63 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 				n2args += 2;
 				n2 = realloc(n2, n2args * sizeof(char *));
 				if (!n2)
-					exit(1);
+					_exit(1);
 				n2[n2args-2] = "-m";
 				n2[n2args-1] = malloc(200);
 				if (!n2[n2args-1])
-					exit(1);
+					_exit(1);
 				ret = snprintf(n2[n2args-1], 200, "%c:%lu:%lu:%lu",
 					map->idtype == ID_TYPE_UID ? 'u' : 'g',
 					map->nsid, map->hostid, map->range);
 				if (ret < 0 || ret >= 200)
-					exit(1);
+					_exit(1);
 			}
 			int hostid_mapped = mapped_hostid(geteuid(), conf, ID_TYPE_UID);
 			int extraargs = hostid_mapped >= 0 ? 1 : 3;
 			n2 = realloc(n2, (nargs + n2args + extraargs) * sizeof(char *));
 			if (!n2)
-				exit(1);
+				_exit(1);
 			if (hostid_mapped < 0) {
 				hostid_mapped = find_unmapped_nsid(conf, ID_TYPE_UID);
 				n2[n2args++] = "-m";
 				if (hostid_mapped < 0) {
 					ERROR("Could not find free uid to map");
-					exit(1);
+					_exit(1);
 				}
 				n2[n2args++] = malloc(200);
 				if (!n2[n2args-1]) {
 					SYSERROR("out of memory");
-					exit(1);
+					_exit(1);
 				}
 				ret = snprintf(n2[n2args-1], 200, "u:%d:%d:1",
 					hostid_mapped, geteuid());
 				if (ret < 0 || ret >= 200) {
 					ERROR("string too long");
-					exit(1);
+					_exit(1);
 				}
 			}
 			int hostgid_mapped = mapped_hostid(getegid(), conf, ID_TYPE_GID);
 			extraargs = hostgid_mapped >= 0 ? 1 : 3;
 			n2 = realloc(n2, (nargs + n2args + extraargs) * sizeof(char *));
 			if (!n2)
-				exit(1);
+				_exit(1);
 			if (hostgid_mapped < 0) {
 				hostgid_mapped = find_unmapped_nsid(conf, ID_TYPE_GID);
 				n2[n2args++] = "-m";
 				if (hostgid_mapped < 0) {
 					ERROR("Could not find free uid to map");
-					exit(1);
+					_exit(1);
 				}
 				n2[n2args++] = malloc(200);
 				if (!n2[n2args-1]) {
 					SYSERROR("out of memory");
-					exit(1);
+					_exit(1);
 				}
 				ret = snprintf(n2[n2args-1], 200, "g:%d:%d:1",
 					hostgid_mapped, getegid());
 				if (ret < 0 || ret >= 200) {
 					ERROR("string too long");
-					exit(1);
+					_exit(1);
 				}
 			}
 			n2[n2args++] = "--";
@@ -1469,7 +1468,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 			n2 = realloc(n2, n2args * sizeof(char *));
 			if (!n2) {
 				SYSERROR("out of memory");
-				exit(1);
+				_exit(1);
 			}
 			/* note n2[n2args-1] is NULL */
 			n2[n2args-5] = "--mapped-uid";
@@ -1485,7 +1484,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 		/* execute */
 		execvp(tpath, newargv);
 		SYSERROR("Failed to execute template %s", tpath);
-		exit(1);
+		_exit(1);
 	}
 
 	if (wait_for_pid(pid) != 0) {
@@ -1715,7 +1714,7 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 		if (!bdev) {
 			ERROR("Failed to create %s storage for %s",
 			      bdevtype ? bdevtype : "(none)", c->name);
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		/* Save config file again to store the new rootfs location. */
@@ -1726,9 +1725,9 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 			 */
 			bdev->ops->umount(bdev);
 			bdev->ops->destroy(bdev);
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
-		exit(EXIT_SUCCESS);
+		_exit(EXIT_SUCCESS);
 	}
 	if (wait_for_pid(pid) != 0)
 		goto out_unlock;
@@ -2167,7 +2166,7 @@ static char ** do_lxcapi_get_interfaces(struct lxc_container *c)
 
 		/* close the write-end of the pipe, thus sending EOF to the reader */
 		close(pipefd[1]);
-		exit(ret);
+		_exit(ret);
 	}
 
 	/* close the write-end of the pipe */
@@ -2292,7 +2291,7 @@ static char** do_lxcapi_get_ips(struct lxc_container *c, const char* interface, 
 
 		/* close the write-end of the pipe, thus sending EOF to the reader */
 		close(pipefd[1]);
-		exit(ret);
+		_exit(ret);
 	}
 
 	/* close the write-end of the pipe */
@@ -3686,10 +3685,10 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	else
 		ret = clone_update_rootfs(&data);
 	if (ret < 0)
-		exit(1);
+		_exit(1);
 
 	container_mem_unlock(c);
-	exit(0);
+	_exit(0);
 
 out:
 	container_mem_unlock(c);
@@ -4259,11 +4258,11 @@ static bool do_add_remove_node(pid_t init_pid, const char *path, bool add,
 
 	ret = chroot(chrootpath);
 	if (ret < 0)
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 
 	ret = chdir("/");
 	if (ret < 0)
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 
 	/* remove path if it exists */
 	ret = faccessat(AT_FDCWD, path, F_OK, AT_SYMLINK_NOFOLLOW);
@@ -4271,24 +4270,24 @@ static bool do_add_remove_node(pid_t init_pid, const char *path, bool add,
 		ret = unlink(path);
 		if (ret < 0) {
 			ERROR("%s - Failed to remove \"%s\"", strerror(errno), path);
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 	}
 
 	if (!add)
-		exit(EXIT_SUCCESS);
+		_exit(EXIT_SUCCESS);
 
 	/* create any missing directories */
 	tmp = strdup(path);
 	if (!tmp)
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 
 	directory_path = dirname(tmp);
 	ret = mkdir_p(directory_path, 0755);
 	if (ret < 0 && errno != EEXIST) {
 		ERROR("%s - Failed to create path \"%s\"", strerror(errno), directory_path);
 		free(tmp);
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	}
 
 	/* create the device node */
@@ -4296,10 +4295,10 @@ static bool do_add_remove_node(pid_t init_pid, const char *path, bool add,
 	free(tmp);
 	if (ret < 0) {
 		ERROR("%s - Failed to create device node at \"%s\"", strerror(errno), path);
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	}
 
-	exit(EXIT_SUCCESS);
+	_exit(EXIT_SUCCESS);
 }
 
 static bool add_remove_device_node(struct lxc_container *c, const char *src_path, const char *dest_path, bool add)
@@ -4444,13 +4443,13 @@ static bool do_lxcapi_detach_interface(struct lxc_container *c,
 		init_pid = do_lxcapi_init_pid(c);
 		if (!switch_to_ns(init_pid, "net")) {
 			ERROR("Failed to enter network namespace");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		ret = lxc_netdev_isup(ifname);
 		if (ret < 0) {
 			ERROR("Failed to determine whether network device \"%s\" is up", ifname);
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		/* netdev of ifname is up. */
@@ -4458,7 +4457,7 @@ static bool do_lxcapi_detach_interface(struct lxc_container *c,
 			ret = lxc_netdev_down(ifname);
 			if (ret) {
 				ERROR("Failed to set network device \"%s\" down", ifname);
-				exit(EXIT_FAILURE);
+				_exit(EXIT_FAILURE);
 			}
 		}
 
@@ -4469,10 +4468,10 @@ static bool do_lxcapi_detach_interface(struct lxc_container *c,
 				ERROR("Network device \"%s\" not found", ifname);
 			else
 				ERROR("Failed to remove network device \"%s\"", ifname);
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
-		exit(EXIT_SUCCESS);
+		_exit(EXIT_SUCCESS);
 	}
 
 	ret = wait_for_pid(pid);
