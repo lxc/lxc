@@ -184,6 +184,9 @@ struct lxc_console {
 		/* fd to the log file for the ringbuffer */
 		int buffer_log_file_fd;
 
+		/* whether to roate buffer log file */
+		unsigned int buffer_rotate;
+
 		/* the in-memory ringbuffer */
 		struct lxc_ringbuf ringbuf;
 	};
