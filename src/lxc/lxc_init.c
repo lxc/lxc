@@ -32,7 +32,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#define _GNU_SOURCE
 #include <getopt.h>
 
 #include "log.h"
