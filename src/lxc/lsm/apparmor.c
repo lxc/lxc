@@ -162,8 +162,8 @@ static bool aa_needs_transition(char *curlabel)
  * apparmor_process_label_set: Set AppArmor process profile
  *
  * @label   : the profile to set
- * @conf    : the container configuration to use @label is NULL
- * @default : use the default profile if label is NULL
+ * @conf    : the container configuration to use if @label is NULL
+ * @default : use the default profile if @label is NULL
  * @on_exec : this is ignored.  Apparmor profile will be changed immediately
  *
  * Returns 0 on success, < 0 on failure
@@ -230,7 +230,6 @@ static int apparmor_process_label_set(const char *inlabel, struct lxc_conf *conf
 		INFO("apparmor profile unchanged");
 		return 0;
 	}
-
 	tid = lxc_raw_gettid();
 	label_fd = lsm_process_label_fd_get(tid, on_exec);
 	if (label_fd < 0) {
