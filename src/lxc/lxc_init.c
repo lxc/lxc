@@ -79,10 +79,10 @@ static void remove_self(void)
 {
 	int ret;
 	ssize_t n;
-	char path[MAXPATHLEN] = {0};
+	char path[4096] = {0};
 
 	n = readlink("/proc/self/exe", path, sizeof(path));
-	if (n < 0 || n >= MAXPATHLEN) {
+	if (n < 0 || n >= 4096) {
 		SYSERROR("Failed to readlink \"/proc/self/exe\"");
 		return;
 	}
