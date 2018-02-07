@@ -65,8 +65,8 @@ static char *selinux_process_label_get(pid_t pid)
  * selinux_process_label_set: Set SELinux context of a process
  *
  * @label   : label string
- * @conf    : the container configuration to use @label is NULL
- * @default : use the default context if label is NULL
+ * @conf    : the container configuration to use if @label is NULL
+ * @default : use the default context if @label is NULL
  * @on_exec : the new context will take effect on exec(2) not immediately
  *
  * Returns 0 on success, < 0 on failure
