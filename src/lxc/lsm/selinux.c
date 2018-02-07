@@ -76,12 +76,12 @@ static int selinux_process_label_set(const char *inlabel, struct lxc_conf *conf,
 {
 	const char *label = inlabel ? inlabel : conf->lsm_se_context;
 	if (!label) {
-		if (use_default)
-			label = DEFAULT_LABEL;
-		else
+		if (!use_default)
 			return -1;
+		label = DEFAULT_LABEL;
 	}
-	if (!strcmp(label, "unconfined_t"))
+
+	if (!strcmp(label, DEFAULT_LABEL))
 		return 0;
 
 	if (on_exec) {
