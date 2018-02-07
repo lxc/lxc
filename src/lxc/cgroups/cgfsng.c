@@ -1915,40 +1915,61 @@ static bool cg_mount_needs_subdirs(int type)
 	return true;
 }
 
-/*
- * After $rootfs/sys/fs/container/controller/the/cg/path has been
- * created, remount controller ro if needed and bindmount the
- * cgroupfs onto controll/the/cg/path
+/* After $rootfs/sys/fs/container/controller/the/cg/path has been created,
+ * remount controller ro if needed and bindmount the cgroupfs onto
+ * controll/the/cg/path.
  */
 static int do_secondstage_mounts_if_needed(int type, struct hierarchy *h,
 					   char *controllerpath, char *cgpath,
 					   const char *container_cgroup)
 {
+	int ret;
+	char *sourcepath;
+	int flags = MS_BIND;
+
 	if (type == LXC_AUTO_CGROUP_RO || type == LXC_AUTO_CGROUP_MIXED) {
-		if (mount(controllerpath, controllerpath, "cgroup", MS_BIND, NULL) < 0) {
-			SYSERROR("Error bind-mounting %s", controllerpath);
+		ret = mount(controllerpath, controllerpath, "cgroup", MS_BIND, NULL);
+		if (ret < 0) {
+			SYSERROR("Failed to bind mount \"%s\" onto \"%s\"",
+				 controllerpath, controllerpath);
 			return -1;
 		}
-		if (mount(controllerpath, controllerpath, "cgroup",
-			   MS_REMOUNT | MS_BIND | MS_RDONLY, NULL) < 0) {
-			SYSERROR("Error remounting %s read-only", controllerpath);
+
+		ret = mount(controllerpath, controllerpath, "cgroup",
+			    MS_REMOUNT | MS_BIND | MS_RDONLY, NULL);
+		if (ret < 0) {
+			SYSERROR("Failed to remount \"%s\" ro", controllerpath);
 			return -1;
 		}
+
 		INFO("Remounted %s read-only", controllerpath);
 	}
-	char *sourcepath = must_make_path(h->mountpoint, h->base_cgroup, container_cgroup, NULL);
-	int flags = MS_BIND;
+
+	sourcepath = must_make_path(h->mountpoint, h->base_cgroup,
+				    container_cgroup, NULL);
 	if (type == LXC_AUTO_CGROUP_RO)
 		flags |= MS_RDONLY;
-	INFO("Mounting %s onto %s", sourcepath, cgpath);
-	if (mount(sourcepath, cgpath, "cgroup", flags, NULL) < 0) {
+
+	ret = mount(sourcepath, cgpath, "cgroup", flags, NULL);
+	if (ret < 0) {
+		SYSERROR("Failed to mount \"%s\" onto \"%s\"", h->controllers[0], cgpath);
 		free(sourcepath);
-		SYSERROR("Error mounting cgroup %s onto %s", h->controllers[0],
-				cgpath);
 		return -1;
 	}
+	INFO("Mounted \"%s\" onto \"%s\"", h->controllers[0], cgpath);
+
+	if (flags & MS_RDONLY) {
+		ret = mount(sourcepath, cgpath, "cgroup",
+			    MS_REMOUNT | flags | MS_RDONLY, NULL);
+		if (ret < 0) {
+			SYSERROR("Failed to remount \"%s\" ro", cgpath);
+			free(sourcepath);
+			return -1;
+		}
+	}
+
 	free(sourcepath);
-	INFO("Completed second stage cgroup automounts for %s", cgpath);
+	INFO("Completed second stage cgroup automounts for \"%s\"", cgpath);
 	return 0;
 }
 
