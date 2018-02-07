@@ -316,9 +316,12 @@ static int lxc_attach_drop_privs(struct lxc_proc_context_info *ctx)
 	return 0;
 }
 
-static int lxc_attach_set_environment(enum lxc_attach_env_policy_t policy,
+static int lxc_attach_set_environment(struct lxc_proc_context_info *init_ctx,
+				      enum lxc_attach_env_policy_t policy,
 				      char **extra_env, char **extra_keep)
 {
+	struct lxc_list *iterator;
+
 	if (policy == LXC_ATTACH_CLEAR_ENV) {
 		int path_kept = 0;
 		char **extra_keep_store = NULL;
@@ -392,6 +395,23 @@ static int lxc_attach_set_environment(enum lxc_attach_env_policy_t policy,
 	if (putenv("container=lxc")) {
 		SYSERROR("Failed to set environment variable.");
 		return -1;
+	}
+
+	/* Set container environment variables.*/
+	if (init_ctx && init_ctx->container && init_ctx->container->lxc_conf) {
+		lxc_list_for_each(iterator, &init_ctx->container->lxc_conf->environment) {
+			char *env_tmp = strdup((char *)iterator->elem);
+			if (!env_tmp) {
+				SYSERROR("Failed to allocate memory for container environment "
+				         "variables.");
+				return -1;
+			}
+
+			if (putenv(env_tmp)) {
+				SYSERROR("Failed to set environment variable: %s.", (char *)iterator->elem);
+				return -1;
+			}
+		}
 	}
 
 	/* Set extra environment variables. */
@@ -761,7 +781,8 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	/* Always set the environment (specify (LXC_ATTACH_KEEP_ENV, NULL, NULL)
 	 * if you want this to be a no-op).
 	 */
-	ret = lxc_attach_set_environment(options->env_policy,
+	ret = lxc_attach_set_environment(init_ctx,
+					 options->env_policy,
 					 options->extra_env_vars,
 					 options->extra_keep_env);
 	if (ret < 0)
