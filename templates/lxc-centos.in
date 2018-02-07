@@ -351,7 +351,7 @@ EOF
     # prevent mingetty from calling vhangup(2) since it fails with userns.
     # Same issue as oracle template: prevent mingetty from calling vhangup(2)
     # commit 2e83f7201c5d402478b9849f0a85c62d5b9f1589.
-    sed -i 's|mingetty|mingetty --nohangup|' $rootfs_path/etc/init/tty.conf
+    test -f $rootfs_path/etc/init/tty.conf && sed -i 's|mingetty|mingetty --nohangup|' $rootfs_path/etc/init/tty.conf
 
     if [ ${root_display_password} = "yes" ]
     then
@@ -381,12 +381,17 @@ EOF
 
 configure_centos_init()
 {
-    sed -i 's|.sbin.start_udev||' ${rootfs_path}/etc/rc.sysinit
-    sed -i 's|.sbin.start_udev||' ${rootfs_path}/etc/rc.d/rc.sysinit
+    test -f ${rootfs_path}/etc/rc.sysinit && sed -i 's|.sbin.start_udev||' ${rootfs_path}/etc/rc.sysinit
+    test -f ${rootfs_path}/etc/rc.d/rc.sysinit && sed -i 's|.sbin.start_udev||' ${rootfs_path}/etc/rc.d/rc.sysinit
     if [ "$release" = "6" ]; then
         chroot ${rootfs_path} chkconfig udev-post off
     fi
     chroot ${rootfs_path} chkconfig network on
+
+    if [ "$release" = "7" ]; then
+	# don't wait for the timeout
+	chroot ${rootfs_path} chkconfig systemd-remount-fs off
+    fi
 
     if [ -d ${rootfs_path}/etc/init ]
     then
@@ -461,6 +466,9 @@ EOF
     mkdir -p $INSTALL_ROOT/dev
     force_mknod 666 $INSTALL_ROOT/dev/null c 1 3
     force_mknod 666 $INSTALL_ROOT/dev/urandom c 1 9
+
+    # create /run directory, just in case it is missing (e.g. RHEL7)
+    mkdir -p $INSTALL_ROOT/run
 
     $YUM install $PKG_LIST
 
