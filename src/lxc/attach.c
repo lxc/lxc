@@ -322,9 +322,13 @@ static int lxc_attach_drop_privs(struct lxc_proc_context_info *ctx)
 	return 0;
 }
 
-static int lxc_attach_set_environment(enum lxc_attach_env_policy_t policy,
+static int lxc_attach_set_environment(struct lxc_proc_context_info *init_ctx,
+				      enum lxc_attach_env_policy_t policy,
 				      char **extra_env, char **extra_keep)
 {
+	int ret;
+	struct lxc_list *iterator;
+
 	if (policy == LXC_ATTACH_CLEAR_ENV) {
 		int path_kept = 0;
 		char **extra_keep_store = NULL;
@@ -332,44 +336,41 @@ static int lxc_attach_set_environment(enum lxc_attach_env_policy_t policy,
 		if (extra_keep) {
 			size_t count, i;
 
-			for (count = 0; extra_keep[count]; count++);
+			for (count = 0; extra_keep[count]; count++)
+				;
 
 			extra_keep_store = calloc(count, sizeof(char *));
-			if (!extra_keep_store) {
-				SYSERROR("Failed to allocate memory for storing current "
-				         "environment variable values that will be kept.");
+			if (!extra_keep_store)
 				return -1;
-			}
+
 			for (i = 0; i < count; i++) {
 				char *v = getenv(extra_keep[i]);
 				if (v) {
 					extra_keep_store[i] = strdup(v);
 					if (!extra_keep_store[i]) {
-						SYSERROR("Failed to allocate memory for storing current "
-						         "environment variable values that will be kept.");
 						while (i > 0)
 							free(extra_keep_store[--i]);
 						free(extra_keep_store);
 						return -1;
 					}
+
 					if (strcmp(extra_keep[i], "PATH") == 0)
 						path_kept = 1;
 				}
-				/* Calloc sets entire array to zero, so we don't
-				 * need an else.
-				 */
 			}
 		}
 
 		if (clearenv()) {
-			char **p;
-
-			SYSERROR("Failed to clear environment.");
 			if (extra_keep_store) {
+				char **p;
+
 				for (p = extra_keep_store; *p; p++)
 					free(*p);
+
 				free(extra_keep_store);
 			}
+
+			SYSERROR("Failed to clear environment");
 			return -1;
 		}
 
@@ -378,8 +379,9 @@ static int lxc_attach_set_environment(enum lxc_attach_env_policy_t policy,
 
 			for (i = 0; extra_keep[i]; i++) {
 				if (extra_keep_store[i]) {
-					if (setenv(extra_keep[i], extra_keep_store[i], 1) < 0)
-						SYSERROR("Unable to set environment variable.");
+					ret = setenv(extra_keep[i], extra_keep_store[i], 1);
+					if (ret < 0)
+						WARN("%s - Failed to set environment variable", strerror(errno));
 				}
 				free(extra_keep_store[i]);
 			}
@@ -391,31 +393,50 @@ static int lxc_attach_set_environment(enum lxc_attach_env_policy_t policy,
 		 * out there that just assume that getenv("PATH") is never NULL
 		 * and then die a painful segfault death.
 		 */
-		if (!path_kept)
-			setenv("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", 1);
+		if (!path_kept) {
+			ret = setenv("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", 1);
+			if (ret < 0)
+				WARN("%s - Failed to set environment variable", strerror(errno));
+		}
 	}
 
-	if (putenv("container=lxc")) {
-		SYSERROR("Failed to set environment variable.");
+	ret = putenv("container=lxc");
+	if (ret < 0) {
+		WARN("%s - Failed to set environment variable", strerror(errno));
 		return -1;
+	}
+
+	/* Set container environment variables.*/
+	if (init_ctx && init_ctx->container && init_ctx->container->lxc_conf) {
+		lxc_list_for_each(iterator, &init_ctx->container->lxc_conf->environment) {
+			char *env_tmp;
+
+			env_tmp = strdup((char *)iterator->elem);
+			if (!env_tmp)
+				return -1;
+
+			ret = putenv(env_tmp);
+			if (ret < 0) {
+				SYSERROR("Failed to set environment variable: %s", (char *)iterator->elem);
+				return -1;
+			}
+		}
 	}
 
 	/* Set extra environment variables. */
 	if (extra_env) {
 		for (; *extra_env; extra_env++) {
-			/* Duplicate the string, just to be on the safe side,
-			 * because putenv does not do it for us.
-			 */
-			char *p = strdup(*extra_env);
+			char *p;
 			/* We just assume the user knows what they are doing, so
 			 * we don't do any checks.
 			 */
-			if (!p) {
-				SYSERROR("Failed to allocate memory for additional environment "
-				         "variables.");
+			p = strdup(*extra_env);
+			if (!p)
 				return -1;
-			}
-			putenv(p);
+
+			ret = putenv(p);
+			if (ret < 0)
+				WARN("%s - Failed to set environment variable", strerror(errno));
 		}
 	}
 
@@ -798,7 +819,8 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	/* Always set the environment (specify (LXC_ATTACH_KEEP_ENV, NULL, NULL)
 	 * if you want this to be a no-op).
 	 */
-	ret = lxc_attach_set_environment(options->env_policy,
+	ret = lxc_attach_set_environment(init_ctx,
+					 options->env_policy,
 					 options->extra_env_vars,
 					 options->extra_keep_env);
 	if (ret < 0)
