@@ -1926,6 +1926,15 @@ static int do_secondstage_mounts_if_needed(int type, struct hierarchy *h,
 				cgpath);
 		return -1;
 	}
+
+	if (flags & MS_RDONLY) {
+		if (mount(sourcepath, cgpath, "cgroup", MS_REMOUNT | flags | MS_RDONLY, NULL) < 0) {
+			free(sourcepath);
+			SYSERROR("Error remounting %s read-only", cgpath);
+			return -1;
+		}
+	}
+
 	free(sourcepath);
 	INFO("Completed second stage cgroup automounts for %s", cgpath);
 	return 0;
