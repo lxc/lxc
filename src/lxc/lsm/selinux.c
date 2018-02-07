@@ -23,13 +23,15 @@
 
 #include <errno.h>
 #include <stdlib.h>
-#include <sys/types.h>
+#include <stdbool.h>
+#include <string.h>
 #include <unistd.h>
 #include <selinux/selinux.h>
+#include <sys/types.h>
 
+#include "conf.h"
 #include "log.h"
 #include "lsm.h"
-#include "conf.h"
 
 #define DEFAULT_LABEL "unconfined_t"
 
@@ -74,29 +76,31 @@ static char *selinux_process_label_get(pid_t pid)
 static int selinux_process_label_set(const char *inlabel, struct lxc_conf *conf,
 				     bool use_default, bool on_exec)
 {
-	const char *label = inlabel ? inlabel : conf->lsm_se_context;
+	int ret;
+	const char *label;
+
+	label = inlabel ? inlabel : conf->lsm_se_context;
 	if (!label) {
-		if (use_default)
-			label = DEFAULT_LABEL;
-		else
-			return -1;
+		if (!use_default)
+			return -EINVAL;
+
+		label = DEFAULT_LABEL;
 	}
-	if (!strcmp(label, "unconfined_t"))
+
+	if (strcmp(label, "unconfined_t") == 0)
 		return 0;
 
-	if (on_exec) {
-		if (setexeccon_raw((char *)label) < 0) {
-			SYSERROR("failed to set new SELinux exec context %s", label);
-			return -1;
-		}
-	} else {
-		if (setcon_raw((char *)label) < 0) {
-			SYSERROR("failed to set new SELinux context %s", label);
-			return -1;
-		}
+	if (on_exec)
+		ret = setexeccon_raw((char *)label);
+	else
+		ret = setcon_raw((char *)label);
+	if (ret < 0) {
+		SYSERROR("Failed to set SELinux%s context to \"%s\"",
+			 on_exec ? " exec" : "", label);
+		return -1;
 	}
 
-	INFO("changed SELinux%s context to %s", on_exec ? " exec" : "", label);
+	INFO("Changed SELinux%s context to \"%s\"", on_exec ? " exec" : "", label);
 	return 0;
 }
 
