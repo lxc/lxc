@@ -42,6 +42,23 @@
 #include "arguments.h"
 #include "tool_utils.h"
 
+/* Define sethostname() if missing from the C library also workaround some
+ * quirky with having this defined in multiple places.
+ */
+static inline int sethostname_including_android(const char *name, size_t len)
+{
+#ifndef HAVE_SETHOSTNAME
+#ifdef __NR_sethostname
+	return syscall(__NR_sethostname, name, len);
+#else
+	errno = ENOSYS;
+	return -1;
+#endif
+#else
+	return sethostname(name, len);
+#endif
+}
+
 struct my_iflist
 {
 	char *mi_ifname;
@@ -127,7 +144,7 @@ static int do_start(void *arg)
 		lxc_setup_fs();
 
 	if ((flags & CLONE_NEWUTS) && want_hostname)
-		if (sethostname(want_hostname, strlen(want_hostname)) < 0) {
+		if (sethostname_including_android(want_hostname, strlen(want_hostname)) < 0) {
 			fprintf(stderr, "failed to set hostname %s: %s\n", want_hostname, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
