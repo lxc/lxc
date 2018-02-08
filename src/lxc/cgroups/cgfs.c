@@ -523,6 +523,8 @@ static bool find_hierarchy_mountpts( struct cgroup_meta_data *meta_data, char **
 			}
 		}
 		lxc_free_array((void **)subsystems, free);
+		if (!h)
+			goto out;
 
 		r = lxc_grow_array((void ***)&meta_data->mount_points, &mount_point_capacity, mount_point_count + 1, 12);
 		if (r < 0)
