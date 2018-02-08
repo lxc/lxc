@@ -506,13 +506,13 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 				l->swap = ls_get_swap(c);
 
 				val = c->get_running_config_item(c, "lxc.idmap");
-				l->unprivileged = (val == NULL);
+				l->unprivileged = !(val == NULL);
 				free(val);
 			} else {
 				int ret;
 
 				ret = c->get_config_item(c, "lxc.idmap", NULL, 0);
-				l->unprivileged = (ret == 0);
+				l->unprivileged = !(ret == 0);
 			}
 		}
 
