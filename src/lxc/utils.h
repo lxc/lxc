@@ -435,6 +435,12 @@ extern int lxc_strmunmap(void *addr, size_t length);
 /* initialize rand with urandom */
 extern int randseed(bool);
 
+/* are we unprivileged with respect to our namespaces */
+inline static bool am_guest_unpriv(void) {
+	return geteuid() != 0;
+}
+
+/* are we unprivileged with respect to init_user_ns */
 inline static bool am_host_unpriv(void)
 {
 	FILE *f;
