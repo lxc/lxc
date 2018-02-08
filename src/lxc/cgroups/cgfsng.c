@@ -1923,7 +1923,7 @@ static int do_secondstage_mounts_if_needed(int type, struct hierarchy *h,
 					   char *controllerpath, char *cgpath,
 					   const char *container_cgroup)
 {
-	int ret;
+	int ret, remount_flags;
 	char *sourcepath;
 	int flags = MS_BIND;
 
@@ -1935,6 +1935,9 @@ static int do_secondstage_mounts_if_needed(int type, struct hierarchy *h,
 			return -1;
 		}
 
+		remount_flags = add_required_remount_flags(controllerpath,
+							   controllerpath,
+							   flags | MS_REMOUNT);
 		ret = mount(controllerpath, controllerpath, "cgroup",
 			    MS_REMOUNT | MS_BIND | MS_RDONLY, NULL);
 		if (ret < 0) {
@@ -1959,13 +1962,15 @@ static int do_secondstage_mounts_if_needed(int type, struct hierarchy *h,
 	INFO("Mounted \"%s\" onto \"%s\"", h->controllers[0], cgpath);
 
 	if (flags & MS_RDONLY) {
-		ret = mount(sourcepath, cgpath, "cgroup",
-			    MS_REMOUNT | flags | MS_RDONLY, NULL);
+		remount_flags = add_required_remount_flags(sourcepath, cgpath,
+							   flags | MS_REMOUNT);
+		ret = mount(sourcepath, cgpath, "cgroup", remount_flags, NULL);
 		if (ret < 0) {
 			SYSERROR("Failed to remount \"%s\" ro", cgpath);
 			free(sourcepath);
 			return -1;
 		}
+		INFO("Remounted %s read-only", cgpath);
 	}
 
 	free(sourcepath);
@@ -1973,7 +1978,8 @@ static int do_secondstage_mounts_if_needed(int type, struct hierarchy *h,
 	return 0;
 }
 
-static int mount_cgroup_cgns_supported(int type, struct hierarchy *h, const char *controllerpath)
+static int cg_mount_in_cgroup_namespace(int type, struct hierarchy *h,
+					const char *controllerpath)
 {
 	 int ret;
 	 char *controllers = NULL;
@@ -2066,7 +2072,7 @@ static bool cgfsng_mount(void *hdata, const char *root, int type)
 			 * will not have CAP_SYS_ADMIN after it has started we
 			 * need to mount the cgroups manually.
 			 */
-			r = mount_cgroup_cgns_supported(type, h, controllerpath);
+			r = cg_mount_in_cgroup_namespace(type, h, controllerpath);
 			free(controllerpath);
 			if (r < 0)
 				goto bad;
