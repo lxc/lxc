@@ -1657,7 +1657,10 @@ static int lxc_spawn(struct lxc_handler *handler)
 		DEBUG("Preserved cgroup namespace via fd %d", ret);
 	}
 
-	snprintf(pidstr, 20, "%d", handler->pid);
+	ret = snprintf(pidstr, 20, "%d", handler->pid);
+	if (ret < 0 || ret >= 20)
+		goto out_delete_net;
+
 	if (setenv("LXC_PID", pidstr, 1))
 		SYSERROR("Failed to set environment variable: LXC_PID=%s.", pidstr);
 
