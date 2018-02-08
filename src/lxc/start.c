@@ -1355,6 +1355,9 @@ int resolve_clone_flags(struct lxc_handler *handler)
 			if (i == LXC_NS_NET && lxc_requests_empty_network(handler))
 				continue;
 
+			if (i == LXC_NS_CGROUP && !cgns_supported())
+				continue;
+
 			handler->clone_flags |= ns_info[i].clone_flag;
 		}
 
