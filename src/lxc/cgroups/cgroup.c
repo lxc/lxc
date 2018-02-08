@@ -26,6 +26,7 @@
 
 #include "cgroup.h"
 #include "conf.h"
+#include "initutils.h"
 #include "log.h"
 #include "start.h"
 
@@ -246,9 +247,14 @@ void prune_init_scope(char *cg)
  * is not mounted then it will be ignored. But if systemd is mounted, then it
  * must be setup so that lxc can create cgroups in it, else containers will
  * fail.
+ *
+ * cgroups listed in lxc.cgroup.use are also treated as crucial
+ *
  */
 bool is_crucial_cgroup_subsystem(const char *s)
 {
+	const char *cgroup_use;
+
 	if (strcmp(s, "systemd") == 0)
 		return true;
 
@@ -256,6 +262,10 @@ bool is_crucial_cgroup_subsystem(const char *s)
 		return true;
 
 	if (strcmp(s, "freezer") == 0)
+		return true;
+
+	cgroup_use = lxc_global_config_value("lxc.cgroup.use");
+	if (cgroup_use && strstr(cgroup_use, s))
 		return true;
 
 	return false;
