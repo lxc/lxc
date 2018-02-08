@@ -372,7 +372,7 @@ struct lxc_storage *storage_copy(struct lxc_container *c0, const char *cname,
 	if (!bdevtype && !keepbdevtype && snap && (!strcmp(orig->type, "dir") || !strcmp(orig->type, "overlayfs")))
 		bdevtype = "overlayfs";
 
-	if (am_unpriv() && !unpriv_snap_allowed(orig, bdevtype, snap, maybe_snap)) {
+	if (am_guest_unpriv() && !unpriv_snap_allowed(orig, bdevtype, snap, maybe_snap)) {
 		ERROR("Unsupported snapshot type \"%s\" for unprivileged users",
 		      bdevtype ? bdevtype : "(null)");
 		storage_put(orig);
@@ -409,7 +409,7 @@ struct lxc_storage *storage_copy(struct lxc_container *c0, const char *cname,
 		goto err;
 	}
 
-	if (am_unpriv() && chown_mapped_root(new->src, c0->lxc_conf) < 0)
+	if (am_guest_unpriv() && chown_mapped_root(new->src, c0->lxc_conf) < 0)
 		WARN("Failed to update ownership of %s", new->dest);
 
 	if (snap)
@@ -458,7 +458,7 @@ struct lxc_storage *storage_copy(struct lxc_container *c0, const char *cname,
 
 	data.orig = orig;
 	data.new = new;
-	if (am_unpriv())
+	if (am_guest_unpriv())
 		ret = userns_exec_full(c0->lxc_conf, rsync_rootfs_wrapper,
 				       &data, "rsync_rootfs_wrapper");
 	else

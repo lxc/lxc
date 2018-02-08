@@ -2511,7 +2511,7 @@ static bool has_snapshots(struct lxc_container *c)
 static bool do_destroy_container(struct lxc_conf *conf) {
 	int ret;
 
-	if (am_unpriv()) {
+	if (am_guest_unpriv()) {
 		ret = userns_exec_full(conf, storage_destroy_wrapper, conf,
 				       "storage_destroy_wrapper");
 		if (ret < 0)
@@ -2597,7 +2597,7 @@ static bool container_destroy(struct lxc_container *c)
 	const char *p1 = do_lxcapi_get_config_path(c);
 	char *path = alloca(strlen(p1) + strlen(c->name) + 2);
 	sprintf(path, "%s/%s", p1, c->name);
-	if (am_unpriv())
+	if (am_guest_unpriv())
 		ret = userns_exec_full(conf, lxc_rmdir_onedev_wrapper, path,
 				       "lxc_rmdir_onedev_wrapper");
 	else
@@ -3334,7 +3334,7 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 		goto out;
 	}
 
-	if (am_unpriv()) {
+	if (am_guest_unpriv()) {
 		if (chown_mapped_root(newpath, c->lxc_conf) < 0) {
 			ERROR("Error chowning %s to container root", newpath);
 			goto out;
@@ -3410,7 +3410,7 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	data.c1 = c2;
 	data.flags = flags;
 	data.hookargs = hookargs;
-	if (am_unpriv())
+	if (am_guest_unpriv())
 		ret = userns_exec_full(c->lxc_conf, clone_update_rootfs_wrapper,
 				       &data, "clone_update_rootfs_wrapper");
 	else
@@ -4072,7 +4072,7 @@ static bool add_remove_device_node(struct lxc_container *c, const char *src_path
 
 static bool do_lxcapi_add_device_node(struct lxc_container *c, const char *src_path, const char *dest_path)
 {
-	if (am_unpriv()) {
+	if (am_host_unpriv()) {
 		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
 		return false;
 	}
@@ -4083,7 +4083,7 @@ WRAP_API_2(bool, lxcapi_add_device_node, const char *, const char *)
 
 static bool do_lxcapi_remove_device_node(struct lxc_container *c, const char *src_path, const char *dest_path)
 {
-	if (am_unpriv()) {
+	if (am_host_unpriv()) {
 		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
 		return false;
 	}
@@ -4099,7 +4099,7 @@ static bool do_lxcapi_attach_interface(struct lxc_container *c,
 	pid_t init_pid;
 	int ret = 0;
 
-	if (am_unpriv()) {
+	if (am_guest_unpriv()) {
 		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
 		return false;
 	}
@@ -4138,7 +4138,7 @@ static bool do_lxcapi_detach_interface(struct lxc_container *c,
 	int ret;
 	pid_t pid, pid_outside;
 
-	if (am_unpriv()) {
+	if (am_guest_unpriv()) {
 		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
 		return false;
 	}

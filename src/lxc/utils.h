@@ -432,7 +432,7 @@ inline static bool am_guest_unpriv(void) {
 }
 
 /* are we unprivileged with respect to init_user_ns */
-inline static bool am_unpriv(void)
+inline static bool am_host_unpriv(void)
 {
 	FILE *f;
 	uid_t user, host, count;

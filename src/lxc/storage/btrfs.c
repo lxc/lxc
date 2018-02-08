@@ -393,7 +393,7 @@ int btrfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 
 	if (snap) {
 		struct rsync_data_char sdata;
-		if (!am_unpriv())
+		if (!am_guest_unpriv())
 			return btrfs_snapshot(orig->dest, new->dest);
 		sdata.dest = new->dest;
 		sdata.src = orig->dest;
