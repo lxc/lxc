@@ -2583,7 +2583,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->init_uid = 0;
 	new->init_gid = 0;
 	memset(&new->cgroup_meta, 0, sizeof(struct lxc_cgroup));
-	memset(&new->inherit_ns, 0, sizeof(char *) * LXC_NS_MAX);
+	memset(&new->ns_share, 0, sizeof(char *) * LXC_NS_MAX);
 
 	return new;
 }
