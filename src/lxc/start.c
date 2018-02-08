@@ -1667,7 +1667,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	/* Run any host-side start hooks */
 	if (run_lxc_hooks(name, "start-host", conf, NULL)) {
 		ERROR("Failed to run lxc.hook.start-host for container \"%s\".", name);
-		return -1;
+		goto out_delete_net;
 	}
 
 	/* Tell the child to complete its initialization and wait for it to exec
@@ -1677,7 +1677,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	 * value, causing us to error out).
 	 */
 	if (lxc_sync_barrier_child(handler, LXC_SYNC_READY_START))
-		return -1;
+		goto out_delete_net;
 
 	if (lxc_network_recv_name_and_ifindex_from_child(handler) < 0) {
 		ERROR("Failed to receive names and ifindices for network "
