@@ -1143,6 +1143,7 @@ static bool cg_hybrid_init(void)
 	f = fopen("/proc/self/mountinfo", "r");
 	if (!f) {
 		CGFSNG_DEBUG("Failed to open \"/proc/self/mountinfo\"\n");
+		free(basecginfo);
 		return false;
 	}
 
