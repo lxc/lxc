@@ -154,10 +154,6 @@ int main(int argc, char *argv[])
 	log.quiet = my_args.quiet;
 	log.lxcpath = my_args.lxcpath[0];
 
-	if (lxc_log_init(&log))
-		exit(EXIT_FAILURE);
-	lxc_log_options_no_override();
-
 	/* REMOVE IN LXC 3.0 */
 	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
 
@@ -187,6 +183,10 @@ int main(int argc, char *argv[])
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
+
+	if (lxc_log_init(&log))
+		exit(EXIT_FAILURE);
+	lxc_log_options_no_override();
 
 	if (my_args.argc == 0) {
 		if (!set_argv(c->lxc_conf, &my_args)) {
