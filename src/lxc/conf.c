@@ -430,7 +430,7 @@ int pin_rootfs(const char *rootfs)
  * NOEXEC etc are honored.
  */
 unsigned long add_required_remount_flags(const char *s, const char *d,
-		unsigned long flags)
+					 unsigned long flags)
 {
 #ifdef HAVE_STATVFS
 	struct statvfs sb;
