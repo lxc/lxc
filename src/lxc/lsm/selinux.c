@@ -63,8 +63,8 @@ static char *selinux_process_label_get(pid_t pid)
  * selinux_process_label_set: Set SELinux context of a process
  *
  * @label   : label string
- * @conf    : the container configuration to use @label is NULL
- * @default : use the default context if label is NULL
+ * @conf    : the container configuration to use if @label is NULL
+ * @default : use the default context if @label is NULL
  * @on_exec : the new context will take effect on exec(2) not immediately
  *
  * Returns 0 on success, < 0 on failure
@@ -76,12 +76,12 @@ static int selinux_process_label_set(const char *inlabel, struct lxc_conf *conf,
 {
 	const char *label = inlabel ? inlabel : conf->lsm_se_context;
 	if (!label) {
-		if (use_default)
-			label = DEFAULT_LABEL;
-		else
+		if (!use_default)
 			return -1;
+		label = DEFAULT_LABEL;
 	}
-	if (!strcmp(label, "unconfined_t"))
+
+	if (!strcmp(label, DEFAULT_LABEL))
 		return 0;
 
 	if (on_exec) {
