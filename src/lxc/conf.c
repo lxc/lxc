@@ -397,7 +397,7 @@ int run_script_argv(const char *name, unsigned int hook_version,
 				 "LXC_HOOK_TYPE=%s", hookname);
 			return -1;
 		}
-		TRACE("Set environment variable: LXC_HOOK_TYPE=%s", section);
+		TRACE("Set environment variable: LXC_HOOK_TYPE=%s", hookname);
 
 		ret = setenv("LXC_HOOK_SECTION", section, 1);
 		if (ret < 0) {
