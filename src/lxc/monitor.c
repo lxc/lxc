@@ -239,7 +239,6 @@ int lxc_monitor_open(const char *lxcpath)
 
 	if (fd < 0) {
 		ERROR("Failed to connect to monitor socket: %s.", strerror(errno));
-		close(fd);
 		return -1;
 	}
 

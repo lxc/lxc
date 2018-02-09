@@ -56,7 +56,7 @@ void *ns_sharing_wrapper(void *data)
 	c = lxc_container_new(name, NULL);
 	if (!c) {
 		lxc_error("Failed to create container \"%s\"\n", name);
-		goto out;
+		return NULL;
 	}
 
 	if (c->is_defined(c)) {

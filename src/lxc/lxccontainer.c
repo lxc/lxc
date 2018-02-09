@@ -2727,7 +2727,7 @@ static bool container_destroy(struct lxc_container *c,
 
 	if (conf && !lxc_list_empty(&conf->hooks[LXCHOOK_DESTROY])) {
 		/* Start of environment variable setup for hooks */
-		if (c->name && setenv("LXC_NAME", c->name, 1))
+		if (setenv("LXC_NAME", c->name, 1))
 			SYSERROR("Failed to set environment variable for container name");
 
 		if (conf->rcfile && setenv("LXC_CONFIG_FILE", conf->rcfile, 1))
@@ -3425,7 +3425,7 @@ static int clone_update_rootfs(struct clone_update_data *data)
 		if (c0->name && setenv("LXC_SRC_NAME", c0->name, 1)) {
 			SYSERROR("failed to set environment variable for source container name");
 		}
-		if (c->name && setenv("LXC_NAME", c->name, 1)) {
+		if (setenv("LXC_NAME", c->name, 1)) {
 			SYSERROR("failed to set environment variable for container name");
 		}
 		if (conf->rcfile && setenv("LXC_CONFIG_FILE", conf->rcfile, 1)) {

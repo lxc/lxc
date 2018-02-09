@@ -1660,14 +1660,17 @@ static int lxc_spawn(struct lxc_handler *handler)
 		DEBUG("Preserved cgroup namespace via fd %d", ret);
 	}
 
-	snprintf(pidstr, 20, "%d", handler->pid);
+	ret = snprintf(pidstr, 20, "%d", handler->pid);
+	if (ret < 0 || ret >= 20)
+		goto out_delete_net;
+
 	if (setenv("LXC_PID", pidstr, 1))
 		SYSERROR("Failed to set environment variable: LXC_PID=%s.", pidstr);
 
 	/* Run any host-side start hooks */
 	if (run_lxc_hooks(name, "start-host", conf, NULL)) {
 		ERROR("Failed to run lxc.hook.start-host for container \"%s\".", name);
-		return -1;
+		goto out_delete_net;
 	}
 
 	/* Tell the child to complete its initialization and wait for it to exec
@@ -1677,7 +1680,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	 * value, causing us to error out).
 	 */
 	if (lxc_sync_barrier_child(handler, LXC_SYNC_READY_START))
-		return -1;
+		goto out_delete_net;
 
 	if (lxc_network_recv_name_and_ifindex_from_child(handler) < 0) {
 		ERROR("Failed to receive names and ifindices for network "
