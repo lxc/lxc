@@ -317,6 +317,14 @@ init_lxc_static_LDADD = @CAP_LIBS@
 init_lxc_static_CFLAGS = $(AM_CFLAGS) -DNO_LXC_CONF
 endif
 
+if HAVE_PAM
+pam_LTLIBRARIES = pam_cgfs.la
+pam_cgfs_la_SOURCES = pam/pam_cgfs.c macro.h
+pam_cgfs_la_CFLAGS = $(AM_CFLAGS)
+pam_cgfs_la_LIBADD = $(AM_LIBS) $(PAM_LIBS) -L$(top_srcdir)
+pam_cgfs_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version -shared
+endif
+
 install-exec-local: install-libLTLIBRARIES
 	mkdir -p $(DESTDIR)$(datadir)/lxc
 	install -c -m 644 lxc.functions $(DESTDIR)$(datadir)/lxc
@@ -331,3 +339,10 @@ install-exec-hook:
 
 uninstall-local:
 	$(RM) $(DESTDIR)$(libdir)/liblxc.so*
+if HAVE_PAM
+	$(RM) $(DESTDIR)$(pamdir)/pam_cgfs.so*
+
+install-data-hook: install-pamLTLIBRARIES
+	$(RM) "$(DESTDIR)$(pamdir)/pam_cgfs.la"
+	$(RM) "$(DESTDIR)$(pamdir)/pam_cgfs.a"
+endif
