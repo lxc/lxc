@@ -3737,6 +3737,9 @@ static int run_userns_fn(void *data)
 	/* Close read end of the pipe. */
 	close(d->p[0]);
 
+	if (c == '0')
+		return 1;
+
 	if (d->fn_name)
 		TRACE("calling function \"%s\"", d->fn_name);
 	/* Call function to run. */
@@ -4026,11 +4029,11 @@ int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	int p[2];
 	struct id_map *map;
 	struct lxc_list *cur;
-	char c = '1';
 	int ret = -1;
 	struct lxc_list *idmap = NULL, *tmplist = NULL;
 	struct id_map *container_root_uid = NULL, *container_root_gid = NULL,
 		      *host_uid_map = NULL, *host_gid_map = NULL;
+	bool error = true;
 
 	ret = pipe(p);
 	if (ret < 0) {
@@ -4172,12 +4175,19 @@ int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	}
 
 	/* Tell child to proceed. */
-	if (write(p[1], &c, 1) != 1) {
+	if (write(p[1], "1", 1) != 1) {
 		SYSERROR("failed telling child process \"%d\" to proceed", pid);
 		goto on_error;
 	}
 
+	error = false;
+
 on_error:
+	/* Try to wake the child up and tell them we failed. */
+	if (error && write(p[1], "0", 1) != 1) {
+		ERROR("error telling the child about our error");
+	}
+
 	/* Wait for child to finish. */
 	if (pid > 0)
 		ret = wait_for_pid(pid);
