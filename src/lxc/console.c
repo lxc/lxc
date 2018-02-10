@@ -390,10 +390,8 @@ static int lxc_console_peer_proxy_alloc(struct lxc_console *console, int sockfd)
 	/* this is the proxy pty that will be given to the client, and that
 	 * the real pty master will send to / recv from
 	 */
-	process_lock();
 	ret = openpty(&console->peerpty.master, &console->peerpty.slave,
 		    console->peerpty.name, NULL, NULL);
-	process_unlock();
 	if (ret) {
 		SYSERROR("failed to create proxy pty");
 		return -1;
