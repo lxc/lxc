@@ -391,12 +391,6 @@ struct lxc_conf {
 	/* RLIMIT_* limits */
 	struct lxc_list limits;
 
-	/* REMOVE IN LXC 3.0
-	 * Indicator whether the current config file we're using contained any
-	 * legacy configuration keys.
-	 */
-	bool contains_legacy_key;
-
 	/* Contains generic info about the cgroup configuration for this
 	 * container. Note that struct lxc_cgroup contains a union. It is only
 	 * valid to access the members of the anonymous "meta" struct within

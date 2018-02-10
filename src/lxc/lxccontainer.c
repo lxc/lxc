@@ -46,7 +46,6 @@
 #include "commands.h"
 #include "commands_utils.h"
 #include "confile.h"
-#include "confile_legacy.h"
 #include "confile_utils.h"
 #include "console.h"
 #include "criu.h"
@@ -2380,10 +2379,8 @@ static int do_lxcapi_get_keys(struct lxc_container *c, const char *key, char *re
 	 * This is an intelligent result to show which keys are valid given the
 	 * type of nic it is.
 	 */
-	if (!strncmp(key, "lxc.net.", 8))
+	if (strncmp(key, "lxc.net.", 8) == 0)
 		ret = lxc_list_net(c->lxc_conf, key, retv, inlen);
-	else if (strncmp(key, "lxc.network.", 12) == 0)
-		ret = lxc_list_nicconfigs_legacy(c->lxc_conf, key, retv, inlen);
 	else
 		ret = lxc_list_subkeys(c->lxc_conf, key, retv, inlen);
 
@@ -3192,11 +3189,6 @@ static int copy_fstab(struct lxc_container *oldc, struct lxc_container *c)
 	if (!oldpath)
 		return 0;
 
-	/* REMOVE IN LXC 3.0
-	   legacy mount key
-	 */
-	clear_unexp_config_line(c->lxc_conf, "lxc.mount", false);
-
 	clear_unexp_config_line(c->lxc_conf, "lxc.mount.fstab", false);
 
 	char *p = strrchr(oldpath, '/');
@@ -3330,11 +3322,6 @@ static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 		return -1;
 	}
 
-	/* REMOVE IN LXC 3.0
-	 * legacy rootfs key
-	 */
-	clear_unexp_config_line(c->lxc_conf, "lxc.rootfs", false);
-
 	/* Append a new lxc.rootfs.path entry to the unexpanded config. */
 	clear_unexp_config_line(c->lxc_conf, "lxc.rootfs.path", false);
 	if (!do_append_unexp_config_line(c->lxc_conf, "lxc.rootfs.path",
@@ -3342,11 +3329,6 @@ static int copy_storage(struct lxc_container *c0, struct lxc_container *c,
 		ERROR("Error saving new rootfs to cloned config.");
 		return -1;
 	}
-
-	/* REMOVE IN LXC 3.0
-	 * legacy rootfs.backend key
-	 */
-	clear_unexp_config_line(c->lxc_conf, "lxc.rootfs.backend", false);
 
 	if (flags & LXC_CLONE_SNAPSHOT)
 		copy_rdepends(c, c0);
@@ -3568,11 +3550,6 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 		fclose(fout);
 		goto out;
 	}
-
-	/* REMOVE IN LXC 3.0
-	 * legacy rootfs key
-	 */
-	clear_unexp_config_line(c->lxc_conf, "lxc.rootfs", false);
 
 	clear_unexp_config_line(c->lxc_conf, "lxc.rootfs.path", false);
 	write_config(fout, c->lxc_conf);

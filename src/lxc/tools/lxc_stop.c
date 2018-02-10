@@ -114,9 +114,6 @@ int main(int argc, char *argv[])
 	if (lxc_log_init(&log))
 		exit(ret);
 
-	/* REMOVE IN LXC 3.0 */
-	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
-
 	/* Set default timeout */
 	if (my_args.timeout == -2) {
 		if (my_args.hardstop)

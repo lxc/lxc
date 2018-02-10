@@ -357,9 +357,6 @@ int main(int argc, char *argv[])
 	if (lxc_log_init(&log))
 		exit(EXIT_FAILURE);
 
-	/* REMOVE IN LXC 3.0 */
-	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
-
 	count = list_defined_containers(my_args.lxcpath[0], NULL, &containers);
 
 	if (count < 0)

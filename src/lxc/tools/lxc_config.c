@@ -60,8 +60,6 @@ int main(int argc, char *argv[])
 	struct lxc_config_items *i;
 	const char *value;
 
-	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
-
 	if (argc < 2 || strcmp(argv[1], "-h") == 0 ||
 			strcmp(argv[1], "--help") == 0)
 		usage(argv[0]);
