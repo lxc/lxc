@@ -2537,15 +2537,18 @@ static int cg_legacy_set_data(const char *filename, const char *value,
 			      struct cgfsng_handler_data *d)
 {
 	char *fullpath, *p;
+	size_t len;
 	/* "b|c <2^64-1>:<2^64-1> r|w|m" = 47 chars max */
 	char converted_value[50];
 	struct hierarchy *h;
 	int ret = 0;
 	char *controller = NULL;
 
-	controller = alloca(strlen(filename) + 1);
+	len = strlen(filename);
+	controller = alloca(len + 1);
 	strcpy(controller, filename);
-	if ((p = strchr(controller, '.')) != NULL)
+	p = strchr(controller, '.');
+	if (p)
 		*p = '\0';
 
 	if (strcmp("devices.allow", filename) == 0 && value[0] == '/') {
@@ -2553,7 +2556,6 @@ static int cg_legacy_set_data(const char *filename, const char *value,
 		if (ret < 0)
 			return ret;
 		value = converted_value;
-
 	}
 
 	h = get_hierarchy(controller);
@@ -2563,7 +2565,7 @@ static int cg_legacy_set_data(const char *filename, const char *value,
 		      "driver or not enabled on the cgroup hierarchy",
 		      controller);
 		errno = ENOENT;
-		return -1;
+		return -ENOENT;
 	}
 
 	fullpath = must_make_path(h->fullcgpath, filename, NULL);

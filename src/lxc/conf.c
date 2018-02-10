@@ -3450,28 +3450,31 @@ int lxc_clear_config_keepcaps(struct lxc_conf *c)
 int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version)
 {
 	char *global_token, *namespaced_token;
+	size_t namespaced_token_len;
 	struct lxc_list *it, *next, *list;
-	const char *k = NULL;
+	const char *k = key;
 	bool all = false;
 
 	if (version == CGROUP2_SUPER_MAGIC) {
 		global_token = "lxc.cgroup2";
 		namespaced_token = "lxc.cgroup2.";
+		namespaced_token_len = sizeof("lxc.cgroup2.") - 1;;
 		list = &c->cgroup2;
 	} else if (version == CGROUP_SUPER_MAGIC) {
 		global_token = "lxc.cgroup";
 		namespaced_token = "lxc.cgroup.";
+		namespaced_token_len = sizeof("lxc.cgroup.") - 1;;
 		list = &c->cgroup;
 	} else {
-		return -1;
+		return -EINVAL;
 	}
 
 	if (strcmp(key, global_token) == 0)
 		all = true;
 	else if (strncmp(key, namespaced_token, sizeof(namespaced_token) - 1) == 0)
-		k = key + sizeof(namespaced_token) - 1;
+		k += namespaced_token_len;
 	else
-		return -1;
+		return -EINVAL;
 
 	lxc_list_for_each_safe(it, list, next) {
 		struct lxc_cgroup *cg = it->elem;
