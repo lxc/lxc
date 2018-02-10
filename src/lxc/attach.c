@@ -1189,13 +1189,10 @@ int lxc_attach(const char *name, const char *lxcpath,
 		return -1;
 	}
 
-	/* Create intermediate subprocess, three reasons:
-	 *       1. Runs all pthread_atfork handlers and the child will no
-	 *          longer be threaded (we can't properly setns() in a threaded
-	 *          process).
-	 *       2. We can't setns() in the child itself, since we want to make
+	/* Create intermediate subprocess, two reasons:
+	 *       1. We can't setns() in the child itself, since we want to make
 	 *          sure we are properly attached to the pidns.
-	 *       3. Also, the initial thread has to put the attached process
+	 *       2. Also, the initial thread has to put the attached process
 	 *          into the cgroup, which we can only do if we didn't already
 	 *          setns() (otherwise, user namespaces will hate us).
 	 */
