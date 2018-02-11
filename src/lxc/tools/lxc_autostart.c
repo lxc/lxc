@@ -18,15 +18,17 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
-#include "list.h"
-#include "log.h"
-#include "utils.h"
+#include "tool_list.h"
+#include "tool_utils.h"
 
 static struct lxc_list *accumulate_list(char *input, char *delimiter, struct lxc_list *str_list);
 
@@ -145,14 +147,13 @@ int lists_contain_common_entry(struct lxc_list *p1, struct lxc_list *p2) {
 	return 0;
 }
 
-/*
- * This is a variation of get_list below it.
- * This version allows two additional features.
- * If a list is passed to it, it adds to it.
- * It allows for empty entries (i.e. "group1,,group2") generating
- * 	and empty list entry.
+/* This is a variation of get_list below it. This version allows two additional
+ * features. If a list is passed to it, it adds to it. It allows for empty
+ * entries (i.e. "group1,,group2") generating and empty list entry.
  */
-static struct lxc_list *accumulate_list(char *input, char *delimiter, struct lxc_list *str_list) {
+static struct lxc_list *accumulate_list(char *input, char *delimiter,
+					struct lxc_list *str_list)
+{
 	char *workstr = NULL;
 	char *workptr = NULL;
 	char *next_ptr = NULL;
@@ -160,45 +161,33 @@ static struct lxc_list *accumulate_list(char *input, char *delimiter, struct lxc
 	struct lxc_list *workstr_list;
 
 	workstr = strdup(input);
-	if (!workstr) {
+	if (!workstr)
 		return NULL;
-	}
 
 	workstr_list = str_list;
-	if ( ! workstr_list ) {
+	if (!workstr_list) {
 		workstr_list = malloc(sizeof(*workstr_list));
 		lxc_list_init(workstr_list);
 	}
 
 	for (workptr = workstr; workptr; workptr = next_ptr) {
-		/*
-		 * We can't use strtok_r here because it collapses
-		 * multiple delimiters into 1 making empty fields
-		 * impossible...
+		/* We can't use strtok_r here because it collapses multiple
+		 * delimiters into 1 making empty fields impossible...
 		 */
-		/* token = strtok_r(workptr, delimiter, &sptr); */
-		next_ptr = strchr( workptr, *delimiter );
-
-		if( next_ptr ) {
+		next_ptr = strchr(workptr, *delimiter);
+		if (next_ptr)
 			*next_ptr++ = '\0';
-		}
 
-		/*
-		 * At this point, we'd like to check to see if this
-		 * group is already contained in the list and ignore
-		 * it if it is...  This also helps us with any
-		 * corner cases where a string begins or ends with a
-		 * delimiter.
+		/* At this point, we'd like to check to see if this group is
+		 * already contained in the list and ignore it if it is...  This
+		 * also helps us with any corner cases where a string begins or
+		 * ends with a delimiter.
 		 */
-
-		if ( list_contains_entry( workptr, workstr_list ) ) {
-			if ( *workptr ) {
-				fprintf(stderr, "Duplicate group \"%s\" in list - ignoring\n", workptr );
-				fflush(stderr);
-			} else {
-				fprintf(stderr, "Duplicate NULL group in list - ignoring\n" );
-				fflush(stderr);
-			}
+		if (list_contains_entry(workptr, workstr_list)) {
+			if (*workptr)
+				fprintf(stderr, "Duplicate group \"%s\" in list - ignoring\n", workptr);
+			else
+				fprintf(stderr, "Duplicate NULL group in list - ignoring\n");
 		} else {
 			worklist = malloc(sizeof(*worklist));
 			if (!worklist)
@@ -219,7 +208,8 @@ static struct lxc_list *accumulate_list(char *input, char *delimiter, struct lxc
 	return workstr_list;
 }
 
-static struct lxc_list *get_list(char *input, char *delimiter) {
+static struct lxc_list *get_list(char *input, char *delimiter)
+{
 	char *workstr = NULL;
 	char *workptr = NULL;
 	char *sptr = NULL;
@@ -236,11 +226,10 @@ static struct lxc_list *get_list(char *input, char *delimiter) {
 		return NULL;
 	}
 
-	for (workptr = workstr;;workptr = NULL) {
+	for (workptr = workstr;; workptr = NULL) {
 		token = strtok_r(workptr, delimiter, &sptr);
-		if (!token) {
+		if (!token)
 			break;
-		}
 
 		worklist = malloc(sizeof(*worklist));
 		if (!worklist)
@@ -260,16 +249,17 @@ static struct lxc_list *get_list(char *input, char *delimiter) {
 	return workstr_list;
 }
 
-static struct lxc_list *get_config_list(struct lxc_container *c, char *key) {
+static struct lxc_list *get_config_list(struct lxc_container *c, char *key)
+{
 	int len = 0;
-	char* value = NULL;
+	char *value = NULL;
 	struct lxc_list *config_list = NULL;
 
 	len = c->get_config_item(c, key, NULL, 0);
 	if (len < 0)
 		return NULL;
 
-	value = (char*) malloc(sizeof(char)*len + 1);
+	value = (char *)malloc(sizeof(char) * len + 1);
 	if (value == NULL)
 		return NULL;
 
@@ -289,16 +279,16 @@ static struct lxc_list *get_config_list(struct lxc_container *c, char *key) {
 	return config_list;
 }
 
-static int get_config_integer(struct lxc_container *c, char *key) {
-	int len = 0;
-	int ret = 0;
-	char* value = NULL;
+static int get_config_integer(struct lxc_container *c, char *key)
+{
+	int len = 0, ret = 0;
+	char *value = NULL;
 
 	len = c->get_config_item(c, key, NULL, 0);
 	if (len < 0)
 		return 0;
 
-	value = (char*) malloc(sizeof(char)*len + 1);
+	value = (char *)malloc(sizeof(char) * len + 1);
 	if (value == NULL)
 		return 0;
 
@@ -315,7 +305,8 @@ static int get_config_integer(struct lxc_container *c, char *key) {
 	return ret;
 }
 
-static int cmporder(const void *p1, const void *p2) {
+static int cmporder(const void *p1, const void *p2)
+{
 	struct lxc_container *c1 = *(struct lxc_container **)p1;
 	struct lxc_container *c2 = *(struct lxc_container **)p2;
 
@@ -324,33 +315,33 @@ static int cmporder(const void *p1, const void *p2) {
 
 	if (c1_order == c2_order)
 		return strcmp(c1->name, c2->name);
-	else
-		return (c1_order - c2_order);
+
+	return (c1_order - c2_order);
 }
 
-static int toss_list( struct lxc_list *c_groups_list ) {
+static int toss_list(struct lxc_list *c_groups_list)
+{
 	struct lxc_list *it, *next;
 
-	if (c_groups_list) {
-		lxc_list_for_each_safe(it, c_groups_list, next) {
-			lxc_list_del(it);
-			free(it->elem);
-			free(it);
-		}
-		free(c_groups_list);
+	if (!c_groups_list)
+		return 1;
+
+	lxc_list_for_each_safe(it, c_groups_list, next) {
+		lxc_list_del(it);
+		free(it->elem);
+		free(it);
 	}
+	free(c_groups_list);
 
 	return 1;
 }
 
 int main(int argc, char *argv[])
 {
-	int count = 0;
-	int i = 0;
-	int ret = 0;
+	int count = 0, i = 0, ret = 0;
+	struct lxc_list *cmd_group;
 	struct lxc_container **containers = NULL;
 	struct lxc_list **c_groups_lists = NULL;
-	struct lxc_list *cmd_group;
 	struct lxc_log log;
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
@@ -365,7 +356,6 @@ int main(int argc, char *argv[])
 
 	if (lxc_log_init(&log))
 		exit(EXIT_FAILURE);
-	lxc_log_options_no_override();
 
 	/* REMOVE IN LXC 3.0 */
 	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
@@ -375,36 +365,29 @@ int main(int argc, char *argv[])
 	if (count < 0)
 		exit(EXIT_FAILURE);
 
-	if (!my_args.all) {
-		/* Allocate an array for our container group lists */
+	/* Allocate an array for our container group lists */
+	if (!my_args.all)
 		c_groups_lists = calloc( count, sizeof( struct lxc_list * ) );
-	}
 
 	qsort(&containers[0], count, sizeof(struct lxc_container *), cmporder);
 
-	if (cmd_groups_list && my_args.all) {
+	if (cmd_groups_list && my_args.all)
 		fprintf(stderr, "Specifying -a (all) with -g (groups) doesn't make sense. All option overrides.\n");
-		fflush(stderr);
-	}
 
-	if (!cmd_groups_list) {
-		/*
-		 * We need a default cmd_groups_list even for the -a
-		 * case in order to force a pass through the loop for
-		 * the NULL group.  This, someday, could be taken from
-		 * a config file somewhere...
-		 */
+	/* We need a default cmd_groups_list even for the -a
+	 * case in order to force a pass through the loop for
+	 * the NULL group.  This, someday, could be taken from
+	 * a config file somewhere...
+	 */
+	if (!cmd_groups_list)
 		cmd_groups_list = accumulate_list( "" , ",", NULL );
-	}
 
 	lxc_list_for_each(cmd_group, cmd_groups_list) {
-
-		/*
-		 * Prograpmmers Note:
-		 * Because we may take several passes through the container list
-		 * We'll switch on if the container pointer is NULL and if we process a
-		 * container (run it or decide to ignore it) and call lxc_container_put
-		 * then we'll NULL it out and not check it again.
+		/* Because we may take several passes through the container list
+		 * We'll switch on if the container pointer is NULL and if we
+		 * process a container (run it or decide to ignore it) and call
+		 * lxc_container_put then we'll NULL it out and not check it
+		 * again.
 		 */
 		for (i = 0; i < count; i++) {
 			struct lxc_container *c = containers[i];
@@ -413,10 +396,9 @@ int main(int argc, char *argv[])
 				/* Skip - must have been already processed */
 				continue;
 
-			/*
-			 * We haven't loaded the container groups yet so
-			 * these next two checks don't need to free them
-			 * if they fail.  They'll fail on the first pass.
+			/* We haven't loaded the container groups yet so these
+			 * next two checks don't need to free them if they fail.
+			 * They'll fail on the first pass.
 			 */
 			if (!c->may_control(c)) {
 				/* We're done with this container */
@@ -443,8 +425,10 @@ int main(int argc, char *argv[])
 				ret = list_contains_entry(cmd_group->elem, c_groups_lists[i]);
 
 				if ( ret == 0 ) {
-					/* Not in the target group this pass */
-					/* Leave in the list for subsequent passes */
+					/* Not in the target group this pass so
+					 * leave in the list for subsequent
+					 * passes.
+					 */
 					continue;
 				}
 			}
@@ -468,8 +452,7 @@ int main(int argc, char *argv[])
 						}
 					}
 				}
-			}
-			else if (my_args.hardstop) {
+			} else if (my_args.hardstop) {
 				/* Kill the container */
 				if (c->is_running(c)) {
 					if (my_args.list) {
@@ -483,8 +466,7 @@ int main(int argc, char *argv[])
 						}
 					}
 				}
-			}
-			else if (my_args.reboot) {
+			} else if (my_args.reboot) {
 				/* Reboot the container */
 				if (c->is_running(c)) {
 					if (my_args.list) {
@@ -501,8 +483,7 @@ int main(int argc, char *argv[])
 							sleep(get_config_integer(c, "lxc.start.delay"));
 					}
 				}
-			}
-			else {
+			} else {
 				/* Start the container */
 				if (!c->is_running(c)) {
 					if (my_args.list) {
@@ -526,9 +507,8 @@ int main(int argc, char *argv[])
 			 * then we're done with this container...  We can dump any
 			 * c_groups_list and the container itself.
 			 */
-			if ( lxc_container_put(c) > 0 ) {
+			if ( lxc_container_put(c) > 0 )
 				containers[i] = NULL;
-			}
 			if ( c_groups_lists ) {
 				toss_list(c_groups_lists[i]);
 				c_groups_lists[i] = NULL;
@@ -539,12 +519,11 @@ int main(int argc, char *argv[])
 
 	/* clean up any lingering detritus */
 	for (i = 0; i < count; i++) {
-		if ( containers[i] ) {
+		if (containers[i])
 			lxc_container_put(containers[i]);
-		}
-		if ( c_groups_lists && c_groups_lists[i] ) {
+
+		if (c_groups_lists && c_groups_lists[i])
 			toss_list(c_groups_lists[i]);
-		}
 	}
 
 	free(c_groups_lists);

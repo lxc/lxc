@@ -17,24 +17,18 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <unistd.h>
+#include <ctype.h>
+#include <errno.h>
 #include <getopt.h>
 #include <signal.h>
-#include <stdio.h>
-#include <sys/types.h>
 #include <stdint.h>
-#include <sys/wait.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
-#include <ctype.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include <lxc/lxccontainer.h>
-
-#include "log.h"
-#include "config.h"
-#include "lxc.h"
-#include "conf.h"
-#include "state.h"
 
 /* we pass fssize in bytes */
 static uint64_t get_fssize(char *s)
@@ -43,30 +37,33 @@ static uint64_t get_fssize(char *s)
 	char *end;
 
 	ret = strtoull(s, &end, 0);
-	if (end == s)
-	{
-		fprintf(stderr, "Invalid blockdev size '%s', using default size\n", s);
+	if (end == s) {
+		fprintf(stderr,
+			"Invalid blockdev size '%s', using default size\n", s);
 		return 0;
 	}
+
 	while (isblank(*end))
 		end++;
-	if (*end == '\0')
+	if (*end == '\0') {
 		ret *= 1024ULL * 1024ULL; /* MB by default */
-	else if (*end == 'b' || *end == 'B')
+	} else if (*end == 'b' || *end == 'B') {
 		ret *= 1ULL;
-	else if (*end == 'k' || *end == 'K')
+	} else if (*end == 'k' || *end == 'K') {
 		ret *= 1024ULL;
-	else if (*end == 'm' || *end == 'M')
+	} else if (*end == 'm' || *end == 'M') {
 		ret *= 1024ULL * 1024ULL;
-	else if (*end == 'g' || *end == 'G')
+	} else if (*end == 'g' || *end == 'G') {
 		ret *= 1024ULL * 1024ULL * 1024ULL;
-	else if (*end == 't' || *end == 'T')
+	} else if (*end == 't' || *end == 'T') {
 		ret *= 1024ULL * 1024ULL * 1024ULL * 1024ULL;
-	else
-	{
-		fprintf(stderr, "Invalid blockdev unit size '%c' in '%s', using default size\n", *end, s);
+	} else {
+		fprintf(stderr, "Invalid blockdev unit size '%c' in '%s', "
+				"using default size\n",
+			*end, s);
 		return 0;
 	}
+
 	return ret;
 }
 
@@ -124,42 +121,76 @@ int main(int argc, char *argv[])
 	if (argc < 3)
 		usage(argv[0]);
 
-	while (1) {
-		c = getopt_long(argc, argv, "sB:L:o:n:v:KMHp:P:Rt:h", options, &option_index);
+	while (true) {
+		c = getopt_long(argc, argv, "sB:L:o:n:v:KMHp:P:Rt:h", options,
+				&option_index);
 		if (c == -1)
 			break;
 		switch (c) {
-		case 's': snapshot = 1; break;
-		case 'B': bdevtype = optarg; break;
-		case 'L': newsize = get_fssize(optarg); break;
-		case 'o': orig = optarg; break;
-		case 'n': new = optarg; break;
-		case 'v': vgname = optarg; break;
-		case 'K': keepname = 1; break;
-		case 'M': keepmac = 1; break;
-		case 'p': lxcpath = optarg; break;
-		case 'P': newpath = optarg; break;
-		case 'R': rename = 1; break;
-		case 't': fstype = optarg; break;
-		case 'h': usage(argv[0]);
-		default: break;
+		case 's':
+			snapshot = 1;
+			break;
+		case 'B':
+			bdevtype = optarg;
+			break;
+		case 'L':
+			newsize = get_fssize(optarg);
+			break;
+		case 'o':
+			orig = optarg;
+			break;
+		case 'n':
+			new = optarg;
+			break;
+		case 'v':
+			vgname = optarg;
+			break;
+		case 'K':
+			keepname = 1;
+			break;
+		case 'M':
+			keepmac = 1;
+			break;
+		case 'p':
+			lxcpath = optarg;
+			break;
+		case 'P':
+			newpath = optarg;
+			break;
+		case 'R':
+			rename = 1;
+			break;
+		case 't':
+			fstype = optarg;
+			break;
+		case 'h':
+			usage(argv[0]);
+		default:
+			break;
 		}
 	}
-    if (optind < argc && !orig)
+
+	if (optind < argc && !orig)
 		orig = argv[optind++];
-    if (optind < argc && !new)
+
+	if (optind < argc && !new)
 		new = argv[optind++];
+
+	/* arguments for the clone hook */
 	if (optind < argc)
-		/* arguments for the clone hook */
 		args = &argv[optind];
+
 	if (!new || !orig) {
 		printf("Error: you must provide orig and new names\n");
 		usage(argv[0]);
 	}
 
-	if (snapshot)  flags |= LXC_CLONE_SNAPSHOT;
-	if (keepname)  flags |= LXC_CLONE_KEEPNAME;
-	if (keepmac)   flags |= LXC_CLONE_KEEPMACADDR;
+	if (snapshot)
+		flags |= LXC_CLONE_SNAPSHOT;
+	if (keepname)
+		flags |= LXC_CLONE_KEEPNAME;
+	if (keepmac)
+		flags |= LXC_CLONE_KEEPMACADDR;
 
 	/* vgname and fstype could be supported by sending them through the
 	 * bdevdata.  However, they currently are not yet.  I'm not convinced
@@ -201,8 +232,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 	} else {
-		c2 = c1->clone(c1, new, newpath, flags, bdevtype, NULL, newsize,
-			       args);
+		c2 = c1->clone(c1, new, newpath, flags, bdevtype, NULL, newsize, args);
 		if (c2 == NULL) {
 			lxc_container_put(c1);
 			fprintf(stderr, "clone failed\n");

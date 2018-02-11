@@ -18,25 +18,24 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
+#define _GNU_SOURCE
+#include <libgen.h>
+#include <limits.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <libgen.h>
-#include <string.h>
-#include <limits.h>
 
 #include <lxc/lxccontainer.h>
 
-#include "utils.h"
-#include "lxc.h"
-#include "log.h"
-
 #include "arguments.h"
+#include "tool_utils.h"
 
 #if HAVE_IFADDRS_H
 #include <ifaddrs.h>
 #else
-#include <../include/ifaddrs.h>
+#include "include/ifaddrs.h"
 #endif
 
 static const struct option my_longopts[] = {
@@ -123,7 +122,6 @@ int main(int argc, char *argv[])
 
 	if (lxc_log_init(&log))
 		goto err;
-	lxc_log_options_no_override();
 
 	/* REMOVE IN LXC 3.0 */
 	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);

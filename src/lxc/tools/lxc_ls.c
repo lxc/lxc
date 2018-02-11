@@ -16,9 +16,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "config.h"
-
+#define _GNU_SOURCE
 #include <getopt.h>
+#include <limits.h>
 #include <regex.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -35,11 +35,7 @@
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
-#include "conf.h"
-#include "confile.h"
-#include "log.h"
-#include "lxc.h"
-#include "utils.h"
+#include "tool_utils.h"
 
 /* Per default we only allow five levels of recursion to protect the stack at
  * least a little bit. */
@@ -231,7 +227,6 @@ int main(int argc, char *argv[])
 
 	if (lxc_log_init(&log))
 		exit(EXIT_FAILURE);
-	lxc_log_options_no_override();
 
 	/* REMOVE IN LXC 3.0 */
 	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
@@ -1072,7 +1067,7 @@ static int ls_remove_lock(const char *path, const char *name,
 	if (check < 0 || (size_t)check >= *len_lockpath)
 		goto out;
 
-	lxc_rmdir_onedev(*lockpath, NULL);
+	(void)rm_r(*lockpath);
 	ret = 0;
 
 out:

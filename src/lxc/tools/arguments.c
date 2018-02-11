@@ -22,6 +22,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#define _GNU_SOURCE
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
@@ -32,10 +33,11 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <lxc/lxccontainer.h>
+#include <lxc/version.h>
+
 #include "arguments.h"
-#include "utils.h"
-#include "version.h"
-#include "namespace.h"
+#include "tool_utils.h"
 
 static int build_shortopts(const struct option *a_options, char *a_shortopts,
 			   size_t a_size)
@@ -182,6 +184,13 @@ static int lxc_arguments_lxcpath_add(struct lxc_arguments *args,
 	return 0;
 }
 
+void remove_trailing_slashes(char *p)
+{
+	int l = strlen(p);
+	while (--l >= 0 && (p[l] == '/' || p[l] == '\n'))
+		p[l] = '\0';
+}
+
 extern int lxc_arguments_parse(struct lxc_arguments *args, int argc,
 			       char *const argv[])
 {
@@ -250,7 +259,7 @@ extern int lxc_arguments_parse(struct lxc_arguments *args, int argc,
 	/* If no lxcpaths were given, use default */
 	if (!args->lxcpath_cnt) {
 		ret = lxc_arguments_lxcpath_add(
-		    args, lxc_global_config_value("lxc.lxcpath"));
+		    args, lxc_get_global_config_item("lxc.lxcpath"));
 		if (ret < 0)
 			return ret;
 	}

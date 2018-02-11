@@ -23,8 +23,6 @@
 
 #include <lxc/lxccontainer.h>
 
-#include "config.h"
-
 struct lxc_config_items {
 	char *name;
 };

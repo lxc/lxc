@@ -17,21 +17,20 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "confile.h"
-#include <stdio.h>
-#include <libgen.h>
-#include <unistd.h>
+#define _GNU_SOURCE
 #include <ctype.h>
-#include <sys/types.h>
 #include <fcntl.h>
+#include <libgen.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
 
 #include <lxc/lxccontainer.h>
 
-#include "lxc.h"
-#include "log.h"
 #include "arguments.h"
-#include "storage.h"
-#include "utils.h"
+#include "tool_utils.h"
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg);
 
@@ -97,7 +96,6 @@ int main(int argc, char *argv[])
 
 	if (lxc_log_init(&log))
 		exit(EXIT_FAILURE);
-	lxc_log_options_no_override();
 
 	/* REMOVE IN LXC 3.0 */
 	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);

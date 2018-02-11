@@ -36,13 +36,13 @@
 #include <ctype.h>
 
 #include <lxc/lxccontainer.h>
+#include <lxc/version.h>
 
 #include "error.h"
 #include "initutils.h"
 #include "log.h"
 #include "namespace.h"
 #include "parse.h"
-#include "version.h"
 
 /* option keys for long only options */
 #define OPT_USAGE 0x1000
