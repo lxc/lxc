@@ -182,6 +182,18 @@ static struct mount_opt mount_opt[] = {
 	{ NULL,            0, 0              },
 };
 
+static struct mount_opt propagation_opt[] = {
+	{ "private",       0, MS_PRIVATE           },
+	{ "shared",        0, MS_SHARED            },
+	{ "slave",         0, MS_SLAVE             },
+	{ "unbindable",    0, MS_UNBINDABLE        },
+	{ "rprivate",      0, MS_PRIVATE|MS_REC    },
+	{ "rshared",       0, MS_SHARED|MS_REC     },
+	{ "rslave",        0, MS_SLAVE|MS_REC      },
+	{ "runbindable",   0, MS_UNBINDABLE|MS_REC },
+	{ NULL,            0, 0                    },
+};
+
 #if HAVE_LIBCAP
 static struct caps_opt caps_opt[] = {
 	{ "chown",             CAP_CHOWN             },
@@ -1703,6 +1715,46 @@ int parse_mntopts(const char *mntopts, unsigned long *mntflags,
 	return 0;
 }
 
+static void parse_propagationopt(char *opt, unsigned long *flags)
+{
+	struct mount_opt *mo;
+
+	/* If opt is found in propagation_opt, set or clear flags. */
+
+	for (mo = &propagation_opt[0]; mo->name != NULL; mo++) {
+		if (strncmp(opt, mo->name, strlen(mo->name)) == 0) {
+			if (mo->clear)
+				*flags &= ~mo->flag;
+			else
+				*flags |= mo->flag;
+			return;
+		}
+	}
+}
+
+static int parse_propagationopts(const char *mntopts, unsigned long *pflags)
+{
+	char *s;
+	char *p, *saveptr = NULL;
+	*pflags = 0L;
+
+	if (!mntopts)
+		return 0;
+
+	s = strdup(mntopts);
+	if (!s) {
+		SYSERROR("Failed to allocate memory");
+		return -ENOMEM;
+	}
+
+	for (p = strtok_r(s, ",", &saveptr); p != NULL;
+	     p = strtok_r(NULL, ",", &saveptr))
+		parse_propagationopt(p, pflags);
+
+	free(s);
+	return 0;
+}
+
 static void null_endofword(char *word)
 {
 	while (*word && *word != ' ' && *word != '\t')
@@ -1730,8 +1782,8 @@ static char *get_field(char *src, int nfields)
 
 static int mount_entry(const char *fsname, const char *target,
 		       const char *fstype, unsigned long mountflags,
-		       const char *data, int optional, int dev,
-		       const char *rootfs)
+		       unsigned long pflags, const char *data, bool optional,
+		       bool dev, const char *rootfs)
 {
 	int ret;
 #ifdef HAVE_STATVFS
@@ -1811,6 +1863,23 @@ static int mount_entry(const char *fsname, const char *target,
 			return -1;
 		}
 	}
+
+	if (pflags) {
+		ret = mount(NULL, target, NULL, pflags, NULL);
+		if (ret < 0) {
+			if (optional) {
+				INFO("%s - Failed to change mount propagation "
+				     "for \"%s\" (optional)", strerror(errno), target);
+				return 0;
+			} else {
+				SYSERROR("Failed to change mount propagation "
+					 "for \"%s\" (optional)", target);
+				return -1;
+			}
+		}
+		DEBUG("Changed mount propagation for \"%s\"", target);
+	}
+
 
 #ifdef HAVE_STATVFS
 skipremount:
@@ -1903,7 +1972,7 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 					 const char *lxc_path)
 {
 	int ret;
-	unsigned long mntflags;
+	unsigned long mntflags, pflags;
 	char *mntdata;
 	bool dev, optional;
 	char *rootfs_path = NULL;
@@ -1924,12 +1993,16 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 	}
 	cull_mntent_opt(mntent);
 
+	ret = parse_propagationopts(mntent->mnt_opts, &pflags);
+	if (ret < 0)
+		return -1;
+
 	ret = parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata);
 	if (ret < 0)
 		return -1;
 
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type, mntflags,
-			  mntdata, optional, dev, rootfs_path);
+			  pflags, mntdata, optional, dev, rootfs_path);
 
 	free(mntdata);
 	return ret;
