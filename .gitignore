@@ -66,6 +66,8 @@ src/lxc/lxc-usernsexec
 src/lxc/lxc-wait
 src/lxc/lxc-user-nic
 src/lxc/version.h
+src/lxc/cmd/lxc-checkconfig
+src/lxc/cmd/lxc-update-config
 
 src/python-lxc/build/
 src/python-lxc/lxc/__pycache__/
