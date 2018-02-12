@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	c->set_config_item(c, "lxc.network.type", "veth");
+	c->set_config_item(c, "lxc.net.0.type", "veth");
 
 	len = c->get_keys(c, NULL, NULL, 0);
 	if (len < 0) {
@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 	}
 	printf("get_keys returned %d\n%s", ret, v3);
 
-	ret = c->get_keys(c, "lxc.network.0", v3, 2000);
+	ret = c->get_keys(c, "lxc.net.0", v3, 2000);
 	if (ret < 0) {
 		fprintf(stderr, "%d: failed to get nic 0 keys(%d)\n", __LINE__, ret);
 		ret = 1;

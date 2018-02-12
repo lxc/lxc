@@ -171,11 +171,6 @@ static int set_invalid_netdev(struct lxc_container *c) {
 		return -1;
 	}
 
-	if (c->set_config_item(c, "lxc.network.0.", "veth")) {
-		lxc_error("%s\n", "lxc.network.0. should be invalid");
-		return -1;
-	}
-
 	c->clear_config(c);
 	c->lxc_conf = NULL;
 
@@ -330,9 +325,9 @@ int main(int argc, char *argv[])
 	/* REMOVE IN LXC 3.0
 	   legacy ps keys
 	 */
-	if (set_get_compare_clear_save_load(c, "lxc.pts", "1000", tmpf, true) <
+	if (set_get_compare_clear_save_load(c, "lxc.pty.max", "1000", tmpf, true) <
 	    0) {
-		lxc_error("%s\n", "lxc.pts");
+		lxc_error("%s\n", "lxc.pty.max");
 		goto non_test_error;
 	}
 
@@ -343,15 +338,6 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* REMOVE IN LXC 3.0
-	   legacy tty.max keys
-	 */
-	if (set_get_compare_clear_save_load(c, "lxc.tty", "4", tmpf, true) <
-	    0) {
-		lxc_error("%s\n", "lxc.tty");
-		goto non_test_error;
-	}
-
 	/* lxc.tty.max */
 	if (set_get_compare_clear_save_load(c, "lxc.tty.max", "4", tmpf, true) <
 	    0) {
@@ -359,46 +345,10 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* REMOVE IN LXC 3.0
-	   legacy devttydir keys
-	 */
-	if (set_get_compare_clear_save_load(c, "lxc.devttydir", "not-dev", tmpf,
-					    true) < 0) {
-		lxc_error("%s\n", "lxc.devttydir");
-		goto non_test_error;
-	}
-
 	/* lxc.tty.dir */
 	if (set_get_compare_clear_save_load(c, "lxc.tty.dir", "not-dev", tmpf,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.tty.dir");
-		goto non_test_error;
-	}
-
-	/* REMOVE IN LXC 3.0
-	   legacy security keys
-	 */
-	if (set_get_compare_clear_save_load(c, "lxc.aa_profile", "unconfined",
-					    tmpf, true) < 0) {
-		lxc_error("%s\n", "lxc.aa_profile");
-		goto non_test_error;
-	}
-
-	/* REMOVE IN LXC 3.0
-	   legacy security keys
-	 */
-	if (set_get_compare_clear_save_load(c, "lxc.aa_allow_incomplete", "1",
-					    tmpf, true) < 0) {
-		lxc_error("%s\n", "lxc.aa_allow_incomplete");
-		goto non_test_error;
-	}
-
-	/* REMOVE IN LXC 3.0
-	   legacy security keys
-	 */
-	if (set_get_compare_clear_save_load(c, "lxc.se_context", "system_u:system_r:lxc_t:s0:c22",
-					    tmpf, true) < 0) {
-		lxc_error("%s\n", "lxc.se_context");
 		goto non_test_error;
 	}
 
@@ -454,34 +404,6 @@ int main(int argc, char *argv[])
 	c->clear_config(c);
 	c->lxc_conf = NULL;
 
-	/* lxc.id_map
-	 * We can't really save the config here since save_config() wants to
-	 * chown the container's directory but we haven't created an on-disk
-	 * container. So let's test set-get-clear.
-	 */
-	if (set_get_compare_clear_save_load(
-		c, "lxc.id_map", "u 0 100000 1000000000", NULL, false) < 0) {
-		lxc_error("%s\n", "lxc.id_map");
-		goto non_test_error;
-	}
-
-	if (!c->set_config_item(c, "lxc.id_map", "u 1 100000 10000000")) {
-		lxc_error("%s\n", "failed to set config item "
-				  "\"lxc.id_map\" to \"u 1 100000 10000000\"");
-		return -1;
-	}
-
-	if (!c->set_config_item(c, "lxc.id_map", "g 1 100000 10000000")) {
-		lxc_error("%s\n", "failed to set config item "
-				  "\"lxc.id_map\" to \"g 1 100000 10000000\"");
-		return -1;
-	}
-
-	if (!c->get_config_item(c, "lxc.id_map", retval, sizeof(retval))) {
-		lxc_error("%s\n", "failed to get config item \"lxc.id_map\"");
-		return -1;
-	}
-
 	/* lxc.idmap
 	 * We can't really save the config here since save_config() wants to
 	 * chown the container's directory but we haven't created an on-disk
@@ -513,25 +435,6 @@ int main(int argc, char *argv[])
 	c->clear_config(c);
 	c->lxc_conf = NULL;
 
-	/* REMOVE IN LXC 3.0
-	   legacy lxc.loglevel key
-	 */
-	if (set_get_compare_clear_save_load(c, "lxc.loglevel", "DEBUG", tmpf,
-					    true) < 0) {
-		lxc_error("%s\n", "lxc.loglevel");
-		goto non_test_error;
-	}
-
-	/* REMOVE IN LXC 3.0
-	   legacy lxc.logfile key
-	 */
-	if (set_get_compare_clear_save_load(c, "lxc.logfile", "/some/path",
-					    tmpf, true) < 0) {
-		lxc_error("%s\n", "lxc.logfile");
-		goto non_test_error;
-	}
-
-
 	/* lxc.log.level */
 	if (set_get_compare_clear_save_load(c, "lxc.log.level", "DEBUG", tmpf,
 					    true) < 0) {
@@ -543,15 +446,6 @@ int main(int argc, char *argv[])
 	if (set_get_compare_clear_save_load(c, "lxc.log.file", "/some/path",
 					    tmpf, true) < 0) {
 		lxc_error("%s\n", "lxc.log.file");
-		goto non_test_error;
-	}
-
-	/* REMOVE IN LXC 3.0
-	   legacy lxc.mount key
-	 */
-	if (set_get_compare_clear_save_load(c, "lxc.mount", "/some/path", NULL,
-					    true) < 0) {
-		lxc_error("%s\n", "lxc.mount");
 		goto non_test_error;
 	}
 
@@ -585,15 +479,6 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* REMOVE IN LXC 3.0
-	   legacy lxc.rootfs key
-	 */
-	if (set_get_compare_clear_save_load(c, "lxc.rootfs", "/some/path", tmpf,
-					    true) < 0) {
-		lxc_error("%s\n", "lxc.rootfs");
-		goto non_test_error;
-	}
-
 	/* lxc.rootfs.path */
 	if (set_get_compare_clear_save_load(c, "lxc.rootfs.path", "/some/path", tmpf,
 					    true) < 0) {
@@ -612,15 +497,6 @@ int main(int argc, char *argv[])
 	if (set_get_compare_clear_save_load(c, "lxc.rootfs.options",
 					    "ext4,discard", tmpf, true) < 0) {
 		lxc_error("%s\n", "lxc.rootfs.options");
-		goto non_test_error;
-	}
-
-	/* REMOVE IN LXC 3.0
-	   legacy lxc.utsname key
-	 */
-	if (set_get_compare_clear_save_load(c, "lxc.utsname", "the-shire", tmpf,
-					    true) < 0) {
-		lxc_error("%s\n", "lxc.utsname");
 		goto non_test_error;
 	}
 
@@ -710,15 +586,6 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* REMOVE IN LXC 3.0
-	   legacy lxc.console key
-	 */
-	if (set_get_compare_clear_save_load(c, "lxc.console", "none", tmpf,
-					    true) < 0) {
-		lxc_error("%s\n", "lxc.console");
-		goto non_test_error;
-	}
-
 	/* lxc.console.path */
 	if (set_get_compare_clear_save_load(c, "lxc.console.path", "none", tmpf,
 					    true) < 0) {
@@ -730,15 +597,6 @@ int main(int argc, char *argv[])
 	if (set_get_compare_clear_save_load(c, "lxc.console.logfile",
 					    "/some/logfile", tmpf, true) < 0) {
 		lxc_error("%s\n", "lxc.console.logfile");
-		goto non_test_error;
-	}
-
-	/* REMOVE IN LXC 3.0
-	   legacy seccomp key
-	 */
-	if (set_get_compare_clear_save_load(
-		c, "lxc.seccomp", "/some/seccomp/file", tmpf, true) < 0) {
-		lxc_error("%s\n", "lxc.seccomp");
 		goto non_test_error;
 	}
 
@@ -756,15 +614,6 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* REMOVE IN LXC 3.0
-	   legacy lxc.haltsignal key
-	 */
-	if (set_get_compare_clear_save_load(c, "lxc.haltsignal", "1", tmpf,
-					    true) < 0) {
-		lxc_error("%s\n", "lxc.haltsignal");
-		goto non_test_error;
-	}
-
 	/* lxc.signal.halt */
 	if (set_get_compare_clear_save_load(c, "lxc.signal.halt", "1", tmpf,
 					    true) < 0) {
@@ -772,28 +621,10 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* REMOVE IN LXC 3.0
-	   legacy lxc.rebootsignal key
-	 */
-	if (set_get_compare_clear_save_load(c, "lxc.rebootsignal", "1", tmpf,
-					    true) < 0) {
-		lxc_error("%s\n", "lxc.rebootsignal");
-		goto non_test_error;
-	}
-
 	/* lxc.signal.reboot */
 	if (set_get_compare_clear_save_load(c, "lxc.signal.reboot", "1", tmpf,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.signal.reboot");
-		goto non_test_error;
-	}
-
-	/* REMOVE IN LXC 3.0
-	   legacy lxc.stopsignal key
-	 */
-	if (set_get_compare_clear_save_load(c, "lxc.stopsignal", "1", tmpf,
-					    true) < 0) {
-		lxc_error("%s\n", "lxc.stopsignal");
 		goto non_test_error;
 	}
 
@@ -832,13 +663,6 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* lxc.utsname */
-	if (set_get_compare_clear_save_load(c, "lxc.utsname", "get-schwifty",
-					    tmpf, true) < 0) {
-		lxc_error("%s\n", "lxc.utsname");
-		goto non_test_error;
-	}
-
 	/* lxc.monitor.unshare */
 	if (set_get_compare_clear_save_load(c, "lxc.monitor.unshare", "1", tmpf,
 					    true) < 0) {
@@ -860,15 +684,6 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* REMOVE IN LXC 3.0
-	   legacy lxc.init_cmd key
-	 */
-	if (set_get_compare_clear_save_load(c, "lxc.init_cmd", "/bin/bash",
-					    tmpf, true) < 0) {
-		lxc_error("%s\n", "lxc.init_cmd");
-		goto non_test_error;
-	}
-
 	/* lxc.init.cmd */
 	if (set_get_compare_clear_save_load(c, "lxc.init.cmd", "/bin/bash",
 					    tmpf, true) < 0) {
@@ -876,28 +691,10 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
-	/* REMOVE IN LXC 3.0
-	   legacy lxc.init_uid key
-	 */
-	if (set_get_compare_clear_save_load(c, "lxc.init_uid", "1000", tmpf,
-					    true) < 0) {
-		lxc_error("%s\n", "lxc.init_uid");
-		goto non_test_error;
-	}
-
 	/* lxc.init.uid */
 	if (set_get_compare_clear_save_load(c, "lxc.init.uid", "1000", tmpf,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.init.uid");
-		goto non_test_error;
-	}
-
-	/* REMOVE IN LXC 3.0
-	   legacy lxc.init_gid key
-	 */
-	if (set_get_compare_clear_save_load(c, "lxc.init_gid", "1000", tmpf,
-					    true) < 0) {
-		lxc_error("%s\n", "lxc.init_gid");
 		goto non_test_error;
 	}
 
@@ -933,15 +730,6 @@ int main(int argc, char *argv[])
 	if (set_get_compare_clear_save_load(c, "lxc.proc.oom_score_adj", "10", tmpf,
 					    true) < 0) {
 		lxc_error("%s\n", "lxc.proc.oom_score_adj");
-		goto non_test_error;
-	}
-
-	/* REMOVE IN LXC 3.0
-	   legacy lxc.limit.* key
-	 */
-	if (set_get_compare_clear_save_load(c, "lxc.limit.nofile", "65536",
-					    tmpf, true) < 0) {
-		lxc_error("%s\n", "lxc.limit.nofile");
 		goto non_test_error;
 	}
 

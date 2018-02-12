@@ -206,9 +206,6 @@ int main(int argc, char *argv[])
 		exit(err);
 	}
 
-	/* REMOVE IN LXC 3.0 */
-	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
-
 	/*
 	 * rcfile possibilities:
 	 * 1. rcfile from random path specified in cli option

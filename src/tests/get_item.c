@@ -44,28 +44,28 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	/* EXPECT SUCCESS: lxc.syslog with valid value. */
-	if (!c->set_config_item(c, "lxc.syslog", "local0")) {
-		lxc_error("%s\n", "Failed to set lxc.syslog.\n");
+	/* EXPECT SUCCESS: lxc.log.syslog with valid value. */
+	if (!c->set_config_item(c, "lxc.log.syslog", "local0")) {
+		lxc_error("%s\n", "Failed to set lxc.log.syslog.\n");
 		goto out;
 	}
-	ret = c->get_config_item(c, "lxc.syslog", v2, 255);
+	ret = c->get_config_item(c, "lxc.log.syslog", v2, 255);
 	if (ret < 0) {
-		lxc_error("Failed to retrieve lxc.syslog: %d.\n", ret);
+		lxc_error("Failed to retrieve lxc.log.syslog: %d.\n", ret);
 		goto out;
 	}
 	if (strcmp(v2, "local0") != 0) {
 		lxc_error("Expected: local0 == %s.\n", v2);
 		goto out;
 	}
-	lxc_debug("Retrieving value for lxc.syslog correctly returned: %s.\n", v2);
+	lxc_debug("Retrieving value for lxc.log.syslog correctly returned: %s.\n", v2);
 
-	/* EXPECT FAILURE: lxc.syslog with invalid value. */
-	if (c->set_config_item(c, "lxc.syslog", "NONSENSE")) {
-		lxc_error("%s\n", "Succeeded int setting lxc.syslog to invalid value \"NONSENSE\".\n");
+	/* EXPECT FAILURE: lxc.log.syslog with invalid value. */
+	if (c->set_config_item(c, "lxc.log.syslog", "NONSENSE")) {
+		lxc_error("%s\n", "Succeeded int setting lxc.log.syslog to invalid value \"NONSENSE\".\n");
 		goto out;
 	}
-	lxc_debug("%s\n", "Successfully failed to set lxc.syslog to invalid value.\n");
+	lxc_debug("%s\n", "Successfully failed to set lxc.log.syslog to invalid value.\n");
 
 	if (!c->set_config_item(c, "lxc.hook.pre-start", "hi there")) {
 		fprintf(stderr, "%d: failed to set hook.pre-start\n", __LINE__);
@@ -78,22 +78,18 @@ int main(int argc, char *argv[])
 	}
 	fprintf(stderr, "lxc.hook.pre-start returned %d %s\n", ret, v2);
 
-	ret = c->get_config_item(c, "lxc.network", v2, 255);
+	ret = c->get_config_item(c, "lxc.net", v2, 255);
 	if (ret < 0) {
 		fprintf(stderr, "%d: get_config_item returned %d\n", __LINE__, ret);
 		goto out;
 	}
-	fprintf(stderr, "%d: get_config_item(lxc.network) returned %d %s\n", __LINE__, ret, v2);
+	fprintf(stderr, "%d: get_config_item(lxc.net) returned %d %s\n", __LINE__, ret, v2);
 
-
-	/* REMOVE IN LXC 3.0
-	   legacy lxc.tty key
-	 */
-	if (!c->set_config_item(c, "lxc.tty", "4")) {
+	if (!c->set_config_item(c, "lxc.tty.max", "4")) {
 		fprintf(stderr, "%d: failed to set tty\n", __LINE__);
 		goto out;
 	}
-	ret = c->get_config_item(c, "lxc.tty", v2, 255);
+	ret = c->get_config_item(c, "lxc.tty.max", v2, 255);
 	if (ret < 0) {
 		fprintf(stderr, "%d: get_config_item(lxc.tty) returned %d\n", __LINE__, ret);
 		goto out;
@@ -111,22 +107,22 @@ int main(int argc, char *argv[])
 	}
 	printf("lxc.arch returned %d %s\n", ret, v2);
 
-	if (!c->set_config_item(c, "lxc.init_uid", "100")) {
+	if (!c->set_config_item(c, "lxc.init.uid", "100")) {
 		fprintf(stderr, "%d: failed to set init_uid\n", __LINE__);
 		goto out;
 	}
-	ret = c->get_config_item(c, "lxc.init_uid", v2, 255);
+	ret = c->get_config_item(c, "lxc.init.uid", v2, 255);
 	if (ret < 0) {
 		fprintf(stderr, "%d: get_config_item(lxc.init_uid) returned %d\n", __LINE__, ret);
 		goto out;
 	}
 	printf("lxc.init_uid returned %d %s\n", ret, v2);
 
-	if (!c->set_config_item(c, "lxc.init_gid", "100")) {
+	if (!c->set_config_item(c, "lxc.init.gid", "100")) {
 		fprintf(stderr, "%d: failed to set init_gid\n", __LINE__);
 		goto out;
 	}
-	ret = c->get_config_item(c, "lxc.init_gid", v2, 255);
+	ret = c->get_config_item(c, "lxc.init.gid", v2, 255);
 	if (ret < 0) {
 		fprintf(stderr, "%d: get_config_item(lxc.init_gid) returned %d\n", __LINE__, ret);
 		goto out;
@@ -136,13 +132,13 @@ int main(int argc, char *argv[])
 #define HNAME "hostname1"
 	// demonstrate proper usage:
 	char *alloced;
-	if (!c->set_config_item(c, "lxc.utsname", HNAME)) {
+	if (!c->set_config_item(c, "lxc.uts.name", HNAME)) {
 		fprintf(stderr, "%d: failed to set utsname\n", __LINE__);
 		goto out;
 	}
 
 	int len;
-	len = c->get_config_item(c, "lxc.utsname", NULL, 0);  // query the size of the string
+	len = c->get_config_item(c, "lxc.uts.name", NULL, 0);  // query the size of the string
 	if (len < 0) {
 		fprintf(stderr, "%d: get_config_item(lxc.utsname) returned %d\n", __LINE__, len);
 		goto out;
@@ -157,7 +153,7 @@ int main(int argc, char *argv[])
 	}
 	// now pass in the malloc'd array, and pass in length of string + 1: again
 	// because we need room for the trailing \0
-	ret = c->get_config_item(c, "lxc.utsname", alloced, len+1);
+	ret = c->get_config_item(c, "lxc.uts.name", alloced, len+1);
 	if (ret < 0) {
 		fprintf(stderr, "%d: get_config_item(lxc.utsname) returned %d\n", __LINE__, ret);
 		goto out;
@@ -180,69 +176,69 @@ int main(int argc, char *argv[])
 	}
 	printf("lxc.mount.entry returned %d %s\n", ret, v2);
 
-	ret = c->get_config_item(c, "lxc.limit", v3, 2047);
+	ret = c->get_config_item(c, "lxc.prlimit", v3, 2047);
 	if (ret != 0) {
 		fprintf(stderr, "%d: get_config_item(limit) returned %d\n", __LINE__, ret);
 		goto out;
 	}
 
-	if (!c->set_config_item(c, "lxc.limit.nofile", "1234:unlimited")) {
+	if (!c->set_config_item(c, "lxc.prlimit.nofile", "1234:unlimited")) {
 		fprintf(stderr, "%d: failed to set limit.nofile\n", __LINE__);
 		goto out;
 	}
-	ret = c->get_config_item(c, "lxc.limit.nofile", v2, 255);
+	ret = c->get_config_item(c, "lxc.prlimit.nofile", v2, 255);
 	if (ret < 0) {
-		fprintf(stderr, "%d: get_config_item(lxc.limit.nofile) returned %d\n", __LINE__, ret);
+		fprintf(stderr, "%d: get_config_item(lxc.prlimit.nofile) returned %d\n", __LINE__, ret);
 		goto out;
 	}
 	if (strcmp(v2, "1234:unlimited")) {
-		fprintf(stderr, "%d: lxc.limit.nofile returned wrong value: %d %s not 14 1234:unlimited\n", __LINE__, ret, v2);
+		fprintf(stderr, "%d: lxc.prlimit.nofile returned wrong value: %d %s not 14 1234:unlimited\n", __LINE__, ret, v2);
 		goto out;
 	}
-	printf("lxc.limit.nofile returned %d %s\n", ret, v2);
+	printf("lxc.prlimit.nofile returned %d %s\n", ret, v2);
 
-	if (!c->set_config_item(c, "lxc.limit.stack", "unlimited")) {
+	if (!c->set_config_item(c, "lxc.prlimit.stack", "unlimited")) {
 		fprintf(stderr, "%d: failed to set limit.stack\n", __LINE__);
 		goto out;
 	}
-	ret = c->get_config_item(c, "lxc.limit.stack", v2, 255);
+	ret = c->get_config_item(c, "lxc.prlimit.stack", v2, 255);
 	if (ret < 0) {
-		fprintf(stderr, "%d: get_config_item(lxc.limit.stack) returned %d\n", __LINE__, ret);
+		fprintf(stderr, "%d: get_config_item(lxc.prlimit.stack) returned %d\n", __LINE__, ret);
 		goto out;
 	}
 	if (strcmp(v2, "unlimited")) {
-		fprintf(stderr, "%d: lxc.limit.stack returned wrong value: %d %s not 9 unlimited\n", __LINE__, ret, v2);
+		fprintf(stderr, "%d: lxc.prlimit.stack returned wrong value: %d %s not 9 unlimited\n", __LINE__, ret, v2);
 		goto out;
 	}
-	printf("lxc.limit.stack returned %d %s\n", ret, v2);
+	printf("lxc.prlimit.stack returned %d %s\n", ret, v2);
 
-#define LIMIT_STACK "lxc.limit.stack = unlimited\n"
-#define ALL_LIMITS "lxc.limit.nofile = 1234:unlimited\n" LIMIT_STACK
-	ret = c->get_config_item(c, "lxc.limit", v3, 2047);
+#define LIMIT_STACK "lxc.prlimit.stack = unlimited\n"
+#define ALL_LIMITS "lxc.prlimit.nofile = 1234:unlimited\n" LIMIT_STACK
+	ret = c->get_config_item(c, "lxc.prlimit", v3, 2047);
 	if (ret != sizeof(ALL_LIMITS)-1) {
 		fprintf(stderr, "%d: get_config_item(limit) returned %d\n", __LINE__, ret);
 		goto out;
 	}
 	if (strcmp(v3, ALL_LIMITS)) {
-		fprintf(stderr, "%d: lxc.limit returned wrong value: %d %s not %d %s\n", __LINE__, ret, v3, (int)sizeof(ALL_LIMITS)-1, ALL_LIMITS);
+		fprintf(stderr, "%d: lxc.prlimit returned wrong value: %d %s not %d %s\n", __LINE__, ret, v3, (int)sizeof(ALL_LIMITS)-1, ALL_LIMITS);
 		goto out;
 	}
-	printf("lxc.limit returned %d %s\n", ret, v3);
+	printf("lxc.prlimit returned %d %s\n", ret, v3);
 
-	if (!c->clear_config_item(c, "lxc.limit.nofile")) {
+	if (!c->clear_config_item(c, "lxc.prlimit.nofile")) {
 		fprintf(stderr, "%d: failed clearing limit.nofile\n", __LINE__);
 		goto out;
 	}
-	ret = c->get_config_item(c, "lxc.limit", v3, 2047);
+	ret = c->get_config_item(c, "lxc.prlimit", v3, 2047);
 	if (ret != sizeof(LIMIT_STACK)-1) {
 		fprintf(stderr, "%d: get_config_item(limit) returned %d\n", __LINE__, ret);
 		goto out;
 	}
 	if (strcmp(v3, LIMIT_STACK)) {
-		fprintf(stderr, "%d: lxc.limit returned wrong value: %d %s not %d %s\n", __LINE__, ret, v3, (int)sizeof(LIMIT_STACK)-1, LIMIT_STACK);
+		fprintf(stderr, "%d: lxc.prlimit returned wrong value: %d %s not %d %s\n", __LINE__, ret, v3, (int)sizeof(LIMIT_STACK)-1, LIMIT_STACK);
 		goto out;
 	}
-	printf("lxc.limit returned %d %s\n", ret, v3);
+	printf("lxc.prlimit returned %d %s\n", ret, v3);
 
 #define SYSCTL_SOMAXCONN "lxc.sysctl.net.core.somaxconn = 256\n"
 #define ALL_SYSCTLS "lxc.sysctl.net.ipv4.ip_forward = 1\n" SYSCTL_SOMAXCONN
@@ -376,11 +372,11 @@ int main(int argc, char *argv[])
 	}
 	printf("lxc.proc returned %d %s\n", ret, v3);
 
-	if (!c->set_config_item(c, "lxc.aa_profile", "unconfined")) {
+	if (!c->set_config_item(c, "lxc.apparmor.profile", "unconfined")) {
 		fprintf(stderr, "%d: failed to set aa_profile\n", __LINE__);
 		goto out;
 	}
-	ret = c->get_config_item(c, "lxc.aa_profile", v2, 255);
+	ret = c->get_config_item(c, "lxc.apparmor.profile", v2, 255);
 	if (ret < 0) {
 		fprintf(stderr, "%d: get_config_item(lxc.aa_profile) returned %d\n", __LINE__, ret);
 		goto out;
@@ -429,87 +425,87 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 	printf("%d: get_config_item(lxc.cap.drop) returned %d %s\n", __LINE__, ret, v2);
-	ret = c->get_config_item(c, "lxc.network", v2, 255);
+	ret = c->get_config_item(c, "lxc.net", v2, 255);
 	if (ret < 0) {
-		fprintf(stderr, "%d: get_config_item(lxc.network) returned %d\n", __LINE__, ret);
+		fprintf(stderr, "%d: get_config_item(lxc.net) returned %d\n", __LINE__, ret);
 		goto out;
 	}
-	printf("%d: get_config_item(lxc.network) returned %d %s\n", __LINE__, ret, v2);
+	printf("%d: get_config_item(lxc.net) returned %d %s\n", __LINE__, ret, v2);
 
-	if (!c->set_config_item(c, "lxc.network.type", "veth")) {
-		fprintf(stderr, "%d: failed to set network.type\n", __LINE__);
+	if (!c->set_config_item(c, "lxc.net.0.type", "veth")) {
+		fprintf(stderr, "%d: failed to set lxc.net.0.type\n", __LINE__);
 		goto out;
 	}
-	if (!c->set_config_item(c, "lxc.network.link", "lxcbr0")) {
+	if (!c->set_config_item(c, "lxc.net.0.link", "lxcbr0")) {
 		fprintf(stderr, "%d: failed to set network.link\n", __LINE__);
 		goto out;
 	}
-	if (!c->set_config_item(c, "lxc.network.flags", "up")) {
+	if (!c->set_config_item(c, "lxc.net.0.flags", "up")) {
 		fprintf(stderr, "%d: failed to set network.flags\n", __LINE__);
 		goto out;
 	}
-	if (!c->set_config_item(c, "lxc.network.hwaddr", "00:16:3e:xx:xx:xx")) {
+	if (!c->set_config_item(c, "lxc.net.0.hwaddr", "00:16:3e:xx:xx:xx")) {
 		fprintf(stderr, "%d: failed to set network.hwaddr\n", __LINE__);
 		goto out;
 	}
-	if (!c->set_config_item(c, "lxc.network.ipv4", "10.2.3.4")) {
+	if (!c->set_config_item(c, "lxc.net.0.ipv4.address", "10.2.3.4")) {
 		fprintf(stderr, "%d: failed to set ipv4\n", __LINE__);
 		goto out;
 	}
 
-	ret = c->get_config_item(c, "lxc.network.0.ipv4", v2, 255);
+	ret = c->get_config_item(c, "lxc.net.0.ipv4.address", v2, 255);
 	if (ret <= 0) {
-		fprintf(stderr, "%d: lxc.network.0.ipv4 returned %d\n", __LINE__, ret);
+		fprintf(stderr, "%d: lxc.net.0.ipv4 returned %d\n", __LINE__, ret);
 		goto out;
 	}
-	if (!c->clear_config_item(c, "lxc.network.0.ipv4")) {
+	if (!c->clear_config_item(c, "lxc.net.0.ipv4.address")) {
 		fprintf(stderr, "%d: failed clearing all ipv4 entries\n", __LINE__);
 		goto out;
 	}
-	ret = c->get_config_item(c, "lxc.network.0.ipv4", v2, 255);
+	ret = c->get_config_item(c, "lxc.net.0.ipv4.address", v2, 255);
 	if (ret != 0) {
 		fprintf(stderr, "%d: after clearing ipv4 entries get_item(lxc.network.0.ipv4 returned %d\n", __LINE__, ret);
 		goto out;
 	}
 
-	if (!c->set_config_item(c, "lxc.network.ipv4.gateway", "10.2.3.254")) {
+	if (!c->set_config_item(c, "lxc.net.0.ipv4.gateway", "10.2.3.254")) {
 		fprintf(stderr, "%d: failed to set ipv4.gateway\n", __LINE__);
 		goto out;
 	}
 
-	ret = c->get_config_item(c, "lxc.network.0.ipv4.gateway", v2, 255);
+	ret = c->get_config_item(c, "lxc.net.0.ipv4.gateway", v2, 255);
 	if (ret <= 0) {
-		fprintf(stderr, "%d: lxc.network.0.ipv4.gateway returned %d\n", __LINE__, ret);
+		fprintf(stderr, "%d: lxc.net.0.ipv4.gateway returned %d\n", __LINE__, ret);
 		goto out;
 	}
-	if (!c->set_config_item(c, "lxc.network.0.ipv4.gateway", "")) {
+	if (!c->set_config_item(c, "lxc.net.0.ipv4.gateway", "")) {
 		fprintf(stderr, "%d: failed clearing ipv4.gateway\n", __LINE__);
 		goto out;
 	}
-	ret = c->get_config_item(c, "lxc.network.0.ipv4.gateway", v2, 255);
+	ret = c->get_config_item(c, "lxc.net.0.ipv4.gateway", v2, 255);
 	if (ret != 0) {
 		fprintf(stderr, "%d: after clearing ipv4.gateway get_item(lxc.network.0.ipv4.gateway returned %d\n", __LINE__, ret);
 		goto out;
 	}
 
-	ret = c->get_config_item(c, "lxc.network.0.link", v2, 255);
+	ret = c->get_config_item(c, "lxc.net.0.link", v2, 255);
 	if (ret < 0) {
 		fprintf(stderr, "%d: get_config_item returned %d\n", __LINE__, ret);
 		goto out;
 	}
 	printf("%d: get_config_item (link) returned %d %s\n", __LINE__, ret, v2);
-	ret = c->get_config_item(c, "lxc.network.0.name", v2, 255);
+	ret = c->get_config_item(c, "lxc.net.0.name", v2, 255);
 	if (ret < 0) {
 		fprintf(stderr, "%d: get_config_item returned %d\n", __LINE__, ret);
 		goto out;
 	}
 	printf("%d: get_config_item (name) returned %d %s\n", __LINE__, ret, v2);
 
-	if (!c->clear_config_item(c, "lxc.network")) {
+	if (!c->clear_config_item(c, "lxc.net")) {
 		fprintf(stderr, "%d: clear_config_item failed\n", __LINE__);
 		goto out;
 	}
-	ret = c->get_config_item(c, "lxc.network", v2, 255);
+	ret = c->get_config_item(c, "lxc.net", v2, 255);
 	if (ret != 0) {
 		fprintf(stderr, "%d: network was not actually cleared (get_network returned %d)\n", __LINE__, ret);
 		goto out;

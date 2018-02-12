@@ -228,9 +228,6 @@ int main(int argc, char *argv[])
 	if (lxc_log_init(&log))
 		exit(EXIT_FAILURE);
 
-	/* REMOVE IN LXC 3.0 */
-	setenv("LXC_UPDATE_CONFIG_FORMAT", "1", 0);
-
 	struct lengths max_len = {
 		/* default header length */
 		.name_length = 4,          /* NAME */
@@ -559,11 +556,6 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 			 * problem with the ovl_mkdir() function in
 			 * lxcoverlay.{c,h}. */
 			char *curr_path = ls_get_config_item(c, "lxc.rootfs.path", running);
-			/* REMOVE IN LXC 3.0
-			   legacy rootfs key
-			   */
-			if (!curr_path)
-				curr_path = ls_get_config_item(c, "lxc.rootfs", running);
 			if (!curr_path)
 				goto put_and_next;
 
