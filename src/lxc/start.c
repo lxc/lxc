@@ -542,6 +542,8 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 			ERROR("Failed to add console handlers to console mainloop");
 			goto out_mainloop_console;
 		}
+
+		handler->conf->console.descr = &descr;
 	}
 
 	ret = lxc_cmd_mainloop_add(name, &descr, handler);
