@@ -552,6 +552,51 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
+#define POPULATE_DEVICE_SDA1 "lxc.populate.device = /dev/sda1:b:8:1:0666:0:0\n"
+#define ALL_POPULATE_DEVICE "lxc.populate.device = /dev/sda:b:8:0:0666:0:0\n" POPULATE_DEVICE_SDA1
+
+	ret = c->get_config_item(c, "lxc.populate.device", v3, 2047);
+	if (ret != 0) {
+		fprintf(stderr, "%d: get_config_item(populate.device) returned %d\n", __LINE__, ret);
+		goto out;
+	}
+
+	if (!c->set_config_item(c, "lxc.populate.device", "/dev/sda:b:8:0:0666:0:0")) {
+		fprintf(stderr, "%d: failed to set lxc.populate.device = /dev/sda:b:8:0:0666:0:0\n", __LINE__);
+		goto out;
+	}
+	ret = c->get_config_item(c, "lxc.populate.device", v2, 255);
+	if (ret < 0) {
+		fprintf(stderr, "%d: get_config_item(lxc.populate.device) returned %d\n", __LINE__, ret);
+		goto out;
+	}
+	if (strcmp(v2, "/dev/sda:b:8:0:0666:0:0")) {
+		fprintf(stderr, "%d: lxc.populate.device returned wrong value: %d %s not /dev/sda:b:8:0:0666:0:0\n", __LINE__, ret, v2);
+		goto out;
+	}
+	printf("lxc.populate.device returned: %d %s\n", ret, v2);
+
+	if (!c->set_config_item(c, "lxc.populate.device", "/dev/sda1:b:8:1:0666:0:0")) {
+		fprintf(stderr, "%d: failed to set lxc.populate.device = /dev/sda1:b:8:1:0666:0:0\n", __LINE__);
+		goto out;
+	}
+
+	ret = c->get_config_item(c, "lxc.populate.device", v3, 2047);
+	if (ret != sizeof(ALL_POPULATE_DEVICE)-1) {
+		fprintf(stderr, "%d: get_config_item(lxc.populate.device) returned %d\n", __LINE__, ret);
+		goto out;
+	}
+	if (strcmp(v3, ALL_POPULATE_DEVICE)) {
+		fprintf(stderr, "%d: lxc.populate.device returned wrong value: %d %s not %d %s\n", __LINE__, ret, v3, (int)sizeof(ALL_POPULATE_DEVICE) - 1, ALL_POPULATE_DEVICE);
+		goto out;
+	}
+	printf("lxc.populate.device returned %d %s\n", ret, v3);
+
+	if (!c->clear_config_item(c, "lxc.populate.device")) {
+		fprintf(stderr, "%d: failed clearing lxc.populate.device\n", __LINE__);
+		goto out;
+	}
+
 	printf("All get_item tests passed\n");
 	fret = EXIT_SUCCESS;
 out:
