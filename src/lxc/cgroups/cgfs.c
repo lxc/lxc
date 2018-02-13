@@ -103,7 +103,6 @@ struct cgroup_mount_point {
  *                      hierarchies
  *
  * Note this is the per-process info tracked by the cgfs_ops.
- * This is not used with cgmanager.
  */
 struct cgroup_process_info {
 	struct cgroup_process_info *next;
