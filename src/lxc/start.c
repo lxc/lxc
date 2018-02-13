@@ -1559,7 +1559,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	 * again.
 	 */
 	if (wants_to_map_ids) {
-		if (!handler->conf->ns_share[LXC_NS_USER] ||
+		if (!handler->conf->ns_share[LXC_NS_USER] &&
 		    (handler->conf->ns_keep & CLONE_NEWUSER) == 0) {
 			ret = lxc_map_ids(id_map, handler->pid);
 			if (ret < 0) {
