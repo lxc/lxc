@@ -305,45 +305,6 @@ AM_COND_IF([ENABLE_SECCOMP],
 		])
 	])
 
-# cgmanager
-AC_ARG_ENABLE([cgmanager],
-	[AC_HELP_STRING([--enable-cgmanager], [enable cgmanager support [default=auto]])],
-	[], [enable_cgmanager=auto])
-
-if test "x$enable_cgmanager" = "xauto" ; then
-	AC_CHECK_LIB([cgmanager],[cgmanager_create],[enable_cgmanager=yes],[enable_cgmanager=no],[-lnih -lnih-dbus -ldbus-1])
-fi
-AM_CONDITIONAL([ENABLE_CGMANAGER], [test "x$enable_cgmanager" = "xyes"])
-
-AM_COND_IF([ENABLE_CGMANAGER],
-	[PKG_CHECK_MODULES([CGMANAGER], [libcgmanager])
-	PKG_CHECK_MODULES([NIH], [libnih >= 1.0.2])
-	PKG_CHECK_MODULES([NIH_DBUS], [libnih-dbus >= 1.0.0])
-	PKG_CHECK_MODULES([DBUS], [dbus-1 >= 1.2.16])
-	])
-
-AC_MSG_CHECKING(for get_pid_cgroup_abs_sync)
-save_LIBS=$LIBS
-AC_SEARCH_LIBS([cgmanager_get_pid_cgroup_abs_sync], [cgmanager], [have_abs_cgroups=yes], [have_abs_cgroups=no], [-lnih -lnih-dbus -ldbus-1])
-LIBS=$save_LIBS
-if test "x$have_abs_cgroups" = "xyes"; then
-	AC_DEFINE([HAVE_CGMANAGER_GET_PID_CGROUP_ABS_SYNC], 1, [Have cgmanager_get_pid_cgroup_abs_sync])
-	AC_MSG_RESULT([yes])
-else
-	AC_MSG_RESULT([no])
-fi
-
-AC_MSG_CHECKING(for cgmanager_list_controllers)
-save_LIBS=$LIBS
-AC_SEARCH_LIBS([cgmanager_list_controllers_sync], [cgmanager], [have_list_controllers=yes], [have_list_controllers=no], [-lnih -lnih-dbus -ldbus-1])
-LIBS=$save_LIBS
-if test "x$have_list_controllers" = "xyes"; then
-	AC_DEFINE([HAVE_CGMANAGER_LIST_CONTROLLERS], 1, [Have cgmanager_list_controllers])
-	AC_MSG_RESULT([yes])
-else
-	AC_MSG_RESULT([no])
-fi
-
 AC_MSG_CHECKING(for static libcap)
 # Check for static libcap, make sure the function checked for differs from the
 # the one checked below so the cache doesn't give a wrong answer
@@ -664,7 +625,6 @@ AC_CHECK_FUNCS([setns pivot_root sethostname unshare rand_r confstr faccessat ge
 
 # Check for some functions
 AC_CHECK_LIB(pthread, main)
-AC_CHECK_FUNCS(pthread_atfork)
 AC_CHECK_FUNCS(statvfs)
 AC_CHECK_LIB(util, openpty)
 AC_CHECK_FUNCS([openpty hasmntopt setmntent endmntent utmpxname])
@@ -965,7 +925,6 @@ Security features:
  - Linux capabilities: $enable_capabilities
  - seccomp: $enable_seccomp
  - SELinux: $enable_selinux
- - cgmanager: $enable_cgmanager
 
 Bindings:
  - lua: $enable_lua
@@ -983,13 +942,3 @@ Debugging:
 Paths:
  - Logs in configpath: $enable_configpath_log
 EOF
-
-if test "x$ac_cv_func_pthread_atfork" = "xno" ; then
-cat << EOF
-
-WARNING: Threading not supported on your platform
-
-	You are compiling LXC for bionic target which lacks certain threading related functionality used by LXC API (like pthread_atfork).
-	Please note that, because of the missing functionality, multithreaded usage of LXC API cause some problems.
-EOF
-fi

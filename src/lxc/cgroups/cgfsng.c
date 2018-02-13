@@ -26,8 +26,7 @@
  * cgroup backend.  The original cgfs.c was designed to be as flexible
  * as possible.  It would try to find cgroup filesystems no matter where
  * or how you had them mounted, and deduce the most usable mount for
- * each controller.  It also was not designed for unprivileged use, as
- * that was reserved for cgmanager.
+ * each controller.
  *
  * This new implementation assumes that cgroup filesystems are mounted
  * under /sys/fs/cgroup/clist where clist is either the controller, or

@@ -136,10 +136,6 @@ liblxc_la_SOURCES = \
 	\
 	$(LSM_SOURCES)
 
-if ENABLE_CGMANAGER
-liblxc_la_SOURCES += cgroups/cgmanager.c
-endif
-
 if IS_BIONIC
 liblxc_la_SOURCES += \
 	../include/ifaddrs.c ../include/ifaddrs.h \
@@ -182,10 +178,6 @@ if ENABLE_APPARMOR
 AM_CFLAGS += -DHAVE_APPARMOR
 endif
 
-if ENABLE_CGMANAGER
-AM_CFLAGS += -DHAVE_CGMANAGER
-endif
-
 if ENABLE_SELINUX
 AM_CFLAGS += -DHAVE_SELINUX
 endif
@@ -208,11 +200,6 @@ liblxc_la_LDFLAGS = \
 	-version-info @LXC_ABI_MAJOR@
 
 liblxc_la_LIBADD = $(CAP_LIBS) $(SELINUX_LIBS) $(SECCOMP_LIBS)
-
-if ENABLE_CGMANAGER
-liblxc_la_LIBADD += $(CGMANAGER_LIBS) $(DBUS_LIBS) $(NIH_LIBS) $(NIH_DBUS_LIBS)
-liblxc_la_CFLAGS += $(CGMANAGER_CFLAGS) $(DBUS_CFLAGS) $(NIH_CFLAGS) $(NIH_DBUS_CFLAGS)
-endif
 
 bin_SCRIPTS = cmd/lxc-checkconfig \
 	      cmd/lxc-update-config
