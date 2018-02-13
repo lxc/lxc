@@ -1495,16 +1495,30 @@ struct generic_userns_exec_data {
 
 static int cgroup_rmdir_wrapper(void *data)
 {
+	int ret;
 	struct generic_userns_exec_data *arg = data;
 	uid_t nsuid = (arg->conf->root_nsuid_map != NULL) ? 0 : arg->conf->init_uid;
 	gid_t nsgid = (arg->conf->root_nsgid_map != NULL) ? 0 : arg->conf->init_gid;
 
-	if (setresgid(nsgid, nsgid, nsgid) < 0)
-		SYSERROR("Failed to setgid to 0");
-	if (setresuid(nsuid, nsuid, nsuid) < 0)
-		SYSERROR("Failed to setuid to 0");
-	if (setgroups(0, NULL) < 0 && errno != EPERM)
-		SYSERROR("Failed to clear groups");
+	ret = setresgid(nsgid, nsgid, nsgid);
+	if (ret < 0) {
+		SYSERROR("Failed to setresgid(%d, %d, %d)", (int)nsgid,
+			 (int)nsgid, (int)nsgid);
+		return -1;
+	}
+
+	ret = setresuid(nsuid, nsuid, nsuid);
+	if (ret < 0) {
+		SYSERROR("Failed to setresuid(%d, %d, %d)", (int)nsuid,
+			 (int)nsuid, (int)nsuid);
+		return -1;
+	}
+
+	ret = setgroups(0, NULL);
+	if (ret < 0 && errno != EPERM) {
+		SYSERROR("Failed to setgroups(0, NULL)");
+		return -1;
+	}
 
 	return cgroup_rmdir(arg->d->container_cgroup);
 }
@@ -1736,8 +1750,29 @@ static bool cgfsng_enter(void *hdata, pid_t pid)
 	return true;
 }
 
-/*
- * chgrp the container cgroups to container group.  We leave
+static int chowmod(char *path, uid_t chown_uid, gid_t chown_gid,
+		   mode_t chmod_mode)
+{
+	int ret;
+
+	ret = chown(path, chown_uid, chown_gid);
+	if (ret < 0) {
+		WARN("%s - Failed to chown(%s, %d, %d)", strerror(errno), path,
+		     (int)chown_uid, (int)chown_gid);
+		return -1;
+	}
+
+	ret = chmod(path, chmod_mode);
+	if (ret < 0) {
+		WARN("%s - Failed to chmod(%s, %d)", strerror(errno), path,
+		     (int)chmod_mode);
+		return -1;
+	}
+
+	return 0;
+}
+
+/* chgrp the container cgroups to container group.  We leave
  * the container owner as cgroup owner.  So we must make the
  * directories 775 so that the container can create sub-cgroups.
  *
@@ -1746,74 +1781,68 @@ static bool cgfsng_enter(void *hdata, pid_t pid)
  */
 static int chown_cgroup_wrapper(void *data)
 {
-	int i;
+	int i, ret;
 	uid_t destuid;
 	struct generic_userns_exec_data *arg = data;
 	uid_t nsuid = (arg->conf->root_nsuid_map != NULL) ? 0 : arg->conf->init_uid;
 	gid_t nsgid = (arg->conf->root_nsgid_map != NULL) ? 0 : arg->conf->init_gid;
 
-	if (setresgid(nsgid, nsgid, nsgid) < 0)
-		SYSERROR("Failed to setgid to 0");
-	if (setresuid(nsuid, nsuid, nsuid) < 0)
-		SYSERROR("Failed to setuid to 0");
-	if (setgroups(0, NULL) < 0 && errno != EPERM)
-		SYSERROR("Failed to clear groups");
+	ret = setresgid(nsgid, nsgid, nsgid);
+	if (ret < 0) {
+		SYSERROR("Failed to setresgid(%d, %d, %d)",
+			 (int)nsgid, (int)nsgid, (int)nsgid);
+		return -1;
+	}
+
+	ret = setresuid(nsuid, nsuid, nsuid);
+	if (ret < 0) {
+		SYSERROR("Failed to setresuid(%d, %d, %d)",
+			 (int)nsuid, (int)nsuid, (int)nsuid);
+		return -1;
+	}
+
+	ret = setgroups(0, NULL);
+	if (ret < 0 && errno != EPERM) {
+		SYSERROR("Failed to setgroups(0, NULL)");
+		return -1;
+	}
 
 	destuid = get_ns_uid(arg->origuid);
 
 	for (i = 0; hierarchies[i]; i++) {
-		char *fullpath, *path = hierarchies[i]->fullcgpath;
+		char *fullpath;
+		char *path = hierarchies[i]->fullcgpath;
 
-		if (chown(path, destuid, nsgid) < 0) {
-			SYSERROR("Error chowning %s to %d", path, (int) destuid);
+		ret = chowmod(path, destuid, nsgid, 0755);
+		if (ret < 0)
 			return -1;
-		}
 
-		if (chmod(path, 0775) < 0) {
-			SYSERROR("Error chmoding %s", path);
-			return -1;
-		}
-
-		/*
-		 * Failures to chown these are inconvenient but not detrimental
-		 * We leave these owned by the container launcher, so that container
-		 * root can write to the files to attach.  We chmod them 664 so that
-		 * container systemd can write to the files (which systemd in wily
-		 * insists on doing)
+		/* Failures to chown() these are inconvenient but not
+		 * detrimental We leave these owned by the container launcher,
+		 * so that container root can write to the files to attach.  We
+		 * chmod() them 664 so that container systemd can write to the
+		 * files (which systemd in wily insists on doing).
 		 */
-		fullpath = must_make_path(path, "tasks", NULL);
-		if (chown(fullpath, destuid, nsgid) < 0 && errno != ENOENT)
-			WARN("Failed chowning %s to %d: %s", fullpath, (int) destuid,
-			     strerror(errno));
-		if (chmod(fullpath, 0664) < 0)
-			WARN("Error chmoding %s: %s", path, strerror(errno));
-		free(fullpath);
+
+		if (hierarchies[i]->version == CGROUP_SUPER_MAGIC) {
+			fullpath = must_make_path(path, "tasks", NULL);
+			(void)chowmod(fullpath, destuid, nsgid, 0664);
+			free(fullpath);
+		}
 
 		fullpath = must_make_path(path, "cgroup.procs", NULL);
-		if (chown(fullpath, destuid, 0) < 0 && errno != ENOENT)
-			WARN("Failed chowning %s to %d: %s", fullpath, (int) destuid,
-			     strerror(errno));
-		if (chmod(fullpath, 0664) < 0)
-			WARN("Error chmoding %s: %s", path, strerror(errno));
+		(void)chowmod(fullpath, destuid, 0, 0664);
 		free(fullpath);
 
 		if (hierarchies[i]->version != CGROUP2_SUPER_MAGIC)
 			continue;
 
 		fullpath = must_make_path(path, "cgroup.subtree_control", NULL);
-		if (chown(fullpath, destuid, nsgid) < 0 && errno != ENOENT)
-			WARN("Failed chowning %s to %d: %s", fullpath, (int) destuid,
-			     strerror(errno));
-		if (chmod(fullpath, 0664) < 0)
-			WARN("Error chmoding %s: %s", path, strerror(errno));
+		(void)chowmod(fullpath, destuid, nsgid, 0664);
 		free(fullpath);
 
 		fullpath = must_make_path(path, "cgroup.threads", NULL);
-		if (chown(fullpath, destuid, nsgid) < 0 && errno != ENOENT)
-			WARN("Failed chowning %s to %d: %s", fullpath, (int) destuid,
-			     strerror(errno));
-		if (chmod(fullpath, 0664) < 0)
-			WARN("Error chmoding %s: %s", path, strerror(errno));
+		(void)chowmod(fullpath, destuid, nsgid, 0664);
 		free(fullpath);
 	}
 
