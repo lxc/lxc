@@ -416,53 +416,6 @@ m4_ifdef([PKG_CHECK_VAR], [],
     ])# PKG_CHECK_VAR
 ])
 
-# Lua module and scripts
-AC_ARG_ENABLE([lua],
-	[AC_HELP_STRING([--enable-lua], [enable lua binding [default=auto]])],
-	[], [enable_lua=auto])
-
-AC_ARG_WITH([lua-pc],
-	[AS_HELP_STRING(
-		[--with-lua-pc=PKG],
-		[Specify pkg-config package name for lua]
-	)], [], [with_lua_pc=no])
-
-if test "x$enable_lua" = "xyes" -a "x$with_lua_pc" != "xno"; then
-	# exit with error if not found
-	PKG_CHECK_MODULES([LUA], [$with_lua_pc], [LUAPKGCONFIG=$with_lua_pc])
-fi
-
-if test "x$enable_lua" = "xauto" -a "x$with_lua_pc" != "xno"; then
-	PKG_CHECK_MODULES([LUA], [$with_lua_pc],
-		[LUAPKGCONFIG=$with_lua_pc
-		enable_lua=yes],
-		[enable_lua=no])
-fi
-
-if test "x$enable_lua" != "xno"; then
-	PKG_CHECK_MODULES([LUA], [lua], [LUAPKGCONFIG=lua],
-		[PKG_CHECK_MODULES([LUA], [lua5.2], [LUAPKGCONFIG=lua5.2],
-			[PKG_CHECK_MODULES([LUA], [lua5.1], [LUAPKGCONFIG=lua5.1],
-				[AS_IF([test "x$enable_lua" = "xyes"],
-					[AC_MSG_ERROR([Lua not found. Please use --with-lua-pc=PKG])],
-					[enable_lua=no])]
-			)]
-		)])
-	AS_IF([test "x$LUAPKGCONFIG" != "x"], [enable_lua=yes])
-fi
-
-AM_CONDITIONAL([ENABLE_LUA],
-	[test "x$enable_lua" = "xyes"])
-
-AM_COND_IF([ENABLE_LUA],
-	[AC_MSG_CHECKING([Lua version])
-	PKG_CHECK_VAR([LUA_VERSION], [$LUAPKGCONFIG], [V],,
-		[PKG_CHECK_VAR([LUA_VERSION], [$LUAPKGCONFIG], [major_version])])
-	AC_MSG_RESULT([$LUA_VERSION])
-	AC_SUBST([LUA_LIBDIR], [$libdir/lua/$LUA_VERSION])
-	AC_SUBST([LUA_SHAREDIR], [$datadir/lua/$LUA_VERSION])
-	])
-
 # Optional bash integration
 AC_ARG_ENABLE([bash],
 	[AC_HELP_STRING([--enable-bash], [build bash integration [default=yes]])],
@@ -943,8 +896,6 @@ AC_CONFIG_FILES([
 	src/lxc/version.h
 	src/python-lxc/Makefile
 
-	src/lua-lxc/Makefile
-
 	src/tests/Makefile
 	src/tests/lxc-test-usernic
 ])
@@ -1007,7 +958,6 @@ PAM:
  - cgroup PAM module: $pamdir
 
 Bindings:
- - lua: $enable_lua
  - python3: $enable_python
 
 Documentation:

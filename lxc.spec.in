@@ -21,7 +21,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 %global with_python %{?_with_python: 1} %{?!_with_python: 0}
-%global with_lua %{?_with_lua: 1} %{?!_with_lua: 0}
 
 # Set with_systemd on distros that use it, so we can install the service
 # file, otherwise the sysvinit script will be installed
@@ -124,23 +123,10 @@ Requires:	%{name} = %{version}-%{release}, pkgconfig
 The %{name}-devel package contains header files and library needed for
 development of the Linux containers.
 
-%if %{with_lua}
-%package	lua
-Summary:	Lua bindings for %{name}
-Group:		System Environment/Libraries
-Requires:	lua-filesystem lua-alt-getopt
-BuildRequires:	lua-devel
-%description	lua
-The %{name}-lua package contains %{name} bindings for lua.
-%endif
-
 %prep
 %setup -q -n %{name}-%{version}%{?beta_dot}
 %build
 PATH=$PATH:/usr/sbin:/sbin %configure $args \
-%if %{with_lua}
-  --enable-lua \
-%endif
 %if %{with_python}
   --enable-python \
 %endif
@@ -282,13 +268,6 @@ fi
 
 %if %{with_python}
 %{python3_sitearch}/*
-%endif
-
-%if %{with_lua}
-%files lua
-%defattr(-,root,root)
-%{_datadir}/lua
-%{_libdir}/lua
 %endif
 
 %files devel

@@ -13,10 +13,6 @@ EXTRA_DIST = \
 
 RPMARGS =
 
-if ENABLE_LUA
-RPMARGS += --with lua
-endif
-
 if ENABLE_PYTHON
 RPMARGS += --with python
 endif
