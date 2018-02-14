@@ -20,7 +20,7 @@
   # allow pre-mount hooks to stage mounts under /var/lib/lxc/<container>/
   mount -> /var/lib/lxc/{**,},
 
-  # required for some pre-mount hooks (like the new lxc-start-ephemeral)
+  # required for some pre-mount hooks
   mount fstype=overlayfs,
   mount fstype=aufs,
   mount fstype=ecryptfs,

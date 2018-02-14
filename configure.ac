@@ -793,7 +793,6 @@ AC_CONFIG_FILES([
 	doc/lxc-cgroup.sgml
 	doc/lxc-checkconfig.sgml
 	doc/lxc-checkpoint.sgml
-	doc/lxc-clone.sgml
 	doc/lxc-config.sgml
 	doc/lxc-console.sgml
 	doc/lxc-copy.sgml
@@ -806,7 +805,6 @@ AC_CONFIG_FILES([
 	doc/lxc-ls.sgml
 	doc/lxc-monitor.sgml
 	doc/lxc-snapshot.sgml
-	doc/lxc-start-ephemeral.sgml
 	doc/lxc-start.sgml
 	doc/lxc-stop.sgml
 	doc/lxc-top.sgml
@@ -842,7 +840,6 @@ AC_CONFIG_FILES([
 	doc/ja/lxc-cgroup.sgml
 	doc/ja/lxc-checkconfig.sgml
 	doc/ja/lxc-checkpoint.sgml
-	doc/ja/lxc-clone.sgml
 	doc/ja/lxc-config.sgml
 	doc/ja/lxc-console.sgml
 	doc/ja/lxc-copy.sgml
@@ -855,7 +852,6 @@ AC_CONFIG_FILES([
 	doc/ja/lxc-ls.sgml
 	doc/ja/lxc-monitor.sgml
 	doc/ja/lxc-snapshot.sgml
-	doc/ja/lxc-start-ephemeral.sgml
 	doc/ja/lxc-start.sgml
 	doc/ja/lxc-stop.sgml
 	doc/ja/lxc-top.sgml
@@ -880,7 +876,6 @@ AC_CONFIG_FILES([
 	doc/ko/lxc-cgroup.sgml
 	doc/ko/lxc-checkconfig.sgml
 	doc/ko/lxc-checkpoint.sgml
-	doc/ko/lxc-clone.sgml
 	doc/ko/lxc-config.sgml
 	doc/ko/lxc-console.sgml
 	doc/ko/lxc-copy.sgml
@@ -893,7 +888,6 @@ AC_CONFIG_FILES([
 	doc/ko/lxc-ls.sgml
 	doc/ko/lxc-monitor.sgml
 	doc/ko/lxc-snapshot.sgml
-	doc/ko/lxc-start-ephemeral.sgml
 	doc/ko/lxc-start.sgml
 	doc/ko/lxc-stop.sgml
 	doc/ko/lxc-top.sgml
@@ -946,7 +940,6 @@ AC_CONFIG_FILES([
 	src/lxc/lxc.functions
 	src/lxc/cmd/lxc-checkconfig
 	src/lxc/cmd/lxc-update-config
-	src/lxc/tools/lxc-start-ephemeral
 	src/lxc/version.h
 	src/python-lxc/Makefile
 

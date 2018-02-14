@@ -39,7 +39,6 @@ src/lxc/lxc-cgroup
 src/lxc/tools/lxc-checkconfig
 src/lxc/tools/lxc-update-config
 src/lxc/lxc-checkpoint
-src/lxc/lxc-clone
 src/lxc/lxc-console
 src/lxc/lxc-config
 src/lxc/lxc-copy
@@ -57,7 +56,6 @@ src/lxc/lxc-monitord
 src/lxc/lxc-shutdown
 src/lxc/lxc-snapshot
 src/lxc/lxc-start
-src/lxc/tools/lxc-start-ephemeral
 src/lxc/lxc-stop
 src/lxc/lxc-top
 src/lxc/lxc-unfreeze

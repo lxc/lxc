@@ -208,17 +208,6 @@ bin_SCRIPTS += cmd/lxc-checkconfig \
 endif
 
 if ENABLE_TOOLS
-EXTRA_DIST = \
-	tools/lxc-top.lua
-
-if ENABLE_DEPRECATED
-if ENABLE_PYTHON
-bin_SCRIPTS += tools/lxc-start-ephemeral
-endif
-endif
-endif
-
-if ENABLE_TOOLS
 bin_PROGRAMS = \
 	lxc-attach \
 	lxc-autostart \
@@ -243,10 +232,6 @@ bin_PROGRAMS = \
 	lxc-unshare \
 	lxc-usernsexec \
 	lxc-wait
-
-if ENABLE_DEPRECATED
-bin_PROGRAMS += lxc-clone
-endif
 endif
 
 if ENABLE_COMMANDS
@@ -297,10 +282,6 @@ endif
 
 
 if ENABLE_TOOLS
-if ENABLE_DEPRECATED
-lxc_clone_SOURCES = tools/lxc_clone.c tools/arguments.c
-endif
-
 if !HAVE_GETSUBOPT
 lxc_copy_SOURCES += tools/include/getsubopt.c tools/include/getsubopt.h
 endif

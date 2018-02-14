@@ -108,5 +108,4 @@ _have lxc-start && {
     complete -o default -F _lxc_generic_t lxc-create
 
     complete -o default -F _lxc_generic_o lxc-copy
-    complete -o default -F _lxc_generic_o lxc-start-ephemeral
 }

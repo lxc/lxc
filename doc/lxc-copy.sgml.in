@@ -105,8 +105,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
     <para>
       <command>lxc-copy</command> creates and optionally starts (ephemeral or
-      non-ephemeral) copies of existing containers. It replaces
-      <command>lxc-clone</command> and <command>lxc-start-ephemeral</command>.
+      non-ephemeral) copies of existing containers.
     </para>
     <para>
       <command>lxc-copy</command> creates copies of existing containers. Copies
