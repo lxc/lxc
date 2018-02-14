@@ -25,16 +25,6 @@ Submitting Modifications:
 -------------------------
 
 The contributions must be Github pull requests.
-It is also possible to send contributions as email patches. But please be aware
-that the review process might take significantly longer than in the case of
-Github pull requests. You can submit your email patches to the
-lxc-devel@lists.linuxcontainers.org mailing list. (Use
-http://lists.linuxcontainers.org/listinfo/lxc-devel to subscribe to the list.)
-The guidelines for submitting email patches are the same as the patch submission
-for the Linux kernel except for the DCO which is defined below. The guidelines
-are defined in the 'SubmittingPatches' file, available in the directory
-'Documentation' of the Linux kernel source tree:
-https://www.kernel.org/doc/html/v4.10/process/submitting-patches.html
 
 Licensing for new files:
 ------------------------
@@ -61,9 +51,7 @@ Developer Certificate of Origin:
 --------------------------------
 
 To improve tracking of contributions to this project we will use a
-process modeled on the modified DCO 1.1 and use a "sign-off" procedure
-on patches that are being emailed around or contributed in any other
-way.
+process modeled on the modified DCO 1.1 and use a "sign-off" procedure.
 
 The sign-off is a simple line at the end of the explanation for the
 patch, which certifies that you wrote it or otherwise have the right
