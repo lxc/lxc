@@ -1813,7 +1813,7 @@ static int chown_cgroup_wrapper(void *data)
 		char *fullpath;
 		char *path = hierarchies[i]->fullcgpath;
 
-		ret = chowmod(path, destuid, nsgid, 0755);
+		ret = chowmod(path, destuid, nsgid, 0775);
 		if (ret < 0)
 			return -1;
 
