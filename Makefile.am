@@ -13,10 +13,6 @@ EXTRA_DIST = \
 
 RPMARGS =
 
-if ENABLE_PYTHON
-RPMARGS += --with python
-endif
-
 pcdatadir = $(libdir)/pkgconfig
 pcdata_DATA = lxc.pc
 

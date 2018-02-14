@@ -41,13 +41,6 @@ man_MANS = \
 	\
 	lxc.7
 
-if ENABLE_DEPRECATED
-    man_MANS += lxc-clone.1
-if ENABLE_PYTHON
-    man_MANS += lxc-start-ephemeral.1
-endif
-endif
-
 %.1 : %.sgml
 	$(db2xman) --encoding=UTF-8 $<
 	test "$(shell basename $@)" != "$@" && mv $(shell basename $@) $@ || true

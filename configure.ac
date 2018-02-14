@@ -363,29 +363,6 @@ AC_ARG_ENABLE([examples],
 	[], [enable_examples=yes])
 AM_CONDITIONAL([ENABLE_EXAMPLES], [test "x$enable_examples" = "xyes"])
 
-# Python3 module and scripts
-AC_ARG_ENABLE([python],
-	[AC_HELP_STRING([--enable-python], [enable python binding [default=auto]])],
-	[], [enable_python=auto])
-
-if test "x$enable_python" = "xauto"; then
-	PKG_CHECK_MODULES([PYTHONDEV], [python3 >= 3.2],[enable_python=yes],[enable_python=no])
-	if test "$CC" = "clang"; then
-		enable_python=no
-	fi
-fi
-
-if test "x$enable_python" = "xyes" && test "$CC" = "clang"; then
-	AC_MSG_ERROR([Python3 is incompatible with the clang compiler])
-fi
-
-AM_CONDITIONAL([ENABLE_PYTHON], [test "x$enable_python" = "xyes"])
-
-AM_COND_IF([ENABLE_PYTHON],
-	[AM_PATH_PYTHON([3.2], [], [AC_MSG_ERROR([You must install python3])])
-	PKG_CHECK_MODULES([PYTHONDEV], [python3 >= 3.2],[],[AC_MSG_ERROR([You must install python3-dev])])
-	AC_DEFINE_UNQUOTED([ENABLE_PYTHON], 1, [Python3 is available])])
-
 # Enable dumping stack traces
 AC_ARG_ENABLE([mutex-debugging],
 	[AC_HELP_STRING([--enable-mutex-debugging], [Makes mutexes to report error and provide stack trace [default=no]])],
@@ -894,7 +871,6 @@ AC_CONFIG_FILES([
 	src/lxc/cmd/lxc-checkconfig
 	src/lxc/cmd/lxc-update-config
 	src/lxc/version.h
-	src/python-lxc/Makefile
 
 	src/tests/Makefile
 	src/tests/lxc-test-usernic
@@ -956,9 +932,6 @@ Security features:
 PAM:
  - PAM module: $enable_pam
  - cgroup PAM module: $pamdir
-
-Bindings:
- - python3: $enable_python
 
 Documentation:
  - examples: $enable_examples
