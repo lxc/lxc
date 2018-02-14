@@ -173,13 +173,6 @@ AC_ARG_ENABLE([werror],
 	[do not treat warnings as errors])],
 	[], [enable_werror=yes])
 
-# Allow enabling deprecated executables
-AC_ARG_ENABLE([deprecated],
-	[AC_HELP_STRING([--enable-deprecated],
-	[enable deprecated executables [default=no]])],
-	[], [enable_deprecated=false])
-AM_CONDITIONAL([ENABLE_DEPRECATED], [test "x$enable_deprecated" = "xyes"])
-
 # Allow disabling rpath
 AC_ARG_ENABLE([rpath],
 	[AC_HELP_STRING([--enable-rpath], [set rpath in executables [default=no]])],
