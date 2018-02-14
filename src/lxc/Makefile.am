@@ -200,9 +200,14 @@ liblxc_la_LDFLAGS = \
 
 liblxc_la_LIBADD = $(CAP_LIBS) $(SELINUX_LIBS) $(SECCOMP_LIBS)
 
-bin_SCRIPTS = cmd/lxc-checkconfig \
-	      cmd/lxc-update-config
+bin_SCRIPTS=
 
+if ENABLE_COMMANDS
+bin_SCRIPTS += cmd/lxc-checkconfig \
+	       cmd/lxc-update-config
+endif
+
+if ENABLE_TOOLS
 EXTRA_DIST = \
 	tools/lxc-top.lua
 
@@ -211,7 +216,9 @@ if ENABLE_PYTHON
 bin_SCRIPTS += tools/lxc-start-ephemeral
 endif
 endif
+endif
 
+if ENABLE_TOOLS
 bin_PROGRAMS = \
 	lxc-attach \
 	lxc-autostart \
@@ -240,11 +247,14 @@ bin_PROGRAMS = \
 if ENABLE_DEPRECATED
 bin_PROGRAMS += lxc-clone
 endif
+endif
 
+if ENABLE_COMMANDS
 sbin_PROGRAMS = init.lxc
 pkglibexec_PROGRAMS = \
 	lxc-monitord \
 	lxc-user-nic
+endif
 
 AM_LDFLAGS = -Wl,-E
 if ENABLE_RPATH
@@ -252,6 +262,7 @@ AM_LDFLAGS += -Wl,-rpath -Wl,$(libdir)
 endif
 LDADD=liblxc.la @CAP_LIBS@ @SELINUX_LIBS@ @SECCOMP_LIBS@
 
+if ENABLE_TOOLS
 lxc_attach_SOURCES = tools/lxc_attach.c tools/arguments.c tools/tool_utils.c
 lxc_autostart_SOURCES = tools/lxc_autostart.c tools/arguments.c tools/tool_utils.c
 lxc_cgroup_SOURCES = tools/lxc_cgroup.c tools/arguments.c tools/tool_utils.c
@@ -274,13 +285,18 @@ lxc_wait_SOURCES = tools/lxc_wait.c tools/arguments.c tools/tool_utils.c
 lxc_create_SOURCES = tools/lxc_create.c tools/arguments.c tools/tool_utils.c
 lxc_snapshot_SOURCES = tools/lxc_snapshot.c tools/arguments.c tools/tool_utils.c
 lxc_checkpoint_SOURCES = tools/lxc_checkpoint.c tools/arguments.c tools/tool_utils.c
+endif
 
+if ENABLE_COMMANDS
 # Binaries shipping with liblxc
 init_lxc_SOURCES = cmd/lxc_init.c
 lxc_monitord_SOURCES = cmd/lxc_monitord.c
 lxc_user_nic_SOURCES = cmd/lxc_user_nic.c namespace.c network.c parse.c
 lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c
+endif
 
+
+if ENABLE_TOOLS
 if ENABLE_DEPRECATED
 lxc_clone_SOURCES = tools/lxc_clone.c tools/arguments.c
 endif
@@ -288,7 +304,9 @@ endif
 if !HAVE_GETSUBOPT
 lxc_copy_SOURCES += tools/include/getsubopt.c tools/include/getsubopt.h
 endif
+endif
 
+if ENABLE_COMMANDS
 if HAVE_STATIC_LIBCAP
 sbin_PROGRAMS += init.lxc.static
 
@@ -303,6 +321,7 @@ endif
 init_lxc_static_LDFLAGS = -all-static
 init_lxc_static_LDADD = @CAP_LIBS@
 init_lxc_static_CFLAGS = $(AM_CFLAGS) -DNO_LXC_CONF
+endif
 endif
 
 if ENABLE_PAM

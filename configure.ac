@@ -477,6 +477,18 @@ AM_COND_IF([ENABLE_BASH],
 	AC_SUBST(bashcompdir)
 	])
 
+# Build the command line tools
+AC_ARG_ENABLE([tools],
+	[AC_HELP_STRING([--enable-tools], [build the command line tools [default=yes]])],
+	[], [enable_tools=yes])
+AM_CONDITIONAL([ENABLE_TOOLS], [test "x$enable_tools" = "xyes"])
+
+# Build the liblxc commands
+AC_ARG_ENABLE([commands],
+	[AC_HELP_STRING([--enable-commands], [build the liblxc commands [default=yes]])],
+	[], [enable_commands=yes])
+AM_CONDITIONAL([ENABLE_COMMANDS], [test "x$enable_commands" = "xyes"])
+
 # Optional test binaries
 AC_ARG_ENABLE([tests],
 	[AC_HELP_STRING([--enable-tests], [build test/example binaries [default=no]])],
@@ -950,6 +962,39 @@ AC_OUTPUT
 cat << EOF
 
 ----------------------------
+Binaries
+ - Command Line Tools:
+   - lxc-attach:     $enable_tools
+   - lxc-autostart:  $enable_tools
+   - lxc-cgroup:     $enable_tools
+   - lxc-checkpoint: $enable_tools
+   - lxc-config:     $enable_tools
+   - lxc-console:    $enable_tools
+   - lxc-copy:       $enable_tools
+   - lxc-create:     $enable_tools
+   - lxc-destroy:    $enable_tools
+   - lxc-device:     $enable_tools
+   - lxc-execute:    $enable_tools
+   - lxc-freeze:     $enable_tools
+   - lxc-info:       $enable_tools
+   - lxc-ls:         $enable_tools
+   - lxc-monitor:    $enable_tools
+   - lxc-snapshot:   $enable_tools
+   - lxc-start:      $enable_tools
+   - lxc-stop:       $enable_tools
+   - lxc-top:        $enable_tools
+   - lxc-unfreeze:   $enable_tools
+   - lxc-unshare:    $enable_tools
+   - lxc-wait:       $enable_tools
+
+ - liblxc Commands:
+   - lxc-checkconfig:   $enable_commands
+   - lxc-update-config: $enable_commands
+   - lxc-init:          $enable_commands
+   - lxc-monitord:      $enable_commands
+   - lxc-user-nic:      $enable_commands
+   - lxc-usernsexec:    $enable_commands
+
 Environment:
  - compiler: $CC
  - distribution: $with_distro
