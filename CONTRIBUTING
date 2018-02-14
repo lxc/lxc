@@ -5,8 +5,7 @@ This project accepts contributions. In order to contribute, you should
 pay attention to a few things:
 
     1 - your code must follow the coding style rules
-    2 - the format of the submission must be email patches or github
-    pull requests
+    2 - the format of the submission must Github pull requests
     3 - your work must be signed
 
 
@@ -20,25 +19,22 @@ the directory 'Documentation' of the Linux kernel source tree.
 
 It can be accessed online too:
 
-http://lxr.linux.no/linux+v2.6.27/Documentation/CodingStyle
+https://www.kernel.org/doc/html/v4.10/process/coding-style.html
 
 Submitting Modifications:
 -------------------------
 
-The contributions should be email patches or github pull requests.
-The guidelines are the same as the patch submission for the Linux kernel
-except for the DCO which is defined below. The guidelines are defined in the
-'SubmittingPatches' file, available in the directory 'Documentation'
-of the Linux kernel source tree.
-
-It can be accessed online too:
-
-https://www.kernel.org/doc/Documentation/SubmittingPatches
-
-You can submit your patches to the lxc-devel@lists.linuxcontainers.org mailing
-list. Use http://lists.linuxcontainers.org/listinfo/lxc-devel to subscribe
-to the list.
-
+The contributions must be Github pull requests.
+It is also possible to send contributions as email patches. But please be aware
+that the review process might take significantly longer than in the case of
+Github pull requests. You can submit your email patches to the
+lxc-devel@lists.linuxcontainers.org mailing list. (Use
+http://lists.linuxcontainers.org/listinfo/lxc-devel to subscribe to the list.)
+The guidelines for submitting email patches are the same as the patch submission
+for the Linux kernel except for the DCO which is defined below. The guidelines
+are defined in the 'SubmittingPatches' file, available in the directory
+'Documentation' of the Linux kernel source tree:
+https://www.kernel.org/doc/html/v4.10/process/submitting-patches.html
 
 Licensing for new files:
 ------------------------
@@ -56,12 +52,10 @@ Anything else (non-libaries) needs to be Free Software and needs to be
 allowed to link with LGPLv2.1+ code (if needed). LXC upstream prefers
 LGPLv2.1+ or GPLv2 for those.
 
-
 When introducing a new file into the project, please make sure it has a
 copyright header making clear under which license it's being released
 and if it doesn't match the criteria described above, please explain
 your decision on the lxc-devel mailing-list when submitting your patch.
-
 
 Developer Certificate of Origin:
 --------------------------------
@@ -111,3 +105,15 @@ You can do it by using option -s or --signoff when you commit
     git commit --signoff ...
 
 using your real name (sorry, no pseudonyms or anonymous contributions.)
+
+In addition we support the following DCOs which maintainers can use to indicate
+that a patch is acceptable:
+
+    Acked-by: Random J Developer <random@developer.org>
+    Reviewed-by: Random J Developer <random@developer.org>
+
+If you are contributing as a group who is implementing a feature together such
+that it cannot be reasonably attributed to a single developer please use:
+
+    Co-developed-by: Random J Developer 1 <random_1@developer.org>
+    Co-developed-by: Random J Developer 2 <random_1@developer.org>
