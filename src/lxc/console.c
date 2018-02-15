@@ -204,6 +204,152 @@ void lxc_console_signal_fini(struct lxc_tty_state *ts)
 	free(ts);
 }
 
+static int lxc_console_truncate_log_file(struct lxc_console *console)
+{
+	/* be very certain things are kosher */
+	if (!console->log_path || console->log_fd < 0)
+		return -EBADF;
+
+	return lxc_unpriv(ftruncate(console->log_fd, 0));
+}
+
+static int lxc_console_rotate_log_file(struct lxc_console *console)
+{
+	int ret;
+	size_t len;
+	char *tmp;
+
+	/* rotate the console log file */
+	if (!console->log_path || console->log_rotate == 0)
+		return -EOPNOTSUPP;
+
+	/* be very certain things are kosher */
+	if (console->log_fd < 0)
+		return -EBADF;
+
+	len = strlen(console->log_path) + sizeof(".1");
+	tmp = alloca(len);
+
+	ret = snprintf(tmp, len, "%s.1", console->log_path);
+	if (ret < 0 || (size_t)ret >= len)
+		return -EFBIG;
+
+	close(console->log_fd);
+	console->log_fd = -1;
+	ret = lxc_unpriv(rename(console->log_path, tmp));
+	if (ret < 0)
+		return ret;
+
+	return lxc_console_create_log_file(console);
+}
+
+static int lxc_console_write_log_file(struct lxc_console *console, char *buf,
+				      int bytes_read)
+{
+	int ret;
+	int64_t space_left = -1;
+	struct stat st;
+
+	if (console->log_fd < 0)
+		return 0;
+
+	/* A log size <= 0 means that there's no limit on the size of the log
+         * file at which point we simply ignore whether the log is supposed to
+	 * be rotated or not.
+	 */
+	if (console->log_size <= 0)
+		return lxc_write_nointr(console->log_fd, buf, bytes_read);
+
+	/* Get current size of the log file. */
+	ret = fstat(console->log_fd, &st);
+	if (ret < 0) {
+		SYSERROR("Failed to stat the console log file descriptor");
+		return -1;
+	}
+
+	/* handle non-regular files */
+	if ((st.st_mode & S_IFMT) != S_IFREG) {
+		/* This isn't a regular file. so rotating the file seems a
+		 * dangerous thing to do, size limits are also very
+		 * questionable. Let's not risk anything and tell the user that
+		 * he's requesting us to do weird stuff.
+		 */
+		if (console->log_rotate > 0 || console->log_size > 0)
+			return -EINVAL;
+
+		/* I mean, sure log wherever you want to. */
+		return lxc_write_nointr(console->log_fd, buf, bytes_read);
+	}
+
+	/* check how much space we have left */
+	space_left = console->log_size - st.st_size;
+
+	/* User doesn't want to rotate the log file and there's no more space
+	 * left so simply truncate it.
+	 */
+	if (space_left <= 0 && console->log_rotate <= 0) {
+		ret = lxc_console_truncate_log_file(console);
+		if (ret < 0)
+			return ret;
+
+		if (bytes_read <= console->log_size)
+			return lxc_write_nointr(console->log_fd, buf, bytes_read);
+
+		/* Write as much as we can into the buffer and loose the rest. */
+		return lxc_write_nointr(console->log_fd, buf, console->log_size);
+	}
+
+	/* There's enough space left. */
+	if (bytes_read <= space_left)
+		return lxc_write_nointr(console->log_fd, buf, bytes_read);
+
+	/* There's not enough space left but at least write as much as we can
+	 * into the old log file.
+	 */
+	ret = lxc_write_nointr(console->log_fd, buf, space_left);
+	if (ret < 0)
+		return -1;
+
+	/* Calculate how many bytes we still need to write. */
+	bytes_read -= space_left;
+
+	/* There be more to write but we aren't instructed to rotate the log
+	 * file so simply return. There's no error on our side here.
+	 */
+	if (console->log_rotate > 0)
+		ret = lxc_console_rotate_log_file(console);
+	else
+		ret = lxc_console_truncate_log_file(console);
+	if (ret < 0)
+		return ret;
+
+	if (console->log_size < bytes_read) {
+		/* Well, this is unfortunate because it means that there is more
+		 * to write than the user has granted us space. There are
+		 * multiple ways to handle this but let's use the simplest one:
+		 * write as much as we can, tell the user that there was more
+		 * stuff to write and move on.
+		 * Note that this scenario shouldn't actually happen with the
+		 * standard pty-based console that LXC allocates since it will
+		 * be switched into raw mode. In raw mode only 1 byte at a time
+		 * should be read and written.
+		 */
+		WARN("Size of console log file is smaller than the bytes to write");
+		ret = lxc_write_nointr(console->log_fd, buf, console->log_size);
+		if (ret < 0)
+			return -1;
+		bytes_read -= ret;
+		return bytes_read;
+	}
+
+	/* Yay, we made it. */
+	ret = lxc_write_nointr(console->log_fd, buf, bytes_read);
+	if (ret < 0)
+		return -1;
+	bytes_read -= ret;
+	return bytes_read;
+}
+
 int lxc_console_cb_con(int fd, uint32_t events, void *data,
 		       struct lxc_epoll_descr *descr)
 {
@@ -245,9 +391,9 @@ int lxc_console_cb_con(int fd, uint32_t events, void *data,
 		if (console->buffer_size > 0)
 			w_rbuf = lxc_ringbuf_write(&console->ringbuf, buf, r);
 
-		/* write to console log */
-		if (console->log_fd >= 0)
-			w_log = lxc_write_nointr(console->log_fd, buf, r);
+		if (console->log_fd > 0)
+			w_log = lxc_console_write_log_file(console, buf, r);
+
 	}
 
 	if (w != r)

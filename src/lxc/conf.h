@@ -171,12 +171,24 @@ struct lxc_console {
 	struct lxc_pty_info peerpty;
 	struct lxc_epoll_descr *descr;
 	char *path;
-	char *log_path;
-	int log_fd;
-	unsigned int log_rotate;
 	char name[MAXPATHLEN];
 	struct termios *tios;
 	struct lxc_tty_state *tty_state;
+
+	struct /* lxc_console_log */ {
+		/* size of the log file */
+		uint64_t log_size;
+
+		/* path to the log file */
+		char *log_path;
+
+		/* fd to the log file */
+		int log_fd;
+
+		/* whether the log file will be rotated */
+		unsigned int log_rotate;
+	};
+
 	struct /* lxc_console_ringbuf */ {
 		/* size of the ringbuffer */
 		uint64_t buffer_size;

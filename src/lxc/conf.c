@@ -2614,6 +2614,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->console.buffer_size = 0;
 	new->console.log_path = NULL;
 	new->console.log_fd = -1;
+	new->console.log_size = 0;
 	new->console.path = NULL;
 	new->console.peer = -1;
 	new->console.peerpty.busy = -1;
