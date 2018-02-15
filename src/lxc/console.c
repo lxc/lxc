@@ -705,9 +705,52 @@ out:
 	return ret;
 }
 
+int lxc_console_write_ringbuffer(struct lxc_console *console)
+{
+	char *r_addr;
+	ssize_t ret;
+	uint64_t used;
+	struct lxc_ringbuf *buf = &console->ringbuf;
+
+	/* There's not log file where we can dump the ringbuffer to. */
+	if (console->log_fd < 0)
+		return 0;
+
+	/* The log file is simply appended to. */
+	if (console->log_size == 0)
+		return 0;
+
+	/* The log file is rotated. */
+	if (console->log_rotate == 0)
+		return 0;
+
+	used = lxc_ringbuf_used(buf);
+	if (used == 0)
+		return 0;
+
+	ret = lxc_console_truncate_log_file(console);
+	if (ret < 0)
+		return ret;
+
+	/* Write as much as we can without exceeding the limit. */
+	if (console->log_size < used)
+		used = console->log_size;
+
+	r_addr = lxc_ringbuf_get_read_addr(buf);
+	ret = lxc_write_nointr(console->log_fd, r_addr, used);
+	if (ret < 0)
+		return -EIO;
+
+	return 0;
+}
+
 void lxc_console_delete(struct lxc_console *console)
 {
 	int ret;
+
+	ret = lxc_console_write_ringbuffer(console);
+	if (ret < 0)
+		WARN("Failed to write console ringbuffer to console log file");
 
 	if (console->tios && console->peer >= 0) {
 		ret = tcsetattr(console->peer, TCSAFLUSH, console->tios);
