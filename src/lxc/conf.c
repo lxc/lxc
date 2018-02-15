@@ -2609,8 +2609,6 @@ struct lxc_conf *lxc_conf_init(void)
 	new->loglevel = LXC_LOG_LEVEL_NOTSET;
 	new->personality = -1;
 	new->autodev = 1;
-	new->console.buffer_log_file = NULL;
-	new->console.buffer_log_file_fd = -1;
 	new->console.buffer_size = 0;
 	new->console.log_path = NULL;
 	new->console.log_fd = -1;

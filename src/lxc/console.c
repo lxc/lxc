@@ -705,35 +705,9 @@ out:
 	return ret;
 }
 
-int lxc_console_write_ringbuffer(struct lxc_console *console)
-{
-	char *r_addr;
-	ssize_t ret;
-	uint64_t used;
-	struct lxc_ringbuf *buf = &console->ringbuf;
-
-	if (!console->buffer_log_file)
-		return 0;
-
-	used = lxc_ringbuf_used(buf);
-	if (used == 0)
-		return 0;
-
-	r_addr = lxc_ringbuf_get_read_addr(buf);
-	ret = lxc_write_nointr(console->buffer_log_file_fd, r_addr, used);
-	if (ret < 0)
-		return -EIO;
-
-	return 0;
-}
-
 void lxc_console_delete(struct lxc_console *console)
 {
 	int ret;
-
-	ret = lxc_console_write_ringbuffer(console);
-	if (ret < 0)
-		WARN("Failed to write console log to disk");
 
 	if (console->tios && console->peer >= 0) {
 		ret = tcsetattr(console->peer, TCSAFLUSH, console->tios);
@@ -758,31 +732,6 @@ void lxc_console_delete(struct lxc_console *console)
 	if (console->log_fd >= 0)
 		close(console->log_fd);
 	console->log_fd = -1;
-
-	if (console->buffer_log_file_fd >= 0)
-		close(console->buffer_log_file_fd);
-	console->buffer_log_file_fd = -1;
-}
-
-/* This is the console ringbuffer log file. Please note that the console
- * ringbuffer log file is (implementation wise not content wise) independent of
- * the console log file.
- */
-static int lxc_console_create_ringbuf_log_file(struct lxc_console *console)
-{
-	if (!console->buffer_log_file)
-		return 0;
-
-	console->buffer_log_file_fd = lxc_unpriv(open(console->buffer_log_file,
-			    O_CLOEXEC | O_RDWR | O_CREAT | O_TRUNC, 0600));
-	if (console->buffer_log_file_fd < 0) {
-		SYSERROR("Failed to open console ringbuffer log file \"%s\"",
-			 console->buffer_log_file);
-		return -EIO;
-	}
-
-	DEBUG("Using \"%s\" as console ringbuffer log file", console->buffer_log_file);
-	return 0;
 }
 
 /**
@@ -909,11 +858,6 @@ int lxc_console_create(struct lxc_conf *conf)
 
 	/* create console ringbuffer */
 	ret = lxc_console_create_ringbuf(console);
-	if (ret < 0)
-		goto err;
-
-	/* create console ringbuffer log file */
-	ret = lxc_console_create_ringbuf_log_file(console);
 	if (ret < 0)
 		goto err;
 
@@ -1166,13 +1110,11 @@ void lxc_pty_init(struct lxc_console *pty)
 	pty->master = -EBADF;
 	pty->peer = -EBADF;
 	pty->log_fd = -EBADF;
-	pty->buffer_log_file_fd = -EBADF;
 	lxc_pty_info_init(&pty->peerpty);
 }
 
 void lxc_pty_conf_free(struct lxc_console *console)
 {
-	free(console->buffer_log_file);
 	free(console->log_path);
 	free(console->path);
 	if (console->buffer_size > 0 && console->ringbuf.addr)
