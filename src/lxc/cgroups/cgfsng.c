@@ -2023,26 +2023,31 @@ static int cg_mount_in_cgroup_namespace(int type, struct hierarchy *h,
 
 static bool cgfsng_mount(void *hdata, const char *root, int type)
 {
-	int i;
+	int i, ret;
 	char *tmpfspath = NULL;
 	bool retval = false;
 	struct lxc_handler *handler = hdata;
 	struct cgfsng_handler_data *d = handler->cgroup_data;
-	bool has_cgns = false, has_sys_admin = true;
+	bool has_cgns = false, wants_force_mount = false;
 
 	if ((type & LXC_AUTO_CGROUP_MASK) == 0)
 		return true;
 
+	if (type & LXC_AUTO_CGROUP_FORCE) {
+		type &= ~LXC_AUTO_CGROUP_FORCE;
+		wants_force_mount = true;
+	}
+
+	if (!wants_force_mount){
+		if (!lxc_list_empty(&handler->conf->keepcaps))
+			wants_force_mount = !in_caplist(CAP_SYS_ADMIN, &handler->conf->keepcaps);
+		else
+			wants_force_mount = in_caplist(CAP_SYS_ADMIN, &handler->conf->caps);
+	}
+
 	has_cgns = cgns_supported();
-	if (!lxc_list_empty(&handler->conf->keepcaps))
-		has_sys_admin = in_caplist(CAP_SYS_ADMIN, &handler->conf->keepcaps);
-	else
-		has_sys_admin = !in_caplist(CAP_SYS_ADMIN, &handler->conf->caps);
-
-	if (has_cgns && has_sys_admin)
+	if (has_cgns && !wants_force_mount)
 		return true;
-
-	tmpfspath = must_make_path(root, "/sys/fs/cgroup", NULL);
 
 	if (type == LXC_AUTO_CGROUP_NOSPEC)
 		type = LXC_AUTO_CGROUP_MIXED;
@@ -2050,17 +2055,17 @@ static bool cgfsng_mount(void *hdata, const char *root, int type)
 		type = LXC_AUTO_CGROUP_FULL_MIXED;
 
 	/* Mount tmpfs */
-	if (safe_mount("cgroup_root", tmpfspath, "tmpfs",
-			MS_NOSUID|MS_NODEV|MS_NOEXEC|MS_RELATIME,
-			"size=10240k,mode=755",
-			root) < 0)
-		goto  bad;
+	tmpfspath = must_make_path(root, "/sys/fs/cgroup", NULL);
+	ret = safe_mount("cgroup_root", tmpfspath, "tmpfs",
+			 MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,
+			 "size=10240k,mode=755", root);
+	if (ret < 0)
+		goto on_error;
 
 	for (i = 0; hierarchies[i]; i++) {
 		char *controllerpath, *path2;
 		struct hierarchy *h = hierarchies[i];
 		char *controller = strrchr(h->mountpoint, '/');
-		int r;
 
 		if (!controller)
 			continue;
@@ -2070,49 +2075,56 @@ static bool cgfsng_mount(void *hdata, const char *root, int type)
 			free(controllerpath);
 			continue;
 		}
-		if (mkdir(controllerpath, 0755) < 0) {
+		ret = mkdir(controllerpath, 0755);
+		if (ret < 0) {
 			SYSERROR("Error creating cgroup path: %s", controllerpath);
 			free(controllerpath);
-			goto bad;
+			goto on_error;
 		}
 
-		if (has_cgns && !has_sys_admin) {
+		if (has_cgns && wants_force_mount) {
 			/* If cgroup namespaces are supported but the container
 			 * will not have CAP_SYS_ADMIN after it has started we
 			 * need to mount the cgroups manually.
 			 */
-			r = cg_mount_in_cgroup_namespace(type, h, controllerpath);
+			ret = cg_mount_in_cgroup_namespace(type, h, controllerpath);
 			free(controllerpath);
-			if (r < 0)
-				goto bad;
+			if (ret < 0)
+				goto on_error;
+
 			continue;
 		}
 
-		if (mount_cgroup_full(type, h, controllerpath, d->container_cgroup) < 0) {
+		ret = mount_cgroup_full(type, h, controllerpath, d->container_cgroup);
+		if (ret < 0) {
 			free(controllerpath);
-			goto bad;
+			goto on_error;
 		}
+
 		if (!cg_mount_needs_subdirs(type)) {
 			free(controllerpath);
 			continue;
 		}
-		path2 = must_make_path(controllerpath, h->base_cgroup, d->container_cgroup, NULL);
-		if (mkdir_p(path2, 0755) < 0) {
+
+		path2 = must_make_path(controllerpath, h->base_cgroup,
+				       d->container_cgroup, NULL);
+		ret = mkdir_p(path2, 0755);
+		if (ret < 0) {
 			free(controllerpath);
 			free(path2);
-			goto bad;
+			goto on_error;
 		}
 
-		r = do_secondstage_mounts_if_needed(type, h, controllerpath, path2,
-						    d->container_cgroup);
+		ret = do_secondstage_mounts_if_needed(
+		    type, h, controllerpath, path2, d->container_cgroup);
 		free(controllerpath);
 		free(path2);
-		if (r < 0)
-			goto bad;
+		if (ret < 0)
+			goto on_error;
 	}
 	retval = true;
 
-bad:
+on_error:
 	free(tmpfspath);
 	return retval;
 }

@@ -930,36 +930,75 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
                   <filename>/sys</filename> as read-write
                 </para>
               </listitem>
+
               <listitem>
                 <para>
                   <option>cgroup:mixed</option>:
-                  mount a tmpfs to <filename>/sys/fs/cgroup</filename>,
-                  create directories for all hierarchies to which
-                  the container is added, create subdirectories
-                  there with the name of the cgroup, and bind-mount
-                  the container's own cgroup into that directory.
-                  The container will be able to write to its own
-                  cgroup directory, but not the parents, since they
-                  will be remounted read-only.
+                  Mount a tmpfs to <filename>/sys/fs/cgroup</filename>,
+                  create directories for all hierarchies to which the container
+                  is added, create subdirectories in those hierarchies with the
+                  name of the cgroup, and bind-mount the container's own cgroup
+                  into that directory. The container will be able to write to
+                  its own cgroup directory, but not the parents, since they will
+                  be remounted read-only.
                 </para>
               </listitem>
+
               <listitem>
                 <para>
-                  <option>cgroup:ro</option>: similar to
-                  <option>cgroup:mixed</option>, but everything will
-                be mounted read-only.
+                  <option>cgroup:mixed:force</option>:
+                  The <option>force</option> option will cause LXC to perform
+                  the cgroup mounts for the container under all circumstances.
+                  Otherwise it is similar to <option>cgroup:mixed</option>.
+                  This is mainly useful when the cgroup namespaces are enabled
+                  where LXC will normally leave mounting cgroups to the init
+                  binary of the container since it is perfectly safe to do so.
                 </para>
               </listitem>
+
+              <listitem>
+                <para>
+                  <option>cgroup:ro</option>:
+                  similar to <option>cgroup:mixed</option>, but everything will
+                  be mounted read-only.
+                </para>
+              </listitem>
+
+              <listitem>
+                <para>
+                  <option>cgroup:ro:force</option>:
+                  The <option>force</option> option will cause LXC to perform
+                  the cgroup mounts for the container under all circumstances.
+                  Otherwise it is similar to <option>cgroup:ro</option>.
+                  This is mainly useful when the cgroup namespaces are enabled
+                  where LXC will normally leave mounting cgroups to the init
+                  binary of the container since it is perfectly safe to do so.
+                </para>
+              </listitem>
+
               <listitem>
                 <para>
                   <option>cgroup:rw</option>: similar to
-                  <option>cgroup:mixed</option>, but everything will
-                  be mounted read-write. Note that the paths leading
-                  up to the container's own cgroup will be writable,
-                  but will not be a cgroup filesystem but just part
-                  of the tmpfs of <filename>/sys/fs/cgroup</filename>
+                  <option>cgroup:mixed</option>, but everything will be mounted
+                  read-write. Note that the paths leading up to the container's
+                  own cgroup will be writable, but will not be a cgroup
+                  filesystem but just part of the tmpfs of
+                  <filename>/sys/fs/cgroup</filename>
                 </para>
               </listitem>
+
+              <listitem>
+                <para>
+                  <option>cgroup:rw:force</option>:
+                  The <option>force</option> option will cause LXC to perform
+                  the cgroup mounts for the container under all circumstances.
+                  Otherwise it is similar to <option>cgroup:rw</option>.
+                  This is mainly useful when the cgroup namespaces are enabled
+                  where LXC will normally leave mounting cgroups to the init
+                  binary of the container since it is perfectly safe to do so.
+                </para>
+              </listitem>
+
               <listitem>
                 <para>
                   <option>cgroup</option> (without specifier):
