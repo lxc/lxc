@@ -628,7 +628,7 @@ void lxc_free_handler(struct lxc_handler *handler)
 	lxc_put_nsfds(handler);
 
 	if (handler->conf && handler->conf->reboot == 0)
-		if (handler->conf->maincmd_fd)
+		if (handler->conf->maincmd_fd >= 0)
 			close(handler->conf->maincmd_fd);
 
 	if (handler->state_socket_pair[0] >= 0)
