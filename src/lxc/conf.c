@@ -376,8 +376,6 @@ int run_script_argv(const char *name, unsigned int hook_version,
 	if (size > INT_MAX)
 		return -EFBIG;
 
-	buffer = alloca(size);
-
 	if (hook_version == 0) {
 		size += strlen(hookname);
 		size++;
@@ -390,19 +388,19 @@ int run_script_argv(const char *name, unsigned int hook_version,
 
 		if (size > INT_MAX)
 			return -EFBIG;
+	}
 
+	buffer = alloca(size);
+	if (hook_version == 0)
 		buf_pos = snprintf(buffer, size, "exec %s %s %s %s", script, name, section, hookname);
-		if (buf_pos < 0 || (size_t)buf_pos >= size) {
-			ERROR("Failed to create command line for script \"%s\"", script);
-			return -1;
-		}
-	} else {
+	else
 		buf_pos = snprintf(buffer, size, "exec %s", script);
-		if (buf_pos < 0 || (size_t)buf_pos >= size) {
-			ERROR("Failed to create command line for script \"%s\"", script);
-			return -1;
-		}
+	if (buf_pos < 0 || (size_t)buf_pos >= size) {
+		ERROR("Failed to create command line for script \"%s\"", script);
+		return -1;
+	}
 
+	if (hook_version == 1) {
 		ret = setenv("LXC_HOOK_TYPE", hookname, 1);
 		if (ret < 0) {
 			SYSERROR("Failed to set environment variable: "
