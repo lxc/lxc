@@ -264,13 +264,12 @@ systemd_container_tuning () {
     # /usr/lib/systemd/system-generators/gentoo-local-generator: line 4: cd: /etc/local.d: No such file or directory
     mkdir ${rootfs}/etc/local.d/
 
-   # Fix TERM variable for container console
-   mkdir container-getty\@0.service.d
-   cat <<EOF > container-getty\@0.service.d/00gentoo.conf
+    mkdir ${rootfs}/etc/systemd/system/NetworkManager.service.d/
+    cat <<EOF > ${rootfs}/etc/systemd/system/NetworkManager.service.d/override.conf
 [Service]
-Environment=TERM=
-Environment=TERM=linux
+ExecStartPre=-/bin/ip -4 link set dev eth0 down
 EOF
+    chmod 644 ${rootfs}/etc/systemd/system/NetworkManager.service.d/override.conf
 
     return 0
 }
