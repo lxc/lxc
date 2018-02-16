@@ -264,6 +264,13 @@ systemd_container_tuning () {
     # /usr/lib/systemd/system-generators/gentoo-local-generator: line 4: cd: /etc/local.d: No such file or directory
     mkdir ${rootfs}/etc/local.d/
 
+    mkdir ${rootfs}/etc/systemd/system/NetworkManager.service.d/
+    cat <<EOF > ${rootfs}/etc/systemd/system/NetworkManager.service.d/override.conf
+[Service]
+ExecStartPre=-/bin/ip -4 link set dev eth0 down
+EOF
+    chmod 644 ${rootfs}/etc/systemd/system/NetworkManager.service.d/override.conf
+
     return 0
 }
 
