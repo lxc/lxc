@@ -1,0 +1,53 @@
+diff a/src/lxc/cgroups/cgfsng.c b/src/lxc/cgroups/cgfsng.c	(rejected hunks)
+@@ -1960,7 +1960,7 @@ static int do_secondstage_mounts_if_needed(int type, struct hierarchy *h,
+ 
+ 	if (flags & MS_RDONLY) {
+ 		ret = mount(sourcepath, cgpath, "cgroup",
+-			    MS_REMOUNT | flags | MS_RDONLY, NULL);
++			    MS_REMOUNT | flags, NULL);
+ 		if (ret < 0) {
+ 			SYSERROR("Failed to remount \"%s\" ro", cgpath);
+ 			free(sourcepath);
+@@ -1975,24 +1975,27 @@ static int do_secondstage_mounts_if_needed(int type, struct hierarchy *h,
+ 
+ static int mount_cgroup_cgns_supported(int type, struct hierarchy *h, const char *controllerpath)
+ {
+-	 int ret;
+-	 char *controllers = NULL;
+-	 char *fstype = "cgroup2";
+-	 unsigned long flags = 0;
++	int ret;
++	char *controllers = NULL;
++	char *fstype = "cgroup2";
++	unsigned long flags = 0;
+ 
+-	 flags |= MS_NOSUID;
+-	 flags |= MS_NOEXEC;
+-	 flags |= MS_NODEV;
+-	 flags |= MS_RELATIME;
++	flags |= MS_NOSUID;
++	flags |= MS_NOEXEC;
++	flags |= MS_NODEV;
++	flags |= MS_RELATIME;
+ 
+-	 if (type == LXC_AUTO_CGROUP_RO || type == LXC_AUTO_CGROUP_FULL_RO)
+-		 flags |= MS_RDONLY;
++	if (type & LXC_AUTO_CGROUP_FORCE){
++		type &= ~LXC_AUTO_CGROUP_FORCE;
++	}
++	if (type == LXC_AUTO_CGROUP_RO || type == LXC_AUTO_CGROUP_FULL_RO)
++		flags |= MS_RDONLY;
+ 
+-	 if (h->version != CGROUP2_SUPER_MAGIC) {
+-		 controllers = lxc_string_join(",", (const char **)h->controllers, false);
+-		 if (!controllers)
+-			 return -ENOMEM;
+-		 fstype = "cgroup";
++	if (h->version != CGROUP2_SUPER_MAGIC) {
++		controllers = lxc_string_join(",", (const char **)h->controllers, false);
++		if (!controllers)
++			return -ENOMEM;
++		fstype = "cgroup";
+ 	}
+ 
+ 	ret = mount("cgroup", controllerpath, fstype, flags, controllers);

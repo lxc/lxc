@@ -2048,18 +2048,24 @@ static bool cgfsng_mount(void *hdata, const char *root, int type)
 	bool retval = false;
 	struct lxc_handler *handler = hdata;
 	struct cgfsng_handler_data *d = handler->cgroup_data;
-	bool has_cgns = false, has_sys_admin = true;
+	bool has_cgns = false, wants_force_mount = false;
 
 	if ((type & LXC_AUTO_CGROUP_MASK) == 0)
 		return true;
 
-	has_cgns = cgns_supported();
-	if (!lxc_list_empty(&handler->conf->keepcaps))
-		has_sys_admin = in_caplist(CAP_SYS_ADMIN, &handler->conf->keepcaps);
-	else
-		has_sys_admin = !in_caplist(CAP_SYS_ADMIN, &handler->conf->caps);
+	if (type & LXC_AUTO_CGROUP_FORCE){
+		type &= ~LXC_AUTO_CGROUP_FORCE;
+		wants_force_mount = true;
+	}
+	if (!wants_force_mount){
+		if (!lxc_list_empty(&handler->conf->keepcaps))
+			wants_force_mount = !in_caplist(CAP_SYS_ADMIN, &handler->conf->keepcaps);
+		else
+			wants_force_mount = in_caplist(CAP_SYS_ADMIN, &handler->conf->caps);
+	}
 
-	if (has_cgns && has_sys_admin)
+	has_cgns = cgns_supported();
+	if (has_cgns && !wants_force_mount)
 		return true;
 
 	tmpfspath = must_make_path(root, "/sys/fs/cgroup", NULL);
@@ -2096,7 +2102,7 @@ static bool cgfsng_mount(void *hdata, const char *root, int type)
 			goto bad;
 		}
 
-		if (has_cgns && !has_sys_admin) {
+		if (has_cgns && wants_force_mount) {
 			/* If cgroup namespaces are supported but the container
 			 * will not have CAP_SYS_ADMIN after it has started we
 			 * need to mount the cgroups manually.
