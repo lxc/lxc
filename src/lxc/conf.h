@@ -233,9 +233,9 @@ enum {
 	 * variants, which is safe. */
 	LXC_AUTO_CGROUP_NOSPEC        = 0x0B0,   /* /sys/fs/cgroup (partial mount, r/w or mixed, depending on caps) */
 	LXC_AUTO_CGROUP_FULL_NOSPEC   = 0x0E0,   /* /sys/fs/cgroup (full mount, r/w or mixed, depending on caps) */
-	LXC_AUTO_CGROUP_MASK          = 0x0F0,
-
-	LXC_AUTO_ALL_MASK             = 0x0FF,   /* all known settings */
+	LXC_AUTO_CGROUP_FORCE         = 0x100,   /* mount cgroups even when cgroup namespaces are supported */
+	LXC_AUTO_CGROUP_MASK          = 0x1F0,   /* all known cgroup options, doe not contain LXC_AUTO_CGROUP_FORCE */
+	LXC_AUTO_ALL_MASK             = 0x1FF,   /* all known settings */
 };
 
 /*

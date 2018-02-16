@@ -1706,26 +1706,30 @@ static int set_config_mount_auto(const char *key, const char *value,
 		int mask;
 		int flag;
 	} allowed_auto_mounts[] = {
-	    { "proc",              LXC_AUTO_PROC_MASK,   LXC_AUTO_PROC_MIXED         },
-	    { "proc:mixed",        LXC_AUTO_PROC_MASK,   LXC_AUTO_PROC_MIXED         },
-	    { "proc:rw",           LXC_AUTO_PROC_MASK,   LXC_AUTO_PROC_RW            },
-	    { "sys",               LXC_AUTO_SYS_MASK,    LXC_AUTO_SYS_MIXED          },
-	    { "sys:ro",            LXC_AUTO_SYS_MASK,    LXC_AUTO_SYS_RO             },
-	    { "sys:mixed",         LXC_AUTO_SYS_MASK,    LXC_AUTO_SYS_MIXED          },
-	    { "sys:rw",            LXC_AUTO_SYS_MASK,    LXC_AUTO_SYS_RW             },
-	    { "cgroup",            LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_NOSPEC      },
-	    { "cgroup:mixed",      LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_MIXED       },
-	    { "cgroup:ro",         LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_RO          },
-	    { "cgroup:rw",         LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_RW          },
-	    { "cgroup-full",       LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_FULL_NOSPEC },
-	    { "cgroup-full:mixed", LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_FULL_MIXED  },
-	    { "cgroup-full:ro",    LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_FULL_RO     },
-	    { "cgroup-full:rw",    LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_FULL_RW     },
+	    { "proc",                    LXC_AUTO_PROC_MASK,   LXC_AUTO_PROC_MIXED                            },
+	    { "proc:mixed",              LXC_AUTO_PROC_MASK,   LXC_AUTO_PROC_MIXED                            },
+	    { "proc:rw",                 LXC_AUTO_PROC_MASK,   LXC_AUTO_PROC_RW                               },
+	    { "sys",                     LXC_AUTO_SYS_MASK,    LXC_AUTO_SYS_MIXED                             },
+	    { "sys:ro",                  LXC_AUTO_SYS_MASK,    LXC_AUTO_SYS_RO                                },
+	    { "sys:mixed",               LXC_AUTO_SYS_MASK,    LXC_AUTO_SYS_MIXED                             },
+	    { "sys:rw",                  LXC_AUTO_SYS_MASK,    LXC_AUTO_SYS_RW                                },
+	    { "cgroup",                  LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_NOSPEC                         },
+	    { "cgroup:mixed",            LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_MIXED                          },
+	    { "cgroup:ro",               LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_RO                             },
+	    { "cgroup:rw",               LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_RW                             },
+	    { "cgroup:force",            LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_NOSPEC | LXC_AUTO_CGROUP_FORCE },
+	    { "cgroup:mixed:force",      LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_MIXED | LXC_AUTO_CGROUP_FORCE  },
+	    { "cgroup:ro:force",         LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_RO | LXC_AUTO_CGROUP_FORCE     },
+	    { "cgroup:rw:force",         LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_RW | LXC_AUTO_CGROUP_FORCE     },
+	    { "cgroup-full",             LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_FULL_NOSPEC                    },
+	    { "cgroup-full:mixed",       LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_FULL_MIXED                     },
+	    { "cgroup-full:ro",          LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_FULL_RO                        },
+	    { "cgroup-full:rw",          LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_FULL_RW                        },
 	    /* For adding anything that is just a single on/off, but has no
-	     * options: keep mask and flag identical and just define the enum
-	     * value as an unused bit so far
+	    *  options: keep mask and flag identical and just define the enum
+	    *  value as an unused bit so far
 	     */
-	    { NULL,                0,                    0                           }
+	    { NULL,                      0,                    0                                              }
 	};
 
 	if (lxc_config_value_empty(value)) {
