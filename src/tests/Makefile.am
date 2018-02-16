@@ -79,7 +79,6 @@ bin_SCRIPTS += \
 	lxc-test-checkpoint-restore \
 	lxc-test-snapdeps \
 	lxc-test-symlink \
-	lxc-test-ubuntu \
 	lxc-test-unpriv \
 	lxc-test-usernic
 endif
@@ -115,7 +114,6 @@ EXTRA_DIST = \
 	lxc-test-no-new-privs \
 	lxc-test-snapdeps \
 	lxc-test-symlink \
-	lxc-test-ubuntu \
 	lxc-test-unpriv \
 	lxc-test-utils.c \
 	may_control.c \
