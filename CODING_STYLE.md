@@ -177,7 +177,7 @@
           }
   ```
 
-#### Functions Not Returning Booleans Must Assigned Return Value Before Performing Checks
+#### Functions Not Returning Booleans Must Assign Return Value Before Performing Checks
 
 - When checking whether a function not returning booleans was successful or not
   the returned value must be assigned before it is checked (`str{n}cmp()`
@@ -199,6 +199,60 @@
   /* check right away */
   if (lxc_string_in_array("ns", (const char **)h->subsystems))
           continue;
+  ```
+
+#### Non-Boolean Functions That Behave Like Boolean Functions Must Explicitly Check Against A Value
+
+- This rule mainly exists for `str{n}cmp()` type functions. In most cases they
+  are used like a boolean function to check whether a string matches or not.
+  But they return an integer. It is perfectly fine to check `str{n}cmp()`
+  functions directly but you must compare explicitly against a value. That is
+  to say, while they are conceptually boolean functions they shouldn't be
+  treated as such since they don't really behave like boolean functions. So
+  `if (!str{n}cmp())` and `if (str{n}cmp())` checks must not be used. Good
+  examples are found in the following functions:
+  ```
+  static int set_config_hooks(const char *key, const char *value,
+                              struct lxc_conf *lxc_conf, void *data)
+
+          char *copy;
+
+          if (lxc_config_value_empty(value))
+                  return lxc_clear_hooks(lxc_conf, key);
+
+          if (strcmp(key + 4, "hook") == 0) {
+                  ERROR("lxc.hook must not have a value");
+                  return -1;
+          }
+
+          copy = strdup(value);
+          if (!copy)
+                  return -1;
+
+          if (strcmp(key + 9, "pre-start") == 0)
+                  return add_hook(lxc_conf, LXCHOOK_PRESTART, copy);
+          else if (strcmp(key + 9, "start-host") == 0)
+                  return add_hook(lxc_conf, LXCHOOK_START_HOST, copy);
+          else if (strcmp(key + 9, "pre-mount") == 0)
+                  return add_hook(lxc_conf, LXCHOOK_PREMOUNT, copy);
+          else if (strcmp(key + 9, "autodev") == 0)
+                  return add_hook(lxc_conf, LXCHOOK_AUTODEV, copy);
+          else if (strcmp(key + 9, "mount") == 0)
+                  return add_hook(lxc_conf, LXCHOOK_MOUNT, copy);
+          else if (strcmp(key + 9, "start") == 0)
+                  return add_hook(lxc_conf, LXCHOOK_START, copy);
+          else if (strcmp(key + 9, "stop") == 0)
+                  return add_hook(lxc_conf, LXCHOOK_STOP, copy);
+          else if (strcmp(key + 9, "post-stop") == 0)
+                  return add_hook(lxc_conf, LXCHOOK_POSTSTOP, copy);
+          else if (strcmp(key + 9, "clone") == 0)
+                  return add_hook(lxc_conf, LXCHOOK_CLONE, copy);
+          else if (strcmp(key + 9, "destroy") == 0)
+                  return add_hook(lxc_conf, LXCHOOK_DESTROY, copy);
+
+          free(copy);
+          return -1;
+  }
   ```
 
 #### Do Not Use C99 Variable Length Arrays (VLA)
