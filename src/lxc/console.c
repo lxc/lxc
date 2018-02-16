@@ -215,16 +215,20 @@ int lxc_console_cb_con(int fd, uint32_t events, void *data,
 	if (r <= 0) {
 		INFO("Console client on fd %d has exited", fd);
 		lxc_mainloop_del_handler(descr, fd);
-		if (fd == console->peer) {
+
+		if (fd == console->master) {
+			console->master = -EBADF;
+		} else if (fd == console->peer) {
 			if (console->tty_state) {
 				lxc_console_signal_fini(console->tty_state);
 				console->tty_state = NULL;
 			}
-			console->peer = -1;
-			close(fd);
-			return 0;
+			console->peer = -EBADF;
+		} else {
+			ERROR("Handler received unexpected file descriptor");
 		}
 		close(fd);
+
 		return LXC_MAINLOOP_CLOSE;
 	}
 
