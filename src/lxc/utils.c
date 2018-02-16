@@ -509,10 +509,14 @@ struct lxc_popen_FILE *lxc_popen(const char *command)
 	fp = malloc(sizeof(*fp));
 	if (!fp)
 		goto on_error;
+	memset(fp, 0, sizeof(*fp));
 
 	fp->child_pid = child_pid;
 	fp->pipe = pipe_fds[0];
 
+	/* From now on, closing fp->f will also close fp->pipe. So only ever
+	 * call fclose(fp->f).
+	 */
 	fp->f = fdopen(pipe_fds[0], "r");
 	if (!fp->f)
 		goto on_error;
@@ -520,14 +524,21 @@ struct lxc_popen_FILE *lxc_popen(const char *command)
 	return fp;
 
 on_error:
-	if (fp)
-		free(fp);
-
-	if (pipe_fds[0] >= 0)
+	/* We can only close pipe_fds[0] if fdopen() didn't succeed or wasn't
+	 * called yet. Otherwise the fd belongs to the file opened by fdopen()
+	 * since it isn't dup()ed.
+	 */
+	if (fp && !fp->f && pipe_fds[0] >= 0)
 		close(pipe_fds[0]);
 
 	if (pipe_fds[1] >= 0)
 		close(pipe_fds[1]);
+
+	if (fp && fp->f)
+		fclose(fp->f);
+
+	if (fp)
+		free(fp);
 
 	return NULL;
 }
@@ -544,7 +555,6 @@ int lxc_pclose(struct lxc_popen_FILE *fp)
 		wait_pid = waitpid(fp->child_pid, &wstatus, 0);
 	} while (wait_pid < 0 && errno == EINTR);
 
-	close(fp->pipe);
 	fclose(fp->f);
 	free(fp);
 
