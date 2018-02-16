@@ -715,7 +715,7 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 	if (flags & LXC_AUTO_CGROUP_MASK) {
 		int cg_flags;
 
-		cg_flags = flags & LXC_AUTO_CGROUP_MASK;
+		cg_flags = flags & (LXC_AUTO_CGROUP_MASK & ~LXC_AUTO_CGROUP_FORCE);
 		/* If the type of cgroup mount was not specified, it depends on the
 		 * container's capabilities as to what makes sense: if we have
 		 * CAP_SYS_ADMIN, the read-only part can be remounted read-write
@@ -737,7 +737,8 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 			else
 				cg_flags = has_sys_admin ? LXC_AUTO_CGROUP_FULL_RW : LXC_AUTO_CGROUP_FULL_MIXED;
 		}
-
+		if (flags & LXC_AUTO_CGROUP_FORCE)
+				cg_flags |= LXC_AUTO_CGROUP_FORCE;
 		if (!cgroup_mount(conf->rootfs.path ? conf->rootfs.mount : "", handler, cg_flags)) {
 			SYSERROR("error mounting /sys/fs/cgroup");
 			return -1;
@@ -3343,7 +3344,7 @@ int lxc_setup(struct lxc_handler *handler)
 	 * before, /sys could not have been mounted
 	 * (is either mounted automatically or via fstab entries)
 	 */
-	if (lxc_mount_auto_mounts(lxc_conf, lxc_conf->auto_mounts & LXC_AUTO_CGROUP_MASK, handler) < 0) {
+	if (lxc_mount_auto_mounts(lxc_conf, lxc_conf->auto_mounts & (LXC_AUTO_CGROUP_MASK), handler) < 0) {
 		ERROR("failed to setup the automatic mounts for '%s'", name);
 		return -1;
 	}
