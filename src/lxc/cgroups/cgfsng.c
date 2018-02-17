@@ -1648,8 +1648,8 @@ struct cgroup_ops *cgfsng_ops_init(void)
 
 static bool cg_unified_create_cgroup(struct hierarchy *h, char *cgname)
 {
-	char **it;
 	size_t i, parts_len;
+	char **it;
 	size_t full_len = 0;
 	char *add_controllers = NULL, *cgroup = NULL;
 	char **parts = NULL;
