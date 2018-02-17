@@ -782,10 +782,9 @@ static bool controller_lists_intersect(char **l1, char **l2)
 	return false;
 }
 
-/*
- * For a null-terminated list of controllers @clist, return true if any of
- * those controllers is already listed the null-terminated list of
- * hierarchies @hlist.  Realistically, if one is present, all must be present.
+/* For a null-terminated list of controllers @clist, return true if any of those
+ * controllers is already listed the null-terminated list of hierarchies @hlist.
+ * Realistically, if one is present, all must be present.
  */
 static bool controller_list_is_dup(struct hierarchy **hlist, char **clist)
 {
@@ -793,11 +792,12 @@ static bool controller_list_is_dup(struct hierarchy **hlist, char **clist)
 
 	if (!hlist)
 		return false;
+
 	for (i = 0; hlist[i]; i++)
 		if (controller_lists_intersect(hlist[i]->controllers, clist))
 			return true;
-	return false;
 
+	return false;
 }
 
 /*
