@@ -205,23 +205,6 @@ static void *must_alloc(size_t sz)
 	return must_realloc(NULL, sz);
 }
 
-/* Return a copy of @entry prepending "name=", i.e.  turn "systemd" into
- * "name=systemd". Do not fail.
- */
-static char *cg_legacy_must_prefix_named(char *entry)
-{
-	size_t len;
-	char *prefixed;
-
-	len = strlen(entry);
-	prefixed = must_alloc(len + 6);
-
-	memcpy(prefixed, "name=", sizeof("name="));
-	memcpy(prefixed + sizeof("name="), entry, len);
-	prefixed[len + 5] = '\0';
-	return prefixed;
-}
-
 /*
  * Given a pointer to a null-terminated array of pointers, realloc to
  * add one entry, and point the new entry to NULL.  Do not fail.  Return
@@ -256,6 +239,23 @@ static bool string_in_list(char **list, const char *entry)
 			return true;
 
 	return false;
+}
+
+/* Return a copy of @entry prepending "name=", i.e.  turn "systemd" into
+ * "name=systemd". Do not fail.
+ */
+static char *cg_legacy_must_prefix_named(char *entry)
+{
+	size_t len;
+	char *prefixed;
+
+	len = strlen(entry);
+	prefixed = must_alloc(len + 6);
+
+	memcpy(prefixed, "name=", sizeof("name="));
+	memcpy(prefixed + sizeof("name="), entry, len);
+	prefixed[len + 5] = '\0';
+	return prefixed;
 }
 
 /*
