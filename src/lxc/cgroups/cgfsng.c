@@ -2793,7 +2793,8 @@ static bool __cg_unified_setup_limits(void *hdata,
 		ret = lxc_write_to_file(fullpath, cg->value, strlen(cg->value), false);
 		free(fullpath);
 		if (ret < 0) {
-			SYSERROR("Failed to set \"%s\" to \"%s\"", cg->subsystem, cg->value);
+			SYSERROR("Failed to set \"%s\" to \"%s\"",
+				 cg->subsystem, cg->value);
 			return false;
 		}
 		TRACE("Set \"%s\" to \"%s\"", cg->subsystem, cg->value);
