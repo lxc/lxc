@@ -206,18 +206,18 @@ static void *must_alloc(size_t sz)
 	return must_realloc(NULL, sz);
 }
 
-/*
- * Given a pointer to a null-terminated array of pointers, realloc to
- * add one entry, and point the new entry to NULL.  Do not fail.  Return
- * the index to the second-to-last entry - that is, the one which is
- * now available for use (keeping the list null-terminated).
+/* Given a pointer to a null-terminated array of pointers, realloc to add one
+ * entry, and point the new entry to NULL. Do not fail. Return the index to the
+ * second-to-last entry - that is, the one which is now available for use
+ * (keeping the list null-terminated).
  */
 static int append_null_to_list(void ***list)
 {
 	int newentry = 0;
 
 	if (*list)
-		for (; (*list)[newentry]; newentry++);
+		for (; (*list)[newentry]; newentry++)
+			;
 
 	*list = must_realloc(*list, (newentry + 2) * sizeof(void **));
 	(*list)[newentry + 1] = NULL;
