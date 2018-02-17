@@ -510,18 +510,17 @@ static ssize_t get_max_cpus(char *cpulist)
 #define __ISOL_CPUS "/sys/devices/system/cpu/isolated"
 static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 {
-	char *lastslash, *fpath, oldv;
 	int ret;
 	ssize_t i;
-
-	ssize_t maxposs = 0, maxisol = 0;
-	char *cpulist = NULL, *posscpus = NULL, *isolcpus = NULL;
-	uint32_t *possmask = NULL, *isolmask = NULL;
+	char *lastslash, *fpath, oldv;
+	ssize_t maxisol = 0, maxposs = 0;
+	char *cpulist = NULL, *isolcpus = NULL, *posscpus = NULL;
+	uint32_t *isolmask = NULL, *possmask = NULL;
 	bool bret = false, flipped_bit = false;
 
 	lastslash = strrchr(path, '/');
-	if (!lastslash) { /* bug...  this shouldn't be possible */
-		ERROR("Invalid path: %s.", path);
+	if (!lastslash) {
+		ERROR("Failed to detect \"/\" in \"%s\"", path);
 		return bret;
 	}
 	oldv = *lastslash;
@@ -529,7 +528,7 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 	fpath = must_make_path(path, "cpuset.cpus", NULL);
 	posscpus = read_file(fpath);
 	if (!posscpus) {
-		SYSERROR("Could not read file: %s.\n", fpath);
+		SYSERROR("Failed to read file \"%s\"", fpath);
 		goto on_error;
 	}
 
@@ -540,14 +539,14 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 
 	if (!file_exists(__ISOL_CPUS)) {
 		/* This system doesn't expose isolated cpus. */
-		DEBUG("Path: "__ISOL_CPUS" to read isolated cpus from does not exist.\n");
+		DEBUG("The path \""__ISOL_CPUS"\" to read isolated cpus from does not exist");
 		cpulist = posscpus;
 		/* No isolated cpus but we weren't already initialized by
 		 * someone. We should simply copy the parents cpuset.cpus
 		 * values.
 		 */
 		if (!am_initialized) {
-			DEBUG("Copying cpuset of parent cgroup.");
+			DEBUG("Copying cpu settings of parent cgroup");
 			goto copy_parent;
 		}
 		/* No isolated cpus but we were already initialized by someone.
@@ -558,18 +557,18 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 
 	isolcpus = read_file(__ISOL_CPUS);
 	if (!isolcpus) {
-		SYSERROR("Could not read file "__ISOL_CPUS);
+		SYSERROR("Failed to read file \""__ISOL_CPUS"\"");
 		goto on_error;
 	}
 	if (!isdigit(isolcpus[0])) {
-		DEBUG("No isolated cpus detected.");
+		TRACE("No isolated cpus detected");
 		cpulist = posscpus;
 		/* No isolated cpus but we weren't already initialized by
 		 * someone. We should simply copy the parents cpuset.cpus
 		 * values.
 		 */
 		if (!am_initialized) {
-			DEBUG("Copying cpuset of parent cgroup.");
+			DEBUG("Copying cpu settings of parent cgroup");
 			goto copy_parent;
 		}
 		/* No isolated cpus but we were already initialized by someone.
@@ -589,32 +588,33 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 
 	possmask = lxc_cpumask(posscpus, maxposs);
 	if (!possmask) {
-		ERROR("Could not create cpumask for all possible cpus.\n");
+		ERROR("Failed to create cpumask for possible cpus");
 		goto on_error;
 	}
 
 	isolmask = lxc_cpumask(isolcpus, maxposs);
 	if (!isolmask) {
-		ERROR("Could not create cpumask for all isolated cpus.\n");
+		ERROR("Failed to create cpumask for isolated cpus");
 		goto on_error;
 	}
 
 	for (i = 0; i <= maxposs; i++) {
-		if (is_set(i, isolmask) && is_set(i, possmask)) {
-			flipped_bit = true;
-			clear_bit(i, possmask);
-		}
+		if (!is_set(i, isolmask) || !is_set(i, possmask))
+			continue;
+
+		flipped_bit = true;
+		clear_bit(i, possmask);
 	}
 
 	if (!flipped_bit) {
-		DEBUG("No isolated cpus present in cpuset.");
+		DEBUG("No isolated cpus present in cpuset");
 		goto on_success;
 	}
-	DEBUG("Removed isolated cpus from cpuset.");
+	DEBUG("Removed isolated cpus from cpuset");
 
 	cpulist = lxc_cpumask_to_cpulist(possmask, maxposs);
 	if (!cpulist) {
-		ERROR("Could not create cpu list.\n");
+		ERROR("Failed to create cpu list");
 		goto on_error;
 	}
 
@@ -624,7 +624,7 @@ copy_parent:
 	fpath = must_make_path(path, "cpuset.cpus", NULL);
 	ret = lxc_write_to_file(fpath, cpulist, strlen(cpulist), false);
 	if (ret < 0) {
-		SYSERROR("Could not write cpu list to: %s.\n", fpath);
+		SYSERROR("Failed to write cpu list to \"%s\"", fpath);
 		goto on_error;
 	}
 
