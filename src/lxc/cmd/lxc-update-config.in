@@ -14,6 +14,12 @@ EOF
     return 0
 }
 
+# Check whether any arguments are provided.
+if [ $# -eq 0 ]; then
+    usage "${0}"
+    exit 0
+fi
+
 OPTIONS=$(getopt -o c:h --long config:,help -- "${@}")
 eval set -- "${OPTIONS}"
 
