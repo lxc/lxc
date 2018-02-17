@@ -648,13 +648,14 @@ on_error:
 /* Copy contents of parent(@path)/@file to @path/@file */
 static bool copy_parent_file(char *path, char *file)
 {
-	char *lastslash, *value = NULL, *fpath, oldv;
-	int len = 0;
 	int ret;
+	char *fpath, *lastslash, oldv;
+	int len = 0;
+	char *value = NULL;
 
 	lastslash = strrchr(path, '/');
-	if (!lastslash) { /* bug...  this shouldn't be possible */
-		ERROR("cgfsng:copy_parent_file: bad path %s", path);
+	if (!lastslash) {
+		ERROR("Failed to detect \"/\" in \"%s\"", path);
 		return false;
 	}
 	oldv = *lastslash;
@@ -662,22 +663,25 @@ static bool copy_parent_file(char *path, char *file)
 	fpath = must_make_path(path, file, NULL);
 	len = lxc_read_from_file(fpath, NULL, 0);
 	if (len <= 0)
-		goto bad;
+		goto on_error;
+
 	value = must_alloc(len + 1);
-	if (lxc_read_from_file(fpath, value, len) != len)
-		goto bad;
+	ret = lxc_read_from_file(fpath, value, len);
+	if (ret != len)
+		goto on_error;
 	free(fpath);
+
 	*lastslash = oldv;
 	fpath = must_make_path(path, file, NULL);
 	ret = lxc_write_to_file(fpath, value, len, false);
 	if (ret < 0)
-		SYSERROR("Unable to write %s to %s", value, fpath);
+		SYSERROR("Failed to write \"%s\" to file \"%s\"", value, fpath);
 	free(fpath);
 	free(value);
 	return ret >= 0;
 
-bad:
-	SYSERROR("Error reading '%s'", fpath);
+on_error:
+	SYSERROR("Failed to read file \"%s\"", fpath);
 	free(fpath);
 	free(value);
 	return false;
