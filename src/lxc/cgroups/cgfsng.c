@@ -1003,10 +1003,8 @@ static char *copy_to_eol(char *p)
 	return sret;
 }
 
-/*
- * cgline: pointer to character after the first ':' in a line in a
- * \n-terminated /proc/self/cgroup file. Check whether * controller c is
- * present.
+/* cgline: pointer to character after the first ':' in a line in a \n-terminated
+ * /proc/self/cgroup file. Check whether controller c is present.
  */
 static bool controller_in_clist(char *cgline, char *c)
 {
