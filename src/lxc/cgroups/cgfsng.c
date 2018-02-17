@@ -1964,7 +1964,7 @@ static bool cgfsng_chown(void *hdata, struct lxc_conf *conf)
 
 	if (userns_exec_1(conf, chown_cgroup_wrapper, &wrap,
 			  "chown_cgroup_wrapper") < 0) {
-		ERROR("Error requesting cgroup chown in new namespace");
+		ERROR("Error requesting cgroup chown in new user namespace");
 		return false;
 	}
 
