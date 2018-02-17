@@ -678,15 +678,16 @@ on_error:
 	return false;
 }
 
-/*
- * Initialize the cpuset hierarchy in first directory of @gname and
- * set cgroup.clone_children so that children inherit settings.
- * Since the h->base_path is populated by init or ourselves, we know
- * it is already initialized.
+/* Initialize the cpuset hierarchy in first directory of @gname and set
+ * cgroup.clone_children so that children inherit settings. Since the
+ * h->base_path is populated by init or ourselves, we know it is already
+ * initialized.
  */
 static bool cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 {
-	char *cgpath, *clonechildrenpath, v, *slash;
+	int ret;
+	char v;
+	char *cgpath, *clonechildrenpath, *slash;
 
 	if (!string_in_list(h->controllers, "cpuset"))
 		return true;
@@ -700,21 +701,28 @@ static bool cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 	cgpath = must_make_path(h->mountpoint, h->base_cgroup, cgname, NULL);
 	if (slash)
 		*slash = '/';
-	if (mkdir(cgpath, 0755) < 0 && errno != EEXIST) {
-		SYSERROR("Failed to create '%s'", cgpath);
-		free(cgpath);
-		return false;
+
+	ret = mkdir(cgpath, 0755);
+	if (ret < 0) {
+		if (errno != EEXIST) {
+			SYSERROR("Failed to create directory \"%s\"", cgpath);
+			free(cgpath);
+			return false;
+		}
 	}
 
-	clonechildrenpath = must_make_path(cgpath, "cgroup.clone_children", NULL);
+	clonechildrenpath =
+	    must_make_path(cgpath, "cgroup.clone_children", NULL);
 	/* unified hierarchy doesn't have clone_children */
 	if (!file_exists(clonechildrenpath)) {
 		free(clonechildrenpath);
 		free(cgpath);
 		return true;
 	}
-	if (lxc_read_from_file(clonechildrenpath, &v, 1) < 0) {
-		SYSERROR("Failed to read '%s'", clonechildrenpath);
+
+	ret = lxc_read_from_file(clonechildrenpath, &v, 1);
+	if (ret < 0) {
+		SYSERROR("Failed to read file \"%s\"", clonechildrenpath);
 		free(clonechildrenpath);
 		free(cgpath);
 		return false;
@@ -722,14 +730,15 @@ static bool cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 
 	/* Make sure any isolated cpus are removed from cpuset.cpus. */
 	if (!cg_legacy_filter_and_set_cpus(cgpath, v == '1')) {
-		SYSERROR("Failed to remove isolated cpus.");
+		SYSERROR("Failed to remove isolated cpus");
 		free(clonechildrenpath);
 		free(cgpath);
 		return false;
 	}
 
-	if (v == '1') {  /* already set for us by someone else */
-		DEBUG("\"cgroup.clone_children\" was already set to \"1\".");
+	/* Already set for us by someone else. */
+	if (v == '1') {
+		DEBUG("\"cgroup.clone_children\" was already set to \"1\"");
 		free(clonechildrenpath);
 		free(cgpath);
 		return true;
@@ -737,16 +746,17 @@ static bool cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 
 	/* copy parent's settings */
 	if (!copy_parent_file(cgpath, "cpuset.mems")) {
-		SYSERROR("Failed to copy \"cpuset.mems\" settings.");
+		SYSERROR("Failed to copy \"cpuset.mems\" settings");
 		free(cgpath);
 		free(clonechildrenpath);
 		return false;
 	}
 	free(cgpath);
 
-	if (lxc_write_to_file(clonechildrenpath, "1", 1, false) < 0) {
+	ret = lxc_write_to_file(clonechildrenpath, "1", 1, false);
+	if (ret < 0) {
 		/* Set clone_children so children inherit our settings */
-		SYSERROR("Failed to write 1 to %s", clonechildrenpath);
+		SYSERROR("Failed to write 1 to \"%s\"", clonechildrenpath);
 		free(clonechildrenpath);
 		return false;
 	}
