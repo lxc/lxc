@@ -117,8 +117,8 @@ struct hierarchy {
  * @name
  * - The name of the container.
  *
- * @cgroup_layout:
- * - What cgroup layout the container is running with
+ * @cgroup_layout
+ * - What cgroup layout the container is running with.
  *   - CGROUP_LAYOUT_UNKNOWN
  *     The cgroup layout could not be determined. This should be treated as an
  *     error condition.
@@ -142,30 +142,49 @@ struct cgfsng_handler_data {
 	cgroup_layout_t cgroup_layout;
 };
 
-/*
- * @hierarchies - a NULL-terminated array of struct hierarchy, one per
- *                legacy hierarchy. No duplicates. First sufficient, writeable
- *                mounted hierarchy wins
+/* @hierarchies
+ * - A NULL-terminated array of struct hierarchy, one per legacy hierarchy. No
+ *   duplicates. First sufficient, writeable mounted hierarchy wins.
  */
 struct hierarchy **hierarchies;
-struct hierarchy *unified;
-cgroup_layout_t cgroup_layout;
-
-/*
- * @cgroup_use - a copy of the lxc.cgroup.use
+/* Pointer to the unified hierarchy in the null terminated list @hierarchies.
+ * This is merely a convenience for hybrid cgroup layouts to easily retrieve the
+ * unified hierarchy without iterating throught @hierarchies.
  */
+struct hierarchy *unified;
+/*
+ * @cgroup_layout
+ * - What cgroup layout the container is running with.
+ *   - CGROUP_LAYOUT_UNKNOWN
+ *     The cgroup layout could not be determined. This should be treated as an
+ *     error condition.
+ *   - CGROUP_LAYOUT_LEGACY
+ *     The container is running with all controllers mounted into legacy cgroup
+ *     hierarchies.
+ *   - CGROUP_LAYOUT_HYBRID
+ *     The container is running with at least one controller mounted into a
+ *     legacy cgroup hierarchy and a mountpoint for the unified hierarchy.  The
+ *     unified hierarchy can be empty (no controllers enabled) or non-empty
+ *     (controllers enabled).
+ *   - CGROUP_LAYOUT_UNIFIED
+ *     The container is running on a pure unified cgroup hierarchy. The unified
+ *     hierarchy can be empty (no controllers enabled) or non-empty (controllers
+ *     enabled).
+ */
+cgroup_layout_t cgroup_layout;
+/* What controllers is the container supposed to use. */
 char *cgroup_use;
 
-/*
- * @lxc_cgfsng_debug - whether to print debug info to stdout for the cgfsng
- * driver
+/* @lxc_cgfsng_debug
+ * - Whether to print debug info to stdout for the cgfsng driver.
  */
 static bool lxc_cgfsng_debug;
 
-#define CGFSNG_DEBUG(format, ...) do {		\
-	if (lxc_cgfsng_debug)			\
-		printf("cgfsng: " format, ##__VA_ARGS__);	\
-} while(0)
+#define CGFSNG_DEBUG(format, ...)                                              \
+	do {                                                                   \
+		if (lxc_cgfsng_debug)                                          \
+			printf("cgfsng: " format, ##__VA_ARGS__);              \
+	} while (0)
 
 static void free_string_list(char **clist)
 {
