@@ -496,12 +496,8 @@ static ssize_t get_max_cpus(char *cpulist)
 		c2 = c1;
 	else if (c1 < c2)
 		c1 = c2;
-	else if (!c1 && c2) /* The reverse case is obvs. not needed. */
+	else if (!c1 && c2)
 		c1 = c2;
-
-	/* If the above logic is correct, c1 should always hold a valid string
-	 * here.
-	 */
 
 	errno = 0;
 	cpus = strtoul(c1, NULL, 0);
