@@ -2473,7 +2473,7 @@ static bool cgfsng_attach(const char *name, const char *lxcpath, pid_t pid)
 	char pidstr[25];
 
 	len = snprintf(pidstr, 25, "%d", pid);
-	if (len < 0 || len > 25)
+	if (len < 0 || len >= 25)
 		return false;
 
 	for (i = 0; hierarchies[i]; i++) {
