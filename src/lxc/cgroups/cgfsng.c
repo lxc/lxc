@@ -2296,7 +2296,7 @@ static int cgfsng_nrtasks(void *hdata)
 	return count;
 }
 
-/* Only root needs to escape to the cgroup of its init */
+/* Only root needs to escape to the cgroup of its init. */
 static bool cgfsng_escape()
 {
 	int i;
@@ -2305,11 +2305,15 @@ static bool cgfsng_escape()
 		return true;
 
 	for (i = 0; hierarchies[i]; i++) {
-		char *fullpath = must_make_path(hierarchies[i]->mountpoint,
-						hierarchies[i]->base_cgroup,
-						"cgroup.procs", NULL);
-		if (lxc_write_to_file(fullpath, "0", 2, false) != 0) {
-			SYSERROR("Failed to escape to %s", fullpath);
+		int ret;
+		char *fullpath;
+
+		fullpath = must_make_path(hierarchies[i]->mountpoint,
+					  hierarchies[i]->base_cgroup,
+					  "cgroup.procs", NULL);
+		ret = lxc_write_to_file(fullpath, "0", 2, false);
+		if (ret != 0) {
+			SYSERROR("Failed to escape to cgroup \"%s\"", fullpath);
 			free(fullpath);
 			return false;
 		}
