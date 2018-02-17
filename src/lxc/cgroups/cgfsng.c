@@ -193,13 +193,15 @@ static bool lxc_cgfsng_debug;
 
 static void free_string_list(char **clist)
 {
-	if (clist) {
-		int i;
+	int i;
 
-		for (i = 0; clist[i]; i++)
-			free(clist[i]);
-		free(clist);
-	}
+	if (!clist)
+		return;
+
+	for (i = 0; clist[i]; i++)
+		free(clist[i]);
+
+	free(clist);
 }
 
 /* Allocate a pointer, do not fail */
