@@ -1844,18 +1844,22 @@ out_free:
 
 static bool cgfsng_enter(void *hdata, pid_t pid)
 {
-	char pidstr[25];
 	int i, len;
+	char pidstr[25];
 
 	len = snprintf(pidstr, 25, "%d", pid);
-	if (len < 0 || len > 25)
+	if (len < 0 || len >= 25)
 		return false;
 
 	for (i = 0; hierarchies[i]; i++) {
-		char *fullpath = must_make_path(hierarchies[i]->fullcgpath,
-						"cgroup.procs", NULL);
-		if (lxc_write_to_file(fullpath, pidstr, len, false) != 0) {
-			SYSERROR("Failed to enter %s", fullpath);
+		int ret;
+		char *fullpath;
+
+		fullpath = must_make_path(hierarchies[i]->fullcgpath,
+					  "cgroup.procs", NULL);
+		ret = lxc_write_to_file(fullpath, pidstr, len, false);
+		if (ret != 0) {
+			SYSERROR("Failed to enter cgroup \"%s\"", fullpath);
 			free(fullpath);
 			return false;
 		}
