@@ -1993,42 +1993,51 @@ static bool cgfsng_chown(void *hdata, struct lxc_conf *conf)
 	return true;
 }
 
-/*
- * We've safe-mounted a tmpfs as parent, so we don't need to protect against
- * symlinks any more - just use mount
+/* We've safe-mounted a tmpfs as parent, so we don't need to protect against
+ * symlinks any more - just use mount.
+ *
+ * mount cgroup-full if requested
  */
-
-/* mount cgroup-full if requested */
 static int mount_cgroup_full(int type, struct hierarchy *h, char *dest,
 			     char *container_cgroup)
 {
+	int ret;
+	char *rwpath, *source;
+
 	if (type < LXC_AUTO_CGROUP_FULL_RO || type > LXC_AUTO_CGROUP_FULL_MIXED)
 		return 0;
-	if (mount(h->mountpoint, dest, "cgroup", MS_BIND, NULL) < 0) {
-		SYSERROR("Error bind-mounting %s cgroup onto %s", h->mountpoint,
-			 dest);
+
+	ret = mount(h->mountpoint, dest, "cgroup", MS_BIND, NULL);
+	if (ret < 0) {
+		SYSERROR("Failed to bind mount cgroup \"%s\" onto \"%s\"",
+			 h->mountpoint, dest);
 		return -1;
 	}
+
 	if (type != LXC_AUTO_CGROUP_FULL_RW) {
 		unsigned long flags = MS_BIND | MS_NOSUID | MS_NOEXEC | MS_NODEV |
 				      MS_REMOUNT | MS_RDONLY;
-		if (mount(NULL, dest, "cgroup", flags, NULL) < 0) {
-			SYSERROR("Error remounting %s readonly", dest);
+
+		ret = mount(NULL, dest, "cgroup", flags, NULL);
+		if (ret < 0) {
+			SYSERROR("Failed to remount cgroup \"%s\" read-only", dest);
 			return -1;
 		}
 	}
 
-	INFO("Bind mounted %s onto %s", h->mountpoint, dest);
+	INFO("Bind mounted \"%s\" onto \"%s\"", h->mountpoint, dest);
 	if (type != LXC_AUTO_CGROUP_FULL_MIXED)
 		return 0;
 
 	/* mount just the container path rw */
-	char *source = must_make_path(h->mountpoint, h->base_cgroup, container_cgroup, NULL);
-	char *rwpath = must_make_path(dest, h->base_cgroup, container_cgroup, NULL);
-	if (mount(source, rwpath, "cgroup", MS_BIND, NULL) < 0)
-		WARN("Failed to mount %s read-write: %s", rwpath,
-		     strerror(errno));
-	INFO("Made %s read-write", rwpath);
+	source = must_make_path(h->mountpoint, h->base_cgroup, container_cgroup, NULL);
+	rwpath = must_make_path(dest, h->base_cgroup, container_cgroup, NULL);
+	ret = mount(source, rwpath, "cgroup", MS_BIND, NULL);
+	if (ret < 0)
+		WARN("%s - Failed to mount cgroup \"%s\" read-write",
+		     strerror(errno), rwpath);
+
+	TRACE("Mounted cgroup \"%s\" read-write", rwpath);
 	free(rwpath);
 	free(source);
 	return 0;
