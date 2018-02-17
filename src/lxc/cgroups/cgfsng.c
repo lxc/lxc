@@ -204,25 +204,27 @@ static void free_string_list(char **clist)
 	free(clist);
 }
 
-/* Allocate a pointer, do not fail */
+/* Allocate a pointer, do not fail. */
 static void *must_alloc(size_t sz)
 {
 	return must_realloc(NULL, sz);
 }
 
-/*
- * This is a special case - return a copy of @entry
- * prepending 'name='.  I.e. turn systemd into name=systemd.
- * Do not fail.
+/* Return a copy of @entry prepending "name=", i.e.  turn "systemd" into
+ * "name=systemd". Do not fail.
  */
-static char *must_prefix_named(char *entry)
+static char *cg_legacy_must_prefix_named(char *entry)
 {
-	char *ret;
-	size_t len = strlen(entry);
+	size_t len;
+	char *prefixed;
 
-	ret = must_alloc(len + 6);
-	snprintf(ret, len + 6, "name=%s", entry);
-	return ret;
+	len = strlen(entry);
+	prefixed = must_alloc(len + 6);
+
+	memcpy(prefixed, "name=", sizeof("name="));
+	memcpy(prefixed + sizeof("name="), entry, len);
+	prefixed[len + 5] = '\0';
+	return prefixed;
 }
 
 /*
@@ -292,7 +294,7 @@ static void must_append_controller(char **klist, char **nlist, char ***clist, ch
 	else if (string_in_list(klist, entry))
 		copy = must_copy_string(entry);
 	else
-		copy = must_prefix_named(entry);
+		copy = cg_legacy_must_prefix_named(entry);
 
 	(*clist)[newentry] = copy;
 }
