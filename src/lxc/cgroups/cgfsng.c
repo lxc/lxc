@@ -62,15 +62,34 @@ lxc_log_define(lxc_cgfsng, lxc);
 
 static struct cgroup_ops cgfsng_ops;
 
-/*
- * A descriptor for a mounted hierarchy
- * @controllers: either NULL, or a null-terminated list of all
- *   the co-mounted controllers
- * @mountpoint: the mountpoint we will use.  It will be either
- *   /sys/fs/cgroup/controller or /sys/fs/cgroup/controllerlist
- * @base_cgroup: the cgroup under which the container cgroup path
-     is created.  This will be either the caller's cgroup (if not
-     root), or init's cgroup (if root).
+/* A descriptor for a mounted hierarchy
+ * @controllers:
+ * - legacy hierarchy:
+ *   Either NULL, or a null-terminated list of all the co-mounted controllers.
+ * - unified hierarchy:
+ *   Either NULL, or a null-terminated list of all enabled controllers.
+ * @mountpoint:
+ * - The mountpoint we will use.
+ * - legacy hierarchy:
+ *   It will be either /sys/fs/cgroup/controller or
+ *   /sys/fs/cgroup/controllerlist.
+ * - unified hierarchy:
+ *   It will either be /sys/fs/cgroup or /sys/fs/cgroup/<mountpoint-name>
+ *   depending on whether this is a hybrid cgroup layout (mix of legacy and
+ *   unified hierarchies) or a pure unified cgroup layout.
+ * @base_cgroup:
+ * - The cgroup under which the container cgroup path
+ *   is created. This will be either the caller's cgroup (if not root), or
+ *   init's cgroup (if root).
+ * @fullcgpath:
+ * - The full path to the containers cgroup.
+ * @version:
+ * - legacy hierarchy:
+ *   If the hierarchy is a legacy hierarchy this will be set to
+ *   CGROUP_SUPER_MAGIC.
+ * - unified hierarchy:
+ *   If the hierarchy is a legacy hierarchy this will be set to
+ *   CGROUP2_SUPER_MAGIC.
  */
 struct hierarchy {
 	char **controllers;
