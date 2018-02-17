@@ -62,31 +62,36 @@ lxc_log_define(lxc_cgfsng, lxc);
 static struct cgroup_ops cgfsng_ops;
 
 /* A descriptor for a mounted hierarchy
- * @controllers:
- * - legacy hierarchy:
+ *
+ * @controllers
+ * - legacy hierarchy
  *   Either NULL, or a null-terminated list of all the co-mounted controllers.
- * - unified hierarchy:
+ * - unified hierarchy
  *   Either NULL, or a null-terminated list of all enabled controllers.
- * @mountpoint:
+ *
+ * @mountpoint
  * - The mountpoint we will use.
- * - legacy hierarchy:
+ * - legacy hierarchy
  *   It will be either /sys/fs/cgroup/controller or
  *   /sys/fs/cgroup/controllerlist.
- * - unified hierarchy:
+ * - unified hierarchy
  *   It will either be /sys/fs/cgroup or /sys/fs/cgroup/<mountpoint-name>
  *   depending on whether this is a hybrid cgroup layout (mix of legacy and
  *   unified hierarchies) or a pure unified cgroup layout.
- * @base_cgroup:
+ *
+ * @base_cgroup
  * - The cgroup under which the container cgroup path
  *   is created. This will be either the caller's cgroup (if not root), or
  *   init's cgroup (if root).
- * @fullcgpath:
+ *
+ * @fullcgpath
  * - The full path to the containers cgroup.
- * @version:
- * - legacy hierarchy:
+ *
+ * @version
+ * - legacy hierarchy
  *   If the hierarchy is a legacy hierarchy this will be set to
  *   CGROUP_SUPER_MAGIC.
- * - unified hierarchy:
+ * - unified hierarchy
  *   If the hierarchy is a legacy hierarchy this will be set to
  *   CGROUP2_SUPER_MAGIC.
  */
@@ -98,16 +103,40 @@ struct hierarchy {
 	int version;
 };
 
-/*
- * The cgroup data which is attached to the lxc_handler.
- * @cgroup_pattern   : A copy of the lxc.cgroup.pattern
- * @container_cgroup : If not null, the cgroup which was created for the
- *                     container. For each hierarchy, it is created under the
- *                     @hierarchy->base_cgroup directory. Relative to the
- *                     base_cgroup it is the same for all hierarchies.
- * @name             : The name of the container.
- * @cgroup_meta      : A copy of the container's cgroup information. This
- *                     overrides @cgroup_pattern.
+/* The cgroup data which is attached to the lxc_handler.
+ *
+ * @cgroup_pattern
+ * - A copy of lxc.cgroup.pattern.
+ *
+ * @container_cgroup
+ * - If not null, the cgroup which was created for the container. For each
+ *   hierarchy, it is created under the @hierarchy->base_cgroup directory.
+ *   Relative to the base_cgroup it is the same for all hierarchies.
+ *
+ * @name
+ * - The name of the container.
+ *
+ * @cgroup_meta
+ * - A copy of the container's cgroup information. This overrides
+ *   @cgroup_pattern.
+ *
+ * @cgroup_layout:
+ * - What cgroup layout the container is running with
+ *   - CGROUP_LAYOUT_UNKNOWN
+ *     The cgroup layout could not be determined. This should be treated as an
+ *     error condition.
+ *   - CGROUP_LAYOUT_LEGACY
+ *     The container is running with all controllers mounted into legacy cgroup
+ *     hierarchies.
+ *   - CGROUP_LAYOUT_HYBRID
+ *     The container is running with at least one controller mounted into a
+ *     legacy cgroup hierarchy and a mountpoint for the unified hierarchy.  The
+ *     unified hierarchy can be empty (no controllers enabled) or non-empty
+ *     (controllers enabled).
+ *   - CGROUP_LAYOUT_UNIFIED
+ *     The container is running on a pure unified cgroup hierarchy. The unified
+ *     hierarchy can be empty (no controllers enabled) or non-empty (controllers
+ *     enabled).
  */
 struct cgfsng_handler_data {
 	char *cgroup_pattern;
