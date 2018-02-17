@@ -2281,10 +2281,11 @@ static int recursive_count_nrtasks(char *dirname)
 	return count;
 }
 
-static int cgfsng_nrtasks(void *hdata) {
-	struct cgfsng_handler_data *d = hdata;
-	char *path;
+static int cgfsng_nrtasks(void *hdata)
+{
 	int count;
+	char *path;
+	struct cgfsng_handler_data *d = hdata;
 
 	if (!d || !d->container_cgroup || !hierarchies)
 		return -1;
