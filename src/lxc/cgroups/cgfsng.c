@@ -996,10 +996,7 @@ static char *cg_hybrid_get_mountpoint(char *line)
 	return sret;
 }
 
-/*
- * Given a multi-line string, return a null-terminated copy of the
- * current line.
- */
+/* Given a multi-line string, return a null-terminated copy of the current line. */
 static char *copy_to_eol(char *p)
 {
 	char *p2 = strchr(p, '\n'), *sret;
