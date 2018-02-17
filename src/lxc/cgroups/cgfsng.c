@@ -1534,7 +1534,7 @@ static int recursive_destroy(char *dirname)
 		ret = lstat(pathname, &mystat);
 		if (ret < 0) {
 			if (!r)
-				WARN("Failed to stat %s", pathname);
+				WARN("Failed to stat \"%s\"", pathname);
 			r = -1;
 			goto next;
 		}
@@ -1552,16 +1552,14 @@ static int recursive_destroy(char *dirname)
 	ret = rmdir(dirname);
 	if (ret < 0) {
 		if (!r)
-			WARN("%s - Failed to delete \"%s\"", strerror(errno),
-			     dirname);
+			WARN("%s - Failed to delete \"%s\"", strerror(errno), dirname);
 		r = -1;
 	}
 
 	ret = closedir(dir);
 	if (ret < 0) {
 		if (!r)
-			WARN("%s - Failed to delete \"%s\"", strerror(errno),
-			     dirname);
+			WARN("%s - Failed to delete \"%s\"", strerror(errno), dirname);
 		r = -1;
 	}
 
