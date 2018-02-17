@@ -392,27 +392,33 @@ static bool is_set(unsigned bit, uint32_t *bitarr)
  *
  *	0,2-3
  *
- *  into bit array
+ * into bit array
  *
  *	1 0 1 1
  */
 static uint32_t *lxc_cpumask(char *buf, size_t nbits)
 {
 	char *token;
+	size_t arrlen;
+	uint32_t *bitarr;
 	char *saveptr = NULL;
-	size_t arrlen = BITS_TO_LONGS(nbits);
-	uint32_t *bitarr = calloc(arrlen, sizeof(uint32_t));
+
+	arrlen = BITS_TO_LONGS(nbits);
+	bitarr = calloc(arrlen, sizeof(uint32_t));
 	if (!bitarr)
 		return NULL;
 
 	for (; (token = strtok_r(buf, ",", &saveptr)); buf = NULL) {
 		errno = 0;
-		unsigned start = strtoul(token, NULL, 0);
-		unsigned end = start;
+		unsigned end, start;
+		char *range;
 
-		char *range = strchr(token, '-');
+		start = strtoul(token, NULL, 0);
+		end = start;
+		range = strchr(token, '-');
 		if (range)
 			end = strtoul(range + 1, NULL, 0);
+
 		if (!(start <= end)) {
 			free(bitarr);
 			return NULL;
