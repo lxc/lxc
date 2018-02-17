@@ -2604,41 +2604,43 @@ static int cgfsng_set(const char *filename, const char *value, const char *name,
 	return ret;
 }
 
-/*
- * take devices cgroup line
+/* take devices cgroup line
  *    /dev/foo rwx
  * and convert it to a valid
  *    type major:minor mode
- * line.  Return <0 on error.  Dest is a preallocated buffer
- * long enough to hold the output.
+ * line. Return <0 on error. Dest is a preallocated buffer long enough to hold
+ * the output.
  */
 static int convert_devpath(const char *invalue, char *dest)
 {
 	int n_parts;
 	char *p, *path, type;
-	struct stat sb;
 	unsigned long minor, major;
+	struct stat sb;
 	int ret = -EINVAL;
 	char *mode = NULL;
 
 	path = must_copy_string(invalue);
 
-	/*
-	 * read path followed by mode;  ignore any trailing text.
-	 * A '    # comment' would be legal.  Technically other text
-	 * is not legal, we could check for that if we cared to
+	/* Read path followed by mode. Ignore any trailing text.
+	 * A '    # comment' would be legal. Technically other text is not
+	 * legal, we could check for that if we cared to.
 	 */
 	for (n_parts = 1, p = path; *p && n_parts < 3; p++) {
 		if (*p != ' ')
 			continue;
 		*p = '\0';
+
 		if (n_parts != 1)
 			break;
 		p++;
 		n_parts++;
+
 		while (*p == ' ')
 			p++;
+
 		mode = p;
+
 		if (*p == '\0')
 			goto out;
 	}
@@ -2659,7 +2661,7 @@ static int convert_devpath(const char *invalue, char *dest)
 		type = 'c';
 		break;
 	default:
-		ERROR("Unsupported device type %i for %s", m, path);
+		ERROR("Unsupported device type %i for \"%s\"", m, path);
 		ret = -EINVAL;
 		goto out;
 	}
