@@ -1734,13 +1734,13 @@ static bool create_path_for_hierarchy(struct hierarchy *h, char *cgname)
 	int ret;
 
 	h->fullcgpath = must_make_path(h->mountpoint, h->base_cgroup, cgname, NULL);
-	if (dir_exists(h->fullcgpath)) { /* it must not already exist */
-		ERROR("cgroup \"%s\" already existed", h->fullcgpath);
+	if (dir_exists(h->fullcgpath)) {
+		ERROR("The cgroup \"%s\" already existed", h->fullcgpath);
 		return false;
 	}
 
 	if (!cg_legacy_handle_cpuset_hierarchy(h, cgname)) {
-		ERROR("Failed to handle cgroupfs v1 cpuset controller");
+		ERROR("Failed to handle legacy cpuset controller");
 		return false;
 	}
 
