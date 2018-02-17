@@ -1755,8 +1755,12 @@ static bool create_path_for_hierarchy(struct hierarchy *h, char *cgname)
 
 static void remove_path_for_hierarchy(struct hierarchy *h, char *cgname)
 {
-	if (rmdir(h->fullcgpath) < 0)
-		SYSERROR("Failed to clean up cgroup %s from failed creation attempt", h->fullcgpath);
+	int ret;
+
+	ret = rmdir(h->fullcgpath);
+	if (ret < 0)
+		SYSERROR("Failed to rmdir(\"%s\") from failed creation attempt", h->fullcgpath);
+
 	free(h->fullcgpath);
 	h->fullcgpath = NULL;
 }
