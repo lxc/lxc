@@ -2288,7 +2288,7 @@ static int recursive_count_nrtasks(char *dirname)
 			goto next;
 
 		count += recursive_count_nrtasks(path);
-next:
+	next:
 		free(path);
 	}
 
@@ -2298,7 +2298,7 @@ next:
 		count += ret;
 	free(path);
 
-	(void) closedir(dir);
+	(void)closedir(dir);
 
 	return count;
 }
