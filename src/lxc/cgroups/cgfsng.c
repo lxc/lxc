@@ -1333,19 +1333,20 @@ static bool cg_hybrid_init(void)
 	return true;
 }
 
-static int cg_is_pure_unified(void) {
+static int cg_is_pure_unified(void)
+{
 
 	int ret;
-        struct statfs fs;
+	struct statfs fs;
 
-        ret = statfs("/sys/fs/cgroup", &fs);
-        if (ret < 0)
-                return -ENOMEDIUM;
+	ret = statfs("/sys/fs/cgroup", &fs);
+	if (ret < 0)
+		return -ENOMEDIUM;
 
-        if (is_fs_type(&fs, CGROUP2_SUPER_MAGIC))
+	if (is_fs_type(&fs, CGROUP2_SUPER_MAGIC))
 		return CGROUP2_SUPER_MAGIC;
 
-        return 0;
+	return 0;
 }
 
 /* Get current cgroup from /proc/self/cgroup for the cgroupfs v2 hierarchy. */
