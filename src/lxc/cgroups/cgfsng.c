@@ -1363,8 +1363,7 @@ static int cg_is_pure_unified(void)
 /* Get current cgroup from /proc/self/cgroup for the cgroupfs v2 hierarchy. */
 static char *cg_unified_get_current_cgroup(void)
 {
-	char *basecginfo;
-	char *base_cgroup;
+	char *basecginfo, *base_cgroup;
 	bool will_escape;
 	char *copy = NULL;
 
