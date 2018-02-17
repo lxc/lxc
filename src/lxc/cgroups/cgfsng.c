@@ -854,17 +854,17 @@ static bool all_controllers_found(void)
 	return true;
 }
 
-/*
- * Get the controllers from a mountinfo line
- * There are other ways we could get this info.  For lxcfs, field 3
- * is /cgroup/controller-list.  For cgroupfs, we could parse the mount
- * options.  But we simply assume that the mountpoint must be
- * /sys/fs/cgroup/controller-list
+/* Get the controllers from a mountinfo line There are other ways we could get
+ * this info. For lxcfs, field 3 is /cgroup/controller-list. For cgroupfs, we
+ * could parse the mount options. But we simply assume that the mountpoint must
+ * be /sys/fs/cgroup/controller-list
  */
 static char **cg_hybrid_get_controllers(char **klist, char **nlist, char *line,
 					int type)
 {
-	/* the fourth field is /sys/fs/cgroup/comma-delimited-controller-list */
+	/* The fourth field is /sys/fs/cgroup/comma-delimited-controller-list
+	 * for legacy hierarchies.
+	 */
 	int i;
 	char *dup, *p2, *tok;
 	char *p = line, *saveptr = NULL, *sep = ",";
@@ -877,9 +877,10 @@ static char **cg_hybrid_get_controllers(char **klist, char **nlist, char *line,
 		p++;
 	}
 
-	/* note - if we change how mountinfo works, then our caller
-	 * will need to verify /sys/fs/cgroup/ in this field */
-	if (strncmp(p, "/sys/fs/cgroup/", 15)) {
+	/* Note, if we change how mountinfo works, then our caller will need to
+	 * verify /sys/fs/cgroup/ in this field.
+	 */
+	if (strncmp(p, "/sys/fs/cgroup/", 15) != 0) {
 		CGFSNG_DEBUG("Found hierarchy not under /sys/fs/cgroup: \"%s\"\n", p);
 		return NULL;
 	}
@@ -907,6 +908,7 @@ static char **cg_hybrid_get_controllers(char **klist, char **nlist, char *line,
 		free(dup);
 	}
 	*p2 = ' ';
+
 	return aret;
 }
 
