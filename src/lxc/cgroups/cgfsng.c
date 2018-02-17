@@ -2393,10 +2393,10 @@ static inline char *build_full_cgpath_from_monitorpath(struct hierarchy *h,
 	return must_make_path(h->mountpoint, inpath, filename, NULL);
 }
 
-/* Technically, we're always at a delegation boundary here. (This is especially
- * true when cgroup namespaces are available.) The reasoning is that in order
+/* Technically, we're always at a delegation boundary here (This is especially
+ * true when cgroup namespaces are available.). The reasoning is that in order
  * for us to have been able to start a container in the first place the root
- * cgroup must have been a leaf node.  Now, either the container's init system
+ * cgroup must have been a leaf node. Now, either the container's init system
  * has populated the cgroup and kept it as a leaf node or it has created
  * subtrees. In the former case we will simply attach to the leaf node we
  * created when we started the container in the latter case we create our own
