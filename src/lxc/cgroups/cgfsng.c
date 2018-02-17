@@ -301,9 +301,8 @@ static void free_handler_data(struct cgfsng_handler_data *d)
 	free(d);
 }
 
-/*
- * Given a handler's cgroup data, return the struct hierarchy for the
- * controller @c, or NULL if there is none.
+/* Given a handler's cgroup data, return the struct hierarchy for the controller
+ * @c, or NULL if there is none.
  */
 struct hierarchy *get_hierarchy(const char *c)
 {
