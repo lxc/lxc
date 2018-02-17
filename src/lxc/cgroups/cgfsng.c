@@ -2682,15 +2682,14 @@ out:
 	return ret;
 }
 
-/*
- * Called from setup_limits - here we have the container's cgroup_data because
- * we created the cgroups
+/* Called from setup_limits - here we have the container's cgroup_data because
+ * we created the cgroups.
  */
 static int cg_legacy_set_data(const char *filename, const char *value,
 			      struct cgfsng_handler_data *d)
 {
-	char *fullpath, *p;
 	size_t len;
+	char *fullpath, *p;
 	/* "b|c <2^64-1>:<2^64-1> r|w|m" = 47 chars max */
 	char converted_value[50];
 	struct hierarchy *h;
