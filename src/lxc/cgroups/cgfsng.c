@@ -2530,10 +2530,9 @@ static bool cgfsng_attach(const char *name, const char *lxcpath, pid_t pid)
 	return true;
 }
 
-/*
- * Called externally (i.e. from 'lxc-cgroup') to query cgroup limits.
- * Here we don't have a cgroup_data set up, so we ask the running
- * container through the commands API for the cgroup path
+/* Called externally (i.e. from 'lxc-cgroup') to query cgroup limits.  Here we
+ * don't have a cgroup_data set up, so we ask the running container through the
+ * commands API for the cgroup path.
  */
 static int cgfsng_get(const char *filename, char *value, size_t len,
 		      const char *name, const char *lxcpath)
