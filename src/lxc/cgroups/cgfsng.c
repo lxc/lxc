@@ -2131,10 +2131,9 @@ static bool cgfsng_mount(void *hdata, const char *root, int type)
 {
 	int i, ret;
 	char *tmpfspath = NULL;
-	bool retval = false;
+	bool has_cgns = false, retval = false, wants_force_mount = false;
 	struct lxc_handler *handler = hdata;
 	struct cgfsng_handler_data *d = handler->cgroup_data;
-	bool has_cgns = false, wants_force_mount = false;
 
 	if ((type & LXC_AUTO_CGROUP_MASK) == 0)
 		return true;
@@ -2176,11 +2175,13 @@ static bool cgfsng_mount(void *hdata, const char *root, int type)
 		if (!controller)
 			continue;
 		controller++;
+
 		controllerpath = must_make_path(tmpfspath, controller, NULL);
 		if (dir_exists(controllerpath)) {
 			free(controllerpath);
 			continue;
 		}
+
 		ret = mkdir(controllerpath, 0755);
 		if (ret < 0) {
 			SYSERROR("Error creating cgroup path: %s", controllerpath);
@@ -2221,8 +2222,8 @@ static bool cgfsng_mount(void *hdata, const char *root, int type)
 			goto on_error;
 		}
 
-		ret = do_secondstage_mounts_if_needed(
-		    type, h, controllerpath, path2, d->container_cgroup);
+		ret = do_secondstage_mounts_if_needed(type, h, controllerpath,
+						      path2, d->container_cgroup);
 		free(controllerpath);
 		free(path2);
 		if (ret < 0)
