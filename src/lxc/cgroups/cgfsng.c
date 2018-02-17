@@ -1143,17 +1143,19 @@ static void lxc_cgfsng_print_handler_data(const struct cgfsng_handler_data *d)
 
 static void lxc_cgfsng_print_hierarchies()
 {
-	struct hierarchy **it;
 	int i;
+	struct hierarchy **it;
 
 	if (!hierarchies) {
 		printf("  No hierarchies found\n");
 		return;
 	}
+
 	printf("  Hierarchies:\n");
 	for (i = 0, it = hierarchies; it && *it; it++, i++) {
-		char **cit;
 		int j;
+		char **cit;
+
 		printf("  %d: base_cgroup: %s\n", i, (*it)->base_cgroup ? (*it)->base_cgroup : "(null)");
 		printf("      mountpoint:  %s\n", (*it)->mountpoint ? (*it)->mountpoint : "(null)");
 		printf("      controllers:\n");
