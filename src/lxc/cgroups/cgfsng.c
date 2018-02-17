@@ -439,24 +439,31 @@ static uint32_t *lxc_cpumask(char *buf, size_t nbits)
 /* Turn cpumask into simple, comma-separated cpulist. */
 static char *lxc_cpumask_to_cpulist(uint32_t *bitarr, size_t nbits)
 {
-	size_t i;
 	int ret;
-	char numstr[LXC_NUMSTRLEN64] = {0};
+	size_t i;
 	char **cpulist = NULL;
+	char numstr[LXC_NUMSTRLEN64] = {0};
 
 	for (i = 0; i <= nbits; i++) {
-		if (is_set(i, bitarr)) {
-			ret = snprintf(numstr, LXC_NUMSTRLEN64, "%zu", i);
-			if (ret < 0 || (size_t)ret >= LXC_NUMSTRLEN64) {
-				lxc_free_array((void **)cpulist, free);
-				return NULL;
-			}
-			if (lxc_append_string(&cpulist, numstr) < 0) {
-				lxc_free_array((void **)cpulist, free);
-				return NULL;
-			}
+		if (!is_set(i, bitarr))
+			continue;
+
+		ret = snprintf(numstr, LXC_NUMSTRLEN64, "%zu", i);
+		if (ret < 0 || (size_t)ret >= LXC_NUMSTRLEN64) {
+			lxc_free_array((void **)cpulist, free);
+			return NULL;
+		}
+
+		ret = lxc_append_string(&cpulist, numstr);
+		if (ret < 0) {
+			lxc_free_array((void **)cpulist, free);
+			return NULL;
 		}
 	}
+
+	if (!cpulist)
+		return NULL;
+
 	return lxc_string_join(",", (const char **)cpulist, false);
 }
 
