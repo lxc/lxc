@@ -1175,6 +1175,7 @@ static void lxc_cgfsng_print_basecg_debuginfo(char *basecginfo, char **klist,
 
 	for (k = 0, it = klist; it && *it; it++, k++)
 		printf("kernel subsystem %d: %s\n", k, *it);
+
 	for (k = 0, it = nlist; it && *it; it++, k++)
 		printf("named subsystem %d: %s\n", k, *it);
 }
