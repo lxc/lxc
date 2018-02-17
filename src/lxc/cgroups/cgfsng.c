@@ -955,17 +955,15 @@ static struct hierarchy *add_hierarchy(char **clist, char *mountpoint,
 	return new;
 }
 
-/*
- * Get a copy of the mountpoint from @line, which is a line from
- * /proc/self/mountinfo
+/* Get a copy of the mountpoint from @line, which is a line from
+ * /proc/self/mountinfo.
  */
 static char *cg_hybrid_get_mountpoint(char *line)
 {
 	int i;
-	char *p2;
 	size_t len;
-	char *p = line;
-	char *sret = NULL;
+	char *p2;
+	char *p = line, *sret = NULL;
 
 	for (i = 0; i < 4; i++) {
 		p = strchr(p, ' ');
@@ -974,7 +972,7 @@ static char *cg_hybrid_get_mountpoint(char *line)
 		p++;
 	}
 
-	if (strncmp(p, "/sys/fs/cgroup/", 15))
+	if (strncmp(p, "/sys/fs/cgroup/", 15) != 0)
 		return NULL;
 
 	p2 = strchr(p + 15, ' ');
