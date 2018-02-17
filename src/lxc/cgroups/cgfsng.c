@@ -224,9 +224,8 @@ static int append_null_to_list(void ***list)
 	return newentry;
 }
 
-/*
- * Given a null-terminated array of strings, check whether @entry
- * is one of the strings
+/* Given a null-terminated array of strings, check whether @entry is one of the
+ * strings.
  */
 static bool string_in_list(char **list, const char *entry)
 {
