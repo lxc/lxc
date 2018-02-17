@@ -800,9 +800,8 @@ static bool controller_list_is_dup(struct hierarchy **hlist, char **clist)
 	return false;
 }
 
-/*
- * Return true if the controller @entry is found in the null-terminated
- * list of hierarchies @hlist
+/* Return true if the controller @entry is found in the null-terminated list of
+ * hierarchies @hlist.
  */
 static bool controller_found(struct hierarchy **hlist, char *entry)
 {
