@@ -1075,9 +1075,10 @@ static char *cg_hybrid_get_current_cgroup(char *basecginfo, char *controller,
 
 static void must_append_string(char ***list, char *entry)
 {
-	int newentry = append_null_to_list((void ***)list);
+	int newentry;
 	char *copy;
 
+	newentry = append_null_to_list((void ***)list);
 	copy = must_copy_string(entry);
 	(*list)[newentry] = copy;
 }
