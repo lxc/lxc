@@ -1765,9 +1765,8 @@ static void remove_path_for_hierarchy(struct hierarchy *h, char *cgname)
 	h->fullcgpath = NULL;
 }
 
-/*
- * Try to create the same cgroup in all hierarchies.
- * Start with cgroup_pattern; next cgroup_pattern-1, -2, ..., -999
+/* Try to create the same cgroup in all hierarchies. Start with cgroup_pattern;
+ * next cgroup_pattern-1, -2, ..., -999.
  */
 static inline bool cgfsng_create(void *hdata)
 {
@@ -1804,6 +1803,7 @@ again:
 		ERROR("Too many conflicting cgroup names");
 		goto out_free;
 	}
+
 	if (idx) {
 		int ret;
 
@@ -1818,10 +1818,11 @@ again:
 			}
 		}
 	}
+
 	for (i = 0; hierarchies[i]; i++) {
 		if (!create_path_for_hierarchy(hierarchies[i], container_cgroup)) {
 			int j;
-			ERROR("Failed to create \"%s\"", hierarchies[i]->fullcgpath);
+			ERROR("Failed to create cgroup \"%s\"", hierarchies[i]->fullcgpath);
 			free(hierarchies[i]->fullcgpath);
 			hierarchies[i]->fullcgpath = NULL;
 			for (j = 0; j < i; j++)
@@ -1830,12 +1831,14 @@ again:
 			goto again;
 		}
 	}
-	/* Done */
+
 	d->container_cgroup = container_cgroup;
+
 	return true;
 
 out_free:
 	free(container_cgroup);
+
 	return false;
 }
 
