@@ -1197,9 +1197,8 @@ static void lxc_cgfsng_print_debuginfo(const struct cgfsng_handler_data *d)
 	lxc_cgfsng_print_hierarchies();
 }
 
-/*
- * At startup, parse_hierarchies finds all the info we need about
- * cgroup mountpoints and current cgroups, and stores it in @d.
+/* At startup, parse_hierarchies finds all the info we need about cgroup
+ * mountpoints and current cgroups, and stores it in @d.
  */
 static bool cg_hybrid_init(void)
 {
@@ -1211,8 +1210,7 @@ static bool cg_hybrid_init(void)
 	char *line = NULL;
 	char **klist = NULL, **nlist = NULL;
 
-	/*
-	 * Root spawned containers escape the current cgroup, so use init's
+	/* Root spawned containers escape the current cgroup, so use init's
 	 * cgroups as our base in that case.
 	 */
 	will_escape = (geteuid() == 0);
@@ -1225,7 +1223,7 @@ static bool cg_hybrid_init(void)
 
 	ret = get_existing_subsystems(&klist, &nlist);
 	if (ret < 0) {
-		CGFSNG_DEBUG("Failed to retrieve available cgroup v1 controllers\n");
+		CGFSNG_DEBUG("Failed to retrieve available legacy cgroup controllers\n");
 		free(basecginfo);
 		return false;
 	}
@@ -1244,7 +1242,7 @@ static bool cg_hybrid_init(void)
 		int type;
 		bool writeable;
 		struct hierarchy *new;
-		char *mountpoint = NULL, *base_cgroup = NULL;
+		char *base_cgroup = NULL, *mountpoint = NULL;
 		char **controller_list = NULL;
 
 		type = get_cgroup_version(line);
@@ -1311,6 +1309,7 @@ static bool cg_hybrid_init(void)
 			if (!controller_list)
 				controller_list = cg_unified_make_empty_controller();
 		}
+
 		new = add_hierarchy(controller_list, mountpoint, base_cgroup, type);
 		if (type == CGROUP2_SUPER_MAGIC && !unified)
 			unified = new;
@@ -1332,7 +1331,7 @@ static bool cg_hybrid_init(void)
 	free(line);
 
 	if (lxc_cgfsng_debug) {
-		printf("writeable subsystems:\n");
+		printf("Writable cgroup hierarchies:\n");
 		lxc_cgfsng_print_hierarchies();
 	}
 
