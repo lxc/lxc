@@ -2708,9 +2708,9 @@ static bool __cg_legacy_setup_limits(void *hdata,
 				     struct lxc_list *cgroup_settings,
 				     bool do_devices)
 {
-	struct cgfsng_handler_data *d = hdata;
-	struct lxc_list *iterator, *sorted_cgroup_settings, *next;
+	struct lxc_list *iterator, *next, *sorted_cgroup_settings;
 	struct lxc_cgroup *cg;
+	struct cgfsng_handler_data *d = hdata;
 	bool ret = false;
 
 	if (lxc_list_empty(cgroup_settings))
@@ -2726,15 +2726,16 @@ static bool __cg_legacy_setup_limits(void *hdata,
 		if (do_devices == !strncmp("devices", cg->subsystem, 7)) {
 			if (cg_legacy_set_data(cg->subsystem, cg->value, d)) {
 				if (do_devices && (errno == EACCES || errno == EPERM)) {
-					WARN("Error setting %s to %s for %s",
-					      cg->subsystem, cg->value, d->name);
+					WARN("Failed to set \"%s\" to \"%s\"",
+					     cg->subsystem, cg->value);
 					continue;
 				}
-				SYSERROR("Error setting %s to %s for %s",
-				      cg->subsystem, cg->value, d->name);
+				WARN("Failed to set \"%s\" to \"%s\"",
+				     cg->subsystem, cg->value);
 				goto out;
 			}
-			DEBUG("cgroup '%s' set to '%s'", cg->subsystem, cg->value);
+			DEBUG("Set controller \"%s\" set to \"%s\"",
+			      cg->subsystem, cg->value);
 		}
 	}
 
