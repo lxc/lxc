@@ -44,10 +44,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/types.h>
-
-#include <linux/types.h>
 #include <linux/kdev_t.h>
+#include <linux/types.h>
+#include <sys/types.h>
 
 #include "caps.h"
 #include "cgroup.h"
