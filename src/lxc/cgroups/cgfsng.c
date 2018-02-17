@@ -1485,7 +1485,7 @@ static void *cgfsng_init(struct lxc_handler *handler)
 	cgroup_pattern = lxc_global_config_value("lxc.cgroup.pattern");
 	if (!cgroup_pattern) {
 		/* lxc.cgroup.pattern is only NULL on error. */
-		ERROR("Error getting cgroup pattern");
+		ERROR("Failed to retrieve cgroup pattern");
 		goto out_free;
 	}
 	d->cgroup_pattern = must_copy_string(cgroup_pattern);
