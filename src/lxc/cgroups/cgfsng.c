@@ -764,9 +764,8 @@ static bool cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 	return true;
 }
 
-/*
- * Given two null-terminated lists of strings, return true if any string
- * is in both.
+/* Given two null-terminated lists of strings, return true if any string is in
+ * both.
  */
 static bool controller_lists_intersect(char **l1, char **l2)
 {
@@ -779,6 +778,7 @@ static bool controller_lists_intersect(char **l1, char **l2)
 		if (string_in_list(l2, l1[i]))
 			return true;
 	}
+
 	return false;
 }
 
