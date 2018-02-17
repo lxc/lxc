@@ -2405,13 +2405,12 @@ static const char *cgfsng_get_cgroup(void *hdata, const char *subsystem)
 	return h->fullcgpath ? h->fullcgpath + strlen(h->mountpoint) : NULL;
 }
 
-/*
- * Given a cgroup path returned from lxc_cmd_get_cgroup_path, build a
- * full path, which must be freed by the caller.
+/* Given a cgroup path returned from lxc_cmd_get_cgroup_path, build a full path,
+ * which must be freed by the caller.
  */
-static char *build_full_cgpath_from_monitorpath(struct hierarchy *h,
-						const char *inpath,
-						const char *filename)
+static inline char *build_full_cgpath_from_monitorpath(struct hierarchy *h,
+						       const char *inpath,
+						       const char *filename)
 {
 	return must_make_path(h->mountpoint, inpath, filename, NULL);
 }
