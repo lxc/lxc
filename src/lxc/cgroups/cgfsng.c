@@ -258,20 +258,19 @@ static char *cg_legacy_must_prefix_named(char *entry)
 	return prefixed;
 }
 
-/*
- * append an entry to the clist.  Do not fail.
- * *clist must be NULL the first time we are called.
+/* Append an entry to the clist. Do not fail. @clist must be NULL the first time
+ * we are called.
  *
- * We also handle named subsystems here.  Any controller which is not a
- * kernel subsystem, we prefix 'name='.  Any which is both a kernel and
- * named subsystem, we refuse to use because we're not sure which we
- * have here.  (TODO - we could work around this in some cases by just
- * remounting to be unambiguous, or by comparing mountpoint contents
- * with current cgroup)
+ * We also handle named subsystems here. Any controller which is not a kernel
+ * subsystem, we prefix "name=". Any which is both a kernel and named subsystem,
+ * we refuse to use because we're not sure which we have here.
+ * (TODO: We could work around this in some cases by just remounting to be
+ * unambiguous, or by comparing mountpoint contents with current cgroup.)
  *
  * The last entry will always be NULL.
  */
-static void must_append_controller(char **klist, char **nlist, char ***clist, char *entry)
+static void must_append_controller(char **klist, char **nlist, char ***clist,
+				   char *entry)
 {
 	int newentry;
 	char *copy;
