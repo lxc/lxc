@@ -1038,11 +1038,11 @@ static bool controller_in_clist(char *cgline, char *c)
 	return false;
 }
 
-/*
- * @basecginfo is a copy of /proc/$$/cgroup.  Return the current
- * cgroup for @controller
+/* @basecginfo is a copy of /proc/$$/cgroup. Return the current cgroup for
+ * @controller.
  */
-static char *cg_hybrid_get_current_cgroup(char *basecginfo, char *controller, int type)
+static char *cg_hybrid_get_current_cgroup(char *basecginfo, char *controller,
+					  int type)
 {
 	char *p = basecginfo;
 
