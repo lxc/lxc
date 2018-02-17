@@ -817,14 +817,14 @@ static bool controller_found(struct hierarchy **hlist, char *entry)
 	return false;
 }
 
-/*
- * Return true if all of the controllers which we require have been found.
- * The required list is  freezer and anything in * lxc.cgroup.use.
+/* Return true if all of the controllers which we require have been found.  The
+ * required list is  freezer and anything in lxc.cgroup.use.
  */
 static bool all_controllers_found(void)
 {
-	char *p, *saveptr = NULL;
-	struct hierarchy ** hlist = hierarchies;
+	char *p;
+	char *saveptr = NULL;
+	struct hierarchy **hlist = hierarchies;
 
 	if (!controller_found(hlist, "freezer")) {
 		CGFSNG_DEBUG("No freezer controller mountpoint found\n");
@@ -835,7 +835,7 @@ static bool all_controllers_found(void)
 		return true;
 
 	for (p = strtok_r(cgroup_use, ",", &saveptr); p;
-			p = strtok_r(NULL, ",", &saveptr)) {
+	     p = strtok_r(NULL, ",", &saveptr)) {
 		if (!controller_found(hlist, p)) {
 			CGFSNG_DEBUG("No %s controller mountpoint found\n", p);
 			return false;
