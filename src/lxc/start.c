@@ -83,11 +83,11 @@
 #include "namespace.h"
 #include "network.h"
 #include "start.h"
-#include "storage.h"
-#include "storage_utils.h"
 #include "sync.h"
 #include "utils.h"
 #include "lsm/lsm.h"
+#include "storage/storage.h"
+#include "storage/storage_utils.h"
 
 lxc_log_define(lxc_start, lxc);
 
