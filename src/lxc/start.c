@@ -192,10 +192,10 @@ static int match_fd(int fd)
 int lxc_check_inherited(struct lxc_conf *conf, bool closeall,
 			int *fds_to_ignore, size_t len_fds)
 {
-	struct dirent *direntp;
 	int fd, fddir;
 	size_t i;
 	DIR *dir;
+	struct dirent *direntp;
 
 	if (conf && conf->close_all_fds)
 		closeall = true;
@@ -203,21 +203,24 @@ int lxc_check_inherited(struct lxc_conf *conf, bool closeall,
 restart:
 	dir = opendir("/proc/self/fd");
 	if (!dir) {
-		WARN("Failed to open directory: %s.", strerror(errno));
+		WARN("%s - Failed to open directory", strerror(errno));
 		return -1;
 	}
 
 	fddir = dirfd(dir);
 
 	while ((direntp = readdir(dir))) {
-		if (!strcmp(direntp->d_name, "."))
+		int ret;
+
+		if (strcmp(direntp->d_name, ".") == 0)
 			continue;
 
-		if (!strcmp(direntp->d_name, ".."))
+		if (strcmp(direntp->d_name, "..") == 0)
 			continue;
 
-		if (lxc_safe_int(direntp->d_name, &fd) < 0) {
-			INFO("Could not parse file descriptor for: %s", direntp->d_name);
+		ret = lxc_safe_int(direntp->d_name, &fd);
+		if (ret < 0) {
+			INFO("Could not parse file descriptor for \"%s\"", direntp->d_name);
 			continue;
 		}
 
