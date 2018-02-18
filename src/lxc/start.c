@@ -952,8 +952,13 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 	int ret, status;
 
 	lxc_set_state(name, handler, ABORTING);
-	if (handler->pid > 0)
-		kill(handler->pid, SIGKILL);
+
+	if (handler->pid > 0) {
+		ret = kill(handler->pid, SIGKILL);
+		if (ret < 0)
+			SYSERROR("Failed to send SIGKILL to %d", handler->pid);
+	}
+
 	while ((ret = waitpid(-1, &status, 0)) > 0) {
 		;
 	}
