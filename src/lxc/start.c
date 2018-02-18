@@ -1024,13 +1024,13 @@ static int lxc_set_death_signal(int signal)
 static int do_start(void *data)
 {
 	int ret;
-	struct lxc_list *iterator;
 	char path[PATH_MAX];
-	struct lxc_handler *handler = data;
 	bool have_cap_setgid;
 	uid_t new_uid;
 	gid_t new_gid;
+	struct lxc_list *iterator;
 	int devnull_fd = -1;
+	struct lxc_handler *handler = data;
 
 	lxc_sync_fini_parent(handler);
 
@@ -1067,19 +1067,21 @@ static int do_start(void *data)
 	    (CLONE_NEWNET | CLONE_NEWUSER)) {
 		ret = unshare(CLONE_NEWNET);
 		if (ret < 0) {
-			SYSERROR("Failed to unshare CLONE_NEWNET.");
+			SYSERROR("Failed to unshare CLONE_NEWNET");
 			goto out_warn_father;
 		}
-		INFO("Unshared CLONE_NEWNET.");
+		INFO("Unshared CLONE_NEWNET");
 	}
 
 	/* Tell the parent task it can begin to configure the container and wait
 	 * for it to finish.
 	 */
-	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CONFIGURE))
+	ret = lxc_sync_barrier_parent(handler, LXC_SYNC_CONFIGURE);
+	if (ret < 0)
 		return -1;
 
-	if (lxc_network_recv_veth_names_from_parent(handler) < 0) {
+	ret = lxc_network_recv_veth_names_from_parent(handler);
+	if (ret < 0) {
 		ERROR("Failed to receive veth names from parent");
 		goto out_warn_father;
 	}
@@ -1120,12 +1122,14 @@ static int do_start(void *data)
 		}
 	}
 
-	if (access(handler->lxcpath, X_OK)) {
+	ret = access(handler->lxcpath, X_OK);
+	if (ret != 0) {
 		print_top_failing_dir(handler->lxcpath);
 		goto out_warn_father;
 	}
 
-	ret = snprintf(path, sizeof(path), "%s/dev/null", handler->conf->rootfs.mount);
+	ret = snprintf(path, sizeof(path), "%s/dev/null",
+		       handler->conf->rootfs.mount);
 	if (ret < 0 || ret >= sizeof(path))
 		goto out_warn_father;
 
@@ -1139,17 +1143,22 @@ static int do_start(void *data)
 	 * means that migration won't work, but at least we won't spew output
 	 * where it isn't wanted.
 	 */
-	if (handler->backgrounded && !handler->conf->autodev && access(path, F_OK) < 0) {
-		devnull_fd = open_devnull();
+	if (handler->backgrounded && !handler->conf->autodev) {
+		ret = access(path, F_OK);
+		if (ret != 0) {
+			devnull_fd = open_devnull();
 
-		if (devnull_fd < 0)
-			goto out_warn_father;
-		WARN("Using /dev/null from the host for container init's "
-		     "standard file descriptors. Migration will not work.");
+			if (devnull_fd < 0)
+				goto out_warn_father;
+			WARN("Using /dev/null from the host for container "
+			     "init's standard file descriptors. Migration will "
+			     "not work");
+		}
 	}
 
 	/* Ask father to setup cgroups and wait for him to finish. */
-	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP))
+	ret = lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP);
+	if (ret < 0)
 		goto out_error;
 
 	/* Unshare cgroup namespace after we have setup our cgroups. If we do it
@@ -1165,11 +1174,12 @@ static int do_start(void *data)
 	 *	8:cpuset:/
 	 */
 	if (handler->clone_flags & CLONE_NEWCGROUP) {
-		if (unshare(CLONE_NEWCGROUP) < 0) {
-			INFO("Failed to unshare CLONE_NEWCGROUP.");
+		ret = unshare(CLONE_NEWCGROUP);
+		if (ret < 0) {
+			INFO("Failed to unshare CLONE_NEWCGROUP");
 			goto out_warn_father;
 		}
-		INFO("Unshared CLONE_NEWCGROUP.");
+		INFO("Unshared CLONE_NEWCGROUP");
 	}
 
 	/* Add the requested environment variables to the current environment to
@@ -1177,8 +1187,10 @@ static int do_start(void *data)
 	 * above.
 	 */
 	lxc_list_for_each(iterator, &handler->conf->environment) {
-		if (putenv((char *)iterator->elem)) {
-			SYSERROR("Failed to set environment variable: %s.", (char *)iterator->elem);
+		ret = putenv((char *)iterator->elem);
+		if (ret < 0) {
+			SYSERROR("Failed to set environment variable: %s",
+				 (char *)iterator->elem);
 			goto out_warn_father;
 		}
 	}
@@ -1188,23 +1200,27 @@ static int do_start(void *data)
 	close(handler->data_sock[1]);
 	close(handler->data_sock[0]);
 	if (ret < 0) {
-		ERROR("Failed to setup container \"%s\".", handler->name);
+		ERROR("Failed to setup container \"%s\"", handler->name);
 		goto out_warn_father;
 	}
 
 	/* Set the label to change to when we exec(2) the container's init. */
-	if (lsm_process_label_set(NULL, handler->conf, 1, 1) < 0)
+	ret = lsm_process_label_set(NULL, handler->conf, 1, 1);
+	if (ret < 0)
 		goto out_warn_father;
 
 	/* Set PR_SET_NO_NEW_PRIVS after we changed the lsm label. If we do it
 	 * before we aren't allowed anymore.
 	 */
 	if (handler->conf->no_new_privs) {
-		if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) < 0) {
-			SYSERROR("Could not set PR_SET_NO_NEW_PRIVS to block execve() gainable privileges.");
+		ret = prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
+		if (ret < 0) {
+			SYSERROR("Could not set PR_SET_NO_NEW_PRIVS to block "
+				 "execve() gainable privileges");
 			goto out_warn_father;
 		}
-		DEBUG("Set PR_SET_NO_NEW_PRIVS to block execve() gainable privileges.");
+		DEBUG("Set PR_SET_NO_NEW_PRIVS to block execve() gainable "
+		      "privileges");
 	}
 
 	/* Some init's such as busybox will set sane tty settings on stdin,
@@ -1220,8 +1236,7 @@ static int do_start(void *data)
 			 ret = lxc_console_set_stdfds(handler->conf->console.slave);
 		 if (ret < 0) {
 			ERROR("Failed to redirect std{in,out,err} to pty file "
-			      "descriptor %d",
-			      handler->conf->console.slave);
+			      "descriptor %d", handler->conf->console.slave);
 			goto out_warn_father;
 		 }
 	 }
@@ -1229,11 +1244,14 @@ static int do_start(void *data)
 	/* If we mounted a temporary proc, then unmount it now. */
 	tmp_proc_unmount(handler->conf);
 
-	if (lxc_seccomp_load(handler->conf) != 0)
+	ret = lxc_seccomp_load(handler->conf);
+	if (ret < 0)
 		goto out_warn_father;
 
-	if (run_lxc_hooks(handler->name, "start", handler->conf, NULL)) {
-		ERROR("Failed to run lxc.hook.start for container \"%s\".", handler->name);
+	ret = run_lxc_hooks(handler->name, "start", handler->conf, NULL);
+	if (ret < 0) {
+		ERROR("Failed to run lxc.hook.start for container \"%s\"",
+		      handler->name);
 		goto out_warn_father;
 	}
 
@@ -1246,12 +1264,13 @@ static int do_start(void *data)
 			goto out_warn_father;
 	}
 
-	if (handler->conf->console.slave < 0 && handler->backgrounded)
-		if (set_stdfds(devnull_fd) < 0) {
-			ERROR("Failed to redirect std{in,out,err} to "
-			      "\"/dev/null\"");
+	if (handler->conf->console.slave < 0 && handler->backgrounded) {
+		ret = set_stdfds(devnull_fd);
+		if (ret < 0) {
+			ERROR("Failed to redirect std{in,out,err} to \"/dev/null\"");
 			goto out_warn_father;
 		}
+	}
 
 	if (devnull_fd >= 0) {
 		close(devnull_fd);
@@ -1260,37 +1279,46 @@ static int do_start(void *data)
 
 	setsid();
 
-	if (handler->conf->init_cwd && chdir(handler->conf->init_cwd)) {
-		SYSERROR("Could not change directory to \"%s\"", handler->conf->init_cwd);
-		goto out_warn_father;
+	if (handler->conf->init_cwd) {
+		ret = chdir(handler->conf->init_cwd);
+		if (ret < 0) {
+			SYSERROR("Could not change directory to \"%s\"",
+				 handler->conf->init_cwd);
+			goto out_warn_father;
+		}
 	}
 
-	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP_LIMITS))
+	ret = lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP_LIMITS);
+	if (ret < 0)
 		goto out_warn_father;
 
 	/* Reset the environment variables the user requested in a clear
 	 * environment.
 	 */
-	if (clearenv()) {
+	ret = clearenv();
+	/* Don't error out though. */
+	if (ret < 0)
 		SYSERROR("Failed to clear environment.");
-		/* Don't error out though. */
-	}
 
 	lxc_list_for_each(iterator, &handler->conf->environment) {
-		if (putenv((char *)iterator->elem)) {
-			SYSERROR("Failed to set environment variable: %s.", (char *)iterator->elem);
+		ret = putenv((char *)iterator->elem);
+		if (ret < 0) {
+			SYSERROR("Failed to set environment variable: %s",
+				 (char *)iterator->elem);
 			goto out_warn_father;
 		}
 	}
 
-	if (putenv("container=lxc")) {
-		SYSERROR("Failed to set environment variable: container=lxc.");
+	ret = putenv("container=lxc");
+	if (ret < 0) {
+		SYSERROR("Failed to set environment variable: container=lxc");
 		goto out_warn_father;
 	}
 
 	if (handler->conf->pty_names) {
-		if (putenv(handler->conf->pty_names)) {
-			SYSERROR("Failed to set environment variable for container ptys.");
+		ret = putenv(handler->conf->pty_names);
+		if (ret < 0) {
+			SYSERROR("Failed to set environment variable for container ptys");
 			goto out_warn_father;
 		}
 	}
@@ -1301,10 +1329,9 @@ static int do_start(void *data)
 	new_uid = handler->conf->init_uid;
 	new_gid = handler->conf->init_gid;
 
-	/* If we are in a new user namespace we already dropped all
-	 * groups when we switched to root in the new user namespace
-	 * further above. Only drop groups if we can, so ensure that we
-	 * have necessary privilege.
+	/* If we are in a new user namespace we already dropped all groups when
+	*  we switched to root in the new user namespace further above. Only
+	*  drop groups if we can, so ensure that we have necessary privilege.
 	 */
 	#if HAVE_LIBCAP
 	have_cap_setgid = lxc_proc_cap_is_set(CAP_SETGID, CAP_EFFECTIVE);
@@ -1312,11 +1339,13 @@ static int do_start(void *data)
 	have_cap_setgid = false;
 	#endif
 	if (lxc_list_empty(&handler->conf->id_map) && have_cap_setgid) {
-		if (lxc_setgroups(0, NULL) < 0)
+		ret = lxc_setgroups(0, NULL);
+		if (ret < 0)
 			goto out_warn_father;
 	}
 
-	if (lxc_switch_uid_gid(new_uid, new_gid) < 0)
+	ret = lxc_switch_uid_gid(new_uid, new_gid);
+	if (ret < 0)
 		goto out_warn_father;
 
 	/* After this call, we are in error because this ops should not return
