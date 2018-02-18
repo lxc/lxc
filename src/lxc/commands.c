@@ -1156,8 +1156,8 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 			continue;
 
 		/* kick client from list */
-		close(client->clientfd);
 		lxc_list_del(cur);
+		close(client->clientfd);
 		free(cur->elem);
 		free(cur);
 		/* No need to walk the whole list. If we found the state client
