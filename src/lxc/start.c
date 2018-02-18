@@ -1511,7 +1511,8 @@ static int lxc_spawn(struct lxc_handler *handler)
 		share_ns = true;
 	}
 
-	if (lxc_sync_init(handler))
+	ret = lxc_sync_init(handler);
+	if (ret < 0)
 		return -1;
 
 	ret = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0,
@@ -1535,8 +1536,9 @@ static int lxc_spawn(struct lxc_handler *handler)
 			 * before creating network interfaces, since goto
 			 * out_delete_net does not work before lxc_clone.
 			 */
-			if (lxc_find_gateway_addresses(handler)) {
-				ERROR("Failed to find gateway addresses.");
+			ret = lxc_find_gateway_addresses(handler);
+			if (ret < 0) {
+				ERROR("Failed to find gateway addresses");
 				lxc_sync_fini(handler);
 				return -1;
 			}
@@ -1544,8 +1546,9 @@ static int lxc_spawn(struct lxc_handler *handler)
 			/* That should be done before the clone because we will
 			 * fill the netdev index and use them in the child.
 			 */
-			if (lxc_create_network_priv(handler)) {
-				ERROR("Failed to create the network.");
+			ret = lxc_create_network_priv(handler);
+			if (ret < 0) {
+				ERROR("Failed to create the network");
 				lxc_sync_fini(handler);
 				return -1;
 			}
@@ -1553,14 +1556,14 @@ static int lxc_spawn(struct lxc_handler *handler)
 	}
 
 	if (!cgroup_init(handler)) {
-		ERROR("Failed initializing cgroup support.");
+		ERROR("Failed initializing cgroup support");
 		goto out_delete_net;
 	}
 
 	cgroups_connected = true;
 
 	if (!cgroup_create(handler)) {
-		ERROR("Failed creating cgroups.");
+		ERROR("Failed creating cgroups");
 		goto out_delete_net;
 	}
 
@@ -1571,7 +1574,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (!wants_to_map_ids) {
 		handler->pinfd = pin_rootfs(conf->rootfs.path);
 		if (handler->pinfd == -1)
-			INFO("Failed to pin the rootfs for container \"%s\".", handler->name);
+			INFO("Failed to pin the rootfs for container \"%s\"", handler->name);
 	}
 
 	/* Create a process in a new set of namespaces. */
@@ -1590,7 +1593,8 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (share_ns) {
 		pid_t attacher_pid;
 
-		attacher_pid = lxc_clone(do_share_ns, handler, CLONE_VFORK | CLONE_VM | CLONE_FILES);
+		attacher_pid = lxc_clone(do_share_ns, handler,
+					 CLONE_VFORK | CLONE_VM | CLONE_FILES);
 		if (attacher_pid < 0) {
 			SYSERROR(LXC_CLONE_ERROR);
 			goto out_delete_net;
@@ -1602,7 +1606,8 @@ static int lxc_spawn(struct lxc_handler *handler)
 			goto out_delete_net;
 		}
 	} else {
-		handler->pid = lxc_raw_clone_cb(do_start, handler, handler->on_clone_flags);
+		handler->pid = lxc_raw_clone_cb(do_start, handler,
+						handler->on_clone_flags);
 	}
 	if (handler->pid < 0) {
 		SYSERROR(LXC_CLONE_ERROR);
@@ -1638,18 +1643,21 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	if (lxc_sync_wake_child(handler, LXC_SYNC_STARTUP))
+	ret = lxc_sync_wake_child(handler, LXC_SYNC_STARTUP);
+	if (ret < 0)
 		goto out_delete_net;
 
-	if (lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE))
+	ret = lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE);
+	if (ret < 0)
 		goto out_delete_net;
 
 	if (!cgroup_create_legacy(handler)) {
-		ERROR("Failed to setup legacy cgroups for container \"%s\".", name);
+		ERROR("Failed to setup legacy cgroups for container \"%s\"", name);
 		goto out_delete_net;
 	}
+
 	if (!cgroup_setup_limits(handler, false)) {
-		ERROR("Failed to setup cgroup limits for container \"%s\".", name);
+		ERROR("Failed to setup cgroup limits for container \"%s\"", name);
 		goto out_delete_net;
 	}
 
@@ -1670,23 +1678,25 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 	/* Create the network configuration. */
 	if (handler->clone_flags & CLONE_NEWNET) {
-		if (lxc_network_move_created_netdev_priv(handler->lxcpath,
-							 handler->name,
-							 &conf->network,
-							 handler->pid)) {
-			ERROR("Failed to create the configured network.");
+		ret = lxc_network_move_created_netdev_priv(handler->lxcpath,
+							   handler->name,
+							   &conf->network,
+							   handler->pid);
+		if (ret < 0) {
+			ERROR("Failed to create the configured network");
 			goto out_delete_net;
 		}
 
-		if (lxc_create_network_unpriv(handler->lxcpath, handler->name,
-					      &conf->network,
-					      handler->pid)) {
-			ERROR("Failed to create the configured network.");
+		ret = lxc_create_network_unpriv(handler->lxcpath, handler->name,
+						&conf->network, handler->pid);
+		if (ret < 0) {
+			ERROR("Failed to create the configured network");
 			goto out_delete_net;
 		}
 	}
 
-	if (lxc_network_send_veth_names_to_child(handler) < 0) {
+	ret = lxc_network_send_veth_names_to_child(handler);
+	if (ret < 0) {
 		ERROR("Failed to send veth names to child");
 		goto out_delete_net;
 	}
@@ -1700,22 +1710,27 @@ static int lxc_spawn(struct lxc_handler *handler)
 	/* Tell the child to continue its initialization. We'll get
 	 * LXC_SYNC_CGROUP when it is ready for us to setup cgroups.
 	 */
-	if (lxc_sync_barrier_child(handler, LXC_SYNC_POST_CONFIGURE))
+	ret = lxc_sync_barrier_child(handler, LXC_SYNC_POST_CONFIGURE);
+	if (ret < 0)
 		goto out_delete_net;
 
-	if (!lxc_list_empty(&conf->limits) && setup_resource_limits(&conf->limits, handler->pid)) {
-		ERROR("failed to setup resource limits for '%s'", name);
-		goto out_delete_net;
+	if (!lxc_list_empty(&conf->limits)) {
+		ret = setup_resource_limits(&conf->limits, handler->pid);
+		if (ret < 0) {
+			ERROR("Failed to setup resource limits");
+			goto out_delete_net;
+		}
 	}
 
-	if (lxc_sync_barrier_child(handler, LXC_SYNC_CGROUP_UNSHARE))
+	ret = lxc_sync_barrier_child(handler, LXC_SYNC_CGROUP_UNSHARE);
+	if (ret < 0)
 		goto out_delete_net;
 
 	if (!cgroup_setup_limits(handler, true)) {
-		ERROR("Failed to setup the devices cgroup for container \"%s\".", name);
+		ERROR("Failed to setup legacy device cgroup controller limits");
 		goto out_delete_net;
 	}
-	TRACE("Set up cgroup device limits");
+	TRACE("Set up legacy device cgroup controller limits");
 
 	cgroup_disconnect();
 	cgroups_connected = false;
@@ -1735,12 +1750,14 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (ret < 0 || ret >= 20)
 		goto out_delete_net;
 
-	if (setenv("LXC_PID", pidstr, 1))
-		SYSERROR("Failed to set environment variable: LXC_PID=%s.", pidstr);
+	ret = setenv("LXC_PID", pidstr, 1);
+	if (ret < 0)
+		SYSERROR("Failed to set environment variable: LXC_PID=%s", pidstr);
 
 	/* Run any host-side start hooks */
-	if (run_lxc_hooks(name, "start-host", conf, NULL)) {
-		ERROR("Failed to run lxc.hook.start-host for container \"%s\".", name);
+	ret = run_lxc_hooks(name, "start-host", conf, NULL);
+	if (ret < 0) {
+		ERROR("Failed to run lxc.hook.start-host");
 		goto out_delete_net;
 	}
 
@@ -1750,10 +1767,12 @@ static int lxc_spawn(struct lxc_handler *handler)
 	 * lxc_sync_barrier_child to return success, or return a different
 	 * value, causing us to error out).
 	 */
-	if (lxc_sync_barrier_child(handler, LXC_SYNC_READY_START))
+	ret = lxc_sync_barrier_child(handler, LXC_SYNC_READY_START);
+	if (ret < 0)
 		goto out_delete_net;
 
-	if (lxc_network_recv_name_and_ifindex_from_child(handler) < 0) {
+	ret = lxc_network_recv_name_and_ifindex_from_child(handler);
+	if (ret < 0) {
 		ERROR("Failed to receive names and ifindices for network "
 		      "devices from child");
 		goto out_delete_net;
@@ -1767,17 +1786,19 @@ static int lxc_spawn(struct lxc_handler *handler)
 	lxc_log_configured_netdevs(conf);
 
 	/* Read tty fds allocated by child. */
-	if (lxc_recv_ttys_from_child(handler) < 0) {
-		ERROR("Failed to receive tty info from child process.");
+	ret = lxc_recv_ttys_from_child(handler);
+	if (ret < 0) {
+		ERROR("Failed to receive tty info from child process");
 		goto out_delete_net;
 	}
 
-	if (handler->ops->post_start(handler, handler->data))
+	ret = handler->ops->post_start(handler, handler->data);
+	if (ret < 0)
 		goto out_abort;
 
-	if (lxc_set_state(name, handler, RUNNING)) {
-		ERROR("Failed to set state for container \"%s\" to \"%s\".", name,
-		      lxc_state2str(RUNNING));
+	ret = lxc_set_state(name, handler, RUNNING);
+	if (ret < 0) {
+		ERROR("Failed to set state to \"%s\"", lxc_state2str(RUNNING));
 		goto out_abort;
 	}
 
