@@ -641,16 +641,13 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 	struct lxc_handler *handler;
 
 	handler = malloc(sizeof(*handler));
-	if (!handler) {
-		ERROR("failed to allocate memory");
+	if (!handler)
 		return NULL;
-	}
-
 	memset(handler, 0, sizeof(*handler));
 
-	/* Note that am_guest_unpriv() checks the effective uid. We probably don't
-	 * care if we are real root only if we are running as root so this
-	 * should be fine.
+	/* Note that am_guest_unpriv() checks the effective uid. We
+	 * probably don't care if we are real root only if we are running
+	 * as root so this should be fine.
 	 */
 	handler->am_root = !am_guest_unpriv();
 	handler->data_sock[0] = handler->data_sock[1] = -1;
@@ -670,8 +667,8 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 
 	if (daemonize && !handler->conf->reboot) {
 		/* Create socketpair() to synchronize on daemonized startup.
-		 * When the container reboots we don't need to synchronize again
-		 * currently so don't open another socketpair().
+		 * When the container reboots we don't need to synchronize
+		 * again currently so don't open another socketpair().
 		 */
 		ret = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0,
 				 handler->state_socket_pair);
