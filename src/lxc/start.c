@@ -127,10 +127,11 @@ static void close_ns(int ns_fd[LXC_NS_MAX])
 	int i;
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
-		if (ns_fd[i] > -1) {
-			close(ns_fd[i]);
-			ns_fd[i] = -1;
-		}
+		if (ns_fd[i] < 0)
+			continue;
+
+		close(ns_fd[i]);
+		ns_fd[i] = -EBADF;
 	}
 }
 
