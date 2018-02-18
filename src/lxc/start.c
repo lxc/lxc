@@ -1954,7 +1954,8 @@ static int lxc_rmdir_onedev_wrapper(void *data)
 	return lxc_rmdir_onedev(arg, NULL);
 }
 
-static bool do_destroy_container(struct lxc_handler *handler) {
+static bool do_destroy_container(struct lxc_handler *handler)
+{
 	int ret;
 
 	if (!handler->am_root) {
