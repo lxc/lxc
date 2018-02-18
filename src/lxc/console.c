@@ -603,11 +603,9 @@ int lxc_pty_create(struct lxc_console *console)
 {
 	int ret, saved_errno;
 
-	process_lock();
 	ret = openpty(&console->master, &console->slave, console->name, NULL,
 		      NULL);
 	saved_errno = errno;
-	process_unlock();
 	if (ret < 0) {
 		ERROR("%s - Failed to allocate a pty", strerror(saved_errno));
 		return -1;
