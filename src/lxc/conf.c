@@ -948,10 +948,8 @@ int lxc_allocate_ttys(const char *name, struct lxc_conf *conf)
 	for (i = 0; i < conf->tty; i++) {
 		struct lxc_pty_info *pty_info = &tty_info->pty_info[i];
 
-		process_lock();
 		ret = openpty(&pty_info->master, &pty_info->slave,
 			      pty_info->name, NULL, NULL);
-		process_unlock();
 		if (ret) {
 			SYSERROR("failed to create pty device number %d", i);
 			tty_info->nbtty = i;
