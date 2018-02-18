@@ -838,7 +838,7 @@ out_close_maincmd_fd:
 
 void lxc_fini(const char *name, struct lxc_handler *handler)
 {
-	int i, rc;
+	int i, ret;
 	pid_t self;
 	struct lxc_list *cur, *next;
 	char *namespaces[LXC_NS_MAX + 1];
@@ -855,14 +855,14 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 			continue;
 
 		if (handler->conf->hooks_version == 0)
-			rc = asprintf(&namespaces[namespace_count],
+			ret = asprintf(&namespaces[namespace_count],
 				      "%s:/proc/%d/fd/%d", ns_info[i].proc_name,
 				      self, handler->nsfd[i]);
 		else
-			rc = asprintf(&namespaces[namespace_count],
+			ret = asprintf(&namespaces[namespace_count],
 				      "/proc/%d/fd/%d", self, handler->nsfd[i]);
-		if (rc == -1) {
-			SYSERROR("Failed to allocate memory.");
+		if (ret == -1) {
+			SYSERROR("Failed to allocate memory");
 			break;
 		}
 
@@ -871,8 +871,8 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 			continue;
 		}
 
-		rc = setenv(ns_info[i].env_name, namespaces[namespace_count], 1);
-		if (rc < 0)
+		ret = setenv(ns_info[i].env_name, namespaces[namespace_count], 1);
+		if (ret < 0)
 			SYSERROR("Failed to set environment variable %s=%s",
 				 ns_info[i].env_name, namespaces[namespace_count]);
 		else
@@ -883,16 +883,26 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	}
 	namespaces[namespace_count] = NULL;
 
-	if (handler->conf->reboot && setenv("LXC_TARGET", "reboot", 1))
-		SYSERROR("Failed to set environment variable: LXC_TARGET=reboot.");
+	if (handler->conf->reboot) {
+		ret = setenv("LXC_TARGET", "reboot", 1);
+		if (ret < 0)
+			SYSERROR("Failed to set environment variable: "
+				 "LXC_TARGET=reboot");
+	}
 
-	if (!handler->conf->reboot && setenv("LXC_TARGET", "stop", 1))
-		SYSERROR("Failed to set environment variable: LXC_TARGET=stop.");
+	if (!handler->conf->reboot) {
+		ret = setenv("LXC_TARGET", "stop", 1);
+		if (ret < 0)
+			SYSERROR("Failed to set environment variable: "
+				 "LXC_TARGET=stop");
+	}
 
 	if (handler->conf->hooks_version == 0)
-		rc = run_lxc_hooks(name, "stop", handler->conf, namespaces);
+		ret = run_lxc_hooks(name, "stop", handler->conf, namespaces);
 	else
-		rc = run_lxc_hooks(name, "stop", handler->conf, NULL);
+		ret = run_lxc_hooks(name, "stop", handler->conf, NULL);
+	if (ret < 0)
+		ERROR("Failed to run \"lxc.hook.stop\" hook");
 
 	while (namespace_count--)
 		free(namespaces[namespace_count]);
@@ -925,18 +935,22 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	}
 
 	if (run_lxc_hooks(name, "post-stop", handler->conf, NULL)) {
-		ERROR("Failed to run lxc.hook.post-stop for container \"%s\".", name);
+		ERROR("Failed to run lxc.hook.post-stop for container \"%s\"", name);
 		if (handler->conf->reboot) {
-			WARN("Container will be stopped instead of rebooted.");
+			WARN("Container will be stopped instead of rebooted");
 			handler->conf->reboot = 0;
-			if (setenv("LXC_TARGET", "stop", 1))
-				WARN("Failed to set environment variable: LXC_TARGET=stop.");
+
+			ret = setenv("LXC_TARGET", "stop", 1);
+			if (ret < 0)
+				WARN("Failed to set environment variable: "
+				     "LXC_TARGET=stop");
 		}
 	}
 
 	/* Reset mask set by setup_signal_fd. */
-	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL))
-		WARN("Failed to restore signal mask.");
+	ret = sigprocmask(SIG_SETMASK, &handler->oldmask, NULL);
+	if (ret < 0)
+		WARN("%s - Failed to restore signal mask", strerror(errno));
 
 	lxc_console_delete(&handler->conf->console);
 	lxc_delete_tty(&handler->conf->tty_info);
@@ -952,8 +966,8 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 			continue;
 
 		/* close state client socket */
-		close(client->clientfd);
 		lxc_list_del(cur);
+		close(client->clientfd);
 		free(cur->elem);
 		free(cur);
 	}
