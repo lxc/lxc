@@ -1828,12 +1828,12 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 		struct lxc_operations* ops, void *data, const char *lxcpath,
 		bool backgrounded)
 {
-	int status;
-	int err = -1;
+	int ret, status;
 	struct lxc_conf *conf = handler->conf;
 
-	if (lxc_init(name, handler) < 0) {
-		ERROR("Failed to initialize container \"%s\".", name);
+	ret = lxc_init(name, handler);
+	if (ret < 0) {
+		ERROR("Failed to initialize container \"%s\"", name);
 		return -1;
 	}
 	handler->ops = ops;
@@ -1841,31 +1841,33 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	handler->backgrounded = backgrounded;
 
 	if (!attach_block_device(handler->conf)) {
-		ERROR("Failed to attach block device.");
+		ERROR("Failed to attach block device");
 		goto out_fini_nonet;
 	}
 
 	if (geteuid() == 0 && !lxc_list_empty(&conf->id_map)) {
 		/* If the backing store is a device, mount it here and now. */
 		if (rootfs_is_blockdev(conf)) {
-			if (unshare(CLONE_NEWNS) < 0) {
-				ERROR("Failed to unshare CLONE_NEWNS.");
+			ret = unshare(CLONE_NEWNS);
+			if (ret < 0) {
+				ERROR("Failed to unshare CLONE_NEWNS");
 				goto out_fini_nonet;
 			}
-			INFO("Unshared CLONE_NEWNS.");
+			INFO("Unshared CLONE_NEWNS");
 
 			remount_all_slave();
-			if (do_rootfs_setup(conf, name, lxcpath) < 0) {
-				ERROR("Error setting up rootfs mount as root before spawn.");
+			ret = do_rootfs_setup(conf, name, lxcpath);
+			if (ret < 0) {
+				ERROR("Error setting up rootfs mount as root before spawn");
 				goto out_fini_nonet;
 			}
-			INFO("Set up container rootfs as host root.");
+			INFO("Set up container rootfs as host root");
 		}
 	}
 
-	err = lxc_spawn(handler);
-	if (err) {
-		ERROR("Failed to spawn container \"%s\".", name);
+	ret = lxc_spawn(handler);
+	if (ret < 0) {
+		ERROR("Failed to spawn container \"%s\"", name);
 		goto out_detach_blockdev;
 	}
 	/* close parent side of data socket */
@@ -1876,14 +1878,15 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 
 	handler->conf->reboot = 0;
 
-	err = lxc_poll(name, handler);
-	if (err) {
-		ERROR("LXC mainloop exited with error: %d.", err);
+	ret = lxc_poll(name, handler);
+	if (ret) {
+		ERROR("LXC mainloop exited with error: %d", ret);
 		goto out_abort;
 	}
 
-	while (waitpid(handler->pid, &status, 0) < 0 && errno == EINTR)
-		continue;
+	status = lxc_wait_for_pid_status(handler->pid);
+	if (status < 0)
+		SYSERROR("Failed to retrieve status for %d", handler->pid);
 
 	/* If the child process exited but was not signaled, it didn't call
 	 * reboot. This should mean it was an lxc-execute which simply exited.
@@ -1892,23 +1895,23 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	if (WIFSIGNALED(status)) {
 		switch(WTERMSIG(status)) {
 		case SIGINT: /* halt */
-			DEBUG("Container \"%s\" is halting.", name);
+			DEBUG("Container \"%s\" is halting", name);
 			break;
 		case SIGHUP: /* reboot */
-			DEBUG("Container \"%s\" is rebooting.", name);
+			DEBUG("Container \"%s\" is rebooting", name);
 			handler->conf->reboot = 1;
 			break;
 		case SIGSYS: /* seccomp */
-			DEBUG("Container \"%s\" violated its seccomp policy.", name);
+			DEBUG("Container \"%s\" violated its seccomp policy", name);
 			break;
 		default:
-			DEBUG("Unknown exit status for container \"%s\" init %d.", name, WTERMSIG(status));
+			DEBUG("Unknown exit status for container \"%s\" init %d", name, WTERMSIG(status));
 			break;
 		}
 	}
 
-	err = lxc_restore_phys_nics_to_netns(handler);
-	if (err < 0)
+	ret = lxc_restore_phys_nics_to_netns(handler);
+	if (ret < 0)
 		ERROR("Failed to move physical network devices back to parent "
 		      "network namespace");
 
@@ -1928,7 +1931,7 @@ out_detach_blockdev:
 
 out_fini_nonet:
 	lxc_fini(name, handler);
-	return err;
+	return ret;
 
 out_abort:
 	lxc_abort(name, handler);
