@@ -418,8 +418,8 @@ int lxc_serve_state_clients(const char *name, struct lxc_handler *handler,
 		}
 
 		/* kick client from list */
-		close(client->clientfd);
 		lxc_list_del(cur);
+		close(client->clientfd);
 		free(cur->elem);
 		free(cur);
 	}
