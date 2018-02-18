@@ -148,18 +148,10 @@ static void close_ns(int ns_fd[LXC_NS_MAX])
  */
 static bool preserve_ns(int ns_fd[LXC_NS_MAX], int clone_flags, pid_t pid)
 {
-	int i, ret;
+	int i;
 
 	for (i = 0; i < LXC_NS_MAX; i++)
-		ns_fd[i] = -1;
-
-	ret = lxc_preserve_ns(pid, "");
-	if (ret < 0) {
-		SYSERROR("Kernel does not support attaching to namespaces.");
-		return false;
-	} else {
-		close(ret);
-	}
+		ns_fd[i] = -EBADF;
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
 		if ((clone_flags & ns_info[i].clone_flag) == 0)
@@ -176,9 +168,11 @@ static bool preserve_ns(int ns_fd[LXC_NS_MAX], int clone_flags, pid_t pid)
 
 error:
 	if (errno == ENOENT)
-		SYSERROR("Kernel does not support attaching to %s namespaces.", ns_info[i].proc_name);
+		SYSERROR("Kernel does not support attaching to %s namespaces",
+			 ns_info[i].proc_name);
 	else
-		SYSERROR("Failed to open file descriptor for %s namespace: %s.", ns_info[i].proc_name, strerror(errno));
+		SYSERROR("Failed to open file descriptor for %s namespace",
+			 ns_info[i].proc_name);
 	close_ns(ns_fd);
 	return false;
 }
