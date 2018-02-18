@@ -718,7 +718,7 @@ again:
 
 static bool wait_on_daemonized_start(struct lxc_handler *handler, int pid)
 {
-        int state, status;
+        int ret, state;
 
         /* Close write end of the socket pair. */
         close(handler->state_socket_pair[1]);
@@ -733,12 +733,11 @@ static bool wait_on_daemonized_start(struct lxc_handler *handler, int pid)
         /* The first child is going to fork() again and then exits. So we reap
          * the first child here.
          */
-        if (waitpid(pid, &status, 0) < 0)
-                DEBUG("Failed waiting on first child");
-        else if (!WIFEXITED(status))
-                DEBUG("Failed to retrieve exit status of first child");
-        else if (WEXITSTATUS(status) != 0)
-                DEBUG("First child exited with: %d", WEXITSTATUS(status));
+	ret = wait_for_pid(pid);
+	if (ret < 0)
+                DEBUG("Failed waiting on first child %d", pid);
+	else
+                DEBUG("First child %d exited", pid);
 
         if (state < 0) {
                 SYSERROR("Failed to receive the container state");
