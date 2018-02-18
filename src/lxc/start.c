@@ -1869,10 +1869,10 @@ static int start(struct lxc_handler *handler, void* data)
 {
 	struct start_args *arg = data;
 
-	NOTICE("Exec'ing \"%s\".", arg->argv[0]);
+	NOTICE("Exec'ing \"%s\"", arg->argv[0]);
 
 	execvp(arg->argv[0], arg->argv);
-	SYSERROR("Failed to exec \"%s\".", arg->argv[0]);
+	SYSERROR("Failed to exec \"%s\"", arg->argv[0]);
 	return 0;
 }
 
