@@ -706,46 +706,77 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	struct lxc_conf *conf = handler->conf;
 
 	lsm_init();
-	TRACE("initialized LSM");
+	TRACE("Initialized LSM");
 
-	if (lxc_read_seccomp_config(conf) != 0) {
-		ERROR("Failed loading seccomp policy.");
+	ret = lxc_read_seccomp_config(conf);
+	if (ret < 0) {
+		ERROR("Failed loading seccomp policy");
 		goto out_close_maincmd_fd;
 	}
-	TRACE("read seccomp policy");
+	TRACE("Read seccomp policy");
 
 	/* Begin by setting the state to STARTING. */
-	if (lxc_set_state(name, handler, STARTING)) {
-		ERROR("Failed to set state for container \"%s\" to \"%s\".", name, lxc_state2str(STARTING));
+	ret = lxc_set_state(name, handler, STARTING);
+	if (ret < 0) {
+		ERROR("Failed to set state to \"%s\"", lxc_state2str(STARTING));
 		goto out_close_maincmd_fd;
 	}
 	TRACE("set container state to \"STARTING\"");
 
 	/* Start of environment variable setup for hooks. */
-	if (name && setenv("LXC_NAME", name, 1))
-		SYSERROR("Failed to set environment variable: LXC_NAME=%s.", name);
+	if (name) {
+		ret = setenv("LXC_NAME", name, 1);
+		if (ret < 0)
+			SYSERROR("Failed to set environment variable: LXC_NAME=%s", name);
+	}
 
-	if (conf->rcfile && setenv("LXC_CONFIG_FILE", conf->rcfile, 1))
-		SYSERROR("Failed to set environment variable: LXC_CONFIG_FILE=%s.", conf->rcfile);
+	if (conf->rcfile) {
+		ret = setenv("LXC_CONFIG_FILE", conf->rcfile, 1);
+		if (ret < 0)
+			SYSERROR("Failed to set environment variable: "
+				 "LXC_CONFIG_FILE=%s", conf->rcfile);
+	}
 
-	if (conf->rootfs.mount && setenv("LXC_ROOTFS_MOUNT", conf->rootfs.mount, 1))
-		SYSERROR("Failed to set environment variable: LXC_ROOTFS_MOUNT=%s.", conf->rootfs.mount);
+	if (conf->rootfs.mount) {
+		ret = setenv("LXC_ROOTFS_MOUNT", conf->rootfs.mount, 1);
+		if (ret < 0)
+			SYSERROR("Failed to set environment variable: "
+				 "LXC_ROOTFS_MOUNT=%s", conf->rootfs.mount);
+	}
 
-	if (conf->rootfs.path && setenv("LXC_ROOTFS_PATH", conf->rootfs.path, 1))
-		SYSERROR("Failed to set environment variable: LXC_ROOTFS_PATH=%s.", conf->rootfs.path);
+	if (conf->rootfs.path) {
+		ret = setenv("LXC_ROOTFS_PATH", conf->rootfs.path, 1);
+		if (ret < 0)
+			SYSERROR("Failed to set environment variable: "
+				 "LXC_ROOTFS_PATH=%s", conf->rootfs.path);
+	}
 
-	if (conf->console.path && setenv("LXC_CONSOLE", conf->console.path, 1))
-		SYSERROR("Failed to set environment variable: LXC_CONSOLE=%s.", conf->console.path);
+	if (conf->console.path) {
+		ret = setenv("LXC_CONSOLE", conf->console.path, 1);
+		if (ret < 0)
+			SYSERROR("Failed to set environment variable: "
+				 "LXC_CONSOLE=%s", conf->console.path);
+	}
 
-	if (conf->console.log_path && setenv("LXC_CONSOLE_LOGPATH", conf->console.log_path, 1))
-		SYSERROR("Failed to set environment variable: LXC_CONSOLE_LOGPATH=%s.", conf->console.log_path);
+	if (conf->console.log_path) {
+		ret = setenv("LXC_CONSOLE_LOGPATH", conf->console.log_path, 1);
+		if (ret < 0)
+			SYSERROR("Failed to set environment variable: "
+				 "LXC_CONSOLE_LOGPATH=%s", conf->console.log_path);
+	}
 
-	if (setenv("LXC_CGNS_AWARE", "1", 1))
-		SYSERROR("Failed to set environment variable LXC_CGNS_AWARE=1.");
+	if (cgns_supported()) {
+		ret = setenv("LXC_CGNS_AWARE", "1", 1);
+		if (ret < 0)
+			SYSERROR("Failed to set environment variable "
+				 "LXC_CGNS_AWARE=1");
+	}
 
 	loglevel = lxc_log_priority_to_string(lxc_log_get_level());
-	if (setenv("LXC_LOG_LEVEL", loglevel, 1))
-		SYSERROR("Failed to set environment variable LXC_LOG_LEVEL=%s", loglevel);
+	ret = setenv("LXC_LOG_LEVEL", loglevel, 1);
+	if (ret < 0)
+		SYSERROR("Set environment variable LXC_LOG_LEVEL=%s",
+			 loglevel);
 
 	if (conf->hooks_version == 0)
 		ret = setenv("LXC_HOOK_VERSION", "0", 1);
@@ -755,13 +786,14 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 		SYSERROR("Failed to set environment variable LXC_HOOK_VERSION=%u", conf->hooks_version);
 	/* End of environment variable setup for hooks. */
 
-	TRACE("set environment variables");
+	TRACE("Set environment variables");
 
-	if (run_lxc_hooks(name, "pre-start", conf, NULL)) {
-		ERROR("Failed to run lxc.hook.pre-start for container \"%s\".", name);
+	ret = run_lxc_hooks(name, "pre-start", conf, NULL);
+	if (ret < 0) {
+		ERROR("Failed to run lxc.hook.pre-start for container \"%s\"", name);
 		goto out_aborting;
 	}
-	TRACE("ran pre-start hooks");
+	TRACE("Ran pre-start hooks");
 
 	/* The signal fd has to be created before forking otherwise if the child
 	 * process exits before we setup the signal fd, the event will be lost
@@ -772,7 +804,7 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 		ERROR("Failed to setup SIGCHLD fd handler.");
 		goto out_delete_tty;
 	}
-	TRACE("set up signal fd");
+	TRACE("Set up signal fd");
 
 	/* Do this after setting up signals since it might unblock SIGWINCH. */
 	ret = lxc_console_create(conf);
@@ -784,12 +816,12 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 
 	ret = lxc_pty_map_ids(conf, &conf->console);
 	if (ret < 0) {
-		ERROR("Failed to shift tty into container.");
+		ERROR("Failed to chown console");
 		goto out_restore_sigmask;
 	}
-	TRACE("shifted tty ids");
+	TRACE("Chowned console");
 
-	INFO("container \"%s\" is initialized", name);
+	INFO("Container \"%s\" is initialized", name);
 	return 0;
 
 out_restore_sigmask:
