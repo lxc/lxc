@@ -129,39 +129,39 @@ static void print_top_failing_dir(const char *path)
 	}
 }
 
-static void close_ns(int ns_fd[LXC_NS_MAX])
+static void lxc_put_nsfds(struct lxc_handler *handler)
 {
 	int i;
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
-		if (ns_fd[i] < 0)
+		if (handler->nsfd[i] < 0)
 			continue;
 
-		close(ns_fd[i]);
-		ns_fd[i] = -EBADF;
+		close(handler->nsfd[i]);
+		handler->nsfd[i] = -EBADF;
 	}
 }
 
-/* preserve_ns: open /proc/@pid/ns/@ns for each namespace specified
+/* lxc_preserve_namespaces: open /proc/@pid/ns/@ns for each namespace specified
  * in clone_flags.
  * Return true on success, false on failure.
  */
-static bool preserve_ns(int ns_fd[LXC_NS_MAX], int clone_flags, pid_t pid)
+static bool lxc_preserve_namespaces(struct lxc_handler *handler, int clone_flags, pid_t pid)
 {
 	int i;
 
 	for (i = 0; i < LXC_NS_MAX; i++)
-		ns_fd[i] = -EBADF;
+		handler->nsfd[i] = -EBADF;
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
 		if ((clone_flags & ns_info[i].clone_flag) == 0)
 			continue;
 
-		ns_fd[i] = lxc_preserve_ns(pid, ns_info[i].proc_name);
-		if (ns_fd[i] < 0)
+		handler->nsfd[i] = lxc_preserve_ns(pid, ns_info[i].proc_name);
+		if (handler->nsfd[i] < 0)
 			goto error;
 
-		DEBUG("Preserved %s namespace via fd %d", ns_info[i].proc_name, ns_fd[i]);
+		DEBUG("Preserved %s namespace via fd %d", ns_info[i].proc_name, handler->nsfd[i]);
 	}
 
 	return true;
@@ -173,7 +173,7 @@ error:
 	else
 		SYSERROR("Failed to open file descriptor for %s namespace",
 			 ns_info[i].proc_name);
-	close_ns(ns_fd);
+	lxc_put_nsfds(handler);
 	return false;
 }
 
@@ -607,19 +607,6 @@ void lxc_zero_handler(struct lxc_handler *handler)
 
 	handler->sync_sock[0] = -1;
 	handler->sync_sock[1] = -1;
-}
-
-static void lxc_put_nsfds(struct lxc_handler *handler)
-{
-	int i;
-
-	for (i = 0; i < LXC_NS_MAX; i++) {
-		if (handler->nsfd[i] < 0)
-			continue;
-
-		close(handler->nsfd[i]);
-		handler->nsfd[i] = -EBADF;
-	}
 }
 
 void lxc_free_handler(struct lxc_handler *handler)
@@ -1550,7 +1537,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		if (handler->on_clone_flags & ns_info[i].clone_flag)
 			INFO("Cloned %s", ns_info[i].flag_name);
 
-	if (!preserve_ns(handler->nsfd, handler->on_clone_flags, handler->pid)) {
+	if (!lxc_preserve_namespaces(handler, handler->on_clone_flags, handler->pid)) {
 		ERROR("Failed to preserve cloned namespaces for lxc.hook.stop");
 		goto out_delete_net;
 	}
