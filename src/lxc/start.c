@@ -499,7 +499,8 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 	bool has_console = true;
 	struct lxc_epoll_descr descr, descr_console;
 
-	if (handler->conf->console.path && !strcmp(handler->conf->console.path, "none"))
+	if (handler->conf->console.path &&
+	    strcmp(handler->conf->console.path, "none") == 0)
 		has_console = false;
 
 	ret = lxc_mainloop_open(&descr);
