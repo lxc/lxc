@@ -1904,28 +1904,29 @@ static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 					    const char *name)
 {
 	char destroy[MAXPATHLEN];
-	bool bret = true;
-	int ret = 0;
 	struct lxc_container *c;
+	int ret = 0;
+	bool bret = true;
+
 	if (handler->conf->rootfs.path && handler->conf->rootfs.mount) {
 		bret = do_destroy_container(handler);
 		if (!bret) {
-			ERROR("Error destroying rootfs for container \"%s\".", name);
+			ERROR("Error destroying rootfs for container \"%s\"", name);
 			return;
 		}
 	}
-	INFO("Destroyed rootfs for container \"%s\".", name);
+	INFO("Destroyed rootfs for container \"%s\"", name);
 
 	ret = snprintf(destroy, MAXPATHLEN, "%s/%s", handler->lxcpath, name);
 	if (ret < 0 || ret >= MAXPATHLEN) {
-		ERROR("Error destroying directory for container \"%s\".", name);
+		ERROR("Error destroying directory for container \"%s\"", name);
 		return;
 	}
 
 	c = lxc_container_new(name, handler->lxcpath);
 	if (c) {
 		if (container_disk_lock(c)) {
-			INFO("Could not update lxc_snapshots file.");
+			INFO("Could not update lxc_snapshots file");
 			lxc_container_put(c);
 		} else {
 			mod_all_rdeps(c, false);
@@ -1941,10 +1942,10 @@ static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 		ret = lxc_rmdir_onedev(destroy, NULL);
 
 	if (ret < 0) {
-		ERROR("Error destroying directory for container \"%s\".", name);
+		ERROR("Error destroying directory for container \"%s\"", name);
 		return;
 	}
-	INFO("Destroyed directory for container \"%s\".", name);
+	INFO("Destroyed directory for container \"%s\"", name);
 }
 
 static int lxc_rmdir_onedev_wrapper(void *data)
