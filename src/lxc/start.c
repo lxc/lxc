@@ -304,13 +304,13 @@ static int signal_handler(int fd, uint32_t events, void *data,
 
 	ret = read(fd, &siginfo, sizeof(siginfo));
 	if (ret < 0) {
-		ERROR("Failed to read signal info from signal file descriptor: %d.", fd);
+		ERROR("Failed to read signal info from signal file descriptor %d", fd);
 		return -1;
 	}
 
 	if (ret != sizeof(siginfo)) {
-		ERROR("Unexpected size for siginfo struct.");
-		return -1;
+		ERROR("Unexpected size for struct signalfd_siginfo");
+		return -EINVAL;
 	}
 
 	/* Check whether init is running. */
@@ -351,25 +351,26 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	 * by a process different from the container init.
 	 */
 	if (siginfo.ssi_pid != hdlr->pid) {
-		NOTICE("Received %d from pid %d instead of container init %d.", siginfo.ssi_signo, siginfo.ssi_pid, hdlr->pid);
+		NOTICE("Received %d from pid %d instead of container init %d",
+		       siginfo.ssi_signo, siginfo.ssi_pid, hdlr->pid);
 		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
 	}
 
 	if (siginfo.ssi_signo != SIGCHLD) {
 		kill(hdlr->pid, siginfo.ssi_signo);
-		INFO("Forwarded signal %d to pid %d.", siginfo.ssi_signo, hdlr->pid);
+		INFO("Forwarded signal %d to pid %d", siginfo.ssi_signo, hdlr->pid);
 		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
 	}
 
 	if (siginfo.ssi_code == CLD_STOPPED) {
-		INFO("Container init process was stopped.");
+		INFO("Container init process was stopped");
 		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
 	} else if (siginfo.ssi_code == CLD_CONTINUED) {
-		INFO("Container init process was continued.");
+		INFO("Container init process was continued");
 		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
 	}
 
-	DEBUG("Container init process %d exited.", hdlr->pid);
+	DEBUG("Container init process %d exited", hdlr->pid);
 	return LXC_MAINLOOP_CLOSE;
 }
 
