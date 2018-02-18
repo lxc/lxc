@@ -99,23 +99,30 @@ static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 
 static void print_top_failing_dir(const char *path)
 {
-	size_t len = strlen(path);
-	char *copy = alloca(len + 1), *p, *e, saved;
-	strcpy(copy, path);
+	int ret;
+	size_t len;
+	char *copy, *e, *p, saved;
 
+	len = strlen(path);
+	copy = alloca(len + 1);
+	strcpy(copy, path);
 	p = copy;
 	e = copy + len;
 	while (p < e) {
 		while (p < e && *p == '/')
 			p++;
+
 		while (p < e && *p != '/')
 			p++;
+
 		saved = *p;
 		*p = '\0';
-		if (access(copy, X_OK)) {
+
+		ret = access(copy, X_OK);
+		if (ret != 0) {
 			SYSERROR("Could not access %s. Please grant it x "
 				 "access, or add an ACL for the container "
-				 "root.", copy);
+				 "root", copy);
 			return;
 		}
 		*p = saved;
