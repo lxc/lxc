@@ -1957,7 +1957,7 @@ static int post_start(struct lxc_handler *handler, void* data)
 {
 	struct start_args *arg = data;
 
-	NOTICE("Started \"%s\" with pid \"%d\".", arg->argv[0], handler->pid);
+	NOTICE("Started \"%s\" with pid \"%d\"", arg->argv[0], handler->pid);
 	return 0;
 }
 
