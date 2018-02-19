@@ -37,14 +37,32 @@
 #include "state.h"
 
 struct lxc_handler {
-	/* The clone flags that were requested. */
-	int clone_flags;
-
-	/* The clone flags to actually use when calling lxc_clone(). They may
-	 * differ from clone_flags because of ordering requirements (e.g.
-	 * CLONE_NEWNET and CLONE_NEWUSER).
+	/* Record the clone for namespaces flags that the container requested.
+	 *
+	 * @ns_clone_flags
+	 * - All clone flags that were requested.
+	 *
+	 * @ns_on_clone_flags
+	 * - The clone flags for namespaces to actually use when calling
+	 *   lxc_clone(): After the container has started ns_on_clone_flags will
+	 *   list the clone flags that were unshare()ed rather then clone()ed
+	 *   because of ordering requirements (e.g. e.g. CLONE_NEWNET and
+	 *   CLONE_NEWUSER) or implementation details.
+         *
+	 * @ns_keep_flags;
+	 * - The clone flags for the namespaces that the container will inherit
+	 *   from the parent. They are not recorded in the handler itself but
+	 *   are present in the container's config.
+	 *
+	 * @ns_share_flags;
+	 * - The clone flags for the namespaces that the container will share
+	 *   with another process.  They are not recorded in the handler itself
+	 *   but are present in the container's config.
 	 */
-	int on_clone_flags;
+	struct /* lxc_ns */ {
+		int ns_clone_flags;
+		int ns_on_clone_flags;
+	};
 
 	/* File descriptor to pin the rootfs for privileged containers. */
 	int pinfd;
