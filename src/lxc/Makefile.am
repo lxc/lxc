@@ -92,7 +92,6 @@ liblxc_la_SOURCES = \
 	storage/rsync.c storage/rsync.h \
 	storage/zfs.c storage/zfs.h \
 	storage/storage_utils.c storage/storage_utils.h \
-	cgroups/cgfs.c \
 	cgroups/cgfsng.c \
 	cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 	cgroups/cgroup.c cgroups/cgroup.h \
