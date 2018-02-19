@@ -2800,12 +2800,12 @@ static struct cgroup_ops cgfsng_ops = {
 	.set = cgfsng_set,
 	.unfreeze = cgfsng_unfreeze,
 	.setup_limits = cgfsng_setup_limits,
-	.name = "cgroupfs-ng",
+	.driver = "cgfsng",
+	.version = "1.0.0",
 	.attach = cgfsng_attach,
 	.chown = cgfsng_chown,
 	.mount_cgroup = cgfsng_mount,
 	.nrtasks = cgfsng_nrtasks,
-	.driver = CGFSNG,
 
 	/* unsupported */
 	.create_legacy = NULL,
