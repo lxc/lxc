@@ -39,14 +39,9 @@ typedef enum {
         CGROUP_LAYOUT_UNIFIED =  2,
 } cgroup_layout_t;
 
-typedef enum {
-	CGFS,
-	CGMANAGER,
-	CGFSNG,
-} cgroup_driver_t;
-
 struct cgroup_ops {
-	const char *name;
+	const char *driver;
+	const char *version;
 
 	void *(*init)(struct lxc_handler *handler);
 	void (*destroy)(void *hdata, struct lxc_conf *conf);
@@ -66,7 +61,6 @@ struct cgroup_ops {
 	bool (*mount_cgroup)(void *hdata, const char *root, int type);
 	int (*nrtasks)(void *hdata);
 	void (*disconnect)(void);
-	cgroup_driver_t driver;
 };
 
 extern bool cgroup_attach(const char *name, const char *lxcpath, pid_t pid);
@@ -87,7 +81,6 @@ extern int cgroup_num_hierarchies();
 extern bool cgroup_get_hierarchies(int i, char ***out);
 extern bool cgroup_unfreeze(struct lxc_handler *handler);
 extern void cgroup_disconnect(void);
-extern cgroup_driver_t cgroup_driver(void);
 
 extern void prune_init_scope(char *cg);
 extern bool is_crucial_cgroup_subsystem(const char *s);
