@@ -2806,7 +2806,4 @@ static struct cgroup_ops cgfsng_ops = {
 	.chown = cgfsng_chown,
 	.mount_cgroup = cgfsng_mount,
 	.nrtasks = cgfsng_nrtasks,
-
-	/* unsupported */
-	.create_legacy = NULL,
 };

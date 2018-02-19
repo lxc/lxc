@@ -1625,11 +1625,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (ret < 0)
 		goto out_delete_net;
 
-	if (!cgroup_create_legacy(handler)) {
-		ERROR("Failed to setup legacy cgroups for container \"%s\"", name);
-		goto out_delete_net;
-	}
-
 	if (!cgroup_setup_limits(handler, false)) {
 		ERROR("Failed to setup cgroup limits for container \"%s\"", name);
 		goto out_delete_net;
