@@ -589,4 +589,7 @@ static inline pid_t lxc_raw_gettid(void)
 #endif
 }
 
+/* Set a signal the child process will receive after the parent has died. */
+extern int lxc_set_death_signal(int signal);
+
 #endif /* __LXC_UTILS_H */
