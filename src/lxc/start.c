@@ -721,7 +721,7 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 		ERROR("Failed to set state to \"%s\"", lxc_state2str(STARTING));
 		goto out_close_maincmd_fd;
 	}
-	TRACE("set container state to \"STARTING\"");
+	TRACE("Set container state to \"STARTING\"");
 
 	/* Start of environment variable setup for hooks. */
 	if (name) {
@@ -934,7 +934,8 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		lxc_set_state(name, handler, STOPPED);
 	}
 
-	if (run_lxc_hooks(name, "post-stop", handler->conf, NULL)) {
+	ret = run_lxc_hooks(name, "post-stop", handler->conf, NULL);
+	if (ret < 0) {
 		ERROR("Failed to run lxc.hook.post-stop for container \"%s\"", name);
 		if (handler->conf->reboot) {
 			WARN("Container will be stopped instead of rebooted");
@@ -1259,7 +1260,6 @@ static int do_start(void *data)
 
 	if (devnull_fd < 0) {
 		devnull_fd = open_devnull();
-
 		if (devnull_fd < 0)
 			goto out_warn_father;
 	}
