@@ -1971,56 +1971,6 @@ static bool cgfsng_chown(void *hdata, struct lxc_conf *conf)
 	return true;
 }
 
-/* We've safe-mounted a tmpfs as parent, so we don't need to protect against
- * symlinks any more - just use mount.
- *
- * mount cgroup-full if requested
- */
-static int mount_cgroup_full(int type, struct hierarchy *h, char *dest,
-			     char *container_cgroup)
-{
-	int ret;
-	char *rwpath, *source;
-
-	if (type < LXC_AUTO_CGROUP_FULL_RO || type > LXC_AUTO_CGROUP_FULL_MIXED)
-		return 0;
-
-	ret = mount(h->mountpoint, dest, "cgroup", MS_BIND, NULL);
-	if (ret < 0) {
-		SYSERROR("Failed to bind mount cgroup \"%s\" onto \"%s\"",
-			 h->mountpoint, dest);
-		return -1;
-	}
-
-	if (type != LXC_AUTO_CGROUP_FULL_RW) {
-		unsigned long flags = MS_BIND | MS_NOSUID | MS_NOEXEC | MS_NODEV |
-				      MS_REMOUNT | MS_RDONLY;
-
-		ret = mount(NULL, dest, "cgroup", flags, NULL);
-		if (ret < 0) {
-			SYSERROR("Failed to remount cgroup \"%s\" read-only", dest);
-			return -1;
-		}
-	}
-
-	INFO("Bind mounted \"%s\" onto \"%s\"", h->mountpoint, dest);
-	if (type != LXC_AUTO_CGROUP_FULL_MIXED)
-		return 0;
-
-	/* mount just the container path rw */
-	source = must_make_path(h->mountpoint, h->base_cgroup, container_cgroup, NULL);
-	rwpath = must_make_path(dest, h->base_cgroup, container_cgroup, NULL);
-	ret = mount(source, rwpath, "cgroup", MS_BIND, NULL);
-	if (ret < 0)
-		WARN("%s - Failed to mount cgroup \"%s\" read-write",
-		     strerror(errno), rwpath);
-
-	TRACE("Mounted cgroup \"%s\" read-write", rwpath);
-	free(rwpath);
-	free(source);
-	return 0;
-}
-
 /* cgroup-full:* is done, no need to create subdirs */
 static bool cg_mount_needs_subdirs(int type)
 {
@@ -2034,9 +1984,9 @@ static bool cg_mount_needs_subdirs(int type)
  * remount controller ro if needed and bindmount the cgroupfs onto
  * controll/the/cg/path.
  */
-static int do_secondstage_mounts_if_needed(int type, struct hierarchy *h,
-					   char *controllerpath, char *cgpath,
-					   const char *container_cgroup)
+static int cg_legacy_mount_controllers(int type, struct hierarchy *h,
+				       char *controllerpath, char *cgpath,
+				       const char *container_cgroup)
 {
 	int ret, remount_flags;
 	char *sourcepath;
@@ -2093,8 +2043,14 @@ static int do_secondstage_mounts_if_needed(int type, struct hierarchy *h,
 	return 0;
 }
 
-static int cg_mount_in_cgroup_namespace(int type, struct hierarchy *h,
-					const char *controllerpath)
+/* __cg_mount_direct
+ *
+ * Mount cgroup hierarchies directly without using bind-mounts. The main
+ * uses-cases are mounting cgroup hierarchies in cgroup namespaces and mounting
+ * cgroups for the LXC_AUTO_CGROUP_FULL option.
+ */
+static int __cg_mount_direct(int type, struct hierarchy *h,
+			     const char *controllerpath)
 {
 	 int ret;
 	 char *controllers = NULL;
@@ -2119,12 +2075,27 @@ static int cg_mount_in_cgroup_namespace(int type, struct hierarchy *h,
 	ret = mount("cgroup", controllerpath, fstype, flags, controllers);
 	free(controllers);
 	if (ret < 0) {
-		SYSERROR("Failed to mount %s with cgroup filesystem type %s", controllerpath, fstype);
+		SYSERROR("Failed to mount \"%s\" with cgroup filesystem type %s", controllerpath, fstype);
 		return -1;
 	}
 
-	DEBUG("Mounted %s with cgroup filesystem type %s", controllerpath, fstype);
+	DEBUG("Mounted \"%s\" with cgroup filesystem type %s", controllerpath, fstype);
 	return 0;
+}
+
+static inline int cg_mount_in_cgroup_namespace(int type, struct hierarchy *h,
+					       const char *controllerpath)
+{
+	return __cg_mount_direct(type, h, controllerpath);
+}
+
+static inline int cg_mount_cgroup_full(int type, struct hierarchy *h,
+				       const char *controllerpath)
+{
+	if (type < LXC_AUTO_CGROUP_FULL_RO || type > LXC_AUTO_CGROUP_FULL_MIXED)
+		return 0;
+
+	return __cg_mount_direct(type, h, controllerpath);
 }
 
 static bool cgfsng_mount(void *hdata, const char *root, int type)
@@ -2161,7 +2132,7 @@ static bool cgfsng_mount(void *hdata, const char *root, int type)
 
 	/* Mount tmpfs */
 	tmpfspath = must_make_path(root, "/sys/fs/cgroup", NULL);
-	ret = safe_mount("cgroup_root", tmpfspath, "tmpfs",
+	ret = safe_mount(NULL, tmpfspath, "tmpfs",
 			 MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,
 			 "size=10240k,mode=755", root);
 	if (ret < 0)
@@ -2202,7 +2173,7 @@ static bool cgfsng_mount(void *hdata, const char *root, int type)
 			continue;
 		}
 
-		ret = mount_cgroup_full(type, h, controllerpath, d->container_cgroup);
+		ret = cg_mount_cgroup_full(type, h, controllerpath);
 		if (ret < 0) {
 			free(controllerpath);
 			goto on_error;
@@ -2222,8 +2193,8 @@ static bool cgfsng_mount(void *hdata, const char *root, int type)
 			goto on_error;
 		}
 
-		ret = do_secondstage_mounts_if_needed(type, h, controllerpath,
-						      path2, d->container_cgroup);
+		ret = cg_legacy_mount_controllers(type, h, controllerpath,
+						  path2, d->container_cgroup);
 		free(controllerpath);
 		free(path2);
 		if (ret < 0)
