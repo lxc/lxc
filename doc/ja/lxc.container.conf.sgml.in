@@ -1806,23 +1806,41 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.cgroup.[subsystem name]</option>
+            <option>lxc.cgroup.[controll name]</option>
           </term>
           <listitem>
             <para>
               <!--
-              specify the control group value to be set.  The
-              subsystem name is the literal name of the control group
-              subsystem.  The permitted names and the syntax of their
-              values is not dictated by LXC, instead it depends on the
-              features of the Linux kernel running at the time the
-              container is started,
-              eg. <option>lxc.cgroup.cpuset.cpus</option>
+              Specify the control group value to be set on a legacy cgroup
+              hierarchy. The controller name is the literal name of the control
+              group. The permitted names and the syntax of their values is not
+              dictated by LXC, instead it depends on the features of the Linux
+              kernel running at the time the container is started, eg.
+              <option>lxc.cgroup.cpuset.cpus</option>
               -->
-              設定する control group の値を指定します。
-              サブシステム名は、control group のそのままの名前です。
-              許される名前や値の書式は LXC が指示することはなく、コンテナが実行された時に実行されている Linux カーネルの機能に依存します。
-              例えば <option>lxc.cgroup.cpuset.cpus</option>
+              legacy な cgroup 階層 (cgroup v1) に設定する値を指定します。コントローラー名は control group そのままの名前です。
+              許される名前や値の書式は LXC が指定することはなく、コンテナが実行された時に実行されている Linux カーネルの機能に依存します。
+              例えば <option>lxc.cgroup.cpuset.cpus</option> のようになります。
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.cgroup2.[controller name]</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              Specify the control group value to be set on the unified cgroup
+              shierarchy. The controller name is the literal name of the control
+              group. The permitted names and the syntax of their values is not
+              dictated by LXC, instead it depends on the features of the Linux
+              kernel running at the time the container is started, eg.
+              <option>lxc.cgroup2.memory.high</option>
+              -->
+              単一の cgroup 階層 (cgroup v2) に設定する値を指定します。
+              許される名前や値の書式は LXC が指定することはなく、コンテナが実行された時に実行されている Linux カーネルの機能に依存します。
+              例えば <option>lxc.cgroup2.memory.high</option> のようになります。
             </para>
           </listitem>
         </varlistentry>
