@@ -1392,20 +1392,21 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <listitem>
             <para>
               <!--
-              specify a mount point corresponding to a line in the
+              Specify a mount point corresponding to a line in the
               fstab format.
               -->
               fstab フォーマットの一行と同じフォーマットのマウントポイントの指定をします。
 
               <!--
-              Moreover lxc add two options to mount.
+              Moreover lxc supports mount propagation, such as rslave or
+              rprivate, and adds three additional mount options.
               <option>optional</option> don't fail if mount does not work.
               <option>create=dir</option> or <option>create=file</option>
               to create dir (or file) when the point will be mounted.
               <option>relative</option> source path is taken to be relative to
               the mounted container root. For instance,
               -->
-              fstab フォーマットに加えて、LXC ではマウントに対して独自の 2 つのオプションが使えます。
+              加えて、LXC では rslave や rprivate といったマウント・プロパゲーションオプションと、独自の 3 つのマウントオプションが使えます。
               <option>optional</option> は、マウントが失敗しても失敗を返さずに無視します。
               <option>create=dir</option> と <option>create=file</option> は、マウントポイントをマウントする際にディレクトリもしくはファイルを作成します。
               <option>relative</option> を指定すると、マウントされたコンテナルートからの相対パスとして取得されます。
@@ -1439,138 +1440,159 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             </para>
             <itemizedlist>
               <listitem>
-                <!--
                 <para>
                   <option>proc:mixed</option> (or <option>proc</option>):
+                <!--
                   mount <filename>/proc</filename> as read-write, but
                   remount <filename>/proc/sys</filename> and
                   <filename>/proc/sysrq-trigger</filename> read-only
                   for security / container isolation purposes.
-                </para>
                 -->
-                <para>
-                  <option>proc:mixed</option> (or <option>proc</option>):
                   <filename>/proc</filename> を読み書き可能でマウントします。
                   ただし、<filename>/proc/sys</filename> と <filename>/proc/sysrq-trigger</filename> は、セキュリティとコンテナの隔離の目的でリードオンリーで再マウントされます。
                 </para>
               </listitem>
               <listitem>
-                <!--
-                <para>
-                  <option>proc:rw</option>: mount
-                  <filename>/proc</filename> as read-write
-                </para>
-                -->
                 <para>
                   <option>proc:rw</option>:
+                <!--
+                  <filename>/proc</filename> as read-write
+                -->
                   <filename>/proc</filename> を読み書き可能でマウントします。
                 </para>
               </listitem>
               <listitem>
-                <!--
                 <para>
                   <option>sys:mixed</option> (or <option>sys</option>):
+                <!--
                   mount <filename>/sys</filename> as read-only but with
                   /sys/devices/virtual/net writable.
-                </para>
                 -->
-                <para>
-                  <option>sys:mixed</option> (or <option>sys</option>):
                   /sys/devices/virtual/net のみ書き込み可能で、その他の <filename>/sys</filename> はリードオンリーでマウントします。
                 </para>
               </listitem>
               <listitem>
-                <!--
-                <para>
-                  <option>sys:ro</option>
-                  mount <filename>/sys</filename> as read-only
-                  for security / container isolation purposes.
-                </para>
-                -->
                 <para>
                   <option>sys:ro</option>:
+                <!--
+                  mount <filename>/sys</filename> as read-only
+                  for security / container isolation purposes.
+                -->
                   <filename>/sys</filename> を、セキュリティとコンテナの隔離の目的でリードオンリーでマウントします。
                 </para>
               </listitem>
               <listitem>
-                <!--
-                <para>
-                  <option>sys:rw</option>: mount
-                  <filename>/sys</filename> as read-write
-                </para>
-                -->
                 <para>
                   <option>sys:rw</option>:
+                <!--
+                  <filename>/sys</filename> as read-write
+                -->
                   <filename>/sys</filename> を読み書き可能でマウントします。
                 </para>
               </listitem>
               <listitem>
-                <!--
                 <para>
                   <option>cgroup:mixed</option>:
-                  mount a tmpfs to <filename>/sys/fs/cgroup</filename>,
-                  create directories for all hierarchies to which
-                  the container is added, create subdirectories
-                  there with the name of the cgroup, and bind-mount
-                  the container's own cgroup into that directory.
-                  The container will be able to write to its own
-                  cgroup directory, but not the parents, since they
-                  will be remounted read-only
-                </para>
-                -->
-                <para>
-                  <option>cgroup:mixed</option>:
-                  <filename>/sys/fs/cgroup</filename> を tmpfs でマウントし、そのコンテナの追加が行われた全ての階層構造に対するディレクトリを作製し、その cgroup の名前でその中にサブディレクトリを作製し、そのコンテナ自身の cgroup をそのディレクトリにバインドマウントします。
-                  コンテナは自身の cgroup ディレクトリに書き込みが可能ですが、親ディレクトリはリードオンリーで再マウントされているため書き込めません。
+                  <!--
+                  Mount a tmpfs to <filename>/sys/fs/cgroup</filename>,
+                  create directories for all hierarchies to which the container
+                  is added, create subdirectories in those hierarchies with the
+                  name of the cgroup, and bind-mount the container's own cgroup
+                  into that directory. The container will be able to write to
+                  its own cgroup directory, but not the parents, since they will
+                  be remounted read-only.
+                    -->
+                  <filename>/sys/fs/cgroup</filename> を tmpfs でマウントし、そのコンテナの追加が行われた全ての階層に対するディレクトリを作成し、それらの階層内に cgroup 名でサブディレクトリを作成し、そのコンテナ自身の cgroup をそのディレクトリにバインドマウントします。コンテナは自身の cgroup ディレクトリに書き込みが可能ですが、親ディレクトリはリードオンリーで再マウントされているため書き込めません。
                 </para>
               </listitem>
+
               <listitem>
-                <!--
                 <para>
-                  <option>cgroup:ro</option>: similar to
-                  <option>cgroup:mixed</option>, but everything will
-                be mounted read-only.
+                  <option>cgroup:mixed:force</option>:
+                  <!--
+                  The <option>force</option> option will cause LXC to perform
+                  the cgroup mounts for the container under all circumstances.
+                  Otherwise it is similar to <option>cgroup:mixed</option>.
+                  This is mainly useful when the cgroup namespaces are enabled
+                  where LXC will normally leave mounting cgroups to the init
+                  binary of the container since it is perfectly safe to do so.
+                    -->
+                  <option>force</option> を指定すると、LXC はあらゆる状況でコンテナのための cgroup マウントを実行します。それ以外は <option>cgroup:mixed</option> と同様です。これは主に cgroup 名前空間が有効な場合に便利です。この場合は完全に安全ですので、LXC は通常コンテナの init バイナリが cgroup をマウントしたままの状態にしておきます。
                 </para>
-                -->
+              </listitem>
+
+              <listitem>
                 <para>
                   <option>cgroup:ro</option>:
+                <!--
+                  <option>cgroup:mixed</option>, but everything will
+                be mounted read-only.
+                -->
                   <option>cgroup:mixed</option> と同様にマウントされますが、全てリードオンリーでマウントされます。
                 </para>
               </listitem>
+
               <listitem>
-                <!--
                 <para>
-                  <option>cgroup:rw</option>: similar to
-                  <option>cgroup:mixed</option>, but everything will
-                  be mounted read-write. Note that the paths leading
-                  up to the container's own cgroup will be writable,
-                  but will not be a cgroup filesystem but just part
-                  of the tmpfs of <filename>/sys/fs/cgroup</filename>
+                  <option>cgroup:ro:force</option>:
+                  <!--
+                  The <option>force</option> option will cause LXC to perform
+                  the cgroup mounts for the container under all circumstances.
+                  Otherwise it is similar to <option>cgroup:ro</option>.
+                  This is mainly useful when the cgroup namespaces are enabled
+                  where LXC will normally leave mounting cgroups to the init
+                  binary of the container since it is perfectly safe to do so.
+                    -->
+                  <option>force</option> を指定すると、LXC はあらゆる状況でコンテナのための cgroup マウントを実行します。それ以外は <option>cgroup:ro</option> と同様です。これは主に cgroup 名前空間が有効な場合に便利です。この場合は完全に安全ですので、LXC は通常コンテナの init バイナリが cgroup をマウントしたままの状態にしておきます。
                 </para>
-                -->
+              </listitem>
+
+              <listitem>
                 <para>
                   <option>cgroup:rw</option>:
+                <!--
+                  <option>cgroup:mixed</option>, but everything will be mounted
+                  read-write. Note that the paths leading up to the container's
+                  own cgroup will be writable, but will not be a cgroup
+                  filesystem but just part of the tmpfs of
+                  <filename>/sys/fs/cgroup</filename>
+                -->
                   <option>cgroup:mixed</option> と同様にマウントされますが、全て読み書き可能でマウントされます。
                   コンテナ自身の cgroup に至るまでのパスも書き込み可能になることに注意が必要ですが、cgroup ファイルシステムにはならず、
                   <filename>/sys/fs/cgroup</filename> の tmpfs の一部分になるでしょう。
                 </para>
               </listitem>
+
               <listitem>
                 <para>
+                  <option>cgroup:rw:force</option>:
                   <!--
-                  <option>cgroup</option> (without specifier):
+                  The <option>force</option> option will cause LXC to perform
+                  the cgroup mounts for the container under all circumstances.
+                  Otherwise it is similar to <option>cgroup:rw</option>.
+                  This is mainly useful when the cgroup namespaces are enabled
+                  where LXC will normally leave mounting cgroups to the init
+                  binary of the container since it is perfectly safe to do so.
+                    -->
+                  <option>force</option> を指定すると、LXC はあらゆる状況でコンテナのための cgroup マウントを実行します。それ以外は <option>cgroup:rw</option> と同様です。これは主に cgroup 名前空間が有効な場合に便利です。この場合は完全に安全ですので、LXC は通常コンテナの init バイナリが cgroup をマウントしたままの状態にしておきます。
+                </para>
+              </listitem>
+
+              <listitem>
+                <para>
+                  <option>cgroup</option> (マウントオプションなしの場合):
+                  <!--
                   defaults to <option>cgroup:rw</option> if the
                   container retains the CAP_SYS_ADMIN capability,
                   <option>cgroup:mixed</option> otherwise.
                   -->
-                  <option>cgroup</option> (マウントオプションなしの場合):
                   コンテナが CAP_SYS_ADMIN ケーパビリティを保持している場合、<option>cgroup:rw</option> となります。保持していない場合、<option>cgroup:mixed</option> となります。
                 </para>
               </listitem>
               <listitem>
-                <!--
                 <para>
                   <option>cgroup-full:mixed</option>:
+                <!--
                   mount a tmpfs to <filename>/sys/fs/cgroup</filename>,
                   create directories for all hierarchies to which
                   the container is added, bind-mount the hierarchies
@@ -1585,42 +1607,35 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                   albeit read-only outside the container's own cgroup.
                   This may leak quite a bit of information into the
                   container.
-                </para>
                 -->
-                <para>
-                  <option>cgroup-full:mixed</option>:
                   <filename>/sys/fs/cgroup</filename> を tmpfs でマウントし、そのコンテナの追加が行われた全ての階層構造に対するディレクトリを作製し、ホストからコンテナまでの階層構造を全てバインドマウントし、コンテナ自身の cgroup を除いてリードオンリーにします。
                   <option>cgroup</option> と比べると、コンテナ自身の cgroup に至るまでの全てのパスが tmpfs の下層のシンプルなディレクトリとなり、コンテナ自身の cgroup の外ではリードオンリーになりますが、<filename>/sys/fs/cgroup/$hierarchy</filename> はホストの全ての cgroup 階層構造を含みます。
                   これにより、コンテナにはかなりの情報が漏洩します。
                 </para>
               </listitem>
               <listitem>
-                <!--
-                <para>
-                  <option>cgroup-full:ro</option>: similar to
-                  <option>cgroup-full:mixed</option>, but everything
-                  will be mounted read-only.
-                </para>
-                -->
                 <para>
                   <option>cgroup-full:ro</option>:
+                <!--
+                  similar to
+                  <option>cgroup-full:mixed</option>, but everything
+                  will be mounted read-only.
+                -->
                   <option>cgroup-full:mixed</option> と同様にマウントされますが、全てリードオンリーでマウントされます。
                 </para>
               </listitem>
               <listitem>
-                <!--
                 <para>
-                  <option>cgroup-full:rw</option>: similar to
+                  <option>cgroup-full:rw</option>:
+                <!--
+                  similar to
                   <option>cgroup-full:mixed</option>, but everything
                   will be mounted read-write. Note that in this case,
                   the container may escape its own cgroup. (Note also
                   that if the container has CAP_SYS_ADMIN support
                   and can mount the cgroup filesystem itself, it may
                   do so anyway.)
-                </para>
                 -->
-                <para>
-                  <option>cgroup-full:rw</option>:
                   <option>cgroup-full:mixed</option>と同様にマウントされますが、全て読み書き可能でマウントされます。
                   この場合、コンテナは自身の cgroup から脱出する可能性があることに注意してください (コンテナが CAP_SYS_ADMIN を持ち、自身で cgroup ファイルシステムをマウント可能なら、いずれにせよそのようにするかもしれないことにも注意してください)。
                 </para>
@@ -1806,23 +1821,41 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.cgroup.[subsystem name]</option>
+            <option>lxc.cgroup.[controll name]</option>
           </term>
           <listitem>
             <para>
               <!--
-              specify the control group value to be set.  The
-              subsystem name is the literal name of the control group
-              subsystem.  The permitted names and the syntax of their
-              values is not dictated by LXC, instead it depends on the
-              features of the Linux kernel running at the time the
-              container is started,
-              eg. <option>lxc.cgroup.cpuset.cpus</option>
+              Specify the control group value to be set on a legacy cgroup
+              hierarchy. The controller name is the literal name of the control
+              group. The permitted names and the syntax of their values is not
+              dictated by LXC, instead it depends on the features of the Linux
+              kernel running at the time the container is started, eg.
+              <option>lxc.cgroup.cpuset.cpus</option>
               -->
-              設定する control group の値を指定します。
-              サブシステム名は、control group のそのままの名前です。
-              許される名前や値の書式は LXC が指示することはなく、コンテナが実行された時に実行されている Linux カーネルの機能に依存します。
-              例えば <option>lxc.cgroup.cpuset.cpus</option>
+              legacy な cgroup 階層 (cgroup v1) に設定する値を指定します。コントローラー名は control group そのままの名前です。
+              許される名前や値の書式は LXC が指定することはなく、コンテナが実行された時に実行されている Linux カーネルの機能に依存します。
+              例えば <option>lxc.cgroup.cpuset.cpus</option> のようになります。
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.cgroup2.[controller name]</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              Specify the control group value to be set on the unified cgroup
+              shierarchy. The controller name is the literal name of the control
+              group. The permitted names and the syntax of their values is not
+              dictated by LXC, instead it depends on the features of the Linux
+              kernel running at the time the container is started, eg.
+              <option>lxc.cgroup2.memory.high</option>
+              -->
+              単一の cgroup 階層 (cgroup v2) に設定する値を指定します。
+              許される名前や値の書式は LXC が指定することはなく、コンテナが実行された時に実行されている Linux カーネルの機能に依存します。
+              例えば <option>lxc.cgroup2.memory.high</option> のようになります。
             </para>
           </listitem>
         </varlistentry>
@@ -1919,17 +1952,95 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </refsect2>
 
     <refsect2>
-      <title>名前空間の継承 <!-- Namespace Inheritance --></title>
+      <title>名前空間 <!-- Namespace --></title>
       <para>
         <!--
-        A namespace can be inherited from another container or process.
-          -->
-        他のコンテナやプロセスから名前空間を継承できます。
+        A namespace can be cloned (<option>lxc.namespace.clone</option>),
+        kept (<option>lxc.namespace.keep</option>) or shared
+        (<option>lxc.namespace.share.[namespace identifier]</option>).
+        -->
+        名前空間は clone したり (<option>lxc.namespace.clone</option>)、keep したり (<option>lxc.namespace.keep</option>)、share したり (<option>lxc.namespace.share.[namespace identifier]</option>) できます。
       </para>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.namespace.[namespace identifier]</option>
+            <option>lxc.namespace.clone</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+            Specify namespaces which the container is supposed to be created
+            with. The namespaces to create are specified as a space separated
+            list. Each namespace must correspond to one of the standard
+            namespace identifiers as seen in the
+            <filename>/proc/PID/ns</filename> directory.
+            When <option>lxc.namespace.clone</option> is not explicitly set all
+            namespaces supported by the kernel and the current configuration
+            will be used.
+            -->
+              コンテナ作成時に作成する名前空間を指定します。作成する名前空間はスペース区切りのリストで指定します。指定する名前空間名は、<filename>/proc/PID/ns</filename> ディレクトリ内に存在する標準の名前空間指示子でなければなりません。
+              <option>lxc.namespace.clone</option> を明示的に設定していない場合は、カーネルがサポートするすべての名前空間と現在の設定が使われます。
+            </para>
+
+            <para>
+              <!--
+            To create a new mount, net and ipc namespace set
+            <option>lxc.namespace.clone=mount net ipc</option>.
+            -->
+              新しいマウント、ネット、IPC 名前空間を作る場合は <option>lxc.namespace.clone=mount net ipc</option> と指定します。
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.namespace.keep</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+            Specify namespaces which the container is supposed to inherit from
+            the process that created it. The namespaces to keep are specified as
+            a space separated list. Each namespace must correspond to one of the
+            standard namespace identifiers as seen in the
+            <filename>/proc/PID/ns</filename> directory.
+            The <option>lxc.namespace.keep</option> is a
+            blacklist option, i.e. it is useful when enforcing that containers
+            must keep a specific set of namespaces.
+            -->
+              コンテナが、作成元のプロセスから継承する (新しい名前空間を作らずに元のプロセスの名前空間のまま実行する) 名前空間を指定します。継承する名前空間はスペース区切りのリストで指定します。指定する名前空間名は、<filename>/proc/PID/ns</filename> ディレクトリ内に存在する標準の名前空間指示子でなければなりません。<option>lxc.namespace.keep</option> はブラックリストを指定するオプションです。つまり、コンテナに特定の名前空間を使い続けることを強制したい場合に便利です。
+            </para>
+
+            <para>
+              <!--
+            To keep the network, user and ipc namespace set
+            <option>lxc.namespace.keep=user net ipc</option>.
+            -->
+              ネットワーク、ユーザ、IPC 名前空間を元のプロセスの名前空間のままで実行したい場合は <option>lxc.namespace.keep=user net ipc</option> と指定します。
+            </para>
+
+            <para>
+              <!--
+            Note that sharing pid namespaces will likely not work with most init
+            systems.
+                -->
+              PID 名前空間を共有すると、ほとんどの init で動作しない可能性があることに注意してください。
+            </para>
+
+            <para>
+              <!--
+            Note that if the container requests a new user namespace and the
+            container wants to inherit the network namespace it needs to inherit
+            the user namespace as well.
+                -->
+              コンテナが新しいユーザ名前空間をリクエストし、そのコンテナがネットワーク名前空間は継承したい場合は、ユーザ名前空間は継承する必要があることに注意してください。
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.namespace.share.[namespace identifier]</option>
           </term>
           <listitem>
             <para>
@@ -1945,30 +2056,30 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <para>
               <!--
             To inherit the namespace from another process set the
-            <option>lxc.namespace.[namespace identifier]</option> to the PID of
-            the process, e.g. <option>lxc.namespace.net=42</option>.
+            <option>lxc.namespace.share.[namespace identifier]</option> to the PID of
+            the process, e.g. <option>lxc.namespace.share.net=42</option>.
             -->
-              他のプロセスから名前空間を継承するには、<option>lxc.namespace.[namespace identifier]</option> の値をプロセスの PID に設定します。例えば <option>lxc.namespace.net=42</option> のようになります。
+              他のプロセスから名前空間を継承するには、<option>lxc.namespace.share.[namespace identifier]</option> の値をプロセスの PID に設定します。例えば <option>lxc.namespace.share.net=42</option> のようになります。
             </para>
 
             <para>
               <!--
             To inherit the namespace from another container set the 
-            <option>lxc.namespace.[namespace identifier]</option> to the name of
-            the container, e.g. <option>lxc.namespace.pid=c3</option>.
+            <option>lxc.namespace.share.[namespace identifier]</option> to the name of
+            the container, e.g. <option>lxc.namespace.share.pid=c3</option>.
             -->
-              他のコンテナから名前空間を継承するには、<option>lxc.namespace.[namespace identifier]</option> の値をコンテナ名に設定します。例えば <option>lxc.namespace.pid=c3</option> のようになります。
+              他のコンテナから名前空間を継承するには、<option>lxc.namespace.share.[namespace identifier]</option> の値をコンテナ名に設定します。例えば <option>lxc.namespace.share.pid=c3</option> のようになります。
             </para>
 
             <para>
               <!--
             To inherit the namespace from another container located in a
             different path than the standard liblxc path set the
-            <option>lxc.namespace.[namespace identifier]</option> to the full
+            <option>lxc.namespace.share.[namespace identifier]</option> to the full
             path to the container, e.g.
-            <option>lxc.namespace.user=/opt/c3</option>.
+            <option>lxc.namespace.share.user=/opt/c3</option>.
             -->
-              標準の liblxc のパスとは異なるコンテナパスに存在する他のコンテナから名前空間を継承するには、<option>lxc.namespace.[namespace identifier]</option> をそのコンテナのフルパスで指定します。例えば <option>lxc.namespace.user=/opt/c3</option> のようになります。
+              標準の liblxc のパスとは異なるコンテナパスに存在する他のコンテナから名前空間を継承するには、<option>lxc.namespace.share.[namespace identifier]</option> をそのコンテナのフルパスで指定します。例えば <option>lxc.namespace.share.user=/opt/c3</option> のようになります。
             </para>
 
             <para>
