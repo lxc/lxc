@@ -1517,7 +1517,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                   where LXC will normally leave mounting cgroups to the init
                   binary of the container since it is perfectly safe to do so.
                     -->
-                  <option>force</option> を指定すると、LXC はあらゆる状況でコンテナのための cgroup マウントを実行します。それ以外は <option>cgroup:mixed</option> と同様です。これは主に cgroup 名前空間が有効な場合に便利です。この場合は完全に安全ですので、LXC は通常コンテナの init バイナリが cgroup をマウントしたままにしておきます。
+                  <option>force</option> を指定すると、LXC はあらゆる状況でコンテナのための cgroup マウントを実行します。それ以外は <option>cgroup:mixed</option> と同様です。これは主に cgroup 名前空間が有効な場合に便利です。この場合は完全に安全ですので、LXC は通常コンテナの init バイナリが cgroup をマウントしたままの状態にしておきます。
                 </para>
               </listitem>
 
@@ -1543,7 +1543,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                   where LXC will normally leave mounting cgroups to the init
                   binary of the container since it is perfectly safe to do so.
                     -->
-                  <option>force</option> を指定すると、LXC はあらゆる状況でコンテナのための cgroup マウントを実行します。それ以外は <option>cgroup:ro</option> と同様です。これは主に cgroup 名前空間が有効な場合に便利です。この場合は完全に安全ですので、LXC は通常コンテナの init バイナリが cgroup をマウントしたままにしておきます。
+                  <option>force</option> を指定すると、LXC はあらゆる状況でコンテナのための cgroup マウントを実行します。それ以外は <option>cgroup:ro</option> と同様です。これは主に cgroup 名前空間が有効な場合に便利です。この場合は完全に安全ですので、LXC は通常コンテナの init バイナリが cgroup をマウントしたままの状態にしておきます。
                 </para>
               </listitem>
 
@@ -1574,7 +1574,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                   where LXC will normally leave mounting cgroups to the init
                   binary of the container since it is perfectly safe to do so.
                     -->
-                  <option>force</option> を指定すると、LXC はあらゆる状況でコンテナのための cgroup マウントを実行します。それ以外は <option>cgroup:rw</option> と同様です。これは主に cgroup 名前空間が有効な場合に便利です。この場合は完全に安全ですので、LXC は通常コンテナの init バイナリが cgroup をマウントしたままにしておきます。
+                  <option>force</option> を指定すると、LXC はあらゆる状況でコンテナのための cgroup マウントを実行します。それ以外は <option>cgroup:rw</option> と同様です。これは主に cgroup 名前空間が有効な場合に便利です。この場合は完全に安全ですので、LXC は通常コンテナの init バイナリが cgroup をマウントしたままの状態にしておきます。
                 </para>
               </listitem>
 
