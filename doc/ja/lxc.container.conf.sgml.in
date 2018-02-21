@@ -1937,14 +1937,92 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     </refsect2>
 
     <refsect2>
-      <title>名前空間の継承 <!-- Namespace Inheritance --></title>
+      <title>名前空間 <!-- Namespace --></title>
       <para>
         <!--
-        A namespace can be inherited from another container or process.
-          -->
-        他のコンテナやプロセスから名前空間を継承できます。
+        A namespace can be cloned (<option>lxc.namespace.clone</option>),
+        kept (<option>lxc.namespace.keep</option>) or shared
+        (<option>lxc.namespace.share.[namespace identifier]</option>).
+        -->
+        名前空間は clone したり (<option>lxc.namespace.clone</option>)、keep したり (<option>lxc.namespace.keep</option>)、share したり (<option>lxc.namespace.share.[namespace identifier]</option>) できます。
       </para>
       <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.namespace.clone</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+            Specify namespaces which the container is supposed to be created
+            with. The namespaces to create are specified as a space separated
+            list. Each namespace must correspond to one of the standard
+            namespace identifiers as seen in the
+            <filename>/proc/PID/ns</filename> directory.
+            When <option>lxc.namespace.clone</option> is not explicitly set all
+            namespaces supported by the kernel and the current configuration
+            will be used.
+            -->
+              コンテナ作成時に作成する名前空間を指定します。作成する名前空間はスペース区切りのリストで指定します。指定する名前空間名は、<filename>/proc/PID/ns</filename> ディレクトリ内に存在する標準の名前空間指示子でなければなりません。
+              <option>lxc.namespace.clone</option> を明示的に設定していない場合は、カーネルがサポートするすべての名前空間と現在の設定が使われます。
+            </para>
+
+            <para>
+              <!--
+            To create a new mount, net and ipc namespace set
+            <option>lxc.namespace.clone=mount net ipc</option>.
+            -->
+              新しいマウント、ネット、IPC 名前空間を作る場合は <option>lxc.namespace.clone=mount net ipc</option> と指定します。
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.namespace.keep</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+            Specify namespaces which the container is supposed to inherit from
+            the process that created it. The namespaces to keep are specified as
+            a space separated list. Each namespace must correspond to one of the
+            standard namespace identifiers as seen in the
+            <filename>/proc/PID/ns</filename> directory.
+            The <option>lxc.namespace.keep</option> is a
+            blacklist option, i.e. it is useful when enforcing that containers
+            must keep a specific set of namespaces.
+            -->
+              コンテナが、作成元のプロセスから継承する (新しい名前空間を作らずに元のプロセスの名前空間のまま実行する) 名前空間を指定します。継承する名前空間はスペース区切りのリストで指定します。指定する名前空間名は、<filename>/proc/PID/ns</filename> ディレクトリ内に存在する標準の名前空間指示子でなければなりません。<option>lxc.namespace.keep</option> はブラックリストを指定するオプションです。つまり、コンテナに特定の名前空間を使い続けることを強制したい場合に便利です。
+            </para>
+
+            <para>
+              <!--
+            To keep the network, user and ipc namespace set
+            <option>lxc.namespace.keep=user net ipc</option>.
+            -->
+              ネットワーク、ユーザ、IPC 名前空間を元のプロセスの名前空間のままで実行したい場合は <option>lxc.namespace.keep=user net ipc</option> と指定します。
+            </para>
+
+            <para>
+              <!--
+            Note that sharing pid namespaces will likely not work with most init
+            systems.
+                -->
+              PID 名前空間を共有すると、ほとんどの init で動作しない可能性があることに注意してください。
+            </para>
+
+            <para>
+              <!--
+            Note that if the container requests a new user namespace and the
+            container wants to inherit the network namespace it needs to inherit
+            the user namespace as well.
+                -->
+              コンテナが新しいユーザ名前空間をリクエストし、そのコンテナがネットワーク名前空間は継承したい場合は、ユーザ名前空間は継承する必要があることに注意してください。
+            </para>
+          </listitem>
+        </varlistentry>
+
         <varlistentry>
           <term>
             <option>lxc.namespace.share.[namespace identifier]</option>
