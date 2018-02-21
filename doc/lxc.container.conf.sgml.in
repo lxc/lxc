@@ -1203,6 +1203,7 @@ dev/null proc/kcore none bind,relative 0 0
                   <option>cgroup:mixed</option> otherwise.
                 </para>
               </listitem>
+
               <listitem>
                 <para>
                   <option>cgroup-full:mixed</option>:
@@ -1222,6 +1223,19 @@ dev/null proc/kcore none bind,relative 0 0
                   container.
                 </para>
               </listitem>
+
+              <listitem>
+                <para>
+                  <option>cgroup-full:mixed:force</option>:
+                  The <option>force</option> option will cause LXC to perform
+                  the cgroup mounts for the container under all circumstances.
+                  Otherwise it is similar to <option>cgroup-full:mixed</option>.
+                  This is mainly useful when the cgroup namespaces are enabled
+                  where LXC will normally leave mounting cgroups to the init
+                  binary of the container since it is perfectly safe to do so.
+                </para>
+              </listitem>
+
               <listitem>
                 <para>
                   <option>cgroup-full:ro</option>: similar to
@@ -1229,6 +1243,19 @@ dev/null proc/kcore none bind,relative 0 0
                   will be mounted read-only.
                 </para>
               </listitem>
+
+              <listitem>
+                <para>
+                  <option>cgroup-full:ro:force</option>:
+                  The <option>force</option> option will cause LXC to perform
+                  the cgroup mounts for the container under all circumstances.
+                  Otherwise it is similar to <option>cgroup-full:ro</option>.
+                  This is mainly useful when the cgroup namespaces are enabled
+                  where LXC will normally leave mounting cgroups to the init
+                  binary of the container since it is perfectly safe to do so.
+                </para>
+              </listitem>
+
               <listitem>
                 <para>
                   <option>cgroup-full:rw</option>: similar to
@@ -1240,6 +1267,19 @@ dev/null proc/kcore none bind,relative 0 0
                   do so anyway.)
                 </para>
               </listitem>
+
+              <listitem>
+                <para>
+                  <option>cgroup-full:rw:force</option>:
+                  The <option>force</option> option will cause LXC to perform
+                  the cgroup mounts for the container under all circumstances.
+                  Otherwise it is similar to <option>cgroup-full:rw</option>.
+                  This is mainly useful when the cgroup namespaces are enabled
+                  where LXC will normally leave mounting cgroups to the init
+                  binary of the container since it is perfectly safe to do so.
+                </para>
+              </listitem>
+
               <listitem>
                 <para>
                   <option>cgroup-full</option> (without specifier):
@@ -1248,6 +1288,7 @@ dev/null proc/kcore none bind,relative 0 0
                   <option>cgroup-full:mixed</option> otherwise.
                 </para>
               </listitem>
+
             </itemizedlist>
             <para>
 	      If cgroup namespaces are enabled, then any <option>cgroup</option>
