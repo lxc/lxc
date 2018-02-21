@@ -35,6 +35,7 @@
 #include <unistd.h>
 #include <linux/loop.h>
 #include <linux/magic.h>
+#include <linux/types.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
