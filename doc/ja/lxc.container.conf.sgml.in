@@ -1392,20 +1392,21 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           <listitem>
             <para>
               <!--
-              specify a mount point corresponding to a line in the
+              Specify a mount point corresponding to a line in the
               fstab format.
               -->
               fstab フォーマットの一行と同じフォーマットのマウントポイントの指定をします。
 
               <!--
-              Moreover lxc add two options to mount.
+              Moreover lxc supports mount propagation, such as rslave or
+              rprivate, and adds three additional mount options.
               <option>optional</option> don't fail if mount does not work.
               <option>create=dir</option> or <option>create=file</option>
               to create dir (or file) when the point will be mounted.
               <option>relative</option> source path is taken to be relative to
               the mounted container root. For instance,
               -->
-              fstab フォーマットに加えて、LXC ではマウントに対して独自の 2 つのオプションが使えます。
+              加えて、LXC では rslave や rprivate といったマウント・プロパゲーションオプションと、独自の 3 つのマウントオプションが使えます。
               <option>optional</option> は、マウントが失敗しても失敗を返さずに無視します。
               <option>create=dir</option> と <option>create=file</option> は、マウントポイントをマウントする際にディレクトリもしくはファイルを作成します。
               <option>relative</option> を指定すると、マウントされたコンテナルートからの相対パスとして取得されます。
