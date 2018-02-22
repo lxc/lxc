@@ -48,6 +48,7 @@
 #include "config.h"
 #include "namespace.h"
 #include "network.h"
+#include "parse.h"
 #include "utils.h"
 
 #define usernic_debug_stream(stream, format, ...)                              \
