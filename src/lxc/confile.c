@@ -2334,7 +2334,7 @@ int lxc_config_read(const char *file, struct lxc_conf *conf, bool from_include)
 	if (!conf->rcfile)
 		conf->rcfile = strdup(file);
 
-	return lxc_file_for_each_line(file, parse_line, &c);
+	return lxc_file_for_each_line_thread_safe(file, parse_line, &c);
 }
 
 int lxc_config_define_add(struct lxc_list *defines, char *arg)
