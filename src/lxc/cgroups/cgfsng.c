@@ -257,8 +257,8 @@ static char *cg_legacy_must_prefix_named(char *entry)
 	len = strlen(entry);
 	prefixed = must_alloc(len + 6);
 
-	memcpy(prefixed, "name=", sizeof("name="));
-	memcpy(prefixed + sizeof("name="), entry, len);
+	memcpy(prefixed, "name=", sizeof("name=") - 1);
+	memcpy(prefixed + sizeof("name=") - 1, entry, len);
 	prefixed[len + 5] = '\0';
 	return prefixed;
 }
