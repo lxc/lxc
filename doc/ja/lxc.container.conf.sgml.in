@@ -1589,6 +1589,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                   コンテナが CAP_SYS_ADMIN ケーパビリティを保持している場合、<option>cgroup:rw</option> となります。保持していない場合、<option>cgroup:mixed</option> となります。
                 </para>
               </listitem>
+	      
               <listitem>
                 <para>
                   <option>cgroup-full:mixed</option>:
@@ -1613,6 +1614,22 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                   これにより、コンテナにはかなりの情報が漏洩します。
                 </para>
               </listitem>
+
+	      <listitem>
+                <para>
+                  <option>cgroup-full:mixed:force</option>:
+		  <!--
+                  The <option>force</option> option will cause LXC to perform
+                  the cgroup mounts for the container under all circumstances.
+                  Otherwise it is similar to <option>cgroup-full:mixed</option>.
+                  This is mainly useful when the cgroup namespaces are enabled
+                  where LXC will normally leave mounting cgroups to the init
+                  binary of the container since it is perfectly safe to do so.
+		  -->
+                  <option>force</option> を指定すると、LXC はあらゆる状況でコンテナのための cgroup マウントを実行します。それ以外は <option>cgroup-full:mixed</option> と同様です。これは主に cgroup 名前空間が有効な場合に便利です。この場合は完全に安全ですので、LXC は通常コンテナの init バイナリが cgroup をマウントしたままの状態にしておきます。
+                </para>
+              </listitem>
+
               <listitem>
                 <para>
                   <option>cgroup-full:ro</option>:
@@ -1624,6 +1641,22 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                   <option>cgroup-full:mixed</option> と同様にマウントされますが、全てリードオンリーでマウントされます。
                 </para>
               </listitem>
+
+              <listitem>
+                <para>
+                  <option>cgroup-full:ro:force</option>:
+		  <!--
+                  The <option>force</option> option will cause LXC to perform
+                  the cgroup mounts for the container under all circumstances.
+                  Otherwise it is similar to <option>cgroup-full:ro</option>.
+                  This is mainly useful when the cgroup namespaces are enabled
+                  where LXC will normally leave mounting cgroups to the init
+                  binary of the container since it is perfectly safe to do so.
+		    -->
+                  <option>force</option> を指定すると、LXC はあらゆる状況でコンテナのための cgroup マウントを実行します。それ以外は <option>cgroup-full:ro</option> と同様です。これは主に cgroup 名前空間が有効な場合に便利です。この場合は完全に安全ですので、LXC は通常コンテナの init バイナリが cgroup をマウントしたままの状態にしておきます。
+                </para>
+              </listitem>
+
               <listitem>
                 <para>
                   <option>cgroup-full:rw</option>:
@@ -1640,6 +1673,22 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                   この場合、コンテナは自身の cgroup から脱出する可能性があることに注意してください (コンテナが CAP_SYS_ADMIN を持ち、自身で cgroup ファイルシステムをマウント可能なら、いずれにせよそのようにするかもしれないことにも注意してください)。
                 </para>
               </listitem>
+
+              <listitem>
+                <para>
+                  <option>cgroup-full:rw:force</option>:
+		  <!--
+                  The <option>force</option> option will cause LXC to perform
+                  the cgroup mounts for the container under all circumstances.
+                  Otherwise it is similar to <option>cgroup-full:rw</option>.
+                  This is mainly useful when the cgroup namespaces are enabled
+                  where LXC will normally leave mounting cgroups to the init
+                  binary of the container since it is perfectly safe to do so.
+		    -->
+                  <option>force</option> を指定すると、LXC はあらゆる状況でコンテナのための cgroup マウントを実行します。それ以外は <option>cgroup-full:rw</option> と同様です。これは主に cgroup 名前空間が有効な場合に便利です。この場合は完全に安全ですので、LXC は通常コンテナの init バイナリが cgroup をマウントしたままの状態にしておきます。
+                </para>
+              </listitem>
+
               <listitem>
                 <para>
                   <!--
@@ -1652,6 +1701,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                   コンテナが CAP_SYS_ADMIN ケーパビリティを保持している場合、<option>cgroup-full:rw</option> となります。保持していない場合、<option>cgroup-full:mixed</option> となります。
                 </para>
               </listitem>
+
             </itemizedlist>
             <para>
               <!--
