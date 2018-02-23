@@ -2198,13 +2198,13 @@ int run_command(char *buf, size_t buf_size, int (*child_fn)(void *), void *args)
 
 		if (ret < 0) {
 			SYSERROR("failed to duplicate std{err,out} file descriptor");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		/* Does not return. */
 		child_fn(args);
 		ERROR("failed to exec command");
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	}
 
 	/* close the write-end of the pipe */
