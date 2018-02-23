@@ -2042,7 +2042,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 		close(pipefd[1]);
 		if (ret < 0) {
 			SYSERROR("Failed to duplicate std{err,out} file descriptor");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		if (netdev->link[0] != '\0')
@@ -2052,7 +2052,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 
 		ret = snprintf(pidstr, LXC_NUMSTRLEN64, "%d", pid);
 		if (ret < 0 || ret >= LXC_NUMSTRLEN64)
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		pidstr[LXC_NUMSTRLEN64 - 1] = '\0';
 
 		INFO("Execing lxc-user-nic create %s %s %s veth %s %s", lxcpath,
@@ -2067,7 +2067,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 			       lxcpath, lxcname, pidstr, "veth", netdev_link,
 			       (char *)NULL);
 		SYSERROR("Failed to execute lxc-user-nic");
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	}
 
 	/* close the write-end of the pipe */
