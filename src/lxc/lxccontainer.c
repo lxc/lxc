@@ -2418,9 +2418,8 @@ WRAP_API_3(int, lxcapi_get_keys, const char *, char *, int)
 
 static bool do_lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 {
-	FILE *fout;
+	int fd, lret;
 	bool ret = false, need_disklock = false;
-	int lret;
 
 	if (!alt_file)
 		alt_file = c->configfile;
@@ -2430,7 +2429,10 @@ static bool do_lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 	/* If we haven't yet loaded a config, load the stock config. */
 	if (!c->lxc_conf) {
 		if (!do_lxcapi_load_config(c, lxc_global_config_value("lxc.default_config"))) {
-			ERROR("Error loading default configuration file %s while saving %s", lxc_global_config_value("lxc.default_config"), c->name);
+			ERROR("Error loading default configuration file %s "
+			      "while saving %s",
+			      lxc_global_config_value("lxc.default_config"),
+			      c->name);
 			return false;
 		}
 	}
@@ -2453,18 +2455,24 @@ static bool do_lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 	if (lret)
 		return false;
 
-	fout = fopen(alt_file, "w");
-	if (!fout)
-		goto out;
-	write_config(fout, c->lxc_conf);
-	fclose(fout);
+	fd = open(alt_file, O_WRONLY | O_CREAT | O_CLOEXEC,
+		  S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+	if (fd < 0)
+		goto on_error;
+
+	lret = write_config(fd, c->lxc_conf);
+	close(fd);
+	if (lret < 0)
+		goto on_error;
+
 	ret = true;
 
-out:
+on_error:
 	if (need_disklock)
 		container_disk_unlock(c);
 	else
 		container_mem_unlock(c);
+
 	return ret;
 }
 
@@ -3515,10 +3523,9 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 		char **hookargs)
 {
 	char newpath[MAXPATHLEN];
-	int ret;
+	int fd, ret;
 	struct clone_update_data data;
 	size_t saved_unexp_len;
-	FILE *fout;
 	pid_t pid;
 	int storage_copied = 0;
 	char *origroot = NULL, *saved_unexp_conf = NULL;
@@ -3562,9 +3569,11 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 		origroot = c->lxc_conf->rootfs.path;
 		c->lxc_conf->rootfs.path = NULL;
 	}
-	fout = fopen(newpath, "w");
-	if (!fout) {
-		SYSERROR("open %s", newpath);
+
+	fd = open(newpath, O_WRONLY | O_CREAT | O_CLOEXEC,
+		  S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+	if (fd < 0) {
+		SYSERROR("Failed to open \"%s\"", newpath);
 		goto out;
 	}
 
@@ -3572,14 +3581,13 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	saved_unexp_len = c->lxc_conf->unexpanded_len;
 	c->lxc_conf->unexpanded_config = strdup(saved_unexp_conf);
 	if (!c->lxc_conf->unexpanded_config) {
-		ERROR("Out of memory");
-		fclose(fout);
+		close(fd);
 		goto out;
 	}
 
 	clear_unexp_config_line(c->lxc_conf, "lxc.rootfs.path", false);
-	write_config(fout, c->lxc_conf);
-	fclose(fout);
+	write_config(fd, c->lxc_conf);
+	close(fd);
 	c->lxc_conf->rootfs.path = origroot;
 	free(c->lxc_conf->unexpanded_config);
 	c->lxc_conf->unexpanded_config = saved_unexp_conf;

@@ -2417,17 +2417,21 @@ signed long lxc_config_parse_arch(const char *arch)
 }
 
 /* Write out a configuration file. */
-void write_config(FILE *fout, struct lxc_conf *c)
+int write_config(int fd, const struct lxc_conf *conf)
 {
 	int ret;
-	size_t len = c->unexpanded_len;
+	size_t len = conf->unexpanded_len;
 
-	if (!len)
-		return;
+	if (len == 0)
+		return 0;
 
-	ret = fwrite(c->unexpanded_config, 1, len, fout);
-	if (ret != len)
+	ret = lxc_write_nointr(fd, conf->unexpanded_config, len);
+	if (ret < 0) {
 		SYSERROR("Failed to write configuration file");
+		return -1;
+	}
+
+	return 0;
 }
 
 bool do_append_unexp_config_line(struct lxc_conf *conf, const char *key,

@@ -93,7 +93,7 @@ extern signed long lxc_config_parse_arch(const char *arch);
 
 extern int lxc_clear_config_item(struct lxc_conf *c, const char *key);
 
-extern void write_config(FILE *fout, struct lxc_conf *c);
+extern int write_config(int fd, const struct lxc_conf *conf);
 
 extern bool do_append_unexp_config_line(struct lxc_conf *conf, const char *key,
 					const char *v);
