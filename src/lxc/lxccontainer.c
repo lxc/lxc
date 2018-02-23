@@ -870,14 +870,14 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		pid = fork();
 		if (pid < 0) {
 			SYSERROR("Failed to fork first child process");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		/* second parent */
 		if (pid != 0) {
 			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
-			exit(EXIT_SUCCESS);
+			_exit(EXIT_SUCCESS);
 		}
 
 		/* second child */
@@ -886,7 +886,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		ret = chdir("/");
 		if (ret < 0) {
 			SYSERROR("Failed to change to \"/\" directory");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		keepfds[0] = handler->conf->maincmd_fd;
@@ -895,13 +895,13 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		ret = lxc_check_inherited(conf, true, keepfds,
 					  sizeof(keepfds) / sizeof(keepfds[0]));
 		if (ret < 0)
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 
 		/* redirect std{in,out,err} to /dev/null */
 		ret = null_stdfds();
 		if (ret < 0) {
 			ERROR("Failed to redirect std{in,out,err} to /dev/null");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		/* become session leader */
@@ -928,7 +928,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
 			if (daemonize)
-				exit(EXIT_FAILURE);
+				_exit(EXIT_FAILURE);
 			return false;
 		}
 
@@ -939,7 +939,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
 			if (daemonize)
-				exit(EXIT_FAILURE);
+				_exit(EXIT_FAILURE);
 			return false;
 		}
 
@@ -1010,9 +1010,9 @@ on_error:
 	free_init_cmd(init_cmd);
 
 	if (daemonize && ret != 0)
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	else if (daemonize)
-		exit(EXIT_SUCCESS);
+		_exit(EXIT_SUCCESS);
 
 	if (ret != 0)
 		return false;
