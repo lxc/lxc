@@ -23,6 +23,9 @@
 #ifndef __LXC_PARSE_H
 #define __LXC_PARSE_H
 
+#include <stdio.h>
+#include <sys/types.h>
+
 typedef int (*lxc_dir_cb)(const char *name, const char *directory,
 			  const char *file, void *data);
 
@@ -31,10 +34,20 @@ typedef int (*lxc_file_cb)(char *buffer, void *data);
 extern int lxc_file_for_each_line(const char *file, lxc_file_cb callback,
 				  void* data);
 
+extern int lxc_file_for_each_line_mmap(const char *file, lxc_file_cb callback,
+				       void *data);
+
 extern int lxc_char_left_gc(const char *buffer, size_t len);
 
 extern int lxc_char_right_gc(const char *buffer, size_t len);
 
 extern int lxc_is_line_empty(const char *line);
+
+/* mmap() wrapper. lxc_strmmap() will take care to \0-terminate files so that
+ * normal string-handling functions can be used on the buffer. */
+extern void *lxc_strmmap(void *addr, size_t length, int prot, int flags, int fd,
+			 off_t offset);
+/* munmap() wrapper. Use it to free memory mmap()ed with lxc_strmmap(). */
+extern int lxc_strmunmap(void *addr, size_t length);
 
 #endif

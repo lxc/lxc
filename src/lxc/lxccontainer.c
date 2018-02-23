@@ -57,6 +57,7 @@
 #include "monitor.h"
 #include "namespace.h"
 #include "network.h"
+#include "parse.h"
 #include "start.h"
 #include "state.h"
 #include "storage.h"
