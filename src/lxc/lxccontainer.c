@@ -2317,7 +2317,7 @@ static char** do_lxcapi_get_ips(struct lxc_container *c, const char* interface, 
 
 		/* close the write-end of the pipe, thus sending EOF to the reader */
 		close(pipefd[1]);
-		exit(ret);
+		_exit(ret);
 	}
 
 	/* close the write-end of the pipe */
