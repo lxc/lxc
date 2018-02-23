@@ -3689,10 +3689,10 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	else
 		ret = clone_update_rootfs(&data);
 	if (ret < 0)
-		exit(1);
+		_exit(EXIT_FAILURE);
 
 	container_mem_unlock(c);
-	exit(0);
+	_exit(EXIT_SUCCESS);
 
 out:
 	container_mem_unlock(c);
