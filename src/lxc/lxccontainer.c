@@ -3975,11 +3975,11 @@ static bool do_add_remove_node(pid_t init_pid, const char *path, bool add,
 
 	ret = chroot(chrootpath);
 	if (ret < 0)
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 
 	ret = chdir("/");
 	if (ret < 0)
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 
 	/* remove path if it exists */
 	ret = faccessat(AT_FDCWD, path, F_OK, AT_SYMLINK_NOFOLLOW);
@@ -3987,24 +3987,24 @@ static bool do_add_remove_node(pid_t init_pid, const char *path, bool add,
 		ret = unlink(path);
 		if (ret < 0) {
 			ERROR("%s - Failed to remove \"%s\"", strerror(errno), path);
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 	}
 
 	if (!add)
-		exit(EXIT_SUCCESS);
+		_exit(EXIT_SUCCESS);
 
 	/* create any missing directories */
 	tmp = strdup(path);
 	if (!tmp)
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 
 	directory_path = dirname(tmp);
 	ret = mkdir_p(directory_path, 0755);
 	if (ret < 0 && errno != EEXIST) {
 		ERROR("%s - Failed to create path \"%s\"", strerror(errno), directory_path);
 		free(tmp);
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	}
 
 	/* create the device node */
@@ -4012,10 +4012,10 @@ static bool do_add_remove_node(pid_t init_pid, const char *path, bool add,
 	free(tmp);
 	if (ret < 0) {
 		ERROR("%s - Failed to create device node at \"%s\"", strerror(errno), path);
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	}
 
-	exit(EXIT_SUCCESS);
+	_exit(EXIT_SUCCESS);
 }
 
 static bool add_remove_device_node(struct lxc_container *c, const char *src_path, const char *dest_path, bool add)
