@@ -2007,7 +2007,7 @@ static char ** do_lxcapi_get_interfaces(struct lxc_container *c)
 
 		/* close the write-end of the pipe, thus sending EOF to the reader */
 		close(pipefd[1]);
-		exit(ret);
+		_exit(ret);
 	}
 
 	/* close the write-end of the pipe */
