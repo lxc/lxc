@@ -1645,8 +1645,8 @@ static void lxcapi_clear_config(struct lxc_container *c)
  * arguments, you can just pass NULL.
  */
 static bool do_lxcapi_create(struct lxc_container *c, const char *t,
-		const char *bdevtype, struct bdev_specs *specs, int flags,
-		char *const argv[])
+			     const char *bdevtype, struct bdev_specs *specs,
+			     int flags, char *const argv[])
 {
 	int partial_fd;
 	pid_t pid;
@@ -1740,7 +1740,7 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 		if (!bdev) {
 			ERROR("Failed to create %s storage for %s",
 			      bdevtype ? bdevtype : "(none)", c->name);
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		/* Save config file again to store the new rootfs location. */
@@ -1751,9 +1751,9 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 			 */
 			bdev->ops->umount(bdev);
 			bdev->ops->destroy(bdev);
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
-		exit(EXIT_SUCCESS);
+		_exit(EXIT_SUCCESS);
 	}
 	if (wait_for_pid(pid) != 0)
 		goto out_unlock;
