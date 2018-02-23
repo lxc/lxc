@@ -478,7 +478,7 @@ struct lxc_popen_FILE *lxc_popen(const char *command)
 			ret = fcntl(pipe_fds[1], F_SETFD, 0);
 		if (ret < 0) {
 			close(pipe_fds[1]);
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		/* duplicate stderr */
@@ -488,19 +488,19 @@ struct lxc_popen_FILE *lxc_popen(const char *command)
 			ret = fcntl(pipe_fds[1], F_SETFD, 0);
 		close(pipe_fds[1]);
 		if (ret < 0)
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 
 		/* unblock all signals */
 		ret = sigfillset(&mask);
 		if (ret < 0)
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 
 		ret = sigprocmask(SIG_UNBLOCK, &mask, NULL);
 		if (ret < 0)
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 
 		execl("/bin/sh", "sh", "-c", command, (char *)NULL);
-		exit(127);
+		_exit(127);
 	}
 
 	close(pipe_fds[1]);
