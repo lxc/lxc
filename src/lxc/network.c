@@ -635,7 +635,7 @@ static int lxc_netdev_rename_by_name_in_netns(pid_t pid, const char *old,
 	if (!switch_to_ns(pid, "net"))
 		return -1;
 
-	exit(lxc_netdev_rename_by_name(old, new));
+	_exit(lxc_netdev_rename_by_name(old, new));
 }
 
 static int lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid,
