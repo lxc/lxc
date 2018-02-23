@@ -1220,15 +1220,19 @@ static struct lxc_storage *do_storage_create(struct lxc_container *c,
 
 static char *lxcbasename(char *path)
 {
-	char *p = path + strlen(path) - 1;
+	char *p;
+
+	p = path + strlen(path) - 1;
 	while (*p != '/' && p > path)
 		p--;
+
 	return p;
 }
 
-static bool create_run_template(struct lxc_container *c, char *tpath, bool need_null_stdfds,
-				char *const argv[])
+static bool create_run_template(struct lxc_container *c, char *tpath,
+				bool need_null_stdfds, char *const argv[])
 {
+	int ret;
 	pid_t pid;
 
 	if (!tpath)
@@ -1241,42 +1245,53 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 	}
 
 	if (pid == 0) { /* child */
-		char *patharg, *namearg, *rootfsarg;
-		struct lxc_storage *bdev = NULL;
-		int i;
-		int ret, len, nargs = 0;
+		int i, len;
+		char *namearg, *patharg, *rootfsarg;
 		char **newargv;
+		int nargs = 0;
+		struct lxc_storage *bdev = NULL;
 		struct lxc_conf *conf = c->lxc_conf;
+		uid_t euid;
 
-		if (need_null_stdfds && null_stdfds() < 0) {
-			_exit(EXIT_FAILURE);
+		if (need_null_stdfds) {
+			ret = null_stdfds();
+			if (ret < 0)
+				_exit(EXIT_FAILURE);
 		}
 
 		bdev = storage_init(c->lxc_conf);
 		if (!bdev) {
-			ERROR("Error opening rootfs");
+			ERROR("Failed to initialize storage");
 			_exit(EXIT_FAILURE);
 		}
 
-		if (geteuid() == 0) {
-			if (unshare(CLONE_NEWNS) < 0) {
-				ERROR("error unsharing mounts");
+		euid = geteuid();
+		if (euid == 0) {
+			ret = unshare(CLONE_NEWNS);
+			if (ret < 0) {
+				ERROR("Failed to unshare CLONE_NEWNS");
 				_exit(EXIT_FAILURE);
 			}
-			if (detect_shared_rootfs()) {
-				if (mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL)) {
-					SYSERROR("Failed to make / rslave to run template");
+
+			ret = detect_shared_rootfs();
+			if (ret == 1) {
+				ret = mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL);
+				if (ret < 0) {
+					SYSERROR("Failed to make \"/\" rslave");
 					ERROR("Continuing...");
 				}
 			}
 		}
-		if (strcmp(bdev->type, "dir") && strcmp(bdev->type, "btrfs")) {
-			if (geteuid() != 0) {
-				ERROR("non-root users can only create btrfs and directory-backed containers");
+
+		if (strcmp(bdev->type, "dir") != 0 && strcmp(bdev->type, "btrfs") != 0) {
+			if (euid != 0) {
+				ERROR("Unprivileged users can only create "
+				      "btrfs and directory-backed containers");
 				_exit(EXIT_FAILURE);
 			}
 
-			if (!strcmp(bdev->type, "overlay") || !strcmp(bdev->type, "overlayfs")) {
+			if (strcmp(bdev->type, "overlay") == 0 ||
+			    strcmp(bdev->type, "overlayfs") == 0) {
 				/* If we create an overlay container we need to
 				 * rsync the contents into
 				 * <container-path>/<container-name>/rootfs.
@@ -1308,7 +1323,8 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 					return -1;
 				}
 			} else {
-				if (bdev->ops->mount(bdev) < 0) {
+				ret = bdev->ops->mount(bdev);
+				if (ret < 0) {
 					ERROR("Failed to mount rootfs");
 					_exit(EXIT_FAILURE);
 				}
@@ -1320,19 +1336,22 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 			bdev->dest = strdup(src);
 		}
 
-		/*
-		 * create our new array, pre-pend the template name and
-		 * base args
+		/* Create our new array, pre-pend the template name and base
+		 * args.
 		 */
 		if (argv)
-			for (nargs = 0; argv[nargs]; nargs++) ;
-		nargs += 4; /* template, path, rootfs and name args */
+			for (nargs = 0; argv[nargs]; nargs++) {
+				;
+			}
+		/* template, path, rootfs and name args */
+		nargs += 4;
 
 		newargv = malloc(nargs * sizeof(*newargv));
 		if (!newargv)
 			_exit(EXIT_FAILURE);
 		newargv[0] = lxcbasename(tpath);
 
+		/* --path */
 		len = strlen(c->config_path) + strlen(c->name) + strlen("--path=") + 2;
 		patharg = malloc(len);
 		if (!patharg)
@@ -1341,6 +1360,8 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 		if (ret < 0 || ret >= len)
 			_exit(EXIT_FAILURE);
 		newargv[1] = patharg;
+
+		/* --name */
 		len = strlen("--name=") + strlen(c->name) + 1;
 		namearg = malloc(len);
 		if (!namearg)
@@ -1350,6 +1371,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 			_exit(EXIT_FAILURE);
 		newargv[2] = namearg;
 
+		/* --rootfs */
 		len = strlen("--rootfs=") + 1 + strlen(bdev->dest);
 		rootfsarg = malloc(len);
 		if (!rootfsarg)
@@ -1362,7 +1384,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 		/* add passed-in args */
 		if (argv)
 			for (i = 4; i < nargs; i++)
-				newargv[i] = argv[i-4];
+				newargv[i] = argv[i - 4];
 
 		/* add trailing NULL */
 		nargs++;
@@ -1371,25 +1393,23 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 			_exit(EXIT_FAILURE);
 		newargv[nargs - 1] = NULL;
 
-		/*
-		 * If we're running the template in a mapped userns, then
-		 * we prepend the template command with:
-		 * lxc-usernsexec <-m map1> ... <-m mapn> --
-		 * and we append "--mapped-uid x", where x is the mapped uid
-		 * for our geteuid()
+		/* If we're running the template in a mapped userns, then we
+		 * prepend the template command with: lxc-usernsexec <-m map1>
+		 * ... <-m mapn> -- and we append "--mapped-uid x", where x is
+		 * the mapped uid for our geteuid()
 		 */
 		if (!lxc_list_empty(&conf->id_map)) {
-			int n2args = 1;
-			char txtuid[20];
-			char txtgid[20];
-			char **n2 = malloc(n2args * sizeof(*n2));
+			int extraargs, hostuid_mapped, hostgid_mapped;
+			char **n2;
+			char txtuid[20], txtgid[20];
 			struct lxc_list *it;
 			struct id_map *map;
+			int n2args = 1;
 
-			if (!n2) {
-				SYSERROR("out of memory");
+			n2 = malloc(n2args * sizeof(*n2));
+			if (!n2)
 				_exit(EXIT_FAILURE);
-			}
+
 			newargv[0] = tpath;
 			tpath = "lxc-usernsexec";
 			n2[0] = "lxc-usernsexec";
@@ -1399,96 +1419,102 @@ static bool create_run_template(struct lxc_container *c, char *tpath, bool need_
 				n2 = realloc(n2, n2args * sizeof(char *));
 				if (!n2)
 					_exit(EXIT_FAILURE);
-				n2[n2args-2] = "-m";
-				n2[n2args-1] = malloc(200);
-				if (!n2[n2args-1])
+
+				n2[n2args - 2] = "-m";
+				n2[n2args - 1] = malloc(200);
+				if (!n2[n2args - 1])
 					_exit(EXIT_FAILURE);
-				ret = snprintf(n2[n2args-1], 200, "%c:%lu:%lu:%lu",
-					map->idtype == ID_TYPE_UID ? 'u' : 'g',
-					map->nsid, map->hostid, map->range);
+
+				ret = snprintf(n2[n2args - 1], 200, "%c:%lu:%lu:%lu",
+					       map->idtype == ID_TYPE_UID ? 'u' : 'g',
+					       map->nsid, map->hostid, map->range);
 				if (ret < 0 || ret >= 200)
 					_exit(EXIT_FAILURE);
 			}
-			int hostid_mapped = mapped_hostid(geteuid(), conf, ID_TYPE_UID);
-			int extraargs = hostid_mapped >= 0 ? 1 : 3;
+
+			hostuid_mapped = mapped_hostid(geteuid(), conf, ID_TYPE_UID);
+			extraargs = hostuid_mapped >= 0 ? 1 : 3;
 			n2 = realloc(n2, (nargs + n2args + extraargs) * sizeof(char *));
 			if (!n2)
 				_exit(EXIT_FAILURE);
-			if (hostid_mapped < 0) {
-				hostid_mapped = find_unmapped_nsid(conf, ID_TYPE_UID);
+
+			if (hostuid_mapped < 0) {
+				hostuid_mapped = find_unmapped_nsid(conf, ID_TYPE_UID);
 				n2[n2args++] = "-m";
-				if (hostid_mapped < 0) {
-					ERROR("Could not find free uid to map");
+				if (hostuid_mapped < 0) {
+					ERROR("Failed to find free uid to map");
 					_exit(EXIT_FAILURE);
 				}
+
 				n2[n2args++] = malloc(200);
-				if (!n2[n2args-1]) {
+				if (!n2[n2args - 1]) {
 					SYSERROR("out of memory");
 					_exit(EXIT_FAILURE);
 				}
-				ret = snprintf(n2[n2args-1], 200, "u:%d:%d:1",
-					hostid_mapped, geteuid());
-				if (ret < 0 || ret >= 200) {
-					ERROR("string too long");
+				ret = snprintf(n2[n2args - 1], 200, "u:%d:%d:1",
+					       hostuid_mapped, geteuid());
+				if (ret < 0 || ret >= 200)
 					_exit(EXIT_FAILURE);
-				}
 			}
-			int hostgid_mapped = mapped_hostid(getegid(), conf, ID_TYPE_GID);
+
+			hostgid_mapped = mapped_hostid(getegid(), conf, ID_TYPE_GID);
 			extraargs = hostgid_mapped >= 0 ? 1 : 3;
 			n2 = realloc(n2, (nargs + n2args + extraargs) * sizeof(char *));
 			if (!n2)
 				_exit(EXIT_FAILURE);
+
 			if (hostgid_mapped < 0) {
 				hostgid_mapped = find_unmapped_nsid(conf, ID_TYPE_GID);
 				n2[n2args++] = "-m";
 				if (hostgid_mapped < 0) {
-					ERROR("Could not find free uid to map");
+					ERROR("Failed to find free gid to map");
 					_exit(EXIT_FAILURE);
 				}
+
 				n2[n2args++] = malloc(200);
-				if (!n2[n2args-1]) {
+				if (!n2[n2args - 1]) {
 					SYSERROR("out of memory");
 					_exit(EXIT_FAILURE);
 				}
-				ret = snprintf(n2[n2args-1], 200, "g:%d:%d:1",
-					hostgid_mapped, getegid());
-				if (ret < 0 || ret >= 200) {
-					ERROR("string too long");
+
+				ret = snprintf(n2[n2args - 1], 200, "g:%d:%d:1",
+					       hostgid_mapped, getegid());
+				if (ret < 0 || ret >= 200)
 					_exit(EXIT_FAILURE);
-				}
 			}
 			n2[n2args++] = "--";
 			for (i = 0; i < nargs; i++)
 				n2[i + n2args] = newargv[i];
 			n2args += nargs;
-			/* Finally add "--mapped-uid $uid" to tell template
-			 * what to chown cached images to.
+
+			/* Finally add "--mapped-uid $uid" to tell template what
+			 * to chown cached images to.
 			 */
 			n2args += 4;
 			n2 = realloc(n2, n2args * sizeof(char *));
-			if (!n2) {
-				SYSERROR("out of memory");
+			if (!n2)
 				_exit(EXIT_FAILURE);
-			}
+
 			/* note n2[n2args-1] is NULL */
-			n2[n2args-5] = "--mapped-uid";
-			snprintf(txtuid, 20, "%d", hostid_mapped);
-			n2[n2args-4] = txtuid;
-			n2[n2args-3] = "--mapped-gid";
+			n2[n2args - 5] = "--mapped-uid";
+			snprintf(txtuid, 20, "%d", hostuid_mapped);
+			n2[n2args - 4] = txtuid;
+			n2[n2args - 3] = "--mapped-gid";
 			snprintf(txtgid, 20, "%d", hostgid_mapped);
-			n2[n2args-2] = txtgid;
-			n2[n2args-1] = NULL;
+			n2[n2args - 2] = txtgid;
+			n2[n2args - 1] = NULL;
 			free(newargv);
 			newargv = n2;
 		}
-		/* execute */
+
 		execvp(tpath, newargv);
 		SYSERROR("Failed to execute template %s", tpath);
 		_exit(EXIT_FAILURE);
 	}
 
-	if (wait_for_pid(pid) != 0) {
-		ERROR("container creation template for %s failed", c->name);
+	ret = wait_for_pid(pid);
+	if (ret != 0) {
+		ERROR("Failed to create container from template");
 		return false;
 	}
 
