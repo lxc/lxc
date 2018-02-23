@@ -4452,13 +4452,13 @@ static bool do_lxcapi_detach_interface(struct lxc_container *c,
 		init_pid = do_lxcapi_init_pid(c);
 		if (!switch_to_ns(init_pid, "net")) {
 			ERROR("Failed to enter network namespace");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		ret = lxc_netdev_isup(ifname);
 		if (ret < 0) {
 			ERROR("Failed to determine whether network device \"%s\" is up", ifname);
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		/* netdev of ifname is up. */
@@ -4466,7 +4466,7 @@ static bool do_lxcapi_detach_interface(struct lxc_container *c,
 			ret = lxc_netdev_down(ifname);
 			if (ret) {
 				ERROR("Failed to set network device \"%s\" down", ifname);
-				exit(EXIT_FAILURE);
+				_exit(EXIT_FAILURE);
 			}
 		}
 
@@ -4477,10 +4477,10 @@ static bool do_lxcapi_detach_interface(struct lxc_container *c,
 				ERROR("Network device \"%s\" not found", ifname);
 			else
 				ERROR("Failed to remove network device \"%s\"", ifname);
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
-		exit(EXIT_SUCCESS);
+		_exit(EXIT_SUCCESS);
 	}
 
 	ret = wait_for_pid(pid);
