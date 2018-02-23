@@ -2269,7 +2269,7 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcna
 		close(pipefd[1]);
 		if (ret < 0) {
 			SYSERROR("Failed to duplicate std{err,out} file descriptor");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		if (netdev->priv.veth_attr.pair[0] != '\0')
@@ -2278,13 +2278,13 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcna
 			hostveth = netdev->priv.veth_attr.veth1;
 		if (hostveth[0] == '\0') {
 			SYSERROR("Host side veth device name is missing");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		if (netdev->link[0] == '\0') {
 			SYSERROR("Network link for network device \"%s\" is "
 				 "missing", netdev->priv.veth_attr.veth1);
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		INFO("Execing lxc-user-nic delete %s %s %s veth %s %s", lxcpath,
@@ -2293,7 +2293,7 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcna
 		       lxcname, netns_path, "veth", netdev->link, hostveth,
 		       (char *)NULL);
 		SYSERROR("Failed to exec lxc-user-nic.");
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	}
 
 	close(pipefd[1]);
