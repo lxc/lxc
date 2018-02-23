@@ -663,7 +663,7 @@ static int lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid,
 		sprintf(pidstr, "%d", pid);
 		execlp("iw", "iw", "phy", physname, "set", "netns", pidstr,
 		       (char *)NULL);
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	}
 
 	if (wait_for_pid(fpid))
