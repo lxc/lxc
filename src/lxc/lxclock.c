@@ -72,10 +72,11 @@ static void lock_mutex(pthread_mutex_t *l)
 {
 	int ret;
 
-	if ((ret = pthread_mutex_lock(l)) != 0) {
-		fprintf(stderr, "pthread_mutex_lock returned:%d %s\n", ret, strerror(ret));
+	ret = pthread_mutex_lock(l);
+	if (ret != 0) {
+		fprintf(stderr, "%s - Failed acquire mutex", strerror(ret));
 		dump_stacktrace();
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	}
 }
 
@@ -83,11 +84,11 @@ static void unlock_mutex(pthread_mutex_t *l)
 {
 	int ret;
 
-	if ((ret = pthread_mutex_unlock(l)) != 0) {
-		fprintf(stderr, "%s: pthread_mutex_unlock returned:%d %s\n",
-				__FILE__, ret, strerror(ret));
+	ret = pthread_mutex_unlock(l);
+	if (ret != 0) {
+		fprintf(stderr, "%s - Failed to release mutex", strerror(ret));
 		dump_stacktrace();
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	}
 }
 
