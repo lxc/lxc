@@ -785,14 +785,14 @@ static bool criu_version_ok(char **version)
 
 		close(STDERR_FILENO);
 		if (dup2(pipes[1], STDOUT_FILENO) < 0)
-			exit(1);
+			_exit(EXIT_FAILURE);
 
 		path = on_path("criu", NULL);
 		if (!path)
-			exit(1);
+			_exit(EXIT_FAILURE);
 
 		execv(path, args);
-		exit(1);
+		_exit(EXIT_FAILURE);
 	} else {
 		FILE *f;
 		char *tmp;
