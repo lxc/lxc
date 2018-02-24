@@ -49,6 +49,7 @@
 #include "confile_utils.h"
 #include "console.h"
 #include "criu.h"
+#include "error.h"
 #include "initutils.h"
 #include "log.h"
 #include "lxc.h"
@@ -70,7 +71,7 @@
 
 /* major()/minor() */
 #ifdef MAJOR_IN_MKDEV
-#    include <sys/mkdev.h>
+#include <sys/mkdev.h>
 #endif
 
 #if HAVE_IFADDRS_H
@@ -85,19 +86,15 @@
 #include <mntent.h>
 #endif
 
-#define MAX_BUFFER 4096
-
-#define NOT_SUPPORTED_ERROR "the requested function %s is not currently supported with unprivileged containers"
-
 /* Define faccessat() if missing from the C library */
 #ifndef HAVE_FACCESSAT
 static int faccessat(int __fd, const char *__file, int __type, int __flag)
 {
 #ifdef __NR_faccessat
-return syscall(__NR_faccessat, __fd, __file, __type, __flag);
+	return syscall(__NR_faccessat, __fd, __file, __type, __flag);
 #else
-errno = ENOSYS;
-return -1;
+	errno = ENOSYS;
+	return -1;
 #endif
 }
 #endif
@@ -4317,7 +4314,7 @@ static bool add_remove_device_node(struct lxc_container *c, const char *src_path
 {
 	int ret;
 	struct stat st;
-	char value[MAX_BUFFER];
+	char value[LXC_MAX_BUFFER];
 	const char *p;
 
 	/* make sure container is running */
@@ -4335,14 +4332,14 @@ static bool add_remove_device_node(struct lxc_container *c, const char *src_path
 
 	/* continue if path is character device or block device */
 	if (S_ISCHR(st.st_mode))
-		ret = snprintf(value, MAX_BUFFER, "c %d:%d rwm", major(st.st_rdev), minor(st.st_rdev));
+		ret = snprintf(value, LXC_MAX_BUFFER, "c %d:%d rwm", major(st.st_rdev), minor(st.st_rdev));
 	else if (S_ISBLK(st.st_mode))
-		ret = snprintf(value, MAX_BUFFER, "b %d:%d rwm", major(st.st_rdev), minor(st.st_rdev));
+		ret = snprintf(value, LXC_MAX_BUFFER, "b %d:%d rwm", major(st.st_rdev), minor(st.st_rdev));
 	else
 		return false;
 
 	/* check snprintf return code */
-	if (ret < 0 || ret >= MAX_BUFFER)
+	if (ret < 0 || ret >= LXC_MAX_BUFFER)
 		return false;
 
 	if (!do_add_remove_node(do_lxcapi_init_pid(c), p, add, &st))
@@ -4368,7 +4365,7 @@ static bool do_lxcapi_add_device_node(struct lxc_container *c, const char *src_p
 {
 	// cannot mknod if we're not privileged wrt init_user_ns
 	if (am_host_unpriv()) {
-		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
+		ERROR(LXC_UNPRIV_EOPNOTSUPP, __FUNCTION__);
 		return false;
 	}
 	return add_remove_device_node(c, src_path, dest_path, true);
@@ -4379,7 +4376,7 @@ WRAP_API_2(bool, lxcapi_add_device_node, const char *, const char *)
 static bool do_lxcapi_remove_device_node(struct lxc_container *c, const char *src_path, const char *dest_path)
 {
 	if (am_guest_unpriv()) {
-		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
+		ERROR(LXC_UNPRIV_EOPNOTSUPP, __FUNCTION__);
 		return false;
 	}
 	return add_remove_device_node(c, src_path, dest_path, false);
@@ -4395,7 +4392,7 @@ static bool do_lxcapi_attach_interface(struct lxc_container *c,
 	int ret = 0;
 
 	if (am_guest_unpriv()) {
-		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
+		ERROR(LXC_UNPRIV_EOPNOTSUPP, __FUNCTION__);
 		return false;
 	}
 
@@ -4438,7 +4435,7 @@ static bool do_lxcapi_detach_interface(struct lxc_container *c,
 	 * But for other types guest privilege suffices.
 	 */
 	if (am_guest_unpriv()) {
-		ERROR(NOT_SUPPORTED_ERROR, __FUNCTION__);
+		ERROR(LXC_UNPRIV_EOPNOTSUPP, __FUNCTION__);
 		return false;
 	}
 

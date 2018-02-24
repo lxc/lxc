@@ -100,6 +100,7 @@
 #define LXC_NUMSTRLEN64 21
 #define LXC_LINELEN 4096
 #define LXC_IDMAPLEN 4096
+#define LXC_MAX_BUFFER 4096
 
 /* returns 1 on success, 0 if there were any failures */
 extern int lxc_rmdir_onedev(const char *path, const char *exclude);
