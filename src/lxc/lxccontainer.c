@@ -127,48 +127,47 @@ static bool config_file_exists(const char *lxcpath, const char *cname)
 	return file_exists(fname);
 }
 
-/*
- * A few functions to help detect when a container creation failed.
- * If a container creation was killed partway through, then trying
- * to actually start that container could harm the host.  We detect
- * this by creating a 'partial' file under the container directory,
- * and keeping an advisory lock.  When container creation completes,
- * we remove that file.  When we load or try to start a container, if
- * we find that file, without a flock, we remove the container.
+/* A few functions to help detect when a container creation failed. If a
+ * container creation was killed partway through, then trying to actually start
+ * that container could harm the host. We detect this by creating a 'partial'
+ * file under the container directory, and keeping an advisory lock. When
+ * container creation completes, we remove that file.  When we load or try to
+ * start a container, if we find that file, without a flock, we remove the
+ * container.
  */
 static int ongoing_create(struct lxc_container *c)
 {
-	int len = strlen(c->config_path) + strlen(c->name) + 10;
-	char *path = alloca(len);
 	int fd, ret;
+	size_t len;
+	char *path;
 	struct flock lk;
 
+	len = strlen(c->config_path) + strlen(c->name) + 10;
+	path = alloca(len);
 	ret = snprintf(path, len, "%s/%s/partial", c->config_path, c->name);
-	if (ret < 0 || ret >= len) {
-		ERROR("Error writing partial pathname");
+	if (ret < 0 || (size_t)ret >= len)
 		return -1;
-	}
 
 	if (!file_exists(path))
 		return 0;
+
 	fd = open(path, O_RDWR);
-	if (fd < 0) {
-		// give benefit of the doubt
-		SYSERROR("Error opening partial file");
+	if (fd < 0)
 		return 0;
-	}
+
 	lk.l_type = F_WRLCK;
 	lk.l_whence = SEEK_SET;
 	lk.l_start = 0;
 	lk.l_len = 0;
 	lk.l_pid = -1;
-	if (fcntl(fd, F_GETLK, &lk) == 0 && lk.l_pid != -1) {
-		// create is still ongoing
-		close(fd);
+
+	ret = fcntl(fd, F_GETLK, &lk);
+	close(fd);
+	if (ret == 0 && lk.l_pid != -1) {
+		/* create is still ongoing */
 		return 1;
 	}
-	// create completed but partial is still there.
-	close(fd);
+
 	return 2;
 }
 
