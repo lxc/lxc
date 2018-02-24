@@ -1188,25 +1188,27 @@ static int do_create_container_dir(const char *path, struct lxc_conf *conf)
 	return ret;
 }
 
-/*
- * create the standard expected container dir
- */
+/* Create the standard expected container dir. */
 static bool create_container_dir(struct lxc_container *c)
 {
+	int ret;
+	size_t len;
 	char *s;
-	int len, ret;
 
 	len = strlen(c->config_path) + strlen(c->name) + 2;
 	s = malloc(len);
 	if (!s)
 		return false;
+
 	ret = snprintf(s, len, "%s/%s", c->config_path, c->name);
-	if (ret < 0 || ret >= len) {
+	if (ret < 0 || (size_t)ret >= len) {
 		free(s);
 		return false;
 	}
+
 	ret = do_create_container_dir(s, c->lxc_conf);
 	free(s);
+
 	return ret == 0;
 }
 
