@@ -464,6 +464,7 @@ WRAP_API(const char *, lxcapi_state)
 static bool is_stopped(struct lxc_container *c)
 {
 	lxc_state_t s;
+
 	s = lxc_getstate(c->name, c->config_path);
 	return (s == STOPPED);
 }
