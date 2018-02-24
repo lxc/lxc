@@ -1256,7 +1256,7 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 		h.name = c->name;
 		if (!cgroup_init(&h)) {
 			ERROR("failed to cgroup_init()");
-			exit(1);
+			_exit(EXIT_FAILURE);
 		}
 
 		os.pipefd = criuout[1];
@@ -1269,13 +1269,13 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 		ret = save_tty_major_minor(opts->directory, c, os.tty_id, sizeof(os.tty_id));
 		if (ret < 0) {
 			free(criu_version);
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		/* exec_criu() returning is an error */
 		exec_criu(&os);
 		free(criu_version);
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	} else {
 		int status;
 		ssize_t n;
