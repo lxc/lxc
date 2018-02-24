@@ -280,19 +280,21 @@ static void lxc_container_free(struct lxc_container *c)
 	free(c);
 }
 
-/*
- * Consider the following case:
-freer                         |    racing get()er
-==================================================================
-lxc_container_put()           |   lxc_container_get()
-\ lxclock(c->privlock)        |   c->numthreads < 1? (no)
-\ c->numthreads = 0           |   \ lxclock(c->privlock) -> waits
-\ lxcunlock()                 |   \
-\ lxc_container_free()        |   \ lxclock() returns
-                              |   \ c->numthreads < 1 -> return 0
-\ \ (free stuff)              |
-\ \ sem_destroy(privlock)     |
-
+/* Consider the following case:
+ *
+ * |====================================================================|
+ * | freer                         |    racing get()er                  |
+ * |====================================================================|
+ * | lxc_container_put()           |   lxc_container_get()              |
+ * | \ lxclock(c->privlock)        |   c->numthreads < 1? (no)          |
+ * | \ c->numthreads = 0           |   \ lxclock(c->privlock) -> waits  |
+ * | \ lxcunlock()                 |   \                                |
+ * | \ lxc_container_free()        |   \ lxclock() returns              |
+ * |                               |   \ c->numthreads < 1 -> return 0  |
+ * | \ \ (free stuff)              |                                    |
+ * | \ \ sem_destroy(privlock)     |                                    |
+ * |_______________________________|____________________________________|
+ *
  * When the get()er checks numthreads the first time, one of the following
  * is true:
  * 1. freer has set numthreads = 0.  get() returns 0
@@ -322,6 +324,7 @@ int lxc_container_get(struct lxc_container *c)
 	}
 	c->numthreads++;
 	container_mem_unlock(c);
+
 	return 1;
 }
 
@@ -329,14 +332,18 @@ int lxc_container_put(struct lxc_container *c)
 {
 	if (!c)
 		return -1;
+
 	if (container_mem_lock(c))
 		return -1;
+
 	if (--c->numthreads < 1) {
 		container_mem_unlock(c);
 		lxc_container_free(c);
 		return 1;
 	}
+
 	container_mem_unlock(c);
+
 	return 0;
 }
 
