@@ -923,7 +923,7 @@ out_unlock:
 }
 
 /* do_restore never returns, the calling process is used as the monitor process.
- * do_restore calls exit() if it fails.
+ * do_restore calls _exit() if it fails.
  */
 static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_opts *opts, char *criu_version)
 {
@@ -1140,7 +1140,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		if (ret)
 			lxc_abort(c->name, handler);
 		lxc_fini(c->name, handler);
-		exit(ret);
+		_exit(ret);
 	}
 
 out_fini_handler:
@@ -1165,7 +1165,7 @@ out:
 		close(status_pipe);
 	}
 
-	exit(1);
+	_exit(EXIT_FAILURE);
 }
 
 static int save_tty_major_minor(char *directory, struct lxc_container *c, char *tty_id, int len)
