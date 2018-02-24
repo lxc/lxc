@@ -488,12 +488,14 @@ WRAP_API(bool, lxcapi_is_running)
 static bool do_lxcapi_freeze(struct lxc_container *c)
 {
 	int ret;
+
 	if (!c)
 		return false;
 
 	ret = lxc_freeze(c->name, c->config_path);
 	if (ret)
 		return false;
+
 	return true;
 }
 
