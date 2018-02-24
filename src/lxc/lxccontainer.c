@@ -353,24 +353,28 @@ int lxc_container_put(struct lxc_container *c)
 
 static bool do_lxcapi_is_defined(struct lxc_container *c)
 {
+	int statret;
 	struct stat statbuf;
 	bool ret = false;
-	int statret;
 
 	if (!c)
 		return false;
 
 	if (container_mem_lock(c))
 		return false;
+
 	if (!c->configfile)
-		goto out;
+		goto on_error;
+
 	statret = stat(c->configfile, &statbuf);
 	if (statret != 0)
-		goto out;
+		goto on_error;
+
 	ret = true;
 
-out:
+on_error:
 	container_mem_unlock(c);
+
 	return ret;
 }
 
