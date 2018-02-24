@@ -568,9 +568,10 @@ static bool load_config_locked(struct lxc_container *c, const char *fname)
 
 static bool do_lxcapi_load_config(struct lxc_container *c, const char *alt_file)
 {
-	bool ret = false, need_disklock = false;
 	int lret;
 	const char *fname;
+	bool need_disklock = false, ret = false;
+
 	if (!c)
 		return false;
 
@@ -579,10 +580,10 @@ static bool do_lxcapi_load_config(struct lxc_container *c, const char *alt_file)
 		fname = alt_file;
 	if (!fname)
 		return false;
-	/*
-	 * If we're reading something other than the container's config,
-	 * we only need to lock the in-memory container.  If loading the
-	 * container's config file, take the disk lock.
+
+	/* If we're reading something other than the container's config, we only
+	 * need to lock the in-memory container. If loading the container's
+	 * config file, take the disk lock.
 	 */
 	if (strcmp(fname, c->configfile) == 0)
 		need_disklock = true;
@@ -600,6 +601,7 @@ static bool do_lxcapi_load_config(struct lxc_container *c, const char *alt_file)
 		container_disk_unlock(c);
 	else
 		container_mem_unlock(c);
+
 	return ret;
 }
 
