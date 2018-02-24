@@ -318,7 +318,7 @@ struct hierarchy *get_hierarchy(const char *c)
 			    !hierarchies[i]->controllers[0])
 				return hierarchies[i];
 
-			return NULL;
+			continue;
 		}
 
 		if (string_in_list(hierarchies[i]->controllers, c))
@@ -1295,8 +1295,11 @@ static bool cg_hybrid_init(void)
 
 			controller_list = cg_unified_get_controllers(cgv2_ctrl_path);
 			free(cgv2_ctrl_path);
-			if (!controller_list)
+			if (!controller_list) {
 				controller_list = cg_unified_make_empty_controller();
+				CGFSNG_DEBUG("No controllers are enabled for "
+					     "delegation in the unified hierarchy\n");
+			}
 		}
 
 		new = add_hierarchy(controller_list, mountpoint, base_cgroup, type);
@@ -2343,13 +2346,16 @@ static bool cgfsng_unfreeze(void *hdata)
 	return true;
 }
 
-static const char *cgfsng_get_cgroup(void *hdata, const char *subsystem)
+static const char *cgfsng_get_cgroup(void *hdata, const char *controller)
 {
 	struct hierarchy *h;
 
-	h = get_hierarchy(subsystem);
-	if (!h)
+	h = get_hierarchy(controller);
+	if (!h) {
+		SYSERROR("Failed to find hierarchy for controller \"%s\"",
+			 controller ? controller : "(null)");
 		return NULL;
+	}
 
 	return h->fullcgpath ? h->fullcgpath + strlen(h->mountpoint) : NULL;
 }
