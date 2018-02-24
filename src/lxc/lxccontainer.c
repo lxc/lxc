@@ -627,12 +627,13 @@ static bool do_lxcapi_want_close_all_fds(struct lxc_container *c, bool state)
 {
 	if (!c || !c->lxc_conf)
 		return false;
-	if (container_mem_lock(c)) {
-		ERROR("Error getting mem lock");
+
+	if (container_mem_lock(c))
 		return false;
-	}
+
 	c->lxc_conf->close_all_fds = state;
 	container_mem_unlock(c);
+
 	return true;
 }
 
