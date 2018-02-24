@@ -113,12 +113,15 @@ static bool do_lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 
 static bool config_file_exists(const char *lxcpath, const char *cname)
 {
-	/* $lxcpath + '/' + $cname + '/config' + \0 */
-	int ret, len = strlen(lxcpath) + strlen(cname) + 9;
-	char *fname = alloca(len);
+	int ret;
+	size_t len;
+	char *fname;
 
-	ret = snprintf(fname, len,  "%s/%s/config", lxcpath, cname);
-	if (ret < 0 || ret >= len)
+	/* $lxcpath + '/' + $cname + '/config' + \0 */
+	len = strlen(lxcpath) + strlen(cname) + 9;
+	fname = alloca(len);
+	ret = snprintf(fname, len, "%s/%s/config", lxcpath, cname);
+	if (ret < 0 || (size_t)ret >= len)
 		return false;
 
 	return file_exists(fname);
