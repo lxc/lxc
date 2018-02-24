@@ -173,27 +173,30 @@ static int ongoing_create(struct lxc_container *c)
 
 static int create_partial(struct lxc_container *c)
 {
-	// $lxcpath + '/' + $name + '/partial' + \0
-	int len = strlen(c->config_path) + strlen(c->name) + 10;
-	char *path = alloca(len);
 	int fd, ret;
+	size_t len;
+	char *path;
 	struct flock lk;
 
+	/* $lxcpath + '/' + $name + '/partial' + \0 */
+	len = strlen(c->config_path) + strlen(c->name) + 10;
+	path = alloca(len);
 	ret = snprintf(path, len, "%s/%s/partial", c->config_path, c->name);
-	if (ret < 0 || ret >= len) {
-		ERROR("Error writing partial pathname");
+	if (ret < 0 || (size_t)ret >= len)
 		return -1;
-	}
-	if ((fd=open(path, O_RDWR | O_CREAT | O_EXCL, 0755)) < 0) {
-		SYSERROR("Error creating partial file");
+
+	fd = open(path, O_RDWR | O_CREAT | O_EXCL, 0755);
+	if (fd < 0)
 		return -1;
-	}
+
 	lk.l_type = F_WRLCK;
 	lk.l_whence = SEEK_SET;
 	lk.l_start = 0;
 	lk.l_len = 0;
-	if (fcntl(fd, F_SETLKW, &lk) < 0) {
-		SYSERROR("Error locking partial file %s", path);
+
+	ret = fcntl(fd, F_SETLKW, &lk);
+	if (ret < 0) {
+		SYSERROR("Failed to lock partial file %s", path);
 		close(fd);
 		return -1;
 	}
