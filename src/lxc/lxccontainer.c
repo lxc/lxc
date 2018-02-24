@@ -707,15 +707,17 @@ static bool am_single_threaded(void)
 
 static void push_arg(char ***argp, char *arg, int *nargs)
 {
-	char **argv;
 	char *copy;
+	char **argv;
 
 	do {
 		copy = strdup(arg);
 	} while (!copy);
+
 	do {
 		argv = realloc(*argp, (*nargs + 2) * sizeof(char *));
 	} while (!argv);
+
 	*argp = argv;
 	argv[*nargs] = copy;
 	(*nargs)++;
