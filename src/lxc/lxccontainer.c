@@ -253,22 +253,28 @@ static void lxc_container_free(struct lxc_container *c)
 
 	free(c->configfile);
 	c->configfile = NULL;
+
 	free(c->error_string);
 	c->error_string = NULL;
+
 	if (c->slock) {
 		lxc_putlock(c->slock);
 		c->slock = NULL;
 	}
+
 	if (c->privlock) {
 		lxc_putlock(c->privlock);
 		c->privlock = NULL;
 	}
+
 	free(c->name);
 	c->name = NULL;
+
 	if (c->lxc_conf) {
 		lxc_conf_free(c->lxc_conf);
 		c->lxc_conf = NULL;
 	}
+
 	free(c->config_path);
 	c->config_path = NULL;
 
