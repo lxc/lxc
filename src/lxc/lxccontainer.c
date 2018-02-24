@@ -1077,9 +1077,7 @@ static bool lxcapi_start(struct lxc_container *c, int useinit,
 	return ret;
 }
 
-/*
- * note there MUST be an ending NULL
- */
+/* Note, there MUST be an ending NULL. */
 static bool lxcapi_startl(struct lxc_container *c, int useinit, ...)
 {
 	va_list ap;
@@ -1095,16 +1093,13 @@ static bool lxcapi_startl(struct lxc_container *c, int useinit, ...)
 	va_start(ap, useinit);
 	inargs = lxc_va_arg_list_to_argv(ap, 0, 1);
 	va_end(ap);
-
-	if (!inargs) {
-		ERROR("Memory allocation error.");
-		goto out;
-	}
+	if (!inargs)
+		goto on_error;
 
 	/* pass NULL if no arguments were supplied */
 	bret = do_lxcapi_start(c, useinit, *inargs ? inargs : NULL);
 
-out:
+on_error:
 	if (inargs) {
 		char **arg;
 		for (arg = inargs; *arg; arg++)
@@ -1113,6 +1108,7 @@ out:
 	}
 
 	current_config = NULL;
+
 	return bret;
 }
 
