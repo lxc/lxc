@@ -762,8 +762,10 @@ static void free_init_cmd(char **argv)
 
 	if (!argv)
 		return;
+
 	while (argv[i])
 		free(argv[i++]);
+
 	free(argv);
 }
 
