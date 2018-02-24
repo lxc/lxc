@@ -639,7 +639,8 @@ static bool do_lxcapi_want_close_all_fds(struct lxc_container *c, bool state)
 
 WRAP_API_1(bool, lxcapi_want_close_all_fds, bool)
 
-static bool do_lxcapi_wait(struct lxc_container *c, const char *state, int timeout)
+static bool do_lxcapi_wait(struct lxc_container *c, const char *state,
+			   int timeout)
 {
 	int ret;
 
