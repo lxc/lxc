@@ -1159,26 +1159,32 @@ WRAP_API(bool, lxcapi_stop)
 
 static int do_create_container_dir(const char *path, struct lxc_conf *conf)
 {
-	int ret = -1, lasterr;
-	char *p = alloca(strlen(path)+1);
+	int lasterr;
+	size_t len;
+	char *p;
+	int ret = -1;
+
 	mode_t mask = umask(0002);
 	ret = mkdir(path, 0770);
 	lasterr = errno;
 	umask(mask);
 	errno = lasterr;
 	if (ret) {
-		if (errno == EEXIST)
-			ret = 0;
-		else {
-			SYSERROR("failed to create container path %s", path);
+		if (errno != EEXIST)
 			return -1;
-		}
+
+		ret = 0;
 	}
+
+	len = strlen(path);
+	p = alloca(len + 1);
 	strcpy(p, path);
-	if (!lxc_list_empty(&conf->id_map) && chown_mapped_root(p, conf) != 0) {
-		ERROR("Failed to chown container dir");
-		ret = -1;
+	if (!lxc_list_empty(&conf->id_map)) {
+		ret = chown_mapped_root(p, conf);
+		if (ret < 0)
+			ret = -1;
 	}
+
 	return ret;
 }
 
