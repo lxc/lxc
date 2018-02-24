@@ -523,12 +523,10 @@ WRAP_API(bool, lxcapi_unfreeze)
 
 static int do_lxcapi_console_getfd(struct lxc_container *c, int *ttynum, int *masterfd)
 {
-	int ttyfd;
 	if (!c)
 		return -1;
 
-	ttyfd = lxc_console_getfd(c, ttynum, masterfd);
-	return ttyfd;
+	return lxc_console_getfd(c, ttynum, masterfd);
 }
 
 WRAP_API_2(int, lxcapi_console_getfd, int *, int *)
