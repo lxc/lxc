@@ -475,9 +475,11 @@ static bool do_lxcapi_is_running(struct lxc_container *c)
 
 	if (!c)
 		return false;
+
 	s = do_lxcapi_state(c);
 	if (!s || strcmp(s, "STOPPED") == 0)
 		return false;
+
 	return true;
 }
 
