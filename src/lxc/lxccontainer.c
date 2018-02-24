@@ -504,12 +504,14 @@ WRAP_API(bool, lxcapi_freeze)
 static bool do_lxcapi_unfreeze(struct lxc_container *c)
 {
 	int ret;
+
 	if (!c)
 		return false;
 
 	ret = lxc_unfreeze(c->name, c->config_path);
 	if (ret)
 		return false;
+
 	return true;
 }
 
