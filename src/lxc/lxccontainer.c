@@ -206,19 +206,21 @@ static int create_partial(struct lxc_container *c)
 
 static void remove_partial(struct lxc_container *c, int fd)
 {
-	// $lxcpath + '/' + $name + '/partial' + \0
-	int len = strlen(c->config_path) + strlen(c->name) + 10;
-	char *path = alloca(len);
 	int ret;
+	size_t len;
+	char *path;
 
 	close(fd);
+	/* $lxcpath + '/' + $name + '/partial' + \0 */
+	len = strlen(c->config_path) + strlen(c->name) + 10;
+	path = alloca(len);
 	ret = snprintf(path, len, "%s/%s/partial", c->config_path, c->name);
-	if (ret < 0 || ret >= len) {
-		ERROR("Error writing partial pathname");
+	if (ret < 0 || (size_t)ret >= len)
 		return;
-	}
-	if (unlink(path) < 0)
-		SYSERROR("Error unlink partial file %s", path);
+
+	ret = unlink(path);
+	if (ret < 0)
+		SYSERROR("Failed to remove partial file %s", path);
 }
 
 /* LOCKING
