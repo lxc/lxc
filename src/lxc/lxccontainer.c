@@ -1096,12 +1096,15 @@ on_error:
 	return true;
 }
 
-static bool lxcapi_start(struct lxc_container *c, int useinit, char * const argv[])
+static bool lxcapi_start(struct lxc_container *c, int useinit,
+			 char *const argv[])
 {
 	bool ret;
+
 	current_config = c ? c->lxc_conf : NULL;
 	ret = do_lxcapi_start(c, useinit, argv);
 	current_config = NULL;
+
 	return ret;
 }
 
