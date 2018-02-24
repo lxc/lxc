@@ -717,13 +717,13 @@ bool __criu_check_feature(uint64_t *features_to_check)
 				 * LXC checking only for 'uffd' makes not much sense. */
 				args[3] = "uffd-noncoop";
 			else
-				exit(1);
+				_exit(EXIT_FAILURE);
 
 			null_stdfds();
 
 			execvp("criu", args);
 			SYSERROR("Failed to exec \"criu\"");
-			exit(1);
+			_exit(EXIT_FAILURE);
 		}
 
 		ret = wait_for_pid(pid);
