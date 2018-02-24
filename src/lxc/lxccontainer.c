@@ -458,6 +458,7 @@ static const char *do_lxcapi_state(struct lxc_container *c)
 
 	if (!c)
 		return NULL;
+
 	s = lxc_getstate(c->name, c->config_path);
 	return lxc_state2str(s);
 }
