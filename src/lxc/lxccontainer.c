@@ -727,9 +727,10 @@ static void push_arg(char ***argp, char *arg, int *nargs)
 static char **split_init_cmd(const char *incmd)
 {
 	size_t len;
-	int nargs = 0;
-	char *copy, *p, *saveptr = NULL;
+	char *copy, *p;
 	char **argv;
+	int nargs = 0;
+	char *saveptr = NULL;
 
 	if (!incmd)
 		return NULL;
@@ -737,20 +738,21 @@ static char **split_init_cmd(const char *incmd)
 	len = strlen(incmd) + 1;
 	copy = alloca(len);
 	strncpy(copy, incmd, len);
-	copy[len-1] = '\0';
+	copy[len - 1] = '\0';
 
 	do {
 		argv = malloc(sizeof(char *));
 	} while (!argv);
+
 	argv[0] = NULL;
-	for (p = strtok_r(copy, " ", &saveptr); p != NULL;
-			p = strtok_r(NULL, " ", &saveptr))
+	for (; (p = strtok_r(copy, " ", &saveptr)); copy = NULL)
 		push_arg(&argv, p, &nargs);
 
 	if (nargs == 0) {
 		free(argv);
 		return NULL;
 	}
+
 	return argv;
 }
 
