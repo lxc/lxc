@@ -657,13 +657,11 @@ static bool am_single_threaded(void)
 {
 	struct dirent *direntp;
 	DIR *dir;
-	int count=0;
+	int count = 0;
 
 	dir = opendir("/proc/self/task");
-	if (!dir) {
-		INFO("failed to open /proc/self/task");
+	if (!dir)
 		return false;
-	}
 
 	while ((direntp = readdir(dir))) {
 		if (!strcmp(direntp->d_name, "."))
@@ -671,10 +669,12 @@ static bool am_single_threaded(void)
 
 		if (!strcmp(direntp->d_name, ".."))
 			continue;
+
 		if (++count > 1)
 			break;
 	}
 	closedir(dir);
+
 	return count == 1;
 }
 
