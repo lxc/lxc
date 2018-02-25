@@ -46,6 +46,7 @@ DOWNLOAD_URL=
 DOWNLOAD_USE_CACHE="false"
 DOWNLOAD_VALIDATE="true"
 DOWNLOAD_VARIANT="default"
+DOWNLOAD_TEMP=
 
 LXC_MAPPED_GID=
 LXC_MAPPED_UID=
@@ -311,11 +312,15 @@ fi
 # Trap all exit signals
 trap cleanup EXIT HUP INT TERM
 
+# /tmp may be mounted in tmpfs or noexec
+if mountpoint -q /tmp; then
+    DOWNLOAD_TEMP="${LXC_PATH}"
+fi
+
 if ! command -V mktemp >/dev/null 2>&1; then
-    DOWNLOAD_TEMP=/tmp/lxc-download.$$
-    mkdir -p "${DOWNLOAD_TEMP}"
+    DOWNLOAD_TEMP="${DOWNLOAD_TEMP}/tmp/lxc-download.$$"
 else
-    DOWNLOAD_TEMP=$(mktemp -d)
+    DOWNLOAD_TEMP="${DOWNLOAD_TEMP}$(mktemp -d)"
 fi
 
 # Simply list images
