@@ -278,7 +278,7 @@ lxc_checkpoint_SOURCES = tools/lxc_checkpoint.c tools/arguments.c tools/tool_uti
 # Binaries shipping with liblxc
 init_lxc_SOURCES = cmd/lxc_init.c
 lxc_monitord_SOURCES = cmd/lxc_monitord.c
-lxc_user_nic_SOURCES = cmd/lxc_user_nic.c namespace.c network.c
+lxc_user_nic_SOURCES = cmd/lxc_user_nic.c namespace.c network.c parse.c
 lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c
 
 if ENABLE_DEPRECATED

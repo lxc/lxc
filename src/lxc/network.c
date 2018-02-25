@@ -635,7 +635,7 @@ static int lxc_netdev_rename_by_name_in_netns(pid_t pid, const char *old,
 	if (!switch_to_ns(pid, "net"))
 		return -1;
 
-	exit(lxc_netdev_rename_by_name(old, new));
+	_exit(lxc_netdev_rename_by_name(old, new));
 }
 
 static int lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid,
@@ -663,7 +663,7 @@ static int lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid,
 		sprintf(pidstr, "%d", pid);
 		execlp("iw", "iw", "phy", physname, "set", "netns", pidstr,
 		       (char *)NULL);
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	}
 
 	if (wait_for_pid(fpid))
@@ -2126,7 +2126,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 		close(pipefd[1]);
 		if (ret < 0) {
 			SYSERROR("Failed to duplicate std{err,out} file descriptor");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		if (netdev->link[0] != '\0')
@@ -2136,7 +2136,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 
 		ret = snprintf(pidstr, LXC_NUMSTRLEN64, "%d", pid);
 		if (ret < 0 || ret >= LXC_NUMSTRLEN64)
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		pidstr[LXC_NUMSTRLEN64 - 1] = '\0';
 
 		INFO("Execing lxc-user-nic create %s %s %s veth %s %s", lxcpath,
@@ -2151,7 +2151,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 			       lxcpath, lxcname, pidstr, "veth", netdev_link,
 			       (char *)NULL);
 		SYSERROR("Failed to execute lxc-user-nic");
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	}
 
 	/* close the write-end of the pipe */
@@ -2269,7 +2269,7 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcna
 		close(pipefd[1]);
 		if (ret < 0) {
 			SYSERROR("Failed to duplicate std{err,out} file descriptor");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		if (netdev->priv.veth_attr.pair[0] != '\0')
@@ -2278,13 +2278,13 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcna
 			hostveth = netdev->priv.veth_attr.veth1;
 		if (hostveth[0] == '\0') {
 			SYSERROR("Host side veth device name is missing");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		if (netdev->link[0] == '\0') {
 			SYSERROR("Network link for network device \"%s\" is "
 				 "missing", netdev->priv.veth_attr.veth1);
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		INFO("Execing lxc-user-nic delete %s %s %s veth %s %s", lxcpath,
@@ -2293,7 +2293,7 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcna
 		       lxcname, netns_path, "veth", netdev->link, hostveth,
 		       (char *)NULL);
 		SYSERROR("Failed to exec lxc-user-nic.");
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	}
 
 	close(pipefd[1]);

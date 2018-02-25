@@ -478,7 +478,7 @@ struct lxc_popen_FILE *lxc_popen(const char *command)
 			ret = fcntl(pipe_fds[1], F_SETFD, 0);
 		if (ret < 0) {
 			close(pipe_fds[1]);
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		/* duplicate stderr */
@@ -488,19 +488,19 @@ struct lxc_popen_FILE *lxc_popen(const char *command)
 			ret = fcntl(pipe_fds[1], F_SETFD, 0);
 		close(pipe_fds[1]);
 		if (ret < 0)
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 
 		/* unblock all signals */
 		ret = sigfillset(&mask);
 		if (ret < 0)
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 
 		ret = sigprocmask(SIG_UNBLOCK, &mask, NULL);
 		if (ret < 0)
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 
 		execl("/bin/sh", "sh", "-c", command, (char *)NULL);
-		exit(127);
+		_exit(127);
 	}
 
 	close(pipe_fds[1]);
@@ -1810,33 +1810,6 @@ int lxc_count_file_lines(const char *fn)
 	return n;
 }
 
-void *lxc_strmmap(void *addr, size_t length, int prot, int flags, int fd,
-		  off_t offset)
-{
-	void *tmp = NULL, *overlap = NULL;
-
-	/* We establish an anonymous mapping that is one byte larger than the
-	 * underlying file. The pages handed to us are zero filled. */
-	tmp = mmap(addr, length + 1, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	if (tmp == MAP_FAILED)
-		return tmp;
-
-	/* Now we establish a fixed-address mapping starting at the address we
-	 * received from our anonymous mapping and replace all bytes excluding
-	 * the additional \0-byte with the file. This allows us to use normal
-	 * string-handling functions. */
-	overlap = mmap(tmp, length, prot, MAP_FIXED | flags, fd, offset);
-	if (overlap == MAP_FAILED)
-		munmap(tmp, length + 1);
-
-	return overlap;
-}
-
-int lxc_strmunmap(void *addr, size_t length)
-{
-	return munmap(addr, length + 1);
-}
-
 /* Check whether a signal is blocked by a process. */
 /* /proc/pid-to-str/status\0 = (5 + 21 + 7 + 1) */
 #define __PROC_STATUS_LEN (5 + (LXC_NUMSTRLEN64) + 7 + 1)
@@ -2269,13 +2242,13 @@ int run_command(char *buf, size_t buf_size, int (*child_fn)(void *), void *args)
 
 		if (ret < 0) {
 			SYSERROR("failed to duplicate std{err,out} file descriptor");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		/* Does not return. */
 		child_fn(args);
 		ERROR("failed to exec command");
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	}
 
 	/* close the write-end of the pipe */
