@@ -308,7 +308,7 @@ endif
 if ENABLE_PAM
 if HAVE_PAM
 pam_LTLIBRARIES = pam_cgfs.la
-pam_cgfs_la_SOURCES = pam/pam_cgfs.c macro.h
+pam_cgfs_la_SOURCES = pam/pam_cgfs.c
 pam_cgfs_la_CFLAGS = $(AM_CFLAGS)
 pam_cgfs_la_LIBADD = $(AM_LIBS) $(PAM_LIBS) -L$(top_srcdir)
 pam_cgfs_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version -shared
