@@ -877,6 +877,7 @@ AC_CONFIG_FILES([
 	templates/lxc-fedora
 	templates/lxc-fedora-legacy
 	templates/lxc-gentoo
+	templates/lxc-local
 	templates/lxc-oci
 	templates/lxc-openmandriva
 	templates/lxc-opensuse

@@ -1,0 +1,266 @@
+#!/bin/sh
+
+# Client script for LXC container images.
+#
+# Copyright © 2018 Stéphane Graber <stgraber@ubuntu.com>
+# Copyright © 2018 Christian Brauner <christian.brauner@ubuntu.com>
+#
+#  This library is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU Lesser General Public
+#  License as published by the Free Software Foundation; either
+#  version 2.1 of the License, or (at your option) any later version.
+
+#  This library is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#  Lesser General Public License for more details.
+
+#  You should have received a copy of the GNU Lesser General Public
+#  License along with this library; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+#  USA
+
+set -eu
+
+LXC_HOOK_DIR="@LXCHOOKDIR@"
+LXC_TEMPLATE_CONFIG="@LXCTEMPLATECONFIG@"
+
+LXC_NAME=
+LXC_PATH=
+LXC_ROOTFS=
+LXC_CONFIG=
+MODE="system"
+COMPAT_LEVEL=4
+
+# Make sure the usual locations are in PATH
+export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
+
+in_userns() {
+  [ -e /proc/self/uid_map ] || { echo no; return; }
+
+  while read -r line; do
+    fields="$(echo "$line" | awk '{ print $1 " " $2 " " $3 }')"
+    if [ "${fields}" = "0 0 4294967295" ]; then
+      echo no;
+      return;
+    fi
+
+    if echo "${fields}" | grep -q " 0 1$"; then
+      echo userns-root;
+      return;
+    fi
+  done < /proc/self/uid_map
+
+  [ "$(cat /proc/self/uid_map)" = "$(cat /proc/1/uid_map)" ] && { echo userns-root; return; }
+    echo yes
+}
+
+usage() {
+  cat <<EOF
+LXC container image downloader
+
+Special arguments:
+[ -h | --help ]: Print this help message and exit.
+[ -l | --list ]: List all available images and exit.
+[ -m | --metadata ]: Path to the metadata for the image.
+[ -f | --fstree ]: Path to the filesystem tree for the image.
+
+LXC internal arguments (do not pass manually!):
+[ --name <name> ]: The container name
+[ --path <path> ]: The path to the container
+[ --rootfs <rootfs> ]: The path to the container's rootfs
+
+EOF
+  return 0
+}
+
+if ! options=$(getopt -o hm:f: -l help,metadata:,fstree:,name:,path:,rootfs:,mapped-uid:,mapped-gid: -- "$@"); then
+  usage
+  exit 1
+fi
+eval set -- "$options"
+
+while :; do
+  case "$1" in
+    -h|--help)     usage && exit 1;;
+    --name)        LXC_NAME="$2"; shift 2;;
+    --path)        LXC_PATH="$2"; shift 2;;
+    --rootfs)      LXC_ROOTFS="$2"; shift 2;;
+    -m|--metadata) LXC_CONFIG="$2"; shift 2;;
+    -f|--fstree)   LXC_FSTREE="$2"; shift 2;;
+    *)             break;;
+  esac
+done
+
+# Check for required binaries
+for bin in tar xz; do
+  if ! command -V "${bin}" >/dev/null 2>&1; then
+    echo "ERROR: Missing required tool: ${bin}" 1>&2
+    exit 1
+  fi
+done
+
+cleanup() {
+  if [ -d "${LOCAL_TEMP}" ]; then
+    rm -Rf "${LOCAL_TEMP}"
+  fi
+}
+
+# Trap all exit signals
+trap cleanup EXIT HUP INT TERM
+
+USERNS="$(in_userns)"
+
+if [ "${USERNS}" != "no" ]; then
+  if [ "${USERNS}" = "yes" ]; then
+    if [ -z "${LXC_MAPPED_UID}" ] || [ "${LXC_MAPPED_UID}" = "-1" ]; then
+      echo "ERROR: In a user namespace without a map." 1>&2
+      exit 1
+    fi
+    MODE="user"
+  else
+    MODE="user"
+  fi
+fi
+
+relevant_file() {
+  FILE_PATH="${LOCAL_TEMP}/$1"
+
+  if [ -e "${FILE_PATH}-${MODE}" ]; then
+    FILE_PATH="${FILE_PATH}-${MODE}"
+  fi
+
+  if [ -e "${FILE_PATH}.${COMPAT_LEVEL}" ]; then
+    FILE_PATH="${FILE_PATH}.${COMPAT_LEVEL}"
+  fi
+
+  echo "${FILE_PATH}"
+}
+
+
+# Unpack the rootfs
+echo "Unpacking the rootfs"
+
+# Create temporary directory to
+if ! command -V mktemp >/dev/null 2>&1; then
+  LOCAL_TEMP=/tmp/lxc-local.$$
+  mkdir -p "${LOCAL_TEMP}"
+else
+  LOCAL_TEMP=$(mktemp -d)
+fi
+
+# Unpack file that contains meta.tar.xz
+if ! tar Jxf "${LXC_CONFIG}" -C "${LOCAL_TEMP}"; then
+  echo "ERROR: Invalid metadata file" 2>&1
+  exit 1
+fi
+
+EXCLUDES=""
+excludelist=$(relevant_file excludes)
+if [ -f "${excludelist}" ]; then
+    while read -r line; do
+        EXCLUDES="${EXCLUDES} --exclude=${line}"
+    done < "${excludelist}"
+fi
+
+# Do not surround ${EXCLUDES} by quotes. This does not work. The solution could
+# use array but this is not POSIX compliant. The only POSIX compliant solution
+# is to use a function wrapper, but the latter can't be used here as the args
+# are dynamic. We thus need to ignore the warning brought by shellcheck.
+# shellcheck disable=SC2086
+tar  --anchored ${EXCLUDES} --numeric-owner -xpJf "${LXC_FSTREE}" -C "${LXC_ROOTFS}"
+
+mkdir -p "${LXC_ROOTFS}/dev/pts/"
+
+# Setup the configuration
+# Setup the configuration
+configfile="$(relevant_file config)"
+if [ ! -e "${configfile}" ]; then
+    echo "ERROR: meta tarball is missing the configuration file" 1>&2
+    exit 1
+fi
+
+## Extract all the network config entries
+sed -i -e "/lxc.net.0/{w ${LXC_PATH}/config-network" -e "d}" "${LXC_PATH}/config"
+
+## Extract any other config entry
+sed -i -e "/lxc./{w ${LXC_PATH}/config-auto" -e "d}" "${LXC_PATH}/config"
+
+## Append the defaults
+{
+  echo ""
+  echo "# Distribution configuration"
+  cat "$configfile"
+} >> "${LXC_PATH}/config"
+
+## Add the container-specific config
+{
+  echo ""
+  echo "# Container specific configuration"
+  if [ -e "${LXC_PATH}/config-auto" ]; then
+    cat "${LXC_PATH}/config-auto"
+    rm "${LXC_PATH}/config-auto"
+  fi
+} >> "${LXC_PATH}/config"
+
+fstab="$(relevant_file fstab)"
+if [ -e "${fstab}" ]; then
+  echo "lxc.mount.fstab = ${LXC_PATH}/fstab" >> "${LXC_PATH}/config"
+fi
+echo "lxc.uts.name = ${LXC_NAME}" >> "${LXC_PATH}/config"
+
+## Re-add the previously removed network config
+if [ -e "${LXC_PATH}/config-network" ]; then
+  {
+    echo ""
+    echo "# Network configuration"
+    cat "${LXC_PATH}/config-network"
+    rm "${LXC_PATH}/config-network"
+  } >> "${LXC_PATH}/config"
+fi
+
+TEMPLATE_FILES="${LXC_PATH}/config"
+
+# Setup the fstab
+if [ -e "${fstab}" ]; then
+  cp "${fstab}" "${LXC_PATH}/fstab"
+  TEMPLATE_FILES="${TEMPLATE_FILES};${LXC_PATH}/fstab"
+fi
+
+# Look for extra templates
+if [ -e "$(relevant_file templates)" ]; then
+  while read -r line; do
+    fullpath="${LXC_ROOTFS}/${line}"
+    [ ! -e "${fullpath}" ] && continue
+    TEMPLATE_FILES="${TEMPLATE_FILES};${fullpath}"
+  done < "$(relevant_file templates)"
+fi
+
+
+# Replace variables in all templates
+OLD_IFS=${IFS}
+IFS=";"
+for file in ${TEMPLATE_FILES}; do
+  [ ! -f "${file}" ] && continue
+
+  sed -i "s#LXC_NAME#${LXC_NAME}#g" "${file}"
+  sed -i "s#LXC_PATH#${LXC_PATH}#g" "${file}"
+  sed -i "s#LXC_ROOTFS#${LXC_ROOTFS}#g" "${file}"
+  sed -i "s#LXC_TEMPLATE_CONFIG#${LXC_TEMPLATE_CONFIG}#g" "${file}"
+  sed -i "s#LXC_HOOK_DIR#${LXC_HOOK_DIR}#g" "${file}"
+done
+IFS=${OLD_IFS}
+
+# prevent mingetty from calling vhangup(2) since it fails with userns on CentOS / Oracle
+if [ -f "${LXC_ROOTFS}/etc/init/tty.conf" ]; then
+  sed -i 's|mingetty|mingetty --nohangup|' "${LXC_ROOTFS}/etc/init/tty.conf"
+fi
+
+
+if [ -e "$(relevant_file create-message)" ]; then
+  echo ""
+  echo "---"
+  cat "$(relevant_file create-message)"
+fi
+
+exit 0
