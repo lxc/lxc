@@ -1014,7 +1014,6 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 		return;
 	}
 
-	process_lock();
 	lxc_list_for_each_safe(cur, &handler->state_clients, next) {
 		client = cur->elem;
 		if (client->clientfd != fd)
@@ -1030,7 +1029,6 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 		 */
 		break;
 	}
-	process_unlock();
 }
 
 static int lxc_cmd_handler(int fd, uint32_t events, void *data,

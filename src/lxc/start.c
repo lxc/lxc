@@ -382,7 +382,6 @@ int lxc_serve_state_clients(const char *name, struct lxc_handler *handler,
 	struct state_client *client;
 	struct lxc_msg msg = {.type = lxc_msg_state, .value = state};
 
-	process_lock();
 	if (state == THAWED)
 		handler->state = RUNNING;
 	else
@@ -392,7 +391,6 @@ int lxc_serve_state_clients(const char *name, struct lxc_handler *handler,
 
 	if (lxc_list_empty(&handler->state_clients)) {
 		TRACE("No state clients registered");
-		process_unlock();
 		return 0;
 	}
 
@@ -429,7 +427,6 @@ int lxc_serve_state_clients(const char *name, struct lxc_handler *handler,
 		free(cur->elem);
 		free(cur);
 	}
-	process_unlock();
 
 	return 0;
 }
