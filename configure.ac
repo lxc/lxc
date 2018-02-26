@@ -607,34 +607,42 @@ else
 fi
 AM_CONDITIONAL([IS_BIONIC], [test "x$is_bionic" = "xyes"])
 
-AC_ARG_WITH(
-	[pamdir],
-	[AS_HELP_STRING([--with-pamdir=PATH],[Specify the directory where PAM modules are stored,
-						or "none" if PAM modules are not to be built])],
-	[pamdir="${withval}"],
-	[
-		if test "${prefix}" = "/usr"; then
-			pamdir="/lib${libdir##*/lib}/security"
-		else
-			pamdir="\$(libdir)/security"
-		fi
-	]
-)
+# Configuration examples
+AC_ARG_ENABLE([pam],
+	[AC_HELP_STRING([--enable-pam], [enable pam module [default=no]])],
+	[], [enable_pam=no])
+AM_CONDITIONAL([ENABLE_PAM], [test "x$enable_pam" = "xyes"])
+
+AM_COND_IF([ENABLE_PAM],
+	[AC_ARG_WITH(
+		[pamdir],
+		[AS_HELP_STRING([--with-pamdir=PATH],[Specify the directory where PAM modules are stored,
+							or "none" if PAM modules are not to be built])],
+		[pamdir="${withval}"],
+		[
+			if test "${prefix}" = "/usr"; then
+				pamdir="/lib${libdir##*/lib}/security"
+			else
+				pamdir="\$(libdir)/security"
+			fi
+		]
+	)])
 
 AM_CONDITIONAL([HAVE_PAM], [test x"$pamdir" != "xnone"])
-if test "z$pamdir" != "znone"; then
-	AC_ARG_VAR([PAM_CFLAGS], [C compiler flags for pam])
-	AC_ARG_VAR([PAM_LIBS], [linker flags for pam])
-	AC_CHECK_LIB(
-		[pam],
-		[pam_authenticate],
-		[PAM_LIBS="-lpam"],
-		[AC_MSG_ERROR([*** libpam not found.])
-		])
+AM_COND_IF([ENABLE_PAM],
+	[if test "z$pamdir" != "znone"; then
+		AC_ARG_VAR([PAM_CFLAGS], [C compiler flags for pam])
+		AC_ARG_VAR([PAM_LIBS], [linker flags for pam])
+		AC_CHECK_LIB(
+			[pam],
+			[pam_authenticate],
+			[PAM_LIBS="-lpam"],
+			[AC_MSG_ERROR([*** libpam not found.])
+			])
 
-	AC_SUBST(PAM_LIBS)
-	AC_SUBST([pamdir])
-fi
+		AC_SUBST(PAM_LIBS)
+		AC_SUBST([pamdir])
+	fi])
 
 # Some systems lack PR_CAPBSET_DROP definition => HAVE_DECL_PR_CAPBSET_DROP
 AC_CHECK_DECLS([PR_CAPBSET_DROP], [], [], [#include <sys/prctl.h>])
@@ -956,6 +964,7 @@ Security features:
  - SELinux: $enable_selinux
 
 PAM:
+ - PAM module: $enable_pam
  - cgroup PAM module: $pamdir
 
 Bindings:
