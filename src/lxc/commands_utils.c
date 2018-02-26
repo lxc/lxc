@@ -211,14 +211,11 @@ int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
 		return -ENOMEM;
 	}
 
-	process_lock();
 	state = handler->state;
 	if (states[state] != 1) {
 		lxc_list_add_elem(tmplist, newclient);
 		lxc_list_add_tail(&handler->conf->state_clients, tmplist);
-		process_unlock();
 	} else {
-		process_unlock();
 		free(newclient);
 		free(tmplist);
 		return state;
