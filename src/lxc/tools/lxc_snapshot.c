@@ -126,6 +126,12 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (!c->lxc_conf) {
+		fprintf(stderr, "No container config specified\n");
+		lxc_container_put(c);
+		exit(EXIT_FAILURE);
+	}
+
 	if (!c->may_control(c)) {
 		fprintf(stderr, "Insufficent privileges to control %s\n",
 			my_args.name);
