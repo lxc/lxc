@@ -1,2 +1,0 @@
-# This derives from the main Ubuntu lucid config
-lxc.include = @LXCTEMPLATECONFIG@/ubuntu.lucid.conf

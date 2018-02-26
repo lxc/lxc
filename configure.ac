@@ -666,44 +666,10 @@ AC_CONFIG_FILES([
 	config/init/upstart/Makefile
 	config/etc/Makefile
 	config/templates/Makefile
-	config/templates/alpine.common.conf
-	config/templates/alpine.userns.conf
-	config/templates/archlinux.common.conf
-	config/templates/archlinux.userns.conf
-	config/templates/centos.common.conf
-	config/templates/centos.userns.conf
 	config/templates/common.conf
 	config/templates/common.conf.d/Makefile
-	config/templates/debian.common.conf
-	config/templates/debian.userns.conf
-	config/templates/fedora.common.conf
-	config/templates/fedora.userns.conf
-	config/templates/gentoo.common.conf
-	config/templates/gentoo.moresecure.conf
-	config/templates/gentoo.userns.conf
 	config/templates/nesting.conf
 	config/templates/oci.common.conf
-	config/templates/opensuse.common.conf
-	config/templates/opensuse.userns.conf
-	config/templates/oracle.common.conf
-	config/templates/oracle.userns.conf
-	config/templates/plamo.common.conf
-	config/templates/plamo.userns.conf
-	config/templates/slackware.common.conf
-	config/templates/slackware.userns.conf
-	config/templates/ubuntu-cloud.common.conf
-	config/templates/ubuntu-cloud.lucid.conf
-	config/templates/ubuntu-cloud.userns.conf
-	config/templates/ubuntu.common.conf
-	config/templates/ubuntu.lucid.conf
-	config/templates/ubuntu.userns.conf
-	config/templates/openwrt.common.conf
-	config/templates/sparclinux.common.conf
-	config/templates/sparclinux.userns.conf
-	config/templates/voidlinux.common.conf
-	config/templates/voidlinux.userns.conf
-	config/templates/sabayon.common.conf
-	config/templates/sabayon.userns.conf
 	config/templates/userns.conf
 	config/yum/Makefile
 	config/sysconfig/Makefile
@@ -832,31 +798,10 @@ AC_CONFIG_FILES([
 	hooks/dhclient
 
 	templates/Makefile
-	templates/lxc-alpine
-	templates/lxc-altlinux
-	templates/lxc-archlinux
 	templates/lxc-busybox
-	templates/lxc-centos
-	templates/lxc-cirros
-	templates/lxc-debian
 	templates/lxc-download
-	templates/lxc-fedora
-	templates/lxc-fedora-legacy
-	templates/lxc-gentoo
 	templates/lxc-local
 	templates/lxc-oci
-	templates/lxc-openmandriva
-	templates/lxc-opensuse
-	templates/lxc-oracle
-	templates/lxc-plamo
-	templates/lxc-pld
-	templates/lxc-slackware
-	templates/lxc-sshd
-	templates/lxc-ubuntu
-	templates/lxc-ubuntu-cloud
-	templates/lxc-sparclinux
-	templates/lxc-voidlinux
-	templates/lxc-sabayon
 
 	src/Makefile
 	src/lxc/Makefile

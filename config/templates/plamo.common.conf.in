@@ -1,9 +1,0 @@
-# This derives from the global common config
-lxc.include = @LXCTEMPLATECONFIG@/common.conf
-
-# Doesn't support consoles in /dev/lxc/
-lxc.tty.dir =
-
-# Extra cgroup device access
-## rtc
-lxc.cgroup.devices.allow = c 254:0 rm
