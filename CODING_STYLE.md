@@ -512,3 +512,8 @@ rules to use them:
       Signed-off-by: Christian Brauner <christian.brauner@ubuntu.com>
 
   ```
+#### Use `_exit()` To Terminate `fork()`ed Child Processes
+
+- When `fork()`ing off a child process use `_exit()` to terminate it instead of
+  `exit()`. The `exit()` function is not thread-safe and thus not suited for
+  the shared library which must ensure that it is thread-safe.

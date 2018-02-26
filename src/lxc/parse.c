@@ -67,9 +67,10 @@ int lxc_strmunmap(void *addr, size_t length)
 int lxc_file_for_each_line_mmap(const char *file, lxc_file_cb callback,
 				void *data)
 {
-	int fd, ret;
+	int fd;
 	char *buf, *line;
 	struct stat st;
+	int ret = 0;
 	char *saveptr = NULL;
 
 	fd = open(file, O_RDONLY | O_CLOEXEC);
@@ -105,7 +106,7 @@ int lxc_file_for_each_line_mmap(const char *file, lxc_file_cb callback,
 
 	lxc_strmunmap(buf, st.st_size);
 	close(fd);
-	return 0;
+	return ret;
 }
 
 int lxc_file_for_each_line(const char *file, lxc_file_cb callback, void *data)
