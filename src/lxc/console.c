@@ -107,8 +107,8 @@ void lxc_terminal_sigwinch(int sig)
 	}
 }
 
-int lxc_console_cb_signal_fd(int fd, uint32_t events, void *cbdata,
-			       struct lxc_epoll_descr *descr)
+int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
+			     struct lxc_epoll_descr *descr)
 {
 	ssize_t ret;
 	struct signalfd_siginfo siginfo;
@@ -121,7 +121,7 @@ int lxc_console_cb_signal_fd(int fd, uint32_t events, void *cbdata,
 	}
 
 	if (siginfo.ssi_signo == SIGTERM) {
-		DEBUG("Received SIGTERM. Detaching from the console");
+		DEBUG("Received SIGTERM. Detaching from the terminal");
 		return LXC_MAINLOOP_CLOSE;
 	}
 
@@ -424,7 +424,7 @@ static int lxc_console_mainloop_add_peer(struct lxc_pty *console)
 		return 0;
 
 	ret = lxc_mainloop_add_handler(console->descr, console->tty_state->sigfd,
-				       lxc_console_cb_signal_fd, console->tty_state);
+				       lxc_terminal_signalfd_cb, console->tty_state);
 	if (ret < 0) {
 		WARN("Failed to add signal handler to mainloop");
 		return -1;
@@ -1036,7 +1036,7 @@ int lxc_console(struct lxc_container *c, int ttynum,
 
 	if (ts->sigfd != -1) {
 		ret = lxc_mainloop_add_handler(&descr, ts->sigfd,
-					       lxc_console_cb_signal_fd, ts);
+					       lxc_terminal_signalfd_cb, ts);
 		if (ret < 0) {
 			ERROR("Failed to add signal handler to mainloop");
 			goto close_mainloop;

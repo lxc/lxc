@@ -201,7 +201,7 @@ extern void lxc_terminal_winsz(int srcfd, int dstfd);
  * we're ready for it. This avoids deadlocks since a signal handler (ie
  * lxc_terminal_sigwinch()) would need to take the thread mutex to prevent
  * lxc_ttys list corruption, but using the fd we can provide the tty_state
- * needed to the callback (lxc_console_cb_signal_fd()).
+ * needed to the callback (lxc_terminal_signalfd_cb()).
  *
  * This function allocates memory. It is up to the caller to free it.
  */
@@ -211,7 +211,7 @@ extern struct lxc_tty_state *lxc_console_signal_init(int srcfd, int dstfd);
  * Handler for signal events. To be registered via the corresponding functions
  * declared and defined in mainloop.{c,h} or lxc_console_mainloop_add().
  */
-extern int lxc_console_cb_signal_fd(int fd, uint32_t events, void *cbdata,
+extern int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
 				    struct lxc_epoll_descr *descr);
 
 /*
