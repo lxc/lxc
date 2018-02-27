@@ -1578,7 +1578,7 @@ static int setup_personality(int persona)
 }
 
 static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
-				 const struct lxc_pty *console)
+				 const struct lxc_terminal *console)
 {
 	char path[MAXPATHLEN];
 	int ret, fd;
@@ -1634,7 +1634,7 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 }
 
 static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
-				    const struct lxc_pty *console,
+				    const struct lxc_terminal *console,
 				    char *ttydir)
 {
 	int ret, fd;
@@ -1720,7 +1720,7 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 }
 
 static int lxc_setup_console(const struct lxc_rootfs *rootfs,
-			     const struct lxc_pty *console, char *ttydir)
+			     const struct lxc_terminal *console, char *ttydir)
 {
 
 	if (!ttydir)

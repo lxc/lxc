@@ -351,7 +351,7 @@ static int lxc_console_write_log_file(struct lxc_pty *console, char *buf,
 int lxc_terminal_io_cb(int fd, uint32_t events, void *data,
 		       struct lxc_epoll_descr *descr)
 {
-	struct lxc_pty *terminal = data;
+	struct lxc_terminal *terminal = data;
 	char buf[LXC_TERMINAL_BUFFER_SIZE];
 	int r, w, w_log, w_rbuf;
 
@@ -407,7 +407,7 @@ int lxc_terminal_io_cb(int fd, uint32_t events, void *data,
 	return 0;
 }
 
-static int lxc_terminal_mainloop_add_peer(struct lxc_pty *terminal)
+static int lxc_terminal_mainloop_add_peer(struct lxc_terminal *terminal)
 {
 	int ret;
 
@@ -434,7 +434,7 @@ static int lxc_terminal_mainloop_add_peer(struct lxc_pty *terminal)
 }
 
 int lxc_terminal_mainloop_add(struct lxc_epoll_descr *descr,
-			     struct lxc_pty *terminal)
+			     struct lxc_terminal *terminal)
 {
 	int ret;
 
@@ -509,7 +509,7 @@ int lxc_setup_tios(int fd, struct termios *oldtios)
 	return 0;
 }
 
-static void lxc_terminal_peer_proxy_free(struct lxc_pty *terminal)
+static void lxc_terminal_peer_proxy_free(struct lxc_terminal *terminal)
 {
 	if (terminal->tty_state) {
 		lxc_terminal_signal_fini(terminal->tty_state);
@@ -524,7 +524,7 @@ static void lxc_terminal_peer_proxy_free(struct lxc_pty *terminal)
 	terminal->peer = -1;
 }
 
-static int lxc_terminal_peer_proxy_alloc(struct lxc_pty *terminal, int sockfd)
+static int lxc_terminal_peer_proxy_alloc(struct lxc_terminal *terminal, int sockfd)
 {
 	struct termios oldtermio;
 	struct lxc_tty_state *ts;
@@ -579,7 +579,7 @@ int lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 {
 	int masterfd = -1, ttynum;
 	struct lxc_tty_info *tty_info = &conf->tty_info;
-	struct lxc_pty *terminal = &conf->console;
+	struct lxc_terminal *terminal = &conf->console;
 
 	if (*ttyreq == 0) {
 		if (lxc_terminal_peer_proxy_alloc(terminal, sockfd) < 0)
@@ -621,7 +621,7 @@ void lxc_terminal_free(struct lxc_conf *conf, int fd)
 {
 	int i;
 	struct lxc_tty_info *tty_info = &conf->tty_info;
-	struct lxc_pty *terminal = &conf->console;
+	struct lxc_terminal *terminal = &conf->console;
 
 	for (i = 0; i < tty_info->nbtty; i++) {
 		if (tty_info->pty_info[i].busy == fd)
@@ -634,7 +634,7 @@ void lxc_terminal_free(struct lxc_conf *conf, int fd)
 	}
 }
 
-static int lxc_terminal_peer_default(struct lxc_pty *terminal)
+static int lxc_terminal_peer_default(struct lxc_terminal *terminal)
 {
 	struct lxc_tty_state *ts;
 	const char *path = terminal->path;
@@ -703,7 +703,7 @@ out:
 	return ret;
 }
 
-int lxc_terminal_write_ringbuffer(struct lxc_pty *terminal)
+int lxc_terminal_write_ringbuffer(struct lxc_terminal *terminal)
 {
 	char *r_addr;
 	ssize_t ret;
@@ -734,7 +734,7 @@ int lxc_terminal_write_ringbuffer(struct lxc_pty *terminal)
 	return 0;
 }
 
-void lxc_terminal_delete(struct lxc_pty *terminal)
+void lxc_terminal_delete(struct lxc_terminal *terminal)
 {
 	int ret;
 
@@ -772,7 +772,7 @@ void lxc_terminal_delete(struct lxc_pty *terminal)
  * register a handler for the terminal's masterfd when we create the mainloop
  * the terminal handler needs to see an allocated ringbuffer.
  */
-static int lxc_terminal_create_ringbuf(struct lxc_pty *terminal)
+static int lxc_terminal_create_ringbuf(struct lxc_terminal *terminal)
 {
 	int ret;
 	struct lxc_ringbuf *buf = &terminal->ringbuf;
@@ -818,7 +818,7 @@ static int lxc_terminal_create_ringbuf(struct lxc_pty *terminal)
  * This is the terminal log file. Please note that the terminal log file is
  * (implementation wise not content wise) independent of the terminal ringbuffer.
  */
-int lxc_terminal_create_log_file(struct lxc_pty *terminal)
+int lxc_terminal_create_log_file(struct lxc_terminal *terminal)
 {
 	if (!terminal->log_path)
 		return 0;
@@ -833,7 +833,7 @@ int lxc_terminal_create_log_file(struct lxc_pty *terminal)
 	return 0;
 }
 
-int lxc_terminal_create(struct lxc_pty *terminal)
+int lxc_terminal_create(struct lxc_terminal *terminal)
 {
 	int ret, saved_errno;
 
@@ -873,7 +873,7 @@ err:
 int lxc_terminal_setup(struct lxc_conf *conf)
 {
 	int ret;
-	struct lxc_pty *terminal = &conf->console;
+	struct lxc_terminal *terminal = &conf->console;
 
 	if (terminal->path && !strcmp(terminal->path, "none")) {
 		INFO("No terminal was requested");
@@ -1136,7 +1136,7 @@ void lxc_terminal_info_init(struct lxc_pty_info *pty)
 	pty->busy = -1;
 }
 
-void lxc_terminal_init(struct lxc_pty *pty)
+void lxc_terminal_init(struct lxc_terminal *pty)
 {
 	memset(pty, 0, sizeof(*pty));
 	pty->slave = -EBADF;
@@ -1146,7 +1146,7 @@ void lxc_terminal_init(struct lxc_pty *pty)
 	lxc_terminal_info_init(&pty->peerpty);
 }
 
-void lxc_terminal_conf_free(struct lxc_pty *terminal)
+void lxc_terminal_conf_free(struct lxc_terminal *terminal)
 {
 	free(terminal->log_path);
 	free(terminal->path);
@@ -1154,7 +1154,7 @@ void lxc_terminal_conf_free(struct lxc_pty *terminal)
 		lxc_ringbuf_release(&terminal->ringbuf);
 }
 
-int lxc_terminal_map_ids(struct lxc_conf *c, struct lxc_pty *pty)
+int lxc_terminal_map_ids(struct lxc_conf *c, struct lxc_terminal *pty)
 {
 	int ret;
 

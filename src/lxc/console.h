@@ -82,7 +82,7 @@ extern int  lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttynum
  * automatically chowned to the uid/gid of the unprivileged user. For this
  * ttys_shift_ids() can be called.)
  */
-extern int lxc_terminal_create(struct lxc_pty *console);
+extern int lxc_terminal_create(struct lxc_terminal *console);
 
 /**
  * lxc_terminal_setup: Create a new pty.
@@ -98,7 +98,7 @@ extern int lxc_terminal_setup(struct lxc_conf *);
  *   /dev/tty)
  * Registered handlers in a mainloop are not automatically deleted.
  */
-extern void lxc_terminal_delete(struct lxc_pty *);
+extern void lxc_terminal_delete(struct lxc_terminal *);
 
 /*
  * lxc_terminal_free: mark the console or a tty as unallocated, free any
@@ -114,7 +114,7 @@ extern void lxc_terminal_free(struct lxc_conf *conf, int fd);
 /*
  * Register pty event handlers in an open mainloop
  */
-extern int  lxc_terminal_mainloop_add(struct lxc_epoll_descr *, struct lxc_pty *);
+extern int  lxc_terminal_mainloop_add(struct lxc_epoll_descr *, struct lxc_terminal *);
 
 /*
  * Handle SIGWINCH events on the allocated ptys.
@@ -227,16 +227,16 @@ extern int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
  */
 extern void lxc_terminal_signal_fini(struct lxc_tty_state *ts);
 
-extern int lxc_terminal_write_ringbuffer(struct lxc_pty *console);
-extern int lxc_terminal_create_log_file(struct lxc_pty *console);
+extern int lxc_terminal_write_ringbuffer(struct lxc_terminal *console);
+extern int lxc_terminal_create_log_file(struct lxc_terminal *console);
 extern int lxc_terminal_io_cb(int fd, uint32_t events, void *data,
 			      struct lxc_epoll_descr *descr);
 
 extern int lxc_make_controlling_pty(int fd);
 extern int lxc_login_pty(int fd);
-extern void lxc_terminal_conf_free(struct lxc_pty *console);
+extern void lxc_terminal_conf_free(struct lxc_terminal *console);
 extern void lxc_terminal_info_init(struct lxc_pty_info *pty);
-extern void lxc_terminal_init(struct lxc_pty *pty);
-extern int lxc_terminal_map_ids(struct lxc_conf *c, struct lxc_pty *pty);
+extern void lxc_terminal_init(struct lxc_terminal *pty);
+extern int lxc_terminal_map_ids(struct lxc_conf *c, struct lxc_terminal *pty);
 
 #endif
