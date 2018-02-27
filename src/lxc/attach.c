@@ -980,7 +980,7 @@ static int lxc_attach_pty(struct lxc_conf *conf, struct lxc_pty *pty)
 
 	lxc_pty_init(pty);
 
-	ret = lxc_pty_create(pty);
+	ret = lxc_terminal_create(pty);
 	if (ret < 0) {
 		SYSERROR("Failed to create pty");
 		return -1;

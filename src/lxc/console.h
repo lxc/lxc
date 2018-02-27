@@ -82,11 +82,11 @@ extern int  lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttynum
  * automatically chowned to the uid/gid of the unprivileged user. For this
  * ttys_shift_ids() can be called.)
  */
-extern int lxc_pty_create(struct lxc_pty *console);
+extern int lxc_terminal_create(struct lxc_pty *console);
 
 /**
  * lxc_terminal_setup: Create a new pty.
- * - In addition to lxc_pty_create() also sets up all pty logs.
+ * - In addition to lxc_terminal_create() also sets up all pty logs.
  */
 extern int lxc_terminal_setup(struct lxc_conf *);
 

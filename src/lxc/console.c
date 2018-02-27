@@ -833,7 +833,7 @@ int lxc_terminal_create_log_file(struct lxc_pty *terminal)
 	return 0;
 }
 
-int lxc_pty_create(struct lxc_pty *terminal)
+int lxc_terminal_create(struct lxc_pty *terminal)
 {
 	int ret, saved_errno;
 
@@ -880,7 +880,7 @@ int lxc_terminal_setup(struct lxc_conf *conf)
 		return 0;
 	}
 
-	ret = lxc_pty_create(terminal);
+	ret = lxc_terminal_create(terminal);
 	if (ret < 0)
 		return -1;
 
