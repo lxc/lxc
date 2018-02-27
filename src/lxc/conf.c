@@ -840,15 +840,15 @@ static bool append_ptyname(char **pp, char *name)
 static int lxc_setup_ttys(struct lxc_conf *conf)
 {
 	int i, ret;
-	const struct lxc_tty_info *tty_info = &conf->tty_info;
+	const struct lxc_tty_info *ttys = &conf->ttys;
 	char *ttydir = conf->ttydir;
 	char path[MAXPATHLEN], lxcpath[MAXPATHLEN];
 
 	if (!conf->rootfs.path)
 		return 0;
 
-	for (i = 0; i < tty_info->nbtty; i++) {
-		struct lxc_terminal_info *tty = &tty_info->tty[i];
+	for (i = 0; i < ttys->nbtty; i++) {
+		struct lxc_terminal_info *tty = &ttys->tty[i];
 
 		ret = snprintf(path, sizeof(path), "/dev/tty%d", i + 1);
 		if (ret < 0 || (size_t)ret >= sizeof(path))
@@ -926,32 +926,32 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 		}
 	}
 
-	INFO("Finished setting up %d /dev/tty<N> device(s)", tty_info->nbtty);
+	INFO("Finished setting up %d /dev/tty<N> device(s)", ttys->nbtty);
 	return 0;
 }
 
 int lxc_allocate_ttys(const char *name, struct lxc_conf *conf)
 {
-	struct lxc_tty_info *tty_info = &conf->tty_info;
+	struct lxc_tty_info *ttys = &conf->ttys;
 	int i, ret;
 
 	/* no tty in the configuration */
 	if (!conf->tty)
 		return 0;
 
-	tty_info->tty = malloc(sizeof(*tty_info->tty) * conf->tty);
-	if (!tty_info->tty)
+	ttys->tty = malloc(sizeof(*ttys->tty) * conf->tty);
+	if (!ttys->tty)
 		return -ENOMEM;
 
 	for (i = 0; i < conf->tty; i++) {
-		struct lxc_terminal_info *tty = &tty_info->tty[i];
+		struct lxc_terminal_info *tty = &ttys->tty[i];
 
 		ret = openpty(&tty->master, &tty->slave,
 			      tty->name, NULL, NULL);
 		if (ret) {
 			SYSERROR("failed to create pty device number %d", i);
-			tty_info->nbtty = i;
-			lxc_delete_tty(tty_info);
+			ttys->nbtty = i;
+			lxc_delete_tty(ttys);
 			return -ENOTTY;
 		}
 
@@ -974,33 +974,33 @@ int lxc_allocate_ttys(const char *name, struct lxc_conf *conf)
 		tty->busy = 0;
 	}
 
-	tty_info->nbtty = conf->tty;
+	ttys->nbtty = conf->tty;
 
 	INFO("finished allocating %d pts devices", conf->tty);
 	return 0;
 }
 
-void lxc_delete_tty(struct lxc_tty_info *tty_info)
+void lxc_delete_tty(struct lxc_tty_info *ttys)
 {
 	int i;
 
-	for (i = 0; i < tty_info->nbtty; i++) {
-		struct lxc_terminal_info *tty = &tty_info->tty[i];
+	for (i = 0; i < ttys->nbtty; i++) {
+		struct lxc_terminal_info *tty = &ttys->tty[i];
 
 		close(tty->master);
 		close(tty->slave);
 	}
 
-	free(tty_info->tty);
-	tty_info->tty = NULL;
-	tty_info->nbtty = 0;
+	free(ttys->tty);
+	ttys->tty = NULL;
+	ttys->nbtty = 0;
 }
 
 static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 {
 	int i;
 	struct lxc_conf *conf = handler->conf;
-	struct lxc_tty_info *tty_info = &conf->tty_info;
+	struct lxc_tty_info *ttys = &conf->ttys;
 	int sock = handler->data_sock[0];
 	int ret = -1;
 
@@ -1009,7 +1009,7 @@ static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 
 	for (i = 0; i < conf->tty; i++) {
 		int ttyfds[2];
-		struct lxc_terminal_info *tty = &tty_info->tty[i];
+		struct lxc_terminal_info *tty = &ttys->tty[i];
 
 		ttyfds[0] = tty->master;
 		ttyfds[1] = tty->slave;
@@ -1065,7 +1065,7 @@ static int lxc_create_ttys(struct lxc_handler *handler)
 	ret = 0;
 
 on_error:
-	lxc_delete_tty(&conf->tty_info);
+	lxc_delete_tty(&conf->ttys);
 
 	return ret;
 }

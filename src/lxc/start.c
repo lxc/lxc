@@ -824,7 +824,7 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 out_restore_sigmask:
 	sigprocmask(SIG_SETMASK, &handler->oldmask, NULL);
 out_delete_tty:
-	lxc_delete_tty(&conf->tty_info);
+	lxc_delete_tty(&conf->ttys);
 out_aborting:
 	lxc_set_state(name, handler, ABORTING);
 out_close_maincmd_fd:
@@ -951,7 +951,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		WARN("%s - Failed to restore signal mask", strerror(errno));
 
 	lxc_terminal_delete(&handler->conf->console);
-	lxc_delete_tty(&handler->conf->tty_info);
+	lxc_delete_tty(&handler->conf->ttys);
 
 	/* The command socket is now closed, no more state clients can register
 	 * themselves from now on. So free the list of state clients.
@@ -1344,13 +1344,13 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 	int ret = -1;
 	int sock = handler->data_sock[1];
 	struct lxc_conf *conf = handler->conf;
-	struct lxc_tty_info *tty_info = &conf->tty_info;
+	struct lxc_tty_info *ttys = &conf->ttys;
 
 	if (!conf->tty)
 		return 0;
 
-	tty_info->tty = malloc(sizeof(*tty_info->tty) * conf->tty);
-	if (!tty_info->tty)
+	ttys->tty = malloc(sizeof(*ttys->tty) * conf->tty);
+	if (!ttys->tty)
 		return -1;
 
 	for (i = 0; i < conf->tty; i++) {
@@ -1360,7 +1360,7 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 		if (ret < 0)
 			break;
 
-		tty = &tty_info->tty[i];
+		tty = &ttys->tty[i];
 		tty->busy = 0;
 		tty->master = ttyfds[0];
 		tty->slave = ttyfds[1];
@@ -1373,7 +1373,7 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 	else
 		TRACE("Received %d ttys from child", conf->tty);
 
-	tty_info->nbtty = conf->tty;
+	ttys->nbtty = conf->tty;
 
 	return ret;
 }

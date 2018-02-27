@@ -134,8 +134,7 @@ struct id_map {
 	unsigned long hostid, nsid, range;
 };
 
-/*
- * Defines the number of tty configured and contains the
+/* Defines the number of tty configured and contains the
  * instantiated ptys
  * @nbtty = number of configured ttys
  */
@@ -203,7 +202,7 @@ enum {
  * @fstab      : path to a fstab file format
  * @caps       : list of the capabilities to drop
  * @keepcaps   : list of the capabilities to keep
- * @tty_info   : tty data
+ * @ttys       : tty data
  * @console    : console data
  * @ttydir     : directory (under /dev) in which to create console and ttys
  * @lsm_aa_profile : apparmor profile to switch to or NULL
@@ -258,7 +257,7 @@ struct lxc_conf {
 	struct lxc_list mount_list;
 	struct lxc_list caps;
 	struct lxc_list keepcaps;
-	struct lxc_tty_info tty_info;
+	struct lxc_tty_info ttys;
 	/* Comma-separated list of lxc.tty.max pty names. */
 	char *pty_names;
 	struct lxc_terminal console;
@@ -387,7 +386,7 @@ extern void lxc_conf_free(struct lxc_conf *conf);
 extern int pin_rootfs(const char *rootfs);
 extern int lxc_map_ids(struct lxc_list *idmap, pid_t pid);
 extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
-extern void lxc_delete_tty(struct lxc_tty_info *tty_info);
+extern void lxc_delete_tty(struct lxc_tty_info *ttys);
 extern int lxc_clear_config_caps(struct lxc_conf *c);
 extern int lxc_clear_config_keepcaps(struct lxc_conf *c);
 extern int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version);
