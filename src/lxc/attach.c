@@ -974,7 +974,7 @@ on_error:
 	rexit(EXIT_FAILURE);
 }
 
-static int lxc_attach_pty(struct lxc_conf *conf, struct lxc_console *pty)
+static int lxc_attach_pty(struct lxc_conf *conf, struct lxc_pty *pty)
 {
 	int ret;
 
@@ -1001,7 +1001,7 @@ on_error:
 	return -1;
 }
 
-static int lxc_attach_pty_mainloop_init(struct lxc_console *pty,
+static int lxc_attach_pty_mainloop_init(struct lxc_pty *pty,
 					struct lxc_epoll_descr *descr)
 {
 	int ret;
@@ -1022,7 +1022,7 @@ static int lxc_attach_pty_mainloop_init(struct lxc_console *pty,
 	return 0;
 }
 
-static inline void lxc_attach_pty_close_master(struct lxc_console *pty)
+static inline void lxc_attach_pty_close_master(struct lxc_pty *pty)
 {
 	if (pty->master < 0)
 		return;
@@ -1031,7 +1031,7 @@ static inline void lxc_attach_pty_close_master(struct lxc_console *pty)
 	pty->master = -EBADF;
 }
 
-static inline void lxc_attach_pty_close_slave(struct lxc_console *pty)
+static inline void lxc_attach_pty_close_slave(struct lxc_pty *pty)
 {
 	if (pty->slave < 0)
 		return;
@@ -1040,7 +1040,7 @@ static inline void lxc_attach_pty_close_slave(struct lxc_console *pty)
 	pty->slave = -EBADF;
 }
 
-static inline void lxc_attach_pty_close_peer(struct lxc_console *pty)
+static inline void lxc_attach_pty_close_peer(struct lxc_pty *pty)
 {
 	if (pty->peer < 0)
 		return;
@@ -1049,7 +1049,7 @@ static inline void lxc_attach_pty_close_peer(struct lxc_console *pty)
 	pty->peer = -EBADF;
 }
 
-static inline void lxc_attach_pty_close_log(struct lxc_console *pty)
+static inline void lxc_attach_pty_close_log(struct lxc_pty *pty)
 {
 	if (pty->log_fd < 0)
 		return;
@@ -1068,7 +1068,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 	signed long personality;
 	pid_t attached_pid, init_pid, pid;
 	struct lxc_proc_context_info *init_ctx;
-	struct lxc_console pty;
+	struct lxc_pty pty;
 	struct lxc_conf *conf;
 	struct attach_clone_payload payload = {0};
 

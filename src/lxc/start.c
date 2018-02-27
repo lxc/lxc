@@ -529,7 +529,7 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 	}
 
 	if (has_console) {
-		struct lxc_console *console = &handler->conf->console;
+		struct lxc_pty *console = &handler->conf->console;
 
 		ret = lxc_console_mainloop_add(&descr, console);
 		if (ret < 0) {

@@ -204,7 +204,7 @@ void lxc_console_signal_fini(struct lxc_tty_state *ts)
 	free(ts);
 }
 
-static int lxc_console_truncate_log_file(struct lxc_console *console)
+static int lxc_console_truncate_log_file(struct lxc_pty *console)
 {
 	/* be very certain things are kosher */
 	if (!console->log_path || console->log_fd < 0)
@@ -213,7 +213,7 @@ static int lxc_console_truncate_log_file(struct lxc_console *console)
 	return lxc_unpriv(ftruncate(console->log_fd, 0));
 }
 
-static int lxc_console_rotate_log_file(struct lxc_console *console)
+static int lxc_console_rotate_log_file(struct lxc_pty *console)
 {
 	int ret;
 	size_t len;
@@ -242,7 +242,7 @@ static int lxc_console_rotate_log_file(struct lxc_console *console)
 	return lxc_console_create_log_file(console);
 }
 
-static int lxc_console_write_log_file(struct lxc_console *console, char *buf,
+static int lxc_console_write_log_file(struct lxc_pty *console, char *buf,
 				      int bytes_read)
 {
 	int ret;
@@ -351,7 +351,7 @@ static int lxc_console_write_log_file(struct lxc_console *console, char *buf,
 int lxc_console_cb_con(int fd, uint32_t events, void *data,
 		       struct lxc_epoll_descr *descr)
 {
-	struct lxc_console *console = (struct lxc_console *)data;
+	struct lxc_pty *console = data;
 	char buf[LXC_CONSOLE_BUFFER_SIZE];
 	int r, w, w_log, w_rbuf;
 
@@ -407,7 +407,7 @@ int lxc_console_cb_con(int fd, uint32_t events, void *data,
 	return 0;
 }
 
-static int lxc_console_mainloop_add_peer(struct lxc_console *console)
+static int lxc_console_mainloop_add_peer(struct lxc_pty *console)
 {
 	int ret;
 
@@ -434,7 +434,7 @@ static int lxc_console_mainloop_add_peer(struct lxc_console *console)
 }
 
 int lxc_console_mainloop_add(struct lxc_epoll_descr *descr,
-			     struct lxc_console *console)
+			     struct lxc_pty *console)
 {
 	int ret;
 
@@ -509,7 +509,7 @@ int lxc_setup_tios(int fd, struct termios *oldtios)
 	return 0;
 }
 
-static void lxc_console_peer_proxy_free(struct lxc_console *console)
+static void lxc_console_peer_proxy_free(struct lxc_pty *console)
 {
 	if (console->tty_state) {
 		lxc_console_signal_fini(console->tty_state);
@@ -524,7 +524,7 @@ static void lxc_console_peer_proxy_free(struct lxc_console *console)
 	console->peer = -1;
 }
 
-static int lxc_console_peer_proxy_alloc(struct lxc_console *console, int sockfd)
+static int lxc_console_peer_proxy_alloc(struct lxc_pty *console, int sockfd)
 {
 	struct termios oldtermio;
 	struct lxc_tty_state *ts;
@@ -579,7 +579,7 @@ int lxc_console_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 {
 	int masterfd = -1, ttynum;
 	struct lxc_tty_info *tty_info = &conf->tty_info;
-	struct lxc_console *console = &conf->console;
+	struct lxc_pty *console = &conf->console;
 
 	if (*ttyreq == 0) {
 		if (lxc_console_peer_proxy_alloc(console, sockfd) < 0)
@@ -621,7 +621,7 @@ void lxc_console_free(struct lxc_conf *conf, int fd)
 {
 	int i;
 	struct lxc_tty_info *tty_info = &conf->tty_info;
-	struct lxc_console *console = &conf->console;
+	struct lxc_pty *console = &conf->console;
 
 	for (i = 0; i < tty_info->nbtty; i++) {
 		if (tty_info->pty_info[i].busy == fd)
@@ -634,7 +634,7 @@ void lxc_console_free(struct lxc_conf *conf, int fd)
 	}
 }
 
-static int lxc_console_peer_default(struct lxc_console *console)
+static int lxc_console_peer_default(struct lxc_pty *console)
 {
 	struct lxc_tty_state *ts;
 	const char *path = console->path;
@@ -703,7 +703,7 @@ out:
 	return ret;
 }
 
-int lxc_console_write_ringbuffer(struct lxc_console *console)
+int lxc_console_write_ringbuffer(struct lxc_pty *console)
 {
 	char *r_addr;
 	ssize_t ret;
@@ -738,7 +738,7 @@ int lxc_console_write_ringbuffer(struct lxc_console *console)
 	return 0;
 }
 
-void lxc_console_delete(struct lxc_console *console)
+void lxc_console_delete(struct lxc_pty *console)
 {
 	int ret;
 
@@ -776,7 +776,7 @@ void lxc_console_delete(struct lxc_console *console)
  * register a handler for the console's masterfd when we create the mainloop
  * the console handler needs to see an allocated ringbuffer.
  */
-static int lxc_console_create_ringbuf(struct lxc_console *console)
+static int lxc_console_create_ringbuf(struct lxc_pty *console)
 {
 	int ret;
 	struct lxc_ringbuf *buf = &console->ringbuf;
@@ -822,7 +822,7 @@ static int lxc_console_create_ringbuf(struct lxc_console *console)
  * This is the console log file. Please note that the console log file is
  * (implementation wise not content wise) independent of the console ringbuffer.
  */
-int lxc_console_create_log_file(struct lxc_console *console)
+int lxc_console_create_log_file(struct lxc_pty *console)
 {
 	if (!console->log_path)
 		return 0;
@@ -837,7 +837,7 @@ int lxc_console_create_log_file(struct lxc_console *console)
 	return 0;
 }
 
-int lxc_pty_create(struct lxc_console *console)
+int lxc_pty_create(struct lxc_pty *console)
 {
 	int ret, saved_errno;
 
@@ -877,7 +877,7 @@ err:
 int lxc_console_create(struct lxc_conf *conf)
 {
 	int ret;
-	struct lxc_console *console = &conf->console;
+	struct lxc_pty *console = &conf->console;
 
 	if (console->path && !strcmp(console->path, "none")) {
 		INFO("No console was requested");
@@ -1140,7 +1140,7 @@ void lxc_pty_info_init(struct lxc_pty_info *pty)
 	pty->busy = -1;
 }
 
-void lxc_pty_init(struct lxc_console *pty)
+void lxc_pty_init(struct lxc_pty *pty)
 {
 	memset(pty, 0, sizeof(*pty));
 	pty->slave = -EBADF;
@@ -1150,7 +1150,7 @@ void lxc_pty_init(struct lxc_console *pty)
 	lxc_pty_info_init(&pty->peerpty);
 }
 
-void lxc_pty_conf_free(struct lxc_console *console)
+void lxc_pty_conf_free(struct lxc_pty *console)
 {
 	free(console->log_path);
 	free(console->path);
@@ -1158,7 +1158,7 @@ void lxc_pty_conf_free(struct lxc_console *console)
 		lxc_ringbuf_release(&console->ringbuf);
 }
 
-int lxc_pty_map_ids(struct lxc_conf *c, struct lxc_console *pty)
+int lxc_pty_map_ids(struct lxc_conf *c, struct lxc_pty *pty)
 {
 	int ret;
 

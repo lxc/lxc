@@ -164,7 +164,7 @@ struct lxc_tty_state;
  * @peer   : the file descriptor put/get console traffic
  * @name   : the file name of the slave pty
  */
-struct lxc_console {
+struct lxc_pty {
 	int slave;
 	int master;
 	int peer;
@@ -189,7 +189,7 @@ struct lxc_console {
 		unsigned int log_rotate;
 	};
 
-	struct /* lxc_console_ringbuf */ {
+	struct /* lxc_pty_ringbuf */ {
 		/* size of the ringbuffer */
 		uint64_t buffer_size;
 
@@ -314,7 +314,7 @@ struct lxc_conf {
 	struct lxc_tty_info tty_info;
 	/* Comma-separated list of lxc.tty.max pty names. */
 	char *pty_names;
-	struct lxc_console console;
+	struct lxc_pty console;
 	struct lxc_rootfs rootfs;
 	char *ttydir;
 	int close_all_fds;
