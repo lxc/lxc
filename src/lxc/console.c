@@ -407,7 +407,7 @@ int lxc_terminal_io_cb(int fd, uint32_t events, void *data,
 	return 0;
 }
 
-static int lxc_console_mainloop_add_peer(struct lxc_pty *console)
+static int lxc_terminal_mainloop_add_peer(struct lxc_pty *console)
 {
 	int ret;
 
@@ -454,7 +454,7 @@ int lxc_console_mainloop_add(struct lxc_epoll_descr *descr,
 	 * does attach to it in lxc_console_allocate().
 	 */
 	console->descr = descr;
-	ret = lxc_console_mainloop_add_peer(console);
+	ret = lxc_terminal_mainloop_add_peer(console);
 	if (ret < 0)
 		return -1;
 
@@ -563,7 +563,7 @@ static int lxc_console_peer_proxy_alloc(struct lxc_pty *console, int sockfd)
 	console->tty_state = ts;
 	console->peer = console->peerpty.slave;
 	console->peerpty.busy = sockfd;
-	ret = lxc_console_mainloop_add_peer(console);
+	ret = lxc_terminal_mainloop_add_peer(console);
 	if (ret < 0)
 		goto err1;
 
