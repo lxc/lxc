@@ -685,7 +685,7 @@ static int lxc_cmd_console_winch_callback(int fd, struct lxc_cmd_req *req,
 {
 	struct lxc_cmd_rsp rsp = { .data = 0 };
 
-	lxc_console_sigwinch(SIGWINCH);
+	lxc_terminal_sigwinch(SIGWINCH);
 
 	return lxc_cmd_rsp_send(fd, &rsp);
 }

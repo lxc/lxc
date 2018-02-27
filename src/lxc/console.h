@@ -119,7 +119,7 @@ extern int  lxc_console_mainloop_add(struct lxc_epoll_descr *, struct lxc_pty *)
 /*
  * Handle SIGWINCH events on the allocated ptys.
  */
-extern void lxc_console_sigwinch(int sig);
+extern void lxc_terminal_sigwinch(int sig);
 
 /*
  * Connect to one of the ptys given to the container via lxc.tty.max.
@@ -199,7 +199,7 @@ extern void lxc_terminal_winsz(int srcfd, int dstfd);
  * Note that the signal handler isn't installed as a classic asychronous
  * handler, rather signalfd(2) is used so that we can handle the signal when
  * we're ready for it. This avoids deadlocks since a signal handler (ie
- * lxc_console_sigwinch()) would need to take the thread mutex to prevent
+ * lxc_terminal_sigwinch()) would need to take the thread mutex to prevent
  * lxc_ttys list corruption, but using the fd we can provide the tty_state
  * needed to the callback (lxc_console_cb_signal_fd()).
  *

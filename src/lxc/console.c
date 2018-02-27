@@ -96,7 +96,7 @@ static void lxc_terminal_winch(struct lxc_tty_state *ts)
 		lxc_cmd_console_winch(ts->winch_proxy, ts->winch_proxy_lxcpath);
 }
 
-void lxc_console_sigwinch(int sig)
+void lxc_terminal_sigwinch(int sig)
 {
 	struct lxc_list *it;
 	struct lxc_tty_state *ts;
