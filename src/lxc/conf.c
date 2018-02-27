@@ -2613,9 +2613,9 @@ struct lxc_conf *lxc_conf_init(void)
 	new->console.log_size = 0;
 	new->console.path = NULL;
 	new->console.peer = -1;
-	new->console.peerpty.busy = -1;
-	new->console.peerpty.master = -1;
-	new->console.peerpty.slave = -1;
+	new->console.proxy.busy = -1;
+	new->console.proxy.master = -1;
+	new->console.proxy.slave = -1;
 	new->console.master = -1;
 	new->console.slave = -1;
 	new->console.name[0] = '\0';

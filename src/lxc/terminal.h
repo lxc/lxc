@@ -79,7 +79,7 @@ struct lxc_terminal {
 	int slave;
 	int master;
 	int peer;
-	struct lxc_terminal_info peerpty;
+	struct lxc_terminal_info proxy;
 	struct lxc_epoll_descr *descr;
 	char *path;
 	char name[MAXPATHLEN];

@@ -515,12 +515,12 @@ static void lxc_terminal_peer_proxy_free(struct lxc_terminal *terminal)
 		lxc_terminal_signal_fini(terminal->tty_state);
 		terminal->tty_state = NULL;
 	}
-	close(terminal->peerpty.master);
-	close(terminal->peerpty.slave);
-	terminal->peerpty.master = -1;
-	terminal->peerpty.slave = -1;
-	terminal->peerpty.busy = -1;
-	terminal->peerpty.name[0] = '\0';
+	close(terminal->proxy.master);
+	close(terminal->proxy.slave);
+	terminal->proxy.master = -1;
+	terminal->proxy.slave = -1;
+	terminal->proxy.busy = -1;
+	terminal->proxy.name[0] = '\0';
 	terminal->peer = -1;
 }
 
@@ -534,7 +534,7 @@ static int lxc_terminal_peer_proxy_alloc(struct lxc_terminal *terminal, int sock
 		ERROR("Terminal not set up");
 		return -1;
 	}
-	if (terminal->peerpty.busy != -1 || terminal->peer != -1) {
+	if (terminal->proxy.busy != -1 || terminal->peer != -1) {
 		NOTICE("Terminal already in use");
 		return -1;
 	}
@@ -546,28 +546,28 @@ static int lxc_terminal_peer_proxy_alloc(struct lxc_terminal *terminal, int sock
 	/* this is the proxy pty that will be given to the client, and that
 	 * the real pty master will send to / recv from
 	 */
-	ret = openpty(&terminal->peerpty.master, &terminal->peerpty.slave,
-		    terminal->peerpty.name, NULL, NULL);
+	ret = openpty(&terminal->proxy.master, &terminal->proxy.slave,
+		    terminal->proxy.name, NULL, NULL);
 	if (ret) {
 		SYSERROR("failed to create proxy pty");
 		return -1;
 	}
 
-	if (lxc_setup_tios(terminal->peerpty.slave, &oldtermio) < 0)
+	if (lxc_setup_tios(terminal->proxy.slave, &oldtermio) < 0)
 		goto err1;
 
-	ts = lxc_terminal_signal_init(terminal->peerpty.master, terminal->master);
+	ts = lxc_terminal_signal_init(terminal->proxy.master, terminal->master);
 	if (!ts)
 		goto err1;
 
 	terminal->tty_state = ts;
-	terminal->peer = terminal->peerpty.slave;
-	terminal->peerpty.busy = sockfd;
+	terminal->peer = terminal->proxy.slave;
+	terminal->proxy.busy = sockfd;
 	ret = lxc_terminal_mainloop_add_peer(terminal);
 	if (ret < 0)
 		goto err1;
 
-	DEBUG("%d peermaster:%d sockfd:%d", lxc_raw_getpid(), terminal->peerpty.master, sockfd);
+	DEBUG("%d peermaster:%d sockfd:%d", lxc_raw_getpid(), terminal->proxy.master, sockfd);
 	return 0;
 
 err1:
@@ -584,7 +584,7 @@ int lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 	if (*ttyreq == 0) {
 		if (lxc_terminal_peer_proxy_alloc(terminal, sockfd) < 0)
 			goto out;
-		masterfd = terminal->peerpty.master;
+		masterfd = terminal->proxy.master;
 		goto out;
 	}
 
@@ -628,8 +628,8 @@ void lxc_terminal_free(struct lxc_conf *conf, int fd)
 			ttys->tty[i].busy = 0;
 	}
 
-	if (terminal->peerpty.busy == fd) {
-		lxc_mainloop_del_handler(terminal->descr, terminal->peerpty.slave);
+	if (terminal->proxy.busy == fd) {
+		lxc_mainloop_del_handler(terminal->descr, terminal->proxy.slave);
 		lxc_terminal_peer_proxy_free(terminal);
 	}
 }
@@ -1143,7 +1143,7 @@ void lxc_terminal_init(struct lxc_terminal *pty)
 	pty->master = -EBADF;
 	pty->peer = -EBADF;
 	pty->log_fd = -EBADF;
-	lxc_terminal_info_init(&pty->peerpty);
+	lxc_terminal_info_init(&pty->proxy);
 }
 
 void lxc_terminal_conf_free(struct lxc_terminal *terminal)
