@@ -524,7 +524,7 @@ static void lxc_terminal_peer_proxy_free(struct lxc_pty *console)
 	console->peer = -1;
 }
 
-static int lxc_console_peer_proxy_alloc(struct lxc_pty *console, int sockfd)
+static int lxc_terminal_peer_proxy_alloc(struct lxc_pty *console, int sockfd)
 {
 	struct termios oldtermio;
 	struct lxc_tty_state *ts;
@@ -582,7 +582,7 @@ int lxc_console_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 	struct lxc_pty *console = &conf->console;
 
 	if (*ttyreq == 0) {
-		if (lxc_console_peer_proxy_alloc(console, sockfd) < 0)
+		if (lxc_terminal_peer_proxy_alloc(console, sockfd) < 0)
 			goto out;
 		masterfd = console->peerpty.master;
 		goto out;
