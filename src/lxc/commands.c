@@ -82,7 +82,7 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 {
 	static const char *const cmdname[LXC_CMD_MAX] = {
 		[LXC_CMD_CONSOLE]             = "console",
-		[LXC_CMD_CONSOLE_WINCH]       = "console_winch",
+		[LXC_CMD_TERMINAL_WINCH]      = "terminal_winch",
 		[LXC_CMD_STOP]                = "stop",
 		[LXC_CMD_GET_STATE]           = "get_state",
 		[LXC_CMD_GET_INIT_PID]        = "get_init_pid",
@@ -659,18 +659,18 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 }
 
 /*
- * lxc_cmd_console_winch: To process as if a SIGWINCH were received
+ * lxc_cmd_terminal_winch: To process as if a SIGWINCH were received
  *
  * @name      : name of container to connect to
  * @lxcpath   : the lxcpath in which the container is running
  *
  * Returns 0 on success, < 0 on failure
  */
-int lxc_cmd_console_winch(const char *name, const char *lxcpath)
+int lxc_cmd_terminal_winch(const char *name, const char *lxcpath)
 {
 	int ret, stopped;
 	struct lxc_cmd_rr cmd = {
-		.req = { .cmd = LXC_CMD_CONSOLE_WINCH },
+		.req = { .cmd = LXC_CMD_TERMINAL_WINCH },
 	};
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
@@ -680,8 +680,8 @@ int lxc_cmd_console_winch(const char *name, const char *lxcpath)
 	return 0;
 }
 
-static int lxc_cmd_console_winch_callback(int fd, struct lxc_cmd_req *req,
-					  struct lxc_handler *handler)
+static int lxc_cmd_terminal_winch_callback(int fd, struct lxc_cmd_req *req,
+					   struct lxc_handler *handler)
 {
 	struct lxc_cmd_rsp rsp = { .data = 0 };
 
@@ -1052,7 +1052,7 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 
 	callback cb[LXC_CMD_MAX] = {
 		[LXC_CMD_CONSOLE]             = lxc_cmd_console_callback,
-		[LXC_CMD_CONSOLE_WINCH]       = lxc_cmd_console_winch_callback,
+		[LXC_CMD_TERMINAL_WINCH]      = lxc_cmd_terminal_winch_callback,
 		[LXC_CMD_STOP]                = lxc_cmd_stop_callback,
 		[LXC_CMD_GET_STATE]           = lxc_cmd_get_state_callback,
 		[LXC_CMD_GET_INIT_PID]        = lxc_cmd_get_init_pid_callback,

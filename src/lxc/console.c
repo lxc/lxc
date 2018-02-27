@@ -93,7 +93,7 @@ static void lxc_terminal_winch(struct lxc_tty_state *ts)
 	lxc_terminal_winsz(ts->stdinfd, ts->masterfd);
 
 	if (ts->winch_proxy)
-		lxc_cmd_console_winch(ts->winch_proxy, ts->winch_proxy_lxcpath);
+		lxc_cmd_terminal_winch(ts->winch_proxy, ts->winch_proxy_lxcpath);
 }
 
 void lxc_terminal_sigwinch(int sig)
@@ -1023,7 +1023,7 @@ int lxc_console(struct lxc_container *c, int ttynum,
 	istty = isatty(stdinfd);
 	if (istty) {
 		lxc_terminal_winsz(stdinfd, masterfd);
-		lxc_cmd_console_winch(ts->winch_proxy, ts->winch_proxy_lxcpath);
+		lxc_cmd_terminal_winch(ts->winch_proxy, ts->winch_proxy_lxcpath);
 	} else {
 		INFO("File descriptor %d does not refer to a tty device", stdinfd);
 	}
