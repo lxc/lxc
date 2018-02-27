@@ -991,8 +991,7 @@ static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
 
 	rsp.ret = 0;
 	if (log->clear)
-		/* clear the ringbuffer */
-		lxc_ringbuf_clear(buf);
+		lxc_ringbuf_clear(buf); /* clear the ringbuffer */
 	else if (rsp.datalen > 0)
 		lxc_ringbuf_move_read_addr(buf, rsp.datalen);
 

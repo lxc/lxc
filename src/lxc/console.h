@@ -228,7 +228,7 @@ extern int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
 extern void lxc_terminal_signal_fini(struct lxc_tty_state *ts);
 
 extern int lxc_terminal_write_ringbuffer(struct lxc_pty *console);
-extern int lxc_console_create_log_file(struct lxc_pty *console);
+extern int lxc_terminal_create_log_file(struct lxc_pty *console);
 extern int lxc_terminal_io_cb(int fd, uint32_t events, void *data,
 			      struct lxc_epoll_descr *descr);
 

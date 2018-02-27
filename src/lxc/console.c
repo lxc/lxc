@@ -822,7 +822,7 @@ static int lxc_terminal_create_ringbuf(struct lxc_pty *console)
  * This is the console log file. Please note that the console log file is
  * (implementation wise not content wise) independent of the console ringbuffer.
  */
-int lxc_console_create_log_file(struct lxc_pty *console)
+int lxc_terminal_create_log_file(struct lxc_pty *console)
 {
 	if (!console->log_path)
 		return 0;
@@ -889,7 +889,7 @@ int lxc_console_create(struct lxc_conf *conf)
 		return -1;
 
 	/* create console log file */
-	ret = lxc_console_create_log_file(console);
+	ret = lxc_terminal_create_log_file(console);
 	if (ret < 0)
 		goto err;
 
