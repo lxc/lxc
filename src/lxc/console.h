@@ -148,7 +148,7 @@ extern int  lxc_console_getfd(struct lxc_container *c, int *ttynum,
  * fd is made a duplicate of a specific standard file descriptor iff the
  * standard file descriptor refers to a pty.
  */
-extern int lxc_console_set_stdfds(int fd);
+extern int lxc_terminal_set_stdfds(int fd);
 
 /*
  * Handler for events on the stdin fd of the pty. To be registered via the

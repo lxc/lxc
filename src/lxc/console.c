@@ -905,7 +905,7 @@ err:
 	return -ENODEV;
 }
 
-int lxc_console_set_stdfds(int fd)
+int lxc_terminal_set_stdfds(int fd)
 {
 	if (fd < 0)
 		return 0;
@@ -1122,7 +1122,7 @@ int lxc_login_pty(int fd)
 	if (ret < 0)
 		return -1;
 
-	ret = lxc_console_set_stdfds(fd);
+	ret = lxc_terminal_set_stdfds(fd);
 	if (ret < 0)
 		return -1;
 
