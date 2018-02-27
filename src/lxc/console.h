@@ -32,7 +32,9 @@
 #include "list.h"
 #include "ringbuf.h"
 
+struct lxc_container;
 struct lxc_conf;
+struct lxc_epoll_descr;
 
 /* Defines a structure containing a pty information for virtualizing a tty
  * @name   : the path name of the slave pty side
@@ -46,51 +48,14 @@ struct lxc_terminal_info {
 	int busy;
 };
 
-struct lxc_terminal {
-	int slave;
-	int master;
-	int peer;
-	struct lxc_terminal_info peerpty;
-	struct lxc_epoll_descr *descr;
-	char *path;
-	char name[MAXPATHLEN];
-	struct termios *tios;
-	struct lxc_tty_state *tty_state;
-
-	struct /* lxc_console_log */ {
-		/* size of the log file */
-		uint64_t log_size;
-
-		/* path to the log file */
-		char *log_path;
-
-		/* fd to the log file */
-		int log_fd;
-
-		/* whether the log file will be rotated */
-		unsigned int log_rotate;
-	};
-
-	struct /* lxc_pty_ringbuf */ {
-		/* size of the ringbuffer */
-		uint64_t buffer_size;
-
-		/* the in-memory ringbuffer */
-		struct lxc_ringbuf ringbuf;
-	};
-};
-
-struct lxc_epoll_descr; /* defined in mainloop.h */
-struct lxc_container; /* defined in lxccontainer.h */
-struct lxc_tty_state
-{
+struct lxc_terminal_state {
 	struct lxc_list node;
 	int stdinfd;
 	int stdoutfd;
 	int masterfd;
 	/* Escape sequence to use for exiting the pty. A single char can be
-	 * specified. The pty can then exited by doing: Ctrl + specified_char + q.
-	 * This field is checked by lxc_terminal_stdin_cb(). Set to -1 to
+	 * specified. The pty can then exited by doing: Ctrl + specified_char +
+	 * q. This field is checked by lxc_terminal_stdin_cb(). Set to -1 to
 	 * disable exiting the pty via a escape sequence.
 	 */
 	int escape;
@@ -108,6 +73,40 @@ struct lxc_tty_state
 	 */
 	int sigfd;
 	sigset_t oldmask;
+};
+
+struct lxc_terminal {
+	int slave;
+	int master;
+	int peer;
+	struct lxc_terminal_info peerpty;
+	struct lxc_epoll_descr *descr;
+	char *path;
+	char name[MAXPATHLEN];
+	struct termios *tios;
+	struct lxc_terminal_state *tty_state;
+
+	struct /* lxc_console_log */ {
+		/* size of the log file */
+		uint64_t log_size;
+
+		/* path to the log file */
+		char *log_path;
+
+		/* fd to the log file */
+		int log_fd;
+
+		/* whether the log file will be rotated */
+		unsigned int log_rotate;
+	};
+
+	struct /* lxc_terminal_ringbuf */ {
+		/* size of the ringbuffer */
+		uint64_t buffer_size;
+
+		/* the in-memory ringbuffer */
+		struct lxc_ringbuf ringbuf;
+	};
 };
 
 /*
@@ -239,8 +238,8 @@ extern void lxc_terminal_winsz(int srcfd, int dstfd);
  * @srcfd  : src for winsz in SIGWINCH handler
  * @dstfd  : dst for winsz in SIGWINCH handler
  *
- * Returns lxc_tty_state structure on success or NULL on failure. The sigfd
- * member of the returned lxc_tty_state can be select()/poll()ed/epoll()ed
+ * Returns lxc_terminal_state structure on success or NULL on failure. The sigfd
+ * member of the returned lxc_terminal_state can be select()/poll()ed/epoll()ed
  * on (ie added to a mainloop) for signals.
  *
  * Must be called with process_lock held to protect the lxc_ttys list, or
@@ -255,7 +254,7 @@ extern void lxc_terminal_winsz(int srcfd, int dstfd);
  *
  * This function allocates memory. It is up to the caller to free it.
  */
-extern struct lxc_tty_state *lxc_terminal_signal_init(int srcfd, int dstfd);
+extern struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, int dstfd);
 
 /*
  * Handler for signal events. To be registered via the corresponding functions
@@ -267,7 +266,7 @@ extern int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
 /*
  * lxc_terminal_signal_fini: uninstall signal handler
  *
- * @ts  : the lxc_tty_state returned by lxc_terminal_signal_init
+ * @ts  : the lxc_terminal_state returned by lxc_terminal_signal_init
  *
  * Restore the saved signal handler that was in effect at the time
  * lxc_terminal_signal_init() was called.
@@ -275,7 +274,7 @@ extern int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
  * Must be called with process_lock held to protect the lxc_ttys list, or
  * from a non-threaded context.
  */
-extern void lxc_terminal_signal_fini(struct lxc_tty_state *ts);
+extern void lxc_terminal_signal_fini(struct lxc_terminal_state *ts);
 
 extern int lxc_terminal_write_ringbuffer(struct lxc_terminal *console);
 extern int lxc_terminal_create_log_file(struct lxc_terminal *console);

@@ -143,8 +143,6 @@ struct lxc_tty_info {
 	struct lxc_terminal_info *tty;
 };
 
-struct lxc_tty_state;
-
 /* Defines a structure to store the rootfs location, the
  * optionals pivot_root, rootfs mount paths
  * @path       : the rootfs source (directory or device)

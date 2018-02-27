@@ -88,7 +88,7 @@ void lxc_terminal_winsz(int srcfd, int dstfd)
 	return;
 }
 
-static void lxc_terminal_winch(struct lxc_tty_state *ts)
+static void lxc_terminal_winch(struct lxc_terminal_state *ts)
 {
 	lxc_terminal_winsz(ts->stdinfd, ts->masterfd);
 
@@ -99,7 +99,7 @@ static void lxc_terminal_winch(struct lxc_tty_state *ts)
 void lxc_terminal_sigwinch(int sig)
 {
 	struct lxc_list *it;
-	struct lxc_tty_state *ts;
+	struct lxc_terminal_state *ts;
 
 	lxc_list_for_each(it, &lxc_ttys) {
 		ts = it->elem;
@@ -112,7 +112,7 @@ int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
 {
 	ssize_t ret;
 	struct signalfd_siginfo siginfo;
-	struct lxc_tty_state *ts = cbdata;
+	struct lxc_terminal_state *ts = cbdata;
 
 	ret = read(fd, &siginfo, sizeof(siginfo));
 	if (ret < 0 || (size_t)ret < sizeof(siginfo)) {
@@ -131,12 +131,12 @@ int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
 	return 0;
 }
 
-struct lxc_tty_state *lxc_terminal_signal_init(int srcfd, int dstfd)
+struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, int dstfd)
 {
 	int ret;
 	bool istty;
 	sigset_t mask;
-	struct lxc_tty_state *ts;
+	struct lxc_terminal_state *ts;
 
 	ts = malloc(sizeof(*ts));
 	if (!ts)
@@ -189,7 +189,7 @@ on_error:
 	return ts;
 }
 
-void lxc_terminal_signal_fini(struct lxc_tty_state *ts)
+void lxc_terminal_signal_fini(struct lxc_terminal_state *ts)
 {
 	if (ts->sigfd >= 0) {
 		close(ts->sigfd);
@@ -527,7 +527,7 @@ static void lxc_terminal_peer_proxy_free(struct lxc_terminal *terminal)
 static int lxc_terminal_peer_proxy_alloc(struct lxc_terminal *terminal, int sockfd)
 {
 	struct termios oldtermio;
-	struct lxc_tty_state *ts;
+	struct lxc_terminal_state *ts;
 	int ret;
 
 	if (terminal->master < 0) {
@@ -636,7 +636,7 @@ void lxc_terminal_free(struct lxc_conf *conf, int fd)
 
 static int lxc_terminal_peer_default(struct lxc_terminal *terminal)
 {
-	struct lxc_tty_state *ts;
+	struct lxc_terminal_state *ts;
 	const char *path = terminal->path;
 	int fd;
 	int ret = 0;
@@ -930,7 +930,7 @@ int lxc_terminal_set_stdfds(int fd)
 int lxc_terminal_stdin_cb(int fd, uint32_t events, void *cbdata,
 			     struct lxc_epoll_descr *descr)
 {
-	struct lxc_tty_state *ts = cbdata;
+	struct lxc_terminal_state *ts = cbdata;
 	char c;
 
 	if (fd != ts->stdinfd)
@@ -961,7 +961,7 @@ int lxc_terminal_stdin_cb(int fd, uint32_t events, void *cbdata,
 int lxc_terminal_master_cb(int fd, uint32_t events, void *cbdata,
 			   struct lxc_epoll_descr *descr)
 {
-	struct lxc_tty_state *ts = cbdata;
+	struct lxc_terminal_state *ts = cbdata;
 	char buf[LXC_TERMINAL_BUFFER_SIZE];
 	int r, w;
 
@@ -995,7 +995,7 @@ int lxc_console(struct lxc_container *c, int ttynum,
 	int ret, ttyfd, masterfd;
 	struct lxc_epoll_descr descr;
 	struct termios oldtios;
-	struct lxc_tty_state *ts;
+	struct lxc_terminal_state *ts;
 	int istty = 0;
 
 	ttyfd = lxc_cmd_console(c->name, &ttynum, &masterfd, c->config_path);
