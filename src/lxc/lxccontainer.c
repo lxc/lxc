@@ -47,7 +47,6 @@
 #include "commands_utils.h"
 #include "confile.h"
 #include "confile_utils.h"
-#include "console.h"
 #include "criu.h"
 #include "error.h"
 #include "initutils.h"
@@ -66,6 +65,7 @@
 #include "storage/btrfs.h"
 #include "storage/overlay.h"
 #include "sync.h"
+#include "terminal.h"
 #include "utils.h"
 #include "version.h"
 
@@ -526,7 +526,7 @@ static int do_lxcapi_console_getfd(struct lxc_container *c, int *ttynum, int *ma
 	if (!c)
 		return -1;
 
-	return lxc_console_getfd(c, ttynum, masterfd);
+	return lxc_terminal_getfd(c, ttynum, masterfd);
 }
 
 WRAP_API_2(int, lxcapi_console_getfd, int *, int *)

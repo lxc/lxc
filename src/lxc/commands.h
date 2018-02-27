@@ -39,7 +39,7 @@
 
 typedef enum {
 	LXC_CMD_CONSOLE,
-	LXC_CMD_CONSOLE_WINCH,
+	LXC_CMD_TERMINAL_WINCH,
 	LXC_CMD_STOP,
 	LXC_CMD_GET_STATE,
 	LXC_CMD_GET_INIT_PID,
@@ -84,7 +84,7 @@ struct lxc_cmd_console_log {
 
 };
 
-extern int lxc_cmd_console_winch(const char *name, const char *lxcpath);
+extern int lxc_cmd_terminal_winch(const char *name, const char *lxcpath);
 extern int lxc_cmd_console(const char *name, int *ttynum, int *fd,
 			   const char *lxcpath);
 /*

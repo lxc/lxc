@@ -38,6 +38,7 @@
 #include "list.h"
 #include "ringbuf.h"
 #include "start.h" /* for lxc_handler */
+#include "terminal.h"
 
 #if HAVE_SCMP_FILTER_CTX
 typedef void * scmp_filter_ctx;
@@ -133,73 +134,16 @@ struct id_map {
 	unsigned long hostid, nsid, range;
 };
 
-/*
- * Defines a structure containing a pty information for
- * virtualizing a tty
- * @name   : the path name of the slave pty side
- * @master : the file descriptor of the master
- * @slave  : the file descriptor of the slave
- */
-struct lxc_pty_info {
-	char name[MAXPATHLEN];
-	int master;
-	int slave;
-	int busy;
-};
-
-/*
- * Defines the number of tty configured and contains the
+/* Defines the number of tty configured and contains the
  * instantiated ptys
  * @nbtty = number of configured ttys
  */
 struct lxc_tty_info {
 	int nbtty;
-	struct lxc_pty_info *pty_info;
+	struct lxc_terminal_info *tty;
 };
 
-struct lxc_tty_state;
-
-/*
- * Defines the structure to store the console information
- * @peer   : the file descriptor put/get console traffic
- * @name   : the file name of the slave pty
- */
-struct lxc_console {
-	int slave;
-	int master;
-	int peer;
-	struct lxc_pty_info peerpty;
-	struct lxc_epoll_descr *descr;
-	char *path;
-	char name[MAXPATHLEN];
-	struct termios *tios;
-	struct lxc_tty_state *tty_state;
-
-	struct /* lxc_console_log */ {
-		/* size of the log file */
-		uint64_t log_size;
-
-		/* path to the log file */
-		char *log_path;
-
-		/* fd to the log file */
-		int log_fd;
-
-		/* whether the log file will be rotated */
-		unsigned int log_rotate;
-	};
-
-	struct /* lxc_console_ringbuf */ {
-		/* size of the ringbuffer */
-		uint64_t buffer_size;
-
-		/* the in-memory ringbuffer */
-		struct lxc_ringbuf ringbuf;
-	};
-};
-
-/*
- * Defines a structure to store the rootfs location, the
+/* Defines a structure to store the rootfs location, the
  * optionals pivot_root, rootfs mount paths
  * @path       : the rootfs source (directory or device)
  * @mount      : where it is mounted
@@ -256,7 +200,7 @@ enum {
  * @fstab      : path to a fstab file format
  * @caps       : list of the capabilities to drop
  * @keepcaps   : list of the capabilities to keep
- * @tty_info   : tty data
+ * @ttys       : tty data
  * @console    : console data
  * @ttydir     : directory (under /dev) in which to create console and ttys
  * @lsm_aa_profile : apparmor profile to switch to or NULL
@@ -311,10 +255,10 @@ struct lxc_conf {
 	struct lxc_list mount_list;
 	struct lxc_list caps;
 	struct lxc_list keepcaps;
-	struct lxc_tty_info tty_info;
+	struct lxc_tty_info ttys;
 	/* Comma-separated list of lxc.tty.max pty names. */
 	char *pty_names;
-	struct lxc_console console;
+	struct lxc_terminal console;
 	struct lxc_rootfs rootfs;
 	char *ttydir;
 	int close_all_fds;
@@ -440,7 +384,7 @@ extern void lxc_conf_free(struct lxc_conf *conf);
 extern int pin_rootfs(const char *rootfs);
 extern int lxc_map_ids(struct lxc_list *idmap, pid_t pid);
 extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
-extern void lxc_delete_tty(struct lxc_tty_info *tty_info);
+extern void lxc_delete_tty(struct lxc_tty_info *ttys);
 extern int lxc_clear_config_caps(struct lxc_conf *c);
 extern int lxc_clear_config_keepcaps(struct lxc_conf *c);
 extern int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version);

@@ -26,7 +26,6 @@ noinst_HEADERS = \
 	conf.h \
 	confile.h \
 	confile_utils.h \
-	console.h \
 	error.h \
 	initutils.h \
 	list.h \
@@ -37,6 +36,7 @@ noinst_HEADERS = \
 	namespace.h \
 	start.h \
 	state.h \
+	terminal.h \
 	utils.h \
 	criu.h \
 	../tests/lxctest.h
@@ -100,7 +100,7 @@ liblxc_la_SOURCES = \
 	start.c start.h \
 	execute.c \
 	monitor.c monitor.h \
-	console.c \
+	terminal.c \
 	freezer.c \
 	error.h error.c \
 	parse.c parse.h \

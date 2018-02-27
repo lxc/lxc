@@ -61,13 +61,13 @@
 #include "conf.h"
 #include "config.h"
 #include "confile.h"
-#include "console.h"
 #include "log.h"
 #include "lsm/lsm.h"
 #include "lxclock.h"
 #include "lxcseccomp.h"
 #include "mainloop.h"
 #include "namespace.h"
+#include "terminal.h"
 #include "utils.h"
 
 #if HAVE_SYS_PERSONALITY_H
@@ -974,20 +974,20 @@ on_error:
 	rexit(EXIT_FAILURE);
 }
 
-static int lxc_attach_pty(struct lxc_conf *conf, struct lxc_console *pty)
+static int lxc_attach_pty(struct lxc_conf *conf, struct lxc_terminal *pty)
 {
 	int ret;
 
-	lxc_pty_init(pty);
+	lxc_terminal_init(pty);
 
-	ret = lxc_pty_create(pty);
+	ret = lxc_terminal_create(pty);
 	if (ret < 0) {
 		SYSERROR("Failed to create pty");
 		return -1;
 	}
 
 	/* Shift ttys to container. */
-	ret = lxc_pty_map_ids(conf, pty);
+	ret = lxc_terminal_map_ids(conf, pty);
 	if (ret < 0) {
 		ERROR("Failed to shift pty");
 		goto on_error;
@@ -996,12 +996,12 @@ static int lxc_attach_pty(struct lxc_conf *conf, struct lxc_console *pty)
 	return 0;
 
 on_error:
-	lxc_console_delete(pty);
-	lxc_pty_conf_free(pty);
+	lxc_terminal_delete(pty);
+	lxc_terminal_conf_free(pty);
 	return -1;
 }
 
-static int lxc_attach_pty_mainloop_init(struct lxc_console *pty,
+static int lxc_attach_pty_mainloop_init(struct lxc_terminal *pty,
 					struct lxc_epoll_descr *descr)
 {
 	int ret;
@@ -1012,7 +1012,7 @@ static int lxc_attach_pty_mainloop_init(struct lxc_console *pty,
 		return -1;
 	}
 
-	ret = lxc_console_mainloop_add(descr, pty);
+	ret = lxc_terminal_mainloop_add(descr, pty);
 	if (ret < 0) {
 		ERROR("Failed to add handlers to mainloop");
 		lxc_mainloop_close(descr);
@@ -1022,7 +1022,7 @@ static int lxc_attach_pty_mainloop_init(struct lxc_console *pty,
 	return 0;
 }
 
-static inline void lxc_attach_pty_close_master(struct lxc_console *pty)
+static inline void lxc_attach_pty_close_master(struct lxc_terminal *pty)
 {
 	if (pty->master < 0)
 		return;
@@ -1031,7 +1031,7 @@ static inline void lxc_attach_pty_close_master(struct lxc_console *pty)
 	pty->master = -EBADF;
 }
 
-static inline void lxc_attach_pty_close_slave(struct lxc_console *pty)
+static inline void lxc_attach_pty_close_slave(struct lxc_terminal *pty)
 {
 	if (pty->slave < 0)
 		return;
@@ -1040,7 +1040,7 @@ static inline void lxc_attach_pty_close_slave(struct lxc_console *pty)
 	pty->slave = -EBADF;
 }
 
-static inline void lxc_attach_pty_close_peer(struct lxc_console *pty)
+static inline void lxc_attach_pty_close_peer(struct lxc_terminal *pty)
 {
 	if (pty->peer < 0)
 		return;
@@ -1049,7 +1049,7 @@ static inline void lxc_attach_pty_close_peer(struct lxc_console *pty)
 	pty->peer = -EBADF;
 }
 
-static inline void lxc_attach_pty_close_log(struct lxc_console *pty)
+static inline void lxc_attach_pty_close_log(struct lxc_terminal *pty)
 {
 	if (pty->log_fd < 0)
 		return;
@@ -1068,7 +1068,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 	signed long personality;
 	pid_t attached_pid, init_pid, pid;
 	struct lxc_proc_context_info *init_ctx;
-	struct lxc_console pty;
+	struct lxc_terminal pty;
 	struct lxc_conf *conf;
 	struct attach_clone_payload payload = {0};
 
@@ -1198,7 +1198,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 
 		pty.log_fd = options->log_fd;
 	} else {
-		lxc_pty_init(&pty);
+		lxc_terminal_init(&pty);
 	}
 
 	/* Create a socket pair for IPC communication; set SOCK_CLOEXEC in order
@@ -1386,8 +1386,8 @@ int lxc_attach(const char *name, const char *lxcpath,
 			(void)wait_for_pid(to_cleanup_pid);
 
 		if (options->attach_flags & LXC_ATTACH_ALLOCATE_PTY) {
-			lxc_console_delete(&pty);
-			lxc_pty_conf_free(&pty);
+			lxc_terminal_delete(&pty);
+			lxc_terminal_conf_free(&pty);
 		}
 		lxc_proc_put_context_info(init_ctx);
 		return ret_parent;

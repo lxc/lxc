@@ -843,13 +843,11 @@ static bool all_controllers_found(void)
 	if (!cgroup_use)
 		return true;
 
-	for (p = strtok_r(cgroup_use, ",", &saveptr); p;
-	     p = strtok_r(NULL, ",", &saveptr)) {
+	for (; (p = strtok_r(cgroup_use, ",", &saveptr)); cgroup_use = NULL)
 		if (!controller_found(hlist, p)) {
 			CGFSNG_DEBUG("No %s controller mountpoint found\n", p);
 			return false;
 		}
-	}
 
 	return true;
 }

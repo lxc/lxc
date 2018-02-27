@@ -176,7 +176,7 @@ static void exec_criu(struct criu_opts *opts)
 	FILE *mnts;
 	struct mntent mntent;
 
-	char buf[4096], tty_info[32];
+	char buf[4096], ttys[32];
 	size_t pos;
 
 	/* If we are currently in a cgroup /foo/bar, and the container is in a
@@ -233,12 +233,12 @@ static void exec_criu(struct criu_opts *opts)
 		 */
 		static_args += 6;
 
-		tty_info[0] = 0;
-		if (load_tty_major_minor(opts->user->directory, tty_info, sizeof(tty_info)))
+		ttys[0] = 0;
+		if (load_tty_major_minor(opts->user->directory, ttys, sizeof(ttys)))
 			return;
 
 		/* --inherit-fd fd[%d]:tty[%s] */
-		if (tty_info[0])
+		if (ttys[0])
 			static_args += 2;
 	} else {
 		return;
@@ -493,13 +493,13 @@ static void exec_criu(struct criu_opts *opts)
 		DECLARE_ARG("--restore-detached");
 		DECLARE_ARG("--restore-sibling");
 
-		if (tty_info[0]) {
+		if (ttys[0]) {
 			if (opts->console_fd < 0) {
 				ERROR("lxc.console.path configured on source host but not target");
 				goto err;
 			}
 
-			ret = snprintf(buf, sizeof(buf), "fd[%d]:%s", opts->console_fd, tty_info);
+			ret = snprintf(buf, sizeof(buf), "fd[%d]:%s", opts->console_fd, ttys);
 			if (ret < 0 || ret >= sizeof(buf))
 				goto err;
 

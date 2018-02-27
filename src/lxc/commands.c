@@ -42,13 +42,13 @@
 #include "commands_utils.h"
 #include "conf.h"
 #include "confile.h"
-#include "console.h"
 #include "log.h"
 #include "lxc.h"
 #include "lxclock.h"
 #include "mainloop.h"
 #include "monitor.h"
 #include "start.h"
+#include "terminal.h"
 #include "utils.h"
 
 /*
@@ -82,7 +82,7 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 {
 	static const char *const cmdname[LXC_CMD_MAX] = {
 		[LXC_CMD_CONSOLE]             = "console",
-		[LXC_CMD_CONSOLE_WINCH]       = "console_winch",
+		[LXC_CMD_TERMINAL_WINCH]      = "terminal_winch",
 		[LXC_CMD_STOP]                = "stop",
 		[LXC_CMD_GET_STATE]           = "get_state",
 		[LXC_CMD_GET_INIT_PID]        = "get_init_pid",
@@ -659,18 +659,18 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 }
 
 /*
- * lxc_cmd_console_winch: To process as if a SIGWINCH were received
+ * lxc_cmd_terminal_winch: To process as if a SIGWINCH were received
  *
  * @name      : name of container to connect to
  * @lxcpath   : the lxcpath in which the container is running
  *
  * Returns 0 on success, < 0 on failure
  */
-int lxc_cmd_console_winch(const char *name, const char *lxcpath)
+int lxc_cmd_terminal_winch(const char *name, const char *lxcpath)
 {
 	int ret, stopped;
 	struct lxc_cmd_rr cmd = {
-		.req = { .cmd = LXC_CMD_CONSOLE_WINCH },
+		.req = { .cmd = LXC_CMD_TERMINAL_WINCH },
 	};
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
@@ -680,12 +680,12 @@ int lxc_cmd_console_winch(const char *name, const char *lxcpath)
 	return 0;
 }
 
-static int lxc_cmd_console_winch_callback(int fd, struct lxc_cmd_req *req,
-					  struct lxc_handler *handler)
+static int lxc_cmd_terminal_winch_callback(int fd, struct lxc_cmd_req *req,
+					   struct lxc_handler *handler)
 {
 	struct lxc_cmd_rsp rsp = { .data = 0 };
 
-	lxc_console_sigwinch(SIGWINCH);
+	lxc_terminal_sigwinch(SIGWINCH);
 
 	return lxc_cmd_rsp_send(fd, &rsp);
 }
@@ -748,7 +748,7 @@ static int lxc_cmd_console_callback(int fd, struct lxc_cmd_req *req,
 	struct lxc_cmd_rsp rsp;
 	int ttynum = PTR_TO_INT(req->data);
 
-	masterfd = lxc_console_allocate(handler->conf, fd, &ttynum);
+	masterfd = lxc_terminal_allocate(handler->conf, fd, &ttynum);
 	if (masterfd < 0)
 		goto out_close;
 
@@ -757,7 +757,7 @@ static int lxc_cmd_console_callback(int fd, struct lxc_cmd_req *req,
 	ret = lxc_abstract_unix_send_fds(fd, &masterfd, 1, &rsp, sizeof(rsp));
 	if (ret < 0) {
 		ERROR("Failed to send tty to client");
-		lxc_console_free(handler->conf, fd);
+		lxc_terminal_free(handler->conf, fd);
 		goto out_close;
 	}
 
@@ -991,8 +991,7 @@ static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
 
 	rsp.ret = 0;
 	if (log->clear)
-		/* clear the ringbuffer */
-		lxc_ringbuf_clear(buf);
+		lxc_ringbuf_clear(buf); /* clear the ringbuffer */
 	else if (rsp.datalen > 0)
 		lxc_ringbuf_move_read_addr(buf, rsp.datalen);
 
@@ -1052,7 +1051,7 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 
 	callback cb[LXC_CMD_MAX] = {
 		[LXC_CMD_CONSOLE]             = lxc_cmd_console_callback,
-		[LXC_CMD_CONSOLE_WINCH]       = lxc_cmd_console_winch_callback,
+		[LXC_CMD_TERMINAL_WINCH]      = lxc_cmd_terminal_winch_callback,
 		[LXC_CMD_STOP]                = lxc_cmd_stop_callback,
 		[LXC_CMD_GET_STATE]           = lxc_cmd_get_state_callback,
 		[LXC_CMD_GET_INIT_PID]        = lxc_cmd_get_init_pid_callback,
@@ -1080,7 +1079,7 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 	struct lxc_state_client *client;
 	struct lxc_list *cur, *next;
 
-	lxc_console_free(handler->conf, fd);
+	lxc_terminal_free(handler->conf, fd);
 	lxc_mainloop_del_handler(descr, fd);
 	if (cmd != LXC_CMD_ADD_STATE_CLIENT) {
 		close(fd);

@@ -71,9 +71,9 @@
 #include "commands_utils.h"
 #include "conf.h"
 #include "confile_utils.h"
-#include "console.h"
 #include "error.h"
 #include "list.h"
+#include "lsm/lsm.h"
 #include "log.h"
 #include "lxccontainer.h"
 #include "lxclock.h"
@@ -83,11 +83,11 @@
 #include "namespace.h"
 #include "network.h"
 #include "start.h"
-#include "sync.h"
-#include "utils.h"
-#include "lsm/lsm.h"
 #include "storage/storage.h"
 #include "storage/storage_utils.h"
+#include "sync.h"
+#include "terminal.h"
+#include "utils.h"
 
 lxc_log_define(lxc_start, lxc);
 
@@ -529,15 +529,15 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 	}
 
 	if (has_console) {
-		struct lxc_console *console = &handler->conf->console;
+		struct lxc_terminal *console = &handler->conf->console;
 
-		ret = lxc_console_mainloop_add(&descr, console);
+		ret = lxc_terminal_mainloop_add(&descr, console);
 		if (ret < 0) {
 			ERROR("Failed to add console handlers to mainloop");
 			goto out_mainloop_console;
 		}
 
-		ret = lxc_console_mainloop_add(&descr_console, console);
+		ret = lxc_terminal_mainloop_add(&descr_console, console);
 		if (ret < 0) {
 			ERROR("Failed to add console handlers to console mainloop");
 			goto out_mainloop_console;
@@ -804,14 +804,14 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	TRACE("Set up signal fd");
 
 	/* Do this after setting up signals since it might unblock SIGWINCH. */
-	ret = lxc_console_create(conf);
+	ret = lxc_terminal_setup(conf);
 	if (ret < 0) {
 		ERROR("Failed to create console");
 		goto out_restore_sigmask;
 	}
 	TRACE("Created console");
 
-	ret = lxc_pty_map_ids(conf, &conf->console);
+	ret = lxc_terminal_map_ids(conf, &conf->console);
 	if (ret < 0) {
 		ERROR("Failed to chown console");
 		goto out_restore_sigmask;
@@ -824,7 +824,7 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 out_restore_sigmask:
 	sigprocmask(SIG_SETMASK, &handler->oldmask, NULL);
 out_delete_tty:
-	lxc_delete_tty(&conf->tty_info);
+	lxc_delete_tty(&conf->ttys);
 out_aborting:
 	lxc_set_state(name, handler, ABORTING);
 out_close_maincmd_fd:
@@ -950,8 +950,8 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	if (ret < 0)
 		WARN("%s - Failed to restore signal mask", strerror(errno));
 
-	lxc_console_delete(&handler->conf->console);
-	lxc_delete_tty(&handler->conf->tty_info);
+	lxc_terminal_delete(&handler->conf->console);
+	lxc_delete_tty(&handler->conf->ttys);
 
 	/* The command socket is now closed, no more state clients can register
 	 * themselves from now on. So free the list of state clients.
@@ -1198,14 +1198,14 @@ static int do_start(void *data)
 	/* Some init's such as busybox will set sane tty settings on stdin,
 	 * stdout, stderr which it thinks is the console. We already set them
 	 * the way we wanted on the real terminal, and we want init to do its
-	 * setup on its console ie. the pty allocated in lxc_console_create() so
+	 * setup on its console ie. the pty allocated in lxc_terminal_setup() so
 	 * make sure that that pty is stdin,stdout,stderr.
 	 */
 	 if (handler->conf->console.slave >= 0) {
 		 if (handler->backgrounded || handler->conf->is_execute == 0)
 			 ret = set_stdfds(handler->conf->console.slave);
 		 else
-			 ret = lxc_console_set_stdfds(handler->conf->console.slave);
+			 ret = lxc_terminal_set_stdfds(handler->conf->console.slave);
 		 if (ret < 0) {
 			ERROR("Failed to redirect std{in,out,err} to pty file "
 			      "descriptor %d", handler->conf->console.slave);
@@ -1340,17 +1340,17 @@ out_error:
 static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 {
 	int i;
-	struct lxc_pty_info *pty_info;
+	struct lxc_terminal_info *tty;
 	int ret = -1;
 	int sock = handler->data_sock[1];
 	struct lxc_conf *conf = handler->conf;
-	struct lxc_tty_info *tty_info = &conf->tty_info;
+	struct lxc_tty_info *ttys = &conf->ttys;
 
 	if (!conf->tty)
 		return 0;
 
-	tty_info->pty_info = malloc(sizeof(*tty_info->pty_info) * conf->tty);
-	if (!tty_info->pty_info)
+	ttys->tty = malloc(sizeof(*ttys->tty) * conf->tty);
+	if (!ttys->tty)
 		return -1;
 
 	for (i = 0; i < conf->tty; i++) {
@@ -1360,12 +1360,12 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 		if (ret < 0)
 			break;
 
-		pty_info = &tty_info->pty_info[i];
-		pty_info->busy = 0;
-		pty_info->master = ttyfds[0];
-		pty_info->slave = ttyfds[1];
+		tty = &ttys->tty[i];
+		tty->busy = 0;
+		tty->master = ttyfds[0];
+		tty->slave = ttyfds[1];
 		TRACE("Received pty with master fd %d and slave fd %d from "
-		      "parent", pty_info->master, pty_info->slave);
+		      "parent", tty->master, tty->slave);
 	}
 	if (ret < 0)
 		ERROR("Failed to receive %d ttys from child: %s", conf->tty,
@@ -1373,7 +1373,7 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 	else
 		TRACE("Received %d ttys from child", conf->tty);
 
-	tty_info->nbtty = conf->tty;
+	ttys->nbtty = conf->tty;
 
 	return ret;
 }
