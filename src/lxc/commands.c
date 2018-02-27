@@ -757,7 +757,7 @@ static int lxc_cmd_console_callback(int fd, struct lxc_cmd_req *req,
 	ret = lxc_abstract_unix_send_fds(fd, &masterfd, 1, &rsp, sizeof(rsp));
 	if (ret < 0) {
 		ERROR("Failed to send tty to client");
-		lxc_console_free(handler->conf, fd);
+		lxc_terminal_free(handler->conf, fd);
 		goto out_close;
 	}
 
@@ -1080,7 +1080,7 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 	struct lxc_state_client *client;
 	struct lxc_list *cur, *next;
 
-	lxc_console_free(handler->conf, fd);
+	lxc_terminal_free(handler->conf, fd);
 	lxc_mainloop_del_handler(descr, fd);
 	if (cmd != LXC_CMD_ADD_STATE_CLIENT) {
 		close(fd);

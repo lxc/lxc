@@ -617,7 +617,7 @@ out:
 	return masterfd;
 }
 
-void lxc_console_free(struct lxc_conf *conf, int fd)
+void lxc_terminal_free(struct lxc_conf *conf, int fd)
 {
 	int i;
 	struct lxc_tty_info *tty_info = &conf->tty_info;

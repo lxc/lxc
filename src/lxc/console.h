@@ -101,7 +101,7 @@ extern int  lxc_console_create(struct lxc_conf *);
 extern void lxc_console_delete(struct lxc_pty *);
 
 /*
- * lxc_console_free: mark the console or a tty as unallocated, free any
+ * lxc_terminal_free: mark the console or a tty as unallocated, free any
  * resources allocated by lxc_terminal_allocate().
  *
  * @conf : the configuration of the container whose tty was closed
@@ -109,7 +109,7 @@ extern void lxc_console_delete(struct lxc_pty *);
  *         the console or tty is no longer in use. this is used to match
  *         which console/tty is being freed.
  */
-extern void lxc_console_free(struct lxc_conf *conf, int fd);
+extern void lxc_terminal_free(struct lxc_conf *conf, int fd);
 
 /*
  * Register pty event handlers in an open mainloop
