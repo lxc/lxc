@@ -21,17 +21,16 @@
 #  USA
 
 set -eu
-# set -x  # debug
 
 # Make sure the usual locations are in PATH
 export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Check for required binaries
 for bin in skopeo umoci jq; do
-    if ! type $bin >/dev/null 2>&1; then
-        echo "ERROR: Missing required tool: $bin" 1>&2
-        exit 1
-    fi
+  if ! which $bin >/dev/null 2>&1; then
+    echo "ERROR: Missing required tool: $bin" 1>&2
+    exit 1
+  fi
 done
 
 LOCALSTATEDIR="@LOCALSTATEDIR@"
@@ -40,86 +39,94 @@ LXC_HOOK_DIR="@LXCHOOKDIR@"
 
 # Some useful functions
 cleanup() {
-    if [ -d "${DOWNLOAD_TEMP}" ]; then
-        rm -Rf "${DOWNLOAD_TEMP}"
-    fi
-    if [ -d "${LXC_ROOTFS}.tmp" ]; then
-        rm -Rf "${LXC_ROOTFS}.tmp"
-    fi
+  if [ -d "${DOWNLOAD_TEMP}" ]; then
+    rm -Rf "${DOWNLOAD_TEMP}"
+  fi
+
+  if [ -d "${LXC_ROOTFS}.tmp" ]; then
+    rm -Rf "${LXC_ROOTFS}.tmp"
+  fi
 }
 
 in_userns() {
-    [ -e /proc/self/uid_map ] || { echo no; return; }
-    while read line; do
-        fields=$(echo $line | awk '{ print $1 " " $2 " " $3 }')
-        [ "$fields" = "0 0 4294967295" ] && { echo no; return; } || true
-        echo $fields | grep -q " 0 1$" && { echo userns-root; return; } || true
-    done < /proc/self/uid_map
+  [ -e /proc/self/uid_map ] || { echo no; return; }
+  while read -r line; do
+    fields="$(echo "$line" | awk '{ print $1 " " $2 " " $3 }')"
+    if [ "${fields}" = "0 0 4294967295" ]; then
+      echo no;
+      return;
+    fi
+    if echo "${fields}" | grep -q " 0 1$"; then
+      echo userns-root;
+      return;
+    fi
+  done < /proc/self/uid_map
 
-    [ "$(cat /proc/self/uid_map)" = "$(cat /proc/1/uid_map)" ] && \
-        { echo userns-root; return; }
-    echo yes
+  [ "$(cat /proc/self/uid_map)" = "$(cat /proc/1/uid_map)" ] && { echo userns-root; return; }
+  echo yes
 }
 
 getconfigpath() {
-	basedir="$1"
-	q="$2"
+  basedir="$1"
+  q="$2"
 
-	digest=`cat "${basedir}/index.json" | jq -c -r --arg q "$q" '.manifests[] | if .annotations."org.opencontainers.image.ref.name" == $q then .digest else empty end'`
-	if [ -z "${digest}" ]; then
-		echo "$q not found in index.json" >&2
-		return
-	fi
+  digest=$(jq -c -r --arg q "$q" '.manifests[] | if .annotations."org.opencontainers.image.ref.name" == $q then .digest else empty end' < "${basedir}/index.json")
+  if [ -z "${digest}" ]; then
+    echo "$q not found in index.json" >&2
+    return
+  fi
 
-	# Ok we have the image config digest, now get the config from that,
-	d=${digest:7}
-	cdigest=`cat "${basedir}/blobs/sha256/${d}" | jq -c -r '.config.digest'`
-	if [ -z "${cdigest}" ]; then
-		echo "container config not found" >&2
-		return
-	fi
+  # Ok we have the image config digest, now get the config from that
+  # shellcheck disable=SC2039
+  d=${digest:7}
+  cdigest=$(jq -c -r '.config.digest' < "${basedir}/blobs/sha256/${d}")
+  if [ -z "${cdigest}" ]; then
+    echo "container config not found" >&2
+    return
+  fi
 
-	d2=${cdigest:7}
-	echo "${basedir}/blobs/sha256/${d2}"
-	return
+  # shellcheck disable=SC2039
+  d2=${cdigest:7}
+  echo "${basedir}/blobs/sha256/${d2}"
+  return
 }
 
-# get entrypoint from oci image.  Use sh if unspecified
+# Get entrypoint from oci image. Use sh if unspecified
 getep() {
-	if [ "$#" -eq 0 ]; then
-		echo "/bin/sh"
-		return
-	fi
+  if [ "$#" -eq 0 ]; then
+    echo "/bin/sh"
+    return
+  fi
 
-	configpath="$1"
+  configpath="$1"
 
-	ep=`cat "${configpath}" | jq -c -r '.config.Entrypoint[]?'`
-	cmd=`cat "${configpath}" | jq -c -r '.config.Cmd[]?'`
-	if [ -z "${ep}" ]; then
-		ep="${cmd}"
-		if [ -z "${ep}" ]; then
-			ep="/bin/sh"
-		fi
-	elif [ -n "${cmd}" ]; then
-		ep="${ep} ${cmd}"
-	fi
+  ep=$(jq -c -r '.config.Entrypoint[]?'< "${configpath}")
+  cmd=$(jq -c -r '.config.Cmd[]?' < "${configpath}")
+  if [ -z "${ep}" ]; then
+    ep="${cmd}"
+    if [ -z "${ep}" ]; then
+      ep="/bin/sh"
+    fi
+  elif [ -n "${cmd}" ]; then
+    ep="${ep} ${cmd}"
+  fi
 
-	echo ${ep}
-	return
+  echo "${ep}"
+  return
 }
 
 # get environment from oci image.
 getenv() {
-	if [ "$#" -eq 0 ]; then
-		return
-	fi
+  if [ "$#" -eq 0 ]; then
+    return
+  fi
 
-	configpath="$1"
+  configpath="$1"
 
-	env=`cat "${configpath}" | jq -c -r '.config.Env[]'`
+  env=$(jq -c -r '.config.Env[]'< "${configpath}")
 
-	echo "${env}"
-	return
+  echo "${env}"
+  return
 }
 
 # FIXME 1: only support numerical values in the configuration file.
@@ -127,37 +134,38 @@ getenv() {
 # the default group and supplementary groups of the given user/uid in
 # /etc/passwd from the container are applied."
 getuidgid() {
-	if [ "$#" -eq 0 ]; then
-		echo "0 0"
-		return
-	fi
+  if [ "$#" -eq 0 ]; then
+    echo "0 0"
+    return
+  fi
 
-	configpath="$1"
+  configpath="$1"
 
-	uidgid=`cat "${configpath}" | jq -c -r '.config.User // "0:0"'`
-	uidgid=(${uidgid//:/ })
+  uidgid=$(jq -c -r '.config.User // "0:0"' < "${configpath}")
+  # shellcheck disable=SC2039
+  uidgid=(${uidgid//:/ })
 
-	printf '%d %d' ${uidgid[0]:-0} ${uidgid[1]:-0} 2>/dev/null || true
-	return
+  printf '%d %d' "${uidgid[0]:-0}" "${uidgid[1]:-0}" 2>/dev/null || true
+  return
 }
 
 # get cwd from oci image.
 getcwd() {
-	if [ "$#" -eq 0 ]; then
-		echo "/"
-		return
-	fi
+  if [ "$#" -eq 0 ]; then
+    echo "/"
+    return
+  fi
 
-	configpath="$1"
+  configpath="$1"
 
-	cwd=`cat "${configpath}" | jq -c -r '.config.WorkingDir // "/"'`
+  cwd=$(jq -c -r '.config.WorkingDir // "/"' < "${configpath}")
 
-	echo "${cwd}"
-	return
+  echo "${cwd}"
+  return
 }
 
 usage() {
-    cat <<EOF
+  cat <<EOF
 LXC container template for OCI images
 
 Special arguments:
@@ -176,15 +184,11 @@ LXC internal arguments (do not pass manually!):
 [ --rootfs <rootfs> ]: The path to the container's rootfs
 [ --mapped-uid <map> ]: A uid map (user namespaces)
 [ --mapped-gid <map> ]: A gid map (user namespaces)
-
 EOF
-    return 0
+  return 0
 }
 
-options=$(getopt -o u:h -l help,url:,username:,password:,no-cache,dhcp,\
-name:,path:,rootfs:,mapped-uid:,mapped-gid: -- "$@")
-
-if [ $? -ne 0 ]; then
+if ! options=$(getopt -o u:h -l help,url:,username:,password:,no-cache,dhcp,name:,path:,rootfs:,mapped-uid:,mapped-gid: -- "$@"); then
     usage
     exit 1
 fi
@@ -203,136 +207,152 @@ LXC_PATH=
 LXC_ROOTFS=
 
 while :; do
-    case "$1" in
-        -h|--help)          usage && exit 1;;
-        -u|--url)           OCI_URL=$2; shift 2;;
-        --username)         OCI_USERNAME=$2; shift 2;;
-        --password)         OCI_PASSWORD=$2; shift 2;;
-        --no-cache)         OCI_USE_CACHE="false"; shift 1;;
-        --dhcp)             OCI_USE_DHCP="true"; shift 1;;
-        --name)             LXC_NAME=$2; shift 2;;
-        --path)             LXC_PATH=$2; shift 2;;
-        --rootfs)           LXC_ROOTFS=$2; shift 2;;
-        --mapped-uid)       LXC_MAPPED_UID=$2; shift 2;;
-        --mapped-gid)       LXC_MAPPED_GID=$2; shift 2;;
-        *)                  break;;
-    esac
+  case "$1" in
+    -h|--help)    usage && exit 1;;
+    -u|--url)     OCI_URL=$2; shift 2;;
+    --username)   OCI_USERNAME=$2; shift 2;;
+    --password)   OCI_PASSWORD=$2; shift 2;;
+    --no-cache)   OCI_USE_CACHE="false"; shift 1;;
+    --dhcp)       OCI_USE_DHCP="true"; shift 1;;
+    --name)       LXC_NAME=$2; shift 2;;
+    --path)       LXC_PATH=$2; shift 2;;
+    --rootfs)     LXC_ROOTFS=$2; shift 2;;
+    --mapped-uid) LXC_MAPPED_UID=$2; shift 2;;
+    --mapped-gid) LXC_MAPPED_GID=$2; shift 2;;
+    *)            break;;
+  esac
 done
 
 # Check that we have all variables we need
 if [ -z "$LXC_NAME" ] || [ -z "$LXC_PATH" ] || [ -z "$LXC_ROOTFS" ]; then
-    echo "ERROR: Not running through LXC." 1>&2
-    exit 1
+  echo "ERROR: Not running through LXC" 1>&2
+  exit 1
 fi
 
 if [ -z "$OCI_URL" ]; then
-    echo "ERROR: no OCI URL given"
-    exit 1
+  echo "ERROR: no OCI URL given"
+  exit 1
 fi
 
 if [ -n "$OCI_PASSWORD" ] && [ -z "$OCI_USERNAME" ]; then
-    echo "ERROR: password given but no username specified"
-    exit 1
+  echo "ERROR: password given but no username specified"
+  exit 1
 fi
 
 if [ "${OCI_USE_CACHE}" = "true" ]; then
-    if ! skopeo copy --help | grep -q 'dest-shared-blob-dir'; then
-        echo "INFO: skopeo doesn't support blob caching"
-        OCI_USE_CACHE="false"
-    fi
+  if ! skopeo copy --help | grep -q 'dest-shared-blob-dir'; then
+    echo "INFO: skopeo doesn't support blob caching"
+    OCI_USE_CACHE="false"
+  fi
 fi
 
 USERNS=$(in_userns)
 
 if [ "$USERNS" = "yes" ]; then
-    if [ -z "$LXC_MAPPED_UID" ] || [ "$LXC_MAPPED_UID" = "-1" ]; then
-        echo "ERROR: In a user namespace without a map." 1>&2
-        exit 1
-    fi
+  if [ -z "$LXC_MAPPED_UID" ] || [ "$LXC_MAPPED_UID" = "-1" ]; then
+    echo "ERROR: In a user namespace without a map" 1>&2
+    exit 1
+  fi
 fi
 
 if [ "${OCI_USE_CACHE}" = "true" ]; then
-    if [ "$USERNS" = "yes" ]; then
-        DOWNLOAD_BASE="${HOME}/.cache/lxc"
-    else
-        DOWNLOAD_BASE="${LOCALSTATEDIR}/cache/lxc"
-    fi
+  if [ "$USERNS" = "yes" ]; then
+    DOWNLOAD_BASE="${HOME}/.cache/lxc"
+  else
+    DOWNLOAD_BASE="${LOCALSTATEDIR}/cache/lxc"
+  fi
 else
-    DOWNLOAD_BASE=/tmp
+  DOWNLOAD_BASE=/tmp
 fi
 
 # Trap all exit signals
 trap cleanup EXIT HUP INT TERM
 
-if ! type mktemp >/dev/null 2>&1; then
-    DOWNLOAD_TEMP="${DOWNLOAD_BASE}/lxc-oci.$$"
-    mkdir -p $DOWNLOAD_TEMP
+if ! which mktemp >/dev/null 2>&1; then
+  DOWNLOAD_TEMP="${DOWNLOAD_BASE}/lxc-oci.$$"
+  mkdir -p "${DOWNLOAD_TEMP}"
 else
-    DOWNLOAD_TEMP=$(mktemp -d -p "${DOWNLOAD_BASE}")
+  DOWNLOAD_TEMP=$(mktemp -d -p "${DOWNLOAD_BASE}")
 fi
 
 # Download the image
+# shellcheck disable=SC2039
 skopeo_args=("")
 if [ -n "$OCI_USERNAME" ]; then
-    CREDENTIALS="${OCI_USERNAME}"
-    if [ -n "$OCI_PASSWORD" ]; then
-        CREDENTIALS="${CREDENTIALS}:${OCI_PASSWORD}"
-    fi
-    skopeo_args+=(--src-creds "${CREDENTIALS}")
+  CREDENTIALS="${OCI_USERNAME}"
+
+  if [ -n "$OCI_PASSWORD" ]; then
+    CREDENTIALS="${CREDENTIALS}:${OCI_PASSWORD}"
+  fi
+
+  # shellcheck disable=SC2039
+  skopeo_args+=(--src-creds "${CREDENTIALS}")
 fi
+
 if [ "${OCI_USE_CACHE}" = "true" ]; then
-    skopeo_args+=(--dest-shared-blob-dir "${DOWNLOAD_BASE}")
-    skopeo copy ${skopeo_args[@]} "${OCI_URL}" "oci:${DOWNLOAD_TEMP}:latest"
-    ln -s "${DOWNLOAD_BASE}/sha256" "${DOWNLOAD_TEMP}/blobs/sha256"
+  # shellcheck disable=SC2039
+  # shellcheck disable=SC2068
+  skopeo_args+=(--dest-shared-blob-dir "${DOWNLOAD_BASE}")
+  # shellcheck disable=SC2039
+  # shellcheck disable=SC2068
+  skopeo copy ${skopeo_args[@]} "${OCI_URL}" "oci:${DOWNLOAD_TEMP}:latest"
+  ln -s "${DOWNLOAD_BASE}/sha256" "${DOWNLOAD_TEMP}/blobs/sha256"
 else
-    skopeo copy ${skopeo_args[@]} "${OCI_URL}" "oci:${DOWNLOAD_TEMP}:latest"
+  # shellcheck disable=SC2039
+  # shellcheck disable=SC2068
+  skopeo copy ${skopeo_args[@]} "${OCI_URL}" "oci:${DOWNLOAD_TEMP}:latest"
 fi
 
 echo "Unpacking the rootfs"
+# shellcheck disable=SC2039
 umoci_args=("")
 if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
-    umoci_args+=(--rootless)
+  # shellcheck disable=SC2039
+  umoci_args+=(--rootless)
 fi
+# shellcheck disable=SC2039
+# shellcheck disable=SC2068
 umoci unpack ${umoci_args[@]} --image "${DOWNLOAD_TEMP}:latest" "${LXC_ROOTFS}.tmp"
 rmdir "${LXC_ROOTFS}"
 mv "${LXC_ROOTFS}.tmp/rootfs" "${LXC_ROOTFS}"
 
-OCI_CONF_FILE=$(getconfigpath ${DOWNLOAD_TEMP} latest)
+OCI_CONF_FILE=$(getconfigpath "${DOWNLOAD_TEMP}" latest)
 LXC_CONF_FILE="${LXC_PATH}/config"
-entrypoint=$(getep ${OCI_CONF_FILE})
+entrypoint=$(getep "${OCI_CONF_FILE}")
 echo "lxc.execute.cmd = '${entrypoint}'" >> "${LXC_CONF_FILE}"
 echo "lxc.mount.auto = proc:mixed sys:mixed cgroup:mixed" >> "${LXC_CONF_FILE}"
 
-environment=$(getenv ${OCI_CONF_FILE})
+environment=$(getenv "${OCI_CONF_FILE}")
+# shellcheck disable=SC2039
 while read -r line; do
-    echo "lxc.environment = ${line}" >> "${LXC_CONF_FILE}"
+  echo "lxc.environment = ${line}" >> "${LXC_CONF_FILE}"
 done <<< "${environment}"
 
 if [ -e "${LXC_TEMPLATE_CONFIG}/common.conf" ]; then
-    echo "lxc.include = ${LXC_TEMPLATE_CONFIG}/common.conf" >> "${LXC_CONF_FILE}"
+  echo "lxc.include = ${LXC_TEMPLATE_CONFIG}/common.conf" >> "${LXC_CONF_FILE}"
 fi
 
 if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ] && [ -e "${LXC_TEMPLATE_CONFIG}/userns.conf" ]; then
-    echo "lxc.include = ${LXC_TEMPLATE_CONFIG}/userns.conf" >> "${LXC_CONF_FILE}"
+  echo "lxc.include = ${LXC_TEMPLATE_CONFIG}/userns.conf" >> "${LXC_CONF_FILE}"
 fi
 
 if [ -e "${LXC_TEMPLATE_CONFIG}/oci.common.conf" ]; then
-    echo "lxc.include = ${LXC_TEMPLATE_CONFIG}/oci.common.conf" >> "${LXC_CONF_FILE}"
+  echo "lxc.include = ${LXC_TEMPLATE_CONFIG}/oci.common.conf" >> "${LXC_CONF_FILE}"
 fi
 
 if [ "${OCI_USE_DHCP}" = "true" ]; then
-    echo "lxc.hook.start-host = ${LXC_HOOK_DIR}/dhclient" >> "${LXC_CONF_FILE}"
-    echo "lxc.hook.stop = ${LXC_HOOK_DIR}/dhclient" >> "${LXC_CONF_FILE}"
+  echo "lxc.hook.start-host = ${LXC_HOOK_DIR}/dhclient" >> "${LXC_CONF_FILE}"
+  echo "lxc.hook.stop = ${LXC_HOOK_DIR}/dhclient" >> "${LXC_CONF_FILE}"
 fi
 
 echo "lxc.uts.name = ${LXC_NAME}" >> "${LXC_CONF_FILE}"
 # set the hostname
-cat <<EOF > ${LXC_ROOTFS}/etc/hostname
+cat <<EOF > "${LXC_ROOTFS}/etc/hostname"
 ${LXC_NAME}
 EOF
 
 # set minimal hosts
-cat <<EOF > ${LXC_ROOTFS}/etc/hosts
+cat <<EOF > "${LXC_ROOTFS}/etc/hosts"
 127.0.0.1   localhost
 127.0.1.1   ${LXC_NAME}
 ::1     localhost ip6-localhost ip6-loopback
@@ -342,18 +362,21 @@ ff02::1 ip6-allnodes
 ff02::2 ip6-allrouters
 EOF
 
-uidgid=($(getuidgid ${OCI_CONF_FILE}))
+# shellcheck disable=SC2039
+uidgid=($(getuidgid "${OCI_CONF_FILE}"))
+# shellcheck disable=SC2039
 echo "lxc.init.uid = ${uidgid[0]}" >> "${LXC_CONF_FILE}"
+# shellcheck disable=SC2039
 echo "lxc.init.gid = ${uidgid[1]}" >> "${LXC_CONF_FILE}"
 
-cwd=$(getcwd ${OCI_CONF_FILE})
+cwd=$(getcwd "${OCI_CONF_FILE}")
 echo "lxc.init.cwd = ${cwd}" >> "${LXC_CONF_FILE}"
 
 if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
-    chown $LXC_MAPPED_UID $LXC_PATH/config $LXC_PATH/fstab >/dev/null 2>&1 || true
+  chown "$LXC_MAPPED_UID" "$LXC_PATH/config" "$LXC_PATH/fstab" > /dev/null 2>&1 || true
 fi
 if [ -n "$LXC_MAPPED_GID" ] && [ "$LXC_MAPPED_GID" != "-1" ]; then
-    chgrp $LXC_MAPPED_GID $LXC_PATH/config $LXC_PATH/fstab >/dev/null 2>&1 || true
+  chgrp "$LXC_MAPPED_GID" "$LXC_PATH/config" "$LXC_PATH/fstab" > /dev/null 2>&1 || true
 fi
 
 exit 0
