@@ -236,7 +236,7 @@ extern int lxc_make_controlling_pty(int fd);
 extern int lxc_login_pty(int fd);
 extern void lxc_pty_conf_free(struct lxc_pty *console);
 extern void lxc_terminal_info_init(struct lxc_pty_info *pty);
-extern void lxc_pty_init(struct lxc_pty *pty);
+extern void lxc_terminal_init(struct lxc_pty *pty);
 extern int lxc_pty_map_ids(struct lxc_conf *c, struct lxc_pty *pty);
 
 #endif

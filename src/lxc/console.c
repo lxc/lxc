@@ -59,7 +59,7 @@ static struct lxc_list lxc_ttys;
 
 typedef void (*sighandler_t)(int);
 
-__attribute__((constructor)) void lxc_terminal_init(void)
+__attribute__((constructor)) void lxc_terminal_init_global(void)
 {
 	lxc_list_init(&lxc_ttys);
 }
@@ -1136,7 +1136,7 @@ void lxc_terminal_info_init(struct lxc_pty_info *pty)
 	pty->busy = -1;
 }
 
-void lxc_pty_init(struct lxc_pty *pty)
+void lxc_terminal_init(struct lxc_pty *pty)
 {
 	memset(pty, 0, sizeof(*pty));
 	pty->slave = -EBADF;

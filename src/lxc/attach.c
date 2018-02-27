@@ -978,7 +978,7 @@ static int lxc_attach_pty(struct lxc_conf *conf, struct lxc_pty *pty)
 {
 	int ret;
 
-	lxc_pty_init(pty);
+	lxc_terminal_init(pty);
 
 	ret = lxc_terminal_create(pty);
 	if (ret < 0) {
@@ -1198,7 +1198,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 
 		pty.log_fd = options->log_fd;
 	} else {
-		lxc_pty_init(&pty);
+		lxc_terminal_init(&pty);
 	}
 
 	/* Create a socket pair for IPC communication; set SOCK_CLOEXEC in order
