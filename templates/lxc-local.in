@@ -114,7 +114,7 @@ USERNS="$(in_userns)"
 if [ "${USERNS}" != "no" ]; then
   if [ "${USERNS}" = "yes" ]; then
     if [ -z "${LXC_MAPPED_UID}" ] || [ "${LXC_MAPPED_UID}" = "-1" ]; then
-      echo "ERROR: In a user namespace without a map." 1>&2
+      echo "ERROR: In a user namespace without a map" 1>&2
       exit 1
     fi
     MODE="user"
