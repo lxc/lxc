@@ -1340,7 +1340,7 @@ out_error:
 static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 {
 	int i;
-	struct lxc_terminal_info *pty_info;
+	struct lxc_terminal_info *tty;
 	int ret = -1;
 	int sock = handler->data_sock[1];
 	struct lxc_conf *conf = handler->conf;
@@ -1349,8 +1349,8 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 	if (!conf->tty)
 		return 0;
 
-	tty_info->pty_info = malloc(sizeof(*tty_info->pty_info) * conf->tty);
-	if (!tty_info->pty_info)
+	tty_info->tty = malloc(sizeof(*tty_info->tty) * conf->tty);
+	if (!tty_info->tty)
 		return -1;
 
 	for (i = 0; i < conf->tty; i++) {
@@ -1360,12 +1360,12 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 		if (ret < 0)
 			break;
 
-		pty_info = &tty_info->pty_info[i];
-		pty_info->busy = 0;
-		pty_info->master = ttyfds[0];
-		pty_info->slave = ttyfds[1];
+		tty = &tty_info->tty[i];
+		tty->busy = 0;
+		tty->master = ttyfds[0];
+		tty->slave = ttyfds[1];
 		TRACE("Received pty with master fd %d and slave fd %d from "
-		      "parent", pty_info->master, pty_info->slave);
+		      "parent", tty->master, tty->slave);
 	}
 	if (ret < 0)
 		ERROR("Failed to receive %d ttys from child: %s", conf->tty,

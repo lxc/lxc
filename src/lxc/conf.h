@@ -141,7 +141,7 @@ struct id_map {
  */
 struct lxc_tty_info {
 	int nbtty;
-	struct lxc_terminal_info *pty_info;
+	struct lxc_terminal_info *tty;
 };
 
 struct lxc_tty_state;

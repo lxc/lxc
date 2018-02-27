@@ -848,7 +848,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 		return 0;
 
 	for (i = 0; i < tty_info->nbtty; i++) {
-		struct lxc_terminal_info *pty_info = &tty_info->pty_info[i];
+		struct lxc_terminal_info *tty = &tty_info->tty[i];
 
 		ret = snprintf(path, sizeof(path), "/dev/tty%d", i + 1);
 		if (ret < 0 || (size_t)ret >= sizeof(path))
@@ -875,13 +875,13 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 				return -1;
 			}
 
-			ret = mount(pty_info->name, lxcpath, "none", MS_BIND, 0);
+			ret = mount(tty->name, lxcpath, "none", MS_BIND, 0);
 			if (ret < 0) {
 				WARN("Failed to bind mount \"%s\" onto \"%s\"",
-				     pty_info->name, path);
+				     tty->name, path);
 				continue;
 			}
-			DEBUG("bind mounted \"%s\" onto \"%s\"", pty_info->name,
+			DEBUG("bind mounted \"%s\" onto \"%s\"", tty->name,
 			      path);
 
 			ret = snprintf(lxcpath, sizeof(lxcpath), "%s/tty%d",
@@ -910,17 +910,17 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 				}
 			}
 
-			ret = mount(pty_info->name, path, "none", MS_BIND, 0);
+			ret = mount(tty->name, path, "none", MS_BIND, 0);
 			if (ret < 0) {
-				SYSERROR("Failed to mount '%s'->'%s'", pty_info->name, path);
+				SYSERROR("Failed to mount '%s'->'%s'", tty->name, path);
 				continue;
 			}
 
-			DEBUG("Bind mounted \"%s\" onto \"%s\"", pty_info->name,
+			DEBUG("Bind mounted \"%s\" onto \"%s\"", tty->name,
 			      path);
 		}
 
-		if (!append_ptyname(&conf->pty_names, pty_info->name)) {
+		if (!append_ptyname(&conf->pty_names, tty->name)) {
 			ERROR("Error setting up container_ttys string");
 			return -1;
 		}
@@ -939,17 +939,15 @@ int lxc_allocate_ttys(const char *name, struct lxc_conf *conf)
 	if (!conf->tty)
 		return 0;
 
-	tty_info->pty_info = malloc(sizeof(*tty_info->pty_info) * conf->tty);
-	if (!tty_info->pty_info) {
-		SYSERROR("failed to allocate struct *pty_info");
+	tty_info->tty = malloc(sizeof(*tty_info->tty) * conf->tty);
+	if (!tty_info->tty)
 		return -ENOMEM;
-	}
 
 	for (i = 0; i < conf->tty; i++) {
-		struct lxc_terminal_info *pty_info = &tty_info->pty_info[i];
+		struct lxc_terminal_info *tty = &tty_info->tty[i];
 
-		ret = openpty(&pty_info->master, &pty_info->slave,
-			      pty_info->name, NULL, NULL);
+		ret = openpty(&tty->master, &tty->slave,
+			      tty->name, NULL, NULL);
 		if (ret) {
 			SYSERROR("failed to create pty device number %d", i);
 			tty_info->nbtty = i;
@@ -958,22 +956,22 @@ int lxc_allocate_ttys(const char *name, struct lxc_conf *conf)
 		}
 
 		DEBUG("allocated pty \"%s\" with master fd %d and slave fd %d",
-		      pty_info->name, pty_info->master, pty_info->slave);
+		      tty->name, tty->master, tty->slave);
 
 		/* Prevent leaking the file descriptors to the container */
-		ret = fcntl(pty_info->master, F_SETFD, FD_CLOEXEC);
+		ret = fcntl(tty->master, F_SETFD, FD_CLOEXEC);
 		if (ret < 0)
 			WARN("failed to set FD_CLOEXEC flag on master fd %d of "
 			     "pty device \"%s\": %s",
-			     pty_info->master, pty_info->name, strerror(errno));
+			     tty->master, tty->name, strerror(errno));
 
-		ret = fcntl(pty_info->slave, F_SETFD, FD_CLOEXEC);
+		ret = fcntl(tty->slave, F_SETFD, FD_CLOEXEC);
 		if (ret < 0)
 			WARN("failed to set FD_CLOEXEC flag on slave fd %d of "
 			     "pty device \"%s\": %s",
-			     pty_info->slave, pty_info->name, strerror(errno));
+			     tty->slave, tty->name, strerror(errno));
 
-		pty_info->busy = 0;
+		tty->busy = 0;
 	}
 
 	tty_info->nbtty = conf->tty;
@@ -987,14 +985,14 @@ void lxc_delete_tty(struct lxc_tty_info *tty_info)
 	int i;
 
 	for (i = 0; i < tty_info->nbtty; i++) {
-		struct lxc_terminal_info *pty_info = &tty_info->pty_info[i];
+		struct lxc_terminal_info *tty = &tty_info->tty[i];
 
-		close(pty_info->master);
-		close(pty_info->slave);
+		close(tty->master);
+		close(tty->slave);
 	}
 
-	free(tty_info->pty_info);
-	tty_info->pty_info = NULL;
+	free(tty_info->tty);
+	tty_info->tty = NULL;
 	tty_info->nbtty = 0;
 }
 
@@ -1011,17 +1009,17 @@ static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 
 	for (i = 0; i < conf->tty; i++) {
 		int ttyfds[2];
-		struct lxc_terminal_info *pty_info = &tty_info->pty_info[i];
+		struct lxc_terminal_info *tty = &tty_info->tty[i];
 
-		ttyfds[0] = pty_info->master;
-		ttyfds[1] = pty_info->slave;
+		ttyfds[0] = tty->master;
+		ttyfds[1] = tty->slave;
 
 		ret = lxc_abstract_unix_send_fds(sock, ttyfds, 2, NULL, 0);
 		if (ret < 0)
 			break;
 
 		TRACE("Send pty \"%s\" with master fd %d and slave fd %d to "
-		      "parent", pty_info->name, pty_info->master, pty_info->slave);
+		      "parent", tty->name, tty->master, tty->slave);
 	}
 
 	if (ret < 0)
