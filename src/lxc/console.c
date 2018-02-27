@@ -131,7 +131,7 @@ int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
 	return 0;
 }
 
-struct lxc_tty_state *lxc_console_signal_init(int srcfd, int dstfd)
+struct lxc_tty_state *lxc_terminal_signal_init(int srcfd, int dstfd)
 {
 	int ret;
 	bool istty;
@@ -556,7 +556,7 @@ static int lxc_console_peer_proxy_alloc(struct lxc_pty *console, int sockfd)
 	if (lxc_setup_tios(console->peerpty.slave, &oldtermio) < 0)
 		goto err1;
 
-	ts = lxc_console_signal_init(console->peerpty.master, console->master);
+	ts = lxc_terminal_signal_init(console->peerpty.master, console->master);
 	if (!ts)
 		goto err1;
 
@@ -670,7 +670,7 @@ static int lxc_console_peer_default(struct lxc_pty *console)
 		goto on_error1;
 	}
 
-	ts = lxc_console_signal_init(console->peer, console->master);
+	ts = lxc_terminal_signal_init(console->peer, console->master);
 	console->tty_state = ts;
 	if (!ts) {
 		WARN("Failed to install signal handler");
@@ -1010,7 +1010,7 @@ int lxc_console(struct lxc_container *c, int ttynum,
 	if (ret < 0)
 		TRACE("Process is already group leader");
 
-	ts = lxc_console_signal_init(stdinfd, masterfd);
+	ts = lxc_terminal_signal_init(stdinfd, masterfd);
 	if (!ts) {
 		ret = -1;
 		goto close_fds;

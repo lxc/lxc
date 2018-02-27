@@ -184,7 +184,7 @@ extern int lxc_setup_tios(int fd, struct termios *oldtios);
 extern void lxc_terminal_winsz(int srcfd, int dstfd);
 
 /*
- * lxc_console_signal_init: install signal handler
+ * lxc_terminal_signal_init: install signal handler
  *
  * @srcfd  : src for winsz in SIGWINCH handler
  * @dstfd  : dst for winsz in SIGWINCH handler
@@ -205,7 +205,7 @@ extern void lxc_terminal_winsz(int srcfd, int dstfd);
  *
  * This function allocates memory. It is up to the caller to free it.
  */
-extern struct lxc_tty_state *lxc_console_signal_init(int srcfd, int dstfd);
+extern struct lxc_tty_state *lxc_terminal_signal_init(int srcfd, int dstfd);
 
 /*
  * Handler for signal events. To be registered via the corresponding functions
@@ -217,10 +217,10 @@ extern int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
 /*
  * lxc_console_signal_fini: uninstall signal handler
  *
- * @ts  : the lxc_tty_state returned by lxc_console_signal_init
+ * @ts  : the lxc_tty_state returned by lxc_terminal_signal_init
  *
  * Restore the saved signal handler that was in effect at the time
- * lxc_console_signal_init() was called.
+ * lxc_terminal_signal_init() was called.
  *
  * Must be called with process_lock held to protect the lxc_ttys list, or
  * from a non-threaded context.
