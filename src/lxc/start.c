@@ -804,7 +804,7 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	TRACE("Set up signal fd");
 
 	/* Do this after setting up signals since it might unblock SIGWINCH. */
-	ret = lxc_terminal_create(conf);
+	ret = lxc_terminal_setup(conf);
 	if (ret < 0) {
 		ERROR("Failed to create console");
 		goto out_restore_sigmask;
@@ -1198,7 +1198,7 @@ static int do_start(void *data)
 	/* Some init's such as busybox will set sane tty settings on stdin,
 	 * stdout, stderr which it thinks is the console. We already set them
 	 * the way we wanted on the real terminal, and we want init to do its
-	 * setup on its console ie. the pty allocated in lxc_terminal_create() so
+	 * setup on its console ie. the pty allocated in lxc_terminal_setup() so
 	 * make sure that that pty is stdin,stdout,stderr.
 	 */
 	 if (handler->conf->console.slave >= 0) {

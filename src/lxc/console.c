@@ -870,7 +870,7 @@ err:
 	return -ENODEV;
 }
 
-int lxc_terminal_create(struct lxc_conf *conf)
+int lxc_terminal_setup(struct lxc_conf *conf)
 {
 	int ret;
 	struct lxc_pty *terminal = &conf->console;
