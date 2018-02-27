@@ -88,7 +88,7 @@ void lxc_terminal_winsz(int srcfd, int dstfd)
 	return;
 }
 
-static void lxc_console_winch(struct lxc_tty_state *ts)
+static void lxc_terminal_winch(struct lxc_tty_state *ts)
 {
 	lxc_terminal_winsz(ts->stdinfd, ts->masterfd);
 
@@ -103,7 +103,7 @@ void lxc_console_sigwinch(int sig)
 
 	lxc_list_for_each(it, &lxc_ttys) {
 		ts = it->elem;
-		lxc_console_winch(ts);
+		lxc_terminal_winch(ts);
 	}
 }
 
@@ -126,7 +126,7 @@ int lxc_console_cb_signal_fd(int fd, uint32_t events, void *cbdata,
 	}
 
 	if (siginfo.ssi_signo == SIGWINCH)
-		lxc_console_winch(ts);
+		lxc_terminal_winch(ts);
 
 	return 0;
 }
