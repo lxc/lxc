@@ -931,8 +931,8 @@ int lxc_terminal_set_stdfds(int fd)
 	return 0;
 }
 
-int lxc_console_cb_tty_stdin(int fd, uint32_t events, void *cbdata,
-		struct lxc_epoll_descr *descr)
+int lxc_terminal_stdin_cb(int fd, uint32_t events, void *cbdata,
+			     struct lxc_epoll_descr *descr)
 {
 	struct lxc_tty_state *ts = cbdata;
 	char c;
@@ -1044,7 +1044,7 @@ int lxc_console(struct lxc_container *c, int ttynum,
 	}
 
 	ret = lxc_mainloop_add_handler(&descr, ts->stdinfd,
-				       lxc_console_cb_tty_stdin, ts);
+				       lxc_terminal_stdin_cb, ts);
 	if (ret < 0) {
 		ERROR("Failed to add stdin handler");
 		goto close_mainloop;

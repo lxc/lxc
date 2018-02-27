@@ -40,11 +40,11 @@ struct lxc_tty_state
 	int masterfd;
 	/* Escape sequence to use for exiting the pty. A single char can be
 	 * specified. The pty can then exited by doing: Ctrl + specified_char + q.
-	 * This field is checked by lxc_console_cb_tty_stdin(). Set to -1 to
+	 * This field is checked by lxc_terminal_stdin_cb(). Set to -1 to
 	 * disable exiting the pty via a escape sequence.
 	 */
 	int escape;
-	/* Used internally by lxc_console_cb_tty_stdin() to check whether an
+	/* Used internally by lxc_terminal_stdin_cb() to check whether an
 	 * escape sequence has been received.
 	 */
 	int saw_escape;
@@ -156,8 +156,8 @@ extern int lxc_terminal_set_stdfds(int fd);
  * lxc_terminal_mainloop_add().
  * This function exits the loop cleanly when an EPOLLHUP event is received.
  */
-extern int lxc_console_cb_tty_stdin(int fd, uint32_t events, void *cbdata,
-		struct lxc_epoll_descr *descr);
+extern int lxc_terminal_stdin_cb(int fd, uint32_t events, void *cbdata,
+				 struct lxc_epoll_descr *descr);
 
 /*
  * Handler for events on the master fd of the pty. To be registered via the
