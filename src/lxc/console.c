@@ -776,7 +776,7 @@ void lxc_terminal_delete(struct lxc_pty *console)
  * register a handler for the console's masterfd when we create the mainloop
  * the console handler needs to see an allocated ringbuffer.
  */
-static int lxc_console_create_ringbuf(struct lxc_pty *console)
+static int lxc_terminal_create_ringbuf(struct lxc_pty *console)
 {
 	int ret;
 	struct lxc_ringbuf *buf = &console->ringbuf;
@@ -894,7 +894,7 @@ int lxc_console_create(struct lxc_conf *conf)
 		goto err;
 
 	/* create console ringbuffer */
-	ret = lxc_console_create_ringbuf(console);
+	ret = lxc_terminal_create_ringbuf(console);
 	if (ret < 0)
 		goto err;
 
