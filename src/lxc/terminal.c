@@ -242,7 +242,7 @@ static int lxc_terminal_rotate_log_file(struct lxc_terminal *terminal)
 	return lxc_terminal_create_log_file(terminal);
 }
 
-static int lxc_console_write_log_file(struct lxc_terminal *terminal, char *buf,
+static int lxc_terminal_write_log_file(struct lxc_terminal *terminal, char *buf,
 				      int bytes_read)
 {
 	int ret;
@@ -391,7 +391,7 @@ int lxc_terminal_io_cb(int fd, uint32_t events, void *data,
 
 		/* write to terminal log */
 		if (terminal->log_fd >= 0)
-			w_log = lxc_console_write_log_file(terminal, buf, r);
+			w_log = lxc_terminal_write_log_file(terminal, buf, r);
 	}
 
 	if (w != r)
