@@ -51,7 +51,7 @@
 #include <../include/openpty.h>
 #endif
 
-#define LXC_CONSOLE_BUFFER_SIZE 1024
+#define LXC_TERMINAL_BUFFER_SIZE 1024
 
 lxc_log_define(console, lxc);
 
@@ -348,26 +348,26 @@ static int lxc_console_write_log_file(struct lxc_pty *console, char *buf,
 	return bytes_read;
 }
 
-int lxc_console_cb_con(int fd, uint32_t events, void *data,
+int lxc_terminal_io_cb(int fd, uint32_t events, void *data,
 		       struct lxc_epoll_descr *descr)
 {
-	struct lxc_pty *console = data;
-	char buf[LXC_CONSOLE_BUFFER_SIZE];
+	struct lxc_pty *terminal = data;
+	char buf[LXC_TERMINAL_BUFFER_SIZE];
 	int r, w, w_log, w_rbuf;
 
 	w = r = lxc_read_nointr(fd, buf, sizeof(buf));
 	if (r <= 0) {
-		INFO("Console client on fd %d has exited", fd);
+		INFO("Terminal client on fd %d has exited", fd);
 		lxc_mainloop_del_handler(descr, fd);
 
-		if (fd == console->master) {
-			console->master = -EBADF;
-		} else if (fd == console->peer) {
-			if (console->tty_state) {
-				lxc_terminal_signal_fini(console->tty_state);
-				console->tty_state = NULL;
+		if (fd == terminal->master) {
+			terminal->master = -EBADF;
+		} else if (fd == terminal->peer) {
+			if (terminal->tty_state) {
+				lxc_terminal_signal_fini(terminal->tty_state);
+				terminal->tty_state = NULL;
 			}
-			console->peer = -EBADF;
+			terminal->peer = -EBADF;
 		} else {
 			ERROR("Handler received unexpected file descriptor");
 		}
@@ -376,33 +376,33 @@ int lxc_console_cb_con(int fd, uint32_t events, void *data,
 		return LXC_MAINLOOP_CLOSE;
 	}
 
-	if (fd == console->peer)
-		w = lxc_write_nointr(console->master, buf, r);
+	if (fd == terminal->peer)
+		w = lxc_write_nointr(terminal->master, buf, r);
 
 	w_rbuf = w_log = 0;
-	if (fd == console->master) {
+	if (fd == terminal->master) {
 		/* write to peer first */
-		if (console->peer >= 0)
-			w = lxc_write_nointr(console->peer, buf, r);
+		if (terminal->peer >= 0)
+			w = lxc_write_nointr(terminal->peer, buf, r);
 
-		/* write to console ringbuffer */
-		if (console->buffer_size > 0)
-			w_rbuf = lxc_ringbuf_write(&console->ringbuf, buf, r);
+		/* write to terminal ringbuffer */
+		if (terminal->buffer_size > 0)
+			w_rbuf = lxc_ringbuf_write(&terminal->ringbuf, buf, r);
 
-		if (console->log_fd > 0)
-			w_log = lxc_console_write_log_file(console, buf, r);
-
+		/* write to terminal log */
+		if (terminal->log_fd >= 0)
+			w_log = lxc_console_write_log_file(terminal, buf, r);
 	}
 
 	if (w != r)
-		WARN("Console short write r:%d != w:%d", r, w);
+		WARN("Short write on terminal r:%d != w:%d", r, w);
 
 	if (w_rbuf < 0)
-		TRACE("%s - Failed to write %d bytes to console ringbuffer",
+		TRACE("%s - Failed to write %d bytes to terminal ringbuffer",
 		      strerror(-w_rbuf), r);
 
 	if (w_log < 0)
-		TRACE("Failed to write %d bytes to console log", r);
+		TRACE("Failed to write %d bytes to terminal log", r);
 
 	return 0;
 }
@@ -413,7 +413,7 @@ static int lxc_console_mainloop_add_peer(struct lxc_pty *console)
 
 	if (console->peer >= 0) {
 		ret = lxc_mainloop_add_handler(console->descr, console->peer,
-					       lxc_console_cb_con, console);
+					       lxc_terminal_io_cb, console);
 		if (ret < 0) {
 			WARN("Failed to add console peer handler to mainloop");
 			return -1;
@@ -444,7 +444,7 @@ int lxc_console_mainloop_add(struct lxc_epoll_descr *descr,
 	}
 
 	ret = lxc_mainloop_add_handler(descr, console->master,
-				       lxc_console_cb_con, console);
+				       lxc_terminal_io_cb, console);
 	if (ret < 0) {
 		ERROR("Failed to add handler for %d to mainloop", console->master);
 		return -1;
@@ -966,7 +966,7 @@ int lxc_console_cb_tty_master(int fd, uint32_t events, void *cbdata,
 		struct lxc_epoll_descr *descr)
 {
 	struct lxc_tty_state *ts = cbdata;
-	char buf[LXC_CONSOLE_BUFFER_SIZE];
+	char buf[LXC_TERMINAL_BUFFER_SIZE];
 	int r, w;
 
 	if (fd != ts->masterfd)
