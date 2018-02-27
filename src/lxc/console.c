@@ -509,7 +509,7 @@ int lxc_setup_tios(int fd, struct termios *oldtios)
 	return 0;
 }
 
-static void lxc_console_peer_proxy_free(struct lxc_pty *console)
+static void lxc_terminal_peer_proxy_free(struct lxc_pty *console)
 {
 	if (console->tty_state) {
 		lxc_terminal_signal_fini(console->tty_state);
@@ -571,7 +571,7 @@ static int lxc_console_peer_proxy_alloc(struct lxc_pty *console, int sockfd)
 	return 0;
 
 err1:
-	lxc_console_peer_proxy_free(console);
+	lxc_terminal_peer_proxy_free(console);
 	return -1;
 }
 
@@ -630,7 +630,7 @@ void lxc_console_free(struct lxc_conf *conf, int fd)
 
 	if (console->peerpty.busy == fd) {
 		lxc_mainloop_del_handler(console->descr, console->peerpty.slave);
-		lxc_console_peer_proxy_free(console);
+		lxc_terminal_peer_proxy_free(console);
 	}
 }
 
