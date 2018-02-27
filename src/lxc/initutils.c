@@ -28,47 +28,6 @@
 
 lxc_log_define(lxc_initutils, lxc);
 
-static int mount_fs(const char *source, const char *target, const char *type)
-{
-	/* the umount may fail */
-	if (umount(target))
-		WARN("Failed to unmount %s : %s", target, strerror(errno));
-
-	if (mount(source, target, type, 0, NULL)) {
-		ERROR("Failed to mount %s : %s", target, strerror(errno));
-		return -1;
-	}
-
-	DEBUG("'%s' mounted on '%s'", source, target);
-
-	return 0;
-}
-
-extern void lxc_setup_fs(void)
-{
-	if (mount_fs("proc", "/proc", "proc"))
-		INFO("Failed to remount proc");
-
-	/* if /dev has been populated by us, /dev/shm does not exist */
-	if (access("/dev/shm", F_OK) && mkdir("/dev/shm", 0777))
-		INFO("Failed to create /dev/shm");
-
-	/* if we can't mount /dev/shm, continue anyway */
-	if (mount_fs("shmfs", "/dev/shm", "tmpfs"))
-		INFO("Failed to mount /dev/shm");
-
-	/* If we were able to mount /dev/shm, then /dev exists */
-	/* Sure, but it's read-only per config :) */
-	if (access("/dev/mqueue", F_OK) && mkdir("/dev/mqueue", 0666)) {
-		DEBUG("Failed to create '/dev/mqueue'");
-		return;
-	}
-
-	/* continue even without posix message queue support */
-	if (mount_fs("mqueue", "/dev/mqueue", "mqueue"))
-		INFO("Failed to mount /dev/mqueue");
-}
-
 static char *copy_global_config_value(char *p)
 {
 	int len = strlen(p);

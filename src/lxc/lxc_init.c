@@ -315,8 +315,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	lxc_setup_fs();
-
 	remove_self();
 
 	pid = fork();
