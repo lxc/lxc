@@ -30,7 +30,7 @@ LXC_PATH=
 LXC_ROOTFS=
 LXC_CONFIG=
 MODE="system"
-COMPAT_LEVEL=4
+COMPAT_LEVEL=5
 
 # Make sure the usual locations are in PATH
 export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
