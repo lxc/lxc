@@ -114,7 +114,7 @@ extern void lxc_console_free(struct lxc_conf *conf, int fd);
 /*
  * Register pty event handlers in an open mainloop
  */
-extern int  lxc_console_mainloop_add(struct lxc_epoll_descr *, struct lxc_pty *);
+extern int  lxc_terminal_mainloop_add(struct lxc_epoll_descr *, struct lxc_pty *);
 
 /*
  * Handle SIGWINCH events on the allocated ptys.
@@ -153,7 +153,7 @@ extern int lxc_console_set_stdfds(int fd);
 /*
  * Handler for events on the stdin fd of the pty. To be registered via the
  * corresponding functions declared and defined in mainloop.{c,h} or
- * lxc_console_mainloop_add().
+ * lxc_terminal_mainloop_add().
  * This function exits the loop cleanly when an EPOLLHUP event is received.
  */
 extern int lxc_console_cb_tty_stdin(int fd, uint32_t events, void *cbdata,
@@ -162,7 +162,7 @@ extern int lxc_console_cb_tty_stdin(int fd, uint32_t events, void *cbdata,
 /*
  * Handler for events on the master fd of the pty. To be registered via the
  * corresponding functions declared and defined in mainloop.{c,h} or
- * lxc_console_mainloop_add().
+ * lxc_terminal_mainloop_add().
  * This function exits the loop cleanly when an EPOLLHUP event is received.
  */
 extern int lxc_console_cb_tty_master(int fd, uint32_t events, void *cbdata,
@@ -209,7 +209,7 @@ extern struct lxc_tty_state *lxc_terminal_signal_init(int srcfd, int dstfd);
 
 /*
  * Handler for signal events. To be registered via the corresponding functions
- * declared and defined in mainloop.{c,h} or lxc_console_mainloop_add().
+ * declared and defined in mainloop.{c,h} or lxc_terminal_mainloop_add().
  */
 extern int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
 				    struct lxc_epoll_descr *descr);

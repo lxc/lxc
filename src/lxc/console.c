@@ -433,7 +433,7 @@ static int lxc_terminal_mainloop_add_peer(struct lxc_pty *console)
 	return 0;
 }
 
-int lxc_console_mainloop_add(struct lxc_epoll_descr *descr,
+int lxc_terminal_mainloop_add(struct lxc_epoll_descr *descr,
 			     struct lxc_pty *console)
 {
 	int ret;

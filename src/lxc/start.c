@@ -531,13 +531,13 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 	if (has_console) {
 		struct lxc_pty *console = &handler->conf->console;
 
-		ret = lxc_console_mainloop_add(&descr, console);
+		ret = lxc_terminal_mainloop_add(&descr, console);
 		if (ret < 0) {
 			ERROR("Failed to add console handlers to mainloop");
 			goto out_mainloop_console;
 		}
 
-		ret = lxc_console_mainloop_add(&descr_console, console);
+		ret = lxc_terminal_mainloop_add(&descr_console, console);
 		if (ret < 0) {
 			ERROR("Failed to add console handlers to console mainloop");
 			goto out_mainloop_console;

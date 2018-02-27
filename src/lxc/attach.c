@@ -1012,7 +1012,7 @@ static int lxc_attach_pty_mainloop_init(struct lxc_pty *pty,
 		return -1;
 	}
 
-	ret = lxc_console_mainloop_add(descr, pty);
+	ret = lxc_terminal_mainloop_add(descr, pty);
 	if (ret < 0) {
 		ERROR("Failed to add handlers to mainloop");
 		lxc_mainloop_close(descr);
