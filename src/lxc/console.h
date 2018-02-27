@@ -24,11 +24,61 @@
 #ifndef __LXC_CONSOLE_H
 #define __LXC_CONSOLE_H
 
+#include "config.h"
+
 #include <signal.h>
 #include <stdio.h>
 
-#include "conf.h"
 #include "list.h"
+#include "ringbuf.h"
+
+struct lxc_conf;
+
+/* Defines a structure containing a pty information for virtualizing a tty
+ * @name   : the path name of the slave pty side
+ * @master : the file descriptor of the master
+ * @slave  : the file descriptor of the slave
+ */
+struct lxc_terminal_info {
+	char name[MAXPATHLEN];
+	int master;
+	int slave;
+	int busy;
+};
+
+struct lxc_terminal {
+	int slave;
+	int master;
+	int peer;
+	struct lxc_terminal_info peerpty;
+	struct lxc_epoll_descr *descr;
+	char *path;
+	char name[MAXPATHLEN];
+	struct termios *tios;
+	struct lxc_tty_state *tty_state;
+
+	struct /* lxc_console_log */ {
+		/* size of the log file */
+		uint64_t log_size;
+
+		/* path to the log file */
+		char *log_path;
+
+		/* fd to the log file */
+		int log_fd;
+
+		/* whether the log file will be rotated */
+		unsigned int log_rotate;
+	};
+
+	struct /* lxc_pty_ringbuf */ {
+		/* size of the ringbuffer */
+		uint64_t buffer_size;
+
+		/* the in-memory ringbuffer */
+		struct lxc_ringbuf ringbuf;
+	};
+};
 
 struct lxc_epoll_descr; /* defined in mainloop.h */
 struct lxc_container; /* defined in lxccontainer.h */

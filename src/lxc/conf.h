@@ -35,6 +35,7 @@
 #endif
 #include <stdbool.h>
 
+#include "console.h"
 #include "list.h"
 #include "ringbuf.h"
 #include "start.h" /* for lxc_handler */
@@ -134,20 +135,6 @@ struct id_map {
 };
 
 /*
- * Defines a structure containing a pty information for
- * virtualizing a tty
- * @name   : the path name of the slave pty side
- * @master : the file descriptor of the master
- * @slave  : the file descriptor of the slave
- */
-struct lxc_terminal_info {
-	char name[MAXPATHLEN];
-	int master;
-	int slave;
-	int busy;
-};
-
-/*
  * Defines the number of tty configured and contains the
  * instantiated ptys
  * @nbtty = number of configured ttys
@@ -159,47 +146,7 @@ struct lxc_tty_info {
 
 struct lxc_tty_state;
 
-/*
- * Defines the structure to store the console information
- * @peer   : the file descriptor put/get console traffic
- * @name   : the file name of the slave pty
- */
-struct lxc_terminal {
-	int slave;
-	int master;
-	int peer;
-	struct lxc_terminal_info peerpty;
-	struct lxc_epoll_descr *descr;
-	char *path;
-	char name[MAXPATHLEN];
-	struct termios *tios;
-	struct lxc_tty_state *tty_state;
-
-	struct /* lxc_console_log */ {
-		/* size of the log file */
-		uint64_t log_size;
-
-		/* path to the log file */
-		char *log_path;
-
-		/* fd to the log file */
-		int log_fd;
-
-		/* whether the log file will be rotated */
-		unsigned int log_rotate;
-	};
-
-	struct /* lxc_pty_ringbuf */ {
-		/* size of the ringbuffer */
-		uint64_t buffer_size;
-
-		/* the in-memory ringbuffer */
-		struct lxc_ringbuf ringbuf;
-	};
-};
-
-/*
- * Defines a structure to store the rootfs location, the
+/* Defines a structure to store the rootfs location, the
  * optionals pivot_root, rootfs mount paths
  * @path       : the rootfs source (directory or device)
  * @mount      : where it is mounted
