@@ -962,8 +962,8 @@ int lxc_terminal_stdin_cb(int fd, uint32_t events, void *cbdata,
 	return 0;
 }
 
-int lxc_console_cb_tty_master(int fd, uint32_t events, void *cbdata,
-		struct lxc_epoll_descr *descr)
+int lxc_terminal_master_cb(int fd, uint32_t events, void *cbdata,
+			   struct lxc_epoll_descr *descr)
 {
 	struct lxc_tty_state *ts = cbdata;
 	char buf[LXC_TERMINAL_BUFFER_SIZE];
@@ -1051,7 +1051,7 @@ int lxc_console(struct lxc_container *c, int ttynum,
 	}
 
 	ret = lxc_mainloop_add_handler(&descr, ts->masterfd,
-				       lxc_console_cb_tty_master, ts);
+				       lxc_terminal_master_cb, ts);
 	if (ret < 0) {
 		ERROR("Failed to add master handler");
 		goto close_mainloop;

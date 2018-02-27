@@ -165,8 +165,8 @@ extern int lxc_terminal_stdin_cb(int fd, uint32_t events, void *cbdata,
  * lxc_terminal_mainloop_add().
  * This function exits the loop cleanly when an EPOLLHUP event is received.
  */
-extern int lxc_console_cb_tty_master(int fd, uint32_t events, void *cbdata,
-		struct lxc_epoll_descr *descr);
+extern int lxc_terminal_master_cb(int fd, uint32_t events, void *cbdata,
+				  struct lxc_epoll_descr *descr);
 
 /*
  * Setup new terminal properties. The old terminal settings are stored in
