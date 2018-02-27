@@ -219,7 +219,6 @@ static int lxc_console_rotate_log_file(struct lxc_console *console)
 	size_t len;
 	char *tmp;
 
-	/* rotate the console log file */
 	if (!console->log_path || console->log_rotate == 0)
 		return -EOPNOTSUPP;
 
@@ -281,7 +280,6 @@ static int lxc_console_write_log_file(struct lxc_console *console, char *buf,
 		return lxc_write_nointr(console->log_fd, buf, bytes_read);
 	}
 
-	/* check how much space we have left */
 	space_left = console->log_size - st.st_size;
 
 	/* User doesn't want to rotate the log file and there's no more space
@@ -313,7 +311,7 @@ static int lxc_console_write_log_file(struct lxc_console *console, char *buf,
 	/* Calculate how many bytes we still need to write. */
 	bytes_read -= space_left;
 
-	/* There be more to write but we aren't instructed to rotate the log
+	/* There'd be more to write but we aren't instructed to rotate the log
 	 * file so simply return. There's no error on our side here.
 	 */
 	if (console->log_rotate > 0)
@@ -718,10 +716,6 @@ int lxc_console_write_ringbuffer(struct lxc_console *console)
 
 	/* The log file is simply appended to. */
 	if (console->log_size == 0)
-		return 0;
-
-	/* The log file is rotated. */
-	if (console->log_rotate == 0)
 		return 0;
 
 	used = lxc_ringbuf_used(buf);
