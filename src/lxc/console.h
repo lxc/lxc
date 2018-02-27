@@ -140,7 +140,7 @@ extern int  lxc_console(struct lxc_container *c, int ttynum,
  * Set ttynum to -1 to allocate the first available pty, or to a value within
  * the range specified by lxc.tty.max to allocate a specific pty.
  */
-extern int  lxc_console_getfd(struct lxc_container *c, int *ttynum,
+extern int  lxc_terminal_getfd(struct lxc_container *c, int *ttynum,
 			      int *masterfd);
 
 /*

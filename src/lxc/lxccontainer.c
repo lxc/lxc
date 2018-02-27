@@ -526,7 +526,7 @@ static int do_lxcapi_console_getfd(struct lxc_container *c, int *ttynum, int *ma
 	if (!c)
 		return -1;
 
-	return lxc_console_getfd(c, ttynum, masterfd);
+	return lxc_terminal_getfd(c, ttynum, masterfd);
 }
 
 WRAP_API_2(int, lxcapi_console_getfd, int *, int *)

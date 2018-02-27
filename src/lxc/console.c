@@ -987,7 +987,7 @@ int lxc_terminal_master_cb(int fd, uint32_t events, void *cbdata,
 	return 0;
 }
 
-int lxc_console_getfd(struct lxc_container *c, int *ttynum, int *masterfd)
+int lxc_terminal_getfd(struct lxc_container *c, int *ttynum, int *masterfd)
 {
 	return lxc_cmd_console(c->name, ttynum, masterfd, c->config_path);
 }
