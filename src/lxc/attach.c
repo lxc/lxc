@@ -987,7 +987,7 @@ static int lxc_attach_pty(struct lxc_conf *conf, struct lxc_pty *pty)
 	}
 
 	/* Shift ttys to container. */
-	ret = lxc_pty_map_ids(conf, pty);
+	ret = lxc_terminal_map_ids(conf, pty);
 	if (ret < 0) {
 		ERROR("Failed to shift pty");
 		goto on_error;

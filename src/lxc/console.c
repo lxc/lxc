@@ -1154,7 +1154,7 @@ void lxc_terminal_conf_free(struct lxc_pty *terminal)
 		lxc_ringbuf_release(&terminal->ringbuf);
 }
 
-int lxc_pty_map_ids(struct lxc_conf *c, struct lxc_pty *pty)
+int lxc_terminal_map_ids(struct lxc_conf *c, struct lxc_pty *pty)
 {
 	int ret;
 

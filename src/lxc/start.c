@@ -811,7 +811,7 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	}
 	TRACE("Created console");
 
-	ret = lxc_pty_map_ids(conf, &conf->console);
+	ret = lxc_terminal_map_ids(conf, &conf->console);
 	if (ret < 0) {
 		ERROR("Failed to chown console");
 		goto out_restore_sigmask;
