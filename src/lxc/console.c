@@ -64,7 +64,7 @@ __attribute__((constructor)) void lxc_console_init(void)
 	lxc_list_init(&lxc_ttys);
 }
 
-void lxc_console_winsz(int srcfd, int dstfd)
+void lxc_terminal_winsz(int srcfd, int dstfd)
 {
 	int ret;
 	struct winsize wsz;
@@ -90,7 +90,7 @@ void lxc_console_winsz(int srcfd, int dstfd)
 
 static void lxc_console_winch(struct lxc_tty_state *ts)
 {
-	lxc_console_winsz(ts->stdinfd, ts->masterfd);
+	lxc_terminal_winsz(ts->stdinfd, ts->masterfd);
 
 	if (ts->winch_proxy)
 		lxc_cmd_console_winch(ts->winch_proxy, ts->winch_proxy_lxcpath);
@@ -677,7 +677,7 @@ static int lxc_console_peer_default(struct lxc_pty *console)
 		goto on_error1;
 	}
 
-	lxc_console_winsz(console->peer, console->master);
+	lxc_terminal_winsz(console->peer, console->master);
 
 	console->tios = malloc(sizeof(*console->tios));
 	if (!console->tios) {
@@ -1022,7 +1022,7 @@ int lxc_console(struct lxc_container *c, int ttynum,
 
 	istty = isatty(stdinfd);
 	if (istty) {
-		lxc_console_winsz(stdinfd, masterfd);
+		lxc_terminal_winsz(stdinfd, masterfd);
 		lxc_cmd_console_winch(ts->winch_proxy, ts->winch_proxy_lxcpath);
 	} else {
 		INFO("File descriptor %d does not refer to a tty device", stdinfd);

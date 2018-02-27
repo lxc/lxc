@@ -176,12 +176,12 @@ extern int lxc_setup_tios(int fd, struct termios *oldtios);
 
 
 /*
- * lxc_console_winsz: propagte winsz from one terminal to another
+ * lxc_terminal_winsz: propagate winsz from one terminal to another
  *
  * @srcfd : terminal to get size from (typically a slave pty)
  * @dstfd : terminal to set size on (typically a master pty)
  */
-extern void lxc_console_winsz(int srcfd, int dstfd);
+extern void lxc_terminal_winsz(int srcfd, int dstfd);
 
 /*
  * lxc_console_signal_init: install signal handler
