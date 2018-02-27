@@ -140,7 +140,7 @@ struct id_map {
  * @master : the file descriptor of the master
  * @slave  : the file descriptor of the slave
  */
-struct lxc_pty_info {
+struct lxc_terminal_info {
 	char name[MAXPATHLEN];
 	int master;
 	int slave;
@@ -154,7 +154,7 @@ struct lxc_pty_info {
  */
 struct lxc_tty_info {
 	int nbtty;
-	struct lxc_pty_info *pty_info;
+	struct lxc_terminal_info *pty_info;
 };
 
 struct lxc_tty_state;
@@ -168,7 +168,7 @@ struct lxc_terminal {
 	int slave;
 	int master;
 	int peer;
-	struct lxc_pty_info peerpty;
+	struct lxc_terminal_info peerpty;
 	struct lxc_epoll_descr *descr;
 	char *path;
 	char name[MAXPATHLEN];

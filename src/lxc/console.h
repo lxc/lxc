@@ -235,7 +235,7 @@ extern int lxc_terminal_io_cb(int fd, uint32_t events, void *data,
 extern int lxc_make_controlling_pty(int fd);
 extern int lxc_login_pty(int fd);
 extern void lxc_terminal_conf_free(struct lxc_terminal *console);
-extern void lxc_terminal_info_init(struct lxc_pty_info *pty);
+extern void lxc_terminal_info_init(struct lxc_terminal_info *pty);
 extern void lxc_terminal_init(struct lxc_terminal *pty);
 extern int lxc_terminal_map_ids(struct lxc_conf *c, struct lxc_terminal *pty);
 

@@ -1340,7 +1340,7 @@ out_error:
 static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 {
 	int i;
-	struct lxc_pty_info *pty_info;
+	struct lxc_terminal_info *pty_info;
 	int ret = -1;
 	int sock = handler->data_sock[1];
 	struct lxc_conf *conf = handler->conf;

@@ -204,7 +204,7 @@ void lxc_terminal_signal_fini(struct lxc_tty_state *ts)
 	free(ts);
 }
 
-static int lxc_terminal_truncate_log_file(struct lxc_pty *terminal)
+static int lxc_terminal_truncate_log_file(struct lxc_terminal *terminal)
 {
 	/* be very certain things are kosher */
 	if (!terminal->log_path || terminal->log_fd < 0)
@@ -213,56 +213,56 @@ static int lxc_terminal_truncate_log_file(struct lxc_pty *terminal)
 	return lxc_unpriv(ftruncate(terminal->log_fd, 0));
 }
 
-static int lxc_console_rotate_log_file(struct lxc_pty *console)
+static int lxc_console_rotate_log_file(struct lxc_terminal *terminal)
 {
 	int ret;
 	size_t len;
 	char *tmp;
 
-	if (!console->log_path || console->log_rotate == 0)
+	if (!terminal->log_path || terminal->log_rotate == 0)
 		return -EOPNOTSUPP;
 
 	/* be very certain things are kosher */
-	if (console->log_fd < 0)
+	if (terminal->log_fd < 0)
 		return -EBADF;
 
-	len = strlen(console->log_path) + sizeof(".1");
+	len = strlen(terminal->log_path) + sizeof(".1");
 	tmp = alloca(len);
 
-	ret = snprintf(tmp, len, "%s.1", console->log_path);
+	ret = snprintf(tmp, len, "%s.1", terminal->log_path);
 	if (ret < 0 || (size_t)ret >= len)
 		return -EFBIG;
 
-	close(console->log_fd);
-	console->log_fd = -1;
-	ret = lxc_unpriv(rename(console->log_path, tmp));
+	close(terminal->log_fd);
+	terminal->log_fd = -1;
+	ret = lxc_unpriv(rename(terminal->log_path, tmp));
 	if (ret < 0)
 		return ret;
 
-	return lxc_terminal_create_log_file(console);
+	return lxc_terminal_create_log_file(terminal);
 }
 
-static int lxc_console_write_log_file(struct lxc_pty *console, char *buf,
+static int lxc_console_write_log_file(struct lxc_terminal *terminal, char *buf,
 				      int bytes_read)
 {
 	int ret;
 	int64_t space_left = -1;
 	struct stat st;
 
-	if (console->log_fd < 0)
+	if (terminal->log_fd < 0)
 		return 0;
 
 	/* A log size <= 0 means that there's no limit on the size of the log
          * file at which point we simply ignore whether the log is supposed to
 	 * be rotated or not.
 	 */
-	if (console->log_size <= 0)
-		return lxc_write_nointr(console->log_fd, buf, bytes_read);
+	if (terminal->log_size <= 0)
+		return lxc_write_nointr(terminal->log_fd, buf, bytes_read);
 
 	/* Get current size of the log file. */
-	ret = fstat(console->log_fd, &st);
+	ret = fstat(terminal->log_fd, &st);
 	if (ret < 0) {
-		SYSERROR("Failed to stat the console log file descriptor");
+		SYSERROR("Failed to stat the terminal log file descriptor");
 		return -1;
 	}
 
@@ -273,38 +273,38 @@ static int lxc_console_write_log_file(struct lxc_pty *console, char *buf,
 		 * questionable. Let's not risk anything and tell the user that
 		 * he's requesting us to do weird stuff.
 		 */
-		if (console->log_rotate > 0 || console->log_size > 0)
+		if (terminal->log_rotate > 0 || terminal->log_size > 0)
 			return -EINVAL;
 
 		/* I mean, sure log wherever you want to. */
-		return lxc_write_nointr(console->log_fd, buf, bytes_read);
+		return lxc_write_nointr(terminal->log_fd, buf, bytes_read);
 	}
 
-	space_left = console->log_size - st.st_size;
+	space_left = terminal->log_size - st.st_size;
 
 	/* User doesn't want to rotate the log file and there's no more space
 	 * left so simply truncate it.
 	 */
-	if (space_left <= 0 && console->log_rotate <= 0) {
-		ret = lxc_terminal_truncate_log_file(console);
+	if (space_left <= 0 && terminal->log_rotate <= 0) {
+		ret = lxc_terminal_truncate_log_file(terminal);
 		if (ret < 0)
 			return ret;
 
-		if (bytes_read <= console->log_size)
-			return lxc_write_nointr(console->log_fd, buf, bytes_read);
+		if (bytes_read <= terminal->log_size)
+			return lxc_write_nointr(terminal->log_fd, buf, bytes_read);
 
 		/* Write as much as we can into the buffer and loose the rest. */
-		return lxc_write_nointr(console->log_fd, buf, console->log_size);
+		return lxc_write_nointr(terminal->log_fd, buf, terminal->log_size);
 	}
 
 	/* There's enough space left. */
 	if (bytes_read <= space_left)
-		return lxc_write_nointr(console->log_fd, buf, bytes_read);
+		return lxc_write_nointr(terminal->log_fd, buf, bytes_read);
 
 	/* There's not enough space left but at least write as much as we can
 	 * into the old log file.
 	 */
-	ret = lxc_write_nointr(console->log_fd, buf, space_left);
+	ret = lxc_write_nointr(terminal->log_fd, buf, space_left);
 	if (ret < 0)
 		return -1;
 
@@ -314,26 +314,26 @@ static int lxc_console_write_log_file(struct lxc_pty *console, char *buf,
 	/* There'd be more to write but we aren't instructed to rotate the log
 	 * file so simply return. There's no error on our side here.
 	 */
-	if (console->log_rotate > 0)
-		ret = lxc_console_rotate_log_file(console);
+	if (terminal->log_rotate > 0)
+		ret = lxc_console_rotate_log_file(terminal);
 	else
-		ret = lxc_terminal_truncate_log_file(console);
+		ret = lxc_terminal_truncate_log_file(terminal);
 	if (ret < 0)
 		return ret;
 
-	if (console->log_size < bytes_read) {
+	if (terminal->log_size < bytes_read) {
 		/* Well, this is unfortunate because it means that there is more
 		 * to write than the user has granted us space. There are
 		 * multiple ways to handle this but let's use the simplest one:
 		 * write as much as we can, tell the user that there was more
 		 * stuff to write and move on.
 		 * Note that this scenario shouldn't actually happen with the
-		 * standard pty-based console that LXC allocates since it will
+		 * standard pty-based terminal that LXC allocates since it will
 		 * be switched into raw mode. In raw mode only 1 byte at a time
 		 * should be read and written.
 		 */
-		WARN("Size of console log file is smaller than the bytes to write");
-		ret = lxc_write_nointr(console->log_fd, buf, console->log_size);
+		WARN("Size of terminal log file is smaller than the bytes to write");
+		ret = lxc_write_nointr(terminal->log_fd, buf, terminal->log_size);
 		if (ret < 0)
 			return -1;
 		bytes_read -= ret;
@@ -341,7 +341,7 @@ static int lxc_console_write_log_file(struct lxc_pty *console, char *buf,
 	}
 
 	/* Yay, we made it. */
-	ret = lxc_write_nointr(console->log_fd, buf, bytes_read);
+	ret = lxc_write_nointr(terminal->log_fd, buf, bytes_read);
 	if (ret < 0)
 		return -1;
 	bytes_read -= ret;
@@ -1128,7 +1128,7 @@ int lxc_login_pty(int fd)
 	return 0;
 }
 
-void lxc_terminal_info_init(struct lxc_pty_info *pty)
+void lxc_terminal_info_init(struct lxc_terminal_info *pty)
 {
 	pty->name[0] = '\0';
 	pty->master = -EBADF;
