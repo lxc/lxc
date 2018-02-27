@@ -634,7 +634,7 @@ void lxc_terminal_free(struct lxc_conf *conf, int fd)
 	}
 }
 
-static int lxc_console_peer_default(struct lxc_pty *console)
+static int lxc_terminal_peer_default(struct lxc_pty *console)
 {
 	struct lxc_tty_state *ts;
 	const char *path = console->path;
@@ -861,7 +861,7 @@ int lxc_pty_create(struct lxc_pty *console)
 		goto err;
 	}
 
-	ret = lxc_console_peer_default(console);
+	ret = lxc_terminal_peer_default(console);
 	if (ret < 0) {
 		ERROR("Failed to allocate a peer pty device");
 		goto err;
