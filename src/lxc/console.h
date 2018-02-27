@@ -85,15 +85,15 @@ extern int  lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttynum
 extern int lxc_pty_create(struct lxc_pty *console);
 
 /**
- * lxc_console_create: Create a new pty.
+ * lxc_terminal_create: Create a new pty.
  * - In addition to lxc_pty_create() also sets up all pty logs.
  */
-extern int  lxc_console_create(struct lxc_conf *);
+extern int  lxc_terminal_create(struct lxc_conf *);
 
 /*
- * Delete a pty created via lxc_console_create():
+ * Delete a pty created via lxc_terminal_create():
  * - set old terminal settings
- * - memory allocated via lxc_console_create() is free()ed.
+ * - memory allocated via lxc_terminal_create() is free()ed.
  * - close master/slave pty pair and allocated fd for the peer (usually
  *   /dev/tty)
  * Registered handlers in a mainloop are not automatically deleted.
