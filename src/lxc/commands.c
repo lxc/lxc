@@ -748,7 +748,7 @@ static int lxc_cmd_console_callback(int fd, struct lxc_cmd_req *req,
 	struct lxc_cmd_rsp rsp;
 	int ttynum = PTR_TO_INT(req->data);
 
-	masterfd = lxc_console_allocate(handler->conf, fd, &ttynum);
+	masterfd = lxc_terminal_allocate(handler->conf, fd, &ttynum);
 	if (masterfd < 0)
 		goto out_close;
 

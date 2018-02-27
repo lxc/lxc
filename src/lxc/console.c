@@ -451,7 +451,7 @@ int lxc_terminal_mainloop_add(struct lxc_epoll_descr *descr,
 	}
 
 	/* We cache the descr so that we can add an fd to it when someone
-	 * does attach to it in lxc_console_allocate().
+	 * does attach to it in lxc_terminal_allocate().
 	 */
 	console->descr = descr;
 	ret = lxc_terminal_mainloop_add_peer(console);
@@ -575,7 +575,7 @@ err1:
 	return -1;
 }
 
-int lxc_console_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
+int lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 {
 	int masterfd = -1, ttynum;
 	struct lxc_tty_info *tty_info = &conf->tty_info;

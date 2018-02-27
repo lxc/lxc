@@ -61,14 +61,14 @@ struct lxc_tty_state
 };
 
 /*
- * lxc_console_allocate: allocate the console or a tty
+ * lxc_terminal_allocate: allocate the console or a tty
  *
  * @conf    : the configuration of the container to allocate from
  * @sockfd  : the socket fd whose remote side when closed, will be an
  *            indication that the console or tty is no longer in use
  * @ttyreq  : the tty requested to be opened, -1 for any, 0 for the console
  */
-extern int  lxc_console_allocate(struct lxc_conf *conf, int sockfd, int *ttynum);
+extern int  lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttynum);
 
 /*
  * Create a new pty:
@@ -102,7 +102,7 @@ extern void lxc_console_delete(struct lxc_pty *);
 
 /*
  * lxc_console_free: mark the console or a tty as unallocated, free any
- * resources allocated by lxc_console_allocate().
+ * resources allocated by lxc_terminal_allocate().
  *
  * @conf : the configuration of the container whose tty was closed
  * @fd   : the socket fd whose remote side was closed, which indicated
