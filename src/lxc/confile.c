@@ -82,11 +82,11 @@ lxc_config_define(cap_keep);
 lxc_config_define(cgroup_controller);
 lxc_config_define(cgroup2_controller);
 lxc_config_define(cgroup_dir);
-lxc_config_define(console_logfile);
-lxc_config_define(console_rotate);
-lxc_config_define(console_buffer_logfile);
 lxc_config_define(console_buffer_size);
+lxc_config_define(console_logfile);
 lxc_config_define(console_path);
+lxc_config_define(console_rotate);
+lxc_config_define(console_size);
 lxc_config_define(environment);
 lxc_config_define(ephemeral);
 lxc_config_define(execute_cmd);
@@ -155,11 +155,11 @@ static struct lxc_config_t config[] = {
 	{ "lxc.cgroup2",                   set_config_cgroup2_controller,          get_config_cgroup2_controller,          clr_config_cgroup2_controller,        },
 	{ "lxc.cgroup.dir",                set_config_cgroup_dir,                  get_config_cgroup_dir,                  clr_config_cgroup_dir,                },
 	{ "lxc.cgroup",                    set_config_cgroup_controller,           get_config_cgroup_controller,           clr_config_cgroup_controller,         },
-	{ "lxc.console.buffer.logfile",    set_config_console_buffer_logfile,      get_config_console_buffer_logfile,      clr_config_console_buffer_logfile,    },
 	{ "lxc.console.buffer.size",       set_config_console_buffer_size,         get_config_console_buffer_size,         clr_config_console_buffer_size,       },
 	{ "lxc.console.logfile",           set_config_console_logfile,             get_config_console_logfile,             clr_config_console_logfile,           },
 	{ "lxc.console.path",              set_config_console_path,                get_config_console_path,                clr_config_console_path,              },
 	{ "lxc.console.rotate",            set_config_console_rotate,              get_config_console_rotate,              clr_config_console_rotate,            },
+	{ "lxc.console.size",              set_config_console_size,                get_config_console_size,                clr_config_console_size,              },
 	{ "lxc.environment",               set_config_environment,                 get_config_environment,                 clr_config_environment,               },
 	{ "lxc.ephemeral",                 set_config_ephemeral,                   get_config_ephemeral,                   clr_config_ephemeral,                 },
 	{ "lxc.execute.cmd",               set_config_execute_cmd,                 get_config_execute_cmd,                 clr_config_execute_cmd,               },
@@ -1961,11 +1961,51 @@ static int set_config_console_buffer_size(const char *key, const char *value,
 	return 0;
 }
 
-static int set_config_console_buffer_logfile(const char *key, const char *value,
-					     struct lxc_conf *lxc_conf,
-					     void *data)
+static int set_config_console_size(const char *key, const char *value,
+				   struct lxc_conf *lxc_conf, void *data)
 {
-	return set_config_path_item(&lxc_conf->console.buffer_log_file, value);
+	int ret;
+	int64_t size;
+	uint64_t log_size, pgsz;
+
+	if (lxc_config_value_empty(value)) {
+		lxc_conf->console.log_size = 0;
+		return 0;
+	}
+
+	/* If the user specified "auto" the default log size is 2^17 = 128 Kib */
+	if (!strcmp(value, "auto")) {
+		lxc_conf->console.log_size = 1 << 17;
+		return 0;
+	}
+
+	ret = parse_byte_size_string(value, &size);
+	if (ret < 0)
+		return -1;
+
+	if (size < 0)
+		return -EINVAL;
+
+	/* must be at least a page size */
+	pgsz = lxc_getpagesize();
+	if ((uint64_t)size < pgsz) {
+		NOTICE("Requested ringbuffer size for the console is %" PRId64
+		       " but must be at least %" PRId64
+		       " bytes. Setting ringbuffer size to %" PRId64 " bytes",
+		       size, pgsz, pgsz);
+		size = pgsz;
+	}
+
+	log_size = lxc_find_next_power2((uint64_t)size);
+	if (log_size == 0)
+		return -EINVAL;
+
+	if (log_size != size)
+		NOTICE("Passed size was not a power of 2. Rounding log size to "
+		       "next power of two: %" PRIu64 " bytes", log_size);
+
+	lxc_conf->console.log_size = log_size;
+	return 0;
 }
 
 int append_unexp_config_line(const char *line, struct lxc_conf *conf)
@@ -3298,12 +3338,12 @@ static int get_config_console_buffer_size(const char *key, char *retv,
 	return lxc_get_conf_uint64(c, retv, inlen, c->console.buffer_size);
 }
 
-static int get_config_console_buffer_logfile(const char *key, char *retv,
-					     int inlen, struct lxc_conf *c,
-					     void *data)
+static int get_config_console_size(const char *key, char *retv, int inlen,
+				   struct lxc_conf *c, void *data)
 {
-	return lxc_get_conf_str(retv, inlen, c->console.buffer_log_file);
+	return lxc_get_conf_uint64(c, retv, inlen, c->console.log_size);
 }
+
 
 static int get_config_seccomp_profile(const char *key, char *retv, int inlen,
 				      struct lxc_conf *c, void *data)
@@ -3840,12 +3880,10 @@ static inline int clr_config_console_buffer_size(const char *key,
 	return 0;
 }
 
-static inline int clr_config_console_buffer_logfile(const char *key,
-						    struct lxc_conf *c,
-						    void *data)
+static inline int clr_config_console_size(const char *key, struct lxc_conf *c,
+					  void *data)
 {
-	free(c->console.buffer_log_file);
-	c->console.buffer_log_file = NULL;
+	c->console.log_size = 0;
 	return 0;
 }
 

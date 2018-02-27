@@ -834,20 +834,28 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
         <varlistentry>
           <term>
-            <option>lxc.console.buffer.logfile</option>
+            <option>lxc.console.size</option>
           </term>
           <listitem>
             <para>
-            Setting this option instructs liblxc to write the in-memory
-            ringbuffer to disk. For performance reasons liblxc will only write
-            the in-memory ringbuffer to disk when requested. Note that the this
-            option is only used by liblxc when
-            <option>lxc.console.buffer.size</option> is set.
+            Setting this option instructs liblxc to place a limit on the size of
+            the console log file specified in
+            <option>lxc.console.logfile</option>. Note that size of the log file
+            must be at least as big as a standard page size. When passed a value
+            smaller than a single page size liblxc will set the size of log file
+            to a single page size. A page size is usually 4kB.
 
-            By default liblxc will dump the contents of the in-memory ringbuffer
-            to disk when the container terminates. This allows users to diagnose
-            boot failures when the container crashed before an API request to
-            retrieve the in-memory ringbuffer could be sent or handled.
+            The keyword 'auto' will cause liblxc to place a limit of 128kB on
+            the log file.
+
+            When manually specifying a size for the log file the value should
+            be a power of 2 when converted to bytes. Valid size prefixes are
+            'kB', 'MB', 'GB'. (Note that all conversions are based on multiples
+            of 1024. That means 'kb' == 'KiB', 'MB' == 'MiB', 'GB' == 'GiB'.)
+
+            If users want to mirror the console ringbuffer on disk they should set
+            <option>lxc.console.size</option> equal to
+            <option>lxc.console.buffer.size</option>.
             </para>
           </listitem>
         </varlistentry>
