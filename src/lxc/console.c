@@ -703,7 +703,7 @@ out:
 	return ret;
 }
 
-int lxc_console_write_ringbuffer(struct lxc_pty *console)
+int lxc_terminal_write_ringbuffer(struct lxc_pty *console)
 {
 	char *r_addr;
 	ssize_t ret;
@@ -742,7 +742,7 @@ void lxc_console_delete(struct lxc_pty *console)
 {
 	int ret;
 
-	ret = lxc_console_write_ringbuffer(console);
+	ret = lxc_terminal_write_ringbuffer(console);
 	if (ret < 0)
 		WARN("Failed to write console ringbuffer to console log file");
 
