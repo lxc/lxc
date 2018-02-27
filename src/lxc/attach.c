@@ -996,7 +996,7 @@ static int lxc_attach_pty(struct lxc_conf *conf, struct lxc_pty *pty)
 	return 0;
 
 on_error:
-	lxc_console_delete(pty);
+	lxc_terminal_delete(pty);
 	lxc_pty_conf_free(pty);
 	return -1;
 }
@@ -1386,7 +1386,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 			(void)wait_for_pid(to_cleanup_pid);
 
 		if (options->attach_flags & LXC_ATTACH_ALLOCATE_PTY) {
-			lxc_console_delete(&pty);
+			lxc_terminal_delete(&pty);
 			lxc_pty_conf_free(&pty);
 		}
 		lxc_proc_put_context_info(init_ctx);

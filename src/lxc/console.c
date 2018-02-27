@@ -738,7 +738,7 @@ int lxc_terminal_write_ringbuffer(struct lxc_pty *console)
 	return 0;
 }
 
-void lxc_console_delete(struct lxc_pty *console)
+void lxc_terminal_delete(struct lxc_pty *console)
 {
 	int ret;
 
@@ -870,7 +870,7 @@ int lxc_pty_create(struct lxc_pty *console)
 	return 0;
 
 err:
-	lxc_console_delete(console);
+	lxc_terminal_delete(console);
 	return -ENODEV;
 }
 
@@ -901,7 +901,7 @@ int lxc_console_create(struct lxc_conf *conf)
 	return 0;
 
 err:
-	lxc_console_delete(console);
+	lxc_terminal_delete(console);
 	return -ENODEV;
 }
 

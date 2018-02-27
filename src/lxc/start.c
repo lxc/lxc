@@ -950,7 +950,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	if (ret < 0)
 		WARN("%s - Failed to restore signal mask", strerror(errno));
 
-	lxc_console_delete(&handler->conf->console);
+	lxc_terminal_delete(&handler->conf->console);
 	lxc_delete_tty(&handler->conf->tty_info);
 
 	/* The command socket is now closed, no more state clients can register

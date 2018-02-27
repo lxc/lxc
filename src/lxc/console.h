@@ -98,7 +98,7 @@ extern int  lxc_console_create(struct lxc_conf *);
  *   /dev/tty)
  * Registered handlers in a mainloop are not automatically deleted.
  */
-extern void lxc_console_delete(struct lxc_pty *);
+extern void lxc_terminal_delete(struct lxc_pty *);
 
 /*
  * lxc_terminal_free: mark the console or a tty as unallocated, free any
