@@ -47,7 +47,6 @@
 #include "commands_utils.h"
 #include "confile.h"
 #include "confile_utils.h"
-#include "console.h"
 #include "criu.h"
 #include "error.h"
 #include "initutils.h"
@@ -66,6 +65,7 @@
 #include "storage/btrfs.h"
 #include "storage/overlay.h"
 #include "sync.h"
+#include "terminal.h"
 #include "utils.h"
 #include "version.h"
 

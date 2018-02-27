@@ -61,13 +61,13 @@
 #include "conf.h"
 #include "config.h"
 #include "confile.h"
-#include "console.h"
 #include "log.h"
 #include "lsm/lsm.h"
 #include "lxclock.h"
 #include "lxcseccomp.h"
 #include "mainloop.h"
 #include "namespace.h"
+#include "terminal.h"
 #include "utils.h"
 
 #if HAVE_SYS_PERSONALITY_H

@@ -38,11 +38,11 @@
 #include "commands.h"
 #include "conf.h"
 #include "config.h"
-#include "console.h"
 #include "log.h"
 #include "lxclock.h"
 #include "mainloop.h"
 #include "start.h" 	/* for struct lxc_handler */
+#include "terminal.h"
 #include "utils.h"
 
 #if HAVE_PTY_H

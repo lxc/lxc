@@ -35,10 +35,10 @@
 #endif
 #include <stdbool.h>
 
-#include "console.h"
 #include "list.h"
 #include "ringbuf.h"
 #include "start.h" /* for lxc_handler */
+#include "terminal.h"
 
 #if HAVE_SCMP_FILTER_CTX
 typedef void * scmp_filter_ctx;

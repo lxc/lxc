@@ -42,13 +42,13 @@
 #include "commands_utils.h"
 #include "conf.h"
 #include "confile.h"
-#include "console.h"
 #include "log.h"
 #include "lxc.h"
 #include "lxclock.h"
 #include "mainloop.h"
 #include "monitor.h"
 #include "start.h"
+#include "terminal.h"
 #include "utils.h"
 
 /*

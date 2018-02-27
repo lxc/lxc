@@ -73,9 +73,9 @@
 #include "cgroup.h"
 #include "conf.h"
 #include "confile_utils.h"
-#include "console.h"
 #include "error.h"
 #include "log.h"
+#include "lsm/lsm.h"
 #include "lxclock.h"
 #include "lxcseccomp.h"
 #include "namespace.h"
@@ -85,8 +85,8 @@
 #include "storage.h"
 #include "storage/aufs.h"
 #include "storage/overlay.h"
+#include "terminal.h"
 #include "utils.h"
-#include "lsm/lsm.h"
 
 #if HAVE_LIBCAP
 #include <sys/capability.h>

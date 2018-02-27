@@ -71,9 +71,9 @@
 #include "commands_utils.h"
 #include "conf.h"
 #include "confile_utils.h"
-#include "console.h"
 #include "error.h"
 #include "list.h"
+#include "lsm/lsm.h"
 #include "log.h"
 #include "lxccontainer.h"
 #include "lxclock.h"
@@ -83,11 +83,11 @@
 #include "namespace.h"
 #include "network.h"
 #include "start.h"
-#include "sync.h"
-#include "utils.h"
-#include "lsm/lsm.h"
 #include "storage/storage.h"
 #include "storage/storage_utils.h"
+#include "sync.h"
+#include "terminal.h"
+#include "utils.h"
 
 lxc_log_define(lxc_start, lxc);
 
