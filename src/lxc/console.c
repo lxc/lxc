@@ -59,7 +59,7 @@ static struct lxc_list lxc_ttys;
 
 typedef void (*sighandler_t)(int);
 
-__attribute__((constructor)) void lxc_console_init(void)
+__attribute__((constructor)) void lxc_terminal_init(void)
 {
 	lxc_list_init(&lxc_ttys);
 }
