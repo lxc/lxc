@@ -1128,7 +1128,7 @@ int lxc_login_pty(int fd)
 	return 0;
 }
 
-void lxc_pty_info_init(struct lxc_pty_info *pty)
+void lxc_terminal_info_init(struct lxc_pty_info *pty)
 {
 	pty->name[0] = '\0';
 	pty->master = -EBADF;
@@ -1143,7 +1143,7 @@ void lxc_pty_init(struct lxc_pty *pty)
 	pty->master = -EBADF;
 	pty->peer = -EBADF;
 	pty->log_fd = -EBADF;
-	lxc_pty_info_init(&pty->peerpty);
+	lxc_terminal_info_init(&pty->peerpty);
 }
 
 void lxc_pty_conf_free(struct lxc_pty *terminal)
