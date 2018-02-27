@@ -213,7 +213,7 @@ static int lxc_terminal_truncate_log_file(struct lxc_terminal *terminal)
 	return lxc_unpriv(ftruncate(terminal->log_fd, 0));
 }
 
-static int lxc_console_rotate_log_file(struct lxc_terminal *terminal)
+static int lxc_terminal_rotate_log_file(struct lxc_terminal *terminal)
 {
 	int ret;
 	size_t len;
@@ -315,7 +315,7 @@ static int lxc_console_write_log_file(struct lxc_terminal *terminal, char *buf,
 	 * file so simply return. There's no error on our side here.
 	 */
 	if (terminal->log_rotate > 0)
-		ret = lxc_console_rotate_log_file(terminal);
+		ret = lxc_terminal_rotate_log_file(terminal);
 	else
 		ret = lxc_terminal_truncate_log_file(terminal);
 	if (ret < 0)
