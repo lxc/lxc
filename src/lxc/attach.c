@@ -997,7 +997,7 @@ static int lxc_attach_pty(struct lxc_conf *conf, struct lxc_pty *pty)
 
 on_error:
 	lxc_terminal_delete(pty);
-	lxc_pty_conf_free(pty);
+	lxc_terminal_conf_free(pty);
 	return -1;
 }
 
@@ -1387,7 +1387,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 
 		if (options->attach_flags & LXC_ATTACH_ALLOCATE_PTY) {
 			lxc_terminal_delete(&pty);
-			lxc_pty_conf_free(&pty);
+			lxc_terminal_conf_free(&pty);
 		}
 		lxc_proc_put_context_info(init_ctx);
 		return ret_parent;

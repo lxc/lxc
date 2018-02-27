@@ -3786,7 +3786,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 		return;
 	if (current_config == conf)
 		current_config = NULL;
-	lxc_pty_conf_free(&conf->console);
+	lxc_terminal_conf_free(&conf->console);
 	free(conf->rootfs.mount);
 	free(conf->rootfs.bdev_type);
 	free(conf->rootfs.options);

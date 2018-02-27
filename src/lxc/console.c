@@ -1146,7 +1146,7 @@ void lxc_terminal_init(struct lxc_pty *pty)
 	lxc_terminal_info_init(&pty->peerpty);
 }
 
-void lxc_pty_conf_free(struct lxc_pty *terminal)
+void lxc_terminal_conf_free(struct lxc_pty *terminal)
 {
 	free(terminal->log_path);
 	free(terminal->path);
