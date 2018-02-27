@@ -189,7 +189,7 @@ on_error:
 	return ts;
 }
 
-void lxc_console_signal_fini(struct lxc_tty_state *ts)
+void lxc_terminal_signal_fini(struct lxc_tty_state *ts)
 {
 	if (ts->sigfd >= 0) {
 		close(ts->sigfd);
@@ -364,7 +364,7 @@ int lxc_console_cb_con(int fd, uint32_t events, void *data,
 			console->master = -EBADF;
 		} else if (fd == console->peer) {
 			if (console->tty_state) {
-				lxc_console_signal_fini(console->tty_state);
+				lxc_terminal_signal_fini(console->tty_state);
 				console->tty_state = NULL;
 			}
 			console->peer = -EBADF;
@@ -512,7 +512,7 @@ int lxc_setup_tios(int fd, struct termios *oldtios)
 static void lxc_console_peer_proxy_free(struct lxc_pty *console)
 {
 	if (console->tty_state) {
-		lxc_console_signal_fini(console->tty_state);
+		lxc_terminal_signal_fini(console->tty_state);
 		console->tty_state = NULL;
 	}
 	close(console->peerpty.master);
@@ -1092,7 +1092,7 @@ close_mainloop:
 	lxc_mainloop_close(&descr);
 
 sigwinch_fini:
-	lxc_console_signal_fini(ts);
+	lxc_terminal_signal_fini(ts);
 
 close_fds:
 	close(masterfd);
