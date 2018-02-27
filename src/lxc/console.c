@@ -53,7 +53,7 @@
 
 #define LXC_TERMINAL_BUFFER_SIZE 1024
 
-lxc_log_define(console, lxc);
+lxc_log_define(terminal, lxc);
 
 static struct lxc_list lxc_ttys;
 
@@ -204,13 +204,13 @@ void lxc_terminal_signal_fini(struct lxc_tty_state *ts)
 	free(ts);
 }
 
-static int lxc_console_truncate_log_file(struct lxc_pty *console)
+static int lxc_terminal_truncate_log_file(struct lxc_pty *terminal)
 {
 	/* be very certain things are kosher */
-	if (!console->log_path || console->log_fd < 0)
+	if (!terminal->log_path || terminal->log_fd < 0)
 		return -EBADF;
 
-	return lxc_unpriv(ftruncate(console->log_fd, 0));
+	return lxc_unpriv(ftruncate(terminal->log_fd, 0));
 }
 
 static int lxc_console_rotate_log_file(struct lxc_pty *console)
@@ -239,7 +239,7 @@ static int lxc_console_rotate_log_file(struct lxc_pty *console)
 	if (ret < 0)
 		return ret;
 
-	return lxc_console_create_log_file(console);
+	return lxc_terminal_create_log_file(console);
 }
 
 static int lxc_console_write_log_file(struct lxc_pty *console, char *buf,
@@ -286,7 +286,7 @@ static int lxc_console_write_log_file(struct lxc_pty *console, char *buf,
 	 * left so simply truncate it.
 	 */
 	if (space_left <= 0 && console->log_rotate <= 0) {
-		ret = lxc_console_truncate_log_file(console);
+		ret = lxc_terminal_truncate_log_file(console);
 		if (ret < 0)
 			return ret;
 
@@ -317,7 +317,7 @@ static int lxc_console_write_log_file(struct lxc_pty *console, char *buf,
 	if (console->log_rotate > 0)
 		ret = lxc_console_rotate_log_file(console);
 	else
-		ret = lxc_console_truncate_log_file(console);
+		ret = lxc_terminal_truncate_log_file(console);
 	if (ret < 0)
 		return ret;
 
@@ -407,24 +407,24 @@ int lxc_terminal_io_cb(int fd, uint32_t events, void *data,
 	return 0;
 }
 
-static int lxc_terminal_mainloop_add_peer(struct lxc_pty *console)
+static int lxc_terminal_mainloop_add_peer(struct lxc_pty *terminal)
 {
 	int ret;
 
-	if (console->peer >= 0) {
-		ret = lxc_mainloop_add_handler(console->descr, console->peer,
-					       lxc_terminal_io_cb, console);
+	if (terminal->peer >= 0) {
+		ret = lxc_mainloop_add_handler(terminal->descr, terminal->peer,
+					       lxc_terminal_io_cb, terminal);
 		if (ret < 0) {
-			WARN("Failed to add console peer handler to mainloop");
+			WARN("Failed to add terminal peer handler to mainloop");
 			return -1;
 		}
 	}
 
-	if (!console->tty_state || console->tty_state->sigfd < 0)
+	if (!terminal->tty_state || terminal->tty_state->sigfd < 0)
 		return 0;
 
-	ret = lxc_mainloop_add_handler(console->descr, console->tty_state->sigfd,
-				       lxc_terminal_signalfd_cb, console->tty_state);
+	ret = lxc_mainloop_add_handler(terminal->descr, terminal->tty_state->sigfd,
+				       lxc_terminal_signalfd_cb, terminal->tty_state);
 	if (ret < 0) {
 		WARN("Failed to add signal handler to mainloop");
 		return -1;
@@ -434,27 +434,27 @@ static int lxc_terminal_mainloop_add_peer(struct lxc_pty *console)
 }
 
 int lxc_terminal_mainloop_add(struct lxc_epoll_descr *descr,
-			     struct lxc_pty *console)
+			     struct lxc_pty *terminal)
 {
 	int ret;
 
-	if (console->master < 0) {
-		INFO("no console");
+	if (terminal->master < 0) {
+		INFO("Terminal is not initialized");
 		return 0;
 	}
 
-	ret = lxc_mainloop_add_handler(descr, console->master,
-				       lxc_terminal_io_cb, console);
+	ret = lxc_mainloop_add_handler(descr, terminal->master,
+				       lxc_terminal_io_cb, terminal);
 	if (ret < 0) {
-		ERROR("Failed to add handler for %d to mainloop", console->master);
+		ERROR("Failed to add handler for %d to mainloop", terminal->master);
 		return -1;
 	}
 
 	/* We cache the descr so that we can add an fd to it when someone
 	 * does attach to it in lxc_terminal_allocate().
 	 */
-	console->descr = descr;
-	ret = lxc_terminal_mainloop_add_peer(console);
+	terminal->descr = descr;
+	ret = lxc_terminal_mainloop_add_peer(terminal);
 	if (ret < 0)
 		return -1;
 
@@ -509,69 +509,69 @@ int lxc_setup_tios(int fd, struct termios *oldtios)
 	return 0;
 }
 
-static void lxc_terminal_peer_proxy_free(struct lxc_pty *console)
+static void lxc_terminal_peer_proxy_free(struct lxc_pty *terminal)
 {
-	if (console->tty_state) {
-		lxc_terminal_signal_fini(console->tty_state);
-		console->tty_state = NULL;
+	if (terminal->tty_state) {
+		lxc_terminal_signal_fini(terminal->tty_state);
+		terminal->tty_state = NULL;
 	}
-	close(console->peerpty.master);
-	close(console->peerpty.slave);
-	console->peerpty.master = -1;
-	console->peerpty.slave = -1;
-	console->peerpty.busy = -1;
-	console->peerpty.name[0] = '\0';
-	console->peer = -1;
+	close(terminal->peerpty.master);
+	close(terminal->peerpty.slave);
+	terminal->peerpty.master = -1;
+	terminal->peerpty.slave = -1;
+	terminal->peerpty.busy = -1;
+	terminal->peerpty.name[0] = '\0';
+	terminal->peer = -1;
 }
 
-static int lxc_terminal_peer_proxy_alloc(struct lxc_pty *console, int sockfd)
+static int lxc_terminal_peer_proxy_alloc(struct lxc_pty *terminal, int sockfd)
 {
 	struct termios oldtermio;
 	struct lxc_tty_state *ts;
 	int ret;
 
-	if (console->master < 0) {
-		ERROR("console not set up");
+	if (terminal->master < 0) {
+		ERROR("Terminal not set up");
 		return -1;
 	}
-	if (console->peerpty.busy != -1 || console->peer != -1) {
-		NOTICE("console already in use");
+	if (terminal->peerpty.busy != -1 || terminal->peer != -1) {
+		NOTICE("Terminal already in use");
 		return -1;
 	}
-	if (console->tty_state) {
-		ERROR("console already has tty_state");
+	if (terminal->tty_state) {
+		ERROR("Terminal already has tty_state");
 		return -1;
 	}
 
 	/* this is the proxy pty that will be given to the client, and that
 	 * the real pty master will send to / recv from
 	 */
-	ret = openpty(&console->peerpty.master, &console->peerpty.slave,
-		    console->peerpty.name, NULL, NULL);
+	ret = openpty(&terminal->peerpty.master, &terminal->peerpty.slave,
+		    terminal->peerpty.name, NULL, NULL);
 	if (ret) {
 		SYSERROR("failed to create proxy pty");
 		return -1;
 	}
 
-	if (lxc_setup_tios(console->peerpty.slave, &oldtermio) < 0)
+	if (lxc_setup_tios(terminal->peerpty.slave, &oldtermio) < 0)
 		goto err1;
 
-	ts = lxc_terminal_signal_init(console->peerpty.master, console->master);
+	ts = lxc_terminal_signal_init(terminal->peerpty.master, terminal->master);
 	if (!ts)
 		goto err1;
 
-	console->tty_state = ts;
-	console->peer = console->peerpty.slave;
-	console->peerpty.busy = sockfd;
-	ret = lxc_terminal_mainloop_add_peer(console);
+	terminal->tty_state = ts;
+	terminal->peer = terminal->peerpty.slave;
+	terminal->peerpty.busy = sockfd;
+	ret = lxc_terminal_mainloop_add_peer(terminal);
 	if (ret < 0)
 		goto err1;
 
-	DEBUG("%d %s peermaster:%d sockfd:%d", lxc_raw_getpid(), __FUNCTION__, console->peerpty.master, sockfd);
+	DEBUG("%d peermaster:%d sockfd:%d", lxc_raw_getpid(), terminal->peerpty.master, sockfd);
 	return 0;
 
 err1:
-	lxc_terminal_peer_proxy_free(console);
+	lxc_terminal_peer_proxy_free(terminal);
 	return -1;
 }
 
@@ -579,12 +579,12 @@ int lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 {
 	int masterfd = -1, ttynum;
 	struct lxc_tty_info *tty_info = &conf->tty_info;
-	struct lxc_pty *console = &conf->console;
+	struct lxc_pty *terminal = &conf->console;
 
 	if (*ttyreq == 0) {
-		if (lxc_terminal_peer_proxy_alloc(console, sockfd) < 0)
+		if (lxc_terminal_peer_proxy_alloc(terminal, sockfd) < 0)
 			goto out;
-		masterfd = console->peerpty.master;
+		masterfd = terminal->peerpty.master;
 		goto out;
 	}
 
@@ -621,27 +621,27 @@ void lxc_terminal_free(struct lxc_conf *conf, int fd)
 {
 	int i;
 	struct lxc_tty_info *tty_info = &conf->tty_info;
-	struct lxc_pty *console = &conf->console;
+	struct lxc_pty *terminal = &conf->console;
 
 	for (i = 0; i < tty_info->nbtty; i++) {
 		if (tty_info->pty_info[i].busy == fd)
 			tty_info->pty_info[i].busy = 0;
 	}
 
-	if (console->peerpty.busy == fd) {
-		lxc_mainloop_del_handler(console->descr, console->peerpty.slave);
-		lxc_terminal_peer_proxy_free(console);
+	if (terminal->peerpty.busy == fd) {
+		lxc_mainloop_del_handler(terminal->descr, terminal->peerpty.slave);
+		lxc_terminal_peer_proxy_free(terminal);
 	}
 }
 
-static int lxc_terminal_peer_default(struct lxc_pty *console)
+static int lxc_terminal_peer_default(struct lxc_pty *terminal)
 {
 	struct lxc_tty_state *ts;
-	const char *path = console->path;
+	const char *path = terminal->path;
 	int fd;
 	int ret = 0;
 
-	/* If no console was given, try current controlling terminal, there
+	/* If no terminal was given, try current controlling terminal, there
 	 * won't be one if we were started as a daemon (-d).
 	 */
 	if (!path && !access("/dev/tty", F_OK)) {
@@ -658,129 +658,125 @@ static int lxc_terminal_peer_default(struct lxc_pty *console)
 		goto out;
 	}
 
-	console->peer = lxc_unpriv(open(path, O_RDWR | O_CLOEXEC));
-	if (console->peer < 0) {
+	terminal->peer = lxc_unpriv(open(path, O_RDWR | O_CLOEXEC));
+	if (terminal->peer < 0) {
 		ERROR("Failed to open \"%s\": %s", path, strerror(errno));
 		return -ENOTTY;
 	}
 	DEBUG("using \"%s\" as peer tty device", path);
 
-	if (!isatty(console->peer)) {
+	if (!isatty(terminal->peer)) {
 		ERROR("file descriptor for file \"%s\" does not refer to a tty device", path);
 		goto on_error1;
 	}
 
-	ts = lxc_terminal_signal_init(console->peer, console->master);
-	console->tty_state = ts;
+	ts = lxc_terminal_signal_init(terminal->peer, terminal->master);
+	terminal->tty_state = ts;
 	if (!ts) {
 		WARN("Failed to install signal handler");
 		goto on_error1;
 	}
 
-	lxc_terminal_winsz(console->peer, console->master);
+	lxc_terminal_winsz(terminal->peer, terminal->master);
 
-	console->tios = malloc(sizeof(*console->tios));
-	if (!console->tios) {
+	terminal->tios = malloc(sizeof(*terminal->tios));
+	if (!terminal->tios) {
 		SYSERROR("failed to allocate memory");
 		goto on_error1;
 	}
 
-	if (lxc_setup_tios(console->peer, console->tios) < 0)
+	if (lxc_setup_tios(terminal->peer, terminal->tios) < 0)
 		goto on_error2;
 	else
 		goto out;
 
 on_error2:
-	free(console->tios);
-	console->tios = NULL;
+	free(terminal->tios);
+	terminal->tios = NULL;
 
 on_error1:
-	close(console->peer);
-	console->peer = -1;
+	close(terminal->peer);
+	terminal->peer = -1;
 	ret = -ENOTTY;
 
 out:
 	return ret;
 }
 
-int lxc_terminal_write_ringbuffer(struct lxc_pty *console)
+int lxc_terminal_write_ringbuffer(struct lxc_pty *terminal)
 {
 	char *r_addr;
 	ssize_t ret;
 	uint64_t used;
-	struct lxc_ringbuf *buf = &console->ringbuf;
+	struct lxc_ringbuf *buf = &terminal->ringbuf;
 
 	/* There's not log file where we can dump the ringbuffer to. */
-	if (console->log_fd < 0)
-		return 0;
-
-	/* The log file is simply appended to. */
-	if (console->log_size == 0)
+	if (terminal->log_fd < 0)
 		return 0;
 
 	used = lxc_ringbuf_used(buf);
 	if (used == 0)
 		return 0;
 
-	ret = lxc_console_truncate_log_file(console);
+	ret = lxc_terminal_truncate_log_file(terminal);
 	if (ret < 0)
 		return ret;
 
 	/* Write as much as we can without exceeding the limit. */
-	if (console->log_size < used)
-		used = console->log_size;
+	if (terminal->log_size < used)
+		used = terminal->log_size;
 
 	r_addr = lxc_ringbuf_get_read_addr(buf);
-	ret = lxc_write_nointr(console->log_fd, r_addr, used);
+	ret = lxc_write_nointr(terminal->log_fd, r_addr, used);
 	if (ret < 0)
 		return -EIO;
 
 	return 0;
 }
 
-void lxc_terminal_delete(struct lxc_pty *console)
+void lxc_terminal_delete(struct lxc_pty *terminal)
 {
 	int ret;
 
-	ret = lxc_terminal_write_ringbuffer(console);
+	ret = lxc_terminal_write_ringbuffer(terminal);
 	if (ret < 0)
-		WARN("Failed to write console ringbuffer to console log file");
+		WARN("Failed to write terminal log to disk");
 
-	if (console->tios && console->peer >= 0) {
-		ret = tcsetattr(console->peer, TCSAFLUSH, console->tios);
+	if (terminal->tios && terminal->peer >= 0) {
+		ret = tcsetattr(terminal->peer, TCSAFLUSH, terminal->tios);
 		if (ret < 0)
 			WARN("%s - Failed to set old terminal settings", strerror(errno));
 	}
-	free(console->tios);
-	console->tios = NULL;
+	free(terminal->tios);
+	terminal->tios = NULL;
 
-	if (console->peer >= 0)
-		close(console->peer);
-	console->peer = -1;
+	if (terminal->peer >= 0)
+		close(terminal->peer);
+	terminal->peer = -1;
 
-	if (console->master >= 0)
-		close(console->master);
-	console->master = -1;
+	if (terminal->master >= 0)
+		close(terminal->master);
+	terminal->master = -1;
 
-	if (console->slave >= 0)
-		close(console->slave);
-	console->slave = -1;
+	if (terminal->slave >= 0)
+		close(terminal->slave);
+	terminal->slave = -1;
 
-	if (console->log_fd >= 0)
-		close(console->log_fd);
-	console->log_fd = -1;
+	if (terminal->log_fd >= 0)
+		close(terminal->log_fd);
+	terminal->log_fd = -1;
 }
 
 /**
  * Note that this function needs to run before the mainloop starts. Since we
- * register a handler for the console's masterfd when we create the mainloop
- * the console handler needs to see an allocated ringbuffer.
+ * register a handler for the terminal's masterfd when we create the mainloop
+ * the terminal handler needs to see an allocated ringbuffer.
  */
-static int lxc_terminal_create_ringbuf(struct lxc_pty *console)
+static int lxc_terminal_create_ringbuf(struct lxc_pty *terminal)
 {
 	int ret;
-	struct lxc_ringbuf *buf = &console->ringbuf;
-	uint64_t size = console->buffer_size;
+	struct lxc_ringbuf *buf = &terminal->ringbuf;
+	uint64_t size = terminal->buffer_size;
 
 	/* no ringbuffer previously allocated and no ringbuffer requested */
 	if (!buf->addr && size <= 0)
@@ -793,7 +789,7 @@ static int lxc_terminal_create_ringbuf(struct lxc_pty *console)
 		buf->r_off = 0;
 		buf->w_off = 0;
 		buf->size = 0;
-		TRACE("Deallocated console ringbuffer");
+		TRACE("Deallocated terminal ringbuffer");
 		return 0;
 	}
 
@@ -802,46 +798,46 @@ static int lxc_terminal_create_ringbuf(struct lxc_pty *console)
 
 	/* check wether the requested size for the ringbuffer has changed */
 	if (buf->addr && buf->size != size) {
-		TRACE("Console ringbuffer size changed from %" PRIu64
-		      " to %" PRIu64 " bytes. Deallocating console ringbuffer",
+		TRACE("Terminal ringbuffer size changed from %" PRIu64
+		      " to %" PRIu64 " bytes. Deallocating terminal ringbuffer",
 		      buf->size, size);
 		lxc_ringbuf_release(buf);
 	}
 
 	ret = lxc_ringbuf_create(buf, size);
 	if (ret < 0) {
-		ERROR("Failed to setup %" PRIu64 " byte console ringbuffer", size);
+		ERROR("Failed to setup %" PRIu64 " byte terminal ringbuffer", size);
 		return -1;
 	}
 
-	TRACE("Allocated %" PRIu64 " byte console ringbuffer", size);
+	TRACE("Allocated %" PRIu64 " byte terminal ringbuffer", size);
 	return 0;
 }
 
 /**
- * This is the console log file. Please note that the console log file is
- * (implementation wise not content wise) independent of the console ringbuffer.
+ * This is the terminal log file. Please note that the terminal log file is
+ * (implementation wise not content wise) independent of the terminal ringbuffer.
  */
-int lxc_terminal_create_log_file(struct lxc_pty *console)
+int lxc_terminal_create_log_file(struct lxc_pty *terminal)
 {
-	if (!console->log_path)
+	if (!terminal->log_path)
 		return 0;
 
-	console->log_fd = lxc_unpriv(open(console->log_path, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600));
-	if (console->log_fd < 0) {
-		SYSERROR("Failed to open console log file \"%s\"", console->log_path);
+	terminal->log_fd = lxc_unpriv(open(terminal->log_path, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600));
+	if (terminal->log_fd < 0) {
+		SYSERROR("Failed to open terminal log file \"%s\"", terminal->log_path);
 		return -1;
 	}
 
-	DEBUG("Using \"%s\" as console log file", console->log_path);
+	DEBUG("Using \"%s\" as terminal log file", terminal->log_path);
 	return 0;
 }
 
-int lxc_pty_create(struct lxc_pty *console)
+int lxc_pty_create(struct lxc_pty *terminal)
 {
 	int ret, saved_errno;
 
-	ret = openpty(&console->master, &console->slave, console->name, NULL,
+	ret = openpty(&terminal->master, &terminal->slave, terminal->name, NULL,
 		      NULL);
 	saved_errno = errno;
 	if (ret < 0) {
@@ -849,19 +845,19 @@ int lxc_pty_create(struct lxc_pty *console)
 		return -1;
 	}
 
-	ret = fcntl(console->master, F_SETFD, FD_CLOEXEC);
+	ret = fcntl(terminal->master, F_SETFD, FD_CLOEXEC);
 	if (ret < 0) {
-		SYSERROR("Failed to set FD_CLOEXEC flag on console master");
+		SYSERROR("Failed to set FD_CLOEXEC flag on terminal master");
 		goto err;
 	}
 
-	ret = fcntl(console->slave, F_SETFD, FD_CLOEXEC);
+	ret = fcntl(terminal->slave, F_SETFD, FD_CLOEXEC);
 	if (ret < 0) {
-		SYSERROR("Failed to set FD_CLOEXEC flag on console slave");
+		SYSERROR("Failed to set FD_CLOEXEC flag on terminal slave");
 		goto err;
 	}
 
-	ret = lxc_terminal_peer_default(console);
+	ret = lxc_terminal_peer_default(terminal);
 	if (ret < 0) {
 		ERROR("Failed to allocate a peer pty device");
 		goto err;
@@ -870,38 +866,38 @@ int lxc_pty_create(struct lxc_pty *console)
 	return 0;
 
 err:
-	lxc_terminal_delete(console);
+	lxc_terminal_delete(terminal);
 	return -ENODEV;
 }
 
 int lxc_terminal_create(struct lxc_conf *conf)
 {
 	int ret;
-	struct lxc_pty *console = &conf->console;
+	struct lxc_pty *terminal = &conf->console;
 
-	if (console->path && !strcmp(console->path, "none")) {
-		INFO("No console was requested");
+	if (terminal->path && !strcmp(terminal->path, "none")) {
+		INFO("No terminal was requested");
 		return 0;
 	}
 
-	ret = lxc_pty_create(console);
+	ret = lxc_pty_create(terminal);
 	if (ret < 0)
 		return -1;
 
-	/* create console log file */
-	ret = lxc_terminal_create_log_file(console);
+	/* create terminal log file */
+	ret = lxc_terminal_create_log_file(terminal);
 	if (ret < 0)
 		goto err;
 
-	/* create console ringbuffer */
-	ret = lxc_terminal_create_ringbuf(console);
+	/* create terminal ringbuffer */
+	ret = lxc_terminal_create_ringbuf(terminal);
 	if (ret < 0)
 		goto err;
 
 	return 0;
 
 err:
-	lxc_terminal_delete(console);
+	lxc_terminal_delete(terminal);
 	return -ENODEV;
 }
 
@@ -944,7 +940,7 @@ int lxc_terminal_stdin_cb(int fd, uint32_t events, void *cbdata,
 		return LXC_MAINLOOP_CLOSE;
 
 	if (ts->escape >= 1) {
-		/* we want to exit the console with Ctrl+a q */
+		/* we want to exit the terminal with Ctrl+a q */
 		if (c == ts->escape && !ts->saw_escape) {
 			ts->saw_escape = 1;
 			return 0;
@@ -1150,12 +1146,12 @@ void lxc_pty_init(struct lxc_pty *pty)
 	lxc_pty_info_init(&pty->peerpty);
 }
 
-void lxc_pty_conf_free(struct lxc_pty *console)
+void lxc_pty_conf_free(struct lxc_pty *terminal)
 {
-	free(console->log_path);
-	free(console->path);
-	if (console->buffer_size > 0 && console->ringbuf.addr)
-		lxc_ringbuf_release(&console->ringbuf);
+	free(terminal->log_path);
+	free(terminal->path);
+	if (terminal->buffer_size > 0 && terminal->ringbuf.addr)
+		lxc_ringbuf_release(&terminal->ringbuf);
 }
 
 int lxc_pty_map_ids(struct lxc_conf *c, struct lxc_pty *pty)
