@@ -23,15 +23,14 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <lxc/lxccontainer.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <termios.h>
-#include <unistd.h>
 #include <sys/epoll.h>
 #include <sys/types.h>
-
-#include <lxc/lxccontainer.h>
+#include <termios.h>
+#include <unistd.h>
 
 #include "af_unix.h"
 #include "caps.h"
@@ -41,7 +40,7 @@
 #include "log.h"
 #include "lxclock.h"
 #include "mainloop.h"
-#include "start.h" 	/* for struct lxc_handler */
+#include "start.h"
 #include "terminal.h"
 #include "utils.h"
 
@@ -117,7 +116,7 @@ int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
 	ret = read(fd, &siginfo, sizeof(siginfo));
 	if (ret < 0 || (size_t)ret < sizeof(siginfo)) {
 		ERROR("Failed to read signal info");
-		return -1;
+		return LXC_MAINLOOP_ERROR;
 	}
 
 	if (siginfo.ssi_signo == SIGTERM) {
@@ -128,13 +127,13 @@ int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
 	if (siginfo.ssi_signo == SIGWINCH)
 		lxc_terminal_winch(ts);
 
-	return 0;
+	return LXC_MAINLOOP_CONTINUE;
 }
 
 struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, int dstfd)
 {
 	int ret;
-	bool istty;
+	bool istty = false;
 	sigset_t mask;
 	struct lxc_terminal_state *ts;
 
@@ -147,20 +146,31 @@ struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, int dstfd)
 	ts->masterfd = dstfd;
 	ts->sigfd = -1;
 
-	sigemptyset(&mask);
+	ret = sigemptyset(&mask);
+	if (ret < 0) {
+		SYSERROR("Failed to initialize an empty signal set");
+		goto on_error;
+	}
 
-	istty = isatty(srcfd) == 1;
+	istty = (isatty(srcfd) == 1);
 	if (!istty) {
 		INFO("fd %d does not refer to a tty device", srcfd);
 	} else {
 		/* Add tty to list to be scanned at SIGWINCH time. */
 		lxc_list_add_elem(&ts->node, ts);
 		lxc_list_add_tail(&lxc_ttys, &ts->node);
-		sigaddset(&mask, SIGWINCH);
+		ret = sigaddset(&mask, SIGWINCH);
+		if (ret < 0)
+			NOTICE("%s - Failed to add SIGWINCH to signal set",
+			       strerror(errno));
 	}
 
 	/* Exit the mainloop cleanly on SIGTERM. */
-	sigaddset(&mask, SIGTERM);
+	ret = sigaddset(&mask, SIGTERM);
+	if (ret < 0) {
+		SYSERROR("Failed to add SIGWINCH to signal set");
+		goto on_error;
+	}
 
 	ret = sigprocmask(SIG_BLOCK, &mask, &ts->oldmask);
 	if (ret < 0) {
@@ -184,8 +194,10 @@ on_error:
 		close(ts->sigfd);
 		ts->sigfd = -1;
 	}
+
 	if (istty)
 		lxc_list_del(&ts->node);
+
 	return ts;
 }
 
@@ -243,11 +255,11 @@ static int lxc_terminal_rotate_log_file(struct lxc_terminal *terminal)
 }
 
 static int lxc_terminal_write_log_file(struct lxc_terminal *terminal, char *buf,
-				      int bytes_read)
+				       int bytes_read)
 {
 	int ret;
-	int64_t space_left = -1;
 	struct stat st;
+	int64_t space_left = -1;
 
 	if (terminal->log_fd < 0)
 		return 0;
@@ -404,7 +416,7 @@ int lxc_terminal_io_cb(int fd, uint32_t events, void *data,
 	if (w_log < 0)
 		TRACE("Failed to write %d bytes to terminal log", r);
 
-	return 0;
+	return LXC_MAINLOOP_CONTINUE;
 }
 
 static int lxc_terminal_mainloop_add_peer(struct lxc_terminal *terminal)
@@ -434,7 +446,7 @@ static int lxc_terminal_mainloop_add_peer(struct lxc_terminal *terminal)
 }
 
 int lxc_terminal_mainloop_add(struct lxc_epoll_descr *descr,
-			     struct lxc_terminal *terminal)
+			      struct lxc_terminal *terminal)
 {
 	int ret;
 
@@ -446,7 +458,8 @@ int lxc_terminal_mainloop_add(struct lxc_epoll_descr *descr,
 	ret = lxc_mainloop_add_handler(descr, terminal->master,
 				       lxc_terminal_io_cb, terminal);
 	if (ret < 0) {
-		ERROR("Failed to add handler for %d to mainloop", terminal->master);
+		ERROR("Failed to add handler for terminal master fd %d to "
+		      "mainloop", terminal->master);
 		return -1;
 	}
 
@@ -454,25 +467,24 @@ int lxc_terminal_mainloop_add(struct lxc_epoll_descr *descr,
 	 * does attach to it in lxc_terminal_allocate().
 	 */
 	terminal->descr = descr;
-	ret = lxc_terminal_mainloop_add_peer(terminal);
-	if (ret < 0)
-		return -1;
 
-	return 0;
+	return lxc_terminal_mainloop_add_peer(terminal);
 }
 
 int lxc_setup_tios(int fd, struct termios *oldtios)
 {
+	int ret;
 	struct termios newtios;
 
 	if (!isatty(fd)) {
-		ERROR("'%d' is not a tty", fd);
+		ERROR("File descriptor %d does not refert to a terminal", fd);
 		return -1;
 	}
 
-	/* Get current termios */
-	if (tcgetattr(fd, oldtios)) {
-		SYSERROR("failed to get current terminal settings");
+	/* Get current termios. */
+	ret = tcgetattr(fd, oldtios);
+	if (ret < 0) {
+		SYSERROR("Failed to get current terminal settings");
 		return -1;
 	}
 
@@ -501,8 +513,9 @@ int lxc_setup_tios(int fd, struct termios *oldtios)
 	newtios.c_cc[VTIME] = 0;
 
 	/* Set new attributes. */
-	if (tcsetattr(fd, TCSAFLUSH, &newtios)) {
-		ERROR("failed to set new terminal settings");
+	ret = tcsetattr(fd, TCSAFLUSH, &newtios);
+	if (ret < 0) {
+		ERROR("Failed to set new terminal settings");
 		return -1;
 	}
 
@@ -515,75 +528,90 @@ static void lxc_terminal_peer_proxy_free(struct lxc_terminal *terminal)
 		lxc_terminal_signal_fini(terminal->tty_state);
 		terminal->tty_state = NULL;
 	}
+
 	close(terminal->proxy.master);
-	close(terminal->proxy.slave);
 	terminal->proxy.master = -1;
+
+	close(terminal->proxy.slave);
 	terminal->proxy.slave = -1;
+
 	terminal->proxy.busy = -1;
+
 	terminal->proxy.name[0] = '\0';
+
 	terminal->peer = -1;
 }
 
-static int lxc_terminal_peer_proxy_alloc(struct lxc_terminal *terminal, int sockfd)
+static int lxc_terminal_peer_proxy_alloc(struct lxc_terminal *terminal,
+					 int sockfd)
 {
+	int ret;
 	struct termios oldtermio;
 	struct lxc_terminal_state *ts;
-	int ret;
 
 	if (terminal->master < 0) {
 		ERROR("Terminal not set up");
 		return -1;
 	}
+
 	if (terminal->proxy.busy != -1 || terminal->peer != -1) {
 		NOTICE("Terminal already in use");
 		return -1;
 	}
+
 	if (terminal->tty_state) {
-		ERROR("Terminal already has tty_state");
+		ERROR("Terminal has already been initialized");
 		return -1;
 	}
 
-	/* this is the proxy pty that will be given to the client, and that
-	 * the real pty master will send to / recv from
+	/* This is the proxy terminal that will be given to the client, and
+	 * that the real terminal master will send to / recv from.
 	 */
 	ret = openpty(&terminal->proxy.master, &terminal->proxy.slave,
-		    terminal->proxy.name, NULL, NULL);
-	if (ret) {
-		SYSERROR("failed to create proxy pty");
+		      terminal->proxy.name, NULL, NULL);
+	if (ret < 0) {
+		SYSERROR("Failed to open proxy terminal");
 		return -1;
 	}
 
-	if (lxc_setup_tios(terminal->proxy.slave, &oldtermio) < 0)
-		goto err1;
+	ret = lxc_setup_tios(terminal->proxy.slave, &oldtermio);
+	if (ret < 0)
+		goto on_error;
 
 	ts = lxc_terminal_signal_init(terminal->proxy.master, terminal->master);
 	if (!ts)
-		goto err1;
+		goto on_error;
 
 	terminal->tty_state = ts;
 	terminal->peer = terminal->proxy.slave;
 	terminal->proxy.busy = sockfd;
 	ret = lxc_terminal_mainloop_add_peer(terminal);
 	if (ret < 0)
-		goto err1;
+		goto on_error;
 
-	DEBUG("%d peermaster:%d sockfd:%d", lxc_raw_getpid(), terminal->proxy.master, sockfd);
+	NOTICE("Opened proxy terminal with master fd %d and slave fd %d",
+	       terminal->proxy.master, terminal->proxy.slave);
 	return 0;
 
-err1:
+on_error:
 	lxc_terminal_peer_proxy_free(terminal);
 	return -1;
 }
 
 int lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 {
-	int masterfd = -1, ttynum;
+	int ttynum;
+	int masterfd = -1;
 	struct lxc_tty_info *ttys = &conf->ttys;
 	struct lxc_terminal *terminal = &conf->console;
 
 	if (*ttyreq == 0) {
-		if (lxc_terminal_peer_proxy_alloc(terminal, sockfd) < 0)
+		int ret;
+
+		ret = lxc_terminal_peer_proxy_alloc(terminal, sockfd);
+		if (ret < 0)
 			goto out;
+
 		masterfd = terminal->proxy.master;
 		goto out;
 	}
@@ -595,16 +623,17 @@ int lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 		if (ttys->tty[*ttyreq - 1].busy)
 			goto out;
 
-		/* the requested tty is available */
+		/* The requested tty is available. */
 		ttynum = *ttyreq;
 		goto out_tty;
 	}
 
-	/* search for next available tty, fixup index tty1 => [0] */
-	for (ttynum = 1; ttynum <= ttys->nbtty && ttys->tty[ttynum - 1].busy; ttynum++)
+	/* Search for next available tty, fixup index tty1 => [0]. */
+	for (ttynum = 1; ttynum <= ttys->nbtty && ttys->tty[ttynum - 1].busy; ttynum++) {
 		;
+	}
 
-	/* we didn't find any available slot for tty */
+	/* We didn't find any available slot for tty. */
 	if (ttynum > ttys->nbtty)
 		goto out;
 
@@ -613,6 +642,7 @@ int lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 out_tty:
 	ttys->tty[ttynum - 1].busy = sockfd;
 	masterfd = ttys->tty[ttynum - 1].master;
+
 out:
 	return masterfd;
 }
@@ -623,15 +653,15 @@ void lxc_terminal_free(struct lxc_conf *conf, int fd)
 	struct lxc_tty_info *ttys = &conf->ttys;
 	struct lxc_terminal *terminal = &conf->console;
 
-	for (i = 0; i < ttys->nbtty; i++) {
+	for (i = 0; i < ttys->nbtty; i++)
 		if (ttys->tty[i].busy == fd)
 			ttys->tty[i].busy = 0;
-	}
 
-	if (terminal->proxy.busy == fd) {
-		lxc_mainloop_del_handler(terminal->descr, terminal->proxy.slave);
-		lxc_terminal_peer_proxy_free(terminal);
-	}
+	if (terminal->proxy.busy != fd)
+		return;
+
+	lxc_mainloop_del_handler(terminal->descr, terminal->proxy.slave);
+	lxc_terminal_peer_proxy_free(terminal);
 }
 
 static int lxc_terminal_peer_default(struct lxc_terminal *terminal)
@@ -641,65 +671,69 @@ static int lxc_terminal_peer_default(struct lxc_terminal *terminal)
 	int fd;
 	int ret = 0;
 
-	/* If no terminal was given, try current controlling terminal, there
-	 * won't be one if we were started as a daemon (-d).
-	 */
-	if (!path && !access("/dev/tty", F_OK)) {
-		fd = open("/dev/tty", O_RDWR);
-		if (fd >= 0) {
-			close(fd);
-			path = "/dev/tty";
+	if (!path) {
+		ret = access("/dev/tty", F_OK);
+		if (ret == 0) {
+			/* If no terminal was given, try current controlling
+			 * terminal, there won't be one if we were started as a
+			 * daemon (-d).
+			 */
+			fd = open("/dev/tty", O_RDWR);
+			if (fd >= 0) {
+				close(fd);
+				path = "/dev/tty";
+			}
 		}
 	}
 
 	if (!path) {
 		errno = ENOTTY;
-		DEBUG("process does not have a controlling terminal");
-		goto out;
+		DEBUG("Theh process does not have a controlling terminal");
+		goto on_succes;
 	}
 
 	terminal->peer = lxc_unpriv(open(path, O_RDWR | O_CLOEXEC));
 	if (terminal->peer < 0) {
-		ERROR("Failed to open \"%s\": %s", path, strerror(errno));
+		ERROR("%s - Failed to open proxy terminal \"%s\"",
+		      strerror(errno), path);
 		return -ENOTTY;
 	}
-	DEBUG("using \"%s\" as peer tty device", path);
+	DEBUG("Using terminal \"%s\" as proxy", path);
 
 	if (!isatty(terminal->peer)) {
-		ERROR("file descriptor for file \"%s\" does not refer to a tty device", path);
-		goto on_error1;
+		ERROR("File descriptor for \"%s\" does not refer to a terminal", path);
+		goto on_error_free_tios;
 	}
 
 	ts = lxc_terminal_signal_init(terminal->peer, terminal->master);
 	terminal->tty_state = ts;
 	if (!ts) {
 		WARN("Failed to install signal handler");
-		goto on_error1;
+		goto on_error_free_tios;
 	}
 
 	lxc_terminal_winsz(terminal->peer, terminal->master);
 
 	terminal->tios = malloc(sizeof(*terminal->tios));
-	if (!terminal->tios) {
-		SYSERROR("failed to allocate memory");
-		goto on_error1;
-	}
+	if (!terminal->tios)
+		goto on_error_free_tios;
 
-	if (lxc_setup_tios(terminal->peer, terminal->tios) < 0)
-		goto on_error2;
+	ret = lxc_setup_tios(terminal->peer, terminal->tios);
+	if (ret < 0)
+		goto on_error_close_peer;
 	else
-		goto out;
+		goto on_succes;
 
-on_error2:
+on_error_free_tios:
 	free(terminal->tios);
 	terminal->tios = NULL;
 
-on_error1:
+on_error_close_peer:
 	close(terminal->peer);
 	terminal->peer = -1;
 	ret = -ENOTTY;
 
-out:
+on_succes:
 	return ret;
 }
 
@@ -835,13 +869,11 @@ int lxc_terminal_create_log_file(struct lxc_terminal *terminal)
 
 int lxc_terminal_create(struct lxc_terminal *terminal)
 {
-	int ret, saved_errno;
+	int ret;
 
-	ret = openpty(&terminal->master, &terminal->slave, terminal->name, NULL,
-		      NULL);
-	saved_errno = errno;
+	ret = openpty(&terminal->master, &terminal->slave, terminal->name, NULL, NULL);
 	if (ret < 0) {
-		ERROR("%s - Failed to allocate a pty", strerror(saved_errno));
+		SYSERROR("Failed to open terminal");
 		return -1;
 	}
 
@@ -859,7 +891,7 @@ int lxc_terminal_create(struct lxc_terminal *terminal)
 
 	ret = lxc_terminal_peer_default(terminal);
 	if (ret < 0) {
-		ERROR("Failed to allocate a peer pty device");
+		ERROR("Failed to allocate proxy terminal");
 		goto err;
 	}
 
@@ -875,8 +907,8 @@ int lxc_terminal_setup(struct lxc_conf *conf)
 	int ret;
 	struct lxc_terminal *terminal = &conf->console;
 
-	if (terminal->path && !strcmp(terminal->path, "none")) {
-		INFO("No terminal was requested");
+	if (terminal->path && strcmp(terminal->path, "none") == 0) {
+		INFO("No terminal requested");
 		return 0;
 	}
 
@@ -884,12 +916,10 @@ int lxc_terminal_setup(struct lxc_conf *conf)
 	if (ret < 0)
 		return -1;
 
-	/* create terminal log file */
 	ret = lxc_terminal_create_log_file(terminal);
 	if (ret < 0)
 		goto err;
 
-	/* create terminal ringbuffer */
 	ret = lxc_terminal_create_ringbuf(terminal);
 	if (ret < 0)
 		goto err;
@@ -901,49 +931,56 @@ err:
 	return -ENODEV;
 }
 
+static bool __terminal_dup2(int duplicate, int original)
+{
+	int ret;
+
+	if (!isatty(original))
+		return true;
+
+	ret = dup2(duplicate, original);
+	if (ret < 0) {
+		SYSERROR("Failed to dup2(%d, %d)", duplicate, original);
+		return false;
+	}
+
+	return true;
+}
+
 int lxc_terminal_set_stdfds(int fd)
 {
+	int i;
+
 	if (fd < 0)
 		return 0;
 
-	if (isatty(STDIN_FILENO))
-		if (dup2(fd, STDIN_FILENO) < 0) {
-			SYSERROR("failed to duplicate stdin.");
+	for (i = 0; i < 3; i++)
+		if (!__terminal_dup2(fd, (int[]){STDIN_FILENO, STDOUT_FILENO,
+						 STDERR_FILENO}[i]))
 			return -1;
-		}
-
-	if (isatty(STDOUT_FILENO))
-		if (dup2(fd, STDOUT_FILENO) < 0) {
-			SYSERROR("failed to duplicate stdout.");
-			return -1;
-		}
-
-	if (isatty(STDERR_FILENO))
-		if (dup2(fd, STDERR_FILENO) < 0) {
-			SYSERROR("failed to duplicate stderr.");
-			return -1;
-		}
 
 	return 0;
 }
 
 int lxc_terminal_stdin_cb(int fd, uint32_t events, void *cbdata,
-			     struct lxc_epoll_descr *descr)
+			  struct lxc_epoll_descr *descr)
 {
-	struct lxc_terminal_state *ts = cbdata;
+	int ret;
 	char c;
+	struct lxc_terminal_state *ts = cbdata;
 
 	if (fd != ts->stdinfd)
 		return LXC_MAINLOOP_CLOSE;
 
-	if (lxc_read_nointr(ts->stdinfd, &c, 1) <= 0)
+	ret = lxc_read_nointr(ts->stdinfd, &c, 1);
+	if (ret <= 0)
 		return LXC_MAINLOOP_CLOSE;
 
 	if (ts->escape >= 1) {
 		/* we want to exit the terminal with Ctrl+a q */
 		if (c == ts->escape && !ts->saw_escape) {
 			ts->saw_escape = 1;
-			return 0;
+			return LXC_MAINLOOP_CONTINUE;
 		}
 
 		if (c == 'q' && ts->saw_escape)
@@ -952,18 +989,19 @@ int lxc_terminal_stdin_cb(int fd, uint32_t events, void *cbdata,
 		ts->saw_escape = 0;
 	}
 
-	if (lxc_write_nointr(ts->masterfd, &c, 1) <= 0)
+	ret = lxc_write_nointr(ts->masterfd, &c, 1);
+	if (ret <= 0)
 		return LXC_MAINLOOP_CLOSE;
 
-	return 0;
+	return LXC_MAINLOOP_CONTINUE;
 }
 
 int lxc_terminal_master_cb(int fd, uint32_t events, void *cbdata,
 			   struct lxc_epoll_descr *descr)
 {
-	struct lxc_terminal_state *ts = cbdata;
-	char buf[LXC_TERMINAL_BUFFER_SIZE];
 	int r, w;
+	char buf[LXC_TERMINAL_BUFFER_SIZE];
+	struct lxc_terminal_state *ts = cbdata;
 
 	if (fd != ts->masterfd)
 		return LXC_MAINLOOP_CLOSE;
@@ -973,14 +1011,10 @@ int lxc_terminal_master_cb(int fd, uint32_t events, void *cbdata,
 		return LXC_MAINLOOP_CLOSE;
 
 	w = lxc_write_nointr(ts->stdoutfd, buf, r);
-	if (w <= 0) {
+	if (w <= 0 || w != r)
 		return LXC_MAINLOOP_CLOSE;
-	} else if (w != r) {
-		SYSERROR("Failed to write");
-		return 1;
-	}
 
-	return 0;
+	return LXC_MAINLOOP_CONTINUE;
 }
 
 int lxc_terminal_getfd(struct lxc_container *c, int *ttynum, int *masterfd)
@@ -992,7 +1026,7 @@ int lxc_console(struct lxc_container *c, int ttynum,
 		int stdinfd, int stdoutfd, int stderrfd,
 		int escape)
 {
-	int ret, ttyfd, masterfd;
+	int masterfd, ret, ttyfd;
 	struct lxc_epoll_descr descr;
 	struct termios oldtios;
 	struct lxc_terminal_state *ts;
@@ -1021,7 +1055,7 @@ int lxc_console(struct lxc_container *c, int ttynum,
 		lxc_terminal_winsz(stdinfd, masterfd);
 		lxc_cmd_terminal_winch(ts->winch_proxy, ts->winch_proxy_lxcpath);
 	} else {
-		INFO("File descriptor %d does not refer to a tty device", stdinfd);
+		INFO("File descriptor %d does not refer to a terminal", stdinfd);
 	}
 
 	ret = lxc_mainloop_open(&descr);
@@ -1097,7 +1131,7 @@ close_fds:
 	return ret;
 }
 
-int lxc_make_controlling_pty(int fd)
+int lxc_make_controlling_terminal(int fd)
 {
 	int ret;
 
@@ -1110,11 +1144,11 @@ int lxc_make_controlling_pty(int fd)
 	return 0;
 }
 
-int lxc_login_pty(int fd)
+int lxc_terminal_prepare_login(int fd)
 {
 	int ret;
 
-	ret = lxc_make_controlling_pty(fd);
+	ret = lxc_make_controlling_terminal(fd);
 	if (ret < 0)
 		return -1;
 
@@ -1128,22 +1162,22 @@ int lxc_login_pty(int fd)
 	return 0;
 }
 
-void lxc_terminal_info_init(struct lxc_terminal_info *pty)
+void lxc_terminal_info_init(struct lxc_terminal_info *terminal)
 {
-	pty->name[0] = '\0';
-	pty->master = -EBADF;
-	pty->slave = -EBADF;
-	pty->busy = -1;
+	terminal->name[0] = '\0';
+	terminal->master = -EBADF;
+	terminal->slave = -EBADF;
+	terminal->busy = -1;
 }
 
-void lxc_terminal_init(struct lxc_terminal *pty)
+void lxc_terminal_init(struct lxc_terminal *terminal)
 {
-	memset(pty, 0, sizeof(*pty));
-	pty->slave = -EBADF;
-	pty->master = -EBADF;
-	pty->peer = -EBADF;
-	pty->log_fd = -EBADF;
-	lxc_terminal_info_init(&pty->proxy);
+	memset(terminal, 0, sizeof(*terminal));
+	terminal->slave = -EBADF;
+	terminal->master = -EBADF;
+	terminal->peer = -EBADF;
+	terminal->log_fd = -EBADF;
+	lxc_terminal_info_init(&terminal->proxy);
 }
 
 void lxc_terminal_conf_free(struct lxc_terminal *terminal)
@@ -1154,24 +1188,23 @@ void lxc_terminal_conf_free(struct lxc_terminal *terminal)
 		lxc_ringbuf_release(&terminal->ringbuf);
 }
 
-int lxc_terminal_map_ids(struct lxc_conf *c, struct lxc_terminal *pty)
+int lxc_terminal_map_ids(struct lxc_conf *c, struct lxc_terminal *terminal)
 {
 	int ret;
 
 	if (lxc_list_empty(&c->id_map))
 		return 0;
 
-	ret = strcmp(pty->name, "");
-	if (ret == 0)
+	if (strcmp(terminal->name, "") == 0)
 		return 0;
 
-	ret = chown_mapped_root(pty->name, c);
+	ret = chown_mapped_root(terminal->name, c);
 	if (ret < 0) {
-		ERROR("Failed to chown \"%s\"", pty->name);
+		ERROR("Failed to chown terminal \"%s\"", terminal->name);
 		return -1;
 	}
 
-	TRACE("Chowned \"%s\"", pty->name);
+	TRACE("Chowned terminal \"%s\"", terminal->name);
 
 	return 0;
 }
