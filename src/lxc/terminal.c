@@ -999,9 +999,9 @@ int lxc_terminal_stdin_cb(int fd, uint32_t events, void *cbdata,
 int lxc_terminal_master_cb(int fd, uint32_t events, void *cbdata,
 			   struct lxc_epoll_descr *descr)
 {
-	struct lxc_terminal_state *ts = cbdata;
-	char buf[LXC_TERMINAL_BUFFER_SIZE];
 	int r, w;
+	char buf[LXC_TERMINAL_BUFFER_SIZE];
+	struct lxc_terminal_state *ts = cbdata;
 
 	if (fd != ts->masterfd)
 		return LXC_MAINLOOP_CLOSE;
@@ -1011,14 +1011,10 @@ int lxc_terminal_master_cb(int fd, uint32_t events, void *cbdata,
 		return LXC_MAINLOOP_CLOSE;
 
 	w = lxc_write_nointr(ts->stdoutfd, buf, r);
-	if (w <= 0) {
+	if (w <= 0 || w != r)
 		return LXC_MAINLOOP_CLOSE;
-	} else if (w != r) {
-		SYSERROR("Failed to write");
-		return 1;
-	}
 
-	return 0;
+	return LXC_MAINLOOP_CONTINUE;
 }
 
 int lxc_terminal_getfd(struct lxc_container *c, int *ttynum, int *masterfd)
