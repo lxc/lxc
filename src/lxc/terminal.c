@@ -963,22 +963,24 @@ int lxc_terminal_set_stdfds(int fd)
 }
 
 int lxc_terminal_stdin_cb(int fd, uint32_t events, void *cbdata,
-			     struct lxc_epoll_descr *descr)
+			  struct lxc_epoll_descr *descr)
 {
-	struct lxc_terminal_state *ts = cbdata;
+	int ret;
 	char c;
+	struct lxc_terminal_state *ts = cbdata;
 
 	if (fd != ts->stdinfd)
 		return LXC_MAINLOOP_CLOSE;
 
-	if (lxc_read_nointr(ts->stdinfd, &c, 1) <= 0)
+	ret = lxc_read_nointr(ts->stdinfd, &c, 1);
+	if (ret <= 0)
 		return LXC_MAINLOOP_CLOSE;
 
 	if (ts->escape >= 1) {
 		/* we want to exit the terminal with Ctrl+a q */
 		if (c == ts->escape && !ts->saw_escape) {
 			ts->saw_escape = 1;
-			return 0;
+			return LXC_MAINLOOP_CONTINUE;
 		}
 
 		if (c == 'q' && ts->saw_escape)
@@ -987,10 +989,11 @@ int lxc_terminal_stdin_cb(int fd, uint32_t events, void *cbdata,
 		ts->saw_escape = 0;
 	}
 
-	if (lxc_write_nointr(ts->masterfd, &c, 1) <= 0)
+	ret = lxc_write_nointr(ts->masterfd, &c, 1);
+	if (ret <= 0)
 		return LXC_MAINLOOP_CLOSE;
 
-	return 0;
+	return LXC_MAINLOOP_CONTINUE;
 }
 
 int lxc_terminal_master_cb(int fd, uint32_t events, void *cbdata,
