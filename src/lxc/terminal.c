@@ -1144,7 +1144,7 @@ int lxc_make_controlling_terminal(int fd)
 	return 0;
 }
 
-int lxc_login_pty(int fd)
+int lxc_terminal_prepare_login(int fd)
 {
 	int ret;
 

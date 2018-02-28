@@ -958,7 +958,7 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	}
 
 	if (options->attach_flags & LXC_ATTACH_ALLOCATE_PTY) {
-		ret = lxc_login_pty(payload->pty_fd);
+		ret = lxc_terminal_prepare_login(payload->pty_fd);
 		if (ret < 0) {
 			SYSERROR("Failed to prepare pty file descriptor %d", payload->pty_fd);
 			goto on_error;
