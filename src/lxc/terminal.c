@@ -416,7 +416,7 @@ int lxc_terminal_io_cb(int fd, uint32_t events, void *data,
 	if (w_log < 0)
 		TRACE("Failed to write %d bytes to terminal log", r);
 
-	return 0;
+	return LXC_MAINLOOP_CONTINUE;
 }
 
 static int lxc_terminal_mainloop_add_peer(struct lxc_terminal *terminal)
