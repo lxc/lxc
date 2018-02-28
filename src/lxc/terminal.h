@@ -21,8 +21,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef __LXC_CONSOLE_H
-#define __LXC_CONSOLE_H
+#ifndef __LXC_TERMINAL_H
+#define __LXC_TERMINAL_H
 
 #include "config.h"
 
@@ -36,15 +36,17 @@ struct lxc_container;
 struct lxc_conf;
 struct lxc_epoll_descr;
 
-/* Defines a structure containing a pty information for virtualizing a tty
- * @name   : the path name of the slave pty side
- * @master : the file descriptor of the master
- * @slave  : the file descriptor of the slave
- */
 struct lxc_terminal_info {
+	/* the path name of the slave side */
 	char name[MAXPATHLEN];
+
+	/* the file descriptor of the master */
 	int master;
+
+	/* the file descriptor of the slave */
 	int slave;
+
+	/* whether the terminal is currently used */
 	int busy;
 };
 
@@ -53,25 +55,32 @@ struct lxc_terminal_state {
 	int stdinfd;
 	int stdoutfd;
 	int masterfd;
-	/* Escape sequence to use for exiting the pty. A single char can be
-	 * specified. The pty can then exited by doing: Ctrl + specified_char +
-	 * q. This field is checked by lxc_terminal_stdin_cb(). Set to -1 to
-	 * disable exiting the pty via a escape sequence.
+
+	/* Escape sequence to use for exiting the terminal. A single char can
+	 * be specified. The terminal can then exited by doing: Ctrl +
+	 * specified_char + q. This field is checked by
+	 * lxc_terminal_stdin_cb(). Set to -1 to disable exiting the terminal
+	 * via a escape sequence.
 	 */
 	int escape;
+
 	/* Used internally by lxc_terminal_stdin_cb() to check whether an
 	 * escape sequence has been received.
 	 */
 	int saw_escape;
+
 	/* Name of the container to forward the SIGWINCH event to. */
 	const char *winch_proxy;
+
 	/* Path of the container to forward the SIGWINCH event to. */
 	const char *winch_proxy_lxcpath;
+
 	/* File descriptor that accepts signals. If set to -1 no signal handler
 	 * could be installed. This also means that the sigset_t oldmask member
 	 * is meaningless.
 	 */
 	int sigfd;
+
 	sigset_t oldmask;
 };
 
@@ -86,7 +95,7 @@ struct lxc_terminal {
 	struct termios *tios;
 	struct lxc_terminal_state *tty_state;
 
-	struct /* lxc_console_log */ {
+	struct /* lxc_terminal_log */ {
 		/* size of the log file */
 		uint64_t log_size;
 
@@ -109,7 +118,7 @@ struct lxc_terminal {
 	};
 };
 
-/*
+/**
  * lxc_terminal_allocate: allocate the console or a tty
  *
  * @conf    : the configuration of the container to allocate from
@@ -119,61 +128,54 @@ struct lxc_terminal {
  */
 extern int  lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttynum);
 
-/*
- * Create a new pty:
- * - calls openpty() to allocate a master/slave pty pair
+/**
+ * Create a new terminal:
+ * - calls openpty() to allocate a master/slave pair
  * - sets the FD_CLOEXEC flag on the master/slave fds
- * - allocates either the current controlling pty (default) or a user specified
- *   pty as peer pty for the newly created master/slave pair
+ * - allocates either the current controlling terminal (default) or a user
+ *   specified terminal as proxy for the newly created master/slave pair
  * - sets up SIGWINCH handler, winsz, and new terminal settings
  *   (Handlers for SIGWINCH and I/O are not registered in a mainloop.)
- * (For an unprivileged container the created pty on the host is not
- * automatically chowned to the uid/gid of the unprivileged user. For this
- * ttys_shift_ids() can be called.)
  */
 extern int lxc_terminal_create(struct lxc_terminal *console);
 
 /**
- * lxc_terminal_setup: Create a new pty.
- * - In addition to lxc_terminal_create() also sets up all pty logs.
+ * lxc_terminal_setup: Create a new terminal.
+ * - In addition to lxc_terminal_create() also sets up logging.
  */
 extern int lxc_terminal_setup(struct lxc_conf *);
 
-/*
- * Delete a pty created via lxc_terminal_setup():
- * - set old terminal settings
- * - memory allocated via lxc_terminal_setup() is free()ed.
- * - close master/slave pty pair and allocated fd for the peer (usually
- *   /dev/tty)
- * Registered handlers in a mainloop are not automatically deleted.
+/**
+ * Delete a terminal created via lxc_terminal_create() or lxc_terminal_setup():
+ * Note, registered handlers are not automatically deleted.
  */
 extern void lxc_terminal_delete(struct lxc_terminal *);
 
-/*
- * lxc_terminal_free: mark the console or a tty as unallocated, free any
- * resources allocated by lxc_terminal_allocate().
+/**
+ * lxc_terminal_free: mark the terminal as unallocated and free any resources
+ * allocated by lxc_terminal_allocate().
  *
  * @conf : the configuration of the container whose tty was closed
  * @fd   : the socket fd whose remote side was closed, which indicated
- *         the console or tty is no longer in use. this is used to match
- *         which console/tty is being freed.
+ *         the terminal is no longer in use. this is used to match
+ *         which terminal is being freed.
  */
 extern void lxc_terminal_free(struct lxc_conf *conf, int fd);
 
-/*
- * Register pty event handlers in an open mainloop
+/**
+ * Register terminal event handlers in an open mainloop.
  */
 extern int  lxc_terminal_mainloop_add(struct lxc_epoll_descr *, struct lxc_terminal *);
 
-/*
- * Handle SIGWINCH events on the allocated ptys.
+/**
+ * Handle SIGWINCH events on the allocated terminals.
  */
 extern void lxc_terminal_sigwinch(int sig);
 
-/*
- * Connect to one of the ptys given to the container via lxc.tty.max.
- * - allocates either the current controlling pty (default) or a user specified
- *   pty as peer pty for the containers tty
+/**
+ * Connect to one of the ttys given to the container via lxc.tty.max.
+ * - allocates either the current controlling terminal (default) or a user specified
+ *   terminal as proxy terminal for the containers tty
  * - sets up SIGWINCH handler, winsz, and new terminal settings
  * - opens mainloop
  * - registers SIGWINCH, I/O handlers in the mainloop
@@ -183,24 +185,24 @@ extern int  lxc_console(struct lxc_container *c, int ttynum,
 		        int stdinfd, int stdoutfd, int stderrfd,
 		        int escape);
 
-/*
- * Allocate one of the ptys given to the container via lxc.tty.max. Returns an
- * open fd to the allocated pty.
- * Set ttynum to -1 to allocate the first available pty, or to a value within
- * the range specified by lxc.tty.max to allocate a specific pty.
+/**
+ * Allocate one of the tty given to the container via lxc.tty.max. Returns an
+ * open fd to the allocated tty.
+ * Set ttynum to -1 to allocate the first available tty, or to a value within
+ * the range specified by lxc.tty.max to allocate a specific tty.
  */
-extern int  lxc_terminal_getfd(struct lxc_container *c, int *ttynum,
+extern int lxc_terminal_getfd(struct lxc_container *c, int *ttynum,
 			      int *masterfd);
 
-/*
- * Make fd a duplicate of the standard file descriptors:
- * fd is made a duplicate of a specific standard file descriptor iff the
- * standard file descriptor refers to a pty.
+/**
+ * Make fd a duplicate of the standard file descriptors. The fd is made a
+ * duplicate of a specific standard file descriptor iff the standard file
+ * descriptor refers to a terminal.
  */
 extern int lxc_terminal_set_stdfds(int fd);
 
-/*
- * Handler for events on the stdin fd of the pty. To be registered via the
+/**
+ * Handler for events on the stdin fd of the terminal. To be registered via the
  * corresponding functions declared and defined in mainloop.{c,h} or
  * lxc_terminal_mainloop_add().
  * This function exits the loop cleanly when an EPOLLHUP event is received.
@@ -208,42 +210,46 @@ extern int lxc_terminal_set_stdfds(int fd);
 extern int lxc_terminal_stdin_cb(int fd, uint32_t events, void *cbdata,
 				 struct lxc_epoll_descr *descr);
 
-/*
- * Handler for events on the master fd of the pty. To be registered via the
- * corresponding functions declared and defined in mainloop.{c,h} or
+/**
+ * Handler for events on the master fd of the terminal. To be registered via
+ * the corresponding functions declared and defined in mainloop.{c,h} or
  * lxc_terminal_mainloop_add().
  * This function exits the loop cleanly when an EPOLLHUP event is received.
  */
 extern int lxc_terminal_master_cb(int fd, uint32_t events, void *cbdata,
 				  struct lxc_epoll_descr *descr);
 
-/*
+/**
  * Setup new terminal properties. The old terminal settings are stored in
  * oldtios.
  */
 extern int lxc_setup_tios(int fd, struct termios *oldtios);
 
 
-/*
+/**
  * lxc_terminal_winsz: propagate winsz from one terminal to another
  *
- * @srcfd : terminal to get size from (typically a slave pty)
- * @dstfd : terminal to set size on (typically a master pty)
+ * @srcfd
+ * - terminal to get size from (typically a slave pty)
+ * @dstfd
+ * - terminal to set size on (typically a master pty)
  */
 extern void lxc_terminal_winsz(int srcfd, int dstfd);
 
 /*
  * lxc_terminal_signal_init: install signal handler
  *
- * @srcfd  : src for winsz in SIGWINCH handler
- * @dstfd  : dst for winsz in SIGWINCH handler
+ * @srcfd
+ * - src for winsz in SIGWINCH handler
+ * @dstfd
+ * - dst for winsz in SIGWINCH handler
  *
- * Returns lxc_terminal_state structure on success or NULL on failure. The sigfd
- * member of the returned lxc_terminal_state can be select()/poll()ed/epoll()ed
- * on (ie added to a mainloop) for signals.
+ * Returns lxc_terminal_state structure on success or NULL on failure. The
+ * sigfd member of the returned lxc_terminal_state can be
+ * select()/poll()ed/epoll()ed on (i.e. added to a mainloop) for signals.
  *
- * Must be called with process_lock held to protect the lxc_ttys list, or
- * from a non-threaded context.
+ * Must be called with process_lock held to protect the lxc_ttys list, or from
+ * a non-threaded context.
  *
  * Note that the signal handler isn't installed as a classic asychronous
  * handler, rather signalfd(2) is used so that we can handle the signal when
@@ -256,17 +262,18 @@ extern void lxc_terminal_winsz(int srcfd, int dstfd);
  */
 extern struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, int dstfd);
 
-/*
+/**
  * Handler for signal events. To be registered via the corresponding functions
  * declared and defined in mainloop.{c,h} or lxc_terminal_mainloop_add().
  */
 extern int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
 				    struct lxc_epoll_descr *descr);
 
-/*
+/**
  * lxc_terminal_signal_fini: uninstall signal handler
  *
- * @ts  : the lxc_terminal_state returned by lxc_terminal_signal_init
+ * @ts
+ * - the lxc_terminal_state returned by lxc_terminal_signal_init
  *
  * Restore the saved signal handler that was in effect at the time
  * lxc_terminal_signal_init() was called.
@@ -276,16 +283,17 @@ extern int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
  */
 extern void lxc_terminal_signal_fini(struct lxc_terminal_state *ts);
 
-extern int lxc_terminal_write_ringbuffer(struct lxc_terminal *console);
-extern int lxc_terminal_create_log_file(struct lxc_terminal *console);
+extern int lxc_terminal_write_ringbuffer(struct lxc_terminal *terminal);
+extern int lxc_terminal_create_log_file(struct lxc_terminal *terminal);
 extern int lxc_terminal_io_cb(int fd, uint32_t events, void *data,
 			      struct lxc_epoll_descr *descr);
 
 extern int lxc_make_controlling_terminal(int fd);
 extern int lxc_terminal_prepare_login(int fd);
-extern void lxc_terminal_conf_free(struct lxc_terminal *console);
-extern void lxc_terminal_info_init(struct lxc_terminal_info *pty);
-extern void lxc_terminal_init(struct lxc_terminal *pty);
-extern int lxc_terminal_map_ids(struct lxc_conf *c, struct lxc_terminal *pty);
+extern void lxc_terminal_conf_free(struct lxc_terminal *terminal);
+extern void lxc_terminal_info_init(struct lxc_terminal_info *terminal);
+extern void lxc_terminal_init(struct lxc_terminal *terminal);
+extern int lxc_terminal_map_ids(struct lxc_conf *c,
+				struct lxc_terminal *terminal);
 
-#endif
+#endif /* __LXC_TERMINAL_H */

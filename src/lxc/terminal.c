@@ -1162,22 +1162,22 @@ int lxc_terminal_prepare_login(int fd)
 	return 0;
 }
 
-void lxc_terminal_info_init(struct lxc_terminal_info *pty)
+void lxc_terminal_info_init(struct lxc_terminal_info *terminal)
 {
-	pty->name[0] = '\0';
-	pty->master = -EBADF;
-	pty->slave = -EBADF;
-	pty->busy = -1;
+	terminal->name[0] = '\0';
+	terminal->master = -EBADF;
+	terminal->slave = -EBADF;
+	terminal->busy = -1;
 }
 
-void lxc_terminal_init(struct lxc_terminal *pty)
+void lxc_terminal_init(struct lxc_terminal *terminal)
 {
-	memset(pty, 0, sizeof(*pty));
-	pty->slave = -EBADF;
-	pty->master = -EBADF;
-	pty->peer = -EBADF;
-	pty->log_fd = -EBADF;
-	lxc_terminal_info_init(&pty->proxy);
+	memset(terminal, 0, sizeof(*terminal));
+	terminal->slave = -EBADF;
+	terminal->master = -EBADF;
+	terminal->peer = -EBADF;
+	terminal->log_fd = -EBADF;
+	lxc_terminal_info_init(&terminal->proxy);
 }
 
 void lxc_terminal_conf_free(struct lxc_terminal *terminal)
