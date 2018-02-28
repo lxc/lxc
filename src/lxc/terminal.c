@@ -542,53 +542,58 @@ static void lxc_terminal_peer_proxy_free(struct lxc_terminal *terminal)
 	terminal->peer = -1;
 }
 
-static int lxc_terminal_peer_proxy_alloc(struct lxc_terminal *terminal, int sockfd)
+static int lxc_terminal_peer_proxy_alloc(struct lxc_terminal *terminal,
+					 int sockfd)
 {
+	int ret;
 	struct termios oldtermio;
 	struct lxc_terminal_state *ts;
-	int ret;
 
 	if (terminal->master < 0) {
 		ERROR("Terminal not set up");
 		return -1;
 	}
+
 	if (terminal->proxy.busy != -1 || terminal->peer != -1) {
 		NOTICE("Terminal already in use");
 		return -1;
 	}
+
 	if (terminal->tty_state) {
-		ERROR("Terminal already has tty_state");
+		ERROR("Terminal has already been initialized");
 		return -1;
 	}
 
-	/* this is the proxy pty that will be given to the client, and that
-	 * the real pty master will send to / recv from
+	/* This is the proxy pty that will be given to the client, and that
+	 * the real pty master will send to / recv from.
 	 */
 	ret = openpty(&terminal->proxy.master, &terminal->proxy.slave,
-		    terminal->proxy.name, NULL, NULL);
-	if (ret) {
-		SYSERROR("failed to create proxy pty");
+		      terminal->proxy.name, NULL, NULL);
+	if (ret < 0) {
+		SYSERROR("Failed to open proxy terminal");
 		return -1;
 	}
 
-	if (lxc_setup_tios(terminal->proxy.slave, &oldtermio) < 0)
-		goto err1;
+	ret = lxc_setup_tios(terminal->proxy.slave, &oldtermio);
+	if (ret < 0)
+		goto on_error;
 
 	ts = lxc_terminal_signal_init(terminal->proxy.master, terminal->master);
 	if (!ts)
-		goto err1;
+		goto on_error;
 
 	terminal->tty_state = ts;
 	terminal->peer = terminal->proxy.slave;
 	terminal->proxy.busy = sockfd;
 	ret = lxc_terminal_mainloop_add_peer(terminal);
 	if (ret < 0)
-		goto err1;
+		goto on_error;
 
-	DEBUG("%d peermaster:%d sockfd:%d", lxc_raw_getpid(), terminal->proxy.master, sockfd);
+	NOTICE("Opened proxy terminal with master fd %d and slave fd %d",
+	       terminal->proxy.master, terminal->proxy.slave);
 	return 0;
 
-err1:
+on_error:
 	lxc_terminal_peer_proxy_free(terminal);
 	return -1;
 }
