@@ -446,7 +446,7 @@ static int lxc_terminal_mainloop_add_peer(struct lxc_terminal *terminal)
 }
 
 int lxc_terminal_mainloop_add(struct lxc_epoll_descr *descr,
-			     struct lxc_terminal *terminal)
+			      struct lxc_terminal *terminal)
 {
 	int ret;
 
@@ -458,7 +458,8 @@ int lxc_terminal_mainloop_add(struct lxc_epoll_descr *descr,
 	ret = lxc_mainloop_add_handler(descr, terminal->master,
 				       lxc_terminal_io_cb, terminal);
 	if (ret < 0) {
-		ERROR("Failed to add handler for %d to mainloop", terminal->master);
+		ERROR("Failed to add handler for terminal master fd %d to "
+		      "mainloop", terminal->master);
 		return -1;
 	}
 
@@ -466,11 +467,8 @@ int lxc_terminal_mainloop_add(struct lxc_epoll_descr *descr,
 	 * does attach to it in lxc_terminal_allocate().
 	 */
 	terminal->descr = descr;
-	ret = lxc_terminal_mainloop_add_peer(terminal);
-	if (ret < 0)
-		return -1;
 
-	return 0;
+	return lxc_terminal_mainloop_add_peer(terminal);
 }
 
 int lxc_setup_tios(int fd, struct termios *oldtios)
