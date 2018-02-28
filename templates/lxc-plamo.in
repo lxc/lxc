@@ -43,15 +43,6 @@ export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
 
 [ -r /etc/default/lxc ] && . /etc/default/lxc
 
-DLSCHEME=${DLSCHEME:-"http"}
-MIRRORSRV=${MIRRORSRV:-"repository.plamolinux.org"}
-MIRRORPATH=${MIRRORPATH:-"/pub/linux/Plamo"}
-CATEGORIES=${CATEGORIES-"00_base 01_minimum"}
-EXTRACTGRS=${EXTRACTGRS-""}
-IGNOREPKGS=${IGNOREPKGS-"grub kernel lilo linux_firmware microcode_ctl
-    cpufreqd cpufrequtils gpm ntp kmod"}
-ADDONPKGS=${ADDONPKGS-"`echo contrib/Hamradio/{morse,qrq}`"}
-
 download_plamo() {
   # check the mini plamo was not already downloaded
   if ! mkdir -p $ptcache ; then
@@ -127,7 +118,15 @@ install_plamo() {
     # command into the lxc cache directory to keep the original uid/
     # gid of files/directories.
     echo "Installing 'installpkg' command into $dlcache/sbin..."
-    ( cd $dlcache ; tar xpJf hdsetup-*.txz ; rm -rf tmp usr var )
+
+    if [ $majorver -ge 7 ]; then
+       pkgtool="pkgtools"
+    else
+       pkgtool="hdsetup"
+    fi
+
+    ( cd $dlcache ; tar xpJf "$pkgtool"-*.txz ; rm -rf tmp usr var )
+
     sed -i "/ldconfig/!s@/sbin@$dlcache&@g" $dlcache/sbin/installpkg*
     PATH=$dlcache/sbin:$PATH
     echo "Installing packages to $rtcache..."
@@ -146,18 +145,18 @@ install_plamo() {
   ) 9> @LOCALSTATEDIR@/lock/subsys/lxc-plamo
 }
 
-configure_plamo() {
+configure_plamo6() {
   # suppress log level output for udev
   sed -i 's/="err"/=0/' $rootfs/etc/udev/udev.conf
   # /etc/fstab
   cat <<- "EOF" > $rootfs/etc/fstab
-	none             /proc    proc        defaults   0   0
-	none             /sys     sysfs       defaults   0   0
-	none             /dev     tmpfs       defaults   0   0
-	none		    /tmp     tmpfs       defaults   0   0
-	none            /dev/pts        devpts  gid=5,mode=620    0 0
-	none            /proc/bus/usb             usbfs        noauto   0   0
-	none             /var/lib/nfs/rpc_pipefs rpc_pipefs  defaults   0   0
+	none            /proc   proc    defaults        0 0
+	none            /sys    sysfs   defaults        0 0
+	none            /dev    tmpfs   defaults        0 0
+	none            /tmp    tmpfs   defaults        0 0
+	none            /dev/pts        devpts  gid=5,mode=620  0 0
+	none            /proc/bus/usb   usbfs   noauto  0 0
+	none            /var/lib/nfs/rpc_pipefs rpc_pipefs  defaults   0 0
 	EOF
   # /etc/inittab
   cat <<- "EOF" | patch $rootfs/etc/inittab
@@ -173,16 +172,8 @@ configure_plamo() {
 	< c5:1235:respawn:/sbin/agetty 38400 tty5 linux
 	< c6:12345:respawn:/sbin/agetty 38400 tty6 linux
 	EOF
-  # set the hostname
-  echo "$name" > $rootfs/etc/HOSTNAME
-  # set minimal hosts
-  echo "127.0.0.1 localhost $name" > $rootfs/etc/hosts
   # configure the network using the dhcp
   echo "DHCP" > $rootfs/var/run/inet1-scheme
-  # localtime (JST)
-  ln -s ../usr/share/zoneinfo/Asia/Tokyo $rootfs/etc/localtime
-  # disable pam_loginuid.so in /etc/pam.d/login (for libvirt's lxc driver)
-  sed -i '/pam_loginuid/s/^/#/' $rootfs/etc/pam.d/login
   # glibc configure
   mv $rootfs/etc/ld.so.conf{.new,}
   chroot $rootfs ldconfig
@@ -238,6 +229,82 @@ configure_plamo() {
   rm -f $rootfs/etc/rc.d/init.d/postfix
   rm -f $rootfs/var/log/initpkg/shadow
   return 0
+}
+
+configure_plamo7() {
+    # fstab
+    cat <<- "EOF" >> $rootfs/etc/fstab
+	proc            /proc   proc    defaults        0 0
+	tmpfs           /run    tmpfs   defaults        0 0
+	sysfs           /sys    sysfs   defaults        0 0
+	tmpfs           /tmp    tmpfs   defaults        0 0
+	devpts          /dev/pts        devpts  gid=5,mode=620  0 0
+	usbfs           /proc/bus/usb   usbfs   noauto  0 0
+	EOF
+
+    # inittab
+    sed -i -e '/^1:2345/i c:1235:respawn:/sbin/agetty console 38400'\
+        -e '/^ca:/a pf::powerfail:/sbin/shutdown -h +0 "THE POWER IS FAILING"' \
+        -e '/^4:2345/d' \
+        -e '/^5:2345/d' \
+        -e '/^6:2345/d' $rootfs/etc/inittab
+
+    # tweak init script on startup
+    remove_init_S="S05modules S10eudev S20swap S30checkfs S35setclock S50eudev_retry S70console"
+    for f in $remove_init_S
+    do
+      rm -f $rootfs/etc/rc.d/rcS.d/"$f"
+    done
+
+    # remove init script in runlevel3
+    remove_init="rc3.d/S30sshd
+                 rc6.d/K30sshd rc6.d/K35setclock rc6.d/S65swap rc6.d/S70mountfs
+                 rc0.d/K30sshd rc0.d/K35setclock rc0.d/S65swap rc0.d/S70mountfs"
+    for f in $remove_init
+    do
+      rm -f $rootfs/etc/rc.d/"$f"
+    done
+
+    # Tweak rc script
+    sed -i -e '/wait_for_user/d' \
+        -e '/Press Enter to/d' \
+        $rootfs/etc/rc.d/init.d/rc
+
+    # network
+    cat <<- "EOF" > $rootfs/etc/sysconfig/ifconfig.eth0
+	ONBOOT="yes"
+	IFACE="eth0"
+	SERVICE="dhclient"
+	EOF
+
+    # initpkg
+    noexec="shadow netconfig7 eudev openssh"
+    for f in $noexec
+    do
+      rm -f $rootfs/var/log/initpkg/"$f"
+    done
+    pushd $rootfs
+    for f in var/log/initpkg/*
+    do
+      chroot $rootfs sh ./$f
+    done
+    popd
+}
+
+configure_plamo() {
+  # set the hostname
+  echo "$name" > $rootfs/etc/HOSTNAME
+  # set minimal hosts
+  echo "127.0.0.1 localhost $name" > $rootfs/etc/hosts
+  # localtime (JST)
+  ln -s ../usr/share/zoneinfo/Asia/Tokyo $rootfs/etc/localtime
+  # disable pam_loginuid.so in /etc/pam.d/login
+  sed -i '/pam_loginuid/s/^/#/' $rootfs/etc/pam.d/login
+  if [ $majorver -ge 7 ]; then
+    configure_plamo7
+  else
+    configure_plamo6
+  fi
 }
 
 copy_configuration() {
@@ -351,6 +418,25 @@ if [ `id -u` -ne 0 ] ; then
   echo "This script should be run as 'root'."
   exit 1
 fi
+
+majorver=${release%.*}
+if [ $majorver -ge 7 ]; then
+    CATEGORIES=${CATEGORIES-"00_base"}
+    ADDONPKGS=${ADDONPKGS-""}
+else
+    CATEGORIES=${CATEGORIES-"00_base 01_minimum"}
+    ADDONPKGS=${ADDONPKGS-"`echo contrib/Hamradio/{morse,qrq}`"}
+fi
+
+DLSCHEME=${DLSCHEME:-"http"}
+MIRRORSRV=${MIRRORSRV:-"repository.plamolinux.org"}
+MIRRORPATH=${MIRRORPATH:-"/pub/linux/Plamo"}
+CATEGORIES=${CATEGORIES-"00_base 01_minimum"}
+EXTRACTGRS=${EXTRACTGRS-""}
+IGNOREPKGS=${IGNOREPKGS-"grub kernel lilo linux_firmware microcode_ctl
+    linux_firmwares cpufreqd cpufrequtils gpm ntp kmod kmscon"}
+ADDONPKGS=${ADDONPKGS-"`echo contrib/Hamradio/{morse,qrq}`"}
+
 cache="${LXC_CACHE_PATH:-@LOCALSTATEDIR@/cache/lxc}"
 ptcache=$cache/partial-${prog##*-}-$release-$arch
 dlcache=$cache/cache-${prog##*-}-$release-$arch
