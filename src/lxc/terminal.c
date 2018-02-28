@@ -653,15 +653,15 @@ void lxc_terminal_free(struct lxc_conf *conf, int fd)
 	struct lxc_tty_info *ttys = &conf->ttys;
 	struct lxc_terminal *terminal = &conf->console;
 
-	for (i = 0; i < ttys->nbtty; i++) {
+	for (i = 0; i < ttys->nbtty; i++)
 		if (ttys->tty[i].busy == fd)
 			ttys->tty[i].busy = 0;
-	}
 
-	if (terminal->proxy.busy == fd) {
-		lxc_mainloop_del_handler(terminal->descr, terminal->proxy.slave);
-		lxc_terminal_peer_proxy_free(terminal);
-	}
+	if (terminal->proxy.busy != fd)
+		return;
+
+	lxc_mainloop_del_handler(terminal->descr, terminal->proxy.slave);
+	lxc_terminal_peer_proxy_free(terminal);
 }
 
 static int lxc_terminal_peer_default(struct lxc_terminal *terminal)
