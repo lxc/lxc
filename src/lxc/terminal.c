@@ -931,28 +931,33 @@ err:
 	return -ENODEV;
 }
 
+static bool __terminal_dup2(int duplicate, int original)
+{
+	int ret;
+
+	if (!isatty(original))
+		return true;
+
+	ret = dup2(duplicate, original);
+	if (ret < 0) {
+		SYSERROR("Failed to dup2(%d, %d)", duplicate, original);
+		return false;
+	}
+
+	return true;
+}
+
 int lxc_terminal_set_stdfds(int fd)
 {
+	int i;
+
 	if (fd < 0)
 		return 0;
 
-	if (isatty(STDIN_FILENO))
-		if (dup2(fd, STDIN_FILENO) < 0) {
-			SYSERROR("failed to duplicate stdin.");
+	for (i = 0; i < 3; i++)
+		if (!__terminal_dup2(fd, (int[]){STDIN_FILENO, STDOUT_FILENO,
+						 STDERR_FILENO}[i]))
 			return -1;
-		}
-
-	if (isatty(STDOUT_FILENO))
-		if (dup2(fd, STDOUT_FILENO) < 0) {
-			SYSERROR("failed to duplicate stdout.");
-			return -1;
-		}
-
-	if (isatty(STDERR_FILENO))
-		if (dup2(fd, STDERR_FILENO) < 0) {
-			SYSERROR("failed to duplicate stderr.");
-			return -1;
-		}
 
 	return 0;
 }
