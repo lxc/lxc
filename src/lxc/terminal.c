@@ -473,16 +473,18 @@ int lxc_terminal_mainloop_add(struct lxc_epoll_descr *descr,
 
 int lxc_setup_tios(int fd, struct termios *oldtios)
 {
+	int ret;
 	struct termios newtios;
 
 	if (!isatty(fd)) {
-		ERROR("'%d' is not a tty", fd);
+		ERROR("File descriptor %d does not refert to a terminal", fd);
 		return -1;
 	}
 
-	/* Get current termios */
-	if (tcgetattr(fd, oldtios)) {
-		SYSERROR("failed to get current terminal settings");
+	/* Get current termios. */
+	ret = tcgetattr(fd, oldtios);
+	if (ret < 0) {
+		SYSERROR("Failed to get current terminal settings");
 		return -1;
 	}
 
@@ -511,8 +513,9 @@ int lxc_setup_tios(int fd, struct termios *oldtios)
 	newtios.c_cc[VTIME] = 0;
 
 	/* Set new attributes. */
-	if (tcsetattr(fd, TCSAFLUSH, &newtios)) {
-		ERROR("failed to set new terminal settings");
+	ret = tcsetattr(fd, TCSAFLUSH, &newtios);
+	if (ret < 0) {
+		ERROR("Failed to set new terminal settings");
 		return -1;
 	}
 
