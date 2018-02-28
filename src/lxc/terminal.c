@@ -1188,24 +1188,23 @@ void lxc_terminal_conf_free(struct lxc_terminal *terminal)
 		lxc_ringbuf_release(&terminal->ringbuf);
 }
 
-int lxc_terminal_map_ids(struct lxc_conf *c, struct lxc_terminal *pty)
+int lxc_terminal_map_ids(struct lxc_conf *c, struct lxc_terminal *terminal)
 {
 	int ret;
 
 	if (lxc_list_empty(&c->id_map))
 		return 0;
 
-	ret = strcmp(pty->name, "");
-	if (ret == 0)
+	if (strcmp(terminal->name, "") == 0)
 		return 0;
 
-	ret = chown_mapped_root(pty->name, c);
+	ret = chown_mapped_root(terminal->name, c);
 	if (ret < 0) {
-		ERROR("Failed to chown \"%s\"", pty->name);
+		ERROR("Failed to chown terminal \"%s\"", terminal->name);
 		return -1;
 	}
 
-	TRACE("Chowned \"%s\"", pty->name);
+	TRACE("Chowned terminal \"%s\"", terminal->name);
 
 	return 0;
 }
