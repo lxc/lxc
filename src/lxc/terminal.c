@@ -23,15 +23,14 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <lxc/lxccontainer.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <termios.h>
-#include <unistd.h>
 #include <sys/epoll.h>
 #include <sys/types.h>
-
-#include <lxc/lxccontainer.h>
+#include <termios.h>
+#include <unistd.h>
 
 #include "af_unix.h"
 #include "caps.h"
@@ -41,7 +40,7 @@
 #include "log.h"
 #include "lxclock.h"
 #include "mainloop.h"
-#include "start.h" 	/* for struct lxc_handler */
+#include "start.h"
 #include "terminal.h"
 #include "utils.h"
 
