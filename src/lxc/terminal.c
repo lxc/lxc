@@ -528,12 +528,17 @@ static void lxc_terminal_peer_proxy_free(struct lxc_terminal *terminal)
 		lxc_terminal_signal_fini(terminal->tty_state);
 		terminal->tty_state = NULL;
 	}
+
 	close(terminal->proxy.master);
-	close(terminal->proxy.slave);
 	terminal->proxy.master = -1;
+
+	close(terminal->proxy.slave);
 	terminal->proxy.slave = -1;
+
 	terminal->proxy.busy = -1;
+
 	terminal->proxy.name[0] = '\0';
+
 	terminal->peer = -1;
 }
 
