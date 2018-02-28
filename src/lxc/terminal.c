@@ -869,13 +869,11 @@ int lxc_terminal_create_log_file(struct lxc_terminal *terminal)
 
 int lxc_terminal_create(struct lxc_terminal *terminal)
 {
-	int ret, saved_errno;
+	int ret;
 
-	ret = openpty(&terminal->master, &terminal->slave, terminal->name, NULL,
-		      NULL);
-	saved_errno = errno;
+	ret = openpty(&terminal->master, &terminal->slave, terminal->name, NULL, NULL);
 	if (ret < 0) {
-		ERROR("%s - Failed to allocate a pty", strerror(saved_errno));
+		SYSERROR("Failed to open terminal");
 		return -1;
 	}
 
@@ -893,7 +891,7 @@ int lxc_terminal_create(struct lxc_terminal *terminal)
 
 	ret = lxc_terminal_peer_default(terminal);
 	if (ret < 0) {
-		ERROR("Failed to allocate a peer pty device");
+		ERROR("Failed to allocate proxy terminal");
 		goto err;
 	}
 
