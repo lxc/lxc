@@ -671,65 +671,69 @@ static int lxc_terminal_peer_default(struct lxc_terminal *terminal)
 	int fd;
 	int ret = 0;
 
-	/* If no terminal was given, try current controlling terminal, there
-	 * won't be one if we were started as a daemon (-d).
-	 */
-	if (!path && !access("/dev/tty", F_OK)) {
-		fd = open("/dev/tty", O_RDWR);
-		if (fd >= 0) {
-			close(fd);
-			path = "/dev/tty";
+	if (!path) {
+		ret = access("/dev/tty", F_OK);
+		if (ret == 0) {
+			/* If no terminal was given, try current controlling
+			 * terminal, there won't be one if we were started as a
+			 * daemon (-d).
+			 */
+			fd = open("/dev/tty", O_RDWR);
+			if (fd >= 0) {
+				close(fd);
+				path = "/dev/tty";
+			}
 		}
 	}
 
 	if (!path) {
 		errno = ENOTTY;
-		DEBUG("process does not have a controlling terminal");
-		goto out;
+		DEBUG("Theh process does not have a controlling terminal");
+		goto on_succes;
 	}
 
 	terminal->peer = lxc_unpriv(open(path, O_RDWR | O_CLOEXEC));
 	if (terminal->peer < 0) {
-		ERROR("Failed to open \"%s\": %s", path, strerror(errno));
+		ERROR("%s - Failed to open proxy terminal \"%s\"",
+		      strerror(errno), path);
 		return -ENOTTY;
 	}
-	DEBUG("using \"%s\" as peer tty device", path);
+	DEBUG("Using terminal \"%s\" as proxy", path);
 
 	if (!isatty(terminal->peer)) {
-		ERROR("file descriptor for file \"%s\" does not refer to a tty device", path);
-		goto on_error1;
+		ERROR("File descriptor for \"%s\" does not refer to a terminal", path);
+		goto on_error_free_tios;
 	}
 
 	ts = lxc_terminal_signal_init(terminal->peer, terminal->master);
 	terminal->tty_state = ts;
 	if (!ts) {
 		WARN("Failed to install signal handler");
-		goto on_error1;
+		goto on_error_free_tios;
 	}
 
 	lxc_terminal_winsz(terminal->peer, terminal->master);
 
 	terminal->tios = malloc(sizeof(*terminal->tios));
-	if (!terminal->tios) {
-		SYSERROR("failed to allocate memory");
-		goto on_error1;
-	}
+	if (!terminal->tios)
+		goto on_error_free_tios;
 
-	if (lxc_setup_tios(terminal->peer, terminal->tios) < 0)
-		goto on_error2;
+	ret = lxc_setup_tios(terminal->peer, terminal->tios);
+	if (ret < 0)
+		goto on_error_close_peer;
 	else
-		goto out;
+		goto on_succes;
 
-on_error2:
+on_error_free_tios:
 	free(terminal->tios);
 	terminal->tios = NULL;
 
-on_error1:
+on_error_close_peer:
 	close(terminal->peer);
 	terminal->peer = -1;
 	ret = -ENOTTY;
 
-out:
+on_succes:
 	return ret;
 }
 
