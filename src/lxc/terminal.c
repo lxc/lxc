@@ -255,11 +255,11 @@ static int lxc_terminal_rotate_log_file(struct lxc_terminal *terminal)
 }
 
 static int lxc_terminal_write_log_file(struct lxc_terminal *terminal, char *buf,
-				      int bytes_read)
+				       int bytes_read)
 {
 	int ret;
-	int64_t space_left = -1;
 	struct stat st;
+	int64_t space_left = -1;
 
 	if (terminal->log_fd < 0)
 		return 0;
