@@ -600,13 +600,18 @@ on_error:
 
 int lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 {
-	int masterfd = -1, ttynum;
+	int ttynum;
+	int masterfd = -1;
 	struct lxc_tty_info *ttys = &conf->ttys;
 	struct lxc_terminal *terminal = &conf->console;
 
 	if (*ttyreq == 0) {
-		if (lxc_terminal_peer_proxy_alloc(terminal, sockfd) < 0)
+		int ret;
+
+		ret = lxc_terminal_peer_proxy_alloc(terminal, sockfd);
+		if (ret < 0)
 			goto out;
+
 		masterfd = terminal->proxy.master;
 		goto out;
 	}
@@ -618,16 +623,17 @@ int lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 		if (ttys->tty[*ttyreq - 1].busy)
 			goto out;
 
-		/* the requested tty is available */
+		/* The requested tty is available. */
 		ttynum = *ttyreq;
 		goto out_tty;
 	}
 
-	/* search for next available tty, fixup index tty1 => [0] */
-	for (ttynum = 1; ttynum <= ttys->nbtty && ttys->tty[ttynum - 1].busy; ttynum++)
+	/* Search for next available tty, fixup index tty1 => [0]. */
+	for (ttynum = 1; ttynum <= ttys->nbtty && ttys->tty[ttynum - 1].busy; ttynum++) {
 		;
+	}
 
-	/* we didn't find any available slot for tty */
+	/* We didn't find any available slot for tty. */
 	if (ttynum > ttys->nbtty)
 		goto out;
 
@@ -636,6 +642,7 @@ int lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 out_tty:
 	ttys->tty[ttynum - 1].busy = sockfd;
 	masterfd = ttys->tty[ttynum - 1].master;
+
 out:
 	return masterfd;
 }
