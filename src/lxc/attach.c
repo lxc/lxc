@@ -846,7 +846,7 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	}
 
 	if (options->stdin_fd > 0 && isatty(options->stdin_fd)) {
-		ret = lxc_make_controlling_pty(options->stdin_fd);
+		ret = lxc_make_controlling_terminal(options->stdin_fd);
 		if (ret < 0)
 			goto on_error;
 	}

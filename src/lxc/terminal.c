@@ -1131,7 +1131,7 @@ close_fds:
 	return ret;
 }
 
-int lxc_make_controlling_pty(int fd)
+int lxc_make_controlling_terminal(int fd)
 {
 	int ret;
 
@@ -1148,7 +1148,7 @@ int lxc_login_pty(int fd)
 {
 	int ret;
 
-	ret = lxc_make_controlling_pty(fd);
+	ret = lxc_make_controlling_terminal(fd);
 	if (ret < 0)
 		return -1;
 

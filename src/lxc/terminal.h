@@ -281,7 +281,7 @@ extern int lxc_terminal_create_log_file(struct lxc_terminal *console);
 extern int lxc_terminal_io_cb(int fd, uint32_t events, void *data,
 			      struct lxc_epoll_descr *descr);
 
-extern int lxc_make_controlling_pty(int fd);
+extern int lxc_make_controlling_terminal(int fd);
 extern int lxc_login_pty(int fd);
 extern void lxc_terminal_conf_free(struct lxc_terminal *console);
 extern void lxc_terminal_info_init(struct lxc_terminal_info *pty);
