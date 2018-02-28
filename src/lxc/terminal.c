@@ -907,8 +907,8 @@ int lxc_terminal_setup(struct lxc_conf *conf)
 	int ret;
 	struct lxc_terminal *terminal = &conf->console;
 
-	if (terminal->path && !strcmp(terminal->path, "none")) {
-		INFO("No terminal was requested");
+	if (terminal->path && strcmp(terminal->path, "none") == 0) {
+		INFO("No terminal requested");
 		return 0;
 	}
 
@@ -916,12 +916,10 @@ int lxc_terminal_setup(struct lxc_conf *conf)
 	if (ret < 0)
 		return -1;
 
-	/* create terminal log file */
 	ret = lxc_terminal_create_log_file(terminal);
 	if (ret < 0)
 		goto err;
 
-	/* create terminal ringbuffer */
 	ret = lxc_terminal_create_ringbuf(terminal);
 	if (ret < 0)
 		goto err;
