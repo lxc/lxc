@@ -20,9 +20,6 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-%global with_python %{?_with_python: 1} %{?!_with_python: 0}
-%global with_lua %{?_with_lua: 1} %{?!_with_lua: 0}
-
 # Set with_systemd on distros that use it, so we can install the service
 # file, otherwise the sysvinit script will be installed
 %if 0%{?fedora} >= 14 || 0%{?rhel} >= 7 || 0%{?suse_version} >= 1210
@@ -94,12 +91,6 @@ BuildRequires:  libseccomp-devel
 %endif
 %endif
 
-%if %{with_python}
-Requires: python3
-BuildRequires: python3-devel
-BuildRequires: python3-setuptools
-%endif
-
 %description
 Containers are insulated areas inside a system, which have their own namespace
 for filesystem, network, PID, IPC, CPU and memory allocation and which can be
@@ -124,26 +115,10 @@ Requires:	%{name} = %{version}-%{release}, pkgconfig
 The %{name}-devel package contains header files and library needed for
 development of the Linux containers.
 
-%if %{with_lua}
-%package	lua
-Summary:	Lua bindings for %{name}
-Group:		System Environment/Libraries
-Requires:	lua-filesystem lua-alt-getopt
-BuildRequires:	lua-devel
-%description	lua
-The %{name}-lua package contains %{name} bindings for lua.
-%endif
-
 %prep
 %setup -q -n %{name}-%{version}%{?beta_dot}
 %build
 PATH=$PATH:/usr/sbin:/sbin %configure $args \
-%if %{with_lua}
-  --enable-lua \
-%endif
-%if %{with_python}
-  --enable-python \
-%endif
 %if "x%{_unitdir}" != "x"
   --with-systemdsystemunitdir=%{_unitdir} \
 %endif
@@ -278,17 +253,6 @@ fi
 %if %{with_systemd}
 %attr(555,root,root) %{_libexecdir}/%{name}/lxc-net
 %attr(555,root,root) %{_libexecdir}/%{name}/lxc-containers
-%endif
-
-%if %{with_python}
-%{python3_sitearch}/*
-%endif
-
-%if %{with_lua}
-%files lua
-%defattr(-,root,root)
-%{_datadir}/lua
-%{_libdir}/lua
 %endif
 
 %files devel

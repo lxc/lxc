@@ -1,8 +1,0 @@
-# This derives from the global userns config
-lxc.include = @LXCTEMPLATECONFIG@/userns.conf
-
-# Set $VIRTUALIZATION so runit doesn't try to mount filesystems or start udevd
-lxc.environment=VIRTUALIZATION=lxc
-
-# Set the halt/stop signals
-lxc.signal.halt=SIGCONT

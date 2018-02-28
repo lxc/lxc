@@ -1,6 +1,0 @@
-# This derives from the global userns config
-lxc.include = @LXCTEMPLATECONFIG@/userns.conf
-
-# Extra fstab entries as mountall can't mount those by itself
-lxc.mount.entry = /sys/firmware/efi/efivars sys/firmware/efi/efivars none bind,optional 0 0
-lxc.mount.entry = /proc/sys/fs/binfmt_misc proc/sys/fs/binfmt_misc none bind,optional 0 0

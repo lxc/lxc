@@ -1,349 +1,221 @@
-#!/bin/bash
+#!/bin/sh
 
+# Client script for LXC container images.
 #
-# lxc: linux Container library
+# Copyright @ Daniel Lezcano <daniel.lezcano@free.fr>
+# Copyright © 2018 Christian Brauner <christian.brauner@ubuntu.com>
+#
+#  This library is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU Lesser General Public
+#  License as published by the Free Software Foundation; either
+#  version 2.1 of the License, or (at your option) any later version.
 
-# Authors:
-# Daniel Lezcano <daniel.lezcano@free.fr>
+#  This library is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#  Lesser General Public License for more details.
 
-# This library is free software; you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either
-# version 2.1 of the License, or (at your option) any later version.
-
-# This library is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# Lesser General Public License for more details.
-
-# You should have received a copy of the GNU Lesser General Public
-# License along with this library; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+#  You should have received a copy of the GNU Lesser General Public
+#  License along with this library; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+#  USA
 
 LXC_MAPPED_UID=
 LXC_MAPPED_GID=
-SSH=
 
 # Make sure the usual locations are in PATH
 export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
 
-am_in_userns() {
-    [ -e /proc/self/uid_map ] || { echo no; return; }
-    [ "$(wc -l /proc/self/uid_map | awk '{ print $1 }')" -eq 1 ] || { echo yes; return; }
-    line=$(awk '{ print $1 " " $2 " " $3 }' /proc/self/uid_map)
-    [ "$line" = "0 0 4294967295" ] && { echo no; return; }
-    echo yes
+in_userns() {
+  [ -e /proc/self/uid_map ] || { echo no; return; }
+  while read -r line; do
+    fields="$(echo "$line" | awk '{ print $1 " " $2 " " $3 }')"
+    if [ "${fields}" = "0 0 4294967295" ]; then
+      echo no;
+      return;
+    fi
+    if echo "${fields}" | grep -q " 0 1$"; then
+      echo userns-root;
+      return;
+    fi
+  done < /proc/self/uid_map
+
+  [ "$(cat /proc/self/uid_map)" = "$(cat /proc/1/uid_map)" ] && { echo userns-root; return; }
+  echo yes
 }
 
-in_userns=0
-[ $(am_in_userns) = "yes" ] && in_userns=1
-
-copy_binary()
-{
-    binary_path=`which $1`
-    if [ $? -ne 0 ]; then
-        echo "Unable to find $1 binary on the system"
-        return 1
-    fi
-
-    dir_path="${binary_path%/*}"
-    echo /{,usr/}{,s}bin | grep $dir_path >/dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        echo "Binary $1 is located at $binary_path and will not be copied"
-        echo "($dir_path not supported)"
-        return 1
-    fi
-
-    cp $binary_path $rootfs/$binary_path
-    if [ $? -ne 0 ]; then
-        echo "Failed to copy $binary_path to rootfs"
-        return 1
-    fi
-
-    return 0
-}
+USERNS="$(in_userns)"
 
 install_busybox()
 {
-    rootfs=$1
-    name=$2
-    res=0
-    tree="\
-$rootfs/selinux \
-$rootfs/dev \
-$rootfs/home \
-$rootfs/root \
-$rootfs/etc \
-$rootfs/etc/init.d \
-$rootfs/bin \
-$rootfs/usr/bin \
-$rootfs/sbin \
-$rootfs/usr/sbin \
-$rootfs/proc \
-$rootfs/sys \
-$rootfs/mnt \
-$rootfs/tmp \
-$rootfs/var/log \
-$rootfs/usr/share/udhcpc \
-$rootfs/dev/pts \
-$rootfs/dev/shm \
-$rootfs/lib \
-$rootfs/usr/lib \
-$rootfs/lib64 \
-$rootfs/usr/lib64"
+  rootfs="${1}"
+  name="${2}"
+  res=0
+  fstree="\
+${rootfs}/selinux \
+${rootfs}/dev \
+${rootfs}/home \
+${rootfs}/root \
+${rootfs}/etc \
+${rootfs}/etc/init.d \
+${rootfs}/bin \
+${rootfs}/usr/bin \
+${rootfs}/sbin \
+${rootfs}/usr/sbin \
+${rootfs}/proc \
+${rootfs}/sys \
+${rootfs}/mnt \
+${rootfs}/tmp \
+${rootfs}/var/log \
+${rootfs}/usr/share/udhcpc \
+${rootfs}/dev/pts \
+${rootfs}/dev/shm \
+${rootfs}/lib \
+${rootfs}/usr/lib \
+${rootfs}/lib64 \
+${rootfs}/usr/lib64"
 
-    mkdir -p $tree || return 1
-    chmod 755 $tree || return 1
+  # shellcheck disable=SC2086
+  mkdir -p ${fstree} || return 1
+  # shellcheck disable=SC2086
+  chmod 755 ${fstree} || return 1
 
-    pushd $rootfs/dev > /dev/null || return 1
+  # minimal devices needed for busybox
+  if [ "${USERNS}" = "yes" ]; then
+    for dev in tty console tty0 tty1 ram0 null urandom; do
+      echo "lxc.mount.entry = /dev/${dev} dev/${dev} none bind,optional,create=file 0 0" >> "${path}/config"
+    done
+  else
+    mknod -m 666 "${rootfs}/tty" c 5 0       || res=1
+    mknod -m 666 "${rootfs}/console" c 5 1   || res=1
+    mknod -m 666 "${rootfs}/tty0" c 4 0      || res=1
+    mknod -m 666 "${rootfs}/tty1" c 4 0      || res=1
+    mknod -m 666 "${rootfs}/tty5" c 4 0      || res=1
+    mknod -m 600 "${rootfs}/ram0" b 1 0      || res=1
+    mknod -m 666 "${rootfs}/null" c 1 3      || res=1
+    mknod -m 666 "${rootfs}/zero" c 1 5      || res=1
+    mknod -m 666 "${rootfs}/urandom" c 1 9   || res=1
+  fi
 
-    # minimal devices needed for busybox
-    if [ $in_userns -eq 1 ]; then
-        for dev in tty console tty0 tty1 ram0 null urandom; do
-            echo "lxc.mount.entry = /dev/$dev dev/$dev    none bind,optional,create=file 0 0" >> $path/config
-        done
-    else
-        mknod -m 666 tty c 5 0       || res=1
-        mknod -m 666 console c 5 1   || res=1
-        mknod -m 666 tty0 c 4 0      || res=1
-        mknod -m 666 tty1 c 4 0      || res=1
-        mknod -m 666 tty5 c 4 0      || res=1
-        mknod -m 600 ram0 b 1 0      || res=1
-        mknod -m 666 null c 1 3      || res=1
-        mknod -m 666 zero c 1 5      || res=1
-        mknod -m 666 urandom c 1 9   || res=1
-    fi
-
-    popd > /dev/null
-
-    # root user defined
-    cat <<EOF >> $rootfs/etc/passwd
+  # root user defined
+  cat <<EOF >> "${rootfs}/etc/passwd"
 root:x:0:0:root:/root:/bin/sh
 EOF
 
-    cat <<EOF >> $rootfs/etc/group
+  cat <<EOF >> "${rootfs}/etc/group"
 root:x:0:root
 EOF
 
     # mount everything
-    cat <<EOF >> $rootfs/etc/init.d/rcS
+  cat <<EOF >> "${rootfs}/etc/init.d/rcS"
 #!/bin/sh
 /bin/syslogd
 /bin/mount -a
 /bin/udhcpc
 EOF
 
-    # executable
-    chmod 744 $rootfs/etc/init.d/rcS || return 1
+  # executable
+  chmod 744 "${rootfs}/etc/init.d/rcS" || return 1
 
-    # launch rcS first then make a console available
-    # and propose a shell on the tty, the last one is
-    # not needed
-    cat <<EOF >> $rootfs/etc/inittab
+  # launch rcS first then make a console available
+  # and propose a shell on the tty, the last one is
+  # not needed
+  cat <<EOF >> "${rootfs}/etc/inittab"
 ::sysinit:/etc/init.d/rcS
 tty1::respawn:/bin/getty -L tty1 115200 vt100
 console::askfirst:/bin/sh
 EOF
-    # writable and readable for other
-    chmod 644 $rootfs/etc/inittab || return 1
+  # writable and readable for other
+  chmod 644 "${rootfs}/etc/inittab" || return 1
 
-    cat <<EOF >> $rootfs/usr/share/udhcpc/default.script
+  cat <<EOF >> "${rootfs}/usr/share/udhcpc/default.script"
 #!/bin/sh
 case "\$1" in
-    deconfig)
-        ip addr flush dev \$interface
-        ;;
+  deconfig)
+    ip addr flush dev \$interface
+    ;;
 
-    renew|bound)
-        # flush all the routes
-        if [ -n "\$router" ]; then
-            ip route del default 2> /dev/null
-        fi
+  renew|bound)
+    # flush all the routes
+    if [ -n "\$router" ]; then
+      ip route del default 2> /dev/null
+    fi
 
-        # check broadcast
-        if [ -n "\$broadcast" ]; then
-            broadcast="broadcast \$broadcast"
-        fi
+    # check broadcast
+    if [ -n "\$broadcast" ]; then
+      broadcast="broadcast \$broadcast"
+    fi
 
-        # add a new ip address
-        ip addr add \$ip/\$mask \$broadcast dev \$interface
+    # add a new ip address
+    ip addr add \$ip/\$mask \$broadcast dev \$interface
 
-        if [ -n "\$router" ]; then
-            ip route add default via \$router dev \$interface
-        fi
+    if [ -n "\$router" ]; then
+      ip route add default via \$router dev \$interface
+    fi
 
-        [ -n "\$domain" ] && echo search \$domain > /etc/resolv.conf
-        for i in \$dns ; do
-            echo nameserver \$i >> /etc/resolv.conf
-        done
-        ;;
+    [ -n "\$domain" ] && echo search \$domain > /etc/resolv.conf
+    for i in \$dns ; do
+      echo nameserver \$i >> /etc/resolv.conf
+    done
+    ;;
 esac
 exit 0
 EOF
 
-    chmod 744 $rootfs/usr/share/udhcpc/default.script
+ chmod 744 "${rootfs}/usr/share/udhcpc/default.script"
 
-    return $res
-}
-
-install_dropbear()
-{
-    # copy dropbear binary
-    copy_binary dropbear || return 1
-
-    # make symlinks to various ssh utilities
-    utils="\
-        $rootfs/usr/bin/dbclient \
-        $rootfs/usr/bin/scp \
-        $rootfs/usr/bin/ssh \
-        $rootfs/usr/sbin/dropbearkey \
-        $rootfs/usr/sbin/dropbearconvert \
-    "
-    echo $utils | xargs -n1 ln -s /usr/sbin/dropbear
-
-    # add necessary config files
-    mkdir $rootfs/etc/dropbear
-    dropbearkey -t rsa -f $rootfs/etc/dropbear/dropbear_rsa_host_key > /dev/null 2>&1
-    dropbearkey -t dss -f $rootfs/etc/dropbear/dropbear_dss_host_key > /dev/null 2>&1
-
-    echo "'dropbear' ssh utility installed"
-
-    return 0
-}
-
-install_openssh()
-{
-    # tools to be installed
-    server_utils="sshd"
-    client_utils="\
-        ssh \
-        scp \
-        "
-    client_optional_utils="\
-        sftp \
-        ssh-add \
-        ssh-agent \
-        ssh-keygen \
-        ssh-keyscan \
-        ssh-argv0 \
-        ssh-copy-id \
-        "
-
-    # new folders used by ssh
-    ssh_tree="\
-$rootfs/etc/ssh \
-$rootfs/var/empty/sshd \
-$rootfs/var/lib/empty/sshd \
-$rootfs/var/run/sshd \
-"
-
-    # create folder structure
-    mkdir -p $ssh_tree
-    if [ $? -ne 0 ]; then
-        return 1
-    fi
-
-    # copy binaries
-    for bin in $server_utils $client_utils; do
-        copy_binary $bin || return 1
-    done
-
-    for bin in $client_optional_utils; do
-        tool_path=`which $bin` && copy_binary $bin
-    done
-
-    # add user and group
-    cat <<EOF >> $rootfs/etc/passwd
-sshd:x:74:74:Privilege-separated SSH:/var/empty/sshd:/sbin/nologin
-EOF
-
-    cat <<EOF >> $rootfs/etc/group
-sshd:x:74:
-EOF
-
-    # generate container keys
-    ssh-keygen -t rsa -N "" -f $rootfs/etc/ssh/ssh_host_rsa_key >/dev/null 2>&1
-    ssh-keygen -t dsa -N "" -f $rootfs/etc/ssh/ssh_host_dsa_key >/dev/null 2>&1
-
-    # by default setup root password with no password
-    cat <<EOF > $rootfs/etc/ssh/sshd_config
-Port 22
-Protocol 2
-HostKey /etc/ssh/ssh_host_rsa_key
-HostKey /etc/ssh/ssh_host_dsa_key
-UsePrivilegeSeparation yes
-KeyRegenerationInterval 3600
-ServerKeyBits 768
-SyslogFacility AUTH
-LogLevel INFO
-LoginGraceTime 120
-PermitRootLogin yes
-StrictModes yes
-RSAAuthentication yes
-PubkeyAuthentication yes
-IgnoreRhosts yes
-RhostsRSAAuthentication no
-HostbasedAuthentication no
-PermitEmptyPasswords yes
-ChallengeResponseAuthentication no
-EOF
-
-    echo "'OpenSSH' utility installed"
-
-    return 0
+ return "${res}"
 }
 
 configure_busybox()
 {
-    rootfs=$1
+  rootfs="${1}"
 
-    which busybox >/dev/null 2>&1
+  if ! which busybox > /dev/null 2>&1; then
+    echo "ERROR: Failed to find busybox binary"
+    return 1
+  fi
 
-    if [ $? -ne 0 ]; then
-        echo "busybox executable is not accessible"
-        return 1
-    fi
+  # copy busybox in the rootfs
+  if ! cp "$(which busybox)" "${rootfs}/bin"; then
+    echo "ERROR: Failed to copy busybox binary"
+    return 1
+  fi
 
-    # copy busybox in the rootfs
-    cp $(which busybox) $rootfs/bin
-    if [ $? -ne 0 ]; then
-        echo "failed to copy busybox in the rootfs"
-        return 1
-    fi
-
-    # symlink busybox for the commands it supports
-    # it would be nice to just use "chroot $rootfs busybox --install -s /bin"
-    # but that only works right in a chroot with busybox >= 1.19.0
-    pushd $rootfs/bin > /dev/null || return 1
+  # symlink busybox for the commands it supports
+  # it would be nice to just use "chroot $rootfs busybox --install -s /bin"
+  # but that only works right in a chroot with busybox >= 1.19.0
+  (
+    cd "${rootfs}/bin" || return 1
     ./busybox --help | grep 'Currently defined functions:' -A300 | \
       grep -v 'Currently defined functions:' | tr , '\n' | \
       xargs -n1 ln -s busybox
-    popd > /dev/null
+  )
 
-    # relink /sbin/init
-    ln $rootfs/bin/busybox $rootfs/sbin/init
+  # relink /sbin/init
+  ln "${rootfs}/bin/busybox" "${rootfs}/sbin/init"
 
-    # /etc/fstab must exist for "mount -a"
-    touch $rootfs/etc/fstab
+  # /etc/fstab must exist for "mount -a"
+  touch "${rootfs}/etc/fstab"
 
-    # passwd exec must be setuid
-    chmod +s $rootfs/bin/passwd
-    touch $rootfs/etc/shadow
+  # passwd exec must be setuid
+  chmod +s "${rootfs}/bin/passwd"
+  touch "${rootfs}/etc/shadow"
 
-    return 0
+  return 0
 }
 
 copy_configuration()
 {
-    path=$1
-    rootfs=$2
-    name=$3
+  path="${1}"
+  rootfs="${2}"
+  name="${3}"
 
-grep -q "^lxc.rootfs.path" $path/config 2>/dev/null || echo "lxc.rootfs.path = $rootfs" >> $path/config
-cat <<EOF >> $path/config
+grep -q "^lxc.rootfs.path" "${path}/config" 2>/dev/null || echo "lxc.rootfs.path = ${rootfs}" >> "${path}/config"
+cat <<EOF >> "${path}/config"
 lxc.signal.halt = SIGUSR1
 lxc.signal.reboot = SIGTERM
-lxc.uts.name = $name
+lxc.uts.name = "${name}"
 lxc.tty.max = 1
 lxc.pty.max = 1
 lxc.cap.drop = sys_module mac_admin mac_override sys_time
@@ -355,130 +227,104 @@ lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
 lxc.mount.entry = shm /dev/shm tmpfs defaults 0 0
 EOF
 
-    libdirs="\
-        lib \
-        usr/lib \
-        lib64 \
-        usr/lib64"
-
-    for dir in $libdirs; do
-        if [ -d "/$dir" ] && [ -d "$rootfs/$dir" ]; then
-            echo "lxc.mount.entry = /$dir $dir none ro,bind 0 0" >> $path/config
-        fi
-    done
-    echo "lxc.mount.entry = /sys/kernel/security sys/kernel/security none ro,bind,optional 0 0" >>$path/config
+  libdirs="\
+    lib \
+    usr/lib \
+    lib64 \
+    usr/lib64"
+  
+  for dir in ${libdirs}; do
+    if [ -d "/${dir}" ] && [ -d "${rootfs}/${dir}" ]; then
+      echo "lxc.mount.entry = /${dir} ${dir} none ro,bind 0 0" >> "${path}/config"
+    fi
+  done
+  echo "lxc.mount.entry = /sys/kernel/security sys/kernel/security none ro,bind,optional 0 0" >> "${path}/config"
 }
 
 remap_userns()
 {
-    path=$1
+ path="${1}"
 
-    if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
-        chown $LXC_MAPPED_UID $path/config >/dev/null 2>&1
-        chown -R root $path/rootfs >/dev/null 2>&1
-    fi
+ if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
+   chown "${LXC_MAPPED_UID}" "${path}/config" > /dev/null 2>&1
+   chown -R root "${path}/rootfs" > /dev/null 2>&1
+ fi
 
-    if [ -n "$LXC_MAPPED_GID" ] && [ "$LXC_MAPPED_GID" != "-1" ]; then
-        chgrp $LXC_MAPPED_GID $path/config >/dev/null 2>&1
-        chgrp -R root $path/rootfs >/dev/null 2>&1
-    fi
+ if [ -n "$LXC_MAPPED_GID" ] && [ "$LXC_MAPPED_GID" != "-1" ]; then
+   chgrp "${LXC_MAPPED_GID}" "${path}/config" > /dev/null 2>&1
+   chgrp -R root "${path}/rootfs" > /dev/null 2>&1
+ fi
 }
 
-usage()
-{
-    cat <<EOF
-$1 -h|--help -p|--path=<path> -s|--ssh={dropbear,openssh}
+usage() {
+  cat <<EOF
+LXC busybox image builder
+
+Special arguments:
+[ -h | --help ]: Print this help message and exit.
+
+LXC internal arguments (do not pass manually!):
+[ --name <name> ]: The container name
+[ --path <path> ]: The path to the container
+[ --rootfs <rootfs> ]: The path to the container's rootfs
+[ --mapped-uid <map> ]: A uid map (user namespaces)
+[ --mapped-gid <map> ]: A gid map (user namespaces)
 EOF
-    return 0
+  return 0
 }
 
-options=$(getopt -o hp:n:s: -l help,rootfs:,path:,name:,mapped-uid:,mapped-gid:,ssh: -- "$@")
-if [ $? -ne 0 ]; then
-    usage $(basename $0)
-    exit 1
+if ! options=$(getopt -o hp:n: -l help,rootfs:,path:,name:,mapped-uid:,mapped-gid: -- "$@"); then
+  usage
+  exit 1
 fi
 eval set -- "$options"
 
 while true
 do
-    case "$1" in
-        -h|--help)      usage $0 && exit 0;;
-        -p|--path)      path=$2; shift 2;;
-        --rootfs)       rootfs=$2; shift 2;;
-        -n|--name)      name=$2; shift 2;;
-        --mapped-uid)   LXC_MAPPED_UID=$2; shift 2;;
-        --mapped-gid)   LXC_MAPPED_GID=$2; shift 2;;
-        -s|--ssh)       SSH=$2; shift 2;;
-        --)             shift 1; break ;;
-        *)              break ;;
-    esac
+  case "$1" in
+    -h|--help)    usage exit 1;;
+    -n|--name)    name=$2; shift 2;;
+    -p|--path)    path=$2; shift 2;;
+    --rootfs)     rootfs=$2; shift 2;;
+    --mapped-uid) LXC_MAPPED_UID=$2; shift 2;;
+    --mapped-gid) LXC_MAPPED_GID=$2; shift 2;;
+    --)           shift 1; break ;;
+    *)            break ;;
+  esac
 done
 
-if [ "$(id -u)" != "0" ]; then
-    echo "This script should be run as 'root'"
-    exit 1
-fi
-
-if [ -z "$path" ]; then
-    echo "'path' parameter is required"
+# Check that we have all variables we need
+if [ -z "${name}" ] || [ -z "${path}" ] || [ -z "${rootfs}" ]; then
+    echo "ERROR: Please pass the name, path, and rootfs for the container" 1>&2
     exit 1
 fi
 
 # detect rootfs
 config="$path/config"
 if [ -z "$rootfs" ]; then
-    if grep -q '^lxc.rootfs.path' $config 2>/dev/null ; then
-        rootfs=$(awk -F= '/^lxc.rootfs.path =/{ print $2 }' $config)
-    else
-        rootfs=$path/rootfs
-    fi
+  if grep -q '^lxc.rootfs.path' "${config}" 2> /dev/null ; then
+    rootfs=$(awk -F= '/^lxc.rootfs.path =/{ print $2 }' "${config}")
+  else
+    rootfs="${path}/rootfs"
+  fi
 fi
 
-install_busybox $rootfs $name
-if [ $? -ne 0 ]; then
-    echo "failed to install busybox's rootfs"
-    exit 1
+if ! install_busybox "${rootfs}" "${name}"; then
+  echo "ERROR: Failed to install rootfs"
+  exit 1
 fi
 
-configure_busybox $rootfs
-if [ $? -ne 0 ]; then
-    echo "failed to configure busybox template"
-    exit 1
+if ! configure_busybox "${rootfs}"; then
+  echo "ERROR: Failed to configure busybox"
+  exit 1
 fi
 
-copy_configuration $path $rootfs $name
-if [ $? -ne 0 ]; then
-    echo "failed to write configuration file"
-    exit 1
+if ! copy_configuration "${path}" "${rootfs}" "${name}"; then
+  echo "ERROR: Failed to write config file"
+  exit 1
 fi
 
-remap_userns $path
-if [ $? -ne 0 ]; then
-    echo "failed to remap files to user"
-    exit 1
-fi
-
-if [ -n "$SSH" ]; then
-    case "$SSH" in
-        "dropbear")
-            install_dropbear
-            if [ $? -ne 0 ]; then
-                echo "Unable to install 'dropbear' ssh utility"
-                exit 1
-            fi ;;
-        "openssh")
-            install_openssh
-            if [ $? -ne 0 ]; then
-                echo "Unable to install 'OpenSSH' utility"
-                exit 1
-            fi ;;
-        *)
-            echo "$SSH: unrecognized ssh utility"
-            exit 1
-    esac
-else
-    which dropbear >/dev/null 2>&1
-    if [ $? -eq 0 ]; then
-        install_dropbear
-    fi
+if ! remap_userns "${path}"; then
+  echo "ERROR: Failed to change idmappings"
+  exit 1
 fi

@@ -173,13 +173,6 @@ AC_ARG_ENABLE([werror],
 	[do not treat warnings as errors])],
 	[], [enable_werror=yes])
 
-# Allow enabling deprecated executables
-AC_ARG_ENABLE([deprecated],
-	[AC_HELP_STRING([--enable-deprecated],
-	[enable deprecated executables [default=no]])],
-	[], [enable_deprecated=false])
-AM_CONDITIONAL([ENABLE_DEPRECATED], [test "x$enable_deprecated" = "xyes"])
-
 # Allow disabling rpath
 AC_ARG_ENABLE([rpath],
 	[AC_HELP_STRING([--enable-rpath], [set rpath in executables [default=no]])],
@@ -363,29 +356,6 @@ AC_ARG_ENABLE([examples],
 	[], [enable_examples=yes])
 AM_CONDITIONAL([ENABLE_EXAMPLES], [test "x$enable_examples" = "xyes"])
 
-# Python3 module and scripts
-AC_ARG_ENABLE([python],
-	[AC_HELP_STRING([--enable-python], [enable python binding [default=auto]])],
-	[], [enable_python=auto])
-
-if test "x$enable_python" = "xauto"; then
-	PKG_CHECK_MODULES([PYTHONDEV], [python3 >= 3.2],[enable_python=yes],[enable_python=no])
-	if test "$CC" = "clang"; then
-		enable_python=no
-	fi
-fi
-
-if test "x$enable_python" = "xyes" && test "$CC" = "clang"; then
-	AC_MSG_ERROR([Python3 is incompatible with the clang compiler])
-fi
-
-AM_CONDITIONAL([ENABLE_PYTHON], [test "x$enable_python" = "xyes"])
-
-AM_COND_IF([ENABLE_PYTHON],
-	[AM_PATH_PYTHON([3.2], [], [AC_MSG_ERROR([You must install python3])])
-	PKG_CHECK_MODULES([PYTHONDEV], [python3 >= 3.2],[],[AC_MSG_ERROR([You must install python3-dev])])
-	AC_DEFINE_UNQUOTED([ENABLE_PYTHON], 1, [Python3 is available])])
-
 # Enable dumping stack traces
 AC_ARG_ENABLE([mutex-debugging],
 	[AC_HELP_STRING([--enable-mutex-debugging], [Makes mutexes to report error and provide stack trace [default=no]])],
@@ -416,53 +386,6 @@ m4_ifdef([PKG_CHECK_VAR], [],
     ])# PKG_CHECK_VAR
 ])
 
-# Lua module and scripts
-AC_ARG_ENABLE([lua],
-	[AC_HELP_STRING([--enable-lua], [enable lua binding [default=auto]])],
-	[], [enable_lua=auto])
-
-AC_ARG_WITH([lua-pc],
-	[AS_HELP_STRING(
-		[--with-lua-pc=PKG],
-		[Specify pkg-config package name for lua]
-	)], [], [with_lua_pc=no])
-
-if test "x$enable_lua" = "xyes" -a "x$with_lua_pc" != "xno"; then
-	# exit with error if not found
-	PKG_CHECK_MODULES([LUA], [$with_lua_pc], [LUAPKGCONFIG=$with_lua_pc])
-fi
-
-if test "x$enable_lua" = "xauto" -a "x$with_lua_pc" != "xno"; then
-	PKG_CHECK_MODULES([LUA], [$with_lua_pc],
-		[LUAPKGCONFIG=$with_lua_pc
-		enable_lua=yes],
-		[enable_lua=no])
-fi
-
-if test "x$enable_lua" != "xno"; then
-	PKG_CHECK_MODULES([LUA], [lua], [LUAPKGCONFIG=lua],
-		[PKG_CHECK_MODULES([LUA], [lua5.2], [LUAPKGCONFIG=lua5.2],
-			[PKG_CHECK_MODULES([LUA], [lua5.1], [LUAPKGCONFIG=lua5.1],
-				[AS_IF([test "x$enable_lua" = "xyes"],
-					[AC_MSG_ERROR([Lua not found. Please use --with-lua-pc=PKG])],
-					[enable_lua=no])]
-			)]
-		)])
-	AS_IF([test "x$LUAPKGCONFIG" != "x"], [enable_lua=yes])
-fi
-
-AM_CONDITIONAL([ENABLE_LUA],
-	[test "x$enable_lua" = "xyes"])
-
-AM_COND_IF([ENABLE_LUA],
-	[AC_MSG_CHECKING([Lua version])
-	PKG_CHECK_VAR([LUA_VERSION], [$LUAPKGCONFIG], [V],,
-		[PKG_CHECK_VAR([LUA_VERSION], [$LUAPKGCONFIG], [major_version])])
-	AC_MSG_RESULT([$LUA_VERSION])
-	AC_SUBST([LUA_LIBDIR], [$libdir/lua/$LUA_VERSION])
-	AC_SUBST([LUA_SHAREDIR], [$datadir/lua/$LUA_VERSION])
-	])
-
 # Optional bash integration
 AC_ARG_ENABLE([bash],
 	[AC_HELP_STRING([--enable-bash], [build bash integration [default=yes]])],
@@ -476,6 +399,18 @@ AM_COND_IF([ENABLE_BASH],
 	AC_MSG_RESULT([$bashcompdir])
 	AC_SUBST(bashcompdir)
 	])
+
+# Build the command line tools
+AC_ARG_ENABLE([tools],
+	[AC_HELP_STRING([--enable-tools], [build the command line tools [default=yes]])],
+	[], [enable_tools=yes])
+AM_CONDITIONAL([ENABLE_TOOLS], [test "x$enable_tools" = "xyes"])
+
+# Build the liblxc commands
+AC_ARG_ENABLE([commands],
+	[AC_HELP_STRING([--enable-commands], [build the liblxc commands [default=yes]])],
+	[], [enable_commands=yes])
+AM_CONDITIONAL([ENABLE_COMMANDS], [test "x$enable_commands" = "xyes"])
 
 # Optional test binaries
 AC_ARG_ENABLE([tests],
@@ -731,44 +666,10 @@ AC_CONFIG_FILES([
 	config/init/upstart/Makefile
 	config/etc/Makefile
 	config/templates/Makefile
-	config/templates/alpine.common.conf
-	config/templates/alpine.userns.conf
-	config/templates/archlinux.common.conf
-	config/templates/archlinux.userns.conf
-	config/templates/centos.common.conf
-	config/templates/centos.userns.conf
 	config/templates/common.conf
 	config/templates/common.conf.d/Makefile
-	config/templates/debian.common.conf
-	config/templates/debian.userns.conf
-	config/templates/fedora.common.conf
-	config/templates/fedora.userns.conf
-	config/templates/gentoo.common.conf
-	config/templates/gentoo.moresecure.conf
-	config/templates/gentoo.userns.conf
 	config/templates/nesting.conf
 	config/templates/oci.common.conf
-	config/templates/opensuse.common.conf
-	config/templates/opensuse.userns.conf
-	config/templates/oracle.common.conf
-	config/templates/oracle.userns.conf
-	config/templates/plamo.common.conf
-	config/templates/plamo.userns.conf
-	config/templates/slackware.common.conf
-	config/templates/slackware.userns.conf
-	config/templates/ubuntu-cloud.common.conf
-	config/templates/ubuntu-cloud.lucid.conf
-	config/templates/ubuntu-cloud.userns.conf
-	config/templates/ubuntu.common.conf
-	config/templates/ubuntu.lucid.conf
-	config/templates/ubuntu.userns.conf
-	config/templates/openwrt.common.conf
-	config/templates/sparclinux.common.conf
-	config/templates/sparclinux.userns.conf
-	config/templates/voidlinux.common.conf
-	config/templates/voidlinux.userns.conf
-	config/templates/sabayon.common.conf
-	config/templates/sabayon.userns.conf
 	config/templates/userns.conf
 	config/yum/Makefile
 	config/sysconfig/Makefile
@@ -781,7 +682,6 @@ AC_CONFIG_FILES([
 	doc/lxc-cgroup.sgml
 	doc/lxc-checkconfig.sgml
 	doc/lxc-checkpoint.sgml
-	doc/lxc-clone.sgml
 	doc/lxc-config.sgml
 	doc/lxc-console.sgml
 	doc/lxc-copy.sgml
@@ -794,7 +694,6 @@ AC_CONFIG_FILES([
 	doc/lxc-ls.sgml
 	doc/lxc-monitor.sgml
 	doc/lxc-snapshot.sgml
-	doc/lxc-start-ephemeral.sgml
 	doc/lxc-start.sgml
 	doc/lxc-stop.sgml
 	doc/lxc-top.sgml
@@ -830,7 +729,6 @@ AC_CONFIG_FILES([
 	doc/ja/lxc-cgroup.sgml
 	doc/ja/lxc-checkconfig.sgml
 	doc/ja/lxc-checkpoint.sgml
-	doc/ja/lxc-clone.sgml
 	doc/ja/lxc-config.sgml
 	doc/ja/lxc-console.sgml
 	doc/ja/lxc-copy.sgml
@@ -843,7 +741,6 @@ AC_CONFIG_FILES([
 	doc/ja/lxc-ls.sgml
 	doc/ja/lxc-monitor.sgml
 	doc/ja/lxc-snapshot.sgml
-	doc/ja/lxc-start-ephemeral.sgml
 	doc/ja/lxc-start.sgml
 	doc/ja/lxc-stop.sgml
 	doc/ja/lxc-top.sgml
@@ -868,7 +765,6 @@ AC_CONFIG_FILES([
 	doc/ko/lxc-cgroup.sgml
 	doc/ko/lxc-checkconfig.sgml
 	doc/ko/lxc-checkpoint.sgml
-	doc/ko/lxc-clone.sgml
 	doc/ko/lxc-config.sgml
 	doc/ko/lxc-console.sgml
 	doc/ko/lxc-copy.sgml
@@ -881,7 +777,6 @@ AC_CONFIG_FILES([
 	doc/ko/lxc-ls.sgml
 	doc/ko/lxc-monitor.sgml
 	doc/ko/lxc-snapshot.sgml
-	doc/ko/lxc-start-ephemeral.sgml
 	doc/ko/lxc-start.sgml
 	doc/ko/lxc-stop.sgml
 	doc/ko/lxc-top.sgml
@@ -903,42 +798,17 @@ AC_CONFIG_FILES([
 	hooks/dhclient
 
 	templates/Makefile
-	templates/lxc-alpine
-	templates/lxc-altlinux
-	templates/lxc-archlinux
 	templates/lxc-busybox
-	templates/lxc-centos
-	templates/lxc-cirros
-	templates/lxc-debian
 	templates/lxc-download
-	templates/lxc-fedora
-	templates/lxc-fedora-legacy
-	templates/lxc-gentoo
 	templates/lxc-local
 	templates/lxc-oci
-	templates/lxc-openmandriva
-	templates/lxc-opensuse
-	templates/lxc-oracle
-	templates/lxc-plamo
-	templates/lxc-pld
-	templates/lxc-slackware
-	templates/lxc-sshd
-	templates/lxc-ubuntu
-	templates/lxc-ubuntu-cloud
-	templates/lxc-sparclinux
-	templates/lxc-voidlinux
-	templates/lxc-sabayon
 
 	src/Makefile
 	src/lxc/Makefile
 	src/lxc/lxc.functions
 	src/lxc/cmd/lxc-checkconfig
 	src/lxc/cmd/lxc-update-config
-	src/lxc/tools/lxc-start-ephemeral
 	src/lxc/version.h
-	src/python-lxc/Makefile
-
-	src/lua-lxc/Makefile
 
 	src/tests/Makefile
 	src/tests/lxc-test-usernic
@@ -950,6 +820,39 @@ AC_OUTPUT
 cat << EOF
 
 ----------------------------
+Binaries
+ - Command Line Tools:
+   - lxc-attach:     $enable_tools
+   - lxc-autostart:  $enable_tools
+   - lxc-cgroup:     $enable_tools
+   - lxc-checkpoint: $enable_tools
+   - lxc-config:     $enable_tools
+   - lxc-console:    $enable_tools
+   - lxc-copy:       $enable_tools
+   - lxc-create:     $enable_tools
+   - lxc-destroy:    $enable_tools
+   - lxc-device:     $enable_tools
+   - lxc-execute:    $enable_tools
+   - lxc-freeze:     $enable_tools
+   - lxc-info:       $enable_tools
+   - lxc-ls:         $enable_tools
+   - lxc-monitor:    $enable_tools
+   - lxc-snapshot:   $enable_tools
+   - lxc-start:      $enable_tools
+   - lxc-stop:       $enable_tools
+   - lxc-top:        $enable_tools
+   - lxc-unfreeze:   $enable_tools
+   - lxc-unshare:    $enable_tools
+   - lxc-wait:       $enable_tools
+
+ - liblxc Commands:
+   - lxc-checkconfig:   $enable_commands
+   - lxc-update-config: $enable_commands
+   - lxc-init:          $enable_commands
+   - lxc-monitord:      $enable_commands
+   - lxc-user-nic:      $enable_commands
+   - lxc-usernsexec:    $enable_commands
+
 Environment:
  - compiler: $CC
  - distribution: $with_distro
@@ -967,10 +870,6 @@ Security features:
 PAM:
  - PAM module: $enable_pam
  - cgroup PAM module: $pamdir
-
-Bindings:
- - lua: $enable_lua
- - python3: $enable_python
 
 Documentation:
  - examples: $enable_examples

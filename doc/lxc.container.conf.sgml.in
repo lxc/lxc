@@ -1897,11 +1897,10 @@ dev/null proc/kcore none bind,relative 0 0
           <listitem><para> Section (always 'lxc'). </para></listitem>
           <listitem><para> The hook type (i.e. 'clone' or 'pre-mount'). </para></listitem>
           <listitem><para> Additional arguments. In the
-          case of the clone hook, any extra arguments passed to
-          lxc-clone will appear as further arguments to the hook.
-          In the case of the stop hook, paths to filedescriptors
-          for each of the container's namespaces along with their types
-          are passed. </para></listitem>
+          case of the clone hook, any extra arguments passed will appear as
+          further arguments to the hook.  In the case of the stop hook, paths to
+          filedescriptors for each of the container's namespaces along with
+          their types are passed. </para></listitem>
         </itemizedlist>
         The following environment variables are set:
         <itemizedlist>

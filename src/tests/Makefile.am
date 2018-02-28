@@ -65,7 +65,9 @@ bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-api-reboot lxc-test-state-server lxc-test-share-ns \
 	lxc-test-criu-check-feature lxc-test-raw-clone
 
-bin_SCRIPTS = lxc-test-automount \
+bin_SCRIPTS =
+if ENABLE_TOOLS
+bin_SCRIPTS += lxc-test-automount \
 	      lxc-test-autostart \
 	      lxc-test-cloneconfig \
 	      lxc-test-createconfig \
@@ -81,6 +83,7 @@ bin_SCRIPTS += \
 	lxc-test-symlink \
 	lxc-test-unpriv \
 	lxc-test-usernic
+endif
 endif
 
 endif

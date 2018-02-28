@@ -30,7 +30,7 @@ LXC_PATH=
 LXC_ROOTFS=
 LXC_CONFIG=
 MODE="system"
-COMPAT_LEVEL=4
+COMPAT_LEVEL=5
 
 # Make sure the usual locations are in PATH
 export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
@@ -69,7 +69,8 @@ LXC internal arguments (do not pass manually!):
 [ --name <name> ]: The container name
 [ --path <path> ]: The path to the container
 [ --rootfs <rootfs> ]: The path to the container's rootfs
-
+[ --mapped-uid <map> ]: A uid map (user namespaces)
+[ --mapped-gid <map> ]: A gid map (user namespaces)
 EOF
   return 0
 }
@@ -88,6 +89,8 @@ while :; do
     --rootfs)      LXC_ROOTFS="$2"; shift 2;;
     -m|--metadata) LXC_CONFIG="$2"; shift 2;;
     -f|--fstree)   LXC_FSTREE="$2"; shift 2;;
+    --mapped-uid)  LXC_MAPPED_UID="$2"; shift 2;;
+    --mapped-gid)  LXC_MAPPED_GID="$2"; shift 2;;
     *)             break;;
   esac
 done
@@ -114,7 +117,7 @@ USERNS="$(in_userns)"
 if [ "${USERNS}" != "no" ]; then
   if [ "${USERNS}" = "yes" ]; then
     if [ -z "${LXC_MAPPED_UID}" ] || [ "${LXC_MAPPED_UID}" = "-1" ]; then
-      echo "ERROR: In a user namespace without a map." 1>&2
+      echo "ERROR: In a user namespace without a map" 1>&2
       exit 1
     fi
     MODE="user"
