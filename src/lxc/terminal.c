@@ -1026,7 +1026,7 @@ int lxc_console(struct lxc_container *c, int ttynum,
 		int stdinfd, int stdoutfd, int stderrfd,
 		int escape)
 {
-	int ret, ttyfd, masterfd;
+	int masterfd, ret, ttyfd;
 	struct lxc_epoll_descr descr;
 	struct termios oldtios;
 	struct lxc_terminal_state *ts;
@@ -1055,7 +1055,7 @@ int lxc_console(struct lxc_container *c, int ttynum,
 		lxc_terminal_winsz(stdinfd, masterfd);
 		lxc_cmd_terminal_winch(ts->winch_proxy, ts->winch_proxy_lxcpath);
 	} else {
-		INFO("File descriptor %d does not refer to a tty device", stdinfd);
+		INFO("File descriptor %d does not refer to a terminal", stdinfd);
 	}
 
 	ret = lxc_mainloop_open(&descr);
