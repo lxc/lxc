@@ -564,8 +564,8 @@ static int lxc_terminal_peer_proxy_alloc(struct lxc_terminal *terminal,
 		return -1;
 	}
 
-	/* This is the proxy pty that will be given to the client, and that
-	 * the real pty master will send to / recv from.
+	/* This is the proxy terminal that will be given to the client, and
+	 * that the real terminal master will send to / recv from.
 	 */
 	ret = openpty(&terminal->proxy.master, &terminal->proxy.slave,
 		      terminal->proxy.name, NULL, NULL);
