@@ -133,7 +133,7 @@ int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
 struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, int dstfd)
 {
 	int ret;
-	bool istty;
+	bool istty = false;
 	sigset_t mask;
 	struct lxc_terminal_state *ts;
 
@@ -146,20 +146,31 @@ struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, int dstfd)
 	ts->masterfd = dstfd;
 	ts->sigfd = -1;
 
-	sigemptyset(&mask);
+	ret = sigemptyset(&mask);
+	if (ret < 0) {
+		SYSERROR("Failed to initialize an empty signal set");
+		goto on_error;
+	}
 
-	istty = isatty(srcfd) == 1;
+	istty = (isatty(srcfd) == 1);
 	if (!istty) {
 		INFO("fd %d does not refer to a tty device", srcfd);
 	} else {
 		/* Add tty to list to be scanned at SIGWINCH time. */
 		lxc_list_add_elem(&ts->node, ts);
 		lxc_list_add_tail(&lxc_ttys, &ts->node);
-		sigaddset(&mask, SIGWINCH);
+		ret = sigaddset(&mask, SIGWINCH);
+		if (ret < 0)
+			NOTICE("%s - Failed to add SIGWINCH to signal set",
+			       strerror(errno));
 	}
 
 	/* Exit the mainloop cleanly on SIGTERM. */
-	sigaddset(&mask, SIGTERM);
+	ret = sigaddset(&mask, SIGTERM);
+	if (ret < 0) {
+		SYSERROR("Failed to add SIGWINCH to signal set");
+		goto on_error;
+	}
 
 	ret = sigprocmask(SIG_BLOCK, &mask, &ts->oldmask);
 	if (ret < 0) {
@@ -183,8 +194,10 @@ on_error:
 		close(ts->sigfd);
 		ts->sigfd = -1;
 	}
+
 	if (istty)
 		lxc_list_del(&ts->node);
+
 	return ts;
 }
 
