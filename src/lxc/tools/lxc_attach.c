@@ -321,7 +321,7 @@ int main(int argc, char *argv[])
 	if (elevated_privileges)
 		attach_options.attach_flags &= ~(elevated_privileges);
 	if (stdfd_is_pty())
-		attach_options.attach_flags |= LXC_ATTACH_ALLOCATE_PTY;
+		attach_options.attach_flags |= LXC_ATTACH_TERMINAL;
 	attach_options.namespaces = namespace_flags;
 	attach_options.personality = new_personality;
 	attach_options.env_policy = env_policy;
