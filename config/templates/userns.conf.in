@@ -2,5 +2,9 @@
 lxc.cgroup.devices.deny =
 lxc.cgroup.devices.allow =
 
+# Start with a full set of capabilities in user namespaces.
+lxc.cap.drop =
+lxc.cap.keep =
+
 # We can't move bind-mounts, so don't use /dev/lxc/
 lxc.tty.dir =
