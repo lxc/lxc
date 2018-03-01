@@ -1295,7 +1295,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 			ret = lxc_attach_pty_mainloop_init(&pty, &descr);
 			if (ret < 0)
 				goto on_error;
-			TRACE("Initalized pty mainloop");
+			TRACE("Initialized pty mainloop");
 		}
 
 		/* Let the child process know to go ahead. */
