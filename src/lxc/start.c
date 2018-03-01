@@ -142,11 +142,31 @@ static void lxc_put_nsfds(struct lxc_handler *handler)
 	}
 }
 
-/* lxc_preserve_namespaces: open /proc/@pid/ns/@ns for each namespace specified
- * in ns_clone_flags.
+static int lxc_try_preserve_ns(const int pid, const char *ns)
+{
+	int fd;
+
+	fd = lxc_preserve_ns(pid, ns);
+	if (fd < 0) {
+		if (errno != ENOENT) {
+			SYSERROR("Failed to preserve %s namespace", ns);
+			return -EINVAL;
+		}
+
+		WARN("%s - Kernel does not support preserving %s namespaces",
+		     strerror(errno), ns);
+		return -EOPNOTSUPP;
+	}
+
+	return fd;
+}
+
+/* lxc_try_preserve_namespaces: open /proc/@pid/ns/@ns for each namespace
+ * specified in ns_clone_flags.
  * Return true on success, false on failure.
  */
-static bool lxc_preserve_namespaces(struct lxc_handler *handler, int ns_clone_flags, pid_t pid)
+static bool lxc_try_preserve_namespaces(struct lxc_handler *handler,
+					int ns_clone_flags, pid_t pid)
 {
 	int i;
 
@@ -154,27 +174,32 @@ static bool lxc_preserve_namespaces(struct lxc_handler *handler, int ns_clone_fl
 		handler->nsfd[i] = -EBADF;
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
+		int fd;
+
 		if ((ns_clone_flags & ns_info[i].clone_flag) == 0)
 			continue;
 
-		handler->nsfd[i] = lxc_preserve_ns(pid, ns_info[i].proc_name);
-		if (handler->nsfd[i] < 0)
-			goto error;
+		fd = lxc_try_preserve_ns(pid, ns_info[i].proc_name);
+		if (fd < 0) {
+			handler->nsfd[i] = -EBADF;
 
-		DEBUG("Preserved %s namespace via fd %d", ns_info[i].proc_name, handler->nsfd[i]);
+			/* Do not fail to start container on kernels that do
+			 * not support interacting with namespaces through
+			 * /proc.
+			 */
+			if (fd == -EOPNOTSUPP)
+				continue;
+
+			lxc_put_nsfds(handler);
+			return false;
+		}
+
+		handler->nsfd[i] = fd;
+		DEBUG("Preserved %s namespace via fd %d", ns_info[i].proc_name,
+		      handler->nsfd[i]);
 	}
 
 	return true;
-
-error:
-	if (errno == ENOENT)
-		SYSERROR("Kernel does not support attaching to %s namespaces",
-			 ns_info[i].proc_name);
-	else
-		SYSERROR("Failed to open file descriptor for %s namespace",
-			 ns_info[i].proc_name);
-	lxc_put_nsfds(handler);
-	return false;
 }
 
 static int match_fd(int fd)
@@ -1590,7 +1615,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		if (handler->ns_on_clone_flags & ns_info[i].clone_flag)
 			INFO("Cloned %s", ns_info[i].flag_name);
 
-	if (!lxc_preserve_namespaces(handler, handler->ns_on_clone_flags, handler->pid)) {
+	if (!lxc_try_preserve_namespaces(handler, handler->ns_on_clone_flags, handler->pid)) {
 		ERROR("Failed to preserve cloned namespaces for lxc.hook.stop");
 		goto out_delete_net;
 	}
@@ -1634,13 +1659,16 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 
 	/* Now we're ready to preserve the network namespace */
-	ret = lxc_preserve_ns(handler->pid, "net");
+	ret = lxc_try_preserve_ns(handler->pid, "net");
 	if (ret < 0) {
-		ERROR("%s - Failed to preserve net namespace", strerror(errno));
-		goto out_delete_net;
+		if (ret != -EOPNOTSUPP) {
+			ERROR("%s - Failed to preserve net namespace", strerror(errno));
+			goto out_delete_net;
+		}
+	} else {
+		handler->nsfd[LXC_NS_NET] = ret;
+		DEBUG("Preserved net namespace via fd %d", ret);
 	}
-	handler->nsfd[LXC_NS_NET] = ret;
-	DEBUG("Preserved net namespace via fd %d", ret);
 
 	/* Create the network configuration. */
 	if (handler->ns_clone_flags & CLONE_NEWNET) {
@@ -1703,13 +1731,17 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 	if (handler->ns_clone_flags & CLONE_NEWCGROUP) {
 		/* Now we're ready to preserve the cgroup namespace */
-		ret = lxc_preserve_ns(handler->pid, "cgroup");
+		ret = lxc_try_preserve_ns(handler->pid, "cgroup");
 		if (ret < 0) {
-			ERROR("%s - Failed to preserve cgroup namespace", strerror(errno));
-			goto out_delete_net;
+			if (ret != -EOPNOTSUPP) {
+				ERROR("%s - Failed to preserve cgroup namespace",
+				      strerror(errno));
+				goto out_delete_net;
+			}
+		} else {
+			handler->nsfd[LXC_NS_CGROUP] = ret;
+			DEBUG("Preserved cgroup namespace via fd %d", ret);
 		}
-		handler->nsfd[LXC_NS_CGROUP] = ret;
-		DEBUG("Preserved cgroup namespace via fd %d", ret);
 	}
 
 	ret = snprintf(pidstr, 20, "%d", handler->pid);
