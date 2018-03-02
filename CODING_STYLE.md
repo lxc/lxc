@@ -16,6 +16,50 @@
   style and add their Signed-off-by line to it. This is especially helpful to
   make it easier for first-time contributors and to prevent having pull
   requests being stuck in the merge queue because of minor details.
+- We currently do not provide automatic coding style checks but if a suitable
+  tool is found we are happy to integrate it into our test suite. It is
+  possible and recommended to use the `clang-format` binary to check your code.
+  The following options are an approximation of the coding style used here.
+  Simply create a file called `.clang-format` in your home directory with the
+  following options:
+  ```sh
+  cat << EOF > "${HOME}"/.clang-format
+  BreakBeforeBraces: Attach
+  AlwaysBreakBeforeMultilineStrings: false
+  BreakBeforeBinaryOperators: None
+  MaxEmptyLinesToKeep: 1
+  PenaltyBreakBeforeFirstCallParameter: 1000000
+  BinPackArguments: true
+  BinPackParameters: true
+  AllowAllParametersOfDeclarationOnNextLine: false
+  AlignAfterOpenBracket: true
+  SpacesInSquareBrackets: false
+  SpacesInCStyleCastParentheses: false
+  SpaceInEmptyParentheses: false
+  SpaceBeforeParens: ControlStatements
+  SpaceAfterCStyleCast: false
+  SortIncludes: true
+  PenaltyReturnTypeOnItsOwnLine: 10000
+  PenaltyExcessCharacter: 10
+  Language: Cpp
+  ForEachMacros: ['lxc_list_for_each', 'lxc_list_for_each_safe']
+  AllowShortLoopsOnASingleLine: false
+  AllowShortIfStatementsOnASingleLine: false
+  AllowShortFunctionsOnASingleLine: None
+  AllowShortCaseLabelsOnASingleLine: false
+  AllowShortBlocksOnASingleLine: false
+  BasedOnStyle: LLVM
+  TabWidth: 8
+  IndentWidth: 8
+  UseTab: Always
+  BreakBeforeBraces: Linux
+  AllowShortIfStatementsOnASingleLine: false
+  IndentCaseLabels: false
+  EOF
+  ```
+  However, it will not handle all cases correctly. For example, most `struct`
+  initializations will not be correct. In such cases please refer to the coding
+  style here.
 
 #### Only Use Tabs
 
