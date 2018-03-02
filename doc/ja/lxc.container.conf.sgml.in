@@ -1088,26 +1088,40 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
         <varlistentry>
           <term>
-            <option>lxc.console.buffer.logfile</option>
+            <option>lxc.console.size</option>
           </term>
           <listitem>
             <para>
               <!--
-            Setting this option instructs liblxc to write the in-memory
-            ringbuffer to disk. For performance reasons liblxc will only write
-            the in-memory ringbuffer to disk when requested. Note that the this
-            option is only used by liblxc when
-            <option>lxc.console.buffer.size</option> is set.
+            Setting this option instructs liblxc to place a limit on the size of
+            the console log file specified in
+            <option>lxc.console.logfile</option>. Note that size of the log file
+            must be at least as big as a standard page size. When passed a value
+            smaller than a single page size liblxc will set the size of log file
+            to a single page size. A page size is usually 4kB.
             -->
-              このオプションを設定すると、liblxc はインメモリのリングバッファをディスクに書き込みます。パフォーマンスを考慮して、liblxc は指定をした場合に限り、インメモリのリングバッファをディスクに書き込みます。liblxc はこのオプションを、<option>lxc.console.buffer.size</option> が指定された場合のみ使います。
+              liblxc は <option>lxc.console.logfile</option> で指定したコンソールログのサイズを、このオプションで設定した値に制限します。ログファイルのサイズは少なくとも標準ページサイズでなければなりません。ページサイズ以下の値を設定した場合は、liblxc はログファイルのサイズをページサイズに設定します。ページサイズは通常は 4kB です。
 
               <!--
-            By default liblxc will dump the contents of the in-memory ringbuffer
-            to disk when the container terminates. This allows users to diagnose
-            boot failures when the container crashed before an API request to
-            retrieve the in-memory ringbuffer could be sent or handled.
+            The keyword 'auto' will cause liblxc to place a limit of 128kB on
+            the log file.
                 -->
-              デフォルトでは liblxc は、コンテナが終了した際にインメモリのリングバッファの内容をディスクに書き出します。これによりユーザは、インメモリのリングバッファを取得する API リクエストが送られたり処理される前に、コンテナがクラッシュした場合、ブートの失敗を調査できます。
+              'auto' を指定すると、liblxc はログファイルのサイズを 128kB に制限します。
+
+              <!--
+            When manually specifying a size for the log file the value should
+            be a power of 2 when converted to bytes. Valid size prefixes are
+            'kB', 'MB', 'GB'. (Note that all conversions are based on multiples
+            of 1024. That means 'kb' == 'KiB', 'MB' == 'MiB', 'GB' == 'GiB'.)
+                -->
+              ログファイルサイズの値を数値指定する場合、値がバイトに変換されるときに 2 の累乗になります。サイズ接頭辞付きの単位として 'kB'、'MB'、'GB' が使えます。(この場合の変換は 1024 の倍数に基づいています。つまり 'kB' == 'KiB'、'MB' == 'MiB'、'GB' == 'GiB' という意味です。)
+
+              <!--
+            If users want to mirror the console ringbuffer on disk they should set
+            <option>lxc.console.size</option> equal to
+            <option>lxc.console.buffer.size</option>.
+            -->
+              ディスク上のコンソールリングバッファとミラーになるようにしたい場合は、<option>lxc.console.size</option> と <option>lxc.console.buffer.size</option> の値を同じ値に設定します。
             </para>
           </listitem>
         </varlistentry>
