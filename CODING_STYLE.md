@@ -433,13 +433,6 @@ rules to use them:
   }
   ```
 
-#### Use `_exit()` in `fork()`ed Processes
-
-- This has multiple reasons but the gist is:
-  - `exit()` is not thread-safe
-  - `exit()` in libc runs exit handlers which might interfer with the parents
-    state
-
 #### Use `for (;;)` instead of `while (1)` or `while (true)`
 
 - Let's be honest, it is really the only sensible way to do this.
