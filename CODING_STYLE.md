@@ -16,6 +16,51 @@
   style and add their Signed-off-by line to it. This is especially helpful to
   make it easier for first-time contributors and to prevent having pull
   requests being stuck in the merge queue because of minor details.
+- We currently do not provide automatic coding style checks but if a suitable
+  tool is found we are happy to integrate it into our test suite. It is
+  possible and recommended to use the `clang-format` binary to check your code.
+  The following options are an approximation of the coding style used here.
+  Simply create a file called `.clang-format` in your home directory with the
+  following options:
+  ```sh
+  cat << EOF > "${HOME}"/.clang-format
+  AlignEscapedNewlines: Left
+  BreakBeforeBraces: Attach
+  AlwaysBreakBeforeMultilineStrings: false
+  BreakBeforeBinaryOperators: None
+  MaxEmptyLinesToKeep: 1
+  PenaltyBreakBeforeFirstCallParameter: 1000000
+  BinPackArguments: true
+  BinPackParameters: true
+  AllowAllParametersOfDeclarationOnNextLine: false
+  AlignAfterOpenBracket: true
+  SpacesInSquareBrackets: false
+  SpacesInCStyleCastParentheses: false
+  SpaceInEmptyParentheses: false
+  SpaceBeforeParens: ControlStatements
+  SpaceAfterCStyleCast: false
+  SortIncludes: true
+  PenaltyReturnTypeOnItsOwnLine: 10000
+  PenaltyExcessCharacter: 10
+  Language: Cpp
+  ForEachMacros: ['lxc_list_for_each', 'lxc_list_for_each_safe']
+  AllowShortLoopsOnASingleLine: false
+  AllowShortIfStatementsOnASingleLine: false
+  AllowShortFunctionsOnASingleLine: None
+  AllowShortCaseLabelsOnASingleLine: false
+  AllowShortBlocksOnASingleLine: false
+  BasedOnStyle: LLVM
+  TabWidth: 8
+  IndentWidth: 8
+  UseTab: Always
+  BreakBeforeBraces: Linux
+  AllowShortIfStatementsOnASingleLine: false
+  IndentCaseLabels: false
+  EOF
+  ```
+  However, it will not handle all cases correctly. For example, most `struct`
+  initializations will not be correct. In such cases please refer to the coding
+  style here.
 
 #### Only Use Tabs
 
@@ -26,12 +71,12 @@
 - Any comments that are added must use `/* */`.
 - All comments should start on the same line as the opening `/*`.
 - Single-line comments should simply be placed between `/* */`. For example:
-  ```
+  ```C
   /* Define pivot_root() if missing from the C library */
   ```
 - Multi-line comments should end with the closing `*/` on a separate line. For
   example:
-  ```
+  ```C
   /* At this point the old-root is mounted on top of our new-root
    * To unmounted it we must not be chdir()ed into it, so escape back
    * to old-root.
@@ -51,7 +96,7 @@
 - They should be descriptive, without being needlessly long. It is best to just
   use already existing error messages as examples.
 - Examples of acceptable error messages are:
-  ```
+  ```C
   SYSERROR("Failed to create directory \"%s\"", path);
   WARN("\"/dev\" directory does not exist. Proceeding without autodev being set up");
   ```
@@ -73,7 +118,7 @@
   the function in the `*.c` file the function signature should not be preceded
   by the `extern` keyword. When declaring the function signature in the `*.h`
   file it must be preceded by the `extern` keyword. For example:
-  ```
+  ```C
   /* Valid function definition in a *.c file */
   ssize_t lxc_write_nointr(int fd, const void* buf, size_t count)
   {
@@ -106,7 +151,7 @@
   - put standard types defined by libc before types defined by LXC
   - put multiple declarations of the same type on the same line
 - Examples of good declarations can be seen in the following function:
-  ```
+  ```C
   int lxc_clear_procs(struct lxc_conf *c, const char *key)
   {
           struct lxc_list *it, *next;
@@ -143,7 +188,7 @@
   single-line conditions. If there is at least one non-single-line
   condition `{}` must be used.
 - For example:
-  ```
+  ```C
   /* no brackets needed */
   if (size > INT_MAX)
           return -EFBIG;
@@ -182,7 +227,7 @@
 - When checking whether a function not returning booleans was successful or not
   the returned value must be assigned before it is checked (`str{n}cmp()`
   functions being one notable exception). For example:
-  ```
+  ```C
   /* assign value to "ret" first */
   ret = mount(sourcepath, cgpath, "cgroup", remount_flags, NULL);
   /* check whether function was successful */
@@ -193,7 +238,7 @@
   }
   ```
   Functions returning booleans can be checked directly. For example:
-  ```
+  ```C
   extern bool lxc_string_in_array(const char *needle, const char **haystack);
 
   /* check right away */
@@ -211,7 +256,7 @@
   treated as such since they don't really behave like boolean functions. So
   `if (!str{n}cmp())` and `if (str{n}cmp())` checks must not be used. Good
   examples are found in the following functions:
-  ```
+  ```C
   static int set_config_hooks(const char *key, const char *value,
                               struct lxc_conf *lxc_conf, void *data)
 
@@ -276,7 +321,7 @@ rules to use them:
 - **only** jump downwards unless you are handling `EAGAIN` errors and want to
   avoid `do-while` constructs.
 - An example of a good usage of `goto` is:
-  ```
+  ```C
   static int set_config_idmaps(const char *key, const char *value,
                              struct lxc_conf *lxc_conf, void *data)
   {
@@ -349,7 +394,7 @@ rules to use them:
 - If you implement a custom cleanup function to e.g. free a complex type
   you declared you must ensure that the object's null type is handled and
   treated as a NOOP. For example:
-  ```
+  ```C
   void lxc_free_array(void **array, lxc_free_fn element_free_fn)
   {
           void **p;
@@ -365,7 +410,7 @@ rules to use them:
   descriptors and sets the already closed file descriptors to `-EBADF`. On the
   next call it can simply check whether the file descriptor is positive and
   move on if it isn't:
-  ```
+  ```C
   static void lxc_put_attach_clone_payload(struct attach_clone_payload *p)
   {
           if (p->ipc_socket >= 0) {
@@ -394,7 +439,7 @@ rules to use them:
   default do not need to be cast to `(void)`. Classical candidates are
   `close()` and `fclose()`.
 - A good example is:
-  ```
+  ```C
   for (i = 0; hierarchies[i]; i++) {
           char *fullpath;
           char *path = hierarchies[i]->fullcgpath;
@@ -432,13 +477,6 @@ rules to use them:
           free(fullpath);
   }
   ```
-
-#### Use `_exit()` in `fork()`ed Processes
-
-- This has multiple reasons but the gist is:
-  - `exit()` is not thread-safe
-  - `exit()` in libc runs exit handlers which might interfer with the parents
-    state
 
 #### Use `for (;;)` instead of `while (1)` or `while (true)`
 
@@ -483,7 +521,7 @@ rules to use them:
 - Please always use the affected file (without the file type suffix) or module
   as a prefix in the commit message.
 - Examples of good commit messages are:
-  ```
+  ```Diff
   commit b87243830e3b5e95fa31a17cf1bfebe55353bf13
   Author: Felix Abecassis <fabecassis@nvidia.com>
   Date:   Fri Feb 2 06:19:13 2018 -0800
@@ -517,3 +555,110 @@ rules to use them:
 - When `fork()`ing off a child process use `_exit()` to terminate it instead of
   `exit()`. The `exit()` function is not thread-safe and thus not suited for
   the shared library which must ensure that it is thread-safe.
+
+#### Keep Arrays of `struct`s Aligned Horizontally When Initializing 
+
+- Arrays of `struct`s are:
+  ```C
+  struct foo_struct {
+        int n;
+        int m;
+        int p;
+  };
+
+  struct foo_struct new_instance[] = {
+          { 1, 2, 3 },
+          { 4, 5, 6 },
+          { 7, 8, 9 },
+  };
+  ```
+- Leave a single space after the opening `{` and before closing `}` of the
+  largest member of the last column.
+- Always leave a single space between the largest member of the current column
+  and the member in the next column.
+- A good example is
+  ```C
+  struct signame {
+          int num;
+          const char *name;
+  };
+
+  static const struct signame signames[] = {
+          { SIGHUP,    "HUP"    },
+          { SIGINT,    "INT"    },
+          { SIGQUIT,   "QUIT"   },
+          { SIGILL,    "ILL"    },
+          { SIGABRT,   "ABRT"   },
+          { SIGFPE,    "FPE"    },
+          { SIGKILL,   "KILL"   },
+          { SIGSEGV,   "SEGV"   },
+          { SIGPIPE,   "PIPE"   },
+          { SIGALRM,   "ALRM"   },
+          { SIGTERM,   "TERM"   },
+          { SIGUSR1,   "USR1"   },
+          { SIGUSR2,   "USR2"   },
+          { SIGCHLD,   "CHLD"   },
+          { SIGCONT,   "CONT"   },
+          { SIGSTOP,   "STOP"   },
+          { SIGTSTP,   "TSTP"   },
+          { SIGTTIN,   "TTIN"   },
+          { SIGTTOU,   "TTOU"   },
+  #ifdef SIGTRAP
+          { SIGTRAP,   "TRAP"   },
+  #endif
+  #ifdef SIGIOT
+          { SIGIOT,    "IOT"    },
+  #endif
+  #ifdef SIGEMT
+          { SIGEMT,    "EMT"    },
+  #endif
+  #ifdef SIGBUS
+          { SIGBUS,    "BUS"    },
+  #endif
+  #ifdef SIGSTKFLT
+          { SIGSTKFLT, "STKFLT" },
+  #endif
+  #ifdef SIGCLD
+          { SIGCLD,    "CLD"    },
+  #endif
+  #ifdef SIGURG
+          { SIGURG,    "URG"    },
+  #endif
+  #ifdef SIGXCPU
+          { SIGXCPU,   "XCPU"   },
+  #endif
+  #ifdef SIGXFSZ
+          { SIGXFSZ,   "XFSZ"   },
+  #endif
+  #ifdef SIGVTALRM
+          { SIGVTALRM, "VTALRM" },
+  #endif
+  #ifdef SIGPROF
+          { SIGPROF,   "PROF"   },
+  #endif
+  #ifdef SIGWINCH
+          { SIGWINCH,  "WINCH"  },
+  #endif
+  #ifdef SIGIO
+          { SIGIO,     "IO"     },
+  #endif
+  #ifdef SIGPOLL
+          { SIGPOLL,   "POLL"   },
+  #endif
+  #ifdef SIGINFO
+          { SIGINFO,   "INFO"   },
+  #endif
+  #ifdef SIGLOST
+          { SIGLOST,   "LOST"   },
+  #endif
+  #ifdef SIGPWR
+          { SIGPWR,    "PWR"    },
+  #endif
+  #ifdef SIGUNUSED
+          { SIGUNUSED, "UNUSED" },
+  #endif
+  #ifdef SIGSYS
+          { SIGSYS,    "SYS"    },
+  #endif
+  };
+  ```
