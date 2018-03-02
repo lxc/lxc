@@ -24,6 +24,7 @@
   following options:
   ```sh
   cat << EOF > "${HOME}"/.clang-format
+  AlignEscapedNewlines: Left
   BreakBeforeBraces: Attach
   AlwaysBreakBeforeMultilineStrings: false
   BreakBeforeBinaryOperators: None
@@ -554,3 +555,110 @@ rules to use them:
 - When `fork()`ing off a child process use `_exit()` to terminate it instead of
   `exit()`. The `exit()` function is not thread-safe and thus not suited for
   the shared library which must ensure that it is thread-safe.
+
+#### Keep Arrays of `struct`s Aligned Horizontally When Initializing 
+
+- Arrays of `struct`s are:
+  ```
+  struct foo_struct {
+        int n;
+        int m;
+        int p;
+  };
+
+  struct foo_struct new_instance[] = {
+          { 1, 2, 3 },
+          { 4, 5, 6 },
+          { 7, 8, 9 },
+  };
+  ```
+- Leave a single space after the opening `{` and before closing `}` of the
+  largest member of the last column.
+- Always leave a single space between the largest member of the current column
+  and the member in the next column.
+- A good example is
+  ```
+  struct signame {
+          int num;
+          const char *name;
+  };
+
+  static const struct signame signames[] = {
+          { SIGHUP,    "HUP"    },
+          { SIGINT,    "INT"    },
+          { SIGQUIT,   "QUIT"   },
+          { SIGILL,    "ILL"    },
+          { SIGABRT,   "ABRT"   },
+          { SIGFPE,    "FPE"    },
+          { SIGKILL,   "KILL"   },
+          { SIGSEGV,   "SEGV"   },
+          { SIGPIPE,   "PIPE"   },
+          { SIGALRM,   "ALRM"   },
+          { SIGTERM,   "TERM"   },
+          { SIGUSR1,   "USR1"   },
+          { SIGUSR2,   "USR2"   },
+          { SIGCHLD,   "CHLD"   },
+          { SIGCONT,   "CONT"   },
+          { SIGSTOP,   "STOP"   },
+          { SIGTSTP,   "TSTP"   },
+          { SIGTTIN,   "TTIN"   },
+          { SIGTTOU,   "TTOU"   },
+  #ifdef SIGTRAP
+          { SIGTRAP,   "TRAP"   },
+  #endif
+  #ifdef SIGIOT
+          { SIGIOT,    "IOT"    },
+  #endif
+  #ifdef SIGEMT
+          { SIGEMT,    "EMT"    },
+  #endif
+  #ifdef SIGBUS
+          { SIGBUS,    "BUS"    },
+  #endif
+  #ifdef SIGSTKFLT
+          { SIGSTKFLT, "STKFLT" },
+  #endif
+  #ifdef SIGCLD
+          { SIGCLD,    "CLD"    },
+  #endif
+  #ifdef SIGURG
+          { SIGURG,    "URG"    },
+  #endif
+  #ifdef SIGXCPU
+          { SIGXCPU,   "XCPU"   },
+  #endif
+  #ifdef SIGXFSZ
+          { SIGXFSZ,   "XFSZ"   },
+  #endif
+  #ifdef SIGVTALRM
+          { SIGVTALRM, "VTALRM" },
+  #endif
+  #ifdef SIGPROF
+          { SIGPROF,   "PROF"   },
+  #endif
+  #ifdef SIGWINCH
+          { SIGWINCH,  "WINCH"  },
+  #endif
+  #ifdef SIGIO
+          { SIGIO,     "IO"     },
+  #endif
+  #ifdef SIGPOLL
+          { SIGPOLL,   "POLL"   },
+  #endif
+  #ifdef SIGINFO
+          { SIGINFO,   "INFO"   },
+  #endif
+  #ifdef SIGLOST
+          { SIGLOST,   "LOST"   },
+  #endif
+  #ifdef SIGPWR
+          { SIGPWR,    "PWR"    },
+  #endif
+  #ifdef SIGUNUSED
+          { SIGUNUSED, "UNUSED" },
+  #endif
+  #ifdef SIGSYS
+          { SIGSYS,    "SYS"    },
+  #endif
+  };
+  ```
