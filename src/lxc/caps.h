@@ -29,6 +29,7 @@
 
 
 #if HAVE_LIBCAP
+#include <linux/types.h> /* workaround for libcap < 2.17 bug */
 #include <sys/capability.h>
 
 extern int lxc_caps_down(void);
