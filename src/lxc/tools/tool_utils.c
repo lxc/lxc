@@ -37,6 +37,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include "config.h"
+
 #if HAVE_SYS_PERSONALITY_H
 #include <sys/personality.h>
 #endif
