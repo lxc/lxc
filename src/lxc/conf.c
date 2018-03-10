@@ -24,38 +24,37 @@
 #define _GNU_SOURCE
 #include "config.h"
 
+#include <arpa/inet.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
 #include <inttypes.h>
 #include <libgen.h>
+#include <linux/loop.h>
+#include <net/if.h>
+#include <netinet/in.h>
 #include <pwd.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <linux/loop.h>
-#include <net/if.h>
-#include <netinet/in.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
 #include <sys/param.h>
 #include <sys/prctl.h>
-#include <sys/stat.h>
 #include <sys/socket.h>
-#include <sys/sysmacros.h>
+#include <sys/stat.h>
 #include <sys/syscall.h>
+#include <sys/sysmacros.h>
 #include <sys/types.h>
 #include <sys/utsname.h>
 #include <sys/wait.h>
+#include <time.h>
+#include <unistd.h>
 
-/* makedev() */
 #ifdef MAJOR_IN_MKDEV
-#    include <sys/mkdev.h>
+#include <sys/mkdev.h>
 #endif
 
 #ifdef HAVE_STATVFS
@@ -67,26 +66,6 @@
 #else
 #include <../include/openpty.h>
 #endif
-
-#include "af_unix.h"
-#include "caps.h"       /* for lxc_caps_last_cap() */
-#include "cgroup.h"
-#include "conf.h"
-#include "confile_utils.h"
-#include "error.h"
-#include "log.h"
-#include "lsm/lsm.h"
-#include "lxclock.h"
-#include "lxcseccomp.h"
-#include "namespace.h"
-#include "network.h"
-#include "parse.h"
-#include "ringbuf.h"
-#include "storage.h"
-#include "storage/aufs.h"
-#include "storage/overlay.h"
-#include "terminal.h"
-#include "utils.h"
 
 #if HAVE_LIBCAP
 #include <sys/capability.h>
@@ -106,11 +85,39 @@
 #include <../include/prlimit.h>
 #endif
 
+#include "af_unix.h"
+#include "caps.h"
+#include "cgroup.h"
+#include "conf.h"
+#include "confile_utils.h"
+#include "error.h"
+#include "log.h"
+#include "lsm/lsm.h"
+#include "lxclock.h"
+#include "lxcseccomp.h"
+#include "namespace.h"
+#include "network.h"
+#include "parse.h"
+#include "ringbuf.h"
+#include "storage.h"
+#include "storage/aufs.h"
+#include "storage/overlay.h"
+#include "terminal.h"
+#include "utils.h"
+
+#ifndef MS_PRIVATE
+#define MS_PRIVATE (1<<18)
+#endif
+
+#ifndef MS_LAZYTIME
+#define MS_LAZYTIME (1<<25)
+#endif
+
 lxc_log_define(lxc_conf, lxc);
 
 /* Define pivot_root() if missing from the C library */
 #ifndef HAVE_PIVOT_ROOT
-static int pivot_root(const char * new_root, const char * put_old)
+static int pivot_root(const char *new_root, const char *put_old)
 {
 #ifdef __NR_pivot_root
 	return syscall(__NR_pivot_root, new_root, put_old);
@@ -120,15 +127,7 @@ static int pivot_root(const char * new_root, const char * put_old)
 #endif
 }
 #else
-extern int pivot_root(const char * new_root, const char * put_old);
-#endif
-
-#ifndef MS_PRIVATE
-#define MS_PRIVATE (1<<18)
-#endif
-
-#ifndef MS_LAZYTIME
-#define MS_LAZYTIME (1<<25)
+extern int pivot_root(const char *new_root, const char *put_old);
 #endif
 
 char *lxchook_names[NUM_LXC_HOOKS] = {"pre-start", "pre-mount", "mount",
