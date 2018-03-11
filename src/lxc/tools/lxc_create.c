@@ -205,7 +205,6 @@ static bool is_valid_storage_type(const char *type)
 {
 	if (strcmp(type, "dir") == 0 ||
 	    strcmp(type, "btrfs") == 0 ||
-	    strcmp(type, "aufs") == 0 ||
 	    strcmp(type, "loop") == 0 ||
 	    strcmp(type, "lvm") == 0 ||
 	    strcmp(type, "nbd") == 0 ||

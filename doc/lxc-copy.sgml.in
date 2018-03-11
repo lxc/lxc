@@ -113,13 +113,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       root filesystem of the container is simply copied to the new container. Or
       they can be snapshots, i.e. small copy-on-write copies of the original
       container. In this case the specified backing storage for the copy must
-      support snapshots. This currently includes aufs, btrfs, lvm (lvm devices
+      support snapshots. This currently includes btrfs, lvm (lvm devices
       do not support snapshots of snapshots.), overlay, and zfs.
     </para>
       
     <para>
     The copy's backing storage will be of the same type as the original
-    container. aufs or overlayfs snapshots of directory backed containers are
+    container. overlay snapshots of directory backed containers are
     exempted from this rule.
     </para>
 
@@ -145,21 +145,22 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     Containers created and started with <replaceable>-e</replaceable> can have
     custom mounts. These are specified with the <replaceable>-m</replaceable>
     flag. Currently three types of mounts are supported:
-    <replaceable>aufs</replaceable>, <replaceable>bind</replaceable>, and
+    <replaceable>bind</replaceable>, and
     <replaceable>overlay</replaceable>. Mount types are specified as suboptions
     to the <replaceable>-m</replaceable> flag and can be specified multiple
-    times separated by commas. <replaceable>aufs</replaceable> and
-    <replaceable>overlay</replaceable> mounts are currently specified in the
-    format <replaceable>-m overlay=/src:/dest</replaceable>.  When no
-    destination <replaceable>dest</replaceable> is specified
+    times separated by commas. <replaceable>overlay</replaceable> mounts are
+    currently specified in the format <replaceable>-m
+    overlay=/src:/dest</replaceable>.  When no destination
+    <replaceable>dest</replaceable> is specified
     <replaceable>dest</replaceable> will be identical to
     <replaceable>src</replaceable>. Read-only <replaceable>bind</replaceable>
     mounts are specified <replaceable>-m bind=/src:/dest:ro</replaceable> and
     read-write <replaceable>bind</replaceable> mounts <replaceable>-m
-    bind=/src:/dest:rw</replaceable>. Read-write <replaceable>bind</replaceable>
-    mounts are the default and <replaceable>rw</replaceable> can be missing when
-    a read-write mount is wanted. When <replaceable>dest</replaceable> is
-    missing <replaceable>dest</replaceable> will be identical to
+    bind=/src:/dest:rw</replaceable>. Read-write
+    <replaceable>bind</replaceable> mounts are the default and
+    <replaceable>rw</replaceable> can be missing when a read-write mount is
+    wanted. When <replaceable>dest</replaceable> is missing
+    <replaceable>dest</replaceable> will be identical to
     <replaceable>src</replaceable>. An example for multiple mounts would be
     <replaceable>-m
     bind=/src1:/dest1:ro,bind=/src2:ro,overlay=/src3:/dest3</replaceable>.
@@ -203,7 +204,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	   <listitem>
             <para> Create a snapshot of the original container. The backing
             storage for the copy must support snapshots. This currently includes
-            aufs, btrfs, lvm, overlay, and zfs. </para>
+            btrfs, lvm, overlay, and zfs. </para>
 	   </listitem>
 	  </varlistentry>
 
@@ -234,7 +235,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	   <listitem>
             <para>  Specify a mount for a snapshot  The
             <replaceable>opts</replaceable> argument for the mount type can by
-            of type {aufs, bind, overlay}. For example <option>-m
+            of type {bind, overlay}. For example <option>-m
             bind=/src:/dest:ro,overlay=/src:/dest</option> (This option can
             currently only be specified in conjunction with
             <replaceable>-e</replaceable>.).</para>
@@ -258,7 +259,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	    <term> <option>-B, --backingstorage <replaceable>backingstorage</replaceable></option></term>
 	   <listitem>
             <para>Specify the backing storage type to be used for the copy
-            where 'backingstorage' is of type 'aufs', 'btrfs', 'dir', 'lvm', 'loop',
+            where 'backingstorage' is of type 'btrfs', 'dir', 'lvm', 'loop',
             'overlay', or 'zfs'. </para>
 	   </listitem>
 	  </varlistentry>

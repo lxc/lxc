@@ -2582,17 +2582,16 @@ bool clone_update_unexp_ovl_paths(struct lxc_conf *conf, const char *oldpath,
 		if (p >= lend)
 			goto next;
 
-		/* Whenever an lxc.mount.entry entry is found in a line we check
-		*  if the substring " overlay" or the substring " aufs" is
-		*  present before doing any further work. We check for "
-		*  overlay" and " aufs" since both substrings need to have at
-		*  least one space before them in a valid overlay
+		/* Whenever a lxc.mount.entry entry is found in a line we check
+		*  if the substring "overlay" is present before doing any
+		*  further work. We check for "overlay" because substrings need
+		*  to have at least one space before them in a valid overlay
 		*  lxc.mount.entry (/A B overlay).  When the space before is
 		*  missing it is very likely that these substrings are part of a
 		*  path or something else. (Checking q >= lend ensures that we
 		*  only count matches in the current line.) */
-		if ((!(q = strstr(p, " overlay")) || q >= lend) &&
-		    (!(q = strstr(p, " aufs")) || q >= lend))
+		q = strstr(p, " overlay");
+		if (!q || q >= lend)
 			goto next;
 
 		if (!(q = strstr(p, olddir)) || (q >= lend))

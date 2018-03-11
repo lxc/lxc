@@ -6,7 +6,6 @@ pkginclude_HEADERS = \
 noinst_HEADERS = \
 	attach.h \
 	storage/storage.h \
-	storage/aufs.h \
 	storage/btrfs.h \
 	storage/dir.h \
 	storage/loop.h \
@@ -81,7 +80,6 @@ endif
 lib_LTLIBRARIES = liblxc.la
 liblxc_la_SOURCES = \
 	storage/storage.c storage/storage.h \
-	storage/aufs.c storage/aufs.h \
 	storage/btrfs.c storage/btrfs.h \
 	storage/dir.c storage/dir.h \
 	storage/loop.c storage/loop.h \

@@ -39,7 +39,6 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
-#include "aufs.h"
 #include "btrfs.h"
 #include "conf.h"
 #include "config.h"
@@ -66,20 +65,6 @@
 #endif
 
 lxc_log_define(storage, lxc);
-
-/* aufs */
-static const struct lxc_storage_ops aufs_ops = {
-    .detect = &aufs_detect,
-    .mount = &aufs_mount,
-    .umount = &aufs_umount,
-    .clone_paths = &aufs_clonepaths,
-    .destroy = &aufs_destroy,
-    .create = &aufs_create,
-    .copy = NULL,
-    .snapshot = NULL,
-    .can_snapshot = true,
-    .can_backup = true,
-};
 
 /* btrfs */
 static const struct lxc_storage_ops btrfs_ops = {
@@ -204,7 +189,6 @@ static const struct lxc_storage_type bdevs[] = {
 	{ .name = "lvm",       .ops = &lvm_ops,   },
 	{ .name = "rbd",       .ops = &rbd_ops,   },
 	{ .name = "btrfs",     .ops = &btrfs_ops, },
-	{ .name = "aufs",      .ops = &aufs_ops,  },
 	{ .name = "overlay",   .ops = &ovl_ops,   },
 	{ .name = "overlayfs", .ops = &ovl_ops,   },
 	{ .name = "loop",      .ops = &loop_ops,  },
@@ -283,11 +267,6 @@ struct lxc_storage *storage_get(const char *type)
 	memset(bdev, 0, sizeof(struct lxc_storage));
 	bdev->ops = bdevs[i].ops;
 	bdev->type = bdevs[i].name;
-
-	if (strcmp(bdev->type, "aufs") == 0)
-		WARN("The \"aufs\" driver will is deprecated and will soon be "
-		     "removed. For similar functionality see the \"overlay\" "
-		     "storage driver");
 
 	return bdev;
 }
@@ -654,11 +633,6 @@ struct lxc_storage *storage_init(struct lxc_conf *conf)
 
 	if (strcmp(bdev->type, "nbd") == 0)
 		bdev->nbd_idx = conf->nbd_idx;
-
-	if (strcmp(bdev->type, "aufs") == 0)
-		WARN("The \"aufs\" driver will is deprecated and will soon be "
-		     "removed. For similar functionality see the \"overlay\" "
-		     "storage driver");
 
 	return bdev;
 }

@@ -100,7 +100,6 @@
 #include "parse.h"
 #include "ringbuf.h"
 #include "storage.h"
-#include "storage/aufs.h"
 #include "storage/overlay.h"
 #include "terminal.h"
 #include "utils.h"
@@ -2001,14 +2000,14 @@ static int mount_entry_create_dir_file(const struct mntent *mntent,
 				       const char *lxc_name,
 				       const char *lxc_path)
 {
-	int ret = 0;
+	int fd, ret;
+	char *p1, *p2;
 
-	if (!strncmp(mntent->mnt_type, "overlay", 7))
+	if (strncmp(mntent->mnt_type, "overlay", 7) == 0) {
 		ret = ovl_mkdir(mntent, rootfs, lxc_name, lxc_path);
-	else if (!strncmp(mntent->mnt_type, "aufs", 4))
-		ret = aufs_mkdir(mntent, rootfs, lxc_name, lxc_path);
-	if (ret < 0)
-		return -1;
+		if (ret < 0)
+			return -1;
+	}
 
 	if (hasmntopt(mntent, "create=dir")) {
 		ret = mkdir_p(path, 0755);

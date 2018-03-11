@@ -3548,7 +3548,6 @@ sudo lxc-clone -o o1 -n n1 -s -L|-fssize fssize -v|--vgname vgname \
 
 -s [ implies overlay]
 -s -B overlay
--s -B aufs
 
 only rootfs gets converted (copied/snapshotted) on clone.
 */
@@ -3935,7 +3934,7 @@ static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	if (storage_is_dir(c->lxc_conf)) {
 		ERROR("Snapshot of directory-backed container requested.");
 		ERROR("Making a copy-clone.  If you do want snapshots, then");
-		ERROR("please create an aufs or overlay clone first, snapshot that");
+		ERROR("please create overlay clone first, snapshot that");
 		ERROR("and keep the original container pristine.");
 		flags &= ~LXC_CLONE_SNAPSHOT | LXC_CLONE_MAYBE_SNAPSHOT;
 	}

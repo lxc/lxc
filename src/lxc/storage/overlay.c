@@ -866,9 +866,6 @@ int ovl_update_abs_paths(struct lxc_conf *lxc_conf, const char *lxc_path,
 
 		if (strstr(mnt_entry, "overlay"))
 			tmp = "upperdir";
-		else if (strstr(mnt_entry, "aufs"))
-			tmp = "br";
-
 		if (!tmp)
 			continue;
 

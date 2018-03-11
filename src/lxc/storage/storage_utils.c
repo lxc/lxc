@@ -423,7 +423,6 @@ bool unpriv_snap_allowed(struct lxc_storage *b, const char *t, bool snap,
 		 * allowed).
 		 */
 		if (strcmp(b->type, "dir") == 0 ||
-		    strcmp(b->type, "aufs") == 0 ||
 		    strcmp(b->type, "overlay") == 0 ||
 		    strcmp(b->type, "overlayfs") == 0 ||
 		    strcmp(b->type, "btrfs") == 0 ||
@@ -437,7 +436,6 @@ bool unpriv_snap_allowed(struct lxc_storage *b, const char *t, bool snap,
 	 * In particular, not zfs, btrfs, or lvm.
 	 */
 	if (strcmp(t, "dir") == 0 ||
-	    strcmp(t, "aufs") == 0 ||
 	    strcmp(t, "overlay") == 0 ||
 	    strcmp(t, "overlayfs") == 0 ||
 	    strcmp(t, "btrfs") == 0 ||
@@ -451,7 +449,6 @@ bool is_valid_storage_type(const char *type)
 {
 	if (strcmp(type, "dir") == 0 ||
 	    strcmp(type, "btrfs") == 0 ||
-	    strcmp(type, "aufs") == 0 ||
 	    strcmp(type, "loop") == 0 ||
 	    strcmp(type, "lvm") == 0 ||
 	    strcmp(type, "nbd") == 0 ||
