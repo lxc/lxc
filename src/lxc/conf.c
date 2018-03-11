@@ -2100,9 +2100,10 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 					 const char *lxc_path)
 {
 	int ret;
-	unsigned long mntflags, pflags;
+	unsigned long mntflags;
 	char *mntdata;
 	bool dev, optional, relative;
+	unsigned long pflags = 0;
 	char *rootfs_path = NULL;
 
 	optional = hasmntopt(mntent, "optional") != NULL;
