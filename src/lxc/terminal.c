@@ -688,7 +688,7 @@ static int lxc_terminal_peer_default(struct lxc_terminal *terminal)
 
 	if (!path) {
 		errno = ENOTTY;
-		DEBUG("Theh process does not have a controlling terminal");
+		DEBUG("The process does not have a controlling terminal");
 		goto on_succes;
 	}
 
