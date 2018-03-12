@@ -53,6 +53,8 @@
 #define MS_SLAVE (1 << 19)
 #endif
 
+extern int lxc_log_fd;
+
 int unshare(int flags);
 
 static void usage(const char *name)
@@ -273,6 +275,8 @@ int main(int argc, char *argv[])
 	char buf[1];
 	int pipe1[2],  /* child tells parent it has unshared */
 	    pipe2[2];  /* parent tells child it is mapped and may proceed */
+
+	lxc_log_fd = STDERR_FILENO;
 
 	memset(ttyname0, '\0', sizeof(ttyname0));
 	memset(ttyname1, '\0', sizeof(ttyname1));
