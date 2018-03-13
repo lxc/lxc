@@ -1368,7 +1368,7 @@ static char *cg_unified_get_current_cgroup(void)
 	bool will_escape;
 	char *copy = NULL;
 
-	will_escape = !am_host_unpriv();
+	will_escape = (geteuid() == 0);
 	if (will_escape)
 		basecginfo = read_file("/proc/1/cgroup");
 	else
