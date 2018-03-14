@@ -194,8 +194,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	ret = lxc_config_define_load(&defines, c);
-	if (ret) {
+	bret = lxc_config_define_load(&defines, c);
+	if (!bret) {
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
@@ -209,8 +209,8 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		ret = c->set_config_item(c, "lxc.init.uid", buf);
-		if (ret < 0) {
+		bret = c->set_config_item(c, "lxc.init.uid", buf);
+		if (!bret) {
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
@@ -225,8 +225,8 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		ret = c->set_config_item(c, "lxc.init.gid", buf);
-		if (ret < 0) {
+		bret = c->set_config_item(c, "lxc.init.gid", buf);
+		if (!bret) {
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
