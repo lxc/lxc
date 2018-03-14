@@ -3368,7 +3368,7 @@ int lxc_setup(struct lxc_handler *handler)
 	}
 
 	ret = run_lxc_hooks(name, "mount", lxc_conf, NULL);
-	if (run_lxc_hooks(name, "mount", lxc_conf, NULL)) {
+	if (ret < 0) {
 		ERROR("Failed to run mount hooks");
 		return -1;
 	}
