@@ -800,20 +800,20 @@ int lxc_config_define_add(struct lxc_list *defines, char *arg)
 	return 0;
 }
 
-int lxc_config_define_load(struct lxc_list *defines, struct lxc_container *c)
+bool lxc_config_define_load(struct lxc_list *defines, struct lxc_container *c)
 {
 	struct lxc_list *it;
-	int ret = 0;
+	bool bret = true;
 
 	lxc_list_for_each(it, defines) {
 		struct new_config_item *new_item = it->elem;
-		ret = c->set_config_item(c, new_item->key, new_item->val);
-		if (ret < 0)
+		bret = c->set_config_item(c, new_item->key, new_item->val);
+		if (!bret)
 			break;
 	}
 
 	lxc_config_define_free(defines);
-	return ret;
+	return bret;
 }
 
 void lxc_config_define_free(struct lxc_list *defines)

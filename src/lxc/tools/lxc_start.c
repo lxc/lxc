@@ -277,7 +277,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if (lxc_config_define_load(&defines, c))
+	if (!lxc_config_define_load(&defines, c))
 		goto out;
 
 	if (!rcfile && !strcmp("/sbin/init", args[0])) {
