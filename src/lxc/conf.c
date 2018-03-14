@@ -205,8 +205,8 @@ static struct mount_opt propagation_opt[] = {
 	{ NULL,            0, 0                    },
 };
 
-#if HAVE_LIBCAP
 static struct caps_opt caps_opt[] = {
+#if HAVE_LIBCAP
 	{ "chown",             CAP_CHOWN             },
 	{ "dac_override",      CAP_DAC_OVERRIDE      },
 	{ "dac_read_search",   CAP_DAC_READ_SEARCH   },
@@ -257,10 +257,8 @@ static struct caps_opt caps_opt[] = {
 #ifdef CAP_BLOCK_SUSPEND
 	{ "block_suspend",     CAP_BLOCK_SUSPEND     },
 #endif
-};
-#else
-static struct caps_opt caps_opt[] = {};
 #endif
+};
 
 static struct limit_opt limit_opt[] = {
 #ifdef RLIMIT_AS
@@ -2359,11 +2357,12 @@ static int parse_cap(const char *cap)
 	char *ptr = NULL;
 	size_t i;
 	int capid = -1;
+	size_t end = sizeof(caps_opt)/sizeof(caps_opt[0]);
 
 	if (!strcmp(cap, "none"))
 		return -2;
 
-	for (i = 0; i < sizeof(caps_opt)/sizeof(caps_opt[0]); i++) {
+	for (i = 0; i < end; i++) {
 
 		if (strcmp(cap, caps_opt[i].name))
 			continue;
