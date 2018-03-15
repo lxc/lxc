@@ -1824,7 +1824,7 @@ out_abort:
 
 int __lxc_start(const char *name, struct lxc_handler *handler,
 		struct lxc_operations* ops, void *data, const char *lxcpath,
-		bool backgrounded)
+		bool backgrounded, int *error_num)
 {
 	int ret, status;
 	struct lxc_conf *conf = handler->conf;
@@ -1920,6 +1920,8 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 
 	lxc_monitor_send_exit_code(name, status, handler->lxcpath);
 	lxc_error_set_and_log(handler->pid, status);
+	if (error_num)
+		*error_num = handler->exit_status;
 
 out_fini:
 	lxc_delete_network(handler);
@@ -1965,13 +1967,13 @@ static struct lxc_operations start_ops = {
 };
 
 int lxc_start(const char *name, char *const argv[], struct lxc_handler *handler,
-	      const char *lxcpath, bool backgrounded)
+	      const char *lxcpath, bool backgrounded, int *error_num)
 {
 	struct start_args start_arg = {
 		.argv = argv,
 	};
 
-	return __lxc_start(name, handler, &start_ops, &start_arg, lxcpath, backgrounded);
+	return __lxc_start(name, handler, &start_ops, &start_arg, lxcpath, backgrounded, error_num);
 }
 
 static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
