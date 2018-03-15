@@ -1035,10 +1035,9 @@ reboot:
 	}
 
 	if (useinit)
-		ret = lxc_execute(c->name, argv, 1, handler, c->config_path, daemonize);
+		ret = lxc_execute(c->name, argv, 1, handler, c->config_path, daemonize, &c->error_num);
 	else
-		ret = lxc_start(c->name, argv, handler, c->config_path, daemonize);
-	c->error_num = handler->exit_status;
+		ret = lxc_start(c->name, argv, handler, c->config_path, daemonize, &c->error_num);
 
 	if (conf->reboot == 1) {
 		INFO("Container requested reboot");
