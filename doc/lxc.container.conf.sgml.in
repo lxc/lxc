@@ -1365,9 +1365,7 @@ dev/null proc/kcore none bind,relative 0 0
           itself should be mounted.  <filename>overlayfs:/lower:/upper</filename>
           specifies that the rootfs should be an overlay with <filename>/upper</filename>
           being mounted read-write over a read-only mount of <filename>/lower</filename>.
-          <filename>aufs:/lower:/upper</filename> does the same using aufs in place
-          of overlayfs. For both <filename>overlayfs</filename> and
-          <filename>aufs</filename> multiple <filename>/lower</filename>
+          For <filename>overlay</filename> multiple <filename>/lower</filename>
           directories can be specified. <filename>loop:/file</filename> tells lxc to attach
           <filename>/file</filename> to a loop device and mount the loop device.
             </para>

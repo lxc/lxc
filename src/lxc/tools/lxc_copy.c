@@ -44,7 +44,6 @@
 
 enum mnttype {
 	LXC_MNT_BIND,
-	LXC_MNT_AUFS,
 	LXC_MNT_OVL,
 };
 
@@ -84,7 +83,6 @@ static const struct option my_longopts[] = {
 /* mount keys */
 static char *const keys[] = {
 	[LXC_MNT_BIND] = "bind",
-	[LXC_MNT_AUFS] = "aufs",
 	[LXC_MNT_OVL] = "overlay",
 	NULL
 };
@@ -93,7 +91,7 @@ static struct lxc_arguments my_args = {
 	.progname = "lxc-copy",
 	.help = "\n\
 --name=NAME [-P lxcpath] -N newname [-p newpath] [-B backingstorage] [-s] [-K] [-M] [-L size [unit]] -- hook options\n\
---name=NAME [-P lxcpath] [-N newname] [-p newpath] [-B backingstorage] -e [-d] [-D] [-K] [-M] [-m {bind,aufs,overlay}=/src:/dest] -- hook options\n\
+--name=NAME [-P lxcpath] [-N newname] [-p newpath] [-B backingstorage] -e [-d] [-D] [-K] [-M] [-m {bind,overlay}=/src:/dest] -- hook options\n\
 --name=NAME [-P lxcpath] -N newname -R\n\
 \n\
 lxc-copy clone a container\n\
@@ -108,7 +106,7 @@ Options :\n\
   -d, --daemon              daemonize the container (default)\n\
   -e, --ephemeral           start ephemeral container\n\
   -m, --mount               directory to mount into container, either \n\
-                            {bind,aufs,overlay}=/src-path or {bind,aufs,overlay}=/src-path:/dst-path\n\
+                            {bind,overlay}=/src-path or {bind,overlay}=/src-path:/dst-path\n\
   -B, --backingstorage=TYPE backingstorage type for the container\n\
   -t, --tmpfs               place ephemeral container on a tmpfs\n\
                             (WARNING: On reboot all changes made to the container will be lost.)\n\
@@ -146,13 +144,12 @@ static uint64_t get_fssize(char *s);
 
 /* Place an ephemeral container started with -e flag on a tmpfs. Restrictions
  * are that you cannot request the data to be kept while placing the container
- * on a tmpfs and that either overlay or aufs backing storage must be used.
+ * on a tmpfs and that either overlay storage driver must be used.
  */
 static char *mount_tmpfs(const char *oldname, const char *newname,
 			 const char *path, struct lxc_arguments *arg);
 static int parse_mntsubopts(char *subopts, char *const *keys,
 			    char *mntparameters);
-static int parse_aufs_mnt(char *mntstring, enum mnttype type);
 static int parse_bind_mnt(char *mntstring, enum mnttype type);
 static int parse_ovl_mnt(char *mntstring, enum mnttype type);
 
@@ -268,7 +265,7 @@ static int mk_rand_ovl_dirs(struct mnts *mnts, unsigned int num, struct lxc_argu
 	struct mnts *m = NULL;
 
 	for (i = 0, m = mnts; i < num; i++, m++) {
-		if ((m->mnt_type == LXC_MNT_OVL) || (m->mnt_type == LXC_MNT_AUFS)) {
+		if (m->mnt_type == LXC_MNT_OVL) {
 			ret = snprintf(upperdir, TOOL_MAXPATHLEN, "%s/%s/delta#XXXXXX",
 					arg->newpath, arg->newname);
 			if (ret < 0 || ret >= TOOL_MAXPATHLEN)
@@ -317,20 +314,7 @@ static char *set_mnt_entry(struct mnts *m)
 	int ret = 0;
 	size_t len = 0;
 
-	if (m->mnt_type == LXC_MNT_AUFS) {
-		len = strlen("  aufs br==rw:=ro,xino=,create=dir") +
-		      2 * strlen(m->src) + strlen(m->dest) + strlen(m->upper) +
-		      strlen(m->workdir) + 1;
-
-		mntentry = malloc(len);
-		if (!mntentry)
-			goto err;
-
-		ret = snprintf(mntentry, len, "%s %s aufs br=%s=rw:%s=ro,xino=%s,create=dir",
-			       m->src, m->dest, m->upper, m->src, m->workdir);
-		if (ret < 0 || (size_t)ret >= len)
-			goto err;
-	} else if (m->mnt_type == LXC_MNT_OVL) {
+	if (m->mnt_type == LXC_MNT_OVL) {
 		len = strlen("  overlay lowerdir=,upperdir=,workdir=,create=dir") +
 		      2 * strlen(m->src) + strlen(m->dest) + strlen(m->upper) +
 		      strlen(m->workdir) + 1;
@@ -631,49 +615,6 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 	return 0;
 }
 
-static int parse_aufs_mnt(char *mntstring, enum mnttype type)
-{
-	int len = 0;
-	const char *xinopath = "/dev/shm/aufs.xino";
-	char **mntarray = NULL;
-	struct mnts *m = NULL;
-
-	m = add_mnt(&mnt_table, &mnt_table_size, type);
-	if (!m)
-		goto err;
-
-	mntarray = lxc_string_split(mntstring, ':');
-	if (!mntarray)
-		goto err;
-
-	m->src = construct_path(mntarray[0], true);
-	if (!m->src)
-		goto err;
-
-	len = lxc_array_len((void **)mntarray);
-	if (len == 1) /* aufs=src */
-		m->dest = construct_path(mntarray[0], false);
-	else if (len == 2) /* aufs=src:dest */
-		m->dest = construct_path(mntarray[1], false);
-	else
-		printf("Excess elements in mount specification\n");
-
-	if (!m->dest)
-		goto err;
-
-	m->workdir = strdup(xinopath);
-	if (!m->workdir)
-		goto err;
-
-	lxc_free_array((void **)mntarray, free);
-	return 0;
-
-err:
-	free_mnts();
-	lxc_free_array((void **)mntarray, free);
-	return -1;
-}
-
 static int parse_bind_mnt(char *mntstring, enum mnttype type)
 {
 	int len = 0;
@@ -744,10 +685,6 @@ static int parse_mntsubopts(char *subopts, char *const *keys, char *mntparameter
 			if (parse_ovl_mnt(mntparameters, LXC_MNT_OVL) < 0)
 				return -1;
 			break;
-		case LXC_MNT_AUFS:
-			if (parse_aufs_mnt(mntparameters, LXC_MNT_AUFS) < 0)
-				return -1;
-			break;
 		default:
 			break;
 		}
@@ -793,7 +730,7 @@ err:
 	return -1;
 }
 
-/* For ephemeral snapshots backed by overlay or aufs filesystems, this function
+/* For ephemeral snapshots backed by the overlay filesystem, this function
  * mounts a fresh tmpfs over the containers directory if the user requests it.
  * Because we mount a fresh tmpfs over the directory of the container the
  * updated /etc/hostname file created during the clone residing in the upperdir
@@ -811,18 +748,19 @@ static char *mount_tmpfs(const char *oldname, const char *newname,
 	FILE *fp;
 
 	if (arg->tmpfs && arg->keepdata) {
-		fprintf(stderr, "%s\n", "A container can only be placed on a "
-					"tmpfs when storage backend is overlay "
-					"or aufs.");
+		fprintf(stderr, "%s\n",
+			"A container can only be placed on a tmpfs when the "
+			"overlay storage driver is used");
 		goto err_free;
 	}
 
 	if (arg->tmpfs && !arg->bdevtype) {
 		arg->bdevtype = "overlayfs";
-	} else if (arg->tmpfs && arg->bdevtype && strcmp(arg->bdevtype, "overlayfs") && strcmp(arg->bdevtype, "aufs")) {
-		fprintf(stderr, "%s\n", "A container can only be placed on a "
-					"tmpfs when storage backend is overlay "
-					"or aufs.");
+	} else if (arg->tmpfs && arg->bdevtype &&
+		   strcmp(arg->bdevtype, "overlayfs") != 0) {
+		fprintf(stderr, "%s\n",
+			"A container can only be placed on a tmpfs when the "
+			"overlay storage driver is used");
 		goto err_free;
 	}
 
