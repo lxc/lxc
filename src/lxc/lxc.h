@@ -54,7 +54,7 @@ struct lxc_handler;
  */
 extern int lxc_start(const char *name, char *const argv[],
 		     struct lxc_handler *handler, const char *lxcpath,
-		     bool backgrounded);
+		     bool backgrounded, int *error_num);
 
 /*
  * Start the specified command inside an application container
@@ -67,7 +67,7 @@ extern int lxc_start(const char *name, char *const argv[],
  */
 extern int lxc_execute(const char *name, char *const argv[], int quiet,
 		       struct lxc_handler *handler, const char *lxcpath,
-		       bool backgrounded);
+		       bool backgrounded, int *error_num);
 
 /*
  * Close the fd associated with the monitoring

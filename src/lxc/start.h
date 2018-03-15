@@ -165,7 +165,8 @@ extern void lxc_fini(const char *name, struct lxc_handler *handler);
 extern int lxc_check_inherited(struct lxc_conf *conf, bool closeall,
 			       int *fds_to_ignore, size_t len_fds);
 extern int __lxc_start(const char *, struct lxc_handler *,
-		       struct lxc_operations *, void *, const char *, bool);
+		       struct lxc_operations *, void *, const char *, bool,
+		       int *);
 
 extern int resolve_clone_flags(struct lxc_handler *handler);
 
