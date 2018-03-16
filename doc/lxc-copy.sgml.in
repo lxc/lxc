@@ -144,7 +144,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <para>
     Containers created and started with <replaceable>-e</replaceable> can have
     custom mounts. These are specified with the <replaceable>-m</replaceable>
-    flag. Currently three types of mounts are supported:
+    flag. Currently two types of mounts are supported:
     <replaceable>bind</replaceable>, and
     <replaceable>overlay</replaceable>. Mount types are specified as suboptions
     to the <replaceable>-m</replaceable> flag and can be specified multiple

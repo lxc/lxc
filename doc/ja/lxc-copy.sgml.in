@@ -125,22 +125,22 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       root filesystem of the container is simply copied to the new container. Or
       they can be snapshots, i.e. small copy-on-write copies of the original
       container. In this case the specified backing storage for the copy must
-      support snapshots. This currently includes aufs, btrfs, lvm (lvm devices
+      support snapshots. This currently includes btrfs, lvm (lvm devices
       do not support snapshots of snapshots.), overlay, and zfs.
       -->
       <command>lxc-copy</command> は、既存のコンテナのコピーを作成します。
       コピーは元のコンテナの完全なクローンにできます。この場合、単にコンテナのルートファイルシステムのすべてが、新しいコンテナにコピーされます。
       また、スナップショットを取得することも可能です。すなわち、元のコンテナの小さなコピーオンライトのコピーにするということです。この場合、コピーで指定するバッキングストレージがスナップショットをサポートしている必要があります。
-      スナップショットをサポートしているバッキングストレージは、現時点では aufs、btrfs、lvm (lvm デバイスはスナップショットのスナップショットはサポートしていません)、overlay、zfs です。
+      スナップショットをサポートしているバッキングストレージは、現時点では btrfs、lvm (lvm デバイスはスナップショットのスナップショットはサポートしていません)、overlay、zfs です。
     </para>
-      
+
     <para>
       <!--
     The copy's backing storage will be of the same type as the original
-    container. aufs or overlayfs snapshots of directory backed containers are
+    container. overlay snapshots of directory backed containers are
     exempted from this rule.
     -->
-      コピー先のバッキングストレージは、元のコンテナと同じタイプになるでしょう。ただし、ディレクトリバックエンドのコンテナのスナップショットは aufs と overlayfs で取得できますので例外です。
+      コピー先のバッキングストレージは、元のコンテナと同じタイプになるでしょう。ただし、ディレクトリバックエンドのコンテナのスナップショットは overlay で取得できますので例外です。
     </para>
 
     <para>
@@ -175,13 +175,13 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     Containers created and started with <replaceable>-e</replaceable> can have
     custom mounts. These are specified with the <replaceable>-m</replaceable>
     flag. Currently three types of mounts are supported:
-    <replaceable>aufs</replaceable>, <replaceable>bind</replaceable>, and
+    <replaceable>bind</replaceable>, and
     <replaceable>overlay</replaceable>. Mount types are specified as suboptions
     to the <replaceable>-m</replaceable> flag and can be specified multiple
-    times separated by commas. <replaceable>aufs</replaceable> and
-    <replaceable>overlay</replaceable> mounts are currently specified in the
-    format <replaceable>-m overlay=/src:/dest</replaceable>.  When no
-    destination <replaceable>dest</replaceable> is specified
+    times separated by commas. <replaceable>overlay</replaceable> mounts are
+    currently specified in the format <replaceable>-m
+    overlay=/src:/dest</replaceable>.  When no destination
+    <replaceable>dest</replaceable> is specified
     <replaceable>dest</replaceable> will be identical to
     <replaceable>src</replaceable>. Read-only <replaceable>bind</replaceable>
     mounts are specified <replaceable>-m bind=/src:/dest:ro</replaceable> and
@@ -194,9 +194,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     <replaceable>-m
     bind=/src1:/dest1:ro,bind=/src2:ro,overlay=/src3:/dest3</replaceable>.
     -->
-      <replaceable>-e</replaceable> で作成し、起動したコンテナは、コンテナ独自のマウントを行えます。現時点では <replaceable>aufs</replaceable>、<replaceable>bind</replaceable>、<replaceable>overlay</replaceable> という 3 つのタイプのマウントがサポートされています。
+      <replaceable>-e</replaceable> で作成し、起動したコンテナは、コンテナ独自のマウントを行えます。現時点では <replaceable>bind</replaceable>、<replaceable>overlay</replaceable> という 2 つのタイプのマウントがサポートされています。
       マウントタイプは <replaceable>-m</replaceable> オプションのサブオプションとして指定します。この指定はカンマ区切りで複数回指定できます。
-      <replaceable>aufs</replaceable> と <replaceable>overlay</replaceable> マウントの場合は、現時点では <replaceable>-m overlay=/src:/dest</replaceable> のように指定します。マウント先の <replaceable>dest</replaceable> を指定しない場合は、<replaceable>dest</replaceable> は <replaceable>src</replaceable> と同じになります。
+      <replaceable>overlay</replaceable> マウントの場合は、現時点では <replaceable>-m overlay=/src:/dest</replaceable> のように指定します。マウント先の <replaceable>dest</replaceable> を指定しない場合は、<replaceable>dest</replaceable> は <replaceable>src</replaceable> と同じになります。
       読み込み専用の <replaceable>bind</replaceable> マウントは <replaceable>-m bind=/src:/dest:ro</replaceable> のように指定します。読み書き可能な <replaceable>bind</replaceable> マウントは <replaceable>-m bind=/src:/dest:rw</replaceable> のように指定します。<replaceable>bind</replaceable> マウントのデフォルトは読み書き可能ですので、読み書き可能なマウントを行う場合は省略できます。マウント先の <replaceable>dest</replaceable> を指定しない場合は、<replaceable>dest</replaceable> は <replaceable>src</replaceable> と同じになります。
       複数のマウントを行う場合の例を示すと、<replaceable>-m bind=/src1:/dest1:ro,bind=/src2:ro,overlay=/src3:/dest3</replaceable> のようになります。
     </para>
@@ -242,8 +242,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	   <listitem>
             <para><!-- Create a snapshot of the original container. The backing
             storage for the copy must support snapshots. This currently includes
-            aufs, btrfs, lvm, overlay, and zfs. -->
-	      元のコンテナのスナップショットを作成します。コピー先のバッキングストレージがスナップショットをサポートしている必要があります。現時点では aufs、btrfs、lvm、overlay、zfs が対象となります。
+            btrfs, lvm, overlay, and zfs. -->
+	      元のコンテナのスナップショットを作成します。コピー先のバッキングストレージがスナップショットをサポートしている必要があります。現時点では btrfs、lvm、overlay、zfs が対象となります。
 	    </para>
 	   </listitem>
 	  </varlistentry>
@@ -278,11 +278,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	   <listitem>
             <para><!--  Specify a mount for a snapshot  The
             <replaceable>opts</replaceable> argument for the mount type can by
-            of type {aufs, bind, overlay}. For example <option>-m
+            of type {bind, overlay}. For example <option>-m
             bind=/src:/dest:ro,overlay=/src:/dest</option> (This option can
             currently only be specified in conjunction with
             <replaceable>-e</replaceable>.). --></para>
-	      スナップショットするコンテナで行うマウントを指定します。マウントタイプは {aufs, bind, overlay} のどれかで指定します。例えば <option>-m bind=/src:/dest:ro,overlay=/src:/dest</option> のようになります。(このオプションは <replaceable>-e</replaceable> と同時の場合のみ指定できます。)
+	      スナップショットするコンテナで行うマウントを指定します。マウントタイプは {bind, overlay} のどれかで指定します。例えば <option>-m bind=/src:/dest:ro,overlay=/src:/dest</option> のようになります。(このオプションは <replaceable>-e</replaceable> と同時の場合のみ指定できます。)
 	   </listitem>
 	  </varlistentry>
 
@@ -306,9 +306,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    <term> <option>-B, --backingstorage <replaceable>backingstorage</replaceable></option></term>
 	   <listitem>
             <para><!-- Specify the backing storage type to be used for the copy
-            where 'backingstorage' is of type 'aufs', 'btrfs', 'dir', 'lvm', 'loop',
+            where 'backingstorage' is of type 'btrfs', 'dir', 'lvm', 'loop',
             'overlay', or 'zfs'. -->
-	      コピー先コンテナのバッキングストレージのタイプを指定します。ここで 'backingsotrage' は 'aufs'、'btrfs'、'dir'、'lvm'、'loop'、'overlay'、'zfs' のどれかです。
+	      コピー先コンテナのバッキングストレージのタイプを指定します。ここで 'backingsotrage' は 'btrfs'、'dir'、'lvm'、'loop'、'overlay'、'zfs' のどれかです。
 	    </para>
 	   </listitem>
 	  </varlistentry>
