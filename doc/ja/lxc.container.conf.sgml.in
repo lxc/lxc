@@ -1807,9 +1807,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           itself should be mounted.  <filename>overlayfs:/lower:/upper</filename>
           specifies that the rootfs should be an overlay with <filename>/upper</filename>
           being mounted read-write over a read-only mount of <filename>/lower</filename>.
-          <filename>aufs:/lower:/upper</filename> does the same using aufs in place
-          of overlayfs. For both <filename>overlayfs</filename> and
-          <filename>aufs</filename> multiple <filename>/lower</filename>
+          For <filename>overlayfs</filename> multiple <filename>/lower</filename>
           directories can be specified. <filename>loop:/file</filename> tells lxc to attach
           <filename>/file</filename> to a loop device and mount the loop device.
           -->
@@ -1817,7 +1815,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               もし rootfs が nbd デバイスの場合、<filename>nbd:file:1</filename> という指定は <filename>file</filename> を nbd デバイスとして使用し、その 1 番目のパーティションが rootfs としてマウントされます。
               <filename>nbd:file</filename> という指定は、nbd デバイス自身をマウントします。
               <filename>overlayfs:/lower:/upper</filename> という指定は、rootfs は <filename>/lower</filename> という読み込み専用でマウントされるディレクトリの上に、<filename>/upper</filename> というディレクトリを読み書き可能で重ね合わせてマウントします。
-              <filename>aufs:/lower:/upper</filename> は overlayfs で指定している部分を aufs と指定すれば同じことになります。<filename>overlayfs</filename> と <filename>aufs</filename> は両方とも、複数の <filename>/lower</filename> ディレクトリを指定できます。
+              <filename>overlayfs</filename> は、複数の <filename>/lower</filename> ディレクトリを指定できます。
               <filename>loop:/file</filename> は <filename>/file</filename> を loop デバイスとして使用し、loop デバイスをマウントします。
             </para>
           </listitem>

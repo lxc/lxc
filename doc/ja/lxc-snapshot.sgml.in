@@ -167,10 +167,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    <term> <option>-N, --newname</option> </term>
 	   <listitem>
             <para>
-	      <!-- When restoring a snapshot, the last optional argument if not given explicitly Via <command>\-\-newname</command> is the name to use for the restored container.  If the newname is identical to the original name of the container, then the original container will be destroyed and the restored container will take its place. Note that deleting the original snapshot is not possible in the case of aufs, overlayfs or zfs backed snapshots. -->
+	      <!-- When restoring a snapshot, the last optional argument if not given explicitly Via <command>\-\-newname</command> is the name to use for the restored container.  If the newname is identical to the original name of the container, then the original container will be destroyed and the restored container will take its place. Note that deleting the original snapshot is not possible in the case of overlayfs or zfs backed snapshots. -->
 	      スナップショットをリストアする際、<command>--newname</command> の値として明示的に指定しない場合でも、最後のオプション引数はリストアするコンテナの名前として使用します。
 	      もし newname が元のコンテナの名前と同じ場合、元のコンテナが削除され、リストアされるコンテナに置き換えられます。
-	      スナップショット元を削除することは、aufs, overlayfs, zfs がバックエンドのスナップショットではできないことに注意が必要です。
+	      スナップショット元を削除することは、overlayfs, zfs がバックエンドのスナップショットではできないことに注意が必要です。
 	    </para>
 	   </listitem>
 	  </varlistentry>
