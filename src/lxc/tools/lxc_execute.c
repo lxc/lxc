@@ -138,16 +138,17 @@ int main(int argc, char *argv[])
 {
 	struct lxc_container *c;
 	struct lxc_log log;
+	int err = EXIT_FAILURE;
 	int ret;
 	bool bret;
 
 	lxc_list_init(&defines);
 
 	if (lxc_caps_init())
-		exit(EXIT_FAILURE);
+		exit(err);
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
-		exit(EXIT_FAILURE);
+		exit(err);
 
 	log.name = my_args.name;
 	log.file = my_args.log_file;
@@ -157,102 +158,89 @@ int main(int argc, char *argv[])
 	log.lxcpath = my_args.lxcpath[0];
 
 	if (lxc_log_init(&log))
-		exit(EXIT_FAILURE);
+		exit(err);
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {
 		fprintf(stderr, "Failed to create lxc_container\n");
-		exit(EXIT_FAILURE);
+		exit(err);
 	}
 
 	if (my_args.rcfile) {
 		c->clear_config(c);
 		if (!c->load_config(c, my_args.rcfile)) {
 			fprintf(stderr, "Failed to load rcfile\n");
-			lxc_container_put(c);
-			exit(EXIT_FAILURE);
+			goto out;
 		}
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
 			fprintf(stderr, "Out of memory setting new config filename\n");
-			lxc_container_put(c);
-			exit(EXIT_FAILURE);
+			goto out;
 		}
 	}
 
 	if (!c->lxc_conf) {
 		fprintf(stderr, "Executing a container with no configuration file may crash the host\n");
-		lxc_container_put(c);
-		exit(EXIT_FAILURE);
+		goto out;
 	}
 
 	if (my_args.argc == 0) {
 		if (!set_argv(c, &my_args)) {
 			fprintf(stderr, "missing command to execute!\n");
-			lxc_container_put(c);
-			exit(EXIT_FAILURE);
+			goto out;
 		}
 	}
 
 	bret = lxc_config_define_load(&defines, c);
-	if (!bret) {
-		lxc_container_put(c);
-		exit(EXIT_FAILURE);
-	}
+	if (!bret)
+		goto out;
 
 	if (my_args.uid) {
 		char buf[256];
 
 		ret = snprintf(buf, 256, "%d", my_args.uid);
-		if (ret < 0 || (size_t)ret >= 256) {
-			lxc_container_put(c);
-			exit(EXIT_FAILURE);
-		}
+		if (ret < 0 || (size_t)ret >= 256)
+			goto out;
 
 		bret = c->set_config_item(c, "lxc.init.uid", buf);
-		if (!bret) {
-			lxc_container_put(c);
-			exit(EXIT_FAILURE);
-		}
+		if (!bret)
+			goto out;
 	}
 
 	if (my_args.gid) {
 		char buf[256];
 
 		ret = snprintf(buf, 256, "%d", my_args.gid);
-		if (ret < 0 || (size_t)ret >= 256) {
-			lxc_container_put(c);
-			exit(EXIT_FAILURE);
-		}
+		if (ret < 0 || (size_t)ret >= 256)
+			goto out;
 
 		bret = c->set_config_item(c, "lxc.init.gid", buf);
-		if (!bret) {
-			lxc_container_put(c);
-			exit(EXIT_FAILURE);
-		}
+		if (!bret)
+			goto out;
 	}
 
-	if (!lxc_setup_shared_ns(&my_args, c)) {
-		lxc_container_put(c);
-		exit(EXIT_FAILURE);
-	}
+	if (!lxc_setup_shared_ns(&my_args, c))
+		goto out;
 
 	c->daemonize = my_args.daemonize == 1;
 	bret = c->start(c, 1, my_args.argv);
-	lxc_container_put(c);
 	if (!bret) {
 		fprintf(stderr, "Failed run an application inside container\n");
-		exit(EXIT_FAILURE);
+		goto out;
 	}
-	if (c->daemonize)
-		exit(EXIT_SUCCESS);
-	else {
+	if (c->daemonize) {
+		err = EXIT_SUCCESS;
+	} else {
 		if (WIFEXITED(c->error_num)) {
-			exit(WEXITSTATUS(c->error_num));
+			err = WEXITSTATUS(c->error_num);
 		} else {
 			/* Try to die with the same signal the task did. */
 			kill(0, WTERMSIG(c->error_num));
-			exit(EXIT_FAILURE);
 		}
 	}
+
+
+out:
+	lxc_container_put(c);
+	exit(err);
 }
