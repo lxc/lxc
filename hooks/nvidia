@@ -235,5 +235,10 @@ if [ "${CLI_DISABLE_REQUIRE}" = "false" ]; then
     done
 fi
 
+if [ -d "/sys/kernel/security/apparmor" ]; then
+    # Try to transition to the unconfined AppArmor profile.
+    echo "changeprofile unconfined" > /proc/self/attr/current || true
+fi
+
 set -x
 exec nvidia-container-cli ${global_args[@]} configure ${configure_args[@]} "${LXC_ROOTFS_MOUNT}"
