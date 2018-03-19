@@ -58,6 +58,7 @@ capability_to_cli() {
     case "$1" in
         compute)  echo "--compute";;
         compat32) echo "--compat32";;
+        display)  echo "--display";;
         graphics) echo "--graphics";;
         utility)  echo "--utility";;
         video)    echo "--video";;
@@ -87,12 +88,14 @@ Optional arguments:
 [ --no-load-kmods ]: Do not try to load the NVIDIA kernel modules.
 [ --disable-require ]: Disable all the constraints of the form NVIDIA_REQUIRE_*.
 [ --debug <path> ]: The path to the log file.
+[ --ldcache <path> ]: The path to the host system's DSO cache.
+[ --root <path> ]: The path to the driver root directory.
 [ --ldconfig <path> ]: The path to the ldconfig binary, use a '@' prefix for a host path.
 EOF
     return 0
 }
 
-options=$(getopt -o h -l help,no-load-kmods,disable-require,debug:,ldconfig: -- "$@")
+options=$(getopt -o h -l help,no-load-kmods,disable-require,debug:,ldcache:,root:,ldconfig: -- "$@")
 if [ $? -ne 0 ]; then
     usage
     exit 1
@@ -102,6 +105,8 @@ eval set -- "$options"
 CLI_LOAD_KMODS="true"
 CLI_DISABLE_REQUIRE="false"
 CLI_DEBUG=
+CLI_LDCACHE=
+CLI_ROOT=
 CLI_LDCONFIG=
 
 while :; do
@@ -110,6 +115,8 @@ while :; do
         --no-load-kmods)    CLI_LOAD_KMODS="false"; shift 1;;
         --disable-require)  CLI_DISABLE_REQUIRE="true"; shift 1;;
         --debug)            CLI_DEBUG=$2; shift 2;;
+        --ldcache)          CLI_LDCACHE=$2; shift 2;;
+        --root)             CLI_ROOT=$2; shift 2;;
         --ldconfig)         CLI_LDCONFIG=$2; shift 2;;
         --)                 shift 1; break;;
         *)                  break;;
@@ -188,7 +195,7 @@ for req in $(compgen -e "NVIDIA_REQUIRE_"); do
 done
 
 if [ "${CLI_CAPABILITIES}" = "all" ]; then
-    CLI_CAPABILITIES="compute compat32 graphics utility video"
+    CLI_CAPABILITIES="compute compat32 display graphics utility video"
 fi
 
 if [ -z "${CLI_CAPABILITIES}" ]; then
@@ -212,6 +219,14 @@ if [ "${USERNS}" = "yes" ]; then
     configure_args+=(--no-cgroups)
 fi
 
+if [ -n "${CLI_LDCACHE}" ]; then
+    global_args+=(--ldcache="${CLI_LDCACHE}")
+fi
+
+if [ -n "${CLI_ROOT}" ]; then
+    global_args+=(--root="${CLI_ROOT}")
+fi
+
 if [ -n "${CLI_LDCONFIG}" ]; then
     configure_args+=(--ldconfig="${CLI_LDCONFIG}")
 fi
@@ -233,6 +248,11 @@ if [ "${CLI_DISABLE_REQUIRE}" = "false" ]; then
     for req in ${CLI_REQUIREMENTS}; do
         configure_args+=(--require="${req}")
     done
+fi
+
+if [ -d "/sys/kernel/security/apparmor" ]; then
+    # Try to transition to the unconfined AppArmor profile.
+    echo "changeprofile unconfined" > /proc/self/attr/current || true
 fi
 
 set -x
