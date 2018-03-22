@@ -282,7 +282,7 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 		return 0;
 
 	n = snprintf(buffer, sizeof(buffer),
-			"%15s%s%s %s %-8s %s - %s:%s:%d - ",
+			"%s%s%s %s %-8s %s - %s:%s:%d - ",
 			log_prefix,
 			log_vmname ? " " : "",
 			log_vmname ? log_vmname : "",
