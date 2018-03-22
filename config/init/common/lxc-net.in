@@ -38,17 +38,17 @@ _netmask2cidr ()
     echo $(( $2 + (${#x}/4) ))
 }
 
-ifdown() {
-    ip addr flush dev $1
-    ip link set dev $1 down
+_ifdown() {
+    ip addr flush dev ${LXC_BRIDGE}
+    ip link set dev ${LXC_BRIDGE} down
 }
 
-ifup() {
+_ifup() {
     MASK=`_netmask2cidr ${LXC_NETMASK}`
     CIDR_ADDR="${LXC_ADDR}/${MASK}"
-    ip addr add ${CIDR_ADDR} dev $1
-    ip link set dev $1 address $LXC_BRIDGE_MAC
-    ip link set dev $1 up
+    ip addr add ${CIDR_ADDR} dev ${LXC_BRIDGE}
+    ip link set dev ${LXC_BRIDGE} address $LXC_BRIDGE_MAC
+    ip link set dev ${LXC_BRIDGE} up
 }
 
 start() {
@@ -89,7 +89,7 @@ start() {
         fi
     fi
 
-    ifup ${LXC_BRIDGE} ${LXC_ADDR} ${LXC_NETMASK}
+    _ifup
 
     LXC_IPV6_ARG=""
     if [ -n "$LXC_IPV6_ADDR" ] && [ -n "$LXC_IPV6_MASK" ] && [ -n "$LXC_IPV6_NETWORK" ]; then
@@ -151,7 +151,7 @@ stop() {
     [ -f "${varrun}/network_up" ] || [ "$1" = "force" ] || { echo "lxc-net isn't running"; exit 1; }
 
     if [ -d /sys/class/net/${LXC_BRIDGE} ]; then
-        ifdown ${LXC_BRIDGE}
+        _ifdown 
         iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p udp --dport 67 -j ACCEPT
         iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p tcp --dport 67 -j ACCEPT
         iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p udp --dport 53 -j ACCEPT
