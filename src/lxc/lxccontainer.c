@@ -2500,11 +2500,10 @@ static bool do_lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 		lret = container_disk_lock(c);
 	else
 		lret = container_mem_lock(c);
-
 	if (lret)
 		return false;
 
-	fd = open(alt_file, O_WRONLY | O_CREAT | O_CLOEXEC,
+	fd = open(alt_file, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
 		  S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 	if (fd < 0)
 		goto on_error;
