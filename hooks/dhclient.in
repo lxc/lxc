@@ -26,6 +26,15 @@ usage() {
     echo "Usage: ${0##*/} <name> lxc {start-host|stop}"
 }
 
+# Wrap the dhclient command with "aa-exec -p unconfined" if AppArmor is enabled.
+dhclient() {
+    bin="/sbin/dhclient"
+    if [ -d "/sys/kernel/security/apparmor" ] && which aa-exec >/dev/null; then
+        bin="aa-exec -p unconfined ${bin}"
+    fi
+    echo $bin
+}
+
 dhclient_start() {
     ns_args=("--uts" "--net")
     if [ -z "$(readlink /proc/${LXC_PID}/ns/user /proc/self/ns/user | uniq -d)" ]; then
@@ -39,7 +48,7 @@ dhclient_start() {
     else
         echo "INFO: Starting DHCP client and acquiring a lease..." >> "${debugfile}"
         nsenter ${ns_args[@]} --target "${LXC_PID}" -- \
-          /sbin/dhclient -1 ${conffile_arg} -pf "${pidfile}" -lf "${leasefile}" -e "ROOTFS=${rootfs_path}" -sf "${LXC_DHCP_SCRIPT}" -v >> "${debugfile}" 2>&1
+          $(dhclient) -1 ${conffile_arg} -pf "${pidfile}" -lf "${leasefile}" -e "ROOTFS=${rootfs_path}" -sf "${LXC_DHCP_SCRIPT}" -v >> "${debugfile}" 2>&1
     fi
 }
 
@@ -63,7 +72,7 @@ dhclient_stop() {
     if [ -e "${pidfile}" ]; then
         echo "INFO: Stopping DHCP client and releasing leases..." >> "${debugfile}"
         nsenter ${ns_args[@]} -- \
-          /sbin/dhclient -r ${conffile_arg} -pf "${pidfile}" -lf "${leasefile}" -e "ROOTFS=${rootfs_path}" -sf "${LXC_DHCP_SCRIPT}" -v >> "${debugfile}" 2>&1
+          $(dhclient) -r ${conffile_arg} -pf "${pidfile}" -lf "${leasefile}" -e "ROOTFS=${rootfs_path}" -sf "${LXC_DHCP_SCRIPT}" -v >> "${debugfile}" 2>&1
     else
         echo "WARN: DHCP client is not running, skipping stop hook." >> "${debugfile}"
     fi
