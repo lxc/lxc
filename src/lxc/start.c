@@ -1105,11 +1105,9 @@ static int do_start(void *data)
 		if (ret < 0 && (handler->am_root || errno != EPERM))
 			goto out_warn_father;
 
-		if (!handler->am_root) {
-			ret = prctl(PR_SET_DUMPABLE, 1, 0, 0, 0);
-			if (ret < 0)
-				goto out_warn_father;
-		}
+		ret = prctl(PR_SET_DUMPABLE, 1, 0, 0, 0);
+		if (ret < 0)
+			goto out_warn_father;
 
 		/* set{g,u}id() clears deathsignal */
 		ret = lxc_set_death_signal(SIGKILL);
