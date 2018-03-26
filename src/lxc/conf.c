@@ -1203,28 +1203,28 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 	return 0;
 }
 
-struct lxc_devs {
+struct lxc_device_node {
 	const char *name;
-	mode_t mode;
-	int maj;
-	int min;
+	const mode_t mode;
+	const int maj;
+	const int min;
 };
 
-static const struct lxc_devs lxc_devs[] = {
-	{ "null",    S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 3 },
-	{ "zero",    S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 5 },
+static const struct lxc_device_node lxc_devices[] = {
 	{ "full",    S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 7 },
-	{ "urandom", S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 9 },
+	{ "null",    S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 3 },
 	{ "random",  S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 8 },
 	{ "tty",     S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 5, 0 },
+	{ "urandom", S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 9 },
+	{ "zero",    S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 5 },
 };
 
 static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 {
-	int ret;
+	int i, ret;
 	char path[MAXPATHLEN];
-	int i;
 	mode_t cmask;
+	bool can_mknod = true;
 
 	ret = snprintf(path, MAXPATHLEN, "%s/dev",
 		       rootfs->path ? rootfs->mount : "");
@@ -1238,53 +1238,55 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 	INFO("Populating \"/dev\"");
 
 	cmask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
-	for (i = 0; i < sizeof(lxc_devs) / sizeof(lxc_devs[0]); i++) {
-		const struct lxc_devs *d = &lxc_devs[i];
+	for (i = 0; i < sizeof(lxc_devices) / sizeof(lxc_devices[0]); i++) {
+		char hostpath[MAXPATHLEN];
+		const struct lxc_device_node *device = &lxc_devices[i];
 
 		ret = snprintf(path, MAXPATHLEN, "%s/dev/%s",
-			       rootfs->path ? rootfs->mount : "", d->name);
+			       rootfs->path ? rootfs->mount : "", device->name);
 		if (ret < 0 || ret >= MAXPATHLEN)
 			return -1;
 
-		ret = mknod(path, d->mode, makedev(d->maj, d->min));
-		if (ret < 0) {
-			FILE *pathfile;
-			char hostpath[MAXPATHLEN];
-
-			if (errno == EEXIST) {
-				DEBUG("\"%s\" device already existed", path);
+		if (can_mknod) {
+			ret = mknod(path, device->mode, makedev(device->maj, device->min));
+			if (ret == 0 || (ret < 0 && errno == EEXIST)) {
+				DEBUG("Created device node \"%s\"", path);
 				continue;
 			}
 
-			/* Unprivileged containers cannot create devices, so
-			 * bind mount the device from the host.
+			if (errno != EPERM) {
+				SYSERROR("Failed to create device node \"%s\"", path);
+				return -1;
+			}
+
+			/* This can e.g. happen when the container is
+			 * unprivileged or CAP_MKNOD has been dropped.
 			 */
-			ret = snprintf(hostpath, MAXPATHLEN, "/dev/%s", d->name);
-			if (ret < 0 || ret >= MAXPATHLEN)
-				return -1;
-
-			pathfile = fopen(path, "wb");
-			if (!pathfile) {
-				SYSERROR("Failed to create file \"%s\"", path);
-				return -1;
-			}
-			fclose(pathfile);
-
-			ret = safe_mount(hostpath, path, 0, MS_BIND, NULL,
-					 rootfs->path ? rootfs->mount : NULL);
-			if (ret < 0) {
-				SYSERROR("Failed to bind mount \"%s\" from "
-					 "host into container",
-					 d->name);
-				return -1;
-			}
-			DEBUG("Bind mounted \"%s\" onto \"%s\"", hostpath,
-			      path);
-		} else {
-			DEBUG("Created device node \"%s\"", path);
+			can_mknod = false;
 		}
+
+		ret = mknod(path, S_IFREG, 0);
+		if (ret < 0 && errno != EEXIST) {
+			SYSERROR("Failed to create file \"%s\"", path);
+			return -1;
+		}
+
+		/* Fallback to bind-mounting the device from the host. */
+		ret = snprintf(hostpath, MAXPATHLEN, "/dev/%s", device->name);
+		if (ret < 0 || ret >= MAXPATHLEN)
+			return -1;
+
+		ret = safe_mount(hostpath, path, 0, MS_BIND, NULL,
+				 rootfs->path ? rootfs->mount : NULL);
+		if (ret < 0) {
+			SYSERROR("Failed to bind mount host device node \"%s\" "
+				 "onto \"%s\"", hostpath, path);
+			return -1;
+		}
+		DEBUG("Bind mounted host device node \"%s\" onto \"%s\"",
+		      hostpath, path);
 	}
-	umask(cmask);
+	(void)umask(cmask);
 
 	INFO("Populated \"/dev\"");
 	return 0;
