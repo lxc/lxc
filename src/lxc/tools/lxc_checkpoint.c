@@ -36,11 +36,13 @@ static bool do_restore = false;
 static bool daemonize_set = false;
 static bool pre_dump = false;
 static char *predump_dir = NULL;
+static char *actionscript_path = NULL;
 
 #define OPT_PREDUMP_DIR OPT_USAGE + 1
 
 static const struct option my_longopts[] = {
 	{"checkpoint-dir", required_argument, 0, 'D'},
+	{"action-script", required_argument, 0, 'A'},
 	{"stop", no_argument, 0, 's'},
 	{"verbose", no_argument, 0, 'v'},
 	{"restore", no_argument, 0, 'r'},
@@ -81,6 +83,11 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 	case 'D':
 		checkpoint_dir = strdup(arg);
 		if (!checkpoint_dir)
+			return -1;
+		break;
+        case 'A':
+		actionscript_path = strdup(arg);
+		if (!actionscript_path)
 			return -1;
 		break;
 	case 's':
@@ -126,6 +133,7 @@ Options :\n\
   -r, --restore             Restore container\n\
   -D, --checkpoint-dir=DIR  directory to save the checkpoint in\n\
   -v, --verbose             Enable verbose criu logs\n\
+  -A, --action-script=PATH  Path to criu action script\n\
   Checkpoint options:\n\
   -s, --stop                Stop the container after checkpointing.\n\
   -p, --pre-dump            Only pre-dump the memory of the container.\n\
@@ -182,13 +190,23 @@ static bool checkpoint(struct lxc_container *c)
 
 static bool restore_finalize(struct lxc_container *c)
 {
-	bool ret = c->restore(c, checkpoint_dir, verbose);
-	if (!ret) {
+	struct migrate_opts opts;
+	bool ret;
+
+	memset(&opts, 0, sizeof(opts));
+
+	opts.directory = checkpoint_dir;
+	opts.verbose = verbose;
+	opts.stop = stop;
+	opts.action_script = actionscript_path;
+	ret = c->migrate(c, MIGRATE_RESTORE, &opts, sizeof(opts));
+	if (ret) {
 		fprintf(stderr, "Restoring %s failed.\n", my_args.name);
+		return false;
 	}
 
 	lxc_container_put(c);
-	return ret;
+	return true;
 }
 
 static bool restore(struct lxc_container *c)
@@ -289,6 +307,9 @@ int main(int argc, char *argv[])
 		ret = restore(c);
 	else
 		ret = checkpoint(c);
+	free(actionscript_path);
+	free(checkpoint_dir);
+	free(predump_dir);
 
 	if (!ret)
 		exit(EXIT_FAILURE);
