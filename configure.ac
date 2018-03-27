@@ -52,7 +52,7 @@ AC_SUBST([LIBTOOL_DEPS])
 # Detect the distribution. This is used for the default configuration and
 # for some distro-specific build options.
 AC_MSG_CHECKING([host distribution])
-AC_ARG_WITH(distro, AS_HELP_STRING([--with-distro=DISTRO], [Specify the Linux distribution to target: One of redhat, oracle, centos, fedora, suse, gentoo, debian, arch, slackware, plamo, paldo, openmandriva, pardus, sparclinux, altlinux.]))
+AC_ARG_WITH(distro, AS_HELP_STRING([--with-distro=DISTRO], [Specify the Linux distribution to target: One of redhat, redhatenterpriseserver, oracle, centos, fedora, suse, gentoo, debian, arch, slackware, plamo, paldo, openmandriva, pardus, sparclinux, altlinux.]))
 if type lsb_release >/dev/null 2>&1 && test "z$with_distro" = "z"; then
 	with_distro=`lsb_release -is`
 fi
@@ -89,7 +89,7 @@ case $with_distro in
 		distroconf=default.conf.lxcbr
 		distrosysconf="$sysconfdir/default"
 		;;
-	redhat|centos|fedora|oracle|oracleserver|sparclinux|altlinux|suse|opensuse*|plamo|pld)
+	redhat|redhatenterpriseserver|centos|fedora|oracle|oracleserver|sparclinux|altlinux|suse|opensuse*|plamo|pld)
 		distroconf=default.conf.lxcbr
 		distrosysconf="$sysconfdir/sysconfig"
 		;;
@@ -116,7 +116,7 @@ case "$with_init_script" in
 			fedora|altlinux|opensuse*)
 				init_script=systemd
 				;;
-			redhat|oracle|oracleserver|sparclinux|plamo)
+			redhat|redhatenterpriseserver|oracle|oracleserver|sparclinux|plamo)
 				init_script=sysvinit
 				;;
 			centos)
