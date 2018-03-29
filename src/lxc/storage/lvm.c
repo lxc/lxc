@@ -324,7 +324,7 @@ static int lvm_snapshot_create_new_uuid_wrapper(void *data)
 	if (strcmp(args->fstype, "btrfs") == 0)
 		execlp("btrfstune", "btrfstune", "-f", "-u", args->lv, (char *)NULL);
 
-	return -1;
+	return 0;
 }
 
 static int lvm_snapshot(struct lxc_storage *orig, const char *path, uint64_t size)
