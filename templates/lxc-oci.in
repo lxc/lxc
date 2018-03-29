@@ -100,8 +100,8 @@ getep() {
 
   configpath="$1"
 
-  ep=$(jq -c -r '.config.Entrypoint[]?'< "${configpath}")
-  cmd=$(jq -c -r '.config.Cmd[]?' < "${configpath}")
+  ep=$(jq -c '.config.Entrypoint[]?'< "${configpath}" | tr '\n' ' ')
+  cmd=$(jq -c '.config.Cmd[]?'< "${configpath}" | tr '\n' ' ')
   if [ -z "${ep}" ]; then
     ep="${cmd}"
     if [ -z "${ep}" ]; then
@@ -312,7 +312,7 @@ if [ -n "$LXC_MAPPED_UID" ] && [ "$LXC_MAPPED_UID" != "-1" ]; then
 fi
 # shellcheck disable=SC2039
 # shellcheck disable=SC2068
-umoci unpack ${umoci_args[@]} --image "${DOWNLOAD_TEMP}:latest" "${LXC_ROOTFS}.tmp"
+umoci --log=error unpack ${umoci_args[@]} --image "${DOWNLOAD_TEMP}:latest" "${LXC_ROOTFS}.tmp"
 rmdir "${LXC_ROOTFS}"
 mv "${LXC_ROOTFS}.tmp/rootfs" "${LXC_ROOTFS}"
 
