@@ -100,8 +100,8 @@ getep() {
 
   configpath="$1"
 
-  ep=$(jq -c -r '.config.Entrypoint[]?'< "${configpath}")
-  cmd=$(jq -c -r '.config.Cmd[]?' < "${configpath}")
+  ep=$(jq -c '.config.Entrypoint[]?'< "${configpath}" | tr '\n' ' ')
+  cmd=$(jq -c '.config.Cmd[]?'< "${configpath}" | tr '\n' ' ')
   if [ -z "${ep}" ]; then
     ep="${cmd}"
     if [ -z "${ep}" ]; then
