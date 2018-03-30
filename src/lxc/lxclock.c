@@ -55,7 +55,7 @@ static inline void dump_stacktrace(void)
 	strings = backtrace_symbols(array, size);
 
 	/* Using fprintf here as our logging module is not thread safe. */
-	fprintf(stderr, "\tObtained %zu stack frames.\n", size);
+	fprintf(stderr, "\tObtained %zu stack frames\n", size);
 
 	for (i = 0; i < size; i++)
 		fprintf(stderr, "\t\t%s\n", strings[i]);
@@ -195,7 +195,7 @@ int lxclock(struct lxc_lock *l, int timeout)
 	case LXC_LOCK_ANON_SEM:
 		if (!timeout) {
 			ret = sem_wait(l->u.sem);
-			if (ret == -1)
+			if (ret < 0)
 				saved_errno = errno;
 		} else {
 			struct timespec ts;
@@ -205,7 +205,7 @@ int lxclock(struct lxc_lock *l, int timeout)
 			}
 			ts.tv_sec += timeout;
 			ret = sem_timedwait(l->u.sem, &ts);
-			if (ret == -1)
+			if (ret < 0)
 				saved_errno = errno;
 		}
 		break;
@@ -220,21 +220,22 @@ int lxclock(struct lxc_lock *l, int timeout)
 			goto out;
 		}
 		if (l->u.f.fd == -1) {
-			l->u.f.fd = open(l->u.f.fname, O_RDWR|O_CREAT,
-					S_IWUSR | S_IRUSR);
+			l->u.f.fd = open(l->u.f.fname, O_CREAT | O_RDWR | O_NOFOLLOW | O_CLOEXEC | O_NOCTTY, S_IWUSR | S_IRUSR);
 			if (l->u.f.fd == -1) {
 				ERROR("Error opening %s", l->u.f.fname);
 				saved_errno = errno;
 				goto out;
 			}
 		}
+		memset(&lk, 0, sizeof(struct flock));
 		lk.l_type = F_WRLCK;
 		lk.l_whence = SEEK_SET;
-		lk.l_start = 0;
-		lk.l_len = 0;
-		ret = fcntl(l->u.f.fd, F_SETLKW, &lk);
-		if (ret == -1)
+		ret = fcntl(l->u.f.fd, F_OFD_SETLKW, &lk);
+		if (ret < 0) {
+			if (errno == EINVAL)
+				ret = flock(l->u.f.fd, LOCK_EX);
 			saved_errno = errno;
+		}
 		break;
 	}
 
@@ -259,13 +260,15 @@ int lxcunlock(struct lxc_lock *l)
 		break;
 	case LXC_LOCK_FLOCK:
 		if (l->u.f.fd != -1) {
+			memset(&lk, 0, sizeof(struct flock));
 			lk.l_type = F_UNLCK;
 			lk.l_whence = SEEK_SET;
-			lk.l_start = 0;
-			lk.l_len = 0;
-			ret = fcntl(l->u.f.fd, F_SETLK, &lk);
-			if (ret < 0)
+			ret = fcntl(l->u.f.fd, F_OFD_SETLK, &lk);
+			if (ret < 0) {
+				if (errno == EINVAL)
+					ret = flock(l->u.f.fd, LOCK_EX | LOCK_NB);
 				saved_errno = errno;
+			}
 			close(l->u.f.fd);
 			l->u.f.fd = -1;
 		} else
