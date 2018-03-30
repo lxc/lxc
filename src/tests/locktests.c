@@ -76,7 +76,7 @@ static void test_two_locks(void)
 		if (WIFEXITED(status)) {
 			printf("%d exited normally with exit code %d\n", pid,
 				WEXITSTATUS(status));
-			if (WEXITSTATUS(status) == 0)
+			if (WEXITSTATUS(status) != 0)
 				exit(1);
 		} else
 			printf("%d did not exit normally\n", pid);
