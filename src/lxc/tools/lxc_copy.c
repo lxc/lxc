@@ -745,7 +745,7 @@ static char *mount_tmpfs(const char *oldname, const char *newname,
 	int ret, fd;
 	size_t len;
 	char *premount = NULL;
-	FILE *fp;
+	FILE *fp = NULL;
 
 	if (arg->tmpfs && arg->keepdata) {
 		fprintf(stderr, "%s\n",
@@ -810,7 +810,7 @@ static char *mount_tmpfs(const char *oldname, const char *newname,
 err_close:
 	if (fd > 0)
 		close(fd);
-	else
+	else if (fp)
 		fclose(fp);
 err_free:
 	free(premount);

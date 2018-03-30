@@ -23,12 +23,25 @@
 #ifndef __LXC_LXCLOCK_H
 #define __LXC_LXCLOCK_H
 
-#include <fcntl.h>           /* For O_* constants */
-#include <sys/stat.h>        /* For mode constants */
-#include <sys/file.h>
+#include <fcntl.h>
 #include <semaphore.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/file.h>
 #include <time.h>
+#include <unistd.h>
+
+#ifndef F_OFD_GETLK
+#define F_OFD_GETLK	36
+#endif
+
+#ifndef F_OFD_SETLK
+#define F_OFD_SETLK	37
+#endif
+
+#ifndef F_OFD_SETLKW
+#define F_OFD_SETLKW	38
+#endif
 
 #define LXC_LOCK_ANON_SEM 1 /*!< Anonymous semaphore lock */
 #define LXC_LOCK_FLOCK    2 /*!< flock(2) lock */
