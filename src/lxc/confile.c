@@ -1096,7 +1096,21 @@ static int set_config_environment(const char *key, const char *value,
 	if (!list_item)
 		goto on_error;
 
-	list_item->elem = strdup(value);
+	if (!strchr(value, '=')) {
+		const char *env_val;
+		const char *env_key = value;
+		const char *env_var[3] = {0};
+
+		env_val = getenv(env_key);
+		if (!env_val)
+			goto on_error;
+
+		env_var[0] = env_key;
+		env_var[1] = env_val;
+		list_item->elem = lxc_string_join("=", env_var, false);
+	} else {
+		list_item->elem = strdup(value);
+	}
 
 	if (!list_item->elem)
 		goto on_error;
