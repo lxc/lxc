@@ -1,10 +1,10 @@
 [![LXD](https://linuxcontainers.org/static/img/containers.png)](https://linuxcontainers.org/lxd)
 # LXC
 
-LXC is the well-known and heavily tested low-level Linux container runtime. It
-is in active development since 2008 and has proven itself in critical
-production environments world-wide. Some of its core contributors are the same
-people that helped to implement various well-known containerization features
+LXC is the low-level Linux container runtime. It
+is in active development since 2008 and it has proven in critical
+production environments. Some of its core contributors are the 
+people who helped to implement containerization features
 inside the Linux kernel.
 
 ## Status
@@ -17,8 +17,8 @@ Static Analysis | Coverity              | <a href="https://scan.coverity.com/pro
 
 ## System Containers
 
-LXC's main focus is system containers. That is, containers which offer an
-environment as close as possible as the one you'd get from a VM but without the
+LXC's main focus is the system containers. Containers offer a close
+environment as the one obtained from a VM but without the
 overhead that comes with running a separate kernel and simulating all the
 hardware.
 
@@ -27,24 +27,24 @@ namespaces, mandatory access control and control groups.
 
 ## Unprivileged Containers
 
-Unprivileged containers are containers that are run without any privilege. This
-requires support for user namespaces in the kernel that the container is run
+Unprivileged containers are containers run without any privilege. This
+requires support from user namespaces in the kernel that the container is run
 on. LXC was the first runtime to support unprivileged containers after user
 namespaces were merged into the mainline kernel.
 
 In essence, user namespaces isolate given sets of UIDs and GIDs. This is
-achieved by establishing a mapping between a range of UIDs and GIDs on the host
+achieved by establishing a mapping between the range of UIDs and GIDs on the host
 to a different (unprivileged) range of UIDs and GIDs in the container. The
 kernel will translate this mapping in such a way that inside the container all
-UIDs and GIDs appear as you would expect from the host whereas on the host
+UIDs and GIDs appear as expected from the host whereas on the host
 these UIDs and GIDs are in fact unprivileged. For example, a process running as
 UID and GID 0 inside the container might appear as UID and GID 100000 on the
 host. The implementation and working details can be gathered from the
 corresponding user namespace man page.
 
-Since unprivileged containers are a security enhancement they naturally come
+Since unprivileged containers are security enhancement, they naturally come
 with a few restrictions enforced by the kernel. In order to provide a fully
-functional unprivileged container LXC interacts with 3 pieces of setuid code:
+functional unprivileged container, LXC interacts with 3 pieces of setuid code:
 
 - lxc-user-nic (setuid helper to create a veth pair and bridge it on the host)
 - newuidmap (from the shadow package, sets up a uid map)
@@ -101,7 +101,7 @@ it.
 
 LXC runs on any kernel from 2.6.32 onwards. All it requires is a functional
 C compiler. LXC works on all architectures that provide the necessary kernel
-features. This includes (but isn't limited to):
+features. This includes (but is not limited to):
 
 - i686
 - x86_64
@@ -145,10 +145,10 @@ introduction at:
 
 - https://www.kernel.org/doc/html/v4.10/process/coding-style.html
 
-and should also take a look at the [CONTRIBUTING](CONTRIBUTING) file in this
+and take a look at the [CONTRIBUTING](CONTRIBUTING) file in this
 repo.
 
-If you want to become more active it is usually also a good idea to show up in
+If you want to become more active, show up in
 the LXC IRC channel `#lxc-dev` on `Freenode`. We try to do all development out
 in the open and discussion of new features or bugs is done either in
 appropriate Github issues or on IRC.
@@ -180,7 +180,7 @@ Without considering distribution specific details a simple
 
 is usually sufficient.
 
-In order to test current git master of LXC it is usually a good idea to compile with
+In order to test current git master of LXC, it is usually a good idea to compile with
 
     ./autogen.sh && ./configure && make
 
