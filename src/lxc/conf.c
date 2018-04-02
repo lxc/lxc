@@ -1112,13 +1112,22 @@ static int setup_rootfs_pivot_root(const char *rootfs)
 		goto on_error;
 	}
 
-	/* At this point the old-root is mounted on top of our new-root To
+	/* At this point the old-root is mounted on top of our new-root. To
 	 * unmounted it we must not be chdir'd into it, so escape back to
 	 * old-root.
 	 */
 	ret = fchdir(oldroot);
 	if (ret < 0) {
 		SYSERROR("Failed to enter old root directory");
+		goto on_error;
+	}
+
+	/* Make oldroot rslave to make sure our umounts don't propagate to the
+	 * host.
+	 */
+	ret = mount("", ".", "", MS_SLAVE | MS_REC, NULL);
+	if (ret < 0) {
+		SYSERROR("Failed to make oldroot rslave");
 		goto on_error;
 	}
 
