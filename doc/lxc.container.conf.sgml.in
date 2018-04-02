@@ -2445,6 +2445,13 @@ dev/null proc/kcore none bind,relative 0 0
               lxc.environment = APP_ENV=production
               lxc.environment = SYSLOG_SERVER=192.0.2.42
             </programlisting>
+            <para>
+            It is possible to inherit host environment variables by setting the
+            name of the variable without a "=" sign. For example:
+            </para>
+            <programlisting>
+              lxc.environment = PATH
+            </programlisting>
           </listitem>
         </varlistentry>
       </variablelist>
