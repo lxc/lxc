@@ -1122,6 +1122,15 @@ static int setup_rootfs_pivot_root(const char *rootfs)
 		goto on_error;
 	}
 
+	/*
+	* make oldroot rslave to make sure our umounts don't propagate to
+	* the host.
+	*/
+	if (mount("", ".", "", MS_SLAVE | MS_REC, 0)) {
+		SYSERROR("failed to make oldroot rslave");
+		goto on_error;
+	}
+
 	ret = umount2(".", MNT_DETACH);
 	if (ret < 0) {
 		SYSERROR("Failed to detach old root directory");
