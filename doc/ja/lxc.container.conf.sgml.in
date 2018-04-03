@@ -2095,7 +2095,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             container wants to inherit the network namespace it needs to inherit
             the user namespace as well.
                 -->
-              コンテナが新しいユーザ名前空間をリクエストし、そのコンテナがネットワーク名前空間は継承したい場合は、ユーザ名前空間は継承する必要があることに注意してください。
+              コンテナが新しいユーザ名前空間をリクエストし、そのコンテナがネットワーク名前空間は継承したい場合は、ユーザ名前空間も同様に継承する必要があることに注意してください。
             </para>
           </listitem>
         </varlistentry>
