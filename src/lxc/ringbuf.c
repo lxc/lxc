@@ -52,10 +52,12 @@ int lxc_ringbuf_create(struct lxc_ringbuf *buf, size_t size)
 
 	memfd = memfd_create(".lxc_ringbuf", MFD_CLOEXEC);
 	if (memfd < 0) {
+		char template[] = P_tmpdir "/.lxc_ringbuf_XXXXXX";
+
 		if (errno != ENOSYS)
 			goto on_error;
 
-		memfd = lxc_make_tmpfile((char *){P_tmpdir"/.lxc_ringbuf_XXXXXX"}, true);
+		memfd = lxc_make_tmpfile(template, true);
 	}
 	if (memfd < 0)
 		goto on_error;
