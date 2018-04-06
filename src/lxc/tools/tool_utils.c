@@ -795,7 +795,13 @@ int lxc_config_define_add(struct lxc_list *defines, char *arg)
 
 	dent->elem = parse_line(arg);
 	if (!dent->elem)
+	  {
+	    if (dent != NULL) {
+	      free(dent);
+	      dent = NULL;
+	    }
 		return -1;
+	  }
 	lxc_list_add_tail(defines, dent);
 	return 0;
 }
