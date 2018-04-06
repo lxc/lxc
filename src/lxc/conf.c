@@ -2297,9 +2297,12 @@ FILE *make_anonymous_mount_file(struct lxc_list *mount)
 
 	fd = memfd_create(".lxc_mount_file", MFD_CLOEXEC);
 	if (fd < 0) {
+		char template[] = P_tmpdir "/.lxc_mount_file_XXXXXX";
+
 		if (errno != ENOSYS)
 			return NULL;
-		fd = lxc_make_tmpfile((char *){P_tmpdir "/.lxc_mount_file"}, true);
+
+		fd = lxc_make_tmpfile(template, true);
 		if (fd < 0) {
 			SYSERROR("Could not create temporary mount file");
 			return NULL;
