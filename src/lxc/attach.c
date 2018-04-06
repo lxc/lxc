@@ -38,6 +38,7 @@
 #include <sys/socket.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
+#include <assert.h>
 
 #include <lxc/lxccontainer.h>
 
@@ -339,6 +340,7 @@ static int lxc_attach_set_environment(struct lxc_proc_context_info *init_ctx,
 			for (count = 0; extra_keep[count]; count++)
 				;
 
+			assert(count != 0 && "count is 0");
 			extra_keep_store = calloc(count, sizeof(char *));
 			if (!extra_keep_store)
 				return -1;
