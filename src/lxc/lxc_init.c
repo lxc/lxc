@@ -147,7 +147,6 @@ static void prevent_forking(void)
 			SYSERROR("Failed to write to \"%s\"", path);
 
 		close(fd);
-		fd = -1;
 		break;
 	}
 
