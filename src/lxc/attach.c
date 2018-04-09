@@ -870,11 +870,11 @@ static int attach_child_main(struct attach_clone_payload *payload)
 		ret = lxc_switch_uid_gid(new_uid, new_gid);
 		if (ret < 0)
 			goto on_error;
-
-		ret = lxc_setgroups(0, NULL);
-		if (ret < 0)
-			goto on_error;
 	}
+
+	ret = lxc_setgroups(0, NULL);
+	if (ret < 0)
+		goto on_error;
 
 	if ((init_ctx->container && init_ctx->container->lxc_conf &&
 	     init_ctx->container->lxc_conf->no_new_privs) ||
