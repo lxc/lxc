@@ -263,7 +263,7 @@ AM_CONDITIONAL([ENABLE_GNUTLS], [test "x$enable_gnutls" = "xyes"])
 
 AM_COND_IF([ENABLE_GNUTLS],
 	[AC_CHECK_HEADER([gnutls/gnutls.h],[],[AC_MSG_ERROR([You must install the GnuTLS development package in order to compile lxc])])
-	AC_CHECK_LIB([gnutls], [gnutls_hash_fast],[],[AC_MSG_ERROR([You must install the GnuTLS development package in order to compile lxc])])
+	AC_CHECK_LIB([gnutls], [gnutls_hash_fast],[true],[AC_MSG_ERROR([You must install the GnuTLS development package in order to compile lxc])])
 	AC_SUBST([GNUTLS_LIBS], [-lgnutls])])
 
 # SELinux
