@@ -97,7 +97,6 @@ static struct arguments my_args = {
 static void prevent_forking(void)
 {
 	FILE *f;
-	int fd = -1;
 	size_t len = 0;
 	char *line = NULL;
 	char path[MAXPATHLEN];
@@ -107,7 +106,7 @@ static void prevent_forking(void)
 		return;
 
 	while (getline(&line, &len, f) != -1) {
-		int ret;
+		int fd, ret;
 		char *p, *p2;
 
 		p = strchr(line, ':');
@@ -143,7 +142,8 @@ static void prevent_forking(void)
 			goto on_error;
 		}
 
-		if (write(fd, "1", 1) != 1)
+		ret = write(fd, "1", 1);
+		if (ret != 1)
 			SYSERROR("Failed to write to \"%s\"", path);
 
 		close(fd);
