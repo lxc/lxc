@@ -73,14 +73,20 @@ int lxc_rsync_exec(const char *src, const char *dest)
 		return -1;
 
 	ret = snprintf(s, l, "%s", src);
-	if (ret < 0 || (size_t)ret >= l)
+	if (ret < 0 || (size_t)ret >= l) {
+		if (s != NULL) {
+			free(s);
+			s = NULL;
+		}
 		return -1;
+	}
 
 	s[l - 2] = '/';
 	s[l - 1] = '\0';
 
 	execlp("rsync", "rsync", "-aHXS", "--delete", s, dest, (char *)NULL);
 	free(s);
+	s = NULL;
 	return -1;
 }
 
