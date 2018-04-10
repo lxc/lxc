@@ -129,6 +129,22 @@ extern char *get_rundir(void);
 #endif
 #endif
 
+#if !defined(__NR_setns) && !defined(__NR_set_ns)
+	#if defined(__x86_64__)
+		#define __NR_setns 308
+	#elif defined(__i386__)
+		#define __NR_setns 346
+	#elif defined(__arm__)
+		#define __NR_setns 375
+	#elif defined(__aarch64__)
+		#define __NR_setns 375
+	#elif defined(__powerpc__)
+		#define __NR_setns 350
+	#elif defined(__s390__)
+		#define __NR_setns 339
+	#endif
+#endif
+
 /* Define setns() if missing from the C library */
 #ifndef HAVE_SETNS
 static inline int setns(int fd, int nstype)
