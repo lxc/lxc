@@ -873,7 +873,7 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	}
 
 	ret = lxc_setgroups(0, NULL);
-	if (ret < 0)
+	if (ret < 0 && errno != EPERM)
 		goto on_error;
 
 	if ((init_ctx->container && init_ctx->container->lxc_conf &&
