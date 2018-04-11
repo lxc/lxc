@@ -539,10 +539,11 @@ int run_script(const char *name, const char *section, const char *script, ...)
 }
 
 /* pin_rootfs
- * if rootfs is a directory, then open ${rootfs}/lxc.hold for writing for
+ * if rootfs is a directory, then open ${rootfs}/.lxc-keep for writing for
  * the duration of the container run, to prevent the container from marking
  * the underlying fs readonly on shutdown. unlink the file immediately so
- * no name pollution is happens
+ * no name pollution is happens.
+ * don't unlink on NFS to avoid random named stale handles.
  * return -1 on error.
  * return -2 if nothing needed to be pinned.
  * return an open fd (>=0) if we pinned it.
@@ -552,6 +553,7 @@ int pin_rootfs(const char *rootfs)
 	int fd, ret;
 	char absrootfs[MAXPATHLEN], absrootfspin[MAXPATHLEN];
 	struct stat s;
+	struct statfs sfs;
 
 	if (rootfs == NULL || strlen(rootfs) == 0)
 		return -2;
@@ -570,13 +572,22 @@ int pin_rootfs(const char *rootfs)
 	if (!S_ISDIR(s.st_mode))
 		return -2;
 
-	ret = snprintf(absrootfspin, MAXPATHLEN, "%s/lxc.hold", absrootfs);
+	ret = snprintf(absrootfspin, MAXPATHLEN, "%s/.lxc-keep", absrootfs);
 	if (ret >= MAXPATHLEN)
 		return -1;
 
 	fd = open(absrootfspin, O_CREAT | O_RDWR, S_IWUSR | S_IRUSR);
 	if (fd < 0)
 		return fd;
+
+	if (fstatfs (fd, &sfs)) {
+		return -1;
+	}
+
+	if (sfs.f_type == NFS_SUPER_MAGIC) {
+		DEBUG("rootfs on NFS, not unlinking pin file \"%s\".", absrootfspin);
+		return fd;
+	}
 
 	(void)unlink(absrootfspin);
 
