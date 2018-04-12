@@ -440,7 +440,7 @@ int run_script_argv(const char *name, unsigned int hook_version,
 
 			parent = argv[1] ? argv[1] : "";
 
-			if (strcmp(argv[0], "macvlan")) {
+			if (strcmp(argv[0], "macvlan") == 0) {
 				ret = setenv("LXC_NET_PARENT", parent, 1);
 				if (ret < 0) {
 					SYSERROR("Failed to set environment "
@@ -448,7 +448,7 @@ int run_script_argv(const char *name, unsigned int hook_version,
 					goto on_error;
 				}
 				TRACE("Set environment variable: LXC_NET_PARENT=%s", parent);
-			} else if (strcmp(argv[0], "phys")) {
+			} else if (strcmp(argv[0], "phys") == 0) {
 				ret = setenv("LXC_NET_PARENT", parent, 1);
 				if (ret < 0) {
 					SYSERROR("Failed to set environment "
@@ -456,7 +456,7 @@ int run_script_argv(const char *name, unsigned int hook_version,
 					goto on_error;
 				}
 				TRACE("Set environment variable: LXC_NET_PARENT=%s", parent);
-			} else if (strcmp(argv[0], "veth")) {
+			} else if (strcmp(argv[0], "veth") == 0) {
 				char *peer = argv[2] ? argv[2] : "";
 
 				ret = setenv("LXC_NET_PEER", peer, 1);
