@@ -1316,7 +1316,7 @@ static struct id_map *find_mapped_nsid_entry(struct lxc_conf *conf, unsigned id,
 static int lxc_setup_devpts(struct lxc_conf *conf)
 {
 	int ret;
-	const char *default_devpts_mntopts;
+	const char *default_devpts_mntopts = "gid=5,newinstance,ptmxmode=0666,mode=0620";
 	char devpts_mntopts[256];
 
 	if (conf->pts <= 0) {
@@ -1324,11 +1324,6 @@ static int lxc_setup_devpts(struct lxc_conf *conf)
 		      "devices are requested");
 		return 0;
 	}
-
-	if (!find_mapped_nsid_entry(conf, 5, ID_TYPE_GID))
-		default_devpts_mntopts = "newinstance,ptmxmode=0666,mode=0620";
-	else
-		default_devpts_mntopts = "newinstance,ptmxmode=0666,mode=0620,gid=5";
 
 	ret = snprintf(devpts_mntopts, sizeof(devpts_mntopts), "%s,max=%d",
 		       default_devpts_mntopts, conf->pts);
@@ -1353,11 +1348,16 @@ static int lxc_setup_devpts(struct lxc_conf *conf)
 		return -1;
 	}
 
-	/* Mount new devpts instance. */
+	/* mount new devpts instance */
 	ret = mount("devpts", "/dev/pts", "devpts", MS_NOSUID | MS_NOEXEC, devpts_mntopts);
 	if (ret < 0) {
-		SYSERROR("failed to mount new devpts instance");
-		return -1;
+		/* try mounting without gid=5 */
+		ret = mount("devpts", "/dev/pts", "devpts",
+			    MS_NOSUID | MS_NOEXEC, devpts_mntopts + sizeof("gid=5"));
+		if (ret < 0) {
+			SYSERROR("Failed to mount new devpts instance");
+			return -1;
+		}
 	}
 	DEBUG("mount new devpts instance with options \"%s\"", devpts_mntopts);
 
