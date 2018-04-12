@@ -134,6 +134,12 @@ struct lxc_handler {
 	int exit_status;
 };
 
+struct execute_args {
+	char *init_path;
+	char *const *argv;
+	int quiet;
+};
+
 struct lxc_operations {
 	int (*start)(struct lxc_handler *, void *);
 	int (*post_start)(struct lxc_handler *, void *);
