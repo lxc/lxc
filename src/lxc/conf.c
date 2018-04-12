@@ -99,6 +99,7 @@
 #include "network.h"
 #include "parse.h"
 #include "ringbuf.h"
+#include "start.h"
 #include "storage.h"
 #include "storage/overlay.h"
 #include "terminal.h"
@@ -3206,10 +3207,12 @@ void remount_all_slave(void)
 	free(line);
 }
 
-static int lxc_execute_bind_init(struct lxc_conf *conf)
+static int lxc_execute_bind_init(struct lxc_handler *handler)
 {
 	int ret;
-	char path[PATH_MAX], destpath[PATH_MAX], *p;
+	char *p;
+	char path[PATH_MAX], destpath[PATH_MAX];
+	struct lxc_conf *conf = handler->conf;
 
 	/* If init exists in the container, don't bind mount a static one */
 	p = choose_init(conf->rootfs.mount);
@@ -3227,20 +3230,16 @@ static int lxc_execute_bind_init(struct lxc_conf *conf)
 		return -1;
 	}
 
-	ret = snprintf(destpath, PATH_MAX, "%s%s", conf->rootfs.mount, "/init.lxc.static");
+	ret = snprintf(destpath, PATH_MAX, "%s" P_tmpdir "%s", conf->rootfs.mount, "/.lxc-init");
 	if (ret < 0 || ret >= PATH_MAX)
 		return -1;
 
 	if (!file_exists(destpath)) {
-		FILE *pathfile;
-
-		pathfile = fopen(destpath, "wb");
-		if (!pathfile) {
-			SYSERROR("Failed to create mount target \"%s\"", destpath);
+		ret = mknod(destpath, S_IFREG | 0000, 0);
+		if (ret < 0 && errno != EEXIST) {
+			SYSERROR("Failed to create dummy \"%s\" file as bind mount target", destpath);
 			return -1;
 		}
-
-		fclose(pathfile);
 	}
 
 	ret = safe_mount(path, destpath, "none", MS_BIND, NULL, conf->rootfs.mount);
@@ -3248,6 +3247,11 @@ static int lxc_execute_bind_init(struct lxc_conf *conf)
 		SYSERROR("Failed to bind mount lxc.init.static into container");
 		return -1;
 	}
+
+	p = strdup(destpath + strlen(conf->rootfs.mount));
+	if (!p)
+		return -ENOMEM;
+	((struct execute_args *)handler->data)->init_path = p;
 
 	INFO("Bind mounted lxc.init.static into container at \"%s\"", path);
 	return 0;
@@ -3383,7 +3387,7 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 
 	if (lxc_conf->is_execute) {
-		ret = lxc_execute_bind_init(lxc_conf);
+		ret = lxc_execute_bind_init(handler);
 		if (ret < 0) {
 			ERROR("Failed to bind-mount the lxc init system");
 			return -1;
