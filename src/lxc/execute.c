@@ -34,18 +34,12 @@
 
 lxc_log_define(lxc_execute, lxc_start);
 
-struct execute_args {
-	char *const *argv;
-	int quiet;
-};
-
 static int execute_start(struct lxc_handler *handler, void* data)
 {
 	int j, i = 0;
 	struct execute_args *my_args = data;
 	char **argv;
 	int argc = 0, argc_add;
-	char *initpath;
 
 	while (my_args->argv[argc++]);
 
@@ -62,12 +56,10 @@ static int execute_start(struct lxc_handler *handler, void* data)
 	if (!argv)
 		goto out1;
 
-	initpath = choose_init(NULL);
-	if (!initpath) {
-		ERROR("Failed to find an init.lxc or init.lxc.static");
+	if (!my_args->init_path)
 		goto out2;
-	}
-	argv[i++] = initpath;
+
+	argv[i++] = my_args->init_path;
 
 	argv[i++] = "-n";
 	argv[i++] = (char *)handler->name;
@@ -99,7 +91,7 @@ static int execute_start(struct lxc_handler *handler, void* data)
 
 	execvp(argv[0], argv);
 	SYSERROR("Failed to exec %s", argv[0]);
-	free(initpath);
+
 out2:
 	free(argv);
 out1:
