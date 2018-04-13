@@ -370,17 +370,21 @@ scmp_filter_ctx get_new_ctx(enum lxc_hostarch_t n_arch, uint32_t default_policy_
 		WARN("Failed to turn on seccomp nop-skip, continuing");
 	}
 #endif
-	ret = seccomp_arch_add(ctx, arch);
-	if (ret != 0) {
-		ERROR("Seccomp error %d (%s) adding arch: %d", ret,
-		      strerror(-ret), (int)n_arch);
-		seccomp_release(ctx);
-		return NULL;
-	}
-	if (seccomp_arch_remove(ctx, SCMP_ARCH_NATIVE) != 0) {
-		ERROR("Seccomp error removing native arch");
-		seccomp_release(ctx);
-		return NULL;
+
+	if (seccomp_arch_exist(ctx, arch) == -EEXIST) {
+		ret = seccomp_arch_add(ctx, arch);
+		if (ret != 0) {
+			ERROR("Seccomp error %d (%s) adding arch: %d", ret,
+					strerror(-ret), (int)n_arch);
+			seccomp_release(ctx);
+			return NULL;
+		}
+
+		if (seccomp_arch_remove(ctx, SCMP_ARCH_NATIVE) != 0) {
+			ERROR("Seccomp error removing native arch");
+			seccomp_release(ctx);
+			return NULL;
+		}
 	}
 
 	return ctx;
@@ -772,11 +776,23 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 	}
 
 	if (compat_ctx[0]) {
-		INFO("Merging in the compat Seccomp ctx into the main one");
-		if (seccomp_merge(conf->seccomp_ctx, compat_ctx[0]) != 0 ||
-			(compat_ctx[1] != NULL && seccomp_merge(conf->seccomp_ctx, compat_ctx[1]) != 0)) {
-			ERROR("Error merging compat Seccomp contexts");
-			goto bad;
+		INFO("Merging compat seccomp contexts into main context");
+		if (compat_arch[0] != native_arch && compat_arch[0] != seccomp_arch_native()) {
+			ret = seccomp_merge(conf->seccomp_ctx, compat_ctx[0]);
+			if (ret < 0) {
+				ERROR("Failed to merge first compat seccomp context into main context");
+				goto bad;
+			}
+			TRACE("Merged first compat seccomp context into main context");
+		}
+
+		if (compat_arch[1] && compat_arch[1] != native_arch && compat_arch[1] != seccomp_arch_native()) {
+			ret = seccomp_merge(conf->seccomp_ctx, compat_ctx[1]);
+			if (ret < 0) {
+				ERROR("Failed to merge first compat seccomp context into main context");
+				goto bad;
+			}
+			TRACE("Merged second compat seccomp context into main context");
 		}
 	}
 
