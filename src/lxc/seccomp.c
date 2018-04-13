@@ -371,20 +371,34 @@ scmp_filter_ctx get_new_ctx(enum lxc_hostarch_t n_arch, uint32_t default_policy_
 	}
 #endif
 
-	if (seccomp_arch_exist(ctx, arch) == -EEXIST) {
-		ret = seccomp_arch_add(ctx, arch);
-		if (ret != 0) {
-			ERROR("Seccomp error %d (%s) adding arch: %d", ret,
-					strerror(-ret), (int)n_arch);
+	ret = seccomp_arch_exist(ctx, arch);
+	if (ret < 0) {
+		if (ret != -EEXIST) {
+			ERROR("%s - Failed to determine whether arch %d is "
+			      "already present in the main seccomp context",
+			       strerror(-ret), (int)n_arch);
 			seccomp_release(ctx);
 			return NULL;
 		}
 
-		if (seccomp_arch_remove(ctx, SCMP_ARCH_NATIVE) != 0) {
-			ERROR("Seccomp error removing native arch");
+		ret = seccomp_arch_add(ctx, arch);
+		if (ret != 0) {
+			ERROR("%s - Failed to add arch %d to main seccomp context",
+			      strerror(-ret), (int)n_arch);
 			seccomp_release(ctx);
 			return NULL;
 		}
+		TRACE("Added arch %d to main seccomp context", (int)n_arch);
+
+		ret = seccomp_arch_remove(ctx, SCMP_ARCH_NATIVE);
+		if (ret != 0) {
+			ERROR("Failed to remove native arch from main seccomp context");
+			seccomp_release(ctx);
+			return NULL;
+		}
+		TRACE("Removed native arch from main seccomp context");
+	} else {
+		TRACE("Arch %d already present in main seccomp context", (int)n_arch);
 	}
 
 	return ctx;
