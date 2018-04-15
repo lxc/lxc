@@ -50,6 +50,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <cmdsynopsis>
       <command>lxc-execute</command>
       <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-d</arg>
       <arg choice="opt">-f <replaceable>config_file</replaceable></arg>
       <arg choice="opt">-s KEY=VAL</arg>
       <arg choice="opt">-- <replaceable>command</replaceable></arg>
@@ -124,6 +125,20 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	  </para>
 	</listitem>
       </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>-d, --daemon</option>
+	</term>
+	<listitem>
+	  <para>
+	    Run the container as a daemon. As the container has no
+	    more tty, if an error occurs nothing will be displayed,
+	    the log file can be used to check the error.
+	  </para>
+	</listitem>
+      </varlistentry>
+
       <varlistentry>
 	<term><option>--</option></term>
 	<listitem>
