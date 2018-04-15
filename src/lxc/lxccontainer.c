@@ -1698,6 +1698,7 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 			     int flags, char *const argv[])
 {
 	int partial_fd;
+	mode_t mask;
 	pid_t pid;
 	bool ret = false;
 	char *tpath = NULL;
@@ -1770,6 +1771,8 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 
 	/* No need to get disk lock bc we have the partial lock. */
 
+	mask = umask(0022);
+
 	/* Create the storage.
 	 * Note we can't do this in the same task as we use to execute the
 	 * template because of the way zfs works.
@@ -1830,6 +1833,7 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 	ret = load_config_locked(c, c->configfile);
 
 out_unlock:
+	umask(mask);
 	if (partial_fd >= 0)
 		remove_partial(c, partial_fd);
 out:
