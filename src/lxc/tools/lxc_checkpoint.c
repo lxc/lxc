@@ -169,6 +169,7 @@ static bool checkpoint(struct lxc_container *c)
 	opts.stop = stop;
 	opts.verbose = verbose;
 	opts.predump_dir = predump_dir;
+	opts.action_script = actionscript_path;
 
 	if (pre_dump)
 		mode = MIGRATE_PRE_DUMP;
