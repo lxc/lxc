@@ -789,24 +789,36 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 		}
 	}
 
+	INFO("Merging compat seccomp contexts into main context");
 	if (compat_ctx[0]) {
-		INFO("Merging compat seccomp contexts into main context");
-		if (compat_arch[0] != native_arch && compat_arch[0] != seccomp_arch_native()) {
+		if ((compat_arch[0] != native_arch) &&
+		    (compat_arch[0] != seccomp_arch_native())) {
 			ret = seccomp_merge(conf->seccomp_ctx, compat_ctx[0]);
 			if (ret < 0) {
-				ERROR("Failed to merge first compat seccomp context into main context");
+				ERROR("Failed to merge first compat seccomp "
+				      "context into main context");
 				goto bad;
 			}
 			TRACE("Merged first compat seccomp context into main context");
+		} else {
+			seccomp_release(compat_ctx[0]);
+			compat_ctx[0] = NULL;
 		}
+	}
 
-		if (compat_arch[1] && compat_arch[1] != native_arch && compat_arch[1] != seccomp_arch_native()) {
+	if (compat_ctx[1]) {
+		if ((compat_arch[1] != native_arch) &&
+		    (compat_arch[1] != seccomp_arch_native())) {
 			ret = seccomp_merge(conf->seccomp_ctx, compat_ctx[1]);
 			if (ret < 0) {
-				ERROR("Failed to merge first compat seccomp context into main context");
+				ERROR("Failed to merge first compat seccomp "
+				      "context into main context");
 				goto bad;
 			}
 			TRACE("Merged second compat seccomp context into main context");
+		} else {
+			seccomp_release(compat_ctx[1]);
+			compat_ctx[1] = NULL;
 		}
 	}
 
