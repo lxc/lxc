@@ -759,33 +759,45 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 		if (cur_rule_arch == native_arch ||
 		    cur_rule_arch == lxc_seccomp_arch_native ||
 		    compat_arch[0] == SCMP_ARCH_NATIVE) {
-			INFO("Adding native rule for %s action %d(%s)", line, rule.action,
-			     get_action_name(rule.action));
 			if (!do_resolve_add_rule(SCMP_ARCH_NATIVE, line, conf->seccomp_ctx, &rule))
 				goto bad_rule;
-		}
-		else if (cur_rule_arch != lxc_seccomp_arch_all) {
-			int arch_index =
-				cur_rule_arch == lxc_seccomp_arch_mips64n32 ||
-				cur_rule_arch == lxc_seccomp_arch_mipsel64n32 ? 1 : 0;
-
-			INFO("Adding compat-only rule for %s action %d(%s)", line, rule.action,
+			INFO("Added native rule for arch %d for %s action %d(%s)",
+			     SCMP_ARCH_NATIVE, line, rule.action,
 			     get_action_name(rule.action));
+		} else if (cur_rule_arch != lxc_seccomp_arch_all) {
+			int arch_index = 0;
+
+			if ((cur_rule_arch == lxc_seccomp_arch_mips64n32) ||
+			    (cur_rule_arch == lxc_seccomp_arch_mipsel64n32))
+				arch_index = 1;
+
 			if (!do_resolve_add_rule(compat_arch[arch_index], line, compat_ctx[arch_index], &rule))
 				goto bad_rule;
-		}
-		else {
-			INFO("Adding native rule for %s action %d(%s)", line, rule.action,
+			INFO("Added compat-only rule for arch %d for %s action %d(%s)",
+			     compat_arch[arch_index], line, rule.action,
 			     get_action_name(rule.action));
+		} else {
 			if (!do_resolve_add_rule(SCMP_ARCH_NATIVE, line, conf->seccomp_ctx, &rule))
 				goto bad_rule;
-			INFO("Adding compat rule for %s action %d(%s)", line, rule.action,
+			INFO("Added native rule for arch %d for %s action %d(%s)",
+			     SCMP_ARCH_NATIVE, line, rule.action,
 			     get_action_name(rule.action));
-			if (!do_resolve_add_rule(compat_arch[0], line, compat_ctx[0], &rule))
-				goto bad_rule;
-			if (compat_arch[1] != SCMP_ARCH_NATIVE &&
-				!do_resolve_add_rule(compat_arch[1], line, compat_ctx[1], &rule))
-				goto bad_rule;
+
+			if (compat_arch[0] != SCMP_ARCH_NATIVE) {
+				if (!do_resolve_add_rule(compat_arch[0], line, compat_ctx[0], &rule))
+					goto bad_rule;
+				INFO("Added compat rule for arch %d for %s "
+				     "action %d(%s)", compat_arch[0], line,
+				     rule.action, get_action_name(rule.action));
+			}
+
+			if (compat_arch[1] != SCMP_ARCH_NATIVE) {
+				if (!do_resolve_add_rule(compat_arch[1], line, compat_ctx[1], &rule))
+					goto bad_rule;
+				INFO("Added compat rule for arch %d for %s "
+				     "action %d(%s)", compat_arch[1], line,
+				     rule.action, get_action_name(rule.action));
+			}
 		}
 	}
 
