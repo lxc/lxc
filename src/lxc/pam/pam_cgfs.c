@@ -223,6 +223,20 @@ static bool cgv2_prune_empty_cgroups(const char *user);
 static bool cgv2_remove(const char *cgroup);
 static bool is_cgv2(char *line);
 
+static int do_mkdir(const char *path, mode_t mode)
+{
+	int saved_errno;
+	mode_t mask;
+	int r;
+
+	mask = umask(0);
+	r = mkdir(path, mode);
+	saved_errno = errno;
+	umask(mask);
+	errno = saved_errno;
+	return (r);
+}
+
 /* Create directory and (if necessary) its parents. */
 static bool mkdir_parent(const char *root, char *path)
 {
@@ -252,7 +266,7 @@ static bool mkdir_parent(const char *root, char *path)
 		if (file_exists(path))
 			goto next;
 
-		if (mkdir(path, 0755) < 0) {
+		if (do_mkdir(path, 0755) < 0) {
 			pam_cgfs_debug("Failed to create %s: %s.\n", path, strerror(errno));
 			return false;
 		}
@@ -1963,7 +1977,7 @@ static bool cgv1_handle_cpuset_hierarchy(struct cgv1_hierarchy *h,
 	cgpath = must_make_path(h->mountpoint, h->base_cgroup, cgroup, NULL);
 	if (slash)
 		*slash = '/';
-	if (mkdir(cgpath, 0755) < 0 && errno != EEXIST) {
+	if (do_mkdir(cgpath, 0755) < 0 && errno != EEXIST) {
 		pam_cgfs_debug("Failed to create '%s'", cgpath);
 		free(cgpath);
 		return false;
