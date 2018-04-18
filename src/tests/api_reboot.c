@@ -59,7 +59,6 @@ int main(int argc, char *argv[])
 		lxc_error("%s\n", "Container \"reboot\" is not defined");
 		goto on_error_put;
 	}
-
 	c->clear_config(c);
 
 	if (!c->load_config(c, NULL)) {
