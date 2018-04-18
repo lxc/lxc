@@ -104,6 +104,7 @@ and execs COMMAND into this container.\n\
 \n\
 Options :\n\
   -n, --name=NAME      NAME of the container\n\
+  -d, --daemon         Daemonize the container\n\
   -f, --rcfile=FILE    Load configuration file FILE\n\
   -s, --define KEY=VAL Assign VAL to configuration variable KEY\n\
   -u, --uid=UID        Execute COMMAND with UID inside the container\n\
