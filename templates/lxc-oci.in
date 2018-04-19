@@ -264,6 +264,7 @@ if [ "${OCI_USE_CACHE}" = "true" ]; then
 else
   DOWNLOAD_BASE=/tmp
 fi
+mkdir -p "${DOWNLOAD_BASE}"
 
 # Trap all exit signals
 trap cleanup EXIT HUP INT TERM
