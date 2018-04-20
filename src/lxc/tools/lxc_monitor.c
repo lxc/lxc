@@ -30,6 +30,7 @@
 #include <libgen.h>
 #include <poll.h>
 #include <regex.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
