@@ -2493,6 +2493,7 @@ static bool cgfsng_attach(const char *name, const char *lxcpath, pid_t pid)
 			continue;
 
 		fullpath = build_full_cgpath_from_monitorpath(h, path, "cgroup.procs");
+		free(path);
 		ret = lxc_write_to_file(fullpath, pidstr, len, false);
 		if (ret < 0) {
 			SYSERROR("Failed to attach %d to %s", (int)pid, fullpath);
