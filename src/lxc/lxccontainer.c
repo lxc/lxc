@@ -4973,31 +4973,48 @@ int list_active_containers(const char *lxcpath, char ***nret,
 			char *recvpath = lxc_cmd_get_lxcpath(p);
 			if (!recvpath)
 				continue;
-			if (strncmp(lxcpath, recvpath, lxcpath_len) != 0)
+			if (strncmp(lxcpath, recvpath, lxcpath_len) != 0) {
+				free(recvpath);
 				continue;
+			}
+			free(recvpath);
 			p = lxc_cmd_get_name(p);
 			if (!p)
 				continue;
 		}
 
-		if (array_contains(&ct_name, p, ct_name_cnt))
+		if (array_contains(&ct_name, p, ct_name_cnt)) {
+			if (is_hashed)
+				free(p);
 			continue;
+		}
 
-		if (!add_to_array(&ct_name, p, ct_name_cnt))
+		if (!add_to_array(&ct_name, p, ct_name_cnt)) {
+			if (is_hashed)
+				free(p);
 			goto free_cret_list;
+		}
 
 		ct_name_cnt++;
 
-		if (!cret)
+		if (!cret) {
+			if (is_hashed)
+				free(p);
 			continue;
+		}
 
 		c = lxc_container_new(p, lxcpath);
 		if (!c) {
 			INFO("Container %s:%s is running but could not be loaded",
 				lxcpath, p);
 			remove_from_array(&ct_name, p, ct_name_cnt--);
+			if (is_hashed)
+				free(p);
 			continue;
 		}
+
+		if (is_hashed)
+			free(p);
 
 		/*
 		 * If this is an anonymous container, then is_defined *can*
