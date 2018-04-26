@@ -23,6 +23,8 @@
 /* Properly support loop devices on 32bit systems. */
 #define _FILE_OFFSET_BITS 64
 
+#include "config.h"
+
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -108,6 +110,37 @@ extern int lxc_fill_elevated_privileges(char *flaglist, int *flags);
 extern signed long lxc_config_parse_arch(const char *arch);
 extern int lxc_namespace_2_cloneflag(const char *namespace);
 extern int lxc_fill_namespace_flags(char *flaglist, int *flags);
+
+#if !defined(__NR_setns) && !defined(__NR_set_ns)
+	#if defined(__x86_64__)
+		#define __NR_setns 308
+	#elif defined(__i386__)
+		#define __NR_setns 346
+	#elif defined(__arm__)
+		#define __NR_setns 375
+	#elif defined(__aarch64__)
+		#define __NR_setns 375
+	#elif defined(__powerpc__)
+		#define __NR_setns 350
+	#elif defined(__s390__)
+		#define __NR_setns 339
+	#endif
+#endif
+
+/* Define setns() if missing from the C library */
+#ifndef HAVE_SETNS
+static inline int setns(int fd, int nstype)
+{
+#ifdef __NR_setns
+	return syscall(__NR_setns, fd, nstype);
+#elif defined(__NR_set_ns)
+	return syscall(__NR_set_ns, fd, nstype);
+#else
+	errno = ENOSYS;
+	return -1;
+#endif
+}
+#endif
 
 #if HAVE_LIBCAP
 #include <sys/capability.h>
