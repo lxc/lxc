@@ -17,8 +17,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef __LXC_UTILS_H
-#define __LXC_UTILS_H
+#ifndef __LXC_TOOLS_UTILS_H
+#define __LXC_TOOLS_UTILS_H
 
 /* Properly support loop devices on 32bit systems. */
 #define _FILE_OFFSET_BITS 64
@@ -201,4 +201,4 @@ int clone(int (*fn)(void *), void *child_stack,
 
 extern pid_t lxc_clone(int (*fn)(void *), void *arg, int flags);
 
-#endif /* __LXC_UTILS_H */
+#endif /* __LXC_TOOLS_UTILS_H */
