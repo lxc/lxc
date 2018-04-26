@@ -21,8 +21,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef __LXC_LIST_H
-#define __LXC_LIST_H
+#ifndef __LXC_TOOLS_LIST_H
+#define __LXC_TOOLS_LIST_H
 
 #include <stdio.h>
 
@@ -164,4 +164,4 @@ static inline size_t lxc_list_len(struct lxc_list *list)
 	 return i;
 }
 
-#endif /* __LXC_LIST_H */
+#endif /* __LXC_TOOLS_LIST_H */

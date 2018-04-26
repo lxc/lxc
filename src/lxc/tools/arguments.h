@@ -22,8 +22,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef __LXC_ARGUMENTS_H
-#define __LXC_ARGUMENTS_H
+#ifndef __LXC_TOOLS_ARGUMENTS_H
+#define __LXC_TOOLS_ARGUMENTS_H
 
 #include <getopt.h>
 #include <stdbool.h>
@@ -177,4 +177,4 @@ extern int lxc_arguments_str_to_int(struct lxc_arguments *args,
 
 extern bool lxc_setup_shared_ns(struct lxc_arguments *args, struct lxc_container *c);
 
-#endif /* __LXC_ARGUMENTS_H */
+#endif /* __LXC_TOOLS_ARGUMENTS_H */
