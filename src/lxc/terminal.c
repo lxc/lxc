@@ -667,33 +667,23 @@ void lxc_terminal_free(struct lxc_conf *conf, int fd)
 static int lxc_terminal_peer_default(struct lxc_terminal *terminal)
 {
 	struct lxc_terminal_state *ts;
-	const char *path = terminal->path;
-	int fd;
+	const char *path;
 	int ret = 0;
 
-	if (!path) {
-		ret = access("/dev/tty", F_OK);
-		if (ret == 0) {
-			/* If no terminal was given, try current controlling
-			 * terminal, there won't be one if we were started as a
-			 * daemon (-d).
-			 */
-			fd = open("/dev/tty", O_RDWR);
-			if (fd >= 0) {
-				close(fd);
-				path = "/dev/tty";
-			}
-		}
-	}
-
-	if (!path) {
-		errno = ENOTTY;
-		DEBUG("The process does not have a controlling terminal");
-		goto on_succes;
-	}
+	if (terminal->path)
+		path = terminal->path;
+	else
+		path = "/dev/tty";
 
 	terminal->peer = lxc_unpriv(open(path, O_RDWR | O_CLOEXEC));
 	if (terminal->peer < 0) {
+		if (!terminal->path) {
+			errno = ENODEV;
+			DEBUG("%s - The process does not have a controlling "
+			      "terminal", strerror(errno));
+			goto on_succes;
+		}
+
 		ERROR("%s - Failed to open proxy terminal \"%s\"",
 		      strerror(errno), path);
 		return -ENOTTY;
