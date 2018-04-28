@@ -83,8 +83,10 @@ int lxc_file_for_each_line_mmap(const char *file, lxc_file_cb callback,
 		return -1;
 	}
 
-	if (st.st_size == 0)
+	if (st.st_size == 0) {
+		close(fd);
 		return 0;
+	}
 
 	buf = lxc_strmmap(NULL, st.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
 	if (buf == MAP_FAILED) {
