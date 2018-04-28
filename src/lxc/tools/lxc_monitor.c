@@ -337,7 +337,6 @@ static int lxc_monitor_open(const char *lxcpath)
 	int fd;
 	size_t retry;
 	size_t len;
-	int ret = -1;
 	int backoff_ms[] = {10, 50, 100};
 
 	if (lxc_monitor_sock_name(lxcpath, &addr) < 0)
@@ -352,9 +351,9 @@ static int lxc_monitor_open(const char *lxcpath)
 	len = strlen(&addr.sun_path[1]);
 	if (len >= sizeof(addr.sun_path) - 1) {
 		errno = ENAMETOOLONG;
-		ret = -errno;
+		close(fd);
 		fprintf(stderr, "name of monitor socket too long (%zu bytes): %s\n", len, strerror(errno));
-		goto on_error;
+		return -errno;
 	}
 
 	for (retry = 0; retry < sizeof(backoff_ms) / sizeof(backoff_ms[0]); retry++) {
@@ -366,16 +365,11 @@ static int lxc_monitor_open(const char *lxcpath)
 	}
 
 	if (fd < 0) {
-		ret = -errno;
 		fprintf(stderr, "Failed to connect to monitor socket: %s\n", strerror(errno));
-		goto on_error;
+		return -errno;
 	}
 
 	return fd;
-
-on_error:
-	close(fd);
-	return ret;
 }
 
 static int lxc_monitor_read_fdset(struct pollfd *fds, nfds_t nfds,
