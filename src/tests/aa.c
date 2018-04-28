@@ -94,7 +94,7 @@ static int do_test_file_open(struct lxc_container *c, char *fnam)
 		fret = 0;
 
 err2:
-	wait_for_pid(pid);
+	(void)wait_for_pid(pid);
 err1:
 	close(pipefd[0]);
 	close(pipefd[1]);
