@@ -2005,7 +2005,8 @@ static int cg_legacy_mount_controllers(int type, struct hierarchy *h,
 							   controllerpath,
 							   flags | MS_REMOUNT);
 		ret = mount(controllerpath, controllerpath, "cgroup",
-			    MS_REMOUNT | MS_BIND | MS_RDONLY, NULL);
+			    remount_flags | MS_REMOUNT | MS_BIND | MS_RDONLY,
+			    NULL);
 		if (ret < 0) {
 			SYSERROR("Failed to remount \"%s\" ro", controllerpath);
 			return -1;
