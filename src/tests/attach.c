@@ -122,7 +122,7 @@ static int test_attach_lsm_func(struct lxc_container *ct)
 	ret = 0;
 
 err2:
-	wait_for_pid(pid);
+	(void)wait_for_pid(pid);
 err1:
 	close(pipefd[0]);
 	close(pipefd[1]);
@@ -176,7 +176,7 @@ static int test_attach_lsm_cmd(struct lxc_container *ct)
 	ret = 0;
 
 err2:
-	wait_for_pid(pid);
+	(void)wait_for_pid(pid);
 err1:
 	close(pipefd[0]);
 	close(pipefd[1]);
@@ -238,7 +238,7 @@ static int test_attach_func(struct lxc_container *ct)
 	ret = 0;
 
 err2:
-	wait_for_pid(pid);
+	(void)wait_for_pid(pid);
 err1:
 	close(pipefd[0]);
 	close(pipefd[1]);
