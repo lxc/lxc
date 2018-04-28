@@ -111,7 +111,7 @@ static void create_helpfn(const struct lxc_arguments *args)
 
 	pid = fork();
 	if (pid) {
-		wait_for_pid(pid);
+		(void)wait_for_pid(pid);
 		return;
 	}
 
