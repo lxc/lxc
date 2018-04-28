@@ -562,10 +562,6 @@ int pin_rootfs(const char *rootfs)
 	if (!realpath(rootfs, absrootfs))
 		return -2;
 
-	ret = access(absrootfs, F_OK);
-	if (ret != 0)
-		return -1;
-
 	ret = stat(absrootfs, &s);
 	if (ret < 0)
 		return -1;
@@ -581,12 +577,12 @@ int pin_rootfs(const char *rootfs)
 	if (fd < 0)
 		return fd;
 
-	if (fstatfs (fd, &sfs)) {
-		return -1;
-	}
+	ret = fstatfs (fd, &sfs);
+	if (ret < 0)
+		return fd;
 
 	if (sfs.f_type == NFS_SUPER_MAGIC) {
-		DEBUG("rootfs on NFS, not unlinking pin file \"%s\".", absrootfspin);
+		DEBUG("Rootfs on NFS, not unlinking pin file \"%s\"", absrootfspin);
 		return fd;
 	}
 
