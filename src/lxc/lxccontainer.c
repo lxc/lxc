@@ -644,6 +644,7 @@ static bool do_lxcapi_want_daemonize(struct lxc_container *c, bool state)
 		return false;
 
 	c->daemonize = state;
+
 	container_mem_unlock(c);
 
 	return true;
@@ -660,6 +661,7 @@ static bool do_lxcapi_want_close_all_fds(struct lxc_container *c, bool state)
 		return false;
 
 	c->lxc_conf->close_all_fds = state;
+
 	container_mem_unlock(c);
 
 	return true;
@@ -683,8 +685,8 @@ WRAP_API_2(bool, lxcapi_wait, const char *, int)
 
 static bool am_single_threaded(void)
 {
-	struct dirent *direntp;
 	DIR *dir;
+	struct dirent *direntp;
 	int count = 0;
 
 	dir = opendir("/proc/self/task");
@@ -692,13 +694,14 @@ static bool am_single_threaded(void)
 		return false;
 
 	while ((direntp = readdir(dir))) {
-		if (!strcmp(direntp->d_name, "."))
+		if (strcmp(direntp->d_name, ".") == 0)
 			continue;
 
-		if (!strcmp(direntp->d_name, ".."))
+		if (strcmp(direntp->d_name, "..") == 0)
 			continue;
 
-		if (++count > 1)
+		count++;
+		if (count > 1)
 			break;
 	}
 	closedir(dir);
@@ -711,9 +714,7 @@ static void push_arg(char ***argp, char *arg, int *nargs)
 	char *copy;
 	char **argv;
 
-	do {
-		copy = strdup(arg);
-	} while (!copy);
+	copy = must_copy_string(arg);
 
 	do {
 		argv = realloc(*argp, (*nargs + 2) * sizeof(char *));
@@ -871,11 +872,13 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 
 	if (container_mem_lock(c))
 		return false;
+
 	conf = c->lxc_conf;
 	daemonize = c->daemonize;
 
 	/* initialize handler */
 	handler = lxc_init_handler(c->name, conf, c->config_path, daemonize);
+
 	container_mem_unlock(c);
 	if (!handler)
 		return false;
@@ -936,9 +939,9 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		 * characters. All that it means is that the proctitle will be
 		 * ugly. Similarly, we also don't care if setproctitle() fails.
 		 * */
-		snprintf(title, sizeof(title), "[lxc monitor] %s %s", c->config_path, c->name);
+		(void)snprintf(title, sizeof(title), "[lxc monitor] %s %s", c->config_path, c->name);
 		INFO("Attempting to set proc title to %s", title);
-		setproctitle(title);
+		(void)setproctitle(title);
 
 		/* We fork() a second time to be reparented to init. Like
 		 * POSIX's daemon() function we change to "/" and redirect
