@@ -510,7 +510,7 @@ static bool do_lxcapi_unfreeze(struct lxc_container *c)
 		return false;
 
 	ret = lxc_unfreeze(c->name, c->config_path);
-	if (ret)
+	if (ret < 0)
 		return false;
 
 	return true;
