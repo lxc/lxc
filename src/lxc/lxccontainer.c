@@ -836,7 +836,6 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	int ret;
 	struct lxc_handler *handler;
 	struct lxc_conf *conf;
-	bool daemonize = false;
 	char *default_args[] = {
 		"/sbin/init",
 		NULL,
@@ -873,10 +872,9 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		return false;
 
 	conf = c->lxc_conf;
-	daemonize = c->daemonize;
 
 	/* initialize handler */
-	handler = lxc_init_handler(c->name, conf, c->config_path, daemonize);
+	handler = lxc_init_handler(c->name, conf, c->config_path, c->daemonize);
 
 	container_mem_unlock(c);
 	if (!handler)
@@ -903,7 +901,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	 * here to protect the on disk container?  We don't want to exclude
 	 * things like lxc_info while the container is running.
 	 */
-	if (daemonize) {
+	if (c->daemonize) {
 		bool started;
 		char title[2048];
 		pid_t pid;
@@ -1010,7 +1008,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 
 			SYSERROR("Failed to write monitor pid to \"%s\"", c->pidfile);
 
-			if (daemonize)
+			if (c->daemonize)
 				_exit(EXIT_FAILURE);
 
 			return false;
@@ -1023,7 +1021,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 
 			SYSERROR("Failed to write '%s'", c->pidfile);
 
-			if (daemonize)
+			if (c->daemonize)
 				_exit(EXIT_FAILURE);
 
 			return false;
@@ -1054,7 +1052,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 reboot:
 	if (conf->reboot == 2) {
 		/* initialize handler */
-		handler = lxc_init_handler(c->name, conf, c->config_path, daemonize);
+		handler = lxc_init_handler(c->name, conf, c->config_path, c->daemonize);
 		if (!handler) {
 			ret = 1;
 			goto on_error;
@@ -1064,7 +1062,7 @@ reboot:
 	keepfds[0] = handler->conf->maincmd_fd;
 	keepfds[1] = handler->state_socket_pair[0];
 	keepfds[2] = handler->state_socket_pair[1];
-	ret = lxc_check_inherited(conf, daemonize, keepfds,
+	ret = lxc_check_inherited(conf, c->daemonize, keepfds,
 				  sizeof(keepfds) / sizeof(keepfds[0]));
 	if (ret < 0) {
 		lxc_free_handler(handler);
@@ -1073,9 +1071,11 @@ reboot:
 	}
 
 	if (useinit)
-		ret = lxc_execute(c->name, argv, 1, handler, c->config_path, daemonize, &c->error_num);
+		ret = lxc_execute(c->name, argv, 1, handler, c->config_path,
+				  c->daemonize, &c->error_num);
 	else
-		ret = lxc_start(c->name, argv, handler, c->config_path, daemonize, &c->error_num);
+		ret = lxc_start(c->name, argv, handler, c->config_path,
+				c->daemonize, &c->error_num);
 
 	if (conf->reboot == 1) {
 		INFO("Container requested reboot");
@@ -1091,9 +1091,9 @@ on_error:
 	}
 	free_init_cmd(init_cmd);
 
-	if (daemonize && ret != 0)
+	if (c->daemonize && ret != 0)
 		_exit(EXIT_FAILURE);
-	else if (daemonize)
+	else if (c->daemonize)
 		_exit(EXIT_SUCCESS);
 
 	if (ret != 0)
