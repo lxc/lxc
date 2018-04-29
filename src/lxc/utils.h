@@ -392,7 +392,7 @@ extern int sha1sum_file(char *fnam, unsigned char *md_value);
 
 /* read and write whole files */
 extern int lxc_write_to_file(const char *filename, const void *buf,
-			     size_t count, bool add_newline);
+			     size_t count, bool add_newline, mode_t mode);
 extern int lxc_read_from_file(const char *filename, void* buf, size_t count);
 
 /* convert variadic argument lists to arrays (for execl type argument lists) */

@@ -2560,7 +2560,7 @@ int setup_sysctl_parameters(struct lxc_list *sysctls)
 		}
 
 		ret = lxc_write_to_file(filename, elem->value,
-					strlen(elem->value), false);
+					strlen(elem->value), false, 0666);
 		if (ret < 0) {
 			ERROR("Failed to setup sysctl parameters %s to %s",
 			      elem->key, elem->value);
@@ -2595,7 +2595,7 @@ int setup_proc_filesystem(struct lxc_list *procs, pid_t pid)
 		}
 
 		ret = lxc_write_to_file(filename, elem->value,
-					strlen(elem->value), false);
+					strlen(elem->value), false, 0666);
 		if (ret < 0) {
 			ERROR("Failed to setup proc filesystem %s to %s",
 			      elem->filename, elem->value);
