@@ -19,6 +19,7 @@
  */
 
 #define _GNU_SOURCE
+#include <arpa/inet.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -29,22 +30,22 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/sysmacros.h>
+#include <sys/file.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
 #include <sys/syscall.h>
+#include <sys/sysmacros.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #include "af_unix.h"
 #include "attach.h"
 #include "cgroup.h"
-#include "conf.h"
-#include "config.h"
 #include "commands.h"
 #include "commands_utils.h"
+#include "conf.h"
+#include "config.h"
 #include "confile.h"
 #include "console.h"
 #include "criu.h"
@@ -59,9 +60,9 @@
 #include "start.h"
 #include "state.h"
 #include "storage.h"
-#include "storage_utils.h"
 #include "storage/btrfs.h"
 #include "storage/overlay.h"
+#include "storage_utils.h"
 #include "sync.h"
 #include "utils.h"
 #include "version.h"
@@ -140,7 +141,7 @@ static int ongoing_create(struct lxc_container *c)
 	int fd, ret;
 	size_t len;
 	char *path;
-	struct flock lk;
+	struct flock lk = {0};
 
 	len = strlen(c->config_path) + strlen(c->name) + 10;
 	path = alloca(len);
@@ -157,11 +158,11 @@ static int ongoing_create(struct lxc_container *c)
 
 	lk.l_type = F_WRLCK;
 	lk.l_whence = SEEK_SET;
-	lk.l_start = 0;
-	lk.l_len = 0;
 	lk.l_pid = -1;
 
-	ret = fcntl(fd, F_GETLK, &lk);
+	ret = fcntl(fd, F_OFD_GETLK, &lk);
+	if (ret < 0 && errno == EINVAL)
+		ret = flock(fd, LOCK_EX | LOCK_NB);
 	close(fd);
 	if (ret == 0 && lk.l_pid != -1) {
 		/* create is still ongoing */
@@ -176,7 +177,7 @@ static int create_partial(struct lxc_container *c)
 	int fd, ret;
 	size_t len;
 	char *path;
-	struct flock lk;
+	struct flock lk = {0};
 
 	/* $lxcpath + '/' + $name + '/partial' + \0 */
 	len = strlen(c->config_path) + strlen(c->name) + 10;
@@ -191,11 +192,15 @@ static int create_partial(struct lxc_container *c)
 
 	lk.l_type = F_WRLCK;
 	lk.l_whence = SEEK_SET;
-	lk.l_start = 0;
-	lk.l_len = 0;
 
-	ret = fcntl(fd, F_SETLKW, &lk);
+	ret = fcntl(fd, F_OFD_SETLKW, &lk);
 	if (ret < 0) {
+		if (errno == EINVAL) {
+			ret = flock(fd, LOCK_EX);
+			if (ret == 0)
+				return fd;
+		}
+
 		SYSERROR("Failed to lock partial file %s", path);
 		close(fd);
 		return -1;
