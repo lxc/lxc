@@ -341,7 +341,9 @@ int lxc_container_put(struct lxc_container *c)
 	if (container_mem_lock(c))
 		return -1;
 
-	if (--c->numthreads < 1) {
+	c->numthreads--;
+
+	if (c->numthreads < 1) {
 		container_mem_unlock(c);
 		lxc_container_free(c);
 		return 1;
