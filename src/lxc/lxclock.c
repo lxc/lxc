@@ -19,13 +19,14 @@
  */
 
 #define _GNU_SOURCE
-#include <malloc.h>
-#include <stdio.h>
 #include <errno.h>
-#include <unistd.h>
 #include <fcntl.h>
-#include <stdlib.h>
+#include <malloc.h>
 #include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/file.h>
+#include <unistd.h>
 
 #include <lxc/lxccontainer.h>
 
