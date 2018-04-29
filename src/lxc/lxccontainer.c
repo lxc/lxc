@@ -1580,6 +1580,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 {
 	long flen;
+	size_t len;
 	char *contents;
 	FILE *f;
 	int ret = -1;
@@ -1593,15 +1594,30 @@ static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 	if (f == NULL)
 		return false;
 
-	if (fseek(f, 0, SEEK_END) < 0)
+	ret = fseek(f, 0, SEEK_END);
+	if (ret < 0)
 		goto out_error;
-	if ((flen = ftell(f)) < 0)
+
+	ret = -1;
+	flen = ftell(f);
+	if (flen < 0)
 		goto out_error;
-	if (fseek(f, 0, SEEK_SET) < 0)
+
+	ret = fseek(f, 0, SEEK_SET);
+	if (ret < 0)
 		goto out_error;
-	if ((contents = malloc(flen + 1)) == NULL)
+
+	ret = fseek(f, 0, SEEK_SET);
+	if (ret < 0)
 		goto out_error;
-	if (fread(contents, 1, flen, f) != flen)
+
+	ret = -1;
+	contents = malloc(flen + 1);
+	if (!contents)
+		goto out_error;
+
+	len = fread(contents, 1, flen, f);
+	if (len != flen)
 		goto out_free_contents;
 
 	contents[flen] = '\0';
@@ -1613,25 +1629,25 @@ static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 #if HAVE_LIBGNUTLS
 	tpath = get_template_path(t);
 	if (!tpath) {
-		ERROR("bad template: %s", t);
+		ERROR("Invalid template \"%s\" specified", t);
 		goto out_free_contents;
 	}
 
 	ret = sha1sum_file(tpath, md_value);
+	free(tpath);
 	if (ret < 0) {
-		ERROR("Error getting sha1sum of %s", tpath);
-		free(tpath);
+		ERROR("Failed to get sha1sum of %s", tpath);
 		goto out_free_contents;
 	}
-	free(tpath);
 #endif
 
 	f = fopen(path, "w");
 	if (f == NULL) {
-		SYSERROR("reopening config for writing");
+		SYSERROR("Reopening config for writing");
 		free(contents);
 		return false;
 	}
+
 	fprintf(f, "# Template used to create this container: %s\n", t);
 	if (argv) {
 		fprintf(f, "# Parameters passed to the template:");
@@ -1657,9 +1673,12 @@ static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 		fclose(f);
 		return false;
 	}
+
 	ret = 0;
+
 out_free_contents:
 	free(contents);
+
 out_error:
 	if (f) {
 		int newret;
@@ -1667,10 +1686,12 @@ out_error:
 		if (ret == 0)
 			ret = newret;
 	}
+
 	if (ret < 0) {
 		SYSERROR("Error prepending header");
 		return false;
 	}
+
 	return true;
 }
 
