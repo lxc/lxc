@@ -498,7 +498,7 @@ static bool do_lxcapi_freeze(struct lxc_container *c)
 		return false;
 
 	ret = lxc_freeze(c->name, c->config_path);
-	if (ret)
+	if (ret < 0)
 		return false;
 
 	return true;
