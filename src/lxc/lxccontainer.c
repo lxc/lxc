@@ -1597,12 +1597,11 @@ out_error:
 
 static void lxcapi_clear_config(struct lxc_container *c)
 {
-	if (c) {
-		if (c->lxc_conf) {
-			lxc_conf_free(c->lxc_conf);
-			c->lxc_conf = NULL;
-		}
-	}
+	if (!c || !c->lxc_conf)
+		return;
+
+	lxc_conf_free(c->lxc_conf);
+	c->lxc_conf = NULL;
 }
 
 #define do_lxcapi_clear_config(c) lxcapi_clear_config(c)
