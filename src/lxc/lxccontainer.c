@@ -478,16 +478,10 @@ static bool is_stopped(struct lxc_container *c)
 
 static bool do_lxcapi_is_running(struct lxc_container *c)
 {
-	const char *s;
-
 	if (!c)
 		return false;
 
-	s = do_lxcapi_state(c);
-	if (!s || strcmp(s, "STOPPED") == 0)
-		return false;
-
-	return true;
+	return !is_stopped(c);
 }
 
 WRAP_API(bool, lxcapi_is_running)
