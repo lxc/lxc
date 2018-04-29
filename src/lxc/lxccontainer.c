@@ -837,7 +837,6 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	struct lxc_handler *handler;
 	struct lxc_conf *conf;
 	bool daemonize = false;
-	FILE *pid_fp = NULL;
 	char *default_args[] = {
 		"/sbin/init",
 		NULL,
@@ -1001,30 +1000,34 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	 * write the right PID.
 	 */
 	if (c->pidfile) {
-		pid_fp = fopen(c->pidfile, "w");
-		if (pid_fp == NULL) {
-			SYSERROR("Failed to create pidfile '%s' for '%s'",
-				 c->pidfile, c->name);
+		int ret, w;
+		char pidstr[LXC_NUMSTRLEN64];
+
+		w = snprintf(pidstr, LXC_NUMSTRLEN64, "%d", (int)lxc_raw_getpid());
+		if (w < 0 || (size_t)w >= LXC_NUMSTRLEN64) {
 			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
+
+			SYSERROR("Failed to write monitor pid to \"%s\"", c->pidfile);
+
 			if (daemonize)
 				_exit(EXIT_FAILURE);
+
 			return false;
 		}
 
-		if (fprintf(pid_fp, "%d\n", lxc_raw_getpid()) < 0) {
+		ret = lxc_write_to_file(c->pidfile, pidstr, w, false, 0600);
+		if (ret < 0) {
+			free_init_cmd(init_cmd);
+			lxc_free_handler(handler);
+
 			SYSERROR("Failed to write '%s'", c->pidfile);
-			fclose(pid_fp);
-			pid_fp = NULL;
-			free_init_cmd(init_cmd);
-			lxc_free_handler(handler);
+
 			if (daemonize)
 				_exit(EXIT_FAILURE);
+
 			return false;
 		}
-
-		fclose(pid_fp);
-		pid_fp = NULL;
 	}
 
 	conf->reboot = 0;
