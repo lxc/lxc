@@ -1534,11 +1534,12 @@ static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 	}
 
 	ret = sha1sum_file(tpath, md_value);
-	free(tpath);
 	if (ret < 0) {
 		ERROR("Failed to get sha1sum of %s", tpath);
+		free(tpath);
 		goto out_free_contents;
 	}
+	free(tpath);
 #endif
 
 	f = fopen(path, "w");
