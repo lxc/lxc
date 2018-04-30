@@ -622,7 +622,7 @@ copy_parent:
 	*lastslash = oldv;
 	free(fpath);
 	fpath = must_make_path(path, "cpuset.cpus", NULL);
-	ret = lxc_write_to_file(fpath, cpulist, strlen(cpulist), false);
+	ret = lxc_write_to_file(fpath, cpulist, strlen(cpulist), false, 0666);
 	if (ret < 0) {
 		SYSERROR("Failed to write cpu list to \"%s\"", fpath);
 		goto on_error;
@@ -673,7 +673,7 @@ static bool copy_parent_file(char *path, char *file)
 
 	*lastslash = oldv;
 	fpath = must_make_path(path, file, NULL);
-	ret = lxc_write_to_file(fpath, value, len, false);
+	ret = lxc_write_to_file(fpath, value, len, false, 0666);
 	if (ret < 0)
 		SYSERROR("Failed to write \"%s\" to file \"%s\"", value, fpath);
 	free(fpath);
@@ -762,7 +762,7 @@ static bool cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 	}
 	free(cgpath);
 
-	ret = lxc_write_to_file(clonechildrenpath, "1", 1, false);
+	ret = lxc_write_to_file(clonechildrenpath, "1", 1, false, 0666);
 	if (ret < 0) {
 		/* Set clone_children so children inherit our settings */
 		SYSERROR("Failed to write 1 to \"%s\"", clonechildrenpath);
@@ -1712,7 +1712,7 @@ static bool cg_unified_create_cgroup(struct hierarchy *h, char *cgname)
 
 		cgroup = must_append_path(cgroup, parts[i], NULL);
 		target = must_make_path(cgroup, "cgroup.subtree_control", NULL);
-		ret = lxc_write_to_file(target, add_controllers, full_len, false);
+		ret = lxc_write_to_file(target, add_controllers, full_len, false, 0666);
 		free(target);
 		if (ret < 0) {
 			SYSERROR("Could not enable \"%s\" controllers in the "
@@ -1858,7 +1858,7 @@ static bool cgfsng_enter(void *hdata, pid_t pid)
 
 		fullpath = must_make_path(hierarchies[i]->fullcgpath,
 					  "cgroup.procs", NULL);
-		ret = lxc_write_to_file(fullpath, pidstr, len, false);
+		ret = lxc_write_to_file(fullpath, pidstr, len, false, 0666);
 		if (ret != 0) {
 			SYSERROR("Failed to enter cgroup \"%s\"", fullpath);
 			free(fullpath);
@@ -2027,7 +2027,8 @@ static int cg_legacy_mount_controllers(int type, struct hierarchy *h,
 							   controllerpath,
 							   flags | MS_REMOUNT);
 		ret = mount(controllerpath, controllerpath, "cgroup",
-			    MS_REMOUNT | MS_BIND | MS_RDONLY, NULL);
+			    remount_flags | MS_REMOUNT | MS_BIND | MS_RDONLY,
+			    NULL);
 		if (ret < 0) {
 			SYSERROR("Failed to remount \"%s\" ro", controllerpath);
 			return -1;
@@ -2305,7 +2306,7 @@ static bool cgfsng_escape()
 		fullpath = must_make_path(hierarchies[i]->mountpoint,
 					  hierarchies[i]->base_cgroup,
 					  "cgroup.procs", NULL);
-		ret = lxc_write_to_file(fullpath, "0", 2, false);
+		ret = lxc_write_to_file(fullpath, "0", 2, false, 0666);
 		if (ret != 0) {
 			SYSERROR("Failed to escape to cgroup \"%s\"", fullpath);
 			free(fullpath);
@@ -2358,7 +2359,7 @@ static bool cgfsng_unfreeze(void *hdata)
 		return false;
 
 	fullpath = must_make_path(h->fullcgpath, "freezer.state", NULL);
-	ret = lxc_write_to_file(fullpath, THAWED, THAWED_LEN, false);
+	ret = lxc_write_to_file(fullpath, THAWED, THAWED_LEN, false, 0666);
 	free(fullpath);
 	if (ret < 0)
 		return false;
@@ -2416,7 +2417,7 @@ static int __cg_unified_attach(const struct hierarchy *h, const char *name,
 	base_path = must_make_path(h->mountpoint, container_cgroup, NULL);
 	full_path = must_make_path(base_path, "cgroup.procs", NULL);
 	/* cgroup is populated */
-	ret = lxc_write_to_file(full_path, pidstr, pidstr_len, false);
+	ret = lxc_write_to_file(full_path, pidstr, pidstr_len, false, 0666);
 	if (ret < 0 && errno != EBUSY)
 		goto on_error;
 
@@ -2442,7 +2443,7 @@ static int __cg_unified_attach(const struct hierarchy *h, const char *name,
 			goto on_error;
 
 		strcat(full_path, "/cgroup.procs");
-		ret = lxc_write_to_file(full_path, pidstr, len, false);
+		ret = lxc_write_to_file(full_path, pidstr, len, false, 0666);
 		if (ret == 0)
 			goto on_success;
 
@@ -2494,7 +2495,7 @@ static bool cgfsng_attach(const char *name, const char *lxcpath, pid_t pid)
 
 		fullpath = build_full_cgpath_from_monitorpath(h, path, "cgroup.procs");
 		free(path);
-		ret = lxc_write_to_file(fullpath, pidstr, len, false);
+		ret = lxc_write_to_file(fullpath, pidstr, len, false, 0666);
 		if (ret < 0) {
 			SYSERROR("Failed to attach %d to %s", (int)pid, fullpath);
 			free(fullpath);
@@ -2572,7 +2573,7 @@ static int cgfsng_set(const char *filename, const char *value, const char *name,
 		char *fullpath;
 
 		fullpath = build_full_cgpath_from_monitorpath(h, path, filename);
-		ret = lxc_write_to_file(fullpath, value, strlen(value), false);
+		ret = lxc_write_to_file(fullpath, value, strlen(value), false, 0666);
 		free(fullpath);
 	}
 	free(path);
@@ -2697,7 +2698,7 @@ static int cg_legacy_set_data(const char *filename, const char *value,
 	}
 
 	fullpath = must_make_path(h->fullcgpath, filename, NULL);
-	ret = lxc_write_to_file(fullpath, value, strlen(value), false);
+	ret = lxc_write_to_file(fullpath, value, strlen(value), false, 0666);
 	free(fullpath);
 	return ret;
 }
@@ -2766,7 +2767,7 @@ static bool __cg_unified_setup_limits(void *hdata,
 		struct lxc_cgroup *cg = iterator->elem;
 
 		fullpath = must_make_path(h->fullcgpath, cg->subsystem, NULL);
-		ret = lxc_write_to_file(fullpath, cg->value, strlen(cg->value), false);
+		ret = lxc_write_to_file(fullpath, cg->value, strlen(cg->value), false, 0666);
 		free(fullpath);
 		if (ret < 0) {
 			SYSERROR("Failed to set \"%s\" to \"%s\"",

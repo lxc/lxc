@@ -562,10 +562,6 @@ int pin_rootfs(const char *rootfs)
 	if (!realpath(rootfs, absrootfs))
 		return -2;
 
-	ret = access(absrootfs, F_OK);
-	if (ret != 0)
-		return -1;
-
 	ret = stat(absrootfs, &s);
 	if (ret < 0)
 		return -1;
@@ -581,12 +577,12 @@ int pin_rootfs(const char *rootfs)
 	if (fd < 0)
 		return fd;
 
-	if (fstatfs (fd, &sfs)) {
-		return -1;
-	}
+	ret = fstatfs (fd, &sfs);
+	if (ret < 0)
+		return fd;
 
 	if (sfs.f_type == NFS_SUPER_MAGIC) {
-		DEBUG("rootfs on NFS, not unlinking pin file \"%s\".", absrootfspin);
+		DEBUG("Rootfs on NFS, not unlinking pin file \"%s\"", absrootfspin);
 		return fd;
 	}
 
@@ -2564,7 +2560,7 @@ int setup_sysctl_parameters(struct lxc_list *sysctls)
 		}
 
 		ret = lxc_write_to_file(filename, elem->value,
-					strlen(elem->value), false);
+					strlen(elem->value), false, 0666);
 		if (ret < 0) {
 			ERROR("Failed to setup sysctl parameters %s to %s",
 			      elem->key, elem->value);
@@ -2599,7 +2595,7 @@ int setup_proc_filesystem(struct lxc_list *procs, pid_t pid)
 		}
 
 		ret = lxc_write_to_file(filename, elem->value,
-					strlen(elem->value), false);
+					strlen(elem->value), false, 0666);
 		if (ret < 0) {
 			ERROR("Failed to setup proc filesystem %s to %s",
 			      elem->filename, elem->value);

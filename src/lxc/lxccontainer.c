@@ -19,6 +19,7 @@
  */
 
 #define _GNU_SOURCE
+#include <arpa/inet.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -29,22 +30,22 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/sysmacros.h>
+#include <sys/file.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
 #include <sys/syscall.h>
+#include <sys/sysmacros.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #include "af_unix.h"
 #include "attach.h"
 #include "cgroup.h"
-#include "conf.h"
-#include "config.h"
 #include "commands.h"
 #include "commands_utils.h"
+#include "conf.h"
+#include "config.h"
 #include "confile.h"
 #include "confile_utils.h"
 #include "criu.h"
@@ -61,9 +62,9 @@
 #include "start.h"
 #include "state.h"
 #include "storage.h"
-#include "storage_utils.h"
 #include "storage/btrfs.h"
 #include "storage/overlay.h"
+#include "storage_utils.h"
 #include "sync.h"
 #include "terminal.h"
 #include "utils.h"
@@ -140,7 +141,7 @@ static int ongoing_create(struct lxc_container *c)
 	int fd, ret;
 	size_t len;
 	char *path;
-	struct flock lk;
+	struct flock lk = {0};
 
 	len = strlen(c->config_path) + strlen(c->name) + 10;
 	path = alloca(len);
@@ -157,11 +158,11 @@ static int ongoing_create(struct lxc_container *c)
 
 	lk.l_type = F_WRLCK;
 	lk.l_whence = SEEK_SET;
-	lk.l_start = 0;
-	lk.l_len = 0;
 	lk.l_pid = -1;
 
-	ret = fcntl(fd, F_GETLK, &lk);
+	ret = fcntl(fd, F_OFD_GETLK, &lk);
+	if (ret < 0 && errno == EINVAL)
+		ret = flock(fd, LOCK_EX | LOCK_NB);
 	close(fd);
 	if (ret == 0 && lk.l_pid != -1) {
 		/* create is still ongoing */
@@ -177,7 +178,7 @@ static int create_partial(struct lxc_container *c)
 	int fd, ret;
 	size_t len;
 	char *path;
-	struct flock lk;
+	struct flock lk = {0};
 
 	/* $lxcpath + '/' + $name + '/partial' + \0 */
 	len = strlen(c->config_path) + strlen(c->name) + 10;
@@ -192,11 +193,15 @@ static int create_partial(struct lxc_container *c)
 
 	lk.l_type = F_WRLCK;
 	lk.l_whence = SEEK_SET;
-	lk.l_start = 0;
-	lk.l_len = 0;
 
-	ret = fcntl(fd, F_SETLKW, &lk);
+	ret = fcntl(fd, F_OFD_SETLKW, &lk);
 	if (ret < 0) {
+		if (errno == EINVAL) {
+			ret = flock(fd, LOCK_EX);
+			if (ret == 0)
+				return fd;
+		}
+
 		SYSERROR("Failed to lock partial file %s", path);
 		close(fd);
 		return -1;
@@ -340,7 +345,9 @@ int lxc_container_put(struct lxc_container *c)
 	if (container_mem_lock(c))
 		return -1;
 
-	if (--c->numthreads < 1) {
+	c->numthreads--;
+
+	if (c->numthreads < 1) {
 		container_mem_unlock(c);
 		lxc_container_free(c);
 		return 1;
@@ -475,16 +482,10 @@ static bool is_stopped(struct lxc_container *c)
 
 static bool do_lxcapi_is_running(struct lxc_container *c)
 {
-	const char *s;
-
 	if (!c)
 		return false;
 
-	s = do_lxcapi_state(c);
-	if (!s || strcmp(s, "STOPPED") == 0)
-		return false;
-
-	return true;
+	return !is_stopped(c);
 }
 
 WRAP_API(bool, lxcapi_is_running)
@@ -497,7 +498,7 @@ static bool do_lxcapi_freeze(struct lxc_container *c)
 		return false;
 
 	ret = lxc_freeze(c->name, c->config_path);
-	if (ret)
+	if (ret < 0)
 		return false;
 
 	return true;
@@ -513,7 +514,7 @@ static bool do_lxcapi_unfreeze(struct lxc_container *c)
 		return false;
 
 	ret = lxc_unfreeze(c->name, c->config_path);
-	if (ret)
+	if (ret < 0)
 		return false;
 
 	return true;
@@ -643,6 +644,7 @@ static bool do_lxcapi_want_daemonize(struct lxc_container *c, bool state)
 		return false;
 
 	c->daemonize = state;
+
 	container_mem_unlock(c);
 
 	return true;
@@ -659,6 +661,7 @@ static bool do_lxcapi_want_close_all_fds(struct lxc_container *c, bool state)
 		return false;
 
 	c->lxc_conf->close_all_fds = state;
+
 	container_mem_unlock(c);
 
 	return true;
@@ -682,8 +685,8 @@ WRAP_API_2(bool, lxcapi_wait, const char *, int)
 
 static bool am_single_threaded(void)
 {
-	struct dirent *direntp;
 	DIR *dir;
+	struct dirent *direntp;
 	int count = 0;
 
 	dir = opendir("/proc/self/task");
@@ -691,13 +694,14 @@ static bool am_single_threaded(void)
 		return false;
 
 	while ((direntp = readdir(dir))) {
-		if (!strcmp(direntp->d_name, "."))
+		if (strcmp(direntp->d_name, ".") == 0)
 			continue;
 
-		if (!strcmp(direntp->d_name, ".."))
+		if (strcmp(direntp->d_name, "..") == 0)
 			continue;
 
-		if (++count > 1)
+		count++;
+		if (count > 1)
 			break;
 	}
 	closedir(dir);
@@ -710,9 +714,7 @@ static void push_arg(char ***argp, char *arg, int *nargs)
 	char *copy;
 	char **argv;
 
-	do {
-		copy = strdup(arg);
-	} while (!copy);
+	copy = must_copy_string(arg);
 
 	do {
 		argv = realloc(*argp, (*nargs + 2) * sizeof(char *));
@@ -834,8 +836,6 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	int ret;
 	struct lxc_handler *handler;
 	struct lxc_conf *conf;
-	bool daemonize = false;
-	FILE *pid_fp = NULL;
 	char *default_args[] = {
 		"/sbin/init",
 		NULL,
@@ -870,11 +870,12 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 
 	if (container_mem_lock(c))
 		return false;
+
 	conf = c->lxc_conf;
-	daemonize = c->daemonize;
 
 	/* initialize handler */
-	handler = lxc_init_handler(c->name, conf, c->config_path, daemonize);
+	handler = lxc_init_handler(c->name, conf, c->config_path, c->daemonize);
+
 	container_mem_unlock(c);
 	if (!handler)
 		return false;
@@ -900,7 +901,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	 * here to protect the on disk container?  We don't want to exclude
 	 * things like lxc_info while the container is running.
 	 */
-	if (daemonize) {
+	if (c->daemonize) {
 		bool started;
 		char title[2048];
 		pid_t pid;
@@ -935,9 +936,9 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		 * characters. All that it means is that the proctitle will be
 		 * ugly. Similarly, we also don't care if setproctitle() fails.
 		 * */
-		snprintf(title, sizeof(title), "[lxc monitor] %s %s", c->config_path, c->name);
+		(void)snprintf(title, sizeof(title), "[lxc monitor] %s %s", c->config_path, c->name);
 		INFO("Attempting to set proc title to %s", title);
-		setproctitle(title);
+		(void)setproctitle(title);
 
 		/* We fork() a second time to be reparented to init. Like
 		 * POSIX's daemon() function we change to "/" and redirect
@@ -997,30 +998,34 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	 * write the right PID.
 	 */
 	if (c->pidfile) {
-		pid_fp = fopen(c->pidfile, "w");
-		if (pid_fp == NULL) {
-			SYSERROR("Failed to create pidfile '%s' for '%s'",
-				 c->pidfile, c->name);
+		int ret, w;
+		char pidstr[LXC_NUMSTRLEN64];
+
+		w = snprintf(pidstr, LXC_NUMSTRLEN64, "%d", (int)lxc_raw_getpid());
+		if (w < 0 || (size_t)w >= LXC_NUMSTRLEN64) {
 			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
-			if (daemonize)
+
+			SYSERROR("Failed to write monitor pid to \"%s\"", c->pidfile);
+
+			if (c->daemonize)
 				_exit(EXIT_FAILURE);
+
 			return false;
 		}
 
-		if (fprintf(pid_fp, "%d\n", lxc_raw_getpid()) < 0) {
+		ret = lxc_write_to_file(c->pidfile, pidstr, w, false, 0600);
+		if (ret < 0) {
+			free_init_cmd(init_cmd);
+			lxc_free_handler(handler);
+
 			SYSERROR("Failed to write '%s'", c->pidfile);
-			fclose(pid_fp);
-			pid_fp = NULL;
-			free_init_cmd(init_cmd);
-			lxc_free_handler(handler);
-			if (daemonize)
+
+			if (c->daemonize)
 				_exit(EXIT_FAILURE);
+
 			return false;
 		}
-
-		fclose(pid_fp);
-		pid_fp = NULL;
 	}
 
 	conf->reboot = 0;
@@ -1047,7 +1052,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 reboot:
 	if (conf->reboot == 2) {
 		/* initialize handler */
-		handler = lxc_init_handler(c->name, conf, c->config_path, daemonize);
+		handler = lxc_init_handler(c->name, conf, c->config_path, c->daemonize);
 		if (!handler) {
 			ret = 1;
 			goto on_error;
@@ -1057,7 +1062,7 @@ reboot:
 	keepfds[0] = handler->conf->maincmd_fd;
 	keepfds[1] = handler->state_socket_pair[0];
 	keepfds[2] = handler->state_socket_pair[1];
-	ret = lxc_check_inherited(conf, daemonize, keepfds,
+	ret = lxc_check_inherited(conf, c->daemonize, keepfds,
 				  sizeof(keepfds) / sizeof(keepfds[0]));
 	if (ret < 0) {
 		lxc_free_handler(handler);
@@ -1066,9 +1071,11 @@ reboot:
 	}
 
 	if (useinit)
-		ret = lxc_execute(c->name, argv, 1, handler, c->config_path, daemonize, &c->error_num);
+		ret = lxc_execute(c->name, argv, 1, handler, c->config_path,
+				  c->daemonize, &c->error_num);
 	else
-		ret = lxc_start(c->name, argv, handler, c->config_path, daemonize, &c->error_num);
+		ret = lxc_start(c->name, argv, handler, c->config_path,
+				c->daemonize, &c->error_num);
 
 	if (conf->reboot == 1) {
 		INFO("Container requested reboot");
@@ -1084,9 +1091,9 @@ on_error:
 	}
 	free_init_cmd(init_cmd);
 
-	if (daemonize && ret != 0)
+	if (c->daemonize && ret != 0)
 		_exit(EXIT_FAILURE);
-	else if (daemonize)
+	else if (c->daemonize)
 		_exit(EXIT_SUCCESS);
 
 	if (ret != 0)
@@ -1573,6 +1580,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 {
 	long flen;
+	size_t len;
 	char *contents;
 	FILE *f;
 	int ret = -1;
@@ -1586,15 +1594,30 @@ static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 	if (f == NULL)
 		return false;
 
-	if (fseek(f, 0, SEEK_END) < 0)
+	ret = fseek(f, 0, SEEK_END);
+	if (ret < 0)
 		goto out_error;
-	if ((flen = ftell(f)) < 0)
+
+	ret = -1;
+	flen = ftell(f);
+	if (flen < 0)
 		goto out_error;
-	if (fseek(f, 0, SEEK_SET) < 0)
+
+	ret = fseek(f, 0, SEEK_SET);
+	if (ret < 0)
 		goto out_error;
-	if ((contents = malloc(flen + 1)) == NULL)
+
+	ret = fseek(f, 0, SEEK_SET);
+	if (ret < 0)
 		goto out_error;
-	if (fread(contents, 1, flen, f) != flen)
+
+	ret = -1;
+	contents = malloc(flen + 1);
+	if (!contents)
+		goto out_error;
+
+	len = fread(contents, 1, flen, f);
+	if (len != flen)
 		goto out_free_contents;
 
 	contents[flen] = '\0';
@@ -1606,25 +1629,25 @@ static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 #if HAVE_LIBGNUTLS
 	tpath = get_template_path(t);
 	if (!tpath) {
-		ERROR("bad template: %s", t);
+		ERROR("Invalid template \"%s\" specified", t);
 		goto out_free_contents;
 	}
 
 	ret = sha1sum_file(tpath, md_value);
+	free(tpath);
 	if (ret < 0) {
-		ERROR("Error getting sha1sum of %s", tpath);
-		free(tpath);
+		ERROR("Failed to get sha1sum of %s", tpath);
 		goto out_free_contents;
 	}
-	free(tpath);
 #endif
 
 	f = fopen(path, "w");
 	if (f == NULL) {
-		SYSERROR("reopening config for writing");
+		SYSERROR("Reopening config for writing");
 		free(contents);
 		return false;
 	}
+
 	fprintf(f, "# Template used to create this container: %s\n", t);
 	if (argv) {
 		fprintf(f, "# Parameters passed to the template:");
@@ -1650,9 +1673,12 @@ static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 		fclose(f);
 		return false;
 	}
+
 	ret = 0;
+
 out_free_contents:
 	free(contents);
+
 out_error:
 	if (f) {
 		int newret;
@@ -1660,21 +1686,22 @@ out_error:
 		if (ret == 0)
 			ret = newret;
 	}
+
 	if (ret < 0) {
 		SYSERROR("Error prepending header");
 		return false;
 	}
+
 	return true;
 }
 
 static void lxcapi_clear_config(struct lxc_container *c)
 {
-	if (c) {
-		if (c->lxc_conf) {
-			lxc_conf_free(c->lxc_conf);
-			c->lxc_conf = NULL;
-		}
-	}
+	if (!c || !c->lxc_conf)
+		return;
+
+	lxc_conf_free(c->lxc_conf);
+	c->lxc_conf = NULL;
 }
 
 #define do_lxcapi_clear_config(c) lxcapi_clear_config(c)

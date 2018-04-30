@@ -971,12 +971,13 @@ size_t lxc_array_len(void **array)
 	return result;
 }
 
-int lxc_write_to_file(const char *filename, const void* buf, size_t count, bool add_newline)
+int lxc_write_to_file(const char *filename, const void *buf, size_t count,
+		      bool add_newline, mode_t mode)
 {
 	int fd, saved_errno;
 	ssize_t ret;
 
-	fd = open(filename, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, 0666);
+	fd = open(filename, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode);
 	if (fd < 0)
 		return -1;
 	ret = lxc_write_nointr(fd, buf, count);
