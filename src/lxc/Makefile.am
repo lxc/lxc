@@ -120,7 +120,6 @@ liblxc_la_SOURCES = \
 	network.c network.h \
 	nl.c nl.h \
 	rtnl.c rtnl.h \
-	genl.c genl.h \
 	\
 	caps.c caps.h \
 	lxcseccomp.h \
