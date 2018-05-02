@@ -1677,6 +1677,8 @@ static int set_config_mount_auto(const char *key, const char *value,
 		return -1;
 
 	for (autoptr = autos;; autoptr = NULL) {
+		bool is_shmounts = false;
+
 		token = strtok_r(autoptr, " \t", &sptr);
 		if (!token) {
 			ret = 0;
@@ -1686,6 +1688,12 @@ static int set_config_mount_auto(const char *key, const char *value,
 		for (i = 0; allowed_auto_mounts[i].token; i++) {
 			if (!strcmp(allowed_auto_mounts[i].token, token))
 				break;
+
+			if (strcmp("shmounts:", allowed_auto_mounts[i].token) == 0
+					&& strncmp("shmounts:", token, sizeof("shmounts:") - 1) == 0) {
+				is_shmounts = true;
+				break;
+			}
 		}
 
 		if (!allowed_auto_mounts[i].token) {
@@ -1695,6 +1703,14 @@ static int set_config_mount_auto(const char *key, const char *value,
 
 		lxc_conf->auto_mounts &= ~allowed_auto_mounts[i].mask;
 		lxc_conf->auto_mounts |= allowed_auto_mounts[i].flag;
+		if (is_shmounts) {
+			lxc_conf->lxc_shmount.path_host = strdup(token + (sizeof("shmounts:") - 1));
+			if (strcmp(lxc_conf->lxc_shmount.path_host, "") == 0) {
+				ERROR("Invalid shmounts path: empty");
+				break;
+			}
+			lxc_conf->lxc_shmount.path_cont = strdup("/dev/.lxc-mounts");
+		}
 	}
 
 	free(autos);
@@ -1724,6 +1740,10 @@ static int set_config_mount(const char *key, const char *value,
 	lxc_list_add_tail(&lxc_conf->mount_list, mntlist);
 
 	return 0;
+}
+
+int add_elem_to_mount_list(const char *value, struct lxc_conf *lxc_conf) {
+	return set_config_mount(NULL, value, lxc_conf, NULL);
 }
 
 static int set_config_cap_keep(const char *key, const char *value,

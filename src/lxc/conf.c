@@ -23,6 +23,7 @@
 
 #define _GNU_SOURCE
 #include "config.h"
+#include "confile.h"
 
 #include <arpa/inet.h>
 #include <dirent.h>
@@ -647,6 +648,30 @@ unsigned long add_required_remount_flags(const char *s, const char *d,
 #endif
 }
 
+static int add_shmount_to_list(struct lxc_conf *conf) {
+	char new_mount[MAXPATHLEN];
+	size_t len_mount;
+	/* Offset for the leading '/' since the path_cont
+	 * is absolute inside the container */
+	int ret = -1, offset = 1;
+
+	/* +1 for the separating whitespace */
+	len_mount = strlen(conf->lxc_shmount.path_host) + 1
+			+ strlen(conf->lxc_shmount.path_cont) - offset
+			+ sizeof(" none bind,create=dir 0 0") - 1;
+
+	ret = snprintf(new_mount, len_mount + 1, "%s %s none bind,create=dir 0 0",
+				   conf->lxc_shmount.path_host, conf->lxc_shmount.path_cont + offset);
+	if (ret < 0 || (size_t)ret >= len_mount + 1)
+		return -1;
+
+	ret = add_elem_to_mount_list(new_mount, conf);
+	if (ret < 0)
+		ERROR("Failed to add new mount \"%s\" to the config", new_mount);
+
+	return ret;
+}
+
 static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_handler *handler)
 {
 	int i, r;
@@ -780,6 +805,14 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 						cg_flags)) {
 			SYSERROR("Failed to mount \"/sys/fs/cgroup\"");
 			return -1;
+		}
+	}
+
+	if (flags & LXC_AUTO_SHMOUNTS_MASK) {
+		int ret = add_shmount_to_list(conf);
+		if (ret < 0) {
+			ERROR("Failed to add shmount entry to container config");
+			return ret;
 		}
 	}
 

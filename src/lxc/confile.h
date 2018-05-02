@@ -121,4 +121,6 @@ bool clone_update_unexp_ovl_paths(struct lxc_conf *conf, const char *oldpath,
 
 extern bool network_new_hwaddrs(struct lxc_conf *conf);
 
+extern int add_elem_to_mount_list(const char *value, struct lxc_conf *lxc_conf);
+
 #endif /* __LXC_CONFILE_H */
