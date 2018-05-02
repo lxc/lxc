@@ -1659,6 +1659,7 @@ static int set_config_mount_auto(const char *key, const char *value,
 	    { "cgroup-full:mixed:force", LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_FULL_MIXED | LXC_AUTO_CGROUP_FORCE  },
 	    { "cgroup-full:ro:force",    LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_FULL_RO | LXC_AUTO_CGROUP_FORCE     },
 	    { "cgroup-full:rw:force",    LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_FULL_RW | LXC_AUTO_CGROUP_FORCE     },
+	    { "shmounts:",               LXC_AUTO_SHMOUNTS_MASK, LXC_AUTO_SHMOUNTS                                 },
 	    /* For adding anything that is just a single on/off, but has no
 	    *  options: keep mask and flag identical and just define the enum
 	    *  value as an unused bit so far
