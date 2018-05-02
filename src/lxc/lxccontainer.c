@@ -30,9 +30,11 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/file.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
+#include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/sysmacros.h>
 #include <sys/types.h>
@@ -454,6 +456,25 @@ static rettype fnname(struct lxc_container *c, t1 a1, t2 a2, t3 a3)	\
 	}								\
 									\
 	ret = do_##fnname(c, a1, a2, a3);				\
+	if (reset_config)						\
+		current_config = NULL;					\
+									\
+	return ret;							\
+}
+
+#define WRAP_API_6(rettype, fnname, t1, t2, t3, t4, t5, t6)				\
+static rettype fnname(struct lxc_container *c, t1 a1, t2 a2, t3 a3,	\
+						t4 a4, t5 a5, t6 a6)	\
+{									\
+	rettype ret;							\
+	bool reset_config = false;					\
+									\
+	if (!current_config && c && c->lxc_conf) {			\
+		current_config = c->lxc_conf;				\
+		reset_config = true;					\
+	}								\
+									\
+	ret = do_##fnname(c, a1, a2, a3, a4, a5, a6);				\
 	if (reset_config)						\
 		current_config = NULL;					\
 									\
@@ -4893,6 +4914,119 @@ static bool do_lxcapi_restore(struct lxc_container *c, char *directory, bool ver
 
 WRAP_API_2(bool, lxcapi_restore, char *, bool)
 
+static int do_lxcapi_mount(struct lxc_container *c,
+			const char *source, const char *target,
+			const char *filesystemtype, unsigned long mountflags,
+			const void *data, struct lxc_mount *mnt) {
+	char *suff, *sret;
+	char template[MAXPATHLEN], path[MAXPATHLEN];
+	pid_t pid, init_pid;
+	size_t len;
+	int ret = -1, fd = -EBADF;
+
+	if (!c || !c->lxc_conf) {
+		ERROR("Container or configuration is NULL");
+		return -EINVAL;
+	}
+
+	if (!c->lxc_conf->lxc_shmount.path_host) {
+		ERROR("Host path to shared mountpoint must be specified in the config\n");
+		return -EINVAL;
+	}
+	len = strlen(c->lxc_conf->lxc_shmount.path_host) + sizeof("/.lxcmount_XXXXXX") - 1;
+
+	ret = snprintf(template, len + 1, "%s/.lxcmount_XXXXXX", c->lxc_conf->lxc_shmount.path_host);
+	if (ret < 0 || (size_t)ret >= len + 1) {
+		SYSERROR("Error writing shmounts tempdir name");
+		goto out;
+	}
+
+	/* Create a temporary dir under the shared mountpoint */
+	sret = mkdtemp(template);
+	if (!sret) {
+		SYSERROR("Could not create shmounts temporary dir");
+		goto out;
+	}
+
+	/* Do the fork */
+	pid = fork();
+	if (pid < 0) {
+		SYSERROR("Could not fork");
+		goto out;
+	}
+
+	if (pid == 0) {
+		/* Do the mount */
+		ret = mount(source, template, filesystemtype, mountflags, data);
+		if (ret < 0) {
+			SYSERROR("Failed to mount \"%s\" onto \"%s\"", source, template);
+			_exit(EXIT_FAILURE);
+		}
+
+		init_pid = do_lxcapi_init_pid(c);
+		if (init_pid < 0) {
+			ERROR("Failed to obtain container's init pid");
+			_exit(EXIT_FAILURE);
+		}
+
+		/* Enter the container namespaces */
+		if (!lxc_list_empty(&c->lxc_conf->id_map)) {
+			if (!switch_to_ns(init_pid, "user")){
+				ERROR("Failed to enter user namespace");
+				_exit(EXIT_FAILURE);
+			}
+		}
+		if (!switch_to_ns(init_pid, "mnt")) {
+			ERROR("Failed to enter mount namespace");
+			_exit(EXIT_FAILURE);
+		}
+
+		suff = strrchr(template, '/');
+		if (!suff)
+			_exit(EXIT_FAILURE);
+
+		len = strlen(c->lxc_conf->lxc_shmount.path_cont) + sizeof("/.lxcmount_XXXXXX") - 1;
+		ret = snprintf(path, len + 1, "%s%s", c->lxc_conf->lxc_shmount.path_cont, suff);
+		if (ret < 0 || (size_t)ret >= len + 1) {
+			SYSERROR("Error writing container mountpoint name");
+			_exit(EXIT_FAILURE);
+		}
+
+		ret = mkdir_p(target, 0700);
+		if (ret < 0) {
+			ERROR("Failed to create container temp mountpoint");
+			_exit(EXIT_FAILURE);
+		}
+
+		ret = mount(path, target, NULL, MS_REC | MS_MOVE, NULL);
+		if (ret < 0) {
+			SYSERROR("Failed to move the mount from \"%s\" to \"%s\"", path, target);
+			_exit(EXIT_FAILURE);
+		}
+
+		_exit(EXIT_SUCCESS);
+	}
+
+	ret = wait_for_pid(pid);
+	if (ret < 0) {
+		SYSERROR("Wait for the child with pid %ld failed", (long) pid);
+		goto out;
+	}
+
+	ret = 0;
+
+	(void)umount2(template, MNT_DETACH);
+	(void)unlink(template);
+
+out:
+	if (fd >= 0)
+		close(fd);
+	return ret;
+}
+
+WRAP_API_6(int, lxcapi_mount, const char *, const char *, const char *,
+	   unsigned long, const void *, struct lxc_mount*)
+
 static int lxcapi_attach_run_waitl(struct lxc_container *c, lxc_attach_options_t *options, const char *program, const char *arg, ...)
 {
 	va_list ap;
@@ -5045,6 +5179,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->restore = lxcapi_restore;
 	c->migrate = lxcapi_migrate;
 	c->console_log = lxcapi_console_log;
+	c->mount = lxcapi_mount;
 
 	return c;
 

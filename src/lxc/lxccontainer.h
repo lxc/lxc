@@ -42,6 +42,7 @@ extern "C" {
 #define LXC_CLONE_MAXFLAGS        (1 << 5) /*!< Number of \c LXC_CLONE_* flags */
 #define LXC_CREATE_QUIET          (1 << 0) /*!< Redirect \c stdin to \c /dev/zero and \c stdout and \c stderr to \c /dev/null */
 #define LXC_CREATE_MAXFLAGS       (1 << 1) /*!< Number of \c LXC_CREATE* flags */
+#define LXC_MOUNT_API_V1		   1
 
 struct bdev_specs;
 
@@ -52,6 +53,10 @@ struct lxc_lock;
 struct migrate_opts;
 
 struct lxc_console_log;
+
+struct lxc_mount {
+	int version;
+};
 
 /*!
  * An LXC container.
@@ -846,6 +851,14 @@ struct lxc_container {
 	 * \return \c true if the container was rebooted successfully, else \c false.
 	 */
 	bool (*reboot2)(struct lxc_container *c, int timeout);
+
+	/*!
+	 * \brief Mount the host's path `source` onto the container's path `target`.
+	 */
+	int (*mount)(struct lxc_container *c,
+				 const char *source, const char *target,
+				 const char *filesystemtype, unsigned long mountflags,
+				 const void *data, struct lxc_mount *mnt);
 };
 
 /*!
