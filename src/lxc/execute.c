@@ -21,11 +21,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#define _GNU_SOURCE
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "conf.h"
 #include "log.h"
@@ -36,9 +38,9 @@ lxc_log_define(lxc_execute, lxc_start);
 
 static int execute_start(struct lxc_handler *handler, void* data)
 {
-	int j, i = 0;
+	int j, i = 0, log = -1;
 	struct execute_args *my_args = data;
-	char **argv;
+	char **argv, *logfd;
 	int argc = 0, argc_add;
 
 	while (my_args->argv[argc++]);
@@ -69,9 +71,25 @@ static int execute_start(struct lxc_handler *handler, void* data)
 		argv[i++] = (char *)lxc_log_priority_to_string(lxc_log_get_level());
 	}
 
-	if (handler->conf->logfile) {
+	if (current_config->logfd != -1 || lxc_log_fd != -1) {
+		int to_dup = current_config->logfd;
+
+		if (current_config->logfd == -1)
+			to_dup = lxc_log_fd;
+
+		log = dup(to_dup);
+		if (log < 0) {
+			SYSERROR("dup of log fd failed");
+			goto out2;
+		}
+
+		if (asprintf(&logfd, "/proc/1/fd/%d", log) < 0) {
+			ERROR("Couldn't allocate memory for log string");
+			goto out3;
+		}
+
 		argv[i++] = "-o";
-		argv[i++] = (char *)handler->conf->logfile;
+		argv[i++] = logfd;
 	}
 
 	if (my_args->quiet)
@@ -92,6 +110,9 @@ static int execute_start(struct lxc_handler *handler, void* data)
 	execvp(argv[0], argv);
 	SYSERROR("Failed to exec %s", argv[0]);
 
+	free(logfd);
+out3:
+	close(log);
 out2:
 	free(argv);
 out1:
