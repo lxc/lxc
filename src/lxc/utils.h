@@ -101,6 +101,17 @@
 #define LXC_LINELEN 4096
 #define LXC_IDMAPLEN 4096
 #define LXC_MAX_BUFFER 4096
+/* /proc/       =    6
+ *                +
+ * <pid-as-str> =   LXC_NUMSTRLEN64
+ *                +
+ * /fd/         =    4
+ *                +
+ * <fd-as-str>  =   LXC_NUMSTRLEN64
+ *                +
+ * \0           =    1
+ */
+#define LXC_PROC_PID_FD_LEN (6 + LXC_NUMSTRLEN64 + 4 + LXC_NUMSTRLEN64 + 1)
 
 /* returns 1 on success, 0 if there were any failures */
 extern int lxc_rmdir_onedev(const char *path, const char *exclude);
