@@ -43,11 +43,12 @@ struct execute_args {
 
 static int execute_start(struct lxc_handler *handler, void* data)
 {
-	int j, i = 0, log = -1;
+	int argc_add, j;
+	char **argv;
+	int argc = 0, i = 0, logfd = -1;
 	struct execute_args *my_args = data;
-	char **argv, *logfd;
-	int argc = 0, argc_add;
 	char *initpath;
+	char logfile[LXC_PROC_PID_FD_LEN];
 
 	while (my_args->argv[argc++])
 		;
@@ -56,8 +57,10 @@ static int execute_start(struct lxc_handler *handler, void* data)
 	argc_add = 5;
 	if (my_args->quiet)
 		argc_add++;
+
 	if (!handler->conf->rootfs.path)
 		argc_add += 2;
+
 	if (lxc_log_has_valid_level())
 		argc_add += 2;
 
@@ -82,24 +85,24 @@ static int execute_start(struct lxc_handler *handler, void* data)
 	}
 
 	if (current_config->logfd != -1 || lxc_log_fd != -1) {
+		int ret;
 		int to_dup = current_config->logfd;
 
 		if (current_config->logfd == -1)
 			to_dup = lxc_log_fd;
 
-		log = dup(to_dup);
-		if (log < 0) {
-			SYSERROR("dup of log fd failed");
+		logfd = dup(to_dup);
+		if (logfd < 0) {
+			SYSERROR("Failed to duplicate log file descriptor");
 			goto out2;
 		}
 
-		if (asprintf(&logfd, "/proc/1/fd/%d", log) < 0) {
-			ERROR("Couldn't allocate memory for log string");
+		ret = snprintf(logfile, sizeof(logfile), "/proc/1/fd/%d", logfd);
+		if (ret < 0 || (size_t)ret >= sizeof(logfile))
 			goto out3;
-		}
 
 		argv[i++] = "-o";
-		argv[i++] = logfd;
+		argv[i++] = logfile;
 	}
 
 	if (my_args->quiet)
@@ -121,9 +124,8 @@ static int execute_start(struct lxc_handler *handler, void* data)
 	SYSERROR("Failed to exec %s", argv[0]);
 	free(initpath);
 
-	free(logfd);
 out3:
-	close(log);
+	close(logfd);
 out2:
 	free(argv);
 out1:
