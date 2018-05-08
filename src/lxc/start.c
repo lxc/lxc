@@ -1971,6 +1971,7 @@ int lxc_start(const char *name, char *const argv[], struct lxc_handler *handler,
 		.argv = argv,
 	};
 
+	TRACE("Doing lxc_start");
 	return __lxc_start(name, handler, &start_ops, &start_arg, lxcpath, backgrounded, error_num);
 }
 

@@ -58,11 +58,15 @@ static int execute_start(struct lxc_handler *handler, void* data)
 		argc_add += 2;
 
 	argv = malloc((argc + argc_add) * sizeof(*argv));
-	if (!argv)
+	if (!argv) {
+		SYSERROR("Allocating init args failed");
 		goto out1;
+	}
 
-	if (!my_args->init_path)
+	if (!my_args->init_path) {
+		ERROR("Init path missing");
 		goto out2;
+	}
 
 	argv[i++] = my_args->init_path;
 
@@ -139,6 +143,7 @@ int lxc_execute(const char *name, char *const argv[], int quiet,
 {
 	struct execute_args args = {.argv = argv, .quiet = quiet};
 
+	TRACE("Doing lxc_execute");
 	handler->conf->is_execute = 1;
 	return __lxc_start(name, handler, &execute_start_ops, &args, lxcpath,
 			   backgrounded, error_num);
