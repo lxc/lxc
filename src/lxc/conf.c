@@ -3203,64 +3203,6 @@ void remount_all_slave(void)
 	free(line);
 }
 
-static int lxc_execute_bind_init(struct lxc_handler *handler)
-{
-	int ret;
-	char *p;
-	char path[PATH_MAX], destpath[PATH_MAX];
-	struct lxc_conf *conf = handler->conf;
-
-	/* If init exists in the container, don't bind mount a static one */
-	p = choose_init(conf->rootfs.mount);
-	if (p) {
-		char *old = p;
-
-		p = strdup(old + strlen(conf->rootfs.mount));
-		free(old);
-		if (!p)
-			return -ENOMEM;
-
-		INFO("Found existing init at \"%s\"", p);
-		goto out;
-	}
-
-	ret = snprintf(path, PATH_MAX, SBINDIR "/init.lxc.static");
-	if (ret < 0 || ret >= PATH_MAX)
-		return -1;
-
-	if (!file_exists(path)) {
-		ERROR("The file \"%s\" does not exist on host", path);
-		return -1;
-	}
-
-	ret = snprintf(destpath, PATH_MAX, "%s" P_tmpdir "%s", conf->rootfs.mount, "/.lxc-init");
-	if (ret < 0 || ret >= PATH_MAX)
-		return -1;
-
-	if (!file_exists(destpath)) {
-		ret = mknod(destpath, S_IFREG | 0000, 0);
-		if (ret < 0 && errno != EEXIST) {
-			SYSERROR("Failed to create dummy \"%s\" file as bind mount target", destpath);
-			return -1;
-		}
-	}
-
-	ret = safe_mount(path, destpath, "none", MS_BIND, NULL, conf->rootfs.mount);
-	if (ret < 0) {
-		SYSERROR("Failed to bind mount lxc.init.static into container");
-		return -1;
-	}
-
-	p = strdup(destpath + strlen(conf->rootfs.mount));
-	if (!p)
-		return -ENOMEM;
-
-	INFO("Bind mounted lxc.init.static into container at \"%s\"", path);
-out:
-	((struct execute_args *)handler->data)->init_path = p;
-	return 0;
-}
-
 /* This does the work of remounting / if it is shared, calling the container
  * pre-mount hooks, and mounting the rootfs.
  */
@@ -3391,11 +3333,22 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 
 	if (lxc_conf->is_execute) {
-		ret = lxc_execute_bind_init(handler);
-		if (ret < 0) {
-			ERROR("Failed to bind-mount the lxc init system");
+		int fd;
+		char path[PATH_MAX];
+
+		ret = snprintf(path, PATH_MAX, SBINDIR "/init.lxc.static");
+		if (ret < 0 || ret >= PATH_MAX) {
+			ERROR("Path to init.lxc.static too long");
 			return -1;
 		}
+
+		fd = open(path, O_PATH | O_CLOEXEC);
+		if (fd < 0) {
+			SYSERROR("Unable to open lxc.init.static");
+			return -1;
+		}
+
+		((struct execute_args *)handler->data)->init_fd = fd;
 	}
 
 	/* Now mount only cgroups, if wanted. Before, /sys could not have been

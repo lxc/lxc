@@ -66,12 +66,7 @@ static int execute_start(struct lxc_handler *handler, void* data)
 		goto out1;
 	}
 
-	if (!my_args->init_path) {
-		ERROR("Init path missing");
-		goto out2;
-	}
-
-	argv[i++] = my_args->init_path;
+	argv[i++] = "lxc-init";
 
 	argv[i++] = "-n";
 	argv[i++] = (char *)handler->name;
@@ -117,7 +112,7 @@ static int execute_start(struct lxc_handler *handler, void* data)
 
 	NOTICE("Exec'ing \"%s\"", my_args->argv[0]);
 
-	execvp(argv[0], argv);
+	fexecve(my_args->init_fd, argv, environ);
 	SYSERROR("Failed to exec %s", argv[0]);
 
 out3:
