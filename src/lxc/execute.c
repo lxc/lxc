@@ -64,6 +64,9 @@ static int execute_start(struct lxc_handler *handler, void* data)
 	if (lxc_log_has_valid_level())
 		argc_add += 2;
 
+	if (current_config->logfd != -1 || lxc_log_fd != -1)
+		argc_add += 2;
+
 	argv = malloc((argc + argc_add) * sizeof(*argv));
 	if (!argv)
 		goto out1;
