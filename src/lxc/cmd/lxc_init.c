@@ -192,32 +192,6 @@ static void kill_children(pid_t pid)
 	fclose(f);
 }
 
-static void remove_self(void)
-{
-	int ret;
-	ssize_t n;
-	char path[MAXPATHLEN] = {0};
-
-	n = readlink("/proc/self/exe", path, sizeof(path));
-	if (n < 0 || n >= MAXPATHLEN) {
-		SYSERROR("Failed to readlink \"/proc/self/exe\"");
-		return;
-	}
-	path[n] = '\0';
-
-	ret = umount2(path, MNT_DETACH);
-	if (ret < 0) {
-		SYSERROR("Failed to unmount \"%s\"", path);
-		return;
-	}
-
-	ret = unlink(path);
-	if (ret < 0) {
-		SYSERROR("Failed to unlink \"%s\"", path);
-		return;
-	}
-}
-
 int main(int argc, char *argv[])
 {
 	int i, ret;
@@ -316,8 +290,6 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 	}
-
-	remove_self();
 
 	pid = fork();
 	if (pid < 0)

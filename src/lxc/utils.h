@@ -506,7 +506,6 @@ extern bool detect_ramfs_rootfs(void);
 extern char *on_path(const char *cmd, const char *rootfs);
 extern bool file_exists(const char *f);
 extern bool cgns_supported(void);
-extern char *choose_init(const char *rootfs);
 extern int print_to_file(const char *file, const char *content);
 extern bool switch_to_ns(pid_t pid, const char *ns);
 extern int is_dir(const char *path);
