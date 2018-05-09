@@ -3213,8 +3213,15 @@ static int lxc_execute_bind_init(struct lxc_handler *handler)
 	/* If init exists in the container, don't bind mount a static one */
 	p = choose_init(conf->rootfs.mount);
 	if (p) {
-		free(p);
-		return 0;
+		char *old = p;
+
+		p = strdup(old + strlen(conf->rootfs.mount));
+		free(old);
+		if (!p)
+			return -ENOMEM;
+
+		INFO("Found existing init at \"%s\"", p);
+		goto out;
 	}
 
 	ret = snprintf(path, PATH_MAX, SBINDIR "/init.lxc.static");
@@ -3247,9 +3254,10 @@ static int lxc_execute_bind_init(struct lxc_handler *handler)
 	p = strdup(destpath + strlen(conf->rootfs.mount));
 	if (!p)
 		return -ENOMEM;
-	((struct execute_args *)handler->data)->init_path = p;
 
 	INFO("Bind mounted lxc.init.static into container at \"%s\"", path);
+out:
+	((struct execute_args *)handler->data)->init_path = p;
 	return 0;
 }
 
