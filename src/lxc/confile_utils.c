@@ -621,10 +621,14 @@ bool new_hwaddr(char *hwaddr)
 
 int lxc_get_conf_str(char *retv, int inlen, const char *value)
 {
+	size_t value_len;
+
 	if (!value)
 		return 0;
-	if (retv && inlen >= strlen(value) + 1)
-		strncpy(retv, value, strlen(value) + 1);
+
+	value_len = strlen(value);
+	if (retv && inlen >= value_len + 1)
+		memcpy(retv, value, value_len + 1);
 
 	return strlen(value);
 }
