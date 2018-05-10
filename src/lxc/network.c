@@ -571,17 +571,12 @@ static char *is_wlan(const char *ifname)
 	size_t len;
 	char *path;
 	FILE *f;
-	struct stat sb;
 	char *physname = NULL;
 
 	len = strlen(ifname) + strlen(PHYSNAME) - 1;
 	path = alloca(len + 1);
 	ret = snprintf(path, len, PHYSNAME, ifname);
 	if (ret < 0 || (size_t)ret >= len)
-		goto bad;
-
-	ret = stat(path, &sb);
-	if (ret)
 		goto bad;
 
 	f = fopen(path, "r");
@@ -592,6 +587,8 @@ static char *is_wlan(const char *ifname)
 	fseek(f, 0, SEEK_END);
 	physlen = ftell(f);
 	fseek(f, 0, SEEK_SET);
+	if (physlen < 0)
+		goto bad;
 
 	physname = malloc(physlen + 1);
 	if (!physname) {

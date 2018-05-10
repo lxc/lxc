@@ -2955,6 +2955,7 @@ static bool do_lxcapi_destroy(struct lxc_container *c)
 {
 	if (!c || !lxcapi_is_defined(c))
 		return false;
+
 	if (has_snapshots(c)) {
 		ERROR("Container %s has snapshots;  not removing", c->name);
 		return false;

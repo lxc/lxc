@@ -4117,6 +4117,9 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	int ret = -1, status = -1;
 	char c = '1';
 
+	if (!conf)
+		return -EINVAL;
+
 	idmap = get_minimal_idmap(conf);
 	if (!idmap)
 		return -1;
@@ -4199,6 +4202,9 @@ int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	struct lxc_list *idmap = NULL, *tmplist = NULL;
 	struct id_map *container_root_uid = NULL, *container_root_gid = NULL,
 		      *host_uid_map = NULL, *host_gid_map = NULL;
+
+	if (!conf)
+		return -EINVAL;
 
 	ret = pipe(p);
 	if (ret < 0) {
