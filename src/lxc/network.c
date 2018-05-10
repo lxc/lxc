@@ -2097,8 +2097,8 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 		return -1;
 	}
 
-	memset(netdev->name, 0, IFNAMSIZ + 1);
-	strncpy(netdev->name, token, IFNAMSIZ);
+	memset(netdev->name, 0, IFNAMSIZ);
+	memcpy(netdev->name, token, IFNAMSIZ - 1);
 
 	/* netdev->ifindex */
 	token = strtok_r(NULL, ":", &saveptr);
