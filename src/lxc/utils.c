@@ -2384,7 +2384,7 @@ int parse_byte_size_string(const char *s, int64_t *converted)
 	if (!s || !strcmp(s, ""))
 		return -EINVAL;
 
-	end = stpncpy(dup, s, sizeof(dup));
+	end = stpncpy(dup, s, sizeof(dup) - 1);
 	if (*end != '\0')
 		return -EINVAL;
 
