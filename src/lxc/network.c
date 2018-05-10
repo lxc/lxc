@@ -2089,7 +2089,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	pid_t child;
 	int bytes, pipefd[2];
 	char *token, *saveptr = NULL;
-	char netdev_link[IFNAMSIZ + 1];
+	char netdev_link[IFNAMSIZ];
 	char buffer[MAXPATHLEN] = {0};
 
 	if (netdev->type != LXC_NET_VETH) {
@@ -2127,9 +2127,9 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 		}
 
 		if (netdev->link[0] != '\0')
-			strncpy(netdev_link, netdev->link, IFNAMSIZ);
+			strncpy(netdev_link, netdev->link, IFNAMSIZ - 1);
 		else
-			strncpy(netdev_link, "none", IFNAMSIZ);
+			strncpy(netdev_link, "none", IFNAMSIZ - 1);
 
 		ret = snprintf(pidstr, LXC_NUMSTRLEN64, "%d", pid);
 		if (ret < 0 || ret >= LXC_NUMSTRLEN64)
@@ -2178,8 +2178,8 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 		return -1;
 	}
 
-	memset(netdev->name, 0, IFNAMSIZ + 1);
-	strncpy(netdev->name, token, IFNAMSIZ);
+	memset(netdev->name, 0, IFNAMSIZ);
+	memcpy(netdev->name, token, IFNAMSIZ - 1);
 
 	/* netdev->ifindex */
 	token = strtok_r(NULL, ":", &saveptr);
