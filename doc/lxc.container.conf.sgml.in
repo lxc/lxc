@@ -828,7 +828,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             be a power of 2 when converted to bytes. Valid size prefixes are
             'KB', 'MB', 'GB'. (Note that all conversions are based on multiples
             of 1024. That means 'KB' == 'KiB', 'MB' == 'MiB', 'GB' == 'GiB'.
-			And ignored case, for example 'kB', 'KB' and 'Kb' is same.)
+            Additionally, the case of the suffix is ignored, i.e. 'kB', 'KB' and
+            'Kb' are treated equally.)
             </para>
           </listitem>
         </varlistentry>
@@ -853,7 +854,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             be a power of 2 when converted to bytes. Valid size prefixes are
             'KB', 'MB', 'GB'. (Note that all conversions are based on multiples
             of 1024. That means 'KB' == 'KiB', 'MB' == 'MiB', 'GB' == 'GiB'. 
-			And ignored case, for example 'kB', 'KB' and 'Kb' is same.)
+            Additionally, the case of the suffix is ignored, i.e. 'kB', 'KB' and
+            'Kb' are treated equally.)
 
             If users want to mirror the console ringbuffer on disk they should set
             <option>lxc.console.size</option> equal to
