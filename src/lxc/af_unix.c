@@ -36,6 +36,10 @@
 #include "log.h"
 #include "utils.h"
 
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
 lxc_log_define(lxc_af_unix, lxc);
 
 int lxc_abstract_unix_open(const char *path, int type, int flags)
@@ -63,8 +67,9 @@ int lxc_abstract_unix_open(const char *path, int type, int flags)
 		errno = ENAMETOOLONG;
 		return -1;
 	}
-	/* addr.sun_path[0] has already been set to 0 by memset() */
-	strncpy(&addr.sun_path[1], &path[1], len);
+
+	/* do not enforce \0-termination */
+	memcpy(&addr.sun_path[1], &path[1], len);
 
 	ret = bind(fd, (struct sockaddr *)&addr,
 		   offsetof(struct sockaddr_un, sun_path) + len + 1);
@@ -116,8 +121,9 @@ int lxc_abstract_unix_connect(const char *path)
 		errno = ENAMETOOLONG;
 		return -1;
 	}
-	/* addr.sun_path[0] has already been set to 0 by memset() */
-	strncpy(&addr.sun_path[1], &path[1], strlen(&path[1]));
+
+	/* do not enforce \0-termination */
+	memcpy(&addr.sun_path[1], &path[1], len);
 
 	ret = connect(fd, (struct sockaddr *)&addr,
 		      offsetof(struct sockaddr_un, sun_path) + len + 1);

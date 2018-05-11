@@ -151,6 +151,10 @@ liblxc_la_SOURCES += ../include/getline.c ../include/getline.h
 endif
 endif
 
+if !HAVE_STRLCPY
+liblxc_la_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
 AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	-DLXCPATH=\"$(LXCPATH)\" \
 	-DLXC_GLOBAL_CONF=\"$(LXC_GLOBAL_CONF)\" \
@@ -298,6 +302,10 @@ if !HAVE_GETLINE
 if HAVE_FGETLN
 init_lxc_static_SOURCES += ../include/getline.c
 endif
+endif
+
+if !HAVE_STRLCPY
+init_lxc_static_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
 endif
 
 init_lxc_static_LDFLAGS = -all-static
