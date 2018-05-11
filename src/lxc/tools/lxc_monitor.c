@@ -47,10 +47,6 @@
 #include "arguments.h"
 #include "tool_utils.h"
 
-#ifndef HAVE_STRLCPY
-#include "include/strlcpy.h"
-#endif
-
 static bool quit_monitord;
 
 static int my_parser(struct lxc_arguments* args, int c, char* arg)
