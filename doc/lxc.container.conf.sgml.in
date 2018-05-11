@@ -819,15 +819,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             ringbuffer. Note that ringbuffer must be at least as big as a
             standard page size. When passed a value smaller than a single page
             size liblxc will allocate a ringbuffer of a single page size. A page
-            size is usually 4kB.
+            size is usually 4KB.
 
             The keyword 'auto' will cause liblxc to allocate a ringbuffer of
-            128kB.
+            128KB.
 
             When manually specifying a size for the ringbuffer the value should
             be a power of 2 when converted to bytes. Valid size prefixes are
-            'kB', 'MB', 'GB'. (Note that all conversions are based on multiples
-            of 1024. That means 'kb' == 'KiB', 'MB' == 'MiB', 'GB' == 'GiB'.)
+            'KB', 'MB', 'GB'. (Note that all conversions are based on multiples
+            of 1024. That means 'KB' == 'KiB', 'MB' == 'MiB', 'GB' == 'GiB'.
+            Additionally, the case of the suffix is ignored, i.e. 'kB', 'KB' and
+            'Kb' are treated equally.)
             </para>
           </listitem>
         </varlistentry>
@@ -843,15 +845,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             <option>lxc.console.logfile</option>. Note that size of the log file
             must be at least as big as a standard page size. When passed a value
             smaller than a single page size liblxc will set the size of log file
-            to a single page size. A page size is usually 4kB.
+            to a single page size. A page size is usually 4KB.
 
-            The keyword 'auto' will cause liblxc to place a limit of 128kB on
+            The keyword 'auto' will cause liblxc to place a limit of 128KB on
             the log file.
 
             When manually specifying a size for the log file the value should
             be a power of 2 when converted to bytes. Valid size prefixes are
-            'kB', 'MB', 'GB'. (Note that all conversions are based on multiples
-            of 1024. That means 'kb' == 'KiB', 'MB' == 'MiB', 'GB' == 'GiB'.)
+            'KB', 'MB', 'GB'. (Note that all conversions are based on multiples
+            of 1024. That means 'KB' == 'KiB', 'MB' == 'MiB', 'GB' == 'GiB'. 
+            Additionally, the case of the suffix is ignored, i.e. 'kB', 'KB' and
+            'Kb' are treated equally.)
 
             If users want to mirror the console ringbuffer on disk they should set
             <option>lxc.console.size</option> equal to

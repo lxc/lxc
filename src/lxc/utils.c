@@ -2450,11 +2450,11 @@ int parse_byte_size_string(const char *s, int64_t *converted)
 		return 0;
 	}
 
-	if (!strcmp(suffix, "kB"))
+	if (strcasecmp(suffix, "KB") == 0)
 		mltpl = 1024;
-	else if (!strcmp(suffix, "MB"))
+	else if (strcasecmp(suffix, "MB") == 0)
 		mltpl = 1024 * 1024;
-	else if (!strcmp(suffix, "GB"))
+	else if (strcasecmp(suffix, "GB") == 0)
 		mltpl = 1024 * 1024 * 1024;
 	else
 		return -EINVAL;
