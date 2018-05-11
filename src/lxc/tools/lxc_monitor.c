@@ -319,7 +319,7 @@ static int lxc_abstract_unix_connect(const char *path)
 		return -1;
 	}
 	/* addr.sun_path[0] has already been set to 0 by memset() */
-	strncpy(&addr.sun_path[1], &path[1], strlen(&path[1]));
+	memcpy(&addr.sun_path[1], &path[1], strlen(&path[1]));
 
 	ret = connect(fd, (struct sockaddr *)&addr,
 		      offsetof(struct sockaddr_un, sun_path) + len + 1);
