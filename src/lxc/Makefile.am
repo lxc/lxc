@@ -289,10 +289,6 @@ if !HAVE_GETSUBOPT
 lxc_copy_SOURCES += ../include/getsubopt.c ../include/getsubopt.h
 endif
 
-if !HAVE_STRLCPY
-lxc_monitor_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
-endif
-
 if HAVE_STATIC_LIBCAP
 sbin_PROGRAMS += init.lxc.static
 
