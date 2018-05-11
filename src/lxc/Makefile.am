@@ -290,6 +290,10 @@ if ENABLE_TOOLS
 if !HAVE_GETSUBOPT
 lxc_copy_SOURCES += tools/include/getsubopt.c tools/include/getsubopt.h
 endif
+
+if !HAVE_STRLCPY
+lxc_monitor_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
 endif
 
 if ENABLE_COMMANDS
