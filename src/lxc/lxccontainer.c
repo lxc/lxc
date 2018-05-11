@@ -87,6 +87,9 @@
 #define MAX_BUFFER 4096
 
 #define NOT_SUPPORTED_ERROR "the requested function %s is not currently supported with unprivileged containers"
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
 
 /* Define faccessat() if missing from the C library */
 #ifndef HAVE_FACCESSAT
@@ -701,7 +704,7 @@ static void push_arg(char ***argp, char *arg, int *nargs)
 
 static char **split_init_cmd(const char *incmd)
 {
-	size_t len;
+	size_t len, retlen;
 	char *copy, *p;
 	char **argv;
 	int nargs = 0;
@@ -712,8 +715,10 @@ static char **split_init_cmd(const char *incmd)
 
 	len = strlen(incmd) + 1;
 	copy = alloca(len);
-	strncpy(copy, incmd, len);
-	copy[len - 1] = '\0';
+	retlen = strlcpy(copy, incmd, len);
+	if (retlen >= len) {
+		return NULL;
+	}
 
 	do {
 		argv = malloc(sizeof(char *));

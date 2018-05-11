@@ -59,6 +59,10 @@
 #include <../include/ifaddrs.h>
 #endif
 
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
 #ifndef IFLA_LINKMODE
 #define IFLA_LINKMODE 17
 #endif
@@ -1815,7 +1819,8 @@ static int lxc_ovs_attach_bridge(const char *bridge, const char *nic)
 
 int lxc_bridge_attach(const char *bridge, const char *ifname)
 {
-	int fd, index, err;
+	int err, fd, index;
+	size_t retlen;
 	struct ifreq ifr;
 
 	if (strlen(ifname) >= IFNAMSIZ)
@@ -1832,8 +1837,10 @@ int lxc_bridge_attach(const char *bridge, const char *ifname)
 	if (fd < 0)
 		return -errno;
 
-	strncpy(ifr.ifr_name, bridge, IFNAMSIZ-1);
-	ifr.ifr_name[IFNAMSIZ-1] = '\0';
+	retlen = strlcpy(ifr.ifr_name, bridge, IFNAMSIZ);
+	if (retlen >= IFNAMSIZ)
+		return -E2BIG;
+
 	ifr.ifr_ifindex = index;
 	err = ioctl(fd, SIOCBRADDIF, &ifr);
 	close(fd);
@@ -2032,6 +2039,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 
 	if (child == 0) {
 		int ret;
+		size_t retlen;
 		char pidstr[LXC_NUMSTRLEN64];
 
 		close(pipefd[0]);
@@ -2046,9 +2054,13 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 		}
 
 		if (netdev->link[0] != '\0')
-			strncpy(netdev_link, netdev->link, IFNAMSIZ - 1);
+			retlen = strlcpy(netdev_link, netdev->link, IFNAMSIZ);
 		else
-			strncpy(netdev_link, "none", IFNAMSIZ - 1);
+			retlen = strlcpy(netdev_link, "none", IFNAMSIZ);
+		if (retlen >= IFNAMSIZ) {
+			SYSERROR("Invalid network device name");
+			_exit(EXIT_FAILURE);
+		}
 
 		ret = snprintf(pidstr, LXC_NUMSTRLEN64, "%d", pid);
 		if (ret < 0 || ret >= LXC_NUMSTRLEN64)

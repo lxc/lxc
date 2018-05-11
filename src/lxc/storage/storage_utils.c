@@ -46,6 +46,10 @@
 #include "storage_utils.h"
 #include "utils.h"
 
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
 #ifndef BLKGETSIZE64
 #define BLKGETSIZE64 _IOR(0x12, 114, size_t)
 #endif
@@ -85,13 +89,23 @@ char *dir_new_path(char *src, const char *oldname, const char *name,
 	}
 
 	while ((p2 = strstr(src, oldname)) != NULL) {
-		strncpy(p, src, p2 - src); // copy text up to oldname
-		p += p2 - src;		   // move target pointer (p)
-		p += sprintf(p, "%s",
-			     name); // print new name in place of oldname
-		src = p2 + l2;      // move src to end of oldname
+		size_t retlen;
+
+		/* copy text up to oldname */
+		retlen = strlcpy(p, src, p2 - src);
+		if (retlen >= p2 - src)
+			return NULL;
+
+		/* move target pointer (p) */
+		p += p2 - src;
+		/* print new name in place of oldname */
+		p += sprintf(p, "%s", name);
+		/* move src to end of oldname */
+		src = p2 + l2;
 	}
-	sprintf(p, "%s", src); // copy the rest of src
+
+	/* copy the rest of src */
+	sprintf(p, "%s", src);
 	return ret;
 }
 

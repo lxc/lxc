@@ -43,6 +43,10 @@
 #include "utils.h"
 #include "lxccontainer.h"
 
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
 /* We're logging in seconds and nanoseconds. Assuming that the underlying
  * datatype is currently at maximum a 64bit integer, we have a date string that
  * is of maximum length (2^64 - 1) * 2 = (21 + 21) = 42.
@@ -575,8 +579,8 @@ extern const char *lxc_log_get_file(void)
 
 extern void lxc_log_set_prefix(const char *prefix)
 {
-	strncpy(log_prefix, prefix, sizeof(log_prefix));
-	log_prefix[sizeof(log_prefix) - 1] = 0;
+	/* We don't care if thte prefix is truncated. */
+	(void)strlcpy(log_prefix, prefix, sizeof(log_prefix));
 }
 
 extern const char *lxc_log_get_prefix(void)

@@ -49,6 +49,10 @@
 #include "state.h"
 #include "utils.h"
 
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
 lxc_log_define(lxc_monitor, lxc);
 
 /* routines used by monitor publishers (containers) */
@@ -131,9 +135,8 @@ void lxc_monitor_send_state(const char *name, lxc_state_t state,
 			    const char *lxcpath)
 {
 	struct lxc_msg msg = {.type = lxc_msg_state, .value = state};
-	strncpy(msg.name, name, sizeof(msg.name));
-	msg.name[sizeof(msg.name) - 1] = 0;
 
+	(void)strlcpy(msg.name, name, sizeof(msg.name));
 	lxc_monitor_fifo_send(&msg, lxcpath);
 }
 
@@ -141,9 +144,8 @@ void lxc_monitor_send_exit_code(const char *name, int exit_code,
 				const char *lxcpath)
 {
 	struct lxc_msg msg = {.type = lxc_msg_exit_code, .value = exit_code};
-	strncpy(msg.name, name, sizeof(msg.name));
-	msg.name[sizeof(msg.name) - 1] = 0;
 
+	(void)strlcpy(msg.name, name, sizeof(msg.name));
 	lxc_monitor_fifo_send(&msg, lxcpath);
 }
 

@@ -41,6 +41,10 @@
 #include "storage.h"
 #include "utils.h"
 
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
 lxc_log_define(btrfs, lxc);
 
 /* defined in lxccontainer.c: needs to become common helper */
@@ -220,38 +224,46 @@ int btrfs_umount(struct lxc_storage *bdev)
 
 static int btrfs_subvolume_create(const char *path)
 {
-	int ret, fd = -1;
-	struct btrfs_ioctl_vol_args  args;
-	char *p, *newfull = strdup(path);
+	int ret, saved_errno;
+	size_t retlen;
+	struct btrfs_ioctl_vol_args args;
+	char *p, *newfull;
+	int fd = -1;
 
+	newfull = strdup(path);
 	if (!newfull) {
-		ERROR("Error: out of memory");
-		return -1;
+		errno = ENOMEM;
+		return -ENOMEM;
 	}
 
 	p = strrchr(newfull, '/');
 	if (!p) {
-		ERROR("bad path: %s", path);
 		free(newfull);
-		return -1;
+		errno = EINVAL;
+		return -EINVAL;
 	}
 	*p = '\0';
 
 	fd = open(newfull, O_RDONLY);
 	if (fd < 0) {
-		ERROR("Error opening %s", newfull);
 		free(newfull);
-		return -1;
+		return -errno;
 	}
 
 	memset(&args, 0, sizeof(args));
-	strncpy(args.name, p+1, BTRFS_SUBVOL_NAME_MAX);
-	args.name[BTRFS_SUBVOL_NAME_MAX-1] = 0;
-	ret = ioctl(fd, BTRFS_IOC_SUBVOL_CREATE, &args);
-	INFO("btrfs: snapshot create ioctl returned %d", ret);
+	retlen = strlcpy(args.name, p + 1, BTRFS_SUBVOL_NAME_MAX);
+	if (retlen >= BTRFS_SUBVOL_NAME_MAX) {
+		free(newfull);
+		close(fd);
+		return -E2BIG;
+	}
 
-	free(newfull);
+	ret = ioctl(fd, BTRFS_IOC_SUBVOL_CREATE, &args);
+	saved_errno = errno;
+
 	close(fd);
+	free(newfull);
+	errno = saved_errno;
 	return ret;
 }
 
@@ -298,9 +310,11 @@ out:
 
 int btrfs_snapshot(const char *orig, const char *new)
 {
-	int fd = -1, fddst = -1, ret = -1;
-	struct btrfs_ioctl_vol_args_v2  args;
-	char *newdir, *newname, *newfull = NULL;
+	int fd, fddst, ret;
+	size_t retlen;
+	struct btrfs_ioctl_vol_args_v2 args;
+	char *newdir, *newname;
+	char *newfull = NULL;
 
 	newfull = strdup(new);
 	if (!newfull) {
@@ -326,9 +340,10 @@ int btrfs_snapshot(const char *orig, const char *new)
 	}
 
 	memset(&args, 0, sizeof(args));
-	args.fd = fd;
-	strncpy(args.name, newname, BTRFS_SUBVOL_NAME_MAX);
-	args.name[BTRFS_SUBVOL_NAME_MAX-1] = 0;
+	retlen = strlcpy(args.name, newname, BTRFS_SUBVOL_NAME_MAX);
+	if (retlen >= BTRFS_SUBVOL_NAME_MAX)
+		goto out;
+
 	ret = ioctl(fddst, BTRFS_IOC_SNAP_CREATE_V2, &args);
 	INFO("btrfs: snapshot create ioctl returned %d", ret);
 
@@ -412,6 +427,7 @@ int btrfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 static int btrfs_do_destroy_subvol(const char *path)
 {
 	int ret, fd = -1;
+	size_t retlen;
 	struct btrfs_ioctl_vol_args  args;
 	char *p, *newfull = strdup(path);
 
@@ -436,8 +452,12 @@ static int btrfs_do_destroy_subvol(const char *path)
 	}
 
 	memset(&args, 0, sizeof(args));
-	strncpy(args.name, p+1, BTRFS_SUBVOL_NAME_MAX);
-	args.name[BTRFS_SUBVOL_NAME_MAX-1] = 0;
+	retlen = strlcpy(args.name, p+1, BTRFS_SUBVOL_NAME_MAX);
+	if (retlen >= BTRFS_SUBVOL_NAME_MAX) {
+		free(newfull);
+		return -E2BIG;
+	}
+
 	ret = ioctl(fd, BTRFS_IOC_SNAP_DESTROY, &args);
 	INFO("btrfs: snapshot destroy ioctl returned %d for %s", ret, path);
 	if (ret < 0 && errno == EPERM)
@@ -491,21 +511,25 @@ static bool update_tree_node(struct mytree_node *n, u64 id, u64 parent,
 {
 	if (id)
 		n->objid = id;
+
 	if (parent)
 		n->parentid = parent;
+
 	if (name) {
 		n->name = malloc(name_len + 1);
 		if (!n->name)
 			return false;
-		strncpy(n->name, name, name_len);
-		n->name[name_len] = '\0';
+
+		strcpy(n->name, name);
 	}
+
 	if (dirname) {
 		n->dirname = malloc(strlen(dirname) + 1);
 		if (!n->dirname) {
 			free(n->name);
 			return false;
 		}
+
 		strcpy(n->dirname, dirname);
 	}
 	return true;

@@ -82,6 +82,10 @@
 #include "storage/storage.h"
 #include "storage/storage_utils.h"
 
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
 lxc_log_define(lxc_start, lxc);
 
 extern void mod_all_rdeps(struct lxc_container *c, bool inc);
@@ -377,6 +381,7 @@ static int signal_handler(int fd, uint32_t events, void *data,
 int lxc_serve_state_clients(const char *name, struct lxc_handler *handler,
 			    lxc_state_t state)
 {
+	size_t retlen;
 	ssize_t ret;
 	struct lxc_list *cur, *next;
 	struct state_client *client;
@@ -394,8 +399,9 @@ int lxc_serve_state_clients(const char *name, struct lxc_handler *handler,
 		return 0;
 	}
 
-	strncpy(msg.name, name, sizeof(msg.name));
-	msg.name[sizeof(msg.name) - 1] = 0;
+	retlen = strlcpy(msg.name, name, sizeof(msg.name));
+	if (retlen >= sizeof(msg.name))
+		return -E2BIG;
 
 	lxc_list_for_each_safe(cur, &handler->state_clients, next) {
 		client = cur->elem;
