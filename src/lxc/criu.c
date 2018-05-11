@@ -51,6 +51,10 @@
 #include <mntent.h>
 #endif
 
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
 #define CRIU_VERSION		"2.0"
 
 #define CRIU_GITID_VERSION	"2.0"
@@ -536,6 +540,7 @@ static void exec_criu(struct criu_opts *opts)
 		argv = m;
 
 		lxc_list_for_each(it, &opts->c->lxc_conf->network) {
+			size_t retlen;
 			char eth[128], *veth;
 			char *fmt;
 			struct lxc_netdev *n = it->elem;
@@ -552,9 +557,9 @@ static void exec_criu(struct criu_opts *opts)
 			}
 
 			if (n->name[0] != '\0') {
-				if (strlen(n->name) >= sizeof(eth))
+				retlen = strlcpy(eth, n->name, sizeof(eth));
+				if (retlen >= sizeof(eth))
 					goto err;
-				strncpy(eth, n->name, sizeof(eth));
 			} else {
 				ret = snprintf(eth, sizeof(eth), "eth%d", netnr);
 				if (ret < 0 || ret >= sizeof(eth))
