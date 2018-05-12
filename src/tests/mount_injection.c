@@ -36,12 +36,13 @@
 #define NAME "mount_injection_test-"
 #define TEMPLATE P_tmpdir"/mount_injection_XXXXXX"
 
-struct mountinfo_strings {
+struct mountinfo_data {
 	const char *mount_root;
 	const char *mount_point;
 	const char *fstype;
 	const char *mount_source;
 	const char *message;
+	bool should_be_present;
 };
 
 static int comp_field(char *line, const char *str, int nfields)
@@ -72,29 +73,33 @@ static int find_in_proc_mounts(void *data)
 {
 	char buf[LXC_LINELEN];
 	FILE *f;
-	struct mountinfo_strings *strs = (struct mountinfo_strings *) data;
+	struct mountinfo_data *mdata = (struct mountinfo_data *) data;
 
-	fprintf(stderr, "%s", strs->message);
+	fprintf(stderr, "%s", mdata->message);
 
 	f = fopen("/proc/self/mountinfo", "r");
 	if (!f)
 		return 0;
 	while (fgets(buf, LXC_LINELEN, f)) {
-		if (comp_field(buf, strs->mount_root, 3) == 0 && comp_field(buf, strs->mount_point, 4) == 0) {
+		if (comp_field(buf, mdata->mount_root, 3) == 0 && comp_field(buf, mdata->mount_point, 4) == 0) {
 			char *buf2 = strchr(buf, '-');
-			if (comp_field(buf2, strs->fstype, 1) == 0 && comp_field(buf2, strs->mount_source, 2) == 0) {
+			if (comp_field(buf2, mdata->fstype, 1) == 0 && comp_field(buf2, mdata->mount_source, 2) == 0) {
 				fclose(f);
-				fprintf(stderr, "OK\n");
-				_exit(EXIT_SUCCESS);
+				fprintf(stderr, "PRESENT\n");
+				if (mdata->should_be_present)
+					_exit(EXIT_SUCCESS);
+				_exit(EXIT_FAILURE);
 			}
 		}
 	}
 	fclose(f);
-	fprintf(stderr, "ERR\n");
+	fprintf(stderr, "MISSING\n");
+	if (!mdata->should_be_present)
+		_exit(EXIT_SUCCESS);
 	_exit(EXIT_FAILURE);
 }
 
-static int check_containers_mountinfo(struct lxc_container *c, struct mountinfo_strings *d)
+static int check_containers_mountinfo(struct lxc_container *c, struct mountinfo_data *d)
 {
 	pid_t pid;
 	int ret = -1;
@@ -126,18 +131,20 @@ static int perform_container_test(const char *name, const char *config_items[])
 	struct lxc_log log;
 	int ret = -1, dev_msg_size = sizeof("Check urandom device injected into "" - ") - 1 + strlen(name) + 1,
 			dir_msg_size = sizeof("Check dir "" injected into "" - ") - 1 + sizeof(TEMPLATE) - 1 + strlen(name) + 1;
-	struct mountinfo_strings device = {
+	struct mountinfo_data device = {
 		.mount_root = "/",
 		.mount_point = "/mnt/mount_injection_test_urandom",
 		.fstype = "devtmpfs",
 		.mount_source = "/dev/urandom",
-		.message = ""
+		.message = "",
+		.should_be_present = true
 	}, dir = {
 		.mount_root = template_dir,
 		.mount_point = template_dir,
 		.fstype = "ext4",
 		.mount_source = NULL,
-		.message = ""
+		.message = "",
+		.should_be_present = true
 	};
 
 	/* Temp paths and messages setup */
@@ -226,6 +233,20 @@ static int perform_container_test(const char *name, const char *config_items[])
 	if (ret < 0)
 		goto out;
 
+	/* Check device unmounted */
+	/* TODO: what about other umount flags? */
+	ret = c->umount(c, "/mnt/mount_injection_test_urandom", MNT_DETACH, &mnt);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to umount2 \"/dev/urandom\"\n");
+		goto out;
+	}
+
+	device.message = "Unmounted \"/mnt/mount_injection_test_urandom\" -- should be missing now: ";
+	device.should_be_present = false;
+	ret = check_containers_mountinfo(c, &device);
+	if (ret < 0)
+		goto out;
+
 	/* Check dir mounted */
 	ret = c->mount(c, template_dir, template_dir, "ext4", MS_BIND, NULL, &mnt);
 	if (ret < 0) {
@@ -237,6 +258,21 @@ static int perform_container_test(const char *name, const char *config_items[])
 	if (ret < 0)
 		goto out;
 
+	/* Check dir unmounted */
+	/* TODO: what about other umount flags? */
+	ret = c->umount(c, template_dir, MNT_DETACH, &mnt);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to umount2 \"%s\"\n", template_dir);
+		goto out;
+	}
+
+	dir.message = "Unmounted dir -- should be missing now: ";
+	dir.should_be_present = false;
+	ret = check_containers_mountinfo(c, &dir);
+	if (ret < 0)
+		goto out;
+
+	/* Finalize the container */
 	if (!c->stop(c)) {
 		fprintf(stderr, "Stopping the container (%s) failed...\n", name);
 		goto out;
