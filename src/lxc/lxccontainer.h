@@ -859,6 +859,12 @@ struct lxc_container {
 				 const char *source, const char *target,
 				 const char *filesystemtype, unsigned long mountflags,
 				 const void *data, struct lxc_mount *mnt);
+
+	/*!
+	 * \brief Unmount the container's path `target`.
+	 */
+	int (*umount)(struct lxc_container *c, const char *target,
+				  unsigned long mountflags, struct lxc_mount *mnt);
 };
 
 /*!
