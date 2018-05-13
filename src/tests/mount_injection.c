@@ -73,29 +73,50 @@ static int find_in_proc_mounts(void *data)
 {
 	char buf[LXC_LINELEN];
 	FILE *f;
-	struct mountinfo_data *mdata = (struct mountinfo_data *) data;
+	struct mountinfo_data *mdata = (struct mountinfo_data *)data;
 
 	fprintf(stderr, "%s", mdata->message);
 
 	f = fopen("/proc/self/mountinfo", "r");
 	if (!f)
 		return 0;
+
 	while (fgets(buf, LXC_LINELEN, f)) {
-		if (comp_field(buf, mdata->mount_root, 3) == 0 && comp_field(buf, mdata->mount_point, 4) == 0) {
-			char *buf2 = strchr(buf, '-');
-			if (comp_field(buf2, mdata->fstype, 1) == 0 && comp_field(buf2, mdata->mount_source, 2) == 0) {
-				fclose(f);
-				fprintf(stderr, "PRESENT\n");
-				if (mdata->should_be_present)
-					_exit(EXIT_SUCCESS);
-				_exit(EXIT_FAILURE);
-			}
-		}
+		char *buf2;
+
+		/* checking mount_root is tricky since it will be prefixed with
+		 * whatever path was the source of the mount in the original
+		 * mount namespace. So only verify it when we know that root is
+		 * in fact "/".
+		 */
+		if (mdata->mount_root && comp_field(buf, mdata->mount_root, 3) != 0)
+			continue;
+
+		if (comp_field(buf, mdata->mount_point, 4) != 0)
+			continue;
+
+		if (!mdata->fstype || !mdata->mount_source)
+			goto on_success;
+
+		buf2 = strchr(buf, '-');
+		if (comp_field(buf2, mdata->fstype, 1) != 0 ||
+		    comp_field(buf2, mdata->mount_source, 2) != 0)
+			continue;
+
+	on_success:
+		fclose(f);
+		fprintf(stderr, "PRESENT\n");
+		if (mdata->should_be_present)
+			_exit(EXIT_SUCCESS);
+
+		_exit(EXIT_FAILURE);
 	}
+
 	fclose(f);
 	fprintf(stderr, "MISSING\n");
 	if (!mdata->should_be_present)
 		_exit(EXIT_SUCCESS);
+
 	_exit(EXIT_FAILURE);
 }
 
@@ -113,7 +134,7 @@ static int check_containers_mountinfo(struct lxc_container *c, struct mountinfo_
 
 	ret = wait_for_pid(pid);
 	if (ret < 0)
-		fprintf(stderr, "Attached function failed");
+		fprintf(stderr, "Attached function failed\n");
 
 	return ret;
 }
@@ -139,9 +160,9 @@ static int perform_container_test(const char *name, const char *config_items[])
 		.message = "",
 		.should_be_present = true
 	}, dir = {
-		.mount_root = template_dir,
+		.mount_root = NULL,
 		.mount_point = template_dir,
-		.fstype = "ext4",
+		.fstype = NULL,
 		.mount_source = NULL,
 		.message = "",
 		.should_be_present = true
@@ -248,7 +269,7 @@ static int perform_container_test(const char *name, const char *config_items[])
 		goto out;
 
 	/* Check dir mounted */
-	ret = c->mount(c, template_dir, template_dir, "ext4", MS_BIND, NULL, &mnt);
+	ret = c->mount(c, template_dir, template_dir, NULL, MS_BIND, NULL, &mnt);
 	if (ret < 0) {
 		fprintf(stderr, "Failed to mount \"%s\"\n", template_dir);
 		goto out;
