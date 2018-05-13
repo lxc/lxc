@@ -8,3 +8,6 @@ lxc.cap.keep =
 
 # We can't move bind-mounts, so don't use /dev/lxc/
 lxc.tty.dir =
+
+# Setup the default mounts
+lxc.mount.auto = sys:rw
