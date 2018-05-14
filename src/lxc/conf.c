@@ -4082,8 +4082,10 @@ struct lxc_list *get_minimal_idmap(struct lxc_conf *conf)
 	return idmap;
 
 on_error:
-	if (idmap)
+	if (idmap) {
 		lxc_free_idmap(idmap);
+		free(id_map);
+	}
 	if (container_root_uid)
 		free(container_root_uid);
 	if (container_root_gid)
@@ -4497,6 +4499,8 @@ void suggest_default_idmap(void)
 	if (!urange || !grange) {
 		ERROR("You do not have subuids or subgids allocated");
 		ERROR("Unprivileged containers require subuids and subgids");
+		free(gname);
+		free(uname);
 		return;
 	}
 
