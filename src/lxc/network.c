@@ -591,8 +591,10 @@ static char *is_wlan(const char *ifname)
 	fseek(f, 0, SEEK_END);
 	physlen = ftell(f);
 	fseek(f, 0, SEEK_SET);
-	if (physlen < 0)
+	if (physlen < 0) {
+		fclose(f);
 		goto bad;
+	}
 
 	physname = malloc(physlen + 1);
 	if (!physname) {
