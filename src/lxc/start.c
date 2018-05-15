@@ -1087,6 +1087,12 @@ static int do_start(void *data)
 		goto out_warn_father;
 	}
 
+	ret = lxc_ambient_caps_up();
+	if (ret < 0) {
+		SYSERROR("Failed to raise ambient capabilities");
+		goto out_warn_father;
+	}
+
 	ret = sigprocmask(SIG_SETMASK, &handler->oldmask, NULL);
 	if (ret < 0) {
 		SYSERROR("Failed to set signal mask");
@@ -1118,8 +1124,9 @@ static int do_start(void *data)
 	/* Tell the parent task it can begin to configure the container and wait
 	 * for it to finish.
 	 */
-	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CONFIGURE))
-		return -1;
+	ret = lxc_sync_barrier_parent(handler, LXC_SYNC_CONFIGURE);
+	if (ret < 0)
+		goto out_warn_father;
 
 	if (lxc_network_recv_veth_names_from_parent(handler) < 0) {
 		ERROR("Failed to receive veth names from parent");
@@ -1352,6 +1359,12 @@ static int do_start(void *data)
 
 	if (lxc_switch_uid_gid(new_uid, new_gid) < 0)
 		goto out_warn_father;
+
+	ret = lxc_ambient_caps_down();
+	if (ret < 0) {
+		SYSERROR("Failed to clear ambient capabilities");
+		goto out_warn_father;
+	}
 
 	/* After this call, we are in error because this ops should not return
 	 * as it execs.
