@@ -254,8 +254,11 @@ static int btrfs_subvolume_create(const char *path)
 
 	memset(&args, 0, sizeof(args));
 	retlen = strlcpy(args.name, p + 1, BTRFS_SUBVOL_NAME_MAX);
-	if (retlen >= BTRFS_SUBVOL_NAME_MAX)
+	if (retlen >= BTRFS_SUBVOL_NAME_MAX) {
+		free(newfull);
+		close(fd);
 		return -E2BIG;
+	}
 
 	ret = ioctl(fd, BTRFS_IOC_SUBVOL_CREATE, &args);
 	saved_errno = errno;
