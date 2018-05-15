@@ -4082,8 +4082,10 @@ struct lxc_list *get_minimal_idmap(struct lxc_conf *conf)
 	return idmap;
 
 on_error:
-	if (idmap)
+	if (idmap) {
 		lxc_free_idmap(idmap);
+		free(idmap);
+	}
 	if (container_root_uid)
 		free(container_root_uid);
 	if (container_root_gid)
