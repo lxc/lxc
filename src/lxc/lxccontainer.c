@@ -4992,14 +4992,15 @@ static bool do_lxcapi_restore(struct lxc_container *c, char *directory, bool ver
 
 WRAP_API_2(bool, lxcapi_restore, char *, bool)
 
-static int do_lxcapi_mount(struct lxc_container *c,
-			const char *source, const char *target,
-			const char *filesystemtype, unsigned long mountflags,
-			const void *data, struct lxc_mount *mnt) {
+static int do_lxcapi_mount(struct lxc_container *c, const char *source,
+			   const char *target, const char *filesystemtype,
+			   unsigned long mountflags, const void *data,
+			   struct lxc_mount *mnt)
+{
 	char *suff, *sret;
+	size_t len;
 	char template[MAXPATHLEN], path[MAXPATHLEN];
 	pid_t pid, init_pid;
-	size_t len;
 	struct stat sb;
 	int ret = -1, fd = -EBADF;
 
@@ -5032,26 +5033,16 @@ static int do_lxcapi_mount(struct lxc_container *c,
 		}
 	}
 
-	if ((sb.st_mode & S_IFMT) == S_IFDIR) {
+	if (S_ISDIR(sb.st_mode)) {
 		sret = mkdtemp(template);
 		if (!sret) {
 			SYSERROR("Could not create shmounts temporary dir");
-			goto out;
-		}
-		ret = chmod(template, 0);
-		if (ret < 0) {
-			SYSERROR("Could not chmod shmounts temporary dir \"%s\"", template);
 			goto out;
 		}
 	} else {
 		fd = lxc_make_tmpfile(template, false);
 		if (fd < 0) {
 			SYSERROR("Could not create shmounts temporary file");
-			goto out;
-		}
-		ret = fchmod(fd, 0);
-		if (ret < 0) {
-			SYSERROR("Could not chmod shmounts temporary file");
 			goto out;
 		}
 	}
@@ -5070,6 +5061,7 @@ static int do_lxcapi_mount(struct lxc_container *c,
 			SYSERROR("Failed to mount onto \"%s\"", template);
 			_exit(EXIT_FAILURE);
 		}
+		TRACE("Mounted \"%s\" onto \"%s\"", source, template);
 
 		init_pid = do_lxcapi_init_pid(c);
 		if (init_pid < 0) {
@@ -5084,6 +5076,7 @@ static int do_lxcapi_mount(struct lxc_container *c,
 				_exit(EXIT_FAILURE);
 			}
 		}
+
 		if (!switch_to_ns(init_pid, "mnt")) {
 			ERROR("Failed to enter mount namespace");
 			_exit(EXIT_FAILURE);
@@ -5092,6 +5085,7 @@ static int do_lxcapi_mount(struct lxc_container *c,
 		ret = create_mount_target(sb.st_mode, target);
 		if (ret < 0)
 			_exit(EXIT_FAILURE);
+		TRACE("Created mount target \"%s\"", target);
 
 		suff = strrchr(template, '/');
 		if (!suff)
@@ -5104,11 +5098,12 @@ static int do_lxcapi_mount(struct lxc_container *c,
 			_exit(EXIT_FAILURE);
 		}
 
-		ret = mount(path, target, NULL, MS_REC | MS_MOVE, NULL);
+		ret = mount(path, target, NULL, MS_MOVE | MS_REC, NULL);
 		if (ret < 0) {
 			SYSERROR("Failed to move the mount from \"%s\" to \"%s\"", path, target);
 			_exit(EXIT_FAILURE);
 		}
+		TRACE("Moved mount from \"%s\" to \"%s\"", path, target);
 
 		_exit(EXIT_SUCCESS);
 	}
@@ -5127,6 +5122,7 @@ static int do_lxcapi_mount(struct lxc_container *c,
 out:
 	if (fd >= 0)
 		close(fd);
+
 	return ret;
 }
 
