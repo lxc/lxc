@@ -146,16 +146,18 @@ static int perform_container_test(const char *name, const char *config_items[])
 	char *sret;
 	char template_log[sizeof(TEMPLATE)], template_dir[sizeof(TEMPLATE)],
 			device_message[sizeof("Check urandom device injected into "" - ") - 1 + strlen(name) + 1],
-			dir_message[sizeof("Check dir "" injected into "" - ") - 1 + sizeof(TEMPLATE) - 1 + strlen(name) + 1];
+			dir_message[sizeof("Check dir "" injected into "" - ") - 1 + sizeof(TEMPLATE) - 1 + strlen(name) + 1],
+			fs_message[sizeof("Check devtmpfs injected into "" - ") - 1 + strlen(name) + 1];
 	struct lxc_container *c;
 	struct lxc_mount mnt;
 	struct lxc_log log;
 	int ret = -1, dev_msg_size = sizeof("Check urandom device injected into "" - ") - 1 + strlen(name) + 1,
-			dir_msg_size = sizeof("Check dir "" injected into "" - ") - 1 + sizeof(TEMPLATE) - 1 + strlen(name) + 1;
+			dir_msg_size = sizeof("Check dir "" injected into "" - ") - 1 + sizeof(TEMPLATE) - 1 + strlen(name) + 1,
+			fs_msg_size = sizeof("Check devtmpfs injected into "" - ") - 1 + strlen(name) + 1;
 	struct mountinfo_data device = {
-		.mount_root = "/",
+		.mount_root = "/urandom",
 		.mount_point = "/mnt/mount_injection_test_urandom",
-		.fstype = "devtmpfs",
+		.fstype = NULL,
 		.mount_source = "/dev/urandom",
 		.message = "",
 		.should_be_present = true
@@ -163,6 +165,13 @@ static int perform_container_test(const char *name, const char *config_items[])
 		.mount_root = NULL,
 		.mount_point = template_dir,
 		.fstype = NULL,
+		.mount_source = NULL,
+		.message = "",
+		.should_be_present = true
+	}, fs = {
+		.mount_root = "/",
+		.mount_point = "/mnt/mount_injection_test_devtmpfs",
+		.fstype = "devtmpfs",
 		.mount_source = NULL,
 		.message = "",
 		.should_be_present = true
@@ -189,6 +198,13 @@ static int perform_container_test(const char *name, const char *config_items[])
 		exit(EXIT_FAILURE);
 	}
 	dir.message = &dir_message[0];
+
+	ret = snprintf(fs_message, fs_msg_size, "Check devtmpfs injected into %s - ", name);
+	if (ret < 0 || ret >= fs_msg_size) {
+		fprintf(stderr, "Failed to create message for fs\n");
+		exit(EXIT_FAILURE);
+	}
+	fs.message = &fs_message[0];
 
 	/* Setup logging*/
 	strcpy(template_log, TEMPLATE);
@@ -244,7 +260,7 @@ static int perform_container_test(const char *name, const char *config_items[])
 	mnt.version = LXC_MOUNT_API_V1;
 
 	/* Check device mounted */
-	ret = c->mount(c, "/dev/urandom", "/mnt/mount_injection_test_urandom", "devtmpfs", 0, NULL, &mnt);
+	ret = c->mount(c, "/dev/urandom", "/mnt/mount_injection_test_urandom", NULL, MS_BIND, NULL, &mnt);
 	if (ret < 0) {
 		fprintf(stderr, "Failed to mount \"/dev/urandom\"\n");
 		goto out;
@@ -290,6 +306,31 @@ static int perform_container_test(const char *name, const char *config_items[])
 	dir.message = "Unmounted dir -- should be missing now: ";
 	dir.should_be_present = false;
 	ret = check_containers_mountinfo(c, &dir);
+	if (ret < 0)
+		goto out;
+
+	/* Check fs mounted */
+	ret = c->mount(c, NULL, "/mnt/mount_injection_test_devtmpfs", "devtmpfs", 0, NULL, &mnt);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to mount devtmpfs\n");
+		goto out;
+	}
+
+	ret = check_containers_mountinfo(c, &fs);
+	if (ret < 0)
+		goto out;
+
+	/* Check fs unmounted */
+	/* TODO: what about other umount flags? */
+	ret = c->umount(c, "/mnt/mount_injection_test_devtmpfs", MNT_DETACH, &mnt);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to umount2 devtmpfs\n");
+		goto out;
+	}
+
+	fs.message = "Unmounted \"/mnt/mount_injection_test_devtmpfs\" -- should be missing now: ";
+	fs.should_be_present = false;
+	ret = check_containers_mountinfo(c, &fs);
 	if (ret < 0)
 		goto out;
 
@@ -340,8 +381,6 @@ static int do_unpriv_container_test()
 {
 	const char *config_items[] = {
 		"lxc.mount.auto", "shmounts:/tmp/mount_injection_test",
-		"lxc.init.uid", "100000",
-		"lxc.init.gid", "100000",
 		NULL
 	};
 	return perform_container_test(NAME"unprivileged", config_items);
@@ -353,6 +392,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Privileged mount injection test failed\n");
 		return -1;
 	}
+
 	if(do_unpriv_container_test()) {
 		fprintf(stderr, "Unprivileged mount injection test failed\n");
 		return -1;
