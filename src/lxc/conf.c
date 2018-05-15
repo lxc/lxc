@@ -4497,6 +4497,7 @@ void suggest_default_idmap(void)
 	if (!urange || !grange) {
 		ERROR("You do not have subuids or subgids allocated");
 		ERROR("Unprivileged containers require subuids and subgids");
+		free(uname);
 		return;
 	}
 
