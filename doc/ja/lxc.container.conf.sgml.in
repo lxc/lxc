@@ -1065,23 +1065,25 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             ringbuffer. Note that ringbuffer must be at least as big as a
             standard page size. When passed a value smaller than a single page
             size liblxc will allocate a ringbuffer of a single page size. A page
-            size is usually 4kB.
+            size is usually 4KB.
                 -->
-              このオプションを設定すると、liblxc はインメモリのリングバッファを割り当てます。コンテナのコンソールはリングバッファに出力されます。リングバッファは少なくとも標準ページサイズの大きさでなければなりません。ページサイズより小さい値を与えた場合は、liblxc  はページサイズのリングバッファを割り当てます。ページサイズは通常は 4kB です。
+              このオプションを設定すると、liblxc はインメモリのリングバッファを割り当てます。コンテナのコンソールはリングバッファに出力されます。リングバッファは少なくとも標準ページサイズの大きさでなければなりません。ページサイズより小さい値を与えた場合は、liblxc  はページサイズのリングバッファを割り当てます。ページサイズは通常は 4KB です。
 
               <!--
             The keyword 'auto' will cause liblxc to allocate a ringbuffer of
-            128kB.
+            128KB.
                 -->
-              'auto' を指定すると、liblxc は 128kB のリングバッファを割り当てます。
+              'auto' を指定すると、liblxc は 128KB のリングバッファを割り当てます。
 
               <!--
             When manually specifying a size for the ringbuffer the value should
             be a power of 2 when converted to bytes. Valid size prefixes are
-            'kB', 'MB', 'GB'. (Note that all conversions are based on multiples
-            of 1024. That means 'kb' == 'KiB', 'MB' == 'MiB', 'GB' == 'GiB'.)
+            'KB', 'MB', 'GB'. (Note that all conversions are based on multiples
+            of 1024. That means 'Kb' == 'KiB', 'MB' == 'MiB', 'GB' == 'GiB'.
+            Additionally, the case of the suffix is ignored, i.e. 'kB', 'KB' and
+            'Kb' are treated equally.)
                 -->
-              リングバッファサイズを数値指定する場合、値がバイトに変換されるときに 2 の累乗になります。サイズ接頭辞付きの単位として 'kB'、'MB'、'GB' が使えます。(この場合の変換は 1024 の倍数に基づいています。つまり 'kB' == 'KiB'、'MB' == 'MiB'、'GB' == 'GiB' という意味です。)
+              リングバッファサイズを数値指定する場合、値がバイトに変換されるときに 2 の累乗になります。サイズ接頭辞付きの単位として 'KB'、'MB'、'GB' が使えます。(この場合の変換は 1024 の倍数に基づいています。つまり 'KB' == 'KiB'、'MB' == 'MiB'、'GB' == 'GiB' という意味です。加えて、単位の大文字小文字は無視されます。すなわち 'kB'、'KB'、'Kb' は同一に扱われます。)
             </para>
           </listitem>
         </varlistentry>
@@ -1098,23 +1100,25 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <option>lxc.console.logfile</option>. Note that size of the log file
             must be at least as big as a standard page size. When passed a value
             smaller than a single page size liblxc will set the size of log file
-            to a single page size. A page size is usually 4kB.
+            to a single page size. A page size is usually 4KB.
             -->
-              liblxc は <option>lxc.console.logfile</option> で指定したコンソールログのサイズを、このオプションで設定した値に制限します。ログファイルのサイズは少なくとも標準ページサイズでなければなりません。ページサイズ以下の値を設定した場合は、liblxc はログファイルのサイズをページサイズに設定します。ページサイズは通常は 4kB です。
+              liblxc は <option>lxc.console.logfile</option> で指定したコンソールログのサイズを、このオプションで設定した値に制限します。ログファイルのサイズは少なくとも標準ページサイズでなければなりません。ページサイズ以下の値を設定した場合は、liblxc はログファイルのサイズをページサイズに設定します。ページサイズは通常は 4KB です。
 
               <!--
-            The keyword 'auto' will cause liblxc to place a limit of 128kB on
+            The keyword 'auto' will cause liblxc to place a limit of 128KB on
             the log file.
                 -->
-              'auto' を指定すると、liblxc はログファイルのサイズを 128kB に制限します。
+              'auto' を指定すると、liblxc はログファイルのサイズを 128KB に制限します。
 
               <!--
             When manually specifying a size for the log file the value should
             be a power of 2 when converted to bytes. Valid size prefixes are
-            'kB', 'MB', 'GB'. (Note that all conversions are based on multiples
-            of 1024. That means 'kb' == 'KiB', 'MB' == 'MiB', 'GB' == 'GiB'.)
+            'KB', 'MB', 'GB'. (Note that all conversions are based on multiples
+            of 1024. That means 'KB' == 'KiB', 'MB' == 'MiB', 'GB' == 'GiB'.
+            Additionally, the case of the suffix is ignored, i.e. 'kB', 'KB' and
+            'Kb' are treated equally.)
                 -->
-              ログファイルサイズの値を数値指定する場合、値がバイトに変換されるときに 2 の累乗になります。サイズ接頭辞付きの単位として 'kB'、'MB'、'GB' が使えます。(この場合の変換は 1024 の倍数に基づいています。つまり 'kB' == 'KiB'、'MB' == 'MiB'、'GB' == 'GiB' という意味です。)
+              ログファイルサイズの値を数値指定する場合、値がバイトに変換されるときに 2 の累乗になります。サイズ接頭辞付きの単位として 'kB'、'MB'、'GB' が使えます。(この場合の変換は 1024 の倍数に基づいています。つまり 'kB' == 'KiB'、'MB' == 'MiB'、'GB' == 'GiB' という意味です。加えて、単位の大文字小文字は無視されます。すなわち 'kB'、'KB'、'Kb' は同一に扱われます。)
 
               <!--
             If users want to mirror the console ringbuffer on disk they should set
