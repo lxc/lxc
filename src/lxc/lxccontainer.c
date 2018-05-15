@@ -390,84 +390,6 @@ on_error:
 	return ret;
 }
 
-static int ensure_dir(const char *dest) {
-	struct stat sb;
-	int ret = -1;
-
-	if (stat(dest, &sb) == 0) {
-		if ((sb.st_mode & S_IFMT) == S_IFDIR)
-			return 0;
-		ret = unlink(dest);
-		if (ret < 0) {
-			SYSERROR("Failed to remove old \"%s\"", dest);
-			return ret;
-		}
-	}
-
-	ret = mkdir(dest, 0755);
-	if (ret < 0) {
-		SYSERROR("Failed to mkdir \"%s\"", dest);
-		return ret;
-	}
-
-	return 0;
-}
-
-static int ensure_file(const char *dest) {
-	struct stat sb;
-	int fd, ret;
-
-	if (stat(dest, &sb) == 0) {
-		if ((sb.st_mode & S_IFMT) != S_IFDIR)
-			return 0;
-		ret = rmdir(dest);
-		if (ret < 0) {
-			SYSERROR("Failed to remove old \"%s\"", dest);
-			return ret;
-		}
-	}
-
-	fd = creat(dest, 0755);
-	if (fd < 0) {
-		SYSERROR("Failed to mkdir \"%s\"", dest);
-		return ret;
-	}
-	close(fd);
-
-	return 0;
-}
-
-/* @st_mode is the st_mode field of the stat(source) return struct */
-static int create_mount_target(mode_t st_mode, const char *dest) {
-	char *dirdup, *destdirname;
-	int ret = -1;
-
-	dirdup = strdup(dest);
-	if (!dirdup) {
-		SYSERROR("Failed to duplicate target name");
-		return ret;
-	}
-
-	destdirname = dirname(dirdup);
-
-	ret = mkdir_p(destdirname, 0755);
-	if (ret < 0) {
-		SYSERROR("failed to create path: %s", destdirname);
-		free(dirdup);
-		return ret;
-	}
-	free(dirdup);
-
-	switch (st_mode & S_IFMT) {
-	case S_IFDIR:
-		ensure_dir(dest);
-		return 0;
-	default:
-		ensure_file(dest);
-		return 0;
-	}
-}
-
 #define WRAP_API(rettype, fnname)					\
 static rettype fnname(struct lxc_container *c)				\
 {									\
@@ -4992,6 +4914,41 @@ static bool do_lxcapi_restore(struct lxc_container *c, char *directory, bool ver
 
 WRAP_API_2(bool, lxcapi_restore, char *, bool)
 
+/* @st_mode is the st_mode field of the stat(source) return struct */
+static int create_mount_target(const char *dest, mode_t st_mode)
+{
+	char *dirdup, *destdirname;
+	int ret;
+
+	dirdup = strdup(dest);
+	if (!dirdup) {
+		SYSERROR("Failed to duplicate target name \"%s\"", dest);
+		return -1;
+	}
+	destdirname = dirname(dirdup);
+
+	ret = mkdir_p(destdirname, 0755);
+	if (ret < 0) {
+		SYSERROR("Failed to create \"%s\"", destdirname);
+		free(dirdup);
+		return ret;
+	}
+	free(dirdup);
+
+	(void)remove(dest);
+
+	if (S_ISDIR(st_mode))
+		ret = mkdir(dest, 0000);
+	else
+		ret = mknod(dest, S_IFREG | 0000, 0);
+	if (ret < 0) {
+		SYSERROR("Failed to create mount target \"%s\"", dest);
+		return -1;
+	}
+
+	return 0;
+}
+
 static int do_lxcapi_mount(struct lxc_container *c, const char *source,
 			   const char *target, const char *filesystemtype,
 			   unsigned long mountflags, const void *data,
@@ -5082,7 +5039,7 @@ static int do_lxcapi_mount(struct lxc_container *c, const char *source,
 			_exit(EXIT_FAILURE);
 		}
 
-		ret = create_mount_target(sb.st_mode, target);
+		ret = create_mount_target(target, sb.st_mode);
 		if (ret < 0)
 			_exit(EXIT_FAILURE);
 		TRACE("Created mount target \"%s\"", target);
