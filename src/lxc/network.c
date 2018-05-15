@@ -1916,8 +1916,10 @@ int lxc_bridge_attach(const char *bridge, const char *ifname)
 		return -errno;
 
 	retlen = strlcpy(ifr.ifr_name, bridge, IFNAMSIZ);
-	if (retlen >= IFNAMSIZ)
+	if (retlen >= IFNAMSIZ) {
+		close(fd);
 		return -E2BIG;
+	}
 
 	ifr.ifr_name[IFNAMSIZ - 1] = '\0';
 	ifr.ifr_ifindex = index;
