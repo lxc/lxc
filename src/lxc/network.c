@@ -1838,8 +1838,10 @@ int lxc_bridge_attach(const char *bridge, const char *ifname)
 		return -errno;
 
 	retlen = strlcpy(ifr.ifr_name, bridge, IFNAMSIZ);
-	if (retlen >= IFNAMSIZ)
+	if (retlen >= IFNAMSIZ) {
+		close(fd);
 		return -E2BIG;
+	}
 
 	ifr.ifr_ifindex = index;
 	err = ioctl(fd, SIOCBRADDIF, &ifr);
