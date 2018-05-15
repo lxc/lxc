@@ -390,6 +390,84 @@ on_error:
 	return ret;
 }
 
+static int ensure_dir(const char *dest) {
+	struct stat sb;
+	int ret = -1;
+
+	if (stat(dest, &sb) == 0) {
+		if ((sb.st_mode & S_IFMT) == S_IFDIR)
+			return 0;
+		ret = unlink(dest);
+		if (ret < 0) {
+			SYSERROR("Failed to remove old \"%s\"", dest);
+			return ret;
+		}
+	}
+
+	ret = mkdir(dest, 0755);
+	if (ret < 0) {
+		SYSERROR("Failed to mkdir \"%s\"", dest);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int ensure_file(const char *dest) {
+	struct stat sb;
+	int fd, ret;
+
+	if (stat(dest, &sb) == 0) {
+		if ((sb.st_mode & S_IFMT) != S_IFDIR)
+			return 0;
+		ret = rmdir(dest);
+		if (ret < 0) {
+			SYSERROR("Failed to remove old \"%s\"", dest);
+			return ret;
+		}
+	}
+
+	fd = creat(dest, 0755);
+	if (fd < 0) {
+		SYSERROR("Failed to mkdir \"%s\"", dest);
+		return ret;
+	}
+	close(fd);
+
+	return 0;
+}
+
+/* @st_mode is the st_mode field of the stat(source) return struct */
+static int create_mount_target(mode_t st_mode, const char *dest) {
+	char *dirdup, *destdirname;
+	int ret = -1;
+
+	dirdup = strdup(dest);
+	if (!dirdup) {
+		SYSERROR("Failed to duplicate target name");
+		return ret;
+	}
+
+	destdirname = dirname(dirdup);
+
+	ret = mkdir_p(destdirname, 0755);
+	if (ret < 0) {
+		SYSERROR("failed to create path: %s", destdirname);
+		free(dirdup);
+		return ret;
+	}
+	free(dirdup);
+
+	switch (st_mode & S_IFMT) {
+	case S_IFDIR:
+		ensure_dir(dest);
+		return 0;
+	default:
+		ensure_file(dest);
+		return 0;
+	}
+}
+
 #define WRAP_API(rettype, fnname)					\
 static rettype fnname(struct lxc_container *c)				\
 {									\
@@ -4922,6 +5000,7 @@ static int do_lxcapi_mount(struct lxc_container *c,
 	char template[MAXPATHLEN], path[MAXPATHLEN];
 	pid_t pid, init_pid;
 	size_t len;
+	struct stat sb;
 	int ret = -1, fd = -EBADF;
 
 	if (!c || !c->lxc_conf) {
@@ -4941,11 +5020,40 @@ static int do_lxcapi_mount(struct lxc_container *c,
 		goto out;
 	}
 
-	/* Create a temporary dir under the shared mountpoint */
-	sret = mkdtemp(template);
-	if (!sret) {
-		SYSERROR("Could not create shmounts temporary dir");
-		goto out;
+	/* Create a temporary file / dir under the shared mountpoint */
+	if (!source || strcmp(source, "") == 0) {
+		/* If source is not specified, maybe we want to mount a filesystem? */
+		sb.st_mode = S_IFDIR;
+	} else {
+		ret = stat(source, &sb);
+		if (ret < 0) {
+			SYSERROR("Error getting stat info about the source \"%s\"", source);
+			goto out;
+		}
+	}
+
+	if ((sb.st_mode & S_IFMT) == S_IFDIR) {
+		sret = mkdtemp(template);
+		if (!sret) {
+			SYSERROR("Could not create shmounts temporary dir");
+			goto out;
+		}
+		ret = chmod(template, 0);
+		if (ret < 0) {
+			SYSERROR("Could not chmod shmounts temporary dir \"%s\"", template);
+			goto out;
+		}
+	} else {
+		fd = lxc_make_tmpfile(template, false);
+		if (fd < 0) {
+			SYSERROR("Could not create shmounts temporary file");
+			goto out;
+		}
+		ret = fchmod(fd, 0);
+		if (ret < 0) {
+			SYSERROR("Could not chmod shmounts temporary file");
+			goto out;
+		}
 	}
 
 	/* Do the fork */
@@ -4959,7 +5067,7 @@ static int do_lxcapi_mount(struct lxc_container *c,
 		/* Do the mount */
 		ret = mount(source, template, filesystemtype, mountflags, data);
 		if (ret < 0) {
-			SYSERROR("Failed to mount \"%s\" onto \"%s\"", source, template);
+			SYSERROR("Failed to mount onto \"%s\"", template);
 			_exit(EXIT_FAILURE);
 		}
 
@@ -4981,6 +5089,10 @@ static int do_lxcapi_mount(struct lxc_container *c,
 			_exit(EXIT_FAILURE);
 		}
 
+		ret = create_mount_target(sb.st_mode, target);
+		if (ret < 0)
+			_exit(EXIT_FAILURE);
+
 		suff = strrchr(template, '/');
 		if (!suff)
 			_exit(EXIT_FAILURE);
@@ -4989,12 +5101,6 @@ static int do_lxcapi_mount(struct lxc_container *c,
 		ret = snprintf(path, len + 1, "%s%s", c->lxc_conf->lxc_shmount.path_cont, suff);
 		if (ret < 0 || (size_t)ret >= len + 1) {
 			SYSERROR("Error writing container mountpoint name");
-			_exit(EXIT_FAILURE);
-		}
-
-		ret = mkdir_p(target, 0700);
-		if (ret < 0) {
-			ERROR("Failed to create container temp mountpoint");
 			_exit(EXIT_FAILURE);
 		}
 
