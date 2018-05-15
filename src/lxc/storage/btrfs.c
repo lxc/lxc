@@ -533,6 +533,7 @@ static int btrfs_do_destroy_subvol(const char *path)
 	retlen = strlcpy(args.name, p+1, BTRFS_SUBVOL_NAME_MAX);
 	if (retlen >= BTRFS_SUBVOL_NAME_MAX) {
 		free(newfull);
+		close(fd);
 		return -E2BIG;
 	}
 
