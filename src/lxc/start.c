@@ -1049,6 +1049,12 @@ static int do_start(void *data)
 		goto out_warn_father;
 	}
 
+	ret = lxc_ambient_caps_up();
+	if (ret < 0) {
+		SYSERROR("Failed to raise ambient capabilities");
+		goto out_warn_father;
+	}
+
 	ret = sigprocmask(SIG_SETMASK, &handler->oldmask, NULL);
 	if (ret < 0) {
 		SYSERROR("Failed to set signal mask");
@@ -1081,7 +1087,7 @@ static int do_start(void *data)
 	 */
 	ret = lxc_sync_barrier_parent(handler, LXC_SYNC_CONFIGURE);
 	if (ret < 0)
-		return -1;
+		goto out_error;
 
 	ret = lxc_network_recv_veth_names_from_parent(handler);
 	if (ret < 0) {
@@ -1347,6 +1353,12 @@ static int do_start(void *data)
 	ret = lxc_switch_uid_gid(new_uid, new_gid);
 	if (ret < 0)
 		goto out_warn_father;
+
+	ret = lxc_ambient_caps_down();
+	if (ret < 0) {
+		SYSERROR("Failed to clear ambient capabilities");
+		goto out_warn_father;
+	}
 
 	/* After this call, we are in error because this ops should not return
 	 * as it execs.
