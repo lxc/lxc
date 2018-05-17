@@ -4500,6 +4500,7 @@ void suggest_default_idmap(void)
 		ERROR("You do not have subuids or subgids allocated");
 		ERROR("Unprivileged containers require subuids and subgids");
 		free(uname);
+		free(gname);
 		return;
 	}
 
