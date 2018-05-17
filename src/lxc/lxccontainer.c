@@ -359,6 +359,7 @@ int lxc_container_put(struct lxc_container *c)
 
 	container_mem_unlock(c);
 
+	lxc_log_free_container_name();
 	return 0;
 }
 
@@ -4782,6 +4783,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 		goto err;
 	}
 
+	lxc_log_set_container_name(name);
 	if (ongoing_create(c) == 2) {
 		ERROR("Failed to complete container creation for %s", c->name);
 		container_destroy(c, NULL);

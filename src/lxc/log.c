@@ -64,7 +64,12 @@ static int lxc_loglevel_specified;
 
 static char log_prefix[LXC_LOG_PREFIX_SIZE] = "lxc";
 static char *log_fname = NULL;
-static char *log_vmname = NULL;
+
+#ifdef HAVE_TLS
+static __thread char *log_container_name;
+#else
+static char *log_container_name;
+#endif
 
 lxc_log_define(lxc_log, lxc);
 
@@ -120,8 +125,8 @@ static int log_append_syslog(const struct lxc_log_appender *appender,
 
 	syslog(lxc_log_priority_to_syslog(event->priority),
 		"%s%s %s - %s:%s:%d - %s" ,
-		log_vmname ? log_vmname : "",
-		log_vmname ? ":" : "",
+		log_container_name ? log_container_name : "",
+		log_container_name ? ":" : "",
 		event->category,
 		event->locinfo->file, event->locinfo->func,
 		event->locinfo->line,
@@ -137,7 +142,7 @@ static int log_append_stderr(const struct lxc_log_appender *appender,
 	if (event->priority < LXC_LOG_LEVEL_ERROR)
 		return 0;
 
-	fprintf(stderr, "%s: %s%s", log_prefix, log_vmname ? log_vmname : "", log_vmname ? ": " : "");
+	fprintf(stderr, "%s: %s%s", log_prefix, log_container_name ? log_container_name : "", log_container_name ? ": " : "");
 	fprintf(stderr, "%s: %s: %d ", event->locinfo->file, event->locinfo->func, event->locinfo->line);
 	vfprintf(stderr, event->fmt, *event->vap);
 	fprintf(stderr, "\n");
@@ -288,8 +293,8 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 	n = snprintf(buffer, sizeof(buffer),
 			"%s%s%s %s %-8s %s - %s:%s:%d - ",
 			log_prefix,
-			log_vmname ? " " : "",
-			log_vmname ? log_vmname : "",
+			log_container_name ? " " : "",
+			log_container_name ? log_container_name : "",
 			date_time,
 			lxc_log_priority_to_string(event->priority),
 			event->category,
@@ -461,8 +466,8 @@ static char *build_log_path(const char *name, const char *lxcpath)
 extern void lxc_log_close(void)
 {
 	closelog();
-	free(log_vmname);
-	log_vmname = NULL;
+	free(log_container_name);
+	log_container_name = NULL;
 	if (lxc_log_fd == -1)
 		return;
 	close(lxc_log_fd);
@@ -561,6 +566,18 @@ extern void lxc_log_enable_syslog(void)
 	syslog_enable = 1;
 }
 
+extern void lxc_log_set_container_name(const char *name)
+{
+	if (log_container_name)
+		free(log_container_name);
+	log_container_name = strdup(name);
+}
+
+extern void lxc_log_free_container_name()
+{
+	free(log_container_name);
+}
+
 /*
  * lxc_log_init:
  * Called from lxc front-end programs (like lxc-create, lxc-start) to
@@ -593,7 +610,7 @@ extern int lxc_log_init(struct lxc_log *log)
 		lxc_log_set_prefix(log->prefix);
 
 	if (log->name)
-		log_vmname = strdup(log->name);
+		log_container_name = strdup(log->name);
 
 	if (log->file) {
 		if (strcmp(log->file, "none") == 0)
