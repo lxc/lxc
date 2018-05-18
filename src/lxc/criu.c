@@ -171,7 +171,7 @@ static int cmp_version(const char *v1, const char *v2)
 	return -1;
 }
 
-static void exec_criu(struct criu_opts *opts)
+static void exec_criu(struct cgroup_ops *cgroup_ops, struct criu_opts *opts)
 {
 	char **argv, log[PATH_MAX];
 	int static_args = 23, argc = 0, i, ret;
@@ -190,7 +190,7 @@ static void exec_criu(struct criu_opts *opts)
 	 * /actual/ root cgroup so that lxcfs thinks criu has enough rights to
 	 * see all cgroups.
 	 */
-	if (!cgroup_escape()) {
+	if (!cgroup_ops->escape(cgroup_ops)) {
 		ERROR("failed to escape cgroups");
 		return;
 	}
@@ -248,8 +248,8 @@ static void exec_criu(struct criu_opts *opts)
 		return;
 	}
 
-	if (cgroup_num_hierarchies() > 0)
-		static_args += 2 * cgroup_num_hierarchies();
+	if (cgroup_ops->num_hierarchies(cgroup_ops) > 0)
+		static_args += 2 * cgroup_ops->num_hierarchies(cgroup_ops);
 
 	if (opts->user->verbose)
 		static_args++;
@@ -306,11 +306,11 @@ static void exec_criu(struct criu_opts *opts)
 	DECLARE_ARG("-o");
 	DECLARE_ARG(log);
 
-	for (i = 0; i < cgroup_num_hierarchies(); i++) {
+	for (i = 0; i < cgroup_ops->num_hierarchies(cgroup_ops); i++) {
 		char **controllers = NULL, *fullname;
 		char *path, *tmp;
 
-		if (!cgroup_get_hierarchies(i, &controllers)) {
+		if (!cgroup_ops->get_hierarchies(cgroup_ops, i, &controllers)) {
 			ERROR("failed to get hierarchy %d", i);
 			goto err;
 		}
@@ -328,7 +328,7 @@ static void exec_criu(struct criu_opts *opts)
 		} else {
 			const char *p;
 
-			p = cgroup_get_cgroup(opts->handler, controllers[0]);
+			p = cgroup_ops->get_cgroup(cgroup_ops, controllers[0]);
 			if (!p) {
 				ERROR("failed to get cgroup path for %s", controllers[0]);
 				goto err;
@@ -937,6 +937,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 	struct lxc_handler *handler;
 	int status = 0;
 	int pipes[2] = {-1, -1};
+	struct cgroup_ops *cgroup_ops;
 
 	/* Try to detach from the current controlling tty if it exists.
 	 * Othwerise, lxc_init (via lxc_console) will attach the container's
@@ -958,12 +959,12 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 	if (lxc_init(c->name, handler) < 0)
 		goto out;
 
-	if (!cgroup_init(handler)) {
-		ERROR("failed initing cgroups");
+	cgroup_ops = cgroup_init(NULL);
+	if (!cgroup_ops)
 		goto out_fini_handler;
-	}
+	handler->cgroup_ops = cgroup_ops;
 
-	if (!cgroup_create(handler)) {
+	if (!cgroup_ops->create(cgroup_ops, handler)) {
 		ERROR("failed creating groups");
 		goto out_fini_handler;
 	}
@@ -1052,7 +1053,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		os.console_name = c->lxc_conf->console.name;
 
 		/* exec_criu() returning is an error */
-		exec_criu(&os);
+		exec_criu(cgroup_ops, &os);
 		umount(rootfs->mount);
 		rmdir(rootfs->mount);
 		goto out_fini_handler;
@@ -1253,16 +1254,21 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 	if (pid == 0) {
 		struct criu_opts os;
 		struct lxc_handler h;
+		struct cgroup_ops *cgroup_ops;
 
 		close(criuout[0]);
 
 		lxc_zero_handler(&h);
 
 		h.name = c->name;
-		if (!cgroup_init(&h)) {
+
+		cgroup_ops = cgroup_init(NULL);
+		if (!cgroup_ops) {
 			ERROR("failed to cgroup_init()");
 			_exit(EXIT_FAILURE);
+			return -1;
 		}
+		h.cgroup_ops = cgroup_ops;
 
 		os.pipefd = criuout[1];
 		os.action = mode;
@@ -1278,7 +1284,7 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 		}
 
 		/* exec_criu() returning is an error */
-		exec_criu(&os);
+		exec_criu(cgroup_ops, &os);
 		free(criu_version);
 		_exit(EXIT_FAILURE);
 	} else {

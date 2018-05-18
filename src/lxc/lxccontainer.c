@@ -3141,6 +3141,7 @@ WRAP_API_1(bool, lxcapi_set_config_path, const char *)
 static bool do_lxcapi_set_cgroup_item(struct lxc_container *c, const char *subsys, const char *value)
 {
 	int ret;
+	struct cgroup_ops *cgroup_ops;
 
 	if (!c)
 		return false;
@@ -3148,12 +3149,19 @@ static bool do_lxcapi_set_cgroup_item(struct lxc_container *c, const char *subsy
 	if (is_stopped(c))
 		return false;
 
+	cgroup_ops = cgroup_init(NULL);
+	if (!cgroup_ops)
+		return false;
+
 	if (container_disk_lock(c))
 		return false;
 
-	ret = lxc_cgroup_set(subsys, value, c->name, c->config_path);
+	ret = cgroup_ops->set(cgroup_ops, subsys, value, c->name, c->config_path);
 
 	container_disk_unlock(c);
+
+	cgroup_exit(cgroup_ops);
+
 	return ret == 0;
 }
 
@@ -3162,6 +3170,7 @@ WRAP_API_2(bool, lxcapi_set_cgroup_item, const char *, const char *)
 static int do_lxcapi_get_cgroup_item(struct lxc_container *c, const char *subsys, char *retv, int inlen)
 {
 	int ret;
+	struct cgroup_ops *cgroup_ops;
 
 	if (!c)
 		return -1;
@@ -3169,12 +3178,20 @@ static int do_lxcapi_get_cgroup_item(struct lxc_container *c, const char *subsys
 	if (is_stopped(c))
 		return -1;
 
+	cgroup_ops = cgroup_init(NULL);
+	if (!cgroup_ops)
+		return -1;
+
 	if (container_disk_lock(c))
 		return -1;
 
-	ret = lxc_cgroup_get(subsys, retv, inlen, c->name, c->config_path);
+	ret = cgroup_ops->get(cgroup_ops, subsys, retv, inlen, c->name,
+			      c->config_path);
 
 	container_disk_unlock(c);
+
+	cgroup_exit(cgroup_ops);
+
 	return ret;
 }
 

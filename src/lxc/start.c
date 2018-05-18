@@ -849,6 +849,13 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	}
 	TRACE("Chowned console");
 
+	handler->cgroup_ops = cgroup_init(handler);
+	if (!handler->cgroup_ops) {
+		ERROR("Failed to initialize cgroup driver");
+		goto out_restore_sigmask;
+	}
+	TRACE("Initialized cgroup driver");
+
 	INFO("Container \"%s\" is initialized", name);
 	return 0;
 
@@ -871,6 +878,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	struct lxc_list *cur, *next;
 	char *namespaces[LXC_NS_MAX + 1];
 	size_t namespace_count = 0;
+	struct cgroup_ops *cgroup_ops = handler->cgroup_ops;
 
 	/* The STOPPING state is there for future cleanup code which can take
 	 * awhile.
@@ -935,7 +943,8 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	while (namespace_count--)
 		free(namespaces[namespace_count]);
 
-	cgroup_destroy(handler);
+	cgroup_ops->destroy(cgroup_ops, handler);
+	cgroup_exit(cgroup_ops);
 
 	if (handler->conf->reboot == 0) {
 		/* For all new state clients simply close the command socket.
@@ -1506,8 +1515,9 @@ static int lxc_spawn(struct lxc_handler *handler)
 	struct lxc_list *id_map;
 	const char *name = handler->name;
 	const char *lxcpath = handler->lxcpath;
-	bool cgroups_connected = false, share_ns = false;
+	bool share_ns = false;
 	struct lxc_conf *conf = handler->conf;
+	struct cgroup_ops *cgroup_ops = handler->cgroup_ops;
 
 	id_map = &conf->id_map;
 	wants_to_map_ids = !lxc_list_empty(id_map);
@@ -1567,14 +1577,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	if (!cgroup_init(handler)) {
-		ERROR("Failed initializing cgroup support");
-		goto out_delete_net;
-	}
-
-	cgroups_connected = true;
-
-	if (!cgroup_create(handler)) {
+	if (!cgroup_ops->create(cgroup_ops, handler)) {
 		ERROR("Failed creating cgroups");
 		goto out_delete_net;
 	}
@@ -1663,15 +1666,15 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (ret < 0)
 		goto out_delete_net;
 
-	if (!cgroup_setup_limits(handler, false)) {
+	if (!cgroup_ops->setup_limits(cgroup_ops, handler->conf, false)) {
 		ERROR("Failed to setup cgroup limits for container \"%s\"", name);
 		goto out_delete_net;
 	}
 
-	if (!cgroup_enter(handler))
+	if (!cgroup_ops->enter(cgroup_ops, handler->pid))
 		goto out_delete_net;
 
-	if (!cgroup_chown(handler))
+	if (!cgroup_ops->chown(cgroup_ops, handler->conf))
 		goto out_delete_net;
 
 	/* Now we're ready to preserve the network namespace */
@@ -1736,14 +1739,11 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (ret < 0)
 		goto out_delete_net;
 
-	if (!cgroup_setup_limits(handler, true)) {
+	if (!cgroup_ops->setup_limits(cgroup_ops, handler->conf, true)) {
 		ERROR("Failed to setup legacy device cgroup controller limits");
 		goto out_delete_net;
 	}
 	TRACE("Set up legacy device cgroup controller limits");
-
-	cgroup_disconnect();
-	cgroups_connected = false;
 
 	if (handler->ns_clone_flags & CLONE_NEWCGROUP) {
 		/* Now we're ready to preserve the cgroup namespace */
@@ -1821,9 +1821,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 	return 0;
 
 out_delete_net:
-	if (cgroups_connected)
-		cgroup_disconnect();
-
 	if (handler->ns_clone_flags & CLONE_NEWNET)
 		lxc_delete_network(handler);
 
