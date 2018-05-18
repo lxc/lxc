@@ -76,6 +76,7 @@ struct lxc_cgroup {
 		struct /* meta */ {
 			char *controllers;
 			char *dir;
+			bool keep;
 		};
 	};
 };
