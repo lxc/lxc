@@ -358,4 +358,6 @@ extern int lxc_log_get_level(void);
 extern bool lxc_log_has_valid_level(void);
 extern const char *lxc_log_get_prefix(void);
 extern void lxc_log_options_no_override();
+extern void lxc_log_set_container_name(const char *name);
+extern void lxc_log_free_container_name();
 #endif
