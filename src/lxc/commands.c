@@ -473,11 +473,12 @@ static int lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
 {
 	const char *path;
 	struct lxc_cmd_rsp rsp;
+	struct cgroup_ops *cgroup_ops = handler->cgroup_ops;
 
 	if (req->datalen > 0)
-		path = cgroup_get_cgroup(handler, req->data);
+		path = cgroup_ops->get_cgroup(cgroup_ops, req->data);
 	else
-		path = cgroup_get_cgroup(handler, NULL);
+		path = cgroup_ops->get_cgroup(cgroup_ops, NULL);
 	if (!path)
 		return -1;
 
@@ -637,6 +638,7 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 {
 	struct lxc_cmd_rsp rsp;
 	int stopsignal = SIGKILL;
+	struct cgroup_ops *cgroup_ops = handler->cgroup_ops;
 
 	if (handler->conf->stopsignal)
 		stopsignal = handler->conf->stopsignal;
@@ -648,7 +650,7 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 		 * lxc_unfreeze() would do another cmd (GET_CGROUP) which would
 		 * deadlock us.
 		 */
-		if (cgroup_unfreeze(handler))
+		if (cgroup_ops->unfreeze(cgroup_ops))
 			return 0;
 
 		ERROR("Failed to unfreeze container \"%s\"", handler->name);
