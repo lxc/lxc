@@ -650,19 +650,13 @@ unsigned long add_required_remount_flags(const char *s, const char *d,
 
 static int add_shmount_to_list(struct lxc_conf *conf) {
 	char new_mount[MAXPATHLEN];
-	size_t len_mount;
 	/* Offset for the leading '/' since the path_cont
 	 * is absolute inside the container */
 	int ret = -1, offset = 1;
 
-	/* +1 for the separating whitespace */
-	len_mount = strlen(conf->shmount.path_host) + 1
-			+ strlen(conf->shmount.path_cont) - offset
-			+ sizeof(" none bind,create=dir 0 0") - 1;
-
-	ret = snprintf(new_mount, len_mount + 1, "%s %s none bind,create=dir 0 0",
+	ret = snprintf(new_mount, sizeof(new_mount), "%s %s none bind,create=dir 0 0",
 				   conf->shmount.path_host, conf->shmount.path_cont + offset);
-	if (ret < 0 || (size_t)ret >= len_mount + 1)
+	if (ret < 0 || (size_t)ret >= sizeof(new_mount))
 		return -1;
 
 	ret = add_elem_to_mount_list(new_mount, conf);
