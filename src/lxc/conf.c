@@ -2702,13 +2702,13 @@ int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 			buflen = sizeof("deny\n") - 1;
 			errno = 0;
 			ret = lxc_write_nointr(fd, "deny\n", buflen);
+			close(fd);
 			if (ret != buflen) {
 				SYSERROR("Failed to write \"deny\" to "
 					 "\"/proc/%d/setgroups\"", pid);
-				close(fd);
 				return -1;
 			}
-			close(fd);
+			TRACE("Wrote \"deny\" to \"/proc/%d/setgroups\"", pid);
 		}
 	}
 
@@ -2725,13 +2725,12 @@ int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 
 	errno = 0;
 	ret = lxc_write_nointr(fd, buf, buf_size);
+	close(fd);
 	if (ret != buf_size) {
 		SYSERROR("Failed to write %cid mapping to \"%s\"",
 			 idtype == ID_TYPE_UID ? 'u' : 'g', path);
-		close(fd);
 		return -1;
 	}
-	close(fd);
 
 	return 0;
 }
