@@ -580,18 +580,20 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 		cur_rule_arch = lxc_seccomp_arch_all;
 
 		ctx.architectures[0] = SCMP_ARCH_ARM;
-		ctx.contexts[0] = get_new_ctx(lxc_seccomp_arch_arm,
-					      default_policy_action,
-					      &ctx.needs_merge[0]);
+		ctx.contexts[0] =
+		    get_new_ctx(lxc_seccomp_arch_arm, default_policy_action,
+				&ctx.needs_merge[0]);
 		if (!ctx.contexts[0])
 			goto bad;
 
+#ifdef SCMP_ARCH_AARCH64
 		ctx.architectures[2] = SCMP_ARCH_AARCH64;
-		ctx.contexts[2] = get_new_ctx(lxc_seccomp_arch_arm64,
-					      default_policy_action,
-					      &ctx.needs_merge[2]);
+		ctx.contexts[2] =
+		    get_new_ctx(lxc_seccomp_arch_arm64, default_policy_action,
+				&ctx.needs_merge[2]);
 		if (!ctx.contexts[2])
 			goto bad;
+#endif
 #endif
 #ifdef SCMP_ARCH_MIPS
 	} else if (native_arch == lxc_seccomp_arch_mips64) {
