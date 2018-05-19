@@ -1704,12 +1704,12 @@ static int set_config_mount_auto(const char *key, const char *value,
 		lxc_conf->auto_mounts &= ~allowed_auto_mounts[i].mask;
 		lxc_conf->auto_mounts |= allowed_auto_mounts[i].flag;
 		if (is_shmounts) {
-			lxc_conf->lxc_shmount.path_host = strdup(token + (sizeof("shmounts:") - 1));
-			if (strcmp(lxc_conf->lxc_shmount.path_host, "") == 0) {
+			lxc_conf->shmount.path_host = strdup(token + (sizeof("shmounts:") - 1));
+			if (strcmp(lxc_conf->shmount.path_host, "") == 0) {
 				ERROR("Invalid shmounts path: empty");
 				break;
 			}
-			lxc_conf->lxc_shmount.path_cont = strdup("/dev/.lxc-mounts");
+			lxc_conf->shmount.path_cont = strdup("/dev/.lxc-mounts");
 		}
 	}
 

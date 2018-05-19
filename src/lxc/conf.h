@@ -371,12 +371,12 @@ struct lxc_conf {
 	/* procs */
 	struct lxc_list procs;
 
-	struct lxc_shmount {
+	struct shmount {
 		/* Absolute path to the shared mount point on the host */
 		char *path_host;
 		/* Absolute path (in the container) to the shared mount point */
 		char *path_cont;
-	} lxc_shmount;
+	} shmount;
 };
 
 extern int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,

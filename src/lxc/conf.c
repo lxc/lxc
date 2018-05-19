@@ -656,12 +656,12 @@ static int add_shmount_to_list(struct lxc_conf *conf) {
 	int ret = -1, offset = 1;
 
 	/* +1 for the separating whitespace */
-	len_mount = strlen(conf->lxc_shmount.path_host) + 1
-			+ strlen(conf->lxc_shmount.path_cont) - offset
+	len_mount = strlen(conf->shmount.path_host) + 1
+			+ strlen(conf->shmount.path_cont) - offset
 			+ sizeof(" none bind,create=dir 0 0") - 1;
 
 	ret = snprintf(new_mount, len_mount + 1, "%s %s none bind,create=dir 0 0",
-				   conf->lxc_shmount.path_host, conf->lxc_shmount.path_cont + offset);
+				   conf->shmount.path_host, conf->shmount.path_cont + offset);
 	if (ret < 0 || (size_t)ret >= len_mount + 1)
 		return -1;
 
@@ -2747,8 +2747,9 @@ struct lxc_conf *lxc_conf_init(void)
 	new->lsm_aa_profile = NULL;
 	new->lsm_se_context = NULL;
 	new->tmp_umount_proc = false;
-	new->lxc_shmount.path_host = NULL;
-	new->lxc_shmount.path_cont = NULL;
+	new->tmp_umount_proc = 0;
+	new->shmount.path_host = NULL;
+	new->shmount.path_cont = NULL;
 
 	/* if running in a new user namespace, init and COMMAND
 	 * default to running as UID/GID 0 when using lxc-execute */
@@ -4076,8 +4077,8 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_procs(conf, "lxc.proc");
 	free(conf->cgroup_meta.dir);
 	free(conf->cgroup_meta.controllers);
-	free(conf->lxc_shmount.path_host);
-	free(conf->lxc_shmount.path_cont);
+	free(conf->shmount.path_host);
+	free(conf->shmount.path_cont);
 	free(conf);
 }
 

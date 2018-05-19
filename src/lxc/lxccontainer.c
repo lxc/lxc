@@ -4966,13 +4966,13 @@ static int do_lxcapi_mount(struct lxc_container *c, const char *source,
 		return -EINVAL;
 	}
 
-	if (!c->lxc_conf->lxc_shmount.path_host) {
+	if (!c->lxc_conf->shmount.path_host) {
 		ERROR("Host path to shared mountpoint must be specified in the config\n");
 		return -EINVAL;
 	}
-	len = strlen(c->lxc_conf->lxc_shmount.path_host) + sizeof("/.lxcmount_XXXXXX") - 1;
+	len = strlen(c->lxc_conf->shmount.path_host) + sizeof("/.lxcmount_XXXXXX") - 1;
 
-	ret = snprintf(template, len + 1, "%s/.lxcmount_XXXXXX", c->lxc_conf->lxc_shmount.path_host);
+	ret = snprintf(template, len + 1, "%s/.lxcmount_XXXXXX", c->lxc_conf->shmount.path_host);
 	if (ret < 0 || (size_t)ret >= len + 1) {
 		SYSERROR("Error writing shmounts tempdir name");
 		goto out;
@@ -5048,8 +5048,8 @@ static int do_lxcapi_mount(struct lxc_container *c, const char *source,
 		if (!suff)
 			_exit(EXIT_FAILURE);
 
-		len = strlen(c->lxc_conf->lxc_shmount.path_cont) + sizeof("/.lxcmount_XXXXXX") - 1;
-		ret = snprintf(path, len + 1, "%s%s", c->lxc_conf->lxc_shmount.path_cont, suff);
+		len = strlen(c->lxc_conf->shmount.path_cont) + sizeof("/.lxcmount_XXXXXX") - 1;
+		ret = snprintf(path, len + 1, "%s%s", c->lxc_conf->shmount.path_cont, suff);
 		if (ret < 0 || (size_t)ret >= len + 1) {
 			SYSERROR("Error writing container mountpoint name");
 			_exit(EXIT_FAILURE);
@@ -5087,7 +5087,7 @@ WRAP_API_6(int, lxcapi_mount, const char *, const char *, const char *,
 	   unsigned long, const void *, struct lxc_mount *)
 
 static int do_lxcapi_umount(struct lxc_container *c, const char *target,
-			    unsigned long mountflags, struct lxc_mount *mnt)
+				unsigned long flags, struct lxc_mount *mnt)
 {
 	pid_t pid, init_pid;
 	int ret = -1;
@@ -5125,7 +5125,7 @@ static int do_lxcapi_umount(struct lxc_container *c, const char *target,
 		}
 
 		/* Do the unmount */
-		ret = umount2(target, mountflags);
+		ret = umount2(target, flags);
 		if (ret < 0) {
 			SYSERROR("Failed to umount \"%s\"", target);
 			_exit(EXIT_FAILURE);

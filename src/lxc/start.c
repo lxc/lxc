@@ -1536,14 +1536,14 @@ static int lxc_setup_shmount(struct lxc_conf *conf) {
 
 	/* Construct the shmount path under the container root */
 	/* +1 for slash */
-	len_cont = strlen(conf->rootfs.mount) + 1 + strlen(conf->lxc_shmount.path_cont);
+	len_cont = strlen(conf->rootfs.mount) + 1 + strlen(conf->shmount.path_cont);
 	/* +1 for the terminating '\0' */
 	full_cont_path = malloc(len_cont + 1);
 	if(!full_cont_path) {
 		SYSERROR("Not enough memory");
 		return -ENOMEM;
 	}
-	ret = snprintf(full_cont_path, len_cont + 1, "%s/%s", conf->rootfs.mount, conf->lxc_shmount.path_cont);
+	ret = snprintf(full_cont_path, len_cont + 1, "%s/%s", conf->rootfs.mount, conf->shmount.path_cont);
 	if (ret < 0 || ret >= len_cont + 1) {
 		SYSERROR("Failed to create filename");
 		free(full_cont_path);
@@ -1551,16 +1551,16 @@ static int lxc_setup_shmount(struct lxc_conf *conf) {
 	}
 
 	/* Check if shmount point is already set up */
-	if (is_shared_mountpoint(conf->lxc_shmount.path_host)) {
-		INFO("Path \"%s\" is already MS_SHARED. Reusing", conf->lxc_shmount.path_host);
+	if (is_shared_mountpoint(conf->shmount.path_host)) {
+		INFO("Path \"%s\" is already MS_SHARED. Reusing", conf->shmount.path_host);
 		free(full_cont_path);
 		return 0;
 	}
 
 	/* Create host and cont mount paths */
-	ret = mkdir_p(conf->lxc_shmount.path_host, 0711);
+	ret = mkdir_p(conf->shmount.path_host, 0711);
 	if (ret < 0 && errno != EEXIST) {
-		SYSERROR("Failed to create directory \"%s\"", conf->lxc_shmount.path_host);
+		SYSERROR("Failed to create directory \"%s\"", conf->shmount.path_host);
 		free(full_cont_path);
 		return ret;
 	}
@@ -1573,22 +1573,22 @@ static int lxc_setup_shmount(struct lxc_conf *conf) {
 	}
 
 	/* Prepare host mountpoint */
-	ret = mount("tmpfs", conf->lxc_shmount.path_host, "tmpfs",
+	ret = mount("tmpfs", conf->shmount.path_host, "tmpfs",
 				0, "size=100k,mode=0711");
 	if (ret < 0) {
-		SYSERROR("Failed to mount \"%s\"", conf->lxc_shmount.path_host);
+		SYSERROR("Failed to mount \"%s\"", conf->shmount.path_host);
 		free(full_cont_path);
 		return ret;
 	}
-	ret = mount(conf->lxc_shmount.path_host, conf->lxc_shmount.path_host, "none",
+	ret = mount(conf->shmount.path_host, conf->shmount.path_host, "none",
 				MS_REC | MS_SHARED, "");
 	if (ret < 0) {
-		SYSERROR("Failed to make shared \"%s\"", conf->lxc_shmount.path_host);
+		SYSERROR("Failed to make shared \"%s\"", conf->shmount.path_host);
 		free(full_cont_path);
 		return ret;
 	}
 
-	INFO("Made shared mount point \"%s\"", conf->lxc_shmount.path_host);
+	INFO("Made shared mount point \"%s\"", conf->shmount.path_host);
 	free(full_cont_path);
 	return 0;
 }
@@ -1670,12 +1670,12 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	if (conf->lxc_shmount.path_host && !conf->lxc_shmount.path_cont) {
+	if (conf->shmount.path_host && !conf->shmount.path_cont) {
 			ERROR("Missing the container side path to the shared mount point");
 			lxc_sync_fini(handler);
 			return -1;
 	}
-	if (conf->lxc_shmount.path_host) {
+	if (conf->shmount.path_host) {
 		ret = lxc_setup_shmount(conf);
 		if (ret < 0) {
 			ERROR("Failed to setup shared mount point");
