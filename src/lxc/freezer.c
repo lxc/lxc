@@ -42,27 +42,6 @@
 
 lxc_log_define(lxc_freezer, lxc);
 
-lxc_state_t freezer_state(const char *name, const char *lxcpath)
-{
-	int ret;
-	char v[100];
-	struct cgroup_ops *cgroup_ops;
-
-	cgroup_ops = cgroup_init(NULL);
-	if (!cgroup_ops)
-		return -1;
-
-	ret = cgroup_ops->get(cgroup_ops, "freezer.state", v, sizeof(v), name, lxcpath);
-	cgroup_exit(cgroup_ops);
-	if (ret < 0)
-		return -1;
-
-	v[99] = '\0';
-	v[lxc_char_right_gc(v, strlen(v))] = '\0';
-
-	return lxc_str2state(v);
-}
-
 static int do_freeze_thaw(bool freeze, const char *name, const char *lxcpath)
 {
 	int ret;

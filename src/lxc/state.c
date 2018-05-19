@@ -72,12 +72,7 @@ lxc_state_t lxc_str2state(const char *state)
 
 lxc_state_t lxc_getstate(const char *name, const char *lxcpath)
 {
-	extern lxc_state_t freezer_state(const char *name, const char *lxcpath);
-
-	lxc_state_t state = freezer_state(name, lxcpath);
-	if (state != FROZEN && state != FREEZING)
-		state = lxc_cmd_get_state(name, lxcpath);
-	return state;
+	return lxc_cmd_get_state(name, lxcpath);
 }
 
 static int fillwaitedstates(const char *strstates, lxc_state_t *states)
