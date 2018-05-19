@@ -1689,8 +1689,8 @@ static int set_config_mount_auto(const char *key, const char *value,
 			if (!strcmp(allowed_auto_mounts[i].token, token))
 				break;
 
-			if (strcmp("shmounts:", allowed_auto_mounts[i].token) == 0
-					&& strncmp("shmounts:", token, sizeof("shmounts:") - 1) == 0) {
+			if (strcmp("shmounts:", allowed_auto_mounts[i].token) == 0 &&
+			    strncmp("shmounts:", token, sizeof("shmounts:") - 1) == 0) {
 				is_shmounts = true;
 				break;
 			}
@@ -1705,11 +1705,21 @@ static int set_config_mount_auto(const char *key, const char *value,
 		lxc_conf->auto_mounts |= allowed_auto_mounts[i].flag;
 		if (is_shmounts) {
 			lxc_conf->shmount.path_host = strdup(token + (sizeof("shmounts:") - 1));
+			if (!lxc_conf->shmount.path_host) {
+				SYSERROR("Failed to copy shmounts host path");
+				break;
+			}
+
 			if (strcmp(lxc_conf->shmount.path_host, "") == 0) {
 				ERROR("Invalid shmounts path: empty");
 				break;
 			}
+
 			lxc_conf->shmount.path_cont = strdup("/dev/.lxc-mounts");
+			if(!lxc_conf->shmount.path_cont) {
+				SYSERROR("Failed to copy shmounts container path");
+				break;
+			}
 		}
 	}
 
