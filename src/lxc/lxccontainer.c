@@ -595,6 +595,8 @@ static bool load_config_locked(struct lxc_container *c, const char *fname)
 	if (lxc_config_read(fname, c->lxc_conf, false) != 0)
 		return false;
 
+	c->lxc_conf->name = c->name;
+
 	return true;
 }
 
