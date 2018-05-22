@@ -324,6 +324,11 @@ int main(int argc, char *argv[])
 		/* restore default signal handlers */
 		for (i = 1; i < NSIG; i++) {
 			sighandler_t sigerr;
+
+			if (i == SIGILL || i == SIGSEGV || i == SIGBUS ||
+			    i == SIGSTOP || i == SIGKILL || i == 32 || i == 33)
+				continue;
+
 			sigerr = signal(i, SIG_DFL);
 			if (sigerr == SIG_ERR) {
 				DEBUG("%s - Failed to reset to default action "
