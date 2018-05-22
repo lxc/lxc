@@ -3259,6 +3259,7 @@ static int lxc_execute_bind_init(struct lxc_handler *handler)
 
 	INFO("Bind mounted lxc.init.static into container at \"%s\"", path);
 out:
+	((struct execute_args *)handler->data)->init_fd = -1;
 	((struct execute_args *)handler->data)->init_path = p;
 	return 0;
 }
@@ -3333,6 +3334,25 @@ static bool verify_start_hooks(struct lxc_conf *conf)
 	return true;
 }
 
+static bool execveat_supported(void)
+{
+#ifdef __NR_execveat
+	/*
+	 * We use the syscall here, because it was introduced in kernel 3.19,
+	 * while glibc got support for using the syscall much later, in 2.27.
+	 * We don't want to use glibc because it falls back to /proc, and the
+	 * container may not have /proc mounted depending on its configuration.
+	 */
+	syscall(__NR_execveat, -1, "", NULL, NULL, AT_EMPTY_PATH);
+	if (errno == ENOSYS)
+		return false;
+
+	return true;
+#else
+	return false;
+#endif
+}
+
 int lxc_setup(struct lxc_handler *handler)
 {
 	int ret;
@@ -3393,10 +3413,30 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 
 	if (lxc_conf->is_execute) {
-		ret = lxc_execute_bind_init(handler);
-		if (ret < 0) {
-			ERROR("Failed to bind-mount the lxc init system");
-			return -1;
+		if (execveat_supported()) {
+			int fd;
+			char path[PATH_MAX];
+
+			ret = snprintf(path, PATH_MAX, SBINDIR "/init.lxc.static");
+			if (ret < 0 || ret >= PATH_MAX) {
+				ERROR("Path to init.lxc.static too long");
+				return -1;
+			}
+
+			fd = open(path, O_PATH | O_CLOEXEC);
+			if (fd < 0) {
+				SYSERROR("Unable to open lxc.init.static");
+				return -1;
+			}
+
+			((struct execute_args *)handler->data)->init_fd = fd;
+			((struct execute_args *)handler->data)->init_path = NULL;
+		} else {
+			ret = lxc_execute_bind_init(handler);
+			if (ret < 0) {
+				ERROR("Failed to bind-mount the lxc init system");
+				return -1;
+			}
 		}
 	}
 
