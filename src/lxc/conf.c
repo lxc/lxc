@@ -757,7 +757,10 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 		if (flags & LXC_AUTO_CGROUP_FORCE)
 			cg_flags |= LXC_AUTO_CGROUP_FORCE;
 
-		if (!cgroup_mount(conf->rootfs.path ? conf->rootfs.mount : "", handler, cg_flags)) {
+		if (!handler->cgroup_ops->mount(handler->cgroup_ops,
+						handler,
+						conf->rootfs.path ? conf->rootfs.mount : "",
+						cg_flags)) {
 			SYSERROR("Failed to mount \"/sys/fs/cgroup\"");
 			return -1;
 		}
@@ -2699,13 +2702,13 @@ int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 			buflen = sizeof("deny\n") - 1;
 			errno = 0;
 			ret = lxc_write_nointr(fd, "deny\n", buflen);
+			close(fd);
 			if (ret != buflen) {
 				SYSERROR("Failed to write \"deny\" to "
 					 "\"/proc/%d/setgroups\"", pid);
-				close(fd);
 				return -1;
 			}
-			close(fd);
+			TRACE("Wrote \"deny\" to \"/proc/%d/setgroups\"", pid);
 		}
 	}
 
@@ -2722,13 +2725,12 @@ int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 
 	errno = 0;
 	ret = lxc_write_nointr(fd, buf, buf_size);
+	close(fd);
 	if (ret != buf_size) {
 		SYSERROR("Failed to write %cid mapping to \"%s\"",
 			 idtype == ID_TYPE_UID ? 'u' : 'g', path);
-		close(fd);
 		return -1;
 	}
-	close(fd);
 
 	return 0;
 }

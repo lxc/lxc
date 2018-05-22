@@ -132,6 +132,8 @@ struct lxc_handler {
 	 * true.
 	 */
 	int exit_status;
+
+	struct cgroup_ops *cgroup_ops;
 };
 
 struct execute_args {

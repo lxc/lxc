@@ -31,6 +31,7 @@
 #include <sys/types.h>
 #include <sys/param.h>
 
+#include "cgroup.h"
 #include "commands.h"
 #include "error.h"
 #include "log.h"
@@ -41,38 +42,30 @@
 
 lxc_log_define(lxc_freezer, lxc);
 
-lxc_state_t freezer_state(const char *name, const char *lxcpath)
-{
-	int ret;
-	char v[100];
-
-	ret = lxc_cgroup_get("freezer.state", v, sizeof(v), name, lxcpath);
-	if (ret < 0)
-		return -1;
-
-	v[99] = '\0';
-	v[lxc_char_right_gc(v, strlen(v))] = '\0';
-
-	return lxc_str2state(v);
-}
-
 static int do_freeze_thaw(bool freeze, const char *name, const char *lxcpath)
 {
 	int ret;
 	char v[100];
+	struct cgroup_ops *cgroup_ops;
 	const char *state = freeze ? "FROZEN" : "THAWED";
 	size_t state_len = 6;
 	lxc_state_t new_state = freeze ? FROZEN : THAWED;
 
-	ret = lxc_cgroup_set("freezer.state", state, name, lxcpath);
+	cgroup_ops = cgroup_init(NULL);
+	if (!cgroup_ops)
+		return -1;
+
+	ret = cgroup_ops->set(cgroup_ops, "freezer.state", state, name, lxcpath);
 	if (ret < 0) {
+		cgroup_exit(cgroup_ops);
 		ERROR("Failed to freeze %s", name);
 		return -1;
 	}
 
 	for (;;) {
-		ret = lxc_cgroup_get("freezer.state", v, sizeof(v), name, lxcpath);
+		ret = cgroup_ops->get(cgroup_ops, "freezer.state", v, sizeof(v), name, lxcpath);
 		if (ret < 0) {
+			cgroup_exit(cgroup_ops);
 			ERROR("Failed to get freezer state of %s", name);
 			return -1;
 		}
@@ -82,6 +75,7 @@ static int do_freeze_thaw(bool freeze, const char *name, const char *lxcpath)
 
 		ret = strncmp(v, state, state_len);
 		if (ret == 0) {
+			cgroup_exit(cgroup_ops);
 			lxc_cmd_serve_state_clients(name, lxcpath, new_state);
 			lxc_monitor_send_state(name, new_state, lxcpath);
 			return 0;

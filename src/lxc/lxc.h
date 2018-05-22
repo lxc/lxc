@@ -98,29 +98,6 @@ extern int lxc_unfreeze(const char *name, const char *lxcpath);
 extern lxc_state_t lxc_state(const char *name, const char *lxcpath);
 
 /*
- * Set a specified value for a specified subsystem. The specified
- * subsystem must be fully specified, eg. "cpu.shares"
- * @filename  : the cgroup attribute filename
- * @value     : the value to be set
- * @name      : the name of the container
- * @lxcpath   : lxc config path for container
- * Returns 0 on success, < 0 otherwise
- */
-extern int lxc_cgroup_set(const char *filename, const char *value, const char *name, const char *lxcpath);
-
-/*
- * Get a specified value for a specified subsystem. The specified
- * subsystem must be fully specified, eg. "cpu.shares"
- * @filename  : the cgroup attribute filename
- * @value     : the value to be set
- * @len       : the len of the value variable
- * @name      : the name of the container
- * @lxcpath   : lxc config path for container
- * Returns the number of bytes read, < 0 on error
- */
-extern int lxc_cgroup_get(const char *filename, char *value, size_t len, const char *name, const char *lxcpath);
-
-/*
  * Create and return a new lxccontainer struct.
  */
 extern struct lxc_container *lxc_container_new(const char *name, const char *configpath);
