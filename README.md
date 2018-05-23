@@ -178,7 +178,7 @@ Without considering distribution specific details a simple
 
     ./autogen.sh && ./configure && make && sudo make install
 
-is usually sufficient.
+is usually sufficient. If you get build problems, make sure the following dependencies are installed: `libtool pkg-config automake m4`. 
 
 In order to test current git master of LXC it is usually a good idea to compile with
 
