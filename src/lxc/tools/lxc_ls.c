@@ -211,22 +211,18 @@ int main(int argc, char *argv[])
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		exit(EXIT_FAILURE);
 
-	if (!my_args.log_file)
-		my_args.log_file = "none";
+	/* Only create log if explicitly instructed */
+	if (my_args.log_file || my_args.log_priority) {
+		log.name = NULL;
+		log.file = my_args.log_file;
+		log.level = my_args.log_priority;
+		log.prefix = my_args.progname;
+		log.quiet = my_args.quiet;
+		log.lxcpath = my_args.lxcpath[0];
 
-	/*
-	 * We set the first argument that usually takes my_args.name to NULL so
-	 * that the log is only used when the user specifies a file.
-	 */
-	log.name = NULL;
-	log.file = my_args.log_file;
-	log.level = my_args.log_priority;
-	log.prefix = my_args.progname;
-	log.quiet = my_args.quiet;
-	log.lxcpath = my_args.lxcpath[0];
-
-	if (lxc_log_init(&log))
-		exit(EXIT_FAILURE);
+		if (lxc_log_init(&log))
+			exit(EXIT_FAILURE);
+	}
 
 	struct lengths max_len = {
 		/* default header length */
