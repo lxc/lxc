@@ -32,6 +32,7 @@
 #include <fcntl.h>
 #include <grp.h>
 #include <poll.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -281,7 +282,7 @@ static int setup_signal_fd(sigset_t *oldmask)
 			return -EBADF;
 	}
 
-	ret = sigprocmask(SIG_BLOCK, &mask, oldmask);
+	ret = pthread_sigmask(SIG_BLOCK, &mask, oldmask);
 	if (ret < 0) {
 		SYSERROR("Failed to set signal mask");
 		return -EBADF;
@@ -831,7 +832,7 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	return 0;
 
 out_restore_sigmask:
-	sigprocmask(SIG_SETMASK, &handler->oldmask, NULL);
+	pthread_sigmask(SIG_SETMASK, &handler->oldmask, NULL);
 out_delete_tty:
 	lxc_delete_tty(&conf->tty_info);
 out_aborting:
@@ -844,7 +845,7 @@ out_close_maincmd_fd:
 
 void lxc_fini(const char *name, struct lxc_handler *handler)
 {
-	int i, rc;
+	int i, ret;
 	struct lxc_list *cur, *next;
 	pid_t self = lxc_raw_getpid();
 	char *namespaces[LXC_NS_MAX + 1];
@@ -857,9 +858,9 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
 		if (handler->nsfd[i] != -1) {
-			rc = asprintf(&namespaces[namespace_count], "%s:/proc/%d/fd/%d",
+			ret = asprintf(&namespaces[namespace_count], "%s:/proc/%d/fd/%d",
 			              ns_info[i].proc_name, self, handler->nsfd[i]);
-			if (rc == -1) {
+			if (ret == -1) {
 				SYSERROR("Failed to allocate memory.");
 				break;
 			}
@@ -926,8 +927,9 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	}
 
 	/* Reset mask set by setup_signal_fd. */
-	if (sigprocmask(SIG_SETMASK, &handler->oldmask, NULL))
-		WARN("Failed to restore signal mask.");
+	ret = pthread_sigmask(SIG_SETMASK, &handler->oldmask, NULL);
+	if (ret < 0)
+		WARN("%s - Failed to restore signal mask", strerror(errno));
 
 	lxc_console_delete(&handler->conf->console);
 	lxc_delete_tty(&handler->conf->tty_info);
@@ -1093,7 +1095,7 @@ static int do_start(void *data)
 		goto out_warn_father;
 	}
 
-	ret = sigprocmask(SIG_SETMASK, &handler->oldmask, NULL);
+	ret = pthread_sigmask(SIG_SETMASK, &handler->oldmask, NULL);
 	if (ret < 0) {
 		SYSERROR("Failed to set signal mask");
 		goto out_warn_father;
