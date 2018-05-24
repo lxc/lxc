@@ -181,7 +181,7 @@ static int get_seccomp_arg_value(char *key, struct v2_rule_args *rule_args)
 	uint64_t mask = 0;
 	enum scmp_compare op = 0;
 	uint32_t index = 0;
-	char s[30] = {0};
+	char s[31] = {0};
 	char *tmp = NULL;
 
 	memset(s, 0, sizeof(s));
