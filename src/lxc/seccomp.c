@@ -335,56 +335,92 @@ int get_hostarch(void)
 	return lxc_seccomp_arch_unknown;
 }
 
-scmp_filter_ctx get_new_ctx(enum lxc_hostarch_t n_arch, uint32_t default_policy_action, bool *needs_merge)
+scmp_filter_ctx get_new_ctx(enum lxc_hostarch_t n_arch,
+			    uint32_t default_policy_action, bool *needs_merge)
 {
-	scmp_filter_ctx ctx;
 	int ret;
 	uint32_t arch;
+	scmp_filter_ctx ctx;
 
-	switch(n_arch) {
-	case lxc_seccomp_arch_i386: arch = SCMP_ARCH_X86; break;
-	case lxc_seccomp_arch_x32: arch = SCMP_ARCH_X32; break;
-	case lxc_seccomp_arch_amd64: arch = SCMP_ARCH_X86_64; break;
-	case lxc_seccomp_arch_arm: arch = SCMP_ARCH_ARM; break;
+	switch (n_arch) {
+	case lxc_seccomp_arch_i386:
+		arch = SCMP_ARCH_X86;
+		break;
+	case lxc_seccomp_arch_x32:
+		arch = SCMP_ARCH_X32;
+		break;
+	case lxc_seccomp_arch_amd64:
+		arch = SCMP_ARCH_X86_64;
+		break;
+	case lxc_seccomp_arch_arm:
+		arch = SCMP_ARCH_ARM;
+		break;
 #ifdef SCMP_ARCH_AARCH64
-	case lxc_seccomp_arch_arm64: arch = SCMP_ARCH_AARCH64; break;
+	case lxc_seccomp_arch_arm64:
+		arch = SCMP_ARCH_AARCH64;
+		break;
 #endif
 #ifdef SCMP_ARCH_PPC64LE
-	case lxc_seccomp_arch_ppc64le: arch = SCMP_ARCH_PPC64LE; break;
+	case lxc_seccomp_arch_ppc64le:
+		arch = SCMP_ARCH_PPC64LE;
+		break;
 #endif
 #ifdef SCMP_ARCH_PPC64
-	case lxc_seccomp_arch_ppc64: arch = SCMP_ARCH_PPC64; break;
+	case lxc_seccomp_arch_ppc64:
+		arch = SCMP_ARCH_PPC64;
+		break;
 #endif
 #ifdef SCMP_ARCH_PPC
-	case lxc_seccomp_arch_ppc: arch = SCMP_ARCH_PPC; break;
+	case lxc_seccomp_arch_ppc:
+		arch = SCMP_ARCH_PPC;
+		break;
 #endif
 #ifdef SCMP_ARCH_MIPS
-	case lxc_seccomp_arch_mips: arch = SCMP_ARCH_MIPS; break;
-	case lxc_seccomp_arch_mips64: arch = SCMP_ARCH_MIPS64; break;
-	case lxc_seccomp_arch_mips64n32: arch = SCMP_ARCH_MIPS64N32; break;
-	case lxc_seccomp_arch_mipsel: arch = SCMP_ARCH_MIPSEL; break;
-	case lxc_seccomp_arch_mipsel64: arch = SCMP_ARCH_MIPSEL64; break;
-	case lxc_seccomp_arch_mipsel64n32: arch = SCMP_ARCH_MIPSEL64N32; break;
+	case lxc_seccomp_arch_mips:
+		arch = SCMP_ARCH_MIPS;
+		break;
+	case lxc_seccomp_arch_mips64:
+		arch = SCMP_ARCH_MIPS64;
+		break;
+	case lxc_seccomp_arch_mips64n32:
+		arch = SCMP_ARCH_MIPS64N32;
+		break;
+	case lxc_seccomp_arch_mipsel:
+		arch = SCMP_ARCH_MIPSEL;
+		break;
+	case lxc_seccomp_arch_mipsel64:
+		arch = SCMP_ARCH_MIPSEL64;
+		break;
+	case lxc_seccomp_arch_mipsel64n32:
+		arch = SCMP_ARCH_MIPSEL64N32;
+		break;
 #endif
 #ifdef SCMP_ARCH_S390X
-	case lxc_seccomp_arch_s390x: arch = SCMP_ARCH_S390X; break;
+	case lxc_seccomp_arch_s390x:
+		arch = SCMP_ARCH_S390X;
+		break;
 #endif
-	default: return NULL;
+	default:
+		return NULL;
 	}
 
-	if ((ctx = seccomp_init(default_policy_action)) == NULL) {
+	ctx = seccomp_init(default_policy_action);
+	if (!ctx) {
 		ERROR("Error initializing seccomp context");
 		return NULL;
 	}
-	if (seccomp_attr_set(ctx, SCMP_FLTATR_CTL_NNP, 0)) {
-		ERROR("Failed to turn off no-new-privs");
+
+	ret = seccomp_attr_set(ctx, SCMP_FLTATR_CTL_NNP, 0);
+	if (ret < 0) {
+		ERROR("%s - Failed to turn off no-new-privs", strerror(-ret));
 		seccomp_release(ctx);
 		return NULL;
 	}
+
 #ifdef SCMP_FLTATR_ATL_TSKIP
-	if (seccomp_attr_set(ctx, SCMP_FLTATR_ATL_TSKIP, 1)) {
-		WARN("Failed to turn on seccomp nop-skip, continuing");
-	}
+	ret = seccomp_attr_set(ctx, SCMP_FLTATR_ATL_TSKIP, 1);
+	if (ret < 0)
+		WARN("%s - Failed to turn on seccomp nop-skip, continuing", strerror(-ret));
 #endif
 
 	ret = seccomp_arch_exist(ctx, arch);
@@ -392,7 +428,7 @@ scmp_filter_ctx get_new_ctx(enum lxc_hostarch_t n_arch, uint32_t default_policy_
 		if (ret != -EEXIST) {
 			ERROR("%s - Failed to determine whether arch %d is "
 			      "already present in the main seccomp context",
-			       strerror(-ret), (int)n_arch);
+			      strerror(-ret), (int)n_arch);
 			seccomp_release(ctx);
 			return NULL;
 		}
