@@ -183,7 +183,6 @@ static int get_seccomp_arg_value(char *key, struct v2_rule_args *rule_args)
 	char s[31] = {0};
 	char *tmp = NULL;
 
-	memset(s, 0, sizeof(s));
 	tmp = strchr(key, '[');
 	if (!tmp) {
 		ERROR("Failed to interpret args");
