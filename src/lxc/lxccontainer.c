@@ -2685,15 +2685,6 @@ out:
 	return bret;
 }
 
-static void strip_newline(char *p)
-{
-	size_t len = strlen(p);
-	if (len < 1)
-		return;
-	if (p[len-1] == '\n')
-		p[len-1] = '\0';
-}
-
 void mod_all_rdeps(struct lxc_container *c, bool inc)
 {
 	struct lxc_container *p;
@@ -2716,8 +2707,10 @@ void mod_all_rdeps(struct lxc_container *c, bool inc)
 			ERROR("badly formatted file %s", path);
 			goto out;
 		}
-		strip_newline(lxcpath);
-		strip_newline(lxcname);
+
+		remove_trailing_newlines(lxcpath);
+		remove_trailing_newlines(lxcname);
+
 		if ((p = lxc_container_new(lxcname, lxcpath)) == NULL) {
 			ERROR("Unable to find dependent container %s:%s",
 				lxcpath, lxcname);
