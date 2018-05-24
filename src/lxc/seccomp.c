@@ -460,18 +460,14 @@ scmp_filter_ctx get_new_ctx(enum lxc_hostarch_t n_arch,
 }
 
 bool do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
-			struct seccomp_v2_rule *rule)
+			 struct seccomp_v2_rule *rule)
 {
-	int nr, ret, i;
+	int i, nr, ret;
 	struct scmp_arg_cmp arg_cmp[6];
-
-	memset(arg_cmp, 0 ,sizeof(arg_cmp));
 
 	ret = seccomp_arch_exist(ctx, arch);
 	if (arch && ret != 0) {
-		ERROR("BUG: Seccomp: rule and context arch do not match (arch "
-		      "%d): %s",
-		      arch, strerror(-ret));
+		ERROR("%s - Seccomp: rule and context arch do not match (arch %d)", strerror(-ret), arch);
 		return false;
 	}
 
@@ -481,49 +477,59 @@ bool do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
 		*p = '\0';
 
 	if (strncmp(line, "reject_force_umount", 19) == 0) {
-		INFO("Setting Seccomp rule to reject force umounts");
-		ret = seccomp_rule_add_exact(ctx, SCMP_ACT_ERRNO(EACCES), SCMP_SYS(umount2),
-				1, SCMP_A1(SCMP_CMP_MASKED_EQ , MNT_FORCE , MNT_FORCE ));
+		ret = seccomp_rule_add_exact(ctx, SCMP_ACT_ERRNO(EACCES),
+					     SCMP_SYS(umount2), 1,
+					     SCMP_A1(SCMP_CMP_MASKED_EQ, MNT_FORCE, MNT_FORCE));
 		if (ret < 0) {
-			ERROR("Failed (%d) loading rule to reject force "
-			      "umount: %s",
-			      ret, strerror(-ret));
+			ERROR("%s - Failed loading rule to reject force umount", strerror(-ret));
 			return false;
 		}
+
+		INFO("Set seccomp rule to reject force umounts");
 		return true;
 	}
 
 	nr = seccomp_syscall_resolve_name(line);
 	if (nr == __NR_SCMP_ERROR) {
-		WARN("Seccomp: failed to resolve syscall: %s", line);
-		WARN("This syscall will NOT be blacklisted");
-		return true;
-	}
-	if (nr < 0) {
-		WARN("Seccomp: got negative for syscall: %d: %s", nr, line);
+		WARN("Failed to resolve syscall \"%s\"", line);
 		WARN("This syscall will NOT be blacklisted");
 		return true;
 	}
 
+	if (nr < 0) {
+		WARN("Got negative return value %d for syscall \"%s\"", nr, line);
+		WARN("This syscall will NOT be blacklisted");
+		return true;
+	}
+
+	memset(&arg_cmp, 0, sizeof(arg_cmp));
 	for (i = 0; i < rule->args_num; i++) {
-		INFO("arg_cmp[%d]:SCMP_CMP(%u, %llu, %llu, %llu)", i,
-		      rule->args_value[i].index,
-		      (long long unsigned int)rule->args_value[i].op,
-		      (long long unsigned int)rule->args_value[i].mask,
-		      (long long unsigned int)rule->args_value[i].value);
+		INFO("arg_cmp[%d]: SCMP_CMP(%u, %llu, %llu, %llu)", i,
+		     rule->args_value[i].index,
+		     (long long unsigned int)rule->args_value[i].op,
+		     (long long unsigned int)rule->args_value[i].mask,
+		     (long long unsigned int)rule->args_value[i].value);
 
 		if (SCMP_CMP_MASKED_EQ == rule->args_value[i].op)
-			arg_cmp[i] = SCMP_CMP(rule->args_value[i].index, rule->args_value[i].op, rule->args_value[i].mask, rule->args_value[i].value);
+			arg_cmp[i] = SCMP_CMP(rule->args_value[i].index,
+					      rule->args_value[i].op,
+					      rule->args_value[i].mask,
+					      rule->args_value[i].value);
 		else
-			arg_cmp[i] = SCMP_CMP(rule->args_value[i].index, rule->args_value[i].op, rule->args_value[i].value);
+			arg_cmp[i] = SCMP_CMP(rule->args_value[i].index,
+					      rule->args_value[i].op,
+					      rule->args_value[i].value);
 	}
 
-	ret = seccomp_rule_add_exact_array(ctx, rule->action, nr, rule->args_num, arg_cmp);
+	ret = seccomp_rule_add_exact_array(ctx, rule->action, nr,
+					   rule->args_num, arg_cmp);
 	if (ret < 0) {
-		ERROR("Failed (%d) loading rule for %s (nr %d action %d(%s)): %s",
-		      ret, line, nr, rule->action, get_action_name(rule->action), strerror(-ret));
+		ERROR("%s - Failed loading rule for %s (nr %d action %d (%s))",
+		      strerror(-ret), line, nr, rule->action,
+		      get_action_name(rule->action));
 		return false;
 	}
+
 	return true;
 }
 
