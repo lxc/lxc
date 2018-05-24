@@ -1035,7 +1035,7 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
  */
 static int parse_config(FILE *f, struct lxc_conf *conf)
 {
-	char line[1024];
+	char line[MAXPATHLEN];
 	int ret, version;
 
 	ret = fscanf(f, "%d\n", &version);
@@ -1043,10 +1043,12 @@ static int parse_config(FILE *f, struct lxc_conf *conf)
 		ERROR("Invalid version");
 		return -1;
 	}
-	if (!fgets(line, 1024, f)) {
+
+	if (!fgets(line, MAXPATHLEN, f)) {
 		ERROR("Invalid config file");
 		return -1;
 	}
+
 	if (version == 1 && !strstr(line, "whitelist")) {
 		ERROR("Only whitelist policy is supported");
 		return -1;
@@ -1059,6 +1061,7 @@ static int parse_config(FILE *f, struct lxc_conf *conf)
 
 	if (version == 1)
 		return parse_config_v1(f, conf);
+
 	return parse_config_v2(f, line, conf);
 }
 
@@ -1071,34 +1074,40 @@ static int parse_config(FILE *f, struct lxc_conf *conf)
  */
 static bool use_seccomp(void)
 {
-	FILE *f = fopen("/proc/self/status", "r");
-	char line[1024];
-	bool already_enabled = false;
-	bool found = false;
 	int ret, v;
+	FILE *f;
+	size_t line_bufsz = 0;
+	char *line = NULL;
+	bool already_enabled = false, found = false;
 
+	f = fopen("/proc/self/status", "r");
 	if (!f)
 		return true;
 
-	while (fgets(line, 1024, f)) {
+	while (getline(&line, &line_bufsz, f) != -1) {
 		if (strncmp(line, "Seccomp:", 8) == 0) {
 			found = true;
+
 			ret = sscanf(line + 8, "%d", &v);
 			if (ret == 1 && v != 0)
 				already_enabled = true;
+
 			break;
 		}
 	}
-
+	free(line);
 	fclose(f);
-	if (!found) { /* no Seccomp line, no seccomp in kernel */
+
+	if (!found) {
 		INFO("Seccomp is not enabled in the kernel");
 		return false;
 	}
-	if (already_enabled) { /* already seccomp-confined */
+
+	if (already_enabled) {
 		INFO("Already seccomp-confined, not loading new policy");
 		return false;
 	}
+
 	return true;
 }
 
