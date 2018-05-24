@@ -2417,40 +2417,38 @@ signed long lxc_config_parse_arch(const char *arch)
 		char *name;
 		unsigned long per;
 	} pername[] = {
-	    { "x86",       PER_LINUX32 },
-	    { "linux32",   PER_LINUX32 },
+	    { "arm",       PER_LINUX32 },
+	    { "armel",     PER_LINUX32 },
+	    { "armhf",     PER_LINUX32 },
+	    { "armv7l",    PER_LINUX32 },
+	    { "athlon",    PER_LINUX32 },
 	    { "i386",      PER_LINUX32 },
 	    { "i486",      PER_LINUX32 },
 	    { "i586",      PER_LINUX32 },
 	    { "i686",      PER_LINUX32 },
-	    { "athlon",    PER_LINUX32 },
+	    { "linux32",   PER_LINUX32 },
 	    { "mips",      PER_LINUX32 },
 	    { "mipsel",    PER_LINUX32 },
 	    { "ppc",       PER_LINUX32 },
-	    { "arm",       PER_LINUX32 },
-	    { "armv7l",    PER_LINUX32 },
-	    { "armhf",     PER_LINUX32 },
-	    { "armel",     PER_LINUX32 },
 	    { "powerpc",   PER_LINUX32 },
-	    { "linux64",   PER_LINUX   },
-	    { "x86_64",    PER_LINUX   },
+	    { "x86",       PER_LINUX32 },
 	    { "amd64",     PER_LINUX   },
+	    { "arm64",     PER_LINUX   },
+	    { "linux64",   PER_LINUX   },
 	    { "mips64",    PER_LINUX   },
 	    { "mips64el",  PER_LINUX   },
 	    { "ppc64",     PER_LINUX   },
-	    { "ppc64le",   PER_LINUX   },
 	    { "ppc64el",   PER_LINUX   },
+	    { "ppc64le",   PER_LINUX   },
 	    { "powerpc64", PER_LINUX   },
 	    { "s390x",     PER_LINUX   },
-	    { "aarch64",   PER_LINUX   },
-	    { "arm64",     PER_LINUX   },
+	    { "x86_64",    PER_LINUX   },
 	};
 	size_t len = sizeof(pername) / sizeof(pername[0]);
 
-	for (i = 0; i < len; i++) {
+	for (i = 0; i < len; i++)
 		if (!strcmp(pername[i].name, arch))
 			return pername[i].per;
-	}
 #endif
 
 	return -1;
