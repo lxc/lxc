@@ -24,6 +24,7 @@
 #define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -386,7 +387,7 @@ int main(int argc, char *argv[])
 	    sigdelset(&mask, SIGSEGV) ||
 	    sigdelset(&mask, SIGBUS)  ||
 	    sigdelset(&mask, SIGTERM) ||
-	    sigprocmask(SIG_BLOCK, &mask, NULL)) {
+	    pthread_sigmask(SIG_BLOCK, &mask, NULL)) {
 		SYSERROR("Failed to set signal mask.");
 		exit(EXIT_FAILURE);
 	}
