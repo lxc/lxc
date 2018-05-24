@@ -2533,3 +2533,14 @@ int lxc_set_death_signal(int signal)
 
 	return 0;
 }
+
+void remove_trailing_newlines(char *l)
+{
+	char *p = l;
+
+	while (*p)
+		p++;
+
+	while (--p >= l && *p == '\n')
+		*p = '\0';
+}

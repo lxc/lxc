@@ -65,16 +65,6 @@ static int parse_config_v1(FILE *f, struct lxc_conf *conf)
 }
 
 #if HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH
-static void remove_trailing_newlines(char *l)
-{
-	char *p = l;
-
-	while (*p)
-		p++;
-	while (--p >= l && *p == '\n')
-		*p = '\0';
-}
-
 static uint32_t get_v2_default_action(char *line)
 {
 	uint32_t ret_action = -1;
