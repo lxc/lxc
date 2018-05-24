@@ -1113,15 +1113,15 @@ static bool use_seccomp(void)
 
 int lxc_read_seccomp_config(struct lxc_conf *conf)
 {
+	int check_seccomp_attr_set, ret;
 	FILE *f;
-	int ret;
-	int check_seccomp_attr_set;
 
 	if (!conf->seccomp)
 		return 0;
 
 	if (!use_seccomp())
 		return 0;
+
 #if HAVE_SCMP_FILTER_CTX
 	/* XXX for debug, pass in SCMP_ACT_TRAP */
 	conf->seccomp_ctx = seccomp_init(SCMP_ACT_KILL);
@@ -1134,7 +1134,7 @@ int lxc_read_seccomp_config(struct lxc_conf *conf)
 		return -1;
 	}
 
-/* turn off no-new-privs.  We don't want it in lxc, and it breaks
+/* turn off no-new-privs. We don't want it in lxc, and it breaks
  * with apparmor */
 #if HAVE_SCMP_FILTER_CTX
 	check_seccomp_attr_set = seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_CTL_NNP, 0);
@@ -1142,13 +1142,14 @@ int lxc_read_seccomp_config(struct lxc_conf *conf)
 	check_seccomp_attr_set = seccomp_attr_set(SCMP_FLTATR_CTL_NNP, 0);
 #endif
 	if (check_seccomp_attr_set) {
-		ERROR("Failed to turn off no-new-privs");
+		ERROR("%s - Failed to turn off no-new-privs", strerror(-check_seccomp_attr_set));
 		return -1;
 	}
 #ifdef SCMP_FLTATR_ATL_TSKIP
-	if (seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_ATL_TSKIP, 1)) {
-		WARN("Failed to turn on seccomp nop-skip, continuing");
-	}
+	check_seccomp_attr_set = seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_ATL_TSKIP, 1);
+	if (check_seccomp_attr_set < 0)
+		WARN("%s - Failed to turn on seccomp nop-skip, continuing",
+		     strerror(-check_seccomp_attr_set));
 #endif
 
 	f = fopen(conf->seccomp, "r");
@@ -1156,39 +1157,46 @@ int lxc_read_seccomp_config(struct lxc_conf *conf)
 		SYSERROR("Failed to open seccomp policy file %s", conf->seccomp);
 		return -1;
 	}
+
 	ret = parse_config(f, conf);
 	fclose(f);
+
 	return ret;
 }
 
 int lxc_seccomp_load(struct lxc_conf *conf)
 {
 	int ret;
+
 	if (!conf->seccomp)
 		return 0;
+
 	if (!use_seccomp())
 		return 0;
-	ret = seccomp_load(
+
 #if HAVE_SCMP_FILTER_CTX
-	    conf->seccomp_ctx
+	ret = seccomp_load(conf->seccomp_ctx);
+#else
+	ret = seccomp_load();
 #endif
-	    );
 	if (ret < 0) {
-		ERROR("Error loading the seccomp policy: %s", strerror(-ret));
+		ERROR("%s- Error loading the seccomp policy", strerror(-ret));
 		return -1;
 	}
 
 /* After load seccomp filter into the kernel successfully, export the current seccomp
  * filter to log file */
 #if HAVE_SCMP_FILTER_CTX
-	if ((lxc_log_get_level() <= LXC_LOG_LEVEL_TRACE || conf->loglevel <= LXC_LOG_LEVEL_TRACE) &&
+	if ((lxc_log_get_level() <= LXC_LOG_LEVEL_TRACE ||
+	     conf->loglevel <= LXC_LOG_LEVEL_TRACE) &&
 	    lxc_log_fd >= 0) {
 		ret = seccomp_export_pfc(conf->seccomp_ctx, lxc_log_fd);
 		/* Just give an warning when export error */
 		if (ret < 0)
-			WARN("Failed to export seccomp filter to log file: %s", strerror(-ret));
+			WARN("%s - Failed to export seccomp filter to log file", strerror(-ret));
 	}
 #endif
+
 	return 0;
 }
 
@@ -1196,6 +1204,7 @@ void lxc_seccomp_free(struct lxc_conf *conf)
 {
 	free(conf->seccomp);
 	conf->seccomp = NULL;
+
 #if HAVE_SCMP_FILTER_CTX
 	if (conf->seccomp_ctx) {
 		seccomp_release(conf->seccomp_ctx);
