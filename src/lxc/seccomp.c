@@ -23,9 +23,9 @@
 
 #define _GNU_SOURCE
 #include <errno.h>
+#include <seccomp.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <seccomp.h>
 #include <sys/mount.h>
 #include <sys/utsname.h>
 
@@ -38,25 +38,30 @@ lxc_log_define(lxc_seccomp, lxc);
 
 static int parse_config_v1(FILE *f, struct lxc_conf *conf)
 {
-	char line[1024];
-	int ret;
+	int ret = 0;
+	size_t line_bufsz = 0;
+	char *line = NULL;
 
-	while (fgets(line, 1024, f)) {
+	while (getline(&line, &line_bufsz, f) != -1) {
 		int nr;
+
 		ret = sscanf(line, "%d", &nr);
 		if (ret != 1)
 			return -1;
-		ret = seccomp_rule_add(
+
 #if HAVE_SCMP_FILTER_CTX
-		    conf->seccomp_ctx,
+		ret = seccomp_rule_add(conf->seccomp_ctx, SCMP_ACT_ALLOW, nr, 0);
+#else
+		ret = seccomp_rule_add(SCMP_ACT_ALLOW, nr, 0);
 #endif
-		    SCMP_ACT_ALLOW, nr, 0);
 		if (ret < 0) {
 			ERROR("Failed loading allow rule for %d", nr);
-			return ret;
+			break;
 		}
 	}
-	return 0;
+	free(line);
+
+	return ret;
 }
 
 #if HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH
