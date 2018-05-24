@@ -164,7 +164,6 @@ static enum scmp_compare parse_v2_rule_op(char *s)
 
 /* This function is used to parse the args string into the structure.
  * args string format:[index,value,op,valueTwo] or [index,value,op]
- * For one arguments, [index,value,valueTwo,op]
  * index: the index for syscall arguments (type uint)
  * value: the value for syscall arguments (type uint64)
  * op: the operator for syscall arguments(string),
