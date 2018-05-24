@@ -32,6 +32,7 @@
 #include "config.h"
 #include "log.h"
 #include "lxcseccomp.h"
+#include "utils.h"
 
 lxc_log_define(lxc_seccomp, lxc);
 
@@ -180,7 +181,7 @@ static int get_seccomp_arg_value(char *key, struct v2_rule_args *rule_args)
 	uint64_t mask = 0;
 	enum scmp_compare op = 0;
 	uint32_t index = 0;
-	char s[31] = {0};
+	char s[31] = {0}, v[24] = {0}, m[24] = {0};
 	char *tmp = NULL;
 
 	tmp = strchr(key, '[');
@@ -188,9 +189,21 @@ static int get_seccomp_arg_value(char *key, struct v2_rule_args *rule_args)
 		ERROR("Failed to interpret args");
 		return -1;
 	}
-	ret = sscanf(tmp, "[%i,%lli,%30[^0-9^,],%lli", &index, (long long unsigned int *)&value, s, (long long unsigned int *)&mask);
+	ret = sscanf(tmp, "[%i,%23[^,],%30[^0-9^,],%23[^,]", &index, v, s, m);
 	if ((ret != 3 && ret != 4) || index >= 6) {
 		ERROR("Failed to interpret args value");
+		return -1;
+	}
+
+	ret = lxc_safe_uint64(v, &value);
+	if (ret < 0) {
+		ERROR("Invalid argument value");
+		return -1;
+	}
+
+	ret = lxc_safe_uint64(v, &mask);
+	if (ret < 0) {
+		ERROR("Invalid argument mask");
 		return -1;
 	}
 
