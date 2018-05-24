@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <getopt.h>
 #include <libgen.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -266,7 +267,7 @@ int main(int argc, char *argv[])
 	if (ret < 0)
 		exit(EXIT_FAILURE);
 
-	ret = sigprocmask(SIG_SETMASK, &mask, &omask);
+	ret = pthread_sigmask(SIG_SETMASK, &mask, &omask);
 	if (ret < 0)
 		exit(EXIT_FAILURE);
 
@@ -340,7 +341,7 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		ret = sigprocmask(SIG_SETMASK, &omask, NULL);
+		ret = pthread_sigmask(SIG_SETMASK, &omask, NULL);
 		if (ret < 0) {
 			SYSERROR("Failed to set signal mask");
 			exit(EXIT_FAILURE);
@@ -368,7 +369,7 @@ int main(int argc, char *argv[])
 	if (ret < 0)
 		exit(EXIT_FAILURE);
 
-	ret = sigprocmask(SIG_SETMASK, &omask, NULL);
+	ret = pthread_sigmask(SIG_SETMASK, &omask, NULL);
 	if (ret < 0) {
 		SYSERROR("Failed to set signal mask");
 		exit(EXIT_FAILURE);

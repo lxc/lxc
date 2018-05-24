@@ -31,6 +31,7 @@
 #include <grp.h>
 #include <inttypes.h>
 #include <libgen.h>
+#include <pthread.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -495,7 +496,7 @@ struct lxc_popen_FILE *lxc_popen(const char *command)
 		if (ret < 0)
 			_exit(EXIT_FAILURE);
 
-		ret = sigprocmask(SIG_UNBLOCK, &mask, NULL);
+		ret = pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
 		if (ret < 0)
 			_exit(EXIT_FAILURE);
 
