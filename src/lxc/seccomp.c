@@ -97,7 +97,7 @@ static uint32_t get_v2_default_action(char *line)
 static const char *get_action_name(uint32_t action)
 {
 	/* The upper 16 bits indicate the type of the seccomp action. */
-	switch(action & 0xffff0000){
+	switch (action & 0xffff0000) {
 	case SCMP_ACT_KILL:
 		return "kill";
 	case SCMP_ACT_ALLOW:
@@ -106,9 +106,9 @@ static const char *get_action_name(uint32_t action)
 		return "trap";
 	case SCMP_ACT_ERRNO(0):
 		return "errno";
-	default:
-		return "invalid action";
 	}
+
+	return "invalid action";
 }
 
 static uint32_t get_v2_action(char *line, uint32_t def_action)
