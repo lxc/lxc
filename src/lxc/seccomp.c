@@ -34,6 +34,14 @@
 #include "lxcseccomp.h"
 #include "utils.h"
 
+#ifdef __MIPSEL__
+#define MIPS_ARCH_O32 lxc_seccomp_arch_mipsel
+#define MIPS_ARCH_N64 lxc_seccomp_arch_mipsel64
+#else
+#define MIPS_ARCH_O32 lxc_seccomp_arch_mips
+#define MIPS_ARCH_N64 lxc_seccomp_arch_mips64
+#endif
+
 lxc_log_define(lxc_seccomp, lxc);
 
 static int parse_config_v1(FILE *f, struct lxc_conf *conf)
@@ -293,14 +301,6 @@ enum lxc_hostarch_t {
 	lxc_seccomp_arch_s390x,
 	lxc_seccomp_arch_unknown = 999,
 };
-
-#ifdef __MIPSEL__
-# define MIPS_ARCH_O32 lxc_seccomp_arch_mipsel
-# define MIPS_ARCH_N64 lxc_seccomp_arch_mipsel64
-#else
-# define MIPS_ARCH_O32 lxc_seccomp_arch_mips
-# define MIPS_ARCH_N64 lxc_seccomp_arch_mips64
-#endif
 
 int get_hostarch(void)
 {
