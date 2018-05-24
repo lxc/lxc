@@ -309,6 +309,7 @@ int get_hostarch(void)
 		SYSERROR("Failed to read host arch");
 		return -1;
 	}
+
 	if (strcmp(uts.machine, "i686") == 0)
 		return lxc_seccomp_arch_i386;
 	/* no x32 kernels */
@@ -330,6 +331,7 @@ int get_hostarch(void)
 		return MIPS_ARCH_O32;
 	else if (strncmp(uts.machine, "s390x", 5) == 0)
 		return lxc_seccomp_arch_s390x;
+
 	return lxc_seccomp_arch_unknown;
 }
 
