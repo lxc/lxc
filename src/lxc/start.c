@@ -32,6 +32,7 @@
 #include <fcntl.h>
 #include <grp.h>
 #include <poll.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -314,7 +315,7 @@ static int setup_signal_fd(sigset_t *oldmask)
 			return -EBADF;
 	}
 
-	ret = sigprocmask(SIG_BLOCK, &mask, oldmask);
+	ret = pthread_sigmask(SIG_BLOCK, &mask, oldmask);
 	if (ret < 0) {
 		SYSERROR("Failed to set signal mask");
 		return -EBADF;
@@ -860,7 +861,7 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	return 0;
 
 out_restore_sigmask:
-	sigprocmask(SIG_SETMASK, &handler->oldmask, NULL);
+	pthread_sigmask(SIG_SETMASK, &handler->oldmask, NULL);
 out_delete_tty:
 	lxc_delete_tty(&conf->ttys);
 out_aborting:
@@ -986,7 +987,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	}
 
 	/* Reset mask set by setup_signal_fd. */
-	ret = sigprocmask(SIG_SETMASK, &handler->oldmask, NULL);
+	ret = pthread_sigmask(SIG_SETMASK, &handler->oldmask, NULL);
 	if (ret < 0)
 		WARN("%s - Failed to restore signal mask", strerror(errno));
 
@@ -1064,7 +1065,7 @@ static int do_start(void *data)
 		goto out_warn_father;
 	}
 
-	ret = sigprocmask(SIG_SETMASK, &handler->oldmask, NULL);
+	ret = pthread_sigmask(SIG_SETMASK, &handler->oldmask, NULL);
 	if (ret < 0) {
 		SYSERROR("Failed to set signal mask");
 		goto out_warn_father;

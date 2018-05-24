@@ -31,6 +31,7 @@
 #include <grp.h>
 #include <inttypes.h>
 #include <libgen.h>
+#include <pthread.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -495,7 +496,7 @@ struct lxc_popen_FILE *lxc_popen(const char *command)
 		if (ret < 0)
 			_exit(EXIT_FAILURE);
 
-		ret = sigprocmask(SIG_UNBLOCK, &mask, NULL);
+		ret = pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
 		if (ret < 0)
 			_exit(EXIT_FAILURE);
 
@@ -1813,17 +1814,16 @@ int lxc_count_file_lines(const char *fn)
 
 /* Check whether a signal is blocked by a process. */
 /* /proc/pid-to-str/status\0 = (5 + 21 + 7 + 1) */
-#define __PROC_STATUS_LEN (5 + (LXC_NUMSTRLEN64) + 7 + 1)
+#define __PROC_STATUS_LEN (6 + (LXC_NUMSTRLEN64) + 7 + 1)
 bool task_blocking_signal(pid_t pid, int signal)
 {
-	bool bret = false;
-	char *line = NULL;
+	int ret;
+	char status[__PROC_STATUS_LEN];
+	FILE *f;
 	long unsigned int sigblk = 0;
 	size_t n = 0;
-	int ret;
-	FILE *f;
-
-	char status[__PROC_STATUS_LEN];
+	bool bret = false;
+	char *line = NULL;
 
 	ret = snprintf(status, __PROC_STATUS_LEN, "/proc/%d/status", pid);
 	if (ret < 0 || ret >= __PROC_STATUS_LEN)
@@ -1834,10 +1834,10 @@ bool task_blocking_signal(pid_t pid, int signal)
 		return bret;
 
 	while (getline(&line, &n, f) != -1) {
-		if (strncmp(line, "SigBlk:\t", 8))
+		if (strncmp(line, "SigBlk:", 7))
 			continue;
 
-		if (sscanf(line + 8, "%lx", &sigblk) != 1)
+		if (sscanf(line + 7, "%lx", &sigblk) != 1)
 			goto out;
 	}
 

@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <lxc/lxccontainer.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -172,7 +173,7 @@ struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, int dstfd)
 		goto on_error;
 	}
 
-	ret = sigprocmask(SIG_BLOCK, &mask, &ts->oldmask);
+	ret = pthread_sigmask(SIG_BLOCK, &mask, &ts->oldmask);
 	if (ret < 0) {
 		WARN("Failed to block signals");
 		goto on_error;
@@ -181,7 +182,7 @@ struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, int dstfd)
 	ts->sigfd = signalfd(-1, &mask, SFD_CLOEXEC);
 	if (ts->sigfd < 0) {
 		WARN("Failed to create signal fd");
-		sigprocmask(SIG_SETMASK, &ts->oldmask, NULL);
+		(void)pthread_sigmask(SIG_SETMASK, &ts->oldmask, NULL);
 		goto on_error;
 	}
 
@@ -206,7 +207,7 @@ void lxc_terminal_signal_fini(struct lxc_terminal_state *ts)
 	if (ts->sigfd >= 0) {
 		close(ts->sigfd);
 
-		if (sigprocmask(SIG_SETMASK, &ts->oldmask, NULL) < 0)
+		if (pthread_sigmask(SIG_SETMASK, &ts->oldmask, NULL) < 0)
 			WARN("%s - Failed to restore signal mask", strerror(errno));
 	}
 
