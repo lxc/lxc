@@ -71,20 +71,26 @@ static uint32_t get_v2_default_action(char *line)
 
 	while (*line == ' ')
 		line++;
+
 	/* After 'whitelist' or 'blacklist' comes default behavior. */
-	if (strncmp(line, "kill", 4) == 0)
+	if (strncmp(line, "kill", 4) == 0) {
 		ret_action = SCMP_ACT_KILL;
-	else if (strncmp(line, "errno", 5) == 0) {
-		int e;
-		if (sscanf(line + 5, "%d", &e) != 1) {
-			ERROR("Bad errno value in %s", line);
+	} else if (strncmp(line, "errno", 5) == 0) {
+		int e, ret;
+
+		ret = sscanf(line + 5, "%d", &e);
+		if (ret != 1) {
+			ERROR("Failed to parse errno value from %s", line);
 			return -2;
 		}
+
 		ret_action = SCMP_ACT_ERRNO(e);
-	} else if (strncmp(line, "allow", 5) == 0)
+	} else if (strncmp(line, "allow", 5) == 0) {
 		ret_action = SCMP_ACT_ALLOW;
-	else if (strncmp(line, "trap", 4) == 0)
+	} else if (strncmp(line, "trap", 4) == 0) {
 		ret_action = SCMP_ACT_TRAP;
+	}
+
 	return ret_action;
 }
 
