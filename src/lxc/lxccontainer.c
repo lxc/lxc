@@ -1829,11 +1829,10 @@ static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 		return true;
 
 	/* Detect whether we should send SIGRTMIN + 3 (e.g. systemd). */
-	if (task_blocking_signal(pid, (SIGRTMIN + 3)))
-		haltsignal = (SIGRTMIN + 3);
-
 	if (c->lxc_conf && c->lxc_conf->haltsignal)
 		haltsignal = c->lxc_conf->haltsignal;
+	else if (task_blocking_signal(pid, (SIGRTMIN + 3)))
+		haltsignal = (SIGRTMIN + 3);
 
 	/* Add a new state client before sending the shutdown signal so that we
 	 * don't miss a state.
