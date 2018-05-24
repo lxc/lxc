@@ -138,7 +138,7 @@ static uint32_t get_v2_action(char *line, uint32_t def_action)
 	return ret;
 }
 
-struct v2_rule_args {
+struct seccomp_v2_rule_args {
 	uint32_t index;
 	uint64_t value;
 	uint64_t mask;
@@ -148,7 +148,7 @@ struct v2_rule_args {
 struct seccomp_v2_rule {
 	uint32_t action;
 	uint32_t args_num;
-	struct v2_rule_args args_value[6];
+	struct seccomp_v2_rule_args args_value[6];
 };
 
 static enum scmp_compare parse_v2_rule_op(char *s)
@@ -171,7 +171,8 @@ static enum scmp_compare parse_v2_rule_op(char *s)
 	return _SCMP_CMP_MAX;
 }
 
-/* This function is used to parse the args string into the structure.
+/*
+ * This function is used to parse the args string into the structure.
  * args string format:[index,value,op,valueTwo] or [index,value,op]
  * index: the index for syscall arguments (type uint)
  * value: the value for syscall arguments (type uint64)
@@ -182,21 +183,21 @@ static enum scmp_compare parse_v2_rule_op(char *s)
  * valueTwo: the value for syscall arguments only used for mask eq (type uint64, optional)
  * Returns 0 on success, < 0 otherwise.
  */
-static int get_seccomp_arg_value(char *key, struct v2_rule_args *rule_args)
+static int get_seccomp_arg_value(char *key, struct seccomp_v2_rule_args *rule_args)
 {
 	int ret = 0;
-	uint64_t value = 0;
-	uint64_t mask = 0;
-	enum scmp_compare op = 0;
 	uint32_t index = 0;
-	char s[31] = {0}, v[24] = {0}, m[24] = {0};
+	uint64_t mask = 0, value = 0;
+	enum scmp_compare op = 0;
 	char *tmp = NULL;
+	char s[31] = {0}, v[24] = {0}, m[24] = {0};
 
 	tmp = strchr(key, '[');
 	if (!tmp) {
 		ERROR("Failed to interpret args");
 		return -1;
 	}
+
 	ret = sscanf(tmp, "[%i,%23[^,],%30[^0-9^,],%23[^,]", &index, v, s, m);
 	if ((ret != 3 && ret != 4) || index >= 6) {
 		ERROR("Failed to interpret args value");
@@ -209,7 +210,7 @@ static int get_seccomp_arg_value(char *key, struct v2_rule_args *rule_args)
 		return -1;
 	}
 
-	ret = lxc_safe_uint64(v, &mask);
+	ret = lxc_safe_uint64(m, &mask);
 	if (ret < 0) {
 		ERROR("Invalid argument mask");
 		return -1;
