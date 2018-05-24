@@ -235,13 +235,11 @@ static int get_seccomp_arg_value(char *key, struct seccomp_v2_rule_args *rule_ar
  * @rules	: output struct.
  * Returns 0 on success, < 0 otherwise.
  */
-static int parse_v2_rules(char *line, uint32_t def_action, struct seccomp_v2_rule *rules)
+static int parse_v2_rules(char *line, uint32_t def_action,
+			  struct seccomp_v2_rule *rules)
 {
-	int ret = 0 ;
-	int i = 0;
-	char *tmp = NULL;
-	char *key = NULL;
-	char *saveptr = NULL;
+	int i = 0, ret = -1;
+	char *key = NULL, *saveptr = NULL, *tmp = NULL;
 
 	tmp = strdup(line);
 	if (!tmp)
@@ -249,33 +247,29 @@ static int parse_v2_rules(char *line, uint32_t def_action, struct seccomp_v2_rul
 
 	/* read optional action which follows the syscall */
 	rules->action = get_v2_action(tmp, def_action);
-	if (rules->action == -1) {
-		ERROR("Failed to interpret action");
-		ret = -1;
-		goto out;
-	}
 
+	ret = 0;
 	rules->args_num = 0;
-	if (!strchr(tmp, '[')) {
-		ret = 0;
+	if (!strchr(tmp, '['))
 		goto out;
-	}
 
-	for ((key = strtok_r(tmp, "]", &saveptr)), i = 0; key && i < 6; (key = strtok_r(NULL, "]", &saveptr)), i++) {
+	ret = -1;
+	for ((key = strtok_r(tmp, "]", &saveptr)), i = 0; key && i < 6;
+	     (key = strtok_r(NULL, "]", &saveptr)), i++) {
 		ret = get_seccomp_arg_value(key, &rules->args_value[i]);
-		if (ret < 0) {
-			ret = -1;
+		if (ret < 0)
 			goto out;
-		}
+
 		rules->args_num++;
 	}
 
 	ret = 0;
+
 out:
 	free(tmp);
+
 	return ret;
 }
-
 #endif
 
 #if HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH
