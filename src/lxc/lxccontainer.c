@@ -1789,24 +1789,30 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 
 static bool do_lxcapi_reboot(struct lxc_container *c)
 {
+	int ret;
 	pid_t pid;
 	int rebootsignal = SIGINT;
 
 	if (!c)
 		return false;
+
 	if (!do_lxcapi_is_running(c))
 		return false;
+
 	pid = do_lxcapi_init_pid(c);
 	if (pid <= 0)
 		return false;
+
 	if (c->lxc_conf && c->lxc_conf->rebootsignal)
 		rebootsignal = c->lxc_conf->rebootsignal;
-	if (kill(pid, rebootsignal) < 0) {
-		WARN("Could not send signal %d to pid %d.", rebootsignal, pid);
+
+	ret = kill(pid, rebootsignal);
+	if (ret < 0) {
+		WARN("Failed to send signal %d to pid %d", rebootsignal, pid);
 		return false;
 	}
-	return true;
 
+	return true;
 }
 
 WRAP_API(bool, lxcapi_reboot)
@@ -1815,7 +1821,7 @@ static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 {
 	int killret, ret;
 	pid_t pid;
-	int haltsignal = SIGPWR, state_client_fd = -1;
+	int haltsignal = SIGPWR, state_client_fd = -EBADF;
 	lxc_state_t states[MAX_STATE] = {0};
 
 	if (!c)
@@ -1857,15 +1863,18 @@ static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 	/* Send shutdown signal to container. */
 	killret = kill(pid, haltsignal);
 	if (killret < 0) {
-		WARN("Could not send signal %d to pid %d", haltsignal, pid);
 		if (state_client_fd >= 0)
 			close(state_client_fd);
+		WARN("Failed to send signal %d to pid %d", haltsignal, pid);
 		return false;
 	}
 	TRACE("Sent signal %d to pid %d", haltsignal, pid);
 
-	if (timeout == 0)
+	if (timeout == 0) {
+		if (state_client_fd >= 0)
+			close(state_client_fd);
 		return true;
+	}
 
 	ret = lxc_cmd_sock_rcv_state(state_client_fd, timeout);
 	close(state_client_fd);
