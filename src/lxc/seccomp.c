@@ -65,6 +65,23 @@ static int parse_config_v1(FILE *f, struct lxc_conf *conf)
 }
 
 #if HAVE_DECL_SECCOMP_SYSCALL_RESOLVE_NAME_ARCH
+static const char *get_action_name(uint32_t action)
+{
+	/* The upper 16 bits indicate the type of the seccomp action. */
+	switch (action & 0xffff0000) {
+	case SCMP_ACT_KILL:
+		return "kill";
+	case SCMP_ACT_ALLOW:
+		return "allow";
+	case SCMP_ACT_TRAP:
+		return "trap";
+	case SCMP_ACT_ERRNO(0):
+		return "errno";
+	}
+
+	return "invalid action";
+}
+
 static uint32_t get_v2_default_action(char *line)
 {
 	uint32_t ret_action = -1;
@@ -94,41 +111,31 @@ static uint32_t get_v2_default_action(char *line)
 	return ret_action;
 }
 
-static const char *get_action_name(uint32_t action)
-{
-	/* The upper 16 bits indicate the type of the seccomp action. */
-	switch (action & 0xffff0000) {
-	case SCMP_ACT_KILL:
-		return "kill";
-	case SCMP_ACT_ALLOW:
-		return "allow";
-	case SCMP_ACT_TRAP:
-		return "trap";
-	case SCMP_ACT_ERRNO(0):
-		return "errno";
-	}
-
-	return "invalid action";
-}
-
 static uint32_t get_v2_action(char *line, uint32_t def_action)
 {
-	char *p = strchr(line, ' ');
+	char *p;
 	uint32_t ret;
 
+	p = strchr(line, ' ');
 	if (!p)
 		return def_action;
 	p++;
+
 	while (*p == ' ')
 		p++;
+
 	if (!*p || *p == '#')
 		return def_action;
+
 	ret = get_v2_default_action(p);
-	switch(ret) {
-	case -2: return -1;
-	case -1: return def_action;
-	default: return ret;
+	switch (ret) {
+	case -2:
+		return -1;
+	case -1:
+		return def_action;
 	}
+
+	return ret;
 }
 
 struct v2_rule_args {
