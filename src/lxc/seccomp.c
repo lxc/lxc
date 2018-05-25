@@ -114,6 +114,9 @@ static uint32_t get_v2_default_action(char *line)
 		ret_action = SCMP_ACT_ALLOW;
 	} else if (strncmp(line, "trap", 4) == 0) {
 		ret_action = SCMP_ACT_TRAP;
+	} else if (line[0]) {
+		ERROR("Unrecognized seccomp action: %s", line);
+		return -2;
 	}
 
 	return ret_action;
