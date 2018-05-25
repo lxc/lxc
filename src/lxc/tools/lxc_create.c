@@ -267,24 +267,19 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (geteuid()) {
-		if (!my_args.lxcpath[0])
-			my_args.lxcpath[0] = lxc_get_global_config_item("lxc.lxcpath");
 
-		if (mkdir_p(my_args.lxcpath[0], 0755))
-			exit(EXIT_FAILURE);
+	if (!my_args.lxcpath[0])
+		my_args.lxcpath[0] = lxc_get_global_config_item("lxc.lxcpath");
 
+	if (mkdir_p(my_args.lxcpath[0], 0755))
+		exit(EXIT_FAILURE);
+
+	if (geteuid())
 		if (access(my_args.lxcpath[0], O_RDONLY) < 0) {
-			fprintf(stderr, "You lack access to %s\n", my_args.lxcpath[0]);
+			fprintf(stderr, "You lack access to %s\n",
+				my_args.lxcpath[0]);
 			exit(EXIT_FAILURE);
 		}
-		if (strcmp(my_args.bdevtype, "dir") && strcmp(my_args.bdevtype, "_unset") &&
-				strcmp(my_args.bdevtype, "btrfs")) {
-			fprintf(stderr, "Unprivileged users cannot create %s containers.\n", my_args.bdevtype);
-			exit(EXIT_FAILURE);
-		}
-	}
-
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {
