@@ -115,7 +115,7 @@ static uint32_t get_v2_default_action(char *line)
 	} else if (strncmp(line, "trap", 4) == 0) {
 		ret_action = SCMP_ACT_TRAP;
 	} else if (line[0]) {
-		ERROR("Unrecognized seccomp action: %s", line);
+		ERROR("Unrecognized seccomp action \"%s\"", line);
 		return -2;
 	}
 
@@ -261,27 +261,27 @@ static int parse_v2_rules(char *line, uint32_t def_action,
 	if (rules->action == -1) {
 		ERROR("Failed to interpret action");
 		ret = -1;
-		goto out;
+		goto on_error;
 	}
 
 	ret = 0;
 	rules->args_num = 0;
 	if (!strchr(tmp, '['))
-		goto out;
+		goto on_error;
 
 	ret = -1;
 	for ((key = strtok_r(tmp, "]", &saveptr)), i = 0; key && i < 6;
 	     (key = strtok_r(NULL, "]", &saveptr)), i++) {
 		ret = get_seccomp_arg_value(key, &rules->args_value[i]);
 		if (ret < 0)
-			goto out;
+			goto on_error;
 
 		rules->args_num++;
 	}
 
 	ret = 0;
 
-out:
+on_error:
 	free(tmp);
 
 	return ret;
@@ -500,14 +500,12 @@ bool do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
 	nr = seccomp_syscall_resolve_name(line);
 	if (nr == __NR_SCMP_ERROR) {
 		WARN("Failed to resolve syscall \"%s\"", line);
-		WARN("This syscall will NOT be blacklisted");
-		return true;
+		return false;
 	}
 
 	if (nr < 0) {
 		WARN("Got negative return value %d for syscall \"%s\"", nr, line);
-		WARN("This syscall will NOT be blacklisted");
-		return true;
+		return false;
 	}
 
 	memset(&arg_cmp, 0, sizeof(arg_cmp));
@@ -1124,7 +1122,7 @@ static bool use_seccomp(void)
 
 int lxc_read_seccomp_config(struct lxc_conf *conf)
 {
-	int check_seccomp_attr_set, ret;
+	int ret;
 	FILE *f;
 
 	if (!conf->seccomp)
@@ -1148,19 +1146,19 @@ int lxc_read_seccomp_config(struct lxc_conf *conf)
 /* turn off no-new-privs. We don't want it in lxc, and it breaks
  * with apparmor */
 #if HAVE_SCMP_FILTER_CTX
-	check_seccomp_attr_set = seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_CTL_NNP, 0);
+	ret = seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_CTL_NNP, 0);
 #else
-	check_seccomp_attr_set = seccomp_attr_set(SCMP_FLTATR_CTL_NNP, 0);
+	ret = seccomp_attr_set(SCMP_FLTATR_CTL_NNP, 0);
 #endif
-	if (check_seccomp_attr_set) {
-		ERROR("%s - Failed to turn off no-new-privs", strerror(-check_seccomp_attr_set));
+	if (ret < 0) {
+		ERROR("%s - Failed to turn off no-new-privs", strerror(-ret));
 		return -1;
 	}
 #ifdef SCMP_FLTATR_ATL_TSKIP
-	check_seccomp_attr_set = seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_ATL_TSKIP, 1);
-	if (check_seccomp_attr_set < 0)
+	ret = seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_ATL_TSKIP, 1);
+	if (ret < 0)
 		WARN("%s - Failed to turn on seccomp nop-skip, continuing",
-		     strerror(-check_seccomp_attr_set));
+		     strerror(-ret));
 #endif
 
 	f = fopen(conf->seccomp, "r");
