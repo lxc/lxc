@@ -115,7 +115,7 @@ static uint32_t get_v2_default_action(char *line)
 	} else if (strncmp(line, "trap", 4) == 0) {
 		ret_action = SCMP_ACT_TRAP;
 	} else if (line[0]) {
-		ERROR("Unrecognized seccomp action: %s", line);
+		ERROR("Unrecognized seccomp action \"%s\"", line);
 		return -2;
 	}
 
@@ -261,27 +261,27 @@ static int parse_v2_rules(char *line, uint32_t def_action,
 	if (rules->action == -1) {
 		ERROR("Failed to interpret action");
 		ret = -1;
-		goto out;
+		goto on_error;
 	}
 
 	ret = 0;
 	rules->args_num = 0;
 	if (!strchr(tmp, '['))
-		goto out;
+		goto on_error;
 
 	ret = -1;
 	for ((key = strtok_r(tmp, "]", &saveptr)), i = 0; key && i < 6;
 	     (key = strtok_r(NULL, "]", &saveptr)), i++) {
 		ret = get_seccomp_arg_value(key, &rules->args_value[i]);
 		if (ret < 0)
-			goto out;
+			goto on_error;
 
 		rules->args_num++;
 	}
 
 	ret = 0;
 
-out:
+on_error:
 	free(tmp);
 
 	return ret;
