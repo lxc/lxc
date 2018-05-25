@@ -44,13 +44,11 @@
 
 lxc_log_define(lxc_seccomp, lxc);
 
-static int parse_config_v1(FILE *f, struct lxc_conf *conf)
+static int parse_config_v1(FILE *f, char *line, size_t *line_bufsz, struct lxc_conf *conf)
 {
 	int ret = 0;
-	size_t line_bufsz = 0;
-	char *line = NULL;
 
-	while (getline(&line, &line_bufsz, f) != -1) {
+	while (getline(&line, line_bufsz, f) != -1) {
 		int nr;
 
 		ret = sscanf(line, "%d", &nr);
@@ -116,6 +114,9 @@ static uint32_t get_v2_default_action(char *line)
 		ret_action = SCMP_ACT_ALLOW;
 	} else if (strncmp(line, "trap", 4) == 0) {
 		ret_action = SCMP_ACT_TRAP;
+	} else if (line[0]) {
+		ERROR("Unrecognized seccomp action: %s", line);
+		return -2;
 	}
 
 	return ret_action;
@@ -257,6 +258,11 @@ static int parse_v2_rules(char *line, uint32_t def_action,
 
 	/* read optional action which follows the syscall */
 	rules->action = get_v2_action(tmp, def_action);
+	if (rules->action == -1) {
+		ERROR("Failed to interpret action");
+		ret = -1;
+		goto out;
+	}
 
 	ret = 0;
 	rules->args_num = 0;
@@ -549,14 +555,12 @@ bool do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
  * write
  * close
  */
-static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
+static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_conf *conf)
 {
 	int ret;
 	char *p;
 	enum lxc_hostarch_t cur_rule_arch, native_arch;
-	size_t line_bufsz = 0;
 	bool blacklist = false;
-	char *rule_line = NULL;
 	uint32_t default_policy_action = -1, default_rule_action = -1;
 	struct seccomp_v2_rule rule;
 	struct scmp_ctx_info {
@@ -731,7 +735,7 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 #endif
 	}
 
-	while (getline(&rule_line, &line_bufsz, f) != -1) {
+	while (getline(&line, line_bufsz, f) != -1) {
 		if (line[0] == '#')
 			continue;
 
@@ -999,7 +1003,7 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
 		}
 	}
 
-	free(rule_line);
+	free(line);
 	return 0;
 
 bad_arch:
@@ -1016,7 +1020,7 @@ bad:
 	if (ctx.contexts[2])
 		seccomp_release(ctx.contexts[2]);
 
-	free(rule_line);
+	free(line);
 
 	return -1;
 }
@@ -1037,7 +1041,8 @@ static int parse_config_v2(FILE *f, char *line, struct lxc_conf *conf)
  */
 static int parse_config(FILE *f, struct lxc_conf *conf)
 {
-	char line[MAXPATHLEN];
+	char *line = NULL;
+	size_t line_bufsz = 0;
 	int ret, version;
 
 	ret = fscanf(f, "%d\n", &version);
@@ -1046,25 +1051,29 @@ static int parse_config(FILE *f, struct lxc_conf *conf)
 		return -1;
 	}
 
-	if (!fgets(line, MAXPATHLEN, f)) {
+	if (getline(&line, &line_bufsz, f) == -1) {
 		ERROR("Invalid config file");
-		return -1;
+		goto bad_line;
 	}
 
 	if (version == 1 && !strstr(line, "whitelist")) {
 		ERROR("Only whitelist policy is supported");
-		return -1;
+		goto bad_line;
 	}
 
 	if (strstr(line, "debug")) {
 		ERROR("Debug not yet implemented");
-		return -1;
+		goto bad_line;
 	}
 
 	if (version == 1)
-		return parse_config_v1(f, conf);
+		return parse_config_v1(f, line, &line_bufsz, conf);
 
-	return parse_config_v2(f, line, conf);
+	return parse_config_v2(f, line, &line_bufsz, conf);
+
+bad_line:
+	free(line);
+	return -1;
 }
 
 /*
