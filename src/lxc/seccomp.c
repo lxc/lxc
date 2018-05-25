@@ -1124,7 +1124,7 @@ static bool use_seccomp(void)
 
 int lxc_read_seccomp_config(struct lxc_conf *conf)
 {
-	int check_seccomp_attr_set, ret;
+	int ret;
 	FILE *f;
 
 	if (!conf->seccomp)
@@ -1148,19 +1148,19 @@ int lxc_read_seccomp_config(struct lxc_conf *conf)
 /* turn off no-new-privs. We don't want it in lxc, and it breaks
  * with apparmor */
 #if HAVE_SCMP_FILTER_CTX
-	check_seccomp_attr_set = seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_CTL_NNP, 0);
+	ret = seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_CTL_NNP, 0);
 #else
-	check_seccomp_attr_set = seccomp_attr_set(SCMP_FLTATR_CTL_NNP, 0);
+	ret = seccomp_attr_set(SCMP_FLTATR_CTL_NNP, 0);
 #endif
-	if (check_seccomp_attr_set) {
-		ERROR("%s - Failed to turn off no-new-privs", strerror(-check_seccomp_attr_set));
+	if (ret < 0) {
+		ERROR("%s - Failed to turn off no-new-privs", strerror(-ret));
 		return -1;
 	}
 #ifdef SCMP_FLTATR_ATL_TSKIP
-	check_seccomp_attr_set = seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_ATL_TSKIP, 1);
-	if (check_seccomp_attr_set < 0)
+	ret = seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_ATL_TSKIP, 1);
+	if (ret < 0)
 		WARN("%s - Failed to turn on seccomp nop-skip, continuing",
-		     strerror(-check_seccomp_attr_set));
+		     strerror(-ret));
 #endif
 
 	f = fopen(conf->seccomp, "r");
