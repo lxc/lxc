@@ -54,8 +54,10 @@ static int parse_config_v1(FILE *f, struct lxc_conf *conf)
 		int nr;
 
 		ret = sscanf(line, "%d", &nr);
-		if (ret != 1)
-			return -1;
+		if (ret != 1) {
+			ret = -1;
+			break;
+		}
 
 #if HAVE_SCMP_FILTER_CTX
 		ret = seccomp_rule_add(conf->seccomp_ctx, SCMP_ACT_ALLOW, nr, 0);
