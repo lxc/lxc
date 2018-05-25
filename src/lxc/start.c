@@ -1486,8 +1486,16 @@ static inline int do_share_ns(void *arg)
 			continue;
 
 		ret = setns(handler->nsfd[i], 0);
-		if (ret < 0)
+		if (ret < 0) {
+			/*
+			 * Note that joining a user and/or mount namespace
+			 * requires the process is not multithreaded otherwise
+			 * setns() will fail here.
+			 */
+			SYSERROR("Failed to inherit %s namespace",
+				 ns_info[i].proc_name);
 			return -1;
+		}
 
 		DEBUG("Inherited %s namespace", ns_info[i].proc_name);
 	}
