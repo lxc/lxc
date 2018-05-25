@@ -257,6 +257,11 @@ static int parse_v2_rules(char *line, uint32_t def_action,
 
 	/* read optional action which follows the syscall */
 	rules->action = get_v2_action(tmp, def_action);
+	if (rules->action == -1) {
+		ERROR("Failed to interpret action");
+		ret = -1;
+		goto out;
+	}
 
 	ret = 0;
 	rules->args_num = 0;
