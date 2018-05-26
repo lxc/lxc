@@ -1127,18 +1127,26 @@ on_error:
 static int set_config_tty_max(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf, void *data)
 {
+	int ret;
+	unsigned int nbtty = 0;
+
 	if (lxc_config_value_empty(value)) {
-		lxc_conf->tty = 0;
+		lxc_conf->ttys.max = 0;
 		return 0;
 	}
 
-	return lxc_safe_uint(value, &lxc_conf->tty);
+	ret = lxc_safe_uint(value, &nbtty);
+	if (ret < 0)
+		return -1;
+
+	lxc_conf->ttys.max = nbtty;
+	return 0;
 }
 
 static int set_config_tty_dir(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf, void *data)
 {
-	return set_config_string_item_max(&lxc_conf->ttydir, value,
+	return set_config_string_item_max(&lxc_conf->ttys.dir, value,
 					  NAME_MAX + 1);
 }
 
@@ -2917,13 +2925,13 @@ static int get_config_pty_max(const char *key, char *retv, int inlen,
 static int get_config_tty_max(const char *key, char *retv, int inlen,
 			      struct lxc_conf *c, void *data)
 {
-	return lxc_get_conf_int(c, retv, inlen, c->tty);
+	return lxc_get_conf_size_t(c, retv, inlen, c->ttys.max);
 }
 
 static int get_config_tty_dir(const char *key, char *retv, int inlen,
 			     struct lxc_conf *c, void *data)
 {
-	return lxc_get_conf_str(retv, inlen, c->ttydir);
+	return lxc_get_conf_str(retv, inlen, c->ttys.dir);
 }
 
 static int get_config_apparmor_profile(const char *key, char *retv, int inlen,
@@ -3695,15 +3703,15 @@ static inline int clr_config_pty_max(const char *key, struct lxc_conf *c,
 static inline int clr_config_tty_max(const char *key, struct lxc_conf *c,
 				     void *data)
 {
-	c->tty = 0;
+	c->ttys.tty = 0;
 	return 0;
 }
 
 static inline int clr_config_tty_dir(const char *key, struct lxc_conf *c,
 				    void *data)
 {
-	free(c->ttydir);
-	c->ttydir = NULL;
+	free(c->ttys.dir);
+	c->ttys.dir = NULL;
 	return 0;
 }
 

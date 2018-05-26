@@ -137,10 +137,12 @@ struct id_map {
 
 /* Defines the number of tty configured and contains the
  * instantiated ptys
- * @nbtty = number of configured ttys
+ * @max = number of configured ttys
  */
 struct lxc_tty_info {
-	int nbtty;
+	size_t max;
+	char *dir;
+	char *tty_names;
 	struct lxc_terminal_info *tty;
 };
 
@@ -214,8 +216,6 @@ struct lxc_state_client {
 struct lxc_conf {
 	/* Pointer to the name of the container. Do not free! */
 	const char *name;
-	unsigned int tty;
-	unsigned int pts;
 	bool is_execute;
 	int reboot;
 	signed long personality;
@@ -252,12 +252,13 @@ struct lxc_conf {
 
 	struct lxc_list caps;
 	struct lxc_list keepcaps;
-	struct lxc_tty_info ttys;
+
 	/* Comma-separated list of lxc.tty.max pty names. */
-	char *pty_names;
+	struct lxc_tty_info ttys;
+
+	unsigned int pts;
 	struct lxc_terminal console;
 	struct lxc_rootfs rootfs;
-	char *ttydir;
 	bool close_all_fds;
 
 	struct {

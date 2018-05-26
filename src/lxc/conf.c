@@ -835,7 +835,7 @@ static int lxc_setup_dev_symlinks(const struct lxc_rootfs *rootfs)
 }
 
 /* Build a space-separate list of ptys to pass to systemd. */
-static bool append_ptyname(char **pp, char *name)
+static bool append_ttyname(char **pp, char *name)
 {
 	char *p;
 
@@ -863,13 +863,13 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 {
 	int i, ret;
 	const struct lxc_tty_info *ttys = &conf->ttys;
-	char *ttydir = conf->ttydir;
+	char *ttydir = ttys->dir;
 	char path[MAXPATHLEN], lxcpath[MAXPATHLEN];
 
 	if (!conf->rootfs.path)
 		return 0;
 
-	for (i = 0; i < ttys->nbtty; i++) {
+	for (i = 0; i < ttys->max; i++) {
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
 		ret = snprintf(path, sizeof(path), "/dev/tty%d", i + 1);
@@ -942,13 +942,13 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 			      path);
 		}
 
-		if (!append_ptyname(&conf->pty_names, tty->name)) {
+		if (!append_ttyname(&conf->ttys.tty_names, tty->name)) {
 			ERROR("Error setting up container_ttys string");
 			return -1;
 		}
 	}
 
-	INFO("Finished setting up %d /dev/tty<N> device(s)", ttys->nbtty);
+	INFO("Finished setting up %zu /dev/tty<N> device(s)", ttys->max);
 	return 0;
 }
 
@@ -958,21 +958,21 @@ int lxc_allocate_ttys(const char *name, struct lxc_conf *conf)
 	struct lxc_tty_info *ttys = &conf->ttys;
 
 	/* no tty in the configuration */
-	if (!conf->tty)
+	if (ttys->max == 0)
 		return 0;
 
-	ttys->tty = malloc(sizeof(*ttys->tty) * conf->tty);
+	ttys->tty = malloc(sizeof(*ttys->tty) * ttys->max);
 	if (!ttys->tty)
 		return -ENOMEM;
 
-	for (i = 0; i < conf->tty; i++) {
+	for (i = 0; i < ttys->max; i++) {
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
 		ret = openpty(&tty->master, &tty->slave,
 			      tty->name, NULL, NULL);
 		if (ret) {
 			SYSERROR("Failed to create tty %d", i);
-			ttys->nbtty = i;
+			ttys->max = i;
 			lxc_delete_tty(ttys);
 			return -ENOTTY;
 		}
@@ -996,9 +996,7 @@ int lxc_allocate_ttys(const char *name, struct lxc_conf *conf)
 		tty->busy = 0;
 	}
 
-	ttys->nbtty = conf->tty;
-
-	INFO("Finished creating %d tty devices", conf->tty);
+	INFO("Finished creating %zu tty devices", ttys->max);
 	return 0;
 }
 
@@ -1006,7 +1004,7 @@ void lxc_delete_tty(struct lxc_tty_info *ttys)
 {
 	int i;
 
-	for (i = 0; i < ttys->nbtty; i++) {
+	for (i = 0; i < ttys->max; i++) {
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
 		close(tty->master);
@@ -1015,7 +1013,6 @@ void lxc_delete_tty(struct lxc_tty_info *ttys)
 
 	free(ttys->tty);
 	ttys->tty = NULL;
-	ttys->nbtty = 0;
 }
 
 static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
@@ -1026,10 +1023,10 @@ static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 	struct lxc_tty_info *ttys = &conf->ttys;
 	int sock = handler->data_sock[0];
 
-	if (conf->tty == 0)
+	if (ttys->max == 0)
 		return 0;
 
-	for (i = 0; i < conf->tty; i++) {
+	for (i = 0; i < ttys->max; i++) {
 		int ttyfds[2];
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
@@ -1045,10 +1042,10 @@ static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 	}
 
 	if (ret < 0)
-		ERROR("Failed to send %d ttys to parent: %s", conf->tty,
+		ERROR("Failed to send %zu ttys to parent: %s", ttys->max,
 		      strerror(errno));
 	else
-		TRACE("Sent %d ttys to parent", conf->tty);
+		TRACE("Sent %zu ttys to parent", ttys->max);
 
 	return ret;
 }
@@ -1078,10 +1075,10 @@ static int lxc_create_ttys(struct lxc_handler *handler)
 		}
 	}
 
-	if (conf->pty_names) {
-		ret = setenv("container_ttys", conf->pty_names, 1);
+	if (conf->ttys.tty_names) {
+		ret = setenv("container_ttys", conf->ttys.tty_names, 1);
 		if (ret < 0)
-			SYSERROR("Failed to set \"container_ttys=%s\"", conf->pty_names);
+			SYSERROR("Failed to set \"container_ttys=%s\"", conf->ttys.tty_names);
 	}
 
 	ret = 0;
@@ -3480,7 +3477,7 @@ int lxc_setup(struct lxc_handler *handler)
 	}
 
 	ret = lxc_setup_console(&lxc_conf->rootfs, &lxc_conf->console,
-				lxc_conf->ttydir);
+				lxc_conf->ttys.dir);
 	if (ret < 0) {
 		ERROR("Failed to setup console");
 		return -1;
@@ -3890,14 +3887,14 @@ void lxc_conf_free(struct lxc_conf *conf)
 	if (conf->logfd != -1)
 		close(conf->logfd);
 	free(conf->utsname);
-	free(conf->ttydir);
+	free(conf->ttys.dir);
+	free(conf->ttys.tty_names);
 	free(conf->fstab);
 	free(conf->rcfile);
 	free(conf->execute_cmd);
 	free(conf->init_cmd);
 	free(conf->init_cwd);
 	free(conf->unexpanded_config);
-	free(conf->pty_names);
 	free(conf->syslog);
 	lxc_free_networks(&conf->network);
 	free(conf->lsm_aa_profile);
