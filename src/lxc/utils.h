@@ -522,7 +522,7 @@ int lxc_count_file_lines(const char *fn);
 int lxc_preserve_ns(const int pid, const char *ns);
 
 /* Check whether a signal is blocked by a process. */
-bool task_blocking_signal(pid_t pid, int signal);
+extern bool task_blocks_signal(pid_t pid, int signal);
 
 /* Helper functions to parse numbers. */
 extern int lxc_safe_uint(const char *numstr, unsigned int *converted);
@@ -530,6 +530,7 @@ extern int lxc_safe_int(const char *numstr, int *converted);
 extern int lxc_safe_long(const char *numstr, long int *converted);
 extern int lxc_safe_long_long(const char *numstr, long long int *converted);
 extern int lxc_safe_ulong(const char *numstr, unsigned long *converted);
+extern int lxc_safe_uint64(const char *numstr, uint64_t *converted, int base);
 /* Handles B, kb, MB, GB. Detects overflows and reports -ERANGE. */
 extern int parse_byte_size_string(const char *s, int64_t *converted);
 

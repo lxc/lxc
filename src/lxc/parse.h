@@ -35,6 +35,8 @@ extern int lxc_char_left_gc(const char *buffer, size_t len);
 
 extern int lxc_char_right_gc(const char *buffer, size_t len);
 
+extern char *lxc_trim_whitespace_in_place(char *buffer);
+
 extern int lxc_is_line_empty(const char *line);
 
 #endif

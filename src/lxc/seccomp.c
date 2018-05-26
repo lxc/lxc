@@ -128,6 +128,7 @@ static uint32_t get_and_clear_v2_action(char *line, uint32_t def_action)
 	case -1: return def_action;
 	default: return ret;
 	}
+	return ret;
 }
 #endif
 
