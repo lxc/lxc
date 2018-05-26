@@ -96,7 +96,7 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 		args->rcfile = arg;
 		break;
 	case 'C':
-		args->close_all_fds = 1;
+		args->close_all_fds = true;
 		break;
 	case 's':
 		return lxc_config_define_add(&defines, arg);

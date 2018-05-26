@@ -254,7 +254,7 @@ struct lxc_conf {
 	struct lxc_terminal console;
 	struct lxc_rootfs rootfs;
 	char *ttydir;
-	int close_all_fds;
+	bool close_all_fds;
 
 	struct {
 		unsigned int hooks_version;

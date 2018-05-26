@@ -83,7 +83,7 @@ struct lxc_arguments {
 	int force;
 
 	/* close fds from parent? */
-	int close_all_fds;
+	bool close_all_fds;
 
 	/* lxc-create */
 	char *bdevtype, *configfile, *template;
