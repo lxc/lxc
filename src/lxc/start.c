@@ -1247,7 +1247,7 @@ static int do_start(void *data)
 	 * make sure that that pty is stdin,stdout,stderr.
 	 */
 	 if (handler->conf->console.slave >= 0) {
-		 if (handler->backgrounded || handler->conf->is_execute == 0)
+		 if (handler->backgrounded || !handler->conf->is_execute)
 			 ret = set_stdfds(handler->conf->console.slave);
 		 else
 			 ret = lxc_terminal_set_stdfds(handler->conf->console.slave);
