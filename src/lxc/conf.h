@@ -78,12 +78,13 @@ struct lxc_cgroup {
 };
 
 #if !HAVE_SYS_RESOURCE_H
-# define RLIM_INFINITY ((unsigned long)-1)
+#define RLIM_INFINITY ((unsigned long)-1)
 struct rlimit {
 	unsigned long rlim_cur;
 	unsigned long rlim_max;
 };
 #endif
+
 /*
  * Defines a structure to configure resource limits to set via setrlimit().
  * @resource : the resource name in lowercase without the RLIMIT_ prefix
@@ -161,51 +162,34 @@ struct lxc_rootfs {
  * Automatic mounts for LXC to perform inside the container
  */
 enum {
-	LXC_AUTO_PROC_RW              = 0x001,   /* /proc read-write */
-	LXC_AUTO_PROC_MIXED           = 0x002,   /* /proc/sys and /proc/sysrq-trigger read-only */
+	LXC_AUTO_PROC_RW              = 0x001, /* /proc read-write */
+	LXC_AUTO_PROC_MIXED           = 0x002, /* /proc/sys and /proc/sysrq-trigger read-only */
 	LXC_AUTO_PROC_MASK            = 0x003,
 
-	LXC_AUTO_SYS_RW               = 0x004,   /* /sys */
-	LXC_AUTO_SYS_RO               = 0x008,   /* /sys read-only */
-	LXC_AUTO_SYS_MIXED            = 0x00C,   /* /sys read-only and /sys/class/net read-write */
+	LXC_AUTO_SYS_RW               = 0x004, /* /sys */
+	LXC_AUTO_SYS_RO               = 0x008, /* /sys read-only */
+	LXC_AUTO_SYS_MIXED            = 0x00C, /* /sys read-only and /sys/class/net read-write */
 	LXC_AUTO_SYS_MASK             = 0x00C,
 
-	LXC_AUTO_CGROUP_RO            = 0x010,   /* /sys/fs/cgroup (partial mount, read-only) */
-	LXC_AUTO_CGROUP_RW            = 0x020,   /* /sys/fs/cgroup (partial mount, read-write) */
-	LXC_AUTO_CGROUP_MIXED         = 0x030,   /* /sys/fs/cgroup (partial mount, paths r/o, cgroup r/w) */
-	LXC_AUTO_CGROUP_FULL_RO       = 0x040,   /* /sys/fs/cgroup (full mount, read-only) */
-	LXC_AUTO_CGROUP_FULL_RW       = 0x050,   /* /sys/fs/cgroup (full mount, read-write) */
-	LXC_AUTO_CGROUP_FULL_MIXED    = 0x060,   /* /sys/fs/cgroup (full mount, parent r/o, own r/w) */
-	/* These are defined in such a way as to retain
-	 * binary compatibility with earlier versions of
-	 * this code. If the previous mask is applied,
-	 * both of these will default back to the _MIXED
-	 * variants, which is safe. */
-	LXC_AUTO_CGROUP_NOSPEC        = 0x0B0,   /* /sys/fs/cgroup (partial mount, r/w or mixed, depending on caps) */
-	LXC_AUTO_CGROUP_FULL_NOSPEC   = 0x0E0,   /* /sys/fs/cgroup (full mount, r/w or mixed, depending on caps) */
-	LXC_AUTO_CGROUP_FORCE         = 0x100,   /* mount cgroups even when cgroup namespaces are supported */
-	LXC_AUTO_CGROUP_MASK          = 0x1F0,   /* all known cgroup options, doe not contain LXC_AUTO_CGROUP_FORCE */
-	LXC_AUTO_ALL_MASK             = 0x1FF,   /* all known settings */
+	LXC_AUTO_CGROUP_RO            = 0x010, /* /sys/fs/cgroup (partial mount, read-only) */
+	LXC_AUTO_CGROUP_RW            = 0x020, /* /sys/fs/cgroup (partial mount, read-write) */
+	LXC_AUTO_CGROUP_MIXED         = 0x030, /* /sys/fs/cgroup (partial mount, paths r/o, cgroup r/w) */
+	LXC_AUTO_CGROUP_FULL_RO       = 0x040, /* /sys/fs/cgroup (full mount, read-only) */
+	LXC_AUTO_CGROUP_FULL_RW       = 0x050, /* /sys/fs/cgroup (full mount, read-write) */
+	LXC_AUTO_CGROUP_FULL_MIXED    = 0x060, /* /sys/fs/cgroup (full mount, parent r/o, own r/w) */
+	/*
+	 * These are defined in such a way as to retain binary compatibility
+	 * with earlier versions of this code. If the previous mask is applied,
+	 * both of these will default back to the _MIXED variants, which is
+	 * safe.
+	 */
+	LXC_AUTO_CGROUP_NOSPEC        = 0x0B0, /* /sys/fs/cgroup (partial mount, r/w or mixed, depending on caps) */
+	LXC_AUTO_CGROUP_FULL_NOSPEC   = 0x0E0, /* /sys/fs/cgroup (full mount, r/w or mixed, depending on caps) */
+	LXC_AUTO_CGROUP_FORCE         = 0x100, /* mount cgroups even when cgroup namespaces are supported */
+	LXC_AUTO_CGROUP_MASK          = 0x1F0, /* all known cgroup options, doe not contain LXC_AUTO_CGROUP_FORCE */
+	LXC_AUTO_ALL_MASK             = 0x1FF, /* all known settings */
 };
 
-/*
- * Defines the global container configuration
- * @rootfs     : root directory to run the container
- * @mount      : list of mount points
- * @tty        : numbers of tty
- * @pts        : new pts instance
- * @mount_list : list of mount point (alternative to fstab file)
- * @network    : network configuration
- * @utsname    : container utsname
- * @fstab      : path to a fstab file format
- * @caps       : list of the capabilities to drop
- * @keepcaps   : list of the capabilities to keep
- * @ttys       : tty data
- * @console    : console data
- * @ttydir     : directory (under /dev) in which to create console and ttys
- * @lsm_aa_profile : apparmor profile to switch to or NULL
- * @lsm_se_context : selinux type to switch to or NULL
- */
 enum lxchooks {
 	LXCHOOK_PRESTART,
 	LXCHOOK_PREMOUNT,
