@@ -2041,11 +2041,8 @@ static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 	}
 	TRACE("Sent signal %d to pid %d", haltsignal, pid);
 
-	if (timeout == 0) {
-		if (state_client_fd >= 0)
-			close(state_client_fd);
+	if (timeout == 0)
 		return true;
-	}
 
 	ret = lxc_cmd_sock_rcv_state(state_client_fd, timeout);
 	close(state_client_fd);
