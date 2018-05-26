@@ -1523,14 +1523,14 @@ static int lxc_setup_devpts(struct lxc_conf *conf)
 	const char *default_devpts_mntopts = "gid=5,newinstance,ptmxmode=0666,mode=0620";
 	char devpts_mntopts[256];
 
-	if (conf->pts <= 0) {
+	if (conf->pty_max <= 0) {
 		DEBUG("No new devpts instance will be mounted since no pts "
 		      "devices are requested");
 		return 0;
 	}
 
-	ret = snprintf(devpts_mntopts, sizeof(devpts_mntopts), "%s,max=%d",
-		       default_devpts_mntopts, conf->pts);
+	ret = snprintf(devpts_mntopts, sizeof(devpts_mntopts), "%s,max=%zu",
+		       default_devpts_mntopts, conf->pty_max);
 	if (ret < 0 || (size_t)ret >= sizeof(devpts_mntopts))
 		return -1;
 

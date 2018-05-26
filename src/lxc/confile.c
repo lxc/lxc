@@ -974,14 +974,19 @@ static int set_config_personality(const char *key, const char *value,
 static int set_config_pty_max(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf, void *data)
 {
+	int ret;
+	unsigned int max = 0;
+
 	if (lxc_config_value_empty(value)) {
-		lxc_conf->pts = 0;
+		lxc_conf->pty_max = 0;
 		return 0;
 	}
 
-	if (lxc_safe_uint(value, &lxc_conf->pts) < 0)
+	ret = lxc_safe_uint(value, &max);
+	if (ret < 0)
 		return -1;
 
+	lxc_conf->pty_max = max;
 	return 0;
 }
 
@@ -2905,7 +2910,7 @@ static int get_config_personality(const char *key, char *retv, int inlen,
 static int get_config_pty_max(const char *key, char *retv, int inlen,
 			      struct lxc_conf *c, void *data)
 {
-	return lxc_get_conf_int(c, retv, inlen, c->pts);
+	return lxc_get_conf_size_t(c, retv, inlen, c->pty_max);
 }
 
 static int get_config_tty_max(const char *key, char *retv, int inlen,
@@ -3682,7 +3687,7 @@ static inline int clr_config_personality(const char *key, struct lxc_conf *c,
 static inline int clr_config_pty_max(const char *key, struct lxc_conf *c,
 				     void *data)
 {
-	c->pts = 0;
+	c->pty_max = 0;
 	return 0;
 }
 

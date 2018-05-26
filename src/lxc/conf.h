@@ -255,8 +255,8 @@ struct lxc_conf {
 
 	/* Comma-separated list of lxc.tty.max pty names. */
 	struct lxc_tty_info ttys;
+	size_t pty_max;
 
-	unsigned int pts;
 	struct lxc_terminal console;
 	struct lxc_rootfs rootfs;
 	bool close_all_fds;
