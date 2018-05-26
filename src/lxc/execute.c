@@ -152,7 +152,7 @@ int lxc_execute(const char *name, char *const argv[], int quiet,
 	struct execute_args args = {.argv = argv, .quiet = quiet};
 
 	TRACE("Doing lxc_execute");
-	handler->conf->is_execute = 1;
+	handler->conf->is_execute = true;
 	return __lxc_start(name, handler, &execute_start_ops, &args, lxcpath,
 			   backgrounded, error_num);
 }

@@ -214,10 +214,10 @@ struct lxc_state_client {
 struct lxc_conf {
 	/* Pointer to the name of the container. Do not free! */
 	const char *name;
-	int is_execute;
 	char *fstab;
 	unsigned int tty;
 	unsigned int pts;
+	bool is_execute;
 	int reboot;
 	signed long personality;
 	struct utsname *utsname;
