@@ -253,11 +253,13 @@ struct lxc_conf {
 	struct lxc_list caps;
 	struct lxc_list keepcaps;
 
-	/* Comma-separated list of lxc.tty.max pty names. */
+	/* /dev/tty<idx> devices */
 	struct lxc_tty_info ttys;
+	/* /dev/console device */
+	struct lxc_terminal console;
+	/* maximum pty devices allowed by devpts mount */
 	size_t pty_max;
 
-	struct lxc_terminal console;
 	struct lxc_rootfs rootfs;
 	bool close_all_fds;
 
