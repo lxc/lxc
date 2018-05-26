@@ -1284,7 +1284,6 @@ static inline bool cgfsng_create(struct cgroup_ops *ops,
 	char *container_cgroup, *offset, *tmp;
 	int idx = 0;
 	struct lxc_conf *conf = handler->conf;
-	const char *join_args[] = {conf->cgroup_meta.dir, handler->name, NULL};
 
 	if (ops->container_cgroup) {
 		WARN("cgfsng_create called a second time: %s", ops->container_cgroup);
@@ -1295,7 +1294,7 @@ static inline bool cgfsng_create(struct cgroup_ops *ops,
 		return false;
 
 	if (conf->cgroup_meta.dir)
-		tmp = lxc_string_join("/", join_args, false);
+		tmp = lxc_string_join("/", (const char *[]){conf->cgroup_meta.dir, handler->name, NULL}, false);
 	else
 		tmp = lxc_string_replace("%n", handler->name, ops->cgroup_pattern);
 	if (!tmp) {
