@@ -1815,12 +1815,12 @@ int lxc_count_file_lines(const char *fn)
 /* Check whether a signal is blocked by a process. */
 /* /proc/pid-to-str/status\0 = (5 + 21 + 7 + 1) */
 #define __PROC_STATUS_LEN (6 + (LXC_NUMSTRLEN64) + 7 + 1)
-bool task_blocking_signal(pid_t pid, int signal)
+bool task_blocks_signal(pid_t pid, int signal)
 {
 	int ret;
 	char status[__PROC_STATUS_LEN];
 	FILE *f;
-	long unsigned int sigblk = 0;
+	uint64_t sigblk = 0, one = 1;
 	size_t n = 0;
 	bool bret = false;
 	char *line = NULL;
@@ -1834,14 +1834,20 @@ bool task_blocking_signal(pid_t pid, int signal)
 		return bret;
 
 	while (getline(&line, &n, f) != -1) {
+		char *numstr;
+
 		if (strncmp(line, "SigBlk:", 7))
 			continue;
 
-		if (sscanf(line + 7, "%lx", &sigblk) != 1)
+		numstr = lxc_trim_whitespace_in_place(line + 7);
+		ret = lxc_safe_uint64(numstr, &sigblk, 16);
+		if (ret < 0)
 			goto out;
+
+		break;
 	}
 
-	if (sigblk & (1LU << (signal - 1)))
+	if (sigblk & (one << (signal - 1)))
 		bret = true;
 
 out:
@@ -1958,7 +1964,7 @@ int lxc_safe_ulong(const char *numstr, unsigned long *converted)
 	return 0;
 }
 
-int lxc_safe_uint64(const char *numstr, uint64_t *converted)
+int lxc_safe_uint64(const char *numstr, uint64_t *converted, int base)
 {
 	char *err = NULL;
 	uint64_t u;
@@ -1970,7 +1976,7 @@ int lxc_safe_uint64(const char *numstr, uint64_t *converted)
 		return -EINVAL;
 
 	errno = 0;
-	u = strtoull(numstr, &err, 0);
+	u = strtoull(numstr, &err, base);
 	if (errno == ERANGE && u == ULLONG_MAX)
 		return -ERANGE;
 

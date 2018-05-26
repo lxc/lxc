@@ -1247,7 +1247,7 @@ static int do_start(void *data)
 	 * make sure that that pty is stdin,stdout,stderr.
 	 */
 	 if (handler->conf->console.slave >= 0) {
-		 if (handler->backgrounded || handler->conf->is_execute == 0)
+		 if (handler->backgrounded || !handler->conf->is_execute)
 			 ret = set_stdfds(handler->conf->console.slave);
 		 else
 			 ret = lxc_terminal_set_stdfds(handler->conf->console.slave);
@@ -1331,8 +1331,8 @@ static int do_start(void *data)
 		goto out_warn_father;
 	}
 
-	if (handler->conf->pty_names) {
-		ret = putenv(handler->conf->pty_names);
+	if (handler->conf->ttys.tty_names) {
+		ret = putenv(handler->conf->ttys.tty_names);
 		if (ret < 0) {
 			SYSERROR("Failed to set environment variable for container ptys");
 			goto out_warn_father;
@@ -1397,14 +1397,14 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 	struct lxc_conf *conf = handler->conf;
 	struct lxc_tty_info *ttys = &conf->ttys;
 
-	if (!conf->tty)
+	if (!conf->ttys.max)
 		return 0;
 
-	ttys->tty = malloc(sizeof(*ttys->tty) * conf->tty);
+	ttys->tty = malloc(sizeof(*ttys->tty) * ttys->max);
 	if (!ttys->tty)
 		return -1;
 
-	for (i = 0; i < conf->tty; i++) {
+	for (i = 0; i < conf->ttys.max; i++) {
 		int ttyfds[2];
 
 		ret = lxc_abstract_unix_recv_fds(sock, ttyfds, 2, NULL, 0);
@@ -1419,12 +1419,10 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 		      "parent", tty->master, tty->slave);
 	}
 	if (ret < 0)
-		ERROR("Failed to receive %d ttys from child: %s", conf->tty,
+		ERROR("Failed to receive %zu ttys from child: %s", ttys->max,
 		      strerror(errno));
 	else
-		TRACE("Received %d ttys from child", conf->tty);
-
-	ttys->nbtty = conf->tty;
+		TRACE("Received %zu ttys from child", ttys->max);
 
 	return ret;
 }
