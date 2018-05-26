@@ -27,14 +27,16 @@
 #include <fcntl.h>
 #include <inttypes.h>
 #include <limits.h>
+#include <pthread.h>
 #include <sched.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include "lxctest.h"
 #include "utils.h"
@@ -507,6 +509,67 @@ void test_lxc_config_net_hwaddr(void)
 		exit(EXIT_FAILURE);
 }
 
+void test_task_blocks_signal(void)
+{
+	int ret;
+	pid_t pid;
+
+	pid = fork();
+	if (pid < 0)
+		_exit(EXIT_FAILURE);
+
+	if (pid == 0) {
+		int i;
+		sigset_t mask;
+		int signals[] = {SIGBUS,   SIGILL,       SIGSEGV,
+				 SIGWINCH, SIGQUIT,      SIGUSR1,
+				 SIGUSR2,  SIGRTMIN + 3, SIGRTMIN + 4};
+
+		sigemptyset(&mask);
+
+		for (i = 0; i < (sizeof(signals) / sizeof(signals[0])); i++) {
+			ret = sigaddset(&mask, signals[i]);
+			if (ret < 0)
+				_exit(EXIT_FAILURE);
+		}
+
+		ret = pthread_sigmask(SIG_BLOCK, &mask, NULL);
+		if (ret < 0) {
+			lxc_error("%s\n", "Failed to block signals");
+			_exit(EXIT_FAILURE);
+		}
+
+		for (i = 0; i < (sizeof(signals) / sizeof(signals[0])); i++) {
+			if (!task_blocks_signal(getpid(), signals[i])) {
+				lxc_error("Failed to detect blocked signal "
+					  "(idx = %d, signal number = %d)\n",
+					  i, signals[i]);
+				_exit(EXIT_FAILURE);
+			}
+		}
+
+		if (task_blocks_signal(getpid(), SIGKILL)) {
+			lxc_error("%s\n",
+				  "Falsely detected SIGKILL as blocked signal");
+			_exit(EXIT_FAILURE);
+		}
+
+		if (task_blocks_signal(getpid(), SIGSTOP)) {
+			lxc_error("%s\n",
+				  "Falsely detected SIGSTOP as blocked signal");
+			_exit(EXIT_FAILURE);
+		}
+
+		_exit(EXIT_SUCCESS);
+	}
+
+	ret = wait_for_pid(pid);
+	if (ret < 0)
+		_exit(EXIT_FAILURE);
+
+	return;
+}
+
 int main(int argc, char *argv[])
 {
 	test_lxc_string_replace();
@@ -518,6 +581,7 @@ int main(int argc, char *argv[])
 	test_lxc_safe_long();
 	test_parse_byte_size_string();
 	test_lxc_config_net_hwaddr();
+	test_task_blocks_signal();
 
 	exit(EXIT_SUCCESS);
 }

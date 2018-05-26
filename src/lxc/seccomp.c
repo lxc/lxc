@@ -215,13 +215,13 @@ static int get_seccomp_arg_value(char *key, struct seccomp_v2_rule_args *rule_ar
 		return -1;
 	}
 
-	ret = lxc_safe_uint64(v, &value);
+	ret = lxc_safe_uint64(v, &value, 0);
 	if (ret < 0) {
 		ERROR("Invalid argument value");
 		return -1;
 	}
 
-	ret = lxc_safe_uint64(m, &mask);
+	ret = lxc_safe_uint64(m, &mask, 0);
 	if (ret < 0) {
 		ERROR("Invalid argument mask");
 		return -1;

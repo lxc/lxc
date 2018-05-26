@@ -44,7 +44,8 @@ AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	-I $(top_srcdir)/src/lxc \
 	-I $(top_srcdir)/src/lxc/bdev \
 	-I $(top_srcdir)/src/lxc/cgroups \
-	-I $(top_srcdir)/src/lxc/tools
+	-I $(top_srcdir)/src/lxc/tools \
+	-pthread
 
 if ENABLE_APPARMOR
 AM_CFLAGS += -DHAVE_APPARMOR
