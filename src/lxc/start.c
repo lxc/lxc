@@ -861,11 +861,11 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	return 0;
 
 out_restore_sigmask:
-	pthread_sigmask(SIG_SETMASK, &handler->oldmask, NULL);
+	(void)pthread_sigmask(SIG_SETMASK, &handler->oldmask, NULL);
 out_delete_tty:
 	lxc_delete_tty(&conf->ttys);
 out_aborting:
-	lxc_set_state(name, handler, ABORTING);
+	(void)lxc_set_state(name, handler, ABORTING);
 out_close_maincmd_fd:
 	close(conf->maincmd_fd);
 	conf->maincmd_fd = -1;
