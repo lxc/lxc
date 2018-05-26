@@ -643,6 +643,16 @@ int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen, int v)
 	return snprintf(retv, inlen, "%d", v);
 }
 
+int lxc_get_conf_size_t(struct lxc_conf *c, char *retv, int inlen, size_t v)
+{
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	return snprintf(retv, inlen, "%zu", v);
+}
+
 int lxc_get_conf_uint64(struct lxc_conf *c, char *retv, int inlen, uint64_t v)
 {
 	if (!retv)

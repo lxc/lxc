@@ -618,7 +618,7 @@ int lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 	}
 
 	if (*ttyreq > 0) {
-		if (*ttyreq > ttys->nbtty)
+		if (*ttyreq > ttys->max)
 			goto out;
 
 		if (ttys->tty[*ttyreq - 1].busy)
@@ -630,12 +630,12 @@ int lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 	}
 
 	/* Search for next available tty, fixup index tty1 => [0]. */
-	for (ttynum = 1; ttynum <= ttys->nbtty && ttys->tty[ttynum - 1].busy; ttynum++) {
+	for (ttynum = 1; ttynum <= ttys->max && ttys->tty[ttynum - 1].busy; ttynum++) {
 		;
 	}
 
 	/* We didn't find any available slot for tty. */
-	if (ttynum > ttys->nbtty)
+	if (ttynum > ttys->max)
 		goto out;
 
 	*ttyreq = ttynum;
@@ -654,7 +654,7 @@ void lxc_terminal_free(struct lxc_conf *conf, int fd)
 	struct lxc_tty_info *ttys = &conf->ttys;
 	struct lxc_terminal *terminal = &conf->console;
 
-	for (i = 0; i < ttys->nbtty; i++)
+	for (i = 0; i < ttys->max; i++)
 		if (ttys->tty[i].busy == fd)
 			ttys->tty[i].busy = 0;
 
