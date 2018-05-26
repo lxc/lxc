@@ -214,7 +214,6 @@ struct lxc_state_client {
 struct lxc_conf {
 	/* Pointer to the name of the container. Do not free! */
 	const char *name;
-	char *fstab;
 	unsigned int tty;
 	unsigned int pts;
 	bool is_execute;
@@ -244,8 +243,13 @@ struct lxc_conf {
 	};
 
 	struct lxc_list network;
-	int auto_mounts;
-	struct lxc_list mount_list;
+
+	struct {
+		char *fstab;
+		int auto_mounts;
+		struct lxc_list mount_list;
+	};
+
 	struct lxc_list caps;
 	struct lxc_list keepcaps;
 	struct lxc_tty_info ttys;
