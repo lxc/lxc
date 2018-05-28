@@ -434,7 +434,7 @@ int lxc_cmd_get_clone_flags(const char *name, const char *lxcpath)
 static int lxc_cmd_get_clone_flags_callback(int fd, struct lxc_cmd_req *req,
 					    struct lxc_handler *handler)
 {
-	struct lxc_cmd_rsp rsp = { .data = INT_TO_PTR(handler->clone_flags) };
+	struct lxc_cmd_rsp rsp = { .data = INT_TO_PTR(handler->ns_clone_flags) };
 
 	return lxc_cmd_rsp_send(fd, &rsp);
 }

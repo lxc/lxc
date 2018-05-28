@@ -331,4 +331,6 @@ static inline uint64_t lxc_getpagesize(void)
 	return pgsz;
 }
 
+extern int lxc_preserve_ns(const int pid, const char *ns);
+
 #endif /* __LXC_UTILS_H */
