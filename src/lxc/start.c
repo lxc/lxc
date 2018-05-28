@@ -619,8 +619,6 @@ void lxc_zero_handler(struct lxc_handler *handler)
 
 	memset(handler, 0, sizeof(struct lxc_handler));
 
-	handler->ns_clone_flags = -1;
-
 	handler->pinfd = -1;
 
 	handler->sigfd = -1;
