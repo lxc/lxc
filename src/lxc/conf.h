@@ -271,7 +271,7 @@ struct lxc_conf {
 	char *lsm_aa_profile;
 	unsigned int lsm_aa_allow_incomplete;
 	char *lsm_se_context;
-	int tmp_umount_proc;
+	bool tmp_umount_proc;
 	char *seccomp;  /* filename with the seccomp rules */
 #if HAVE_SCMP_FILTER_CTX
 	scmp_filter_ctx seccomp_ctx;
