@@ -968,6 +968,8 @@ int lxc_allocate_ttys(const char *name, struct lxc_conf *conf)
 	for (i = 0; i < ttys->max; i++) {
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
+		tty->master = -EBADF;
+		tty->slave = -EBADF;
 		ret = openpty(&tty->master, &tty->slave,
 			      tty->name, NULL, NULL);
 		if (ret) {
@@ -1004,11 +1006,21 @@ void lxc_delete_tty(struct lxc_tty_info *ttys)
 {
 	int i;
 
+	if (!ttys->tty)
+		return;
+
 	for (i = 0; i < ttys->max; i++) {
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
-		close(tty->master);
-		close(tty->slave);
+		if (tty->master >= 0) {
+			close(tty->master);
+			tty->master = -EBADF;
+		}
+
+		if (tty->slave >= 0) {
+			close(tty->slave);
+			tty->slave = -EBADF;
+		}
 	}
 
 	free(ttys->tty);
