@@ -1946,7 +1946,12 @@ int setup_private_host_hw_addr(char *veth1)
 	if (sockfd < 0)
 		return -errno;
 
-	snprintf((char *)ifr.ifr_name, IFNAMSIZ, "%s", veth1);
+	err = snprintf((char *)ifr.ifr_name, IFNAMSIZ, "%s", veth1);
+	if (err < 0 || (size_t)err >= IFNAMSIZ) {
+		close(sockfd);
+		return -E2BIG;
+	}
+
 	err = ioctl(sockfd, SIOCGIFHWADDR, &ifr);
 	if (err < 0) {
 		close(sockfd);
