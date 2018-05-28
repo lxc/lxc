@@ -2027,8 +2027,10 @@ int setup_private_host_hw_addr(char *veth1)
 		return -errno;
 
 	err = snprintf((char *)ifr.ifr_name, IFNAMSIZ, "%s", veth1);
-	if (err < 0 || (size_t)err >= IFNAMSIZ)
+	if (err < 0 || (size_t)err >= IFNAMSIZ) {
+		close(sockfd);
 		return -E2BIG;
+	}
 
 	err = ioctl(sockfd, SIOCGIFHWADDR, &ifr);
 	if (err < 0) {
