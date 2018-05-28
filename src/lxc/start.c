@@ -106,62 +106,77 @@ static void print_top_failing_dir(const char *path)
 	}
 }
 
-static void close_ns(int ns_fd[LXC_NS_MAX]) {
+static void lxc_put_nsfds(int nsfd[LXC_NS_MAX])
+{
 	int i;
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
-		if (ns_fd[i] > -1) {
-			close(ns_fd[i]);
-			ns_fd[i] = -1;
-		}
+		if (nsfd[i] < 0)
+			continue;
+
+		close(nsfd[i]);
+		nsfd[i] = -EBADF;
 	}
 }
 
-/*
- * preserve_ns: open /proc/@pid/ns/@ns for each namespace specified
- * in clone_flags.
- * Return true on success, false on failure.  On failure, leave an error
- * message in *errmsg, which caller must free.
- */
-static
-bool preserve_ns(int ns_fd[LXC_NS_MAX], int clone_flags, pid_t pid, char **errmsg) {
-	int i, ret;
-	char path[MAXPATHLEN];
+static int lxc_try_preserve_ns(const int pid, const char *ns)
+{
+	int fd;
 
-	for (i = 0; i < LXC_NS_MAX; i++)
-		ns_fd[i] = -1;
+	fd = lxc_preserve_ns(pid, ns);
+	if (fd < 0) {
+		if (errno != ENOENT) {
+			SYSERROR("Failed to preserve %s namespace", ns);
+			return -EINVAL;
+		}
 
-	snprintf(path, MAXPATHLEN, "/proc/%d/ns", pid);
-	if (access(path, X_OK)) {
-		if (asprintf(errmsg, "Kernel does not support setns.") == -1)
-			*errmsg = NULL;
-		return false;
+		WARN("%s - Kernel does not support preserving %s namespaces",
+		     strerror(errno), ns);
+		return -EOPNOTSUPP;
 	}
 
+	return fd;
+}
+
+/* lxc_try_preserve_namespaces: open /proc/@pid/ns/@ns for each namespace
+ * specified in ns_clone_flags.
+ * Return true on success, false on failure.
+ */
+static bool lxc_try_preserve_namespaces(int nsfd[LXC_NS_MAX],
+					int ns_clone_flags, pid_t pid)
+{
+	int i;
+
+	for (i = 0; i < LXC_NS_MAX; i++)
+		nsfd[i] = -EBADF;
+
 	for (i = 0; i < LXC_NS_MAX; i++) {
-		if ((clone_flags & ns_info[i].clone_flag) == 0)
+		int fd;
+
+		if ((ns_clone_flags & ns_info[i].clone_flag) == 0)
 			continue;
-		snprintf(path, MAXPATHLEN, "/proc/%d/ns/%s", pid,
-		         ns_info[i].proc_name);
-		ns_fd[i] = open(path, O_RDONLY | O_CLOEXEC);
-		if (ns_fd[i] < 0)
-			goto error;
+
+		fd = lxc_try_preserve_ns(pid, ns_info[i].proc_name);
+		if (fd < 0) {
+			nsfd[i] = -EBADF;
+
+			/* Do not fail to start container on kernels that do
+			 * not support interacting with namespaces through
+			 * /proc.
+			 */
+			if (fd == -EOPNOTSUPP)
+				continue;
+
+			lxc_put_nsfds(nsfd);
+			return false;
+		}
+
+		nsfd[i] = fd;
+		DEBUG("Preserved %s namespace via fd %d", ns_info[i].proc_name,
+		      nsfd[i]);
 	}
 
 	return true;
-
-error:
-	if (errno == ENOENT) {
-		ret = asprintf(errmsg, "Kernel does not support setns for %s",
-			ns_info[i].proc_name);
-	} else {
-		ret = asprintf(errmsg, "Failed to open %s: %s",
-			path, strerror(errno));
-	}
-	if (ret == -1)
-		*errmsg = NULL;
-	close_ns(ns_fd);
-	return false;
 }
 
 static int attach_ns(const int ns_fd[LXC_NS_MAX]) {
@@ -931,9 +946,8 @@ static int lxc_spawn(struct lxc_handler *handler)
 			INFO("failed to pin the container's rootfs");
 	}
 
-	if (!preserve_ns(saved_ns_fd, preserve_mask, getpid(), &errmsg)) {
-		SYSERROR("Failed to preserve requested namespaces: %s",
-			errmsg ? errmsg : "(Out of memory)");
+	if (!lxc_try_preserve_namespaces(saved_ns_fd, preserve_mask, getpid())) {
+		SYSERROR("Failed to preserve requested namespaces");
 		free(errmsg);
 		goto out_delete_net;
 	}
@@ -959,9 +973,8 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 	}
 
-	if (!preserve_ns(handler->nsfd, handler->clone_flags | preserve_mask, handler->pid, &errmsg)) {
-		INFO("Failed to store namespace references for stop hook: %s",
-			errmsg ? errmsg : "(Out of memory)");
+	if (!lxc_try_preserve_namespaces(handler->nsfd, handler->clone_flags | preserve_mask, handler->pid)) {
+		INFO("Failed to store namespace references for stop hook");
 		free(errmsg);
 	}
 
