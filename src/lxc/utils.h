@@ -319,4 +319,16 @@ int null_stdfds(void);
 int safe_mount(const char *src, const char *dest, const char *fstype,
 		unsigned long flags, const void *data, const char *rootfs);
 int set_stdfds(int fd);
+
+static inline uint64_t lxc_getpagesize(void)
+{
+	int64_t pgsz;
+
+	pgsz = sysconf(_SC_PAGESIZE);
+	if (pgsz <= 0)
+		pgsz = 1 << 12;
+
+	return pgsz;
+}
+
 #endif /* __LXC_UTILS_H */

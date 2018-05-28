@@ -74,15 +74,6 @@
 
 lxc_log_define(lxc_start, lxc);
 
-const struct ns_info ns_info[LXC_NS_MAX] = {
-	[LXC_NS_MNT] = {"mnt", CLONE_NEWNS},
-	[LXC_NS_PID] = {"pid", CLONE_NEWPID},
-	[LXC_NS_UTS] = {"uts", CLONE_NEWUTS},
-	[LXC_NS_IPC] = {"ipc", CLONE_NEWIPC},
-	[LXC_NS_USER] = {"user", CLONE_NEWUSER},
-	[LXC_NS_NET] = {"net", CLONE_NEWNET}
-};
-
 static void print_top_failing_dir(const char *path)
 {
 	size_t len = strlen(path);
