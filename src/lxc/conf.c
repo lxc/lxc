@@ -1499,7 +1499,7 @@ static int setup_pivot_root(const struct lxc_rootfs *rootfs)
 	return 0;
 }
 
-static struct id_map *find_mapped_nsid_entry(struct lxc_conf *conf, unsigned id,
+static const struct id_map *find_mapped_nsid_entry(struct lxc_conf *conf, unsigned id,
 					     enum idtype idtype)
 {
 	struct lxc_list *it;
@@ -3965,7 +3965,8 @@ static int run_userns_fn(void *data)
 static struct id_map *mapped_nsid_add(struct lxc_conf *conf, unsigned id,
 				      enum idtype idtype)
 {
-	struct id_map *map, *retmap;
+	const struct id_map *map;
+	struct id_map *retmap;
 
 	map = find_mapped_nsid_entry(conf, id, idtype);
 	if (!map)
