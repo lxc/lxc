@@ -260,7 +260,10 @@ struct lxc_conf {
 	/* maximum pty devices allowed by devpts mount */
 	size_t pty_max;
 
+	/* set to true when rootfs has been setup */
+	bool rootfs_setup;
 	struct lxc_rootfs rootfs;
+
 	bool close_all_fds;
 
 	struct {
@@ -301,9 +304,6 @@ struct lxc_conf {
 	/* unshare the mount namespace in the monitor */
 	unsigned int monitor_unshare;
 
-	/* set to true when rootfs has been setup */
-	bool rootfs_setup;
-
 	/* list of included files */
 	struct lxc_list includes;
 	/* config entries which are not "lxc.*" are aliens */
@@ -315,7 +315,8 @@ struct lxc_conf {
 
 	/* text representation of the config file */
 	char *unexpanded_config;
-	size_t unexpanded_len, unexpanded_alloced;
+	size_t unexpanded_len;
+	size_t unexpanded_alloced;
 
 	/* default command for lxc-execute */
 	char *execute_cmd;
