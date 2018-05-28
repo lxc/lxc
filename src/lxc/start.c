@@ -848,7 +848,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	netpipe = -1;
 
 	for (i = 0; i < LXC_NS_MAX; i++)
-		if (handler->conf->inherit_ns_fd[i] != -1)
+		if (handler->conf->ns_share[i] != -1)
 			preserve_mask |= ns_info[i].clone_flag;
 
 	if (lxc_sync_init(handler))
@@ -860,7 +860,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		handler->clone_flags |= CLONE_NEWUSER;
 	}
 
-	if (handler->conf->inherit_ns_fd[LXC_NS_NET] == -1) {
+	if (handler->conf->ns_share[LXC_NS_NET] == -1) {
 		if (!lxc_requests_empty_network(handler))
 			handler->clone_flags |= CLONE_NEWNET;
 
@@ -894,13 +894,13 @@ static int lxc_spawn(struct lxc_handler *handler)
 		INFO("Inheriting a net namespace");
 	}
 
-	if (handler->conf->inherit_ns_fd[LXC_NS_IPC] == -1) {
+	if (handler->conf->ns_share[LXC_NS_IPC] == -1) {
 		handler->clone_flags |= CLONE_NEWIPC;
 	} else {
 		INFO("Inheriting an IPC namespace");
 	}
 
-	if (handler->conf->inherit_ns_fd[LXC_NS_UTS] == -1) {
+	if (handler->conf->ns_share[LXC_NS_UTS] == -1) {
 		handler->clone_flags |= CLONE_NEWUTS;
 	} else {
 		INFO("Inheriting a UTS namespace");
@@ -937,7 +937,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		free(errmsg);
 		goto out_delete_net;
 	}
-	if (attach_ns(handler->conf->inherit_ns_fd) < 0)
+	if (attach_ns(handler->conf->ns_share) < 0)
 		goto out_delete_net;
 
 	if (am_unpriv() && (nveths = count_veths(&handler->conf->network))) {
