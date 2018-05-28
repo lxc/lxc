@@ -646,7 +646,7 @@ void lxc_free_handler(struct lxc_handler *handler)
 
 	lxc_put_nsfds(handler);
 
-	if (handler->conf && handler->conf->reboot == 0)
+	if (handler->conf && handler->conf->reboot == REBOOT_NONE)
 		if (handler->conf->maincmd_fd >= 0)
 			close(handler->conf->maincmd_fd);
 
@@ -684,7 +684,7 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 	handler->sigfd = -EBADF;
 	handler->init_died = false;
 	handler->state_socket_pair[0] = handler->state_socket_pair[1] = -1;
-	if (handler->conf->reboot == 0)
+	if (handler->conf->reboot == REBOOT_NONE)
 		lxc_list_init(&handler->conf->state_clients);
 
 	for (i = 0; i < LXC_NS_MAX; i++)
@@ -692,7 +692,7 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 
 	handler->name = name;
 
-	if (daemonize && !handler->conf->reboot) {
+	if (daemonize && handler->conf->reboot == REBOOT_NONE) {
 		/* Create socketpair() to synchronize on daemonized startup.
 		 * When the container reboots we don't need to synchronize
 		 * again currently so don't open another socketpair().
@@ -708,7 +708,7 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 		      handler->state_socket_pair[1]);
 	}
 
-	if (handler->conf->reboot == 0) {
+	if (handler->conf->reboot == REBOOT_NONE) {
 		handler->conf->maincmd_fd = lxc_cmd_init(name, lxcpath, "command");
 		if (handler->conf->maincmd_fd < 0) {
 			ERROR("Failed to set up command socket");
@@ -918,14 +918,14 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	}
 	namespaces[namespace_count] = NULL;
 
-	if (handler->conf->reboot) {
+	if (handler->conf->reboot > REBOOT_NONE) {
 		ret = setenv("LXC_TARGET", "reboot", 1);
 		if (ret < 0)
 			SYSERROR("Failed to set environment variable: "
 				 "LXC_TARGET=reboot");
 	}
 
-	if (!handler->conf->reboot) {
+	if (handler->conf->reboot == REBOOT_NONE) {
 		ret = setenv("LXC_TARGET", "stop", 1);
 		if (ret < 0)
 			SYSERROR("Failed to set environment variable: "
@@ -945,7 +945,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	cgroup_ops->destroy(cgroup_ops, handler);
 	cgroup_exit(cgroup_ops);
 
-	if (handler->conf->reboot == 0) {
+	if (handler->conf->reboot == REBOOT_NONE) {
 		/* For all new state clients simply close the command socket.
 		 * This will inform all state clients that the container is
 		 * STOPPED and also prevents a race between a open()/close() on
@@ -973,9 +973,9 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	ret = run_lxc_hooks(name, "post-stop", handler->conf, NULL);
 	if (ret < 0) {
 		ERROR("Failed to run lxc.hook.post-stop for container \"%s\"", name);
-		if (handler->conf->reboot) {
+		if (handler->conf->reboot > REBOOT_NONE) {
 			WARN("Container will be stopped instead of rebooted");
-			handler->conf->reboot = 0;
+			handler->conf->reboot = REBOOT_NONE;
 
 			ret = setenv("LXC_TARGET", "stop", 1);
 			if (ret < 0)
@@ -999,7 +999,8 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		struct lxc_state_client *client = cur->elem;
 
 		/* Keep state clients that want to be notified about reboots. */
-		if ((handler->conf->reboot > 0) && (client->states[RUNNING] == 2))
+		if ((handler->conf->reboot > REBOOT_NONE) &&
+		    (client->states[RUNNING] == 2))
 			continue;
 
 		/* close state client socket */
@@ -1009,7 +1010,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		free(cur);
 	}
 
-	if (handler->conf->ephemeral == 1 && handler->conf->reboot != 1)
+	if (handler->conf->ephemeral == 1 && handler->conf->reboot != REBOOT_REQ)
 		lxc_destroy_container_on_signal(handler, name);
 
 	lxc_free_handler(handler);
@@ -1892,7 +1893,7 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	close(handler->data_sock[1]);
 	handler->data_sock[1] = -1;
 
-	handler->conf->reboot = 0;
+	handler->conf->reboot = REBOOT_NONE;
 
 	ret = lxc_poll(name, handler);
 	if (ret) {
@@ -1915,7 +1916,7 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 			break;
 		case SIGHUP: /* reboot */
 			DEBUG("Container \"%s\" is rebooting", name);
-			handler->conf->reboot = 1;
+			handler->conf->reboot = REBOOT_REQ;
 			break;
 		case SIGSYS: /* seccomp */
 			DEBUG("Container \"%s\" violated its seccomp policy", name);
