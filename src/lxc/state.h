@@ -35,6 +35,12 @@ typedef enum {
 	MAX_STATE,
 } lxc_state_t;
 
+enum {
+	REBOOT_NONE,
+	REBOOT_REQ,
+	REBOOT_INIT
+};
+
 extern lxc_state_t lxc_getstate(const char *name, const char *lxcpath);
 
 extern lxc_state_t lxc_str2state(const char *state);

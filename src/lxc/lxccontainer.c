@@ -1036,7 +1036,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		}
 	}
 
-	conf->reboot = 0;
+	conf->reboot = REBOOT_NONE;
 
 	/* Unshare the mount namespace if requested */
 	if (conf->monitor_unshare) {
@@ -1058,7 +1058,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	}
 
 reboot:
-	if (conf->reboot == 2) {
+	if (conf->reboot == REBOOT_INIT) {
 		/* initialize handler */
 		handler = lxc_init_handler(c->name, conf, c->config_path, c->daemonize);
 		if (!handler) {
@@ -1085,9 +1085,9 @@ reboot:
 		ret = lxc_start(c->name, argv, handler, c->config_path,
 				c->daemonize, &c->error_num);
 
-	if (conf->reboot == 1) {
+	if (conf->reboot == REBOOT_REQ) {
 		INFO("Container requested reboot");
-		conf->reboot = 2;
+		conf->reboot = REBOOT_INIT;
 		goto reboot;
 	}
 
