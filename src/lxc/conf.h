@@ -332,7 +332,7 @@ struct lxc_conf {
 	char *logfile;  // the logfile as specifed in config
 	int loglevel;   // loglevel as specifed in config (if any)
 
-	int inherit_ns_fd[LXC_NS_MAX];
+	int ns_share[LXC_NS_MAX];
 
 	int start_auto;
 	int start_delay;

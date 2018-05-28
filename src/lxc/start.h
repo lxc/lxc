@@ -41,28 +41,27 @@ struct lxc_operations {
 
 struct cgroup_desc;
 
-enum {
-	LXC_NS_MNT,
-	LXC_NS_PID,
-	LXC_NS_UTS,
-	LXC_NS_IPC,
-	LXC_NS_USER,
-	LXC_NS_NET,
-	LXC_NS_MAX
-};
-
-struct ns_info {
-	const char *proc_name;
-	int clone_flag;
-};
-
-extern const struct ns_info ns_info[LXC_NS_MAX];
-
 struct lxc_handler {
+        /* Record the clone for namespaces flags that the container requested.
+	 *
+	 * @ns_clone_flags
+	 * - All clone flags that were requested.
+	 *
+	 * @ns_on_clone_flags
+	 * - The clone flags for namespaces to actually use when calling
+	 *   lxc_clone(): After the container has started ns_on_clone_flags will
+	 *   list the clone flags that were unshare()ed rather then clone()ed
+	 *   because of ordering requirements (e.g. e.g. CLONE_NEWNET and
+	 *   CLONE_NEWUSER) or implementation details.
+	 */
+	struct /* lxc_ns */ {
+		int ns_clone_flags;
+		int ns_on_clone_flags;
+	};
+
 	pid_t pid;
 	char *name;
 	lxc_state_t state;
-	int clone_flags;
 	int sigfd;
 	sigset_t oldmask;
 	struct lxc_conf *conf;

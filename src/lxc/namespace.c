@@ -21,17 +21,20 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <unistd.h>
 #include <alloca.h>
 #include <errno.h>
-#include <signal.h>
-#include <sys/param.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <sched.h>
+#include <signal.h>
+#include <unistd.h>
+#include <sys/param.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
 
-#include "namespace.h"
 #include "log.h"
+#include "namespace.h"
+#include "utils.h"
 
 lxc_log_define(lxc_namespace, lxc);
 
@@ -53,41 +56,139 @@ pid_t lxc_clone(int (*fn)(void *), void *arg, int flags)
 		.arg = arg,
 	};
 
-	size_t stack_size = sysconf(_SC_PAGESIZE);
+	size_t stack_size = lxc_getpagesize();
 	void *stack = alloca(stack_size);
 	pid_t ret;
 
 #ifdef __ia64__
-	ret = __clone2(do_clone, stack,
-		       stack_size, flags | SIGCHLD, &clone_arg);
+	ret = __clone2(do_clone, stack, stack_size, flags | SIGCHLD, &clone_arg);
 #else
 	ret = clone(do_clone, stack  + stack_size, flags | SIGCHLD, &clone_arg);
 #endif
 	if (ret < 0)
-		ERROR("failed to clone (%#x): %s", flags, strerror(errno));
+		ERROR("Failed to clone (%#x): %s.", flags, strerror(errno));
 
 	return ret;
 }
 
-static const char * const namespaces_list[] = {
-	"MOUNT", "PID", "UTSNAME", "IPC",
-	"USER", "NETWORK"
-};
-static const int cloneflags_list[] = {
-	CLONE_NEWNS, CLONE_NEWPID, CLONE_NEWUTS, CLONE_NEWIPC,
-	CLONE_NEWUSER, CLONE_NEWNET
-};
-
-int lxc_namespace_2_cloneflag(char *namespace)
+/**
+ * This is based on raw_clone in systemd but adapted to our needs. This uses
+ * copy on write semantics and doesn't pass a stack. CLONE_VM is tricky and
+ * doesn't really matter to us so disallow it.
+ *
+ * The nice thing about this is that we get fork() behavior. That is
+ * lxc_raw_clone() returns 0 in the child and the child pid in the parent.
+ */
+pid_t lxc_raw_clone(unsigned long flags)
 {
-	int i, len;
-	len = sizeof(namespaces_list)/sizeof(namespaces_list[0]);
-	for (i = 0; i < len; i++)
-		if (!strcmp(namespaces_list[i], namespace))
-			return cloneflags_list[i];
 
-	ERROR("invalid namespace name %s", namespace);
-	return -1;
+	/* These flags don't interest at all so we don't jump through any hoopes
+	 * of retrieving them and passing them to the kernel.
+	 */
+	errno = EINVAL;
+	if ((flags & (CLONE_VM | CLONE_PARENT_SETTID | CLONE_CHILD_SETTID |
+		      CLONE_CHILD_CLEARTID | CLONE_SETTLS)))
+		return -EINVAL;
+
+#if defined(__s390x__) || defined(__s390__) || defined(__CRIS__)
+	/* On s390/s390x and cris the order of the first and second arguments
+	 * of the system call is reversed.
+	 */
+	return (int)syscall(__NR_clone, NULL, flags | SIGCHLD);
+#elif defined(__sparc__) && defined(__arch64__)
+	{
+		/**
+		 * sparc64 always returns the other process id in %o0, and
+		 * a boolean flag whether this is the child or the parent in
+		 * %o1. Inline assembly is needed to get the flag returned
+		 * in %o1.
+		 */
+		int in_child;
+		int child_pid;
+		asm volatile("mov %2, %%g1\n\t"
+			     "mov %3, %%o0\n\t"
+			     "mov 0 , %%o1\n\t"
+			     "t 0x6d\n\t"
+			     "mov %%o1, %0\n\t"
+			     "mov %%o0, %1"
+			     : "=r"(in_child), "=r"(child_pid)
+			     : "i"(__NR_clone), "r"(flags | SIGCHLD)
+			     : "%o1", "%o0", "%g1");
+		if (in_child)
+			return 0;
+		else
+			return child_pid;
+	}
+#elif defined(__ia64__)
+	/* On ia64 the stack and stack size are passed as separate arguments. */
+	return (int)syscall(__NR_clone, flags | SIGCHLD, NULL, 0);
+#else
+	return (int)syscall(__NR_clone, flags | SIGCHLD, NULL);
+#endif
+}
+
+pid_t lxc_raw_clone_cb(int (*fn)(void *), void *args, unsigned long flags)
+{
+	pid_t pid;
+
+	pid = lxc_raw_clone(flags);
+	if (pid < 0)
+		return -1;
+
+	/* exit() is not thread-safe and might mess with the parent's signal
+	 * handlers and other stuff when exec() fails.
+	 */
+	if (pid == 0)
+		_exit(fn(args));
+
+	return pid;
+}
+
+/* Leave the user namespace at the first position in the array of structs so
+ * that we always attach to it first when iterating over the struct and using
+ * setns() to switch namespaces. This especially affects lxc_attach(): Suppose
+ * you cloned a new user namespace and mount namespace as an unprivileged user
+ * on the host and want to setns() to the mount namespace. This requires you to
+ * attach to the user namespace first otherwise the kernel will fail this check:
+ *
+ *        if (!ns_capable(mnt_ns->user_ns, CAP_SYS_ADMIN) ||
+ *            !ns_capable(current_user_ns(), CAP_SYS_CHROOT) ||
+ *            !ns_capable(current_user_ns(), CAP_SYS_ADMIN))
+ *            return -EPERM;
+ *
+ *    in
+ *
+ *        linux/fs/namespace.c:mntns_install().
+ */
+const struct ns_info ns_info[LXC_NS_MAX] = {
+	[LXC_NS_USER]    = { "user",   CLONE_NEWUSER,   "CLONE_NEWUSER",   "LXC_USER_NS"    },
+	[LXC_NS_MNT]    =  { "mnt",    CLONE_NEWNS,     "CLONE_NEWNS",     "LXC_MNT_NS"     },
+	[LXC_NS_PID]    =  { "pid",    CLONE_NEWPID,    "CLONE_NEWPID",    "LXC_PID_NS"     },
+	[LXC_NS_UTS]    =  { "uts",    CLONE_NEWUTS,    "CLONE_NEWUTS",    "LXC_UTS_NS"     },
+	[LXC_NS_IPC]    =  { "ipc",    CLONE_NEWIPC,    "CLONE_NEWIPC",    "LXC_IPC_NS"     },
+	[LXC_NS_NET]    =  { "net",    CLONE_NEWNET,    "CLONE_NEWNET",    "LXC_NET_NS"     }
+};
+
+int lxc_namespace_2_cloneflag(const char *namespace)
+{
+	int i;
+	for (i = 0; i < LXC_NS_MAX; i++)
+		if (!strcasecmp(ns_info[i].proc_name, namespace))
+			return ns_info[i].clone_flag;
+
+	ERROR("Invalid namespace name \"%s\"", namespace);
+	return -EINVAL;
+}
+
+int lxc_namespace_2_ns_idx(const char *namespace)
+{
+	int i;
+	for (i = 0; i < LXC_NS_MAX; i++)
+		if (!strcmp(ns_info[i].proc_name, namespace))
+			return i;
+
+	ERROR("Invalid namespace name \"%s\"", namespace);
+	return -EINVAL;
 }
 
 int lxc_fill_namespace_flags(char *flaglist, int *flags)
@@ -96,7 +197,7 @@ int lxc_fill_namespace_flags(char *flaglist, int *flags)
 	int aflag;
 
 	if (!flaglist) {
-		ERROR("need at least one namespace to unshare");
+		ERROR("At least one namespace is needed.");
 		return -1;
 	}
 

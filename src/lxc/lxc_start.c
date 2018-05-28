@@ -310,7 +310,7 @@ int main(int argc, char *argv[])
 		int fd = open_ns(pid, ns_info[i].proc_name);
 		if (fd < 0)
 			goto out;
-		conf->inherit_ns_fd[i] = fd;
+		conf->ns_share[i] = fd;
 	}
 
 	if (!my_args.daemonize) {

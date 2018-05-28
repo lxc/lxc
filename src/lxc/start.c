@@ -74,111 +74,109 @@
 
 lxc_log_define(lxc_start, lxc);
 
-const struct ns_info ns_info[LXC_NS_MAX] = {
-	[LXC_NS_MNT] = {"mnt", CLONE_NEWNS},
-	[LXC_NS_PID] = {"pid", CLONE_NEWPID},
-	[LXC_NS_UTS] = {"uts", CLONE_NEWUTS},
-	[LXC_NS_IPC] = {"ipc", CLONE_NEWIPC},
-	[LXC_NS_USER] = {"user", CLONE_NEWUSER},
-	[LXC_NS_NET] = {"net", CLONE_NEWNET}
-};
-
 static void print_top_failing_dir(const char *path)
 {
-	size_t len = strlen(path);
-	char *copy = alloca(len+1), *p, *e, saved;
-	strcpy(copy, path);
+	int ret;
+	size_t len;
+	char *copy, *e, *p, saved;
 
+	len = strlen(path);
+	copy = alloca(len + 1);
+	strcpy(copy, path);
 	p = copy;
 	e = copy + len;
 	while (p < e) {
-		while (p < e && *p == '/') p++;
-		while (p < e && *p != '/') p++;
+		while (p < e && *p == '/')
+			p++;
+
+		while (p < e && *p != '/')
+			p++;
+
 		saved = *p;
 		*p = '\0';
-		if (access(copy, X_OK)) {
-			SYSERROR("could not access %s.  Please grant it 'x' " \
-			      "access, or add an ACL for the container root.",
-			      copy);
+
+		ret = access(copy, X_OK);
+		if (ret != 0) {
+			SYSERROR("Could not access %s. Please grant it x "
+				 "access, or add an ACL for the container "
+				 "root", copy);
 			return;
 		}
 		*p = saved;
 	}
 }
 
-static void close_ns(int ns_fd[LXC_NS_MAX]) {
+static void lxc_put_nsfds(struct lxc_handler *handler)
+{
 	int i;
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
-		if (ns_fd[i] > -1) {
-			close(ns_fd[i]);
-			ns_fd[i] = -1;
-		}
+		if (handler->nsfd[i] < 0)
+			continue;
+
+		close(handler->nsfd[i]);
+		handler->nsfd[i] = -EBADF;
 	}
 }
 
-/*
- * preserve_ns: open /proc/@pid/ns/@ns for each namespace specified
- * in clone_flags.
- * Return true on success, false on failure.  On failure, leave an error
- * message in *errmsg, which caller must free.
- */
-static
-bool preserve_ns(int ns_fd[LXC_NS_MAX], int clone_flags, pid_t pid, char **errmsg) {
-	int i, ret;
-	char path[MAXPATHLEN];
+static int lxc_try_preserve_ns(const int pid, const char *ns)
+{
+	int fd;
 
-	for (i = 0; i < LXC_NS_MAX; i++)
-		ns_fd[i] = -1;
+	fd = lxc_preserve_ns(pid, ns);
+	if (fd < 0) {
+		if (errno != ENOENT) {
+			SYSERROR("Failed to preserve %s namespace", ns);
+			return -EINVAL;
+		}
 
-	snprintf(path, MAXPATHLEN, "/proc/%d/ns", pid);
-	if (access(path, X_OK)) {
-		if (asprintf(errmsg, "Kernel does not support setns.") == -1)
-			*errmsg = NULL;
-		return false;
+		WARN("%s - Kernel does not support preserving %s namespaces",
+		     strerror(errno), ns);
+		return -EOPNOTSUPP;
 	}
 
+	return fd;
+}
+
+/* lxc_try_preserve_namespaces: open /proc/@pid/ns/@ns for each namespace
+ * specified in ns_clone_flags.
+ * Return true on success, false on failure.
+ */
+static bool lxc_try_preserve_namespaces(struct lxc_handler *handler,
+					int ns_clone_flags, pid_t pid)
+{
+	int i;
+
+	for (i = 0; i < LXC_NS_MAX; i++)
+		handler->nsfd[i] = -EBADF;
+
 	for (i = 0; i < LXC_NS_MAX; i++) {
-		if ((clone_flags & ns_info[i].clone_flag) == 0)
+		int fd;
+
+		if ((ns_clone_flags & ns_info[i].clone_flag) == 0)
 			continue;
-		snprintf(path, MAXPATHLEN, "/proc/%d/ns/%s", pid,
-		         ns_info[i].proc_name);
-		ns_fd[i] = open(path, O_RDONLY | O_CLOEXEC);
-		if (ns_fd[i] < 0)
-			goto error;
+
+		fd = lxc_try_preserve_ns(pid, ns_info[i].proc_name);
+		if (fd < 0) {
+			handler->nsfd[i] = -EBADF;
+
+			/* Do not fail to start container on kernels that do
+			 * not support interacting with namespaces through
+			 * /proc.
+			 */
+			if (fd == -EOPNOTSUPP)
+				continue;
+
+			lxc_put_nsfds(handler);
+			return false;
+		}
+
+		handler->nsfd[i] = fd;
+		DEBUG("Preserved %s namespace via fd %d", ns_info[i].proc_name,
+		      handler->nsfd[i]);
 	}
 
 	return true;
-
-error:
-	if (errno == ENOENT) {
-		ret = asprintf(errmsg, "Kernel does not support setns for %s",
-			ns_info[i].proc_name);
-	} else {
-		ret = asprintf(errmsg, "Failed to open %s: %s",
-			path, strerror(errno));
-	}
-	if (ret == -1)
-		*errmsg = NULL;
-	close_ns(ns_fd);
-	return false;
-}
-
-static int attach_ns(const int ns_fd[LXC_NS_MAX]) {
-	int i;
-
-	for (i = 0; i < LXC_NS_MAX; i++) {
-		if (ns_fd[i] < 0)
-			continue;
-
-		if (setns(ns_fd[i], 0) != 0)
-			goto error;
-	}
-	return 0;
-
-error:
-	SYSERROR("failed to set namespace '%s'", ns_info[i].proc_name);
-	return -1;
 }
 
 static int match_fd(int fd)
@@ -490,10 +488,11 @@ static void lxc_fini(const char *name, struct lxc_handler *handler)
 	lxc_set_state(name, handler, STOPPING);
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
-		if (handler->nsfd[i] != -1) {
-			close(handler->nsfd[i]);
-			handler->nsfd[i] = -1;
-		}
+		if (handler->nsfd[i] < 0)
+			continue;
+
+		close(handler->nsfd[i]);
+		handler->nsfd[i] = -EBADF;
 	}
 	lxc_set_state(name, handler, STOPPED);
 
@@ -672,15 +671,17 @@ static int do_start(void *data)
 	if (lxc_sync_wait_parent(handler, LXC_SYNC_STARTUP))
 		return -1;
 
-	/* Unshare CLONE_NEWNET after CLONE_NEWUSER  - see
-	  https://github.com/lxc/lxd/issues/1978 */
-	if ((handler->clone_flags & (CLONE_NEWNET | CLONE_NEWUSER)) ==
-			(CLONE_NEWNET | CLONE_NEWUSER)) {
+	/* Unshare CLONE_NEWNET after CLONE_NEWUSER. See
+	 * https://github.com/lxc/lxd/issues/1978.
+	 */
+	if ((handler->ns_clone_flags & (CLONE_NEWNET | CLONE_NEWUSER)) ==
+	    (CLONE_NEWNET | CLONE_NEWUSER)) {
 		ret = unshare(CLONE_NEWNET);
 		if (ret < 0) {
-			SYSERROR("Error unsharing network namespace");
+			SYSERROR("Failed to unshare CLONE_NEWNET");
 			goto out_warn_father;
 		}
+		INFO("Unshared CLONE_NEWNET");
 	}
 
 	/* Tell the parent task it can begin to configure the
@@ -835,35 +836,96 @@ static int save_phys_nics(struct lxc_conf *conf)
 	return 0;
 }
 
+int resolve_clone_flags(struct lxc_handler *handler)
+{
+	int i;
+	struct lxc_conf *conf = handler->conf;
+
+	for (i = 0; i < LXC_NS_MAX; i++) {
+
+		if (conf->ns_share[i] < 0)
+			continue;
+
+		handler->ns_clone_flags &= ~ns_info[i].clone_flag;
+		TRACE("Sharing %s namespace", ns_info[i].proc_name);
+	}
+
+	return 0;
+}
+
+/* Note that this function is used with clone(CLONE_VM). Some glibc versions
+ * used to reset the pid/tid to -1 when CLONE_VM was used without CLONE_THREAD.
+ * But since the memory between parent and child is shared on CLONE_VM this
+ * would invalidate the getpid() cache that glibc used to maintain and so
+ * getpid() in the child would return the parent's pid. This is all fixed in
+ * newer glibc versions where the getpid() cache is removed and the pid/tid is
+ * not reset anymore.
+ * However, if for whatever reason you - dear commiter - somehow need to get the
+ * pid of the dummy intermediate process for do_share_ns() you need to call
+ * lxc_raw_getpid(). The next lxc_raw_clone() call does not employ CLONE_VM and
+ * will be fine.
+ */
+static inline int do_share_ns(void *arg)
+{
+	int i, flags, ret;
+	struct lxc_handler *handler = arg;
+
+	for (i = 0; i < LXC_NS_MAX; i++) {
+		if (handler->conf->ns_share[i] < 0)
+			continue;
+
+		ret = setns(handler->conf->ns_share[i], 0);
+		if (ret < 0) {
+			/*
+			 * Note that joining a user and/or mount namespace
+			 * requires the process is not multithreaded otherwise
+			 * setns() will fail here.
+			 */
+			SYSERROR("Failed to inherit %s namespace",
+				 ns_info[i].proc_name);
+			return -1;
+		}
+
+		DEBUG("Inherited %s namespace", ns_info[i].proc_name);
+	}
+
+	flags = handler->ns_on_clone_flags;
+	flags |= CLONE_PARENT;
+	handler->pid = lxc_raw_clone_cb(do_start, handler, flags);
+	if (handler->pid < 0)
+		return -1;
+
+	return 0;
+}
+
 static int lxc_spawn(struct lxc_handler *handler)
 {
+	int i, nveths, ret;
+	int netpipepair[2];
 	int failed_before_rename = 0;
 	const char *name = handler->name;
-	char *errmsg = NULL;
-	bool cgroups_connected = false;
-	int saved_ns_fd[LXC_NS_MAX];
-	int preserve_mask = 0, i, flags;
-	int netpipepair[2], nveths;
+	bool cgroups_connected = false, share_ns = false;
 
 	netpipe = -1;
 
-	for (i = 0; i < LXC_NS_MAX; i++)
-		if (handler->conf->inherit_ns_fd[i] != -1)
-			preserve_mask |= ns_info[i].clone_flag;
+	for (i = 0; i < LXC_NS_MAX; i++) {
+		if (handler->conf->ns_share[i] < 0)
+			continue;
+
+		share_ns = true;
+		break;
+	}
 
 	if (lxc_sync_init(handler))
 		return -1;
 
-	handler->clone_flags = CLONE_NEWPID|CLONE_NEWNS;
-	if (!lxc_list_empty(&handler->conf->id_map)) {
-		INFO("Cloning a new user namespace");
-		handler->clone_flags |= CLONE_NEWUSER;
+	ret = resolve_clone_flags(handler);
+	if (ret < 0) {
+		lxc_sync_fini(handler);
+		return -1;
 	}
 
-	if (handler->conf->inherit_ns_fd[LXC_NS_NET] == -1) {
-		if (!lxc_requests_empty_network(handler))
-			handler->clone_flags |= CLONE_NEWNET;
-
+	if (handler->ns_clone_flags & CLONE_NEWNET) {
 		if (!lxc_list_empty(&handler->conf->network)) {
 
 			/* Find gateway addresses from the link device, which is
@@ -894,19 +956,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 		INFO("Inheriting a net namespace");
 	}
 
-	if (handler->conf->inherit_ns_fd[LXC_NS_IPC] == -1) {
-		handler->clone_flags |= CLONE_NEWIPC;
-	} else {
-		INFO("Inheriting an IPC namespace");
-	}
-
-	if (handler->conf->inherit_ns_fd[LXC_NS_UTS] == -1) {
-		handler->clone_flags |= CLONE_NEWUTS;
-	} else {
-		INFO("Inheriting a UTS namespace");
-	}
-
-
 	if (!cgroup_init(handler)) {
 		ERROR("failed initializing cgroup support");
 		goto out_delete_net;
@@ -931,15 +980,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 			INFO("failed to pin the container's rootfs");
 	}
 
-	if (!preserve_ns(saved_ns_fd, preserve_mask, getpid(), &errmsg)) {
-		SYSERROR("Failed to preserve requested namespaces: %s",
-			errmsg ? errmsg : "(Out of memory)");
-		free(errmsg);
-		goto out_delete_net;
-	}
-	if (attach_ns(handler->conf->inherit_ns_fd) < 0)
-		goto out_delete_net;
-
 	if (am_unpriv() && (nveths = count_veths(&handler->conf->network))) {
 		if (pipe(netpipepair) < 0) {
 			SYSERROR("Error creating pipe");
@@ -949,24 +989,50 @@ static int lxc_spawn(struct lxc_handler *handler)
 		netpipe = netpipepair[0];
 	}
 
-	/* Create a process in a new set of namespaces */
-	flags = handler->clone_flags;
-	if (handler->clone_flags & CLONE_NEWUSER)
-		flags &= ~CLONE_NEWNET;
-	handler->pid = lxc_clone(do_start, handler, handler->clone_flags);
+	/* Create a process in a new set of namespaces. */
+	handler->ns_on_clone_flags = handler->ns_clone_flags;
+	if (handler->ns_clone_flags & CLONE_NEWUSER) {
+		/* If CLONE_NEWUSER and CLONE_NEWNET was requested, we need to
+		 * clone a new user namespace first and only later unshare our
+		 * network namespace to ensure that network devices ownership is
+		 * set up correctly.
+		 */
+		handler->ns_on_clone_flags &= ~CLONE_NEWNET;
+	}
+
+	if (share_ns) {
+		pid_t attacher_pid;
+
+		attacher_pid = lxc_clone(do_share_ns, handler,
+					 CLONE_VFORK | CLONE_VM | CLONE_FILES);
+		if (attacher_pid < 0) {
+			SYSERROR(LXC_CLONE_ERROR);
+			goto out_delete_net;
+		}
+
+		ret = wait_for_pid(attacher_pid);
+		if (ret < 0) {
+			SYSERROR("Intermediate process failed");
+			goto out_delete_net;
+		}
+	} else {
+		handler->pid = lxc_raw_clone_cb(do_start, handler,
+						handler->ns_on_clone_flags);
+	}
 	if (handler->pid < 0) {
-		SYSERROR("failed to fork into a new namespace");
+		SYSERROR(LXC_CLONE_ERROR);
 		goto out_delete_net;
 	}
+	TRACE("Cloned child process %d", handler->pid);
 
-	if (!preserve_ns(handler->nsfd, handler->clone_flags | preserve_mask, handler->pid, &errmsg)) {
-		INFO("Failed to store namespace references for stop hook: %s",
-			errmsg ? errmsg : "(Out of memory)");
-		free(errmsg);
+	for (i = 0; i < LXC_NS_MAX; i++)
+		if (handler->ns_on_clone_flags & ns_info[i].clone_flag)
+			INFO("Cloned %s", ns_info[i].flag_name);
+
+	if (!lxc_try_preserve_namespaces(handler, handler->ns_on_clone_flags, handler->pid)) {
+		ERROR("Failed to preserve cloned namespaces for lxc.hook.stop");
+		goto out_delete_net;
 	}
-
-	if (attach_ns(saved_ns_fd))
-		WARN("failed to restore saved namespaces");
 
 	lxc_sync_fini_child(handler);
 
@@ -1009,7 +1075,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 
 	/* Create the network configuration */
-	if (handler->clone_flags & CLONE_NEWNET) {
+	if (handler->ns_clone_flags & CLONE_NEWNET) {
 		if (lxc_assign_network(&handler->conf->network, handler->pid)) {
 			ERROR("failed to create the configured network");
 			goto out_delete_net;
@@ -1076,7 +1142,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 out_delete_net:
 	if (cgroups_connected)
 		cgroup_disconnect();
-	if (handler->clone_flags & CLONE_NEWNET)
+	if (handler->ns_clone_flags & CLONE_NEWNET)
 		lxc_delete_network(handler);
 out_abort:
 	lxc_abort(name, handler);

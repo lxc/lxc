@@ -3043,7 +3043,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->tmp_umount_proc = 0;
 
 	for (i = 0; i < LXC_NS_MAX; i++)
-		new->inherit_ns_fd[i] = -1;
+		new->ns_share[i] = -1;
 
 	return new;
 }
@@ -4281,7 +4281,7 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
-	if (lxc_conf->inherit_ns_fd[LXC_NS_UTS] == -1) {
+	if (lxc_conf->ns_share[LXC_NS_UTS] == -1) {
 		if (setup_utsname(lxc_conf->utsname)) {
 			ERROR("failed to setup the utsname for '%s'", name);
 			return -1;
