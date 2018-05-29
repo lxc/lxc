@@ -530,8 +530,10 @@ int run_script(const char *name, const char *section, const char *script, ...)
 		int len = size - ret;
 		int rc;
 		rc = snprintf(buffer + ret, len, " %s", p);
-		if (rc < 0 || rc >= len)
+		if (rc < 0 || rc >= len) {
+			va_end(ap);
 			return -1;
+		}
 		ret += rc;
 	}
 	va_end(ap);
