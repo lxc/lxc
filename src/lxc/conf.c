@@ -1499,7 +1499,7 @@ static int setup_pivot_root(const struct lxc_rootfs *rootfs)
 	return 0;
 }
 
-static struct id_map *find_mapped_nsid_entry(struct lxc_conf *conf, unsigned id,
+static const struct id_map *find_mapped_nsid_entry(struct lxc_conf *conf, unsigned id,
 					     enum idtype idtype)
 {
 	struct lxc_list *it;
@@ -2676,7 +2676,7 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->state_clients);
 	new->lsm_aa_profile = NULL;
 	new->lsm_se_context = NULL;
-	new->tmp_umount_proc = 0;
+	new->tmp_umount_proc = false;
 
 	/* if running in a new user namespace, init and COMMAND
 	 * default to running as UID/GID 0 when using lxc-execute */
@@ -3158,7 +3158,7 @@ int lxc_create_tmp_proc_mount(struct lxc_conf *conf)
 		if (conf->rootfs.path)
 			return -1;
 	} else if (mounted == 1) {
-		conf->tmp_umount_proc = 1;
+		conf->tmp_umount_proc = true;
 	}
 
 	return 0;
@@ -3166,11 +3166,11 @@ int lxc_create_tmp_proc_mount(struct lxc_conf *conf)
 
 void tmp_proc_unmount(struct lxc_conf *lxc_conf)
 {
-	if (lxc_conf->tmp_umount_proc != 1)
+	if (!lxc_conf->tmp_umount_proc)
 		return;
 
-	umount("/proc");
-	lxc_conf->tmp_umount_proc = 0;
+	(void)umount2("/proc", MNT_DETACH);
+	lxc_conf->tmp_umount_proc = false;
 }
 
 /* Walk /proc/mounts and change any shared entries to slave. */
@@ -3965,7 +3965,8 @@ static int run_userns_fn(void *data)
 static struct id_map *mapped_nsid_add(struct lxc_conf *conf, unsigned id,
 				      enum idtype idtype)
 {
-	struct id_map *map, *retmap;
+	const struct id_map *map;
+	struct id_map *retmap;
 
 	map = find_mapped_nsid_entry(conf, id, idtype);
 	if (!map)
