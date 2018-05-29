@@ -383,6 +383,7 @@ int run_script(const char *name, const char *section, const char *script, ...)
 		rc = snprintf(buffer + ret, len, " %s", p);
 		if (rc < 0 || rc >= len) {
 			ERROR("Script args too long.");
+			va_end(ap);
 			return -1;
 		}
 		ret += rc;
