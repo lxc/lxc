@@ -528,45 +528,130 @@ static int set_config_path_item(char **conf_item, const char *value)
 	return set_config_string_item_max(conf_item, value, PATH_MAX);
 }
 
-/*
- * Config entry is something like "lxc.network.0.ipv4" the key 'lxc.network.'
- * was found.  So we make sure next comes an integer, find the right callback
- * (by rewriting the key), and call it.
+static struct lxc_config_t *get_network_config_ops(const char *key,
+						   struct lxc_conf *lxc_conf,
+						   ssize_t *idx,
+						   char **deindexed_key)
+{
+	int ret;
+	unsigned int tmpidx;
+	size_t numstrlen;
+	char *copy, *idx_start, *idx_end;
+	struct lxc_config_t *config = NULL;
+
+	/* check that this is a sensible network key */
+	if (strncmp("lxc.network.", key, 12)) {
+		ERROR("Invalid network configuration key \"%s\"", key);
+		return NULL;
+	}
+
+	copy = strdup(key);
+	if (!copy) {
+		ERROR("Failed to duplicate string \"%s\"", key);
+		return NULL;
+	}
+
+	/* lxc.network.<n> */
+	if (!isdigit(*(key + 12))) {
+		ERROR("Failed to detect digit in string \"%s\"", key + 12);
+		goto on_error;
+	}
+
+	/* beginning of index string */
+	idx_start = (copy + 11);
+	*idx_start = '\0';
+
+	/* end of index string */
+	idx_end = strchr((copy + 12), '.');
+	if (idx_end)
+		*idx_end = '\0';
+
+	/* parse current index */
+	ret = lxc_safe_uint((idx_start + 1), &tmpidx);
+	if (ret < 0) {
+		ERROR("Failed to parse usigned integer from string \"%s\": %s",
+		      idx_start + 1, strerror(-ret));
+		*idx = ret;
+		goto on_error;
+	}
+
+	/* This, of course is utterly nonsensical on so many levels, but
+	 * better safe than sorry.
+	 * (Checking for INT_MAX here is intentional.)
+	 */
+	if (tmpidx == INT_MAX) {
+		SYSERROR("Number of configured networks would overflow the "
+			 "counter");
+		goto on_error;
+	}
+	*idx = tmpidx;
+
+	numstrlen = strlen((idx_start + 1));
+
+	/* repair configuration key */
+	*idx_start = '.';
+
+	/* lxc.network.<idx>.<subkey> */
+	if (idx_end) {
+		*idx_end = '.';
+		if (strlen(idx_end + 1) == 0) {
+			ERROR("No subkey in network configuration key \"%s\"", key);
+			goto on_error;
+		}
+
+		memmove(copy + 12, idx_end + 1, strlen(idx_end + 1));
+		copy[strlen(key) - numstrlen + 1] = '\0';
+
+		config = lxc_getconfig(copy);
+		if (!config) {
+			ERROR("Unknown network configuration key \"%s\"", key);
+			goto on_error;
+		}
+	}
+
+	if (deindexed_key)
+		*deindexed_key = copy;
+
+	return config;
+
+on_error:
+	free(copy);
+	return NULL;
+}
+
+/* Config entry is something like "lxc.network.0.ipv4" the key 'lxc.network.'
+*  was found. So we make sure next comes an integer, find the right callback
+*  (by rewriting the key), and call it.
  */
 static int set_config_network_nic(const char *key, const char *value,
 				  struct lxc_conf *lxc_conf, void *data)
 {
-	char *copy = strdup(key), *p;
-	int ret = -1;
+	int ret;
+	const char *idxstring;
 	struct lxc_config_t *config;
+	struct lxc_netdev *netdev;
+	ssize_t idx = -1;
+	char *deindexed_key = NULL;
 
-	if (!copy) {
-		SYSERROR("failed to allocate memory");
+	idxstring = key + 12;
+	if (!isdigit(*idxstring))
+		return -1;
+
+	if (lxc_config_value_empty(value))
+		return clr_config_network_item(key, lxc_conf, data);
+
+	config = get_network_config_ops(key, lxc_conf, &idx, &deindexed_key);
+	if (!config || idx < 0)
+		return -1;
+
+	netdev = lxc_get_netdev_by_idx(lxc_conf, (unsigned int)idx);
+	if (!netdev) {
+		free(deindexed_key);
 		return -1;
 	}
-	/*
-	 * Ok we know that to get here we've got "lxc.network."
-	 * and it isn't any of the other network entries.  So
-	 * after the second . Should come an integer (# of defined
-	 * nic) followed by a valid entry.
-	 */
-	if (*(key + 12) < '0' || *(key + 12) > '9')
-		goto out;
 
-	p = strchr(key + 12, '.');
-	if (!p)
-		goto out;
-
-	strcpy(copy + 12, p + 1);
-	config = lxc_getconfig(copy);
-	if (!config) {
-		ERROR("unknown key %s", key);
-		goto out;
-	}
-	ret = config->set(key, value, lxc_conf, data);
-
-out:
-	free(copy);
+	ret = config->set(deindexed_key, value, lxc_conf, netdev);
+	free(deindexed_key);
 	return ret;
 }
 
