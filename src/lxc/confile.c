@@ -2899,9 +2899,9 @@ static int get_config_personality(const char *key, char *retv, int inlen,
 	int fulllen = 0;
 
 	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
+		return -1;
+
+	memset(retv, 0, inlen);
 
 #if HAVE_SYS_PERSONALITY_H
 	int len = 0;
@@ -2979,9 +2979,9 @@ static int __get_config_cgroup_controller(const char *key, char *retv,
 	bool get_all = false;
 
 	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	if (version == CGROUP2_SUPER_MAGIC) {
 		global_token = "lxc.cgroup2";
@@ -3040,9 +3040,9 @@ static int get_config_cgroup_dir(const char *key, char *retv, int inlen,
 	int fulllen = 0;
 
 	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	strprint(retv, inlen, "%s", lxc_conf->cgroup_meta.dir);
 
@@ -3079,9 +3079,9 @@ static int get_config_idmaps(const char *key, char *retv, int inlen,
 	char buf[__LXC_IDMAP_STR_BUF];
 
 	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	listlen = lxc_list_len(&c->id_map);
 	lxc_list_for_each(it, &c->id_map)
@@ -3125,9 +3125,9 @@ static int get_config_mount_auto(const char *key, char *retv, int inlen,
 	const char *sep = "";
 
 	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	if (!(c->auto_mounts & LXC_AUTO_ALL_MASK))
 		return 0;
@@ -3201,9 +3201,9 @@ static int get_config_mount(const char *key, char *retv, int inlen,
 	struct lxc_list *it;
 
 	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	lxc_list_for_each(it, &c->mount_list) {
 		strprint(retv, inlen, "%s\n", (char *)it->elem);
@@ -3264,9 +3264,9 @@ static int get_config_hooks(const char *key, char *retv, int inlen,
 		return -1;
 
 	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	lxc_list_for_each(it, &c->hooks[found]) {
 		strprint(retv, inlen, "%s\n", (char *)it->elem);
@@ -3287,9 +3287,9 @@ static int get_config_net(const char *key, char *retv, int inlen,
 	struct lxc_list *it;
 
 	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	lxc_list_for_each(it, &c->network) {
 		struct lxc_netdev *n = it->elem;
@@ -3307,9 +3307,9 @@ static int get_config_cap_drop(const char *key, char *retv, int inlen,
 	struct lxc_list *it;
 
 	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	lxc_list_for_each(it, &c->caps) {
 		strprint(retv, inlen, "%s\n", (char *)it->elem);
@@ -3325,9 +3325,9 @@ static int get_config_cap_keep(const char *key, char *retv, int inlen,
 	struct lxc_list *it;
 
 	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	lxc_list_for_each(it, &c->keepcaps) {
 		strprint(retv, inlen, "%s\n", (char *)it->elem);
@@ -3431,9 +3431,9 @@ static int get_config_group(const char *key, char *retv, int inlen,
 	struct lxc_list *it;
 
 	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	lxc_list_for_each(it, &c->groups) {
 		strprint(retv, inlen, "%s\n", (char *)it->elem);
@@ -3449,9 +3449,9 @@ static int get_config_environment(const char *key, char *retv, int inlen,
 	struct lxc_list *it;
 
 	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	lxc_list_for_each(it, &c->environment) {
 		strprint(retv, inlen, "%s\n", (char *)it->elem);
@@ -3514,9 +3514,9 @@ static int get_config_prlimit(const char *key, char *retv, int inlen,
 	struct lxc_list *it;
 
 	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	if (!strcmp(key, "lxc.prlimit"))
 		get_all = true;
@@ -3572,9 +3572,9 @@ static int get_config_sysctl(const char *key, char *retv, int inlen,
 	bool get_all = false;
 
 	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	if (strcmp(key, "lxc.sysctl") == 0)
 		get_all = true;
@@ -3605,9 +3605,9 @@ static int get_config_proc(const char *key, char *retv, int inlen,
 	bool get_all = false;
 
 	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	if (strcmp(key, "lxc.proc") == 0)
 		get_all = true;
@@ -3637,9 +3637,9 @@ static int get_config_namespace_clone(const char *key, char *retv, int inlen,
 	int fulllen = 0;
 
 	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
 		if (c->ns_clone & ns_info[i].clone_flag)
@@ -3656,9 +3656,9 @@ static int get_config_namespace_keep(const char *key, char *retv, int inlen,
 	int fulllen = 0;
 
 	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
 		if (c->ns_keep & ns_info[i].clone_flag)
@@ -3676,9 +3676,9 @@ static int get_config_namespace_share(const char *key, char *retv, int inlen,
 	int fulllen = 0;
 
 	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	namespace = key + sizeof("lxc.namespace.share.") - 1;
 	ns_idx = lxc_namespace_2_ns_idx(namespace);
@@ -4523,13 +4523,13 @@ static int get_config_net_type(const char *key, char *retv, int inlen,
 	int fulllen = 0;
 	struct lxc_netdev *netdev = data;
 
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
 	if (!netdev)
 		return -1;
+
+	if (!retv)
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	strprint(retv, inlen, "%s", lxc_net_type_to_str(netdev->type));
 
@@ -4543,13 +4543,13 @@ static int get_config_net_flags(const char *key, char *retv, int inlen,
 	int fulllen = 0;
 	struct lxc_netdev *netdev = data;
 
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
 	if (!netdev)
 		return -1;
+
+	if (!retv)
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	if (netdev->flags & IFF_UP)
 		strprint(retv, inlen, "up");
@@ -4564,13 +4564,13 @@ static int get_config_net_link(const char *key, char *retv, int inlen,
 	int fulllen = 0;
 	struct lxc_netdev *netdev = data;
 
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
 	if (!netdev)
 		return -1;
+
+	if (!retv)
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	if (netdev->link[0] != '\0')
 		strprint(retv, inlen, "%s", netdev->link);
@@ -4585,13 +4585,13 @@ static int get_config_net_name(const char *key, char *retv, int inlen,
 	int fulllen = 0;
 	struct lxc_netdev *netdev = data;
 
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
 	if (!netdev)
 		return -1;
+
+	if (!retv)
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	if (netdev->name[0] != '\0')
 		strprint(retv, inlen, "%s", netdev->name);
@@ -4607,16 +4607,16 @@ static int get_config_net_macvlan_mode(const char *key, char *retv, int inlen,
 	const char *mode;
 	struct lxc_netdev *netdev = data;
 
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
 	if (!netdev)
 		return -1;
 
 	if (netdev->type != LXC_NET_MACVLAN)
 		return 0;
+
+	if (!retv)
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	switch (netdev->priv.macvlan_attr.mode) {
 	case MACVLAN_MODE_PRIVATE:
@@ -4648,16 +4648,16 @@ static int get_config_net_veth_pair(const char *key, char *retv, int inlen,
 	int fulllen = 0;
 	struct lxc_netdev *netdev = data;
 
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
 	if (!netdev)
 		return -1;
 
 	if (netdev->type != LXC_NET_VETH)
 		return 0;
+
+	if (!retv)
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	strprint(retv, inlen, "%s",
 		 netdev->priv.veth_attr.pair[0] != '\0'
@@ -4674,13 +4674,13 @@ static int get_config_net_script_up(const char *key, char *retv, int inlen,
 	int fulllen = 0;
 	struct lxc_netdev *netdev = data;
 
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
 	if (!netdev)
 		return -1;
+
+	if (!retv)
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	if (netdev->upscript)
 		strprint(retv, inlen, "%s", netdev->upscript);
@@ -4695,13 +4695,13 @@ static int get_config_net_script_down(const char *key, char *retv, int inlen,
 	int fulllen = 0;
 	struct lxc_netdev *netdev = data;
 
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
 	if (!netdev)
 		return -1;
+
+	if (!retv)
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	if (netdev->downscript)
 		strprint(retv, inlen, "%s", netdev->downscript);
@@ -4716,13 +4716,13 @@ static int get_config_net_hwaddr(const char *key, char *retv, int inlen,
 	int fulllen = 0;
 	struct lxc_netdev *netdev = data;
 
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
 	if (!netdev)
 		return -1;
+
+	if (!retv)
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	if (netdev->hwaddr)
 		strprint(retv, inlen, "%s", netdev->hwaddr);
@@ -4737,13 +4737,13 @@ static int get_config_net_mtu(const char *key, char *retv, int inlen,
 	int fulllen = 0;
 	struct lxc_netdev *netdev = data;
 
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
 	if (!netdev)
 		return -1;
+
+	if (!retv)
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	if (netdev->mtu)
 		strprint(retv, inlen, "%s", netdev->mtu);
@@ -4758,16 +4758,16 @@ static int get_config_net_vlan_id(const char *key, char *retv, int inlen,
 	int fulllen = 0;
 	struct lxc_netdev *netdev = data;
 
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
 	if (!netdev)
 		return -1;
 
 	if (netdev->type != LXC_NET_VLAN)
 		return 0;
+
+	if (!retv)
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	strprint(retv, inlen, "%d", netdev->priv.vlan_attr.vid);
 
@@ -4782,13 +4782,13 @@ static int get_config_net_ipv4_gateway(const char *key, char *retv, int inlen,
 	int fulllen = 0;
 	struct lxc_netdev *netdev = data;
 
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
 	if (!netdev)
 		return -1;
+
+	if (!retv)
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	if (netdev->ipv4_gateway_auto) {
 		strprint(retv, inlen, "auto");
@@ -4810,13 +4810,13 @@ static int get_config_net_ipv4_address(const char *key, char *retv, int inlen,
 	int fulllen = 0;
 	struct lxc_netdev *netdev = data;
 
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
 	if (!netdev)
 		return -1;
+
+	if (!retv)
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	listlen = lxc_list_len(&netdev->ipv4);
 	lxc_list_for_each(it, &netdev->ipv4) {
@@ -4837,13 +4837,13 @@ static int get_config_net_ipv6_gateway(const char *key, char *retv, int inlen,
 	int fulllen = 0;
 	struct lxc_netdev *netdev = data;
 
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
 	if (!netdev)
 		return -1;
+
+	if (!retv)
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	if (netdev->ipv6_gateway_auto) {
 		strprint(retv, inlen, "auto");
@@ -4865,13 +4865,13 @@ static int get_config_net_ipv6_address(const char *key, char *retv, int inlen,
 	int fulllen = 0;
 	struct lxc_netdev *netdev = data;
 
-	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
-
 	if (!netdev)
 		return -1;
+
+	if (!retv)
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	listlen = lxc_list_len(&netdev->ipv6);
 	lxc_list_for_each(it, &netdev->ipv6) {
@@ -4891,9 +4891,9 @@ int lxc_list_config_items(char *retv, int inlen)
 	int fulllen = 0;
 
 	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	for (i = 0; i < config_size; i++) {
 		char *s = config[i].name;
@@ -4914,9 +4914,9 @@ int lxc_list_subkeys(struct lxc_conf *conf, const char *key, char *retv,
 	int fulllen = 0;
 
 	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	if (!strcmp(key, "lxc.apparmor")) {
 		strprint(retv, inlen, "allow_incomplete\n");
@@ -4992,9 +4992,9 @@ int lxc_list_net(struct lxc_conf *c, const char *key, char *retv, int inlen)
 		return -1;
 
 	if (!retv)
-		inlen = 0;
-	else
-		memset(retv, 0, inlen);
+		return -1;
+
+	memset(retv, 0, inlen);
 
 	strprint(retv, inlen, "type\n");
 	strprint(retv, inlen, "script.up\n");
