@@ -41,21 +41,24 @@
 #define MACVLAN_MODE_PASSTHRU 8
 #endif
 
-#define strprint(str, inlen, ...)                                              \
-	do {                                                                   \
-		len = snprintf(str, inlen, ##__VA_ARGS__);                     \
-		if (len < 0) {                                                 \
-			SYSERROR("failed to create string");                   \
-			return -1;                                             \
-		};                                                             \
-		fulllen += len;                                                \
-		if (inlen > 0) {                                               \
-			if (str)                                               \
-				str += len;                                    \
-			inlen -= len;                                          \
-			if (inlen < 0)                                         \
-				inlen = 0;                                     \
-		}                                                              \
+#define strprint(str, inlen, ...)                                       \
+	do {                                                            \
+		if (str)                                                \
+			len = snprintf(str, inlen, ##__VA_ARGS__);      \
+		else                                                    \
+			len = snprintf((char *){""}, 0, ##__VA_ARGS__); \
+		if (len < 0) {                                          \
+			SYSERROR("failed to create string");            \
+			return -1;                                      \
+		};                                                      \
+		fulllen += len;                                         \
+		if (inlen > 0) {                                        \
+			if (str)                                        \
+				str += len;                             \
+			inlen -= len;                                   \
+			if (inlen < 0)                                  \
+				inlen = 0;                              \
+		}                                                       \
 	} while (0);
 
 extern int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
