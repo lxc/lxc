@@ -474,23 +474,6 @@ extern struct lxc_config_t *lxc_getconfig(const char *key)
 	return NULL;
 }
 
-#define strprint(str, inlen, ...)                                              \
-	do {                                                                   \
-		len = snprintf(str, inlen, ##__VA_ARGS__);                     \
-		if (len < 0) {                                                 \
-			SYSERROR("failed to create string");                   \
-			return -1;                                             \
-		};                                                             \
-		fulllen += len;                                                \
-		if (inlen > 0) {                                               \
-			if (str)                                               \
-				str += len;                                    \
-			inlen -= len;                                          \
-			if (inlen < 0)                                         \
-				inlen = 0;                                     \
-		}                                                              \
-	} while (0);
-
 static int set_config_string_item(char **conf_item, const char *value)
 {
 	char *new_value;
