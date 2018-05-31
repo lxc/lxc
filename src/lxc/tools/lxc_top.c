@@ -671,7 +671,7 @@ static int stdin_handler(int fd, uint32_t events, void *data,
 
 	if (events & EPOLLHUP)
 		*in_char = 'q';
-	return 1;
+	return LXC_MAINLOOP_CLOSE;
 }
 
 int main(int argc, char *argv[])
