@@ -1824,8 +1824,14 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 		goto out_abort;
 	}
 
-	while (waitpid(handler->pid, &status, 0) < 0 && errno == EINTR)
-		continue;
+	if (!handler->init_died && handler->pid > 0) {
+		ERROR("Child process is not killed");
+		goto out_abort;
+	}
+
+	status = lxc_wait_for_pid_status(handler->pid);
+	if (status < 0)
+		SYSERROR("Failed to retrieve status for %d", handler->pid);
 
 	/* If the child process exited but was not signaled, it didn't call
 	 * reboot. This should mean it was an lxc-execute which simply exited.
