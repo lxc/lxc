@@ -320,7 +320,7 @@ fi
 if ! command -V mktemp >/dev/null 2>&1; then
   DOWNLOAD_TEMP="${DOWNLOAD_TEMP}/tmp/lxc-download.$$"
 else
-  DOWNLOAD_TEMP="${DOWNLOAD_TEMP}$(mktemp -d)"
+  DOWNLOAD_TEMP="$(mktemp -p ${DOWNLOAD_TEMP} -d)"
 fi
 
 # Simply list images
