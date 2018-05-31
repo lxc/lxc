@@ -1901,6 +1901,11 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 		goto out_abort;
 	}
 
+	if (!handler->init_died && handler->pid > 0) {
+		ERROR("Child process is not killed");
+		goto out_abort;
+	}
+
 	status = lxc_wait_for_pid_status(handler->pid);
 	if (status < 0)
 		SYSERROR("Failed to retrieve status for %d", handler->pid);
