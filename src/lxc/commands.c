@@ -1167,7 +1167,7 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 		if (ret != req.datalen) {
 			WARN("Failed to receive full command request. Ignoring "
 			     "request for \"%s\"", lxc_cmd_str(req.cmd));
-			ret = -1;
+			ret = LXC_MAINLOOP_ERROR;
 			goto out_close;
 		}
 
@@ -1177,7 +1177,7 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 	ret = lxc_cmd_process(fd, &req, handler);
 	if (ret) {
 		/* This is not an error, but only a request to close fd. */
-		ret = 0;
+		ret = LXC_MAINLOOP_CONTINUE;
 		goto out_close;
 	}
 
@@ -1201,7 +1201,7 @@ static int lxc_cmd_accept(int fd, uint32_t events, void *data,
 	connection = accept(fd, NULL, 0);
 	if (connection < 0) {
 		SYSERROR("Failed to accept connection to run command.");
-		return -1;
+		return LXC_MAINLOOP_ERROR;
 	}
 
 	ret = fcntl(connection, F_SETFD, FD_CLOEXEC);
