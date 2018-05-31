@@ -343,7 +343,7 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	ret = read(fd, &siginfo, sizeof(siginfo));
 	if (ret < 0) {
 		ERROR("Failed to read signal info from signal file descriptor %d", fd);
-		return -1;
+		return LXC_MAINLOOP_ERROR;
 	}
 
 	if (ret != sizeof(siginfo)) {
@@ -382,13 +382,13 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	if (siginfo.ssi_signo == SIGHUP) {
 		kill(hdlr->pid, SIGTERM);
 		INFO("Killing %d since terminal hung up", hdlr->pid);
-		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
+		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : LXC_MAINLOOP_CONTINUE;
 	}
 
 	if (siginfo.ssi_signo != SIGCHLD) {
 		kill(hdlr->pid, siginfo.ssi_signo);
 		INFO("Forwarded signal %d to pid %d", siginfo.ssi_signo, hdlr->pid);
-		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
+		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : LXC_MAINLOOP_CONTINUE;
 	}
 
 	/* More robustness, protect ourself from a SIGCHLD sent
@@ -397,15 +397,15 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	if (siginfo.ssi_pid != hdlr->pid) {
 		NOTICE("Received %d from pid %d instead of container init %d",
 		       siginfo.ssi_signo, siginfo.ssi_pid, hdlr->pid);
-		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
+		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : LXC_MAINLOOP_CONTINUE;
 	}
 
 	if (siginfo.ssi_code == CLD_STOPPED) {
 		INFO("Container init process was stopped");
-		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
+		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : LXC_MAINLOOP_CONTINUE;
 	} else if (siginfo.ssi_code == CLD_CONTINUED) {
 		INFO("Container init process was continued");
-		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : 0;
+		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : LXC_MAINLOOP_CONTINUE;
 	}
 
 	DEBUG("Container init process %d exited", hdlr->pid);

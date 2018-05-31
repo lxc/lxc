@@ -161,7 +161,7 @@ static int lxc_monitord_sock_handler(int fd, uint32_t events, void *data,
 
 		rc = read(fd, buf, sizeof(buf));
 		if (rc > 0 && !strncmp(buf, "quit", 4))
-			quit = 1;
+			quit = LXC_MAINLOOP_CLOSE;
 	}
 
 	if (events & EPOLLHUP)
@@ -177,7 +177,7 @@ static int lxc_monitord_sock_accept(int fd, uint32_t events, void *data,
 	struct ucred cred;
 	socklen_t credsz = sizeof(cred);
 
-	ret = -1;
+	ret = LXC_MAINLOOP_ERROR;
 	clientfd = accept(fd, NULL, 0);
 	if (clientfd < 0) {
 		SYSERROR("Failed to accept connection for client file descriptor %d.", fd);
@@ -301,7 +301,7 @@ static int lxc_monitord_fifo_handler(int fd, uint32_t events, void *data,
 	ret = read(fd, &msglxc, sizeof(msglxc));
 	if (ret != sizeof(msglxc)) {
 		SYSERROR("Reading from fifo failed: %s.", strerror(errno));
-		return 1;
+		return LXC_MAINLOOP_CLOSE;
 	}
 
 	for (i = 0; i < mon->clientfds_cnt; i++) {
@@ -311,7 +311,7 @@ static int lxc_monitord_fifo_handler(int fd, uint32_t events, void *data,
 			      mon->clientfds[i], strerror(errno));
 	}
 
-	return 0;
+	return LXC_MAINLOOP_CONTINUE;
 }
 
 static int lxc_monitord_mainloop_add(struct lxc_monitor *mon)
