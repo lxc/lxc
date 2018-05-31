@@ -374,7 +374,7 @@ static int signal_handler(int fd, uint32_t events, void *data,
 			hdlr->exit_status = 1;
 			break;
 		default:
-			ERROR("Unknown si_code: %d", hdlr->init_died);
+			ERROR("Unknown si_code: %d", info.si_code);
 			hdlr->exit_status = 1;
 		}
 	}
