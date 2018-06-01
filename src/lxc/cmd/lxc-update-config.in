@@ -102,7 +102,10 @@ while read -r LINE; do
 	# one we bump IDX and replace any "lxc.network.<subkey>" keys we
 	# encounter with "lxc.network.<IDX>.<subkey>".
 	echo "${LINE}" | grep -q "lxc.network.type" && IDX=$((IDX+1))
-	sed -i -e "${LINE_NUM} s/\([[:blank:]*]\|#*\)\(lxc\.network\)\.\([^[:digit:]*]\)/\1lxc\.net\.${IDX}\.\3/g" "${CONFIGPATH}"
+	sed -i \
+-e "${LINE_NUM} s/\([[:blank:]*]\|#*\)\(lxc\.network\)\(\.ipv[[:digit:]]\)\([[:blank:]]*\)=\(.*\)/\1lxc\.net\.${IDX}\3\.address\4=\5/g" \
+-e "${LINE_NUM} s/\([[:blank:]*]\|#*\)\(lxc\.network\)\.\([^[:digit:]*]\)/\1lxc\.net\.${IDX}\.\3/g" \
+	"${CONFIGPATH}"
 done < "${TMPFILE}"
 
 rm "${TMPFILE}"
