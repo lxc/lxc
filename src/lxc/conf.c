@@ -2332,11 +2332,11 @@ FILE *make_anonymous_mount_file(struct lxc_list *mount)
 		mount_entry = iterator->elem;
 		len = strlen(mount_entry);
 
-		ret = write(fd, mount_entry, len);
+		ret = lxc_write_nointr(fd, mount_entry, len);
 		if (ret != len)
 			goto on_error;
 
-		ret = write(fd, "\n", 1);
+		ret = lxc_write_nointr(fd, "\n", 1);
 		if (ret != 1)
 			goto on_error;
 	}
@@ -3951,7 +3951,7 @@ static int run_userns_fn(void *data)
 	/* Wait for parent to finish establishing a new mapping in the user
 	 * namespace we are executing in.
 	 */
-	if (read(d->p[0], &c, 1) != 1)
+	if (lxc_read_nointr(d->p[0], &c, 1) != 1)
 		return -1;
 
 	/* Close read end of the pipe. */
@@ -4224,7 +4224,7 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	}
 
 	/* Tell child to proceed. */
-	if (write(p[1], &c, 1) != 1) {
+	if (lxc_write_nointr(p[1], &c, 1) != 1) {
 		SYSERROR("Failed telling child process \"%d\" to proceed", pid);
 		goto on_error;
 	}
@@ -4401,7 +4401,7 @@ int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	}
 
 	/* Tell child to proceed. */
-	if (write(p[1], &c, 1) != 1) {
+	if (lxc_write_nointr(p[1], &c, 1) != 1) {
 		SYSERROR("Failed telling child process \"%d\" to proceed", pid);
 		goto on_error;
 	}
