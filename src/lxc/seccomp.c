@@ -201,7 +201,7 @@ static int get_seccomp_arg_value(char *key, struct seccomp_v2_rule_args *rule_ar
 	uint64_t mask = 0, value = 0;
 	enum scmp_compare op = 0;
 	char *tmp = NULL;
-	char s[31] = {0}, v[24] = {0}, m[24] = {0};
+	char s[31] = {0}, v[24] = {0}, m[24] = {'0'};
 
 	tmp = strchr(key, '[');
 	if (!tmp) {
