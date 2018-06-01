@@ -2253,42 +2253,49 @@ FILE *make_anonymous_mount_file(struct lxc_list *mount)
 	int ret;
 	char *mount_entry;
 	struct lxc_list *iterator;
-	FILE *f;
 	int fd = -1;
 
-	fd = memfd_create("lxc_mount_file", MFD_CLOEXEC);
+	fd = memfd_create(".lxc_mount_file", MFD_CLOEXEC);
 	if (fd < 0) {
+		char template[] = P_tmpdir "/.lxc_mount_file_XXXXXX";
+
 		if (errno != ENOSYS)
 			return NULL;
-		f = tmpfile();
+
+		fd = lxc_make_tmpfile(template, true);
+		if (fd < 0) {
+			SYSERROR("Could not create temporary mount file");
+			return NULL;
+		}
+
 		TRACE("Created temporary mount file");
-	} else {
-		f = fdopen(fd, "r+");
-		TRACE("Created anonymous mount file");
 	}
 
-	if (!f) {
-		SYSERROR("Could not create mount file");
-		if (fd != -1)
-			close(fd);
-		return NULL;
-	}
+	lxc_list_for_each (iterator, mount) {
+		size_t len;
 
-	lxc_list_for_each(iterator, mount) {
 		mount_entry = iterator->elem;
-		ret = fprintf(f, "%s\n", mount_entry);
-		if (ret < strlen(mount_entry))
-			WARN("Could not write mount entry to mount file");
+		len = strlen(mount_entry);
+
+		ret = lxc_write_nointr(fd, mount_entry, len);
+		if (ret != len)
+			goto on_error;
+
+		ret = lxc_write_nointr(fd, "\n", 1);
+		if (ret != 1)
+			goto on_error;
 	}
 
-	ret = fseek(f, 0, SEEK_SET);
-	if (ret < 0) {
-		SYSERROR("Failed to seek mount file");
-		fclose(f);
-		return NULL;
-	}
+	ret = lseek(fd, 0, SEEK_SET);
+	if (ret < 0)
+		goto on_error;
 
-	return f;
+	return fdopen(fd, "r+");
+
+on_error:
+	SYSERROR("Failed to write mount entry to temporary mount file");
+	close(fd);
+	return NULL;
 }
 
 static int setup_mount_entries(const struct lxc_conf *conf,
@@ -3638,7 +3645,7 @@ static int run_userns_fn(void *data)
 	/* Wait for parent to finish establishing a new mapping in the user
 	 * namespace we are executing in.
 	 */
-	if (read(d->p[0], &c, 1) != 1)
+	if (lxc_read_nointr(d->p[0], &c, 1) != 1)
 		return -1;
 
 	/* Close read end of the pipe. */
@@ -3909,7 +3916,7 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	}
 
 	/* Tell child to proceed. */
-	if (write(p[1], &c, 1) != 1) {
+	if (lxc_write_nointr(p[1], &c, 1) != 1) {
 		SYSERROR("Failed telling child process \"%d\" to proceed", pid);
 		goto on_error;
 	}
@@ -4087,8 +4094,8 @@ int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	}
 
 	/* Tell child to proceed. */
-	if (write(p[1], &c, 1) != 1) {
-		SYSERROR("failed telling child process \"%d\" to proceed", pid);
+	if (lxc_write_nointr(p[1], &c, 1) != 1) {
+		SYSERROR("Failed telling child process \"%d\" to proceed", pid);
 		goto on_error;
 	}
 

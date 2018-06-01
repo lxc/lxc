@@ -307,7 +307,7 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	struct signalfd_siginfo siginfo;
 	struct lxc_handler *hdlr = data;
 
-	ret = read(fd, &siginfo, sizeof(siginfo));
+	ret = lxc_read_nointr(fd, &siginfo, sizeof(siginfo));
 	if (ret < 0) {
 		ERROR("Failed to read signal info from signal file descriptor %d", fd);
 		return -1;
