@@ -184,14 +184,14 @@ static enum scmp_compare parse_v2_rule_op(char *s)
 
 /*
  * This function is used to parse the args string into the structure.
- * args string format:[index,value,op,valueTwo] or [index,value,op]
+ * args string format:[index,value,op,mask] or [index,value,op]
  * index: the index for syscall arguments (type uint)
  * value: the value for syscall arguments (type uint64)
  * op: the operator for syscall arguments(string),
 	 a valid list of constants as of libseccomp v2.3.2 is
 	 SCMP_CMP_NE,SCMP_CMP_LE,SCMP_CMP_LE, SCMP_CMP_EQ, SCMP_CMP_GE,
 	 SCMP_CMP_GT, SCMP_CMP_MASKED_EQ, or !=,<=,==,>=,>,&=
- * valueTwo: the value for syscall arguments only used for mask eq (type uint64, optional)
+ * mask: the mask to apply on "value" for SCMP_CMP_MASKED_EQ (type uint64, optional)
  * Returns 0 on success, < 0 otherwise.
  */
 static int get_seccomp_arg_value(char *key, struct seccomp_v2_rule_args *rule_args)
@@ -201,7 +201,7 @@ static int get_seccomp_arg_value(char *key, struct seccomp_v2_rule_args *rule_ar
 	uint64_t mask = 0, value = 0;
 	enum scmp_compare op = 0;
 	char *tmp = NULL;
-	char s[31] = {0}, v[24] = {0}, m[24] = {0};
+	char s[31] = {0}, v[24] = {0}, m[24] = {'0'};
 
 	tmp = strchr(key, '[');
 	if (!tmp) {
