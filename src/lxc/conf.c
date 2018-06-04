@@ -3175,16 +3175,63 @@ void tmp_proc_unmount(struct lxc_conf *lxc_conf)
 	lxc_conf->tmp_umount_proc = false;
 }
 
+static void copy_proc_mountinfo(const char* src, const char* dst)
+{
+	FILE *src_fp;
+	FILE *dst_fp;
+	char buf[4096] = {0};
+
+	if (!src || !dst) {
+		ERROR("Invalid argument value");
+		return;
+	}
+
+	src_fp = fopen(src, "r");
+	if (!src_fp) {
+		SYSERROR("Failed to open \"%s\"", src);
+		return;
+	}
+
+	dst_fp = fopen(dst, "w");
+	if (!dst_fp) {
+		SYSERROR("Failed to open \"%s\"", dst);
+		fclose(src_fp);
+		return;
+	}
+
+	while (fgets(buf, sizeof(buf), src_fp))
+		fputs(buf, dst_fp);
+
+	fclose(src_fp);
+	fclose(dst_fp);
+
+	INFO("\"%s\" is copied to \"%s\"", src, dst);
+}
+
 /* Walk /proc/mounts and change any shared entries to slave. */
-void remount_all_slave(void)
+void remount_all_slave(const char *name)
 {
 	FILE *f;
 	size_t len = 0;
 	char *line = NULL;
+	char path[MAXPATHLEN];
+	bool ret = false;
 
-	f = fopen("/proc/self/mountinfo", "r");
+	if (name) {
+		snprintf(path, MAXPATHLEN, "/tmp/lxc_%s_mountinfo", name);
+
+		copy_proc_mountinfo("/proc/self/mountinfo", path);
+
+		if (!access(path, F_OK | R_OK))
+			ret = true;
+	}
+
+	if (!ret)
+		snprintf(path, MAXPATHLEN, "/proc/self/mountinfo");
+
+	f = fopen(path, "r");
 	if (!f) {
-		SYSERROR("Failed to open \"/proc/self/mountinfo\" to mark all shared");
+		SYSERROR("Failed to open \"%s\" to mark all shared", path);
 		ERROR("Continuing container startup...");
 		return;
 	}
@@ -3214,6 +3261,9 @@ void remount_all_slave(void)
 	}
 	fclose(f);
 	free(line);
+
+	if (ret && remove("/tmp/lxc_mountinfo.txt") < 0)
+		SYSERROR("Failed to remove \"%s\"", path);
 }
 
 static int lxc_execute_bind_init(struct lxc_handler *handler)
@@ -3298,7 +3348,7 @@ int do_rootfs_setup(struct lxc_conf *conf, const char *name, const char *lxcpath
 		return 0;
 	}
 
-	remount_all_slave();
+	remount_all_slave(name);
 
 	ret = run_lxc_hooks(name, "pre-mount", conf, NULL);
 	if (ret < 0) {

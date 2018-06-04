@@ -1872,7 +1872,7 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 			}
 			INFO("Unshared CLONE_NEWNS");
 
-			remount_all_slave();
+			remount_all_slave(name);
 			ret = do_rootfs_setup(conf, name, lxcpath);
 			if (ret < 0) {
 				ERROR("Error setting up rootfs mount as root before spawn");
