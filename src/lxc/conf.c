@@ -3262,7 +3262,7 @@ void remount_all_slave(const char *name)
 	fclose(f);
 	free(line);
 
-	if (ret && remove("/tmp/lxc_mountinfo.txt") < 0)
+	if (ret && remove(path) < 0)
 		SYSERROR("Failed to remove \"%s\"", path);
 }
 
