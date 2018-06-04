@@ -24,34 +24,35 @@
 #define _GNU_SOURCE
 #include "config.h"
 
+#include <arpa/inet.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
 #include <inttypes.h>
 #include <libgen.h>
+#include <linux/loop.h>
+#include <net/if.h>
+#include <netinet/in.h>
 #include <pwd.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <linux/loop.h>
-#include <net/if.h>
-#include <netinet/in.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
 #include <sys/param.h>
 #include <sys/prctl.h>
-#include <sys/stat.h>
+#include <sys/sendfile.h>
 #include <sys/socket.h>
-#include <sys/sysmacros.h>
+#include <sys/stat.h>
 #include <sys/syscall.h>
+#include <sys/sysmacros.h>
 #include <sys/types.h>
 #include <sys/utsname.h>
 #include <sys/wait.h>
+#include <time.h>
+#include <unistd.h>
 
 /* makedev() */
 #ifdef MAJOR_IN_MKDEV
@@ -3013,38 +3014,117 @@ void tmp_proc_unmount(struct lxc_conf *lxc_conf)
 	}
 }
 
+#define LXC_SENDFILE_MAX 0x7ffff000
+
+static ssize_t lxc_sendfile_nointr(int out_fd, int in_fd, off_t *offset,
+				   size_t count)
+{
+	ssize_t ret;
+
+again:
+	ret = sendfile(out_fd, in_fd, offset, count);
+	if (ret < 0) {
+		if (errno == EINTR)
+			goto again;
+
+		return -1;
+	}
+
+	return ret;
+}
+
+/* Walk /proc/mounts and change any shared entries to slave. */
 void remount_all_slave(void)
 {
-	/* walk /proc/mounts and change any shared entries to slave */
-	FILE *f = fopen("/proc/self/mountinfo", "r");
-	char *line = NULL;
+	int memfd, mntinfo_fd, ret;
+	ssize_t copied;
+	FILE *f;
 	size_t len = 0;
+	char *line = NULL;
 
+	mntinfo_fd = open("/proc/self/mountinfo", O_RDONLY | O_CLOEXEC);
+	if (mntinfo_fd < 0) {
+		SYSERROR("Failed to open \"/proc/self/mountinfo\"");
+		return;
+	}
+
+	memfd = memfd_create(".lxc_mountinfo", MFD_CLOEXEC);
+	if (memfd < 0) {
+		char template[] = P_tmpdir "/.lxc_mountinfo_XXXXXX";
+
+		if (errno != ENOSYS) {
+			SYSERROR("Failed to create temporary in-memory file");
+			close(mntinfo_fd);
+			return;
+		}
+
+		memfd = lxc_make_tmpfile(template, true);
+		if (memfd < 0) {
+			close(mntinfo_fd);
+			WARN("Failed to create temporary file");
+			return;
+		}
+	}
+
+again:
+	copied = lxc_sendfile_nointr(memfd, mntinfo_fd, NULL, LXC_SENDFILE_MAX);
+	if (copied < 0) {
+		if (errno == EINTR)
+			goto again;
+
+		SYSERROR("Failed to copy \"/proc/self/mountinfo\"");
+		close(mntinfo_fd);
+		close(memfd);
+		return;
+	}
+	close(mntinfo_fd);
+
+	/* After a successful fdopen() memfd will be closed when calling
+	 * fclose(f). Calling close(memfd) afterwards is undefined.
+	 */
+	ret = lseek(memfd, 0, SEEK_SET);
+	if (ret < 0) {
+		SYSERROR("Failed to reset file descriptor offset");
+		close(memfd);
+		return;
+	}
+
+	f = fdopen(memfd, "r");
 	if (!f) {
-		SYSERROR("Failed to open /proc/self/mountinfo to mark all shared");
-		ERROR("Continuing container startup...");
+		SYSERROR("Failed to open copy of \"/proc/self/mountinfo\" to mark "
+				"all shared. Continuing");
+		close(memfd);
 		return;
 	}
 
 	while (getline(&line, &len, f) != -1) {
-		char *target, *opts;
+		int ret;
+		char *opts, *target;
+
 		target = get_field(line, 4);
 		if (!target)
 			continue;
+
 		opts = get_field(target, 2);
 		if (!opts)
 			continue;
+
 		null_endofword(opts);
 		if (!strstr(opts, "shared"))
 			continue;
+
 		null_endofword(target);
-		if (mount(NULL, target, NULL, MS_SLAVE, NULL)) {
-			SYSERROR("Failed to make %s rslave", target);
+		ret = mount(NULL, target, NULL, MS_SLAVE, NULL);
+		if (ret < 0) {
+			SYSERROR("Failed to make \"%s\" MS_SLAVE", target);
 			ERROR("Continuing...");
+			continue;
 		}
+		TRACE("Remounted \"%s\" as MS_SLAVE", target);
 	}
 	fclose(f);
 	free(line);
+	TRACE("Remounted all mount table entries as MS_SLAVE");
 }
 
 void lxc_execute_bind_init(struct lxc_conf *conf)
