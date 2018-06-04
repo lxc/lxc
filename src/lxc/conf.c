@@ -43,6 +43,7 @@
 #include <sys/mount.h>
 #include <sys/param.h>
 #include <sys/prctl.h>
+#include <sys/sendfile.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
@@ -3178,14 +3179,63 @@ void tmp_proc_unmount(struct lxc_conf *lxc_conf)
 /* Walk /proc/mounts and change any shared entries to slave. */
 void remount_all_slave(void)
 {
+	int memfd, mntinfo_fd, ret;
+	ssize_t copied;
 	FILE *f;
 	size_t len = 0;
 	char *line = NULL;
 
-	f = fopen("/proc/self/mountinfo", "r");
+	mntinfo_fd = open("/proc/self/mountinfo", O_RDONLY | O_CLOEXEC);
+	if (mntinfo_fd < 0)
+		return;
+
+	memfd = memfd_create(".lxc_mountinfo", MFD_CLOEXEC);
+	if (memfd < 0) {
+		char template[] = P_tmpdir "/.lxc_mountinfo_XXXXXX";
+
+		if (errno != ENOSYS) {
+			close(mntinfo_fd);
+			WARN("Failed to create temporary in-memory file");
+			return;
+		}
+
+		memfd = lxc_make_tmpfile(template, true);
+	}
+	if (memfd < 0) {
+		close(mntinfo_fd);
+		WARN("Failed to create temporary file");
+		return;
+	}
+
+#define __LXC_SENDFILE_MAX 0x7ffff000 /* maximum number of bytes sendfile can handle */
+again:
+	copied = sendfile(memfd, mntinfo_fd, NULL, __LXC_SENDFILE_MAX);
+	if (copied < 0) {
+		if (errno == EINTR)
+			goto again;
+
+		close(mntinfo_fd);
+		close(memfd);
+		WARN("Failed to copy \"/proc/self/mountinfo\"");
+		return;
+	}
+	close(mntinfo_fd);
+
+	/* After a successful fdopen() memfd will be closed when calling
+	 * fclose(f). Calling close(memfd) afterwards is undefined.
+	 */
+	ret = lseek(memfd, 0, SEEK_SET);
+	if (ret < 0) {
+		close(memfd);
+		WARN("%s - Failed to reset file descriptor offset", strerror(errno));
+		return;
+	}
+
+	f = fdopen(memfd, "r");
 	if (!f) {
-		SYSERROR("Failed to open \"/proc/self/mountinfo\" to mark all shared");
-		ERROR("Continuing container startup...");
+		WARN("Failed to open copy of \"/proc/self/mountinfo\" to mark "
+		     "all shared. Continuing");
+		close(memfd);
 		return;
 	}
 
@@ -3210,10 +3260,13 @@ void remount_all_slave(void)
 		if (ret < 0) {
 			SYSERROR("Failed to make \"%s\" MS_SLAVE", target);
 			ERROR("Continuing...");
+			continue;
 		}
+		TRACE("Remounted \"%s\" as MS_SLAVE", target);
 	}
 	fclose(f);
 	free(line);
+	TRACE("Remounted all mount table entries as MS_SLAVE");
 }
 
 static int lxc_execute_bind_init(struct lxc_handler *handler)
