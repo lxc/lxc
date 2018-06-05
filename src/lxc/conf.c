@@ -3186,25 +3186,27 @@ void remount_all_slave(void)
 	char *line = NULL;
 
 	mntinfo_fd = open("/proc/self/mountinfo", O_RDONLY | O_CLOEXEC);
-	if (mntinfo_fd < 0)
+	if (mntinfo_fd < 0) {
+		SYSERROR("Failed to open \"/proc/self/mountinfo\"");
 		return;
+	}
 
 	memfd = memfd_create(".lxc_mountinfo", MFD_CLOEXEC);
 	if (memfd < 0) {
 		char template[] = P_tmpdir "/.lxc_mountinfo_XXXXXX";
 
 		if (errno != ENOSYS) {
+			SYSERROR("Failed to create temporary in-memory file");
 			close(mntinfo_fd);
-			WARN("Failed to create temporary in-memory file");
 			return;
 		}
 
 		memfd = lxc_make_tmpfile(template, true);
-	}
-	if (memfd < 0) {
-		close(mntinfo_fd);
-		WARN("Failed to create temporary file");
-		return;
+		if (memfd < 0) {
+			close(mntinfo_fd);
+			WARN("Failed to create temporary file");
+			return;
+		}
 	}
 
 #define __LXC_SENDFILE_MAX 0x7ffff000 /* maximum number of bytes sendfile can handle */
@@ -3214,9 +3216,9 @@ again:
 		if (errno == EINTR)
 			goto again;
 
+		SYSERROR("Failed to copy \"/proc/self/mountinfo\"");
 		close(mntinfo_fd);
 		close(memfd);
-		WARN("Failed to copy \"/proc/self/mountinfo\"");
 		return;
 	}
 	close(mntinfo_fd);
@@ -3226,15 +3228,15 @@ again:
 	 */
 	ret = lseek(memfd, 0, SEEK_SET);
 	if (ret < 0) {
+		SYSERROR("Failed to reset file descriptor offset");
 		close(memfd);
-		WARN("%s - Failed to reset file descriptor offset", strerror(errno));
 		return;
 	}
 
 	f = fdopen(memfd, "r");
 	if (!f) {
-		WARN("Failed to open copy of \"/proc/self/mountinfo\" to mark "
-		     "all shared. Continuing");
+		SYSERROR("Failed to open copy of \"/proc/self/mountinfo\" to mark "
+				"all shared. Continuing");
 		close(memfd);
 		return;
 	}
