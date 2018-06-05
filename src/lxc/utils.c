@@ -2239,7 +2239,7 @@ int run_command(char *buf, size_t buf_size, int (*child_fn)(void *), void *args)
 	int ret, fret, pipefd[2];
 	ssize_t bytes;
 
-	/* Make sure our callers do not receive unitialized memory. */
+	/* Make sure our callers do not receive uninitialized memory. */
 	if (buf_size > 0 && buf)
 		buf[0] = '\0';
 
