@@ -500,13 +500,13 @@ bool do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
 	nr = seccomp_syscall_resolve_name(line);
 	if (nr == __NR_SCMP_ERROR) {
 		WARN("Failed to resolve syscall \"%s\"", line);
-		WARN("This syscall will NOT be blacklisted");
+		WARN("This syscall will NOT be handled by seccomp");
 		return true;
 	}
 
 	if (nr < 0) {
 		WARN("Got negative return value %d for syscall \"%s\"", nr, line);
-		WARN("This syscall will NOT be blacklisted");
+		WARN("This syscall will NOT be handled by seccomp");
 		return true;
 	}
 
