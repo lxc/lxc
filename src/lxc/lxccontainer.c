@@ -4904,9 +4904,6 @@ int list_defined_containers(const char *lxcpath, char ***names, struct lxc_conta
 		*names = NULL;
 
 	while ((direntp = readdir(dir))) {
-		if (!direntp)
-			break;
-
 		/* Ignore '.', '..' and any hidden directory. */
 		if (!strncmp(direntp->d_name, ".", 1))
 			continue;
