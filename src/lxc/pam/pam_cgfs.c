@@ -525,9 +525,6 @@ static int recursive_rmdir(char *dirname)
 		struct stat st;
 		char *pathname;
 
-		if (!direntp)
-			break;
-
 		if (!strcmp(direntp->d_name, ".") ||
 		    !strcmp(direntp->d_name, ".."))
 			continue;
