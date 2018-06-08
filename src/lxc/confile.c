@@ -2062,8 +2062,6 @@ static int do_includedir(const char *dirp, struct lxc_conf *lxc_conf)
 
 	while ((direntp = readdir(dir))) {
 		const char *fnam;
-		if (!direntp)
-			break;
 
 		fnam = direntp->d_name;
 		if (!strcmp(fnam, "."))
