@@ -73,9 +73,6 @@ again:
 		return -1;
 	}
 
-	if (ret < 0)
-		return -1;
-
 	TRACE("Received state %s from state client %d",
 	      lxc_state2str(msg.value), state_client_fd);
 

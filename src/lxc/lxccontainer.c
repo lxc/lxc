@@ -2777,9 +2777,6 @@ static bool has_snapshots(struct lxc_container *c)
 	if (!dir)
 		return false;
 	while ((direntp = readdir(dir))) {
-		if (!direntp)
-			break;
-
 		if (!strcmp(direntp->d_name, "."))
 			continue;
 
@@ -4119,9 +4116,6 @@ static int do_lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot 
 	}
 
 	while ((direntp = readdir(dir))) {
-		if (!direntp)
-			break;
-
 		if (!strcmp(direntp->d_name, "."))
 			continue;
 
@@ -4907,9 +4901,6 @@ int list_defined_containers(const char *lxcpath, char ***names, struct lxc_conta
 		*names = NULL;
 
 	while ((direntp = readdir(dir))) {
-		if (!direntp)
-			break;
-
 		/* Ignore '.', '..' and any hidden directory. */
 		if (!strncmp(direntp->d_name, ".", 1))
 			continue;

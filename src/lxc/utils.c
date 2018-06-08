@@ -85,9 +85,6 @@ static int _recursive_rmdir(const char *dirname, dev_t pdev,
 		struct stat mystat;
 		int rc;
 
-		if (!direntp)
-			break;
-
 		if (!strcmp(direntp->d_name, ".") ||
 		    !strcmp(direntp->d_name, ".."))
 			continue;
@@ -2091,9 +2088,6 @@ static int lxc_get_unused_loop_dev_legacy(char *loop_name)
 		return -1;
 
 	while ((dp = readdir(dir))) {
-		if (!dp)
-			break;
-
 		if (strncmp(dp->d_name, "loop", 4) != 0)
 			continue;
 
