@@ -2582,9 +2582,6 @@ static bool has_snapshots(struct lxc_container *c)
 	if (!dir)
 		return false;
 	while ((direntp = readdir(dir))) {
-		if (!direntp)
-			break;
-
 		if (!strcmp(direntp->d_name, "."))
 			continue;
 
