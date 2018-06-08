@@ -4470,8 +4470,11 @@ on_error:
 	if (pid > 0)
 		ret = wait_for_pid(pid);
 
-	if (idmap)
+	if (idmap) {
 		lxc_free_idmap(idmap);
+		free(idmap);
+	}
+
 	if (host_uid_map && (host_uid_map != container_root_uid))
 		free(host_uid_map);
 	if (host_gid_map && (host_gid_map != container_root_gid))
