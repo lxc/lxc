@@ -628,8 +628,12 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 	/* No prefix specified, determine it from the network class. */
 	if (prefix) {
 		ret = lxc_safe_uint(prefix, &inetdev->prefix);
-		if (ret < 0)
+		if (ret < 0) {
+			free(inetdev);
+			free(list);
+			free(addr);
 			return -1;
+		}
 	} else {
 		inetdev->prefix = config_ip_prefix(&inetdev->addr);
 	}
