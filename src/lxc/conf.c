@@ -2648,29 +2648,48 @@ int lxc_map_ids_exec_wrapper(void *args)
 	return -1;
 }
 
+/* Calculate the number of chars needed to represent a given integer as a C
+ * string. Include room for '-' to indicate negative numbers and the \0 byte.
+ * This is based on systemd.
+ */
+#define INTTYPE_TO_STRLEN(type)                   \
+	(2 + (sizeof(type) <= 1                   \
+		  ? 3                             \
+		  : sizeof(type) <= 2             \
+			? 5                       \
+			: sizeof(type) <= 4       \
+			      ? 10                \
+			      : sizeof(type) <= 8 \
+				    ? 20          \
+				    : sizeof(int[-2 * (sizeof(type) > 8)])))
+
 int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 {
+	int fill, left;
+	char u_or_g;
+	char *pos;
+	char cmd_output[PATH_MAX];
 	struct id_map *map;
 	struct lxc_list *iterator;
 	enum idtype type;
-	char u_or_g;
-	char *pos;
-	int fill, left;
-	char cmd_output[MAXPATHLEN];
 	/* strlen("new@idmap") = 9
 	 * +
 	 * strlen(" ") = 1
 	 * +
-	 * LXC_NUMSTRLEN64
+	 * INTTYPE_TO_STRLEN(uint32_t)
 	 * +
 	 * strlen(" ") = 1
 	 *
 	 * We add some additional space to make sure that we really have
 	 * LXC_IDMAPLEN bytes available for our the {g,u]id mapping.
 	 */
-	char mapbuf[9 + 1 + LXC_NUMSTRLEN64 + 1 + LXC_IDMAPLEN] = {0};
-	int ret = 0, uidmap = 0, gidmap = 0;
-	bool use_shadow = false, had_entry = false;
+	int ret = 0, gidmap = 0, uidmap = 0;
+	char mapbuf[9 + 1 + INTTYPE_TO_STRLEN(uint32_t) + 1 + LXC_IDMAPLEN] = {0};
+	bool had_entry = false, use_shadow = false;
+	int hostuid, hostgid;
+
+	hostuid = geteuid();
+	hostgid = getegid();
 
 	/* If new{g,u}idmap exists, that is, if shadow is handing out subuid
 	 * ranges, then insist that root also reserve ranges in subuid. This
@@ -2690,7 +2709,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 		WARN("newgidmap is lacking necessary privileges");
 
 	if (uidmap > 0 && gidmap > 0) {
-		DEBUG("Functional newuidmap and newgidmap binary found.");
+		DEBUG("Functional newuidmap and newgidmap binary found");
 		use_shadow = true;
 	} else {
 		/* In case unprivileged users run application containers via
@@ -2699,7 +2718,25 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 		 * doing so by requiring geteuid() == 0.
 		 */
 		DEBUG("No newuidmap and newgidmap binary found. Trying to "
-		      "write directly with euid %d.", geteuid());
+		      "write directly with euid %d", hostuid);
+	}
+
+	/* Check if we really need to use newuidmap and newgidmap.
+	* If the user is only remapping his own {g,u}id, we don't need it.
+	*/
+	if (use_shadow && lxc_list_len(idmap) == 2) {
+		use_shadow = false;
+		lxc_list_for_each(iterator, idmap) {
+			map = iterator->elem;
+			if (map->idtype == ID_TYPE_UID && map->range == 1 &&
+			    map->nsid == hostuid && map->hostid == hostuid)
+				continue;
+			if (map->idtype == ID_TYPE_GID && map->range == 1 &&
+			    map->nsid == hostgid && map->hostid == hostgid)
+				continue;
+			use_shadow = true;
+			break;
+		}
 	}
 
 	for (type = ID_TYPE_UID, u_or_g = 'u'; type <= ID_TYPE_GID;
@@ -2734,7 +2771,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 		if (!had_entry)
 			continue;
 
-		/* Try to catch the ouput of new{g,u}idmap to make debugging
+		/* Try to catch the output of new{g,u}idmap to make debugging
 		 * easier.
 		 */
 		if (use_shadow) {
