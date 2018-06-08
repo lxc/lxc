@@ -2091,9 +2091,6 @@ static int lxc_get_unused_loop_dev_legacy(char *loop_name)
 		return -1;
 
 	while ((dp = readdir(dir))) {
-		if (!dp)
-			break;
-
 		if (strncmp(dp->d_name, "loop", 4) != 0)
 			continue;
 
