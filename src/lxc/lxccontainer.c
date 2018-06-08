@@ -4116,9 +4116,6 @@ static int do_lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot 
 	}
 
 	while ((direntp = readdir(dir))) {
-		if (!direntp)
-			break;
-
 		if (!strcmp(direntp->d_name, "."))
 			continue;
 
