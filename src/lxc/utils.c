@@ -85,9 +85,6 @@ static int _recursive_rmdir(const char *dirname, dev_t pdev,
 		struct stat mystat;
 		int rc;
 
-		if (!direntp)
-			break;
-
 		if (!strcmp(direntp->d_name, ".") ||
 		    !strcmp(direntp->d_name, ".."))
 			continue;
