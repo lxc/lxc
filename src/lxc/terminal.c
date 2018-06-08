@@ -509,7 +509,7 @@ int lxc_setup_tios(int fd, struct termios *oldtios)
 #ifdef IEXTEN
 	newtios.c_lflag &= ~IEXTEN;
 #endif
-	newtios.c_oflag &= ~OPOST;
+	newtios.c_oflag |= OPOST;
 	newtios.c_cc[VMIN] = 1;
 	newtios.c_cc[VTIME] = 0;
 
