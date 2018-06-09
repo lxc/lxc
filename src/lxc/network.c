@@ -2097,7 +2097,7 @@ int lxc_find_gateway_addresses(struct lxc_handler *handler)
 
 #define LXC_USERNIC_PATH LIBEXECDIR "/lxc/lxc-user-nic"
 static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcname,
-					  struct lxc_netdev *netdev, pid_t pid)
+					  struct lxc_netdev *netdev, pid_t pid, unsigned int hooks_version)
 {
 	int ret;
 	pid_t child;
@@ -2241,6 +2241,21 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 		      strerror(-ret), token);
 		return -1;
 	}
+
+	if (netdev->upscript) {
+		char *argv[] = {
+			"veth",
+			netdev->link,
+			netdev->priv.veth_attr.veth1,
+			NULL,
+		};
+
+		ret = run_script_argv(lxcname,
+				hooks_version, "net",
+				netdev->upscript, "up", argv);
+		if (ret < 0)
+			return -1;
+    }
 
 	return 0;
 }
@@ -2499,7 +2514,7 @@ int lxc_network_move_created_netdev_priv(const char *lxcpath, const char *lxcnam
 }
 
 int lxc_create_network_unpriv(const char *lxcpath, const char *lxcname,
-			      struct lxc_list *network, pid_t pid)
+			      struct lxc_list *network, pid_t pid, unsigned int hooks_version)
 {
 	struct lxc_list *iterator;
 
@@ -2525,7 +2540,7 @@ int lxc_create_network_unpriv(const char *lxcpath, const char *lxcname,
 		if (netdev->mtu)
 			INFO("mtu ignored due to insufficient privilege");
 
-		if (lxc_create_network_unpriv_exec(lxcpath, lxcname, netdev, pid))
+		if (lxc_create_network_unpriv_exec(lxcpath, lxcname, netdev, pid, hooks_version))
 			return -1;
 	}
 
