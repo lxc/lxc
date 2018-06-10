@@ -1707,7 +1707,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 
 		ret = lxc_create_network_unpriv(handler->lxcpath, handler->name,
-						&conf->network, handler->pid);
+						&conf->network, handler->pid, conf->hooks_version);
 		if (ret < 0) {
 			ERROR("Failed to create the configured network");
 			goto out_delete_net;
