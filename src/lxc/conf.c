@@ -2845,6 +2845,10 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	int ret = 0, gidmap = 0, uidmap = 0;
 	char mapbuf[9 + 1 + LXC_NUMSTRLEN64 + 1 + LXC_IDMAPLEN] = {0};
 	bool had_entry = false, use_shadow = false;
+	int hostuid, hostgid;
+
+	hostuid = geteuid();
+	hostgid = getegid();
 
 	/* If new{g,u}idmap exists, that is, if shadow is handing out subuid
 	 * ranges, then insist that root also reserve ranges in subuid. This
@@ -2873,7 +2877,25 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 		 * doing so by requiring geteuid() == 0.
 		 */
 		DEBUG("No newuidmap and newgidmap binary found. Trying to "
-		      "write directly with euid %d", geteuid());
+		      "write directly with euid %d", hostuid);
+	}
+
+	/* Check if we really need to use newuidmap and newgidmap.
+	* If the user is only remapping his own {g,u}id, we don't need it.
+	*/
+	if (use_shadow && lxc_list_len(idmap) == 2) {
+		use_shadow = false;
+		lxc_list_for_each(iterator, idmap) {
+			map = iterator->elem;
+			if (map->idtype == ID_TYPE_UID && map->range == 1 &&
+			    map->nsid == hostuid && map->hostid == hostuid)
+				continue;
+			if (map->idtype == ID_TYPE_GID && map->range == 1 &&
+			    map->nsid == hostgid && map->hostid == hostgid)
+				continue;
+			use_shadow = true;
+			break;
+		}
 	}
 
 	for (type = ID_TYPE_UID, u_or_g = 'u'; type <= ID_TYPE_GID;
