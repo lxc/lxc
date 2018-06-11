@@ -97,16 +97,6 @@ static void print_usage(const struct option longopts[],
 	fprintf(stderr, "Usage: %s ", a_args->progname);
 
 	for (opt = longopts, i = 1; opt->name; opt++, i++) {
-		int j;
-		char *uppername;
-
-		uppername = strdup(opt->name);
-		if (!uppername)
-			exit(-ENOMEM);
-
-		for (j = 0; uppername[j]; j++)
-			uppername[j] = toupper(uppername[j]);
-
 		fprintf(stderr, "[");
 
 		if (isprint(opt->val))
@@ -114,18 +104,30 @@ static void print_usage(const struct option longopts[],
 
 		fprintf(stderr, "--%s", opt->name);
 
-		if (opt->has_arg == required_argument)
-			fprintf(stderr, "=%s", uppername);
+		if ((opt->has_arg == required_argument) ||
+		    (opt->has_arg == optional_argument)) {
+			int j;
+			char *uppername;
 
-		if (opt->has_arg == optional_argument)
-			fprintf(stderr, "[=%s]", uppername);
+			uppername = strdup(opt->name);
+			if (!uppername)
+				exit(-ENOMEM);
+
+			for (j = 0; uppername[j]; j++)
+				uppername[j] = toupper(uppername[j]);
+
+			if (opt->has_arg == required_argument)
+				fprintf(stderr, "=%s", uppername);
+			else	// optional_argument
+				fprintf(stderr, "[=%s]", uppername);
+
+			free(uppername);
+		}
 
 		fprintf(stderr, "] ");
 
 		if (!(i % 4))
 			fprintf(stderr, "\n\t");
-
-		free(uppername);
 	}
 
 	fprintf(stderr, "\n");
