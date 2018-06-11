@@ -213,19 +213,21 @@ int main(int argc, char *argv[])
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		exit(EXIT_FAILURE);
 
-	if (!my_args.log_file)
-		my_args.log_file = "none";
+	/* Only create log if explicitly instructed */
+	if (my_args.log_file || my_args.log_priority) {
+		log.name = my_args.name;
+		if (!my_args.log_file)
+			log.file = "none";
+		else
+			log.file = my_args.log_file;
+		log.level = my_args.log_priority;
+		log.prefix = my_args.progname;
+		log.quiet = my_args.quiet;
+		log.lxcpath = my_args.lxcpath[0];
 
-	log.name = my_args.name;
-	log.file = my_args.log_file;
-	log.level = my_args.log_priority;
-	log.prefix = my_args.progname;
-	log.quiet = my_args.quiet;
-	log.lxcpath = my_args.lxcpath[0];
-
-	if (lxc_log_init(&log))
-		exit(EXIT_FAILURE);
-	lxc_log_options_no_override();
+		if (lxc_log_init(&log))
+			exit(EXIT_FAILURE);
+	}
 
 	if (!my_args.template) {
 		fprintf(stderr, "A template must be specified.\n");
