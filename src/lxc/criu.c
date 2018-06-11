@@ -769,13 +769,13 @@ static bool criu_ok(struct lxc_container *c, char **criu_version)
 {
 	struct lxc_list *it;
 
-	if (!criu_version_ok(criu_version))
-		return false;
-
 	if (geteuid()) {
 		ERROR("Must be root to checkpoint");
 		return false;
 	}
+
+	if (!criu_version_ok(criu_version))
+		return false;
 
 	/* We only know how to restore containers with veth networks. */
 	lxc_list_for_each(it, &c->lxc_conf->network) {
@@ -788,6 +788,10 @@ static bool criu_ok(struct lxc_container *c, char **criu_version)
 			break;
 		default:
 			ERROR("Found un-dumpable network: %s (%s)", lxc_net_type_to_str(n->type), n->name);
+			if (criu_version) {
+				free(*criu_version);
+				*criu_version = NULL;
+			}
 			return false;
 		}
 	}
@@ -1139,6 +1143,7 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 	ret = pipe(criuout);
 	if (ret < 0) {
 		SYSERROR("pipe() failed");
+		free(criu_version);
 		return false;
 	}
 
@@ -1194,6 +1199,7 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 		if (w == -1) {
 			SYSERROR("waitpid");
 			close(criuout[0]);
+			free(criu_version);
 			return false;
 		}
 
@@ -1222,6 +1228,8 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 
 		if (!ret)
 			ERROR("criu output: %s", buf);
+
+		free(criu_version);
 		return ret;
 	}
 fail:
@@ -1261,9 +1269,6 @@ bool __criu_restore(struct lxc_container *c, struct migrate_opts *opts)
 	int pipefd[2];
 	char *criu_version = NULL;
 
-	if (!criu_ok(c, &criu_version))
-		return false;
-
 	if (geteuid()) {
 		ERROR("Must be root to restore");
 		return false;
@@ -1274,10 +1279,17 @@ bool __criu_restore(struct lxc_container *c, struct migrate_opts *opts)
 		return false;
 	}
 
+	if (!criu_ok(c, &criu_version)) {
+		close(pipefd[0]);
+		close(pipefd[1]);
+		return false;
+	}
+
 	pid = fork();
 	if (pid < 0) {
 		close(pipefd[0]);
 		close(pipefd[1]);
+		free(criu_version);
 		return false;
 	}
 
@@ -1288,6 +1300,7 @@ bool __criu_restore(struct lxc_container *c, struct migrate_opts *opts)
 	}
 
 	close(pipefd[1]);
+	free(criu_version);
 
 	nread = read(pipefd[0], &status, sizeof(status));
 	close(pipefd[0]);
