@@ -230,7 +230,10 @@ int main(int argc, char *argv[])
 	/* Only create log if explicitly instructed */
 	if (my_args.log_file || my_args.log_priority) {
 		log.name = my_args.name;
-		log.file = my_args.log_file;
+		if (!my_args.log_file)
+			log.file = "none";
+		else
+			log.file = my_args.log_file;
 		log.level = my_args.log_priority;
 		log.prefix = my_args.progname;
 		log.quiet = my_args.quiet;
