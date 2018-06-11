@@ -342,16 +342,9 @@ static int lxc_monitor_open(const char *lxcpath)
 	if (lxc_monitor_sock_name(lxcpath, &addr) < 0)
 		return -1;
 
-	fd = socket(PF_UNIX, SOCK_STREAM, 0);
-	if (fd < 0) {
-		fprintf(stderr, "Failed to create socket: %s\n", strerror(errno));
-		return -errno;
-	}
-
 	len = strlen(&addr.sun_path[1]);
 	if (len >= sizeof(addr.sun_path) - 1) {
 		errno = ENAMETOOLONG;
-		close(fd);
 		fprintf(stderr, "name of monitor socket too long (%zu bytes): %s\n", len, strerror(errno));
 		return -errno;
 	}

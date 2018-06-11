@@ -1384,7 +1384,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 				ret = mount(src, bdev->dest, "bind", MS_BIND | MS_REC, NULL);
 				if (ret < 0) {
 					ERROR("Failed to mount rootfs");
-					return -1;
+					_exit(EXIT_FAILURE);
 				}
 			} else {
 				ret = bdev->ops->mount(bdev);
