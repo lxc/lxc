@@ -172,7 +172,6 @@ static void lxc_proc_put_context_info(struct lxc_proc_context_info *ctx)
 
 	lxc_proc_close_ns_fd(ctx);
 	free(ctx);
-	ctx = NULL;
 }
 
 /**
@@ -908,6 +907,7 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	close(payload->ipc_socket);
 	payload->ipc_socket = -EBADF;
 	lxc_proc_put_context_info(init_ctx);
+	payload->init_ctx = NULL;
 
 	/* The following is done after the communication socket is shut down.
 	 * That way, all errors that might (though unlikely) occur up until this
