@@ -68,9 +68,21 @@ static void usage(char *cmd)
 static bool lookup_user(const char *optarg, uid_t *uid)
 {
 	char name[MAXPATHLEN];
-	struct passwd *pwent = NULL;
+	struct passwd pwent;
+	struct passwd *pwentp = NULL;
+	char *buf;
+	size_t bufsize;
+	int ret;
 
 	if (!optarg || (optarg[0] == '\0'))
+		return false;
+
+	bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+	if (bufsize == -1)
+		bufsize = 1024;
+
+	buf = malloc(bufsize);
+	if (!buf)
 		return false;
 
 	if (sscanf(optarg, "%u", uid) < 1) {
@@ -78,19 +90,29 @@ static bool lookup_user(const char *optarg, uid_t *uid)
 		if (sscanf(optarg, "%s", name) < 1)
 			return false;
 
-		pwent = getpwnam(name);
-		if (!pwent) {
+		ret = getpwnam_r(name, &pwent, buf, bufsize, &pwentp);
+		if (!pwentp) {
+			if (ret == 0)
+				fprintf(stderr, "could not find matched password record\n");
+
 			fprintf(stderr, "invalid username %s\n", name);
+			free(buf);
 			return false;
 		}
-		*uid = pwent->pw_uid;
+		*uid = pwent.pw_uid;
 	} else {
-		pwent = getpwuid(*uid);
-		if (!pwent) {
+		ret = getpwuid_r(*uid, &pwent, buf, bufsize, &pwentp);
+		if (!pwentp) {
+			if (ret == 0)
+				fprintf(stderr, "could not find matched password record\n");
+
 			fprintf(stderr, "invalid uid %u\n", *uid);
+			free(buf);
 			return false;
 		}
 	}
+
+	free(buf);
 	return true;
 }
 
