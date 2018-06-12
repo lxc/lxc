@@ -1520,7 +1520,7 @@ static void cg_escape(void)
 /* Get uid and gid for @user. */
 static bool get_uid_gid(const char *user, uid_t *uid, gid_t *gid)
 {
-	strcut passwd pwent;
+	struct passwd pwent;
 	struct passwd *pwentp = NULL;
 	char *buf;
 	size_t bufsize;
@@ -1537,7 +1537,8 @@ static bool get_uid_gid(const char *user, uid_t *uid, gid_t *gid)
 	ret = getpwnam_r(user, &pwent, buf, bufsize, &pwentp);
 	if (!pwentp) {
 		if (ret == 0)
-			mysyslog(LOG_ERR, "Could not find matched password record.\n", NULL);
+			mysyslog(LOG_ERR,
+				 "Could not find matched password record\n", NULL);
 
 		free(buf);
 		return false;
