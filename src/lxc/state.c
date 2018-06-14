@@ -104,7 +104,7 @@ static int fillwaitedstates(const char *strstates, lxc_state_t *states)
 extern int lxc_wait(const char *lxcname, const char *states, int timeout,
 		    const char *lxcpath)
 {
-	int state;
+	int state = -1;
 	lxc_state_t s[MAX_STATE] = {0};
 
 	if (fillwaitedstates(states, s))
@@ -127,6 +127,11 @@ extern int lxc_wait(const char *lxcname, const char *states, int timeout,
 			return -1;
 
 		sleep(1);
+	}
+
+	if (state < 0) {
+		ERROR("Failed to retrieve state from monitor");
+		return -1;
 	}
 
 	TRACE("Retrieved state of container %s", lxc_state2str(state));
