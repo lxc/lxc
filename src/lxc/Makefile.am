@@ -63,6 +63,10 @@ if !HAVE_GETSUBOPT
 noinst_HEADERS += tools/include/getsubopt.h
 endif
 
+if !HAVE_GETGRGID_R
+noinst_HEADERS += ../include/getgrgid_r.h
+endif
+
 sodir=$(libdir)
 
 LSM_SOURCES = \
@@ -153,6 +157,10 @@ endif
 
 if !HAVE_STRLCPY
 liblxc_la_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_GETGRGID_R
+liblxc_la_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
 endif
 
 AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
@@ -306,6 +314,10 @@ endif
 
 if !HAVE_STRLCPY
 init_lxc_static_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_GETGRGID_R
+liblxc_la_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
 endif
 
 init_lxc_static_LDFLAGS = -all-static
