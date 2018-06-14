@@ -101,8 +101,10 @@ static bool lookup_user(const char *optarg, uid_t *uid)
 
 	if (sscanf(optarg, "%u", uid) < 1) {
 		/* not a uid -- perhaps a username */
-		if (sscanf(optarg, "%s", name) < 1)
+		if (sscanf(optarg, "%s", name) < 1) {
+			free(buf);
 			return false;
+		}
 
 		ret = getpwnam_r(name, &pwent, buf, bufsize, &pwentp);
 		if (!pwentp) {
