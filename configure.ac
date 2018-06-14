@@ -660,6 +660,10 @@ AC_CHECK_FUNCS(pthread_atfork)
 AC_CHECK_FUNCS(statvfs)
 AC_CHECK_LIB(util, openpty)
 AC_CHECK_FUNCS([openpty hasmntopt setmntent endmntent utmpxname])
+AC_CHECK_FUNCS([getgrgid_r],
+	AM_CONDITIONAL(HAVE_GETGRGID_R, true)
+	AC_DEFINE(HAVE_GETGRGID_R,1,[Have getgrgid_r]),
+	AM_CONDITIONAL(HAVE_GETGRGID_R, false))
 AC_CHECK_FUNCS([getline],
 	AM_CONDITIONAL(HAVE_GETLINE, true)
 	AC_DEFINE(HAVE_GETLINE,1,[Have getline]),
@@ -672,6 +676,10 @@ AC_CHECK_FUNCS([fgetln],
 	AM_CONDITIONAL(HAVE_FGETLN, true)
 	AC_DEFINE(HAVE_FGETLN,1,[Have fgetln]),
 	AM_CONDITIONAL(HAVE_FGETLN, false))
+AC_CHECK_FUNCS([pthread_setcancelstate],
+	AM_CONDITIONAL(HAVE_PTHREAD_SETCANCELSTATE, true)
+	AC_DEFINE(HAVE_PTHREAD_SETCANCELSTATE,1,[Have pthread_setcancelstate]),
+	AM_CONDITIONAL(HAVE_PTHREAD_SETCANCELSTATE, false))
 AC_CHECK_FUNCS([strlcpy],
 	AM_CONDITIONAL(HAVE_STRLCPY, true)
 	AC_DEFINE(HAVE_STRLCPY,1,[Have strlcpy]),
