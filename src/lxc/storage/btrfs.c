@@ -659,7 +659,7 @@ static void free_btrfs_tree(struct my_btrfs_tree *tree)
 static bool do_remove_btrfs_children(struct my_btrfs_tree *tree, u64 root_id,
 				     const char *path)
 {
-	int i;
+	int i, ret;
 	char *newpath;
 	size_t len;
 
@@ -675,7 +675,11 @@ static bool do_remove_btrfs_children(struct my_btrfs_tree *tree, u64 root_id,
 				ERROR("Out of memory");
 				return false;
 			}
-			snprintf(newpath, len, "%s/%s", path, tree->nodes[i].dirname);
+			ret = snprintf(newpath, len, "%s/%s", path, tree->nodes[i].dirname);
+			if (ret < 0 || ret >= len) {
+				free(newpath);
+				return false;
+			}
 			if (!do_remove_btrfs_children(tree, tree->nodes[i].objid, newpath)) {
 				ERROR("Failed to prune %s\n", tree->nodes[i].name);
 				free(newpath);
