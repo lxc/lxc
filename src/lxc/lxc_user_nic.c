@@ -191,6 +191,8 @@ static char **get_groupnames(void)
 		return NULL;
 	}
 
+	memset(groupnames, 0, sizeof(char *) * (ngroups + 1));
+
 	bufsize = sysconf(_SC_GETGR_R_SIZE_MAX);
 	if (bufsize == -1)
 		bufsize = 1024;
@@ -204,8 +206,6 @@ static char **get_groupnames(void)
 			      strerror(errno));
 		return NULL;
 	}
-
-	memset(groupnames, 0, sizeof(char *) * (ngroups + 1));
 
 	for (i = 0; i < ngroups; i++) {
 		ret = getgrgid_r(group_ids[i], &grent, buf, bufsize, &grentp);
