@@ -1581,13 +1581,13 @@ static int lxc_setup_devpts(struct lxc_conf *conf)
 	DEBUG("Mount new devpts instance with options \"%s\"", devpts_mntopts);
 
 	/* Remove any pre-existing /dev/ptmx file. */
-	ret = access("/dev/ptmx", F_OK);
-	if (!ret) {
-		ret = remove("/dev/ptmx");
-		if (ret < 0) {
+	ret = remove("/dev/ptmx");
+	if (ret < 0) {
+		if (errno != ENOENT) {
 			SYSERROR("Failed to remove existing \"/dev/ptmx\" file");
 			return -1;
 		}
+	} else {
 		DEBUG("Removed existing \"/dev/ptmx\" file");
 	}
 
