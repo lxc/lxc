@@ -4275,13 +4275,35 @@ static char* getuname(void)
 /* not thread-safe, do not use from api without first forking */
 static char *getgname(void)
 {
-	struct group *result;
+	struct group grent;
+	struct group *grentp = NULL;
+	char *buf;
+	char *grname;
+	size_t bufsize;
+	int ret;
 
-	result = getgrgid(getegid());
-	if (!result)
+	bufsize = sysconf(_SC_GETGR_R_SIZE_MAX);
+	if (bufsize == -1)
+		bufsize = 1024;
+
+	buf = malloc(bufsize);
+	if (!buf)
 		return NULL;
 
-	return strdup(result->gr_name);
+	ret = getgrgid_r(getegid(), &grent, buf, bufsize, &grentp);
+	if (!grentp) {
+		if (ret == 0)
+			WARN("Could not find matched group record");
+
+		ERROR("Failed to get group record - %u", getegid());
+		free(buf);
+		return NULL;
+	}
+
+	grname = strdup(grent.gr_name);
+	free(buf);
+
+	return grname;
 }
 
 /* not thread-safe, do not use from api without first forking */
