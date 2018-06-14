@@ -1426,14 +1426,32 @@ int lxc_attach_run_command(void* payload)
 int lxc_attach_run_shell(void* payload)
 {
 	uid_t uid;
-	struct passwd *passwd;
+	struct passwd pwent;
+	struct passwd *pwentp = NULL;
 	char *user_shell;
+	char *buf;
+	size_t bufsize;
+	int ret;
 
 	/* Ignore payload parameter. */
 	(void)payload;
 
 	uid = getuid();
-	passwd = getpwuid(uid);
+
+	bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+	if (bufsize == -1)
+		bufsize = 1024;
+
+	buf = malloc(bufsize);
+	if (buf) {
+		ret = getpwuid_r(uid, &pwent, buf, bufsize, &pwentp);
+		if (!pwentp) {
+			if (ret == 0)
+				WARN("Could not find matched password record.");
+
+			WARN("Failed to get password record - %u", uid);
+		}
+	}
 
 	/* This probably happens because of incompatible nss implementations in
 	 * host and container (remember, this code is still using the host's
@@ -1441,10 +1459,10 @@ int lxc_attach_run_shell(void* payload)
 	 * the information by spawning a [getent passwd uid] process and parsing
 	 * the result.
 	 */
-	if (!passwd)
+	if (!pwentp)
 		user_shell = lxc_attach_getpwshell(uid);
 	else
-		user_shell = passwd->pw_shell;
+		user_shell = pwent.pw_shell;
 	if (user_shell)
 		execlp(user_shell, user_shell, (char *)NULL);
 
@@ -1453,7 +1471,8 @@ int lxc_attach_run_shell(void* payload)
 	 */
 	execlp("/bin/sh", "/bin/sh", (char *)NULL);
 	SYSERROR("Failed to execute shell");
-	if (!passwd)
+	if (!pwentp)
 		free(user_shell);
+	free(buf);
 	return -1;
 }

@@ -253,14 +253,42 @@ static int read_default_map(char *fnam, int which, char *username)
 
 static int find_default_map(void)
 {
-	struct passwd *p = getpwuid(getuid());
-	if (!p)
+	struct passwd pwent;
+	struct passwd *pwentp = NULL;
+	char *buf;
+	size_t bufsize;
+	int ret;
+
+	bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+	if (bufsize == -1)
+		bufsize = 1024;
+
+	buf = malloc(bufsize);
+	if (!buf)
 		return -1;
-	if (read_default_map(subuidfile, ID_TYPE_UID, p->pw_name) < 0)
+
+	ret = getpwuid_r(getuid(), &pwent, buf, bufsize, &pwentp);
+	if (!pwentp) {
+		if (ret == 0)
+			printf("WARN: could not find matched password record\n");
+
+		printf("Failed to get password record - %u\n", getuid());
+		free(buf);
 		return -1;
-	if (read_default_map(subgidfile, ID_TYPE_GID, p->pw_name) < 0)
+	}
+
+	if (read_default_map(subuidfile, ID_TYPE_UID, pwent.pw_name) < 0) {
+		free(buf);
 		return -1;
-    return 0;
+	}
+
+	if (read_default_map(subgidfile, ID_TYPE_GID, pwent.pw_name) < 0) {
+		free(buf);
+		return -1;
+	}
+
+	free(buf);
+	return 0;
 }
 
 int main(int argc, char *argv[])
