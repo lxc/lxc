@@ -153,7 +153,10 @@ static char **get_groupnames(void)
 	gid_t *group_ids;
 	int ret, i;
 	char **groupnames;
-	struct group *gr;
+	struct group grent;
+	struct group *grentp = NULL;
+	char *buf;
+	size_t bufsize;
 
 	ngroups = getgroups(0, NULL);
 	if (ngroups < 0) {
@@ -189,28 +192,48 @@ static char **get_groupnames(void)
 		return NULL;
 	}
 
+	bufsize = sysconf(_SC_GETGR_R_SIZE_MAX);
+	if (bufsize == -1)
+		bufsize = 1024;
+
+	buf = malloc(bufsize);
+	if (!buf) {
+		free(group_ids);
+		free_groupnames(groupnames);
+		usernic_error("Failed to allocate memory while getting group "
+			      "names: %s\n",
+			      strerror(errno));
+		return NULL;
+	}
+
 	memset(groupnames, 0, sizeof(char *) * (ngroups + 1));
 
 	for (i = 0; i < ngroups; i++) {
-		gr = getgrgid(group_ids[i]);
-		if (!gr) {
-			usernic_error("Failed to get group name: %s\n",
-				      strerror(errno));
+		ret = getgrgid_r(group_ids[i], &grent, buf, bufsize, &grentp);
+		if (!grentp) {
+			if (ret == 0)
+				usernic_error("%s", "Could not find matched group record\n");
+
+			usernic_error("Failed to get group name: %s(%u)\n",
+			      strerror(errno), group_ids[i]);
+			free(buf);
 			free(group_ids);
 			free_groupnames(groupnames);
 			return NULL;
 		}
 
-		groupnames[i] = strdup(gr->gr_name);
+		groupnames[i] = strdup(grent.gr_name);
 		if (!groupnames[i]) {
 			usernic_error("Failed to copy group name \"%s\"",
-				      gr->gr_name);
+				      grent.gr_name);
+			free(buf);
 			free(group_ids);
 			free_groupnames(groupnames);
 			return NULL;
 		}
 	}
 
+	free(buf);
 	free(group_ids);
 
 	return groupnames;
