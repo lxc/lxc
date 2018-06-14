@@ -1564,7 +1564,12 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 			snprintf(txtuid, 20, "%d", hostuid_mapped);
 			n2[n2args - 4] = txtuid;
 			n2[n2args - 3] = "--mapped-gid";
-			snprintf(txtgid, 20, "%d", hostgid_mapped);
+			ret = snprintf(txtgid, 20, "%d", hostgid_mapped);
+			if (ret < 0 || ret >= 20) {
+				free(newargv);
+				free(n2);
+				_exit(EXIT_FAILURE);
+			}
 			n2[n2args - 2] = txtgid;
 			n2[n2args - 1] = NULL;
 			free(newargv);

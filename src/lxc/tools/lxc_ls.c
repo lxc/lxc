@@ -1136,17 +1136,27 @@ static int ls_serialize(int wpipefd, struct ls *n)
 
 static int ls_recv_str(int fd, char **buf)
 {
+	ssize_t ret;
 	size_t slen = 0;
-	if (lxc_read_nointr(fd, &slen, sizeof(slen)) != sizeof(slen))
+
+	ret = lxc_read_nointr(fd, &slen, sizeof(slen));
+	if (ret != sizeof(slen))
 		return -1;
+
 	if (slen > 0) {
 		*buf = malloc(sizeof(char) * (slen + 1));
 		if (!*buf)
 			return -1;
-		if (lxc_read_nointr(fd, *buf, slen) != (ssize_t)slen)
+
+		ret = lxc_read_nointr(fd, *buf, slen);
+		if (ret != (ssize_t)slen) {
+			free(*buf);
 			return -1;
+		}
+
 		(*buf)[slen] = '\0';
 	}
+
 	return 0;
 }
 
