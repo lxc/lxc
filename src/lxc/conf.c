@@ -4508,13 +4508,35 @@ on_error:
 /* not thread-safe, do not use from api without first forking */
 static char *getuname(void)
 {
-	struct passwd *result;
+	struct passwd pwent;
+	struct passwd *pwentp = NULL;
+	char *buf;
+	char *username;
+	size_t bufsize;
+	int ret;
 
-	result = getpwuid(geteuid());
-	if (!result)
+	bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+	if (bufsize == -1)
+		bufsize = 1024;
+
+	buf = malloc(bufsize);
+	if (!buf)
 		return NULL;
 
-	return strdup(result->pw_name);
+	ret = getpwuid_r(geteuid(), &pwent, buf, bufsize, &pwentp);
+	if (!pwentp) {
+		if (ret == 0)
+			WARN("Could not find matched password record.");
+
+		ERROR("Failed to get password record - %u", geteuid());
+		free(buf);
+		return NULL;
+	}
+
+	username = strdup(pwent.pw_name);
+	free(buf);
+
+	return username;
 }
 
 /* not thread-safe, do not use from api without first forking */
