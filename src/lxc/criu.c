@@ -1314,7 +1314,11 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 			SYSERROR("read");
 			n = 0;
 		}
-		buf[n] = 0;
+
+		if (n == sizeof(buf))
+			buf[n-1] = 0;
+		else
+			buf[n] = 0;
 
 		if (WIFEXITED(status)) {
 			if (WEXITSTATUS(status)) {
