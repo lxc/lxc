@@ -801,6 +801,7 @@ static bool criu_ok(struct lxc_container *c, char **criu_version)
 
 static bool restore_net_info(struct lxc_container *c)
 {
+	int ret;
 	struct lxc_list *it;
 	bool has_error = true;
 
@@ -814,7 +815,9 @@ static bool restore_net_info(struct lxc_container *c)
 		if (netdev->type != LXC_NET_VETH)
 			continue;
 
-		snprintf(template, sizeof(template), "vethXXXXXX");
+		ret = snprintf(template, sizeof(template), "vethXXXXXX");
+		if (ret < 0 || ret >= sizeof(template))
+			goto out_unlock;
 
 		if (netdev->priv.veth_attr.pair[0] == '\0' &&
 		    netdev->priv.veth_attr.veth1[0] == '\0') {
