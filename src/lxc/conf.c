@@ -924,16 +924,9 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 			/* If we populated /dev, then we need to create
 			 * /dev/ttyN
 			 */
-			ret = access(path, F_OK);
-			if (ret < 0) {
-				ret = creat(path, 0660);
-				if (ret < 0) {
-					SYSERROR("Failed to create \"%s\"", path);
-					/* this isn't fatal, continue */
-				} else {
-					close(ret);
-				}
-			}
+			ret = mknod(path, S_IFREG | 0000, 0);
+			if (ret < 0) /* this isn't fatal, continue */
+				ERROR("%s - Failed to create \"%s\"", strerror(errno), path);
 
 			ret = mount(tty->name, path, "none", MS_BIND, 0);
 			if (ret < 0) {
@@ -941,8 +934,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 				continue;
 			}
 
-			DEBUG("Bind mounted \"%s\" onto \"%s\"", tty->name,
-			      path);
+			DEBUG("Bind mounted \"%s\" onto \"%s\"", tty->name, path);
 		}
 
 		if (!append_ttyname(&conf->ttys.tty_names, tty->name)) {
