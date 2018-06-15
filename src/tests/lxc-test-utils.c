@@ -149,13 +149,13 @@ void test_detect_ramfs_rootfs(void)
 		goto non_test_error;
 	}
 
-	fd1 = mkstemp(tmpf1);
+	fd1 = lxc_make_tmpfile(tmpf1, false);
 	if (fd1 < 0) {
 		lxc_error("%s\n", "Could not create temporary file.");
 		goto non_test_error;
 	}
 
-	fd2 = mkstemp(tmpf2);
+	fd2 = lxc_make_tmpfile(tmpf2, false);
 	if (fd2 < 0) {
 		lxc_error("%s\n", "Could not create temporary file.");
 		goto non_test_error;
