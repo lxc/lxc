@@ -86,8 +86,8 @@ is2big:
 	return -1;
 }
 
-static void print_usage(const struct option longopts[],
-			const struct lxc_arguments *a_args)
+static void print_usage_exit(const struct option longopts[],
+			     const struct lxc_arguments *a_args)
 
 {
 	int i;
@@ -133,13 +133,13 @@ static void print_usage(const struct option longopts[],
 	exit(0);
 }
 
-static void print_version()
+static void print_version_exit()
 {
 	printf("%s\n", lxc_get_version());
 	exit(0);
 }
 
-static void print_help(const struct lxc_arguments *args, int code)
+static void print_help_exit(const struct lxc_arguments *args, int code)
 {
 	fprintf(stderr, "\
 Usage: %s %s\
@@ -228,13 +228,13 @@ extern int lxc_arguments_parse(struct lxc_arguments *args, int argc,
 				return ret;
 			break;
 		case OPT_USAGE:
-			print_usage(args->options, args);
+			print_usage_exit(args->options, args);
 		case OPT_VERSION:
-			print_version();
+			print_version_exit();
 		case '?':
-			print_help(args, 1);
+			print_help_exit(args, 1);
 		case 'h':
-			print_help(args, 0);
+			print_help_exit(args, 0);
 		default:
 			if (args->parser) {
 				ret = args->parser(args, c, optarg);
