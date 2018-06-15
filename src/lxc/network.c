@@ -123,7 +123,10 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		memcpy(netdev->priv.veth_attr.veth1, veth1, IFNAMSIZ);
 	}
 
-	snprintf(veth2buf, sizeof(veth2buf), "vethXXXXXX");
+	err = snprintf(veth2buf, sizeof(veth2buf), "vethXXXXXX");
+	if (err < 0 || (size_t)err >= sizeof(veth2buf))
+		return -1;
+
 	veth2 = lxc_mkifname(veth2buf);
 	if (!veth2)
 		goto out_delete;
