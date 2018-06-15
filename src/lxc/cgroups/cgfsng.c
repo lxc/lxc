@@ -2223,9 +2223,6 @@ static int recursive_count_nrtasks(char *dirname)
 	while ((direntp = readdir(dir))) {
 		struct stat mystat;
 
-		if (!direntp)
-			break;
-
 		if (!strcmp(direntp->d_name, ".") ||
 		    !strcmp(direntp->d_name, ".."))
 			continue;
