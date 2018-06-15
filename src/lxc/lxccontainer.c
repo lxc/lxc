@@ -2477,7 +2477,10 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 		if (stat(path, &fbuf) < 0)
 			goto out;
 		if (!fbuf.st_size) {
-			remove(path);
+			ret = remove(path);
+			if (ret < 0)
+				SYSERROR("Failed to remove \"%s\"", path);
+
 		}
 	}
 
