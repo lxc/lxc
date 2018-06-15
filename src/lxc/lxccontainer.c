@@ -3429,14 +3429,20 @@ static bool add_rdepends(struct lxc_container *c, struct lxc_container *c0)
 bool should_default_to_snapshot(struct lxc_container *c0,
 				struct lxc_container *c1)
 {
+	int ret;
 	size_t l0 = strlen(c0->config_path) + strlen(c0->name) + 2;
 	size_t l1 = strlen(c1->config_path) + strlen(c1->name) + 2;
 	char *p0 = alloca(l0 + 1);
 	char *p1 = alloca(l1 + 1);
 	char *rootfs = c0->lxc_conf->rootfs.path;
 
-	snprintf(p0, l0, "%s/%s", c0->config_path, c0->name);
-	snprintf(p1, l1, "%s/%s", c1->config_path, c1->name);
+	ret = snprintf(p0, l0, "%s/%s", c0->config_path, c0->name);
+	if (ret < 0 || ret >= l0)
+		return false;
+
+	ret = snprintf(p1, l1, "%s/%s", c1->config_path, c1->name);
+	if (ret < 0 || ret >= l1)
+		return false;
 
 	if (!is_btrfs_fs(p0) || !is_btrfs_fs(p1))
 		return false;
