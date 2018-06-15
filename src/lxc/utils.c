@@ -2378,8 +2378,11 @@ bool lxc_nic_exists(char *nic)
 int lxc_make_tmpfile(char *template, bool rm)
 {
 	int fd, ret;
+	mode_t msk;
 
+	msk = umask(0022);
 	fd = mkstemp(template);
+	umask(msk);
 	if (fd < 0)
 		return -1;
 
