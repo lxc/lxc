@@ -213,7 +213,7 @@ static int lxc_cmd_rsp_send(int fd, struct lxc_cmd_rsp *rsp)
 		return -1;
 	}
 
-	if (rsp->datalen <= 0)
+	if (!rsp->data || rsp->datalen <= 0)
 		return 0;
 
 	ret = send(fd, rsp->data, rsp->datalen, 0);
