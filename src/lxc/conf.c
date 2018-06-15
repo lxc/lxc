@@ -1541,16 +1541,11 @@ static int lxc_setup_devpts(struct lxc_conf *conf)
 	if (ret < 0 || (size_t)ret >= sizeof(devpts_mntopts))
 		return -1;
 
-	/* Unmount old devpts instance. */
-	ret = access("/dev/pts/ptmx", F_OK);
-	if (!ret) {
-		ret = umount("/dev/pts");
-		if (ret < 0) {
-			SYSERROR("Failed to unmount old devpts instance");
-			return -1;
-		}
+	ret = umount2("/dev/pts", MNT_DETACH);
+	if (ret < 0)
+		WARN("%s - Failed to unmount old devpts instance", strerror(errno));
+	else
 		DEBUG("Unmounted old devpts instance");
-	}
 
 	/* Create mountpoint for devpts instance. */
 	ret = mkdir("/dev/pts", 0755);
