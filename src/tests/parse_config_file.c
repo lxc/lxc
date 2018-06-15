@@ -32,6 +32,7 @@
 #include "confile_utils.h"
 #include "lxc/state.h"
 #include "lxctest.h"
+#include "utils.h"
 
 static int set_get_compare_clear_save_load(struct lxc_container *c,
 					   const char *key, const char *value,
@@ -170,7 +171,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	fd = mkstemp(tmpf);
+	fd = lxc_make_tmpfile(tmpf, false);
 	if (fd < 0) {
 		lxc_error("%s\n", "Could not create temporary file");
 		goto non_test_error;
