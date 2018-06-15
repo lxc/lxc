@@ -176,6 +176,7 @@ static void print_net_stats(struct lxc_container *c)
 		snprintf(path, sizeof(path), "/sys/class/net/%s/statistics/rx_bytes", ifname);
 		rc = lxc_read_from_file(path, buf, sizeof(buf));
 		if (rc > 0) {
+			buf[rc - 1] = '\0';
 			str_chomp(buf);
 			rx_bytes = str_size_humanize(buf, sizeof(buf));
 			printf("%-15s %s\n", " TX bytes:", buf);
@@ -185,6 +186,7 @@ static void print_net_stats(struct lxc_container *c)
 		snprintf(path, sizeof(path), "/sys/class/net/%s/statistics/tx_bytes", ifname);
 		rc = lxc_read_from_file(path, buf, sizeof(buf));
 		if (rc > 0) {
+			buf[rc - 1] = '\0';
 			str_chomp(buf);
 			tx_bytes = str_size_humanize(buf, sizeof(buf));
 			printf("%-15s %s\n", " RX bytes:", buf);
