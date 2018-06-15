@@ -751,11 +751,9 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	TRACE("Set container state to \"STARTING\"");
 
 	/* Start of environment variable setup for hooks. */
-	if (name) {
-		ret = setenv("LXC_NAME", name, 1);
-		if (ret < 0)
-			SYSERROR("Failed to set environment variable: LXC_NAME=%s", name);
-	}
+	ret = setenv("LXC_NAME", name, 1);
+	if (ret < 0)
+		SYSERROR("Failed to set environment variable: LXC_NAME=%s", name);
 
 	if (conf->rcfile) {
 		ret = setenv("LXC_CONFIG_FILE", conf->rcfile, 1);
