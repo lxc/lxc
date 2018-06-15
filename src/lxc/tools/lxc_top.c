@@ -139,7 +139,7 @@ Options :\n\
 
 static void stdin_tios_restore(void)
 {
-	tcsetattr(0, TCSAFLUSH, &oldtios);
+	(void)tcsetattr(0, TCSAFLUSH, &oldtios);
 	fprintf(stderr, "\n");
 }
 
