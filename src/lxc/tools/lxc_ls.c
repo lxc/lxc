@@ -819,8 +819,8 @@ static void ls_print_fancy_format(struct ls *l, struct lengths *lht,
 		    strcasecmp(*s, "GROUPS") && strcasecmp(*s, "INTERFACE") &&
 		    strcasecmp(*s, "IPV4") && strcasecmp(*s, "IPV6") &&
 		    strcasecmp(*s, "UNPRIVILEGED")) {
-			lxc_free_array((void **)tmp, free);
 			fprintf(stderr, "Invalid key: %s\n", *s);
+			lxc_free_array((void **)tmp, free);
 			return;
 		}
 	}
