@@ -2409,7 +2409,10 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 		n = fscanf(f1, "%d", &v);
 		fclose(f1);
 		if (n == 1 && v == 0) {
-			remove(path);
+			ret = remove(path);
+			if (ret < 0)
+				ERROR("%s - Failed to remove \"%s\"",
+				      strerror(errno), path);
 			n = 0;
 		}
 	}
