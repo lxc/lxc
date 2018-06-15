@@ -744,6 +744,7 @@ static char *mount_tmpfs(const char *oldname, const char *newname,
 {
 	int ret, fd;
 	size_t len;
+	mode_t msk;
 	char *premount = NULL;
 	FILE *fp = NULL;
 
@@ -773,7 +774,9 @@ static char *mount_tmpfs(const char *oldname, const char *newname,
 	if (ret < 0 || (size_t)ret >= len)
 		goto err_free;
 
+	msk = umask(0022);
 	fd = mkstemp(premount);
+	umask(msk);
 	if (fd < 0)
 		goto err_free;
 
