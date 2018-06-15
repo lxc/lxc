@@ -93,8 +93,10 @@ char *dir_new_path(char *src, const char *oldname, const char *name,
 
 		/* copy text up to oldname */
 		retlen = strlcpy(p, src, p2 - src);
-		if (retlen >= p2 - src)
+		if (retlen >= p2 - src) {
+			free(ret);
 			return NULL;
+		}
 
 		/* move target pointer (p) */
 		p += p2 - src;
