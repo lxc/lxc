@@ -568,8 +568,10 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 			/* We want to remove all locks we create under
 			 * /run/lxc/lock so we create a string pointing us to
 			 * the lock path for the current container. */
-			if (ls_remove_lock(path, name, lockpath, &len_lockpath, true) == -1)
+			if (ls_remove_lock(path, name, lockpath, &len_lockpath, true) == -1) {
+				free(newpath);
 				goto put_and_next;
+			}
 
 			ls_get(m, size, args, newpath, l->name, lvl + 1, lockpath, len_lockpath, grps_must, grps_must_len);
 			free(newpath);
