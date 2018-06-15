@@ -2337,58 +2337,64 @@ static char ** do_lxcapi_get_interfaces(struct lxc_container *c)
 
 WRAP_API(char **, lxcapi_get_interfaces)
 
-static char** do_lxcapi_get_ips(struct lxc_container *c, const char* interface, const char* family, int scope)
+static char **do_lxcapi_get_ips(struct lxc_container *c, const char *interface,
+				const char *family, int scope)
 {
+	int i, ret;
 	pid_t pid;
-	int i, count = 0, pipefd[2];
-	char **addresses = NULL;
+	int pipefd[2];
 	char address[INET6_ADDRSTRLEN];
+	int count = 0;
+	char **addresses = NULL;
 
-	if(pipe(pipefd) < 0) {
-		SYSERROR("pipe failed");
+	ret = pipe(pipefd);
+	if (ret < 0) {
+		SYSERROR("Failed to create pipe");
 		return NULL;
 	}
 
 	pid = fork();
 	if (pid < 0) {
-		SYSERROR("failed to fork task to get container ips");
+		SYSERROR("Failed to create new process");
 		close(pipefd[0]);
 		close(pipefd[1]);
 		return NULL;
 	}
 
-	if (pid == 0) { /* child */
-		int ret = 1, nbytes;
-		struct ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
+	if (pid == 0) {
+		ssize_t nbytes;
 		char addressOutputBuffer[INET6_ADDRSTRLEN];
-		void *tempAddrPtr = NULL;
+		int ret = 1;
 		char *address = NULL;
+		void *tempAddrPtr = NULL;
+		struct ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
 
 		/* close the read-end of the pipe */
 		close(pipefd[0]);
 
 		if (!enter_net_ns(c)) {
-			SYSERROR("failed to enter namespace");
+			SYSERROR("Failed to attach to network namespace");
 			goto out;
 		}
 
 		/* Grab the list of interfaces */
 		if (getifaddrs(&interfaceArray)) {
-			SYSERROR("failed to get interfaces list");
+			SYSERROR("Failed to get interfaces list");
 			goto out;
 		}
 
 		/* Iterate through the interfaces */
-		for (tempIfAddr = interfaceArray; tempIfAddr != NULL; tempIfAddr = tempIfAddr->ifa_next) {
+		for (tempIfAddr = interfaceArray; tempIfAddr;
+		     tempIfAddr = tempIfAddr->ifa_next) {
 			if (tempIfAddr->ifa_addr == NULL)
 				continue;
 
-			if(tempIfAddr->ifa_addr->sa_family == AF_INET) {
+			if (tempIfAddr->ifa_addr->sa_family == AF_INET) {
 				if (family && strcmp(family, "inet"))
 					continue;
+
 				tempAddrPtr = &((struct sockaddr_in *)tempIfAddr->ifa_addr)->sin_addr;
-			}
-			else {
+			} else {
 				if (family && strcmp(family, "inet6"))
 					continue;
 
@@ -2404,15 +2410,15 @@ static char** do_lxcapi_get_ips(struct lxc_container *c, const char* interface, 
 				continue;
 
 			address = (char *)inet_ntop(tempIfAddr->ifa_addr->sa_family,
-						tempAddrPtr,
-						addressOutputBuffer,
-						sizeof(addressOutputBuffer));
+						    tempAddrPtr, addressOutputBuffer,
+						    sizeof(addressOutputBuffer));
 			if (!address)
-					continue;
+				continue;
 
-			nbytes = write(pipefd[1], address, INET6_ADDRSTRLEN);
-			if (nbytes < 0) {
-				ERROR("write failed");
+			nbytes = lxc_write_nointr(pipefd[1], address, INET6_ADDRSTRLEN);
+			if (nbytes != INET6_ADDRSTRLEN) {
+				SYSERROR("Failed to send ipv6 address \"%s\"",
+					 address);
 				goto out;
 			}
 			count++;
@@ -2420,7 +2426,7 @@ static char** do_lxcapi_get_ips(struct lxc_container *c, const char* interface, 
 		ret = 0;
 
 	out:
-		if(interfaceArray)
+		if (interfaceArray)
 			freeifaddrs(interfaceArray);
 
 		/* close the write-end of the pipe, thus sending EOF to the reader */
@@ -2431,15 +2437,19 @@ static char** do_lxcapi_get_ips(struct lxc_container *c, const char* interface, 
 	/* close the write-end of the pipe */
 	close(pipefd[1]);
 
-	while (read(pipefd[0], &address, INET6_ADDRSTRLEN) == INET6_ADDRSTRLEN) {
-		if(!add_to_array(&addresses, address, count))
+	while (lxc_read_nointr(pipefd[0], &address, INET6_ADDRSTRLEN) == INET6_ADDRSTRLEN) {
+		address[INET6_ADDRSTRLEN - 1] = '\0';
+
+		if (!add_to_array(&addresses, address, count))
 			ERROR("PARENT: add_to_array failed");
+
 		count++;
 	}
 
 	if (wait_for_pid(pid) != 0) {
-		for(i=0;i<count;i++)
+		for (i = 0; i < count; i++)
 			free(addresses[i]);
+
 		free(addresses);
 		addresses = NULL;
 	}
@@ -2448,7 +2458,7 @@ static char** do_lxcapi_get_ips(struct lxc_container *c, const char* interface, 
 	close(pipefd[0]);
 
 	/* Append NULL to the array */
-	if(addresses)
+	if (addresses)
 		addresses = (char **)lxc_append_null_to_array((void **)addresses, count);
 
 	return addresses;
