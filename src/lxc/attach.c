@@ -606,8 +606,9 @@ static void lxc_attach_get_init_uidgid(uid_t *init_uid, gid_t *init_gid)
 	uid_t uid = (uid_t)-1;
 	gid_t gid = (gid_t)-1;
 
-	/* Read capabilities. */
-	snprintf(proc_fn, __PROC_STATUS_LEN, "/proc/%d/status", 1);
+	ret = snprintf(proc_fn, __PROC_STATUS_LEN, "/proc/%d/status", 1);
+	if (ret < 0 || ret >= __PROC_STATUS_LEN)
+		return;
 
 	proc_file = fopen(proc_fn, "r");
 	if (!proc_file)
