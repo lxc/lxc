@@ -112,19 +112,19 @@ static void str_chomp(char *buf)
 static void size_humanize(unsigned long long val, char *buf, size_t bufsz)
 {
 	if (val > 1 << 30) {
-		snprintf(buf, bufsz, "%u.%2.2u GiB",
-			    (unsigned int)(val >> 30),
-			    (unsigned int)(val & ((1 << 30) - 1)) / 10737419);
+		(void)snprintf(buf, bufsz, "%u.%2.2u GiB",
+			       (unsigned int)(val >> 30),
+			       (unsigned int)(val & ((1 << 30) - 1)) / 10737419);
 	} else if (val > 1 << 20) {
 		unsigned int x = val + 5243;  /* for rounding */
-		snprintf(buf, bufsz, "%u.%2.2u MiB",
-			    x >> 20, ((x & ((1 << 20) - 1)) * 100) >> 20);
+		(void)snprintf(buf, bufsz, "%u.%2.2u MiB", x >> 20,
+			       ((x & ((1 << 20) - 1)) * 100) >> 20);
 	} else if (val > 1 << 10) {
 		unsigned int x = val + 5;  /* for rounding */
-		snprintf(buf, bufsz, "%u.%2.2u KiB",
-			    x >> 10, ((x & ((1 << 10) - 1)) * 100) >> 10);
+		(void)snprintf(buf, bufsz, "%u.%2.2u KiB", x >> 10,
+			       ((x & ((1 << 10) - 1)) * 100) >> 10);
 	} else {
-		snprintf(buf, bufsz, "%u bytes", (unsigned int)val);
+		(void)snprintf(buf, bufsz, "%u bytes", (unsigned int)val);
 	}
 }
 
@@ -172,7 +172,10 @@ static void print_net_stats(struct lxc_container *c)
 		/* XXX: tx and rx are reversed from the host vs container
 		 * perspective, print them from the container perspective
 		 */
-		snprintf(path, sizeof(path), "/sys/class/net/%s/statistics/rx_bytes", ifname);
+		rc = snprintf(path, sizeof(path), "/sys/class/net/%s/statistics/rx_bytes", ifname);
+		if (rc < 0 || (size_t)rc >= sizeof(path))
+			return;
+
 		rc = lxc_read_from_file(path, buf, sizeof(buf));
 		if (rc > 0) {
 			str_chomp(buf);
@@ -181,7 +184,10 @@ static void print_net_stats(struct lxc_container *c)
 			fflush(stdout);
 		}
 
-		snprintf(path, sizeof(path), "/sys/class/net/%s/statistics/tx_bytes", ifname);
+		rc = snprintf(path, sizeof(path), "/sys/class/net/%s/statistics/tx_bytes", ifname);
+		if (rc < 0 || (size_t)rc >= sizeof(path))
+			return;
+
 		rc = lxc_read_from_file(path, buf, sizeof(buf));
 		if (rc > 0) {
 			str_chomp(buf);
