@@ -37,6 +37,10 @@
 #include "storage_utils.h"
 #include "utils.h"
 
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
 lxc_log_define(nbd, lxc);
 
 struct nbd_attach_data {
@@ -53,10 +57,14 @@ static bool wait_for_partition(const char *path);
 
 bool attach_nbd(char *src, struct lxc_conf *conf)
 {
-	char *orig = alloca(strlen(src)+1), *p, path[50];
+	char *orig, *p, path[50];
 	int i = 0;
+	size_t len;
 
-	strcpy(orig, src);
+	len = strlen(src);
+	orig = alloca(len + 1);
+	(void)strlcpy(orig, src, len + 1);
+
 	/* if path is followed by a partition, drop that for now */
 	p = strchr(orig, ':');
 	if (p)

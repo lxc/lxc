@@ -50,6 +50,10 @@
 #include "network.h"
 #include "utils.h"
 
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
 #define usernic_debug_stream(stream, format, ...)                              \
 	do {                                                                   \
 		fprintf(stream, "%s: %d: %s: " format, __FILE__, __LINE__,     \
@@ -828,9 +832,11 @@ static bool create_db_dir(char *fnam)
 {
 	int ret;
 	char *p;
+	size_t len;
 
-	p = alloca(strlen(fnam) + 1);
-	strcpy(p, fnam);
+	len = strlen(fnam);
+	p = alloca(len + 1);
+	(void)strlcpy(p, fnam, len + 1);
 	fnam = p;
 	p = p + 1;
 
