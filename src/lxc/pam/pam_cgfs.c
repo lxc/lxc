@@ -59,6 +59,10 @@
 
 #include "utils.h"
 
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
 #define pam_cgfs_debug_stream(stream, format, ...)                                \
 	do {                                                                   \
 		fprintf(stream, "%s: %d: %s: " format, __FILE__, __LINE__,     \
@@ -1626,7 +1630,8 @@ static char *string_join(const char *sep, const char **parts, bool use_as_prefix
 		return NULL;
 
 	if (use_as_prefix)
-		strcpy(result, sep);
+		(void)strlcpy(result, sep, (result_len + 1) * sizeof(char));
+
 	for (p = (char **)parts; *p; p++) {
 		if (p > (char **)parts)
 			strcat(result, sep);
