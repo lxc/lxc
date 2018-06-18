@@ -91,8 +91,8 @@ char *get_btrfs_subvol_path(int fd, u64 dir_id, u64 objid, char *name,
 		retpath = malloc(len);
 		if (!retpath)
 			return NULL;
-		strcpy(retpath, args.name);
-		strcat(retpath, "/");
+		(void)strlcpy(retpath, args.name, len);
+		strncat(retpath, "/", 1);
 		strncat(retpath, name, name_len);
 	} else {
 		/* we're at the root of ref_tree */
@@ -521,17 +521,20 @@ static bool update_tree_node(struct mytree_node *n, u64 id, u64 parent,
 		if (!n->name)
 			return false;
 
-		strcpy(n->name, name);
+		(void)strlcpy(n->name, name, name_len + 1);
 	}
 
 	if (dirname) {
-		n->dirname = malloc(strlen(dirname) + 1);
+		size_t len;
+
+		len = strlen(dirname);
+		n->dirname = malloc(len + 1);
 		if (!n->dirname) {
 			free(n->name);
 			return false;
 		}
 
-		strcpy(n->dirname, dirname);
+		(void)strlcpy(n->dirname, dirname, len + 1);
 	}
 	return true;
 }

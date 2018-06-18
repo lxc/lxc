@@ -1155,7 +1155,8 @@ static int do_create_container_dir(const char *path, struct lxc_conf *conf)
 
 	len = strlen(path);
 	p = alloca(len + 1);
-	strcpy(p, path);
+	(void)strlcpy(p, path, len + 1);
+
 	if (!lxc_list_empty(&conf->id_map)) {
 		ret = chown_mapped_root(p, conf);
 		if (ret < 0)
@@ -4444,6 +4445,7 @@ out:
 struct lxc_container *lxc_container_new(const char *name, const char *configpath)
 {
 	struct lxc_container *c;
+	size_t len;
 
 	if (!name)
 		return NULL;
@@ -4466,12 +4468,14 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	}
 
 	remove_trailing_slashes(c->config_path);
-	c->name = malloc(strlen(name)+1);
+
+	len = strlen(name);
+	c->name = malloc(len + 1);
 	if (!c->name) {
 		fprintf(stderr, "Failed to allocate memory for %s\n", name);
 		goto err;
 	}
-	strcpy(c->name, name);
+	(void)strlcpy(c->name, name, len + 1);
 
 	c->numthreads = 1;
 	c->slock = lxc_newlock(c->config_path, name);

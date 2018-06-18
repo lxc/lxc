@@ -103,9 +103,11 @@ static void print_top_failing_dir(const char *path)
 
 	len = strlen(path);
 	copy = alloca(len + 1);
-	strcpy(copy, path);
+	(void)strlcpy(copy, path, len + 1);
+
 	p = copy;
 	e = copy + len;
+
 	while (p < e) {
 		while (p < e && *p == '/')
 			p++;
