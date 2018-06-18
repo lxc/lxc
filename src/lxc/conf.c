@@ -947,7 +947,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 	return 0;
 }
 
-int lxc_allocate_ttys(const char *name, struct lxc_conf *conf)
+int lxc_allocate_ttys(struct lxc_conf *conf)
 {
 	int i, ret;
 	struct lxc_tty_info *ttys = &conf->ttys;
@@ -1062,7 +1062,7 @@ static int lxc_create_ttys(struct lxc_handler *handler)
 	int ret = -1;
 	struct lxc_conf *conf = handler->conf;
 
-	ret = lxc_allocate_ttys(handler->name, conf);
+	ret = lxc_allocate_ttys(conf);
 	if (ret < 0) {
 		ERROR("Failed to allocate ttys");
 		goto on_error;
