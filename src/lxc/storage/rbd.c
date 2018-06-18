@@ -34,6 +34,10 @@
 #include "storage_utils.h"
 #include "utils.h"
 
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
 lxc_log_define(rbd, lxc);
 
 struct rbd_args {
@@ -193,6 +197,7 @@ int rbd_destroy(struct lxc_storage *orig)
 	char *rbdfullname;
 	char cmd_output[MAXPATHLEN];
 	struct rbd_args args = {0};
+	size_t len;
 
 	src = lxc_storage_get_path(orig->src, orig->type);
 	if (file_exists(src)) {
@@ -206,9 +211,11 @@ int rbd_destroy(struct lxc_storage *orig)
 		}
 	}
 
-	rbdfullname = alloca(strlen(src) - 8);
-	strcpy(rbdfullname, &src[9]);
+	len = strlen(src);
+	rbdfullname = alloca(len - 8);
+	(void)strlcpy(rbdfullname, &src[9], len - 8);
 	args.rbd_name = rbdfullname;
+
 	ret = run_command(cmd_output, sizeof(cmd_output),
 			rbd_delete_wrapper, (void *)&args);
 	if (ret < 0) {
