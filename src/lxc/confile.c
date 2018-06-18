@@ -65,6 +65,10 @@
 #include <sys/personality.h>
 #endif
 
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
 lxc_log_define(lxc_confile, lxc);
 
 #define lxc_config_define(name)                                                \
@@ -2181,7 +2185,7 @@ static int set_config_uts_name(const char *key, const char *value,
 		return -1;
 	}
 
-	strcpy(utsname->nodename, value);
+	(void)strlcpy(utsname->nodename, value, sizeof(utsname->nodename));
 	free(lxc_conf->utsname);
 	lxc_conf->utsname = utsname;
 

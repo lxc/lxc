@@ -48,6 +48,10 @@
 #include "arguments.h"
 #include "tool_utils.h"
 
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
 int lxc_fill_elevated_privileges(char *flaglist, int *flags)
 {
 	char *token, *saveptr = NULL;
@@ -422,13 +426,16 @@ char **lxc_string_split(const char *string, char _sep)
 	char **tmp = NULL, **result = NULL;
 	size_t result_capacity = 0;
 	size_t result_count = 0;
+	size_t len;
 	int r, saved_errno;
 
 	if (!string)
 		return calloc(1, sizeof(char *));
 
-	str = alloca(strlen(string) + 1);
-	strcpy(str, string);
+	len = strlen(string);
+	str = alloca(len + 1);
+	(void)strlcpy(str, string, len + 1);
+
 	for (; (token = strtok_r(str, sep, &saveptr)); str = NULL) {
 		r = lxc_grow_array((void ***)&result, &result_capacity, result_count + 1, 16);
 		if (r < 0)
@@ -506,7 +513,8 @@ char *lxc_string_join(const char *sep, const char **parts, bool use_as_prefix)
 		return NULL;
 
 	if (use_as_prefix)
-		strcpy(result, sep);
+		(void)strlcpy(result, sep, result_len + 1);
+
 	for (p = (char **)parts; *p; p++) {
 		if (p > (char **)parts)
 			strcat(result, sep);
@@ -868,12 +876,15 @@ char **lxc_string_split_and_trim(const char *string, char _sep)
 	size_t result_count = 0;
 	int r, saved_errno;
 	size_t i = 0;
+	size_t len;
 
 	if (!string)
 		return calloc(1, sizeof(char *));
 
-	str = alloca(strlen(string)+1);
-	strcpy(str, string);
+	len = strlen(string);
+	str = alloca(len + 1);
+	(void)strlcpy(str, string, len + 1);
+
 	for (; (token = strtok_r(str, sep, &saveptr)); str = NULL) {
 		while (token[0] == ' ' || token[0] == '\t')
 			token++;

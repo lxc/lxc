@@ -60,6 +60,10 @@
 #include "utils.h"
 #include "zfs.h"
 
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
 #ifndef BLKGETSIZE64
 #define BLKGETSIZE64 _IOR(0x12, 114, size_t)
 #endif
@@ -564,9 +568,12 @@ struct lxc_storage *storage_create(const char *dest, const char *type,
 	if (strchr(type, ',')) {
 		char *dup, *token;
 		char *saveptr = NULL;
+		size_t len;
 
-		dup = alloca(strlen(type) + 1);
-		strcpy(dup, type);
+		len = strlen(type);
+		dup = alloca(len + 1);
+		(void)strlcpy(dup, type, len + 1);
+
 		for (token = strtok_r(dup, ",", &saveptr); token;
 		     token = strtok_r(NULL, ",", &saveptr)) {
 			bdev = do_storage_create(dest, token, cname, specs);
