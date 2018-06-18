@@ -923,7 +923,7 @@ static bool restore_net_info(struct lxc_container *c)
 			if (!lxc_mkifname(template))
 				goto out_unlock;
 
-			strcpy(netdev->priv.veth_attr.veth1, template);
+			(void)strlcpy(netdev->priv.veth_attr.veth1, template, IFNAMSIZ);
 		}
 	}
 
