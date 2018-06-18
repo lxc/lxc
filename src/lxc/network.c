@@ -1992,7 +1992,7 @@ char *lxc_mkifname(char *template)
 	/* Generate random names until we find one that doesn't exist. */
 	while (true) {
 		name[0] = '\0';
-		strcpy(name, template);
+		(void)strlcpy(name, template, IFNAMSIZ);
 
 		exists = false;
 		for (i = 0; i < strlen(name); i++) {
@@ -2017,7 +2017,9 @@ char *lxc_mkifname(char *template)
 	}
 
 	freeifaddrs(ifaddr);
-	return strcpy(template, name);
+	(void)strlcpy(template, name, strlen(template) + 1);
+
+	return template;
 }
 
 int setup_private_host_hw_addr(char *veth1)
@@ -2108,6 +2110,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	char *token, *saveptr = NULL;
 	char netdev_link[IFNAMSIZ];
 	char buffer[MAXPATHLEN] = {0};
+	size_t retlen;
 
 	if (netdev->type != LXC_NET_VETH) {
 		ERROR("Network type %d not support for unprivileged use", netdev->type);
@@ -2224,12 +2227,12 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 		return -1;
 	}
 
-	if (strlen(token) >= IFNAMSIZ) {
+	retlen = strlcpy(netdev->priv.veth_attr.veth1, token, IFNAMSIZ);
+	if (retlen >= IFNAMSIZ) {
 		ERROR("Host side veth device name returned by lxc-user-nic is "
 		      "too long");
 		return -E2BIG;
 	}
-	strcpy(netdev->priv.veth_attr.veth1, token);
 
 	/* netdev->priv.veth_attr.ifindex */
 	token = strtok_r(NULL, ":", &saveptr);
@@ -2880,9 +2883,9 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 	 */
 	if (netdev->name[0] == '\0') {
 		if (netdev->type == LXC_NET_PHYS)
-			strcpy(netdev->name, netdev->link);
+			(void)strlcpy(netdev->name, netdev->link, IFNAMSIZ);
 		else
-			strcpy(netdev->name, "eth%d");
+			(void)strlcpy(netdev->name, "eth%d", IFNAMSIZ);
 	}
 
 	/* rename the interface name */
@@ -2908,7 +2911,7 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 	 * name of the network device in the child's network namespace. We will
 	 * later on send this information back to the parent.
 	 */
-	strcpy(netdev->name, current_ifname);
+	(void)strlcpy(netdev->name, current_ifname, IFNAMSIZ);
 
 	/* set a mac address */
 	if (netdev->hwaddr) {
