@@ -33,6 +33,10 @@
 #include "lxc.h"
 #include "commands.h"
 
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
 #define MYNAME "lxctest1"
 
 #define TSTERR(fmt, ...) do { \
@@ -87,7 +91,7 @@ static int test_running_container(const char *lxcpath,
 		TSTERR("cgroup_get failed");
 		goto err3;
 	}
-	strcpy(value_save, value);
+	(void)strlcpy(value_save, value, NAME_MAX);
 
 	ret = cgroup_ops->set(cgroup_ops, "memory.soft_limit_in_bytes", "512M",
 			      c->name, c->config_path);

@@ -450,7 +450,7 @@ static int set_config_net_link(const char *key, const char *value,
 	if (value[strlen(value) - 1] == '+' && netdev->type == LXC_NET_PHYS)
 		ret = create_matched_ifnames(value, lxc_conf, netdev);
 	else
-		ret = network_ifname(netdev->link, value);
+		ret = network_ifname(netdev->link, value, sizeof(netdev->link));
 
 	return ret;
 }
@@ -466,7 +466,7 @@ static int set_config_net_name(const char *key, const char *value,
 	if (!netdev)
 		return -1;
 
-	return network_ifname(netdev->name, value);
+	return network_ifname(netdev->name, value, sizeof(netdev->name));
 }
 
 static int set_config_net_veth_pair(const char *key, const char *value,
@@ -480,7 +480,7 @@ static int set_config_net_veth_pair(const char *key, const char *value,
 	if (!netdev)
 		return -1;
 
-	return network_ifname(netdev->priv.veth_attr.pair, value);
+	return network_ifname(netdev->priv.veth_attr.pair, value, sizeof(netdev->priv.veth_attr.pair));
 }
 
 static int set_config_net_macvlan_mode(const char *key, const char *value,

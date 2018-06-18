@@ -31,6 +31,10 @@
 #include "lxctest.h"
 #include "utils.h"
 
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
 #define MYNAME "shortlived"
 
 static int destroy_container(void)
@@ -103,7 +107,8 @@ int main(int argc, char *argv[])
 	char template[sizeof(P_tmpdir"/shortlived_XXXXXX")];
 	int ret = EXIT_FAILURE;
 
-	strcpy(template, P_tmpdir"/shortlived_XXXXXX");
+	(void)strlcpy(template, P_tmpdir"/shortlived_XXXXXX", sizeof(template));
+
 	i = lxc_make_tmpfile(template, false);
 	if (i < 0) {
 		lxc_error("Failed to create temporary log file for container %s\n", MYNAME);
