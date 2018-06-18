@@ -36,6 +36,10 @@
 #include "parse.h"
 #include "utils.h"
 
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
 lxc_log_define(lxc_confile_utils, lxc);
 
 int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
@@ -509,14 +513,19 @@ int config_ip_prefix(struct in_addr *addr)
 	return 0;
 }
 
-int network_ifname(char *valuep, const char *value)
+int network_ifname(char *valuep, const char *value, size_t size)
 {
-	if (strlen(value) >= IFNAMSIZ) {
+	size_t retlen;
+
+	if (!valuep || !value)
+		return -1;
+
+	retlen = strlcpy(valuep, value, size);
+	if (retlen >= size) {
 		ERROR("Network devie name \"%s\" is too long (>= %zu)", value,
-		      (size_t)IFNAMSIZ);
+		      size);
 	}
 
-	strcpy(valuep, value);
 	return 0;
 }
 
