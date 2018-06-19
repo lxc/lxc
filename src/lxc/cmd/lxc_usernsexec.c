@@ -91,6 +91,7 @@ static void opentty(const char * tty, int which) {
 	flags &= ~O_NONBLOCK;
 	if (fcntl(fd, F_SETFL, flags) < 0) {
 		printf("WARN: could not set fd flags: %s\n", strerror(errno));
+		close(fd);
 		return;
 	}
 
