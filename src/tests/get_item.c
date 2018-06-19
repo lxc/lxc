@@ -321,7 +321,10 @@ int main(int argc, char *argv[])
 	printf("All get_item tests passed\n");
 	ret = EXIT_SUCCESS;
 out:
-	c->destroy(c);
-	lxc_container_put(c);
+	if (c) {
+		c->destroy(c);
+		lxc_container_put(c);
+	}
+
 	exit(ret);
 }
