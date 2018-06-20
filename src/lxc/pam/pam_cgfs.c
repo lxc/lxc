@@ -1634,8 +1634,8 @@ static char *string_join(const char *sep, const char **parts, bool use_as_prefix
 
 	for (p = (char **)parts; *p; p++) {
 		if (p > (char **)parts)
-			strcat(result, sep);
-		strcat(result, *p);
+			strncat(result, sep, sep_len);
+		strncat(result, *p, strlen(*p));
 	}
 
 	return result;
