@@ -152,6 +152,10 @@ if !HAVE_STRLCPY
 liblxc_la_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
 endif
 
+if !HAVE_STRLCAT
+liblxc_la_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
 if !HAVE_GETGRGID_R
 liblxc_la_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
 endif
@@ -310,6 +314,10 @@ endif
 
 if !HAVE_STRLCPY
 init_lxc_static_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+if !HAVE_STRLCAT
+init_lxc_static_SOURCES += ../include/strlcat.c ../include/strlcat.h
 endif
 
 if !HAVE_GETGRGID_R
