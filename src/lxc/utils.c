@@ -649,8 +649,8 @@ char *lxc_string_join(const char *sep, const char **parts, bool use_as_prefix)
 
 	for (p = (char **)parts; *p; p++) {
 		if (p > (char **)parts)
-			strcat(result, sep);
-		strcat(result, *p);
+			strncat(result, sep, sep_len);
+		strncat(result, *p, strlen(*p));
 	}
 
 	return result;
@@ -2318,10 +2318,12 @@ char *must_make_path(const char *first, ...)
 		full_len += strlen(cur);
 		if (cur[0] != '/')
 			full_len++;
+
 		dest = must_realloc(dest, full_len + 1);
+
 		if (cur[0] != '/')
-			strcat(dest, "/");
-		strcat(dest, cur);
+			strncat(dest, "/", 1);
+		strncat(dest, cur, strlen(cur));
 	}
 	va_end(args);
 
@@ -2339,16 +2341,14 @@ char *must_append_path(char *first, ...)
 	va_start(args, first);
 	while ((cur = va_arg(args, char *)) != NULL) {
 		full_len += strlen(cur);
-
 		if (cur[0] != '/')
 			full_len++;
 
 		dest = must_realloc(dest, full_len + 1);
 
 		if (cur[0] != '/')
-			strcat(dest, "/");
-
-		strcat(dest, cur);
+			strncat(dest, "/", 1);
+		strncat(dest, cur, strlen(cur));
 	}
 	va_end(args);
 

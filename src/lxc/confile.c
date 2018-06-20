@@ -2046,10 +2046,11 @@ int append_unexp_config_line(const char *line, struct lxc_conf *conf)
 		conf->unexpanded_config = tmp;
 		conf->unexpanded_alloced += 1024;
 	}
-	strcat(conf->unexpanded_config, line);
+
+	strncat(conf->unexpanded_config, line, linelen);
 	conf->unexpanded_len += linelen;
 	if (line[linelen - 1] != '\n') {
-		strcat(conf->unexpanded_config, "\n");
+		strncat(conf->unexpanded_config, "\n", 1);
 		conf->unexpanded_len++;
 	}
 

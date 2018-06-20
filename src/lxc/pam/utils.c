@@ -77,10 +77,12 @@ char *must_make_path(const char *first, ...)
 		full_len += strlen(cur);
 		if (cur[0] != '/')
 			full_len++;
+
 		dest = must_realloc(dest, full_len + 1);
+
 		if (cur[0] != '/')
-			strcat(dest, "/");
-		strcat(dest, cur);
+			strncat(dest, "/", 1);
+		strncat(dest, cur, strlen(cur));
 	}
 	va_end(args);
 

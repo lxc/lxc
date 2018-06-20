@@ -856,8 +856,8 @@ static bool append_ttyname(char **pp, char *name)
 		return false;
 
 	*pp = p;
-	strcat(p, " ");
-	strcat(p, name);
+	strncat(p, " ", 1);
+	strncat(p, name, strlen(name));
 
 	return true;
 }
@@ -1788,9 +1788,10 @@ static int lxc_setup_console(const struct lxc_rootfs *rootfs,
 	return lxc_setup_ttydir_console(rootfs, console, ttydir);
 }
 
-static void parse_mntopt(char *opt, unsigned long *flags, char **data)
+static void parse_mntopt(char *opt, unsigned long *flags, char **data, size_t size)
 {
 	struct mount_opt *mo;
+	size_t cursize;
 
 	/* If opt is found in mount_opt, set or clear flags.
 	 * Otherwise append it to data. */
@@ -1805,15 +1806,23 @@ static void parse_mntopt(char *opt, unsigned long *flags, char **data)
 		}
 	}
 
-	if (strlen(*data))
-		strcat(*data, ",");
-	strcat(*data, opt);
+	cursize = strlen(*data);
+	if (cursize)
+		cursize += 1;
+
+	if (size - cursize > 1) {
+		if (cursize)
+			strncat(*data, ",", 1);
+
+		strncat(*data, opt, size - cursize - 1);
+	}
 }
 
 int parse_mntopts(const char *mntopts, unsigned long *mntflags, char **mntdata)
 {
 	char *data, *p, *s;
 	char *saveptr = NULL;
+	size_t size;
 
 	*mntdata = NULL;
 	*mntflags = 0L;
@@ -1825,7 +1834,8 @@ int parse_mntopts(const char *mntopts, unsigned long *mntflags, char **mntdata)
 	if (!s)
 		return -1;
 
-	data = malloc(strlen(s) + 1);
+	size = strlen(s) + 1;
+	data = malloc(size);
 	if (!data) {
 		free(s);
 		return -1;
@@ -1833,7 +1843,7 @@ int parse_mntopts(const char *mntopts, unsigned long *mntflags, char **mntdata)
 	*data = 0;
 
 	for (; (p = strtok_r(s, ",", &saveptr)); s = NULL)
-		parse_mntopt(p, mntflags, &data);
+		parse_mntopt(p, mntflags, &data, size);
 
 	if (*data)
 		*mntdata = data;
