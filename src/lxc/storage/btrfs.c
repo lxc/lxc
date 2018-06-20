@@ -46,6 +46,10 @@
 #include "include/strlcpy.h"
 #endif
 
+#ifndef HAVE_STRLCAT
+#include "include/strlcat.h"
+#endif
+
 lxc_log_define(btrfs, lxc);
 
 /*
@@ -89,8 +93,8 @@ char *get_btrfs_subvol_path(int fd, u64 dir_id, u64 objid, char *name,
 		if (!retpath)
 			return NULL;
 		(void)strlcpy(retpath, args.name, len);
-		strncat(retpath, "/", 1);
-		strncat(retpath, name, name_len);
+		(void)strlcat(retpath, "/", 1);
+		(void)strlcat(retpath, name, name_len);
 	} else {
 		/* we're at the root of ref_tree */
 		len = name_len + 1;
@@ -98,7 +102,7 @@ char *get_btrfs_subvol_path(int fd, u64 dir_id, u64 objid, char *name,
 		if (!retpath)
 			return NULL;
 		*retpath = '\0';
-		strncat(retpath, name, name_len);
+		(void)strlcat(retpath, name, name_len);
 	}
 	return retpath;
 }
