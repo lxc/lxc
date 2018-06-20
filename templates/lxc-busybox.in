@@ -187,9 +187,7 @@ configure_busybox()
   # but that only works right in a chroot with busybox >= 1.19.0
   (
     cd "${rootfs}/bin" || return 1
-    ./busybox --help | grep 'Currently defined functions:' -A300 | \
-      grep -v 'Currently defined functions:' | tr , '\n' | \
-      xargs -n1 ln -s busybox
+    ./busybox --list | grep -v busybox | xargs -n1 ln -s busybox
   )
 
   # relink /sbin/init
@@ -232,7 +230,7 @@ EOF
     usr/lib \
     lib64 \
     usr/lib64"
-  
+
   for dir in ${libdirs}; do
     if [ -d "/${dir}" ] && [ -d "${rootfs}/${dir}" ]; then
       echo "lxc.mount.entry = /${dir} ${dir} none ro,bind 0 0" >> "${path}/config"
