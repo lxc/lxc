@@ -69,6 +69,10 @@
 #include "include/strlcpy.h"
 #endif
 
+#ifndef HAVE_STRLCAT
+#include "include/strlcat.h"
+#endif
+
 lxc_log_define(lxc_confile, lxc);
 
 #define lxc_config_define(name)                                                \
@@ -2047,10 +2051,10 @@ int append_unexp_config_line(const char *line, struct lxc_conf *conf)
 		conf->unexpanded_alloced += 1024;
 	}
 
-	strncat(conf->unexpanded_config, line, linelen);
+	(void)strlcat(conf->unexpanded_config, line, conf->unexpanded_alloced);
 	conf->unexpanded_len += linelen;
 	if (line[linelen - 1] != '\n') {
-		strncat(conf->unexpanded_config, "\n", 1);
+		(void)strlcat(conf->unexpanded_config, "\n", conf->unexpanded_alloced);
 		conf->unexpanded_len++;
 	}
 
