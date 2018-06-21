@@ -55,6 +55,10 @@
 #include "include/strlcpy.h"
 #endif
 
+#ifndef HAVE_STRLCAT
+#include "include/strlcat.h"
+#endif
+
 #ifndef O_PATH
 #define O_PATH      010000000
 #endif
@@ -635,22 +639,24 @@ char *lxc_string_join(const char *sep, const char **parts, bool use_as_prefix)
 	char **p;
 	size_t sep_len = strlen(sep);
 	size_t result_len = use_as_prefix * sep_len;
+	size_t buf_len;
 
 	/* calculate new string length */
 	for (p = (char **)parts; *p; p++)
 		result_len += (p > (char **)parts) * sep_len + strlen(*p);
 
-	result = calloc(result_len + 1, 1);
+	buf_len = result_len + 1;
+	result = calloc(buf_len, 1);
 	if (!result)
 		return NULL;
 
 	if (use_as_prefix)
-		(void)strlcpy(result, sep, result_len + 1);
+		(void)strlcpy(result, sep, buf_len);
 
 	for (p = (char **)parts; *p; p++) {
 		if (p > (char **)parts)
-			strncat(result, sep, sep_len);
-		strncat(result, *p, strlen(*p));
+			(void)strlcat(result, sep, buf_len);
+		(void)strlcat(result, *p, buf_len);
 	}
 
 	return result;
@@ -2310,6 +2316,7 @@ char *must_make_path(const char *first, ...)
 	va_list args;
 	char *cur, *dest;
 	size_t full_len = strlen(first);
+	size_t buf_len;
 
 	dest = must_copy_string(first);
 
@@ -2319,11 +2326,12 @@ char *must_make_path(const char *first, ...)
 		if (cur[0] != '/')
 			full_len++;
 
-		dest = must_realloc(dest, full_len + 1);
+		buf_len = full_len + 1;
+		dest = must_realloc(dest, buf_len);
 
 		if (cur[0] != '/')
-			strncat(dest, "/", 1);
-		strncat(dest, cur, strlen(cur));
+			(void)strlcat(dest, "/", buf_len);
+		(void)strlcat(dest, cur, buf_len);
 	}
 	va_end(args);
 
@@ -2336,6 +2344,7 @@ char *must_append_path(char *first, ...)
 	size_t full_len;
 	va_list args;
 	char *dest = first;
+	size_t buf_len;
 
 	full_len = strlen(first);
 	va_start(args, first);
@@ -2344,11 +2353,12 @@ char *must_append_path(char *first, ...)
 		if (cur[0] != '/')
 			full_len++;
 
-		dest = must_realloc(dest, full_len + 1);
+		buf_len = full_len + 1;
+		dest = must_realloc(dest, buf_len);
 
 		if (cur[0] != '/')
-			strncat(dest, "/", 1);
-		strncat(dest, cur, strlen(cur));
+			(void)strlcat(dest, "/", buf_len);
+		(void)strlcat(dest, cur, buf_len);
 	}
 	va_end(args);
 
