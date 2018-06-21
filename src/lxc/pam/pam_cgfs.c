@@ -63,6 +63,10 @@
 #include "include/strlcpy.h"
 #endif
 
+#ifndef HAVE_STRLCAT
+#include "include/strlcat.h"
+#endif
+
 #define pam_cgfs_debug_stream(stream, format, ...)                                \
 	do {                                                                   \
 		fprintf(stream, "%s: %d: %s: " format, __FILE__, __LINE__,     \
@@ -1617,6 +1621,7 @@ static char *string_join(const char *sep, const char **parts, bool use_as_prefix
 	char **p;
 	size_t sep_len = strlen(sep);
 	size_t result_len = use_as_prefix * sep_len;
+	size_t buf_len;
 
 	if (!parts)
 		return NULL;
@@ -1625,17 +1630,18 @@ static char *string_join(const char *sep, const char **parts, bool use_as_prefix
 	for (p = (char **)parts; *p; p++)
 		result_len += (p > (char **)parts) * sep_len + strlen(*p);
 
-	result = calloc(result_len + 1, sizeof(char));
+	buf_len = result_len + 1;
+	result = calloc(buf_len, sizeof(char));
 	if (!result)
 		return NULL;
 
 	if (use_as_prefix)
-		(void)strlcpy(result, sep, (result_len + 1) * sizeof(char));
+		(void)strlcpy(result, sep, buf_len * sizeof(char));
 
 	for (p = (char **)parts; *p; p++) {
 		if (p > (char **)parts)
-			strncat(result, sep, sep_len);
-		strncat(result, *p, strlen(*p));
+			(void)strlcat(result, sep, buf_len * sizeof(char));
+		(void)strlcat(result, *p, buf_len * sizeof(char));
 	}
 
 	return result;
