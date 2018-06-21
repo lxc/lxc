@@ -62,6 +62,10 @@
 #include "include/strlcpy.h"
 #endif
 
+#ifndef HAVE_STRLCAT
+#include "include/strlcat.h"
+#endif
+
 lxc_log_define(lxc_cgfsng, lxc);
 
 static void free_string_list(char **clist)
@@ -1205,11 +1209,11 @@ static bool cg_unified_create_cgroup(struct hierarchy *h, char *cgname)
 		if (h->controllers[0] == *it)
 			add_controllers[0] = '\0';
 
-		strncat(add_controllers, "+", 1);
-		strncat(add_controllers, *it, strlen(*it));
+		(void)strlcat(add_controllers, "+", full_len + 1);
+		(void)strlcat(add_controllers, *it, full_len + 1);
 
 		if ((it + 1) && *(it + 1))
-			strncat(add_controllers, " ", 1);
+			(void)strlcat(add_controllers, " ", full_len + 1);
 	}
 
 	parts = lxc_string_split(cgname, '/');
@@ -1951,7 +1955,7 @@ static int __cg_unified_attach(const struct hierarchy *h, const char *name,
 		if (ret < 0 && errno != EEXIST)
 			goto on_error;
 
-		strncat(full_path, "/cgroup.procs", strlen("/cgroup.procs"));
+		(void)strlcat(full_path, "/cgroup.procs", len + 1);
 		ret = lxc_write_to_file(full_path, pidstr, len, false, 0666);
 		if (ret == 0)
 			goto on_success;
