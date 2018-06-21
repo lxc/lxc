@@ -92,9 +92,10 @@ char *get_btrfs_subvol_path(int fd, u64 dir_id, u64 objid, char *name,
 		retpath = malloc(len);
 		if (!retpath)
 			return NULL;
+
 		(void)strlcpy(retpath, args.name, len);
-		(void)strlcat(retpath, "/", 1);
-		(void)strlcat(retpath, name, name_len);
+		(void)strlcat(retpath, "/", len);
+		(void)strlcat(retpath, name, len);
 	} else {
 		/* we're at the root of ref_tree */
 		len = name_len + 1;
@@ -102,7 +103,7 @@ char *get_btrfs_subvol_path(int fd, u64 dir_id, u64 objid, char *name,
 		if (!retpath)
 			return NULL;
 		*retpath = '\0';
-		(void)strlcat(retpath, name, name_len);
+		(void)strlcat(retpath, name, len);
 	}
 	return retpath;
 }
