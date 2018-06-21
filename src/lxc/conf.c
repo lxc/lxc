@@ -76,6 +76,10 @@
 #include <sys/personality.h>
 #endif
 
+#ifndef HAVE_STRLCAT
+#include "include/strlcat.h"
+#endif
+
 #if IS_BIONIC
 #include <../include/lxcmntent.h>
 #else
@@ -841,6 +845,7 @@ static int lxc_setup_dev_symlinks(const struct lxc_rootfs *rootfs)
 static bool append_ttyname(char **pp, char *name)
 {
 	char *p;
+	size_t size;
 
 	if (!*pp) {
 		*pp = malloc(strlen(name) + strlen("container_ttys=") + 1);
@@ -851,13 +856,14 @@ static bool append_ttyname(char **pp, char *name)
 		return true;
 	}
 
-	p = realloc(*pp, strlen(*pp) + strlen(name) + 2);
+	size = strlen(*pp) + strlen(name) + 2;
+	p = realloc(*pp, size);
 	if (!p)
 		return false;
 
 	*pp = p;
-	strncat(p, " ", 1);
-	strncat(p, name, strlen(name));
+	(void)strlcat(p, " ", size);
+	(void)strlcat(p, name, size);
 
 	return true;
 }
@@ -1791,7 +1797,6 @@ static int lxc_setup_console(const struct lxc_rootfs *rootfs,
 static void parse_mntopt(char *opt, unsigned long *flags, char **data, size_t size)
 {
 	struct mount_opt *mo;
-	size_t cursize;
 
 	/* If opt is found in mount_opt, set or clear flags.
 	 * Otherwise append it to data. */
@@ -1806,16 +1811,10 @@ static void parse_mntopt(char *opt, unsigned long *flags, char **data, size_t si
 		}
 	}
 
-	cursize = strlen(*data);
-	if (cursize)
-		cursize += 1;
+	if (strlen(*data))
+		(void)strlcat(*data, ",", size);
 
-	if (size - cursize > 1) {
-		if (cursize)
-			strncat(*data, ",", 1);
-
-		strncat(*data, opt, size - cursize - 1);
-	}
+	(void)strlcat(*data, opt, size);
 }
 
 int parse_mntopts(const char *mntopts, unsigned long *mntflags, char **mntdata)
