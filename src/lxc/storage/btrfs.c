@@ -63,7 +63,7 @@ char *get_btrfs_subvol_path(int fd, u64 dir_id, u64 objid, char *name,
 {
 	struct btrfs_ioctl_ino_lookup_args args;
 	int ret, e;
-	size_t len;
+	size_t len, retlen;
 	char *retpath;
 
 	memset(&args, 0, sizeof(args));
@@ -95,16 +95,30 @@ char *get_btrfs_subvol_path(int fd, u64 dir_id, u64 objid, char *name,
 
 		(void)strlcpy(retpath, args.name, len);
 		(void)strlcat(retpath, "/", len);
-		(void)strlcat(retpath, name, len);
+
+		retlen = strlcat(retpath, name, len);
+		if (retlen >= len) {
+			ERROR("Failed to append name - %s\n", name);
+			free(retpath);
+			return NULL;
+		}
 	} else {
 		/* we're at the root of ref_tree */
 		len = name_len + 1;
 		retpath = malloc(len);
 		if (!retpath)
 			return NULL;
+
 		*retpath = '\0';
-		(void)strlcat(retpath, name, len);
+
+		retlen = strlcat(retpath, name, len);
+		if (retlen >= len) {
+			ERROR("Failed to append name - %s\n", name);
+			free(retpath);
+			return NULL;
+		}
 	}
+
 	return retpath;
 }
 
