@@ -58,6 +58,14 @@
 #include "storage/storage.h"
 #include "utils.h"
 
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
+#ifndef HAVE_STRLCAT
+#include "include/strlcat.h"
+#endif
+
 lxc_log_define(lxc_cgfsng, lxc);
 
 static void free_string_list(char **clist)
@@ -1195,19 +1203,23 @@ static bool cg_unified_create_cgroup(struct hierarchy *h, char *cgname)
 	 * some thinking.
 	 */
 	for (it = h->controllers; it && *it; it++) {
-                full_len += strlen(*it) + 2;
-                add_controllers = must_realloc(add_controllers, full_len + 1);
-                if (h->controllers[0] == *it)
-                        add_controllers[0] = '\0';
-                strcat(add_controllers, "+");
-                strcat(add_controllers, *it);
-                if ((it + 1) && *(it + 1))
-                        strcat(add_controllers, " ");
+		full_len += strlen(*it) + 2;
+		add_controllers = must_realloc(add_controllers, full_len + 1);
+
+		if (h->controllers[0] == *it)
+			add_controllers[0] = '\0';
+
+		(void)strlcat(add_controllers, "+", full_len + 1);
+		(void)strlcat(add_controllers, *it, full_len + 1);
+
+		if ((it + 1) && *(it + 1))
+			(void)strlcat(add_controllers, " ", full_len + 1);
 	}
 
 	parts = lxc_string_split(cgname, '/');
 	if (!parts)
 		goto on_error;
+
 	parts_len = lxc_array_len((void **)parts);
 	if (parts_len > 0)
 		parts_len--;
@@ -1301,9 +1313,10 @@ static inline bool cgfsng_create(struct cgroup_ops *ops,
 		ERROR("Failed expanding cgroup name pattern");
 		return false;
 	}
+
 	len = strlen(tmp) + 5; /* leave room for -NNN\0 */
 	container_cgroup = must_alloc(len);
-	strcpy(container_cgroup, tmp);
+	(void)strlcpy(container_cgroup, tmp, len);
 	free(tmp);
 	offset = container_cgroup + len - 5;
 
@@ -1942,7 +1955,7 @@ static int __cg_unified_attach(const struct hierarchy *h, const char *name,
 		if (ret < 0 && errno != EEXIST)
 			goto on_error;
 
-		strcat(full_path, "/cgroup.procs");
+		(void)strlcat(full_path, "/cgroup.procs", len + 1);
 		ret = lxc_write_to_file(full_path, pidstr, len, false, 0666);
 		if (ret == 0)
 			goto on_success;
@@ -2022,7 +2035,8 @@ static int cgfsng_get(struct cgroup_ops *ops, const char *filename, char *value,
 
 	controller_len = strlen(filename);
 	controller = alloca(controller_len + 1);
-	strcpy(controller, filename);
+	(void)strlcpy(controller, filename, controller_len + 1);
+
 	p = strchr(controller, '.');
 	if (p)
 		*p = '\0';
@@ -2059,7 +2073,8 @@ static int cgfsng_set(struct cgroup_ops *ops, const char *filename,
 
 	controller_len = strlen(filename);
 	controller = alloca(controller_len + 1);
-	strcpy(controller, filename);
+	(void)strlcpy(controller, filename, controller_len + 1);
+
 	p = strchr(controller, '.');
 	if (p)
 		*p = '\0';
@@ -2176,7 +2191,8 @@ static int cg_legacy_set_data(struct cgroup_ops *ops, const char *filename,
 
 	len = strlen(filename);
 	controller = alloca(len + 1);
-	strcpy(controller, filename);
+	(void)strlcpy(controller, filename, len + 1);
+
 	p = strchr(controller, '.');
 	if (p)
 		*p = '\0';
