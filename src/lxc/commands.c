@@ -309,21 +309,22 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 	if (client_fd < 0) {
 		TRACE("%s - Command \"%s\" failed to connect command socket",
 		      strerror(errno), lxc_cmd_str(cmd->req.cmd));
-		if (client_fd == -ECONNREFUSED) {
+
+		if (client_fd == -ECONNREFUSED)
 			*stopped = 1;
-			return -1;
+
+		if (client_fd == -EPIPE) {
+			*stopped = 1;
+			client_fd = 0;
 		}
 
-		if (client_fd == -EPIPE)
-			goto epipe;
-
-		goto out;
+		return client_fd;
 	}
 
 	ret = lxc_cmd_rsp_recv(client_fd, cmd);
 	if (ret == -ECONNRESET)
 		*stopped = 1;
-out:
+
 	if (!stay_connected || ret <= 0)
 		if (client_fd >= 0)
 			close(client_fd);
@@ -332,10 +333,6 @@ out:
 		cmd->rsp.ret = client_fd;
 
 	return ret;
-
-epipe:
-	*stopped = 1;
-	return 0;
 }
 
 int lxc_try_cmd(const char *name, const char *lxcpath)
