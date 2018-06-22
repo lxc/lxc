@@ -324,13 +324,13 @@ int lxc_monitord_spawn(const char *lxcpath)
 
 	if (pipe(pipefd) < 0) {
 		SYSERROR("Failed to create pipe.");
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	}
 
 	pid2 = fork();
 	if (pid2 < 0) {
 		SYSERROR("Failed to fork().");
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	}
 
 	if (pid2) {
@@ -350,18 +350,18 @@ int lxc_monitord_spawn(const char *lxcpath)
 		close(pipefd[0]);
 
 		DEBUG("Successfully synced with child process.");
-		exit(EXIT_SUCCESS);
+		_exit(EXIT_SUCCESS);
 	}
 
 	if (setsid() < 0) {
 		SYSERROR("Failed to setsid().");
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	}
 
 	lxc_check_inherited(NULL, true, &pipefd[1], 1);
 	if (null_stdfds() < 0) {
 		SYSERROR("Failed to dup2() standard file descriptors to /dev/null.");
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	}
 
 	close(pipefd[0]);
@@ -369,7 +369,7 @@ int lxc_monitord_spawn(const char *lxcpath)
 	ret = snprintf(pipefd_str, LXC_NUMSTRLEN64, "%d", pipefd[1]);
 	if (ret < 0 || ret >= LXC_NUMSTRLEN64) {
 		ERROR("Failed to create pid argument to pass to monitord.");
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 	}
 
 	DEBUG("Using pipe file descriptor %d for monitord.", pipefd[1]);
@@ -377,5 +377,5 @@ int lxc_monitord_spawn(const char *lxcpath)
 	execvp(args[0], args);
 	SYSERROR("failed to exec lxc-monitord");
 
-	exit(EXIT_FAILURE);
+	_exit(EXIT_FAILURE);
 }
