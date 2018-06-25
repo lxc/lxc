@@ -274,6 +274,27 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 	(lxc_log_priority_to_string(lxc_log_category_##name.priority))
 
 /*
+ * Helper macro to define errno string.
+ */
+#if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !defined(_GNU_SOURCE)
+#define lxc_log_strerror_r                                               \
+	char errno_buf[MAXPATHLEN / 2] = {"Failed to get errno string"}; \
+	char *ptr = errno_buf;                                           \
+	{                                                                \
+		(void)strerror_r(errno, errno_buf, sizeof(errno_buf));   \
+	}
+#else
+#define lxc_log_strerror_r                                               \
+	char errno_buf[MAXPATHLEN / 2] = {"Failed to get errno string"}; \
+	char *ptr;                                                       \
+	{                                                                \
+		ptr = strerror_r(errno, errno_buf, sizeof(errno_buf));   \
+		if (!ptr)                                                \
+			ptr = errno_buf;                                 \
+	}
+#endif
+
+/*
  * top categories
  */
 #define TRACE(format, ...) do {						\
@@ -321,11 +342,41 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 	LXC_FATAL(&locinfo, format, ##__VA_ARGS__);			\
 } while (0)
 
+#define SYSTRACE(format, ...)                              \
+	do {                                               \
+		lxc_log_strerror_r;                        \
+		TRACE("%s - " format, ptr, ##__VA_ARGS__); \
+	} while (0)
 
+#define SYSDEBUG(format, ...)                              \
+	do {                                               \
+		lxc_log_strerror_r;                        \
+		DEBUG("%s - " format, ptr, ##__VA_ARGS__); \
+	} while (0)
 
-#define SYSERROR(format, ...) do {				    	\
-	ERROR("%s - " format, strerror(errno), ##__VA_ARGS__);		\
-} while (0)
+#define SYSINFO(format, ...)                              \
+	do {                                              \
+		lxc_log_strerror_r;                       \
+		INFO("%s - " format, ptr, ##__VA_ARGS__); \
+	} while (0)
+
+#define SYSNOTICE(format, ...)                              \
+	do {                                                \
+		lxc_log_strerror_r;                         \
+		NOTICE("%s - " format, ptr, ##__VA_ARGS__); \
+	} while (0)
+
+#define SYSWARN(format, ...)                              \
+	do {                                              \
+		lxc_log_strerror_r;                       \
+		WARN("%s - " format, ptr, ##__VA_ARGS__); \
+	} while (0)
+
+#define SYSERROR(format, ...)                              \
+	do {                                               \
+		lxc_log_strerror_r;                        \
+		ERROR("%s - " format, ptr, ##__VA_ARGS__); \
+	} while (0)
 
 extern int lxc_log_fd;
 
