@@ -29,9 +29,9 @@
 # BuildRequires systemd-units on fedora and rhel
 %if 0%{?fedora} >= 14 || 0%{?rhel} >= 7
 BuildRequires: systemd-units
+%endif
 #
 # BuildRequires systemd on openSUSE and SUSE
-%endif
 %if 0%{?suse_version} >= 1210
 BuildRequires: systemd
 %endif
