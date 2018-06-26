@@ -786,9 +786,9 @@ int ovl_mkdir(const struct mntent *mntent, const struct lxc_rootfs *rootfs,
 		else if (!strncmp(upperdir, lxcpath, dirlen) &&
 			 strncmp(upperdir, rootfs_dir, rootfslen))
 			ret = mkdir_p(upperdir, 0755);
+
 		if (ret < 0)
-			WARN("Failed to create directory \"%s\": %s", upperdir,
-			     strerror(errno));
+			SYSWARN("Failed to create directory \"%s\"", upperdir);
 	}
 
 	ret = 0;
@@ -798,9 +798,9 @@ int ovl_mkdir(const struct mntent *mntent, const struct lxc_rootfs *rootfs,
 		else if (!strncmp(workdir, lxcpath, dirlen) &&
 			 strncmp(workdir, rootfs_dir, rootfslen))
 			ret = mkdir_p(workdir, 0755);
+
 		if (ret < 0)
-			WARN("Failed to create directory \"%s\": %s", workdir,
-			     strerror(errno));
+			SYSWARN("Failed to create directory \"%s\"", workdir);
 	}
 
 	fret = 0;

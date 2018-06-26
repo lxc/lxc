@@ -113,7 +113,7 @@ static void lxc_monitor_fifo_send(struct lxc_msg *msg, const char *lxcpath)
 		if (errno == ENXIO || errno == ENOENT)
 			return;
 
-		WARN("%s - Failed to open fifo to send message", strerror(errno));
+		SYSWARN("Failed to open fifo to send message");
 		return;
 	}
 

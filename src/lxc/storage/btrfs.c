@@ -132,8 +132,7 @@ int btrfs_list_get_path_rootid(int fd, u64 *treeid)
 
 	ret = ioctl(fd, BTRFS_IOC_INO_LOOKUP, &args);
 	if (ret < 0) {
-		WARN("Warning: can't perform the search -%s\n",
-				strerror(errno));
+		SYSWARN("Warning: can't perform the search");
 		return ret;
 	}
 	*treeid = args.treeid;

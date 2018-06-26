@@ -2599,10 +2599,10 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 			     netdev->name[0] != '\0' ? netdev->name : "(null)",
 			     netdev->ifindex);
 		} else if (ret < 0) {
-			WARN("Failed to remove interface \"%s\" with "
-			     "index %d: %s",
-			     netdev->name[0] != '\0' ? netdev->name : "(null)",
-			     netdev->ifindex, strerror(-ret));
+			errno = -ret;
+			SYSWARN("Failed to remove interface \"%s\" with index %d",
+			        netdev->name[0] != '\0' ? netdev->name : "(null)",
+			        netdev->ifindex);
 			goto clear_ifindices;
 		}
 		INFO("Removed interface \"%s\" with index %d",
@@ -2624,8 +2624,9 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 
 		ret = lxc_netdev_delete_by_name(hostveth);
 		if (ret < 0) {
-			WARN("Failed to remove interface \"%s\" from \"%s\": %s",
-			     hostveth, netdev->link, strerror(-ret));
+			errno = -ret;
+			SYSWARN("Failed to remove interface \"%s\" from \"%s\"",
+			        hostveth, netdev->link);
 			goto clear_ifindices;
 		}
 		INFO("Removed interface \"%s\" from \"%s\"", hostveth, netdev->link);

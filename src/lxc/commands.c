@@ -126,8 +126,9 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 
 	ret = lxc_abstract_unix_recv_fds(sock, &rspfd, 1, rsp, sizeof(*rsp));
 	if (ret < 0) {
-		WARN("%s - Failed to receive response for command \"%s\"",
-		     strerror(errno), lxc_cmd_str(cmd->req.cmd));
+		SYSWARN("Failed to receive response for command \"%s\"",
+		        lxc_cmd_str(cmd->req.cmd));
+
 		if (errno == ECONNRESET)
 			return -ECONNRESET;
 
@@ -218,8 +219,7 @@ static int lxc_cmd_rsp_send(int fd, struct lxc_cmd_rsp *rsp)
 
 	ret = send(fd, rsp->data, rsp->datalen, 0);
 	if (ret < 0 || ret != (ssize_t)rsp->datalen) {
-		WARN("%s - Failed to send command response data %zd",
-		     strerror(errno), ret);
+		SYSWARN("Failed to send command response data %zd", ret);
 		return -1;
 	}
 

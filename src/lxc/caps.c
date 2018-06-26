@@ -196,8 +196,7 @@ int lxc_ambient_caps_up(void)
 	for (cap = 0; cap <= last_cap; cap++) {
 		ret = prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, cap, 0, 0);
 		if (ret < 0) {
-			WARN("%s - Failed to raise ambient capability %d",
-			     strerror(errno), cap);
+			SYSWARN("Failed to raise ambient capability %d", cap);
 			goto out;
 		}
 	}

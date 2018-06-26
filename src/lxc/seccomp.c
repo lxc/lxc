@@ -427,8 +427,10 @@ scmp_filter_ctx get_new_ctx(enum lxc_hostarch_t n_arch,
 
 #ifdef SCMP_FLTATR_ATL_TSKIP
 	ret = seccomp_attr_set(ctx, SCMP_FLTATR_ATL_TSKIP, 1);
-	if (ret < 0)
-		WARN("%s - Failed to turn on seccomp nop-skip, continuing", strerror(-ret));
+	if (ret < 0) {
+		errno = -ret;
+		SYSWARN("Failed to turn on seccomp nop-skip, continuing");
+	}
 #endif
 
 	ret = seccomp_arch_exist(ctx, arch);
@@ -730,8 +732,10 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 
 #ifdef SCMP_FLTATR_ATL_TSKIP
 		ret = seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_ATL_TSKIP, 1);
-		if (ret < 0)
-			WARN("%s - Failed to turn on seccomp nop-skip, continuing", strerror(-ret));
+		if (ret < 0) {
+			errno = -ret;
+			SYSWARN("Failed to turn on seccomp nop-skip, continuing");
+		}
 #endif
 	}
 
@@ -1156,11 +1160,13 @@ int lxc_read_seccomp_config(struct lxc_conf *conf)
 		ERROR("%s - Failed to turn off no-new-privs", strerror(-ret));
 		return -1;
 	}
+
 #ifdef SCMP_FLTATR_ATL_TSKIP
 	ret = seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_ATL_TSKIP, 1);
-	if (ret < 0)
-		WARN("%s - Failed to turn on seccomp nop-skip, continuing",
-		     strerror(-ret));
+	if (ret < 0) {
+		errno = -ret;
+		SYSWARN("Failed to turn on seccomp nop-skip, continuing");
+	}
 #endif
 
 	f = fopen(conf->seccomp, "r");
@@ -1203,8 +1209,10 @@ int lxc_seccomp_load(struct lxc_conf *conf)
 	    lxc_log_fd >= 0) {
 		ret = seccomp_export_pfc(conf->seccomp_ctx, lxc_log_fd);
 		/* Just give an warning when export error */
-		if (ret < 0)
-			WARN("%s - Failed to export seccomp filter to log file", strerror(-ret));
+		if (ret < 0) {
+			errno = -ret;
+			SYSWARN("Failed to export seccomp filter to log file");
+		}
 	}
 #endif
 

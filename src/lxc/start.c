@@ -160,8 +160,7 @@ static int lxc_try_preserve_ns(const int pid, const char *ns)
 			return -EINVAL;
 		}
 
-		WARN("%s - Kernel does not support preserving %s namespaces",
-		     strerror(errno), ns);
+		SYSWARN("Kernel does not support preserving %s namespaces", ns);
 		return -EOPNOTSUPP;
 	}
 
@@ -228,7 +227,7 @@ int lxc_check_inherited(struct lxc_conf *conf, bool closeall,
 restart:
 	dir = opendir("/proc/self/fd");
 	if (!dir) {
-		WARN("%s - Failed to open directory", strerror(errno));
+		SYSWARN("Failed to open directory");
 		return -1;
 	}
 
@@ -987,7 +986,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	/* Reset mask set by setup_signal_fd. */
 	ret = pthread_sigmask(SIG_SETMASK, &handler->oldmask, NULL);
 	if (ret < 0)
-		WARN("%s - Failed to restore signal mask", strerror(errno));
+		SYSWARN("Failed to restore signal mask");
 
 	lxc_terminal_delete(&handler->conf->console);
 	lxc_delete_tty(&handler->conf->ttys);

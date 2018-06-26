@@ -986,15 +986,13 @@ int lxc_allocate_ttys(struct lxc_conf *conf)
 		/* Prevent leaking the file descriptors to the container */
 		ret = fcntl(tty->master, F_SETFD, FD_CLOEXEC);
 		if (ret < 0)
-			WARN("Failed to set FD_CLOEXEC flag on master fd %d of "
-			     "tty device \"%s\": %s",
-			     tty->master, tty->name, strerror(errno));
+			SYSWARN("Failed to set FD_CLOEXEC flag on master fd %d of "
+			        "tty device \"%s\"", tty->master, tty->name);
 
 		ret = fcntl(tty->slave, F_SETFD, FD_CLOEXEC);
 		if (ret < 0)
-			WARN("Failed to set FD_CLOEXEC flag on slave fd %d of "
-			     "tty device \"%s\": %s",
-			     tty->slave, tty->name, strerror(errno));
+			SYSWARN("Failed to set FD_CLOEXEC flag on slave fd %d of "
+			        "tty device \"%s\"", tty->slave, tty->name);
 
 		tty->busy = 0;
 	}
@@ -1549,7 +1547,7 @@ static int lxc_setup_devpts(struct lxc_conf *conf)
 
 	ret = umount2("/dev/pts", MNT_DETACH);
 	if (ret < 0)
-		WARN("%s - Failed to unmount old devpts instance", strerror(errno));
+		SYSWARN("Failed to unmount old devpts instance");
 	else
 		DEBUG("Unmounted old devpts instance");
 
