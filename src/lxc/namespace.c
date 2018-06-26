@@ -21,6 +21,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#define _GNU_SOURCE
 #include <alloca.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -66,7 +67,7 @@ pid_t lxc_clone(int (*fn)(void *), void *arg, int flags)
 	ret = clone(do_clone, stack  + stack_size, flags | SIGCHLD, &clone_arg);
 #endif
 	if (ret < 0)
-		ERROR("Failed to clone (%#x): %s.", flags, strerror(errno));
+		SYSERROR("Failed to clone (%#x)", flags);
 
 	return ret;
 }

@@ -221,7 +221,7 @@ int lxc_monitor_open(const char *lxcpath)
 	DEBUG("opening monitor socket %s with len %zu", &addr.sun_path[1], len);
 	if (len >= sizeof(addr.sun_path) - 1) {
 		errno = ENAMETOOLONG;
-		ERROR("name of monitor socket too long (%zu bytes): %s", len, strerror(errno));
+		SYSERROR("The name of monitor socket too long (%zu bytes)", len);
 		return -1;
 	}
 
@@ -229,12 +229,13 @@ int lxc_monitor_open(const char *lxcpath)
 		fd = lxc_abstract_unix_connect(addr.sun_path);
 		if (fd != -1 || errno != ECONNREFUSED)
 			break;
-		ERROR("Failed to connect to monitor socket. Retrying in %d ms: %s", backoff_ms[retry], strerror(errno));
+
+		SYSERROR("Failed to connect to monitor socket. Retrying in %d ms", backoff_ms[retry]);
 		usleep(backoff_ms[retry] * 1000);
 	}
 
 	if (fd < 0) {
-		ERROR("Failed to connect to monitor socket: %s.", strerror(errno));
+		SYSERROR("Failed to connect to monitor socket");
 		return -1;
 	}
 

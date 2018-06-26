@@ -458,8 +458,7 @@ int lxc_serve_state_clients(const char *name, struct lxc_handler *handler,
 				goto again;
 			}
 
-			ERROR("%s - Failed to send message to client",
-			      strerror(errno));
+			SYSERROR("Failed to send message to client");
 		}
 
 		/* kick client from list */
@@ -1416,9 +1415,9 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 		TRACE("Received pty with master fd %d and slave fd %d from "
 		      "parent", tty->master, tty->slave);
 	}
+
 	if (ret < 0)
-		ERROR("Failed to receive %zu ttys from child: %s", ttys->max,
-		      strerror(errno));
+		SYSERROR("Failed to receive %zu ttys from child", ttys->max);
 	else
 		TRACE("Received %zu ttys from child", ttys->max);
 
@@ -1686,7 +1685,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	ret = lxc_try_preserve_ns(handler->pid, "net");
 	if (ret < 0) {
 		if (ret != -EOPNOTSUPP) {
-			ERROR("%s - Failed to preserve net namespace", strerror(errno));
+			SYSERROR("Failed to preserve net namespace");
 			goto out_delete_net;
 		}
 	} else {
@@ -1755,8 +1754,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		ret = lxc_try_preserve_ns(handler->pid, "cgroup");
 		if (ret < 0) {
 			if (ret != -EOPNOTSUPP) {
-				ERROR("%s - Failed to preserve cgroup namespace",
-				      strerror(errno));
+				SYSERROR("Failed to preserve cgroup namespace");
 				goto out_delete_net;
 			}
 		} else {

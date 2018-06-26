@@ -416,8 +416,7 @@ static int log_open(const char *name)
 	fd = lxc_unpriv(open(name, O_CREAT | O_WRONLY |
 			     O_APPEND | O_CLOEXEC, 0666));
 	if (fd == -1) {
-		ERROR("failed to open log file \"%s\" : %s", name,
-		      strerror(errno));
+		SYSERROR("Failed to open log file \"%s\"", name);
 		return -1;
 	}
 
@@ -426,7 +425,7 @@ static int log_open(const char *name)
 
 	newfd = fcntl(fd, F_DUPFD_CLOEXEC, 3);
 	if (newfd == -1)
-		ERROR("failed to dup log fd %d : %s", fd, strerror(errno));
+		SYSERROR("Failed to dup log fd %d", fd);
 
 	close(fd);
 	return newfd;
@@ -528,8 +527,7 @@ static int __lxc_log_set_file(const char *fname, int create_dirs)
 	if (create_dirs)
 #endif
 	if (build_dir(fname)) {
-		ERROR("failed to create dir for log file \"%s\" : %s", fname,
-		      strerror(errno));
+		SYSERROR("Failed to create dir for log file \"%s\"", fname);
 		return -1;
 	}
 
@@ -704,8 +702,7 @@ extern int lxc_log_set_file(int *fd, const char *fname)
 	}
 
 	if (build_dir(fname)) {
-		ERROR("failed to create dir for log file \"%s\" : %s", fname,
-				strerror(errno));
+		SYSERROR("Failed to create dir for log file \"%s\"", fname);
 		return -1;
 	}
 

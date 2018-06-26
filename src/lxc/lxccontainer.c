@@ -2628,21 +2628,24 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 		if (n == 1 && v == 0) {
 			ret = remove(path);
 			if (ret < 0)
-				ERROR("%s - Failed to remove \"%s\"",
-				      strerror(errno), path);
+				SYSERROR("Failed to remove \"%s\"", path);
+
 			n = 0;
 		}
 	}
+
 	if (n == 1) {
 		v += inc ? 1 : -1;
 		f1 = fopen(path, "w");
 		if (!f1)
 			goto out;
+
 		if (fprintf(f1, "%d\n", v) < 0) {
 			ERROR("Error writing new snapshots value");
 			fclose(f1);
 			goto out;
 		}
+
 		ret = fclose(f1);
 		if (ret != 0) {
 			SYSERROR("Error writing to or closing snapshots file");
@@ -2679,7 +2682,6 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 			}
 
 			if (fbuf.st_size != 0) {
-
 				buf = lxc_strmmap(NULL, fbuf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 				if (buf == MAP_FAILED) {
 					SYSERROR("Failed to create mapping %s", path);
@@ -2706,11 +2708,11 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 		/* If the lxc-snapshot file is empty, remove it. */
 		if (stat(path, &fbuf) < 0)
 			goto out;
+
 		if (!fbuf.st_size) {
 			ret = remove(path);
 			if (ret < 0)
 				SYSERROR("Failed to remove \"%s\"", path);
-
 		}
 	}
 
@@ -4415,7 +4417,7 @@ static bool do_add_remove_node(pid_t init_pid, const char *path, bool add,
 	if(ret == 0) {
 		ret = unlink(path);
 		if (ret < 0) {
-			ERROR("%s - Failed to remove \"%s\"", strerror(errno), path);
+			SYSERROR("Failed to remove \"%s\"", path);
 			_exit(EXIT_FAILURE);
 		}
 	}
@@ -4431,7 +4433,7 @@ static bool do_add_remove_node(pid_t init_pid, const char *path, bool add,
 	directory_path = dirname(tmp);
 	ret = mkdir_p(directory_path, 0755);
 	if (ret < 0 && errno != EEXIST) {
-		ERROR("%s - Failed to create path \"%s\"", strerror(errno), directory_path);
+		SYSERROR("Failed to create path \"%s\"", directory_path);
 		free(tmp);
 		_exit(EXIT_FAILURE);
 	}
@@ -4440,7 +4442,7 @@ static bool do_add_remove_node(pid_t init_pid, const char *path, bool add,
 	ret = mknod(path, st->st_mode, st->st_rdev);
 	free(tmp);
 	if (ret < 0) {
-		ERROR("%s - Failed to create device node at \"%s\"", strerror(errno), path);
+		SYSERROR("Failed to create device node at \"%s\"", path);
 		_exit(EXIT_FAILURE);
 	}
 

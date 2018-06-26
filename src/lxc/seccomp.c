@@ -420,7 +420,8 @@ scmp_filter_ctx get_new_ctx(enum lxc_hostarch_t n_arch,
 
 	ret = seccomp_attr_set(ctx, SCMP_FLTATR_CTL_NNP, 0);
 	if (ret < 0) {
-		ERROR("%s - Failed to turn off no-new-privs", strerror(-ret));
+		errno = -ret;
+		SYSERROR("Failed to turn off no-new-privs");
 		seccomp_release(ctx);
 		return NULL;
 	}
@@ -436,17 +437,19 @@ scmp_filter_ctx get_new_ctx(enum lxc_hostarch_t n_arch,
 	ret = seccomp_arch_exist(ctx, arch);
 	if (ret < 0) {
 		if (ret != -EEXIST) {
-			ERROR("%s - Failed to determine whether arch %d is "
-			      "already present in the main seccomp context",
-			      strerror(-ret), (int)n_arch);
+			errno = -ret;
+			SYSERROR("Failed to determine whether arch %d is "
+			         "already present in the main seccomp context",
+			         (int)n_arch);
 			seccomp_release(ctx);
 			return NULL;
 		}
 
 		ret = seccomp_arch_add(ctx, arch);
 		if (ret != 0) {
-			ERROR("%s - Failed to add arch %d to main seccomp context",
-			      strerror(-ret), (int)n_arch);
+			errno = -ret;
+			SYSERROR("Failed to add arch %d to main seccomp context",
+			         (int)n_arch);
 			seccomp_release(ctx);
 			return NULL;
 		}
@@ -477,7 +480,8 @@ bool do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
 
 	ret = seccomp_arch_exist(ctx, arch);
 	if (arch && ret != 0) {
-		ERROR("%s - Seccomp: rule and context arch do not match (arch %d)", strerror(-ret), arch);
+		errno = -ret;
+		SYSERROR("Seccomp: rule and context arch do not match (arch %d)", arch);
 		return false;
 	}
 
@@ -491,7 +495,8 @@ bool do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
 					     SCMP_SYS(umount2), 1,
 					     SCMP_A1(SCMP_CMP_MASKED_EQ, MNT_FORCE, MNT_FORCE));
 		if (ret < 0) {
-			ERROR("%s - Failed loading rule to reject force umount", strerror(-ret));
+			errno = -ret;
+			SYSERROR("Failed loading rule to reject force umount");
 			return false;
 		}
 
@@ -534,9 +539,9 @@ bool do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
 	ret = seccomp_rule_add_exact_array(ctx, rule->action, nr,
 					   rule->args_num, arg_cmp);
 	if (ret < 0) {
-		ERROR("%s - Failed loading rule for %s (nr %d action %d (%s))",
-		      strerror(-ret), line, nr, rule->action,
-		      get_action_name(rule->action));
+		errno = -ret;
+		SYSERROR("Failed loading rule for %s (nr %d action %d (%s))",
+		         line, nr, rule->action, get_action_name(rule->action));
 		return false;
 	}
 
@@ -726,7 +731,8 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 
 		ret = seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_CTL_NNP, 0);
 		if (ret < 0) {
-			ERROR("%s - Failed to turn off no-new-privs", strerror(-ret));
+			errno = -ret;
+			SYSERROR("Failed to turn off no-new-privs");
 			return -1;
 		}
 
@@ -1157,7 +1163,8 @@ int lxc_read_seccomp_config(struct lxc_conf *conf)
 	ret = seccomp_attr_set(SCMP_FLTATR_CTL_NNP, 0);
 #endif
 	if (ret < 0) {
-		ERROR("%s - Failed to turn off no-new-privs", strerror(-ret));
+		errno = -ret;
+		SYSERROR("Failed to turn off no-new-privs");
 		return -1;
 	}
 
@@ -1197,7 +1204,8 @@ int lxc_seccomp_load(struct lxc_conf *conf)
 	ret = seccomp_load();
 #endif
 	if (ret < 0) {
-		ERROR("%s- Error loading the seccomp policy", strerror(-ret));
+		errno = -ret;
+		SYSERROR("Error loading the seccomp policy");
 		return -1;
 	}
 

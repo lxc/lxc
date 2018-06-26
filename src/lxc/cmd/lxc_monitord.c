@@ -241,7 +241,7 @@ static int lxc_monitord_sock_create(struct lxc_monitor *mon)
 
 	fd = lxc_abstract_unix_open(addr.sun_path, SOCK_STREAM, O_TRUNC);
 	if (fd < 0) {
-		ERROR("Failed to open unix socket: %s.", strerror(errno));
+		SYSERROR("Failed to open unix socket");
 		return -1;
 	}
 
@@ -307,8 +307,8 @@ static int lxc_monitord_fifo_handler(int fd, uint32_t events, void *data,
 	for (i = 0; i < mon->clientfds_cnt; i++) {
 		ret = write(mon->clientfds[i], &msglxc, sizeof(msglxc));
 		if (ret < 0)
-			ERROR("Failed to send message to client file descriptor %d: %s.",
-			      mon->clientfds[i], strerror(errno));
+			SYSERROR("Failed to send message to client file descriptor %d",
+			         mon->clientfds[i]);
 	}
 
 	return LXC_MAINLOOP_CONTINUE;

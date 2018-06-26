@@ -62,7 +62,7 @@ char *get_btrfs_subvol_path(int fd, u64 dir_id, u64 objid, char *name,
 			    int name_len)
 {
 	struct btrfs_ioctl_ino_lookup_args args;
-	int ret, e;
+	int ret;
 	size_t len, retlen;
 	char *retpath;
 
@@ -71,12 +71,11 @@ char *get_btrfs_subvol_path(int fd, u64 dir_id, u64 objid, char *name,
 	args.objectid = objid;
 
 	ret = ioctl(fd, BTRFS_IOC_INO_LOOKUP, &args);
-	e = errno;
 	if (ret) {
-		ERROR("Failed to lookup path for %llu %llu %s - %s\n",
-				 (unsigned long long) dir_id,
-				 (unsigned long long) objid,
-				 name, strerror(e));
+		SYSERROR("Failed to lookup path for %llu %llu %s",
+		         (unsigned long long) dir_id,
+		         (unsigned long long) objid,
+		         name);
 		return NULL;
 	} else
 		INFO("Got path for %llu %llu - %s\n",
