@@ -645,9 +645,8 @@ int ovl_mount(struct lxc_storage *bdev)
 		ret = ovl_remount_on_enodev(lower, bdev->dest, ovl_name,
 					    MS_MGC_VAL | mntflags, options);
 		if (ret < 0)
-			SYSERROR("Failed to mount \"%s\" on \"%s\" with "
-				 "options \"%s\": %s",
-				 lower, bdev->dest, options, strerror(errno));
+			SYSERROR("Failed to mount \"%s\" on \"%s\" with options \"%s\"",
+			         lower, bdev->dest, options);
 		else
 			INFO("Mounted \"%s\" on \"%s\" with options \"%s\"",
 			     lower, bdev->dest, options);

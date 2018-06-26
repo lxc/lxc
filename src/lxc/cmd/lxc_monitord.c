@@ -300,7 +300,7 @@ static int lxc_monitord_fifo_handler(int fd, uint32_t events, void *data,
 
 	ret = read(fd, &msglxc, sizeof(msglxc));
 	if (ret != sizeof(msglxc)) {
-		SYSERROR("Reading from fifo failed: %s.", strerror(errno));
+		SYSERROR("Reading from fifo failed");
 		return LXC_MAINLOOP_CLOSE;
 	}
 
