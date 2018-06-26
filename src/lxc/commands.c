@@ -307,8 +307,8 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 
 	client_fd = lxc_cmd_send(name, cmd, lxcpath, hashed_sock_name);
 	if (client_fd < 0) {
-		TRACE("%s - Command \"%s\" failed to connect command socket",
-		      strerror(errno), lxc_cmd_str(cmd->req.cmd));
+		SYSTRACE("Command \"%s\" failed to connect command socket",
+		         lxc_cmd_str(cmd->req.cmd));
 
 		if (client_fd == -ECONNREFUSED)
 			*stopped = 1;

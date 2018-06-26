@@ -163,8 +163,7 @@ struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, int dstfd)
 		lxc_list_add_tail(&lxc_ttys, &ts->node);
 		ret = sigaddset(&mask, SIGWINCH);
 		if (ret < 0)
-			NOTICE("%s - Failed to add SIGWINCH to signal set",
-			       strerror(errno));
+			SYSNOTICE("Failed to add SIGWINCH to signal set");
 	}
 
 	/* Exit the mainloop cleanly on SIGTERM. */
@@ -411,9 +410,10 @@ int lxc_terminal_io_cb(int fd, uint32_t events, void *data,
 	if (w != r)
 		WARN("Short write on terminal r:%d != w:%d", r, w);
 
-	if (w_rbuf < 0)
-		TRACE("%s - Failed to write %d bytes to terminal ringbuffer",
-		      strerror(-w_rbuf), r);
+	if (w_rbuf < 0) {
+		errno = -w_rbuf;
+		SYSTRACE("Failed to write %d bytes to terminal ringbuffer", r);
+	}
 
 	if (w_log < 0)
 		TRACE("Failed to write %d bytes to terminal log", r);
@@ -681,8 +681,7 @@ static int lxc_terminal_peer_default(struct lxc_terminal *terminal)
 	if (terminal->peer < 0) {
 		if (!terminal->path) {
 			errno = ENODEV;
-			DEBUG("%s - The process does not have a controlling "
-			      "terminal", strerror(errno));
+			SYSDEBUG("The process does not have a controlling terminal");
 			goto on_succes;
 		}
 

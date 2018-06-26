@@ -1080,7 +1080,8 @@ int randseed(bool srand_it)
 	if (f) {
 		int ret = fread(&seed, sizeof(seed), 1, f);
 		if (ret != 1)
-			DEBUG("unable to fread /dev/urandom, %s, fallback to time+pid rand seed", strerror(errno));
+			SYSDEBUG("unable to fread /dev/urandom, fallback to time+pid rand seed");
+
 		fclose(f);
 	}
 
