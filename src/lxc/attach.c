@@ -24,6 +24,7 @@
 #define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
+#include <termios.h>
 #include <grp.h>
 #include <pwd.h>
 #include <signal.h>
@@ -979,12 +980,19 @@ static int lxc_attach_terminal(struct lxc_conf *conf,
 			       struct lxc_terminal *terminal)
 {
 	int ret;
+	struct termios oldtios;
 
 	lxc_terminal_init(terminal);
 
 	ret = lxc_terminal_create(terminal);
 	if (ret < 0) {
 		SYSERROR("Failed to create terminal");
+		return -1;
+	}
+
+	ret = lxc_setup_tios(terminal->master, &oldtios);
+	if (ret < 0) {
+		SYSERROR("Failed to setup terminal");
 		return -1;
 	}
 
