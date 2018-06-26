@@ -356,7 +356,7 @@ int main(int argc, char *argv[])
 		NOTICE("Exec'ing \"%s\"", my_args.argv[0]);
 
 		ret = execvp(my_args.argv[0], my_args.argv);
-		ERROR("%s - Failed to exec \"%s\"", strerror(errno), my_args.argv[0]);
+		SYSERROR("Failed to exec \"%s\"", my_args.argv[0]);
 		exit(ret);
 	}
 
@@ -443,8 +443,7 @@ int main(int argc, char *argv[])
 			if (errno == EINTR)
 				continue;
 
-			ERROR("%s - Failed to wait on child %d",
-			      strerror(errno), pid);
+			SYSERROR("Failed to wait on child %d", pid);
 			goto out;
 		}
 

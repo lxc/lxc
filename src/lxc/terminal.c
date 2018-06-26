@@ -685,8 +685,7 @@ static int lxc_terminal_peer_default(struct lxc_terminal *terminal)
 			goto on_succes;
 		}
 
-		ERROR("%s - Failed to open proxy terminal \"%s\"",
-		      strerror(errno), path);
+		SYSERROR("Failed to open proxy terminal \"%s\"", path);
 		return -ENOTTY;
 	}
 	DEBUG("Using terminal \"%s\" as proxy", path);

@@ -983,7 +983,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 
 	ret = resolve_clone_flags(handler);
 	if (ret < 0) {
-		ERROR("%s - Unsupported clone flag specified", strerror(errno));
+		SYSERROR("Unsupported clone flag specified");
 		goto out_fini_handler;
 	}
 

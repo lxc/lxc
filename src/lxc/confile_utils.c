@@ -743,8 +743,7 @@ static int lxc_container_name_to_pid(const char *lxcname_or_pid,
 
 	ret = kill(pid, 0);
 	if (ret < 0) {
-		ERROR("%s - Failed to send signal to pid %d", strerror(errno),
-		      (int)pid);
+		SYSERROR("Failed to send signal to pid %d", (int)pid);
 		return -EPERM;
 	}
 

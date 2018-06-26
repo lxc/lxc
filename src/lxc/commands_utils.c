@@ -69,7 +69,7 @@ again:
 			goto again;
 		}
 
-		ERROR("Failed to receive message: %s", strerror(errno));
+		SYSERROR("Failed to receive message");
 		return -1;
 	}
 
