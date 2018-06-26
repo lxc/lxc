@@ -1030,8 +1030,10 @@ int lxc_read_from_file(const char *filename, void* buf, size_t count)
 	if (!buf || !count) {
 		char buf2[100];
 		size_t count2 = 0;
+
 		while ((ret = read(fd, buf2, 100)) > 0)
 			count2 += ret;
+
 		if (ret >= 0)
 			ret = count2;
 	} else {
@@ -1040,7 +1042,7 @@ int lxc_read_from_file(const char *filename, void* buf, size_t count)
 	}
 
 	if (ret < 0)
-		ERROR("read %s: %s", filename, strerror(errno));
+		SYSERROR("Read %s", filename);
 
 	saved_errno = errno;
 	close(fd);
@@ -1080,7 +1082,8 @@ int randseed(bool srand_it)
 	if (f) {
 		int ret = fread(&seed, sizeof(seed), 1, f);
 		if (ret != 1)
-			DEBUG("unable to fread /dev/urandom, %s, fallback to time+pid rand seed", strerror(errno));
+			SYSDEBUG("unable to fread /dev/urandom, fallback to time+pid rand seed");
+
 		fclose(f);
 	}
 

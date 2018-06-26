@@ -335,9 +335,8 @@ int main(int argc, char *argv[])
 
 			sigerr = signal(i, SIG_DFL);
 			if (sigerr == SIG_ERR) {
-				DEBUG("%s - Failed to reset to default action "
-				      "for signal \"%d\": %d", strerror(errno),
-				      i, pid);
+				SYSDEBUG("Failed to reset to default action "
+				         "for signal \"%d\": %d", i, pid);
 			}
 		}
 
@@ -357,7 +356,7 @@ int main(int argc, char *argv[])
 		NOTICE("Exec'ing \"%s\"", my_args.argv[0]);
 
 		ret = execvp(my_args.argv[0], my_args.argv);
-		ERROR("%s - Failed to exec \"%s\"", strerror(errno), my_args.argv[0]);
+		SYSERROR("Failed to exec \"%s\"", my_args.argv[0]);
 		exit(ret);
 	}
 
@@ -409,8 +408,7 @@ int main(int argc, char *argv[])
 				} else {
 					ret = kill(-1, SIGTERM);
 					if (ret < 0)
-						DEBUG("%s - Failed to send SIGTERM to "
-						      "all children", strerror(errno));
+						SYSDEBUG("Failed to send SIGTERM to all children");
 				}
 				alarm(1);
 			}
@@ -424,16 +422,14 @@ int main(int argc, char *argv[])
 			} else {
 				ret = kill(-1, SIGKILL);
 				if (ret < 0)
-					DEBUG("%s - Failed to send SIGTERM to "
-					      "all children", strerror(errno));
+					SYSDEBUG("Failed to send SIGTERM to all children");
 			}
 			break;
 		}
 		default:
 			ret = kill(pid, was_interrupted);
 			if (ret < 0)
-				DEBUG("%s - Failed to send signal \"%d\" to "
-				      "%d", strerror(errno), was_interrupted, pid);
+				SYSDEBUG("Failed to send signal \"%d\" to %d", was_interrupted, pid);
 			break;
 		}
 		ret = EXIT_SUCCESS;
@@ -447,8 +443,7 @@ int main(int argc, char *argv[])
 			if (errno == EINTR)
 				continue;
 
-			ERROR("%s - Failed to wait on child %d",
-			      strerror(errno), pid);
+			SYSERROR("Failed to wait on child %d", pid);
 			goto out;
 		}
 

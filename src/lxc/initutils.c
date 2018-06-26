@@ -21,6 +21,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#define _GNU_SOURCE
 #include <sys/prctl.h>
 
 #include "initutils.h"
@@ -364,7 +365,7 @@ int setproctitle(char *title)
 	if (ret == 0)
 		(void)strlcpy((char*)arg_start, title, len);
 	else
-		INFO("setting cmdline failed - %s", strerror(errno));
+		SYSINFO("setting cmdline failed");
 
 	return ret;
 }

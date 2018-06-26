@@ -636,18 +636,17 @@ int ovl_mount(struct lxc_storage *bdev)
 	ret = ovl_remount_on_enodev(lower, bdev->dest, ovl_name,
 				    MS_MGC_VAL | mntflags, options_work);
 	if (ret < 0) {
-		INFO("Failed to mount \"%s\" on \"%s\" with options \"%s\". "
-		     "Retrying without workdir: %s",
-		     lower, bdev->dest, options_work, strerror(errno));
+		SYSINFO("Failed to mount \"%s\" on \"%s\" with options \"%s\". "
+		        "Retrying without workdir",
+		        lower, bdev->dest, options_work);
 
 		/* Assume we cannot use a workdir as we are on a version <= v21.
 		 */
 		ret = ovl_remount_on_enodev(lower, bdev->dest, ovl_name,
 					    MS_MGC_VAL | mntflags, options);
 		if (ret < 0)
-			SYSERROR("Failed to mount \"%s\" on \"%s\" with "
-				 "options \"%s\": %s",
-				 lower, bdev->dest, options, strerror(errno));
+			SYSERROR("Failed to mount \"%s\" on \"%s\" with options \"%s\"",
+			         lower, bdev->dest, options);
 		else
 			INFO("Mounted \"%s\" on \"%s\" with options \"%s\"",
 			     lower, bdev->dest, options);
@@ -786,9 +785,9 @@ int ovl_mkdir(const struct mntent *mntent, const struct lxc_rootfs *rootfs,
 		else if (!strncmp(upperdir, lxcpath, dirlen) &&
 			 strncmp(upperdir, rootfs_dir, rootfslen))
 			ret = mkdir_p(upperdir, 0755);
+
 		if (ret < 0)
-			WARN("Failed to create directory \"%s\": %s", upperdir,
-			     strerror(errno));
+			SYSWARN("Failed to create directory \"%s\"", upperdir);
 	}
 
 	ret = 0;
@@ -798,9 +797,9 @@ int ovl_mkdir(const struct mntent *mntent, const struct lxc_rootfs *rootfs,
 		else if (!strncmp(workdir, lxcpath, dirlen) &&
 			 strncmp(workdir, rootfs_dir, rootfslen))
 			ret = mkdir_p(workdir, 0755);
+
 		if (ret < 0)
-			WARN("Failed to create directory \"%s\": %s", workdir,
-			     strerror(errno));
+			SYSWARN("Failed to create directory \"%s\"", workdir);
 	}
 
 	fret = 0;

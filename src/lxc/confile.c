@@ -2222,8 +2222,9 @@ static int set_config_namespace_clone(const char *key, const char *value,
 		return clr_config_namespace_clone(key, lxc_conf, data);
 
 	if (lxc_conf->ns_keep != 0) {
-		ERROR("%s - Cannot set both \"lxc.namespace.clone\" and "
-		      "\"lxc.namespace.keep\"", strerror(EINVAL));
+		errno = EINVAL;
+		SYSERROR("Cannot set both \"lxc.namespace.clone\" and "
+		         "\"lxc.namespace.keep\"");
 		return -EINVAL;
 	}
 
@@ -2258,8 +2259,9 @@ static int set_config_namespace_keep(const char *key, const char *value,
 		return clr_config_namespace_keep(key, lxc_conf, data);
 
 	if (lxc_conf->ns_clone != 0) {
-		ERROR("%s - Cannot set both \"lxc.namespace.clone\" and "
-		      "\"lxc.namespace.keep\"", strerror(EINVAL));
+		errno = EINVAL;
+		SYSERROR("Cannot set both \"lxc.namespace.clone\" and "
+		         "\"lxc.namespace.keep\"");
 		return -EINVAL;
 	}
 
@@ -4153,8 +4155,9 @@ static struct lxc_config_t *get_network_config_ops(const char *key,
 	/* parse current index */
 	ret = lxc_safe_uint((idx_start + 1), &tmpidx);
 	if (ret < 0) {
-		ERROR("Failed to parse usigned integer from string \"%s\": %s",
-		      idx_start + 1, strerror(-ret));
+		errno = -ret;
+		SYSERROR("Failed to parse usigned integer from string \"%s\"",
+		         idx_start + 1);
 		*idx = ret;
 		goto on_error;
 	}

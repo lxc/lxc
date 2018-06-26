@@ -932,7 +932,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 			 */
 			ret = mknod(path, S_IFREG | 0000, 0);
 			if (ret < 0) /* this isn't fatal, continue */
-				ERROR("%s - Failed to create \"%s\"", strerror(errno), path);
+				SYSERROR("Failed to create \"%s\"", path);
 
 			ret = mount(tty->name, path, "none", MS_BIND, 0);
 			if (ret < 0) {
@@ -986,15 +986,13 @@ int lxc_allocate_ttys(struct lxc_conf *conf)
 		/* Prevent leaking the file descriptors to the container */
 		ret = fcntl(tty->master, F_SETFD, FD_CLOEXEC);
 		if (ret < 0)
-			WARN("Failed to set FD_CLOEXEC flag on master fd %d of "
-			     "tty device \"%s\": %s",
-			     tty->master, tty->name, strerror(errno));
+			SYSWARN("Failed to set FD_CLOEXEC flag on master fd %d of "
+			        "tty device \"%s\"", tty->master, tty->name);
 
 		ret = fcntl(tty->slave, F_SETFD, FD_CLOEXEC);
 		if (ret < 0)
-			WARN("Failed to set FD_CLOEXEC flag on slave fd %d of "
-			     "tty device \"%s\": %s",
-			     tty->slave, tty->name, strerror(errno));
+			SYSWARN("Failed to set FD_CLOEXEC flag on slave fd %d of "
+			        "tty device \"%s\"", tty->slave, tty->name);
 
 		tty->busy = 0;
 	}
@@ -1055,8 +1053,7 @@ static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 	}
 
 	if (ret < 0)
-		ERROR("Failed to send %zu ttys to parent: %s", ttys->max,
-		      strerror(errno));
+		SYSERROR("Failed to send %zu ttys to parent", ttys->max);
 	else
 		TRACE("Sent %zu ttys to parent", ttys->max);
 
@@ -1549,7 +1546,7 @@ static int lxc_setup_devpts(struct lxc_conf *conf)
 
 	ret = umount2("/dev/pts", MNT_DETACH);
 	if (ret < 0)
-		WARN("%s - Failed to unmount old devpts instance", strerror(errno));
+		SYSWARN("Failed to unmount old devpts instance");
 	else
 		DEBUG("Unmounted old devpts instance");
 
@@ -1661,7 +1658,7 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	if (file_exists(path)) {
 		ret = lxc_unstack_mountpoint(path, false);
 		if (ret < 0) {
-			ERROR("Failed to unmount \"%s\": %s", path, strerror(errno));
+			SYSERROR("Failed to unmount \"%s\"", path);
 			return -ret;
 		} else {
 			DEBUG("Cleared all (%d) mounts from \"%s\"", ret, path);
@@ -1740,7 +1737,7 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 	if (file_exists(path)) {
 		ret = lxc_unstack_mountpoint(path, false);
 		if (ret < 0) {
-			ERROR("%s - Failed to unmount \"%s\"", strerror(errno), path);
+			SYSERROR("Failed to unmount \"%s\"", path);
 			return -ret;
 		} else {
 			DEBUG("Cleared all (%d) mounts from \"%s\"", ret, path);
@@ -1944,9 +1941,8 @@ static int mount_entry(const char *fsname, const char *target,
 			 rootfs);
 	if (ret < 0) {
 		if (optional) {
-			INFO("%s - Failed to mount \"%s\" on \"%s\" "
-			     "(optional)", strerror(errno),
-			     srcpath ? srcpath : "(null)", target);
+			SYSINFO("Failed to mount \"%s\" on \"%s\" (optional)",
+			        srcpath ? srcpath : "(null)", target);
 			return 0;
 		}
 
@@ -2002,10 +1998,8 @@ static int mount_entry(const char *fsname, const char *target,
 		ret = mount(srcpath, target, fstype, mountflags | MS_REMOUNT, data);
 		if (ret < 0) {
 			if (optional) {
-				INFO("Failed to mount \"%s\" on \"%s\" "
-				     "(optional): %s",
-				     srcpath ? srcpath : "(null)", target,
-				     strerror(errno));
+				SYSINFO("Failed to mount \"%s\" on \"%s\" (optional)",
+				        srcpath ? srcpath : "(null)", target);
 				return 0;
 			}
 
@@ -2019,8 +2013,8 @@ static int mount_entry(const char *fsname, const char *target,
 		ret = mount(NULL, target, NULL, pflags, NULL);
 		if (ret < 0) {
 			if (optional) {
-				INFO("%s - Failed to change mount propagation "
-				     "for \"%s\" (optional)", strerror(errno), target);
+				SYSINFO("Failed to change mount propagation "
+				        "for \"%s\" (optional)", target);
 				return 0;
 			} else {
 				SYSERROR("Failed to change mount propagation "
@@ -2534,8 +2528,7 @@ int setup_resource_limits(struct lxc_list *limits, pid_t pid)
 
 #if HAVE_PRLIMIT || HAVE_PRLIMIT64
 		if (prlimit(pid, resid, &lim->limit, NULL) != 0) {
-			ERROR("Failed to set limit %s: %s", lim->resource,
-			      strerror(errno));
+			SYSERROR("Failed to set limit %s", lim->resource);
 			return -1;
 		}
 #else

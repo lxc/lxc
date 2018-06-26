@@ -163,8 +163,7 @@ struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, int dstfd)
 		lxc_list_add_tail(&lxc_ttys, &ts->node);
 		ret = sigaddset(&mask, SIGWINCH);
 		if (ret < 0)
-			NOTICE("%s - Failed to add SIGWINCH to signal set",
-			       strerror(errno));
+			SYSNOTICE("Failed to add SIGWINCH to signal set");
 	}
 
 	/* Exit the mainloop cleanly on SIGTERM. */
@@ -209,7 +208,7 @@ void lxc_terminal_signal_fini(struct lxc_terminal_state *ts)
 		close(ts->sigfd);
 
 		if (pthread_sigmask(SIG_SETMASK, &ts->oldmask, NULL) < 0)
-			WARN("%s - Failed to restore signal mask", strerror(errno));
+			SYSWARN("Failed to restore signal mask");
 	}
 
 	if (isatty(ts->stdinfd))
@@ -411,9 +410,10 @@ int lxc_terminal_io_cb(int fd, uint32_t events, void *data,
 	if (w != r)
 		WARN("Short write on terminal r:%d != w:%d", r, w);
 
-	if (w_rbuf < 0)
-		TRACE("%s - Failed to write %d bytes to terminal ringbuffer",
-		      strerror(-w_rbuf), r);
+	if (w_rbuf < 0) {
+		errno = -w_rbuf;
+		SYSTRACE("Failed to write %d bytes to terminal ringbuffer", r);
+	}
 
 	if (w_log < 0)
 		TRACE("Failed to write %d bytes to terminal log", r);
@@ -681,13 +681,11 @@ static int lxc_terminal_peer_default(struct lxc_terminal *terminal)
 	if (terminal->peer < 0) {
 		if (!terminal->path) {
 			errno = ENODEV;
-			DEBUG("%s - The process does not have a controlling "
-			      "terminal", strerror(errno));
+			SYSDEBUG("The process does not have a controlling terminal");
 			goto on_succes;
 		}
 
-		ERROR("%s - Failed to open proxy terminal \"%s\"",
-		      strerror(errno), path);
+		SYSERROR("Failed to open proxy terminal \"%s\"", path);
 		return -ENOTTY;
 	}
 	DEBUG("Using terminal \"%s\" as proxy", path);
@@ -771,7 +769,7 @@ void lxc_terminal_delete(struct lxc_terminal *terminal)
 	if (terminal->tios && terminal->peer >= 0) {
 		ret = tcsetattr(terminal->peer, TCSAFLUSH, terminal->tios);
 		if (ret < 0)
-			WARN("%s - Failed to set old terminal settings", strerror(errno));
+			SYSWARN("Failed to set old terminal settings");
 	}
 	free(terminal->tios);
 	terminal->tios = NULL;
@@ -1106,8 +1104,7 @@ restore_tios:
 	if (istty) {
 		istty = tcsetattr(stdinfd, TCSAFLUSH, &oldtios);
 		if (istty < 0)
-			WARN("%s - Failed to restore terminal properties",
-			     strerror(errno));
+			SYSWARN("Failed to restore terminal properties");
 	}
 
 close_mainloop:

@@ -160,8 +160,7 @@ static int lxc_try_preserve_ns(const int pid, const char *ns)
 			return -EINVAL;
 		}
 
-		WARN("%s - Kernel does not support preserving %s namespaces",
-		     strerror(errno), ns);
+		SYSWARN("Kernel does not support preserving %s namespaces", ns);
 		return -EOPNOTSUPP;
 	}
 
@@ -228,7 +227,7 @@ int lxc_check_inherited(struct lxc_conf *conf, bool closeall,
 restart:
 	dir = opendir("/proc/self/fd");
 	if (!dir) {
-		WARN("%s - Failed to open directory", strerror(errno));
+		SYSWARN("Failed to open directory");
 		return -1;
 	}
 
@@ -459,8 +458,7 @@ int lxc_serve_state_clients(const char *name, struct lxc_handler *handler,
 				goto again;
 			}
 
-			ERROR("%s - Failed to send message to client",
-			      strerror(errno));
+			SYSERROR("Failed to send message to client");
 		}
 
 		/* kick client from list */
@@ -987,7 +985,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	/* Reset mask set by setup_signal_fd. */
 	ret = pthread_sigmask(SIG_SETMASK, &handler->oldmask, NULL);
 	if (ret < 0)
-		WARN("%s - Failed to restore signal mask", strerror(errno));
+		SYSWARN("Failed to restore signal mask");
 
 	lxc_terminal_delete(&handler->conf->console);
 	lxc_delete_tty(&handler->conf->ttys);
@@ -1417,9 +1415,9 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 		TRACE("Received pty with master fd %d and slave fd %d from "
 		      "parent", tty->master, tty->slave);
 	}
+
 	if (ret < 0)
-		ERROR("Failed to receive %zu ttys from child: %s", ttys->max,
-		      strerror(errno));
+		SYSERROR("Failed to receive %zu ttys from child", ttys->max);
 	else
 		TRACE("Received %zu ttys from child", ttys->max);
 
@@ -1687,7 +1685,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	ret = lxc_try_preserve_ns(handler->pid, "net");
 	if (ret < 0) {
 		if (ret != -EOPNOTSUPP) {
-			ERROR("%s - Failed to preserve net namespace", strerror(errno));
+			SYSERROR("Failed to preserve net namespace");
 			goto out_delete_net;
 		}
 	} else {
@@ -1756,8 +1754,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		ret = lxc_try_preserve_ns(handler->pid, "cgroup");
 		if (ret < 0) {
 			if (ret != -EOPNOTSUPP) {
-				ERROR("%s - Failed to preserve cgroup namespace",
-				      strerror(errno));
+				SYSERROR("Failed to preserve cgroup namespace");
 				goto out_delete_net;
 			}
 		} else {
