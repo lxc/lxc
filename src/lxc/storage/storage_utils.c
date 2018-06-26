@@ -385,7 +385,7 @@ int find_fstype_cb(char *buffer, void *data)
 	}
 
 	if (mount(cbarg->rootfs, cbarg->target, fstype, mntflags, mntdata)) {
-		DEBUG("mount failed with error: %s", strerror(errno));
+		SYSDEBUG("mount failed with error");
 		free(mntdata);
 		return 0;
 	}

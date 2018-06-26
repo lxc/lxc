@@ -1942,9 +1942,8 @@ static int mount_entry(const char *fsname, const char *target,
 			 rootfs);
 	if (ret < 0) {
 		if (optional) {
-			INFO("%s - Failed to mount \"%s\" on \"%s\" "
-			     "(optional)", strerror(errno),
-			     srcpath ? srcpath : "(null)", target);
+			SYSINFO("Failed to mount \"%s\" on \"%s\" (optional)",
+			        srcpath ? srcpath : "(null)", target);
 			return 0;
 		}
 
@@ -2000,10 +1999,8 @@ static int mount_entry(const char *fsname, const char *target,
 		ret = mount(srcpath, target, fstype, mountflags | MS_REMOUNT, data);
 		if (ret < 0) {
 			if (optional) {
-				INFO("Failed to mount \"%s\" on \"%s\" "
-				     "(optional): %s",
-				     srcpath ? srcpath : "(null)", target,
-				     strerror(errno));
+				SYSINFO("Failed to mount \"%s\" on \"%s\" (optional)",
+				        srcpath ? srcpath : "(null)", target);
 				return 0;
 			}
 
@@ -2017,8 +2014,8 @@ static int mount_entry(const char *fsname, const char *target,
 		ret = mount(NULL, target, NULL, pflags, NULL);
 		if (ret < 0) {
 			if (optional) {
-				INFO("%s - Failed to change mount propagation "
-				     "for \"%s\" (optional)", strerror(errno), target);
+				SYSINFO("Failed to change mount propagation "
+				        "for \"%s\" (optional)", target);
 				return 0;
 			} else {
 				SYSERROR("Failed to change mount propagation "

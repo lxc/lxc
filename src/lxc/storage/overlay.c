@@ -636,9 +636,9 @@ int ovl_mount(struct lxc_storage *bdev)
 	ret = ovl_remount_on_enodev(lower, bdev->dest, ovl_name,
 				    MS_MGC_VAL | mntflags, options_work);
 	if (ret < 0) {
-		INFO("Failed to mount \"%s\" on \"%s\" with options \"%s\". "
-		     "Retrying without workdir: %s",
-		     lower, bdev->dest, options_work, strerror(errno));
+		SYSINFO("Failed to mount \"%s\" on \"%s\" with options \"%s\". "
+		        "Retrying without workdir",
+		        lower, bdev->dest, options_work);
 
 		/* Assume we cannot use a workdir as we are on a version <= v21.
 		 */
