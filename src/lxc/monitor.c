@@ -261,7 +261,7 @@ int lxc_monitor_read_fdset(struct pollfd *fds, nfds_t nfds, struct lxc_msg *msg,
 			fds[i].revents = 0;
 			ret = recv(fds[i].fd, msg, sizeof(*msg), 0);
 			if (ret <= 0) {
-				SYSERROR("Failed to receive message. Did monitord die?: %s.", strerror(errno));
+				SYSERROR("Failed to receive message. Did monitord die?");
 				return -1;
 			}
 			return ret;

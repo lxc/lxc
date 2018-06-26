@@ -112,8 +112,7 @@ int lsm_process_label_fd_get(pid_t pid, bool on_exec)
 
 	labelfd = open(path, O_RDWR);
 	if (labelfd < 0) {
-		SYSERROR("%s - Unable to %s LSM label file descriptor",
-			 name, strerror(errno));
+		SYSERROR("Unable to %s LSM label file descriptor", name);
 		return -1;
 	}
 
