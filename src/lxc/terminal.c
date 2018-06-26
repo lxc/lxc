@@ -209,7 +209,7 @@ void lxc_terminal_signal_fini(struct lxc_terminal_state *ts)
 		close(ts->sigfd);
 
 		if (pthread_sigmask(SIG_SETMASK, &ts->oldmask, NULL) < 0)
-			WARN("%s - Failed to restore signal mask", strerror(errno));
+			SYSWARN("Failed to restore signal mask");
 	}
 
 	if (isatty(ts->stdinfd))
@@ -771,7 +771,7 @@ void lxc_terminal_delete(struct lxc_terminal *terminal)
 	if (terminal->tios && terminal->peer >= 0) {
 		ret = tcsetattr(terminal->peer, TCSAFLUSH, terminal->tios);
 		if (ret < 0)
-			WARN("%s - Failed to set old terminal settings", strerror(errno));
+			SYSWARN("Failed to set old terminal settings");
 	}
 	free(terminal->tios);
 	terminal->tios = NULL;
@@ -1106,8 +1106,7 @@ restore_tios:
 	if (istty) {
 		istty = tcsetattr(stdinfd, TCSAFLUSH, &oldtios);
 		if (istty < 0)
-			WARN("%s - Failed to restore terminal properties",
-			     strerror(errno));
+			SYSWARN("Failed to restore terminal properties");
 	}
 
 close_mainloop:

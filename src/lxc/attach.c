@@ -380,7 +380,7 @@ static int lxc_attach_set_environment(struct lxc_proc_context_info *init_ctx,
 				if (extra_keep_store[i]) {
 					ret = setenv(extra_keep[i], extra_keep_store[i], 1);
 					if (ret < 0)
-						WARN("%s - Failed to set environment variable", strerror(errno));
+						SYSWARN("Failed to set environment variable");
 				}
 				free(extra_keep_store[i]);
 			}
@@ -395,13 +395,13 @@ static int lxc_attach_set_environment(struct lxc_proc_context_info *init_ctx,
 		if (!path_kept) {
 			ret = setenv("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", 1);
 			if (ret < 0)
-				WARN("%s - Failed to set environment variable", strerror(errno));
+				SYSWARN("Failed to set environment variable");
 		}
 	}
 
 	ret = putenv("container=lxc");
 	if (ret < 0) {
-		WARN("%s - Failed to set environment variable", strerror(errno));
+		SYSWARN("Failed to set environment variable");
 		return -1;
 	}
 
@@ -435,7 +435,7 @@ static int lxc_attach_set_environment(struct lxc_proc_context_info *init_ctx,
 
 			ret = putenv(p);
 			if (ret < 0)
-				WARN("%s - Failed to set environment variable", strerror(errno));
+				SYSWARN("Failed to set environment variable");
 		}
 	}
 

@@ -1082,14 +1082,14 @@ static int recursive_destroy(char *dirname)
 	ret = rmdir(dirname);
 	if (ret < 0) {
 		if (!r)
-			WARN("%s - Failed to delete \"%s\"", strerror(errno), dirname);
+			SYSWARN("Failed to delete \"%s\"", dirname);
 		r = -1;
 	}
 
 	ret = closedir(dir);
 	if (ret < 0) {
 		if (!r)
-			WARN("%s - Failed to delete \"%s\"", strerror(errno), dirname);
+			SYSWARN("Failed to delete \"%s\"", dirname);
 		r = -1;
 	}
 
@@ -1398,15 +1398,13 @@ static int chowmod(char *path, uid_t chown_uid, gid_t chown_gid,
 
 	ret = chown(path, chown_uid, chown_gid);
 	if (ret < 0) {
-		WARN("%s - Failed to chown(%s, %d, %d)", strerror(errno), path,
-		     (int)chown_uid, (int)chown_gid);
+		SYSWARN("Failed to chown(%s, %d, %d)", path, (int)chown_uid, (int)chown_gid);
 		return -1;
 	}
 
 	ret = chmod(path, chmod_mode);
 	if (ret < 0) {
-		WARN("%s - Failed to chmod(%s, %d)", strerror(errno), path,
-		     (int)chmod_mode);
+		SYSWARN("Failed to chmod(%s, %d)", path, (int)chmod_mode);
 		return -1;
 	}
 
