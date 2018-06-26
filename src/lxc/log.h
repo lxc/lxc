@@ -295,7 +295,7 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 /*
  * Helper macro to define errno string.
  */
-#if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !defined(_GNU_SOURCE)
+#if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !defined(_GNU_SOURCE) || IS_BIONIC
 #define lxc_log_strerror_r                                               \
 	char errno_buf[MAXPATHLEN / 2] = {"Failed to get errno string"}; \
 	char *ptr = errno_buf;                                           \
