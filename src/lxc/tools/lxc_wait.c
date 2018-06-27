@@ -35,21 +35,23 @@
 #include "arguments.h"
 #include "tool_utils.h"
 
-static int my_checker(const struct lxc_arguments* args)
+static int my_checker(const struct lxc_arguments *args)
 {
 	if (!args->states) {
 		lxc_error(args, "missing state option to wait for.");
 		return -1;
 	}
+
 	return 0;
 }
 
-static int my_parser(struct lxc_arguments* args, int c, char* arg)
+static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
 	switch (c) {
 	case 's': args->states = optarg; break;
 	case 't': args->timeout = atol(optarg); break;
 	}
+
 	return 0;
 }
 
@@ -105,21 +107,23 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 
 	if (!c->may_control(c)) {
-		fprintf(stderr, "Insufficent privileges to control %s\n", c->name);
+		lxc_error(&my_args, "Insufficent privileges to control %s", c->name);
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
 
 	if (my_args.rcfile) {
 		c->clear_config(c);
+
 		if (!c->load_config(c, my_args.rcfile)) {
-			fprintf(stderr, "Failed to load rcfile\n");
+			lxc_error(&my_args, "Failed to load rcfile");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
+
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
-			fprintf(stderr, "Out of memory setting new config filename\n");
+			lxc_error(&my_args, "Out of memory setting new config filename");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
@@ -129,5 +133,6 @@ int main(int argc, char *argv[])
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
+
 	exit(EXIT_SUCCESS);
 }
