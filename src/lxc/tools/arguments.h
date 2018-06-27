@@ -29,6 +29,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
+#include <sys/param.h>
 #include <lxc/lxccontainer.h>
 
 struct lxc_arguments;
@@ -146,7 +147,7 @@ struct lxc_arguments {
 
 #define LXC_COMMON_OPTIONS                                                     \
 	    { "name",        required_argument, 0, 'n'         },              \
-            { "help",        no_argument,       0, 'h'         },              \
+	    { "help",        no_argument,       0, 'h'         },              \
 	    { "usage",       no_argument,       0, OPT_USAGE   },              \
 	    { "version",     no_argument,       0, OPT_VERSION },              \
 	    { "quiet",       no_argument,       0, 'q'         },              \
@@ -171,10 +172,47 @@ extern int lxc_arguments_parse(struct lxc_arguments *args, int argc,
 extern int lxc_arguments_str_to_int(struct lxc_arguments *args,
 				    const char *str);
 
-#define lxc_error(arg, fmt, args...)                                           \
-	if (!(arg)->quiet)                                                     \
-	fprintf(stderr, "%s: " fmt "\n", (arg)->progname, ##args)
-
 extern bool lxc_setup_shared_ns(struct lxc_arguments *args, struct lxc_container *c);
+
+/* Helper macro to define errno string. */
+#if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !defined(_GNU_SOURCE) || IS_BIONIC
+#define lxc_log_strerror_r                                              \
+	char errno_buf[MAXPATHLEN / 2] = {"Failed to get errno string"}; \
+	char *ptr = errno_buf;                                           \
+	{                                                                \
+		(void)strerror_r(errno, errno_buf, sizeof(errno_buf));   \
+	}
+#else
+#define lxc_log_strerror_r                                              \
+	char errno_buf[MAXPATHLEN / 2] = {"Failed to get errno string"}; \
+	char *ptr;                                                       \
+	{                                                                \
+		ptr = strerror_r(errno, errno_buf, sizeof(errno_buf));   \
+		if (!ptr)                                                \
+			ptr = errno_buf;                                 \
+	}
+#endif
+
+#define lxc_info(arg, fmt, args...)                                                \
+	do {                                                                       \
+		if (!(arg)->quiet) {                                               \
+			fprintf(stdout, "%s: " fmt "\n", (arg)->progname, ##args); \
+		}                                                                  \
+	} while (0)
+
+#define lxc_error(arg, fmt, args...)                                               \
+	do {                                                                       \
+		if (!(arg)->quiet) {                                               \
+			fprintf(stderr, "%s: " fmt "\n", (arg)->progname, ##args); \
+		}                                                                  \
+	} while (0)
+
+#define lxc_sys_error(arg, fmt, args...)                                                     \
+	do {                                                                                 \
+		if (!(arg)->quiet) {                                                         \
+			lxc_log_strerror_r                                                   \
+			fprintf(stderr, "%s: %s - " fmt "\n", (arg)->progname, ptr, ##args); \
+		}                                                                            \
+	} while (0)
 
 #endif /* __LXC_ARGUMENTS_H */
