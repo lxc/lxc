@@ -2760,6 +2760,7 @@ struct lxc_conf *lxc_conf_init(void)
 		free(new);
 		return NULL;
 	}
+	new->rootfs.managed = true;
 	new->logfd = -1;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->cgroup2);

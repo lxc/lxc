@@ -2973,6 +2973,10 @@ static bool container_destroy(struct lxc_container *c,
 		}
 	}
 
+	/* LXC is not managing the storage of the container. */
+	if (conf && !conf->rootfs.managed)
+		goto on_success;
+
 	if (conf && conf->rootfs.path && conf->rootfs.mount) {
 		if (!do_destroy_container(conf)) {
 			ERROR("Error destroying rootfs for %s", c->name);
@@ -3045,6 +3049,7 @@ static bool container_destroy(struct lxc_container *c,
 	}
 	INFO("Destroyed directory \"%s\" for \"%s\"", path, c->name);
 
+on_success:
 	bret = true;
 
 out:
@@ -3060,14 +3065,16 @@ static bool do_lxcapi_destroy(struct lxc_container *c)
 	if (!c || !lxcapi_is_defined(c))
 		return false;
 
-	if (has_snapshots(c)) {
-		ERROR("Container %s has snapshots;  not removing", c->name);
-		return false;
-	}
+	if (c->lxc_conf && c->lxc_conf->rootfs.managed) {
+		if (has_snapshots(c)) {
+			ERROR("Container %s has snapshots;  not removing", c->name);
+			return false;
+		}
 
-	if (has_fs_snapshots(c)) {
-		ERROR("container %s has snapshots on its rootfs", c->name);
-		return false;
+		if (has_fs_snapshots(c)) {
+			ERROR("container %s has snapshots on its rootfs", c->name);
+			return false;
+		}
 	}
 
 	return container_destroy(c, NULL);

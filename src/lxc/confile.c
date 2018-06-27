@@ -141,6 +141,7 @@ lxc_config_define(no_new_privs);
 lxc_config_define(personality);
 lxc_config_define(prlimit);
 lxc_config_define(pty_max);
+lxc_config_define(rootfs_managed);
 lxc_config_define(rootfs_mount);
 lxc_config_define(rootfs_options);
 lxc_config_define(rootfs_path);
@@ -226,6 +227,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.no_new_privs",	           set_config_no_new_privs,                get_config_no_new_privs,                clr_config_no_new_privs,              },
 	{ "lxc.prlimit",                   set_config_prlimit,                     get_config_prlimit,                     clr_config_prlimit,                   },
 	{ "lxc.pty.max",                   set_config_pty_max,                     get_config_pty_max,                     clr_config_pty_max,                   },
+	{ "lxc.rootfs.managed",            set_config_rootfs_managed,              get_config_rootfs_managed,              clr_config_rootfs_managed,            },
 	{ "lxc.rootfs.mount",              set_config_rootfs_mount,                get_config_rootfs_mount,                clr_config_rootfs_mount,              },
 	{ "lxc.rootfs.options",            set_config_rootfs_options,              get_config_rootfs_options,              clr_config_rootfs_options,            },
 	{ "lxc.rootfs.path",               set_config_rootfs_path,                 get_config_rootfs_path,                 clr_config_rootfs_path,               },
@@ -2134,6 +2136,31 @@ static int set_config_rootfs_path(const char *key, const char *value,
 	return ret;
 }
 
+static int set_config_rootfs_managed(const char *key, const char *value,
+				     struct lxc_conf *lxc_conf, void *data)
+{
+	unsigned int val = 0;
+
+	if (lxc_config_value_empty(value)) {
+		lxc_conf->rootfs.managed = true;
+		return 0;
+	}
+
+	if (lxc_safe_uint(value, &val) < 0)
+		return -EINVAL;
+
+	switch (val) {
+	case 0:
+		lxc_conf->rootfs.managed = false;
+		return 0;
+	case 1:
+		lxc_conf->rootfs.managed = true;
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
 static int set_config_rootfs_mount(const char *key, const char *value,
 				   struct lxc_conf *lxc_conf, void *data)
 {
@@ -3356,6 +3383,12 @@ static int get_config_rootfs_path(const char *key, char *retv, int inlen,
 	return lxc_get_conf_str(retv, inlen, c->rootfs.path);
 }
 
+static int get_config_rootfs_managed(const char *key, char *retv, int inlen,
+				     struct lxc_conf *c, void *data)
+{
+	return lxc_get_conf_bool(c, retv, inlen, c->rootfs.managed);
+}
+
 static int get_config_rootfs_mount(const char *key, char *retv, int inlen,
 				   struct lxc_conf *c, void *data)
 {
@@ -3973,6 +4006,13 @@ static inline int clr_config_rootfs_path(const char *key, struct lxc_conf *c,
 {
 	free(c->rootfs.path);
 	c->rootfs.path = NULL;
+	return 0;
+}
+
+static inline int clr_config_rootfs_managed(const char *key, struct lxc_conf *c,
+					    void *data)
+{
+	c->rootfs.managed = true;
 	return 0;
 }
 
