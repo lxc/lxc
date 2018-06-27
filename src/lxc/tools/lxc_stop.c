@@ -130,56 +130,59 @@ int main(int argc, char *argv[])
 
 	/* some checks */
 	if (!my_args.hardstop && my_args.timeout < -1) {
-		fprintf(stderr, "invalid timeout\n");
+		lxc_error(&my_args, "Invalid timeout");
 		exit(ret);
 	}
 
 	if (my_args.hardstop && my_args.nokill) {
-		fprintf(stderr, "-k can't be used with --nokill\n");
+		lxc_error(&my_args, "-k can't be used with --nokill");
 		exit(ret);
 	}
 
 	if (my_args.hardstop && my_args.reboot) {
-		fprintf(stderr, "-k can't be used with -r\n");
+		lxc_error(&my_args, "-k can't be used with -r");
 		exit(ret);
 	}
 
 	if (my_args.hardstop && my_args.timeout) {
-		fprintf(stderr, "-k doesn't allow timeouts\n");
+		lxc_error(&my_args, "-k doesn't allow timeouts");
 		exit(ret);
 	}
 
 	if (my_args.nolock && !my_args.hardstop) {
-		fprintf(stderr, "--nolock may only be used with -k\n");
+		lxc_error(&my_args, "--nolock may only be used with -k");
 		exit(ret);
 	}
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {
-		fprintf(stderr, "Error opening container\n");
+		lxc_error(&my_args, "Error opening container");
 		goto out;
 	}
 
 	if (my_args.rcfile) {
 		c->clear_config(c);
+
 		if (!c->load_config(c, my_args.rcfile)) {
-			fprintf(stderr, "Failed to load rcfile\n");
+			lxc_error(&my_args, "Failed to load rcfile");
 			goto out;
 		}
+
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
-			fprintf(stderr, "Out of memory setting new config filename\n");
+			lxc_error(&my_args, "Out of memory setting new config filename");
 			goto out;
 		}
 	}
 
 	if (!c->may_control(c)) {
-		fprintf(stderr, "Insufficent privileges to control %s\n", c->name);
+		lxc_error(&my_args, "Insufficent privileges to control %s", c->name);
 		goto out;
 	}
 
 	if (!c->is_running(c)) {
-		fprintf(stderr, "%s is not running\n", c->name);
+		lxc_error(&my_args, "%s is not running", c->name);
+
 		/* Per our manpage we need to exit with exit code:
 		 * 2: The specified container exists but was not running.
 		 */
@@ -200,6 +203,7 @@ int main(int argc, char *argv[])
 			ret = EXIT_FAILURE;
 		else
 			ret = EXIT_SUCCESS;
+
 		goto out;
 	}
 
