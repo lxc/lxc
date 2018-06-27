@@ -92,7 +92,7 @@ static int add_to_simple_array(char ***array, ssize_t *capacity, char *value)
 	return 0;
 }
 
-static int my_parser(struct lxc_arguments* args, int c, char* arg)
+static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
 	char **it;
 	char *del;
@@ -240,13 +240,13 @@ static bool stdfd_is_pty(void)
 	return false;
 }
 
-int lxc_attach_create_log_file(const char *log_file)
+static int lxc_attach_create_log_file(const char *log_file)
 {
 	int fd;
 
 	fd = open(log_file, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600);
 	if (fd < 0) {
-		fprintf(stderr, "Failed to open log file \"%s\"\n", log_file);
+		lxc_error(&my_args, "Failed to open log file \"%s\"", log_file);
 		return -1;
 	}
 
@@ -285,8 +285,7 @@ int main(int argc, char *argv[])
 
 	if (geteuid()) {
 		if (access(my_args.lxcpath[0], O_RDONLY) < 0) {
-			if (!my_args.quiet)
-				fprintf(stderr, "You lack access to %s\n", my_args.lxcpath[0]);
+			lxc_error(&my_args, "You lack access to %s", my_args.lxcpath[0]);
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -298,30 +297,34 @@ int main(int argc, char *argv[])
 	if (my_args.rcfile) {
 		c->clear_config(c);
 		if (!c->load_config(c, my_args.rcfile)) {
-			fprintf(stderr, "Failed to load rcfile\n");
+			lxc_error(&my_args, "Failed to load rcfile");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
+
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
-			fprintf(stderr, "Out of memory setting new config filename\n");
+			lxc_error(&my_args, "Out of memory setting new config filename");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
 	}
 
 	if (!c->may_control(c)) {
-		fprintf(stderr, "Insufficent privileges to control %s\n", c->name);
+		lxc_error(&my_args, "Insufficent privileges to control %s", c->name);
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
 
 	if (remount_sys_proc)
 		attach_options.attach_flags |= LXC_ATTACH_REMOUNT_PROC_SYS;
+
 	if (elevated_privileges)
 		attach_options.attach_flags &= ~(elevated_privileges);
+
 	if (stdfd_is_pty())
 		attach_options.attach_flags |= LXC_ATTACH_TERMINAL;
+
 	attach_options.namespaces = namespace_flags;
 	attach_options.personality = new_personality;
 	attach_options.env_policy = env_policy;
@@ -343,7 +346,6 @@ int main(int argc, char *argv[])
 		ret = c->attach(c, lxc_attach_run_command, &command, &attach_options, &pid);
 	else
 		ret = c->attach(c, lxc_attach_run_shell, NULL, &attach_options, &pid);
-
 	if (ret < 0)
 		goto out;
 
@@ -357,5 +359,6 @@ out:
 	lxc_container_put(c);
 	if (ret >= 0)
 		exit(wexit);
+
 	exit(EXIT_FAILURE);
 }
