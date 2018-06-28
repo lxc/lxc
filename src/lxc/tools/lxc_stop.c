@@ -31,10 +31,13 @@
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
-#include "tool_utils.h"
+#include "log.h"
+#include "utils.h"
 
 #define OPT_NO_LOCK OPT_USAGE + 1
 #define OPT_NO_KILL OPT_USAGE + 2
+
+lxc_log_define(lxc_stop, lxc);
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
@@ -130,33 +133,33 @@ int main(int argc, char *argv[])
 
 	/* some checks */
 	if (!my_args.hardstop && my_args.timeout < -1) {
-		lxc_error(&my_args, "Invalid timeout");
+		ERROR("Invalid timeout");
 		exit(ret);
 	}
 
 	if (my_args.hardstop && my_args.nokill) {
-		lxc_error(&my_args, "-k can't be used with --nokill");
+		ERROR("-k can't be used with --nokill");
 		exit(ret);
 	}
 
 	if (my_args.hardstop && my_args.reboot) {
-		lxc_error(&my_args, "-k can't be used with -r");
+		ERROR("-k can't be used with -r");
 		exit(ret);
 	}
 
 	if (my_args.hardstop && my_args.timeout) {
-		lxc_error(&my_args, "-k doesn't allow timeouts");
+		ERROR("-k doesn't allow timeouts");
 		exit(ret);
 	}
 
 	if (my_args.nolock && !my_args.hardstop) {
-		lxc_error(&my_args, "--nolock may only be used with -k");
+		ERROR("--nolock may only be used with -k");
 		exit(ret);
 	}
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {
-		lxc_error(&my_args, "Error opening container");
+		ERROR("Error opening container");
 		goto out;
 	}
 
@@ -164,24 +167,24 @@ int main(int argc, char *argv[])
 		c->clear_config(c);
 
 		if (!c->load_config(c, my_args.rcfile)) {
-			lxc_error(&my_args, "Failed to load rcfile");
+			ERROR("Failed to load rcfile");
 			goto out;
 		}
 
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
-			lxc_error(&my_args, "Out of memory setting new config filename");
+			ERROR("Out of memory setting new config filename");
 			goto out;
 		}
 	}
 
 	if (!c->may_control(c)) {
-		lxc_error(&my_args, "Insufficent privileges to control %s", c->name);
+		ERROR("Insufficent privileges to control %s", c->name);
 		goto out;
 	}
 
 	if (!c->is_running(c)) {
-		lxc_error(&my_args, "%s is not running", c->name);
+		ERROR("%s is not running", c->name);
 
 		/* Per our manpage we need to exit with exit code:
 		 * 2: The specified container exists but was not running.
