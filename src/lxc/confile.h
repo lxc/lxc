@@ -58,6 +58,11 @@ struct lxc_config_t {
 	config_clr_cb clr;
 };
 
+struct new_config_item {
+	char *key;
+	char *val;
+};
+
 /* Get the jump table entry for the given configuration key. */
 extern struct lxc_config_t *lxc_get_config(const char *key);
 
@@ -85,11 +90,15 @@ extern int append_unexp_config_line(const char *line, struct lxc_conf *conf);
 
 extern int lxc_config_define_add(struct lxc_list *defines, char* arg);
 
-extern int lxc_config_define_load(struct lxc_list *defines,
-				  struct lxc_conf *conf);
+extern bool lxc_config_define_load(struct lxc_list *defines,
+				   struct lxc_container *c);
+
+extern void lxc_config_define_free(struct lxc_list *defines);
 
 /* needed for lxc-attach */
 extern signed long lxc_config_parse_arch(const char *arch);
+
+extern int lxc_fill_elevated_privileges(char *flaglist, int *flags);
 
 extern int lxc_clear_config_item(struct lxc_conf *c, const char *key);
 

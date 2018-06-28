@@ -174,25 +174,6 @@ extern int lxc_arguments_str_to_int(struct lxc_arguments *args,
 
 extern bool lxc_setup_shared_ns(struct lxc_arguments *args, struct lxc_container *c);
 
-/* Helper macro to define errno string. */
-#if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !defined(_GNU_SOURCE) || IS_BIONIC
-#define lxc_log_strerror_r                                              \
-	char errno_buf[MAXPATHLEN / 2] = {"Failed to get errno string"}; \
-	char *ptr = errno_buf;                                           \
-	{                                                                \
-		(void)strerror_r(errno, errno_buf, sizeof(errno_buf));   \
-	}
-#else
-#define lxc_log_strerror_r                                              \
-	char errno_buf[MAXPATHLEN / 2] = {"Failed to get errno string"}; \
-	char *ptr;                                                       \
-	{                                                                \
-		ptr = strerror_r(errno, errno_buf, sizeof(errno_buf));   \
-		if (!ptr)                                                \
-			ptr = errno_buf;                                 \
-	}
-#endif
-
 #define lxc_info(arg, fmt, args...)                                                \
 	do {                                                                       \
 		if (!(arg)->quiet) {                                               \
@@ -210,8 +191,7 @@ extern bool lxc_setup_shared_ns(struct lxc_arguments *args, struct lxc_container
 #define lxc_sys_error(arg, fmt, args...)                                                     \
 	do {                                                                                 \
 		if (!(arg)->quiet) {                                                         \
-			lxc_log_strerror_r                                                   \
-			fprintf(stderr, "%s: %s - " fmt "\n", (arg)->progname, ptr, ##args); \
+			fprintf(stderr, "%s: " fmt "\n", (arg)->progname, ##args); \
 		}                                                                            \
 	} while (0)
 
