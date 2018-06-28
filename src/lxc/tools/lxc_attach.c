@@ -37,7 +37,13 @@
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
-#include "tool_utils.h"
+#include "attach.h"
+#include "caps.h"
+#include "confile.h"
+#include "log.h"
+#include "utils.h"
+
+lxc_log_define(lxc_attach, lxc);
 
 static const struct option my_longopts[] = {
 	{"elevated-privileges", optional_argument, 0, 'e'},
@@ -108,7 +114,7 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 	case 'a':
 		new_personality = lxc_config_parse_arch(arg);
 		if (new_personality < 0) {
-			lxc_error(args, "invalid architecture specified: %s", arg);
+			ERROR("Invalid architecture specified: %s", arg);
 			return -1;
 		}
 		break;
@@ -153,14 +159,14 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 	case 502: /* keep-var */
 		ret = add_to_simple_array(&extra_keep, &extra_keep_size, arg);
 		if (ret < 0) {
-			lxc_error(args, "memory allocation error");
+			ERROR("Failed to alloc memory");
 			return -1;
 		}
 		break;
 	case 'v':
 		ret = add_to_simple_array(&extra_env, &extra_env_size, arg);
 		if (ret < 0) {
-			lxc_error(args, "memory allocation error");
+			ERROR("Failed to alloc memory");
 			return -1;
 		}
 		break;
@@ -246,7 +252,7 @@ static int lxc_attach_create_log_file(const char *log_file)
 
 	fd = open(log_file, O_CLOEXEC | O_RDWR | O_CREAT | O_APPEND, 0600);
 	if (fd < 0) {
-		lxc_error(&my_args, "Failed to open log file \"%s\"", log_file);
+		ERROR("Failed to open log file \"%s\"", log_file);
 		return -1;
 	}
 
@@ -285,7 +291,7 @@ int main(int argc, char *argv[])
 
 	if (geteuid()) {
 		if (access(my_args.lxcpath[0], O_RDONLY) < 0) {
-			lxc_error(&my_args, "You lack access to %s", my_args.lxcpath[0]);
+			ERROR("You lack access to %s", my_args.lxcpath[0]);
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -297,21 +303,21 @@ int main(int argc, char *argv[])
 	if (my_args.rcfile) {
 		c->clear_config(c);
 		if (!c->load_config(c, my_args.rcfile)) {
-			lxc_error(&my_args, "Failed to load rcfile");
+			ERROR("Failed to load rcfile");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
 
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
-			lxc_error(&my_args, "Out of memory setting new config filename");
+			ERROR("Out of memory setting new config filename");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
 	}
 
 	if (!c->may_control(c)) {
-		lxc_error(&my_args, "Insufficent privileges to control %s", c->name);
+		ERROR("Insufficent privileges to control %s", c->name);
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
@@ -355,6 +361,7 @@ int main(int argc, char *argv[])
 
 	if (WIFEXITED(ret))
 		wexit = WEXITSTATUS(ret);
+
 out:
 	lxc_container_put(c);
 	if (ret >= 0)
