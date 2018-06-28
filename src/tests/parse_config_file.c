@@ -773,6 +773,11 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
+	if (set_get_compare_clear_save_load(c, "lxc.rootfs.managed", "1", tmpf, true) < 0) {
+		lxc_error("%s\n", "lxc.rootfs.managed");
+		goto non_test_error;
+	}
+
 	fret = EXIT_SUCCESS;
 
 non_test_error:
