@@ -33,12 +33,14 @@
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
-#include "tool_utils.h"
+#include "log.h"
+
+lxc_log_define(lxc_wait, lxc);
 
 static int my_checker(const struct lxc_arguments *args)
 {
 	if (!args->states) {
-		lxc_error(args, "missing state option to wait for.");
+		ERROR("Missing state option to wait for.");
 		return -1;
 	}
 
@@ -107,7 +109,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 
 	if (!c->may_control(c)) {
-		lxc_error(&my_args, "Insufficent privileges to control %s", c->name);
+		ERROR("Insufficent privileges to control %s", c->name);
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
@@ -116,14 +118,14 @@ int main(int argc, char *argv[])
 		c->clear_config(c);
 
 		if (!c->load_config(c, my_args.rcfile)) {
-			lxc_error(&my_args, "Failed to load rcfile");
+			ERROR("Failed to load rcfile");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
 
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
-			lxc_error(&my_args, "Out of memory setting new config filename");
+			ERROR("Out of memory setting new config filename");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
