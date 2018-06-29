@@ -1238,6 +1238,7 @@ struct lxc_device_node {
 };
 
 static const struct lxc_device_node lxc_devices[] = {
+	{ "console", S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 5 },
 	{ "full",    S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 7 },
 	{ "null",    S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 3 },
 	{ "random",  S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 8 },
@@ -1251,7 +1252,7 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 	int i, ret;
 	char path[MAXPATHLEN];
 	mode_t cmask;
-	bool can_mknod = true;
+	int can_mknod = 1;
 
 	ret = snprintf(path, MAXPATHLEN, "%s/dev",
 		       rootfs->path ? rootfs->mount : "");
@@ -1274,7 +1275,11 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 		if (ret < 0 || ret >= MAXPATHLEN)
 			return -1;
 
-		if (can_mknod) {
+		/* See
+		 * - https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=55956b59df336f6738da916dbb520b6e37df9fbd
+		 * - https://lists.linuxfoundation.org/pipermail/containers/2018-June/039176.html
+		 */
+		if (can_mknod == 2 || (can_mknod == 1 && !am_host_unpriv())) {
 			ret = mknod(path, device->mode, makedev(device->maj, device->min));
 			if (ret == 0 || (ret < 0 && errno == EEXIST)) {
 				DEBUG("Created device node \"%s\"", path);
@@ -1289,7 +1294,9 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 			/* This can e.g. happen when the container is
 			 * unprivileged or CAP_MKNOD has been dropped.
 			 */
-			can_mknod = false;
+			can_mknod = 2;
+		} else {
+			can_mknod = 0;
 		}
 
 		ret = mknod(path, S_IFREG, 0);
