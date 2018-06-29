@@ -284,7 +284,7 @@ lxc_top_SOURCES = tools/lxc_top.c tools/arguments.c
 lxc_unfreeze_SOURCES = tools/lxc_unfreeze.c tools/arguments.c
 lxc_unshare_SOURCES = tools/lxc_unshare.c tools/arguments.c
 lxc_wait_SOURCES = tools/lxc_wait.c tools/arguments.c
-lxc_create_SOURCES = tools/lxc_create.c tools/arguments.c tools/tool_utils.c
+lxc_create_SOURCES = tools/lxc_create.c tools/arguments.c
 lxc_snapshot_SOURCES = tools/lxc_snapshot.c tools/arguments.c
 lxc_checkpoint_SOURCES = tools/lxc_checkpoint.c tools/arguments.c
 endif
