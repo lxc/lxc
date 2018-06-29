@@ -37,7 +37,7 @@
 #include <lxc/version.h>
 
 #include "arguments.h"
-#include "tool_utils.h"
+#include "namespace.h"
 
 static int build_shortopts(const struct option *a_options, char *a_shortopts,
 			   size_t a_size)
