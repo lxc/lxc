@@ -303,10 +303,10 @@ int lxc_monitord_spawn(const char *lxcpath)
 	pid_t pid1, pid2;
 
 	char *const args[] = {
-	    LXC_MONITORD_PATH,
-	    (char *)lxcpath,
-	    pipefd_str,
-	    NULL,
+		LXC_MONITORD_PATH,
+		(char *)lxcpath,
+		pipefd_str,
+		NULL,
 	};
 
 	/* double fork to avoid zombies when monitord exits */
@@ -318,8 +318,10 @@ int lxc_monitord_spawn(const char *lxcpath)
 
 	if (pid1) {
 		DEBUG("Going to wait for pid %d.", pid1);
+
 		if (waitpid(pid1, NULL, 0) != pid1)
 			return -1;
+
 		DEBUG("Finished waiting on pid %d.", pid1);
 		return 0;
 	}
