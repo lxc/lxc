@@ -39,16 +39,20 @@
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
-#include "tool_utils.h"
+#include "log.h"
+#include "utils.h"
+
+lxc_log_define(lxc_console, lxc);
 
 static char etoc(const char *expr)
 {
 	/* returns "control code" of given expression */
 	char c = expr[0] == '^' ? expr[1] : expr[0];
+
 	return 1 + ((c > 'Z') ? (c - 'a') : (c - 'Z'));
 }
 
-static int my_parser(struct lxc_arguments* args, int c, char* arg)
+static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
 	switch (c) {
 	case 't':
@@ -59,6 +63,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 		args->escape = etoc(arg);
 		break;
 	}
+
 	return 0;
 }
 
@@ -95,7 +100,7 @@ int main(int argc, char *argv[])
 
 	ret = lxc_arguments_parse(&my_args, argc, argv);
 	if (ret)
-		return EXIT_FAILURE;
+		exit(EXIT_FAILURE);
 
 	/* Only create log if explicitly instructed */
 	if (my_args.log_file || my_args.log_priority) {
@@ -112,33 +117,35 @@ int main(int argc, char *argv[])
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {
-		fprintf(stderr, "System error loading container\n");
+		ERROR("System error loading container");
 		exit(EXIT_FAILURE);
 	}
 
 	if (my_args.rcfile) {
 		c->clear_config(c);
+
 		if (!c->load_config(c, my_args.rcfile)) {
-			fprintf(stderr, "Failed to load rcfile\n");
+			ERROR("Failed to load rcfile");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
+
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
-			fprintf(stderr, "Out of memory setting new config filename\n");
+			ERROR("Out of memory setting new config filename");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
 	}
 
 	if (!c->may_control(c)) {
-		fprintf(stderr, "Insufficent privileges to control %s\n", my_args.name);
+		ERROR("Insufficent privileges to control %s", my_args.name);
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
 
 	if (!c->is_running(c)) {
-		fprintf(stderr, "%s is not running\n", my_args.name);
+		ERROR("%s is not running", my_args.name);
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
@@ -148,6 +155,7 @@ int main(int argc, char *argv[])
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
+
 	lxc_container_put(c);
 	exit(EXIT_SUCCESS);
 }
