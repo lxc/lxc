@@ -2374,6 +2374,74 @@ on_error:
 	return ret;
 }
 
+static struct new_config_item *parse_new_conf_line(char *buffer)
+{
+	char *dot, *key, *line, *linep, *value;
+	int ret = 0;
+	char *dup = buffer;
+	struct new_config_item *new = NULL;
+
+	linep = line = strdup(dup);
+	if (!line)
+		return NULL;
+
+	line += lxc_char_left_gc(line, strlen(line));
+
+	/* martian option - don't add it to the config itself */
+	if (strncmp(line, "lxc.", strlen(line)))
+		goto on_error;
+
+	ret = -1;
+	dot = strchr(line, '=');
+	if (!dot) {
+		ERROR("Invalid configuration item: %s", line);
+		goto on_error;
+	}
+
+	*dot = '\0';
+	value = dot + 1;
+
+	key = line;
+	key[lxc_char_right_gc(key, strlen(key))] = '\0';
+
+	value += lxc_char_left_gc(value, strlen(value));
+	value[lxc_char_right_gc(value, strlen(value))] = '\0';
+
+	if (*value == '\'' || *value == '\"') {
+		size_t len;
+
+		len = strlen(value);
+		if (len > 1 && value[len - 1] == *value) {
+			value[len - 1] = '\0';
+			value++;
+		}
+	}
+
+	ret = -1;
+	new = malloc(sizeof(struct new_config_item));
+	if (!new)
+		goto on_error;
+
+	new->key = strdup(key);
+	new->val = strdup(value);
+	if (!new->val || !new->key)
+		goto on_error;
+
+	ret = 0;
+
+on_error:
+	free(linep);
+
+	if (ret < 0 && new) {
+		free(new->key);
+		free(new->val);
+		free(new);
+		new = NULL;
+	}
+
+	return new;
+}
+
 int lxc_config_read(const char *file, struct lxc_conf *conf, bool from_include)
 {
 	int ret;
@@ -2401,7 +2469,12 @@ int lxc_config_define_add(struct lxc_list *defines, char *arg)
 	if (!dent)
 		return -1;
 
-	dent->elem = arg;
+	dent->elem = parse_new_conf_line(arg);
+	if (!dent->elem) {
+		free(dent);
+		return -1;
+	}
+
 	lxc_list_add_tail(defines, dent);
 	return 0;
 }
