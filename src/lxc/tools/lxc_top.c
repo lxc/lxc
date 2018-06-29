@@ -40,7 +40,8 @@
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
-#include "tool_utils.h"
+#include "mainloop.h"
+#include "utils.h"
 
 #define USER_HZ   100
 #define ESC       "\033"
@@ -83,7 +84,7 @@ static struct termios oldtios;
 static struct ct *ct = NULL;
 static int ct_alloc_cnt = 0;
 
-static int my_parser(struct lxc_arguments* args, int c, char* arg)
+static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
 	switch (c) {
 	case 'd':
@@ -92,7 +93,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 			return -1;
 		break;
 	case 'b':
-		batch=1;
+		batch = 1;
 		break;
 	case 's':
 		sort_by = arg[0];
@@ -101,6 +102,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 		sort_reverse = 1;
 		break;
 	}
+
 	return 0;
 }
 
@@ -153,7 +155,7 @@ static int stdin_tios_setup(void)
 	}
 
 	if (tcgetattr(0, &oldtios)) {
-		fprintf(stderr, "failed to get current terminal settings\n");
+		fprintf(stderr, "Failed to get current terminal settings\n");
 		return -1;
 	}
 
@@ -167,7 +169,7 @@ static int stdin_tios_setup(void)
 	newtios.c_cc[VTIME] = 0;
 
 	if (tcsetattr(0, TCSAFLUSH, &newtios)) {
-		fprintf(stderr, "failed to set new terminal settings\n");
+		fprintf(stderr, "Failed to set new terminal settings\n");
 		return -1;
 	}
 
@@ -177,8 +179,10 @@ static int stdin_tios_setup(void)
 static int stdin_tios_rows(void)
 {
 	struct winsize wsz;
+
 	if (isatty(0) && ioctl(0, TIOCGWINSZ, &wsz) == 0)
 		return wsz.ws_row;
+
 	return 25;
 }
 
@@ -219,7 +223,7 @@ static uint64_t stat_get_int(struct lxc_container *c, const char *item)
 
 	len = c->get_cgroup_item(c, item, buf, sizeof(buf));
 	if (len <= 0) {
-		fprintf(stderr, "unable to read cgroup item %s\n", item);
+		fprintf(stderr, "Unable to read cgroup item %s\n", item);
 		return 0;
 	}
 
@@ -238,7 +242,7 @@ static uint64_t stat_match_get_int(struct lxc_container *c, const char *item,
 
 	len = c->get_cgroup_item(c, item, buf, sizeof(buf));
 	if (len <= 0) {
-		fprintf(stderr, "unable to read cgroup item %s\n", item);
+		fprintf(stderr, "Unable to read cgroup item %s\n", item);
 		goto out;
 	}
 
@@ -248,22 +252,26 @@ static uint64_t stat_match_get_int(struct lxc_container *c, const char *item,
 
 	matchlen = strlen(match);
 	for (i = 0; lines[i]; i++) {
-		if (strncmp(lines[i], match, matchlen) == 0) {
+		if (!strncmp(lines[i], match, matchlen)) {
 			cols = lxc_string_split_and_trim(lines[i], ' ');
 			if (!cols)
 				goto err1;
+
 			for (j = 0; cols[j]; j++) {
 				if (j == column) {
 					val = strtoull(cols[j], NULL, 0);
 					break;
 				}
 			}
+
 			lxc_free_array((void **)cols, free);
 			break;
 		}
 	}
+
 err1:
 	lxc_free_array((void **)lines, free);
+
 out:
 	return val;
 }
@@ -294,7 +302,7 @@ static void stat_get_blk_stats(struct lxc_container *c, const char *item,
 
 	len = c->get_cgroup_item(c, item, buf, sizeof(buf));
 	if (len <= 0 || (size_t)len >= sizeof(buf)) {
-		fprintf(stderr, "unable to read cgroup item %s\n", item);
+		fprintf(stderr, "Unable to read cgroup item %s\n", item);
 		return;
 	}
 
@@ -303,19 +311,23 @@ static void stat_get_blk_stats(struct lxc_container *c, const char *item,
 		return;
 
 	memset(stats, 0, sizeof(struct blkio_stats));
+
 	for (i = 0; lines[i]; i++) {
 		cols = lxc_string_split_and_trim(lines[i], ' ');
 		if (!cols)
 			goto out;
-		if (strcmp(cols[1], "Read") == 0)
+
+		if (!strncmp(cols[1], "Read", strlen(cols[1])))
 			stats->read += strtoull(cols[2], NULL, 0);
-		else if (strcmp(cols[1], "Write") == 0)
+		else if (!strncmp(cols[1], "Write", strlen(cols[1])))
 			stats->write += strtoull(cols[2], NULL, 0);
-		if (strcmp(cols[0], "Total") == 0)
+
+		if (!strncmp(cols[0], "Total", strlen(cols[0])))
 			stats->total = strtoull(cols[1], NULL, 0);
 
 		lxc_free_array((void **)cols, free);
 	}
+
 out:
 	lxc_free_array((void **)lines, free);
 	return;
@@ -333,6 +345,7 @@ static void stats_get(struct lxc_container *c, struct ct *ct, struct stats *tota
 	ct->stats->cpu_use_nanos = stat_get_int(c, "cpuacct.usage");
 	ct->stats->cpu_use_user  = stat_match_get_int(c, "cpuacct.stat", "user", 1);
 	ct->stats->cpu_use_sys   = stat_match_get_int(c, "cpuacct.stat", "system", 1);
+
 	stat_get_blk_stats(c, "blkio.throttle.io_service_bytes", &ct->stats->io_service_bytes);
 	stat_get_blk_stats(c, "blkio.throttle.io_serviced", &ct->stats->io_serviced);
 
@@ -356,17 +369,22 @@ static void stats_print_header(struct stats *stats)
 {
 	printf(TERMRVRS TERMBOLD);
 	printf("%-18s %12s %12s %12s %36s %10s", "Container", "CPU",  "CPU",  "CPU",  "BlkIO", "Mem");
+
 	if (stats->memsw_used > 0)
 		printf(" %10s", "MemSw");
+
 	if (stats->kmem_used > 0)
 		printf(" %10s", "KMem");
 	printf("\n");
 
 	printf("%-18s %12s %12s %12s %36s %10s", "Name",      "Used", "Sys",  "User", "Total(Read/Write)", "Used");
+
 	if (stats->memsw_used > 0)
 		printf(" %10s", "Used");
+
 	if (stats->kmem_used > 0)
 		printf(" %10s", "Used");
+
 	printf("\n");
 	printf(TERMNORM);
 }
@@ -431,8 +449,9 @@ static int cmp_name(const void *sct1, const void *sct2)
 	const struct ct *ct2 = sct2;
 
 	if (sort_reverse)
-		return strcmp(ct2->c->name, ct1->c->name);
-	return strcmp(ct1->c->name, ct2->c->name);
+		return strncmp(ct2->c->name, ct1->c->name, strlen(ct2->c->name));
+
+	return strncmp(ct1->c->name, ct2->c->name, strlen(ct1->c->name));
 }
 
 static int cmp_cpuuse(const void *sct1, const void *sct2)
@@ -442,6 +461,7 @@ static int cmp_cpuuse(const void *sct1, const void *sct2)
 
 	if (sort_reverse)
 		return ct2->stats->cpu_use_nanos < ct1->stats->cpu_use_nanos;
+
 	return ct1->stats->cpu_use_nanos < ct2->stats->cpu_use_nanos;
 }
 
@@ -452,6 +472,7 @@ static int cmp_blkio(const void *sct1, const void *sct2)
 
 	if (sort_reverse)
 		return ct2->stats->io_service_bytes.total < ct1->stats->io_service_bytes.total;
+
 	return ct1->stats->io_service_bytes.total < ct2->stats->io_service_bytes.total;
 }
 
@@ -462,6 +483,7 @@ static int cmp_memory(const void *sct1, const void *sct2)
 
 	if (sort_reverse)
 		return ct2->stats->mem_used < ct1->stats->mem_used;
+
 	return ct1->stats->mem_used < ct2->stats->mem_used;
 }
 
@@ -472,6 +494,7 @@ static int cmp_memorysw(const void *sct1, const void *sct2)
 
 	if (sort_reverse)
 		return ct2->stats->memsw_used < ct1->stats->memsw_used;
+
 	return ct1->stats->memsw_used < ct2->stats->memsw_used;
 }
 
@@ -482,6 +505,7 @@ static int cmp_kmemory(const void *sct1, const void *sct2)
 
 	if (sort_reverse)
 		return ct2->stats->kmem_used < ct1->stats->kmem_used;
+
 	return ct1->stats->kmem_used < ct2->stats->kmem_used;
 }
 
@@ -498,6 +522,7 @@ static void ct_sort(int active)
 	case 's': cmp_func = cmp_memorysw; break;
 	case 'k': cmp_func = cmp_kmemory; break;
 	}
+
 	qsort(ct, active, sizeof(*ct), (int (*)(const void *,const void *))cmp_func);
 }
 
@@ -510,6 +535,7 @@ static void ct_free(void)
 			lxc_container_put(ct[i].c);
 			ct[i].c = NULL;
 		}
+
 		free(ct[i].stats);
 		ct[i].stats = NULL;
 	}
@@ -517,143 +543,27 @@ static void ct_free(void)
 
 static void ct_realloc(int active_cnt)
 {
-	int i;
-
 	if (active_cnt > ct_alloc_cnt) {
+		int i;
+
 		ct_free();
+
 		ct = realloc(ct, sizeof(*ct) * active_cnt);
 		if (!ct) {
-			fprintf(stderr, "cannot alloc mem\n");
+			fprintf(stderr, "Cannot alloc mem\n");
 			exit(EXIT_FAILURE);
 		}
+
 		for (i = 0; i < active_cnt; i++) {
 			ct[i].stats = malloc(sizeof(*ct[0].stats));
 			if (!ct[i].stats) {
-				fprintf(stderr, "cannot alloc mem\n");
+				fprintf(stderr, "Cannot alloc mem\n");
 				exit(EXIT_FAILURE);
 			}
 		}
+
 		ct_alloc_cnt = active_cnt;
 	}
-}
-
-#define LXC_MAINLOOP_CONTINUE 0
-#define LXC_MAINLOOP_CLOSE 1
-
-struct lxc_epoll_descr {
-	int epfd;
-	struct lxc_list handlers;
-};
-
-typedef int (*lxc_mainloop_callback_t)(int fd, uint32_t event, void *data,
-				       struct lxc_epoll_descr *descr);
-
-struct mainloop_handler {
-	lxc_mainloop_callback_t callback;
-	int fd;
-	void *data;
-};
-
-#define MAX_EVENTS 10
-
-int lxc_mainloop(struct lxc_epoll_descr *descr, int timeout_ms)
-{
-	int i, nfds, ret;
-	struct mainloop_handler *handler;
-	struct epoll_event events[MAX_EVENTS];
-
-	for (;;) {
-		nfds = epoll_wait(descr->epfd, events, MAX_EVENTS, timeout_ms);
-		if (nfds < 0) {
-			if (errno == EINTR)
-				continue;
-
-			return -1;
-		}
-
-		for (i = 0; i < nfds; i++) {
-			handler = events[i].data.ptr;
-
-			/* If the handler returns a positive value, exit the
-			 * mainloop.
-			 */
-			ret = handler->callback(handler->fd, events[i].events,
-						handler->data, descr);
-			if (ret == LXC_MAINLOOP_CLOSE)
-				return 0;
-		}
-
-		if (nfds == 0)
-			return 0;
-
-		if (lxc_list_empty(&descr->handlers))
-			return 0;
-	}
-}
-
-int lxc_mainloop_open(struct lxc_epoll_descr *descr)
-{
-	/* hint value passed to epoll create */
-	descr->epfd = epoll_create1(EPOLL_CLOEXEC);
-	if (descr->epfd < 0)
-		return -1;
-
-	lxc_list_init(&descr->handlers);
-	return 0;
-}
-
-int lxc_mainloop_add_handler(struct lxc_epoll_descr *descr, int fd,
-			     lxc_mainloop_callback_t callback, void *data)
-{
-	struct epoll_event ev;
-	struct mainloop_handler *handler;
-	struct lxc_list *item;
-
-	handler = malloc(sizeof(*handler));
-	if (!handler)
-		return -1;
-
-	handler->callback = callback;
-	handler->fd = fd;
-	handler->data = data;
-
-	ev.events = EPOLLIN;
-	ev.data.ptr = handler;
-
-	if (epoll_ctl(descr->epfd, EPOLL_CTL_ADD, fd, &ev) < 0)
-		goto out_free_handler;
-
-	item = malloc(sizeof(*item));
-	if (!item)
-		goto out_free_handler;
-
-	item->elem = handler;
-	lxc_list_add(&descr->handlers, item);
-	return 0;
-
-out_free_handler:
-	free(handler);
-	return -1;
-}
-
-int lxc_mainloop_close(struct lxc_epoll_descr *descr)
-{
-	struct lxc_list *iterator, *next;
-
-	iterator = descr->handlers.next;
-	while (iterator != &descr->handlers) {
-		next = iterator->next;
-
-		lxc_list_del(iterator);
-		free(iterator->elem);
-		free(iterator);
-		iterator = next;
-	}
-
-	if (descr->epfd >= 0)
-		return close(descr->epfd);
-
-	return 0;
 }
 
 static int stdin_handler(int fd, uint32_t events, void *data,
@@ -671,6 +581,7 @@ static int stdin_handler(int fd, uint32_t events, void *data,
 
 	if (events & EPOLLHUP)
 		*in_char = 'q';
+
 	return LXC_MAINLOOP_CLOSE;
 }
 
@@ -681,12 +592,13 @@ int main(int argc, char *argv[])
 	char in_char;
 
 	ret = EXIT_FAILURE;
+
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		goto out;
 
 	ct_print_cnt = stdin_tios_rows() - 3; /* 3 -> header and total */
 	if (stdin_tios_setup() < 0) {
-		fprintf(stderr, "failed to setup terminal\n");
+		fprintf(stderr, "Failed to setup terminal\n");
 		goto out;
 	}
 
@@ -696,23 +608,22 @@ int main(int argc, char *argv[])
 	signal(SIGQUIT, sig_handler);
 
 	if (lxc_mainloop_open(&descr)) {
-		fprintf(stderr, "failed to create mainloop\n");
+		fprintf(stderr, "Failed to create mainloop\n");
 		goto out;
 	}
 
 	ret = lxc_mainloop_add_handler(&descr, 0, stdin_handler, &in_char);
 	if (ret) {
-		fprintf(stderr, "failed to add stdin handler\n");
+		fprintf(stderr, "Failed to add stdin handler\n");
 		ret = EXIT_FAILURE;
 		goto err1;
 	}
 
-	if (batch && !delay_set) {
+	if (batch && !delay_set)
 		delay = 300;
-	}
-        if (batch) {
+
+        if (batch)
 		printf("time_ms,container,cpu_nanos,cpu_sys_userhz,cpu_user_userhz,blkio_bytes,blkio_iops,mem_used_bytes,memsw_used_bytes,kernel_mem_used_bytes\n");
-	}
 
 	for(;;) {
 		struct lxc_container **active;
@@ -724,19 +635,22 @@ int main(int argc, char *argv[])
 		ct_realloc(active_cnt);
 
 		memset(&total, 0, sizeof(total));
+
 		for (i = 0; i < active_cnt; i++)
 			stats_get(active[i], &ct[i], &total);
 
 		ct_sort(active_cnt);
 
 		if (!batch) {
-		  printf(TERMCLEAR);
-		  stats_print_header(&total);
+			printf(TERMCLEAR);
+			stats_print_header(&total);
 		}
+
 		for (i = 0; i < active_cnt && i < ct_print_cnt; i++) {
 			stats_print(ct[i].c->name, ct[i].stats, &total);
 			printf("\n");
 		}
+
 		if (!batch) {
 			sprintf(total_name, "TOTAL %d of %d", i, active_cnt);
 			stats_print(total_name, &total, &total);
@@ -749,10 +663,12 @@ int main(int argc, char *argv[])
 		}
 
 		in_char = '\0';
+
 		if (!batch) {
 			ret = lxc_mainloop(&descr, 1000 * delay);
 			if (ret != 0 || in_char == 'q')
 				break;
+
 			switch(in_char) {
 			case 'r':
 				sort_reverse ^= 1;
@@ -773,10 +689,12 @@ int main(int argc, char *argv[])
 			sleep(delay);
 		}
 	}
+
 	ret = EXIT_SUCCESS;
 
 err1:
 	lxc_mainloop_close(&descr);
+
 out:
 	exit(ret);
 }
