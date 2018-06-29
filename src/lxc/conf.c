@@ -1319,6 +1319,82 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 	return 0;
 }
 
+static int setup_populate_devs(const struct lxc_rootfs *rootfs, struct lxc_list *devs)
+{
+	int ret;
+	char *pathdirname;
+	char path[MAXPATHLEN];
+	mode_t cmask;
+	mode_t file_mode = 0;
+	struct lxc_populate_devs *dev_elem;
+	struct lxc_list *it;
+
+	INFO("Populating devices into container");
+	cmask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
+	lxc_list_for_each(it, devs) {
+		dev_elem = it->elem;
+
+		ret = snprintf(path, MAXPATHLEN, "%s/%s", rootfs->path ? rootfs->mount : "", dev_elem->name);
+		if (ret < 0 || ret >= MAXPATHLEN)
+			return -1;
+
+		/* create any missing directories */
+		pathdirname = strdup(path);
+		pathdirname = dirname(pathdirname);
+		ret = mkdir_p(pathdirname, 0755);
+		free(pathdirname);
+		if (ret < 0) {
+			WARN("Failed to create target directory");
+			return -1;
+		}
+
+		if (!strcmp(dev_elem->type, "c")) {
+			file_mode = dev_elem->file_mode | S_IFCHR;
+		} else if (!strcmp(dev_elem->type, "b")) {
+			file_mode = dev_elem->file_mode | S_IFBLK;
+		} else {
+			ERROR("Failed to parse devices type '%s'", dev_elem->type);
+			return -1;
+		}
+
+		ret = mknod(path, file_mode, makedev(dev_elem->maj, dev_elem->min));
+		if (ret && errno != EEXIST) {
+			SYSERROR("Failed to mknod '%s':'%d':'%d':'%d'", dev_elem->name,
+				file_mode, dev_elem->maj, dev_elem->min);
+
+			char hostpath[MAXPATHLEN];
+			FILE *pathfile;
+
+			// Unprivileged containers cannot create devices, so
+			// try to bind mount the device from the host
+			ret = snprintf(hostpath, MAXPATHLEN, "/dev/%s", dev_elem->name);
+			if (ret < 0 || ret >= MAXPATHLEN)
+				return -1;
+			pathfile = fopen(path, "wb");
+			if (!pathfile) {
+				SYSERROR("Failed to create device mount target '%s'", path);
+				return -1;
+			}
+			fclose(pathfile);
+			if (safe_mount(hostpath, path, 0, MS_BIND, NULL,
+						rootfs->path ? rootfs->mount : NULL) != 0) {
+				SYSERROR("Failed bind mounting device %s from host into container",
+					dev_elem->name);
+				return -1;
+			}
+		}
+		if (chown(path, dev_elem->uid, dev_elem->gid) < 0) {
+			ERROR("Error chowning %s", path);
+			return -1;
+		}
+	}
+	umask(cmask);
+
+	INFO("Populated devices into container /dev");
+	return 0;
+}
+
+
 static int lxc_setup_rootfs(struct lxc_conf *conf)
 {
 	int ret;
@@ -2677,6 +2753,8 @@ struct lxc_conf *lxc_conf_init(void)
 	memset(&new->cgroup_meta, 0, sizeof(struct lxc_cgroup));
 	memset(&new->ns_share, 0, sizeof(char *) * LXC_NS_MAX);
 
+	lxc_list_init(&new->populate_devs);
+
 	return new;
 }
 
@@ -3545,6 +3623,14 @@ int lxc_setup(struct lxc_handler *handler)
 			ERROR("Failed to populate \"/dev\"");
 			return -1;
 		}
+		/* setup devices which will be populated in the container.
+		 */
+		if (!lxc_list_empty(&lxc_conf->populate_devs)) {
+			if (setup_populate_devs(&lxc_conf->rootfs, &lxc_conf->populate_devs)) {
+				ERROR("Failed to setup devices in the container");
+				return -1;
+			}
+		}
 	}
 
 	if (!lxc_list_empty(&lxc_conf->mount_list)) {
@@ -3850,6 +3936,21 @@ int lxc_clear_procs(struct lxc_conf *c, const char *key)
 	return 0;
 }
 
+int lxc_clear_devices(struct lxc_conf *c)
+{
+	struct lxc_list *it,*next;
+
+	lxc_list_for_each_safe(it, &c->populate_devs, next) {
+		struct lxc_populate_devs *dev_elem = it->elem;
+		lxc_list_del(it);
+		free(dev_elem->name);
+		free(dev_elem->type);
+		free(dev_elem);
+		free(it);
+	}
+	return 0;
+}
+
 int lxc_clear_groups(struct lxc_conf *c)
 {
 	struct lxc_list *it, *next;
@@ -3994,6 +4095,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_limits(conf, "lxc.prlimit");
 	lxc_clear_sysctls(conf, "lxc.sysctl");
 	lxc_clear_procs(conf, "lxc.proc");
+	lxc_clear_devices(conf);
 	free(conf->cgroup_meta.dir);
 	free(conf->cgroup_meta.controllers);
 	free(conf);

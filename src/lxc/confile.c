@@ -152,6 +152,7 @@ lxc_config_define(tty_dir);
 lxc_config_define(uts_name);
 lxc_config_define(sysctl);
 lxc_config_define(proc);
+lxc_config_define(populate_device);
 
 static struct lxc_config_t config[] = {
 	{ "lxc.arch",                      set_config_personality,                 get_config_personality,                 clr_config_personality,               },
@@ -236,6 +237,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.uts.name",                  set_config_uts_name,                    get_config_uts_name,                    clr_config_uts_name,                  },
 	{ "lxc.sysctl",                    set_config_sysctl,                      get_config_sysctl,                      clr_config_sysctl,                    },
 	{ "lxc.proc",                      set_config_proc,                        get_config_proc,                        clr_config_proc,                      },
+	{ "lxc.populate.device",           set_config_populate_device,             get_config_populate_device,             clr_config_populate_device,                  },
 };
 
 struct signame {
@@ -1659,6 +1661,89 @@ on_error:
 		free(procelem);
 	}
 
+	return -1;
+}
+
+static int set_config_populate_device(const char *key, const char *value,
+			    struct lxc_conf *lxc_conf, void *data)
+{
+	int ret = 0, major = 0, minor = 0;
+	uid_t uid = (uid_t)-1;
+	gid_t gid = (gid_t)-1;
+	char name[PATH_MAX] = {0};
+	char type[2] = {0};
+	char *replace_value = NULL;
+	mode_t filemode = 0;
+	struct lxc_list *iter;
+	struct lxc_list *dev_list = NULL;
+	struct lxc_populate_devs *dev_elem = NULL;
+
+	if (lxc_config_value_empty(value))
+		return lxc_clear_devices(lxc_conf);
+
+	/* lxc.populate.device = PATH_IN_CONTAINER:DEVICETYPE:MAJOR:MINOR:MODE:UID:GID
+	 * For e.g. lxc.populate.device = /dev/sda:b:8:0:0666:0:0
+	 */
+	ret = sscanf(value, "%[^:]:%2[^:]:%i:%i:%i:%u:%u", name, type, &major, &minor, &filemode, &uid, &gid);
+	if (ret != 7)
+		return -1;
+
+	/* find existing list element */
+	lxc_list_for_each(iter, &lxc_conf->populate_devs) {
+		dev_elem = iter->elem;
+
+		if (strcmp(name, dev_elem->name) != 0)
+			continue;
+
+		replace_value = strdup(type);
+		if (!replace_value)
+			return -1;
+
+		free(dev_elem->type);
+		dev_elem->type = replace_value;
+		dev_elem->file_mode = filemode;
+		dev_elem->maj = major;
+		dev_elem->min = minor;
+		dev_elem->uid = (uid_t)uid;
+		dev_elem->gid = (gid_t)gid;
+		return 0;
+	}
+
+	/* allocate list element */
+	dev_list = malloc(sizeof(*dev_list));
+	if (!dev_list)
+		goto on_error;
+
+	dev_elem = malloc(sizeof(*dev_elem));
+	if (!dev_elem)
+		goto on_error;
+	memset(dev_elem, 0, sizeof(*dev_elem));
+
+	dev_elem->name = strdup(name);
+	if (!dev_elem->name)
+		goto on_error;
+
+	dev_elem->type = strdup(type);
+	if (!dev_elem->type)
+		goto on_error;
+
+	dev_elem->file_mode = filemode;
+	dev_elem->maj = major;
+	dev_elem->min = minor;
+
+	lxc_list_add_elem(dev_list, dev_elem);
+
+	lxc_list_add_tail(&lxc_conf->populate_devs, dev_list);
+
+	return 0;
+
+on_error:
+	free(dev_list);
+	if (dev_elem) {
+		free(dev_elem->name);
+		free(dev_elem->type);
+		free(dev_elem);
+	}
 	return -1;
 }
 
@@ -3643,6 +3728,35 @@ static int get_config_proc(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
+/* If you ask for 'lxc.populate.device', then all populate device
+ * entries will be printed, in 'lxc.populate.device = path_in_container:type:major:minor:mode:uid:gid' format.
+ * For e.g. lxc.populate.device = /dev/sda:b:8:0:0666:0:0
+ */
+static int get_config_populate_device(const char *key, char *retv, int inlen,
+			    struct lxc_conf *c, void *data)
+{
+	int len;
+	struct lxc_list *it;
+	int fulllen = 0;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	if (strcmp(key, "lxc.populate.device") != 0)
+		return -1;
+
+	lxc_list_for_each(it, &c->populate_devs) {
+		struct lxc_populate_devs *elem = it->elem;
+		strprint(retv, inlen, "lxc.populate.device = %s:%s:%d:%d:%o:%u:%u\n",
+			 elem->name, elem->type, elem->maj,
+			 elem->min, elem->file_mode, elem->uid, elem->gid);
+	}
+
+	return fulllen;
+}
+
 static int get_config_namespace_clone(const char *key, char *retv, int inlen,
 				      struct lxc_conf *c, void *data)
 {
@@ -4062,6 +4176,12 @@ static inline int clr_config_sysctl(const char *key, struct lxc_conf *c,
 				   void *data)
 {
 	return lxc_clear_sysctls(c, key);
+}
+
+static inline int clr_config_populate_device(const char *key, struct lxc_conf *c,
+				   void *data)
+{
+	return lxc_clear_devices(c);
 }
 
 static inline int clr_config_proc(const char *key, struct lxc_conf *c,

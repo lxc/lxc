@@ -161,6 +161,27 @@ struct lxc_rootfs {
 };
 
 /*
+ * Defines a structure to store the devices which will
+ * be populated in container
+ * @name       : the target device name in container
+ * @type       : the type of target device "c" or "b"
+ * @mode       : file mode for the device
+ * @maj        : major number for the device
+ * @min        : minor number for the device
+ * @uid        : owner uid for the device
+ * @gid        : owner gid for the device
+ */
+struct lxc_populate_devs {
+	char *name;
+	char *type;
+	mode_t file_mode;
+	int maj;
+	int min;
+	uid_t uid;
+	gid_t gid;
+};
+
+/*
  * Automatic mounts for LXC to perform inside the container
  */
 enum {
@@ -366,6 +387,9 @@ struct lxc_conf {
 
 	/* procs */
 	struct lxc_list procs;
+
+	/* populate devices*/
+	struct lxc_list populate_devs;
 };
 
 extern int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
@@ -430,5 +454,5 @@ extern int setup_sysctl_parameters(struct lxc_list *sysctls);
 extern int lxc_clear_sysctls(struct lxc_conf *c, const char *key);
 extern int setup_proc_filesystem(struct lxc_list *procs, pid_t pid);
 extern int lxc_clear_procs(struct lxc_conf *c, const char *key);
-
+extern int lxc_clear_devices(struct lxc_conf *c);
 #endif /* __LXC_CONF_H */

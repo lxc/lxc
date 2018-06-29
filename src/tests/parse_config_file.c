@@ -727,6 +727,13 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
+	/* lxc.populate.device */
+	if (set_get_compare_clear_save_load(c, "lxc.populate.device", "/dev/sda:b:8:0:0666:0:0", tmpf,
+					    true) < 0) {
+		lxc_error("%s\n", "lxc.populate.device");
+		goto non_test_error;
+	}
+
 	/* lxc.proc */
 	if (set_get_compare_clear_save_load(c, "lxc.proc.oom_score_adj", "10", tmpf,
 					    true) < 0) {

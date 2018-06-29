@@ -1696,6 +1696,29 @@ dev/null proc/kcore none bind,relative 0 0
     </refsect2>
 
     <refsect2>
+      <title>Populate devices</title>
+      <para>
+        Specify the devices on host to be populated into the container.
+        For instance, you can populate the block device '/dev/sda' on host into the container.
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.populate.device</option>
+          </term>
+          <listitem>
+            <para>
+              Seven values must be provided. First The absolute path of the device in the container.
+	      Next a character, either 'b', or 'c', to specify the device type.
+	      Next is the major device number. Next is the minor device number.
+	      Next is the filemode of the device. Finally, user and group ownership of the devive.
+             </para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
       <title>Apparmor profile</title>
       <para>
         If lxc was compiled and installed with apparmor support, and the host
