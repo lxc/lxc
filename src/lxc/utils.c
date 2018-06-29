@@ -132,6 +132,7 @@ static int _recursive_rmdir(const char *dirname, dev_t pdev,
 			failed = 1;
 			continue;
 		}
+
 		if (onedev && mystat.st_dev != pdev) {
 			/* TODO should we be checking /proc/self/mountinfo for
 			 * pathname and not doing this if found? */
@@ -139,6 +140,7 @@ static int _recursive_rmdir(const char *dirname, dev_t pdev,
 				INFO("Removed btrfs subvolume at %s\n", pathname);
 			continue;
 		}
+
 		if (S_ISDIR(mystat.st_mode)) {
 			if (_recursive_rmdir(pathname, pdev, exclude, level+1, onedev) < 0)
 				failed=1;
@@ -233,6 +235,7 @@ extern int mkdir_p(const char *dir, mode_t mode)
 	do {
 		dir = tmp + strspn(tmp, "/");
 		tmp = dir + strcspn(dir, "/");
+
 		makeme = strndup(orig, dir - orig);
 		if (*makeme) {
 			if (mkdir(makeme, mode) && errno != EEXIST) {
@@ -253,9 +256,8 @@ char *get_rundir()
 	const char *homedir;
 	struct stat sb;
 
-	if (stat(RUNTIME_PATH, &sb) < 0) {
+	if (stat(RUNTIME_PATH, &sb) < 0)
 		return NULL;
-	}
 
 	if (geteuid() == sb.st_uid || getegid() == sb.st_gid) {
 		rundir = strdup(RUNTIME_PATH);
@@ -276,6 +278,9 @@ char *get_rundir()
 	}
 
 	rundir = malloc(sizeof(char) * (17 + strlen(homedir)));
+	if (!rundir)
+		return NULL;
+
 	sprintf(rundir, "%s/.cache/lxc/run/", homedir);
 
 	return rundir;
@@ -290,12 +295,16 @@ again:
 	if (ret == -1) {
 		if (errno == EINTR)
 			goto again;
+
 		return -1;
 	}
+
 	if (ret != pid)
 		goto again;
+
 	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
 		return -1;
+
 	return 0;
 }
 
@@ -308,45 +317,54 @@ again:
 	if (ret == -1) {
 		if (errno == EINTR)
 			goto again;
+
 		return -1;
 	}
+
 	if (ret != pid)
 		goto again;
+
 	return status;
 }
 
-ssize_t lxc_write_nointr(int fd, const void* buf, size_t count)
+ssize_t lxc_write_nointr(int fd, const void *buf, size_t count)
 {
 	ssize_t ret;
 again:
 	ret = write(fd, buf, count);
 	if (ret < 0 && errno == EINTR)
 		goto again;
+
 	return ret;
 }
 
-ssize_t lxc_read_nointr(int fd, void* buf, size_t count)
+ssize_t lxc_read_nointr(int fd, void *buf, size_t count)
 {
 	ssize_t ret;
 again:
 	ret = read(fd, buf, count);
 	if (ret < 0 && errno == EINTR)
 		goto again;
+
 	return ret;
 }
 
-ssize_t lxc_read_nointr_expect(int fd, void* buf, size_t count, const void* expected_buf)
+ssize_t lxc_read_nointr_expect(int fd, void *buf, size_t count, const void *expected_buf)
 {
 	ssize_t ret;
+
 	ret = lxc_read_nointr(fd, buf, count);
 	if (ret <= 0)
 		return ret;
+
 	if ((size_t)ret != count)
 		return -1;
+
 	if (expected_buf && memcmp(buf, expected_buf, count) != 0) {
 		errno = EINVAL;
 		return -1;
 	}
+
 	return ret;
 }
 
@@ -369,42 +387,50 @@ int sha1sum_file(char *fnam, unsigned char *digest)
 
 	if (!fnam)
 		return -1;
+
 	f = fopen_cloexec(fnam, "r");
 	if (!f) {
 		SYSERROR("Error opening template");
 		return -1;
 	}
+
 	if (fseek(f, 0, SEEK_END) < 0) {
 		SYSERROR("Error seeking to end of template");
 		fclose(f);
 		return -1;
 	}
+
 	if ((flen = ftell(f)) < 0) {
 		SYSERROR("Error telling size of template");
 		fclose(f);
 		return -1;
 	}
+
 	if (fseek(f, 0, SEEK_SET) < 0) {
 		SYSERROR("Error seeking to start of template");
 		fclose(f);
 		return -1;
 	}
+
 	if ((buf = malloc(flen+1)) == NULL) {
 		SYSERROR("Out of memory");
 		fclose(f);
 		return -1;
 	}
+
 	if (fread(buf, 1, flen, f) != flen) {
 		SYSERROR("Failure reading template");
 		free(buf);
 		fclose(f);
 		return -1;
 	}
+
 	if (fclose(f) < 0) {
 		SYSERROR("Failre closing template");
 		free(buf);
 		return -1;
 	}
+
 	buf[flen] = '\0';
 	ret = gnutls_hash_fast(GNUTLS_DIG_SHA1, buf, flen, (void *)digest);
 	free(buf);
@@ -433,6 +459,7 @@ char** lxc_va_arg_list_to_argv(va_list ap, size_t skip, int do_strdup)
 	result = calloc(count, sizeof(char*));
 	if (!result)
 		return NULL;
+
 	count = skip;
 	while (1) {
 		char* arg = va_arg(ap, char*);
@@ -515,6 +542,7 @@ struct lxc_popen_FILE *lxc_popen(const char *command)
 	fp = malloc(sizeof(*fp));
 	if (!fp)
 		goto on_error;
+
 	memset(fp, 0, sizeof(*fp));
 
 	fp->child_pid = child_pid;
@@ -587,6 +615,7 @@ char *lxc_string_replace(const char *needle, const char *replacement, const char
 			result = calloc(1, len + 1);
 			if (!result)
 				return NULL;
+
 			saved_len = len;
 		}
 
@@ -596,15 +625,20 @@ char *lxc_string_replace(const char *needle, const char *replacement, const char
 			part_len = (ssize_t)(p - last_p);
 			if (result && part_len > 0)
 				memcpy(&result[len], last_p, part_len);
+
 			len += part_len;
+
 			if (result && replacement_len > 0)
 				memcpy(&result[len], replacement, replacement_len);
+
 			len += replacement_len;
 			p += needle_len;
 		}
+
 		part_len = strlen(last_p);
 		if (result && part_len > 0)
 			memcpy(&result[len], last_p, part_len);
+
 		len += part_len;
 	}
 
@@ -615,6 +649,7 @@ char *lxc_string_replace(const char *needle, const char *replacement, const char
 		free(result);
 		return NULL;
 	}
+
 	/* make sure we didn't overwrite any buffer,
 	 * due to calloc the string should be 0-terminated */
 	if (result[len] != '\0') {
@@ -630,6 +665,7 @@ bool lxc_string_in_array(const char *needle, const char **haystack)
 	for (; haystack && *haystack; haystack++)
 		if (!strcmp(needle, *haystack))
 			return true;
+
 	return false;
 }
 
@@ -656,6 +692,7 @@ char *lxc_string_join(const char *sep, const char **parts, bool use_as_prefix)
 	for (p = (char **)parts; *p; p++) {
 		if (p > (char **)parts)
 			(void)strlcat(result, sep, buf_len);
+
 		(void)strlcat(result, *p, buf_len);
 	}
 
@@ -672,6 +709,7 @@ char **lxc_normalize_path(const char *path)
 	components = lxc_string_split(path, '/');
 	if (!components)
 		return NULL;
+
 	for (p = components; *p; p++)
 		components_len++;
 
@@ -720,6 +758,7 @@ char *lxc_deslashify(const char *path)
 			lxc_free_array((void **)parts, free);
 			return dup;
 		}
+
 		n = strcspn(dup, "/");
 		if (n == len) {
 			free(dup);
@@ -807,9 +846,11 @@ char **lxc_string_split(const char *string, char _sep)
 		r = lxc_grow_array((void ***)&result, &result_capacity, result_count + 1, 16);
 		if (r < 0)
 			goto error_out;
+
 		result[result_count] = strdup(token);
 		if (!result[result_count])
 			goto error_out;
+
 		result_count++;
 	}
 
@@ -817,11 +858,15 @@ char **lxc_string_split(const char *string, char _sep)
 	tmp = realloc(result, (result_count + 1) * sizeof(char *));
 	if (!tmp)
 		goto error_out;
+
 	result = tmp;
+
 	/* Make sure we don't return uninitialized memory. */
 	if (result_count == 0)
 		*result = NULL;
+
 	return result;
+
 error_out:
 	saved_errno = errno;
 	lxc_free_array((void **)result, free);
@@ -836,9 +881,11 @@ static bool complete_word(char ***result, char *start, char *end, size_t *cap, s
 	r = lxc_grow_array((void ***)result, cap, 2 + *cnt, 16);
 	if (r < 0)
 		return false;
+
 	(*result)[*cnt] = strndup(start, end - start);
 	if (!(*result)[*cnt])
 		return false;
+
 	(*cnt)++;
 
 	return true;
@@ -918,22 +965,27 @@ char **lxc_string_split_and_trim(const char *string, char _sep)
 	for (; (token = strtok_r(str, sep, &saveptr)); str = NULL) {
 		while (token[0] == ' ' || token[0] == '\t')
 			token++;
+
 		i = strlen(token);
 		while (i > 0 && (token[i - 1] == ' ' || token[i - 1] == '\t')) {
 			token[i - 1] = '\0';
 			i--;
 		}
+
 		r = lxc_grow_array((void ***)&result, &result_capacity, result_count + 1, 16);
 		if (r < 0)
 			goto error_out;
+
 		result[result_count] = strdup(token);
 		if (!result[result_count])
 			goto error_out;
+
 		result_count++;
 	}
 
 	/* if we allocated too much, reduce it */
 	return realloc(result, (result_count + 1) * sizeof(char *));
+
 error_out:
 	saved_errno = errno;
 	lxc_free_array((void **)result, free);
@@ -944,12 +996,14 @@ error_out:
 void lxc_free_array(void **array, lxc_free_fn element_free_fn)
 {
 	void **p;
+
 	for (p = array; p && *p; p++)
 		element_free_fn(*p);
+
 	free((void*)array);
 }
 
-int lxc_grow_array(void ***array, size_t* capacity, size_t new_size, size_t capacity_increment)
+int lxc_grow_array(void ***array, size_t *capacity, size_t new_size, size_t capacity_increment)
 {
 	size_t new_capacity;
 	void **new_array;
@@ -964,11 +1018,13 @@ int lxc_grow_array(void ***array, size_t* capacity, size_t new_size, size_t capa
 	new_capacity = *capacity;
 	while (new_size + 1 > new_capacity)
 		new_capacity += capacity_increment;
+
 	if (new_capacity != *capacity) {
 		/* we have to reallocate */
 		new_array = realloc(*array, new_capacity * sizeof(void *));
 		if (!new_array)
 			return -1;
+
 		memset(&new_array[*capacity], 0, (new_capacity - (*capacity)) * sizeof(void *));
 		*array = new_array;
 		*capacity = new_capacity;
@@ -998,16 +1054,20 @@ int lxc_write_to_file(const char *filename, const void *buf, size_t count,
 	fd = open(filename, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode);
 	if (fd < 0)
 		return -1;
+
 	ret = lxc_write_nointr(fd, buf, count);
 	if (ret < 0)
 		goto out_error;
+
 	if ((size_t)ret != count)
 		goto out_error;
+
 	if (add_newline) {
 		ret = lxc_write_nointr(fd, "\n", 1);
 		if (ret != 1)
 			goto out_error;
 	}
+
 	close(fd);
 	return 0;
 
@@ -1018,7 +1078,7 @@ out_error:
 	return -1;
 }
 
-int lxc_read_from_file(const char *filename, void* buf, size_t count)
+int lxc_read_from_file(const char *filename, void *buf, size_t count)
 {
 	int fd = -1, saved_errno;
 	ssize_t ret;
@@ -1064,9 +1124,11 @@ void **lxc_append_null_to_array(void **array, size_t count)
 			free(array);
 			return NULL;
 		}
+
 		array = temp;
 		array[count] = NULL;
 	}
+
 	return array;
 }
 
@@ -1105,6 +1167,7 @@ uid_t get_ns_uid(uid_t orig)
 	while (getline(&line, &sz, f) != -1) {
 		if (sscanf(line, "%u %u %u", &nsid, &hostid, &range) != 3)
 			continue;
+
 		if (hostid <= orig && hostid + range > orig) {
 			nsid += orig - hostid;
 			goto found;
@@ -1112,6 +1175,7 @@ uid_t get_ns_uid(uid_t orig)
 	}
 
 	nsid = 0;
+
 found:
 	fclose(f);
 	free(line);
@@ -1127,6 +1191,7 @@ bool dir_exists(const char *path)
 	if (ret < 0)
 		/* Could be something other than eexist, just say "no". */
 		return false;
+
 	return S_ISDIR(sb.st_mode);
 }
 
@@ -1171,14 +1236,17 @@ int detect_shared_rootfs(void)
 	f = fopen("/proc/self/mountinfo", "r");
 	if (!f)
 		return 0;
+
 	while (fgets(buf, LXC_LINELEN, f)) {
 		for (p = buf, i = 0; p && i < 4; i++)
 			p = strchr(p + 1, ' ');
 		if (!p)
 			continue;
+
 		p2 = strchr(p + 1, ' ');
 		if (!p2)
 			continue;
+
 		*p2 = '\0';
 		if (strcmp(p + 1, "/") == 0) {
 			/* This is '/'. Is it shared? */
@@ -1189,6 +1257,7 @@ int detect_shared_rootfs(void)
 			}
 		}
 	}
+
 	fclose(f);
 	return 0;
 }
@@ -1214,6 +1283,7 @@ bool switch_to_ns(pid_t pid, const char *ns) {
 		close(fd);
 		return false;
 	}
+
 	close(fd);
 	return true;
 }
@@ -1242,9 +1312,11 @@ bool detect_ramfs_rootfs(void)
 			p = strchr(p + 1, ' ');
 		if (!p)
 			continue;
+
 		p2 = strchr(p + 1, ' ');
 		if (!p2)
 			continue;
+
 		*p2 = '\0';
 		if (strcmp(p + 1, "/") == 0) {
 			/* This is '/'. Is it the ramfs? */
@@ -1256,6 +1328,7 @@ bool detect_ramfs_rootfs(void)
 			}
 		}
 	}
+
 	free(line);
 	fclose(f);
 	return false;
@@ -1324,6 +1397,7 @@ char *choose_init(const char *rootfs)
 	if (!getenv("PATH")) {
 		if (setenv("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", 0))
 			SYSERROR("Failed to setenv");
+
 		env_set = 1;
 	}
 
@@ -1351,6 +1425,7 @@ char *choose_init(const char *rootfs)
 		ERROR("pathname too long");
 		goto out1;
 	}
+
 	if (access(retv, X_OK) == 0)
 		return retv;
 
@@ -1359,6 +1434,7 @@ char *choose_init(const char *rootfs)
 		ERROR("pathname too long");
 		goto out1;
 	}
+
 	if (access(retv, X_OK) == 0)
 		return retv;
 
@@ -1367,6 +1443,7 @@ char *choose_init(const char *rootfs)
 		ERROR("pathname too long");
 		goto out1;
 	}
+
 	if (access(retv, X_OK) == 0)
 		return retv;
 
@@ -1375,6 +1452,7 @@ char *choose_init(const char *rootfs)
 		ERROR("pathname too long");
 		goto out1;
 	}
+
 	if (access(retv, X_OK) == 0)
 		return retv;
 
@@ -1393,6 +1471,7 @@ char *choose_init(const char *rootfs)
 		WARN("Nonsense - name /lxc.init.static too long");
 		goto out1;
 	}
+
 	if (access(retv, X_OK) == 0)
 		return retv;
 
@@ -1409,8 +1488,10 @@ int print_to_file(const char *file, const char *content)
 	f = fopen(file, "w");
 	if (!f)
 		return -1;
+
 	if (fprintf(f, "%s", content) != strlen(content))
 		ret = -1;
+
 	fclose(f);
 	return ret;
 }
@@ -1418,9 +1499,12 @@ int print_to_file(const char *file, const char *content)
 int is_dir(const char *path)
 {
 	struct stat statbuf;
-	int ret = stat(path, &statbuf);
+	int ret;
+
+	ret = stat(path, &statbuf);
 	if (ret == 0 && S_ISDIR(statbuf.st_mode))
 		return 1;
+
 	return 0;
 }
 
@@ -1441,14 +1525,17 @@ char *get_template_path(const char *t)
 	}
 
 	len = strlen(LXCTEMPLATEDIR) + strlen(t) + strlen("/lxc-") + 1;
+
 	tpath = malloc(len);
 	if (!tpath)
 		return NULL;
+
 	ret = snprintf(tpath, len, "%s/lxc-%s", LXCTEMPLATEDIR, t);
 	if (ret < 0 || ret >= len) {
 		free(tpath);
 		return NULL;
 	}
+
 	if (access(tpath, X_OK) < 0) {
 		SYSERROR("bad template: %s", t);
 		free(tpath);
@@ -1474,6 +1561,7 @@ static char *get_nextpath(char *path, int *offsetp, int fulllen)
 
 	while (path[offset] != '\0' && offset < fulllen)
 		offset++;
+
 	while (path[offset] == '\0' && offset < fulllen)
 		offset++;
 
@@ -1491,12 +1579,16 @@ static bool is_subdir(const char *subdir, const char *dir, size_t len)
 
 	if (subdirlen < len)
 		return false;
+
 	if (strncmp(subdir, dir, len) != 0)
 		return false;
+
 	if (dir[len-1] == '/')
 		return true;
+
 	if (subdir[len] == '/' || subdirlen == len)
 		return true;
+
 	return false;
 }
 
@@ -1507,11 +1599,15 @@ static bool is_subdir(const char *subdir, const char *dir, size_t len)
 static int check_symlink(int fd)
 {
 	struct stat sb;
-	int ret = fstat(fd, &sb);
+	int ret;
+
+	ret = fstat(fd, &sb);
 	if (ret < 0)
 		return -ENOENT;
+
 	if (S_ISLNK(sb.st_mode))
 		return -ELOOP;
+
 	return 0;
 }
 
@@ -1579,6 +1675,7 @@ static int open_without_symlink(const char *target, const char *prefix_skip)
 				target, prefix_skip);
 			return -EINVAL;
 		}
+
 		/*
 		 * get_nextpath() expects the curlen argument to be
 		 * on a  (turned into \0) / or before it, so decrement
@@ -1596,6 +1693,7 @@ static int open_without_symlink(const char *target, const char *prefix_skip)
 		SYSERROR("Out of memory checking for symbolic link");
 		return -ENOMEM;
 	}
+
 	for (i = 0; i < fulllen; i++) {
 		if (dup[i] == '/')
 			dup[i] = '\0';
@@ -1604,20 +1702,24 @@ static int open_without_symlink(const char *target, const char *prefix_skip)
 	dirfd = open(prefix_skip, O_RDONLY);
 	if (dirfd < 0)
 		goto out;
+
 	while (1) {
 		int newfd, saved_errno;
 		char *nextpath;
 
 		if ((nextpath = get_nextpath(dup, &curlen, fulllen)) == NULL)
 			goto out;
+
 		newfd = open_if_safe(dirfd, nextpath);
 		saved_errno = errno;
 		close(dirfd);
+
 		dirfd = newfd;
 		if (newfd < 0) {
 			errno = saved_errno;
 			if (errno == ELOOP)
 				SYSERROR("%s in %s was a symbolic link!", nextpath, target);
+
 			goto out;
 		}
 	}
@@ -1650,9 +1752,11 @@ int safe_mount(const char *src, const char *dest, const char *fstype,
 	/* todo - allow symlinks for relative paths if 'allowsymlinks' option is passed */
 	if (flags & MS_BIND && src && src[0] != '/') {
 		INFO("this is a relative bind mount");
+
 		srcfd = open_without_symlink(src, NULL);
 		if (srcfd < 0)
 			return srcfd;
+
 		ret = snprintf(srcbuf, 50, "/proc/self/fd/%d", srcfd);
 		if (ret < 0 || ret > 50) {
 			close(srcfd);
@@ -1669,6 +1773,7 @@ int safe_mount(const char *src, const char *dest, const char *fstype,
 			close(srcfd);
 			errno = saved_errno;
 		}
+
 		return destfd;
 	}
 
@@ -1676,6 +1781,7 @@ int safe_mount(const char *src, const char *dest, const char *fstype,
 	if (ret < 0 || ret > 50) {
 		if (srcfd != -1)
 			close(srcfd);
+
 		close(destfd);
 		ERROR("Out of memory");
 		return -EINVAL;
@@ -1685,6 +1791,7 @@ int safe_mount(const char *src, const char *dest, const char *fstype,
 	saved_errno = errno;
 	if (srcfd != -1)
 		close(srcfd);
+
 	close(destfd);
 	if (ret < 0) {
 		errno = saved_errno;
@@ -1731,6 +1838,7 @@ int lxc_mount_proc_if_needed(const char *rootfs)
 	if (linklen < 0) {
 		if (mkdir(path, 0755) && errno != EEXIST)
 			return -1;
+
 		goto domount;
 	} else if (linklen >= LXC_NUMSTRLEN64) {
 		link[linklen - 1] = '\0';
@@ -1800,8 +1908,9 @@ int set_stdfds(int fd)
 int null_stdfds(void)
 {
 	int ret = -1;
-	int fd = open_devnull();
+	int fd;
 
+	fd = open_devnull();
 	if (fd >= 0) {
 		ret = set_stdfds(fd);
 		close(fd);
@@ -1827,6 +1936,7 @@ int lxc_count_file_lines(const char *fn)
 	while (getline(&line, &sz, f) != -1) {
 		n++;
 	}
+
 	free(line);
 	fclose(f);
 	return n;
@@ -2241,6 +2351,7 @@ pop_stack:
 		 */
 		if (umounts != INT_MAX)
 			umounts++;
+
 		/* We succeeded in umounting. Make sure that there's no other
 		 * mountpoint stacked underneath.
 		 */
@@ -2374,6 +2485,7 @@ char *must_copy_string(const char *entry)
 
 	if (!entry)
 		return NULL;
+
 	do {
 		ret = strdup(entry);
 	} while (!ret);
