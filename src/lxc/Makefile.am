@@ -17,8 +17,6 @@ noinst_HEADERS = \
 	storage/zfs.h \
 	storage/storage_utils.h \
 	tools/arguments.h \
-	tools/tool_utils.h \
-	tools/tool_list.h \
 	cgroups/cgroup.h \
 	cgroups/cgroup_utils.h \
 	caps.h \
