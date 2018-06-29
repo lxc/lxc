@@ -54,7 +54,7 @@ static const struct option my_longopts[] = {
 	LXC_COMMON_OPTIONS
 };
 
-lxc_log_define(lxc_start, lxc);
+lxc_log_define(lxc_checkpoint, lxc);
 
 static int my_checker(const struct lxc_arguments *args)
 {
