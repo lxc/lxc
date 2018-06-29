@@ -68,7 +68,6 @@ struct prctl_mm_map {
 };
 #endif
 
-extern void lxc_setup_fs(void);
 extern const char *lxc_global_config_value(const char *option_name);
 
 /* open a file with O_CLOEXEC */
