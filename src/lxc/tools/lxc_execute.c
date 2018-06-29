@@ -36,12 +36,16 @@
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
-#include "tool_list.h"
-#include "tool_utils.h"
+#include "caps.h"
+#include "confile.h"
+#include "log.h"
+#include "utils.h"
+
+lxc_log_define(lxc_execute, lxc);
 
 static struct lxc_list defines;
 
-static int my_parser(struct lxc_arguments* args, int c, char* arg)
+static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
 	int ret;
 
@@ -78,6 +82,7 @@ static int my_parser(struct lxc_arguments* args, int c, char* arg)
 		args->share_ns[LXC_NS_PID] = arg;
 		break;
 	}
+
 	return 0;
 }
 
@@ -117,10 +122,10 @@ Options :\n\
 static bool set_argv(struct lxc_container *c, struct lxc_arguments *args)
 {
 	int ret;
-	char buf[TOOL_MAXPATHLEN];
+	char buf[MAXPATHLEN];
 	char **components, **p;
 
-	ret = c->get_config_item(c, "lxc.execute.cmd", buf, TOOL_MAXPATHLEN);
+	ret = c->get_config_item(c, "lxc.execute.cmd", buf, MAXPATHLEN);
 	if (ret < 0)
 		return false;
 
@@ -166,31 +171,33 @@ int main(int argc, char *argv[])
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {
-		fprintf(stderr, "Failed to create lxc_container\n");
+		ERROR("Failed to create lxc_container");
 		exit(err);
 	}
 
 	if (my_args.rcfile) {
 		c->clear_config(c);
+
 		if (!c->load_config(c, my_args.rcfile)) {
-			fprintf(stderr, "Failed to load rcfile\n");
+			ERROR("Failed to load rcfile");
 			goto out;
 		}
+
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
-			fprintf(stderr, "Out of memory setting new config filename\n");
+			ERROR("Out of memory setting new config filename");
 			goto out;
 		}
 	}
 
 	if (!c->lxc_conf) {
-		fprintf(stderr, "Executing a container with no configuration file may crash the host\n");
+		ERROR("Executing a container with no configuration file may crash the host");
 		goto out;
 	}
 
 	if (my_args.argc == 0) {
 		if (!set_argv(c, &my_args)) {
-			fprintf(stderr, "missing command to execute!\n");
+			ERROR("Missing command to execute!");
 			goto out;
 		}
 	}
@@ -227,11 +234,13 @@ int main(int argc, char *argv[])
 		goto out;
 
 	c->daemonize = my_args.daemonize == 1;
+
 	bret = c->start(c, 1, my_args.argv);
 	if (!bret) {
-		fprintf(stderr, "Failed run an application inside container\n");
+		ERROR("Failed run an application inside container");
 		goto out;
 	}
+
 	if (c->daemonize) {
 		err = EXIT_SUCCESS;
 	} else {
@@ -242,7 +251,6 @@ int main(int argc, char *argv[])
 			kill(0, WTERMSIG(c->error_num));
 		}
 	}
-
 
 out:
 	lxc_container_put(c);
