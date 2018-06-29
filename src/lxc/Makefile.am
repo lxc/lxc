@@ -268,7 +268,7 @@ if ENABLE_TOOLS
 lxc_attach_SOURCES = tools/lxc_attach.c tools/arguments.c
 lxc_autostart_SOURCES = tools/lxc_autostart.c tools/arguments.c
 lxc_cgroup_SOURCES = tools/lxc_cgroup.c tools/arguments.c
-lxc_config_SOURCES = tools/lxc_config.c tools/arguments.c tools/tool_utils.c
+lxc_config_SOURCES = tools/lxc_config.c tools/arguments.c
 lxc_console_SOURCES = tools/lxc_console.c tools/arguments.c tools/tool_utils.c
 lxc_destroy_SOURCES = tools/lxc_destroy.c tools/arguments.c tools/tool_utils.c
 lxc_device_SOURCES = tools/lxc_device.c tools/arguments.c tools/tool_utils.c
