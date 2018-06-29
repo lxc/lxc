@@ -40,7 +40,9 @@
 #include <sys/wait.h>
 
 #include "arguments.h"
-#include "tool_utils.h"
+#include "caps.h"
+#include "namespace.h"
+#include "utils.h"
 
 /* Define sethostname() if missing from the C library also workaround some
  * quirky with having this defined in multiple places.
@@ -76,12 +78,13 @@ static void usage(char *cmd)
 	fprintf(stderr, "\t -H <hostname>: Set the hostname in the container\n");
 	fprintf(stderr, "\t -d           : Daemonize (do not wait for container to exit)\n");
 	fprintf(stderr, "\t -M           : Remount default fs inside container (/proc /dev/shm /dev/mqueue)\n");
+
 	_exit(EXIT_SUCCESS);
 }
 
 static bool lookup_user(const char *optarg, uid_t *uid)
 {
-	char name[TOOL_MAXPATHLEN];
+	char name[MAXPATHLEN];
 	struct passwd pwent;
 	struct passwd *pwentp = NULL;
 	char *buf;
@@ -109,20 +112,21 @@ static bool lookup_user(const char *optarg, uid_t *uid)
 		ret = getpwnam_r(name, &pwent, buf, bufsize, &pwentp);
 		if (!pwentp) {
 			if (ret == 0)
-				fprintf(stderr, "could not find matched password record\n");
+				fprintf(stderr, "Could not find matched password record\n");
 
-			fprintf(stderr, "invalid username %s\n", name);
+			fprintf(stderr, "Invalid username %s\n", name);
 			free(buf);
 			return false;
 		}
+
 		*uid = pwent.pw_uid;
 	} else {
 		ret = getpwuid_r(*uid, &pwent, buf, bufsize, &pwentp);
 		if (!pwentp) {
 			if (ret == 0)
-				fprintf(stderr, "could not find matched password record\n");
+				fprintf(stderr, "Could not find matched password record\n");
 
-			fprintf(stderr, "invalid uid %u\n", *uid);
+			fprintf(stderr, "Invalid uid %u\n", *uid);
 			free(buf);
 			return false;
 		}
@@ -142,6 +146,37 @@ struct start_arg {
 	const char *want_hostname;
 };
 
+static int mount_fs(const char *source, const char *target, const char *type)
+{
+	/* the umount may fail */
+	if (umount(target) < 0)
+
+	if (mount(source, target, type, 0, NULL) < 0)
+		return -1;
+
+	return 0;
+}
+
+static void lxc_setup_fs(void)
+{
+	(void)mount_fs("proc", "/proc", "proc");
+
+	/* if /dev has been populated by us, /dev/shm does not exist */
+	if (access("/dev/shm", F_OK))
+		(void)mkdir("/dev/shm", 0777);
+
+	/* if we can't mount /dev/shm, continue anyway */
+	(void)mount_fs("shmfs", "/dev/shm", "tmpfs");
+
+	/* If we were able to mount /dev/shm, then /dev exists */
+	/* Sure, but it's read-only per config :) */
+	if (access("/dev/mqueue", F_OK))
+		(void)mkdir("/dev/mqueue", 0666);
+
+	/* continue even without posix message queue support */
+	(void)mount_fs("mqueue", "/dev/mqueue", "mqueue");
+}
+
 static int do_start(void *arg)
 {
 	int ret;
@@ -159,8 +194,8 @@ static int do_start(void *arg)
 		ret = read(wait_fd, &wait_val, sizeof(wait_val));
 		if (ret == -1) {
 			close(wait_fd);
-			fprintf(stderr, "read eventfd failed\n");
-			exit(EXIT_FAILURE);
+			fprintf(stderr, "Failed to read eventfd\n");
+			_exit(EXIT_FAILURE);
 		}
 	}
 
@@ -169,30 +204,29 @@ static int do_start(void *arg)
 
 	if ((flags & CLONE_NEWUTS) && want_hostname)
 		if (sethostname_including_android(want_hostname, strlen(want_hostname)) < 0) {
-			fprintf(stderr, "failed to set hostname %s: %s\n", want_hostname, strerror(errno));
-			exit(EXIT_FAILURE);
+			fprintf(stderr, "Failed to set hostname %s: %s\n", want_hostname, strerror(errno));
+			_exit(EXIT_FAILURE);
 		}
 
 	/* Setuid is useful even without a new user id space. */
 	if (start_arg->setuid && setuid(uid)) {
-		fprintf(stderr, "failed to set uid %d: %s\n", uid, strerror(errno));
-		exit(EXIT_FAILURE);
+		fprintf(stderr, "Failed to set uid %d: %s\n", uid, strerror(errno));
+		_exit(EXIT_FAILURE);
 	}
 
 	execvp(args[0], args);
 
-	fprintf(stderr, "failed to exec: '%s': %s\n", args[0], strerror(errno));
+	fprintf(stderr, "Failed to exec: '%s': %s\n", args[0], strerror(errno));
 	return 1;
 }
 
-int write_id_mapping(pid_t pid, const char *buf, size_t buf_size)
+static int write_id_mapping(pid_t pid, const char *buf, size_t buf_size)
 {
-	char path[TOOL_MAXPATHLEN];
+	char path[MAXPATHLEN];
 	int fd, ret;
 
-
-	ret = snprintf(path, TOOL_MAXPATHLEN, "/proc/%d/uid_map", pid);
-	if (ret < 0 || ret >= TOOL_MAXPATHLEN)
+	ret = snprintf(path, MAXPATHLEN, "/proc/%d/uid_map", pid);
+	if (ret < 0 || ret >= MAXPATHLEN)
 		return -E2BIG;
 
 	fd = open(path, O_WRONLY);
@@ -239,6 +273,7 @@ int main(int argc, char *argv[])
 				perror("malloc");
 				exit(EXIT_FAILURE);
 			}
+
 			tmpif->mi_ifname = optarg;
 			tmpif->mi_next = my_iflist;
 			my_iflist = tmpif;
@@ -263,7 +298,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (argv[optind] == NULL) {
-		fprintf(stderr, "a command to execute in the new namespace is required\n");
+		fprintf(stderr, "A command to execute in the new namespace is required\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -320,14 +355,14 @@ int main(int argc, char *argv[])
 	if (start_arg.setuid) {
 		start_arg.wait_fd = eventfd(0, EFD_CLOEXEC);
 		if (start_arg.wait_fd < 0) {
-			fprintf(stderr, "failed to create eventfd\n");
+			fprintf(stderr, "Failed to create eventfd\n");
 			exit(EXIT_FAILURE);
 		}
 	}
 
 	pid = lxc_clone(do_start, &start_arg, flags);
 	if (pid < 0) {
-		fprintf(stderr, "failed to clone\n");
+		fprintf(stderr, "Failed to clone\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -341,7 +376,7 @@ int main(int argc, char *argv[])
 		ret = snprintf(umap, 100, "%d %d 1\n" , *(start_arg.uid), getuid());
 		if (ret < 0 || ret >= 100) {
 			close(start_arg.wait_fd);
-			fprintf(stderr, "snprintf failed");
+			fprintf(stderr, "snprintf is failed\n");
 			exit(EXIT_FAILURE);
 		}
 
@@ -355,7 +390,7 @@ int main(int argc, char *argv[])
 		ret = write(start_arg.wait_fd, &wait_val, sizeof(wait_val));
 		if (ret < 0) {
 			close(start_arg.wait_fd);
-			fprintf(stderr, "write to eventfd failed\n");
+			fprintf(stderr, "Failed to write eventfd\n");
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -375,10 +410,10 @@ int main(int argc, char *argv[])
 
 				ret = snprintf(buf, 256, "%d", pid);
 				if (ret < 0 || ret >= 256)
-					exit(EXIT_FAILURE);
+					_exit(EXIT_FAILURE);
 
 				execlp("ip", "ip", "link", "set", "dev", tmpif->mi_ifname, "netns", buf, (char *)NULL);
-				exit(EXIT_FAILURE);
+				_exit(EXIT_FAILURE);
 			}
 
 			if (wait_for_pid(pid) != 0)
@@ -392,7 +427,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_SUCCESS);
 
 	if (wait_for_pid(pid) != 0) {
-		fprintf(stderr, "failed to wait for '%d'\n", pid);
+		fprintf(stderr, "Failed to wait for '%d'\n", pid);
 		exit(EXIT_FAILURE);
 	}
 
