@@ -159,7 +159,7 @@ static inline int setns(int fd, int nstype)
 
 /* Define sethostname() if missing from the C library */
 #ifndef HAVE_SETHOSTNAME
-static inline int sethostname(const char * name, size_t len)
+static inline int sethostname(const char *name, size_t len)
 {
 #ifdef __NR_sethostname
 return syscall(__NR_sethostname, name, len);
@@ -392,8 +392,8 @@ extern int wait_for_pid(pid_t pid);
 extern int lxc_wait_for_pid_status(pid_t pid);
 
 /* send and receive buffers completely */
-extern ssize_t lxc_write_nointr(int fd, const void* buf, size_t count);
-extern ssize_t lxc_read_nointr(int fd, void* buf, size_t count);
+extern ssize_t lxc_write_nointr(int fd, const void *buf, size_t count);
+extern ssize_t lxc_read_nointr(int fd, void *buf, size_t count);
 extern ssize_t lxc_read_nointr_expect(int fd, void *buf, size_t count,
 				      const void *expected_buf);
 #if HAVE_LIBGNUTLS
@@ -404,7 +404,7 @@ extern int sha1sum_file(char *fnam, unsigned char *md_value);
 /* read and write whole files */
 extern int lxc_write_to_file(const char *filename, const void *buf,
 			     size_t count, bool add_newline, mode_t mode);
-extern int lxc_read_from_file(const char *filename, void* buf, size_t count);
+extern int lxc_read_from_file(const char *filename, void *buf, size_t count);
 
 /* convert variadic argument lists to arrays (for execl type argument lists) */
 extern char** lxc_va_arg_list_to_argv(va_list ap, size_t skip, int do_strdup);
