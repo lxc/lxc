@@ -842,20 +842,22 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	ret = lxc_terminal_map_ids(conf, &conf->console);
 	if (ret < 0) {
 		ERROR("Failed to chown console");
-		goto out_restore_sigmask;
+		goto out_delete_terminal;
 	}
 	TRACE("Chowned console");
 
 	handler->cgroup_ops = cgroup_init(handler);
 	if (!handler->cgroup_ops) {
 		ERROR("Failed to initialize cgroup driver");
-		goto out_restore_sigmask;
+		goto out_delete_terminal;
 	}
 	TRACE("Initialized cgroup driver");
 
 	INFO("Container \"%s\" is initialized", name);
 	return 0;
 
+out_delete_terminal:
+	lxc_terminal_delete(&handler->conf->console);
 out_restore_sigmask:
 	(void)pthread_sigmask(SIG_SETMASK, &handler->oldmask, NULL);
 out_delete_tty:
