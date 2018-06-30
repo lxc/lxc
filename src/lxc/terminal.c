@@ -570,11 +570,18 @@ static int lxc_terminal_peer_proxy_alloc(struct lxc_terminal *terminal,
 	/* This is the proxy terminal that will be given to the client, and
 	 * that the real terminal master will send to / recv from.
 	 */
-	ret = openpty(&terminal->proxy.master, &terminal->proxy.slave,
-		      terminal->proxy.name, NULL, NULL);
+	ret = openpty(&terminal->proxy.master, &terminal->proxy.slave, NULL,
+		      NULL, NULL);
 	if (ret < 0) {
 		SYSERROR("Failed to open proxy terminal");
 		return -1;
+	}
+
+	ret = ttyname_r(terminal->proxy.slave, terminal->proxy.name,
+			sizeof(terminal->proxy.name));
+	if (ret < 0) {
+		SYSERROR("Failed to retrieve name of proxy terminal slave");
+		goto on_error;
 	}
 
 	ret = lxc_setup_tios(terminal->proxy.slave, &oldtermio);
@@ -862,10 +869,16 @@ int lxc_terminal_create(struct lxc_terminal *terminal)
 {
 	int ret;
 
-	ret = openpty(&terminal->master, &terminal->slave, terminal->name, NULL, NULL);
+	ret = openpty(&terminal->master, &terminal->slave, NULL, NULL, NULL);
 	if (ret < 0) {
 		SYSERROR("Failed to open terminal");
 		return -1;
+	}
+
+	ret = ttyname_r(terminal->slave, terminal->name, sizeof(terminal->name));
+	if (ret < 0) {
+		SYSERROR("Failed to retrieve name of terminal slave");
+		goto err;
 	}
 
 	ret = fcntl(terminal->master, F_SETFD, FD_CLOEXEC);
