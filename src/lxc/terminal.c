@@ -584,6 +584,18 @@ static int lxc_terminal_peer_proxy_alloc(struct lxc_terminal *terminal,
 		goto on_error;
 	}
 
+	ret = fd_cloexec(terminal->proxy.master, true);
+	if (ret < 0) {
+		SYSERROR("Failed to set FD_CLOEXEC flag on proxy terminal master");
+		goto on_error;
+	}
+
+	ret = fd_cloexec(terminal->proxy.slave, true);
+	if (ret < 0) {
+		SYSERROR("Failed to set FD_CLOEXEC flag on proxy terminal slave");
+		goto on_error;
+	}
+
 	ret = lxc_setup_tios(terminal->proxy.slave, &oldtermio);
 	if (ret < 0)
 		goto on_error;
@@ -881,13 +893,13 @@ int lxc_terminal_create(struct lxc_terminal *terminal)
 		goto err;
 	}
 
-	ret = fcntl(terminal->master, F_SETFD, FD_CLOEXEC);
+	ret = fd_cloexec(terminal->master, true);
 	if (ret < 0) {
 		SYSERROR("Failed to set FD_CLOEXEC flag on terminal master");
 		goto err;
 	}
 
-	ret = fcntl(terminal->slave, F_SETFD, FD_CLOEXEC);
+	ret = fd_cloexec(terminal->slave, true);
 	if (ret < 0) {
 		SYSERROR("Failed to set FD_CLOEXEC flag on terminal slave");
 		goto err;
