@@ -47,13 +47,6 @@
 static const char *lsm_config_key = NULL;
 static const char *lsm_label = NULL;
 
-bool file_exists(const char *f)
-{
-	struct stat statbuf;
-
-	return stat(f, &statbuf) == 0;
-}
-
 static void test_lsm_detect(void)
 {
 	if (lsm_enabled()) {
