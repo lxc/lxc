@@ -44,7 +44,7 @@
 #include "monitor.h"
 #include "start.h"
 
-lxc_log_define(lxc_state, lxc);
+lxc_log_define(state, lxc);
 
 static const char *const strstate[] = {
     "STOPPED",  "STARTING", "RUNNING", "STOPPING",

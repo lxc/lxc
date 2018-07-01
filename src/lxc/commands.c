@@ -76,7 +76,7 @@
  * container.
  */
 
-lxc_log_define(lxc_commands, lxc);
+lxc_log_define(commands, lxc);
 
 static const char *lxc_cmd_str(lxc_cmd_t cmd)
 {

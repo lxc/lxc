@@ -40,7 +40,7 @@
 #include "include/strlcpy.h"
 #endif
 
-lxc_log_define(lxc_confile_utils, lxc);
+lxc_log_define(confile_utils, lxc);
 
 int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 		 unsigned long *hostid, unsigned long *range)

@@ -38,6 +38,7 @@
 
 #include "arguments.h"
 #include "namespace.h"
+#include "initutils.h"
 
 static int build_shortopts(const struct option *a_options, char *a_shortopts,
 			   size_t a_size)
@@ -184,13 +185,6 @@ static int lxc_arguments_lxcpath_add(struct lxc_arguments *args,
 	}
 	args->lxcpath[args->lxcpath_cnt++] = lxcpath;
 	return 0;
-}
-
-void remove_trailing_slashes(char *p)
-{
-	int l = strlen(p);
-	while (--l >= 0 && (p[l] == '/' || p[l] == '\n'))
-		p[l] = '\0';
 }
 
 extern int lxc_arguments_parse(struct lxc_arguments *args, int argc,

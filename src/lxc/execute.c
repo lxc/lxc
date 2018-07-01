@@ -34,7 +34,7 @@
 #include "start.h"
 #include "utils.h"
 
-lxc_log_define(lxc_execute, lxc_start);
+lxc_log_define(execute, start);
 
 static int execute_start(struct lxc_handler *handler, void* data)
 {
