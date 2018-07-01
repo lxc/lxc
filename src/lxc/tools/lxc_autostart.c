@@ -111,17 +111,14 @@ static int list_contains_entry(char *str_ptr, struct lxc_list *p1) {
 	 * If the entry is NULL or the empty string and the list
 	 * is NULL, we have a match
 	 */
-	if (!p1 && !str_ptr)
-		return 1;
-
-	if (!p1 && !(*str_ptr))
+	if (!p1 && (!str_ptr || !*str_ptr))
 		return 1;
 
 	if (!p1)
 		return 0;
 
 	lxc_list_for_each(it1, p1) {
-		if (!strncmp(it1->elem, str_ptr, strlen(it1->elem)))
+		if (strncmp(it1->elem, str_ptr, strlen(it1->elem)) == 0)
 			return 1;
 	}
 
@@ -361,7 +358,7 @@ int main(int argc, char *argv[])
 	qsort(&containers[0], count, sizeof(struct lxc_container *), cmporder);
 
 	if (cmd_groups_list && my_args.all)
-		ERROR("Specifying -a (all) with -g (groups) doesn't make sense. All option overrides.");
+		ERROR("Specifying -a (all) with -g (groups) doesn't make sense. All option overrides");
 
 	/* We need a default cmd_groups_list even for the -a
 	 * case in order to force a pass through the loop for
@@ -391,7 +388,7 @@ int main(int argc, char *argv[])
 			 */
 			if (!c->may_control(c)) {
 				/* We're done with this container */
-				if ( lxc_container_put(c) > 0 )
+				if (lxc_container_put(c) > 0)
 					containers[i] = NULL;
 
 				continue;
