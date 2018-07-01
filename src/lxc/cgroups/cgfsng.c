@@ -66,7 +66,7 @@
 #include "include/strlcat.h"
 #endif
 
-lxc_log_define(lxc_cgfsng, lxc);
+lxc_log_define(cgfsng, cgroup);
 
 static void free_string_list(char **clist)
 {

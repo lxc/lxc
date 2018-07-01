@@ -38,7 +38,7 @@
 #include "state.h"
 #include "utils.h"
 
-lxc_log_define(lxc_commands_utils, lxc);
+lxc_log_define(commands_utils, lxc);
 
 int lxc_cmd_sock_rcv_state(int state_client_fd, int timeout)
 {

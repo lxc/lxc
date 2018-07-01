@@ -94,7 +94,7 @@
 #include "include/strlcpy.h"
 #endif
 
-lxc_log_define(lxc_start, lxc);
+lxc_log_define(start, lxc);
 
 extern void mod_all_rdeps(struct lxc_container *c, bool inc);
 static bool do_destroy_container(struct lxc_handler *handler);
