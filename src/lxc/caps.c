@@ -34,7 +34,7 @@
 #include "caps.h"
 #include "log.h"
 
-lxc_log_define(lxc_caps, lxc);
+lxc_log_define(caps, lxc);
 
 #if HAVE_LIBCAP
 

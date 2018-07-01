@@ -30,7 +30,7 @@
 #include "log.h"
 #include "start.h"
 
-lxc_log_define(lxc_cgroup, lxc);
+lxc_log_define(cgroup, lxc);
 
 extern struct cgroup_ops *cgfsng_ops_init(void);
 

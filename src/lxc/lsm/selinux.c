@@ -36,7 +36,7 @@
 
 #define DEFAULT_LABEL "unconfined_t"
 
-lxc_log_define(lxc_lsm_selinux, lxc);
+lxc_log_define(selinux, lsm);
 
 /*
  * selinux_process_label_get: Get SELinux context of a process

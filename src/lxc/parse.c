@@ -35,7 +35,7 @@
 #include "utils.h"
 #include "log.h"
 
-lxc_log_define(lxc_parse, lxc);
+lxc_log_define(parse, lxc);
 
 void *lxc_strmmap(void *addr, size_t length, int prot, int flags, int fd,
 		  off_t offset)

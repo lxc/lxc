@@ -87,7 +87,7 @@
 #define MS_SLAVE (1 << 19)
 #endif
 
-lxc_log_define(lxc_attach, lxc);
+lxc_log_define(attach, lxc);
 
 /* /proc/pid-to-str/status\0 = (5 + 21 + 7 + 1) */
 #define __PROC_STATUS_LEN (5 + (LXC_NUMSTRLEN64) + 7 + 1)

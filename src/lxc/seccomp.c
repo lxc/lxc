@@ -42,7 +42,7 @@
 #define MIPS_ARCH_N64 lxc_seccomp_arch_mips64
 #endif
 
-lxc_log_define(lxc_seccomp, lxc);
+lxc_log_define(seccomp, lxc);
 
 static int parse_config_v1(FILE *f, char *line, size_t *line_bufsz, struct lxc_conf *conf)
 {

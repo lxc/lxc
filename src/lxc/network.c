@@ -95,7 +95,7 @@
 #define IFLA_MACVLAN_MODE 1
 #endif
 
-lxc_log_define(lxc_network, lxc);
+lxc_log_define(network, lxc);
 
 typedef int (*instantiate_cb)(struct lxc_handler *, struct lxc_netdev *);
 

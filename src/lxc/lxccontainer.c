@@ -104,7 +104,7 @@ static int faccessat(int __fd, const char *__file, int __type, int __flag)
 }
 #endif
 
-lxc_log_define(lxc_container, lxc);
+lxc_log_define(lxccontainer, lxc);
 
 static bool do_lxcapi_destroy(struct lxc_container *c);
 static const char *lxcapi_get_config_path(struct lxc_container *c);
