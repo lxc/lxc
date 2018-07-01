@@ -59,21 +59,21 @@ lxc_log_define(lxc_checkpoint, lxc);
 static int my_checker(const struct lxc_arguments *args)
 {
 	if (do_restore && stop) {
-		ERROR("-s not compatible with -r.");
+		ERROR("-s not compatible with -r");
 		return -1;
 
 	} else if (!do_restore && daemonize_set) {
-		ERROR("-d/-F not compatible with -r.");
+		ERROR("-d/-F not compatible with -r");
 		return -1;
 	}
 
 	if (!checkpoint_dir) {
-		ERROR("-D is required.");
+		ERROR("-D is required");
 		return -1;
 	}
 
 	if (pre_dump && do_restore) {
-		ERROR("-p not compatible with -r.");
+		ERROR("-p not compatible with -r");
 		return -1;
 	}
 
@@ -162,7 +162,7 @@ static bool checkpoint(struct lxc_container *c)
 	int mode;
 
 	if (!c->is_running(c)) {
-		ERROR("%s not running, not checkpointing.", my_args.name);
+		ERROR("%s not running, not checkpointing", my_args.name);
 		lxc_container_put(c);
 		return false;
 	}
@@ -186,7 +186,7 @@ static bool checkpoint(struct lxc_container *c)
 	/* the migrate() API does not negate the return code like
 	 * checkpoint() and restore() does. */
 	if (ret) {
-		ERROR("Checkpointing %s failed.", my_args.name);
+		ERROR("Checkpointing %s failed", my_args.name);
 		return false;
 	}
 
@@ -207,7 +207,7 @@ static bool restore_finalize(struct lxc_container *c)
 
 	ret = c->migrate(c, MIGRATE_RESTORE, &opts, sizeof(opts));
 	if (ret) {
-		ERROR("Restoring %s failed.", my_args.name);
+		ERROR("Restoring %s failed", my_args.name);
 		return false;
 	}
 
@@ -218,7 +218,7 @@ static bool restore_finalize(struct lxc_container *c)
 static bool restore(struct lxc_container *c)
 {
 	if (c->is_running(c)) {
-		ERROR("%s is running, not restoring.", my_args.name);
+		ERROR("%s is running, not restoring", my_args.name);
 		lxc_container_put(c);
 		return false;
 	}
