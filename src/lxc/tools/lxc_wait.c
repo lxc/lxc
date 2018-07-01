@@ -40,7 +40,7 @@ lxc_log_define(lxc_wait, lxc);
 static int my_checker(const struct lxc_arguments *args)
 {
 	if (!args->states) {
-		ERROR("Missing state option to wait for.");
+		ERROR("Missing state option to wait for");
 		return -1;
 	}
 
