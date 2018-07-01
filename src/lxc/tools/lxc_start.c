@@ -42,10 +42,13 @@
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
-#include "tool_list.h"
-#include "tool_utils.h"
+#include "caps.h"
+#include "confile.h"
+#include "log.h"
 
 static struct lxc_list defines;
+
+lxc_log_define(lxc_start, lxc);
 
 static int ensure_path(struct lxc_arguments *args, char **confpath, const char *path)
 {
@@ -56,7 +59,7 @@ static int ensure_path(struct lxc_arguments *args, char **confpath, const char *
 		if (access(path, W_OK)) {
 			fd = creat(path, 0600);
 			if (fd < 0 && errno != EEXIST) {
-				lxc_error(args, "Failed to create '%s'", path);
+				ERROR("Failed to create '%s'", path);
 				goto err;
 			}
 
@@ -66,7 +69,7 @@ static int ensure_path(struct lxc_arguments *args, char **confpath, const char *
 
 		fullpath = realpath(path, NULL);
 		if (!fullpath) {
-			lxc_error(args, "Failed to get the real path of '%s'", path);
+			ERROR("Failed to get the real path of '%s'", path);
 			goto err;
 		}
 
@@ -206,7 +209,7 @@ int main(int argc, char *argv[])
 
 	lxcpath = my_args.lxcpath[0];
 	if (access(lxcpath, O_RDONLY) < 0) {
-		lxc_error(&my_args, "You lack access to %s", lxcpath);
+		ERROR("You lack access to %s", lxcpath);
 		exit(err);
 	}
 
@@ -222,21 +225,21 @@ int main(int argc, char *argv[])
 
 		c = lxc_container_new(my_args.name, lxcpath);
 		if (!c) {
-			lxc_error(&my_args, "Failed to create lxc_container");
+			ERROR("Failed to create lxc_container");
 			exit(err);
 		}
 
 		c->clear_config(c);
 
 		if (!c->load_config(c, rcfile)) {
-			lxc_error(&my_args, "Failed to load rcfile");
+			ERROR("Failed to load rcfile");
 			lxc_container_put(c);
 			exit(err);
 		}
 
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
-			lxc_error(&my_args, "Out of memory setting new config filename");
+			ERROR("Out of memory setting new config filename");
 			goto out;
 		}
 	} else {
@@ -244,7 +247,7 @@ int main(int argc, char *argv[])
 
 		rc = asprintf(&rcfile, "%s/%s/config", lxcpath, my_args.name);
 		if (rc == -1) {
-			lxc_error(&my_args, "Failed to allocate memory");
+			ERROR("Failed to allocate memory");
 			exit(err);
 		}
 
@@ -256,7 +259,7 @@ int main(int argc, char *argv[])
 
 		c = lxc_container_new(my_args.name, lxcpath);
 		if (!c) {
-			lxc_error(&my_args, "Failed to create lxc_container");
+			ERROR("Failed to create lxc_container");
 			exit(err);
 		}
 	}
@@ -267,12 +270,12 @@ int main(int argc, char *argv[])
 	 * file as argument and start the container right away.
 	 */
 	if (!c->may_control(c)) {
-		lxc_error(&my_args, "Insufficent privileges to control %s", c->name);
+		ERROR("Insufficent privileges to control %s", c->name);
 		goto out;
 	}
 
 	if (c->is_running(c)) {
-		lxc_error(&my_args, "Container is already running.");
+		ERROR("Container is already running");
 		err = EXIT_SUCCESS;
 		goto out;
 	}
@@ -282,7 +285,7 @@ int main(int argc, char *argv[])
 	 * unset c->lxc_conf for us and let us not use lxc_config_define_load()
 	 */
 	if (!c->lxc_conf) {
-		lxc_error(&my_args, "No container config specified");
+		ERROR("No container config specified");
 		goto out;
 	}
 
@@ -290,13 +293,13 @@ int main(int argc, char *argv[])
 		goto out;
 
 	if (!rcfile && !strcmp("/sbin/init", args[0])) {
-		lxc_error(&my_args, "Executing '/sbin/init' with no configuration file may crash the host");
+		ERROR("Executing '/sbin/init' with no configuration file may crash the host");
 		goto out;
 	}
 
 	if (my_args.pidfile != NULL) {
 		if (ensure_path(&my_args, &c->pidfile, my_args.pidfile) < 0) {
-			lxc_error(&my_args, "Failed to ensure pidfile '%s'", my_args.pidfile);
+			ERROR("Failed to ensure pidfile '%s'", my_args.pidfile);
 			goto out;
 		}
 	}
@@ -324,13 +327,13 @@ int main(int argc, char *argv[])
 	else
 		err = c->start(c, 0, args) ? EXIT_SUCCESS : EXIT_FAILURE;
 	if (err) {
-		lxc_error(&my_args, "The container failed to start.");
+		ERROR("The container failed to start");
 
 		if (my_args.daemonize)
-			lxc_error(&my_args, "To get more details, run the container in foreground mode.");
+			ERROR("To get more details, run the container in foreground mode");
 
-		lxc_error(&my_args, "Additional information can be obtained by setting the "
-		          "--logfile and --logpriority options.\n");
+		ERROR("Additional information can be obtained by setting the "
+		      "--logfile and --logpriority options");
 
 		err = c->error_num;
 		lxc_container_put(c);

@@ -32,12 +32,14 @@
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
-#include "tool_utils.h"
+#include "log.h"
+
+lxc_log_define(lxc_cgroup, lxc);
 
 static int my_checker(const struct lxc_arguments* args)
 {
 	if (!args->argc) {
-		lxc_error(args, "Missing state object");
+		ERROR("Missing state object");
 		return -1;
 	}
 
@@ -94,28 +96,29 @@ int main(int argc, char *argv[])
 
 	if (my_args.rcfile) {
 		c->clear_config(c);
+
 		if (!c->load_config(c, my_args.rcfile)) {
-			lxc_error(&my_args, "Failed to load rcfile");
+			ERROR("Failed to load rcfile");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
 
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
-			lxc_error(&my_args, "Out of memory setting new config filename");
+			ERROR("Out of memory setting new config filename");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
 	}
 
 	if (!c->may_control(c)) {
-		lxc_error(&my_args, "Insufficent privileges to control %s:%s", my_args.lxcpath[0], my_args.name);
+		ERROR("Insufficent privileges to control %s:%s", my_args.lxcpath[0], my_args.name);
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
 
 	if (!c->is_running(c)) {
-		lxc_error(&my_args, "'%s:%s' is not running", my_args.lxcpath[0], my_args.name);
+		ERROR("'%s:%s' is not running", my_args.lxcpath[0], my_args.name);
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
@@ -124,25 +127,26 @@ int main(int argc, char *argv[])
 		value = my_args.argv[1];
 
 		if (!c->set_cgroup_item(c, state_object, value)) {
-			lxc_error(&my_args, "Failed to assign '%s' value to '%s' for '%s'",
-			          value, state_object, my_args.name);
+			ERROR("Failed to assign '%s' value to '%s' for '%s'",
+			      value, state_object, my_args.name);
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
 	} else {
-		char buffer[TOOL_MAXPATHLEN];
+		char buffer[MAXPATHLEN];
 		int ret;
 
-		ret = c->get_cgroup_item(c, state_object, buffer, TOOL_MAXPATHLEN);
+		ret = c->get_cgroup_item(c, state_object, buffer, MAXPATHLEN);
 		if (ret < 0) {
-			lxc_error(&my_args, "Failed to retrieve value of '%s' for '%s:%s'",
-			          state_object, my_args.lxcpath[0], my_args.name);
+			ERROR("Failed to retrieve value of '%s' for '%s:%s'",
+			      state_object, my_args.lxcpath[0], my_args.name);
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
-		printf("%*s", ret, buffer);
+		INFO("%*s", ret, buffer);
 	}
 
 	lxc_container_put(c);
+
 	exit(EXIT_SUCCESS);
 }

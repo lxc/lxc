@@ -36,11 +36,14 @@
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
-#include "tool_utils.h"
+#include "log.h"
+#include "utils.h"
 
 #ifndef HAVE_GETSUBOPT
 #include "include/getsubopt.h"
 #endif
+
+lxc_log_define(lxc_copy, lxc);
 
 enum mnttype {
 	LXC_MNT_BIND,
@@ -178,22 +181,22 @@ int main(int argc, char *argv[])
 
 	if (geteuid()) {
 		if (access(my_args.lxcpath[0], O_RDONLY) < 0) {
-			if (!my_args.quiet)
-				fprintf(stderr, "You lack access to %s\n", my_args.lxcpath[0]);
+			ERROR("You lack access to %s", my_args.lxcpath[0]);
 			exit(ret);
 		}
 	}
 
 	if (!my_args.newname && !(my_args.task == DESTROY)) {
-		if (!my_args.quiet)
-			printf("Error: You must provide a NEWNAME for the clone.\n");
+		ERROR("You must provide a NEWNAME for the clone");
 		exit(ret);
 	}
 
 	if (my_args.task == SNAP || my_args.task == DESTROY)
 		flags |= LXC_CLONE_SNAPSHOT;
+
 	if (my_args.keepname)
 		flags |= LXC_CLONE_KEEPNAME;
+
 	if (my_args.keepmac)
 		flags |= LXC_CLONE_KEEPMACADDR;
 
@@ -206,26 +209,26 @@ int main(int argc, char *argv[])
 
 	if (my_args.rcfile) {
 		c->clear_config(c);
+
 		if (!c->load_config(c, my_args.rcfile)) {
-			fprintf(stderr, "Failed to load rcfile\n");
+			ERROR("Failed to load rcfile");
 			goto out;
 		}
+
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
-			fprintf(stderr, "Out of memory setting new config filename\n");
+			ERROR("Out of memory setting new config filename");
 			goto out;
 		}
 	}
 
 	if (!c->may_control(c)) {
-		if (!my_args.quiet)
-			fprintf(stderr, "Insufficent privileges to control %s\n", c->name);
+		ERROR("Insufficent privileges to control %s", c->name);
 		goto out;
 	}
 
 	if (!c->is_defined(c)) {
-		if (!my_args.quiet)
-			fprintf(stderr, "Error: container %s is not defined\n", c->name);
+		ERROR("Container %s is not defined", c->name);
 		goto out;
 	}
 
@@ -258,32 +261,36 @@ static struct mnts *add_mnt(struct mnts **mnts, unsigned int *num, enum mnttype 
 
 static int mk_rand_ovl_dirs(struct mnts *mnts, unsigned int num, struct lxc_arguments *arg)
 {
-	char upperdir[TOOL_MAXPATHLEN];
-	char workdir[TOOL_MAXPATHLEN];
+	char upperdir[MAXPATHLEN];
+	char workdir[MAXPATHLEN];
 	unsigned int i;
 	int ret;
 	struct mnts *m = NULL;
 
 	for (i = 0, m = mnts; i < num; i++, m++) {
 		if (m->mnt_type == LXC_MNT_OVL) {
-			ret = snprintf(upperdir, TOOL_MAXPATHLEN, "%s/%s/delta#XXXXXX",
+			ret = snprintf(upperdir, MAXPATHLEN, "%s/%s/delta#XXXXXX",
 					arg->newpath, arg->newname);
-			if (ret < 0 || ret >= TOOL_MAXPATHLEN)
+			if (ret < 0 || ret >= MAXPATHLEN)
 				return -1;
+
 			if (!mkdtemp(upperdir))
 				return -1;
+
 			m->upper = strdup(upperdir);
 			if (!m->upper)
 				return -1;
 		}
 
 		if (m->mnt_type == LXC_MNT_OVL) {
-			ret = snprintf(workdir, TOOL_MAXPATHLEN, "%s/%s/work#XXXXXX",
+			ret = snprintf(workdir, MAXPATHLEN, "%s/%s/work#XXXXXX",
 					arg->newpath, arg->newname);
-			if (ret < 0 || ret >= TOOL_MAXPATHLEN)
+			if (ret < 0 || ret >= MAXPATHLEN)
 				return -1;
+
 			if (!mkdtemp(workdir))
 				return -1;
+
 			m->workdir = strdup(workdir);
 			if (!m->workdir)
 				return -1;
@@ -359,8 +366,7 @@ static int do_clone(struct lxc_container *c, char *newname, char *newpath,
 	clone = c->clone(c, newname, newpath, flags, bdevtype, NULL, fssize,
 			 args);
 	if (!clone) {
-		if (!my_args.quiet)
-			fprintf(stderr, "clone failed\n");
+		ERROR("Failed to clone");
 		return -1;
 	}
 
@@ -373,7 +379,7 @@ static int do_clone_ephemeral(struct lxc_container *c,
 		struct lxc_arguments *arg, char **args, int flags)
 {
 	char *premount;
-	char randname[TOOL_MAXPATHLEN];
+	char randname[MAXPATHLEN];
 	unsigned int i;
 	int ret = 0;
 	bool bret = true, started = false;
@@ -383,15 +389,18 @@ static int do_clone_ephemeral(struct lxc_container *c,
 	attach_options.env_policy = LXC_ATTACH_CLEAR_ENV;
 
 	if (!arg->newname) {
-		ret = snprintf(randname, TOOL_MAXPATHLEN, "%s/%s_XXXXXX", arg->newpath, arg->name);
-		if (ret < 0 || ret >= TOOL_MAXPATHLEN)
+		ret = snprintf(randname, MAXPATHLEN, "%s/%s_XXXXXX", arg->newpath, arg->name);
+		if (ret < 0 || ret >= MAXPATHLEN)
 			return -1;
+
 		if (!mkdtemp(randname))
 			return -1;
+
 		if (chmod(randname, 0770) < 0) {
 			(void)remove(randname);
 			return -1;
 		}
+
 		arg->newname = randname + strlen(arg->newpath) + 1;
 	}
 
@@ -423,9 +432,11 @@ static int do_clone_ephemeral(struct lxc_container *c,
 	struct mnts *n = NULL;
 	for (i = 0, n = mnt_table; i < mnt_table_size; i++, n++) {
 		char *mntentry = NULL;
+
 		mntentry = set_mnt_entry(n);
 		if (!mntentry)
 			goto destroy_and_put;
+
 		bret = clone->set_config_item(clone, "lxc.mount.entry", mntentry);
 		free(mntentry);
 		if (!bret)
@@ -467,9 +478,11 @@ static int do_clone_ephemeral(struct lxc_container *c,
 destroy_and_put:
 	if (started)
 		clone->shutdown(clone, -1);
-	ret = clone->get_config_item(clone, "lxc.ephemeral", tmp_buf, TOOL_MAXPATHLEN);
+
+	ret = clone->get_config_item(clone, "lxc.ephemeral", tmp_buf, MAXPATHLEN);
 	if (ret > 0 && strcmp(tmp_buf, "0"))
 		clone->destroy(clone);
+
 	free_mnts();
 	lxc_container_put(clone);
 	return -1;
@@ -478,7 +491,7 @@ destroy_and_put:
 static int do_clone_rename(struct lxc_container *c, char *newname)
 {
 	if (!c->rename(c, newname)) {
-		fprintf(stderr, "Error: Renaming container %s to %s failed\n", c->name, newname);
+		ERROR("Renaming container %s to %s failed", c->name, newname);
 		return -1;
 	}
 
@@ -519,6 +532,7 @@ static void free_mnts()
 		free(n->upper);
 		free(n->workdir);
 	}
+
 	free(mnt_table);
 	mnt_table = NULL;
 	mnt_table_size = 0;
@@ -532,8 +546,7 @@ static uint64_t get_fssize(char *s)
 
 	ret = strtoull(s, &end, 0);
 	if (end == s) {
-		if (!my_args.quiet)
-			fprintf(stderr, "Invalid blockdev size '%s', using default size\n", s);
+		ERROR("Invalid blockdev size '%s', using default size", s);
 		return 0;
 	}
 	while (isblank(*end))
@@ -551,8 +564,7 @@ static uint64_t get_fssize(char *s)
 	} else if (*end == 't' || *end == 'T') {
 		ret *= 1024ULL * 1024ULL * 1024ULL * 1024ULL;
 	} else {
-		if (!my_args.quiet)
-			fprintf(stderr, "Invalid blockdev unit size '%c' in '%s', " "using default size\n", *end, s);
+		ERROR("Invalid blockdev unit size '%c' in '%s', " "using default size", *end, s);
 		return 0;
 	}
 
@@ -591,7 +603,7 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 			return -1;
 		break;
 	case 'B':
-		if (strcmp(arg, "overlay") == 0)
+		if (strncmp(arg, "overlay", strlen(arg)) == 0)
 			arg = "overlayfs";
 		args->bdevtype = arg;
 		break;
@@ -660,8 +672,8 @@ static int parse_bind_mnt(char *mntstring, enum mnttype type)
 	if (!m->options)
 		m->options = strdup("rw");
 
-	if (!m->options || (strncmp(m->options, "rw", strlen(m->options)) &&
-			    strncmp(m->options, "ro", strlen(m->options))))
+	if (!m->options || (strncmp(m->options, "rw", strlen(m->options)) != 0 &&
+			    strncmp(m->options, "ro", strlen(m->options)) != 0))
 		goto err;
 
 	lxc_free_array((void **)mntarray, free);
@@ -689,6 +701,7 @@ static int parse_mntsubopts(char *subopts, char *const *keys, char *mntparameter
 			break;
 		}
 	}
+
 	return 0;
 }
 
@@ -749,19 +762,19 @@ static char *mount_tmpfs(const char *oldname, const char *newname,
 	FILE *fp = NULL;
 
 	if (arg->tmpfs && arg->keepdata) {
-		fprintf(stderr, "%s\n",
-			"A container can only be placed on a tmpfs when the "
-			"overlay storage driver is used");
+		ERROR("%s",
+		      "A container can only be placed on a tmpfs when the "
+		      "overlay storage driver is used");
 		goto err_free;
 	}
 
 	if (arg->tmpfs && !arg->bdevtype) {
 		arg->bdevtype = "overlayfs";
 	} else if (arg->tmpfs && arg->bdevtype &&
-		   strcmp(arg->bdevtype, "overlayfs") != 0) {
-		fprintf(stderr, "%s\n",
-			"A container can only be placed on a tmpfs when the "
-			"overlay storage driver is used");
+		   strncmp(arg->bdevtype, "overlayfs", strlen(arg->bdevtype)) != 0) {
+		ERROR("%s",
+		      "A container can only be placed on a tmpfs when the "
+		      "overlay storage driver is used");
 		goto err_free;
 	}
 
@@ -781,7 +794,7 @@ static char *mount_tmpfs(const char *oldname, const char *newname,
 		goto err_free;
 
 	if (fcntl(fd, F_SETFD, FD_CLOEXEC)) {
-		fprintf(stderr, "Failed to set close-on-exec on file descriptor.\n");
+		ERROR("Failed to set close-on-exec on file descriptor");
 		goto err_close;
 	}
 
@@ -815,6 +828,7 @@ err_close:
 		close(fd);
 	else if (fp)
 		fclose(fp);
+
 err_free:
 	free(premount);
 	return NULL;

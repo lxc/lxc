@@ -34,7 +34,10 @@
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
-#include "tool_utils.h"
+#include "log.h"
+#include "utils.h"
+
+lxc_log_define(lxc_info, lxc);
 
 static bool ips;
 static bool state;
@@ -45,14 +48,16 @@ static char **key = NULL;
 static int keys = 0;
 static int filter_count = 0;
 
-static int my_parser(struct lxc_arguments* args, int c, char* arg)
+static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
 	char **newk;
+
 	switch (c) {
 	case 'c':
 		newk = realloc(key, (keys + 1) * sizeof(key[0]));
 		if (!newk)
 			return -1;
+
 		key = newk;
 		key[keys] = arg;
 		keys++;
@@ -153,6 +158,7 @@ static void print_net_stats(struct lxc_container *c)
 
 	for(netnr = 0; ;netnr++) {
 		sprintf(buf, "lxc.net.%d.type", netnr);
+
 		type = c->get_running_config_item(c, buf);
 		if (!type)
 			break;
@@ -163,9 +169,11 @@ static void print_net_stats(struct lxc_container *c)
 			sprintf(buf, "lxc.net.%d.link", netnr);
 		}
 		free(type);
+
 		ifname = c->get_running_config_item(c, buf);
 		if (!ifname)
 			return;
+
 		printf("%-15s %s\n", "Link:", ifname);
 		fflush(stdout);
 
@@ -303,11 +311,13 @@ static int print_info(const char *name, const char *lxcpath)
 
 	if (my_args.rcfile) {
 		c->clear_config(c);
+
 		if (!c->load_config(c, my_args.rcfile)) {
 			fprintf(stderr, "Failed to load rcfile\n");
 			lxc_container_put(c);
 			return -1;
 		}
+
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
 			fprintf(stderr, "Out of memory setting new config filename\n");
@@ -333,9 +343,8 @@ static int print_info(const char *name, const char *lxcpath)
 		print_info_msg_str("Name:", c->name);
 	}
 
-	if (state) {
+	if (state)
 		print_info_msg_str("State:", c->state(c));
-	}
 
 	if (c->is_running(c)) {
 		if (pid) {
@@ -348,10 +357,12 @@ static int print_info(const char *name, const char *lxcpath)
 
 		if (ips) {
 			fflush(stdout);
+
 			char **addresses = c->get_ips(c, NULL, NULL, 0);
 			if (addresses) {
 				char *address;
 				i = 0;
+
 				while (addresses[i]) {
 					address = addresses[i];
 					print_info_msg_str("IP:", address);
@@ -380,6 +391,7 @@ static int print_info(const char *name, const char *lxcpath)
 				else
 					printf("%s = %s\n", key[i], val);
 			}
+
 			free(val);
 		} else if (len == 0) {
 			if (!humanize && keys == 1)

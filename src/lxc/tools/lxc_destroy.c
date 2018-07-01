@@ -29,10 +29,12 @@
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
-#include "tool_utils.h"
+#include "log.h"
+#include "utils.h"
 
-static int my_parser(struct lxc_arguments* args, int c, char* arg);
-static bool quiet;
+lxc_log_define(lxc_destroy, lxc);
+
+static int my_parser(struct lxc_arguments *args, int c, char *arg);
 
 static const struct option my_longopts[] = {
 	{"force", no_argument, 0, 'f'},
@@ -83,59 +85,56 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 	}
 
-	if (my_args.quiet)
-		quiet = true;
-
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {
-		if (!quiet)
-			fprintf(stderr, "System error loading container\n");
+		ERROR("System error loading container");
 		exit(EXIT_FAILURE);
 	}
 
 	if (my_args.rcfile) {
 		c->clear_config(c);
+
 		if (!c->load_config(c, my_args.rcfile)) {
-			fprintf(stderr, "Failed to load rcfile\n");
+			ERROR("Failed to load rcfile");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
+
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
-			fprintf(stderr, "Out of memory setting new config filename\n");
+			ERROR("Out of memory setting new config filename");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
 	}
 
 	if (!c->may_control(c)) {
-		if (!quiet)
-			fprintf(stderr, "Insufficent privileges to control %s\n", my_args.name);
+		ERROR("Insufficent privileges to control %s", my_args.name);
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
 
 	if (!c->is_defined(c)) {
-		if (!quiet)
-			fprintf(stderr, "Container is not defined\n");
+		ERROR("Container is not defined");
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
 
 	if (my_args.task == SNAP) {
 		bret = do_destroy_with_snapshots(c);
-		if (bret && !quiet)
-			printf("Destroyed container %s including snapshots \n", my_args.name);
+		if (bret)
+			ERROR("Destroyed container %s including snapshots", my_args.name);
 	} else {
 		bret = do_destroy(c);
-		if (bret && !quiet)
-			printf("Destroyed container %s\n", my_args.name);
+		if (bret)
+			ERROR("Destroyed container %s", my_args.name);
 	}
 
 	lxc_container_put(c);
 
 	if (bret)
 		exit(EXIT_SUCCESS);
+
 	exit(EXIT_FAILURE);
 }
 
@@ -151,34 +150,33 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 static bool do_destroy(struct lxc_container *c)
 {
 	bool bret = true;
-	char path[TOOL_MAXPATHLEN];
+	char path[MAXPATHLEN];
 
 	/* First check whether the container has dependent clones or snapshots. */
-	int ret = snprintf(path, TOOL_MAXPATHLEN, "%s/%s/lxc_snapshots", c->config_path, c->name);
-	if (ret < 0 || ret >= TOOL_MAXPATHLEN)
+	int ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_snapshots", c->config_path, c->name);
+	if (ret < 0 || ret >= MAXPATHLEN)
 		return false;
 
 	if (file_exists(path)) {
-		if (!quiet)
-			fprintf(stdout, "Destroying %s failed: %s has clones.\n", c->name, c->name);
+		ERROR("Destroying %s failed: %s has clones", c->name, c->name);
 		return false;
 	}
 
-	ret = snprintf(path, TOOL_MAXPATHLEN, "%s/%s/snaps", c->config_path, c->name);
-	if (ret < 0 || ret >= TOOL_MAXPATHLEN)
+	ret = snprintf(path, MAXPATHLEN, "%s/%s/snaps", c->config_path, c->name);
+	if (ret < 0 || ret >= MAXPATHLEN)
 		return false;
 
 	if (rmdir(path) < 0 && errno != ENOENT) {
-		if (!quiet)
-			fprintf(stdout, "Destroying %s failed: %s has snapshots.\n", c->name, c->name);
+		ERROR("Destroying %s failed: %s has snapshots", c->name, c->name);
 		return false;
 	}
 
 	if (c->is_running(c)) {
-		if (!my_args.force && !quiet) {
-			fprintf(stderr, "%s is running\n", my_args.name);
+		if (!my_args.force) {
+			ERROR("%s is running", my_args.name);
 			return false;
 		}
+
 		/* If the container was ephemeral it will be removed on shutdown. */
 		c->stop(c);
 	}
@@ -187,6 +185,7 @@ static bool do_destroy(struct lxc_container *c)
 	 * stopped it. */
 	if (c->is_defined(c)) {
 		char buf[256];
+
 		ret = c->get_config_item(c, "lxc.ephemeral", buf, 256);
 		if (ret > 0 && strcmp(buf, "0") == 0) {
 			bret = c->destroy(c);
@@ -194,8 +193,7 @@ static bool do_destroy(struct lxc_container *c)
 	}
 
 	if (!bret) {
-		if (!quiet)
-			fprintf(stderr, "Destroying %s failed\n", my_args.name);
+		ERROR("Destroying %s failed", my_args.name);
 		return false;
 	}
 
@@ -207,7 +205,7 @@ static bool do_destroy_with_snapshots(struct lxc_container *c)
 	struct lxc_container *c1;
 	struct stat fbuf;
 	bool bret = false;
-	char path[TOOL_MAXPATHLEN];
+	char path[MAXPATHLEN];
 	char *buf = NULL;
 	char *lxcpath = NULL;
 	char *lxcname = NULL;
@@ -217,8 +215,8 @@ static bool do_destroy_with_snapshots(struct lxc_container *c)
 	int counter = 0;
 
 	/* Destroy clones. */
-	ret = snprintf(path, TOOL_MAXPATHLEN, "%s/%s/lxc_snapshots", c->config_path, c->name);
-	if (ret < 0 || ret >= TOOL_MAXPATHLEN)
+	ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_snapshots", c->config_path, c->name);
+	if (ret < 0 || ret >= MAXPATHLEN)
 		return false;
 
 	fd = open(path, O_RDONLY | O_CLOEXEC);
@@ -232,14 +230,14 @@ static bool do_destroy_with_snapshots(struct lxc_container *c)
 		/* Make sure that the string is \0 terminated. */
 		buf = calloc(fbuf.st_size + 1, sizeof(char));
 		if (!buf) {
-			fprintf(stderr, "failed to allocate memory\n");
+			ERROR("Failed to allocate memory");
 			close(fd);
 			return false;
 		}
 
 		ret = read(fd, buf, fbuf.st_size);
 		if (ret < 0) {
-			fprintf(stderr, "could not read %s\n", path);
+			ERROR("Could not read %s", path);
 			close(fd);
 			free(buf);
 			return false;
@@ -249,11 +247,13 @@ static bool do_destroy_with_snapshots(struct lxc_container *c)
 		while ((lxcpath = strtok_r(!counter ? buf : NULL, "\n", &scratch))) {
 			if (!(lxcname = strtok_r(NULL, "\n", &scratch)))
 				break;
+
 			c1 = lxc_container_new(lxcname, lxcpath);
 			if (!c1) {
 				counter++;
 				continue;
 			}
+
 			/* We do not destroy recursively. If a clone of a clone
 			 * has clones or snapshots the user should remove it
 			 * explicitly. */
@@ -262,6 +262,7 @@ static bool do_destroy_with_snapshots(struct lxc_container *c)
 				free(buf);
 				return false;
 			}
+
 			lxc_container_put(c1);
 			counter++;
 		}
@@ -269,8 +270,8 @@ static bool do_destroy_with_snapshots(struct lxc_container *c)
 	}
 
 	/* Destroy snapshots located in the containers snap/ folder. */
-	ret = snprintf(path, TOOL_MAXPATHLEN, "%s/%s/snaps", c->config_path, c->name);
-	if (ret < 0 || ret >= TOOL_MAXPATHLEN)
+	ret = snprintf(path, MAXPATHLEN, "%s/%s/snaps", c->config_path, c->name);
+	if (ret < 0 || ret >= MAXPATHLEN)
 		return false;
 
 	if (rmdir(path) < 0 && errno != ENOENT)

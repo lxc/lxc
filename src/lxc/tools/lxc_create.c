@@ -17,6 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define _GNU_SOURCE
 #include <ctype.h>
 #include <fcntl.h>
 #include <libgen.h>
@@ -29,7 +30,10 @@
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
-#include "tool_utils.h"
+#include "log.h"
+#include "utils.h"
+
+lxc_log_define(lxc_create, lxc);
 
 static uint64_t get_fssize(char *s)
 {
@@ -39,11 +43,13 @@ static uint64_t get_fssize(char *s)
 	ret = strtoull(s, &end, 0);
 	if (end == s)
 	{
-		fprintf(stderr, "Invalid blockdev size '%s', using default size\n", s);
+		ERROR("Invalid blockdev size '%s', using default size", s);
 		return 0;
 	}
+
 	while (isblank(*end))
 		end++;
+
 	if (*end == '\0')
 		ret *= 1024ULL * 1024ULL; /* MB by default */
 	else if (*end == 'b' || *end == 'B')
@@ -58,13 +64,14 @@ static uint64_t get_fssize(char *s)
 		ret *= 1024ULL * 1024ULL * 1024ULL * 1024ULL;
 	else
 	{
-		fprintf(stderr, "Invalid blockdev unit size '%c' in '%s', using default size\n", *end, s);
+		ERROR("Invalid blockdev unit size '%c' in '%s', using default size", *end, s);
 		return 0;
 	}
+
 	return ret;
 }
 
-static int my_parser(struct lxc_arguments* args, int c, char* arg)
+static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
 	switch (c) {
 	case 'B': args->bdevtype = arg; break;
@@ -120,8 +127,8 @@ static void create_helpfn(const struct lxc_arguments *args)
 	argv[2] = NULL;
 
 	execv(path, argv);
-	fprintf(stderr, "Error executing %s -h\n", path);
-	exit(EXIT_FAILURE);
+	ERROR("Error executing %s -h", path);
+	_exit(EXIT_FAILURE);
 }
 
 static struct lxc_arguments my_args = {
@@ -170,34 +177,38 @@ Options :\n\
 
 static bool validate_bdev_args(struct lxc_arguments *a)
 {
-	if (strcmp(a->bdevtype, "best") != 0) {
+	if (strncmp(a->bdevtype, "best", strlen(a->bdevtype)) != 0) {
 		if (a->fstype || a->fssize) {
-			if (strcmp(a->bdevtype, "lvm") != 0 &&
-			    strcmp(a->bdevtype, "loop") != 0 &&
-			    strcmp(a->bdevtype, "rbd") != 0) {
-				fprintf(stderr, "filesystem type and size are only valid with block devices\n");
+			if (strncmp(a->bdevtype, "lvm", strlen(a->bdevtype)) != 0 &&
+			    strncmp(a->bdevtype, "loop", strlen(a->bdevtype)) != 0 &&
+			    strncmp(a->bdevtype, "rbd", strlen(a->bdevtype)) != 0) {
+				ERROR("Filesystem type and size are only valid with block devices");
 				return false;
 			}
 		}
-		if (strcmp(a->bdevtype, "lvm") != 0) {
+
+		if (strncmp(a->bdevtype, "lvm", strlen(a->bdevtype)) != 0) {
 			if (a->lvname || a->vgname || a->thinpool) {
-				fprintf(stderr, "--lvname, --vgname and --thinpool are only valid with -B lvm\n");
+				ERROR("--lvname, --vgname and --thinpool are only valid with -B lvm");
 				return false;
 			}
 		}
-		if (strcmp(a->bdevtype, "rbd") != 0) {
+
+		if (strncmp(a->bdevtype, "rbd", strlen(a->bdevtype)) != 0) {
 			if (a->rbdname || a->rbdpool) {
-				fprintf(stderr, "--rbdname and --rbdpool are only valid with -B rbd\n");
+				ERROR("--rbdname and --rbdpool are only valid with -B rbd");
 				return false;
 			}
 		}
-		if (strcmp(a->bdevtype, "zfs") != 0) {
+
+		if (strncmp(a->bdevtype, "zfs", strlen(a->bdevtype)) != 0) {
 			if (a->zfsroot) {
-				fprintf(stderr, "zfsroot is only valid with -B zfs\n");
+				ERROR("zfsroot is only valid with -B zfs");
 				return false;
 			}
 		}
 	}
+
 	return true;
 }
 
@@ -244,32 +255,30 @@ int main(int argc, char *argv[])
 	}
 
 	if (!my_args.template) {
-		fprintf(stderr, "A template must be specified.\n");
-		fprintf(stderr, "Use \"none\" if you really want a container without a rootfs.\n");
+		ERROR("A template must be specified");
+		ERROR("Use \"none\" if you really want a container without a rootfs");
 		exit(EXIT_FAILURE);
 	}
 
-	if (strcmp(my_args.template, "none") == 0)
+	if (strncmp(my_args.template, "none", strlen(my_args.template)) == 0)
 		my_args.template = NULL;
 
-	memset(&spec, 0, sizeof(spec));
 	if (!my_args.bdevtype)
 		my_args.bdevtype = "_unset";
 
 	if (!validate_bdev_args(&my_args))
 		exit(EXIT_FAILURE);
 
-	if (strcmp(my_args.bdevtype, "none") == 0)
+	if (strncmp(my_args.bdevtype, "none", strlen(my_args.bdevtype)) == 0)
 		my_args.bdevtype = "dir";
 
 	/* Final check whether the user gave use a valid bdev type. */
-	if (strcmp(my_args.bdevtype, "best") &&
-	    strcmp(my_args.bdevtype, "_unset") &&
+	if (strncmp(my_args.bdevtype, "best", strlen(my_args.bdevtype)) != 0 &&
+	    strncmp(my_args.bdevtype, "_unset", strlen(my_args.bdevtype)) != 0 &&
 	    !is_valid_storage_type(my_args.bdevtype)) {
-		fprintf(stderr, "%s is not a valid backing storage type.\n", my_args.bdevtype);
+		ERROR("%s is not a valid backing storage type", my_args.bdevtype);
 		exit(EXIT_FAILURE);
 	}
-
 
 	if (!my_args.lxcpath[0])
 		my_args.lxcpath[0] = lxc_get_global_config_item("lxc.lxcpath");
@@ -279,48 +288,58 @@ int main(int argc, char *argv[])
 
 	if (geteuid())
 		if (access(my_args.lxcpath[0], O_RDONLY) < 0) {
-			fprintf(stderr, "You lack access to %s\n",
-				my_args.lxcpath[0]);
+			ERROR("You lack access to %s", my_args.lxcpath[0]);
 			exit(EXIT_FAILURE);
 		}
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {
-		fprintf(stderr, "Failed to create lxc container.\n");
+		ERROR("Failed to create lxc container");
 		exit(EXIT_FAILURE);
 	}
+
 	if (c->is_defined(c)) {
 		lxc_container_put(c);
-		fprintf(stderr, "Container already exists\n");
+		ERROR("Container already exists");
 		exit(EXIT_FAILURE);
 	}
+
 	if (my_args.configfile)
 		c->load_config(c, my_args.configfile);
 	else
 		c->load_config(c, lxc_get_global_config_item("lxc.default_config"));
 
+	memset(&spec, 0, sizeof(spec));
+
 	if (my_args.fstype)
 		spec.fstype = my_args.fstype;
+
 	if (my_args.fssize)
 		spec.fssize = my_args.fssize;
 
-	if ((strcmp(my_args.bdevtype, "zfs") == 0) || (strcmp(my_args.bdevtype, "best") == 0)) {
+	if ((strncmp(my_args.bdevtype, "zfs", strlen(my_args.bdevtype)) == 0) ||
+	     (strncmp(my_args.bdevtype, "best", strlen(my_args.bdevtype)) == 0)) {
 		if (my_args.zfsroot)
 			spec.zfs.zfsroot = my_args.zfsroot;
 	}
 
-	if ((strcmp(my_args.bdevtype, "lvm") == 0) || (strcmp(my_args.bdevtype, "best") == 0)) {
+	if ((strncmp(my_args.bdevtype, "lvm", strlen(my_args.bdevtype)) == 0) ||
+	     (strncmp(my_args.bdevtype, "best", strlen(my_args.bdevtype)) == 0)) {
 		if (my_args.lvname)
 			spec.lvm.lv = my_args.lvname;
+
 		if (my_args.vgname)
 			spec.lvm.vg = my_args.vgname;
+
 		if (my_args.thinpool)
 			spec.lvm.thinpool = my_args.thinpool;
 	}
 
-	if ((strcmp(my_args.bdevtype, "rbd") == 0) || (strcmp(my_args.bdevtype, "best") == 0)) {
+	if ((strncmp(my_args.bdevtype, "rbd", strlen(my_args.bdevtype)) == 0) ||
+	     (strncmp(my_args.bdevtype, "best", strlen(my_args.bdevtype)) == 0)) {
 		if (my_args.rbdname)
 			spec.rbd.rbdname = my_args.rbdname;
+
 		if (my_args.rbdpool)
 			spec.rbd.rbdpool = my_args.rbdpool;
 	}
@@ -328,7 +347,7 @@ int main(int argc, char *argv[])
 	if (my_args.dir)
 		spec.dir = my_args.dir;
 
-	if (strcmp(my_args.bdevtype, "_unset") == 0)
+	if (strncmp(my_args.bdevtype, "_unset", strlen(my_args.bdevtype)) == 0)
 		my_args.bdevtype = NULL;
 
 	if (my_args.quiet)

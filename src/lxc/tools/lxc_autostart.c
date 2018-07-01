@@ -27,14 +27,17 @@
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
-#include "tool_list.h"
-#include "tool_utils.h"
+#include "list.h"
+#include "log.h"
+#include "utils.h"
+
+lxc_log_define(lxc_autostart, lxc);
 
 static struct lxc_list *accumulate_list(char *input, char *delimiter, struct lxc_list *str_list);
 
 struct lxc_list *cmd_groups_list = NULL;
 
-static int my_parser(struct lxc_arguments* args, int c, char* arg)
+static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
 	switch (c) {
 	case 'k':
@@ -101,47 +104,22 @@ Options:\n\
 	.timeout = 60,
 };
 
-int list_contains_entry( char *str_ptr, struct lxc_list *p1 ) {
+static int list_contains_entry(char *str_ptr, struct lxc_list *p1) {
 	struct lxc_list *it1;
 
 	/*
 	 * If the entry is NULL or the empty string and the list
 	 * is NULL, we have a match
 	 */
-	if (! p1 && ! str_ptr)
-		return 1;
-	if (! p1 && ! *str_ptr)
+	if (!p1 && (!str_ptr || !*str_ptr))
 		return 1;
 
 	if (!p1)
 		return 0;
 
 	lxc_list_for_each(it1, p1) {
-		if (strcmp(it1->elem, str_ptr) == 0)
+		if (strncmp(it1->elem, str_ptr, strlen(it1->elem)) == 0)
 			return 1;
-	}
-
-	return 0;
-}
-
-int lists_contain_common_entry(struct lxc_list *p1, struct lxc_list *p2) {
-	struct lxc_list *it1;
-	struct lxc_list *it2;
-
-	if (!p1 && !p2)
-		return 1;
-
-	if (!p1)
-		return 0;
-
-	if (!p2)
-		return 0;
-
-	lxc_list_for_each(it1, p1) {
-		lxc_list_for_each(it2, p2) {
-			if (strcmp(it1->elem, it2->elem) == 0)
-				return 1;
-		}
 	}
 
 	return 0;
@@ -167,6 +145,11 @@ static struct lxc_list *accumulate_list(char *input, char *delimiter,
 	workstr_list = str_list;
 	if (!workstr_list) {
 		workstr_list = malloc(sizeof(*workstr_list));
+		if (!workstr_list) {
+			free(workstr);
+			return NULL;
+		}
+
 		lxc_list_init(workstr_list);
 	}
 
@@ -185,9 +168,9 @@ static struct lxc_list *accumulate_list(char *input, char *delimiter,
 		 */
 		if (list_contains_entry(workptr, workstr_list)) {
 			if (*workptr)
-				fprintf(stderr, "Duplicate group \"%s\" in list - ignoring\n", workptr);
+				ERROR("Duplicate group \"%s\" in list - ignoring", workptr);
 			else
-				fprintf(stderr, "Duplicate NULL group in list - ignoring\n");
+				ERROR("Duplicate NULL group in list - ignoring");
 		} else {
 			worklist = malloc(sizeof(*worklist));
 			if (!worklist)
@@ -218,6 +201,9 @@ static struct lxc_list *get_list(char *input, char *delimiter)
 	struct lxc_list *workstr_list;
 
 	workstr_list = malloc(sizeof(*workstr_list));
+	if (!workstr_list)
+		return NULL;
+
 	lxc_list_init(workstr_list);
 
 	workstr = strdup(input);
@@ -260,7 +246,7 @@ static struct lxc_list *get_config_list(struct lxc_container *c, char *key)
 		return NULL;
 
 	value = (char *)malloc(sizeof(char) * len + 1);
-	if (value == NULL)
+	if (!value)
 		return NULL;
 
 	if (c->get_config_item(c, key, value, len + 1) != len) {
@@ -289,7 +275,7 @@ static int get_config_integer(struct lxc_container *c, char *key)
 		return 0;
 
 	value = (char *)malloc(sizeof(char) * len + 1);
-	if (value == NULL)
+	if (!value)
 		return 0;
 
 	if (c->get_config_item(c, key, value, len + 1) != len) {
@@ -314,7 +300,7 @@ static int cmporder(const void *p1, const void *p2)
 	int c2_order = get_config_integer(c2, "lxc.start.order");
 
 	if (c1_order == c2_order)
-		return strcmp(c1->name, c2->name);
+		return strncmp(c1->name, c2->name, strlen(c1->name));
 
 	return (c1_order - c2_order);
 }
@@ -372,7 +358,7 @@ int main(int argc, char *argv[])
 	qsort(&containers[0], count, sizeof(struct lxc_container *), cmporder);
 
 	if (cmd_groups_list && my_args.all)
-		fprintf(stderr, "Specifying -a (all) with -g (groups) doesn't make sense. All option overrides.\n");
+		ERROR("Specifying -a (all) with -g (groups) doesn't make sense. All option overrides");
 
 	/* We need a default cmd_groups_list even for the -a
 	 * case in order to force a pass through the loop for
@@ -402,29 +388,30 @@ int main(int argc, char *argv[])
 			 */
 			if (!c->may_control(c)) {
 				/* We're done with this container */
-				if ( lxc_container_put(c) > 0 )
+				if (lxc_container_put(c) > 0)
 					containers[i] = NULL;
+
 				continue;
 			}
 
 			if (!my_args.ignore_auto &&
 			    get_config_integer(c, "lxc.start.auto") != 1) {
 				/* We're done with this container */
-				if ( lxc_container_put(c) > 0 )
+				if (lxc_container_put(c) > 0)
 					containers[i] = NULL;
+
 				continue;
 			}
 
 			if (!my_args.all) {
 				/* Filter by group */
-				if( ! c_groups_lists[i] ) {
+				if (!c_groups_lists[i]) {
 					/* Now we're loading up a container's groups */
 					c_groups_lists[i] = get_config_list(c, "lxc.group");
 				}
 
 				ret = list_contains_entry(cmd_group->elem, c_groups_lists[i]);
-
-				if ( ret == 0 ) {
+				if (ret == 0) {
 					/* Not in the target group this pass so
 					 * leave in the list for subsequent
 					 * passes.
@@ -445,10 +432,8 @@ int main(int argc, char *argv[])
 					}
 					else {
 						if (!c->shutdown(c, my_args.timeout)) {
-							if (!c->stop(c)) {
-								fprintf(stderr, "Error shutting down container: %s\n", c->name);
-								fflush(stderr);
-							}
+							if (!c->stop(c))
+								ERROR("Error shutting down container: %s", c->name);
 						}
 					}
 				}
@@ -460,10 +445,8 @@ int main(int argc, char *argv[])
 						fflush(stdout);
 					}
 					else {
-						if (!c->stop(c)) {
-							fprintf(stderr, "Error killing container: %s\n", c->name);
-							fflush(stderr);
-						}
+						if (!c->stop(c))
+							ERROR("Error killing container: %s", c->name);
 					}
 				}
 			} else if (my_args.reboot) {
@@ -475,10 +458,8 @@ int main(int argc, char *argv[])
 						fflush(stdout);
 					}
 					else {
-						if (!c->reboot(c)) {
-							fprintf(stderr, "Error rebooting container: %s\n", c->name);
-							fflush(stderr);
-						}
+						if (!c->reboot(c))
+							ERROR("Error rebooting container: %s", c->name);
 						else
 							sleep(get_config_integer(c, "lxc.start.delay"));
 					}
@@ -492,10 +473,8 @@ int main(int argc, char *argv[])
 						fflush(stdout);
 					}
 					else {
-						if (!c->start(c, 0, NULL)) {
-							fprintf(stderr, "Error starting container: %s\n", c->name);
-							fflush(stderr);
-						}
+						if (!c->start(c, 0, NULL))
+							ERROR("Error starting container: %s", c->name);
 						else
 							sleep(get_config_integer(c, "lxc.start.delay"));
 					}
@@ -507,9 +486,10 @@ int main(int argc, char *argv[])
 			 * then we're done with this container...  We can dump any
 			 * c_groups_list and the container itself.
 			 */
-			if ( lxc_container_put(c) > 0 )
+			if (lxc_container_put(c) > 0)
 				containers[i] = NULL;
-			if ( c_groups_lists ) {
+
+			if (c_groups_lists) {
 				toss_list(c_groups_lists[i]);
 				c_groups_lists[i] = NULL;
 			}
@@ -527,7 +507,7 @@ int main(int argc, char *argv[])
 	}
 
 	free(c_groups_lists);
-	toss_list( cmd_groups_list );
+	toss_list(cmd_groups_list);
 	free(containers);
 
 	exit(EXIT_SUCCESS);

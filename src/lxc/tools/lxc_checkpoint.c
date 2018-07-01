@@ -27,7 +27,8 @@
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
-#include "tool_utils.h"
+#include "log.h"
+#include "utils.h"
 
 static char *checkpoint_dir = NULL;
 static bool stop = false;
@@ -53,24 +54,26 @@ static const struct option my_longopts[] = {
 	LXC_COMMON_OPTIONS
 };
 
+lxc_log_define(lxc_checkpoint, lxc);
+
 static int my_checker(const struct lxc_arguments *args)
 {
 	if (do_restore && stop) {
-		lxc_error(args, "-s not compatible with -r.");
+		ERROR("-s not compatible with -r");
 		return -1;
 
 	} else if (!do_restore && daemonize_set) {
-		lxc_error(args, "-d/-F not compatible with -r.");
+		ERROR("-d/-F not compatible with -r");
 		return -1;
 	}
 
-	if (checkpoint_dir == NULL) {
-		lxc_error(args, "-D is required.");
+	if (!checkpoint_dir) {
+		ERROR("-D is required");
 		return -1;
 	}
 
 	if (pre_dump && do_restore) {
-		lxc_error(args, "-p not compatible with -r.");
+		ERROR("-p not compatible with -r");
 		return -1;
 	}
 
@@ -116,6 +119,7 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 			return -1;
 		break;
 	}
+
 	return 0;
 }
 
@@ -158,7 +162,7 @@ static bool checkpoint(struct lxc_container *c)
 	int mode;
 
 	if (!c->is_running(c)) {
-		fprintf(stderr, "%s not running, not checkpointing.\n", my_args.name);
+		ERROR("%s not running, not checkpointing", my_args.name);
 		lxc_container_put(c);
 		return false;
 	}
@@ -182,7 +186,7 @@ static bool checkpoint(struct lxc_container *c)
 	/* the migrate() API does not negate the return code like
 	 * checkpoint() and restore() does. */
 	if (ret) {
-		fprintf(stderr, "Checkpointing %s failed.\n", my_args.name);
+		ERROR("Checkpointing %s failed", my_args.name);
 		return false;
 	}
 
@@ -200,9 +204,10 @@ static bool restore_finalize(struct lxc_container *c)
 	opts.verbose = verbose;
 	opts.stop = stop;
 	opts.action_script = actionscript_path;
+
 	ret = c->migrate(c, MIGRATE_RESTORE, &opts, sizeof(opts));
 	if (ret) {
-		fprintf(stderr, "Restoring %s failed.\n", my_args.name);
+		ERROR("Restoring %s failed", my_args.name);
 		return false;
 	}
 
@@ -213,7 +218,7 @@ static bool restore_finalize(struct lxc_container *c)
 static bool restore(struct lxc_container *c)
 {
 	if (c->is_running(c)) {
-		fprintf(stderr, "%s is running, not restoring.\n", my_args.name);
+		ERROR("%s is running, not restoring", my_args.name);
 		lxc_container_put(c);
 		return false;
 	}
@@ -223,7 +228,7 @@ static bool restore(struct lxc_container *c)
 
 		pid = fork();
 		if (pid < 0) {
-			perror("fork");
+			SYSERROR("Failed to fork");
 			return false;
 		}
 
@@ -231,7 +236,7 @@ static bool restore(struct lxc_container *c)
 			close(0);
 			close(1);
 
-			exit(!restore_finalize(c));
+			_exit(!restore_finalize(c));
 		} else {
 			return wait_for_pid(pid) == 0;
 		}
@@ -272,33 +277,35 @@ int main(int argc, char *argv[])
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {
-		fprintf(stderr, "System error loading %s\n", my_args.name);
+		ERROR("System error loading %s", my_args.name);
 		exit(EXIT_FAILURE);
 	}
 
 	if (my_args.rcfile) {
 		c->clear_config(c);
+
 		if (!c->load_config(c, my_args.rcfile)) {
-			fprintf(stderr, "Failed to load rcfile\n");
+			ERROR("Failed to load rcfile");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
+
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
-			fprintf(stderr, "Out of memory setting new config filename\n");
+			ERROR("Out of memory setting new config filename");
 			lxc_container_put(c);
 			exit(EXIT_FAILURE);
 		}
 	}
 
 	if (!c->may_control(c)) {
-		fprintf(stderr, "Insufficent privileges to control %s\n", my_args.name);
+		ERROR("Insufficent privileges to control %s", my_args.name);
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
 
 	if (!c->is_defined(c)) {
-		fprintf(stderr, "%s is not defined\n", my_args.name);
+		ERROR("%s is not defined", my_args.name);
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
@@ -308,6 +315,7 @@ int main(int argc, char *argv[])
 		ret = restore(c);
 	else
 		ret = checkpoint(c);
+
 	free(actionscript_path);
 	free(checkpoint_dir);
 	free(predump_dir);

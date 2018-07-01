@@ -2388,14 +2388,72 @@ on_error:
 	return ret;
 }
 
-static int lxc_config_readline(char *buffer, struct lxc_conf *conf)
+static struct new_config_item *parse_new_conf_line(char *buffer)
 {
-	struct parse_line_conf c;
+	char *dot, *key, *line, *linep, *value;
+	int ret = 0;
+	char *dup = buffer;
+	struct new_config_item *new = NULL;
 
-	c.conf = conf;
-	c.from_include = false;
+	linep = line = strdup(dup);
+	if (!line)
+		return NULL;
 
-	return parse_line(buffer, &c);
+	line += lxc_char_left_gc(line, strlen(line));
+
+	/* martian option - don't add it to the config itself */
+	if (strncmp(line, "lxc.", strlen(line)))
+		goto on_error;
+
+	ret = -1;
+	dot = strchr(line, '=');
+	if (!dot) {
+		ERROR("Invalid configuration item: %s", line);
+		goto on_error;
+	}
+
+	*dot = '\0';
+	value = dot + 1;
+
+	key = line;
+	key[lxc_char_right_gc(key, strlen(key))] = '\0';
+
+	value += lxc_char_left_gc(value, strlen(value));
+	value[lxc_char_right_gc(value, strlen(value))] = '\0';
+
+	if (*value == '\'' || *value == '\"') {
+		size_t len;
+
+		len = strlen(value);
+		if (len > 1 && value[len - 1] == *value) {
+			value[len - 1] = '\0';
+			value++;
+		}
+	}
+
+	ret = -1;
+	new = malloc(sizeof(struct new_config_item));
+	if (!new)
+		goto on_error;
+
+	new->key = strdup(key);
+	new->val = strdup(value);
+	if (!new->val || !new->key)
+		goto on_error;
+
+	ret = 0;
+
+on_error:
+	free(linep);
+
+	if (ret < 0 && new) {
+		free(new->key);
+		free(new->val);
+		free(new);
+		new = NULL;
+	}
+
+	return new;
 }
 
 int lxc_config_read(const char *file, struct lxc_conf *conf, bool from_include)
@@ -2425,28 +2483,43 @@ int lxc_config_define_add(struct lxc_list *defines, char *arg)
 	if (!dent)
 		return -1;
 
-	dent->elem = arg;
+	dent->elem = parse_new_conf_line(arg);
+	if (!dent->elem) {
+		free(dent);
+		return -1;
+	}
+
 	lxc_list_add_tail(defines, dent);
 	return 0;
 }
 
-int lxc_config_define_load(struct lxc_list *defines, struct lxc_conf *conf)
+bool lxc_config_define_load(struct lxc_list *defines, struct lxc_container *c)
 {
-	struct lxc_list *it, *next;
-	int ret = 0;
+	struct lxc_list *it;
+	bool bret = true;
 
 	lxc_list_for_each(it, defines) {
-		ret = lxc_config_readline(it->elem, conf);
-		if (ret)
+		struct new_config_item *new_item = it->elem;
+		bret = c->set_config_item(c, new_item->key, new_item->val);
+		if (!bret)
 			break;
 	}
 
+	lxc_config_define_free(defines);
+	return bret;
+}
+
+void lxc_config_define_free(struct lxc_list *defines)
+{
+	struct lxc_list *it, *next;
+
 	lxc_list_for_each_safe(it, defines, next) {
+		struct new_config_item *new_item = it->elem;
+		free(new_item->key);
+		free(new_item->val);
 		lxc_list_del(it);
 		free(it);
 	}
-
-	return ret;
 }
 
 signed long lxc_config_parse_arch(const char *arch)
@@ -2492,6 +2565,49 @@ signed long lxc_config_parse_arch(const char *arch)
 #endif
 
 	return -1;
+}
+
+int lxc_fill_elevated_privileges(char *flaglist, int *flags)
+{
+	char *token, *saveptr = NULL;
+	int i, aflag;
+	struct {
+		const char *token;
+		int flag;
+	} all_privs[] = {
+		{ "CGROUP", LXC_ATTACH_MOVE_TO_CGROUP    },
+		{ "CAP",    LXC_ATTACH_DROP_CAPABILITIES },
+		{ "LSM",    LXC_ATTACH_LSM_EXEC          },
+		{ NULL,     0                            }
+	};
+
+	if (!flaglist) {
+		/* For the sake of backward compatibility, drop all privileges
+		*  if none is specified.
+		 */
+		for (i = 0; all_privs[i].token; i++)
+			*flags |= all_privs[i].flag;
+
+		return 0;
+	}
+
+	token = strtok_r(flaglist, "|", &saveptr);
+	while (token) {
+		aflag = -1;
+
+		for (i = 0; all_privs[i].token; i++)
+			if (!strcmp(all_privs[i].token, token))
+				aflag = all_privs[i].flag;
+
+		if (aflag < 0)
+			return -1;
+
+		*flags |= aflag;
+
+		token = strtok_r(NULL, "|", &saveptr);
+	}
+
+	return 0;
 }
 
 /* Write out a configuration file. */
