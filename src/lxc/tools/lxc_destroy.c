@@ -158,7 +158,7 @@ static bool do_destroy(struct lxc_container *c)
 		return false;
 
 	if (file_exists(path)) {
-		ERROR("Destroying %s failed: %s has clones.", c->name, c->name);
+		ERROR("Destroying %s failed: %s has clones", c->name, c->name);
 		return false;
 	}
 
@@ -167,7 +167,7 @@ static bool do_destroy(struct lxc_container *c)
 		return false;
 
 	if (rmdir(path) < 0 && errno != ENOENT) {
-		ERROR("Destroying %s failed: %s has snapshots.", c->name, c->name);
+		ERROR("Destroying %s failed: %s has snapshots", c->name, c->name);
 		return false;
 	}
 
