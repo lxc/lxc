@@ -252,7 +252,7 @@ static uint64_t stat_match_get_int(struct lxc_container *c, const char *item,
 
 	matchlen = strlen(match);
 	for (i = 0; lines[i]; i++) {
-		if (!strncmp(lines[i], match, matchlen)) {
+		if (strncmp(lines[i], match, matchlen) == 0) {
 			cols = lxc_string_split_and_trim(lines[i], ' ');
 			if (!cols)
 				goto err1;
@@ -317,12 +317,12 @@ static void stat_get_blk_stats(struct lxc_container *c, const char *item,
 		if (!cols)
 			goto out;
 
-		if (!strncmp(cols[1], "Read", strlen(cols[1])))
+		if (strncmp(cols[1], "Read", strlen(cols[1])) == 0)
 			stats->read += strtoull(cols[2], NULL, 0);
-		else if (!strncmp(cols[1], "Write", strlen(cols[1])))
+		else if (strncmp(cols[1], "Write", strlen(cols[1])) == 0)
 			stats->write += strtoull(cols[2], NULL, 0);
 
-		if (!strncmp(cols[0], "Total", strlen(cols[0])))
+		if (strncmp(cols[0], "Total", strlen(cols[0])) == 0)
 			stats->total = strtoull(cols[1], NULL, 0);
 
 		lxc_free_array((void **)cols, free);
