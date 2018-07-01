@@ -275,7 +275,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (c->is_running(c)) {
-		ERROR("Container is already running.");
+		ERROR("Container is already running");
 		err = EXIT_SUCCESS;
 		goto out;
 	}
@@ -327,13 +327,13 @@ int main(int argc, char *argv[])
 	else
 		err = c->start(c, 0, args) ? EXIT_SUCCESS : EXIT_FAILURE;
 	if (err) {
-		ERROR("The container failed to start.");
+		ERROR("The container failed to start");
 
 		if (my_args.daemonize)
-			ERROR("To get more details, run the container in foreground mode.");
+			ERROR("To get more details, run the container in foreground mode");
 
 		ERROR("Additional information can be obtained by setting the "
-		      "--logfile and --logpriority options.");
+		      "--logfile and --logpriority options");
 
 		err = c->error_num;
 		lxc_container_put(c);
