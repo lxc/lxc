@@ -61,15 +61,15 @@ int main(int argc, char *argv[])
 	struct lxc_config_items *i;
 	const char *value;
 
-	if (argc < 2 || !strncmp(argv[1], "-h", strlen(argv[1])) ||
-	                !strncmp(argv[1], "--help", strlen(argv[1])))
+	if (argc < 2 || strncmp(argv[1], "-h", strlen(argv[1])) == 0 ||
+	                strncmp(argv[1], "--help", strlen(argv[1])) == 0)
 		usage(argv[0]);
 
-	if (!strncmp(argv[1], "-l", strlen(argv[1])))
+	if (strncmp(argv[1], "-l", strlen(argv[1])) == 0)
 		list_config_items();
 
 	for (i = &items[0]; i->name; i++) {
-		if (!strncmp(argv[1], i->name, strlen(argv[1]))) {
+		if (strncmp(argv[1], i->name, strlen(argv[1])) == 0) {
 			value = lxc_get_global_config_item(i->name);
 			if (value)
 				printf("%s\n", value);
