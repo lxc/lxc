@@ -187,7 +187,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (!my_args.newname && !(my_args.task == DESTROY)) {
-		ERROR("You must provide a NEWNAME for the clone.");
+		ERROR("You must provide a NEWNAME for the clone");
 		exit(ret);
 	}
 
@@ -603,7 +603,7 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 			return -1;
 		break;
 	case 'B':
-		if (!strncmp(arg, "overlay", strlen(arg)))
+		if (strncmp(arg, "overlay", strlen(arg)) == 0)
 			arg = "overlayfs";
 		args->bdevtype = arg;
 		break;
@@ -649,10 +649,10 @@ static int parse_bind_mnt(char *mntstring, enum mnttype type)
 	if (len == 1) { /* bind=src */
 		m->dest = construct_path(mntarray[0], false);
 	} else if (len == 2) { /* bind=src:option or bind=src:dest */
-		if (!strncmp(mntarray[1], "rw", strlen(mntarray[1])))
+		if (strncmp(mntarray[1], "rw", strlen(mntarray[1])) == 0)
 			m->options = strdup("rw");
 
-		if (!strncmp(mntarray[1], "ro", strlen(mntarray[1])))
+		if (strncmp(mntarray[1], "ro", strlen(mntarray[1])) == 0)
 			m->options = strdup("ro");
 
 		if (m->options)
@@ -672,8 +672,8 @@ static int parse_bind_mnt(char *mntstring, enum mnttype type)
 	if (!m->options)
 		m->options = strdup("rw");
 
-	if (!m->options || (strncmp(m->options, "rw", strlen(m->options)) &&
-			    strncmp(m->options, "ro", strlen(m->options))))
+	if (!m->options || (strncmp(m->options, "rw", strlen(m->options)) != 0 &&
+			    strncmp(m->options, "ro", strlen(m->options)) != 0))
 		goto err;
 
 	lxc_free_array((void **)mntarray, free);
@@ -771,7 +771,7 @@ static char *mount_tmpfs(const char *oldname, const char *newname,
 	if (arg->tmpfs && !arg->bdevtype) {
 		arg->bdevtype = "overlayfs";
 	} else if (arg->tmpfs && arg->bdevtype &&
-		   strncmp(arg->bdevtype, "overlayfs", strlen(arg->bdevtype))) {
+		   strncmp(arg->bdevtype, "overlayfs", strlen(arg->bdevtype)) != 0) {
 		ERROR("%s",
 		      "A container can only be placed on a tmpfs when the "
 		      "overlay storage driver is used");
@@ -794,7 +794,7 @@ static char *mount_tmpfs(const char *oldname, const char *newname,
 		goto err_free;
 
 	if (fcntl(fd, F_SETFD, FD_CLOEXEC)) {
-		ERROR("Failed to set close-on-exec on file descriptor.");
+		ERROR("Failed to set close-on-exec on file descriptor");
 		goto err_close;
 	}
 
