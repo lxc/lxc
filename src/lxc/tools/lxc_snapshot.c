@@ -221,7 +221,7 @@ static int do_snapshot_destroy(struct lxc_container *c, char *snapname)
 {
 	bool ret;
 
-	if (!strncmp(snapname, "ALL", strlen(snapname)))
+	if (strncmp(snapname, "ALL", strlen(snapname)) == 0)
 		ret = c->snapshot_destroy_all(c);
 	else
 		ret = c->snapshot_destroy(c, snapname);
