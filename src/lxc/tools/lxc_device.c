@@ -64,7 +64,7 @@ static bool is_interface(const char *dev_name, pid_t pid)
 {
 	pid_t p = fork();
 	if (p < 0) {
-		ERROR("Failed to fork task.");
+		ERROR("Failed to fork task");
 		exit(EXIT_FAILURE);
 	}
 
@@ -72,7 +72,7 @@ static bool is_interface(const char *dev_name, pid_t pid)
 		struct ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
 
 		if (!switch_to_ns(pid, "net")) {
-			ERROR("Failed to enter netns of container.");
+			ERROR("Failed to enter netns of container");
 			_exit(-1);
 		}
 
@@ -84,7 +84,7 @@ static bool is_interface(const char *dev_name, pid_t pid)
 
 		/* Iterate through the interfaces */
 		for (tempIfAddr = interfaceArray; tempIfAddr != NULL; tempIfAddr = tempIfAddr->ifa_next) {
-			if (!strncmp(tempIfAddr->ifa_name, dev_name, strlen(tempIfAddr->ifa_name)))
+			if (strncmp(tempIfAddr->ifa_name, dev_name, strlen(tempIfAddr->ifa_name)) == 0)
 				_exit(EXIT_SUCCESS);
 		}
 
@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (!c->is_running(c)) {
-		ERROR("Container %s is not running.", c->name);
+		ERROR("Container %s is not running", c->name);
 		goto err1;
 	}
 
@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
 	else
 		dst_name = my_args.argv[2];
 
-	if (!strncmp(cmd, "add", strlen(cmd))) {
+	if (strncmp(cmd, "add", strlen(cmd)) == 0) {
 		if (is_interface(dev_name, 1)) {
 			ret = c->attach_interface(c, dev_name, dst_name);
 		} else {
@@ -171,10 +171,10 @@ int main(int argc, char *argv[])
 		}
 
 		if (ret != true) {
-			ERROR("Failed to add %s to %s.", dev_name, c->name);
+			ERROR("Failed to add %s to %s", dev_name, c->name);
 			goto err1;
 		}
-	} else if (!strncmp(cmd, "del", strlen(cmd))) {
+	} else if (strncmp(cmd, "del", strlen(cmd)) == 0) {
 		if (is_interface(dev_name, c->init_pid(c))) {
 			ret = c->detach_interface(c, dev_name, dst_name);
 		} else {
@@ -182,7 +182,7 @@ int main(int argc, char *argv[])
 		}
 
 		if (ret != true) {
-			ERROR("Failed to del %s from %s.", dev_name, c->name);
+			ERROR("Failed to del %s from %s", dev_name, c->name);
 			goto err1;
 		}
 	} else {
