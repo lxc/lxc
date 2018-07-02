@@ -1238,7 +1238,6 @@ struct lxc_device_node {
 };
 
 static const struct lxc_device_node lxc_devices[] = {
-	{ "console", S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 5 },
 	{ "full",    S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 7 },
 	{ "null",    S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 3 },
 	{ "random",  S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 8 },
@@ -1648,7 +1647,7 @@ static int setup_personality(int persona)
 static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 				 const struct lxc_terminal *console)
 {
-	int fd, ret;
+	int ret;
 	char path[MAXPATHLEN];
 	char *rootfs_path = rootfs->path ? rootfs->mount : "";
 
@@ -1675,17 +1674,15 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	/* For unprivileged containers autodev or automounts will already have
 	 * taken care of creating /dev/console.
 	 */
-	fd = open(path, O_CREAT | O_EXCL, S_IXUSR | S_IXGRP | S_IXOTH);
-	if (fd < 0) {
+	ret = mknod(path, S_IFREG | 0000, 0);
+	if (ret < 0) {
 		if (errno != EEXIST) {
 			SYSERROR("Failed to create console");
 			return -errno;
 		}
-	} else {
-		close(fd);
 	}
 
-	ret = chmod(console->name, S_IXUSR | S_IXGRP | S_IXOTH);
+	ret = fchmod(console->slave, S_IXUSR | S_IXGRP | S_IXOTH);
 	if (ret < 0) {
 		SYSERROR("Failed to set mode \"0%o\" to \"%s\"",
 			 S_IXUSR | S_IXGRP | S_IXOTH, console->name);
