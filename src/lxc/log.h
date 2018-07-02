@@ -72,9 +72,9 @@ enum lxc_loglevel {
 
 /* location information of the logging event */
 struct lxc_log_locinfo {
-	const char	*file;
-	const char	*func;
-	int		line;
+	const char *file;
+	const char *func;
+	int line;
 };
 
 #define LXC_LOG_LOCINFO_INIT						\
@@ -82,31 +82,31 @@ struct lxc_log_locinfo {
 
 /* brief logging event object */
 struct lxc_log_event {
-	const char*		category;
-	int			priority;
-	struct timespec		timestamp;
-	struct lxc_log_locinfo	*locinfo;
-	const char		*fmt;
-	va_list			*vap;
+	const char *category;
+	int priority;
+	struct timespec timestamp;
+	struct lxc_log_locinfo *locinfo;
+	const char *fmt;
+	va_list *vap;
 };
 
 /* log appender object */
 struct lxc_log_appender {
-	const char*	name;
+	const char *name;
 	int (*append)(const struct lxc_log_appender *, struct lxc_log_event *);
 
 	/*
 	 * appenders can be stacked
 	 */
-	struct lxc_log_appender	*next;
+	struct lxc_log_appender *next;
 };
 
 /* log category object */
 struct lxc_log_category {
-	const char			*name;
-	int				priority;
-	struct lxc_log_appender		*appender;
-	const struct lxc_log_category	*parent;
+	const char *name;
+	int priority;
+	struct lxc_log_appender *appender;
+	const struct lxc_log_category *parent;
 };
 
 #ifndef NO_LXC_CONF
@@ -117,18 +117,16 @@ extern int lxc_log_use_global_fd;
  * Returns true if the chained priority is equal to or higher than
  * given priority.
  */
-static inline int
-lxc_log_priority_is_enabled(const struct lxc_log_category* category,
-			   int priority)
+static inline int lxc_log_priority_is_enabled(const struct lxc_log_category *category,
+					      int priority)
 {
-	while (category->priority == LXC_LOG_LEVEL_NOTSET &&
-	       category->parent)
+	while (category->priority == LXC_LOG_LEVEL_NOTSET && category->parent)
 		category = category->parent;
 
 	int cmp_prio = category->priority;
 #ifndef NO_LXC_CONF
 	if (!lxc_log_use_global_fd && current_config &&
-			current_config->loglevel != LXC_LOG_LEVEL_NOTSET)
+	    current_config->loglevel != LXC_LOG_LEVEL_NOTSET)
 		cmp_prio = current_config->loglevel;
 #endif
 
@@ -138,79 +136,114 @@ lxc_log_priority_is_enabled(const struct lxc_log_category* category,
 /*
  * converts a priority to a literal string
  */
-static inline const char* lxc_log_priority_to_string(int priority)
+static inline const char *lxc_log_priority_to_string(int priority)
 {
 	switch (priority) {
-	case LXC_LOG_LEVEL_TRACE:	return "TRACE";
-	case LXC_LOG_LEVEL_DEBUG:	return "DEBUG";
-	case LXC_LOG_LEVEL_INFO:	return "INFO";
-	case LXC_LOG_LEVEL_NOTICE:	return "NOTICE";
-	case LXC_LOG_LEVEL_WARN:	return "WARN";
-	case LXC_LOG_LEVEL_ERROR:	return "ERROR";
-	case LXC_LOG_LEVEL_CRIT:	return "CRIT";
-	case LXC_LOG_LEVEL_ALERT:	return "ALERT";
-	case LXC_LOG_LEVEL_FATAL:	return "FATAL";
-	default:
-		return "NOTSET";
+	case LXC_LOG_LEVEL_TRACE:
+		return "TRACE";
+	case LXC_LOG_LEVEL_DEBUG:
+		return "DEBUG";
+	case LXC_LOG_LEVEL_INFO:
+		return "INFO";
+	case LXC_LOG_LEVEL_NOTICE:
+		return "NOTICE";
+	case LXC_LOG_LEVEL_WARN:
+		return "WARN";
+	case LXC_LOG_LEVEL_ERROR:
+		return "ERROR";
+	case LXC_LOG_LEVEL_CRIT:
+		return "CRIT";
+	case LXC_LOG_LEVEL_ALERT:
+		return "ALERT";
+	case LXC_LOG_LEVEL_FATAL:
+		return "FATAL";
 	}
+
+	return "NOTSET";
 }
 
-static inline const char* lxc_syslog_priority_to_string(int priority)
+static inline const char *lxc_syslog_priority_to_string(int priority)
 {
 	switch (priority) {
-	case LOG_DAEMON: return "daemon";
-	case LOG_LOCAL0: return "local0";
-	case LOG_LOCAL1: return "local1";
-	case LOG_LOCAL2: return "local2";
-	case LOG_LOCAL3: return "local3";
-	case LOG_LOCAL4: return "local4";
-	case LOG_LOCAL5: return "local5";
-	case LOG_LOCAL6: return "local6";
-	case LOG_LOCAL7: return "local7";
-	default:
-		return "NOTSET";
+	case LOG_DAEMON:
+		return "daemon";
+	case LOG_LOCAL0:
+		return "local0";
+	case LOG_LOCAL1:
+		return "local1";
+	case LOG_LOCAL2:
+		return "local2";
+	case LOG_LOCAL3:
+		return "local3";
+	case LOG_LOCAL4:
+		return "local4";
+	case LOG_LOCAL5:
+		return "local5";
+	case LOG_LOCAL6:
+		return "local6";
+	case LOG_LOCAL7:
+		return "local7";
 	}
+
+	return "NOTSET";
 }
 
 /*
  * converts a literal priority to an int
  */
-static inline int lxc_log_priority_to_int(const char* name)
+static inline int lxc_log_priority_to_int(const char *name)
 {
-	if (!strcasecmp("TRACE",  name)) return LXC_LOG_LEVEL_TRACE;
-	if (!strcasecmp("DEBUG",  name)) return LXC_LOG_LEVEL_DEBUG;
-	if (!strcasecmp("INFO",   name)) return LXC_LOG_LEVEL_INFO;
-	if (!strcasecmp("NOTICE", name)) return LXC_LOG_LEVEL_NOTICE;
-	if (!strcasecmp("WARN",   name)) return LXC_LOG_LEVEL_WARN;
-	if (!strcasecmp("ERROR",  name)) return LXC_LOG_LEVEL_ERROR;
-	if (!strcasecmp("CRIT",   name)) return LXC_LOG_LEVEL_CRIT;
-	if (!strcasecmp("ALERT",  name)) return LXC_LOG_LEVEL_ALERT;
-	if (!strcasecmp("FATAL",  name)) return LXC_LOG_LEVEL_FATAL;
+	if (strcasecmp("TRACE", name) == 0)
+		return LXC_LOG_LEVEL_TRACE;
+	if (strcasecmp("DEBUG", name) == 0)
+		return LXC_LOG_LEVEL_DEBUG;
+	if (strcasecmp("INFO", name) == 0)
+		return LXC_LOG_LEVEL_INFO;
+	if (strcasecmp("NOTICE", name) == 0)
+		return LXC_LOG_LEVEL_NOTICE;
+	if (strcasecmp("WARN", name) == 0)
+		return LXC_LOG_LEVEL_WARN;
+	if (strcasecmp("ERROR", name) == 0)
+		return LXC_LOG_LEVEL_ERROR;
+	if (strcasecmp("CRIT", name) == 0)
+		return LXC_LOG_LEVEL_CRIT;
+	if (strcasecmp("ALERT", name) == 0)
+		return LXC_LOG_LEVEL_ALERT;
+	if (strcasecmp("FATAL", name) == 0)
+		return LXC_LOG_LEVEL_FATAL;
 
 	return LXC_LOG_LEVEL_NOTSET;
 }
 
-static inline int lxc_syslog_priority_to_int(const char* name)
+static inline int lxc_syslog_priority_to_int(const char *name)
 {
-	if (!strcasecmp("daemon", name)) return LOG_DAEMON;
-	if (!strcasecmp("local0", name)) return LOG_LOCAL0;
-	if (!strcasecmp("local1", name)) return LOG_LOCAL1;
-	if (!strcasecmp("local2", name)) return LOG_LOCAL2;
-	if (!strcasecmp("local3", name)) return LOG_LOCAL3;
-	if (!strcasecmp("local4", name)) return LOG_LOCAL4;
-	if (!strcasecmp("local5", name)) return LOG_LOCAL5;
-	if (!strcasecmp("local6", name)) return LOG_LOCAL6;
-	if (!strcasecmp("local7", name)) return LOG_LOCAL7;
+	if (strcasecmp("daemon", name) == 0)
+		return LOG_DAEMON;
+	if (strcasecmp("local0", name) == 0)
+		return LOG_LOCAL0;
+	if (strcasecmp("local1", name) == 0)
+		return LOG_LOCAL1;
+	if (strcasecmp("local2", name) == 0)
+		return LOG_LOCAL2;
+	if (strcasecmp("local3", name) == 0)
+		return LOG_LOCAL3;
+	if (strcasecmp("local4", name) == 0)
+		return LOG_LOCAL4;
+	if (strcasecmp("local5", name) == 0)
+		return LOG_LOCAL5;
+	if (strcasecmp("local6", name) == 0)
+		return LOG_LOCAL6;
+	if (strcasecmp("local7", name) == 0)
+		return LOG_LOCAL7;
 
 	return -EINVAL;
 }
 
-static inline void
-__lxc_log_append(const struct lxc_log_appender *appender,
-		struct lxc_log_event* event)
+static inline void __lxc_log_append(const struct lxc_log_appender *appender,
+				    struct lxc_log_event *event)
 {
-	va_list va, *va_keep;
-	va_keep = event->vap;
+	va_list va;
+	va_list *va_keep = event->vap;
 
 	while (appender) {
 		va_copy(va, *va_keep);
@@ -221,9 +254,8 @@ __lxc_log_append(const struct lxc_log_appender *appender,
 	}
 }
 
-static inline void
-__lxc_log(const struct lxc_log_category* category,
-	  struct lxc_log_event* event)
+static inline void __lxc_log(const struct lxc_log_category *category,
+			     struct lxc_log_event *event)
 {
 	while (category) {
 		__lxc_log_append(category->appender, event);
@@ -234,34 +266,34 @@ __lxc_log(const struct lxc_log_category* category,
 /*
  * Helper macro to define log functions.
  */
-#define lxc_log_priority_define(acategory, LEVEL)			\
-									\
-ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo *,		\
-	const char *, ...) __attribute__ ((format (printf, 2, 3)));	\
-									\
+#define lxc_log_priority_define(acategory, LEVEL)				\
+										\
+ATTR_UNUSED __attribute__ ((format (printf, 2, 3)))				\
+static inline void LXC_##LEVEL(struct lxc_log_locinfo *, const char *, ...);	\
+										\
 ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
-				  const char* format, ...)		\
-{									\
-	if (lxc_log_priority_is_enabled(acategory, 			\
-					LXC_LOG_LEVEL_##LEVEL)) {	\
-		struct lxc_log_event evt = {				\
-			.category	= (acategory)->name,		\
-			.priority	= LXC_LOG_LEVEL_##LEVEL,	\
-			.fmt		= format,			\
-			.locinfo	= locinfo			\
-		};							\
-		va_list va_ref;						\
-									\
-		/* clock_gettime() is explicitly marked as MT-Safe	\
-		 * without restrictions. So let's use it for our	\
-		 * logging stamps. */					\
-		clock_gettime(CLOCK_REALTIME, &evt.timestamp);		\
-									\
-		va_start(va_ref, format);				\
-		evt.vap = &va_ref;					\
-		__lxc_log(acategory, &evt);				\
-		va_end(va_ref);						\
-	}								\
+					   const char* format, ...)		\
+{										\
+	if (lxc_log_priority_is_enabled(acategory, LXC_LOG_LEVEL_##LEVEL)) {	\
+		va_list va_ref;							\
+		struct lxc_log_event evt = {					\
+			.category	= (acategory)->name,			\
+			.priority	= LXC_LOG_LEVEL_##LEVEL,		\
+			.fmt		= format,				\
+			.locinfo	= locinfo				\
+		};								\
+										\
+		/* clock_gettime() is explicitly marked as MT-Safe		\
+		 * without restrictions. So let's use it for our		\
+		 * logging stamps.						\
+		 */								\
+		(void)clock_gettime(CLOCK_REALTIME, &evt.timestamp);		\
+										\
+		va_start(va_ref, format);					\
+		evt.vap = &va_ref;						\
+		__lxc_log(acategory, &evt);					\
+		va_end(va_ref);							\
+	}									\
 }
 
 /*
@@ -271,7 +303,7 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 	extern struct lxc_log_category lxc_log_category_##parent;	\
 	struct lxc_log_category lxc_log_category_##name = {		\
 		#name,							\
-		LXC_LOG_LEVEL_NOTSET,				\
+		LXC_LOG_LEVEL_NOTSET,					\
 		NULL,							\
 		&lxc_log_category_##parent				\
 	};
