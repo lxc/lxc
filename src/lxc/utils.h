@@ -616,5 +616,6 @@ static inline pid_t lxc_raw_gettid(void)
 /* Set a signal the child process will receive after the parent has died. */
 extern int lxc_set_death_signal(int signal);
 extern int fd_cloexec(int fd, bool cloexec);
+extern int recursive_destroy(char *dirname);
 
 #endif /* __LXC_UTILS_H */
