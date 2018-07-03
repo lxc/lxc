@@ -86,5 +86,6 @@ on_error_put:
 	lxc_container_put(c);
 	if (ret == EXIT_SUCCESS)
 		lxc_debug("%s\n", "All criu feature check tests passed");
+
 	exit(ret);
 }
