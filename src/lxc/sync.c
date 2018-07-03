@@ -60,7 +60,7 @@ static int __sync_wait(int fd, int sequence)
 	}
 
 	if (sync != sequence) {
-		ERROR("Invalid sequence number %d. expected %d",
+		ERROR("Invalid sequence number %d. Expected sequence number %d",
 		      sync, sequence);
 		return -1;
 	}
