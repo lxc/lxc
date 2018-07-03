@@ -39,10 +39,12 @@ static int destroy_busybox(void)
 		perror("fork");
 		return -1;
 	}
+
 	if (pid == 0) {
 		execlp("lxc-destroy", "lxc-destroy", "-f", "-n", MYNAME, NULL);
 		exit(EXIT_FAILURE);
 	}
+
 again:
 	ret = waitpid(pid, &status, 0);
 	if (ret == -1) {
@@ -51,12 +53,15 @@ again:
 		perror("waitpid");
 		return -1;
 	}
+
 	if (ret != pid)
 		goto again;
+
 	if (!WIFEXITED(status))  { // did not exit normally
 		fprintf(stderr, "%d: lxc-create exited abnormally\n", __LINE__);
 		return -1;
 	}
+
 	return WEXITSTATUS(status);
 }
 
@@ -69,10 +74,12 @@ static int create_busybox(void)
 		perror("fork");
 		return -1;
 	}
+
 	if (pid == 0) {
 		execlp("lxc-create", "lxc-create", "-t", "busybox", "-n", MYNAME, NULL);
 		exit(EXIT_FAILURE);
 	}
+
 again:
 	ret = waitpid(pid, &status, 0);
 	if (ret == -1) {
@@ -81,12 +88,15 @@ again:
 		perror("waitpid");
 		return -1;
 	}
+
 	if (ret != pid)
 		goto again;
+
 	if (!WIFEXITED(status))  { // did not exit normally
 		fprintf(stderr, "%d: lxc-create exited abnormally\n", __LINE__);
 		return -1;
 	}
+
 	return WEXITSTATUS(status);
 }
 
@@ -99,25 +109,30 @@ int main(int argc, char *argv[])
 	char *str;
 
 	ret = 1;
+
 	/* test refcounting */
 	c = lxc_container_new(MYNAME, NULL);
 	if (!c) {
 		fprintf(stderr, "%d: error creating lxc_container %s\n", __LINE__, MYNAME);
 		goto out;
 	}
+
 	if (!lxc_container_get(c)) {
 		fprintf(stderr, "%d: error getting refcount\n", __LINE__);
 		goto out;
 	}
+
 	/* peek in, inappropriately, make sure refcount is a we'd like */
 	if (c->numthreads != 2) {
 		fprintf(stderr, "%d: refcount is %d, not %d\n", __LINE__, c->numthreads, 2);
 		goto out;
 	}
+
 	if (strcmp(c->name, MYNAME) != 0) {
 		fprintf(stderr, "%d: container has wrong name (%s not %s)\n", __LINE__, c->name, MYNAME);
 		goto out;
 	}
+
 	str = c->config_file_name(c);
 #define CONFIGFNAM LXCPATH "/" MYNAME "/config"
 	if (!str || strcmp(str, CONFIGFNAM)) {
@@ -127,19 +142,23 @@ int main(int argc, char *argv[])
 	free(str);
 	free(c->configfile);
 	c->configfile = NULL;
+
 	str = c->config_file_name(c);
 	if (str) {
 		fprintf(stderr, "%d: config file name was not NULL as it should have been\n", __LINE__);
 		goto out;
 	}
+
 	if (lxc_container_put(c) != 0) {
 		fprintf(stderr, "%d: c was freed on non-final put\n", __LINE__);
 		goto out;
 	}
+
 	if (c->numthreads != 1) {
 		fprintf(stderr, "%d: refcount is %d, not %d\n", __LINE__, c->numthreads, 1);
 		goto out;
 	}
+
 	if (lxc_container_put(c) != 1) {
 		fprintf(stderr, "%d: c was not freed on final put\n", __LINE__);
 		goto out;
@@ -202,9 +221,11 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%d: lxc_get_wait_states gave %d not %d\n", __LINE__, numstates, MAX_STATE);
 		goto out;
 	}
+
 	const char **sstr = malloc(numstates * sizeof(const char *));
 	numstates = lxc_get_wait_states(sstr);
 	int i;
+
 	for (i=0; i<numstates; i++) {
 		fprintf(stderr, "got state %d %s\n", i, sstr[i]);
 	}
@@ -237,6 +258,7 @@ out:
 		c->stop(c);
 		destroy_busybox();
 	}
+
 	lxc_container_put(c);
 	exit(ret);
 }
