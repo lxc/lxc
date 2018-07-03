@@ -51,6 +51,7 @@ int main(int argc, char *argv[])
 		ret = 1;
 		goto out;
 	}
+
 	ret = c->get_keys(c, NULL, v3, len+1);
 	if (ret != len) {
 		fprintf(stderr, "%d: failed to get keys (%d)\n", __LINE__, ret);
