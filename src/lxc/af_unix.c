@@ -40,7 +40,7 @@
 #include "include/strlcpy.h"
 #endif
 
-lxc_log_define(lxc_af_unix, lxc);
+lxc_log_define(af_unix, lxc);
 
 int lxc_abstract_unix_open(const char *path, int type, int flags)
 {

@@ -73,7 +73,7 @@
 #include "include/strlcat.h"
 #endif
 
-lxc_log_define(lxc_confile, lxc);
+lxc_log_define(confile, lxc);
 
 #define lxc_config_define(name)                                                \
 	static int set_config_##name(const char *, const char *,               \

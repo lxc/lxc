@@ -32,7 +32,7 @@
 #include "log.h"
 #include "lsm.h"
 
-lxc_log_define(lxc_lsm, lxc);
+lxc_log_define(lsm, lxc);
 
 static struct lsm_drv *drv = NULL;
 

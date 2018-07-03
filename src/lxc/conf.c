@@ -118,7 +118,7 @@
 #define MS_LAZYTIME (1<<25)
 #endif
 
-lxc_log_define(lxc_conf, lxc);
+lxc_log_define(conf, lxc);
 
 /* The lxc_conf of the container currently being worked on in an API call.
  * This is used in the error calls.

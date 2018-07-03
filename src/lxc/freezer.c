@@ -40,7 +40,7 @@
 #include "parse.h"
 #include "state.h"
 
-lxc_log_define(lxc_freezer, lxc);
+lxc_log_define(freezer, lxc);
 
 static int do_freeze_thaw(bool freeze, const char *name, const char *lxcpath)
 {

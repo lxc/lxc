@@ -54,7 +54,7 @@
 #include "include/strlcpy.h"
 #endif
 
-lxc_log_define(lxc_monitor, lxc);
+lxc_log_define(monitor, lxc);
 
 /* routines used by monitor publishers (containers) */
 int lxc_monitor_fifo_name(const char *lxcpath, char *fifo_path, size_t fifo_path_sz,

@@ -31,7 +31,7 @@
 #include "include/strlcpy.h"
 #endif
 
-lxc_log_define(lxc_initutils, lxc);
+lxc_log_define(initutils, lxc);
 
 static char *copy_global_config_value(char *p)
 {

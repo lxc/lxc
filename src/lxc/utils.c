@@ -67,7 +67,7 @@
 #define O_NOFOLLOW  00400000
 #endif
 
-lxc_log_define(lxc_utils, lxc);
+lxc_log_define(utils, lxc);
 
 /*
  * if path is btrfs, tries to remove it and any subvolumes beneath it

@@ -37,7 +37,7 @@
 #include "namespace.h"
 #include "utils.h"
 
-lxc_log_define(lxc_namespace, lxc);
+lxc_log_define(namespace, lxc);
 
 struct clone_arg {
 	int (*fn)(void *);
