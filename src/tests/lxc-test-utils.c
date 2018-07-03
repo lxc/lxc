@@ -49,6 +49,7 @@ void test_lxc_deslashify(void)
 	t = lxc_deslashify(s);
 	if (!t)
 		exit(EXIT_FAILURE);
+
 	lxc_test_assert_abort(strcmp(t, "/A/B/C/D/E") == 0);
 	free(t);
 
@@ -57,6 +58,7 @@ void test_lxc_deslashify(void)
 	t = lxc_deslashify(s);
 	if (!t)
 		exit(EXIT_FAILURE);
+
 	lxc_test_assert_abort(strcmp(t, "/A") == 0);
 	free(t);
 
@@ -64,6 +66,7 @@ void test_lxc_deslashify(void)
 	t = lxc_deslashify(s);
 	if (!t)
 		exit(EXIT_FAILURE);
+
 	lxc_test_assert_abort(strcmp(t, "") == 0);
 	free(t);
 
@@ -72,6 +75,7 @@ void test_lxc_deslashify(void)
 	t = lxc_deslashify(s);
 	if (!t)
 		exit(EXIT_FAILURE);
+
 	lxc_test_assert_abort(strcmp(t, "/") == 0);
 	free(t);
 }
@@ -188,6 +192,7 @@ void test_detect_ramfs_rootfs(void)
 	for (i = 0; i < sizeof(mountinfo) / sizeof(mountinfo[0]); i++) {
 		if (strcmp(mountinfo[i], "24 0 8:2 / / rw - rootfs rootfs rw,size=1004396k,nr_inodes=251099") == 0)
 			continue;
+
 		if (fprintf(fp2, "%s\n", mountinfo[i]) < 0) {
 			lxc_error("Could not write \"%s\" to temporary file.", mountinfo[i]);
 			goto non_test_error;
@@ -217,6 +222,7 @@ non_test_error:
 		fclose(fp1);
 	else if (fd1 > 0)
 		close(fd1);
+
 	if (fp2)
 		fclose(fp2);
 	else if (fd2 > 0)
@@ -229,8 +235,10 @@ non_test_error:
 		}
 		close(init_ns);
 	}
+
 	if (fret == EXIT_SUCCESS)
 		return;
+
 	exit(fret);
 }
 
@@ -246,11 +254,13 @@ void test_lxc_safe_uint(void)
 	ret = snprintf(numstr, LXC_NUMSTRLEN64, "%" PRIu64, (uint64_t)UINT_MAX);
 	if (ret < 0 || ret >= LXC_NUMSTRLEN64)
 		exit(EXIT_FAILURE);
+
 	lxc_test_assert_abort((0 == lxc_safe_uint(numstr, &n)) && n == UINT_MAX);
 
 	ret = snprintf(numstr, LXC_NUMSTRLEN64, "%" PRIu64, (uint64_t)UINT_MAX + 1);
 	if (ret < 0 || ret >= LXC_NUMSTRLEN64)
 		exit(EXIT_FAILURE);
+
 	lxc_test_assert_abort((-ERANGE == lxc_safe_uint(numstr, &n)));
 
 	lxc_test_assert_abort((0 == lxc_safe_uint("1234345", &n)) && n == 1234345);
@@ -277,21 +287,25 @@ void test_lxc_safe_int(void)
 	ret = snprintf(numstr, LXC_NUMSTRLEN64, "%" PRIu64, (uint64_t)INT_MAX);
 	if (ret < 0 || ret >= LXC_NUMSTRLEN64)
 		exit(EXIT_FAILURE);
+
 	lxc_test_assert_abort((0 == lxc_safe_int(numstr, &n)) && n == INT_MAX);
 
 	ret = snprintf(numstr, LXC_NUMSTRLEN64, "%" PRIu64, (uint64_t)INT_MAX + 1);
 	if (ret < 0 || ret >= LXC_NUMSTRLEN64)
 		exit(EXIT_FAILURE);
+
 	lxc_test_assert_abort((-ERANGE == lxc_safe_int(numstr, &n)));
 
 	ret = snprintf(numstr, LXC_NUMSTRLEN64, "%" PRId64, (int64_t)INT_MIN);
 	if (ret < 0 || ret >= LXC_NUMSTRLEN64)
 		exit(EXIT_FAILURE);
+
 	lxc_test_assert_abort((0 == lxc_safe_int(numstr, &n)) && n == INT_MIN);
 
 	ret = snprintf(numstr, LXC_NUMSTRLEN64, "%" PRId64, (int64_t)INT_MIN - 1);
 	if (ret < 0 || ret >= LXC_NUMSTRLEN64)
 		exit(EXIT_FAILURE);
+
 	lxc_test_assert_abort((-ERANGE == lxc_safe_int(numstr, &n)));
 
 	lxc_test_assert_abort((0 == lxc_safe_int("1234345", &n)) && n == 1234345);
@@ -394,6 +408,7 @@ void test_parse_byte_size_string(void)
 		lxc_error("%s\n", "Failed to parse \"0\"");
 		exit(EXIT_FAILURE);
 	}
+
 	if (n != 0) {
 		lxc_error("%s\n", "Failed to parse \"0\"");
 		exit(EXIT_FAILURE);
@@ -404,6 +419,7 @@ void test_parse_byte_size_string(void)
 		lxc_error("%s\n", "Failed to parse \"1\"");
 		exit(EXIT_FAILURE);
 	}
+
 	if (n != 1) {
 		lxc_error("%s\n", "Failed to parse \"1\"");
 		exit(EXIT_FAILURE);
@@ -420,6 +436,7 @@ void test_parse_byte_size_string(void)
 		lxc_error("%s\n", "Failed to parse \"1B\"");
 		exit(EXIT_FAILURE);
 	}
+
 	if (n != 1) {
 		lxc_error("%s\n", "Failed to parse \"1B\"");
 		exit(EXIT_FAILURE);
@@ -430,6 +447,7 @@ void test_parse_byte_size_string(void)
 		lxc_error("%s\n", "Failed to parse \"1kB\"");
 		exit(EXIT_FAILURE);
 	}
+
 	if (n != 1024) {
 		lxc_error("%s\n", "Failed to parse \"1kB\"");
 		exit(EXIT_FAILURE);
@@ -440,6 +458,7 @@ void test_parse_byte_size_string(void)
 		lxc_error("%s\n", "Failed to parse \"1MB\"");
 		exit(EXIT_FAILURE);
 	}
+
 	if (n != 1048576) {
 		lxc_error("%s\n", "Failed to parse \"1MB\"");
 		exit(EXIT_FAILURE);
@@ -456,6 +475,7 @@ void test_parse_byte_size_string(void)
 		lxc_error("%s\n", "Failed to parse \"1 B\"");
 		exit(EXIT_FAILURE);
 	}
+
 	if (n != 1) {
 		lxc_error("%s\n", "Failed to parse \"1 B\"");
 		exit(EXIT_FAILURE);
@@ -466,6 +486,7 @@ void test_parse_byte_size_string(void)
 		lxc_error("%s\n", "Failed to parse \"1 kB\"");
 		exit(EXIT_FAILURE);
 	}
+
 	if (n != 1024) {
 		lxc_error("%s\n", "Failed to parse \"1 kB\"");
 		exit(EXIT_FAILURE);
@@ -476,6 +497,7 @@ void test_parse_byte_size_string(void)
 		lxc_error("%s\n", "Failed to parse \"1 MB\"");
 		exit(EXIT_FAILURE);
 	}
+
 	if (n != 1048576) {
 		lxc_error("%s\n", "Failed to parse \"1 MB\"");
 		exit(EXIT_FAILURE);
@@ -503,8 +525,10 @@ void test_lxc_config_net_hwaddr(void)
 
 	if (lxc_config_net_hwaddr("lxc.net"))
 		exit(EXIT_FAILURE);
+
 	if (lxc_config_net_hwaddr("lxc.net."))
 		exit(EXIT_FAILURE);
+
 	if (lxc_config_net_hwaddr("lxc.net.0."))
 		exit(EXIT_FAILURE);
 }
