@@ -160,8 +160,6 @@ static int ls_remove_lock(const char *path, const char *name,
 static int ls_serialize(int wpipefd, struct ls *n);
 static int my_parser(struct lxc_arguments *args, int c, char *arg);
 
-static int rm_r(char *dirname);
-
 static const struct option my_longopts[] = {
 	{"line", no_argument, 0, '1'},
 	{"fancy", no_argument, 0, 'f'},
@@ -1088,7 +1086,10 @@ static int ls_remove_lock(const char *path, const char *name,
 	if (check < 0 || (size_t)check >= *len_lockpath)
 		goto out;
 
-	(void)rm_r(*lockpath);
+	ret = recursive_destroy(*lockpath);
+	if (ret < 0)
+		WARN("Failed to destroy \"%s\"", *lockpath);
+
 	ret = 0;
 
 out:
@@ -1322,52 +1323,4 @@ static void ls_field_width(const struct ls *l, const size_t size,
 				lht->init_length = len;
 		}
 	}
-}
-
-static int rm_r(char *dirname)
-{
-	int ret;
-	struct dirent *direntp;
-	DIR *dir;
-	int r = 0;
-
-	dir = opendir(dirname);
-	if (!dir)
-		return -1;
-
-	while ((direntp = readdir(dir))) {
-		char *pathname;
-		struct stat mystat;
-
-		if (!strcmp(direntp->d_name, ".") ||
-		    !strcmp(direntp->d_name, ".."))
-			continue;
-
-		pathname = must_make_path(dirname, direntp->d_name, NULL);
-
-		ret = lstat(pathname, &mystat);
-		if (ret < 0) {
-			r = -1;
-			goto next;
-		}
-
-		if (!S_ISDIR(mystat.st_mode))
-			goto next;
-
-		ret = rm_r(pathname);
-		if (ret < 0)
-			r = -1;
-	next:
-		free(pathname);
-	}
-
-	ret = rmdir(dirname);
-	if (ret < 0)
-		r = -1;
-
-	ret = closedir(dir);
-	if (ret < 0)
-		r = -1;
-
-	return r;
 }
