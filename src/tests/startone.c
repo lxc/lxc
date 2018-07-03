@@ -39,24 +39,30 @@ static int destroy_container(void)
 		perror("fork");
 		return -1;
 	}
+
 	if (pid == 0) {
 		execlp("lxc-destroy", "lxc-destroy", "-f", "-n", MYNAME, NULL);
 		exit(EXIT_FAILURE);
 	}
+
 again:
 	ret = waitpid(pid, &status, 0);
 	if (ret == -1) {
 		if (errno == EINTR)
 			goto again;
+
 		perror("waitpid");
 		return -1;
 	}
+
 	if (ret != pid)
 		goto again;
+
 	if (!WIFEXITED(status))  { // did not exit normally
 		fprintf(stderr, "%d: lxc-create exited abnormally\n", __LINE__);
 		return -1;
 	}
+
 	return WEXITSTATUS(status);
 }
 
@@ -69,24 +75,30 @@ static int create_container(void)
 		perror("fork");
 		return -1;
 	}
+
 	if (pid == 0) {
 		execlp("lxc-create", "lxc-create", "-t", "busybox", "-n", MYNAME, NULL);
 		exit(EXIT_FAILURE);
 	}
+
 again:
 	ret = waitpid(pid, &status, 0);
 	if (ret == -1) {
 		if (errno == EINTR)
 			goto again;
+
 		perror("waitpid");
 		return -1;
 	}
+
 	if (ret != pid)
 		goto again;
+
 	if (!WIFEXITED(status))  { // did not exit normally
 		fprintf(stderr, "%d: lxc-create exited abnormally\n", __LINE__);
 		return -1;
 	}
+
 	return WEXITSTATUS(status);
 }
 
@@ -100,6 +112,7 @@ int main(int argc, char *argv[])
 	int len;
 
 	ret = 1;
+
 	/* test a real container */
 	c = lxc_container_new(MYNAME, NULL);
 	if (!c) {
@@ -167,6 +180,7 @@ int main(int argc, char *argv[])
 	}
 
 	sleep(3);
+
 	s = c->state(c);
 	if (!s || strcmp(s, "RUNNING")) {
 		fprintf(stderr, "%d: %s is in state %s, not in RUNNING.\n", __LINE__, c->name, s ? s : "undefined");
@@ -192,7 +206,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-    sprintf(buf, "XXX");
+	sprintf(buf, "XXX");
 	len = c->get_cgroup_item(c, "freezer.state", buf, 200);
 	if (len <= 0 || (strcmp(buf, "FREEZING\n") && strcmp(buf, "FROZEN\n"))) {
 		fprintf(stderr, "%d: not able to get freezer.state (len %d buf %s)\n", __LINE__, len, buf);
