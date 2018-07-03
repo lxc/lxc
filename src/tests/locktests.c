@@ -38,39 +38,49 @@ static void test_two_locks(void)
 
 	if (pipe(p) < 0)
 		exit(1);
+
 	if ((pid = fork()) < 0)
 		exit(1);
+
 	if (pid == 0) {
 		if (read(p[0], &c, 1) < 0) {
 			perror("read");
 			exit(1);
 		}
+
 		l = lxc_newlock("/tmp", "lxctest-sem");
 		if (!l) {
 			fprintf(stderr, "%d: child: failed to create lock\n", __LINE__);
 			exit(1);
 		}
+
 		if (lxclock(l, 0) < 0) {
 			fprintf(stderr, "%d: child: failed to grab lock\n", __LINE__);
 			exit(1);
 		}
+
 		fprintf(stderr, "%d: child: grabbed lock\n", __LINE__);
 		exit(0);
 	}
+
 	l = lxc_newlock("/tmp", "lxctest-sem");
 	if (!l) {
 		fprintf(stderr, "%d: failed to create lock\n", __LINE__);
 		exit(1);
 	}
+
 	if (lxclock(l, 0) < 0) {
 		fprintf(stderr, "%d; failed to get lock\n", __LINE__);
 		exit(1);
 	}
+
 	if (write(p[1], "a", 1) < 0) {
 		perror("write");
 		exit(1);
 	}
+
 	sleep(3);
+
 	ret = waitpid(pid, &status, WNOHANG);
 	if (ret == pid) { // task exited
 		if (WIFEXITED(status)) {
@@ -85,6 +95,7 @@ static void test_two_locks(void)
 		perror("waitpid");
 		exit(1);
 	}
+
 	kill(pid, SIGKILL);
 	wait(&status);
 	close(p[1]);
@@ -103,6 +114,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%d: failed to get unnamed lock\n", __LINE__);
 		exit(1);
 	}
+
 	ret = lxclock(lock, 0);
 	if (ret) {
 		fprintf(stderr, "%d: failed to take unnamed lock (%d)\n", __LINE__, ret);
@@ -121,8 +133,10 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%d: failed to get lock\n", __LINE__);
 		exit(1);
 	}
+
 	struct stat sb;
 	char *pathname = RUNTIME_PATH "/lxc/lock/var/lib/lxc/";
+
 	ret = stat(pathname, &sb);
 	if (ret != 0) {
 		fprintf(stderr, "%d: filename %s not created\n", __LINE__,
