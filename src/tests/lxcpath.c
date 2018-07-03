@@ -44,6 +44,7 @@ int main()
 		TSTERR("create using default path");
 		goto err;
 	}
+
 	p1 = c->get_config_path(c);
 	p2 = c->config_file_name(c);
 	if (!p1 || !p2 || strncmp(p1, p2, strlen(p1))) {
@@ -57,6 +58,7 @@ int main()
 		TSTERR("Error setting custom path");
 		goto err;
 	}
+
 	p1 = c->get_config_path(c);
 	p2 = c->config_file_name(c);
 	if (strcmp(p1, CPATH) || strcmp(p2, FPATH)) {

@@ -125,6 +125,7 @@ int main(int argc, char *argv[])
 	flags |= CLONE_NEWIPC;
 	flags |= CLONE_NEWPID;
 	flags |= CLONE_NEWUTS;
+
 	pid = lxc_raw_clone(flags);
 	if (pid < 0) {
 		lxc_error("%s\n", "Failed to call lxc_raw_clone(CLONE_NEWUSER "
@@ -172,7 +173,6 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-
 	if (pid == 0) {
 		lxc_error("%s\n", "Child will exit(EXIT_SUCCESS)");
 		exit(EXIT_SUCCESS);
@@ -189,7 +189,6 @@ int main(int argc, char *argv[])
 		lxc_error("%s\n", "Failed to call lxc_raw_clone(CLONE_VFORK);");
 		exit(EXIT_FAILURE);
 	}
-
 
 	if (pid == 0) {
 		lxc_error("%s\n", "Child will exit(EXIT_FAILURE)");
@@ -208,7 +207,6 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-
 	if (pid == 0) {
 		lxc_error("%s\n", "Child will exit(EXIT_SUCCESS)");
 		exit(EXIT_SUCCESS);
@@ -225,7 +223,6 @@ int main(int argc, char *argv[])
 		lxc_error("%s\n", "Failed to call lxc_raw_clone(CLONE_FILES);");
 		exit(EXIT_FAILURE);
 	}
-
 
 	if (pid == 0) {
 		lxc_error("%s\n", "Child will exit(EXIT_FAILURE)");

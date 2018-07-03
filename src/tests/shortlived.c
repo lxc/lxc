@@ -46,10 +46,12 @@ static int destroy_container(void)
 		perror("fork");
 		return -1;
 	}
+
 	if (pid == 0) {
 		execlp("lxc-destroy", "lxc-destroy", "-f", "-n", MYNAME, NULL);
 		exit(EXIT_FAILURE);
 	}
+
 again:
 	ret = waitpid(pid, &status, 0);
 	if (ret == -1) {
@@ -58,12 +60,15 @@ again:
 		perror("waitpid");
 		return -1;
 	}
+
 	if (ret != pid)
 		goto again;
+
 	if (!WIFEXITED(status))  { // did not exit normally
 		fprintf(stderr, "%d: lxc-create exited abnormally\n", __LINE__);
 		return -1;
 	}
+
 	return WEXITSTATUS(status);
 }
 
@@ -76,24 +81,30 @@ static int create_container(void)
 		perror("fork");
 		return -1;
 	}
+
 	if (pid == 0) {
 		execlp("lxc-create", "lxc-create", "-t", "busybox", "-n", MYNAME, NULL);
 		exit(EXIT_FAILURE);
 	}
+
 again:
 	ret = waitpid(pid, &status, 0);
 	if (ret == -1) {
 		if (errno == EINTR)
 			goto again;
+
 		perror("waitpid");
 		return -1;
 	}
+
 	if (ret != pid)
 		goto again;
+
 	if (!WIFEXITED(status))  { // did not exit normally
 		fprintf(stderr, "%d: lxc-create exited abnormally\n", __LINE__);
 		return -1;
 	}
+
 	return WEXITSTATUS(status);
 }
 
@@ -124,6 +135,7 @@ int main(int argc, char *argv[])
 	log.prefix = "shortlived";
 	log.quiet = false;
 	log.lxcpath = NULL;
+
 	if (lxc_log_init(&log))
 		exit(EXIT_FAILURE);
 
@@ -256,11 +268,13 @@ out:
 		if (fd >= 0) {
 			char buf[4096];
 			ssize_t buflen;
+
 			while ((buflen = read(fd, buf, 1024)) > 0) {
 				buflen = write(STDERR_FILENO, buf, buflen);
 				if (buflen <= 0)
 					break;
 			}
+
 			close(fd);
 		}
 	}
