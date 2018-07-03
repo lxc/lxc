@@ -41,6 +41,7 @@ static int do_reboot(void *arg)
 
 	if (reboot(*cmd))
 		printf("failed to reboot(%d): %s\n", *cmd, strerror(errno));
+
 	return 0;
 }
 
@@ -65,6 +66,7 @@ static int test_reboot(int cmd, int sig)
 	if (!WIFSIGNALED(status)) {
 		if (sig != -1)
 			printf("child process exited but was not signaled\n");
+
 		return -1;
 	}
 
@@ -89,9 +91,11 @@ static int have_reboot_patch(void)
 	fclose(f);
 	if (ret != 1)
 		return 0;
+
 	ret = reboot(v ? LINUX_REBOOT_CMD_CAD_ON : LINUX_REBOOT_CMD_CAD_OFF);
 	if (ret != -1)
 		return 0;
+
 	return 1;
 }
 
