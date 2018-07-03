@@ -46,6 +46,7 @@ static void test_console_close_all(int ttyfd[MAXCONSOLES],
 			close(masterfd[i]);
 			masterfd[i] = -1;
 		}
+
 		if (ttyfd[i] != -1) {
 			close(ttyfd[i]);
 			ttyfd[i] = -1;
@@ -64,11 +65,13 @@ static int test_console_running_container(struct lxc_container *c)
 		ttynum[i] = ttyfd[i] = masterfd[i] = -1;
 
 	ttynum[0] = 1;
+
 	ret = c->console_getfd(c, &ttynum[0], &masterfd[0]);
 	if (ret < 0) {
 		TSTERR("console allocate failed");
 		goto err1;
 	}
+
 	ttyfd[0] = ret;
 	if (ttynum[0] != 1) {
 		TSTERR("console allocate got bad ttynum %d", ttynum[0]);
@@ -94,16 +97,20 @@ static int test_console_running_container(struct lxc_container *c)
 				break;
 			ttyfd[nrconsoles] = ret;
 		}
+
 		if (nrconsoles != TTYCNT) {
 			TSTERR("didn't allocate all consoles %d != %d", nrconsoles, TTYCNT);
 			goto err2;
 		}
+
 		test_console_close_all(ttyfd, masterfd);
 	}
+
 	ret = 0;
 
 err2:
 	test_console_close_all(ttyfd, masterfd);
+
 err1:
 	return ret;
 }
@@ -135,20 +142,24 @@ static int test_console(const char *lxcpath,
 		TSTERR("instantiating container %s", name);
 		goto out1;
 	}
+
 	if (c->is_defined(c)) {
 		c->stop(c);
 		c->destroy(c);
 		c = lxc_container_new(name, lxcpath);
 	}
+
 	if (!c->createl(c, template, NULL, NULL, 0, NULL)) {
 		TSTERR("creating container %s", name);
 		goto out2;
 	}
+
 	c->load_config(c, NULL);
 	c->set_config_item(c, "lxc.tty.max", TTYCNT_STR);
 	c->set_config_item(c, "lxc.pty.max", "1024");
 	c->save_config(c, NULL);
 	c->want_daemonize(c, true);
+
 	if (!c->startl(c, 0, NULL)) {
 		TSTERR("starting container %s", name);
 		goto out3;
@@ -157,10 +168,13 @@ static int test_console(const char *lxcpath,
 	ret = test_console_running_container(c);
 
 	c->stop(c);
+
 out3:
 	c->destroy(c);
+
 out2:
 	lxc_container_put(c);
+
 out1:
 	return ret;
 }
@@ -168,6 +182,7 @@ out1:
 int main(int argc, char *argv[])
 {
 	int ret;
+
 	ret = test_console(NULL, NULL, TSTNAME, "busybox");
 	if (ret < 0)
 		goto err1;
@@ -175,7 +190,9 @@ int main(int argc, char *argv[])
 	ret = test_console("/var/lib/lxctest2", NULL, TSTNAME, "busybox");
 	if (ret < 0)
 		goto err1;
+
 	printf("All tests passed\n");
+
 err1:
 	return ret;
 }
