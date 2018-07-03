@@ -54,6 +54,7 @@ int main(int argc, char *argv[])
 	for (key = strtok_r(keys, "\n", &saveptr); key != NULL;
 	     key = strtok_r(NULL, "\n", &saveptr)) {
 		struct lxc_config_t *config;
+
 		config = lxc_get_config(key);
 		if (!config) {
 			lxc_error("configuration key \"%s\" not implemented in "
@@ -90,5 +91,4 @@ on_error:
 	free(keys);
 
 	exit(ret);
-
 }
