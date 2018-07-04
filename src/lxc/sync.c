@@ -32,7 +32,7 @@
 #include "log.h"
 #include "start.h"
 
-lxc_log_define(lxc_sync, lxc);
+lxc_log_define(sync, lxc);
 
 static int __sync_wait(int fd, int sequence)
 {

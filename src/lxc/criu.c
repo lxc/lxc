@@ -63,7 +63,7 @@
 #define CRIU_IN_FLIGHT_SUPPORT	"2.4"
 #define CRIU_EXTERNAL_NOT_VETH	"2.8"
 
-lxc_log_define(lxc_criu, lxc);
+lxc_log_define(criu, lxc);
 
 struct criu_opts {
 	/* the thing to hook to stdout and stderr for logging */

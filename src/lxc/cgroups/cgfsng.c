@@ -66,7 +66,7 @@
 #include "include/strlcat.h"
 #endif
 
-lxc_log_define(lxc_cgfsng, lxc);
+lxc_log_define(cgfsng, cgroup);
 
 static void free_string_list(char **clist)
 {
@@ -695,8 +695,7 @@ static bool controller_found(struct hierarchy **hlist, char *entry)
  */
 static bool all_controllers_found(struct cgroup_ops *ops)
 {
-	char *p;
-	char *saveptr = NULL;
+	char **cur;
 	struct hierarchy **hlist = ops->hierarchies;
 
 	if (!controller_found(hlist, "freezer")) {
@@ -707,9 +706,9 @@ static bool all_controllers_found(struct cgroup_ops *ops)
 	if (!ops->cgroup_use)
 		return true;
 
-	for (; (p = strtok_r(ops->cgroup_use, ",", &saveptr)); ops->cgroup_use = NULL)
-		if (!controller_found(hlist, p)) {
-			ERROR("No %s controller mountpoint found", p);
+	for (cur = ops->cgroup_use; cur && *cur; cur++)
+		if (!controller_found(hlist, *cur)) {
+			ERROR("No %s controller mountpoint found", *cur);
 			return false;
 		}
 
@@ -2251,6 +2250,34 @@ static bool cgfsng_setup_limits(struct cgroup_ops *ops, struct lxc_conf *conf,
 	return __cg_unified_setup_limits(ops, &conf->cgroup2);
 }
 
+static bool cgroup_use_wants_controllers(const struct cgroup_ops *ops,
+				       char **controllers)
+{
+	char **cur_ctrl, **cur_use;
+
+	if (!ops->cgroup_use)
+		return true;
+
+	for (cur_ctrl = controllers; cur_ctrl && *cur_ctrl; cur_ctrl++) {
+		bool found = false;
+
+		for (cur_use = ops->cgroup_use; cur_use && *cur_use; cur_use++) {
+			if (strcmp(*cur_use, *cur_ctrl) != 0)
+				continue;
+
+			found = true;
+			break;
+		}
+
+		if (found)
+			continue;
+
+		return false;
+	}
+
+	return true;
+}
+
 /* At startup, parse_hierarchies finds all the info we need about cgroup
  * mountpoints and current cgroups, and stores it in @d.
  */
@@ -2365,6 +2392,10 @@ static bool cg_hybrid_init(struct cgroup_ops *ops)
 				      "delegation in the unified hierarchy");
 			}
 		}
+
+		/* Exclude all controllers that cgroup use does not want. */
+		if (!cgroup_use_wants_controllers(ops, controller_list))
+			goto next;
 
 		new = add_hierarchy(&ops->hierarchies, controller_list, mountpoint, base_cgroup, type);
 		if (type == CGROUP2_SUPER_MAGIC && !ops->unified)
@@ -2498,8 +2529,18 @@ static bool cg_init(struct cgroup_ops *ops)
 	const char *tmp;
 
 	tmp = lxc_global_config_value("lxc.cgroup.use");
-	if (tmp)
-		ops->cgroup_use = must_copy_string(tmp);
+	if (tmp) {
+		char *chop, *cur, *pin;
+		char *saveptr = NULL;
+
+		pin = must_copy_string(tmp);
+		chop = pin;
+
+		for (; (cur = strtok_r(chop, ",", &saveptr)); chop = NULL)
+			must_append_string(&ops->cgroup_use, cur);
+
+		free(pin);
+	}
 
 	ret = cg_unified_init(ops);
 	if (ret < 0)

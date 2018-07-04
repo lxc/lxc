@@ -89,7 +89,7 @@ struct cgroup_ops {
 	const char *version;
 
 	/* What controllers is the container supposed to use. */
-	char *cgroup_use;
+	char **cgroup_use;
 	char *cgroup_pattern;
 	char *container_cgroup;
 
@@ -149,6 +149,5 @@ extern struct cgroup_ops *cgroup_init(struct lxc_handler *handler);
 extern void cgroup_exit(struct cgroup_ops *ops);
 
 extern void prune_init_scope(char *cg);
-extern bool is_crucial_cgroup_subsystem(const char *s);
 
 #endif

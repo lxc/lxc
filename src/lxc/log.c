@@ -66,7 +66,7 @@ static char log_prefix[LXC_LOG_PREFIX_SIZE] = "lxc";
 static char *log_fname = NULL;
 static char *log_vmname = NULL;
 
-lxc_log_define(lxc_log, lxc);
+lxc_log_define(log, lxc);
 
 static int lxc_log_priority_to_syslog(int priority)
 {

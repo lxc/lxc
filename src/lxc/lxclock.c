@@ -40,7 +40,7 @@
 
 #define MAX_STACKDEPTH 25
 
-lxc_log_define(lxc_lock, lxc);
+lxc_log_define(lxclock, lxc);
 
 #ifdef MUTEX_DEBUGGING
 static pthread_mutex_t thread_mutex = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;

@@ -118,7 +118,7 @@
 #define MS_LAZYTIME (1<<25)
 #endif
 
-lxc_log_define(lxc_conf, lxc);
+lxc_log_define(conf, lxc);
 
 /* The lxc_conf of the container currently being worked on in an API call.
  * This is used in the error calls.
@@ -892,13 +892,11 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 			if (ret < 0 || (size_t)ret >= sizeof(lxcpath))
 				return -1;
 
-			ret = creat(lxcpath, 0660);
+			ret = mknod(path, S_IFREG, 0);
 			if (ret < 0 && errno != EEXIST) {
 				SYSERROR("Failed to create \"%s\"", lxcpath);
 				return -1;
 			}
-			if (ret >= 0)
-				close(ret);
 
 			ret = unlink(path);
 			if (ret < 0 && errno != ENOENT) {
@@ -971,10 +969,17 @@ int lxc_allocate_ttys(struct lxc_conf *conf)
 
 		tty->master = -EBADF;
 		tty->slave = -EBADF;
-		ret = openpty(&tty->master, &tty->slave,
-			      tty->name, NULL, NULL);
-		if (ret) {
+		ret = openpty(&tty->master, &tty->slave, NULL, NULL, NULL);
+		if (ret < 0) {
 			SYSERROR("Failed to create tty %d", i);
+			ttys->max = i;
+			lxc_delete_tty(ttys);
+			return -ENOTTY;
+		}
+
+		ret = ttyname_r(tty->slave, tty->name, sizeof(tty->name));
+		if (ret < 0) {
+			SYSERROR("Failed to retrieve name of tty %d slave", i);
 			ttys->max = i;
 			lxc_delete_tty(ttys);
 			return -ENOTTY;
@@ -984,12 +989,12 @@ int lxc_allocate_ttys(struct lxc_conf *conf)
 		      tty->name, tty->master, tty->slave);
 
 		/* Prevent leaking the file descriptors to the container */
-		ret = fcntl(tty->master, F_SETFD, FD_CLOEXEC);
+		ret = fd_cloexec(tty->master, true);
 		if (ret < 0)
 			SYSWARN("Failed to set FD_CLOEXEC flag on master fd %d of "
 			        "tty device \"%s\"", tty->master, tty->name);
 
-		ret = fcntl(tty->slave, F_SETFD, FD_CLOEXEC);
+		ret = fd_cloexec(tty->slave, true);
 		if (ret < 0)
 			SYSWARN("Failed to set FD_CLOEXEC flag on slave fd %d of "
 			        "tty device \"%s\"", tty->slave, tty->name);

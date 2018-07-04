@@ -28,7 +28,7 @@
 #include "error.h"
 #include "log.h"
 
-lxc_log_define(lxc_error, lxc);
+lxc_log_define(error, lxc);
 
 /*---------------------------------------------------------------------------*/
 /* lxc_error_set_and_log

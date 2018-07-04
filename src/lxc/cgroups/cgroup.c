@@ -21,6 +21,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
 
@@ -30,7 +31,7 @@
 #include "log.h"
 #include "start.h"
 
-lxc_log_define(lxc_cgroup, lxc);
+lxc_log_define(cgroup, lxc);
 
 extern struct cgroup_ops *cgfsng_ops_init(void);
 
@@ -63,12 +64,15 @@ struct cgroup_ops *cgroup_init(struct lxc_handler *handler)
 
 void cgroup_exit(struct cgroup_ops *ops)
 {
+	char **cur;
 	struct hierarchy **it;
 
 	if (!ops)
 		return;
 
-	free(ops->cgroup_use);
+	for (cur = ops->cgroup_use; cur && *cur; cur++)
+		free(*cur);
+
 	free(ops->cgroup_pattern);
 	free(ops->container_cgroup);
 
@@ -107,34 +111,4 @@ void prune_init_scope(char *cg)
 		else
 			*point = '\0';
 	}
-}
-
-/* Return true if this is a subsystem which we cannot do without.
- *
- * systemd is questionable here. The way callers currently use this, if systemd
- * is not mounted then it will be ignored. But if systemd is mounted, then it
- * must be setup so that lxc can create cgroups in it, else containers will
- * fail.
- *
- * cgroups listed in lxc.cgroup.use are also treated as crucial
- *
- */
-bool is_crucial_cgroup_subsystem(const char *s)
-{
-	const char *cgroup_use;
-
-	if (strcmp(s, "systemd") == 0)
-		return true;
-
-	if (strcmp(s, "name=systemd") == 0)
-		return true;
-
-	if (strcmp(s, "freezer") == 0)
-		return true;
-
-	cgroup_use = lxc_global_config_value("lxc.cgroup.use");
-	if (cgroup_use && strstr(cgroup_use, s))
-		return true;
-
-	return false;
 }
