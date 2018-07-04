@@ -892,13 +892,11 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 			if (ret < 0 || (size_t)ret >= sizeof(lxcpath))
 				return -1;
 
-			ret = creat(lxcpath, 0660);
+			ret = mknod(path, S_IFREG, 0);
 			if (ret < 0 && errno != EEXIST) {
 				SYSERROR("Failed to create \"%s\"", lxcpath);
 				return -1;
 			}
-			if (ret >= 0)
-				close(ret);
 
 			ret = unlink(path);
 			if (ret < 0 && errno != ENOENT) {
