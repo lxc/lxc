@@ -21,6 +21,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
 
@@ -63,12 +64,15 @@ struct cgroup_ops *cgroup_init(struct lxc_handler *handler)
 
 void cgroup_exit(struct cgroup_ops *ops)
 {
+	char **cur;
 	struct hierarchy **it;
 
 	if (!ops)
 		return;
 
-	free(ops->cgroup_use);
+	for (cur = ops->cgroup_use; cur && *cur; cur++)
+		free(*cur);
+
 	free(ops->cgroup_pattern);
 	free(ops->container_cgroup);
 

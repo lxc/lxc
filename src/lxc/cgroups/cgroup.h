@@ -89,7 +89,7 @@ struct cgroup_ops {
 	const char *version;
 
 	/* What controllers is the container supposed to use. */
-	char *cgroup_use;
+	char **cgroup_use;
 	char *cgroup_pattern;
 	char *container_cgroup;
 
