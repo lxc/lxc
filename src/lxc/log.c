@@ -384,7 +384,7 @@ static int build_dir(const char *name)
 	/* Make copy of string since we'll be modifying it. */
 	n = strdup(name);
 	if (!n) {
-		ERROR("Out of memory while creating directory '%s'.", name);
+		ERROR("Out of memory while creating directory '%s'", name);
 		return -1;
 	}
 
@@ -393,16 +393,18 @@ static int build_dir(const char *name)
 		if (*p != '/')
 			continue;
 		*p = '\0';
+
 		if (access(n, F_OK)) {
 			ret = lxc_unpriv(mkdir(n, 0755));
 			if (ret && errno != EEXIST) {
-				SYSERROR("failed to create directory '%s'.", n);
+				SYSERROR("Failed to create directory '%s'", n);
 				free(n);
 				return -1;
 			}
 		}
 		*p = '/';
 	}
+
 	free(n);
 	return 0;
 }
@@ -469,6 +471,7 @@ static char *build_log_path(const char *name, const char *lxcpath)
 		len += strlen(lxcpath) + 1 + strlen(name) + 1;  /* add "/$container_name/" */
 	else
 		len += strlen(lxcpath) + 1;
+
 	p = malloc(len);
 	if (!p)
 		return p;
@@ -477,23 +480,27 @@ static char *build_log_path(const char *name, const char *lxcpath)
 		ret = snprintf(p, len, "%s/%s/%s.log", lxcpath, name, name);
 	else
 		ret = snprintf(p, len, "%s/%s.log", lxcpath, name);
-
 	if (ret < 0 || ret >= len) {
 		free(p);
 		return NULL;
 	}
+
 	return p;
 }
 
 extern void lxc_log_close(void)
 {
 	closelog();
+
 	free(log_vmname);
 	log_vmname = NULL;
+
 	if (lxc_log_fd == -1)
 		return;
+
 	close(lxc_log_fd);
 	lxc_log_fd = -1;
+
 	free(log_fname);
 	log_fname = NULL;
 }
@@ -546,7 +553,7 @@ static int _lxc_log_set_file(const char *name, const char *lxcpath, int create_d
 
 	logfile = build_log_path(name, lxcpath);
 	if (!logfile) {
-		ERROR("could not build log path");
+		ERROR("Could not build log path");
 		return -1;
 	}
 	ret = __lxc_log_set_file(logfile, create_dirs);
@@ -654,7 +661,7 @@ extern int lxc_log_init(struct lxc_log *log)
 	 * ignore failures and continue logging to console
 	 */
 	if (!log->file && ret != 0) {
-		INFO("Ignoring failure to open default logfile.");
+		INFO("Ignoring failure to open default logfile");
 		ret = 0;
 	}
 
@@ -669,9 +676,10 @@ extern int lxc_log_init(struct lxc_log *log)
 extern int lxc_log_set_level(int *dest, int level)
 {
 	if (level < 0 || level >= LXC_LOG_LEVEL_NOTSET) {
-		ERROR("invalid log priority %d", level);
+		ERROR("Invalid log priority %d", level);
 		return -1;
 	}
+
 	*dest = level;
 	return 0;
 }
@@ -684,8 +692,10 @@ extern int lxc_log_get_level(void)
 extern bool lxc_log_has_valid_level(void)
 {
 	int log_level = lxc_log_get_level();
+
 	if (log_level < 0 || log_level >= LXC_LOG_LEVEL_NOTSET)
 		return false;
+
 	return true;
 }
 
@@ -709,6 +719,7 @@ extern int lxc_log_set_file(int *fd, const char *fname)
 	*fd = log_open(fname);
 	if (*fd == -1)
 		return -errno;
+
 	return 0;
 }
 
