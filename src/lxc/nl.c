@@ -229,7 +229,7 @@ extern int netlink_send(struct nl_handler *handler, struct nlmsg *nlmsg)
 	nladdr.nl_pid = 0;
 	nladdr.nl_groups = 0;
 
-	ret = sendmsg(handler->fd, &msg, 0);
+	ret = sendmsg(handler->fd, &msg, MSG_NOSIGNAL);
 	if (ret < 0)
 		return -errno;
 
