@@ -922,7 +922,6 @@ int lxc_terminal_setup(struct lxc_conf *conf)
 {
 	int ret;
 	struct lxc_terminal *terminal = &conf->console;
-	struct termios oldtios;
 
 	if (terminal->path && strcmp(terminal->path, "none") == 0) {
 		INFO("No terminal requested");
@@ -930,10 +929,6 @@ int lxc_terminal_setup(struct lxc_conf *conf)
 	}
 
 	ret = lxc_terminal_create(terminal);
-	if (ret < 0)
-		return -1;
-
-	ret = lxc_setup_tios(terminal->master, &oldtios);
 	if (ret < 0)
 		return -1;
 
