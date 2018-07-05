@@ -452,7 +452,7 @@ int lxc_serve_state_clients(const char *name, struct lxc_handler *handler,
 		      lxc_state2str(state), client->clientfd);
 
 	again:
-		ret = send(client->clientfd, &msg, sizeof(msg), 0);
+		ret = send(client->clientfd, &msg, sizeof(msg), MSG_NOSIGNAL);
 		if (ret <= 0) {
 			if (errno == EINTR) {
 				TRACE("Caught EINTR; retrying");
