@@ -301,9 +301,10 @@ restart:
 
 static int setup_signal_fd(sigset_t *oldmask)
 {
-	int ret, sig;
+	int ret;
+	int sig;
 	sigset_t mask;
-	int signals[] = {SIGBUS, SIGILL, SIGSEGV, SIGWINCH};
+	const int signals[] = {SIGBUS, SIGILL, SIGSEGV, SIGWINCH};
 
 	/* Block everything except serious error signals. */
 	ret = sigfillset(&mask);
