@@ -208,9 +208,9 @@ static bool lxc_try_preserve_namespaces(struct lxc_handler *handler,
 	return true;
 }
 
-static int match_fd(int fd)
+static inline bool match_stdfds(int fd)
 {
-	return (fd == 0 || fd == 1 || fd == 2);
+	return (fd == STDIN_FILENO || fd == STDOUT_FILENO || fd == STDERR_FILENO);
 }
 
 int lxc_check_inherited(struct lxc_conf *conf, bool closeall,
@@ -277,7 +277,7 @@ restart:
 		if (current_config && fd == current_config->logfd)
 			continue;
 
-		if (match_fd(fd))
+		if (match_stdfds(fd))
 			continue;
 
 		if (closeall) {
