@@ -892,7 +892,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 			if (ret < 0 || (size_t)ret >= sizeof(lxcpath))
 				return -1;
 
-			ret = mknod(path, S_IFREG, 0);
+			ret = mknod(path, S_IFREG | 0000, 0);
 			if (ret < 0 && errno != EEXIST) {
 				SYSERROR("Failed to create \"%s\"", lxcpath);
 				return -1;
@@ -1303,7 +1303,7 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 			can_mknod = 0;
 		}
 
-		ret = mknod(path, S_IFREG, 0);
+		ret = mknod(path, S_IFREG | 0000, 0);
 		if (ret < 0 && errno != EEXIST) {
 			SYSERROR("Failed to create file \"%s\"", path);
 			return -1;
@@ -1593,12 +1593,11 @@ static int lxc_setup_devpts(struct lxc_conf *conf)
 	}
 
 	/* Create dummy /dev/ptmx file as bind mountpoint for /dev/pts/ptmx. */
-	ret = open("/dev/ptmx", O_CREAT, 0666);
-	if (ret < 0) {
+	ret = mknod("/dev/ptmx", S_IFREG | 0000, 0);
+	if (ret < 0 && errno != EEXIST) {
 		SYSERROR("Failed to create dummy \"/dev/ptmx\" file as bind mount target");
 		return -1;
 	}
-	close(ret);
 	DEBUG("Created dummy \"/dev/ptmx\" file as bind mount target");
 
 	/* Fallback option: create symlink /dev/ptmx -> /dev/pts/ptmx  */
@@ -1680,11 +1679,9 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	 * taken care of creating /dev/console.
 	 */
 	ret = mknod(path, S_IFREG | 0000, 0);
-	if (ret < 0) {
-		if (errno != EEXIST) {
-			SYSERROR("Failed to create console");
-			return -errno;
-		}
+	if (ret < 0 && errno != EEXIST) {
+		SYSERROR("Failed to create console");
+		return -errno;
 	}
 
 	ret = fchmod(console->slave, S_IXUSR | S_IXGRP | S_IXOTH);
@@ -1708,7 +1705,7 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 				    const struct lxc_terminal *console,
 				    char *ttydir)
 {
-	int ret, fd;
+	int ret;
 	char path[MAXPATHLEN], lxcpath[MAXPATHLEN];
 	char *rootfs_path = rootfs->path ? rootfs->mount : "";
 
@@ -1731,13 +1728,11 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 	if (ret < 0 || (size_t)ret >= sizeof(lxcpath))
 		return -1;
 
-	ret = creat(lxcpath, 0660);
-	if (ret == -1 && errno != EEXIST) {
+	ret = mknod(lxcpath, S_IFREG | 0000, 0);
+	if (ret < 0 && errno != EEXIST) {
 		SYSERROR("Failed to create \"%s\"", lxcpath);
 		return -errno;
 	}
-	if (ret >= 0)
-		close(ret);
 
 	ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs_path);
 	if (ret < 0 || (size_t)ret >= sizeof(path))
@@ -1753,17 +1748,13 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 		}
 	}
 
-	fd = open(path, O_CREAT | O_EXCL, S_IXUSR | S_IXGRP | S_IXOTH);
-	if (fd < 0) {
-		if (errno != EEXIST) {
-			SYSERROR("Failed to create console");
-			return -errno;
-		}
-	} else {
-		close(fd);
+	ret = mknod(path, S_IFREG | 0000, 0);
+	if (ret < 0 && errno != EEXIST) {
+		SYSERROR("Failed to create console");
+		return -errno;
 	}
 
-	ret = chmod(console->name, S_IXUSR | S_IXGRP | S_IXOTH);
+	ret = fchmod(console->slave, S_IXUSR | S_IXGRP | S_IXOTH);
 	if (ret < 0) {
 		SYSERROR("Failed to set mode \"0%o\" to \"%s\"",
 			 S_IXUSR | S_IXGRP | S_IXOTH, console->name);
@@ -2079,7 +2070,7 @@ static int mount_entry_create_dir_file(const struct mntent *mntent,
 				       const struct lxc_rootfs *rootfs,
 				       const char *lxc_name, const char *lxc_path)
 {
-	int fd, ret;
+	int ret;
 	char *p1, *p2;
 
 	if (strncmp(mntent->mnt_type, "overlay", 7) == 0) {
@@ -2116,10 +2107,9 @@ static int mount_entry_create_dir_file(const struct mntent *mntent,
 		return -1;
 	}
 
-	fd = open(path, O_CREAT, 0644);
-	if (fd < 0)
-		return -1;
-	close(fd);
+	ret = mknod(path, S_IFREG | 0000, 0);
+	if (ret < 0 && errno != EEXIST)
+		return -errno;
 
 	return 0;
 }
