@@ -193,6 +193,40 @@ int lxc_namespace_2_ns_idx(const char *namespace)
 	return -EINVAL;
 }
 
+extern int lxc_namespace_2_std_identifiers(char *namespaces)
+{
+	char **it;
+	char *del;
+
+	/* The identifiers for namespaces used with lxc-attach and lxc-unshare
+	 * as given on the manpage do not align with the standard identifiers.
+	 * This affects network, mount, and uts namespaces. The standard identifiers
+	 * are: "mnt", "uts", and "net" whereas lxc-attach and lxc-unshare uses
+	 * "MOUNT", "UTSNAME", and "NETWORK". So let's use some cheap memmove()s
+	 * to replace them by their standard identifiers.
+	 * Let's illustrate this with an example:
+	 * Assume the string:
+	 *
+	 *	"IPC|MOUNT|PID"
+	 *
+	 * then we memmove()
+	 *
+	 *	dest: del + 1 == OUNT|PID
+	 *	src:  del + 3 == NT|PID
+	 */
+	if (!namespaces)
+		return -1;
+
+	while ((del = strstr(namespaces, "MOUNT")))
+		memmove(del + 1, del + 3, strlen(del) - 2);
+
+	for (it = (char *[]){"NETWORK", "UTSNAME", NULL}; it && *it; it++)
+		while ((del = strstr(namespaces, *it)))
+			memmove(del + 3, del + 7, strlen(del) - 6);
+
+	return 0;
+}
+
 int lxc_fill_namespace_flags(char *flaglist, int *flags)
 {
 	char *token, *saveptr = NULL;

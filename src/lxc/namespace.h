@@ -181,6 +181,7 @@ extern pid_t lxc_raw_clone_cb(int (*fn)(void *), void *args,
 
 extern int lxc_namespace_2_cloneflag(const char *namespace);
 extern int lxc_namespace_2_ns_idx(const char *namespace);
+extern int lxc_namespace_2_std_identifiers(char *namespaces);
 extern int lxc_fill_namespace_flags(char *flaglist, int *flags);
 
 /**
