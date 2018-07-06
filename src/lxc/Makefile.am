@@ -141,16 +141,20 @@ liblxc_la_SOURCES += \
 	../include/lxcmntent.c ../include/lxcmntent.h
 endif
 
+if !HAVE_GETLINE
+if HAVE_FGETLN
+liblxc_la_SOURCES += ../include/getline.c ../include/getline.h
+endif
+endif
+
 if !HAVE_PRLIMIT
 if HAVE_PRLIMIT64
 liblxc_la_SOURCES += ../include/prlimit.c ../include/prlimit.h
 endif
 endif
 
-if !HAVE_GETLINE
-if HAVE_FGETLN
-liblxc_la_SOURCES += ../include/getline.c ../include/getline.h
-endif
+if ENABLE_SECCOMP
+liblxc_la_SOURCES += seccomp.c
 endif
 
 if !HAVE_STRLCPY
@@ -192,6 +196,10 @@ if ENABLE_GNUTLS
 AM_CFLAGS += -DHAVE_LIBGNUTLS
 endif
 
+if ENABLE_SECCOMP
+AM_CFLAGS += -DHAVE_SECCOMP $(SECCOMP_CFLAGS)
+endif
+
 if ENABLE_SELINUX
 AM_CFLAGS += -DHAVE_SELINUX
 endif
@@ -200,20 +208,20 @@ if USE_CONFIGPATH_LOGS
 AM_CFLAGS += -DUSE_CONFIGPATH_LOGS
 endif
 
-if ENABLE_SECCOMP
-AM_CFLAGS += -DHAVE_SECCOMP $(SECCOMP_CFLAGS)
-liblxc_la_SOURCES += seccomp.c
-endif
+# build the shared library
+liblxc_la_CFLAGS = -fPIC \
+		   -DPIC \
+		   $(AM_CFLAGS) \
+		   -pthread
 
-liblxc_la_CFLAGS = -fPIC -DPIC $(AM_CFLAGS) -pthread
+liblxc_la_LDFLAGS = -pthread \
+		    -Wl,-soname,liblxc.so.$(firstword $(subst ., ,@LXC_ABI@)) \
+		    -version-info @LXC_ABI_MAJOR@
 
-liblxc_la_LDFLAGS = \
-	-pthread \
-	-shared \
-	-Wl,-soname,liblxc.so.$(firstword $(subst ., ,@LXC_ABI@)) \
-	-version-info @LXC_ABI_MAJOR@
-
-liblxc_la_LIBADD = $(CAP_LIBS) $(GNUTLS_LIBS) $(SELINUX_LIBS) $(SECCOMP_LIBS)
+liblxc_la_LIBADD = $(CAP_LIBS) \
+		   $(GNUTLS_LIBS) \
+		   $(SELINUX_LIBS) \
+		   $(SECCOMP_LIBS)
 
 bin_SCRIPTS=
 
@@ -322,10 +330,6 @@ if !HAVE_STRLCAT
 init_lxc_static_SOURCES += ../include/strlcat.c ../include/strlcat.h
 endif
 
-if !HAVE_GETGRGID_R
-liblxc_la_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
-endif
-
 init_lxc_static_LDFLAGS = -all-static
 init_lxc_static_LDADD = @CAP_LIBS@
 init_lxc_static_CFLAGS = $(AM_CFLAGS) -DNO_LXC_CONF
@@ -356,6 +360,7 @@ install-exec-hook:
 
 uninstall-local:
 	$(RM) $(DESTDIR)$(libdir)/liblxc.so*
+	$(RM) $(DESTDIR)$(libdir)/liblxc.a
 if ENABLE_PAM
 if HAVE_PAM
 	$(RM) $(DESTDIR)$(pamdir)/pam_cgfs.so*
