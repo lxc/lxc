@@ -244,8 +244,7 @@ static int write_id_mapping(pid_t pid, const char *buf, size_t buf_size)
 
 int main(int argc, char *argv[])
 {
-	char *del;
-	char **it, **args;
+	char **args;
 	int opt;
 	int ret;
 	char *namespaces = NULL;
@@ -308,30 +307,8 @@ int main(int argc, char *argv[])
 	if (ret)
 		exit(EXIT_FAILURE);
 
-	/* The identifiers for namespaces used with lxc-unshare as given on the
-	 * manpage do not align with the standard identifiers. This affects
-	 * network, mount, and uts namespaces. The standard identifiers are:
-	 * "mnt", "uts", and "net" whereas lxc-unshare uses "MOUNT", "UTSNAME",
-	 * and "NETWORK". So let's use some cheap memmove()s to replace them by
-	 * their standard identifiers. Let's illustrate this with an example:
-	 * Assume the string:
-	 *
-	 *	"IPC|MOUNT|PID"
-	 *
-	 * then we memmove()
-	 *
-	 *	dest: del + 1 == OUNT|PID
-	 *	src:  del + 3 == NT|PID
-	 */
-	if (!namespaces)
+	if (lxc_namespace_2_std_identifiers(namespaces) < 0)
 		usage(argv[0]);
-
-	while ((del = strstr(namespaces, "MOUNT")))
-		memmove(del + 1, del + 3, strlen(del) - 2);
-
-	for (it = (char *[]){"NETWORK", "UTSNAME", NULL}; it && *it; it++)
-		while ((del = strstr(namespaces, *it)))
-			memmove(del + 3, del + 7, strlen(del) - 6);
 
 	ret = lxc_fill_namespace_flags(namespaces, &flags);
 	if (ret)
