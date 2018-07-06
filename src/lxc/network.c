@@ -3094,7 +3094,7 @@ int lxc_network_send_veth_names_to_child(struct lxc_handler *handler)
 		if (netdev->type != LXC_NET_VETH)
 			continue;
 
-		ret = send(data_sock, netdev->name, IFNAMSIZ, 0);
+		ret = send(data_sock, netdev->name, IFNAMSIZ, MSG_NOSIGNAL);
 		if (ret < 0)
 			return -1;
 		TRACE("Sent network device name \"%s\" to child", netdev->name);
@@ -3142,14 +3142,14 @@ int lxc_network_send_name_and_ifindex_to_parent(struct lxc_handler *handler)
 		struct lxc_netdev *netdev = iterator->elem;
 
 		/* Send network device name in the child's namespace to parent. */
-		ret = send(data_sock, netdev->name, IFNAMSIZ, 0);
+		ret = send(data_sock, netdev->name, IFNAMSIZ, MSG_NOSIGNAL);
 		if (ret < 0)
 			return -1;
 
 		/* Send network device ifindex in the child's namespace to
 		 * parent.
 		 */
-		ret = send(data_sock, &netdev->ifindex, sizeof(netdev->ifindex), 0);
+		ret = send(data_sock, &netdev->ifindex, sizeof(netdev->ifindex), MSG_NOSIGNAL);
 		if (ret < 0)
 			return -1;
 	}

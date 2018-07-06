@@ -206,7 +206,7 @@ static int lxc_cmd_rsp_send(int fd, struct lxc_cmd_rsp *rsp)
 {
 	ssize_t ret;
 
-	ret = send(fd, rsp, sizeof(*rsp), 0);
+	ret = send(fd, rsp, sizeof(*rsp), MSG_NOSIGNAL);
 	if (ret < 0 || (size_t)ret != sizeof(*rsp)) {
 		SYSERROR("Failed to send command response %zd", ret);
 		return -1;
@@ -215,7 +215,7 @@ static int lxc_cmd_rsp_send(int fd, struct lxc_cmd_rsp *rsp)
 	if (!rsp->data || rsp->datalen <= 0)
 		return 0;
 
-	ret = send(fd, rsp->data, rsp->datalen, 0);
+	ret = send(fd, rsp->data, rsp->datalen, MSG_NOSIGNAL);
 	if (ret < 0 || ret != (ssize_t)rsp->datalen) {
 		SYSWARN("Failed to send command response data %zd", ret);
 		return -1;
