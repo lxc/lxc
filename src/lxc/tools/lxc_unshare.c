@@ -41,6 +41,7 @@
 
 #include "arguments.h"
 #include "caps.h"
+#include "conf.h"
 #include "namespace.h"
 #include "utils.h"
 
@@ -220,28 +221,6 @@ static int do_start(void *arg)
 	return 1;
 }
 
-static int write_id_mapping(pid_t pid, const char *buf, size_t buf_size)
-{
-	char path[MAXPATHLEN];
-	int fd, ret;
-
-	ret = snprintf(path, MAXPATHLEN, "/proc/%d/uid_map", pid);
-	if (ret < 0 || ret >= MAXPATHLEN)
-		return -E2BIG;
-
-	fd = open(path, O_WRONLY);
-	if (fd < 0)
-		return -1;
-
-	errno = 0;
-	ret = lxc_write_nointr(fd, buf, buf_size);
-	close(fd);
-	if (ret < 0 || (size_t)ret != buf_size)
-		return -1;
-
-	return 0;
-}
-
 int main(int argc, char *argv[])
 {
 	char **args;
@@ -357,7 +336,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		ret = write_id_mapping(pid, umap, strlen(umap));
+		ret = write_id_mapping(ID_TYPE_UID, pid, umap, strlen(umap));
 		if (ret < 0) {
 			close(start_arg.wait_fd);
 			fprintf(stderr, "uid mapping failed\n");
