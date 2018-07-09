@@ -1191,6 +1191,7 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 	int ret;
 	size_t clen;
 	char *path;
+	mode_t cur_mask;
 
 	INFO("Preparing \"/dev\"");
 
@@ -1202,37 +1203,45 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 	if (ret < 0 || (size_t)ret >= clen)
 		return -1;
 
-	if (!dir_exists(path)) {
-		WARN("\"/dev\" directory does not exist. Proceeding without "
-		     "autodev being set up");
-		return 0;
+	cur_mask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
+	ret = mkdir(path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+	if (ret < 0 && errno != EEXIST) {
+		SYSERROR("Failed to create \"/dev\" directory");
+		ret = -errno;
+		goto reset_umask;
 	}
 
 	ret = safe_mount("none", path, "tmpfs", 0, "size=500000,mode=755",
 			 rootfs->path ? rootfs->mount : NULL);
 	if (ret < 0) {
 		SYSERROR("Failed to mount tmpfs on \"%s\"", path);
-		return -1;
+		goto reset_umask;
 	}
-	INFO("Mounted tmpfs on \"%s\"", path);
+	TRACE("Mounted tmpfs on \"%s\"", path);
 
 	ret = snprintf(path, clen, "%s/dev/pts", rootfs->path ? rootfs->mount : "");
-	if (ret < 0 || (size_t)ret >= clen)
-		return -1;
+	if (ret < 0 || (size_t)ret >= clen) {
+		ret = -1;
+		goto reset_umask;
+	}
 
 	/* If we are running on a devtmpfs mapping, dev/pts may already exist.
 	 * If not, then create it and exit if that fails...
 	 */
-	if (!dir_exists(path)) {
-		ret = mkdir(path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
-		if (ret < 0) {
-			SYSERROR("Failed to create directory \"%s\"", path);
-			return -1;
-		}
+	ret = mkdir(path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+	if (ret < 0 && errno != EEXIST) {
+		SYSERROR("Failed to create directory \"%s\"", path);
+		ret = -errno;
+		goto reset_umask;
 	}
 
+	ret = 0;
+
+reset_umask:
+	(void)umask(cur_mask);
+
 	INFO("Prepared \"/dev\"");
-	return 0;
+	return ret;
 }
 
 struct lxc_device_node {
