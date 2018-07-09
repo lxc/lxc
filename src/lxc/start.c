@@ -1287,23 +1287,18 @@ static int do_start(void *data)
 
 	close(handler->sigfd);
 
-	if (devnull_fd < 0) {
-		devnull_fd = open_devnull();
-
-		if (devnull_fd < 0)
-			goto out_warn_father;
-	}
-
-	if (handler->conf->console.slave < 0 && handler->backgrounded)
-		if (set_stdfds(devnull_fd) < 0) {
-			ERROR("Failed to redirect std{in,out,err} to "
-			      "\"/dev/null\"");
-			goto out_warn_father;
+	if (handler->conf->console.slave < 0 && handler->backgrounded) {
+		if (devnull_fd < 0) {
+			devnull_fd = open_devnull();
+			if (devnull_fd < 0)
+				goto out_warn_father;
 		}
 
-	if (devnull_fd >= 0) {
-		close(devnull_fd);
-		devnull_fd = -1;
+		ret = set_stdfds(devnull_fd);
+		if (ret < 0) {
+			ERROR("Failed to redirect std{in,out,err} to \"/dev/null\"");
+			goto out_warn_father;
+		}
 	}
 
 	setsid();
