@@ -1274,13 +1274,13 @@ static int do_start(void *data)
 
 	close(handler->sigfd);
 
-	if (devnull_fd < 0) {
-		devnull_fd = open_devnull();
-		if (devnull_fd < 0)
-			goto out_warn_father;
-	}
-
 	if (handler->conf->console.slave < 0 && handler->backgrounded) {
+		if (devnull_fd < 0) {
+			devnull_fd = open_devnull();
+			if (devnull_fd < 0)
+				goto out_warn_father;
+		}
+
 		ret = set_stdfds(devnull_fd);
 		if (ret < 0) {
 			ERROR("Failed to redirect std{in,out,err} to \"/dev/null\"");
