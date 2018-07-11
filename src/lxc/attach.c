@@ -643,9 +643,10 @@ static void lxc_attach_get_init_uidgid(uid_t *init_uid, gid_t *init_gid)
 /* Define default options if no options are supplied by the user. */
 static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_DEFAULT;
 
-static bool fetch_seccomp(struct lxc_container *c,
-			  lxc_attach_options_t *options)
+static bool fetch_seccomp(struct lxc_container *c, lxc_attach_options_t *options)
 {
+	int ret;
+	bool bret;
 	char *path;
 
 	if (!(options->namespaces & CLONE_NEWNS) ||
@@ -656,36 +657,36 @@ static bool fetch_seccomp(struct lxc_container *c,
 	}
 
 	/* Remove current setting. */
-	if (!c->set_config_item(c, "lxc.seccomp", "") &&
-	    !c->set_config_item(c, "lxc.seccomp.profile", "")) {
+	if (!c->set_config_item(c, "lxc.seccomp.profile", "") &&
+	    !c->set_config_item(c, "lxc.seccomp", "")) {
 		return false;
 	}
 
 	/* Fetch the current profile path over the cmd interface. */
 	path = c->get_running_config_item(c, "lxc.seccomp.profile");
 	if (!path) {
-		INFO("Failed to get running config item for lxc.seccomp.profile");
+		INFO("Failed to retrieve lxc.seccomp.profile");
 		path = c->get_running_config_item(c, "lxc.seccomp");
-	}
-	if (!path) {
-		INFO("Failed to get running config item for lxc.seccomp");
-		return true;
+		if (!path) {
+			INFO("Failed to retrieve lxc.seccomp");
+			return true;
+		}
 	}
 
 	/* Copy the value into the new lxc_conf. */
-	if (!c->set_config_item(c, "lxc.seccomp.profile", path)) {
-		free(path);
-		return false;
-	}
+	bret = c->set_config_item(c, "lxc.seccomp.profile", path);
 	free(path);
+	if (!bret)
+		return false;
 
 	/* Attempt to parse the resulting config. */
-	if (lxc_read_seccomp_config(c->lxc_conf) < 0) {
-		ERROR("Error reading seccomp policy.");
+	ret = lxc_read_seccomp_config(c->lxc_conf);
+	if (ret < 0) {
+		ERROR("Failed to retrieve seccomp policy");
 		return false;
 	}
 
-	INFO("Retrieved seccomp policy.");
+	INFO("Retrieved seccomp policy");
 	return true;
 }
 
