@@ -692,27 +692,26 @@ static bool fetch_seccomp(struct lxc_container *c, lxc_attach_options_t *options
 
 static bool no_new_privs(struct lxc_container *c, lxc_attach_options_t *options)
 {
+	bool bret;
 	char *val;
 
 	/* Remove current setting. */
-	if (!c->set_config_item(c, "lxc.no_new_privs", ""))
+	if (!c->set_config_item(c, "lxc.no_new_privs", "")) {
+		INFO("Failed to unset lxc.no_new_privs");
 		return false;
+	}
 
 	/* Retrieve currently active setting. */
 	val = c->get_running_config_item(c, "lxc.no_new_privs");
 	if (!val) {
-		INFO("Failed to get running config item for lxc.no_new_privs.");
+		INFO("Failed to retrieve lxc.no_new_privs");
 		return false;
 	}
 
 	/* Set currently active setting. */
-	if (!c->set_config_item(c, "lxc.no_new_privs", val)) {
-		free(val);
-		return false;
-	}
+	bret = c->set_config_item(c, "lxc.no_new_privs", val);
 	free(val);
-
-	return true;
+	return bret;
 }
 
 static signed long get_personality(const char *name, const char *lxcpath)
