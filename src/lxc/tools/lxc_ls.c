@@ -308,7 +308,7 @@ static char *ls_get_config_item(struct lxc_container *c, const char *item,
 	if (running)
 		return c->get_running_config_item(c, item);
 
-	size_t len = c->get_config_item(c, item, NULL, 0);
+	int len = c->get_config_item(c, item, NULL, 0);
 	if (len <= 0)
 		return NULL;
 
@@ -316,7 +316,7 @@ static char *ls_get_config_item(struct lxc_container *c, const char *item,
 	if (!val)
 		return NULL;
 
-	if ((size_t)c->get_config_item(c, item, val, len + 1) != len) {
+	if (c->get_config_item(c, item, val, len + 1) != len) {
 		free(val);
 		val = NULL;
 	}
@@ -612,7 +612,7 @@ out:
 
 static char *ls_get_cgroup_item(struct lxc_container *c, const char *item)
 {
-	size_t len = c->get_cgroup_item(c, item, NULL, 0);
+	int len = c->get_cgroup_item(c, item, NULL, 0);
 	if (len <= 0)
 		return NULL;
 
@@ -620,7 +620,7 @@ static char *ls_get_cgroup_item(struct lxc_container *c, const char *item)
 	if (!val)
 		return NULL;
 
-	if ((size_t)c->get_cgroup_item(c, item, val, len + 1) != len) {
+	if (c->get_cgroup_item(c, item, val, len + 1) != len) {
 		free(val);
 		val = NULL;
 	}
@@ -630,7 +630,7 @@ static char *ls_get_cgroup_item(struct lxc_container *c, const char *item)
 
 static char *ls_get_groups(struct lxc_container *c, bool running)
 {
-	size_t len = 0;
+	int len = 0;
 	char *val = NULL;
 
 	if (running)
@@ -640,7 +640,7 @@ static char *ls_get_groups(struct lxc_container *c, bool running)
 
 	if (!val && (len > 0)) {
 		val = malloc((len + 1) * sizeof(*val));
-		if ((size_t)c->get_config_item(c, "lxc.group", val, len + 1) != len) {
+		if (c->get_config_item(c, "lxc.group", val, len + 1) != len) {
 			free(val);
 			return NULL;
 		}
