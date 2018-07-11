@@ -930,16 +930,7 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	 * here, ignore errors.
 	 */
 	for (fd = STDIN_FILENO; fd <= STDERR_FILENO; fd++) {
-		int flags;
-
-		flags = fcntl(fd, F_GETFL);
-		if (flags < 0)
-			continue;
-
-		if ((flags & FD_CLOEXEC) == 0)
-			continue;
-
-		ret = fcntl(fd, F_SETFL, flags & ~FD_CLOEXEC);
+		ret = fd_cloexec(fd, false);
 		if (ret < 0) {
 			SYSERROR("Failed to clear FD_CLOEXEC from file descriptor %d", fd);
 			goto on_error;
