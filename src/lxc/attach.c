@@ -1064,7 +1064,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 
 	init_pid = lxc_cmd_get_init_pid(name, lxcpath);
 	if (init_pid < 0) {
-		ERROR("Failed to get init pid.");
+		ERROR("Failed to get init pid");
 		return -1;
 	}
 
@@ -1098,10 +1098,10 @@ int lxc_attach(const char *name, const char *lxcpath,
 	conf = init_ctx->container->lxc_conf;
 
 	if (!fetch_seccomp(init_ctx->container, options))
-		WARN("Failed to get seccomp policy.");
+		WARN("Failed to get seccomp policy");
 
 	if (!no_new_privs(init_ctx->container, options))
-		WARN("Could not determine whether PR_SET_NO_NEW_PRIVS is set.");
+		WARN("Could not determine whether PR_SET_NO_NEW_PRIVS is set");
 
 	cwd = getcwd(NULL, 0);
 
@@ -1217,7 +1217,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 	 */
 	ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, ipc_sockets);
 	if (ret < 0) {
-		SYSERROR("Could not set up required IPC mechanism for attaching.");
+		SYSERROR("Could not set up required IPC mechanism for attaching");
 		free(cwd);
 		lxc_proc_put_context_info(init_ctx);
 		return -1;
@@ -1232,7 +1232,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 	 */
 	pid = fork();
 	if (pid < 0) {
-		SYSERROR("Failed to create first subprocess.");
+		SYSERROR("Failed to create first subprocess");
 		free(cwd);
 		lxc_proc_put_context_info(init_ctx);
 		return -1;
