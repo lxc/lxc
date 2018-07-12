@@ -861,13 +861,13 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	 * may want to make sure the fds are closed, for example.
 	 */
 	if (options->stdin_fd >= 0 && options->stdin_fd != STDIN_FILENO)
-		dup2(options->stdin_fd, STDIN_FILENO);
+		(void)dup2(options->stdin_fd, STDIN_FILENO);
 
 	if (options->stdout_fd >= 0 && options->stdout_fd != STDOUT_FILENO)
-		dup2(options->stdout_fd, STDOUT_FILENO);
+		(void)dup2(options->stdout_fd, STDOUT_FILENO);
 
 	if (options->stderr_fd >= 0 && options->stderr_fd != STDERR_FILENO)
-		dup2(options->stderr_fd, STDERR_FILENO);
+		(void)dup2(options->stderr_fd, STDERR_FILENO);
 
 	/* close the old fds */
 	if (options->stdin_fd > STDERR_FILENO)
