@@ -75,14 +75,15 @@ static void usage(const char *name)
 	printf("        calling user permission to use the mapped ranges\n");
 }
 
-static void opentty(const char * tty, int which) {
+static void opentty(const char *tty, int which)
+{
 	int fd, flags;
 
 	if (tty[0] == '\0')
 		return;
 
 	fd = open(tty, O_RDWR | O_NONBLOCK);
-	if (fd == -1) {
+	if (fd < 0) {
 		printf("WARN: could not reopen tty: %s\n", strerror(errno));
 		return;
 	}
@@ -97,7 +98,7 @@ static void opentty(const char * tty, int which) {
 
 	close(which);
 	if (fd != which) {
-		dup2(fd, which);
+		(void)dup2(fd, which);
 		close(fd);
 	}
 }
