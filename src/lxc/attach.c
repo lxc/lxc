@@ -448,12 +448,15 @@ static char *lxc_attach_getpwshell(uid_t uid)
 	int fd, ret;
 	pid_t pid;
 	int pipes[2];
-	char *result = NULL;
+	FILE *pipe_f;
+	bool found = false;
+	size_t line_bufsz = 0;
+	char *line = NULL, *result = NULL;
 
 	/* We need to fork off a process that runs the getent program, and we
 	 * need to capture its output, so we use a pipe for that purpose.
 	 */
-	ret = pipe(pipes);
+	ret = pipe2(pipes, O_CLOEXEC);
 	if (ret < 0)
 		return NULL;
 
@@ -464,100 +467,7 @@ static char *lxc_attach_getpwshell(uid_t uid)
 		return NULL;
 	}
 
-	if (pid) {
-		int status;
-		FILE *pipe_f;
-		int found = 0;
-		size_t line_bufsz = 0;
-		char *line = NULL;
-
-		close(pipes[1]);
-
-		pipe_f = fdopen(pipes[0], "r");
-		while (getline(&line, &line_bufsz, pipe_f) != -1) {
-			int i;
-			long value;
-			char *token;
-			char *endptr = NULL, *saveptr = NULL;
-
-			/* If we already found something, just continue to read
-			 * until the pipe doesn't deliver any more data, but
-			 * don't modify the existing data structure.
-			 */
-			if (found)
-				continue;
-
-			/* Trim line on the right hand side. */
-			for (i = strlen(line); i > 0 && (line[i - 1] == '\n' || line[i - 1] == '\r'); --i)
-				line[i - 1] = '\0';
-
-			/* Split into tokens: first: user name. */
-			token = strtok_r(line, ":", &saveptr);
-			if (!token)
-				continue;
-			/* next: dummy password field */
-			token = strtok_r(NULL, ":", &saveptr);
-			if (!token)
-				continue;
-			/* next: user id */
-			token = strtok_r(NULL, ":", &saveptr);
-			value = token ? strtol(token, &endptr, 10) : 0;
-			if (!token || !endptr || *endptr || value == LONG_MIN || value == LONG_MAX)
-				continue;
-			/* dummy sanity check: user id matches */
-			if ((uid_t) value != uid)
-				continue;
-			/* skip fields: gid, gecos, dir, go to next field 'shell' */
-			for (i = 0; i < 4; i++) {
-				token = strtok_r(NULL, ":", &saveptr);
-				if (!token)
-					break;
-			}
-			if (!token)
-				continue;
-			free(result);
-			result = strdup(token);
-
-			/* Sanity check that there are no fields after that. */
-			token = strtok_r(NULL, ":", &saveptr);
-			if (token)
-				continue;
-
-			found = 1;
-		}
-
-		free(line);
-		fclose(pipe_f);
-	again:
-		if (waitpid(pid, &status, 0) < 0) {
-			if (errno == EINTR)
-				goto again;
-			free(result);
-			return NULL;
-		}
-
-		/* Some sanity checks. If anything even hinted at going wrong,
-		 * we can't be sure we have a valid result, so we assume we
-		 * don't.
-		 */
-
-		if (!WIFEXITED(status)) {
-			free(result);
-			return NULL;
-		}
-
-		if (WEXITSTATUS(status) != 0) {
-			free(result);
-			return NULL;
-		}
-
-		if (!found) {
-			free(result);
-			return NULL;
-		}
-
-		return result;
-	} else {
+	if (!pid) {
 		char uid_buf[32];
 		char *arguments[] = {
 			"getent",
@@ -569,31 +479,108 @@ static char *lxc_attach_getpwshell(uid_t uid)
 		close(pipes[0]);
 
 		/* We want to capture stdout. */
-		dup2(pipes[1], 1);
+		ret = dup2(pipes[1], STDOUT_FILENO);
 		close(pipes[1]);
+		if (ret < 0)
+			exit(EXIT_FAILURE);
 
 		/* Get rid of stdin/stderr, so we try to associate it with
 		 * /dev/null.
 		 */
-		fd = open("/dev/null", O_RDWR);
+		fd = open_devnull();
 		if (fd < 0) {
-			close(0);
-			close(2);
+			close(STDIN_FILENO);
+			close(STDERR_FILENO);
 		} else {
-			dup2(fd, 0);
-			dup2(fd, 2);
+			(void)dup3(fd, STDIN_FILENO, O_CLOEXEC);
+			(void)dup3(fd, STDOUT_FILENO, O_CLOEXEC);
 			close(fd);
 		}
 
 		/* Finish argument list. */
-		ret = snprintf(uid_buf, sizeof(uid_buf), "%ld", (long) uid);
-		if (ret <= 0)
-			exit(-1);
+		ret = snprintf(uid_buf, sizeof(uid_buf), "%ld", (long)uid);
+		if (ret <= 0 || ret >= sizeof(uid_buf))
+			exit(EXIT_FAILURE);
 
 		/* Try to run getent program. */
-		(void) execvp("getent", arguments);
-		exit(-1);
+		(void)execvp("getent", arguments);
+		exit(EXIT_FAILURE);
 	}
+
+	close(pipes[1]);
+
+	pipe_f = fdopen(pipes[0], "r");
+	while (getline(&line, &line_bufsz, pipe_f) != -1) {
+		int i;
+		long value;
+		char *token;
+		char *endptr = NULL, *saveptr = NULL;
+
+		/* If we already found something, just continue to read
+		* until the pipe doesn't deliver any more data, but
+		* don't modify the existing data structure.
+		 */
+		if (found)
+			continue;
+
+		/* Trim line on the right hand side. */
+		for (i = strlen(line); i > 0 && (line[i - 1] == '\n' || line[i - 1] == '\r'); --i)
+			line[i - 1] = '\0';
+
+		/* Split into tokens: first: user name. */
+		token = strtok_r(line, ":", &saveptr);
+		if (!token)
+			continue;
+
+		/* next: dummy password field */
+		token = strtok_r(NULL, ":", &saveptr);
+		if (!token)
+			continue;
+
+		/* next: user id */
+		token = strtok_r(NULL, ":", &saveptr);
+		value = token ? strtol(token, &endptr, 10) : 0;
+		if (!token || !endptr || *endptr || value == LONG_MIN ||
+				value == LONG_MAX)
+			continue;
+
+		/* dummy sanity check: user id matches */
+		if ((uid_t)value != uid)
+			continue;
+
+		/* skip fields: gid, gecos, dir, go to next field 'shell' */
+		for (i = 0; i < 4; i++) {
+			token = strtok_r(NULL, ":", &saveptr);
+			if (!token)
+				continue;
+		}
+		if (!token)
+			continue;
+		free(result);
+		result = strdup(token);
+
+		/* Sanity check that there are no fields after that. */
+		token = strtok_r(NULL, ":", &saveptr);
+		if (token)
+			continue;
+
+		found = true;
+	}
+	free(line);
+	fclose(pipe_f);
+
+	ret = wait_for_pid(pid);
+	if (ret < 0) {
+		free(result);
+		return NULL;
+	}
+
+	if (!found) {
+		free(result);
+		return NULL;
+	}
+
+	return result;
 }
 
 static void lxc_attach_get_init_uidgid(uid_t *init_uid, gid_t *init_gid)
@@ -656,9 +643,10 @@ static void lxc_attach_get_init_uidgid(uid_t *init_uid, gid_t *init_gid)
 /* Define default options if no options are supplied by the user. */
 static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_DEFAULT;
 
-static bool fetch_seccomp(struct lxc_container *c,
-			  lxc_attach_options_t *options)
+static bool fetch_seccomp(struct lxc_container *c, lxc_attach_options_t *options)
 {
+	int ret;
+	bool bret;
 	char *path;
 
 	if (!(options->namespaces & CLONE_NEWNS) ||
@@ -669,62 +657,61 @@ static bool fetch_seccomp(struct lxc_container *c,
 	}
 
 	/* Remove current setting. */
-	if (!c->set_config_item(c, "lxc.seccomp", "") &&
-	    !c->set_config_item(c, "lxc.seccomp.profile", "")) {
+	if (!c->set_config_item(c, "lxc.seccomp.profile", "") &&
+	    !c->set_config_item(c, "lxc.seccomp", "")) {
 		return false;
 	}
 
 	/* Fetch the current profile path over the cmd interface. */
 	path = c->get_running_config_item(c, "lxc.seccomp.profile");
 	if (!path) {
-		INFO("Failed to get running config item for lxc.seccomp.profile");
+		INFO("Failed to retrieve lxc.seccomp.profile");
 		path = c->get_running_config_item(c, "lxc.seccomp");
-	}
-	if (!path) {
-		INFO("Failed to get running config item for lxc.seccomp");
-		return true;
+		if (!path) {
+			INFO("Failed to retrieve lxc.seccomp");
+			return true;
+		}
 	}
 
 	/* Copy the value into the new lxc_conf. */
-	if (!c->set_config_item(c, "lxc.seccomp.profile", path)) {
-		free(path);
-		return false;
-	}
+	bret = c->set_config_item(c, "lxc.seccomp.profile", path);
 	free(path);
+	if (!bret)
+		return false;
 
 	/* Attempt to parse the resulting config. */
-	if (lxc_read_seccomp_config(c->lxc_conf) < 0) {
-		ERROR("Error reading seccomp policy.");
+	ret = lxc_read_seccomp_config(c->lxc_conf);
+	if (ret < 0) {
+		ERROR("Failed to retrieve seccomp policy");
 		return false;
 	}
 
-	INFO("Retrieved seccomp policy.");
+	INFO("Retrieved seccomp policy");
 	return true;
 }
 
 static bool no_new_privs(struct lxc_container *c, lxc_attach_options_t *options)
 {
+	bool bret;
 	char *val;
 
 	/* Remove current setting. */
-	if (!c->set_config_item(c, "lxc.no_new_privs", ""))
+	if (!c->set_config_item(c, "lxc.no_new_privs", "")) {
+		INFO("Failed to unset lxc.no_new_privs");
 		return false;
+	}
 
 	/* Retrieve currently active setting. */
 	val = c->get_running_config_item(c, "lxc.no_new_privs");
 	if (!val) {
-		INFO("Failed to get running config item for lxc.no_new_privs.");
+		INFO("Failed to retrieve lxc.no_new_privs");
 		return false;
 	}
 
 	/* Set currently active setting. */
-	if (!c->set_config_item(c, "lxc.no_new_privs", val)) {
-		free(val);
-		return false;
-	}
+	bret = c->set_config_item(c, "lxc.no_new_privs", val);
 	free(val);
-
-	return true;
+	return bret;
 }
 
 static signed long get_personality(const char *name, const char *lxcpath)
@@ -943,16 +930,7 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	 * here, ignore errors.
 	 */
 	for (fd = STDIN_FILENO; fd <= STDERR_FILENO; fd++) {
-		int flags;
-
-		flags = fcntl(fd, F_GETFL);
-		if (flags < 0)
-			continue;
-
-		if ((flags & FD_CLOEXEC) == 0)
-			continue;
-
-		ret = fcntl(fd, F_SETFL, flags & ~FD_CLOEXEC);
+		ret = fd_cloexec(fd, false);
 		if (ret < 0) {
 			SYSERROR("Failed to clear FD_CLOEXEC from file descriptor %d", fd);
 			goto on_error;
@@ -1086,7 +1064,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 
 	init_pid = lxc_cmd_get_init_pid(name, lxcpath);
 	if (init_pid < 0) {
-		ERROR("Failed to get init pid.");
+		ERROR("Failed to get init pid");
 		return -1;
 	}
 
@@ -1120,10 +1098,10 @@ int lxc_attach(const char *name, const char *lxcpath,
 	conf = init_ctx->container->lxc_conf;
 
 	if (!fetch_seccomp(init_ctx->container, options))
-		WARN("Failed to get seccomp policy.");
+		WARN("Failed to get seccomp policy");
 
 	if (!no_new_privs(init_ctx->container, options))
-		WARN("Could not determine whether PR_SET_NO_NEW_PRIVS is set.");
+		WARN("Could not determine whether PR_SET_NO_NEW_PRIVS is set");
 
 	cwd = getcwd(NULL, 0);
 
@@ -1239,7 +1217,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 	 */
 	ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, ipc_sockets);
 	if (ret < 0) {
-		SYSERROR("Could not set up required IPC mechanism for attaching.");
+		SYSERROR("Could not set up required IPC mechanism for attaching");
 		free(cwd);
 		lxc_proc_put_context_info(init_ctx);
 		return -1;
@@ -1254,7 +1232,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 	 */
 	pid = fork();
 	if (pid < 0) {
-		SYSERROR("Failed to create first subprocess.");
+		SYSERROR("Failed to create first subprocess");
 		free(cwd);
 		lxc_proc_put_context_info(init_ctx);
 		return -1;
