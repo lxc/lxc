@@ -1260,12 +1260,20 @@ static const struct lxc_device_node lxc_devices[] = {
 	{ "zero",    S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 5 },
 };
 
+
+enum {
+	LXC_DEVNODE_BIND,
+	LXC_DEVNODE_MKNOD,
+	LXC_DEVNODE_PARTIAL,
+	LXC_DEVNODE_OPEN,
+};
+
 static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 {
 	int i, ret;
 	char path[MAXPATHLEN];
 	mode_t cmask;
-	int can_mknod = 1;
+	int use_mknod = LXC_DEVNODE_MKNOD;
 
 	ret = snprintf(path, MAXPATHLEN, "%s/dev",
 		       rootfs->path ? rootfs->mount : "");
@@ -1288,34 +1296,52 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 		if (ret < 0 || ret >= MAXPATHLEN)
 			return -1;
 
-		/* See
-		 * - https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=55956b59df336f6738da916dbb520b6e37df9fbd
-		 * - https://lists.linuxfoundation.org/pipermail/containers/2018-June/039176.html
-		 */
-		if (can_mknod == 2 || (can_mknod == 1 && !am_host_unpriv())) {
+		if (use_mknod >= LXC_DEVNODE_MKNOD) {
 			ret = mknod(path, device->mode, makedev(device->maj, device->min));
 			if (ret == 0 || (ret < 0 && errno == EEXIST)) {
 				DEBUG("Created device node \"%s\"", path);
+			} else if (ret < 0) {
+				if (errno != EPERM) {
+					SYSERROR("Failed to create device node \"%s\"", path);
+					return -1;
+				}
+
+				use_mknod = LXC_DEVNODE_BIND;
+			}
+
+			/* Device nodes are fully useable. */
+			if (use_mknod == LXC_DEVNODE_OPEN)
 				continue;
-			}
 
-			if (errno != EPERM) {
-				SYSERROR("Failed to create device node \"%s\"", path);
-				return -1;
-			}
+			if (use_mknod == LXC_DEVNODE_MKNOD) {
+				/* See
+				 * - https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=55956b59df336f6738da916dbb520b6e37df9fbd
+				 * - https://lists.linuxfoundation.org/pipermail/containers/2018-June/039176.html
+				 */
+				ret = open(path, O_RDONLY | O_CLOEXEC);
+				if (ret >= 0) {
+					close(ret);
+					/* Device nodes are fully useable. */
+					use_mknod = LXC_DEVNODE_OPEN;
+					continue;
+				}
 
-			/* This can e.g. happen when the container is
-			 * unprivileged or CAP_MKNOD has been dropped.
-			 */
-			can_mknod = 2;
-		} else {
-			can_mknod = 0;
+				SYSTRACE("Failed to open \"%s\" device", path);
+				/* Device nodes are only partially useable. */
+				use_mknod = LXC_DEVNODE_PARTIAL;
+			}
 		}
 
-		ret = mknod(path, S_IFREG | 0000, 0);
-		if (ret < 0 && errno != EEXIST) {
-			SYSERROR("Failed to create file \"%s\"", path);
-			return -1;
+		if (use_mknod != LXC_DEVNODE_PARTIAL) {
+			/* If we are dealing with partially functional device
+			 * nodes the prio mknod() call will have created the
+			 * device node so we can use it as a bind-mount target.
+			 */
+			ret = mknod(path, S_IFREG | 0000, 0);
+			if (ret < 0 && errno != EEXIST) {
+				SYSERROR("Failed to create file \"%s\"", path);
+				return -1;
+			}
 		}
 
 		/* Fallback to bind-mounting the device from the host. */
