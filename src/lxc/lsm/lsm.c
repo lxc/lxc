@@ -142,18 +142,20 @@ int lsm_process_label_set_at(int label_fd, const char *label, bool on_exec)
 
 		if (on_exec) {
 			ERROR("Changing AppArmor profile on exec not supported");
-			return -EINVAL;
+			return -1;
 		}
 
 		len = strlen(label) + strlen("changeprofile ") + 1;
 		command = malloc(len);
 		if (!command)
-			return -1;
+			goto on_error;
 
 		ret = snprintf(command, len, "changeprofile %s", label);
 		if (ret < 0 || (size_t)ret >= len) {
+			int saved_errno = errno;
 			free(command);
-			return -1;
+			errno = saved_errno;
+			goto on_error;
 		}
 
 		ret = lxc_write_nointr(label_fd, command, len - 1);
@@ -161,9 +163,11 @@ int lsm_process_label_set_at(int label_fd, const char *label, bool on_exec)
 	} else if (strcmp(name, "SELinux") == 0) {
 		ret = lxc_write_nointr(label_fd, label, strlen(label));
 	} else {
-		ret = -EINVAL;
+		errno = EINVAL;
+		ret = -1;
 	}
 	if (ret < 0) {
+on_error:
 		SYSERROR("Failed to set %s label \"%s\"", name, label);
 		return -1;
 	}

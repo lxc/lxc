@@ -241,7 +241,7 @@ static int apparmor_process_label_set(const char *inlabel, struct lxc_conf *conf
 	ret = lsm_process_label_set_at(label_fd, label, on_exec);
 	close(label_fd);
 	if (ret < 0) {
-		SYSERROR("Failed to change apparmor profile to %s", label);
+		ERROR("Failed to change apparmor profile to %s", label);
 		return -1;
 	}
 
