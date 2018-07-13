@@ -2388,7 +2388,7 @@ static struct new_config_item *parse_new_conf_line(char *buffer)
 	line += lxc_char_left_gc(line, strlen(line));
 
 	/* martian option - don't add it to the config itself */
-	if (strncmp(line, "lxc.", strlen(line)))
+	if (strncmp(line, "lxc.", 4))
 		goto on_error;
 
 	ret = -1;
