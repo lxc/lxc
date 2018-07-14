@@ -386,7 +386,6 @@ int main(int argc, char *argv[])
 	start_arg.flags = my_args.flags;
 	start_arg.want_hostname = my_args.want_hostname;
 	start_arg.want_default_mounts = my_args.want_default_mounts;
-	start_arg.wait_fd = -1;
 
 	pid = lxc_clone(do_start, &start_arg, my_args.flags);
 	if (pid < 0) {
