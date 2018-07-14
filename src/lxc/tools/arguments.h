@@ -94,7 +94,7 @@ struct lxc_arguments {
 	char *rbdname, *rbdpool;
 	char *zfsroot, *lowerdir, *dir;
 
-	/* lxc-execute */
+	/* lxc-execute and lxc-unshare */
 	uid_t uid;
 	gid_t gid;
 
@@ -136,6 +136,12 @@ struct lxc_arguments {
 
 	/* lxc-copy */
 	bool tmpfs;
+
+	/* lxc-unshare */
+	int flags;
+	int want_default_mounts;
+	const char *want_hostname;
+	bool setuid;
 
 	/* remaining arguments */
 	char *const *argv;

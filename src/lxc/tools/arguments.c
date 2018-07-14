@@ -50,7 +50,6 @@ static int build_shortopts(const struct option *a_options, char *a_shortopts,
 		return -1;
 
 	for (opt = a_options; opt->name; opt++) {
-
 		if (!isascii(opt->val))
 			continue;
 
@@ -163,6 +162,7 @@ See the %s man page for further information.\n\n",
 
 	if (args->helpfn)
 		args->helpfn(args);
+
 	exit(code);
 }
 
@@ -183,6 +183,7 @@ static int lxc_arguments_lxcpath_add(struct lxc_arguments *args,
 		lxc_error(args, "no memory");
 		return -ENOMEM;
 	}
+
 	args->lxcpath[args->lxcpath_cnt++] = lxcpath;
 	return 0;
 }
@@ -207,6 +208,7 @@ extern int lxc_arguments_parse(struct lxc_arguments *args, int argc,
 		c = getopt_long(argc, argv, shortopts, args->options, &index);
 		if (c == -1)
 			break;
+
 		switch (c) {
 		case 'n':
 			args->name = optarg;
@@ -261,7 +263,8 @@ extern int lxc_arguments_parse(struct lxc_arguments *args, int argc,
 	}
 
 	/* Check the command options */
-	if (!args->name && strcmp(args->progname, "lxc-autostart") != 0) {
+	if (!args->name && strncmp(args->progname, "lxc-autostart", strlen(args->progname)) != 0
+	                && strncmp(args->progname, "lxc-unshare", strlen(args->progname)) != 0) {
 		if (args->argv) {
 			args->name = argv[optind];
 			optind++;
@@ -277,9 +280,11 @@ extern int lxc_arguments_parse(struct lxc_arguments *args, int argc,
 
 	if (args->checker)
 		ret = args->checker(args);
+
 error:
 	if (ret)
 		lxc_error(args, "could not parse command line");
+
 	return ret;
 }
 
