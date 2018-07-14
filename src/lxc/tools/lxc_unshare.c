@@ -71,7 +71,7 @@ static int mount_fs(const char *source, const char *target, const char *type);
 static void lxc_setup_fs(void);
 static int do_start(void *arg);
 
-static struct my_iflist *tmpif, *my_iflist = NULL;
+static struct my_iflist *tmpif, *my_iflist;
 
 static const struct option my_longopts[] = {
 	{"namespaces", required_argument, 0, 's'},
@@ -128,7 +128,8 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 		args->want_hostname = arg;
 		break;
 	case 'i':
-		if (!(tmpif = malloc(sizeof(*tmpif)))) {
+		tmpif = malloc(sizeof(*tmpif));
+		if (!tmpif) {
 			SYSERROR("Failed to malloc()");
 			return -1;
 		}
@@ -327,7 +328,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 	}
 
-	if (*my_args.argv == NULL) {
+	if (!*my_args.argv) {
 		ERROR("A command to execute in the new namespace is required");
 		exit(EXIT_FAILURE);
 	}
