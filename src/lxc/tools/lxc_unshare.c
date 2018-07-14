@@ -41,6 +41,7 @@
 
 #include "arguments.h"
 #include "caps.h"
+#include "list.h"
 #include "log.h"
 #include "namespace.h"
 #include "utils.h"
@@ -57,12 +58,6 @@ struct start_arg {
 	const char *want_hostname;
 };
 
-struct my_iflist
-{
-	char *mi_ifname;
-	struct my_iflist *mi_next;
-};
-
 static int my_parser(struct lxc_arguments *args, int c, char *arg);
 static inline int sethostname_including_android(const char *name, size_t len);
 static int get_namespace_flags(char *namespaces);
@@ -70,8 +65,9 @@ static bool lookup_user(const char *optarg, uid_t *uid);
 static int mount_fs(const char *source, const char *target, const char *type);
 static void lxc_setup_fs(void);
 static int do_start(void *arg);
+static void free_ifname_list(void);
 
-static struct my_iflist *tmpif, *my_iflist;
+static struct lxc_list ifnames;
 
 static const struct option my_longopts[] = {
 	{"namespaces", required_argument, 0, 's'},
@@ -112,6 +108,8 @@ Options :\n\
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
+	struct lxc_list *tmplist;
+
 	switch (c) {
 	case 's':
 		args->flags = get_namespace_flags(arg);
@@ -128,15 +126,15 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 		args->want_hostname = arg;
 		break;
 	case 'i':
-		tmpif = malloc(sizeof(*tmpif));
-		if (!tmpif) {
-			SYSERROR("Failed to malloc()");
+		tmplist = malloc(sizeof(*tmplist));
+		if (!tmplist) {
+			SYSERROR("Failed to alloc lxc list");
+			free_ifname_list();
 			return -1;
 		}
 
-		tmpif->mi_ifname = arg;
-		tmpif->mi_next = my_iflist;
-		my_iflist = tmpif;
+		lxc_list_add_elem(tmplist, arg);
+		lxc_list_add_tail(&ifnames, tmplist);
 		break;
 	case 'd':
 		args->daemonize = 1;
@@ -302,12 +300,24 @@ static int do_start(void *arg)
 	return 1;
 }
 
+static void free_ifname_list(void)
+{
+	struct lxc_list *iterator, *next;
+
+	lxc_list_for_each_safe (iterator, &ifnames, next) {
+		lxc_list_del(iterator);
+		free(iterator);
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	int ret;
 	pid_t pid;
 	struct lxc_log log;
 	struct start_arg start_arg;
+
+	lxc_list_init(&ifnames);
 
 	if (lxc_caps_init())
 		exit(EXIT_FAILURE);
@@ -324,32 +334,39 @@ int main(int argc, char *argv[])
 		log.quiet = my_args.quiet;
 		log.lxcpath = my_args.lxcpath[0];
 
-		if (lxc_log_init(&log))
+		if (lxc_log_init(&log)) {
+			free_ifname_list();
 			exit(EXIT_FAILURE);
+		}
 	}
 
 	if (!*my_args.argv) {
 		ERROR("A command to execute in the new namespace is required");
+		free_ifname_list();
 		exit(EXIT_FAILURE);
 	}
 
 	if (my_args.flags == 0) {
 		ERROR("A namespace to execute command is required");
+		free_ifname_list();
 		exit(EXIT_FAILURE);
 	}
 
-	if (!(my_args.flags & CLONE_NEWNET) && my_iflist) {
+	if (!(my_args.flags & CLONE_NEWNET) && lxc_list_len(&ifnames) > 0) {
 		ERROR("-i <interfacename> needs -s NETWORK option");
+		free_ifname_list();
 		exit(EXIT_FAILURE);
 	}
 
 	if (!(my_args.flags & CLONE_NEWUTS) && my_args.want_hostname) {
 		ERROR("-H <hostname> needs -s UTSNAME option");
+		free_ifname_list();
 		exit(EXIT_FAILURE);
 	}
 
 	if (!(my_args.flags & CLONE_NEWNS) && my_args.want_default_mounts) {
 		ERROR("-M needs -s MOUNT option");
+		free_ifname_list();
 		exit(EXIT_FAILURE);
 	}
 
@@ -357,6 +374,7 @@ int main(int argc, char *argv[])
 		start_arg.wait_fd = eventfd(0, EFD_CLOEXEC);
 		if (start_arg.wait_fd < 0) {
 			SYSERROR("Failed to create eventfd");
+			free_ifname_list();
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -368,11 +386,11 @@ int main(int argc, char *argv[])
 	start_arg.flags = my_args.flags;
 	start_arg.want_hostname = my_args.want_hostname;
 	start_arg.want_default_mounts = my_args.want_default_mounts;
-	start_arg.wait_fd = -1;
 
 	pid = lxc_clone(do_start, &start_arg, my_args.flags);
 	if (pid < 0) {
 		ERROR("Failed to clone");
+		free_ifname_list();
 		exit(EXIT_FAILURE);
 	}
 
@@ -387,6 +405,7 @@ int main(int argc, char *argv[])
 		ret = snprintf(umap, 100, "%d %d 1\n" , my_args.uid, getuid());
 		if (ret < 0 || ret >= 100) {
 			ERROR("snprintf is failed");
+			free_ifname_list();
 			close(start_arg.wait_fd);
 			exit(EXIT_FAILURE);
 		}
@@ -394,6 +413,7 @@ int main(int argc, char *argv[])
 		ret = write_id_mapping(ID_TYPE_UID, pid, umap, strlen(umap));
 		if (ret < 0) {
 			ERROR("Failed to map uid");
+			free_ifname_list();
 			close(start_arg.wait_fd);
 			exit(EXIT_FAILURE);
 		}
@@ -401,19 +421,26 @@ int main(int argc, char *argv[])
 		ret = write(start_arg.wait_fd, &wait_val, sizeof(wait_val));
 		if (ret < 0) {
 			SYSERROR("Failed to write eventfd");
+			free_ifname_list();
 			close(start_arg.wait_fd);
 			exit(EXIT_FAILURE);
 		}
 	}
 
-	if (my_iflist) {
-		for (tmpif = my_iflist; tmpif; tmpif = tmpif->mi_next) {
-			pid_t pid;
+	if (lxc_list_len(&ifnames) > 0) {
+		struct lxc_list *iterator;
+		char* ifname;
+		pid_t pid;
+
+		lxc_list_for_each(iterator, &ifnames) {
+			ifname = iterator->elem;
+			if (!ifname)
+				continue;
 
 			pid = fork();
 			if (pid < 0) {
 				SYSERROR("Failed to move network device \"%s\" to network namespace",
-				         tmpif->mi_ifname);
+				         ifname);
 				continue;
 			}
 
@@ -424,14 +451,16 @@ int main(int argc, char *argv[])
 				if (ret < 0 || ret >= 256)
 					_exit(EXIT_FAILURE);
 
-				execlp("ip", "ip", "link", "set", "dev", tmpif->mi_ifname, "netns", buf, (char *)NULL);
+				execlp("ip", "ip", "link", "set", "dev", ifname, "netns", buf, (char *)NULL);
 				_exit(EXIT_FAILURE);
 			}
 
 			if (wait_for_pid(pid) != 0)
 				SYSERROR("Could not move interface \"%s\" into container %d",
-				         tmpif->mi_ifname, pid);
+				         ifname, pid);
 		}
+
+		free_ifname_list();
 	}
 
 	if (my_args.daemonize)
