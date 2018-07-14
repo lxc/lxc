@@ -115,6 +115,7 @@ pid_t lxc_raw_clone(unsigned long flags)
 			     : "=r"(in_child), "=r"(child_pid)
 			     : "i"(__NR_clone), "r"(flags | SIGCHLD)
 			     : "%o1", "%o0", "%g1");
+
 		if (in_child)
 			return 0;
 		else
@@ -174,6 +175,7 @@ const struct ns_info ns_info[LXC_NS_MAX] = {
 int lxc_namespace_2_cloneflag(const char *namespace)
 {
 	int i;
+
 	for (i = 0; i < LXC_NS_MAX; i++)
 		if (!strcasecmp(ns_info[i].proc_name, namespace))
 			return ns_info[i].clone_flag;
@@ -185,6 +187,7 @@ int lxc_namespace_2_cloneflag(const char *namespace)
 int lxc_namespace_2_ns_idx(const char *namespace)
 {
 	int i;
+
 	for (i = 0; i < LXC_NS_MAX; i++)
 		if (!strcmp(ns_info[i].proc_name, namespace))
 			return i;
@@ -239,7 +242,6 @@ int lxc_fill_namespace_flags(char *flaglist, int *flags)
 
 	token = strtok_r(flaglist, "|", &saveptr);
 	while (token) {
-
 		aflag = lxc_namespace_2_cloneflag(token);
 		if (aflag < 0)
 			return -1;
@@ -248,5 +250,6 @@ int lxc_fill_namespace_flags(char *flaglist, int *flags)
 
 		token = strtok_r(NULL, "|", &saveptr);
 	}
+
 	return 0;
 }

@@ -41,9 +41,111 @@
 
 #include "arguments.h"
 #include "caps.h"
-#include "conf.h"
+#include "log.h"
 #include "namespace.h"
 #include "utils.h"
+
+lxc_log_define(lxc_unshare, lxc);
+
+struct start_arg {
+	char *const *args;
+	int flags;
+	uid_t uid;
+	bool setuid;
+	int want_default_mounts;
+	int wait_fd;
+	const char *want_hostname;
+};
+
+struct my_iflist
+{
+	char *mi_ifname;
+	struct my_iflist *mi_next;
+};
+
+static int my_parser(struct lxc_arguments *args, int c, char *arg);
+static inline int sethostname_including_android(const char *name, size_t len);
+static int get_namespace_flags(char *namespaces);
+static bool lookup_user(const char *optarg, uid_t *uid);
+static int mount_fs(const char *source, const char *target, const char *type);
+static void lxc_setup_fs(void);
+static int do_start(void *arg);
+
+static struct my_iflist *tmpif, *my_iflist = NULL;
+
+static const struct option my_longopts[] = {
+	{"namespaces", required_argument, 0, 's'},
+	{"user", required_argument, 0, 'u'},
+	{"hostname", required_argument, 0, 'H'},
+	{"ifname", required_argument, 0, 'i'},
+	{"daemon", no_argument, 0, 'd'},
+	{"remount", no_argument, 0, 'M'},
+	LXC_COMMON_OPTIONS
+};
+
+static struct lxc_arguments my_args = {
+	.progname     = "lxc-unshare",
+	.help         = "\
+-s NAMESPACES COMMAND\n\
+\n\
+lxc-unshare run a COMMAND in a new set of NAMESPACES\n\
+\n\
+Options :\n\
+  -s, --namespaces=FLAGS\n\
+                    ORed list of flags to unshare:\n\
+                    MOUNT, PID, UTSNAME, IPC, USER, NETWORK\n\
+  -u, --user=USERID\n\
+                    new id to be set if -s USER is specified\n\
+  -H, --hostname=HOSTNAME\n\
+                    Set the hostname in the container\n\
+  -i, --ifname=IFNAME\n\
+                    Interface name to be moved into container (presumably with NETWORK unsharing set)\n\
+  -d, --daemon      Daemonize (do not wait for container to exit)\n\
+  -M, --remount     Remount default fs inside container (/proc /dev/shm /dev/mqueue)\n\
+",
+	.options      = my_longopts,
+	.parser       = my_parser,
+	.checker      = NULL,
+	.daemonize    = 0,
+	.pidfile      = NULL,
+};
+
+static int my_parser(struct lxc_arguments *args, int c, char *arg)
+{
+	switch (c) {
+	case 's':
+		args->flags = get_namespace_flags(arg);
+		if (args->flags < 0)
+			return -1;
+		break;
+	case 'u':
+		if (!lookup_user(arg, &args->uid))
+			return -1;
+
+		args->setuid = true;
+		break;
+	case 'H':
+		args->want_hostname = arg;
+		break;
+	case 'i':
+		if (!(tmpif = malloc(sizeof(*tmpif)))) {
+			SYSERROR("Failed to malloc()");
+			return -1;
+		}
+
+		tmpif->mi_ifname = arg;
+		tmpif->mi_next = my_iflist;
+		my_iflist = tmpif;
+		break;
+	case 'd':
+		args->daemonize = 1;
+		break;
+	case 'M':
+		args->want_default_mounts = 1;
+		break;
+	}
+	return 0;
+}
 
 /* Define sethostname() if missing from the C library also workaround some
  * quirky with having this defined in multiple places.
@@ -62,25 +164,17 @@ static inline int sethostname_including_android(const char *name, size_t len)
 #endif
 }
 
-struct my_iflist
+static int get_namespace_flags(char *namespaces)
 {
-	char *mi_ifname;
-	struct my_iflist *mi_next;
-};
+	int flags = 0;
 
-static void usage(char *cmd)
-{
-	fprintf(stderr, "%s <options> command [command_arguments]\n", basename(cmd));
-	fprintf(stderr, "Options are:\n");
-	fprintf(stderr, "\t -s flags   : ORed list of flags to unshare:\n" \
-			"\t           MOUNT, PID, UTSNAME, IPC, USER, NETWORK\n");
-	fprintf(stderr, "\t -u <id>      : new id to be set if -s USER is specified\n");
-	fprintf(stderr, "\t -i <iface>   : Interface name to be moved into container (presumably with NETWORK unsharing set)\n");
-	fprintf(stderr, "\t -H <hostname>: Set the hostname in the container\n");
-	fprintf(stderr, "\t -d           : Daemonize (do not wait for container to exit)\n");
-	fprintf(stderr, "\t -M           : Remount default fs inside container (/proc /dev/shm /dev/mqueue)\n");
+	if (lxc_namespace_2_std_identifiers(namespaces) < 0)
+		return -1;
 
-	_exit(EXIT_SUCCESS);
+	if (lxc_fill_namespace_flags(namespaces, &flags) < 0)
+		return -1;
+
+	return flags;
 }
 
 static bool lookup_user(const char *optarg, uid_t *uid)
@@ -113,9 +207,9 @@ static bool lookup_user(const char *optarg, uid_t *uid)
 		ret = getpwnam_r(name, &pwent, buf, bufsize, &pwentp);
 		if (!pwentp) {
 			if (ret == 0)
-				fprintf(stderr, "Could not find matched password record\n");
+				SYSERROR("Could not find matched password record");
 
-			fprintf(stderr, "Invalid username %s\n", name);
+			SYSERROR("Invalid username \"%s\"", name);
 			free(buf);
 			return false;
 		}
@@ -125,9 +219,9 @@ static bool lookup_user(const char *optarg, uid_t *uid)
 		ret = getpwuid_r(*uid, &pwent, buf, bufsize, &pwentp);
 		if (!pwentp) {
 			if (ret == 0)
-				fprintf(stderr, "Could not find matched password record\n");
+				SYSERROR("Could not find matched password record");
 
-			fprintf(stderr, "Invalid uid %u\n", *uid);
+			SYSERROR("Invalid uid : %u", *uid);
 			free(buf);
 			return false;
 		}
@@ -136,16 +230,6 @@ static bool lookup_user(const char *optarg, uid_t *uid)
 	free(buf);
 	return true;
 }
-
-struct start_arg {
-	char ***args;
-	int *flags;
-	uid_t *uid;
-	bool setuid;
-	int want_default_mounts;
-	int wait_fd;
-	const char *want_hostname;
-};
 
 static int mount_fs(const char *source, const char *target, const char *type)
 {
@@ -183,170 +267,140 @@ static int do_start(void *arg)
 	int ret;
 	uint64_t wait_val;
 	struct start_arg *start_arg = arg;
-	char **args = *start_arg->args;
-	int flags = *start_arg->flags;
-	uid_t uid = *start_arg->uid;
-	int want_default_mounts = start_arg->want_default_mounts;
+	char *const *args = start_arg->args;
 	const char *want_hostname = start_arg->want_hostname;
-	int wait_fd = start_arg->wait_fd;
 
 	if (start_arg->setuid) {
 		/* waiting until uid maps is set */
-		ret = read(wait_fd, &wait_val, sizeof(wait_val));
+		ret = read(start_arg->wait_fd, &wait_val, sizeof(wait_val));
 		if (ret == -1) {
-			close(wait_fd);
-			fprintf(stderr, "Failed to read eventfd\n");
+			SYSERROR("Failed to read eventfd");
+			close(start_arg->wait_fd);
 			_exit(EXIT_FAILURE);
 		}
 	}
 
-	if ((flags & CLONE_NEWNS) && want_default_mounts)
+	if ((start_arg->flags & CLONE_NEWNS) && start_arg->want_default_mounts)
 		lxc_setup_fs();
 
-	if ((flags & CLONE_NEWUTS) && want_hostname)
+	if ((start_arg->flags & CLONE_NEWUTS) && want_hostname)
 		if (sethostname_including_android(want_hostname, strlen(want_hostname)) < 0) {
-			fprintf(stderr, "Failed to set hostname %s: %s\n", want_hostname, strerror(errno));
+			SYSERROR("Failed to set hostname %s", want_hostname);
 			_exit(EXIT_FAILURE);
 		}
 
 	/* Setuid is useful even without a new user id space. */
-	if (start_arg->setuid && setuid(uid)) {
-		fprintf(stderr, "Failed to set uid %d: %s\n", uid, strerror(errno));
+	if (start_arg->setuid && setuid(start_arg->uid)) {
+		SYSERROR("Failed to set uid %d", start_arg->uid);
 		_exit(EXIT_FAILURE);
 	}
 
 	execvp(args[0], args);
 
-	fprintf(stderr, "Failed to exec: '%s': %s\n", args[0], strerror(errno));
+	SYSERROR("Failed to exec: '%s'", args[0]);
 	return 1;
 }
 
 int main(int argc, char *argv[])
 {
-	char **args;
-	int opt;
 	int ret;
-	char *namespaces = NULL;
-	int flags = 0, daemonize = 0;
-	uid_t uid = 0; /* valid only if (flags & CLONE_NEWUSER) */
 	pid_t pid;
-	uint64_t wait_val = 1;
-	struct my_iflist *tmpif, *my_iflist = NULL;
-	struct start_arg start_arg = {
-		.args = &args,
-		.uid = &uid,
-		.setuid = false,
-		.flags = &flags,
-		.want_hostname = NULL,
-		.want_default_mounts = 0,
-	};
+	struct lxc_log log;
+	struct start_arg start_arg;
 
-	while ((opt = getopt(argc, argv, "s:u:hH:i:dM")) != -1) {
-		switch (opt) {
-		case 's':
-			namespaces = optarg;
-			break;
-		case 'i':
-			if (!(tmpif = malloc(sizeof(*tmpif)))) {
-				perror("malloc");
-				exit(EXIT_FAILURE);
-			}
+	if (lxc_caps_init())
+		exit(EXIT_FAILURE);
 
-			tmpif->mi_ifname = optarg;
-			tmpif->mi_next = my_iflist;
-			my_iflist = tmpif;
-			break;
-		case 'd':
-			daemonize = 1;
-			break;
-		case 'M':
-			start_arg.want_default_mounts = 1;
-			break;
-		case 'H':
-			start_arg.want_hostname = optarg;
-			break;
-		case 'h':
-			usage(argv[0]);
-			break;
-		case 'u':
-			if (!lookup_user(optarg, &uid))
-				exit(EXIT_FAILURE);
-			start_arg.setuid = true;
-		}
+	if (lxc_arguments_parse(&my_args, argc, argv))
+		exit(EXIT_FAILURE);
+
+	/* Only create log if explicitly instructed */
+	if (my_args.log_file || my_args.log_priority) {
+		log.name = my_args.name;
+		log.file = my_args.log_file;
+		log.level = my_args.log_priority;
+		log.prefix = my_args.progname;
+		log.quiet = my_args.quiet;
+		log.lxcpath = my_args.lxcpath[0];
+
+		if (lxc_log_init(&log))
+			exit(EXIT_FAILURE);
 	}
 
-	if (argv[optind] == NULL) {
-		fprintf(stderr, "A command to execute in the new namespace is required\n");
+	if (*my_args.argv == NULL) {
+		ERROR("A command to execute in the new namespace is required");
 		exit(EXIT_FAILURE);
 	}
 
-	args = &argv[optind];
-
-	ret = lxc_caps_init();
-	if (ret)
-		exit(EXIT_FAILURE);
-
-	if (lxc_namespace_2_std_identifiers(namespaces) < 0)
-		usage(argv[0]);
-
-	ret = lxc_fill_namespace_flags(namespaces, &flags);
-	if (ret)
-		usage(argv[0]);
-
-	if (!(flags & CLONE_NEWNET) && my_iflist) {
-		fprintf(stderr, "-i <interfacename> needs -s NETWORK option\n");
+	if (my_args.flags == 0) {
+		ERROR("A namespace to execute command is required");
 		exit(EXIT_FAILURE);
 	}
 
-	if (!(flags & CLONE_NEWUTS) && start_arg.want_hostname) {
-		fprintf(stderr, "-H <hostname> needs -s UTSNAME option\n");
+	if (!(my_args.flags & CLONE_NEWNET) && my_iflist) {
+		ERROR("-i <interfacename> needs -s NETWORK option");
 		exit(EXIT_FAILURE);
 	}
 
-	if (!(flags & CLONE_NEWNS) && start_arg.want_default_mounts) {
-		fprintf(stderr, "-M needs -s MOUNT option\n");
+	if (!(my_args.flags & CLONE_NEWUTS) && my_args.want_hostname) {
+		ERROR("-H <hostname> needs -s UTSNAME option");
 		exit(EXIT_FAILURE);
 	}
 
-	if (start_arg.setuid) {
+	if (!(my_args.flags & CLONE_NEWNS) && my_args.want_default_mounts) {
+		ERROR("-M needs -s MOUNT option");
+		exit(EXIT_FAILURE);
+	}
+
+	if (my_args.setuid) {
 		start_arg.wait_fd = eventfd(0, EFD_CLOEXEC);
 		if (start_arg.wait_fd < 0) {
-			fprintf(stderr, "Failed to create eventfd\n");
+			SYSERROR("Failed to create eventfd");
 			exit(EXIT_FAILURE);
 		}
 	}
 
-	pid = lxc_clone(do_start, &start_arg, flags);
+	/* set start arguments for lxc_clone from lxc_arguments */
+	start_arg.args = my_args.argv;
+	start_arg.uid = my_args.uid;	/* valid only if (flags & CLONE_NEWUSER) */
+	start_arg.setuid = my_args.setuid;
+	start_arg.flags = my_args.flags;
+	start_arg.want_hostname = my_args.want_hostname;
+	start_arg.want_default_mounts = my_args.want_default_mounts;
+	start_arg.wait_fd = -1;
+
+	pid = lxc_clone(do_start, &start_arg, my_args.flags);
 	if (pid < 0) {
-		fprintf(stderr, "Failed to clone\n");
+		ERROR("Failed to clone");
 		exit(EXIT_FAILURE);
 	}
 
-	if (start_arg.setuid) {
+	if (my_args.setuid) {
+		uint64_t wait_val = 1;
 		/* enough space to accommodate uids */
 		char *umap = (char *)alloca(100);
 
 		/* create new uid mapping using current UID and the one
 		 * specified as parameter
 		 */
-		ret = snprintf(umap, 100, "%d %d 1\n" , *(start_arg.uid), getuid());
+		ret = snprintf(umap, 100, "%d %d 1\n" , my_args.uid, getuid());
 		if (ret < 0 || ret >= 100) {
+			ERROR("snprintf is failed");
 			close(start_arg.wait_fd);
-			fprintf(stderr, "snprintf is failed\n");
 			exit(EXIT_FAILURE);
 		}
 
 		ret = write_id_mapping(ID_TYPE_UID, pid, umap, strlen(umap));
 		if (ret < 0) {
+			ERROR("Failed to map uid");
 			close(start_arg.wait_fd);
-			fprintf(stderr, "uid mapping failed\n");
 			exit(EXIT_FAILURE);
 		}
 
 		ret = write(start_arg.wait_fd, &wait_val, sizeof(wait_val));
 		if (ret < 0) {
+			SYSERROR("Failed to write eventfd");
 			close(start_arg.wait_fd);
-			fprintf(stderr, "Failed to write eventfd\n");
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -356,10 +410,11 @@ int main(int argc, char *argv[])
 			pid_t pid;
 
 			pid = fork();
-			if (pid < 0)
-				fprintf(stderr, "Failed to move network device "
-						"\"%s\" to network namespace\n",
-					tmpif->mi_ifname);
+			if (pid < 0) {
+				SYSERROR("Failed to move network device \"%s\" to network namespace",
+				         tmpif->mi_ifname);
+				continue;
+			}
 
 			if (pid == 0) {
 				char buf[256];
@@ -373,17 +428,16 @@ int main(int argc, char *argv[])
 			}
 
 			if (wait_for_pid(pid) != 0)
-				fprintf(stderr, "Could not move interface %s "
-						"into container %d: %s\n",
-					tmpif->mi_ifname, pid, strerror(errno));
+				SYSERROR("Could not move interface \"%s\" into container %d",
+				         tmpif->mi_ifname, pid);
 		}
 	}
 
-	if (daemonize)
+	if (my_args.daemonize)
 		exit(EXIT_SUCCESS);
 
 	if (wait_for_pid(pid) != 0) {
-		fprintf(stderr, "Failed to wait for '%d'\n", pid);
+		SYSERROR("Failed to wait for '%d'", pid);
 		exit(EXIT_FAILURE);
 	}
 
