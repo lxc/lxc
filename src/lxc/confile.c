@@ -111,6 +111,7 @@ lxc_config_define(log_file);
 lxc_config_define(log_level);
 lxc_config_define(log_syslog);
 lxc_config_define(monitor);
+lxc_config_define(monitor_signal_pdeath);
 lxc_config_define(mount);
 lxc_config_define(mount_auto);
 lxc_config_define(mount_fstab);
@@ -194,6 +195,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.log.level",                 set_config_log_level,                   get_config_log_level,                   clr_config_log_level,                 },
 	{ "lxc.log.syslog",                set_config_log_syslog,                  get_config_log_syslog,                  clr_config_log_syslog,                },
 	{ "lxc.monitor.unshare",           set_config_monitor,                     get_config_monitor,                     clr_config_monitor,                   },
+	{ "lxc.monitor.signal.pdeath",     set_config_monitor_signal_pdeath,       get_config_monitor_signal_pdeath,       clr_config_monitor_signal_pdeath,     },
 	{ "lxc.mount.auto",                set_config_mount_auto,                  get_config_mount_auto,                  clr_config_mount_auto,                },
 	{ "lxc.mount.entry",               set_config_mount,                       get_config_mount,                       clr_config_mount,                     },
 	{ "lxc.mount.fstab",               set_config_mount_fstab,                 get_config_mount_fstab,                 clr_config_mount_fstab,               },
@@ -974,6 +976,28 @@ static int set_config_monitor(const char *key, const char *value,
 		return lxc_safe_uint(value, &lxc_conf->monitor_unshare);
 
 	return -1;
+}
+
+static int set_config_monitor_signal_pdeath(const char *key, const char *value,
+					    struct lxc_conf *lxc_conf, void *data)
+{
+	if (lxc_config_value_empty(value)) {
+		lxc_conf->monitor_signal_pdeath = 0;
+		return 0;
+	}
+
+	if (strcmp(key + 12, "signal.pdeath") == 0) {
+		int sig_n;
+
+		sig_n = sig_parse(value);
+		if (sig_n < 0)
+			return -1;
+
+		lxc_conf->monitor_signal_pdeath = sig_n;
+		return 0;
+	}
+
+	return -EINVAL;
 }
 
 static int set_config_group(const char *key, const char *value,
@@ -3420,6 +3444,13 @@ static int get_config_monitor(const char *key, char *retv, int inlen,
 	return lxc_get_conf_int(c, retv, inlen, c->monitor_unshare);
 }
 
+static int get_config_monitor_signal_pdeath(const char *key, char *retv,
+					    int inlen, struct lxc_conf *c,
+					    void *data)
+{
+	return lxc_get_conf_int(c, retv, inlen, c->monitor_signal_pdeath);
+}
+
 static int get_config_group(const char *key, char *retv, int inlen,
 			    struct lxc_conf *c, void *data)
 {
@@ -3968,6 +3999,13 @@ static inline int clr_config_monitor(const char *key, struct lxc_conf *c,
 				     void *data)
 {
 	c->monitor_unshare = 0;
+	return 0;
+}
+
+static inline int clr_config_monitor_signal_pdeath(const char *key,
+						   struct lxc_conf *c, void *data)
+{
+	c->monitor_signal_pdeath = 0;
 	return 0;
 }
 
