@@ -911,6 +911,12 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
+	ret = set_get_compare_clear_save_load(c, "lxc.monitor.signal.pdeath", "SIGKILL", tmpf, true);
+	if (ret == 0) {
+		lxc_error("%s\n", "lxc.hook.version");
+		goto non_test_error;
+	}
+
 	fret = EXIT_SUCCESS;
 
 non_test_error:
