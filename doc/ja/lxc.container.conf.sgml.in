@@ -3158,6 +3158,25 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         </varlistentry>
         <varlistentry>
           <term>
+            <option>lxc.monitor.signal.pdeath</option>
+          </term>
+          <listitem>
+            <para>
+	      <!--
+              Set the signal to be sent to the container's init when the lxc
+              monitor exits. By default it is set to SIGKILL which will cause
+              all container processes to be killed when the lxc monitor process
+              dies.
+              To ensure that containers stay alive even if lxc monitor dies set
+              this to 0.
+		-->
+	      lxc のモニタプロセスが終了した際に、コンテナの init プロセスに送出するシグナルを指定します。デフォルトでは、lxc のモニタプロセスが終了した場合には、すべてのコンテナ内のプロセスが停止するように SIGKILL が設定されています。
+	      lxc のモニタプロセスが終了しても、コンテナがすべて確実に動作しつづけるようにするには、この値を 0 に設定します。
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
             <option>lxc.group</option>
           </term>
           <listitem>
