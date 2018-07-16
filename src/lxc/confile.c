@@ -111,6 +111,7 @@ lxc_config_define(log_file);
 lxc_config_define(log_level);
 lxc_config_define(log_syslog);
 lxc_config_define(monitor);
+lxc_config_define(monitor_signal_pdeath);
 lxc_config_define(mount);
 lxc_config_define(mount_auto);
 lxc_config_define(mount_fstab);
@@ -194,6 +195,7 @@ static struct lxc_config_t config[] = {
 	{ "lxc.log.level",                 set_config_log_level,                   get_config_log_level,                   clr_config_log_level,                 },
 	{ "lxc.log.syslog",                set_config_log_syslog,                  get_config_log_syslog,                  clr_config_log_syslog,                },
 	{ "lxc.monitor.unshare",           set_config_monitor,                     get_config_monitor,                     clr_config_monitor,                   },
+	{ "lxc.monitor.signal.pdeath",     set_config_monitor_signal_pdeath,       get_config_monitor_signal_pdeath,       clr_config_monitor_signal_pdeath,     },
 	{ "lxc.mount.auto",                set_config_mount_auto,                  get_config_mount_auto,                  clr_config_mount_auto,                },
 	{ "lxc.mount.entry",               set_config_mount,                       get_config_mount,                       clr_config_mount,                     },
 	{ "lxc.mount.fstab",               set_config_mount_fstab,                 get_config_mount_fstab,                 clr_config_mount_fstab,               },
@@ -236,90 +238,6 @@ static struct lxc_config_t config[] = {
 	{ "lxc.uts.name",                  set_config_uts_name,                    get_config_uts_name,                    clr_config_uts_name,                  },
 	{ "lxc.sysctl",                    set_config_sysctl,                      get_config_sysctl,                      clr_config_sysctl,                    },
 	{ "lxc.proc",                      set_config_proc,                        get_config_proc,                        clr_config_proc,                      },
-};
-
-struct signame {
-	int num;
-	const char *name;
-};
-
-static const struct signame signames[] = {
-	{ SIGHUP,    "HUP"    },
-	{ SIGINT,    "INT"    },
-	{ SIGQUIT,   "QUIT"   },
-	{ SIGILL,    "ILL"    },
-	{ SIGABRT,   "ABRT"   },
-	{ SIGFPE,    "FPE"    },
-	{ SIGKILL,   "KILL"   },
-	{ SIGSEGV,   "SEGV"   },
-	{ SIGPIPE,   "PIPE"   },
-	{ SIGALRM,   "ALRM"   },
-	{ SIGTERM,   "TERM"   },
-	{ SIGUSR1,   "USR1"   },
-	{ SIGUSR2,   "USR2"   },
-	{ SIGCHLD,   "CHLD"   },
-	{ SIGCONT,   "CONT"   },
-	{ SIGSTOP,   "STOP"   },
-	{ SIGTSTP,   "TSTP"   },
-	{ SIGTTIN,   "TTIN"   },
-	{ SIGTTOU,   "TTOU"   },
-#ifdef SIGTRAP
-	{ SIGTRAP,   "TRAP"   },
-#endif
-#ifdef SIGIOT
-	{ SIGIOT,    "IOT"    },
-#endif
-#ifdef SIGEMT
-	{ SIGEMT,    "EMT"    },
-#endif
-#ifdef SIGBUS
-	{ SIGBUS,    "BUS"    },
-#endif
-#ifdef SIGSTKFLT
-	{ SIGSTKFLT, "STKFLT" },
-#endif
-#ifdef SIGCLD
-	{ SIGCLD,    "CLD"    },
-#endif
-#ifdef SIGURG
-	{ SIGURG,    "URG"    },
-#endif
-#ifdef SIGXCPU
-	{ SIGXCPU,   "XCPU"   },
-#endif
-#ifdef SIGXFSZ
-	{ SIGXFSZ,   "XFSZ"   },
-#endif
-#ifdef SIGVTALRM
-	{ SIGVTALRM, "VTALRM" },
-#endif
-#ifdef SIGPROF
-	{ SIGPROF,   "PROF"   },
-#endif
-#ifdef SIGWINCH
-	{ SIGWINCH,  "WINCH"  },
-#endif
-#ifdef SIGIO
-	{ SIGIO,     "IO"     },
-#endif
-#ifdef SIGPOLL
-	{ SIGPOLL,   "POLL"   },
-#endif
-#ifdef SIGINFO
-	{ SIGINFO,   "INFO"   },
-#endif
-#ifdef SIGLOST
-	{ SIGLOST,   "LOST"   },
-#endif
-#ifdef SIGPWR
-	{ SIGPWR,    "PWR"    },
-#endif
-#ifdef SIGUNUSED
-	{ SIGUNUSED, "UNUSED" },
-#endif
-#ifdef SIGSYS
-	{ SIGSYS,    "SYS"    },
-#endif
 };
 
 static const size_t config_size = sizeof(config) / sizeof(struct lxc_config_t);
@@ -1060,6 +978,28 @@ static int set_config_monitor(const char *key, const char *value,
 	return -1;
 }
 
+static int set_config_monitor_signal_pdeath(const char *key, const char *value,
+					    struct lxc_conf *lxc_conf, void *data)
+{
+	if (lxc_config_value_empty(value)) {
+		lxc_conf->monitor_signal_pdeath = 0;
+		return 0;
+	}
+
+	if (strcmp(key + 12, "signal.pdeath") == 0) {
+		int sig_n;
+
+		sig_n = sig_parse(value);
+		if (sig_n < 0)
+			return -1;
+
+		lxc_conf->monitor_signal_pdeath = sig_n;
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
 static int set_config_group(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
@@ -1258,55 +1198,6 @@ static int set_config_autodev(const char *key, const char *value,
 		return -1;
 
 	return 0;
-}
-
-static int sig_num(const char *sig)
-{
-	unsigned int signum;
-
-	if (lxc_safe_uint(sig, &signum) < 0)
-		return -1;
-
-	return signum;
-}
-
-static int rt_sig_num(const char *signame)
-{
-	int rtmax = 0, sig_n = 0;
-
-	if (strncasecmp(signame, "max-", 4) == 0) {
-		rtmax = 1;
-	}
-
-	signame += 4;
-	if (!isdigit(*signame))
-		return -1;
-
-	sig_n = sig_num(signame);
-	sig_n = rtmax ? SIGRTMAX - sig_n : SIGRTMIN + sig_n;
-	if (sig_n > SIGRTMAX || sig_n < SIGRTMIN)
-		return -1;
-
-	return sig_n;
-}
-
-static int sig_parse(const char *signame)
-{
-	size_t n;
-
-	if (isdigit(*signame)) {
-		return sig_num(signame);
-	} else if (strncasecmp(signame, "sig", 3) == 0) {
-		signame += 3;
-		if (strncasecmp(signame, "rt", 2) == 0)
-			return rt_sig_num(signame + 2);
-		for (n = 0; n < sizeof(signames) / sizeof((signames)[0]); n++) {
-			if (strcasecmp(signames[n].name, signame) == 0)
-				return signames[n].num;
-		}
-	}
-
-	return -1;
 }
 
 static int set_config_signal_halt(const char *key, const char *value,
@@ -3553,6 +3444,13 @@ static int get_config_monitor(const char *key, char *retv, int inlen,
 	return lxc_get_conf_int(c, retv, inlen, c->monitor_unshare);
 }
 
+static int get_config_monitor_signal_pdeath(const char *key, char *retv,
+					    int inlen, struct lxc_conf *c,
+					    void *data)
+{
+	return lxc_get_conf_int(c, retv, inlen, c->monitor_signal_pdeath);
+}
+
 static int get_config_group(const char *key, char *retv, int inlen,
 			    struct lxc_conf *c, void *data)
 {
@@ -4101,6 +3999,13 @@ static inline int clr_config_monitor(const char *key, struct lxc_conf *c,
 				     void *data)
 {
 	c->monitor_unshare = 0;
+	return 0;
+}
+
+static inline int clr_config_monitor_signal_pdeath(const char *key,
+						   struct lxc_conf *c, void *data)
+{
+	c->monitor_signal_pdeath = 0;
 	return 0;
 }
 

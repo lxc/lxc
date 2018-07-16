@@ -303,6 +303,7 @@ struct lxc_conf {
 
 	/* unshare the mount namespace in the monitor */
 	unsigned int monitor_unshare;
+	unsigned int monitor_signal_pdeath;
 
 	/* list of included files */
 	struct lxc_list includes;

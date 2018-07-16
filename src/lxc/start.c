@@ -1370,6 +1370,15 @@ static int do_start(void *data)
 		goto out_warn_father;
 	}
 
+	if (handler->conf->monitor_signal_pdeath != SIGKILL) {
+		ret = lxc_set_death_signal(handler->conf->monitor_signal_pdeath);
+		if (ret < 0) {
+			SYSERROR("Failed to set PR_SET_PDEATHSIG to %d",
+				 handler->conf->monitor_signal_pdeath);
+			goto out_warn_father;
+		}
+	}
+
 	/* After this call, we are in error because this ops should not return
 	 * as it execs.
 	 */

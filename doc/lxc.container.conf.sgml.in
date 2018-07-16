@@ -2380,6 +2380,21 @@ dev/null proc/kcore none bind,relative 0 0
         </varlistentry>
         <varlistentry>
           <term>
+            <option>lxc.monitor.signal.pdeath</option>
+          </term>
+          <listitem>
+            <para>
+              Set the signal to be sent to the container's init when the lxc
+              monitor exits. By default it is set to SIGKILL which will cause
+              all container processes to be killed when the lxc monitor process
+              dies.
+              To ensure that containers stay alive even if lxc monitor dies set
+              this to 0.
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
             <option>lxc.group</option>
           </term>
           <listitem>
