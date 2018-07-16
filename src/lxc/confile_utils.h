@@ -92,5 +92,6 @@ extern int lxc_get_conf_uint64(struct lxc_conf *c, char *retv, int inlen, uint64
 extern bool parse_limit_value(const char **value, rlim_t *res);
 extern int lxc_inherit_namespace(const char *lxcname_or_pid,
 				 const char *lxcpath, const char *namespace);
+extern int sig_parse(const char *signame);
 
 #endif /* __LXC_CONFILE_UTILS_H */
