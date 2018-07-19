@@ -9,8 +9,8 @@
   ptrace,
 
   # currently blocked by apparmor bug
-  mount -> /usr/lib/*/lxc/{**,},
-  mount -> /usr/lib/lxc/{**,},
+  mount -> /usr/lib*/*/lxc/{**,},
+  mount -> /usr/lib*/lxc/{**,},
   mount fstype=devpts -> /dev/pts/,
   mount options=bind /dev/pts/ptmx/ -> /dev/ptmx/,
   mount options=bind /dev/pts/** -> /dev/**,
@@ -34,10 +34,10 @@
   # This may look a bit redundant, however it appears we need all of
   # them if we want things to work properly on all combinations of kernel
   # and userspace parser...
-  pivot_root /usr/lib/lxc/,
-  pivot_root /usr/lib/*/lxc/,
-  pivot_root /usr/lib/lxc/**,
-  pivot_root /usr/lib/*/lxc/**,
+  pivot_root /usr/lib*/lxc/,
+  pivot_root /usr/lib*/*/lxc/,
+  pivot_root /usr/lib*/lxc/**,
+  pivot_root /usr/lib*/*/lxc/**,
 
   change_profile -> lxc-*,
   change_profile -> unconfined,
