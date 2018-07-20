@@ -240,16 +240,19 @@ static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
 
 	ret = lxc_abstract_unix_send_credential(client_fd, &cmd->req,
 						sizeof(cmd->req));
-	if (ret < 0 || (size_t)ret != sizeof(cmd->req)) {
+	if (ret < 0 ) {
+		if (errno == EPIPE) {
+			close(client_fd);
+			return -EPIPE;
+		}
 		close(client_fd);
 
-		if (errno == EPIPE)
-			return -EPIPE;
-
-		if (ret >= 0)
-			return -EMSGSIZE;
-
 		return -1;
+	}
+
+	if ((size_t)ret != sizeof(cmd->req)) {
+		close(client_fd);
+		return -EMSGSIZE;
 	}
 
 	if (cmd->req.datalen <= 0)
@@ -754,7 +757,7 @@ static int lxc_cmd_console_callback(int fd, struct lxc_cmd_req *req,
 	rsp.data = INT_TO_PTR(ttynum);
 	ret = lxc_abstract_unix_send_fds(fd, &masterfd, 1, &rsp, sizeof(rsp));
 	if (ret < 0) {
-		ERROR("Failed to send tty to client");
+		SYSERROR("Failed to send tty to client");
 		lxc_terminal_free(handler->conf, fd);
 		goto out_close;
 	}
@@ -1112,17 +1115,17 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 	struct lxc_handler *handler = data;
 
 	ret = lxc_abstract_unix_rcv_credential(fd, &req, sizeof(req));
-	if (ret == -EACCES) {
-		/* We don't care for the peer, just send and close. */
-		struct lxc_cmd_rsp rsp = {.ret = ret};
-
-		lxc_cmd_rsp_send(fd, &rsp);
-		goto out_close;
-	}
-
 	if (ret < 0) {
 		SYSERROR("Failed to receive data on command socket for command "
-			 "\"%s\"", lxc_cmd_str(req.cmd));
+		         "\"%s\"", lxc_cmd_str(req.cmd));
+
+		if (errno == EACCES) {
+			/* We don't care for the peer, just send and close. */
+			struct lxc_cmd_rsp rsp = {.ret = ret};
+
+			lxc_cmd_rsp_send(fd, &rsp);
+		}
+
 		goto out_close;
 	}
 

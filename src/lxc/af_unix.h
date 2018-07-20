@@ -28,7 +28,7 @@
 
 /* does not enforce \0-termination */
 extern int lxc_abstract_unix_open(const char *path, int type, int flags);
-extern int lxc_abstract_unix_close(int fd);
+extern void lxc_abstract_unix_close(int fd);
 /* does not enforce \0-termination */
 extern int lxc_abstract_unix_connect(const char *path);
 extern int lxc_abstract_unix_send_fds(int fd, int *sendfds, int num_sendfds,
