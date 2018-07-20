@@ -490,11 +490,17 @@ static int lxc_serve_state_socket_pair(const char *name,
 again:
 	ret = lxc_abstract_unix_send_credential(handler->state_socket_pair[1],
 						&(int){state}, sizeof(int));
-	if (ret != sizeof(int)) {
+	if (ret < 0) {
+		SYSERROR("Failed to send state to %d", handler->state_socket_pair[1]);
+
 		if (errno == EINTR)
 			goto again;
-		SYSERROR("Failed to send state to %d",
-			 handler->state_socket_pair[1]);
+
+		return -1;
+	}
+
+	if (ret != sizeof(int)) {
+		ERROR("Message too long : %d", handler->state_socket_pair[1]);
 		return -1;
 	}
 
@@ -649,7 +655,7 @@ void lxc_free_handler(struct lxc_handler *handler)
 
 	if (handler->conf && handler->conf->reboot == REBOOT_NONE)
 		if (handler->conf->maincmd_fd >= 0)
-			close(handler->conf->maincmd_fd);
+			lxc_abstract_unix_close(handler->conf->maincmd_fd);
 
 	if (handler->state_socket_pair[0] >= 0)
 		close(handler->state_socket_pair[0]);
@@ -671,6 +677,7 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 	handler = malloc(sizeof(*handler));
 	if (!handler)
 		return NULL;
+
 	memset(handler, 0, sizeof(*handler));
 
 	/* Note that am_guest_unpriv() checks the effective uid. We
@@ -704,6 +711,7 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 			ERROR("Failed to create anonymous pair of unix sockets");
 			goto on_error;
 		}
+
 		TRACE("Created anonymous pair {%d,%d} of unix sockets",
 		      handler->state_socket_pair[0],
 		      handler->state_socket_pair[1]);
@@ -716,6 +724,7 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 			goto on_error;
 		}
 	}
+
 	TRACE("Unix domain socket %d for command server is ready",
 	      handler->conf->maincmd_fd);
 
@@ -866,7 +875,7 @@ out_delete_tty:
 out_aborting:
 	(void)lxc_set_state(name, handler, ABORTING);
 out_close_maincmd_fd:
-	close(conf->maincmd_fd);
+	lxc_abstract_unix_close(conf->maincmd_fd);
 	conf->maincmd_fd = -1;
 	return -1;
 }
@@ -953,7 +962,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		 * the command socket causing a new process to get ECONNREFUSED
 		 * because we haven't yet closed the command socket.
 		 */
-		close(handler->conf->maincmd_fd);
+		lxc_abstract_unix_close(handler->conf->maincmd_fd);
 		handler->conf->maincmd_fd = -1;
 		TRACE("Closed command socket");
 
