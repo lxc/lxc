@@ -550,14 +550,15 @@ void rand_complete_hwaddr(char *hwaddr)
 {
 	const char hex[] = "0123456789abcdef";
 	char *curs = hwaddr;
-
-#ifndef HAVE_RAND_R
-	randseed(true);
-#else
+#ifdef HAVE_RAND_R
 	unsigned int seed;
 
 	seed = randseed(false);
+#else
+
+	(void)randseed(true);
 #endif
+
 	while (*curs != '\0' && *curs != '\n') {
 		if (*curs == 'x' || *curs == 'X') {
 			if (curs - hwaddr == 1) {
@@ -635,13 +636,22 @@ void update_hwaddr(const char *line)
 bool new_hwaddr(char *hwaddr)
 {
 	int ret;
+#ifdef HAVE_RAND_R
+	unsigned int seed;
+
+	seed = randseed(false);
+
+	ret = snprintf(hwaddr, 18, "00:16:3e:%02x:%02x:%02x", rand_r(&seed) % 255,
+		       rand_r(&seed) % 255, rand_r(&seed) % 255);
+#else
 
 	(void)randseed(true);
 
 	ret = snprintf(hwaddr, 18, "00:16:3e:%02x:%02x:%02x", rand() % 255,
 		       rand() % 255, rand() % 255);
+#endif
 	if (ret < 0 || ret >= 18) {
-		SYSERROR("Failed to call snprintf().");
+		SYSERROR("Failed to call snprintf()");
 		return false;
 	}
 
