@@ -868,12 +868,16 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 
 out_delete_terminal:
 	lxc_terminal_delete(&handler->conf->console);
+
 out_restore_sigmask:
 	(void)pthread_sigmask(SIG_SETMASK, &handler->oldmask, NULL);
+
 out_delete_tty:
 	lxc_delete_tty(&conf->ttys);
+
 out_aborting:
 	(void)lxc_set_state(name, handler, ABORTING);
+
 out_close_maincmd_fd:
 	lxc_abstract_unix_close(conf->maincmd_fd);
 	conf->maincmd_fd = -1;
