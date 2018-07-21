@@ -1965,12 +1965,18 @@ static const char padchar[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 char *lxc_mkifname(char *template)
 {
 	int ret;
-	unsigned int seed;
-	FILE *urandom;
 	struct ifaddrs *ifa, *ifaddr;
 	char name[IFNAMSIZ];
 	bool exists = false;
 	size_t i = 0;
+#ifdef HAVE_RAND_R
+	unsigned int seed;
+
+	seed = randseed(false);
+#else
+
+	(void)randseed(true);
+#endif
 
 	if (strlen(template) >= IFNAMSIZ)
 		return NULL;
@@ -1982,26 +1988,13 @@ char *lxc_mkifname(char *template)
 		return NULL;
 	}
 
-	/* Initialize the random number generator. */
-	urandom = fopen("/dev/urandom", "r");
-	if (urandom != NULL) {
-		if (fread(&seed, sizeof(seed), 1, urandom) <= 0)
-			seed = time(0);
-		fclose(urandom);
-	} else {
-		seed = time(0);
-	}
-
-#ifndef HAVE_RAND_R
-	srand(seed);
-#endif
-
 	/* Generate random names until we find one that doesn't exist. */
 	while (true) {
 		name[0] = '\0';
 		(void)strlcpy(name, template, IFNAMSIZ);
 
 		exists = false;
+
 		for (i = 0; i < strlen(name); i++) {
 			if (name[i] == 'X') {
 #ifdef HAVE_RAND_R
