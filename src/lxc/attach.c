@@ -828,8 +828,13 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	 */
 	if (needs_lsm) {
 		ret = lxc_abstract_unix_recv_fds(payload->ipc_socket, &lsm_fd, 1, NULL, 0);
-		if (ret <= 0)
+		if (ret <= 0) {
+			if (ret < 0)
+				SYSERROR("Failed to receive lsm label fd");
+
 			goto on_error;
+		}
+
 		TRACE("Received LSM label file descriptor %d from parent", lsm_fd);
 	}
 
@@ -1330,11 +1335,15 @@ int lxc_attach(const char *name, const char *lxcpath,
 
 			/* Send child fd of the LSM security module to write to. */
 			ret = lxc_abstract_unix_send_fds(ipc_sockets[0], &labelfd, 1, NULL, 0);
-			close(labelfd);
 			if (ret <= 0) {
-				SYSERROR("%d", (int)ret);
+				if (ret < 0)
+					SYSERROR("Failed to send lsm label fd");
+
+				close(labelfd);
 				goto close_mainloop;
 			}
+
+			close(labelfd);
 			TRACE("Sent LSM label file descriptor %d to child", labelfd);
 		}
 

@@ -149,6 +149,7 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 	 */
 	if (*(slide + strspn(slide, " \t\r\n")) != '\0')
 		goto on_error;
+
 	/* Mark end of range. */
 	*slide = '\0';
 
@@ -211,6 +212,7 @@ struct lxc_netdev *lxc_network_add(struct lxc_list *networks, int idx, bool tail
 		lxc_list_add_tail(networks, newlist);
 	else
 		lxc_list_add(networks, newlist);
+
 	return netdev;
 }
 
@@ -265,23 +267,29 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 
 		TRACE("index: %zd", netdev->idx);
 		TRACE("ifindex: %d", netdev->ifindex);
+
 		switch (netdev->type) {
 		case LXC_NET_VETH:
 			TRACE("type: veth");
+
 			if (netdev->priv.veth_attr.pair[0] != '\0')
 				TRACE("veth pair: %s",
 				      netdev->priv.veth_attr.pair);
+
 			if (netdev->priv.veth_attr.veth1[0] != '\0')
 				TRACE("veth1 : %s",
 				      netdev->priv.veth_attr.veth1);
+
 			if (netdev->priv.veth_attr.ifindex > 0)
 				TRACE("host side ifindex for veth device: %d",
 				      netdev->priv.veth_attr.ifindex);
 			break;
 		case LXC_NET_MACVLAN:
 			TRACE("type: macvlan");
+
 			if (netdev->priv.macvlan_attr.mode > 0) {
 				char *macvlan_mode;
+
 				macvlan_mode = lxc_macvlan_flag_to_mode(
 				    netdev->priv.macvlan_attr.mode);
 				TRACE("macvlan mode: %s",
@@ -295,10 +303,10 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 			break;
 		case LXC_NET_PHYS:
 			TRACE("type: phys");
-			if (netdev->priv.phys_attr.ifindex > 0) {
+
+			if (netdev->priv.phys_attr.ifindex > 0)
 				TRACE("host side ifindex for phys device: %d",
 				      netdev->priv.phys_attr.ifindex);
-			}
 			break;
 		case LXC_NET_EMPTY:
 			TRACE("type: empty");
@@ -314,16 +322,22 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 		if (netdev->type != LXC_NET_EMPTY) {
 			TRACE("flags: %s",
 			      netdev->flags == IFF_UP ? "up" : "none");
+
 			if (netdev->link[0] != '\0')
 				TRACE("link: %s", netdev->link);
+
 			if (netdev->name[0] != '\0')
 				TRACE("name: %s", netdev->name);
+
 			if (netdev->hwaddr)
 				TRACE("hwaddr: %s", netdev->hwaddr);
+
 			if (netdev->mtu)
 				TRACE("mtu: %s", netdev->mtu);
+
 			if (netdev->upscript)
 				TRACE("upscript: %s", netdev->upscript);
+
 			if (netdev->downscript)
 				TRACE("downscript: %s", netdev->downscript);
 
@@ -345,11 +359,13 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 
 			TRACE("ipv6 gateway auto: %s",
 			      netdev->ipv6_gateway_auto ? "true" : "false");
+
 			if (netdev->ipv6_gateway) {
 				inet_ntop(AF_INET6, netdev->ipv6_gateway,
 					  bufinet6, sizeof(bufinet6));
 				TRACE("ipv6 gateway: %s", bufinet6);
 			}
+
 			lxc_list_for_each_safe(cur, &netdev->ipv6, next) {
 				inet6dev = cur->elem;
 				inet_ntop(AF_INET6, &inet6dev->addr, bufinet6,
@@ -477,7 +493,7 @@ int set_config_string_item(char **conf_item, const char *value)
 
 	new_value = strdup(value);
 	if (!new_value) {
-		SYSERROR("failed to duplicate string \"%s\"", value);
+		SYSERROR("Failed to duplicate string \"%s\"", value);
 		return -1;
 	}
 
@@ -505,8 +521,10 @@ int config_ip_prefix(struct in_addr *addr)
 {
 	if (IN_CLASSA(addr->s_addr))
 		return 32 - IN_CLASSA_NSHIFT;
+
 	if (IN_CLASSB(addr->s_addr))
 		return 32 - IN_CLASSB_NSHIFT;
+
 	if (IN_CLASSC(addr->s_addr))
 		return 32 - IN_CLASSC_NSHIFT;
 
@@ -521,15 +539,14 @@ int network_ifname(char *valuep, const char *value, size_t size)
 		return -1;
 
 	retlen = strlcpy(valuep, value, size);
-	if (retlen >= size) {
+	if (retlen >= size)
 		ERROR("Network devie name \"%s\" is too long (>= %zu)", value,
 		      size);
-	}
 
 	return 0;
 }
 
-int rand_complete_hwaddr(char *hwaddr)
+void rand_complete_hwaddr(char *hwaddr)
 {
 	const char hex[] = "0123456789abcdef";
 	char *curs = hwaddr;
@@ -558,7 +575,6 @@ int rand_complete_hwaddr(char *hwaddr)
 		}
 		curs++;
 	}
-	return 0;
 }
 
 bool lxc_config_net_hwaddr(const char *line)
@@ -568,11 +584,15 @@ bool lxc_config_net_hwaddr(const char *line)
 
 	if (strncmp(line, "lxc.net", 7) != 0)
 		return false;
+
 	if (strncmp(line, "lxc.net.hwaddr", 14) == 0)
 		return true;
+
 	if (strncmp(line, "lxc.network.hwaddr", 18) == 0)
 		return true;
-	if (sscanf(line, "lxc.net.%u.%6s", &index, tmp) == 2 || sscanf(line, "lxc.network.%u.%6s", &index, tmp) == 2)
+
+	if (sscanf(line, "lxc.net.%u.%6s", &index, tmp) == 2 ||
+	    sscanf(line, "lxc.network.%u.%6s", &index, tmp) == 2)
 		return strncmp(tmp, "hwaddr", 6) == 0;
 
 	return false;
@@ -639,7 +659,7 @@ int lxc_get_conf_str(char *retv, int inlen, const char *value)
 	if (retv && inlen >= value_len + 1)
 		memcpy(retv, value, value_len + 1);
 
-	return strlen(value);
+	return value_len;
 }
 
 int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen, int v)
@@ -701,6 +721,7 @@ bool parse_limit_value(const char **value, rlim_t *res)
 	*res = strtoull(*value, &endptr, 10);
 	if (errno || !endptr)
 		return false;
+
 	*value = endptr;
 
 	return true;
@@ -744,7 +765,7 @@ static int lxc_container_name_to_pid(const char *lxcname_or_pid,
 	ret = kill(pid, 0);
 	if (ret < 0) {
 		SYSERROR("Failed to send signal to pid %d", (int)pid);
-		return -EPERM;
+		return -1;
 	}
 
 	return pid;
@@ -760,7 +781,7 @@ int lxc_inherit_namespace(const char *lxcname_or_pid, const char *lxcpath,
 	if (lastslash) {
 		dup = strdup(lxcname_or_pid);
 		if (!dup)
-			return -ENOMEM;
+			return -1;
 
 		dup[lastslash - lxcname_or_pid] = '\0';
 		pid = lxc_container_name_to_pid(lastslash + 1, dup);
@@ -770,11 +791,11 @@ int lxc_inherit_namespace(const char *lxcname_or_pid, const char *lxcpath,
 	}
 
 	if (pid < 0)
-		return -EINVAL;
+		return -1;
 
 	fd = lxc_preserve_ns(pid, namespace);
 	if (fd < 0)
-		return -EINVAL;
+		return -1;
 
 	return fd;
 }
@@ -877,9 +898,8 @@ static int rt_sig_num(const char *signame)
 {
 	int rtmax = 0, sig_n = 0;
 
-	if (strncasecmp(signame, "max-", 4) == 0) {
+	if (strncasecmp(signame, "max-", 4) == 0)
 		rtmax = 1;
-	}
 
 	signame += 4;
 	if (!isdigit(*signame))
@@ -903,10 +923,10 @@ int sig_parse(const char *signame)
 		signame += 3;
 		if (strncasecmp(signame, "rt", 2) == 0)
 			return rt_sig_num(signame + 2);
-		for (n = 0; n < sizeof(signames) / sizeof((signames)[0]); n++) {
+
+		for (n = 0; n < sizeof(signames) / sizeof((signames)[0]); n++)
 			if (strcasecmp(signames[n].name, signame) == 0)
 				return signames[n].num;
-		}
 	}
 
 	return -1;

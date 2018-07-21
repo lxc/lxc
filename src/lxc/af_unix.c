@@ -74,30 +74,28 @@ int lxc_abstract_unix_open(const char *path, int type, int flags)
 	ret = bind(fd, (struct sockaddr *)&addr,
 		   offsetof(struct sockaddr_un, sun_path) + len + 1);
 	if (ret < 0) {
-		int tmp = errno;
+		int saved_erron = errno;
 		close(fd);
-		errno = tmp;
+		errno = saved_erron;
 		return -1;
 	}
 
 	if (type == SOCK_STREAM) {
 		ret = listen(fd, 100);
 		if (ret < 0) {
-			int tmp = errno;
+			int saved_erron = errno;
 			close(fd);
-			errno = tmp;
+			errno = saved_erron;
 			return -1;
 		}
-
 	}
 
 	return fd;
 }
 
-int lxc_abstract_unix_close(int fd)
+void lxc_abstract_unix_close(int fd)
 {
 	close(fd);
-	return 0;
 }
 
 int lxc_abstract_unix_connect(const char *path)
@@ -128,7 +126,9 @@ int lxc_abstract_unix_connect(const char *path)
 	ret = connect(fd, (struct sockaddr *)&addr,
 		      offsetof(struct sockaddr_un, sun_path) + len + 1);
 	if (ret < 0) {
+		int saved_errno = errno;
 		close(fd);
+		errno = saved_errno;
 		return -1;
 	}
 
@@ -150,8 +150,10 @@ int lxc_abstract_unix_send_fds(int fd, int *sendfds, int num_sendfds,
 	memset(&iov, 0, sizeof(iov));
 
 	cmsgbuf = malloc(cmsgbufsize);
-	if (!cmsgbuf)
+	if (!cmsgbuf) {
+		errno = ENOMEM;
 		return -1;
+	}
 
 	msg.msg_control = cmsgbuf;
 	msg.msg_controllen = cmsgbufsize;
@@ -190,8 +192,10 @@ int lxc_abstract_unix_recv_fds(int fd, int *recvfds, int num_recvfds,
 	memset(&iov, 0, sizeof(iov));
 
 	cmsgbuf = malloc(cmsgbufsize);
-	if (!cmsgbuf)
+	if (!cmsgbuf) {
+		errno = ENOMEM;
 		return -1;
+	}
 
 	msg.msg_control = cmsgbuf;
 	msg.msg_controllen = cmsgbufsize;
@@ -209,9 +213,8 @@ int lxc_abstract_unix_recv_fds(int fd, int *recvfds, int num_recvfds,
 
 	memset(recvfds, -1, num_recvfds * sizeof(int));
 	if (cmsg && cmsg->cmsg_len == CMSG_LEN(num_recvfds * sizeof(int)) &&
-	    cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
+	    cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS)
 		memcpy(recvfds, CMSG_DATA(cmsg), num_recvfds * sizeof(int));
-	}
 
 out:
 	free(cmsgbuf);
@@ -281,10 +284,12 @@ int lxc_abstract_unix_rcv_credential(int fd, void *data, size_t size)
 		memcpy(&cred, CMSG_DATA(cmsg), sizeof(cred));
 		if (cred.uid &&
 		    (cred.uid != getuid() || cred.gid != getgid())) {
-			INFO("message denied for '%d/%d'", cred.uid, cred.gid);
-			return -EACCES;
+			INFO("Message denied for '%d/%d'", cred.uid, cred.gid);
+			errno = EACCES;
+			return -1;
 		}
 	}
+
 out:
 	return ret;
 }
