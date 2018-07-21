@@ -516,6 +516,9 @@ static char *lxc_attach_getpwshell(uid_t uid)
 		if (found)
 			continue;
 
+		if (!line)
+			continue;
+
 		/* Trim line on the right hand side. */
 		for (i = strlen(line); i > 0 && (line[i - 1] == '\n' || line[i - 1] == '\r'); --i)
 			line[i - 1] = '\0';
