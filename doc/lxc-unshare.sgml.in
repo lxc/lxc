@@ -50,12 +50,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
   <refsynopsisdiv>
     <cmdsynopsis>
       <command>lxc-unshare</command>
-      <arg choice="req">-s <replaceable>namespaces</replaceable></arg>
-      <arg choice="opt">-u <replaceable>user</replaceable></arg>
-      <arg choice="opt">-H <replaceable>hostname</replaceable></arg>
-      <arg choice="opt">-i <replaceable>ifname</replaceable></arg>
-      <arg choice="opt">-d</arg>
-      <arg choice="opt">-M</arg>
+      <arg choice="req">-s, --namespaces <replaceable>namespaces</replaceable></arg>
+      <arg choice="opt">-u, --user <replaceable>user</replaceable></arg>
+      <arg choice="opt">-H, --hostname <replaceable>hostname</replaceable></arg>
+      <arg choice="opt">-i, --ifname <replaceable>ifname</replaceable></arg>
+      <arg choice="opt">-d, --daemon</arg>
+      <arg choice="opt">-M, --remount</arg>
       <arg choice="req">command</arg>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -81,7 +81,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
 	<term>
-	  <option>-s <replaceable>namespaces</replaceable></option>
+	  <option>-s, --namespaces <replaceable>namespaces</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
@@ -102,7 +102,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
 	<term>
-	  <option>-u <replaceable>user</replaceable></option>
+	  <option>-u, --user <replaceable>user</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
@@ -113,7 +113,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
 	<term>
-	  <option>-H <replaceable>hostname</replaceable></option>
+	  <option>-H, --hostname <replaceable>hostname</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
@@ -125,7 +125,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
 	<term>
-	  <option>-i <replaceable>interfacename</replaceable></option>
+	  <option>-i, --ifname <replaceable>interfacename</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
@@ -139,7 +139,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
 	<term>
-	  <option>-d</option>
+	  <option>-d, --daemon</option>
 	</term>
 	<listitem>
 	  <para>
@@ -150,7 +150,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
 	<term>
-	  <option>-M</option>
+	  <option>-M, --remount</option>
 	</term>
 	<listitem>
 	  <para>
