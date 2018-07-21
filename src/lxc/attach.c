@@ -190,7 +190,7 @@ static void lxc_proc_put_context_info(struct lxc_proc_context_info *ctx)
 static int in_same_namespace(pid_t pid1, pid_t pid2, const char *ns)
 {
 	int ns_fd1 = -1, ns_fd2 = -1, ret = -1;
-	int saved_errno = errno;
+	int saved_errno;
 	struct stat ns_st1, ns_st2;
 
 	ns_fd1 = lxc_preserve_ns(pid1, ns);
@@ -201,27 +201,20 @@ static int in_same_namespace(pid_t pid1, pid_t pid2, const char *ns)
 		if (errno == ENOENT)
 			return -EINVAL;
 
-		saved_errno = errno;
 		goto out;
 	}
 
 	ns_fd2 = lxc_preserve_ns(pid2, ns);
-	if (ns_fd2 < 0) {
-		saved_errno = errno;
+	if (ns_fd2 < 0)
 		goto out;
-	}
 
 	ret = fstat(ns_fd1, &ns_st1);
-	if (ret < 0) {
-		saved_errno = errno;
+	if (ret < 0)
 		goto out;
-	}
 
 	ret = fstat(ns_fd2, &ns_st2);
-	if (ret < 0) {
-		saved_errno = errno;
+	if (ret < 0)
 		goto out;
-	}
 
 	/* processes are in the same namespace */
 	if ((ns_st1.st_dev == ns_st2.st_dev ) && (ns_st1.st_ino == ns_st2.st_ino)) {
@@ -234,6 +227,8 @@ static int in_same_namespace(pid_t pid1, pid_t pid2, const char *ns)
 	ns_fd2 = -1;
 
 out:
+	saved_errno = errno;
+
 	if (ns_fd1 >= 0)
 		close(ns_fd1);
 
@@ -246,13 +241,14 @@ out:
 
 static int lxc_attach_to_ns(pid_t pid, struct lxc_proc_context_info *ctx)
 {
-	int i;
+	int i, ret;
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
 		if (ctx->ns_fd[i] < 0)
 			continue;
 
-		if (setns(ctx->ns_fd[i], ns_info[i].clone_flag) < 0) {
+		ret = setns(ctx->ns_fd[i], ns_info[i].clone_flag);
+		if (ret < 0) {
 			SYSERROR("Failed to attach to %s namespace of %d",
 			         ns_info[i].proc_name, pid);
 			return -1;
