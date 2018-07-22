@@ -1219,19 +1219,12 @@ uint64_t fnv_64a_buf(void *buf, size_t len, uint64_t hval)
 	return hval;
 }
 
-/*
- * Detect whether / is mounted MS_SHARED.  The only way I know of to
- * check that is through /proc/self/mountinfo.
- * I'm only checking for /.  If the container rootfs or mount location
- * is MS_SHARED, but not '/', then you're out of luck - figuring that
- * out would be too much work to be worth it.
- */
-int detect_shared_rootfs(void)
+bool is_shared_mountpoint(const char *path)
 {
-	char buf[LXC_LINELEN], *p;
+	char buf[LXC_LINELEN];
 	FILE *f;
 	int i;
-	char *p2;
+	char *p, *p2;
 
 	f = fopen("/proc/self/mountinfo", "r");
 	if (!f)
@@ -1248,17 +1241,31 @@ int detect_shared_rootfs(void)
 			continue;
 
 		*p2 = '\0';
-		if (strcmp(p + 1, "/") == 0) {
-			/* This is '/'. Is it shared? */
+		if (strcmp(p + 1, path) == 0) {
+			/* This is the path. Is it shared? */
 			p = strchr(p2 + 1, ' ');
 			if (p && strstr(p, "shared:")) {
 				fclose(f);
-				return 1;
+				return true;
 			}
 		}
 	}
 
 	fclose(f);
+	return false;
+}
+
+/*
+ * Detect whether / is mounted MS_SHARED.  The only way I know of to
+ * check that is through /proc/self/mountinfo.
+ * I'm only checking for /.  If the container rootfs or mount location
+ * is MS_SHARED, but not '/', then you're out of luck - figuring that
+ * out would be too much work to be worth it.
+ */
+int detect_shared_rootfs(void)
+{
+	if (is_shared_mountpoint("/"))
+		return 1;
 	return 0;
 }
 

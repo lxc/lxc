@@ -28,7 +28,9 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+
 #include <lxc/attach_options.h>
+#include <lxc/lxccontainer.h>
 
 struct lxc_conf;
 struct lxc_list;
@@ -120,5 +122,7 @@ bool clone_update_unexp_ovl_paths(struct lxc_conf *conf, const char *oldpath,
 				  const char *newname, const char *ovldir);
 
 extern bool network_new_hwaddrs(struct lxc_conf *conf);
+
+extern int add_elem_to_mount_list(const char *value, struct lxc_conf *lxc_conf);
 
 #endif /* __LXC_CONFILE_H */

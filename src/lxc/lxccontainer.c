@@ -30,9 +30,11 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/file.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
+#include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/sysmacros.h>
 #include <sys/types.h>
@@ -454,6 +456,25 @@ static rettype fnname(struct lxc_container *c, t1 a1, t2 a2, t3 a3)	\
 	}								\
 									\
 	ret = do_##fnname(c, a1, a2, a3);				\
+	if (reset_config)						\
+		current_config = NULL;					\
+									\
+	return ret;							\
+}
+
+#define WRAP_API_6(rettype, fnname, t1, t2, t3, t4, t5, t6)				\
+static rettype fnname(struct lxc_container *c, t1 a1, t2 a2, t3 a3,	\
+						t4 a4, t5 a5, t6 a6)	\
+{									\
+	rettype ret;							\
+	bool reset_config = false;					\
+									\
+	if (!current_config && c && c->lxc_conf) {			\
+		current_config = c->lxc_conf;				\
+		reset_config = true;					\
+	}								\
+									\
+	ret = do_##fnname(c, a1, a2, a3, a4, a5, a6);				\
 	if (reset_config)						\
 		current_config = NULL;					\
 									\
@@ -4893,6 +4914,234 @@ static bool do_lxcapi_restore(struct lxc_container *c, char *directory, bool ver
 
 WRAP_API_2(bool, lxcapi_restore, char *, bool)
 
+/* @st_mode is the st_mode field of the stat(source) return struct */
+static int create_mount_target(const char *dest, mode_t st_mode)
+{
+	char *dirdup, *destdirname;
+	int ret;
+
+	dirdup = strdup(dest);
+	if (!dirdup) {
+		SYSERROR("Failed to duplicate target name \"%s\"", dest);
+		return -1;
+	}
+	destdirname = dirname(dirdup);
+
+	ret = mkdir_p(destdirname, 0755);
+	if (ret < 0) {
+		SYSERROR("Failed to create \"%s\"", destdirname);
+		free(dirdup);
+		return ret;
+	}
+	free(dirdup);
+
+	(void)remove(dest);
+
+	if (S_ISDIR(st_mode))
+		ret = mkdir(dest, 0000);
+	else
+		ret = mknod(dest, S_IFREG | 0000, 0);
+	if (ret < 0) {
+		SYSERROR("Failed to create mount target \"%s\"", dest);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int do_lxcapi_mount(struct lxc_container *c, const char *source,
+			   const char *target, const char *filesystemtype,
+			   unsigned long mountflags, const void *data,
+			   struct lxc_mount *mnt)
+{
+	char *suff, *sret;
+	char template[MAXPATHLEN], path[MAXPATHLEN];
+	pid_t pid, init_pid;
+	struct stat sb;
+	int ret = -1, fd = -EBADF;
+
+	if (!c || !c->lxc_conf) {
+		ERROR("Container or configuration is NULL");
+		return -EINVAL;
+	}
+
+	if (!c->lxc_conf->shmount.path_host) {
+		ERROR("Host path to shared mountpoint must be specified in the config\n");
+		return -EINVAL;
+	}
+
+	ret = snprintf(template, sizeof(template), "%s/.lxcmount_XXXXXX", c->lxc_conf->shmount.path_host);
+	if (ret < 0 || (size_t)ret >= sizeof(template)) {
+		SYSERROR("Error writing shmounts tempdir name");
+		goto out;
+	}
+
+	/* Create a temporary file / dir under the shared mountpoint */
+	if (!source || strcmp(source, "") == 0) {
+		/* If source is not specified, maybe we want to mount a filesystem? */
+		sb.st_mode = S_IFDIR;
+	} else {
+		ret = stat(source, &sb);
+		if (ret < 0) {
+			SYSERROR("Error getting stat info about the source \"%s\"", source);
+			goto out;
+		}
+	}
+
+	if (S_ISDIR(sb.st_mode)) {
+		sret = mkdtemp(template);
+		if (!sret) {
+			SYSERROR("Could not create shmounts temporary dir");
+			goto out;
+		}
+	} else {
+		fd = lxc_make_tmpfile(template, false);
+		if (fd < 0) {
+			SYSERROR("Could not create shmounts temporary file");
+			goto out;
+		}
+	}
+
+	/* Do the fork */
+	pid = fork();
+	if (pid < 0) {
+		SYSERROR("Could not fork");
+		goto out;
+	}
+
+	if (pid == 0) {
+		/* Do the mount */
+		ret = mount(source, template, filesystemtype, mountflags, data);
+		if (ret < 0) {
+			SYSERROR("Failed to mount onto \"%s\"", template);
+			_exit(EXIT_FAILURE);
+		}
+		TRACE("Mounted \"%s\" onto \"%s\"", source, template);
+
+		init_pid = do_lxcapi_init_pid(c);
+		if (init_pid < 0) {
+			ERROR("Failed to obtain container's init pid");
+			_exit(EXIT_FAILURE);
+		}
+
+		/* Enter the container namespaces */
+		if (!lxc_list_empty(&c->lxc_conf->id_map)) {
+			if (!switch_to_ns(init_pid, "user")){
+				ERROR("Failed to enter user namespace");
+				_exit(EXIT_FAILURE);
+			}
+		}
+
+		if (!switch_to_ns(init_pid, "mnt")) {
+			ERROR("Failed to enter mount namespace");
+			_exit(EXIT_FAILURE);
+		}
+
+		ret = create_mount_target(target, sb.st_mode);
+		if (ret < 0)
+			_exit(EXIT_FAILURE);
+		TRACE("Created mount target \"%s\"", target);
+
+		suff = strrchr(template, '/');
+		if (!suff)
+			_exit(EXIT_FAILURE);
+
+		ret = snprintf(path, sizeof(path), "%s%s", c->lxc_conf->shmount.path_cont, suff);
+		if (ret < 0 || (size_t)ret >= sizeof(path)) {
+			SYSERROR("Error writing container mountpoint name");
+			_exit(EXIT_FAILURE);
+		}
+
+		ret = mount(path, target, NULL, MS_MOVE | MS_REC, NULL);
+		if (ret < 0) {
+			SYSERROR("Failed to move the mount from \"%s\" to \"%s\"", path, target);
+			_exit(EXIT_FAILURE);
+		}
+		TRACE("Moved mount from \"%s\" to \"%s\"", path, target);
+
+		_exit(EXIT_SUCCESS);
+	}
+
+	ret = wait_for_pid(pid);
+	if (ret < 0) {
+		SYSERROR("Wait for the child with pid %ld failed", (long) pid);
+		goto out;
+	}
+
+	ret = 0;
+
+	(void)umount2(template, MNT_DETACH);
+	(void)unlink(template);
+
+out:
+	if (fd >= 0)
+		close(fd);
+
+	return ret;
+}
+
+WRAP_API_6(int, lxcapi_mount, const char *, const char *, const char *,
+	   unsigned long, const void *, struct lxc_mount *)
+
+static int do_lxcapi_umount(struct lxc_container *c, const char *target,
+				unsigned long flags, struct lxc_mount *mnt)
+{
+	pid_t pid, init_pid;
+	int ret = -1;
+
+	if (!c || !c->lxc_conf) {
+		ERROR("Container or configuration is NULL");
+		return -EINVAL;
+	}
+
+	/* Do the fork */
+	pid = fork();
+	if (pid < 0) {
+		SYSERROR("Could not fork");
+		return -1;
+	}
+
+	if (pid == 0) {
+		init_pid = do_lxcapi_init_pid(c);
+		if (init_pid < 0) {
+			ERROR("Failed to obtain container's init pid");
+			_exit(EXIT_FAILURE);
+		}
+
+		/* Enter the container namespaces */
+		if (!lxc_list_empty(&c->lxc_conf->id_map)) {
+			if (!switch_to_ns(init_pid, "user")) {
+				ERROR("Failed to enter user namespace");
+				_exit(EXIT_FAILURE);
+			}
+		}
+
+		if (!switch_to_ns(init_pid, "mnt")) {
+			ERROR("Failed to enter mount namespace");
+			_exit(EXIT_FAILURE);
+		}
+
+		/* Do the unmount */
+		ret = umount2(target, flags);
+		if (ret < 0) {
+			SYSERROR("Failed to umount \"%s\"", target);
+			_exit(EXIT_FAILURE);
+		}
+
+		_exit(EXIT_SUCCESS);
+	}
+
+	ret = wait_for_pid(pid);
+	if (ret < 0) {
+		SYSERROR("Wait for the child with pid %ld failed", (long)pid);
+		return -ret;
+	}
+
+	return 0;
+}
+
+WRAP_API_3(int, lxcapi_umount, const char *, unsigned long, struct lxc_mount*)
+
 static int lxcapi_attach_run_waitl(struct lxc_container *c, lxc_attach_options_t *options, const char *program, const char *arg, ...)
 {
 	va_list ap;
@@ -5045,6 +5294,8 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->restore = lxcapi_restore;
 	c->migrate = lxcapi_migrate;
 	c->console_log = lxcapi_console_log;
+	c->mount = lxcapi_mount;
+	c->umount = lxcapi_umount;
 
 	return c;
 

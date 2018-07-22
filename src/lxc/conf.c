@@ -23,6 +23,7 @@
 
 #define _GNU_SOURCE
 #include "config.h"
+#include "confile.h"
 
 #include <arpa/inet.h>
 #include <dirent.h>
@@ -647,6 +648,23 @@ unsigned long add_required_remount_flags(const char *s, const char *d,
 #endif
 }
 
+static int add_shmount_to_list(struct lxc_conf *conf)
+{
+	char new_mount[MAXPATHLEN];
+	/* Offset for the leading '/' since the path_cont
+	 * is absolute inside the container.
+	 */
+	int offset = 1, ret = -1;
+
+	ret = snprintf(new_mount, sizeof(new_mount),
+		       "%s %s none bind,create=dir 0 0", conf->shmount.path_host,
+		       conf->shmount.path_cont + offset);
+	if (ret < 0 || (size_t)ret >= sizeof(new_mount))
+		return -1;
+
+	return add_elem_to_mount_list(new_mount, conf);
+}
+
 static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_handler *handler)
 {
 	int i, r;
@@ -779,6 +797,14 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 						conf->rootfs.path ? conf->rootfs.mount : "",
 						cg_flags)) {
 			SYSERROR("Failed to mount \"/sys/fs/cgroup\"");
+			return -1;
+		}
+	}
+
+	if (flags & LXC_AUTO_SHMOUNTS_MASK) {
+		int ret = add_shmount_to_list(conf);
+		if (ret < 0) {
+			ERROR("Failed to add shmount entry to container config");
 			return -1;
 		}
 	}
@@ -2714,6 +2740,9 @@ struct lxc_conf *lxc_conf_init(void)
 	new->lsm_aa_profile = NULL;
 	new->lsm_se_context = NULL;
 	new->tmp_umount_proc = false;
+	new->tmp_umount_proc = 0;
+	new->shmount.path_host = NULL;
+	new->shmount.path_cont = NULL;
 
 	/* if running in a new user namespace, init and COMMAND
 	 * default to running as UID/GID 0 when using lxc-execute */
@@ -4041,6 +4070,8 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_procs(conf, "lxc.proc");
 	free(conf->cgroup_meta.dir);
 	free(conf->cgroup_meta.controllers);
+	free(conf->shmount.path_host);
+	free(conf->shmount.path_cont);
 	free(conf);
 }
 

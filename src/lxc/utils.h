@@ -502,6 +502,7 @@ extern bool dir_exists(const char *path);
 #define FNV1A_64_INIT ((uint64_t)0xcbf29ce484222325ULL)
 extern uint64_t fnv_64a_buf(void *buf, size_t len, uint64_t hval);
 
+extern bool is_shared_mountpoint(const char *path);
 extern int detect_shared_rootfs(void);
 extern bool detect_ramfs_rootfs(void);
 extern char *on_path(const char *cmd, const char *rootfs);

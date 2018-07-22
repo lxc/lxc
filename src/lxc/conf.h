@@ -189,6 +189,9 @@ enum {
 	LXC_AUTO_CGROUP_FULL_NOSPEC   = 0x0E0, /* /sys/fs/cgroup (full mount, r/w or mixed, depending on caps) */
 	LXC_AUTO_CGROUP_FORCE         = 0x100, /* mount cgroups even when cgroup namespaces are supported */
 	LXC_AUTO_CGROUP_MASK          = 0x1F0, /* all known cgroup options, doe not contain LXC_AUTO_CGROUP_FORCE */
+
+	LXC_AUTO_SHMOUNTS             = 0x200, /* shared mount point */
+	LXC_AUTO_SHMOUNTS_MASK        = 0x200, /* shared mount point mask */
 	LXC_AUTO_ALL_MASK             = 0x1FF, /* all known settings */
 };
 
@@ -367,6 +370,13 @@ struct lxc_conf {
 
 	/* procs */
 	struct lxc_list procs;
+
+	struct shmount {
+		/* Absolute path to the shared mount point on the host */
+		char *path_host;
+		/* Absolute path (in the container) to the shared mount point */
+		char *path_cont;
+	} shmount;
 };
 
 extern int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
