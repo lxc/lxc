@@ -648,22 +648,21 @@ unsigned long add_required_remount_flags(const char *s, const char *d,
 #endif
 }
 
-static int add_shmount_to_list(struct lxc_conf *conf) {
+static int add_shmount_to_list(struct lxc_conf *conf)
+{
 	char new_mount[MAXPATHLEN];
 	/* Offset for the leading '/' since the path_cont
-	 * is absolute inside the container */
-	int ret = -1, offset = 1;
+	 * is absolute inside the container.
+	 */
+	int offset = 1, ret = -1;
 
-	ret = snprintf(new_mount, sizeof(new_mount), "%s %s none bind,create=dir 0 0",
-				   conf->shmount.path_host, conf->shmount.path_cont + offset);
+	ret = snprintf(new_mount, sizeof(new_mount),
+		       "%s %s none bind,create=dir 0 0", conf->shmount.path_host,
+		       conf->shmount.path_cont + offset);
 	if (ret < 0 || (size_t)ret >= sizeof(new_mount))
 		return -1;
 
-	ret = add_elem_to_mount_list(new_mount, conf);
-	if (ret < 0)
-		ERROR("Failed to add new mount \"%s\" to the config", new_mount);
-
-	return ret;
+	return add_elem_to_mount_list(new_mount, conf);
 }
 
 static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_handler *handler)
@@ -806,7 +805,7 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 		int ret = add_shmount_to_list(conf);
 		if (ret < 0) {
 			ERROR("Failed to add shmount entry to container config");
-			return ret;
+			return -1;
 		}
 	}
 
