@@ -56,6 +56,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
     <cmdsynopsis>
       <command>lxc-execute</command>
       <arg choice="req">-n <replaceable>name</replaceable></arg>
+      <arg choice="opt">-d</arg>
       <arg choice="opt">-f <replaceable>config_file</replaceable></arg>
       <arg choice="opt">-s KEY=VAL</arg>
       <arg choice="opt">-- <replaceable>command</replaceable></arg>
@@ -156,6 +157,18 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
             -->
             <replaceable>VAL</replaceable> 값을 <replaceable>KEY</replaceable> 설정변수에 넣는다.
             이는 <replaceable>config_file</replaceable>에서의 설정을 덮어쓴다.
+	  </para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>
+	  <option>-d, --daemon</option>
+	</term>
+	<listitem>
+	  <para>
+	    컨테이너를 데몬으로 실행한다.
+	    컨테이너는 tty를 가지고 있지 않기 때문에, 에러가 발생하더라도 화면에 아무것도 표시되지 않는다.
+	    에러를 확인하기 위해 로그 파일을 사용할 수 있다.
 	  </para>
 	</listitem>
       </varlistentry>
