@@ -114,7 +114,6 @@ int lxc_caps_up(void)
 	}
 
 	for (cap = 0; cap <= CAP_LAST_CAP; cap++) {
-
 		cap_flag_value_t flag;
 
 		ret = cap_get_flag(caps, cap, CAP_PERMITTED, &flag);
@@ -203,8 +202,10 @@ int lxc_ambient_caps_up(void)
 	}
 
 	cap_names = cap_to_text(caps, NULL);
-	if (!cap_names)
+	if (!cap_names) {
+		SYSWARN("Failed to convert capabilities %d", cap);
 		goto out;
+	}
 
 	TRACE("Raised %s in inheritable and ambient capability set", cap_names);
 
@@ -317,6 +318,7 @@ static int _real_caps_last_cap(void)
 		if ((n = read(fd, buf, 31)) >= 0) {
 			buf[n] = '\0';
 			errno = 0;
+
 			result = strtol(buf, &ptr, 10);
 			if (!ptr || (*ptr != '\0' && *ptr != '\n') || errno != 0)
 				result = -1;
@@ -329,7 +331,10 @@ static int _real_caps_last_cap(void)
 	* each capability indiviually from the kernel */
 	if (result < 0) {
 		int cap = 0;
-		while (prctl(PR_CAPBSET_READ, cap) >= 0) cap++;
+
+		while (prctl(PR_CAPBSET_READ, cap) >= 0)
+			cap++;
+
 		result = cap - 1;
 	}
 
@@ -339,7 +344,9 @@ static int _real_caps_last_cap(void)
 int lxc_caps_last_cap(void)
 {
 	static int last_cap = -1;
-	if (last_cap < 0) last_cap = _real_caps_last_cap();
+
+	if (last_cap < 0)
+		last_cap = _real_caps_last_cap();
 
 	return last_cap;
 }

@@ -1091,7 +1091,7 @@ static int do_start(void *data)
 
 	ret = lxc_ambient_caps_up();
 	if (ret < 0) {
-		SYSERROR("Failed to raise ambient capabilities");
+		ERROR("Failed to raise ambient capabilities");
 		goto out_warn_father;
 	}
 
@@ -1359,7 +1359,7 @@ static int do_start(void *data)
 
 	ret = lxc_ambient_caps_down();
 	if (ret < 0) {
-		SYSERROR("Failed to clear ambient capabilities");
+		ERROR("Failed to clear ambient capabilities");
 		goto out_warn_father;
 	}
 
