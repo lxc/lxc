@@ -28,7 +28,9 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+
 #include <lxc/attach_options.h>
+#include <lxc/lxccontainer.h>
 
 struct lxc_conf;
 struct lxc_list;
