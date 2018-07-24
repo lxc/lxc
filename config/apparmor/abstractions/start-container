@@ -40,5 +40,6 @@
   pivot_root /usr/lib*/*/lxc/**,
 
   change_profile -> lxc-*,
+  change_profile -> lxc-**,
   change_profile -> unconfined,
   change_profile -> :lxc-*:unconfined,
