@@ -855,16 +855,16 @@ struct lxc_container {
 	/*!
 	 * \brief Mount the host's path `source` onto the container's path `target`.
 	 */
-	int (*mount)(struct lxc_container *c,
-				 const char *source, const char *target,
-				 const char *filesystemtype, unsigned long mountflags,
-				 const void *data, struct lxc_mount *mnt);
+	int (*mount)(struct lxc_container *c, const char *source,
+		     const char *target, const char *filesystemtype,
+		     unsigned long mountflags, const void *data,
+		     struct lxc_mount *mnt);
 
 	/*!
 	 * \brief Unmount the container's path `target`.
 	 */
 	int (*umount)(struct lxc_container *c, const char *target,
-				  unsigned long mountflags, struct lxc_mount *mnt);
+		      unsigned long mountflags, struct lxc_mount *mnt);
 };
 
 /*!
