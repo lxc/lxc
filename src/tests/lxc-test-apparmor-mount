@@ -23,6 +23,16 @@
 
 set -e
 
+# Only run on a normally configured ubuntu lxc system
+if [ ! -d /sys/class/net/lxcbr0 ]; then
+	echo "lxcbr0 is not configured."
+	exit 1
+fi
+if [ "$(id -u)" != "0" ]; then
+	echo "ERROR: Must run as root."
+	exit 1
+fi
+
 if [ -f /proc/self/ns/cgroup ]; then
 	default_profile="lxc-container-default-cgns (enforce)"
 else
@@ -73,16 +83,6 @@ clear_log() {
 }
 
 trap cleanup exit
-
-# Only run on a normally configured ubuntu lxc system
-if [ ! -d /sys/class/net/lxcbr0 ]; then
-	echo "lxcbr0 is not configured."
-	exit 1
-fi
-if [ "$(id -u)" != "0" ]; then
-	echo "ERROR: Must run as root."
-	exit 1
-fi
 
 chmod 0666 "$logfile"
 
