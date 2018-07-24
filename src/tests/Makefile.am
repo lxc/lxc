@@ -81,6 +81,7 @@ if DISTRO_UBUNTU
 bin_SCRIPTS += \
 	lxc-test-lxc-attach \
 	lxc-test-apparmor-mount \
+	lxc-test-apparmor-generated \
 	lxc-test-checkpoint-restore \
 	lxc-test-snapdeps \
 	lxc-test-symlink \
@@ -114,6 +115,7 @@ EXTRA_DIST = \
 	lxc-test-rootfs \
 	lxc-test-autostart \
 	lxc-test-apparmor-mount \
+	lxc-test-apparmor-generated \
 	lxc-test-checkpoint-restore \
 	lxc-test-cloneconfig \
 	lxc-test-createconfig \
