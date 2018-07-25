@@ -2360,7 +2360,23 @@ static int setup_mount(const struct lxc_conf *conf,
 	return ret;
 }
 
-FILE *make_anonymous_mount_file(struct lxc_list *mount)
+/*
+ * In order for nested containers to be able to mount /proc and /sys they need
+ * to see a "pure" proc and sysfs mount points with nothing mounted on top
+ * (like lxcfs).
+ * For this we provide proc and sysfs in /dev/.lxc/{proc,sys} while using an
+ * apparmor rule to deny access to them. This is mostly for convenience: The
+ * container's root user can mount them anyway and thus has access to the two
+ * file systems. But a non-root user in the container should not be allowed to
+ * access them as a side effect without explicitly allowing it.
+ */
+static const char nesting_helpers[] =
+"proc dev/.lxc/proc proc create=dir,optional\n"
+"sys dev/.lxc/sys sysfs create=dir,optional\n"
+;
+
+FILE *make_anonymous_mount_file(struct lxc_list *mount,
+				bool include_nesting_helpers)
 {
 	int ret;
 	char *mount_entry;
@@ -2402,6 +2418,13 @@ FILE *make_anonymous_mount_file(struct lxc_list *mount)
 			goto on_error;
 	}
 
+	if (include_nesting_helpers) {
+		ret = lxc_write_nointr(fd, nesting_helpers,
+				       sizeof(nesting_helpers) - 1);
+		if (ret != sizeof(nesting_helpers) - 1)
+			goto on_error;
+	}
+
 	ret = lseek(fd, 0, SEEK_SET);
 	if (ret < 0)
 		goto on_error;
@@ -2422,7 +2445,7 @@ static int setup_mount_entries(const struct lxc_conf *conf,
 	int ret;
 	FILE *f;
 
-	f = make_anonymous_mount_file(mount);
+	f = make_anonymous_mount_file(mount, conf->lsm_aa_allow_nesting);
 	if (!f)
 		return -1;
 
@@ -2738,6 +2761,7 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->groups);
 	lxc_list_init(&new->state_clients);
 	new->lsm_aa_profile = NULL;
+	lxc_list_init(&new->lsm_aa_raw);
 	new->lsm_se_context = NULL;
 	new->tmp_umount_proc = false;
 	new->tmp_umount_proc = 0;
@@ -4025,6 +4049,19 @@ void lxc_clear_includes(struct lxc_conf *conf)
 	}
 }
 
+int lxc_clear_apparmor_raw(struct lxc_conf *c)
+{
+	struct lxc_list *it, *next;
+
+	lxc_list_for_each_safe (it, &c->lsm_aa_raw, next) {
+		lxc_list_del(it);
+		free(it->elem);
+		free(it);
+	}
+
+	return 0;
+}
+
 void lxc_conf_free(struct lxc_conf *conf)
 {
 	if (!conf)
@@ -4052,6 +4089,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->syslog);
 	lxc_free_networks(&conf->network);
 	free(conf->lsm_aa_profile);
+	free(conf->lsm_aa_profile_computed);
 	free(conf->lsm_se_context);
 	lxc_seccomp_free(conf);
 	lxc_clear_config_caps(conf);
@@ -4068,6 +4106,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_limits(conf, "lxc.prlimit");
 	lxc_clear_sysctls(conf, "lxc.sysctl");
 	lxc_clear_procs(conf, "lxc.proc");
+	lxc_clear_apparmor_raw(conf);
 	free(conf->cgroup_meta.dir);
 	free(conf->cgroup_meta.controllers);
 	free(conf->shmount.path_host);

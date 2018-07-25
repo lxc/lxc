@@ -469,6 +469,13 @@ AC_ARG_WITH([cgroup-pattern],
 		[pattern for container cgroups]
 	)], [], [with_cgroup_pattern=['lxc/%n']])
 
+# The path for the apparmor_parser's cache for generated apparmor profiles
+AC_ARG_WITH([apparmor-cache-dir],
+	[AC_HELP_STRING(
+		[--with-apparmor-cache-dir=dir],
+		[path for apparmor_parser cache]
+	)], [], [with_apparmor_cache_dir=['${localstatedir}/cache/lxc/apparmor']])
+
 # Container log path.  By default, use $lxcpath.
 AC_MSG_CHECKING([Whether to place logfiles in container config path])
 AC_ARG_ENABLE([configpath-log],
@@ -515,6 +522,7 @@ AS_AC_EXPAND(LXCBINHOOKDIR, "$libexecdir/lxc/hooks")
 AS_AC_EXPAND(LXCINITDIR, "$libexecdir")
 AS_AC_EXPAND(LOGPATH, "$with_log_path")
 AS_AC_EXPAND(RUNTIME_PATH, "$with_runtime_path")
+AS_AC_EXPAND(APPARMOR_CACHE_DIR, "$with_apparmor_cache_dir")
 AC_SUBST(DEFAULT_CGROUP_PATTERN, ["$with_cgroup_pattern"])
 
 # We need the install path so criu knows where to reference the hook scripts.

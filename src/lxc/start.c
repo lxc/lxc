@@ -863,8 +863,18 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	}
 	TRACE("Initialized cgroup driver");
 
+	ret = lsm_process_prepare(conf, handler->lxcpath);
+	if (ret < 0) {
+		ERROR("Failed to initialize LSM");
+		goto out_destroy_cgroups;
+	}
+	TRACE("Initialized LSM");
+
 	INFO("Container \"%s\" is initialized", name);
 	return 0;
+
+out_destroy_cgroups:
+	handler->cgroup_ops->destroy(handler->cgroup_ops, handler);
 
 out_delete_terminal:
 	lxc_terminal_delete(&handler->conf->console);
@@ -955,6 +965,8 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 
 	while (namespace_count--)
 		free(namespaces[namespace_count]);
+
+	lsm_process_cleanup(handler->conf, handler->lxcpath);
 
 	cgroup_ops->destroy(cgroup_ops, handler);
 	cgroup_exit(cgroup_ops);
@@ -1235,7 +1247,7 @@ static int do_start(void *data)
 	}
 
 	/* Set the label to change to when we exec(2) the container's init. */
-	ret = lsm_process_label_set(NULL, handler->conf, 1, 1);
+	ret = lsm_process_label_set(NULL, handler->conf, true);
 	if (ret < 0)
 		goto out_warn_father;
 

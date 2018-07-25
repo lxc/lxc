@@ -177,11 +177,37 @@ on_error:
 }
 
 int lsm_process_label_set(const char *label, struct lxc_conf *conf,
-			  bool use_default, bool on_exec)
+			  bool on_exec)
 {
 	if (!drv) {
 		ERROR("LSM driver not inited");
 		return -1;
 	}
-	return drv->process_label_set(label, conf, use_default, on_exec);
+	return drv->process_label_set(label, conf, on_exec);
+}
+
+int lsm_process_prepare(struct lxc_conf *conf, const char *lxcpath)
+{
+	if (!drv) {
+		ERROR("LSM driver not inited");
+		return 0;
+	}
+
+	if (!drv->prepare)
+		return 0;
+
+	return drv->prepare(conf, lxcpath);
+}
+
+void lsm_process_cleanup(struct lxc_conf *conf, const char *lxcpath)
+{
+	if (!drv) {
+		ERROR("LSM driver not inited");
+		return;
+	}
+
+	if (!drv->cleanup)
+		return;
+
+	drv->cleanup(conf, lxcpath);
 }
