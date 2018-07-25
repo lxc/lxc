@@ -9,4 +9,5 @@ profile lxc-container-default-cgns flags=(attach_disconnected,mediate_deleted) {
   # the newinstance option (but, right now, we don't).
   deny mount fstype=devpts,
   mount fstype=cgroup -> /sys/fs/cgroup/**,
+  mount fstype=cgroup2 -> /sys/fs/cgroup/**,
 }
