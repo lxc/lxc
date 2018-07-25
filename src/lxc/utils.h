@@ -95,6 +95,10 @@
 #define CGROUP2_SUPER_MAGIC 0x63677270
 #endif
 
+#ifndef NSFS_MAGIC
+#define NSFS_MAGIC 0x6e736673
+#endif
+
 /* Useful macros */
 /* Maximum number for 64 bit integer is a string with 21 digits: 2^64 - 1 = 21 */
 #define LXC_NUMSTRLEN64 21
@@ -580,6 +584,7 @@ extern void *must_realloc(void *orig, size_t sz);
 /* __typeof__ should be safe to use with all compilers. */
 typedef __typeof__(((struct statfs *)NULL)->f_type) fs_type_magic;
 extern bool has_fs_type(const char *path, fs_type_magic magic_val);
+extern bool fhas_fs_type(int fd, fs_type_magic magic_val);
 extern bool is_fs_type(const struct statfs *fs, fs_type_magic magic_val);
 extern bool lxc_nic_exists(char *nic);
 extern int lxc_make_tmpfile(char *template, bool rm);

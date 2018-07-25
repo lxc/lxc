@@ -2544,6 +2544,18 @@ bool has_fs_type(const char *path, fs_type_magic magic_val)
 	return has_type;
 }
 
+bool fhas_fs_type(int fd, fs_type_magic magic_val)
+{
+	int ret;
+	struct statfs sb;
+
+	ret = fstatfs(fd, &sb);
+	if (ret < 0)
+		return false;
+
+	return is_fs_type(&sb, magic_val);
+}
+
 bool lxc_nic_exists(char *nic)
 {
 #define __LXC_SYS_CLASS_NET_LEN 15 + IFNAMSIZ + 1
