@@ -471,6 +471,7 @@ extern void *must_realloc(void *orig, size_t sz);
 /* __typeof__ should be safe to use with all compilers. */
 typedef __typeof__(((struct statfs *)NULL)->f_type) fs_type_magic;
 extern bool has_fs_type(const char *path, fs_type_magic magic_val);
+extern bool fhas_fs_type(int fd, fs_type_magic magic_val);
 extern bool is_fs_type(const struct statfs *fs, fs_type_magic magic_val);
 extern bool lxc_nic_exists(char *nic);
 extern int lxc_make_tmpfile(char *template, bool rm);

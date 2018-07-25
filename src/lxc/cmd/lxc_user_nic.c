@@ -1179,12 +1179,41 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 	} else if (request == LXC_USERNIC_DELETE) {
-		netns_fd = open(args.pid, O_RDONLY);
+		char opath[LXC_PROC_PID_FD_LEN];
+
+		/* Open the path with O_PATH which will not trigger an actual
+		 * open(). Don't report an errno to the caller to not leak
+		 * information whether the path exists or not.
+		 * When stracing setuid is stripped so this is not a concern
+		 * either.
+		 */
+		netns_fd = open(args.pid, O_PATH | O_CLOEXEC);
 		if (netns_fd < 0) {
-			usernic_error("Could not open \"%s\": %s\n", args.pid,
-				      strerror(errno));
+			usernic_error("Failed to open \"%s\"\n", args.pid);
 			exit(EXIT_FAILURE);
 		}
+
+		if (!fhas_fs_type(netns_fd, NSFS_MAGIC)) {
+			usernic_error("Path \"%s\" does not refer to a network namespace path\n", args.pid);
+			close(netns_fd);
+			exit(EXIT_FAILURE);
+		}
+
+		ret = snprintf(opath, sizeof(opath), "/proc/self/fd/%d", netns_fd);
+		if (ret < 0 || (size_t)ret >= sizeof(opath)) {
+			close(netns_fd);
+			exit(EXIT_FAILURE);
+		}
+
+		/* Now get an fd that we can use in setns() calls. */
+		ret = open(opath, O_RDONLY | O_CLOEXEC);
+		if (ret < 0) {
+			usernic_error("Failed to open \"%s\": %s\n", args.pid, strerror(errno));
+			close(netns_fd);
+			exit(EXIT_FAILURE);
+		}
+		close(netns_fd);
+		netns_fd = ret;
 	}
 
 	if (!create_db_dir(LXC_USERNIC_DB)) {
