@@ -194,8 +194,6 @@ static struct lxc_list *accumulate_list(char *input, char *delimiter,
 static struct lxc_list *get_list(char *input, char *delimiter)
 {
 	char *workstr = NULL;
-	char *workptr = NULL;
-	char *sptr = NULL;
 	char *token = NULL;
 	struct lxc_list *worklist;
 	struct lxc_list *workstr_list;
@@ -212,11 +210,7 @@ static struct lxc_list *get_list(char *input, char *delimiter)
 		return NULL;
 	}
 
-	for (workptr = workstr;; workptr = NULL) {
-		token = strtok_r(workptr, delimiter, &sptr);
-		if (!token)
-			break;
-
+	lxc_iterate_parts(token, workstr, delimiter) {
 		worklist = malloc(sizeof(*worklist));
 		if (!worklist)
 			break;

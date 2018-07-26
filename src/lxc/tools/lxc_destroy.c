@@ -209,10 +209,8 @@ static bool do_destroy_with_snapshots(struct lxc_container *c)
 	char *buf = NULL;
 	char *lxcpath = NULL;
 	char *lxcname = NULL;
-	char *scratch = NULL;
 	int fd;
 	int ret;
-	int counter = 0;
 
 	/* Destroy clones. */
 	ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_snapshots", c->config_path, c->name);
@@ -244,15 +242,10 @@ static bool do_destroy_with_snapshots(struct lxc_container *c)
 		}
 		close(fd);
 
-		while ((lxcpath = strtok_r(!counter ? buf : NULL, "\n", &scratch))) {
-			if (!(lxcname = strtok_r(NULL, "\n", &scratch)))
-				break;
-
+		lxc_iterate_parts(lxcpath, buf, "\n") {
 			c1 = lxc_container_new(lxcname, lxcpath);
-			if (!c1) {
-				counter++;
+			if (!c1)
 				continue;
-			}
 
 			/* We do not destroy recursively. If a clone of a clone
 			 * has clones or snapshots the user should remove it
@@ -264,7 +257,6 @@ static bool do_destroy_with_snapshots(struct lxc_container *c)
 			}
 
 			lxc_container_put(c1);
-			counter++;
 		}
 		free(buf);
 	}
