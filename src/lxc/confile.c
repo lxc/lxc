@@ -1007,9 +1007,9 @@ static int set_config_monitor_signal_pdeath(const char *key, const char *value,
 static int set_config_group(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
-	char *groups, *groupptr, *sptr, *token;
+	char *groups, *token;
 	struct lxc_list *grouplist;
-	int ret = -1;
+	int ret = 0;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_groups(lxc_conf);
@@ -1021,20 +1021,17 @@ static int set_config_group(const char *key, const char *value,
 	/* In case several groups are specified in a single line split these
 	 * groups in a single element for the list.
 	 */
-	for (groupptr = groups;; groupptr = NULL) {
-		token = strtok_r(groupptr, " \t", &sptr);
-		if (!token) {
-			ret = 0;
+	lxc_iterate_parts(token, groups, " \t") {
+		grouplist = malloc(sizeof(*grouplist));
+		if (!grouplist) {
+			ret = -1;
 			break;
 		}
-
-		grouplist = malloc(sizeof(*grouplist));
-		if (!grouplist)
-			break;
 
 		grouplist->elem = strdup(token);
 		if (!grouplist->elem) {
 			free(grouplist);
+			ret = -1;
 			break;
 		}
 
@@ -1678,7 +1675,7 @@ static int set_config_mount_fstab(const char *key, const char *value,
 static int set_config_mount_auto(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf, void *data)
 {
-	char *autos, *autoptr, *sptr, *token;
+	char *autos, *token;
 	int i;
 	int ret = -1;
 	static struct {
@@ -1726,14 +1723,8 @@ static int set_config_mount_auto(const char *key, const char *value,
 	if (!autos)
 		return -1;
 
-	for (autoptr = autos;; autoptr = NULL) {
+	lxc_iterate_parts(token, autos, " \t") {
 		bool is_shmounts = false;
-
-		token = strtok_r(autoptr, " \t", &sptr);
-		if (!token) {
-			ret = 0;
-			break;
-		}
 
 		for (i = 0; allowed_auto_mounts[i].token; i++) {
 			if (!strcmp(allowed_auto_mounts[i].token, token))
@@ -1748,7 +1739,7 @@ static int set_config_mount_auto(const char *key, const char *value,
 
 		if (!allowed_auto_mounts[i].token) {
 			ERROR("Invalid filesystem to automount \"%s\"", token);
-			break;
+			goto on_error;
 		}
 
 		lxc_conf->auto_mounts &= ~allowed_auto_mounts[i].mask;
@@ -1757,23 +1748,27 @@ static int set_config_mount_auto(const char *key, const char *value,
 			lxc_conf->shmount.path_host = strdup(token + (sizeof("shmounts:") - 1));
 			if (!lxc_conf->shmount.path_host) {
 				SYSERROR("Failed to copy shmounts host path");
-				break;
+				goto on_error;
 			}
 
 			if (strcmp(lxc_conf->shmount.path_host, "") == 0) {
 				ERROR("Invalid shmounts path: empty");
-				break;
+				goto on_error;
 			}
 
 			lxc_conf->shmount.path_cont = strdup("/dev/.lxc-mounts");
 			if(!lxc_conf->shmount.path_cont) {
 				SYSERROR("Failed to copy shmounts container path");
-				break;
+				goto on_error;
 			}
 		}
 	}
 
+	ret = 0;
+
+on_error:
 	free(autos);
+
 	return ret;
 }
 
@@ -1809,7 +1804,7 @@ int add_elem_to_mount_list(const char *value, struct lxc_conf *lxc_conf) {
 static int set_config_cap_keep(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf, void *data)
 {
-	char *keepcaps, *keepptr, *sptr, *token;
+	char *keepcaps, *token;
 	struct lxc_list *keeplist;
 	int ret = -1;
 
@@ -1823,29 +1818,26 @@ static int set_config_cap_keep(const char *key, const char *value,
 	/* In case several capability keep is specified in a single line
 	 * split these caps in a single element for the list.
 	 */
-	for (keepptr = keepcaps;; keepptr = NULL) {
-		token = strtok_r(keepptr, " \t", &sptr);
-		if (!token) {
-			ret = 0;
-			break;
-		}
-
+	lxc_iterate_parts(token, keepcaps, " \t") {
 		if (!strcmp(token, "none"))
 			lxc_clear_config_keepcaps(lxc_conf);
 
 		keeplist = malloc(sizeof(*keeplist));
 		if (!keeplist)
-			break;
+			goto on_error;
 
 		keeplist->elem = strdup(token);
 		if (!keeplist->elem) {
 			free(keeplist);
-			break;
+			goto on_error;
 		}
 
 		lxc_list_add_tail(&lxc_conf->keepcaps, keeplist);
 	}
 
+	ret = 0;
+
+on_error:
 	free(keepcaps);
 
 	return ret;
@@ -1854,7 +1846,7 @@ static int set_config_cap_keep(const char *key, const char *value,
 static int set_config_cap_drop(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf, void *data)
 {
-	char *dropcaps, *dropptr, *sptr, *token;
+	char *dropcaps, *token;
 	struct lxc_list *droplist;
 	int ret = -1;
 
@@ -1868,26 +1860,23 @@ static int set_config_cap_drop(const char *key, const char *value,
 	/* In case several capability drop is specified in a single line
 	 * split these caps in a single element for the list.
 	 */
-	for (dropptr = dropcaps;; dropptr = NULL) {
-		token = strtok_r(dropptr, " \t", &sptr);
-		if (!token) {
-			ret = 0;
-			break;
-		}
-
+	lxc_iterate_parts(token, dropcaps, " \t") {
 		droplist = malloc(sizeof(*droplist));
 		if (!droplist)
-			break;
+			goto on_error;
 
 		droplist->elem = strdup(token);
 		if (!droplist->elem) {
 			free(droplist);
-			break;
+			goto on_error;
 		}
 
 		lxc_list_add_tail(&lxc_conf->caps, droplist);
 	}
 
+        ret = 0;
+
+on_error:
 	free(dropcaps);
 
 	return ret;
@@ -2186,7 +2175,7 @@ static int set_config_uts_name(const char *key, const char *value,
 static int set_config_namespace_clone(const char *key, const char *value,
 				      struct lxc_conf *lxc_conf, void *data)
 {
-	char *ns, *nsptr, *token;
+	char *ns, *token;
 	int cloneflag = 0;
 	char *saveptr = NULL;
 
@@ -2203,9 +2192,8 @@ static int set_config_namespace_clone(const char *key, const char *value,
 	ns = strdup(value);
 	if (!ns)
 		return -1;
-	nsptr = ns;
 
-	for (; (token = strtok_r(nsptr, " \t", &saveptr)); nsptr = NULL) {
+	lxc_iterate_parts(token, ns, " \t") {
 		token += lxc_char_left_gc(token, strlen(token));
 		token[lxc_char_right_gc(token, strlen(token))] = '\0';
 		cloneflag = lxc_namespace_2_cloneflag(token);
@@ -2223,7 +2211,7 @@ static int set_config_namespace_clone(const char *key, const char *value,
 static int set_config_namespace_keep(const char *key, const char *value,
 				     struct lxc_conf *lxc_conf, void *data)
 {
-	char *ns, *nsptr, *token;
+	char *ns, *token;
 	int cloneflag = 0;
 	char *saveptr = NULL;
 
@@ -2240,9 +2228,8 @@ static int set_config_namespace_keep(const char *key, const char *value,
 	ns = strdup(value);
 	if (!ns)
 		return -1;
-	nsptr = ns;
 
-	for (; (token = strtok_r(nsptr, " \t", &saveptr)); nsptr = NULL) {
+	lxc_iterate_parts(token, ns, " \t") {
 		token += lxc_char_left_gc(token, strlen(token));
 		token[lxc_char_right_gc(token, strlen(token))] = '\0';
 		cloneflag = lxc_namespace_2_cloneflag(token);
@@ -2541,7 +2528,7 @@ signed long lxc_config_parse_arch(const char *arch)
 
 int lxc_fill_elevated_privileges(char *flaglist, int *flags)
 {
-	char *token, *saveptr = NULL;
+	char *token;
 	int i, aflag;
 	struct {
 		const char *token;
@@ -2563,8 +2550,7 @@ int lxc_fill_elevated_privileges(char *flaglist, int *flags)
 		return 0;
 	}
 
-	token = strtok_r(flaglist, "|", &saveptr);
-	while (token) {
+	lxc_iterate_parts(token, flaglist, "|") {
 		aflag = -1;
 
 		for (i = 0; all_privs[i].token; i++)
@@ -2575,8 +2561,6 @@ int lxc_fill_elevated_privileges(char *flaglist, int *flags)
 			return -1;
 
 		*flags |= aflag;
-
-		token = strtok_r(NULL, "|", &saveptr);
 	}
 
 	return 0;

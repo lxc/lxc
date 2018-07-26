@@ -759,7 +759,6 @@ static char **split_init_cmd(const char *incmd)
 	char *copy, *p;
 	char **argv;
 	int nargs = 0;
-	char *saveptr = NULL;
 
 	if (!incmd)
 		return NULL;
@@ -775,7 +774,7 @@ static char **split_init_cmd(const char *incmd)
 	} while (!argv);
 
 	argv[0] = NULL;
-	for (; (p = strtok_r(copy, " ", &saveptr)); copy = NULL)
+	lxc_iterate_parts(p, copy, " ")
 		push_arg(&argv, p, &nargs);
 
 	if (nargs == 0) {

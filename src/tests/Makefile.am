@@ -33,7 +33,7 @@ lxc_test_state_server_SOURCES = state_server.c lxctest.h
 lxc_test_share_ns_SOURCES = share_ns.c lxctest.h
 lxc_test_criu_check_feature_SOURCES = criu_check_feature.c lxctest.h
 lxc_test_raw_clone_SOURCES = lxc_raw_clone.c lxctest.h
-lxc_test_mount_injection_SOURCES = mount_injection.c
+lxc_test_mount_injection_SOURCES = mount_injection.c lxctest.h
 
 AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	-DLXCPATH=\"$(LXCPATH)\" \

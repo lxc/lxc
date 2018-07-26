@@ -18,6 +18,7 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include <alloca.h>
 #include <stdio.h>
 #include <string.h>
 #include <mntent.h>
@@ -153,7 +154,10 @@ FILE *setmntent (const char *file, const char *mode)
     /* Extend the mode parameter with "c" to disable cancellation in the
     I/O functions and "e" to set FD_CLOEXEC. */
     size_t modelen = strlen (mode);
-    char newmode[modelen + 3];
+    char *newmode;
+
+    newmode = alloca(modelen + 3);
+
     memcpy (newmode, mode, modelen);
     memcpy (newmode + modelen, "ce", 3);
     FILE *result = fopen (file, newmode);

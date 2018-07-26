@@ -656,11 +656,8 @@ AC_PROG_SED
 # See if we support thread-local storage.
 LXC_CHECK_TLS
 
-if test "x$GCC" = "xyes"; then
-	CFLAGS="$CFLAGS -Wall"
-	if test "x$enable_werror" = "xyes"; then
-		CFLAGS="$CFLAGS -Werror"
-	fi
+if test "x$enable_werror" = "xyes"; then
+	CFLAGS="$CFLAGS -Werror -Wvla -std=gnu11"
 fi
 
 # Files requiring some variable expansion

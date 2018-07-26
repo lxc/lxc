@@ -567,15 +567,13 @@ struct lxc_storage *storage_create(const char *dest, const char *type,
 	/* -B lvm,dir */
 	if (strchr(type, ',')) {
 		char *dup, *token;
-		char *saveptr = NULL;
 		size_t len;
 
 		len = strlen(type);
 		dup = alloca(len + 1);
 		(void)strlcpy(dup, type, len + 1);
 
-		for (token = strtok_r(dup, ",", &saveptr); token;
-		     token = strtok_r(NULL, ",", &saveptr)) {
+		lxc_iterate_parts(token, dup, ",") {
 			bdev = do_storage_create(dest, token, cname, specs);
 			if (bdev)
 				return bdev;

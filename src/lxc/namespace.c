@@ -232,7 +232,7 @@ extern int lxc_namespace_2_std_identifiers(char *namespaces)
 
 int lxc_fill_namespace_flags(char *flaglist, int *flags)
 {
-	char *token, *saveptr = NULL;
+	char *token;
 	int aflag;
 
 	if (!flaglist) {
@@ -240,15 +240,12 @@ int lxc_fill_namespace_flags(char *flaglist, int *flags)
 		return -1;
 	}
 
-	token = strtok_r(flaglist, "|", &saveptr);
-	while (token) {
+	lxc_iterate_parts(token, flaglist, "|") {
 		aflag = lxc_namespace_2_cloneflag(token);
 		if (aflag < 0)
 			return -1;
 
 		*flags |= aflag;
-
-		token = strtok_r(NULL, "|", &saveptr);
 	}
 
 	return 0;
