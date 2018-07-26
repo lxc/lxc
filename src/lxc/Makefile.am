@@ -174,6 +174,7 @@ AM_CFLAGS = -DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	    -DDEFAULT_CGROUP_PATTERN=\"$(DEFAULT_CGROUP_PATTERN)\" \
 	    -DRUNTIME_PATH=\"$(RUNTIME_PATH)\" \
 	    -DSBINDIR=\"$(SBINDIR)\" \
+	    -DAPPARMOR_CACHE_DIR=\"$(APPARMOR_CACHE_DIR)\" \
 	    -I $(top_srcdir)/src \
 	    -I $(top_srcdir)/src/lxc \
 	    -I $(top_srcdir)/src/lxc/storage \

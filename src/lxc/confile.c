@@ -84,7 +84,9 @@ lxc_log_define(confile, lxc);
 
 lxc_config_define(autodev);
 lxc_config_define(apparmor_allow_incomplete);
+lxc_config_define(apparmor_allow_nesting);
 lxc_config_define(apparmor_profile);
+lxc_config_define(apparmor_raw);
 lxc_config_define(cap_drop);
 lxc_config_define(cap_keep);
 lxc_config_define(cgroup_controller);
@@ -158,6 +160,8 @@ static struct lxc_config_t config[] = {
 	{ "lxc.arch",                      set_config_personality,                 get_config_personality,                 clr_config_personality,               },
 	{ "lxc.apparmor.profile",          set_config_apparmor_profile,            get_config_apparmor_profile,            clr_config_apparmor_profile,          },
 	{ "lxc.apparmor.allow_incomplete", set_config_apparmor_allow_incomplete,   get_config_apparmor_allow_incomplete,   clr_config_apparmor_allow_incomplete, },
+	{ "lxc.apparmor.allow_nesting",    set_config_apparmor_allow_nesting,      get_config_apparmor_allow_nesting,      clr_config_apparmor_allow_nesting,    },
+	{ "lxc.apparmor.raw",              set_config_apparmor_raw,                get_config_apparmor_raw,                clr_config_apparmor_raw,              },
 	{ "lxc.autodev",                   set_config_autodev,                     get_config_autodev,                     clr_config_autodev,                   },
 	{ "lxc.cap.drop",                  set_config_cap_drop,                    get_config_cap_drop,                    clr_config_cap_drop,                  },
 	{ "lxc.cap.keep",                  set_config_cap_keep,                    get_config_cap_keep,                    clr_config_cap_keep,                  },
@@ -1128,6 +1132,52 @@ static int set_config_apparmor_allow_incomplete(const char *key,
 
 	if (lxc_conf->lsm_aa_allow_incomplete > 1)
 		return -1;
+
+	return 0;
+}
+
+static int set_config_apparmor_allow_nesting(const char *key,
+					     const char *value,
+					     struct lxc_conf *lxc_conf,
+					     void *data)
+{
+	if (lxc_config_value_empty(value))
+		return clr_config_apparmor_allow_nesting(key, lxc_conf, NULL);
+
+	if (lxc_safe_uint(value, &lxc_conf->lsm_aa_allow_nesting) < 0)
+		return -1;
+
+	if (lxc_conf->lsm_aa_allow_nesting > 1)
+		return -1;
+
+	return 0;
+}
+
+static int set_config_apparmor_raw(const char *key,
+				   const char *value,
+				   struct lxc_conf *lxc_conf,
+				   void *data)
+{
+	char *elem;
+	struct lxc_list *list;
+
+	if (lxc_config_value_empty(value))
+		return lxc_clear_apparmor_raw(lxc_conf);
+
+	list = malloc(sizeof(*list));
+	if (!list) {
+		errno = ENOMEM;
+		return -1;
+	}
+
+	elem = strdup(value);
+	if (!elem) {
+		free(list);
+		return -1;
+	}
+	list->elem = elem;
+
+	lxc_list_add_tail(&lxc_conf->lsm_aa_raw, list);
 
 	return 0;
 }
@@ -3004,6 +3054,34 @@ static int get_config_apparmor_allow_incomplete(const char *key, char *retv,
 				c->lsm_aa_allow_incomplete);
 }
 
+static int get_config_apparmor_allow_nesting(const char *key, char *retv,
+					     int inlen, struct lxc_conf *c,
+					     void *data)
+{
+	return lxc_get_conf_int(c, retv, inlen,
+				c->lsm_aa_allow_nesting);
+}
+
+static int get_config_apparmor_raw(const char *key, char *retv,
+				   int inlen, struct lxc_conf *c,
+				   void *data)
+{
+	int len;
+	struct lxc_list *it;
+	int fulllen = 0;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	lxc_list_for_each(it, &c->lsm_aa_raw) {
+		strprint(retv, inlen, "%s\n", (char *)it->elem);
+	}
+
+	return fulllen;
+}
+
 static int get_config_selinux_context(const char *key, char *retv, int inlen,
 				      struct lxc_conf *c, void *data)
 {
@@ -3792,6 +3870,21 @@ static inline int clr_config_apparmor_allow_incomplete(const char *key,
 {
 	c->lsm_aa_allow_incomplete = 0;
 	return 0;
+}
+
+static inline int clr_config_apparmor_allow_nesting(const char *key,
+						    struct lxc_conf *c,
+						    void *data)
+{
+	c->lsm_aa_allow_nesting = 0;
+	return 0;
+}
+
+static inline int clr_config_apparmor_raw(const char *key,
+					  struct lxc_conf *c,
+					  void *data)
+{
+	return lxc_clear_apparmor_raw(c);
 }
 
 static inline int clr_config_selinux_context(const char *key,
@@ -4986,7 +5079,9 @@ int lxc_list_subkeys(struct lxc_conf *conf, const char *key, char *retv,
 
 	if (!strcmp(key, "lxc.apparmor")) {
 		strprint(retv, inlen, "allow_incomplete\n");
+		strprint(retv, inlen, "allow_nesting\n");
 		strprint(retv, inlen, "profile\n");
+		strprint(retv, inlen, "raw\n");
 	} else if (!strcmp(key, "lxc.cgroup")) {
 		strprint(retv, inlen, "dir\n");
 	} else if (!strcmp(key, "lxc.selinux")) {

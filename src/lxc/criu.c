@@ -378,7 +378,8 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct criu_opts *opts)
 		DECLARE_ARG(opts->user->action_script);
 	}
 
-	mnts = make_anonymous_mount_file(&opts->c->lxc_conf->mount_list);
+	mnts = make_anonymous_mount_file(&opts->c->lxc_conf->mount_list,
+	                                 opts->c->lxc_conf->lsm_aa_allow_nesting);
 	if (!mnts)
 		goto err;
 

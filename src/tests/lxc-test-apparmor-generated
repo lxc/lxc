@@ -1,0 +1,84 @@
+#!/bin/sh
+
+# lxc: linux Container library
+
+# This is a test script for generated apparmor profiles
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+if ! which apparmor_parser >/dev/null 2>&1; then
+	echo 'SKIP: test for generated apparmor profiles: apparmor_parser missing'
+fi
+exit 0
+
+DONE=0
+KNOWN_RELEASES="precise trusty xenial yakkety zesty"
+LOGFILE="/tmp/lxc-test-$$.log"
+cleanup() {
+	lxc-destroy -n $CONTAINER_NAME >/dev/null 2>&1 || true
+
+	if [ $DONE -eq 0 ]; then
+		[ -f "$LOGFILE" ] && cat "$LOGFILE" >&2
+		rm -f "$LOGFILE"
+		echo "FAIL"
+		exit 1
+	fi
+	rm -f "$LOGFILE"
+	echo "PASS"
+}
+
+ARCH=i386
+if type dpkg >/dev/null 2>&1; then
+	ARCH=$(dpkg --print-architecture)
+fi
+
+trap cleanup EXIT HUP INT TERM
+set -eu
+
+# Create a container
+CONTAINER_NAME=lxc-test-apparmor-generated
+
+# default release is trusty, or the systems release if recognized
+release=trusty
+if [ -f /etc/lsb-release ]; then
+    . /etc/lsb-release
+    rels=$(ubuntu-distro-info --supported 2>/dev/null) ||
+        rels="$KNOWN_RELEASES"
+    for r in $rels; do
+        [ "$DISTRIB_CODENAME" = "$r" ] && release="$r"
+    done
+fi
+
+lxc-create -t download -n $CONTAINER_NAME -B dir -- -d ubuntu -r $release -a $ARCH
+CONTAINER_PATH=$(dirname $(lxc-info -n $CONTAINER_NAME -c lxc.rootfs.path -H) | sed -e 's/dir://')
+cp $CONTAINER_PATH/config $CONTAINER_PATH/config.bak
+
+# Set the profile to be auto-generated
+echo "lxc.apparmor.profile = generated" >> $CONTAINER_PATH/config
+
+# Start it
+lxc-start -n $CONTAINER_NAME -lDEBUG -o "$LOGFILE"
+lxc-wait -n $CONTAINER_NAME -t 5 -s RUNNING || (echo "Container didn't start" && exit 1)
+pid=`lxc-info -p -H -n $CONTAINER_NAME`
+profile=`cat /proc/$pid/attr/current`
+expected_profile="lxc-${CONTAINER_NAME}_</var/lib/lxc>//&:lxc-${CONTAINER_NAME}_<-var-lib-lxc>:unconfined (enforce)"
+lxc-stop -n $CONTAINER_NAME -k
+if [ "x$profile" != "x$expected_profile" ]; then
+	echo "FAIL: container was in profile $profile" >&2
+	echo "expected profile: $expected_profile" >&2
+	exit 1
+fi
+
+DONE=1

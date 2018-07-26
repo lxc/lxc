@@ -23,6 +23,16 @@
 
 set -e
 
+# Only run on a normally configured ubuntu lxc system
+if [ ! -d /sys/class/net/lxcbr0 ]; then
+	echo "lxcbr0 is not configured."
+	exit 1
+fi
+if [ "$(id -u)" != "0" ]; then
+	echo "ERROR: Must run as root."
+	exit 1
+fi
+
 if [ -f /proc/self/ns/cgroup ]; then
 	default_profile="lxc-container-default-cgns (enforce)"
 else
@@ -45,6 +55,7 @@ DONE=0
 KNOWN_RELEASES="precise trusty xenial yakkety zesty"
 MOUNTSR=/sys/kernel/security/apparmor/features/mount
 dnam=`mktemp -d`
+logfile=`mktemp`
 cname=`basename $dnam`
 cleanup() {
 	run_cmd lxc-destroy -f -n $cname || true
@@ -56,23 +67,24 @@ cleanup() {
 	rm -Rf $HDIR /run/user/$(id -u $TUSER)
 	deluser $TUSER
 	if [ $DONE -eq 0 ]; then
+		echo 'Failed container log:' >&2
+		cat "$logfile" >&2
+		echo 'End log' >&2
+		rm -f "$logfile"
 		echo "FAIL"
 		exit 1
 	fi
+	rm -f "$logfile"
 	echo "PASS"
+}
+
+clear_log() {
+	truncate -s0 "$logfile"
 }
 
 trap cleanup exit
 
-# Only run on a normally configured ubuntu lxc system
-if [ ! -d /sys/class/net/lxcbr0 ]; then
-	echo "lxcbr0 is not configured."
-	exit 1
-fi
-if [ "$(id -u)" != "0" ]; then
-	echo "ERROR: Must run as root."
-	exit 1
-fi
+chmod 0666 "$logfile"
 
 # This would be much simpler if we could run it as
 # root.  However, in order to not have the bind mount
@@ -160,7 +172,7 @@ fi
 run_cmd lxc-create -t download -n $cname -- -d ubuntu -r $release -a $ARCH
 
 echo "test default confined container"
-run_cmd lxc-start -n $cname -d
+run_cmd lxc-start -n $cname -d -lDEBUG -o "$logfile"
 run_cmd lxc-wait -n $cname -s RUNNING
 pid=`run_cmd lxc-info -p -H -n $cname`
 profile=`cat /proc/$pid/attr/current`
@@ -169,10 +181,11 @@ if [ "x$profile" != "x${default_profile}" ]; then
 	exit 1
 fi
 run_cmd lxc-stop -n $cname -k
+clear_log
 
 echo "test regular unconfined container"
 echo "lxc.apparmor.profile = unconfined" >> $HDIR/.local/share/lxc/$cname/config
-run_cmd lxc-start -n $cname -d
+run_cmd lxc-start -n $cname -d -lDEBUG -o "$logfile"
 run_cmd lxc-wait -n $cname -s RUNNING
 pid=`run_cmd lxc-info -p -H -n $cname`
 profile=`cat /proc/$pid/attr/current`
@@ -181,6 +194,7 @@ if [ "x$profile" != "xunconfined" ]; then
 	exit 1
 fi
 run_cmd lxc-stop -n $cname -k
+clear_log
 
 echo "masking $MOUNTSR"
 mount --bind $dnam $MOUNTSR
@@ -198,7 +212,7 @@ fi
 
 echo "test regular unconfined container"
 echo "lxc.apparmor.profile = unconfined" >> $HDIR/.local/share/lxc/$cname/config
-run_cmd lxc-start -n $cname -d
+run_cmd lxc-start -n $cname -d -lDEBUG -o "$logfile"
 run_cmd lxc-wait -n $cname -s RUNNING
 pid=`run_cmd lxc-info -p -H -n $cname`
 if [ "$pid" = "-1" ]; then
@@ -211,11 +225,12 @@ if [ "x$profile" != "xunconfined" ]; then
 	exit 1
 fi
 run_cmd lxc-stop -n $cname -k
+clear_log
 
 echo "testing override"
 sed -i '/apparmor.profile/d' $HDIR/.local/share/lxc/$cname/config
 echo "lxc.apparmor.allow_incomplete = 1" >> $HDIR/.local/share/lxc/$cname/config
-run_cmd lxc-start -n $cname -d
+run_cmd lxc-start -n $cname -d -lDEBUG -o "$logfile"
 run_cmd lxc-wait -n $cname -s RUNNING
 pid=`run_cmd lxc-info -p -H -n $cname`
 if [ "$pid" = "-1" ]; then
@@ -228,5 +243,6 @@ if [ "x$profile" != "x${default_profile}" ]; then
 	exit 1
 fi
 run_cmd lxc-stop -n $cname -k
+clear_log
 
 DONE=1

@@ -275,7 +275,11 @@ struct lxc_conf {
 	};
 
 	char *lsm_aa_profile;
+	char *lsm_aa_profile_computed;
+	bool lsm_aa_profile_created;
+	unsigned int lsm_aa_allow_nesting;
 	unsigned int lsm_aa_allow_incomplete;
+	struct lxc_list lsm_aa_raw;
 	char *lsm_se_context;
 	bool tmp_umount_proc;
 	char *seccomp;  /* filename with the seccomp rules */
@@ -427,7 +431,8 @@ extern int parse_mntopts(const char *mntopts, unsigned long *mntflags,
 extern void tmp_proc_unmount(struct lxc_conf *lxc_conf);
 extern void remount_all_slave(void);
 extern void suggest_default_idmap(void);
-extern FILE *make_anonymous_mount_file(struct lxc_list *mount);
+extern FILE *make_anonymous_mount_file(struct lxc_list *mount,
+				       bool include_nesting_helpers);
 extern struct lxc_list *sort_cgroup_settings(struct lxc_list *cgroup_settings);
 extern unsigned long add_required_remount_flags(const char *s, const char *d,
 						unsigned long flags);
@@ -441,5 +446,6 @@ extern int setup_sysctl_parameters(struct lxc_list *sysctls);
 extern int lxc_clear_sysctls(struct lxc_conf *c, const char *key);
 extern int setup_proc_filesystem(struct lxc_list *procs, pid_t pid);
 extern int lxc_clear_procs(struct lxc_conf *c, const char *key);
+extern int lxc_clear_apparmor_raw(struct lxc_conf *c);
 
 #endif /* __LXC_CONF_H */

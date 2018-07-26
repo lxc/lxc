@@ -38,17 +38,21 @@ struct lsm_drv {
 	int (*enabled)(void);
 	char *(*process_label_get)(pid_t pid);
 	int (*process_label_set)(const char *label, struct lxc_conf *conf,
-				 bool use_default, bool on_exec);
+				 bool on_exec);
+	int (*prepare)(struct lxc_conf *conf, const char *lxcpath);
+	void (*cleanup)(struct lxc_conf *conf, const char *lxcpath);
 };
 
 extern void lsm_init(void);
 extern int lsm_enabled(void);
 extern const char *lsm_name(void);
 extern char *lsm_process_label_get(pid_t pid);
+extern int lsm_process_prepare(struct lxc_conf *conf, const char *lxcpath);
 extern int lsm_process_label_set(const char *label, struct lxc_conf *conf,
-				 bool use_default, bool on_exec);
+				 bool on_exec);
 extern int lsm_process_label_fd_get(pid_t pid, bool on_exec);
 extern int lsm_process_label_set_at(int label_fd, const char *label,
 				    bool on_exec);
+extern void lsm_process_cleanup(struct lxc_conf *conf, const char *lxcpath);
 
 #endif /* __LXC_LSM_H */
