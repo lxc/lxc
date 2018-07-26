@@ -68,10 +68,9 @@ int lxc_file_for_each_line_mmap(const char *file, lxc_file_cb callback,
 				void *data)
 {
 	int fd;
-	char *buf, *chop, *line;
+	char *buf, *line;
 	struct stat st;
 	int ret = 0;
-	char *saveptr = NULL;
 
 	fd = open(file, O_RDONLY | O_CLOEXEC);
 	if (fd < 0)
@@ -94,7 +93,7 @@ int lxc_file_for_each_line_mmap(const char *file, lxc_file_cb callback,
 		return -1;
 	}
 
-	for (chop = buf; (line = strtok_r(chop, "\n\0", &saveptr)); chop = NULL) {
+	lxc_iterate_parts(line, buf, "\n\0") {
 		ret = callback(line, data);
 		if (ret) {
 			/* Callback rv > 0 means stop here callback rv < 0 means
