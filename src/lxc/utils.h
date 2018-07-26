@@ -620,4 +620,9 @@ extern int lxc_set_death_signal(int signal);
 extern int fd_cloexec(int fd, bool cloexec);
 extern int recursive_destroy(char *dirname);
 
+#define lxc_iterate_parts(__iterator, __splitme, __separators)                  \
+	for (char *__p = NULL, *__it = strtok_r(__splitme, __separators, &__p); \
+	     (__iterator = __it);                                               \
+	     __iterator = __it = strtok_r(NULL, __separators, &__p))
+
 #endif /* __LXC_UTILS_H */
