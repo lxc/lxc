@@ -806,7 +806,7 @@ char *lxc_append_paths(const char *first, const char *second)
 
 bool lxc_string_in_list(const char *needle, const char *haystack, char _sep)
 {
-	char *token, *str, *saveptr = NULL;
+	char *token, *str;
 	char sep[2] = { _sep, '\0' };
 	size_t len;
 
@@ -817,17 +817,16 @@ bool lxc_string_in_list(const char *needle, const char *haystack, char _sep)
 	str = alloca(len + 1);
 	(void)strlcpy(str, haystack, len + 1);
 
-	for (; (token = strtok_r(str, sep, &saveptr)); str = NULL) {
+	lxc_iterate_parts(token, str, sep)
 		if (strcmp(needle, token) == 0)
 			return 1;
-	}
 
 	return 0;
 }
 
 char **lxc_string_split(const char *string, char _sep)
 {
-	char *token, *str, *saveptr = NULL;
+	char *token, *str;
 	char sep[2] = {_sep, '\0'};
 	char **tmp = NULL, **result = NULL;
 	size_t result_capacity = 0;
@@ -842,7 +841,7 @@ char **lxc_string_split(const char *string, char _sep)
 	str = alloca(len + 1);
 	(void)strlcpy(str, string, len + 1);
 
-	for (; (token = strtok_r(str, sep, &saveptr)); str = NULL) {
+	lxc_iterate_parts(token, str, sep) {
 		r = lxc_grow_array((void ***)&result, &result_capacity, result_count + 1, 16);
 		if (r < 0)
 			goto error_out;
@@ -946,7 +945,7 @@ char **lxc_string_split_quoted(char *string)
 
 char **lxc_string_split_and_trim(const char *string, char _sep)
 {
-	char *token, *str, *saveptr = NULL;
+	char *token, *str;
 	char sep[2] = { _sep, '\0' };
 	char **result = NULL;
 	size_t result_capacity = 0;
@@ -962,7 +961,7 @@ char **lxc_string_split_and_trim(const char *string, char _sep)
 	str = alloca(len + 1);
 	(void)strlcpy(str, string, len + 1);
 
-	for (; (token = strtok_r(str, sep, &saveptr)); str = NULL) {
+	lxc_iterate_parts(token, str, sep) {
 		while (token[0] == ' ' || token[0] == '\t')
 			token++;
 
@@ -1335,9 +1334,7 @@ bool detect_ramfs_rootfs(void)
 }
 
 char *on_path(const char *cmd, const char *rootfs) {
-	char *path = NULL;
-	char *entry = NULL;
-	char *saveptr = NULL;
+	char *entry = NULL, *path = NULL;
 	char cmdpath[MAXPATHLEN];
 	int ret;
 
@@ -1349,23 +1346,18 @@ char *on_path(const char *cmd, const char *rootfs) {
 	if (!path)
 		return NULL;
 
-	entry = strtok_r(path, ":", &saveptr);
-	while (entry) {
+	lxc_iterate_parts(entry, path, ":") {
 		if (rootfs)
 			ret = snprintf(cmdpath, MAXPATHLEN, "%s/%s/%s", rootfs, entry, cmd);
 		else
 			ret = snprintf(cmdpath, MAXPATHLEN, "%s/%s", entry, cmd);
-
 		if (ret < 0 || ret >= MAXPATHLEN)
-			goto next_loop;
+			continue;
 
 		if (access(cmdpath, X_OK) == 0) {
 			free(path);
 			return strdup(cmdpath);
 		}
-
-next_loop:
-		entry = strtok_r(NULL, ":", &saveptr);
 	}
 
 	free(path);
