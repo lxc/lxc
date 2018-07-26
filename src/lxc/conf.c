@@ -1862,7 +1862,6 @@ static void parse_mntopt(char *opt, unsigned long *flags, char **data, size_t si
 int parse_mntopts(const char *mntopts, unsigned long *mntflags, char **mntdata)
 {
 	char *data, *p, *s;
-	char *saveptr = NULL;
 	size_t size;
 
 	*mntdata = NULL;
@@ -1883,7 +1882,7 @@ int parse_mntopts(const char *mntopts, unsigned long *mntflags, char **mntdata)
 	}
 	*data = 0;
 
-	for (; (p = strtok_r(s, ",", &saveptr)); s = NULL)
+	lxc_iterate_parts(p, s, ",")
 		parse_mntopt(p, mntflags, &data, size);
 
 	if (*data)
@@ -1916,7 +1915,6 @@ static void parse_propagationopt(char *opt, unsigned long *flags)
 static int parse_propagationopts(const char *mntopts, unsigned long *pflags)
 {
 	char *p, *s;
-	char *saveptr = NULL;
 
 	if (!mntopts)
 		return 0;
@@ -1928,7 +1926,7 @@ static int parse_propagationopts(const char *mntopts, unsigned long *pflags)
 	}
 
 	*pflags = 0L;
-	for (; (p = strtok_r(s, ",", &saveptr)); s = NULL)
+	lxc_iterate_parts(p, s, ",")
 		parse_propagationopt(p, pflags);
 	free(s);
 
