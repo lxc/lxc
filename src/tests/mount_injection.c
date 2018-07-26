@@ -17,7 +17,6 @@
  */
 
 
-#define _GNU_SOURCE
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,6 +29,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "config.h"
 #include "lxctest.h"
 #include "utils.h"
 
@@ -145,9 +145,9 @@ static int perform_container_test(const char *name, const char *config_items[])
 	int i;
 	char *sret;
 	char template_log[sizeof(TEMPLATE)], template_dir[sizeof(TEMPLATE)],
-			device_message[sizeof("Check urandom device injected into "" - ") - 1 + strlen(name) + 1],
-			dir_message[sizeof("Check dir "" injected into "" - ") - 1 + sizeof(TEMPLATE) - 1 + strlen(name) + 1],
-			fs_message[sizeof("Check devtmpfs injected into "" - ") - 1 + strlen(name) + 1];
+			device_message[4096],
+			dir_message[4096],
+			fs_message[4096];
 	struct lxc_container *c;
 	struct lxc_mount mnt;
 	struct lxc_log log;
