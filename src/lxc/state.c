@@ -43,6 +43,7 @@
 #include "lxc.h"
 #include "monitor.h"
 #include "start.h"
+#include "utils.h"
 
 lxc_log_define(state, lxc);
 
@@ -78,16 +79,15 @@ lxc_state_t lxc_getstate(const char *name, const char *lxcpath)
 
 static int fillwaitedstates(const char *strstates, lxc_state_t *states)
 {
-	char *token, *saveptr = NULL;
-	char *strstates_dup = strdup(strstates);
+	char *token;
+	char *strstates_dup;
 	int state;
 
+	strstates_dup = strdup(strstates);
 	if (!strstates_dup)
 		return -1;
 
-	token = strtok_r(strstates_dup, "|", &saveptr);
-	while (token) {
-
+	lxc_iterate_parts(token, strstates_dup, "|") {
 		state = lxc_str2state(token);
 		if (state < 0) {
 			free(strstates_dup);
@@ -95,8 +95,6 @@ static int fillwaitedstates(const char *strstates, lxc_state_t *states)
 		}
 
 		states[state] = 1;
-
-		token = strtok_r(NULL, "|", &saveptr);
 	}
 	free(strstates_dup);
 	return 0;
