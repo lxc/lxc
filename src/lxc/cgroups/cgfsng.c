@@ -274,14 +274,13 @@ static uint32_t *lxc_cpumask(char *buf, size_t nbits)
 	char *token;
 	size_t arrlen;
 	uint32_t *bitarr;
-	char *saveptr = NULL;
 
 	arrlen = BITS_TO_LONGS(nbits);
 	bitarr = calloc(arrlen, sizeof(uint32_t));
 	if (!bitarr)
 		return NULL;
 
-	for (; (token = strtok_r(buf, ",", &saveptr)); buf = NULL) {
+	lxc_iterate_parts(token, buf, ",") {
 		errno = 0;
 		unsigned end, start;
 		char *range;
@@ -728,7 +727,7 @@ static char **cg_hybrid_get_controllers(char **klist, char **nlist, char *line,
 	 */
 	int i;
 	char *dup, *p2, *tok;
-	char *p = line, *saveptr = NULL, *sep = ",";
+	char *p = line, *sep = ",";
 	char **aret = NULL;
 
 	for (i = 0; i < 4; i++) {
@@ -755,16 +754,17 @@ static char **cg_hybrid_get_controllers(char **klist, char **nlist, char *line,
 	*p2 = '\0';
 
 	if (type == CGROUP_SUPER_MAGIC) {
-		/* strdup() here for v1 hierarchies. Otherwise strtok_r() will
-		 * destroy mountpoints such as "/sys/fs/cgroup/cpu,cpuacct".
+		/* strdup() here for v1 hierarchies. Otherwise
+		 * lxc_iterate_parts() will destroy mountpoints such as
+		 * "/sys/fs/cgroup/cpu,cpuacct".
 		 */
 		dup = strdup(p);
 		if (!dup)
 			return NULL;
 
-		for (tok = strtok_r(dup, sep, &saveptr); tok;
-		     tok = strtok_r(NULL, sep, &saveptr))
+		lxc_iterate_parts(tok, dup, sep) {
 			must_append_controller(klist, nlist, &aret, tok);
+		}
 
 		free(dup);
 	}
@@ -786,15 +786,14 @@ static char **cg_unified_make_empty_controller(void)
 static char **cg_unified_get_controllers(const char *file)
 {
 	char *buf, *tok;
-	char *saveptr = NULL, *sep = " \t\n";
+	char *sep = " \t\n";
 	char **aret = NULL;
 
 	buf = read_file(file);
 	if (!buf)
 		return NULL;
 
-	for (tok = strtok_r(buf, sep, &saveptr); tok;
-	     tok = strtok_r(NULL, sep, &saveptr)) {
+	lxc_iterate_parts(tok, buf, sep) {
 		int newentry;
 		char *copy;
 
@@ -878,7 +877,7 @@ static char *copy_to_eol(char *p)
  */
 static bool controller_in_clist(char *cgline, char *c)
 {
-	char *tok, *saveptr = NULL, *eol, *tmp;
+	char *tok, *eol, *tmp;
 	size_t len;
 
 	eol = strchr(cgline, ':');
@@ -890,8 +889,7 @@ static bool controller_in_clist(char *cgline, char *c)
 	memcpy(tmp, cgline, len);
 	tmp[len] = '\0';
 
-	for (tok = strtok_r(tmp, ",", &saveptr); tok;
-	     tok = strtok_r(NULL, ",", &saveptr)) {
+	lxc_iterate_parts(tok, tmp, ",") {
 		if (strcmp(tok, c) == 0)
 			return true;
 	}
@@ -955,7 +953,7 @@ static int get_existing_subsystems(char ***klist, char ***nlist)
 		return -1;
 
 	while (getline(&line, &len, f) != -1) {
-		char *p, *p2, *tok, *saveptr = NULL;
+		char *p, *p2, *tok;
 		p = strchr(line, ':');
 		if (!p)
 			continue;
@@ -977,8 +975,7 @@ static int get_existing_subsystems(char ***klist, char ***nlist)
 			continue;
 		}
 
-		for (tok = strtok_r(p, ",", &saveptr); tok;
-		     tok = strtok_r(NULL, ",", &saveptr)) {
+		lxc_iterate_parts(tok, p, ",") {
 			if (strncmp(tok, "name=", 5) == 0)
 				must_append_string(nlist, tok);
 			else
@@ -2531,13 +2528,13 @@ static bool cg_init(struct cgroup_ops *ops)
 	tmp = lxc_global_config_value("lxc.cgroup.use");
 	if (tmp) {
 		char *chop, *cur, *pin;
-		char *saveptr = NULL;
 
 		pin = must_copy_string(tmp);
 		chop = pin;
 
-		for (; (cur = strtok_r(chop, ",", &saveptr)); chop = NULL)
+		lxc_iterate_parts(cur, chop, ",") {
 			must_append_string(&ops->cgroup_use, cur);
+		}
 
 		free(pin);
 	}
