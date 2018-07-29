@@ -303,8 +303,8 @@ int main(int argc, char *argv[])
 	int pid;
 	char *default_args[] = {"/bin/sh", NULL};
 	char buf[1];
-	int pipe1[2],  // child tells parent it has unshared
-	    pipe2[2];  // parent tells child it is mapped and may proceed
+	int pipe_fds1[2],  /* child tells parent it has unshared */
+	    pipe_fds2[2];  /* parent tells child it is mapped and may proceed */
 
 	lxc_log_fd = STDERR_FILENO;
 
@@ -360,15 +360,15 @@ int main(int argc, char *argv[])
 	if (argc < 1)
 		argv = default_args;
 
-	if (pipe(pipe1) < 0 || pipe(pipe2) < 0) {
+	if (pipe2(pipe_fds1, O_CLOEXEC) < 0 || pipe2(pipe_fds2, O_CLOEXEC) < 0) {
 		perror("pipe");
 		exit(EXIT_FAILURE);
 	}
 	if ((pid = fork()) == 0) {
 		// Child.
 
-		close(pipe1[0]);
-		close(pipe2[1]);
+		close(pipe_fds1[0]);
+		close(pipe_fds2[1]);
 		opentty(ttyname0, 0);
 		opentty(ttyname1, 1);
 		opentty(ttyname2, 2);
@@ -379,11 +379,11 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 		buf[0] = '1';
-		if (write(pipe1[1], buf, 1) < 1) {
+		if (write(pipe_fds1[1], buf, 1) < 1) {
 			perror("write pipe");
 			exit(EXIT_FAILURE);
 		}
-		if (read(pipe2[0], buf, 1) < 1) {
+		if (read(pipe_fds2[0], buf, 1) < 1) {
 			perror("read pipe");
 			exit(EXIT_FAILURE);
 		}
@@ -392,14 +392,14 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		close(pipe1[1]);
-		close(pipe2[0]);
+		close(pipe_fds1[1]);
+		close(pipe_fds2[0]);
 		return do_child((void*)argv);
 	}
 
-	close(pipe1[1]);
-	close(pipe2[0]);
-	if (read(pipe1[0], buf, 1) < 1) {
+	close(pipe_fds1[1]);
+	close(pipe_fds2[0]);
+	if (read(pipe_fds1[0], buf, 1) < 1) {
 		perror("read pipe");
 		exit(EXIT_FAILURE);
 	}
@@ -409,7 +409,7 @@ int main(int argc, char *argv[])
 	if (lxc_map_ids(&active_map, pid))
 		fprintf(stderr, "error mapping child\n");
 
-	if (write(pipe2[1], buf, 1) < 0) {
+	if (write(pipe_fds2[1], buf, 1) < 0) {
 		perror("write to pipe");
 		exit(EXIT_FAILURE);
 	}
