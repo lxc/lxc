@@ -1299,7 +1299,7 @@ static int proc_sys_net_write(const char *path, const char *value)
 	if (fd < 0)
 		return -errno;
 
-	if (write(fd, value, strlen(value)) < 0)
+	if (lxc_write_nointr(fd, value, strlen(value)) < 0)
 		err = -errno;
 
 	close(fd);
