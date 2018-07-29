@@ -2050,7 +2050,7 @@ static char **do_lxcapi_get_interfaces(struct lxc_container *c)
 	char **interfaces = NULL;
 	char interface[IFNAMSIZ];
 
-	if (pipe(pipefd) < 0)
+	if (pipe2(pipefd, O_CLOEXEC) < 0)
 		return NULL;
 
 	pid = fork();
@@ -2143,7 +2143,7 @@ static char **do_lxcapi_get_ips(struct lxc_container *c, const char *interface,
 	int count = 0;
 	char **addresses = NULL;
 
-	ret = pipe(pipefd);
+	ret = pipe2(pipefd, O_CLOEXEC);
 	if (ret < 0) {
 		SYSERROR("Failed to create pipe");
 		return NULL;
