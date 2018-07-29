@@ -2099,7 +2099,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	/* close the write-end of the pipe */
 	close(pipefd[1]);
 
-	bytes = read(pipefd[0], &buffer, MAXPATHLEN);
+	bytes = lxc_read_nointr(pipefd[0], &buffer, MAXPATHLEN);
 	if (bytes < 0) {
 		SYSERROR("Failed to read from pipe file descriptor");
 		close(pipefd[0]);
@@ -2240,7 +2240,7 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcna
 
 	close(pipefd[1]);
 
-	bytes = read(pipefd[0], &buffer, MAXPATHLEN);
+	bytes = lxc_read_nointr(pipefd[0], &buffer, MAXPATHLEN);
 	if (bytes < 0) {
 		SYSERROR("Failed to read from pipe file descriptor.");
 		close(pipefd[0]);
