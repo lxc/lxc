@@ -987,7 +987,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		goto out_fini_handler;
 	}
 
-	if (pipe(pipes) < 0) {
+	if (pipe2(pipes, O_CLOEXEC) < 0) {
 		SYSERROR("pipe() failed");
 		goto out_fini_handler;
 	}
