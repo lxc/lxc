@@ -122,7 +122,7 @@ static void lxc_monitor_fifo_send(struct lxc_msg *msg, const char *lxcpath)
 		return;
 	}
 
-	ret = write(fd, msg, sizeof(*msg));
+	ret = lxc_write_nointr(fd, msg, sizeof(*msg));
 	if (ret != sizeof(*msg)) {
 		close(fd);
 		SYSERROR("Failed to write to monitor fifo \"%s\".", fifo_path);
