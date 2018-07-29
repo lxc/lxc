@@ -115,7 +115,7 @@ int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
 	struct signalfd_siginfo siginfo;
 	struct lxc_terminal_state *ts = cbdata;
 
-	ret = read(fd, &siginfo, sizeof(siginfo));
+	ret = lxc_read_nointr(fd, &siginfo, sizeof(siginfo));
 	if (ret < 0 || (size_t)ret < sizeof(siginfo)) {
 		ERROR("Failed to read signal info");
 		return LXC_MAINLOOP_ERROR;
