@@ -1140,84 +1140,6 @@ on_error:
 	return ret;
 }
 
-static int setup_rootfs_pivot_root(const char *rootfs)
-{
-	int ret;
-	int newroot = -1, oldroot = -1;
-
-	oldroot = open("/", O_DIRECTORY | O_RDONLY);
-	if (oldroot < 0) {
-		SYSERROR("Failed to open old root directory");
-		return -1;
-	}
-
-	newroot = open(rootfs, O_DIRECTORY | O_RDONLY);
-	if (newroot < 0) {
-		SYSERROR("Failed to open new root directory");
-		goto on_error;
-	}
-
-	/* change into new root fs */
-	ret = fchdir(newroot);
-	if (ret < 0) {
-		SYSERROR("Failed to change to new rootfs \"%s\"", rootfs);
-		goto on_error;
-	}
-
-	/* pivot_root into our new root fs */
-	ret = pivot_root(".", ".");
-	if (ret < 0) {
-		SYSERROR("Failed to pivot_root()");
-		goto on_error;
-	}
-
-	/* At this point the old-root is mounted on top of our new-root. To
-	 * unmounted it we must not be chdir'd into it, so escape back to
-	 * old-root.
-	 */
-	ret = fchdir(oldroot);
-	if (ret < 0) {
-		SYSERROR("Failed to enter old root directory");
-		goto on_error;
-	}
-
-	/* Make oldroot rslave to make sure our umounts don't propagate to the
-	 * host.
-	 */
-	ret = mount("", ".", "", MS_SLAVE | MS_REC, NULL);
-	if (ret < 0) {
-		SYSERROR("Failed to make oldroot rslave");
-		goto on_error;
-	}
-
-	ret = umount2(".", MNT_DETACH);
-	if (ret < 0) {
-		SYSERROR("Failed to detach old root directory");
-		goto on_error;
-	}
-
-	ret = fchdir(newroot);
-	if (ret < 0) {
-		SYSERROR("Failed to re-enter new root directory");
-		goto on_error;
-	}
-
-	close(oldroot);
-	close(newroot);
-
-	DEBUG("pivot_root(\"%s\") successful", rootfs);
-
-	return 0;
-
-on_error:
-	if (oldroot != -1)
-		close(oldroot);
-	if (newroot != -1)
-		close(newroot);
-
-	return -1;
-}
-
 /* Just create a path for /dev under $lxcpath/$name and in rootfs If we hit an
  * error, log it but don't fail yet.
  */
@@ -1401,17 +1323,16 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 	return 0;
 }
 
-static int lxc_setup_rootfs(struct lxc_conf *conf)
+static int lxc_mount_rootfs(struct lxc_conf *conf)
 {
 	int ret;
 	struct lxc_storage *bdev;
-	const struct lxc_rootfs *rootfs;
+	const struct lxc_rootfs *rootfs = &conf->rootfs;
 
-	rootfs = &conf->rootfs;
 	if (!rootfs->path) {
 		ret = mount("", "/", NULL, MS_SLAVE | MS_REC, 0);
 		if (ret < 0) {
-			SYSERROR("Failed to make / rslave");
+			SYSERROR("Failed to remount \"/\" MS_REC | MS_SLAVE");
 			return -1;
 		}
 
@@ -1449,15 +1370,18 @@ static int lxc_setup_rootfs(struct lxc_conf *conf)
 	return 0;
 }
 
-int prepare_ramfs_root(char *root)
+int lxc_chroot(const struct lxc_rootfs *rootfs)
 {
 	int i, ret;
 	char *p, *p2;
 	char buf[LXC_LINELEN], nroot[PATH_MAX];
 	FILE *f;
+	char *root = rootfs->mount;
 
-	if (!realpath(root, nroot))
+	if (!realpath(root, nroot)) {
+		SYSERROR("Failed to resolve \"%s\"", root);
 		return -1;
+	}
 
 	ret = chdir("/");
 	if (ret < 0)
@@ -1466,15 +1390,15 @@ int prepare_ramfs_root(char *root)
 	/* We could use here MS_MOVE, but in userns this mount is locked and
 	 * can't be moved.
 	 */
-	ret = mount(root, "/", NULL, MS_REC | MS_BIND, NULL);
+	ret = mount(nroot, "/", NULL, MS_REC | MS_BIND, NULL);
 	if (ret < 0) {
-		SYSERROR("Failed to move \"%s\" into \"/\"", root);
+		SYSERROR("Failed to mount \"%s\" onto \"/\" as MS_REC | MS_BIND", nroot);
 		return -1;
 	}
 
 	ret = mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL);
 	if (ret < 0) {
-		SYSERROR("Failed to make \"/\" rprivate");
+		SYSERROR("Failed to remount \"/\"");
 		return -1;
 	}
 
@@ -1493,8 +1417,8 @@ int prepare_ramfs_root(char *root)
 
 		f = fopen("./proc/self/mountinfo", "r");
 		if (!f) {
-			SYSERROR("Unable to open /proc/self/mountinfo");
-			return -1;
+			SYSERROR("Failed to open \"/proc/self/mountinfo\"");
+			return -errno;
 		}
 
 		while (fgets(buf, LXC_LINELEN, f)) {
@@ -1534,53 +1458,141 @@ int prepare_ramfs_root(char *root)
 	/* It is weird, but chdir("..") moves us in a new root */
 	ret = chdir("..");
 	if (ret < 0) {
-		SYSERROR("Unable to change working directory");
+		SYSERROR("Failed to chdir(\"..\")");
 		return -1;
 	}
 
 	ret = chroot(".");
 	if (ret < 0) {
-		SYSERROR("Unable to chroot");
+		SYSERROR("Failed to chroot(\".\")");
 		return -1;
 	}
 
 	return 0;
 }
 
-static int setup_pivot_root(const struct lxc_rootfs *rootfs)
+/* (The following explanation is copied verbatim from the kernel.)
+ *
+ * pivot_root Semantics:
+ * Moves the root file system of the current process to the directory put_old,
+ * makes new_root as the new root file system of the current process, and sets
+ * root/cwd of all processes which had them on the current root to new_root.
+ *
+ * Restrictions:
+ * The new_root and put_old must be directories, and  must not be on the
+ * same file  system as the current process root. The put_old  must  be
+ * underneath new_root,  i.e. adding a non-zero number of /.. to the string
+ * pointed to by put_old must yield the same directory as new_root. No other
+ * file system may be mounted on put_old. After all, new_root is a mountpoint.
+ *
+ * Also, the current root cannot be on the 'rootfs' (initial ramfs) filesystem.
+ * See Documentation/filesystems/ramfs-rootfs-initramfs.txt for alternatives
+ * in this situation.
+ *
+ * Notes:
+ *  - we don't move root/cwd if they are not at the root (reason: if something
+ *    cared enough to change them, it's probably wrong to force them elsewhere)
+ *  - it's okay to pick a root that isn't the root of a file system, e.g.
+ *    /nfs/my_root where /nfs is the mount point. It must be a mountpoint,
+ *    though, so you may need to say mount --bind /nfs/my_root /nfs/my_root
+ *    first.
+ */
+static int lxc_pivot_root(const char *rootfs)
 {
-	int ret;
+	int newroot = -1, oldroot = -1, ret = -1;
 
+	oldroot = open("/", O_DIRECTORY | O_RDONLY);
+	if (oldroot < 0) {
+		SYSERROR("Failed to open old root directory");
+		return -1;
+	}
+
+	newroot = open(rootfs, O_DIRECTORY | O_RDONLY);
+	if (newroot < 0) {
+		SYSERROR("Failed to open new root directory");
+		goto on_error;
+	}
+
+	/* change into new root fs */
+	ret = fchdir(newroot);
+	if (ret < 0) {
+		ret = -1;
+		SYSERROR("Failed to change to new rootfs \"%s\"", rootfs);
+		goto on_error;
+	}
+
+	/* pivot_root into our new root fs */
+	ret = pivot_root(".", ".");
+	if (ret < 0) {
+		ret = -1;
+		SYSERROR("Failed to pivot_root()");
+		goto on_error;
+	}
+
+	/* At this point the old-root is mounted on top of our new-root. To
+	 * unmounted it we must not be chdir'd into it, so escape back to
+	 * old-root.
+	 */
+	ret = fchdir(oldroot);
+	if (ret < 0) {
+		ret = -1;
+		SYSERROR("Failed to enter old root directory");
+		goto on_error;
+	}
+
+	/* Make oldroot rslave to make sure our umounts don't propagate to the
+	 * host.
+	 */
+	ret = mount("", ".", "", MS_SLAVE | MS_REC, NULL);
+	if (ret < 0) {
+		ret = -1;
+		SYSERROR("Failed to make oldroot rslave");
+		goto on_error;
+	}
+
+	ret = umount2(".", MNT_DETACH);
+	if (ret < 0) {
+		ret = -1;
+		SYSERROR("Failed to detach old root directory");
+		goto on_error;
+	}
+
+	ret = fchdir(newroot);
+	if (ret < 0) {
+		ret = -1;
+		SYSERROR("Failed to re-enter new root directory");
+		goto on_error;
+	}
+
+	ret = 0;
+
+	TRACE("pivot_root(\"%s\") successful", rootfs);
+
+on_error:
+	if (oldroot != -1)
+		close(oldroot);
+	if (newroot != -1)
+		close(newroot);
+
+	return ret;
+}
+
+static int lxc_setup_rootfs_switch_root(const struct lxc_rootfs *rootfs)
+{
 	if (!rootfs->path) {
 		DEBUG("Container does not have a rootfs");
 		return 0;
 	}
 
-	if (detect_ramfs_rootfs()) {
-		DEBUG("Detected that container is on ramfs");
+	if (detect_ramfs_rootfs())
+		return lxc_chroot(rootfs);
 
-		ret = prepare_ramfs_root(rootfs->mount);
-		if (ret < 0) {
-			ERROR("Failed to prepare minimal ramfs root");
-			return -1;
-		}
-
-		DEBUG("Prepared ramfs root for container");
-		return 0;
-	}
-
-	ret = setup_rootfs_pivot_root(rootfs->mount);
-	if (ret < 0) {
-		ERROR("Failed to pivot_root()");
-		return -1;
-	}
-
-	DEBUG("Finished pivot_root()");
-	return 0;
+	return lxc_pivot_root(rootfs->mount);
 }
 
-static const struct id_map *find_mapped_nsid_entry(struct lxc_conf *conf, unsigned id,
-					     enum idtype idtype)
+static const struct id_map *find_mapped_nsid_entry(struct lxc_conf *conf,
+						   unsigned id,
+						   enum idtype idtype)
 {
 	struct lxc_list *it;
 	struct id_map *map;
@@ -1938,7 +1950,7 @@ static void parse_propagationopt(char *opt, unsigned long *flags)
 	}
 }
 
-static int parse_propagationopts(const char *mntopts, unsigned long *pflags)
+int parse_propagationopts(const char *mntopts, unsigned long *pflags)
 {
 	char *p, *s;
 
@@ -3440,7 +3452,8 @@ out:
 /* This does the work of remounting / if it is shared, calling the container
  * pre-mount hooks, and mounting the rootfs.
  */
-int do_rootfs_setup(struct lxc_conf *conf, const char *name, const char *lxcpath)
+int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const char *name,
+				  const char *lxcpath)
 {
 	int ret;
 
@@ -3453,7 +3466,7 @@ int do_rootfs_setup(struct lxc_conf *conf, const char *name, const char *lxcpath
 		ret = mount(path, path, "rootfs", MS_BIND, NULL);
 		if (ret < 0) {
 			ERROR("Failed to bind mount container / onto itself");
-			return -1;
+			return -errno;
 		}
 
 		TRACE("Bind mounted container / onto itself");
@@ -3468,7 +3481,7 @@ int do_rootfs_setup(struct lxc_conf *conf, const char *name, const char *lxcpath
 		return -1;
 	}
 
-	ret = lxc_setup_rootfs(conf);
+	ret = lxc_mount_rootfs(conf);
 	if (ret < 0) {
 		ERROR("Failed to setup rootfs for");
 		return -1;
@@ -3532,7 +3545,7 @@ int lxc_setup(struct lxc_handler *handler)
 	const char *lxcpath = handler->lxcpath, *name = handler->name;
 	struct lxc_conf *lxc_conf = handler->conf;
 
-	ret = do_rootfs_setup(lxc_conf, name, lxcpath);
+	ret = lxc_setup_rootfs_prepare_root(lxc_conf, name, lxcpath);
 	if (ret < 0) {
 		ERROR("Failed to setup rootfs");
 		return -1;
@@ -3671,7 +3684,7 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
-	ret = setup_pivot_root(&lxc_conf->rootfs);
+	ret = lxc_setup_rootfs_switch_root(&lxc_conf->rootfs);
 	if (ret < 0) {
 		ERROR("Failed to pivot root into rootfs");
 		return -1;

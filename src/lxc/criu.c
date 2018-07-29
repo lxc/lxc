@@ -1016,7 +1016,8 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		rootfs = &c->lxc_conf->rootfs;
 
 		if (rootfs_is_blockdev(c->lxc_conf)) {
-			if (do_rootfs_setup(c->lxc_conf, c->name, c->config_path) < 0)
+			if (lxc_setup_rootfs_prepare_root(c->lxc_conf, c->name,
+							  c->config_path) < 0)
 				goto out_fini_handler;
 		} else {
 			if (mkdir(rootfs->mount, 0755) < 0 && errno != EEXIST)

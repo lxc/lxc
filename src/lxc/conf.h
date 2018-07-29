@@ -413,8 +413,8 @@ extern int lxc_clear_environment(struct lxc_conf *c);
 extern int lxc_clear_limits(struct lxc_conf *c, const char *key);
 extern int lxc_delete_autodev(struct lxc_handler *handler);
 extern void lxc_clear_includes(struct lxc_conf *conf);
-extern int do_rootfs_setup(struct lxc_conf *conf, const char *name,
-			   const char *lxcpath);
+extern int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf,
+					 const char *name, const char *lxcpath);
 extern int lxc_setup(struct lxc_handler *handler);
 extern int lxc_setup_parent(struct lxc_handler *handler);
 extern int setup_resource_limits(struct lxc_list *limits, pid_t pid);
@@ -428,6 +428,7 @@ extern int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *),
 			    void *data, const char *fn_name);
 extern int parse_mntopts(const char *mntopts, unsigned long *mntflags,
 			 char **mntdata);
+extern int parse_propagationopts(const char *mntopts, unsigned long *pflags);
 extern void tmp_proc_unmount(struct lxc_conf *lxc_conf);
 extern void remount_all_slave(void);
 extern void suggest_default_idmap(void);
