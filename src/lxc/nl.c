@@ -61,7 +61,8 @@ static int nla_put(struct nlmsg *nlmsg, int attr,
 	rta = NLMSG_TAIL(nlmsg->nlmsghdr);
 	rta->rta_type = attr;
 	rta->rta_len = rtalen;
-	memcpy(RTA_DATA(rta), data, len);
+	if (data && len)
+		memcpy(RTA_DATA(rta), data, len);
 	nlmsg->nlmsghdr->nlmsg_len = tlen;
 	return 0;
 }
