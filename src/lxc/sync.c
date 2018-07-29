@@ -31,6 +31,7 @@
 #include "sync.h"
 #include "log.h"
 #include "start.h"
+#include "utils.h"
 
 lxc_log_define(sync, lxc);
 
@@ -39,7 +40,7 @@ static int __sync_wait(int fd, int sequence)
 	int sync = -1;
 	ssize_t ret;
 
-	ret = read(fd, &sync, sizeof(sync));
+	ret = lxc_read_nointr(fd, &sync, sizeof(sync));
 	if (ret < 0) {
 		SYSERROR("Sync wait failure");
 		return -1;
