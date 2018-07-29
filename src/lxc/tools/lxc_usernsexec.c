@@ -383,7 +383,7 @@ int main(int argc, char *argv[])
 			perror("write pipe");
 			exit(EXIT_FAILURE);
 		}
-		if (read(pipe_fds2[0], buf, 1) < 1) {
+		if (lxc_read_nointr(pipe_fds2[0], buf, 1) < 1) {
 			perror("read pipe");
 			exit(EXIT_FAILURE);
 		}
@@ -399,7 +399,7 @@ int main(int argc, char *argv[])
 
 	close(pipe_fds1[1]);
 	close(pipe_fds2[0]);
-	if (read(pipe_fds1[0], buf, 1) < 1) {
+	if (lxc_read_nointr(pipe_fds1[0], buf, 1) < 1) {
 		perror("read pipe");
 		exit(EXIT_FAILURE);
 	}
