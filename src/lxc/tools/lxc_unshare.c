@@ -271,7 +271,7 @@ static int do_start(void *arg)
 
 	if (start_arg->setuid) {
 		/* waiting until uid maps is set */
-		ret = read(start_arg->wait_fd, &wait_val, sizeof(wait_val));
+		ret = lxc_read_nointr(start_arg->wait_fd, &wait_val, sizeof(wait_val));
 		if (ret == -1) {
 			SYSERROR("Failed to read eventfd");
 			close(start_arg->wait_fd);
