@@ -2331,7 +2331,7 @@ static char **do_lxcapi_get_interfaces(struct lxc_container *c)
 	/* close the write-end of the pipe */
 	close(pipefd[1]);
 
-	while (read(pipefd[0], &interface, IFNAMSIZ) == IFNAMSIZ) {
+	while (lxc_read_nointr(pipefd[0], &interface, IFNAMSIZ) == IFNAMSIZ) {
 		interface[IFNAMSIZ - 1] = '\0';
 
 		if (array_contains(&interfaces, interface, count))
@@ -3321,7 +3321,7 @@ static int copy_file(const char *old, const char *new)
 	}
 
 	while (1) {
-		len = read(in, buf, 8096);
+		len = lxc_read_nointr(in, buf, 8096);
 		if (len < 0) {
 			SYSERROR("Error reading old file %s", old);
 			goto err;
