@@ -276,7 +276,7 @@ int main(int argc, char *argv[])
 				continue;
 			}
 
-			if (write(fd, "quit", 4) < 0) {
+			if (lxc_write_nointr(fd, "quit", 4) < 0) {
 				SYSERROR("Unable to close monitor on path: %s", my_args.lxcpath[i]);
 				ret = EXIT_FAILURE;
 				close(fd);

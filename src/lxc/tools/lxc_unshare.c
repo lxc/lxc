@@ -418,7 +418,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		ret = write(start_arg.wait_fd, &wait_val, sizeof(wait_val));
+		ret = lxc_write_nointr(start_arg.wait_fd, &wait_val, sizeof(wait_val));
 		if (ret < 0) {
 			SYSERROR("Failed to write eventfd");
 			free_ifname_list();
