@@ -3763,8 +3763,9 @@ struct userns_fn_data {
 
 static int run_userns_fn(void *data)
 {
-	struct userns_fn_data *d = data;
+	int ret;
 	char c;
+	struct userns_fn_data *d = data;
 
 	/* Close write end of the pipe. */
 	close(d->p[1]);
@@ -3772,14 +3773,15 @@ static int run_userns_fn(void *data)
 	/* Wait for parent to finish establishing a new mapping in the user
 	 * namespace we are executing in.
 	 */
-	if (lxc_read_nointr(d->p[0], &c, 1) != 1)
-		return -1;
-
+	ret = lxc_read_nointr(d->p[0], &c, 1);
 	/* Close read end of the pipe. */
 	close(d->p[0]);
+	if (ret != 1)
+		return -1;
 
 	if (d->fn_name)
-		TRACE("calling function \"%s\"", d->fn_name);
+		TRACE("Calling function \"%s\"", d->fn_name);
+
 	/* Call function to run. */
 	return d->fn(d->arg);
 }
