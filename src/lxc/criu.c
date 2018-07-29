@@ -1128,7 +1128,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 
 		close(pipes[0]);
 
-		ret = write(status_pipe, &status, sizeof(status));
+		ret = lxc_write_nointr(status_pipe, &status, sizeof(status));
 		close(status_pipe);
 		status_pipe = -1;
 
@@ -1174,7 +1174,7 @@ out:
 		if (!status)
 			status = 1;
 
-		if (write(status_pipe, &status, sizeof(status)) != sizeof(status))
+		if (lxc_write_nointr(status_pipe, &status, sizeof(status)) != sizeof(status))
 			SYSERROR("writing status failed");
 		close(status_pipe);
 	}
