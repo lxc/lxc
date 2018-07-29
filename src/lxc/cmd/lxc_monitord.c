@@ -161,7 +161,7 @@ static int lxc_monitord_sock_handler(int fd, uint32_t events, void *data,
 		int rc;
 		char buf[4];
 
-		rc = read(fd, buf, sizeof(buf));
+		rc = lxc_read_nointr(fd, buf, sizeof(buf));
 		if (rc > 0 && !strncmp(buf, "quit", 4))
 			quit = LXC_MAINLOOP_CLOSE;
 	}
@@ -305,7 +305,7 @@ static int lxc_monitord_fifo_handler(int fd, uint32_t events, void *data,
 	struct lxc_msg msglxc;
 	struct lxc_monitor *mon = data;
 
-	ret = read(fd, &msglxc, sizeof(msglxc));
+	ret = lxc_read_nointr(fd, &msglxc, sizeof(msglxc));
 	if (ret != sizeof(msglxc)) {
 		SYSERROR("Reading from fifo failed");
 		return LXC_MAINLOOP_CLOSE;
