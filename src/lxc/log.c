@@ -201,7 +201,8 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 {
 	char buffer[LXC_LOG_BUFFER_SIZE];
 	char date_time[LXC_LOG_TIME_SIZE];
-	int n, ret;
+	int n;
+	ssize_t ret;
 	int fd_to_use = -1;
 
 #ifndef NO_LXC_CONF
@@ -243,7 +244,12 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 
 	buffer[n] = '\n';
 
-	return write(fd_to_use, buffer, n + 1);
+again:
+	ret = write(fd_to_use, buffer, n + 1);
+	if (ret < 0 && errno == EINTR)
+		goto again;
+
+	return ret;
 }
 
 static struct lxc_log_appender log_appender_stderr = {
