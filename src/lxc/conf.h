@@ -150,14 +150,18 @@ struct lxc_tty_info {
  * optionals pivot_root, rootfs mount paths
  * @path       : the rootfs source (directory or device)
  * @mount      : where it is mounted
- * @options    : mount options
  * @bev_type   : optional backing store type
+ * @options    : mount options
+ * @mountflags : the portion of @options that are flags
+ * @data       : the porition of @options that are not flags
  */
 struct lxc_rootfs {
 	char *path;
 	char *mount;
-	char *options;
 	char *bdev_type;
+	char *options;
+	unsigned long mountflags;
+	char *data;
 };
 
 /*
