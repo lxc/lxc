@@ -72,7 +72,7 @@ static int __sync_wake(int fd, int sequence)
 {
 	int sync = sequence;
 
-	if (write(fd, &sync, sizeof(sync)) < 0) {
+	if (lxc_write_nointr(fd, &sync, sizeof(sync)) < 0) {
 		SYSERROR("Sync wake failure");
 		return -1;
 	}
