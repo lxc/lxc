@@ -1090,14 +1090,14 @@ int lxc_read_from_file(const char *filename, void *buf, size_t count)
 		char buf2[100];
 		size_t count2 = 0;
 
-		while ((ret = read(fd, buf2, 100)) > 0)
+		while ((ret = lxc_read_nointr(fd, buf2, 100)) > 0)
 			count2 += ret;
 
 		if (ret >= 0)
 			ret = count2;
 	} else {
 		memset(buf, 0, count);
-		ret = read(fd, buf, count);
+		ret = lxc_read_nointr(fd, buf, count);
 	}
 
 	if (ret < 0)
@@ -2407,7 +2407,7 @@ int run_command(char *buf, size_t buf_size, int (*child_fn)(void *), void *args)
 	close(pipefd[1]);
 
 	if (buf && buf_size > 0) {
-		bytes = read(pipefd[0], buf, buf_size - 1);
+		bytes = lxc_read_nointr(pipefd[0], buf, buf_size - 1);
 		if (bytes > 0)
 			buf[bytes - 1] = '\0';
 	}
