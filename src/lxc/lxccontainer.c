@@ -2082,7 +2082,7 @@ static char **do_lxcapi_get_interfaces(struct lxc_container *c)
 		/* Iterate through the interfaces */
 		for (tempIfAddr = interfaceArray; tempIfAddr != NULL;
 		     tempIfAddr = tempIfAddr->ifa_next) {
-			nbytes = write(pipefd[1], tempIfAddr->ifa_name, IFNAMSIZ);
+			nbytes = lxc_write_nointr(pipefd[1], tempIfAddr->ifa_name, IFNAMSIZ);
 			if (nbytes < 0)
 				goto out;
 
@@ -2959,8 +2959,9 @@ static int copy_file(const char *old, const char *new)
 		}
 		if (len == 0)
 			break;
-		ret = write(out, buf, len);
-		if (ret < len) { // should we retry?
+
+		ret = lxc_write_nointr(out, buf, len);
+		if (ret < len) { /* should we retry? */
 			SYSERROR("Error: write to new file %s was interrupted", new);
 			goto err;
 		}
