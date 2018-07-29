@@ -379,7 +379,7 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 		buf[0] = '1';
-		if (write(pipe_fds1[1], buf, 1) < 1) {
+		if (lxc_write_nointr(pipe_fds1[1], buf, 1) < 1) {
 			perror("write pipe");
 			exit(EXIT_FAILURE);
 		}
@@ -409,7 +409,7 @@ int main(int argc, char *argv[])
 	if (lxc_map_ids(&active_map, pid))
 		fprintf(stderr, "error mapping child\n");
 
-	if (write(pipe_fds2[1], buf, 1) < 0) {
+	if (lxc_write_nointr(pipe_fds2[1], buf, 1) < 0) {
 		perror("write to pipe");
 		exit(EXIT_FAILURE);
 	}

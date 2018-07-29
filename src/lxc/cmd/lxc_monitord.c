@@ -312,7 +312,7 @@ static int lxc_monitord_fifo_handler(int fd, uint32_t events, void *data,
 	}
 
 	for (i = 0; i < mon->clientfds_cnt; i++) {
-		ret = write(mon->clientfds[i], &msglxc, sizeof(msglxc));
+		ret = lxc_write_nointr(mon->clientfds[i], &msglxc, sizeof(msglxc));
 		if (ret < 0)
 			SYSERROR("Failed to send message to client file descriptor %d",
 			         mon->clientfds[i]);
@@ -428,7 +428,7 @@ int main(int argc, char *argv[])
 	 * if-empty-statement construct is to quiet the
 	 * warn-unused-result warning.
 	 */
-	if (write(pipefd, "S", 1))
+	if (lxc_write_nointr(pipefd, "S", 1))
 		;
 	close(pipefd);
 
