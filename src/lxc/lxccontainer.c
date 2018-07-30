@@ -2292,21 +2292,19 @@ static bool remove_from_array(char ***names, char *cname, int size)
 	return false;
 }
 
-static char ** do_lxcapi_get_interfaces(struct lxc_container *c)
+static char **do_lxcapi_get_interfaces(struct lxc_container *c)
 {
 	pid_t pid;
 	int i, count = 0, pipefd[2];
 	char **interfaces = NULL;
 	char interface[IFNAMSIZ];
 
-	if(pipe(pipefd) < 0) {
-		SYSERROR("pipe failed");
+	if (pipe2(pipefd, O_CLOEXEC) < 0)
 		return NULL;
-	}
 
 	pid = fork();
 	if (pid < 0) {
-		SYSERROR("failed to fork task to get interfaces information");
+		SYSERROR("Failed to fork task to get interfaces information");
 		close(pipefd[0]);
 		close(pipefd[1]);
 		return NULL;
@@ -2320,23 +2318,23 @@ static char ** do_lxcapi_get_interfaces(struct lxc_container *c)
 		close(pipefd[0]);
 
 		if (!enter_net_ns(c)) {
-			SYSERROR("failed to enter namespace");
+			SYSERROR("Failed to enter network namespace");
 			goto out;
 		}
 
 		/* Grab the list of interfaces */
 		if (getifaddrs(&interfaceArray)) {
-			SYSERROR("failed to get interfaces list");
+			SYSERROR("Failed to get interfaces list");
 			goto out;
 		}
 
 		/* Iterate through the interfaces */
-		for (tempIfAddr = interfaceArray; tempIfAddr != NULL; tempIfAddr = tempIfAddr->ifa_next) {
-			nbytes = write(pipefd[1], tempIfAddr->ifa_name, IFNAMSIZ);
-			if (nbytes < 0) {
-				ERROR("write failed");
+		for (tempIfAddr = interfaceArray; tempIfAddr != NULL;
+		     tempIfAddr = tempIfAddr->ifa_next) {
+			nbytes = lxc_write_nointr(pipefd[1], tempIfAddr->ifa_name, IFNAMSIZ);
+			if (nbytes < 0)
 				goto out;
-			}
+
 			count++;
 		}
 
@@ -2354,20 +2352,20 @@ static char ** do_lxcapi_get_interfaces(struct lxc_container *c)
 	/* close the write-end of the pipe */
 	close(pipefd[1]);
 
-	while (read(pipefd[0], &interface, IFNAMSIZ) == IFNAMSIZ) {
+	while (lxc_read_nointr(pipefd[0], &interface, IFNAMSIZ) == IFNAMSIZ) {
 		interface[IFNAMSIZ - 1] = '\0';
 
 		if (array_contains(&interfaces, interface, count))
-				continue;
+			continue;
 
-		if(!add_to_array(&interfaces, interface, count))
+		if (!add_to_array(&interfaces, interface, count))
 			ERROR("Failed to add \"%s\" to array", interface);
 
 		count++;
 	}
 
 	if (wait_for_pid(pid) != 0) {
-		for(i=0;i<count;i++)
+		for (i = 0; i < count; i++)
 			free(interfaces[i]);
 
 		free(interfaces);
@@ -2378,7 +2376,7 @@ static char ** do_lxcapi_get_interfaces(struct lxc_container *c)
 	close(pipefd[0]);
 
 	/* Append NULL to the array */
-	if(interfaces)
+	if (interfaces)
 		interfaces = (char **)lxc_append_null_to_array((void **)interfaces, count);
 
 	return interfaces;
@@ -2396,7 +2394,7 @@ static char **do_lxcapi_get_ips(struct lxc_container *c, const char *interface,
 	int count = 0;
 	char **addresses = NULL;
 
-	ret = pipe(pipefd);
+	ret = pipe2(pipefd, O_CLOEXEC);
 	if (ret < 0) {
 		SYSERROR("Failed to create pipe");
 		return NULL;
@@ -3344,7 +3342,7 @@ static int copy_file(const char *old, const char *new)
 	}
 
 	while (1) {
-		len = read(in, buf, 8096);
+		len = lxc_read_nointr(in, buf, 8096);
 		if (len < 0) {
 			SYSERROR("Error reading old file %s", old);
 			goto err;
@@ -3353,7 +3351,7 @@ static int copy_file(const char *old, const char *new)
 		if (len == 0)
 			break;
 
-		ret = write(out, buf, len);
+		ret = lxc_write_nointr(out, buf, len);
 		if (ret < len) { /* should we retry? */
 			SYSERROR("Error: write to new file %s was interrupted", new);
 			goto err;

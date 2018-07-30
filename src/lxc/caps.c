@@ -309,7 +309,11 @@ static int _real_caps_last_cap(void)
 		char *ptr;
 		int n;
 
-		if ((n = read(fd, buf, 31)) >= 0) {
+	again:
+		n = read(fd, buf, 31);
+		if (n < 0 && errno == EINTR) {
+			goto again;
+		} else if (n >= 0) {
 			buf[n] = '\0';
 			errno = 0;
 

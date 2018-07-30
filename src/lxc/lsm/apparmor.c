@@ -599,7 +599,7 @@ static bool file_is_yes(const char *path)
 	if (fd < 0)
 		return false;
 
-	rd = read(fd, buf, sizeof(buf));
+	rd = lxc_read_nointr(fd, buf, sizeof(buf));
 	close(fd);
 
 	return rd >= 4 && strncmp(buf, "yes\n", 4) == 0;

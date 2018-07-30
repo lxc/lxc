@@ -233,14 +233,13 @@ static bool do_destroy_with_snapshots(struct lxc_container *c)
 			return false;
 		}
 
-		ret = read(fd, buf, fbuf.st_size);
+		ret = lxc_read_nointr(fd, buf, fbuf.st_size);
+		close(fd);
 		if (ret < 0) {
 			ERROR("Could not read %s", path);
-			close(fd);
 			free(buf);
 			return false;
 		}
-		close(fd);
 
 		lxc_iterate_parts(lxcpath, buf, "\n") {
 			c1 = lxc_container_new(lxcname, lxcpath);

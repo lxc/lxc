@@ -988,7 +988,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		goto out_fini_handler;
 	}
 
-	if (pipe(pipes) < 0) {
+	if (pipe2(pipes, O_CLOEXEC) < 0) {
 		SYSERROR("pipe() failed");
 		goto out_fini_handler;
 	}
@@ -1085,7 +1085,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 			if (WEXITSTATUS(status)) {
 				int n;
 
-				n = read(pipes[0], buf, sizeof(buf));
+				n = lxc_read_nointr(pipes[0], buf, sizeof(buf));
 				if (n < 0) {
 					SYSERROR("failed reading from criu stderr");
 					goto out_fini_handler;
@@ -1129,7 +1129,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 
 		close(pipes[0]);
 
-		ret = write(status_pipe, &status, sizeof(status));
+		ret = lxc_write_nointr(status_pipe, &status, sizeof(status));
 		close(status_pipe);
 		status_pipe = -1;
 
@@ -1175,7 +1175,7 @@ out:
 		if (!status)
 			status = 1;
 
-		if (write(status_pipe, &status, sizeof(status)) != sizeof(status))
+		if (lxc_write_nointr(status_pipe, &status, sizeof(status)) != sizeof(status))
 			SYSERROR("writing status failed");
 		close(status_pipe);
 	}
@@ -1313,7 +1313,7 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 			return false;
 		}
 
-		n = read(criuout[0], buf, sizeof(buf));
+		n = lxc_read_nointr(criuout[0], buf, sizeof(buf));
 		close(criuout[0]);
 		if (n < 0) {
 			SYSERROR("read");
@@ -1416,7 +1416,7 @@ bool __criu_restore(struct lxc_container *c, struct migrate_opts *opts)
 	close(pipefd[1]);
 	free(criu_version);
 
-	nread = read(pipefd[0], &status, sizeof(status));
+	nread = lxc_read_nointr(pipefd[0], &status, sizeof(status));
 	close(pipefd[0]);
 	if (sizeof(status) != nread) {
 		ERROR("reading status from pipe failed");

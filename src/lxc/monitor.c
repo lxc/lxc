@@ -122,7 +122,7 @@ static void lxc_monitor_fifo_send(struct lxc_msg *msg, const char *lxcpath)
 		return;
 	}
 
-	ret = write(fd, msg, sizeof(*msg));
+	ret = lxc_write_nointr(fd, msg, sizeof(*msg));
 	if (ret != sizeof(*msg)) {
 		close(fd);
 		SYSERROR("Failed to write to monitor fifo \"%s\".", fifo_path);
@@ -348,7 +348,7 @@ int lxc_monitord_spawn(const char *lxcpath)
 		 * synced with the child process. the if-empty-statement
 		 * construct is to quiet the warn-unused-result warning.
 		 */
-		if (read(pipefd[0], &c, 1))
+		if (lxc_read_nointr(pipefd[0], &c, 1))
 			;
 
 		close(pipefd[0]);

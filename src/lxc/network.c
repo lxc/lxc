@@ -1374,7 +1374,7 @@ static int proc_sys_net_write(const char *path, const char *value)
 	if (fd < 0)
 		return -errno;
 
-	if (write(fd, value, strlen(value)) < 0)
+	if (lxc_write_nointr(fd, value, strlen(value)) < 0)
 		err = -errno;
 
 	close(fd);
@@ -2179,7 +2179,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	/* close the write-end of the pipe */
 	close(pipefd[1]);
 
-	bytes = read(pipefd[0], &buffer, MAXPATHLEN);
+	bytes = lxc_read_nointr(pipefd[0], &buffer, MAXPATHLEN);
 	if (bytes < 0) {
 		SYSERROR("Failed to read from pipe file descriptor");
 		close(pipefd[0]);
@@ -2335,7 +2335,7 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcna
 
 	close(pipefd[1]);
 
-	bytes = read(pipefd[0], &buffer, MAXPATHLEN);
+	bytes = lxc_read_nointr(pipefd[0], &buffer, MAXPATHLEN);
 	if (bytes < 0) {
 		SYSERROR("Failed to read from pipe file descriptor.");
 		close(pipefd[0]);

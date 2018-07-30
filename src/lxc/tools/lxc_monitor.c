@@ -202,7 +202,7 @@ static int lxc_tool_monitord_spawn(const char *lxcpath)
 		 * synced with the child process. the if-empty-statement
 		 * construct is to quiet the warn-unused-result warning.
 		 */
-		if (read(pipefd[0], &c, 1))
+		if (lxc_read_nointr(pipefd[0], &c, 1))
 			;
 
 		close(pipefd[0]);
@@ -276,7 +276,7 @@ int main(int argc, char *argv[])
 				continue;
 			}
 
-			if (write(fd, "quit", 4) < 0) {
+			if (lxc_write_nointr(fd, "quit", 4) < 0) {
 				SYSERROR("Unable to close monitor on path: %s", my_args.lxcpath[i]);
 				ret = EXIT_FAILURE;
 				close(fd);

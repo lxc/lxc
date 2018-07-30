@@ -574,7 +574,7 @@ static int stdin_handler(int fd, uint32_t events, void *data,
 	if (events & EPOLLIN) {
 		int rc;
 
-		rc = read(fd, in_char, sizeof(*in_char));
+		rc = lxc_read_nointr(fd, in_char, sizeof(*in_char));
 		if (rc <= 0)
 			*in_char = '\0';
 	}
