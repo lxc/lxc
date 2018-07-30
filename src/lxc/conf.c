@@ -1392,7 +1392,7 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 		f = fopen("./proc/self/mountinfo", "r");
 		if (!f) {
 			SYSERROR("Failed to open \"/proc/self/mountinfo\"");
-			return -errno;
+			return -1;
 		}
 
 		while (fgets(buf, LXC_LINELEN, f)) {
@@ -3423,7 +3423,7 @@ int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const char *name,
 		ret = mount(path, path, "rootfs", MS_BIND, NULL);
 		if (ret < 0) {
 			ERROR("Failed to bind mount container / onto itself");
-			return -errno;
+			return -1;
 		}
 
 		TRACE("Bind mounted container / onto itself");
