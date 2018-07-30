@@ -1330,6 +1330,7 @@ bool detect_ramfs_rootfs(void)
 			if (p && strncmp(p, "- rootfs rootfs ", 16) == 0) {
 				free(line);
 				fclose(f);
+				INFO("Rootfs is located on ramfs");
 				return true;
 			}
 		}

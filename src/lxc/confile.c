@@ -2143,7 +2143,32 @@ static int set_config_rootfs_mount(const char *key, const char *value,
 static int set_config_rootfs_options(const char *key, const char *value,
 				     struct lxc_conf *lxc_conf, void *data)
 {
-	return set_config_string_item(&lxc_conf->rootfs.options, value);
+	int ret;
+	unsigned long mflags = 0, pflags = 0;
+	char *mdata = NULL, *opts = NULL;
+	struct lxc_rootfs *rootfs = &lxc_conf->rootfs;
+
+	ret = parse_mntopts(value, &mflags, &mdata);
+	if (ret < 0)
+		return -EINVAL;
+
+	ret = parse_propagationopts(value, &pflags);
+	if (ret < 0) {
+		free(mdata);
+		return -EINVAL;
+	}
+
+	ret = set_config_string_item(&opts, value);
+	if (ret < 0) {
+		free(mdata);
+		return -ENOMEM;
+	}
+
+	rootfs->mountflags = mflags | pflags;
+	rootfs->options = opts;
+	rootfs->data = mdata;
+
+	return 0;
 }
 
 static int set_config_uts_name(const char *key, const char *value,
@@ -3964,6 +3989,10 @@ static inline int clr_config_rootfs_options(const char *key, struct lxc_conf *c,
 {
 	free(c->rootfs.options);
 	c->rootfs.options = NULL;
+
+	free(c->rootfs.data);
+	c->rootfs.data = NULL;
+
 	return 0;
 }
 
