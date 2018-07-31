@@ -127,7 +127,7 @@ The LXC project has a good reputation in handling security issues quickly and
 efficiently. If you think you've found a potential security issue, please
 report it by e-mail to all of the following persons:
 
-- serge.hallyn (at) ubuntu (dot) com
+- serge (at) hallyn (dot) com
 - stgraber (at) ubuntu (dot) com
 - christian.brauner (at) ubuntu (dot) com
 
