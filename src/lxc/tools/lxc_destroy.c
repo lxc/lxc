@@ -211,6 +211,7 @@ static bool do_destroy_with_snapshots(struct lxc_container *c)
 	char *lxcname = NULL;
 	int fd;
 	int ret;
+	ssize_t bytes;
 
 	/* Destroy clones. */
 	ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_snapshots", c->config_path, c->name);
@@ -233,9 +234,9 @@ static bool do_destroy_with_snapshots(struct lxc_container *c)
 			return false;
 		}
 
-		ret = lxc_read_nointr(fd, buf, fbuf.st_size);
+		bytes = lxc_read_nointr(fd, buf, fbuf.st_size);
 		close(fd);
-		if (ret < 0) {
+		if (bytes != (ssize_t)fbuf.st_size) {
 			ERROR("Could not read %s", path);
 			free(buf);
 			return false;
