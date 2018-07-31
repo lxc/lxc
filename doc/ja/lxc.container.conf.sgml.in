@@ -566,11 +566,14 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               network devices are usable in the container.  It also
               means that if both the container and host have upstart as
               init, 'halt' in a container (for instance) will shut down the
-              host.
+              host. Note that unprivileged containers do not work with this
+              setting due to an inability to mount sysfs. An unsafe workaround
+              would be to bind mount the host's sysfs.
               -->
               <option>none:</option> ホストのネットワーク名前空間を共有します。
               これにより、ホストのネットワークデバイスをコンテナ内で使うことが可能になります。
               もしコンテナもホストも init として upstart を使っている場合、(例えば) コンテナ内で 'halt' を実行すると、ホストがシャットダウンしてしまうことにもなります。
+              非特権コンテナでは、sysfs をマウントできないので、この設定は動作しません。この問題に対する回避策は、ホストの sysfs を bind マウントすることです。ただしこの回避策は安全ではありません。
             </para>
 
             <para>
