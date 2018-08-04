@@ -16,6 +16,7 @@ noinst_HEADERS = attach.h \
 		 log.h \
 		 lxc.h \
 		 lxclock.h \
+		 macro.h \
 		 monitor.h \
 		 namespace.h \
 		 start.h \
@@ -99,6 +100,7 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    lxccontainer.c lxccontainer.h \
 		    lxclock.c lxclock.h \
 		    lxcseccomp.h \
+		    macro.h \
 		    mainloop.c mainloop.h \
 		    namespace.c namespace.h \
 		    nl.c nl.h \
@@ -342,6 +344,7 @@ init_lxc_static_SOURCES = cmd/lxc_init.c \
 			  error.c error.h \
 			  initutils.c initutils.h \
 			  log.c log.h \
+			  macro.h \
 			  namespace.c namespace.h \
 			  parse.c parse.h
 
