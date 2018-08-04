@@ -384,30 +384,28 @@ struct lxc_log_category lxc_log_category_lxc = {
 /*---------------------------------------------------------------------------*/
 static int build_dir(const char *name)
 {
-	int ret;
 	char *e, *n, *p;
 
-	/* Make copy of string since we'll be modifying it. */
+	/* Make copy of the string since we'll be modifying it. */
 	n = strdup(name);
-	if (!n) {
-		ERROR("Out of memory while creating directory '%s'", name);
+	if (!n)
 		return -1;
-	}
 
 	e = &n[strlen(n)];
-	for (p = n+1; p < e; p++) {
+	for (p = n + 1; p < e; p++) {
+		int ret;
+
 		if (*p != '/')
 			continue;
 		*p = '\0';
 
-		if (access(n, F_OK)) {
-			ret = lxc_unpriv(mkdir(n, 0755));
-			if (ret && errno != EEXIST) {
-				SYSERROR("Failed to create directory '%s'", n);
-				free(n);
-				return -1;
-			}
+		ret = lxc_unpriv(mkdir(n, 0755));
+		if (ret && errno != EEXIST) {
+			SYSERROR("Failed to create directory %s", n);
+			free(n);
+			return -1;
 		}
+
 		*p = '/';
 	}
 
@@ -421,9 +419,8 @@ static int log_open(const char *name)
 	int fd;
 	int newfd;
 
-	fd = lxc_unpriv(open(name, O_CREAT | O_WRONLY |
-			     O_APPEND | O_CLOEXEC, 0666));
-	if (fd == -1) {
+	fd = lxc_unpriv(open(name, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0666));
+	if (fd < 0) {
 		SYSERROR("Failed to open log file \"%s\"", name);
 		return -1;
 	}
@@ -431,7 +428,7 @@ static int log_open(const char *name)
 	if (fd > 2)
 		return fd;
 
-	newfd = fcntl(fd, F_DUPFD_CLOEXEC, 3);
+	newfd = fcntl(fd, F_DUPFD_CLOEXEC, STDERR_FILENO);
 	if (newfd == -1)
 		SYSERROR("Failed to dup log fd %d", fd);
 
@@ -448,15 +445,17 @@ static int log_open(const char *name)
 static char *build_log_path(const char *name, const char *lxcpath)
 {
 	char *p;
-	int len, ret, use_dir;
+	int ret;
+	size_t len;
+	bool use_dir;
 
 	if (!name)
 		return NULL;
 
 #if USE_CONFIGPATH_LOGS
-	use_dir = 1;
+	use_dir = true;
 #else
-	use_dir = 0;
+	use_dir = false;
 #endif
 
 	/*
@@ -469,7 +468,7 @@ static char *build_log_path(const char *name, const char *lxcpath)
 	 */
 	len = strlen(name) + 6; /* 6 == '/' + '.log' + '\0' */
 	if (lxcpath)
-		use_dir = 1;
+		use_dir = true;
 	else
 		lxcpath = LOGPATH;
 
@@ -486,7 +485,7 @@ static char *build_log_path(const char *name, const char *lxcpath)
 		ret = snprintf(p, len, "%s/%s/%s.log", lxcpath, name, name);
 	else
 		ret = snprintf(p, len, "%s/%s.log", lxcpath, name);
-	if (ret < 0 || ret >= len) {
+	if (ret < 0 || (size_t)ret >= len) {
 		free(p);
 		return NULL;
 	}
@@ -494,7 +493,7 @@ static char *build_log_path(const char *name, const char *lxcpath)
 	return p;
 }
 
-extern void lxc_log_close(void)
+void lxc_log_close(void)
 {
 	closelog();
 
@@ -562,12 +561,13 @@ static int _lxc_log_set_file(const char *name, const char *lxcpath, int create_d
 		ERROR("Could not build log path");
 		return -1;
 	}
+
 	ret = __lxc_log_set_file(logfile, create_dirs);
 	free(logfile);
 	return ret;
 }
 
-extern int lxc_log_syslog(int facility)
+int lxc_log_syslog(int facility)
 {
 	struct lxc_log_appender *appender;
 
@@ -595,7 +595,7 @@ extern int lxc_log_syslog(int facility)
 	return 0;
 }
 
-extern void lxc_log_enable_syslog(void)
+inline void lxc_log_enable_syslog(void)
 {
 	syslog_enable = 1;
 }
@@ -605,13 +605,13 @@ extern void lxc_log_enable_syslog(void)
  * Called from lxc front-end programs (like lxc-create, lxc-start) to
  * initalize the log defaults.
  */
-extern int lxc_log_init(struct lxc_log *log)
+int lxc_log_init(struct lxc_log *log)
 {
-	int lxc_priority = LXC_LOG_LEVEL_ERROR;
 	int ret;
+	int lxc_priority = LXC_LOG_LEVEL_ERROR;
 
 	if (lxc_log_fd != -1) {
-		WARN("lxc_log_init called with log already initialized");
+		WARN("Log already initialized");
 		return 0;
 	}
 
@@ -637,6 +637,7 @@ extern int lxc_log_init(struct lxc_log *log)
 	if (log->file) {
 		if (strcmp(log->file, "none") == 0)
 			return 0;
+
 		ret = __lxc_log_set_file(log->file, 1);
 		lxc_log_use_global_fd = 1;
 	} else {
@@ -679,7 +680,7 @@ extern int lxc_log_init(struct lxc_log *log)
  * happens after processing command line arguments, which override the .conf
  * settings.  So only set the level if previously unset.
  */
-extern int lxc_log_set_level(int *dest, int level)
+int lxc_log_set_level(int *dest, int level)
 {
 	if (level < 0 || level >= LXC_LOG_LEVEL_NOTSET) {
 		ERROR("Invalid log priority %d", level);
@@ -690,15 +691,16 @@ extern int lxc_log_set_level(int *dest, int level)
 	return 0;
 }
 
-extern int lxc_log_get_level(void)
+inline int lxc_log_get_level(void)
 {
 	return lxc_log_category_lxc.priority;
 }
 
-extern bool lxc_log_has_valid_level(void)
+bool lxc_log_has_valid_level(void)
 {
-	int log_level = lxc_log_get_level();
+	int log_level;
 
+	log_level = lxc_log_get_level();
 	if (log_level < 0 || log_level >= LXC_LOG_LEVEL_NOTSET)
 		return false;
 
@@ -710,42 +712,40 @@ extern bool lxc_log_has_valid_level(void)
  * happens after processing command line arguments, which override the .conf
  * settings.  So only set the file if previously unset.
  */
-extern int lxc_log_set_file(int *fd, const char *fname)
+int lxc_log_set_file(int *fd, const char *fname)
 {
-	if (*fd != -1) {
+	if (*fd >= 0) {
 		close(*fd);
 		*fd = -1;
 	}
 
-	if (build_dir(fname)) {
-		SYSERROR("Failed to create dir for log file \"%s\"", fname);
+	if (build_dir(fname))
 		return -1;
-	}
 
 	*fd = log_open(fname);
-	if (*fd == -1)
-		return -errno;
+	if (*fd < 0)
+		return -1;
 
 	return 0;
 }
 
-extern const char *lxc_log_get_file(void)
+inline const char *lxc_log_get_file(void)
 {
 	return log_fname;
 }
 
-extern void lxc_log_set_prefix(const char *prefix)
+inline void lxc_log_set_prefix(const char *prefix)
 {
 	/* We don't care if thte prefix is truncated. */
 	(void)strlcpy(log_prefix, prefix, sizeof(log_prefix));
 }
 
-extern const char *lxc_log_get_prefix(void)
+inline const char *lxc_log_get_prefix(void)
 {
 	return log_prefix;
 }
 
-extern void lxc_log_options_no_override()
+inline void lxc_log_options_no_override()
 {
 	lxc_quiet_specified = 1;
 	lxc_loglevel_specified = 1;
