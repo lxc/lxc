@@ -2680,7 +2680,8 @@ int lxc_set_death_signal(int signal)
 	int ret;
 	pid_t ppid;
 
-	ret = prctl(PR_SET_PDEATHSIG, signal, 0, 0, 0);
+	ret = prctl(PR_SET_PDEATHSIG, prctl_arg(signal), prctl_arg(0),
+		    prctl_arg(0), prctl_arg(0));
 
 	/* Check whether we have been orphaned. */
 	ppid = (pid_t)syscall(SYS_getppid);
