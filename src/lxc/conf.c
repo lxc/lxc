@@ -2544,7 +2544,8 @@ static int setup_caps(struct lxc_list *caps)
 			return -1;
 		}
 
-		ret = prctl(PR_CAPBSET_DROP, capid, 0, 0, 0);
+		ret = prctl(PR_CAPBSET_DROP, prctl_arg(capid), prctl_arg(0),
+			    prctl_arg(0), prctl_arg(0));
 		if (ret < 0) {
 			SYSERROR("Failed to remove %s capability", drop_entry);
 			return -1;
@@ -2593,7 +2594,8 @@ static int dropcaps_except(struct lxc_list *caps)
 		if (caplist[i])
 			continue;
 
-		ret = prctl(PR_CAPBSET_DROP, i, 0, 0, 0);
+		ret = prctl(PR_CAPBSET_DROP, prctl_arg(i), prctl_arg(0),
+			    prctl_arg(0), prctl_arg(0));
 		if (ret < 0) {
 			SYSERROR("Failed to remove capability %d", i);
 			return -1;

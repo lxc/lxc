@@ -198,7 +198,8 @@ int lxc_ambient_caps_up(void)
 	}
 
 	for (cap = 0; cap <= last_cap; cap++) {
-		ret = prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, cap, 0, 0);
+		ret = prctl(PR_CAP_AMBIENT, prctl_arg(PR_CAP_AMBIENT_RAISE),
+			    prctl_arg(cap), prctl_arg(0), prctl_arg(0));
 		if (ret < 0) {
 			SYSWARN("Failed to raise ambient capability %d", cap);
 			goto out;
@@ -230,7 +231,8 @@ int lxc_ambient_caps_down(void)
 	if (!getuid())
 		return 0;
 
-	ret = prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0);
+	ret = prctl(PR_CAP_AMBIENT, prctl_arg(PR_CAP_AMBIENT_CLEAR_ALL),
+		    prctl_arg(0), prctl_arg(0), prctl_arg(0));
 	if (ret < 0) {
 		SYSERROR("Failed to clear ambient capability set");
 		return -1;
@@ -276,7 +278,7 @@ int lxc_caps_init(void)
 
 		INFO("Command is run as setuid root (uid: %d)", uid);
 
-		ret = prctl(PR_SET_KEEPCAPS, 1);
+		ret = prctl(PR_SET_KEEPCAPS, prctl_arg(1));
 		if (ret < 0) {
 			SYSERROR("Failed to set PR_SET_KEEPCAPS");
 			return -1;
@@ -341,7 +343,7 @@ static int _real_caps_last_cap(void)
 		/* Try to get it manually by trying to get the status of each
 		 * capability individually from the kernel.
 		 */
-		while (prctl(PR_CAPBSET_READ, cap) >= 0)
+		while (prctl(PR_CAPBSET_READ, prctl_arg(cap)) >= 0)
 			cap++;
 
 		result = cap - 1;

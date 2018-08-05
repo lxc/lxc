@@ -209,7 +209,8 @@ static int do_attach_nbd(void *d)
 		exit(1);
 	}
 
-	if (prctl(PR_SET_PDEATHSIG, SIGHUP, 0, 0, 0) < 0)
+	if (prctl(PR_SET_PDEATHSIG, prctl_arg(SIGHUP), prctl_arg(0),
+		  prctl_arg(0), prctl_arg(0)) < 0)
 		SYSERROR("Error setting parent death signal for nbd watcher");
 
 	pid = fork();
