@@ -1140,7 +1140,8 @@ static int do_start(void *data)
 		if (ret < 0 && (handler->am_root || errno != EPERM))
 			goto out_warn_father;
 
-		ret = prctl(PR_SET_DUMPABLE, 1, 0, 0, 0);
+		ret = prctl(PR_SET_DUMPABLE, prctl_arg(1), prctl_arg(0),
+			    prctl_arg(0), prctl_arg(0));
 		if (ret < 0)
 			goto out_warn_father;
 
@@ -1243,7 +1244,8 @@ static int do_start(void *data)
 	 * before we aren't allowed anymore.
 	 */
 	if (handler->conf->no_new_privs) {
-		ret = prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
+		ret = prctl(PR_SET_NO_NEW_PRIVS, prctl_arg(1), prctl_arg(0),
+			    prctl_arg(0), prctl_arg(0));
 		if (ret < 0) {
 			SYSERROR("Could not set PR_SET_NO_NEW_PRIVS to block "
 				 "execve() gainable privileges");

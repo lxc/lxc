@@ -136,4 +136,6 @@ extern int __build_bug_on_failed;
 	     (__iterator = __it);                                               \
 	     __iterator = __it = strtok_r(NULL, __separators, &__p))
 
+#define prctl_arg(x) ((unsigned long)x)
+
 #endif /* __LXC_MACRO_H */

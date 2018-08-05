@@ -318,7 +318,8 @@ static int lxc_attach_drop_privs(struct lxc_proc_context_info *ctx)
 		if (ctx->capability_mask & (1LL << cap))
 			continue;
 
-		if (prctl(PR_CAPBSET_DROP, cap, 0, 0, 0)) {
+		if (prctl(PR_CAPBSET_DROP, prctl_arg(cap), prctl_arg(0),
+			  prctl_arg(0), prctl_arg(0))) {
 			SYSERROR("Failed to drop capability %d", cap);
 			return -1;
 		}
@@ -898,7 +899,8 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	if ((init_ctx->container && init_ctx->container->lxc_conf &&
 	     init_ctx->container->lxc_conf->no_new_privs) ||
 	    (options->attach_flags & LXC_ATTACH_NO_NEW_PRIVS)) {
-		ret = prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
+		ret = prctl(PR_SET_NO_NEW_PRIVS, prctl_arg(1), prctl_arg(0),
+			    prctl_arg(0), prctl_arg(0));
 		if (ret < 0)
 			goto on_error;
 

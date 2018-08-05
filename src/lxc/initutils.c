@@ -26,6 +26,7 @@
 
 #include "initutils.h"
 #include "log.h"
+#include "macro.h"
 
 #ifndef HAVE_STRLCPY
 #include "include/strlcpy.h"
@@ -361,7 +362,8 @@ int setproctitle(char *title)
 		.exe_fd = -1,
 	};
 
-	ret = prctl(PR_SET_MM, PR_SET_MM_MAP, (long) &prctl_map, sizeof(prctl_map), 0);
+	ret = prctl(PR_SET_MM, prctl_arg(PR_SET_MM_MAP), prctl_arg(&prctl_map),
+		    prctl_arg(sizeof(prctl_map)), prctl_arg(0));
 	if (ret == 0)
 		(void)strlcpy((char*)arg_start, title, len);
 	else
