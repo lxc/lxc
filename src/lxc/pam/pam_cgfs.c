@@ -1772,8 +1772,10 @@ static bool cg_filter_and_set_cpus(char *path, bool am_initialized)
 		pam_cgfs_debug("Invalid path: %s.\n", path);
 		return bret;
 	}
+
 	oldv = *lastslash;
 	*lastslash = '\0';
+
 	fpath = must_make_path(path, "cpuset.cpus", NULL);
 	posscpus = read_file(fpath);
 	if (!posscpus) {
@@ -1790,6 +1792,7 @@ static bool cg_filter_and_set_cpus(char *path, bool am_initialized)
 		/* This system doesn't expose isolated cpus. */
 		pam_cgfs_debug("%s", "Path: "__ISOL_CPUS" to read isolated cpus from does not exist.\n");
 		cpulist = posscpus;
+
 		/* No isolated cpus but we weren't already initialized by
 		 * someone. We should simply copy the parents cpuset.cpus
 		 * values.
@@ -1798,6 +1801,7 @@ static bool cg_filter_and_set_cpus(char *path, bool am_initialized)
 			pam_cgfs_debug("%s", "Copying cpuset of parent cgroup.\n");
 			goto copy_parent;
 		}
+
 		/* No isolated cpus but we were already initialized by someone.
 		 * Nothing more to do for us.
 		 */
@@ -1809,9 +1813,11 @@ static bool cg_filter_and_set_cpus(char *path, bool am_initialized)
 		pam_cgfs_debug("%s", "Could not read file "__ISOL_CPUS"\n");
 		goto on_error;
 	}
+
 	if (!isdigit(isolcpus[0])) {
 		pam_cgfs_debug("%s", "No isolated cpus detected.\n");
 		cpulist = posscpus;
+
 		/* No isolated cpus but we weren't already initialized by
 		 * someone. We should simply copy the parents cpuset.cpus
 		 * values.
@@ -1820,6 +1826,7 @@ static bool cg_filter_and_set_cpus(char *path, bool am_initialized)
 			pam_cgfs_debug("%s", "Copying cpuset of parent cgroup.\n");
 			goto copy_parent;
 		}
+
 		/* No isolated cpus but we were already initialized by someone.
 		 * Nothing more to do for us.
 		 */
@@ -1868,6 +1875,10 @@ static bool cg_filter_and_set_cpus(char *path, bool am_initialized)
 
 copy_parent:
 	*lastslash = oldv;
+
+	if (fpath)
+		free(fpath);
+
 	fpath = must_make_path(path, "cpuset.cpus", NULL);
 	ret = write_to_file(fpath, cpulist, strlen(cpulist), false);
 	if (ret < 0) {
