@@ -275,7 +275,7 @@ static bool mkdir_parent(const char *root, char *path)
 			goto next;
 
 		if (do_mkdir(path, 0755) < 0) {
-			pam_cgfs_debug("Failed to create %s: %s.\n", path, strerror(errno));
+			pam_cgfs_debug("Failed to create %s: %s\n", path, strerror(errno));
 			return false;
 		}
 
@@ -356,9 +356,8 @@ static int append_null_to_list(void ***list)
 	int newentry = 0;
 
 	if (*list)
-		for (; (*list)[newentry]; newentry++) {
+		for (; (*list)[newentry]; newentry++)
 			;
-		}
 
 	*list = must_realloc(*list, (newentry + 2) * sizeof(void **));
 	(*list)[newentry + 1] = NULL;
@@ -541,7 +540,7 @@ static int recursive_rmdir(char *dirname)
 
 		if (lstat(pathname, &st)) {
 			if (!r)
-				pam_cgfs_debug("Failed to stat %s.\n", pathname);
+				pam_cgfs_debug("Failed to stat %s\n", pathname);
 			r = -1;
 			goto next;
 		}
@@ -551,19 +550,20 @@ static int recursive_rmdir(char *dirname)
 
 		if (recursive_rmdir(pathname) < 0)
 			r = -1;
+
 next:
 		free(pathname);
 	}
 
 	if (rmdir(dirname) < 0) {
 		if (!r)
-			pam_cgfs_debug("Failed to delete %s: %s.\n", dirname, strerror(errno));
+			pam_cgfs_debug("Failed to delete %s: %s\n", dirname, strerror(errno));
 		r = -1;
 	}
 
 	if (closedir(dir) < 0) {
 		if (!r)
-			pam_cgfs_debug("Failed to delete %s: %s.\n", dirname, strerror(errno));
+			pam_cgfs_debug("Failed to delete %s: %s\n", dirname, strerror(errno));
 		r = -1;
 	}
 
@@ -730,6 +730,7 @@ static bool cgv1_controller_list_is_dup(struct cgv1_hierarchy **hlist, char **cl
 		if ((*it)->controllers)
 			if (cgv1_controller_lists_intersect((*it)->controllers, clist))
 				return true;
+
 	return false;
 
 }
@@ -744,7 +745,7 @@ static void cgv1_mark_to_make_rw(char **clist)
 	for (it = cgv1_hierarchies; it && *it; it++)
 		if ((*it)->controllers)
 			if (cgv1_controller_lists_intersect((*it)->controllers, clist) ||
-				string_in_list(clist, "all"))
+			    string_in_list(clist, "all"))
 				(*it)->create_rw_cgroup = true;
 }
 
@@ -864,6 +865,7 @@ static bool cgv1_controller_in_clist(char *cgline, char *c)
 		if (strcmp(tok, c) == 0)
 			return true;
 	}
+
 	return false;
 }
 
@@ -935,6 +937,7 @@ static void cgv1_add_controller(char **clist, char *mountpoint, char *base_cgrou
 	int newentry;
 
 	new = must_alloc(sizeof(*new));
+
 	new->controllers = clist;
 	new->mountpoint = mountpoint;
 	new->base_cgroup = base_cgroup;
@@ -961,6 +964,7 @@ static void cgv2_add_controller(char **clist, char *mountpoint, char *base_cgrou
 	int newentry;
 
 	new = must_alloc(sizeof(*new));
+
 	new->controllers = clist;
 	new->mountpoint = mountpoint;
 	new->base_cgroup = base_cgroup;
@@ -1002,6 +1006,7 @@ static bool cg_systemd_under_user_slice_1(const char *in, uid_t uid)
 		p--;
 	if (p < copy)
 		goto cleanup;
+
 	/* make sure it is something.session */
 	len = strlen(p + 1);
 	if (len < strlen("1.session") ||
@@ -1012,6 +1017,7 @@ static bool cg_systemd_under_user_slice_1(const char *in, uid_t uid)
 	*(p + 1) = '\0';
 	while (p >= copy && *(--p) != '/')
 		;
+
 	if (sscanf(p + 1, "%d.user/", &id) != 1)
 		goto cleanup;
 
@@ -1121,6 +1127,7 @@ static bool cg_systemd_created_user_slice(const char *base_cgroup,
 
 succeed:
 	bret = true;
+
 cleanup:
 	free(copy);
 	return bret;
@@ -1142,9 +1149,9 @@ static bool cg_systemd_chown_existing_cgroup(const char *mountpoint,
 	 * need to chown it.
 	 */
 	if (chown(path, uid, gid) < 0)
-		mysyslog(LOG_WARNING, "Failed to chown %s to %d:%d: %s.\n",
-			 path, (int)uid, (int)gid, strerror(errno), NULL);
-	pam_cgfs_debug("Chowned %s to %d:%d.\n", path, (int)uid, (int)gid);
+		mysyslog(LOG_WARNING, "Failed to chown %s to %d:%d: %s\n",
+		         path, (int)uid, (int)gid, strerror(errno), NULL);
+	pam_cgfs_debug("Chowned %s to %d:%d\n", path, (int)uid, (int)gid);
 
 	free(path);
 	return true;
@@ -1236,8 +1243,9 @@ static bool cgv1_init(uid_t uid, gid_t gid)
 			cg_systemd_prune_init_scope(init_cgroup);
 			(*it)->init_cgroup = init_cgroup;
 			pam_cgfs_debug("cgroupfs v1 controller \"%s\" has init "
-				       "cgroup \"%s\".\n",
-				       (*(*it)->controllers), init_cgroup);
+			               "cgroup \"%s\"\n",
+			               (*(*it)->controllers), init_cgroup);
+
 			/* Check whether systemd has already created a cgroup
 			 * for us.
 			 */
@@ -1385,16 +1393,16 @@ static bool cg_init(uid_t uid, gid_t gid)
 
 	if (cgv1_hierarchies && cgv2_hierarchies) {
 		cg_mount_mode = CGROUP_MIXED;
-		pam_cgfs_debug("%s\n", "Detected cgroupfs v1 and v2 hierarchies.");
+		pam_cgfs_debug("%s\n", "Detected cgroupfs v1 and v2 hierarchies");
 	} else if (cgv1_hierarchies && !cgv2_hierarchies) {
 		cg_mount_mode = CGROUP_PURE_V1;
-		pam_cgfs_debug("%s\n", "Detected cgroupfs v1 hierarchies.");
+		pam_cgfs_debug("%s\n", "Detected cgroupfs v1 hierarchies");
 	} else if (cgv2_hierarchies && !cgv1_hierarchies) {
 		cg_mount_mode = CGROUP_PURE_V2;
-		pam_cgfs_debug("%s\n", "Detected cgroupfs v2 hierarchies.");
+		pam_cgfs_debug("%s\n", "Detected cgroupfs v2 hierarchies");
 	} else {
 		cg_mount_mode = CGROUP_UNKNOWN;
-		mysyslog(LOG_ERR, "Could not detect cgroupfs hierarchy.\n", NULL);
+		mysyslog(LOG_ERR, "Could not detect cgroupfs hierarchy\n", NULL);
 	}
 
 	if (cg_mount_mode == CGROUP_UNKNOWN)
@@ -1441,15 +1449,18 @@ static bool cgv1_enter(const char *cgroup)
 						      "/tasks",
 						      NULL);
 			}
-			pam_cgfs_debug("Attempting to enter cgroupfs v1 hierarchy in \"%s\" cgroup.\n", path);
+
+			pam_cgfs_debug("Attempting to enter cgroupfs v1 hierarchy in \"%s\" cgroup\n", path);
 			entered = write_int(path, (int)getpid());
 			if (entered) {
 				free(path);
 				break;
 			}
-			pam_cgfs_debug("Failed to enter cgroupfs v1 hierarchy in \"%s\" cgroup.\n", path);
+
+			pam_cgfs_debug("Failed to enter cgroupfs v1 hierarchy in \"%s\" cgroup\n", path);
 			free(path);
 		}
+
 		if (!entered)
 			return false;
 	}
@@ -1476,10 +1487,11 @@ static bool cgv2_enter(const char *cgroup)
 		return true;
 
 	path = must_make_path(v2->mountpoint, v2->base_cgroup, cgroup, "/cgroup.procs", NULL);
-	pam_cgfs_debug("Attempting to enter cgroupfs v2 hierarchy in cgroup \"%s\".\n", path);
+	pam_cgfs_debug("Attempting to enter cgroupfs v2 hierarchy in cgroup \"%s\"\n", path);
+
 	entered = write_int(path, (int)getpid());
 	if (!entered) {
-		pam_cgfs_debug("Failed to enter cgroupfs v2 hierarchy in cgroup \"%s\".\n", path);
+		pam_cgfs_debug("Failed to enter cgroupfs v2 hierarchy in cgroup \"%s\"\n", path);
 		free(path);
 		return false;
 	}
@@ -1493,12 +1505,12 @@ static bool cgv2_enter(const char *cgroup)
 static bool cg_enter(const char *cgroup)
 {
 	if (!cgv1_enter(cgroup)) {
-		mysyslog(LOG_WARNING, "cgroupfs v1: Failed to enter cgroups.\n", NULL);
+		mysyslog(LOG_WARNING, "cgroupfs v1: Failed to enter cgroups\n", NULL);
 		return false;
 	}
 
 	if (!cgv2_enter(cgroup)) {
-		mysyslog(LOG_WARNING, "cgroupfs v2: Failed to enter cgroups.\n", NULL);
+		mysyslog(LOG_WARNING, "cgroupfs v2: Failed to enter cgroups\n", NULL);
 		return false;
 	}
 
@@ -1517,17 +1529,17 @@ static void cgv1_escape(void)
 	 */
 	for (it = cgv1_hierarchies; it && *it; it++)
 		if (!cgv1_handle_root_cpuset_hierarchy(*it))
-			mysyslog(LOG_WARNING, "cgroupfs v1: Failed to initialize cpuset.\n", NULL);
+			mysyslog(LOG_WARNING, "cgroupfs v1: Failed to initialize cpuset\n", NULL);
 
 	if (!cgv1_enter("/"))
-		mysyslog(LOG_WARNING, "cgroupfs v1: Failed to escape to init's cgroup.\n", NULL);
+		mysyslog(LOG_WARNING, "cgroupfs v1: Failed to escape to init's cgroup\n", NULL);
 }
 
 /* Escape to root cgroup in the cgroupfs v2 hierarchy. */
 static void cgv2_escape(void)
 {
 	if (!cgv2_enter("/"))
-		mysyslog(LOG_WARNING, "cgroupfs v2: Failed to escape to init's cgroup.\n", NULL);
+		mysyslog(LOG_WARNING, "cgroupfs v2: Failed to escape to init's cgroup\n", NULL);
 }
 
 /* Wrapper around cgv{1,2}_escape(). */
@@ -1654,6 +1666,7 @@ static char *string_join(const char *sep, const char **parts, bool use_as_prefix
 	for (p = (char **)parts; *p; p++) {
 		if (p > (char **)parts)
 			(void)strlcat(result, sep, buf_len * sizeof(char));
+
 		(void)strlcat(result, *p, buf_len * sizeof(char));
 	}
 
@@ -1777,7 +1790,7 @@ static bool cg_filter_and_set_cpus(char *path, bool am_initialized)
 
 	lastslash = strrchr(path, '/');
 	if (!lastslash) { // bug...  this shouldn't be possible
-		pam_cgfs_debug("Invalid path: %s.\n", path);
+		pam_cgfs_debug("Invalid path: %s\n", path);
 		return bret;
 	}
 
@@ -1787,7 +1800,7 @@ static bool cg_filter_and_set_cpus(char *path, bool am_initialized)
 	fpath = must_make_path(path, "cpuset.cpus", NULL);
 	posscpus = read_file(fpath);
 	if (!posscpus) {
-		pam_cgfs_debug("Could not read file: %s.\n", fpath);
+		pam_cgfs_debug("Could not read file: %s\n", fpath);
 		goto on_error;
 	}
 
@@ -1798,7 +1811,7 @@ static bool cg_filter_and_set_cpus(char *path, bool am_initialized)
 
 	if (!file_exists(__ISOL_CPUS)) {
 		/* This system doesn't expose isolated cpus. */
-		pam_cgfs_debug("%s", "Path: "__ISOL_CPUS" to read isolated cpus from does not exist.\n");
+		pam_cgfs_debug("%s", "Path: "__ISOL_CPUS" to read isolated cpus from does not exist\n");
 		cpulist = posscpus;
 
 		/* No isolated cpus but we weren't already initialized by
@@ -1806,7 +1819,7 @@ static bool cg_filter_and_set_cpus(char *path, bool am_initialized)
 		 * values.
 		 */
 		if (!am_initialized) {
-			pam_cgfs_debug("%s", "Copying cpuset of parent cgroup.\n");
+			pam_cgfs_debug("%s", "Copying cpuset of parent cgroup\n");
 			goto copy_parent;
 		}
 
@@ -1823,7 +1836,7 @@ static bool cg_filter_and_set_cpus(char *path, bool am_initialized)
 	}
 
 	if (!isdigit(isolcpus[0])) {
-		pam_cgfs_debug("%s", "No isolated cpus detected.\n");
+		pam_cgfs_debug("%s", "No isolated cpus detected\n");
 		cpulist = posscpus;
 
 		/* No isolated cpus but we weren't already initialized by
@@ -1831,7 +1844,7 @@ static bool cg_filter_and_set_cpus(char *path, bool am_initialized)
 		 * values.
 		 */
 		if (!am_initialized) {
-			pam_cgfs_debug("%s", "Copying cpuset of parent cgroup.\n");
+			pam_cgfs_debug("%s", "Copying cpuset of parent cgroup\n");
 			goto copy_parent;
 		}
 
@@ -1852,13 +1865,13 @@ static bool cg_filter_and_set_cpus(char *path, bool am_initialized)
 
 	possmask = cg_cpumask(posscpus, maxposs);
 	if (!possmask) {
-		pam_cgfs_debug("%s", "Could not create cpumask for all possible cpus.\n");
+		pam_cgfs_debug("%s", "Could not create cpumask for all possible cpus\n");
 		goto on_error;
 	}
 
 	isolmask = cg_cpumask(isolcpus, maxposs);
 	if (!isolmask) {
-		pam_cgfs_debug("%s", "Could not create cpumask for all isolated cpus.\n");
+		pam_cgfs_debug("%s", "Could not create cpumask for all isolated cpus\n");
 		goto on_error;
 	}
 
@@ -1870,14 +1883,14 @@ static bool cg_filter_and_set_cpus(char *path, bool am_initialized)
 	}
 
 	if (!flipped_bit) {
-		pam_cgfs_debug("%s", "No isolated cpus present in cpuset.\n");
+		pam_cgfs_debug("%s", "No isolated cpus present in cpuset\n");
 		goto on_success;
 	}
-	pam_cgfs_debug("%s", "Removed isolated cpus from cpuset.\n");
+	pam_cgfs_debug("%s", "Removed isolated cpus from cpuset\n");
 
 	cpulist = cg_cpumask_to_cpulist(possmask, maxposs);
 	if (!cpulist) {
-		pam_cgfs_debug("%s", "Could not create cpu list.\n");
+		pam_cgfs_debug("%s", "Could not create cpu list\n");
 		goto on_error;
 	}
 
@@ -1890,7 +1903,7 @@ copy_parent:
 	fpath = must_make_path(path, "cpuset.cpus", NULL);
 	ret = write_to_file(fpath, cpulist, strlen(cpulist), false);
 	if (ret < 0) {
-		pam_cgfs_debug("Could not write cpu list to: %s.\n", fpath);
+		pam_cgfs_debug("Could not write cpu list to: %s\n", fpath);
 		goto on_error;
 	}
 
@@ -1923,6 +1936,7 @@ int read_from_file(const char *filename, void* buf, size_t count)
 	if (!buf || !count) {
 		char buf2[100];
 		size_t count2 = 0;
+
 		while ((ret = read(fd, buf2, 100)) > 0)
 			count2 += ret;
 		if (ret >= 0)
@@ -1953,21 +1967,27 @@ static bool cg_copy_parent_file(char *path, char *file)
 		pam_cgfs_debug("cgfsng:copy_parent_file: bad path %s", path);
 		return false;
 	}
+
 	oldv = *lastslash;
 	*lastslash = '\0';
+
 	fpath = must_make_path(path, file, NULL);
 	len = read_from_file(fpath, NULL, 0);
 	if (len <= 0)
 		goto bad;
+
 	value = must_alloc(len + 1);
 	if (read_from_file(fpath, value, len) != len)
 		goto bad;
 	free(fpath);
+
 	*lastslash = oldv;
+
 	fpath = must_make_path(path, file, NULL);
 	ret = write_to_file(fpath, value, len, false);
 	if (ret < 0)
 		pam_cgfs_debug("Unable to write %s to %s", value, fpath);
+
 	free(fpath);
 	free(value);
 	return ret >= 0;
@@ -2010,6 +2030,7 @@ static bool cgv1_handle_root_cpuset_hierarchy(struct cgv1_hierarchy *h)
 		free(clonechildrenpath);
 		return false;
 	}
+
 	free(clonechildrenpath);
 	return true;
 }
@@ -2037,17 +2058,20 @@ static bool cgv1_handle_cpuset_hierarchy(struct cgv1_hierarchy *h,
 	cgpath = must_make_path(h->mountpoint, h->base_cgroup, cgroup, NULL);
 	if (slash)
 		*slash = '/';
+
 	if (do_mkdir(cgpath, 0755) < 0 && errno != EEXIST) {
 		pam_cgfs_debug("Failed to create '%s'", cgpath);
 		free(cgpath);
 		return false;
 	}
+
 	clonechildrenpath = must_make_path(cgpath, "cgroup.clone_children", NULL);
 	if (!file_exists(clonechildrenpath)) { /* unified hierarchy doesn't have clone_children */
 		free(clonechildrenpath);
 		free(cgpath);
 		return true;
 	}
+
 	if (read_from_file(clonechildrenpath, &v, 1) < 0) {
 		pam_cgfs_debug("Failed to read '%s'", clonechildrenpath);
 		free(clonechildrenpath);
@@ -2057,14 +2081,14 @@ static bool cgv1_handle_cpuset_hierarchy(struct cgv1_hierarchy *h,
 
 	/* Make sure any isolated cpus are removed from cpuset.cpus. */
 	if (!cg_filter_and_set_cpus(cgpath, v == '1')) {
-		pam_cgfs_debug("%s", "Failed to remove isolated cpus.\n");
+		pam_cgfs_debug("%s", "Failed to remove isolated cpus\n");
 		free(clonechildrenpath);
 		free(cgpath);
 		return false;
 	}
 
 	if (v == '1') {  /* already set for us by someone else */
-		pam_cgfs_debug("%s", "\"cgroup.clone_children\" was already set to \"1\".\n");
+		pam_cgfs_debug("%s", "\"cgroup.clone_children\" was already set to \"1\"\n");
 		free(clonechildrenpath);
 		free(cgpath);
 		return true;
@@ -2072,7 +2096,7 @@ static bool cgv1_handle_cpuset_hierarchy(struct cgv1_hierarchy *h,
 
 	/* copy parent's settings */
 	if (!cg_copy_parent_file(cgpath, "cpuset.mems")) {
-		pam_cgfs_debug("%s", "Failed to copy \"cpuset.mems\" settings.\n");
+		pam_cgfs_debug("%s", "Failed to copy \"cpuset.mems\" settings\n");
 		free(cgpath);
 		free(clonechildrenpath);
 		return false;
@@ -2105,6 +2129,7 @@ static bool cgv1_create_one(struct cgv1_hierarchy *h, const char *cgroup, uid_t 
 
 	*existed = false;
 	it = h;
+
 	for (controller = it->controllers; controller && *controller;
 	     controller++) {
 		if (!cgv1_handle_cpuset_hierarchy(it, cgroup))
@@ -2115,9 +2140,8 @@ static bool cgv1_create_one(struct cgv1_hierarchy *h, const char *cgroup, uid_t 
 		 */
 		if (cg_systemd_chown_existing_cgroup(it->mountpoint,
 						     it->base_cgroup, uid, gid,
-						     it->systemd_user_slice)) {
+						     it->systemd_user_slice))
 			return true;
-		}
 
 		/* We need to make sure that we do not create an endless chain
 		 * of sub-cgroups. So we check if we have already logged in
@@ -2139,27 +2163,34 @@ static bool cgv1_create_one(struct cgv1_hierarchy *h, const char *cgroup, uid_t 
 		}
 
 		path = must_make_path(it->mountpoint, it->init_cgroup, cgroup, NULL);
-		pam_cgfs_debug("Constructing path: %s.\n", path);
+		pam_cgfs_debug("Constructing path: %s\n", path);
+
 		if (file_exists(path)) {
 			bool our_cg = cg_belongs_to_uid_gid(path, uid, gid);
-			pam_cgfs_debug("%s existed and does %shave our uid: %d and gid: %d.\n", path, our_cg ? "" : "not ", uid, gid);
-			free(path);
 			if (our_cg)
 				*existed = false;
 			else
 				*existed = true;
+
+			pam_cgfs_debug("%s existed and does %shave our uid: %d and gid: %d\n",
+			               path, our_cg ? "" : "not ", uid, gid);
+			free(path);
+
 			return our_cg;
 		}
+
 		created = mkdir_parent(it->mountpoint, path);
 		if (!created) {
 			free(path);
 			continue;
 		}
+
 		if (chown(path, uid, gid) < 0)
 			mysyslog(LOG_WARNING,
-				 "Failed to chown %s to %d:%d: %s.\n", path,
-				 (int)uid, (int)gid, strerror(errno), NULL);
-		pam_cgfs_debug("Chowned %s to %d:%d.\n", path, (int)uid, (int)gid);
+			         "Failed to chown %s to %d:%d: %s\n", path,
+			         (int)uid, (int)gid, strerror(errno), NULL);
+
+		pam_cgfs_debug("Chowned %s to %d:%d\n", path, (int)uid, (int)gid);
 		free(path);
 		break;
 	}
@@ -2288,12 +2319,12 @@ static bool cgv2_create(const char *cgroup, uid_t uid, gid_t gid, bool *existed)
 	}
 
 	path = must_make_path(v2->mountpoint, v2->base_cgroup, cgroup, NULL);
-	pam_cgfs_debug("Constructing path \"%s\".\n", path);
+	pam_cgfs_debug("Constructing path \"%s\"\n", path);
+
 	if (file_exists(path)) {
 		our_cg = cg_belongs_to_uid_gid(path, uid, gid);
-		pam_cgfs_debug(
-		    "%s existed and does %shave our uid: %d and gid: %d.\n",
-		    path, our_cg ? "" : "not ", uid, gid);
+		pam_cgfs_debug("%s existed and does %shave our uid: %d and gid: %d\n",
+		               path, our_cg ? "" : "not ", uid, gid);
 		free(path);
 		if (our_cg) {
 			*existed = false;
@@ -2312,10 +2343,10 @@ static bool cgv2_create(const char *cgroup, uid_t uid, gid_t gid, bool *existed)
 
 	/* chown cgroup to user */
 	if (chown(path, uid, gid) < 0)
-		mysyslog(LOG_WARNING, "Failed to chown %s to %d:%d: %s.\n",
-			 path, (int)uid, (int)gid, strerror(errno), NULL);
+		mysyslog(LOG_WARNING, "Failed to chown %s to %d:%d: %s\n",
+		         path, (int)uid, (int)gid, strerror(errno), NULL);
 	else
-		pam_cgfs_debug("Chowned %s to %d:%d.\n", path, (int)uid, (int)gid);
+		pam_cgfs_debug("Chowned %s to %d:%d\n", path, (int)uid, (int)gid);
 	free(path);
 
 delegate_files:
@@ -2326,12 +2357,13 @@ delegate_files:
 	else
 		path = must_make_path(v2->mountpoint, v2->base_cgroup, cgroup,
 				      "/cgroup.procs", NULL);
+
 	ret = chown(path, uid, gid);
 	if (ret < 0)
-		mysyslog(LOG_WARNING, "Failed to chown %s to %d:%d: %s.\n",
-			 path, (int)uid, (int)gid, strerror(errno), NULL);
+		mysyslog(LOG_WARNING, "Failed to chown %s to %d:%d: %s\n",
+		         path, (int)uid, (int)gid, strerror(errno), NULL);
 	else
-		pam_cgfs_debug("Chowned %s to %d:%d.\n", path, (int)uid, (int)gid);
+		pam_cgfs_debug("Chowned %s to %d:%d\n", path, (int)uid, (int)gid);
 	free(path);
 
 	/* chown cgroup.subtree_control to user */
@@ -2341,9 +2373,10 @@ delegate_files:
 	else
 		path = must_make_path(v2->mountpoint, v2->base_cgroup, cgroup,
 				      "/cgroup.subtree_control", NULL);
+
 	ret = chown(path, uid, gid);
 	if (ret < 0)
-		mysyslog(LOG_WARNING, "Failed to chown %s to %d:%d: %s.\n",
+		mysyslog(LOG_WARNING, "Failed to chown %s to %d:%d: %s\n",
 			 path, (int)uid, (int)gid, strerror(errno), NULL);
 	free(path);
 
@@ -2356,7 +2389,7 @@ delegate_files:
 				      "/cgroup.threads", NULL);
 	ret = chown(path, uid, gid);
 	if (ret < 0 && errno != ENOENT)
-		mysyslog(LOG_WARNING, "Failed to chown %s to %d:%d: %s.\n",
+		mysyslog(LOG_WARNING, "Failed to chown %s to %d:%d: %s\n",
 			 path, (int)uid, (int)gid, strerror(errno), NULL);
 	free(path);
 
@@ -2377,7 +2410,7 @@ static int handle_login(const char *user, uid_t uid, gid_t gid)
 	while (idx >= 0) {
 		ret = snprintf(cg, MAXPATHLEN, "/user/%s/%d", user, idx);
 		if (ret < 0 || ret >= MAXPATHLEN) {
-			mysyslog(LOG_ERR, "Username too long.\n", NULL);
+			mysyslog(LOG_ERR, "Username too long\n", NULL);
 			return PAM_SESSION_ERR;
 		}
 
@@ -2388,7 +2421,8 @@ static int handle_login(const char *user, uid_t uid, gid_t gid)
 				idx++;
 				continue;
 			}
-			mysyslog(LOG_ERR, "Failed to create a cgroup for user %s.\n", user, NULL);
+
+			mysyslog(LOG_ERR, "Failed to create a cgroup for user %s\n", user, NULL);
 			return PAM_SESSION_ERR;
 		}
 
@@ -2399,14 +2433,16 @@ static int handle_login(const char *user, uid_t uid, gid_t gid)
 				idx++;
 				continue;
 			}
-			mysyslog(LOG_ERR, "Failed to create a cgroup for user %s.\n", user, NULL);
+
+			mysyslog(LOG_ERR, "Failed to create a cgroup for user %s\n", user, NULL);
 			return PAM_SESSION_ERR;
 		}
 
 		if (!cg_enter(cg)) {
-			mysyslog( LOG_ERR, "Failed to enter user cgroup %s for user %s.\n", cg, user, NULL);
+			mysyslog( LOG_ERR, "Failed to enter user cgroup %s for user %s\n", cg, user, NULL);
 			return PAM_SESSION_ERR;
 		}
+
 		break;
 	}
 
@@ -2436,7 +2472,8 @@ static bool cgv1_prune_empty_cgroups(const char *user)
 			bool path_base_rm, path_init_rm;
 
 			path_base = must_make_path((*it)->mountpoint, (*it)->base_cgroup, "/user", user, NULL);
-			pam_cgfs_debug("cgroupfs v1: Trying to prune \"%s\".\n", path_base);
+			pam_cgfs_debug("cgroupfs v1: Trying to prune \"%s\"\n", path_base);
+
 			ret = recursive_rmdir(path_base);
 			if (ret == -ENOENT || ret >= 0)
 				path_base_rm = true;
@@ -2445,7 +2482,8 @@ static bool cgv1_prune_empty_cgroups(const char *user)
 			free(path_base);
 
 			path_init = must_make_path((*it)->mountpoint, (*it)->init_cgroup, "/user", user, NULL);
-			pam_cgfs_debug("cgroupfs v1: Trying to prune \"%s\".\n", path_init);
+			pam_cgfs_debug("cgroupfs v1: Trying to prune \"%s\"\n", path_init);
+
 			ret = recursive_rmdir(path_init);
 			if (ret == -ENOENT || ret >= 0)
 				path_init_rm = true;
@@ -2461,6 +2499,7 @@ static bool cgv1_prune_empty_cgroups(const char *user)
 			controller_removed = true;
 			break;
 		}
+
 		if (!controller_removed)
 			all_removed = false;
 	}
@@ -2484,7 +2523,8 @@ static bool cgv2_prune_empty_cgroups(const char *user)
 	v2 = *cgv2_hierarchies;
 
 	path_base = must_make_path(v2->mountpoint, v2->base_cgroup, "/user", user, NULL);
-	pam_cgfs_debug("cgroupfs v2: Trying to prune \"%s\".\n", path_base);
+	pam_cgfs_debug("cgroupfs v2: Trying to prune \"%s\"\n", path_base);
+
 	ret = recursive_rmdir(path_base);
 	if (ret == -ENOENT || ret >= 0)
 		path_base_rm = true;
@@ -2493,7 +2533,8 @@ static bool cgv2_prune_empty_cgroups(const char *user)
 	free(path_base);
 
 	path_init = must_make_path(v2->mountpoint, v2->init_cgroup, "/user", user, NULL);
-	pam_cgfs_debug("cgroupfs v2: Trying to prune \"%s\".\n", path_init);
+	pam_cgfs_debug("cgroupfs v2: Trying to prune \"%s\"\n", path_init);
+
 	ret = recursive_rmdir(path_init);
 	if (ret == -ENOENT || ret >= 0)
 		path_init_rm = true;
@@ -2530,11 +2571,13 @@ static void cgv1_free_hierarchies(void)
 
 			free((*it)->controllers);
 		}
+
 		free((*it)->mountpoint);
 		free((*it)->base_cgroup);
 		free((*it)->fullcgpath);
 		free((*it)->init_cgroup);
 	}
+
 	free(cgv1_hierarchies);
 }
 
@@ -2549,16 +2592,19 @@ static void cgv2_free_hierarchies(void)
 	for (it = cgv2_hierarchies; it && *it; it++) {
 		if ((*it)->controllers) {
 			char **tmp;
+
 			for (tmp = (*it)->controllers; tmp && *tmp; tmp++)
 				free(*tmp);
 
 			free((*it)->controllers);
 		}
+
 		free((*it)->mountpoint);
 		free((*it)->base_cgroup);
 		free((*it)->fullcgpath);
 		free((*it)->init_cgroup);
 	}
+
 	free(cgv2_hierarchies);
 }
 
@@ -2584,7 +2630,7 @@ int pam_sm_open_session(pam_handle_t *pamh, int flags, int argc,
 	}
 
 	if (!get_uid_gid(PAM_user, &uid, &gid)) {
-		mysyslog(LOG_ERR, "Failed to get uid and gid for %s.\n", PAM_user, NULL);
+		mysyslog(LOG_ERR, "Failed to get uid and gid for %s\n", PAM_user, NULL);
 		return PAM_SESSION_ERR;
 	}
 
@@ -2609,7 +2655,7 @@ int pam_sm_open_session(pam_handle_t *pamh, int flags, int argc,
 		 * that simply doesn't make any sense.
 		 */
 		if (string_list_length(clist) > 1 && string_in_list(clist, "all")) {
-			mysyslog(LOG_ERR, "Invalid -c option, cannot specify individual controllers alongside 'all'.\n", NULL);
+			mysyslog(LOG_ERR, "Invalid -c option, cannot specify individual controllers alongside 'all'\n", NULL);
 			free_string_list(clist);
 			return PAM_SESSION_ERR;
 		}
@@ -2636,7 +2682,7 @@ int pam_sm_close_session(pam_handle_t *pamh, int flags, int argc,
 	}
 
 	if (!get_uid_gid(PAM_user, &uid, &gid)) {
-		mysyslog(LOG_ERR, "Failed to get uid and gid for %s.\n", PAM_user, NULL);
+		mysyslog(LOG_ERR, "Failed to get uid and gid for %s\n", PAM_user, NULL);
 		return PAM_SESSION_ERR;
 	}
 
@@ -2652,7 +2698,7 @@ int pam_sm_close_session(pam_handle_t *pamh, int flags, int argc,
 			 * that simply doesn't make any sense.
 			 */
 			if (string_list_length(clist) > 1 && string_in_list(clist, "all")) {
-				mysyslog(LOG_ERR, "Invalid -c option, cannot specify individual controllers alongside 'all'.\n", NULL);
+				mysyslog(LOG_ERR, "Invalid -c option, cannot specify individual controllers alongside 'all'\n", NULL);
 				free_string_list(clist);
 				return PAM_SESSION_ERR;
 			}
