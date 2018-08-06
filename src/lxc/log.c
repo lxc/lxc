@@ -127,13 +127,13 @@ static int log_append_syslog(const struct lxc_log_appender *appender,
 	}
 
 	syslog(lxc_log_priority_to_syslog(event->priority),
-		"%s%s %s - %s:%s:%d - %s" ,
-		log_container_name ? log_container_name : "",
-		log_container_name ? ":" : "",
-		event->category,
-		event->locinfo->file, event->locinfo->func,
-		event->locinfo->line,
-		msg);
+	       "%s%s %s - %s:%s:%d - %s" ,
+	       log_container_name ? log_container_name : "",
+	       log_container_name ? ":" : "",
+	       event->category,
+	       event->locinfo->file, event->locinfo->func,
+	       event->locinfo->line,
+	       msg);
 	free(msg);
 
 	return 0;
@@ -156,10 +156,10 @@ static int log_append_stderr(const struct lxc_log_appender *appender,
 #endif
 
 	fprintf(stderr, "%s: %s%s", log_prefix,
-		log_container_name ? log_container_name : "",
-		log_container_name ? ": " : "");
+	        log_container_name ? log_container_name : "",
+	        log_container_name ? ": " : "");
 	fprintf(stderr, "%s: %s: %d ", event->locinfo->file,
-		event->locinfo->func, event->locinfo->line);
+	        event->locinfo->func, event->locinfo->line);
 	vfprintf(stderr, event->fmt, *event->vap);
 	fprintf(stderr, "\n");
 
@@ -167,7 +167,7 @@ static int log_append_stderr(const struct lxc_log_appender *appender,
 }
 
 /*---------------------------------------------------------------------------*/
-int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespec *time)
+static int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespec *time)
 {
 	int64_t epoch_to_days, z, era, doe, yoe, year, doy, mp, day, month,
 	    d_in_s, hours, h_in_s, minutes, seconds;
@@ -315,16 +315,15 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 		return 0;
 
 	n = snprintf(buffer, sizeof(buffer),
-			"%s%s%s %s %-8s %s - %s:%s:%d - ",
-			log_prefix,
-			log_container_name ? " " : "",
-			log_container_name ? log_container_name : "",
-			date_time,
-			lxc_log_priority_to_string(event->priority),
-			event->category,
-			event->locinfo->file, event->locinfo->func,
-			event->locinfo->line);
-
+		     "%s%s%s %s %-8s %s - %s:%s:%d - ",
+		     log_prefix,
+		     log_container_name ? " " : "",
+		     log_container_name ? log_container_name : "",
+		     date_time,
+		     lxc_log_priority_to_string(event->priority),
+		     event->category,
+		     event->locinfo->file, event->locinfo->func,
+		     event->locinfo->line);
 	if (n < 0)
 		return n;
 
@@ -493,23 +492,6 @@ static char *build_log_path(const char *name, const char *lxcpath)
 	return p;
 }
 
-void lxc_log_close(void)
-{
-	closelog();
-
-	free(log_vmname);
-	log_vmname = NULL;
-
-	if (lxc_log_fd == -1)
-		return;
-
-	close(lxc_log_fd);
-	lxc_log_fd = -1;
-
-	free(log_fname);
-	log_fname = NULL;
-}
-
 /*
  * This can be called:
  *   1. when a program calls lxc_log_init with no logfile parameter (in which
@@ -565,39 +547,6 @@ static int _lxc_log_set_file(const char *name, const char *lxcpath, int create_d
 	ret = __lxc_log_set_file(logfile, create_dirs);
 	free(logfile);
 	return ret;
-}
-
-int lxc_log_syslog(int facility)
-{
-	struct lxc_log_appender *appender;
-
-	openlog(log_prefix, LOG_PID, facility);
-	if (!lxc_log_category_lxc.appender) {
-		lxc_log_category_lxc.appender = &log_appender_syslog;
-		return 0;
-	}
-
-	appender = lxc_log_category_lxc.appender;
-	/* Check if syslog was already added, to avoid creating a loop */
-	while (appender) {
-		if (appender == &log_appender_syslog) {
-			/* not an error: openlog re-opened the connection */
-			return 0;
-		}
-		appender = appender->next;
-	}
-
-	appender = lxc_log_category_lxc.appender;
-	while (appender->next != NULL)
-		appender = appender->next;
-	appender->next = &log_appender_syslog;
-
-	return 0;
-}
-
-inline void lxc_log_enable_syslog(void)
-{
-	syslog_enable = 1;
 }
 
 /*
@@ -673,6 +622,56 @@ int lxc_log_init(struct lxc_log *log)
 	}
 
 	return ret;
+}
+
+void lxc_log_close(void)
+{
+	closelog();
+
+	free(log_vmname);
+	log_vmname = NULL;
+
+	if (lxc_log_fd == -1)
+		return;
+
+	close(lxc_log_fd);
+	lxc_log_fd = -1;
+
+	free(log_fname);
+	log_fname = NULL;
+}
+
+int lxc_log_syslog(int facility)
+{
+	struct lxc_log_appender *appender;
+
+	openlog(log_prefix, LOG_PID, facility);
+	if (!lxc_log_category_lxc.appender) {
+		lxc_log_category_lxc.appender = &log_appender_syslog;
+		return 0;
+	}
+
+	appender = lxc_log_category_lxc.appender;
+	/* Check if syslog was already added, to avoid creating a loop */
+	while (appender) {
+		if (appender == &log_appender_syslog) {
+			/* not an error: openlog re-opened the connection */
+			return 0;
+		}
+		appender = appender->next;
+	}
+
+	appender = lxc_log_category_lxc.appender;
+	while (appender->next != NULL)
+		appender = appender->next;
+	appender->next = &log_appender_syslog;
+
+	return 0;
+}
+
+inline void lxc_log_enable_syslog(void)
+{
+	syslog_enable = 1;
 }
 
 /*

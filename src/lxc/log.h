@@ -431,14 +431,14 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 
 extern int lxc_log_fd;
 
-extern int lxc_log_set_file(int *fd, const char *fname);
 extern int lxc_log_syslog(int facility);
 extern void lxc_log_enable_syslog(void);
 extern int lxc_log_set_level(int *dest, int level);
-extern void lxc_log_set_prefix(const char *prefix);
-extern const char *lxc_log_get_file(void);
 extern int lxc_log_get_level(void);
 extern bool lxc_log_has_valid_level(void);
+extern int lxc_log_set_file(int *fd, const char *fname);
+extern const char *lxc_log_get_file(void);
+extern void lxc_log_set_prefix(const char *prefix);
 extern const char *lxc_log_get_prefix(void);
 extern void lxc_log_options_no_override();
 #endif
