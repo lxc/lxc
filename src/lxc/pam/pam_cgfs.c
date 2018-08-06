@@ -1295,6 +1295,7 @@ static bool cgv2_init(uid_t uid, gid_t gid)
 		 */
 		goto cleanup;
 	}
+
 	cg_systemd_prune_init_scope(init_cgroup);
 
 	/* Check if the v2 hierarchy is mounted at its standard location.
@@ -1329,6 +1330,7 @@ static bool cgv2_init(uid_t uid, gid_t gid)
 	while (getline(&line, &len, f) != -1) {
 		char *user_slice;
 		bool has_user_slice = false;
+
 		if (!is_cgv2(line))
 			continue;
 
@@ -1342,6 +1344,7 @@ static bool cgv2_init(uid_t uid, gid_t gid)
 		free(user_slice);
 
 		cgv2_add_controller(NULL, mountpoint, current_cgroup, init_cgroup, has_user_slice);
+
 		/* Although the unified hierarchy can be mounted multiple times,
 		 * each of those mountpoints will expose identical information.
 		 * So let the first mountpoint we find, win.
@@ -1359,8 +1362,10 @@ cleanup:
 		fclose(f);
 	free(line);
 
-	if (!ret)
+	if (!ret) {
+		free(init_cgroup);
 		free(current_cgroup);
+	}
 
 	return ret;
 }
