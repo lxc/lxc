@@ -776,8 +776,10 @@ static char *cgv1_must_prefix_named(char *entry)
 	s = must_alloc(len + 6);
 
 	ret = snprintf(s, len + 6, "name=%s", entry);
-	if (ret < 0 || (size_t)ret >= (len + 6))
+	if (ret < 0 || (size_t)ret >= (len + 6)) {
+		free(s);
 		return NULL;
+	}
 
 	return s;
 }
