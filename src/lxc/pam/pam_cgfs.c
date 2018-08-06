@@ -1185,8 +1185,7 @@ static bool cgv1_init(uid_t uid, gid_t gid)
 		if (!controller_list)
 			continue;
 
-		if (cgv1_controller_list_is_dup(cgv1_hierarchies,
-						controller_list)) {
+		if (cgv1_controller_list_is_dup(cgv1_hierarchies, controller_list)) {
 			free(controller_list);
 			continue;
 		}
@@ -1203,13 +1202,14 @@ static bool cgv1_init(uid_t uid, gid_t gid)
 			free(mountpoint);
 			continue;
 		}
+
 		trim(base_cgroup);
 		pam_cgfs_debug("Detected cgroupfs v1 controller \"%s\" with "
-			    "mountpoint \"%s\" and cgroup \"%s\".\n",
-			    controller_list[0], mountpoint, base_cgroup);
-		cgv1_add_controller(controller_list, mountpoint, base_cgroup,
-				    NULL);
+		               "mountpoint \"%s\" and cgroup \"%s\"\n",
+		               controller_list[0], mountpoint, base_cgroup);
+		cgv1_add_controller(controller_list, mountpoint, base_cgroup, NULL);
 	}
+
 	free_string_list(klist);
 	free_string_list(nlist);
 	free(basecginfo);
@@ -1224,6 +1224,7 @@ static bool cgv1_init(uid_t uid, gid_t gid)
 	for (it = cgv1_hierarchies; it && *it; it++) {
 		if ((*it)->controllers) {
 			char *init_cgroup, *user_slice;
+
 			/* We've already stored the controller and received its
 			 * current cgroup. If we now fail to retrieve its init
 			 * cgroup, we should probably fail.
@@ -1233,17 +1234,20 @@ static bool cgv1_init(uid_t uid, gid_t gid)
 				free(basecginfo);
 				return false;
 			}
+
 			cg_systemd_prune_init_scope(init_cgroup);
 			(*it)->init_cgroup = init_cgroup;
 			pam_cgfs_debug("cgroupfs v1 controller \"%s\" has init "
-				    "cgroup \"%s\".\n",
-				    (*(*it)->controllers), init_cgroup);
+				       "cgroup \"%s\".\n",
+				       (*(*it)->controllers), init_cgroup);
 			/* Check whether systemd has already created a cgroup
 			 * for us.
 			 */
 			user_slice = must_make_path((*it)->mountpoint, (*it)->base_cgroup, NULL);
 			if (cg_systemd_created_user_slice((*it)->base_cgroup, (*it)->init_cgroup, user_slice, uid))
 				(*it)->systemd_user_slice = true;
+
+			free(user_slice);
 		}
 	}
 	free(basecginfo);
