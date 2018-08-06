@@ -511,7 +511,7 @@ static int __lxc_log_set_file(const char *fname, int create_dirs)
 
 	if (strlen(fname) == 0) {
 		log_fname = NULL;
-		return 0;
+		return -1;
 	}
 
 #if USE_CONFIGPATH_LOGS
@@ -559,6 +559,9 @@ int lxc_log_init(struct lxc_log *log)
 	int ret;
 	int lxc_priority = LXC_LOG_LEVEL_ERROR;
 
+	if (!log)
+		return -1;
+
 	if (lxc_log_fd != -1) {
 		WARN("Log already initialized");
 		return 0;
@@ -572,10 +575,9 @@ int lxc_log_init(struct lxc_log *log)
 		lxc_loglevel_specified = 1;
 	}
 
-	if (!lxc_quiet_specified) {
+	if (!lxc_quiet_specified)
 		if (!log->quiet)
 			lxc_log_category_lxc.appender->next = &log_appender_stderr;
-	}
 
 	if (log->prefix)
 		lxc_log_set_prefix(log->prefix);
@@ -588,6 +590,11 @@ int lxc_log_init(struct lxc_log *log)
 			return 0;
 
 		ret = __lxc_log_set_file(log->file, 1);
+		if (ret < 0) {
+			ERROR("Failed to enable logfile");
+			return -1;
+		}
+
 		lxc_log_use_global_fd = 1;
 	} else {
 		/* if no name was specified, there nothing to do */
@@ -619,6 +626,11 @@ int lxc_log_init(struct lxc_log *log)
 	if (!log->file && ret != 0) {
 		INFO("Ignoring failure to open default logfile");
 		ret = 0;
+	}
+
+	if (lxc_log_fd != -1) {
+		lxc_log_category_lxc.appender = &log_appender_logfile;
+		lxc_log_category_lxc.appender->next = &log_appender_stderr;
 	}
 
 	return ret;
