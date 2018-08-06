@@ -102,6 +102,8 @@ Options :\n\
 	.options      = my_longopts,
 	.parser       = my_parser,
 	.checker      = NULL,
+	.log_priority = "ERROR",
+	.log_file     = "none",
 	.daemonize    = 0,
 	.pidfile      = NULL,
 };
@@ -325,19 +327,16 @@ int main(int argc, char *argv[])
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		exit(EXIT_FAILURE);
 
-	/* Only create log if explicitly instructed */
-	if (my_args.log_file || my_args.log_priority) {
-		log.name = my_args.name;
-		log.file = my_args.log_file;
-		log.level = my_args.log_priority;
-		log.prefix = my_args.progname;
-		log.quiet = my_args.quiet;
-		log.lxcpath = my_args.lxcpath[0];
+	log.name = my_args.name;
+	log.file = my_args.log_file;
+	log.level = my_args.log_priority;
+	log.prefix = my_args.progname;
+	log.quiet = my_args.quiet;
+	log.lxcpath = my_args.lxcpath[0];
 
-		if (lxc_log_init(&log)) {
-			free_ifname_list();
-			exit(EXIT_FAILURE);
-		}
+	if (lxc_log_init(&log)) {
+		free_ifname_list();
+		exit(EXIT_FAILURE);
 	}
 
 	if (!*my_args.argv) {
