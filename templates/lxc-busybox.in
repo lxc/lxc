@@ -280,7 +280,7 @@ eval set -- "$options"
 while true
 do
   case "$1" in
-    -h|--help)    usage exit 1;;
+    -h|--help)    usage && exit 1;;
     -n|--name)    name=$2; shift 2;;
     -p|--path)    path=$2; shift 2;;
     --rootfs)     rootfs=$2; shift 2;;
