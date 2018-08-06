@@ -192,6 +192,7 @@ extern int lxc_arguments_parse(struct lxc_arguments *args, int argc,
 			       char *const argv[])
 {
 	int ret = 0;
+	bool logfile = false;
 	char shortopts[256];
 
 	ret = build_shortopts(args->options, shortopts, sizeof(shortopts));
@@ -215,9 +216,14 @@ extern int lxc_arguments_parse(struct lxc_arguments *args, int argc,
 			break;
 		case 'o':
 			args->log_file = optarg;
+			logfile = true;
 			break;
 		case 'l':
 			args->log_priority = optarg;
+			if (!logfile &&
+			    args->log_file &&
+			    strcmp(args->log_file, "none") == 0)
+			    args->log_file = NULL;
 			break;
 		case 'q':
 			args->quiet = 1;
