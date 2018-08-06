@@ -1351,13 +1351,16 @@ static bool cgv2_init(uid_t uid, gid_t gid)
 	}
 
 	pam_cgfs_debug("Detected cgroupfs v2 hierarchy at mountpoint \"%s\" with "
-		    "current cgroup \"%s\" and init cgroup \"%s\".\n",
-		    mountpoint, current_cgroup, init_cgroup);
+	               "current cgroup \"%s\" and init cgroup \"%s\"\n",
+	               mountpoint, current_cgroup, init_cgroup);
 
 cleanup:
 	if (f)
 		fclose(f);
 	free(line);
+
+	if (!ret)
+		free(current_cgroup);
 
 	return ret;
 }
