@@ -825,8 +825,6 @@ static char **cgv1_get_proc_mountinfo_controllers(char **klist, char **nlist, ch
 			return NULL;
 		p++;
 	}
-	if (!p)
-		return NULL;
 
 	if (strncmp(p, "/sys/fs/cgroup/", 15) != 0)
 		return NULL;
