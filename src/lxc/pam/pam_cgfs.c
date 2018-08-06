@@ -1911,8 +1911,9 @@ on_success:
 	bret = true;
 
 on_error:
-	free(fpath);
+	*lastslash = oldv;
 
+	free(fpath);
 	free(isolcpus);
 	free(isolmask);
 
