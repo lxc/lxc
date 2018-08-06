@@ -1558,7 +1558,7 @@ static bool get_uid_gid(const char *user, uid_t *uid, gid_t *gid)
 	if (!pwentp) {
 		if (ret == 0)
 			mysyslog(LOG_ERR,
-				 "Could not find matched password record\n", NULL);
+			         "Could not find matched password record\n", NULL);
 
 		free(buf);
 		return false;
@@ -1610,6 +1610,7 @@ static uint32_t *cg_cpumask(char *buf, size_t nbits)
 		char *range = strchr(token, '-');
 		if (range)
 			end = strtoul(range + 1, NULL, 0);
+
 		if (!(start <= end)) {
 			free(bitarr);
 			return NULL;
@@ -1678,9 +1679,11 @@ static char *cg_cpumask_to_cpulist(uint32_t *bitarr, size_t nbits)
 				free_string_list(cpulist);
 				return NULL;
 			}
+
 			must_append_string(&cpulist, numstr);
 		}
 	}
+
 	return string_join(",", (const char **)cpulist, false);
 }
 
@@ -1703,10 +1706,12 @@ static ssize_t cg_get_max_cpus(char *cpulist)
 	else if (c1 < c2)
 		c1 = c2;
 
+	if (!c1)
+		return -1;
+
 	/* If the above logic is correct, c1 should always hold a valid string
 	 * here.
 	 */
-
 	errno = 0;
 	cpus = strtoul(c1, NULL, 0);
 	if (errno != 0)
@@ -1718,10 +1723,12 @@ static ssize_t cg_get_max_cpus(char *cpulist)
 static ssize_t write_nointr(int fd, const void* buf, size_t count)
 {
 	ssize_t ret;
+
 again:
 	ret = write(fd, buf, count);
 	if (ret < 0 && errno == EINTR)
 		goto again;
+
 	return ret;
 }
 
@@ -1733,16 +1740,19 @@ static int write_to_file(const char *filename, const void* buf, size_t count, bo
 	fd = open(filename, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, 0666);
 	if (fd < 0)
 		return -1;
+
 	ret = write_nointr(fd, buf, count);
 	if (ret < 0)
 		goto out_error;
 	if ((size_t)ret != count)
 		goto out_error;
+
 	if (add_newline) {
 		ret = write_nointr(fd, "\n", 1);
 		if (ret != 1)
 			goto out_error;
 	}
+
 	close(fd);
 	return 0;
 
