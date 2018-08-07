@@ -149,8 +149,15 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if (lxc_container_put(c) != 0) {
+	ret = lxc_container_put(c);
+	if (ret < 0) {
+		fprintf(stderr, "%d: c is invalid pointer\n", __LINE__);
+		ret = 1;
+		goto out;
+	}
+	else if (ret == 1) {
 		fprintf(stderr, "%d: c was freed on non-final put\n", __LINE__);
+		c = NULL;
 		goto out;
 	}
 
@@ -257,8 +264,8 @@ out:
 	if (c) {
 		c->stop(c);
 		destroy_busybox();
+		lxc_container_put(c);
 	}
 
-	lxc_container_put(c);
 	exit(ret);
 }
