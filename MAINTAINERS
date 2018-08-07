@@ -4,7 +4,7 @@ conforming with the DCO contained in the ./CONTRIBUTING file.
 Maintainer
 ----------
 
-Committers              : Serge Hallyn, Stéphane Graber, Dwight Engen and Christian Brauner
+Committers              : Serge Hallyn, Stéphane Graber, Dwight Engen, Christian Brauner and Wolfgang Bumiller
 Mail patches to         : lxc-devel@lists.linuxcontainers.org
 Send pull requests at   : https://github.com/lxc/lxc
 Mailing lists           : lxc-devel@lists.linuxcontainers.org, lxc-users@lists.linuxcontainers.org
