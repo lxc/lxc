@@ -31,7 +31,6 @@
 #include <time.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include <linux/net_namespace.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <linux/sockios.h>
@@ -3183,6 +3182,16 @@ int addattr(struct nlmsghdr *n, int maxlen, int type, const void *data, int alen
 	return 0;
 }
 
+/* Attributes of RTM_NEWNSID/RTM_GETNSID messages */
+enum {
+	LXC_NETNSA_NONE,
+#define LXC_NETNSA_NSID_NOT_ASSIGNED -1
+	LXC_NETNSA_NSID,
+	LXC_NETNSA_PID,
+	LXC_NETNSA_FD,
+	__LXC_NETNSA_MAX,
+};
+
 int lxc_netns_set_nsid(int fd)
 {
 	ssize_t ret;
@@ -3210,8 +3219,8 @@ int lxc_netns_set_nsid(int fd)
 	l_hdr->nlmsg_seq = RTM_NEWNSID;
 	l_msg->rtgen_family = AF_UNSPEC;
 
-	addattr(l_hdr, 1024, NETNSA_FD, &fd, sizeof(__u32));
-	addattr(l_hdr, 1024, NETNSA_NSID, &nsid, sizeof(__u32));
+	addattr(l_hdr, 1024, LXC_NETNSA_FD, &fd, sizeof(__u32));
+	addattr(l_hdr, 1024, LXC_NETNSA_NSID, &nsid, sizeof(__u32));
 
 	memset(&l_addr, 0, sizeof(l_addr));
 	l_addr.nl_family = AF_NETLINK;

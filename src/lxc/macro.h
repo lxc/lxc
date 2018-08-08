@@ -183,4 +183,8 @@ extern int __build_bug_on_failed;
 #define IFLA_IF_NETNSID 46
 #endif
 
+#ifndef RTM_NEWNSID
+#define RTM_NEWNSID 88
+#endif
+
 #endif /* __LXC_MACRO_H */
