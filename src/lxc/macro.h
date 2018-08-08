@@ -142,4 +142,45 @@ extern int __build_bug_on_failed;
 
 #define prctl_arg(x) ((unsigned long)x)
 
+/* networking */
+#ifndef IFLA_LINKMODE
+#define IFLA_LINKMODE 17
+#endif
+
+#ifndef IFLA_LINKINFO
+#define IFLA_LINKINFO 18
+#endif
+
+#ifndef IFLA_NET_NS_PID
+#define IFLA_NET_NS_PID 19
+#endif
+
+#ifndef IFLA_INFO_KIND
+#define IFLA_INFO_KIND 1
+#endif
+
+#ifndef IFLA_VLAN_ID
+#define IFLA_VLAN_ID 1
+#endif
+
+#ifndef IFLA_INFO_DATA
+#define IFLA_INFO_DATA 2
+#endif
+
+#ifndef VETH_INFO_PEER
+#define VETH_INFO_PEER 1
+#endif
+
+#ifndef IFLA_MACVLAN_MODE
+#define IFLA_MACVLAN_MODE 1
+#endif
+
+#ifndef IFLA_NEW_NETNSID
+#define IFLA_NEW_NETNSID 45
+#endif
+
+#ifndef IFLA_IF_NETNSID
+#define IFLA_IF_NETNSID 46
+#endif
+
 #endif /* __LXC_MACRO_H */
