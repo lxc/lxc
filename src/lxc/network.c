@@ -3164,7 +3164,7 @@ void lxc_delete_network(struct lxc_handler *handler)
 		DEBUG("Deleted network devices");
 }
 
-int addattr(struct nlmsghdr *n, int maxlen, int type, const void *data, int alen)
+int addattr(struct nlmsghdr *n, size_t maxlen, int type, const void *data, size_t alen)
 {
 	int len = RTA_LENGTH(alen);
 	struct rtattr *rta;
@@ -3184,11 +3184,11 @@ int addattr(struct nlmsghdr *n, int maxlen, int type, const void *data, int alen
 
 /* Attributes of RTM_NEWNSID/RTM_GETNSID messages */
 enum {
-	LXC_NETNSA_NONE,
-#define LXC_NETNSA_NSID_NOT_ASSIGNED -1
-	LXC_NETNSA_NSID,
-	LXC_NETNSA_PID,
-	LXC_NETNSA_FD,
+	__LXC_NETNSA_NONE,
+#define __LXC_NETNSA_NSID_NOT_ASSIGNED -1
+	__LXC_NETNSA_NSID,
+	__LXC_NETNSA_PID,
+	__LXC_NETNSA_FD,
 	__LXC_NETNSA_MAX,
 };
 
@@ -3202,7 +3202,8 @@ int lxc_netns_set_nsid(int fd)
 	struct nlmsghdr *l_hdr;
 	struct rtgenmsg *l_msg;
 	struct sockaddr_nl l_addr;
-	int nsid = -1;
+	__s32 ns_id = -1;
+	__u32 netns_fd = fd;
 
 	ret = netlink_open(&nlh, NETLINK_ROUTE);
 	if (ret < 0)
@@ -3219,8 +3220,8 @@ int lxc_netns_set_nsid(int fd)
 	l_hdr->nlmsg_seq = RTM_NEWNSID;
 	l_msg->rtgen_family = AF_UNSPEC;
 
-	addattr(l_hdr, 1024, LXC_NETNSA_FD, &fd, sizeof(__u32));
-	addattr(l_hdr, 1024, LXC_NETNSA_NSID, &nsid, sizeof(__u32));
+	addattr(l_hdr, 1024, __LXC_NETNSA_FD, &netns_fd, sizeof(netns_fd));
+	addattr(l_hdr, 1024, __LXC_NETNSA_NSID, &ns_id, sizeof(ns_id));
 
 	memset(&l_addr, 0, sizeof(l_addr));
 	l_addr.nl_family = AF_NETLINK;
