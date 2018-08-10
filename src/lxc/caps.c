@@ -310,7 +310,7 @@ int lxc_caps_init(void)
 	return 0;
 }
 
-static int _real_caps_last_cap(void)
+static long int _real_caps_last_cap(void)
 {
 	int fd, result = -1;
 
@@ -354,10 +354,13 @@ static int _real_caps_last_cap(void)
 
 int lxc_caps_last_cap(void)
 {
-	static int last_cap = -1;
+	static long int last_cap = -1;
 
-	if (last_cap < 0)
+	if (last_cap < 0) {
 		last_cap = _real_caps_last_cap();
+		if (last_cap < 0 || last_cap > INT_MAX)
+			last_cap = -1;
+	}
 
 	return last_cap;
 }
