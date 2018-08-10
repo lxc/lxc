@@ -397,7 +397,7 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 
 	/* Get maximum number of cpus found in possible cpuset. */
 	maxposs = get_max_cpus(posscpus);
-	if (maxposs < 0)
+	if (maxposs < 0 || maxposs >= INT_MAX - 1)
 		goto on_error;
 
 	if (!file_exists(__ISOL_CPUS)) {
@@ -442,7 +442,7 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 
 	/* Get maximum number of cpus found in isolated cpuset. */
 	maxisol = get_max_cpus(isolcpus);
-	if (maxisol < 0)
+	if (maxisol < 0 || maxisol >= INT_MAX - 1)
 		goto on_error;
 
 	if (maxposs < maxisol)
