@@ -677,7 +677,7 @@ bool __criu_check_feature(uint64_t *features_to_check)
 	pid_t pid;
 	uint64_t current_bit = 0;
 	int ret;
-	int features = *features_to_check;
+	uint64_t features = *features_to_check;
 	/* Feature checking is currently always like
 	 * criu check --feature <feature-name>
 	 */

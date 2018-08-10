@@ -963,7 +963,8 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 
 int lxc_allocate_ttys(struct lxc_conf *conf)
 {
-	int i, ret;
+	size_t i;
+	int ret;
 	struct lxc_tty_info *ttys = &conf->ttys;
 
 	/* no tty in the configuration */
@@ -981,7 +982,7 @@ int lxc_allocate_ttys(struct lxc_conf *conf)
 		tty->slave = -EBADF;
 		ret = openpty(&tty->master, &tty->slave, NULL, NULL, NULL);
 		if (ret < 0) {
-			SYSERROR("Failed to create tty %d", i);
+			SYSERROR("Failed to create tty %zu", i);
 			ttys->max = i;
 			lxc_delete_tty(ttys);
 			return -ENOTTY;
@@ -989,7 +990,7 @@ int lxc_allocate_ttys(struct lxc_conf *conf)
 
 		ret = ttyname_r(tty->slave, tty->name, sizeof(tty->name));
 		if (ret < 0) {
-			SYSERROR("Failed to retrieve name of tty %d slave", i);
+			SYSERROR("Failed to retrieve name of tty %zu slave", i);
 			ttys->max = i;
 			lxc_delete_tty(ttys);
 			return -ENOTTY;
