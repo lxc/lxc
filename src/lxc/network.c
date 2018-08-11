@@ -3192,16 +3192,102 @@ enum {
 	__LXC_NETNSA_MAX,
 };
 
+static int nl_send(struct nl_handler *handler, struct nlmsghdr *nlmsghdr)
+{
+	struct sockaddr_nl nladdr;
+	struct iovec iov = {
+		.iov_base = nlmsghdr,
+		.iov_len = nlmsghdr->nlmsg_len,
+	};
+	struct msghdr msg = {
+		.msg_name = &nladdr,
+		.msg_namelen = sizeof(nladdr),
+		.msg_iov = &iov,
+		.msg_iovlen = 1,
+	};
+	int ret;
+
+	memset(&nladdr, 0, sizeof(nladdr));
+	nladdr.nl_family = AF_NETLINK;
+	nladdr.nl_pid = 0;
+	nladdr.nl_groups = 0;
+
+	ret = sendmsg(handler->fd, &msg, MSG_NOSIGNAL);
+	if (ret < 0)
+		return -errno;
+
+	return ret;
+}
+
+static int nl_recv(struct nl_handler *handler, struct nlmsghdr *nlmsghdr)
+{
+	int ret;
+	struct sockaddr_nl nladdr;
+	struct iovec iov = {
+	    .iov_base = nlmsghdr,
+	    .iov_len = nlmsghdr->nlmsg_len,
+	};
+
+	struct msghdr msg = {
+		.msg_name = &nladdr,
+		.msg_namelen = sizeof(nladdr),
+		.msg_iov = &iov,
+		.msg_iovlen = 1,
+	};
+
+	memset(&nladdr, 0, sizeof(nladdr));
+	nladdr.nl_family = AF_NETLINK;
+	nladdr.nl_pid = 0;
+	nladdr.nl_groups = 0;
+
+again:
+	ret = recvmsg(handler->fd, &msg, 0);
+	if (ret < 0) {
+		if (errno == EINTR)
+			goto again;
+
+		return -1;
+	}
+
+	if (!ret)
+		return 0;
+
+	if (msg.msg_flags & MSG_TRUNC && (ret == nlmsghdr->nlmsg_len))
+		return -EMSGSIZE;
+
+	return ret;
+}
+
+extern int nl_transaction(struct nl_handler *handler, struct nlmsghdr *request,
+			  struct nlmsghdr *answer)
+{
+	int ret;
+
+	ret = nl_send(handler, request);
+	if (ret < 0)
+		return ret;
+
+	ret = nl_recv(handler, answer);
+	if (ret < 0)
+		return ret;
+
+	if (answer->nlmsg_type == NLMSG_ERROR) {
+		struct nlmsgerr *err = (struct nlmsgerr *)NLMSG_DATA(answer);
+		return err->error;
+	}
+
+	return 0;
+}
+
 int lxc_netns_set_nsid(int fd)
 {
 	ssize_t ret;
-	char l_buffer[NLMSG_ALIGN(sizeof(struct nlmsghdr)) +
-		      NLMSG_ALIGN(sizeof(struct rtgenmsg)) +
-		      NLMSG_ALIGN(1024)];
+	char buf[NLMSG_ALIGN(sizeof(struct nlmsghdr)) +
+		 NLMSG_ALIGN(sizeof(struct rtgenmsg)) +
+		 NLMSG_ALIGN(1024)];
 	struct nl_handler nlh;
-	struct nlmsghdr *l_hdr;
-	struct rtgenmsg *l_msg;
-	struct sockaddr_nl l_addr;
+	struct nlmsghdr *hdr;
+	struct rtgenmsg *msg;
 	__s32 ns_id = -1;
 	__u32 netns_fd = fd;
 
@@ -3209,25 +3295,21 @@ int lxc_netns_set_nsid(int fd)
 	if (ret < 0)
 		return ret;
 
-	memset(l_buffer, 0, sizeof(l_buffer));
-	l_hdr = (struct nlmsghdr *)l_buffer;
-	l_msg = (struct rtgenmsg *)NLMSG_DATA(l_hdr);
+	memset(buf, 0, sizeof(buf));
+	hdr = (struct nlmsghdr *)buf;
+	msg = (struct rtgenmsg *)NLMSG_DATA(hdr);
 
-	l_hdr->nlmsg_len = NLMSG_LENGTH(sizeof(*l_msg));
-	l_hdr->nlmsg_type = RTM_NEWNSID;
-	l_hdr->nlmsg_flags = NLM_F_REQUEST;
-	l_hdr->nlmsg_pid = 0;
-	l_hdr->nlmsg_seq = RTM_NEWNSID;
-	l_msg->rtgen_family = AF_UNSPEC;
+	hdr->nlmsg_len = NLMSG_LENGTH(sizeof(*msg));
+	hdr->nlmsg_type = RTM_NEWNSID;
+	hdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+	hdr->nlmsg_pid = 0;
+	hdr->nlmsg_seq = RTM_NEWNSID;
+	msg->rtgen_family = AF_UNSPEC;
 
-	addattr(l_hdr, 1024, __LXC_NETNSA_FD, &netns_fd, sizeof(netns_fd));
-	addattr(l_hdr, 1024, __LXC_NETNSA_NSID, &ns_id, sizeof(ns_id));
+	addattr(hdr, 1024, __LXC_NETNSA_FD, &netns_fd, sizeof(netns_fd));
+	addattr(hdr, 1024, __LXC_NETNSA_NSID, &ns_id, sizeof(ns_id));
 
-	memset(&l_addr, 0, sizeof(l_addr));
-	l_addr.nl_family = AF_NETLINK;
-
-	ret = sendto(nlh.fd, l_hdr, l_hdr->nlmsg_len, 0,
-		     (struct sockaddr *)&l_addr, sizeof(l_addr));
+	ret = nl_transaction(&nlh, hdr, hdr);
 	netlink_close(&nlh);
 	if (ret < 0)
 		return -1;
