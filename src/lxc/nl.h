@@ -98,6 +98,7 @@ int netlink_close(struct nl_handler *handler);
  * Returns 0 on success, < 0 otherwise
  */
 int netlink_rcv(struct nl_handler *handler, struct nlmsg *nlmsg);
+int __netlink_recv(struct nl_handler *handler, struct nlmsghdr *nlmsg);
 
 /*
  * netlink_send: send a netlink message to the kernel. It is up
@@ -109,6 +110,7 @@ int netlink_rcv(struct nl_handler *handler, struct nlmsg *nlmsg);
  * Returns 0 on success, < 0 otherwise
  */
 int netlink_send(struct nl_handler *handler, struct nlmsg *nlmsg);
+int __netlink_send(struct nl_handler *handler, struct nlmsghdr *nlmsg);
 
 /*
  * netlink_transaction: send a request to the kernel and read the response.
@@ -123,6 +125,8 @@ int netlink_send(struct nl_handler *handler, struct nlmsg *nlmsg);
  */
 int netlink_transaction(struct nl_handler *handler,
 			struct nlmsg *request, struct nlmsg *anwser);
+int __netlink_transaction(struct nl_handler *handler, struct nlmsghdr *request,
+			  struct nlmsghdr *anwser);
 
 /*
  * nla_put_string: copy a null terminated string to a netlink message
