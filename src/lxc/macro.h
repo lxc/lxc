@@ -187,4 +187,8 @@ extern int __build_bug_on_failed;
 #define RTM_NEWNSID 88
 #endif
 
+#ifndef NLMSG_ERROR
+#define NLMSG_ERROR 0x2
+#endif
+
 #endif /* __LXC_MACRO_H */

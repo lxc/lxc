@@ -237,9 +237,6 @@ extern int netlink_send(struct nl_handler *handler, struct nlmsg *nlmsg)
 	return ret;
 }
 
-#ifndef NLMSG_ERROR
-#define NLMSG_ERROR                0x2
-#endif
 extern int netlink_transaction(struct nl_handler *handler,
 			       struct nlmsg *request, struct nlmsg *answer)
 {
