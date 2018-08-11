@@ -1712,10 +1712,11 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 		ret = lxc_netns_set_nsid(handler->nsfd[LXC_NS_NET]);
 		if (ret < 0) {
-			ERROR("Failed to allocate new network namespace id: %d", ret);
-			goto out_delete_net;
+			errno = -ret;
+			SYSERROR("Failed to allocate new network namespace id");
+		} else {
+			TRACE("Allocated new network namespace id");
 		}
-		TRACE("Allocated new network namespace id");
 	}
 
 	/* Create the network configuration. */
