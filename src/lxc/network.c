@@ -3192,93 +3192,6 @@ enum {
 	__LXC_NETNSA_MAX,
 };
 
-static int nl_send(struct nl_handler *handler, struct nlmsghdr *nlmsghdr)
-{
-	struct sockaddr_nl nladdr;
-	struct iovec iov = {
-		.iov_base = nlmsghdr,
-		.iov_len = nlmsghdr->nlmsg_len,
-	};
-	struct msghdr msg = {
-		.msg_name = &nladdr,
-		.msg_namelen = sizeof(nladdr),
-		.msg_iov = &iov,
-		.msg_iovlen = 1,
-	};
-	int ret;
-
-	memset(&nladdr, 0, sizeof(nladdr));
-	nladdr.nl_family = AF_NETLINK;
-	nladdr.nl_pid = 0;
-	nladdr.nl_groups = 0;
-
-	ret = sendmsg(handler->fd, &msg, MSG_NOSIGNAL);
-	if (ret < 0)
-		return -errno;
-
-	return ret;
-}
-
-static int nl_recv(struct nl_handler *handler, struct nlmsghdr *nlmsghdr)
-{
-	int ret;
-	struct sockaddr_nl nladdr;
-	struct iovec iov = {
-	    .iov_base = nlmsghdr,
-	    .iov_len = nlmsghdr->nlmsg_len,
-	};
-
-	struct msghdr msg = {
-		.msg_name = &nladdr,
-		.msg_namelen = sizeof(nladdr),
-		.msg_iov = &iov,
-		.msg_iovlen = 1,
-	};
-
-	memset(&nladdr, 0, sizeof(nladdr));
-	nladdr.nl_family = AF_NETLINK;
-	nladdr.nl_pid = 0;
-	nladdr.nl_groups = 0;
-
-again:
-	ret = recvmsg(handler->fd, &msg, 0);
-	if (ret < 0) {
-		if (errno == EINTR)
-			goto again;
-
-		return -1;
-	}
-
-	if (!ret)
-		return 0;
-
-	if (msg.msg_flags & MSG_TRUNC && (ret == nlmsghdr->nlmsg_len))
-		return -EMSGSIZE;
-
-	return ret;
-}
-
-extern int nl_transaction(struct nl_handler *handler, struct nlmsghdr *request,
-			  struct nlmsghdr *answer)
-{
-	int ret;
-
-	ret = nl_send(handler, request);
-	if (ret < 0)
-		return ret;
-
-	ret = nl_recv(handler, answer);
-	if (ret < 0)
-		return ret;
-
-	if (answer->nlmsg_type == NLMSG_ERROR) {
-		struct nlmsgerr *err = (struct nlmsgerr *)NLMSG_DATA(answer);
-		return err->error;
-	}
-
-	return 0;
-}
-
 int lxc_netns_set_nsid(int fd)
 {
 	ssize_t ret;
@@ -3309,7 +3222,7 @@ int lxc_netns_set_nsid(int fd)
 	addattr(hdr, 1024, __LXC_NETNSA_FD, &netns_fd, sizeof(netns_fd));
 	addattr(hdr, 1024, __LXC_NETNSA_NSID, &ns_id, sizeof(ns_id));
 
-	ret = nl_transaction(&nlh, hdr, hdr);
+	ret = __netlink_transaction(&nlh, hdr, hdr);
 	netlink_close(&nlh);
 	if (ret < 0)
 		return -1;
