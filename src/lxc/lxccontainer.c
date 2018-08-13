@@ -4121,15 +4121,19 @@ static bool get_snappath_dir(struct lxc_container *c, char *snappath)
 static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 {
 	int i, flags, ret;
+	time_t timer;
+	struct tm tm_info;
 	struct lxc_container *c2;
 	char snappath[MAXPATHLEN], newname[20];
+	char buffer[25];
+	FILE *f;
 
 	if (!c || !lxcapi_is_defined(c))
 		return -1;
 
 	if (!storage_can_backup(c->lxc_conf)) {
-		ERROR("%s's backing store cannot be backed up.", c->name);
-		ERROR("Your container must use another backing store type.");
+		ERROR("%s's backing store cannot be backed up", c->name);
+		ERROR("Your container must use another backing store type");
 		return -1;
 	}
 
@@ -4154,31 +4158,30 @@ static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	flags = LXC_CLONE_SNAPSHOT | LXC_CLONE_KEEPMACADDR | LXC_CLONE_KEEPNAME |
 		LXC_CLONE_KEEPBDEVTYPE | LXC_CLONE_MAYBE_SNAPSHOT;
 	if (storage_is_dir(c->lxc_conf)) {
-		ERROR("Snapshot of directory-backed container requested.");
+		ERROR("Snapshot of directory-backed container requested");
 		ERROR("Making a copy-clone.  If you do want snapshots, then");
 		ERROR("please create overlay clone first, snapshot that");
-		ERROR("and keep the original container pristine.");
+		ERROR("and keep the original container pristine");
 		flags &= ~LXC_CLONE_SNAPSHOT | LXC_CLONE_MAYBE_SNAPSHOT;
 	}
 
 	c2 = do_lxcapi_clone(c, newname, snappath, flags, NULL, NULL, 0, NULL);
 	if (!c2) {
-		ERROR("clone of %s:%s failed", c->config_path, c->name);
+		ERROR("Failed to clone of %s:%s", c->config_path, c->name);
 		return -1;
 	}
 
 	lxc_container_put(c2);
 
 	/* Now write down the creation time. */
-	time_t timer;
-	char buffer[25];
-	struct tm* tm_info;
-	FILE *f;
-
 	time(&timer);
-	tm_info = localtime(&timer);
 
-	strftime(buffer, 25, "%Y:%m:%d %H:%M:%S", tm_info);
+	if (!localtime_r(&timer, &tm_info)) {
+		ERROR("Failed to get localtime");
+		return -1;
+	}
+
+	strftime(buffer, 25, "%Y:%m:%d %H:%M:%S", &tm_info);
 
 	char *dfnam = alloca(strlen(snappath) + strlen(newname) + 5);
 	sprintf(dfnam, "%s/%s/ts", snappath, newname);

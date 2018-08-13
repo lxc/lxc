@@ -33,7 +33,6 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <pthread.h>
-#include <time.h>
 
 #include <syslog.h>
 #include <stdio.h>

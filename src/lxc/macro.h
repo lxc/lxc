@@ -43,10 +43,6 @@
 #define PR_CAPBSET_DROP 24
 #endif
 
-#ifndef LO_FLAGS_AUTOCLEAR
-#define LO_FLAGS_AUTOCLEAR 4
-#endif
-
 #ifndef CAP_SETUID
 #define CAP_SETUID 7
 #endif
