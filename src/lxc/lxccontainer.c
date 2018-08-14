@@ -164,7 +164,10 @@ static int ongoing_create(struct lxc_container *c)
 
 	lk.l_type = F_WRLCK;
 	lk.l_whence = SEEK_SET;
-	lk.l_pid = -1;
+	/* F_OFD_GETLK requires that l_pid be set to 0 otherwise the kernel
+	 * will EINVAL us.
+	 */
+	lk.l_pid = 0;
 
 	ret = fcntl(fd, F_OFD_GETLK, &lk);
 	if (ret < 0 && errno == EINVAL)
@@ -172,8 +175,9 @@ static int ongoing_create(struct lxc_container *c)
 
 	close(fd);
 
-	if (ret == 0 && lk.l_pid != -1)
-		/* create is still ongoing */
+	/* F_OFD_GETLK will not send us back a pid so don't check it. */
+	if (ret == 0)
+		/* Create is still ongoing. */
 		return 1;
 
 	/* Create completed but partial is still there. */
