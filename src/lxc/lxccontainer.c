@@ -155,12 +155,13 @@ static int ongoing_create(struct lxc_container *c)
 	if (ret < 0 || (size_t)ret >= len)
 		return -1;
 
-	if (!file_exists(path))
-		return 0;
+	fd = open(path, O_RDWR | O_CLOEXEC);
+	if (fd < 0) {
+		if (errno != ENOENT)
+			return -1;
 
-	fd = open(path, O_RDWR);
-	if (fd < 0)
 		return 0;
+	}
 
 	lk.l_type = F_WRLCK;
 	lk.l_whence = SEEK_SET;
@@ -170,8 +171,11 @@ static int ongoing_create(struct lxc_container *c)
 	lk.l_pid = 0;
 
 	ret = fcntl(fd, F_OFD_GETLK, &lk);
-	if (ret < 0 && errno == EINVAL)
+	if (ret < 0 && errno == EINVAL) {
 		ret = flock(fd, LOCK_EX | LOCK_NB);
+		if (ret < 0 && errno == EWOULDBLOCK)
+			ret = 0;
+	}
 
 	close(fd);
 
@@ -198,7 +202,7 @@ static int create_partial(struct lxc_container *c)
 	if (ret < 0 || (size_t)ret >= len)
 		return -1;
 
-	fd = open(path, O_RDWR | O_CREAT | O_EXCL, 0755);
+	fd = open(path, O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0000);
 	if (fd < 0)
 		return -1;
 
