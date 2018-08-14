@@ -1897,8 +1897,7 @@ static bool cg_filter_and_set_cpus(char *path, bool am_initialized)
 copy_parent:
 	*lastslash = oldv;
 
-	if (fpath)
-		free(fpath);
+	free(fpath);
 
 	fpath = must_make_path(path, "cpuset.cpus", NULL);
 	ret = write_to_file(fpath, cpulist, strlen(cpulist), false);
