@@ -949,10 +949,15 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		/* We don't really care if this doesn't print all the
 		 * characters. All that it means is that the proctitle will be
 		 * ugly. Similarly, we also don't care if setproctitle() fails.
-		 * */
-		(void)snprintf(title, sizeof(title), "[lxc monitor] %s %s", c->config_path, c->name);
-		INFO("Attempting to set proc title to %s", title);
-		(void)setproctitle(title);
+		 */
+		ret = snprintf(title, sizeof(title), "[lxc monitor] %s %s", c->config_path, c->name);
+		if (ret > 0) {
+			ret = setproctitle(title);
+			if (ret < 0)
+				INFO("Failed to set process title to %s", title);
+			else
+				INFO("Set process title to %s", title);
+		}
 
 		/* We fork() a second time to be reparented to init. Like
 		 * POSIX's daemon() function we change to "/" and redirect
@@ -999,17 +1004,15 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		ret = setsid();
 		if (ret < 0)
 			TRACE("Process %d is already process group leader", lxc_raw_getpid());
-	} else {
-		if (!am_single_threaded()) {
-			ERROR("Cannot start non-daemonized container when threaded");
-			free_init_cmd(init_cmd);
-			lxc_free_handler(handler);
-			return false;
-		}
+	} else if (!am_single_threaded()) {
+		ERROR("Cannot start non-daemonized container when threaded");
+		free_init_cmd(init_cmd);
+		lxc_free_handler(handler);
+		return false;
 	}
 
-	/* We need to write PID file after daemonize, so we always
-	 * write the right PID.
+	/* We need to write PID file after daemonize, so we always write the
+	 * right PID.
 	 */
 	if (c->pidfile) {
 		int ret, w;
@@ -1033,7 +1036,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
 
-			SYSERROR("Failed to write '%s'", c->pidfile);
+			SYSERROR("Failed to write monitor pid to \"%s\"", c->pidfile);
 
 			if (c->daemonize)
 				_exit(EXIT_FAILURE);
@@ -1048,7 +1051,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	if (conf->monitor_unshare) {
 		ret = unshare(CLONE_NEWNS);
 		if (ret < 0) {
-			SYSERROR("failed to unshare mount namespace");
+			SYSERROR("Failed to unshare mount namespace");
 			lxc_free_handler(handler);
 			ret = 1;
 			goto on_error;
