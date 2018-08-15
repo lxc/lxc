@@ -375,7 +375,8 @@ int main(int argc, char *argv[])
 
 		ret = unshare(flags);
 		if (ret < 0) {
-			perror("unshare");
+			fprintf(stderr,
+				"Failed to unshare mount and user namespace\n");
 			return 1;
 		}
 		buf[0] = '1';
@@ -399,8 +400,12 @@ int main(int argc, char *argv[])
 
 	close(pipe_fds1[1]);
 	close(pipe_fds2[0]);
-	if (lxc_read_nointr(pipe_fds1[0], buf, 1) < 1) {
+	ret = lxc_read_nointr(pipe_fds1[0], buf, 1);
+	if (ret < 0) {
 		perror("read pipe");
+		exit(EXIT_FAILURE);
+	} else if (ret == 0) {
+		fprintf(stderr, "Failed to read from pipe\n");
 		exit(EXIT_FAILURE);
 	}
 
