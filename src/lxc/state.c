@@ -100,8 +100,8 @@ static int fillwaitedstates(const char *strstates, lxc_state_t *states)
 	return 0;
 }
 
-extern int lxc_wait(const char *lxcname, const char *states, int timeout,
-		    const char *lxcpath)
+int lxc_wait(const char *lxcname, const char *states, int timeout,
+	     const char *lxcpath)
 {
 	int state = -1;
 	lxc_state_t s[MAX_STATE] = {0};
@@ -110,6 +110,11 @@ extern int lxc_wait(const char *lxcname, const char *states, int timeout,
 		return -1;
 
 	for (;;) {
+		struct timespec onesec = {
+		    .tv_sec = 1,
+		    .tv_nsec = 0,
+		};
+
 		state = lxc_cmd_sock_get_state(lxcname, lxcpath, s, timeout);
 		if (state >= 0)
 			break;
@@ -125,7 +130,7 @@ extern int lxc_wait(const char *lxcname, const char *states, int timeout,
 		if (timeout == 0)
 			return -1;
 
-		sleep(1);
+		(void)nanosleep(&onesec, NULL);
 	}
 
 	if (state < 0) {
