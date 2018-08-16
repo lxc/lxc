@@ -54,7 +54,7 @@
 
 lxc_log_define(lxc_init, lxc);
 
-static sig_atomic_t was_interrupted = 0;
+static sig_atomic_t was_interrupted;
 
 static void interrupt_handler(int sig)
 {
@@ -336,7 +336,7 @@ int main(int argc, char *argv[])
 			sigerr = signal(i, SIG_DFL);
 			if (sigerr == SIG_ERR) {
 				SYSDEBUG("Failed to reset to default action "
-				         "for signal \"%d\": %d", i, pid);
+					 "for signal \"%d\": %d", i, pid);
 			}
 		}
 
@@ -350,8 +350,8 @@ int main(int argc, char *argv[])
 		if (sid < 0)
 			DEBUG("Failed to make child session leader");
 
-                if (ioctl(STDIN_FILENO, TIOCSCTTY, 0) < 0)
-                        DEBUG("Failed to set controlling terminal");
+		if (ioctl(STDIN_FILENO, TIOCSCTTY, 0) < 0)
+			DEBUG("Failed to set controlling terminal");
 
 		NOTICE("Exec'ing \"%s\"", my_args.argv[0]);
 
@@ -556,7 +556,7 @@ static int arguments_parse(struct arguments *args, int argc,
 
 	/* Check the command options */
 	if (!args->name) {
-		if(!args->quiet)
+		if (!args->quiet)
 			fprintf(stderr, "lxc-init: missing container name, use --name option\n");
 		return -1;
 	}

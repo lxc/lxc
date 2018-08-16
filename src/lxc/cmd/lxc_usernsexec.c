@@ -333,18 +333,18 @@ int main(int argc, char *argv[])
 
 	while ((c = getopt(argc, argv, "m:h")) != EOF) {
 		switch (c) {
-			case 'm':
-				if (parse_map(optarg)) {
-					usage(argv[0]);
-					exit(EXIT_FAILURE);
-				}
-				break;
-			case 'h':
-				  usage(argv[0]);
-				  exit(EXIT_SUCCESS);
-			default:
-				  usage(argv[0]);
-				  exit(EXIT_FAILURE);
+		case 'm':
+			if (parse_map(optarg)) {
+				usage(argv[0]);
+				exit(EXIT_FAILURE);
+			}
+			break;
+		case 'h':
+			usage(argv[0]);
+			exit(EXIT_SUCCESS);
+		default:
+			usage(argv[0]);
+			exit(EXIT_FAILURE);
 		}
 	};
 
@@ -364,9 +364,8 @@ int main(int argc, char *argv[])
 		perror("pipe");
 		exit(EXIT_FAILURE);
 	}
-	if ((pid = fork()) == 0) {
-		/* Child. */
-
+	pid = fork();
+	if (pid == 0) { /* Child. */
 		close(pipe_fds1[0]);
 		close(pipe_fds2[1]);
 		opentty(ttyname0, 0);
@@ -395,7 +394,7 @@ int main(int argc, char *argv[])
 
 		close(pipe_fds1[1]);
 		close(pipe_fds2[0]);
-		return do_child((void*)argv);
+		return do_child((void *)argv);
 	}
 
 	close(pipe_fds1[1]);
@@ -418,8 +417,8 @@ int main(int argc, char *argv[])
 		perror("write to pipe");
 		exit(EXIT_FAILURE);
 	}
-
-	if ((ret = waitpid(pid, &status, __WALL)) < 0) {
+	ret = waitpid(pid, &status, __WALL);
+	if (ret < 0) {
 		printf("waitpid() returns %d, errno %d\n", ret, errno);
 		exit(EXIT_FAILURE);
 	}
