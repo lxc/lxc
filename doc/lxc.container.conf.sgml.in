@@ -69,7 +69,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     </para>
 
     <para>
-      LXC has supports unprivileged containers.  Unprivileged containers are
+      LXC has support for unprivileged containers.  Unprivileged containers are
       containers that are run without any privilege.  This requires support for
       user namespaces in the kernel that the container is run on.  LXC was the
       first runtime to support unprivileged containers after user namespaces
@@ -99,7 +99,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       </para>
 
     <para>
-      LXC namespaces configuration keys by using single dots. This means complex
+      LXC namespaces configuration keys use single dots. This means complex
       configuration keys such as <option>lxc.net.0</option> expose various
       subkeys such as <option>lxc.net.0.type</option>,
       <option>lxc.net.0.link</option>, <option>lxc.net.0.ipv6.address</option>, and
@@ -350,7 +350,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           </term>
           <listitem>
             <para>
-              Specify the proc file name to be set. The file name available
+              Specify the proc file name to be set. The file names available
               are those listed under /proc/PID/.
               Example:
             </para>
