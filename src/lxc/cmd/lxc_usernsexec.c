@@ -364,9 +364,8 @@ int main(int argc, char *argv[])
 		perror("pipe");
 		exit(EXIT_FAILURE);
 	}
-	if ((pid = fork()) == 0) {
-		/* Child. */
-
+	pid = fork();
+	if (pid == 0) { /* Child. */
 		close(pipe_fds1[0]);
 		close(pipe_fds2[1]);
 		opentty(ttyname0, 0);
@@ -413,8 +412,8 @@ int main(int argc, char *argv[])
 		perror("write to pipe");
 		exit(EXIT_FAILURE);
 	}
-
-	if ((ret = waitpid(pid, &status, __WALL)) < 0) {
+	ret = waitpid(pid, &status, __WALL);
+	if (ret < 0) {
 		printf("waitpid() returns %d, errno %d\n", ret, errno);
 		exit(EXIT_FAILURE);
 	}
