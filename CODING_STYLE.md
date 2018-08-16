@@ -127,26 +127,8 @@ https://www.kernel.org/doc/html/latest/process/coding-style.html
 
 #### All Exported Functions Must Be Declared `extern` In A Header File
 
-- Functions which are used in different files in the library should be declared
-  in a suitable `*.c` file and exposed in a suitable `*.h` file. When defining
-  the function in the `*.c` file the function signature should not be preceded
-  by the `extern` keyword. When declaring the function signature in the `*.h`
-  file it must be preceded by the `extern` keyword. For example:
-  ```C
-  /* Valid function definition in a *.c file */
-  ssize_t lxc_write_nointr(int fd, const void* buf, size_t count)
-  {
-          ssize_t ret;
-  again:
-          ret = write(fd, buf, count);
-          if (ret < 0 && errno == EINTR)
-                  goto again;
-          return ret;
-  }
-
-  /* Valid function declaration in a *.h file */
-  extern ssize_t lxc_write_nointr(int fd, const void* buf, size_t count);
-  ```
+- Functions declared in header files (`*.h`) should use the `extern` keyword.
+- Functions declared in source files (`*.c`) should not use the `extern` keyword.
 
 #### All Names Must Be In lower_case
 
