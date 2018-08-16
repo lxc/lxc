@@ -54,7 +54,7 @@
 
 lxc_log_define(lxc_init, lxc);
 
-static sig_atomic_t was_interrupted = 0;
+static sig_atomic_t was_interrupted;
 
 static void interrupt_handler(int sig)
 {
