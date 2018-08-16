@@ -12,7 +12,8 @@ pay attention to a few things:
 Coding Style:
 -------------
 
-The coding style follows the Linux kernel coding style.
+The LXC project generally follows the Linux kernel coding style.  However there
+are a few differences, these are outlined it CODING_STLYE.md
 
 The Linux kernel coding style guide can be found within the kernel tree:
 
