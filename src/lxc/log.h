@@ -429,6 +429,18 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 		ERROR("%s - " format, ptr, ##__VA_ARGS__); \
 	} while (0)
 
+#define CMD_SYSERROR(format, ...)                                    \
+	do {                                                         \
+		lxc_log_strerror_r;                                  \
+		fprintf(stderr, "%s - " format, ptr, ##__VA_ARGS__); \
+	} while (0)
+
+#define CMD_SYSINFO(format, ...)                            \
+	do {                                                \
+		lxc_log_strerror_r;                         \
+		printf("%s - " format, ptr, ##__VA_ARGS__); \
+	} while (0)
+
 extern int lxc_log_fd;
 
 extern int lxc_log_syslog(int facility);
