@@ -395,7 +395,7 @@ int main(int argc, char *argv[])
 
 		close(pipe_fds1[1]);
 		close(pipe_fds2[0]);
-		return do_child((void*)argv);
+		return do_child((void *)argv);
 	}
 
 	close(pipe_fds1[1]);

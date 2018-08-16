@@ -130,7 +130,8 @@ static int lxc_monitord_fifo_delete(struct lxc_monitor *mon)
 	return 0;
 }
 
-static void lxc_monitord_sockfd_remove(struct lxc_monitor *mon, int fd) {
+static void lxc_monitord_sockfd_remove(struct lxc_monitor *mon, int fd)
+{
 	int i;
 
 	if (lxc_mainloop_del_handler(&mon->descr, fd))
@@ -175,7 +176,7 @@ static int lxc_monitord_sock_handler(int fd, uint32_t events, void *data,
 static int lxc_monitord_sock_accept(int fd, uint32_t events, void *data,
 				    struct lxc_epoll_descr *descr)
 {
-	int ret,clientfd;
+	int ret, clientfd;
 	struct lxc_monitor *mon = data;
 	struct ucred cred;
 	socklen_t credsz = sizeof(cred);
@@ -301,7 +302,7 @@ static void lxc_monitord_delete(struct lxc_monitor *mon)
 static int lxc_monitord_fifo_handler(int fd, uint32_t events, void *data,
 				     struct lxc_epoll_descr *descr)
 {
-	int ret,i;
+	int ret, i;
 	struct lxc_msg msglxc;
 	struct lxc_monitor *mon = data;
 
@@ -315,7 +316,7 @@ static int lxc_monitord_fifo_handler(int fd, uint32_t events, void *data,
 		ret = lxc_write_nointr(mon->clientfds[i], &msglxc, sizeof(msglxc));
 		if (ret < 0)
 			SYSERROR("Failed to send message to client file descriptor %d",
-			         mon->clientfds[i]);
+				 mon->clientfds[i]);
 	}
 
 	return LXC_MAINLOOP_CONTINUE;
@@ -371,7 +372,7 @@ int main(int argc, char *argv[])
 	}
 
 	ret = snprintf(logpath, sizeof(logpath), "%s/lxc-monitord.log",
-		       (strcmp(LXCPATH, lxcpath) ? lxcpath : LOGPATH ));
+		       (strcmp(LXCPATH, lxcpath) ? lxcpath : LOGPATH));
 	if (ret < 0 || ret >= sizeof(logpath))
 		exit(EXIT_FAILURE);
 
