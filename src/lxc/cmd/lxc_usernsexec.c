@@ -333,18 +333,18 @@ int main(int argc, char *argv[])
 
 	while ((c = getopt(argc, argv, "m:h")) != EOF) {
 		switch (c) {
-			case 'm':
-				if (parse_map(optarg)) {
-					usage(argv[0]);
-					exit(EXIT_FAILURE);
-				}
-				break;
-			case 'h':
-				  usage(argv[0]);
-				  exit(EXIT_SUCCESS);
-			default:
-				  usage(argv[0]);
-				  exit(EXIT_FAILURE);
+		case 'm':
+			if (parse_map(optarg)) {
+				usage(argv[0]);
+				exit(EXIT_FAILURE);
+			}
+			break;
+		case 'h':
+			usage(argv[0]);
+			exit(EXIT_SUCCESS);
+		default:
+			usage(argv[0]);
+			exit(EXIT_FAILURE);
 		}
 	};
 
