@@ -318,7 +318,7 @@ static int toss_list(struct lxc_list *c_groups_list)
 
 int main(int argc, char *argv[])
 {
-	int count = 0, i = 0, ret = 0;
+	int count = 0, failed = 0, i = 0, ret = 0;
 	struct lxc_list *cmd_group;
 	struct lxc_container **containers = NULL;
 	struct lxc_list **c_groups_lists = NULL;
@@ -491,11 +491,15 @@ int main(int argc, char *argv[])
 
 	}
 
-	/* clean up any lingering detritus */
+	/* clean up any lingering detritus, if container exists here
+	 * then it must have failed to start.
+	 */
+	failed = 0;
 	for (i = 0; i < count; i++) {
-		if (containers[i])
+		if (containers[i]) {
+			failed++;
 			lxc_container_put(containers[i]);
-
+		}
 		if (c_groups_lists && c_groups_lists[i])
 			toss_list(c_groups_lists[i]);
 	}
@@ -503,6 +507,11 @@ int main(int argc, char *argv[])
 	free(c_groups_lists);
 	toss_list(cmd_groups_list);
 	free(containers);
+
+	if (failed == count)
+		exit(1);	/* Total failure */
+	else if (failed > 0)
+		exit(2);	/* Partial failure */
 
 	exit(EXIT_SUCCESS);
 }
