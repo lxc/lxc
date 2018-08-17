@@ -41,8 +41,8 @@ static const struct option my_longopts[] = {
 };
 
 static struct lxc_arguments my_args = {
-	.progname = "lxc-freeze",
-	.help     = "\
+	.progname     = "lxc-freeze",
+	.help         = "\
 --name=NAME\n\
 \n\
 lxc-freeze freezes a container with the identifier NAME\n\
@@ -50,9 +50,11 @@ lxc-freeze freezes a container with the identifier NAME\n\
 Options :\n\
   -n, --name=NAME      NAME of the container\n\
   --rcfile=FILE        Load configuration file FILE\n",
-	.options  = my_longopts,
-	.parser   = NULL,
-	.checker  = NULL,
+	.options      = my_longopts,
+	.parser       = NULL,
+	.checker      = NULL,
+	.log_priority = "ERROR",
+	.log_file     = "none",
 };
 
 int main(int argc, char *argv[])
@@ -63,18 +65,15 @@ int main(int argc, char *argv[])
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		exit(EXIT_FAILURE);
 
-	/* Only create log if explicitly instructed */
-	if (my_args.log_file || my_args.log_priority) {
-		log.name = my_args.name;
-		log.file = my_args.log_file;
-		log.level = my_args.log_priority;
-		log.prefix = my_args.progname;
-		log.quiet = my_args.quiet;
-		log.lxcpath = my_args.lxcpath[0];
+	log.name = my_args.name;
+	log.file = my_args.log_file;
+	log.level = my_args.log_priority;
+	log.prefix = my_args.progname;
+	log.quiet = my_args.quiet;
+	log.lxcpath = my_args.lxcpath[0];
 
-		if (lxc_log_init(&log))
-			exit(EXIT_FAILURE);
-	}
+	if (lxc_log_init(&log))
+		exit(EXIT_FAILURE);
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {
