@@ -47,7 +47,7 @@
 
 /* option keys for long only options */
 #define OPT_USAGE 0x1000
-#define OPT_VERSION OPT_USAGE - 1
+#define OPT_VERSION (OPT_USAGE - 1)
 
 #define QUOTE(macro) #macro
 #define QUOTEVAL(macro) QUOTE(macro)
