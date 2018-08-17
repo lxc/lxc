@@ -20,7 +20,7 @@ The Linux kernel coding style guide can be found within the kernel tree:
 
 It can be accessed online too:
 
-https://www.kernel.org/doc/html/v4.10/process/coding-style.html
+https://www.kernel.org/doc/html/latest/process/coding-style.html
 
 Submitting Modifications:
 -------------------------
