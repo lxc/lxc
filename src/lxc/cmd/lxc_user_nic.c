@@ -752,7 +752,7 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 		lxc_strmunmap(buf, sb.st_size);
 	}
 
-	if (owner == NULL)
+	if (!owner)
 		return NULL;
 
 	ret = snprintf(nicname, sizeof(nicname), "vethXXXXXX");
