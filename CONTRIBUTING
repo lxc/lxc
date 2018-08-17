@@ -5,21 +5,23 @@ This project accepts contributions. In order to contribute, you should
 pay attention to a few things:
 
     1 - your code must follow the coding style rules
-    2 - the format of the submission must Github pull requests
+    2 - the format of the submission must be Github pull requests
     3 - your work must be signed
 
 
 Coding Style:
 -------------
 
-The coding style follows the Linux kernel coding style.
+The LXC project generally follows the Linux kernel coding style.  However there
+are a few differences, these are outlined it CODING_STLYE.md
 
-The coding style is defined in the 'CodingStyle' file, available in
-the directory 'Documentation' of the Linux kernel source tree.
+The Linux kernel coding style guide can be found within the kernel tree:
+
+	Documentation/process/coding-style.rst
 
 It can be accessed online too:
 
-https://www.kernel.org/doc/html/v4.10/process/coding-style.html
+https://www.kernel.org/doc/html/latest/process/coding-style.html
 
 Submitting Modifications:
 -------------------------

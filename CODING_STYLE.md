@@ -1,4 +1,18 @@
-#### General Notes
+LXC Coding Style Guide
+======================
+
+In general the LXC project follows the Linux kernel coding style.  There are
+however are a few differences, these are outlined in this document.
+
+The Linux kernel coding style guide can be found within the kernel tree:
+
+	Documentation/process/coding-style.rst
+
+It can be accessed online too:
+
+https://www.kernel.org/doc/html/latest/process/coding-style.html
+
+## 1) General Notes
 
 - The coding style guide refers to new code. But legacy code can be cleaned up
   and we are happy to take those patches.
@@ -62,11 +76,11 @@
   initializations will not be correct. In such cases please refer to the coding
   style here.
 
-#### Only Use Tabs
+## 2) Only Use Tabs
 
 - LXC uses tabs.
 
-#### Only use `/* */` Style Comments
+## 3) Only use `/* */` Style Comments
 
 - Any comments that are added must use `/* */`.
 - All comments should start on the same line as the opening `/*`.
@@ -83,13 +97,13 @@
    */
   ```
 
-#### Try To Wrap At 80chars
+## 4) Try To Wrap At 80chars
 
 - This is not strictly enforced. It is perfectly valid to sometimes
   overflow this limit if it helps clarity. Nonetheless, try to stick to it
   and use common sense to decide when not to.
 
-#### Error Messages
+## 5) Error Messages
 
 - Error messages must start with a capital letter and must **not** end with a
   punctuation sign.
@@ -101,44 +115,22 @@
   WARN("\"/dev\" directory does not exist. Proceeding without autodev being set up");
   ```
 
-#### Return Error Codes
+## 6) Return Error Codes
 
 - When writing a function that can fail in a non-binary way try to return
   meaningful negative error codes (e.g. `return -EINVAL;`).
 
-#### All Unexported Functions Must Be Declared `static`
+## 7) All Unexported Functions Must Be Declared `static`
 
 - Functions which are only used in the current file and are not exported
   within the codebase need to be declared with the `static` attribute.
 
-#### All Exported Functions Must Be Declared `extern` In A Header File
+## 8) All Exported Functions Must Be Declared `extern` In A Header File
 
-- Functions which are used in different files in the library should be declared
-  in a suitable `*.c` file and exposed in a suitable `*.h` file. When defining
-  the function in the `*.c` file the function signature should not be preceded
-  by the `extern` keyword. When declaring the function signature in the `*.h`
-  file it must be preceded by the `extern` keyword. For example:
-  ```C
-  /* Valid function definition in a *.c file */
-  ssize_t lxc_write_nointr(int fd, const void* buf, size_t count)
-  {
-          ssize_t ret;
-  again:
-          ret = write(fd, buf, count);
-          if (ret < 0 && errno == EINTR)
-                  goto again;
-          return ret;
-  }
+- Functions declared in header files (`*.h`) should use the `extern` keyword.
+- Functions declared in source files (`*.c`) should not use the `extern` keyword.
 
-  /* Valid function declaration in a *.h file */
-  extern ssize_t lxc_write_nointr(int fd, const void* buf, size_t count);
-  ```
-
-#### All Names Must Be In lower_case
-
-- All functions and variable names must use lower case.
-
-#### Declaring Variables
+## 9) Declaring Variables
 
 - variables should be declared at the top of the function or at the beginning
   of a new scope but **never** in the middle of a scope
@@ -181,48 +173,7 @@
   }
     ```
 
-#### Single-line `if` blocks should not be enclosed in `{}`
-
-- This also affects `if-else` ladders if and only if all constituting
-  conditions are
-  single-line conditions. If there is at least one non-single-line
-  condition `{}` must be used.
-- For example:
-  ```C
-  /* no brackets needed */
-  if (size > INT_MAX)
-          return -EFBIG;
-
-  /* The else branch has more than one-line and so needs {}. This entails that
-   * the if branch also needs to have {}.
-   */
-  if ( errno == EROFS ) {
-          WARN("Warning: Read Only file system while creating %s", path);
-  } else {
-          SYSERROR("Error creating %s", path);
-          return -1;
-  }
-
-  /* also fine */
-  for (i = 0; list[i]; i++)
-        if (strcmp(list[i], entry) == 0)
-                return true;
-
-  /* also fine */
-  if (ret < 0)
-          WARN("Failed to set FD_CLOEXEC flag on slave fd %d of "
-               "pty device \"%s\": %s", pty_info->slave,
-               pty_info->name, strerror(errno));
-
-  /* also fine */
-  if (ret == 0)
-          for (i = 0; i < sizeof(limit_opt)/sizeof(limit_opt[0]); ++i) {
-                  if (strcmp(res, limit_opt[i].name) == 0)
-                          return limit_opt[i].value;
-          }
-  ```
-
-#### Functions Not Returning Booleans Must Assign Return Value Before Performing Checks
+## 10) Functions Not Returning Booleans Must Assign Return Value Before Performing Checks
 
 - When checking whether a function not returning booleans was successful or not
   the returned value must be assigned before it is checked (`str{n}cmp()`
@@ -246,7 +197,7 @@
           continue;
   ```
 
-#### Non-Boolean Functions That Behave Like Boolean Functions Must Explicitly Check Against A Value
+## 11) Non-Boolean Functions That Behave Like Boolean Functions Must Explicitly Check Against A Value
 
 - This rule mainly exists for `str{n}cmp()` type functions. In most cases they
   are used like a boolean function to check whether a string matches or not.
@@ -300,17 +251,17 @@
   }
   ```
 
-#### Do Not Use C99 Variable Length Arrays (VLA)
+## 12) Do Not Use C99 Variable Length Arrays (VLA)
 
 - They are made optional and there is no guarantee that future C standards
   will support them.
 
-#### Use Standard libc Macros When Exiting
+## 13) Use Standard libc Macros When Exiting
 
 - libc provides `EXIT_FAILURE` and `EXIT_SUCCESS`. Use them whenever possible
   in the child of `fork()`ed process or when exiting from a `main()` function.
 
-#### Use `goto`s
+## 14) Use `goto`s
 
 `goto`s are an essential language construct of C and are perfect to perform
 cleanup operations or simplify the logic of functions. However, here are the
@@ -384,12 +335,12 @@ rules to use them:
   }
   ```
 
-#### Use Booleans instead of integers
+## 15) Use Booleans instead of integers
 
 - When something can be conceptualized in a binary way use a boolean not
   an integer.
 
-#### Cleanup Functions Must Handle The Object's Null Type And Being Passed Already Cleaned Up Objects
+## 16) Cleanup Functions Must Handle The Object's Null Type And Being Passed Already Cleaned Up Objects
 
 - If you implement a custom cleanup function to e.g. free a complex type
   you declared you must ensure that the object's null type is handled and
@@ -431,7 +382,7 @@ rules to use them:
   }
   ```
 
-### Cast to `(void)` When Intentionally Ignoring Return Values
+## 17) Cast to `(void)` When Intentionally Ignoring Return Values
 
 - There are cases where you do not care about the return value of a function.
   Please cast the return value to `(void)` when doing so.
@@ -478,11 +429,11 @@ rules to use them:
   }
   ```
 
-#### Use `for (;;)` instead of `while (1)` or `while (true)`
+## 18) Use `for (;;)` instead of `while (1)` or `while (true)`
 
 - Let's be honest, it is really the only sensible way to do this.
 
-#### Use The Set Of Supported DCO Statements
+## 19) Use The Set Of Supported DCO Statements
 
 - Signed-off-by: Random J Developer <random@developer.org>
   - You did write this code or have the right to contribute it to LXC.
@@ -508,7 +459,7 @@ rules to use them:
     helped you solve a problem or had a clever idea do not silently claim it by
     slapping your Signed-off-by underneath. Be honest and add a Suggested-by.
 
-#### Commit Message Outline
+## 20) Commit Message Outline
 
 - You **must** stick to the 80chars limit especially in the title of the commit
   message.
@@ -550,13 +501,13 @@ rules to use them:
       Signed-off-by: Christian Brauner <christian.brauner@ubuntu.com>
 
   ```
-#### Use `_exit()` To Terminate `fork()`ed Child Processes
+## 21) Use `_exit()` To Terminate `fork()`ed Child Processes
 
 - When `fork()`ing off a child process use `_exit()` to terminate it instead of
   `exit()`. The `exit()` function is not thread-safe and thus not suited for
   the shared library which must ensure that it is thread-safe.
 
-#### Keep Arrays of `struct`s Aligned Horizontally When Initializing 
+## 22) Keep Arrays of `struct`s Aligned Horizontally When Initializing
 
 - Arrays of `struct`s are:
   ```C
@@ -663,7 +614,7 @@ rules to use them:
   };
   ```
 
-#### Use `strlcpy()` instead of `strncpy()`
+## 23) Use `strlcpy()` instead of `strncpy()`
 
 When copying strings always use `strlcpy()` instead of `strncpy()`. The
 advantage of `strlcpy()` is that it will always append a `\0` byte to the
@@ -673,7 +624,7 @@ Unless you have a valid reason to accept truncation you must check whether
 truncation has occurred, treat it as an error, and handle the error
 appropriately.
 
-#### Use `strlcat()` instead of `strncat()`
+## 24) Use `strlcat()` instead of `strncat()`
 
 When concatenating strings always use `strlcat()` instead of `strncat()`. The
 advantage of `strlcat()` is that it will always append a `\0` byte to the
