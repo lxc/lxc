@@ -89,7 +89,7 @@ static int lxc_monitord_fifo_create(struct lxc_monitor *mon)
 	if (ret < 0)
 		return ret;
 
-	ret = mknod(fifo_path, S_IFIFO|S_IRUSR|S_IWUSR, 0);
+	ret = mknod(fifo_path, S_IFIFO | S_IRUSR | S_IWUSR, 0);
 	if (ret < 0 && errno != EEXIST) {
 		SYSINFO("Failed to mknod monitor fifo %s", fifo_path);
 		return -1;
@@ -208,7 +208,7 @@ static int lxc_monitord_sock_accept(int fd, uint32_t events, void *data,
 
 		clientfds = realloc(mon->clientfds,
 				    (mon->clientfds_size + CLIENTFDS_CHUNK) * sizeof(mon->clientfds[0]));
-		if (clientfds == NULL) {
+		if (!clientfds) {
 			ERROR("Failed to realloc memory for %d client file descriptors",
 			      mon->clientfds_size + CLIENTFDS_CHUNK);
 			goto err1;

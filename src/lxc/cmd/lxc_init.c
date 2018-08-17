@@ -47,7 +47,7 @@
 
 /* option keys for long only options */
 #define OPT_USAGE 0x1000
-#define OPT_VERSION OPT_USAGE - 1
+#define OPT_VERSION (OPT_USAGE - 1)
 
 #define QUOTE(macro) #macro
 #define QUOTEVAL(macro) QUOTE(macro)
@@ -73,7 +73,7 @@ static struct option long_options[] = {
 	    { "lxcpath",     required_argument, 0, 'P'         },
 	    { 0,             0,                 0, 0           }
 	};
-static char short_options[] = "n:hqo:l:P:";
+static const char short_options[] = "n:hqo:l:P:";
 
 struct arguments {
 	const struct option *options;
@@ -91,7 +91,7 @@ struct arguments {
 };
 
 static int arguments_parse(struct arguments *my_args, int argc,
-			       char *const argv[]);
+			   char *const argv[]);
 
 static struct arguments my_args = {
 	.options   = long_options,
@@ -468,18 +468,18 @@ out:
 static void print_usage(const struct option longopts[])
 
 {
-	fprintf(stderr, "Usage: lxc-init [-n|--name=NAME] [-h|--help] [--usage] [--version] \n\
+	fprintf(stderr, "Usage: lxc-init [-n|--name=NAME] [-h|--help] [--usage] [--version]\n\
 		[-q|--quiet] [-o|--logfile=LOGFILE] [-l|--logpriority=LOGPRIORITY] [-P|--lxcpath=LXCPATH]\n");
 	exit(0);
 }
 
-static void print_version()
+static void print_version(void)
 {
 	printf("%s\n", LXC_VERSION);
 	exit(0);
 }
 
-static void print_help()
+static void print_help(void)
 {
 	fprintf(stderr, "\
 Usage: lxc-init --name=NAME -- COMMAND\n\
@@ -500,11 +500,10 @@ Mandatory or optional arguments to long options are also mandatory or optional\n
 for any corresponding short options.\n\
 \n\
 See the lxc-init man page for further information.\n\n");
-
 }
 
 static int arguments_parse(struct arguments *args, int argc,
-			       char *const argv[])
+			   char *const argv[])
 {
 	while (true) {
 		int c;
@@ -550,9 +549,8 @@ static int arguments_parse(struct arguments *args, int argc,
 	args->argc = argc - optind;
 
 	/* If no lxcpath was given, use default */
-	if (!args->lxcpath) {
+	if (!args->lxcpath)
 		args->lxcpath = lxc_global_config_value("lxc.lxcpath");
-	}
 
 	/* Check the command options */
 	if (!args->name) {

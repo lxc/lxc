@@ -219,7 +219,7 @@ static char **get_groupnames(void)
 				usernic_error("%s", "Could not find matched group record\n");
 
 			usernic_error("Failed to get group name: %s(%u)\n",
-			      strerror(errno), group_ids[i]);
+				      strerror(errno), group_ids[i]);
 			free(buf);
 			free(group_ids);
 			free_groupnames(groupnames);
@@ -512,7 +512,8 @@ static int instantiate_veth(char *veth1, char *veth2)
 
 	/* Changing the high byte of the mac address to 0xfe, the bridge
 	 * interface will always keep the host's mac address and not take the
-	 * mac address of a container. */
+	 * mac address of a container.
+	 */
 	ret = setup_private_host_hw_addr(veth1);
 	if (ret < 0)
 		usernic_error("Failed to change mac address of host interface "
@@ -686,7 +687,7 @@ static bool cull_entries(int fd, char *name, char *net_type, char *net_link,
 static int count_entries(char *buf, off_t len, char *name, char *net_type, char *net_link)
 {
 	int count = 0;
-	bool owner = false;;
+	bool owner = false;
 	char *buf_end;
 
 	buf_end = &buf[len];
@@ -751,7 +752,7 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 		lxc_strmunmap(buf, sb.st_size);
 	}
 
-	if (owner == NULL)
+	if (!owner)
 		return NULL;
 
 	ret = snprintf(nicname, sizeof(nicname), "vethXXXXXX");
