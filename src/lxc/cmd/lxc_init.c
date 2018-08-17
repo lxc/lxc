@@ -91,7 +91,7 @@ struct arguments {
 };
 
 static int arguments_parse(struct arguments *my_args, int argc,
-			       char *const argv[]);
+			   char *const argv[]);
 
 static struct arguments my_args = {
 	.options   = long_options,
@@ -500,11 +500,10 @@ Mandatory or optional arguments to long options are also mandatory or optional\n
 for any corresponding short options.\n\
 \n\
 See the lxc-init man page for further information.\n\n");
-
 }
 
 static int arguments_parse(struct arguments *args, int argc,
-			       char *const argv[])
+			   char *const argv[])
 {
 	while (true) {
 		int c;
