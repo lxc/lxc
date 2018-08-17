@@ -33,21 +33,23 @@
 #include "log.h"
 #include "utils.h"
 
-lxc_log_define(lxc_device, lxc);
-
 #if HAVE_IFADDRS_H
 #include <ifaddrs.h>
 #else
 #include "include/ifaddrs.h"
 #endif
 
+lxc_log_define(lxc_device, lxc);
+
+static bool is_interface(const char *dev_name, pid_t pid);
+
 static const struct option my_longopts[] = {
 	LXC_COMMON_OPTIONS
 };
 
 static struct lxc_arguments my_args = {
-	.progname = "lxc-device",
-	.help     = "\
+	.progname     = "lxc-device",
+	.help         = "\
 --name=NAME -- add|del DEV\n\
 \n\
 lxc-device attach or detach DEV to or from container.\n\
@@ -55,9 +57,11 @@ lxc-device attach or detach DEV to or from container.\n\
 Options :\n\
   -n, --name=NAME      NAME of the container\n\
   --rcfile=FILE        Load configuration file FILE\n",
-	.options  = my_longopts,
-	.parser   = NULL,
-	.checker  = NULL,
+	.options      = my_longopts,
+	.parser       = NULL,
+	.checker      = NULL,
+	.log_priority = "ERROR",
+	.log_file     = "none",
 };
 
 static bool is_interface(const char *dev_name, pid_t pid)
@@ -110,25 +114,22 @@ int main(int argc, char *argv[])
 	}
 
 	if (lxc_arguments_parse(&my_args, argc, argv))
-		goto err;
+		exit(EXIT_FAILURE);
 
-	/* Only create log if explicitly instructed */
-	if (my_args.log_file || my_args.log_priority) {
-		log.name = my_args.name;
-		log.file = my_args.log_file;
-		log.level = my_args.log_priority;
-		log.prefix = my_args.progname;
-		log.quiet = my_args.quiet;
-		log.lxcpath = my_args.lxcpath[0];
+	log.name = my_args.name;
+	log.file = my_args.log_file;
+	log.level = my_args.log_priority;
+	log.prefix = my_args.progname;
+	log.quiet = my_args.quiet;
+	log.lxcpath = my_args.lxcpath[0];
 
-		if (lxc_log_init(&log))
-			exit(EXIT_FAILURE);
-	}
+	if (lxc_log_init(&log))
+		exit(EXIT_FAILURE);
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {
 		ERROR("%s doesn't exist", my_args.name);
-		goto err;
+		exit(EXIT_FAILURE);
 	}
 
 	if (my_args.rcfile) {
@@ -136,65 +137,60 @@ int main(int argc, char *argv[])
 
 		if (!c->load_config(c, my_args.rcfile)) {
 			ERROR("Failed to load rcfile");
-			goto err1;
+			goto err;
 		}
 
 		c->configfile = strdup(my_args.rcfile);
 		if (!c->configfile) {
 			ERROR("Out of memory setting new config filename");
-			goto err1;
+			goto err;
 		}
 	}
 
 	if (!c->is_running(c)) {
 		ERROR("Container %s is not running", c->name);
-		goto err1;
+		goto err;
 	}
 
 	if (my_args.argc < 2) {
 		ERROR("Error: no command given (Please see --help output)");
-		goto err1;
+		goto err;
 	}
 
 	cmd = my_args.argv[0];
 	dev_name = my_args.argv[1];
+
 	if (my_args.argc < 3)
 		dst_name = dev_name;
 	else
 		dst_name = my_args.argv[2];
 
 	if (strncmp(cmd, "add", strlen(cmd)) == 0) {
-		if (is_interface(dev_name, 1)) {
+		if (is_interface(dev_name, 1))
 			ret = c->attach_interface(c, dev_name, dst_name);
-		} else {
+		else
 			ret = c->add_device_node(c, dev_name, dst_name);
-		}
-
 		if (ret != true) {
 			ERROR("Failed to add %s to %s", dev_name, c->name);
-			goto err1;
+			goto err;
 		}
 	} else if (strncmp(cmd, "del", strlen(cmd)) == 0) {
-		if (is_interface(dev_name, c->init_pid(c))) {
+		if (is_interface(dev_name, c->init_pid(c)))
 			ret = c->detach_interface(c, dev_name, dst_name);
-		} else {
+		else
 			ret = c->remove_device_node(c, dev_name, dst_name);
-		}
-
 		if (ret != true) {
 			ERROR("Failed to del %s from %s", dev_name, c->name);
-			goto err1;
+			goto err;
 		}
 	} else {
 		ERROR("Error: Please use add or del (Please see --help output)");
-		goto err1;
+		goto err;
 	}
 
 	exit(EXIT_SUCCESS);
 
-err1:
-	lxc_container_put(c);
-
 err:
+	lxc_container_put(c);
 	exit(EXIT_FAILURE);
 }
