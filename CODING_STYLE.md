@@ -130,10 +130,6 @@ https://www.kernel.org/doc/html/latest/process/coding-style.html
 - Functions declared in header files (`*.h`) should use the `extern` keyword.
 - Functions declared in source files (`*.c`) should not use the `extern` keyword.
 
-#### All Names Must Be In lower_case
-
-- All functions and variable names must use lower case.
-
 #### Declaring Variables
 
 - variables should be declared at the top of the function or at the beginning
@@ -176,47 +172,6 @@ https://www.kernel.org/doc/html/latest/process/coding-style.html
           return 0;
   }
     ```
-
-#### Single-line `if` blocks should not be enclosed in `{}`
-
-- This also affects `if-else` ladders if and only if all constituting
-  conditions are
-  single-line conditions. If there is at least one non-single-line
-  condition `{}` must be used.
-- For example:
-  ```C
-  /* no brackets needed */
-  if (size > INT_MAX)
-          return -EFBIG;
-
-  /* The else branch has more than one-line and so needs {}. This entails that
-   * the if branch also needs to have {}.
-   */
-  if ( errno == EROFS ) {
-          WARN("Warning: Read Only file system while creating %s", path);
-  } else {
-          SYSERROR("Error creating %s", path);
-          return -1;
-  }
-
-  /* also fine */
-  for (i = 0; list[i]; i++)
-        if (strcmp(list[i], entry) == 0)
-                return true;
-
-  /* also fine */
-  if (ret < 0)
-          WARN("Failed to set FD_CLOEXEC flag on slave fd %d of "
-               "pty device \"%s\": %s", pty_info->slave,
-               pty_info->name, strerror(errno));
-
-  /* also fine */
-  if (ret == 0)
-          for (i = 0; i < sizeof(limit_opt)/sizeof(limit_opt[0]); ++i) {
-                  if (strcmp(res, limit_opt[i].name) == 0)
-                          return limit_opt[i].value;
-          }
-  ```
 
 #### Functions Not Returning Booleans Must Assign Return Value Before Performing Checks
 
