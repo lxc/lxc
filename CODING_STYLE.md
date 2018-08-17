@@ -382,7 +382,7 @@ rules to use them:
   }
   ```
 
-### Cast to `(void)` When Intentionally Ignoring Return Values
+#### Cast to `(void)` When Intentionally Ignoring Return Values
 
 - There are cases where you do not care about the return value of a function.
   Please cast the return value to `(void)` when doing so.
