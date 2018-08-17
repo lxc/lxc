@@ -201,20 +201,20 @@ static void remove_self(void)
 
 	n = readlink("/proc/self/exe", path, sizeof(path));
 	if (n < 0 || n >= MAXPATHLEN) {
-		SYSERROR("Failed to readlink \"/proc/self/exe\"");
+		SYSDEBUG("Failed to readlink \"/proc/self/exe\"");
 		return;
 	}
 	path[n] = '\0';
 
 	ret = umount2(path, MNT_DETACH);
 	if (ret < 0) {
-		SYSERROR("Failed to unmount \"%s\"", path);
+		SYSDEBUG("Failed to unmount \"%s\"", path);
 		return;
 	}
 
 	ret = unlink(path);
 	if (ret < 0) {
-		SYSERROR("Failed to unlink \"%s\"", path);
+		SYSDEBUG("Failed to unlink \"%s\"", path);
 		return;
 	}
 }
