@@ -46,41 +46,58 @@
 #include "confile.h"
 #include "log.h"
 
-static struct lxc_list defines;
-
 lxc_log_define(lxc_start, lxc);
 
-static int ensure_path(struct lxc_arguments *args, char **confpath, const char *path)
-{
-	int err = -1, fd;
-	char *fullpath = NULL;
+static int my_parser(struct lxc_arguments *args, int c, char *arg);
+static int ensure_path(struct lxc_arguments *args, char **confpath, const char *path);
 
-	if (path) {
-		if (access(path, W_OK)) {
-			fd = creat(path, 0600);
-			if (fd < 0 && errno != EEXIST) {
-				ERROR("Failed to create '%s'", path);
-				goto err;
-			}
+static struct lxc_list defines;
 
-			if (fd >= 0)
-				close(fd);
-		}
+static const struct option my_longopts[] = {
+	{"daemon", no_argument, 0, 'd'},
+	{"foreground", no_argument, 0, 'F'},
+	{"rcfile", required_argument, 0, 'f'},
+	{"define", required_argument, 0, 's'},
+	{"console", required_argument, 0, 'c'},
+	{"console-log", required_argument, 0, 'L'},
+	{"close-all-fds", no_argument, 0, 'C'},
+	{"pidfile", required_argument, 0, 'p'},
+	{"share-net", required_argument, 0, OPT_SHARE_NET},
+	{"share-ipc", required_argument, 0, OPT_SHARE_IPC},
+	{"share-uts", required_argument, 0, OPT_SHARE_UTS},
+	{"share-pid", required_argument, 0, OPT_SHARE_PID},
+	LXC_COMMON_OPTIONS
+};
 
-		fullpath = realpath(path, NULL);
-		if (!fullpath) {
-			ERROR("Failed to get the real path of '%s'", path);
-			goto err;
-		}
-
-		*confpath = fullpath;
-	}
-
-	err = EXIT_SUCCESS;
-
-err:
-	return err;
-}
+static struct lxc_arguments my_args = {
+	.progname     = "lxc-start",
+	.help         = "\
+--name=NAME -- COMMAND\n\
+\n\
+lxc-start start COMMAND in specified container NAME\n\
+\n\
+Options :\n\
+  -n, --name=NAME        NAME of the container\n\
+  -d, --daemon           Daemonize the container (default)\n\
+  -F, --foreground       Start with the current tty attached to /dev/console\n\
+  -p, --pidfile=FILE     Create a file with the process id\n\
+  -f, --rcfile=FILE      Load configuration file FILE\n\
+  -c, --console=FILE     Use specified FILE for the container console\n\
+  -L, --console-log=FILE Log container console output to FILE\n\
+  -C, --close-all-fds    If any fds are inherited, close them\n\
+                         If not specified, exit with failure instead\n\
+                         Note: --daemon implies --close-all-fds\n\
+  -s, --define KEY=VAL   Assign VAL to configuration variable KEY\n\
+      --share-[net|ipc|uts|pid]=NAME Share a namespace with another container or pid\n\
+",
+	.options      = my_longopts,
+	.parser       = my_parser,
+	.checker      = NULL,
+	.log_priority = "ERROR",
+	.log_file     = "none",
+	.daemonize    = 1,
+	.pidfile      = NULL,
+};
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
@@ -124,49 +141,34 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 	return 0;
 }
 
-static const struct option my_longopts[] = {
-	{"daemon", no_argument, 0, 'd'},
-	{"foreground", no_argument, 0, 'F'},
-	{"rcfile", required_argument, 0, 'f'},
-	{"define", required_argument, 0, 's'},
-	{"console", required_argument, 0, 'c'},
-	{"console-log", required_argument, 0, 'L'},
-	{"close-all-fds", no_argument, 0, 'C'},
-	{"pidfile", required_argument, 0, 'p'},
-	{"share-net", required_argument, 0, OPT_SHARE_NET},
-	{"share-ipc", required_argument, 0, OPT_SHARE_IPC},
-	{"share-uts", required_argument, 0, OPT_SHARE_UTS},
-	{"share-pid", required_argument, 0, OPT_SHARE_PID},
-	LXC_COMMON_OPTIONS
-};
+static int ensure_path(struct lxc_arguments *args, char **confpath, const char *path)
+{
+	int fd;
+	char *fullpath = NULL;
 
-static struct lxc_arguments my_args = {
-	.progname = "lxc-start",
-	.help     = "\
---name=NAME -- COMMAND\n\
-\n\
-lxc-start start COMMAND in specified container NAME\n\
-\n\
-Options :\n\
-  -n, --name=NAME        NAME of the container\n\
-  -d, --daemon           Daemonize the container (default)\n\
-  -F, --foreground       Start with the current tty attached to /dev/console\n\
-  -p, --pidfile=FILE     Create a file with the process id\n\
-  -f, --rcfile=FILE      Load configuration file FILE\n\
-  -c, --console=FILE     Use specified FILE for the container console\n\
-  -L, --console-log=FILE Log container console output to FILE\n\
-  -C, --close-all-fds    If any fds are inherited, close them\n\
-                         If not specified, exit with failure instead\n\
-                         Note: --daemon implies --close-all-fds\n\
-  -s, --define KEY=VAL   Assign VAL to configuration variable KEY\n\
-      --share-[net|ipc|uts|pid]=NAME Share a namespace with another container or pid\n\
-",
-	.options   = my_longopts,
-	.parser    = my_parser,
-	.checker   = NULL,
-	.daemonize = 1,
-	.pidfile = NULL,
-};
+	if (path) {
+		if (access(path, W_OK)) {
+			fd = creat(path, 0600);
+			if (fd < 0 && errno != EEXIST) {
+				ERROR("Failed to create '%s'", path);
+				return -1;
+			}
+
+			if (fd >= 0)
+				close(fd);
+		}
+
+		fullpath = realpath(path, NULL);
+		if (!fullpath) {
+			ERROR("Failed to get the real path of '%s'", path);
+			return -1;
+		}
+
+		*confpath = fullpath;
+	}
+
+	return 0;
+}
 
 int main(int argc, char *argv[])
 {
@@ -194,18 +196,15 @@ int main(int argc, char *argv[])
 	else
 		args = my_args.argv;
 
-	/* Only create log if explicitly instructed */
-	if (my_args.log_file || my_args.log_priority) {
-		log.name = my_args.name;
-		log.file = my_args.log_file;
-		log.level = my_args.log_priority;
-		log.prefix = my_args.progname;
-		log.quiet = my_args.quiet;
-		log.lxcpath = my_args.lxcpath[0];
+	log.name = my_args.name;
+	log.file = my_args.log_file;
+	log.level = my_args.log_priority;
+	log.prefix = my_args.progname;
+	log.quiet = my_args.quiet;
+	log.lxcpath = my_args.lxcpath[0];
 
-		if (lxc_log_init(&log))
-			exit(err);
-	}
+	if (lxc_log_init(&log))
+		exit(err);
 
 	lxcpath = my_args.lxcpath[0];
 	if (access(lxcpath, O_RDONLY) < 0) {
@@ -297,12 +296,11 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if (my_args.pidfile != NULL) {
+	if (my_args.pidfile)
 		if (ensure_path(&my_args, &c->pidfile, my_args.pidfile) < 0) {
 			ERROR("Failed to ensure pidfile '%s'", my_args.pidfile);
 			goto out;
 		}
-	}
 
 	if (my_args.console)
 		if (!c->set_config_item(c, "lxc.console.path", my_args.console))
@@ -315,9 +313,8 @@ int main(int argc, char *argv[])
 	if (!lxc_setup_shared_ns(&my_args, c))
 		goto out;
 
-	if (!my_args.daemonize) {
+	if (!my_args.daemonize)
 		c->want_daemonize(c, false);
-	}
 
 	if (my_args.close_all_fds)
 		c->want_close_all_fds(c, true);
