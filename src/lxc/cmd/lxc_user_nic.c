@@ -219,7 +219,7 @@ static char **get_groupnames(void)
 				usernic_error("%s", "Could not find matched group record\n");
 
 			usernic_error("Failed to get group name: %s(%u)\n",
-			      strerror(errno), group_ids[i]);
+				      strerror(errno), group_ids[i]);
 			free(buf);
 			free(group_ids);
 			free_groupnames(groupnames);
