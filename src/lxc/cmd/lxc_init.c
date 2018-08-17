@@ -550,9 +550,8 @@ static int arguments_parse(struct arguments *args, int argc,
 	args->argc = argc - optind;
 
 	/* If no lxcpath was given, use default */
-	if (!args->lxcpath) {
+	if (!args->lxcpath)
 		args->lxcpath = lxc_global_config_value("lxc.lxcpath");
-	}
 
 	/* Check the command options */
 	if (!args->name) {
