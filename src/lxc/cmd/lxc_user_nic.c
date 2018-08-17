@@ -687,7 +687,7 @@ static bool cull_entries(int fd, char *name, char *net_type, char *net_link,
 static int count_entries(char *buf, off_t len, char *name, char *net_type, char *net_link)
 {
 	int count = 0;
-	bool owner = false;;
+	bool owner = false;
 	char *buf_end;
 
 	buf_end = &buf[len];
