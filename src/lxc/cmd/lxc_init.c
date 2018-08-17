@@ -473,13 +473,13 @@ static void print_usage(const struct option longopts[])
 	exit(0);
 }
 
-static void print_version()
+static void print_version(void)
 {
 	printf("%s\n", LXC_VERSION);
 	exit(0);
 }
 
-static void print_help()
+static void print_help(void)
 {
 	fprintf(stderr, "\
 Usage: lxc-init --name=NAME -- COMMAND\n\
