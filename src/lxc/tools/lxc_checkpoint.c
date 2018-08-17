@@ -30,16 +30,24 @@
 #include "log.h"
 #include "utils.h"
 
-static char *checkpoint_dir = NULL;
-static bool stop = false;
-static bool verbose = false;
-static bool do_restore = false;
-static bool daemonize_set = false;
-static bool pre_dump = false;
-static char *predump_dir = NULL;
-static char *actionscript_path = NULL;
+#define OPT_PREDUMP_DIR (OPT_USAGE + 1)
 
-#define OPT_PREDUMP_DIR OPT_USAGE + 1
+lxc_log_define(lxc_checkpoint, lxc);
+
+static int my_parser(struct lxc_arguments *args, int c, char *arg);
+static int my_checker(const struct lxc_arguments *args);
+static bool checkpoint(struct lxc_container *c);
+static bool restore_finalize(struct lxc_container *c);
+static bool restore(struct lxc_container *c);
+
+static char *checkpoint_dir;
+static bool stop;
+static bool verbose;
+static bool do_restore;
+static bool daemonize_set;
+static bool pre_dump;
+static char *predump_dir;
+static char *actionscript_path;
 
 static const struct option my_longopts[] = {
 	{"checkpoint-dir", required_argument, 0, 'D'},
@@ -54,31 +62,39 @@ static const struct option my_longopts[] = {
 	LXC_COMMON_OPTIONS
 };
 
-lxc_log_define(lxc_checkpoint, lxc);
-
-static int my_checker(const struct lxc_arguments *args)
-{
-	if (do_restore && stop) {
-		ERROR("-s not compatible with -r");
-		return -1;
-
-	} else if (!do_restore && daemonize_set) {
-		ERROR("-d/-F not compatible with -r");
-		return -1;
-	}
-
-	if (!checkpoint_dir) {
-		ERROR("-D is required");
-		return -1;
-	}
-
-	if (pre_dump && do_restore) {
-		ERROR("-p not compatible with -r");
-		return -1;
-	}
-
-	return 0;
-}
+static struct lxc_arguments my_args = {
+	.progname     = "lxc-checkpoint",
+	.help         = "\
+--name=NAME\n\
+\n\
+lxc-checkpoint checkpoints and restores a container\n\
+  Serializes a container's running state to disk to allow restoring it in\n\
+  its running state at a later time.\n\
+\n\
+Options :\n\
+  -n, --name=NAME           NAME of the container\n\
+  -r, --restore             Restore container\n\
+  -D, --checkpoint-dir=DIR  directory to save the checkpoint in\n\
+  -v, --verbose             Enable verbose criu logs\n\
+  -A, --action-script=PATH  Path to criu action script\n\
+  Checkpoint options:\n\
+  -s, --stop                Stop the container after checkpointing.\n\
+  -p, --pre-dump            Only pre-dump the memory of the container.\n\
+                            Container keeps on running and following\n\
+                            checkpoints will only dump the changes.\n\
+  --predump-dir=DIR         path to images from previous dump (relative to -D)\n\
+  Restore options:\n\
+  -d, --daemon              Daemonize the container (default)\n\
+  -F, --foreground          Start with the current tty attached to /dev/console\n\
+  --rcfile=FILE             Load configuration file FILE\n\
+",
+	.options      = my_longopts,
+	.parser       = my_parser,
+	.daemonize    = 1,
+	.checker      = my_checker,
+	.log_priority = "ERROR",
+	.log_file     = "none",
+};
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
@@ -88,7 +104,7 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 		if (!checkpoint_dir)
 			return -1;
 		break;
-        case 'A':
+	case 'A':
 		actionscript_path = strdup(arg);
 		if (!actionscript_path)
 			return -1;
@@ -123,37 +139,29 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 	return 0;
 }
 
-static struct lxc_arguments my_args = {
-	.progname  = "lxc-checkpoint",
-	.help      = "\
---name=NAME\n\
-\n\
-lxc-checkpoint checkpoints and restores a container\n\
-  Serializes a container's running state to disk to allow restoring it in\n\
-  its running state at a later time.\n\
-\n\
-Options :\n\
-  -n, --name=NAME           NAME of the container\n\
-  -r, --restore             Restore container\n\
-  -D, --checkpoint-dir=DIR  directory to save the checkpoint in\n\
-  -v, --verbose             Enable verbose criu logs\n\
-  -A, --action-script=PATH  Path to criu action script\n\
-  Checkpoint options:\n\
-  -s, --stop                Stop the container after checkpointing.\n\
-  -p, --pre-dump            Only pre-dump the memory of the container.\n\
-                            Container keeps on running and following\n\
-                            checkpoints will only dump the changes.\n\
-  --predump-dir=DIR         path to images from previous dump (relative to -D)\n\
-  Restore options:\n\
-  -d, --daemon              Daemonize the container (default)\n\
-  -F, --foreground          Start with the current tty attached to /dev/console\n\
-  --rcfile=FILE             Load configuration file FILE\n\
-",
-	.options   = my_longopts,
-	.parser    = my_parser,
-	.daemonize = 1,
-	.checker   = my_checker,
-};
+static int my_checker(const struct lxc_arguments *args)
+{
+	if (do_restore && stop) {
+		ERROR("-s not compatible with -r");
+		return -1;
+
+	} else if (!do_restore && daemonize_set) {
+		ERROR("-d/-F not compatible with -r");
+		return -1;
+	}
+
+	if (!checkpoint_dir) {
+		ERROR("-D is required");
+		return -1;
+	}
+
+	if (pre_dump && do_restore) {
+		ERROR("-p not compatible with -r");
+		return -1;
+	}
+
+	return 0;
+}
 
 static bool checkpoint(struct lxc_container *c)
 {
@@ -262,18 +270,15 @@ int main(int argc, char *argv[])
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		exit(EXIT_FAILURE);
 
-	/* Only create log if explicitly instructed */
-	if (my_args.log_file || my_args.log_priority) {
-		log.name = my_args.name;
-		log.file = my_args.log_file;
-		log.level = my_args.log_priority;
-		log.prefix = my_args.progname;
-		log.quiet = my_args.quiet;
-		log.lxcpath = my_args.lxcpath[0];
+	log.name = my_args.name;
+	log.file = my_args.log_file;
+	log.level = my_args.log_priority;
+	log.prefix = my_args.progname;
+	log.quiet = my_args.quiet;
+	log.lxcpath = my_args.lxcpath[0];
 
-		if (lxc_log_init(&log))
-			exit(EXIT_FAILURE);
-	}
+	if (lxc_log_init(&log))
+		exit(EXIT_FAILURE);
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {
