@@ -208,7 +208,7 @@ static int lxc_monitord_sock_accept(int fd, uint32_t events, void *data,
 
 		clientfds = realloc(mon->clientfds,
 				    (mon->clientfds_size + CLIENTFDS_CHUNK) * sizeof(mon->clientfds[0]));
-		if (clientfds == NULL) {
+		if (!clientfds) {
 			ERROR("Failed to realloc memory for %d client file descriptors",
 			      mon->clientfds_size + CLIENTFDS_CHUNK);
 			goto err1;
