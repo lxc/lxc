@@ -34,10 +34,46 @@
 #include "log.h"
 #include "utils.h"
 
-#define OPT_NO_LOCK OPT_USAGE + 1
-#define OPT_NO_KILL OPT_USAGE + 2
+#define OPT_NO_LOCK (OPT_USAGE + 1)
+#define OPT_NO_KILL (OPT_USAGE + 2)
 
 lxc_log_define(lxc_stop, lxc);
+
+static int my_parser(struct lxc_arguments *args, int c, char *arg);
+
+static const struct option my_longopts[] = {
+	{"reboot", no_argument, 0, 'r'},
+	{"nowait", no_argument, 0, 'W'},
+	{"timeout", required_argument, 0, 't'},
+	{"kill", no_argument, 0, 'k'},
+	{"nokill", no_argument, 0, OPT_NO_KILL},
+	{"nolock", no_argument, 0, OPT_NO_LOCK},
+	LXC_COMMON_OPTIONS
+};
+
+static struct lxc_arguments my_args = {
+	.progname     = "lxc-stop",
+	.help         = "\
+--name=NAME\n\
+\n\
+lxc-stop stops a container with the identifier NAME\n\
+\n\
+Options :\n\
+  -n, --name=NAME   NAME of the container\n\
+  -r, --reboot      reboot the container\n\
+  -W, --nowait      don't wait for shutdown or reboot to complete\n\
+  -t, --timeout=T   wait T seconds before hard-stopping\n\
+  -k, --kill        kill container rather than request clean shutdown\n\
+      --nolock      Avoid using API locks\n\
+      --nokill      Only request clean shutdown, don't force kill after timeout\n\
+  --rcfile=FILE     Load configuration file FILE\n",
+	.options      = my_longopts,
+	.parser       = my_parser,
+	.checker      = NULL,
+	.log_priority = "ERROR",
+	.log_file     = "none",
+	.timeout      = -2,
+};
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
@@ -65,38 +101,6 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 	return 0;
 }
 
-static const struct option my_longopts[] = {
-	{"reboot", no_argument, 0, 'r'},
-	{"nowait", no_argument, 0, 'W'},
-	{"timeout", required_argument, 0, 't'},
-	{"kill", no_argument, 0, 'k'},
-	{"nokill", no_argument, 0, OPT_NO_KILL},
-	{"nolock", no_argument, 0, OPT_NO_LOCK},
-	LXC_COMMON_OPTIONS
-};
-
-static struct lxc_arguments my_args = {
-	.progname = "lxc-stop",
-	.help     = "\
---name=NAME\n\
-\n\
-lxc-stop stops a container with the identifier NAME\n\
-\n\
-Options :\n\
-  -n, --name=NAME   NAME of the container\n\
-  -r, --reboot      reboot the container\n\
-  -W, --nowait      don't wait for shutdown or reboot to complete\n\
-  -t, --timeout=T   wait T seconds before hard-stopping\n\
-  -k, --kill        kill container rather than request clean shutdown\n\
-      --nolock      Avoid using API locks\n\
-      --nokill      Only request clean shutdown, don't force kill after timeout\n\
-  --rcfile=FILE     Load configuration file FILE\n",
-	.options  = my_longopts,
-	.parser   = my_parser,
-	.checker  = NULL,
-	.timeout  = -2,
-};
-
 int main(int argc, char *argv[])
 {
 	struct lxc_container *c;
@@ -107,18 +111,15 @@ int main(int argc, char *argv[])
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		exit(ret);
 
-	/* Only create log if explicitly instructed */
-	if (my_args.log_file || my_args.log_priority) {
-		log.name = my_args.name;
-		log.file = my_args.log_file;
-		log.level = my_args.log_priority;
-		log.prefix = my_args.progname;
-		log.quiet = my_args.quiet;
-		log.lxcpath = my_args.lxcpath[0];
+	log.name = my_args.name;
+	log.file = my_args.log_file;
+	log.level = my_args.log_priority;
+	log.prefix = my_args.progname;
+	log.quiet = my_args.quiet;
+	log.lxcpath = my_args.lxcpath[0];
 
-		if (lxc_log_init(&log))
-			exit(ret);
-	}
+	if (lxc_log_init(&log))
+		exit(ret);
 
 	/* Set default timeout */
 	if (my_args.timeout == -2) {
