@@ -73,7 +73,7 @@ static struct option long_options[] = {
 	    { "lxcpath",     required_argument, 0, 'P'         },
 	    { 0,             0,                 0, 0           }
 	};
-static char short_options[] = "n:hqo:l:P:";
+static const char short_options[] = "n:hqo:l:P:";
 
 struct arguments {
 	const struct option *options;
