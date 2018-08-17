@@ -468,7 +468,7 @@ out:
 static void print_usage(const struct option longopts[])
 
 {
-	fprintf(stderr, "Usage: lxc-init [-n|--name=NAME] [-h|--help] [--usage] [--version] \n\
+	fprintf(stderr, "Usage: lxc-init [-n|--name=NAME] [-h|--help] [--usage] [--version]\n\
 		[-q|--quiet] [-o|--logfile=LOGFILE] [-l|--logpriority=LOGPRIORITY] [-P|--lxcpath=LXCPATH]\n");
 	exit(0);
 }
