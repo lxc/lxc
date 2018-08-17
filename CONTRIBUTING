@@ -14,8 +14,9 @@ Coding Style:
 
 The coding style follows the Linux kernel coding style.
 
-The coding style is defined in the 'CodingStyle' file, available in
-the directory 'Documentation' of the Linux kernel source tree.
+The Linux kernel coding style guide can be found within the kernel tree:
+
+	Documentation/process/coding-style.rst
 
 It can be accessed online too:
 
