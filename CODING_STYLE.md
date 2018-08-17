@@ -1,3 +1,17 @@
+LXC Coding Style Guide
+======================
+
+In general the LXC project follows the Linux kernel coding style.  There are
+however are a few differences, these are outlined in this document.
+
+The Linux kernel coding style guide can be found within the kernel tree:
+
+	Documentation/process/coding-style.rst
+
+It can be accessed online too:
+
+https://www.kernel.org/doc/html/latest/process/coding-style.html
+
 #### General Notes
 
 - The coding style guide refers to new code. But legacy code can be cleaned up
