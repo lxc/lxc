@@ -1627,6 +1627,7 @@ static int lxc_setup_devpts(struct lxc_conf *conf)
 	int ret;
 	char default_devpts_mntopts[] = "gid=5,newinstance,ptmxmode=0666,mode=0620";
 	char devpts_mntopts[256];
+	struct stat ptmx;
 
 	if (conf->pty_max <= 0) {
 		DEBUG("No new devpts instance will be mounted since no pts "
@@ -1687,6 +1688,40 @@ static int lxc_setup_devpts(struct lxc_conf *conf)
 		DEBUG("Removed existing \"/dev/ptmx\" file");
 	}
 
+	/* Read attributes of /dev/pts/ptmx */
+	ret = stat("/dev/pts/ptmx", &ptmx);
+	if (ret) {
+		SYSERROR("failed to stat \"/dev/pts/ptmx\"");
+		return -1;
+	} else if (!S_ISCHR(ptmx.st_mode)) {
+		SYSERROR("\"/dev/pts/ptmx\" isn't a character device!");
+		return -1;
+	}
+
+	/* Create doppelganger of /dev/pts/ptmx at /dev/ptmx */
+	ret = mknod("/dev/ptmx", ptmx.st_mode, ptmx.st_rdev);
+	if (!ret) {
+		/* Set ownership and mode on doppelganger */
+		ret = chown("/dev/ptmx", ptmx.st_uid, ptmx.st_gid);
+		if (ret)
+		{
+			SYSERROR("failed to chown \"/dev/ptmx\"");
+			return -1;
+		}
+		ret = chmod("/dev/ptmx", ptmx.st_mode);
+		if (ret)
+		{
+			SYSERROR("failed to chmod \"/dev/ptmx\"");
+			return -1;
+		}
+		/* Our work is done here */
+		DEBUG("made copy of \"/dev/pts/ptmx\" at \"/dev/ptmx\"");
+		return 0;
+	} else {
+		/* Fallthrough and try to bind mount */
+		SYSERROR("failed to mknod \"/dev/ptmx\"");
+	}
+
 	/* Create dummy /dev/ptmx file as bind mountpoint for /dev/pts/ptmx. */
 	ret = mknod("/dev/ptmx", S_IFREG | 0000, 0);
 	if (ret < 0 && errno != EEXIST) {
@@ -1695,7 +1730,7 @@ static int lxc_setup_devpts(struct lxc_conf *conf)
 	}
 	DEBUG("Created dummy \"/dev/ptmx\" file as bind mount target");
 
-	/* Fallback option: create symlink /dev/ptmx -> /dev/pts/ptmx  */
+	/* Fallback option 1: bind mount /dev/ptmx -> /dev/pts/ptmx  */
 	ret = mount("/dev/pts/ptmx", "/dev/ptmx", NULL, MS_BIND, NULL);
 	if (!ret) {
 		DEBUG("Bind mounted \"/dev/pts/ptmx\" to \"/dev/ptmx\"");
@@ -1712,7 +1747,7 @@ static int lxc_setup_devpts(struct lxc_conf *conf)
 		return -1;
 	}
 
-	/* Fallback option: Create symlink /dev/ptmx -> /dev/pts/ptmx. */
+	/* Fallback option 2: Create symlink /dev/ptmx -> /dev/pts/ptmx. */
 	ret = symlink("/dev/pts/ptmx", "/dev/ptmx");
 	if (ret < 0) {
 		SYSERROR("Failed to create symlink from \"/dev/ptmx\" to \"/dev/pts/ptmx\"");
