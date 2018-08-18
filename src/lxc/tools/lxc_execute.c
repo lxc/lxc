@@ -43,7 +43,45 @@
 
 lxc_log_define(lxc_execute, lxc);
 
+static int my_parser(struct lxc_arguments *args, int c, char *arg);
+static bool set_argv(struct lxc_container *c, struct lxc_arguments *args);
+
 static struct lxc_list defines;
+
+static const struct option my_longopts[] = {
+	{"daemon", no_argument, 0, 'd'},
+	{"rcfile", required_argument, 0, 'f'},
+	{"define", required_argument, 0, 's'},
+	{"uid", required_argument, 0, 'u'},
+	{"gid", required_argument, 0, 'g'},
+	{"share-net", required_argument, 0, OPT_SHARE_NET},
+	{"share-ipc", required_argument, 0, OPT_SHARE_IPC},
+	{"share-uts", required_argument, 0, OPT_SHARE_UTS},
+	{"share-pid", required_argument, 0, OPT_SHARE_PID},
+	LXC_COMMON_OPTIONS
+};
+
+static struct lxc_arguments my_args = {
+	.progname     = "lxc-execute",
+	.help         = "\
+--name=NAME -- COMMAND\n\
+\n\
+lxc-execute creates a container with the identifier NAME\n\
+and execs COMMAND into this container.\n\
+\n\
+Options :\n\
+  -n, --name=NAME      NAME of the container\n\
+  -d, --daemon         Daemonize the container\n\
+  -f, --rcfile=FILE    Load configuration file FILE\n\
+  -s, --define KEY=VAL Assign VAL to configuration variable KEY\n\
+  -u, --uid=UID        Execute COMMAND with UID inside the container\n\
+  -g, --gid=GID        Execute COMMAND with GID inside the container\n",
+	.options      = my_longopts,
+	.parser       = my_parser,
+	.log_priority = "ERROR",
+	.log_file     = "none",
+	.daemonize    = 0,
+};
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
@@ -82,42 +120,8 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 		args->share_ns[LXC_NS_PID] = arg;
 		break;
 	}
-
 	return 0;
 }
-
-static const struct option my_longopts[] = {
-	{"daemon", no_argument, 0, 'd'},
-	{"rcfile", required_argument, 0, 'f'},
-	{"define", required_argument, 0, 's'},
-	{"uid", required_argument, 0, 'u'},
-	{"gid", required_argument, 0, 'g'},
-	{"share-net", required_argument, 0, OPT_SHARE_NET},
-	{"share-ipc", required_argument, 0, OPT_SHARE_IPC},
-	{"share-uts", required_argument, 0, OPT_SHARE_UTS},
-	{"share-pid", required_argument, 0, OPT_SHARE_PID},
-	LXC_COMMON_OPTIONS
-};
-
-static struct lxc_arguments my_args = {
-	.progname = "lxc-execute",
-	.help     = "\
---name=NAME -- COMMAND\n\
-\n\
-lxc-execute creates a container with the identifier NAME\n\
-and execs COMMAND into this container.\n\
-\n\
-Options :\n\
-  -n, --name=NAME      NAME of the container\n\
-  -d, --daemon         Daemonize the container\n\
-  -f, --rcfile=FILE    Load configuration file FILE\n\
-  -s, --define KEY=VAL Assign VAL to configuration variable KEY\n\
-  -u, --uid=UID        Execute COMMAND with UID inside the container\n\
-  -g, --gid=GID        Execute COMMAND with GID inside the container\n",
-	.options  = my_longopts,
-	.parser   = my_parser,
-	.daemonize = 0,
-};
 
 static bool set_argv(struct lxc_container *c, struct lxc_arguments *args)
 {
@@ -134,6 +138,7 @@ static bool set_argv(struct lxc_container *c, struct lxc_arguments *args)
 		return false;
 
 	args->argv = components;
+
 	for (p = components; *p; p++)
 		args->argc++;
 
@@ -156,18 +161,15 @@ int main(int argc, char *argv[])
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		exit(err);
 
-	/* Only create log if explicitly instructed */
-	if (my_args.log_file || my_args.log_priority) {
-		log.name = my_args.name;
-		log.file = my_args.log_file;
-		log.level = my_args.log_priority;
-		log.prefix = my_args.progname;
-		log.quiet = my_args.quiet;
-		log.lxcpath = my_args.lxcpath[0];
+	log.name = my_args.name;
+	log.file = my_args.log_file;
+	log.level = my_args.log_priority;
+	log.prefix = my_args.progname;
+	log.quiet = my_args.quiet;
+	log.lxcpath = my_args.lxcpath[0];
 
-		if (lxc_log_init(&log))
-			exit(err);
-	}
+	if (lxc_log_init(&log))
+		exit(err);
 
 	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
 	if (!c) {
@@ -195,12 +197,11 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if (my_args.argc == 0) {
+	if (my_args.argc == 0)
 		if (!set_argv(c, &my_args)) {
 			ERROR("Missing command to execute!");
 			goto out;
 		}
-	}
 
 	bret = lxc_config_define_load(&defines, c);
 	if (!bret)
@@ -244,12 +245,11 @@ int main(int argc, char *argv[])
 	if (c->daemonize) {
 		err = EXIT_SUCCESS;
 	} else {
-		if (WIFEXITED(c->error_num)) {
+		if (WIFEXITED(c->error_num))
 			err = WEXITSTATUS(c->error_num);
-		} else {
+		else
 			/* Try to die with the same signal the task did. */
 			kill(0, WTERMSIG(c->error_num));
-		}
 	}
 
 out:

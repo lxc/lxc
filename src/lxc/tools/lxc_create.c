@@ -31,64 +31,15 @@
 
 #include "arguments.h"
 #include "log.h"
+#include "storage_utils.h"
 #include "utils.h"
 
 lxc_log_define(lxc_create, lxc);
 
-static uint64_t get_fssize(char *s)
-{
-	uint64_t ret;
-	char *end;
-
-	ret = strtoull(s, &end, 0);
-	if (end == s)
-	{
-		ERROR("Invalid blockdev size '%s', using default size", s);
-		return 0;
-	}
-
-	while (isblank(*end))
-		end++;
-
-	if (*end == '\0')
-		ret *= 1024ULL * 1024ULL; /* MB by default */
-	else if (*end == 'b' || *end == 'B')
-		ret *= 1ULL;
-	else if (*end == 'k' || *end == 'K')
-		ret *= 1024ULL;
-	else if (*end == 'm' || *end == 'M')
-		ret *= 1024ULL * 1024ULL;
-	else if (*end == 'g' || *end == 'G')
-		ret *= 1024ULL * 1024ULL * 1024ULL;
-	else if (*end == 't' || *end == 'T')
-		ret *= 1024ULL * 1024ULL * 1024ULL * 1024ULL;
-	else
-	{
-		ERROR("Invalid blockdev unit size '%c' in '%s', using default size", *end, s);
-		return 0;
-	}
-
-	return ret;
-}
-
-static int my_parser(struct lxc_arguments *args, int c, char *arg)
-{
-	switch (c) {
-	case 'B': args->bdevtype = arg; break;
-	case 'f': args->configfile = arg; break;
-	case 't': args->template = arg; break;
-	case '0': args->lvname = arg; break;
-	case '1': args->vgname = arg; break;
-	case '2': args->thinpool = arg; break;
-	case '3': args->fstype = arg; break;
-	case '4': args->fssize = get_fssize(arg); break;
-	case '5': args->zfsroot = arg; break;
-	case '6': args->dir = arg; break;
-	case '7': args->rbdname = arg; break;
-	case '8': args->rbdpool = arg; break;
-	}
-	return 0;
-}
+static int my_parser(struct lxc_arguments *args, int c, char *arg);
+static uint64_t get_fssize(char *s);
+static void create_helpfn(const struct lxc_arguments *args);
+static bool validate_bdev_args(struct lxc_arguments *args);
 
 static const struct option my_longopts[] = {
 	{"bdev", required_argument, 0, 'B'},
@@ -106,35 +57,10 @@ static const struct option my_longopts[] = {
 	LXC_COMMON_OPTIONS
 };
 
-static void create_helpfn(const struct lxc_arguments *args)
-{
-	char *argv[3], *path;
-	pid_t pid;
-
-	if (!args->template)
-		return;
-
-	pid = fork();
-	if (pid) {
-		(void)wait_for_pid(pid);
-		return;
-	}
-
-	path = get_template_path(args->template);
-
-	argv[0] = path;
-	argv[1] = "-h";
-	argv[2] = NULL;
-
-	execv(path, argv);
-	ERROR("Error executing %s -h", path);
-	_exit(EXIT_FAILURE);
-}
-
 static struct lxc_arguments my_args = {
-	.progname = "lxc-create",
-	.helpfn   = create_helpfn,
-	.help     = "\
+	.progname     = "lxc-create",
+	.helpfn       = create_helpfn,
+	.help         = "\
 --name=NAME --template=TEMPLATE [OPTION...]\n\
 \n\
 lxc-create creates a container\n\
@@ -170,62 +96,146 @@ Options :\n\
       --fssize=SIZE[U]          Create filesystem of\n\
                                 size SIZE * unit U (bBkKmMgGtT)\n\
                                 (Default: 1G, default unit: M)\n",
-	.options  = my_longopts,
-	.parser   = my_parser,
-	.checker  = NULL,
+	.options      = my_longopts,
+	.parser       = my_parser,
+	.checker      = NULL,
+	.log_priority = "ERROR",
+	.log_file     = "none",
 };
 
-static bool validate_bdev_args(struct lxc_arguments *a)
+static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
-	if (strncmp(a->bdevtype, "best", strlen(a->bdevtype)) != 0) {
-		if (a->fstype || a->fssize) {
-			if (strncmp(a->bdevtype, "lvm", strlen(a->bdevtype)) != 0 &&
-			    strncmp(a->bdevtype, "loop", strlen(a->bdevtype)) != 0 &&
-			    strncmp(a->bdevtype, "rbd", strlen(a->bdevtype)) != 0) {
+	switch (c) {
+	case 'B':
+		args->bdevtype = arg;
+		break;
+	case 'f':
+		args->configfile = arg;
+		break;
+	case 't':
+		args->template = arg;
+		break;
+	case '0':
+		args->lvname = arg;
+		break;
+	case '1':
+		args->vgname = arg;
+		break;
+	case '2':
+		args->thinpool = arg;
+		break;
+	case '3':
+		args->fstype = arg;
+		break;
+	case '4':
+		args->fssize = get_fssize(arg);
+		break;
+	case '5':
+		args->zfsroot = arg;
+		break;
+	case '6':
+		args->dir = arg;
+		break;
+	case '7':
+		args->rbdname = arg;
+		break;
+	case '8':
+		args->rbdpool = arg;
+		break;
+	}
+	return 0;
+}
+
+static uint64_t get_fssize(char *s)
+{
+	uint64_t ret;
+	char *end;
+
+	ret = strtoull(s, &end, 0);
+	if (end == s) {
+		ERROR("Invalid blockdev size '%s', using default size", s);
+		return 0;
+	}
+
+	while (isblank(*end))
+		end++;
+
+	if (*end == '\0') {
+		ret *= 1024ULL * 1024ULL; /* MB by default */
+	} else if (*end == 'b' || *end == 'B') {
+		ret *= 1ULL;
+	} else if (*end == 'k' || *end == 'K') {
+		ret *= 1024ULL;
+	} else if (*end == 'm' || *end == 'M') {
+		ret *= 1024ULL * 1024ULL;
+	} else if (*end == 'g' || *end == 'G') {
+		ret *= 1024ULL * 1024ULL * 1024ULL;
+	} else if (*end == 't' || *end == 'T') {
+		ret *= 1024ULL * 1024ULL * 1024ULL * 1024ULL;
+	} else {
+		ERROR("Invalid blockdev unit size '%c' in '%s', using default size", *end, s);
+		return 0;
+	}
+
+	return ret;
+}
+
+static void create_helpfn(const struct lxc_arguments *args)
+{
+	char *argv[3], *path;
+	pid_t pid;
+
+	if (!args->template)
+		return;
+
+	pid = fork();
+	if (pid) {
+		(void)wait_for_pid(pid);
+		return;
+	}
+
+	path = get_template_path(args->template);
+
+	argv[0] = path;
+	argv[1] = "-h";
+	argv[2] = NULL;
+
+	execv(path, argv);
+	ERROR("Error executing %s -h", path);
+	_exit(EXIT_FAILURE);
+}
+
+static bool validate_bdev_args(struct lxc_arguments *args)
+{
+	if (strncmp(args->bdevtype, "best", strlen(args->bdevtype)) != 0) {
+		if (args->fstype || args->fssize)
+			if (strncmp(args->bdevtype, "lvm", strlen(args->bdevtype)) != 0 &&
+			    strncmp(args->bdevtype, "loop", strlen(args->bdevtype)) != 0 &&
+			    strncmp(args->bdevtype, "rbd", strlen(args->bdevtype)) != 0) {
 				ERROR("Filesystem type and size are only valid with block devices");
 				return false;
 			}
-		}
 
-		if (strncmp(a->bdevtype, "lvm", strlen(a->bdevtype)) != 0) {
-			if (a->lvname || a->vgname || a->thinpool) {
+		if (strncmp(args->bdevtype, "lvm", strlen(args->bdevtype)) != 0)
+			if (args->lvname || args->vgname || args->thinpool) {
 				ERROR("--lvname, --vgname and --thinpool are only valid with -B lvm");
 				return false;
 			}
-		}
 
-		if (strncmp(a->bdevtype, "rbd", strlen(a->bdevtype)) != 0) {
-			if (a->rbdname || a->rbdpool) {
+		if (strncmp(args->bdevtype, "rbd", strlen(args->bdevtype)) != 0)
+			if (args->rbdname || args->rbdpool) {
 				ERROR("--rbdname and --rbdpool are only valid with -B rbd");
 				return false;
 			}
-		}
 
-		if (strncmp(a->bdevtype, "zfs", strlen(a->bdevtype)) != 0) {
-			if (a->zfsroot) {
+		if (strncmp(args->bdevtype, "zfs", strlen(args->bdevtype)) != 0)
+			if (args->zfsroot) {
 				ERROR("zfsroot is only valid with -B zfs");
 				return false;
 			}
-		}
 	}
 
 	return true;
-}
-
-static bool is_valid_storage_type(const char *type)
-{
-	if (strcmp(type, "dir") == 0 ||
-	    strcmp(type, "btrfs") == 0 ||
-	    strcmp(type, "loop") == 0 ||
-	    strcmp(type, "lvm") == 0 ||
-	    strcmp(type, "nbd") == 0 ||
-	    strcmp(type, "overlay") == 0 ||
-	    strcmp(type, "overlayfs") == 0 ||
-	    strcmp(type, "rbd") == 0 ||
-	    strcmp(type, "zfs") == 0)
-		return true;
-
-	return false;
 }
 
 int main(int argc, char *argv[])
@@ -238,21 +248,15 @@ int main(int argc, char *argv[])
 	if (lxc_arguments_parse(&my_args, argc, argv))
 		exit(EXIT_FAILURE);
 
-	/* Only create log if explicitly instructed */
-	if (my_args.log_file || my_args.log_priority) {
-		log.name = my_args.name;
-		if (!my_args.log_file)
-			log.file = "none";
-		else
-			log.file = my_args.log_file;
-		log.level = my_args.log_priority;
-		log.prefix = my_args.progname;
-		log.quiet = my_args.quiet;
-		log.lxcpath = my_args.lxcpath[0];
+	log.name = my_args.name;
+	log.file = my_args.log_file;
+	log.level = my_args.log_priority;
+	log.prefix = my_args.progname;
+	log.quiet = my_args.quiet;
+	log.lxcpath = my_args.lxcpath[0];
 
-		if (lxc_log_init(&log))
-			exit(EXIT_FAILURE);
-	}
+	if (lxc_log_init(&log))
+		exit(EXIT_FAILURE);
 
 	if (!my_args.template) {
 		ERROR("A template must be specified");
@@ -318,13 +322,12 @@ int main(int argc, char *argv[])
 		spec.fssize = my_args.fssize;
 
 	if ((strncmp(my_args.bdevtype, "zfs", strlen(my_args.bdevtype)) == 0) ||
-	     (strncmp(my_args.bdevtype, "best", strlen(my_args.bdevtype)) == 0)) {
+	    (strncmp(my_args.bdevtype, "best", strlen(my_args.bdevtype)) == 0))
 		if (my_args.zfsroot)
 			spec.zfs.zfsroot = my_args.zfsroot;
-	}
 
 	if ((strncmp(my_args.bdevtype, "lvm", strlen(my_args.bdevtype)) == 0) ||
-	     (strncmp(my_args.bdevtype, "best", strlen(my_args.bdevtype)) == 0)) {
+	    (strncmp(my_args.bdevtype, "best", strlen(my_args.bdevtype)) == 0)) {
 		if (my_args.lvname)
 			spec.lvm.lv = my_args.lvname;
 
@@ -336,7 +339,7 @@ int main(int argc, char *argv[])
 	}
 
 	if ((strncmp(my_args.bdevtype, "rbd", strlen(my_args.bdevtype)) == 0) ||
-	     (strncmp(my_args.bdevtype, "best", strlen(my_args.bdevtype)) == 0)) {
+	    (strncmp(my_args.bdevtype, "best", strlen(my_args.bdevtype)) == 0)) {
 		if (my_args.rbdname)
 			spec.rbd.rbdname = my_args.rbdname;
 
@@ -354,7 +357,7 @@ int main(int argc, char *argv[])
 		flags = LXC_CREATE_QUIET;
 
 	if (!c->create(c, my_args.template, my_args.bdevtype, &spec, flags, &argv[optind])) {
-		fprintf(stderr, "Error creating container %s\n", c->name);
+		ERROR("Failed to create container %s", c->name);
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}

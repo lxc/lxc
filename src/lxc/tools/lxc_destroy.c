@@ -35,6 +35,8 @@
 lxc_log_define(lxc_destroy, lxc);
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg);
+static bool do_destroy(struct lxc_container *c);
+static bool do_destroy_with_snapshots(struct lxc_container *c);
 
 static const struct option my_longopts[] = {
 	{"force", no_argument, 0, 'f'},
@@ -43,8 +45,8 @@ static const struct option my_longopts[] = {
 };
 
 static struct lxc_arguments my_args = {
-	.progname = "lxc-destroy",
-	.help     = "\
+	.progname     = "lxc-destroy",
+	.help         = "\
 --name=NAME [-f] [-P lxcpath]\n\
 \n\
 lxc-destroy destroys a container with the identifier NAME\n\
@@ -54,106 +56,35 @@ Options :\n\
   -s, --snapshots   destroy including all snapshots\n\
   -f, --force       wait for the container to shut down\n\
   --rcfile=FILE     Load configuration file FILE\n",
-	.options  = my_longopts,
-	.parser   = my_parser,
-	.checker  = NULL,
-	.task     = DESTROY,
+	.options      = my_longopts,
+	.parser       = my_parser,
+	.checker      = NULL,
+	.log_priority = "ERROR",
+	.log_file     = "none",
+	.task         = DESTROY,
 };
-
-static bool do_destroy(struct lxc_container *c);
-static bool do_destroy_with_snapshots(struct lxc_container *c);
-
-int main(int argc, char *argv[])
-{
-	struct lxc_container *c;
-	struct lxc_log log;
-	bool bret;
-
-	if (lxc_arguments_parse(&my_args, argc, argv))
-		exit(EXIT_FAILURE);
-
-	/* Only create log if explicitly instructed */
-	if (my_args.log_file || my_args.log_priority) {
-		log.name = my_args.name;
-		log.file = my_args.log_file;
-		log.level = my_args.log_priority;
-		log.prefix = my_args.progname;
-		log.quiet = my_args.quiet;
-		log.lxcpath = my_args.lxcpath[0];
-
-		if (lxc_log_init(&log))
-			exit(EXIT_FAILURE);
-	}
-
-	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
-	if (!c) {
-		ERROR("System error loading container");
-		exit(EXIT_FAILURE);
-	}
-
-	if (my_args.rcfile) {
-		c->clear_config(c);
-
-		if (!c->load_config(c, my_args.rcfile)) {
-			ERROR("Failed to load rcfile");
-			lxc_container_put(c);
-			exit(EXIT_FAILURE);
-		}
-
-		c->configfile = strdup(my_args.rcfile);
-		if (!c->configfile) {
-			ERROR("Out of memory setting new config filename");
-			lxc_container_put(c);
-			exit(EXIT_FAILURE);
-		}
-	}
-
-	if (!c->may_control(c)) {
-		ERROR("Insufficent privileges to control %s", my_args.name);
-		lxc_container_put(c);
-		exit(EXIT_FAILURE);
-	}
-
-	if (!c->is_defined(c)) {
-		ERROR("Container is not defined");
-		lxc_container_put(c);
-		exit(EXIT_FAILURE);
-	}
-
-	if (my_args.task == SNAP) {
-		bret = do_destroy_with_snapshots(c);
-		if (bret)
-			ERROR("Destroyed container %s including snapshots", my_args.name);
-	} else {
-		bret = do_destroy(c);
-		if (bret)
-			ERROR("Destroyed container %s", my_args.name);
-	}
-
-	lxc_container_put(c);
-
-	if (bret)
-		exit(EXIT_SUCCESS);
-
-	exit(EXIT_FAILURE);
-}
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg)
 {
 	switch (c) {
-	case 'f': args->force = 1; break;
-	case 's': args->task = SNAP; break;
+	case 'f':
+		args->force = 1;
+		break;
+	case 's':
+		args->task = SNAP;
+		break;
 	}
 	return 0;
 }
 
 static bool do_destroy(struct lxc_container *c)
 {
+	int ret;
 	bool bret = true;
 	char path[MAXPATHLEN];
 
 	/* First check whether the container has dependent clones or snapshots. */
-	int ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_snapshots", c->config_path, c->name);
+	ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_snapshots", c->config_path, c->name);
 	if (ret < 0 || ret >= MAXPATHLEN)
 		return false;
 
@@ -187,9 +118,8 @@ static bool do_destroy(struct lxc_container *c)
 		char buf[256];
 
 		ret = c->get_config_item(c, "lxc.ephemeral", buf, 256);
-		if (ret > 0 && strcmp(buf, "0") == 0) {
+		if (ret > 0 && strcmp(buf, "0") == 0)
 			bret = c->destroy(c);
-		}
 	}
 
 	if (!bret) {
@@ -272,4 +202,76 @@ static bool do_destroy_with_snapshots(struct lxc_container *c)
 		bret = do_destroy(c);
 
 	return bret;
+}
+
+int main(int argc, char *argv[])
+{
+	struct lxc_container *c;
+	struct lxc_log log;
+	bool bret;
+
+	if (lxc_arguments_parse(&my_args, argc, argv))
+		exit(EXIT_FAILURE);
+
+	log.name = my_args.name;
+	log.file = my_args.log_file;
+	log.level = my_args.log_priority;
+	log.prefix = my_args.progname;
+	log.quiet = my_args.quiet;
+	log.lxcpath = my_args.lxcpath[0];
+
+	if (lxc_log_init(&log))
+		exit(EXIT_FAILURE);
+
+	c = lxc_container_new(my_args.name, my_args.lxcpath[0]);
+	if (!c) {
+		ERROR("System error loading container");
+		exit(EXIT_FAILURE);
+	}
+
+	if (my_args.rcfile) {
+		c->clear_config(c);
+
+		if (!c->load_config(c, my_args.rcfile)) {
+			ERROR("Failed to load rcfile");
+			lxc_container_put(c);
+			exit(EXIT_FAILURE);
+		}
+
+		c->configfile = strdup(my_args.rcfile);
+		if (!c->configfile) {
+			ERROR("Out of memory setting new config filename");
+			lxc_container_put(c);
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	if (!c->may_control(c)) {
+		ERROR("Insufficent privileges to control %s", my_args.name);
+		lxc_container_put(c);
+		exit(EXIT_FAILURE);
+	}
+
+	if (!c->is_defined(c)) {
+		ERROR("Container is not defined");
+		lxc_container_put(c);
+		exit(EXIT_FAILURE);
+	}
+
+	if (my_args.task == SNAP) {
+		bret = do_destroy_with_snapshots(c);
+		if (bret)
+			ERROR("Destroyed container %s including snapshots", my_args.name);
+	} else {
+		bret = do_destroy(c);
+		if (bret)
+			ERROR("Destroyed container %s", my_args.name);
+	}
+
+	lxc_container_put(c);
+
+	if (bret)
+		exit(EXIT_SUCCESS);
+
+	exit(EXIT_FAILURE);
 }
