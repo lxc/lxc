@@ -17,7 +17,6 @@
  */
 
 #define _GNU_SOURCE
-#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
@@ -37,6 +36,7 @@
 
 #include "arguments.h"
 #include "log.h"
+#include "storage_utils.h"
 #include "utils.h"
 
 #ifndef HAVE_GETSUBOPT
@@ -143,7 +143,6 @@ static int do_clone_rename(struct lxc_container *c, char *newname);
 static int do_clone_task(struct lxc_container *c, enum task task, int flags,
 			 char **args);
 static void free_mnts(void);
-static uint64_t get_fssize(char *s);
 
 /* Place an ephemeral container started with -e flag on a tmpfs. Restrictions
  * are that you cannot request the data to be kept while placing the container
@@ -536,39 +535,6 @@ static void free_mnts()
 	free(mnt_table);
 	mnt_table = NULL;
 	mnt_table_size = 0;
-}
-
-/* we pass fssize in bytes */
-static uint64_t get_fssize(char *s)
-{
-	uint64_t ret;
-	char *end;
-
-	ret = strtoull(s, &end, 0);
-	if (end == s) {
-		ERROR("Invalid blockdev size '%s', using default size", s);
-		return 0;
-	}
-	while (isblank(*end))
-		end++;
-	if (*end == '\0') {
-		ret *= 1024ULL * 1024ULL; /* MB by default */
-	} else if (*end == 'b' || *end == 'B') {
-		ret *= 1ULL;
-	} else if (*end == 'k' || *end == 'K') {
-		ret *= 1024ULL;
-	} else if (*end == 'm' || *end == 'M') {
-		ret *= 1024ULL * 1024ULL;
-	} else if (*end == 'g' || *end == 'G') {
-		ret *= 1024ULL * 1024ULL * 1024ULL;
-	} else if (*end == 't' || *end == 'T') {
-		ret *= 1024ULL * 1024ULL * 1024ULL * 1024ULL;
-	} else {
-		ERROR("Invalid blockdev unit size '%c' in '%s', " "using default size", *end, s);
-		return 0;
-	}
-
-	return ret;
 }
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg)
