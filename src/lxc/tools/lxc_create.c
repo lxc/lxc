@@ -18,7 +18,6 @@
  */
 
 #define _GNU_SOURCE
-#include <ctype.h>
 #include <fcntl.h>
 #include <libgen.h>
 #include <stdint.h>
@@ -37,7 +36,6 @@
 lxc_log_define(lxc_create, lxc);
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg);
-static uint64_t get_fssize(char *s);
 static void create_helpfn(const struct lxc_arguments *args);
 static bool validate_bdev_args(struct lxc_arguments *args);
 
@@ -144,40 +142,6 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 		break;
 	}
 	return 0;
-}
-
-static uint64_t get_fssize(char *s)
-{
-	uint64_t ret;
-	char *end;
-
-	ret = strtoull(s, &end, 0);
-	if (end == s) {
-		ERROR("Invalid blockdev size '%s', using default size", s);
-		return 0;
-	}
-
-	while (isblank(*end))
-		end++;
-
-	if (*end == '\0') {
-		ret *= 1024ULL * 1024ULL; /* MB by default */
-	} else if (*end == 'b' || *end == 'B') {
-		ret *= 1ULL;
-	} else if (*end == 'k' || *end == 'K') {
-		ret *= 1024ULL;
-	} else if (*end == 'm' || *end == 'M') {
-		ret *= 1024ULL * 1024ULL;
-	} else if (*end == 'g' || *end == 'G') {
-		ret *= 1024ULL * 1024ULL * 1024ULL;
-	} else if (*end == 't' || *end == 'T') {
-		ret *= 1024ULL * 1024ULL * 1024ULL * 1024ULL;
-	} else {
-		ERROR("Invalid blockdev unit size '%c' in '%s', using default size", *end, s);
-		return 0;
-	}
-
-	return ret;
 }
 
 static void create_helpfn(const struct lxc_arguments *args)
