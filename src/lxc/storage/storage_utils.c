@@ -22,6 +22,7 @@
  */
 
 #define _GNU_SOURCE
+#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -455,6 +456,40 @@ bool unpriv_snap_allowed(struct lxc_storage *b, const char *t, bool snap,
 		return true;
 
 	return false;
+}
+
+uint64_t get_fssize(char *s)
+{
+	uint64_t ret;
+	char *end;
+
+	ret = strtoull(s, &end, 0);
+	if (end == s) {
+		ERROR("Invalid blockdev size '%s', using default size", s);
+		return 0;
+	}
+
+	while (isblank(*end))
+		end++;
+
+	if (*end == '\0') {
+		ret *= 1024ULL * 1024ULL; /* MB by default */
+	} else if (*end == 'b' || *end == 'B') {
+		ret *= 1ULL;
+	} else if (*end == 'k' || *end == 'K') {
+		ret *= 1024ULL;
+	} else if (*end == 'm' || *end == 'M') {
+		ret *= 1024ULL * 1024ULL;
+	} else if (*end == 'g' || *end == 'G') {
+		ret *= 1024ULL * 1024ULL * 1024ULL;
+	} else if (*end == 't' || *end == 'T') {
+		ret *= 1024ULL * 1024ULL * 1024ULL * 1024ULL;
+	} else {
+		ERROR("Invalid blockdev unit size '%c' in '%s', using default size", *end, s);
+		return 0;
+	}
+
+	return ret;
 }
 
 bool is_valid_storage_type(const char *type)
