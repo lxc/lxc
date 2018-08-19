@@ -187,4 +187,13 @@ extern int __build_bug_on_failed;
 #define NLMSG_ERROR 0x2
 #endif
 
+/* mount */
+#ifndef MS_REC
+#define MS_REC 16384
+#endif
+
+#ifndef MS_SLAVE
+#define MS_SLAVE (1 << 19)
+#endif
+
 #endif /* __LXC_MACRO_H */

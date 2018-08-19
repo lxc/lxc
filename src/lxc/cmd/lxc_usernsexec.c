@@ -44,20 +44,11 @@
 #include "conf.h"
 #include "list.h"
 #include "log.h"
+#include "macro.h"
 #include "namespace.h"
 #include "utils.h"
 
-#ifndef MS_REC
-#define MS_REC 16384
-#endif
-
-#ifndef MS_SLAVE
-#define MS_SLAVE (1 << 19)
-#endif
-
 extern int lxc_log_fd;
-
-int unshare(int flags);
 
 static void usage(const char *name)
 {
