@@ -197,6 +197,22 @@ extern int __build_bug_on_failed;
 #define NLMSG_ERROR 0x2
 #endif
 
+#ifndef MACVLAN_MODE_PRIVATE
+#define MACVLAN_MODE_PRIVATE 1
+#endif
+
+#ifndef MACVLAN_MODE_VEPA
+#define MACVLAN_MODE_VEPA 2
+#endif
+
+#ifndef MACVLAN_MODE_BRIDGE
+#define MACVLAN_MODE_BRIDGE 4
+#endif
+
+#ifndef MACVLAN_MODE_PASSTHRU
+#define MACVLAN_MODE_PASSTHRU 8
+#endif
+
 /* mount */
 #ifndef MS_REC
 #define MS_REC 16384
