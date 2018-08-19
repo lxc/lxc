@@ -21,25 +21,25 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
 #include "config.h"
 
+#include <errno.h>
+#include <fcntl.h>
+#include <grp.h>
+#include <libgen.h>
+#include <pwd.h>
+#include <sched.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <sched.h>
-#include <sys/syscall.h>
-#include <signal.h>
 #include <string.h>
-#include <errno.h>
-#include <libgen.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <sys/mount.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
 #include <sys/wait.h>
-#include <sched.h>
-#include <pwd.h>
-#include <grp.h>
+#include <unistd.h>
 
 #include "conf.h"
 #include "list.h"
