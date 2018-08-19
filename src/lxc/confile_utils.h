@@ -20,26 +20,12 @@
 #ifndef __LXC_CONFILE_UTILS_H
 #define __LXC_CONFILE_UTILS_H
 
+#include "config.h"
+
 #include <stdbool.h>
 
 #include "conf.h"
 #include "confile_utils.h"
-
-#ifndef MACVLAN_MODE_PRIVATE
-#define MACVLAN_MODE_PRIVATE 1
-#endif
-
-#ifndef MACVLAN_MODE_VEPA
-#define MACVLAN_MODE_VEPA 2
-#endif
-
-#ifndef MACVLAN_MODE_BRIDGE
-#define MACVLAN_MODE_BRIDGE 4
-#endif
-
-#ifndef MACVLAN_MODE_PASSTHRU
-#define MACVLAN_MODE_PASSTHRU 8
-#endif
 
 #define strprint(str, inlen, ...)                                       \
 	do {                                                            \

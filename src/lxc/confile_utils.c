@@ -32,6 +32,7 @@
 #include "list.h"
 #include "log.h"
 #include "lxccontainer.h"
+#include "macro.h"
 #include "network.h"
 #include "parse.h"
 #include "utils.h"
@@ -288,13 +289,12 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 			TRACE("type: macvlan");
 
 			if (netdev->priv.macvlan_attr.mode > 0) {
-				char *macvlan_mode;
+				char *mode;
 
-				macvlan_mode = lxc_macvlan_flag_to_mode(
+				mode = lxc_macvlan_flag_to_mode(
 				    netdev->priv.macvlan_attr.mode);
 				TRACE("macvlan mode: %s",
-				      macvlan_mode ? macvlan_mode
-						   : "(invalid mode)");
+				      mode ? mode : "(invalid mode)");
 			}
 			break;
 		case LXC_NET_VLAN:
@@ -442,7 +442,7 @@ void lxc_free_networks(struct lxc_list *networks)
 	lxc_list_init(networks);
 }
 
-static struct macvlan_mode {
+static struct lxc_macvlan_mode {
 	char *name;
 	int mode;
 } macvlan_mode[] = {
