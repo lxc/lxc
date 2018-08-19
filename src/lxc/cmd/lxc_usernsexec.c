@@ -196,6 +196,7 @@ static int parse_map(char *map)
  */
 static int read_default_map(char *fnam, int which, char *user)
 {
+	int ret;
 	size_t len;
 	char *p1, *p2;
 	FILE *fin;
@@ -228,8 +229,20 @@ static int read_default_map(char *fnam, int which, char *user)
 			return -1;
 		}
 
-		newmap->hostid = atol(p1 + 1);
-		newmap->range = atol(p2 + 1);
+		ret = lxc_safe_ulong(p1 + 1, &newmap->hostid);
+		if (ret < 0) {
+			fclose(fin);
+			free(line);
+			return -1;
+		}
+
+		ret = lxc_safe_ulong(p2 + 1, &newmap->range);
+		if (ret < 0) {
+			fclose(fin);
+			free(line);
+			return -1;
+		}
+
 		newmap->nsid = 0;
 		newmap->idtype = which;
 
