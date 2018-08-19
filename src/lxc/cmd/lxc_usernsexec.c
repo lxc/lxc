@@ -194,8 +194,9 @@ static int parse_map(char *map)
  * only use the first one for each of uid and gid, because otherwise we're not
  * sure which entries the user wanted.
  */
-static int read_default_map(char *fnam, int which, char *username)
+static int read_default_map(char *fnam, int which, char *user)
 {
+	size_t len;
 	char *p1, *p2;
 	FILE *fin;
 	struct id_map *newmap;
@@ -207,10 +208,9 @@ static int read_default_map(char *fnam, int which, char *username)
 	if (!fin)
 		return -1;
 
+	len = strlen(user);
 	while (getline(&line, &sz, fin) != -1) {
-		if (sz <= strlen(username) ||
-		    strncmp(line, username, strlen(username)) != 0 ||
-		    line[strlen(username)] != ':')
+		if (sz <= len || strncmp(line, user, len) != 0 || line[len] != ':')
 			continue;
 
 		p1 = strchr(line, ':');
