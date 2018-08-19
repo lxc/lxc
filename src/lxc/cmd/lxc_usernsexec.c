@@ -104,23 +104,13 @@ static int do_child(void *vargv)
 	char **argv = (char **)vargv;
 
 	/* Assume we want to become root */
-	ret = setgid(0);
-	if (ret < 0) {
-		CMD_SYSERROR("Failed to set gid to");
+	ret = lxc_switch_uid_gid(0, 0);
+	if (ret < 0)
 		return -1;
-	}
 
-	ret = setuid(0);
-	if (ret < 0) {
-		CMD_SYSERROR("Failed to set uid to 0");
+	ret = lxc_setgroups(0, NULL);
+	if (ret < 0)
 		return -1;
-	}
-
-	ret = setgroups(0, NULL);
-	if (ret < 0) {
-		CMD_SYSERROR("Failed to clear supplementary groups");
-		return -1;
-	}
 
 	ret = unshare(CLONE_NEWNS);
 	if (ret < 0) {
