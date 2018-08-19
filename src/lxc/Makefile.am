@@ -322,6 +322,7 @@ if ENABLE_COMMANDS
 init_lxc_SOURCES = cmd/lxc_init.c
 lxc_monitord_SOURCES = cmd/lxc_monitord.c
 lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
+		       log.c log.h \
 		       namespace.c namespace.h \
 		       network.c network.h \
 		       parse.c parse.h
