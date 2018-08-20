@@ -166,14 +166,14 @@ static int parse_map(char *map)
 	struct lxc_list *tmp = NULL;
 
 	if (!map)
-		return -1;
+		return -EINVAL;
 
 	ret = sscanf(map, "%c:%ld:%ld:%ld", &which, &ns_id, &host_id, &range);
 	if (ret != 4)
-		return -1;
+		return -EINVAL;
 
 	if (which != 'b' && which != 'u' && which != 'g')
-		return -1;
+		return -EINVAL;
 
 	for (i = 0; i < 2; i++) {
 		if (which != types[i] && which != 'b')
