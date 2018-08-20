@@ -89,6 +89,9 @@
 
 lxc_log_define(attach, lxc);
 
+/* Define default options if no options are supplied by the user. */
+static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_DEFAULT;
+
 /* /proc/pid-to-str/status\0 = (5 + 21 + 7 + 1) */
 #define __PROC_STATUS_LEN (5 + (LXC_NUMSTRLEN64) + 7 + 1)
 static struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
@@ -651,9 +654,6 @@ static void lxc_attach_get_init_uidgid(uid_t *init_uid, gid_t *init_gid)
 	 * setgroups() to set them.
 	 */
 }
-
-/* Define default options if no options are supplied by the user. */
-static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_DEFAULT;
 
 static bool fetch_seccomp(struct lxc_container *c, lxc_attach_options_t *options)
 {
