@@ -24,35 +24,23 @@
 #define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
-#include <termios.h>
 #include <grp.h>
+#include <linux/unistd.h>
 #include <pwd.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <linux/unistd.h>
 #include <sys/mount.h>
 #include <sys/param.h>
 #include <sys/prctl.h>
 #include <sys/socket.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
+#include <termios.h>
+#include <unistd.h>
 
 #include <lxc/lxccontainer.h>
-
-#ifndef HAVE_DECL_PR_CAPBSET_DROP
-#define PR_CAPBSET_DROP 24
-#endif
-
-#ifndef HAVE_DECL_PR_SET_NO_NEW_PRIVS
-#define PR_SET_NO_NEW_PRIVS 38
-#endif
-
-#ifndef HAVE_DECL_PR_GET_NO_NEW_PRIVS
-#define PR_GET_NO_NEW_PRIVS 39
-#endif
 
 #include "af_unix.h"
 #include "attach.h"
@@ -66,6 +54,7 @@
 #include "lsm/lsm.h"
 #include "lxclock.h"
 #include "lxcseccomp.h"
+#include "macro.h"
 #include "mainloop.h"
 #include "namespace.h"
 #include "terminal.h"
@@ -75,38 +64,24 @@
 #include <sys/personality.h>
 #endif
 
-#ifndef SOCK_CLOEXEC
-#define SOCK_CLOEXEC 02000000
-#endif
-
-#ifndef MS_REC
-#define MS_REC 16384
-#endif
-
-#ifndef MS_SLAVE
-#define MS_SLAVE (1 << 19)
-#endif
-
 lxc_log_define(attach, lxc);
 
 /* Define default options if no options are supplied by the user. */
 static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_DEFAULT;
 
-/* /proc/pid-to-str/status\0 = (5 + 21 + 7 + 1) */
-#define __PROC_STATUS_LEN (5 + (LXC_NUMSTRLEN64) + 7 + 1)
 static struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 {
 	int ret;
 	bool found;
 	FILE *proc_file;
-	char proc_fn[__PROC_STATUS_LEN];
+	char proc_fn[LXC_PROC_STATUS_LEN];
 	size_t line_bufsz = 0;
 	char *line = NULL;
 	struct lxc_proc_context_info *info = NULL;
 
 	/* Read capabilities. */
-	ret = snprintf(proc_fn, __PROC_STATUS_LEN, "/proc/%d/status", pid);
-	if (ret < 0 || ret >= __PROC_STATUS_LEN)
+	ret = snprintf(proc_fn, LXC_PROC_STATUS_LEN, "/proc/%d/status", pid);
+	if (ret < 0 || ret >= LXC_PROC_STATUS_LEN)
 		goto on_error;
 
 	proc_file = fopen(proc_fn, "r");
@@ -607,7 +582,7 @@ static char *lxc_attach_getpwshell(uid_t uid)
 static void lxc_attach_get_init_uidgid(uid_t *init_uid, gid_t *init_gid)
 {
 	FILE *proc_file;
-	char proc_fn[__PROC_STATUS_LEN];
+	char proc_fn[LXC_PROC_STATUS_LEN];
 	int ret;
 	char *line = NULL;
 	size_t line_bufsz = 0;
@@ -615,8 +590,8 @@ static void lxc_attach_get_init_uidgid(uid_t *init_uid, gid_t *init_gid)
 	uid_t uid = (uid_t)-1;
 	gid_t gid = (gid_t)-1;
 
-	ret = snprintf(proc_fn, __PROC_STATUS_LEN, "/proc/%d/status", 1);
-	if (ret < 0 || ret >= __PROC_STATUS_LEN)
+	ret = snprintf(proc_fn, LXC_PROC_STATUS_LEN, "/proc/%d/status", 1);
+	if (ret < 0 || ret >= LXC_PROC_STATUS_LEN)
 		return;
 
 	proc_file = fopen(proc_fn, "r");

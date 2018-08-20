@@ -67,6 +67,19 @@
 #define CAP_SYS_ADMIN 21
 #endif
 
+#ifndef HAVE_DECL_PR_CAPBSET_DROP
+#define PR_CAPBSET_DROP 24
+#endif
+
+/* prctl */
+#ifndef HAVE_DECL_PR_SET_NO_NEW_PRIVS
+#define PR_SET_NO_NEW_PRIVS 38
+#endif
+
+#ifndef HAVE_DECL_PR_GET_NO_NEW_PRIVS
+#define PR_GET_NO_NEW_PRIVS 39
+#endif
+
 #ifndef CGROUP_SUPER_MAGIC
 #define CGROUP_SUPER_MAGIC 0x27e0eb
 #endif
@@ -105,6 +118,8 @@
  * \0           =    1
  */
 #define LXC_PROC_PID_FD_LEN (6 + LXC_NUMSTRLEN64 + 4 + LXC_NUMSTRLEN64 + 1)
+/* /proc/pid-to-str/status\0 = (5 + 21 + 7 + 1) */
+#define LXC_PROC_STATUS_LEN (5 + (LXC_NUMSTRLEN64) + 7 + 1)
 
 /* loop devices */
 #ifndef LO_FLAGS_AUTOCLEAR
@@ -238,6 +253,11 @@ extern int __build_bug_on_failed;
 
 #ifndef O_NOFOLLOW
 #define O_NOFOLLOW  00400000
+#endif
+
+/* sockets */
+#ifndef SOCK_CLOEXEC
+#define SOCK_CLOEXEC 02000000
 #endif
 
 #endif /* __LXC_MACRO_H */
