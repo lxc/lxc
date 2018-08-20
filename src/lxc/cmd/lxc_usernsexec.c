@@ -196,14 +196,14 @@ static int parse_map(char *map)
  */
 static int read_default_map(char *fnam, int which, char *user)
 {
-	int ret;
 	size_t len;
 	char *p1, *p2;
 	FILE *fin;
-	struct id_map *newmap;
+	int ret = -1;
 	size_t sz = 0;
 	char *line = NULL;
 	struct lxc_list *tmp = NULL;
+	struct id_map *newmap = NULL;
 
 	fin = fopen(fnam, "r");
 	if (!fin)
@@ -223,46 +223,38 @@ static int read_default_map(char *fnam, int which, char *user)
 			continue;
 
 		newmap = malloc(sizeof(*newmap));
-		if (!newmap) {
-			fclose(fin);
-			free(line);
-			return -1;
-		}
+		if (!newmap)
+			goto on_error;
 
 		ret = lxc_safe_ulong(p1 + 1, &newmap->hostid);
-		if (ret < 0) {
-			fclose(fin);
-			free(line);
-			return -1;
-		}
+		if (ret < 0)
+			goto on_error;
 
 		ret = lxc_safe_ulong(p2 + 1, &newmap->range);
-		if (ret < 0) {
-			fclose(fin);
-			free(line);
-			return -1;
-		}
+		if (ret < 0)
+			goto on_error;
 
 		newmap->nsid = 0;
 		newmap->idtype = which;
 
+		ret = -1;
 		tmp = malloc(sizeof(*tmp));
-		if (!tmp) {
-			fclose(fin);
-			free(line);
-			free(newmap);
-			return -1;
-		}
+		if (!tmp)
+			goto on_error;
 
 		tmp->elem = newmap;
 		lxc_list_add_tail(&active_map, tmp);
 		break;
 	}
 
-	free(line);
-	fclose(fin);
+	ret = 0;
 
-	return 0;
+on_error:
+	fclose(fin);
+	free(line);
+	free(newmap);
+
+	return ret;
 }
 
 static int find_default_map(void)
