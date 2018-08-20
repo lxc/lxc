@@ -652,14 +652,6 @@ static void lxc_attach_get_init_uidgid(uid_t *init_uid, gid_t *init_gid)
 	 */
 }
 
-/* Help the optimizer along if it doesn't know that exit always exits. */
-#define rexit(c)                                                               \
-	do {                                                                   \
-		int __c = (c);                                                 \
-		_exit(__c);                                                    \
-		return __c;                                                    \
-	} while (0)
-
 /* Define default options if no options are supplied by the user. */
 static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_DEFAULT;
 
@@ -986,11 +978,11 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	}
 
 	/* We're done, so we can now do whatever the user intended us to do. */
-	rexit(payload->exec_function(payload->exec_payload));
+	_exit(payload->exec_function(payload->exec_payload));
 
 on_error:
 	lxc_put_attach_clone_payload(payload);
-	rexit(EXIT_FAILURE);
+	_exit(EXIT_FAILURE);
 }
 
 static int lxc_attach_terminal(struct lxc_conf *conf,
@@ -1447,7 +1439,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 	if (ret != sizeof(status)) {
 		shutdown(ipc_sockets[1], SHUT_RDWR);
 		lxc_proc_put_context_info(init_ctx);
-		rexit(-1);
+		_exit(EXIT_FAILURE);
 	}
 
 	TRACE("Intermediate process starting to initialize");
@@ -1460,7 +1452,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 		ERROR("Failed to enter namespaces");
 		shutdown(ipc_sockets[1], SHUT_RDWR);
 		lxc_proc_put_context_info(init_ctx);
-		rexit(-1);
+		_exit(EXIT_FAILURE);
 	}
 
 	/* close namespace file descriptors */
@@ -1491,7 +1483,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 		SYSERROR("Failed to clone attached process");
 		shutdown(ipc_sockets[1], SHUT_RDWR);
 		lxc_proc_put_context_info(init_ctx);
-		rexit(-1);
+		_exit(EXIT_FAILURE);
 	}
 
 	if (pid == 0) {
@@ -1516,14 +1508,14 @@ int lxc_attach(const char *name, const char *lxcpath,
 		 */
 		shutdown(ipc_sockets[1], SHUT_RDWR);
 		lxc_proc_put_context_info(init_ctx);
-		rexit(-1);
+		_exit(EXIT_FAILURE);
 	}
 
 	TRACE("Sending pid %d of attached process", pid);
 
 	/* The rest is in the hands of the initial and the attached process. */
 	lxc_proc_put_context_info(init_ctx);
-	rexit(0);
+	_exit(0);
 }
 
 int lxc_attach_run_command(void* payload)
