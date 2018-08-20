@@ -21,43 +21,34 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
 #include "config.h"
 
+#include <errno.h>
+#include <fcntl.h>
+#include <grp.h>
+#include <libgen.h>
+#include <pwd.h>
+#include <sched.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <sched.h>
-#include <sys/syscall.h>
-#include <signal.h>
 #include <string.h>
-#include <errno.h>
-#include <libgen.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <sys/mount.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
 #include <sys/wait.h>
-#include <sched.h>
-#include <pwd.h>
-#include <grp.h>
+#include <unistd.h>
 
 #include "conf.h"
 #include "list.h"
 #include "log.h"
+#include "macro.h"
 #include "namespace.h"
 #include "utils.h"
 
-#ifndef MS_REC
-#define MS_REC 16384
-#endif
-
-#ifndef MS_SLAVE
-#define MS_SLAVE (1 << 19)
-#endif
-
 extern int lxc_log_fd;
-
-int unshare(int flags);
 
 static void usage(const char *name)
 {
@@ -113,23 +104,13 @@ static int do_child(void *vargv)
 	char **argv = (char **)vargv;
 
 	/* Assume we want to become root */
-	ret = setgid(0);
-	if (ret < 0) {
-		CMD_SYSERROR("Failed to set gid to");
+	ret = lxc_switch_uid_gid(0, 0);
+	if (ret < 0)
 		return -1;
-	}
 
-	ret = setuid(0);
-	if (ret < 0) {
-		CMD_SYSERROR("Failed to set uid to 0");
+	ret = lxc_setgroups(0, NULL);
+	if (ret < 0)
 		return -1;
-	}
-
-	ret = setgroups(0, NULL);
-	if (ret < 0) {
-		CMD_SYSERROR("Failed to clear supplementary groups");
-		return -1;
-	}
 
 	ret = unshare(CLONE_NEWNS);
 	if (ret < 0) {
@@ -213,23 +194,24 @@ static int parse_map(char *map)
  * only use the first one for each of uid and gid, because otherwise we're not
  * sure which entries the user wanted.
  */
-static int read_default_map(char *fnam, int which, char *username)
+static int read_default_map(char *fnam, int which, char *user)
 {
+	size_t len;
 	char *p1, *p2;
 	FILE *fin;
-	struct id_map *newmap;
+	int ret = -1;
 	size_t sz = 0;
 	char *line = NULL;
 	struct lxc_list *tmp = NULL;
+	struct id_map *newmap = NULL;
 
 	fin = fopen(fnam, "r");
 	if (!fin)
 		return -1;
 
+	len = strlen(user);
 	while (getline(&line, &sz, fin) != -1) {
-		if (sz <= strlen(username) ||
-		    strncmp(line, username, strlen(username)) != 0 ||
-		    line[strlen(username)] != ':')
+		if (sz <= len || strncmp(line, user, len) != 0 || line[len] != ':')
 			continue;
 
 		p1 = strchr(line, ':');
@@ -241,34 +223,38 @@ static int read_default_map(char *fnam, int which, char *username)
 			continue;
 
 		newmap = malloc(sizeof(*newmap));
-		if (!newmap) {
-			fclose(fin);
-			free(line);
-			return -1;
-		}
+		if (!newmap)
+			goto on_error;
 
-		newmap->hostid = atol(p1 + 1);
-		newmap->range = atol(p2 + 1);
+		ret = lxc_safe_ulong(p1 + 1, &newmap->hostid);
+		if (ret < 0)
+			goto on_error;
+
+		ret = lxc_safe_ulong(p2 + 1, &newmap->range);
+		if (ret < 0)
+			goto on_error;
+
 		newmap->nsid = 0;
 		newmap->idtype = which;
 
+		ret = -1;
 		tmp = malloc(sizeof(*tmp));
-		if (!tmp) {
-			fclose(fin);
-			free(line);
-			free(newmap);
-			return -1;
-		}
+		if (!tmp)
+			goto on_error;
 
 		tmp->elem = newmap;
 		lxc_list_add_tail(&active_map, tmp);
 		break;
 	}
 
-	free(line);
-	fclose(fin);
+	ret = 0;
 
-	return 0;
+on_error:
+	fclose(fin);
+	free(line);
+	free(newmap);
+
+	return ret;
 }
 
 static int find_default_map(void)

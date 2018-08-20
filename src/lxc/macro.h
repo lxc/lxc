@@ -20,6 +20,16 @@
 #ifndef __LXC_MACRO_H
 #define __LXC_MACRO_H
 
+#include "config.h"
+
+#include <asm/types.h>
+#include <linux/if_link.h>
+#include <linux/loop.h>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
+#include <sys/mount.h>
+#include <sys/socket.h>
+
 /* Define __S_ISTYPE if missing from the C library. */
 #ifndef __S_ISTYPE
 #define __S_ISTYPE(mode, mask) (((mode)&S_IFMT) == (mask))
@@ -185,6 +195,31 @@ extern int __build_bug_on_failed;
 
 #ifndef NLMSG_ERROR
 #define NLMSG_ERROR 0x2
+#endif
+
+#ifndef MACVLAN_MODE_PRIVATE
+#define MACVLAN_MODE_PRIVATE 1
+#endif
+
+#ifndef MACVLAN_MODE_VEPA
+#define MACVLAN_MODE_VEPA 2
+#endif
+
+#ifndef MACVLAN_MODE_BRIDGE
+#define MACVLAN_MODE_BRIDGE 4
+#endif
+
+#ifndef MACVLAN_MODE_PASSTHRU
+#define MACVLAN_MODE_PASSTHRU 8
+#endif
+
+/* mount */
+#ifndef MS_REC
+#define MS_REC 16384
+#endif
+
+#ifndef MS_SLAVE
+#define MS_SLAVE (1 << 19)
 #endif
 
 #endif /* __LXC_MACRO_H */
