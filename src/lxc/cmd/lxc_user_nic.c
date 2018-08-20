@@ -80,13 +80,14 @@ static void usage(char *me, bool fail)
 
 static int open_and_lock(char *path)
 {
-	int fd, ret;
+	int fd, ret, save;
 	struct flock lk;
 
 	fd = open(path, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
 	if (fd < 0) {
+		save = errno;
 		CMD_SYSERROR("Failed to open \"%s\"\n", path);
-		return -1;
+		return -errno;
 	}
 
 	lk.l_type = F_WRLCK;
@@ -96,9 +97,10 @@ static int open_and_lock(char *path)
 
 	ret = fcntl(fd, F_SETLKW, &lk);
 	if (ret < 0) {
+		save = errno;
 		CMD_SYSERROR("Failed to lock \"%s\"\n", path);
 		close(fd);
-		return -1;
+		return -save;
 	}
 
 	return fd;
@@ -311,7 +313,7 @@ static void free_alloted(struct alloted_s **head)
  * @group type bridge count
  *
  * Return the count entry for the calling user if there is one.  Else
- * return -1.
+ * return -EINVAL.
  */
 static int get_alloted(char *me, char *intype, char *link,
 		       struct alloted_s **alloted)
@@ -327,7 +329,7 @@ static int get_alloted(char *me, char *intype, char *link,
 	fin = fopen(LXC_USERNIC_CONF, "r");
 	if (!fin) {
 		CMD_SYSERROR("Failed to open \"%s\"\n", LXC_USERNIC_CONF);
-		return -1;
+		return -EINVAL;	/* fopen only returns EINVAL */
 	}
 
 	groups = get_groupnames();
@@ -527,18 +529,20 @@ static int get_mtu(char *name)
 static int create_nic(char *nic, char *br, int pid, char **cnic)
 {
 	char veth1buf[IFNAMSIZ], veth2buf[IFNAMSIZ];
-	int mtu, ret;
+	int mtu, ret, save;
 
 	ret = snprintf(veth1buf, IFNAMSIZ, "%s", nic);
 	if (ret < 0 || ret >= IFNAMSIZ) {
+		save = errno;
 		usernic_error("%s", "Could not create nic name\n");
-		return -1;
+		return -save;
 	}
 
 	ret = snprintf(veth2buf, IFNAMSIZ, "%sp", veth1buf);
 	if (ret < 0 || ret >= IFNAMSIZ) {
+		save = errno;
 		usernic_error("%s\n", "Could not create nic name");
-		return -1;
+		return -save;
 	}
 
 	/* create the nics */
@@ -586,7 +590,7 @@ static int create_nic(char *nic, char *br, int pid, char **cnic)
 	*cnic = strdup(veth2buf);
 	if (!*cnic) {
 		usernic_error("Failed to copy string \"%s\"\n", veth2buf);
-		return -1;
+		return -ENOMEM;	/* strdup only returns ENOMEM */
 	}
 
 	return 0;

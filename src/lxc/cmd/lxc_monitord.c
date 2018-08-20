@@ -83,7 +83,7 @@ static int lxc_monitord_fifo_create(struct lxc_monitor *mon)
 {
 	struct flock lk;
 	char fifo_path[PATH_MAX];
-	int ret;
+	int ret, save;
 
 	ret = lxc_monitor_fifo_name(mon->lxcpath, fifo_path, sizeof(fifo_path), 1);
 	if (ret < 0)
@@ -91,15 +91,17 @@ static int lxc_monitord_fifo_create(struct lxc_monitor *mon)
 
 	ret = mknod(fifo_path, S_IFIFO | S_IRUSR | S_IWUSR, 0);
 	if (ret < 0 && errno != EEXIST) {
+		save = errno;
 		SYSINFO("Failed to mknod monitor fifo %s", fifo_path);
-		return -1;
+		return -save;
 	}
 
 	mon->fifofd = open(fifo_path, O_RDWR);
 	if (mon->fifofd < 0) {
+		save = errno;
 		SYSERROR("Failed to open monitor fifo %s", fifo_path);
 		unlink(fifo_path);
-		return -1;
+		return -save;
 	}
 
 	lk.l_type = F_WRLCK;
@@ -108,10 +110,11 @@ static int lxc_monitord_fifo_create(struct lxc_monitor *mon)
 	lk.l_len = 0;
 
 	if (fcntl(mon->fifofd, F_SETLK, &lk) != 0) {
+		save = errno;
 		/* another lxc-monitord is already running, don't start up */
 		SYSDEBUG("lxc-monitord already running on lxcpath %s", mon->lxcpath);
 		close(mon->fifofd);
-		return -1;
+		return -save;
 	}
 
 	return 0;

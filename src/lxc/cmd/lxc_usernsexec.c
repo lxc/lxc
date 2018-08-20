@@ -109,39 +109,44 @@ static void opentty(const char *tty, int which)
 
 static int do_child(void *vargv)
 {
-	int ret;
+	int ret, save;
 	char **argv = (char **)vargv;
 
 	/* Assume we want to become root */
 	ret = setgid(0);
 	if (ret < 0) {
+		save = errno;
 		CMD_SYSERROR("Failed to set gid to");
-		return -1;
+		return -save;
 	}
 
 	ret = setuid(0);
 	if (ret < 0) {
+		save = errno;
 		CMD_SYSERROR("Failed to set uid to 0");
-		return -1;
+		return -save;
 	}
 
 	ret = setgroups(0, NULL);
 	if (ret < 0) {
+		save = errno;
 		CMD_SYSERROR("Failed to clear supplementary groups");
-		return -1;
+		return -save;
 	}
 
 	ret = unshare(CLONE_NEWNS);
 	if (ret < 0) {
+		save = errno;
 		CMD_SYSERROR("Failed to unshare mount namespace");
-		return -1;
+		return -save;
 	}
 
 	if (detect_shared_rootfs()) {
 		ret = mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL);
 		if (ret < 0) {
+			save = errno;
 			CMD_SYSINFO("Failed to make \"/\" rslave");
-			return -1;
+			return -save;
 		}
 	}
 
@@ -181,7 +186,7 @@ static int parse_map(char *map)
 
 		newmap = malloc(sizeof(*newmap));
 		if (!newmap)
-			return -1;
+			return -ENOMEM;
 
 		newmap->hostid = host_id;
 		newmap->nsid = ns_id;
@@ -195,7 +200,7 @@ static int parse_map(char *map)
 		tmp = malloc(sizeof(*tmp));
 		if (!tmp) {
 			free(newmap);
-			return -1;
+			return -ENOMEM;
 		}
 
 		tmp->elem = newmap;
@@ -224,7 +229,7 @@ static int read_default_map(char *fnam, int which, char *username)
 
 	fin = fopen(fnam, "r");
 	if (!fin)
-		return -1;
+		return -errno;
 
 	while (getline(&line, &sz, fin) != -1) {
 		if (sz <= strlen(username) ||
@@ -244,7 +249,7 @@ static int read_default_map(char *fnam, int which, char *username)
 		if (!newmap) {
 			fclose(fin);
 			free(line);
-			return -1;
+			return -ENOMEM;
 		}
 
 		newmap->hostid = atol(p1 + 1);
@@ -257,7 +262,7 @@ static int read_default_map(char *fnam, int which, char *username)
 			fclose(fin);
 			free(line);
 			free(newmap);
-			return -1;
+			return -ENOMEM;
 		}
 
 		tmp->elem = newmap;
@@ -285,7 +290,7 @@ static int find_default_map(void)
 
 	buf = malloc(bufsize);
 	if (!buf)
-		return -1;
+		return -ENOMEM;
 
 	ret = getpwuid_r(getuid(), &pwent, buf, bufsize, &pwentp);
 	if (!pwentp) {
