@@ -707,7 +707,6 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 	char nicname[IFNAMSIZ];
 	struct stat sb;
 	struct alloted_s *n;
-	int count = 0;
 	char *buf = NULL;
 
 	for (n = names; n != NULL; n = n->next)
@@ -735,6 +734,8 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 		owner = NULL;
 
 		for (n = names; n != NULL; n = n->next) {
+			int count;
+
 			count = count_entries(buf, sb.st_size, n->name, intype, br);
 			if (count >= n->allowed)
 				continue;
