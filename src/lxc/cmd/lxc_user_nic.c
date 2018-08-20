@@ -862,12 +862,12 @@ again:
 static char *lxc_secure_rename_in_ns(int pid, char *oldname, char *newname,
 				     int *container_veth_ifidx)
 {
-	int ret;
+	int ofd, ret;
 	pid_t pid_self;
 	uid_t ruid, suid, euid;
 	char ifname[IFNAMSIZ];
 	char *string_ret = NULL, *name = NULL;
-	int fd = -1, ifindex = -1, ofd = -1;
+	int fd = -1, ifindex = -1;
 
 	pid_self = lxc_raw_getpid();
 
@@ -1035,11 +1035,10 @@ struct user_nic_args {
 
 static bool is_privileged_over_netns(int netns_fd)
 {
-	int ret;
+	int ofd, ret;
 	pid_t pid_self;
 	uid_t euid, ruid, suid;
 	bool bret = false;
-	int ofd = -1;
 
 	pid_self = lxc_raw_getpid();
 
