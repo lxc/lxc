@@ -902,7 +902,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 			if (ret < 0 || (size_t)ret >= sizeof(lxcpath))
 				return -1;
 
-			ret = mknod(path, S_IFREG | 0000, 0);
+			ret = mknod(lxcpath, S_IFREG | 0000, 0);
 			if (ret < 0 && errno != EEXIST) {
 				SYSERROR("Failed to create \"%s\"", lxcpath);
 				return -1;
@@ -916,12 +916,12 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 
 			ret = mount(tty->name, lxcpath, "none", MS_BIND, 0);
 			if (ret < 0) {
-				WARN("Failed to bind mount \"%s\" onto \"%s\"",
-				     tty->name, path);
+				SYSWARN("Failed to bind mount \"%s\" onto \"%s\"",
+				     tty->name, lxcpath);
 				continue;
 			}
 			DEBUG("Bind mounted \"%s\" onto \"%s\"", tty->name,
-			      path);
+			      lxcpath);
 
 			ret = snprintf(lxcpath, sizeof(lxcpath), "%s/tty%d",
 				       ttydir, i + 1);
