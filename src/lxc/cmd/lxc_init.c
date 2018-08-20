@@ -556,7 +556,7 @@ static int arguments_parse(struct arguments *args, int argc,
 	if (!args->name) {
 		if (!args->quiet)
 			fprintf(stderr, "lxc-init: missing container name, use --name option\n");
-		return -1;
+		return -EINVAL;
 	}
 
 	return 0;
