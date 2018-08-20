@@ -24,21 +24,21 @@
 #define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
+#include <net/if.h>
+#include <netinet/in.h>
 #include <pthread.h>
+#include <setjmp.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <net/if.h>
-#include <netinet/in.h>
-#include <setjmp.h>
 #include <sys/epoll.h>
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/un.h>
+#include <unistd.h>
 
 #include <lxc/lxccontainer.h>
 
