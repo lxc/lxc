@@ -37,14 +37,6 @@ extern int lxc_file_for_each_line(const char *file, lxc_file_cb callback,
 extern int lxc_file_for_each_line_mmap(const char *file, lxc_file_cb callback,
 				       void *data);
 
-extern int lxc_char_left_gc(const char *buffer, size_t len);
-
-extern int lxc_char_right_gc(const char *buffer, size_t len);
-
-extern char *lxc_trim_whitespace_in_place(char *buffer);
-
-extern int lxc_is_line_empty(const char *line);
-
 /* mmap() wrapper. lxc_strmmap() will take care to \0-terminate files so that
  * normal string-handling functions can be used on the buffer. */
 extern void *lxc_strmmap(void *addr, size_t length, int prot, int flags, int fd,

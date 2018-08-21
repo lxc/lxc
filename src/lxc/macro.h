@@ -79,6 +79,15 @@
 #define NSFS_MAGIC 0x6e736673
 #endif
 
+/* We have two different magic values for overlayfs, yay. */
+#ifndef OVERLAYFS_SUPER_MAGIC
+#define OVERLAYFS_SUPER_MAGIC 0x794c764f
+#endif
+
+#ifndef OVERLAY_SUPER_MAGIC
+#define OVERLAY_SUPER_MAGIC 0x794c7630
+#endif
+
 /* Useful macros */
 /* Maximum number for 64 bit integer is a string with 21 digits: 2^64 - 1 = 21 */
 #define LXC_NUMSTRLEN64 21
@@ -220,6 +229,15 @@ extern int __build_bug_on_failed;
 
 #ifndef MS_SLAVE
 #define MS_SLAVE (1 << 19)
+#endif
+
+/* open */
+#ifndef O_PATH
+#define O_PATH      010000000
+#endif
+
+#ifndef O_NOFOLLOW
+#define O_NOFOLLOW  00400000
 #endif
 
 #endif /* __LXC_MACRO_H */

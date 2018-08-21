@@ -37,8 +37,8 @@
 #include "log.h"
 #include "lxc.h"
 #include "monitor.h"
-#include "parse.h"
 #include "state.h"
+#include "string_utils.h"
 
 lxc_log_define(freezer, lxc);
 
