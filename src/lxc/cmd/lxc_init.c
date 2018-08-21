@@ -44,6 +44,7 @@
 #include "log.h"
 #include "namespace.h"
 #include "parse.h"
+#include "string_utils.h"
 
 /* option keys for long only options */
 #define OPT_USAGE 0x1000

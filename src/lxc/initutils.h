@@ -72,7 +72,6 @@ extern const char *lxc_global_config_value(const char *option_name);
 
 /* open a file with O_CLOEXEC */
 extern void remove_trailing_slashes(char *p);
-extern FILE *fopen_cloexec(const char *path, const char *mode);
 extern int setproctitle(char *title);
 
 #endif /* __LXC_INITUTILS_H */

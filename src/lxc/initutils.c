@@ -24,6 +24,7 @@
 #define _GNU_SOURCE
 #include <sys/prctl.h>
 
+#include "file_utils.h"
 #include "initutils.h"
 #include "log.h"
 #include "macro.h"
@@ -221,50 +222,6 @@ extern void remove_trailing_slashes(char *p)
 	int l = strlen(p);
 	while (--l >= 0 && (p[l] == '/' || p[l] == '\n'))
 		p[l] = '\0';
-}
-
-FILE *fopen_cloexec(const char *path, const char *mode)
-{
-	int open_mode = 0;
-	int step = 0;
-	int fd;
-	int saved_errno = 0;
-	FILE *ret;
-
-	if (!strncmp(mode, "r+", 2)) {
-		open_mode = O_RDWR;
-		step = 2;
-	} else if (!strncmp(mode, "r", 1)) {
-		open_mode = O_RDONLY;
-		step = 1;
-	} else if (!strncmp(mode, "w+", 2)) {
-		open_mode = O_RDWR | O_TRUNC | O_CREAT;
-		step = 2;
-	} else if (!strncmp(mode, "w", 1)) {
-		open_mode = O_WRONLY | O_TRUNC | O_CREAT;
-		step = 1;
-	} else if (!strncmp(mode, "a+", 2)) {
-		open_mode = O_RDWR | O_CREAT | O_APPEND;
-		step = 2;
-	} else if (!strncmp(mode, "a", 1)) {
-		open_mode = O_WRONLY | O_CREAT | O_APPEND;
-		step = 1;
-	}
-	for (; mode[step]; step++)
-		if (mode[step] == 'x')
-			open_mode |= O_EXCL;
-	open_mode |= O_CLOEXEC;
-
-	fd = open(path, open_mode, 0666);
-	if (fd < 0)
-		return NULL;
-
-	ret = fdopen(fd, mode);
-	saved_errno = errno;
-	if (!ret)
-		close(fd);
-	errno = saved_errno;
-	return ret;
 }
 
 /*
