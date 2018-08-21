@@ -45,6 +45,22 @@ AC_CANONICAL_HOST
 AM_PROG_CC_C_O
 AC_GNU_SOURCE
 
+# Test if we have a new enough compiler.
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#define GCC_VERSION \
+	(__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+
+#define CLANG_VERSION \
+	(__clang_major__ * 10000 + __clang_minor__ * 100 + __clang_patchlevel__)
+
+#if GCC_VERSION < 40600 && CLANG_VERSION < 10000
+#error Sorry, your compiler is too old - please upgrade it
+#endif
+	]])], [valid_compiler=yes], [valid_compiler=no])
+if test "x$valid_compiler" = "xno"; then
+	AC_MSG_ERROR([Sorry, your compiler is too old - please upgrade it])
+fi
+
 # libtool
 LT_INIT
 AC_SUBST([LIBTOOL_DEPS])
