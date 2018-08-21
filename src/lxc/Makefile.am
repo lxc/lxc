@@ -386,12 +386,27 @@ endif
 if ENABLE_PAM
 if HAVE_PAM
 pam_LTLIBRARIES = pam_cgfs.la
+
 pam_cgfs_la_SOURCES = pam/pam_cgfs.c \
-		      pam/utils.c pam/utils.h
-pam_cgfs_la_CFLAGS = $(AM_CFLAGS)
+		      macro.h \
+		      file_utils.c file_utils.h \
+		      string_utils.c string_utils.h
+
+if !HAVE_STRLCAT
+pam_cgfs_la_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
+if !HAVE_STRLCPY
+pam_cgfs_la_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+pam_cgfs_la_CFLAGS = $(AM_CFLAGS) \
+		     -DNO_LOG
+
 pam_cgfs_la_LIBADD = $(AM_LIBS) \
 		     $(PAM_LIBS) \
 		     -L$(top_srcdir)
+
 pam_cgfs_la_LDFLAGS = $(AM_LDFLAGS) \
 		      -avoid-version \
 		      -module \
