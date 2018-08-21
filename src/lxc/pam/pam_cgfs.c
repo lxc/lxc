@@ -57,6 +57,7 @@
 #include <security/_pam_macros.h>
 #include <security/pam_modules.h>
 
+#include "macro.h"
 #include "utils.h"
 
 #ifndef HAVE_STRLCPY
