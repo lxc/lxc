@@ -1651,28 +1651,21 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 	ret = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0,
 			 handler->data_sock);
-	if (ret < 0) {
-		lxc_sync_fini(handler);
-		return -1;
-	}
+	if (ret < 0)
+		goto out_sync_fini;
 
 	ret = resolve_clone_flags(handler);
-	if (ret < 0) {
-		lxc_sync_fini(handler);
-		return -1;
-	}
+	if (ret < 0)
+		goto out_sync_fini;
 
 	if (conf->shmount.path_host) {
-		if (!conf->shmount.path_cont) {
-			lxc_sync_fini(handler);
-			return -1;
-		}
+		if (!conf->shmount.path_cont)
+			goto out_sync_fini;
 
 		ret = lxc_setup_shmount(conf);
 		if (ret < 0) {
 			ERROR("Failed to setup shared mount point");
-			lxc_sync_fini(handler);
-			return -1;
+			goto out_sync_fini;
 		}
 	}
 
@@ -1687,8 +1680,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 			ret = lxc_find_gateway_addresses(handler);
 			if (ret < 0) {
 				ERROR("Failed to find gateway addresses");
-				lxc_sync_fini(handler);
-				return -1;
+				goto out_sync_fini;
 			}
 
 			/* That should be done before the clone because we will
@@ -1963,6 +1955,8 @@ out_delete_net:
 
 out_abort:
 	lxc_abort(name, handler);
+
+out_sync_fini:
 	lxc_sync_fini(handler);
 	if (handler->pinfd >= 0) {
 		close(handler->pinfd);
