@@ -213,6 +213,7 @@ liblxc_la_CFLAGS = -fPIC \
 		   -pthread
 
 liblxc_la_LDFLAGS = -pthread \
+		    -Wl,-no-undefined \
 		    -Wl,-soname,liblxc.so.$(firstword $(subst ., ,@LXC_ABI@)) \
 		    -version-info @LXC_ABI_MAJOR@
 
@@ -409,7 +410,8 @@ pam_cgfs_la_LIBADD = $(AM_LIBS) \
 pam_cgfs_la_LDFLAGS = $(AM_LDFLAGS) \
 		      -avoid-version \
 		      -module \
-		      -shared
+		      -shared \
+		      -Wl,-no-undefined
 endif
 endif
 
