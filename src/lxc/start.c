@@ -1662,6 +1662,20 @@ static int lxc_spawn(struct lxc_handler *handler)
 		return -1;
 	}
 
+	if (conf->shmount.path_host) {
+		if (!conf->shmount.path_cont) {
+			lxc_sync_fini(handler);
+			return -1;
+		}
+
+		ret = lxc_setup_shmount(conf);
+		if (ret < 0) {
+			ERROR("Failed to setup shared mount point");
+			lxc_sync_fini(handler);
+			return -1;
+		}
+	}
+
 	if (handler->ns_clone_flags & CLONE_NEWNET) {
 		if (!lxc_list_empty(&conf->network)) {
 
@@ -1683,23 +1697,8 @@ static int lxc_spawn(struct lxc_handler *handler)
 			ret = lxc_create_network_priv(handler);
 			if (ret < 0) {
 				ERROR("Failed to create the network");
-				lxc_sync_fini(handler);
-				return -1;
+				goto out_delete_net;
 			}
-		}
-	}
-
-	if (conf->shmount.path_host) {
-		if (!conf->shmount.path_cont) {
-			lxc_sync_fini(handler);
-			return -1;
-		}
-
-		ret = lxc_setup_shmount(conf);
-		if (ret < 0) {
-			ERROR("Failed to setup shared mount point");
-			lxc_sync_fini(handler);
-			return -1;
 		}
 	}
 
