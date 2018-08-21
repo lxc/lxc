@@ -11,6 +11,7 @@ noinst_HEADERS = attach.h \
 		 confile_utils.h \
 		 criu.h \
 		 error.h \
+		 file_utils.h \
 		 initutils.h \
 		 list.h \
 		 log.h \
@@ -32,6 +33,7 @@ noinst_HEADERS = attach.h \
 		 storage/storage.h \
 		 storage/storage_utils.h \
 		 storage/zfs.h \
+		 string_utils.h \
 		 terminal.h \
 		 ../tests/lxctest.h \
 		 tools/arguments.h \
@@ -93,6 +95,7 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    error.c error.h \
 		    execute.c \
 		    freezer.c \
+		    file_utils.c file_utils.h \
 		    initutils.c initutils.h \
 		    list.h \
 		    log.c log.h \
@@ -122,6 +125,7 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    storage/storage.c storage/storage.h \
 		    storage/storage_utils.c storage/storage_utils.h \
 		    storage/zfs.c storage/zfs.h \
+		    string_utils.c string_utils.h \
 		    sync.c sync.h \
 		    terminal.c \
 		    utils.c utils.h \
@@ -319,7 +323,8 @@ endif
 
 if ENABLE_COMMANDS
 # Binaries shipping with liblxc
-init_lxc_SOURCES = cmd/lxc_init.c
+init_lxc_SOURCES = cmd/lxc_init.c \
+		   string_utils.c string_utils.h
 lxc_monitord_SOURCES = cmd/lxc_monitord.c
 lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
 		       log.c log.h \
@@ -332,6 +337,8 @@ lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c \
 			 log.c log.h \
 			 macro.h \
 			 namespace.c namespace.h \
+			 file_utils.c file_utils.h \
+			 string_utils.c string_utils.h \
 			 utils.c utils.h
 endif
 
@@ -350,10 +357,11 @@ init_lxc_static_SOURCES = cmd/lxc_init.c \
 			  caps.c caps.h \
 			  error.c error.h \
 			  initutils.c initutils.h \
+			  file_utils.c file_utils.h \
 			  log.c log.h \
 			  macro.h \
 			  namespace.c namespace.h \
-			  parse.c parse.h
+			  string_utils.c string_utils.h
 
 if !HAVE_GETLINE
 if HAVE_FGETLN
@@ -378,12 +386,27 @@ endif
 if ENABLE_PAM
 if HAVE_PAM
 pam_LTLIBRARIES = pam_cgfs.la
+
 pam_cgfs_la_SOURCES = pam/pam_cgfs.c \
-		      pam/utils.c pam/utils.h
-pam_cgfs_la_CFLAGS = $(AM_CFLAGS)
+		      macro.h \
+		      file_utils.c file_utils.h \
+		      string_utils.c string_utils.h
+
+if !HAVE_STRLCAT
+pam_cgfs_la_SOURCES += ../include/strlcat.c ../include/strlcat.h
+endif
+
+if !HAVE_STRLCPY
+pam_cgfs_la_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
+endif
+
+pam_cgfs_la_CFLAGS = $(AM_CFLAGS) \
+		     -DNO_LOG
+
 pam_cgfs_la_LIBADD = $(AM_LIBS) \
 		     $(PAM_LIBS) \
 		     -L$(top_srcdir)
+
 pam_cgfs_la_LDFLAGS = $(AM_LDFLAGS) \
 		      -avoid-version \
 		      -module \
