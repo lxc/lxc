@@ -555,14 +555,14 @@ static int create_nic(char *nic, char *br, int pid, char **cnic)
 			ret = lxc_netdev_set_mtu(veth1buf, mtu);
 			if (ret < 0) {
 				usernic_error("Failed to set mtu to %d on %s\n",
-				              mtu, veth1buf);
+					      mtu, veth1buf);
 				goto out_del;
 			}
 
 			ret = lxc_netdev_set_mtu(veth2buf, mtu);
 			if (ret < 0) {
 				usernic_error("Failed to set mtu to %d on %s\n",
-				              mtu, veth2buf);
+					      mtu, veth2buf);
 				goto out_del;
 			}
 		}
@@ -579,7 +579,7 @@ static int create_nic(char *nic, char *br, int pid, char **cnic)
 	ret = lxc_netdev_move_by_name(veth2buf, pid, NULL);
 	if (ret < 0) {
 		usernic_error("Error moving %s to network namespace of %d\n",
-		              veth2buf, pid);
+			      veth2buf, pid);
 		goto out_del;
 	}
 
@@ -1006,7 +1006,7 @@ static bool may_access_netns(int pid)
 
 	ret = access(s, R_OK);
 	may_access = true;
-	if (ret < 0)  {
+	if (ret < 0) {
 		may_access = false;
 		CMD_SYSERROR("Uid %d may not access %s\n", (int)ruid, s);
 	}
@@ -1232,7 +1232,7 @@ int main(int argc, char *argv[])
 		close(netns_fd);
 		if (!has_priv) {
 			usernic_error("%s", "Process is not privileged over "
-			              "network namespace\n");
+				      "network namespace\n");
 			_exit(EXIT_FAILURE);
 		}
 	}
@@ -1247,7 +1247,7 @@ int main(int argc, char *argv[])
 
 		if (!is_ovs_bridge(args.link)) {
 			usernic_error("%s", "Deletion of non ovs type network "
-			              "devices not implemented\n");
+				      "devices not implemented\n");
 			close(fd);
 			free_alloted(&alloted);
 			_exit(EXIT_FAILURE);
@@ -1267,15 +1267,15 @@ int main(int argc, char *argv[])
 
 		if (!found_nicname) {
 			usernic_error("Caller is not allowed to delete network "
-			              "device \"%s\"\n", args.veth_name);
+				      "device \"%s\"\n", args.veth_name);
 			_exit(EXIT_FAILURE);
 		}
 
 		ret = lxc_ovs_delete_port(args.link, args.veth_name);
 		if (ret < 0) {
 			usernic_error("Failed to remove port \"%s\" from "
-			              "openvswitch bridge \"%s\"",
-			              args.veth_name, args.link);
+				      "openvswitch bridge \"%s\"",
+				      args.veth_name, args.link);
 			_exit(EXIT_FAILURE);
 		}
 
