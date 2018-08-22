@@ -52,7 +52,7 @@ int lxc_cmd_sock_rcv_state(int state_client_fd, int timeout)
 		ret = setsockopt(state_client_fd, SOL_SOCKET, SO_RCVTIMEO,
 				(const void *)&out, sizeof(out));
 		if (ret < 0) {
-			SYSERROR("Failed to set %ds timeout on containter "
+			SYSERROR("Failed to set %ds timeout on container "
 				 "state socket",
 				 timeout);
 			return -1;
