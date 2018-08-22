@@ -111,5 +111,6 @@ extern int lxc_char_right_gc(const char *buffer, size_t len);
 extern char *lxc_trim_whitespace_in_place(char *buffer);
 
 extern int lxc_is_line_empty(const char *line);
+extern void remove_trailing_slashes(char *p);
 
 #endif /* __LXC_STRING_UTILS_H */
