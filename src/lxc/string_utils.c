@@ -56,9 +56,7 @@
 #include "include/strlcat.h"
 #endif
 
-#ifndef NO_LOG
 lxc_log_define(string_utils, lxc);
-#endif
 
 char **lxc_va_arg_list_to_argv(va_list ap, size_t skip, int do_strdup)
 {
