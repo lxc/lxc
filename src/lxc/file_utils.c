@@ -31,9 +31,7 @@
 #include "macro.h"
 #include "string.h"
 
-#ifndef NO_LOG
 lxc_log_define(file_utils, lxc);
-#endif
 
 int lxc_write_to_file(const char *filename, const void *buf, size_t count,
 		      bool add_newline, mode_t mode)
