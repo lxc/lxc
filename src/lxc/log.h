@@ -327,22 +327,40 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 /*
  * Helper macro to define errno string.
  */
-#if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !defined(_GNU_SOURCE) || IS_BIONIC
-#define lxc_log_strerror_r                                               \
-	char errno_buf[MAXPATHLEN / 2] = {"Failed to get errno string"}; \
-	char *ptr = errno_buf;                                           \
-	{                                                                \
-		(void)strerror_r(errno, errno_buf, sizeof(errno_buf));   \
-	}
+#if HAVE_STRERROR_R
+	#ifndef HAVE_DECL_STRERROR_R
+		#ifdef STRERROR_R_CHAR_P
+			char *strerror_r(int errnum, char *buf, size_t buflen);
+		#else
+			int strerror_r(int errnum, char *buf, size_t buflen);
+		#endif
+	#endif
+
+	#ifdef STRERROR_R_CHAR_P
+		#define lxc_log_strerror_r                                               \
+			char errno_buf[MAXPATHLEN / 2] = {"Failed to get errno string"}; \
+			char *ptr = NULL;                                                \
+			{                                                                \
+				ptr = strerror_r(errno, errno_buf, sizeof(errno_buf));   \
+				if (!ptr)                                                \
+					ptr = errno_buf;                                 \
+			}
+	#else
+		#define lxc_log_strerror_r                                               \
+			char errno_buf[MAXPATHLEN / 2] = {"Failed to get errno string"}; \
+			char *ptr = errno_buf;                                           \
+			{                                                                \
+				(void)strerror_r(errno, errno_buf, sizeof(errno_buf));   \
+			}
+	#endif
+#elif ENFORCE_THREAD_SAFETY
+	#error ENFORCE_THREAD_SAFETY was set but cannot be guaranteed
 #else
-#define lxc_log_strerror_r                                               \
-	char errno_buf[MAXPATHLEN / 2] = {"Failed to get errno string"}; \
-	char *ptr;                                                       \
-	{                                                                \
-		ptr = strerror_r(errno, errno_buf, sizeof(errno_buf));   \
-		if (!ptr)                                                \
-			ptr = errno_buf;                                 \
-	}
+	#define lxc_log_strerror_r             \
+		char *ptr = NULL;              \
+		{                              \
+			ptr = strerror(errno); \
+		}
 #endif
 
 /*
