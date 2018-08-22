@@ -217,13 +217,6 @@ out:
 	return values[i];
 }
 
-extern void remove_trailing_slashes(char *p)
-{
-	int l = strlen(p);
-	while (--l >= 0 && (p[l] == '/' || p[l] == '\n'))
-		p[l] = '\0';
-}
-
 /*
  * Sets the process title to the specified title. Note that this may fail if
  * the kernel doesn't support PR_SET_MM_MAP (kernels <3.18).

@@ -978,3 +978,10 @@ int lxc_is_line_empty(const char *line)
 			return 0;
 	return 1;
 }
+
+void remove_trailing_slashes(char *p)
+{
+	int l = strlen(p);
+	while (--l >= 0 && (p[l] == '/' || p[l] == '\n'))
+		p[l] = '\0';
+}
