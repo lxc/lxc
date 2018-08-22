@@ -324,6 +324,7 @@ endif
 if ENABLE_COMMANDS
 # Binaries shipping with liblxc
 init_lxc_SOURCES = cmd/lxc_init.c \
+		   initutils.c initutils.h \
 		   string_utils.c string_utils.h
 lxc_monitord_SOURCES = cmd/lxc_monitord.c
 lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
@@ -388,8 +389,10 @@ if HAVE_PAM
 pam_LTLIBRARIES = pam_cgfs.la
 
 pam_cgfs_la_SOURCES = pam/pam_cgfs.c \
-		      macro.h \
+		      caps.c caps.h \
 		      file_utils.c file_utils.h \
+		      log.c log.h \
+		      macro.h \
 		      string_utils.c string_utils.h
 
 if !HAVE_STRLCAT
@@ -400,8 +403,7 @@ if !HAVE_STRLCPY
 pam_cgfs_la_SOURCES += ../include/strlcpy.c ../include/strlcpy.h
 endif
 
-pam_cgfs_la_CFLAGS = $(AM_CFLAGS) \
-		     -DNO_LOG
+pam_cgfs_la_CFLAGS = $(AM_CFLAGS) -DNO_LXC_CONF
 
 pam_cgfs_la_LIBADD = $(AM_LIBS) \
 		     $(PAM_LIBS) \
