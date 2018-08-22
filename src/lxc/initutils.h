@@ -70,7 +70,6 @@ struct prctl_mm_map {
 
 extern const char *lxc_global_config_value(const char *option_name);
 
-/* open a file with O_CLOEXEC */
 extern void remove_trailing_slashes(char *p);
 extern int setproctitle(char *title);
 
