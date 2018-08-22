@@ -46,7 +46,6 @@
 #include "namespace.h"
 #include "parse.h"
 #include "string_utils.h"
-#include "utils.h"
 
 #ifndef HAVE_STRLCPY
 #include "include/strlcpy.h"
@@ -56,9 +55,7 @@
 #include "include/strlcat.h"
 #endif
 
-#ifndef NO_LOG
 lxc_log_define(string_utils, lxc);
-#endif
 
 char **lxc_va_arg_list_to_argv(va_list ap, size_t skip, int do_strdup)
 {
@@ -980,4 +977,11 @@ int lxc_is_line_empty(const char *line)
 		    line[i] != '\f' && line[i] != '\0')
 			return 0;
 	return 1;
+}
+
+void remove_trailing_slashes(char *p)
+{
+	int l = strlen(p);
+	while (--l >= 0 && (p[l] == '/' || p[l] == '\n'))
+		p[l] = '\0';
 }

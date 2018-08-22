@@ -22,22 +22,6 @@
 
 #include "config.h"
 
-#include <errno.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <unistd.h>
-#include <linux/loop.h>
-#include <linux/magic.h>
-#include <linux/types.h>
-#include <sys/syscall.h>
-#include <sys/types.h>
-#include <sys/vfs.h>
-
-#ifdef HAVE_LINUX_MEMFD_H
-#include <linux/memfd.h>
-#endif
-
 #include "initutils.h"
 #include "macro.h"
 
@@ -127,5 +111,6 @@ extern int lxc_char_right_gc(const char *buffer, size_t len);
 extern char *lxc_trim_whitespace_in_place(char *buffer);
 
 extern int lxc_is_line_empty(const char *line);
+extern void remove_trailing_slashes(char *p);
 
 #endif /* __LXC_STRING_UTILS_H */

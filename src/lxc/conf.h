@@ -26,14 +26,17 @@
 #include "config.h"
 
 #include <stdio.h>
+#include <linux/magic.h>
 #include <net/if.h>
 #include <netinet/in.h>
 #include <sys/param.h>
 #include <sys/types.h>
+#include <stdbool.h>
+#include <sys/vfs.h>
+
 #if HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
 #endif
-#include <stdbool.h>
 
 #include "list.h"
 #include "ringbuf.h"
