@@ -353,6 +353,8 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 				(void)strerror_r(errno, errno_buf, sizeof(errno_buf));   \
 			}
 	#endif
+#elif ENFORCE_THREAD_SAFETY
+	#error ENFORCE_THREAD_SAFETY was set but cannot be guaranteed
 #else
 	#define lxc_log_strerror_r             \
 		char *ptr = NULL;              \
