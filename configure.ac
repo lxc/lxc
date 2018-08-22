@@ -611,6 +611,12 @@ AC_HEADER_MAJOR
 # Check for some syscalls functions
 AC_CHECK_FUNCS([setns pivot_root sethostname unshare rand_r confstr faccessat gettid memfd_create])
 
+# Check for strerror_r() support. Defines:
+# - HAVE_STRERROR_R if available
+# - HAVE_DECL_STRERROR_R if defined
+# - STRERROR_R_CHAR_P if it returns char *
+AC_FUNC_STRERROR_R
+
 # Check for some functions
 AC_CHECK_LIB(pthread, main)
 AC_CHECK_FUNCS(statvfs)
