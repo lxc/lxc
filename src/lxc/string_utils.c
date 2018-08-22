@@ -46,7 +46,6 @@
 #include "namespace.h"
 #include "parse.h"
 #include "string_utils.h"
-#include "utils.h"
 
 #ifndef HAVE_STRLCPY
 #include "include/strlcpy.h"
