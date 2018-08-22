@@ -674,6 +674,11 @@ if test "x$enable_werror" = "xyes"; then
 	CFLAGS="$CFLAGS -Werror -Wvla -std=gnu11"
 fi
 
+AC_ARG_ENABLE([thread-safety],
+	[AC_HELP_STRING([--enable-thread-safety], [enforce thread-safety otherwise fail the build [default=yes]])],
+	[], [enable_thread_safety=yes])
+AM_CONDITIONAL([ENFORCE_THREAD_SAFETY], [test "x$enable_thread_safety" = "xyes"])
+
 # Files requiring some variable expansion
 AC_CONFIG_FILES([
 	Makefile
@@ -917,4 +922,7 @@ Debugging:
 
 Paths:
  - Logs in configpath: $enable_configpath_log
+
+Thread-safety:
+ - enforce: $enable_thread_safety
 EOF
