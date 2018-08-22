@@ -132,9 +132,12 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    version.h \
 		    $(LSM_SOURCES)
 
+if !HAVE_IFADDRS_H
+liblxc_la_SOURCES += ../include/ifaddrs.c ../include/ifaddrs.h
+endif
+
 if IS_BIONIC
-liblxc_la_SOURCES += ../include/ifaddrs.c ../include/ifaddrs.h \
-		     ../include/lxcmntent.c ../include/lxcmntent.h \
+liblxc_la_SOURCES += ../include/lxcmntent.c ../include/lxcmntent.h \
 		     ../include/openpty.c ../include/openpty.h
 endif
 
