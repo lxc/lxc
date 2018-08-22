@@ -22,22 +22,6 @@
 
 #include "config.h"
 
-#include <errno.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <unistd.h>
-#include <linux/loop.h>
-#include <linux/magic.h>
-#include <linux/types.h>
-#include <sys/syscall.h>
-#include <sys/types.h>
-#include <sys/vfs.h>
-
-#ifdef HAVE_LINUX_MEMFD_H
-#include <linux/memfd.h>
-#endif
-
 #include "initutils.h"
 #include "macro.h"
 
