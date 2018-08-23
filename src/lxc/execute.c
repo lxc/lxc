@@ -95,7 +95,7 @@ static int execute_start(struct lxc_handler *handler, void* data)
 			goto out2;
 		}
 
-		ret = snprintf(logfile, sizeof(logfile), "/proc/1/fd/%d", logfd);
+		ret = snprintf(logfile, sizeof(logfile), "/proc/self/fd/%d", logfd);
 		if (ret < 0 || (size_t)ret >= sizeof(logfile))
 			goto out3;
 
