@@ -104,6 +104,37 @@ struct start_arg {
 	const char *want_hostname;
 };
 
+static int mount_fs(const char *source, const char *target, const char *type)
+{
+	/* the umount may fail */
+	if (umount(target) < 0)
+
+	if (mount(source, target, type, 0, NULL) < 0)
+		return -1;
+
+	return 0;
+}
+
+static void lxc_setup_fs(void)
+{
+	(void)mount_fs("proc", "/proc", "proc");
+
+	/* if /dev has been populated by us, /dev/shm does not exist */
+	if (access("/dev/shm", F_OK))
+		(void)mkdir("/dev/shm", 0777);
+
+	/* if we can't mount /dev/shm, continue anyway */
+	(void)mount_fs("shmfs", "/dev/shm", "tmpfs");
+
+	/* If we were able to mount /dev/shm, then /dev exists */
+	/* Sure, but it's read-only per config :) */
+	if (access("/dev/mqueue", F_OK))
+		(void)mkdir("/dev/mqueue", 0666);
+
+	/* continue even without posix message queue support */
+	(void)mount_fs("mqueue", "/dev/mqueue", "mqueue");
+}
+
 static int do_start(void *arg)
 {
 	int ret;
