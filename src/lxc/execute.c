@@ -43,6 +43,7 @@ static int execute_start(struct lxc_handler *handler, void* data)
 	int argc = 0, i = 0, logfd = -1;
 	struct execute_args *my_args = data;
 	char logfile[LXC_PROC_PID_FD_LEN];
+	bool is_privileged = lxc_list_empty(&handler->conf->id_map);
 
 	while (my_args->argv[argc++]);
 
@@ -54,11 +55,13 @@ static int execute_start(struct lxc_handler *handler, void* data)
 	if (!handler->conf->rootfs.path)
 		argc_add += 2;
 
-	if (lxc_log_has_valid_level())
-		argc_add += 2;
+	if (is_privileged) {
+		if (lxc_log_has_valid_level())
+			argc_add += 2;
 
-	if (current_config->logfd != -1 || lxc_log_fd != -1)
-		argc_add += 2;
+		if (current_config->logfd != -1 || lxc_log_fd != -1)
+			argc_add += 2;
+	}
 
 	argv = malloc((argc + argc_add) * sizeof(*argv));
 	if (!argv) {
@@ -79,7 +82,7 @@ static int execute_start(struct lxc_handler *handler, void* data)
 		argv[i++] = (char *)lxc_log_priority_to_string(lxc_log_get_level());
 	}
 
-	if (current_config->logfd != -1 || lxc_log_fd != -1) {
+	if (is_privileged && (current_config->logfd != -1 || lxc_log_fd != -1)) {
 		int ret;
 		int to_dup = current_config->logfd;
 
