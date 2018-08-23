@@ -36,7 +36,7 @@
 #if HAVE_IFADDRS_H
 #include <ifaddrs.h>
 #else
-#include "include/ifaddrs.h"
+#include "../include/ifaddrs.h"
 #endif
 
 lxc_log_define(lxc_device, lxc);
