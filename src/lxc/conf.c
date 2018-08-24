@@ -125,7 +125,7 @@ lxc_log_define(conf, lxc);
  * This is used in the error calls.
  */
 #ifdef HAVE_TLS
-__thread struct lxc_conf *current_config;
+thread_local struct lxc_conf *current_config;
 #else
 struct lxc_conf *current_config;
 #endif

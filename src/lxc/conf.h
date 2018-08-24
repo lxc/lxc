@@ -38,6 +38,7 @@
 #include <sys/resource.h>
 #endif
 
+#include "compiler.h"
 #include "list.h"
 #include "ringbuf.h"
 #include "start.h" /* for lxc_handler */
@@ -395,7 +396,7 @@ extern int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 			    size_t buf_size);
 
 #ifdef HAVE_TLS
-extern __thread struct lxc_conf *current_config;
+extern thread_local struct lxc_conf *current_config;
 #else
 extern struct lxc_conf *current_config;
 #endif

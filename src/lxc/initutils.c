@@ -28,6 +28,7 @@
 #include "initutils.h"
 #include "log.h"
 #include "macro.h"
+#include "compiler.h"
 
 #ifndef HAVE_STRLCPY
 #include "include/strlcpy.h"
@@ -72,9 +73,9 @@ const char *lxc_global_config_value(const char *option_name)
 
 	/* placed in the thread local storage pool for non-bionic targets */
 #ifdef HAVE_TLS
-	static __thread const char *values[sizeof(options) / sizeof(options[0])] = { 0 };
+	static thread_local const char *values[sizeof(options) / sizeof(options[0])] = {0};
 #else
-	static const char *values[sizeof(options) / sizeof(options[0])] = { 0 };
+	static const char *values[sizeof(options) / sizeof(options[0])] = {0};
 #endif
 
 	/* user_config_path is freed as soon as it is used */
