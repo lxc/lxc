@@ -6,6 +6,7 @@ noinst_HEADERS = attach.h \
 		 caps.h \
 		 cgroups/cgroup.h \
 		 cgroups/cgroup_utils.h \
+		 compiler.h \
 		 conf.h \
 		 confile.h \
 		 confile_utils.h \
@@ -86,6 +87,7 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    cgroups/cgfsng.c \
 		    cgroups/cgroup.c cgroups/cgroup.h \
 		    cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
+		    compiler.h \
 		    commands.c commands.h \
 		    commands_utils.c commands_utils.h \
 		    conf.c conf.h \
