@@ -27,6 +27,7 @@
 #include <linux/loop.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+#include <string.h>
 #include <sys/mount.h>
 #include <sys/socket.h>
 
