@@ -611,7 +611,7 @@ AC_CHECK_DECLS([PR_SET_NO_NEW_PRIVS], [], [], [#include <sys/prctl.h>])
 AC_CHECK_DECLS([PR_GET_NO_NEW_PRIVS], [], [], [#include <sys/prctl.h>])
 
 # Check for some headers
-AC_CHECK_HEADERS([sys/signalfd.h pty.h sys/memfd.h sys/personality.h utmpx.h sys/timerfd.h sys/resource.h])
+AC_CHECK_HEADERS([pty.h sys/memfd.h sys/personality.h sys/resource.h sys/signalfd.h sys/timerfd.h utmpx.h])
 
 AC_CHECK_HEADER([ifaddrs.h],
 	AM_CONDITIONAL(HAVE_IFADDRS_H, true)
