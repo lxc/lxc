@@ -21,9 +21,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#define _GNU_SOURCE
+#include "config.h"
+
 #include <stdio.h>
-#undef _GNU_SOURCE
 #include <dirent.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -31,7 +31,6 @@
 #include <sys/mman.h>
 
 #include "parse.h"
-#include "config.h"
 #include "utils.h"
 #include "log.h"
 
