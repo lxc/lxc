@@ -30,6 +30,7 @@
 #include <string.h>
 #include <sys/mount.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 
 /* Define __S_ISTYPE if missing from the C library. */
 #ifndef __S_ISTYPE
@@ -237,6 +238,9 @@ extern int __build_bug_on_failed;
 #ifndef MACVLAN_MODE_PASSTHRU
 #define MACVLAN_MODE_PASSTHRU 8
 #endif
+
+/* Length of abstract unix domain socket socket address. */
+#define LXC_AUDS_ADDR_LEN sizeof(((struct sockaddr_un *)0)->sun_path)
 
 /* mount */
 #ifndef MS_REC
