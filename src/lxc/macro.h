@@ -27,6 +27,7 @@
 #include <linux/loop.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+#include <stdint.h>
 #include <string.h>
 #include <sys/mount.h>
 #include <sys/socket.h>
@@ -265,5 +266,9 @@ extern int __build_bug_on_failed;
 #ifndef SOCK_CLOEXEC
 #define SOCK_CLOEXEC 02000000
 #endif
+
+/* pointer conversion macros */
+#define PTR_TO_INT(p) ((int)((intptr_t)(p)))
+#define INT_TO_PTR(u) ((void *)((intptr_t)(u)))
 
 #endif /* __LXC_MACRO_H */

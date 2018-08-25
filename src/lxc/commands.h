@@ -29,9 +29,6 @@
 #include <unistd.h>
 
 #include "lxccontainer.h"
-/* https://developer.gnome.org/glib/2.28/glib-Type-Conversion-Macros.html */
-#define INT_TO_PTR(n) ((void *)(long)(n))
-#define PTR_TO_INT(p) ((int)(long)(p))
 #include "macro.h"
 #include "state.h"
 
