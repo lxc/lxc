@@ -39,6 +39,7 @@
 #include <unistd.h>
 
 #include "lxctest.h"
+#include "macro.h"
 #include "utils.h"
 
 void test_lxc_deslashify(void)
@@ -81,7 +82,7 @@ void test_lxc_deslashify(void)
 }
 
 /* /proc/int_as_str/ns/mnt\0 = (5 + 21 + 7 + 1) */
-#define __MNTNS_LEN (5 + (LXC_NUMSTRLEN64) + 7 + 1)
+#define __MNTNS_LEN (5 + INTTYPE_TO_STRLEN(pid_t) + 7 + 1)
 void test_detect_ramfs_rootfs(void)
 {
 	size_t i;
@@ -246,19 +247,19 @@ void test_lxc_safe_uint(void)
 {
 	int ret;
 	unsigned int n;
-	char numstr[LXC_NUMSTRLEN64];
+	char numstr[INTTYPE_TO_STRLEN(uint64_t)];
 
 	lxc_test_assert_abort((-EINVAL == lxc_safe_uint("    -123", &n)));
 	lxc_test_assert_abort((-EINVAL == lxc_safe_uint("-123", &n)));
 
-	ret = snprintf(numstr, LXC_NUMSTRLEN64, "%" PRIu64, (uint64_t)UINT_MAX);
-	if (ret < 0 || ret >= LXC_NUMSTRLEN64)
+	ret = snprintf(numstr, INTTYPE_TO_STRLEN(uint64_t), "%" PRIu64, (uint64_t)UINT_MAX);
+	if (ret < 0 || ret >= INTTYPE_TO_STRLEN(uint64_t))
 		exit(EXIT_FAILURE);
 
 	lxc_test_assert_abort((0 == lxc_safe_uint(numstr, &n)) && n == UINT_MAX);
 
-	ret = snprintf(numstr, LXC_NUMSTRLEN64, "%" PRIu64, (uint64_t)UINT_MAX + 1);
-	if (ret < 0 || ret >= LXC_NUMSTRLEN64)
+	ret = snprintf(numstr, INTTYPE_TO_STRLEN(uint64_t), "%" PRIu64, (uint64_t)UINT_MAX + 1);
+	if (ret < 0 || ret >= INTTYPE_TO_STRLEN(uint64_t))
 		exit(EXIT_FAILURE);
 
 	lxc_test_assert_abort((-ERANGE == lxc_safe_uint(numstr, &n)));
@@ -282,28 +283,28 @@ void test_lxc_safe_int(void)
 {
 	int ret;
 	signed int n;
-	char numstr[LXC_NUMSTRLEN64];
+	char numstr[INTTYPE_TO_STRLEN(uint64_t)];
 
-	ret = snprintf(numstr, LXC_NUMSTRLEN64, "%" PRIu64, (uint64_t)INT_MAX);
-	if (ret < 0 || ret >= LXC_NUMSTRLEN64)
+	ret = snprintf(numstr, INTTYPE_TO_STRLEN(uint64_t), "%" PRIu64, (uint64_t)INT_MAX);
+	if (ret < 0 || ret >= INTTYPE_TO_STRLEN(uint64_t))
 		exit(EXIT_FAILURE);
 
 	lxc_test_assert_abort((0 == lxc_safe_int(numstr, &n)) && n == INT_MAX);
 
-	ret = snprintf(numstr, LXC_NUMSTRLEN64, "%" PRIu64, (uint64_t)INT_MAX + 1);
-	if (ret < 0 || ret >= LXC_NUMSTRLEN64)
+	ret = snprintf(numstr, INTTYPE_TO_STRLEN(uint64_t), "%" PRIu64, (uint64_t)INT_MAX + 1);
+	if (ret < 0 || ret >= INTTYPE_TO_STRLEN(uint64_t))
 		exit(EXIT_FAILURE);
 
 	lxc_test_assert_abort((-ERANGE == lxc_safe_int(numstr, &n)));
 
-	ret = snprintf(numstr, LXC_NUMSTRLEN64, "%" PRId64, (int64_t)INT_MIN);
-	if (ret < 0 || ret >= LXC_NUMSTRLEN64)
+	ret = snprintf(numstr, INTTYPE_TO_STRLEN(int64_t), "%" PRId64, (int64_t)INT_MIN);
+	if (ret < 0 || ret >= INTTYPE_TO_STRLEN(int64_t))
 		exit(EXIT_FAILURE);
 
 	lxc_test_assert_abort((0 == lxc_safe_int(numstr, &n)) && n == INT_MIN);
 
-	ret = snprintf(numstr, LXC_NUMSTRLEN64, "%" PRId64, (int64_t)INT_MIN - 1);
-	if (ret < 0 || ret >= LXC_NUMSTRLEN64)
+	ret = snprintf(numstr, INTTYPE_TO_STRLEN(int64_t), "%" PRId64, (int64_t)INT_MIN - 1);
+	if (ret < 0 || ret >= INTTYPE_TO_STRLEN(int64_t))
 		exit(EXIT_FAILURE);
 
 	lxc_test_assert_abort((-ERANGE == lxc_safe_int(numstr, &n)));
