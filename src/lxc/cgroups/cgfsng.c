@@ -55,6 +55,7 @@
 #include "commands.h"
 #include "conf.h"
 #include "log.h"
+#include "macro.h"
 #include "storage/storage.h"
 #include "utils.h"
 
@@ -314,14 +315,14 @@ static char *lxc_cpumask_to_cpulist(uint32_t *bitarr, size_t nbits)
 	int ret;
 	size_t i;
 	char **cpulist = NULL;
-	char numstr[LXC_NUMSTRLEN64] = {0};
+	char numstr[INTTYPE_TO_STRLEN(size_t)] = {0};
 
 	for (i = 0; i <= nbits; i++) {
 		if (!is_set(i, bitarr))
 			continue;
 
-		ret = snprintf(numstr, LXC_NUMSTRLEN64, "%zu", i);
-		if (ret < 0 || (size_t)ret >= LXC_NUMSTRLEN64) {
+		ret = snprintf(numstr, INTTYPE_TO_STRLEN(size_t), "%zu", i);
+		if (ret < 0 || (size_t)ret >= INTTYPE_TO_STRLEN(size_t)) {
 			lxc_free_array((void **)cpulist, free);
 			return NULL;
 		}
