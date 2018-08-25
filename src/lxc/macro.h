@@ -139,6 +139,7 @@
 /* /proc/pid-to-str/status\0 = (5 + 21 + 7 + 1) */
 #define LXC_PROC_STATUS_LEN (5 + (LXC_NUMSTRLEN64) + 7 + 1)
 #define LXC_CMD_DATA_MAX (MAXPATHLEN * 2)
+#define LXC_LSMATTRLEN (5 + (INTTYPE_TO_STRLEN(pid_t)) + 7 + 1)
 
 /* loop devices */
 #ifndef LO_FLAGS_AUTOCLEAR
