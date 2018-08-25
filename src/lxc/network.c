@@ -49,6 +49,7 @@
 #include "conf.h"
 #include "config.h"
 #include "log.h"
+#include "macro.h"
 #include "network.h"
 #include "nl.h"
 #include "utils.h"
@@ -2102,7 +2103,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	if (child == 0) {
 		int ret;
 		size_t retlen;
-		char pidstr[LXC_NUMSTRLEN64];
+		char pidstr[INTTYPE_TO_STRLEN(pid_t)];
 
 		close(pipefd[0]);
 
@@ -2124,10 +2125,10 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 			_exit(EXIT_FAILURE);
 		}
 
-		ret = snprintf(pidstr, LXC_NUMSTRLEN64, "%d", pid);
-		if (ret < 0 || ret >= LXC_NUMSTRLEN64)
+		ret = snprintf(pidstr, sizeof(pidstr), "%d", pid);
+		if (ret < 0 || ret >= sizeof(pidstr))
 			_exit(EXIT_FAILURE);
-		pidstr[LXC_NUMSTRLEN64 - 1] = '\0';
+		pidstr[sizeof(pidstr) - 1] = '\0';
 
 		INFO("Execing lxc-user-nic create %s %s %s veth %s %s", lxcpath,
 		     lxcname, pidstr, netdev_link,
@@ -2329,15 +2330,15 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 	struct lxc_list *network = &handler->conf->network;
 	/* strlen("/proc/") = 6
 	 * +
-	 * LXC_NUMSTRLEN64
+	 * INTTYPE_TO_STRLEN(pid_t)
 	 * +
 	 * strlen("/fd/") = 4
 	 * +
-	 * LXC_NUMSTRLEN64
+	 * INTTYPE_TO_STRLEN(int)
 	 * +
 	 * \0
 	 */
-	char netns_path[6 + LXC_NUMSTRLEN64 + 4 + LXC_NUMSTRLEN64 + 1];
+	char netns_path[6 + INTTYPE_TO_STRLEN(pid_t) + 4 + INTTYPE_TO_STRLEN(int) + 1];
 
 	*netns_path = '\0';
 
