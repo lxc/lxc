@@ -53,7 +53,7 @@
  * datatype is currently at maximum a 64bit integer, we have a date string that
  * is of maximum length (2^64 - 1) * 2 = (21 + 21) = 42.
  */
-#define LXC_LOG_TIME_SIZE ((LXC_NUMSTRLEN64)*2)
+#define LXC_LOG_TIME_SIZE ((INTTYPE_TO_STRLEN(uint64_t)) * 2)
 
 int lxc_log_fd = -1;
 static int syslog_enable = 0;
@@ -170,7 +170,7 @@ static int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespe
 {
 	int64_t epoch_to_days, z, era, doe, yoe, year, doy, mp, day, month,
 	    d_in_s, hours, h_in_s, minutes, seconds;
-	char nanosec[LXC_NUMSTRLEN64];
+	char nanosec[INTTYPE_TO_STRLEN(int64_t)];
 	int ret;
 
 	/* See https://howardhinnant.github.io/date_algorithms.html for an
@@ -247,8 +247,8 @@ static int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespe
 	seconds = (time->tv_sec - d_in_s - h_in_s - (minutes * 60));
 
 	/* Make string from nanoseconds. */
-	ret = snprintf(nanosec, LXC_NUMSTRLEN64, "%"PRId64, (int64_t)time->tv_nsec);
-	if (ret < 0 || ret >= LXC_NUMSTRLEN64)
+	ret = snprintf(nanosec, INTTYPE_TO_STRLEN(int64_t), "%"PRId64, (int64_t)time->tv_nsec);
+	if (ret < 0 || ret >= INTTYPE_TO_STRLEN(int64_t))
 		return -1;
 
 	/* Create final timestamp for the log and shorten nanoseconds to 3
