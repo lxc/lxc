@@ -381,7 +381,7 @@ pid_t lxc_cmd_get_init_pid(const char *name, const char *lxcpath)
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
-		return ret;
+		return -1;
 
 	return PTR_TO_INT(cmd.rsp.data);
 }
