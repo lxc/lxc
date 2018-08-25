@@ -321,10 +321,10 @@ static long int _real_caps_last_cap(void)
 	if (fd >= 0) {
 		ssize_t n;
 		char *ptr;
-		char buf[LXC_NUMSTRLEN64 + 1];
+		char buf[INTTYPE_TO_STRLEN(int)];
 
 	again:
-		n = read(fd, buf, LXC_NUMSTRLEN64);
+		n = read(fd, buf, INTTYPE_TO_STRLEN(int));
 		if (n < 0 && errno == EINTR) {
 			goto again;
 		} else if (n >= 0) {
