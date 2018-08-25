@@ -104,9 +104,24 @@
 #define OVERLAY_SUPER_MAGIC 0x794c7630
 #endif
 
+/* Calculate the number of chars needed to represent a given integer as a C
+ * string. Include room for '-' to indicate negative numbers and the \0 byte.
+ * This is based on systemd.
+ */
+#define INTTYPE_TO_STRLEN(type)                   \
+	(2 + (sizeof(type) <= 1                   \
+		  ? 3                             \
+		  : sizeof(type) <= 2             \
+			? 5                       \
+			: sizeof(type) <= 4       \
+			      ? 10                \
+			      : sizeof(type) <= 8 \
+				    ? 20          \
+				    : sizeof(int[-2 * (sizeof(type) > 8)])))
+
 /* Useful macros */
 /* Maximum number for 64 bit integer is a string with 21 digits: 2^64 - 1 = 21 */
-#define LXC_NUMSTRLEN64 21
+#define LXC_NUMSTRLEN64 INTTYPE_TO_STRLEN(int64_t)
 #define LXC_LINELEN 4096
 #define LXC_IDMAPLEN 4096
 #define LXC_MAX_BUFFER 4096
