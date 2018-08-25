@@ -2,6 +2,7 @@ if ENABLE_TESTS
 
 LDADD = ../lxc/liblxc.la
 
+lxc_test_basic_SOURCES = basic.c
 lxc_test_containertests_SOURCES = containertests.c
 lxc_test_locktests_SOURCES = locktests.c
 lxc_test_startone_SOURCES = startone.c
@@ -64,7 +65,8 @@ bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-apparmor lxc-test-utils lxc-test-parse-config-file \
 	lxc-test-config-jump-table lxc-test-shortlived \
 	lxc-test-api-reboot lxc-test-state-server lxc-test-share-ns \
-	lxc-test-criu-check-feature lxc-test-raw-clone
+	lxc-test-criu-check-feature lxc-test-raw-clone \
+	lxc-test-basic
 
 bin_SCRIPTS =
 if ENABLE_TOOLS
@@ -90,6 +92,7 @@ endif
 endif
 
 EXTRA_DIST = \
+	basic.c \
 	cgpath.c \
 	clonetest.c \
 	concurrent.c \
