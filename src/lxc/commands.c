@@ -1239,7 +1239,7 @@ out_close:
 int lxc_cmd_init(const char *name, const char *lxcpath, const char *suffix)
 {
 	int fd, len, ret;
-	char path[sizeof(((struct sockaddr_un *)0)->sun_path)] = {0};
+	char path[LXC_AUDS_ADDR_LEN] = {0};
 	char *offset = &path[1];
 
 	/* -2 here because this is an abstract unix socket so it needs a
