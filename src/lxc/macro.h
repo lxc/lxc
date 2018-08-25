@@ -121,26 +121,29 @@
 				    : sizeof(int[-2 * (sizeof(type) > 8)])))
 
 /* Useful macros */
-/* Maximum number for 64 bit integer is a string with 21 digits: 2^64 - 1 = 21 */
-#define LXC_NUMSTRLEN64 INTTYPE_TO_STRLEN(int64_t)
 #define LXC_LINELEN 4096
 #define LXC_IDMAPLEN 4096
 #define LXC_MAX_BUFFER 4096
+
 /* /proc/       =    6
  *                +
- * <pid-as-str> =   LXC_NUMSTRLEN64
+ * <pid-as-str> =   INTTYPE_TO_STRLEN(pid_t)
  *                +
  * /fd/         =    4
  *                +
- * <fd-as-str>  =   LXC_NUMSTRLEN64
+ * <fd-as-str>  =   INTTYPE_TO_STRLEN(int)
  *                +
  * \0           =    1
  */
 #define LXC_PROC_PID_FD_LEN (6 + INTTYPE_TO_STRLEN(pid_t) + 4 + INTTYPE_TO_STRLEN(int) + 1)
-/* /proc/pid-to-str/status\0 = (5 + 21 + 7 + 1) */
-#define LXC_PROC_STATUS_LEN (5 + (INTTYPE_TO_STRLEN(pid_t)) + 7 + 1)
+
+/* /proc/pid-to-str/status\0 = (5 + INTTYPE_TO_STRLEN(pid_t) + 7 + 1) */
+#define LXC_PROC_STATUS_LEN (5 + INTTYPE_TO_STRLEN(pid_t) + 7 + 1)
+
+/* /proc/pid-to-str/attr/current = (5 + INTTYPE_TO_STRLEN(pid_t) + 7 + 1) */
+#define LXC_LSMATTRLEN (5 + INTTYPE_TO_STRLEN(pid_t) + 7 + 1)
+
 #define LXC_CMD_DATA_MAX (MAXPATHLEN * 2)
-#define LXC_LSMATTRLEN (5 + (INTTYPE_TO_STRLEN(pid_t)) + 7 + 1)
 
 /* loop devices */
 #ifndef LO_FLAGS_AUTOCLEAR
