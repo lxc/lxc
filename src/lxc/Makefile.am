@@ -302,6 +302,7 @@ lxc_freeze_SOURCES = tools/lxc_freeze.c \
 lxc_info_SOURCES = tools/lxc_info.c \
 		   tools/arguments.c tools/arguments.h
 lxc_monitor_SOURCES = tools/lxc_monitor.c \
+		      macro.h \
 		      tools/arguments.c tools/arguments.h
 lxc_ls_SOURCES = tools/lxc_ls.c \
 		 tools/arguments.c tools/arguments.h
