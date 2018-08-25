@@ -376,7 +376,12 @@ pid_t lxc_cmd_get_init_pid(const char *name, const char *lxcpath)
 {
 	int ret, stopped;
 	struct lxc_cmd_rr cmd = {
-		.req = { .cmd = LXC_CMD_GET_INIT_PID },
+		.req = {
+			.cmd = LXC_CMD_GET_INIT_PID
+		},
+		.rsp = {
+			.data = INT_TO_PTR((int){-1})
+		}
 	};
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
