@@ -1037,10 +1037,10 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	 */
 	if (c->pidfile) {
 		int ret, w;
-		char pidstr[LXC_NUMSTRLEN64];
+		char pidstr[INTTYPE_TO_STRLEN(int)];
 
-		w = snprintf(pidstr, LXC_NUMSTRLEN64, "%d", (int)lxc_raw_getpid());
-		if (w < 0 || (size_t)w >= LXC_NUMSTRLEN64) {
+		w = snprintf(pidstr, INTTYPE_TO_STRLEN(int), "%d", (int)lxc_raw_getpid());
+		if (w < 0 || (size_t)w >= INTTYPE_TO_STRLEN(int)) {
 			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
 
