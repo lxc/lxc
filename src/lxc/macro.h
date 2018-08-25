@@ -122,6 +122,7 @@
 #define LXC_PROC_PID_FD_LEN (6 + LXC_NUMSTRLEN64 + 4 + LXC_NUMSTRLEN64 + 1)
 /* /proc/pid-to-str/status\0 = (5 + 21 + 7 + 1) */
 #define LXC_PROC_STATUS_LEN (5 + (LXC_NUMSTRLEN64) + 7 + 1)
+#define LXC_CMD_DATA_MAX (MAXPATHLEN * 2)
 
 /* loop devices */
 #ifndef LO_FLAGS_AUTOCLEAR
