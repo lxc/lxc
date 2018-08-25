@@ -32,6 +32,7 @@
 #include <sys/mount.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <unistd.h>
 
 /* Define __S_ISTYPE if missing from the C library. */
 #ifndef __S_ISTYPE
@@ -135,9 +136,9 @@
  *                +
  * \0           =    1
  */
-#define LXC_PROC_PID_FD_LEN (6 + LXC_NUMSTRLEN64 + 4 + LXC_NUMSTRLEN64 + 1)
+#define LXC_PROC_PID_FD_LEN (6 + INTTYPE_TO_STRLEN(pid_t) + 4 + INTTYPE_TO_STRLEN(int) + 1)
 /* /proc/pid-to-str/status\0 = (5 + 21 + 7 + 1) */
-#define LXC_PROC_STATUS_LEN (5 + (LXC_NUMSTRLEN64) + 7 + 1)
+#define LXC_PROC_STATUS_LEN (5 + (INTTYPE_TO_STRLEN(pid_t)) + 7 + 1)
 #define LXC_CMD_DATA_MAX (MAXPATHLEN * 2)
 #define LXC_LSMATTRLEN (5 + (INTTYPE_TO_STRLEN(pid_t)) + 7 + 1)
 
