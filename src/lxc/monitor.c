@@ -46,6 +46,7 @@
 #include "error.h"
 #include "log.h"
 #include "lxclock.h"
+#include "macro.h"
 #include "monitor.h"
 #include "state.h"
 #include "utils.h"
@@ -299,7 +300,7 @@ int lxc_monitord_spawn(const char *lxcpath)
 {
 	int ret;
 	int pipefd[2];
-	char pipefd_str[LXC_NUMSTRLEN64];
+	char pipefd_str[INTTYPE_TO_STRLEN(int)];
 	pid_t pid1, pid2;
 
 	char *const args[] = {
@@ -370,8 +371,8 @@ int lxc_monitord_spawn(const char *lxcpath)
 
 	close(pipefd[0]);
 
-	ret = snprintf(pipefd_str, LXC_NUMSTRLEN64, "%d", pipefd[1]);
-	if (ret < 0 || ret >= LXC_NUMSTRLEN64) {
+	ret = snprintf(pipefd_str, INTTYPE_TO_STRLEN(int), "%d", pipefd[1]);
+	if (ret < 0 || ret >= INTTYPE_TO_STRLEN(int)) {
 		ERROR("Failed to create pid argument to pass to monitord.");
 		_exit(EXIT_FAILURE);
 	}
