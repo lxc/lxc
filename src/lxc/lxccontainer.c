@@ -529,7 +529,7 @@ static bool do_lxcapi_freeze(struct lxc_container *c)
 	if (!c)
 		return false;
 
-	ret = lxc_freeze(c->name, c->config_path);
+	ret = lxc_freeze(c->lxc_conf, c->name, c->config_path);
 	if (ret < 0)
 		return false;
 
@@ -545,7 +545,7 @@ static bool do_lxcapi_unfreeze(struct lxc_container *c)
 	if (!c)
 		return false;
 
-	ret = lxc_unfreeze(c->name, c->config_path);
+	ret = lxc_unfreeze(c->lxc_conf, c->name, c->config_path);
 	if (ret < 0)
 		return false;
 
@@ -3263,7 +3263,7 @@ static bool do_lxcapi_set_cgroup_item(struct lxc_container *c, const char *subsy
 	if (is_stopped(c))
 		return false;
 
-	cgroup_ops = cgroup_init(NULL);
+	cgroup_ops = cgroup_init(c->lxc_conf);
 	if (!cgroup_ops)
 		return false;
 
@@ -3292,7 +3292,7 @@ static int do_lxcapi_get_cgroup_item(struct lxc_container *c, const char *subsys
 	if (is_stopped(c))
 		return -1;
 
-	cgroup_ops = cgroup_init(NULL);
+	cgroup_ops = cgroup_init(c->lxc_conf);
 	if (!cgroup_ops)
 		return -1;
 

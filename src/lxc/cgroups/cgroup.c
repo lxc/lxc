@@ -33,13 +33,13 @@
 
 lxc_log_define(cgroup, lxc);
 
-extern struct cgroup_ops *cgfsng_ops_init(void);
+extern struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf);
 
-struct cgroup_ops *cgroup_init(struct lxc_handler *handler)
+struct cgroup_ops *cgroup_init(struct lxc_conf *conf)
 {
 	struct cgroup_ops *cgroup_ops;
 
-	cgroup_ops = cgfsng_ops_init();
+	cgroup_ops = cgfsng_ops_init(conf);
 	if (!cgroup_ops) {
 		ERROR("Failed to initialize cgroup driver");
 		return NULL;

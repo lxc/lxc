@@ -190,7 +190,7 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct criu_opts *opts)
 	 * /actual/ root cgroup so that lxcfs thinks criu has enough rights to
 	 * see all cgroups.
 	 */
-	if (!cgroup_ops->escape(cgroup_ops)) {
+	if (!cgroup_ops->escape(cgroup_ops, opts->handler->conf)) {
 		ERROR("failed to escape cgroups");
 		return;
 	}
@@ -967,7 +967,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 	if (lxc_init(c->name, handler) < 0)
 		goto out;
 
-	cgroup_ops = cgroup_init(NULL);
+	cgroup_ops = cgroup_init(c->lxc_conf);
 	if (!cgroup_ops)
 		goto out_fini_handler;
 	handler->cgroup_ops = cgroup_ops;
@@ -1272,7 +1272,7 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 
 		h.name = c->name;
 
-		cgroup_ops = cgroup_init(NULL);
+		cgroup_ops = cgroup_init(c->lxc_conf);
 		if (!cgroup_ops) {
 			ERROR("failed to cgroup_init()");
 			_exit(EXIT_FAILURE);
