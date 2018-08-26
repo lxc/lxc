@@ -65,8 +65,33 @@
 #endif
 
 /* prctl */
+#ifndef PR_CAPBSET_READ
+#define PR_CAPBSET_READ 23
+#endif
+
 #ifndef PR_CAPBSET_DROP
 #define PR_CAPBSET_DROP 24
+#endif
+
+/* Control the ambient capability set */
+#ifndef PR_CAP_AMBIENT
+#define PR_CAP_AMBIENT 47
+#endif
+
+#ifndef PR_CAP_AMBIENT_IS_SET
+#define PR_CAP_AMBIENT_IS_SET 1
+#endif
+
+#ifndef PR_CAP_AMBIENT_RAISE
+#define PR_CAP_AMBIENT_RAISE 2
+#endif
+
+#ifndef PR_CAP_AMBIENT_LOWER
+#define PR_CAP_AMBIENT_LOWER 3
+#endif
+
+#ifndef PR_CAP_AMBIENT_CLEAR_ALL
+#define PR_CAP_AMBIENT_CLEAR_ALL 4
 #endif
 
 #ifndef PR_SET_NO_NEW_PRIVS
