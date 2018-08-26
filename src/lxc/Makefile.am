@@ -40,9 +40,12 @@ noinst_HEADERS = attach.h \
 		 tools/arguments.h \
 		 utils.h
 
+if !HAVE_IFADDRS_H
+noinst_HEADERS += ../include/ifaddrs.h
+endif
+
 if IS_BIONIC
-noinst_HEADERS += ../include/ifaddrs.h \
-		  ../include/lxcmntent.h \
+noinst_HEADERS += ../include/lxcmntent.h \
 		  ../include/openpty.h
 endif
 
