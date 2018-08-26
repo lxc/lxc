@@ -53,18 +53,6 @@
 #include <sys/capability.h>
 #endif
 
-#if !HAVE_DECL_PR_CAPBSET_DROP
-#define PR_CAPBSET_DROP 24
-#endif
-
-#if !HAVE_DECL_PR_SET_NO_NEW_PRIVS
-#define PR_SET_NO_NEW_PRIVS 38
-#endif
-
-#if !HAVE_DECL_PR_GET_NO_NEW_PRIVS
-#define PR_GET_NO_NEW_PRIVS 39
-#endif
-
 #include "af_unix.h"
 #include "caps.h"
 #include "cgroup.h"
@@ -79,6 +67,7 @@
 #include "lxccontainer.h"
 #include "lxclock.h"
 #include "lxcseccomp.h"
+#include "macro.h"
 #include "mainloop.h"
 #include "monitor.h"
 #include "namespace.h"
