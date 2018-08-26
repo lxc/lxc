@@ -1694,11 +1694,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	if (!cgroup_init(handler)) {
-		ERROR("Failed initializing cgroup support");
-		goto out_delete_net;
-	}
-
 	if (!cgroup_ops->create(cgroup_ops, handler)) {
 		ERROR("Failed creating cgroups");
 		goto out_delete_net;
