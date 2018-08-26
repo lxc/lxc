@@ -679,7 +679,7 @@ int lxc_safe_uint64(const char *numstr, uint64_t *converted, int base)
 
 	errno = 0;
 	u = strtoull(numstr, &err, base);
-	if (errno == ERANGE && u == ULLONG_MAX)
+	if (errno == ERANGE && u == UINT64_MAX)
 		return -ERANGE;
 
 	if (err == numstr || *err != '\0')
