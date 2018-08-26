@@ -39,7 +39,11 @@
 #define __S_ISTYPE(mode, mask) (((mode)&S_IFMT) == (mask))
 #endif
 
-#if HAVE_LIBCAP
+/* capabilities */
+#ifndef CAP_SYS_ADMIN
+#define CAP_SYS_ADMIN 21
+#endif
+
 #ifndef CAP_SETFCAP
 #define CAP_SETFCAP 31
 #endif
@@ -51,11 +55,6 @@
 #ifndef CAP_MAC_ADMIN
 #define CAP_MAC_ADMIN 33
 #endif
-#endif
-
-#ifndef PR_CAPBSET_DROP
-#define PR_CAPBSET_DROP 24
-#endif
 
 #ifndef CAP_SETUID
 #define CAP_SETUID 7
@@ -65,25 +64,20 @@
 #define CAP_SETGID 6
 #endif
 
-/* needed for cgroup automount checks, regardless of whether we
- * have included linux/capability.h or not */
-#ifndef CAP_SYS_ADMIN
-#define CAP_SYS_ADMIN 21
-#endif
-
-#ifndef HAVE_DECL_PR_CAPBSET_DROP
+/* prctl */
+#ifndef PR_CAPBSET_DROP
 #define PR_CAPBSET_DROP 24
 #endif
 
-/* prctl */
-#ifndef HAVE_DECL_PR_SET_NO_NEW_PRIVS
+#ifndef PR_SET_NO_NEW_PRIVS
 #define PR_SET_NO_NEW_PRIVS 38
 #endif
 
-#ifndef HAVE_DECL_PR_GET_NO_NEW_PRIVS
+#ifndef PR_GET_NO_NEW_PRIVS
 #define PR_GET_NO_NEW_PRIVS 39
 #endif
 
+/* filesystem magic values */
 #ifndef CGROUP_SUPER_MAGIC
 #define CGROUP_SUPER_MAGIC 0x27e0eb
 #endif
@@ -96,13 +90,14 @@
 #define NSFS_MAGIC 0x6e736673
 #endif
 
-/* We have two different magic values for overlayfs, yay. */
-#ifndef OVERLAYFS_SUPER_MAGIC
-#define OVERLAYFS_SUPER_MAGIC 0x794c764f
-#endif
-
+/* current overlayfs */
 #ifndef OVERLAY_SUPER_MAGIC
 #define OVERLAY_SUPER_MAGIC 0x794c7630
+#endif
+
+/* legacy overlayfs */
+#ifndef OVERLAYFS_SUPER_MAGIC
+#define OVERLAYFS_SUPER_MAGIC 0x794c764f
 #endif
 
 /* Calculate the number of chars needed to represent a given integer as a C
@@ -179,14 +174,15 @@
  * though, hence the two different methods.
  */
 #ifndef __OPTIMIZE__
-#define BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
+#define BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2 * !!(condition)]))
 #else
 extern int __build_bug_on_failed;
-#define BUILD_BUG_ON(condition)					\
-	do {							\
-		((void)sizeof(char[1 - 2*!!(condition)]));	\
-		if (condition) __build_bug_on_failed = 1;	\
-	} while(0)
+#define BUILD_BUG_ON(condition)                              \
+	do {                                                 \
+		((void)sizeof(char[1 - 2 * !!(condition)])); \
+		if (condition)                               \
+			__build_bug_on_failed = 1;           \
+	} while (0)
 #endif
 
 #define lxc_iterate_parts(__iterator, __splitme, __separators)                  \
