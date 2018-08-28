@@ -80,7 +80,7 @@ static int test_running_container(const char *lxcpath,
 		goto err3;
 	}
 
-	cgroup_ops = cgroup_init(NULL);
+	cgroup_ops = cgroup_init(c->lxc_conf);
 	if (!cgroup_ops)
 		goto err3;
 

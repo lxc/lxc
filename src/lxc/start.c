@@ -856,7 +856,7 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	}
 	TRACE("Chowned console");
 
-	handler->cgroup_ops = cgroup_init(handler);
+	handler->cgroup_ops = cgroup_init(handler->conf);
 	if (!handler->cgroup_ops) {
 		ERROR("Failed to initialize cgroup driver");
 		goto out_delete_terminal;
@@ -1692,11 +1692,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 				goto out_delete_net;
 			}
 		}
-	}
-
-	if (!cgroup_init(handler)) {
-		ERROR("Failed initializing cgroup support");
-		goto out_delete_net;
 	}
 
 	if (!cgroup_ops->create(cgroup_ops, handler)) {

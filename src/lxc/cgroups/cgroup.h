@@ -127,7 +127,7 @@ struct cgroup_ops {
 	bool (*create)(struct cgroup_ops *ops, struct lxc_handler *handler);
 	bool (*enter)(struct cgroup_ops *ops, pid_t pid);
 	const char *(*get_cgroup)(struct cgroup_ops *ops, const char *controller);
-	bool (*escape)(const struct cgroup_ops *ops);
+	bool (*escape)(const struct cgroup_ops *ops, struct lxc_conf *conf);
 	int (*num_hierarchies)(struct cgroup_ops *ops);
 	bool (*get_hierarchies)(struct cgroup_ops *ops, int n, char ***out);
 	int (*set)(struct cgroup_ops *ops, const char *filename,
@@ -145,7 +145,7 @@ struct cgroup_ops {
 	int (*nrtasks)(struct cgroup_ops *ops);
 };
 
-extern struct cgroup_ops *cgroup_init(struct lxc_handler *handler);
+extern struct cgroup_ops *cgroup_init(struct lxc_conf *conf);
 extern void cgroup_exit(struct cgroup_ops *ops);
 
 extern void prune_init_scope(char *cg);

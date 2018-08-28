@@ -1261,7 +1261,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 		if (options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) {
 			struct cgroup_ops *cgroup_ops;
 
-			cgroup_ops = cgroup_init(NULL);
+			cgroup_ops = cgroup_init(conf);
 			if (!cgroup_ops)
 				goto on_error;
 

@@ -1742,11 +1742,11 @@ static int cgfsng_nrtasks(struct cgroup_ops *ops)
 }
 
 /* Only root needs to escape to the cgroup of its init. */
-static bool cgfsng_escape(const struct cgroup_ops *ops)
+static bool cgfsng_escape(const struct cgroup_ops *ops, struct lxc_conf *conf)
 {
 	int i;
 
-	if (geteuid())
+	if (conf->cgroup_meta.keep || geteuid())
 		return true;
 
 	for (i = 0; ops->hierarchies[i]; i++) {
@@ -2278,11 +2278,10 @@ static bool cgroup_use_wants_controllers(const struct cgroup_ops *ops,
 /* At startup, parse_hierarchies finds all the info we need about cgroup
  * mountpoints and current cgroups, and stores it in @d.
  */
-static bool cg_hybrid_init(struct cgroup_ops *ops)
+static bool cg_hybrid_init(struct cgroup_ops *ops, bool keep)
 {
 	int ret;
 	char *basecginfo;
-	bool will_escape;
 	FILE *f;
 	size_t len = 0;
 	char *line = NULL;
@@ -2291,8 +2290,7 @@ static bool cg_hybrid_init(struct cgroup_ops *ops)
 	/* Root spawned containers escape the current cgroup, so use init's
 	 * cgroups as our base in that case.
 	 */
-	will_escape = (geteuid() == 0);
-	if (will_escape)
+	if (!keep && (geteuid() == 0))
 		basecginfo = read_file("/proc/1/cgroup");
 	else
 		basecginfo = read_file("/proc/self/cgroup");
@@ -2443,14 +2441,12 @@ static int cg_is_pure_unified(void)
 }
 
 /* Get current cgroup from /proc/self/cgroup for the cgroupfs v2 hierarchy. */
-static char *cg_unified_get_current_cgroup(void)
+static char *cg_unified_get_current_cgroup(bool keep)
 {
 	char *basecginfo, *base_cgroup;
-	bool will_escape;
 	char *copy = NULL;
 
-	will_escape = (geteuid() == 0);
-	if (will_escape)
+	if (!keep && (geteuid() == 0))
 		basecginfo = read_file("/proc/1/cgroup");
 	else
 		basecginfo = read_file("/proc/self/cgroup");
@@ -2474,7 +2470,7 @@ cleanup_on_err:
 	return copy;
 }
 
-static int cg_unified_init(struct cgroup_ops *ops)
+static int cg_unified_init(struct cgroup_ops *ops, bool keep)
 {
 	int ret;
 	char *mountpoint, *subtree_path;
@@ -2488,7 +2484,7 @@ static int cg_unified_init(struct cgroup_ops *ops)
 	if (ret != CGROUP2_SUPER_MAGIC)
 		return 0;
 
-	base_cgroup = cg_unified_get_current_cgroup();
+	base_cgroup = cg_unified_get_current_cgroup(keep);
 	if (!base_cgroup)
 		return -EINVAL;
 	prune_init_scope(base_cgroup);
@@ -2520,10 +2516,11 @@ static int cg_unified_init(struct cgroup_ops *ops)
 	return CGROUP2_SUPER_MAGIC;
 }
 
-static bool cg_init(struct cgroup_ops *ops)
+static bool cg_init(struct cgroup_ops *ops, struct lxc_conf *conf)
 {
 	int ret;
 	const char *tmp;
+	bool keep = conf->cgroup_meta.keep;
 
 	tmp = lxc_global_config_value("lxc.cgroup.use");
 	if (tmp) {
@@ -2539,14 +2536,14 @@ static bool cg_init(struct cgroup_ops *ops)
 		free(pin);
 	}
 
-	ret = cg_unified_init(ops);
+	ret = cg_unified_init(ops, keep);
 	if (ret < 0)
 		return false;
 
 	if (ret == CGROUP2_SUPER_MAGIC)
 		return true;
 
-	return cg_hybrid_init(ops);
+	return cg_hybrid_init(ops, keep);
 }
 
 static bool cgfsng_data_init(struct cgroup_ops *ops)
@@ -2565,7 +2562,7 @@ static bool cgfsng_data_init(struct cgroup_ops *ops)
 	return true;
 }
 
-struct cgroup_ops *cgfsng_ops_init(void)
+struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 {
 	struct cgroup_ops *cgfsng_ops;
 
@@ -2576,7 +2573,7 @@ struct cgroup_ops *cgfsng_ops_init(void)
 	memset(cgfsng_ops, 0, sizeof(struct cgroup_ops));
 	cgfsng_ops->cgroup_layout = CGROUP_LAYOUT_UNKNOWN;
 
-	if (!cg_init(cgfsng_ops)) {
+	if (!cg_init(cgfsng_ops, conf)) {
 		free(cgfsng_ops);
 		return NULL;
 	}
