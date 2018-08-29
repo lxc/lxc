@@ -3236,19 +3236,19 @@ static int get_config_idmaps(const char *key, char *retv, int inlen,
  * +
  * sizeof(" ")
  * +
- * sizeof(uint64_t)
+ * sizeof(uint32_t)
  * +
  * sizeof(" ")
  * +
- * sizeof(uint64_t)
+ * sizeof(uint32_t)
  * +
  * sizeof(" ")
  * +
- * sizeof(uint64_t)
+ * sizeof(uint32_t)
  * +
  * \0
  */
-#define __LXC_IDMAP_STR_BUF (3 * LXC_NUMSTRLEN64 + 3 + 1 + 1)
+#define __LXC_IDMAP_STR_BUF (3 * INTTYPE_TO_STRLEN(uint32_t) + 3 + 1 + 1)
 	char buf[__LXC_IDMAP_STR_BUF];
 
 	if (!retv)
@@ -3257,8 +3257,7 @@ static int get_config_idmaps(const char *key, char *retv, int inlen,
 		memset(retv, 0, inlen);
 
 	listlen = lxc_list_len(&c->id_map);
-	lxc_list_for_each(it, &c->id_map)
-	{
+	lxc_list_for_each(it, &c->id_map) {
 		struct id_map *map = it->elem;
 		ret = snprintf(buf, __LXC_IDMAP_STR_BUF, "%c %lu %lu %lu",
 			       (map->idtype == ID_TYPE_UID) ? 'u' : 'g',
@@ -3706,9 +3705,8 @@ static int get_config_prlimit(const char *key, char *retv, int inlen,
 		return -1;
 
 	lxc_list_for_each(it, &c->limits) {
-		char buf[LXC_NUMSTRLEN64 * 2 + 2]; /* 2 colon separated 64 bit
-						      integers or the word
-						      'unlimited' */
+		/* 2 colon separated 64 bit integers or the word 'unlimited' */
+		char buf[INTTYPE_TO_STRLEN(uint64_t) * 2 + 2];
 		int partlen;
 		struct lxc_limit *lim = it->elem;
 

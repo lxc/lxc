@@ -1157,7 +1157,7 @@ int lxc_mount_proc_if_needed(const char *rootfs)
 {
 	char path[MAXPATHLEN];
 	int link_to_pid, linklen, mypid, ret;
-	char link[LXC_NUMSTRLEN64] = {0};
+	char link[INTTYPE_TO_STRLEN(pid_t)] = {0};
 
 	ret = snprintf(path, MAXPATHLEN, "%s/proc/self", rootfs);
 	if (ret < 0 || ret >= MAXPATHLEN) {
@@ -1165,7 +1165,7 @@ int lxc_mount_proc_if_needed(const char *rootfs)
 		return -1;
 	}
 
-	linklen = readlink(path, link, LXC_NUMSTRLEN64);
+	linklen = readlink(path, link, INTTYPE_TO_STRLEN(pid_t));
 
 	ret = snprintf(path, MAXPATHLEN, "%s/proc", rootfs);
 	if (ret < 0 || ret >= MAXPATHLEN) {
@@ -1179,7 +1179,7 @@ int lxc_mount_proc_if_needed(const char *rootfs)
 			return -1;
 
 		goto domount;
-	} else if (linklen >= LXC_NUMSTRLEN64) {
+	} else if (linklen >= INTTYPE_TO_STRLEN(pid_t)) {
 		link[linklen - 1] = '\0';
 		ERROR("readlink returned truncated content: \"%s\"", link);
 		return -1;
@@ -1260,7 +1260,7 @@ int null_stdfds(void)
 
 /* Check whether a signal is blocked by a process. */
 /* /proc/pid-to-str/status\0 = (5 + 21 + 7 + 1) */
-#define __PROC_STATUS_LEN (6 + (LXC_NUMSTRLEN64) + 7 + 1)
+#define __PROC_STATUS_LEN (6 + INTTYPE_TO_STRLEN(pid_t) + 7 + 1)
 bool task_blocks_signal(pid_t pid, int signal)
 {
 	int ret;

@@ -162,7 +162,7 @@ int lxc_cmd_connect(const char *name, const char *lxcpath,
 		    const char *hashed_sock_name, const char *suffix)
 {
 	int ret, client_fd;
-	char path[sizeof(((struct sockaddr_un *)0)->sun_path)] = {0};
+	char path[LXC_AUDS_ADDR_LEN] = {0};
 	char *offset = &path[1];
 
 	/* -2 here because this is an abstract unix socket so it needs a

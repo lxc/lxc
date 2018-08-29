@@ -125,7 +125,7 @@ lxc_log_define(conf, lxc);
  * This is used in the error calls.
  */
 #ifdef HAVE_TLS
-__thread struct lxc_conf *current_config;
+thread_local struct lxc_conf *current_config;
 #else
 struct lxc_conf *current_config;
 #endif
@@ -2952,7 +2952,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	 * +
 	 * strlen(" ") = 1
 	 * +
-	 * LXC_NUMSTRLEN64
+	 * INTTYPE_TO_STRLEN(uint32_t)
 	 * +
 	 * strlen(" ") = 1
 	 *
@@ -2960,7 +2960,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	 * LXC_IDMAPLEN bytes available for our the {g,u]id mapping.
 	 */
 	int ret = 0, gidmap = 0, uidmap = 0;
-	char mapbuf[9 + 1 + LXC_NUMSTRLEN64 + 1 + LXC_IDMAPLEN] = {0};
+	char mapbuf[9 + 1 + INTTYPE_TO_STRLEN(uint32_t) + 1 + LXC_IDMAPLEN] = {0};
 	bool had_entry = false, use_shadow = false;
 	int hostuid, hostgid;
 

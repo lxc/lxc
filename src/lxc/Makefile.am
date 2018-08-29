@@ -6,6 +6,7 @@ noinst_HEADERS = attach.h \
 		 caps.h \
 		 cgroups/cgroup.h \
 		 cgroups/cgroup_utils.h \
+		 compiler.h \
 		 conf.h \
 		 confile.h \
 		 confile_utils.h \
@@ -39,9 +40,12 @@ noinst_HEADERS = attach.h \
 		 tools/arguments.h \
 		 utils.h
 
+if !HAVE_IFADDRS_H
+noinst_HEADERS += ../include/ifaddrs.h
+endif
+
 if IS_BIONIC
-noinst_HEADERS += ../include/ifaddrs.h \
-		  ../include/lxcmntent.h \
+noinst_HEADERS += ../include/lxcmntent.h \
 		  ../include/openpty.h
 endif
 
@@ -86,6 +90,7 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    cgroups/cgfsng.c \
 		    cgroups/cgroup.c cgroups/cgroup.h \
 		    cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
+		    compiler.h \
 		    commands.c commands.h \
 		    commands_utils.c commands_utils.h \
 		    conf.c conf.h \
@@ -300,6 +305,7 @@ lxc_freeze_SOURCES = tools/lxc_freeze.c \
 lxc_info_SOURCES = tools/lxc_info.c \
 		   tools/arguments.c tools/arguments.h
 lxc_monitor_SOURCES = tools/lxc_monitor.c \
+		      macro.h \
 		      tools/arguments.c tools/arguments.h
 lxc_ls_SOURCES = tools/lxc_ls.c \
 		 tools/arguments.c tools/arguments.h

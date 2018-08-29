@@ -25,17 +25,12 @@
 #define __LXC_COMMANDS_H
 
 #include <stdio.h>
-#include <unistd.h>
 #include <sys/types.h>
+#include <unistd.h>
 
-#include "state.h"
 #include "lxccontainer.h"
-
-#define LXC_CMD_DATA_MAX (MAXPATHLEN * 2)
-
-/* https://developer.gnome.org/glib/2.28/glib-Type-Conversion-Macros.html */
-#define INT_TO_PTR(n) ((void *)(long)(n))
-#define PTR_TO_INT(p) ((int)(long)(p))
+#include "macro.h"
+#include "state.h"
 
 typedef enum {
 	LXC_CMD_CONSOLE,

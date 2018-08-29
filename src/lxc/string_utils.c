@@ -43,6 +43,7 @@
 
 #include "log.h"
 #include "lxclock.h"
+#include "macro.h"
 #include "namespace.h"
 #include "parse.h"
 #include "string_utils.h"
@@ -678,7 +679,7 @@ int lxc_safe_uint64(const char *numstr, uint64_t *converted, int base)
 
 	errno = 0;
 	u = strtoull(numstr, &err, base);
-	if (errno == ERANGE && u == ULLONG_MAX)
+	if (errno == ERANGE && u == UINT64_MAX)
 		return -ERANGE;
 
 	if (err == numstr || *err != '\0')
@@ -860,7 +861,7 @@ int parse_byte_size_string(const char *s, int64_t *converted)
 	long long int conv;
 	int64_t mltpl, overflow;
 	char *end;
-	char dup[LXC_NUMSTRLEN64 + 2];
+	char dup[INTTYPE_TO_STRLEN(int64_t)];
 	char suffix[3] = {0};
 
 	if (!s || !strcmp(s, ""))
