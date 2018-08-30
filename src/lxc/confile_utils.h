@@ -72,6 +72,7 @@ extern bool lxc_config_net_hwaddr(const char *line);
 extern void update_hwaddr(const char *line);
 extern bool new_hwaddr(char *hwaddr);
 extern int lxc_get_conf_str(char *retv, int inlen, const char *value);
+extern int lxc_get_conf_bool(struct lxc_conf *c, char *retv, int inlen, bool v);
 extern int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen, int v);
 extern int lxc_get_conf_size_t(struct lxc_conf *c, char *retv, int inlen, size_t v);
 extern int lxc_get_conf_uint64(struct lxc_conf *c, char *retv, int inlen, uint64_t v);

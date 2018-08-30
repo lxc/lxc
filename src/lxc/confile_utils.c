@@ -672,6 +672,21 @@ int lxc_get_conf_str(char *retv, int inlen, const char *value)
 	return value_len;
 }
 
+int lxc_get_conf_bool(struct lxc_conf *c, char *retv, int inlen, bool v)
+{
+	int len;
+	int fulllen = 0;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	strprint(retv, inlen, "%d", v);
+
+	return fulllen;
+}
+
 int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen, int v)
 {
 	int len;

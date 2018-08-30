@@ -159,6 +159,7 @@ struct lxc_tty_info {
  * @options    : mount options
  * @mountflags : the portion of @options that are flags
  * @data       : the porition of @options that are not flags
+ * @managed    : whether it is managed by LXC
  */
 struct lxc_rootfs {
 	char *path;
@@ -167,6 +168,7 @@ struct lxc_rootfs {
 	char *options;
 	unsigned long mountflags;
 	char *data;
+	bool managed;
 };
 
 /*
