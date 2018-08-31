@@ -402,8 +402,10 @@ pid_t lxc_cmd_get_init_pid(const char *name, const char *lxcpath)
 static int lxc_cmd_get_init_pid_callback(int fd, struct lxc_cmd_req *req,
 					 struct lxc_handler *handler)
 {
+	intmax_t pid = handler->pid;
+
 	struct lxc_cmd_rsp rsp = {
-		.data = INTMAX_TO_PTR(handler->pid)
+		.data = INTMAX_TO_PTR(pid)
 	};
 
 	return lxc_cmd_rsp_send(fd, &rsp);
