@@ -375,12 +375,13 @@ int lxc_try_cmd(const char *name, const char *lxcpath)
 pid_t lxc_cmd_get_init_pid(const char *name, const char *lxcpath)
 {
 	int ret, stopped;
+	intmax_t pid;
 	struct lxc_cmd_rr cmd = {
 		.req = {
 			.cmd = LXC_CMD_GET_INIT_PID
 		},
 		.rsp = {
-			.data = INT_TO_PTR((int){-1})
+			.data = INTMAX_TO_PTR((intmax_t){-1})
 		}
 	};
 
@@ -388,13 +389,22 @@ pid_t lxc_cmd_get_init_pid(const char *name, const char *lxcpath)
 	if (ret < 0)
 		return -1;
 
-	return PTR_TO_INT(cmd.rsp.data);
+	pid = PTR_TO_INTMAX(cmd.rsp.data);
+	if (pid < 0)
+		return -1;
+
+	/* We need to assume that pid_t can actually hold any pid given to us
+	 * by the kernel. If it can't it's a libc bug.
+	 */
+	return (pid_t)pid;
 }
 
 static int lxc_cmd_get_init_pid_callback(int fd, struct lxc_cmd_req *req,
 					 struct lxc_handler *handler)
 {
-	struct lxc_cmd_rsp rsp = { .data = INT_TO_PTR(handler->pid) };
+	struct lxc_cmd_rsp rsp = {
+		.data = INTMAX_TO_PTR(handler->pid)
+	};
 
 	return lxc_cmd_rsp_send(fd, &rsp);
 }

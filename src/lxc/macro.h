@@ -312,4 +312,7 @@ extern int __build_bug_on_failed;
 #define PTR_TO_INT(p) ((int)((intptr_t)(p)))
 #define INT_TO_PTR(u) ((void *)((intptr_t)(u)))
 
+#define PTR_TO_INTMAX(p) ((intmax_t)((intptr_t)(p)))
+#define INTMAX_TO_PTR(u) ((void *)((intptr_t)(u)))
+
 #endif /* __LXC_MACRO_H */
