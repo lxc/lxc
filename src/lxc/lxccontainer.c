@@ -1018,8 +1018,8 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		int ret, w;
 		char pidstr[INTTYPE_TO_STRLEN(int)];
 
-		w = snprintf(pidstr, sizeof(pidstr), "%d", (int)lxc_raw_getpid());
-		if (w < 0 || (size_t)w >= sizeof(pidstr)) {
+		w = snprintf(pidstr, INTTYPE_TO_STRLEN(int), "%d", (int)lxc_raw_getpid());
+		if (w < 0 || (size_t)w >= INTTYPE_TO_STRLEN(int)) {
 			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
 

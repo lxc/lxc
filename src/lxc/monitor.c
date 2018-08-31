@@ -371,8 +371,8 @@ int lxc_monitord_spawn(const char *lxcpath)
 
 	close(pipefd[0]);
 
-	ret = snprintf(pipefd_str, sizeof(pipefd_str), "%d", pipefd[1]);
-	if (ret < 0 || ret >= sizeof(pipefd_str)) {
+	ret = snprintf(pipefd_str, INTTYPE_TO_STRLEN(int), "%d", pipefd[1]);
+	if (ret < 0 || ret >= INTTYPE_TO_STRLEN(int)) {
 		ERROR("Failed to create pid argument to pass to monitord.");
 		_exit(EXIT_FAILURE);
 	}
