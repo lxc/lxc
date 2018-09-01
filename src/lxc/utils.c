@@ -1165,7 +1165,7 @@ int lxc_mount_proc_if_needed(const char *rootfs)
 		return -1;
 	}
 
-	linklen = readlink(path, link, INTTYPE_TO_STRLEN(pid_t));
+	linklen = readlink(path, link, sizeof(link));
 
 	ret = snprintf(path, MAXPATHLEN, "%s/proc", rootfs);
 	if (ret < 0 || ret >= MAXPATHLEN) {
@@ -1179,7 +1179,7 @@ int lxc_mount_proc_if_needed(const char *rootfs)
 			return -1;
 
 		goto domount;
-	} else if (linklen >= INTTYPE_TO_STRLEN(pid_t)) {
+	} else if (linklen >= sizeof(link)) {
 		link[linklen - 1] = '\0';
 		ERROR("readlink returned truncated content: \"%s\"", link);
 		return -1;

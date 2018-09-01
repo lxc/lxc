@@ -247,8 +247,8 @@ static int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespe
 	seconds = (time->tv_sec - d_in_s - h_in_s - (minutes * 60));
 
 	/* Make string from nanoseconds. */
-	ret = snprintf(nanosec, INTTYPE_TO_STRLEN(int64_t), "%"PRId64, (int64_t)time->tv_nsec);
-	if (ret < 0 || ret >= INTTYPE_TO_STRLEN(int64_t))
+	ret = snprintf(nanosec, sizeof(nanosec), "%"PRId64, (int64_t)time->tv_nsec);
+	if (ret < 0 || ret >= sizeof(nanosec))
 		return -1;
 
 	/* Create final timestamp for the log and shorten nanoseconds to 3
