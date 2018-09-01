@@ -321,8 +321,8 @@ static char *lxc_cpumask_to_cpulist(uint32_t *bitarr, size_t nbits)
 		if (!is_set(i, bitarr))
 			continue;
 
-		ret = snprintf(numstr, INTTYPE_TO_STRLEN(size_t), "%zu", i);
-		if (ret < 0 || (size_t)ret >= INTTYPE_TO_STRLEN(size_t)) {
+		ret = snprintf(numstr, sizeof(numstr), "%zu", i);
+		if (ret < 0 || (size_t)ret >= sizeof(numstr)) {
 			lxc_free_array((void **)cpulist, free);
 			return NULL;
 		}
