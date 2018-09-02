@@ -101,6 +101,7 @@
 #include "lsm/lsm.h"
 #include "lxclock.h"
 #include "lxcseccomp.h"
+#include "macro.h"
 #include "namespace.h"
 #include "network.h"
 #include "parse.h"
@@ -110,14 +111,6 @@
 #include "storage/overlay.h"
 #include "terminal.h"
 #include "utils.h"
-
-#ifndef MS_PRIVATE
-#define MS_PRIVATE (1<<18)
-#endif
-
-#ifndef MS_LAZYTIME
-#define MS_LAZYTIME (1<<25)
-#endif
 
 lxc_log_define(conf, lxc);
 
