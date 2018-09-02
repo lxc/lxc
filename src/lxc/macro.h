@@ -303,12 +303,20 @@ extern int __build_bug_on_failed;
 #define LXC_AUDS_ADDR_LEN sizeof(((struct sockaddr_un *)0)->sun_path)
 
 /* mount */
-#ifndef MS_REC
-#define MS_REC 16384
+#ifndef MS_PRIVATE
+#define MS_PRIVATE (1<<18)
 #endif
 
 #ifndef MS_SLAVE
 #define MS_SLAVE (1 << 19)
+#endif
+
+#ifndef MS_LAZYTIME
+#define MS_LAZYTIME (1<<25)
+#endif
+
+#ifndef MS_REC
+#define MS_REC 16384
 #endif
 
 /* open */
