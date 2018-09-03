@@ -178,11 +178,8 @@ int lxc_cmd_connect(const char *name, const char *lxcpath,
 
 	/* Get new client fd. */
 	client_fd = lxc_abstract_unix_connect(path);
-	if (client_fd < 0) {
-		if (errno == ECONNREFUSED)
-			return -ECONNREFUSED;
+	if (client_fd < 0)
 		return -1;
-	}
 
 	return client_fd;
 }

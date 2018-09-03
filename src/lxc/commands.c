@@ -130,7 +130,7 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		        lxc_cmd_str(cmd->req.cmd));
 
 		if (errno == ECONNRESET)
-			return -ECONNRESET;
+			return -1;
 
 		return -1;
 	}
@@ -147,10 +147,12 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 
 		rspdata = malloc(sizeof(*rspdata));
 		if (!rspdata) {
+			errno = ENOMEM;
 			ERROR("Failed to allocate response buffer for command \"%s\"",
 			      lxc_cmd_str(cmd->req.cmd));
-			return -ENOMEM;
+			return -1;
 		}
+
 		rspdata->masterfd = rspfd;
 		rspdata->ttynum = PTR_TO_INT(rsp->data);
 		rsp->data = rspdata;
@@ -164,10 +166,9 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 
 	if ((rsp->datalen > LXC_CMD_DATA_MAX) &&
 	    (cmd->req.cmd != LXC_CMD_CONSOLE_LOG)) {
-		errno = EFBIG;
-		SYSERROR("Response data for command \"%s\" is too long: %d bytes > %d",
-		         lxc_cmd_str(cmd->req.cmd), rsp->datalen, LXC_CMD_DATA_MAX);
-		return -EFBIG;
+		ERROR("Response data for command \"%s\" is too long: %d bytes > %d",
+		      lxc_cmd_str(cmd->req.cmd), rsp->datalen, LXC_CMD_DATA_MAX);
+		return -1;
 	}
 
 	if (cmd->req.cmd == LXC_CMD_CONSOLE_LOG) {
@@ -178,17 +179,16 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 	}
 	if (!rsp->data) {
 		errno = ENOMEM;
-		SYSERROR("Failed to allocate response buffer for command \"%s\"",
-		         lxc_cmd_str(cmd->req.cmd));
-		return -ENOMEM;
+		ERROR("Failed to allocate response buffer for command \"%s\"",
+		      lxc_cmd_str(cmd->req.cmd));
+		return -1;
 	}
 
-	ret = recv(sock, rsp->data, rsp->datalen, 0);
+	ret = lxc_recv_nointr(sock, rsp->data, rsp->datalen, 0);
 	if (ret != rsp->datalen) {
 		SYSERROR("Failed to receive response data for command \"%s\"",
 		         lxc_cmd_str(cmd->req.cmd));
-		if (ret >= 0)
-			ret = -1;
+		return -1;
 	}
 
 	return ret;
@@ -227,51 +227,33 @@ static int lxc_cmd_rsp_send(int fd, struct lxc_cmd_rsp *rsp)
 static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
 			const char *lxcpath, const char *hashed_sock_name)
 {
-	int client_fd;
+	int client_fd, saved_errno;
 	ssize_t ret = -1;
 
 	client_fd = lxc_cmd_connect(name, lxcpath, hashed_sock_name, "command");
-	if (client_fd < 0) {
-		if (client_fd == -ECONNREFUSED)
-			return -ECONNREFUSED;
-
+	if (client_fd < 0)
 		return -1;
-	}
 
 	ret = lxc_abstract_unix_send_credential(client_fd, &cmd->req,
 						sizeof(cmd->req));
-	if (ret < 0 ) {
-		if (errno == EPIPE) {
-			close(client_fd);
-			return -EPIPE;
-		}
-		close(client_fd);
-
-		return -1;
-	}
-
-	if ((size_t)ret != sizeof(cmd->req)) {
-		close(client_fd);
-		return -EMSGSIZE;
-	}
+	if (ret < 0 || (size_t)ret != sizeof(cmd->req))
+		goto on_error;
 
 	if (cmd->req.datalen <= 0)
 		return client_fd;
 
 	ret = send(client_fd, cmd->req.data, cmd->req.datalen, MSG_NOSIGNAL);
-	if (ret < 0 || ret != (ssize_t)cmd->req.datalen) {
-		close(client_fd);
-
-		if (errno == EPIPE)
-			return -EPIPE;
-
-		if (ret >= 0)
-			return -EMSGSIZE;
-
-		return -1;
-	}
+	if (ret < 0 || ret != (ssize_t)cmd->req.datalen)
+		goto on_error;
 
 	return client_fd;
+
+on_error:
+	saved_errno = errno;
+	close(client_fd);
+	errno = saved_errno;
+
+	return -1;
 }
 
 /*
@@ -296,7 +278,7 @@ static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
 static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 		   const char *lxcpath, const char *hashed_sock_name)
 {
-	int client_fd;
+	int client_fd, saved_errno;
 	int ret = -1;
 	bool stay_connected = false;
 
@@ -311,24 +293,27 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 		SYSTRACE("Command \"%s\" failed to connect command socket",
 		         lxc_cmd_str(cmd->req.cmd));
 
-		if (client_fd == -ECONNREFUSED)
+		if (errno == ECONNREFUSED)
 			*stopped = 1;
 
-		if (client_fd == -EPIPE) {
+		if (errno == EPIPE) {
 			*stopped = 1;
 			client_fd = 0;
 		}
 
-		return client_fd;
+		return -1;
 	}
 
 	ret = lxc_cmd_rsp_recv(client_fd, cmd);
-	if (ret == -ECONNRESET)
+	if (ret < 0 && errno == ECONNRESET)
 		*stopped = 1;
 
 	if (!stay_connected || ret <= 0)
-		if (client_fd >= 0)
+		if (client_fd >= 0) {
+			saved_errno = errno;
 			close(client_fd);
+			errno = saved_errno;
+		}
 
 	if (stay_connected && ret > 0)
 		cmd->rsp.ret = client_fd;
