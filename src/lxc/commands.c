@@ -1166,7 +1166,7 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 			goto out_close;
 		}
 
-		ret = recv(fd, reqdata, req.datalen, 0);
+		ret = lxc_recv_nointr(fd, reqdata, req.datalen, 0);
 		if (ret != req.datalen) {
 			WARN("Failed to receive full command request. Ignoring "
 			     "request for \"%s\"", lxc_cmd_str(req.cmd));
