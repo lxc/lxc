@@ -296,15 +296,13 @@ static long int _real_caps_last_cap(void)
 	if (fd >= 0) {
 		ssize_t n;
 		char *ptr;
-		char buf[INTTYPE_TO_STRLEN(int)];
+		char buf[INTTYPE_TO_STRLEN(int)] = {0};
 
 	again:
-		n = read(fd, buf, sizeof(buf));
+		n = read(fd, buf, sizeof(buf) - 1);
 		if (n < 0 && errno == EINTR) {
 			goto again;
 		} else if (n >= 0) {
-			buf[n] = '\0';
-
 			errno = 0;
 			result = strtol(buf, &ptr, 10);
 			if (!ptr || (*ptr != '\0' && *ptr != '\n') || errno != 0)
