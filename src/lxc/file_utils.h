@@ -37,6 +37,7 @@ extern int lxc_read_from_file(const char *filename, void *buf, size_t count);
 
 /* send and receive buffers completely */
 extern ssize_t lxc_write_nointr(int fd, const void *buf, size_t count);
+extern ssize_t lxc_send_nointr(int sockfd, void *buf, size_t len, int flags);
 extern ssize_t lxc_read_nointr(int fd, void *buf, size_t count);
 extern ssize_t lxc_read_nointr_expect(int fd, void *buf, size_t count,
 				      const void *expected_buf);
