@@ -32,6 +32,7 @@
 #include "commands.h"
 #include "commands_utils.h"
 #include "initutils.h"
+#include "file_utils.h"
 #include "log.h"
 #include "lxclock.h"
 #include "monitor.h"
@@ -61,14 +62,8 @@ int lxc_cmd_sock_rcv_state(int state_client_fd, int timeout)
 
 	memset(&msg, 0, sizeof(msg));
 
-again:
-	ret = recv(state_client_fd, &msg, sizeof(msg), 0);
+	ret = lxc_recv_nointr(state_client_fd, &msg, sizeof(msg), 0);
 	if (ret < 0) {
-		if (errno == EINTR) {
-			TRACE("Caught EINTR; retrying");
-			goto again;
-		}
-
 		SYSERROR("Failed to receive message");
 		return -1;
 	}

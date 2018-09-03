@@ -48,6 +48,7 @@
 #include "af_unix.h"
 #include "conf.h"
 #include "config.h"
+#include "file_utils.h"
 #include "log.h"
 #include "macro.h"
 #include "network.h"
@@ -3081,7 +3082,7 @@ int lxc_network_recv_veth_names_from_parent(struct lxc_handler *handler)
 		if (netdev->type != LXC_NET_VETH)
 			continue;
 
-		ret = recv(data_sock, netdev->name, IFNAMSIZ, 0);
+		ret = lxc_recv_nointr(data_sock, netdev->name, IFNAMSIZ, 0);
 		if (ret < 0)
 			return -1;
 		TRACE("Received network device name \"%s\" from parent", netdev->name);
@@ -3136,14 +3137,14 @@ int lxc_network_recv_name_and_ifindex_from_child(struct lxc_handler *handler)
 		/* Receive network device name in the child's namespace to
 		 * parent.
 		 */
-		ret = recv(data_sock, netdev->name, IFNAMSIZ, 0);
+		ret = lxc_recv_nointr(data_sock, netdev->name, IFNAMSIZ, 0);
 		if (ret < 0)
 			return -1;
 
 		/* Receive network device ifindex in the child's namespace to
 		 * parent.
 		 */
-		ret = recv(data_sock, &netdev->ifindex, sizeof(netdev->ifindex), 0);
+		ret = lxc_recv_nointr(data_sock, &netdev->ifindex, sizeof(netdev->ifindex), 0);
 		if (ret < 0)
 			return -1;
 	}
