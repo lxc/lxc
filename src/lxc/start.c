@@ -61,6 +61,7 @@
 #include "conf.h"
 #include "confile_utils.h"
 #include "error.h"
+#include "file_utils.h"
 #include "list.h"
 #include "lsm/lsm.h"
 #include "log.h"
@@ -440,16 +441,9 @@ int lxc_serve_state_clients(const char *name, struct lxc_handler *handler,
 		TRACE("Sending state %s to state client %d",
 		      lxc_state2str(state), client->clientfd);
 
-	again:
-		ret = send(client->clientfd, &msg, sizeof(msg), MSG_NOSIGNAL);
-		if (ret <= 0) {
-			if (errno == EINTR) {
-				TRACE("Caught EINTR; retrying");
-				goto again;
-			}
-
+		ret = lxc_send_nointr(client->clientfd, &msg, sizeof(msg), MSG_NOSIGNAL);
+		if (ret <= 0)
 			SYSERROR("Failed to send message to client");
-		}
 
 		/* kick client from list */
 		lxc_list_del(cur);
