@@ -106,6 +106,17 @@ again:
 	return ret;
 }
 
+ssize_t lxc_send_nointr(int sockfd, void *buf, size_t len, int flags)
+{
+	ssize_t ret;
+again:
+	ret = send(sockfd, buf, len, flags);
+	if (ret < 0 && errno == EINTR)
+		goto again;
+
+	return ret;
+}
+
 ssize_t lxc_read_nointr(int fd, void *buf, size_t count)
 {
 	ssize_t ret;
