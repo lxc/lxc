@@ -117,6 +117,17 @@ again:
 	return ret;
 }
 
+ssize_t lxc_recv_nointr(int sockfd, void *buf, size_t len, int flags)
+{
+	ssize_t ret;
+again:
+	ret = recv(sockfd, buf, len, flags);
+	if (ret < 0 && errno == EINTR)
+		goto again;
+
+	return ret;
+}
+
 ssize_t lxc_read_nointr_expect(int fd, void *buf, size_t count, const void *expected_buf)
 {
 	ssize_t ret;
