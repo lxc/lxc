@@ -3203,6 +3203,7 @@ int lxc_netns_set_nsid(int fd)
 	struct nl_handler nlh;
 	struct nlmsghdr *hdr;
 	struct rtgenmsg *msg;
+	int saved_errno;
 	__s32 ns_id = -1;
 	__u32 netns_fd = fd;
 
@@ -3225,7 +3226,9 @@ int lxc_netns_set_nsid(int fd)
 	addattr(hdr, 1024, __LXC_NETNSA_NSID, &ns_id, sizeof(ns_id));
 
 	ret = __netlink_transaction(&nlh, hdr, hdr);
+	saved_errno = errno;
 	netlink_close(&nlh);
+	errno = saved_errno;
 	if (ret < 0)
 		return -1;
 

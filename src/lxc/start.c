@@ -1694,12 +1694,10 @@ static int lxc_spawn(struct lxc_handler *handler)
 		DEBUG("Preserved net namespace via fd %d", ret);
 
 		ret = lxc_netns_set_nsid(handler->nsfd[LXC_NS_NET]);
-		if (ret < 0) {
-			errno = -ret;
+		if (ret < 0)
 			SYSERROR("Failed to allocate new network namespace id");
-		} else {
+		else
 			TRACE("Allocated new network namespace id");
-		}
 	}
 
 	/* Create the network configuration. */
