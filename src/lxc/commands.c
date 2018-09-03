@@ -97,7 +97,7 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 	};
 
 	if (cmd >= LXC_CMD_MAX)
-		return "Unknown cmd";
+		return "Invalid request";
 
 	return cmdname[cmd];
 }
