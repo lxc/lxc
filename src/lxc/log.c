@@ -311,7 +311,7 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 		return 0;
 
 	if (lxc_unix_epoch_to_utc(date_time, LXC_LOG_TIME_SIZE, &event->timestamp) < 0)
-		return 0;
+		return -1;
 
 	n = snprintf(buffer, sizeof(buffer),
 		     "%s%s%s %s %-8s %s - %s:%s:%d - ",
