@@ -276,6 +276,7 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 {										\
 	if (lxc_log_priority_is_enabled(acategory, LXC_LOG_LEVEL_##LEVEL)) {	\
 		va_list va_ref;							\
+		int saved_errno;						\
 		struct lxc_log_event evt = {					\
 			.category	= (acategory)->name,			\
 			.priority	= LXC_LOG_LEVEL_##LEVEL,		\
@@ -287,12 +288,14 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 		 * without restrictions. So let's use it for our		\
 		 * logging stamps.						\
 		 */								\
+		saved_errno = errno;						\
 		(void)clock_gettime(CLOCK_REALTIME, &evt.timestamp);		\
 										\
 		va_start(va_ref, format);					\
 		evt.vap = &va_ref;						\
 		__lxc_log(acategory, &evt);					\
 		va_end(va_ref);							\
+		errno = saved_errno;						\
 	}									\
 }
 
@@ -341,7 +344,9 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 			char errno_buf[MAXPATHLEN / 2] = {"Failed to get errno string"}; \
 			char *ptr = NULL;                                                \
 			{                                                                \
+				int saved_errno = errno;				 \
 				ptr = strerror_r(errno, errno_buf, sizeof(errno_buf));   \
+				errno = saved_errno;					 \
 				if (!ptr)                                                \
 					ptr = errno_buf;                                 \
 			}
@@ -350,7 +355,9 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 			char errno_buf[MAXPATHLEN / 2] = {"Failed to get errno string"}; \
 			char *ptr = errno_buf;                                           \
 			{                                                                \
+				int saved_errno = errno;				 \
 				(void)strerror_r(errno, errno_buf, sizeof(errno_buf));   \
+				errno = saved_errno;					 \
 			}
 	#endif
 #elif ENFORCE_THREAD_SAFETY

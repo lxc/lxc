@@ -20,6 +20,9 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
+#include "config.h"
+
 #include <sys/socket.h>
 #include <string.h>
 #include <stdio.h>
@@ -30,7 +33,10 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 
+#include "log.h"
 #include "nl.h"
+
+lxc_log_define(nl, lxc);
 
 extern size_t nlmsg_len(const struct nlmsg *nlmsg)
 {
@@ -201,8 +207,10 @@ again:
 	if (!ret)
 		return 0;
 
-	if (msg.msg_flags & MSG_TRUNC && (ret == nlmsghdr->nlmsg_len))
-		return -EMSGSIZE;
+	if (msg.msg_flags & MSG_TRUNC && (ret == nlmsghdr->nlmsg_len)) {
+		errno = EMSGSIZE;
+		ret = -1;
+	}
 
 	return ret;
 }
@@ -252,18 +260,21 @@ extern int __netlink_transaction(struct nl_handler *handler,
 
 	ret = __netlink_send(handler, request);
 	if (ret < 0)
-		return ret;
+		return -1;
 
 	ret = __netlink_recv(handler, answer);
 	if (ret < 0)
-		return ret;
+		return -1;
 
+	ret = 0;
 	if (answer->nlmsg_type == NLMSG_ERROR) {
 		struct nlmsgerr *err = (struct nlmsgerr *)NLMSG_DATA(answer);
-		return err->error;
+		errno = -err->error;
+		if (err->error < 0)
+			ret = -1;
 	}
 
-	return 0;
+	return ret;
 }
 
 extern int netlink_transaction(struct nl_handler *handler,

@@ -48,6 +48,7 @@
 #include "af_unix.h"
 #include "conf.h"
 #include "config.h"
+#include "file_utils.h"
 #include "log.h"
 #include "macro.h"
 #include "network.h"
@@ -3056,7 +3057,7 @@ int lxc_network_send_veth_names_to_child(struct lxc_handler *handler)
 		if (netdev->type != LXC_NET_VETH)
 			continue;
 
-		ret = send(data_sock, netdev->name, IFNAMSIZ, MSG_NOSIGNAL);
+		ret = lxc_send_nointr(data_sock, netdev->name, IFNAMSIZ, MSG_NOSIGNAL);
 		if (ret < 0)
 			return -1;
 		TRACE("Sent network device name \"%s\" to child", netdev->name);
@@ -3081,7 +3082,7 @@ int lxc_network_recv_veth_names_from_parent(struct lxc_handler *handler)
 		if (netdev->type != LXC_NET_VETH)
 			continue;
 
-		ret = recv(data_sock, netdev->name, IFNAMSIZ, 0);
+		ret = lxc_recv_nointr(data_sock, netdev->name, IFNAMSIZ, 0);
 		if (ret < 0)
 			return -1;
 		TRACE("Received network device name \"%s\" from parent", netdev->name);
@@ -3104,14 +3105,14 @@ int lxc_network_send_name_and_ifindex_to_parent(struct lxc_handler *handler)
 		struct lxc_netdev *netdev = iterator->elem;
 
 		/* Send network device name in the child's namespace to parent. */
-		ret = send(data_sock, netdev->name, IFNAMSIZ, MSG_NOSIGNAL);
+		ret = lxc_send_nointr(data_sock, netdev->name, IFNAMSIZ, MSG_NOSIGNAL);
 		if (ret < 0)
 			return -1;
 
 		/* Send network device ifindex in the child's namespace to
 		 * parent.
 		 */
-		ret = send(data_sock, &netdev->ifindex, sizeof(netdev->ifindex), MSG_NOSIGNAL);
+		ret = lxc_send_nointr(data_sock, &netdev->ifindex, sizeof(netdev->ifindex), MSG_NOSIGNAL);
 		if (ret < 0)
 			return -1;
 	}
@@ -3136,14 +3137,14 @@ int lxc_network_recv_name_and_ifindex_from_child(struct lxc_handler *handler)
 		/* Receive network device name in the child's namespace to
 		 * parent.
 		 */
-		ret = recv(data_sock, netdev->name, IFNAMSIZ, 0);
+		ret = lxc_recv_nointr(data_sock, netdev->name, IFNAMSIZ, 0);
 		if (ret < 0)
 			return -1;
 
 		/* Receive network device ifindex in the child's namespace to
 		 * parent.
 		 */
-		ret = recv(data_sock, &netdev->ifindex, sizeof(netdev->ifindex), 0);
+		ret = lxc_recv_nointr(data_sock, &netdev->ifindex, sizeof(netdev->ifindex), 0);
 		if (ret < 0)
 			return -1;
 	}
@@ -3202,6 +3203,7 @@ int lxc_netns_set_nsid(int fd)
 	struct nl_handler nlh;
 	struct nlmsghdr *hdr;
 	struct rtgenmsg *msg;
+	int saved_errno;
 	__s32 ns_id = -1;
 	__u32 netns_fd = fd;
 
@@ -3224,7 +3226,9 @@ int lxc_netns_set_nsid(int fd)
 	addattr(hdr, 1024, __LXC_NETNSA_NSID, &ns_id, sizeof(ns_id));
 
 	ret = __netlink_transaction(&nlh, hdr, hdr);
+	saved_errno = errno;
 	netlink_close(&nlh);
+	errno = saved_errno;
 	if (ret < 0)
 		return -1;
 
