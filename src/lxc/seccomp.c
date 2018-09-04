@@ -905,8 +905,9 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 				}
 
 				cur_rule_arch = lxc_seccomp_arch_s390x;
+			}
 #endif
-			} else {
+			else {
 				goto bad_arch;
 			}
 
