@@ -32,9 +32,6 @@
 
 #include "nl.h"
 
-#define NLMSG_TAIL(nmsg) \
-        ((struct rtattr *) (((void *) (nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)))
-
 extern size_t nlmsg_len(const struct nlmsg *nlmsg)
 {
 	return nlmsg->nlmsghdr->nlmsg_len - NLMSG_HDRLEN;
