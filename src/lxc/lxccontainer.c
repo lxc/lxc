@@ -583,6 +583,9 @@ static int do_lxcapi_console_log(struct lxc_container *c, struct lxc_console_log
 {
 	int ret;
 
+	if (!c)
+		return -EINVAL;
+
 	ret = lxc_cmd_console_log(c->name, do_lxcapi_get_config_path(c), log);
 	if (ret < 0) {
 		if (ret == -ENODATA)
@@ -4548,6 +4551,9 @@ WRAP_API(bool, lxcapi_snapshot_destroy_all)
 
 static bool do_lxcapi_may_control(struct lxc_container *c)
 {
+	if (!c)
+		return false;
+
 	return lxc_try_cmd(c->name, c->config_path) == 0;
 }
 
