@@ -852,13 +852,6 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	if (options->gid != (gid_t)-1)
 		new_gid = options->gid;
 
-	/* Try to set the {u,g}id combination. */
-	if (new_uid != 0 || new_gid != 0 || options->namespaces & CLONE_NEWUSER) {
-		ret = lxc_switch_uid_gid(new_uid, new_gid);
-		if (ret < 0)
-			goto on_error;
-	}
-
 	ret = lxc_setgroups(0, NULL);
 	if (ret < 0 && errno != EPERM)
 		goto on_error;
@@ -895,6 +888,13 @@ static int attach_child_main(struct attach_clone_payload *payload)
 			goto on_error;
 
 		TRACE("Loaded seccomp profile");
+	}
+
+	/* Try to set the {u,g}id combination. */
+	if (new_uid != 0 || new_gid != 0 || options->namespaces & CLONE_NEWUSER) {
+		ret = lxc_switch_uid_gid(new_uid, new_gid);
+		if (ret < 0)
+			goto on_error;
 	}
 
 	shutdown(payload->ipc_socket, SHUT_RDWR);
