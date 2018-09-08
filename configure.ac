@@ -53,7 +53,7 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #define CLANG_VERSION \
 	(__clang_major__ * 10000 + __clang_minor__ * 100 + __clang_patchlevel__)
 
-#if GCC_VERSION < 40600 && CLANG_VERSION < 10000
+#if GCC_VERSION < 40700 && CLANG_VERSION < 10000
 #error Sorry, your compiler is too old - please upgrade it
 #endif
 	]])], [valid_compiler=yes], [valid_compiler=no])
@@ -675,8 +675,9 @@ AC_PROG_SED
 # See if we support thread-local storage.
 LXC_CHECK_TLS
 
+CFLAGS="$CFLAGS -Wvla -std=gnu11"
 if test "x$enable_werror" = "xyes"; then
-	CFLAGS="$CFLAGS -Werror -Wvla -std=gnu11"
+	CFLAGS="$CFLAGS -Werror"
 fi
 
 AC_ARG_ENABLE([thread-safety],
