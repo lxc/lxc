@@ -1112,8 +1112,7 @@ static int do_start(void *data)
 		if (!handler->conf->root_nsgid_map)
 			nsgid = handler->conf->init_gid;
 
-		ret = lxc_switch_uid_gid(nsuid, nsgid);
-		if (ret < 0)
+		if (!lxc_switch_uid_gid(nsuid, nsgid))
 			goto out_warn_father;
 
 		/* Drop groups only after we switched to a valid gid in the new
@@ -1350,8 +1349,7 @@ static int do_start(void *data)
 	if (new_gid == nsgid)
 		new_gid = LXC_INVALID_GID;
 
-	ret = lxc_switch_uid_gid(new_uid, new_gid);
-	if (ret < 0)
+	if (!lxc_switch_uid_gid(new_uid, new_gid))
 		goto out_warn_father;
 
 	/* If we are in a new user namespace we already dropped all groups when

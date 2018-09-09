@@ -854,8 +854,7 @@ static int attach_child_main(struct attach_clone_payload *payload)
 		if (ns_root_uid == LXC_INVALID_UID)
 			goto on_error;
 
-		ret = lxc_switch_uid_gid(ns_root_uid, ns_root_gid);
-		if (ret < 0)
+		if (!lxc_switch_uid_gid(ns_root_uid, ns_root_gid))
 			goto on_error;
 	}
 
@@ -969,8 +968,7 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	if (new_gid == ns_root_gid)
 		new_gid = LXC_INVALID_GID;
 
-	ret = lxc_switch_uid_gid(new_uid, new_gid);
-	if (ret < 0)
+	if (!lxc_switch_uid_gid(new_uid, new_gid))
 		goto on_error;
 
 	/* We're done, so we can now do whatever the user intended us to do. */
