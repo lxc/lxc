@@ -53,6 +53,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">-d</arg>
       <arg choice="opt">-f <replaceable>config_file</replaceable></arg>
       <arg choice="opt">-s KEY=VAL</arg>
+      <arg choice="opt">-u, --uid <replaceable>uid</replaceable></arg>
+      <arg choice="opt">-g, --gid <replaceable>gid</replaceable></arg>
       <arg choice="opt">-- <replaceable>command</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -135,6 +137,30 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	    Run the container as a daemon. As the container has no
 	    more tty, if an error occurs nothing will be displayed,
 	    the log file can be used to check the error.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--u, --uid <replaceable>uid</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    Executes the <replaceable>command</replaceable> with user ID
+	   <replaceable>uid</replaceable> inside the container.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--g, --gid <replaceable>gid</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    Executes the <replaceable>command</replaceable> with group ID
+	   <replaceable>gid</replaceable> inside the container.
 	  </para>
 	</listitem>
       </varlistentry>
