@@ -859,8 +859,7 @@ static int attach_child_main(struct attach_clone_payload *payload)
 			goto on_error;
 	}
 
-	ret = lxc_setgroups(0, NULL);
-	if (ret < 0 && errno != EPERM)
+	if (!lxc_setgroups(0, NULL) && errno != EPERM)
 		goto on_error;
 
 	/* Set {u,g}id. */
