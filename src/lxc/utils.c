@@ -1377,15 +1377,15 @@ int lxc_switch_uid_gid(uid_t uid, gid_t gid)
 }
 
 /* Simple covenience function which enables uniform logging. */
-int lxc_setgroups(int size, gid_t list[])
+bool lxc_setgroups(int size, gid_t list[])
 {
 	if (setgroups(size, list) < 0) {
-		SYSERROR("Failed to setgroups().");
-		return -errno;
+		SYSERROR("Failed to setgroups()");
+		return false;
 	}
-	NOTICE("Dropped additional groups.");
+	NOTICE("Dropped additional groups");
 
-	return 0;
+	return true;
 }
 
 static int lxc_get_unused_loop_dev_legacy(char *loop_name)

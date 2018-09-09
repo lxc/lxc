@@ -1046,7 +1046,6 @@ static int do_start(void *data)
 {
 	int ret;
 	char path[PATH_MAX];
-	bool have_cap_setgid;
 	uid_t new_uid;
 	gid_t new_gid;
 	struct lxc_list *iterator;
@@ -1132,8 +1131,8 @@ static int do_start(void *data)
 		/* Drop groups only after we switched to a valid gid in the new
 		 * user namespace.
 		 */
-		ret = lxc_setgroups(0, NULL);
-		if (ret < 0 && (handler->am_root || errno != EPERM))
+		if (!lxc_setgroups(0, NULL) &&
+		    (handler->am_root || errno != EPERM))
 			goto out_warn_father;
 
 		ret = prctl(PR_SET_DUMPABLE, prctl_arg(1), prctl_arg(0),
@@ -1356,21 +1355,6 @@ static int do_start(void *data)
 	new_uid = handler->conf->init_uid;
 	new_gid = handler->conf->init_gid;
 
-	/* If we are in a new user namespace we already dropped all groups when
-	*  we switched to root in the new user namespace further above. Only
-	*  drop groups if we can, so ensure that we have necessary privilege.
-	 */
-	#if HAVE_LIBCAP
-	have_cap_setgid = lxc_proc_cap_is_set(CAP_SETGID, CAP_EFFECTIVE);
-	#else
-	have_cap_setgid = false;
-	#endif
-	if (lxc_list_empty(&handler->conf->id_map) && have_cap_setgid) {
-		ret = lxc_setgroups(0, NULL);
-		if (ret < 0)
-			goto out_warn_father;
-	}
-
 	/* Avoid unnecessary syscalls. */
 	if (new_uid == nsuid)
 		new_uid = LXC_INVALID_UID;
@@ -1381,6 +1365,17 @@ static int do_start(void *data)
 	ret = lxc_switch_uid_gid(new_uid, new_gid);
 	if (ret < 0)
 		goto out_warn_father;
+
+	/* If we are in a new user namespace we already dropped all groups when
+	 * we switched to root in the new user namespace further above. Only
+	 * drop groups if we can, so ensure that we have necessary privilege.
+	 */
+	if (lxc_list_empty(&handler->conf->id_map))
+		#if HAVE_LIBCAP
+		if (lxc_proc_cap_is_set(CAP_SETGID, CAP_EFFECTIVE))
+		#endif
+			if (!lxc_setgroups(0, NULL))
+				goto out_warn_father;
 
 	ret = lxc_ambient_caps_down();
 	if (ret < 0) {

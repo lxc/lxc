@@ -108,8 +108,7 @@ static int do_child(void *vargv)
 	if (ret < 0)
 		return -1;
 
-	ret = lxc_setgroups(0, NULL);
-	if (ret < 0)
+	if (!lxc_setgroups(0, NULL))
 		return -1;
 
 	ret = unshare(CLONE_NEWNS);

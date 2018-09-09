@@ -362,7 +362,7 @@ extern bool task_blocks_signal(pid_t pid, int signal);
  * If LXC_INVALID_{G,U}ID is passed then the set{g,u}id() will not be called.
  */
 extern int lxc_switch_uid_gid(uid_t uid, gid_t gid);
-extern int lxc_setgroups(int size, gid_t list[]);
+extern bool lxc_setgroups(int size, gid_t list[]);
 
 /* Find an unused loop device and associate it with source. */
 extern int lxc_prepare_loop_dev(const char *source, char *loop_dev, int flags);
