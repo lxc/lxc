@@ -357,7 +357,9 @@ extern int lxc_preserve_ns(const int pid, const char *ns);
 /* Check whether a signal is blocked by a process. */
 extern bool task_blocks_signal(pid_t pid, int signal);
 
-/* Switch to a new uid and gid. */
+/* Switch to a new uid and gid.
+ * If LXC_INVALID_{G,U}ID is passed then the set{g,u}id() will not be called.
+ */
 extern int lxc_switch_uid_gid(uid_t uid, gid_t gid);
 extern int lxc_setgroups(int size, gid_t list[]);
 

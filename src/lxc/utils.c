@@ -1346,19 +1346,27 @@ int lxc_preserve_ns(const int pid, const char *ns)
 
 int lxc_switch_uid_gid(uid_t uid, gid_t gid)
 {
-	if (setgid(gid) < 0) {
-		SYSERROR("Failed to switch to gid %d.", gid);
-		return -errno;
-	}
-	NOTICE("Switched to gid %d.", gid);
+	int ret = 0;
 
-	if (setuid(uid) < 0) {
-		SYSERROR("Failed to switch to uid %d.", uid);
-		return -errno;
+	if (gid != LXC_INVALID_GID) {
+		ret = setgid(gid);
+		if (ret < 0) {
+			SYSERROR("Failed to switch to gid %d", gid);
+			return -1;
+		}
+		NOTICE("Switched to gid %d", gid);
 	}
-	NOTICE("Switched to uid %d.", uid);
 
-	return 0;
+	if (uid != LXC_INVALID_UID) {
+		ret = setuid(uid);
+		if (ret < 0) {
+			SYSERROR("Failed to switch to uid %d", uid);
+			return -1;
+		}
+		NOTICE("Switched to uid %d", uid);
+	}
+
+	return ret;
 }
 
 /* Simple covenience function which enables uniform logging. */
