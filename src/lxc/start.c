@@ -1050,6 +1050,8 @@ static int do_start(void *data)
 	uid_t new_uid;
 	gid_t new_gid;
 	struct lxc_list *iterator;
+	uid_t nsuid = 0;
+	gid_t nsgid = 0;
 	int devnull_fd = -1;
 	struct lxc_handler *handler = data;
 
@@ -1117,12 +1119,11 @@ static int do_start(void *data)
 	 * privilege over our namespace.
 	 */
 	if (!lxc_list_empty(&handler->conf->id_map)) {
-		uid_t nsuid = (handler->conf->root_nsuid_map != NULL)
-				  ? 0
-				  : handler->conf->init_uid;
-		gid_t nsgid = (handler->conf->root_nsgid_map != NULL)
-				  ? 0
-				  : handler->conf->init_gid;
+		if (!handler->conf->root_nsuid_map)
+			nsuid = handler->conf->init_uid;
+
+		if (!handler->conf->root_nsgid_map)
+			nsgid = handler->conf->init_gid;
 
 		ret = lxc_switch_uid_gid(nsuid, nsgid);
 		if (ret < 0)
@@ -1369,6 +1370,13 @@ static int do_start(void *data)
 		if (ret < 0)
 			goto out_warn_father;
 	}
+
+	/* Avoid unnecessary syscalls. */
+	if (new_uid == nsuid)
+		new_uid = LXC_INVALID_UID;
+
+	if (new_gid == nsgid)
+		new_gid = LXC_INVALID_GID;
 
 	ret = lxc_switch_uid_gid(new_uid, new_gid);
 	if (ret < 0)
