@@ -104,8 +104,7 @@ static int do_child(void *vargv)
 	char **argv = (char **)vargv;
 
 	/* Assume we want to become root */
-	ret = lxc_switch_uid_gid(0, 0);
-	if (ret < 0)
+	if (!lxc_switch_uid_gid(0, 0))
 		return -1;
 
 	if (!lxc_setgroups(0, NULL))

@@ -50,8 +50,7 @@ int lxc_rsync_exec_wrapper(void *data)
 	int ret;
 	struct rsync_data_char *args = data;
 
-	ret = lxc_switch_uid_gid(0, 0);
-	if (ret < 0)
+	if (!lxc_switch_uid_gid(0, 0))
 		return -1;
 
 	if (!lxc_setgroups(0, NULL))
@@ -116,8 +115,7 @@ int lxc_rsync(struct rsync_data *data)
 		return -1;
 	}
 
-	ret = lxc_switch_uid_gid(0, 0);
-	if (ret < 0)
+	if (!lxc_switch_uid_gid(0, 0))
 		return -1;
 
 	if (!lxc_setgroups(0, NULL))
