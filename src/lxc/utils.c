@@ -544,7 +544,34 @@ uid_t get_ns_uid(uid_t orig)
 		}
 	}
 
-	nsid = 0;
+	nsid = LXC_INVALID_UID;
+
+found:
+	fclose(f);
+	free(line);
+	return nsid;
+}
+
+gid_t get_ns_gid(gid_t orig)
+{
+	char *line = NULL;
+	size_t sz = 0;
+	gid_t nsid, hostid, range;
+	FILE *f = fopen("/proc/self/gid_map", "r");
+	if (!f)
+		return 0;
+
+	while (getline(&line, &sz, f) != -1) {
+		if (sscanf(line, "%u %u %u", &nsid, &hostid, &range) != 3)
+			continue;
+
+		if (hostid <= orig && hostid + range > orig) {
+			nsid += orig - hostid;
+			goto found;
+		}
+	}
+
+	nsid = LXC_INVALID_GID;
 
 found:
 	fclose(f);
