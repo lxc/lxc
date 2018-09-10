@@ -92,6 +92,7 @@ struct cgroup_ops {
 	char **cgroup_use;
 	char *cgroup_pattern;
 	char *container_cgroup;
+	char *monitor_pattern;
 
 	/* @hierarchies
 	 * - A NULL-terminated array of struct hierarchy, one per legacy

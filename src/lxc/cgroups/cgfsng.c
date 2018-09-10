@@ -2569,6 +2569,7 @@ __cgfsng_ops__ static bool cgfsng_data_init(struct cgroup_ops *ops)
 		return false;
 	}
 	ops->cgroup_pattern = must_copy_string(cgroup_pattern);
+	ops->monitor_pattern = must_copy_string("lxc.monitor");
 
 	return true;
 }
