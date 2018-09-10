@@ -971,7 +971,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		goto out_fini_handler;
 	handler->cgroup_ops = cgroup_ops;
 
-	if (!cgroup_ops->create(cgroup_ops, handler)) {
+	if (!cgroup_ops->payload_create(cgroup_ops, handler)) {
 		ERROR("failed creating groups");
 		goto out_fini_handler;
 	}

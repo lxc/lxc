@@ -1583,7 +1583,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	if (!cgroup_ops->create(cgroup_ops, handler)) {
+	if (!cgroup_ops->payload_create(cgroup_ops, handler)) {
 		ERROR("Failed creating cgroups");
 		goto out_delete_net;
 	}
@@ -1677,7 +1677,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 	}
 
-	if (!cgroup_ops->enter(cgroup_ops, handler->pid))
+	if (!cgroup_ops->payload_enter(cgroup_ops, handler->pid))
 		goto out_delete_net;
 
 	if (!cgroup_ops->chown(cgroup_ops, handler->conf))

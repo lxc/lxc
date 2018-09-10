@@ -2593,8 +2593,8 @@ struct cgroup_ops *cgfsng_ops_init(void)
 
 	cgfsng_ops->data_init = cgfsng_data_init;
 	cgfsng_ops->destroy = cgfsng_destroy;
-	cgfsng_ops->create = cgfsng_create;
-	cgfsng_ops->enter = cgfsng_enter;
+	cgfsng_ops->payload_create = cgfsng_payload_create;
+	cgfsng_ops->payload_enter = cgfsng_payload_enter;
 	cgfsng_ops->escape = cgfsng_escape;
 	cgfsng_ops->num_hierarchies = cgfsng_num_hierarchies;
 	cgfsng_ops->get_hierarchies = cgfsng_get_hierarchies;

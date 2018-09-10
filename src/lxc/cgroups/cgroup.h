@@ -124,8 +124,8 @@ struct cgroup_ops {
 
 	bool (*data_init)(struct cgroup_ops *ops);
 	void (*destroy)(struct cgroup_ops *ops, struct lxc_handler *handler);
-	bool (*create)(struct cgroup_ops *ops, struct lxc_handler *handler);
-	bool (*enter)(struct cgroup_ops *ops, pid_t pid);
+	bool (*payload_create)(struct cgroup_ops *ops, struct lxc_handler *handler);
+	bool (*payload_enter)(struct cgroup_ops *ops, pid_t pid);
 	const char *(*get_cgroup)(struct cgroup_ops *ops, const char *controller);
 	bool (*escape)(const struct cgroup_ops *ops);
 	int (*num_hierarchies)(struct cgroup_ops *ops);
