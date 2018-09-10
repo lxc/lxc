@@ -62,7 +62,7 @@ typedef enum {
  *   is created. This will be either the caller's cgroup (if not root), or
  *   init's cgroup (if root).
  *
- * @fullcgpath
+ * @container_full_path
  * - The full path to the containers cgroup.
  *
  * @version
@@ -77,7 +77,7 @@ struct hierarchy {
 	char **controllers;
 	char *mountpoint;
 	char *base_cgroup;
-	char *fullcgpath;
+	char *container_full_path;
 	int version;
 };
 

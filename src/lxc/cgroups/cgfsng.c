@@ -819,7 +819,7 @@ static struct hierarchy *add_hierarchy(struct hierarchy ***h, char **clist, char
 	new->controllers = clist;
 	new->mountpoint = mountpoint;
 	new->base_cgroup = base_cgroup;
-	new->fullcgpath = NULL;
+	new->container_full_path = NULL;
 	new->version = type;
 
 	newentry = append_null_to_list((void ***)h);
@@ -1051,15 +1051,15 @@ static int cgroup_rmdir(struct hierarchy **hierarchies,
 		int ret;
 		struct hierarchy *h = hierarchies[i];
 
-		if (!h->fullcgpath)
+		if (!h->container_full_path)
 			continue;
 
-		ret = recursive_destroy(h->fullcgpath);
+		ret = recursive_destroy(h->container_full_path);
 		if (ret < 0)
-			WARN("Failed to destroy \"%s\"", h->fullcgpath);
+			WARN("Failed to destroy \"%s\"", h->container_full_path);
 
-		free(h->fullcgpath);
-		h->fullcgpath = NULL;
+		free(h->container_full_path);
+		h->container_full_path = NULL;
 	}
 
 	return 0;
@@ -1196,9 +1196,9 @@ static bool create_path_for_hierarchy(struct hierarchy *h, char *cgname)
 {
 	int ret;
 
-	h->fullcgpath = must_make_path(h->mountpoint, h->base_cgroup, cgname, NULL);
-	if (dir_exists(h->fullcgpath)) {
-		ERROR("The cgroup \"%s\" already existed", h->fullcgpath);
+	h->container_full_path = must_make_path(h->mountpoint, h->base_cgroup, cgname, NULL);
+	if (dir_exists(h->container_full_path)) {
+		ERROR("The cgroup \"%s\" already existed", h->container_full_path);
 		return false;
 	}
 
@@ -1207,9 +1207,9 @@ static bool create_path_for_hierarchy(struct hierarchy *h, char *cgname)
 		return false;
 	}
 
-	ret = mkdir_p(h->fullcgpath, 0755);
+	ret = mkdir_p(h->container_full_path, 0755);
 	if (ret < 0) {
-		ERROR("Failed to create cgroup \"%s\"", h->fullcgpath);
+		ERROR("Failed to create cgroup \"%s\"", h->container_full_path);
 		return false;
 	}
 
@@ -1220,12 +1220,12 @@ static void remove_path_for_hierarchy(struct hierarchy *h, char *cgname)
 {
 	int ret;
 
-	ret = rmdir(h->fullcgpath);
+	ret = rmdir(h->container_full_path);
 	if (ret < 0)
-		SYSERROR("Failed to rmdir(\"%s\") from failed creation attempt", h->fullcgpath);
+		SYSERROR("Failed to rmdir(\"%s\") from failed creation attempt", h->container_full_path);
 
-	free(h->fullcgpath);
-	h->fullcgpath = NULL;
+	free(h->container_full_path);
+	h->container_full_path = NULL;
 }
 
 /* Try to create the same cgroup in all hierarchies. Start with cgroup_pattern;
@@ -1287,9 +1287,9 @@ again:
 	for (i = 0; ops->hierarchies[i]; i++) {
 		if (!create_path_for_hierarchy(ops->hierarchies[i], container_cgroup)) {
 			int j;
-			ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->fullcgpath);
-			free(ops->hierarchies[i]->fullcgpath);
-			ops->hierarchies[i]->fullcgpath = NULL;
+			ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->container_full_path);
+			free(ops->hierarchies[i]->container_full_path);
+			ops->hierarchies[i]->container_full_path = NULL;
 			for (j = 0; j < i; j++)
 				remove_path_for_hierarchy(ops->hierarchies[j], container_cgroup);
 			idx++;
@@ -1320,7 +1320,7 @@ __cgfsng_ops__ static bool cgfsng_enter(struct cgroup_ops *ops, pid_t pid)
 		int ret;
 		char *fullpath;
 
-		fullpath = must_make_path(ops->hierarchies[i]->fullcgpath,
+		fullpath = must_make_path(ops->hierarchies[i]->container_full_path,
 					  "cgroup.procs", NULL);
 		ret = lxc_write_to_file(fullpath, pidstr, len, false, 0666);
 		if (ret != 0) {
@@ -1395,7 +1395,7 @@ static int chown_cgroup_wrapper(void *data)
 
 	for (i = 0; arg->hierarchies[i]; i++) {
 		char *fullpath;
-		char *path = arg->hierarchies[i]->fullcgpath;
+		char *path = arg->hierarchies[i]->container_full_path;
 
 		ret = chowmod(path, destuid, nsgid, 0775);
 		if (ret < 0)
@@ -1742,7 +1742,7 @@ __cgfsng_ops__ static int cgfsng_nrtasks(struct cgroup_ops *ops)
 	if (!ops->container_cgroup || !ops->hierarchies)
 		return -1;
 
-	path = must_make_path(ops->hierarchies[0]->fullcgpath, NULL);
+	path = must_make_path(ops->hierarchies[0]->container_full_path, NULL);
 	count = recursive_count_nrtasks(path);
 	free(path);
 	return count;
@@ -1816,7 +1816,7 @@ __cgfsng_ops__ static bool cgfsng_unfreeze(struct cgroup_ops *ops)
 	if (!h)
 		return false;
 
-	fullpath = must_make_path(h->fullcgpath, "freezer.state", NULL);
+	fullpath = must_make_path(h->container_full_path, "freezer.state", NULL);
 	ret = lxc_write_to_file(fullpath, THAWED, THAWED_LEN, false, 0666);
 	free(fullpath);
 	if (ret < 0)
@@ -1837,7 +1837,7 @@ __cgfsng_ops__ static const char *cgfsng_get_cgroup(struct cgroup_ops *ops,
 		return NULL;
 	}
 
-	return h->fullcgpath ? h->fullcgpath + strlen(h->mountpoint) : NULL;
+	return h->container_full_path ? h->container_full_path + strlen(h->mountpoint) : NULL;
 }
 
 /* Given a cgroup path returned from lxc_cmd_get_cgroup_path, build a full path,
@@ -2162,7 +2162,7 @@ static int cg_legacy_set_data(struct cgroup_ops *ops, const char *filename,
 		return -ENOENT;
 	}
 
-	fullpath = must_make_path(h->fullcgpath, filename, NULL);
+	fullpath = must_make_path(h->container_full_path, filename, NULL);
 	ret = lxc_write_to_file(fullpath, value, strlen(value), false, 0666);
 	free(fullpath);
 	return ret;
@@ -2230,7 +2230,7 @@ static bool __cg_unified_setup_limits(struct cgroup_ops *ops,
 		char *fullpath;
 		struct lxc_cgroup *cg = iterator->elem;
 
-		fullpath = must_make_path(h->fullcgpath, cg->subsystem, NULL);
+		fullpath = must_make_path(h->container_full_path, cg->subsystem, NULL);
 		ret = lxc_write_to_file(fullpath, cg->value, strlen(cg->value), false, 0666);
 		free(fullpath);
 		if (ret < 0) {
