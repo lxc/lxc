@@ -1370,31 +1370,46 @@ out_free:
 	return false;
 }
 
-__cgfsng_ops__ static bool cgfsng_enter(struct cgroup_ops *ops, pid_t pid)
+__cgfsng_ops__ static bool __do_cgroup_enter(struct cgroup_ops *ops, pid_t pid,
+					     bool monitor)
 {
-	int i, len;
+	int len;
 	char pidstr[25];
 
 	len = snprintf(pidstr, 25, "%d", pid);
 	if (len < 0 || len >= 25)
 		return false;
 
-	for (i = 0; ops->hierarchies[i]; i++) {
+	for (int i = 0; ops->hierarchies[i]; i++) {
 		int ret;
-		char *fullpath;
+		char *path;
 
-		fullpath = must_make_path(ops->hierarchies[i]->container_full_path,
-					  "cgroup.procs", NULL);
-		ret = lxc_write_to_file(fullpath, pidstr, len, false, 0666);
+		if (monitor)
+			path = must_make_path(ops->hierarchies[i]->monitor_full_path,
+					      "cgroup.procs", NULL);
+		else
+			path = must_make_path(ops->hierarchies[i]->container_full_path,
+					      "cgroup.procs", NULL);
+		ret = lxc_write_to_file(path, pidstr, len, false, 0666);
 		if (ret != 0) {
-			SYSERROR("Failed to enter cgroup \"%s\"", fullpath);
-			free(fullpath);
+			SYSERROR("Failed to enter cgroup \"%s\"", path);
+			free(path);
 			return false;
 		}
-		free(fullpath);
+		free(path);
 	}
 
 	return true;
+}
+
+static bool cgfsng_monitor_enter(struct cgroup_ops *ops, pid_t pid)
+{
+	return __do_cgroup_enter(ops, pid, true);
+}
+
+static bool cgfsng_payload_enter(struct cgroup_ops *ops, pid_t pid)
+{
+	return __do_cgroup_enter(ops, pid, false);
 }
 
 static int chowmod(char *path, uid_t chown_uid, gid_t chown_gid,
@@ -2656,6 +2671,7 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 	cgfsng_ops->data_init = cgfsng_data_init;
 	cgfsng_ops->destroy = cgfsng_destroy;
 	cgfsng_ops->monitor_create = cgfsng_monitor_create;
+	cgfsng_ops->monitor_enter = cgfsng_monitor_enter;
 	cgfsng_ops->payload_create = cgfsng_payload_create;
 	cgfsng_ops->payload_enter = cgfsng_payload_enter;
 	cgfsng_ops->escape = cgfsng_escape;
