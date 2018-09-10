@@ -1232,8 +1232,8 @@ static void remove_path_for_hierarchy(struct hierarchy *h, char *cgname)
 /* Try to create the same cgroup in all hierarchies. Start with cgroup_pattern;
  * next cgroup_pattern-1, -2, ..., -999.
  */
-__cgfsng_ops__ static inline bool cgfsng_create(struct cgroup_ops *ops,
-						struct lxc_handler *handler)
+__cgfsng_ops__ static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
+							struct lxc_handler *handler)
 {
 	int i;
 	size_t len;
