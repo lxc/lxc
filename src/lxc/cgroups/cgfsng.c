@@ -1193,7 +1193,24 @@ on_error:
 	return bret;
 }
 
-static bool create_path_for_hierarchy(struct hierarchy *h, char *cgname)
+static bool monitor_create_path_for_hierarchy(struct hierarchy *h, char *cgname)
+{
+	int ret;
+
+	h->monitor_full_path = must_make_path(h->mountpoint, h->container_base_path, cgname, NULL);
+	if (dir_exists(h->monitor_full_path))
+		return true;
+
+	ret = mkdir_p(h->monitor_full_path, 0755);
+	if (ret < 0) {
+		ERROR("Failed to create cgroup \"%s\"", h->monitor_full_path);
+		return false;
+	}
+
+	return cg_unified_create_cgroup(h, cgname);
+}
+
+static bool container_create_path_for_hierarchy(struct hierarchy *h, char *cgname)
 {
 	int ret;
 
@@ -1217,16 +1234,62 @@ static bool create_path_for_hierarchy(struct hierarchy *h, char *cgname)
 	return cg_unified_create_cgroup(h, cgname);
 }
 
-static void remove_path_for_hierarchy(struct hierarchy *h, char *cgname)
+static void remove_path_for_hierarchy(struct hierarchy *h, char *cgname, bool monitor)
 {
 	int ret;
+	char *full_path;
 
-	ret = rmdir(h->container_full_path);
+	if (monitor)
+		full_path = h->monitor_full_path;
+	else
+		full_path = h->container_full_path;
+
+	ret = rmdir(full_path);
 	if (ret < 0)
-		SYSERROR("Failed to rmdir(\"%s\") from failed creation attempt", h->container_full_path);
+		SYSERROR("Failed to rmdir(\"%s\") from failed creation attempt", full_path);
 
-	free(h->container_full_path);
-	h->container_full_path = NULL;
+	free(full_path);
+
+	if (monitor)
+		h->monitor_full_path = NULL;
+	else
+		h->container_full_path = NULL;
+}
+
+static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
+					 struct lxc_handler *handler)
+{
+	char *monitor_cgroup;
+	bool bret = false;
+	struct lxc_conf *conf = handler->conf;
+
+	if (!conf)
+		return bret;
+
+	if (conf->cgroup_meta.dir)
+		monitor_cgroup = lxc_string_join("/", (const char *[]){conf->cgroup_meta.dir, ops->monitor_pattern, handler->name, NULL}, false);
+	else
+		monitor_cgroup = must_make_path(ops->monitor_pattern, handler->name, NULL);
+	if (!monitor_cgroup)
+		return bret;
+
+	for (int i = 0; ops->hierarchies[i]; i++) {
+		if (!monitor_create_path_for_hierarchy(ops->hierarchies[i], monitor_cgroup)) {
+			ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->monitor_full_path);
+			free(ops->hierarchies[i]->container_full_path);
+			ops->hierarchies[i]->container_full_path = NULL;
+			for (int j = 0; j < i; j++)
+				remove_path_for_hierarchy(ops->hierarchies[j], monitor_cgroup, true);
+			goto on_error;
+		}
+	}
+
+	bret = true;
+
+on_error:
+	free(monitor_cgroup);
+
+	return bret;
 }
 
 /* Try to create the same cgroup in all hierarchies. Start with cgroup_pattern;
@@ -1286,13 +1349,12 @@ again:
 	}
 
 	for (i = 0; ops->hierarchies[i]; i++) {
-		if (!create_path_for_hierarchy(ops->hierarchies[i], container_cgroup)) {
-			int j;
+		if (!container_create_path_for_hierarchy(ops->hierarchies[i], container_cgroup)) {
 			ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->container_full_path);
 			free(ops->hierarchies[i]->container_full_path);
 			ops->hierarchies[i]->container_full_path = NULL;
-			for (j = 0; j < i; j++)
-				remove_path_for_hierarchy(ops->hierarchies[j], container_cgroup);
+			for (int j = 0; j < i; j++)
+				remove_path_for_hierarchy(ops->hierarchies[j], container_cgroup, false);
 			idx++;
 			goto again;
 		}
@@ -2593,6 +2655,7 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 
 	cgfsng_ops->data_init = cgfsng_data_init;
 	cgfsng_ops->destroy = cgfsng_destroy;
+	cgfsng_ops->monitor_create = cgfsng_monitor_create;
 	cgfsng_ops->payload_create = cgfsng_payload_create;
 	cgfsng_ops->payload_enter = cgfsng_payload_enter;
 	cgfsng_ops->escape = cgfsng_escape;
