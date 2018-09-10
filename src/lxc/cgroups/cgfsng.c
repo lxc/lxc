@@ -573,7 +573,7 @@ static bool cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 	if (slash)
 		*slash = '\0';
 
-	cgpath = must_make_path(h->mountpoint, h->base_cgroup, cgname, NULL);
+	cgpath = must_make_path(h->mountpoint, h->container_base_path, cgname, NULL);
 	if (slash)
 		*slash = '/';
 
@@ -810,7 +810,7 @@ static char **cg_unified_get_controllers(const char *file)
 }
 
 static struct hierarchy *add_hierarchy(struct hierarchy ***h, char **clist, char *mountpoint,
-				       char *base_cgroup, int type)
+				       char *container_base_path, int type)
 {
 	struct hierarchy *new;
 	int newentry;
@@ -818,7 +818,7 @@ static struct hierarchy *add_hierarchy(struct hierarchy ***h, char **clist, char
 	new = must_alloc(sizeof(*new));
 	new->controllers = clist;
 	new->mountpoint = mountpoint;
-	new->base_cgroup = base_cgroup;
+	new->container_base_path = container_base_path;
 	new->container_full_path = NULL;
 	new->version = type;
 
@@ -1015,7 +1015,7 @@ static void lxc_cgfsng_print_hierarchies(struct cgroup_ops *ops)
 		int j;
 		char **cit;
 
-		TRACE("  %d: base_cgroup: %s", i, (*it)->base_cgroup ? (*it)->base_cgroup : "(null)");
+		TRACE("  %d: base_cgroup: %s", i, (*it)->container_base_path ? (*it)->container_base_path : "(null)");
 		TRACE("      mountpoint:  %s", (*it)->mountpoint ? (*it)->mountpoint : "(null)");
 		TRACE("      controllers:");
 		for (j = 0, cit = (*it)->controllers; cit && *cit; cit++, j++)
@@ -1167,7 +1167,7 @@ static bool cg_unified_create_cgroup(struct hierarchy *h, char *cgname)
 	if (parts_len > 0)
 		parts_len--;
 
-	cgroup = must_make_path(h->mountpoint, h->base_cgroup, NULL);
+	cgroup = must_make_path(h->mountpoint, h->container_base_path, NULL);
 	for (i = 0; i < parts_len; i++) {
 		int ret;
 		char *target;
@@ -1196,7 +1196,7 @@ static bool create_path_for_hierarchy(struct hierarchy *h, char *cgname)
 {
 	int ret;
 
-	h->container_full_path = must_make_path(h->mountpoint, h->base_cgroup, cgname, NULL);
+	h->container_full_path = must_make_path(h->mountpoint, h->container_base_path, cgname, NULL);
 	if (dir_exists(h->container_full_path)) {
 		ERROR("The cgroup \"%s\" already existed", h->container_full_path);
 		return false;
@@ -1498,7 +1498,7 @@ static int cg_legacy_mount_controllers(int type, struct hierarchy *h,
 		INFO("Remounted %s read-only", controllerpath);
 	}
 
-	sourcepath = must_make_path(h->mountpoint, h->base_cgroup,
+	sourcepath = must_make_path(h->mountpoint, h->container_base_path,
 				    container_cgroup, NULL);
 	if (type == LXC_AUTO_CGROUP_RO)
 		flags |= MS_RDONLY;
@@ -1669,7 +1669,7 @@ __cgfsng_ops__ static bool cgfsng_mount(struct cgroup_ops *ops,
 			continue;
 		}
 
-		path2 = must_make_path(controllerpath, h->base_cgroup,
+		path2 = must_make_path(controllerpath, h->container_base_path,
 				       ops->container_cgroup, NULL);
 		ret = mkdir_p(path2, 0755);
 		if (ret < 0) {
@@ -1761,7 +1761,7 @@ __cgfsng_ops__ static bool cgfsng_escape(const struct cgroup_ops *ops)
 		char *fullpath;
 
 		fullpath = must_make_path(ops->hierarchies[i]->mountpoint,
-					  ops->hierarchies[i]->base_cgroup,
+					  ops->hierarchies[i]->container_base_path,
 					  "cgroup.procs", NULL);
 		ret = lxc_write_to_file(fullpath, "0", 2, false, 0666);
 		if (ret != 0) {

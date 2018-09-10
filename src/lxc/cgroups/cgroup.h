@@ -57,7 +57,7 @@ typedef enum {
  *   depending on whether this is a hybrid cgroup layout (mix of legacy and
  *   unified hierarchies) or a pure unified cgroup layout.
  *
- * @base_cgroup
+ * @container_base_path
  * - The cgroup under which the container cgroup path
  *   is created. This will be either the caller's cgroup (if not root), or
  *   init's cgroup (if root).
@@ -76,7 +76,7 @@ typedef enum {
 struct hierarchy {
 	char **controllers;
 	char *mountpoint;
-	char *base_cgroup;
+	char *container_base_path;
 	char *container_full_path;
 	int version;
 };
