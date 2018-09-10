@@ -65,6 +65,9 @@ typedef enum {
  * @container_full_path
  * - The full path to the containers cgroup.
  *
+ * @monitor_full_path
+ * - The full path to the monitor's cgroup.
+ *
  * @version
  * - legacy hierarchy
  *   If the hierarchy is a legacy hierarchy this will be set to
@@ -78,6 +81,7 @@ struct hierarchy {
 	char *mountpoint;
 	char *container_base_path;
 	char *container_full_path;
+	char *monitor_full_path;
 	int version;
 };
 

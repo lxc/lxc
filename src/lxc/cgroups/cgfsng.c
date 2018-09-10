@@ -820,6 +820,7 @@ static struct hierarchy *add_hierarchy(struct hierarchy ***h, char **clist, char
 	new->mountpoint = mountpoint;
 	new->container_base_path = container_base_path;
 	new->container_full_path = NULL;
+	new->monitor_full_path = NULL;
 	new->version = type;
 
 	newentry = append_null_to_list((void ***)h);

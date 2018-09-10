@@ -88,6 +88,7 @@ void cgroup_exit(struct cgroup_ops *ops)
 		free((*it)->mountpoint);
 		free((*it)->container_base_path);
 		free((*it)->container_full_path);
+		free((*it)->monitor_full_path);
 		free(*it);
 	}
 	free(ops->hierarchies);
