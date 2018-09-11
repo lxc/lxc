@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <linux/types.h>
 #include <sys/socket.h>
 
 #include "list.h"
@@ -273,5 +274,6 @@ extern int lxc_network_recv_veth_names_from_parent(struct lxc_handler *handler);
 extern int lxc_network_send_name_and_ifindex_to_parent(struct lxc_handler *handler);
 extern int lxc_network_recv_name_and_ifindex_from_child(struct lxc_handler *handler);
 extern int lxc_netns_set_nsid(int netns_fd);
+extern int lxc_netns_get_nsid(__s32 fd);
 
 #endif /* __LXC_NETWORK_H */
