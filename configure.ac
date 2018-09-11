@@ -685,6 +685,19 @@ AC_ARG_ENABLE([thread-safety],
 	[], [enable_thread_safety=yes])
 AM_CONDITIONAL([ENFORCE_THREAD_SAFETY], [test "x$enable_thread_safety" = "xyes"])
 
+AC_ARG_ENABLE([dlog],
+	[AC_HELP_STRING([--enable-dlog], [enable dlog support [default=no]])],
+	[], [enable_dlog=no])
+AM_CONDITIONAL([ENABLE_DLOG], [test "x$enable_dlog" = "xyes"])
+
+AM_COND_IF([ENABLE_DLOG],
+	[PKG_CHECK_MODULES([DLOG],[dlog],[],[
+		AC_CHECK_HEADER([dlog.h],[],[AC_MSG_ERROR([You must install the dlog development package in order to compile lxc])])
+		AC_CHECK_LIB([dlog], [dlog_print],[],[AC_MSG_ERROR([You must install the dlog development package in order to compile lxc])])
+		AC_SUBST([DLOG_LIBS], [-ldlog])
+		])
+	])
+
 # Files requiring some variable expansion
 AC_CONFIG_FILES([
 	Makefile
@@ -931,4 +944,7 @@ Paths:
 
 Thread-safety:
  - enforce: $enable_thread_safety
+
+Dlog:
+ - enable: $enable_dlog
 EOF

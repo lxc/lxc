@@ -49,6 +49,13 @@
 #include "include/strlcpy.h"
 #endif
 
+#if HAVE_DLOG
+#include <dlog.h>
+
+#undef LOG_TAG
+#define LOG_TAG "LXC"
+#endif
+
 /* We're logging in seconds and nanoseconds. Assuming that the underlying
  * datatype is currently at maximum a 64bit integer, we have a date string that
  * is of maximum length (2^64 - 1) * 2 = (21 + 21) = 42.
@@ -347,6 +354,41 @@ again:
 	return ret;
 }
 
+#if HAVE_DLOG
+static int log_append_dlog(const struct lxc_log_appender *appender,
+			     struct lxc_log_event *event)
+{
+	if (event->priority < LXC_LOG_LEVEL_ERROR)
+		return 0;
+
+	switch(event->priority) {
+	case LXC_LOG_LEVEL_TRACE:
+	case LXC_LOG_LEVEL_DEBUG:
+		LOG_VA(LOG_DEBUG, LOG_TAG, event->fmt, *event->vap);
+		break;
+	case LXC_LOG_LEVEL_INFO:
+		LOG_VA(LOG_INFO, LOG_TAG, event->fmt, *event->vap);
+		break;
+	case LXC_LOG_LEVEL_NOTICE:
+	case LXC_LOG_LEVEL_WARN:
+		LOG_VA(LOG_WARN, LOG_TAG, event->fmt, *event->vap);
+		break;
+	case LXC_LOG_LEVEL_ERROR:
+		LOG_VA(LOG_ERROR, LOG_TAG, event->fmt, *event->vap);
+		break;
+	case LXC_LOG_LEVEL_CRIT:
+	case LXC_LOG_LEVEL_ALERT:
+	case LXC_LOG_LEVEL_FATAL:
+		LOG_VA(LOG_FATAL, LOG_TAG, event->fmt, *event->vap);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+#endif
+
 static struct lxc_log_appender log_appender_syslog = {
 	.name		= "syslog",
 	.append		= log_append_syslog,
@@ -365,6 +407,14 @@ static struct lxc_log_appender log_appender_logfile = {
 	.next		= NULL,
 };
 
+#if HAVE_DLOG
+static struct lxc_log_appender log_appender_dlog = {
+	.name		= "dlog",
+	.append		= log_append_dlog,
+	.next		= NULL,
+};
+#endif
+
 static struct lxc_log_category log_root = {
 	.name		= "root",
 	.priority	= LXC_LOG_LEVEL_ERROR,
@@ -372,12 +422,21 @@ static struct lxc_log_category log_root = {
 	.parent		= NULL,
 };
 
+#if HAVE_DLOG
+struct lxc_log_category lxc_log_category_lxc = {
+	.name		= "lxc",
+	.priority	= LXC_LOG_LEVEL_ERROR,
+	.appender	= &log_appender_dlog,
+	.parent		= &log_root
+};
+#else
 struct lxc_log_category lxc_log_category_lxc = {
 	.name		= "lxc",
 	.priority	= LXC_LOG_LEVEL_ERROR,
 	.appender	= &log_appender_logfile,
 	.parent		= &log_root
 };
+#endif
 
 /*---------------------------------------------------------------------------*/
 static int build_dir(const char *name)
