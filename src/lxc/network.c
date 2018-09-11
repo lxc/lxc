@@ -3196,7 +3196,7 @@ enum {
 
 int lxc_netns_set_nsid(int fd)
 {
-	ssize_t ret;
+	int ret;
 	char buf[NLMSG_ALIGN(sizeof(struct nlmsghdr)) +
 		 NLMSG_ALIGN(sizeof(struct rtgenmsg)) +
 		 NLMSG_ALIGN(1024)];
@@ -3209,7 +3209,7 @@ int lxc_netns_set_nsid(int fd)
 
 	ret = netlink_open(&nlh, NETLINK_ROUTE);
 	if (ret < 0)
-		return ret;
+		return -1;
 
 	memset(buf, 0, sizeof(buf));
 	hdr = (struct nlmsghdr *)buf;
