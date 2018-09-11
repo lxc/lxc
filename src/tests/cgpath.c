@@ -59,7 +59,7 @@ static int test_running_container(const char *lxcpath,
 	char  value[NAME_MAX], value_save[NAME_MAX];
 	struct cgroup_ops *cgroup_ops;
 
-	sprintf(relpath, "%s/%s", group ? group : "lxc", name);
+	sprintf(relpath, "%s/%s", group ? group : "lxc.payload", name);
 
 	if ((c = lxc_container_new(name, lxcpath)) == NULL) {
 		TSTERR("container %s couldn't instantiate", name);
