@@ -340,4 +340,7 @@ extern int __build_bug_on_failed;
 #define PTR_TO_INTMAX(p) ((intmax_t)((intptr_t)(p)))
 #define INTMAX_TO_PTR(u) ((void *)((intptr_t)(u)))
 
+#define LXC_INVALID_UID ((uid_t)-1)
+#define LXC_INVALID_GID ((gid_t)-1)
+
 #endif /* __LXC_MACRO_H */

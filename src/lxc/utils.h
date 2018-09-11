@@ -328,6 +328,10 @@ inline static bool am_host_unpriv(void)
  * parse /proc/self/uid_map to find what @orig maps to
  */
 extern uid_t get_ns_uid(uid_t orig);
+/*
+ * parse /proc/self/gid_map to find what @orig maps to
+ */
+extern gid_t get_ns_gid(gid_t orig);
 
 extern bool dir_exists(const char *path);
 
@@ -354,9 +358,11 @@ extern int lxc_preserve_ns(const int pid, const char *ns);
 /* Check whether a signal is blocked by a process. */
 extern bool task_blocks_signal(pid_t pid, int signal);
 
-/* Switch to a new uid and gid. */
-extern int lxc_switch_uid_gid(uid_t uid, gid_t gid);
-extern int lxc_setgroups(int size, gid_t list[]);
+/* Switch to a new uid and gid.
+ * If LXC_INVALID_{G,U}ID is passed then the set{g,u}id() will not be called.
+ */
+extern bool lxc_switch_uid_gid(uid_t uid, gid_t gid);
+extern bool lxc_setgroups(int size, gid_t list[]);
 
 /* Find an unused loop device and associate it with source. */
 extern int lxc_prepare_loop_dev(const char *source, char *loop_dev, int flags);

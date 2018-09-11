@@ -60,6 +60,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <arg choice="opt">--clear-env</arg>
       <arg choice="opt">-v, --set-var <replaceable>variable</replaceable></arg>
       <arg choice="opt">--keep-var <replaceable>variable</replaceable></arg>
+      <arg choice="opt">-u, --uid <replaceable>uid</replaceable></arg>
+      <arg choice="opt">-g, --gid <replaceable>gid</replaceable></arg>
       <arg choice="opt">-- <replaceable>command</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -278,6 +280,30 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	    specified in conjunction
 	    with <replaceable>--clear-env</replaceable>, and can be
 	    specified multiple times.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--u, --uid <replaceable>uid</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    Executes the <replaceable>command</replaceable> with user ID
+	   <replaceable>uid</replaceable> inside the container.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--g, --gid <replaceable>gid</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    Executes the <replaceable>command</replaceable> with group ID
+	   <replaceable>gid</replaceable> inside the container.
 	  </para>
 	</listitem>
       </varlistentry>

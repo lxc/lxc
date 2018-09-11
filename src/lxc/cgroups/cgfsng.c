@@ -1388,6 +1388,8 @@ static int chown_cgroup_wrapper(void *data)
 	}
 
 	destuid = get_ns_uid(arg->origuid);
+	if (destuid == LXC_INVALID_UID)
+		destuid = 0;
 
 	for (i = 0; arg->hierarchies[i]; i++) {
 		char *fullpath;

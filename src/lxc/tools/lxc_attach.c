@@ -72,6 +72,8 @@ static const struct option my_longopts[] = {
 	{"set-var", required_argument, 0, 'v'},
 	{"pty-log", required_argument, 0, 'L'},
 	{"rcfile", required_argument, 0, 'f'},
+	{"uid", required_argument, 0, 'u'},
+	{"gid", required_argument, 0, 'g'},
 	LXC_COMMON_OPTIONS
 };
 
@@ -122,6 +124,8 @@ Options :\n\
                     multiple times.\n\
   -f, --rcfile=FILE\n\
                     Load configuration file FILE\n\
+  -u, --uid=UID     Execute COMMAND with UID inside the container\n\
+  -g, --gid=GID     Execute COMMAND with GID inside the container\n\
 ",
 	.options      = my_longopts,
 	.parser       = my_parser,
@@ -186,6 +190,14 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 		break;
 	case 'f':
 		args->rcfile = arg;
+		break;
+	case 'u':
+		if (lxc_safe_uint(arg, &args->uid) < 0)
+			return -1;
+		break;
+	case 'g':
+		if (lxc_safe_uint(arg, &args->gid) < 0)
+			return -1;
 		break;
 	}
 
@@ -332,6 +344,12 @@ int main(int argc, char *argv[])
 		if (attach_options.log_fd < 0)
 			goto out;
 	}
+
+	if (my_args.uid)
+		attach_options.uid = my_args.uid;
+
+	if (my_args.gid)
+		attach_options.gid = my_args.gid;
 
 	if (command.program)
 		ret = c->attach(c, lxc_attach_run_command, &command, &attach_options, &pid);

@@ -544,7 +544,34 @@ uid_t get_ns_uid(uid_t orig)
 		}
 	}
 
-	nsid = 0;
+	nsid = LXC_INVALID_UID;
+
+found:
+	fclose(f);
+	free(line);
+	return nsid;
+}
+
+gid_t get_ns_gid(gid_t orig)
+{
+	char *line = NULL;
+	size_t sz = 0;
+	gid_t nsid, hostid, range;
+	FILE *f = fopen("/proc/self/gid_map", "r");
+	if (!f)
+		return 0;
+
+	while (getline(&line, &sz, f) != -1) {
+		if (sscanf(line, "%u %u %u", &nsid, &hostid, &range) != 3)
+			continue;
+
+		if (hostid <= orig && hostid + range > orig) {
+			nsid += orig - hostid;
+			goto found;
+		}
+	}
+
+	nsid = LXC_INVALID_GID;
 
 found:
 	fclose(f);
@@ -1324,33 +1351,41 @@ int lxc_preserve_ns(const int pid, const char *ns)
 	return open(path, O_RDONLY | O_CLOEXEC);
 }
 
-int lxc_switch_uid_gid(uid_t uid, gid_t gid)
+bool lxc_switch_uid_gid(uid_t uid, gid_t gid)
 {
-	if (setgid(gid) < 0) {
-		SYSERROR("Failed to switch to gid %d.", gid);
-		return -errno;
-	}
-	NOTICE("Switched to gid %d.", gid);
+	int ret = 0;
 
-	if (setuid(uid) < 0) {
-		SYSERROR("Failed to switch to uid %d.", uid);
-		return -errno;
+	if (gid != LXC_INVALID_GID) {
+		ret = setgid(gid);
+		if (ret < 0) {
+			SYSERROR("Failed to switch to gid %d", gid);
+			return false;
+		}
+		NOTICE("Switched to gid %d", gid);
 	}
-	NOTICE("Switched to uid %d.", uid);
 
-	return 0;
+	if (uid != LXC_INVALID_UID) {
+		ret = setuid(uid);
+		if (ret < 0) {
+			SYSERROR("Failed to switch to uid %d", uid);
+			return false;
+		}
+		NOTICE("Switched to uid %d", uid);
+	}
+
+	return true;
 }
 
 /* Simple covenience function which enables uniform logging. */
-int lxc_setgroups(int size, gid_t list[])
+bool lxc_setgroups(int size, gid_t list[])
 {
 	if (setgroups(size, list) < 0) {
-		SYSERROR("Failed to setgroups().");
-		return -errno;
+		SYSERROR("Failed to setgroups()");
+		return false;
 	}
-	NOTICE("Dropped additional groups.");
+	NOTICE("Dropped additional groups");
 
-	return 0;
+	return true;
 }
 
 static int lxc_get_unused_loop_dev_legacy(char *loop_name)
