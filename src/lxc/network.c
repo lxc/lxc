@@ -3234,3 +3234,79 @@ int lxc_netns_set_nsid(int fd)
 
 	return 0;
 }
+
+static int parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, int len)
+{
+
+	memset(tb, 0, sizeof(struct rtattr *) * (max + 1));
+
+	while (RTA_OK(rta, len)) {
+		unsigned short type = rta->rta_type;
+
+		if ((type <= max) && (!tb[type]))
+			tb[type] = rta;
+
+		rta = RTA_NEXT(rta, len);
+	}
+
+	return 0;
+}
+
+static inline __s32 rta_getattr_s32(const struct rtattr *rta)
+{
+	return *(__s32 *)RTA_DATA(rta);
+}
+
+#ifndef NETNS_RTA
+#define NETNS_RTA(r) \
+	((struct rtattr *)(((char *)(r)) + NLMSG_ALIGN(sizeof(struct rtgenmsg))))
+#endif
+
+int lxc_netns_get_nsid(int fd)
+{
+	int ret;
+	ssize_t len;
+	char buf[NLMSG_ALIGN(sizeof(struct nlmsghdr)) +
+		 NLMSG_ALIGN(sizeof(struct rtgenmsg)) + NLMSG_ALIGN(1024)];
+	struct rtattr *tb[__LXC_NETNSA_MAX + 1];
+	struct nl_handler nlh;
+	struct nlmsghdr *hdr;
+	struct rtgenmsg *msg;
+	int saved_errno;
+	__u32 netns_fd = fd;
+
+	ret = netlink_open(&nlh, NETLINK_ROUTE);
+	if (ret < 0)
+		return -1;
+
+	memset(buf, 0, sizeof(buf));
+	hdr = (struct nlmsghdr *)buf;
+	msg = (struct rtgenmsg *)NLMSG_DATA(hdr);
+
+	hdr->nlmsg_len = NLMSG_LENGTH(sizeof(*msg));
+	hdr->nlmsg_type = RTM_GETNSID;
+	hdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+	hdr->nlmsg_pid = 0;
+	hdr->nlmsg_seq = RTM_GETNSID;
+	msg->rtgen_family = AF_UNSPEC;
+
+	addattr(hdr, 1024, __LXC_NETNSA_FD, &netns_fd, sizeof(netns_fd));
+
+	ret = __netlink_transaction(&nlh, hdr, hdr);
+	saved_errno = errno;
+	netlink_close(&nlh);
+	errno = saved_errno;
+	if (ret < 0)
+		return -1;
+
+	msg = NLMSG_DATA(hdr);
+	len = hdr->nlmsg_len - NLMSG_SPACE(sizeof(*msg));
+	if (len < 0)
+		return -1;
+
+	parse_rtattr(tb, __LXC_NETNSA_MAX, NETNS_RTA(msg), len);
+	if (tb[__LXC_NETNSA_NSID])
+		return rta_getattr_s32(tb[__LXC_NETNSA_NSID]);
+
+	return -1;
+}

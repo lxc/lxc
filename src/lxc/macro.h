@@ -27,6 +27,7 @@
 #include <linux/loop.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+#include <linux/types.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/mount.h>
@@ -277,6 +278,10 @@ extern int __build_bug_on_failed;
 
 #ifndef RTM_NEWNSID
 #define RTM_NEWNSID 88
+#endif
+
+#ifndef RTM_GETNSID
+#define RTM_GETNSID 90
 #endif
 
 #ifndef NLMSG_ERROR
