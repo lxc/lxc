@@ -239,18 +239,6 @@ int lxc_make_tmpfile(char *template, bool rm)
 	return fd;
 }
 
-/* In overlayfs, st_dev is unreliable. So on overlayfs we don't do the
- * lxc_rmdir_onedev()
- */
-static bool is_native_overlayfs(const char *path)
-{
-	if (has_fs_type(path, OVERLAY_SUPER_MAGIC) ||
-	    has_fs_type(path, OVERLAYFS_SUPER_MAGIC))
-		return true;
-
-	return false;
-}
-
 bool is_fs_type(const struct statfs *fs, fs_type_magic magic_val)
 {
 	return (fs->f_type == (fs_type_magic)magic_val);
@@ -258,7 +246,6 @@ bool is_fs_type(const struct statfs *fs, fs_type_magic magic_val)
 
 bool has_fs_type(const char *path, fs_type_magic magic_val)
 {
-	bool has_type;
 	int ret;
 	struct statfs sb;
 
