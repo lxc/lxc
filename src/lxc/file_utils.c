@@ -258,7 +258,6 @@ bool is_fs_type(const struct statfs *fs, fs_type_magic magic_val)
 
 bool has_fs_type(const char *path, fs_type_magic magic_val)
 {
-	bool has_type;
 	int ret;
 	struct statfs sb;
 
