@@ -2257,7 +2257,6 @@ static int set_config_namespace_clone(const char *key, const char *value,
 {
 	char *ns, *token;
 	int cloneflag = 0;
-	char *saveptr = NULL;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_namespace_clone(key, lxc_conf, data);
@@ -2293,7 +2292,6 @@ static int set_config_namespace_keep(const char *key, const char *value,
 {
 	char *ns, *token;
 	int cloneflag = 0;
-	char *saveptr = NULL;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_namespace_keep(key, lxc_conf, data);

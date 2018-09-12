@@ -47,7 +47,6 @@ int lxc_storage_rsync_exec_wrapper(void *data)
 
 int lxc_rsync_exec_wrapper(void *data)
 {
-	int ret;
 	struct rsync_data_char *args = data;
 
 	if (!lxc_switch_uid_gid(0, 0))
