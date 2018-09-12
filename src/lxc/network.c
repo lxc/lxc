@@ -3171,6 +3171,7 @@ int addattr(struct nlmsghdr *n, size_t maxlen, int type, const void *data, size_
 	int len = RTA_LENGTH(alen);
 	struct rtattr *rta;
 
+	errno = EMSGSIZE;
 	if (NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(len) > maxlen)
 		return -1;
 
@@ -3204,8 +3205,8 @@ int lxc_netns_set_nsid(int fd)
 	struct nlmsghdr *hdr;
 	struct rtgenmsg *msg;
 	int saved_errno;
-	__s32 ns_id = -1;
-	__u32 netns_fd = fd;
+	const __s32 ns_id = -1;
+	const __u32 netns_fd = fd;
 
 	ret = netlink_open(&nlh, NETLINK_ROUTE);
 	if (ret < 0)
@@ -3222,17 +3223,22 @@ int lxc_netns_set_nsid(int fd)
 	hdr->nlmsg_seq = RTM_NEWNSID;
 	msg->rtgen_family = AF_UNSPEC;
 
-	addattr(hdr, 1024, __LXC_NETNSA_FD, &netns_fd, sizeof(netns_fd));
-	addattr(hdr, 1024, __LXC_NETNSA_NSID, &ns_id, sizeof(ns_id));
+	ret = addattr(hdr, 1024, __LXC_NETNSA_FD, &netns_fd, sizeof(netns_fd));
+	if (ret < 0)
+		goto on_error;
+
+	ret = addattr(hdr, 1024, __LXC_NETNSA_NSID, &ns_id, sizeof(ns_id));
+	if (ret < 0)
+		goto on_error;
 
 	ret = __netlink_transaction(&nlh, hdr, hdr);
+
+on_error:
 	saved_errno = errno;
 	netlink_close(&nlh);
 	errno = saved_errno;
-	if (ret < 0)
-		return -1;
 
-	return 0;
+	return ret;
 }
 
 static int parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, int len)
@@ -3267,7 +3273,8 @@ int lxc_netns_get_nsid(int fd)
 	int ret;
 	ssize_t len;
 	char buf[NLMSG_ALIGN(sizeof(struct nlmsghdr)) +
-		 NLMSG_ALIGN(sizeof(struct rtgenmsg)) + NLMSG_ALIGN(1024)];
+		 NLMSG_ALIGN(sizeof(struct rtgenmsg)) +
+		 NLMSG_ALIGN(1024)];
 	struct rtattr *tb[__LXC_NETNSA_MAX + 1];
 	struct nl_handler nlh;
 	struct nlmsghdr *hdr;
@@ -3290,15 +3297,17 @@ int lxc_netns_get_nsid(int fd)
 	hdr->nlmsg_seq = RTM_GETNSID;
 	msg->rtgen_family = AF_UNSPEC;
 
-	addattr(hdr, 1024, __LXC_NETNSA_FD, &netns_fd, sizeof(netns_fd));
+	ret = addattr(hdr, 1024, __LXC_NETNSA_FD, &netns_fd, sizeof(netns_fd));
+	if (ret == 0)
+		ret = __netlink_transaction(&nlh, hdr, hdr);
 
-	ret = __netlink_transaction(&nlh, hdr, hdr);
 	saved_errno = errno;
 	netlink_close(&nlh);
 	errno = saved_errno;
 	if (ret < 0)
 		return -1;
 
+	errno = EINVAL;
 	msg = NLMSG_DATA(hdr);
 	len = hdr->nlmsg_len - NLMSG_SPACE(sizeof(*msg));
 	if (len < 0)
