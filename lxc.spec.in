@@ -91,6 +91,13 @@ BuildRequires:  libseccomp-devel
 %endif
 %endif
 
+#
+# Additional package for Tizen
+#
+%if %{defined tizen_version}
+BuildRequires:  pkgconfig(dlog)
+%endif
+
 %description
 Containers are insulated areas inside a system, which have their own namespace
 for filesystem, network, PID, IPC, CPU and memory allocation and which can be
