@@ -372,33 +372,49 @@ again:
 static int log_append_dlog(const struct lxc_log_appender *appender,
 			     struct lxc_log_event *event)
 {
-	if (event->priority < LXC_LOG_LEVEL_ERROR)
-		return 0;
+	char *msg = lxc_log_get_va_msg(event);
+	const char *log_container_name = lxc_log_get_container_name();
 
-	switch(event->priority) {
+	switch (event->priority) {
 	case LXC_LOG_LEVEL_TRACE:
 	case LXC_LOG_LEVEL_DEBUG:
-		LOG_VA(LOG_DEBUG, LOG_TAG, event->fmt, *event->vap);
+		print_log(DLOG_DEBUG, LOG_TAG, "%s: %s(%d) > [%s] %s",
+		          event->locinfo->file, event->locinfo->func, event->locinfo->line,
+		          log_container_name ? log_container_name : "-",
+		          msg ? msg : "-");
 		break;
 	case LXC_LOG_LEVEL_INFO:
-		LOG_VA(LOG_INFO, LOG_TAG, event->fmt, *event->vap);
+		print_log(DLOG_INFO, LOG_TAG, "%s: %s(%d) > [%s] %s",
+		          event->locinfo->file, event->locinfo->func, event->locinfo->line,
+		          log_container_name ? log_container_name : "-",
+		          msg ? msg : "-");
 		break;
 	case LXC_LOG_LEVEL_NOTICE:
 	case LXC_LOG_LEVEL_WARN:
-		LOG_VA(LOG_WARN, LOG_TAG, event->fmt, *event->vap);
+		print_log(DLOG_WARN, LOG_TAG, "%s: %s(%d) > [%s] %s",
+		          event->locinfo->file, event->locinfo->func, event->locinfo->line,
+		          log_container_name ? log_container_name : "-",
+		          msg ? msg : "-");
 		break;
 	case LXC_LOG_LEVEL_ERROR:
-		LOG_VA(LOG_ERROR, LOG_TAG, event->fmt, *event->vap);
+		print_log(DLOG_ERROR, LOG_TAG, "%s: %s(%d) > [%s] %s",
+		          event->locinfo->file, event->locinfo->func, event->locinfo->line,
+		          log_container_name ? log_container_name : "-",
+		          msg ? msg : "-");
 		break;
 	case LXC_LOG_LEVEL_CRIT:
 	case LXC_LOG_LEVEL_ALERT:
 	case LXC_LOG_LEVEL_FATAL:
-		LOG_VA(LOG_FATAL, LOG_TAG, event->fmt, *event->vap);
+		print_log(DLOG_FATAL, LOG_TAG, "%s: %s(%d) > [%s] %s",
+		          event->locinfo->file, event->locinfo->func, event->locinfo->line,
+		          log_container_name ? log_container_name : "-",
+		          msg ? msg : "-");
 		break;
 	default:
 		break;
 	}
 
+	free(msg);
 	return 0;
 }
 #endif
@@ -439,7 +455,7 @@ static struct lxc_log_category log_root = {
 #if HAVE_DLOG
 struct lxc_log_category lxc_log_category_lxc = {
 	.name		= "lxc",
-	.priority	= LXC_LOG_LEVEL_ERROR,
+	.priority	= LXC_LOG_LEVEL_TRACE,
 	.appender	= &log_appender_dlog,
 	.parent		= &log_root
 };
