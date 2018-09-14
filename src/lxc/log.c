@@ -101,36 +101,57 @@ static int lxc_log_priority_to_syslog(int priority)
 	return LOG_NOTICE;
 }
 
-/*---------------------------------------------------------------------------*/
-static int log_append_syslog(const struct lxc_log_appender *appender,
-			     struct lxc_log_event *event)
+static const char *lxc_log_get_container_name()
+{
+#ifndef NO_LXC_CONF
+	if (current_config && !log_vmname)
+		return current_config->name;
+#endif
+
+	return log_vmname;
+}
+
+static char *lxc_log_get_va_msg(struct lxc_log_event *event)
 {
 	char *msg;
 	int rc, len;
 	va_list args;
-	const char *log_container_name = log_vmname;
 
-#ifndef NO_LXC_CONF
-	if (current_config && !log_container_name)
-		log_container_name = current_config->name;
-#endif
-
-	if (!syslog_enable)
-		return 0;
+	if (!event)
+		return NULL;
 
 	va_copy(args, *event->vap);
 	len = vsnprintf(NULL, 0, event->fmt, args) + 1;
 	va_end(args);
 
 	msg = malloc(len * sizeof(char));
-	if (msg == NULL)
-		return 0;
+	if (!msg)
+		return NULL;
 
 	rc = vsnprintf(msg, len, event->fmt, *event->vap);
 	if (rc == -1 || rc >= len) {
 		free(msg);
-		return 0;
+		return NULL;
 	}
+
+	return msg;
+}
+
+/*---------------------------------------------------------------------------*/
+static int log_append_syslog(const struct lxc_log_appender *appender,
+			     struct lxc_log_event *event)
+{
+	char *msg;
+	const char *log_container_name;
+
+	if (!syslog_enable)
+		return 0;
+
+	log_container_name = lxc_log_get_container_name();
+
+	msg = lxc_log_get_va_msg(event);
+	if (!msg)
+		return 0;
 
 	syslog(lxc_log_priority_to_syslog(event->priority),
 	       "%s%s %s - %s:%s:%d - %s" ,
@@ -154,12 +175,7 @@ static int log_append_stderr(const struct lxc_log_appender *appender,
 	if (event->priority < LXC_LOG_LEVEL_ERROR)
 		return 0;
 
-	log_container_name = log_vmname;
-
-#ifndef NO_LXC_CONF
-	if (current_config && !log_container_name)
-		log_container_name = current_config->name;
-#endif
+	log_container_name = lxc_log_get_container_name();
 
 	fprintf(stderr, "%s: %s%s", log_prefix,
 	        log_container_name ? log_container_name : "",
@@ -299,17 +315,15 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 	int n;
 	ssize_t ret;
 	int fd_to_use = -1;
-	const char *log_container_name = log_vmname;
+	const char *log_container_name;
 
 #ifndef NO_LXC_CONF
-	if (current_config) {
+	if (current_config)
 		if (!lxc_log_use_global_fd)
 			fd_to_use = current_config->logfd;
-
-		if (!log_container_name)
-			log_container_name = current_config->name;
-	}
 #endif
+
+	log_container_name = lxc_log_get_container_name();
 
 	if (fd_to_use == -1)
 		fd_to_use = lxc_log_fd;
