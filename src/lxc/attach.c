@@ -706,7 +706,6 @@ struct attach_clone_payload {
 static void lxc_put_attach_clone_payload(struct attach_clone_payload *p)
 {
 	if (p->ipc_socket >= 0) {
-		shutdown(p->ipc_socket, SHUT_RDWR);
 		close(p->ipc_socket);
 		p->ipc_socket = -EBADF;
 	}
@@ -848,7 +847,6 @@ static int attach_child_main(struct attach_clone_payload *payload)
 			goto on_error;
 		TRACE("Loaded seccomp profile");
 	}
-	shutdown(payload->ipc_socket, SHUT_RDWR);
 	close(payload->ipc_socket);
 	payload->ipc_socket = -EBADF;
 	lxc_proc_put_context_info(init_ctx);
