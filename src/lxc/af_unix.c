@@ -42,50 +42,70 @@
 
 lxc_log_define(af_unix, lxc);
 
+static ssize_t lxc_abstract_unix_set_sockaddr(struct sockaddr_un *addr,
+				const char *path)
+{
+	size_t len;
+
+	if (!addr || !path) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	/* Clear address structure */
+	memset(addr, 0, sizeof(*addr));
+
+	addr->sun_family = AF_UNIX;
+
+	len = strlen(&path[1]);
+
+	/* do not enforce \0-termination */
+	if (len >= INT_MAX || len >= sizeof(addr->sun_path)) {
+		errno = ENAMETOOLONG;
+		return -1;
+	}
+
+	/* do not enforce \0-termination */
+	memcpy(&addr->sun_path[1], &path[1], len);
+	return len;
+}
+
 int lxc_abstract_unix_open(const char *path, int type, int flags)
 {
 	int fd, ret;
-	size_t len;
+	ssize_t len;
 	struct sockaddr_un addr;
 
 	fd = socket(PF_UNIX, type, 0);
 	if (fd < 0)
 		return -1;
 
-	/* Clear address structure */
-	memset(&addr, 0, sizeof(addr));
-
 	if (!path)
 		return fd;
 
-	addr.sun_family = AF_UNIX;
-
-	len = strlen(&path[1]);
-	/* do not enforce \0-termination */
-	if (len >= sizeof(addr.sun_path)) {
+	len = lxc_abstract_unix_set_sockaddr(&addr, path);
+	if (len < 0) {
+		int saved_errno = errno;
 		close(fd);
-		errno = ENAMETOOLONG;
+		errno = saved_errno;
 		return -1;
 	}
-
-	/* do not enforce \0-termination */
-	memcpy(&addr.sun_path[1], &path[1], len);
 
 	ret = bind(fd, (struct sockaddr *)&addr,
 		   offsetof(struct sockaddr_un, sun_path) + len + 1);
 	if (ret < 0) {
-		int saved_erron = errno;
+		int saved_errno = errno;
 		close(fd);
-		errno = saved_erron;
+		errno = saved_errno;
 		return -1;
 	}
 
 	if (type == SOCK_STREAM) {
 		ret = listen(fd, 100);
 		if (ret < 0) {
-			int saved_erron = errno;
+			int saved_errno = errno;
 			close(fd);
-			errno = saved_erron;
+			errno = saved_errno;
 			return -1;
 		}
 	}
@@ -101,27 +121,20 @@ void lxc_abstract_unix_close(int fd)
 int lxc_abstract_unix_connect(const char *path)
 {
 	int fd, ret;
-	size_t len;
+	ssize_t len;
 	struct sockaddr_un addr;
 
 	fd = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (fd < 0)
 		return -1;
 
-	memset(&addr, 0, sizeof(addr));
-
-	addr.sun_family = AF_UNIX;
-
-	len = strlen(&path[1]);
-	/* do not enforce \0-termination */
-	if (len >= sizeof(addr.sun_path)) {
+	len = lxc_abstract_unix_set_sockaddr(&addr, path);
+	if (len < 0) {
+		int saved_errno = errno;
 		close(fd);
-		errno = ENAMETOOLONG;
+		errno = saved_errno;
 		return -1;
 	}
-
-	/* do not enforce \0-termination */
-	memcpy(&addr.sun_path[1], &path[1], len);
 
 	ret = connect(fd, (struct sockaddr *)&addr,
 		      offsetof(struct sockaddr_un, sun_path) + len + 1);
