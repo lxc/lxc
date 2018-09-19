@@ -1510,14 +1510,23 @@ int lxc_attach(const char *name, const char *lxcpath,
 	_exit(0);
 }
 
-int lxc_attach_run_command(void* payload)
+int lxc_attach_run_command(void *payload)
 {
-	lxc_attach_command_t* cmd = (lxc_attach_command_t*)payload;
+	int ret = -1;
+	lxc_attach_command_t *cmd = payload;
 
-	execvp(cmd->program, cmd->argv);
+	ret = execvp(cmd->program, cmd->argv);
+	if (ret < 0) {
+		switch (errno) {
+		case ENOEXEC:
+			ret = 126;
+		case ENOENT:
+			ret = 127;
+		}
+	}
 
 	SYSERROR("Failed to exec \"%s\"", cmd->program);
-	return -1;
+	return ret;
 }
 
 int lxc_attach_run_shell(void* payload)
