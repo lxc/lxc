@@ -1778,10 +1778,10 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 		return -errno;
 	}
 
-	ret = fchmod(console->slave, S_IXUSR | S_IXGRP | S_IXOTH);
+	ret = fchmod(console->slave, S_IXUSR | S_IXGRP);
 	if (ret < 0) {
 		SYSERROR("Failed to set mode \"0%o\" to \"%s\"",
-			 S_IXUSR | S_IXGRP | S_IXOTH, console->name);
+			 S_IXUSR | S_IXGRP, console->name);
 		return -errno;
 	}
 
@@ -1848,10 +1848,10 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 		return -errno;
 	}
 
-	ret = fchmod(console->slave, S_IXUSR | S_IXGRP | S_IXOTH);
+	ret = fchmod(console->slave, S_IXUSR | S_IXGRP);
 	if (ret < 0) {
 		SYSERROR("Failed to set mode \"0%o\" to \"%s\"",
-			 S_IXUSR | S_IXGRP | S_IXOTH, console->name);
+			 S_IXUSR | S_IXGRP, console->name);
 		return -errno;
 	}
 

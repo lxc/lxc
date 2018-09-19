@@ -249,7 +249,7 @@ static void lxc_setup_fs(void)
 
 	/* if /dev has been populated by us, /dev/shm does not exist */
 	if (access("/dev/shm", F_OK))
-		(void)mkdir("/dev/shm", 0777);
+		(void)mkdir("/dev/shm", 0770);
 
 	/* if we can't mount /dev/shm, continue anyway */
 	(void)mount_fs("shmfs", "/dev/shm", "tmpfs");
@@ -257,7 +257,7 @@ static void lxc_setup_fs(void)
 	/* If we were able to mount /dev/shm, then /dev exists */
 	/* Sure, but it's read-only per config :) */
 	if (access("/dev/mqueue", F_OK))
-		(void)mkdir("/dev/mqueue", 0666);
+		(void)mkdir("/dev/mqueue", 0660);
 
 	/* continue even without posix message queue support */
 	(void)mount_fs("mqueue", "/dev/mqueue", "mqueue");
