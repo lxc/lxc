@@ -111,6 +111,7 @@ config/ltmain.sh
 config/missing
 config/libtool.m4
 config/lt*.m4
+config/apparmor/abstractions/start-container
 config/bash/lxc
 config/init/common/lxc-containers
 config/init/common/lxc-net

@@ -714,6 +714,7 @@ AC_CONFIG_FILES([
 
 	config/Makefile
 	config/apparmor/Makefile
+	config/apparmor/abstractions/start-container
 	config/selinux/Makefile
 	config/bash/Makefile
 	config/bash/lxc

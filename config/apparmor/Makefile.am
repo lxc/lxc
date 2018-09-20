@@ -19,7 +19,7 @@ install-apparmor:
 	$(MKDIR_P) $(DESTDIR)$(sysconfdir)/apparmor.d/abstractions/lxc/
 	$(MKDIR_P) $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/
 	$(INSTALL_DATA) $(srcdir)/abstractions/container-base $(DESTDIR)$(sysconfdir)/apparmor.d/abstractions/lxc/
-	$(INSTALL_DATA) $(srcdir)/abstractions/start-container $(DESTDIR)$(sysconfdir)/apparmor.d/abstractions/lxc/
+	$(INSTALL_DATA) abstractions/start-container $(DESTDIR)$(sysconfdir)/apparmor.d/abstractions/lxc/
 	$(INSTALL_DATA) $(srcdir)/profiles/lxc-default $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/
 	$(INSTALL_DATA) $(srcdir)/profiles/lxc-default-cgns $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/
 	$(INSTALL_DATA) $(srcdir)/profiles/lxc-default-with-mounting $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/
