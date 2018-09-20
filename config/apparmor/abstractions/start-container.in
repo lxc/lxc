@@ -11,6 +11,7 @@
   # currently blocked by apparmor bug
   mount -> /usr/lib*/*/lxc/{**,},
   mount -> /usr/lib*/lxc/{**,},
+  mount -> @LXCROOTFSMOUNT@/{,**},
   mount fstype=devpts -> /dev/pts/,
   mount options=bind /dev/pts/ptmx/ -> /dev/ptmx/,
   mount options=bind /dev/pts/** -> /dev/**,
@@ -38,6 +39,7 @@
   pivot_root /usr/lib*/*/lxc/,
   pivot_root /usr/lib*/lxc/**,
   pivot_root /usr/lib*/*/lxc/**,
+  pivot_root @LXCROOTFSMOUNT@/{,**},
 
   change_profile -> lxc-*,
   change_profile -> lxc-**,
