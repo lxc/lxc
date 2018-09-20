@@ -3277,12 +3277,7 @@ static bool do_lxcapi_set_cgroup_item(struct lxc_container *c, const char *subsy
 	if (!cgroup_ops)
 		return false;
 
-	if (container_disk_lock(c))
-		return false;
-
 	ret = cgroup_ops->set(cgroup_ops, subsys, value, c->name, c->config_path);
-
-	container_disk_unlock(c);
 
 	cgroup_exit(cgroup_ops);
 
