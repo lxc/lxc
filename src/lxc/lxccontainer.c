@@ -3273,13 +3273,8 @@ static int do_lxcapi_get_cgroup_item(struct lxc_container *c, const char *subsys
 	if (!cgroup_ops)
 		return -1;
 
-	if (container_disk_lock(c))
-		return -1;
-
 	ret = cgroup_ops->get(cgroup_ops, subsys, retv, inlen, c->name,
 			      c->config_path);
-
-	container_disk_unlock(c);
 
 	cgroup_exit(cgroup_ops);
 
