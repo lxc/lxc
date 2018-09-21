@@ -49,12 +49,12 @@ struct lxc_handler;
  * @name         : the name of the container
  * @argv         : an array of char * corresponding to the commande line
  * @conf         : configuration
- * @backgrounded : whether or not the container is daemonized
+ * @daemonize    : whether or not the container is daemonized
  * Returns 0 on success, < 0 otherwise
  */
 extern int lxc_start(const char *name, char *const argv[],
 		     struct lxc_handler *handler, const char *lxcpath,
-		     bool backgrounded, int *error_num);
+		     bool daemonize, int *error_num);
 
 /*
  * Start the specified command inside an application container
@@ -62,12 +62,12 @@ extern int lxc_start(const char *name, char *const argv[],
  * @argv         : an array of char * corresponding to the commande line
  * @quiet        : if != 0 then lxc-init won't produce any output
  * @conf         : configuration
- * @backgrounded : whether or not the container is daemonized
+ * @daemonize    : whether or not the container is daemonized
  * Returns 0 on success, < 0 otherwise
  */
 extern int lxc_execute(const char *name, char *const argv[], int quiet,
 		       struct lxc_handler *handler, const char *lxcpath,
-		       bool backgrounded, int *error_num);
+		       bool daemonize, int *error_num);
 
 /*
  * Close the fd associated with the monitoring

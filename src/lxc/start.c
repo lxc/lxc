@@ -461,7 +461,7 @@ static int lxc_serve_state_socket_pair(const char *name,
 {
 	ssize_t ret;
 
-	if (!handler->backgrounded ||
+	if (!handler->daemonize ||
             handler->state_socket_pair[1] < 0 ||
 	    state == STARTING)
 		return 0;
@@ -1156,7 +1156,7 @@ static int do_start(void *data)
 	 * means that migration won't work, but at least we won't spew output
 	 * where it isn't wanted.
 	 */
-	if (handler->backgrounded && !handler->conf->autodev) {
+	if (handler->daemonize && !handler->conf->autodev) {
 		ret = access(path, F_OK);
 		if (ret != 0) {
 			devnull_fd = open_devnull();
@@ -1244,7 +1244,7 @@ static int do_start(void *data)
 	 * make sure that that pty is stdin,stdout,stderr.
 	 */
 	 if (handler->conf->console.slave >= 0) {
-		 if (handler->backgrounded || !handler->conf->is_execute)
+		 if (handler->daemonize || !handler->conf->is_execute)
 			 ret = set_stdfds(handler->conf->console.slave);
 		 else
 			 ret = lxc_terminal_set_stdfds(handler->conf->console.slave);
@@ -1271,7 +1271,7 @@ static int do_start(void *data)
 
 	close(handler->sigfd);
 
-	if (handler->conf->console.slave < 0 && handler->backgrounded) {
+	if (handler->conf->console.slave < 0 && handler->daemonize) {
 		if (devnull_fd < 0) {
 			devnull_fd = open_devnull();
 			if (devnull_fd < 0)
@@ -1848,7 +1848,7 @@ out_abort:
 
 int __lxc_start(const char *name, struct lxc_handler *handler,
 		struct lxc_operations* ops, void *data, const char *lxcpath,
-		bool backgrounded, int *error_num)
+		bool daemonize, int *error_num)
 {
 	int ret, status;
 	struct lxc_conf *conf = handler->conf;
@@ -1860,7 +1860,7 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	}
 	handler->ops = ops;
 	handler->data = data;
-	handler->backgrounded = backgrounded;
+	handler->daemonize = daemonize;
 
 	if (!attach_block_device(handler->conf)) {
 		ERROR("Failed to attach block device");
@@ -1996,14 +1996,14 @@ static struct lxc_operations start_ops = {
 };
 
 int lxc_start(const char *name, char *const argv[], struct lxc_handler *handler,
-	      const char *lxcpath, bool backgrounded, int *error_num)
+	      const char *lxcpath, bool daemonize, int *error_num)
 {
 	struct start_args start_arg = {
 		.argv = argv,
 	};
 
 	TRACE("Doing lxc_start");
-	return __lxc_start(name, handler, &start_ops, &start_arg, lxcpath, backgrounded, error_num);
+	return __lxc_start(name, handler, &start_ops, &start_arg, lxcpath, daemonize, error_num);
 }
 
 static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
