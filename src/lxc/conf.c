@@ -552,24 +552,31 @@ int run_script(const char *name, const char *section, const char *script, ...)
 int pin_rootfs(const char *rootfs)
 {
 	int fd, ret;
-	char absrootfs[MAXPATHLEN], absrootfspin[MAXPATHLEN];
+	char absrootfspin[MAXPATHLEN];
+	char *absrootfs;
 	struct stat s;
 	struct statfs sfs;
 
 	if (rootfs == NULL || strlen(rootfs) == 0)
 		return -2;
 
-	if (!realpath(rootfs, absrootfs))
+	absrootfs = realpath(rootfs, NULL);
+	if (!absrootfs)
 		return -2;
 
 	ret = stat(absrootfs, &s);
-	if (ret < 0)
+	if (ret < 0) {
+		free(absrootfs);
 		return -1;
+	}
 
-	if (!S_ISDIR(s.st_mode))
+	if (!S_ISDIR(s.st_mode)) {
+		free(absrootfs);
 		return -2;
+	}
 
 	ret = snprintf(absrootfspin, MAXPATHLEN, "%s/.lxc-keep", absrootfs);
+	free(absrootfs);
 	if (ret >= MAXPATHLEN)
 		return -1;
 
@@ -1341,18 +1348,22 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 {
 	int i, ret;
 	char *p, *p2;
-	char buf[LXC_LINELEN], nroot[PATH_MAX];
+	char buf[LXC_LINELEN];
+	char *nroot;
 	FILE *f;
 	char *root = rootfs->mount;
 
-	if (!realpath(root, nroot)) {
+	nroot = realpath(root, NULL);
+	if (!nroot) {
 		SYSERROR("Failed to resolve \"%s\"", root);
 		return -1;
 	}
 
 	ret = chdir("/");
-	if (ret < 0)
+	if (ret < 0) {
+		free(nroot);
 		return -1;
+	}
 
 	/* We could use here MS_MOVE, but in userns this mount is locked and
 	 * can't be moved.
@@ -1360,8 +1371,10 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 	ret = mount(nroot, "/", NULL, MS_REC | MS_BIND, NULL);
 	if (ret < 0) {
 		SYSERROR("Failed to mount \"%s\" onto \"/\" as MS_REC | MS_BIND", nroot);
+		free(nroot);
 		return -1;
 	}
+	free(nroot);
 
 	ret = mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL);
 	if (ret < 0) {
