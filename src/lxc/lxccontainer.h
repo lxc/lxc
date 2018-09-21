@@ -1123,6 +1123,13 @@ void lxc_log_close(void);
  */
 bool lxc_config_item_is_supported(const char *key);
 
+/*!
+ * \brief Check if an API extension is supported by this LXC instance.
+ *
+ * \param extension API extension to check for.
+ */
+bool lxc_has_api_extension(const char *extension);
+
 #ifdef  __cplusplus
 }
 #endif

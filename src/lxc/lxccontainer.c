@@ -42,6 +42,7 @@
 #include <unistd.h>
 
 #include "af_unix.h"
+#include "api_extensions.h"
 #include "attach.h"
 #include "cgroup.h"
 #include "commands.h"
@@ -5670,4 +5671,17 @@ free_ct_name:
 bool lxc_config_item_is_supported(const char *key)
 {
 	return !!lxc_get_config(key);
+}
+
+bool lxc_has_api_extension(const char *extension)
+{
+	/* The NULL API extension is always present. :) */
+	if (!extension)
+		return true;
+
+	for (size_t i = 0; i < nr_api_extensions; i++)
+		if (strcmp(api_extensions[i], extension) == 0)
+			return true;
+
+	return false;
 }
