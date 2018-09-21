@@ -633,3 +633,32 @@ string.
 Unless you have a valid reason to accept truncation you must check whether
 truncation has occurred, treat it as an error, and handle the error
 appropriately.
+
+## 25) Use `__fallthrough__` in switch statements
+
+If LXC detects that the compiler is new enough it will tell it to check
+`switch` statements for non-documented fallthroughs. Please always place
+a `__fallthrough__` after a `case` which falls through the next one.
+
+```c
+int lxc_attach_run_command(void *payload)
+{
+	int ret = -1;
+	lxc_attach_command_t *cmd = payload;
+
+	ret = execvp(cmd->program, cmd->argv);
+	if (ret < 0) {
+		switch (errno) {
+		case ENOEXEC:
+			ret = 126;
+			break;
+		case ENOENT:
+			ret = 127;
+			break;
+		}
+	}
+
+	SYSERROR("Failed to exec \"%s\"", cmd->program);
+	return ret;
+}
+```

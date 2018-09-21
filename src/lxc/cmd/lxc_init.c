@@ -39,6 +39,7 @@
 #include <lxc/lxccontainer.h>
 #include <lxc/version.h>
 
+#include "compiler.h"
 #include "error.h"
 #include "initutils.h"
 #include "log.h"
@@ -466,7 +467,7 @@ out:
 	exit(exit_with);
 }
 
-static void print_usage(const struct option longopts[])
+__noreturn__ static void print_usage_exit(const struct option longopts[])
 
 {
 	fprintf(stderr, "Usage: lxc-init [-n|--name=NAME] [-h|--help] [--usage] [--version]\n\
@@ -474,7 +475,7 @@ static void print_usage(const struct option longopts[])
 	exit(0);
 }
 
-static void print_version(void)
+__noreturn__ static void print_version_exit(void)
 {
 	printf("%s\n", LXC_VERSION);
 	exit(0);
@@ -531,9 +532,9 @@ static int arguments_parse(struct arguments *args, int argc,
 			args->lxcpath = optarg;
 			break;
 		case OPT_USAGE:
-			print_usage(args->options);
+			print_usage_exit(args->options);
 		case OPT_VERSION:
-			print_version();
+			print_version_exit();
 		case '?':
 			print_help();
 			exit(EXIT_FAILURE);
