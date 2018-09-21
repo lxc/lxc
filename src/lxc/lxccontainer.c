@@ -721,32 +721,6 @@ static bool do_lxcapi_wait(struct lxc_container *c, const char *state,
 
 WRAP_API_2(bool, lxcapi_wait, const char *, int)
 
-static bool am_single_threaded(void)
-{
-	DIR *dir;
-	struct dirent *direntp;
-	int count = 0;
-
-	dir = opendir("/proc/self/task");
-	if (!dir)
-		return false;
-
-	while ((direntp = readdir(dir))) {
-		if (strcmp(direntp->d_name, ".") == 0)
-			continue;
-
-		if (strcmp(direntp->d_name, "..") == 0)
-			continue;
-
-		count++;
-		if (count > 1)
-			break;
-	}
-	closedir(dir);
-
-	return count == 1;
-}
-
 static void push_arg(char ***argp, char *arg, int *nargs)
 {
 	char *copy;
@@ -1028,11 +1002,6 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		ret = setsid();
 		if (ret < 0)
 			TRACE("Process %d is already process group leader", lxc_raw_getpid());
-	} else if (!am_single_threaded()) {
-		ERROR("Cannot start non-daemonized container when threaded");
-		free_init_cmd(init_cmd);
-		lxc_free_handler(handler);
-		return false;
 	}
 
 	/* We need to write PID file after daemonize, so we always write the
