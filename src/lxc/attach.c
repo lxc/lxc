@@ -1520,8 +1520,10 @@ int lxc_attach_run_command(void *payload)
 		switch (errno) {
 		case ENOEXEC:
 			ret = 126;
+			break;
 		case ENOENT:
 			ret = 127;
+			break;
 		}
 	}
 

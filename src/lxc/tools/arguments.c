@@ -37,6 +37,7 @@
 #include <lxc/version.h>
 
 #include "arguments.h"
+#include "compiler.h"
 #include "namespace.h"
 #include "initutils.h"
 
@@ -87,8 +88,8 @@ is2big:
 	return -1;
 }
 
-static void print_usage_exit(const struct option longopts[],
-			     const struct lxc_arguments *a_args)
+__noreturn__ static void print_usage_exit(const struct option longopts[],
+					  const struct lxc_arguments *a_args)
 
 {
 	int i;
@@ -134,13 +135,14 @@ static void print_usage_exit(const struct option longopts[],
 	exit(0);
 }
 
-static void print_version_exit()
+__noreturn__ static void print_version_exit()
 {
 	printf("%s\n", lxc_get_version());
 	exit(0);
 }
 
-static void print_help_exit(const struct lxc_arguments *args, int code)
+__noreturn__ static void print_help_exit(const struct lxc_arguments *args,
+					 int code)
 {
 	fprintf(stderr, "\
 Usage: %s %s\

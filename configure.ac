@@ -683,6 +683,9 @@ AC_PROG_SED
 # See if we support thread-local storage.
 LXC_CHECK_TLS
 
+AX_CHECK_COMPILE_FLAG([-fdiagnostics-color], [CFLAGS="$CFLAGS -fdiagnostics-color"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-fdiagnostics-color], [CFLAGS="$CFLAGS -Wimplicit-fallthrough"],,[-Werror])
+
 CFLAGS="$CFLAGS -Wvla -std=gnu11"
 if test "x$enable_werror" = "xyes"; then
 	CFLAGS="$CFLAGS -Werror"
