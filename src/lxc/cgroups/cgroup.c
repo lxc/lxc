@@ -22,6 +22,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
 
@@ -75,6 +76,7 @@ void cgroup_exit(struct cgroup_ops *ops)
 
 	free(ops->cgroup_pattern);
 	free(ops->container_cgroup);
+	free(ops->monitor_pattern);
 
 	for (it = ops->hierarchies; it && *it; it++) {
 		char **ctrlr;
@@ -84,8 +86,9 @@ void cgroup_exit(struct cgroup_ops *ops)
 		free((*it)->controllers);
 
 		free((*it)->mountpoint);
-		free((*it)->base_cgroup);
-		free((*it)->fullcgpath);
+		free((*it)->container_base_path);
+		free((*it)->container_full_path);
+		free((*it)->monitor_full_path);
 		free(*it);
 	}
 	free(ops->hierarchies);

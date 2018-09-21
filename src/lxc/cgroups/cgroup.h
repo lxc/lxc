@@ -57,13 +57,16 @@ typedef enum {
  *   depending on whether this is a hybrid cgroup layout (mix of legacy and
  *   unified hierarchies) or a pure unified cgroup layout.
  *
- * @base_cgroup
+ * @container_base_path
  * - The cgroup under which the container cgroup path
  *   is created. This will be either the caller's cgroup (if not root), or
  *   init's cgroup (if root).
  *
- * @fullcgpath
+ * @container_full_path
  * - The full path to the containers cgroup.
+ *
+ * @monitor_full_path
+ * - The full path to the monitor's cgroup.
  *
  * @version
  * - legacy hierarchy
@@ -76,8 +79,9 @@ typedef enum {
 struct hierarchy {
 	char **controllers;
 	char *mountpoint;
-	char *base_cgroup;
-	char *fullcgpath;
+	char *container_base_path;
+	char *container_full_path;
+	char *monitor_full_path;
 	int version;
 };
 
@@ -92,6 +96,7 @@ struct cgroup_ops {
 	char **cgroup_use;
 	char *cgroup_pattern;
 	char *container_cgroup;
+	char *monitor_pattern;
 
 	/* @hierarchies
 	 * - A NULL-terminated array of struct hierarchy, one per legacy
@@ -124,8 +129,10 @@ struct cgroup_ops {
 
 	bool (*data_init)(struct cgroup_ops *ops);
 	void (*destroy)(struct cgroup_ops *ops, struct lxc_handler *handler);
-	bool (*create)(struct cgroup_ops *ops, struct lxc_handler *handler);
-	bool (*enter)(struct cgroup_ops *ops, pid_t pid);
+	bool (*monitor_create)(struct cgroup_ops *ops, struct lxc_handler *handler);
+	bool (*monitor_enter)(struct cgroup_ops *ops, pid_t pid);
+	bool (*payload_create)(struct cgroup_ops *ops, struct lxc_handler *handler);
+	bool (*payload_enter)(struct cgroup_ops *ops, pid_t pid);
 	const char *(*get_cgroup)(struct cgroup_ops *ops, const char *controller);
 	bool (*escape)(const struct cgroup_ops *ops, struct lxc_conf *conf);
 	int (*num_hierarchies)(struct cgroup_ops *ops);

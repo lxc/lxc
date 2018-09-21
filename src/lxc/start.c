@@ -1678,7 +1678,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	if (!cgroup_ops->create(cgroup_ops, handler)) {
+	if (!cgroup_ops->payload_create(cgroup_ops, handler)) {
 		ERROR("Failed creating cgroups");
 		goto out_delete_net;
 	}
@@ -1772,7 +1772,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 	}
 
-	if (!cgroup_ops->enter(cgroup_ops, handler->pid))
+	if (!cgroup_ops->payload_enter(cgroup_ops, handler->pid))
 		goto out_delete_net;
 
 	if (!cgroup_ops->chown(cgroup_ops, handler->conf))
@@ -1949,6 +1949,7 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 {
 	int ret, status;
 	struct lxc_conf *conf = handler->conf;
+	struct cgroup_ops *cgroup_ops;
 
 	ret = lxc_init(name, handler);
 	if (ret < 0) {
@@ -1958,9 +1959,20 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	handler->ops = ops;
 	handler->data = data;
 	handler->daemonize = daemonize;
+	cgroup_ops = handler->cgroup_ops;
 
 	if (!attach_block_device(handler->conf)) {
 		ERROR("Failed to attach block device");
+		goto out_fini_nonet;
+	}
+
+	if (!cgroup_ops->monitor_create(cgroup_ops, handler)) {
+		ERROR("Failed to create monitor cgroup");
+		goto out_fini_nonet;
+	}
+
+	if (!cgroup_ops->monitor_enter(cgroup_ops, lxc_raw_getpid())) {
+		ERROR("Failed to enter monitor cgroup");
 		goto out_fini_nonet;
 	}
 

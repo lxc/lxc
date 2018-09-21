@@ -573,7 +573,7 @@ static bool cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 	if (slash)
 		*slash = '\0';
 
-	cgpath = must_make_path(h->mountpoint, h->base_cgroup, cgname, NULL);
+	cgpath = must_make_path(h->mountpoint, h->container_base_path, cgname, NULL);
 	if (slash)
 		*slash = '/';
 
@@ -810,7 +810,7 @@ static char **cg_unified_get_controllers(const char *file)
 }
 
 static struct hierarchy *add_hierarchy(struct hierarchy ***h, char **clist, char *mountpoint,
-				       char *base_cgroup, int type)
+				       char *container_base_path, int type)
 {
 	struct hierarchy *new;
 	int newentry;
@@ -818,8 +818,9 @@ static struct hierarchy *add_hierarchy(struct hierarchy ***h, char **clist, char
 	new = must_alloc(sizeof(*new));
 	new->controllers = clist;
 	new->mountpoint = mountpoint;
-	new->base_cgroup = base_cgroup;
-	new->fullcgpath = NULL;
+	new->container_base_path = container_base_path;
+	new->container_full_path = NULL;
+	new->monitor_full_path = NULL;
 	new->version = type;
 
 	newentry = append_null_to_list((void ***)h);
@@ -1015,7 +1016,7 @@ static void lxc_cgfsng_print_hierarchies(struct cgroup_ops *ops)
 		int j;
 		char **cit;
 
-		TRACE("  %d: base_cgroup: %s", i, (*it)->base_cgroup ? (*it)->base_cgroup : "(null)");
+		TRACE("  %d: base_cgroup: %s", i, (*it)->container_base_path ? (*it)->container_base_path : "(null)");
 		TRACE("      mountpoint:  %s", (*it)->mountpoint ? (*it)->mountpoint : "(null)");
 		TRACE("      controllers:");
 		for (j = 0, cit = (*it)->controllers; cit && *cit; cit++, j++)
@@ -1051,15 +1052,15 @@ static int cgroup_rmdir(struct hierarchy **hierarchies,
 		int ret;
 		struct hierarchy *h = hierarchies[i];
 
-		if (!h->fullcgpath)
+		if (!h->container_full_path)
 			continue;
 
-		ret = recursive_destroy(h->fullcgpath);
+		ret = recursive_destroy(h->container_full_path);
 		if (ret < 0)
-			WARN("Failed to destroy \"%s\"", h->fullcgpath);
+			WARN("Failed to destroy \"%s\"", h->container_full_path);
 
-		free(h->fullcgpath);
-		h->fullcgpath = NULL;
+		free(h->container_full_path);
+		h->container_full_path = NULL;
 	}
 
 	return 0;
@@ -1167,7 +1168,7 @@ static bool cg_unified_create_cgroup(struct hierarchy *h, char *cgname)
 	if (parts_len > 0)
 		parts_len--;
 
-	cgroup = must_make_path(h->mountpoint, h->base_cgroup, NULL);
+	cgroup = must_make_path(h->mountpoint, h->container_base_path, NULL);
 	for (i = 0; i < parts_len; i++) {
 		int ret;
 		char *target;
@@ -1192,13 +1193,30 @@ on_error:
 	return bret;
 }
 
-static bool create_path_for_hierarchy(struct hierarchy *h, char *cgname)
+static bool monitor_create_path_for_hierarchy(struct hierarchy *h, char *cgname)
 {
 	int ret;
 
-	h->fullcgpath = must_make_path(h->mountpoint, h->base_cgroup, cgname, NULL);
-	if (dir_exists(h->fullcgpath)) {
-		ERROR("The cgroup \"%s\" already existed", h->fullcgpath);
+	h->monitor_full_path = must_make_path(h->mountpoint, h->container_base_path, cgname, NULL);
+	if (dir_exists(h->monitor_full_path))
+		return true;
+
+	ret = mkdir_p(h->monitor_full_path, 0755);
+	if (ret < 0) {
+		ERROR("Failed to create cgroup \"%s\"", h->monitor_full_path);
+		return false;
+	}
+
+	return cg_unified_create_cgroup(h, cgname);
+}
+
+static bool container_create_path_for_hierarchy(struct hierarchy *h, char *cgname)
+{
+	int ret;
+
+	h->container_full_path = must_make_path(h->mountpoint, h->container_base_path, cgname, NULL);
+	if (dir_exists(h->container_full_path)) {
+		ERROR("The cgroup \"%s\" already existed", h->container_full_path);
 		return false;
 	}
 
@@ -1207,32 +1225,78 @@ static bool create_path_for_hierarchy(struct hierarchy *h, char *cgname)
 		return false;
 	}
 
-	ret = mkdir_p(h->fullcgpath, 0755);
+	ret = mkdir_p(h->container_full_path, 0755);
 	if (ret < 0) {
-		ERROR("Failed to create cgroup \"%s\"", h->fullcgpath);
+		ERROR("Failed to create cgroup \"%s\"", h->container_full_path);
 		return false;
 	}
 
 	return cg_unified_create_cgroup(h, cgname);
 }
 
-static void remove_path_for_hierarchy(struct hierarchy *h, char *cgname)
+static void remove_path_for_hierarchy(struct hierarchy *h, char *cgname, bool monitor)
 {
 	int ret;
+	char *full_path;
 
-	ret = rmdir(h->fullcgpath);
+	if (monitor)
+		full_path = h->monitor_full_path;
+	else
+		full_path = h->container_full_path;
+
+	ret = rmdir(full_path);
 	if (ret < 0)
-		SYSERROR("Failed to rmdir(\"%s\") from failed creation attempt", h->fullcgpath);
+		SYSERROR("Failed to rmdir(\"%s\") from failed creation attempt", full_path);
 
-	free(h->fullcgpath);
-	h->fullcgpath = NULL;
+	free(full_path);
+
+	if (monitor)
+		h->monitor_full_path = NULL;
+	else
+		h->container_full_path = NULL;
+}
+
+__cgfsng_ops__ static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
+							struct lxc_handler *handler)
+{
+	char *monitor_cgroup;
+	bool bret = false;
+	struct lxc_conf *conf = handler->conf;
+
+	if (!conf)
+		return bret;
+
+	if (conf->cgroup_meta.dir)
+		monitor_cgroup = lxc_string_join("/", (const char *[]){conf->cgroup_meta.dir, ops->monitor_pattern, handler->name, NULL}, false);
+	else
+		monitor_cgroup = must_make_path(ops->monitor_pattern, handler->name, NULL);
+	if (!monitor_cgroup)
+		return bret;
+
+	for (int i = 0; ops->hierarchies[i]; i++) {
+		if (!monitor_create_path_for_hierarchy(ops->hierarchies[i], monitor_cgroup)) {
+			ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->monitor_full_path);
+			free(ops->hierarchies[i]->container_full_path);
+			ops->hierarchies[i]->container_full_path = NULL;
+			for (int j = 0; j < i; j++)
+				remove_path_for_hierarchy(ops->hierarchies[j], monitor_cgroup, true);
+			goto on_error;
+		}
+	}
+
+	bret = true;
+
+on_error:
+	free(monitor_cgroup);
+
+	return bret;
 }
 
 /* Try to create the same cgroup in all hierarchies. Start with cgroup_pattern;
  * next cgroup_pattern-1, -2, ..., -999.
  */
-__cgfsng_ops__ static inline bool cgfsng_create(struct cgroup_ops *ops,
-						struct lxc_handler *handler)
+__cgfsng_ops__ static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
+							struct lxc_handler *handler)
 {
 	int i;
 	size_t len;
@@ -1285,13 +1349,12 @@ again:
 	}
 
 	for (i = 0; ops->hierarchies[i]; i++) {
-		if (!create_path_for_hierarchy(ops->hierarchies[i], container_cgroup)) {
-			int j;
-			ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->fullcgpath);
-			free(ops->hierarchies[i]->fullcgpath);
-			ops->hierarchies[i]->fullcgpath = NULL;
-			for (j = 0; j < i; j++)
-				remove_path_for_hierarchy(ops->hierarchies[j], container_cgroup);
+		if (!container_create_path_for_hierarchy(ops->hierarchies[i], container_cgroup)) {
+			ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->container_full_path);
+			free(ops->hierarchies[i]->container_full_path);
+			ops->hierarchies[i]->container_full_path = NULL;
+			for (int j = 0; j < i; j++)
+				remove_path_for_hierarchy(ops->hierarchies[j], container_cgroup, false);
 			idx++;
 			goto again;
 		}
@@ -1307,31 +1370,46 @@ out_free:
 	return false;
 }
 
-__cgfsng_ops__ static bool cgfsng_enter(struct cgroup_ops *ops, pid_t pid)
+__cgfsng_ops__ static bool __do_cgroup_enter(struct cgroup_ops *ops, pid_t pid,
+					     bool monitor)
 {
-	int i, len;
+	int len;
 	char pidstr[25];
 
 	len = snprintf(pidstr, 25, "%d", pid);
 	if (len < 0 || len >= 25)
 		return false;
 
-	for (i = 0; ops->hierarchies[i]; i++) {
+	for (int i = 0; ops->hierarchies[i]; i++) {
 		int ret;
-		char *fullpath;
+		char *path;
 
-		fullpath = must_make_path(ops->hierarchies[i]->fullcgpath,
-					  "cgroup.procs", NULL);
-		ret = lxc_write_to_file(fullpath, pidstr, len, false, 0666);
+		if (monitor)
+			path = must_make_path(ops->hierarchies[i]->monitor_full_path,
+					      "cgroup.procs", NULL);
+		else
+			path = must_make_path(ops->hierarchies[i]->container_full_path,
+					      "cgroup.procs", NULL);
+		ret = lxc_write_to_file(path, pidstr, len, false, 0666);
 		if (ret != 0) {
-			SYSERROR("Failed to enter cgroup \"%s\"", fullpath);
-			free(fullpath);
+			SYSERROR("Failed to enter cgroup \"%s\"", path);
+			free(path);
 			return false;
 		}
-		free(fullpath);
+		free(path);
 	}
 
 	return true;
+}
+
+__cgfsng_ops__ static bool cgfsng_monitor_enter(struct cgroup_ops *ops, pid_t pid)
+{
+	return __do_cgroup_enter(ops, pid, true);
+}
+
+static bool cgfsng_payload_enter(struct cgroup_ops *ops, pid_t pid)
+{
+	return __do_cgroup_enter(ops, pid, false);
 }
 
 static int chowmod(char *path, uid_t chown_uid, gid_t chown_gid,
@@ -1395,7 +1473,7 @@ static int chown_cgroup_wrapper(void *data)
 
 	for (i = 0; arg->hierarchies[i]; i++) {
 		char *fullpath;
-		char *path = arg->hierarchies[i]->fullcgpath;
+		char *path = arg->hierarchies[i]->container_full_path;
 
 		ret = chowmod(path, destuid, nsgid, 0775);
 		if (ret < 0)
@@ -1498,7 +1576,7 @@ static int cg_legacy_mount_controllers(int type, struct hierarchy *h,
 		INFO("Remounted %s read-only", controllerpath);
 	}
 
-	sourcepath = must_make_path(h->mountpoint, h->base_cgroup,
+	sourcepath = must_make_path(h->mountpoint, h->container_base_path,
 				    container_cgroup, NULL);
 	if (type == LXC_AUTO_CGROUP_RO)
 		flags |= MS_RDONLY;
@@ -1669,7 +1747,7 @@ __cgfsng_ops__ static bool cgfsng_mount(struct cgroup_ops *ops,
 			continue;
 		}
 
-		path2 = must_make_path(controllerpath, h->base_cgroup,
+		path2 = must_make_path(controllerpath, h->container_base_path,
 				       ops->container_cgroup, NULL);
 		ret = mkdir_p(path2, 0755);
 		if (ret < 0) {
@@ -1742,7 +1820,7 @@ __cgfsng_ops__ static int cgfsng_nrtasks(struct cgroup_ops *ops)
 	if (!ops->container_cgroup || !ops->hierarchies)
 		return -1;
 
-	path = must_make_path(ops->hierarchies[0]->fullcgpath, NULL);
+	path = must_make_path(ops->hierarchies[0]->container_full_path, NULL);
 	count = recursive_count_nrtasks(path);
 	free(path);
 	return count;
@@ -1762,7 +1840,7 @@ __cgfsng_ops__ static bool cgfsng_escape(const struct cgroup_ops *ops,
 		char *fullpath;
 
 		fullpath = must_make_path(ops->hierarchies[i]->mountpoint,
-					  ops->hierarchies[i]->base_cgroup,
+					  ops->hierarchies[i]->container_base_path,
 					  "cgroup.procs", NULL);
 		ret = lxc_write_to_file(fullpath, "0", 2, false, 0666);
 		if (ret != 0) {
@@ -1816,7 +1894,7 @@ __cgfsng_ops__ static bool cgfsng_unfreeze(struct cgroup_ops *ops)
 	if (!h)
 		return false;
 
-	fullpath = must_make_path(h->fullcgpath, "freezer.state", NULL);
+	fullpath = must_make_path(h->container_full_path, "freezer.state", NULL);
 	ret = lxc_write_to_file(fullpath, THAWED, THAWED_LEN, false, 0666);
 	free(fullpath);
 	if (ret < 0)
@@ -1837,7 +1915,7 @@ __cgfsng_ops__ static const char *cgfsng_get_cgroup(struct cgroup_ops *ops,
 		return NULL;
 	}
 
-	return h->fullcgpath ? h->fullcgpath + strlen(h->mountpoint) : NULL;
+	return h->container_full_path ? h->container_full_path + strlen(h->mountpoint) : NULL;
 }
 
 /* Given a cgroup path returned from lxc_cmd_get_cgroup_path, build a full path,
@@ -2162,7 +2240,7 @@ static int cg_legacy_set_data(struct cgroup_ops *ops, const char *filename,
 		return -ENOENT;
 	}
 
-	fullpath = must_make_path(h->fullcgpath, filename, NULL);
+	fullpath = must_make_path(h->container_full_path, filename, NULL);
 	ret = lxc_write_to_file(fullpath, value, strlen(value), false, 0666);
 	free(fullpath);
 	return ret;
@@ -2230,7 +2308,7 @@ static bool __cg_unified_setup_limits(struct cgroup_ops *ops,
 		char *fullpath;
 		struct lxc_cgroup *cg = iterator->elem;
 
-		fullpath = must_make_path(h->fullcgpath, cg->subsystem, NULL);
+		fullpath = must_make_path(h->container_full_path, cg->subsystem, NULL);
 		ret = lxc_write_to_file(fullpath, cg->value, strlen(cg->value), false, 0666);
 		free(fullpath);
 		if (ret < 0) {
@@ -2569,6 +2647,7 @@ __cgfsng_ops__ static bool cgfsng_data_init(struct cgroup_ops *ops)
 		return false;
 	}
 	ops->cgroup_pattern = must_copy_string(cgroup_pattern);
+	ops->monitor_pattern = must_copy_string("lxc.monitor");
 
 	return true;
 }
@@ -2591,8 +2670,10 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 
 	cgfsng_ops->data_init = cgfsng_data_init;
 	cgfsng_ops->destroy = cgfsng_destroy;
-	cgfsng_ops->create = cgfsng_create;
-	cgfsng_ops->enter = cgfsng_enter;
+	cgfsng_ops->monitor_create = cgfsng_monitor_create;
+	cgfsng_ops->monitor_enter = cgfsng_monitor_enter;
+	cgfsng_ops->payload_create = cgfsng_payload_create;
+	cgfsng_ops->payload_enter = cgfsng_payload_enter;
 	cgfsng_ops->escape = cgfsng_escape;
 	cgfsng_ops->num_hierarchies = cgfsng_num_hierarchies;
 	cgfsng_ops->get_hierarchies = cgfsng_get_hierarchies;
