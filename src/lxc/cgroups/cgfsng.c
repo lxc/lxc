@@ -1256,8 +1256,8 @@ static void remove_path_for_hierarchy(struct hierarchy *h, char *cgname, bool mo
 		h->container_full_path = NULL;
 }
 
-static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
-					 struct lxc_handler *handler)
+__cgfsng_ops__ static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
+							struct lxc_handler *handler)
 {
 	char *monitor_cgroup;
 	bool bret = false;
@@ -1402,7 +1402,7 @@ __cgfsng_ops__ static bool __do_cgroup_enter(struct cgroup_ops *ops, pid_t pid,
 	return true;
 }
 
-static bool cgfsng_monitor_enter(struct cgroup_ops *ops, pid_t pid)
+__cgfsng_ops__ static bool cgfsng_monitor_enter(struct cgroup_ops *ops, pid_t pid)
 {
 	return __do_cgroup_enter(ops, pid, true);
 }
