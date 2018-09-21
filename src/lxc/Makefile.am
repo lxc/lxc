@@ -2,7 +2,8 @@ pkginclude_HEADERS = attach_options.h \
 		     lxccontainer.h \
 		     version.h
 
-noinst_HEADERS = attach.h \
+noinst_HEADERS = api_extensions.h \
+		 attach.h \
 		 caps.h \
 		 cgroups/cgroup.h \
 		 cgroups/cgroup_utils.h \
@@ -85,6 +86,7 @@ endif
 
 lib_LTLIBRARIES = liblxc.la
 liblxc_la_SOURCES = af_unix.c af_unix.h \
+		    api_extensions.h \
 		    attach.c attach.h \
 		    caps.c caps.h \
 		    cgroups/cgfsng.c \
