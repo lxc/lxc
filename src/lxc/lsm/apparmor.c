@@ -667,21 +667,21 @@ static char *get_apparmor_profile_content(struct lxc_conf *conf, const char *lxc
 	size = strlen(profile);
 
 	must_append_sized(&profile, &size, AA_PROFILE_BASE,
-	                  sizeof(AA_PROFILE_BASE) - 1);
+	                  STRARRAYLEN(AA_PROFILE_BASE));
 
 	if (aa_supports_unix)
 		must_append_sized(&profile, &size, AA_PROFILE_UNIX_SOCKETS,
-		                  sizeof(AA_PROFILE_UNIX_SOCKETS) - 1);
+		                  STRARRAYLEN(AA_PROFILE_UNIX_SOCKETS));
 
 	if (file_exists("/proc/self/ns/cgroup"))
 		must_append_sized(&profile, &size, AA_PROFILE_CGROUP_NAMESPACES,
-		                  sizeof(AA_PROFILE_CGROUP_NAMESPACES) - 1);
+		                  STRARRAYLEN(AA_PROFILE_CGROUP_NAMESPACES));
 
 	if (aa_can_stack && !aa_is_stacked) {
 		char *namespace, *temp;
 
 		must_append_sized(&profile, &size, AA_PROFILE_STACKING_BASE,
-		                  sizeof(AA_PROFILE_STACKING_BASE) - 1);
+		                  STRARRAYLEN(AA_PROFILE_STACKING_BASE));
 
 		namespace = apparmor_namespace(conf->name, lxcpath);
 		temp = must_concat("  change_profile -> \":", namespace, ":*\",\n"
@@ -693,12 +693,12 @@ static char *get_apparmor_profile_content(struct lxc_conf *conf, const char *lxc
 		free(temp);
 	} else {
 		must_append_sized(&profile, &size, AA_PROFILE_NO_STACKING,
-		                  sizeof(AA_PROFILE_NO_STACKING) - 1);
+		                  STRARRAYLEN(AA_PROFILE_NO_STACKING));
 	}
 
 	if (conf->lsm_aa_allow_nesting) {
 		must_append_sized(&profile, &size, AA_PROFILE_NESTING_BASE,
-		                  sizeof(AA_PROFILE_NESTING_BASE) - 1);
+		                  STRARRAYLEN(AA_PROFILE_NESTING_BASE));
 
 		if (!aa_can_stack || aa_is_stacked) {
 			char *temp;
@@ -712,7 +712,7 @@ static char *get_apparmor_profile_content(struct lxc_conf *conf, const char *lxc
 
 	if (!is_privileged(conf) || am_host_unpriv())
 		must_append_sized(&profile, &size, AA_PROFILE_UNPRIVILEGED,
-		                  sizeof(AA_PROFILE_UNPRIVILEGED) - 1);
+		                  STRARRAYLEN(AA_PROFILE_UNPRIVILEGED));
 
 	lxc_list_for_each(it, &conf->lsm_aa_raw) {
 		const char *line = it->elem;
@@ -999,9 +999,9 @@ static int apparmor_prepare(struct lxc_conf *conf, const char *lxcpath)
 		if (aa_can_stack && !aa_is_stacked) {
 			char *namespace = apparmor_namespace(conf->name, lxcpath);
 			size_t llen = strlen(genlabel);
-			must_append_sized(&genlabel, &llen, "//&:", sizeof("//&:") - 1);
+			must_append_sized(&genlabel, &llen, "//&:", STRARRAYLEN("//&:"));
 			must_append_sized(&genlabel, &llen, namespace, strlen(namespace));
-			must_append_sized(&genlabel, &llen, ":", sizeof(":")); /* with the nul byte */
+			must_append_sized(&genlabel, &llen, ":", STRARRAYLEN(":") + 1); /* with the nul byte */
 			free(namespace);
 		}
 

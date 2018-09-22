@@ -1437,10 +1437,10 @@ static int set_config_prlimit(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return lxc_clear_limits(lxc_conf, key);
 
-	if (strncmp(key, "lxc.prlimit.", sizeof("lxc.prlimit.") - 1) != 0)
+	if (strncmp(key, "lxc.prlimit.", STRLITERALLEN("lxc.prlimit.")) != 0)
 		return -1;
 
-	key += sizeof("lxc.prlimit.") - 1;
+	key += STRLITERALLEN("lxc.prlimit.");
 
 	/* soft limit comes first in the value */
 	if (!parse_limit_value(&value, &limit_value))
@@ -1526,10 +1526,10 @@ static int set_config_sysctl(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return clr_config_sysctl(key, lxc_conf, NULL);
 
-	if (strncmp(key, "lxc.sysctl.", sizeof("lxc.sysctl.") - 1) != 0)
+	if (strncmp(key, "lxc.sysctl.", STRLITERALLEN("lxc.sysctl.")) != 0)
 		return -1;
 
-	key += sizeof("lxc.sysctl.") - 1;
+	key += STRLITERALLEN("lxc.sysctl.");
 
 	/* find existing list element */
 	lxc_list_for_each(iter, &lxc_conf->sysctls) {
@@ -1591,10 +1591,10 @@ static int set_config_proc(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return clr_config_proc(key, lxc_conf, NULL);
 
-	if (strncmp(key, "lxc.proc.", sizeof("lxc.proc.") -1) != 0)
+	if (strncmp(key, "lxc.proc.", STRLITERALLEN("lxc.proc.")) != 0)
 		return -1;
 
-	subkey = key + sizeof("lxc.proc.") - 1;
+	subkey = key + STRLITERALLEN("lxc.proc.");
 	if (*subkey == '\0')
 		return -EINVAL;
 
@@ -1761,7 +1761,7 @@ static int set_config_mount_auto(const char *key, const char *value,
 				break;
 
 			if (strcmp("shmounts:", allowed_auto_mounts[i].token) == 0 &&
-			    strncmp("shmounts:", token, sizeof("shmounts:") - 1) == 0) {
+			    strncmp("shmounts:", token, STRLITERALLEN("shmounts:")) == 0) {
 				is_shmounts = true;
 				break;
 			}
@@ -1775,7 +1775,7 @@ static int set_config_mount_auto(const char *key, const char *value,
 		lxc_conf->auto_mounts &= ~allowed_auto_mounts[i].mask;
 		lxc_conf->auto_mounts |= allowed_auto_mounts[i].flag;
 		if (is_shmounts) {
-			lxc_conf->shmount.path_host = strdup(token + (sizeof("shmounts:") - 1));
+			lxc_conf->shmount.path_host = strdup(token + STRLITERALLEN("shmounts:"));
 			if (!lxc_conf->shmount.path_host) {
 				SYSERROR("Failed to copy shmounts host path");
 				goto on_error;
@@ -2331,7 +2331,7 @@ static int set_config_namespace_share(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return clr_config_namespace_share(key, lxc_conf, data);
 
-	namespace = key + sizeof("lxc.namespace.share.") - 1;
+	namespace = key + STRLITERALLEN("lxc.namespace.share.");
 	ns_idx = lxc_namespace_2_ns_idx(namespace);
 	if (ns_idx < 0)
 		return ns_idx;
@@ -3177,11 +3177,11 @@ static int __get_config_cgroup_controller(const char *key, char *retv,
 	if (version == CGROUP2_SUPER_MAGIC) {
 		global_token = "lxc.cgroup2";
 		namespaced_token = "lxc.cgroup2.";
-		namespaced_token_len = sizeof("lxc.cgroup2.") - 1;;
+		namespaced_token_len = STRLITERALLEN("lxc.cgroup2.");
 	} else if (version == CGROUP_SUPER_MAGIC) {
 		global_token = "lxc.cgroup";
 		namespaced_token = "lxc.cgroup.";
-		namespaced_token_len = sizeof("lxc.cgroup.") - 1;;
+		namespaced_token_len = STRLITERALLEN("lxc.cgroup.");
 	} else {
 		return -1;
 	}
@@ -3743,8 +3743,8 @@ static int get_config_prlimit(const char *key, char *retv, int inlen,
 		struct lxc_limit *lim = it->elem;
 
 		if (lim->limit.rlim_cur == RLIM_INFINITY) {
-			memcpy(buf, "unlimited", sizeof("unlimited"));
-			partlen = sizeof("unlimited") - 1;
+			memcpy(buf, "unlimited", STRLITERALLEN("unlimited") + 1);
+			partlen = STRLITERALLEN("unlimited");
 		} else {
 			partlen = sprintf(buf, "%" PRIu64,
 					  (uint64_t)lim->limit.rlim_cur);
@@ -3752,7 +3752,7 @@ static int get_config_prlimit(const char *key, char *retv, int inlen,
 		if (lim->limit.rlim_cur != lim->limit.rlim_max) {
 			if (lim->limit.rlim_max == RLIM_INFINITY)
 				memcpy(buf + partlen, ":unlimited",
-				       sizeof(":unlimited"));
+				       STRLITERALLEN(":unlimited") + 1);
 			else
 				sprintf(buf + partlen, ":%" PRIu64,
 					(uint64_t)lim->limit.rlim_max);
@@ -3788,8 +3788,8 @@ static int get_config_sysctl(const char *key, char *retv, int inlen,
 
 	if (strcmp(key, "lxc.sysctl") == 0)
 		get_all = true;
-	else if (strncmp(key, "lxc.sysctl.", sizeof("lxc.sysctl.") - 1) == 0)
-		key += sizeof("lxc.sysctl.") - 1;
+	else if (strncmp(key, "lxc.sysctl.", STRLITERALLEN("lxc.sysctl.")) == 0)
+		key += STRLITERALLEN("lxc.sysctl.");
 	else
 		return -1;
 
@@ -3821,8 +3821,8 @@ static int get_config_proc(const char *key, char *retv, int inlen,
 
 	if (strcmp(key, "lxc.proc") == 0)
 		get_all = true;
-	else if (strncmp(key, "lxc.proc.", sizeof("lxc.proc.") - 1) == 0)
-		key += sizeof("lxc.proc.") - 1;
+	else if (strncmp(key, "lxc.proc.", STRLITERALLEN("lxc.proc.")) == 0)
+		key += STRLITERALLEN("lxc.proc.");
 	else
 		return -1;
 
@@ -3890,7 +3890,7 @@ static int get_config_namespace_share(const char *key, char *retv, int inlen,
 	else
 		memset(retv, 0, inlen);
 
-	namespace = key + sizeof("lxc.namespace.share.") - 1;
+	namespace = key + STRLITERALLEN("lxc.namespace.share.");
 	ns_idx = lxc_namespace_2_ns_idx(namespace);
 	if (ns_idx < 0)
 		return ns_idx;
@@ -4335,7 +4335,7 @@ static int clr_config_namespace_share(const char *key,
 	int ns_idx;
 	const char *namespace;
 
-	namespace = key + sizeof("lxc.namespace.share.") - 1;
+	namespace = key + STRLITERALLEN("lxc.namespace.share.");
 	ns_idx = lxc_namespace_2_ns_idx(namespace);
 	if (ns_idx < 0)
 		return ns_idx;

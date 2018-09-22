@@ -299,7 +299,7 @@ static long int _real_caps_last_cap(void)
 		char buf[INTTYPE_TO_STRLEN(int)] = {0};
 
 	again:
-		n = read(fd, buf, sizeof(buf) - 1);
+		n = read(fd, buf, STRARRAYLEN(buf));
 		if (n < 0 && errno == EINTR) {
 			goto again;
 		} else if (n >= 0) {
