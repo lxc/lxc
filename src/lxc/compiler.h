@@ -33,9 +33,9 @@
 #endif
 
 #if defined(__GNUC__) && __GNUC__ >= 7 || defined(__clang__)
-#define __fallthrough__ __attribute__((fallthrough))
+#define __fallthrough __attribute__((fallthrough))
 #else
-#define __fallthrough__
+#define __fallthrough
 #endif
 
 #ifndef _noreturn_
