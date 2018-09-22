@@ -467,7 +467,7 @@ out:
 	exit(exit_with);
 }
 
-__noreturn__ static void print_usage_exit(const struct option longopts[])
+__noreturn static void print_usage_exit(const struct option longopts[])
 
 {
 	fprintf(stderr, "Usage: lxc-init [-n|--name=NAME] [-h|--help] [--usage] [--version]\n\
@@ -475,7 +475,7 @@ __noreturn__ static void print_usage_exit(const struct option longopts[])
 	exit(0);
 }
 
-__noreturn__ static void print_version_exit(void)
+__noreturn static void print_version_exit(void)
 {
 	printf("%s\n", LXC_VERSION);
 	exit(0);

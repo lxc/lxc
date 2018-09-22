@@ -40,9 +40,9 @@
 
 #ifndef _noreturn_
 #if __STDC_VERSION__ >= 201112L
-#define __noreturn__ _Noreturn
+#define __noreturn _Noreturn
 #else
-#define __noreturn__ __attribute__((noreturn))
+#define __noreturn __attribute__((noreturn))
 #endif
 #endif
 
