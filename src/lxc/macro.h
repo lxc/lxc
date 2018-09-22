@@ -348,4 +348,7 @@ extern int __build_bug_on_failed;
 #define LXC_INVALID_UID ((uid_t)-1)
 #define LXC_INVALID_GID ((gid_t)-1)
 
+#define STRLITERALLEN(x) (sizeof(""x"") - 1)
+#define STRARRAYLEN(x) (sizeof(x) - 1)
+
 #endif /* __LXC_MACRO_H */
