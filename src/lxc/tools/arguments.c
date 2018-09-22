@@ -88,7 +88,7 @@ is2big:
 	return -1;
 }
 
-__noreturn__ static void print_usage_exit(const struct option longopts[],
+__noreturn static void print_usage_exit(const struct option longopts[],
 					  const struct lxc_arguments *a_args)
 
 {
@@ -135,13 +135,13 @@ __noreturn__ static void print_usage_exit(const struct option longopts[],
 	exit(0);
 }
 
-__noreturn__ static void print_version_exit()
+__noreturn static void print_version_exit()
 {
 	printf("%s\n", lxc_get_version());
 	exit(0);
 }
 
-__noreturn__ static void print_help_exit(const struct lxc_arguments *args,
+__noreturn static void print_help_exit(const struct lxc_arguments *args,
 					 int code)
 {
 	fprintf(stderr, "\
