@@ -106,7 +106,7 @@ static char *lxclock_name(const char *p, const char *n)
 	 */
 
 	/* length of "/lxc/lock/" + $lxcpath + "/" + "." + $lxcname + '\0' */
-	len = (sizeof("/lxc/lock/") - 1) + strlen(n) + strlen(p) + 3;
+	len = STRLITERALLEN("/lxc/lock/") + strlen(n) + strlen(p) + 3;
 
 	rundir = get_rundir();
 	if (!rundir)

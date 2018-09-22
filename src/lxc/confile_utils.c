@@ -721,9 +721,9 @@ bool parse_limit_value(const char **value, rlim_t *res)
 {
 	char *endptr = NULL;
 
-	if (strncmp(*value, "unlimited", sizeof("unlimited") - 1) == 0) {
+	if (strncmp(*value, "unlimited", STRLITERALLEN("unlimited")) == 0) {
 		*res = RLIM_INFINITY;
-		*value += sizeof("unlimited") - 1;
+		*value += STRLITERALLEN("unlimited");
 		return true;
 	}
 

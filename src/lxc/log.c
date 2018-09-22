@@ -347,7 +347,7 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 	if (n < 0)
 		return n;
 
-	if ((size_t)n < (sizeof(buffer) - 1)) {
+	if ((size_t)n < STRARRAYLEN(buffer)) {
 		ret = vsnprintf(buffer + n, sizeof(buffer) - n, event->fmt, *event->vap);
 		if (ret < 0)
 			return 0;
@@ -356,7 +356,7 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 	}
 
 	if ((size_t)n >= sizeof(buffer))
-		n = sizeof(buffer) - 1;
+		n = STRARRAYLEN(buffer);
 
 	buffer[n] = '\n';
 
@@ -835,7 +835,7 @@ inline const char *lxc_log_get_file(void)
 
 inline void lxc_log_set_prefix(const char *prefix)
 {
-	/* We don't care if thte prefix is truncated. */
+	/* We don't care if the prefix is truncated. */
 	(void)strlcpy(log_prefix, prefix, sizeof(log_prefix));
 }
 
