@@ -67,8 +67,6 @@
 #include "include/strlcat.h"
 #endif
 
-#define __cgfsng_ops__
-
 lxc_log_define(cgfsng, cgroup);
 
 static void free_string_list(char **clist)
@@ -1103,7 +1101,7 @@ static int cgroup_rmdir_wrapper(void *data)
 	return cgroup_rmdir(arg->hierarchies, arg->container_cgroup);
 }
 
-__cgfsng_ops__ static void cgfsng_destroy(struct cgroup_ops *ops, struct lxc_handler *handler)
+__cgfsng_ops static void cgfsng_destroy(struct cgroup_ops *ops, struct lxc_handler *handler)
 {
 	int ret;
 	struct generic_userns_exec_data wrap;
@@ -1231,8 +1229,8 @@ static void remove_path_for_hierarchy(struct hierarchy *h, char *cgname)
 /* Try to create the same cgroup in all hierarchies. Start with cgroup_pattern;
  * next cgroup_pattern-1, -2, ..., -999.
  */
-__cgfsng_ops__ static inline bool cgfsng_create(struct cgroup_ops *ops,
-						struct lxc_handler *handler)
+__cgfsng_ops static bool cgfsng_payload_create(struct cgroup_ops *ops,
+					       struct lxc_handler *handler)
 {
 	int i;
 	size_t len;
@@ -1307,7 +1305,7 @@ out_free:
 	return false;
 }
 
-__cgfsng_ops__ static bool cgfsng_enter(struct cgroup_ops *ops, pid_t pid)
+__cgfsng_ops static bool cgfsng_payload_enter(struct cgroup_ops *ops, pid_t pid)
 {
 	int i, len;
 	char pidstr[25];
@@ -1433,7 +1431,7 @@ static int chown_cgroup_wrapper(void *data)
 	return 0;
 }
 
-__cgfsng_ops__ static bool cgfsng_chown(struct cgroup_ops *ops,
+__cgfsng_ops static bool cgfsng_chown(struct cgroup_ops *ops,
 					struct lxc_conf *conf)
 {
 	struct generic_userns_exec_data wrap;
@@ -1583,7 +1581,7 @@ static inline int cg_mount_cgroup_full(int type, struct hierarchy *h,
 	return __cg_mount_direct(type, h, controllerpath);
 }
 
-__cgfsng_ops__ static bool cgfsng_mount(struct cgroup_ops *ops,
+__cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 					struct lxc_handler *handler,
 					const char *root, int type)
 {
@@ -1734,7 +1732,7 @@ static int recursive_count_nrtasks(char *dirname)
 	return count;
 }
 
-__cgfsng_ops__ static int cgfsng_nrtasks(struct cgroup_ops *ops)
+__cgfsng_ops static int cgfsng_nrtasks(struct cgroup_ops *ops)
 {
 	int count;
 	char *path;
@@ -1749,7 +1747,7 @@ __cgfsng_ops__ static int cgfsng_nrtasks(struct cgroup_ops *ops)
 }
 
 /* Only root needs to escape to the cgroup of its init. */
-__cgfsng_ops__ static bool cgfsng_escape(const struct cgroup_ops *ops)
+__cgfsng_ops static bool cgfsng_escape(const struct cgroup_ops *ops)
 {
 	int i;
 
@@ -1775,7 +1773,7 @@ __cgfsng_ops__ static bool cgfsng_escape(const struct cgroup_ops *ops)
 	return true;
 }
 
-__cgfsng_ops__ static int cgfsng_num_hierarchies(struct cgroup_ops *ops)
+__cgfsng_ops static int cgfsng_num_hierarchies(struct cgroup_ops *ops)
 {
 	int i;
 
@@ -1785,7 +1783,7 @@ __cgfsng_ops__ static int cgfsng_num_hierarchies(struct cgroup_ops *ops)
 	return i;
 }
 
-__cgfsng_ops__ static bool cgfsng_get_hierarchies(struct cgroup_ops *ops, int n, char ***out)
+__cgfsng_ops static bool cgfsng_get_hierarchies(struct cgroup_ops *ops, int n, char ***out)
 {
 	int i;
 
@@ -1805,7 +1803,7 @@ __cgfsng_ops__ static bool cgfsng_get_hierarchies(struct cgroup_ops *ops, int n,
 /* TODO: If the unified cgroup hierarchy grows a freezer controller this needs
  * to be adapted.
  */
-__cgfsng_ops__ static bool cgfsng_unfreeze(struct cgroup_ops *ops)
+__cgfsng_ops static bool cgfsng_unfreeze(struct cgroup_ops *ops)
 {
 	int ret;
 	char *fullpath;
@@ -1824,7 +1822,7 @@ __cgfsng_ops__ static bool cgfsng_unfreeze(struct cgroup_ops *ops)
 	return true;
 }
 
-__cgfsng_ops__ static const char *cgfsng_get_cgroup(struct cgroup_ops *ops,
+__cgfsng_ops static const char *cgfsng_get_cgroup(struct cgroup_ops *ops,
 						    const char *controller)
 {
 	struct hierarchy *h;
@@ -1923,7 +1921,7 @@ on_error:
 	return fret;
 }
 
-__cgfsng_ops__ static bool cgfsng_attach(struct cgroup_ops *ops, const char *name,
+__cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops, const char *name,
 					 const char *lxcpath, pid_t pid)
 {
 	int i, len, ret;
@@ -1970,7 +1968,7 @@ __cgfsng_ops__ static bool cgfsng_attach(struct cgroup_ops *ops, const char *nam
  * don't have a cgroup_data set up, so we ask the running container through the
  * commands API for the cgroup path.
  */
-__cgfsng_ops__ static int cgfsng_get(struct cgroup_ops *ops, const char *filename,
+__cgfsng_ops static int cgfsng_get(struct cgroup_ops *ops, const char *filename,
 				     char *value, size_t len, const char *name,
 				     const char *lxcpath)
 {
@@ -2009,7 +2007,7 @@ __cgfsng_ops__ static int cgfsng_get(struct cgroup_ops *ops, const char *filenam
  * don't have a cgroup_data set up, so we ask the running container through the
  * commands API for the cgroup path.
  */
-__cgfsng_ops__ static int cgfsng_set(struct cgroup_ops *ops,
+__cgfsng_ops static int cgfsng_set(struct cgroup_ops *ops,
 				     const char *filename, const char *value,
 				     const char *name, const char *lxcpath)
 {
@@ -2244,7 +2242,7 @@ static bool __cg_unified_setup_limits(struct cgroup_ops *ops,
 	return true;
 }
 
-__cgfsng_ops__ static bool cgfsng_setup_limits(struct cgroup_ops *ops,
+__cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
 					       struct lxc_conf *conf,
 					       bool do_devices)
 {
@@ -2559,7 +2557,7 @@ static bool cg_init(struct cgroup_ops *ops)
 	return cg_hybrid_init(ops);
 }
 
-__cgfsng_ops__ static bool cgfsng_data_init(struct cgroup_ops *ops)
+__cgfsng_ops static bool cgfsng_data_init(struct cgroup_ops *ops)
 {
 	const char *cgroup_pattern;
 
