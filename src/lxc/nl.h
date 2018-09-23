@@ -23,6 +23,8 @@
 #ifndef __LXC_NL_H
 #define __LXC_NL_H
 
+#include <stdio.h>
+
 /*
  * Use this as a good size to allocate generic netlink messages
  */
@@ -259,5 +261,7 @@ void nlmsg_free(struct nlmsg *nlmsg);
  */
 void *nlmsg_data(struct nlmsg *nlmsg);
 
+extern int addattr(struct nlmsghdr *n, size_t maxlen, int type,
+		   const void *data, size_t alen);
 
 #endif

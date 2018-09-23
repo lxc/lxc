@@ -272,9 +272,19 @@ extern int __build_bug_on_failed;
 #define IFLA_NEW_NETNSID 45
 #endif
 
-#ifndef IFLA_IF_NETNSID
-#define IFLA_IF_NETNSID 46
+#ifdef IFLA_IF_NETNSID
+#ifndef IFLA_TARGET_NETNSID
+#define IFLA_TARGET_NETNSID = IFLA_IF_NETNSID
 #endif
+#else
+#define IFLA_IF_NETNSID 46
+#define IFLA_TARGET_NETNSID 46
+#endif
+
+#ifndef IFA_TARGET_NETNSID
+#define IFA_TARGET_NETNSID 10
+#endif
+
 
 #ifndef RTM_NEWNSID
 #define RTM_NEWNSID 88
@@ -303,6 +313,16 @@ extern int __build_bug_on_failed;
 #ifndef MACVLAN_MODE_PASSTHRU
 #define MACVLAN_MODE_PASSTHRU 8
 #endif
+
+/* Attributes of RTM_NEWNSID/RTM_GETNSID messages */
+enum {
+	__LXC_NETNSA_NONE,
+#define __LXC_NETNSA_NSID_NOT_ASSIGNED -1
+	__LXC_NETNSA_NSID,
+	__LXC_NETNSA_PID,
+	__LXC_NETNSA_FD,
+	__LXC_NETNSA_MAX,
+};
 
 /* Length of abstract unix domain socket socket address. */
 #define LXC_AUDS_ADDR_LEN sizeof(((struct sockaddr_un *)0)->sun_path)

@@ -3181,35 +3181,6 @@ void lxc_delete_network(struct lxc_handler *handler)
 		DEBUG("Deleted network devices");
 }
 
-int addattr(struct nlmsghdr *n, size_t maxlen, int type, const void *data, size_t alen)
-{
-	int len = RTA_LENGTH(alen);
-	struct rtattr *rta;
-
-	errno = EMSGSIZE;
-	if (NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(len) > maxlen)
-		return -1;
-
-	rta = NLMSG_TAIL(n);
-	rta->rta_type = type;
-	rta->rta_len = len;
-	if (alen)
-		memcpy(RTA_DATA(rta), data, alen);
-	n->nlmsg_len = NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(len);
-
-	return 0;
-}
-
-/* Attributes of RTM_NEWNSID/RTM_GETNSID messages */
-enum {
-	__LXC_NETNSA_NONE,
-#define __LXC_NETNSA_NSID_NOT_ASSIGNED -1
-	__LXC_NETNSA_NSID,
-	__LXC_NETNSA_PID,
-	__LXC_NETNSA_FD,
-	__LXC_NETNSA_MAX,
-};
-
 int lxc_netns_set_nsid(int fd)
 {
 	int ret;
