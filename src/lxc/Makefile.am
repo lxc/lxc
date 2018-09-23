@@ -341,6 +341,7 @@ init_lxc_SOURCES = cmd/lxc_init.c \
 		   string_utils.c string_utils.h
 lxc_monitord_SOURCES = cmd/lxc_monitord.c
 lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
+		       ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		       log.c log.h \
 		       namespace.c namespace.h \
 		       network.c network.h \
