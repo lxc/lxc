@@ -725,6 +725,8 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	const char *loglevel;
 	struct lxc_conf *conf = handler->conf;
 
+	handler->monitor_pid = lxc_raw_getpid();
+
 	lsm_init();
 	TRACE("Initialized LSM");
 
@@ -857,7 +859,8 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	return 0;
 
 out_destroy_cgroups:
-	handler->cgroup_ops->destroy(handler->cgroup_ops, handler);
+	handler->cgroup_ops->payload_destroy(handler->cgroup_ops, handler);
+	handler->cgroup_ops->monitor_destroy(handler->cgroup_ops, handler);
 
 out_delete_terminal:
 	lxc_terminal_delete(&handler->conf->console);
@@ -951,7 +954,8 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 
 	lsm_process_cleanup(handler->conf, handler->lxcpath);
 
-	cgroup_ops->destroy(cgroup_ops, handler);
+	cgroup_ops->payload_destroy(cgroup_ops, handler);
+	cgroup_ops->monitor_destroy(cgroup_ops, handler);
 	cgroup_exit(cgroup_ops);
 
 	if (handler->conf->reboot == REBOOT_NONE) {
@@ -1971,7 +1975,7 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 		goto out_fini_nonet;
 	}
 
-	if (!cgroup_ops->monitor_enter(cgroup_ops, lxc_raw_getpid())) {
+	if (!cgroup_ops->monitor_enter(cgroup_ops, handler->monitor_pid)) {
 		ERROR("Failed to enter monitor cgroup");
 		goto out_fini_nonet;
 	}

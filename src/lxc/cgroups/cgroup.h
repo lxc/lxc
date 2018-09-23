@@ -129,7 +129,8 @@ struct cgroup_ops {
 	cgroup_layout_t cgroup_layout;
 
 	bool (*data_init)(struct cgroup_ops *ops);
-	void (*destroy)(struct cgroup_ops *ops, struct lxc_handler *handler);
+	void (*payload_destroy)(struct cgroup_ops *ops, struct lxc_handler *handler);
+	void (*monitor_destroy)(struct cgroup_ops *ops, struct lxc_handler *handler);
 	bool (*monitor_create)(struct cgroup_ops *ops, struct lxc_handler *handler);
 	bool (*monitor_enter)(struct cgroup_ops *ops, pid_t pid);
 	bool (*payload_create)(struct cgroup_ops *ops, struct lxc_handler *handler);

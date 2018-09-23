@@ -1111,8 +1111,8 @@ static int cgroup_rmdir_wrapper(void *data)
 	return cgroup_rmdir(arg->hierarchies, arg->container_cgroup);
 }
 
-__cgfsng_ops__ static void cgfsng_payload_destroy(struct cgroup_ops *ops,
-		struct lxc_handler *handler)
+__cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
+						struct lxc_handler *handler)
 {
 	int ret;
 	struct generic_userns_exec_data wrap;
@@ -1130,6 +1130,60 @@ __cgfsng_ops__ static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 	if (ret < 0) {
 		WARN("Failed to destroy cgroups");
 		return;
+	}
+}
+
+__cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
+						struct lxc_handler *handler)
+{
+	int len;
+	char *pivot_path;
+	struct lxc_conf *conf = handler->conf;
+	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
+
+	if (!ops->hierarchies)
+		return;
+
+	len = snprintf(pidstr, sizeof(pidstr), "%d", handler->monitor_pid);
+	if (len < 0 || (size_t)len >= sizeof(pidstr))
+		return;
+
+	for (int i = 0; ops->hierarchies[i]; i++) {
+		int ret;
+		struct hierarchy *h = ops->hierarchies[i];
+
+		if (!h->monitor_full_path)
+			continue;
+
+		if (conf && conf->cgroup_meta.dir)
+			pivot_path = must_make_path(h->mountpoint,
+						    h->container_base_path,
+						    conf->cgroup_meta.dir,
+						    "lxc.pivot",
+						    "cgroup.procs", NULL);
+		else
+			pivot_path = must_make_path(h->mountpoint,
+						    h->container_base_path,
+						    "lxc.pivot",
+						    "cgroup.procs", NULL);
+
+		ret = mkdir_p(pivot_path, 0755);
+		if (ret < 0 && errno != EEXIST)
+			goto next;
+
+		/* Move ourselves into the pivot cgroup to delete our own
+		 * cgroup.
+		 */
+		ret = lxc_write_to_file(pivot_path, pidstr, len, false, 0666);
+		if (ret != 0)
+			goto next;
+
+		ret = recursive_destroy(h->monitor_full_path);
+		if (ret < 0)
+			WARN("Failed to destroy \"%s\"", h->monitor_full_path);
+
+	next:
+		free(pivot_path);
 	}
 }
 
@@ -2682,7 +2736,8 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 	}
 
 	cgfsng_ops->data_init = cgfsng_data_init;
-	cgfsng_ops->destroy = cgfsng_payload_destroy;
+	cgfsng_ops->payload_destroy = cgfsng_payload_destroy;
+	cgfsng_ops->monitor_destroy = cgfsng_monitor_destroy;
 	cgfsng_ops->monitor_create = cgfsng_monitor_create;
 	cgfsng_ops->monitor_enter = cgfsng_monitor_enter;
 	cgfsng_ops->payload_create = cgfsng_payload_create;

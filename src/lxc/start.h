@@ -103,6 +103,9 @@ struct lxc_handler {
 	/* The child's pid. */
 	pid_t pid;
 
+	/* The monitor's pid. */
+	pid_t monitor_pid;
+
 	/* Whether the child has already exited. */
 	bool init_died;
 
