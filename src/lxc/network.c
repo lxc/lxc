@@ -48,18 +48,13 @@
 #include "af_unix.h"
 #include "conf.h"
 #include "config.h"
+#include <../include/netns_ifaddrs.h>
 #include "file_utils.h"
 #include "log.h"
 #include "macro.h"
 #include "network.h"
 #include "nl.h"
 #include "utils.h"
-
-#if HAVE_IFADDRS_H
-#include <ifaddrs.h>
-#else
-#include <../include/ifaddrs.h>
-#endif
 
 #ifndef HAVE_STRLCPY
 #include "include/strlcpy.h"
@@ -1950,7 +1945,7 @@ static const char padchar[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 char *lxc_mkifname(char *template)
 {
 	int ret;
-	struct ifaddrs *ifa, *ifaddr;
+	struct netns_ifaddrs *ifa, *ifaddr;
 	char name[IFNAMSIZ];
 	bool exists = false;
 	size_t i = 0;
@@ -1967,7 +1962,7 @@ char *lxc_mkifname(char *template)
 		return NULL;
 
 	/* Get all the network interfaces. */
-	ret = getifaddrs(&ifaddr);
+	ret = netns_getifaddrs(&ifaddr, -1, &(bool){false});
 	if (ret < 0) {
 		SYSERROR("Failed to get network interfaces");
 		return NULL;
@@ -2001,7 +1996,7 @@ char *lxc_mkifname(char *template)
 			break;
 	}
 
-	freeifaddrs(ifaddr);
+	netns_freeifaddrs(ifaddr);
 	(void)strlcpy(template, name, strlen(template) + 1);
 
 	return template;
@@ -3180,35 +3175,6 @@ void lxc_delete_network(struct lxc_handler *handler)
 	else
 		DEBUG("Deleted network devices");
 }
-
-int addattr(struct nlmsghdr *n, size_t maxlen, int type, const void *data, size_t alen)
-{
-	int len = RTA_LENGTH(alen);
-	struct rtattr *rta;
-
-	errno = EMSGSIZE;
-	if (NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(len) > maxlen)
-		return -1;
-
-	rta = NLMSG_TAIL(n);
-	rta->rta_type = type;
-	rta->rta_len = len;
-	if (alen)
-		memcpy(RTA_DATA(rta), data, alen);
-	n->nlmsg_len = NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(len);
-
-	return 0;
-}
-
-/* Attributes of RTM_NEWNSID/RTM_GETNSID messages */
-enum {
-	__LXC_NETNSA_NONE,
-#define __LXC_NETNSA_NSID_NOT_ASSIGNED -1
-	__LXC_NETNSA_NSID,
-	__LXC_NETNSA_PID,
-	__LXC_NETNSA_FD,
-	__LXC_NETNSA_MAX,
-};
 
 int lxc_netns_set_nsid(int fd)
 {

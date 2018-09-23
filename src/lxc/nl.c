@@ -345,3 +345,22 @@ extern int netlink_close(struct nl_handler *handler)
 	return 0;
 }
 
+int addattr(struct nlmsghdr *n, size_t maxlen, int type, const void *data,
+	    size_t alen)
+{
+	int len = RTA_LENGTH(alen);
+	struct rtattr *rta;
+
+	errno = EMSGSIZE;
+	if (NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(len) > maxlen)
+		return -1;
+
+	rta = NLMSG_TAIL(n);
+	rta->rta_type = type;
+	rta->rta_len = len;
+	if (alen)
+		memcpy(RTA_DATA(rta), data, alen);
+	n->nlmsg_len = NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(len);
+
+	return 0;
+}

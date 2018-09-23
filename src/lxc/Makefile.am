@@ -14,6 +14,7 @@ noinst_HEADERS = api_extensions.h \
 		 criu.h \
 		 error.h \
 		 file_utils.h \
+		 ../include/netns_ifaddrs.h \
 		 initutils.h \
 		 list.h \
 		 log.h \
@@ -40,10 +41,6 @@ noinst_HEADERS = api_extensions.h \
 		 ../tests/lxctest.h \
 		 tools/arguments.h \
 		 utils.h
-
-if !HAVE_IFADDRS_H
-noinst_HEADERS += ../include/ifaddrs.h
-endif
 
 if IS_BIONIC
 noinst_HEADERS += ../include/lxcmntent.h \
@@ -103,6 +100,7 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    execute.c \
 		    freezer.c \
 		    file_utils.c file_utils.h \
+		    ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		    initutils.c initutils.h \
 		    list.h \
 		    log.c log.h \
@@ -138,10 +136,6 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    utils.c utils.h \
 		    version.h \
 		    $(LSM_SOURCES)
-
-if !HAVE_IFADDRS_H
-liblxc_la_SOURCES += ../include/ifaddrs.c ../include/ifaddrs.h
-endif
 
 if IS_BIONIC
 liblxc_la_SOURCES += ../include/lxcmntent.c ../include/lxcmntent.h \
@@ -347,6 +341,7 @@ init_lxc_SOURCES = cmd/lxc_init.c \
 		   string_utils.c string_utils.h
 lxc_monitord_SOURCES = cmd/lxc_monitord.c
 lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
+		       ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		       log.c log.h \
 		       namespace.c namespace.h \
 		       network.c network.h \

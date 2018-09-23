@@ -30,14 +30,9 @@
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
+#include "../../include/netns_ifaddrs.h"
 #include "log.h"
 #include "utils.h"
-
-#if HAVE_IFADDRS_H
-#include <ifaddrs.h>
-#else
-#include "../include/ifaddrs.h"
-#endif
 
 lxc_log_define(lxc_device, lxc);
 
@@ -73,7 +68,7 @@ static bool is_interface(const char *dev_name, pid_t pid)
 	}
 
 	if (p == 0) {
-		struct ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
+		struct netns_ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
 
 		if (!switch_to_ns(pid, "net")) {
 			ERROR("Failed to enter netns of container");
@@ -81,7 +76,7 @@ static bool is_interface(const char *dev_name, pid_t pid)
 		}
 
 		/* Grab the list of interfaces */
-		if (getifaddrs(&interfaceArray)) {
+		if (netns_getifaddrs(&interfaceArray, -1, &(bool){false})) {
 			ERROR("Failed to get interfaces list");
 			_exit(-1);
 		}
