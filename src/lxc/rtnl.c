@@ -42,6 +42,9 @@ extern int rtnetlink_close(struct rtnl_handler *handler)
 	return netlink_close(&handler->nlh);
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
+
 extern int rtnetlink_rcv(struct rtnl_handler *handler, struct rtnlmsg *rtnlmsg)
 {
 	return netlink_rcv(&handler->nlh, (struct nlmsg *)&rtnlmsg->nlmsghdr);
@@ -61,6 +64,8 @@ extern int rtnetlink_transaction(struct rtnl_handler *handler,
 				   (struct nlmsg *)&request->nlmsghdr,
 				   (struct nlmsg *)&answer->nlmsghdr);
 }
+
+#pragma GCC diagnostic pop
 
 extern struct rtnlmsg *rtnlmsg_alloc(size_t size)
 {
