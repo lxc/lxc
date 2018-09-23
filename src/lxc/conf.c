@@ -372,7 +372,8 @@ int run_script_argv(const char *name, unsigned int hook_version,
 	for (i = 0; argv && argv[i]; i++)
 		size += strlen(argv[i]) + 1;
 
-	size += sizeof("exec");
+	size += STRLITERALLEN("exec");
+	size++;
 	size += strlen(script);
 	size++;
 
@@ -510,7 +511,7 @@ int run_script(const char *name, const char *section, const char *script, ...)
 		size += strlen(p) + 1;
 	va_end(ap);
 
-	size += strlen("exec");
+	size += STRLITERALLEN("exec");
 	size += strlen(script);
 	size += strlen(name);
 	size += strlen(section);
@@ -1663,13 +1664,13 @@ static int lxc_setup_devpts(struct lxc_conf *conf)
 	mntopt_sets[0] = devpts_mntopts;
 
 	/* !gid=5 && max= */
-	mntopt_sets[1] = devpts_mntopts + sizeof("gid=5");
+	mntopt_sets[1] = devpts_mntopts + STRLITERALLEN("gid=5") + 1;
 
 	/* gid=5 && !max= */
 	mntopt_sets[2] = default_devpts_mntopts;
 
 	/* !gid=5 && !max= */
-	mntopt_sets[3] = default_devpts_mntopts + sizeof("gid=5");
+	mntopt_sets[3] = default_devpts_mntopts + STRLITERALLEN("gid=5") + 1;
 
 	/* end */
 	mntopt_sets[4] = NULL;
@@ -2405,8 +2406,7 @@ static int setup_mount(const struct lxc_conf *conf,
  */
 static const char nesting_helpers[] =
 "proc dev/.lxc/proc proc create=dir,optional\n"
-"sys dev/.lxc/sys sysfs create=dir,optional\n"
-;
+"sys dev/.lxc/sys sysfs create=dir,optional\n";
 
 FILE *make_anonymous_mount_file(struct lxc_list *mount,
 				bool include_nesting_helpers)
@@ -2453,8 +2453,8 @@ FILE *make_anonymous_mount_file(struct lxc_list *mount,
 
 	if (include_nesting_helpers) {
 		ret = lxc_write_nointr(fd, nesting_helpers,
-				       sizeof(nesting_helpers) - 1);
-		if (ret != sizeof(nesting_helpers) - 1)
+				       STRARRAYLEN(nesting_helpers));
+		if (ret != STRARRAYLEN(nesting_helpers))
 			goto on_error;
 	}
 
@@ -2834,7 +2834,7 @@ int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 		}
 
 		if (fd >= 0) {
-			buflen = sizeof("deny\n") - 1;
+			buflen = STRLITERALLEN("deny\n");
 			errno = 0;
 			ret = lxc_write_nointr(fd, "deny\n", buflen);
 			close(fd);
@@ -3863,12 +3863,12 @@ int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version)
 	if (version == CGROUP2_SUPER_MAGIC) {
 		global_token = "lxc.cgroup2";
 		namespaced_token = "lxc.cgroup2.";
-		namespaced_token_len = sizeof("lxc.cgroup2.") - 1;
+		namespaced_token_len = STRLITERALLEN("lxc.cgroup2.");
 		list = &c->cgroup2;
 	} else if (version == CGROUP_SUPER_MAGIC) {
 		global_token = "lxc.cgroup";
 		namespaced_token = "lxc.cgroup.";
-		namespaced_token_len = sizeof("lxc.cgroup.") - 1;
+		namespaced_token_len = STRLITERALLEN("lxc.cgroup.");
 		list = &c->cgroup;
 	} else {
 		return -EINVAL;
@@ -3876,7 +3876,7 @@ int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version)
 
 	if (strcmp(key, global_token) == 0)
 		all = true;
-	else if (strncmp(key, namespaced_token, sizeof(namespaced_token) - 1) == 0)
+	else if (strncmp(key, namespaced_token, namespaced_token_len) == 0)
 		k += namespaced_token_len;
 	else
 		return -EINVAL;
@@ -3905,10 +3905,10 @@ int lxc_clear_limits(struct lxc_conf *c, const char *key)
 
 	if (strcmp(key, "lxc.limit") == 0 || strcmp(key, "lxc.prlimit") == 0)
 		all = true;
-	else if (strncmp(key, "lxc.limit.", sizeof("lxc.limit.") - 1) == 0)
-		k = key + sizeof("lxc.limit.") - 1;
-	else if (strncmp(key, "lxc.prlimit.", sizeof("lxc.prlimit.") - 1) == 0)
-		k = key + sizeof("lxc.prlimit.") - 1;
+	else if (strncmp(key, "lxc.limit.", STRLITERALLEN("lxc.limit.")) == 0)
+		k = key + STRLITERALLEN("lxc.limit.");
+	else if (strncmp(key, "lxc.prlimit.", STRLITERALLEN("lxc.prlimit.")) == 0)
+		k = key + STRLITERALLEN("lxc.prlimit.");
 	else
 		return -1;
 
@@ -3935,8 +3935,8 @@ int lxc_clear_sysctls(struct lxc_conf *c, const char *key)
 
 	if (strcmp(key, "lxc.sysctl") == 0)
 		all = true;
-	else if (strncmp(key, "lxc.sysctl.", sizeof("lxc.sysctl.") - 1) == 0)
-		k = key + sizeof("lxc.sysctl.") - 1;
+	else if (strncmp(key, "lxc.sysctl.", STRLITERALLEN("lxc.sysctl.")) == 0)
+		k = key + STRLITERALLEN("lxc.sysctl.");
 	else
 		return -1;
 
@@ -3964,8 +3964,8 @@ int lxc_clear_procs(struct lxc_conf *c, const char *key)
 
 	if (strcmp(key, "lxc.proc") == 0)
 		all = true;
-	else if (strncmp(key, "lxc.proc.", sizeof("lxc.proc.") - 1) == 0)
-		k = key + sizeof("lxc.proc.") - 1;
+	else if (strncmp(key, "lxc.proc.", STRLITERALLEN("lxc.proc.")) == 0)
+		k = key + STRLITERALLEN("lxc.proc.");
 	else
 		return -1;
 
@@ -4039,8 +4039,8 @@ int lxc_clear_hooks(struct lxc_conf *c, const char *key)
 
 	if (strcmp(key, "lxc.hook") == 0)
 		all = true;
-	else if (strncmp(key, "lxc.hook.", sizeof("lxc.hook.") - 1) == 0)
-		k = key + sizeof("lxc.hook.") - 1;
+	else if (strncmp(key, "lxc.hook.", STRLITERALLEN("lxc.hook.")) == 0)
+		k = key + STRLITERALLEN("lxc.hook.");
 	else
 		return -1;
 

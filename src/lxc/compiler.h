@@ -33,17 +33,19 @@
 #endif
 
 #if defined(__GNUC__) && __GNUC__ >= 7 || defined(__clang__)
-#define __fallthrough__ __attribute__((fallthrough))
+#define __fallthrough __attribute__((fallthrough))
 #else
-#define __fallthrough__
+#define __fallthrough
 #endif
 
 #ifndef _noreturn_
 #if __STDC_VERSION__ >= 201112L
-#define __noreturn__ _Noreturn
+#define __noreturn _Noreturn
 #else
-#define __noreturn__ __attribute__((noreturn))
+#define __noreturn __attribute__((noreturn))
 #endif
 #endif
+
+#define __cgfsng_ops
 
 #endif /* __LXC_COMPILER_H */

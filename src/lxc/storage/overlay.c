@@ -31,6 +31,7 @@
 #include "confile.h"
 #include "log.h"
 #include "lxccontainer.h"
+#include "macro.h"
 #include "overlay.h"
 #include "rsync.h"
 #include "storage.h"
@@ -94,7 +95,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 			return -22;
 		}
 
-		if (strlen(lastslash) < (sizeof("/rootfs") - 1)) {
+		if (strlen(lastslash) < STRLITERALLEN("/rootfs")) {
 			ERROR("Failed to detect \"/rootfs\" in string \"%s\"",
 			      new->dest);
 			return -22;
@@ -110,8 +111,8 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 		}
 
 		memcpy(delta, new->dest, lastslashidx + 1);
-		memcpy(delta + lastslashidx, "delta0", sizeof("delta0") - 1);
-		delta[lastslashidx + sizeof("delta0") - 1] = '\0';
+		memcpy(delta + lastslashidx, "delta0", STRLITERALLEN("delta0"));
+		delta[lastslashidx + STRLITERALLEN("delta0")] = '\0';
 
 		ret = mkdir(delta, 0755);
 		if (ret < 0 && errno != EEXIST) {
@@ -142,8 +143,8 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 		}
 
 		memcpy(work, new->dest, lastslashidx + 1);
-		memcpy(work + lastslashidx, "olwork", sizeof("olwork") - 1);
-		work[lastslashidx + sizeof("olwork") - 1] = '\0';
+		memcpy(work + lastslashidx, "olwork", STRLITERALLEN("olwork"));
+		work[lastslashidx + STRLITERALLEN("olwork")] = '\0';
 
 		ret = mkdir(work, 0755);
 		if (ret < 0) {
@@ -253,8 +254,8 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 		}
 
 		memcpy(work, ndelta, lastslashidx + 1);
-		memcpy(work + lastslashidx, "olwork", sizeof("olwork") - 1);
-		work[lastslashidx + sizeof("olwork") - 1] = '\0';
+		memcpy(work + lastslashidx, "olwork", STRLITERALLEN("olwork"));
+		work[lastslashidx + STRLITERALLEN("olwork")] = '\0';
 
 		ret = mkdir(work, 0755);
 		if (ret < 0 && errno != EEXIST) {
@@ -335,11 +336,11 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 			return -1;
 		}
 
-		if (!strncmp(s1, "/snaps", sizeof("/snaps") - 1)) {
+		if (!strncmp(s1, "/snaps", STRLITERALLEN("/snaps"))) {
 			s1 = clean_new_path;
 			s2 = clean_old_path;
 			s3 = (char *)cname;
-		} else if (!strncmp(s2, "/snaps", sizeof("/snaps") - 1)) {
+		} else if (!strncmp(s2, "/snaps", STRLITERALLEN("/snaps"))) {
 			s1 = clean_old_path;
 			s2 = clean_new_path;
 			s3 = (char *)oldname;
@@ -415,7 +416,7 @@ int ovl_create(struct lxc_storage *bdev, const char *dest, const char *n,
 		ERROR("Failed to allocate memory");
 		return -1;
 	}
-	memcpy(delta + len - 6, "delta0", sizeof("delta0") - 1);
+	memcpy(delta + len - 6, "delta0", STRLITERALLEN("delta0"));
 
 	ret = mkdir_p(delta, 0755);
 	if (ret < 0) {
@@ -568,8 +569,8 @@ int ovl_mount(struct lxc_storage *bdev)
 	}
 
 	memcpy(work, upper, lastslashidx + 1);
-	memcpy(work + lastslashidx, "olwork", sizeof("olwork") - 1);
-	work[lastslashidx + sizeof("olwork") - 1] = '\0';
+	memcpy(work + lastslashidx, "olwork", STRLITERALLEN("olwork"));
+	work[lastslashidx + STRLITERALLEN("olwork")] = '\0';
 
 	ret = parse_mntopts(bdev->mntopts, &mntflags, &mntdata);
 	if (ret < 0) {
