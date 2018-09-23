@@ -167,6 +167,9 @@ static int nl_msg_to_ifaddr(void *pctx, struct nlmsghdr *h)
 	struct ifaddrs_ctx *ctx = pctx;
 
 	if (h->nlmsg_type == RTM_NEWLINK) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
+
 		for (rta = __NLMSG_RTA(h, sizeof(*ifi)); __NLMSG_RTAOK(rta, h);
 		     rta = __RTA_NEXT(rta)) {
 			if (rta->rta_type != IFLA_STATS)
@@ -175,6 +178,8 @@ static int nl_msg_to_ifaddr(void *pctx, struct nlmsghdr *h)
 			stats_len = __RTA_DATALEN(rta);
 			break;
 		}
+
+#pragma GCC diagnostic pop
 	} else {
 		for (ifs0 = ctx->hash[ifa->ifa_index % IFADDRS_HASH_SIZE]; ifs0;
 		     ifs0 = ifs0->hash_next)
@@ -189,6 +194,9 @@ static int nl_msg_to_ifaddr(void *pctx, struct nlmsghdr *h)
 		errno = ENOMEM;
 		return -1;
 	}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
 
 	if (h->nlmsg_type == RTM_NEWLINK) {
 		ifs->index = ifi->ifi_index;
@@ -289,6 +297,8 @@ static int nl_msg_to_ifaddr(void *pctx, struct nlmsghdr *h)
 				    &ifs->netmask, ifa->ifa_prefixlen);
 	}
 
+#pragma GCC diagnostic pop
+
 	if (ifs->ifa.ifa_name) {
 		if (!ctx->first)
 			ctx->first = ifs;
@@ -334,6 +344,8 @@ static int __nl_recv(int fd, unsigned int seq, int type, int af,
 		if (r <= 0)
 			return -1;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
 		for (h = &u.reply; __NLMSG_OK(h, (void *)&u.buf[r]);
 		     h = __NLMSG_NEXT(h)) {
 			if (h->nlmsg_type == NLMSG_DONE)
@@ -348,6 +360,7 @@ static int __nl_recv(int fd, unsigned int seq, int type, int af,
 			if (ret)
 				return ret;
 		}
+#pragma GCC diagnostic pop
 	}
 }
 
