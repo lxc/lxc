@@ -76,7 +76,6 @@ void cgroup_exit(struct cgroup_ops *ops)
 
 	free(ops->cgroup_pattern);
 	free(ops->container_cgroup);
-	free(ops->monitor_pattern);
 
 	for (it = ops->hierarchies; it && *it; it++) {
 		char **ctrlr;

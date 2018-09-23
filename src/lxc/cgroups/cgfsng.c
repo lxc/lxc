@@ -1159,12 +1159,12 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 			pivot_path = must_make_path(h->mountpoint,
 						    h->container_base_path,
 						    conf->cgroup_meta.dir,
-						    "lxc.pivot",
+						    PIVOT_CGROUP,
 						    "cgroup.procs", NULL);
 		else
 			pivot_path = must_make_path(h->mountpoint,
 						    h->container_base_path,
-						    "lxc.pivot",
+						    PIVOT_CGROUP,
 						    "cgroup.procs", NULL);
 
 		ret = mkdir_p(pivot_path, 0755);
@@ -2714,7 +2714,7 @@ __cgfsng_ops static bool cgfsng_data_init(struct cgroup_ops *ops)
 		return false;
 	}
 	ops->cgroup_pattern = must_copy_string(cgroup_pattern);
-	ops->monitor_pattern = must_copy_string("lxc.monitor");
+	ops->monitor_pattern = MONITOR_CGROUP;
 
 	return true;
 }

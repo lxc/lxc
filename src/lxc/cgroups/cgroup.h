@@ -28,6 +28,10 @@
 #include <stddef.h>
 #include <sys/types.h>
 
+#define PAYLOAD_CGROUP "lxc.payload"
+#define MONITOR_CGROUP "lxc.monitor"
+#define PIVOT_CGROUP "lxc.pivot"
+
 struct lxc_handler;
 struct lxc_conf;
 struct lxc_list;
@@ -96,6 +100,8 @@ struct cgroup_ops {
 	char **cgroup_use;
 	char *cgroup_pattern;
 	char *container_cgroup;
+
+	/* Static memory, do not free.*/
 	char *monitor_pattern;
 
 	/* @hierarchies
