@@ -392,6 +392,9 @@ static int __ifaddrs_netlink_recv(int fd, unsigned int seq, int type, int af,
 		return -1;
 
 	memset(buf, 0, sizeof(*buf));
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
 	hdr = (struct nlmsghdr *)buf;
 	if (type == RTM_GETLINK)
 		ifi_msg = (struct ifinfomsg *)__NLMSG_DATA(hdr);
@@ -402,6 +405,7 @@ static int __ifaddrs_netlink_recv(int fd, unsigned int seq, int type, int af,
 		hdr->nlmsg_len = NLMSG_LENGTH(sizeof(*ifi_msg));
 	else
 		hdr->nlmsg_len = NLMSG_LENGTH(sizeof(*ifa_msg));
+#pragma GCC diagnostic pop
 
 	hdr->nlmsg_type = type;
 	hdr->nlmsg_flags = NLM_F_DUMP | NLM_F_REQUEST;
@@ -482,6 +486,8 @@ static int __rtnl_enumerate(int link_af, int addr_af, __s32 netns_id,
 	return r;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
 /* Get a pointer to the address structure from a sockaddr. */
 static void *get_addr_ptr(struct sockaddr *sockaddr_ptr)
 {
@@ -493,12 +499,16 @@ static void *get_addr_ptr(struct sockaddr *sockaddr_ptr)
 
 	return NULL;
 }
+#pragma GCC diagnostic pop
 
 static char *get_packet_address(struct sockaddr *sockaddr_ptr, char *buf, size_t buflen)
 {
 	char *slider = buf;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
 	unsigned char *m = ((struct sockaddr_ll *)sockaddr_ptr)->sll_addr;
 	unsigned char n = ((struct sockaddr_ll *)sockaddr_ptr)->sll_halen;
+#pragma GCC diagnostic pop
 
 	for (unsigned char i = 0; i < n; i++) {
 		int ret;
