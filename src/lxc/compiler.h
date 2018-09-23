@@ -46,4 +46,6 @@
 #endif
 #endif
 
+#define __cgfsng_ops
+
 #endif /* __LXC_COMPILER_H */
