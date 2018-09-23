@@ -477,5 +477,5 @@ extern int lxc_log_set_file(int *fd, const char *fname);
 extern const char *lxc_log_get_file(void);
 extern void lxc_log_set_prefix(const char *prefix);
 extern const char *lxc_log_get_prefix(void);
-extern void lxc_log_options_no_override();
+extern void lxc_log_options_no_override(void);
 #endif
