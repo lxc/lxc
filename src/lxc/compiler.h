@@ -39,7 +39,7 @@
 #endif
 
 #ifndef _noreturn_
-#if __STDC_VERSION__ >= 201112L
+#if __STDC_VERSION__ >= 201112L && !IS_BIONIC
 #define __noreturn _Noreturn
 #else
 #define __noreturn __attribute__((noreturn))
