@@ -2429,6 +2429,9 @@ static char **do_lxcapi_get_ips(struct lxc_container *c, const char *interface,
 			if (tempIfAddr->ifa_addr == NULL)
 				continue;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
+
 			if (tempIfAddr->ifa_addr->sa_family == AF_INET) {
 				if (family && strcmp(family, "inet"))
 					continue;
@@ -2443,6 +2446,8 @@ static char **do_lxcapi_get_ips(struct lxc_container *c, const char *interface,
 
 				tempAddrPtr = &((struct sockaddr_in6 *)tempIfAddr->ifa_addr)->sin6_addr;
 			}
+
+#pragma GCC diagnostic pop
 
 			if (interface && strcmp(interface, tempIfAddr->ifa_name))
 				continue;

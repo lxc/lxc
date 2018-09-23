@@ -962,6 +962,9 @@ int netdev_get_mtu(int ifindex)
 	if (err < 0)
 		goto out;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
+
 	do {
 		/* Restore the answer buffer length, it might have been
 		 * overwritten by a previous receive.
@@ -1023,6 +1026,8 @@ int netdev_get_mtu(int ifindex)
 			msg = NLMSG_NEXT(msg, recv_len);
 		}
 	} while (readmore);
+
+#pragma GCC diagnostic pop
 
 	/* If we end up here, we didn't find any result, so signal an error. */
 	err = -1;
@@ -1501,6 +1506,9 @@ int lxc_ipv4_addr_add(int ifindex, struct in_addr *addr, struct in_addr *bcast,
  * the given RTM_NEWADDR message. Allocates memory for the address and stores
  * that pointer in *res (so res should be an in_addr** or in6_addr**).
  */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
+
 static int ifa_get_local_ip(int family, struct nlmsghdr *msg, void **res)
 {
 	int addrlen;
@@ -1546,6 +1554,8 @@ static int ifa_get_local_ip(int family, struct nlmsghdr *msg, void **res)
 	return 0;
 }
 
+#pragma GCC diagnostic pop
+
 static int ip_addr_get(int family, int ifindex, void **res)
 {
 	int answer_len, err;
@@ -1587,6 +1597,9 @@ static int ip_addr_get(int family, int ifindex, void **res)
 	err = netlink_send(&nlh, nlmsg);
 	if (err < 0)
 		goto out;
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
 
 	do {
 		/* Restore the answer buffer length, it might have been
@@ -1646,6 +1659,8 @@ static int ip_addr_get(int family, int ifindex, void **res)
 			msg = NLMSG_NEXT(msg, recv_len);
 		}
 	} while (readmore);
+
+#pragma GCC diagnostic pop
 
 	/* If we end up here, we didn't find any result, so signal an
 	 * error.
@@ -3213,8 +3228,12 @@ int lxc_netns_set_nsid(int fd)
 		return -1;
 
 	memset(buf, 0, sizeof(buf));
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
 	hdr = (struct nlmsghdr *)buf;
 	msg = (struct rtgenmsg *)NLMSG_DATA(hdr);
+#pragma GCC diagnostic pop
 
 	hdr->nlmsg_len = NLMSG_LENGTH(sizeof(*msg));
 	hdr->nlmsg_type = RTM_NEWNSID;
@@ -3252,7 +3271,10 @@ static int parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, int le
 		if ((type <= max) && (!tb[type]))
 			tb[type] = rta;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
 		rta = RTA_NEXT(rta, len);
+#pragma GCC diagnostic pop
 	}
 
 	return 0;
@@ -3287,8 +3309,12 @@ int lxc_netns_get_nsid(int fd)
 		return -1;
 
 	memset(buf, 0, sizeof(buf));
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
 	hdr = (struct nlmsghdr *)buf;
 	msg = (struct rtgenmsg *)NLMSG_DATA(hdr);
+#pragma GCC diagnostic pop
 
 	hdr->nlmsg_len = NLMSG_LENGTH(sizeof(*msg));
 	hdr->nlmsg_type = RTM_GETNSID;
@@ -3313,9 +3339,12 @@ int lxc_netns_get_nsid(int fd)
 	if (len < 0)
 		return -1;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
 	parse_rtattr(tb, __LXC_NETNSA_MAX, NETNS_RTA(msg), len);
 	if (tb[__LXC_NETNSA_NSID])
 		return rta_getattr_s32(tb[__LXC_NETNSA_NSID]);
+#pragma GCC diagnostic pop
 
 	return -1;
 }
