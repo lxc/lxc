@@ -586,8 +586,7 @@ static bool cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 		}
 	}
 
-	clonechildrenpath =
-	    must_make_path(cgpath, "cgroup.clone_children", NULL);
+	clonechildrenpath = must_make_path(cgpath, "cgroup.clone_children", NULL);
 	/* unified hierarchy doesn't have clone_children */
 	if (!file_exists(clonechildrenpath)) {
 		free(clonechildrenpath);
@@ -1200,6 +1199,11 @@ static bool monitor_create_path_for_hierarchy(struct hierarchy *h, char *cgname)
 	h->monitor_full_path = must_make_path(h->mountpoint, h->container_base_path, cgname, NULL);
 	if (dir_exists(h->monitor_full_path))
 		return true;
+
+	if (!cg_legacy_handle_cpuset_hierarchy(h, cgname)) {
+		ERROR("Failed to handle legacy cpuset controller");
+		return false;
+	}
 
 	ret = mkdir_p(h->monitor_full_path, 0755);
 	if (ret < 0) {
