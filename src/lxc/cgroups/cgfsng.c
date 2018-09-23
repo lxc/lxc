@@ -1111,7 +1111,8 @@ static int cgroup_rmdir_wrapper(void *data)
 	return cgroup_rmdir(arg->hierarchies, arg->container_cgroup);
 }
 
-__cgfsng_ops static void cgfsng_destroy(struct cgroup_ops *ops, struct lxc_handler *handler)
+__cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
+						struct lxc_handler *handler)
 {
 	int ret;
 	struct generic_userns_exec_data wrap;
@@ -2600,7 +2601,8 @@ struct cgroup_ops *cgfsng_ops_init(void)
 	}
 
 	cgfsng_ops->data_init = cgfsng_data_init;
-	cgfsng_ops->destroy = cgfsng_destroy;
+	cgfsng_ops->destroy = cgfsng_payload_destroy;
+	cgfsng_ops->destroy = cgfsng_payload_destroy;
 	cgfsng_ops->payload_create = cgfsng_payload_create;
 	cgfsng_ops->payload_enter = cgfsng_payload_enter;
 	cgfsng_ops->escape = cgfsng_escape;
