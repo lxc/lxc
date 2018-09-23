@@ -48,18 +48,13 @@
 #include "af_unix.h"
 #include "conf.h"
 #include "config.h"
+#include <../include/netns_ifaddrs.h>
 #include "file_utils.h"
 #include "log.h"
 #include "macro.h"
 #include "network.h"
 #include "nl.h"
 #include "utils.h"
-
-#if HAVE_IFADDRS_H
-#include <ifaddrs.h>
-#else
-#include <../include/ifaddrs.h>
-#endif
 
 #ifndef HAVE_STRLCPY
 #include "include/strlcpy.h"
@@ -1950,7 +1945,7 @@ static const char padchar[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 char *lxc_mkifname(char *template)
 {
 	int ret;
-	struct ifaddrs *ifa, *ifaddr;
+	struct netns_ifaddrs *ifa, *ifaddr;
 	char name[IFNAMSIZ];
 	bool exists = false;
 	size_t i = 0;
@@ -1967,7 +1962,7 @@ char *lxc_mkifname(char *template)
 		return NULL;
 
 	/* Get all the network interfaces. */
-	ret = getifaddrs(&ifaddr);
+	ret = netns_getifaddrs(&ifaddr, -1, &(bool){false});
 	if (ret < 0) {
 		SYSERROR("Failed to get network interfaces");
 		return NULL;
@@ -2001,7 +1996,7 @@ char *lxc_mkifname(char *template)
 			break;
 	}
 
-	freeifaddrs(ifaddr);
+	netns_freeifaddrs(ifaddr);
 	(void)strlcpy(template, name, strlen(template) + 1);
 
 	return template;

@@ -48,18 +48,13 @@
 #include "config.h"
 #include "confile.h"
 #include "confile_utils.h"
+#include <../include/netns_ifaddrs.h>
 #include "log.h"
 #include "lxcseccomp.h"
 #include "network.h"
 #include "parse.h"
 #include "storage.h"
 #include "utils.h"
-
-#if HAVE_IFADDRS_H
-#include <ifaddrs.h>
-#else
-#include <../include/ifaddrs.h>
-#endif
 
 #if HAVE_SYS_PERSONALITY_H
 #include <sys/personality.h>
@@ -314,14 +309,14 @@ static int set_config_net_flags(const char *key, const char *value,
 static int create_matched_ifnames(const char *value, struct lxc_conf *lxc_conf,
 				  struct lxc_netdev *netdev)
 {
-	struct ifaddrs *ifaddr, *ifa;
+	struct netns_ifaddrs *ifaddr, *ifa;
 	int n;
 	int ret = 0;
 	const char *type_key = "lxc.net.type";
 	const char *link_key = "lxc.net.link";
 	const char *tmpvalue = "phys";
 
-	if (getifaddrs(&ifaddr) == -1) {
+	if (netns_getifaddrs(&ifaddr, -1, &(bool){false}) < 0) {
 		SYSERROR("Get network interfaces failed");
 		return -1;
 	}
@@ -349,7 +344,7 @@ static int create_matched_ifnames(const char *value, struct lxc_conf *lxc_conf,
 		}
 	}
 
-	freeifaddrs(ifaddr);
+	netns_freeifaddrs(ifaddr);
 	ifaddr = NULL;
 
 	return ret;

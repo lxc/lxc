@@ -50,6 +50,7 @@
 #include "confile_utils.h"
 #include "criu.h"
 #include "error.h"
+#include <../include/netns_ifaddrs.h>
 #include "initutils.h"
 #include "log.h"
 #include "lxc.h"
@@ -73,12 +74,6 @@
 /* major()/minor() */
 #ifdef MAJOR_IN_MKDEV
 #include <sys/mkdev.h>
-#endif
-
-#if HAVE_IFADDRS_H
-#include <ifaddrs.h>
-#else
-#include <../include/ifaddrs.h>
 #endif
 
 #if IS_BIONIC
@@ -2305,7 +2300,7 @@ static char **do_lxcapi_get_interfaces(struct lxc_container *c)
 
 	if (pid == 0) { /* child */
 		int ret = 1, nbytes;
-		struct ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
+		struct netns_ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
 
 		/* close the read-end of the pipe */
 		close(pipefd[0]);
@@ -2316,7 +2311,7 @@ static char **do_lxcapi_get_interfaces(struct lxc_container *c)
 		}
 
 		/* Grab the list of interfaces */
-		if (getifaddrs(&interfaceArray)) {
+		if (netns_getifaddrs(&interfaceArray, -1, &(bool){false})) {
 			SYSERROR("Failed to get interfaces list");
 			goto out;
 		}
@@ -2335,7 +2330,7 @@ static char **do_lxcapi_get_interfaces(struct lxc_container *c)
 
 	out:
 		if (interfaceArray)
-			freeifaddrs(interfaceArray);
+			netns_freeifaddrs(interfaceArray);
 
 		/* close the write-end of the pipe, thus sending EOF to the reader */
 		close(pipefd[1]);
@@ -2407,7 +2402,7 @@ static char **do_lxcapi_get_ips(struct lxc_container *c, const char *interface,
 		int ret = 1;
 		char *address = NULL;
 		void *tempAddrPtr = NULL;
-		struct ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
+		struct netns_ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
 
 		/* close the read-end of the pipe */
 		close(pipefd[0]);
@@ -2418,7 +2413,7 @@ static char **do_lxcapi_get_ips(struct lxc_container *c, const char *interface,
 		}
 
 		/* Grab the list of interfaces */
-		if (getifaddrs(&interfaceArray)) {
+		if (netns_getifaddrs(&interfaceArray, -1, &(bool){false})) {
 			SYSERROR("Failed to get interfaces list");
 			goto out;
 		}
@@ -2474,7 +2469,7 @@ static char **do_lxcapi_get_ips(struct lxc_container *c, const char *interface,
 
 	out:
 		if (interfaceArray)
-			freeifaddrs(interfaceArray);
+			netns_freeifaddrs(interfaceArray);
 
 		/* close the write-end of the pipe, thus sending EOF to the reader */
 		close(pipefd[1]);
