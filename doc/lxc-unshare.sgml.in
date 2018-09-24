@@ -190,11 +190,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         To spawn a shell in a new network, pid, mount, and hostname
         namespace.
         <programlisting>
-          lxc-unshare -s "NETWORK|PID|MOUNT|UTSNAME" -M -H slave -i veth1 /bin/bash
+          lxc-unshare -s "NETWORK|PID|MOUNT|UTSNAME" -M -H myhostname -i veth1 /bin/bash
         </programlisting>
 
 	The resulting shell will have pid 1 and will see two network
-	interfaces (lo and veth1).  The hostname will be "slave" and
+	interfaces (lo and veth1).  The hostname will be "myhostname" and
 	/proc will have been remounted.  ps output will show there are
 	no other processes in the namespace.
       </para>

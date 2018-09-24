@@ -242,21 +242,21 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
         To spawn a shell in a new network, pid, mount, and hostname
         namespace.
         <programlisting>
-          lxc-unshare -s "NETWORK|PID|MOUNT|UTSNAME" -M -H slave -i veth1 /bin/bash
+          lxc-unshare -s "NETWORK|PID|MOUNT|UTSNAME" -M -H myhostname -i veth1 /bin/bash
         </programlisting>
         -->
         새로운 네트워크, PID, 마운트 그리고 호스트 이름(UTS) 네임스페이스 내에 쉘을 실행하려면, 아래처럼 하면 된다.
         <programlisting>
-          lxc-unshare -s "NETWORK|PID|MOUNT|UTSNAME" -M -H slave -i veth1 /bin/bash
+          lxc-unshare -s "NETWORK|PID|MOUNT|UTSNAME" -M -H myhostname -i veth1 /bin/bash
         </programlisting>
 
         <!--
 	The resulting shell will have pid 1 and will see two network
-	interfaces (lo and veth1).  The hostname will be "slave" and
+	interfaces (lo and veth1).  The hostname will be "myhostname" and
 	/proc will have been remounted.  ps output will show there are
 	no other processes in the namespace.
         -->
-        그 결과 생긴 쉘은 1번 pid를 갖는다. 그리고 2개의 네트워크 인터페이스(lo와 veth1)를 갖는다. 호스트 이름은 "slave"이고, /proc은 다시 마운트 된다.
+        그 결과 생긴 쉘은 1번 pid를 갖는다. 그리고 2개의 네트워크 인터페이스(lo와 veth1)를 갖는다. 호스트 이름은 "myhostname"이고, /proc은 다시 마운트 된다.
         ps 명령어를 입력하면, 네임스페이스 내에서 다른 프로세스들은 보이지 않을 것이다.
       </para>
   </refsect1>
