@@ -1326,7 +1326,9 @@ static void remove_path_for_hierarchy(struct hierarchy *h, char *cgname, bool mo
 __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 							struct lxc_handler *handler)
 {
-	char *monitor_cgroup;
+	char *monitor_cgroup, *offset, *tmp;
+	int idx = 0;
+	size_t len;
 	bool bret = false;
 	struct lxc_conf *conf = handler->conf;
 
@@ -1334,24 +1336,46 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 		return bret;
 
 	if (conf->cgroup_meta.dir)
-		monitor_cgroup = lxc_string_join("/", (const char *[]){conf->cgroup_meta.dir, ops->monitor_pattern, handler->name, NULL}, false);
+		tmp = lxc_string_join("/",
+				      (const char *[]){conf->cgroup_meta.dir,
+						       ops->monitor_pattern,
+						       handler->name, NULL},
+				      false);
 	else
-		monitor_cgroup = must_make_path(ops->monitor_pattern, handler->name, NULL);
-	if (!monitor_cgroup)
+		tmp = must_make_path(ops->monitor_pattern, handler->name, NULL);
+	if (!tmp)
 		return bret;
 
-	for (int i = 0; ops->hierarchies[i]; i++) {
-		if (!monitor_create_path_for_hierarchy(ops->hierarchies[i], monitor_cgroup)) {
-			ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->monitor_full_path);
-			free(ops->hierarchies[i]->container_full_path);
-			ops->hierarchies[i]->container_full_path = NULL;
-			for (int j = 0; j < i; j++)
-				remove_path_for_hierarchy(ops->hierarchies[j], monitor_cgroup, true);
-			goto on_error;
-		}
-	}
+	len = strlen(tmp) + 5; /* leave room for -NNN\0 */
+	monitor_cgroup = must_alloc(len);
+	(void)strlcpy(monitor_cgroup, tmp, len);
+	free(tmp);
+	offset = monitor_cgroup + len - 5;
 
-	bret = true;
+	do {
+		if (idx) {
+			int ret = snprintf(offset, 5, "-%d", idx);
+			if (ret < 0 || (size_t)ret >= 5)
+				goto on_error;
+		}
+
+		for (int i = 0; ops->hierarchies[i]; i++) {
+			if (!monitor_create_path_for_hierarchy(ops->hierarchies[i], monitor_cgroup)) {
+				ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->monitor_full_path);
+				free(ops->hierarchies[i]->container_full_path);
+				ops->hierarchies[i]->container_full_path = NULL;
+
+				for (int j = 0; j < i; j++)
+					remove_path_for_hierarchy(ops->hierarchies[j], monitor_cgroup, true);
+
+				idx++;
+				break;
+			}
+		}
+	} while (idx > 0 && idx < 1000);
+
+	if (idx < 1000)
+		bret = true;
 
 on_error:
 	free(monitor_cgroup);
