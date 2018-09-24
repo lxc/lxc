@@ -179,15 +179,19 @@ static void must_append_controller(char **klist, char **nlist, char ***clist,
 /* Given a handler's cgroup data, return the struct hierarchy for the controller
  * @c, or NULL if there is none.
  */
-struct hierarchy *get_hierarchy(struct cgroup_ops *ops, const char *c)
+struct hierarchy *get_hierarchy(struct cgroup_ops *ops, const char *controller)
 {
 	int i;
 
-	if (!ops->hierarchies)
+	errno = ENOENT;
+
+	if (!ops->hierarchies) {
+		TRACE("There are no useable cgroup controllers");
 		return NULL;
+	}
 
 	for (i = 0; ops->hierarchies[i]; i++) {
-		if (!c) {
+		if (!controller) {
 			/* This is the empty unified hierarchy. */
 			if (ops->hierarchies[i]->controllers &&
 			    !ops->hierarchies[i]->controllers[0])
@@ -196,9 +200,14 @@ struct hierarchy *get_hierarchy(struct cgroup_ops *ops, const char *c)
 			continue;
 		}
 
-		if (string_in_list(ops->hierarchies[i]->controllers, c))
+		if (string_in_list(ops->hierarchies[i]->controllers, controller))
 			return ops->hierarchies[i];
 	}
+
+	if (controller)
+		WARN("There is no useable %s controller", controller);
+	else
+		WARN("There is no empty unified cgroup hierarchy");
 
 	return NULL;
 }
