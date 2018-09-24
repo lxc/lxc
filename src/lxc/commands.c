@@ -654,6 +654,9 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 		 * lxc_unfreeze() would do another cmd (GET_CGROUP) which would
 		 * deadlock us.
 		 */
+		if (cgroup_ops->get_cgroup(cgroup_ops, "freezer") == NULL)
+			return 0;
+
 		if (cgroup_ops->unfreeze(cgroup_ops))
 			return 0;
 
