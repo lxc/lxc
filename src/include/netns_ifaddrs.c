@@ -1,4 +1,3 @@
-#define _GNU_SOURCE
 #include <arpa/inet.h>
 #include <errno.h>
 #include <linux/if.h>
@@ -17,6 +16,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "config.h"
 #include "nl.h"
 #include "macro.h"
 #include "netns_ifaddrs.h"
