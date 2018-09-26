@@ -1327,7 +1327,7 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 							struct lxc_handler *handler)
 {
 	char *monitor_cgroup, *offset, *tmp;
-	int idx = 0;
+	int i, idx = 0;
 	size_t len;
 	bool bret = false;
 	struct lxc_conf *conf = handler->conf;
@@ -1359,7 +1359,7 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 				goto on_error;
 		}
 
-		for (int i = 0; ops->hierarchies[i]; i++) {
+		for (i = 0; ops->hierarchies[i]; i++) {
 			if (!monitor_create_path_for_hierarchy(ops->hierarchies[i], monitor_cgroup)) {
 				ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->monitor_full_path);
 				free(ops->hierarchies[i]->container_full_path);
@@ -1372,7 +1372,7 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 				break;
 			}
 		}
-	} while (idx > 0 && idx < 1000);
+	} while (ops->hierarchies[i] && idx > 0 && idx < 1000);
 
 	if (idx < 1000)
 		bret = true;
