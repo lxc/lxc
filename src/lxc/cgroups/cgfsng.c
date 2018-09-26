@@ -1465,10 +1465,10 @@ __cgfsng_ops static bool __do_cgroup_enter(struct cgroup_ops *ops, pid_t pid,
 					     bool monitor)
 {
 	int len;
-	char pidstr[25];
+	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
 
-	len = snprintf(pidstr, 25, "%d", pid);
-	if (len < 0 || len >= 25)
+	len = snprintf(pidstr, sizeof(pidstr), "%d", pid);
+	if (len < 0 || (size_t)len >= sizeof(pidstr))
 		return false;
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
@@ -2097,10 +2097,10 @@ __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops, const char *name,
 					 const char *lxcpath, pid_t pid)
 {
 	int i, len, ret;
-	char pidstr[25];
+	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
 
-	len = snprintf(pidstr, 25, "%d", pid);
-	if (len < 0 || len >= 25)
+	len = snprintf(pidstr, sizeof(pidstr), "%d", pid);
+	if (len < 0 || (size_t)len >= sizeof(pidstr))
 		return false;
 
 	for (i = 0; ops->hierarchies[i]; i++) {
