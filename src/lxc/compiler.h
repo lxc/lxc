@@ -20,6 +20,8 @@
 #ifndef __LXC_COMPILER_H
 #define __LXC_COMPILER_H
 
+#include <sys/cdefs.h>
+
 #include "config.h"
 
 #ifndef thread_local
@@ -38,12 +40,18 @@
 #define __fallthrough
 #endif
 
-#ifndef _noreturn_
-#if __STDC_VERSION__ >= 201112L && !IS_BIONIC
-#define __noreturn _Noreturn
-#else
-#define __noreturn __attribute__((noreturn))
-#endif
+#ifndef __noreturn
+#	if __STDC_VERSION__ >= 201112L
+#		if !IS_BIONIC
+#			define __noreturn _Noreturn
+#		else
+#			define __noreturn __attribute__((__noreturn__))
+#		endif
+#	elif IS_BIONIC
+#		define __noreturn __attribute__((__noreturn__))
+#	else
+#		define __noreturn __attribute__((noreturn))
+#	endif
 #endif
 
 #define __cgfsng_ops
