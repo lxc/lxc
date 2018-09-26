@@ -59,6 +59,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <arg choice="opt">-d</arg>
       <arg choice="opt">-f <replaceable>config_file</replaceable></arg>
       <arg choice="opt">-s KEY=VAL</arg>
+      <arg choice="opt">-u, --uid <replaceable>uid</replaceable></arg>
+      <arg choice="opt">-g, --gid <replaceable>gid</replaceable></arg>
       <arg choice="opt">-- <replaceable>command</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -171,6 +173,36 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    the log file can be used to check the error.
 	      -->
             コンテナをデーモンとして実行します。コンテナには TTY がありませんので、エラーが発生した場合は何も表示されません。エラーのチェックにはログファイルを使用すると良いでしょう。
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--u, --uid <replaceable>uid</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    <!--
+	    Executes the <replaceable>command</replaceable> with user ID
+	    <replaceable>uid</replaceable> inside the container.
+	    -->
+	    コンテナ内で、ユーザ ID <replaceable>uid</replaceable> で <replaceable>command</replaceable> を実行します。
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--g, --gid <replaceable>gid</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    <!--
+	    Executes the <replaceable>command</replaceable> with group ID
+	    <replaceable>gid</replaceable> inside the container.
+	    -->
+	    コンテナ内で、グループ ID <replaceable>gid</replaceable> で <replaceable>command</replaceable> を実行します。
 	  </para>
 	</listitem>
       </varlistentry>
