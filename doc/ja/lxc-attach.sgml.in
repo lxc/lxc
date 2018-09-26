@@ -65,6 +65,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <arg choice="opt">--clear-env</arg>
       <arg choice="opt">-v, --set-var <replaceable>variable</replaceable></arg>
       <arg choice="opt">--keep-var <replaceable>variable</replaceable></arg>
+      <arg choice="opt">-u, --uid <replaceable>uid</replaceable></arg>
+      <arg choice="opt">-g, --gid <replaceable>gid</replaceable></arg>
       <arg choice="opt">-- <replaceable>command</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
@@ -111,7 +113,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
     -->
       前のバージョンの <command>lxc-attach</command> は、単に指定したコンテナの名前空間にアタッチし、最初に擬似端末 (pseudo terminal) を割り当てないで、シェルもしくは指定したコマンドを実行しました。
       これは、異なる特権レベルを持つユーザ空間の実行コンテキストを切り替えた後に、TIOCSTI <command>ioctl</command> の呼び出し経由で擬似入力を行うことに対して脆弱となります。
-      新しいバージョンの <command>lxc-attach</command> は、ホスト上の擬似端末のマスター/スレーブのペアを割り当てようとします。そしてシェルやコマンドを実行する前に、擬似端末のスレーブ側に対して、ターミナルを参照する標準ファイルディスクリプタをアタッチします。
+      新しいバージョンの <command>lxc-attach</command> は、ホスト上の擬似端末のファイルディスクリプタのペアを割り当てようとします。そしてシェルやコマンドを実行する前に、擬似端末のコンテナ側に対して、ターミナルを参照する標準ファイルディスクリプタをアタッチします。
       ターミナルを参照する標準ファイルディスクリプタがない場合は、<command>lxc-attach</command> は擬似端末の割り当てを行わないことに注意してください。代わりに、単にコンテナの名前空間にアタッチし、シェルや指定したコマンドを実行します。
     </para>
 
@@ -366,6 +368,36 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    specified multiple times.
 	    -->
 	    <replaceable>--clear-env</replaceable> を指定した際に、クリアせずに保持したままにしたい環境変数を指定します。<replaceable>--clear-env</replaceable> と同時にしか使えません。複数回指定できます。
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--u, --uid <replaceable>uid</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    <!--
+	    Executes the <replaceable>command</replaceable> with user ID
+	    <replaceable>uid</replaceable> inside the container.
+	    -->
+	    コンテナ内で、ユーザ ID <replaceable>uid</replaceable> で <replaceable>command</replaceable> を実行します。
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option>--g, --gid <replaceable>gid</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	    <!--
+	    Executes the <replaceable>command</replaceable> with group ID
+	    <replaceable>gid</replaceable> inside the container.
+	    -->
+	    コンテナ内で、グループ ID <replaceable>gid</replaceable> で <replaceable>command</replaceable> を実行します。
 	  </para>
 	</listitem>
       </varlistentry>
