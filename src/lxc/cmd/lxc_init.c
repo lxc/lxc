@@ -21,7 +21,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <ctype.h>
 #include <errno.h>
 #include <getopt.h>
@@ -40,6 +42,7 @@
 #include <lxc/version.h>
 
 #include "compiler.h"
+#include "config.h"
 #include "error.h"
 #include "initutils.h"
 #include "log.h"

@@ -18,21 +18,18 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#define _GNU_SOURCE
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <stdlib.h>
 #include <sys/mount.h>
-#include <sys/vfs.h>
+#include <unistd.h>
 
+#include "conf.h"
+#include "config.h"
 #include "log.h"
 #include "lsm.h"
-#include "conf.h"
-#include "utils.h"
-#include "initutils.h"
 
 lxc_log_define(apparmor, lsm);
 

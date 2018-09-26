@@ -26,27 +26,25 @@
 /* Properly support loop devices on 32bit systems. */
 #define _FILE_OFFSET_BITS 64
 
-#include "config.h"
-
 #include <errno.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <unistd.h>
 #include <linux/loop.h>
 #include <linux/types.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdio.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
-
-#ifdef HAVE_LINUX_MEMFD_H
-#include <linux/memfd.h>
-#endif
+#include <unistd.h>
 
 #include "file_utils.h"
 #include "initutils.h"
 #include "macro.h"
 #include "string_utils.h"
+
+#ifdef HAVE_LINUX_MEMFD_H
+#include <linux/memfd.h>
+#endif
 
 /* returns 1 on success, 0 if there were any failures */
 extern int lxc_rmdir_onedev(const char *path, const char *exclude);

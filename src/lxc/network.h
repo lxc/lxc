@@ -23,12 +23,12 @@
 #ifndef __LXC_NETWORK_H
 #define __LXC_NETWORK_H
 
-#include <stdbool.h>
-#include <stdio.h>
-#include <unistd.h>
 #include <arpa/inet.h>
 #include <linux/types.h>
+#include <stdbool.h>
+#include <stdio.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 #include "list.h"
 

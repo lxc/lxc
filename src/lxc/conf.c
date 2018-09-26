@@ -21,9 +21,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#define _GNU_SOURCE
-#include "config.h"
-
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <errno.h>
@@ -53,6 +53,29 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
+
+#include "af_unix.h"
+#include "caps.h"
+#include "cgroup.h"
+#include "conf.h"
+#include "config.h"
+#include "confile.h"
+#include "confile_utils.h"
+#include "error.h"
+#include "log.h"
+#include "lsm/lsm.h"
+#include "lxclock.h"
+#include "lxcseccomp.h"
+#include "macro.h"
+#include "namespace.h"
+#include "network.h"
+#include "parse.h"
+#include "ringbuf.h"
+#include "start.h"
+#include "storage.h"
+#include "storage/overlay.h"
+#include "terminal.h"
+#include "utils.h"
 
 #ifdef MAJOR_IN_MKDEV
 #include <sys/mkdev.h>
@@ -89,27 +112,6 @@
 #if !defined(HAVE_PRLIMIT) && defined(HAVE_PRLIMIT64)
 #include <../include/prlimit.h>
 #endif
-
-#include "af_unix.h"
-#include "caps.h"
-#include "cgroup.h"
-#include "conf.h"
-#include "confile_utils.h"
-#include "error.h"
-#include "log.h"
-#include "lsm/lsm.h"
-#include "lxclock.h"
-#include "lxcseccomp.h"
-#include "macro.h"
-#include "namespace.h"
-#include "network.h"
-#include "parse.h"
-#include "ringbuf.h"
-#include "start.h"
-#include "storage.h"
-#include "storage/overlay.h"
-#include "terminal.h"
-#include "utils.h"
 
 lxc_log_define(conf, lxc);
 

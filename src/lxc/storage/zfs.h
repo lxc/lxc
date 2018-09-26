@@ -24,7 +24,6 @@
 #ifndef __LXC_ZFS_H
 #define __LXC_ZFS_H
 
-#define _GNU_SOURCE
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>

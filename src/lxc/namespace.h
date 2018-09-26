@@ -27,8 +27,6 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 
-#include "config.h"
-
 #ifndef CLONE_PARENT_SETTID
 #define CLONE_PARENT_SETTID 0x00100000
 #endif

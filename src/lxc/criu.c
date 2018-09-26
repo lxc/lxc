@@ -20,7 +20,10 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#define _GNU_SOURCE
+
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <inttypes.h>
 #include <linux/limits.h>
 #include <sched.h>
@@ -32,11 +35,10 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "config.h"
-
 #include "cgroup.h"
-#include "conf.h"
 #include "commands.h"
+#include "conf.h"
+#include "config.h"
 #include "criu.h"
 #include "log.h"
 #include "lxc.h"

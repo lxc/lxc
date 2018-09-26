@@ -21,7 +21,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
@@ -29,15 +31,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
-#include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
-#include "log.h"
 #include "btrfs.h"
+#include "config.h"
+#include "log.h"
 #include "rsync.h"
 #include "storage.h"
 #include "utils.h"

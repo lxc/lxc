@@ -21,16 +21,19 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#define _GNU_SOURCE
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-#include "sync.h"
+#include "config.h"
 #include "log.h"
 #include "start.h"
+#include "sync.h"
 #include "utils.h"
 
 lxc_log_define(sync, lxc);

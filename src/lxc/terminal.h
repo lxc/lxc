@@ -24,8 +24,6 @@
 #ifndef __LXC_TERMINAL_H
 #define __LXC_TERMINAL_H
 
-#include "config.h"
-
 #include <signal.h>
 #include <stdio.h>
 

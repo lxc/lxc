@@ -23,9 +23,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#define _GNU_SOURCE
-#include "config.h"
-
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <alloca.h>
 #include <dirent.h>
 #include <errno.h>
@@ -37,7 +37,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/file.h>
 #include <sys/mount.h>
 #include <sys/param.h>
@@ -48,10 +47,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <sys/wait.h>
-
-#if HAVE_LIBCAP
-#include <sys/capability.h>
-#endif
+#include <unistd.h>
 
 #include "af_unix.h"
 #include "caps.h"
@@ -59,12 +55,13 @@
 #include "commands.h"
 #include "commands_utils.h"
 #include "conf.h"
+#include "config.h"
 #include "confile_utils.h"
 #include "error.h"
 #include "file_utils.h"
 #include "list.h"
-#include "lsm/lsm.h"
 #include "log.h"
+#include "lsm/lsm.h"
 #include "lxccontainer.h"
 #include "lxclock.h"
 #include "lxcseccomp.h"
@@ -79,6 +76,10 @@
 #include "sync.h"
 #include "terminal.h"
 #include "utils.h"
+
+#if HAVE_LIBCAP
+#include <sys/capability.h>
+#endif
 
 #ifndef HAVE_STRLCPY
 #include "include/strlcpy.h"

@@ -24,8 +24,6 @@
 #ifndef __LXC_LOG_H
 #define __LXC_LOG_H
 
-#include "config.h"
-
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>

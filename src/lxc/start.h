@@ -32,7 +32,6 @@
 #include <sys/un.h>
 
 #include "conf.h"
-#include "config.h"
 #include "namespace.h"
 #include "state.h"
 

@@ -28,8 +28,9 @@
 #include <getopt.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/types.h>
 #include <sys/param.h>
+#include <sys/types.h>
+
 #include <lxc/lxccontainer.h>
 
 struct lxc_arguments;

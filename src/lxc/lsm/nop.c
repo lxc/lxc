@@ -21,7 +21,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <stdlib.h>
+
+#include "config.h"
 #include "lsm/lsm.h"
 
 static char *nop_process_label_get(pid_t pid)
