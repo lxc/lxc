@@ -70,12 +70,13 @@
 
 lxc_log_define(confile, lxc);
 
-#define lxc_config_define(name)                                                \
-	static int set_config_##name(const char *, const char *,               \
-				     struct lxc_conf *, void *);               \
-	static int get_config_##name(const char *, char *, int,                \
-				     struct lxc_conf *, void *);               \
-	static int clr_config_##name(const char *, struct lxc_conf *, void *);
+#define lxc_config_define(name)                                             \
+	__hot static int set_config_##name(const char *, const char *,      \
+					   struct lxc_conf *, void *);      \
+	__hot static int get_config_##name(const char *, char *, int,       \
+					   struct lxc_conf *, void *);      \
+	__hot static int clr_config_##name(const char *, struct lxc_conf *, \
+					   void *);
 
 lxc_config_define(autodev);
 lxc_config_define(apparmor_allow_incomplete);
