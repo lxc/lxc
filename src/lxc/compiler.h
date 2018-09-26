@@ -46,6 +46,10 @@
 #endif
 #endif
 
+#ifndef __hot
+#	define __hot __attribute__((hot))
+#endif
+
 #define __cgfsng_ops
 
 #endif /* __LXC_COMPILER_H */
