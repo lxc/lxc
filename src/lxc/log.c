@@ -21,29 +21,29 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #define __STDC_FORMAT_MACROS /* Required for PRIu64 to work. */
-#include <stdint.h>
-#include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <limits.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <string.h>
 #include <pthread.h>
-
-#include <syslog.h>
+#include <stdint.h>
 #include <stdio.h>
-
-#include <fcntl.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <syslog.h>
+#include <unistd.h>
 
-#include "log.h"
 #include "caps.h"
-#include "utils.h"
+#include "config.h"
+#include "log.h"
 #include "lxccontainer.h"
+#include "utils.h"
 
 #ifndef HAVE_STRLCPY
 #include "include/strlcpy.h"

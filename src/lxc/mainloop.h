@@ -25,6 +25,7 @@
 #define __LXC_MAINLOOP_H
 
 #include <stdint.h>
+
 #include "list.h"
 
 #define LXC_MAINLOOP_ERROR -1

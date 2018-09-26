@@ -21,18 +21,20 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "config.h"
-
-#include <sys/socket.h>
-#include <string.h>
-#include <stdio.h>
-#include <time.h>
-#include <unistd.h>
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <errno.h>
-#include <stdlib.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <time.h>
+#include <unistd.h>
 
+#include "config.h"
 #include "log.h"
 #include "nl.h"
 

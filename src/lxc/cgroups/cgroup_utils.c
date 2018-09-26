@@ -22,14 +22,17 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "config.h"
-
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "cgroup_utils.h"
+#include "config.h"
+#include "macro.h"
 #include "utils.h"
 
 int get_cgroup_version(char *line)

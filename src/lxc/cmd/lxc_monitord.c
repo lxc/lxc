@@ -21,7 +21,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <errno.h>
 #include <fcntl.h>
 #include <net/if.h>
@@ -43,6 +45,7 @@
 #include <lxc/lxccontainer.h>
 
 #include "af_unix.h"
+#include "config.h"
 #include "log.h"
 #include "mainloop.h"
 #include "monitor.h"

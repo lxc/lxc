@@ -20,8 +20,6 @@
 #ifndef __LXC_MACRO_H
 #define __LXC_MACRO_H
 
-#include "config.h"
-
 #include <asm/types.h>
 #include <linux/if_link.h>
 #include <linux/loop.h>

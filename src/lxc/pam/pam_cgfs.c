@@ -33,10 +33,14 @@
  * See COPYING file for details.
  */
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <linux/unistd.h>
 #include <pwd.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -44,21 +48,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <syslog.h>
-#include <unistd.h>
-#include <linux/unistd.h>
 #include <sys/mount.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
+#include <syslog.h>
+#include <unistd.h>
+
+#include "config.h"
+#include "macro.h"
+#include "utils.h"
 
 #define PAM_SM_SESSION
 #include <security/_pam_macros.h>
 #include <security/pam_modules.h>
-
-#include "macro.h"
-#include "utils.h"
 
 #ifndef HAVE_STRLCPY
 #include "include/strlcpy.h"

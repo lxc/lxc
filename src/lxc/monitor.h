@@ -24,9 +24,9 @@
 #define __LXC_MONITOR_H
 
 #include <limits.h>
+#include <poll.h>
 #include <sys/param.h>
 #include <sys/un.h>
-#include <poll.h>
 
 typedef enum {
 	lxc_msg_state,

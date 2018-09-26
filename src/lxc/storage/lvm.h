@@ -24,7 +24,6 @@
 #ifndef __LXC_LVM_H
 #define __LXC_LVM_H
 
-#define _GNU_SOURCE
 #include <stdbool.h>
 #include <stdint.h>
 
