@@ -11,6 +11,8 @@ extern "C" {
 #include <stdbool.h>
 #include <sys/socket.h>
 
+#include "netns_ifaddrs.h"
+
 struct netns_ifaddrs {
 	struct netns_ifaddrs *ifa_next;
 
