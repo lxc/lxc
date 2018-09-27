@@ -1376,8 +1376,10 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 		}
 	} while (ops->hierarchies[i] && idx > 0 && idx < 1000);
 
-	if (idx < 1000)
+	if (idx < 1000) {
 		bret = true;
+		INFO("The monitor process uses \"%s\" as cgroup", monitor_cgroup);
+	}
 
 on_error:
 	free(monitor_cgroup);
@@ -1454,6 +1456,7 @@ again:
 	}
 
 	ops->container_cgroup = container_cgroup;
+	INFO("The container uses \"%s\" as cgroup", container_cgroup);
 
 	return true;
 

@@ -102,7 +102,7 @@ struct cgroup_ops {
 	char *container_cgroup;
 
 	/* Static memory, do not free.*/
-	char *monitor_pattern;
+	const char *monitor_pattern;
 
 	/* @hierarchies
 	 * - A NULL-terminated array of struct hierarchy, one per legacy
