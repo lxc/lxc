@@ -1113,7 +1113,8 @@ static int cgroup_rmdir_wrapper(void *data)
 	return cgroup_rmdir(arg->hierarchies, arg->container_cgroup);
 }
 
-__cgfsng_ops static void cgfsng_destroy(struct cgroup_ops *ops, struct lxc_handler *handler)
+__cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
+						struct lxc_handler *handler)
 {
 	int ret;
 	struct generic_userns_exec_data wrap;
@@ -1131,6 +1132,60 @@ __cgfsng_ops static void cgfsng_destroy(struct cgroup_ops *ops, struct lxc_handl
 	if (ret < 0) {
 		WARN("Failed to destroy cgroups");
 		return;
+	}
+}
+
+__cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
+						struct lxc_handler *handler)
+{
+	int len;
+	char *pivot_path;
+	struct lxc_conf *conf = handler->conf;
+	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
+
+	if (!ops->hierarchies)
+		return;
+
+	len = snprintf(pidstr, sizeof(pidstr), "%d", handler->monitor_pid);
+	if (len < 0 || (size_t)len >= sizeof(pidstr))
+		return;
+
+	for (int i = 0; ops->hierarchies[i]; i++) {
+		int ret;
+		struct hierarchy *h = ops->hierarchies[i];
+
+		if (!h->monitor_full_path)
+			continue;
+
+		if (conf && conf->cgroup_meta.dir)
+			pivot_path = must_make_path(h->mountpoint,
+						    h->container_base_path,
+						    conf->cgroup_meta.dir,
+						    PIVOT_CGROUP,
+						    "cgroup.procs", NULL);
+		else
+			pivot_path = must_make_path(h->mountpoint,
+						    h->container_base_path,
+						    PIVOT_CGROUP,
+						    "cgroup.procs", NULL);
+
+		ret = mkdir_p(pivot_path, 0755);
+		if (ret < 0 && errno != EEXIST)
+			goto next;
+
+		/* Move ourselves into the pivot cgroup to delete our own
+		 * cgroup.
+		 */
+		ret = lxc_write_to_file(pivot_path, pidstr, len, false, 0666);
+		if (ret != 0)
+			goto next;
+
+		ret = recursive_destroy(h->monitor_full_path);
+		if (ret < 0)
+			WARN("Failed to destroy \"%s\"", h->monitor_full_path);
+
+	next:
+		free(pivot_path);
 	}
 }
 
@@ -1273,7 +1328,9 @@ static void remove_path_for_hierarchy(struct hierarchy *h, char *cgname, bool mo
 __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 							struct lxc_handler *handler)
 {
-	char *monitor_cgroup;
+	char *monitor_cgroup, *offset, *tmp;
+	int i, idx = 0;
+	size_t len;
 	bool bret = false;
 	struct lxc_conf *conf = handler->conf;
 
@@ -1281,24 +1338,46 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 		return bret;
 
 	if (conf->cgroup_meta.dir)
-		monitor_cgroup = lxc_string_join("/", (const char *[]){conf->cgroup_meta.dir, ops->monitor_pattern, handler->name, NULL}, false);
+		tmp = lxc_string_join("/",
+				      (const char *[]){conf->cgroup_meta.dir,
+						       ops->monitor_pattern,
+						       handler->name, NULL},
+				      false);
 	else
-		monitor_cgroup = must_make_path(ops->monitor_pattern, handler->name, NULL);
-	if (!monitor_cgroup)
+		tmp = must_make_path(ops->monitor_pattern, handler->name, NULL);
+	if (!tmp)
 		return bret;
 
-	for (int i = 0; ops->hierarchies[i]; i++) {
-		if (!monitor_create_path_for_hierarchy(ops->hierarchies[i], monitor_cgroup)) {
-			ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->monitor_full_path);
-			free(ops->hierarchies[i]->container_full_path);
-			ops->hierarchies[i]->container_full_path = NULL;
-			for (int j = 0; j < i; j++)
-				remove_path_for_hierarchy(ops->hierarchies[j], monitor_cgroup, true);
-			goto on_error;
-		}
-	}
+	len = strlen(tmp) + 5; /* leave room for -NNN\0 */
+	monitor_cgroup = must_alloc(len);
+	(void)strlcpy(monitor_cgroup, tmp, len);
+	free(tmp);
+	offset = monitor_cgroup + len - 5;
 
-	bret = true;
+	do {
+		if (idx) {
+			int ret = snprintf(offset, 5, "-%d", idx);
+			if (ret < 0 || (size_t)ret >= 5)
+				goto on_error;
+		}
+
+		for (i = 0; ops->hierarchies[i]; i++) {
+			if (!monitor_create_path_for_hierarchy(ops->hierarchies[i], monitor_cgroup)) {
+				ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->monitor_full_path);
+				free(ops->hierarchies[i]->container_full_path);
+				ops->hierarchies[i]->container_full_path = NULL;
+
+				for (int j = 0; j < i; j++)
+					remove_path_for_hierarchy(ops->hierarchies[j], monitor_cgroup, true);
+
+				idx++;
+				break;
+			}
+		}
+	} while (ops->hierarchies[i] && idx > 0 && idx < 1000);
+
+	if (idx < 1000)
+		bret = true;
 
 on_error:
 	free(monitor_cgroup);
@@ -1388,10 +1467,10 @@ __cgfsng_ops static bool __do_cgroup_enter(struct cgroup_ops *ops, pid_t pid,
 					     bool monitor)
 {
 	int len;
-	char pidstr[25];
+	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
 
-	len = snprintf(pidstr, 25, "%d", pid);
-	if (len < 0 || len >= 25)
+	len = snprintf(pidstr, sizeof(pidstr), "%d", pid);
+	if (len < 0 || (size_t)len >= sizeof(pidstr))
 		return false;
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
@@ -2020,10 +2099,10 @@ __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops, const char *name,
 					 const char *lxcpath, pid_t pid)
 {
 	int i, len, ret;
-	char pidstr[25];
+	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
 
-	len = snprintf(pidstr, 25, "%d", pid);
-	if (len < 0 || len >= 25)
+	len = snprintf(pidstr, sizeof(pidstr), "%d", pid);
+	if (len < 0 || (size_t)len >= sizeof(pidstr))
 		return false;
 
 	for (i = 0; ops->hierarchies[i]; i++) {
@@ -2661,7 +2740,7 @@ __cgfsng_ops static bool cgfsng_data_init(struct cgroup_ops *ops)
 		return false;
 	}
 	ops->cgroup_pattern = must_copy_string(cgroup_pattern);
-	ops->monitor_pattern = must_copy_string("lxc.monitor");
+	ops->monitor_pattern = MONITOR_CGROUP;
 
 	return true;
 }
@@ -2683,7 +2762,8 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 	}
 
 	cgfsng_ops->data_init = cgfsng_data_init;
-	cgfsng_ops->destroy = cgfsng_destroy;
+	cgfsng_ops->payload_destroy = cgfsng_payload_destroy;
+	cgfsng_ops->monitor_destroy = cgfsng_monitor_destroy;
 	cgfsng_ops->monitor_create = cgfsng_monitor_create;
 	cgfsng_ops->monitor_enter = cgfsng_monitor_enter;
 	cgfsng_ops->payload_create = cgfsng_payload_create;
