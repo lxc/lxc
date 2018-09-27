@@ -21,16 +21,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
+#include <arpa/inet.h>
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <unistd.h>
-#include <arpa/inet.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <linux/sockios.h>
@@ -38,17 +35,22 @@
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/inotify.h>
 #include <sys/ioctl.h>
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <time.h>
+#include <unistd.h>
 
+#include "../include/netns_ifaddrs.h"
 #include "af_unix.h"
 #include "conf.h"
 #include "config.h"
-#include <../include/netns_ifaddrs.h>
 #include "file_utils.h"
 #include "log.h"
 #include "macro.h"

@@ -21,16 +21,18 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/sysmacros.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #include "config.h"
 #include "log.h"

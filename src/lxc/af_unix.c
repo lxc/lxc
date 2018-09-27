@@ -20,8 +20,10 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#include "config.h"
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <errno.h>
 #include <fcntl.h>
 #include <stddef.h>
@@ -33,6 +35,7 @@
 #include <sys/syscall.h>
 #include <sys/un.h>
 
+#include "config.h"
 #include "log.h"
 #include "utils.h"
 

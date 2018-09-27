@@ -23,26 +23,28 @@
 #ifndef __LXC_CONF_H
 #define __LXC_CONF_H
 
-#include "config.h"
-
-#include <stdio.h>
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <linux/magic.h>
 #include <net/if.h>
 #include <netinet/in.h>
+#include <stdbool.h>
+#include <stdio.h>
 #include <sys/param.h>
 #include <sys/types.h>
-#include <stdbool.h>
 #include <sys/vfs.h>
+
+#include "compiler.h"
+#include "config.h"
+#include "list.h"
+#include "ringbuf.h"
+#include "start.h"
+#include "terminal.h"
 
 #if HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
 #endif
-
-#include "compiler.h"
-#include "list.h"
-#include "ringbuf.h"
-#include "start.h" /* for lxc_handler */
-#include "terminal.h"
 
 #if HAVE_SCMP_FILTER_CTX
 typedef void * scmp_filter_ctx;

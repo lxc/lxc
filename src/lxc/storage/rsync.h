@@ -24,7 +24,6 @@
 #ifndef __LXC_RSYNC_H
 #define __LXC_RSYNC_H
 
-#define _GNU_SOURCE
 #include <stdio.h>
 
 struct rsync_data {

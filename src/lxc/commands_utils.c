@@ -17,22 +17,25 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #define __STDC_FORMAT_MACROS /* Required for PRIu64 to work. */
 #include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <unistd.h>
 
 #include "af_unix.h"
 #include "commands.h"
 #include "commands_utils.h"
-#include "initutils.h"
+#include "config.h"
 #include "file_utils.h"
+#include "initutils.h"
 #include "log.h"
 #include "lxclock.h"
 #include "monitor.h"

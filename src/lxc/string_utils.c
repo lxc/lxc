@@ -17,8 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "config.h"
-
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #define __STDC_FORMAT_MACROS /* Required for PRIu64 to work. */
 #include <ctype.h>
 #include <dirent.h>
@@ -32,7 +33,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
 #include <sys/param.h>
@@ -40,7 +40,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
+#include "config.h"
 #include "log.h"
 #include "lxclock.h"
 #include "macro.h"

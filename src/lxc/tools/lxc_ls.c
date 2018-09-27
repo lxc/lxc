@@ -16,7 +16,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <dirent.h>
 #include <getopt.h>
 #include <limits.h>
@@ -26,16 +28,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <termios.h>
-#include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <termios.h>
+#include <unistd.h>
 
 #include <lxc/lxccontainer.h>
 
 #include "arguments.h"
+#include "config.h"
 #include "log.h"
 #include "utils.h"
 

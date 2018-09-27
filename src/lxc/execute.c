@@ -21,15 +21,18 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#define _GNU_SOURCE
-#include <sys/types.h>
-#include <sys/stat.h>
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <errno.h>
-#include <unistd.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "conf.h"
+#include "config.h"
 #include "log.h"
 #include "start.h"
 #include "utils.h"

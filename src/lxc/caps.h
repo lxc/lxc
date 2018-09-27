@@ -24,8 +24,9 @@
 #ifndef __LXC_CAPS_H
 #define __LXC_CAPS_H
 
-#include "config.h"
 #include <stdbool.h>
+
+#include "config.h"
 
 #if HAVE_LIBCAP
 #include <linux/types.h> /* workaround for libcap < 2.17 bug */

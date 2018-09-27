@@ -22,33 +22,35 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #define __STDC_FORMAT_MACROS
+#include <arpa/inet.h>
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <net/if.h>
+#include <netinet/in.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <syslog.h>
-#include <time.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <net/if.h>
-#include <netinet/in.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/utsname.h>
+#include <syslog.h>
+#include <time.h>
+#include <unistd.h>
 
 #include "conf.h"
 #include "config.h"
 #include "confile.h"
 #include "confile_utils.h"
-#include <../include/netns_ifaddrs.h>
+#include "../include/netns_ifaddrs.h"
 #include "log.h"
 #include "lxcseccomp.h"
 #include "network.h"

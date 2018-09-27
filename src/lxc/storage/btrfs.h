@@ -24,11 +24,10 @@
 #ifndef __LXC_BTRFS_H
 #define __LXC_BTRFS_H
 
-#define _GNU_SOURCE
+#include <byteswap.h>
 #include <linux/types.h> /* __le64, __l32 ... */
 #include <stdbool.h>
 #include <stdint.h>
-#include <byteswap.h>
 
 #ifndef BTRFS_SUPER_MAGIC
 #  define BTRFS_SUPER_MAGIC       0x9123683E

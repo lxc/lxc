@@ -18,7 +18,9 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <errno.h>
@@ -41,6 +43,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "../include/netns_ifaddrs.h"
 #include "af_unix.h"
 #include "api_extensions.h"
 #include "attach.h"
@@ -53,7 +56,6 @@
 #include "confile_utils.h"
 #include "criu.h"
 #include "error.h"
-#include <../include/netns_ifaddrs.h>
 #include "initutils.h"
 #include "log.h"
 #include "lxc.h"

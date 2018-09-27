@@ -34,26 +34,28 @@
  * a comman-separated list of controllers.
  */
 
-#include "config.h"
-
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <grp.h>
+#include <linux/kdev_t.h>
+#include <linux/types.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <linux/kdev_t.h>
-#include <linux/types.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include "caps.h"
 #include "cgroup.h"
 #include "cgroup_utils.h"
 #include "commands.h"
 #include "conf.h"
+#include "config.h"
 #include "log.h"
 #include "macro.h"
 #include "storage/storage.h"

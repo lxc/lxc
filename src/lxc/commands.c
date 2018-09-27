@@ -21,8 +21,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "config.h"
-
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <caps.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -31,16 +32,17 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <unistd.h>
 
 #include "af_unix.h"
 #include "cgroup.h"
 #include "commands.h"
 #include "commands_utils.h"
 #include "conf.h"
+#include "config.h"
 #include "confile.h"
 #include "log.h"
 #include "lxc.h"

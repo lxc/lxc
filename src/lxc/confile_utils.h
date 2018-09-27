@@ -20,8 +20,6 @@
 #ifndef __LXC_CONFILE_UTILS_H
 #define __LXC_CONFILE_UTILS_H
 
-#include "config.h"
-
 #include <stdbool.h>
 
 #include "conf.h"

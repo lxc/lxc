@@ -21,14 +21,18 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/epoll.h>
+#include <unistd.h>
 
+#include "config.h"
 #include "mainloop.h"
 
 struct mainloop_handler {
