@@ -651,6 +651,10 @@ AC_CHECK_FUNCS([fgetln],
 	AM_CONDITIONAL(HAVE_FGETLN, true)
 	AC_DEFINE(HAVE_FGETLN,1,[Have fgetln]),
 	AM_CONDITIONAL(HAVE_FGETLN, false))
+AC_CHECK_FUNCS([keyctl],
+	AM_CONDITIONAL(HAVE_KEYCTL, true)
+	AC_DEFINE(HAVE_KEYCTL,1,[Have keyctl]),
+	AM_CONDITIONAL(HAVE_KEYCTL, false))
 AC_CHECK_FUNCS([prlimit],
 	AM_CONDITIONAL(HAVE_PRLIMIT, true)
 	AC_DEFINE(HAVE_PRLIMIT,1,[Have prlimit]),
@@ -684,7 +688,7 @@ AC_PROG_SED
 LXC_CHECK_TLS
 
 AX_CHECK_COMPILE_FLAG([-fdiagnostics-color], [CFLAGS="$CFLAGS -fdiagnostics-color"],,[-Werror])
-AX_CHECK_COMPILE_FLAG([-implicit-fallthrough], [CFLAGS="$CFLAGS -Wimplicit-fallthrough"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-Wimplicit-fallthrough], [CFLAGS="$CFLAGS -Wimplicit-fallthrough"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-Wcast-align], [CFLAGS="$CFLAGS -Wcast-align"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-Wstrict-prototypes], [CFLAGS="$CFLAGS -Wstrict-prototypes"],,[-Werror])
 

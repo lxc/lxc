@@ -17,48 +17,35 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef __LXC_COMPILER_H
-#define __LXC_COMPILER_H
+#ifndef __LXC_SYSCALL_WRAPPER_H
+#define __LXC_SYSCALL_WRAPPER_H
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
-#include <sys/cdefs.h>
+#include <asm/unistd.h>
+#include <linux/keyctl.h>
+#include <stdint.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "config.h"
 
-#ifndef thread_local
-#if __STDC_VERSION__ >= 201112L &&    \
-    !(defined(__STDC_NO_THREADS__) || \
-      (defined(__GNU_LIBRARY__) && __GLIBC__ == 2 && __GLIBC_MINOR__ < 16))
-#define thread_local _Thread_local
+typedef int32_t key_serial_t;
+
+#if !HAVE_KEYCTL
+static inline long __keyctl(int cmd, unsigned long arg2, unsigned long arg3,
+			    unsigned long arg4, unsigned long arg5)
+{
+#ifdef __NR_keyctl
+	return syscall(__NR_keyctl, cmd, arg2, arg3, arg4, arg5);
 #else
-#define thread_local __thread
+	errno = ENOSYS;
+	return -1;
 #endif
-#endif
-
-#ifndef __fallthrough
-#define __fallthrough /* fall through */
-#endif
-
-#ifndef __noreturn
-#	if __STDC_VERSION__ >= 201112L
-#		if !IS_BIONIC
-#			define __noreturn _Noreturn
-#		else
-#			define __noreturn __attribute__((__noreturn__))
-#		endif
-#	elif IS_BIONIC
-#		define __noreturn __attribute__((__noreturn__))
-#	else
-#		define __noreturn __attribute__((noreturn))
-#	endif
+}
+#define keyctl __keyctl
 #endif
 
-#ifndef __hot
-#	define __hot __attribute__((hot))
-#endif
-
-#define __cgfsng_ops
-
-#endif /* __LXC_COMPILER_H */
+#endif /* __LXC_SYSCALL_WRAPPER_H */
