@@ -129,23 +129,42 @@ getenv() {
   return
 }
 
-# FIXME 1: only support numerical values in the configuration file.
-# FIXME 2: from the OCI image spec: "If group/gid is not specified,
-# the default group and supplementary groups of the given user/uid in
-# /etc/passwd from the container are applied."
+# check var is decimal.
+isdecimal() {
+  var="$1"
+  if [ "${var}" -eq "${var}" ] 2> /dev/null; then
+    return 0
+  else 
+    return 1
+  fi
+}
+
+# get uid, gid from oci image.
 getuidgid() {
-  if [ "$#" -eq 0 ]; then
-    echo "0 0"
-    return
+  configpath="$1"
+  rootpath="$2"
+  passwdpath="${rootpath}/etc/passwd"
+  grouppath="${rootpath}/etc/group"
+
+  usergroup=$(jq -c -r '.config.User' < "${configpath}")
+  # shellcheck disable=SC2039
+  usergroup=(${usergroup//:/ })
+
+  user=${usergroup[0]:-0}
+  if ! isdecimal "${user}" && [ -f ${passwdpath} ]; then
+    user=$(grep "^${user}:" "${passwdpath}" | awk -F: '{print $3}')
+  else
+    user=0
   fi
 
-  configpath="$1"
+  group=${usergroup[1]:-}
+  if [ -z "${group}" ] && [ -f "${passwdpath}" ]; then
+    group=$(grep "^[^:]*:[^:]*:${user}:" "${passwdpath}" | awk -F: '{print $4}')
+  elif ! isdecimal "${group}" && [ -f "${grouppath}" ]; then
+    group=$(grep "^${group}:" "${grouppath}" | awk -F: '{print $3}')
+  fi
 
-  uidgid=$(jq -c -r '.config.User // "0:0"' < "${configpath}")
-  # shellcheck disable=SC2039
-  uidgid=(${uidgid//:/ })
-
-  printf '%d %d' "${uidgid[0]:-0}" "${uidgid[1]:-0}" 2>/dev/null || true
+  echo "${user:-0} ${group:-0}"
   return
 }
 
@@ -364,7 +383,7 @@ ff02::2 ip6-allrouters
 EOF
 
 # shellcheck disable=SC2039
-uidgid=($(getuidgid "${OCI_CONF_FILE}"))
+uidgid=($(getuidgid "${OCI_CONF_FILE}" "${LXC_ROOTFS}" ))
 # shellcheck disable=SC2039
 echo "lxc.init.uid = ${uidgid[0]}" >> "${LXC_CONF_FILE}"
 # shellcheck disable=SC2039
