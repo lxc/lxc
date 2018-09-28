@@ -366,6 +366,7 @@ int btrfs_snapshot(const char *orig, const char *new)
 		goto out;
 
 	memset(&args, 0, sizeof(args));
+	args.fd = fd;
 	retlen = strlcpy(args.name, newname, BTRFS_SUBVOL_NAME_MAX);
 	if (retlen >= BTRFS_SUBVOL_NAME_MAX)
 		goto out;
