@@ -3533,6 +3533,10 @@ int lxc_setup(struct lxc_handler *handler)
 		}
 	}
 
+	ret = lxc_setup_keyring();
+	if (ret < 0)
+		return -1;
+
 	ret = lxc_setup_network_in_child_namespaces(lxc_conf, &lxc_conf->network);
 	if (ret < 0) {
 		ERROR("Failed to setup network");

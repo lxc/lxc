@@ -51,6 +51,7 @@
 #include "lxclock.h"
 #include "namespace.h"
 #include "parse.h"
+#include "syscall_wrappers.h"
 #include "utils.h"
 
 #ifndef HAVE_STRLCPY
@@ -1745,4 +1746,34 @@ int recursive_destroy(char *dirname)
 	}
 
 	return r;
+}
+
+int lxc_setup_keyring(void)
+{
+	key_serial_t keyring;
+	int ret = 0;
+
+	/* Try to allocate a new session keyring for the container to prevent
+	 * information leaks.
+	 */
+	keyring = keyctl(KEYCTL_JOIN_SESSION_KEYRING, prctl_arg(0),
+			 prctl_arg(0), prctl_arg(0), prctl_arg(0));
+	if (keyring < 0) {
+		switch (errno) {
+		case ENOSYS:
+			DEBUG("The keyctl() syscall is not supported or blocked");
+			break;
+		case EACCES:
+			__fallthrough;
+		case EPERM:
+			DEBUG("Failed to access kernel keyring. Continuing...");
+			break;
+		default:
+			SYSERROR("Failed to create kernel keyring");
+			ret = -1;
+			break;
+		}
+	}
+
+	return ret;
 }

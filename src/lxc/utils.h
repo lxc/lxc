@@ -435,5 +435,6 @@ static inline pid_t lxc_raw_gettid(void)
 extern int lxc_set_death_signal(int signal);
 extern int fd_cloexec(int fd, bool cloexec);
 extern int recursive_destroy(char *dirname);
+extern int lxc_setup_keyring(void);
 
 #endif /* __LXC_UTILS_H */

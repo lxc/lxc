@@ -36,6 +36,7 @@ noinst_HEADERS = attach.h \
 		 storage/storage_utils.h \
 		 storage/zfs.h \
 		 string_utils.h \
+		 syscall_wrappers.h \
 		 terminal.h \
 		 ../tests/lxctest.h \
 		 tools/arguments.h \
@@ -130,6 +131,7 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    storage/zfs.c storage/zfs.h \
 		    string_utils.c string_utils.h \
 		    sync.c sync.h \
+		    syscall_wrappers.h \
 		    terminal.c \
 		    utils.c utils.h \
 		    version.h \
