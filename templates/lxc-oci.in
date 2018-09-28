@@ -151,17 +151,27 @@ getuidgid() {
   usergroup=(${usergroup//:/ })
 
   user=${usergroup[0]:-0}
-  if ! isdecimal "${user}" && [ -f ${passwdpath} ]; then
-    user=$(grep "^${user}:" "${passwdpath}" | awk -F: '{print $3}')
-  else
-    user=0
+  if ! isdecimal "${user}"; then
+    if [ -f ${passwdpath} ]; then
+      user=$(grep "^${user}:" "${passwdpath}" | awk -F: '{print $3}')
+    else
+      user=0
+    fi
   fi
 
   group=${usergroup[1]:-}
-  if [ -z "${group}" ] && [ -f "${passwdpath}" ]; then
-    group=$(grep "^[^:]*:[^:]*:${user}:" "${passwdpath}" | awk -F: '{print $4}')
-  elif ! isdecimal "${group}" && [ -f "${grouppath}" ]; then
-    group=$(grep "^${group}:" "${grouppath}" | awk -F: '{print $3}')
+  if [ -z "${group}" ]; then
+    if [ -f "${passwdpath}" ]; then
+      group=$(grep "^[^:]*:[^:]*:${user}:" "${passwdpath}" | awk -F: '{print $4}')
+    else
+      group=0
+    fi
+  elif ! isdecimal "${group}"; then
+    if [ -f "${grouppath}" ]; then
+      group=$(grep "^${group}:" "${grouppath}" | awk -F: '{print $3}')
+    else
+      group=0
+    fi
   fi
 
   echo "${user:-0} ${group:-0}"
