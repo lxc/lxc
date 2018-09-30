@@ -23,6 +23,7 @@ noinst_HEADERS = api_extensions.h \
 		 macro.h \
 		 monitor.h \
 		 namespace.h \
+		 raw_syscalls.h \
 		 start.h \
 		 state.h \
 		 storage/btrfs.h \
@@ -116,6 +117,7 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    network.c network.h \
 		    monitor.c monitor.h \
 		    parse.c parse.h \
+		    raw_syscalls.c raw_syscalls.h \
 		    ringbuf.c ringbuf.h \
 		    rtnl.c rtnl.h \
 		    state.c state.h \
