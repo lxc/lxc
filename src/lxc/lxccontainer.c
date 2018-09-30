@@ -65,6 +65,7 @@
 #include "namespace.h"
 #include "network.h"
 #include "parse.h"
+#include "raw_syscalls.h"
 #include "start.h"
 #include "state.h"
 #include "storage.h"

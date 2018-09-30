@@ -140,13 +140,4 @@ extern int lxc_namespace_2_ns_idx(const char *namespace);
 extern int lxc_namespace_2_std_identifiers(char *namespaces);
 extern int lxc_fill_namespace_flags(char *flaglist, int *flags);
 
-/**
- * Because of older glibc's pid cache (up to 2.25) whenever clone() is called
- * the child must must retrieve it's own pid via lxc_raw_getpid().
- */
-static inline pid_t lxc_raw_getpid(void)
-{
-	return (pid_t) syscall(SYS_getpid);
-}
-
 #endif

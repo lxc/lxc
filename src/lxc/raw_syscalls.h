@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/syscall.h>
+#include <unistd.h>
 
 /*
  * lxc_raw_clone() - create a new process
@@ -72,5 +73,14 @@ extern pid_t lxc_raw_clone_cb(int (*fn)(void *), void *args, unsigned long flags
 
 extern int lxc_raw_execveat(int dirfd, const char *pathname, char *const argv[],
 			    char *const envp[], int flags);
+
+/*
+ * Because of older glibc's pid cache (up to 2.25) whenever clone() is called
+ * the child must must retrieve it's own pid via lxc_raw_getpid().
+ */
+static inline pid_t lxc_raw_getpid(void)
+{
+	return (pid_t)syscall(SYS_getpid);
+}
 
 #endif /* __LXC_RAW_SYSCALL_H */

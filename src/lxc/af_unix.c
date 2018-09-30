@@ -37,6 +37,7 @@
 
 #include "config.h"
 #include "log.h"
+#include "raw_syscalls.h"
 #include "utils.h"
 
 #ifndef HAVE_STRLCPY
