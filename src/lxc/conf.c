@@ -70,6 +70,7 @@
 #include "namespace.h"
 #include "network.h"
 #include "parse.h"
+#include "raw_syscalls.h"
 #include "ringbuf.h"
 #include "start.h"
 #include "storage.h"
@@ -3482,21 +3483,11 @@ static bool verify_start_hooks(struct lxc_conf *conf)
 
 static bool execveat_supported(void)
 {
-#ifdef __NR_execveat
-	/*
-	 * We use the syscall here, because it was introduced in kernel 3.19,
-	 * while glibc got support for using the syscall much later, in 2.27.
-	 * We don't want to use glibc because it falls back to /proc, and the
-	 * container may not have /proc mounted depending on its configuration.
-	 */
-	syscall(__NR_execveat, -1, "", NULL, NULL, AT_EMPTY_PATH);
+	lxc_raw_execveat(-1, "", NULL, NULL, AT_EMPTY_PATH);
 	if (errno == ENOSYS)
 		return false;
 
 	return true;
-#else
-	return false;
-#endif
 }
 
 int lxc_setup(struct lxc_handler *handler)

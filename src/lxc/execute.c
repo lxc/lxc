@@ -35,6 +35,7 @@
 #include "config.h"
 #include "log.h"
 #include "start.h"
+#include "raw_syscalls.h"
 #include "utils.h"
 
 lxc_log_define(execute, start);
@@ -122,11 +123,7 @@ static int execute_start(struct lxc_handler *handler, void* data)
 	NOTICE("Exec'ing \"%s\"", my_args->argv[0]);
 
 	if (my_args->init_fd >= 0)
-#ifdef __NR_execveat
-		syscall(__NR_execveat, my_args->init_fd, "", argv, environ, AT_EMPTY_PATH);
-#else
-		ERROR("System seems to be missing execveat syscall number");
-#endif
+		lxc_raw_execveat(my_args->init_fd, "", argv, environ, AT_EMPTY_PATH);
 	else
 		execvp(argv[0], argv);
 	SYSERROR("Failed to exec %s", argv[0]);
