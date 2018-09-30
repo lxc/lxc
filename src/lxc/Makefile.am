@@ -356,7 +356,6 @@ lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c \
 			 list.h \
 			 log.c log.h \
 			 macro.h \
-			 namespace.c namespace.h \
 			 file_utils.c file_utils.h \
 			 string_utils.c string_utils.h \
 			 utils.c utils.h
