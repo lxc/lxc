@@ -668,6 +668,9 @@ AC_CHECK_FUNCS([strlcat],
 	AC_DEFINE(HAVE_STRLCAT,1,[Have strlcat]),
 	AM_CONDITIONAL(HAVE_STRLCAT, false))
 
+# HAVE_STRUCT_RTNL_LINK_STATS64={0,1}
+AC_CHECK_TYPES([struct rtnl_link_stats64], [], [], [[#include <linux/if_link.h>]])
+
 # Check for some libraries
 AX_PTHREAD
 AC_SEARCH_LIBS(clock_gettime, [rt])

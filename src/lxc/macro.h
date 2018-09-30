@@ -283,6 +283,13 @@ extern int __build_bug_on_failed;
 #define IFA_TARGET_NETNSID 10
 #endif
 
+#ifndef IFLA_STATS
+#define IFLA_STATS 7
+#endif
+
+#ifndef IFLA_STATS64
+#define IFLA_STATS64 23
+#endif
 
 #ifndef RTM_NEWNSID
 #define RTM_NEWNSID 88
