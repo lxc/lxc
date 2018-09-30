@@ -70,10 +70,12 @@
 #include "namespace.h"
 #include "network.h"
 #include "parse.h"
+#include "raw_syscalls.h"
 #include "ringbuf.h"
 #include "start.h"
 #include "storage.h"
 #include "storage/overlay.h"
+#include "syscall_wrappers.h"
 #include "terminal.h"
 #include "utils.h"
 
@@ -122,21 +124,6 @@ lxc_log_define(conf, lxc);
 thread_local struct lxc_conf *current_config;
 #else
 struct lxc_conf *current_config;
-#endif
-
-/* Define pivot_root() if missing from the C library */
-#ifndef HAVE_PIVOT_ROOT
-static int pivot_root(const char *new_root, const char *put_old)
-{
-#ifdef __NR_pivot_root
-	return syscall(__NR_pivot_root, new_root, put_old);
-#else
-	errno = ENOSYS;
-	return -1;
-#endif
-}
-#else
-extern int pivot_root(const char *new_root, const char *put_old);
 #endif
 
 char *lxchook_names[NUM_LXC_HOOKS] = {
@@ -3549,21 +3536,11 @@ static bool verify_start_hooks(struct lxc_conf *conf)
 
 static bool execveat_supported(void)
 {
-#ifdef __NR_execveat
-	/*
-	 * We use the syscall here, because it was introduced in kernel 3.19,
-	 * while glibc got support for using the syscall much later, in 2.27.
-	 * We don't want to use glibc because it falls back to /proc, and the
-	 * container may not have /proc mounted depending on its configuration.
-	 */
-	syscall(__NR_execveat, -1, "", NULL, NULL, AT_EMPTY_PATH);
+	lxc_raw_execveat(-1, "", NULL, NULL, AT_EMPTY_PATH);
 	if (errno == ENOSYS)
 		return false;
 
 	return true;
-#else
-	return false;
-#endif
 }
 
 int lxc_setup(struct lxc_handler *handler)

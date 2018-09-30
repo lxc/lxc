@@ -23,6 +23,7 @@ noinst_HEADERS = api_extensions.h \
 		 macro.h \
 		 monitor.h \
 		 namespace.h \
+		 raw_syscalls.h \
 		 start.h \
 		 state.h \
 		 storage/btrfs.h \
@@ -116,6 +117,7 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    network.c network.h \
 		    monitor.c monitor.h \
 		    parse.c parse.h \
+		    raw_syscalls.c raw_syscalls.h \
 		    ringbuf.c ringbuf.h \
 		    rtnl.c rtnl.h \
 		    state.c state.h \
@@ -339,21 +341,31 @@ endif
 if ENABLE_COMMANDS
 # Binaries shipping with liblxc
 init_lxc_SOURCES = cmd/lxc_init.c \
+		   compiler.h \
+		   error.h \
 		   initutils.c initutils.h \
+		   log.c log.h \
+		   parse.c parse.h \
+		   raw_syscalls.c raw_syscalls.h \
 		   string_utils.c string_utils.h
-lxc_monitord_SOURCES = cmd/lxc_monitord.c
+lxc_monitord_SOURCES = cmd/lxc_monitord.c \
+		       af_unix.c af_unix.h \
+		       log.c log.h \
+		       mainloop.c mainloop.h \
+		       monitor.c monitor.h \
+		       raw_syscalls.c raw_syscalls.h \
+		       utils.c utils.h
 lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
 		       ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		       log.c log.h \
-		       namespace.c namespace.h \
 		       network.c network.h \
-		       parse.c parse.h
+		       parse.c parse.h \
+		       raw_syscalls.c raw_syscalls.h
 lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c \
 			 conf.c conf.h \
 			 list.h \
 			 log.c log.h \
 			 macro.h \
-			 namespace.c namespace.h \
 			 file_utils.c file_utils.h \
 			 string_utils.c string_utils.h \
 			 utils.c utils.h
