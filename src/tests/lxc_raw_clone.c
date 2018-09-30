@@ -38,6 +38,7 @@
 #include <sys/types.h>
 
 #include "lxctest.h"
+#include "namespace.h"
 #include "raw_syscalls.h"
 #include "utils.h"
 
