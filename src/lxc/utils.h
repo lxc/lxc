@@ -40,6 +40,7 @@
 #include "file_utils.h"
 #include "initutils.h"
 #include "macro.h"
+#include "raw_syscalls.h"
 #include "string_utils.h"
 
 #ifdef HAVE_LINUX_MEMFD_H

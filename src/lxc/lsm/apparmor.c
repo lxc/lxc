@@ -30,6 +30,9 @@
 #include "config.h"
 #include "log.h"
 #include "lsm.h"
+#include "parse.h"
+#include "raw_syscalls.h"
+#include "utils.h"
 
 lxc_log_define(apparmor, lsm);
 
