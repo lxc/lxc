@@ -47,7 +47,8 @@
 #include "list.h"
 #include "log.h"
 #include "macro.h"
-#include "namespace.h"
+#include "file_utils.h"
+#include "string_utils.h"
 #include "utils.h"
 
 extern int lxc_log_fd;
