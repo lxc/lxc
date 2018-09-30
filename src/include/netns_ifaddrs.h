@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include <features.h>
+#include <linux/if_link.h>
 #include <linux/types.h>
 #include <netinet/in.h>
 #include <stdbool.h>
@@ -37,8 +38,10 @@ struct netns_ifaddrs {
 		struct sockaddr *ifu_dstaddr;
 	} ifa_ifu;
 
-	/* If you don't know what this is for don't touch it. */
-	void *ifa_data;
+	/* These fields are not present struct ifaddrs. */
+	int ifa_stats_type;
+	struct rtnl_link_stats ifa_stats32;
+	struct rtnl_link_stats64 ifa_stats64;
 };
 
 #define __ifa_broadaddr ifa_ifu.ifu_broadaddr

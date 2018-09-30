@@ -177,7 +177,11 @@ static int nl_msg_to_ifaddr(void *pctx, bool *netnsid_aware, struct nlmsghdr *h)
 #pragma GCC diagnostic ignored "-Wcast-align"
 		for (rta = __NLMSG_RTA(h, sizeof(*ifi)); __NLMSG_RTAOK(rta, h);
 		     rta = __RTA_NEXT(rta)) {
+#if HAVE_STRUCT_RTNL_LINK_STATS64
+			if (rta->rta_type != IFLA_STATS64)
+#else
 			if (rta->rta_type != IFLA_STATS)
+#endif
 				continue;
 
 			stats_len = __RTA_DATALEN(rta);
@@ -226,11 +230,19 @@ static int nl_msg_to_ifaddr(void *pctx, bool *netnsid_aware, struct nlmsghdr *h)
 					    __RTA_DATA(rta), __RTA_DATALEN(rta),
 					    ifi->ifi_index, ifi->ifi_type);
 				break;
-			case IFLA_STATS:
-				ifs->ifa.ifa_data = (void *)(ifs + 1);
-				memcpy(ifs->ifa.ifa_data, __RTA_DATA(rta),
+#if HAVE_STRUCT_RTNL_LINK_STATS64
+			case IFLA_STATS64:
+				ifs->ifa.ifa_stats_type = IFLA_STATS64;
+				memcpy(&ifs->ifa.ifa_stats64, __RTA_DATA(rta),
 				       __RTA_DATALEN(rta));
 				break;
+#else
+			case IFLA_STATS:
+				ifs->ifa.ifa_stats_type = IFLA_STATS;
+				memcpy(&ifs->ifa.ifa_stats32, __RTA_DATA(rta),
+				       __RTA_DATALEN(rta));
+				break;
+#endif
 			case IFLA_MTU:
 				memcpy(&ifs->ifa.ifa_mtu, __RTA_DATA(rta),
 				       sizeof(int));
