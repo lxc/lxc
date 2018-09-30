@@ -24,7 +24,11 @@ lxc_test_locktests_SOURCES = locktests.c
 lxc_test_lxcpath_SOURCES = lxcpath.c
 lxc_test_may_control_SOURCES = may_control.c
 lxc_test_parse_config_file_SOURCES = parse_config_file.c lxctest.h
-lxc_test_raw_clone_SOURCES = lxc_raw_clone.c lxctest.h
+lxc_test_raw_clone_SOURCES = lxc_raw_clone.c \
+			     lxctest.h \
+			     ../lxc/namespace.c ../lxc/namespace.h \
+			     ../lxc/raw_syscalls.c ../lxc/raw_syscalls.h
+			     ../lxc/utils.c ../lxc/utils.h
 lxc_test_reboot_SOURCES = reboot.c
 lxc_test_saveconfig_SOURCES = saveconfig.c
 lxc_test_share_ns_SOURCES = share_ns.c lxctest.h
