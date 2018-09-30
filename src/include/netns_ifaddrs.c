@@ -233,16 +233,13 @@ static int nl_msg_to_ifaddr(void *pctx, bool *netnsid_aware, struct nlmsghdr *h)
 #if HAVE_STRUCT_RTNL_LINK_STATS64
 			case IFLA_STATS64:
 				ifs->ifa.ifa_stats_type = IFLA_STATS64;
-				memcpy(&ifs->ifa.ifa_stats64, __RTA_DATA(rta),
-				       __RTA_DATALEN(rta));
-				break;
 #else
 			case IFLA_STATS:
 				ifs->ifa.ifa_stats_type = IFLA_STATS;
-				memcpy(&ifs->ifa.ifa_stats32, __RTA_DATA(rta),
+#endif
+				memcpy(&ifs->ifa.ifa_stats, __RTA_DATA(rta),
 				       __RTA_DATALEN(rta));
 				break;
-#endif
 			case IFLA_MTU:
 				memcpy(&ifs->ifa.ifa_mtu, __RTA_DATA(rta),
 				       sizeof(int));
