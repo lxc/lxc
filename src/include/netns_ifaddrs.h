@@ -40,8 +40,11 @@ struct netns_ifaddrs {
 
 	/* These fields are not present struct ifaddrs. */
 	int ifa_stats_type;
-	struct rtnl_link_stats ifa_stats32;
-	struct rtnl_link_stats64 ifa_stats64;
+#if HAVE_STRUCT_RTNL_LINK_STATS64
+	struct rtnl_link_stats64 ifa_stats;
+#else
+	struct rtnl_link_stats ifa_stats;
+#endif
 };
 
 #define __ifa_broadaddr ifa_ifu.ifu_broadaddr
