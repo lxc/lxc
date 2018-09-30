@@ -339,7 +339,12 @@ init_lxc_SOURCES = cmd/lxc_init.c \
 		   raw_syscalls.c raw_syscalls.h \
 		   string_utils.c string_utils.h
 lxc_monitord_SOURCES = cmd/lxc_monitord.c \
-		       raw_syscalls.c raw_syscalls.h
+		       af_unix.c af_unix.h \
+		       log.c log.h \
+		       mainloop.c mainloop.h \
+		       monitor.c monitor.h \
+		       raw_syscalls.c raw_syscalls.h \
+		       utils.c utils.h
 lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
 		       ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		       log.c log.h \
