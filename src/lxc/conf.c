@@ -74,6 +74,7 @@
 #include "start.h"
 #include "storage.h"
 #include "storage/overlay.h"
+#include "syscall_wrappers.h"
 #include "terminal.h"
 #include "utils.h"
 
@@ -122,21 +123,6 @@ lxc_log_define(conf, lxc);
 thread_local struct lxc_conf *current_config;
 #else
 struct lxc_conf *current_config;
-#endif
-
-/* Define pivot_root() if missing from the C library */
-#ifndef HAVE_PIVOT_ROOT
-static int pivot_root(const char *new_root, const char *put_old)
-{
-#ifdef __NR_pivot_root
-	return syscall(__NR_pivot_root, new_root, put_old);
-#else
-	errno = ENOSYS;
-	return -1;
-#endif
-}
-#else
-extern int pivot_root(const char *new_root, const char *put_old);
 #endif
 
 char *lxchook_names[NUM_LXC_HOOKS] = {
