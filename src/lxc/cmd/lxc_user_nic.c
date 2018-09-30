@@ -49,9 +49,9 @@
 
 #include "config.h"
 #include "log.h"
-#include "namespace.h"
 #include "network.h"
 #include "parse.h"
+#include "raw_syscalls.h"
 #include "utils.h"
 
 #ifndef HAVE_STRLCPY
