@@ -59,6 +59,7 @@
 #include "macro.h"
 #include "mainloop.h"
 #include "namespace.h"
+#include "raw_syscalls.h"
 #include "terminal.h"
 #include "utils.h"
 

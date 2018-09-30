@@ -51,6 +51,7 @@
 #include "lxclock.h"
 #include "namespace.h"
 #include "parse.h"
+#include "raw_syscalls.h"
 #include "syscall_wrappers.h"
 #include "utils.h"
 
