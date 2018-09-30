@@ -48,4 +48,18 @@ static inline long __keyctl(int cmd, unsigned long arg2, unsigned long arg3,
 #define keyctl __keyctl
 #endif
 
+#if !HAVE_PIVOT_ROOT
+static int pivot_root(const char *new_root, const char *put_old)
+{
+#ifdef __NR_pivot_root
+	return syscall(__NR_pivot_root, new_root, put_old);
+#else
+	errno = ENOSYS;
+	return -1;
+#endif
+}
+#else
+extern int pivot_root(const char *new_root, const char *put_old);
+#endif
+
 #endif /* __LXC_SYSCALL_WRAPPER_H */
