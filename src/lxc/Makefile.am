@@ -204,11 +204,6 @@ if ENABLE_SELINUX
 AM_CFLAGS += -DHAVE_SELINUX
 endif
 
-if ENABLE_DLOG
-AM_CFLAGS += -DHAVE_DLOG \
-	      $(DLOG_CFLAGS)
-endif
-
 if USE_CONFIGPATH_LOGS
 AM_CFLAGS += -DUSE_CONFIGPATH_LOGS
 endif
@@ -227,8 +222,7 @@ liblxc_la_LDFLAGS = -pthread \
 liblxc_la_LIBADD = $(CAP_LIBS) \
 		   $(GNUTLS_LIBS) \
 		   $(SELINUX_LIBS) \
-		   $(SECCOMP_LIBS) \
-		   $(DLOG_LIBS)
+		   $(SECCOMP_LIBS)
 
 bin_SCRIPTS=
 
@@ -280,8 +274,7 @@ LDADD = liblxc.la \
 	@CAP_LIBS@ \
 	@GNUTLS_LIBS@ \
 	@SECCOMP_LIBS@ \
-	@SELINUX_LIBS@ \
-	@DLOG_LIBS@
+	@SELINUX_LIBS@
 
 if ENABLE_TOOLS
 lxc_attach_SOURCES = tools/lxc_attach.c \
@@ -418,7 +411,6 @@ pam_cgfs_la_CFLAGS = $(AM_CFLAGS) -DNO_LXC_CONF
 
 pam_cgfs_la_LIBADD = $(AM_LIBS) \
 		     $(PAM_LIBS) \
-		     $(DLOG_LIBS) \
 		     -L$(top_srcdir)
 
 pam_cgfs_la_LDFLAGS = $(AM_LDFLAGS) \
