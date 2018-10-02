@@ -1262,8 +1262,10 @@ static bool monitor_create_path_for_hierarchy(struct hierarchy *h, char *cgname)
 	int ret;
 
 	h->monitor_full_path = must_make_path(h->mountpoint, h->container_base_path, cgname, NULL);
-	if (dir_exists(h->monitor_full_path))
-		return true;
+	if (dir_exists(h->monitor_full_path)) {
+		ERROR("The cgroup \"%s\" already existed", h->monitor_full_path);
+		return false;
+	}
 
 	if (!cg_legacy_handle_cpuset_hierarchy(h, cgname)) {
 		ERROR("Failed to handle legacy cpuset controller");
