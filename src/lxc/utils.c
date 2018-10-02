@@ -221,26 +221,31 @@ extern int get_u16(unsigned short *val, const char *arg, int base)
 	return 0;
 }
 
-extern int mkdir_p(const char *dir, mode_t mode)
+int mkdir_p(const char *dir, mode_t mode)
 {
 	const char *tmp = dir;
 	const char *orig = dir;
-	char *makeme;
-
 	do {
+		int ret;
+		char *makeme;
+
 		dir = tmp + strspn(tmp, "/");
 		tmp = dir + strcspn(dir, "/");
 
+		errno = ENOMEM;
 		makeme = strndup(orig, dir - orig);
-		if (*makeme) {
-			if (mkdir(makeme, mode) && errno != EEXIST) {
-				SYSERROR("failed to create directory '%s'", makeme);
-				free(makeme);
-				return -1;
-			}
+		if (!makeme)
+			return -1;
+
+		ret = mkdir(makeme, mode);
+		if (ret < 0 && errno != EEXIST) {
+			SYSERROR("Failed to create directory \"%s\"", makeme);
+			free(makeme);
+			return -1;
 		}
 		free(makeme);
-	} while(tmp != dir);
+
+	} while (tmp != dir);
 
 	return 0;
 }
