@@ -495,44 +495,6 @@ static int __rtnl_enumerate(int link_af, int addr_af, __s32 netns_id,
 	return r;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wcast-align"
-/* Get a pointer to the address structure from a sockaddr. */
-static void *get_addr_ptr(struct sockaddr *sockaddr_ptr)
-{
-	if (sockaddr_ptr->sa_family == AF_INET)
-		return &((struct sockaddr_in *)sockaddr_ptr)->sin_addr;
-
-	if (sockaddr_ptr->sa_family == AF_INET6)
-		return &((struct sockaddr_in6 *)sockaddr_ptr)->sin6_addr;
-
-	return NULL;
-}
-#pragma GCC diagnostic pop
-
-static char *get_packet_address(struct sockaddr *sockaddr_ptr, char *buf, size_t buflen)
-{
-	char *slider = buf;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wcast-align"
-	unsigned char *m = ((struct sockaddr_ll *)sockaddr_ptr)->sll_addr;
-	unsigned char n = ((struct sockaddr_ll *)sockaddr_ptr)->sll_halen;
-#pragma GCC diagnostic pop
-
-	for (unsigned char i = 0; i < n; i++) {
-		int ret;
-
-		ret = snprintf(slider, buflen, "%02x%s", m[i], (i + 1) < n ? ":" : "");
-		if (ret < 0 || (size_t)ret >= buflen)
-			return NULL;
-
-		buflen -= ret;
-		slider = (slider + ret);
-	}
-
-	return buf;
-}
-
 void netns_freeifaddrs(struct netns_ifaddrs *ifp)
 {
 	struct netns_ifaddrs *n;
