@@ -1645,7 +1645,7 @@ uint64_t lxc_find_next_power2(uint64_t n)
 	return n;
 }
 
-int lxc_set_death_signal(int signal)
+int lxc_set_death_signal(int signal, pid_t parent)
 {
 	int ret;
 	pid_t ppid;
@@ -1655,11 +1655,8 @@ int lxc_set_death_signal(int signal)
 
 	/* Check whether we have been orphaned. */
 	ppid = (pid_t)syscall(SYS_getppid);
-	if (ppid == 1) {
-		pid_t self;
-
-		self = lxc_raw_getpid();
-		ret = kill(self, SIGKILL);
+	if (ppid != parent) {
+		ret = raise(SIGKILL);
 		if (ret < 0)
 			return -1;
 	}
