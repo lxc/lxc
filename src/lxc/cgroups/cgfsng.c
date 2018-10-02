@@ -1257,55 +1257,24 @@ on_error:
 	return bret;
 }
 
-static int mkdir_eexist_on_last(const char *dir, mode_t mode)
-{
-	const char *tmp = dir;
-	const char *orig = dir;
-	size_t orig_len;
-
-	orig_len = strlen(dir);
-	do {
-		int ret;
-		size_t cur_len;
-		char *makeme;
-
-		dir = tmp + strspn(tmp, "/");
-		tmp = dir + strcspn(dir, "/");
-
-		errno = ENOMEM;
-		cur_len = dir - orig;
-		makeme = strndup(orig, cur_len);
-		if (!makeme)
-			return -1;
-
-		ret = mkdir(makeme, mode);
-		if (ret < 0) {
-			if ((errno != EEXIST) || (orig_len == cur_len)) {
-				SYSERROR("Failed to create directory \"%s\"", makeme);
-				free(makeme);
-				return -1;
-			}
-		}
-		free(makeme);
-
-	} while (tmp != dir);
-
-	return 0;
-}
-
 static bool monitor_create_path_for_hierarchy(struct hierarchy *h, char *cgname)
 {
 	int ret;
 
 	h->monitor_full_path = must_make_path(h->mountpoint, h->container_base_path, cgname, NULL);
-	ret = mkdir_eexist_on_last(h->monitor_full_path, 0755);
-	if (ret < 0) {
-		ERROR("Failed to create cgroup \"%s\"", h->monitor_full_path);
+	if (dir_exists(h->monitor_full_path)) {
+		ERROR("The cgroup \"%s\" already existed", h->monitor_full_path);
 		return false;
 	}
 
 	if (!cg_legacy_handle_cpuset_hierarchy(h, cgname)) {
 		ERROR("Failed to handle legacy cpuset controller");
+		return false;
+	}
+
+	ret = mkdir_p(h->monitor_full_path, 0755);
+	if (ret < 0) {
+		ERROR("Failed to create cgroup \"%s\"", h->monitor_full_path);
 		return false;
 	}
 
@@ -1317,14 +1286,19 @@ static bool container_create_path_for_hierarchy(struct hierarchy *h, char *cgnam
 	int ret;
 
 	h->container_full_path = must_make_path(h->mountpoint, h->container_base_path, cgname, NULL);
-	ret = mkdir_eexist_on_last(h->container_full_path, 0755);
-	if (ret < 0) {
-		ERROR("Failed to create cgroup \"%s\"", h->container_full_path);
+	if (dir_exists(h->container_full_path)) {
+		ERROR("The cgroup \"%s\" already existed", h->container_full_path);
 		return false;
 	}
 
 	if (!cg_legacy_handle_cpuset_hierarchy(h, cgname)) {
 		ERROR("Failed to handle legacy cpuset controller");
+		return false;
+	}
+
+	ret = mkdir_p(h->container_full_path, 0755);
+	if (ret < 0) {
+		ERROR("Failed to create cgroup \"%s\"", h->container_full_path);
 		return false;
 	}
 
