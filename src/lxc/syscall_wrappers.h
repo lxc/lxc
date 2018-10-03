@@ -127,6 +127,19 @@ extern int pivot_root(const char *new_root, const char *put_old);
 	#endif
 #endif
 
+/* Define sethostname() if missing from the C library */
+#ifndef HAVE_SETHOSTNAME
+static inline int sethostname(const char *name, size_t len)
+{
+#ifdef __NR_sethostname
+	return syscall(__NR_sethostname, name, len);
+#else
+	errno = ENOSYS;
+	return -1;
+#endif
+}
+#endif
+
 /* Define setns() if missing from the C library */
 #ifndef HAVE_SETNS
 static inline int setns(int fd, int nstype)
