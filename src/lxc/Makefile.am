@@ -350,7 +350,8 @@ lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
 		       log.c log.h \
 		       network.c network.h \
 		       parse.c parse.h \
-		       raw_syscalls.c raw_syscalls.h
+		       raw_syscalls.c raw_syscalls.h \
+		       syscall_wrappers.h
 lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c \
 			 conf.c conf.h \
 			 list.h \

@@ -60,6 +60,7 @@
 #include "mainloop.h"
 #include "namespace.h"
 #include "raw_syscalls.h"
+#include "syscall_wrappers.h"
 #include "terminal.h"
 #include "utils.h"
 
