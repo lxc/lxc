@@ -56,21 +56,6 @@ extern char *get_rundir(void);
 #endif
 #endif
 
-/* Define unshare() if missing from the C library */
-#ifndef HAVE_UNSHARE
-static inline int unshare(int flags)
-{
-#ifdef __NR_unshare
-	return syscall(__NR_unshare, flags);
-#else
-	errno = ENOSYS;
-	return -1;
-#endif
-}
-#else
-extern int unshare(int);
-#endif
-
 /* Define signalfd() if missing from the C library */
 #ifdef HAVE_SYS_SIGNALFD_H
 #  include <sys/signalfd.h>

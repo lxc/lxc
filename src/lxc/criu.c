@@ -45,6 +45,7 @@
 #include "lxclock.h"
 #include "network.h"
 #include "storage.h"
+#include "syscall_wrappers.h"
 #include "utils.h"
 
 #if IS_BIONIC

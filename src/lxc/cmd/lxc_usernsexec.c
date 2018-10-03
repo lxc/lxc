@@ -49,6 +49,7 @@
 #include "macro.h"
 #include "file_utils.h"
 #include "string_utils.h"
+#include "syscall_wrappers.h"
 #include "utils.h"
 
 extern int lxc_log_fd;

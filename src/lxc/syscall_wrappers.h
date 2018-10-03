@@ -155,4 +155,19 @@ static inline int setns(int fd, int nstype)
 }
 #endif
 
+/* Define unshare() if missing from the C library */
+#ifndef HAVE_UNSHARE
+static inline int unshare(int flags)
+{
+#ifdef __NR_unshare
+	return syscall(__NR_unshare, flags);
+#else
+	errno = ENOSYS;
+	return -1;
+#endif
+}
+#else
+extern int unshare(int);
+#endif
+
 #endif /* __LXC_SYSCALL_WRAPPER_H */
