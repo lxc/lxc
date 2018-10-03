@@ -236,15 +236,6 @@ static inline uint64_t lxc_getpagesize(void)
  */
 extern uint64_t lxc_find_next_power2(uint64_t n);
 
-static inline pid_t lxc_raw_gettid(void)
-{
-#ifdef SYS_gettid
-	return syscall(SYS_gettid);
-#else
-	return lxc_raw_getpid();
-#endif
-}
-
 /* Set a signal the child process will receive after the parent has died. */
 extern int lxc_set_death_signal(int signal, pid_t parent);
 extern int fd_cloexec(int fd, bool cloexec);
