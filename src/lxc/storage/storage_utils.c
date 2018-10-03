@@ -48,6 +48,7 @@
 #include "parse.h"
 #include "storage.h"
 #include "storage_utils.h"
+#include "syscall_wrappers.h"
 #include "utils.h"
 
 #ifndef HAVE_STRLCPY

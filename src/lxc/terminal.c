@@ -45,6 +45,7 @@
 #include "lxclock.h"
 #include "mainloop.h"
 #include "start.h"
+#include "syscall_wrappers.h"
 #include "terminal.h"
 #include "utils.h"
 

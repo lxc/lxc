@@ -83,4 +83,13 @@ static inline pid_t lxc_raw_getpid(void)
 	return (pid_t)syscall(SYS_getpid);
 }
 
+static inline pid_t lxc_raw_gettid(void)
+{
+#ifdef __NR_gettid
+	return syscall(__NR_gettid);
+#else
+	return lxc_raw_getpid();
+#endif
+}
+
 #endif /* __LXC_RAW_SYSCALL_H */

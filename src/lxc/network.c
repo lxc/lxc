@@ -57,6 +57,7 @@
 #include "network.h"
 #include "nl.h"
 #include "raw_syscalls.h"
+#include "syscall_wrappers.h"
 #include "utils.h"
 
 #ifndef HAVE_STRLCPY
