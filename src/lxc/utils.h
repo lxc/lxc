@@ -56,19 +56,6 @@ extern char *get_rundir(void);
 #endif
 #endif
 
-/* Define sethostname() if missing from the C library */
-#ifndef HAVE_SETHOSTNAME
-static inline int sethostname(const char *name, size_t len)
-{
-#ifdef __NR_sethostname
-return syscall(__NR_sethostname, name, len);
-#else
-errno = ENOSYS;
-return -1;
-#endif
-}
-#endif
-
 /* Define unshare() if missing from the C library */
 #ifndef HAVE_UNSHARE
 static inline int unshare(int flags)
