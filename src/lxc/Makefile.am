@@ -369,6 +369,7 @@ lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c \
 			 macro.h \
 			 file_utils.c file_utils.h \
 			 string_utils.c string_utils.h \
+			 syscall_wrappers.h \
 			 utils.c utils.h
 endif
 

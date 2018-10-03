@@ -73,6 +73,7 @@
 #include "storage/overlay.h"
 #include "storage_utils.h"
 #include "sync.h"
+#include "syscall_wrappers.h"
 #include "terminal.h"
 #include "utils.h"
 #include "version.h"

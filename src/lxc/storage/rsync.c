@@ -38,6 +38,7 @@
 #include "log.h"
 #include "rsync.h"
 #include "storage.h"
+#include "syscall_wrappers.h"
 #include "utils.h"
 
 lxc_log_define(rsync, lxc);
