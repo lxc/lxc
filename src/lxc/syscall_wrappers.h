@@ -32,6 +32,10 @@
 
 #include "config.h"
 
+#ifdef HAVE_LINUX_MEMFD_H
+#include <linux/memfd.h>
+#endif
+
 typedef int32_t key_serial_t;
 
 #if !HAVE_KEYCTL
@@ -46,6 +50,50 @@ static inline long __keyctl(int cmd, unsigned long arg2, unsigned long arg3,
 #endif
 }
 #define keyctl __keyctl
+#endif
+
+#ifndef HAVE_MEMFD_CREATE
+static inline int memfd_create(const char *name, unsigned int flags) {
+	#ifndef __NR_memfd_create
+		#if defined __i386__
+			#define __NR_memfd_create 356
+		#elif defined __x86_64__
+			#define __NR_memfd_create 319
+		#elif defined __arm__
+			#define __NR_memfd_create 385
+		#elif defined __aarch64__
+			#define __NR_memfd_create 279
+		#elif defined __s390__
+			#define __NR_memfd_create 350
+		#elif defined __powerpc__
+			#define __NR_memfd_create 360
+		#elif defined __sparc__
+			#define __NR_memfd_create 348
+		#elif defined __blackfin__
+			#define __NR_memfd_create 390
+		#elif defined __ia64__
+			#define __NR_memfd_create 1340
+		#elif defined _MIPS_SIM
+			#if _MIPS_SIM == _MIPS_SIM_ABI32
+				#define __NR_memfd_create 4354
+			#endif
+			#if _MIPS_SIM == _MIPS_SIM_NABI32
+				#define __NR_memfd_create 6318
+			#endif
+			#if _MIPS_SIM == _MIPS_SIM_ABI64
+				#define __NR_memfd_create 5314
+			#endif
+		#endif
+	#endif
+	#ifdef __NR_memfd_create
+	return syscall(__NR_memfd_create, name, flags);
+	#else
+	errno = ENOSYS;
+	return -1;
+	#endif
+}
+#else
+extern int memfd_create(const char *name, unsigned int flags);
 #endif
 
 #if !HAVE_PIVOT_ROOT
