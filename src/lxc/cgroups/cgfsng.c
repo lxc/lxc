@@ -1297,15 +1297,15 @@ static bool monitor_create_path_for_hierarchy(struct hierarchy *h, char *cgname)
 {
 	int ret;
 
+	if (!cg_legacy_handle_cpuset_hierarchy(h, cgname)) {
+		ERROR("Failed to handle legacy cpuset controller");
+		return false;
+	}
+
 	h->monitor_full_path = must_make_path(h->mountpoint, h->container_base_path, cgname, NULL);
 	ret = mkdir_eexist_on_last(h->monitor_full_path, 0755);
 	if (ret < 0) {
 		ERROR("Failed to create cgroup \"%s\"", h->monitor_full_path);
-		return false;
-	}
-
-	if (!cg_legacy_handle_cpuset_hierarchy(h, cgname)) {
-		ERROR("Failed to handle legacy cpuset controller");
 		return false;
 	}
 
@@ -1316,15 +1316,15 @@ static bool container_create_path_for_hierarchy(struct hierarchy *h, char *cgnam
 {
 	int ret;
 
+	if (!cg_legacy_handle_cpuset_hierarchy(h, cgname)) {
+		ERROR("Failed to handle legacy cpuset controller");
+		return false;
+	}
+
 	h->container_full_path = must_make_path(h->mountpoint, h->container_base_path, cgname, NULL);
 	ret = mkdir_eexist_on_last(h->container_full_path, 0755);
 	if (ret < 0) {
 		ERROR("Failed to create cgroup \"%s\"", h->container_full_path);
-		return false;
-	}
-
-	if (!cg_legacy_handle_cpuset_hierarchy(h, cgname)) {
-		ERROR("Failed to handle legacy cpuset controller");
 		return false;
 	}
 
