@@ -75,6 +75,7 @@
 #include "storage/storage.h"
 #include "storage/storage_utils.h"
 #include "sync.h"
+#include "syscall_wrappers.h"
 #include "terminal.h"
 #include "utils.h"
 
