@@ -32,6 +32,7 @@
 
 #include "config.h"
 #include "ringbuf.h"
+#include "syscall_wrappers.h"
 #include "utils.h"
 
 int lxc_ringbuf_create(struct lxc_ringbuf *buf, size_t size)
