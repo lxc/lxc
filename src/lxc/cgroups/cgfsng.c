@@ -1377,10 +1377,9 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 		return bret;
 
 	len = strlen(tmp) + 5; /* leave room for -NNN\0 */
-	monitor_cgroup = must_alloc(len);
-	(void)strlcpy(monitor_cgroup, tmp, len);
-	free(tmp);
+	monitor_cgroup = must_realloc(tmp, len);
 	offset = monitor_cgroup + len - 5;
+	*offset = 0;
 
 	do {
 		if (idx) {
