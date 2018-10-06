@@ -52,7 +52,7 @@
 lxc_log_define(lxc_start, lxc);
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg);
-static int ensure_path(struct lxc_arguments *args, char **confpath, const char *path);
+static int ensure_path(char **confpath, const char *path);
 
 static struct lxc_list defines;
 
@@ -144,7 +144,7 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 	return 0;
 }
 
-static int ensure_path(struct lxc_arguments *args, char **confpath, const char *path)
+static int ensure_path(char **confpath, const char *path)
 {
 	int fd;
 	char *fullpath = NULL;
@@ -300,7 +300,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (my_args.pidfile)
-		if (ensure_path(&my_args, &c->pidfile, my_args.pidfile) < 0) {
+		if (ensure_path(&c->pidfile, my_args.pidfile) < 0) {
 			ERROR("Failed to ensure pidfile '%s'", my_args.pidfile);
 			goto out;
 		}

@@ -108,7 +108,6 @@ Options :\n\
 	.log_priority = "ERROR",
 	.log_file     = "none",
 	.daemonize    = 0,
-	.pidfile      = NULL,
 };
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg)
