@@ -542,7 +542,7 @@ int run_script(const char *name, const char *section, const char *script, ...)
 int pin_rootfs(const char *rootfs)
 {
 	int fd, ret;
-	char absrootfspin[MAXPATHLEN];
+	char absrootfspin[PATH_MAX];
 	char *absrootfs;
 	struct stat s;
 	struct statfs sfs;
@@ -565,9 +565,9 @@ int pin_rootfs(const char *rootfs)
 		return -2;
 	}
 
-	ret = snprintf(absrootfspin, MAXPATHLEN, "%s/.lxc-keep", absrootfs);
+	ret = snprintf(absrootfspin, PATH_MAX, "%s/.lxc-keep", absrootfs);
 	free(absrootfs);
-	if (ret >= MAXPATHLEN)
+	if (ret < 0 || ret >= PATH_MAX)
 		return -1;
 
 	fd = open(absrootfspin, O_CREAT | O_RDWR, S_IWUSR | S_IRUSR);
@@ -808,7 +808,7 @@ static const struct dev_symlinks dev_symlinks[] = {
 static int lxc_setup_dev_symlinks(const struct lxc_rootfs *rootfs)
 {
 	int i, ret;
-	char path[MAXPATHLEN];
+	char path[PATH_MAX];
 	struct stat s;
 
 	for (i = 0; i < sizeof(dev_symlinks) / sizeof(dev_symlinks[0]); i++) {
@@ -816,7 +816,7 @@ static int lxc_setup_dev_symlinks(const struct lxc_rootfs *rootfs)
 
 		ret = snprintf(path, sizeof(path), "%s/dev/%s",
 			       rootfs->path ? rootfs->mount : "", d->name);
-		if (ret < 0 || ret >= MAXPATHLEN)
+		if (ret < 0 || ret >= PATH_MAX)
 			return -1;
 
 		/* Stat the path first. If we don't get an error accept it as
@@ -872,7 +872,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 	int i, ret;
 	const struct lxc_tty_info *ttys = &conf->ttys;
 	char *ttydir = ttys->dir;
-	char path[MAXPATHLEN], lxcpath[MAXPATHLEN];
+	char path[PATH_MAX], lxcpath[PATH_MAX];
 
 	if (!conf->rootfs.path)
 		return 0;
@@ -1193,13 +1193,13 @@ enum {
 static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 {
 	int i, ret;
-	char path[MAXPATHLEN];
+	char path[PATH_MAX];
 	mode_t cmask;
 	int use_mknod = LXC_DEVNODE_MKNOD;
 
-	ret = snprintf(path, MAXPATHLEN, "%s/dev",
+	ret = snprintf(path, PATH_MAX, "%s/dev",
 		       rootfs->path ? rootfs->mount : "");
-	if (ret < 0 || ret >= MAXPATHLEN)
+	if (ret < 0 || ret >= PATH_MAX)
 		return -1;
 
 	/* ignore, just don't try to fill in */
@@ -1210,12 +1210,12 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 
 	cmask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
 	for (i = 0; i < sizeof(lxc_devices) / sizeof(lxc_devices[0]); i++) {
-		char hostpath[MAXPATHLEN];
+		char hostpath[PATH_MAX];
 		const struct lxc_device_node *device = &lxc_devices[i];
 
-		ret = snprintf(path, MAXPATHLEN, "%s/dev/%s",
+		ret = snprintf(path, PATH_MAX, "%s/dev/%s",
 			       rootfs->path ? rootfs->mount : "", device->name);
-		if (ret < 0 || ret >= MAXPATHLEN)
+		if (ret < 0 || ret >= PATH_MAX)
 			return -1;
 
 		if (use_mknod >= LXC_DEVNODE_MKNOD) {
@@ -1267,8 +1267,8 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 		}
 
 		/* Fallback to bind-mounting the device from the host. */
-		ret = snprintf(hostpath, MAXPATHLEN, "/dev/%s", device->name);
-		if (ret < 0 || ret >= MAXPATHLEN)
+		ret = snprintf(hostpath, PATH_MAX, "/dev/%s", device->name);
+		if (ret < 0 || ret >= PATH_MAX)
 			return -1;
 
 		ret = safe_mount(hostpath, path, 0, MS_BIND, NULL,
@@ -1722,7 +1722,7 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 				 const struct lxc_terminal *console)
 {
 	int ret;
-	char path[MAXPATHLEN];
+	char path[PATH_MAX];
 	char *rootfs_path = rootfs->path ? rootfs->mount : "";
 
 	if (console->path && !strcmp(console->path, "none"))
@@ -1776,7 +1776,7 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 				    char *ttydir)
 {
 	int ret;
-	char path[MAXPATHLEN], lxcpath[MAXPATHLEN];
+	char path[PATH_MAX], lxcpath[PATH_MAX];
 	char *rootfs_path = rootfs->path ? rootfs->mount : "";
 
 	if (console->path && !strcmp(console->path, "none"))
@@ -1990,15 +1990,15 @@ static int mount_entry(const char *fsname, const char *target,
 		       bool dev, bool relative, const char *rootfs)
 {
 	int ret;
-	char srcbuf[MAXPATHLEN];
+	char srcbuf[PATH_MAX];
 	const char *srcpath = fsname;
 #ifdef HAVE_STATVFS
 	struct statvfs sb;
 #endif
 
 	if (relative) {
-		ret = snprintf(srcbuf, MAXPATHLEN, "%s/%s", rootfs ? rootfs : "/", fsname ? fsname : "");
-		if (ret < 0 || ret >= MAXPATHLEN) {
+		ret = snprintf(srcbuf, PATH_MAX, "%s/%s", rootfs ? rootfs : "/", fsname ? fsname : "");
+		if (ret < 0 || ret >= PATH_MAX) {
 			ERROR("source path is too long");
 			return -1;
 		}
@@ -2232,7 +2232,7 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 static inline int mount_entry_on_systemfs(struct mntent *mntent)
 {
 	int ret;
-	char path[MAXPATHLEN];
+	char path[PATH_MAX];
 
 	/* For containers created without a rootfs all mounts are treated as
 	 * absolute paths starting at / on the host.
@@ -2255,7 +2255,7 @@ static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
 	int offset;
 	char *aux;
 	const char *lxcpath;
-	char path[MAXPATHLEN];
+	char path[PATH_MAX];
 	int ret = 0;
 
 	lxcpath = lxc_global_config_value("lxc.lxcpath");
@@ -2265,8 +2265,8 @@ static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
 	/* If rootfs->path is a blockdev path, allow container fstab to use
 	 * <lxcpath>/<name>/rootfs" as the target prefix.
 	 */
-	ret = snprintf(path, MAXPATHLEN, "%s/%s/rootfs", lxcpath, lxc_name);
-	if (ret < 0 || ret >= MAXPATHLEN)
+	ret = snprintf(path, PATH_MAX, "%s/%s/rootfs", lxcpath, lxc_name);
+	if (ret < 0 || ret >= PATH_MAX)
 		goto skipvarlib;
 
 	aux = strstr(mntent->mnt_dir, path);
@@ -2284,8 +2284,8 @@ skipvarlib:
 	offset = strlen(rootfs->path);
 
 skipabs:
-	ret = snprintf(path, MAXPATHLEN, "%s/%s", rootfs->mount, aux + offset);
-	if (ret < 0 || ret >= MAXPATHLEN)
+	ret = snprintf(path, PATH_MAX, "%s/%s", rootfs->mount, aux + offset);
+	if (ret < 0 || ret >= PATH_MAX)
 		return -1;
 
 	return mount_entry_on_generic(mntent, path, rootfs, lxc_name, lxc_path);
@@ -2297,7 +2297,7 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 					  const char *lxc_path)
 {
 	int ret;
-	char path[MAXPATHLEN];
+	char path[PATH_MAX];
 
 	/* relative to root mount point */
 	ret = snprintf(path, sizeof(path), "%s/%s", rootfs->mount, mntent->mnt_dir);
@@ -2615,7 +2615,7 @@ int setup_sysctl_parameters(struct lxc_list *sysctls)
 	struct lxc_sysctl *elem;
 	int ret = 0;
 	char *tmp = NULL;
-	char filename[MAXPATHLEN] = {0};
+	char filename[PATH_MAX] = {0};
 
 	lxc_list_for_each (it, sysctls) {
 		elem = it->elem;
@@ -2650,7 +2650,7 @@ int setup_proc_filesystem(struct lxc_list *procs, pid_t pid)
 	struct lxc_proc *elem;
 	int ret = 0;
 	char *tmp = NULL;
-	char filename[MAXPATHLEN] = {0};
+	char filename[PATH_MAX] = {0};
 
 	lxc_list_for_each (it, procs) {
 		elem = it->elem;
@@ -2753,13 +2753,13 @@ int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 		     size_t buf_size)
 {
 	int fd, ret;
-	char path[MAXPATHLEN];
+	char path[PATH_MAX];
 
 	if (geteuid() != 0 && idtype == ID_TYPE_GID) {
 		size_t buflen;
 
-		ret = snprintf(path, MAXPATHLEN, "/proc/%d/setgroups", pid);
-		if (ret < 0 || ret >= MAXPATHLEN)
+		ret = snprintf(path, PATH_MAX, "/proc/%d/setgroups", pid);
+		if (ret < 0 || ret >= PATH_MAX)
 			return -E2BIG;
 
 		fd = open(path, O_WRONLY);
@@ -2782,9 +2782,9 @@ int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 		}
 	}
 
-	ret = snprintf(path, MAXPATHLEN, "/proc/%d/%cid_map", pid,
+	ret = snprintf(path, PATH_MAX, "/proc/%d/%cid_map", pid,
 		       idtype == ID_TYPE_UID ? 'u' : 'g');
-	if (ret < 0 || ret >= MAXPATHLEN)
+	if (ret < 0 || ret >= PATH_MAX)
 		return -E2BIG;
 
 	fd = open(path, O_WRONLY);
@@ -2885,7 +2885,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	int fill, left;
 	char u_or_g;
 	char *pos;
-	char cmd_output[MAXPATHLEN];
+	char cmd_output[PATH_MAX];
 	struct id_map *map;
 	struct lxc_list *iterator;
 	enum idtype type;
@@ -3118,7 +3118,7 @@ int chown_mapped_root(const char *path, struct lxc_conf *conf)
 			 "-m", map5,
 			 "--", "chown", ugid, path,
 			 NULL};
-	char cmd_output[MAXPATHLEN];
+	char cmd_output[PATH_MAX];
 
 	hostuid = geteuid();
 	hostgid = getegid();
@@ -3454,7 +3454,7 @@ int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const char *name,
 
 static bool verify_start_hooks(struct lxc_conf *conf)
 {
-	char path[MAXPATHLEN];
+	char path[PATH_MAX];
 	struct lxc_list *it;
 
 	lxc_list_for_each (it, &conf->hooks[LXCHOOK_START]) {
@@ -3462,10 +3462,10 @@ static bool verify_start_hooks(struct lxc_conf *conf)
 		struct stat st;
 		char *hookname = it->elem;
 
-		ret = snprintf(path, MAXPATHLEN, "%s%s",
+		ret = snprintf(path, PATH_MAX, "%s%s",
 			       conf->rootfs.path ? conf->rootfs.mount : "",
 			       hookname);
-		if (ret < 0 || ret >= MAXPATHLEN)
+		if (ret < 0 || ret >= PATH_MAX)
 			return false;
 
 		ret = stat(path, &st);
