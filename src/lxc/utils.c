@@ -84,7 +84,7 @@ static int _recursive_rmdir(const char *dirname, dev_t pdev,
 	struct dirent *direntp;
 	DIR *dir;
 	int ret, failed=0;
-	char pathname[MAXPATHLEN];
+	char pathname[PATH_MAX];
 	bool hadexclude = false;
 
 	dir = opendir(dirname);
@@ -101,8 +101,8 @@ static int _recursive_rmdir(const char *dirname, dev_t pdev,
 		    !strcmp(direntp->d_name, ".."))
 			continue;
 
-		rc = snprintf(pathname, MAXPATHLEN, "%s/%s", dirname, direntp->d_name);
-		if (rc < 0 || rc >= MAXPATHLEN) {
+		rc = snprintf(pathname, PATH_MAX, "%s/%s", dirname, direntp->d_name);
+		if (rc < 0 || rc >= PATH_MAX) {
 			ERROR("pathname too long");
 			failed=1;
 			continue;
@@ -678,11 +678,11 @@ int detect_shared_rootfs(void)
 bool switch_to_ns(pid_t pid, const char *ns)
 {
 	int fd, ret;
-	char nspath[MAXPATHLEN];
+	char nspath[PATH_MAX];
 
 	/* Switch to new ns */
-	ret = snprintf(nspath, MAXPATHLEN, "/proc/%d/ns/%s", pid, ns);
-	if (ret < 0 || ret >= MAXPATHLEN)
+	ret = snprintf(nspath, PATH_MAX, "/proc/%d/ns/%s", pid, ns);
+	if (ret < 0 || ret >= PATH_MAX)
 		return false;
 
 	fd = open(nspath, O_RDONLY);
@@ -752,7 +752,7 @@ bool detect_ramfs_rootfs(void)
 char *on_path(const char *cmd, const char *rootfs)
 {
 	char *entry = NULL, *path = NULL;
-	char cmdpath[MAXPATHLEN];
+	char cmdpath[PATH_MAX];
 	int ret;
 
 	path = getenv("PATH");
@@ -765,11 +765,11 @@ char *on_path(const char *cmd, const char *rootfs)
 
 	lxc_iterate_parts (entry, path, ":") {
 		if (rootfs)
-			ret = snprintf(cmdpath, MAXPATHLEN, "%s/%s/%s", rootfs,
+			ret = snprintf(cmdpath, PATH_MAX, "%s/%s/%s", rootfs,
 				       entry, cmd);
 		else
-			ret = snprintf(cmdpath, MAXPATHLEN, "%s/%s", entry, cmd);
-		if (ret < 0 || ret >= MAXPATHLEN)
+			ret = snprintf(cmdpath, PATH_MAX, "%s/%s", entry, cmd);
+		if (ret < 0 || ret >= PATH_MAX)
 			continue;
 
 		if (access(cmdpath, X_OK) == 0) {
@@ -1191,20 +1191,20 @@ int safe_mount(const char *src, const char *dest, const char *fstype,
  */
 int lxc_mount_proc_if_needed(const char *rootfs)
 {
-	char path[MAXPATHLEN];
+	char path[PATH_MAX];
 	int link_to_pid, linklen, mypid, ret;
 	char link[INTTYPE_TO_STRLEN(pid_t)] = {0};
 
-	ret = snprintf(path, MAXPATHLEN, "%s/proc/self", rootfs);
-	if (ret < 0 || ret >= MAXPATHLEN) {
+	ret = snprintf(path, PATH_MAX, "%s/proc/self", rootfs);
+	if (ret < 0 || ret >= PATH_MAX) {
 		SYSERROR("proc path name too long");
 		return -1;
 	}
 
 	linklen = readlink(path, link, sizeof(link));
 
-	ret = snprintf(path, MAXPATHLEN, "%s/proc", rootfs);
-	if (ret < 0 || ret >= MAXPATHLEN) {
+	ret = snprintf(path, PATH_MAX, "%s/proc", rootfs);
+	if (ret < 0 || ret >= PATH_MAX) {
 		SYSERROR("proc path name too long");
 		return -1;
 	}
