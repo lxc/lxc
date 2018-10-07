@@ -148,7 +148,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	<listitem>
 	  <para>
 	    Executes the <replaceable>command</replaceable> with user ID
-	   <replaceable>uid</replaceable> inside the container.
+	    <replaceable>uid</replaceable> inside the container.
 	  </para>
 	</listitem>
       </varlistentry>
@@ -160,7 +160,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	<listitem>
 	  <para>
 	    Executes the <replaceable>command</replaceable> with group ID
-	   <replaceable>gid</replaceable> inside the container.
+	    <replaceable>gid</replaceable> inside the container.
 	  </para>
 	</listitem>
       </varlistentry>
