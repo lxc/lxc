@@ -1483,6 +1483,15 @@ int lxc_attach(const char *name, const char *lxcpath,
 	}
 
 	if (pid == 0) {
+		if (options->attach_flags & LXC_ATTACH_TERMINAL) {
+			ret = pthread_sigmask(SIG_SETMASK,
+					      &terminal.tty_state->oldmask, NULL);
+			if (ret < 0) {
+				SYSERROR("Failed to reset signal mask");
+				_exit(EXIT_FAILURE);
+			}
+		}
+
 		ret = attach_child_main(&payload);
 		if (ret < 0)
 			ERROR("Failed to exec");
