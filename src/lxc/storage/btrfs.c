@@ -462,7 +462,7 @@ bool btrfs_create_clone(struct lxc_conf *conf, struct lxc_storage *orig,
 {
 	int ret;
 	struct rsync_data data = {0, 0};
-	char cmd_output[MAXPATHLEN] = {0};
+	char cmd_output[PATH_MAX] = {0};
 
 	ret = rmdir(new->dest);
 	if (ret < 0 && errno != ENOENT)

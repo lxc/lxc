@@ -331,7 +331,7 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 	const char *src = c->lxc_conf->rootfs.path;
 	const char *oldname = c->name;
 	const char *oldpath = c->config_path;
-	char cmd_output[MAXPATHLEN] = {0};
+	char cmd_output[PATH_MAX] = {0};
 	struct rsync_data data = {0};
 
 	if (!src) {

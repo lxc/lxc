@@ -104,7 +104,7 @@ int rbd_create(struct lxc_storage *bdev, const char *dest, const char *n,
 	int ret, len;
 	char sz[24];
 	const char *cmd_args[2];
-	char cmd_output[MAXPATHLEN];
+	char cmd_output[PATH_MAX];
 	const char *rbdname = n;
 	struct rbd_args args = {0};
 
@@ -198,7 +198,7 @@ int rbd_destroy(struct lxc_storage *orig)
 	int ret;
 	const char *src;
 	char *rbdfullname;
-	char cmd_output[MAXPATHLEN];
+	char cmd_output[PATH_MAX];
 	struct rbd_args args = {0};
 	size_t len;
 
