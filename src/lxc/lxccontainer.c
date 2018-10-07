@@ -2651,8 +2651,8 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 	struct stat fbuf;
 	void *buf = NULL;
 	char *del = NULL;
-	char path[MAXPATHLEN];
-	char newpath[MAXPATHLEN];
+	char path[PATH_MAX];
+	char newpath[PATH_MAX];
 	int fd, ret, n = 0, v = 0;
 	bool bret = false;
 	size_t len = 0, bytes = 0;
@@ -2660,12 +2660,12 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 	if (container_disk_lock(c0))
 		return false;
 
-	ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_snapshots", c0->config_path, c0->name);
-	if (ret < 0 || ret > MAXPATHLEN)
+	ret = snprintf(path, PATH_MAX, "%s/%s/lxc_snapshots", c0->config_path, c0->name);
+	if (ret < 0 || ret > PATH_MAX)
 		goto out;
 
-	ret = snprintf(newpath, MAXPATHLEN, "%s\n%s\n", c->config_path, c->name);
-	if (ret < 0 || ret > MAXPATHLEN)
+	ret = snprintf(newpath, PATH_MAX, "%s\n%s\n", c->config_path, c->name);
+	if (ret < 0 || ret > PATH_MAX)
 		goto out;
 
 	/* If we find an lxc-snapshot file using the old format only listing the
@@ -2776,14 +2776,14 @@ out:
 void mod_all_rdeps(struct lxc_container *c, bool inc)
 {
 	struct lxc_container *p;
-	char *lxcpath = NULL, *lxcname = NULL, path[MAXPATHLEN];
+	char *lxcpath = NULL, *lxcname = NULL, path[PATH_MAX];
 	size_t pathlen = 0, namelen = 0;
 	FILE *f;
 	int ret;
 
-	ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_rdepends",
+	ret = snprintf(path, PATH_MAX, "%s/%s/lxc_rdepends",
 		c->config_path, c->name);
-	if (ret < 0 || ret >= MAXPATHLEN) {
+	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("Path name too long");
 		return;
 	}
@@ -2823,14 +2823,14 @@ out:
 static bool has_fs_snapshots(struct lxc_container *c)
 {
 	FILE *f;
-	char path[MAXPATHLEN];
+	char path[PATH_MAX];
 	int ret, v;
 	struct stat fbuf;
 	bool bret = false;
 
-	ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_snapshots", c->config_path,
+	ret = snprintf(path, PATH_MAX, "%s/%s/lxc_snapshots", c->config_path,
 			c->name);
-	if (ret < 0 || ret > MAXPATHLEN)
+	if (ret < 0 || ret > PATH_MAX)
 		goto out;
 
 	/* If the file doesn't exist there are no snapshots. */
@@ -2858,7 +2858,7 @@ out:
 
 static bool has_snapshots(struct lxc_container *c)
 {
-	char path[MAXPATHLEN];
+	char path[PATH_MAX];
 	struct dirent *direntp;
 	int count=0;
 	DIR *dir;
@@ -3379,7 +3379,7 @@ static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
 		lxc_list_for_each(it, &c->lxc_conf->hooks[i]) {
 			char *hookname = it->elem;
 			char *fname = strrchr(hookname, '/');
-			char tmppath[MAXPATHLEN];
+			char tmppath[PATH_MAX];
 			if (!fname) /* relative path - we don't support, but maybe we should */
 				return 0;
 
@@ -3389,9 +3389,9 @@ static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
 			}
 
 			/* copy the script, and change the entry in confile */
-			ret = snprintf(tmppath, MAXPATHLEN, "%s/%s/%s",
+			ret = snprintf(tmppath, PATH_MAX, "%s/%s/%s",
 					c->config_path, c->name, fname+1);
-			if (ret < 0 || ret >= MAXPATHLEN)
+			if (ret < 0 || ret >= PATH_MAX)
 				return -1;
 
 			ret = copy_file(it->elem, tmppath);
@@ -3421,7 +3421,7 @@ static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
 
 static int copy_fstab(struct lxc_container *oldc, struct lxc_container *c)
 {
-	char newpath[MAXPATHLEN];
+	char newpath[PATH_MAX];
 	char *oldpath = oldc->lxc_conf->fstab;
 	int ret;
 
@@ -3434,9 +3434,9 @@ static int copy_fstab(struct lxc_container *oldc, struct lxc_container *c)
 	if (!p)
 		return -1;
 
-	ret = snprintf(newpath, MAXPATHLEN, "%s/%s%s",
+	ret = snprintf(newpath, PATH_MAX, "%s/%s%s",
 			c->config_path, c->name, p);
-	if (ret < 0 || ret >= MAXPATHLEN) {
+	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("error printing new path for %s", oldpath);
 		return -1;
 	}
@@ -3469,19 +3469,19 @@ static int copy_fstab(struct lxc_container *oldc, struct lxc_container *c)
 
 static void copy_rdepends(struct lxc_container *c, struct lxc_container *c0)
 {
-	char path0[MAXPATHLEN], path1[MAXPATHLEN];
+	char path0[PATH_MAX], path1[PATH_MAX];
 	int ret;
 
-	ret = snprintf(path0, MAXPATHLEN, "%s/%s/lxc_rdepends", c0->config_path,
+	ret = snprintf(path0, PATH_MAX, "%s/%s/lxc_rdepends", c0->config_path,
 		c0->name);
-	if (ret < 0 || ret >= MAXPATHLEN) {
+	if (ret < 0 || ret >= PATH_MAX) {
 		WARN("Error copying reverse dependencies");
 		return;
 	}
 
-	ret = snprintf(path1, MAXPATHLEN, "%s/%s/lxc_rdepends", c->config_path,
+	ret = snprintf(path1, PATH_MAX, "%s/%s/lxc_rdepends", c->config_path,
 		c->name);
-	if (ret < 0 || ret >= MAXPATHLEN) {
+	if (ret < 0 || ret >= PATH_MAX) {
 		WARN("Error copying reverse dependencies");
 		return;
 	}
@@ -3495,13 +3495,13 @@ static void copy_rdepends(struct lxc_container *c, struct lxc_container *c0)
 static bool add_rdepends(struct lxc_container *c, struct lxc_container *c0)
 {
 	int ret;
-	char path[MAXPATHLEN];
+	char path[PATH_MAX];
 	FILE *f;
 	bool bret;
 
-	ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_rdepends", c->config_path,
+	ret = snprintf(path, PATH_MAX, "%s/%s/lxc_rdepends", c->config_path,
 		c->name);
-	if (ret < 0 || ret >= MAXPATHLEN)
+	if (ret < 0 || ret >= PATH_MAX)
 		return false;
 
 	f = fopen(path, "a");
@@ -3615,7 +3615,7 @@ static int clone_update_rootfs(struct clone_update_data *data)
 	int flags = data->flags;
 	char **hookargs = data->hookargs;
 	int ret = -1;
-	char path[MAXPATHLEN];
+	char path[PATH_MAX];
 	struct lxc_storage *bdev;
 	FILE *fout;
 	struct lxc_conf *conf = c->lxc_conf;
@@ -3691,10 +3691,10 @@ static int clone_update_rootfs(struct clone_update_data *data)
 	}
 
 	if (!(flags & LXC_CLONE_KEEPNAME)) {
-		ret = snprintf(path, MAXPATHLEN, "%s/etc/hostname", bdev->dest);
+		ret = snprintf(path, PATH_MAX, "%s/etc/hostname", bdev->dest);
 		storage_put(bdev);
 
-		if (ret < 0 || ret >= MAXPATHLEN)
+		if (ret < 0 || ret >= PATH_MAX)
 			return -1;
 
 		if (!file_exists(path))
@@ -3756,7 +3756,7 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 		const char *bdevtype, const char *bdevdata, uint64_t newsize,
 		char **hookargs)
 {
-	char newpath[MAXPATHLEN];
+	char newpath[PATH_MAX];
 	int fd, ret;
 	struct clone_update_data data;
 	size_t saved_unexp_len;
@@ -3783,8 +3783,8 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	if (!lxcpath)
 		lxcpath = do_lxcapi_get_config_path(c);
 
-	ret = snprintf(newpath, MAXPATHLEN, "%s/%s/config", lxcpath, newname);
-	if (ret < 0 || ret >= MAXPATHLEN) {
+	ret = snprintf(newpath, PATH_MAX, "%s/%s/config", lxcpath, newname);
+	if (ret < 0 || ret >= PATH_MAX) {
 		SYSERROR("clone: failed making config pathname");
 		goto out;
 	}
@@ -3832,8 +3832,8 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	saved_unexp_conf = NULL;
 	c->lxc_conf->unexpanded_len = saved_unexp_len;
 
-	ret = snprintf(newpath, MAXPATHLEN, "%s/%s/rootfs", lxcpath, newname);
-	if (ret < 0 || ret >= MAXPATHLEN) {
+	ret = snprintf(newpath, PATH_MAX, "%s/%s/rootfs", lxcpath, newname);
+	if (ret < 0 || ret >= PATH_MAX) {
 		SYSERROR("clone: failed making rootfs pathname");
 		goto out;
 	}
@@ -4082,13 +4082,13 @@ static bool get_snappath_dir(struct lxc_container *c, char *snappath)
 	 * If the old style snapshot path exists, use it
 	 * /var/lib/lxc -> /var/lib/lxcsnaps
 	 */
-	ret = snprintf(snappath, MAXPATHLEN, "%ssnaps", c->config_path);
-	if (ret < 0 || ret >= MAXPATHLEN)
+	ret = snprintf(snappath, PATH_MAX, "%ssnaps", c->config_path);
+	if (ret < 0 || ret >= PATH_MAX)
 		return false;
 
 	if (dir_exists(snappath)) {
-		ret = snprintf(snappath, MAXPATHLEN, "%ssnaps/%s", c->config_path, c->name);
-		if (ret < 0 || ret >= MAXPATHLEN)
+		ret = snprintf(snappath, PATH_MAX, "%ssnaps/%s", c->config_path, c->name);
+		if (ret < 0 || ret >= PATH_MAX)
 			return false;
 
 		return true;
@@ -4098,8 +4098,8 @@ static bool get_snappath_dir(struct lxc_container *c, char *snappath)
 	 * Use the new style path
 	 * /var/lib/lxc -> /var/lib/lxc + c->name + /snaps + \0
 	 */
-	ret = snprintf(snappath, MAXPATHLEN, "%s/%s/snaps", c->config_path, c->name);
-	if (ret < 0 || ret >= MAXPATHLEN)
+	ret = snprintf(snappath, PATH_MAX, "%s/%s/snaps", c->config_path, c->name);
+	if (ret < 0 || ret >= PATH_MAX)
 		return false;
 
 	return true;
@@ -4111,7 +4111,7 @@ static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	time_t timer;
 	struct tm tm_info;
 	struct lxc_container *c2;
-	char snappath[MAXPATHLEN], newname[20];
+	char snappath[PATH_MAX], newname[20];
 	char buffer[25];
 	FILE *f;
 
@@ -4231,12 +4231,12 @@ static char *get_snapcomment_path(char* snappath, char *name)
 
 static char *get_timestamp(char* snappath, char *name)
 {
-	char path[MAXPATHLEN], *s = NULL;
+	char path[PATH_MAX], *s = NULL;
 	int ret, len;
 	FILE *fin;
 
-	ret = snprintf(path, MAXPATHLEN, "%s/%s/ts", snappath, name);
-	if (ret < 0 || ret >= MAXPATHLEN)
+	ret = snprintf(path, PATH_MAX, "%s/%s/ts", snappath, name);
+	if (ret < 0 || ret >= PATH_MAX)
 		return NULL;
 
 	fin = fopen(path, "r");
@@ -4264,7 +4264,7 @@ static char *get_timestamp(char* snappath, char *name)
 
 static int do_lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot **ret_snaps)
 {
-	char snappath[MAXPATHLEN], path2[MAXPATHLEN];
+	char snappath[PATH_MAX], path2[PATH_MAX];
 	int count = 0, ret;
 	struct dirent *direntp;
 	struct lxc_snapshot *snaps =NULL, *nsnaps;
@@ -4291,8 +4291,8 @@ static int do_lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot 
 		if (!strcmp(direntp->d_name, ".."))
 			continue;
 
-		ret = snprintf(path2, MAXPATHLEN, "%s/%s/config", snappath, direntp->d_name);
-		if (ret < 0 || ret >= MAXPATHLEN) {
+		ret = snprintf(path2, PATH_MAX, "%s/%s/config", snappath, direntp->d_name);
+		if (ret < 0 || ret >= PATH_MAX) {
 			ERROR("pathname too long");
 			goto out_free;
 		}
@@ -4349,7 +4349,7 @@ WRAP_API_1(int, lxcapi_snapshot_list, struct lxc_snapshot **)
 
 static bool do_lxcapi_snapshot_restore(struct lxc_container *c, const char *snapname, const char *newname)
 {
-	char clonelxcpath[MAXPATHLEN];
+	char clonelxcpath[PATH_MAX];
 	int flags = 0;
 	struct lxc_container *snap, *rest;
 	struct lxc_storage *bdev;
@@ -4487,7 +4487,7 @@ static bool remove_all_snapshots(const char *path)
 
 static bool do_lxcapi_snapshot_destroy(struct lxc_container *c, const char *snapname)
 {
-	char clonelxcpath[MAXPATHLEN];
+	char clonelxcpath[PATH_MAX];
 
 	if (!c || !c->name || !c->config_path || !snapname)
 		return false;
@@ -4502,7 +4502,7 @@ WRAP_API_1(bool, lxcapi_snapshot_destroy, const char *)
 
 static bool do_lxcapi_snapshot_destroy_all(struct lxc_container *c)
 {
-	char clonelxcpath[MAXPATHLEN];
+	char clonelxcpath[PATH_MAX];
 
 	if (!c || !c->name || !c->config_path)
 		return false;
@@ -4531,7 +4531,7 @@ static bool do_add_remove_node(pid_t init_pid, const char *path, bool add,
 	int ret;
 	char *tmp;
 	pid_t pid;
-	char chrootpath[MAXPATHLEN];
+	char chrootpath[PATH_MAX];
 	char *directory_path = NULL;
 
 	pid = fork();
@@ -4551,8 +4551,8 @@ static bool do_add_remove_node(pid_t init_pid, const char *path, bool add,
 	}
 
 	/* prepare the path */
-	ret = snprintf(chrootpath, MAXPATHLEN, "/proc/%d/root", init_pid);
-	if (ret < 0 || ret >= MAXPATHLEN)
+	ret = snprintf(chrootpath, PATH_MAX, "/proc/%d/root", init_pid);
+	if (ret < 0 || ret >= PATH_MAX)
 		return false;
 
 	ret = chroot(chrootpath);
