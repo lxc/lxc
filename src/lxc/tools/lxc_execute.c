@@ -129,11 +129,11 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 static bool set_argv(struct lxc_container *c, struct lxc_arguments *args)
 {
 	int ret;
-	char buf[MAXPATHLEN];
+	char buf[PATH_MAX];
 	char **components, **p;
 
 	buf[0] = '\0';
-	ret = c->get_config_item(c, "lxc.execute.cmd", buf, MAXPATHLEN);
+	ret = c->get_config_item(c, "lxc.execute.cmd", buf, PATH_MAX);
 	if (ret < 0)
 		return false;
 
