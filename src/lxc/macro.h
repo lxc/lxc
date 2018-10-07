@@ -184,7 +184,7 @@
  */
 #define LXC_LSMATTRLEN (6 + INTTYPE_TO_STRLEN(pid_t) + 6 + 8 + 1)
 
-#define LXC_CMD_DATA_MAX (MAXPATHLEN * 2)
+#define LXC_CMD_DATA_MAX (PATH_MAX * 2)
 
 /* loop devices */
 #ifndef LO_FLAGS_AUTOCLEAR
