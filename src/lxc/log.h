@@ -339,7 +339,7 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 
 	#ifdef STRERROR_R_CHAR_P
 		#define lxc_log_strerror_r                                               \
-			char errno_buf[MAXPATHLEN / 2] = {"Failed to get errno string"}; \
+			char errno_buf[PATH_MAX / 2] = {"Failed to get errno string"};   \
 			char *ptr = NULL;                                                \
 			{                                                                \
 				int saved_errno = errno;				 \
@@ -350,7 +350,7 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 			}
 	#else
 		#define lxc_log_strerror_r                                               \
-			char errno_buf[MAXPATHLEN / 2] = {"Failed to get errno string"}; \
+			char errno_buf[PATH_MAX / 2] = {"Failed to get errno string"};   \
 			char *ptr = errno_buf;                                           \
 			{                                                                \
 				int saved_errno = errno;				 \
@@ -361,10 +361,10 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 #elif ENFORCE_THREAD_SAFETY
 	#error ENFORCE_THREAD_SAFETY was set but cannot be guaranteed
 #else
-	#define lxc_log_strerror_r             \
-		char *ptr = NULL;              \
-		{                              \
-			ptr = strerror(errno); \
+	#define lxc_log_strerror_r							 \
+		char *ptr = NULL;              						 \
+		{                              						 \
+			ptr = strerror(errno); 						 \
 		}
 #endif
 
