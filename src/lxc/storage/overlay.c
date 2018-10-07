@@ -737,7 +737,7 @@ char *ovl_get_rootfs(const char *rootfs_path, size_t *rootfslen)
 int ovl_mkdir(const struct mntent *mntent, const struct lxc_rootfs *rootfs,
 	      const char *lxc_name, const char *lxc_path)
 {
-	char lxcpath[MAXPATHLEN];
+	char lxcpath[PATH_MAX];
 	char **opts;
 	int ret;
 	size_t arrlen, i, len, rootfslen;
@@ -766,8 +766,8 @@ int ovl_mkdir(const struct mntent *mntent, const struct lxc_rootfs *rootfs,
 	}
 
 	if (rootfs_path) {
-		ret = snprintf(lxcpath, MAXPATHLEN, "%s/%s", lxc_path, lxc_name);
-		if (ret < 0 || ret >= MAXPATHLEN)
+		ret = snprintf(lxcpath, PATH_MAX, "%s/%s", lxc_path, lxc_name);
+		if (ret < 0 || ret >= PATH_MAX)
 			goto err;
 
 		rootfs_dir = ovl_get_rootfs(rootfs_path, &rootfslen);
@@ -825,8 +825,8 @@ int ovl_update_abs_paths(struct lxc_conf *lxc_conf, const char *lxc_path,
 			 const char *lxc_name, const char *newpath,
 			 const char *newname)
 {
-	char new_upper[MAXPATHLEN], new_work[MAXPATHLEN], old_upper[MAXPATHLEN],
-	    old_work[MAXPATHLEN];
+	char new_upper[PATH_MAX], new_work[PATH_MAX], old_upper[PATH_MAX],
+	    old_work[PATH_MAX];
 	size_t i;
 	struct lxc_list *iterator;
 	char *cleanpath = NULL;
@@ -852,13 +852,13 @@ int ovl_update_abs_paths(struct lxc_conf *lxc_conf, const char *lxc_path,
 	}
 
 	ret =
-	    snprintf(old_work, MAXPATHLEN, "workdir=%s/%s", lxc_path, lxc_name);
-	if (ret < 0 || ret >= MAXPATHLEN)
+	    snprintf(old_work, PATH_MAX, "workdir=%s/%s", lxc_path, lxc_name);
+	if (ret < 0 || ret >= PATH_MAX)
 		goto err;
 
 	ret =
-	    snprintf(new_work, MAXPATHLEN, "workdir=%s/%s", cleanpath, newname);
-	if (ret < 0 || ret >= MAXPATHLEN)
+	    snprintf(new_work, PATH_MAX, "workdir=%s/%s", cleanpath, newname);
+	if (ret < 0 || ret >= PATH_MAX)
 		goto err;
 
 	lxc_list_for_each(iterator, &lxc_conf->mount_list) {
@@ -872,14 +872,14 @@ int ovl_update_abs_paths(struct lxc_conf *lxc_conf, const char *lxc_path,
 		if (!tmp)
 			continue;
 
-		ret = snprintf(old_upper, MAXPATHLEN, "%s=%s/%s", tmp, lxc_path,
+		ret = snprintf(old_upper, PATH_MAX, "%s=%s/%s", tmp, lxc_path,
 			       lxc_name);
-		if (ret < 0 || ret >= MAXPATHLEN)
+		if (ret < 0 || ret >= PATH_MAX)
 			goto err;
 
-		ret = snprintf(new_upper, MAXPATHLEN, "%s=%s/%s", tmp,
+		ret = snprintf(new_upper, PATH_MAX, "%s=%s/%s", tmp,
 			       cleanpath, newname);
-		if (ret < 0 || ret >= MAXPATHLEN)
+		if (ret < 0 || ret >= PATH_MAX)
 			goto err;
 
 		if (strstr(mnt_entry, old_upper)) {
@@ -956,7 +956,7 @@ static int ovl_do_rsync(const char *src, const char *dest,
 {
 	int ret = -1;
 	struct rsync_data_char rdata = {0};
-	char cmd_output[MAXPATHLEN] = {0};
+	char cmd_output[PATH_MAX] = {0};
 
 	rdata.src = (char *)src;
 	rdata.dest = (char *)dest;

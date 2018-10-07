@@ -186,7 +186,7 @@ int detect_fs(struct lxc_storage *bdev, char *type, int len)
 	FILE *f;
 	char *sp1, *sp2, *sp3;
 	const char *l, *srcdev;
-	char devpath[MAXPATHLEN];
+	char devpath[PATH_MAX];
 	char *line = NULL;
 
 	if (!bdev || !bdev->src || !bdev->dest)
@@ -415,11 +415,11 @@ const char *linkderef(const char *path, char *dest)
 	if (!S_ISLNK(sbuf.st_mode))
 		return path;
 
-	ret = readlink(path, dest, MAXPATHLEN);
+	ret = readlink(path, dest, PATH_MAX);
 	if (ret < 0) {
 		SYSERROR("error reading link %s", path);
 		return NULL;
-	} else if (ret >= MAXPATHLEN) {
+	} else if (ret >= PATH_MAX) {
 		ERROR("link in %s too long", path);
 		return NULL;
 	}

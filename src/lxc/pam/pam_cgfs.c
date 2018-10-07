@@ -2408,13 +2408,13 @@ static int handle_login(const char *user, uid_t uid, gid_t gid)
 {
 	int idx = 0, ret;
 	bool existed;
-	char cg[MAXPATHLEN];
+	char cg[PATH_MAX];
 
 	cg_escape();
 
 	while (idx >= 0) {
-		ret = snprintf(cg, MAXPATHLEN, "/user/%s/%d", user, idx);
-		if (ret < 0 || ret >= MAXPATHLEN) {
+		ret = snprintf(cg, PATH_MAX, "/user/%s/%d", user, idx);
+		if (ret < 0 || ret >= PATH_MAX) {
 			mysyslog(LOG_ERR, "Username too long\n", NULL);
 			return PAM_SESSION_ERR;
 		}

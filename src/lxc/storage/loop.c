@@ -237,7 +237,7 @@ bool loop_detect(const char *path)
 int loop_mount(struct lxc_storage *bdev)
 {
 	int ret, loopfd;
-	char loname[MAXPATHLEN];
+	char loname[PATH_MAX];
 	const char *src;
 
 	if (strcmp(bdev->type, "loop"))
@@ -301,7 +301,7 @@ static int do_loop_create(const char *path, uint64_t size, const char *fstype)
 {
 	int fd, ret;
 	off_t ret_size;
-	char cmd_output[MAXPATHLEN];
+	char cmd_output[PATH_MAX];
 	const char *cmd_args[2] = {fstype, path};
 
 	/* create the new loopback file */

@@ -2068,7 +2068,7 @@ static int do_includedir(const char *dirp, struct lxc_conf *lxc_conf)
 {
 	struct dirent *direntp;
 	DIR *dir;
-	char path[MAXPATHLEN];
+	char path[PATH_MAX];
 	int len;
 	int ret = -1;
 
@@ -2090,8 +2090,8 @@ static int do_includedir(const char *dirp, struct lxc_conf *lxc_conf)
 		if (len < 6 || strncmp(fnam + len - 5, ".conf", 5) != 0)
 			continue;
 
-		len = snprintf(path, MAXPATHLEN, "%s/%s", dirp, fnam);
-		if (len < 0 || len >= MAXPATHLEN) {
+		len = snprintf(path, PATH_MAX, "%s/%s", dirp, fnam);
+		if (len < 0 || len >= PATH_MAX) {
 			ret = -1;
 			goto out;
 		}

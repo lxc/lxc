@@ -21,6 +21,7 @@
 #define __LXC_MACRO_H
 
 #include <asm/types.h>
+#include <limits.h>
 #include <linux/if_link.h>
 #include <linux/loop.h>
 #include <linux/netlink.h>
@@ -32,6 +33,10 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
 /* Define __S_ISTYPE if missing from the C library. */
 #ifndef __S_ISTYPE
@@ -179,7 +184,7 @@
  */
 #define LXC_LSMATTRLEN (6 + INTTYPE_TO_STRLEN(pid_t) + 6 + 8 + 1)
 
-#define LXC_CMD_DATA_MAX (MAXPATHLEN * 2)
+#define LXC_CMD_DATA_MAX (PATH_MAX * 2)
 
 /* loop devices */
 #ifndef LO_FLAGS_AUTOCLEAR

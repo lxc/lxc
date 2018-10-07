@@ -809,7 +809,7 @@ static int run_apparmor_parser(char command,
                                struct lxc_conf *conf,
                                const char *lxcpath)
 {
-	char output[MAXPATHLEN];
+	char output[PATH_MAX];
 	int ret;
 	struct apparmor_parser_args args = {
 		.cmd = command,

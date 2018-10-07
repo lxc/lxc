@@ -28,6 +28,7 @@
 #include <stdio.h>
 
 #include "list.h"
+#include "macro.h"
 #include "ringbuf.h"
 
 struct lxc_container;
@@ -36,7 +37,7 @@ struct lxc_epoll_descr;
 
 struct lxc_terminal_info {
 	/* the path name of the slave side */
-	char name[MAXPATHLEN];
+	char name[PATH_MAX];
 
 	/* the file descriptor of the master */
 	int master;
@@ -89,7 +90,7 @@ struct lxc_terminal {
 	struct lxc_terminal_info proxy;
 	struct lxc_epoll_descr *descr;
 	char *path;
-	char name[MAXPATHLEN];
+	char name[PATH_MAX];
 	struct termios *tios;
 	struct lxc_terminal_state *tty_state;
 

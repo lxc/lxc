@@ -134,7 +134,7 @@ bool zfs_detect(const char *path)
 	int ret;
 	char *dataset;
 	struct zfs_args cmd_args = {0};
-	char cmd_output[MAXPATHLEN] = {0};
+	char cmd_output[PATH_MAX] = {0};
 
 	if (!strncmp(path, "zfs:", 4))
 		return true;
@@ -185,7 +185,7 @@ int zfs_mount(struct lxc_storage *bdev)
 	char *mntdata, *tmp;
 	const char *src;
 	unsigned long mntflags;
-	char cmd_output[MAXPATHLEN] = {0};
+	char cmd_output[PATH_MAX] = {0};
 
 	if (strcmp(bdev->type, "zfs"))
 		return -22;
@@ -287,7 +287,7 @@ bool zfs_copy(struct lxc_conf *conf, struct lxc_storage *orig,
 	      struct lxc_storage *new, uint64_t newsize)
 {
 	int ret;
-	char cmd_output[MAXPATHLEN], option[MAXPATHLEN];
+	char cmd_output[PATH_MAX], option[PATH_MAX];
 	struct rsync_data data = {0, 0};
 	struct zfs_args cmd_args = {0};
 	const char *argv[] = {"zfs",			   /* 0    */
@@ -299,8 +299,8 @@ bool zfs_copy(struct lxc_conf *conf, struct lxc_storage *orig,
 			      NULL};
 
 	/* mountpoint */
-	ret = snprintf(option, MAXPATHLEN, "mountpoint=%s", new->dest);
-	if (ret < 0 || ret >= MAXPATHLEN) {
+	ret = snprintf(option, PATH_MAX, "mountpoint=%s", new->dest);
+	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("Failed to create string");
 		return false;
 	}
@@ -348,7 +348,7 @@ bool zfs_snapshot(struct lxc_conf *conf, struct lxc_storage *orig,
 	char *tmp, *snap_name, *snapshot;
 	const char *orig_src;
 	struct zfs_args cmd_args = {0};
-	char cmd_output[MAXPATHLEN] = {0}, option[MAXPATHLEN];
+	char cmd_output[PATH_MAX] = {0}, option[PATH_MAX];
 
 	orig_src = lxc_storage_get_path(orig->src, orig->type);
 	if (*orig_src == '/') {
@@ -423,8 +423,8 @@ bool zfs_snapshot(struct lxc_conf *conf, struct lxc_storage *orig,
 		TRACE("Created zfs snapshot \"%s\"", snapshot);
 	}
 
-	ret = snprintf(option, MAXPATHLEN, "mountpoint=%s", new->dest);
-	if (ret < 0 || ret >= MAXPATHLEN) {
+	ret = snprintf(option, PATH_MAX, "mountpoint=%s", new->dest);
+	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("Failed to create string");
 		free(snapshot);
 		return -1;
@@ -455,7 +455,7 @@ int zfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 	char *dataset, *tmp;
 	const char *orig_src;
 	size_t dataset_len, len;
-	char cmd_output[MAXPATHLEN] = {0};
+	char cmd_output[PATH_MAX] = {0};
 
 	if (!orig->src || !orig->dest)
 		return -1;
@@ -586,7 +586,7 @@ int zfs_destroy(struct lxc_storage *orig)
 	bool found;
 	char *parent_snapshot = NULL;
 	struct zfs_args cmd_args = {0};
-	char cmd_output[MAXPATHLEN] = {0};
+	char cmd_output[PATH_MAX] = {0};
 
 	src = lxc_storage_get_path(orig->src, orig->type);
 
@@ -714,7 +714,7 @@ int zfs_create(struct lxc_storage *bdev, const char *dest, const char *n,
 	int ret;
 	size_t len;
 	struct zfs_args cmd_args = {0};
-	char cmd_output[MAXPATHLEN], option[MAXPATHLEN];
+	char cmd_output[PATH_MAX], option[PATH_MAX];
 	const char *argv[] = {"zfs",			   /* 0    */
 			      "create",			   /* 1    */
 			      "-o",     "",		   /* 2, 3 */
@@ -750,8 +750,8 @@ int zfs_create(struct lxc_storage *bdev, const char *dest, const char *n,
 	}
 	argv[7] = lxc_storage_get_path(bdev->src, bdev->type);
 
-	ret = snprintf(option, MAXPATHLEN, "mountpoint=%s", bdev->dest);
-	if (ret < 0 || ret >= MAXPATHLEN) {
+	ret = snprintf(option, PATH_MAX, "mountpoint=%s", bdev->dest);
+	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("Failed to create string");
 		return -1;
 	}

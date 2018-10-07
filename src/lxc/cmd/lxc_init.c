@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <getopt.h>
 #include <libgen.h>
+#include <limits.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
@@ -108,7 +109,7 @@ static void prevent_forking(void)
 	FILE *f;
 	size_t len = 0;
 	char *line = NULL;
-	char path[MAXPATHLEN];
+	char path[PATH_MAX];
 
 	f = fopen("/proc/self/cgroup", "r");
 	if (!f)
@@ -202,10 +203,10 @@ static void remove_self(void)
 {
 	int ret;
 	ssize_t n;
-	char path[MAXPATHLEN] = {0};
+	char path[PATH_MAX] = {0};
 
 	n = readlink("/proc/self/exe", path, sizeof(path));
-	if (n < 0 || n >= MAXPATHLEN) {
+	if (n < 0 || n >= PATH_MAX) {
 		SYSDEBUG("Failed to readlink \"/proc/self/exe\"");
 		return;
 	}
