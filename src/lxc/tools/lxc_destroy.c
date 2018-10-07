@@ -84,11 +84,11 @@ static bool do_destroy(struct lxc_container *c)
 {
 	int ret;
 	bool bret = true;
-	char path[MAXPATHLEN];
+	char path[PATH_MAX];
 
 	/* First check whether the container has dependent clones or snapshots. */
-	ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_snapshots", c->config_path, c->name);
-	if (ret < 0 || ret >= MAXPATHLEN)
+	ret = snprintf(path, PATH_MAX, "%s/%s/lxc_snapshots", c->config_path, c->name);
+	if (ret < 0 || ret >= PATH_MAX)
 		return false;
 
 	if (file_exists(path)) {
@@ -96,8 +96,8 @@ static bool do_destroy(struct lxc_container *c)
 		return false;
 	}
 
-	ret = snprintf(path, MAXPATHLEN, "%s/%s/snaps", c->config_path, c->name);
-	if (ret < 0 || ret >= MAXPATHLEN)
+	ret = snprintf(path, PATH_MAX, "%s/%s/snaps", c->config_path, c->name);
+	if (ret < 0 || ret >= PATH_MAX)
 		return false;
 
 	if (rmdir(path) < 0 && errno != ENOENT) {
@@ -138,7 +138,7 @@ static bool do_destroy_with_snapshots(struct lxc_container *c)
 	struct lxc_container *c1;
 	struct stat fbuf;
 	bool bret = false;
-	char path[MAXPATHLEN];
+	char path[PATH_MAX];
 	char *buf = NULL;
 	char *lxcpath = NULL;
 	char *lxcname = NULL;
@@ -147,8 +147,8 @@ static bool do_destroy_with_snapshots(struct lxc_container *c)
 	ssize_t bytes;
 
 	/* Destroy clones. */
-	ret = snprintf(path, MAXPATHLEN, "%s/%s/lxc_snapshots", c->config_path, c->name);
-	if (ret < 0 || ret >= MAXPATHLEN)
+	ret = snprintf(path, PATH_MAX, "%s/%s/lxc_snapshots", c->config_path, c->name);
+	if (ret < 0 || ret >= PATH_MAX)
 		return false;
 
 	fd = open(path, O_RDONLY | O_CLOEXEC);
@@ -195,8 +195,8 @@ static bool do_destroy_with_snapshots(struct lxc_container *c)
 	}
 
 	/* Destroy snapshots located in the containers snap/ folder. */
-	ret = snprintf(path, MAXPATHLEN, "%s/%s/snaps", c->config_path, c->name);
-	if (ret < 0 || ret >= MAXPATHLEN)
+	ret = snprintf(path, PATH_MAX, "%s/%s/snaps", c->config_path, c->name);
+	if (ret < 0 || ret >= PATH_MAX)
 		return false;
 
 	if (rmdir(path) < 0 && errno != ENOENT)

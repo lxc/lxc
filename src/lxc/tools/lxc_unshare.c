@@ -182,7 +182,7 @@ static int get_namespace_flags(char *namespaces)
 
 static bool lookup_user(const char *optarg, uid_t *uid)
 {
-	char name[MAXPATHLEN];
+	char name[PATH_MAX];
 	struct passwd pwent;
 	struct passwd *pwentp = NULL;
 	char *buf;
