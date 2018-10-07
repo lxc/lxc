@@ -2012,7 +2012,7 @@ int lxc_start(const char *name, char *const argv[], struct lxc_handler *handler,
 static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 					    const char *name)
 {
-	char destroy[MAXPATHLEN];
+	char destroy[PATH_MAX];
 	struct lxc_container *c;
 	int ret = 0;
 	bool bret = true;
@@ -2026,8 +2026,8 @@ static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 	}
 	INFO("Destroyed rootfs for container \"%s\"", name);
 
-	ret = snprintf(destroy, MAXPATHLEN, "%s/%s", handler->lxcpath, name);
-	if (ret < 0 || ret >= MAXPATHLEN) {
+	ret = snprintf(destroy, PATH_MAX, "%s/%s", handler->lxcpath, name);
+	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("Error destroying directory for container \"%s\"", name);
 		return;
 	}
