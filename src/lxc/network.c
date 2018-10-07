@@ -1358,15 +1358,15 @@ static int proc_sys_net_write(const char *path, const char *value)
 static int neigh_proxy_set(const char *ifname, int family, int flag)
 {
 	int ret;
-	char path[MAXPATHLEN];
+	char path[PATH_MAX];
 
 	if (family != AF_INET && family != AF_INET6)
 		return -EINVAL;
 
-	ret = snprintf(path, MAXPATHLEN, "/proc/sys/net/%s/conf/%s/%s",
+	ret = snprintf(path, PATH_MAX, "/proc/sys/net/%s/conf/%s/%s",
 		       family == AF_INET ? "ipv4" : "ipv6", ifname,
 		       family == AF_INET ? "proxy_arp" : "proxy_ndp");
-	if (ret < 0 || (size_t)ret >= MAXPATHLEN)
+	if (ret < 0 || (size_t)ret >= PATH_MAX)
 		return -E2BIG;
 
 	return proc_sys_net_write(path, flag ? "1" : "0");
@@ -1847,7 +1847,7 @@ static int lxc_ovs_delete_port_exec(void *data)
 int lxc_ovs_delete_port(const char *bridge, const char *nic)
 {
 	int ret;
-	char cmd_output[MAXPATHLEN];
+	char cmd_output[PATH_MAX];
 	struct ovs_veth_args args;
 
 	args.bridge = bridge;
@@ -1875,7 +1875,7 @@ static int lxc_ovs_attach_bridge_exec(void *data)
 static int lxc_ovs_attach_bridge(const char *bridge, const char *nic)
 {
 	int ret;
-	char cmd_output[MAXPATHLEN];
+	char cmd_output[PATH_MAX];
 	struct ovs_veth_args args;
 
 	args.bridge = bridge;
@@ -2093,7 +2093,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	int bytes, pipefd[2];
 	char *token, *saveptr = NULL;
 	char netdev_link[IFNAMSIZ];
-	char buffer[MAXPATHLEN] = {0};
+	char buffer[PATH_MAX] = {0};
 	size_t retlen;
 
 	if (netdev->type != LXC_NET_VETH) {
@@ -2163,7 +2163,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	/* close the write-end of the pipe */
 	close(pipefd[1]);
 
-	bytes = lxc_read_nointr(pipefd[0], &buffer, MAXPATHLEN);
+	bytes = lxc_read_nointr(pipefd[0], &buffer, PATH_MAX);
 	if (bytes < 0) {
 		SYSERROR("Failed to read from pipe file descriptor");
 		close(pipefd[0]);
@@ -2257,7 +2257,7 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	int bytes, ret;
 	pid_t child;
 	int pipefd[2];
-	char buffer[MAXPATHLEN] = {0};
+	char buffer[PATH_MAX] = {0};
 
 	if (netdev->type != LXC_NET_VETH) {
 		ERROR("Network type %d not support for unprivileged use", netdev->type);
@@ -2319,7 +2319,7 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcna
 
 	close(pipefd[1]);
 
-	bytes = lxc_read_nointr(pipefd[0], &buffer, MAXPATHLEN);
+	bytes = lxc_read_nointr(pipefd[0], &buffer, PATH_MAX);
 	if (bytes < 0) {
 		SYSERROR("Failed to read from pipe file descriptor.");
 		close(pipefd[0]);
