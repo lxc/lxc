@@ -2499,10 +2499,6 @@ int lxc_config_read(const char *file, struct lxc_conf *conf, bool from_include)
 	c.conf = conf;
 	c.from_include = from_include;
 
-	ret = access(file, R_OK);
-	if (ret < 0)
-		return -1;
-
 	/* Catch only the top level config file name in the structure. */
 	if (!conf->rcfile)
 		conf->rcfile = strdup(file);

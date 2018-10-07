@@ -65,34 +65,35 @@ int lxc_strmunmap(void *addr, size_t length)
 	return munmap(addr, length + 1);
 }
 
-int lxc_file_for_each_line_mmap(const char *file, lxc_file_cb callback,
-				void *data)
+int lxc_file_for_each_line_mmap(const char *file, lxc_file_cb callback, void *data)
 {
-	int fd;
+	int fd, saved_errno;
 	char *buf, *line;
 	struct stat st;
 	int ret = 0;
 
 	fd = open(file, O_RDONLY | O_CLOEXEC);
-	if (fd < 0)
+	if (fd < 0) {
+		SYSERROR("Failed to open config file \"%s\"", file);
 		return -1;
+	}
 
 	ret = fstat(fd, &st);
 	if (ret < 0) {
-		close(fd);
-		return -1;
+		SYSERROR("Failed to stat config file \"%s\"", file);
+		goto on_error;
 	}
 
-	if (st.st_size == 0) {
-		close(fd);
-		return 0;
-	}
+	ret = 0;
+	if (st.st_size == 0)
+		goto on_error;
 
+	ret = -1;
 	buf = lxc_strmmap(NULL, st.st_size, PROT_READ | PROT_WRITE,
 			  MAP_PRIVATE | MAP_POPULATE, fd, 0);
 	if (buf == MAP_FAILED) {
-		close(fd);
-		return -1;
+		SYSERROR("Failed to map config file \"%s\"", file);
+		goto on_error;
 	}
 
 	lxc_iterate_parts(line, buf, "\n\0") {
@@ -102,13 +103,22 @@ int lxc_file_for_each_line_mmap(const char *file, lxc_file_cb callback,
 			 * error.
 			 */
 			if (ret < 0)
-				ERROR("Failed to parse config: %s", line);
+				ERROR("Failed to parse config file \"%s\" at "
+				      "line \"%s\"",
+				      file, line);
 			break;
 		}
 	}
 
-	lxc_strmunmap(buf, st.st_size);
+on_error:
+	ret = lxc_strmunmap(buf, st.st_size);
+	if (ret < 0)
+		SYSERROR("Failed to unmap config file \"%s\"", file);
+
+	saved_errno = errno;
 	close(fd);
+	errno = saved_errno;
+
 	return ret;
 }
 
