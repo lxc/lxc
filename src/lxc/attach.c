@@ -29,6 +29,7 @@
 #include <grp.h>
 #include <linux/unistd.h>
 #include <pwd.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
