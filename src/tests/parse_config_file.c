@@ -778,6 +778,11 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
+	if (c->set_config_item(c, "lxc.notaconfigkey", "invalid")) {
+		lxc_error("%s\n", "Managed to set to set invalid config item \"lxc.notaconfigkey\" to \"invalid\"");
+		return -1;
+	}
+
 	fret = EXIT_SUCCESS;
 
 non_test_error:
