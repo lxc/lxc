@@ -243,6 +243,10 @@ extern int __build_bug_on_failed;
 #define NETLINK_DUMP_STRICT_CHK 12
 #endif
 
+#ifndef SOL_NETLINK
+#define SOL_NETLINK 270
+#endif
+
 #ifndef IFLA_LINKMODE
 #define IFLA_LINKMODE 17
 #endif
