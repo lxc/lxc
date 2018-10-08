@@ -477,6 +477,14 @@ static int __rtnl_enumerate(int link_af, int addr_af, __s32 netns_id,
 	if (fd < 0)
 		return -1;
 
+	r = setsockopt(fd, SOL_NETLINK, NETLINK_DUMP_STRICT_CHK, &(int){1},
+		       sizeof(int));
+	if (r < 0 && netns_id >= 0) {
+		close(fd);
+		*netnsid_aware = false;
+		return -1;
+	}
+
 	r = __ifaddrs_netlink_recv(fd, 1, RTM_GETLINK, link_af, netns_id,
 				   &getlink_netnsid_aware, cb, ctx);
 	if (!r)
