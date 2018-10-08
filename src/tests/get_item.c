@@ -600,6 +600,12 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
+	if (c->set_config_item(c, "lxc.notaconfigkey", "invalid")) {
+		fprintf(stderr, "%d: Managed to set \"lxc.notaconfigkey\"\n", __LINE__);
+		goto out;
+	}
+
+
 	printf("All get_item tests passed\n");
 	fret = EXIT_SUCCESS;
 

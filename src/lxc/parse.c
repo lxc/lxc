@@ -111,9 +111,11 @@ int lxc_file_for_each_line_mmap(const char *file, lxc_file_cb callback, void *da
 	}
 
 on_error:
-	ret = lxc_strmunmap(buf, st.st_size);
-	if (ret < 0)
+	if (lxc_strmunmap(buf, st.st_size) < 0) {
 		SYSERROR("Failed to unmap config file \"%s\"", file);
+		if (ret == 0)
+			ret = -1;
+	}
 
 	saved_errno = errno;
 	close(fd);
