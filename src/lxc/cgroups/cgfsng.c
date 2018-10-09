@@ -1175,8 +1175,10 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 			*chop = '\0';
 
 		ret = mkdir_p(pivot_path, 0755);
-		if (ret < 0 && errno != EEXIST)
+		if (ret < 0 && errno != EEXIST) {
+			SYSWARN("Failed to create cgroup \"%s\"\n", pivot_path);
 			goto next;
+		}
 
 		if (chop)
 			*chop = '/';
@@ -1185,8 +1187,10 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 		 * cgroup.
 		 */
 		ret = lxc_write_to_file(pivot_path, pidstr, len, false, 0666);
-		if (ret != 0)
+		if (ret != 0) {
+			SYSWARN("Failed to move monitor %s to \"%s\"\n", pidstr, pivot_path);
 			goto next;
+		}
 
 		ret = recursive_destroy(h->monitor_full_path);
 		if (ret < 0)
