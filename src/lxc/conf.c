@@ -2647,8 +2647,10 @@ int setup_resource_limits(struct lxc_list *limits, pid_t pid)
 			SYSERROR("Failed to set limit %s", lim->resource);
 			return -1;
 		}
+
+		TRACE("Setup \"%s\" limit", lim->resource);
 #else
-		ERROR("Cannot set limit %s as prlimit is missing", lim->resource);
+		ERROR("Cannot set limit \"%s\" as prlimit is missing", lim->resource);
 		return -1;
 #endif
 	}
