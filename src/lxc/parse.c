@@ -81,12 +81,12 @@ int lxc_file_for_each_line_mmap(const char *file, lxc_file_cb callback, void *da
 	ret = fstat(fd, &st);
 	if (ret < 0) {
 		SYSERROR("Failed to stat config file \"%s\"", file);
-		goto on_error;
+		goto on_error_fstat;
 	}
 
 	ret = 0;
 	if (st.st_size == 0)
-		goto on_error;
+		goto on_error_fstat;
 
 	ret = -1;
 	buf = lxc_strmmap(NULL, st.st_size, PROT_READ | PROT_WRITE,
@@ -117,6 +117,7 @@ on_error:
 			ret = -1;
 	}
 
+on_error_fstat:
 	saved_errno = errno;
 	close(fd);
 	errno = saved_errno;
