@@ -3514,7 +3514,6 @@ static bool verify_start_hooks(struct lxc_conf *conf)
 
 	lxc_list_for_each (it, &conf->hooks[LXCHOOK_START]) {
 		int ret;
-		struct stat st;
 		char *hookname = it->elem;
 
 		ret = snprintf(path, PATH_MAX, "%s%s",
@@ -3523,9 +3522,9 @@ static bool verify_start_hooks(struct lxc_conf *conf)
 		if (ret < 0 || ret >= PATH_MAX)
 			return false;
 
-		ret = stat(path, &st);
+		ret = access(path, X_OK);
 		if (ret < 0) {
-			SYSERROR("Start hook %s not found in container",
+			SYSERROR("Start hook \"%s\" not found in container",
 				 hookname);
 			return false;
 		}
@@ -3604,10 +3603,6 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
-	/* Make sure any start hooks are in the container */
-	if (!verify_start_hooks(lxc_conf))
-		return -1;
-
 	if (lxc_conf->is_execute) {
 		if (execveat_supported()) {
 			int fd;
@@ -3673,6 +3668,12 @@ int lxc_setup(struct lxc_handler *handler)
 			ERROR("Failed to setup mount entries");
 			return -1;
 		}
+	}
+
+	/* Make sure any start hooks are in the container */
+	if (!verify_start_hooks(lxc_conf)) {
+		ERROR("Failed to verify start hooks");
+		return -1;
 	}
 
 	ret = lxc_setup_console(&lxc_conf->rootfs, &lxc_conf->console,
