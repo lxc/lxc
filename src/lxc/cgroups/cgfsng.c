@@ -1153,6 +1153,7 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 	for (int i = 0; ops->hierarchies[i]; i++) {
 		int ret;
 		char *chop;
+		char pivot_cgroup[] = PIVOT_CGROUP;
 		struct hierarchy *h = ops->hierarchies[i];
 
 		if (!h->monitor_full_path)
@@ -1173,6 +1174,15 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 		chop = strrchr(pivot_path, '/');
 		if (chop)
 			*chop = '\0';
+
+		/*
+		 * Make sure not to pass in the ro string literal PIVOT_CGROUP
+		 * here.
+		 */
+		if (!cg_legacy_handle_cpuset_hierarchy(h, pivot_cgroup)) {
+			WARN("Failed to handle legacy cpuset controller");
+			goto next;
+		}
 
 		ret = mkdir_p(pivot_path, 0755);
 		if (ret < 0 && errno != EEXIST) {
