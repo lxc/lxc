@@ -152,6 +152,11 @@ fi
 
 %post
 # This test should trigger a network configure on a new install.
+if [ ! -d @LXC_DISTRO_SYSCONF@ ]
+then
+	mkdir -p @LXC_DISTRO_SYSCONF@
+fi
+
 if [ ! -f @LXC_DISTRO_SYSCONF@/lxc-net ] || ! grep -q 'USE_LXC_BRIDGE=' @LXC_DISTRO_SYSCONF@/lxc-net
 then
 	# Grab a random 10net subnet.  Need to add test logic...
