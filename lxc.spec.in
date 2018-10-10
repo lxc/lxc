@@ -251,6 +251,7 @@ fi
 %defattr(-,root,root)
 %{_sbindir}/*
 %{_libdir}/*.so.*
+%{_libdir}/*.a
 %{_libdir}/%{name}
 %{_localstatedir}/*
 %{_libexecdir}/%{name}/hooks/unmount-namespace
