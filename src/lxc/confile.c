@@ -2319,7 +2319,6 @@ on_error:
 
 int lxc_config_read(const char *file, struct lxc_conf *conf, bool from_include)
 {
-	int ret;
 	struct parse_line_conf c;
 
 	c.conf = conf;
