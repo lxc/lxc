@@ -174,7 +174,8 @@ static int cmp_version(const char *v1, const char *v2)
 	return -1;
 }
 
-static void exec_criu(struct cgroup_ops *cgroup_ops, struct criu_opts *opts)
+static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
+		      struct criu_opts *opts)
 {
 	char **argv, log[PATH_MAX];
 	int static_args = 23, argc = 0, i, ret;
@@ -1064,7 +1065,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		os.console_name = c->lxc_conf->console.name;
 
 		/* exec_criu() returning is an error */
-		exec_criu(cgroup_ops, &os);
+		exec_criu(cgroup_ops, c->lxc_conf, &os);
 		umount(rootfs->mount);
 		rmdir(rootfs->mount);
 		goto out_fini_handler;
@@ -1265,14 +1266,9 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 
 	if (pid == 0) {
 		struct criu_opts os;
-		struct lxc_handler h;
 		struct cgroup_ops *cgroup_ops;
 
 		close(criuout[0]);
-
-		lxc_zero_handler(&h);
-
-		h.name = c->name;
 
 		cgroup_ops = cgroup_init(NULL);
 		if (!cgroup_ops) {
@@ -1280,7 +1276,6 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 			_exit(EXIT_FAILURE);
 			return -1;
 		}
-		h.cgroup_ops = cgroup_ops;
 
 		os.pipefd = criuout[1];
 		os.action = mode;
@@ -1288,6 +1283,7 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 		os.c = c;
 		os.console_name = c->lxc_conf->console.path;
 		os.criu_version = criu_version;
+		os.handler = NULL;
 
 		ret = save_tty_major_minor(opts->directory, c, os.tty_id, sizeof(os.tty_id));
 		if (ret < 0) {
@@ -1296,7 +1292,7 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 		}
 
 		/* exec_criu() returning is an error */
-		exec_criu(cgroup_ops, &os);
+		exec_criu(cgroup_ops, c->lxc_conf, &os);
 		free(criu_version);
 		_exit(EXIT_FAILURE);
 	} else {
