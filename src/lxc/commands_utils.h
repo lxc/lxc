@@ -25,7 +25,8 @@
 #include "state.h"
 #include "commands.h"
 
-int lxc_make_abstract_socket_name(char *path, int len, const char *lxcname,
+int lxc_make_abstract_socket_name(char *path, size_t pathlen,
+				  const char *lxcname,
 				  const char *lxcpath,
 				  const char *hashed_sock_name,
 				  const char *suffix);
