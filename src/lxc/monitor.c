@@ -199,7 +199,11 @@ int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr) {
 	ret = snprintf(addr->sun_path, len, "@lxc/%016" PRIx64 "/%s", hash, lxcpath);
 	if (ret < 0) {
 		ERROR("Failed to create hashed name for monitor socket");
-		return -1;
+		goto on_error;
+	} else if ((size_t)ret >= len) {
+		errno = ENAMETOOLONG;
+		SYSERROR("The name of monitor socket too long (%d bytes)", ret);
+		goto on_error;
 	}
 
 	/* replace @ with \0 */
@@ -207,6 +211,9 @@ int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr) {
 	INFO("Using monitor socket name \"%s\" (length of socket name %zu must be <= %zu)", &addr->sun_path[1], strlen(&addr->sun_path[1]), sizeof(addr->sun_path) - 3);
 
 	return 0;
+
+on_error:
+	return -1;
 }
 
 int lxc_monitor_open(const char *lxcpath)
@@ -214,19 +221,12 @@ int lxc_monitor_open(const char *lxcpath)
 	struct sockaddr_un addr;
 	int fd;
 	size_t retry;
-	size_t len;
 	int backoff_ms[] = {10, 50, 100};
 
 	if (lxc_monitor_sock_name(lxcpath, &addr) < 0)
 		return -1;
 
-	len = strlen(&addr.sun_path[1]);
-	DEBUG("Opening monitor socket %s with len %zu", &addr.sun_path[1], len);
-	if (len >= sizeof(addr.sun_path) - 1) {
-		errno = ENAMETOOLONG;
-		SYSERROR("The name of monitor socket too long (%zu bytes)", len);
-		return -1;
-	}
+	DEBUG("Opening monitor socket %s with len %zu", &addr.sun_path[1], strlen(&addr.sun_path[1]));
 
 	for (retry = 0; retry < sizeof(backoff_ms) / sizeof(backoff_ms[0]); retry++) {
 		fd = lxc_abstract_unix_connect(addr.sun_path);
