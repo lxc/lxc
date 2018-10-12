@@ -168,7 +168,8 @@ int lxc_monitor_close(int fd)
  * have a maximum of 106 chars. But to not break backwards compatibility we keep
  * the limit at 105.
  */
-int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr) {
+int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr)
+{
 	size_t len;
 	int ret;
 	char *path;
