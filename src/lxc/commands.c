@@ -1244,24 +1244,17 @@ out_close:
 
 int lxc_cmd_init(const char *name, const char *lxcpath, const char *suffix)
 {
-	int fd, len, ret;
+	int fd, ret;
 	char path[LXC_AUDS_ADDR_LEN] = {0};
-	char *offset = &path[1];
 
-	/* -2 here because this is an abstract unix socket so it needs a
-	 * leading \0, and we null terminate, so it needs a trailing \0.
-	 * Although null termination isn't required by the API, we do it anyway
-	 * because we print the sockname out sometimes.
-	 */
-	len = sizeof(path) - 2;
-	ret = lxc_make_abstract_socket_name(offset, len, name, lxcpath, NULL, suffix);
+	ret = lxc_make_abstract_socket_name(path, sizeof(path), name, lxcpath, NULL, suffix);
 	if (ret < 0)
 		return -1;
-	TRACE("Creating abstract unix socket \"%s\"", offset);
+	TRACE("Creating abstract unix socket \"%s\"", &path[1]);
 
 	fd = lxc_abstract_unix_open(path, SOCK_STREAM, 0);
 	if (fd < 0) {
-		SYSERROR("Failed to create command socket %s", offset);
+		SYSERROR("Failed to create command socket %s", &path[1]);
 		if (errno == EADDRINUSE)
 			ERROR("Container \"%s\" appears to be already running", name);
 

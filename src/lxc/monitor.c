@@ -73,7 +73,7 @@ int lxc_monitor_fifo_name(const char *lxcpath, char *fifo_path, size_t fifo_path
 	if (do_mkdirp) {
 		ret = snprintf(fifo_path, fifo_path_sz, "%s/lxc/%s", rundir, lxcpath);
 		if (ret < 0 || (size_t)ret >= fifo_path_sz) {
-			ERROR("rundir/lxcpath (%s/%s) too long for monitor fifo.", rundir, lxcpath);
+			ERROR("rundir/lxcpath (%s/%s) too long for monitor fifo", rundir, lxcpath);
 			free(rundir);
 			return -1;
 		}
@@ -86,7 +86,7 @@ int lxc_monitor_fifo_name(const char *lxcpath, char *fifo_path, size_t fifo_path
 	}
 	ret = snprintf(fifo_path, fifo_path_sz, "%s/lxc/%s/monitor-fifo", rundir, lxcpath);
 	if (ret < 0 || (size_t)ret >= fifo_path_sz) {
-		ERROR("rundir/lxcpath (%s/%s) too long for monitor fifo.", rundir, lxcpath);
+		ERROR("rundir/lxcpath (%s/%s) too long for monitor fifo", rundir, lxcpath);
 		free(rundir);
 		return -1;
 	}
@@ -128,7 +128,7 @@ static void lxc_monitor_fifo_send(struct lxc_msg *msg, const char *lxcpath)
 	ret = lxc_write_nointr(fd, msg, sizeof(*msg));
 	if (ret != sizeof(*msg)) {
 		close(fd);
-		SYSERROR("Failed to write to monitor fifo \"%s\".", fifo_path);
+		SYSERROR("Failed to write to monitor fifo \"%s\"", fifo_path);
 		return;
 	}
 
@@ -168,7 +168,8 @@ int lxc_monitor_close(int fd)
  * have a maximum of 106 chars. But to not break backwards compatibility we keep
  * the limit at 105.
  */
-int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr) {
+int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr)
+{
 	size_t len;
 	int ret;
 	char *path;
@@ -185,7 +186,7 @@ int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr) {
 	path = alloca(len);
 	ret = snprintf(path, len, "lxc/%s/monitor-sock", lxcpath);
 	if (ret < 0 || (size_t)ret >= len) {
-		ERROR("failed to create name for monitor socket");
+		ERROR("Failed to create name for monitor socket");
 		return -1;
 	}
 
@@ -198,15 +199,22 @@ int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr) {
 	hash = fnv_64a_buf(path, ret, FNV1A_64_INIT);
 	ret = snprintf(addr->sun_path, len, "@lxc/%016" PRIx64 "/%s", hash, lxcpath);
 	if (ret < 0) {
-		ERROR("failed to create hashed name for monitor socket");
-		return -1;
+		ERROR("Failed to create hashed name for monitor socket");
+		goto on_error;
+	} else if ((size_t)ret >= len) {
+		errno = ENAMETOOLONG;
+		SYSERROR("The name of monitor socket too long (%d bytes)", ret);
+		goto on_error;
 	}
 
 	/* replace @ with \0 */
 	addr->sun_path[0] = '\0';
-	INFO("using monitor socket name \"%s\" (length of socket name %zu must be <= %zu)", &addr->sun_path[1], strlen(&addr->sun_path[1]), sizeof(addr->sun_path) - 3);
+	INFO("Using monitor socket name \"%s\" (length of socket name %zu must be <= %zu)", &addr->sun_path[1], strlen(&addr->sun_path[1]), sizeof(addr->sun_path) - 3);
 
 	return 0;
+
+on_error:
+	return -1;
 }
 
 int lxc_monitor_open(const char *lxcpath)
@@ -214,19 +222,12 @@ int lxc_monitor_open(const char *lxcpath)
 	struct sockaddr_un addr;
 	int fd;
 	size_t retry;
-	size_t len;
 	int backoff_ms[] = {10, 50, 100};
 
 	if (lxc_monitor_sock_name(lxcpath, &addr) < 0)
 		return -1;
 
-	len = strlen(&addr.sun_path[1]);
-	DEBUG("opening monitor socket %s with len %zu", &addr.sun_path[1], len);
-	if (len >= sizeof(addr.sun_path) - 1) {
-		errno = ENAMETOOLONG;
-		SYSERROR("The name of monitor socket too long (%zu bytes)", len);
-		return -1;
-	}
+	DEBUG("Opening monitor socket %s with len %zu", &addr.sun_path[1], strlen(&addr.sun_path[1]));
 
 	for (retry = 0; retry < sizeof(backoff_ms) / sizeof(backoff_ms[0]); retry++) {
 		fd = lxc_abstract_unix_connect(addr.sun_path);
@@ -272,7 +273,7 @@ int lxc_monitor_read_fdset(struct pollfd *fds, nfds_t nfds, struct lxc_msg *msg,
 		}
 	}
 
-	SYSERROR("No ready fd found.");
+	SYSERROR("No ready fd found");
 
 	return -1;
 }
@@ -315,33 +316,33 @@ int lxc_monitord_spawn(const char *lxcpath)
 	/* double fork to avoid zombies when monitord exits */
 	pid1 = fork();
 	if (pid1 < 0) {
-		SYSERROR("Failed to fork().");
+		SYSERROR("Failed to fork()");
 		return -1;
 	}
 
 	if (pid1) {
-		DEBUG("Going to wait for pid %d.", pid1);
+		DEBUG("Going to wait for pid %d", pid1);
 
 		if (waitpid(pid1, NULL, 0) != pid1)
 			return -1;
 
-		DEBUG("Finished waiting on pid %d.", pid1);
+		DEBUG("Finished waiting on pid %d", pid1);
 		return 0;
 	}
 
 	if (pipe(pipefd) < 0) {
-		SYSERROR("Failed to create pipe.");
+		SYSERROR("Failed to create pipe");
 		_exit(EXIT_FAILURE);
 	}
 
 	pid2 = fork();
 	if (pid2 < 0) {
-		SYSERROR("Failed to fork().");
+		SYSERROR("Failed to fork()");
 		_exit(EXIT_FAILURE);
 	}
 
 	if (pid2) {
-		DEBUG("Trying to sync with child process.");
+		DEBUG("Trying to sync with child process");
 		char c;
 		/* Wait for daemon to create socket. */
 		close(pipefd[1]);
@@ -356,18 +357,18 @@ int lxc_monitord_spawn(const char *lxcpath)
 
 		close(pipefd[0]);
 
-		DEBUG("Successfully synced with child process.");
+		DEBUG("Successfully synced with child process");
 		_exit(EXIT_SUCCESS);
 	}
 
 	if (setsid() < 0) {
-		SYSERROR("Failed to setsid().");
+		SYSERROR("Failed to setsid()");
 		_exit(EXIT_FAILURE);
 	}
 
 	lxc_check_inherited(NULL, true, &pipefd[1], 1);
 	if (null_stdfds() < 0) {
-		SYSERROR("Failed to dup2() standard file descriptors to /dev/null.");
+		SYSERROR("Failed to dup2() standard file descriptors to /dev/null");
 		_exit(EXIT_FAILURE);
 	}
 
@@ -375,14 +376,14 @@ int lxc_monitord_spawn(const char *lxcpath)
 
 	ret = snprintf(pipefd_str, sizeof(pipefd_str), "%d", pipefd[1]);
 	if (ret < 0 || ret >= sizeof(pipefd_str)) {
-		ERROR("Failed to create pid argument to pass to monitord.");
+		ERROR("Failed to create pid argument to pass to monitord");
 		_exit(EXIT_FAILURE);
 	}
 
-	DEBUG("Using pipe file descriptor %d for monitord.", pipefd[1]);
+	DEBUG("Using pipe file descriptor %d for monitord", pipefd[1]);
 
 	execvp(args[0], args);
-	SYSERROR("failed to exec lxc-monitord");
+	SYSERROR("Failed to exec lxc-monitord");
 
 	_exit(EXIT_FAILURE);
 }

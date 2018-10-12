@@ -96,24 +96,38 @@ int lxc_cmd_sock_get_state(const char *name, const char *lxcpath,
 	return ret;
 }
 
-int lxc_make_abstract_socket_name(char *path, int len, const char *lxcname,
+int lxc_make_abstract_socket_name(char *path, size_t pathlen,
+				  const char *lxcname,
 				  const char *lxcpath,
 				  const char *hashed_sock_name,
 				  const char *suffix)
 {
 	const char *name;
+	char *offset;
 	char *tmppath;
+	size_t len;
 	size_t tmplen;
 	uint64_t hash;
 	int ret;
+
+	if (!path)
+		return -1;
+
+	offset = &path[1];
+
+	/* -2 here because this is an abstract unix socket so it needs a
+	 * leading \0, and we null terminate, so it needs a trailing \0.
+	 * Although null termination isn't required by the API, we do it anyway
+	 * because we print the sockname out sometimes.
+	 */
+	len = pathlen -2;
 
 	name = lxcname;
 	if (!name)
 		name = "";
 
 	if (hashed_sock_name != NULL) {
-		ret =
-		    snprintf(path, len, "lxc/%s/%s", hashed_sock_name, suffix);
+		ret = snprintf(offset, len, "lxc/%s/%s", hashed_sock_name, suffix);
 		if (ret < 0 || ret >= len) {
 			ERROR("Failed to create abstract socket name");
 			return -1;
@@ -129,7 +143,7 @@ int lxc_make_abstract_socket_name(char *path, int len, const char *lxcname,
 		}
 	}
 
-	ret = snprintf(path, len, "%s/%s/%s", lxcpath, name, suffix);
+	ret = snprintf(offset, len, "%s/%s/%s", lxcpath, name, suffix);
 	if (ret < 0) {
 		ERROR("Failed to create abstract socket name");
 		return -1;
@@ -147,7 +161,7 @@ int lxc_make_abstract_socket_name(char *path, int len, const char *lxcname,
 	}
 
 	hash = fnv_64a_buf(tmppath, ret, FNV1A_64_INIT);
-	ret = snprintf(path, len, "lxc/%016" PRIx64 "/%s", hash, suffix);
+	ret = snprintf(offset, len, "lxc/%016" PRIx64 "/%s", hash, suffix);
 	if (ret < 0 || ret >= len) {
 		ERROR("Failed to create abstract socket name");
 		return -1;
@@ -161,15 +175,8 @@ int lxc_cmd_connect(const char *name, const char *lxcpath,
 {
 	int ret, client_fd;
 	char path[LXC_AUDS_ADDR_LEN] = {0};
-	char *offset = &path[1];
 
-	/* -2 here because this is an abstract unix socket so it needs a
-	 * leading \0, and we null terminate, so it needs a trailing \0.
-	 * Although null termination isn't required by the API, we do it anyway
-	 * because we print the sockname out sometimes.
-	 */
-	size_t len = sizeof(path) - 2;
-	ret = lxc_make_abstract_socket_name(offset, len, name, lxcpath,
+	ret = lxc_make_abstract_socket_name(path, sizeof(path), name, lxcpath,
 					    hashed_sock_name, suffix);
 	if (ret < 0)
 		return -1;
