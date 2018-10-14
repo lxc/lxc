@@ -989,6 +989,7 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 	int ret;
 	size_t clen;
 	char *path;
+	mode_t cur_mask;
 
 	INFO("Preparing \"/dev\"");
 
@@ -1000,37 +1001,45 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 	if (ret < 0 || (size_t)ret >= clen)
 		return -1;
 
-	if (!dir_exists(path)) {
-		WARN("\"/dev\" directory does not exist. Proceeding without "
-		     "autodev being set up");
-		return 0;
+	cur_mask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
+	ret = mkdir(path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+	if (ret < 0 && errno != EEXIST) {
+		SYSERROR("Failed to create \"/dev\" directory");
+		ret = -errno;
+		goto reset_umask;
 	}
 
 	ret = safe_mount("none", path, "tmpfs", 0, "size=500000,mode=755",
 			 rootfs->path ? rootfs->mount : NULL);
 	if (ret < 0) {
 		SYSERROR("Failed to mount tmpfs on \"%s\"", path);
-		return -1;
+		goto reset_umask;
 	}
-	INFO("Mounted tmpfs on \"%s\"", path);
+	TRACE("Mounted tmpfs on \"%s\"", path);
 
 	ret = snprintf(path, clen, "%s/dev/pts", rootfs->path ? rootfs->mount : "");
-	if (ret < 0 || (size_t)ret >= clen)
-		return -1;
+	if (ret < 0 || (size_t)ret >= clen) {
+		ret = -1;
+		goto reset_umask;
+	}
 
 	/* If we are running on a devtmpfs mapping, dev/pts may already exist.
 	 * If not, then create it and exit if that fails...
 	 */
-	if (!dir_exists(path)) {
-		ret = mkdir(path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
-		if (ret < 0) {
-			SYSERROR("Failed to create directory \"%s\"", path);
-			return -1;
-		}
+	ret = mkdir(path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+	if (ret < 0 && errno != EEXIST) {
+		SYSERROR("Failed to create directory \"%s\"", path);
+		ret = -errno;
+		goto reset_umask;
 	}
 
+	ret = 0;
+
+reset_umask:
+	(void)umask(cur_mask);
+
 	INFO("Prepared \"/dev\"");
-	return 0;
+	return ret;
 }
 
 struct lxc_device_node {
@@ -1049,16 +1058,23 @@ static const struct lxc_device_node lxc_devices[] = {
 	{ "zero",    S_IFCHR | S_IRWXU | S_IRWXG | S_IRWXO, 1, 5 },
 };
 
+enum {
+	LXC_DEVNODE_BIND,
+	LXC_DEVNODE_MKNOD,
+	LXC_DEVNODE_PARTIAL,
+	LXC_DEVNODE_OPEN,
+};
+
 static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 {
 	int i, ret;
-	char path[MAXPATHLEN];
+	char path[PATH_MAX];
 	mode_t cmask;
-	bool can_mknod = true;
+	int use_mknod = LXC_DEVNODE_MKNOD;
 
-	ret = snprintf(path, MAXPATHLEN, "%s/dev",
+	ret = snprintf(path, PATH_MAX, "%s/dev",
 		       rootfs->path ? rootfs->mount : "");
-	if (ret < 0 || ret >= MAXPATHLEN)
+	if (ret < 0 || ret >= PATH_MAX)
 		return -1;
 
 	/* ignore, just don't try to fill in */
@@ -1069,41 +1085,65 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 
 	cmask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
 	for (i = 0; i < sizeof(lxc_devices) / sizeof(lxc_devices[0]); i++) {
-		char hostpath[MAXPATHLEN];
+		char hostpath[PATH_MAX];
 		const struct lxc_device_node *device = &lxc_devices[i];
 
-		ret = snprintf(path, MAXPATHLEN, "%s/dev/%s",
+		ret = snprintf(path, PATH_MAX, "%s/dev/%s",
 			       rootfs->path ? rootfs->mount : "", device->name);
-		if (ret < 0 || ret >= MAXPATHLEN)
+		if (ret < 0 || ret >= PATH_MAX)
 			return -1;
 
-		if (can_mknod) {
+		if (use_mknod >= LXC_DEVNODE_MKNOD) {
 			ret = mknod(path, device->mode, makedev(device->maj, device->min));
 			if (ret == 0 || (ret < 0 && errno == EEXIST)) {
 				DEBUG("Created device node \"%s\"", path);
+			} else if (ret < 0) {
+				if (errno != EPERM) {
+					SYSERROR("Failed to create device node \"%s\"", path);
+					return -1;
+				}
+
+				use_mknod = LXC_DEVNODE_BIND;
+			}
+
+			/* Device nodes are fully useable. */
+			if (use_mknod == LXC_DEVNODE_OPEN)
 				continue;
-			}
 
-			if (errno != EPERM) {
-				SYSERROR("Failed to create device node \"%s\"", path);
-				return -1;
-			}
+			if (use_mknod == LXC_DEVNODE_MKNOD) {
+				/* See
+				 * - https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=55956b59df336f6738da916dbb520b6e37df9fbd
+				 * - https://lists.linuxfoundation.org/pipermail/containers/2018-June/039176.html
+				 */
+				ret = open(path, O_RDONLY | O_CLOEXEC);
+				if (ret >= 0) {
+					close(ret);
+					/* Device nodes are fully useable. */
+					use_mknod = LXC_DEVNODE_OPEN;
+					continue;
+				}
 
-			/* This can e.g. happen when the container is
-			 * unprivileged or CAP_MKNOD has been dropped.
-			 */
-			can_mknod = false;
+				TRACE("Failed to open \"%s\" device", path);
+				/* Device nodes are only partially useable. */
+				use_mknod = LXC_DEVNODE_PARTIAL;
+			}
 		}
 
-		ret = mknod(path, S_IFREG, 0);
-		if (ret < 0 && errno != EEXIST) {
-			SYSERROR("Failed to create file \"%s\"", path);
-			return -1;
+		if (use_mknod != LXC_DEVNODE_PARTIAL) {
+			/* If we are dealing with partially functional device
+			 * nodes the prio mknod() call will have created the
+			 * device node so we can use it as a bind-mount target.
+			 */
+			ret = mknod(path, S_IFREG | 0000, 0);
+			if (ret < 0 && errno != EEXIST) {
+				SYSERROR("Failed to create file \"%s\"", path);
+				return -1;
+			}
 		}
 
 		/* Fallback to bind-mounting the device from the host. */
-		ret = snprintf(hostpath, MAXPATHLEN, "/dev/%s", device->name);
-		if (ret < 0 || ret >= MAXPATHLEN)
+		ret = snprintf(hostpath, PATH_MAX, "/dev/%s", device->name);
+		if (ret < 0 || ret >= PATH_MAX)
 			return -1;
 
 		ret = safe_mount(hostpath, path, 0, MS_BIND, NULL,
