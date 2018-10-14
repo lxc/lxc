@@ -44,10 +44,8 @@ static int execute_start(struct lxc_handler *handler, void* data)
 {
 	int argc_add, j;
 	char **argv;
-	int argc = 0, i = 0, logfd = -1;
+	int argc = 0, i = 0;
 	struct execute_args *my_args = data;
-	char logfile[LXC_PROC_PID_FD_LEN];
-	bool is_privileged = lxc_list_empty(&handler->conf->id_map);
 
 	while (my_args->argv[argc++]);
 
@@ -58,14 +56,6 @@ static int execute_start(struct lxc_handler *handler, void* data)
 
 	if (!handler->conf->rootfs.path)
 		argc_add += 2;
-
-	if (is_privileged) {
-		if (lxc_log_has_valid_level())
-			argc_add += 2;
-
-		if (current_config->logfd != -1 || lxc_log_fd != -1)
-			argc_add += 2;
-	}
 
 	argv = malloc((argc + argc_add) * sizeof(*argv));
 	if (!argv) {
@@ -80,32 +70,6 @@ static int execute_start(struct lxc_handler *handler, void* data)
 
 	argv[i++] = "-n";
 	argv[i++] = (char *)handler->name;
-
-	if (lxc_log_has_valid_level()) {
-		argv[i++] = "-l";
-		argv[i++] = (char *)lxc_log_priority_to_string(lxc_log_get_level());
-	}
-
-	if (is_privileged && (current_config->logfd != -1 || lxc_log_fd != -1)) {
-		int ret;
-		int to_dup = current_config->logfd;
-
-		if (current_config->logfd == -1)
-			to_dup = lxc_log_fd;
-
-		logfd = dup(to_dup);
-		if (logfd < 0) {
-			SYSERROR("Failed to duplicate log file descriptor");
-			goto out2;
-		}
-
-		ret = snprintf(logfile, sizeof(logfile), "/proc/self/fd/%d", logfd);
-		if (ret < 0 || (size_t)ret >= sizeof(logfile))
-			goto out3;
-
-		argv[i++] = "-o";
-		argv[i++] = logfile;
-	}
 
 	if (my_args->quiet)
 		argv[i++] = "--quiet";
@@ -128,9 +92,6 @@ static int execute_start(struct lxc_handler *handler, void* data)
 		execvp(argv[0], argv);
 	SYSERROR("Failed to exec %s", argv[0]);
 
-out3:
-	close(logfd);
-out2:
 	free(argv);
 out1:
 	return 1;
