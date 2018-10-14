@@ -507,7 +507,7 @@ AM_CONDITIONAL([ENABLE_BASH], [test "x$enable_bash" = "xyes"])
 AM_COND_IF([ENABLE_BASH],
 	[AC_MSG_CHECKING([bash completion directory])
 	PKG_CHECK_VAR(bashcompdir, [bash-completion], [completionsdir], ,
-		bashcompdir="${sysconfdir}/bash_completion.d")
+		bashcompdir="/usr/share/bash-completion/completions")
 	AC_MSG_RESULT([$bashcompdir])
 	AC_SUBST(bashcompdir)
 	])
