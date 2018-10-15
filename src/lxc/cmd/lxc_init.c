@@ -26,6 +26,7 @@
 #endif
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <getopt.h>
 #include <libgen.h>
 #include <limits.h>
@@ -46,7 +47,6 @@
 #include "config.h"
 #include "error.h"
 #include "initutils.h"
-#include "log.h"
 #include "parse.h"
 #include "raw_syscalls.h"
 #include "string_utils.h"
@@ -57,8 +57,6 @@
 
 #define QUOTE(macro) #macro
 #define QUOTEVAL(macro) QUOTE(macro)
-
-lxc_log_define(lxc_init, lxc);
 
 static sig_atomic_t was_interrupted;
 
@@ -74,8 +72,6 @@ static struct option long_options[] = {
 	    { "usage",       no_argument,       0, OPT_USAGE   },
 	    { "version",     no_argument,       0, OPT_VERSION },
 	    { "quiet",       no_argument,       0, 'q'         },
-	    { "logfile",     required_argument, 0, 'o'         },
-	    { "logpriority", required_argument, 0, 'l'         },
 	    { "lxcpath",     required_argument, 0, 'P'         },
 	    { 0,             0,                 0, 0           }
 	};
@@ -86,8 +82,6 @@ struct arguments {
 	const char *shortopts;
 
 	const char *name;
-	char *log_file;
-	char *log_priority;
 	bool quiet;
 	const char *lxcpath;
 
@@ -142,19 +136,21 @@ static void prevent_forking(void)
 		ret = snprintf(path, sizeof(path),
 			       "/sys/fs/cgroup/pids/%s/pids.max", p2);
 		if (ret < 0 || (size_t)ret >= sizeof(path)) {
-			ERROR("Failed to create string");
+			if (my_args.quiet)
+				fprintf(stderr, "Failed to create string\n");
 			goto on_error;
 		}
 
 		fd = open(path, O_WRONLY);
 		if (fd < 0) {
-			SYSERROR("Failed to open \"%s\"", path);
+			if (my_args.quiet)
+				fprintf(stderr, "Failed to open \"%s\"\n", path);
 			goto on_error;
 		}
 
 		ret = write(fd, "1", 1);
-		if (ret != 1)
-			SYSERROR("Failed to write to \"%s\"", path);
+		if (ret != 1 && !my_args.quiet)
+			fprintf(stderr, "Failed to write to \"%s\"\n", path);
 
 		close(fd);
 		break;
@@ -173,13 +169,15 @@ static void kill_children(pid_t pid)
 
 	ret = snprintf(path, sizeof(path), "/proc/%d/task/%d/children", pid, pid);
 	if (ret < 0 || (size_t)ret >= sizeof(path)) {
-		ERROR("Failed to create string");
+		if (my_args.quiet)
+			fprintf(stderr, "Failed to create string\n");
 		return;
 	}
 
 	f = fopen(path, "r");
 	if (!f) {
-		SYSERROR("Failed to open %s", path);
+		if (my_args.quiet)
+			fprintf(stderr, "Failed to open %s\n", path);
 		return;
 	}
 
@@ -187,7 +185,8 @@ static void kill_children(pid_t pid)
 		pid_t pid;
 
 		if (fscanf(f, "%d ", &pid) != 1) {
-			ERROR("Failed to retrieve pid");
+			if (my_args.quiet)
+				fprintf(stderr, "Failed to retrieve pid\n");
 			fclose(f);
 			return;
 		}
@@ -206,51 +205,33 @@ static void remove_self(void)
 	char path[PATH_MAX] = {0};
 
 	n = readlink("/proc/self/exe", path, sizeof(path));
-	if (n < 0 || n >= PATH_MAX) {
-		SYSDEBUG("Failed to readlink \"/proc/self/exe\"");
+	if (n < 0 || n >= PATH_MAX)
 		return;
-	}
 	path[n] = '\0';
 
 	ret = umount2(path, MNT_DETACH);
-	if (ret < 0) {
-		SYSDEBUG("Failed to unmount \"%s\"", path);
+	if (ret < 0)
 		return;
-	}
 
 	ret = unlink(path);
-	if (ret < 0) {
-		SYSDEBUG("Failed to unlink \"%s\"", path);
+	if (ret < 0)
 		return;
-	}
 }
 
 int main(int argc, char *argv[])
 {
-	int i, ret;
-	pid_t pid, sid;
+	int i, logfd, ret;
+	pid_t pid;
 	struct sigaction act;
-	struct lxc_log log;
 	sigset_t mask, omask;
 	int have_status = 0, exit_with = 1, shutdown = 0;
 
 	if (arguments_parse(&my_args, argc, argv))
 		exit(EXIT_FAILURE);
 
-	log.prefix = "lxc-init";
-	log.name = my_args.name;
-	log.file = my_args.log_file;
-	log.level = my_args.log_priority;
-	log.quiet = my_args.quiet;
-	log.lxcpath = my_args.lxcpath;
-
-	ret = lxc_log_init(&log);
-	if (ret < 0)
-		exit(EXIT_FAILURE);
-	lxc_log_options_no_override();
-
 	if (!my_args.argc) {
-		ERROR("Please specify a command to execute");
+		if (my_args.quiet)
+			fprintf(stderr, "Please specify a command to execute\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -319,7 +300,8 @@ int main(int argc, char *argv[])
 			if (errno == EINVAL)
 				continue;
 
-			SYSERROR("Failed to change signal action");
+			if (my_args.quiet)
+				fprintf(stderr, "Failed to change signal action\n");
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -340,34 +322,34 @@ int main(int argc, char *argv[])
 				continue;
 
 			sigerr = signal(i, SIG_DFL);
-			if (sigerr == SIG_ERR) {
-				SYSDEBUG("Failed to reset to default action "
-					 "for signal \"%d\": %d", i, pid);
-			}
+			if (sigerr == SIG_ERR && !my_args.quiet)
+				fprintf(stderr, "Failed to reset to default action for signal \"%d\": %d\n", i, pid);
 		}
 
 		ret = pthread_sigmask(SIG_SETMASK, &omask, NULL);
 		if (ret < 0) {
-			SYSERROR("Failed to set signal mask");
+			if (my_args.quiet)
+				fprintf(stderr, "Failed to set signal mask\n");
 			exit(EXIT_FAILURE);
 		}
 
-		sid = setsid();
-		if (sid < 0)
-			DEBUG("Failed to make child session leader");
+		(void)setsid();
 
-		if (ioctl(STDIN_FILENO, TIOCSCTTY, 0) < 0)
-			DEBUG("Failed to set controlling terminal");
-
-		NOTICE("Exec'ing \"%s\"", my_args.argv[0]);
+		(void)ioctl(STDIN_FILENO, TIOCSCTTY, 0);
 
 		ret = execvp(my_args.argv[0], my_args.argv);
-		SYSERROR("Failed to exec \"%s\"", my_args.argv[0]);
+		if (my_args.quiet)
+			fprintf(stderr, "Failed to exec \"%s\"\n", my_args.argv[0]);
 		exit(ret);
 	}
+	logfd = open("/dev/console", O_WRONLY | O_NOCTTY | O_CLOEXEC);
+	if (logfd >= 0) {
+		ret = dup3(logfd, STDERR_FILENO, O_CLOEXEC);
+		if (ret < 0)
+			exit(EXIT_FAILURE);
+	}
 
-	INFO("Attempting to set proc title to \"init\"");
-	setproctitle("init");
+	(void)setproctitle("init");
 
 	/* Let's process the signals now. */
 	ret = sigdelset(&omask, SIGALRM);
@@ -376,7 +358,8 @@ int main(int argc, char *argv[])
 
 	ret = pthread_sigmask(SIG_SETMASK, &omask, NULL);
 	if (ret < 0) {
-		SYSERROR("Failed to set signal mask");
+		if (my_args.quiet)
+			fprintf(stderr, "Failed to set signal mask\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -413,8 +396,8 @@ int main(int argc, char *argv[])
 					kill_children(mypid);
 				} else {
 					ret = kill(-1, SIGTERM);
-					if (ret < 0)
-						SYSDEBUG("Failed to send SIGTERM to all children");
+					if (ret < 0 && !my_args.quiet)
+						fprintf(stderr, "Failed to send SIGTERM to all children\n");
 				}
 				alarm(1);
 			}
@@ -427,15 +410,13 @@ int main(int argc, char *argv[])
 				kill_children(mypid);
 			} else {
 				ret = kill(-1, SIGKILL);
-				if (ret < 0)
-					SYSDEBUG("Failed to send SIGTERM to all children");
+				if (ret < 0 && !my_args.quiet)
+					fprintf(stderr, "Failed to send SIGTERM to all children\n");
 			}
 			break;
 		}
 		default:
 			ret = kill(pid, was_interrupted);
-			if (ret < 0)
-				SYSDEBUG("Failed to send signal \"%d\" to %d", was_interrupted, pid);
 			break;
 		}
 		ret = EXIT_SUCCESS;
@@ -449,7 +430,8 @@ int main(int argc, char *argv[])
 			if (errno == EINTR)
 				continue;
 
-			SYSERROR("Failed to wait on child %d", pid);
+			if (my_args.quiet)
+				fprintf(stderr, "Failed to wait on child %d\n", pid);
 			goto out;
 		}
 
@@ -475,7 +457,7 @@ __noreturn static void print_usage_exit(const struct option longopts[])
 
 {
 	fprintf(stderr, "Usage: lxc-init [-n|--name=NAME] [-h|--help] [--usage] [--version]\n\
-		[-q|--quiet] [-o|--logfile=LOGFILE] [-l|--logpriority=LOGPRIORITY] [-P|--lxcpath=LXCPATH]\n");
+		[-q|--quiet] [-P|--lxcpath=LXCPATH]\n");
 	exit(0);
 }
 
@@ -494,8 +476,6 @@ Usage: lxc-init --name=NAME -- COMMAND\n\
 \n\
 Options :\n\
   -n, --name=NAME                  NAME of the container\n\
-  -o, --logfile=FILE               Output log to FILE instead of stderr\n\
-  -l, --logpriority=LEVEL          Set log priority to LEVEL\n\
   -q, --quiet                      Don't produce any output\n\
   -P, --lxcpath=PATH               Use specified container path\n\
   -?, --help                       Give this help list\n\
@@ -523,10 +503,8 @@ static int arguments_parse(struct arguments *args, int argc,
 			args->name = optarg;
 			break;
 		case 'o':
-			args->log_file = optarg;
 			break;
 		case 'l':
-			args->log_priority = optarg;
 			break;
 		case 'q':
 			args->quiet = true;

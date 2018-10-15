@@ -344,7 +344,6 @@ init_lxc_SOURCES = cmd/lxc_init.c \
 		   compiler.h \
 		   error.h \
 		   initutils.c initutils.h \
-		   log.c log.h \
 		   parse.c parse.h \
 		   raw_syscalls.c raw_syscalls.h \
 		   string_utils.c string_utils.h
