@@ -3291,9 +3291,8 @@ void remount_all_slave(void)
 		}
 	}
 
-#define __LXC_SENDFILE_MAX 0x7ffff000 /* maximum number of bytes sendfile can handle */
 again:
-	copied = sendfile(memfd, mntinfo_fd, NULL, __LXC_SENDFILE_MAX);
+	copied = lxc_sendfile_nointr(memfd, mntinfo_fd, NULL, LXC_SENDFILE_MAX);
 	if (copied < 0) {
 		if (errno == EINTR)
 			goto again;

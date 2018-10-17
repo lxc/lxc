@@ -389,4 +389,7 @@ enum {
 #define STRLITERALLEN(x) (sizeof(""x"") - 1)
 #define STRARRAYLEN(x) (sizeof(x) - 1)
 
+/* Maximum number of bytes sendfile() is able to send in one go. */
+#define LXC_SENDFILE_MAX 0x7ffff000
+
 #endif /* __LXC_MACRO_H */
