@@ -257,11 +257,17 @@ bin_PROGRAMS = lxc-attach \
 	       lxc-top \
 	       lxc-unfreeze \
 	       lxc-unshare \
-	       lxc-usernsexec \
 	       lxc-wait
 endif
 
 if ENABLE_COMMANDS
+
+if ENABLE_TOOLS
+bin_PROGRAMS += lxc-usernsexec
+else
+bin_PROGRAMS = lxc-usernsexec
+endif
+
 sbin_PROGRAMS = init.lxc
 
 pkglibexec_PROGRAMS = lxc-monitord \
