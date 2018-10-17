@@ -1889,10 +1889,12 @@ static int set_config_console_size(const char *key, const char *value,
 
 int append_unexp_config_line(const char *line, struct lxc_conf *conf)
 {
-	size_t len = conf->unexpanded_len, linelen = strlen(line);
+	size_t linelen;
+	size_t len = conf->unexpanded_len;
 
 	update_hwaddr(line);
 
+	linelen = strlen(line);
 	while (conf->unexpanded_alloced <= len + linelen + 2) {
 		char *tmp = realloc(conf->unexpanded_config,
 				    conf->unexpanded_alloced + 1024);
@@ -1901,16 +1903,16 @@ int append_unexp_config_line(const char *line, struct lxc_conf *conf)
 
 		if (!conf->unexpanded_config)
 			*tmp = '\0';
+
 		conf->unexpanded_config = tmp;
 		conf->unexpanded_alloced += 1024;
 	}
 
-	(void)strlcat(conf->unexpanded_config, line, conf->unexpanded_alloced);
+	memcpy(conf->unexpanded_config + conf->unexpanded_len, line, linelen);
 	conf->unexpanded_len += linelen;
-	if (line[linelen - 1] != '\n') {
-		(void)strlcat(conf->unexpanded_config, "\n", conf->unexpanded_alloced);
-		conf->unexpanded_len++;
-	}
+	if (line[linelen - 1] != '\n')
+		conf->unexpanded_config[conf->unexpanded_len++] = '\n';
+	conf->unexpanded_config[conf->unexpanded_len] = '\0';
 
 	return 0;
 }
