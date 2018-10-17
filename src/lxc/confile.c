@@ -2048,8 +2048,8 @@ int append_unexp_config_line(const char *line, struct lxc_conf *conf)
 		if (!tmp)
 			return -1;
 
-		if (!conf->unexpanded_config)
-			*tmp = '\0';
+		memset(tmp + conf->unexpanded_alloced, 0, 1024);
+
 		conf->unexpanded_config = tmp;
 		conf->unexpanded_alloced += 1024;
 	}
