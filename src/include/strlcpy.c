@@ -19,43 +19,17 @@
  * This function has been copied from musl.
  */
 
-#include <limits.h>
-#include <stdint.h>
 #include <string.h>
 
-#define ALIGN (sizeof(size_t) - 1)
-#define ONES ((size_t)-1 / UCHAR_MAX)
-#define HIGHS (ONES * (UCHAR_MAX / 2 + 1))
-#define HASZERO(x) (((x)-ONES) & ~(x)&HIGHS)
-
-size_t strlcpy(char *d, const char *s, size_t n)
+size_t strlcpy(char *dest, const char *src, size_t size)
 {
-	char *d0 = d;
-	size_t *wd;
-	const size_t *ws;
+	size_t ret = strlen(src);
 
-	if (!n--)
-		goto finish;
-
-	if (((uintptr_t)s & ALIGN) == ((uintptr_t)d & ALIGN)) {
-		for (; ((uintptr_t)s & ALIGN) && n && (*d = *s); n--, s++, d++)
-			;
-		if (n && *s) {
-			wd = (void *)d;
-			ws = (const void *)s;
-			for (; n >= sizeof(size_t) && !HASZERO(*ws);
-			     n -= sizeof(size_t), ws++, wd++)
-				*wd = *ws;
-			d = (void *)wd;
-			s = (const void *)ws;
-		}
+	if (size) {
+		size_t len = (ret >= size) ? size - 1 : ret;
+		memcpy(dest, src, len);
+		dest[len] = '\0';
 	}
 
-	for (; n && (*d = *s); n--, s++, d++)
-		;
-
-	*d = 0;
-
-finish:
-	return d - d0 + strlen(s);
+	return ret;
 }
