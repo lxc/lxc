@@ -20,8 +20,8 @@ int lxc_raw_execveat(int dirfd, const char *pathname, char *const argv[],
 	syscall(__NR_execveat, dirfd, pathname, argv, envp, flags);
 #else
 	errno = ENOSYS;
-	return -1;
 #endif
+	return -1;
 }
 
 /*
