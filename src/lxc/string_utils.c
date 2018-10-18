@@ -784,24 +784,32 @@ char *must_make_path(const char *first, ...)
 	char *cur, *dest;
 	size_t full_len = strlen(first);
 	size_t buf_len;
+	size_t cur_len;
 
 	dest = must_copy_string(first);
+	cur_len = full_len;
 
 	va_start(args, first);
 	while ((cur = va_arg(args, char *)) != NULL) {
-		full_len += strlen(cur);
+		buf_len = strlen(cur);
+
+		full_len += buf_len;
 		if (cur[0] != '/')
 			full_len++;
 
-		buf_len = full_len + 1;
-		dest = must_realloc(dest, buf_len);
+		dest = must_realloc(dest, full_len + 1);
 
-		if (cur[0] != '/')
-			(void)strlcat(dest, "/", buf_len);
-		(void)strlcat(dest, cur, buf_len);
+		if (cur[0] != '/') {
+			memcpy(dest + cur_len, "/", 1);
+			cur_len++;
+		}
+
+		memcpy(dest + cur_len, cur, buf_len);
+		cur_len += buf_len;
 	}
 	va_end(args);
 
+	dest[cur_len] = '\0';
 	return dest;
 }
 
@@ -812,23 +820,32 @@ char *must_append_path(char *first, ...)
 	va_list args;
 	char *dest = first;
 	size_t buf_len;
+	size_t cur_len;
 
 	full_len = strlen(first);
+	cur_len = full_len;
+
 	va_start(args, first);
 	while ((cur = va_arg(args, char *)) != NULL) {
-		full_len += strlen(cur);
+		buf_len = strlen(cur);
+
+		full_len += buf_len;
 		if (cur[0] != '/')
 			full_len++;
 
-		buf_len = full_len + 1;
-		dest = must_realloc(dest, buf_len);
+		dest = must_realloc(dest, full_len + 1);
 
-		if (cur[0] != '/')
-			(void)strlcat(dest, "/", buf_len);
-		(void)strlcat(dest, cur, buf_len);
+		if (cur[0] != '/') {
+			memcpy(dest + cur_len, "/", 1);
+			cur_len++;
+		}
+
+		memcpy(dest + cur_len, cur, buf_len);
+		cur_len += buf_len;
 	}
 	va_end(args);
 
+	dest[cur_len] = '\0';
 	return dest;
 }
 
