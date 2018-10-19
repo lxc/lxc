@@ -34,7 +34,6 @@ int lxc_raw_execveat(int dirfd, const char *pathname, char *const argv[],
  */
 pid_t lxc_raw_clone(unsigned long flags)
 {
-
 	/*
 	 * These flags don't interest at all so we don't jump through any hoopes
 	 * of retrieving them and passing them to the kernel.

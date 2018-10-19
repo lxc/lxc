@@ -1212,7 +1212,7 @@ static int lxc_cmd_accept(int fd, uint32_t events, void *data,
 
 	connection = accept(fd, NULL, 0);
 	if (connection < 0) {
-		SYSERROR("Failed to accept connection to run command.");
+		SYSERROR("Failed to accept connection to run command");
 		return LXC_MAINLOOP_ERROR;
 	}
 
