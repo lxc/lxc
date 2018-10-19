@@ -72,7 +72,7 @@ int lxc_strmunmap(void *addr, size_t length)
 int lxc_file_for_each_line_mmap(const char *file, lxc_file_cb callback, void *data)
 {
 	int saved_errno;
-	ssize_t ret, bytes_sent;
+	ssize_t ret = -1, bytes_sent;
 	char *line;
 	int fd = -1, memfd = -1;
 	char *buf = NULL;
