@@ -120,7 +120,7 @@ int lxc_make_abstract_socket_name(char *path, size_t pathlen,
 	 * Although null termination isn't required by the API, we do it anyway
 	 * because we print the sockname out sometimes.
 	 */
-	len = pathlen -2;
+	len = pathlen - 2;
 
 	name = lxcname;
 	if (!name)
@@ -220,6 +220,6 @@ int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
 		return state;
 	}
 
-	TRACE("added state client %d to state client list", state_client_fd);
+	TRACE("Added state client %d to state client list", state_client_fd);
 	return MAX_STATE;
 }
