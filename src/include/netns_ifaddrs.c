@@ -373,12 +373,7 @@ static int __ifaddrs_netlink_recv(int fd, unsigned int seq, int type, int af,
 					    struct nlmsghdr *h),
 				  void *ctx)
 {
-	char getlink_buf[__NETLINK_ALIGN(sizeof(struct nlmsghdr)) +
-			 __NETLINK_ALIGN(sizeof(struct ifinfomsg)) +
-			 __NETLINK_ALIGN(1024)];
-	char getaddr_buf[__NETLINK_ALIGN(sizeof(struct nlmsghdr)) +
-			 __NETLINK_ALIGN(sizeof(struct ifaddrmsg)) +
-			 __NETLINK_ALIGN(1024)];
+	int r, property, ret;
 	char *buf;
 	struct nlmsghdr *hdr;
 	struct ifinfomsg *ifi_msg;
@@ -391,47 +386,43 @@ static int __ifaddrs_netlink_recv(int fd, unsigned int seq, int type, int af,
 		} req;
 		struct nlmsghdr reply;
 	} u;
-	int r, property, ret;
-
-	if (type == RTM_GETLINK)
-		buf = getlink_buf;
-	else if (type == RTM_GETADDR)
-		buf = getaddr_buf;
-	else
-		return -1;
-
-	memset(buf, 0, sizeof(*buf));
+	char getlink_buf[__NETLINK_ALIGN(sizeof(struct nlmsghdr)) +
+			 __NETLINK_ALIGN(sizeof(struct ifinfomsg)) +
+			 __NETLINK_ALIGN(1024)] = {0};
+	char getaddr_buf[__NETLINK_ALIGN(sizeof(struct nlmsghdr)) +
+			 __NETLINK_ALIGN(sizeof(struct ifaddrmsg)) +
+			 __NETLINK_ALIGN(1024)] = {0};
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-align"
-	hdr = (struct nlmsghdr *)buf;
-	if (type == RTM_GETLINK)
-		ifi_msg = (struct ifinfomsg *)__NLMSG_DATA(hdr);
-	else
-		ifa_msg = (struct ifaddrmsg *)__NLMSG_DATA(hdr);
-
-	if (type == RTM_GETLINK)
+	if (type == RTM_GETLINK) {
+		buf = getlink_buf;
+		hdr = (struct nlmsghdr *)buf;
 		hdr->nlmsg_len = NLMSG_LENGTH(sizeof(*ifi_msg));
-	else
+
+		ifi_msg = (struct ifinfomsg *)__NLMSG_DATA(hdr);
+		ifi_msg->ifi_family = af;
+
+		property = IFLA_TARGET_NETNSID;
+	} else if (type == RTM_GETADDR) {
+		buf = getaddr_buf;
+		hdr = (struct nlmsghdr *)buf;
 		hdr->nlmsg_len = NLMSG_LENGTH(sizeof(*ifa_msg));
+
+		ifa_msg = (struct ifaddrmsg *)__NLMSG_DATA(hdr);
+		ifa_msg->ifa_family = af;
+
+		property = IFA_TARGET_NETNSID;
+	} else {
+		errno = EINVAL;
+		return -1;
+	}
 #pragma GCC diagnostic pop
 
 	hdr->nlmsg_type = type;
 	hdr->nlmsg_flags = NLM_F_DUMP | NLM_F_REQUEST;
 	hdr->nlmsg_pid = 0;
 	hdr->nlmsg_seq = seq;
-	if (type == RTM_GETLINK)
-		ifi_msg->ifi_family = af;
-	else
-		ifa_msg->ifa_family = af;
-
-	errno = EINVAL;
-	if (type == RTM_GETLINK)
-		property = IFLA_TARGET_NETNSID;
-	else if (type == RTM_GETADDR)
-		property = IFA_TARGET_NETNSID;
-	else
-		return -1;
 
 	if (netns_id >= 0)
 		addattr(hdr, 1024, property, &netns_id, sizeof(netns_id));
