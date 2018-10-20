@@ -3272,8 +3272,10 @@ static int get_config_hooks(const char *key, char *retv, int inlen,
 		return -1;
 
 	subkey = strchr(subkey + 1, '.');
+	if (!subkey)
+		return -1;
 	subkey++;
-	if (!*subkey)
+	if (*subkey == '\0')
 		return -1;
 
 	for (i = 0; i < NUM_LXC_HOOKS; i++) {
