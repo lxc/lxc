@@ -1469,7 +1469,8 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
  */
 static int lxc_pivot_root(const char *rootfs)
 {
-	int newroot = -1, oldroot = -1, ret = -1;
+	int oldroot;
+	int newroot = -1, ret = -1;
 
 	oldroot = open("/", O_DIRECTORY | O_RDONLY);
 	if (oldroot < 0) {
@@ -1539,9 +1540,9 @@ static int lxc_pivot_root(const char *rootfs)
 	TRACE("pivot_root(\"%s\") successful", rootfs);
 
 on_error:
-	if (oldroot != -1)
-		close(oldroot);
-	if (newroot != -1)
+	close(oldroot);
+
+	if (newroot >= 0)
 		close(newroot);
 
 	return ret;
