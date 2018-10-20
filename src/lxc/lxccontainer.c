@@ -1935,8 +1935,7 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 
 out_unlock:
 	umask(mask);
-	if (partial_fd >= 0)
-		remove_partial(c, partial_fd);
+	remove_partial(c, partial_fd);
 
 out:
 	if (!ret)
