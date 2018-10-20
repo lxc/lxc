@@ -299,13 +299,8 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 		SYSTRACE("Command \"%s\" failed to connect command socket",
 		         lxc_cmd_str(cmd->req.cmd));
 
-		if (errno == ECONNREFUSED)
+		if (errno == ECONNREFUSED || errno == EPIPE)
 			*stopped = 1;
-
-		if (errno == EPIPE) {
-			*stopped = 1;
-			client_fd = 0;
-		}
 
 		return -1;
 	}
@@ -314,12 +309,12 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 	if (ret < 0 && errno == ECONNRESET)
 		*stopped = 1;
 
-	if (!stay_connected || ret <= 0)
-		if (client_fd >= 0) {
-			saved_errno = errno;
-			close(client_fd);
-			errno = saved_errno;
-		}
+	if (!stay_connected || ret <= 0) {
+		saved_errno = errno;
+		close(client_fd);
+		errno = saved_errno;
+		return ret;
+	}
 
 	if (stay_connected && ret > 0)
 		cmd->rsp.ret = client_fd;
