@@ -135,11 +135,6 @@ int lxc_wait(const char *lxcname, const char *states, int timeout,
 		(void)nanosleep(&onesec, NULL);
 	}
 
-	if (state < 0) {
-		ERROR("Failed to retrieve state from monitor");
-		return -1;
-	}
-
 	TRACE("Retrieved state of container %s", lxc_state2str(state));
 	if (!s[state])
 		return -1;
