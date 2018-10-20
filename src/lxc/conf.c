@@ -1472,13 +1472,13 @@ static int lxc_pivot_root(const char *rootfs)
 	int oldroot;
 	int newroot = -1, ret = -1;
 
-	oldroot = open("/", O_DIRECTORY | O_RDONLY);
+	oldroot = open("/", O_DIRECTORY | O_RDONLY | O_CLOEXEC);
 	if (oldroot < 0) {
 		SYSERROR("Failed to open old root directory");
 		return -1;
 	}
 
-	newroot = open(rootfs, O_DIRECTORY | O_RDONLY);
+	newroot = open(rootfs, O_DIRECTORY | O_RDONLY | O_CLOEXEC);
 	if (newroot < 0) {
 		SYSERROR("Failed to open new root directory");
 		goto on_error;
