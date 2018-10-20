@@ -2420,10 +2420,6 @@ FILE *make_anonymous_mount_file(struct lxc_list *mount,
 
 		TRACE("Created temporary mount file");
 	}
-	if (fd < 0) {
-		SYSERROR("Could not create temporary mount file");
-		return NULL;
-	}
 
 	lxc_list_for_each (iterator, mount) {
 		size_t len;
