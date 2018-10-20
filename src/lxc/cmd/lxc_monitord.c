@@ -80,7 +80,7 @@ struct lxc_monitor {
 	struct lxc_epoll_descr descr;
 };
 
-static struct lxc_monitor mon;
+static struct lxc_monitor monitor;
 static int quit;
 
 static int lxc_monitord_fifo_create(struct lxc_monitor *mon)
@@ -349,7 +349,7 @@ static int lxc_monitord_mainloop_add(struct lxc_monitor *mon)
 
 static void lxc_monitord_cleanup(void)
 {
-	lxc_monitord_delete(&mon);
+	lxc_monitord_delete(&monitor);
 }
 
 static void lxc_monitord_sig_handler(int sig)
@@ -415,15 +415,15 @@ int main(int argc, char *argv[])
 
 	ret = EXIT_FAILURE;
 
-	memset(&mon, 0, sizeof(mon));
-	mon.lxcpath = lxcpath;
-	if (lxc_mainloop_open(&mon.descr)) {
+	memset(&monitor, 0, sizeof(monitor));
+	monitor.lxcpath = lxcpath;
+	if (lxc_mainloop_open(&monitor.descr)) {
 		ERROR("Failed to create mainloop");
 		goto on_error;
 	}
 	mainloop_opened = true;
 
-	if (lxc_monitord_create(&mon))
+	if (lxc_monitord_create(&monitor))
 		goto on_error;
 	monitord_created = true;
 
@@ -437,22 +437,22 @@ int main(int argc, char *argv[])
 		;
 	close(pipefd);
 
-	if (lxc_monitord_mainloop_add(&mon)) {
+	if (lxc_monitord_mainloop_add(&monitor)) {
 		ERROR("Failed to add mainloop handlers");
 		goto on_error;
 	}
 
 	NOTICE("lxc-monitord with pid %d is now monitoring lxcpath %s",
-	       lxc_raw_getpid(), mon.lxcpath);
+	       lxc_raw_getpid(), monitor.lxcpath);
 
 	for (;;) {
-		ret = lxc_mainloop(&mon.descr, 1000 * 30);
+		ret = lxc_mainloop(&monitor.descr, 1000 * 30);
 		if (ret) {
 			ERROR("mainloop returned an error");
 			break;
 		}
 
-		if (mon.clientfds_cnt <= 0) {
+		if (monitor.clientfds_cnt <= 0) {
 			NOTICE("No remaining clients. lxc-monitord is exiting");
 			break;
 		}
@@ -471,7 +471,7 @@ on_error:
 		lxc_monitord_cleanup();
 
 	if (mainloop_opened)
-		lxc_mainloop_close(&mon.descr);
+		lxc_mainloop_close(&monitor.descr);
 
 	exit(ret);
 }
