@@ -48,7 +48,7 @@ static bool pid;
 static bool stats;
 static bool humanize = true;
 static char **key = NULL;
-static int keys = 0;
+static int nr_keys = 0;
 static int filter_count = 0;
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg)
@@ -57,13 +57,13 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 
 	switch (c) {
 	case 'c':
-		newk = realloc(key, (keys + 1) * sizeof(key[0]));
+		newk = realloc(key, (nr_keys + 1) * sizeof(key[0]));
 		if (!newk)
 			return -1;
 
 		key = newk;
-		key[keys] = arg;
-		keys++;
+		key[nr_keys] = arg;
+		nr_keys++;
 		break;
 	case 'i': ips = true; filter_count += 1; break;
 	case 's': state = true; filter_count += 1; break;
@@ -341,7 +341,7 @@ static int print_info(const char *name, const char *lxcpath)
 		return -1;
 	}
 
-	if (!state && !pid && !ips && !stats && keys <= 0) {
+	if (!state && !pid && !ips && !stats && nr_keys <= 0) {
 		state = pid = ips = stats = true;
 		print_info_msg_str("Name:", c->name);
 	}
@@ -380,7 +380,7 @@ static int print_info(const char *name, const char *lxcpath)
 		print_net_stats(c);
 	}
 
-	for(i = 0; i < keys; i++) {
+	for(i = 0; i < nr_keys; i++) {
 		int len = c->get_config_item(c, key[i], NULL, 0);
 
 		if (len > 0) {
@@ -389,7 +389,7 @@ static int print_info(const char *name, const char *lxcpath)
 			if (c->get_config_item(c, key[i], val, len + 1) != len) {
 				fprintf(stderr, "unable to read %s from configuration\n", key[i]);
 			} else {
-				if (!humanize && keys == 1)
+				if (!humanize && nr_keys == 1)
 					printf("%s\n", val);
 				else
 					printf("%s = %s\n", key[i], val);
@@ -397,7 +397,7 @@ static int print_info(const char *name, const char *lxcpath)
 
 			free(val);
 		} else if (len == 0) {
-			if (!humanize && keys == 1)
+			if (!humanize && nr_keys == 1)
 				printf("\n");
 			else
 				printf("%s =\n", key[i]);
