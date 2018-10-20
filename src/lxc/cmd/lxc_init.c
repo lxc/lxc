@@ -182,17 +182,17 @@ static void kill_children(pid_t pid)
 	}
 
 	while (!feof(f)) {
-		pid_t pid;
+		pid_t find_pid;
 
-		if (fscanf(f, "%d ", &pid) != 1) {
+		if (fscanf(f, "%d ", &find_pid) != 1) {
 			if (my_args.quiet)
 				fprintf(stderr, "Failed to retrieve pid\n");
 			fclose(f);
 			return;
 		}
 
-		kill_children(pid);
-		kill(pid, SIGKILL);
+		(void)kill_children(find_pid);
+		(void)kill(find_pid, SIGKILL);
 	}
 
 	fclose(f);
