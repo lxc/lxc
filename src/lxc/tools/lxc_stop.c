@@ -205,8 +205,7 @@ int main(int argc, char *argv[])
 
 	/* reboot */
 	if (my_args.reboot) {
-		ret = c->reboot2(c, my_args.timeout);
-		if (ret < 0)
+		if (!c->reboot2(c, my_args.timeout))
 			ret = EXIT_FAILURE;
 		else
 			ret = EXIT_SUCCESS;
