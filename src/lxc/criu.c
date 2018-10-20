@@ -694,7 +694,7 @@ bool __criu_check_feature(uint64_t *features_to_check)
 		return false;
 	}
 
-	while (current_bit < sizeof(uint64_t) * 8) {
+	while (current_bit < (sizeof(uint64_t) * 8 - 1)) {
 		/* only test requested features */
 		if (!(features & (1ULL << current_bit))) {
 			/* skip this */
