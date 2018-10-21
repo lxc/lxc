@@ -180,8 +180,6 @@ static bool lxc_try_preserve_namespaces(struct lxc_handler *handler,
 
 		fd = lxc_try_preserve_ns(pid, ns_info[i].proc_name);
 		if (fd < 0) {
-			handler->nsfd[i] = -EBADF;
-
 			/* Do not fail to start container on kernels that do
 			 * not support interacting with namespaces through
 			 * /proc.
@@ -295,7 +293,6 @@ restart:
 static int setup_signal_fd(sigset_t *oldmask)
 {
 	int ret;
-	int sig;
 	sigset_t mask;
 	const int signals[] = {SIGBUS, SIGILL, SIGSEGV, SIGWINCH};
 
@@ -304,7 +301,7 @@ static int setup_signal_fd(sigset_t *oldmask)
 	if (ret < 0)
 		return -EBADF;
 
-	for (sig = 0; sig < (sizeof(signals) / sizeof(signals[0])); sig++) {
+	for (int sig = 0; sig < (sizeof(signals) / sizeof(signals[0])); sig++) {
 		ret = sigdelset(&mask, signals[sig]);
 		if (ret < 0)
 			return -EBADF;
@@ -377,13 +374,15 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	if (siginfo.ssi_signo == SIGHUP) {
 		kill(hdlr->pid, SIGTERM);
 		INFO("Killing %d since terminal hung up", hdlr->pid);
-		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : LXC_MAINLOOP_CONTINUE;
+		return hdlr->init_died ? LXC_MAINLOOP_CLOSE
+				       : LXC_MAINLOOP_CONTINUE;
 	}
 
 	if (siginfo.ssi_signo != SIGCHLD) {
 		kill(hdlr->pid, siginfo.ssi_signo);
 		INFO("Forwarded signal %d to pid %d", siginfo.ssi_signo, hdlr->pid);
-		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : LXC_MAINLOOP_CONTINUE;
+		return hdlr->init_died ? LXC_MAINLOOP_CLOSE
+				       : LXC_MAINLOOP_CONTINUE;
 	}
 
 	/* More robustness, protect ourself from a SIGCHLD sent
@@ -392,18 +391,24 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	if (siginfo.ssi_pid != hdlr->pid) {
 		NOTICE("Received %d from pid %d instead of container init %d",
 		       siginfo.ssi_signo, siginfo.ssi_pid, hdlr->pid);
-		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : LXC_MAINLOOP_CONTINUE;
+		return hdlr->init_died ? LXC_MAINLOOP_CLOSE
+				       : LXC_MAINLOOP_CONTINUE;
 	}
 
 	if (siginfo.ssi_code == CLD_STOPPED) {
 		INFO("Container init process was stopped");
-		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : LXC_MAINLOOP_CONTINUE;
-	} else if (siginfo.ssi_code == CLD_CONTINUED) {
+		return hdlr->init_died ? LXC_MAINLOOP_CLOSE
+				       : LXC_MAINLOOP_CONTINUE;
+	}
+
+	if (siginfo.ssi_code == CLD_CONTINUED) {
 		INFO("Container init process was continued");
-		return hdlr->init_died ? LXC_MAINLOOP_CLOSE : LXC_MAINLOOP_CONTINUE;
+		return hdlr->init_died ? LXC_MAINLOOP_CLOSE
+				       : LXC_MAINLOOP_CONTINUE;
 	}
 
 	DEBUG("Container init process %d exited", hdlr->pid);
+
 	return LXC_MAINLOOP_CLOSE;
 }
 
@@ -648,6 +653,9 @@ void lxc_free_handler(struct lxc_handler *handler)
 
 	if (handler->state_socket_pair[1] >= 0)
 		close(handler->state_socket_pair[1]);
+
+	if (handler->cgroup_ops)
+		cgroup_exit(handler->cgroup_ops);
 
 	handler->conf = NULL;
 	free(handler);
@@ -959,7 +967,6 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 
 	cgroup_ops->payload_destroy(cgroup_ops, handler);
 	cgroup_ops->monitor_destroy(cgroup_ops, handler);
-	cgroup_exit(cgroup_ops);
 
 	if (handler->conf->reboot == REBOOT_NONE) {
 		/* For all new state clients simply close the command socket.
