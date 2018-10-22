@@ -2133,7 +2133,8 @@ static int __cg_unified_attach(const struct hierarchy *h, const char *name,
 		if (errno != EBUSY)
 			goto on_error;
 
-	} while (++idx > 0 && idx < 1000);
+		idx++;
+	} while (idx < 1000);
 
 on_success:
 	if (idx < 1000)

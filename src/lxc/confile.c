@@ -156,7 +156,7 @@ lxc_config_define(uts_name);
 lxc_config_define(sysctl);
 lxc_config_define(proc);
 
-static struct lxc_config_t config[] = {
+static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.arch",                      set_config_personality,                 get_config_personality,                 clr_config_personality,               },
 	{ "lxc.apparmor.profile",          set_config_apparmor_profile,            get_config_apparmor_profile,            clr_config_apparmor_profile,          },
 	{ "lxc.apparmor.allow_incomplete", set_config_apparmor_allow_incomplete,   get_config_apparmor_allow_incomplete,   clr_config_apparmor_allow_incomplete, },
@@ -246,15 +246,15 @@ static struct lxc_config_t config[] = {
 	{ "lxc.proc",                      set_config_proc,                        get_config_proc,                        clr_config_proc,                      },
 };
 
-static const size_t config_size = sizeof(config) / sizeof(struct lxc_config_t);
+static const size_t config_jump_table_size = sizeof(config_jump_table) / sizeof(struct lxc_config_t);
 
 struct lxc_config_t *lxc_get_config(const char *key)
 {
 	size_t i;
 
-	for (i = 0; i < config_size; i++)
-		if (!strncmp(config[i].name, key, strlen(config[i].name)))
-			return &config[i];
+	for (i = 0; i < config_jump_table_size; i++)
+		if (!strncmp(config_jump_table[i].name, key, strlen(config_jump_table[i].name)))
+			return &config_jump_table[i];
 
 	return NULL;
 }
@@ -3489,8 +3489,10 @@ static int get_config_hooks(const char *key, char *retv, int inlen,
 		return -1;
 
 	subkey = strchr(subkey + 1, '.');
+	if (!subkey)
+		return -1;
 	subkey++;
-	if (!*subkey)
+	if (*subkey == '\0')
 		return -1;
 
 	for (i = 0; i < NUM_LXC_HOOKS; i++) {
@@ -5190,8 +5192,8 @@ int lxc_list_config_items(char *retv, int inlen)
 	else
 		memset(retv, 0, inlen);
 
-	for (i = 0; i < config_size; i++) {
-		char *s = config[i].name;
+	for (i = 0; i < config_jump_table_size; i++) {
+		char *s = config_jump_table[i].name;
 
 		if (s[strlen(s) - 1] == '.')
 			continue;

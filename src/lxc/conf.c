@@ -1494,15 +1494,16 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
  */
 static int lxc_pivot_root(const char *rootfs)
 {
-	int newroot = -1, oldroot = -1, ret = -1;
+	int oldroot;
+	int newroot = -1, ret = -1;
 
-	oldroot = open("/", O_DIRECTORY | O_RDONLY);
+	oldroot = open("/", O_DIRECTORY | O_RDONLY | O_CLOEXEC);
 	if (oldroot < 0) {
 		SYSERROR("Failed to open old root directory");
 		return -1;
 	}
 
-	newroot = open(rootfs, O_DIRECTORY | O_RDONLY);
+	newroot = open(rootfs, O_DIRECTORY | O_RDONLY | O_CLOEXEC);
 	if (newroot < 0) {
 		SYSERROR("Failed to open new root directory");
 		goto on_error;
@@ -1564,9 +1565,9 @@ static int lxc_pivot_root(const char *rootfs)
 	TRACE("pivot_root(\"%s\") successful", rootfs);
 
 on_error:
-	if (oldroot != -1)
-		close(oldroot);
-	if (newroot != -1)
+	close(oldroot);
+
+	if (newroot >= 0)
 		close(newroot);
 
 	return ret;
@@ -2418,10 +2419,6 @@ FILE *make_anonymous_mount_file(struct lxc_list *mount,
 		}
 
 		TRACE("Created temporary mount file");
-	}
-	if (fd < 0) {
-		SYSERROR("Could not create temporary mount file");
-		return NULL;
 	}
 
 	lxc_list_for_each (iterator, mount) {

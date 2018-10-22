@@ -87,7 +87,7 @@ static const struct option my_longopts[] = {
 };
 
 /* mount keys */
-static char *const keys[] = {
+static char *const mount_keys[] = {
 	[LXC_MNT_BIND] = "bind",
 	[LXC_MNT_OVL] = "overlay",
 	NULL
@@ -568,7 +568,7 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 		break;
 	case 'm':
 		subopts = optarg;
-		if (parse_mntsubopts(subopts, keys, mntparameters) < 0)
+		if (parse_mntsubopts(subopts, mount_keys, mntparameters) < 0)
 			return -1;
 		break;
 	case 'B':
