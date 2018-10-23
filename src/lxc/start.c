@@ -204,6 +204,38 @@ static inline bool match_stdfds(int fd)
 	return (fd == STDIN_FILENO || fd == STDOUT_FILENO || fd == STDERR_FILENO);
 }
 
+#ifdef HAVE_DLOG
+static bool match_dlog_fds(struct dirent *direntp)
+{
+	char path[PATH_MAX] = {0};
+	char link[PATH_MAX] = {0};
+	ssize_t linklen;
+	int ret;
+
+	ret = snprintf(path, PATH_MAX, "/proc/self/fd/%s", direntp->d_name);
+	if (ret < 0 || ret >= PATH_MAX) {
+		ERROR("Failed to create file descriptor name");
+		return false;
+	}
+
+	linklen = readlink(path, link, PATH_MAX);
+	if (linklen < 0) {
+		SYSERROR("Failed to read link path - \"%s\"", path);
+		return false;
+	} else if (linklen >= PATH_MAX) {
+		ERROR("The name of link path is too long - \"%s\"", path);
+		return false;
+	}
+
+	if (strcmp(link, "/dev/log_main") == 0 ||
+	    strcmp(link, "/dev/log_system") == 0 ||
+	    strcmp(link, "/dev/log_radio") == 0)
+		return true;
+
+	return false;
+}
+#endif
+
 int lxc_check_inherited(struct lxc_conf *conf, bool closeall,
 			int *fds_to_ignore, size_t len_fds)
 {
@@ -265,6 +297,11 @@ restart:
 		if (matched)
 			continue;
 
+#ifdef HAVE_DLOG
+		if (match_dlog_fds(direntp))
+			continue;
+
+#endif
 		if (current_config && fd == current_config->logfd)
 			continue;
 
