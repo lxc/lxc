@@ -77,6 +77,7 @@ char *dir_new_path(char *src, const char *oldname, const char *name,
 		p += l1;
 		nlen += (strlen(lxcpath) - l1);
 	}
+
 	l2 = strlen(oldname);
 	while ((p = strstr(p, oldname)) != NULL) {
 		p += l2;
@@ -105,14 +106,17 @@ char *dir_new_path(char *src, const char *oldname, const char *name,
 
 		/* move target pointer (p) */
 		p += p2 - src;
+
 		/* print new name in place of oldname */
 		p += sprintf(p, "%s", name);
+
 		/* move src to end of oldname */
 		src = p2 + l2;
 	}
 
 	/* copy the rest of src */
 	sprintf(p, "%s", src);
+
 	return ret;
 }
 
@@ -214,38 +218,42 @@ int detect_fs(struct lxc_storage *bdev, char *type, int len)
 
 	if (pid > 0) {
 		int status;
+
 		close(p[1]);
 		memset(type, 0, len);
+
 		ret = read(p[0], type, len - 1);
-		close(p[0]);
 		if (ret < 0) {
-			SYSERROR("error reading from pipe");
-			wait(&status);
-			return -1;
+			SYSERROR("Failed to read FSType from pipe");
 		} else if (ret == 0) {
-			ERROR("child exited early - fstype not found");
-			wait(&status);
-			return -1;
+			ERROR("FSType not found - child exited early");
+			ret = -1;
 		}
+
+		close(p[0]);
 		wait(&status);
+
+		if (ret < 0)
+			return ret;
+
 		type[len - 1] = '\0';
-		INFO("detected fstype %s for %s", type, srcdev);
+		INFO("Detected FSType \"%s\" for \"%s\"", type, srcdev);
+
 		return ret;
 	}
 
 	if (unshare(CLONE_NEWNS) < 0)
 		exit(1);
 
-	if (detect_shared_rootfs()) {
+	if (detect_shared_rootfs())
 		if (mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL)) {
 			SYSERROR("Failed to make / rslave");
 			ERROR("Continuing...");
 		}
-	}
 
 	ret = mount_unknown_fs(srcdev, bdev->dest, bdev->mntopts);
 	if (ret < 0) {
-		ERROR("failed mounting %s onto %s to detect fstype", srcdev,
+		ERROR("Failed to mount \"%s\" onto \"%s\" to detect FSType", srcdev,
 		      bdev->dest);
 		exit(1);
 	}
@@ -253,6 +261,7 @@ int detect_fs(struct lxc_storage *bdev, char *type, int len)
 	l = linkderef(srcdev, devpath);
 	if (!l)
 		exit(1);
+
 	f = fopen("/proc/self/mounts", "r");
 	if (!f)
 		exit(1);
@@ -261,17 +270,21 @@ int detect_fs(struct lxc_storage *bdev, char *type, int len)
 		sp1 = strchr(line, ' ');
 		if (!sp1)
 			exit(1);
+
 		*sp1 = '\0';
 		if (strcmp(line, l))
 			continue;
+
 		sp2 = strchr(sp1 + 1, ' ');
 		if (!sp2)
 			exit(1);
 		*sp2 = '\0';
+
 		sp3 = strchr(sp2 + 1, ' ');
 		if (!sp3)
 			exit(1);
 		*sp3 = '\0';
+
 		sp2++;
 		if (write(p[1], sp2, strlen(sp2)) != strlen(sp2))
 			exit(1);
@@ -305,10 +318,12 @@ int do_mkfs_exec_wrapper(void *args)
 		return -1;
 	}
 
-	TRACE("executing \"%s %s\"", mkfs, data[1]);
+	TRACE("Executing \"%s %s\"", mkfs, data[1]);
 	execlp(mkfs, mkfs, data[1], (char *)NULL);
-	SYSERROR("failed to run \"%s %s \"", mkfs, data[1]);
+
+	SYSERROR("Failed to run \"%s %s\"", mkfs, data[1]);
 	free(mkfs);
+
 	return -1;
 }
 
@@ -355,7 +370,7 @@ int mount_unknown_fs(const char *rootfs, const char *target,
 
 		ret = lxc_file_for_each_line(fsfile[i], find_fstype_cb, &cbarg);
 		if (ret < 0) {
-			ERROR("failed to parse '%s'", fsfile[i]);
+			ERROR("Failed to parse \"%s\"", fsfile[i]);
 			return -1;
 		}
 
@@ -363,7 +378,8 @@ int mount_unknown_fs(const char *rootfs, const char *target,
 			return 0;
 	}
 
-	ERROR("failed to determine fs type for '%s'", rootfs);
+	ERROR("Failed to determine FSType for \"%s\"", rootfs);
+
 	return -1;
 }
 
@@ -392,7 +408,7 @@ int find_fstype_cb(char *buffer, void *data)
 	fstype += lxc_char_left_gc(fstype, strlen(fstype));
 	fstype[lxc_char_right_gc(fstype, strlen(fstype))] = '\0';
 
-	DEBUG("trying to mount '%s'->'%s' with fstype '%s'", cbarg->rootfs,
+	DEBUG("Trying to mount \"%s\"->\"%s\" with FSType \"%s\"", cbarg->rootfs,
 	      cbarg->target, fstype);
 
 	if (parse_mntopts(cbarg->options, &mntflags, &mntdata) < 0) {
@@ -401,14 +417,14 @@ int find_fstype_cb(char *buffer, void *data)
 	}
 
 	if (mount(cbarg->rootfs, cbarg->target, fstype, mntflags, mntdata)) {
-		SYSDEBUG("mount failed with error");
+		SYSDEBUG("Failed to mount");
 		free(mntdata);
 		return 0;
 	}
 
 	free(mntdata);
 
-	INFO("mounted '%s' on '%s', with fstype '%s'", cbarg->rootfs,
+	INFO("Mounted \"%s\" on \"%s\", with FSType \"%s\"", cbarg->rootfs,
 	     cbarg->target, fstype);
 
 	return 1;
@@ -430,10 +446,10 @@ const char *linkderef(const char *path, char *dest)
 
 	ret = readlink(path, dest, PATH_MAX);
 	if (ret < 0) {
-		SYSERROR("error reading link %s", path);
+		SYSERROR("Failed to read link of \"%s\"", path);
 		return NULL;
 	} else if (ret >= PATH_MAX) {
-		ERROR("link in %s too long", path);
+		ERROR("The name of link of \"%s\" is too long", path);
 		return NULL;
 	}
 	dest[ret] = '\0';
