@@ -153,12 +153,18 @@ int blk_getsize(struct lxc_storage *bdev, uint64_t *size)
 	const char *src;
 
 	src = lxc_storage_get_path(bdev->src, bdev->type);
-	fd = open(src, O_RDONLY);
-	if (fd < 0)
+
+	fd = open(src, O_RDONLY | O_CLOEXEC);
+	if (fd < 0) {
+		SYSERROR("Failed to open \"%s\"", src);
 		return -1;
+	}
 
 	/* size of device in bytes */
 	ret = ioctl(fd, BLKGETSIZE64, size);
+	if (ret < 0)
+		SYSERROR("Failed to get block size of dev-src");
+
 	close(fd);
 	return ret;
 }
@@ -195,11 +201,16 @@ int detect_fs(struct lxc_storage *bdev, char *type, int len)
 	srcdev = lxc_storage_get_path(bdev->src, bdev->type);
 
 	ret = pipe(p);
-	if (ret < 0)
+	if (ret < 0) {
+		SYSERROR("Failed to create pipe");
 		return -1;
+	}
 
-	if ((pid = fork()) < 0)
+	pid = fork();
+	if (pid < 0) {
+		SYSERROR("Failed to fork process");
 		return -1;
+	}
 
 	if (pid > 0) {
 		int status;
@@ -409,8 +420,10 @@ const char *linkderef(const char *path, char *dest)
 	ssize_t ret;
 
 	ret = stat(path, &sbuf);
-	if (ret < 0)
+	if (ret < 0) {
+		SYSERROR("Failed to get status of file - \"%s\"", path);
 		return NULL;
+	}
 
 	if (!S_ISLNK(sbuf.st_mode))
 		return path;
@@ -517,20 +530,22 @@ int storage_destroy_wrapper(void *data)
 	struct lxc_conf *conf = data;
 
 	if (setgid(0) < 0) {
-		ERROR("Failed to setgid to 0");
+		SYSERROR("Failed to setgid to 0");
 		return -1;
 	}
 
 	if (setgroups(0, NULL) < 0)
-		WARN("Failed to clear groups");
+		SYSWARN("Failed to clear groups");
 
 	if (setuid(0) < 0) {
-		ERROR("Failed to setuid to 0");
+		SYSERROR("Failed to setuid to 0");
 		return -1;
 	}
 
-	if (!storage_destroy(conf))
+	if (!storage_destroy(conf)) {
+		ERROR("Failed to destroy storage");
 		return -1;
+	}
 
 	return 0;
 }
