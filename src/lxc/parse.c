@@ -101,7 +101,6 @@ int lxc_file_for_each_line_mmap(const char *file, lxc_file_cb callback, void *da
 		return -1;
 	}
 
-
 	/* sendfile() handles up to 2GB. No config file should be that big. */
 	bytes_sent = lxc_sendfile_nointr(memfd, fd, NULL, LXC_SENDFILE_MAX);
 	if (bytes_sent < 0) {
@@ -170,7 +169,7 @@ int lxc_file_for_each_line(const char *file, lxc_file_cb callback, void *data)
 
 	f = fopen(file, "r");
 	if (!f) {
-		SYSERROR("failed to open %s", file);
+		SYSERROR("Failed to open \"%s\"", file);
 		return -1;
 	}
 
@@ -181,7 +180,7 @@ int lxc_file_for_each_line(const char *file, lxc_file_cb callback, void *data)
 			 * error.
 			 */
 			if (err < 0)
-				ERROR("Failed to parse config: %s", line);
+				ERROR("Failed to parse config: \"%s\"", line);
 			break;
 		}
 	}
