@@ -296,7 +296,7 @@ struct lxc_conf {
 	int stopsignal; /* signal used to hard stop container */
 	char *rcfile;	/* Copy of the top level rcfile we read */
 
-	/* Logfile and logleve can be set in a container config file. Those
+	/* Logfile and loglevel can be set in a container config file. Those
 	 * function as defaults. The defaults can be overriden by command line.
 	 * However we don't want the command line specified values to be saved
 	 * on c->save_config(). So we store the config file specified values
