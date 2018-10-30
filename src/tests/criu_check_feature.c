@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 		goto on_error_put;
 	}
 
-	/* do the actual fature check for memory tracking */
+	/* do the actual feature check for memory tracking */
 	m_opts.features_to_check = FEATURE_MEM_TRACK;
 	if (c->migrate(c, MIGRATE_FEATURE_CHECK, &m_opts, sizeof(struct migrate_opts))) {
 		lxc_debug("%s\n", "System does not support \"FEATURE_MEM_TRACK\".");
