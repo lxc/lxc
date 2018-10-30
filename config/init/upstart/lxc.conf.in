@@ -61,7 +61,7 @@ end script
 
 # The stop is serialized and can take excessive time.  We need to avoid
 # delaying the system shutdown / reboot as much as we can since it's not
-# parallelized...  Even 5 second timout may be too long.
+# parallelized...  Even 5 second timeout may be too long.
 post-stop script
 	[ -f /etc/default/lxc ] && . /etc/default/lxc
 
