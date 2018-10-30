@@ -63,7 +63,7 @@ struct lxc_list {
 	for (__iterator = (__list)->next, __next = __iterator->next;           \
 	     __iterator != __list; __iterator = __next, __next = __next->next)
 
-/* Initalize list. */
+/* Initialize list. */
 static inline void lxc_list_init(struct lxc_list *list)
 {
 	list->elem = NULL;
