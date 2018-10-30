@@ -25,7 +25,7 @@ an efficient ringbuffer.
 This adds `reboot2()` as a new API extension. This function properly waits
 until a reboot succeeded. It takes a timeout argument. When set to `> 0`
 `reboot2()` will block until the timeout is reached, if timeout is set to zero
-`reboot2()` will not block, if set to -1 `reboot2()` will block indefinitly.
+`reboot2()` will not block, if set to -1 `reboot2()` will block indefinitely.
 
 ## mount\_injection
 
