@@ -77,6 +77,7 @@ char *dir_new_path(char *src, const char *oldname, const char *name,
 		p += l1;
 		nlen += (strlen(lxcpath) - l1);
 	}
+
 	l2 = strlen(oldname);
 	while ((p = strstr(p, oldname)) != NULL) {
 		p += l2;
@@ -105,14 +106,17 @@ char *dir_new_path(char *src, const char *oldname, const char *name,
 
 		/* move target pointer (p) */
 		p += p2 - src;
+
 		/* print new name in place of oldname */
 		p += sprintf(p, "%s", name);
+
 		/* move src to end of oldname */
 		src = p2 + l2;
 	}
 
 	/* copy the rest of src */
 	sprintf(p, "%s", src);
+
 	return ret;
 }
 
@@ -153,12 +157,18 @@ int blk_getsize(struct lxc_storage *bdev, uint64_t *size)
 	const char *src;
 
 	src = lxc_storage_get_path(bdev->src, bdev->type);
-	fd = open(src, O_RDONLY);
-	if (fd < 0)
+
+	fd = open(src, O_RDONLY | O_CLOEXEC);
+	if (fd < 0) {
+		SYSERROR("Failed to open \"%s\"", src);
 		return -1;
+	}
 
 	/* size of device in bytes */
 	ret = ioctl(fd, BLKGETSIZE64, size);
+	if (ret < 0)
+		SYSERROR("Failed to get block size of dev-src");
+
 	close(fd);
 	return ret;
 }
@@ -195,80 +205,94 @@ int detect_fs(struct lxc_storage *bdev, char *type, int len)
 	srcdev = lxc_storage_get_path(bdev->src, bdev->type);
 
 	ret = pipe(p);
-	if (ret < 0)
+	if (ret < 0) {
+		SYSERROR("Failed to create pipe");
 		return -1;
+	}
 
-	if ((pid = fork()) < 0)
+	pid = fork();
+	if (pid < 0) {
+		SYSERROR("Failed to fork process");
 		return -1;
+	}
 
 	if (pid > 0) {
 		int status;
+
 		close(p[1]);
 		memset(type, 0, len);
+
 		ret = read(p[0], type, len - 1);
-		close(p[0]);
 		if (ret < 0) {
-			SYSERROR("error reading from pipe");
-			wait(&status);
-			return -1;
+			SYSERROR("Failed to read FSType from pipe");
 		} else if (ret == 0) {
-			ERROR("child exited early - fstype not found");
-			wait(&status);
-			return -1;
+			ERROR("FSType not found - child exited early");
+			ret = -1;
 		}
+
+		close(p[0]);
 		wait(&status);
+
+		if (ret < 0)
+			return ret;
+
 		type[len - 1] = '\0';
-		INFO("detected fstype %s for %s", type, srcdev);
+		INFO("Detected FSType \"%s\" for \"%s\"", type, srcdev);
+
 		return ret;
 	}
 
 	if (unshare(CLONE_NEWNS) < 0)
-		exit(1);
+		_exit(EXIT_FAILURE);
 
-	if (detect_shared_rootfs()) {
+	if (detect_shared_rootfs())
 		if (mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL)) {
 			SYSERROR("Failed to make / rslave");
 			ERROR("Continuing...");
 		}
-	}
 
 	ret = mount_unknown_fs(srcdev, bdev->dest, bdev->mntopts);
 	if (ret < 0) {
-		ERROR("failed mounting %s onto %s to detect fstype", srcdev,
+		ERROR("Failed to mount \"%s\" onto \"%s\" to detect FSType", srcdev,
 		      bdev->dest);
-		exit(1);
+		_exit(EXIT_FAILURE);
 	}
 
 	l = linkderef(srcdev, devpath);
 	if (!l)
-		exit(1);
+		_exit(EXIT_FAILURE);
+
 	f = fopen("/proc/self/mounts", "r");
 	if (!f)
-		exit(1);
+		_exit(EXIT_FAILURE);
 
 	while (getline(&line, &linelen, f) != -1) {
 		sp1 = strchr(line, ' ');
 		if (!sp1)
-			exit(1);
+			_exit(EXIT_FAILURE);
+
 		*sp1 = '\0';
 		if (strcmp(line, l))
 			continue;
+
 		sp2 = strchr(sp1 + 1, ' ');
 		if (!sp2)
-			exit(1);
+			_exit(EXIT_FAILURE);
 		*sp2 = '\0';
+
 		sp3 = strchr(sp2 + 1, ' ');
 		if (!sp3)
-			exit(1);
+			_exit(EXIT_FAILURE);
 		*sp3 = '\0';
+
 		sp2++;
 		if (write(p[1], sp2, strlen(sp2)) != strlen(sp2))
-			exit(1);
+			_exit(EXIT_FAILURE);
 
-		exit(0);
+		_exit(EXIT_SUCCESS);
 	}
 
-	exit(1);
+	_exit(EXIT_FAILURE);
 }
 
 int do_mkfs_exec_wrapper(void *args)
@@ -294,10 +318,12 @@ int do_mkfs_exec_wrapper(void *args)
 		return -1;
 	}
 
-	TRACE("executing \"%s %s\"", mkfs, data[1]);
+	TRACE("Executing \"%s %s\"", mkfs, data[1]);
 	execlp(mkfs, mkfs, data[1], (char *)NULL);
-	SYSERROR("failed to run \"%s %s \"", mkfs, data[1]);
+
+	SYSERROR("Failed to run \"%s %s\"", mkfs, data[1]);
 	free(mkfs);
+
 	return -1;
 }
 
@@ -344,7 +370,7 @@ int mount_unknown_fs(const char *rootfs, const char *target,
 
 		ret = lxc_file_for_each_line(fsfile[i], find_fstype_cb, &cbarg);
 		if (ret < 0) {
-			ERROR("failed to parse '%s'", fsfile[i]);
+			ERROR("Failed to parse \"%s\"", fsfile[i]);
 			return -1;
 		}
 
@@ -352,7 +378,8 @@ int mount_unknown_fs(const char *rootfs, const char *target,
 			return 0;
 	}
 
-	ERROR("failed to determine fs type for '%s'", rootfs);
+	ERROR("Failed to determine FSType for \"%s\"", rootfs);
+
 	return -1;
 }
 
@@ -381,7 +408,7 @@ int find_fstype_cb(char *buffer, void *data)
 	fstype += lxc_char_left_gc(fstype, strlen(fstype));
 	fstype[lxc_char_right_gc(fstype, strlen(fstype))] = '\0';
 
-	DEBUG("trying to mount '%s'->'%s' with fstype '%s'", cbarg->rootfs,
+	DEBUG("Trying to mount \"%s\"->\"%s\" with FSType \"%s\"", cbarg->rootfs,
 	      cbarg->target, fstype);
 
 	if (parse_mntopts(cbarg->options, &mntflags, &mntdata) < 0) {
@@ -390,14 +417,14 @@ int find_fstype_cb(char *buffer, void *data)
 	}
 
 	if (mount(cbarg->rootfs, cbarg->target, fstype, mntflags, mntdata)) {
-		SYSDEBUG("mount failed with error");
+		SYSDEBUG("Failed to mount");
 		free(mntdata);
 		return 0;
 	}
 
 	free(mntdata);
 
-	INFO("mounted '%s' on '%s', with fstype '%s'", cbarg->rootfs,
+	INFO("Mounted \"%s\" on \"%s\", with FSType \"%s\"", cbarg->rootfs,
 	     cbarg->target, fstype);
 
 	return 1;
@@ -409,18 +436,20 @@ const char *linkderef(const char *path, char *dest)
 	ssize_t ret;
 
 	ret = stat(path, &sbuf);
-	if (ret < 0)
+	if (ret < 0) {
+		SYSERROR("Failed to get status of file - \"%s\"", path);
 		return NULL;
+	}
 
 	if (!S_ISLNK(sbuf.st_mode))
 		return path;
 
 	ret = readlink(path, dest, PATH_MAX);
 	if (ret < 0) {
-		SYSERROR("error reading link %s", path);
+		SYSERROR("Failed to read link of \"%s\"", path);
 		return NULL;
 	} else if (ret >= PATH_MAX) {
-		ERROR("link in %s too long", path);
+		ERROR("The name of link of \"%s\" is too long", path);
 		return NULL;
 	}
 	dest[ret] = '\0';
@@ -517,20 +546,22 @@ int storage_destroy_wrapper(void *data)
 	struct lxc_conf *conf = data;
 
 	if (setgid(0) < 0) {
-		ERROR("Failed to setgid to 0");
+		SYSERROR("Failed to setgid to 0");
 		return -1;
 	}
 
 	if (setgroups(0, NULL) < 0)
-		WARN("Failed to clear groups");
+		SYSWARN("Failed to clear groups");
 
 	if (setuid(0) < 0) {
-		ERROR("Failed to setuid to 0");
+		SYSERROR("Failed to setuid to 0");
 		return -1;
 	}
 
-	if (!storage_destroy(conf))
+	if (!storage_destroy(conf)) {
+		ERROR("Failed to destroy storage");
 		return -1;
+	}
 
 	return 0;
 }
