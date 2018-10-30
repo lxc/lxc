@@ -463,7 +463,7 @@ static int ls_get(struct ls **m, size_t *size, const struct lxc_arguments *args,
 		if (!l->name)
 			goto put_and_next;
 
-		/* Do not record stuff the user did not explictly request. */
+		/* Do not record stuff the user did not explicitly request. */
 		if (args->ls_fancy) {
 			/* Maybe we should even consider the name sensitive and
 			 * hide it when you're not allowed to control the
