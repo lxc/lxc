@@ -542,7 +542,7 @@ int network_ifname(char *valuep, const char *value, size_t size)
 
 	retlen = strlcpy(valuep, value, size);
 	if (retlen >= size)
-		ERROR("Network devie name \"%s\" is too long (>= %zu)", value,
+		ERROR("Network device name \"%s\" is too long (>= %zu)", value,
 		      size);
 
 	return 0;
