@@ -2421,7 +2421,7 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 		     netdev->link);
 
 clear_ifindices:
-		/* We need to clear any ifindeces we recorded so liblxc won't
+		/* We need to clear any ifindices we recorded so liblxc won't
 		 * have cached stale data which would cause it to fail on reboot
 		 * we're we don't re-read the on-disk config file.
 		 */
@@ -2632,7 +2632,7 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 			     hostveth, netdev->link);
 
 clear_ifindices:
-		/* We need to clear any ifindeces we recorded so liblxc won't
+		/* We need to clear any ifindices we recorded so liblxc won't
 		 * have cached stale data which would cause it to fail on reboot
 		 * we're we don't re-read the on-disk config file.
 		 */
@@ -3131,7 +3131,7 @@ int lxc_network_send_name_and_ifindex_to_parent(struct lxc_handler *handler)
 			return -1;
 	}
 
-	TRACE("Sent network device names and ifindeces to parent");
+	TRACE("Sent network device names and ifindices to parent");
 	return 0;
 }
 
