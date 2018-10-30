@@ -952,7 +952,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 	struct cgroup_ops *cgroup_ops;
 
 	/* Try to detach from the current controlling tty if it exists.
-	 * Othwerise, lxc_init (via lxc_console) will attach the container's
+	 * Otherwise, lxc_init (via lxc_console) will attach the container's
 	 * console output to the current tty, which is probably not what any
 	 * library user wants, and if they do, they can just manually configure
 	 * it :)

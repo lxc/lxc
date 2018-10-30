@@ -2272,7 +2272,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         container should be run can be specified in the container
         configuration.  The default is <command>lxc-container-default-cgns</command>
         if the host kernel is cgroup namespace aware, or
-        <command>lxc-container-default</command> othewise.
+        <command>lxc-container-default</command> otherwise.
         -->
         lxc が apparmor サポートでコンパイルされ、インストールされている場合で、ホストで apparmor が有効な場合、コンテナが従って動くべき apparmor プロファイルは、コンテナの設定で指定することが可能です。
         デフォルトは、ホストのカーネルで cgroup 名前空間が使える場合は <command>lxc-container-default-cgns</command>です。使えない場合は <command>lxc-container-default</command> です。
