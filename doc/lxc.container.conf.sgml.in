@@ -1443,7 +1443,7 @@ dev/null proc/kcore none bind,relative 0 0
           <listitem>
             <para>
               Specify the control group value to be set on the unified cgroup
-              shierarchy. The controller name is the literal name of the control
+              hierarchy. The controller name is the literal name of the control
               group. The permitted names and the syntax of their values is not
               dictated by LXC, instead it depends on the features of the Linux
               kernel running at the time the container is started, eg.
