@@ -472,6 +472,6 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	/* Call exit() directly on this function because it retuns an exit code. */
+	/* Call exit() directly on this function because it returns an exit code. */
 	exit(EXIT_SUCCESS);
 }
