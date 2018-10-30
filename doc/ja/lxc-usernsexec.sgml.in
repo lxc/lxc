@@ -88,7 +88,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <!--
 	  The uid map to use in the user namespace.  Each map consists of
 	  four colon-separate values.  First a character 'u', 'g' or 'b' to
-	  specify whether this map perttains to user ids, group ids, or
+	  specify whether this map pertains to user ids, group ids, or
 	  both; next the first userid in the user namespace;  next the
 	  first userid as seen on the host;  and finally the number of
 	  ids to be mapped.
