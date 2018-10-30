@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
 	/* Test whether we can start a really short-lived daemonized container with lxc-init. */
 	for (i = 0; i < 10; i++) {
 		/* An container started with lxc-init will always start
-		 * succesfully unless lxc-init has a bug.
+		 * successfully unless lxc-init has a bug.
 		 */
 		if (!c->startl(c, 1, NULL)) {
 			fprintf(stderr, "%d: %s failed to start on %dth iteration\n", __LINE__, c->name, i);
