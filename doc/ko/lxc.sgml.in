@@ -107,7 +107,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       manage a container with simple command lines and complete enough
       to be used for other purposes.
       -->
-      이 프로젝트의 첫번째 목적은 컨테이너 프로젝트에 속해있는 커널 개발자들의 작업을 편하게 하며, 특히 새로운 기능인 Checkpoing/Restart에 대해 계속 작업을 진행해 나가는 것이다.
+      이 프로젝트의 첫번째 목적은 컨테이너 프로젝트에 속해있는 커널 개발자들의 작업을 편하게 하며, 특히 새로운 기능인 Checkpoint/Restart에 대해 계속 작업을 진행해 나가는 것이다.
       <command>lxc</command>는 작지만, 컨테이너를 간단한 명령어를 통해 쉽게 관리할 수 있고, 다목적으로 사용되기에도 충분하다.
     </para>
   </refsect1>
