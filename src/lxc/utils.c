@@ -1378,7 +1378,7 @@ bool lxc_switch_uid_gid(uid_t uid, gid_t gid)
 	return true;
 }
 
-/* Simple covenience function which enables uniform logging. */
+/* Simple convenience function which enables uniform logging. */
 bool lxc_setgroups(int size, gid_t list[])
 {
 	if (setgroups(size, list) < 0) {
