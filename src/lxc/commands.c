@@ -348,7 +348,7 @@ int lxc_try_cmd(const char *name, const char *lxcpath)
 	return 0;
 }
 
-/* Implentations of the commands and their callbacks */
+/* Implementations of the commands and their callbacks */
 
 /*
  * lxc_cmd_get_init_pid: Get pid of the container's init process
