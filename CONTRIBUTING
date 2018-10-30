@@ -40,7 +40,7 @@ imported into LXC).
 
 Language bindings for the libraries need to be released under LGPLv2.1+.
 
-Anything else (non-libaries) needs to be Free Software and needs to be
+Anything else (non-libraries) needs to be Free Software and needs to be
 allowed to link with LGPLv2.1+ code (if needed). LXC upstream prefers
 LGPLv2.1+ or GPLv2 for those.
 
