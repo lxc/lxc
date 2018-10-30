@@ -97,7 +97,7 @@ case "$1" in
 
         # The stop is serialized and can take excessive time.  We need to avoid
         # delaying the system shutdown / reboot as much as we can since it's not
-        # parallelized...  Even 5 second timout may be too long.
+        # parallelized...  Even 5 second timeout may be too long.
         "$bindir"/lxc-autostart $STOPOPTS $SHUTDOWNDELAY
     ;;
 
