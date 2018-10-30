@@ -106,7 +106,7 @@ static int load_tty_major_minor(char *directory, char *output, int len)
 
 	ret = snprintf(path, sizeof(path), "%s/tty.info", directory);
 	if (ret < 0 || ret >= sizeof(path)) {
-		ERROR("snprintf'd too many chacters: %d", ret);
+		ERROR("snprintf'd too many characters: %d", ret);
 		return -1;
 	}
 
@@ -1200,7 +1200,7 @@ static int save_tty_major_minor(char *directory, struct lxc_container *c, char *
 
 	ret = snprintf(path, sizeof(path), "/proc/%d/root/dev/console", c->init_pid(c));
 	if (ret < 0 || ret >= sizeof(path)) {
-		ERROR("snprintf'd too many chacters: %d", ret);
+		ERROR("snprintf'd too many characters: %d", ret);
 		return -1;
 	}
 
