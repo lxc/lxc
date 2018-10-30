@@ -640,7 +640,7 @@ static int _lxc_log_set_file(const char *name, const char *lxcpath, int create_d
 /*
  * lxc_log_init:
  * Called from lxc front-end programs (like lxc-create, lxc-start) to
- * initalize the log defaults.
+ * initialize the log defaults.
  */
 int lxc_log_init(struct lxc_log *log)
 {
