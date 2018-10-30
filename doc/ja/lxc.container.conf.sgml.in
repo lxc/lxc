@@ -2388,7 +2388,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         Versions 1 and 2 are currently supported.  In version 1, the
         policy is a simple whitelist.  The second line therefore must
         read "whitelist", with the rest of the file containing one (numeric)
-        sycall number per line.  Each syscall number is whitelisted,
+        syscall number per line.  Each syscall number is whitelisted,
         while every unlisted number is blacklisted for use in the container
         -->
         現時点では、バージョン番号は 1 と 2 をサポートしています。バージョン 1 では、ポリシーはシンプルなホワイトリストですので、2 行目は "whitelist" でなければなりません。
