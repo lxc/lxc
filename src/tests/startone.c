@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
 	sprintf(buf, "0");
 	b = c->set_cgroup_item(c, "cpuset.cpus", buf);
 	if (b) {
-		fprintf(stderr, "%d: %s not running but coudl set cgroup settings\n", __LINE__, MYNAME);
+		fprintf(stderr, "%d: %s not running but could set cgroup settings\n", __LINE__, MYNAME);
 		goto out;
 	}
 
