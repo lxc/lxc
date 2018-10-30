@@ -308,7 +308,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <para><!-- Specify the backing storage type to be used for the copy
             where 'backingstorage' is of type 'btrfs', 'dir', 'lvm', 'loop',
             'overlay', or 'zfs'. -->
-	      コピー先コンテナのバッキングストレージのタイプを指定します。ここで 'backingsotrage' は 'btrfs'、'dir'、'lvm'、'loop'、'overlay'、'zfs' のどれかです。
+	      コピー先コンテナのバッキングストレージのタイプを指定します。ここで 'backingstorage' は 'btrfs'、'dir'、'lvm'、'loop'、'overlay'、'zfs' のどれかです。
 	    </para>
 	   </listitem>
 	  </varlistentry>
