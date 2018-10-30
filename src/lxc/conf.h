@@ -311,8 +311,8 @@ struct lxc_conf {
 	 * However we don't want the command line specified values to be saved
 	 * on c->save_config(). So we store the config file specified values
 	 * here. */
-	char *logfile; /* the logfile as specifed in config */
-	int loglevel; /* loglevel as specifed in config (if any) */
+	char *logfile; /* the logfile as specified in config */
+	int loglevel; /* loglevel as specified in config (if any) */
 	int logfd;
 
 	unsigned int start_auto;
