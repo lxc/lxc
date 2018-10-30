@@ -31,7 +31,7 @@
  *
  * This new implementation assumes that cgroup filesystems are mounted
  * under /sys/fs/cgroup/clist where clist is either the controller, or
- * a comman-separated list of controllers.
+ * a comma-separated list of controllers.
  */
 
 #ifndef _GNU_SOURCE
