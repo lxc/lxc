@@ -2987,7 +2987,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 		if (!had_entry)
 			continue;
 
-		/* Try to catch the ouput of new{g,u}idmap to make debugging
+		/* Try to catch the output of new{g,u}idmap to make debugging
 		 * easier.
 		 */
 		if (use_shadow) {
