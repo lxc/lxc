@@ -88,7 +88,7 @@ chmod 0666 "$logfile"
 
 # This would be much simpler if we could run it as
 # root.  However, in order to not have the bind mount
-# of an empty directory over the securitfs 'mount' directory
+# of an empty directory over the securityfs 'mount' directory
 # be removed, we need to do this as non-root.
 
 which newuidmap >/dev/null 2>&1 || { echo "'newuidmap' command is missing" >&2; exit 1; }
