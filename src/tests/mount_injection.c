@@ -386,16 +386,54 @@ static int do_unpriv_container_test()
 	return perform_container_test(NAME"unprivileged", config_items);
 }
 
-int main(int argc, char *argv[])
+static bool lxc_setup_shmount(const char *shmount_path)
 {
-	if (do_priv_container_test()) {
-		fprintf(stderr, "Privileged mount injection test failed\n");
-		return -1;
+	int ret;
+
+	ret = mkdir_p(shmount_path, 0711);
+	if (ret < 0 && errno != EEXIST) {
+		fprintf(stderr, "Failed to create directory \"%s\"\n", shmount_path);
+		return false;
 	}
 
-	if(do_unpriv_container_test()) {
-		fprintf(stderr, "Unprivileged mount injection test failed\n");
-		return -1;
+	/* Prepare host mountpoint */
+	ret = mount("tmpfs", shmount_path, "tmpfs", 0, "size=100k,mode=0711");
+	if (ret < 0) {
+		fprintf(stderr, "Failed to mount \"%s\"\n", shmount_path);
+		return false;
 	}
-	return 0;
+
+	ret = mount(shmount_path, shmount_path, "none", MS_REC | MS_SHARED, "");
+	if (ret < 0) {
+		fprintf(stderr, "Failed to make shared \"%s\"\n", shmount_path);
+		return false;
+	}
+
+	return true;
+}
+
+static void lxc_teardown_shmount(char *shmount_path)
+{
+	(void)umount2(shmount_path, MNT_DETACH);
+	(void)recursive_destroy(shmount_path);
+}
+
+int main(int argc, char *argv[])
+{
+	if (!lxc_setup_shmount("/tmp/mount_injection_test"))
+		exit(EXIT_FAILURE);
+
+	if (do_priv_container_test()) {
+		fprintf(stderr, "Privileged mount injection test failed\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (do_unpriv_container_test()) {
+		fprintf(stderr, "Unprivileged mount injection test failed\n");
+		exit(EXIT_FAILURE);
+	}
+
+	lxc_teardown_shmount("/tmp/mount_injection_test");
+
+	exit(EXIT_SUCCESS);
 }

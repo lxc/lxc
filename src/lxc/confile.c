@@ -1788,24 +1788,31 @@ static int set_config_mount_auto(const char *key, const char *value,
 		lxc_conf->auto_mounts |= allowed_auto_mounts[i].flag;
 
 		if (is_shmounts) {
-			char *slide = token + STRLITERALLEN("shmounts:");
+			char *container_path;
+			char *host_path;
 
-			if (*slide == '\0') {
+			host_path = token + STRLITERALLEN("shmounts:");
+			if (*host_path == '\0') {
 				SYSERROR("Failed to copy shmounts host path");
 				goto on_error;
 			}
 
-			lxc_conf->shmount.path_host = strdup(slide);
+			container_path = strchr(host_path, ':');
+			if (!container_path || *(container_path + 1) == '\0')
+				container_path = "/dev/.lxc-mounts";
+			else
+				*container_path++ = '\0';
+
+			ERROR("AAAA: %s", host_path);
+			ERROR("BBBB: %s", container_path);
+
+			lxc_conf->shmount.path_host = strdup(host_path);
 			if (!lxc_conf->shmount.path_host) {
 				SYSERROR("Failed to copy shmounts host path");
 				goto on_error;
 			}
 
-			slide = strchr(slide, ':');
-			if (!slide || *(++slide) == '\0')
-				slide = "/dev/.lxc-mounts";
-
-			lxc_conf->shmount.path_cont = strdup(slide);
+			lxc_conf->shmount.path_cont = strdup(container_path);
 			if(!lxc_conf->shmount.path_cont) {
 				SYSERROR("Failed to copy shmounts container path");
 				goto on_error;
