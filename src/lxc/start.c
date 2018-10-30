@@ -1913,7 +1913,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	}
 
 	/* Now all networks are created, network devices are moved into place,
-	 * and the correct names and ifindeces in the respective namespaces have
+	 * and the correct names and ifindices in the respective namespaces have
 	 * been recorded. The corresponding structs have now all been filled. So
 	 * log them for debugging purposes.
 	 */
