@@ -137,7 +137,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
     container. aufs or overlayfs snapshots of directory backed containers are
     exempted from this rule.
     -->
-    복사본의 저장소는 원본 컨테이너와 같은 종류가 된다. 단, aufs나 디렉토리로 구성된 컨테이너의 overayfs 스냅샷은 예외이다.
+    복사본의 저장소는 원본 컨테이너와 같은 종류가 된다. 단, aufs나 디렉토리로 구성된 컨테이너의 overlayfs 스냅샷은 예외이다.
     </para>
 
     <para>
