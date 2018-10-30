@@ -1689,7 +1689,7 @@ static bool cg_mount_needs_subdirs(int type)
 
 /* After $rootfs/sys/fs/container/controller/the/cg/path has been created,
  * remount controller ro if needed and bindmount the cgroupfs onto
- * controll/the/cg/path.
+ * control/the/cg/path.
  */
 static int cg_legacy_mount_controllers(int type, struct hierarchy *h,
 				       char *controllerpath, char *cgpath,

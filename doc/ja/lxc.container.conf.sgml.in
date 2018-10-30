@@ -1890,7 +1890,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.cgroup.[controll name]</option>
+            <option>lxc.cgroup.[control name]</option>
           </term>
           <listitem>
             <para>
