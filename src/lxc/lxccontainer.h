@@ -299,7 +299,7 @@ struct lxc_container {
 	bool (*destroy)(struct lxc_container *c);
 
 	/*!
-	 * \brief Save configuaration to a file.
+	 * \brief Save configuration to a file.
 	 *
 	 * \param c Container.
 	 * \param alt_file Full path to file to save configuration in.
