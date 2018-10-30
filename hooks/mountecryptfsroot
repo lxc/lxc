@@ -39,7 +39,7 @@
 #     container as normal.
 #     a. echo none | ecryptfs-add-passphrase
 #     b. lxc-start -n q1
-#  Note that you may well want to use a wrapped passhrase (see the ecryptfs-wrap-passphrase(1) manual page).
+#  Note that you may well want to use a wrapped passphrase (see the ecryptfs-wrap-passphrase(1) manual page).
 
 set -e
 ecryptfs_crypt=$(echo $LXC_ROOTFS_PATH | sed 's/rootfs$/rootfs.crypt/')
