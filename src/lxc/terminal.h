@@ -250,7 +250,7 @@ extern void lxc_terminal_winsz(int srcfd, int dstfd);
  * Must be called with process_lock held to protect the lxc_ttys list, or from
  * a non-threaded context.
  *
- * Note that the signal handler isn't installed as a classic asychronous
+ * Note that the signal handler isn't installed as a classic asynchronous
  * handler, rather signalfd(2) is used so that we can handle the signal when
  * we're ready for it. This avoids deadlocks since a signal handler (ie
  * lxc_terminal_sigwinch()) would need to take the thread mutex to prevent
