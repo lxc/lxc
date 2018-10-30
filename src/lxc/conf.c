@@ -1372,7 +1372,7 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 		return -1;
 	}
 
-	/* The following code cleans up inhereted mounts which are not required
+	/* The following code cleans up inherited mounts which are not required
 	 * for CT.
 	 *
 	 * The mountinfo file shows not all mounts, if a few points have been
