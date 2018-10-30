@@ -258,13 +258,13 @@ static int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespe
 	/* Transform hours to seconds. */
 	h_in_s = hours * 3600;
 
-	/* Calculate minutes by substracting the seconds for all days in the
+	/* Calculate minutes by subtracting the seconds for all days in the
 	 * epoch and for all hours in the epoch and divide by the number of
 	 * minutes in an hour.
 	 */
 	minutes = (time->tv_sec - d_in_s - h_in_s) / 60;
 
-	/* Calculate the seconds by substracting the seconds for all days in the
+	/* Calculate the seconds by subtracting the seconds for all days in the
 	 * epoch, hours in the epoch and minutes in the epoch.
 	 */
 	seconds = (time->tv_sec - d_in_s - h_in_s - (minutes * 60));
