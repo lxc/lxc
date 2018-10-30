@@ -57,7 +57,7 @@ static int test_attach_write_file(void* payload)
 
 /*
  * try opening a file attached to a container.  Return 0 on open fail.  Return
- * 1 if the file open succeeded.  Return -1 if attach itself failed - perhas an
+ * 1 if the file open succeeded.  Return -1 if attach itself failed - perhaps an
  * older kernel.
  */
 static int do_test_file_open(struct lxc_container *c, char *fnam)
