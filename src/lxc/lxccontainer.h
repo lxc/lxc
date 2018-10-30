@@ -824,7 +824,7 @@ struct lxc_container {
 	/*!
 	 * \brief An API call to perform various migration operations
 	 *
-	 * \param cmd One of the MIGRATE_ contstants.
+	 * \param cmd One of the MIGRATE_ constants.
 	 * \param opts A migrate_opts struct filled with relevant options.
 	 * \param size The size of the migrate_opts struct, i.e. sizeof(struct migrate_opts).
 	 *
