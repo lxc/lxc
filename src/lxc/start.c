@@ -1503,7 +1503,7 @@ int resolve_clone_flags(struct lxc_handler *handler)
  * getpid() in the child would return the parent's pid. This is all fixed in
  * newer glibc versions where the getpid() cache is removed and the pid/tid is
  * not reset anymore.
- * However, if for whatever reason you - dear commiter - somehow need to get the
+ * However, if for whatever reason you - dear committer - somehow need to get the
  * pid of the dummy intermediate process for do_share_ns() you need to call
  * lxc_raw_getpid(). The next lxc_raw_clone() call does not employ CLONE_VM and
  * will be fine.
