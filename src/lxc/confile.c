@@ -4434,7 +4434,7 @@ static struct lxc_config_t *get_network_config_ops(const char *key,
 	ret = lxc_safe_uint((idx_start + 1), &tmpidx);
 	if (ret < 0) {
 		errno = -ret;
-		SYSERROR("Failed to parse usigned integer from string \"%s\"",
+		SYSERROR("Failed to parse unsigned integer from string \"%s\"",
 		         idx_start + 1);
 		*idx = ret;
 		goto on_error;
