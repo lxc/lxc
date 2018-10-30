@@ -2863,7 +2863,7 @@ static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 	 * of the doubt. Otherwise we might fail even though all the necessary
 	 * file capabilities are set.
 	 */
-	DEBUG("Cannot check for file capabilites as full capability support is "
+	DEBUG("Cannot check for file capabilities as full capability support is "
 	      "missing. Manual intervention needed");
 	fret = 1;
 #endif
