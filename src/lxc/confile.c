@@ -2983,7 +2983,7 @@ static int get_config_selinux_context(const char *key, char *retv, int inlen,
 /* If you ask for a specific cgroup value, i.e. lxc.cgroup.devices.list, then
  * just the value(s) will be printed. Since there still could be more than one,
  * it is newline-separated.
- * (Maybe that's ambigous, since some values, i.e. devices.list, will already
+ * (Maybe that's ambiguous, since some values, i.e. devices.list, will already
  * have newlines?)
  * If you ask for 'lxc.cgroup", then all cgroup entries will be printed, in
  * 'lxc.cgroup.subsystem.key = value' format.
