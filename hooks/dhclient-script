@@ -32,7 +32,7 @@
 # Resolve every paths against the $ROOTFS environment variable.
 
 # 'ip' just looks too weird. Also, we now have unit-tests! Those unit-tests
-# overwirte this line to use a fake ip-echo tool. It's also convenient
+# override this line to use a fake ip-echo tool. It's also convenient
 # if your system holds ip tool in a non-standard location.
 ip=/sbin/ip
 
