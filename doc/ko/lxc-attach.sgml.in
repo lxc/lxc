@@ -163,7 +163,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
 	    <citerefentry>
 	      <refentrytitle><filename>lxc.conf</filename></refentrytitle>
 	      <manvolnum>5</manvolnum>
-	    </citerefentry>. By default, the current archictecture of the
+	    </citerefentry>. By default, the current architecture of the
 	    running container will be used.
 	    -->
 	    명령어를 실행하는 컨테이너의 아키텍처를 지정한다.

@@ -162,7 +162,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 	    <citerefentry>
 	      <refentrytitle><filename>lxc.conf</filename></refentrytitle>
 	      <manvolnum>5</manvolnum>
-	    </citerefentry>. By default, the current archictecture of the
+	    </citerefentry>. By default, the current architecture of the
 	    running container will be used.
             -->
             コマンドを実行するコンテナのアーキテクチャを指定します。
