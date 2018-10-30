@@ -1705,7 +1705,7 @@ dev/null proc/kcore none bind,relative 0 0
         container should be run can be specified in the container
         configuration.  The default is <command>lxc-container-default-cgns</command>
 	if the host kernel is cgroup namespace aware, or
-	<command>lxc-container-default</command> othewise.
+	<command>lxc-container-default</command> otherwise.
       </para>
       <variablelist>
         <varlistentry>
