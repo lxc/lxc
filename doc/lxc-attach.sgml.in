@@ -134,7 +134,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	    <citerefentry>
 	      <refentrytitle><filename>lxc.conf</filename></refentrytitle>
 	      <manvolnum>5</manvolnum>
-	    </citerefentry>. By default, the current archictecture of the
+	    </citerefentry>. By default, the current architecture of the
 	    running container will be used.
 	  </para>
 	</listitem>
