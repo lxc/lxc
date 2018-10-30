@@ -5,7 +5,7 @@ This project accepts contributions. In order to contribute, you should
 pay attention to a few things:
 
     1 - your code must follow the coding style rules
-    2 - the format of the submission must be Github pull requests
+    2 - the format of the submission must be GitHub pull requests
     3 - your work must be signed
 
 
@@ -26,7 +26,7 @@ https://www.kernel.org/doc/html/latest/process/coding-style.html
 Submitting Modifications:
 -------------------------
 
-The contributions must be Github pull requests.
+The contributions must be GitHub pull requests.
 
 Licensing for new files:
 ------------------------

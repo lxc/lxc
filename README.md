@@ -151,7 +151,7 @@ repo.
 If you want to become more active it is usually also a good idea to show up in
 the LXC IRC channel `#lxc-dev` on `Freenode`. We try to do all development out
 in the open and discussion of new features or bugs is done either in
-appropriate Github issues or on IRC.
+appropriate GitHub issues or on IRC.
 
 When thinking about making security critical contributions or substantial
 changes it is usually a good idea to ping the developers first and ask whether
