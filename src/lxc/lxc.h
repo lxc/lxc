@@ -48,7 +48,7 @@ struct lxc_handler;
 /*
  * Start the specified command inside a system container
  * @name         : the name of the container
- * @argv         : an array of char * corresponding to the commande line
+ * @argv         : an array of char * corresponding to the command line
  * @conf         : configuration
  * @daemonize    : whether or not the container is daemonized
  * Returns 0 on success, < 0 otherwise
@@ -60,7 +60,7 @@ extern int lxc_start(const char *name, char *const argv[],
 /*
  * Start the specified command inside an application container
  * @name         : the name of the container
- * @argv         : an array of char * corresponding to the commande line
+ * @argv         : an array of char * corresponding to the command line
  * @quiet        : if != 0 then lxc-init won't produce any output
  * @conf         : configuration
  * @daemonize    : whether or not the container is daemonized
