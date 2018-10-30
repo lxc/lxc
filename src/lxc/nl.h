@@ -126,9 +126,9 @@ int __netlink_send(struct nl_handler *handler, struct nlmsghdr *nlmsg);
  * Returns 0 on success, < 0 otherwise
  */
 int netlink_transaction(struct nl_handler *handler,
-			struct nlmsg *request, struct nlmsg *anwser);
+			struct nlmsg *request, struct nlmsg *answer);
 int __netlink_transaction(struct nl_handler *handler, struct nlmsghdr *request,
-			  struct nlmsghdr *anwser);
+			  struct nlmsghdr *answer);
 
 /*
  * nla_put_string: copy a null terminated string to a netlink message
