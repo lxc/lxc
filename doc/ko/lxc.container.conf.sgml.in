@@ -348,7 +348,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
           <listitem>
             <para>
               <!--
-              UID to use within a private user namesapce for init.
+              UID to use within a private user namespace for init.
                 -->
               init이 사용자 네임스페이스 안에서 사용할 UID.
             </para>
@@ -361,7 +361,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
           <listitem>
             <para>
               <!--
-              GID to use within a private user namesapce for init.
+              GID to use within a private user namespace for init.
                 -->
               init이 사용자 네임스페이스 안에서 사용할 GID.
             </para>
