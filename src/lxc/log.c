@@ -296,7 +296,7 @@ static int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespe
  * think you are, you __will__ cause trouble using them.
  * (As a short example how this can cause trouble: LXD uses forkstart to fork
  * off a new process that runs the container. At the same time the go runtime
- * LXD relies on does its own multi-threading thing which we can't controll. The
+ * LXD relies on does its own multi-threading thing which we can't control. The
  * fork()ing + threading then seems to mess with the locking states in these
  * time functions causing deadlocks.)
  * The current solution is to be good old unix people and use the Epoch as our
