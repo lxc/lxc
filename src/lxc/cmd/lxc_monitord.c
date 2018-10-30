@@ -458,7 +458,7 @@ int main(int argc, char *argv[])
 		}
 
 		if (quit == LXC_MAINLOOP_CLOSE) {
-			NOTICE("Got quit command. lxc-monitord is exitting");
+			NOTICE("Got quit command. lxc-monitord is exiting");
 			break;
 		}
 	}
