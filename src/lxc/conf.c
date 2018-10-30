@@ -4290,7 +4290,7 @@ on_error:
  * - the container root {g,u}id as seen from the host > user's host {g,u}id
  * - the container root -> some sub{g,u}id
  * The former we add, if the user did not specifiy a mapping. The latter we
- * retrieve from the ontainer's configured {g,u}id mappings as it must have been
+ * retrieve from the container's configured {g,u}id mappings as it must have been
  * there to start the container in the first place.
  */
 int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
