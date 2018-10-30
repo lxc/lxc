@@ -1404,7 +1404,7 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 	 * unmounted between read operations from the mountinfo. So we need to
 	 * read mountinfo a few times.
 	 *
-	 * This loop can be skipped if a container uses unserns, because all
+	 * This loop can be skipped if a container uses userns, because all
 	 * inherited mounts are locked and we should live with all this trash.
 	 */
 	for (;;) {
@@ -1447,7 +1447,7 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 			break;
 	}
 
-	/* This also can be skipped if a container uses unserns. */
+	/* This also can be skipped if a container uses userns. */
 	(void)umount2("./proc", MNT_DETACH);
 
 	/* It is weird, but chdir("..") moves us in a new root */
