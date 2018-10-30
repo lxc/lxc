@@ -1790,7 +1790,7 @@ dev/null proc/kcore none bind,relative 0 0
         Versions 1 and 2 are currently supported.  In version 1, the
         policy is a simple whitelist.  The second line therefore must
         read "whitelist", with the rest of the file containing one (numeric)
-        sycall number per line.  Each syscall number is whitelisted,
+        syscall number per line.  Each syscall number is whitelisted,
         while every unlisted number is blacklisted for use in the container
       </para>
 
