@@ -117,7 +117,7 @@ Options :\n\
   -t, --tmpfs               place ephemeral container on a tmpfs\n\
                             (WARNING: On reboot all changes made to the container will be lost.)\n\
   -L, --fssize              size of the new block device for block device containers\n\
-  -D, --keedata             pass together with -e start a persistent snapshot \n\
+  -D, --keepdata            pass together with -e start a persistent snapshot \n\
   -K, --keepname            keep the hostname of the original container\n\
   --  hook options          arguments passed to the hook program\n\
   -M, --keepmac             keep the MAC address of the original container\n\
