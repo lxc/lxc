@@ -160,7 +160,7 @@ struct lxc_tty_info {
  * @bev_type   : optional backing store type
  * @options    : mount options
  * @mountflags : the portion of @options that are flags
- * @data       : the porition of @options that are not flags
+ * @data       : the portion of @options that are not flags
  * @managed    : whether it is managed by LXC
  */
 struct lxc_rootfs {
