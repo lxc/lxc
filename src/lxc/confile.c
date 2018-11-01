@@ -1803,9 +1803,6 @@ static int set_config_mount_auto(const char *key, const char *value,
 			else
 				*container_path++ = '\0';
 
-			ERROR("AAAA: %s", host_path);
-			ERROR("BBBB: %s", container_path);
-
 			lxc_conf->shmount.path_host = strdup(host_path);
 			if (!lxc_conf->shmount.path_host) {
 				SYSERROR("Failed to copy shmounts host path");
