@@ -1397,14 +1397,14 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 		return -1;
 	}
 
-	/* The following code cleans up inhereted mounts which are not required
+	/* The following code cleans up inherited mounts which are not required
 	 * for CT.
 	 *
 	 * The mountinfo file shows not all mounts, if a few points have been
 	 * unmounted between read operations from the mountinfo. So we need to
 	 * read mountinfo a few times.
 	 *
-	 * This loop can be skipped if a container uses unserns, because all
+	 * This loop can be skipped if a container uses userns, because all
 	 * inherited mounts are locked and we should live with all this trash.
 	 */
 	for (;;) {
@@ -1447,7 +1447,7 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 			break;
 	}
 
-	/* This also can be skipped if a container uses unserns. */
+	/* This also can be skipped if a container uses userns. */
 	(void)umount2("./proc", MNT_DETACH);
 
 	/* It is weird, but chdir("..") moves us in a new root */
@@ -2916,7 +2916,7 @@ static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 	 * of the doubt. Otherwise we might fail even though all the necessary
 	 * file capabilities are set.
 	 */
-	DEBUG("Cannot check for file capabilites as full capability support is "
+	DEBUG("Cannot check for file capabilities as full capability support is "
 	      "missing. Manual intervention needed");
 	fret = 1;
 #endif
@@ -3040,7 +3040,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 		if (!had_entry)
 			continue;
 
-		/* Try to catch the ouput of new{g,u}idmap to make debugging
+		/* Try to catch the output of new{g,u}idmap to make debugging
 		 * easier.
 		 */
 		if (use_shadow) {
@@ -4359,8 +4359,8 @@ on_error:
  * This means we require only to establish a mapping from:
  * - the container root {g,u}id as seen from the host > user's host {g,u}id
  * - the container root -> some sub{g,u}id
- * The former we add, if the user did not specifiy a mapping. The latter we
- * retrieve from the ontainer's configured {g,u}id mappings as it must have been
+ * The former we add, if the user did not specify a mapping. The latter we
+ * retrieve from the container's configured {g,u}id mappings as it must have been
  * there to start the container in the first place.
  */
 int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,

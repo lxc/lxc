@@ -31,7 +31,7 @@
  *
  * This new implementation assumes that cgroup filesystems are mounted
  * under /sys/fs/cgroup/clist where clist is either the controller, or
- * a comman-separated list of controllers.
+ * a comma-separated list of controllers.
  */
 
 #ifndef _GNU_SOURCE
@@ -1689,7 +1689,7 @@ static bool cg_mount_needs_subdirs(int type)
 
 /* After $rootfs/sys/fs/container/controller/the/cg/path has been created,
  * remount controller ro if needed and bindmount the cgroupfs onto
- * controll/the/cg/path.
+ * control/the/cg/path.
  */
 static int cg_legacy_mount_controllers(int type, struct hierarchy *h,
 				       char *controllerpath, char *cgpath,

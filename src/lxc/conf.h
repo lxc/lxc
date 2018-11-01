@@ -160,7 +160,7 @@ struct lxc_tty_info {
  * @bev_type   : optional backing store type
  * @options    : mount options
  * @mountflags : the portion of @options that are flags
- * @data       : the porition of @options that are not flags
+ * @data       : the portion of @options that are not flags
  * @managed    : whether it is managed by LXC
  */
 struct lxc_rootfs {
@@ -306,13 +306,13 @@ struct lxc_conf {
 	int stopsignal; /* signal used to hard stop container */
 	char *rcfile;	/* Copy of the top level rcfile we read */
 
-	/* Logfile and logleve can be set in a container config file. Those
-	 * function as defaults. The defaults can be overriden by command line.
+	/* Logfile and loglevel can be set in a container config file. Those
+	 * function as defaults. The defaults can be overridden by command line.
 	 * However we don't want the command line specified values to be saved
 	 * on c->save_config(). So we store the config file specified values
 	 * here. */
-	char *logfile; /* the logfile as specifed in config */
-	int loglevel; /* loglevel as specifed in config (if any) */
+	char *logfile; /* the logfile as specified in config */
+	int loglevel; /* loglevel as specified in config (if any) */
 	int logfd;
 
 	unsigned int start_auto;

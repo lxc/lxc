@@ -348,7 +348,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
           <listitem>
             <para>
               <!--
-              UID to use within a private user namesapce for init.
+              UID to use within a private user namespace for init.
                 -->
               init이 사용자 네임스페이스 안에서 사용할 UID.
             </para>
@@ -361,7 +361,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
           <listitem>
             <para>
               <!--
-              GID to use within a private user namesapce for init.
+              GID to use within a private user namespace for init.
                 -->
               init이 사용자 네임스페이스 안에서 사용할 GID.
             </para>
@@ -1623,7 +1623,7 @@ proc proc proc nodev,noexec,nosuid 0 0
 	container should be run can be specified in the container
         configuration.  The default is <command>lxc-container-default-cgns</command>
 	if the host kernel is cgroup namespace aware, or
-	<command>lxc-container-default</command> othewise.
+	<command>lxc-container-default</command> otherwise.
         -->
         lxc가 apparmor를 지원하도록 컴파일된 후 설치되었고, 호스트 시스템에서 apparmor가 활성화되었다면, 컨테이너에서 따라야할 apparmor 프로파일을 컨테이너 설정에서 지정할 수 있다. 기본값은 호스트 커널이 cgroup 네임스페이스를 지원하면 <command>lxc-container-default-cgns</command>이고, 그렇지 않다면 <command>lxc-container-default</command>이다.
       </para>
@@ -1738,7 +1738,7 @@ proc proc proc nodev,noexec,nosuid 0 0
         Versions 1 and 2 are currently supported.  In version 1, the
 	policy is a simple whitelist.  The second line therefore must
 	read "whitelist", with the rest of the file containing one (numeric)
-	sycall number per line.  Each syscall number is whitelisted,
+	syscall number per line.  Each syscall number is whitelisted,
 	while every unlisted number is blacklisted for use in the container
         -->
         현재는 버전1과 2만 지원된다. 버전 1에서는 정책은 단순한 화이트리스트이다. 그러므로 두번째 라인은 반드시 "whitelist"여야 한다. 파일의 나머지 내용은 한 줄에 하나의 시스템콜 번호로 채워진다. 화이트리스트에 없는 번호는 컨테이너에서 블랙리스트로 들어간다.

@@ -314,7 +314,7 @@ bool storage_can_backup(struct lxc_conf *conf)
 	return ret;
 }
 
-/* If we're not snaphotting, then storage_copy becomes a simple case of mount
+/* If we're not snapshotting, then storage_copy becomes a simple case of mount
  * the original, mount the new, and rsync the contents.
  */
 struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,

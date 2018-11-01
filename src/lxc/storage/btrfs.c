@@ -831,7 +831,7 @@ static int btrfs_recursive_destroy(const char *path)
 
 			/*
 			 * A backref key with the name and dirid of the parent
-			 * comes followed by the reoot ref key which has the
+			 * comes followed by the root ref key which has the
 			 * name of the child subvol in question.
 			 */
 			if (sh.objectid != root_id && sh.type == BTRFS_ROOT_BACKREF_KEY) {

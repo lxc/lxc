@@ -2254,7 +2254,7 @@ static bool add_to_array(char ***names, char *cname, int pos)
 	if (!newnames[pos])
 		return false;
 
-	/* Sort the arrray as we will use binary search on it. */
+	/* Sort the array as we will use binary search on it. */
 	qsort(newnames, pos + 1, sizeof(char *),
 	      (int (*)(const void *, const void *))string_cmp);
 
@@ -2273,7 +2273,7 @@ static bool add_to_clist(struct lxc_container ***list, struct lxc_container *c,
 	*list = newlist;
 	newlist[pos] = c;
 
-	/* Sort the arrray as we will use binary search on it. */
+	/* Sort the array as we will use binary search on it. */
 	if (sort)
 		qsort(newlist, pos + 1, sizeof(struct lxc_container *),
 		      (int (*)(const void *, const void *))container_cmp);

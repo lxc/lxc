@@ -1890,7 +1890,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.cgroup.[controll name]</option>
+            <option>lxc.cgroup.[control name]</option>
           </term>
           <listitem>
             <para>
@@ -1916,7 +1916,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <para>
               <!--
               Specify the control group value to be set on the unified cgroup
-              shierarchy. The controller name is the literal name of the control
+              hierarchy. The controller name is the literal name of the control
               group. The permitted names and the syntax of their values is not
               dictated by LXC, instead it depends on the features of the Linux
               kernel running at the time the container is started, eg.
@@ -2272,7 +2272,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         container should be run can be specified in the container
         configuration.  The default is <command>lxc-container-default-cgns</command>
         if the host kernel is cgroup namespace aware, or
-        <command>lxc-container-default</command> othewise.
+        <command>lxc-container-default</command> otherwise.
         -->
         lxc が apparmor サポートでコンパイルされ、インストールされている場合で、ホストで apparmor が有効な場合、コンテナが従って動くべき apparmor プロファイルは、コンテナの設定で指定することが可能です。
         デフォルトは、ホストのカーネルで cgroup 名前空間が使える場合は <command>lxc-container-default-cgns</command>です。使えない場合は <command>lxc-container-default</command> です。
@@ -2388,7 +2388,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         Versions 1 and 2 are currently supported.  In version 1, the
         policy is a simple whitelist.  The second line therefore must
         read "whitelist", with the rest of the file containing one (numeric)
-        sycall number per line.  Each syscall number is whitelisted,
+        syscall number per line.  Each syscall number is whitelisted,
         while every unlisted number is blacklisted for use in the container
         -->
         現時点では、バージョン番号は 1 と 2 をサポートしています。バージョン 1 では、ポリシーはシンプルなホワイトリストですので、2 行目は "whitelist" でなければなりません。

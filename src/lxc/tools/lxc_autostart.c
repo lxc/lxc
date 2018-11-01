@@ -417,7 +417,7 @@ int main(int argc, char *argv[])
 				}
 			}
 
-			/* We have a candidate continer to process */
+			/* We have a candidate container to process */
 			c->want_daemonize(c, 1);
 
 			if (my_args.shutdown) {

@@ -1281,7 +1281,7 @@ static inline int cg_get_version_of_mntpt(const char *path)
 }
 
 /* Detect and store information about the cgroupfs v2 hierarchy. Currently only
- * deals with the empty v2 hierachy as we do not retrieve enabled controllers.
+ * deals with the empty v2 hierarchy as we do not retrieve enabled controllers.
  */
 static bool cgv2_init(uid_t uid, gid_t gid)
 {

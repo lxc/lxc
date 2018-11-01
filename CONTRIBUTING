@@ -5,7 +5,7 @@ This project accepts contributions. In order to contribute, you should
 pay attention to a few things:
 
     1 - your code must follow the coding style rules
-    2 - the format of the submission must be Github pull requests
+    2 - the format of the submission must be GitHub pull requests
     3 - your work must be signed
 
 
@@ -26,7 +26,7 @@ https://www.kernel.org/doc/html/latest/process/coding-style.html
 Submitting Modifications:
 -------------------------
 
-The contributions must be Github pull requests.
+The contributions must be GitHub pull requests.
 
 Licensing for new files:
 ------------------------
@@ -40,7 +40,7 @@ imported into LXC).
 
 Language bindings for the libraries need to be released under LGPLv2.1+.
 
-Anything else (non-libaries) needs to be Free Software and needs to be
+Anything else (non-libraries) needs to be Free Software and needs to be
 allowed to link with LGPLv2.1+ code (if needed). LXC upstream prefers
 LGPLv2.1+ or GPLv2 for those.
 

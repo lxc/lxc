@@ -101,7 +101,7 @@ __attribute__((sentinel)) extern char *must_append_path(char *first, ...);
 /* Return copy of string @entry. Do not fail. */
 extern char *must_copy_string(const char *entry);
 
-/* Re-alllocate a pointer, do not fail */
+/* Re-allocate a pointer, do not fail */
 extern void *must_realloc(void *orig, size_t sz);
 
 extern int lxc_char_left_gc(const char *buffer, size_t len);

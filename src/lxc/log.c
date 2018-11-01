@@ -258,13 +258,13 @@ static int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespe
 	/* Transform hours to seconds. */
 	h_in_s = hours * 3600;
 
-	/* Calculate minutes by substracting the seconds for all days in the
+	/* Calculate minutes by subtracting the seconds for all days in the
 	 * epoch and for all hours in the epoch and divide by the number of
 	 * minutes in an hour.
 	 */
 	minutes = (time->tv_sec - d_in_s - h_in_s) / 60;
 
-	/* Calculate the seconds by substracting the seconds for all days in the
+	/* Calculate the seconds by subtracting the seconds for all days in the
 	 * epoch, hours in the epoch and minutes in the epoch.
 	 */
 	seconds = (time->tv_sec - d_in_s - h_in_s - (minutes * 60));
@@ -296,7 +296,7 @@ static int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespe
  * think you are, you __will__ cause trouble using them.
  * (As a short example how this can cause trouble: LXD uses forkstart to fork
  * off a new process that runs the container. At the same time the go runtime
- * LXD relies on does its own multi-threading thing which we can't controll. The
+ * LXD relies on does its own multi-threading thing which we can't control. The
  * fork()ing + threading then seems to mess with the locking states in these
  * time functions causing deadlocks.)
  * The current solution is to be good old unix people and use the Epoch as our
@@ -640,7 +640,7 @@ static int _lxc_log_set_file(const char *name, const char *lxcpath, int create_d
 /*
  * lxc_log_init:
  * Called from lxc front-end programs (like lxc-create, lxc-start) to
- * initalize the log defaults.
+ * initialize the log defaults.
  */
 int lxc_log_init(struct lxc_log *log)
 {

@@ -1319,7 +1319,7 @@ int main(int argc, char *argv[])
 		_exit(EXIT_FAILURE);
 	}
 
-	/* Write names of veth pairs and their ifindeces to stout:
+	/* Write names of veth pairs and their ifindices to stout:
 	 * (e.g. eth0:731:veth9MT2L4:730)
 	 */
 	fprintf(stdout, "%s:%d:%s:%d\n", newname, container_veth_ifidx, nicname,
