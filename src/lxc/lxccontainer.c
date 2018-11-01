@@ -4976,6 +4976,7 @@ static int do_lxcapi_mount(struct lxc_container *c, const char *source,
 	char template[PATH_MAX], path[PATH_MAX];
 	pid_t pid, init_pid;
 	struct stat sb;
+	bool is_dir;
 	int ret = -1, fd = -EBADF;
 
 	if (!c || !c->lxc_conf) {
@@ -5006,7 +5007,8 @@ static int do_lxcapi_mount(struct lxc_container *c, const char *source,
 		}
 	}
 
-	if (S_ISDIR(sb.st_mode)) {
+	is_dir = (S_ISDIR(sb.st_mode) != 0);
+	if (is_dir) {
 		sret = mkdtemp(template);
 		if (!sret) {
 			SYSERROR("Could not create shmounts temporary dir");
@@ -5089,7 +5091,10 @@ static int do_lxcapi_mount(struct lxc_container *c, const char *source,
 	ret = 0;
 
 	(void)umount2(template, MNT_DETACH);
-	(void)unlink(template);
+	if (is_dir)
+		(void)rmdir(template);
+	else
+		(void)unlink(template);
 
 out:
 	if (fd >= 0)

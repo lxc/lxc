@@ -1578,75 +1578,6 @@ static inline int do_share_ns(void *arg)
 	return 0;
 }
 
-static int lxc_setup_shmount(struct lxc_conf *conf)
-{
-	size_t len_cont;
-	char *full_cont_path;
-	int ret = -1;
-
-	/* Construct the shmount path under the container root. */
-	len_cont = strlen(conf->rootfs.mount) + 1 + strlen(conf->shmount.path_cont);
-	/* +1 for the terminating '\0' */
-	full_cont_path = malloc(len_cont + 1);
-	if (!full_cont_path) {
-		SYSERROR("Not enough memory");
-		return -ENOMEM;
-	}
-
-	ret = snprintf(full_cont_path, len_cont + 1, "%s/%s",
-		       conf->rootfs.mount, conf->shmount.path_cont);
-	if (ret < 0 || ret >= len_cont + 1) {
-		SYSERROR("Failed to create filename");
-		free(full_cont_path);
-		return -1;
-	}
-
-	/* Check if shmount point is already set up. */
-	if (is_shared_mountpoint(conf->shmount.path_host)) {
-		INFO("Path \"%s\" is already MS_SHARED. Reusing",
-		     conf->shmount.path_host);
-		free(full_cont_path);
-		return 0;
-	}
-
-	/* Create host and cont mount paths */
-	ret = mkdir_p(conf->shmount.path_host, 0711);
-	if (ret < 0 && errno != EEXIST) {
-		SYSERROR("Failed to create directory \"%s\"",
-			 conf->shmount.path_host);
-		free(full_cont_path);
-		return ret;
-	}
-
-	ret = mkdir_p(full_cont_path, 0711);
-	if (ret < 0 && errno != EEXIST) {
-		SYSERROR("Failed to create directory \"%s\"", full_cont_path);
-		free(full_cont_path);
-		return ret;
-	}
-
-	/* Prepare host mountpoint */
-	ret = mount("tmpfs", conf->shmount.path_host, "tmpfs", 0,
-		    "size=100k,mode=0711");
-	if (ret < 0) {
-		SYSERROR("Failed to mount \"%s\"", conf->shmount.path_host);
-		free(full_cont_path);
-		return ret;
-	}
-
-	ret = mount(conf->shmount.path_host, conf->shmount.path_host, "none",
-		    MS_REC | MS_SHARED, "");
-	if (ret < 0) {
-		SYSERROR("Failed to make shared \"%s\"", conf->shmount.path_host);
-		free(full_cont_path);
-		return ret;
-	}
-
-	INFO("Setup shared mount point \"%s\"", conf->shmount.path_host);
-	free(full_cont_path);
-	return 0;
-}
-
 /* lxc_spawn() performs crucial setup tasks and clone()s the new process which
  * exec()s the requested container binary.
  * Note that lxc_spawn() runs in the parent namespaces. Any operations performed
@@ -1692,17 +1623,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 	ret = resolve_clone_flags(handler);
 	if (ret < 0)
 		goto out_sync_fini;
-
-	if (conf->shmount.path_host) {
-		if (!conf->shmount.path_cont)
-			goto out_sync_fini;
-
-		ret = lxc_setup_shmount(conf);
-		if (ret < 0) {
-			ERROR("Failed to setup shared mount point");
-			goto out_sync_fini;
-		}
-	}
 
 	if (handler->ns_clone_flags & CLONE_NEWNET) {
 		if (!lxc_list_empty(&conf->network)) {
