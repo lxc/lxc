@@ -22,10 +22,10 @@
 #define _GNU_SOURCE 1
 #endif
 #include <alloca.h>
-#include <macro.h>
 #include <mntent.h>
 #include <stdio.h>
 #include <string.h>
+#include "../lxc/macro.h"
 
 /* Since the values in a line are separated by spaces, a name cannot
  * contain a space. Therefore some programs encode spaces in names
