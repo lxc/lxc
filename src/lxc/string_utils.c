@@ -774,7 +774,7 @@ char *must_concat(const char *first, ...)
 	}
 	va_end(args);
 
-	dest[cur_len] = 0;
+	dest[cur_len] = '\0';
 	return dest;
 }
 
