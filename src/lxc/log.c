@@ -488,7 +488,7 @@ static int build_dir(const char *name)
 
 		ret = lxc_unpriv(mkdir(n, 0755));
 		if (ret && errno != EEXIST) {
-			SYSERROR("Failed to create directory %s", n);
+			SYSERROR("Failed to create directory \"%s\"", n);
 			free(n);
 			return -1;
 		}
@@ -506,7 +506,7 @@ static int log_open(const char *name)
 	int fd;
 	int newfd;
 
-	fd = lxc_unpriv(open(name, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0666));
+	fd = lxc_unpriv(open(name, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0660));
 	if (fd < 0) {
 		SYSERROR("Failed to open log file \"%s\"", name);
 		return -1;
