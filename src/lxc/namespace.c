@@ -67,7 +67,7 @@ pid_t lxc_clone(int (*fn)(void *), void *arg, int flags)
 #ifdef __ia64__
 	ret = __clone2(do_clone, stack, stack_size, flags | SIGCHLD, &clone_arg);
 #else
-	ret = clone(do_clone, stack  + stack_size, flags | SIGCHLD, &clone_arg);
+	ret = clone(do_clone, stack + stack_size, flags | SIGCHLD, &clone_arg);
 #endif
 	if (ret < 0)
 		SYSERROR("Failed to clone (%#x)", flags);
