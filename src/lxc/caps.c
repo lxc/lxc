@@ -33,6 +33,7 @@
 
 #include "caps.h"
 #include "config.h"
+#include "file_utils.h"
 #include "log.h"
 #include "macro.h"
 
@@ -299,11 +300,8 @@ static long int _real_caps_last_cap(void)
 		char *ptr;
 		char buf[INTTYPE_TO_STRLEN(int)] = {0};
 
-	again:
-		n = read(fd, buf, STRARRAYLEN(buf));
-		if (n < 0 && errno == EINTR) {
-			goto again;
-		} else if (n >= 0) {
+		n = lxc_read_nointr(fd, buf, STRARRAYLEN(buf));
+		if (n >= 0) {
 			errno = 0;
 			result = strtol(buf, &ptr, 10);
 			if (!ptr || (*ptr != '\0' && *ptr != '\n') || errno != 0)
