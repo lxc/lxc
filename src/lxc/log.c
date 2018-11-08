@@ -41,6 +41,7 @@
 
 #include "caps.h"
 #include "config.h"
+#include "file_utils.h"
 #include "log.h"
 #include "lxccontainer.h"
 #include "utils.h"
@@ -360,12 +361,7 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 
 	buffer[n] = '\n';
 
-again:
-	ret = write(fd_to_use, buffer, n + 1);
-	if (ret < 0 && errno == EINTR)
-		goto again;
-
-	return ret;
+	return lxc_write_nointr(fd_to_use, buffer, n + 1);
 }
 
 #if HAVE_DLOG
