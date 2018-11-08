@@ -1078,7 +1078,7 @@ static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 		if (ret < 0)
 			break;
 
-		TRACE("Sent ty \"%s\" with master fd %d and slave fd %d to "
+		TRACE("Sent tty \"%s\" with master fd %d and slave fd %d to "
 		      "parent", tty->name, tty->master, tty->slave);
 	}
 
