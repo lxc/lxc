@@ -297,17 +297,17 @@ restart:
 		if (matched)
 			continue;
 
-#ifdef HAVE_DLOG
-		if (match_dlog_fds(direntp))
-			continue;
-
-#endif
 		if (current_config && fd == current_config->logfd)
 			continue;
 
 		if (match_stdfds(fd))
 			continue;
 
+#ifdef HAVE_DLOG
+		if (match_dlog_fds(direntp))
+			continue;
+
+#endif
 		if (closeall) {
 			close(fd);
 			closedir(dir);
