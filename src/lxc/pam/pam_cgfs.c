@@ -119,7 +119,6 @@ static inline bool is_set(unsigned bit, uint32_t *bitarr)
 static bool is_lxcfs(const char *line);
 static bool is_cgv1(char *line);
 static bool is_cgv2(char *line);
-static void *must_alloc(size_t sz);
 static void must_add_to_list(char ***clist, char *entry);
 static void must_append_controller(char **klist, char **nlist, char ***clist,
 				   char *entry);
@@ -388,12 +387,6 @@ static void trim(char *s)
 		s[--len] = '\0';
 }
 
-/* Allocate pointer; do not fail. */
-static void *must_alloc(size_t sz)
-{
-	return must_realloc(NULL, sz);
-}
-
 /* Make allocated copy of string. End of string is taken to be '\n'. */
 static char *copy_to_eol(char *s)
 {
@@ -405,7 +398,7 @@ static char *copy_to_eol(char *s)
 		return NULL;
 
 	len = newline - s;
-	sret = must_alloc(len + 1);
+	sret = must_realloc(NULL, len + 1);
 	memcpy(sret, s, len);
 	sret[len] = '\0';
 
@@ -603,7 +596,7 @@ static char *get_mountpoint(char *line)
 		*p2 = '\0';
 
 	len = strlen(p);
-	sret = must_alloc(len + 1);
+	sret = must_realloc(NULL, len + 1);
 	memcpy(sret, p, len);
 	sret[len] = '\0';
 
@@ -775,7 +768,7 @@ static char *cgv1_must_prefix_named(char *entry)
 	size_t len;
 
 	len = strlen(entry);
-	s = must_alloc(len + 6);
+	s = must_realloc(NULL, len + 6);
 
 	ret = snprintf(s, len + 6, "name=%s", entry);
 	if (ret < 0 || (size_t)ret >= (len + 6)) {
@@ -937,7 +930,7 @@ static void cgv1_add_controller(char **clist, char *mountpoint, char *base_cgrou
 	struct cgv1_hierarchy *new;
 	int newentry;
 
-	new = must_alloc(sizeof(*new));
+	new = must_realloc(NULL, sizeof(*new));
 
 	new->controllers = clist;
 	new->mountpoint = mountpoint;
@@ -964,7 +957,7 @@ static void cgv2_add_controller(char **clist, char *mountpoint, char *base_cgrou
 	struct cgv2_hierarchy *new;
 	int newentry;
 
-	new = must_alloc(sizeof(*new));
+	new = must_realloc(NULL, sizeof(*new));
 
 	new->controllers = clist;
 	new->mountpoint = mountpoint;
@@ -1905,7 +1898,7 @@ static bool cg_copy_parent_file(char *path, char *file)
 		goto bad;
 	}
 
-	value = must_alloc(len + 1);
+	value = must_realloc(NULL, len + 1);
 	if (lxc_read_from_file(fpath, value, len) != len) {
 		pam_cgfs_debug("Failed to read %s: %s", fpath, strerror(errno));
 		goto bad;
