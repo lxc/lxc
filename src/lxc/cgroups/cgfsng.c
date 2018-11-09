@@ -84,12 +84,6 @@ static void free_string_list(char **clist)
 	free(clist);
 }
 
-/* Allocate a pointer, do not fail. */
-static void *must_alloc(size_t sz)
-{
-	return must_realloc(NULL, sz);
-}
-
 /* Given a pointer to a null-terminated array of pointers, realloc to add one
  * entry, and point the new entry to NULL. Do not fail. Return the index to the
  * second-to-last entry - that is, the one which is now available for use
@@ -134,7 +128,7 @@ static char *cg_legacy_must_prefix_named(char *entry)
 	char *prefixed;
 
 	len = strlen(entry);
-	prefixed = must_alloc(len + 6);
+	prefixed = must_realloc(NULL, len + 6);
 
 	memcpy(prefixed, "name=", STRLITERALLEN("name="));
 	memcpy(prefixed + STRLITERALLEN("name="), entry, len);
@@ -541,7 +535,7 @@ static bool copy_parent_file(char *path, char *file)
 	if (len <= 0)
 		goto on_error;
 
-	value = must_alloc(len + 1);
+	value = must_realloc(NULL, len + 1);
 	ret = lxc_read_from_file(fpath, value, len);
 	if (ret != len)
 		goto on_error;
@@ -824,7 +818,7 @@ static struct hierarchy *add_hierarchy(struct hierarchy ***h, char **clist, char
 	struct hierarchy *new;
 	int newentry;
 
-	new = must_alloc(sizeof(*new));
+	new = must_realloc(NULL, sizeof(*new));
 	new->controllers = clist;
 	new->mountpoint = mountpoint;
 	new->container_base_path = container_base_path;
@@ -863,7 +857,7 @@ static char *cg_hybrid_get_mountpoint(char *line)
 	*p2 = '\0';
 
 	len = strlen(p);
-	sret = must_alloc(len + 1);
+	sret = must_realloc(NULL, len + 1);
 	memcpy(sret, p, len);
 	sret[len] = '\0';
 	return sret;
@@ -879,7 +873,7 @@ static char *copy_to_eol(char *p)
 		return NULL;
 
 	len = p2 - p;
-	sret = must_alloc(len + 1);
+	sret = must_realloc(NULL, len + 1);
 	memcpy(sret, p, len);
 	sret[len] = '\0';
 	return sret;
@@ -1466,7 +1460,7 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 	}
 
 	len = strlen(tmp) + 5; /* leave room for -NNN\0 */
-	container_cgroup = must_alloc(len);
+	container_cgroup = must_realloc(NULL, len);
 	(void)strlcpy(container_cgroup, tmp, len);
 	free(tmp);
 	offset = container_cgroup + len - 5;
@@ -2110,7 +2104,7 @@ static int __cg_unified_attach(const struct hierarchy *h, const char *name,
 
 	len = strlen(base_path) + STRLITERALLEN("/lxc-1000") +
 	      STRLITERALLEN("/cgroup-procs");
-	full_path = must_alloc(len + 1);
+	full_path = must_realloc(NULL, len + 1);
 	do {
 		if (idx)
 			ret = snprintf(full_path, len + 1, "%s/lxc-%d",
