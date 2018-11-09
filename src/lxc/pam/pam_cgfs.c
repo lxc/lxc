@@ -126,7 +126,6 @@ static void must_append_controller(char **klist, char **nlist, char ***clist,
 static void must_append_string(char ***list, char *entry);
 static void mysyslog(int err, const char *format, ...) __attribute__((sentinel));
 static char *read_file(char *fnam);
-static int read_from_file(const char *filename, void* buf, size_t count);
 static int recursive_rmdir(char *dirname);
 static inline void set_bit(unsigned bit, uint32_t *bitarr)
 {
@@ -136,9 +135,6 @@ static bool string_in_list(char **list, const char *entry);
 static char *string_join(const char *sep, const char **parts, bool use_as_prefix);
 static void trim(char *s);
 static bool write_int(char *path, int v);
-static ssize_t write_nointr(int fd, const void* buf, size_t count);
-static int write_to_file(const char *filename, const void *buf, size_t count,
-			 bool add_newline);
 
 /* cgroupfs prototypes. */
 static bool cg_belongs_to_uid_gid(const char *path, uid_t uid, gid_t gid);
@@ -1738,49 +1734,6 @@ static ssize_t cg_get_max_cpus(char *cpulist)
 	return cpus;
 }
 
-static ssize_t write_nointr(int fd, const void* buf, size_t count)
-{
-	ssize_t ret;
-
-again:
-	ret = write(fd, buf, count);
-	if (ret < 0 && errno == EINTR)
-		goto again;
-
-	return ret;
-}
-
-static int write_to_file(const char *filename, const void* buf, size_t count, bool add_newline)
-{
-	int fd, saved_errno;
-	ssize_t ret;
-
-	fd = open(filename, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, 0666);
-	if (fd < 0)
-		return -1;
-
-	ret = write_nointr(fd, buf, count);
-	if (ret < 0)
-		goto out_error;
-	if ((size_t)ret != count)
-		goto out_error;
-
-	if (add_newline) {
-		ret = write_nointr(fd, "\n", 1);
-		if (ret != 1)
-			goto out_error;
-	}
-
-	close(fd);
-	return 0;
-
-out_error:
-	saved_errno = errno;
-	close(fd);
-	errno = saved_errno;
-	return -1;
-}
-
 #define __ISOL_CPUS "/sys/devices/system/cpu/isolated"
 static bool cg_filter_and_set_cpus(char *path, bool am_initialized)
 {
@@ -1905,7 +1858,7 @@ copy_parent:
 	free(fpath);
 
 	fpath = must_make_path(path, "cpuset.cpus", NULL);
-	ret = write_to_file(fpath, cpulist, strlen(cpulist), false);
+	ret = lxc_write_to_file(fpath, cpulist, strlen(cpulist), false, 0660);
 	if (ret < 0) {
 		pam_cgfs_debug("Could not write cpu list to: %s\n", fpath);
 		goto on_error;
@@ -1929,37 +1882,6 @@ on_error:
 	return bret;
 }
 
-int read_from_file(const char *filename, void* buf, size_t count)
-{
-	int fd = -1, saved_errno;
-	ssize_t ret;
-
-	fd = open(filename, O_RDONLY | O_CLOEXEC);
-	if (fd < 0)
-		return -1;
-
-	if (!buf || !count) {
-		char buf2[100];
-		size_t count2 = 0;
-
-		while ((ret = read(fd, buf2, 100)) > 0)
-			count2 += ret;
-		if (ret >= 0)
-			ret = count2;
-	} else {
-		memset(buf, 0, count);
-		ret = read(fd, buf, count);
-	}
-
-	if (ret < 0)
-		pam_cgfs_debug("read %s: %s", filename, strerror(errno));
-
-	saved_errno = errno;
-	close(fd);
-	errno = saved_errno;
-	return ret;
-}
-
 /* Copy contents of parent(@path)/@file to @path/@file */
 static bool cg_copy_parent_file(char *path, char *file)
 {
@@ -1977,19 +1899,23 @@ static bool cg_copy_parent_file(char *path, char *file)
 	*lastslash = '\0';
 
 	fpath = must_make_path(path, file, NULL);
-	len = read_from_file(fpath, NULL, 0);
-	if (len <= 0)
+	len = lxc_read_from_file(fpath, NULL, 0);
+	if (len <= 0) {
+		pam_cgfs_debug("Failed to read %s: %s", fpath, strerror(errno));
 		goto bad;
+	}
 
 	value = must_alloc(len + 1);
-	if (read_from_file(fpath, value, len) != len)
+	if (lxc_read_from_file(fpath, value, len) != len) {
+		pam_cgfs_debug("Failed to read %s: %s", fpath, strerror(errno));
 		goto bad;
+	}
 	free(fpath);
 
 	*lastslash = oldv;
 
 	fpath = must_make_path(path, file, NULL);
-	ret = write_to_file(fpath, value, len, false);
+	ret = lxc_write_to_file(fpath, value, len, false, 0660);
 	if (ret < 0)
 		pam_cgfs_debug("Unable to write %s to %s", value, fpath);
 
@@ -2018,8 +1944,8 @@ static bool cgv1_handle_root_cpuset_hierarchy(struct cgv1_hierarchy *h)
 
 	clonechildrenpath = must_make_path(h->mountpoint, "cgroup.clone_children", NULL);
 
-	if (read_from_file(clonechildrenpath, &v, 1) < 0) {
-		pam_cgfs_debug("Failed to read '%s'", clonechildrenpath);
+	if (lxc_read_from_file(clonechildrenpath, &v, 1) < 0) {
+		pam_cgfs_debug("Failed to read %s: %s", clonechildrenpath, strerror(errno));
 		free(clonechildrenpath);
 		return false;
 	}
@@ -2029,7 +1955,7 @@ static bool cgv1_handle_root_cpuset_hierarchy(struct cgv1_hierarchy *h)
 		return true;
 	}
 
-	if (write_to_file(clonechildrenpath, "1", 1, false) < 0) {
+	if (lxc_write_to_file(clonechildrenpath, "1", 1, false, 0660) < 0) {
 		/* Set clone_children so children inherit our settings */
 		pam_cgfs_debug("Failed to write 1 to %s", clonechildrenpath);
 		free(clonechildrenpath);
@@ -2077,8 +2003,8 @@ static bool cgv1_handle_cpuset_hierarchy(struct cgv1_hierarchy *h,
 		return true;
 	}
 
-	if (read_from_file(clonechildrenpath, &v, 1) < 0) {
-		pam_cgfs_debug("Failed to read '%s'", clonechildrenpath);
+	if (lxc_read_from_file(clonechildrenpath, &v, 1) < 0) {
+		pam_cgfs_debug("Failed to read %s: %s", clonechildrenpath, strerror(errno));
 		free(clonechildrenpath);
 		free(cgpath);
 		return false;
@@ -2108,7 +2034,7 @@ static bool cgv1_handle_cpuset_hierarchy(struct cgv1_hierarchy *h,
 	}
 	free(cgpath);
 
-	if (write_to_file(clonechildrenpath, "1", 1, false) < 0) {
+	if (lxc_write_to_file(clonechildrenpath, "1", 1, false, 0660) < 0) {
 		/* Set clone_children so children inherit our settings */
 		pam_cgfs_debug("Failed to write 1 to %s", clonechildrenpath);
 		free(clonechildrenpath);
