@@ -321,7 +321,7 @@ int setproctitle(char *title)
 	if (ret == 0)
 		(void)strlcpy((char*)arg_start, title, len);
 	else
-		SYSINFO("setting cmdline failed");
+		SYSWARN("Failed to set cmdline");
 
 	return ret;
 }

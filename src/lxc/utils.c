@@ -83,13 +83,13 @@ static int _recursive_rmdir(const char *dirname, dev_t pdev,
 {
 	struct dirent *direntp;
 	DIR *dir;
-	int ret, failed=0;
+	int ret, failed = 0;
 	char pathname[PATH_MAX];
 	bool hadexclude = false;
 
 	dir = opendir(dirname);
 	if (!dir) {
-		ERROR("failed to open %s", dirname);
+		ERROR("Failed to open \"%s\"", dirname);
 		return -1;
 	}
 
@@ -103,7 +103,7 @@ static int _recursive_rmdir(const char *dirname, dev_t pdev,
 
 		rc = snprintf(pathname, PATH_MAX, "%s/%s", dirname, direntp->d_name);
 		if (rc < 0 || rc >= PATH_MAX) {
-			ERROR("pathname too long");
+			ERROR("The name of path is too long");
 			failed=1;
 			continue;
 		}
@@ -113,26 +113,27 @@ static int _recursive_rmdir(const char *dirname, dev_t pdev,
 			if (ret < 0) {
 				switch(errno) {
 				case ENOTEMPTY:
-					INFO("Not deleting snapshot %s", pathname);
+					INFO("Not deleting snapshot \"%s\"", pathname);
 					hadexclude = true;
 					break;
 				case ENOTDIR:
 					ret = unlink(pathname);
 					if (ret)
-						INFO("Failed to remove %s", pathname);
+						INFO("Failed to remove \"%s\"", pathname);
 					break;
 				default:
-					SYSERROR("Failed to rmdir %s", pathname);
+					SYSERROR("Failed to rmdir \"%s\"", pathname);
 					failed = 1;
 					break;
 				}
 			}
+
 			continue;
 		}
 
 		ret = lstat(pathname, &mystat);
 		if (ret) {
-			ERROR("Failed to stat %s", pathname);
+			SYSERROR("Failed to stat \"%s\"", pathname);
 			failed = 1;
 			continue;
 		}
@@ -141,7 +142,7 @@ static int _recursive_rmdir(const char *dirname, dev_t pdev,
 			/* TODO should we be checking /proc/self/mountinfo for
 			 * pathname and not doing this if found? */
 			if (btrfs_try_remove_subvol(pathname))
-				INFO("Removed btrfs subvolume at %s\n", pathname);
+				INFO("Removed btrfs subvolume at \"%s\"", pathname);
 			continue;
 		}
 
@@ -150,20 +151,20 @@ static int _recursive_rmdir(const char *dirname, dev_t pdev,
 				failed=1;
 		} else {
 			if (unlink(pathname) < 0) {
-				SYSERROR("Failed to delete %s", pathname);
+				SYSERROR("Failed to delete \"%s\"", pathname);
 				failed=1;
 			}
 		}
 	}
 
 	if (rmdir(dirname) < 0 && !btrfs_try_remove_subvol(dirname) && !hadexclude) {
-		ERROR("Failed to delete %s", dirname);
+		SYSERROR("Failed to delete \"%s\"", dirname);
 		failed=1;
 	}
 
 	ret = closedir(dir);
 	if (ret) {
-		ERROR("Failed to close directory %s", dirname);
+		SYSERROR("Failed to close directory \"%s\"", dirname);
 		failed=1;
 	}
 
@@ -195,7 +196,7 @@ extern int lxc_rmdir_onedev(const char *path, const char *exclude)
 		if (errno == ENOENT)
 			return 0;
 
-		ERROR("Failed to stat %s", path);
+		SYSERROR("Failed to stat \"%s\"", path);
 		return -1;
 	}
 
@@ -225,6 +226,7 @@ int mkdir_p(const char *dir, mode_t mode)
 {
 	const char *tmp = dir;
 	const char *orig = dir;
+
 	do {
 		int ret;
 		char *makeme;
@@ -243,8 +245,8 @@ int mkdir_p(const char *dir, mode_t mode)
 			free(makeme);
 			return -1;
 		}
-		free(makeme);
 
+		free(makeme);
 	} while (tmp != dir);
 
 	return 0;
@@ -270,10 +272,10 @@ char *get_rundir()
 		return rundir;
 	}
 
-	INFO("XDG_RUNTIME_DIR isn't set in the environment.");
+	INFO("XDG_RUNTIME_DIR isn't set in the environment");
 	homedir = getenv("HOME");
 	if (!homedir) {
-		ERROR("HOME isn't set in the environment.");
+		ERROR("HOME isn't set in the environment");
 		return NULL;
 	}
 
@@ -349,24 +351,24 @@ int sha1sum_file(char *fnam, unsigned char *digest)
 
 	f = fopen_cloexec(fnam, "r");
 	if (!f) {
-		SYSERROR("Error opening template");
+		SYSERROR("Failed to open template \"%s\"", fnam);
 		return -1;
 	}
 
 	if (fseek(f, 0, SEEK_END) < 0) {
-		SYSERROR("Error seeking to end of template");
+		SYSERROR("Failed to seek to end of template");
 		fclose(f);
 		return -1;
 	}
 
 	if ((flen = ftell(f)) < 0) {
-		SYSERROR("Error telling size of template");
+		SYSERROR("Failed to tell size of template");
 		fclose(f);
 		return -1;
 	}
 
 	if (fseek(f, 0, SEEK_SET) < 0) {
-		SYSERROR("Error seeking to start of template");
+		SYSERROR("Failed to seek to start of template");
 		fclose(f);
 		return -1;
 	}
@@ -378,14 +380,14 @@ int sha1sum_file(char *fnam, unsigned char *digest)
 	}
 
 	if (fread(buf, 1, flen, f) != flen) {
-		SYSERROR("Failure reading template");
+		SYSERROR("Failed to read template");
 		free(buf);
 		fclose(f);
 		return -1;
 	}
 
 	if (fclose(f) < 0) {
-		SYSERROR("Failre closing template");
+		SYSERROR("Failed to close template");
 		free(buf);
 		return -1;
 	}
@@ -513,17 +515,17 @@ int lxc_pclose(struct lxc_popen_FILE *fp)
 
 int randseed(bool srand_it)
 {
+	FILE *f;
 	/*
-	   srand pre-seed function based on /dev/urandom
-	   */
+	 * srand pre-seed function based on /dev/urandom
+	 */
 	unsigned int seed = time(NULL) + getpid();
 
-	FILE *f;
 	f = fopen("/dev/urandom", "r");
 	if (f) {
 		int ret = fread(&seed, sizeof(seed), 1, f);
 		if (ret != 1)
-			SYSDEBUG("unable to fread /dev/urandom, fallback to time+pid rand seed");
+			SYSDEBUG("Unable to fread /dev/urandom, fallback to time+pid rand seed");
 
 		fclose(f);
 	}
@@ -539,9 +541,13 @@ uid_t get_ns_uid(uid_t orig)
 	char *line = NULL;
 	size_t sz = 0;
 	uid_t nsid, hostid, range;
-	FILE *f = fopen("/proc/self/uid_map", "r");
-	if (!f)
+	FILE *f;
+
+	f = fopen("/proc/self/uid_map", "r");
+	if (!f) {
+		SYSERROR("Failed to open uid_map");
 		return 0;
+	}
 
 	while (getline(&line, &sz, f) != -1) {
 		if (sscanf(line, "%u %u %u", &nsid, &hostid, &range) != 3)
@@ -566,9 +572,13 @@ gid_t get_ns_gid(gid_t orig)
 	char *line = NULL;
 	size_t sz = 0;
 	gid_t nsid, hostid, range;
-	FILE *f = fopen("/proc/self/gid_map", "r");
-	if (!f)
+	FILE *f;
+
+	f = fopen("/proc/self/gid_map", "r");
+	if (!f) {
+		SYSERROR("Failed to open gid_map");
 		return 0;
+	}
 
 	while (getline(&line, &sz, f) != -1) {
 		if (sscanf(line, "%u %u %u", &nsid, &hostid, &range) != 3)
@@ -610,8 +620,7 @@ uint64_t fnv_64a_buf(void *buf, size_t len, uint64_t hval)
 {
 	unsigned char *bp;
 
-	for(bp = buf; bp < (unsigned char *)buf + len; bp++)
-	{
+	for(bp = buf; bp < (unsigned char *)buf + len; bp++) {
 		/* xor the bottom with the current octet */
 		hval ^= (uint64_t)*bp;
 
@@ -680,13 +689,13 @@ bool switch_to_ns(pid_t pid, const char *ns)
 
 	fd = open(nspath, O_RDONLY);
 	if (fd < 0) {
-		SYSERROR("Failed to open %s", nspath);
+		SYSERROR("Failed to open \"%s\"", nspath);
 		return false;
 	}
 
 	ret = setns(fd, 0);
 	if (ret) {
-		SYSERROR("Failed to set process %d to %s of %d.", pid, ns, fd);
+		SYSERROR("Failed to set process %d to \"%s\" of %d.", pid, ns, fd);
 		close(fd);
 		return false;
 	}
@@ -711,8 +720,10 @@ bool detect_ramfs_rootfs(void)
 	int i;
 
 	f = fopen("/proc/self/mountinfo", "r");
-	if (!f)
+	if (!f) {
+		SYSERROR("Failed to open mountinfo");
 		return false;
+	}
 
 	while (getline(&line, &len, f) != -1) {
 		for (p = line, i = 0; p && i < 4; i++)
@@ -799,10 +810,9 @@ char *choose_init(const char *rootfs)
 
 	retv = on_path("init.lxc", rootfs);
 
-	if (env_set) {
+	if (env_set)
 		if (unsetenv("PATH"))
 			SYSERROR("Failed to unsetenv");
-	}
 
 	if (retv)
 		return retv;
@@ -818,7 +828,7 @@ char *choose_init(const char *rootfs)
 
 	ret = snprintf(retv, PATH_MAX, "%s/%s/%s", tmp, SBINDIR, "/init.lxc");
 	if (ret < 0 || ret >= PATH_MAX) {
-		ERROR("pathname too long");
+		ERROR("The name of path is too long");
 		goto out1;
 	}
 
@@ -827,7 +837,7 @@ char *choose_init(const char *rootfs)
 
 	ret = snprintf(retv, PATH_MAX, "%s/%s/%s", tmp, LXCINITDIR, "/lxc/lxc-init");
 	if (ret < 0 || ret >= PATH_MAX) {
-		ERROR("pathname too long");
+		ERROR("The name of path is too long");
 		goto out1;
 	}
 
@@ -836,7 +846,7 @@ char *choose_init(const char *rootfs)
 
 	ret = snprintf(retv, PATH_MAX, "%s/usr/lib/lxc/lxc-init", tmp);
 	if (ret < 0 || ret >= PATH_MAX) {
-		ERROR("pathname too long");
+		ERROR("The name of path is too long");
 		goto out1;
 	}
 
@@ -845,7 +855,7 @@ char *choose_init(const char *rootfs)
 
 	ret = snprintf(retv, PATH_MAX, "%s/sbin/lxc-init", tmp);
 	if (ret < 0 || ret >= PATH_MAX) {
-		ERROR("pathname too long");
+		ERROR("The name of path is too long");
 		goto out1;
 	}
 
@@ -934,6 +944,7 @@ static char *get_nextpath(char *path, int *offsetp, int fulllen)
 		offset++;
 
 	*offsetp = offset;
+
 	return (offset < fulllen) ? &path[offset] : NULL;
 }
 
@@ -1031,7 +1042,7 @@ static int open_if_safe(int dirfd, const char *nextpath)
 static int open_without_symlink(const char *target, const char *prefix_skip)
 {
 	int curlen = 0, dirfd, fulllen, i;
-	char *dup = NULL;
+	char *dup;
 
 	fulllen = strlen(target);
 
@@ -1039,8 +1050,8 @@ static int open_without_symlink(const char *target, const char *prefix_skip)
 	if (prefix_skip && strlen(prefix_skip) > 0) {
 		curlen = strlen(prefix_skip);
 		if (!is_subdir(target, prefix_skip, curlen)) {
-			ERROR("WHOA there - target '%s' didn't start with prefix '%s'",
-				target, prefix_skip);
+			ERROR("WHOA there - target \"%s\" didn't start with prefix \"%s\"",
+			      target, prefix_skip);
 			return -EINVAL;
 		}
 
@@ -1058,7 +1069,7 @@ static int open_without_symlink(const char *target, const char *prefix_skip)
 
 	/* Make a copy of target which we can hack up, and tokenize it */
 	if ((dup = strdup(target)) == NULL) {
-		SYSERROR("Out of memory checking for symbolic link");
+		ERROR("Out of memory checking for symbolic link");
 		return -ENOMEM;
 	}
 
@@ -1068,8 +1079,10 @@ static int open_without_symlink(const char *target, const char *prefix_skip)
 	}
 
 	dirfd = open(prefix_skip, O_RDONLY);
-	if (dirfd < 0)
+	if (dirfd < 0) {
+		SYSERROR("Failed to open path \"%s\"", prefix_skip);
 		goto out;
+	}
 
 	while (1) {
 		int newfd, saved_errno;
@@ -1119,7 +1132,7 @@ int safe_mount(const char *src, const char *dest, const char *fstype,
 
 	/* todo - allow symlinks for relative paths if 'allowsymlinks' option is passed */
 	if (flags & MS_BIND && src && src[0] != '/') {
-		INFO("this is a relative bind mount");
+		INFO("This is a relative bind mount");
 
 		srcfd = open_without_symlink(src, NULL);
 		if (srcfd < 0)
@@ -1163,7 +1176,7 @@ int safe_mount(const char *src, const char *dest, const char *fstype,
 	close(destfd);
 	if (ret < 0) {
 		errno = saved_errno;
-		SYSERROR("Failed to mount %s onto %s", src ? src : "(null)", dest);
+		SYSERROR("Failed to mount \"%s\" onto \"%s\"", src ? src : "(null)", dest);
 		return ret;
 	}
 
@@ -1184,13 +1197,13 @@ int safe_mount(const char *src, const char *dest, const char *fstype,
  */
 int lxc_mount_proc_if_needed(const char *rootfs)
 {
-	char path[PATH_MAX];
+	char path[PATH_MAX] = {0};
 	int link_to_pid, linklen, mypid, ret;
 	char link[INTTYPE_TO_STRLEN(pid_t)] = {0};
 
 	ret = snprintf(path, PATH_MAX, "%s/proc/self", rootfs);
 	if (ret < 0 || ret >= PATH_MAX) {
-		SYSERROR("proc path name too long");
+		SYSERROR("The name of proc path is too long");
 		return -1;
 	}
 
@@ -1198,7 +1211,7 @@ int lxc_mount_proc_if_needed(const char *rootfs)
 
 	ret = snprintf(path, PATH_MAX, "%s/proc", rootfs);
 	if (ret < 0 || ret >= PATH_MAX) {
-		SYSERROR("proc path name too long");
+		SYSERROR("The name of proc path is too long");
 		return -1;
 	}
 
@@ -1210,7 +1223,7 @@ int lxc_mount_proc_if_needed(const char *rootfs)
 		goto domount;
 	} else if (linklen >= sizeof(link)) {
 		link[linklen - 1] = '\0';
-		ERROR("readlink returned truncated content: \"%s\"", link);
+		ERROR("Readlink returned truncated content: \"%s\"", link);
 		return -1;
 	}
 
@@ -1226,7 +1239,7 @@ int lxc_mount_proc_if_needed(const char *rootfs)
 
 	ret = umount2(path, MNT_DETACH);
 	if (ret < 0)
-		WARN("failed to umount \"%s\" with MNT_DETACH", path);
+		SYSWARN("Failed to umount \"%s\" with MNT_DETACH", path);
 
 domount:
 	/* rootfs is NULL */
@@ -1237,14 +1250,13 @@ domount:
 	if (ret < 0)
 		return -1;
 
-	INFO("mounted /proc in container for security transition");
+	INFO("Mounted /proc in container for security transition");
 	return 1;
 }
 
 int open_devnull(void)
 {
 	int fd = open("/dev/null", O_RDWR);
-
 	if (fd < 0)
 		SYSERROR("Can't open /dev/null");
 
@@ -1293,7 +1305,7 @@ int null_stdfds(void)
 bool task_blocks_signal(pid_t pid, int signal)
 {
 	int ret;
-	char status[__PROC_STATUS_LEN];
+	char status[__PROC_STATUS_LEN] = {0};
 	FILE *f;
 	uint64_t sigblk = 0, one = 1;
 	size_t n = 0;
@@ -1553,7 +1565,7 @@ int run_command(char *buf, size_t buf_size, int (*child_fn)(void *), void *args)
 		buf[0] = '\0';
 
 	if (pipe(pipefd) < 0) {
-		SYSERROR("failed to create pipe");
+		SYSERROR("Failed to create pipe");
 		return -1;
 	}
 
@@ -1561,7 +1573,7 @@ int run_command(char *buf, size_t buf_size, int (*child_fn)(void *), void *args)
 	if (child < 0) {
 		close(pipefd[0]);
 		close(pipefd[1]);
-		SYSERROR("failed to create new process");
+		SYSERROR("Failed to create new process");
 		return -1;
 	}
 
@@ -1580,13 +1592,13 @@ int run_command(char *buf, size_t buf_size, int (*child_fn)(void *), void *args)
 		close(pipefd[1]);
 
 		if (ret < 0) {
-			SYSERROR("failed to duplicate std{err,out} file descriptor");
+			SYSERROR("Failed to duplicate std{err,out} file descriptor");
 			_exit(EXIT_FAILURE);
 		}
 
 		/* Does not return. */
 		child_fn(args);
-		ERROR("failed to exec command");
+		ERROR("Failed to exec command");
 		_exit(EXIT_FAILURE);
 	}
 
@@ -1699,8 +1711,10 @@ int recursive_destroy(char *dirname)
 	int r = 0;
 
 	dir = opendir(dirname);
-	if (!dir)
+	if (!dir) {
+		SYSERROR("Failed to open dir \"%s\"", dirname);
 		return -1;
+	}
 
 	while ((direntp = readdir(dir))) {
 		char *pathname;
@@ -1715,7 +1729,7 @@ int recursive_destroy(char *dirname)
 		ret = lstat(pathname, &mystat);
 		if (ret < 0) {
 			if (!r)
-				WARN("Failed to stat \"%s\"", pathname);
+				SYSWARN("Failed to stat \"%s\"", pathname);
 
 			r = -1;
 			goto next;
