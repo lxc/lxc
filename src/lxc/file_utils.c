@@ -30,11 +30,8 @@
 
 #include "config.h"
 #include "file_utils.h"
-#include "log.h"
 #include "macro.h"
 #include "string.h"
-
-lxc_log_define(file_utils, lxc);
 
 int lxc_write_to_file(const char *filename, const void *buf, size_t count,
 		      bool add_newline, mode_t mode)

@@ -424,9 +424,7 @@ if HAVE_PAM
 pam_LTLIBRARIES = pam_cgfs.la
 
 pam_cgfs_la_SOURCES = pam/pam_cgfs.c \
-		      caps.c caps.h \
 		      file_utils.c file_utils.h \
-		      log.c log.h \
 		      macro.h \
 		      string_utils.c string_utils.h
 

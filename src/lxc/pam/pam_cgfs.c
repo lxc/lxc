@@ -57,8 +57,9 @@
 #include <unistd.h>
 
 #include "config.h"
+#include "file_utils.h"
 #include "macro.h"
-#include "utils.h"
+#include "string_utils.h"
 
 #define PAM_SM_SESSION
 #include <security/_pam_macros.h>
