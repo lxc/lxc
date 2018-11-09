@@ -29,6 +29,7 @@
 #include <inttypes.h>
 #include <libgen.h>
 #include <pthread.h>
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,7 +44,6 @@
 #include <unistd.h>
 
 #include "config.h"
-#include "log.h"
 #include "lxclock.h"
 #include "macro.h"
 #include "namespace.h"
@@ -57,8 +57,6 @@
 #ifndef HAVE_STRLCAT
 #include "include/strlcat.h"
 #endif
-
-lxc_log_define(string_utils, lxc);
 
 char **lxc_va_arg_list_to_argv(va_list ap, size_t skip, int do_strdup)
 {
