@@ -75,11 +75,11 @@ static int lvm_create_exec_wrapper(void *data)
 
 	(void)setenv("LVM_SUPPRESS_FD_WARNINGS", "1", 1);
 	if (args->thinpool)
-		execlp("lvcreate", "lvcreate", "--thinpool", args->thinpool,
+		execlp("lvcreate", "lvcreate", "-qq", "--thinpool", args->thinpool,
 		       "-V", args->size, args->vg, "-n", args->lv,
 		       (char *)NULL);
 	else
-		execlp("lvcreate", "lvcreate", "-L", args->size, args->vg, "-n",
+		execlp("lvcreate", "lvcreate", "-qq", "-L", args->size, args->vg, "-n",
 		       args->lv, (char *)NULL);
 
 	return -1;
