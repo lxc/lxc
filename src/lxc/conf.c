@@ -1463,6 +1463,12 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 		return -1;
 	}
 
+	ret = chdir("/");
+	if (ret < 0) {
+		SYSERROR("Failed to chroot(\"/\")");
+		return -1;
+	}
+
 	return 0;
 }
 
