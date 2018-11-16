@@ -120,6 +120,16 @@
   mount options=(rw,bind) /sy[^s]*{,/**},
   mount options=(rw,bind) /sys?*{,/**},
 
+  # allow various ro-bind-*re*-mounts
+  mount options=(ro,remount,bind),
+  mount options=(ro,remount,bind,nosuid),
+  mount options=(ro,remount,bind,noexec),
+  mount options=(ro,remount,bind,nodev),
+  mount options=(ro,remount,bind,nosuid,noexec),
+  mount options=(ro,remount,bind,noexec,nodev),
+  mount options=(ro,remount,bind,nodev,nosuid),
+  mount options=(ro,remount,bind,nosuid,noexec,nodev),
+
   # allow moving mounts except for /proc, /sys and /dev
   mount options=(rw,move) /[^spd]*{,/**},
   mount options=(rw,move) /d[^e]*{,/**},
