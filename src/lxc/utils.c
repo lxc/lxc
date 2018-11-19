@@ -1799,7 +1799,6 @@ int lxc_setup_keyring(void)
 			break;
 		default:
 			SYSERROR("Failed to create kernel keyring");
-			ret = -1;
 			break;
 		}
 	}
