@@ -41,6 +41,7 @@ noinst_HEADERS = attach.h \
 		 terminal.h \
 		 ../tests/lxctest.h \
 		 tools/arguments.h \
+		 storage/storage_utils.h \
 		 utils.h
 
 if IS_BIONIC
@@ -313,7 +314,8 @@ lxc_monitor_SOURCES = tools/lxc_monitor.c \
 lxc_ls_SOURCES = tools/lxc_ls.c \
 		 tools/arguments.c tools/arguments.h
 lxc_copy_SOURCES = tools/lxc_copy.c \
-		   tools/arguments.c tools/arguments.h
+		   tools/arguments.c tools/arguments.h \
+		   storage/storage_utils.c storage/storage_utils.h
 lxc_start_SOURCES = tools/lxc_start.c \
 		    tools/arguments.c tools/arguments.h
 lxc_stop_SOURCES = tools/lxc_stop.c \
@@ -327,7 +329,8 @@ lxc_unshare_SOURCES = tools/lxc_unshare.c \
 lxc_wait_SOURCES = tools/lxc_wait.c \
 		   tools/arguments.c tools/arguments.h
 lxc_create_SOURCES = tools/lxc_create.c \
-		     tools/arguments.c tools/arguments.h
+		     tools/arguments.c tools/arguments.h \
+		     storage/storage_utils.c storage/storage_utils.h
 lxc_snapshot_SOURCES = tools/lxc_snapshot.c \
 		       tools/arguments.c tools/arguments.h
 lxc_checkpoint_SOURCES = tools/lxc_checkpoint.c \
