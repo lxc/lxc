@@ -703,11 +703,6 @@ static bool all_controllers_found(struct cgroup_ops *ops)
 	char **cur;
 	struct hierarchy **hlist = ops->hierarchies;
 
-	if (!controller_found(hlist, "freezer")) {
-		ERROR("No freezer controller mountpoint found");
-		return false;
-	}
-
 	if (!ops->cgroup_use)
 		return true;
 
