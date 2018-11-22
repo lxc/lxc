@@ -73,6 +73,7 @@ static const struct option my_longopts[] = {
 	{ "newpath", required_argument, 0, 'p'},
 	{ "rename", no_argument, 0, 'R'},
 	{ "snapshot", no_argument, 0, 's'},
+	{ "allowrunning", no_argument, 0, 'a'},
 	{ "foreground", no_argument, 0, 'F'},
 	{ "daemon", no_argument, 0, 'd'},
 	{ "ephemeral", no_argument, 0, 'e'},
@@ -108,6 +109,7 @@ Options :\n\
   -p, --newpath=NEWPATH     NEWPATH for the container to be stored\n\
   -R, --rename              rename container\n\
   -s, --snapshot            create snapshot instead of clone\n\
+  -a, --allowrunning        allow snapshot creation even if source container is running\n\
   -F, --foreground          start with current tty attached to /dev/console\n\
   -d, --daemon              daemonize the container (default)\n\
   -e, --ephemeral           start ephemeral container\n\
@@ -195,7 +197,8 @@ int main(int argc, char *argv[])
 
 	if (my_args.task == SNAP || my_args.task == DESTROY)
 		flags |= LXC_CLONE_SNAPSHOT;
-
+	if (my_args.allowrunning)
+		flags |= LXC_CLONE_ALLOW_RUNNING;
 	if (my_args.keepname)
 		flags |= LXC_CLONE_KEEPNAME;
 
@@ -556,6 +559,9 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 		break;
 	case 's':
 		args->task = SNAP;
+		break;
+	case 'a':
+		args->allowrunning = 1;
 		break;
 	case 'F':
 		args->daemonize = 0;

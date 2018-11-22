@@ -122,6 +122,7 @@ struct lxc_arguments {
 	int keepdata;
 	int keepname;
 	int keepmac;
+	int allowrunning;
 
 	/* lxc-ls */
 	char *ls_fancy_format;
