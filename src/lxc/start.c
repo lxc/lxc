@@ -988,7 +988,6 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		free(namespaces[namespace_count]);
 
 	cgroup_ops->destroy(cgroup_ops, handler);
-	cgroup_exit(cgroup_ops);
 
 	if (handler->conf->reboot == REBOOT_NONE) {
 		/* For all new state clients simply close the command socket.
