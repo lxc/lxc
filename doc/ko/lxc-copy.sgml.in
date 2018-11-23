@@ -61,6 +61,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <arg choice="opt">-p, --newpath <replaceable>newpath</replaceable></arg>
       <arg choice="opt">-B, --backingstorage <replaceable>backingstorage</replaceable></arg>
       <arg choice="opt">-s, --snapshot</arg>
+      <arg choice="opt">-a, --allowrunning</arg>
       <arg choice="opt">-K, --keepname</arg>
       <arg choice="opt">-D, --keepdata</arg>
       <arg choice="opt">-M, --keepmac</arg>
@@ -76,6 +77,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
       <arg choice="req">-e, --ephemeral</arg>
       <arg choice="opt">-B, --backingstorage <replaceable>backingstorage</replaceable></arg>
       <arg choice="opt">-s, --snapshot</arg>
+      <arg choice="opt">-a, --allowrunning</arg>
       <arg choice="opt">-K, --keepname</arg>
       <arg choice="opt">-D, --keepdata</arg>
       <arg choice="opt">-M, --keepmac</arg>
@@ -241,6 +243,21 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
             -->
             원본 컨테이너의 스냅샷을 생성한다. 복사본의 저장소는 반드시 스냅샷을 지원해야 한다. 현재 aufs, btrfs, lvm, overlay, zfs가 가능하다.
             </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-a,--allowrunning </option> </term>
+	   <listitem>
+	    <para>
+	    <!--
+	    Allow the creation of a Snapshot of an already running container.
+	    This may cause data corruption or data loss depending on the used
+	    filesystem and applications. Use with care.
+	    -->
+	    이미 동작중인 컨테이너의 스냅샷 생성을 허용한다. 이 작업은 사용되고 있는 파일시스템 또는 어플리케이션들에 따라 데이터 변형 또는 손실을 야기할 수도 있다.
+	    신중히 사용해야 한다.
+	    </para>
 	   </listitem>
 	  </varlistentry>
 
