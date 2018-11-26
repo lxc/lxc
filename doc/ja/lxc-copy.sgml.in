@@ -61,6 +61,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <arg choice="opt">-p, --newpath <replaceable>newpath</replaceable></arg>
       <arg choice="opt">-B, --backingstorage <replaceable>backingstorage</replaceable></arg>
       <arg choice="opt">-s, --snapshot</arg>
+      <arg choice="opt">-a, --allowrunning</arg>
       <arg choice="opt">-K, --keepname</arg>
       <arg choice="opt">-D, --keepdata</arg>
       <arg choice="opt">-M, --keepmac</arg>
@@ -91,6 +92,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       <arg choice="req">-e, --ephemeral</arg>
       <arg choice="opt">-B, --backingstorage <replaceable>backingstorage</replaceable></arg>
       <arg choice="opt">-s, --snapshot</arg>
+      <arg choice="opt">-a, --allowrunning</arg>
       <arg choice="opt">-t, --tmpfs</arg>
       <arg choice="opt">-K, --keepname</arg>
       <arg choice="opt">-M, --keepmac</arg>
@@ -244,6 +246,19 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             storage for the copy must support snapshots. This currently includes
             btrfs, lvm, overlay, and zfs. -->
 	      元のコンテナのスナップショットを作成します。コピー先のバッキングストレージがスナップショットをサポートしている必要があります。現時点では btrfs、lvm、overlay、zfs が対象となります。
+	    </para>
+	   </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+	    <term> <option>-a,--allowrunning </option> </term>
+	   <listitem>
+	    <para><!-- Allow the creation of a Snapshot of an already running container.
+	    This may cause data corruption or data loss depending on the used
+	    filesystem and applications. Use with care. -->
+	      実行中のコンテナのスナップショットを作成します。
+	      これは、使用しているファイルシステムやアプリケーションによっては、データの破損や欠損を引き起こす可能性があります。
+	      注意して使用してください。
 	    </para>
 	   </listitem>
 	  </varlistentry>
