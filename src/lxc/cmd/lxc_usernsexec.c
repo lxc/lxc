@@ -200,6 +200,7 @@ static int read_default_map(char *fnam, int which, char *user)
 {
 	size_t len;
 	char *p1, *p2;
+	unsigned long ul1, ul2;
 	FILE *fin;
 	int ret = -1;
 	size_t sz = 0;
@@ -224,37 +225,42 @@ static int read_default_map(char *fnam, int which, char *user)
 		if (!p2)
 			continue;
 
+		line[strlen(line) - 1] = '\0';
+		*p2 = '\0';
+
+		ret = lxc_safe_ulong(p1 + 1, &ul1);
+		if (ret < 0)
+			break;
+
+		ret = lxc_safe_ulong(p2 + 1, &ul2);
+		if (ret < 0)
+			break;
+
+		ret = -1;
 		newmap = malloc(sizeof(*newmap));
 		if (!newmap)
-			goto on_error;
-
-		ret = lxc_safe_ulong(p1 + 1, &newmap->hostid);
-		if (ret < 0)
-			goto on_error;
-
-		ret = lxc_safe_ulong(p2 + 1, &newmap->range);
-		if (ret < 0)
-			goto on_error;
+			break;
 
 		newmap->nsid = 0;
 		newmap->idtype = which;
+		newmap->hostid = ul1;
+		newmap->range = ul2;
 
-		ret = -1;
 		tmp = malloc(sizeof(*tmp));
-		if (!tmp)
-			goto on_error;
+		if (!tmp) {
+			free(newmap);
+			break;
+		}
 
 		tmp->elem = newmap;
 		lxc_list_add_tail(&active_map, tmp);
+
+		ret = 0;
 		break;
 	}
 
-	ret = 0;
-
-on_error:
 	fclose(fin);
 	free(line);
-	free(newmap);
 
 	return ret;
 }
