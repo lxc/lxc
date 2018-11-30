@@ -462,8 +462,10 @@ install-exec-local: install-libLTLIBRARIES
 	ln -sf liblxc.so.@LXC_ABI@ liblxc.so.$(firstword $(subst ., ,@LXC_ABI@)); \
 	ln -sf liblxc.so.$(firstword $(subst ., ,@LXC_ABI@)) liblxc.so
 
+if ENABLE_COMMANDS
 install-exec-hook:
 	chmod u+s $(DESTDIR)$(libexecdir)/lxc/lxc-user-nic
+endif
 
 uninstall-local:
 	$(RM) $(DESTDIR)$(libdir)/liblxc.so*
