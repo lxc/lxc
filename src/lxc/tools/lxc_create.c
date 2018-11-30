@@ -62,7 +62,7 @@ static struct lxc_arguments my_args = {
 	.progname     = "lxc-create",
 	.helpfn       = create_helpfn,
 	.help         = "\
---name=NAME --template=TEMPLATE [OPTION...]\n\
+--name=NAME --template=TEMPLATE [OPTION...] [-- template-options]\n\
 \n\
 lxc-create creates a container\n\
 \n\
@@ -96,7 +96,11 @@ Options :\n\
                                 (Default: ext4)\n\
       --fssize=SIZE[U]          Create filesystem of\n\
                                 size SIZE * unit U (bBkKmMgGtT)\n\
-                                (Default: 1G, default unit: M)\n",
+                                (Default: 1G, default unit: M)\n\
+  -- template-options\n\
+         This will pass template-options to the template as arguments.\n\
+         To see the list of options supported by the template,\n\
+         you can run lxc-create -t TEMPLATE -h.\n",
 	.options      = my_longopts,
 	.parser       = my_parser,
 	.checker      = NULL,
