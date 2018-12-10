@@ -310,49 +310,52 @@ out:
 
 int btrfs_snapshot(const char *orig, const char *new)
 {
-	int fd, fddst, ret;
 	size_t retlen;
 	struct btrfs_ioctl_vol_args_v2 args;
 	char *newdir, *newname;
 	char *newfull = NULL;
+	int saved_errno = -1;
+	int fd = -1, fddst = -1, ret = -1;
 
 	newfull = strdup(new);
-	if (!newfull) {
-		ERROR("Error: out of memory");
+	if (!newfull)
 		goto out;
-	}
-	// make sure the directory doesn't already exist
-	if (rmdir(newfull) < 0 && errno != ENOENT) {
-		SYSERROR("Error removing empty new rootfs");
+
+	ret = rmdir(newfull);
+	if (ret < 0 && errno != ENOENT)
 		goto out;
-	}
+
 	newname = basename(newfull);
-	newdir = dirname(newfull);
 	fd = open(orig, O_RDONLY);
-	if (fd < 0) {
-		SYSERROR("Error opening original rootfs %s", orig);
+	if (fd < 0)
 		goto out;
-	}
+
+	newdir = dirname(newfull);
 	fddst = open(newdir, O_RDONLY);
-	if (fddst < 0) {
-		SYSERROR("Error opening new container dir %s", newdir);
+	if (fddst < 0)
 		goto out;
-	}
 
 	memset(&args, 0, sizeof(args));
+	args.fd = fd;
 	retlen = strlcpy(args.name, newname, BTRFS_SUBVOL_NAME_MAX);
 	if (retlen >= BTRFS_SUBVOL_NAME_MAX)
 		goto out;
 
 	ret = ioctl(fddst, BTRFS_IOC_SNAP_CREATE_V2, &args);
-	INFO("btrfs: snapshot create ioctl returned %d", ret);
+	saved_errno = errno;
 
 out:
 	if (fddst != -1)
 		close(fddst);
+
 	if (fd != -1)
 		close(fd);
+
 	free(newfull);
+
+	if (saved_errno >= 0)
+		errno = saved_errno;
+
 	return ret;
 }
 
