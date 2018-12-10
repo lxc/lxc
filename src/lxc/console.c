@@ -21,15 +21,17 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "config.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <termios.h>
-#include <unistd.h>
 #include <sys/epoll.h>
 #include <sys/types.h>
+#include <termios.h>
+#include <unistd.h>
 
 #include <lxc/lxccontainer.h>
 
@@ -37,12 +39,11 @@
 #include "caps.h"
 #include "commands.h"
 #include "conf.h"
-#include "config.h"
 #include "console.h"
 #include "log.h"
 #include "lxclock.h"
 #include "mainloop.h"
-#include "start.h" 	/* for struct lxc_handler */
+#include "start.h" /* for struct lxc_handler */
 #include "utils.h"
 
 #if HAVE_PTY_H
