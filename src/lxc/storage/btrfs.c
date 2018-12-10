@@ -41,6 +41,10 @@
 #include "storage.h"
 #include "utils.h"
 
+#ifndef HAVE_STRLCAT
+#include "include/strlcat.h"
+#endif
+
 #ifndef HAVE_STRLCPY
 #include "include/strlcpy.h"
 #endif
@@ -58,11 +62,11 @@ extern char *dir_new_path(char *src, const char *oldname, const char *name,
  * simply return a.
  */
 char *get_btrfs_subvol_path(int fd, u64 dir_id, u64 objid, char *name,
-			    int name_len)
+			    u16 name_len)
 {
 	struct btrfs_ioctl_ino_lookup_args args;
-	int ret, e;
-	size_t len;
+	int ret;
+	size_t len, retlen;
 	char *retpath;
 
 	memset(&args, 0, sizeof(args));
@@ -70,17 +74,16 @@ char *get_btrfs_subvol_path(int fd, u64 dir_id, u64 objid, char *name,
 	args.objectid = objid;
 
 	ret = ioctl(fd, BTRFS_IOC_INO_LOOKUP, &args);
-	e = errno;
 	if (ret) {
-		ERROR("Failed to lookup path for %llu %llu %s - %s\n",
-				 (unsigned long long) dir_id,
-				 (unsigned long long) objid,
-				 name, strerror(e));
+		SYSERROR("Failed to lookup path for %llu %llu %s",
+		         (unsigned long long) dir_id,
+		         (unsigned long long) objid,
+		         name);
 		return NULL;
 	} else
-		INFO("Got path for %llu %llu - %s\n",
-			(unsigned long long) objid, (unsigned long long) dir_id,
-			name);
+		INFO("Got path for %llu %llu - %s",
+		     (unsigned long long) objid, (unsigned long long) dir_id,
+		     name);
 
 	if (args.name[0]) {
 		/*
@@ -91,18 +94,33 @@ char *get_btrfs_subvol_path(int fd, u64 dir_id, u64 objid, char *name,
 		retpath = malloc(len);
 		if (!retpath)
 			return NULL;
+
 		(void)strlcpy(retpath, args.name, len);
-		strncat(retpath, "/", 1);
-		strncat(retpath, name, name_len);
+		(void)strlcat(retpath, "/", len);
+
+		retlen = strlcat(retpath, name, len);
+		if (retlen >= len) {
+			ERROR("Failed to append name - %s", name);
+			free(retpath);
+			return NULL;
+		}
 	} else {
 		/* we're at the root of ref_tree */
 		len = name_len + 1;
 		retpath = malloc(len);
 		if (!retpath)
 			return NULL;
+
 		*retpath = '\0';
-		strncat(retpath, name, name_len);
+
+		retlen = strlcat(retpath, name, len);
+		if (retlen >= len) {
+			ERROR("Failed to append name - %s", name);
+			free(retpath);
+			return NULL;
+		}
 	}
+
 	return retpath;
 }
 
