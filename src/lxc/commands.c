@@ -21,8 +21,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "config.h"
-
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
+#include <caps.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <malloc.h>
@@ -30,16 +32,17 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <unistd.h>
 
 #include "af_unix.h"
 #include "cgroup.h"
 #include "commands.h"
 #include "commands_utils.h"
 #include "conf.h"
+#include "config.h"
 #include "confile.h"
 #include "console.h"
 #include "log.h"
@@ -96,7 +99,7 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 	};
 
 	if (cmd >= LXC_CMD_MAX)
-		return "Unknown cmd";
+		return "Invalid request";
 
 	return cmdname[cmd];
 }
@@ -125,10 +128,11 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 
 	ret = lxc_abstract_unix_recv_fds(sock, &rspfd, 1, rsp, sizeof(*rsp));
 	if (ret < 0) {
-		WARN("%s - Failed to receive response for command \"%s\"",
-		     strerror(errno), lxc_cmd_str(cmd->req.cmd));
+		SYSWARN("Failed to receive response for command \"%s\"",
+		        lxc_cmd_str(cmd->req.cmd));
+
 		if (errno == ECONNRESET)
-			return -ECONNRESET;
+			return -1;
 
 		return -1;
 	}
@@ -145,10 +149,12 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 
 		rspdata = malloc(sizeof(*rspdata));
 		if (!rspdata) {
+			errno = ENOMEM;
 			ERROR("Failed to allocate response buffer for command \"%s\"",
 			      lxc_cmd_str(cmd->req.cmd));
-			return -ENOMEM;
+			return -1;
 		}
+
 		rspdata->masterfd = rspfd;
 		rspdata->ttynum = PTR_TO_INT(rsp->data);
 		rsp->data = rspdata;
@@ -161,27 +167,24 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 	}
 
 	if (rsp->datalen > LXC_CMD_DATA_MAX) {
-		errno = EFBIG;
-		ERROR("%s - Response data for command \"%s\" is too long: %d "
-		      "bytes > %d", strerror(errno), lxc_cmd_str(cmd->req.cmd),
-		      rsp->datalen, LXC_CMD_DATA_MAX);
-		return -EFBIG;
+		ERROR("Response data for command \"%s\" is too long: %d bytes > %d",
+		      lxc_cmd_str(cmd->req.cmd), rsp->datalen, LXC_CMD_DATA_MAX);
+		return -1;
 	}
 
 	rsp->data = malloc(rsp->datalen);
 	if (!rsp->data) {
 		errno = ENOMEM;
-		ERROR("%s - Failed to allocate response buffer for command "
-		      "\"%s\"", strerror(errno), lxc_cmd_str(cmd->req.cmd));
-		return -ENOMEM;
+		ERROR("Failed to allocate response buffer for command \"%s\"",
+		      lxc_cmd_str(cmd->req.cmd));
+		return -1;
 	}
 
 	ret = recv(sock, rsp->data, rsp->datalen, 0);
 	if (ret != rsp->datalen) {
-		ERROR("%s - Failed to receive response data for command \"%s\"",
-		      lxc_cmd_str(cmd->req.cmd), strerror(errno));
-		if (ret >= 0)
-			ret = -1;
+		SYSERROR("Failed to receive response data for command \"%s\"",
+		         lxc_cmd_str(cmd->req.cmd));
+		return -1;
 	}
 
 	return ret;
@@ -199,20 +202,19 @@ static int lxc_cmd_rsp_send(int fd, struct lxc_cmd_rsp *rsp)
 {
 	ssize_t ret;
 
-	ret = send(fd, rsp, sizeof(*rsp), 0);
+	errno = EMSGSIZE;
+	ret = send(fd, rsp, sizeof(*rsp), MSG_NOSIGNAL);
 	if (ret < 0 || (size_t)ret != sizeof(*rsp)) {
-		ERROR("%s - Failed to send command response %zd",
-		      strerror(errno), ret);
+		SYSERROR("Failed to send command response %zd", ret);
 		return -1;
 	}
 
 	if (!rsp->data || rsp->datalen <= 0)
 		return 0;
 
-	ret = send(fd, rsp->data, rsp->datalen, 0);
+	ret = send(fd, rsp->data, rsp->datalen, MSG_NOSIGNAL);
 	if (ret < 0 || ret != (ssize_t)rsp->datalen) {
-		WARN("%s - Failed to send command response data %zd",
-		     strerror(errno), ret);
+		SYSWARN("Failed to send command response data %zd", ret);
 		return -1;
 	}
 
@@ -222,48 +224,35 @@ static int lxc_cmd_rsp_send(int fd, struct lxc_cmd_rsp *rsp)
 static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
 			const char *lxcpath, const char *hashed_sock_name)
 {
-	int client_fd;
+	int client_fd, saved_errno;
 	ssize_t ret = -1;
 
 	client_fd = lxc_cmd_connect(name, lxcpath, hashed_sock_name, "command");
-	if (client_fd < 0) {
-		if (client_fd == -ECONNREFUSED)
-			return -ECONNREFUSED;
-
+	if (client_fd < 0)
 		return -1;
-	}
 
 	ret = lxc_abstract_unix_send_credential(client_fd, &cmd->req,
 						sizeof(cmd->req));
-	if (ret < 0 || (size_t)ret != sizeof(cmd->req)) {
-		close(client_fd);
-
-		if (errno == EPIPE)
-			return -EPIPE;
-
-		if (ret >= 0)
-			return -EMSGSIZE;
-
-		return -1;
-	}
+	if (ret < 0 || (size_t)ret != sizeof(cmd->req))
+		goto on_error;
 
 	if (cmd->req.datalen <= 0)
 		return client_fd;
 
-	ret = send(client_fd, cmd->req.data, cmd->req.datalen, MSG_NOSIGNAL);
-	if (ret < 0 || ret != (ssize_t)cmd->req.datalen) {
-		close(client_fd);
-
-		if (errno == EPIPE)
-			return -EPIPE;
-
-		if (ret >= 0)
-			return -EMSGSIZE;
-
-		return -1;
-	}
+	errno = EMSGSIZE;
+	ret = send(client_fd, (void *)cmd->req.data, cmd->req.datalen,
+		   MSG_NOSIGNAL);
+	if (ret < 0 || ret != (ssize_t)cmd->req.datalen)
+		goto on_error;
 
 	return client_fd;
+
+on_error:
+	saved_errno = errno;
+	close(client_fd);
+	errno = saved_errno;
+
+	return -1;
 }
 
 /*
@@ -288,7 +277,7 @@ static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
 static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 		   const char *lxcpath, const char *hashed_sock_name)
 {
-	int client_fd;
+	int client_fd, saved_errno;
 	int ret = -1;
 	bool stay_connected = false;
 
@@ -300,27 +289,25 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 
 	client_fd = lxc_cmd_send(name, cmd, lxcpath, hashed_sock_name);
 	if (client_fd < 0) {
-		TRACE("%s - Command \"%s\" failed to connect command socket",
-		      strerror(errno), lxc_cmd_str(cmd->req.cmd));
+		SYSTRACE("Command \"%s\" failed to connect command socket",
+		         lxc_cmd_str(cmd->req.cmd));
 
-		if (client_fd == -ECONNREFUSED)
+		if (errno == ECONNREFUSED || errno == EPIPE)
 			*stopped = 1;
 
-		if (client_fd == -EPIPE) {
-			*stopped = 1;
-			client_fd = 0;
-		}
-
-		return client_fd;
+		return -1;
 	}
 
 	ret = lxc_cmd_rsp_recv(client_fd, cmd);
-	if (ret == -ECONNRESET)
+	if (ret < 0 && errno == ECONNRESET)
 		*stopped = 1;
 
-	if (!stay_connected || ret <= 0)
-		if (client_fd >= 0)
-			close(client_fd);
+	if (!stay_connected || ret <= 0) {
+		saved_errno = errno;
+		close(client_fd);
+		errno = saved_errno;
+		return ret;
+	}
 
 	if (stay_connected && ret > 0)
 		cmd->rsp.ret = client_fd;
@@ -354,7 +341,7 @@ int lxc_try_cmd(const char *name, const char *lxcpath)
 	return 0;
 }
 
-/* Implentations of the commands and their callbacks */
+/* Implementations of the commands and their callbacks */
 
 /*
  * lxc_cmd_get_init_pid: Get pid of the container's init process
@@ -367,21 +354,38 @@ int lxc_try_cmd(const char *name, const char *lxcpath)
 pid_t lxc_cmd_get_init_pid(const char *name, const char *lxcpath)
 {
 	int ret, stopped;
+	intmax_t pid;
 	struct lxc_cmd_rr cmd = {
-		.req = { .cmd = LXC_CMD_GET_INIT_PID },
+		.req = {
+			.cmd = LXC_CMD_GET_INIT_PID
+		},
+		.rsp = {
+			.data = INTMAX_TO_PTR((intmax_t){-1})
+		}
 	};
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
-		return ret;
+		return -1;
 
-	return PTR_TO_INT(cmd.rsp.data);
+	pid = PTR_TO_INTMAX(cmd.rsp.data);
+	if (pid < 0)
+		return -1;
+
+	/* We need to assume that pid_t can actually hold any pid given to us
+	 * by the kernel. If it can't it's a libc bug.
+	 */
+	return (pid_t)pid;
 }
 
 static int lxc_cmd_get_init_pid_callback(int fd, struct lxc_cmd_req *req,
 					 struct lxc_handler *handler)
 {
-	struct lxc_cmd_rsp rsp = { .data = INT_TO_PTR(handler->pid) };
+	intmax_t pid = handler->pid;
+
+	struct lxc_cmd_rsp rsp = {
+		.data = INTMAX_TO_PTR(pid)
+	};
 
 	return lxc_cmd_rsp_send(fd, &rsp);
 }
@@ -612,8 +616,8 @@ int lxc_cmd_stop(const char *name, const char *lxcpath)
 	 * closed.
 	 */
 	if (ret > 0) {
-		ERROR("%s - Failed to stop container \"%s\"",
-		      strerror(-cmd.rsp.ret), name);
+		errno = -cmd.rsp.ret;
+		SYSERROR("Failed to stop container \"%s\"", name);
 		return -1;
 	}
 
@@ -703,7 +707,8 @@ int lxc_cmd_console(const char *name, int *ttynum, int *fd, const char *lxcpath)
 		return ret;
 
 	if (cmd.rsp.ret < 0) {
-		ERROR("%s - Denied access to tty", strerror(-cmd.rsp.ret));
+		errno = -cmd.rsp.ret;
+		SYSERROR("Denied access to tty");
 		ret = -1;
 		goto out;
 	}
@@ -855,7 +860,8 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 
 	if (ret < 0) {
 		if (errno != ECONNREFUSED)
-			ERROR("%s - Failed to execute command", strerror(errno));
+			SYSERROR("Failed to execute command");
+
 		return -1;
 	}
 
@@ -863,7 +869,8 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 	 * function.
 	 */
 	if (cmd.rsp.ret < 0) {
-		ERROR("%s - Failed to receive socket fd", strerror(-cmd.rsp.ret));
+		errno = -cmd.rsp.ret;
+		SYSERROR("Failed to receive socket fd");
 		return -1;
 	}
 
@@ -938,7 +945,7 @@ int lxc_cmd_serve_state_clients(const char *name, const char *lxcpath,
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0) {
-		ERROR("%s - Failed to execute command", strerror(errno));
+		SYSERROR("Failed to execute command");
 		return -1;
 	}
 
@@ -1036,17 +1043,17 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 	struct lxc_handler *handler = data;
 
 	ret = lxc_abstract_unix_rcv_credential(fd, &req, sizeof(req));
-	if (ret == -EACCES) {
-		/* We don't care for the peer, just send and close. */
-		struct lxc_cmd_rsp rsp = {.ret = ret};
-
-		lxc_cmd_rsp_send(fd, &rsp);
-		goto out_close;
-	}
-
 	if (ret < 0) {
 		SYSERROR("Failed to receive data on command socket for command "
-			 "\"%s\"", lxc_cmd_str(req.cmd));
+		         "\"%s\"", lxc_cmd_str(req.cmd));
+
+		if (errno == EACCES) {
+			/* We don't care for the peer, just send and close. */
+			struct lxc_cmd_rsp rsp = {.ret = ret};
+
+			lxc_cmd_rsp_send(fd, &rsp);
+		}
+
 		goto out_close;
 	}
 
@@ -1138,27 +1145,20 @@ out_close:
 
 int lxc_cmd_init(const char *name, const char *lxcpath, const char *suffix)
 {
-	int fd, len, ret;
-	char path[sizeof(((struct sockaddr_un *)0)->sun_path)] = {0};
-	char *offset = &path[1];
+	int fd, ret;
+	char path[LXC_AUDS_ADDR_LEN] = {0};
 
-	/* -2 here because this is an abstract unix socket so it needs a
-	 * leading \0, and we null terminate, so it needs a trailing \0.
-	 * Although null termination isn't required by the API, we do it anyway
-	 * because we print the sockname out sometimes.
-	 */
-	len = sizeof(path) - 2;
-	ret = lxc_make_abstract_socket_name(offset, len, name, lxcpath, NULL, suffix);
+	ret = lxc_make_abstract_socket_name(path, sizeof(path), name, lxcpath, NULL, suffix);
 	if (ret < 0)
 		return -1;
-	TRACE("Creating abstract unix socket \"%s\"", offset);
+	TRACE("Creating abstract unix socket \"%s\"", &path[1]);
 
 	fd = lxc_abstract_unix_open(path, SOCK_STREAM, 0);
 	if (fd < 0) {
-		ERROR("%s - Failed to create command socket %s",
-		      strerror(errno), offset);
+		SYSERROR("Failed to create command socket %s", &path[1]);
 		if (errno == EADDRINUSE)
 			ERROR("Container \"%s\" appears to be already running", name);
+
 		return -1;
 	}
 

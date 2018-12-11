@@ -25,16 +25,24 @@
 #define __LXC_COMMANDS_H
 
 #include <stdio.h>
-#include <unistd.h>
 #include <sys/types.h>
+#include <unistd.h>
 
+#include "lxccontainer.h"
 #include "state.h"
 
 #define LXC_CMD_DATA_MAX (MAXPATHLEN * 2)
 
-/* https://developer.gnome.org/glib/2.28/glib-Type-Conversion-Macros.html */
-#define INT_TO_PTR(n) ((void *)(long)(n))
-#define PTR_TO_INT(p) ((int)(long)(p))
+/* Length of abstract unix domain socket socket address. */
+#define LXC_AUDS_ADDR_LEN sizeof(((struct sockaddr_un *)0)->sun_path)
+
+/* pointer conversion macros */
+#define PTR_TO_INT(p) ((int)((intptr_t)(p)))
+#define INT_TO_PTR(u) ((void *)((intptr_t)(u)))
+
+#define PTR_TO_INTMAX(p) ((intmax_t)((intptr_t)(p)))
+#define INTMAX_TO_PTR(u) ((void *)((intptr_t)(u)))
+
 
 typedef enum {
 	LXC_CMD_CONSOLE,
