@@ -61,65 +61,6 @@
 
 lxc_log_define(storage_utils, lxc);
 
-/* the bulk of this needs to become a common helper */
-char *dir_new_path(char *src, const char *oldname, const char *name,
-		   const char *oldpath, const char *lxcpath)
-{
-	char *ret, *p, *p2;
-	int l1, l2, nlen;
-
-	nlen = strlen(src) + 1;
-	l1 = strlen(oldpath);
-	p = src;
-	/* if src starts with oldpath, look for oldname only after
-	 * that path */
-	if (strncmp(src, oldpath, l1) == 0) {
-		p += l1;
-		nlen += (strlen(lxcpath) - l1);
-	}
-
-	l2 = strlen(oldname);
-	while ((p = strstr(p, oldname)) != NULL) {
-		p += l2;
-		nlen += strlen(name) - l2;
-	}
-
-	ret = malloc(nlen);
-	if (!ret)
-		return NULL;
-
-	p = ret;
-	if (strncmp(src, oldpath, l1) == 0) {
-		p += sprintf(p, "%s", lxcpath);
-		src += l1;
-	}
-
-	while ((p2 = strstr(src, oldname)) != NULL) {
-		size_t retlen;
-
-		/* copy text up to oldname */
-		retlen = strlcpy(p, src, p2 - src);
-		if (retlen >= p2 - src) {
-			free(ret);
-			return NULL;
-		}
-
-		/* move target pointer (p) */
-		p += p2 - src;
-
-		/* print new name in place of oldname */
-		p += sprintf(p, "%s", name);
-
-		/* move src to end of oldname */
-		src = p2 + l2;
-	}
-
-	/* copy the rest of src */
-	sprintf(p, "%s", src);
-
-	return ret;
-}
-
 /*
  * attach_block_device returns true if all went well,
  * meaning either a block device was attached or was not
