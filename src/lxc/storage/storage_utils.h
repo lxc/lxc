@@ -33,8 +33,6 @@
 struct lxc_storage;
 struct lxc_conf;
 
-extern char *dir_new_path(char *src, const char *oldname, const char *name,
-			  const char *oldpath, const char *lxcpath);
 extern bool attach_block_device(struct lxc_conf *conf);
 extern void detach_block_device(struct lxc_conf *conf);
 extern int blk_getsize(struct lxc_storage *bdev, uint64_t *size);
