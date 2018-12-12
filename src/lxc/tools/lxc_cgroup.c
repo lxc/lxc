@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		INFO("%*s", ret, buffer);
+		printf("%*s\n", ret, buffer);
 	}
 
 	lxc_container_put(c);
