@@ -68,12 +68,6 @@ struct lxc_terminal_state {
 	 */
 	int saw_escape;
 
-	/* Name of the container to forward the SIGWINCH event to. */
-	const char *winch_proxy;
-
-	/* Path of the container to forward the SIGWINCH event to. */
-	const char *winch_proxy_lxcpath;
-
 	/* File descriptor that accepts signals. If set to -1 no signal handler
 	 * could be installed. This also means that the sigset_t oldmask member
 	 * is meaningless.

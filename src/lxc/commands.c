@@ -665,7 +665,7 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 }
 
 /*
- * lxc_cmd_terminal_winch: To process as if a SIGWINCH were received
+ * lxc_cmd_terminal_winch: noop
  *
  * @name      : name of container to connect to
  * @lxcpath   : the lxcpath in which the container is running
@@ -674,26 +674,14 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
  */
 int lxc_cmd_terminal_winch(const char *name, const char *lxcpath)
 {
-	int ret, stopped;
-	struct lxc_cmd_rr cmd = {
-		.req = { .cmd = LXC_CMD_TERMINAL_WINCH },
-	};
-
-	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
-	if (ret < 0)
-		return ret;
-
 	return 0;
 }
 
 static int lxc_cmd_terminal_winch_callback(int fd, struct lxc_cmd_req *req,
 					   struct lxc_handler *handler)
 {
-	struct lxc_cmd_rsp rsp = { .data = 0 };
-
-	lxc_terminal_sigwinch(SIGWINCH);
-
-	return lxc_cmd_rsp_send(fd, &rsp);
+	/* should never be called */
+	return -1;
 }
 
 /*
