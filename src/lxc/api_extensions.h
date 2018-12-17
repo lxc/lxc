@@ -40,6 +40,7 @@ static char *api_extensions[] = {
 	"reboot2",
 	"mount_injection",
 	"cgroup_relative",
+	"mount_injection_file",
 };
 
 static size_t nr_api_extensions = sizeof(api_extensions) / sizeof(*api_extensions);

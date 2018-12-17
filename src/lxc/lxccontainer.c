@@ -5045,10 +5045,13 @@ static int do_lxcapi_mount(struct lxc_container *c, const char *source,
 
 		/* Enter the container namespaces */
 		if (!lxc_list_empty(&c->lxc_conf->id_map)) {
-			if (!switch_to_ns(init_pid, "user")){
+			if (!switch_to_ns(init_pid, "user")) {
 				ERROR("Failed to enter user namespace");
 				_exit(EXIT_FAILURE);
 			}
+
+			if (!lxc_switch_uid_gid(0, 0))
+				_exit(EXIT_FAILURE);
 		}
 
 		if (!switch_to_ns(init_pid, "mnt")) {
