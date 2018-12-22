@@ -239,7 +239,8 @@ fi
 %endif
 %{_datadir}/doc/*
 %{_datadir}/lxc/*
-%{_sysconfdir}/bash_completion.d
+#%{_sysconfdir}/bash_completion.d
+/usr/share/bash-completion/completions/lxc
 %config(noreplace) %{_sysconfdir}/lxc/*
 %config(noreplace) %{_sysconfdir}/sysconfig/*
 
