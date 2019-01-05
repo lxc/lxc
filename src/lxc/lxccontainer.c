@@ -296,7 +296,6 @@ static void lxc_container_free(struct lxc_container *c)
 	c->config_path = NULL;
 
 	free(c);
-	c = NULL;
 }
 
 /* Consider the following case:
