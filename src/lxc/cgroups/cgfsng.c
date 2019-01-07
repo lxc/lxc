@@ -1319,8 +1319,6 @@ again:
 		if (!create_path_for_hierarchy(ops->hierarchies[i], container_cgroup)) {
 			int j;
 			ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->container_full_path);
-			free(ops->hierarchies[i]->container_full_path);
-			ops->hierarchies[i]->container_full_path = NULL;
 			for (j = 0; j < i; j++)
 				remove_path_for_hierarchy(ops->hierarchies[j], container_cgroup);
 			idx++;
