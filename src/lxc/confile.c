@@ -145,6 +145,7 @@ lxc_config_define(rootfs_mount);
 lxc_config_define(rootfs_options);
 lxc_config_define(rootfs_path);
 lxc_config_define(seccomp_profile);
+lxc_config_define(seccomp_allow_nesting);
 lxc_config_define(selinux_context);
 lxc_config_define(signal_halt);
 lxc_config_define(signal_reboot);
@@ -231,6 +232,7 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.rootfs.mount",              set_config_rootfs_mount,                get_config_rootfs_mount,                clr_config_rootfs_mount,              },
 	{ "lxc.rootfs.options",            set_config_rootfs_options,              get_config_rootfs_options,              clr_config_rootfs_options,            },
 	{ "lxc.rootfs.path",               set_config_rootfs_path,                 get_config_rootfs_path,                 clr_config_rootfs_path,               },
+	{ "lxc.seccomp.allow_nesting",     set_config_seccomp_allow_nesting,       get_config_seccomp_allow_nesting,       clr_config_seccomp_allow_nesting,     },
 	{ "lxc.seccomp.profile",           set_config_seccomp_profile,             get_config_seccomp_profile,             clr_config_seccomp_profile,           },
 	{ "lxc.selinux.context",           set_config_selinux_context,             get_config_selinux_context,             clr_config_selinux_context,           },
 	{ "lxc.signal.halt",               set_config_signal_halt,                 get_config_signal_halt,                 clr_config_signal_halt,               },
@@ -767,6 +769,21 @@ static int add_hook(struct lxc_conf *lxc_conf, int which, char *hook)
 
 	hooklist->elem = hook;
 	lxc_list_add_tail(&lxc_conf->hooks[which], hooklist);
+
+	return 0;
+}
+
+static int set_config_seccomp_allow_nesting(const char *key, const char *value,
+					    struct lxc_conf *lxc_conf, void *data)
+{
+	if (lxc_config_value_empty(value))
+		return clr_config_seccomp_allow_nesting(key, lxc_conf, NULL);
+
+	if (lxc_safe_uint(value, &lxc_conf->seccomp_allow_nesting) < 0)
+		return -1;
+
+	if (lxc_conf->seccomp_allow_nesting > 1)
+		return -1;
 
 	return 0;
 }
@@ -3621,6 +3638,12 @@ static int get_config_console_size(const char *key, char *retv, int inlen,
 	return lxc_get_conf_uint64(c, retv, inlen, c->console.log_size);
 }
 
+static int get_config_seccomp_allow_nesting(const char *key, char *retv,
+					    int inlen, struct lxc_conf *c,
+					    void *data)
+{
+	return lxc_get_conf_int(c, retv, inlen, c->seccomp_allow_nesting);
+}
 
 static int get_config_seccomp_profile(const char *key, char *retv, int inlen,
 				      struct lxc_conf *c, void *data)
@@ -4202,6 +4225,13 @@ static inline int clr_config_console_size(const char *key, struct lxc_conf *c,
 					  void *data)
 {
 	c->console.log_size = 0;
+	return 0;
+}
+
+static inline int clr_config_seccomp_allow_nesting(const char *key,
+						   struct lxc_conf *c, void *data)
+{
+	c->seccomp_allow_nesting = 0;
 	return 0;
 }
 

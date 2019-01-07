@@ -1823,6 +1823,19 @@ dev/null proc/kcore none bind,relative 0 0
              </para>
           </listitem>
         </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.seccomp.allow_nesting</option>
+          </term>
+          <listitem>
+            <para>
+	      If this flag is set to 1, then seccomp filters will be stacked
+	      regardless of whether a seccomp profile is already loaded.
+	      This allows nested containers to load their own seccomp profile.
+	      The default setting is 0.
+             </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 

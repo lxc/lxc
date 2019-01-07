@@ -1096,13 +1096,16 @@ bad_line:
  *   1. seccomp is not enabled in the kernel
  *   2. a seccomp policy is already enabled for this task
  */
-static bool use_seccomp(void)
+static bool use_seccomp(const struct lxc_conf *conf)
 {
 	int ret, v;
 	FILE *f;
 	size_t line_bufsz = 0;
 	char *line = NULL;
 	bool already_enabled = false, found = false;
+
+	if (conf->seccomp_allow_nesting > 0)
+		return true;
 
 	f = fopen("/proc/self/status", "r");
 	if (!f)
@@ -1143,7 +1146,7 @@ int lxc_read_seccomp_config(struct lxc_conf *conf)
 	if (!conf->seccomp)
 		return 0;
 
-	if (!use_seccomp())
+	if (!use_seccomp(conf))
 		return 0;
 
 #if HAVE_SCMP_FILTER_CTX
@@ -1198,7 +1201,7 @@ int lxc_seccomp_load(struct lxc_conf *conf)
 	if (!conf->seccomp)
 		return 0;
 
-	if (!use_seccomp())
+	if (!use_seccomp(conf))
 		return 0;
 
 #if HAVE_SCMP_FILTER_CTX
