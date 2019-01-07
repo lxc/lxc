@@ -296,6 +296,7 @@ struct lxc_conf {
 	char *lsm_se_context;
 	bool tmp_umount_proc;
 	char *seccomp;  /* filename with the seccomp rules */
+	unsigned int seccomp_allow_nesting;
 #if HAVE_SCMP_FILTER_CTX
 	scmp_filter_ctx seccomp_ctx;
 #endif
