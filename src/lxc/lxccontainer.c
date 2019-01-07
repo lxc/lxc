@@ -1796,7 +1796,7 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 	int partial_fd;
 	mode_t mask;
 	pid_t pid;
-	bool ret = false;
+	bool ret = false, rootfs_managed = true;
 	char *tpath = NULL;
 
 	if (!c)
@@ -1831,6 +1831,9 @@ static bool do_lxcapi_create(struct lxc_container *c, const char *t,
 
 	if (!create_container_dir(c))
 		goto free_tpath;
+
+	if (c->lxc_conf->rootfs.path)
+		rootfs_managed = false;
 
 	/* If both template and rootfs.path are set, template is setup as
 	 * rootfs.path. The container is already created if we have a config and
@@ -1938,8 +1941,18 @@ out_unlock:
 	remove_partial(c, partial_fd);
 
 out:
-	if (!ret)
+	if (!ret) {
+		bool reset_managed = c->lxc_conf->rootfs.managed;
+
+		/*
+		 * Ensure that we don't destroy storage we didn't create
+		 * ourselves.
+		 */
+		if (!rootfs_managed)
+			c->lxc_conf->rootfs.managed = false;
 		container_destroy(c, NULL);
+		c->lxc_conf->rootfs.managed = reset_managed;
+	}
 
 free_tpath:
 	free(tpath);
