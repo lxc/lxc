@@ -3691,7 +3691,7 @@ static int clone_update_rootfs(struct clone_update_data *data)
 		}
 	} else { /* TODO come up with a better way */
 		free(bdev->dest);
-		bdev->dest = strdup(bdev->src);
+		bdev->dest = strdup(lxc_storage_get_path(bdev->src, bdev->type));
 	}
 
 	if (!lxc_list_empty(&conf->hooks[LXCHOOK_CLONE])) {
