@@ -1402,9 +1402,6 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 		for (i = 0; ops->hierarchies[i]; i++) {
 			if (!monitor_create_path_for_hierarchy(ops->hierarchies[i], monitor_cgroup)) {
 				ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->monitor_full_path);
-				free(ops->hierarchies[i]->container_full_path);
-				ops->hierarchies[i]->container_full_path = NULL;
-
 				for (int j = 0; j < i; j++)
 					remove_path_for_hierarchy(ops->hierarchies[j], monitor_cgroup, true);
 
@@ -1484,8 +1481,6 @@ again:
 	for (i = 0; ops->hierarchies[i]; i++) {
 		if (!container_create_path_for_hierarchy(ops->hierarchies[i], container_cgroup)) {
 			ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->container_full_path);
-			free(ops->hierarchies[i]->container_full_path);
-			ops->hierarchies[i]->container_full_path = NULL;
 			for (int j = 0; j < i; j++)
 				remove_path_for_hierarchy(ops->hierarchies[j], container_cgroup, false);
 			idx++;
