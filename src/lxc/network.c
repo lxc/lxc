@@ -1982,9 +1982,9 @@ char *lxc_mkifname(char *template)
 		for (i = 0; i < strlen(name); i++) {
 			if (name[i] == 'X') {
 #ifdef HAVE_RAND_R
-				name[i] = padchar[rand_r(&seed) % (strlen(padchar) - 1)];
+				name[i] = padchar[rand_r(&seed) % strlen(padchar)];
 #else
-				name[i] = padchar[rand() % (strlen(padchar) - 1)];
+				name[i] = padchar[rand() % strlen(padchar)];
 #endif
 			}
 		}
