@@ -711,6 +711,7 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 	struct stat sb;
 	struct alloted_s *n;
 	char *buf = NULL;
+	uid_t uid;
 
 	for (n = names; n != NULL; n = n->next)
 		cull_entries(fd, n->name, intype, br, NULL, NULL);
@@ -753,7 +754,12 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 	if (!owner)
 		return NULL;
 
-	ret = snprintf(nicname, sizeof(nicname), "vethXXXXXX");
+        uid = getuid();
+	/* for POSIX integer uids the network device name schema is vethUID_XXXXX */
+	if (uid > 0 && uid <= 65536)
+		ret = snprintf(nicname, sizeof(nicname), "veth%d_XXXXX", uid);
+	else
+		ret = snprintf(nicname, sizeof(nicname), "vethXXXXXX");
 	if (ret < 0 || (size_t)ret >= sizeof(nicname))
 		return NULL;
 
