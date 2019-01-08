@@ -1953,6 +1953,8 @@ char *lxc_mkifname(char *template)
 	char name[IFNAMSIZ];
 	bool exists = false;
 	size_t i = 0;
+	uid_t uid = getuid();
+	unsigned int uidpad;
 #ifdef HAVE_RAND_R
 	unsigned int seed;
 
@@ -1978,14 +1980,21 @@ char *lxc_mkifname(char *template)
 		(void)strlcpy(name, template, IFNAMSIZ);
 
 		exists = false;
+		uidpad = (unsigned int) uid;
 
 		for (i = 0; i < strlen(name); i++) {
 			if (name[i] == 'X') {
+				/* insert max 4 chars UID info, 1679615 = base36 'ZZZZ' */
+				if (uidpad > 0 && uidpad <= 1679615) {
+					name[i] = padchar[uidpad % strlen(padchar)];
+					uidpad /= strlen(padchar);
+				} else {
 #ifdef HAVE_RAND_R
-				name[i] = padchar[rand_r(&seed) % strlen(padchar)];
+					name[i] = padchar[rand_r(&seed) % strlen(padchar)];
 #else
-				name[i] = padchar[rand() % strlen(padchar)];
+					name[i] = padchar[rand() % strlen(padchar)];
 #endif
+				}
 			}
 		}
 
