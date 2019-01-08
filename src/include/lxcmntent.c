@@ -24,6 +24,7 @@
 #include <alloca.h>
 #include <mntent.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "../lxc/macro.h"
 
