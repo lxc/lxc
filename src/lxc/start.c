@@ -1252,10 +1252,16 @@ static int do_start(void *data)
 	if (handler->ns_clone_flags & CLONE_NEWCGROUP) {
 		ret = unshare(CLONE_NEWCGROUP);
 		if (ret < 0) {
-			INFO("Failed to unshare CLONE_NEWCGROUP");
-			goto out_warn_father;
+			if (errno != EINVAL) {
+				SYSERROR("Failed to unshare CLONE_NEWCGROUP");
+				goto out_warn_father;
+			}
+
+			handler->ns_clone_flags &= ~CLONE_NEWCGROUP;
+			SYSINFO("Kernel does not support CLONE_NEWCGROUP");
+		} else {
+			INFO("Unshared CLONE_NEWCGROUP");
 		}
-		INFO("Unshared CLONE_NEWCGROUP");
 	}
 
 	/* Add the requested environment variables to the current environment to
