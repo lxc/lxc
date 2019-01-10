@@ -1108,6 +1108,9 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 	int ret;
 	struct generic_userns_exec_data wrap;
 
+	if (!ops->hierarchies)
+		return;
+
 	wrap.origuid = 0;
 	wrap.container_cgroup = ops->container_cgroup;
 	wrap.hierarchies = ops->hierarchies;
@@ -1376,6 +1379,9 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 	if (!conf)
 		return bret;
 
+	if (!ops->hierarchies)
+		return true;
+
 	if (conf->cgroup_meta.dir)
 		tmp = lxc_string_join("/",
 				      (const char *[]){conf->cgroup_meta.dir,
@@ -1442,6 +1448,9 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 	if (!conf)
 		return false;
 
+	if (!ops->hierarchies)
+		return true;
+
 	if (conf->cgroup_meta.dir)
 		tmp = lxc_string_join("/", (const char *[]){conf->cgroup_meta.dir, handler->name, NULL}, false);
 	else
@@ -1504,6 +1513,9 @@ __cgfsng_ops static bool __do_cgroup_enter(struct cgroup_ops *ops, pid_t pid,
 {
 	int len;
 	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
+
+	if (!ops->hierarchies)
+		return true;
 
 	len = snprintf(pidstr, sizeof(pidstr), "%d", pid);
 	if (len < 0 || (size_t)len >= sizeof(pidstr))
@@ -1646,6 +1658,9 @@ __cgfsng_ops static bool cgfsng_chown(struct cgroup_ops *ops,
 	struct generic_userns_exec_data wrap;
 
 	if (lxc_list_empty(&conf->id_map))
+		return true;
+
+	if (!ops->hierarchies)
 		return true;
 
 	wrap.origuid = geteuid();
@@ -1797,6 +1812,9 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	int i, ret;
 	char *tmpfspath = NULL;
 	bool has_cgns = false, retval = false, wants_force_mount = false;
+
+	if (!ops->hierarchies)
+		return true;
 
 	if ((type & LXC_AUTO_CGROUP_MASK) == 0)
 		return true;
@@ -1961,7 +1979,7 @@ __cgfsng_ops static bool cgfsng_escape(const struct cgroup_ops *ops,
 {
 	int i;
 
-	if (conf->cgroup_meta.relative || geteuid())
+	if (conf->cgroup_meta.relative || geteuid() || !ops->hierarchies)
 		return true;
 
 	for (i = 0; ops->hierarchies[i]; i++) {
@@ -1985,9 +2003,12 @@ __cgfsng_ops static bool cgfsng_escape(const struct cgroup_ops *ops,
 
 __cgfsng_ops static int cgfsng_num_hierarchies(struct cgroup_ops *ops)
 {
-	int i;
+	int i = 0;
 
-	for (i = 0; ops->hierarchies[i]; i++)
+	if (!ops->hierarchies)
+		return 0;
+
+	for (; ops->hierarchies[i]; i++)
 		;
 
 	return i;
@@ -1996,6 +2017,9 @@ __cgfsng_ops static int cgfsng_num_hierarchies(struct cgroup_ops *ops)
 __cgfsng_ops static bool cgfsng_get_hierarchies(struct cgroup_ops *ops, int n, char ***out)
 {
 	int i;
+
+	if (!ops->hierarchies)
+		return false;
 
 	/* sanity check n */
 	for (i = 0; i < n; i++)
@@ -2137,6 +2161,9 @@ __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops, const char *name,
 {
 	int i, len, ret;
 	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
+
+	if (!ops->hierarchies)
+		return true;
 
 	len = snprintf(pidstr, sizeof(pidstr), "%d", pid);
 	if (len < 0 || (size_t)len >= sizeof(pidstr))
@@ -2386,6 +2413,9 @@ static bool __cg_legacy_setup_limits(struct cgroup_ops *ops,
 
 	if (lxc_list_empty(cgroup_settings))
 		return true;
+
+	if (!ops->hierarchies)
+		return false;
 
 	sorted_cgroup_settings = sort_cgroup_settings(cgroup_settings);
 	if (!sorted_cgroup_settings)
