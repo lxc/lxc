@@ -501,7 +501,12 @@ struct lxc_popen_FILE *lxc_popen(const char *command)
 		if (ret < 0)
 			_exit(EXIT_FAILURE);
 
-		execl("/bin/sh", "sh", "-c", command, (char *)NULL);
+		/* check if /bin/sh exist, otherwise try Android location /system/bin/sh */
+		if (file_exists("/bin/sh"))
+			execl("/bin/sh", "sh", "-c", command, (char *)NULL);
+		else
+			execl("/system/bin/sh", "sh", "-c", command, (char *)NULL);
+
 		_exit(127);
 	}
 
