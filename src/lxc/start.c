@@ -1940,16 +1940,19 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 
 	if (!attach_block_device(handler->conf)) {
 		ERROR("Failed to attach block device");
+		ret = -1;
 		goto out_fini_nonet;
 	}
 
 	if (!cgroup_ops->monitor_create(cgroup_ops, handler)) {
 		ERROR("Failed to create monitor cgroup");
+		ret = -1;
 		goto out_fini_nonet;
 	}
 
 	if (!cgroup_ops->monitor_enter(cgroup_ops, handler->monitor_pid)) {
 		ERROR("Failed to enter monitor cgroup");
+		ret = -1;
 		goto out_fini_nonet;
 	}
 
@@ -1994,6 +1997,7 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 
 	if (!handler->init_died && handler->pid > 0) {
 		ERROR("Child process is not killed");
+		ret = -1;
 		goto out_abort;
 	}
 
