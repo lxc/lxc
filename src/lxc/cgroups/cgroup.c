@@ -95,6 +95,8 @@ void cgroup_exit(struct cgroup_ops *ops)
 	}
 	free(ops->hierarchies);
 
+	free(ops);
+
 	return;
 }
 
