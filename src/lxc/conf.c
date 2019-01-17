@@ -2103,6 +2103,9 @@ static int mount_entry(const char *fsname, const char *target,
 		}
 	}
 
+#ifdef HAVE_STATVFS
+skipremount:
+#endif
 	if (pflags) {
 		ret = mount(NULL, target, NULL, pflags, NULL);
 		if (ret < 0) {
@@ -2119,10 +2122,6 @@ static int mount_entry(const char *fsname, const char *target,
 		DEBUG("Changed mount propagation for \"%s\"", target);
 	}
 
-
-#ifdef HAVE_STATVFS
-skipremount:
-#endif
 	DEBUG("Mounted \"%s\" on \"%s\" with filesystem type \"%s\"",
 	      srcpath ? srcpath : "(null)", target, fstype);
 
@@ -3833,6 +3832,16 @@ int lxc_clear_config_keepcaps(struct lxc_conf *c)
 	return 0;
 }
 
+int lxc_clear_namespace(struct lxc_conf *c)
+{
+	int i;
+	for (i = 0; i < LXC_NS_MAX; i++) {
+		free(c->ns_share[i]);
+		c->ns_share[i] = NULL;
+	}
+	return 0;
+}
+
 int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version)
 {
 	char *global_token, *namespaced_token;
@@ -4125,6 +4134,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_sysctls(conf, "lxc.sysctl");
 	lxc_clear_procs(conf, "lxc.proc");
 	lxc_clear_apparmor_raw(conf);
+	lxc_clear_namespace(conf);
 	free(conf->cgroup_meta.dir);
 	free(conf->cgroup_meta.controllers);
 	free(conf->shmount.path_host);
