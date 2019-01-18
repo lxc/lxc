@@ -1485,8 +1485,16 @@ static int lxc_get_unused_loop_dev(char *name_loop)
 		goto on_error;
 
 	fd_tmp = open(name_loop, O_RDWR | O_CLOEXEC);
-	if (fd_tmp < 0)
-		SYSERROR("Failed to open loop \"%s\"", name_loop);
+	if (fd_tmp < 0) {
+		/* on Android loop devices are moved under /dev/block, give it a shot */
+		ret = snprintf(name_loop, LO_NAME_SIZE, "/dev/block/loop%d", loop_nr);
+                if (ret < 0 || ret >= LO_NAME_SIZE)
+                        goto on_error;
+
+		fd_tmp = open(name_loop, O_RDWR | O_CLOEXEC);
+		if (fd_tmp < 0)
+			SYSERROR("Failed to open loop \"%s\"", name_loop);
+	}
 
 on_error:
 	close(fd_ctl);
