@@ -525,13 +525,17 @@ WRAP_API(bool, lxcapi_is_running)
 static bool do_lxcapi_freeze(struct lxc_container *c)
 {
 	int ret;
+	lxc_state_t s;
 
 	if (!c)
 		return false;
 
-	ret = lxc_freeze(c->lxc_conf, c->name, c->config_path);
-	if (ret < 0)
-		return false;
+	s = lxc_getstate(c->name, c->config_path);
+	if (s != FROZEN) {
+	  ret = lxc_freeze(c->lxc_conf, c->name, c->config_path);
+	  if (ret < 0)
+	    return false;
+	}
 
 	return true;
 }
@@ -541,13 +545,17 @@ WRAP_API(bool, lxcapi_freeze)
 static bool do_lxcapi_unfreeze(struct lxc_container *c)
 {
 	int ret;
+	lxc_state_t s;
 
 	if (!c)
 		return false;
 
-	ret = lxc_unfreeze(c->lxc_conf, c->name, c->config_path);
-	if (ret < 0)
-		return false;
+	s = lxc_getstate(c->name, c->config_path);
+	if (s == FROZEN) {
+	  ret = lxc_unfreeze(c->lxc_conf, c->name, c->config_path);
+	  if (ret < 0)
+	    return false;
+	}
 
 	return true;
 }
