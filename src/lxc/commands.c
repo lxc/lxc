@@ -896,7 +896,7 @@ static int lxc_cmd_add_state_client_callback(int fd, struct lxc_cmd_req *req,
 	if (req->datalen < 0)
 		goto reap_client_fd;
 
-	if (req->datalen > (sizeof(lxc_state_t) * MAX_STATE))
+	if (req->datalen != (sizeof(lxc_state_t) * MAX_STATE))
 		goto reap_client_fd;
 
 	if (!req->data)
