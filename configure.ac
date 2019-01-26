@@ -706,6 +706,17 @@ AC_ARG_ENABLE([thread-safety],
 	[], [enable_thread_safety=yes])
 AM_CONDITIONAL([ENFORCE_THREAD_SAFETY], [test "x$enable_thread_safety" = "xyes"])
 
+AC_ARG_ENABLE([memfd-rexec],
+	[AC_HELP_STRING([--enable-memfd-rexec], [enforce liblxc as a memfd to protect against certain symlink attacks [default=yes]])],
+	[], [enable_memfd_rexec=yes])
+AM_CONDITIONAL([ENFORCE_MEMFD_REXEC], [test "x$enable_memfd_rexec" = "xyes"])
+if test "x$enable_memfd_rexec" = "xyes"; then
+	AC_DEFINE([ENFORCE_MEMFD_REXEC], 1, [Rexec liblxc as memfd])
+	AC_MSG_RESULT([yes])
+else
+	AC_MSG_RESULT([no])
+fi
+
 # Files requiring some variable expansion
 AC_CONFIG_FILES([
 	Makefile
@@ -934,6 +945,7 @@ Security features:
  - Linux capabilities: $enable_capabilities
  - seccomp: $enable_seccomp
  - SELinux: $enable_selinux
+ - memfd rexec: $enable_memfd_rexec
 
 PAM:
  - PAM module: $enable_pam
