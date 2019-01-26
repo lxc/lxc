@@ -51,9 +51,11 @@ static int do_freeze_thaw(bool freeze, struct lxc_conf *conf, const char *name,
 	int ret;
 	char v[100];
 	struct cgroup_ops *cgroup_ops;
-	const char *state = freeze ? "FROZEN" : "THAWED";
+        const char *state;
 	size_t state_len = 6;
 	lxc_state_t new_state = freeze ? FROZEN : THAWED;
+
+        state = lxc_state2str(new_state);
 
 	cgroup_ops = cgroup_init(conf);
 	if (!cgroup_ops)
@@ -62,7 +64,7 @@ static int do_freeze_thaw(bool freeze, struct lxc_conf *conf, const char *name,
 	ret = cgroup_ops->set(cgroup_ops, "freezer.state", state, name, lxcpath);
 	if (ret < 0) {
 		cgroup_exit(cgroup_ops);
-		ERROR("Failed to freeze %s", name);
+		ERROR("Failed to %s %s", (new_state == FROZEN ? "freeze" : "unfreeze"), name);
 		return -1;
 	}
 
@@ -74,7 +76,7 @@ static int do_freeze_thaw(bool freeze, struct lxc_conf *conf, const char *name,
 			return -1;
 		}
 
-		v[99] = '\0';
+		v[sizeof(v)-1] = '\0';
 		v[lxc_char_right_gc(v, strlen(v))] = '\0';
 
 		ret = strncmp(v, state, state_len);
