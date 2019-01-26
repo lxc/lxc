@@ -55,5 +55,6 @@ extern bool is_fs_type(const struct statfs *fs, fs_type_magic magic_val);
 extern FILE *fopen_cloexec(const char *path, const char *mode);
 extern ssize_t lxc_sendfile_nointr(int out_fd, int in_fd, off_t *offset,
 				   size_t count);
+extern char *file_to_buf(char *path, size_t *length);
 
 #endif /* __LXC_FILE_UTILS_H */

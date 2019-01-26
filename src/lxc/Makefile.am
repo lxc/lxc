@@ -177,6 +177,10 @@ if !HAVE_STRLCAT
 liblxc_la_SOURCES += ../include/strlcat.c ../include/strlcat.h
 endif
 
+if ENFORCE_MEMFD_REXEC
+liblxc_la_SOURCES += rexec.c
+endif
+
 AM_CFLAGS = -DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	    -DLXCPATH=\"$(LXCPATH)\" \
 	    -DLXC_GLOBAL_CONF=\"$(LXC_GLOBAL_CONF)\" \

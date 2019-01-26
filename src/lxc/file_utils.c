@@ -31,7 +31,7 @@
 #include "config.h"
 #include "file_utils.h"
 #include "macro.h"
-#include "string.h"
+#include "string_utils.h"
 
 int lxc_write_to_file(const char *filename, const void *buf, size_t count,
 		      bool add_newline, mode_t mode)
@@ -326,4 +326,43 @@ again:
 	}
 
 	return ret;
+}
+
+char *file_to_buf(char *path, size_t *length)
+{
+	int fd;
+	char buf[PATH_MAX];
+	char *copy = NULL;
+
+	if (!length)
+		return NULL;
+
+	fd = open(path, O_RDONLY | O_CLOEXEC);
+	if (fd < 0)
+		return NULL;
+
+	*length = 0;
+	for (;;) {
+		int n;
+		char *old = copy;
+
+		n = lxc_read_nointr(fd, buf, sizeof(buf));
+		if (n < 0)
+			goto on_error;
+		if (!n)
+			break;
+
+		copy = must_realloc(old, (*length + n) * sizeof(*old));
+		memcpy(copy + *length, buf, n);
+		*length += n;
+	}
+
+	close(fd);
+	return copy;
+
+on_error:
+	close(fd);
+	free(copy);
+
+	return NULL;
 }
