@@ -23,7 +23,6 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
-#include <sys/cdefs.h>
 
 #include "config.h"
 
