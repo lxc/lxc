@@ -52,10 +52,11 @@ static int do_freeze_thaw(bool freeze, struct lxc_conf *conf, const char *name,
 	char v[100];
 	struct cgroup_ops *cgroup_ops;
         const char *state;
-	size_t state_len = 6;
+	size_t state_len;
 	lxc_state_t new_state = freeze ? FROZEN : THAWED;
 
         state = lxc_state2str(new_state);
+	state_len = strlen(state);
 
 	cgroup_ops = cgroup_init(conf);
 	if (!cgroup_ops)
