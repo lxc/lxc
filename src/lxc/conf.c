@@ -2397,8 +2397,8 @@ static int setup_mount(const struct lxc_conf *conf,
  * access them as a side effect without explicitly allowing it.
  */
 static const char nesting_helpers[] =
-"proc dev/.lxc/proc proc create=dir,optional\n"
-"sys dev/.lxc/sys sysfs create=dir,optional\n";
+"proc dev/.lxc/proc proc create=dir,optional 0 0\n"
+"sys dev/.lxc/sys sysfs create=dir,optional 0 0\n";
 
 FILE *make_anonymous_mount_file(struct lxc_list *mount,
 				bool include_nesting_helpers)
