@@ -23,6 +23,8 @@
 LXC_MAPPED_UID=
 LXC_MAPPED_GID=
 
+BUSYBOX_EXE=
+
 # Make sure the usual locations are in PATH
 export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
 
@@ -128,7 +130,13 @@ EOF
   # writable and readable for other
   chmod 644 "${rootfs}/etc/inittab" || return 1
 
-  cat <<EOF >> "${rootfs}/usr/share/udhcpc/default.script"
+  # Look for the pathname of "default.script" from the help of udhcpc
+  DEF_SCRIPT=`${BUSYBOX_EXE} udhcpc -h 2>&1 | grep -- '-s,--script PROG' | cut -d'/' -f2- | cut -d')' -f1`
+  DEF_SCRIPT_DIR=`dirname /${DEF_SCRIPT}`
+  mkdir -p ${rootfs}/${DEF_SCRIPT_DIR}
+  chmod 644 ${rootfs}/${DEF_SCRIPT_DIR} || return 1
+
+  cat <<EOF >> ${rootfs}/${DEF_SCRIPT}
 #!/bin/sh
 case "\$1" in
   deconfig)
@@ -162,7 +170,7 @@ esac
 exit 0
 EOF
 
- chmod 744 "${rootfs}/usr/share/udhcpc/default.script"
+ chmod 744 ${rootfs}/${DEF_SCRIPT}
 
  return "${res}"
 }
@@ -294,6 +302,13 @@ done
 # Check that we have all variables we need
 if [ -z "${name}" ] || [ -z "${path}" ] || [ -z "${rootfs}" ]; then
     echo "ERROR: Please pass the name, path, and rootfs for the container" 1>&2
+    exit 1
+fi
+
+# Make sure busybox is present
+BUSYBOX_EXE=`which busybox`
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to find busybox binary"
     exit 1
 fi
 
