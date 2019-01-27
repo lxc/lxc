@@ -179,13 +179,8 @@ configure_busybox()
 {
   rootfs="${1}"
 
-  if ! which busybox > /dev/null 2>&1; then
-    echo "ERROR: Failed to find busybox binary"
-    return 1
-  fi
-
   # copy busybox in the rootfs
-  if ! cp "$(which busybox)" "${rootfs}/bin"; then
+  if ! cp "${BUSYBOX_EXE}" "${rootfs}/bin"; then
     echo "ERROR: Failed to copy busybox binary"
     return 1
   fi
