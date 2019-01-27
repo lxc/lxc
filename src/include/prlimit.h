@@ -30,7 +30,6 @@
 #define _PRLIMIT_H
 
 #include <linux/resource.h>
-#include <sys/cdefs.h>
 #include <sys/types.h>
 
 #define RLIM_SAVED_CUR RLIM_INFINITY
