@@ -2120,6 +2120,10 @@ static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 		if (ret < MAX_STATE)
 			return false;
 	}
+	
+	/* Raise the STOPPING state */
+	lxc_cmd_serve_state_clients(c->name, c->config_path, STOPPING);
+	lxc_monitor_send_state(c->name, STOPPING, c->config_path);
 
 	/* Send shutdown signal to container. */
 	killret = kill(pid, haltsignal);
