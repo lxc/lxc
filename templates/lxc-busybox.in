@@ -69,6 +69,7 @@ ${rootfs}/sys \
 ${rootfs}/mnt \
 ${rootfs}/tmp \
 ${rootfs}/var/log \
+${rootfs}/var/run \
 ${rootfs}/usr/share/udhcpc \
 ${rootfs}/dev/pts \
 ${rootfs}/dev/shm \
