@@ -2336,11 +2336,12 @@ static int mount_file_entries(const struct lxc_conf *conf,
 			      const struct lxc_rootfs *rootfs, FILE *file,
 			      const char *lxc_name, const char *lxc_path)
 {
-	char buf[4096];
+	char buf[PATH_MAX];
 	struct mntent mntent;
-	int ret = -1;
 
 	while (getmntent_r(file, &mntent, buf, sizeof(buf))) {
+		int ret;
+
 		if (!rootfs->path)
 			ret = mount_entry_on_systemfs(&mntent);
 		else if (mntent.mnt_dir[0] != '/')
@@ -2348,14 +2349,17 @@ static int mount_file_entries(const struct lxc_conf *conf,
 							     lxc_name, lxc_path);
 		else
 			ret = mount_entry_on_absolute_rootfs(&mntent, rootfs,
-					                     lxc_name, lxc_path);
+							     lxc_name, lxc_path);
 		if (ret < 0)
 			return -1;
 	}
-	ret = 0;
 
-	INFO("Finished setting up mounts");
-	return ret;
+	if (!feof(file) || ferror(file)) {
+		ERROR("Failed to parse mount entries");
+		return -1;
+	}
+
+	return 0;
 }
 
 static int setup_mount(const struct lxc_conf *conf,
@@ -2393,8 +2397,8 @@ static int setup_mount(const struct lxc_conf *conf,
  * access them as a side effect without explicitly allowing it.
  */
 static const char nesting_helpers[] =
-"proc dev/.lxc/proc proc create=dir,optional\n"
-"sys dev/.lxc/sys sysfs create=dir,optional\n";
+"proc dev/.lxc/proc proc create=dir,optional 0 0\n"
+"sys dev/.lxc/sys sysfs create=dir,optional 0 0\n";
 
 FILE *make_anonymous_mount_file(struct lxc_list *mount,
 				bool include_nesting_helpers)
