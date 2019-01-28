@@ -2433,6 +2433,24 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
              </para>
           </listitem>
         </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.seccomp.allow_nesting</option>
+          </term>
+          <listitem>
+            <para>
+	      <!--
+              If this flag is set to 1, then seccomp filters will be stacked
+              regardless of whether a seccomp profile is already loaded.
+              This allows nested containers to load their own seccomp profile.
+              The default setting is 0.
+		-->
+	      このオプションを 1 に設定すると、すでに seccomp プロファイルがロードされている、いないに関わらず、seccomp フィルタが重ね合わせられます。
+	      これにより、ネストされたコンテナが自身の seccomp プロファイルをロードできます。
+	      デフォルト値は 0 です。
+             </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
