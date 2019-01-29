@@ -910,9 +910,13 @@ char *get_template_path(const char *t)
 	int ret, len;
 	char *tpath;
 
-	if (t[0] == '/' && access(t, X_OK) == 0) {
-		tpath = strdup(t);
-		return tpath;
+	if (t[0] == '/') {
+		if (access(t, X_OK) == 0) {
+			return strdup(t);
+		} else {
+			SYSERROR("Bad template pathname: %s", t);
+			return NULL;
+		}
 	}
 
 	len = strlen(LXCTEMPLATEDIR) + strlen(t) + strlen("/lxc-") + 1;
