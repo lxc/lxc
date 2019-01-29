@@ -910,9 +910,24 @@ char *get_template_path(const char *t)
 	int ret, len;
 	char *tpath;
 
-	if (t[0] == '/' && access(t, X_OK) == 0) {
-		tpath = strdup(t);
-		return tpath;
+	if (t[0] == '/') {
+        	if (access(t, X_OK) == 0) {
+			tpath = strdup(t);
+			return tpath;
+		} else {
+			if (errno == EACCES) {
+				SYSERROR("cannot execute template %s", t);
+				return NULL;
+			}
+
+			if (errno == ENOENT) {
+				SYSERROR("template %s does not exist", t);
+				return NULL;
+			}
+
+			SYSERROR("Bad template pathname: %s", t);
+			return NULL;
+		}
 	}
 
 	len = strlen(LXCTEMPLATEDIR) + strlen(t) + strlen("/lxc-") + 1;
