@@ -912,19 +912,8 @@ char *get_template_path(const char *t)
 
 	if (t[0] == '/') {
         	if (access(t, X_OK) == 0) {
-			tpath = strdup(t);
-			return tpath;
+			return strdup(t);
 		} else {
-			if (errno == EACCES) {
-				SYSERROR("cannot execute template %s", t);
-				return NULL;
-			}
-
-			if (errno == ENOENT) {
-				SYSERROR("template %s does not exist", t);
-				return NULL;
-			}
-
 			SYSERROR("Bad template pathname: %s", t);
 			return NULL;
 		}
