@@ -527,15 +527,12 @@ static bool do_lxcapi_freeze(struct lxc_container *c)
 	int ret;
 	lxc_state_t s;
 
-	if (!c)
+	if (!c || !c->lxc_conf)
 		return false;
 
 	s = lxc_getstate(c->name, c->config_path);
-	if (s != FROZEN) {
-	  ret = lxc_freeze(c->lxc_conf, c->name, c->config_path);
-	  if (ret < 0)
-	    return false;
-	}
+	if (s != FROZEN)
+		return lxc_freeze(c->lxc_conf, c->name, c->config_path) == 0;
 
 	return true;
 }
@@ -547,15 +544,12 @@ static bool do_lxcapi_unfreeze(struct lxc_container *c)
 	int ret;
 	lxc_state_t s;
 
-	if (!c)
+	if (!c || !c->lxc_conf)
 		return false;
 
 	s = lxc_getstate(c->name, c->config_path);
-	if (s == FROZEN) {
-	  ret = lxc_unfreeze(c->lxc_conf, c->name, c->config_path);
-	  if (ret < 0)
-	    return false;
-	}
+	if (s == FROZEN)
+		return lxc_unfreeze(c->lxc_conf, c->name, c->config_path) == 0;
 
 	return true;
 }
