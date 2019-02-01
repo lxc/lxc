@@ -81,6 +81,11 @@ typedef enum {
  *   CGROUP2_SUPER_MAGIC.
  */
 struct hierarchy {
+	/*
+	 * cgroup2 only: what files need to be chowned to delegate a cgroup to
+	 * an unprivileged user.
+	 */
+	char **cgroup2_chown;
 	char **controllers;
 	char *mountpoint;
 	char *container_base_path;

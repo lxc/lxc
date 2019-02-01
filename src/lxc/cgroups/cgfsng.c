@@ -820,6 +820,7 @@ static struct hierarchy *add_hierarchy(struct hierarchy ***h, char **clist, char
 	new->container_full_path = NULL;
 	new->monitor_full_path = NULL;
 	new->version = type;
+	new->cgroup2_chown = NULL;
 
 	newentry = append_null_to_list((void ***)h);
 	(*h)[newentry] = new;
@@ -1640,13 +1641,11 @@ static int chown_cgroup_wrapper(void *data)
 		if (arg->hierarchies[i]->version != CGROUP2_SUPER_MAGIC)
 			continue;
 
-		fullpath = must_make_path(path, "cgroup.subtree_control", NULL);
-		(void)chowmod(fullpath, destuid, nsgid, 0664);
-		free(fullpath);
-
-		fullpath = must_make_path(path, "cgroup.threads", NULL);
-		(void)chowmod(fullpath, destuid, nsgid, 0664);
-		free(fullpath);
+		for (char **p = arg->hierarchies[i]->cgroup2_chown; p && *p; p++) {
+			fullpath = must_make_path(path, *p, NULL);
+			(void)chowmod(fullpath, destuid, nsgid, 0664);
+			free(fullpath);
+		}
 	}
 
 	return 0;
@@ -2524,10 +2523,40 @@ static bool cgroup_use_wants_controllers(const struct cgroup_ops *ops,
 	return true;
 }
 
+static void cg_unified_delegate(char ***delegate)
+{
+	char *tmp;
+	int idx;
+	char *standard[] = {"cgroup.subtree_control", "cgroup.threads", NULL};
+
+	tmp = read_file("/sys/kernel/cgroup/delegate");
+	if (!tmp) {
+		for (char **p = standard; p && *p; p++) {
+			idx = append_null_to_list((void ***)delegate);
+			(*delegate)[idx] = must_copy_string(*p);
+		}
+	} else {
+		char *token;
+		lxc_iterate_parts (token, tmp, " \t\n") {
+			/*
+			 * We always need to chown this for both cgroup and
+			 * cgroup2.
+			 */
+			if (strcmp(token, "cgroup.procs") == 0)
+				continue;
+
+			idx = append_null_to_list((void ***)delegate);
+			(*delegate)[idx] = must_copy_string(token);
+		}
+		free(tmp);
+	}
+}
+
 /* At startup, parse_hierarchies finds all the info we need about cgroup
  * mountpoints and current cgroups, and stores it in @d.
  */
-static bool cg_hybrid_init(struct cgroup_ops *ops, bool relative)
+static bool cg_hybrid_init(struct cgroup_ops *ops, bool relative,
+			   bool unprivileged)
 {
 	int ret;
 	char *basecginfo;
@@ -2642,8 +2671,11 @@ static bool cg_hybrid_init(struct cgroup_ops *ops, bool relative)
 			goto next;
 
 		new = add_hierarchy(&ops->hierarchies, controller_list, mountpoint, base_cgroup, type);
-		if (type == CGROUP2_SUPER_MAGIC && !ops->unified)
+		if (type == CGROUP2_SUPER_MAGIC && !ops->unified) {
+			if (unprivileged)
+				cg_unified_delegate(&new->cgroup2_chown);
 			ops->unified = new;
+		}
 
 		continue;
 
@@ -2719,11 +2751,13 @@ cleanup_on_err:
 	return copy;
 }
 
-static int cg_unified_init(struct cgroup_ops *ops, bool relative)
+static int cg_unified_init(struct cgroup_ops *ops, bool relative,
+			   bool unprivileged)
 {
 	int ret;
-	char *mountpoint, *subtree_path;
+	char *mountpoint, *subtree_path, *tmp;
 	char **delegatable;
+	struct hierarchy *new;
 	char *base_cgroup = NULL;
 
 	ret = cg_is_pure_unified();
@@ -2759,7 +2793,9 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative)
 	 * controllers per container.
 	 */
 
-	add_hierarchy(&ops->hierarchies, delegatable, mountpoint, base_cgroup, CGROUP2_SUPER_MAGIC);
+	new = add_hierarchy(&ops->hierarchies, delegatable, mountpoint, base_cgroup, CGROUP2_SUPER_MAGIC);
+	if (!unprivileged)
+		cg_unified_delegate(&new->cgroup2_chown);
 
 	ops->cgroup_layout = CGROUP_LAYOUT_UNIFIED;
 	return CGROUP2_SUPER_MAGIC;
@@ -2785,14 +2821,14 @@ static bool cg_init(struct cgroup_ops *ops, struct lxc_conf *conf)
 		free(pin);
 	}
 
-	ret = cg_unified_init(ops, relative);
+	ret = cg_unified_init(ops, relative, !lxc_list_empty(&conf->id_map));
 	if (ret < 0)
 		return false;
 
 	if (ret == CGROUP2_SUPER_MAGIC)
 		return true;
 
-	return cg_hybrid_init(ops, relative);
+	return cg_hybrid_init(ops, relative, !lxc_list_empty(&conf->id_map));
 }
 
 __cgfsng_ops static bool cgfsng_data_init(struct cgroup_ops *ops)

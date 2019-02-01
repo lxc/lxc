@@ -82,11 +82,15 @@ void cgroup_exit(struct cgroup_ops *ops)
 	free(ops->container_cgroup);
 
 	for (it = ops->hierarchies; it && *it; it++) {
-		char **ctrlr;
+		char **p;
 
-		for (ctrlr = (*it)->controllers; ctrlr && *ctrlr; ctrlr++)
-			free(*ctrlr);
+		for (p = (*it)->controllers; p && *p; p++)
+			free(*p);
 		free((*it)->controllers);
+
+		for (p = (*it)->cgroup2_chown; p && *p; p++)
+			free(*p);
+		free((*it)->cgroup2_chown);
 
 		free((*it)->mountpoint);
 		free((*it)->container_base_path);
