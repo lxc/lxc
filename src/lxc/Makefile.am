@@ -368,9 +368,11 @@ lxc_monitord_SOURCES = cmd/lxc_monitord.c \
 lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
 		       ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		       log.c log.h \
+		       memory_utils.h \
 		       network.c network.h \
 		       parse.c parse.h \
 		       raw_syscalls.c raw_syscalls.h \
+		       string_utils.c string_utils.h \
 		       syscall_wrappers.h
 lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c \
 			 conf.c conf.h \
