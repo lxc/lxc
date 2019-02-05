@@ -53,6 +53,7 @@
 #include "../include/netns_ifaddrs.h"
 #include "log.h"
 #include "lxcseccomp.h"
+#include "memory_utils.h"
 #include "network.h"
 #include "parse.h"
 #include "storage.h"
@@ -2710,12 +2711,12 @@ int write_config(int fd, const struct lxc_conf *conf)
 bool do_append_unexp_config_line(struct lxc_conf *conf, const char *key,
 				 const char *v)
 {
+	__do_free char *tmp;
 	int ret;
 	size_t len;
-	char *tmp;
 
 	len = strlen(key) + strlen(v) + 4;
-	tmp = alloca(len);
+	tmp = must_realloc(NULL, len);
 
 	if (lxc_config_value_empty(v))
 		ret = snprintf(tmp, len, "%s =", key);
@@ -2777,21 +2778,23 @@ bool clone_update_unexp_ovl_paths(struct lxc_conf *conf, const char *oldpath,
 				  const char *newpath, const char *oldname,
 				  const char *newname, const char *ovldir)
 {
+	__do_free char *newdir = NULL,
+							 *olddir = NULL;
 	int ret;
-	char *lend, *newdir, *olddir, *p, *q;
+	char *lend, *p, *q;
 	size_t newdirlen, olddirlen;
 	char *lstart = conf->unexpanded_config;
 	const char *key = "lxc.mount.entry";
 
 	olddirlen = strlen(ovldir) + strlen(oldpath) + strlen(oldname) + 2;
-	olddir = alloca(olddirlen + 1);
+	olddir = must_realloc(NULL, olddirlen + 1);
 	ret = snprintf(olddir, olddirlen + 1, "%s=%s/%s", ovldir, oldpath,
 		       oldname);
 	if (ret < 0 || ret >= olddirlen + 1)
 		return false;
 
 	newdirlen = strlen(ovldir) + strlen(newpath) + strlen(newname) + 2;
-	newdir = alloca(newdirlen + 1);
+	newdir = must_realloc(NULL, newdirlen + 1);
 	ret = snprintf(newdir, newdirlen + 1, "%s=%s/%s", ovldir, newpath,
 		       newname);
 	if (ret < 0 || ret >= newdirlen + 1)
@@ -2885,20 +2888,22 @@ bool clone_update_unexp_hooks(struct lxc_conf *conf, const char *oldpath,
 			      const char *newpath, const char *oldname,
 			      const char *newname)
 {
+	__do_free char *newdir = NULL,
+							 *olddir = NULL;
 	int ret;
-	char *lend, *newdir, *olddir, *p;
+	char *lend, *p;
 	char *lstart = conf->unexpanded_config;
 	size_t newdirlen, olddirlen;
 	const char *key = "lxc.hook";
 
 	olddirlen = strlen(oldpath) + strlen(oldname) + 1;
-	olddir = alloca(olddirlen + 1);
+	olddir = must_realloc(NULL, olddirlen + 1);
 	ret = snprintf(olddir, olddirlen + 1, "%s/%s", oldpath, oldname);
 	if (ret < 0 || ret >= olddirlen + 1)
 		return false;
 
 	newdirlen = strlen(newpath) + strlen(newname) + 1;
-	newdir = alloca(newdirlen + 1);
+	newdir = must_realloc(NULL, newdirlen + 1);
 	ret = snprintf(newdir, newdirlen + 1, "%s/%s", newpath, newname);
 	if (ret < 0 || ret >= newdirlen + 1)
 		return false;
