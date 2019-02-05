@@ -67,6 +67,7 @@
 #include "lxclock.h"
 #include "lxcseccomp.h"
 #include "macro.h"
+#include "memory_utils.h"
 #include "namespace.h"
 #include "network.h"
 #include "parse.h"
@@ -486,8 +487,9 @@ on_error:
 
 int run_script(const char *name, const char *section, const char *script, ...)
 {
+	__do_free char *buffer = NULL;
 	int ret;
-	char *buffer, *p;
+	char *p;
 	va_list ap;
 	size_t size = 0;
 
@@ -508,7 +510,7 @@ int run_script(const char *name, const char *section, const char *script, ...)
 	if (size > INT_MAX)
 		return -1;
 
-	buffer = alloca(size);
+	buffer = must_realloc(NULL, size);
 	ret = snprintf(buffer, size, "exec %s %s %s", script, name, section);
 	if (ret < 0 || ret >= size)
 		return -1;
@@ -1136,16 +1138,16 @@ on_error:
 static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 			 const char *lxcpath)
 {
+	__do_free char *path = NULL;
 	int ret;
 	size_t clen;
-	char *path;
 	mode_t cur_mask;
 
 	INFO("Preparing \"/dev\"");
 
 	/* $(rootfs->mount) + "/dev/pts" + '\0' */
 	clen = (rootfs->path ? strlen(rootfs->mount) : 0) + 9;
-	path = alloca(clen);
+	path = must_realloc(NULL, clen);
 
 	ret = snprintf(path, clen, "%s/dev", rootfs->path ? rootfs->mount : "");
 	if (ret < 0 || (size_t)ret >= clen)
@@ -2560,6 +2562,7 @@ static int setup_caps(struct lxc_list *caps)
 
 static int dropcaps_except(struct lxc_list *caps)
 {
+	__do_free int *caplist = NULL;
 	int i, capid, numcaps;
 	char *keep_entry;
 	struct lxc_list *iterator;
@@ -2570,7 +2573,7 @@ static int dropcaps_except(struct lxc_list *caps)
 	TRACE("Found %d capabilities", numcaps);
 
 	/* caplist[i] is 1 if we keep capability i */
-	int *caplist = alloca(numcaps * sizeof(int));
+	caplist = must_realloc(NULL, numcaps * sizeof(int));
 	memset(caplist, 0, numcaps * sizeof(int));
 
 	lxc_list_for_each (iterator, caps) {
