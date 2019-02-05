@@ -51,6 +51,7 @@
 #include "lvm.h"
 #include "lxc.h"
 #include "lxclock.h"
+#include "memory_utils.h"
 #include "namespace.h"
 #include "nbd.h"
 #include "overlay.h"
@@ -567,13 +568,11 @@ struct lxc_storage *storage_create(const char *dest, const char *type,
 
 	/* -B lvm,dir */
 	if (strchr(type, ',')) {
-		char *dup, *token;
+		__do_free char *dup;
+		char *token;
 		size_t len;
 
-		len = strlen(type);
-		dup = alloca(len + 1);
-		(void)strlcpy(dup, type, len + 1);
-
+		dup = must_copy_string(type);
 		lxc_iterate_parts(token, dup, ",") {
 			bdev = do_storage_create(dest, token, cname, specs);
 			if (bdev)
