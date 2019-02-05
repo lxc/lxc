@@ -44,6 +44,7 @@
 #include "log.h"
 #include "lxclock.h"
 #include "mainloop.h"
+#include "memory_utils.h"
 #include "start.h"
 #include "syscall_wrappers.h"
 #include "terminal.h"
@@ -199,9 +200,9 @@ static int lxc_terminal_truncate_log_file(struct lxc_terminal *terminal)
 
 static int lxc_terminal_rotate_log_file(struct lxc_terminal *terminal)
 {
+	__do_free char *tmp = NULL;
 	int ret;
 	size_t len;
-	char *tmp;
 
 	if (!terminal->log_path || terminal->log_rotate == 0)
 		return -EOPNOTSUPP;
@@ -211,7 +212,7 @@ static int lxc_terminal_rotate_log_file(struct lxc_terminal *terminal)
 		return -EBADF;
 
 	len = strlen(terminal->log_path) + sizeof(".1");
-	tmp = alloca(len);
+	tmp = must_realloc(NULL, len);
 
 	ret = snprintf(tmp, len, "%s.1", terminal->log_path);
 	if (ret < 0 || (size_t)ret >= len)
