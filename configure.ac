@@ -716,6 +716,7 @@ AX_CHECK_COMPILE_FLAG([-Wendif-labels], [CFLAGS="$CFLAGS -Wendif-labels"],,[-Wer
 AX_CHECK_COMPILE_FLAG([-Werror=overflow], [CFLAGS="$CFLAGS -Werror=overflow"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-fdiagnostics-show-option], [CFLAGS="$CFLAGS -fdiagnostics-show-option"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-Werror=shift-count-overflow], [CFLAGS="$CFLAGS -Werror=shift-count-overflow"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-Werror=shift-overflow=2], [CFLAGS="$CFLAGS -Werror=shift-overflow=2"],,[-Werror])
 
 AX_CHECK_LINK_FLAG([-z relro], [LDLAGS="$LDLAGS -z relro"],,[])
 AX_CHECK_LINK_FLAG([-z now], [LDLAGS="$LDLAGS -z now"],,[])
