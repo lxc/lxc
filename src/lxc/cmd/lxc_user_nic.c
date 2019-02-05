@@ -49,9 +49,11 @@
 
 #include "config.h"
 #include "log.h"
+#include "memory_utils.h"
 #include "network.h"
 #include "parse.h"
 #include "raw_syscalls.h"
+#include "string_utils.h"
 #include "syscall_wrappers.h"
 #include "utils.h"
 
@@ -838,13 +840,12 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 
 static bool create_db_dir(char *fnam)
 {
-	int ret;
+	__do_free char *copy;
 	char *p;
-	size_t len;
+	int ret;
 
-	len = strlen(fnam);
-	p = alloca(len + 1);
-	(void)strlcpy(p, fnam, len + 1);
+	copy = must_copy_string(fnam);
+	p = copy;
 	fnam = p;
 	p = p + 1;
 
