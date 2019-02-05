@@ -295,19 +295,22 @@ char *lxc_append_paths(const char *first, const char *second)
 	int ret;
 	size_t len;
 	char *result = NULL;
-	const char *pattern = "%s%s";
+	int pattern_type = 0;
 
 	len = strlen(first) + strlen(second) + 1;
 	if (second[0] != '/') {
 		len += 1;
-		pattern = "%s/%s";
+		pattern_type = 1;
 	}
 
 	result = calloc(1, len);
 	if (!result)
 		return NULL;
 
-	ret = snprintf(result, len, pattern, first, second);
+	if (pattern_type == 0)
+		ret = snprintf(result, len, "%s%s", first, second);
+	else
+		ret = snprintf(result, len, "%s/%s", first, second);
 	if (ret < 0 || (size_t)ret >= len) {
 		free(result);
 		return NULL;

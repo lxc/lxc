@@ -355,7 +355,6 @@ struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
 	}
 
 	if (!orig->dest) {
-		int ret;
 		size_t len;
 		struct stat sb;
 

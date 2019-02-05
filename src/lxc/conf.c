@@ -3377,7 +3377,6 @@ again:
 	}
 
 	while (getline(&line, &len, f) != -1) {
-		int ret;
 		char *opts, *target;
 
 		target = get_field(line, 4);

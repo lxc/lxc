@@ -1351,10 +1351,10 @@ int lxc_attach(const char *name, const char *lxcpath,
 		if ((options->namespaces & CLONE_NEWNS) &&
 		    (options->attach_flags & LXC_ATTACH_LSM) &&
 		    init_ctx->lsm_label) {
-			int ret = -1;
 			int labelfd;
 			bool on_exec;
 
+			ret = -1;
 			on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? true : false;
 			labelfd = lsm_process_label_fd_get(attached_pid, on_exec);
 			if (labelfd < 0)

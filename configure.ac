@@ -690,8 +690,9 @@ AC_PROG_SED
 # See if we support thread-local storage.
 LXC_CHECK_TLS
 
+# Hardening flags
 AX_CHECK_COMPILE_FLAG([-fdiagnostics-color], [CFLAGS="$CFLAGS -fdiagnostics-color"],,[-Werror])
-AX_CHECK_COMPILE_FLAG([-Wimplicit-fallthrough], [CFLAGS="$CFLAGS -Wimplicit-fallthrough"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-Wimplicit-fallthrough=5], [CFLAGS="$CFLAGS -Wimplicit-fallthrough=5"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-Wcast-align], [CFLAGS="$CFLAGS -Wcast-align"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-Wstrict-prototypes], [CFLAGS="$CFLAGS -Wstrict-prototypes"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-fno-strict-aliasing], [CFLAGS="$CFLAGS -fno-strict-aliasing"],,[-Werror])
@@ -700,6 +701,16 @@ AX_CHECK_LINK_FLAG([-fstack-protector-strong], [CFLAGS="$CFLAGS -fstack-protecto
 AX_CHECK_COMPILE_FLAG([-g], [CFLAGS="$CFLAGS -g"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([--mcet -fcf-protection], [CFLAGS="$CFLAGS --mcet -fcf-protection"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-Werror=implicit-function-declaration], [CFLAGS="$CFLAGS -Werror=implicit-function-declaration"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-Wlogical-op], [CFLAGS="$CFLAGS -Wlogical-op"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-Wmissing-include-dirs], [CFLAGS="$CFLAGS -Wmissing-include-dirs"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-Wold-style-definition], [CFLAGS="$CFLAGS -Wold-style-definition"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-Winit-self], [CFLAGS="$CFLAGS -Winit-self"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-Wfloat-equal], [CFLAGS="$CFLAGS -Wfloat-equal"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-Wsuggest-attribute=noreturn], [CFLAGS="$CFLAGS -Wsuggest-attribute=noreturn"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-Werror=return-type], [CFLAGS="$CFLAGS -Werror=return-type"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-Werror=incompatible-pointer-types], [CFLAGS="$CFLAGS -Werror=incompatible-pointer-types"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-Wformat=2], [CFLAGS="$CFLAGS -Wformat=2"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-Wshadow], [CFLAGS="$CFLAGS -Wshadow"],,[-Werror])
 
 AX_CHECK_LINK_FLAG([-z relro], [LDLAGS="$LDLAGS -z relro"],,[])
 AX_CHECK_LINK_FLAG([-z now], [LDLAGS="$LDLAGS -z now"],,[])

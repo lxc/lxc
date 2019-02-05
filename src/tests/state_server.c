@@ -38,7 +38,7 @@ struct thread_args {
 	struct lxc_container *c;
 };
 
-void *state_wrapper(void *data)
+static void *state_wrapper(void *data)
 {
 	struct thread_args *args = data;
 
@@ -108,8 +108,6 @@ int main(int argc, char *argv[])
 		sleep(5);
 
 		for (i = 0; i < 10; i++) {
-			int ret;
-
 			args[i].thread_id = i;
 			args[i].c = c;
 			args[i].timeout = -1;
@@ -123,8 +121,6 @@ int main(int argc, char *argv[])
 		}
 
 		for (i = 0; i < 10; i++) {
-			int ret;
-
 			ret = pthread_join(threads[i], NULL);
 			if (ret != 0)
 				goto on_error_stop;

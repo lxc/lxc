@@ -274,28 +274,28 @@ static void print_stats(struct lxc_container *c)
 	}
 }
 
-static void print_info_msg_int(const char *key, int value)
+static void print_info_msg_int(const char *k, int value)
 {
 	if (humanize)
-		printf("%-15s %d\n", key, value);
+		printf("%-15s %d\n", k, value);
 	else {
 		if (filter_count == 1)
 			printf("%d\n", value);
 		else
-			printf("%-15s %d\n", key, value);
+			printf("%-15s %d\n", k, value);
 	}
 	fflush(stdout);
 }
 
-static void print_info_msg_str(const char *key, const char *value)
+static void print_info_msg_str(const char *k, const char *value)
 {
 	if (humanize)
-		printf("%-15s %s\n", key, value);
+		printf("%-15s %s\n", k, value);
 	else {
 		if (filter_count == 1)
 			printf("%s\n", value);
 		else
-			printf("%-15s %s\n", key, value);
+			printf("%-15s %s\n", k, value);
 	}
 	fflush(stdout);
 }
