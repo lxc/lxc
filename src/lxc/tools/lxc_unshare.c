@@ -398,7 +398,7 @@ int main(int argc, char *argv[])
 	if (my_args.setuid) {
 		uint64_t wait_val = 1;
 		/* enough space to accommodate uids */
-		char *umap = (char *)alloca(100);
+		char umap[100];
 
 		/* create new uid mapping using current UID and the one
 		 * specified as parameter
