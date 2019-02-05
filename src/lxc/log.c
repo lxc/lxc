@@ -122,14 +122,20 @@ static char *lxc_log_get_va_msg(struct lxc_log_event *event)
 		return NULL;
 
 	va_copy(args, *event->vap);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
 	len = vsnprintf(NULL, 0, event->fmt, args) + 1;
+#pragma GCC diagnostic pop
 	va_end(args);
 
 	msg = malloc(len * sizeof(char));
 	if (!msg)
 		return NULL;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
 	rc = vsnprintf(msg, len, event->fmt, *event->vap);
+#pragma GCC diagnostic pop
 	if (rc == -1 || rc >= len) {
 		free(msg);
 		return NULL;
@@ -183,7 +189,10 @@ static int log_append_stderr(const struct lxc_log_appender *appender,
 	        log_container_name ? ": " : "");
 	fprintf(stderr, "%s: %s: %d ", event->locinfo->file,
 	        event->locinfo->func, event->locinfo->line);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
 	vfprintf(stderr, event->fmt, *event->vap);
+#pragma GCC diagnostic pop
 	fprintf(stderr, "\n");
 
 	return 0;
@@ -349,7 +358,10 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 		return n;
 
 	if ((size_t)n < STRARRAYLEN(buffer)) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
 		ret = vsnprintf(buffer + n, sizeof(buffer) - n, event->fmt, *event->vap);
+#pragma GCC diagnostic pop
 		if (ret < 0)
 			return 0;
 

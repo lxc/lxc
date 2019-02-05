@@ -297,8 +297,11 @@ static void mysyslog(int err, const char *format, ...)
 	va_list args;
 
 	va_start(args, format);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
 	openlog("PAM-CGFS", LOG_CONS | LOG_PID, LOG_AUTH);
 	vsyslog(err, format, args);
+#pragma GCC diagnostic pop
 	va_end(args);
 	closelog();
 }

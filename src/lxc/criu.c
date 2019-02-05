@@ -387,7 +387,7 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		goto err;
 
 	while (getmntent_r(mnts, &mntent, buf, sizeof(buf))) {
-		char *fmt, *key, *val, *mntdata;
+		char *mntdata;
 		char arg[2 * PATH_MAX + 2];
 		unsigned long flags;
 
@@ -400,17 +400,12 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		if (!(flags & MS_BIND))
 			continue;
 
-		if (strcmp(opts->action, "dump") == 0) {
-			fmt = "/%s:%s";
-			key = mntent.mnt_dir;
-			val = mntent.mnt_dir;
-		} else {
-			fmt = "%s:%s";
-			key = mntent.mnt_dir;
-			val = mntent.mnt_fsname;
-		}
-
-		ret = snprintf(arg, sizeof(arg), fmt, key, val);
+		if (strcmp(opts->action, "dump") == 0)
+			ret = snprintf(arg, sizeof(arg), "/%s:%s",
+				       mntent.mnt_dir, mntent.mnt_dir);
+		else
+			ret = snprintf(arg, sizeof(arg), "%s:%s",
+				       mntent.mnt_dir, mntent.mnt_fsname);
 		if (ret < 0 || ret >= sizeof(arg)) {
 			fclose(mnts);
 			ERROR("snprintf failed");
@@ -546,7 +541,6 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		lxc_list_for_each(it, &opts->c->lxc_conf->network) {
 			size_t retlen;
 			char eth[128], *veth;
-			char *fmt;
 			struct lxc_netdev *n = it->elem;
 			bool external_not_veth;
 
@@ -578,18 +572,23 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 
 				if (n->link[0] != '\0') {
 					if (external_not_veth)
-						fmt = "veth[%s]:%s@%s";
+						ret = snprintf(buf, sizeof(buf),
+							       "veth[%s]:%s@%s",
+							       eth, veth,
+							       n->link);
 					else
-						fmt = "%s=%s@%s";
-
-					ret = snprintf(buf, sizeof(buf), fmt, eth, veth, n->link);
+						ret = snprintf(buf, sizeof(buf),
+							       "%s=%s@%s", eth,
+							       veth, n->link);
 				} else {
 					if (external_not_veth)
-						fmt = "veth[%s]:%s";
+						ret = snprintf(buf, sizeof(buf),
+							       "veth[%s]:%s",
+							       eth, veth);
 					else
-						fmt = "%s=%s";
-
-					ret = snprintf(buf, sizeof(buf), fmt, eth, veth);
+						ret = snprintf(buf, sizeof(buf),
+							       "%s=%s", eth,
+							       veth);
 				}
 				if (ret < 0 || ret >= sizeof(buf))
 					goto err;
