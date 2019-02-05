@@ -58,6 +58,7 @@
 #include "lxc.h"
 #include "lxccontainer.h"
 #include "lxclock.h"
+#include "memory_utils.h"
 #include "monitor.h"
 #include "namespace.h"
 #include "network.h"
@@ -117,13 +118,13 @@ static bool do_lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 
 static bool config_file_exists(const char *lxcpath, const char *cname)
 {
+	__do_free char *fname;
 	int ret;
 	size_t len;
-	char *fname;
 
 	/* $lxcpath + '/' + $cname + '/config' + \0 */
 	len = strlen(lxcpath) + strlen(cname) + 9;
-	fname = alloca(len);
+	fname = must_realloc(NULL, len);
 	ret = snprintf(fname, len, "%s/%s/config", lxcpath, cname);
 	if (ret < 0 || (size_t)ret >= len)
 		return false;
@@ -141,13 +142,13 @@ static bool config_file_exists(const char *lxcpath, const char *cname)
  */
 static int ongoing_create(struct lxc_container *c)
 {
+	__do_free char *path;
 	int fd, ret;
 	size_t len;
-	char *path;
 	struct flock lk = {0};
 
 	len = strlen(c->config_path) + strlen(c->name) + 10;
-	path = alloca(len);
+	path = must_realloc(NULL, len);
 	ret = snprintf(path, len, "%s/%s/partial", c->config_path, c->name);
 	if (ret < 0 || (size_t)ret >= len)
 		return -1;
@@ -187,14 +188,14 @@ static int ongoing_create(struct lxc_container *c)
 
 static int create_partial(struct lxc_container *c)
 {
+	__do_free char *path;
 	int fd, ret;
 	size_t len;
-	char *path;
 	struct flock lk = {0};
 
 	/* $lxcpath + '/' + $name + '/partial' + \0 */
 	len = strlen(c->config_path) + strlen(c->name) + 10;
-	path = alloca(len);
+	path = must_realloc(NULL, len);
 	ret = snprintf(path, len, "%s/%s/partial", c->config_path, c->name);
 	if (ret < 0 || (size_t)ret >= len)
 		return -1;
@@ -224,15 +225,15 @@ static int create_partial(struct lxc_container *c)
 
 static void remove_partial(struct lxc_container *c, int fd)
 {
+	__do_free char *path;
 	int ret;
 	size_t len;
-	char *path;
 
 	close(fd);
 
 	/* $lxcpath + '/' + $name + '/partial' + \0 */
 	len = strlen(c->config_path) + strlen(c->name) + 10;
-	path = alloca(len);
+	path = must_realloc(NULL, len);
 	ret = snprintf(path, len, "%s/%s/partial", c->config_path, c->name);
 	if (ret < 0 || (size_t)ret >= len)
 		return;
@@ -744,26 +745,22 @@ static void push_arg(char ***argp, char *arg, int *nargs)
 
 static char **split_init_cmd(const char *incmd)
 {
-	size_t len, retlen;
-	char *copy, *p;
+	__do_free char *copy = NULL;
+	char *p;
 	char **argv;
 	int nargs = 0;
 
 	if (!incmd)
 		return NULL;
 
-	len = strlen(incmd) + 1;
-	copy = alloca(len);
-	retlen = strlcpy(copy, incmd, len);
-	if (retlen >= len)
-		return NULL;
+	copy = must_copy_string(incmd);
 
 	do {
 		argv = malloc(sizeof(char *));
 	} while (!argv);
 
 	argv[0] = NULL;
-	lxc_iterate_parts(p, copy, " ")
+	lxc_iterate_parts (p, copy, " ")
 		push_arg(&argv, p, &nargs);
 
 	if (nargs == 0) {
@@ -1185,9 +1182,9 @@ WRAP_API(bool, lxcapi_stop)
 
 static int do_create_container_dir(const char *path, struct lxc_conf *conf)
 {
+	__do_free char *p = NULL;
 	int lasterr;
 	size_t len;
-	char *p;
 	int ret = -1;
 
 	mode_t mask = umask(0002);
@@ -1202,9 +1199,7 @@ static int do_create_container_dir(const char *path, struct lxc_conf *conf)
 		ret = 0;
 	}
 
-	len = strlen(path);
-	p = alloca(len + 1);
-	(void)strlcpy(p, path, len + 1);
+	p = must_copy_string(path);
 
 	if (!lxc_list_empty(&conf->id_map)) {
 		ret = chown_mapped_root(p, conf);
@@ -1246,9 +1241,9 @@ static struct lxc_storage *do_storage_create(struct lxc_container *c,
 					     const char *type,
 					     struct bdev_specs *specs)
 {
+	__do_free char *dest;
 	int ret;
 	size_t len;
-	char *dest;
 	struct lxc_storage *bdev;
 
 	/* rootfs.path or lxcpath/lxcname/rootfs */
@@ -1256,12 +1251,12 @@ static struct lxc_storage *do_storage_create(struct lxc_container *c,
 	    (access(c->lxc_conf->rootfs.path, F_OK) == 0)) {
 		const char *rpath = c->lxc_conf->rootfs.path;
 		len = strlen(rpath) + 1;
-		dest = alloca(len);
+		dest = must_realloc(NULL, len);
 		ret = snprintf(dest, len, "%s", rpath);
 	} else {
 		const char *lxcpath = do_lxcapi_get_config_path(c);
 		len = strlen(c->name) + strlen(lxcpath) + 9;
-		dest = alloca(len);
+		dest = must_realloc(NULL, len);
 		ret = snprintf(dest, len, "%s/%s/rootfs", lxcpath, c->name);
 	}
 	if (ret < 0 || (size_t)ret >= len)
@@ -3363,12 +3358,12 @@ err:
 
 static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
 {
+	__do_free char *cpath;
 	int i, len, ret;
 	struct lxc_list *it;
-	char *cpath;
 
 	len = strlen(oldc->config_path) + strlen(oldc->name) + 3;
-	cpath = alloca(len);
+	cpath = must_realloc(NULL, len);
 	ret = snprintf(cpath, len, "%s/%s/", oldc->config_path, oldc->name);
 	if (ret < 0 || ret >= len)
 		return -1;
@@ -3526,13 +3521,14 @@ static bool add_rdepends(struct lxc_container *c, struct lxc_container *c0)
 bool should_default_to_snapshot(struct lxc_container *c0,
 				struct lxc_container *c1)
 {
+	__do_free char *p0, *p1;
 	int ret;
 	size_t l0 = strlen(c0->config_path) + strlen(c0->name) + 2;
 	size_t l1 = strlen(c1->config_path) + strlen(c1->name) + 2;
-	char *p0 = alloca(l0 + 1);
-	char *p1 = alloca(l1 + 1);
 	char *rootfs = c0->lxc_conf->rootfs.path;
 
+	p0 = must_realloc(NULL, l0 + 1);
+	p1 = must_realloc(NULL, l1 + 1);
 	ret = snprintf(p0, l0, "%s/%s", c0->config_path, c0->name);
 	if (ret < 0 || ret >= l0)
 		return false;
@@ -4055,11 +4051,11 @@ static int lxcapi_attach_run_wait(struct lxc_container *c, lxc_attach_options_t 
 
 static int get_next_index(const char *lxcpath, char *cname)
 {
-	char *fname;
+	__do_free char *fname;
 	struct stat sb;
 	int i = 0, ret;
 
-	fname = alloca(strlen(lxcpath) + 20);
+	fname = must_realloc(NULL, strlen(lxcpath) + 20);
 
 	while (1) {
 		sprintf(fname, "%s/snap%d", lxcpath, i);
@@ -4105,6 +4101,7 @@ static bool get_snappath_dir(struct lxc_container *c, char *snappath)
 
 static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 {
+	__do_free char *dfnam = NULL;
 	int i, flags, ret;
 	time_t timer;
 	struct tm tm_info;
@@ -4168,7 +4165,7 @@ static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 
 	strftime(buffer, 25, "%Y:%m:%d %H:%M:%S", &tm_info);
 
-	char *dfnam = alloca(strlen(snappath) + strlen(newname) + 5);
+	dfnam = must_realloc(NULL, strlen(snappath) + strlen(newname) + 5);
 	sprintf(dfnam, "%s/%s/ts", snappath, newname);
 	f = fopen(dfnam, "w");
 	if (!f) {
@@ -4189,10 +4186,11 @@ static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	}
 
 	if (commentfile) {
+		__do_free char *path;
 		/* $p / $name / comment \0 */
 		int len = strlen(snappath) + strlen(newname) + 10;
-		char *path = alloca(len);
 
+		path = must_realloc(NULL, len);
 		sprintf(path, "%s/%s/comment", snappath, newname);
 		return copy_file(commentfile, path) < 0 ? -1 : i;
 	}
