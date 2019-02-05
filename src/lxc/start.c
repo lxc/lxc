@@ -26,7 +26,6 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
-#include <alloca.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -67,6 +66,7 @@
 #include "lxcseccomp.h"
 #include "macro.h"
 #include "mainloop.h"
+#include "memory_utils.h"
 #include "monitor.h"
 #include "namespace.h"
 #include "network.h"
@@ -97,16 +97,13 @@ static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 
 static void print_top_failing_dir(const char *path)
 {
+	__do_free char *copy;
 	int ret;
-	size_t len;
-	char *copy, *e, *p, saved;
+	char *e, *p, saved;
 
-	len = strlen(path);
-	copy = alloca(len + 1);
-	(void)strlcpy(copy, path, len + 1);
-
+	copy = must_copy_string(path);
 	p = copy;
-	e = copy + len;
+	e = copy + strlen(path);
 
 	while (p < e) {
 		while (p < e && *p == '/')
