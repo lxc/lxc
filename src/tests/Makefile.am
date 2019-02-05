@@ -48,7 +48,6 @@ AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	  -DRUNTIME_PATH=\"$(RUNTIME_PATH)\" \
 	  -I $(top_srcdir)/src \
 	  -I $(top_srcdir)/src/lxc \
-	  -I $(top_srcdir)/src/lxc/bdev \
 	  -I $(top_srcdir)/src/lxc/cgroups \
 	  -I $(top_srcdir)/src/lxc/tools \
 	  -pthread
