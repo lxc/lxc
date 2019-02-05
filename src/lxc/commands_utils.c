@@ -38,6 +38,7 @@
 #include "initutils.h"
 #include "log.h"
 #include "lxclock.h"
+#include "memory_utils.h"
 #include "monitor.h"
 #include "state.h"
 #include "utils.h"
@@ -102,9 +103,9 @@ int lxc_make_abstract_socket_name(char *path, size_t pathlen,
 				  const char *hashed_sock_name,
 				  const char *suffix)
 {
+	__do_free char *tmppath = NULL;
 	const char *name;
 	char *offset;
-	char *tmppath;
 	size_t len;
 	size_t tmplen;
 	uint64_t hash;
@@ -153,7 +154,7 @@ int lxc_make_abstract_socket_name(char *path, size_t pathlen,
 
 	/* ret >= len; lxcpath or name is too long.  hash both */
 	tmplen = strlen(name) + strlen(lxcpath) + 2;
-	tmppath = alloca(tmplen);
+	tmppath = must_realloc(NULL, tmplen);
 	ret = snprintf(tmppath, tmplen, "%s/%s", lxcpath, name);
 	if (ret < 0 || (size_t)ret >= tmplen) {
 		ERROR("Failed to create abstract socket name");
