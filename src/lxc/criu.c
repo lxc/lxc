@@ -1069,7 +1069,6 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		rmdir(rootfs->mount);
 		goto out_fini_handler;
 	} else {
-		int ret;
 		char title[2048];
 
 		close(pipes[1]);
@@ -1298,7 +1297,6 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 		int status;
 		ssize_t n;
 		char buf[4096];
-		bool ret;
 
 		close(criuout[1]);
 

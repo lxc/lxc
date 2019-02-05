@@ -468,7 +468,6 @@ int zfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 
 	orig_src = lxc_storage_get_path(orig->src, orig->type);
 	if (!strcmp(orig->type, "zfs")) {
-		size_t len;
 		if (*orig_src == '/') {
 			bool found;
 
@@ -594,8 +593,6 @@ int zfs_destroy(struct lxc_storage *orig)
 	 * "<lxcpath>/<lxcname>/rootfs" is given.
 	 */
 	if (*src == '/') {
-		char *tmp;
-
 		found = zfs_list_entry(src, cmd_output, sizeof(cmd_output));
 		if (!found) {
 			ERROR("Failed to find zfs entry \"%s\"", orig->src);

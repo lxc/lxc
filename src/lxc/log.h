@@ -342,9 +342,9 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 			char errno_buf[PATH_MAX / 2] = {"Failed to get errno string"};   \
 			char *ptr = NULL;                                                \
 			{                                                                \
-				int saved_errno = errno;				 \
+				int __saved_errno = errno;				 \
 				ptr = strerror_r(errno, errno_buf, sizeof(errno_buf));   \
-				errno = saved_errno;					 \
+				errno = __saved_errno;					 \
 				if (!ptr)                                                \
 					ptr = errno_buf;                                 \
 			}
@@ -353,9 +353,9 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 			char errno_buf[PATH_MAX / 2] = {"Failed to get errno string"};   \
 			char *ptr = errno_buf;                                           \
 			{                                                                \
-				int saved_errno = errno;				 \
+				int __saved_errno = errno;				 \
 				(void)strerror_r(errno, errno_buf, sizeof(errno_buf));   \
-				errno = saved_errno;					 \
+				errno = __saved_errno;					 \
 			}
 	#endif
 #elif ENFORCE_THREAD_SAFETY

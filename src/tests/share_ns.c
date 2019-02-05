@@ -269,8 +269,6 @@ int main(int argc, char *argv[])
 		lxc_debug("Starting namespace sharing test iteration %d\n", j);
 
 		for (i = 0; i < 10; i++) {
-			int ret;
-
 			args[i].thread_id = i;
 			args[i].success = false;
 			args[i].init_pid = init_pid;
@@ -283,8 +281,6 @@ int main(int argc, char *argv[])
 		}
 
 		for (i = 0; i < 10; i++) {
-			int ret;
-
 			ret = pthread_join(threads[i], NULL);
 			if (ret != 0)
 				goto on_error_stop;

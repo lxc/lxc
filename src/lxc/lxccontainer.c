@@ -1017,7 +1017,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	 * right PID.
 	 */
 	if (c->pidfile) {
-		int ret, w;
+		int w;
 		char pidstr[INTTYPE_TO_STRLEN(pid_t)];
 
 		w = snprintf(pidstr, sizeof(pidstr), "%d", lxc_raw_getpid());
@@ -2402,8 +2402,7 @@ static char **do_lxcapi_get_ips(struct lxc_container *c, const char *interface,
 	if (pid == 0) {
 		ssize_t nbytes;
 		char addressOutputBuffer[INET6_ADDRSTRLEN];
-		int ret = 1;
-		char *address = NULL;
+		char *address_ptr = NULL;
 		void *tempAddrPtr = NULL;
 		struct netns_ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
 
@@ -2452,16 +2451,16 @@ static char **do_lxcapi_get_ips(struct lxc_container *c, const char *interface,
 			else if (!interface && strcmp("lo", tempIfAddr->ifa_name) == 0)
 				continue;
 
-			address = (char *)inet_ntop(tempIfAddr->ifa_addr->sa_family,
+			address_ptr = (char *)inet_ntop(tempIfAddr->ifa_addr->sa_family,
 						    tempAddrPtr, addressOutputBuffer,
 						    sizeof(addressOutputBuffer));
-			if (!address)
+			if (!address_ptr)
 				continue;
 
-			nbytes = lxc_write_nointr(pipefd[1], address, INET6_ADDRSTRLEN);
+			nbytes = lxc_write_nointr(pipefd[1], address_ptr, INET6_ADDRSTRLEN);
 			if (nbytes != INET6_ADDRSTRLEN) {
 				SYSERROR("Failed to send ipv6 address \"%s\"",
-					 address);
+					 address_ptr);
 				goto out;
 			}
 

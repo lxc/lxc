@@ -64,7 +64,7 @@ struct start_arg {
 static int my_parser(struct lxc_arguments *args, int c, char *arg);
 static inline int sethostname_including_android(const char *name, size_t len);
 static int get_namespace_flags(char *namespaces);
-static bool lookup_user(const char *optarg, uid_t *uid);
+static bool lookup_user(const char *oparg, uid_t *uid);
 static int mount_fs(const char *source, const char *target, const char *type);
 static void lxc_setup_fs(void);
 static int do_start(void *arg);
@@ -180,7 +180,7 @@ static int get_namespace_flags(char *namespaces)
 	return flags;
 }
 
-static bool lookup_user(const char *optarg, uid_t *uid)
+static bool lookup_user(const char *oparg, uid_t *uid)
 {
 	char name[PATH_MAX];
 	struct passwd pwent;
@@ -189,7 +189,7 @@ static bool lookup_user(const char *optarg, uid_t *uid)
 	size_t bufsize;
 	int ret;
 
-	if (!optarg || (optarg[0] == '\0'))
+	if (!oparg || (oparg[0] == '\0'))
 		return false;
 
 	bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
@@ -200,9 +200,9 @@ static bool lookup_user(const char *optarg, uid_t *uid)
 	if (!buf)
 		return false;
 
-	if (sscanf(optarg, "%u", uid) < 1) {
+	if (sscanf(oparg, "%u", uid) < 1) {
 		/* not a uid -- perhaps a username */
-		if (sscanf(optarg, "%s", name) < 1) {
+		if (sscanf(oparg, "%s", name) < 1) {
 			free(buf);
 			return false;
 		}
@@ -431,24 +431,24 @@ int main(int argc, char *argv[])
 	if (lxc_list_len(&ifnames) > 0) {
 		struct lxc_list *iterator;
 		char* ifname;
-		pid_t pid;
+		pid_t lpid;
 
 		lxc_list_for_each(iterator, &ifnames) {
 			ifname = iterator->elem;
 			if (!ifname)
 				continue;
 
-			pid = fork();
-			if (pid < 0) {
+			lpid = fork();
+			if (lpid < 0) {
 				SYSERROR("Failed to move network device \"%s\" to network namespace",
 				         ifname);
 				continue;
 			}
 
-			if (pid == 0) {
+			if (lpid == 0) {
 				char buf[256];
 
-				ret = snprintf(buf, 256, "%d", pid);
+				ret = snprintf(buf, 256, "%d", lpid);
 				if (ret < 0 || ret >= 256)
 					_exit(EXIT_FAILURE);
 
@@ -456,9 +456,9 @@ int main(int argc, char *argv[])
 				_exit(EXIT_FAILURE);
 			}
 
-			if (wait_for_pid(pid) != 0)
+			if (wait_for_pid(lpid) != 0)
 				SYSERROR("Could not move interface \"%s\" into container %d",
-				         ifname, pid);
+				         ifname, lpid);
 		}
 
 		free_ifname_list();
