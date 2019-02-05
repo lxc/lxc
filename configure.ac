@@ -709,6 +709,8 @@ AX_CHECK_COMPILE_FLAG([-Wfloat-equal], [CFLAGS="$CFLAGS -Wfloat-equal"],,[-Werro
 AX_CHECK_COMPILE_FLAG([-Wsuggest-attribute=noreturn], [CFLAGS="$CFLAGS -Wsuggest-attribute=noreturn"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-Werror=return-type], [CFLAGS="$CFLAGS -Werror=return-type"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-Werror=incompatible-pointer-types], [CFLAGS="$CFLAGS -Werror=incompatible-pointer-types"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-Wformat=2], [CFLAGS="$CFLAGS -Wformat=2"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-Wshadow], [CFLAGS="$CFLAGS -Wshadow"],,[-Werror])
 
 AX_CHECK_LINK_FLAG([-z relro], [LDLAGS="$LDLAGS -z relro"],,[])
 AX_CHECK_LINK_FLAG([-z now], [LDLAGS="$LDLAGS -z now"],,[])
