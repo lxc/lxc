@@ -46,6 +46,7 @@
 #include "config.h"
 #include "lxclock.h"
 #include "macro.h"
+#include "memory_utils.h"
 #include "namespace.h"
 #include "parse.h"
 #include "string_utils.h"
@@ -321,17 +322,14 @@ char *lxc_append_paths(const char *first, const char *second)
 
 bool lxc_string_in_list(const char *needle, const char *haystack, char _sep)
 {
-	char *token, *str;
+	__do_free char *str = NULL;
+	char *token;
 	char sep[2] = { _sep, '\0' };
-	size_t len;
 
 	if (!haystack || !needle)
 		return 0;
 
-	len = strlen(haystack);
-	str = alloca(len + 1);
-	(void)strlcpy(str, haystack, len + 1);
-
+	str = must_copy_string(haystack);
 	lxc_iterate_parts(token, str, sep)
 		if (strcmp(needle, token) == 0)
 			return 1;
@@ -341,21 +339,18 @@ bool lxc_string_in_list(const char *needle, const char *haystack, char _sep)
 
 char **lxc_string_split(const char *string, char _sep)
 {
-	char *token, *str;
+	__do_free char *str = NULL;
+	char *token;
 	char sep[2] = {_sep, '\0'};
 	char **tmp = NULL, **result = NULL;
 	size_t result_capacity = 0;
 	size_t result_count = 0;
 	int r, saved_errno;
-	size_t len;
 
 	if (!string)
 		return calloc(1, sizeof(char *));
 
-	len = strlen(string);
-	str = alloca(len + 1);
-	(void)strlcpy(str, string, len + 1);
-
+	str = must_copy_string(string);
 	lxc_iterate_parts(token, str, sep) {
 		r = lxc_grow_array((void ***)&result, &result_capacity, result_count + 1, 16);
 		if (r < 0)
@@ -461,22 +456,19 @@ char **lxc_string_split_quoted(char *string)
 
 char **lxc_string_split_and_trim(const char *string, char _sep)
 {
-	char *token, *str;
+	__do_free char *str = NULL;
+	char *token;
 	char sep[2] = { _sep, '\0' };
 	char **result = NULL;
 	size_t result_capacity = 0;
 	size_t result_count = 0;
 	int r, saved_errno;
 	size_t i = 0;
-	size_t len;
 
 	if (!string)
 		return calloc(1, sizeof(char *));
 
-	len = strlen(string);
-	str = alloca(len + 1);
-	(void)strlcpy(str, string, len + 1);
-
+	str = must_copy_string(string);
 	lxc_iterate_parts(token, str, sep) {
 		while (token[0] == ' ' || token[0] == '\t')
 			token++;
