@@ -48,6 +48,7 @@
 #include "lxc.h"
 #include "lxclock.h"
 #include "mainloop.h"
+#include "memory_utils.h"
 #include "monitor.h"
 #include "start.h"
 #include "terminal.h"
@@ -524,8 +525,8 @@ char *lxc_cmd_get_config_item(const char *name, const char *item,
 static int lxc_cmd_get_config_item_callback(int fd, struct lxc_cmd_req *req,
 					    struct lxc_handler *handler)
 {
+	__do_free char *cidata = NULL;
 	int cilen;
-	char *cidata;
 	struct lxc_config_t *item;
 	struct lxc_cmd_rsp rsp;
 
@@ -538,7 +539,7 @@ static int lxc_cmd_get_config_item_callback(int fd, struct lxc_cmd_req *req,
 	if (cilen <= 0)
 		goto err1;
 
-	cidata = alloca(cilen + 1);
+	cidata = must_realloc(NULL, cilen + 1);
 	if (item->get(req->data, cidata, cilen + 1, handler->conf, NULL) != cilen)
 		goto err1;
 
@@ -1103,9 +1104,9 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 			   struct lxc_epoll_descr *descr)
 {
+	__do_free void *reqdata = NULL;
 	int ret;
 	struct lxc_cmd_req req;
-	void *reqdata = NULL;
 	struct lxc_handler *handler = data;
 
 	ret = lxc_abstract_unix_rcv_credential(fd, &req, sizeof(req));
@@ -1143,21 +1144,7 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 	}
 
 	if (req.datalen > 0) {
-		/* LXC_CMD_CONSOLE_LOG needs to be able to allocate data
-		 * that exceeds LXC_CMD_DATA_MAX: use malloc() for that.
-		 */
-		if (req.cmd == LXC_CMD_CONSOLE_LOG)
-			reqdata = malloc(req.datalen);
-		else
-			reqdata = alloca(req.datalen);
-		if (!reqdata) {
-			ERROR("Failed to allocate memory for \"%s\" command",
-			      lxc_cmd_str(req.cmd));
-			errno = ENOMEM;
-			ret = -ENOMEM;
-			goto out_close;
-		}
-
+		reqdata = must_realloc(NULL, req.datalen);
 		ret = lxc_recv_nointr(fd, reqdata, req.datalen, 0);
 		if (ret != req.datalen) {
 			WARN("Failed to receive full command request. Ignoring "
@@ -1177,9 +1164,6 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 	}
 
 out:
-	if (req.cmd == LXC_CMD_CONSOLE_LOG && reqdata)
-		free(reqdata);
-
 	return ret;
 
 out_close:
