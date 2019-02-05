@@ -58,6 +58,7 @@
 #include "config.h"
 #include "log.h"
 #include "macro.h"
+#include "memory_utils.h"
 #include "storage/storage.h"
 #include "utils.h"
 
@@ -887,15 +888,18 @@ static bool controller_in_clist(char *cgline, char *c)
 		return false;
 
 	len = eol - cgline;
-	tmp = alloca(len + 1);
+	tmp = must_realloc(NULL, len + 1);
 	memcpy(tmp, cgline, len);
 	tmp[len] = '\0';
 
 	lxc_iterate_parts(tok, tmp, ",") {
-		if (strcmp(tok, c) == 0)
+		if (strcmp(tok, c) == 0) {
+			free(tmp);
 			return true;
+		}
 	}
 
+	free(tmp);
 	return false;
 }
 
@@ -2004,15 +2008,12 @@ __cgfsng_ops static int cgfsng_get(struct cgroup_ops *ops, const char *filename,
 				     char *value, size_t len, const char *name,
 				     const char *lxcpath)
 {
-	int ret = -1;
-	size_t controller_len;
-	char *controller, *p, *path;
+	__do_free char *controller;
+	char *p, *path;
 	struct hierarchy *h;
+	int ret = -1;
 
-	controller_len = strlen(filename);
-	controller = alloca(controller_len + 1);
-	(void)strlcpy(controller, filename, controller_len + 1);
-
+	controller = must_copy_string(filename);
 	p = strchr(controller, '.');
 	if (p)
 		*p = '\0';
@@ -2043,15 +2044,12 @@ __cgfsng_ops static int cgfsng_set(struct cgroup_ops *ops,
 				     const char *filename, const char *value,
 				     const char *name, const char *lxcpath)
 {
-	int ret = -1;
-	size_t controller_len;
-	char *controller, *p, *path;
+	__do_free char *controller;
+	char *p, *path;
 	struct hierarchy *h;
+	int ret = -1;
 
-	controller_len = strlen(filename);
-	controller = alloca(controller_len + 1);
-	(void)strlcpy(controller, filename, controller_len + 1);
-
+	controller = must_copy_string(filename);
 	p = strchr(controller, '.');
 	if (p)
 		*p = '\0';
@@ -2158,18 +2156,14 @@ out:
 static int cg_legacy_set_data(struct cgroup_ops *ops, const char *filename,
 			      const char *value)
 {
-	size_t len;
+	__do_free char *controller;
 	char *fullpath, *p;
 	/* "b|c <2^64-1>:<2^64-1> r|w|m" = 47 chars max */
 	char converted_value[50];
 	struct hierarchy *h;
 	int ret = 0;
-	char *controller = NULL;
 
-	len = strlen(filename);
-	controller = alloca(len + 1);
-	(void)strlcpy(controller, filename, len + 1);
-
+	controller = must_copy_string(filename);
 	p = strchr(controller, '.');
 	if (p)
 		*p = '\0';
