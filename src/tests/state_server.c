@@ -38,7 +38,7 @@ struct thread_args {
 	struct lxc_container *c;
 };
 
-void *state_wrapper(void *data)
+static void *state_wrapper(void *data)
 {
 	struct thread_args *args = data;
 
