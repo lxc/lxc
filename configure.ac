@@ -707,6 +707,7 @@ AX_CHECK_COMPILE_FLAG([-Wshadow], [CFLAGS="$CFLAGS -Wshadow"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-Wendif-labels], [CFLAGS="$CFLAGS -Wendif-labels"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-Werror=overflow], [CFLAGS="$CFLAGS -Werror=overflow"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-fdiagnostics-show-option], [CFLAGS="$CFLAGS -fdiagnostics-show-option"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-Werror=shift-count-overflow], [CFLAGS="$CFLAGS -Werror=shift-count-overflow"],,[-Werror])
 
 AX_CHECK_LINK_FLAG([-z relro], [LDLAGS="$LDLAGS -z relro"],,[])
 AX_CHECK_LINK_FLAG([-z now], [LDLAGS="$LDLAGS -z now"],,[])
