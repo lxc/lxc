@@ -86,7 +86,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 	if (strcmp(orig->type, "dir") == 0) {
 		char *delta, *lastslash;
 		char *work;
-		int ret, len, lastslashidx;
+		int len, lastslashidx;
 
 		/* If we have "/var/lib/lxc/c2/rootfs" then delta will be
 		 * "/var/lib/lxc/c2/delta0".
@@ -194,7 +194,7 @@ int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new, const char
 		char *clean_old_path, *clean_new_path;
 		char *lastslash, *ndelta, *nsrc, *odelta, *osrc, *s1, *s2, *s3,
 		    *work;
-		int ret, lastslashidx;
+		int lastslashidx;
 		size_t len, name_len;
 
 		osrc = strdup(orig->src);

@@ -1250,7 +1250,6 @@ int main(int argc, char *argv[])
 	free(me);
 
 	if (request == LXC_USERNIC_DELETE) {
-		int ret;
 		struct alloted_s *it;
 		bool found_nicname = false;
 

@@ -2116,8 +2116,6 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	}
 
 	if (child == 0) {
-		int ret;
-		size_t retlen;
 		char pidstr[INTTYPE_TO_STRLEN(pid_t)];
 
 		close(pipefd[0]);
@@ -2280,7 +2278,6 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcna
 
 	if (child == 0) {
 		char *hostveth;
-		int ret;
 
 		close(pipefd[0]);
 
@@ -2925,8 +2922,6 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 
 	/* set the network device up */
 	if (netdev->flags & IFF_UP) {
-		int err;
-
 		err = lxc_netdev_up(current_ifname);
 		if (err) {
 			errno = -err;
