@@ -37,6 +37,7 @@
 #include "config.h"
 #include "log.h"
 #include "lvm.h"
+#include "memory_utils.h"
 #include "rsync.h"
 #include "storage.h"
 #include "storage_utils.h"
@@ -113,7 +114,7 @@ static int do_lvm_create(const char *path, uint64_t size, const char *thinpool)
 	char *pathdup, *vg, *lv;
 	char cmd_output[PATH_MAX];
 	char sz[24];
-	char *tp = NULL;
+	__do_free char *tp;
 	struct lvcreate_args cmd_args = {0};
 
 	ret = snprintf(sz, 24, "%" PRIu64 "b", size);
@@ -149,7 +150,7 @@ static int do_lvm_create(const char *path, uint64_t size, const char *thinpool)
 
 	if (thinpool) {
 		len = strlen(pathdup) + strlen(thinpool) + 2;
-		tp = alloca(len);
+		tp = must_realloc(NULL, len);
 
 		ret = snprintf(tp, len, "%s/%s", pathdup, thinpool);
 		if (ret < 0 || ret >= len) {
@@ -267,15 +268,15 @@ int lvm_umount(struct lxc_storage *bdev)
 #define __LVSCMD "lvs --unbuffered --noheadings -o lv_attr %s 2>/dev/null"
 int lvm_compare_lv_attr(const char *path, int pos, const char expected)
 {
+	__do_free char *cmd;
 	struct lxc_popen_FILE *f;
 	int ret, status;
 	size_t len;
-	char *cmd;
 	char output[12];
 	int start = 0;
 
 	len = strlen(__LVSCMD) + strlen(path) + 1;
-	cmd = alloca(len);
+	cmd = must_realloc(NULL, len);
 
 	ret = snprintf(cmd, len, __LVSCMD, path);
 	if (ret < 0 || (size_t)ret >= len)
