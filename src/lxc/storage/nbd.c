@@ -35,6 +35,7 @@
 
 #include "config.h"
 #include "log.h"
+#include "memory_utils.h"
 #include "nbd.h"
 #include "storage.h"
 #include "storage_utils.h"
@@ -61,14 +62,11 @@ static bool wait_for_partition(const char *path);
 
 bool attach_nbd(char *src, struct lxc_conf *conf)
 {
-	char *orig, *p, path[50];
+	__do_free char *orig;
+	char *p, path[50];
 	int i = 0;
-	size_t len;
 
-	len = strlen(src);
-	orig = alloca(len + 1);
-	(void)strlcpy(orig, src, len + 1);
-
+	orig = must_copy_string(src);
 	/* if path is followed by a partition, drop that for now */
 	p = strchr(orig, ':');
 	if (p)

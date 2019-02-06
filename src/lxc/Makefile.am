@@ -21,6 +21,7 @@ noinst_HEADERS = api_extensions.h \
 		 lxc.h \
 		 lxclock.h \
 		 macro.h \
+		 memory_utils.h \
 		 monitor.h \
 		 namespace.h \
 		 raw_syscalls.h \
@@ -112,6 +113,7 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    lxclock.c lxclock.h \
 		    lxcseccomp.h \
 		    macro.h \
+		    memory_utils.h \
 		    mainloop.c mainloop.h \
 		    namespace.c namespace.h \
 		    nl.c nl.h \
@@ -366,9 +368,11 @@ lxc_monitord_SOURCES = cmd/lxc_monitord.c \
 lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
 		       ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		       log.c log.h \
+		       memory_utils.h \
 		       network.c network.h \
 		       parse.c parse.h \
 		       raw_syscalls.c raw_syscalls.h \
+		       string_utils.c string_utils.h \
 		       syscall_wrappers.h
 lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c \
 			 conf.c conf.h \
@@ -429,6 +433,7 @@ pam_LTLIBRARIES = pam_cgfs.la
 pam_cgfs_la_SOURCES = pam/pam_cgfs.c \
 		      file_utils.c file_utils.h \
 		      macro.h \
+		      memory_utils.h \
 		      string_utils.c string_utils.h
 
 if !HAVE_STRLCAT

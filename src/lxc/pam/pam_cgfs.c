@@ -59,6 +59,7 @@
 #include "config.h"
 #include "file_utils.h"
 #include "macro.h"
+#include "memory_utils.h"
 #include "string_utils.h"
 
 #define PAM_SM_SESSION
@@ -845,8 +846,9 @@ static char **cgv1_get_proc_mountinfo_controllers(char **klist, char **nlist, ch
 /* Check if a cgroupfs v2 controller is present in the string @cgline. */
 static bool cgv1_controller_in_clist(char *cgline, char *c)
 {
+	__do_free char *tmp = NULL;
 	size_t len;
-	char *tok, *eol, *tmp;
+	char *tok, *eol;
 	char *saveptr = NULL;
 
 	eol = strchr(cgline, ':');
@@ -854,7 +856,7 @@ static bool cgv1_controller_in_clist(char *cgline, char *c)
 		return false;
 
 	len = eol - cgline;
-	tmp = alloca(len + 1);
+	tmp = must_realloc(NULL, len + 1);
 	memcpy(tmp, cgline, len);
 	tmp[len] = '\0';
 

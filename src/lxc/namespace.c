@@ -24,7 +24,6 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
-#include <alloca.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sched.h>
@@ -37,6 +36,7 @@
 
 #include "config.h"
 #include "log.h"
+#include "memory_utils.h"
 #include "namespace.h"
 #include "utils.h"
 
@@ -53,16 +53,17 @@ static int do_clone(void *arg)
 	return clone_arg->fn(clone_arg->arg);
 }
 
+#define __LXC_STACK_SIZE 4096
 pid_t lxc_clone(int (*fn)(void *), void *arg, int flags)
 {
-	struct clone_arg clone_arg = {
-		.fn = fn,
-		.arg = arg,
-	};
-
-	size_t stack_size = lxc_getpagesize();
-	void *stack = alloca(stack_size);
+	size_t stack_size;
 	pid_t ret;
+	struct clone_arg clone_arg = {
+	    .fn = fn,
+	    .arg = arg,
+	};
+	char *stack[__LXC_STACK_SIZE] = {0};
+	stack_size = __LXC_STACK_SIZE;
 
 #ifdef __ia64__
 	ret = __clone2(do_clone, stack, stack_size, flags | SIGCHLD, &clone_arg);

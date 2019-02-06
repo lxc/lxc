@@ -49,6 +49,7 @@
 #include "log.h"
 #include "lxclock.h"
 #include "macro.h"
+#include "memory_utils.h"
 #include "monitor.h"
 #include "state.h"
 #include "utils.h"
@@ -170,9 +171,9 @@ int lxc_monitor_close(int fd)
  */
 int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr)
 {
+	__do_free char *path;
 	size_t len;
 	int ret;
-	char *path;
 	uint64_t hash;
 
 	/* addr.sun_path is only 108 bytes, so we hash the full name and
@@ -183,7 +184,7 @@ int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr)
 
 	/* strlen("lxc/") + strlen("/monitor-sock") + 1 = 18 */
 	len = strlen(lxcpath) + 18;
-	path = alloca(len);
+	path = must_realloc(NULL, len);
 	ret = snprintf(path, len, "lxc/%s/monitor-sock", lxcpath);
 	if (ret < 0 || (size_t)ret >= len) {
 		ERROR("Failed to create name for monitor socket");

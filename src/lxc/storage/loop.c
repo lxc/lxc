@@ -39,6 +39,7 @@
 #include "config.h"
 #include "log.h"
 #include "loop.h"
+#include "memory_utils.h"
 #include "storage.h"
 #include "storage_utils.h"
 #include "utils.h"
@@ -56,9 +57,9 @@ int loop_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 		    const char *lxcpath, int snap, uint64_t newsize,
 		    struct lxc_conf *conf)
 {
+	__do_free char *srcdev = NULL;
 	uint64_t size = newsize;
 	int len, ret;
-	char *srcdev;
 	char fstype[100] = "ext4";
 
 	if (snap) {
@@ -70,7 +71,7 @@ int loop_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 		return -1;
 
 	len = strlen(lxcpath) + strlen(cname) + strlen("rootdev") + 3;
-	srcdev = alloca(len);
+	srcdev = must_realloc(NULL, len);
 	ret = snprintf(srcdev, len, "%s/%s/rootdev", lxcpath, cname);
 	if (ret < 0 || ret >= len) {
 		ERROR("Failed to create string");
@@ -136,10 +137,10 @@ int loop_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 int loop_create(struct lxc_storage *bdev, const char *dest, const char *n,
 		struct bdev_specs *specs)
 {
+	__do_free char *srcdev;
 	const char *fstype;
 	uint64_t sz;
 	int ret, len;
-	char *srcdev;
 
 	if (!specs)
 		return -1;
@@ -148,7 +149,7 @@ int loop_create(struct lxc_storage *bdev, const char *dest, const char *n,
 	 * be <lxcpath>/<lxcname>/rootdev, and <src> will be "loop:<srcdev>".
 	 */
 	len = strlen(dest) + 2;
-	srcdev = alloca(len);
+	srcdev = must_realloc(NULL, len);
 
 	ret = snprintf(srcdev, len, "%s", dest);
 	if (ret < 0 || ret >= len) {

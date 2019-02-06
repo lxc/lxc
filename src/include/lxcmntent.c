@@ -21,7 +21,7 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
-#include <alloca.h>
+#include <errno.h>
 #include <mntent.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -160,14 +160,17 @@ FILE *setmntent(const char *file, const char *mode)
 	 * I/O functions and "e" to set FD_CLOEXEC.
 	 */
 	size_t modelen = strlen(mode);
-	char *newmode;
+	char newmode[256];
 
-	newmode = alloca(modelen + 3);
+	if (modelen >= (sizeof(newmode) - 3)) {
+		errno = -EFBIG;
+		return NULL;
+	}
 
 	memcpy(newmode, mode, modelen);
 	memcpy(newmode + modelen, "ce", 3);
 
-	return fopen (file, newmode);
+	return fopen(file, newmode);
 }
 
 /* Close a stream opened with `setmntent'. */

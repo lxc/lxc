@@ -54,6 +54,7 @@
 #include "file_utils.h"
 #include "log.h"
 #include "macro.h"
+#include "memory_utils.h"
 #include "network.h"
 #include "nl.h"
 #include "raw_syscalls.h"
@@ -549,15 +550,15 @@ out:
 #define PHYSNAME "/sys/class/net/%s/phy80211/name"
 static char *is_wlan(const char *ifname)
 {
+	__do_free char *path;
 	int i, ret;
 	long physlen;
 	size_t len;
-	char *path;
 	FILE *f;
 	char *physname = NULL;
 
 	len = strlen(ifname) + strlen(PHYSNAME) - 1;
-	path = alloca(len + 1);
+	path = must_realloc(NULL, len + 1);
 	ret = snprintf(path, len, PHYSNAME, ifname);
 	if (ret < 0 || (size_t)ret >= len)
 		goto bad;

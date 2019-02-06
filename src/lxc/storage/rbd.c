@@ -33,6 +33,7 @@
 
 #include "config.h"
 #include "log.h"
+#include "memory_utils.h"
 #include "storage.h"
 #include "storage_utils.h"
 #include "utils.h"
@@ -195,9 +196,9 @@ int rbd_create(struct lxc_storage *bdev, const char *dest, const char *n,
 
 int rbd_destroy(struct lxc_storage *orig)
 {
+	__do_free char *rbdfullname = NULL;
 	int ret;
 	const char *src;
-	char *rbdfullname;
 	char cmd_output[PATH_MAX];
 	struct rbd_args args = {0};
 	size_t len;
@@ -215,7 +216,7 @@ int rbd_destroy(struct lxc_storage *orig)
 	}
 
 	len = strlen(src);
-	rbdfullname = alloca(len - 8);
+	rbdfullname = must_realloc(NULL, len - 8);
 	(void)strlcpy(rbdfullname, &src[9], len - 8);
 	args.rbd_name = rbdfullname;
 

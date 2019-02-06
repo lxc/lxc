@@ -35,6 +35,7 @@
 #include "log.h"
 #include "lxccontainer.h"
 #include "macro.h"
+#include "memory_utils.h"
 #include "overlay.h"
 #include "rsync.h"
 #include "storage.h"
@@ -491,8 +492,10 @@ bool ovl_detect(const char *path)
 
 int ovl_mount(struct lxc_storage *bdev)
 {
-	char *tmp, *options, *dup, *lower, *upper;
-	char *options_work, *work, *lastslash;
+	__do_free char *options = NULL,
+							 *options_work = NULL;
+	char *tmp, *dup, *lower, *upper;
+	char *work, *lastslash;
 	int lastslashidx;
 	size_t len, len2;
 	unsigned long mntflags;
@@ -602,27 +605,27 @@ int ovl_mount(struct lxc_storage *bdev)
 	if (mntdata) {
 		len = strlen(lower) + strlen(upper) +
 		      strlen("upperdir=,lowerdir=,") + strlen(mntdata) + 1;
-		options = alloca(len);
+		options = must_realloc(NULL, len);
 		ret = snprintf(options, len, "upperdir=%s,lowerdir=%s,%s",
 			       upper, lower, mntdata);
 
 		len2 = strlen(lower) + strlen(upper) + strlen(work) +
 		       strlen("upperdir=,lowerdir=,workdir=") +
 		       strlen(mntdata) + 1;
-		options_work = alloca(len2);
+		options_work = must_realloc(NULL, len2);
 		ret2 = snprintf(options, len2,
 				"upperdir=%s,lowerdir=%s,workdir=%s,%s", upper,
 				lower, work, mntdata);
 	} else {
 		len = strlen(lower) + strlen(upper) +
 		      strlen("upperdir=,lowerdir=") + 1;
-		options = alloca(len);
+		options = must_realloc(NULL, len);
 		ret = snprintf(options, len, "upperdir=%s,lowerdir=%s", upper,
 			       lower);
 
 		len2 = strlen(lower) + strlen(upper) + strlen(work) +
 		       strlen("upperdir=,lowerdir=,workdir=") + 1;
-		options_work = alloca(len2);
+		options_work = must_realloc(NULL, len2);
 		ret2 = snprintf(options_work, len2,
 				"upperdir=%s,lowerdir=%s,workdir=%s", upper,
 				lower, work);
