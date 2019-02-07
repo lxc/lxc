@@ -2795,11 +2795,77 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 	return CGROUP2_SUPER_MAGIC;
 }
 
+static bool lxc_premount_necessary_controllers(struct lxc_conf *conf, int *mntns_fd)
+{
+	*mntns_fd = -1;
+
+	if (geteuid() != 0)
+		return true;
+
+	if (!has_fs_type("/sys/fs/cgroup", CGROUP2_SUPER_MAGIC) &&
+	    !has_fs_type("/sys/fs/cgroup", TMPFS_MAGIC)) {
+		int ret;
+
+		*mntns_fd = open("/proc/self/ns/mnt", O_RDONLY | O_CLOEXEC);
+		if (*mntns_fd < 0) {
+			SYSERROR("Failed to unshare CLONE_NEWNS");
+			return false;
+		}
+
+		ret = unshare(CLONE_NEWNS);
+		if (ret < 0) {
+			SYSERROR("Failed to unshare CLONE_NEWNS");
+			goto on_error;
+		}
+		TRACE("Unshared CLONE_NEWNS");
+
+		(void)mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL);
+
+		ret = mkdir("/sys/fs/cgroup", 0755);
+		if (ret && errno != EEXIST) {
+			SYSERROR("Failed to create \"/sys/fs/cgroup\" mountpoint");
+			goto on_error;
+		}
+
+		ret = mount("tmpfs", "/sys/fs/cgroup", "tmpfs",
+				MS_NOSUID | MS_NODEV | MS_NOEXEC, "mode=755");
+		if (ret) {
+			SYSERROR("Failed to mount tmpfs at \"/sys/fs/cgroup\"");
+			goto on_error;
+		}
+
+		if (has_fs_type("/sys/fs/cgroup/systemd", CGROUP_SUPER_MAGIC))
+			return true;
+
+		ret = mkdir("/sys/fs/cgroup/systemd", 0755);
+		if (ret && errno != EEXIST) {
+			SYSERROR("Failed to create \"/sys/fs/cgroup/systemd\" mountpoint");
+			goto on_error;
+		}
+		ret = mount("cgroup", "/sys/fs/cgroup/systemd", "cgroup",
+			    MS_NOSUID | MS_NODEV | MS_NOEXEC,
+			    "none,name=systemd,xattr");
+		if (ret) {
+			SYSERROR("Failed to mount name=systemd controller at \"/sys/fs/cgroup/systemd\"");
+			goto on_error;
+		}
+	}
+
+	return true;
+
+on_error:
+	close(*mntns_fd);
+	return false;
+}
+
 static bool cg_init(struct cgroup_ops *ops, struct lxc_conf *conf)
 {
-	int ret;
+	int mntns_fd, ret;
 	const char *tmp;
-	bool relative = conf->cgroup_meta.relative;
+	bool bret = true, relative = conf->cgroup_meta.relative;
+
+	if (!lxc_premount_necessary_controllers(conf, &mntns_fd))
+		return false;
 
 	tmp = lxc_global_config_value("lxc.cgroup.use");
 	if (tmp) {
@@ -2808,7 +2874,7 @@ static bool cg_init(struct cgroup_ops *ops, struct lxc_conf *conf)
 		pin = must_copy_string(tmp);
 		chop = pin;
 
-		lxc_iterate_parts(cur, chop, ",") {
+		lxc_iterate_parts (cur, chop, ",") {
 			must_append_string(&ops->cgroup_use, cur);
 		}
 
@@ -2820,9 +2886,13 @@ static bool cg_init(struct cgroup_ops *ops, struct lxc_conf *conf)
 		return false;
 
 	if (ret == CGROUP2_SUPER_MAGIC)
-		return true;
+		goto out;
 
-	return cg_hybrid_init(ops, relative, !lxc_list_empty(&conf->id_map));
+	bret = cg_hybrid_init(ops, relative, !lxc_list_empty(&conf->id_map));
+out:
+	if (mntns_fd >= 0 && setns(mntns_fd, CLONE_NEWNS))
+		SYSWARN("Failed to reattach to original mount namespace");
+	return bret;
 }
 
 __cgfsng_ops static bool cgfsng_data_init(struct cgroup_ops *ops)
