@@ -20,13 +20,31 @@
 #ifndef __LXC_MEMORY_UTILS_H
 #define __LXC_MEMORY_UTILS_H
 
+#include <dirent.h>
+#include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
 
 static inline void __auto_free__(void *p)
 {
 	free(*(void **)p);
 }
 
+static inline void __auto_fclose__(FILE **f)
+{
+	if (*f)
+		fclose(*f);
+}
+
+static inline void __auto_closedir__(DIR **d)
+{
+	if (*d)
+		closedir(*d);
+}
+
 #define __do_free __attribute__((__cleanup__(__auto_free__)))
+#define __do_fclose __attribute__((__cleanup__(__auto_fclose__)))
+#define __do_closedir __attribute__((__cleanup__(__auto_closedir__)))
 
 #endif /* __LXC_MEMORY_UTILS_H */
