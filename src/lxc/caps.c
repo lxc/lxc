@@ -136,8 +136,7 @@ int lxc_ambient_caps_up(void)
 	int last_cap = CAP_LAST_CAP;
 	char *cap_names = NULL;
 
-	/* When we are root, we don't want to play with capabilities. */
-	if (!getuid())
+	if (!getuid() || geteuid())
 		return 0;
 
 	caps = cap_get_proc();
@@ -204,8 +203,7 @@ int lxc_ambient_caps_down(void)
 	cap_t caps;
 	cap_value_t cap;
 
-	/* When we are root, we don't want to play with capabilities. */
-	if (!getuid())
+	if (!getuid() || geteuid())
 		return 0;
 
 	ret = prctl(PR_CAP_AMBIENT, prctl_arg(PR_CAP_AMBIENT_CLEAR_ALL),
