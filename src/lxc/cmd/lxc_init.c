@@ -492,7 +492,7 @@ See the lxc-init man page for further information.\n\n");
 static int arguments_parse(struct arguments *args, int argc,
 			   char *const argv[])
 {
-	while (true) {
+	for (;;) {
 		int c;
 		int index = 0;
 

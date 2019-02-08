@@ -805,7 +805,7 @@ static int btrfs_recursive_destroy(const char *path)
 	sk->max_transid = (u64)-1;
 	sk->nr_items = 4096;
 
-	while(1) {
+	for (;;) {
 		ret = ioctl(fd, BTRFS_IOC_TREE_SEARCH, &args);
 		e = errno;
 		if (ret < 0) {
