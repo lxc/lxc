@@ -3321,7 +3321,7 @@ static int copy_file(const char *old, const char *new)
 		return -1;
 	}
 
-	while (1) {
+	for (;;) {
 		len = lxc_read_nointr(in, buf, 8096);
 		if (len < 0) {
 			SYSERROR("Error reading old file %s", old);
@@ -4057,7 +4057,7 @@ static int get_next_index(const char *lxcpath, char *cname)
 
 	fname = must_realloc(NULL, strlen(lxcpath) + 20);
 
-	while (1) {
+	for (;;) {
 		sprintf(fname, "%s/snap%d", lxcpath, i);
 
 		ret = stat(fname, &sb);

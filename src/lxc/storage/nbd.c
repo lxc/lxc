@@ -72,7 +72,7 @@ bool attach_nbd(char *src, struct lxc_conf *conf)
 	if (p)
 		*p = '\0';
 
-	while (1) {
+	for (;;) {
 		sprintf(path, "/dev/nbd%d", i);
 
 		if (!file_exists(path))

@@ -1093,7 +1093,7 @@ static int open_without_symlink(const char *target, const char *prefix_skip)
 		goto out;
 	}
 
-	while (1) {
+	for (;;) {
 		int newfd, saved_errno;
 		char *nextpath;
 

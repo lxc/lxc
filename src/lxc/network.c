@@ -1974,7 +1974,7 @@ char *lxc_mkifname(char *template)
 	}
 
 	/* Generate random names until we find one that doesn't exist. */
-	while (true) {
+	for (;;) {
 		name[0] = '\0';
 		(void)strlcpy(name, template, IFNAMSIZ);
 

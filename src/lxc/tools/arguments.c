@@ -207,7 +207,7 @@ extern int lxc_arguments_parse(struct lxc_arguments *args, int argc,
 		return ret;
 	}
 
-	while (true) {
+	for (;;) {
 		int c;
 		int index = 0;
 

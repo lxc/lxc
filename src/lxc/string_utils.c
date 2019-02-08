@@ -69,7 +69,7 @@ char **lxc_va_arg_list_to_argv(va_list ap, size_t skip, int do_strdup)
 	 * constantly...
 	 */
 	va_copy(ap2, ap);
-	while (1) {
+	for (;;) {
 		char *arg = va_arg(ap2, char *);
 		if (!arg)
 			break;
@@ -82,7 +82,7 @@ char **lxc_va_arg_list_to_argv(va_list ap, size_t skip, int do_strdup)
 		return NULL;
 
 	count = skip;
-	while (1) {
+	for (;;) {
 		char *arg = va_arg(ap, char *);
 		if (!arg)
 			break;

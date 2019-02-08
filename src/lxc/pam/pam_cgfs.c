@@ -259,7 +259,7 @@ static bool mkdir_parent(const char *root, char *path)
 		return true;
 
 	b = path + strlen(root) + 1;
-	while (true) {
+	for (;;) {
 		while (*b && (*b == '/'))
 			b++;
 		if (!*b)
@@ -878,7 +878,7 @@ static char *cgv1_get_current_cgroup(char *basecginfo, char *controller)
 
 	p = basecginfo;
 
-	while (true) {
+	for (;;) {
 		p = strchr(p, ':');
 		if (!p)
 			return NULL;
