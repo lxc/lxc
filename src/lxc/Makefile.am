@@ -377,10 +377,11 @@ lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
 		       syscall_wrappers.h
 lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c \
 			 conf.c conf.h \
+			 file_utils.c file_utils.h \
 			 list.h \
 			 log.c log.h \
 			 macro.h \
-			 file_utils.c file_utils.h \
+			 memory_utils.h \
 			 string_utils.c string_utils.h \
 			 syscall_wrappers.h \
 			 utils.c utils.h
