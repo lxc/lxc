@@ -353,6 +353,7 @@ init_lxc_SOURCES = cmd/lxc_init.c \
 		   compiler.h \
 		   error.h \
 		   initutils.c initutils.h \
+		   memory_utils.h \
 		   parse.c parse.h \
 		   raw_syscalls.c raw_syscalls.h \
 		   string_utils.c string_utils.h
@@ -401,6 +402,7 @@ init_lxc_static_SOURCES = cmd/lxc_init.c \
 			  file_utils.c file_utils.h \
 			  log.c log.h \
 			  macro.h \
+			  memory_utils.h \
 			  namespace.c namespace.h \
 			  string_utils.c string_utils.h
 
