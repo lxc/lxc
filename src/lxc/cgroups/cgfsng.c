@@ -2094,7 +2094,7 @@ static int convert_devpath(const char *invalue, char *dest)
 	 * A '    # comment' would be legal. Technically other text is not
 	 * legal, we could check for that if we cared to.
 	 */
-	for (n_parts = 1, p = path; *p && n_parts < 3; p++) {
+	for (n_parts = 1, p = path; *p; p++) {
 		if (*p != ' ')
 			continue;
 		*p = '\0';
