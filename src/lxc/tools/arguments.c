@@ -135,13 +135,13 @@ __noreturn static void print_usage_exit(const struct option longopts[],
 	}
 
 	fprintf(stderr, "\n");
-	exit(0);
+	exit(EXIT_SUCCESS);
 }
 
 __noreturn static void print_version_exit()
 {
 	printf("%s\n", lxc_get_version());
-	exit(0);
+	exit(EXIT_SUCCESS);
 }
 
 __noreturn static void print_help_exit(const struct lxc_arguments *args,
@@ -207,7 +207,7 @@ extern int lxc_arguments_parse(struct lxc_arguments *args, int argc,
 		return ret;
 	}
 
-	while (true) {
+	for (;;) {
 		int c;
 		int index = 0;
 

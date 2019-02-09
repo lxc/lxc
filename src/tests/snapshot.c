@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
 	c = lxc_container_new(MYNAME, NULL);
 	if (!c) {
 		fprintf(stderr, "%s: %d: failed to load first container\n", __FILE__, __LINE__);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (c->is_defined(c)) {
@@ -188,12 +188,12 @@ good:
 	try_to_remove();
 
 	printf("All tests passed\n");
-	exit(0);
+	exit(EXIT_SUCCESS);
 
 err:
 	lxc_container_put(c);
 	try_to_remove();
 
 	fprintf(stderr, "Exiting on error\n");
-	exit(1);
+	exit(EXIT_FAILURE);
 }

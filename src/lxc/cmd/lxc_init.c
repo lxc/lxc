@@ -459,13 +459,13 @@ __noreturn static void print_usage_exit(const struct option longopts[])
 {
 	fprintf(stderr, "Usage: lxc-init [-n|--name=NAME] [-h|--help] [--usage] [--version]\n\
 		[-q|--quiet] [-P|--lxcpath=LXCPATH]\n");
-	exit(0);
+	exit(EXIT_SUCCESS);
 }
 
 __noreturn static void print_version_exit(void)
 {
 	printf("%s\n", LXC_VERSION);
-	exit(0);
+	exit(EXIT_SUCCESS);
 }
 
 static void print_help(void)
@@ -492,7 +492,7 @@ See the lxc-init man page for further information.\n\n");
 static int arguments_parse(struct arguments *args, int argc,
 			   char *const argv[])
 {
-	while (true) {
+	for (;;) {
 		int c;
 		int index = 0;
 

@@ -1521,7 +1521,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 
 	/* The rest is in the hands of the initial and the attached process. */
 	lxc_proc_put_context_info(init_ctx);
-	_exit(0);
+	_exit(EXIT_SUCCESS);
 }
 
 int lxc_attach_run_command(void *payload)
