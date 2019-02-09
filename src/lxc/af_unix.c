@@ -37,6 +37,7 @@
 
 #include "config.h"
 #include "log.h"
+#include "memory_utils.h"
 #include "raw_syscalls.h"
 #include "utils.h"
 
@@ -155,12 +156,11 @@ int lxc_abstract_unix_connect(const char *path)
 int lxc_abstract_unix_send_fds(int fd, int *sendfds, int num_sendfds,
 			       void *data, size_t size)
 {
-	int ret;
+	__do_free char *cmsgbuf;
 	struct msghdr msg;
 	struct iovec iov;
 	struct cmsghdr *cmsg = NULL;
 	char buf[1] = {0};
-	char *cmsgbuf;
 	size_t cmsgbufsize = CMSG_SPACE(num_sendfds * sizeof(int));
 
 	memset(&msg, 0, sizeof(msg));
@@ -189,20 +189,18 @@ int lxc_abstract_unix_send_fds(int fd, int *sendfds, int num_sendfds,
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 
-	ret = sendmsg(fd, &msg, MSG_NOSIGNAL);
-	free(cmsgbuf);
-	return ret;
+	return sendmsg(fd, &msg, MSG_NOSIGNAL);
 }
 
 int lxc_abstract_unix_recv_fds(int fd, int *recvfds, int num_recvfds,
 			       void *data, size_t size)
 {
+	__do_free char *cmsgbuf;
 	int ret;
 	struct msghdr msg;
 	struct iovec iov;
 	struct cmsghdr *cmsg = NULL;
 	char buf[1] = {0};
-	char *cmsgbuf;
 	size_t cmsgbufsize = CMSG_SPACE(num_recvfds * sizeof(int));
 
 	memset(&msg, 0, sizeof(msg));
@@ -234,7 +232,6 @@ int lxc_abstract_unix_recv_fds(int fd, int *recvfds, int num_recvfds,
 		memcpy(recvfds, CMSG_DATA(cmsg), num_recvfds * sizeof(int));
 
 out:
-	free(cmsgbuf);
 	return ret;
 }
 
