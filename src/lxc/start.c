@@ -452,7 +452,6 @@ int lxc_serve_state_clients(const char *name, struct lxc_handler *handler,
 	size_t retlen;
 	ssize_t ret;
 	struct lxc_list *cur, *next;
-	struct lxc_state_client *client;
 	struct lxc_msg msg = {.type = lxc_msg_state, .value = state};
 
 	if (state == THAWED)
@@ -472,7 +471,7 @@ int lxc_serve_state_clients(const char *name, struct lxc_handler *handler,
 		return -E2BIG;
 
 	lxc_list_for_each_safe(cur, &handler->conf->state_clients, next) {
-		client = cur->elem;
+		struct lxc_state_client *client = cur->elem;
 
 		if (client->states[state] == 0) {
 			TRACE("State %s not registered for state client %d",
