@@ -170,13 +170,13 @@ int main(int argc, char *argv[])
 
 	if (!lxc_container_get(c)) {
 		fprintf(stderr, "%d: failed to get extra ref to container\n", __LINE__);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	c->want_daemonize(c, true);
 	if (!c->startl(c, 0, NULL)) {
 		fprintf(stderr, "%d: %s failed to start\n", __LINE__, c->name);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	sleep(3);

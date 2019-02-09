@@ -99,5 +99,5 @@ int main(int argc, char *argv[])
 	test_list_func(lxcpath, "Active:", list_active_containers);
 	test_list_func(lxcpath, "All:", list_all_containers);
 
-	exit(0);
+	exit(EXIT_SUCCESS);
 }
