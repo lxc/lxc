@@ -432,6 +432,7 @@ int main(int argc, char *argv[])
 
 			if (my_args.quiet)
 				fprintf(stderr, "Failed to wait on child %d\n", pid);
+			ret = -1;
 			goto out;
 		}
 

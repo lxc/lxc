@@ -1507,11 +1507,11 @@ int resolve_clone_flags(struct lxc_handler *handler)
 	struct lxc_conf *conf = handler->conf;
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
-		if (conf->ns_keep > 0) {
-			if ((conf->ns_keep & ns_info[i].clone_flag) == 0)
+		if (conf->ns_keep) {
+			if (!(conf->ns_keep & ns_info[i].clone_flag))
 				handler->ns_clone_flags |= ns_info[i].clone_flag;
-		} else if (conf->ns_clone > 0) {
-			if ((conf->ns_clone & ns_info[i].clone_flag) > 0)
+		} else if (conf->ns_clone) {
+			if ((conf->ns_clone & ns_info[i].clone_flag))
 				handler->ns_clone_flags |= ns_info[i].clone_flag;
 		} else {
 			if (i == LXC_NS_USER && lxc_list_empty(&handler->conf->id_map))
