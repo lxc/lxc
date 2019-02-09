@@ -47,6 +47,7 @@
 #include "config.h"
 #include "error.h"
 #include "initutils.h"
+#include "memory_utils.h"
 #include "parse.h"
 #include "raw_syscalls.h"
 #include "string_utils.h"
@@ -100,10 +101,10 @@ static struct arguments my_args = {
 
 static void prevent_forking(void)
 {
-	FILE *f;
-	size_t len = 0;
-	char *line = NULL;
+	__do_free char *line = NULL;
+	__do_fclose FILE *f = NULL;
 	char path[PATH_MAX];
+	size_t len = 0;
 
 	f = fopen("/proc/self/cgroup", "r");
 	if (!f)
@@ -138,14 +139,14 @@ static void prevent_forking(void)
 		if (ret < 0 || (size_t)ret >= sizeof(path)) {
 			if (my_args.quiet)
 				fprintf(stderr, "Failed to create string\n");
-			goto on_error;
+			return;
 		}
 
 		fd = open(path, O_WRONLY);
 		if (fd < 0) {
 			if (my_args.quiet)
 				fprintf(stderr, "Failed to open \"%s\"\n", path);
-			goto on_error;
+			return;
 		}
 
 		ret = write(fd, "1", 1);
@@ -153,17 +154,13 @@ static void prevent_forking(void)
 			fprintf(stderr, "Failed to write to \"%s\"\n", path);
 
 		close(fd);
-		break;
+		return;
 	}
-
-on_error:
-	free(line);
-	fclose(f);
 }
 
 static void kill_children(pid_t pid)
 {
-	FILE *f;
+	__do_fclose FILE *f = NULL;
 	char path[PATH_MAX];
 	int ret;
 
@@ -187,15 +184,12 @@ static void kill_children(pid_t pid)
 		if (fscanf(f, "%d ", &find_pid) != 1) {
 			if (my_args.quiet)
 				fprintf(stderr, "Failed to retrieve pid\n");
-			fclose(f);
 			return;
 		}
 
 		(void)kill_children(find_pid);
 		(void)kill(find_pid, SIGKILL);
 	}
-
-	fclose(f);
 }
 
 static void remove_self(void)
