@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
 	c = lxc_container_new(MYNAME, NULL);
 	if (!c) {
 		fprintf(stderr, "%s: %d: failed to load first container\n", __FILE__, __LINE__);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (c->is_defined(c)) {
@@ -190,9 +190,9 @@ int main(int argc, char *argv[])
 	c->stop(c);
 
 	try_to_remove();
-	exit(0);
+	exit(EXIT_SUCCESS);
 
 err:
 	try_to_remove();
-	exit(1);
+	exit(EXIT_FAILURE);
 }

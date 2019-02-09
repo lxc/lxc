@@ -24,7 +24,7 @@
 static void usage(const char *me)
 {
 	printf("Usage: %s name [lxcpath]\n", me);
-	exit(0);
+	exit(EXIT_SUCCESS);
 }
 
 int main(int argc, char *argv[])

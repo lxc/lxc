@@ -184,7 +184,7 @@ int main()
 	 * pam_cgroup */
 	if (geteuid() != 0) {
 		TSTERR("requires privilege");
-		exit(0);
+		exit(EXIT_SUCCESS);
 	}
 
 	#if TEST_ALREADY_RUNNING_CT

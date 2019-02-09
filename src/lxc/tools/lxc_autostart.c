@@ -512,7 +512,7 @@ int main(int argc, char *argv[])
 	free(containers);
 
 	if (failed == count)
-		exit(1);	/* Total failure */
+		exit(EXIT_FAILURE);	/* Total failure */
 	else if (failed > 0)
 		exit(2);	/* Partial failure */
 
