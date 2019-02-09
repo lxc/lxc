@@ -111,10 +111,9 @@ static int open_and_lock(char *path)
 
 static char *get_username(void)
 {
+	__do_free char *buf = NULL;
 	struct passwd pwent;
 	struct passwd *pwentp = NULL;
-	char *buf;
-	char *username;
 	size_t bufsize;
 	int ret;
 
@@ -132,14 +131,10 @@ static char *get_username(void)
 			usernic_error("%s", "Could not find matched password record\n");
 
 		CMD_SYSERROR("Failed to get username: %u\n", getuid());
-		free(buf);
 		return NULL;
 	}
 
-	username = strdup(pwent.pw_name);
-	free(buf);
-
-	return username;
+	return strdup(pwent.pw_name);
 }
 
 static void free_groupnames(char **groupnames)
@@ -157,13 +152,13 @@ static void free_groupnames(char **groupnames)
 
 static char **get_groupnames(void)
 {
+	__do_free char *buf = NULL;
+	__do_free gid_t *group_ids = NULL;
 	int ngroups;
-	gid_t *group_ids;
 	int ret, i;
 	char **groupnames;
 	struct group grent;
 	struct group *grentp = NULL;
-	char *buf;
 	size_t bufsize;
 
 	ngroups = getgroups(0, NULL);
@@ -182,14 +177,12 @@ static char **get_groupnames(void)
 
 	ret = getgroups(ngroups, group_ids);
 	if (ret < 0) {
-		free(group_ids);
 		CMD_SYSERROR("Failed to get process groups\n");
 		return NULL;
 	}
 
 	groupnames = malloc(sizeof(char *) * (ngroups + 1));
 	if (!groupnames) {
-		free(group_ids);
 		CMD_SYSERROR("Failed to allocate memory while getting group names\n");
 		return NULL;
 	}
@@ -202,7 +195,6 @@ static char **get_groupnames(void)
 
 	buf = malloc(bufsize);
 	if (!buf) {
-		free(group_ids);
 		free_groupnames(groupnames);
 		CMD_SYSERROR("Failed to allocate memory while getting group names\n");
 		return NULL;
@@ -215,8 +207,6 @@ static char **get_groupnames(void)
 				usernic_error("%s", "Could not find matched group record\n");
 
 			CMD_SYSERROR("Failed to get group name: %u\n", group_ids[i]);
-			free(buf);
-			free(group_ids);
 			free_groupnames(groupnames);
 			return NULL;
 		}
@@ -224,15 +214,10 @@ static char **get_groupnames(void)
 		groupnames[i] = strdup(grent.gr_name);
 		if (!groupnames[i]) {
 			usernic_error("Failed to copy group name \"%s\"", grent.gr_name);
-			free(buf);
-			free(group_ids);
 			free_groupnames(groupnames);
 			return NULL;
 		}
 	}
-
-	free(buf);
-	free(group_ids);
 
 	return groupnames;
 }
@@ -321,13 +306,13 @@ static void free_alloted(struct alloted_s **head)
 static int get_alloted(char *me, char *intype, char *link,
 		       struct alloted_s **alloted)
 {
+	__do_free char *line = NULL;
+	__do_fclose FILE *fin = NULL;
 	int n, ret;
 	char name[100], type[100], br[100];
 	char **groups;
-	FILE *fin;
 	int count = 0;
 	size_t len = 0;
-	char *line = NULL;
 
 	fin = fopen(LXC_USERNIC_CONF, "r");
 	if (!fin) {
@@ -378,8 +363,6 @@ static int get_alloted(char *me, char *intype, char *link,
 	}
 
 	free_groupnames(groups);
-	fclose(fin);
-	free(line);
 
 	/* Now return the total number of nics that this user can create. */
 	return count;
@@ -610,12 +593,12 @@ struct entry_line {
 static bool cull_entries(int fd, char *name, char *net_type, char *net_link,
 			 char *net_dev, bool *found_nicname)
 {
+	__do_free struct entry_line *entry_lines = NULL;
 	int i, ret;
 	char *buf, *buf_end, *buf_start;
 	struct stat sb;
 	int n = 0;
 	bool found, keep;
-	struct entry_line *entry_lines = NULL;
 
 	ret = fstat(fd, &sb);
 	if (ret < 0) {
@@ -641,7 +624,6 @@ static bool cull_entries(int fd, char *name, char *net_type, char *net_link,
 
 		newe = realloc(entry_lines, sizeof(*entry_lines) * (n + 1));
 		if (!newe) {
-			free(entry_lines);
 			lxc_strmunmap(buf, sb.st_size);
 			return false;
 		}
@@ -671,8 +653,6 @@ static bool cull_entries(int fd, char *name, char *net_type, char *net_link,
 		*buf_start = '\n';
 		buf_start++;
 	}
-
-	free(entry_lines);
 
 	ret = ftruncate(fd, buf_start - buf);
 	lxc_strmunmap(buf, sb.st_size);
@@ -706,9 +686,10 @@ static int count_entries(char *buf, off_t len, char *name, char *net_type, char 
 static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 			      char *intype, char *br, int allowed, char **cnic)
 {
+	__do_free char *newline = NULL;
 	int ret;
 	size_t slen;
-	char *newline, *owner;
+	char *owner;
 	char nicname[IFNAMSIZ];
 	struct stat sb;
 	struct alloted_s *n;
@@ -795,7 +776,6 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 	slen = strlen(owner) + strlen(intype) + strlen(br) + strlen(nicname) + 4;
 	newline = malloc(slen + 1);
 	if (!newline) {
-		free(newline);
 		CMD_SYSERROR("Failed allocate memory\n");
 		return NULL;
 	}
@@ -805,7 +785,6 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 		if (lxc_netdev_delete_by_name(nicname) != 0)
 			usernic_error("Error unlinking %s\n", nicname);
 
-		free(newline);
 		return NULL;
 	}
 
@@ -824,7 +803,6 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 		if (lxc_netdev_delete_by_name(nicname) != 0)
 			usernic_error("Error unlinking %s\n", nicname);
 
-		free(newline);
 		return NULL;
 	}
 
@@ -832,7 +810,6 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 	 * \0 byte! Files are not \0-terminated!
 	 */
 	memmove(buf + sb.st_size, newline, slen);
-	free(newline);
 	lxc_strmunmap(buf, sb.st_size + slen);
 
 	return strdup(nicname);
@@ -1115,11 +1092,11 @@ do_partial_cleanup:
 
 int main(int argc, char *argv[])
 {
+	__do_free char *me = NULL, *newname = NULL, *nicname = NULL;
 	int fd, n, pid, request, ret;
-	char *me, *newname;
 	struct user_nic_args args;
 	int container_veth_ifidx = -1, host_veth_ifidx = -1, netns_fd = -1;
-	char *cnic = NULL, *nicname = NULL;
+	char *cnic = NULL;
 	struct alloted_s *alloted = NULL;
 
 	if (argc < 7 || argc > 8) {
@@ -1248,7 +1225,6 @@ int main(int argc, char *argv[])
 	}
 
 	n = get_alloted(me, args.type, args.link, &alloted);
-	free(me);
 
 	if (request == LXC_USERNIC_DELETE) {
 		struct alloted_s *it;
@@ -1313,14 +1289,11 @@ int main(int argc, char *argv[])
 		if (ret < 0)
 			usernic_error("Failed to delete \"%s\"\n", cnic);
 
-		free(nicname);
 		_exit(EXIT_FAILURE);
 	}
 
 	host_veth_ifidx = if_nametoindex(nicname);
 	if (!host_veth_ifidx) {
-		free(newname);
-		free(nicname);
 		CMD_SYSERROR("Failed to get netdev index\n");
 		_exit(EXIT_FAILURE);
 	}
@@ -1330,8 +1303,6 @@ int main(int argc, char *argv[])
 	 */
 	fprintf(stdout, "%s:%d:%s:%d\n", newname, container_veth_ifidx, nicname,
 		host_veth_ifidx);
-	free(newname);
-	free(nicname);
 
 	fflush(stdout);
 	_exit(EXIT_SUCCESS);
