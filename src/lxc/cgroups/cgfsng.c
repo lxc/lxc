@@ -1329,7 +1329,7 @@ static void remove_path_for_hierarchy(struct hierarchy *h, char *cgname, bool mo
 }
 
 __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
-							struct lxc_handler *handler)
+						      struct lxc_handler *handler)
 {
 	__do_free char *monitor_cgroup = NULL;
 	char *offset, *tmp;
@@ -1367,10 +1367,14 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 		}
 
 		for (i = 0; ops->hierarchies[i]; i++) {
-			if (!monitor_create_path_for_hierarchy(ops->hierarchies[i], monitor_cgroup)) {
-				ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->monitor_full_path);
+			if (!monitor_create_path_for_hierarchy(ops->hierarchies[i],
+							       monitor_cgroup)) {
+				ERROR("Failed to create cgroup \"%s\"",
+				      ops->hierarchies[i]->monitor_full_path);
 				for (int j = 0; j < i; j++)
-					remove_path_for_hierarchy(ops->hierarchies[j], monitor_cgroup, true);
+					remove_path_for_hierarchy(ops->hierarchies[j],
+								  monitor_cgroup,
+								  true);
 
 				idx++;
 				break;
