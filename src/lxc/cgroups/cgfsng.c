@@ -1426,9 +1426,11 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 	offset = container_cgroup + len - 5;
 
 	do {
-		int ret = snprintf(offset, 5, "-%d", idx);
-		if (ret < 0 || (size_t)ret >= 5)
-			return false;
+		if (idx) {
+			int ret = snprintf(offset, 5, "-%d", idx);
+			if (ret < 0 || (size_t)ret >= 5)
+				return false;
+		}
 
 		for (i = 0; ops->hierarchies[i]; i++) {
 			if (!container_create_path_for_hierarchy(ops->hierarchies[i],
@@ -1443,16 +1445,13 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 				break;
 			}
 		}
-
-		ops->container_cgroup = container_cgroup;
-		container_cgroup = NULL;
-		INFO("The container uses \"%s\" as cgroup", ops->container_cgroup);
 	} while (ops->hierarchies[i] && idx > 0 && idx < 1000);
 
 	if (idx == 1000)
 		return false;
 
-	INFO("The container process uses \"%s\" as cgroup", ops->container_cgroup);
+	INFO("The container process uses \"%s\" as cgroup", container_cgroup);
+	ops->container_cgroup = steal_ptr(container_cgroup);
 	return true;
 }
 
