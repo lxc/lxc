@@ -131,7 +131,7 @@ int lxc_file_for_each_line_mmap(const char *file, lxc_file_cb callback, void *da
 	}
 
 	ret = 0;
-	lxc_iterate_parts(line, buf, "\n\0") {
+	lxc_iterate_parts(line, buf, "\r\n\0") {
 		ret = callback(line, data);
 		if (ret) {
 			/* Callback rv > 0 means stop here callback rv < 0 means
