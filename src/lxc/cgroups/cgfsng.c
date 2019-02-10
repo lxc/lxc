@@ -1431,10 +1431,14 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 			return false;
 
 		for (i = 0; ops->hierarchies[i]; i++) {
-			if (!container_create_path_for_hierarchy(ops->hierarchies[i], container_cgroup)) {
-				ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->container_full_path);
+			if (!container_create_path_for_hierarchy(ops->hierarchies[i],
+								 container_cgroup)) {
+				ERROR("Failed to create cgroup \"%s\"",
+				      ops->hierarchies[i]->container_full_path);
 				for (int j = 0; j < i; j++)
-					remove_path_for_hierarchy(ops->hierarchies[j], container_cgroup, false);
+					remove_path_for_hierarchy(ops->hierarchies[j],
+								  container_cgroup,
+								  false);
 				idx++;
 				break;
 			}
