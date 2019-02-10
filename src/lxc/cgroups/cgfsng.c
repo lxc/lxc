@@ -1329,7 +1329,7 @@ static void remove_path_for_hierarchy(struct hierarchy *h, char *cgname, bool mo
 }
 
 __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
-							struct lxc_handler *handler)
+						      struct lxc_handler *handler)
 {
 	__do_free char *monitor_cgroup = NULL;
 	char *offset, *tmp;
@@ -1367,10 +1367,14 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 		}
 
 		for (i = 0; ops->hierarchies[i]; i++) {
-			if (!monitor_create_path_for_hierarchy(ops->hierarchies[i], monitor_cgroup)) {
-				ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->monitor_full_path);
+			if (!monitor_create_path_for_hierarchy(ops->hierarchies[i],
+							       monitor_cgroup)) {
+				ERROR("Failed to create cgroup \"%s\"",
+				      ops->hierarchies[i]->monitor_full_path);
 				for (int j = 0; j < i; j++)
-					remove_path_for_hierarchy(ops->hierarchies[j], monitor_cgroup, true);
+					remove_path_for_hierarchy(ops->hierarchies[j],
+								  monitor_cgroup,
+								  true);
 
 				idx++;
 				break;
@@ -1422,29 +1426,32 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 	offset = container_cgroup + len - 5;
 
 	do {
-		int ret = snprintf(offset, 5, "-%d", idx);
-		if (ret < 0 || (size_t)ret >= 5)
-			return false;
+		if (idx) {
+			int ret = snprintf(offset, 5, "-%d", idx);
+			if (ret < 0 || (size_t)ret >= 5)
+				return false;
+		}
 
 		for (i = 0; ops->hierarchies[i]; i++) {
-			if (!container_create_path_for_hierarchy(ops->hierarchies[i], container_cgroup)) {
-				ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->container_full_path);
+			if (!container_create_path_for_hierarchy(ops->hierarchies[i],
+								 container_cgroup)) {
+				ERROR("Failed to create cgroup \"%s\"",
+				      ops->hierarchies[i]->container_full_path);
 				for (int j = 0; j < i; j++)
-					remove_path_for_hierarchy(ops->hierarchies[j], container_cgroup, false);
+					remove_path_for_hierarchy(ops->hierarchies[j],
+								  container_cgroup,
+								  false);
 				idx++;
 				break;
 			}
 		}
-
-		ops->container_cgroup = container_cgroup;
-		container_cgroup = NULL;
-		INFO("The container uses \"%s\" as cgroup", ops->container_cgroup);
 	} while (ops->hierarchies[i] && idx > 0 && idx < 1000);
 
 	if (idx == 1000)
 		return false;
 
-	INFO("The container process uses \"%s\" as cgroup", ops->container_cgroup);
+	INFO("The container process uses \"%s\" as cgroup", container_cgroup);
+	ops->container_cgroup = steal_ptr(container_cgroup);
 	return true;
 }
 
