@@ -286,6 +286,20 @@ static inline int signalfd(int fd, const sigset_t *mask, int flags)
 #define MFD_ALLOW_SEALING 0x0002U
 #endif
 
+#ifndef F_LINUX_SPECIFIC_BASE
+#define F_LINUX_SPECIFIC_BASE 1024
+#endif
+#ifndef F_ADD_SEALS
+#define F_ADD_SEALS (F_LINUX_SPECIFIC_BASE + 9)
+#define F_GET_SEALS (F_LINUX_SPECIFIC_BASE + 10)
+#endif
+#ifndef F_SEAL_SEAL
+#define F_SEAL_SEAL 0x0001
+#define F_SEAL_SHRINK 0x0002
+#define F_SEAL_GROW 0x0004
+#define F_SEAL_WRITE 0x0008
+#endif
+
 #ifndef HAVE_MEMFD_CREATE
 static inline int memfd_create(const char *name, unsigned int flags) {
 	#ifndef __NR_memfd_create
