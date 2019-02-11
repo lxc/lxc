@@ -47,7 +47,8 @@ noinst_HEADERS = api_extensions.h \
 		 utils.h
 
 if IS_BIONIC
-noinst_HEADERS += ../include/lxcmntent.h \
+noinst_HEADERS += ../include/fexecve.h \
+		  ../include/lxcmntent.h \
 		  ../include/openpty.h
 endif
 
@@ -145,7 +146,8 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    $(LSM_SOURCES)
 
 if IS_BIONIC
-liblxc_la_SOURCES += ../include/lxcmntent.c ../include/lxcmntent.h \
+liblxc_la_SOURCES += ../include/fexecve.c ../include/fexecve.h \
+		     ../include/lxcmntent.c ../include/lxcmntent.h \
 		     ../include/openpty.c ../include/openpty.h
 endif
 
