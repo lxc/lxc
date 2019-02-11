@@ -33,7 +33,6 @@
 
 #include "config.h"
 #include "utils.h"
-#include "syscall_wrappers.h"
 
 #define LXC_MEMFD_REXEC_SEALS \
 	(F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_WRITE)
