@@ -142,7 +142,7 @@ on_error:
 	errno = saved_errno;
 }
 
-static int lxc_rexec(const char *memfd_name)
+int lxc_rexec(const char *memfd_name)
 {
 	int ret;
 	char **argv = NULL, **envp = NULL;
@@ -179,7 +179,7 @@ static int lxc_rexec(const char *memfd_name)
  */
 __attribute__((constructor)) static void liblxc_rexec(void)
 {
-	if (lxc_rexec("liblxc")) {
+	if (getenv("LXC_MEMFD_REXEC") && lxc_rexec("liblxc")) {
 		fprintf(stderr, "Failed to re-execute liblxc via memory file descriptor\n");
 		_exit(EXIT_FAILURE);
 	}
