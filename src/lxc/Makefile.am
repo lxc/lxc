@@ -25,6 +25,7 @@ noinst_HEADERS = api_extensions.h \
 		 monitor.h \
 		 namespace.h \
 		 raw_syscalls.h \
+		 rexec.h \
 		 start.h \
 		 state.h \
 		 storage/btrfs.h \
@@ -180,7 +181,7 @@ liblxc_la_SOURCES += ../include/strlcat.c ../include/strlcat.h
 endif
 
 if ENFORCE_MEMFD_REXEC
-liblxc_la_SOURCES += rexec.c
+liblxc_la_SOURCES += rexec.c rexec.h
 endif
 
 AM_CFLAGS = -DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
@@ -307,6 +308,7 @@ LDADD = liblxc.la \
 
 if ENABLE_TOOLS
 lxc_attach_SOURCES = tools/lxc_attach.c \
+		     rexec.c rexec.h \
 		     tools/arguments.c tools/arguments.h
 lxc_autostart_SOURCES = tools/lxc_autostart.c \
 			tools/arguments.c tools/arguments.h
