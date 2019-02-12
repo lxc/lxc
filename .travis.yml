@@ -27,6 +27,9 @@ script:
  - ../configure --enable-tests --with-distro=unknown
  - make -j4
  - make DESTDIR=$TRAVIS_BUILD_DIR/install install
+ - cd ..
+ - ./config/apparmor/lxc-generate-aa-rules.py config/apparmor/container-rules.base
+
 notifications:
   email:
     recipients:
