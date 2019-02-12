@@ -42,7 +42,7 @@ static inline int lxc_raw_execveat(int dirfd, const char *pathname,
 	return -1;
 }
 
-int efexecve(int fd, char *const argv[], char *const envp[])
+int fexecve(int fd, char *const argv[], char *const envp[])
 {
 	char procfd[256];
 	int ret;

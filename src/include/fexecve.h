@@ -22,6 +22,6 @@
 #define _LXC_FEXECVE_H
 
 #include <stdio.h>
-extern int efexecve(int fd, char *const argv[], char *const envp[]);
+extern int fexecve(int fd, char *const argv[], char *const envp[]);
 
 #endif /* _LXC_FEXECVE_H */
