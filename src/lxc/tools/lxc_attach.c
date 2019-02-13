@@ -57,9 +57,9 @@ lxc_log_define(lxc_attach, lxc);
  * mapping: CVE-2019-5736.
  */
 #ifdef ENFORCE_MEMFD_REXEC
-__attribute__((constructor)) static void lxc_attach_rexec(void)
+__attribute__((constructor)) static void lxc_attach_rexec(int argc, char *argv[])
 {
-	if (!getenv("LXC_MEMFD_REXEC") && lxc_rexec("lxc-attach")) {
+	if (!getenv("LXC_MEMFD_REXEC") && lxc_rexec(argv, "lxc-attach")) {
 		fprintf(stderr, "Failed to re-execute lxc-attach via memory file descriptor\n");
 		_exit(EXIT_FAILURE);
 	}
