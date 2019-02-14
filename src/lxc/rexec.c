@@ -29,6 +29,8 @@
 
 #include "config.h"
 #include "file_utils.h"
+#include "macro.h"
+#include "memory_utils.h"
 #include "raw_syscalls.h"
 #include "string_utils.h"
 #include "syscall_wrappers.h"
@@ -39,6 +41,45 @@
 
 #define LXC_MEMFD_REXEC_SEALS \
 	(F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_WRITE)
+
+static int push_vargs(char *data, int data_length, char ***output)
+{
+	int num = 0;
+	char *cur = data;
+
+	if (!data || *output)
+		return -1;
+
+	*output = must_realloc(NULL, sizeof(**output));
+
+	while (cur < data + data_length) {
+		num++;
+		*output = must_realloc(*output, (num + 1) * sizeof(**output));
+
+		(*output)[num - 1] = cur;
+		cur += strlen(cur) + 1;
+	}
+	(*output)[num] = NULL;
+	return num;
+}
+
+static int parse_argv(char ***argv)
+{
+	__do_free char *cmdline = NULL;
+	int ret;
+	size_t cmdline_size;
+
+	cmdline = file_to_buf("/proc/self/cmdline", &cmdline_size);
+	if (!cmdline)
+		return -1;
+
+	ret = push_vargs(cmdline, cmdline_size, argv);
+	if (ret <= 0)
+		return -1;
+
+	steal_ptr(cmdline);
+	return 0;
+}
 
 static int is_memfd(void)
 {
@@ -91,9 +132,16 @@ on_error:
 	errno = saved_errno;
 }
 
-int lxc_rexec(char *argv[], const char *memfd_name)
+/*
+ * Get cheap access to the environment. This must be declared by the user as
+ * mandated by POSIX. The definition is located in unistd.h.
+ */
+extern char **environ;
+
+int lxc_rexec(const char *memfd_name)
 {
 	int ret;
+	char **argv = NULL;
 
 	ret = is_memfd();
 	if (ret < 0 && ret == -ENOTRECOVERABLE) {
@@ -103,6 +151,14 @@ int lxc_rexec(char *argv[], const char *memfd_name)
 		return -1;
 	} else if (ret > 0) {
 		return 0;
+	}
+
+	ret = parse_argv(&argv);
+	if (ret < 0) {
+		fprintf(stderr,
+			"%s - Failed to parse command line parameters\n",
+			strerror(errno));
+		return -1;
 	}
 
 	lxc_rexec_as_memfd(argv, environ, memfd_name);
@@ -117,9 +173,9 @@ int lxc_rexec(char *argv[], const char *memfd_name)
  * container are in the same user namespace or have set up an identity id
  * mapping: CVE-2019-5736.
  */
-__attribute__((constructor)) static void liblxc_rexec(int argc, char *argv[])
+__attribute__((constructor)) static void liblxc_rexec(void)
 {
-	if (getenv("LXC_MEMFD_REXEC") && lxc_rexec(argv, "liblxc")) {
+	if (getenv("LXC_MEMFD_REXEC") && lxc_rexec("liblxc")) {
 		fprintf(stderr, "Failed to re-execute liblxc via memory file descriptor\n");
 		_exit(EXIT_FAILURE);
 	}
