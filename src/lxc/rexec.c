@@ -25,9 +25,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "config.h"
 #include "file_utils.h"
+#include "macro.h"
+#include "memory_utils.h"
 #include "raw_syscalls.h"
 #include "string_utils.h"
 #include "syscall_wrappers.h"
@@ -60,35 +63,22 @@ static int push_vargs(char *data, int data_length, char ***output)
 	return num;
 }
 
-static int parse_exec_params(char ***argv, char ***envp)
+static int parse_argv(char ***argv)
 {
+	__do_free char *cmdline = NULL;
 	int ret;
-	char *cmdline = NULL, *env = NULL;
-	size_t cmdline_size, env_size;
+	size_t cmdline_size;
 
 	cmdline = file_to_buf("/proc/self/cmdline", &cmdline_size);
 	if (!cmdline)
-		goto on_error;
-
-	env = file_to_buf("/proc/self/environ", &env_size);
-	if (!env)
-		goto on_error;
+		return -1;
 
 	ret = push_vargs(cmdline, cmdline_size, argv);
 	if (ret <= 0)
-		goto on_error;
+		return -1;
 
-	ret = push_vargs(env, env_size, envp);
-	if (ret <= 0)
-		goto on_error;
-
+	steal_ptr(cmdline);
 	return 0;
-
-on_error:
-	free(env);
-	free(cmdline);
-
-	return -1;
 }
 
 static int is_memfd(void)
@@ -142,10 +132,16 @@ on_error:
 	errno = saved_errno;
 }
 
+/*
+ * Get cheap access to the environment. This must be declared by the user as
+ * mandated by POSIX. The definition is located in unistd.h.
+ */
+extern char **environ;
+
 int lxc_rexec(const char *memfd_name)
 {
 	int ret;
-	char **argv = NULL, **envp = NULL;
+	char **argv = NULL;
 
 	ret = is_memfd();
 	if (ret < 0 && ret == -ENOTRECOVERABLE) {
@@ -157,7 +153,7 @@ int lxc_rexec(const char *memfd_name)
 		return 0;
 	}
 
-	ret = parse_exec_params(&argv, &envp);
+	ret = parse_argv(&argv);
 	if (ret < 0) {
 		fprintf(stderr,
 			"%s - Failed to parse command line parameters\n",
@@ -165,7 +161,7 @@ int lxc_rexec(const char *memfd_name)
 		return -1;
 	}
 
-	lxc_rexec_as_memfd(argv, envp, memfd_name);
+	lxc_rexec_as_memfd(argv, environ, memfd_name);
 	fprintf(stderr, "%s - Failed to rexec as memfd\n", strerror(errno));
 	return -1;
 }
