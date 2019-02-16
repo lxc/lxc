@@ -4970,7 +4970,10 @@ static int create_mount_target(const char *dest, mode_t st_mode)
 		ret = mkdir(dest, 0000);
 	else
 		ret = mknod(dest, S_IFREG | 0000, 0);
-	if (ret < 0) {
+
+	if (ret == 0)
+		TRACE("Created mount target \"%s\"", dest);
+	else if (ret < 0 && ret != EEXIST) {
 		SYSERROR("Failed to create mount target \"%s\"", dest);
 		return -1;
 	}
@@ -5071,12 +5074,9 @@ static int do_lxcapi_mount(struct lxc_container *c, const char *source,
 			_exit(EXIT_FAILURE);
 		}
 
-		if (access(target, F_OK) < 0 && errno == ENOENT) {
-			ret = create_mount_target(target, sb.st_mode);
-			if (ret < 0)
-				_exit(EXIT_FAILURE);
-			TRACE("Created mount target \"%s\"", target);
-		}
+		ret = create_mount_target(target, sb.st_mode);
+		if (ret < 0)
+			_exit(EXIT_FAILURE);
 
 		suff = strrchr(template, '/');
 		if (!suff)
