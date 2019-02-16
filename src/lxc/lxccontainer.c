@@ -5071,10 +5071,12 @@ static int do_lxcapi_mount(struct lxc_container *c, const char *source,
 			_exit(EXIT_FAILURE);
 		}
 
-		ret = create_mount_target(target, sb.st_mode);
-		if (ret < 0)
-			_exit(EXIT_FAILURE);
-		TRACE("Created mount target \"%s\"", target);
+		if (access(target, F_OK) < 0 && errno == ENOENT) {
+			ret = create_mount_target(target, sb.st_mode);
+			if (ret < 0)
+				_exit(EXIT_FAILURE);
+			TRACE("Created mount target \"%s\"", target);
+		}
 
 		suff = strrchr(template, '/');
 		if (!suff)
