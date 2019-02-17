@@ -1074,7 +1074,6 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 			       struct lxc_epoll_descr *descr,
 			       const lxc_cmd_t cmd)
 {
-	struct lxc_state_client *client;
 	struct lxc_list *cur, *next;
 
 	lxc_terminal_free(handler->conf, fd);
@@ -1085,7 +1084,8 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 	}
 
 	lxc_list_for_each_safe(cur, &handler->conf->state_clients, next) {
-		client = cur->elem;
+		struct lxc_state_client *client = cur->elem;
+
 		if (client->clientfd != fd)
 			continue;
 
