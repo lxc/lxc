@@ -1157,7 +1157,7 @@ out_close:
 static int lxc_cmd_accept(int fd, uint32_t events, void *data,
 			  struct lxc_epoll_descr *descr)
 {
-	int connection;
+	__do_close_prot_errno int connection = -EBADF;
 	int opt = 1, ret = -1;
 
 	connection = accept(fd, NULL, 0);
@@ -1169,27 +1169,23 @@ static int lxc_cmd_accept(int fd, uint32_t events, void *data,
 	ret = fcntl(connection, F_SETFD, FD_CLOEXEC);
 	if (ret < 0) {
 		SYSERROR("Failed to set close-on-exec on incoming command connection");
-		goto out_close;
+		return ret;
 	}
 
 	ret = setsockopt(connection, SOL_SOCKET, SO_PASSCRED, &opt, sizeof(opt));
 	if (ret < 0) {
 		SYSERROR("Failed to enable necessary credentials on command socket");
-		goto out_close;
+		return ret;
 	}
 
 	ret = lxc_mainloop_add_handler(descr, connection, lxc_cmd_handler, data);
 	if (ret) {
 		ERROR("Failed to add command handler");
-		goto out_close;
+		return ret;
 	}
 
-out:
+	steal_fd(connection);
 	return ret;
-
-out_close:
-	close(connection);
-	goto out;
 }
 
 int lxc_cmd_init(const char *name, const char *lxcpath, const char *suffix)
