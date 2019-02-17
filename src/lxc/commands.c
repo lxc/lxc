@@ -232,7 +232,7 @@ static int lxc_cmd_rsp_send(int fd, struct lxc_cmd_rsp *rsp)
 static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
 			const char *lxcpath, const char *hashed_sock_name)
 {
-	int client_fd, saved_errno;
+	__do_close_prot_errno int client_fd = -EBADF;
 	ssize_t ret = -1;
 
 	client_fd = lxc_cmd_connect(name, lxcpath, hashed_sock_name, "command");
@@ -242,25 +242,18 @@ static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
 	ret = lxc_abstract_unix_send_credential(client_fd, &cmd->req,
 						sizeof(cmd->req));
 	if (ret < 0 || (size_t)ret != sizeof(cmd->req))
-		goto on_error;
+		return -1;
 
 	if (cmd->req.datalen <= 0)
-		return client_fd;
+		return steal_fd(client_fd);
 
 	errno = EMSGSIZE;
 	ret = lxc_send_nointr(client_fd, (void *)cmd->req.data,
 			      cmd->req.datalen, MSG_NOSIGNAL);
 	if (ret < 0 || ret != (ssize_t)cmd->req.datalen)
-		goto on_error;
+		return -1;
 
-	return client_fd;
-
-on_error:
-	saved_errno = errno;
-	close(client_fd);
-	errno = saved_errno;
-
-	return -1;
+	return steal_fd(client_fd);
 }
 
 /*
