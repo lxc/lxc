@@ -83,16 +83,14 @@ static int parse_argv(char ***argv)
 
 static int is_memfd(void)
 {
-	int fd, saved_errno, seals;
+	__do_close_prot_errno int fd = -EBADF;
+	int saved_errno, seals;
 
 	fd = open("/proc/self/exe", O_RDONLY | O_CLOEXEC);
 	if (fd < 0)
 		return -ENOTRECOVERABLE;
 
 	seals = fcntl(fd, F_GET_SEALS);
-	saved_errno = errno;
-	close(fd);
-	errno = saved_errno;
 	if (seals < 0)
 		return -EINVAL;
 
@@ -101,9 +99,9 @@ static int is_memfd(void)
 
 static void lxc_rexec_as_memfd(char **argv, char **envp, const char *memfd_name)
 {
+	__do_close_prot_errno int fd = -EBADF, memfd = -EBADF;
 	int saved_errno;
 	ssize_t bytes_sent;
-	int fd = -1, memfd = -1;
 
 	memfd = memfd_create(memfd_name, MFD_ALLOW_SEALING | MFD_CLOEXEC);
 	if (memfd < 0)
@@ -111,25 +109,17 @@ static void lxc_rexec_as_memfd(char **argv, char **envp, const char *memfd_name)
 
 	fd = open("/proc/self/exe", O_RDONLY | O_CLOEXEC);
 	if (fd < 0)
-		goto on_error;
+		return;
 
 	/* sendfile() handles up to 2GB. */
 	bytes_sent = lxc_sendfile_nointr(memfd, fd, NULL, LXC_SENDFILE_MAX);
-	saved_errno = errno;
-	close(fd);
-	errno = saved_errno;
 	if (bytes_sent < 0)
-		goto on_error;
+		return;
 
 	if (fcntl(memfd, F_ADD_SEALS, LXC_MEMFD_REXEC_SEALS))
-		goto on_error;
+		return;
 
 	fexecve(memfd, argv, envp);
-
-on_error:
-	saved_errno = errno;
-	close(memfd);
-	errno = saved_errno;
 }
 
 /*
