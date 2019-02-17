@@ -828,6 +828,7 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 			     lxc_state_t states[MAX_STATE],
 			     int *state_client_fd)
 {
+	__do_close_prot_errno int clientfd = -EBADF;
 	int state, stopped;
 	ssize_t ret;
 	struct lxc_cmd_rr cmd = {
@@ -852,8 +853,9 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 	/* We should now be guaranteed to get an answer from the state sending
 	 * function.
 	 */
-	if (cmd.rsp.ret < 0) {
-		errno = -cmd.rsp.ret;
+	clientfd = cmd.rsp.ret;
+	if (clientfd < 0) {
+		errno = -clientfd;
 		SYSERROR("Failed to receive socket fd");
 		return -1;
 	}
@@ -861,12 +863,11 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 	state = PTR_TO_INT(cmd.rsp.data);
 	if (state < MAX_STATE) {
 		TRACE("Container is already in requested state %s", lxc_state2str(state));
-		close(cmd.rsp.ret);
 		return state;
 	}
 
-	*state_client_fd = cmd.rsp.ret;
-	TRACE("Added state client %d to state client list", cmd.rsp.ret);
+	*state_client_fd = steal_fd(clientfd);
+	TRACE("Added state client %d to state client list", *state_client_fd);
 	return MAX_STATE;
 }
 
