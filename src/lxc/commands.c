@@ -278,7 +278,7 @@ static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
 static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 		   const char *lxcpath, const char *hashed_sock_name)
 {
-	int client_fd, saved_errno;
+	__do_close_prot_errno int client_fd = -EBADF;
 	int ret = -1;
 	bool stay_connected = false;
 
@@ -303,15 +303,8 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 	if (ret < 0 && errno == ECONNRESET)
 		*stopped = 1;
 
-	if (!stay_connected || ret <= 0) {
-		saved_errno = errno;
-		close(client_fd);
-		errno = saved_errno;
-		return ret;
-	}
-
-	if (stay_connected)
-		cmd->rsp.ret = client_fd;
+	if (stay_connected && ret > 0)
+		cmd->rsp.ret = steal_fd(client_fd);
 
 	return ret;
 }
