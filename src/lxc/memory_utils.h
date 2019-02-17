@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 static inline void __auto_free__(void *p)
 {
@@ -44,6 +45,16 @@ static inline void __auto_closedir__(DIR **d)
 		closedir(*d);
 }
 
+static inline void __auto_close__(int *fd)
+{
+	if (*fd >= 0) {
+		int e = errno;
+		close(*fd);
+		errno = e;
+	}
+}
+
+#define __do_close_prot_errno __attribute__((__cleanup__(__auto_close__)))
 #define __do_free __attribute__((__cleanup__(__auto_free__)))
 #define __do_fclose __attribute__((__cleanup__(__auto_fclose__)))
 #define __do_closedir __attribute__((__cleanup__(__auto_closedir__)))
