@@ -698,8 +698,8 @@ static int lxc_cmd_terminal_winch_callback(int fd, struct lxc_cmd_req *req,
  */
 int lxc_cmd_console(const char *name, int *ttynum, int *fd, const char *lxcpath)
 {
+	__do_free struct lxc_cmd_console_rsp_data *rspdata = NULL;
 	int ret, stopped;
-	struct lxc_cmd_console_rsp_data *rspdata;
 	struct lxc_cmd_rr cmd = {
 		.req = { .cmd = LXC_CMD_CONSOLE, .data = INT_TO_PTR(*ttynum) },
 	};
@@ -708,23 +708,21 @@ int lxc_cmd_console(const char *name, int *ttynum, int *fd, const char *lxcpath)
 	if (ret < 0)
 		return ret;
 
+	rspdata = cmd.rsp.data;
 	if (cmd.rsp.ret < 0) {
 		errno = -cmd.rsp.ret;
 		SYSERROR("Denied access to tty");
-		ret = -1;
-		goto out;
+		return -1;
 	}
 
 	if (ret == 0) {
 		ERROR("tty number %d invalid, busy or all ttys busy", *ttynum);
-		ret = -1;
-		goto out;
+		return -1;
 	}
 
-	rspdata = cmd.rsp.data;
 	if (rspdata->masterfd < 0) {
 		ERROR("Unable to allocate fd for tty %d", rspdata->ttynum);
-		goto out;
+		return -1;
 	}
 
 	ret = cmd.rsp.ret; /* socket fd */
@@ -732,8 +730,6 @@ int lxc_cmd_console(const char *name, int *ttynum, int *fd, const char *lxcpath)
 	*ttynum = rspdata->ttynum;
 	INFO("Alloced fd %d for tty %d via socket %d", *fd, rspdata->ttynum, ret);
 
-out:
-	free(cmd.rsp.data);
 	return ret;
 }
 
