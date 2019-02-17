@@ -1190,13 +1190,13 @@ static int lxc_cmd_accept(int fd, uint32_t events, void *data,
 
 int lxc_cmd_init(const char *name, const char *lxcpath, const char *suffix)
 {
-	int fd, ret;
+	__do_close_prot_errno int fd = -EBADF;
+	int ret;
 	char path[LXC_AUDS_ADDR_LEN] = {0};
 
 	ret = lxc_make_abstract_socket_name(path, sizeof(path), name, lxcpath, NULL, suffix);
 	if (ret < 0)
 		return -1;
-	TRACE("Creating abstract unix socket \"%s\"", &path[1]);
 
 	fd = lxc_abstract_unix_open(path, SOCK_STREAM, 0);
 	if (fd < 0) {
@@ -1210,11 +1210,11 @@ int lxc_cmd_init(const char *name, const char *lxcpath, const char *suffix)
 	ret = fcntl(fd, F_SETFD, FD_CLOEXEC);
 	if (ret < 0) {
 		SYSERROR("Failed to set FD_CLOEXEC on command socket file descriptor");
-		close(fd);
 		return -1;
 	}
 
-	return fd;
+	TRACE("Created abstract unix socket \"%s\"", &path[1]);
+	return steal_fd(fd);
 }
 
 int lxc_cmd_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
