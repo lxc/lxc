@@ -1220,14 +1220,15 @@ int lxc_cmd_init(const char *name, const char *lxcpath, const char *suffix)
 int lxc_cmd_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
 			 struct lxc_handler *handler)
 {
+	__do_close_prot_errno int fd = handler->conf->maincmd_fd;
 	int ret;
-	int fd = handler->conf->maincmd_fd;
 
 	ret = lxc_mainloop_add_handler(descr, fd, lxc_cmd_accept, handler);
 	if (ret < 0) {
 		ERROR("Failed to add handler for command socket");
-		close(fd);
+		return ret;
 	}
 
+	steal_fd(fd);
 	return ret;
 }
