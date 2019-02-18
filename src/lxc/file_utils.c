@@ -222,7 +222,7 @@ int lxc_make_tmpfile(char *template, bool rm)
 	mode_t msk;
 
 	msk = umask(0022);
-	fd = mkstemp(template);
+	fd = mkostemp(template, O_CLOEXEC);
 	umask(msk);
 	if (fd < 0)
 		return -1;
@@ -365,4 +365,34 @@ on_error:
 	free(copy);
 
 	return NULL;
+}
+
+int fd_to_fd(int from, int to)
+{
+	for (;;) {
+		uint8_t buf[PATH_MAX];
+		uint8_t *p = buf;
+		ssize_t bytes_to_write;
+		ssize_t bytes_read;
+
+		bytes_read = lxc_read_nointr(from, buf, sizeof buf);
+		if (bytes_read < 0)
+			return -1;
+		if (bytes_read == 0)
+			break;
+
+		bytes_to_write = (size_t)bytes_read;
+		do {
+			ssize_t bytes_written;
+
+			bytes_written = lxc_write_nointr(to, p, bytes_to_write);
+			if (bytes_written < 0)
+				return -1;
+
+			bytes_to_write -= bytes_written;
+			p += bytes_written;
+		} while (bytes_to_write > 0);
+	}
+
+	return 0;
 }
