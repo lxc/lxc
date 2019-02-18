@@ -245,7 +245,7 @@ static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
 		return -1;
 
 	if (cmd->req.datalen <= 0)
-		return steal_fd(client_fd);
+		return move_fd(client_fd);
 
 	errno = EMSGSIZE;
 	ret = lxc_send_nointr(client_fd, (void *)cmd->req.data,
@@ -253,7 +253,7 @@ static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
 	if (ret < 0 || ret != (ssize_t)cmd->req.datalen)
 		return -1;
 
-	return steal_fd(client_fd);
+	return move_fd(client_fd);
 }
 
 /*
@@ -304,7 +304,7 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 		*stopped = 1;
 
 	if (stay_connected && ret > 0)
-		cmd->rsp.ret = steal_fd(client_fd);
+		cmd->rsp.ret = move_fd(client_fd);
 
 	return ret;
 }
@@ -866,7 +866,7 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 		return state;
 	}
 
-	*state_client_fd = steal_fd(clientfd);
+	*state_client_fd = move_fd(clientfd);
 	TRACE("Added state client %d to state client list", *state_client_fd);
 	return MAX_STATE;
 }
@@ -1184,7 +1184,7 @@ static int lxc_cmd_accept(int fd, uint32_t events, void *data,
 		return ret;
 	}
 
-	steal_fd(connection);
+	move_fd(connection);
 	return ret;
 }
 
@@ -1214,7 +1214,7 @@ int lxc_cmd_init(const char *name, const char *lxcpath, const char *suffix)
 	}
 
 	TRACE("Created abstract unix socket \"%s\"", &path[1]);
-	return steal_fd(fd);
+	return move_fd(fd);
 }
 
 int lxc_cmd_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
@@ -1229,6 +1229,6 @@ int lxc_cmd_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
 		return ret;
 	}
 
-	steal_fd(fd);
+	move_fd(fd);
 	return ret;
 }
