@@ -393,11 +393,11 @@ enum {
 /* Maximum number of bytes sendfile() is able to send in one go. */
 #define LXC_SENDFILE_MAX 0x7ffff000
 
-#define steal_ptr(ptr)                     \
-	({                                 \
-		typeof(ptr) _ptr_ = (ptr); \
-		(ptr) = NULL;              \
-		_ptr_;                     \
+#define move_ptr(ptr)                                 \
+	({                                            \
+		typeof(ptr) __internal_ptr__ = (ptr); \
+		(ptr) = NULL;                         \
+		__internal_ptr__;                     \
 	})
 
 #define steal_fd(fd)             \

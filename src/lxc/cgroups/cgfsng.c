@@ -1451,7 +1451,7 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 		return false;
 
 	INFO("The container process uses \"%s\" as cgroup", container_cgroup);
-	ops->container_cgroup = steal_ptr(container_cgroup);
+	ops->container_cgroup = move_ptr(container_cgroup);
 	return true;
 }
 

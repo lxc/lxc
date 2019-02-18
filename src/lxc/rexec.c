@@ -77,7 +77,7 @@ static int parse_argv(char ***argv)
 	if (ret <= 0)
 		return -1;
 
-	steal_ptr(cmdline);
+	move_ptr(cmdline);
 	return 0;
 }
 
