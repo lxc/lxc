@@ -234,13 +234,13 @@ int lxc_make_tmpfile(char *template, bool rm)
 		return -1;
 
 	if (!rm)
-		return steal_fd(fd);
+		return move_fd(fd);
 
 	ret = unlink(template);
 	if (ret < 0)
 		return -1;
 
-	return steal_fd(fd);
+	return move_fd(fd);
 }
 
 bool is_fs_type(const struct statfs *fs, fs_type_magic magic_val)

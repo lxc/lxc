@@ -400,11 +400,11 @@ enum {
 		__internal_ptr__;                     \
 	})
 
-#define steal_fd(fd)             \
-	({                       \
-		int _fd_ = (fd); \
-		(fd) = -EBADF;   \
-		_fd_;            \
+#define move_fd(fd)                         \
+	({                                  \
+		int __internal_fd__ = (fd); \
+		(fd) = -EBADF;              \
+		__internal_fd__;            \
 	})
 
 #endif /* __LXC_MACRO_H */
