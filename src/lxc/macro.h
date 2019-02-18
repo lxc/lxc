@@ -407,11 +407,4 @@ enum {
 		__internal_fd__;            \
 	})
 
-#define steal_fd(fd)             \
-	({                       \
-		int _fd_ = (fd); \
-		(fd) = -EBADF;   \
-		_fd_;            \
-	})
-
 #endif /* __LXC_MACRO_H */
