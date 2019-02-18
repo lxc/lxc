@@ -44,9 +44,27 @@
 #include "config.h"
 #include "confile.h"
 #include "log.h"
+#include "rexec.h"
 #include "utils.h"
 
 lxc_log_define(lxc_attach, lxc);
+
+/**
+ * This function will copy any binary that calls liblxc into a memory file and
+ * will use the memfd to rexecute the binary. This is done to prevent attacks
+ * through the /proc/self/exe symlink to corrupt the host binary when host and
+ * container are in the same user namespace or have set up an identity id
+ * mapping: CVE-2019-5736.
+ */
+#ifdef ENFORCE_MEMFD_REXEC
+__attribute__((constructor)) static void lxc_attach_rexec(void)
+{
+	if (!getenv("LXC_MEMFD_REXEC") && lxc_rexec("lxc-attach")) {
+		fprintf(stderr, "Failed to re-execute lxc-attach via memory file descriptor\n");
+		_exit(EXIT_FAILURE);
+	}
+}
+#endif
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg);
 static int add_to_simple_array(char ***array, ssize_t *capacity, char *value);

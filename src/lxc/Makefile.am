@@ -20,9 +20,11 @@ noinst_HEADERS = attach.h \
 		 lxc.h \
 		 lxclock.h \
 		 macro.h \
+		 memory_utils.h \
 		 monitor.h \
 		 namespace.h \
 		 raw_syscalls.h \
+		 rexec.h \
 		 start.h \
 		 state.h \
 		 storage/btrfs.h \
@@ -111,6 +113,7 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    lxclock.c lxclock.h \
 		    lxcseccomp.h \
 		    macro.h \
+		    memory_utils.h \
 		    mainloop.c mainloop.h \
 		    namespace.c namespace.h \
 		    nl.c nl.h \
@@ -176,7 +179,7 @@ liblxc_la_SOURCES += ../include/strlcat.c ../include/strlcat.h
 endif
 
 if ENFORCE_MEMFD_REXEC
-liblxc_la_SOURCES += rexec.c
+liblxc_la_SOURCES += rexec.c rexec.h
 endif
 
 AM_CFLAGS = -DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
@@ -295,6 +298,7 @@ LDADD = liblxc.la \
 
 if ENABLE_TOOLS
 lxc_attach_SOURCES = tools/lxc_attach.c \
+		     rexec.c rexec.h \
 		     tools/arguments.c tools/arguments.h
 lxc_autostart_SOURCES = tools/lxc_autostart.c \
 			tools/arguments.c tools/arguments.h

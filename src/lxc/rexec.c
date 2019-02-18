@@ -3,18 +3,19 @@
  * Copyright © 2019 Christian Brauner <christian.brauner@ubuntu.com>.
  * Copyright © 2019 Canonical Ltd.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2, as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
 #ifndef _GNU_SOURCE
@@ -24,9 +25,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "config.h"
 #include "file_utils.h"
+#include "macro.h"
+#include "memory_utils.h"
 #include "raw_syscalls.h"
 #include "string_utils.h"
 #include "syscall_wrappers.h"
@@ -59,92 +63,132 @@ static int push_vargs(char *data, int data_length, char ***output)
 	return num;
 }
 
-static int parse_exec_params(char ***argv, char ***envp)
+static int parse_argv(char ***argv)
 {
+	__do_free char *cmdline = NULL;
 	int ret;
-	char *cmdline = NULL, *env = NULL;
-	size_t cmdline_size, env_size;
+	size_t cmdline_size;
 
 	cmdline = file_to_buf("/proc/self/cmdline", &cmdline_size);
 	if (!cmdline)
-		goto on_error;
-
-	env = file_to_buf("/proc/self/environ", &env_size);
-	if (!env)
-		goto on_error;
+		return -1;
 
 	ret = push_vargs(cmdline, cmdline_size, argv);
 	if (ret <= 0)
-		goto on_error;
+		return -1;
 
-	ret = push_vargs(env, env_size, envp);
-	if (ret <= 0)
-		goto on_error;
-
+	move_ptr(cmdline);
 	return 0;
-
-on_error:
-	free(env);
-	free(cmdline);
-
-	return -1;
 }
 
 static int is_memfd(void)
 {
-	int fd, saved_errno, seals;
+	__do_close_prot_errno int fd = -EBADF;
+	int seals;
 
 	fd = open("/proc/self/exe", O_RDONLY | O_CLOEXEC);
 	if (fd < 0)
 		return -ENOTRECOVERABLE;
 
 	seals = fcntl(fd, F_GET_SEALS);
-	saved_errno = errno;
-	close(fd);
-	errno = saved_errno;
-	if (seals < 0)
+	if (seals < 0) {
+		struct stat s = {0};
+
+		if (fstat(fd, &s) == 0)
+			return (s.st_nlink == 0);
+
 		return -EINVAL;
+	}
 
 	return seals == LXC_MEMFD_REXEC_SEALS;
 }
 
 static void lxc_rexec_as_memfd(char **argv, char **envp, const char *memfd_name)
 {
-	int saved_errno;
-	ssize_t bytes_sent;
-	int fd = -1, memfd = -1;
+	__do_close_prot_errno int execfd = -EBADF, fd = -EBADF, memfd = -EBADF,
+				  tmpfd = -EBADF;
+	int ret;
+	ssize_t bytes_sent = 0;
+	struct stat st = {0};
 
 	memfd = memfd_create(memfd_name, MFD_ALLOW_SEALING | MFD_CLOEXEC);
-	if (memfd < 0)
-		return;
+	if (memfd < 0) {
+		char template[PATH_MAX];
+
+		ret = snprintf(template, sizeof(template),
+			       P_tmpdir "/.%s_XXXXXX", memfd_name);
+		if (ret < 0 || (size_t)ret >= sizeof(template))
+			return;
+
+		tmpfd = lxc_make_tmpfile(template, true);
+		if (tmpfd < 0)
+			return;
+
+		ret = fchmod(tmpfd, 0700);
+		if (ret)
+			return;
+	}
 
 	fd = open("/proc/self/exe", O_RDONLY | O_CLOEXEC);
 	if (fd < 0)
-		goto on_error;
+		return;
 
 	/* sendfile() handles up to 2GB. */
-	bytes_sent = lxc_sendfile_nointr(memfd, fd, NULL, LXC_SENDFILE_MAX);
-	saved_errno = errno;
-	close(fd);
-	errno = saved_errno;
-	if (bytes_sent < 0)
-		goto on_error;
+	ret = fstat(fd, &st);
+	if (ret)
+		return;
 
-	if (fcntl(memfd, F_ADD_SEALS, LXC_MEMFD_REXEC_SEALS))
-		goto on_error;
+	while (bytes_sent < st.st_size) {
+		ssize_t sent;
 
-	fexecve(memfd, argv, envp);
+		sent = lxc_sendfile_nointr(memfd >= 0 ? memfd : tmpfd, fd, NULL,
+					   st.st_size - bytes_sent);
+		if (sent < 0) {
+			/* Fallback to shoveling data between kernel- and
+			 * userspace.
+			 */
+			lseek(fd, 0, SEEK_SET);
+			if (fd_to_fd(fd, memfd >= 0 ? memfd : tmpfd))
+				break;
 
-on_error:
-	saved_errno = errno;
-	close(memfd);
-	errno = saved_errno;
+			return;
+		}
+		bytes_sent += sent;
+	}
+	close_prot_errno_disarm(fd);
+
+	if (memfd >= 0) {
+		if (fcntl(memfd, F_ADD_SEALS, LXC_MEMFD_REXEC_SEALS))
+			return;
+
+		execfd = memfd;
+	} else {
+		char procfd[LXC_PROC_PID_FD_LEN];
+
+		ret = snprintf(procfd, sizeof(procfd), "/proc/self/fd/%d", tmpfd);
+		if (ret < 0 || (size_t)ret >= sizeof(procfd))
+			return;
+
+		execfd = open(procfd, O_PATH | O_CLOEXEC);
+		close_prot_errno_disarm(tmpfd);
+
+	}
+	if (execfd < 0)
+		return;
+
+	fexecve(execfd, argv, envp);
 }
 
-static int lxc_rexec(const char *memfd_name)
+/*
+ * Get cheap access to the environment. This must be declared by the user as
+ * mandated by POSIX. The definition is located in unistd.h.
+ */
+extern char **environ;
+
+int lxc_rexec(const char *memfd_name)
 {
 	int ret;
-	char **argv = NULL, **envp = NULL;
+	char **argv = NULL;
 
 	ret = is_memfd();
 	if (ret < 0 && ret == -ENOTRECOVERABLE) {
@@ -156,7 +200,7 @@ static int lxc_rexec(const char *memfd_name)
 		return 0;
 	}
 
-	ret = parse_exec_params(&argv, &envp);
+	ret = parse_argv(&argv);
 	if (ret < 0) {
 		fprintf(stderr,
 			"%s - Failed to parse command line parameters\n",
@@ -164,7 +208,7 @@ static int lxc_rexec(const char *memfd_name)
 		return -1;
 	}
 
-	lxc_rexec_as_memfd(argv, envp, memfd_name);
+	lxc_rexec_as_memfd(argv, environ, memfd_name);
 	fprintf(stderr, "%s - Failed to rexec as memfd\n", strerror(errno));
 	return -1;
 }
@@ -178,7 +222,7 @@ static int lxc_rexec(const char *memfd_name)
  */
 __attribute__((constructor)) static void liblxc_rexec(void)
 {
-	if (lxc_rexec("liblxc")) {
+	if (getenv("LXC_MEMFD_REXEC") && lxc_rexec("liblxc")) {
 		fprintf(stderr, "Failed to re-execute liblxc via memory file descriptor\n");
 		_exit(EXIT_FAILURE);
 	}
