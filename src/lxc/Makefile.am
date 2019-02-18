@@ -363,6 +363,7 @@ init_lxc_SOURCES = cmd/lxc_init.c \
 		   compiler.h \
 		   error.h \
 		   initutils.c initutils.h \
+		   memory_utils.h \
 		   parse.c parse.h \
 		   raw_syscalls.c raw_syscalls.h \
 		   string_utils.c string_utils.h
@@ -384,10 +385,11 @@ lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
 		       syscall_wrappers.h
 lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c \
 			 conf.c conf.h \
+			 file_utils.c file_utils.h \
 			 list.h \
 			 log.c log.h \
 			 macro.h \
-			 file_utils.c file_utils.h \
+			 memory_utils.h \
 			 string_utils.c string_utils.h \
 			 syscall_wrappers.h \
 			 utils.c utils.h
@@ -411,6 +413,7 @@ init_lxc_static_SOURCES = cmd/lxc_init.c \
 			  file_utils.c file_utils.h \
 			  log.c log.h \
 			  macro.h \
+			  memory_utils.h \
 			  namespace.c namespace.h \
 			  string_utils.c string_utils.h
 

@@ -26,6 +26,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <unistd.h>
+
+#include "macro.h"
 
 static inline void __auto_free__(void *p)
 {
@@ -44,6 +47,20 @@ static inline void __auto_closedir__(DIR **d)
 		closedir(*d);
 }
 
+#define close_prot_errno_disarm(fd) \
+	if (fd >= 0) {              \
+		int _e_ = errno;    \
+		close(fd);          \
+		errno = _e_;        \
+		fd = -EBADF;        \
+	}
+
+static inline void __auto_close__(int *fd)
+{
+	close_prot_errno_disarm(*fd);
+}
+
+#define __do_close_prot_errno __attribute__((__cleanup__(__auto_close__)))
 #define __do_free __attribute__((__cleanup__(__auto_free__)))
 #define __do_fclose __attribute__((__cleanup__(__auto_fclose__)))
 #define __do_closedir __attribute__((__cleanup__(__auto_closedir__)))

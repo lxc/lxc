@@ -47,6 +47,7 @@
 #include "list.h"
 #include "log.h"
 #include "macro.h"
+#include "memory_utils.h"
 #include "file_utils.h"
 #include "string_utils.h"
 #include "syscall_wrappers.h"
@@ -198,13 +199,13 @@ static int parse_map(char *map)
  */
 static int read_default_map(char *fnam, int which, char *user)
 {
+	__do_free char *line = NULL;
+	__do_fclose FILE *fin = NULL;
 	size_t len;
 	char *p1, *p2;
 	unsigned long ul1, ul2;
-	FILE *fin;
 	int ret = -1;
 	size_t sz = 0;
-	char *line = NULL;
 	struct lxc_list *tmp = NULL;
 	struct id_map *newmap = NULL;
 
@@ -259,16 +260,13 @@ static int read_default_map(char *fnam, int which, char *user)
 		break;
 	}
 
-	fclose(fin);
-	free(line);
-
 	return ret;
 }
 
 static int find_default_map(void)
 {
+	__do_free char *buf = NULL;
 	size_t bufsize;
-	char *buf;
 	struct passwd pwent;
 	int ret = -1;
 	struct passwd *pwentp = NULL;
@@ -287,24 +285,18 @@ static int find_default_map(void)
 			CMD_SYSERROR("Failed to find matched password record");
 
 		CMD_SYSERROR("Failed to get password record for uid %d", getuid());
-		ret = -1;
-		goto out;
+		return -1;
 	}
 
 	ret = read_default_map(subuidfile, ID_TYPE_UID, pwent.pw_name);
 	if (ret < 0)
-		goto out;
+		return -1;
 
 	ret = read_default_map(subgidfile, ID_TYPE_GID, pwent.pw_name);
 	if (ret < 0)
-		goto out;
+		return -1;
 
-	ret = 0;
-
-out:
-	free(buf);
-
-	return ret;
+	return 0;
 }
 
 int main(int argc, char *argv[])
