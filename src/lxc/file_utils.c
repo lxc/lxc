@@ -31,7 +31,9 @@
 #include "config.h"
 #include "file_utils.h"
 #include "macro.h"
+#include "memory_utils.h"
 #include "string_utils.h"
+#include "utils.h"
 
 int lxc_write_to_file(const char *filename, const void *buf, size_t count,
 		      bool add_newline, mode_t mode)
@@ -218,7 +220,8 @@ int lxc_count_file_lines(const char *fn)
 
 int lxc_make_tmpfile(char *template, bool rm)
 {
-	int fd, ret;
+	__do_close_prot_errno int fd = -EBADF;
+	int ret;
 	mode_t msk;
 
 	msk = umask(0022);
@@ -227,16 +230,17 @@ int lxc_make_tmpfile(char *template, bool rm)
 	if (fd < 0)
 		return -1;
 
+	if (lxc_set_cloexec(fd))
+		return -1;
+
 	if (!rm)
-		return fd;
+		return steal_fd(fd);
 
 	ret = unlink(template);
-	if (ret < 0) {
-		close(fd);
+	if (ret < 0)
 		return -1;
-	}
 
-	return fd;
+	return steal_fd(fd);
 }
 
 bool is_fs_type(const struct statfs *fs, fs_type_magic magic_val)
@@ -365,4 +369,34 @@ on_error:
 	free(copy);
 
 	return NULL;
+}
+
+int fd_to_fd(int from, int to)
+{
+	for (;;) {
+		uint8_t buf[PATH_MAX];
+		uint8_t *p = buf;
+		ssize_t bytes_to_write;
+		ssize_t bytes_read;
+
+		bytes_read = lxc_read_nointr(from, buf, sizeof buf);
+		if (bytes_read < 0)
+			return -1;
+		if (bytes_read == 0)
+			break;
+
+		bytes_to_write = (size_t)bytes_read;
+		do {
+			ssize_t bytes_written;
+
+			bytes_written = lxc_write_nointr(to, p, bytes_to_write);
+			if (bytes_written < 0)
+				return -1;
+
+			bytes_to_write -= bytes_written;
+			p += bytes_written;
+		} while (bytes_to_write > 0);
+	}
+
+	return 0;
 }
