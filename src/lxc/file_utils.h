@@ -57,6 +57,5 @@ extern FILE *fopen_cloexec(const char *path, const char *mode);
 extern ssize_t lxc_sendfile_nointr(int out_fd, int in_fd, off_t *offset,
 				   size_t count);
 extern char *file_to_buf(char *path, size_t *length);
-extern int fd_to_fd(int from, int to);
 
 #endif /* __LXC_FILE_UTILS_H */

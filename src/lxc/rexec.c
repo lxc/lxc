@@ -84,97 +84,42 @@ static int parse_argv(char ***argv)
 static int is_memfd(void)
 {
 	__do_close_prot_errno int fd = -EBADF;
-	int seals;
+	int saved_errno, seals;
 
 	fd = open("/proc/self/exe", O_RDONLY | O_CLOEXEC);
 	if (fd < 0)
 		return -ENOTRECOVERABLE;
 
 	seals = fcntl(fd, F_GET_SEALS);
-	if (seals < 0) {
-		struct stat s = {0};
-
-		if (fstat(fd, &s) == 0) {
-			fprintf(stderr, "AAAAA: %ld\n", (long)s.st_nlink);
-			return (s.st_nlink == 0);
-		}
-
+	if (seals < 0)
 		return -EINVAL;
-	}
 
 	return seals == LXC_MEMFD_REXEC_SEALS;
 }
 
 static void lxc_rexec_as_memfd(char **argv, char **envp, const char *memfd_name)
 {
-	__do_close_prot_errno int fd = -EBADF, memfd = -EBADF, tmpfd = -EBADF;
-	int ret;
+	__do_close_prot_errno int fd = -EBADF, memfd = -EBADF;
+	int saved_errno;
+	ssize_t bytes_sent;
 
 	memfd = memfd_create(memfd_name, MFD_ALLOW_SEALING | MFD_CLOEXEC);
-	if (memfd < 0) {
-		char template[PATH_MAX];
-
-		ret = snprintf(template, sizeof(template),
-			       P_tmpdir "/.%s_XXXXXX", memfd_name);
-		if (ret < 0 || (size_t)ret >= sizeof(template))
-			return;
-
-		tmpfd = lxc_make_tmpfile(template, true);
-		if (tmpfd < 0)
-			return;
-
-		ret = fchmod(tmpfd, 0700);
-		if (ret)
-			return;
-	}
+	if (memfd < 0)
+		return;
 
 	fd = open("/proc/self/exe", O_RDONLY | O_CLOEXEC);
 	if (fd < 0)
 		return;
 
 	/* sendfile() handles up to 2GB. */
-	if (memfd >= 0) {
-		ssize_t bytes_sent = 0;
-		struct stat st = {0};
-
-		ret = fstat(fd, &st);
-		if (ret)
-			return;
-
-		while (bytes_sent < st.st_size) {
-			ssize_t sent;
-			sent = lxc_sendfile_nointr(memfd, fd, NULL,
-						   st.st_size - bytes_sent);
-			if (sent < 0)
-				return;
-			bytes_sent += sent;
-		}
-	} else if (fd_to_fd(fd, tmpfd)) {
-		return;
-	}
-
-	close_prot_errno_disarm(fd);
-
-	if (memfd >= 0 && fcntl(memfd, F_ADD_SEALS, LXC_MEMFD_REXEC_SEALS))
+	bytes_sent = lxc_sendfile_nointr(memfd, fd, NULL, LXC_SENDFILE_MAX);
+	if (bytes_sent < 0)
 		return;
 
-	if (memfd >= 0) {
-		fexecve(memfd, argv, envp);
-	} else {
-		__do_close_prot_errno int execfd = -EBADF;
-		char procfd[LXC_PROC_PID_FD_LEN];
+	if (fcntl(memfd, F_ADD_SEALS, LXC_MEMFD_REXEC_SEALS))
+		return;
 
-		ret = snprintf(procfd, sizeof(procfd), "/proc/self/fd/%d", tmpfd);
-		if (ret < 0 || (size_t)ret >= sizeof(procfd))
-			return;
-
-		execfd = open(procfd, O_PATH | O_CLOEXEC);
-		close_prot_errno_disarm(tmpfd);
-		if (execfd < 0)
-			return;
-
-		fexecve(execfd, argv, envp);
-	}
+	fexecve(memfd, argv, envp);
 }
 
 /*
