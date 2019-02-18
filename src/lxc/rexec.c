@@ -105,8 +105,11 @@ static int is_memfd(void)
 
 static void lxc_rexec_as_memfd(char **argv, char **envp, const char *memfd_name)
 {
-	__do_close_prot_errno int fd = -EBADF, memfd = -EBADF, tmpfd = -EBADF;
+	__do_close_prot_errno int execfd = -EBADF, fd = -EBADF, memfd = -EBADF,
+				  tmpfd = -EBADF;
 	int ret;
+	ssize_t bytes_sent = 0;
+	struct stat st = {0};
 
 	memfd = memfd_create(memfd_name, MFD_ALLOW_SEALING | MFD_CLOEXEC);
 	if (memfd < 0) {
@@ -131,35 +134,35 @@ static void lxc_rexec_as_memfd(char **argv, char **envp, const char *memfd_name)
 		return;
 
 	/* sendfile() handles up to 2GB. */
-	if (memfd >= 0) {
-		ssize_t bytes_sent = 0;
-		struct stat st = {0};
-
-		ret = fstat(fd, &st);
-		if (ret)
-			return;
-
-		while (bytes_sent < st.st_size) {
-			ssize_t sent;
-			sent = lxc_sendfile_nointr(memfd, fd, NULL,
-						   st.st_size - bytes_sent);
-			if (sent < 0)
-				return;
-			bytes_sent += sent;
-		}
-	} else if (fd_to_fd(fd, tmpfd)) {
+	ret = fstat(fd, &st);
+	if (ret)
 		return;
-	}
 
+	while (bytes_sent < st.st_size) {
+		ssize_t sent;
+
+		sent = lxc_sendfile_nointr(memfd >= 0 ? memfd : tmpfd, fd, NULL,
+					   st.st_size - bytes_sent);
+		if (sent < 0) {
+			/* Fallback to shoveling data between kernel- and
+			 * userspace.
+			 */
+			lseek(fd, 0, SEEK_SET);
+			if (fd_to_fd(fd, memfd >= 0 ? memfd : tmpfd))
+				break;
+
+			return;
+		}
+		bytes_sent += sent;
+	}
 	close_prot_errno_disarm(fd);
 
-	if (memfd >= 0 && fcntl(memfd, F_ADD_SEALS, LXC_MEMFD_REXEC_SEALS))
-		return;
-
 	if (memfd >= 0) {
-		fexecve(memfd, argv, envp);
+		if (fcntl(memfd, F_ADD_SEALS, LXC_MEMFD_REXEC_SEALS))
+			return;
+
+		execfd = memfd;
 	} else {
-		__do_close_prot_errno int execfd = -EBADF;
 		char procfd[LXC_PROC_PID_FD_LEN];
 
 		ret = snprintf(procfd, sizeof(procfd), "/proc/self/fd/%d", tmpfd);
@@ -168,11 +171,12 @@ static void lxc_rexec_as_memfd(char **argv, char **envp, const char *memfd_name)
 
 		execfd = open(procfd, O_PATH | O_CLOEXEC);
 		close_prot_errno_disarm(tmpfd);
-		if (execfd < 0)
-			return;
 
-		fexecve(execfd, argv, envp);
 	}
+	if (execfd < 0)
+		return;
+
+	fexecve(execfd, argv, envp);
 }
 
 /*
