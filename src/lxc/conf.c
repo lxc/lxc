@@ -2135,8 +2135,9 @@ static int mount_entry_create_dir_file(const struct mntent *mntent,
 				       const struct lxc_rootfs *rootfs,
 				       const char *lxc_name, const char *lxc_path)
 {
+	__do_free char *p1 = NULL;
 	int ret;
-	char *p1, *p2;
+	char *p2;
 
 	if (strncmp(mntent->mnt_type, "overlay", 7) == 0) {
 		ret = ovl_mkdir(mntent, rootfs, lxc_name, lxc_path);
@@ -2166,7 +2167,6 @@ static int mount_entry_create_dir_file(const struct mntent *mntent,
 	p2 = dirname(p1);
 
 	ret = mkdir_p(p2, 0755);
-	free(p1);
 	if (ret < 0 && errno != EEXIST) {
 		SYSERROR("Failed to create directory \"%s\"", path);
 		return -1;
