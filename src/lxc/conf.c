@@ -1863,7 +1863,8 @@ static void parse_mntopt(char *opt, unsigned long *flags, char **data, size_t si
 
 int parse_mntopts(const char *mntopts, unsigned long *mntflags, char **mntdata)
 {
-	char *data, *p, *s;
+	__do_free char *data = NULL, *s = NULL;
+	char *p;
 	size_t size;
 
 	*mntdata = NULL;
@@ -1878,20 +1879,15 @@ int parse_mntopts(const char *mntopts, unsigned long *mntflags, char **mntdata)
 
 	size = strlen(s) + 1;
 	data = malloc(size);
-	if (!data) {
-		free(s);
+	if (!data)
 		return -1;
-	}
 	*data = 0;
 
 	lxc_iterate_parts(p, s, ",")
 		parse_mntopt(p, mntflags, &data, size);
 
 	if (*data)
-		*mntdata = data;
-	else
-		free(data);
-	free(s);
+		*mntdata = move_ptr(data);
 
 	return 0;
 }
