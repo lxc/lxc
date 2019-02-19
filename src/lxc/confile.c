@@ -115,6 +115,7 @@ lxc_config_define(log_syslog);
 lxc_config_define(monitor);
 lxc_config_define(monitor_signal_pdeath);
 lxc_config_define(mount);
+lxc_config_define(allow_abs_mountentries);
 lxc_config_define(mount_auto);
 lxc_config_define(mount_fstab);
 lxc_config_define(namespace_clone);
@@ -205,6 +206,7 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.monitor.signal.pdeath",     set_config_monitor_signal_pdeath,       get_config_monitor_signal_pdeath,       clr_config_monitor_signal_pdeath,     },
 	{ "lxc.mount.auto",                set_config_mount_auto,                  get_config_mount_auto,                  clr_config_mount_auto,                },
 	{ "lxc.mount.entry",               set_config_mount,                       get_config_mount,                       clr_config_mount,                     },
+	{ "lxc.allow_abs_mountentries",    set_config_allow_abs_mountentries,      get_config_allow_abs_mountentries,      clr_config_allow_abs_mountentries,          },
 	{ "lxc.mount.fstab",               set_config_mount_fstab,                 get_config_mount_fstab,                 clr_config_mount_fstab,               },
 	{ "lxc.namespace.clone",           set_config_namespace_clone,             get_config_namespace_clone,             clr_config_namespace_clone,           },
 	{ "lxc.namespace.keep",            set_config_namespace_keep,              get_config_namespace_keep,              clr_config_namespace_keep,            },
@@ -1868,6 +1870,20 @@ static int set_config_mount(const char *key, const char *value,
 	return 0;
 }
 
+static int set_config_allow_abs_mountentries(const char *key, const char *value,
+			    struct lxc_conf *lxc_conf, void *data)
+{
+	if (lxc_config_value_empty(value) || value[0] == '0')
+		lxc_conf->allow_abs_mountentries = false;
+	else if (value[0] == '1')
+		lxc_conf->allow_abs_mountentries = true;
+	else {
+		ERROR("Bad value for allow_abs_mountentries: \"%s\"", value);
+		return 1;
+	}
+	return 0;
+}
+
 int add_elem_to_mount_list(const char *value, struct lxc_conf *lxc_conf) {
 	return set_config_mount(NULL, value, lxc_conf, NULL);
 }
@@ -3382,6 +3398,13 @@ static int get_config_mount_fstab(const char *key, char *retv, int inlen,
 	return lxc_get_conf_str(retv, inlen, c->fstab);
 }
 
+static int get_config_allow_abs_mountentries(const char *key, char *retv, int inlen,
+				  struct lxc_conf *c, void *data)
+{
+	return lxc_get_conf_bool(c, retv, inlen, c->allow_abs_mountentries);
+}
+
+
 static int get_config_mount_auto(const char *key, char *retv, int inlen,
 				 struct lxc_conf *c, void *data)
 {
@@ -4103,6 +4126,13 @@ static inline int clr_config_mount(const char *key, struct lxc_conf *c,
 				   void *data)
 {
 	return lxc_clear_mount_entries(c);
+}
+
+static inline int clr_config_allow_abs_mountentries(const char *key, struct lxc_conf *c,
+				   void *data)
+{
+	c->allow_abs_mountentries = false;
+	return 0;
 }
 
 static inline int clr_config_mount_auto(const char *key, struct lxc_conf *c,

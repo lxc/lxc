@@ -264,6 +264,7 @@ struct lxc_conf {
 		char *fstab;
 		int auto_mounts;
 		struct lxc_list mount_list;
+		bool allow_abs_mountentries;
 	};
 
 	struct lxc_list caps;

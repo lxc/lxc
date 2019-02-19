@@ -2331,6 +2331,11 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 	return mount_entry_on_generic(mntent, path, rootfs, lxc_name, lxc_path);
 }
 
+static bool startswith(const char *string, const char *start)
+{
+	return strncmp(string, start, strlen(start)) == 0;
+}
+
 static int mount_file_entries(const struct lxc_conf *conf,
 			      const struct lxc_rootfs *rootfs, FILE *file,
 			      const char *lxc_name, const char *lxc_path)
@@ -2346,9 +2351,16 @@ static int mount_file_entries(const struct lxc_conf *conf,
 		else if (mntent.mnt_dir[0] != '/')
 			ret = mount_entry_on_relative_rootfs(&mntent, rootfs,
 							     lxc_name, lxc_path);
-		else
+		else {
+			if (!conf->allow_abs_mountentries) {
+				if (!startswith(mntent.mnt_dir, rootfs->path)) {
+					ERROR("Dangerous container mount onto %s", mntent.mnt_dir);
+					return -1;
+				}
+			}
 			ret = mount_entry_on_absolute_rootfs(&mntent, rootfs,
 							     lxc_name, lxc_path);
+		}
 		if (ret < 0)
 			return -1;
 	}
