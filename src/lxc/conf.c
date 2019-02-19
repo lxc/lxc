@@ -306,8 +306,8 @@ static struct limit_opt limit_opt[] = {
 
 static int run_buffer(char *buffer)
 {
+	__do_free char *output = NULL;
 	int ret;
-	char *output;
 	struct lxc_popen_FILE *f;
 
 	f = lxc_popen(buffer);
@@ -325,8 +325,6 @@ static int run_buffer(char *buffer)
 
 	while (fgets(output, LXC_LOG_BUFFER_SIZE, f->f))
 		DEBUG("Script %s with output: %s", buffer, output);
-
-	free(output);
 
 	ret = lxc_pclose(f);
 	if (ret == -1) {
