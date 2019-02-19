@@ -29,6 +29,7 @@ lxc_test_config_jump_table_SOURCES = config_jump_table.c lxctest.h
 lxc_test_shortlived_SOURCES = shortlived.c
 lxc_test_state_server_SOURCES = state_server.c lxctest.h
 lxc_test_raw_clone_SOURCES = lxc_raw_clone.c lxctest.h
+lxc_test_cve_2019_5736_SOURCES = cve-2019-5736.c lxctest.h
 
 AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	-DLXCPATH=\"$(LXCPATH)\" \
@@ -59,7 +60,7 @@ bin_PROGRAMS = lxc-test-containertests lxc-test-locktests lxc-test-startone \
 	lxc-test-reboot lxc-test-list lxc-test-attach lxc-test-device-add-remove \
 	lxc-test-apparmor lxc-test-utils lxc-test-parse-config-file \
 	lxc-test-config-jump-table lxc-test-shortlived lxc-test-state-server \
-	lxc-test-raw-clone
+	lxc-test-raw-clone lxc-test-cve-2019-5736
 
 bin_SCRIPTS = lxc-test-automount \
 	      lxc-test-autostart \
@@ -88,6 +89,7 @@ EXTRA_DIST = \
 	console.c \
 	containertests.c \
 	createtest.c \
+	cve-2019-5736.c \
 	destroytest.c \
 	device_add_remove.c \
 	get_item.c \
