@@ -1320,10 +1320,10 @@ static int lxc_mount_rootfs(struct lxc_conf *conf)
 
 int lxc_chroot(const struct lxc_rootfs *rootfs)
 {
+	__do_free char *nroot = NULL;
 	int i, ret;
 	char *p, *p2;
 	char buf[LXC_LINELEN];
-	char *nroot;
 	FILE *f;
 	char *root = rootfs->mount;
 
@@ -1334,10 +1334,8 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 	}
 
 	ret = chdir("/");
-	if (ret < 0) {
-		free(nroot);
+	if (ret < 0)
 		return -1;
-	}
 
 	/* We could use here MS_MOVE, but in userns this mount is locked and
 	 * can't be moved.
@@ -1345,10 +1343,8 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 	ret = mount(nroot, "/", NULL, MS_REC | MS_BIND, NULL);
 	if (ret < 0) {
 		SYSERROR("Failed to mount \"%s\" onto \"/\" as MS_REC | MS_BIND", nroot);
-		free(nroot);
 		return -1;
 	}
-	free(nroot);
 
 	ret = mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL);
 	if (ret < 0) {
