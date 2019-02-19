@@ -31,8 +31,10 @@ noinst_HEADERS = \
 	log.h \
 	lxc.h \
 	lxclock.h \
+	macro.h \
 	monitor.h \
 	namespace.h \
+	rexec.h \
 	start.h \
 	state.h \
 	utils.h \
@@ -122,6 +124,7 @@ liblxc_la_SOURCES = \
 	\
 	caps.c caps.h \
 	lxcseccomp.h \
+	macro.h \
 	mainloop.c mainloop.h \
 	af_unix.c af_unix.h \
 	\
@@ -159,7 +162,7 @@ liblxc_la_SOURCES += ../include/strlcat.c ../include/strlcat.h
 endif
 
 if ENFORCE_MEMFD_REXEC
-liblxc_la_SOURCES += rexec.c
+liblxc_la_SOURCES += rexec.c rexec.h
 endif
 
 AM_CFLAGS = -DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
@@ -269,7 +272,7 @@ AM_LDFLAGS += -Wl,-rpath -Wl,$(libdir)
 endif
 LDADD=liblxc.la @CAP_LIBS@ @SELINUX_LIBS@ @SECCOMP_LIBS@
 
-lxc_attach_SOURCES = tools/lxc_attach.c tools/arguments.c
+lxc_attach_SOURCES = tools/lxc_attach.c tools/arguments.c rexec.c rexec.h
 lxc_autostart_SOURCES = tools/lxc_autostart.c tools/arguments.c
 lxc_cgroup_SOURCES = tools/lxc_cgroup.c tools/arguments.c
 lxc_config_SOURCES = tools/lxc_config.c tools/arguments.c

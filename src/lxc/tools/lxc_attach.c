@@ -21,8 +21,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "config.h"
-
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -35,21 +36,40 @@
 
 #include <lxc/lxccontainer.h>
 
-#include "attach.h"
 #include "arguments.h"
+#include "attach.h"
 #include "caps.h"
 #include "conf.h"
+#include "config.h"
 #include "confile.h"
 #include "console.h"
-#include "log.h"
 #include "list.h"
+#include "log.h"
 #include "mainloop.h"
+#include "rexec.h"
 #include "utils.h"
 
 #if HAVE_PTY_H
 #include <pty.h>
 #else
 #include <../include/openpty.h>
+#endif
+
+/**
+ * This function will copy any binary that calls liblxc into a memory file and
+ * will use the memfd to rexecute the binary. This is done to prevent attacks
+ * through the /proc/self/exe symlink to corrupt the host binary when host and
+ * container are in the same user namespace or have set up an identity id
+ * mapping: CVE-2019-5736.
+ */
+#ifdef ENFORCE_MEMFD_REXEC
+__attribute__((constructor)) static void lxc_attach_rexec(void)
+{
+	if (!getenv("LXC_MEMFD_REXEC") && lxc_rexec("lxc-attach")) {
+		fprintf(stderr, "Failed to re-execute lxc-attach via memory file descriptor\n");
+		_exit(EXIT_FAILURE);
+	}
+}
 #endif
 
 static const struct option my_longopts[] = {

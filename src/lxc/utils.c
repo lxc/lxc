@@ -47,6 +47,7 @@
 
 #include "log.h"
 #include "lxclock.h"
+#include "memory_utils.h"
 #include "namespace.h"
 #include "parse.h"
 #include "utils.h"
@@ -2396,7 +2397,8 @@ bool lxc_nic_exists(char *nic)
 
 int lxc_make_tmpfile(char *template, bool rm)
 {
-	int fd, ret;
+	__do_close_prot_errno int fd = -EBADF;
+	int ret;
 	mode_t msk;
 
 	msk = umask(0022);
@@ -2405,16 +2407,17 @@ int lxc_make_tmpfile(char *template, bool rm)
 	if (fd < 0)
 		return -1;
 
+	if (lxc_set_cloexec(fd))
+		return -1;
+
 	if (!rm)
-		return fd;
+		return move_fd(fd);
 
 	ret = unlink(template);
-	if (ret < 0) {
-		close(fd);
+	if (ret < 0)
 		return -1;
-	}
 
-	return fd;
+	return move_fd(fd);
 }
 
 int parse_byte_size_string(const char *s, int64_t *converted)

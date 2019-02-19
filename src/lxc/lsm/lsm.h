@@ -28,9 +28,8 @@ struct lxc_conf;
 
 #include <sys/types.h>
 
+#include "macro.h"
 #include "utils.h"
-
-#define LXC_LSMATTRLEN (5 + (LXC_NUMSTRLEN64) + 7 + 1)
 
 struct lsm_drv {
 	const char *name;

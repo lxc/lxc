@@ -29,9 +29,8 @@
 #include <unistd.h>
 
 #include "lxccontainer.h"
+#include "macro.h"
 #include "state.h"
-
-#define LXC_CMD_DATA_MAX (MAXPATHLEN * 2)
 
 /* Length of abstract unix domain socket socket address. */
 #define LXC_AUDS_ADDR_LEN sizeof(((struct sockaddr_un *)0)->sun_path)
