@@ -2585,10 +2585,10 @@ int setup_resource_limits(struct lxc_list *limits, pid_t pid)
 
 int setup_sysctl_parameters(struct lxc_list *sysctls)
 {
+	__do_free char *tmp = NULL;
 	struct lxc_list *it;
 	struct lxc_sysctl *elem;
 	int ret = 0;
-	char *tmp = NULL;
 	char filename[PATH_MAX] = {0};
 
 	lxc_list_for_each (it, sysctls) {
@@ -2600,7 +2600,6 @@ int setup_sysctl_parameters(struct lxc_list *sysctls)
 		}
 
 		ret = snprintf(filename, sizeof(filename), "/proc/sys/%s", tmp);
-		free(tmp);
 		if (ret < 0 || (size_t)ret >= sizeof(filename)) {
 			ERROR("Error setting up sysctl parameters path");
 			return -1;
