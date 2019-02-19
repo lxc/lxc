@@ -2619,10 +2619,10 @@ int setup_sysctl_parameters(struct lxc_list *sysctls)
 
 int setup_proc_filesystem(struct lxc_list *procs, pid_t pid)
 {
+	__do_free char *tmp = NULL;
 	struct lxc_list *it;
 	struct lxc_proc *elem;
 	int ret = 0;
-	char *tmp = NULL;
 	char filename[PATH_MAX] = {0};
 
 	lxc_list_for_each (it, procs) {
@@ -2634,7 +2634,6 @@ int setup_proc_filesystem(struct lxc_list *procs, pid_t pid)
 		}
 
 		ret = snprintf(filename, sizeof(filename), "/proc/%d/%s", pid, tmp);
-		free(tmp);
 		if (ret < 0 || (size_t)ret >= sizeof(filename)) {
 			ERROR("Error setting up proc filesystem path");
 			return -1;
