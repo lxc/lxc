@@ -4597,10 +4597,9 @@ on_error:
 /* not thread-safe, do not use from api without first forking */
 static char *getuname(void)
 {
+	__do_free char *buf = NULL;
 	struct passwd pwent;
 	struct passwd *pwentp = NULL;
-	char *buf;
-	char *username;
 	size_t bufsize;
 	int ret;
 
@@ -4618,23 +4617,18 @@ static char *getuname(void)
 			WARN("Could not find matched password record.");
 
 		ERROR("Failed to get password record - %u", geteuid());
-		free(buf);
 		return NULL;
 	}
 
-	username = strdup(pwent.pw_name);
-	free(buf);
-
-	return username;
+	return strdup(pwent.pw_name);
 }
 
 /* not thread-safe, do not use from api without first forking */
 static char *getgname(void)
 {
+	__do_free char *buf = NULL;
 	struct group grent;
 	struct group *grentp = NULL;
-	char *buf;
-	char *grname;
 	size_t bufsize;
 	int ret;
 
@@ -4652,14 +4646,10 @@ static char *getgname(void)
 			WARN("Could not find matched group record");
 
 		ERROR("Failed to get group record - %u", getegid());
-		free(buf);
 		return NULL;
 	}
 
-	grname = strdup(grent.gr_name);
-	free(buf);
-
-	return grname;
+	return strdup(grent.gr_name);
 }
 
 /* not thread-safe, do not use from api without first forking */
