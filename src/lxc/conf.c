@@ -2162,9 +2162,9 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 					 const char *lxc_name,
 					 const char *lxc_path)
 {
+	__do_free char *mntdata = NULL;
 	int ret;
 	unsigned long mntflags;
-	char *mntdata;
 	bool dev, optional, relative;
 	unsigned long pflags = 0;
 	char *rootfs_path = NULL;
@@ -2197,7 +2197,6 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type, mntflags,
 			  pflags, mntdata, optional, dev, relative, rootfs_path);
 
-	free(mntdata);
 	return ret;
 }
 
