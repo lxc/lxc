@@ -3329,10 +3329,9 @@ static int lxc_execute_bind_init(struct lxc_handler *handler)
 	/* If init exists in the container, don't bind mount a static one */
 	p = choose_init(conf->rootfs.mount);
 	if (p) {
-		char *old = p;
+		__do_free char *old = p;
 
 		p = strdup(old + strlen(conf->rootfs.mount));
-		free(old);
 		if (!p)
 			return -ENOMEM;
 
