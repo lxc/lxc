@@ -672,10 +672,9 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 	};
 
 	for (i = 0; default_mounts[i].match_mask; i++) {
+		__do_free char *destination = NULL, *source = NULL;
 		int saved_errno;
 		unsigned long mflags;
-		char *destination = NULL;
-		char *source = NULL;
 		if ((flags & default_mounts[i].match_mask) != default_mounts[i].match_flag)
 			continue;
 
@@ -688,16 +687,12 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 
 		if (!default_mounts[i].destination) {
 			ERROR("BUG: auto mounts destination %d was NULL", i);
-			free(source);
 			return -1;
 		}
 
 		/* will act like strdup if %r is not present */
 		destination = lxc_string_replace("%r", conf->rootfs.path ? conf->rootfs.mount : "", default_mounts[i].destination);
 		if (!destination) {
-			saved_errno = errno;
-			free(source);
-			errno = saved_errno;
 			return -1;
 		}
 
@@ -715,8 +710,6 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 			SYSERROR("Failed to mount \"%s\" on \"%s\" with flags %lu", source, destination, mflags);
 		}
 
-		free(source);
-		free(destination);
 		if (r < 0) {
 			errno = saved_errno;
 			return -1;
