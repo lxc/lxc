@@ -2839,7 +2839,7 @@ int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
  */
 static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 {
-	char *path;
+	__do_free char *path = NULL;
 	int ret;
 	struct stat st;
 	int fret = 0;
@@ -2895,7 +2895,6 @@ static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 #endif
 
 cleanup:
-	free(path);
 	return fret;
 }
 
