@@ -4585,27 +4585,22 @@ static char *getgname(void)
 /* not thread-safe, do not use from api without first forking */
 void suggest_default_idmap(void)
 {
-	char *uname, *gname;
+	__do_free char *gname = NULL, *line = NULL, *uname = NULL;
 	FILE *f;
 	unsigned int uid = 0, urange = 0, gid = 0, grange = 0;
 	size_t len = 0;
-	char *line = NULL;
 
 	uname = getuname();
 	if (!uname)
 		return;
 
 	gname = getgname();
-	if (!gname) {
-		free(uname);
+	if (!gname)
 		return;
-	}
 
 	f = fopen(subuidfile, "r");
 	if (!f) {
 		ERROR("Your system is not configured with subuids");
-		free(gname);
-		free(uname);
 		return;
 	}
 
@@ -4644,8 +4639,6 @@ void suggest_default_idmap(void)
 	f = fopen(subgidfile, "r");
 	if (!f) {
 		ERROR("Your system is not configured with subgids");
-		free(gname);
-		free(uname);
 		return;
 	}
 
@@ -4681,13 +4674,9 @@ void suggest_default_idmap(void)
 	}
 	fclose(f);
 
-	free(line);
-
 	if (!urange || !grange) {
 		ERROR("You do not have subuids or subgids allocated");
 		ERROR("Unprivileged containers require subuids and subgids");
-		free(uname);
-		free(gname);
 		return;
 	}
 
@@ -4697,9 +4686,6 @@ void suggest_default_idmap(void)
 	ERROR("lxc.include = %s", LXC_DEFAULT_CONFIG);
 	ERROR("lxc.idmap = u 0 %u %u", uid, urange);
 	ERROR("lxc.idmap = g 0 %u %u", gid, grange);
-
-	free(gname);
-	free(uname);
 }
 
 static void free_cgroup_settings(struct lxc_list *result)
