@@ -345,9 +345,8 @@ int run_script_argv(const char *name, unsigned int hook_version,
 		    const char *section, const char *script,
 		    const char *hookname, char **argv)
 {
+	__do_free char *buffer = NULL;
 	int buf_pos, i, ret;
-	char *buffer;
-	int fret = -1;
 	size_t size = 0;
 
 	if (hook_version == 0)
@@ -391,7 +390,7 @@ int run_script_argv(const char *name, unsigned int hook_version,
 		buf_pos = snprintf(buffer, size, "exec %s", script);
 	if (buf_pos < 0 || (size_t)buf_pos >= size) {
 		ERROR("Failed to create command line for script \"%s\"", script);
-		goto on_error;
+		return -1;
 	}
 
 	if (hook_version == 1) {
@@ -399,7 +398,7 @@ int run_script_argv(const char *name, unsigned int hook_version,
 		if (ret < 0) {
 			SYSERROR("Failed to set environment variable: "
 				 "LXC_HOOK_TYPE=%s", hookname);
-			goto on_error;
+			return -1;
 		}
 		TRACE("Set environment variable: LXC_HOOK_TYPE=%s", hookname);
 
@@ -407,7 +406,7 @@ int run_script_argv(const char *name, unsigned int hook_version,
 		if (ret < 0) {
 			SYSERROR("Failed to set environment variable: "
 				 "LXC_HOOK_SECTION=%s", section);
-			goto on_error;
+			return -1;
 		}
 		TRACE("Set environment variable: LXC_HOOK_SECTION=%s", section);
 
@@ -415,13 +414,13 @@ int run_script_argv(const char *name, unsigned int hook_version,
 			char *parent;
 
 			if (!argv || !argv[0])
-				goto on_error;
+				return -1;
 
 			ret = setenv("LXC_NET_TYPE", argv[0], 1);
 			if (ret < 0) {
 				SYSERROR("Failed to set environment variable: "
 					 "LXC_NET_TYPE=%s", argv[0]);
-				goto on_error;
+				return -1;
 			}
 			TRACE("Set environment variable: LXC_NET_TYPE=%s", argv[0]);
 
@@ -432,7 +431,7 @@ int run_script_argv(const char *name, unsigned int hook_version,
 				if (ret < 0) {
 					SYSERROR("Failed to set environment "
 						 "variable: LXC_NET_PARENT=%s", parent);
-					goto on_error;
+					return -1;
 				}
 				TRACE("Set environment variable: LXC_NET_PARENT=%s", parent);
 			} else if (strcmp(argv[0], "phys") == 0) {
@@ -440,7 +439,7 @@ int run_script_argv(const char *name, unsigned int hook_version,
 				if (ret < 0) {
 					SYSERROR("Failed to set environment "
 						 "variable: LXC_NET_PARENT=%s", parent);
-					goto on_error;
+					return -1;
 				}
 				TRACE("Set environment variable: LXC_NET_PARENT=%s", parent);
 			} else if (strcmp(argv[0], "veth") == 0) {
@@ -450,7 +449,7 @@ int run_script_argv(const char *name, unsigned int hook_version,
 				if (ret < 0) {
 					SYSERROR("Failed to set environment "
 						 "variable: LXC_NET_PEER=%s", peer);
-					goto on_error;
+					return -1;
 				}
 				TRACE("Set environment variable: LXC_NET_PEER=%s", peer);
 
@@ -458,7 +457,7 @@ int run_script_argv(const char *name, unsigned int hook_version,
 				if (ret < 0) {
 					SYSERROR("Failed to set environment "
 						 "variable: LXC_NET_PARENT=%s", parent);
-					goto on_error;
+					return -1;
 				}
 				TRACE("Set environment variable: LXC_NET_PARENT=%s", parent);
 			}
@@ -471,16 +470,12 @@ int run_script_argv(const char *name, unsigned int hook_version,
 		ret = snprintf(buffer + buf_pos, len, " %s", argv[i]);
 		if (ret < 0 || (size_t)ret >= len) {
 			ERROR("Failed to create command line for script \"%s\"", script);
-			goto on_error;
+			return -1;
 		}
 		buf_pos += ret;
 	}
 
-	fret = run_buffer(buffer);
-
-on_error:
-	free(buffer);
-	return fret;
+	return run_buffer(buffer);
 }
 
 int run_script(const char *name, const char *section, const char *script, ...)
