@@ -1937,7 +1937,8 @@ static void parse_propagationopt(char *opt, unsigned long *flags)
 
 int parse_propagationopts(const char *mntopts, unsigned long *pflags)
 {
-	char *p, *s;
+	__do_free char *s = NULL;
+	char *p;
 
 	if (!mntopts)
 		return 0;
@@ -1951,7 +1952,6 @@ int parse_propagationopts(const char *mntopts, unsigned long *pflags)
 	*pflags = 0L;
 	lxc_iterate_parts(p, s, ",")
 		parse_propagationopt(p, pflags);
-	free(s);
 
 	return 0;
 }
