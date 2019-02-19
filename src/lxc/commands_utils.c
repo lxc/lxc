@@ -82,8 +82,8 @@ int lxc_cmd_sock_rcv_state(int state_client_fd, int timeout)
 int lxc_cmd_sock_get_state(const char *name, const char *lxcpath,
 			   lxc_state_t states[MAX_STATE], int timeout)
 {
+	__do_close_prot_errno int state_client_fd = -EBADF;
 	int ret;
-	int state_client_fd;
 
 	ret = lxc_cmd_add_state_client(name, lxcpath, states, &state_client_fd);
 	if (ret < 0)
@@ -92,9 +92,7 @@ int lxc_cmd_sock_get_state(const char *name, const char *lxcpath,
 	if (ret < MAX_STATE)
 		return ret;
 
-	ret = lxc_cmd_sock_rcv_state(state_client_fd, timeout);
-	close(state_client_fd);
-	return ret;
+	return lxc_cmd_sock_rcv_state(state_client_fd, timeout);
 }
 
 int lxc_make_abstract_socket_name(char *path, size_t pathlen,
