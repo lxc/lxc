@@ -3230,11 +3230,11 @@ void tmp_proc_unmount(struct lxc_conf *lxc_conf)
 /* Walk /proc/mounts and change any shared entries to slave. */
 void remount_all_slave(void)
 {
+	__do_free char *line = NULL;
 	int memfd, mntinfo_fd, ret;
 	ssize_t copied;
 	FILE *f;
 	size_t len = 0;
-	char *line = NULL;
 
 	mntinfo_fd = open("/proc/self/mountinfo", O_RDONLY | O_CLOEXEC);
 	if (mntinfo_fd < 0) {
@@ -3316,7 +3316,6 @@ again:
 		TRACE("Remounted \"%s\" as MS_SLAVE", target);
 	}
 	fclose(f);
-	free(line);
 	TRACE("Remounted all mount table entries as MS_SLAVE");
 }
 
