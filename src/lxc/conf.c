@@ -536,9 +536,9 @@ int run_script(const char *name, const char *section, const char *script, ...)
  */
 int pin_rootfs(const char *rootfs)
 {
+	__do_free char *absrootfs = NULL;
 	int fd, ret;
 	char absrootfspin[PATH_MAX];
-	char *absrootfs;
 	struct stat s;
 	struct statfs sfs;
 
@@ -550,18 +550,13 @@ int pin_rootfs(const char *rootfs)
 		return -2;
 
 	ret = stat(absrootfs, &s);
-	if (ret < 0) {
-		free(absrootfs);
+	if (ret < 0)
 		return -1;
-	}
 
-	if (!S_ISDIR(s.st_mode)) {
-		free(absrootfs);
+	if (!S_ISDIR(s.st_mode))
 		return -2;
-	}
 
 	ret = snprintf(absrootfspin, PATH_MAX, "%s/.lxc-keep", absrootfs);
-	free(absrootfs);
 	if (ret < 0 || ret >= PATH_MAX)
 		return -1;
 
