@@ -4219,18 +4219,20 @@ static struct id_map *mapped_hostid_add(struct lxc_conf *conf, uid_t id,
 
 struct lxc_list *get_minimal_idmap(struct lxc_conf *conf)
 {
+	__do_free struct id_map *container_root_uid = NULL,
+				*container_root_gid = NULL,
+				*host_uid_map = NULL, *host_gid_map = NULL;
+	__do_free struct lxc_list *idmap = NULL;
 	uid_t euid, egid;
 	uid_t nsuid = (conf->root_nsuid_map != NULL) ? 0 : conf->init_uid;
 	gid_t nsgid = (conf->root_nsgid_map != NULL) ? 0 : conf->init_gid;
-	struct lxc_list *idmap = NULL, *tmplist = NULL;
-	struct id_map *container_root_uid = NULL, *container_root_gid = NULL,
-		      *host_uid_map = NULL, *host_gid_map = NULL;
+	struct lxc_list *tmplist = NULL;
 
 	/* Find container root mappings. */
 	container_root_uid = mapped_nsid_add(conf, nsuid, ID_TYPE_UID);
 	if (!container_root_uid) {
 		DEBUG("Failed to find mapping for namespace uid %d", 0);
-		goto on_error;
+		return NULL;
 	}
 	euid = geteuid();
 	if (euid >= container_root_uid->hostid &&
@@ -4240,7 +4242,7 @@ struct lxc_list *get_minimal_idmap(struct lxc_conf *conf)
 	container_root_gid = mapped_nsid_add(conf, nsgid, ID_TYPE_GID);
 	if (!container_root_gid) {
 		DEBUG("Failed to find mapping for namespace gid %d", 0);
-		goto on_error;
+		return NULL;
 	}
 	egid = getegid();
 	if (egid >= container_root_gid->hostid &&
@@ -4252,84 +4254,68 @@ struct lxc_list *get_minimal_idmap(struct lxc_conf *conf)
 		host_uid_map = mapped_hostid_add(conf, euid, ID_TYPE_UID);
 	if (!host_uid_map) {
 		DEBUG("Failed to find mapping for uid %d", euid);
-		goto on_error;
+		return NULL;
 	}
 
 	if (!host_gid_map)
 		host_gid_map = mapped_hostid_add(conf, egid, ID_TYPE_GID);
 	if (!host_gid_map) {
 		DEBUG("Failed to find mapping for gid %d", egid);
-		goto on_error;
+		return NULL;
 	}
 
 	/* Allocate new {g,u}id map list. */
 	idmap = malloc(sizeof(*idmap));
 	if (!idmap)
-		goto on_error;
+		return NULL;
 	lxc_list_init(idmap);
 
 	/* Add container root to the map. */
 	tmplist = malloc(sizeof(*tmplist));
 	if (!tmplist)
-		goto on_error;
+		return NULL;
 	lxc_list_add_elem(tmplist, container_root_uid);
 	lxc_list_add_tail(idmap, tmplist);
 
 	if (host_uid_map && (host_uid_map != container_root_uid)) {
 		/* idmap will now keep track of that memory. */
-		container_root_uid = NULL;
+		move_ptr(container_root_uid);
 
 		/* Add container root to the map. */
 		tmplist = malloc(sizeof(*tmplist));
 		if (!tmplist)
-			goto on_error;
+			return NULL;
 		lxc_list_add_elem(tmplist, host_uid_map);
 		lxc_list_add_tail(idmap, tmplist);
 	}
 	/* idmap will now keep track of that memory. */
-	container_root_uid = NULL;
+	move_ptr(container_root_uid);
 	/* idmap will now keep track of that memory. */
-	host_uid_map = NULL;
+	move_ptr(host_uid_map);
 
 	tmplist = malloc(sizeof(*tmplist));
 	if (!tmplist)
-		goto on_error;
+		return NULL;
 	lxc_list_add_elem(tmplist, container_root_gid);
 	lxc_list_add_tail(idmap, tmplist);
 
 	if (host_gid_map && (host_gid_map != container_root_gid)) {
 		/* idmap will now keep track of that memory. */
-		container_root_gid = NULL;
+		move_ptr(container_root_gid);
 
 		tmplist = malloc(sizeof(*tmplist));
 		if (!tmplist)
-			goto on_error;
+			return NULL;
 		lxc_list_add_elem(tmplist, host_gid_map);
 		lxc_list_add_tail(idmap, tmplist);
 	}
 	/* idmap will now keep track of that memory. */
-	container_root_gid = NULL;
+	move_ptr(container_root_gid);
 	/* idmap will now keep track of that memory. */
-	host_gid_map = NULL;
+	move_ptr(host_gid_map);
 
 	TRACE("Allocated minimal idmapping");
-	return idmap;
-
-on_error:
-	if (idmap) {
-		lxc_free_idmap(idmap);
-		free(idmap);
-	}
-	if (container_root_uid)
-		free(container_root_uid);
-	if (container_root_gid)
-		free(container_root_gid);
-	if (host_uid_map && (host_uid_map != container_root_uid))
-		free(host_uid_map);
-	if (host_gid_map && (host_gid_map != container_root_gid))
-		free(host_gid_map);
-
-	return NULL;
+	return move_ptr(idmap);
 }
 
 /* Run a function in a new user namespace.
