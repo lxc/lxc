@@ -15,6 +15,7 @@ lxc_test_console_log_SOURCES = console_log.c lxctest.h
 lxc_test_containertests_SOURCES = containertests.c
 lxc_test_createtest_SOURCES = createtest.c
 lxc_test_criu_check_feature_SOURCES = criu_check_feature.c lxctest.h
+lxc_test_cve_2019_5736_SOURCES =  cve-2019-5736.c lxctest.h
 lxc_test_destroytest_SOURCES = destroytest.c
 lxc_test_device_add_remove_SOURCES = device_add_remove.c
 lxc_test_getkeys_SOURCES = getkeys.c
@@ -72,6 +73,7 @@ bin_PROGRAMS = lxc-test-api-reboot \
 	       lxc-test-containertests \
 	       lxc-test-createtest \
 	       lxc-test-criu-check-feature \
+	       lxc-test-cve-2019-5736 \
 	       lxc-test-destroytest \
 	       lxc-test-device-add-remove \
 	       lxc-test-getkeys \
@@ -124,6 +126,7 @@ EXTRA_DIST = basic.c \
 	     containertests.c \
 	     createtest.c \
 	     criu_check_feature.c \
+	     cve-2019-5736.c \
 	     destroytest.c \
 	     device_add_remove.c \
 	     get_item.c \
