@@ -157,7 +157,8 @@ static void lxc_proc_put_context_info(struct lxc_proc_context_info *ctx)
  */
 static int in_same_namespace(pid_t pid1, pid_t pid2, const char *ns)
 {
-	int ns_fd1 = -1, ns_fd2 = -1, ret = -1;
+	__do_close_prot_errno int ns_fd1 = -1, ns_fd2 = -1;
+	int ret = -1;
 	int saved_errno;
 	struct stat ns_st1, ns_st2;
 
@@ -169,42 +170,27 @@ static int in_same_namespace(pid_t pid1, pid_t pid2, const char *ns)
 		if (errno == ENOENT)
 			return -EINVAL;
 
-		goto out;
+		return -1;
 	}
 
 	ns_fd2 = lxc_preserve_ns(pid2, ns);
 	if (ns_fd2 < 0)
-		goto out;
+		return -1;
 
 	ret = fstat(ns_fd1, &ns_st1);
 	if (ret < 0)
-		goto out;
+		return -1;
 
 	ret = fstat(ns_fd2, &ns_st2);
 	if (ret < 0)
-		goto out;
+		return -1;
 
 	/* processes are in the same namespace */
-	if ((ns_st1.st_dev == ns_st2.st_dev ) && (ns_st1.st_ino == ns_st2.st_ino)) {
-		ret = -EINVAL;
-		goto out;
-	}
+	if ((ns_st1.st_dev == ns_st2.st_dev) && (ns_st1.st_ino == ns_st2.st_ino))
+		return -EINVAL;
 
 	/* processes are in different namespaces */
-	ret = ns_fd2;
-	ns_fd2 = -1;
-
-out:
-	saved_errno = errno;
-
-	if (ns_fd1 >= 0)
-		close(ns_fd1);
-
-	if (ns_fd2 >= 0)
-		close(ns_fd2);
-
-	errno = saved_errno;
-	return ret;
+	return move_fd(ns_fd2);
 }
 
 static int lxc_attach_to_ns(pid_t pid, struct lxc_proc_context_info *ctx)
