@@ -88,6 +88,10 @@
 #include "utils.h"
 #include "lsm/lsm.h"
 
+#if !HAVE_GETGRGID_R
+#include "../include/getgrgid_r.h"
+#endif
+
 #if HAVE_LIBCAP
 #include <sys/capability.h>
 #endif

@@ -44,6 +44,7 @@ noinst_HEADERS = \
 if IS_BIONIC
 noinst_HEADERS += \
 	../include/fexecve.h \
+	../include/getgrgid_r.h \
 	../include/ifaddrs.h \
 	../include/openpty.h \
 	../include/lxcmntent.h
@@ -57,10 +58,6 @@ endif
 
 if !HAVE_GETSUBOPT
 noinst_HEADERS += ../include/getsubopt.h
-endif
-
-if !HAVE_GETGRGID_R
-noinst_HEADERS += ../include/getgrgid_r.h
 endif
 
 sodir=$(libdir)
@@ -142,6 +139,7 @@ endif
 if IS_BIONIC
 liblxc_la_SOURCES += \
 	../include/fexecve.c ../include/fexecve.h \
+	../include/getgrgid_r.c ../include/getgrgid_r.h \
 	../include/ifaddrs.c ../include/ifaddrs.h \
 	../include/openpty.c ../include/openpty.h \
 	../include/lxcmntent.c ../include/lxcmntent.h
@@ -324,10 +322,6 @@ endif
 
 if !HAVE_STRLCAT
 init_lxc_static_SOURCES += ../include/strlcat.c ../include/strlcat.h
-endif
-
-if !HAVE_GETGRGID_R
-liblxc_la_SOURCES += ../include/getgrgid_r.c ../include/getgrgid_r.h
 endif
 
 init_lxc_static_LDFLAGS = -all-static
