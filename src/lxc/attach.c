@@ -984,38 +984,22 @@ static int lxc_attach_terminal_mainloop_init(struct lxc_terminal *terminal,
 
 static inline void lxc_attach_terminal_close_master(struct lxc_terminal *terminal)
 {
-	if (terminal->master < 0)
-		return;
-
-	close(terminal->master);
-	terminal->master = -EBADF;
+	close_prot_errno_disarm(terminal->master);
 }
 
 static inline void lxc_attach_terminal_close_slave(struct lxc_terminal *terminal)
 {
-	if (terminal->slave < 0)
-		return;
-
-	close(terminal->slave);
-	terminal->slave = -EBADF;
+	close_prot_errno_disarm(terminal->slave);
 }
 
 static inline void lxc_attach_terminal_close_peer(struct lxc_terminal *terminal)
 {
-	if (terminal->peer < 0)
-		return;
-
-	close(terminal->peer);
-	terminal->peer = -EBADF;
+	close_prot_errno_disarm(terminal->peer);
 }
 
 static inline void lxc_attach_terminal_close_log(struct lxc_terminal *terminal)
 {
-	if (terminal->log_fd < 0)
-		return;
-
-	close(terminal->log_fd);
-	terminal->log_fd = -EBADF;
+	close_prot_errno_disarm(terminal->log_fd);
 }
 
 int lxc_attach(const char *name, const char *lxcpath,
