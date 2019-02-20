@@ -4973,7 +4973,7 @@ static int create_mount_target(const char *dest, mode_t st_mode)
 
 	if (ret == 0)
 		TRACE("Created mount target \"%s\"", dest);
-	else if (ret < 0 && ret != EEXIST) {
+	else if (ret < 0 && errno != EEXIST) {
 		SYSERROR("Failed to create mount target \"%s\"", dest);
 		return -1;
 	}
