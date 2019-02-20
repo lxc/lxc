@@ -690,15 +690,8 @@ struct attach_clone_payload {
 
 static void lxc_put_attach_clone_payload(struct attach_clone_payload *p)
 {
-	if (p->ipc_socket >= 0) {
-		close(p->ipc_socket);
-		p->ipc_socket = -EBADF;
-	}
-
-	if (p->terminal_slave_fd >= 0) {
-		close(p->terminal_slave_fd);
-		p->terminal_slave_fd = -EBADF;
-	}
+	__do_close_prot_errno int ipc_socket = p->ipc_socket;
+	__do_close_prot_errno int terminal_slave_fd = p->terminal_slave_fd;
 
 	if (p->init_ctx) {
 		lxc_proc_put_context_info(p->init_ctx);
