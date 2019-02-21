@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include <fcntl.h>
 #include "config.h"
 #include "macro.h"
 #include "raw_syscalls.h"
