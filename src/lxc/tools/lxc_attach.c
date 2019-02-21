@@ -354,19 +354,23 @@ int main(int argc, char *argv[])
 			goto out;
 	}
 
-	if (command.program)
-		ret = c->attach(c, lxc_attach_run_command, &command, &attach_options, &pid);
-	else
+	if (command.program) {
+		ret = c->attach_run_wait(c, &attach_options, command.program,
+					 (const char **)command.argv);
+		if (ret < 0)
+			goto out;
+	} else {
 		ret = c->attach(c, lxc_attach_run_shell, NULL, &attach_options, &pid);
-	if (ret < 0)
-		goto out;
+		if (ret < 0)
+			goto out;
 
-	ret = lxc_wait_for_pid_status(pid);
-	if (ret < 0)
-		goto out;
+		ret = lxc_wait_for_pid_status(pid);
+		if (ret < 0)
+			goto out;
 
-	if (WIFEXITED(ret))
-		wexit = WEXITSTATUS(ret);
+		if (WIFEXITED(ret))
+			wexit = WEXITSTATUS(ret);
+	}
 
 out:
 	lxc_container_put(c);
