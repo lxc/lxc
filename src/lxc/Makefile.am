@@ -32,6 +32,7 @@ noinst_HEADERS = \
 	lxc.h \
 	lxclock.h \
 	macro.h \
+	memory_utils.h \
 	monitor.h \
 	namespace.h \
 	rexec.h \
@@ -123,6 +124,7 @@ liblxc_la_SOURCES = \
 	lxcseccomp.h \
 	macro.h \
 	mainloop.c mainloop.h \
+	memory_utils.h \
 	af_unix.c af_unix.h \
 	\
 	lxcutmp.c lxcutmp.h \
