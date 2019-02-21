@@ -14,7 +14,6 @@ CI (Linux)      | Jenkins               | [![Build Status](https://jenkins.linux
 CI (Linux)      | Travis                | [![Build Status](https://travis-ci.org/lxc/lxc.svg?branch=master)](https://travis-ci.org/lxc/lxc/)
 Project status  | CII Best Practices    | [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/1087/badge)](https://bestpractices.coreinfrastructure.org/projects/1087)
 Code Quality    | LGTM                  | [![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/lxc/lxc.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/lxc/lxc/context:cpp)
-Static Analysis | Coverity              | <a href="https://scan.coverity.com/projects/lxc-linux-containers"> <img alt="Coverity Scan Build Status" src="https://img.shields.io/coverity/scan/369.svg"/> </a>
 
 ## System Containers
 
