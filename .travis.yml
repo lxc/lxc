@@ -13,7 +13,7 @@ addons:
     notification_email: lxc-devel@lists.linuxcontainers.org
     build_command_prepend: "./autogen.sh && rm -Rf build && mkdir build && cd build && ../configure --enable-tests --with-distro=unknown"
     build_command: "make -j4"
-    branch_pattern: coverity
+    branch_pattern: master
 before_install:
  - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
  - sudo add-apt-repository ppa:ubuntu-lxc/daily -y
