@@ -3226,9 +3226,10 @@ void tmp_proc_unmount(struct lxc_conf *lxc_conf)
 void remount_all_slave(void)
 {
 	__do_free char *line = NULL;
-	int memfd, mntinfo_fd, ret;
+	__do_fclose FILE *f = NULL;
+	__do_close_prot_errno int memfd = -EBADF, mntinfo_fd = -EBADF;
+	int ret;
 	ssize_t copied;
-	FILE *f;
 	size_t len = 0;
 
 	mntinfo_fd = open("/proc/self/mountinfo", O_RDONLY | O_CLOEXEC);
@@ -3243,13 +3244,11 @@ void remount_all_slave(void)
 
 		if (errno != ENOSYS) {
 			SYSERROR("Failed to create temporary in-memory file");
-			close(mntinfo_fd);
 			return;
 		}
 
 		memfd = lxc_make_tmpfile(template, true);
 		if (memfd < 0) {
-			close(mntinfo_fd);
 			WARN("Failed to create temporary file");
 			return;
 		}
@@ -3262,29 +3261,26 @@ again:
 			goto again;
 
 		SYSERROR("Failed to copy \"/proc/self/mountinfo\"");
-		close(mntinfo_fd);
-		close(memfd);
 		return;
 	}
-	close(mntinfo_fd);
 
-	/* After a successful fdopen() memfd will be closed when calling
-	 * fclose(f). Calling close(memfd) afterwards is undefined.
-	 */
 	ret = lseek(memfd, 0, SEEK_SET);
 	if (ret < 0) {
 		SYSERROR("Failed to reset file descriptor offset");
-		close(memfd);
 		return;
 	}
 
 	f = fdopen(memfd, "r");
 	if (!f) {
-		SYSERROR("Failed to open copy of \"/proc/self/mountinfo\" to mark "
-				"all shared. Continuing");
-		close(memfd);
+		SYSERROR("Failed to open copy of \"/proc/self/mountinfo\" to mark all shared. Continuing");
 		return;
 	}
+
+	/*
+	 * After a successful fdopen() memfd will be closed when calling
+	 * fclose(f). Calling close(memfd) afterwards is undefined.
+	 */
+	move_fd(memfd);
 
 	while (getline(&line, &len, f) != -1) {
 		char *opts, *target;
@@ -3310,7 +3306,6 @@ again:
 		}
 		TRACE("Remounted \"%s\" as MS_SLAVE", target);
 	}
-	fclose(f);
 	TRACE("Remounted all mount table entries as MS_SLAVE");
 }
 
