@@ -2358,10 +2358,10 @@ static const char nesting_helpers[] =
 FILE *make_anonymous_mount_file(struct lxc_list *mount,
 				bool include_nesting_helpers)
 {
+	__do_close_prot_errno int fd = -EBADF;
 	int ret;
 	char *mount_entry;
 	struct lxc_list *iterator;
-	int fd = -1;
 
 	fd = memfd_create(".lxc_mount_file", MFD_CLOEXEC);
 	if (fd < 0) {
@@ -2387,30 +2387,25 @@ FILE *make_anonymous_mount_file(struct lxc_list *mount,
 
 		ret = lxc_write_nointr(fd, mount_entry, len);
 		if (ret != len)
-			goto on_error;
+			return NULL;
 
 		ret = lxc_write_nointr(fd, "\n", 1);
 		if (ret != 1)
-			goto on_error;
+			return NULL;
 	}
 
 	if (include_nesting_helpers) {
 		ret = lxc_write_nointr(fd, nesting_helpers,
 				       STRARRAYLEN(nesting_helpers));
 		if (ret != STRARRAYLEN(nesting_helpers))
-			goto on_error;
+			return NULL;
 	}
 
 	ret = lseek(fd, 0, SEEK_SET);
 	if (ret < 0)
-		goto on_error;
+		return NULL;
 
-	return fdopen(fd, "r+");
-
-on_error:
-	SYSERROR("Failed to write mount entry to temporary mount file");
-	close(fd);
-	return NULL;
+	return fdopen(move_fd(fd), "r+");
 }
 
 static int setup_mount_entries(const struct lxc_conf *conf,
