@@ -1251,7 +1251,7 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 				 */
 				ret = open(path, O_RDONLY | O_CLOEXEC);
 				if (ret >= 0) {
-					close(ret);
+					close_prot_errno_disarm(ret);
 					/* Device nodes are fully useable. */
 					use_mknod = LXC_DEVNODE_OPEN;
 					continue;
