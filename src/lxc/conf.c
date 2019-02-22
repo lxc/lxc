@@ -2699,30 +2699,28 @@ struct lxc_conf *lxc_conf_init(void)
 int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 		     size_t buf_size)
 {
-	int fd, ret;
+	__do_close_prot_errno int fd;
+	int ret;
 	char path[PATH_MAX];
 
 	if (geteuid() != 0 && idtype == ID_TYPE_GID) {
-		size_t buflen;
+		__do_close_prot_errno int setgroups_fd = -EBADF;
 
 		ret = snprintf(path, PATH_MAX, "/proc/%d/setgroups", pid);
 		if (ret < 0 || ret >= PATH_MAX)
 			return -E2BIG;
 
-		fd = open(path, O_WRONLY);
-		if (fd < 0 && errno != ENOENT) {
+		setgroups_fd = open(path, O_WRONLY);
+		if (setgroups_fd < 0 && errno != ENOENT) {
 			SYSERROR("Failed to open \"%s\"", path);
 			return -1;
 		}
 
-		if (fd >= 0) {
-			buflen = STRLITERALLEN("deny\n");
-			errno = 0;
-			ret = lxc_write_nointr(fd, "deny\n", buflen);
-			close(fd);
-			if (ret != buflen) {
-				SYSERROR("Failed to write \"deny\" to "
-					 "\"/proc/%d/setgroups\"", pid);
+		if (setgroups_fd >= 0) {
+			ret = lxc_write_nointr(setgroups_fd, "deny\n",
+					       STRLITERALLEN("deny\n"));
+			if (ret != STRLITERALLEN("deny\n")) {
+				SYSERROR("Failed to write \"deny\" to \"/proc/%d/setgroups\"", pid);
 				return -1;
 			}
 			TRACE("Wrote \"deny\" to \"/proc/%d/setgroups\"", pid);
@@ -2740,9 +2738,7 @@ int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 		return -1;
 	}
 
-	errno = 0;
 	ret = lxc_write_nointr(fd, buf, buf_size);
-	close(fd);
 	if (ret != buf_size) {
 		SYSERROR("Failed to write %cid mapping to \"%s\"",
 			 idtype == ID_TYPE_UID ? 'u' : 'g', path);
