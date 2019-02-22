@@ -306,8 +306,8 @@ static struct limit_opt limit_opt[] = {
 
 static int run_buffer(char *buffer)
 {
+	__do_free char *output = NULL;
 	int ret;
-	char *output;
 	struct lxc_popen_FILE *f;
 
 	f = lxc_popen(buffer);
@@ -325,8 +325,6 @@ static int run_buffer(char *buffer)
 
 	while (fgets(output, LXC_LOG_BUFFER_SIZE, f->f))
 		DEBUG("Script %s with output: %s", buffer, output);
-
-	free(output);
 
 	ret = lxc_pclose(f);
 	if (ret == -1) {
@@ -347,9 +345,8 @@ int run_script_argv(const char *name, unsigned int hook_version,
 		    const char *section, const char *script,
 		    const char *hookname, char **argv)
 {
+	__do_free char *buffer = NULL;
 	int buf_pos, i, ret;
-	char *buffer;
-	int fret = -1;
 	size_t size = 0;
 
 	if (hook_version == 0)
@@ -393,7 +390,7 @@ int run_script_argv(const char *name, unsigned int hook_version,
 		buf_pos = snprintf(buffer, size, "exec %s", script);
 	if (buf_pos < 0 || (size_t)buf_pos >= size) {
 		ERROR("Failed to create command line for script \"%s\"", script);
-		goto on_error;
+		return -1;
 	}
 
 	if (hook_version == 1) {
@@ -401,7 +398,7 @@ int run_script_argv(const char *name, unsigned int hook_version,
 		if (ret < 0) {
 			SYSERROR("Failed to set environment variable: "
 				 "LXC_HOOK_TYPE=%s", hookname);
-			goto on_error;
+			return -1;
 		}
 		TRACE("Set environment variable: LXC_HOOK_TYPE=%s", hookname);
 
@@ -409,7 +406,7 @@ int run_script_argv(const char *name, unsigned int hook_version,
 		if (ret < 0) {
 			SYSERROR("Failed to set environment variable: "
 				 "LXC_HOOK_SECTION=%s", section);
-			goto on_error;
+			return -1;
 		}
 		TRACE("Set environment variable: LXC_HOOK_SECTION=%s", section);
 
@@ -417,13 +414,13 @@ int run_script_argv(const char *name, unsigned int hook_version,
 			char *parent;
 
 			if (!argv || !argv[0])
-				goto on_error;
+				return -1;
 
 			ret = setenv("LXC_NET_TYPE", argv[0], 1);
 			if (ret < 0) {
 				SYSERROR("Failed to set environment variable: "
 					 "LXC_NET_TYPE=%s", argv[0]);
-				goto on_error;
+				return -1;
 			}
 			TRACE("Set environment variable: LXC_NET_TYPE=%s", argv[0]);
 
@@ -434,7 +431,7 @@ int run_script_argv(const char *name, unsigned int hook_version,
 				if (ret < 0) {
 					SYSERROR("Failed to set environment "
 						 "variable: LXC_NET_PARENT=%s", parent);
-					goto on_error;
+					return -1;
 				}
 				TRACE("Set environment variable: LXC_NET_PARENT=%s", parent);
 			} else if (strcmp(argv[0], "phys") == 0) {
@@ -442,7 +439,7 @@ int run_script_argv(const char *name, unsigned int hook_version,
 				if (ret < 0) {
 					SYSERROR("Failed to set environment "
 						 "variable: LXC_NET_PARENT=%s", parent);
-					goto on_error;
+					return -1;
 				}
 				TRACE("Set environment variable: LXC_NET_PARENT=%s", parent);
 			} else if (strcmp(argv[0], "veth") == 0) {
@@ -452,7 +449,7 @@ int run_script_argv(const char *name, unsigned int hook_version,
 				if (ret < 0) {
 					SYSERROR("Failed to set environment "
 						 "variable: LXC_NET_PEER=%s", peer);
-					goto on_error;
+					return -1;
 				}
 				TRACE("Set environment variable: LXC_NET_PEER=%s", peer);
 
@@ -460,7 +457,7 @@ int run_script_argv(const char *name, unsigned int hook_version,
 				if (ret < 0) {
 					SYSERROR("Failed to set environment "
 						 "variable: LXC_NET_PARENT=%s", parent);
-					goto on_error;
+					return -1;
 				}
 				TRACE("Set environment variable: LXC_NET_PARENT=%s", parent);
 			}
@@ -473,16 +470,12 @@ int run_script_argv(const char *name, unsigned int hook_version,
 		ret = snprintf(buffer + buf_pos, len, " %s", argv[i]);
 		if (ret < 0 || (size_t)ret >= len) {
 			ERROR("Failed to create command line for script \"%s\"", script);
-			goto on_error;
+			return -1;
 		}
 		buf_pos += ret;
 	}
 
-	fret = run_buffer(buffer);
-
-on_error:
-	free(buffer);
-	return fret;
+	return run_buffer(buffer);
 }
 
 int run_script(const char *name, const char *section, const char *script, ...)
@@ -543,9 +536,9 @@ int run_script(const char *name, const char *section, const char *script, ...)
  */
 int pin_rootfs(const char *rootfs)
 {
+	__do_free char *absrootfs = NULL;
 	int fd, ret;
 	char absrootfspin[PATH_MAX];
-	char *absrootfs;
 	struct stat s;
 	struct statfs sfs;
 
@@ -557,18 +550,13 @@ int pin_rootfs(const char *rootfs)
 		return -2;
 
 	ret = stat(absrootfs, &s);
-	if (ret < 0) {
-		free(absrootfs);
+	if (ret < 0)
 		return -1;
-	}
 
-	if (!S_ISDIR(s.st_mode)) {
-		free(absrootfs);
+	if (!S_ISDIR(s.st_mode))
 		return -2;
-	}
 
 	ret = snprintf(absrootfspin, PATH_MAX, "%s/.lxc-keep", absrootfs);
-	free(absrootfs);
 	if (ret < 0 || ret >= PATH_MAX)
 		return -1;
 
@@ -701,10 +689,9 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 	};
 
 	for (i = 0; default_mounts[i].match_mask; i++) {
+		__do_free char *destination = NULL, *source = NULL;
 		int saved_errno;
 		unsigned long mflags;
-		char *destination = NULL;
-		char *source = NULL;
 		if ((flags & default_mounts[i].match_mask) != default_mounts[i].match_flag)
 			continue;
 
@@ -717,16 +704,12 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 
 		if (!default_mounts[i].destination) {
 			ERROR("BUG: auto mounts destination %d was NULL", i);
-			free(source);
 			return -1;
 		}
 
 		/* will act like strdup if %r is not present */
 		destination = lxc_string_replace("%r", conf->rootfs.path ? conf->rootfs.mount : "", default_mounts[i].destination);
 		if (!destination) {
-			saved_errno = errno;
-			free(source);
-			errno = saved_errno;
 			return -1;
 		}
 
@@ -744,8 +727,6 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 			SYSERROR("Failed to mount \"%s\" on \"%s\" with flags %lu", source, destination, mflags);
 		}
 
-		free(source);
-		free(destination);
 		if (r < 0) {
 			errno = saved_errno;
 			return -1;
@@ -1364,10 +1345,10 @@ static int lxc_mount_rootfs(struct lxc_conf *conf)
 
 int lxc_chroot(const struct lxc_rootfs *rootfs)
 {
+	__do_free char *nroot = NULL;
 	int i, ret;
 	char *p, *p2;
 	char buf[LXC_LINELEN];
-	char *nroot;
 	FILE *f;
 	char *root = rootfs->mount;
 
@@ -1378,10 +1359,8 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 	}
 
 	ret = chdir("/");
-	if (ret < 0) {
-		free(nroot);
+	if (ret < 0)
 		return -1;
-	}
 
 	/* We could use here MS_MOVE, but in userns this mount is locked and
 	 * can't be moved.
@@ -1389,10 +1368,8 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 	ret = mount(nroot, "/", NULL, MS_REC | MS_BIND, NULL);
 	if (ret < 0) {
 		SYSERROR("Failed to mount \"%s\" onto \"/\" as MS_REC | MS_BIND", nroot);
-		free(nroot);
 		return -1;
 	}
-	free(nroot);
 
 	ret = mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL);
 	if (ret < 0) {
@@ -1911,7 +1888,8 @@ static void parse_mntopt(char *opt, unsigned long *flags, char **data, size_t si
 
 int parse_mntopts(const char *mntopts, unsigned long *mntflags, char **mntdata)
 {
-	char *data, *p, *s;
+	__do_free char *data = NULL, *s = NULL;
+	char *p;
 	size_t size;
 
 	*mntdata = NULL;
@@ -1926,20 +1904,15 @@ int parse_mntopts(const char *mntopts, unsigned long *mntflags, char **mntdata)
 
 	size = strlen(s) + 1;
 	data = malloc(size);
-	if (!data) {
-		free(s);
+	if (!data)
 		return -1;
-	}
 	*data = 0;
 
 	lxc_iterate_parts(p, s, ",")
 		parse_mntopt(p, mntflags, &data, size);
 
 	if (*data)
-		*mntdata = data;
-	else
-		free(data);
-	free(s);
+		*mntdata = move_ptr(data);
 
 	return 0;
 }
@@ -1964,7 +1937,8 @@ static void parse_propagationopt(char *opt, unsigned long *flags)
 
 int parse_propagationopts(const char *mntopts, unsigned long *pflags)
 {
-	char *p, *s;
+	__do_free char *s = NULL;
+	char *p;
 
 	if (!mntopts)
 		return 0;
@@ -1978,7 +1952,6 @@ int parse_propagationopts(const char *mntopts, unsigned long *pflags)
 	*pflags = 0L;
 	lxc_iterate_parts(p, s, ",")
 		parse_propagationopt(p, pflags);
-	free(s);
 
 	return 0;
 }
@@ -2162,8 +2135,9 @@ static int mount_entry_create_dir_file(const struct mntent *mntent,
 				       const struct lxc_rootfs *rootfs,
 				       const char *lxc_name, const char *lxc_path)
 {
+	__do_free char *p1 = NULL;
 	int ret;
-	char *p1, *p2;
+	char *p2;
 
 	if (strncmp(mntent->mnt_type, "overlay", 7) == 0) {
 		ret = ovl_mkdir(mntent, rootfs, lxc_name, lxc_path);
@@ -2193,7 +2167,6 @@ static int mount_entry_create_dir_file(const struct mntent *mntent,
 	p2 = dirname(p1);
 
 	ret = mkdir_p(p2, 0755);
-	free(p1);
 	if (ret < 0 && errno != EEXIST) {
 		SYSERROR("Failed to create directory \"%s\"", path);
 		return -1;
@@ -2214,9 +2187,9 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 					 const char *lxc_name,
 					 const char *lxc_path)
 {
+	__do_free char *mntdata = NULL;
 	int ret;
 	unsigned long mntflags;
-	char *mntdata;
 	bool dev, optional, relative;
 	unsigned long pflags = 0;
 	char *rootfs_path = NULL;
@@ -2249,7 +2222,6 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type, mntflags,
 			  pflags, mntdata, optional, dev, relative, rootfs_path);
 
-	free(mntdata);
 	return ret;
 }
 
@@ -2660,10 +2632,10 @@ int setup_resource_limits(struct lxc_list *limits, pid_t pid)
 
 int setup_sysctl_parameters(struct lxc_list *sysctls)
 {
+	__do_free char *tmp = NULL;
 	struct lxc_list *it;
 	struct lxc_sysctl *elem;
 	int ret = 0;
-	char *tmp = NULL;
 	char filename[PATH_MAX] = {0};
 
 	lxc_list_for_each (it, sysctls) {
@@ -2675,7 +2647,6 @@ int setup_sysctl_parameters(struct lxc_list *sysctls)
 		}
 
 		ret = snprintf(filename, sizeof(filename), "/proc/sys/%s", tmp);
-		free(tmp);
 		if (ret < 0 || (size_t)ret >= sizeof(filename)) {
 			ERROR("Error setting up sysctl parameters path");
 			return -1;
@@ -2695,10 +2666,10 @@ int setup_sysctl_parameters(struct lxc_list *sysctls)
 
 int setup_proc_filesystem(struct lxc_list *procs, pid_t pid)
 {
+	__do_free char *tmp = NULL;
 	struct lxc_list *it;
 	struct lxc_proc *elem;
 	int ret = 0;
-	char *tmp = NULL;
 	char filename[PATH_MAX] = {0};
 
 	lxc_list_for_each (it, procs) {
@@ -2710,7 +2681,6 @@ int setup_proc_filesystem(struct lxc_list *procs, pid_t pid)
 		}
 
 		ret = snprintf(filename, sizeof(filename), "/proc/%d/%s", pid, tmp);
-		free(tmp);
 		if (ret < 0 || (size_t)ret >= sizeof(filename)) {
 			ERROR("Error setting up proc filesystem path");
 			return -1;
@@ -2869,7 +2839,7 @@ int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
  */
 static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 {
-	char *path;
+	__do_free char *path = NULL;
 	int ret;
 	struct stat st;
 	int fret = 0;
@@ -2925,7 +2895,6 @@ static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 #endif
 
 cleanup:
-	free(path);
 	return fret;
 }
 
@@ -3314,11 +3283,11 @@ void tmp_proc_unmount(struct lxc_conf *lxc_conf)
 /* Walk /proc/mounts and change any shared entries to slave. */
 void remount_all_slave(void)
 {
+	__do_free char *line = NULL;
 	int memfd, mntinfo_fd, ret;
 	ssize_t copied;
 	FILE *f;
 	size_t len = 0;
-	char *line = NULL;
 
 	mntinfo_fd = open("/proc/self/mountinfo", O_RDONLY | O_CLOEXEC);
 	if (mntinfo_fd < 0) {
@@ -3400,7 +3369,6 @@ again:
 		TRACE("Remounted \"%s\" as MS_SLAVE", target);
 	}
 	fclose(f);
-	free(line);
 	TRACE("Remounted all mount table entries as MS_SLAVE");
 }
 
@@ -3414,10 +3382,9 @@ static int lxc_execute_bind_init(struct lxc_handler *handler)
 	/* If init exists in the container, don't bind mount a static one */
 	p = choose_init(conf->rootfs.mount);
 	if (p) {
-		char *old = p;
+		__do_free char *old = p;
 
 		p = strdup(old + strlen(conf->rootfs.mount));
-		free(old);
 		if (!p)
 			return -ENOMEM;
 
@@ -4252,18 +4219,20 @@ static struct id_map *mapped_hostid_add(struct lxc_conf *conf, uid_t id,
 
 struct lxc_list *get_minimal_idmap(struct lxc_conf *conf)
 {
+	__do_free struct id_map *container_root_uid = NULL,
+				*container_root_gid = NULL,
+				*host_uid_map = NULL, *host_gid_map = NULL;
+	__do_free struct lxc_list *idmap = NULL;
 	uid_t euid, egid;
 	uid_t nsuid = (conf->root_nsuid_map != NULL) ? 0 : conf->init_uid;
 	gid_t nsgid = (conf->root_nsgid_map != NULL) ? 0 : conf->init_gid;
-	struct lxc_list *idmap = NULL, *tmplist = NULL;
-	struct id_map *container_root_uid = NULL, *container_root_gid = NULL,
-		      *host_uid_map = NULL, *host_gid_map = NULL;
+	struct lxc_list *tmplist = NULL;
 
 	/* Find container root mappings. */
 	container_root_uid = mapped_nsid_add(conf, nsuid, ID_TYPE_UID);
 	if (!container_root_uid) {
 		DEBUG("Failed to find mapping for namespace uid %d", 0);
-		goto on_error;
+		return NULL;
 	}
 	euid = geteuid();
 	if (euid >= container_root_uid->hostid &&
@@ -4273,7 +4242,7 @@ struct lxc_list *get_minimal_idmap(struct lxc_conf *conf)
 	container_root_gid = mapped_nsid_add(conf, nsgid, ID_TYPE_GID);
 	if (!container_root_gid) {
 		DEBUG("Failed to find mapping for namespace gid %d", 0);
-		goto on_error;
+		return NULL;
 	}
 	egid = getegid();
 	if (egid >= container_root_gid->hostid &&
@@ -4285,84 +4254,68 @@ struct lxc_list *get_minimal_idmap(struct lxc_conf *conf)
 		host_uid_map = mapped_hostid_add(conf, euid, ID_TYPE_UID);
 	if (!host_uid_map) {
 		DEBUG("Failed to find mapping for uid %d", euid);
-		goto on_error;
+		return NULL;
 	}
 
 	if (!host_gid_map)
 		host_gid_map = mapped_hostid_add(conf, egid, ID_TYPE_GID);
 	if (!host_gid_map) {
 		DEBUG("Failed to find mapping for gid %d", egid);
-		goto on_error;
+		return NULL;
 	}
 
 	/* Allocate new {g,u}id map list. */
 	idmap = malloc(sizeof(*idmap));
 	if (!idmap)
-		goto on_error;
+		return NULL;
 	lxc_list_init(idmap);
 
 	/* Add container root to the map. */
 	tmplist = malloc(sizeof(*tmplist));
 	if (!tmplist)
-		goto on_error;
+		return NULL;
 	lxc_list_add_elem(tmplist, container_root_uid);
 	lxc_list_add_tail(idmap, tmplist);
 
 	if (host_uid_map && (host_uid_map != container_root_uid)) {
 		/* idmap will now keep track of that memory. */
-		container_root_uid = NULL;
+		move_ptr(container_root_uid);
 
 		/* Add container root to the map. */
 		tmplist = malloc(sizeof(*tmplist));
 		if (!tmplist)
-			goto on_error;
+			return NULL;
 		lxc_list_add_elem(tmplist, host_uid_map);
 		lxc_list_add_tail(idmap, tmplist);
 	}
 	/* idmap will now keep track of that memory. */
-	container_root_uid = NULL;
+	move_ptr(container_root_uid);
 	/* idmap will now keep track of that memory. */
-	host_uid_map = NULL;
+	move_ptr(host_uid_map);
 
 	tmplist = malloc(sizeof(*tmplist));
 	if (!tmplist)
-		goto on_error;
+		return NULL;
 	lxc_list_add_elem(tmplist, container_root_gid);
 	lxc_list_add_tail(idmap, tmplist);
 
 	if (host_gid_map && (host_gid_map != container_root_gid)) {
 		/* idmap will now keep track of that memory. */
-		container_root_gid = NULL;
+		move_ptr(container_root_gid);
 
 		tmplist = malloc(sizeof(*tmplist));
 		if (!tmplist)
-			goto on_error;
+			return NULL;
 		lxc_list_add_elem(tmplist, host_gid_map);
 		lxc_list_add_tail(idmap, tmplist);
 	}
 	/* idmap will now keep track of that memory. */
-	container_root_gid = NULL;
+	move_ptr(container_root_gid);
 	/* idmap will now keep track of that memory. */
-	host_gid_map = NULL;
+	move_ptr(host_gid_map);
 
 	TRACE("Allocated minimal idmapping");
-	return idmap;
-
-on_error:
-	if (idmap) {
-		lxc_free_idmap(idmap);
-		free(idmap);
-	}
-	if (container_root_uid)
-		free(container_root_uid);
-	if (container_root_gid)
-		free(container_root_gid);
-	if (host_uid_map && (host_uid_map != container_root_uid))
-		free(host_uid_map);
-	if (host_gid_map && (host_gid_map != container_root_gid))
-		free(host_gid_map);
-
-	return NULL;
+	return move_ptr(idmap);
 }
 
 /* Run a function in a new user namespace.
@@ -4644,10 +4597,9 @@ on_error:
 /* not thread-safe, do not use from api without first forking */
 static char *getuname(void)
 {
+	__do_free char *buf = NULL;
 	struct passwd pwent;
 	struct passwd *pwentp = NULL;
-	char *buf;
-	char *username;
 	size_t bufsize;
 	int ret;
 
@@ -4665,23 +4617,18 @@ static char *getuname(void)
 			WARN("Could not find matched password record.");
 
 		ERROR("Failed to get password record - %u", geteuid());
-		free(buf);
 		return NULL;
 	}
 
-	username = strdup(pwent.pw_name);
-	free(buf);
-
-	return username;
+	return strdup(pwent.pw_name);
 }
 
 /* not thread-safe, do not use from api without first forking */
 static char *getgname(void)
 {
+	__do_free char *buf = NULL;
 	struct group grent;
 	struct group *grentp = NULL;
-	char *buf;
-	char *grname;
 	size_t bufsize;
 	int ret;
 
@@ -4699,40 +4646,31 @@ static char *getgname(void)
 			WARN("Could not find matched group record");
 
 		ERROR("Failed to get group record - %u", getegid());
-		free(buf);
 		return NULL;
 	}
 
-	grname = strdup(grent.gr_name);
-	free(buf);
-
-	return grname;
+	return strdup(grent.gr_name);
 }
 
 /* not thread-safe, do not use from api without first forking */
 void suggest_default_idmap(void)
 {
-	char *uname, *gname;
+	__do_free char *gname = NULL, *line = NULL, *uname = NULL;
 	FILE *f;
 	unsigned int uid = 0, urange = 0, gid = 0, grange = 0;
 	size_t len = 0;
-	char *line = NULL;
 
 	uname = getuname();
 	if (!uname)
 		return;
 
 	gname = getgname();
-	if (!gname) {
-		free(uname);
+	if (!gname)
 		return;
-	}
 
 	f = fopen(subuidfile, "r");
 	if (!f) {
 		ERROR("Your system is not configured with subuids");
-		free(gname);
-		free(uname);
 		return;
 	}
 
@@ -4771,8 +4709,6 @@ void suggest_default_idmap(void)
 	f = fopen(subgidfile, "r");
 	if (!f) {
 		ERROR("Your system is not configured with subgids");
-		free(gname);
-		free(uname);
 		return;
 	}
 
@@ -4808,13 +4744,9 @@ void suggest_default_idmap(void)
 	}
 	fclose(f);
 
-	free(line);
-
 	if (!urange || !grange) {
 		ERROR("You do not have subuids or subgids allocated");
 		ERROR("Unprivileged containers require subuids and subgids");
-		free(uname);
-		free(gname);
 		return;
 	}
 
@@ -4824,9 +4756,6 @@ void suggest_default_idmap(void)
 	ERROR("lxc.include = %s", LXC_DEFAULT_CONFIG);
 	ERROR("lxc.idmap = u 0 %u %u", uid, urange);
 	ERROR("lxc.idmap = g 0 %u %u", gid, grange);
-
-	free(gname);
-	free(uname);
 }
 
 static void free_cgroup_settings(struct lxc_list *result)

@@ -82,8 +82,8 @@ int lxc_cmd_sock_rcv_state(int state_client_fd, int timeout)
 int lxc_cmd_sock_get_state(const char *name, const char *lxcpath,
 			   lxc_state_t states[MAX_STATE], int timeout)
 {
+	__do_close_prot_errno int state_client_fd = -EBADF;
 	int ret;
-	int state_client_fd;
 
 	ret = lxc_cmd_add_state_client(name, lxcpath, states, &state_client_fd);
 	if (ret < 0)
@@ -92,9 +92,7 @@ int lxc_cmd_sock_get_state(const char *name, const char *lxcpath,
 	if (ret < MAX_STATE)
 		return ret;
 
-	ret = lxc_cmd_sock_rcv_state(state_client_fd, timeout);
-	close(state_client_fd);
-	return ret;
+	return lxc_cmd_sock_rcv_state(state_client_fd, timeout);
 }
 
 int lxc_make_abstract_socket_name(char *path, size_t pathlen,
@@ -193,9 +191,9 @@ int lxc_cmd_connect(const char *name, const char *lxcpath,
 int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
 			 lxc_state_t states[MAX_STATE])
 {
+	__do_free struct lxc_state_client *newclient = NULL;
+	__do_free struct lxc_list *tmplist = NULL;
 	int state;
-	struct lxc_state_client *newclient;
-	struct lxc_list *tmplist;
 
 	newclient = malloc(sizeof(*newclient));
 	if (!newclient)
@@ -206,21 +204,19 @@ int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
 	newclient->clientfd = state_client_fd;
 
 	tmplist = malloc(sizeof(*tmplist));
-	if (!tmplist) {
-		free(newclient);
+	if (!tmplist)
 		return -ENOMEM;
-	}
 
 	state = handler->state;
 	if (states[state] != 1) {
 		lxc_list_add_elem(tmplist, newclient);
 		lxc_list_add_tail(&handler->conf->state_clients, tmplist);
 	} else {
-		free(newclient);
-		free(tmplist);
 		return state;
 	}
 
 	TRACE("Added state client %d to state client list", state_client_fd);
+	move_ptr(newclient);
+	move_ptr(tmplist);
 	return MAX_STATE;
 }

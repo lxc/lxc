@@ -125,14 +125,8 @@ static struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 
 static inline void lxc_proc_close_ns_fd(struct lxc_proc_context_info *ctx)
 {
-	int i;
-
-	for (i = 0; i < LXC_NS_MAX; i++) {
-		if (ctx->ns_fd[i] < 0)
-			continue;
-
-		close(ctx->ns_fd[i]);
-		ctx->ns_fd[i] = -EBADF;
+	for (int i = 0; i < LXC_NS_MAX; i++) {
+		__do_close_prot_errno int fd = ctx->ns_fd[i];
 	}
 }
 
@@ -163,7 +157,8 @@ static void lxc_proc_put_context_info(struct lxc_proc_context_info *ctx)
  */
 static int in_same_namespace(pid_t pid1, pid_t pid2, const char *ns)
 {
-	int ns_fd1 = -1, ns_fd2 = -1, ret = -1;
+	__do_close_prot_errno int ns_fd1 = -1, ns_fd2 = -1;
+	int ret = -1;
 	int saved_errno;
 	struct stat ns_st1, ns_st2;
 
@@ -175,42 +170,27 @@ static int in_same_namespace(pid_t pid1, pid_t pid2, const char *ns)
 		if (errno == ENOENT)
 			return -EINVAL;
 
-		goto out;
+		return -1;
 	}
 
 	ns_fd2 = lxc_preserve_ns(pid2, ns);
 	if (ns_fd2 < 0)
-		goto out;
+		return -1;
 
 	ret = fstat(ns_fd1, &ns_st1);
 	if (ret < 0)
-		goto out;
+		return -1;
 
 	ret = fstat(ns_fd2, &ns_st2);
 	if (ret < 0)
-		goto out;
+		return -1;
 
 	/* processes are in the same namespace */
-	if ((ns_st1.st_dev == ns_st2.st_dev ) && (ns_st1.st_ino == ns_st2.st_ino)) {
-		ret = -EINVAL;
-		goto out;
-	}
+	if ((ns_st1.st_dev == ns_st2.st_dev) && (ns_st1.st_ino == ns_st2.st_ino))
+		return -EINVAL;
 
 	/* processes are in different namespaces */
-	ret = ns_fd2;
-	ns_fd2 = -1;
-
-out:
-	saved_errno = errno;
-
-	if (ns_fd1 >= 0)
-		close(ns_fd1);
-
-	if (ns_fd2 >= 0)
-		close(ns_fd2);
-
-	errno = saved_errno;
-	return ret;
+	return move_fd(ns_fd2);
 }
 
 static int lxc_attach_to_ns(pid_t pid, struct lxc_proc_context_info *ctx)
@@ -710,15 +690,8 @@ struct attach_clone_payload {
 
 static void lxc_put_attach_clone_payload(struct attach_clone_payload *p)
 {
-	if (p->ipc_socket >= 0) {
-		close(p->ipc_socket);
-		p->ipc_socket = -EBADF;
-	}
-
-	if (p->terminal_slave_fd >= 0) {
-		close(p->terminal_slave_fd);
-		p->terminal_slave_fd = -EBADF;
-	}
+	__do_close_prot_errno int ipc_socket = p->ipc_socket;
+	__do_close_prot_errno int terminal_slave_fd = p->terminal_slave_fd;
 
 	if (p->init_ctx) {
 		lxc_proc_put_context_info(p->init_ctx);
@@ -1011,38 +984,22 @@ static int lxc_attach_terminal_mainloop_init(struct lxc_terminal *terminal,
 
 static inline void lxc_attach_terminal_close_master(struct lxc_terminal *terminal)
 {
-	if (terminal->master < 0)
-		return;
-
-	close(terminal->master);
-	terminal->master = -EBADF;
+	close_prot_errno_disarm(terminal->master);
 }
 
 static inline void lxc_attach_terminal_close_slave(struct lxc_terminal *terminal)
 {
-	if (terminal->slave < 0)
-		return;
-
-	close(terminal->slave);
-	terminal->slave = -EBADF;
+	close_prot_errno_disarm(terminal->slave);
 }
 
 static inline void lxc_attach_terminal_close_peer(struct lxc_terminal *terminal)
 {
-	if (terminal->peer < 0)
-		return;
-
-	close(terminal->peer);
-	terminal->peer = -EBADF;
+	close_prot_errno_disarm(terminal->peer);
 }
 
 static inline void lxc_attach_terminal_close_log(struct lxc_terminal *terminal)
 {
-	if (terminal->log_fd < 0)
-		return;
-
-	close(terminal->log_fd);
-	terminal->log_fd = -EBADF;
+	close_prot_errno_disarm(terminal->log_fd);
 }
 
 int lxc_attach(const char *name, const char *lxcpath,
