@@ -2791,24 +2791,23 @@ static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 	struct stat st;
 	int fret = 0;
 
+	errno = EINVAL;
 	if (cap != CAP_SETUID && cap != CAP_SETGID)
-		return -EINVAL;
+		return -1;
 
+	errno = ENOENT;
 	path = on_path(binary, NULL);
 	if (!path)
-		return -ENOENT;
+		return -1;
 
 	ret = stat(path, &st);
-	if (ret < 0) {
-		fret = -errno;
-		goto cleanup;
-	}
+	if (ret < 0)
+		return -1;
 
 	/* Check if the binary is setuid. */
 	if (st.st_mode & S_ISUID) {
 		DEBUG("The binary \"%s\" does have the setuid bit set", path);
-		fret = 1;
-		goto cleanup;
+		return 1;
 	}
 
 #if HAVE_LIBCAP && LIBCAP_SUPPORTS_FILE_CAPABILITIES
@@ -2818,8 +2817,7 @@ static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 	    lxc_file_cap_is_set(path, CAP_SETUID, CAP_PERMITTED)) {
 		DEBUG("The binary \"%s\" has CAP_SETUID in its CAP_EFFECTIVE "
 		      "and CAP_PERMITTED sets", path);
-		fret = 1;
-		goto cleanup;
+		return 1;
 	}
 
 	/* Check if it has the CAP_SETGID capability. */
@@ -2828,8 +2826,7 @@ static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 	    lxc_file_cap_is_set(path, CAP_SETGID, CAP_PERMITTED)) {
 		DEBUG("The binary \"%s\" has CAP_SETGID in its CAP_EFFECTIVE "
 		      "and CAP_PERMITTED sets", path);
-		fret = 1;
-		goto cleanup;
+		return 1;
 	}
 #else
 	/* If we cannot check for file capabilities we need to give the benefit
@@ -2838,11 +2835,9 @@ static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 	 */
 	DEBUG("Cannot check for file capabilities as full capability support is "
 	      "missing. Manual intervention needed");
-	fret = 1;
 #endif
 
-cleanup:
-	return fret;
+	return 1;
 }
 
 int lxc_map_ids_exec_wrapper(void *args)
