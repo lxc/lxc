@@ -1472,8 +1472,8 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
  */
 static int lxc_pivot_root(const char *rootfs)
 {
-	int oldroot;
-	int newroot = -1, ret = -1;
+	__do_close_prot_errno int oldroot = -EBADF, newroot = -EBADF;
+	int ret;
 
 	oldroot = open("/", O_DIRECTORY | O_RDONLY | O_CLOEXEC);
 	if (oldroot < 0) {
@@ -1484,23 +1484,21 @@ static int lxc_pivot_root(const char *rootfs)
 	newroot = open(rootfs, O_DIRECTORY | O_RDONLY | O_CLOEXEC);
 	if (newroot < 0) {
 		SYSERROR("Failed to open new root directory");
-		goto on_error;
+		return -1;
 	}
 
 	/* change into new root fs */
 	ret = fchdir(newroot);
 	if (ret < 0) {
-		ret = -1;
 		SYSERROR("Failed to change to new rootfs \"%s\"", rootfs);
-		goto on_error;
+		return -1;
 	}
 
 	/* pivot_root into our new root fs */
 	ret = pivot_root(".", ".");
 	if (ret < 0) {
-		ret = -1;
 		SYSERROR("Failed to pivot_root()");
-		goto on_error;
+		return -1;
 	}
 
 	/* At this point the old-root is mounted on top of our new-root. To
@@ -1509,9 +1507,8 @@ static int lxc_pivot_root(const char *rootfs)
 	 */
 	ret = fchdir(oldroot);
 	if (ret < 0) {
-		ret = -1;
 		SYSERROR("Failed to enter old root directory");
-		goto on_error;
+		return -1;
 	}
 
 	/* Make oldroot rslave to make sure our umounts don't propagate to the
@@ -1519,36 +1516,25 @@ static int lxc_pivot_root(const char *rootfs)
 	 */
 	ret = mount("", ".", "", MS_SLAVE | MS_REC, NULL);
 	if (ret < 0) {
-		ret = -1;
 		SYSERROR("Failed to make oldroot rslave");
-		goto on_error;
+		return -1;
 	}
 
 	ret = umount2(".", MNT_DETACH);
 	if (ret < 0) {
-		ret = -1;
 		SYSERROR("Failed to detach old root directory");
-		goto on_error;
+		return -1;
 	}
 
 	ret = fchdir(newroot);
 	if (ret < 0) {
-		ret = -1;
 		SYSERROR("Failed to re-enter new root directory");
-		goto on_error;
+		return -1;
 	}
-
-	ret = 0;
 
 	TRACE("pivot_root(\"%s\") successful", rootfs);
 
-on_error:
-	close(oldroot);
-
-	if (newroot >= 0)
-		close(newroot);
-
-	return ret;
+	return 0;
 }
 
 static int lxc_setup_rootfs_switch_root(const struct lxc_rootfs *rootfs)
