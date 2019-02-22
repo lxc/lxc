@@ -1324,7 +1324,6 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 	int i, ret;
 	char *p, *p2;
 	char buf[LXC_LINELEN];
-	FILE *f;
 	char *root = rootfs->mount;
 
 	nroot = realpath(root, NULL);
@@ -1363,6 +1362,7 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 	 * inherited mounts are locked and we should live with all this trash.
 	 */
 	for (;;) {
+		__do_fclose FILE *f = NULL;
 		int progress = 0;
 
 		f = fopen("./proc/self/mountinfo", "r");
@@ -1395,8 +1395,6 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 			if (ret == 0)
 				progress++;
 		}
-
-		fclose(f);
 
 		if (!progress)
 			break;
