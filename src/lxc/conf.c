@@ -2413,17 +2413,13 @@ static int setup_mount_entries(const struct lxc_conf *conf,
 			       struct lxc_list *mount, const char *lxc_name,
 			       const char *lxc_path)
 {
-	int ret;
-	FILE *f;
+	__do_fclose FILE *f = NULL;
 
 	f = make_anonymous_mount_file(mount, conf->lsm_aa_allow_nesting);
 	if (!f)
 		return -1;
 
-	ret = mount_file_entries(conf, rootfs, f, lxc_name, lxc_path);
-	fclose(f);
-
-	return ret;
+	return mount_file_entries(conf, rootfs, f, lxc_name, lxc_path);
 }
 
 static int parse_cap(const char *cap)
