@@ -4617,7 +4617,7 @@ static char *getgname(void)
 void suggest_default_idmap(void)
 {
 	__do_free char *gname = NULL, *line = NULL, *uname = NULL;
-	FILE *f;
+	__do_fclose FILE *subuid_f = NULL, *subgid_f = NULL;
 	unsigned int uid = 0, urange = 0, gid = 0, grange = 0;
 	size_t len = 0;
 
@@ -4629,13 +4629,13 @@ void suggest_default_idmap(void)
 	if (!gname)
 		return;
 
-	f = fopen(subuidfile, "r");
-	if (!f) {
+	subuid_f = fopen(subuidfile, "r");
+	if (!subuid_f) {
 		ERROR("Your system is not configured with subuids");
 		return;
 	}
 
-	while (getline(&line, &len, f) != -1) {
+	while (getline(&line, &len, subuid_f) != -1) {
 		char *p, *p2;
 		size_t no_newline = 0;
 
@@ -4665,15 +4665,14 @@ void suggest_default_idmap(void)
 		if (lxc_safe_uint(p2, &urange) < 0)
 			WARN("Could not parse UID range");
 	}
-	fclose(f);
 
-	f = fopen(subgidfile, "r");
-	if (!f) {
+	subgid_f = fopen(subgidfile, "r");
+	if (!subgid_f) {
 		ERROR("Your system is not configured with subgids");
 		return;
 	}
 
-	while (getline(&line, &len, f) != -1) {
+	while (getline(&line, &len, subgid_f) != -1) {
 		char *p, *p2;
 		size_t no_newline = 0;
 
@@ -4703,7 +4702,6 @@ void suggest_default_idmap(void)
 		if (lxc_safe_uint(p2, &grange) < 0)
 			WARN("Could not parse GID range");
 	}
-	fclose(f);
 
 	if (!urange || !grange) {
 		ERROR("You do not have subuids or subgids allocated");
