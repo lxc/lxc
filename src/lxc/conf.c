@@ -1251,7 +1251,7 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 				 */
 				ret = open(path, O_RDONLY | O_CLOEXEC);
 				if (ret >= 0) {
-					close(ret);
+					close_prot_errno_disarm(ret);
 					/* Device nodes are fully useable. */
 					use_mknod = LXC_DEVNODE_OPEN;
 					continue;
@@ -1349,7 +1349,6 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 	int i, ret;
 	char *p, *p2;
 	char buf[LXC_LINELEN];
-	FILE *f;
 	char *root = rootfs->mount;
 
 	nroot = realpath(root, NULL);
@@ -1388,6 +1387,7 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 	 * inherited mounts are locked and we should live with all this trash.
 	 */
 	for (;;) {
+		__do_fclose FILE *f = NULL;
 		int progress = 0;
 
 		f = fopen("./proc/self/mountinfo", "r");
@@ -1420,8 +1420,6 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 			if (ret == 0)
 				progress++;
 		}
-
-		fclose(f);
 
 		if (!progress)
 			break;
@@ -1474,8 +1472,8 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
  */
 static int lxc_pivot_root(const char *rootfs)
 {
-	int oldroot;
-	int newroot = -1, ret = -1;
+	__do_close_prot_errno int oldroot = -EBADF, newroot = -EBADF;
+	int ret;
 
 	oldroot = open("/", O_DIRECTORY | O_RDONLY | O_CLOEXEC);
 	if (oldroot < 0) {
@@ -1486,23 +1484,21 @@ static int lxc_pivot_root(const char *rootfs)
 	newroot = open(rootfs, O_DIRECTORY | O_RDONLY | O_CLOEXEC);
 	if (newroot < 0) {
 		SYSERROR("Failed to open new root directory");
-		goto on_error;
+		return -1;
 	}
 
 	/* change into new root fs */
 	ret = fchdir(newroot);
 	if (ret < 0) {
-		ret = -1;
 		SYSERROR("Failed to change to new rootfs \"%s\"", rootfs);
-		goto on_error;
+		return -1;
 	}
 
 	/* pivot_root into our new root fs */
 	ret = pivot_root(".", ".");
 	if (ret < 0) {
-		ret = -1;
 		SYSERROR("Failed to pivot_root()");
-		goto on_error;
+		return -1;
 	}
 
 	/* At this point the old-root is mounted on top of our new-root. To
@@ -1511,9 +1507,8 @@ static int lxc_pivot_root(const char *rootfs)
 	 */
 	ret = fchdir(oldroot);
 	if (ret < 0) {
-		ret = -1;
 		SYSERROR("Failed to enter old root directory");
-		goto on_error;
+		return -1;
 	}
 
 	/* Make oldroot rslave to make sure our umounts don't propagate to the
@@ -1521,36 +1516,25 @@ static int lxc_pivot_root(const char *rootfs)
 	 */
 	ret = mount("", ".", "", MS_SLAVE | MS_REC, NULL);
 	if (ret < 0) {
-		ret = -1;
 		SYSERROR("Failed to make oldroot rslave");
-		goto on_error;
+		return -1;
 	}
 
 	ret = umount2(".", MNT_DETACH);
 	if (ret < 0) {
-		ret = -1;
 		SYSERROR("Failed to detach old root directory");
-		goto on_error;
+		return -1;
 	}
 
 	ret = fchdir(newroot);
 	if (ret < 0) {
-		ret = -1;
 		SYSERROR("Failed to re-enter new root directory");
-		goto on_error;
+		return -1;
 	}
-
-	ret = 0;
 
 	TRACE("pivot_root(\"%s\") successful", rootfs);
 
-on_error:
-	close(oldroot);
-
-	if (newroot >= 0)
-		close(newroot);
-
-	return ret;
+	return 0;
 }
 
 static int lxc_setup_rootfs_switch_root(const struct lxc_rootfs *rootfs)
@@ -2374,10 +2358,10 @@ static const char nesting_helpers[] =
 FILE *make_anonymous_mount_file(struct lxc_list *mount,
 				bool include_nesting_helpers)
 {
+	__do_close_prot_errno int fd = -EBADF;
 	int ret;
 	char *mount_entry;
 	struct lxc_list *iterator;
-	int fd = -1;
 
 	fd = memfd_create(".lxc_mount_file", MFD_CLOEXEC);
 	if (fd < 0) {
@@ -2403,30 +2387,25 @@ FILE *make_anonymous_mount_file(struct lxc_list *mount,
 
 		ret = lxc_write_nointr(fd, mount_entry, len);
 		if (ret != len)
-			goto on_error;
+			return NULL;
 
 		ret = lxc_write_nointr(fd, "\n", 1);
 		if (ret != 1)
-			goto on_error;
+			return NULL;
 	}
 
 	if (include_nesting_helpers) {
 		ret = lxc_write_nointr(fd, nesting_helpers,
 				       STRARRAYLEN(nesting_helpers));
 		if (ret != STRARRAYLEN(nesting_helpers))
-			goto on_error;
+			return NULL;
 	}
 
 	ret = lseek(fd, 0, SEEK_SET);
 	if (ret < 0)
-		goto on_error;
+		return NULL;
 
-	return fdopen(fd, "r+");
-
-on_error:
-	SYSERROR("Failed to write mount entry to temporary mount file");
-	close(fd);
-	return NULL;
+	return fdopen(move_fd(fd), "r+");
 }
 
 static int setup_mount_entries(const struct lxc_conf *conf,
@@ -2434,17 +2413,13 @@ static int setup_mount_entries(const struct lxc_conf *conf,
 			       struct lxc_list *mount, const char *lxc_name,
 			       const char *lxc_path)
 {
-	int ret;
-	FILE *f;
+	__do_fclose FILE *f = NULL;
 
 	f = make_anonymous_mount_file(mount, conf->lsm_aa_allow_nesting);
 	if (!f)
 		return -1;
 
-	ret = mount_file_entries(conf, rootfs, f, lxc_name, lxc_path);
-	fclose(f);
-
-	return ret;
+	return mount_file_entries(conf, rootfs, f, lxc_name, lxc_path);
 }
 
 static int parse_cap(const char *cap)
@@ -2777,30 +2752,28 @@ struct lxc_conf *lxc_conf_init(void)
 int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 		     size_t buf_size)
 {
-	int fd, ret;
+	__do_close_prot_errno int fd;
+	int ret;
 	char path[PATH_MAX];
 
 	if (geteuid() != 0 && idtype == ID_TYPE_GID) {
-		size_t buflen;
+		__do_close_prot_errno int setgroups_fd = -EBADF;
 
 		ret = snprintf(path, PATH_MAX, "/proc/%d/setgroups", pid);
 		if (ret < 0 || ret >= PATH_MAX)
 			return -E2BIG;
 
-		fd = open(path, O_WRONLY);
-		if (fd < 0 && errno != ENOENT) {
+		setgroups_fd = open(path, O_WRONLY);
+		if (setgroups_fd < 0 && errno != ENOENT) {
 			SYSERROR("Failed to open \"%s\"", path);
 			return -1;
 		}
 
-		if (fd >= 0) {
-			buflen = STRLITERALLEN("deny\n");
-			errno = 0;
-			ret = lxc_write_nointr(fd, "deny\n", buflen);
-			close(fd);
-			if (ret != buflen) {
-				SYSERROR("Failed to write \"deny\" to "
-					 "\"/proc/%d/setgroups\"", pid);
+		if (setgroups_fd >= 0) {
+			ret = lxc_write_nointr(setgroups_fd, "deny\n",
+					       STRLITERALLEN("deny\n"));
+			if (ret != STRLITERALLEN("deny\n")) {
+				SYSERROR("Failed to write \"deny\" to \"/proc/%d/setgroups\"", pid);
 				return -1;
 			}
 			TRACE("Wrote \"deny\" to \"/proc/%d/setgroups\"", pid);
@@ -2818,9 +2791,7 @@ int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 		return -1;
 	}
 
-	errno = 0;
 	ret = lxc_write_nointr(fd, buf, buf_size);
-	close(fd);
 	if (ret != buf_size) {
 		SYSERROR("Failed to write %cid mapping to \"%s\"",
 			 idtype == ID_TYPE_UID ? 'u' : 'g', path);
@@ -2844,24 +2815,23 @@ static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 	struct stat st;
 	int fret = 0;
 
+	errno = EINVAL;
 	if (cap != CAP_SETUID && cap != CAP_SETGID)
-		return -EINVAL;
+		return -1;
 
+	errno = ENOENT;
 	path = on_path(binary, NULL);
 	if (!path)
-		return -ENOENT;
+		return -1;
 
 	ret = stat(path, &st);
-	if (ret < 0) {
-		fret = -errno;
-		goto cleanup;
-	}
+	if (ret < 0)
+		return -1;
 
 	/* Check if the binary is setuid. */
 	if (st.st_mode & S_ISUID) {
 		DEBUG("The binary \"%s\" does have the setuid bit set", path);
-		fret = 1;
-		goto cleanup;
+		return 1;
 	}
 
 #if HAVE_LIBCAP && LIBCAP_SUPPORTS_FILE_CAPABILITIES
@@ -2871,8 +2841,7 @@ static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 	    lxc_file_cap_is_set(path, CAP_SETUID, CAP_PERMITTED)) {
 		DEBUG("The binary \"%s\" has CAP_SETUID in its CAP_EFFECTIVE "
 		      "and CAP_PERMITTED sets", path);
-		fret = 1;
-		goto cleanup;
+		return 1;
 	}
 
 	/* Check if it has the CAP_SETGID capability. */
@@ -2881,8 +2850,7 @@ static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 	    lxc_file_cap_is_set(path, CAP_SETGID, CAP_PERMITTED)) {
 		DEBUG("The binary \"%s\" has CAP_SETGID in its CAP_EFFECTIVE "
 		      "and CAP_PERMITTED sets", path);
-		fret = 1;
-		goto cleanup;
+		return 1;
 	}
 #else
 	/* If we cannot check for file capabilities we need to give the benefit
@@ -2891,11 +2859,9 @@ static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 	 */
 	DEBUG("Cannot check for file capabilities as full capability support is "
 	      "missing. Manual intervention needed");
-	fret = 1;
 #endif
 
-cleanup:
-	return fret;
+	return 1;
 }
 
 int lxc_map_ids_exec_wrapper(void *args)
@@ -3284,9 +3250,10 @@ void tmp_proc_unmount(struct lxc_conf *lxc_conf)
 void remount_all_slave(void)
 {
 	__do_free char *line = NULL;
-	int memfd, mntinfo_fd, ret;
+	__do_fclose FILE *f = NULL;
+	__do_close_prot_errno int memfd = -EBADF, mntinfo_fd = -EBADF;
+	int ret;
 	ssize_t copied;
-	FILE *f;
 	size_t len = 0;
 
 	mntinfo_fd = open("/proc/self/mountinfo", O_RDONLY | O_CLOEXEC);
@@ -3301,13 +3268,11 @@ void remount_all_slave(void)
 
 		if (errno != ENOSYS) {
 			SYSERROR("Failed to create temporary in-memory file");
-			close(mntinfo_fd);
 			return;
 		}
 
 		memfd = lxc_make_tmpfile(template, true);
 		if (memfd < 0) {
-			close(mntinfo_fd);
 			WARN("Failed to create temporary file");
 			return;
 		}
@@ -3320,29 +3285,26 @@ again:
 			goto again;
 
 		SYSERROR("Failed to copy \"/proc/self/mountinfo\"");
-		close(mntinfo_fd);
-		close(memfd);
 		return;
 	}
-	close(mntinfo_fd);
 
-	/* After a successful fdopen() memfd will be closed when calling
-	 * fclose(f). Calling close(memfd) afterwards is undefined.
-	 */
 	ret = lseek(memfd, 0, SEEK_SET);
 	if (ret < 0) {
 		SYSERROR("Failed to reset file descriptor offset");
-		close(memfd);
 		return;
 	}
 
 	f = fdopen(memfd, "r");
 	if (!f) {
-		SYSERROR("Failed to open copy of \"/proc/self/mountinfo\" to mark "
-				"all shared. Continuing");
-		close(memfd);
+		SYSERROR("Failed to open copy of \"/proc/self/mountinfo\" to mark all shared. Continuing");
 		return;
 	}
+
+	/*
+	 * After a successful fdopen() memfd will be closed when calling
+	 * fclose(f). Calling close(memfd) afterwards is undefined.
+	 */
+	move_fd(memfd);
 
 	while (getline(&line, &len, f) != -1) {
 		char *opts, *target;
@@ -3368,7 +3330,6 @@ again:
 		}
 		TRACE("Remounted \"%s\" as MS_SLAVE", target);
 	}
-	fclose(f);
 	TRACE("Remounted all mount table entries as MS_SLAVE");
 }
 
@@ -4656,7 +4617,7 @@ static char *getgname(void)
 void suggest_default_idmap(void)
 {
 	__do_free char *gname = NULL, *line = NULL, *uname = NULL;
-	FILE *f;
+	__do_fclose FILE *subuid_f = NULL, *subgid_f = NULL;
 	unsigned int uid = 0, urange = 0, gid = 0, grange = 0;
 	size_t len = 0;
 
@@ -4668,13 +4629,13 @@ void suggest_default_idmap(void)
 	if (!gname)
 		return;
 
-	f = fopen(subuidfile, "r");
-	if (!f) {
+	subuid_f = fopen(subuidfile, "r");
+	if (!subuid_f) {
 		ERROR("Your system is not configured with subuids");
 		return;
 	}
 
-	while (getline(&line, &len, f) != -1) {
+	while (getline(&line, &len, subuid_f) != -1) {
 		char *p, *p2;
 		size_t no_newline = 0;
 
@@ -4704,15 +4665,14 @@ void suggest_default_idmap(void)
 		if (lxc_safe_uint(p2, &urange) < 0)
 			WARN("Could not parse UID range");
 	}
-	fclose(f);
 
-	f = fopen(subgidfile, "r");
-	if (!f) {
+	subgid_f = fopen(subgidfile, "r");
+	if (!subgid_f) {
 		ERROR("Your system is not configured with subgids");
 		return;
 	}
 
-	while (getline(&line, &len, f) != -1) {
+	while (getline(&line, &len, subgid_f) != -1) {
 		char *p, *p2;
 		size_t no_newline = 0;
 
@@ -4742,7 +4702,6 @@ void suggest_default_idmap(void)
 		if (lxc_safe_uint(p2, &grange) < 0)
 			WARN("Could not parse GID range");
 	}
-	fclose(f);
 
 	if (!urange || !grange) {
 		ERROR("You do not have subuids or subgids allocated");
