@@ -60,6 +60,7 @@ if [ -z "${DOWNLOAD_KEYSERVER:-}" ]; then
   # Deal with GPG over http proxy
   if [ -n "${http_proxy:-}" ]; then
     DOWNLOAD_KEYSERVER="hkp://p80.pool.sks-keyservers.net:80"
+    DOWNLOAD_GPG_PROXY="--keyserver-options http-proxy=\"${http_proxy}\""
   fi
 fi
 
@@ -133,8 +134,8 @@ gpg_setup() {
 
   success=
   for _ in $(seq 3); do
-    if gpg --keyserver "${DOWNLOAD_KEYSERVER}" \
-      --recv-keys "${DOWNLOAD_KEYID}" >/dev/null 2>&1; then
+    if $(gpg --keyserver "${DOWNLOAD_KEYSERVER}" ${DOWNLOAD_GPG_PROXY:-} \
+      --recv-keys "${DOWNLOAD_KEYID}" >/dev/null 2>&1); then
       success=1
       break
     fi
