@@ -49,6 +49,7 @@
 #include "config.h"
 #include "log.h"
 #include "lxclock.h"
+#include "memory_utils.h"
 #include "namespace.h"
 #include "parse.h"
 #include "raw_syscalls.h"
@@ -641,37 +642,37 @@ uint64_t fnv_64a_buf(void *buf, size_t len, uint64_t hval)
 
 bool is_shared_mountpoint(const char *path)
 {
-	char buf[LXC_LINELEN];
-	FILE *f;
+	__do_fclose FILE *f = NULL;
+	__do_free char *line = NULL;
 	int i;
-	char *p, *p2;
+	size_t len = 0;
 
 	f = fopen("/proc/self/mountinfo", "r");
 	if (!f)
 		return 0;
 
-	while (fgets(buf, LXC_LINELEN, f)) {
-		for (p = buf, i = 0; p && i < 4; i++)
-			p = strchr(p + 1, ' ');
-		if (!p)
+	while (getline(&line, &len, f) > 0) {
+		char *slider1, *slider2;
+
+		for (slider1 = line, i = 0; slider1 && i < 4; i++)
+			slider1 = strchr(slider1 + 1, ' ');
+
+		if (!slider1)
 			continue;
 
-		p2 = strchr(p + 1, ' ');
-		if (!p2)
+		slider2 = strchr(slider1 + 1, ' ');
+		if (!slider2)
 			continue;
 
-		*p2 = '\0';
-		if (strcmp(p + 1, path) == 0) {
+		*slider2 = '\0';
+		if (strcmp(slider1 + 1, path) == 0) {
 			/* This is the path. Is it shared? */
-			p = strchr(p2 + 1, ' ');
-			if (p && strstr(p, "shared:")) {
-				fclose(f);
+			slider1 = strchr(slider2 + 1, ' ');
+			if (slider1 && strstr(slider1, "shared:"))
 				return true;
-			}
 		}
 	}
 
-	fclose(f);
 	return false;
 }
 
