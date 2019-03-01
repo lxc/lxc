@@ -432,8 +432,8 @@ static int set_config_net_macvlan_mode(const char *key, const char *value,
 static int set_config_net_hwaddr(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf, void *data)
 {
+	__do_free char *new_value = NULL;
 	struct lxc_netdev *netdev = data;
-	char *new_value;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_hwaddr(key, lxc_conf, data);
@@ -448,12 +448,11 @@ static int set_config_net_hwaddr(const char *key, const char *value,
 	rand_complete_hwaddr(new_value);
 
 	if (lxc_config_value_empty(new_value)) {
-		free(new_value);
 		netdev->hwaddr = NULL;
 		return 0;
 	}
 
-	netdev->hwaddr = new_value;
+	netdev->hwaddr = move_ptr(new_value);
 
 	return 0;
 }
@@ -494,12 +493,13 @@ static int set_config_net_mtu(const char *key, const char *value,
 static int set_config_net_ipv4_address(const char *key, const char *value,
 				       struct lxc_conf *lxc_conf, void *data)
 {
+	__do_free char *addr = NULL;
+	__do_free struct lxc_inetdev *inetdev = NULL;
+	__do_free struct lxc_list *list = NULL;
 	int ret;
 	struct lxc_netdev *netdev = data;
-	struct lxc_inetdev *inetdev;
-	struct lxc_list *list;
 	char *cursor, *slash;
-	char *addr = NULL, *bcast = NULL, *prefix = NULL;
+	char *bcast = NULL, *prefix = NULL;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_ipv4_address(key, lxc_conf, data);
@@ -513,20 +513,15 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 	memset(inetdev, 0, sizeof(*inetdev));
 
 	list = malloc(sizeof(*list));
-	if (!list) {
-		free(inetdev);
+	if (!list)
 		return -1;
-	}
 
 	lxc_list_init(list);
 	list->elem = inetdev;
 
 	addr = strdup(value);
-	if (!addr) {
-		free(inetdev);
-		free(list);
+	if (!addr)
 		return -1;
-	}
 
 	cursor = strstr(addr, " ");
 	if (cursor) {
@@ -543,9 +538,6 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 	ret = inet_pton(AF_INET, addr, &inetdev->addr);
 	if (!ret || ret < 0) {
 		SYSERROR("Invalid ipv4 address \"%s\"", value);
-		free(inetdev);
-		free(addr);
-		free(list);
 		return -1;
 	}
 
@@ -553,26 +545,16 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 		ret = inet_pton(AF_INET, bcast, &inetdev->bcast);
 		if (!ret || ret < 0) {
 			SYSERROR("Invalid ipv4 broadcast address \"%s\"", value);
-			free(inetdev);
-			free(list);
-			free(addr);
 			return -1;
 		}
 
 	}
 
 	/* No prefix specified, determine it from the network class. */
-	if (prefix) {
-		ret = lxc_safe_uint(prefix, &inetdev->prefix);
-		if (ret < 0) {
-			free(inetdev);
-			free(list);
-			free(addr);
-			return -1;
-		}
-	} else {
+	if (prefix && (lxc_safe_uint(prefix, &inetdev->prefix) < 0))
+		return -1;
+	else
 		inetdev->prefix = config_ip_prefix(&inetdev->addr);
-	}
 
 	/* If no broadcast address, let compute one from the
 	 * prefix and address.
@@ -583,7 +565,8 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 	}
 
 	lxc_list_add_tail(&netdev->ipv4, list);
-	free(addr);
+	move_ptr(inetdev);
+	move_ptr(list);
 
 	return 0;
 }
@@ -605,8 +588,8 @@ static int set_config_net_ipv4_gateway(const char *key, const char *value,
 		netdev->ipv4_gateway = NULL;
 		netdev->ipv4_gateway_auto = true;
 	} else {
+		__do_free struct in_addr *gw = NULL;
 		int ret;
-		struct in_addr *gw;
 
 		gw = malloc(sizeof(*gw));
 		if (!gw)
@@ -615,11 +598,10 @@ static int set_config_net_ipv4_gateway(const char *key, const char *value,
 		ret = inet_pton(AF_INET, value, gw);
 		if (!ret || ret < 0) {
 			SYSERROR("Invalid ipv4 gateway address \"%s\"", value);
-			free(gw);
 			return -1;
 		}
 
-		netdev->ipv4_gateway = gw;
+		netdev->ipv4_gateway = move_ptr(gw);
 		netdev->ipv4_gateway_auto = false;
 	}
 
@@ -629,11 +611,12 @@ static int set_config_net_ipv4_gateway(const char *key, const char *value,
 static int set_config_net_ipv6_address(const char *key, const char *value,
 				       struct lxc_conf *lxc_conf, void *data)
 {
+	__do_free struct lxc_inet6dev *inet6dev = NULL;
+	__do_free struct lxc_list *list = NULL;
+	__do_free char *valdup = NULL;
 	int ret;
 	struct lxc_netdev *netdev = data;
-	struct lxc_inet6dev *inet6dev;
-	struct lxc_list *list;
-	char *slash, *valdup, *netmask;
+	char *slash, *netmask;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_ipv6_address(key, lxc_conf, data);
@@ -647,20 +630,15 @@ static int set_config_net_ipv6_address(const char *key, const char *value,
 	memset(inet6dev, 0, sizeof(*inet6dev));
 
 	list = malloc(sizeof(*list));
-	if (!list) {
-		free(inet6dev);
+	if (!list)
 		return -1;
-	}
 
 	lxc_list_init(list);
 	list->elem = inet6dev;
 
 	valdup = strdup(value);
-	if (!valdup) {
-		free(list);
-		free(inet6dev);
+	if (!valdup)
 		return -1;
-	}
 
 	inet6dev->prefix = 64;
 	slash = strstr(valdup, "/");
@@ -669,25 +647,19 @@ static int set_config_net_ipv6_address(const char *key, const char *value,
 		netmask = slash + 1;
 
 		ret = lxc_safe_uint(netmask, &inet6dev->prefix);
-		if (ret < 0) {
-			free(list);
-			free(inet6dev);
-			free(valdup);
+		if (ret < 0)
 			return -1;
-		}
 	}
 
 	ret = inet_pton(AF_INET6, valdup, &inet6dev->addr);
 	if (!ret || ret < 0) {
 		SYSERROR("Invalid ipv6 address \"%s\"", valdup);
-		free(list);
-		free(inet6dev);
-		free(valdup);
 		return -1;
 	}
 
 	lxc_list_add_tail(&netdev->ipv6, list);
-	free(valdup);
+	move_ptr(inet6dev);
+	move_ptr(list);
 
 	return 0;
 }
@@ -709,8 +681,8 @@ static int set_config_net_ipv6_gateway(const char *key, const char *value,
 		netdev->ipv6_gateway = NULL;
 		netdev->ipv6_gateway_auto = true;
 	} else {
+		__do_free struct in6_addr *gw = NULL;
 		int ret;
-		struct in6_addr *gw;
 
 		gw = malloc(sizeof(*gw));
 		if (!gw)
@@ -719,11 +691,10 @@ static int set_config_net_ipv6_gateway(const char *key, const char *value,
 		ret = inet_pton(AF_INET6, value, gw);
 		if (!ret || ret < 0) {
 			SYSERROR("Invalid ipv6 gateway address \"%s\"", value);
-			free(gw);
 			return -1;
 		}
 
-		netdev->ipv6_gateway = gw;
+		netdev->ipv6_gateway = move_ptr(gw);
 		netdev->ipv6_gateway_auto = false;
 	}
 
@@ -852,7 +823,7 @@ static int set_config_init_gid(const char *key, const char *value,
 static int set_config_hooks(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
-	char *copy;
+	__do_free char *copy = NULL;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_hooks(lxc_conf, key);
@@ -886,8 +857,6 @@ static int set_config_hooks(const char *key, const char *value,
 		return add_hook(lxc_conf, LXCHOOK_CLONE, copy);
 	else if (strcmp(key + 9, "destroy") == 0)
 		return add_hook(lxc_conf, LXCHOOK_DESTROY, copy);
-
-	free(copy);
 
 	return -1;
 }
@@ -1032,8 +1001,8 @@ static int set_config_monitor_signal_pdeath(const char *key, const char *value,
 static int set_config_group(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
-	char *groups, *token;
-	struct lxc_list *grouplist;
+	__do_free char *groups = NULL;
+	char *token;
 	int ret = 0;
 
 	if (lxc_config_value_empty(value))
@@ -1047,23 +1016,18 @@ static int set_config_group(const char *key, const char *value,
 	 * groups in a single element for the list.
 	 */
 	lxc_iterate_parts(token, groups, " \t") {
+		__do_free struct lxc_list *grouplist = NULL;
+
 		grouplist = malloc(sizeof(*grouplist));
-		if (!grouplist) {
-			ret = -1;
-			break;
-		}
+		if (!grouplist)
+			return -1;
 
 		grouplist->elem = strdup(token);
-		if (!grouplist->elem) {
-			free(grouplist);
-			ret = -1;
-			break;
-		}
+		if (!grouplist->elem)
+			return -1;
 
-		lxc_list_add_tail(&lxc_conf->groups, grouplist);
+		lxc_list_add_tail(&lxc_conf->groups, move_ptr(grouplist));
 	}
-
-	free(groups);
 
 	return ret;
 }
@@ -1071,14 +1035,14 @@ static int set_config_group(const char *key, const char *value,
 static int set_config_environment(const char *key, const char *value,
 				  struct lxc_conf *lxc_conf, void *data)
 {
-	struct lxc_list *list_item = NULL;
+	__do_free struct lxc_list *list_item = NULL;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_environment(lxc_conf);
 
 	list_item = malloc(sizeof(*list_item));
 	if (!list_item)
-		goto on_error;
+		return -1;
 
 	if (!strchr(value, '=')) {
 		const char *env_val;
@@ -1087,7 +1051,7 @@ static int set_config_environment(const char *key, const char *value,
 
 		env_val = getenv(env_key);
 		if (!env_val)
-			goto on_error;
+			return -1;
 
 		env_var[0] = env_key;
 		env_var[1] = env_val;
@@ -1097,16 +1061,11 @@ static int set_config_environment(const char *key, const char *value,
 	}
 
 	if (!list_item->elem)
-		goto on_error;
+		return -1;
 
-	lxc_list_add_tail(&lxc_conf->environment, list_item);
+	lxc_list_add_tail(&lxc_conf->environment, move_ptr(list_item));
 
 	return 0;
-
-on_error:
-	free(list_item);
-
-	return -1;
 }
 
 static int set_config_tty_max(const char *key, const char *value,
@@ -1183,8 +1142,8 @@ static int set_config_apparmor_raw(const char *key,
 				   struct lxc_conf *lxc_conf,
 				   void *data)
 {
+	__do_free struct lxc_list *list = NULL;
 	char *elem;
-	struct lxc_list *list;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_apparmor_raw(lxc_conf);
@@ -1196,13 +1155,11 @@ static int set_config_apparmor_raw(const char *key,
 	}
 
 	elem = strdup(value);
-	if (!elem) {
-		free(list);
+	if (!elem)
 		return -1;
-	}
 	list->elem = elem;
 
-	lxc_list_add_tail(&lxc_conf->lsm_aa_raw, list);
+	lxc_list_add_tail(&lxc_conf->lsm_aa_raw, move_ptr(list));
 
 	return 0;
 }
@@ -1684,28 +1641,28 @@ on_error:
 static int set_config_idmaps(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf, void *data)
 {
+	__do_free struct lxc_list *idmaplist = NULL;
+	__do_free struct id_map *idmap = NULL;
 	unsigned long hostid, nsid, range;
 	char type;
 	int ret;
-	struct lxc_list *idmaplist = NULL;
-	struct id_map *idmap = NULL;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_idmaps(lxc_conf);
 
 	idmaplist = malloc(sizeof(*idmaplist));
 	if (!idmaplist)
-		goto on_error;
+		return -1;
 
 	idmap = malloc(sizeof(*idmap));
 	if (!idmap)
-		goto on_error;
+		return -1;
 	memset(idmap, 0, sizeof(*idmap));
 
 	ret = parse_idmaps(value, &type, &nsid, &hostid, &range);
 	if (ret < 0) {
 		ERROR("Failed to parse id mappings");
-		goto on_error;
+		return -1;
 	}
 
 	INFO("Read uid map: type %c nsid %lu hostid %lu range %lu", type, nsid, hostid, range);
@@ -1714,7 +1671,7 @@ static int set_config_idmaps(const char *key, const char *value,
 	else if (type == 'g')
 		idmap->idtype = ID_TYPE_GID;
 	else
-		goto on_error;
+		return -1;
 
 	idmap->hostid = hostid;
 	idmap->nsid = nsid;
@@ -1730,15 +1687,10 @@ static int set_config_idmaps(const char *key, const char *value,
 		if (idmap->nsid == 0)
 			lxc_conf->root_nsgid_map = idmap;
 
-	idmap = NULL;
+	move_ptr(idmap);
+	move_ptr(idmaplist);
 
 	return 0;
-
-on_error:
-	free(idmaplist);
-	free(idmap);
-
-	return -1;
 }
 
 static int set_config_mount_fstab(const char *key, const char *value,
@@ -1755,9 +1707,9 @@ static int set_config_mount_fstab(const char *key, const char *value,
 static int set_config_mount_auto(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf, void *data)
 {
-	char *autos, *token;
+	__do_free char *autos = NULL;
+	char *token;
 	int i;
-	int ret = -1;
 	static struct {
 		const char *token;
 		int mask;
@@ -1819,7 +1771,7 @@ static int set_config_mount_auto(const char *key, const char *value,
 
 		if (!allowed_auto_mounts[i].token) {
 			ERROR("Invalid filesystem to automount \"%s\"", token);
-			goto on_error;
+			return -1;
 		}
 
 		lxc_conf->auto_mounts &= ~allowed_auto_mounts[i].mask;
@@ -1832,7 +1784,7 @@ static int set_config_mount_auto(const char *key, const char *value,
 			host_path = token + STRLITERALLEN("shmounts:");
 			if (*host_path == '\0') {
 				SYSERROR("Failed to copy shmounts host path");
-				goto on_error;
+				return -1;
 			}
 
 			container_path = strchr(host_path, ':');
@@ -1844,30 +1796,25 @@ static int set_config_mount_auto(const char *key, const char *value,
 			lxc_conf->shmount.path_host = strdup(host_path);
 			if (!lxc_conf->shmount.path_host) {
 				SYSERROR("Failed to copy shmounts host path");
-				goto on_error;
+				return -1;
 			}
 
 			lxc_conf->shmount.path_cont = strdup(container_path);
 			if(!lxc_conf->shmount.path_cont) {
 				SYSERROR("Failed to copy shmounts container path");
-				goto on_error;
+				return -1;
 			}
 		}
 	}
 
-	ret = 0;
-
-on_error:
-	free(autos);
-
-	return ret;
+	return 0;
 }
 
 static int set_config_mount(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
+	__do_free struct lxc_list *mntlist = NULL;
 	char *mntelem;
-	struct lxc_list *mntlist;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_mount_entries(lxc_conf);
@@ -1877,13 +1824,11 @@ static int set_config_mount(const char *key, const char *value,
 		return -1;
 
 	mntelem = strdup(value);
-	if (!mntelem) {
-		free(mntlist);
+	if (!mntelem)
 		return -1;
-	}
 	mntlist->elem = mntelem;
 
-	lxc_list_add_tail(&lxc_conf->mount_list, mntlist);
+	lxc_list_add_tail(&lxc_conf->mount_list, move_ptr(mntlist));
 
 	return 0;
 }
@@ -1895,8 +1840,9 @@ int add_elem_to_mount_list(const char *value, struct lxc_conf *lxc_conf) {
 static int set_config_cap_keep(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf, void *data)
 {
-	char *keepcaps, *token;
-	struct lxc_list *keeplist;
+	__do_free char *keepcaps = NULL;
+	__do_free struct lxc_list *keeplist = NULL;
+	char *token;
 	int ret = -1;
 
 	if (lxc_config_value_empty(value))
@@ -1915,31 +1861,24 @@ static int set_config_cap_keep(const char *key, const char *value,
 
 		keeplist = malloc(sizeof(*keeplist));
 		if (!keeplist)
-			goto on_error;
+			return -1;
 
 		keeplist->elem = strdup(token);
-		if (!keeplist->elem) {
-			free(keeplist);
-			goto on_error;
-		}
+		if (!keeplist->elem)
+			return -1;
 
-		lxc_list_add_tail(&lxc_conf->keepcaps, keeplist);
+		lxc_list_add_tail(&lxc_conf->keepcaps, move_ptr(keeplist));
 	}
 
-	ret = 0;
-
-on_error:
-	free(keepcaps);
-
-	return ret;
+	return 0;
 }
 
 static int set_config_cap_drop(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf, void *data)
 {
-	char *dropcaps, *token;
-	struct lxc_list *droplist;
-	int ret = -1;
+	__do_free char *dropcaps = NULL;
+	__do_free struct lxc_list *droplist = NULL;
+	char *token;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_config_caps(lxc_conf);
@@ -1954,23 +1893,16 @@ static int set_config_cap_drop(const char *key, const char *value,
 	lxc_iterate_parts(token, dropcaps, " \t") {
 		droplist = malloc(sizeof(*droplist));
 		if (!droplist)
-			goto on_error;
+			return -1;
 
 		droplist->elem = strdup(token);
-		if (!droplist->elem) {
-			free(droplist);
-			goto on_error;
-		}
+		if (!droplist->elem)
+			return -1;
 
 		lxc_list_add_tail(&lxc_conf->caps, droplist);
 	}
 
-        ret = 0;
-
-on_error:
-	free(dropcaps);
-
-	return ret;
+	return 0;
 }
 
 static int set_config_console_path(const char *key, const char *value,
@@ -2226,8 +2158,9 @@ static int set_config_includefiles(const char *key, const char *value,
 static int set_config_rootfs_path(const char *key, const char *value,
 				  struct lxc_conf *lxc_conf, void *data)
 {
+	__do_free char *dup = NULL;
 	int ret;
-	char *dup, *tmp;
+	char *tmp;
 	const char *container_path;
 
 	if (lxc_config_value_empty(value)) {
@@ -2249,10 +2182,8 @@ static int set_config_rootfs_path(const char *key, const char *value,
 		*tmp = '\0';
 
 		ret = set_config_path_item(&lxc_conf->rootfs.bdev_type, dup);
-		if (ret < 0) {
-			free(dup);
+		if (ret < 0)
 			return -1;
-		}
 
 		tmp++;
 		container_path = tmp;
@@ -2261,7 +2192,6 @@ static int set_config_rootfs_path(const char *key, const char *value,
 	}
 
 	ret = set_config_path_item(&lxc_conf->rootfs.path, container_path);
-	free(dup);
 
 	return ret;
 }
@@ -2300,9 +2230,10 @@ static int set_config_rootfs_mount(const char *key, const char *value,
 static int set_config_rootfs_options(const char *key, const char *value,
 				     struct lxc_conf *lxc_conf, void *data)
 {
+	__do_free char *mdata = NULL;
 	int ret;
 	unsigned long mflags = 0, pflags = 0;
-	char *mdata = NULL, *opts = NULL;
+	char *opts = NULL;
 	struct lxc_rootfs *rootfs = &lxc_conf->rootfs;
 
 	ret = parse_mntopts(value, &mflags, &mdata);
@@ -2310,20 +2241,16 @@ static int set_config_rootfs_options(const char *key, const char *value,
 		return -EINVAL;
 
 	ret = parse_propagationopts(value, &pflags);
-	if (ret < 0) {
-		free(mdata);
+	if (ret < 0)
 		return -EINVAL;
-	}
 
 	ret = set_config_string_item(&opts, value);
-	if (ret < 0) {
-		free(mdata);
+	if (ret < 0)
 		return -ENOMEM;
-	}
 
 	rootfs->mountflags = mflags | pflags;
 	rootfs->options = opts;
-	rootfs->data = mdata;
+	rootfs->data = move_ptr(mdata);
 
 	return 0;
 }
@@ -2331,7 +2258,7 @@ static int set_config_rootfs_options(const char *key, const char *value,
 static int set_config_uts_name(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf, void *data)
 {
-	struct utsname *utsname;
+	__do_free struct utsname *utsname = NULL;
 
 	if (lxc_config_value_empty(value)) {
 		clr_config_uts_name(key, lxc_conf, NULL);
@@ -2342,14 +2269,12 @@ static int set_config_uts_name(const char *key, const char *value,
 	if (!utsname)
 		return -1;
 
-	if (strlen(value) >= sizeof(utsname->nodename)) {
-		free(utsname);
+	if (strlen(value) >= sizeof(utsname->nodename))
 		return -1;
-	}
 
 	(void)strlcpy(utsname->nodename, value, sizeof(utsname->nodename));
 	free(lxc_conf->utsname);
-	lxc_conf->utsname = utsname;
+	lxc_conf->utsname = move_ptr(utsname);
 
 	return 0;
 }
@@ -2357,7 +2282,8 @@ static int set_config_uts_name(const char *key, const char *value,
 static int set_config_namespace_clone(const char *key, const char *value,
 				      struct lxc_conf *lxc_conf, void *data)
 {
-	char *ns, *token;
+	__do_free char *ns = NULL;
+	char *token;
 	int cloneflag = 0;
 
 	if (lxc_config_value_empty(value))
@@ -2378,13 +2304,10 @@ static int set_config_namespace_clone(const char *key, const char *value,
 		token += lxc_char_left_gc(token, strlen(token));
 		token[lxc_char_right_gc(token, strlen(token))] = '\0';
 		cloneflag = lxc_namespace_2_cloneflag(token);
-		if (cloneflag < 0) {
-			free(ns);
+		if (cloneflag < 0)
 			return -EINVAL;
-		}
 		lxc_conf->ns_clone |= cloneflag;
 	}
-	free(ns);
 
 	return 0;
 }
@@ -2392,7 +2315,8 @@ static int set_config_namespace_clone(const char *key, const char *value,
 static int set_config_namespace_keep(const char *key, const char *value,
 				     struct lxc_conf *lxc_conf, void *data)
 {
-	char *ns, *token;
+	__do_free char *ns = NULL;
+	char *token;
 	int cloneflag = 0;
 
 	if (lxc_config_value_empty(value))
@@ -2413,13 +2337,10 @@ static int set_config_namespace_keep(const char *key, const char *value,
 		token += lxc_char_left_gc(token, strlen(token));
 		token[lxc_char_right_gc(token, strlen(token))] = '\0';
 		cloneflag = lxc_namespace_2_cloneflag(token);
-		if (cloneflag < 0) {
-			free(ns);
+		if (cloneflag < 0)
 			return -EINVAL;
-		}
 		lxc_conf->ns_keep |= cloneflag;
 	}
-	free(ns);
 
 	return 0;
 }
@@ -2448,7 +2369,8 @@ struct parse_line_conf {
 
 static int parse_line(char *buffer, void *data)
 {
-	char *dot, *key, *line, *linep, *value;
+	__do_free char *linep = NULL;
+	char *dot, *key, *line, *value;
 	bool empty_line;
 	struct lxc_config_t *config;
 	int ret = 0;
@@ -2471,28 +2393,28 @@ static int parse_line(char *buffer, void *data)
 	if (!plc->from_include) {
 		ret = append_unexp_config_line(line, plc->conf);
 		if (ret < 0)
-			goto on_error;
+			return -1;
 	}
 
 	if (empty_line)
-		goto on_error;
+		return -1;
 
 	line += lxc_char_left_gc(line, strlen(line));
 
 	/* ignore comments */
 	if (line[0] == '#')
-		goto on_error;
+		return -1;
 
 	/* martian option - don't add it to the config itself */
 	if (strncmp(line, "lxc.", 4))
-		goto on_error;
+		return -1;
 
 	ret = -1;
 
 	dot = strchr(line, '=');
 	if (!dot) {
 		ERROR("Invalid configuration line: %s", line);
-		goto on_error;
+		return -1;
 	}
 
 	*dot = '\0';
@@ -2517,20 +2439,16 @@ static int parse_line(char *buffer, void *data)
 	config = lxc_get_config(key);
 	if (!config) {
 		ERROR("Unknown configuration key \"%s\"", key);
-		goto on_error;
+		return -1;
 	}
 
-	ret = config->set(key, value, plc->conf, NULL);
-
-on_error:
-	free(linep);
-
-	return ret;
+	return config->set(key, value, plc->conf, NULL);
 }
 
 static struct new_config_item *parse_new_conf_line(char *buffer)
 {
-	char *dot, *key, *line, *linep, *value;
+	__do_free char *linep = NULL;
+	char *dot, *key, *line, *value;
 	int ret = 0;
 	char *dup = buffer;
 	struct new_config_item *new = NULL;
@@ -2543,13 +2461,13 @@ static struct new_config_item *parse_new_conf_line(char *buffer)
 
 	/* martian option - don't add it to the config itself */
 	if (strncmp(line, "lxc.", 4))
-		goto on_error;
+		return NULL;
 
 	ret = -1;
 	dot = strchr(line, '=');
 	if (!dot) {
 		ERROR("Invalid configuration item: %s", line);
-		goto on_error;
+		return NULL;
 	}
 
 	*dot = '\0';
@@ -2574,17 +2492,14 @@ static struct new_config_item *parse_new_conf_line(char *buffer)
 	ret = -1;
 	new = malloc(sizeof(struct new_config_item));
 	if (!new)
-		goto on_error;
+		return NULL;
 
 	new->key = strdup(key);
 	new->val = strdup(value);
 	if (!new->val || !new->key)
-		goto on_error;
+		return NULL;
 
 	ret = 0;
-
-on_error:
-	free(linep);
 
 	if (ret < 0 && new) {
 		free(new->key);
@@ -2612,19 +2527,17 @@ int lxc_config_read(const char *file, struct lxc_conf *conf, bool from_include)
 
 int lxc_config_define_add(struct lxc_list *defines, char *arg)
 {
-	struct lxc_list *dent;
+	__do_free struct lxc_list *dent = NULL;
 
 	dent = malloc(sizeof(struct lxc_list));
 	if (!dent)
 		return -1;
 
 	dent->elem = parse_new_conf_line(arg);
-	if (!dent->elem) {
-		free(dent);
+	if (!dent->elem)
 		return -1;
-	}
 
-	lxc_list_add_tail(defines, dent);
+	lxc_list_add_tail(defines, move_ptr(dent));
 
 	return 0;
 }
