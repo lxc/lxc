@@ -2509,7 +2509,7 @@ int write_config(int fd, const struct lxc_conf *conf)
 bool do_append_unexp_config_line(struct lxc_conf *conf, const char *key,
 				 const char *v)
 {
-	__do_free char *tmp;
+	__do_free char *tmp = NULL;
 	int ret;
 	size_t len;
 
