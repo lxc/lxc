@@ -32,6 +32,7 @@
 #include "initutils.h"
 #include "log.h"
 #include "macro.h"
+#include "memory_utils.h"
 
 #ifndef HAVE_STRLCPY
 #include "include/strlcpy.h"
@@ -115,7 +116,6 @@ const char *lxc_global_config_value(const char *option_name)
 
 	const char * const (*ptr)[2];
 	size_t i;
-	char buf[1024], *p, *p2;
 	FILE *fin = NULL;
 
 	for (i = 0, ptr = options; (*ptr)[0]; ptr++, i++) {
@@ -142,51 +142,64 @@ const char *lxc_global_config_value(const char *option_name)
 	fin = fopen_cloexec(user_config_path, "r");
 	free(user_config_path);
 	if (fin) {
-		while (fgets(buf, 1024, fin)) {
-			if (buf[0] == '#')
+		__do_free char *line = NULL;
+		size_t len = 0;
+		char *slider1, *slider2;
+
+		while (getline(&line, &len, fin) > 0) {
+			if (*line == '#')
 				continue;
-			p = strstr(buf, option_name);
-			if (!p)
+
+			slider1 = strstr(line, option_name);
+			if (!slider1)
 				continue;
+
 			/* see if there was just white space in front
 			 * of the option name
 			 */
-			for (p2 = buf; p2 < p; p2++) {
-				if (*p2 != ' ' && *p2 != '\t')
+			for (slider2 = line; slider2 < slider1; slider2++)
+				if (*slider2 != ' ' && *slider2 != '\t')
 					break;
-			}
-			if (p2 < p)
+
+			if (slider2 < slider1)
 				continue;
-			p = strchr(p, '=');
-			if (!p)
+
+			slider1 = strchr(slider1, '=');
+			if (!slider1)
 				continue;
+
 			/* see if there was just white space after
 			 * the option name
 			 */
-			for (p2 += strlen(option_name); p2 < p; p2++) {
-				if (*p2 != ' ' && *p2 != '\t')
+			for (slider2 += strlen(option_name); slider2 < slider1;
+			     slider2++)
+				if (*slider2 != ' ' && *slider2 != '\t')
 					break;
-			}
-			if (p2 < p)
+
+			if (slider2 < slider1)
 				continue;
-			p++;
-			while (*p && (*p == ' ' || *p == '\t')) p++;
-			if (!*p)
+
+			slider1++;
+			while (*slider1 && (*slider1 == ' ' || *slider1 == '\t'))
+				slider1++;
+
+			if (!*slider1)
 				continue;
 
 			if (strcmp(option_name, "lxc.lxcpath") == 0) {
 				free(user_lxc_path);
-				user_lxc_path = copy_global_config_value(p);
+				user_lxc_path = copy_global_config_value(slider1);
 				remove_trailing_slashes(user_lxc_path);
 				values[i] = user_lxc_path;
 				user_lxc_path = NULL;
 				goto out;
 			}
 
-			values[i] = copy_global_config_value(p);
+			values[i] = copy_global_config_value(slider1);
 			goto out;
 		}
 	}
+
 	/* could not find value, use default */
 	if (strcmp(option_name, "lxc.lxcpath") == 0) {
 		remove_trailing_slashes(user_lxc_path);
