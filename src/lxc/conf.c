@@ -1339,8 +1339,6 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 {
 	__do_free char *nroot = NULL;
 	int i, ret;
-	char *p, *p2;
-	char buf[LXC_LINELEN];
 	char *root = rootfs->mount;
 
 	nroot = realpath(root, NULL);
@@ -1380,7 +1378,10 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 	 */
 	for (;;) {
 		__do_fclose FILE *f = NULL;
+		__do_free char *line = NULL;
+		char *slider1, *slider2;
 		int progress = 0;
+		size_t len = 0;
 
 		f = fopen("./proc/self/mountinfo", "r");
 		if (!f) {
@@ -1388,27 +1389,27 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 			return -1;
 		}
 
-		while (fgets(buf, LXC_LINELEN, f)) {
-			for (p = buf, i=0; p && i < 4; i++)
-				p = strchr(p+1, ' ');
+		while (getline(&line, &len, f) > 0) {
+			for (slider1 = line, i = 0; slider1 && i < 4; i++)
+				slider1 = strchr(slider1 + 1, ' ');
 
-			if (!p)
+			if (!slider1)
 				continue;
 
-			p2 = strchr(p+1, ' ');
-			if (!p2)
+			slider2 = strchr(slider1 + 1, ' ');
+			if (!slider2)
 				continue;
 
-			*p2 = '\0';
-			*p = '.';
+			*slider2 = '\0';
+			*slider1 = '.';
 
-			if (strcmp(p + 1, "/") == 0)
+			if (strcmp(slider1 + 1, "/") == 0)
 				continue;
 
-			if (strcmp(p + 1, "/proc") == 0)
+			if (strcmp(slider1 + 1, "/proc") == 0)
 				continue;
 
-			ret = umount2(p, MNT_DETACH);
+			ret = umount2(slider1, MNT_DETACH);
 			if (ret == 0)
 				progress++;
 		}
