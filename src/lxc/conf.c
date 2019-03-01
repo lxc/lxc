@@ -307,7 +307,7 @@ static struct limit_opt limit_opt[] = {
 static int run_buffer(char *buffer)
 {
 	__do_free char *output = NULL;
-	int ret;
+	int fd, ret;
 	struct lxc_popen_FILE *f;
 
 	f = lxc_popen(buffer);
@@ -323,8 +323,25 @@ static int run_buffer(char *buffer)
 		return -1;
 	}
 
-	while (fgets(output, LXC_LOG_BUFFER_SIZE, f->f))
-		DEBUG("Script %s with output: %s", buffer, output);
+	fd = fileno(f->f);
+	if (fd < 0) {
+		SYSERROR("Failed to retrieve underlying file descriptor");
+		lxc_pclose(f);
+		return -1;
+	}
+
+	for (int i = 0; i < 10; i++) {
+		ssize_t bytes_read;
+
+		bytes_read = lxc_read_nointr(fd, output, LXC_LOG_BUFFER_SIZE - 1);
+		if (bytes_read > 0) {
+			output[bytes_read] = '\0';
+			DEBUG("Script %s produced output: %s", buffer, output);
+			continue;
+		}
+
+		break;
+	}
 
 	ret = lxc_pclose(f);
 	if (ret == -1) {
