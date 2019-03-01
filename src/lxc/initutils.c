@@ -240,62 +240,64 @@ out:
  */
 int setproctitle(char *title)
 {
+	__do_fclose FILE *f = NULL;
+	int i, fd, len;
+	char *buf_ptr;
+	char buf[LXC_LINELEN];
+	int ret = 0;
+	ssize_t bytes_read = 0;
 	static char *proctitle = NULL;
-	char buf[2048], *tmp;
-	FILE *f;
-	int i, len, ret = 0;
 
-	/* We don't really need to know all of this stuff, but unfortunately
+	/*
+	 * We don't really need to know all of this stuff, but unfortunately
 	 * PR_SET_MM_MAP requires us to set it all at once, so we have to
 	 * figure it out anyway.
 	 */
 	unsigned long start_data, end_data, start_brk, start_code, end_code,
-			start_stack, arg_start, arg_end, env_start, env_end,
-			brk_val;
+	    start_stack, arg_start, arg_end, env_start, env_end, brk_val;
 	struct prctl_mm_map prctl_map;
 
 	f = fopen_cloexec("/proc/self/stat", "r");
-	if (!f) {
+	if (!f)
 		return -1;
-	}
 
-	tmp = fgets(buf, sizeof(buf), f);
-	fclose(f);
-	if (!tmp) {
+	fd = fileno(f);
+	if (fd < 0)
 		return -1;
-	}
+
+	bytes_read = lxc_read_nointr(fd, buf, sizeof(buf) - 1);
+	if (bytes_read <= 0)
+		return -1;
+
+	buf[bytes_read] = '\0';
 
 	/* Skip the first 25 fields, column 26-28 are start_code, end_code,
 	 * and start_stack */
-	tmp = strchr(buf, ' ');
+	buf_ptr = strchr(buf, ' ');
 	for (i = 0; i < 24; i++) {
-		if (!tmp)
+		if (!buf_ptr)
 			return -1;
-		tmp = strchr(tmp+1, ' ');
+		buf_ptr = strchr(buf_ptr + 1, ' ');
 	}
-	if (!tmp)
+	if (!buf_ptr)
 		return -1;
 
-	i = sscanf(tmp, "%lu %lu %lu", &start_code, &end_code, &start_stack);
+	i = sscanf(buf_ptr, "%lu %lu %lu", &start_code, &end_code, &start_stack);
 	if (i != 3)
 		return -1;
 
 	/* Skip the next 19 fields, column 45-51 are start_data to arg_end */
 	for (i = 0; i < 19; i++) {
-		if (!tmp)
+		if (!buf_ptr)
 			return -1;
-		tmp = strchr(tmp+1, ' ');
+		buf_ptr = strchr(buf_ptr + 1, ' ');
 	}
 
-	if (!tmp)
+	if (!buf_ptr)
 		return -1;
 
-	i = sscanf(tmp, "%lu %lu %lu %*u %*u %lu %lu",
-		&start_data,
-		&end_data,
-		&start_brk,
-		&env_start,
-		&env_end);
+	i = sscanf(buf_ptr, "%lu %lu %lu %*u %*u %lu %lu", &start_data,
+		   &end_data, &start_brk, &env_start, &env_end);
 	if (i != 5)
 		return -1;
 
@@ -307,32 +309,32 @@ int setproctitle(char *title)
 	if (!proctitle)
 		return -1;
 
-	arg_start = (unsigned long) proctitle;
+	arg_start = (unsigned long)proctitle;
 	arg_end = arg_start + len;
 
 	brk_val = syscall(__NR_brk, 0);
 
-	prctl_map = (struct prctl_mm_map) {
-		.start_code = start_code,
-		.end_code = end_code,
-		.start_stack = start_stack,
-		.start_data = start_data,
-		.end_data = end_data,
-		.start_brk = start_brk,
-		.brk = brk_val,
-		.arg_start = arg_start,
-		.arg_end = arg_end,
-		.env_start = env_start,
-		.env_end = env_end,
-		.auxv = NULL,
-		.auxv_size = 0,
-		.exe_fd = -1,
+	prctl_map = (struct prctl_mm_map){
+	    .start_code = start_code,
+	    .end_code = end_code,
+	    .start_stack = start_stack,
+	    .start_data = start_data,
+	    .end_data = end_data,
+	    .start_brk = start_brk,
+	    .brk = brk_val,
+	    .arg_start = arg_start,
+	    .arg_end = arg_end,
+	    .env_start = env_start,
+	    .env_end = env_end,
+	    .auxv = NULL,
+	    .auxv_size = 0,
+	    .exe_fd = -1,
 	};
 
 	ret = prctl(PR_SET_MM, prctl_arg(PR_SET_MM_MAP), prctl_arg(&prctl_map),
 		    prctl_arg(sizeof(prctl_map)), prctl_arg(0));
 	if (ret == 0)
-		(void)strlcpy((char*)arg_start, title, len);
+		(void)strlcpy((char *)arg_start, title, len);
 	else
 		SYSWARN("Failed to set cmdline");
 
