@@ -2813,7 +2813,6 @@ static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 	__do_free char *path = NULL;
 	int ret;
 	struct stat st;
-	int fret = 0;
 
 	errno = EINVAL;
 	if (cap != CAP_SETUID && cap != CAP_SETGID)
