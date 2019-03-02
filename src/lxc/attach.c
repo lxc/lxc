@@ -159,7 +159,6 @@ static int in_same_namespace(pid_t pid1, pid_t pid2, const char *ns)
 {
 	__do_close_prot_errno int ns_fd1 = -1, ns_fd2 = -1;
 	int ret = -1;
-	int saved_errno;
 	struct stat ns_st1, ns_st2;
 
 	ns_fd1 = lxc_preserve_ns(pid1, ns);
