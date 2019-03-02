@@ -669,7 +669,7 @@ static bool no_new_privs(struct lxc_container *c, lxc_attach_options_t *options)
 
 static signed long get_personality(const char *name, const char *lxcpath)
 {
-	__do_free char *p;
+	__do_free char *p = NULL;
 
 	p = lxc_cmd_get_config_item(name, "lxc.arch", lxcpath);
 	if (!p)
