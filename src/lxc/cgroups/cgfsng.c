@@ -386,7 +386,7 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 	int ret;
 	ssize_t i;
 	char oldv;
-	char *lastslash, *posscpus_tmp;
+	char *lastslash;
 	ssize_t maxisol = 0, maxposs = 0;
 	bool bret = false, flipped_bit = false;
 
@@ -2642,7 +2642,7 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 {
 	__do_free char *subtree_path = NULL;
 	int ret;
-	char *mountpoint, *tmp;
+	char *mountpoint;
 	char **delegatable;
 	struct hierarchy *new;
 	char *base_cgroup = NULL;
