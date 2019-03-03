@@ -1322,7 +1322,7 @@ static char *lxcbasename(char *path)
 	while (*p != '/' && p > path)
 		p--;
 
-	return (p == path) ? p : ++p;
+	return (p == path && *p != '/') ? p : ++p;
 }
 
 static bool create_run_template(struct lxc_container *c, char *tpath,
