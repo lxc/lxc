@@ -550,7 +550,7 @@ out:
 #define PHYSNAME "/sys/class/net/%s/phy80211/name"
 static char *is_wlan(const char *ifname)
 {
-	__do_free char *path;
+	__do_free char *path = NULL;
 	int i, ret;
 	long physlen;
 	size_t len;
