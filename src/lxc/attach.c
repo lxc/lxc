@@ -159,7 +159,6 @@ static int in_same_namespace(pid_t pid1, pid_t pid2, const char *ns)
 {
 	__do_close_prot_errno int ns_fd1 = -1, ns_fd2 = -1;
 	int ret = -1;
-	int saved_errno;
 	struct stat ns_st1, ns_st2;
 
 	ns_fd1 = lxc_preserve_ns(pid1, ns);
@@ -670,7 +669,7 @@ static bool no_new_privs(struct lxc_container *c, lxc_attach_options_t *options)
 
 static signed long get_personality(const char *name, const char *lxcpath)
 {
-	__do_free char *p;
+	__do_free char *p = NULL;
 
 	p = lxc_cmd_get_config_item(name, "lxc.arch", lxcpath);
 	if (!p)

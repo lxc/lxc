@@ -62,7 +62,7 @@ static bool wait_for_partition(const char *path);
 
 bool attach_nbd(char *src, struct lxc_conf *conf)
 {
-	__do_free char *orig;
+	__do_free char *orig = NULL;
 	char *p, path[50];
 	int i = 0;
 
