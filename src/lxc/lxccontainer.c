@@ -121,7 +121,7 @@ static bool do_lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 
 static bool config_file_exists(const char *lxcpath, const char *cname)
 {
-	__do_free char *fname;
+	__do_free char *fname = NULL;
 	int ret;
 	size_t len;
 
@@ -145,7 +145,7 @@ static bool config_file_exists(const char *lxcpath, const char *cname)
  */
 static int ongoing_create(struct lxc_container *c)
 {
-	__do_free char *path;
+	__do_free char *path = NULL;
 	int fd, ret;
 	size_t len;
 	struct flock lk = {0};
@@ -191,7 +191,7 @@ static int ongoing_create(struct lxc_container *c)
 
 static int create_partial(struct lxc_container *c)
 {
-	__do_free char *path;
+	__do_free char *path = NULL;
 	int fd, ret;
 	size_t len;
 	struct flock lk = {0};
@@ -228,7 +228,7 @@ static int create_partial(struct lxc_container *c)
 
 static void remove_partial(struct lxc_container *c, int fd)
 {
-	__do_free char *path;
+	__do_free char *path = NULL;
 	int ret;
 	size_t len;
 
@@ -525,7 +525,6 @@ WRAP_API(bool, lxcapi_is_running)
 
 static bool do_lxcapi_freeze(struct lxc_container *c)
 {
-	int ret;
 	lxc_state_t s;
 
 	if (!c || !c->lxc_conf)
@@ -542,7 +541,6 @@ WRAP_API(bool, lxcapi_freeze)
 
 static bool do_lxcapi_unfreeze(struct lxc_container *c)
 {
-	int ret;
 	lxc_state_t s;
 
 	if (!c || !c->lxc_conf)
@@ -1208,7 +1206,6 @@ static int do_create_container_dir(const char *path, struct lxc_conf *conf)
 {
 	__do_free char *p = NULL;
 	int lasterr;
-	size_t len;
 	int ret = -1;
 
 	mode_t mask = umask(0002);
@@ -1265,7 +1262,7 @@ static struct lxc_storage *do_storage_create(struct lxc_container *c,
 					     const char *type,
 					     struct bdev_specs *specs)
 {
-	__do_free char *dest;
+	__do_free char *dest = NULL;
 	int ret;
 	size_t len;
 	struct lxc_storage *bdev;
@@ -3402,7 +3399,7 @@ err:
 
 static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
 {
-	__do_free char *cpath;
+	__do_free char *cpath = NULL;
 	int i, len, ret;
 	struct lxc_list *it;
 
@@ -3565,7 +3562,7 @@ static bool add_rdepends(struct lxc_container *c, struct lxc_container *c0)
 bool should_default_to_snapshot(struct lxc_container *c0,
 				struct lxc_container *c1)
 {
-	__do_free char *p0, *p1;
+	__do_free char *p0 = NULL, *p1 = NULL;
 	int ret;
 	size_t l0 = strlen(c0->config_path) + strlen(c0->name) + 2;
 	size_t l1 = strlen(c1->config_path) + strlen(c1->name) + 2;
@@ -4094,7 +4091,7 @@ static int lxcapi_attach_run_wait(struct lxc_container *c, lxc_attach_options_t 
 
 static int get_next_index(const char *lxcpath, char *cname)
 {
-	__do_free char *fname;
+	__do_free char *fname = NULL;
 	struct stat sb;
 	int i = 0, ret;
 
@@ -4229,7 +4226,7 @@ static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	}
 
 	if (commentfile) {
-		__do_free char *path;
+		__do_free char *path = NULL;
 		/* $p / $name / comment \0 */
 		int len = strlen(snappath) + strlen(newname) + 10;
 
