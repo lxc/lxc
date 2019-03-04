@@ -137,7 +137,7 @@ int loop_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 int loop_create(struct lxc_storage *bdev, const char *dest, const char *n,
 		struct bdev_specs *specs)
 {
-	__do_free char *srcdev;
+	__do_free char *srcdev = NULL;
 	const char *fstype;
 	uint64_t sz;
 	int ret, len;

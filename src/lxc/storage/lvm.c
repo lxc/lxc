@@ -114,7 +114,7 @@ static int do_lvm_create(const char *path, uint64_t size, const char *thinpool)
 	char *pathdup, *vg, *lv;
 	char cmd_output[PATH_MAX];
 	char sz[24];
-	__do_free char *tp;
+	__do_free char *tp = NULL;
 	struct lvcreate_args cmd_args = {0};
 
 	ret = snprintf(sz, 24, "%" PRIu64 "b", size);
@@ -268,7 +268,7 @@ int lvm_umount(struct lxc_storage *bdev)
 #define __LVSCMD "lvs --unbuffered --noheadings -o lv_attr %s 2>/dev/null"
 int lvm_compare_lv_attr(const char *path, int pos, const char expected)
 {
-	__do_free char *cmd;
+	__do_free char *cmd = NULL;
 	struct lxc_popen_FILE *f;
 	int ret, status;
 	size_t len;
