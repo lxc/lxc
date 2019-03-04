@@ -654,6 +654,7 @@ int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen, int v)
 
 	return fulllen;
 }
+
 int lxc_get_conf_size_t(struct lxc_conf *c, char *retv, int inlen, size_t v)
 {
 	int len;
@@ -682,26 +683,6 @@ int lxc_get_conf_uint64(struct lxc_conf *c, char *retv, int inlen, uint64_t v)
 	strprint(retv, inlen, "%"PRIu64, v);
 
 	return fulllen;
-}
-
-bool parse_limit_value(const char **value, rlim_t *res)
-{
-	char *endptr = NULL;
-
-	if (strncmp(*value, "unlimited", STRLITERALLEN("unlimited")) == 0) {
-		*res = RLIM_INFINITY;
-		*value += STRLITERALLEN("unlimited");
-		return true;
-	}
-
-	errno = 0;
-	*res = strtoull(*value, &endptr, 10);
-	if (errno || !endptr)
-		return false;
-
-	*value = endptr;
-
-	return true;
 }
 
 static int lxc_container_name_to_pid(const char *lxcname_or_pid,
