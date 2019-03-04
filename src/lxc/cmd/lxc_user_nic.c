@@ -817,7 +817,7 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 
 static bool create_db_dir(char *fnam)
 {
-	__do_free char *copy;
+	__do_free char *copy = NULL;
 	char *p;
 	int ret;
 
