@@ -548,6 +548,27 @@ int network_ifname(char *valuep, const char *value, size_t size)
 	return 0;
 }
 
+bool lxc_config_net_is_hwaddr(const char *line)
+{
+	unsigned index;
+	char tmp[7];
+
+	if (strncmp(line, "lxc.net", 7) != 0)
+		return false;
+
+	if (strncmp(line, "lxc.net.hwaddr", 14) == 0)
+		return true;
+
+	if (strncmp(line, "lxc.network.hwaddr", 18) == 0)
+		return true;
+
+	if (sscanf(line, "lxc.net.%u.%6s", &index, tmp) == 2 ||
+	    sscanf(line, "lxc.network.%u.%6s", &index, tmp) == 2)
+		return strncmp(tmp, "hwaddr", 6) == 0;
+
+	return false;
+}
+
 void rand_complete_hwaddr(char *hwaddr)
 {
 	const char hex[] = "0123456789abcdef";
@@ -580,27 +601,6 @@ void rand_complete_hwaddr(char *hwaddr)
 	}
 }
 
-bool lxc_config_net_hwaddr(const char *line)
-{
-	unsigned index;
-	char tmp[7];
-
-	if (strncmp(line, "lxc.net", 7) != 0)
-		return false;
-
-	if (strncmp(line, "lxc.net.hwaddr", 14) == 0)
-		return true;
-
-	if (strncmp(line, "lxc.network.hwaddr", 18) == 0)
-		return true;
-
-	if (sscanf(line, "lxc.net.%u.%6s", &index, tmp) == 2 ||
-	    sscanf(line, "lxc.network.%u.%6s", &index, tmp) == 2)
-		return strncmp(tmp, "hwaddr", 6) == 0;
-
-	return false;
-}
-
 /*
  * If we find a lxc.net.[i].hwaddr or lxc.network.hwaddr in the original config
  * file, we expand it in the unexpanded_config, so that after a save_config we
@@ -617,7 +617,7 @@ void update_hwaddr(const char *line)
 	if (line[0] == '#')
 		return;
 
-	if (!lxc_config_net_hwaddr(line))
+	if (!lxc_config_net_is_hwaddr(line))
 		return;
 
 	/* Let config_net_hwaddr raise the error. */
