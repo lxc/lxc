@@ -97,7 +97,7 @@ static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 
 static void print_top_failing_dir(const char *path)
 {
-	__do_free char *copy;
+	__do_free char *copy = NULL;
 	int ret;
 	char *e, *p, saved;
 
