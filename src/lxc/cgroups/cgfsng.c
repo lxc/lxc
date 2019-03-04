@@ -381,7 +381,7 @@ static ssize_t get_max_cpus(char *cpulist)
 static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 {
 	__do_free char *cpulist = NULL, *fpath = NULL, *isolcpus = NULL,
-		       *posscpus;
+		       *posscpus = NULL;
 	__do_free uint32_t *isolmask = NULL, *possmask = NULL;
 	int ret;
 	ssize_t i;
@@ -727,7 +727,7 @@ static char **cg_hybrid_get_controllers(char **klist, char **nlist, char *line,
 	*p2 = '\0';
 
 	if (type == CGROUP_SUPER_MAGIC) {
-		__do_free char *dup;
+		__do_free char *dup = NULL;
 
 		/* strdup() here for v1 hierarchies. Otherwise
 		 * lxc_iterate_parts() will destroy mountpoints such as
@@ -1216,7 +1216,7 @@ static bool cg_unified_create_cgroup(struct hierarchy *h, char *cgname)
 	cgroup = must_make_path(h->mountpoint, h->container_base_path, NULL);
 	for (i = 0; i < parts_len; i++) {
 		int ret;
-		__do_free char *target;
+		__do_free char *target = NULL;
 
 		cgroup = must_append_path(cgroup, parts[i], NULL);
 		target = must_make_path(cgroup, "cgroup.subtree_control", NULL);
@@ -1470,7 +1470,7 @@ __cgfsng_ops static bool __do_cgroup_enter(struct cgroup_ops *ops, pid_t pid,
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
 		int ret;
-		__do_free char *path;
+		__do_free char *path = NULL;
 
 		if (monitor)
 			path = must_make_path(ops->hierarchies[i]->monitor_full_path,
@@ -1842,7 +1842,7 @@ on_error:
 static int recursive_count_nrtasks(char *dirname)
 {
 	__do_free char *path = NULL;
-	__do_closedir DIR *dir;
+	__do_closedir DIR *dir = NULL;
 	struct dirent *direntp;
 	int count = 0, ret;
 
@@ -1900,7 +1900,7 @@ __cgfsng_ops static bool cgfsng_escape(const struct cgroup_ops *ops,
 
 	for (i = 0; ops->hierarchies[i]; i++) {
 		int ret;
-		__do_free char *fullpath;
+		__do_free char *fullpath = NULL;
 
 		fullpath = must_make_path(ops->hierarchies[i]->mountpoint,
 					  ops->hierarchies[i]->container_base_path,
@@ -2116,7 +2116,7 @@ __cgfsng_ops static int cgfsng_get(struct cgroup_ops *ops, const char *filename,
 				     const char *lxcpath)
 {
 	__do_free char *path = NULL;
-	__do_free char *controller;
+	__do_free char *controller = NULL;
 	char *p;
 	struct hierarchy *h;
 	int ret = -1;
@@ -2133,7 +2133,7 @@ __cgfsng_ops static int cgfsng_get(struct cgroup_ops *ops, const char *filename,
 
 	h = get_hierarchy(ops, controller);
 	if (h) {
-		__do_free char *fullpath;
+		__do_free char *fullpath = NULL;
 
 		fullpath = build_full_cgpath_from_monitorpath(h, path, filename);
 		ret = lxc_read_from_file(fullpath, value, len);
@@ -2151,7 +2151,7 @@ __cgfsng_ops static int cgfsng_set(struct cgroup_ops *ops,
 				     const char *name, const char *lxcpath)
 {
 	__do_free char *path = NULL;
-	__do_free char *controller;
+	__do_free char *controller = NULL;
 	char *p;
 	struct hierarchy *h;
 	int ret = -1;
@@ -2168,7 +2168,7 @@ __cgfsng_ops static int cgfsng_set(struct cgroup_ops *ops,
 
 	h = get_hierarchy(ops, controller);
 	if (h) {
-		__do_free char *fullpath;
+		__do_free char *fullpath = NULL;
 
 		fullpath = build_full_cgpath_from_monitorpath(h, path, filename);
 		ret = lxc_write_to_file(fullpath, value, strlen(value), false, 0666);
@@ -2186,7 +2186,7 @@ __cgfsng_ops static int cgfsng_set(struct cgroup_ops *ops,
  */
 static int convert_devpath(const char *invalue, char *dest)
 {
-	__do_free char *path;
+	__do_free char *path = NULL;
 	int n_parts;
 	char *p, type;
 	unsigned long minor, major;
@@ -2261,7 +2261,7 @@ out:
 static int cg_legacy_set_data(struct cgroup_ops *ops, const char *filename,
 			      const char *value)
 {
-	__do_free char *controller;
+	__do_free char *controller = NULL;
 	__do_free char *fullpath = NULL;
 	char *p;
 	/* "b|c <2^64-1>:<2^64-1> r|w|m" = 47 chars max */
@@ -2358,7 +2358,7 @@ static bool __cg_unified_setup_limits(struct cgroup_ops *ops,
 		return false;
 
 	lxc_list_for_each(iterator, cgroup_settings) {
-		__do_free char *fullpath;
+		__do_free char *fullpath = NULL;
 		int ret;
 		struct lxc_cgroup *cg = iterator->elem;
 
@@ -2419,7 +2419,7 @@ static bool cgroup_use_wants_controllers(const struct cgroup_ops *ops,
 
 static void cg_unified_delegate(char ***delegate)
 {
-	__do_free char *tmp;
+	__do_free char *tmp = NULL;
 	int idx;
 	char *standard[] = {"cgroup.subtree_control", "cgroup.threads", NULL};
 
@@ -2451,7 +2451,7 @@ static void cg_unified_delegate(char ***delegate)
 static bool cg_hybrid_init(struct cgroup_ops *ops, bool relative,
 			   bool unprivileged)
 {
-	__do_free char *basecginfo;
+	__do_free char *basecginfo = NULL;
 	__do_free char *line = NULL;
 	__do_fclose FILE *f = NULL;
 	int ret;
@@ -2610,7 +2610,7 @@ static int cg_is_pure_unified(void)
 /* Get current cgroup from /proc/self/cgroup for the cgroupfs v2 hierarchy. */
 static char *cg_unified_get_current_cgroup(bool relative)
 {
-	__do_free char *basecginfo;
+	__do_free char *basecginfo = NULL;
 	char *base_cgroup;
 	char *copy = NULL;
 
@@ -2695,7 +2695,7 @@ static bool cg_init(struct cgroup_ops *ops, struct lxc_conf *conf)
 
 	tmp = lxc_global_config_value("lxc.cgroup.use");
 	if (tmp) {
-		__do_free char *pin;
+		__do_free char *pin = NULL;
 		char *chop, *cur;
 
 		pin = must_copy_string(tmp);
