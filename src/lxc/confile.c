@@ -1450,6 +1450,26 @@ static int set_config_cgroup_relative(const char *key, const char *value,
 	return -EINVAL;
 }
 
+static bool parse_limit_value(const char **value, rlim_t *res)
+{
+	char *endptr = NULL;
+
+	if (strncmp(*value, "unlimited", STRLITERALLEN("unlimited")) == 0) {
+		*res = RLIM_INFINITY;
+		*value += STRLITERALLEN("unlimited");
+		return true;
+	}
+
+	errno = 0;
+	*res = strtoull(*value, &endptr, 10);
+	if (errno || !endptr)
+		return false;
+
+	*value = endptr;
+
+	return true;
+}
+
 static int set_config_prlimit(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {

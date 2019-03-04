@@ -73,7 +73,6 @@ extern int lxc_get_conf_bool(struct lxc_conf *c, char *retv, int inlen, bool v);
 extern int lxc_get_conf_int(struct lxc_conf *c, char *retv, int inlen, int v);
 extern int lxc_get_conf_size_t(struct lxc_conf *c, char *retv, int inlen, size_t v);
 extern int lxc_get_conf_uint64(struct lxc_conf *c, char *retv, int inlen, uint64_t v);
-extern bool parse_limit_value(const char **value, rlim_t *res);
 extern int lxc_inherit_namespace(const char *lxcname_or_pid,
 				 const char *lxcpath, const char *namespace);
 extern int sig_parse(const char *signame);
