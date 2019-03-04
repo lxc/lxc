@@ -171,7 +171,7 @@ int lxc_monitor_close(int fd)
  */
 int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr)
 {
-	__do_free char *path;
+	__do_free char *path = NULL;
 	size_t len;
 	int ret;
 	uint64_t hash;
