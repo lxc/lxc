@@ -2081,6 +2081,40 @@ static int set_config_console_size(const char *key, const char *value,
 	return 0;
 }
 
+/*
+ * If we find a lxc.net.[i].hwaddr or lxc.network.hwaddr in the original config
+ * file, we expand it in the unexpanded_config, so that after a save_config we
+ * store the hwaddr for re-use.
+ * This is only called when reading the config file, not when executing a
+ * lxc.include.
+ * 'x' and 'X' are substituted in-place.
+ */
+static void update_hwaddr(const char *line)
+{
+	char *p;
+
+	line += lxc_char_left_gc(line, strlen(line));
+	if (line[0] == '#')
+		return;
+
+	if (!lxc_config_net_is_hwaddr(line))
+		return;
+
+	/* Let config_net_hwaddr raise the error. */
+	p = strchr(line, '=');
+	if (!p)
+		return;
+	p++;
+
+	while (isblank(*p))
+		p++;
+
+	if (!*p)
+		return;
+
+	rand_complete_hwaddr(p);
+}
+
 int append_unexp_config_line(const char *line, struct lxc_conf *conf)
 {
 	size_t linelen;

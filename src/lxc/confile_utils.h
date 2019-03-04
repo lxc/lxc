@@ -67,7 +67,6 @@ extern int config_ip_prefix(struct in_addr *addr);
 extern int network_ifname(char *valuep, const char *value, size_t size);
 extern void rand_complete_hwaddr(char *hwaddr);
 extern bool lxc_config_net_is_hwaddr(const char *line);
-extern void update_hwaddr(const char *line);
 extern bool new_hwaddr(char *hwaddr);
 extern int lxc_get_conf_str(char *retv, int inlen, const char *value);
 extern int lxc_get_conf_bool(struct lxc_conf *c, char *retv, int inlen, bool v);
