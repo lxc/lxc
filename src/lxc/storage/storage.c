@@ -568,9 +568,8 @@ struct lxc_storage *storage_create(const char *dest, const char *type,
 
 	/* -B lvm,dir */
 	if (strchr(type, ',')) {
-		__do_free char *dup;
+		__do_free char *dup = NULL;
 		char *token;
-		size_t len;
 
 		dup = must_copy_string(type);
 		lxc_iterate_parts(token, dup, ",") {
