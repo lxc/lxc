@@ -32,6 +32,7 @@
 #include "initutils.h"
 #include "log.h"
 #include "macro.h"
+#include "memory_utils.h"
 
 #ifndef HAVE_STRLCPY
 #include "include/strlcpy.h"
@@ -115,7 +116,6 @@ const char *lxc_global_config_value(const char *option_name)
 
 	const char * const (*ptr)[2];
 	size_t i;
-	char buf[1024], *p, *p2;
 	FILE *fin = NULL;
 
 	for (i = 0, ptr = options; (*ptr)[0]; ptr++, i++) {
@@ -142,51 +142,64 @@ const char *lxc_global_config_value(const char *option_name)
 	fin = fopen_cloexec(user_config_path, "r");
 	free(user_config_path);
 	if (fin) {
-		while (fgets(buf, 1024, fin)) {
-			if (buf[0] == '#')
+		__do_free char *line = NULL;
+		size_t len = 0;
+		char *slider1, *slider2;
+
+		while (getline(&line, &len, fin) > 0) {
+			if (*line == '#')
 				continue;
-			p = strstr(buf, option_name);
-			if (!p)
+
+			slider1 = strstr(line, option_name);
+			if (!slider1)
 				continue;
+
 			/* see if there was just white space in front
 			 * of the option name
 			 */
-			for (p2 = buf; p2 < p; p2++) {
-				if (*p2 != ' ' && *p2 != '\t')
+			for (slider2 = line; slider2 < slider1; slider2++)
+				if (*slider2 != ' ' && *slider2 != '\t')
 					break;
-			}
-			if (p2 < p)
+
+			if (slider2 < slider1)
 				continue;
-			p = strchr(p, '=');
-			if (!p)
+
+			slider1 = strchr(slider1, '=');
+			if (!slider1)
 				continue;
+
 			/* see if there was just white space after
 			 * the option name
 			 */
-			for (p2 += strlen(option_name); p2 < p; p2++) {
-				if (*p2 != ' ' && *p2 != '\t')
+			for (slider2 += strlen(option_name); slider2 < slider1;
+			     slider2++)
+				if (*slider2 != ' ' && *slider2 != '\t')
 					break;
-			}
-			if (p2 < p)
+
+			if (slider2 < slider1)
 				continue;
-			p++;
-			while (*p && (*p == ' ' || *p == '\t')) p++;
-			if (!*p)
+
+			slider1++;
+			while (*slider1 && (*slider1 == ' ' || *slider1 == '\t'))
+				slider1++;
+
+			if (!*slider1)
 				continue;
 
 			if (strcmp(option_name, "lxc.lxcpath") == 0) {
 				free(user_lxc_path);
-				user_lxc_path = copy_global_config_value(p);
+				user_lxc_path = copy_global_config_value(slider1);
 				remove_trailing_slashes(user_lxc_path);
 				values[i] = user_lxc_path;
 				user_lxc_path = NULL;
 				goto out;
 			}
 
-			values[i] = copy_global_config_value(p);
+			values[i] = copy_global_config_value(slider1);
 			goto out;
 		}
 	}
+
 	/* could not find value, use default */
 	if (strcmp(option_name, "lxc.lxcpath") == 0) {
 		remove_trailing_slashes(user_lxc_path);
@@ -227,62 +240,64 @@ out:
  */
 int setproctitle(char *title)
 {
+	__do_fclose FILE *f = NULL;
+	int i, fd, len;
+	char *buf_ptr;
+	char buf[LXC_LINELEN];
+	int ret = 0;
+	ssize_t bytes_read = 0;
 	static char *proctitle = NULL;
-	char buf[2048], *tmp;
-	FILE *f;
-	int i, len, ret = 0;
 
-	/* We don't really need to know all of this stuff, but unfortunately
+	/*
+	 * We don't really need to know all of this stuff, but unfortunately
 	 * PR_SET_MM_MAP requires us to set it all at once, so we have to
 	 * figure it out anyway.
 	 */
 	unsigned long start_data, end_data, start_brk, start_code, end_code,
-			start_stack, arg_start, arg_end, env_start, env_end,
-			brk_val;
+	    start_stack, arg_start, arg_end, env_start, env_end, brk_val;
 	struct prctl_mm_map prctl_map;
 
 	f = fopen_cloexec("/proc/self/stat", "r");
-	if (!f) {
+	if (!f)
 		return -1;
-	}
 
-	tmp = fgets(buf, sizeof(buf), f);
-	fclose(f);
-	if (!tmp) {
+	fd = fileno(f);
+	if (fd < 0)
 		return -1;
-	}
+
+	bytes_read = lxc_read_nointr(fd, buf, sizeof(buf) - 1);
+	if (bytes_read <= 0)
+		return -1;
+
+	buf[bytes_read] = '\0';
 
 	/* Skip the first 25 fields, column 26-28 are start_code, end_code,
 	 * and start_stack */
-	tmp = strchr(buf, ' ');
+	buf_ptr = strchr(buf, ' ');
 	for (i = 0; i < 24; i++) {
-		if (!tmp)
+		if (!buf_ptr)
 			return -1;
-		tmp = strchr(tmp+1, ' ');
+		buf_ptr = strchr(buf_ptr + 1, ' ');
 	}
-	if (!tmp)
+	if (!buf_ptr)
 		return -1;
 
-	i = sscanf(tmp, "%lu %lu %lu", &start_code, &end_code, &start_stack);
+	i = sscanf(buf_ptr, "%lu %lu %lu", &start_code, &end_code, &start_stack);
 	if (i != 3)
 		return -1;
 
 	/* Skip the next 19 fields, column 45-51 are start_data to arg_end */
 	for (i = 0; i < 19; i++) {
-		if (!tmp)
+		if (!buf_ptr)
 			return -1;
-		tmp = strchr(tmp+1, ' ');
+		buf_ptr = strchr(buf_ptr + 1, ' ');
 	}
 
-	if (!tmp)
+	if (!buf_ptr)
 		return -1;
 
-	i = sscanf(tmp, "%lu %lu %lu %*u %*u %lu %lu",
-		&start_data,
-		&end_data,
-		&start_brk,
-		&env_start,
-		&env_end);
+	i = sscanf(buf_ptr, "%lu %lu %lu %*u %*u %lu %lu", &start_data,
+		   &end_data, &start_brk, &env_start, &env_end);
 	if (i != 5)
 		return -1;
 
@@ -294,32 +309,32 @@ int setproctitle(char *title)
 	if (!proctitle)
 		return -1;
 
-	arg_start = (unsigned long) proctitle;
+	arg_start = (unsigned long)proctitle;
 	arg_end = arg_start + len;
 
 	brk_val = syscall(__NR_brk, 0);
 
-	prctl_map = (struct prctl_mm_map) {
-		.start_code = start_code,
-		.end_code = end_code,
-		.start_stack = start_stack,
-		.start_data = start_data,
-		.end_data = end_data,
-		.start_brk = start_brk,
-		.brk = brk_val,
-		.arg_start = arg_start,
-		.arg_end = arg_end,
-		.env_start = env_start,
-		.env_end = env_end,
-		.auxv = NULL,
-		.auxv_size = 0,
-		.exe_fd = -1,
+	prctl_map = (struct prctl_mm_map){
+	    .start_code = start_code,
+	    .end_code = end_code,
+	    .start_stack = start_stack,
+	    .start_data = start_data,
+	    .end_data = end_data,
+	    .start_brk = start_brk,
+	    .brk = brk_val,
+	    .arg_start = arg_start,
+	    .arg_end = arg_end,
+	    .env_start = env_start,
+	    .env_end = env_end,
+	    .auxv = NULL,
+	    .auxv_size = 0,
+	    .exe_fd = -1,
 	};
 
 	ret = prctl(PR_SET_MM, prctl_arg(PR_SET_MM_MAP), prctl_arg(&prctl_map),
 		    prctl_arg(sizeof(prctl_map)), prctl_arg(0));
 	if (ret == 0)
-		(void)strlcpy((char*)arg_start, title, len);
+		(void)strlcpy((char *)arg_start, title, len);
 	else
 		SYSWARN("Failed to set cmdline");
 
