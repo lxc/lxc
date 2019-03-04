@@ -2812,7 +2812,7 @@ bool network_new_hwaddrs(struct lxc_conf *conf)
 		else
 			lend++;
 
-		if (!lxc_config_net_hwaddr(lstart)) {
+		if (!lxc_config_net_is_hwaddr(lstart)) {
 			lstart = lend;
 			continue;
 		}
