@@ -2717,7 +2717,7 @@ struct lxc_conf *lxc_conf_init(void)
 int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 		     size_t buf_size)
 {
-	__do_close_prot_errno int fd = 0;
+	__do_close_prot_errno int fd;
 	int ret;
 	char path[PATH_MAX];
 
