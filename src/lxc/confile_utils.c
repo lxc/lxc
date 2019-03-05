@@ -548,6 +548,27 @@ int network_ifname(char *valuep, const char *value, size_t size)
 	return 0;
 }
 
+bool lxc_config_net_is_hwaddr(const char *line)
+{
+	unsigned index;
+	char tmp[7];
+
+	if (strncmp(line, "lxc.net", 7) != 0)
+		return false;
+
+	if (strncmp(line, "lxc.net.hwaddr", 14) == 0)
+		return true;
+
+	if (strncmp(line, "lxc.network.hwaddr", 18) == 0)
+		return true;
+
+	if (sscanf(line, "lxc.net.%u.%6s", &index, tmp) == 2 ||
+	    sscanf(line, "lxc.network.%u.%6s", &index, tmp) == 2)
+		return strncmp(tmp, "hwaddr", 6) == 0;
+
+	return false;
+}
+
 void rand_complete_hwaddr(char *hwaddr)
 {
 	const char hex[] = "0123456789abcdef";
@@ -578,61 +599,6 @@ void rand_complete_hwaddr(char *hwaddr)
 		}
 		curs++;
 	}
-}
-
-bool lxc_config_net_hwaddr(const char *line)
-{
-	unsigned index;
-	char tmp[7];
-
-	if (strncmp(line, "lxc.net", 7) != 0)
-		return false;
-
-	if (strncmp(line, "lxc.net.hwaddr", 14) == 0)
-		return true;
-
-	if (strncmp(line, "lxc.network.hwaddr", 18) == 0)
-		return true;
-
-	if (sscanf(line, "lxc.net.%u.%6s", &index, tmp) == 2 ||
-	    sscanf(line, "lxc.network.%u.%6s", &index, tmp) == 2)
-		return strncmp(tmp, "hwaddr", 6) == 0;
-
-	return false;
-}
-
-/*
- * If we find a lxc.net.[i].hwaddr or lxc.network.hwaddr in the original config
- * file, we expand it in the unexpanded_config, so that after a save_config we
- * store the hwaddr for re-use.
- * This is only called when reading the config file, not when executing a
- * lxc.include.
- * 'x' and 'X' are substituted in-place.
- */
-void update_hwaddr(const char *line)
-{
-	char *p;
-
-	line += lxc_char_left_gc(line, strlen(line));
-	if (line[0] == '#')
-		return;
-
-	if (!lxc_config_net_hwaddr(line))
-		return;
-
-	/* Let config_net_hwaddr raise the error. */
-	p = strchr(line, '=');
-	if (!p)
-		return;
-	p++;
-
-	while (isblank(*p))
-		p++;
-
-	if (!*p)
-		return;
-
-	rand_complete_hwaddr(p);
 }
 
 bool new_hwaddr(char *hwaddr)
@@ -732,26 +698,6 @@ int lxc_get_conf_uint64(struct lxc_conf *c, char *retv, int inlen, uint64_t v)
 	strprint(retv, inlen, "%"PRIu64, v);
 
 	return fulllen;
-}
-
-bool parse_limit_value(const char **value, rlim_t *res)
-{
-	char *endptr = NULL;
-
-	if (strncmp(*value, "unlimited", STRLITERALLEN("unlimited")) == 0) {
-		*res = RLIM_INFINITY;
-		*value += STRLITERALLEN("unlimited");
-		return true;
-	}
-
-	errno = 0;
-	*res = strtoull(*value, &endptr, 10);
-	if (errno || !endptr)
-		return false;
-
-	*value = endptr;
-
-	return true;
 }
 
 static int lxc_container_name_to_pid(const char *lxcname_or_pid,
