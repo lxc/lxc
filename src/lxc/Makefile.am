@@ -202,7 +202,10 @@ AM_CFLAGS = -DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	    -I $(top_srcdir)/src \
 	    -I $(top_srcdir)/src/lxc \
 	    -I $(top_srcdir)/src/lxc/storage \
-	    -I $(top_srcdir)/src/lxc/cgroups
+	    -I $(top_srcdir)/src/lxc/cgroups \
+	    -Wall \
+	    -Werror
+
 
 if ENABLE_APPARMOR
 AM_CFLAGS += -DHAVE_APPARMOR
