@@ -2551,6 +2551,7 @@ static int cg_unified_init(struct cgroup_ops *ops)
 	add_hierarchy(&ops->hierarchies, delegatable, mountpoint, base_cgroup, CGROUP2_SUPER_MAGIC);
 
 	ops->cgroup_layout = CGROUP_LAYOUT_UNIFIED;
+	ops->unified = new;
 	return CGROUP2_SUPER_MAGIC;
 }
 
