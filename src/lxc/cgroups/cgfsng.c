@@ -2684,6 +2684,7 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 		cg_unified_delegate(&new->cgroup2_chown);
 
 	ops->cgroup_layout = CGROUP_LAYOUT_UNIFIED;
+	ops->unified = new;
 	return CGROUP2_SUPER_MAGIC;
 }
 
