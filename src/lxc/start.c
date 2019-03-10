@@ -1026,6 +1026,9 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		lxc_set_state(name, handler, STOPPED);
 	}
 
+	/* Avoid lingering namespace references. */
+	lxc_put_nsfds(handler);
+
 	ret = run_lxc_hooks(name, "post-stop", handler->conf, NULL);
 	if (ret < 0) {
 		ERROR("Failed to run lxc.hook.post-stop for container \"%s\"", name);
