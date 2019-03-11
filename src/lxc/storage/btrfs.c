@@ -763,7 +763,6 @@ static int btrfs_recursive_destroy(const char *path)
 	int ret, e, i;
 	unsigned long off = 0;
 	u16 name_len;
-	char *name;
 	char *tmppath;
 	u64 dir_id;
 
@@ -835,9 +834,22 @@ static int btrfs_recursive_destroy(const char *path)
 			 * name of the child subvol in question.
 			 */
 			if (sh.objectid != root_id && sh.type == BTRFS_ROOT_BACKREF_KEY) {
+				char *name, *tmp;
+
 				ref = (struct btrfs_root_ref *)(args.buf + off);
 				name_len = btrfs_stack_root_ref_name_len(ref);
-				name = (char *)(ref + 1);
+				tmp = (char *)(ref + 1);
+
+				name = malloc(name_len + 1);
+				if (!name) {
+					ERROR("Out of memory");
+					free_btrfs_tree(tree);
+					free(tmppath);
+					close(fd);
+				}
+
+				memcpy(name, tmp, name_len);
+				name[name_len] = '\0';
 				dir_id = btrfs_stack_root_ref_dirid(ref);
 				tmppath = get_btrfs_subvol_path(fd, sh.offset,
 						dir_id, name, name_len);
@@ -847,12 +859,14 @@ static int btrfs_recursive_destroy(const char *path)
 							name_len, tmppath)) {
 					ERROR("Out of memory");
 					free_btrfs_tree(tree);
+					free(name);
 					free(tmppath);
 					close(fd);
 					return -1;
 				}
 
 				free(tmppath);
+				free(name);
 			}
 
 			off += sh.len;
