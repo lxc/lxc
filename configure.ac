@@ -428,6 +428,12 @@ AC_ARG_ENABLE([commands],
 	[], [enable_commands=yes])
 AM_CONDITIONAL([ENABLE_COMMANDS], [test "x$enable_commands" = "xyes"])
 
+# Build with ASAN commands
+AC_ARG_ENABLE([asan],
+	[AC_HELP_STRING([--enable-asan], [build with address sanitizer enabled [default=no]])],
+	[], [enable_asan=no])
+AM_CONDITIONAL([ENABLE_ASAN], [test "x$enable_asan" = "xyes"])
+
 # Optional test binaries
 AC_ARG_ENABLE([tests],
 	[AC_HELP_STRING([--enable-tests], [build test/example binaries [default=no]])],
@@ -1001,6 +1007,7 @@ Documentation:
 
 Debugging:
  - tests: $enable_tests
+ - ASAN: $enable_asan
  - mutex debugging: $enable_mutex_debugging
 
 Paths:
