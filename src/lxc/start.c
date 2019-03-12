@@ -1096,7 +1096,7 @@ static int do_start(void *data)
 	 * exit before we set the pdeath signal leading to a unsupervized
 	 * container.
 	 */
-	ret = lxc_set_death_signal(SIGKILL, 0);
+	ret = lxc_set_death_signal(SIGKILL, handler->monitor_pid);
 	if (ret < 0) {
 		SYSERROR("Failed to set PR_SET_PDEATHSIG to SIGKILL");
 		goto out_warn_father;
