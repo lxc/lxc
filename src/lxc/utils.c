@@ -49,6 +49,7 @@
 #include "config.h"
 #include "log.h"
 #include "lxclock.h"
+#include "memory_utils.h"
 #include "namespace.h"
 #include "parse.h"
 #include "raw_syscalls.h"
@@ -684,15 +685,18 @@ int detect_shared_rootfs(void)
 
 bool switch_to_ns(pid_t pid, const char *ns)
 {
-	int fd, ret;
-	char nspath[PATH_MAX];
+	__do_close_prot_errno int fd = -EBADF;
+	int ret;
+	char nspath[STRLITERALLEN("/proc//ns/")
+		    + INTTYPE_TO_STRLEN(pid_t)
+		    + LXC_NAMESPACE_NAME_MAX];
 
 	/* Switch to new ns */
-	ret = snprintf(nspath, PATH_MAX, "/proc/%d/ns/%s", pid, ns);
-	if (ret < 0 || ret >= PATH_MAX)
+	ret = snprintf(nspath, sizeof(nspath), "/proc/%d/ns/%s", pid, ns);
+	if (ret < 0 || ret >= sizeof(nspath))
 		return false;
 
-	fd = open(nspath, O_RDONLY);
+	fd = open(nspath, O_RDONLY | O_CLOEXEC);
 	if (fd < 0) {
 		SYSERROR("Failed to open \"%s\"", nspath);
 		return false;
@@ -700,12 +704,11 @@ bool switch_to_ns(pid_t pid, const char *ns)
 
 	ret = setns(fd, 0);
 	if (ret) {
-		SYSERROR("Failed to set process %d to \"%s\" of %d.", pid, ns, fd);
-		close(fd);
+		SYSERROR("Failed to set process %d to \"%s\" of %d.", pid, ns,
+			 fd);
 		return false;
 	}
 
-	close(fd);
 	return true;
 }
 
