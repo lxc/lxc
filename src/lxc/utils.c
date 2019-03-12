@@ -1696,9 +1696,9 @@ int lxc_set_death_signal(int signal, pid_t parent)
 	ret = prctl(PR_SET_PDEATHSIG, prctl_arg(signal), prctl_arg(0),
 		    prctl_arg(0), prctl_arg(0));
 
-	/* Check whether we have been orphaned. */
+	/* If not in a PID namespace, check whether we have been orphaned. */
 	ppid = (pid_t)syscall(SYS_getppid);
-	if (ppid != parent) {
+	if (ppid && ppid != parent) {
 		ret = raise(SIGKILL);
 		if (ret < 0)
 			return -1;
