@@ -201,6 +201,21 @@ extern int lxc_unstack_mountpoint(const char *path, bool lazy);
 extern int run_command(char *buf, size_t buf_size, int (*child_fn)(void *),
 		       void *args);
 
+/*
+ * run_command runs a command and collect it's std{err,out} output in buf, returns exit status.
+ *
+ * @param[out] buf     The buffer where the commands std{err,out] output will be
+ *                     read into. If no output was produced, buf will be memset
+ *                     to 0.
+ * @param[in] buf_size The size of buf. This function will reserve one byte for
+ *                     \0-termination.
+ * @param[in] child_fn The function to be run in the child process. This
+ *                     function must exec.
+ * @param[in] args     Arguments to be passed to child_fn.
+ */
+extern int run_command_status(char *buf, size_t buf_size, int (*child_fn)(void *),
+		       void *args);
+
 /* Concatenate all passed-in strings into one path. Do not fail. If any piece
  * is not prefixed with '/', add a '/'.
  */
