@@ -2227,6 +2227,9 @@ static inline bool enter_net_ns(struct lxc_container *c)
 {
 	pid_t pid = do_lxcapi_init_pid(c);
 
+	if (pid < 0)
+		return false;
+
 	if ((geteuid() != 0 || (c->lxc_conf && !lxc_list_empty(&c->lxc_conf->id_map))) &&
 	    (access("/proc/self/ns/user", F_OK) == 0))
 		if (!switch_to_ns(pid, "user"))
@@ -4642,6 +4645,7 @@ static bool add_remove_device_node(struct lxc_container *c, const char *src_path
 	struct stat st;
 	char value[LXC_MAX_BUFFER];
 	const char *p;
+	pid_t init_pid;
 
 	/* make sure container is running */
 	if (!do_lxcapi_is_running(c)) {
@@ -4668,7 +4672,13 @@ static bool add_remove_device_node(struct lxc_container *c, const char *src_path
 	if (ret < 0 || ret >= LXC_MAX_BUFFER)
 		return false;
 
-	if (!do_add_remove_node(do_lxcapi_init_pid(c), p, add, &st))
+	init_pid = do_lxcapi_init_pid(c);
+	if (init_pid < 0) {
+		ERROR("Failed to get init pid");
+		return false;
+	}
+
+	if (!do_add_remove_node(init_pid, p, add, &st))
 		return false;
 
 	/* add or remove device to/from cgroup access list */
@@ -4738,6 +4748,11 @@ static bool do_lxcapi_attach_interface(struct lxc_container *c,
 	}
 
 	init_pid = do_lxcapi_init_pid(c);
+	if (init_pid < 0) {
+		ERROR("Failed to get init pid");
+		goto err;
+	}
+
 	ret = lxc_netdev_move_by_name(ifname, init_pid, dst_ifname);
 	if (ret)
 		goto err;
@@ -4783,6 +4798,10 @@ static bool do_lxcapi_detach_interface(struct lxc_container *c,
 		pid_t init_pid;
 
 		init_pid = do_lxcapi_init_pid(c);
+		if (init_pid < 0) {
+			ERROR("Failed to get init pid");
+			_exit(EXIT_FAILURE);
+		}
 		if (!switch_to_ns(init_pid, "net")) {
 			ERROR("Failed to enter network namespace");
 			_exit(EXIT_FAILURE);
