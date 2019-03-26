@@ -126,7 +126,7 @@ static struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 static inline void lxc_proc_close_ns_fd(struct lxc_proc_context_info *ctx)
 {
 	for (int i = 0; i < LXC_NS_MAX; i++) {
-		__do_close_prot_errno int fd = move_fd(ctx->ns_fd[i]);
+		__do_close_prot_errno int fd ATTR_UNUSED = move_fd(ctx->ns_fd[i]);
 	}
 }
 
@@ -689,8 +689,8 @@ struct attach_clone_payload {
 
 static void lxc_put_attach_clone_payload(struct attach_clone_payload *p)
 {
-	__do_close_prot_errno int ipc_socket = p->ipc_socket;
-	__do_close_prot_errno int terminal_slave_fd = p->terminal_slave_fd;
+	__do_close_prot_errno int ipc_socket ATTR_UNUSED = p->ipc_socket;
+	__do_close_prot_errno int terminal_slave_fd ATTR_UNUSED = p->terminal_slave_fd;
 
 	if (p->init_ctx) {
 		lxc_proc_put_context_info(p->init_ctx);

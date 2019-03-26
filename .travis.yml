@@ -9,6 +9,8 @@ before_install:
 script:
  - ./coccinelle/run-coccinelle.sh -i
  - git diff --exit-code
+ - export CFLAGS="-Wall -Werror"
+ - export LDFLAGS="-pthread -lpthread"
  - ./autogen.sh
  - rm -Rf build
  - mkdir build
