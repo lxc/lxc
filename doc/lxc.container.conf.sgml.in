@@ -1751,6 +1751,11 @@ dev/null proc/kcore none bind,relative 0 0
 	      are nesting containers and are already confined), then use
             </para>
               <programlisting>lxc.apparmor.profile = unchanged</programlisting>
+            <para>
+              If you instruct LXC to generate the apparmor profile,
+              then use
+            </para>
+              <programlisting>lxc.apparmor.profile = generated</programlisting>
           </listitem>
         </varlistentry>
         <varlistentry>
@@ -1774,6 +1779,38 @@ dev/null proc/kcore none bind,relative 0 0
             </para>
           </listitem>
         </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.apparmor.allow_nesting</option>
+          </term>
+          <listitem>
+            <para>
+              If set this to 1, causes the following changes. When
+              generated apparmor profiles are used, they will contain
+              the necessary changes to allow creating a nested
+              container. In addition to the usual mount points,
+              <filename>/dev/.lxc/proc</filename>
+              and <filename>/dev/.lxc/sys</filename> will contain
+              procfs and sysfs mount points without the lxcfs
+              overlays, which, if generated apparmor profiles are
+              being used, will not be read/writable directly.
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.apparmor.raw</option>
+          </term>
+          <listitem>
+            <para>
+              A list of raw AppArmor profile lines to append to the
+              profile. Only valid when using generated profiles.
+            </para>
+          </listitem>
+        </varlistentry>
+
       </variablelist>
     </refsect2>
 

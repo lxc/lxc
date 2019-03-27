@@ -2337,6 +2337,14 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               もし apparmor プロファイルが変更されないままでなくてはならない場合 (ネストしたコンテナである場合や、すでに confined されている場合) は以下のように設定します。
             </para>
               <programlisting>lxc.apparmor.profile = unchanged</programlisting>
+            <para>
+              <!--
+                If you instruct LXC to generate the apparmor profile,
+                then use
+                -->
+              もし LXC に AppArmor プロファイルを生成するように指示するには次のように設定します。
+            </para>
+              <programlisting>lxc.apparmor.profile = generated</programlisting>
           </listitem>
         </varlistentry>
         <varlistentry>
@@ -2368,6 +2376,46 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             </para>
           </listitem>
         </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.apparmor.allow_nesting</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              If set this to 1, causes the following changes. When
+              generated apparmor profiles are used, they will contain
+              the necessary changes to allow creating a nested
+              container. In addition to the usual mount points,
+              <filename>/dev/.lxc/proc</filename>
+              and <filename>/dev/.lxc/sys</filename> will contain
+              procfs and sysfs mount points without the lxcfs
+              overlays, which, if generated apparmor profiles are
+              being used, will not be read/writable directly.
+              -->
+              1 に設定すると次のような変更が行われます。
+              generated な AppArmor プロファイルが使われる場合、ネストしたコンテナを使うのに必要な変更が含まれます。通常のマウントポイントに加えて、lxcfs のオーバーレイなしで、<filename>/dev/.lxc/proc</filename> と <filename>/dev/.lxc/sys</filename> が procfs と sysfs のマウントポイントに含まれます。
+              generated な AppArmor プロファイルが使われている場合は、直接読み書きはできません
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.apparmor.raw</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              A list of raw AppArmor profile lines to append to the
+              profile. Only valid when using generated profiles.
+                -->
+              プロファイルに加える、生の AppArmor プロファイル行のリストです。generated なプロファイルを使っているときのみ有効です。
+            </para>
+          </listitem>
+        </varlistentry>
+
       </variablelist>
     </refsect2>
 
