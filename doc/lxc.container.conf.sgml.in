@@ -1407,6 +1407,19 @@ dev/null proc/kcore none bind,relative 0 0
           </listitem>
         </varlistentry>
 
+        <varlistentry>
+          <term>
+            <option>lxc.rootfs.managed</option>
+          </term>
+          <listitem>
+            <para>
+              Set this to 0 to indicate that LXC is not managing the
+              container storage, then LXC will not modify the
+              container storage. The default is 1.
+            </para>
+          </listitem>
+        </varlistentry>
+
       </variablelist>
     </refsect2>
 
@@ -1467,6 +1480,20 @@ dev/null proc/kcore none bind,relative 0 0
               "/sys/fs/cgroup/cpuset/my-user/my-cgroup/first/c1" for the
               container. Any missing cgroups will be created by LXC. This
               presupposes that the user has write access to its current cgroup.
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.cgroup.relative</option>
+          </term>
+          <listitem>
+            <para>
+              Set this to 1 to instruct LXC to never escape to the
+              root cgroup. This makes it easy for users to adhere to
+              restrictions enforced by cgroup2 and
+              systemd. Specifically, this makes it possible to run LXC
+              containers as systemd services.
             </para>
           </listitem>
         </varlistentry>
@@ -1724,6 +1751,11 @@ dev/null proc/kcore none bind,relative 0 0
 	      are nesting containers and are already confined), then use
             </para>
               <programlisting>lxc.apparmor.profile = unchanged</programlisting>
+            <para>
+              If you instruct LXC to generate the apparmor profile,
+              then use
+            </para>
+              <programlisting>lxc.apparmor.profile = generated</programlisting>
           </listitem>
         </varlistentry>
         <varlistentry>
@@ -1747,6 +1779,38 @@ dev/null proc/kcore none bind,relative 0 0
             </para>
           </listitem>
         </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.apparmor.allow_nesting</option>
+          </term>
+          <listitem>
+            <para>
+              If set this to 1, causes the following changes. When
+              generated apparmor profiles are used, they will contain
+              the necessary changes to allow creating a nested
+              container. In addition to the usual mount points,
+              <filename>/dev/.lxc/proc</filename>
+              and <filename>/dev/.lxc/sys</filename> will contain
+              procfs and sysfs mount points without the lxcfs
+              overlays, which, if generated apparmor profiles are
+              being used, will not be read/writable directly.
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.apparmor.raw</option>
+          </term>
+          <listitem>
+            <para>
+              A list of raw AppArmor profile lines to append to the
+              profile. Only valid when using generated profiles.
+            </para>
+          </listitem>
+        </varlistentry>
+
       </variablelist>
     </refsect2>
 

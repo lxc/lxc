@@ -1869,6 +1869,23 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           </listitem>
         </varlistentry>
 
+        <varlistentry>
+          <term>
+            <option>lxc.rootfs.managed</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              Set this to 0 to indicate that LXC is not managing the
+              container storage, then LXC will not modify the
+              container storage. The default is 1.
+                -->
+              LXC がコンテナのストレージを管理していない場合は、この値を 0 に設定します。
+              0 に設定すると、LXC はコンテナのストレージを変更しません。デフォルト値は 1 です。
+            </para>
+          </listitem>
+        </varlistentry>
+
       </variablelist>
     </refsect2>
 
@@ -1950,6 +1967,25 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               例えば、"c1" という名前のコンテナで <option>lxc.cgroup.dir = my-cgroup/first</option> のように設定すると、"my-cgroup" のサブ cgroup のようにコンテナの cgroup を作成します。
               例えば、ユーザのカレントの cgroup である "my-user" が cgroup v1 階層にある cpuset コントローラの root cgroup 内に存在する場合、この設定は "/sys/fs/cgroup/cpuset/my-user/my-cgroup/first/c1" という cgroup をこのコンテナ向けに作成します。
               存在しない cgroup は LXC が作成しますが、ユーザがカレントの cgroup に書き込み権を持っていることが前提となります。
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.cgroup.relative</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              Set this to 1 to instruct LXC to never escape to the
+              root cgroup. This makes it easy for users to adhere to
+              restrictions enforced by cgroup2 and
+              systemd. Specifically, this makes it possible to run LXC
+              containers as systemd services.
+                -->
+              LXC に root cgroup へのエスケープを行わないように指示するには、この値を 1 に設定してください。
+              これにより、ユーザは cgroup2 と systemd が強制する制限を遵守するのが容易になります。
+              具体的には、これにより LXC コンテナを systemd のサービスとして実行できます。
             </para>
           </listitem>
         </varlistentry>
@@ -2301,6 +2337,14 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               もし apparmor プロファイルが変更されないままでなくてはならない場合 (ネストしたコンテナである場合や、すでに confined されている場合) は以下のように設定します。
             </para>
               <programlisting>lxc.apparmor.profile = unchanged</programlisting>
+            <para>
+              <!--
+                If you instruct LXC to generate the apparmor profile,
+                then use
+                -->
+              もし LXC に AppArmor プロファイルを生成するように指示するには次のように設定します。
+            </para>
+              <programlisting>lxc.apparmor.profile = generated</programlisting>
           </listitem>
         </varlistentry>
         <varlistentry>
@@ -2332,6 +2376,46 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             </para>
           </listitem>
         </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.apparmor.allow_nesting</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              If set this to 1, causes the following changes. When
+              generated apparmor profiles are used, they will contain
+              the necessary changes to allow creating a nested
+              container. In addition to the usual mount points,
+              <filename>/dev/.lxc/proc</filename>
+              and <filename>/dev/.lxc/sys</filename> will contain
+              procfs and sysfs mount points without the lxcfs
+              overlays, which, if generated apparmor profiles are
+              being used, will not be read/writable directly.
+              -->
+              1 に設定すると次のような変更が行われます。
+              generated な AppArmor プロファイルが使われる場合、ネストしたコンテナを使うのに必要な変更が含まれます。通常のマウントポイントに加えて、lxcfs のオーバーレイなしで、<filename>/dev/.lxc/proc</filename> と <filename>/dev/.lxc/sys</filename> が procfs と sysfs のマウントポイントに含まれます。
+              generated な AppArmor プロファイルが使われている場合は、直接読み書きはできません
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.apparmor.raw</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              A list of raw AppArmor profile lines to append to the
+              profile. Only valid when using generated profiles.
+                -->
+              プロファイルに加える、生の AppArmor プロファイル行のリストです。generated なプロファイルを使っているときのみ有効です。
+            </para>
+          </listitem>
+        </varlistentry>
+
       </variablelist>
     </refsect2>
 
