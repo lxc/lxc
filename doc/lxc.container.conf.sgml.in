@@ -1470,6 +1470,20 @@ dev/null proc/kcore none bind,relative 0 0
             </para>
           </listitem>
         </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.cgroup.relative</option>
+          </term>
+          <listitem>
+            <para>
+              Set this to 1 to instruct LXC to never escape to the
+              root cgroup. This makes it easy for users to adhere to
+              restrictions enforced by cgroup2 and
+              systemd. Specifically, this makes it possible to run LXC
+              containers as systemd services.
+            </para>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 
