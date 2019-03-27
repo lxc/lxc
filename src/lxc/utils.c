@@ -1594,7 +1594,7 @@ pop_stack:
 	return umounts;
 }
 
-int run_command(char *buf, size_t buf_size, int (*child_fn)(void *), void *args)
+int run_command_internal(char *buf, size_t buf_size, int (*child_fn)(void *), void *args, bool wait_status)
 {
 	pid_t child;
 	int ret, fret, pipefd[2];
@@ -1651,11 +1651,25 @@ int run_command(char *buf, size_t buf_size, int (*child_fn)(void *), void *args)
 			buf[bytes - 1] = '\0';
 	}
 
-	fret = wait_for_pid(child);
+	if (wait_status)
+		fret = lxc_wait_for_pid_status(child);
+	else
+		fret = wait_for_pid(child);
+
 	/* close the read-end of the pipe */
 	close(pipefd[0]);
 
 	return fret;
+}
+
+int run_command(char *buf, size_t buf_size, int (*child_fn)(void *), void *args)
+{
+    return run_command_internal(buf, buf_size, child_fn, args, false);
+}
+
+int run_command_status(char *buf, size_t buf_size, int (*child_fn)(void *), void *args)
+{
+    return run_command_internal(buf, buf_size, child_fn, args, true);
 }
 
 bool lxc_nic_exists(char *nic)

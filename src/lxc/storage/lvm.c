@@ -55,6 +55,7 @@ struct lvcreate_args {
 	const char *lv;
 	const char *thinpool;
 	const char *fstype;
+	bool sigwipe;
 
 	/* snapshot specific arguments */
 	const char *source_lv;
@@ -76,12 +77,19 @@ static int lvm_create_exec_wrapper(void *data)
 
 	(void)setenv("LVM_SUPPRESS_FD_WARNINGS", "1", 1);
 	if (args->thinpool)
-		execlp("lvcreate", "lvcreate", "-qq", "--thinpool", args->thinpool,
-		       "-V", args->size, args->vg, "-n", args->lv,
-		       (char *)NULL);
+		if(args->sigwipe)
+			execlp("lvcreate", "lvcreate", "-Wy", "--yes", "--thinpool", args->thinpool,
+			       "-V", args->size, args->vg, "-n", args->lv, (char *)NULL);
+		else
+			execlp("lvcreate", "lvcreate", "-qq", "--thinpool", args->thinpool,
+			       "-V", args->size, args->vg, "-n", args->lv, (char *)NULL);
 	else
-		execlp("lvcreate", "lvcreate", "-qq", "-L", args->size, args->vg, "-n",
-		       args->lv, (char *)NULL);
+		if(args->sigwipe)
+			execlp("lvcreate", "lvcreate", "-Wy", "--yes", "-L", args->size, args->vg, "-n",
+			       args->lv, (char *)NULL);
+		else
+			execlp("lvcreate", "lvcreate", "-qq", "-L", args->size, args->vg, "-n",
+			       args->lv, (char *)NULL);
 
 	return -1;
 }
@@ -177,11 +185,22 @@ static int do_lvm_create(const char *path, uint64_t size, const char *thinpool)
 	cmd_args.vg = vg;
 	cmd_args.lv = lv;
 	cmd_args.size = sz;
+	cmd_args.sigwipe = true;
 	TRACE("Creating new lvm storage volume \"%s\" on volume group \"%s\" "
 	      "of size \"%s\"", lv, vg, sz);
-	ret = run_command(cmd_output, sizeof(cmd_output),
+	ret = run_command_status(cmd_output, sizeof(cmd_output),
 			  lvm_create_exec_wrapper, (void *)&cmd_args);
-	if (ret < 0) {
+
+	/* If lvcreate is old and doesn't support signature wiping, try again without it.
+	 * Test for exit code EINVALID_CMD_LINE(3) of lvcreate command.
+	 */
+	if (WIFEXITED(ret) && WEXITSTATUS(ret) == 3) {
+		cmd_args.sigwipe = false;
+		ret = run_command(cmd_output, sizeof(cmd_output),
+			      lvm_create_exec_wrapper, (void *)&cmd_args);
+	}
+
+	if (ret != 0) {
 		ERROR("Failed to create logical volume \"%s\": %s", lv,
 		      cmd_output);
 		free(pathdup);
