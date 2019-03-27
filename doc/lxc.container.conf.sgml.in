@@ -1407,6 +1407,19 @@ dev/null proc/kcore none bind,relative 0 0
           </listitem>
         </varlistentry>
 
+        <varlistentry>
+          <term>
+            <option>lxc.rootfs.managed</option>
+          </term>
+          <listitem>
+            <para>
+              Set this to 0 to indicate that LXC is not managing the
+              container storage, then LXC will not modify the
+              container storage. The default is 1.
+            </para>
+          </listitem>
+        </varlistentry>
+
       </variablelist>
     </refsect2>
 

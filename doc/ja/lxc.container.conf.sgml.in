@@ -1869,6 +1869,23 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           </listitem>
         </varlistentry>
 
+        <varlistentry>
+          <term>
+            <option>lxc.rootfs.managed</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              Set this to 0 to indicate that LXC is not managing the
+              container storage, then LXC will not modify the
+              container storage. The default is 1.
+                -->
+              LXC がコンテナのストレージを管理していない場合は、この値を 0 に設定します。
+              0 に設定すると、LXC はコンテナのストレージを変更しません。デフォルト値は 1 です。
+            </para>
+          </listitem>
+        </varlistentry>
+
       </variablelist>
     </refsect2>
 
