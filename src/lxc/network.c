@@ -2574,17 +2574,16 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 		 * interface to the network namespace, we have to destroy it.
 		 */
 		ret = lxc_netdev_delete_by_index(netdev->ifindex);
-		if (-ret == ENODEV) {
-			INFO("Interface \"%s\" with index %d already "
-			     "deleted or existing in different network "
-			     "namespace",
+		if (ret < 0) {
+			if (errno != ENODEV) {
+				WARN("Failed to remove interface \"%s\" with index %d",
+				     netdev->name[0] != '\0' ? netdev->name : "(null)",
+				     netdev->ifindex);
+				goto clear_ifindices;
+			}
+			INFO("Interface \"%s\" with index %d already deleted or existing in different network namespace",
 			     netdev->name[0] != '\0' ? netdev->name : "(null)",
 			     netdev->ifindex);
-		} else if (ret < 0) {
-			WARN("Failed to remove interface \"%s\" with index %d",
-			     netdev->name[0] != '\0' ? netdev->name : "(null)",
-			     netdev->ifindex);
-			goto clear_ifindices;
 		}
 		INFO("Removed interface \"%s\" with index %d",
 		     netdev->name[0] != '\0' ? netdev->name : "(null)",
