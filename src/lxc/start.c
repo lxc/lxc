@@ -1181,7 +1181,7 @@ static int do_start(void *data)
 			goto out_warn_father;
 
 		/* set{g,u}id() clears deathsignal */
-		ret = lxc_set_death_signal(SIGKILL, 0);
+		ret = lxc_set_death_signal(SIGKILL, handler->monitor_pid);
 		if (ret < 0) {
 			SYSERROR("Failed to set PR_SET_PDEATHSIG to SIGKILL");
 			goto out_warn_father;
