@@ -1090,6 +1090,18 @@ do_partial_cleanup:
 	return bret;
 }
 
+static inline int validate_args(const struct user_nic_args *args, int argc)
+{
+	int request = -EINVAL;
+
+	if (!strcmp(args->cmd, "create"))
+		request = LXC_USERNIC_CREATE;
+	else if (!strcmp(args->cmd, "delete"))
+		request = LXC_USERNIC_DELETE;
+
+	return request;
+}
+
 int main(int argc, char *argv[])
 {
 	__do_free char *me = NULL, *newname = NULL, *nicname = NULL;
@@ -1113,11 +1125,8 @@ int main(int argc, char *argv[])
 	if (argc == 8)
 		args.veth_name = argv[7];
 
-	if (!strcmp(args.cmd, "create"))
-		request = LXC_USERNIC_CREATE;
-	else if (!strcmp(args.cmd, "delete"))
-		request = LXC_USERNIC_DELETE;
-	else
+	request = validate_args(&args, argc);
+	if (request < 0)
 		usage(true);
 
 	/* Set a sane env, because we are setuid-root. */
