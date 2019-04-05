@@ -42,17 +42,31 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <refname>lxc-user-nic</refname>
 
     <refpurpose>
-      Create and attach a nic to another network namespace.
+      Manage nics in another network namespace
     </refpurpose>
   </refnamediv>
 
   <refsynopsisdiv>
     <cmdsynopsis>
       <command>lxc-user-nic</command>
+      <command>create</command>
+      <arg choice="req"><replaceable>lxcpath</replaceable></arg>
+      <arg choice="req"><replaceable>name</replaceable></arg>
       <arg choice="req"><replaceable>pid</replaceable></arg>
       <arg choice="req"><replaceable>type</replaceable></arg>
       <arg choice="req"><replaceable>bridge</replaceable></arg>
-      <arg choice="opt"><replaceable>nicname</replaceable></arg>
+      <arg choice="req"><replaceable>container nicname</replaceable></arg>
+    </cmdsynopsis>
+
+    <cmdsynopsis>
+      <command>lxc-user-nic</command>
+      <command>delete</command>
+      <arg choice="req"><replaceable>lxcpath</replaceable></arg>
+      <arg choice="req"><replaceable>name</replaceable></arg>
+      <arg choice="req"><replaceable>path to network namespace</replaceable></arg>
+      <arg choice="req"><replaceable>type</replaceable></arg>
+      <arg choice="req"><replaceable>bridge</replaceable></arg>
+      <arg choice="req"><replaceable>container nicname</replaceable></arg>
     </cmdsynopsis>
   </refsynopsisdiv>
 
@@ -61,7 +75,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
     <para>
       <command>lxc-user-nic</command> is a setuid-root program with which
-      unprivileged users may create network interfaces for use by a lxc container.
+      unprivileged users may manage network interfaces for use by a
+      lxc container.
     </para>
     <para>
       It will consult the configuration file <filename>@LXC_USERNIC_CONF@</filename>
@@ -71,6 +86,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <filename>@LXC_USERNIC_DB@</filename>.  It ensures that the calling
       user is privileged over the network namespace to which the interface
       will be attached.
+      <command>lxc-user-nic</command> also allows to delete network devices.
+      Currently only ovs ports can be deleted.
     </para>
 
   </refsect1>
@@ -80,6 +97,27 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     <title>Options</title>
 
     <variablelist>
+      <varlistentry>
+	<term>
+	  <option><replaceable>lxcpath</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	  The path of the container. This is currently not used.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option><replaceable>name</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	  The name of the container. This is currently not used.
+	  </para>
+	</listitem>
+      </varlistentry>
 
       <varlistentry>
 	<term>
@@ -99,7 +137,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 	</term>
 	<listitem>
 	  <para>
-	  The network interface type to attach.  Currently only veth is
+	  The network interface type to attach. Currently only veth is
 	  supported.  With this type, two interfaces representing each
 	  tunnel endpoint are created.  One endpoint will be attached
 	  to the specified bridge, while the other will be passed into
@@ -122,12 +160,25 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
       <varlistentry>
 	<term>
-	  <option><replaceable>nicname</replaceable></option>
+	  <option><replaceable>container nicname</replaceable></option>
 	</term>
 	<listitem>
 	  <para>
-	  The desired interface name in the container.  This will be
+	  The desired interface name in the container. This will be
 	  <filename>eth0</filename> if unspecified.
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>
+	  <option><replaceable>path to network namespace</replaceable></option>
+	</term>
+	<listitem>
+	  <para>
+	  A path to open to get a file descriptor for the target
+	  network namespace.
+	  This is only relevant when an veth device is deleted.
 	  </para>
 	</listitem>
       </varlistentry>
@@ -159,6 +210,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
   <refsect1>
     <title>Author</title>
+    <para>Christian Brauner <email>christian@brauner.io</email></para>
+    <para>Serge Hallyn <email>serge@hallyn.com</email></para>
     <para>Daniel Lezcano <email>daniel.lezcano@free.fr</email></para>
   </refsect1>
 
