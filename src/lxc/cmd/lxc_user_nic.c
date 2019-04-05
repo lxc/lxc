@@ -47,6 +47,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "compiler.h"
 #include "config.h"
 #include "log.h"
 #include "memory_utils.h"
@@ -69,13 +70,17 @@
 
 #define usernic_error(format, ...) usernic_debug_stream(stderr, format, __VA_ARGS__)
 
-static void usage(char *me, bool fail)
+__noreturn static void usage(bool fail)
 {
-	fprintf(stderr, "Usage: %s create {lxcpath} {name} {pid} {type} "
-			"{bridge} {nicname}\n", me);
-	fprintf(stderr, "Usage: %s delete {lxcpath} {name} "
-			"{/proc/<pid>/ns/net} {type} {bridge} {nicname}\n", me);
-	fprintf(stderr, "{nicname} is the name to use inside the container\n");
+	fprintf(stderr, "Description:\n");
+	fprintf(stderr, "  Manage nics in another network namespace\n\n");
+
+	fprintf(stderr, "Usage:\n");
+	fprintf(stderr, "  lxc-user-nic [command]\n\n");
+
+	fprintf(stderr, "Available Commands:\n");
+	fprintf(stderr, "  create {lxcpath} {name} {pid} {type} {bridge} {container nicname}\n");
+	fprintf(stderr, "  delete {lxcpath} {name} {/proc/<pid>/ns/net} {type} {bridge} {container nicname}\n");
 
 	if (fail)
 		_exit(EXIT_FAILURE);
@@ -83,9 +88,10 @@ static void usage(char *me, bool fail)
 	_exit(EXIT_SUCCESS);
 }
 
-static int open_and_lock(char *path)
+static int open_and_lock(const char *path)
 {
-	int fd, ret;
+	__do_close_prot_errno int fd = -EBADF;
+	int ret;
 	struct flock lk;
 
 	fd = open(path, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
@@ -102,11 +108,10 @@ static int open_and_lock(char *path)
 	ret = fcntl(fd, F_SETLKW, &lk);
 	if (ret < 0) {
 		CMD_SYSERROR("Failed to lock \"%s\"\n", path);
-		close(fd);
 		return -1;
 	}
 
-	return fd;
+	return move_fd(fd);
 }
 
 static char *get_username(void)
@@ -881,16 +886,15 @@ static char *lxc_secure_rename_in_ns(int pid, char *oldname, char *newname,
 	close(fd);
 	fd = -1;
 	if (ret < 0) {
-		CMD_SYSERROR("Failed to setns() to the network namespace of "
-		             "the container with PID %d\n", pid);
+		CMD_SYSERROR("Failed to setns() to the network namespace of the container with PID %d\n",
+			     pid);
 		goto do_partial_cleanup;
 	}
 
 	ret = setresuid(ruid, ruid, 0);
 	if (ret < 0) {
-		CMD_SYSERROR("Failed to drop privilege by setting effective "
-		             "user id and real user id to %d, and saved user "
-		             "ID to 0\n", ruid);
+		CMD_SYSERROR("Failed to drop privilege by setting effective user id and real user id to %d, and saved user ID to 0\n",
+			     ruid);
 		/* It's ok to jump to do_full_cleanup here since setresuid()
 		 * will succeed when trying to set real, effective, and saved to
 		 * values they currently have.
@@ -936,18 +940,15 @@ static char *lxc_secure_rename_in_ns(int pid, char *oldname, char *newname,
 do_full_cleanup:
 	ret = setresuid(ruid, euid, suid);
 	if (ret < 0) {
-		CMD_SYSERROR("Failed to restore privilege by setting "
-		             "effective user id to %d, real user id to %d, "
-		             "and saved user ID to %d\n", ruid, euid, suid);
+		CMD_SYSERROR("Failed to restore privilege by setting effective user id to %d, real user id to %d, and saved user ID to %d\n",
+			     ruid, euid, suid);
 
 		string_ret = NULL;
 	}
 
 	ret = setns(ofd, CLONE_NEWNET);
 	if (ret < 0) {
-		CMD_SYSERROR("Failed to setns() to original network namespace "
-		             "of PID %d\n", ofd);
-
+		CMD_SYSERROR("Failed to setns() to original network namespace of PID %d\n", ofd);
 		string_ret = NULL;
 	}
 
@@ -981,9 +982,8 @@ static bool may_access_netns(int pid)
 
 	ret = setresuid(ruid, ruid, euid);
 	if (ret < 0) {
-		CMD_SYSERROR("Failed to drop privilege by setting effective "
-		             "user id and real user id to %d, and saved user "
-		             "ID to %d\n", ruid, euid);
+		CMD_SYSERROR("Failed to drop privilege by setting effective user id and real user id to %d, and saved user ID to %d\n",
+			     ruid, euid);
 		return false;
 	}
 
@@ -1000,8 +1000,8 @@ static bool may_access_netns(int pid)
 
 	ret = setresuid(ruid, euid, suid);
 	if (ret < 0) {
-		CMD_SYSERROR("Failed to restore user id to %d, real user id "
-		             "to %d, and saved user ID to %d\n", ruid, euid, suid);
+		CMD_SYSERROR("Failed to restore user id to %d, real user id to %d, and saved user ID to %d\n",
+			     ruid, euid, suid);
 		may_access = false;
 	}
 
@@ -1018,8 +1018,10 @@ struct user_nic_args {
 	char *veth_name;
 };
 
-#define LXC_USERNIC_CREATE 0
-#define LXC_USERNIC_DELETE 1
+enum lxc_user_nic_command {
+	LXC_USERNIC_CREATE = 0,
+	LXC_USERNIC_DELETE = 1,
+};
 
 static bool is_privileged_over_netns(int netns_fd)
 {
@@ -1050,9 +1052,8 @@ static bool is_privileged_over_netns(int netns_fd)
 
 	ret = setresuid(ruid, ruid, 0);
 	if (ret < 0) {
-		CMD_SYSERROR("Failed to drop privilege by setting effective "
-		             "user id and real user id to %d, and saved user "
-		             "ID to 0\n", ruid);
+		CMD_SYSERROR("Failed to drop privilege by setting effective user id and real user id to %d, and saved user ID to 0\n",
+			     ruid);
 		/* It's ok to jump to do_full_cleanup here since setresuid()
 		 * will succeed when trying to set real, effective, and saved to
 		 * values they currently have.
@@ -1072,22 +1073,33 @@ static bool is_privileged_over_netns(int netns_fd)
 do_full_cleanup:
 	ret = setresuid(ruid, euid, suid);
 	if (ret < 0) {
-		CMD_SYSERROR("Failed to restore privilege by setting "
-		             "effective user id to %d, real user id to %d, "
-		             "and saved user ID to %d\n", ruid, euid, suid);
+		CMD_SYSERROR("Failed to restore privilege by setting effective user id to %d, real user id to %d, and saved user ID to %d\n",
+			     ruid, euid, suid);
 		bret = false;
 	}
 
 	ret = setns(ofd, CLONE_NEWNET);
 	if (ret < 0) {
-		CMD_SYSERROR("Failed to setns() to original network namespace "
-		             "of PID %d\n", ofd);
+		CMD_SYSERROR("Failed to setns() to original network namespace of PID %d\n",
+			     ofd);
 		bret = false;
 	}
 
 do_partial_cleanup:
 	close(ofd);
 	return bret;
+}
+
+static inline int validate_args(const struct user_nic_args *args, int argc)
+{
+	int request = -EINVAL;
+
+	if (!strcmp(args->cmd, "create"))
+		request = LXC_USERNIC_CREATE;
+	else if (!strcmp(args->cmd, "delete"))
+		request = LXC_USERNIC_DELETE;
+
+	return request;
 }
 
 int main(int argc, char *argv[])
@@ -1099,10 +1111,8 @@ int main(int argc, char *argv[])
 	char *cnic = NULL;
 	struct alloted_s *alloted = NULL;
 
-	if (argc < 7 || argc > 8) {
-		usage(argv[0], true);
-		_exit(EXIT_FAILURE);
-	}
+	if (argc < 7 || argc > 8)
+		usage(true);
 
 	memset(&args, 0, sizeof(struct user_nic_args));
 
@@ -1112,17 +1122,12 @@ int main(int argc, char *argv[])
 	args.pid = argv[4];
 	args.type = argv[5];
 	args.link = argv[6];
-	if (argc >= 8)
+	if (argc == 8)
 		args.veth_name = argv[7];
 
-	if (!strcmp(args.cmd, "create")) {
-		request = LXC_USERNIC_CREATE;
-	} else if (!strcmp(args.cmd, "delete")) {
-		request = LXC_USERNIC_DELETE;
-	} else {
-		usage(argv[0], true);
-		_exit(EXIT_FAILURE);
-	}
+	request = validate_args(&args, argc);
+	if (request < 0)
+		usage(true);
 
 	/* Set a sane env, because we are setuid-root. */
 	ret = clearenv();
@@ -1218,8 +1223,7 @@ int main(int argc, char *argv[])
 		has_priv = is_privileged_over_netns(netns_fd);
 		close(netns_fd);
 		if (!has_priv) {
-			usernic_error("%s", "Process is not privileged over "
-				      "network namespace\n");
+			usernic_error("%s", "Process is not privileged over network namespace\n");
 			_exit(EXIT_FAILURE);
 		}
 	}
@@ -1231,8 +1235,7 @@ int main(int argc, char *argv[])
 		bool found_nicname = false;
 
 		if (!is_ovs_bridge(args.link)) {
-			usernic_error("%s", "Deletion of non ovs type network "
-				      "devices not implemented\n");
+			usernic_error("%s", "Deletion of non ovs type network devices not implemented\n");
 			close(fd);
 			free_alloted(&alloted);
 			_exit(EXIT_FAILURE);
@@ -1251,16 +1254,13 @@ int main(int argc, char *argv[])
 		free_alloted(&alloted);
 
 		if (!found_nicname) {
-			usernic_error("Caller is not allowed to delete network "
-				      "device \"%s\"\n", args.veth_name);
+			usernic_error("Caller is not allowed to delete network device \"%s\"\n", args.veth_name);
 			_exit(EXIT_FAILURE);
 		}
 
 		ret = lxc_ovs_delete_port(args.link, args.veth_name);
 		if (ret < 0) {
-			usernic_error("Failed to remove port \"%s\" from "
-				      "openvswitch bridge \"%s\"",
-				      args.veth_name, args.link);
+			usernic_error("Failed to remove port \"%s\" from openvswitch bridge \"%s\"", args.veth_name, args.link);
 			_exit(EXIT_FAILURE);
 		}
 
