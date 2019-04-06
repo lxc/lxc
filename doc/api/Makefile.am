@@ -2,7 +2,7 @@ EXTRA_DIST = Doxyfile
 
 if ENABLE_API_DOCS
 html: Doxyfile
-	doxygen
+	doxygen $<
 endif
 
 .PHONY: html
