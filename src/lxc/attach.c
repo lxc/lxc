@@ -726,6 +726,8 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	int fd, lsm_fd, ret;
 	uid_t new_uid;
 	gid_t new_gid;
+	uid_t ns_root_uid = 0;
+	gid_t ns_root_gid = 0;
 	lxc_attach_options_t* options = payload->options;
 	struct lxc_proc_context_info* init_ctx = payload->init_ctx;
 	bool needs_lsm = (options->namespaces & CLONE_NEWNS) &&
@@ -809,24 +811,39 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	/* Ignore errors, we will fall back to root in that case (/proc was not
 	 * mounted etc.).
 	 */
-	if (options->namespaces & CLONE_NEWUSER)
-		lxc_attach_get_init_uidgid(&new_uid, &new_gid);
+	if (options->namespaces & CLONE_NEWUSER) {
+		/* Check whether nsuid 0 has a mapping. */
+		ns_root_uid = get_ns_uid(0);
 
-	if (options->uid != (uid_t)-1)
-		new_uid = options->uid;
-	if (options->gid != (gid_t)-1)
-		new_gid = options->gid;
+		/* Check whether nsgid 0 has a mapping. */
+		ns_root_gid = get_ns_gid(0);
 
-	/* Try to set the {u,g}id combination. */
-	if (new_uid != 0 || new_gid != 0 || options->namespaces & CLONE_NEWUSER) {
-		ret = lxc_switch_uid_gid(new_uid, new_gid);
-		if (ret < 0)
+		/* If there's no mapping for nsuid 0 try to retrieve the nsuid
+		 * init was started with.
+		 */
+		if (ns_root_uid == LXC_INVALID_UID)
+			lxc_attach_get_init_uidgid(&ns_root_uid, &ns_root_gid);
+
+		if (ns_root_uid == LXC_INVALID_UID)
 			goto on_error;
 
-		ret = lxc_setgroups(0, NULL);
-		if (ret < 0)
+		if (!lxc_switch_uid_gid(ns_root_uid, ns_root_gid))
 			goto on_error;
 	}
+
+	if (!lxc_setgroups(0, NULL) && errno != EPERM)
+		goto on_error;
+
+	/* Set {u,g}id. */
+	if (options->uid != LXC_INVALID_UID)
+		new_uid = options->uid;
+	else
+		new_uid = ns_root_uid;
+
+	if (options->gid != LXC_INVALID_GID)
+		new_gid = options->gid;
+	else
+		new_gid = ns_root_gid;
 
 	if (needs_lsm) {
 		bool on_exec;
@@ -908,6 +925,16 @@ static int attach_child_main(struct attach_clone_payload *payload)
 		}
 		TRACE("Prepared pty file descriptor %d", payload->pty_fd);
 	}
+
+	/* Avoid unnecessary syscalls. */
+	if (new_uid == ns_root_uid)
+		new_uid = LXC_INVALID_UID;
+
+	if (new_gid == ns_root_gid)
+		new_gid = LXC_INVALID_GID;
+
+	if (!lxc_switch_uid_gid(new_uid, new_gid))
+		goto on_error;
 
 	/* We're done, so we can now do whatever the user intended us to do. */
 	rexit(payload->exec_function(payload->exec_payload));

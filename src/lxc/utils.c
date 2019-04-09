@@ -1001,17 +1001,18 @@ void **lxc_append_null_to_array(void **array, size_t count)
 
 int randseed(bool srand_it)
 {
+	FILE *f;
 	/*
-	   srand pre-seed function based on /dev/urandom
-	   */
+	 * srand pre-seed function based on /dev/urandom
+	 */
 	unsigned int seed = time(NULL) + getpid();
 
-	FILE *f;
 	f = fopen("/dev/urandom", "r");
 	if (f) {
 		int ret = fread(&seed, sizeof(seed), 1, f);
 		if (ret != 1)
-			DEBUG("unable to fread /dev/urandom, %s, fallback to time+pid rand seed", strerror(errno));
+			SYSDEBUG("Unable to fread /dev/urandom, fallback to time+pid rand seed");
+
 		fclose(f);
 	}
 
@@ -1026,26 +1027,62 @@ uid_t get_ns_uid(uid_t orig)
 	char *line = NULL;
 	size_t sz = 0;
 	uid_t nsid, hostid, range;
-	FILE *f = fopen("/proc/self/uid_map", "r");
-	if (!f)
+	FILE *f;
+
+	f = fopen("/proc/self/uid_map", "r");
+	if (!f) {
+		SYSERROR("Failed to open uid_map");
 		return 0;
+	}
 
 	while (getline(&line, &sz, f) != -1) {
 		if (sscanf(line, "%u %u %u", &nsid, &hostid, &range) != 3)
 			continue;
+
 		if (hostid <= orig && hostid + range > orig) {
 			nsid += orig - hostid;
 			goto found;
 		}
 	}
 
-	nsid = 0;
+	nsid = LXC_INVALID_UID;
+
 found:
 	fclose(f);
 	free(line);
 	return nsid;
 }
 
+gid_t get_ns_gid(gid_t orig)
+{
+	char *line = NULL;
+	size_t sz = 0;
+	gid_t nsid, hostid, range;
+	FILE *f;
+
+	f = fopen("/proc/self/gid_map", "r");
+	if (!f) {
+		SYSERROR("Failed to open gid_map");
+		return 0;
+	}
+
+	while (getline(&line, &sz, f) != -1) {
+		if (sscanf(line, "%u %u %u", &nsid, &hostid, &range) != 3)
+			continue;
+
+		if (hostid <= orig && hostid + range > orig) {
+			nsid += orig - hostid;
+			goto found;
+		}
+	}
+
+	nsid = LXC_INVALID_GID;
+
+found:
+	fclose(f);
+	free(line);
+	return nsid;
+}
 bool dir_exists(const char *path)
 {
 	struct stat sb;

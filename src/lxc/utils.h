@@ -415,6 +415,7 @@ inline static bool am_host_unpriv(void)
  * parse /proc/self/uid_map to find what @orig maps to
  */
 extern uid_t get_ns_uid(uid_t orig);
+extern gid_t get_ns_gid(gid_t orig);
 
 extern bool dir_exists(const char *path);
 
