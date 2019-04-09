@@ -1146,15 +1146,13 @@ static int do_start(void *data)
 				  ? 0
 				  : handler->conf->init_gid;
 
-		ret = lxc_switch_uid_gid(nsuid, nsgid);
-		if (ret < 0)
+		if (!lxc_switch_uid_gid(nsuid, nsgid))
 			goto out_warn_father;
 
 		/* Drop groups only after we switched to a valid gid in the new
 		 * user namespace.
 		 */
-		ret = lxc_setgroups(0, NULL);
-		if (ret < 0 && (handler->am_root || errno != EPERM))
+		if (!lxc_setgroups(0, NULL) && (handler->am_root || errno != EPERM))
 			goto out_warn_father;
 
 		ret = prctl(PR_SET_DUMPABLE, 1, 0, 0, 0);
@@ -1349,12 +1347,11 @@ static int do_start(void *data)
 	#else
 	have_cap_setgid = false;
 	#endif
-	if (lxc_list_empty(&handler->conf->id_map) && have_cap_setgid) {
-		if (lxc_setgroups(0, NULL) < 0)
+	if (lxc_list_empty(&handler->conf->id_map) && have_cap_setgid)
+		if (!lxc_setgroups(0, NULL))
 			goto out_warn_father;
-	}
 
-	if (lxc_switch_uid_gid(new_uid, new_gid) < 0)
+	if (!lxc_switch_uid_gid(new_uid, new_gid))
 		goto out_warn_father;
 
 	ret = lxc_ambient_caps_down();

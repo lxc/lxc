@@ -455,8 +455,8 @@ extern int lxc_safe_uint64(const char *numstr, uint64_t *converted, int base);
 extern int parse_byte_size_string(const char *s, int64_t *converted);
 
 /* Switch to a new uid and gid. */
-int lxc_switch_uid_gid(uid_t uid, gid_t gid);
-int lxc_setgroups(int size, gid_t list[]);
+bool lxc_switch_uid_gid(uid_t uid, gid_t gid);
+bool lxc_setgroups(int size, gid_t list[]);
 
 /* Find an unused loop device and associate it with source. */
 int lxc_prepare_loop_dev(const char *source, char *loop_dev, int flags);
