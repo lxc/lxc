@@ -769,6 +769,8 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	const char *loglevel;
 	struct lxc_conf *conf = handler->conf;
 
+	handler->monitor_pid = lxc_raw_getpid();
+
 	lsm_init();
 	TRACE("Initialized LSM");
 
