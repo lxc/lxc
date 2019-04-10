@@ -2510,8 +2510,9 @@ cleanup_on_err:
 
 static int cg_unified_init(struct cgroup_ops *ops)
 {
+	__do_free char *subtree_path = NULL;
 	int ret;
-	char *mountpoint, *subtree_path;
+	char *mountpoint;
 	char **delegatable;
 	char *base_cgroup = NULL;
 
@@ -2535,7 +2536,6 @@ static int cg_unified_init(struct cgroup_ops *ops)
 	subtree_path = must_make_path(mountpoint, base_cgroup,
 				      "cgroup.subtree_control", NULL);
 	delegatable = cg_unified_get_controllers(subtree_path);
-	free(subtree_path);
 	if (!delegatable)
 		delegatable = cg_unified_make_empty_controller();
 	if (!delegatable[0])
@@ -2548,10 +2548,9 @@ static int cg_unified_init(struct cgroup_ops *ops)
 	 * controllers per container.
 	 */
 
-	add_hierarchy(&ops->hierarchies, delegatable, mountpoint, base_cgroup, CGROUP2_SUPER_MAGIC);
-
 	ops->cgroup_layout = CGROUP_LAYOUT_UNIFIED;
-	ops->unified = new;
+	ops->unified = add_hierarchy(&ops->hierarchies, delegatable, mountpoint,
+				     base_cgroup, CGROUP2_SUPER_MAGIC);
 	return CGROUP2_SUPER_MAGIC;
 }
 
