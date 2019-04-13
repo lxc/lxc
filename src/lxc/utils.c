@@ -1728,7 +1728,43 @@ uint64_t lxc_find_next_power2(uint64_t n)
 	return n;
 }
 
-int lxc_set_death_signal(int signal, pid_t parent)
+static int process_dead(/* takes */ int status_fd)
+{
+	__do_close_prot_errno int dupfd = -EBADF;
+	__do_free char *line = NULL;
+	__do_fclose FILE *f = NULL;
+	int ret = 0;
+	size_t n = 0;
+
+	dupfd = dup(status_fd);
+	if (dupfd < 0)
+		return -1;
+
+	if (fd_cloexec(dupfd, true) < 0)
+		return -1;
+
+	/* transfer ownership of fd */
+	f = fdopen(move_fd(dupfd), "re");
+	if (!f)
+		return -1;
+
+	ret = 0;
+	while (getline(&line, &n, f) != -1) {
+		char *state;
+
+		if (strncmp(line, "State:", 6))
+			continue;
+
+		state = lxc_trim_whitespace_in_place(line + 6);
+		/* only check whether process is dead or zombie for now */
+		if (*state == 'X' || *state == 'Z')
+			ret = 1;
+	}
+
+	return ret;
+}
+
+int lxc_set_death_signal(int signal, pid_t parent, int parent_status_fd)
 {
 	int ret;
 	pid_t ppid;
@@ -1736,12 +1772,16 @@ int lxc_set_death_signal(int signal, pid_t parent)
 	ret = prctl(PR_SET_PDEATHSIG, prctl_arg(signal), prctl_arg(0),
 		    prctl_arg(0), prctl_arg(0));
 
-	/* If not in a PID namespace, check whether we have been orphaned. */
+	/* verify that we haven't been orphaned in the meantime */
 	ppid = (pid_t)syscall(SYS_getppid);
-	if (ppid && ppid != parent) {
-		ret = raise(SIGKILL);
-		if (ret < 0)
-			return -1;
+	if (ppid == 0) { /* parent outside our pidns */
+		if (parent_status_fd < 0)
+			return 0;
+
+		if (process_dead(parent_status_fd) == 1)
+			return raise(SIGKILL);
+	} else if (ppid != parent) {
+		return raise(SIGKILL);
 	}
 
 	if (ret < 0)
