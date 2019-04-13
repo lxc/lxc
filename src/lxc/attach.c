@@ -700,7 +700,7 @@ static void lxc_put_attach_clone_payload(struct attach_clone_payload *p)
 
 static int attach_child_main(struct attach_clone_payload *payload)
 {
-	int fd, lsm_fd, ret;
+	int lsm_fd, ret;
 	uid_t new_uid;
 	gid_t new_gid;
 	uid_t ns_root_uid = 0;
@@ -893,10 +893,11 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	if (options->stderr_fd > STDERR_FILENO)
 		close(options->stderr_fd);
 
-	/* Try to remove FD_CLOEXEC flag from stdin/stdout/stderr, but also
+	/*
+	 * Try to remove FD_CLOEXEC flag from stdin/stdout/stderr, but also
 	 * here, ignore errors.
 	 */
-	for (fd = STDIN_FILENO; fd <= STDERR_FILENO; fd++) {
+	for (int fd = STDIN_FILENO; fd <= STDERR_FILENO; fd++) {
 		ret = fd_cloexec(fd, false);
 		if (ret < 0) {
 			SYSERROR("Failed to clear FD_CLOEXEC from file descriptor %d", fd);
