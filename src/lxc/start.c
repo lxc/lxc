@@ -703,6 +703,9 @@ void lxc_free_handler(struct lxc_handler *handler)
 		if (handler->conf->maincmd_fd >= 0)
 			lxc_abstract_unix_close(handler->conf->maincmd_fd);
 
+	if (handler->monitor_status_fd >= 0)
+		close(handler->monitor_status_fd);
+
 	if (handler->state_socket_pair[0] >= 0)
 		close(handler->state_socket_pair[0]);
 
@@ -737,6 +740,7 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 	handler->data_sock[0] = handler->data_sock[1] = -1;
 	handler->conf = conf;
 	handler->lxcpath = lxcpath;
+	handler->monitor_status_fd = -EBADF;
 	handler->pinfd = -1;
 	handler->pidfd = -EBADF;
 	handler->proc_pidfd = -EBADF;
@@ -789,11 +793,17 @@ on_error:
 
 int lxc_init(const char *name, struct lxc_handler *handler)
 {
+	__do_close_prot_errno int status_fd = -EBADF;
 	int ret;
 	const char *loglevel;
 	struct lxc_conf *conf = handler->conf;
 
 	handler->monitor_pid = lxc_raw_getpid();
+	status_fd = open("/proc/self/status", O_RDONLY | O_CLOEXEC);
+	if (status_fd < 0) {
+		SYSERROR("Failed to open monitor status fd");
+		goto out_close_maincmd_fd;
+	}
 
 	lsm_init();
 	TRACE("Initialized LSM");
@@ -917,6 +927,7 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	TRACE("Initialized cgroup driver");
 
 	INFO("Container \"%s\" is initialized", name);
+	handler->monitor_status_fd = move_fd(status_fd);
 	return 0;
 
 out_delete_terminal:
@@ -1112,6 +1123,7 @@ static int do_start(void *data)
 	struct lxc_handler *handler = data;
 	ATTR_UNUSED __do_close_prot_errno int data_sock0 = handler->data_sock[0],
 					      data_sock1 = handler->data_sock[1];
+	__do_close_prot_errno int status_fd = -EBADF;
 	int ret;
 	uid_t new_uid;
 	gid_t new_gid;
@@ -1122,13 +1134,18 @@ static int do_start(void *data)
 
 	lxc_sync_fini_parent(handler);
 
+	if (lxc_abstract_unix_recv_fds(handler->data_sock[1], &status_fd, 1, NULL, 0) < 0) {
+		ERROR("Failed to receive status file descriptor to child process");
+		goto out_warn_father;
+	}
+
 	/* This prctl must be before the synchro, so if the parent dies before
 	 * we set the parent death signal, we will detect its death with the
 	 * synchro right after, otherwise we have a window where the parent can
 	 * exit before we set the pdeath signal leading to a unsupervized
 	 * container.
 	 */
-	ret = lxc_set_death_signal(SIGKILL, handler->monitor_pid);
+	ret = lxc_set_death_signal(SIGKILL, handler->monitor_pid, status_fd);
 	if (ret < 0) {
 		SYSERROR("Failed to set PR_SET_PDEATHSIG to SIGKILL");
 		goto out_warn_father;
@@ -1206,7 +1223,7 @@ static int do_start(void *data)
 			goto out_warn_father;
 
 		/* set{g,u}id() clears deathsignal */
-		ret = lxc_set_death_signal(SIGKILL, handler->monitor_pid);
+		ret = lxc_set_death_signal(SIGKILL, handler->monitor_pid, status_fd);
 		if (ret < 0) {
 			SYSERROR("Failed to set PR_SET_PDEATHSIG to SIGKILL");
 			goto out_warn_father;
@@ -1231,12 +1248,12 @@ static int do_start(void *data)
 	 */
 	if (handler->daemonize && !handler->conf->autodev) {
 		char path[PATH_MAX];
-		
+
 		ret = snprintf(path, sizeof(path), "%s/dev/null",
 			       handler->conf->rootfs.mount);
 		if (ret < 0 || ret >= sizeof(path))
 			goto out_warn_father;
-		
+
 		ret = access(path, F_OK);
 		if (ret != 0) {
 			devnull_fd = open_devnull();
@@ -1451,6 +1468,16 @@ static int do_start(void *data)
 	if (ret < 0) {
 		ERROR("Failed to clear ambient capabilities");
 		goto out_warn_father;
+	}
+
+	if (handler->conf->monitor_signal_pdeath != SIGKILL) {
+		ret = lxc_set_death_signal(handler->conf->monitor_signal_pdeath,
+					   handler->monitor_pid, status_fd);
+		if (ret < 0) {
+			SYSERROR("Failed to set PR_SET_PDEATHSIG to %d",
+				 handler->conf->monitor_signal_pdeath);
+			goto out_warn_father;
+		}
 	}
 
 	/* After this call, we are in error because this ops should not return
@@ -1767,6 +1794,12 @@ static int lxc_spawn(struct lxc_handler *handler)
 	}
 
 	lxc_sync_fini_child(handler);
+
+	if (lxc_abstract_unix_send_fds(handler->data_sock[0], &handler->monitor_status_fd, 1, NULL, 0) < 0) {
+		ERROR("Failed to send status file descriptor to child process");
+		goto out_delete_net;
+	}
+	close_prot_errno_disarm(handler->monitor_status_fd);
 
 	/* Map the container uids. The container became an invalid userid the
 	 * moment it was cloned with CLONE_NEWUSER. This call doesn't change
