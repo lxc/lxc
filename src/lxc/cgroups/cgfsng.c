@@ -522,13 +522,17 @@ static bool copy_parent_file(char *path, char *file)
 	*lastslash = '\0';
 	parent_path = must_make_path(path, file, NULL);
 	len = lxc_read_from_file(parent_path, NULL, 0);
-	if (len <= 0)
-		goto on_error;
+	if (len <= 0) {
+		SYSERROR("Failed to determine buffer size");
+		return false;
+	}
 
 	value = must_realloc(NULL, len + 1);
 	ret = lxc_read_from_file(parent_path, value, len);
-	if (ret != len)
-		goto on_error;
+	if (ret != len) {
+		SYSERROR("Failed to read from parent file \"%s\"", parent_path);
+		return false;
+	}
 
 	*lastslash = oldv;
 	child_path = must_make_path(path, file, NULL);
@@ -536,10 +540,6 @@ static bool copy_parent_file(char *path, char *file)
 	if (ret < 0)
 		SYSERROR("Failed to write \"%s\" to file \"%s\"", value, child_path);
 	return ret >= 0;
-
-on_error:
-	SYSERROR("Failed to read file \"%s\"", child_path);
-	return false;
 }
 
 /* Initialize the cpuset hierarchy in first directory of @gname and set
