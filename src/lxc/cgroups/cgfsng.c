@@ -519,10 +519,11 @@ on_error:
 /* Copy contents of parent(@path)/@file to @path/@file */
 static bool copy_parent_file(char *path, char *file)
 {
+	__do_free char *child_path = NULL, *parent_path = NULL, *value = NULL;
 	int ret;
-	char *fpath, *lastslash, oldv;
+	char oldv;
 	int len = 0;
-	char *value = NULL;
+	char *lastslash = NULL;
 
 	lastslash = strrchr(path, '/');
 	if (!lastslash) {
@@ -531,30 +532,25 @@ static bool copy_parent_file(char *path, char *file)
 	}
 	oldv = *lastslash;
 	*lastslash = '\0';
-	fpath = must_make_path(path, file, NULL);
-	len = lxc_read_from_file(fpath, NULL, 0);
+	parent_path = must_make_path(path, file, NULL);
+	len = lxc_read_from_file(parent_path, NULL, 0);
 	if (len <= 0)
 		goto on_error;
 
 	value = must_realloc(NULL, len + 1);
-	ret = lxc_read_from_file(fpath, value, len);
+	ret = lxc_read_from_file(parent_path, value, len);
 	if (ret != len)
 		goto on_error;
-	free(fpath);
 
 	*lastslash = oldv;
-	fpath = must_make_path(path, file, NULL);
-	ret = lxc_write_to_file(fpath, value, len, false, 0666);
+	child_path = must_make_path(path, file, NULL);
+	ret = lxc_write_to_file(child_path, value, len, false, 0666);
 	if (ret < 0)
-		SYSERROR("Failed to write \"%s\" to file \"%s\"", value, fpath);
-	free(fpath);
-	free(value);
+		SYSERROR("Failed to write \"%s\" to file \"%s\"", value, child_path);
 	return ret >= 0;
 
 on_error:
-	SYSERROR("Failed to read file \"%s\"", fpath);
-	free(fpath);
-	free(value);
+	SYSERROR("Failed to read file \"%s\"", child_path);
 	return false;
 }
 
