@@ -343,6 +343,9 @@ struct lxc_conf {
 	/* default command for lxc-execute */
 	char *execute_cmd;
 
+	/* the path to a fifo to do wait on during execute */
+	char *execute_wait_fifo_path;
+
 	/* init command */
 	char *init_cmd;
 

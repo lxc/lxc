@@ -157,6 +157,7 @@ lxc_config_define(tty_dir);
 lxc_config_define(uts_name);
 lxc_config_define(sysctl);
 lxc_config_define(proc);
+lxc_config_define(execute_wait_fifo_path);
 
 static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.arch",                      set_config_personality,                 get_config_personality,                 clr_config_personality,               },
@@ -179,6 +180,7 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.environment",               set_config_environment,                 get_config_environment,                 clr_config_environment,               },
 	{ "lxc.ephemeral",                 set_config_ephemeral,                   get_config_ephemeral,                   clr_config_ephemeral,                 },
 	{ "lxc.execute.cmd",               set_config_execute_cmd,                 get_config_execute_cmd,                 clr_config_execute_cmd,               },
+	{ "lxc.execute.wait_fifo_path",    set_config_execute_wait_fifo_path,      get_config_execute_wait_fifo_path,      clr_config_execute_wait_fifo_path,    },
 	{ "lxc.group",                     set_config_group,                       get_config_group,                       clr_config_group,                     },
 	{ "lxc.hook.autodev",              set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
 	{ "lxc.hook.clone",                set_config_hooks,                       get_config_hooks,                       clr_config_hooks,                     },
@@ -799,6 +801,14 @@ static int set_config_execute_cmd(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_path_item(&lxc_conf->execute_cmd, value);
+}
+
+static int set_config_execute_wait_fifo_path(const char *key,
+					     const char *value,
+					     struct lxc_conf *lxc_conf,
+					     void *data)
+{
+	return set_config_path_item(&lxc_conf->execute_wait_fifo_path, value);
 }
 
 static int set_config_init_cmd(const char *key, const char *value,
@@ -3808,6 +3818,13 @@ static int get_config_execute_cmd(const char *key, char *retv, int inlen,
 	return lxc_get_conf_str(retv, inlen, c->execute_cmd);
 }
 
+static int get_config_execute_wait_fifo_path(const char *key, char *retv,
+					     int inlen, struct lxc_conf *c,
+					     void *data)
+{
+	return lxc_get_conf_str(retv, inlen, c->execute_wait_fifo_path);
+}
+
 static int get_config_init_cmd(const char *key, char *retv, int inlen,
 			       struct lxc_conf *c, void *data)
 {
@@ -4382,6 +4399,15 @@ static inline int clr_config_execute_cmd(const char *key, struct lxc_conf *c,
 {
 	free(c->execute_cmd);
 	c->execute_cmd = NULL;
+	return 0;
+}
+
+static inline int clr_config_execute_wait_fifo_path(const char *key,
+						    struct lxc_conf *c,
+						    void *data)
+{
+	free(c->execute_wait_fifo_path);
+	c->execute_wait_fifo_path = NULL;
 	return 0;
 }
 

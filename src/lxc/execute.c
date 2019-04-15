@@ -57,6 +57,9 @@ static int execute_start(struct lxc_handler *handler, void* data)
 	if (!handler->conf->rootfs.path)
 		argc_add += 2;
 
+	if (handler->conf->execute_wait_fifo_path)
+		argc_add += 2;
+
 	argv = malloc((argc + argc_add) * sizeof(*argv));
 	if (!argv) {
 		SYSERROR("Allocating init args failed");
@@ -77,6 +80,11 @@ static int execute_start(struct lxc_handler *handler, void* data)
 	if (!handler->conf->rootfs.path) {
 		argv[i++] = "-P";
 		argv[i++] = (char *)handler->lxcpath;
+	}
+
+	if (handler->conf->execute_wait_fifo_path) {
+		argv[i++] = "--exec-wait";
+		argv[i++] = handler->conf->execute_wait_fifo_path;
 	}
 
 	argv[i++] = "--";
