@@ -202,12 +202,6 @@ if [ -n "${NVIDIA_DRIVER_CAPABILITIES:-}" ]; then
      CLI_CAPABILITIES="${NVIDIA_DRIVER_CAPABILITIES//,/ }"
 fi
 
-# https://github.com/nvidia/nvidia-container-runtime#nvidia_require_
-CLI_REQUIREMENTS=
-for req in $(compgen -e "NVIDIA_REQUIRE_"); do
-    CLI_REQUIREMENTS="${CLI_REQUIREMENTS} ${!req}"
-done
-
 if [ "${CLI_CAPABILITIES}" = "all" ]; then
     CLI_CAPABILITIES="compute compat32 display graphics utility video"
 fi
@@ -216,8 +210,8 @@ if [ -z "${CLI_CAPABILITIES}" ]; then
     CLI_CAPABILITIES="utility"
 fi
 
-global_args=("")
-configure_args=("")
+global_args=()
+configure_args=()
 
 if [ -n "${CLI_DEBUG}" ]; then
     echo "INFO: Writing nvidia-container-cli log at ${CLI_DEBUG}." >&2
@@ -258,9 +252,10 @@ for cap in ${CLI_CAPABILITIES}; do
     fi
 done
 
+# https://github.com/nvidia/nvidia-container-runtime#nvidia_require_
 if [ "${CLI_DISABLE_REQUIRE}" = "false" ]; then
-    for req in ${CLI_REQUIREMENTS}; do
-        configure_args+=(--require="${req}")
+    for req in $(compgen -e "NVIDIA_REQUIRE_"); do
+	configure_args+=("--require=${!req}")
     done
 fi
 
@@ -270,4 +265,4 @@ if [ -d "/sys/kernel/security/apparmor" ]; then
 fi
 
 set -x
-exec nvidia-container-cli ${global_args[@]} configure ${configure_args[@]} "${LXC_ROOTFS_MOUNT}"
+exec nvidia-container-cli ${global_args[@]} configure "${configure_args[@]}" "${LXC_ROOTFS_MOUNT}"
