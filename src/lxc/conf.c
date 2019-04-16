@@ -3493,6 +3493,15 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
+	if (!lxc_list_empty(&lxc_conf->mount_list)) {
+		ret = setup_mount_entries(lxc_conf, &lxc_conf->rootfs,
+					  &lxc_conf->mount_list, name, lxcpath);
+		if (ret < 0) {
+			ERROR("Failed to setup mount entries");
+			return -1;
+		}
+	}
+
 	if (lxc_conf->is_execute) {
 		if (execveat_supported()) {
 			int fd;
@@ -3547,15 +3556,6 @@ int lxc_setup(struct lxc_handler *handler)
 		ret = lxc_fill_autodev(&lxc_conf->rootfs);
 		if (ret < 0) {
 			ERROR("Failed to populate \"/dev\"");
-			return -1;
-		}
-	}
-
-	if (!lxc_list_empty(&lxc_conf->mount_list)) {
-		ret = setup_mount_entries(lxc_conf, &lxc_conf->rootfs,
-					  &lxc_conf->mount_list, name, lxcpath);
-		if (ret < 0) {
-			ERROR("Failed to setup mount entries");
 			return -1;
 		}
 	}
