@@ -47,7 +47,7 @@ pid_t lxc_raw_clone(unsigned long flags)
 	/* On s390/s390x and cris the order of the first and second arguments
 	 * of the system call is reversed.
 	 */
-	return (int)syscall(__NR_clone, NULL, flags | SIGCHLD);
+	return syscall(__NR_clone, NULL, flags | SIGCHLD);
 #elif defined(__sparc__) && defined(__arch64__)
 	{
 		/*
@@ -55,28 +55,38 @@ pid_t lxc_raw_clone(unsigned long flags)
 		 * boolean flag whether this is the child or the parent in %o1.
 		 * Inline assembly is needed to get the flag returned in %o1.
 		 */
-		int in_child;
-		int child_pid;
-		asm volatile("mov %2, %%g1\n\t"
-			     "mov %3, %%o0\n\t"
-			     "mov 0 , %%o1\n\t"
-			     "t 0x6d\n\t"
-			     "mov %%o1, %0\n\t"
-			     "mov %%o0, %1"
-			     : "=r"(in_child), "=r"(child_pid)
-			     : "i"(__NR_clone), "r"(flags | SIGCHLD)
-			     : "%o1", "%o0", "%g1");
+		int child_pid, in_child, ret;
+
+                asm volatile("mov %3, %%g1\n\t"
+                             "mov %4, %%o0\n\t"
+                             "mov 0 , %%o1\n\t"
+#if defined(__arch64__)
+                             "t 0x6d\n\t"
+#else
+                             "t 0x10\n\t"
+#endif
+                             "addx %%g0, 0, %2\n\t"
+                             "mov %%o1, %0\n\t"
+                             "mov %%o0, %1" :
+                             "=r"(in_child), "=r"(child_pid), "=r"(ret) :
+                             "i"(__NR_clone), "r"(flags | SIGCHLD) :
+                             "%o1", "%o0", "%g1", "cc" );
+
+		if (ret) {
+			errno = child_pid;
+			return -1;
+		}
 
 		if (in_child)
 			return 0;
-		else
-			return child_pid;
+
+		return child_pid;
 	}
 #elif defined(__ia64__)
 	/* On ia64 the stack and stack size are passed as separate arguments. */
-	return (int)syscall(__NR_clone, flags | SIGCHLD, NULL, prctl_arg(0));
+	return syscall(__NR_clone, flags | SIGCHLD, NULL, prctl_arg(0));
 #else
-	return (int)syscall(__NR_clone, flags | SIGCHLD, NULL);
+	return syscall(__NR_clone, flags | SIGCHLD, NULL);
 #endif
 }
 
