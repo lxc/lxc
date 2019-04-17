@@ -729,8 +729,8 @@ AX_CHECK_COMPILE_FLAG([-fasynchronous-unwind-tables], [CFLAGS="$CFLAGS -fasynchr
 AX_CHECK_COMPILE_FLAG([-pipe], [CFLAGS="$CFLAGS -pipe"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-fexceptions], [CFLAGS="$CFLAGS -fexceptions"],,[-Werror])
 
-AX_CHECK_LINK_FLAG([-z relro], [LDLAGS="$LDLAGS -z relro"],,[])
-AX_CHECK_LINK_FLAG([-z now], [LDLAGS="$LDLAGS -z now"],,[])
+AX_CHECK_LINK_FLAG([-z relro], [LDFLAGS="$LDFLAGS -z relro"],,[])
+AX_CHECK_LINK_FLAG([-z now], [LDFLAGS="$LDFLAGS -z now"],,[])
 
 CFLAGS="$CFLAGS -Wvla -std=gnu11"
 if test "x$enable_werror" = "xyes"; then
