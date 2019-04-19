@@ -126,7 +126,7 @@ static struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 static inline void lxc_proc_close_ns_fd(struct lxc_proc_context_info *ctx)
 {
 	for (int i = 0; i < LXC_NS_MAX; i++) {
-		__do_close_prot_errno int fd = move_fd(ctx->ns_fd[i]);
+		__do_close_prot_errno int fd ATTR_UNUSED = move_fd(ctx->ns_fd[i]);
 	}
 }
 
@@ -689,8 +689,8 @@ struct attach_clone_payload {
 
 static void lxc_put_attach_clone_payload(struct attach_clone_payload *p)
 {
-	__do_close_prot_errno int ipc_socket = p->ipc_socket;
-	__do_close_prot_errno int terminal_slave_fd = p->terminal_slave_fd;
+	__do_close_prot_errno int ipc_socket ATTR_UNUSED = p->ipc_socket;
+	__do_close_prot_errno int terminal_slave_fd ATTR_UNUSED = p->terminal_slave_fd;
 
 	if (p->init_ctx) {
 		lxc_proc_put_context_info(p->init_ctx);
@@ -700,7 +700,7 @@ static void lxc_put_attach_clone_payload(struct attach_clone_payload *p)
 
 static int attach_child_main(struct attach_clone_payload *payload)
 {
-	int fd, lsm_fd, ret;
+	int lsm_fd, ret;
 	uid_t new_uid;
 	gid_t new_gid;
 	uid_t ns_root_uid = 0;
@@ -893,10 +893,11 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	if (options->stderr_fd > STDERR_FILENO)
 		close(options->stderr_fd);
 
-	/* Try to remove FD_CLOEXEC flag from stdin/stdout/stderr, but also
+	/*
+	 * Try to remove FD_CLOEXEC flag from stdin/stdout/stderr, but also
 	 * here, ignore errors.
 	 */
-	for (fd = STDIN_FILENO; fd <= STDERR_FILENO; fd++) {
+	for (int fd = STDIN_FILENO; fd <= STDERR_FILENO; fd++) {
 		ret = fd_cloexec(fd, false);
 		if (ret < 0) {
 			SYSERROR("Failed to clear FD_CLOEXEC from file descriptor %d", fd);
@@ -1217,7 +1218,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 		if (options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) {
 			struct cgroup_ops *cgroup_ops;
 
-			cgroup_ops = cgroup_init(NULL);
+			cgroup_ops = cgroup_init(conf);
 			if (!cgroup_ops)
 				goto on_error;
 

@@ -885,7 +885,7 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	}
 	TRACE("Chowned console");
 
-	handler->cgroup_ops = cgroup_init(handler);
+	handler->cgroup_ops = cgroup_init(handler->conf);
 	if (!handler->cgroup_ops) {
 		ERROR("Failed to initialize cgroup driver");
 		goto out_delete_terminal;
@@ -894,6 +894,10 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 
 	INFO("Container \"%s\" is initialized", name);
 	return 0;
+
+out_destroy_cgroups:
+	handler->cgroup_ops->payload_destroy(handler->cgroup_ops, handler);
+	handler->cgroup_ops->monitor_destroy(handler->cgroup_ops, handler);
 
 out_delete_terminal:
 	lxc_terminal_delete(&handler->conf->console);
@@ -985,7 +989,8 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	while (namespace_count--)
 		free(namespaces[namespace_count]);
 
-	cgroup_ops->destroy(cgroup_ops, handler);
+	cgroup_ops->payload_destroy(cgroup_ops, handler);
+	cgroup_ops->monitor_destroy(cgroup_ops, handler);
 
 	if (handler->conf->reboot == REBOOT_NONE) {
 		/* For all new state clients simply close the command socket.
@@ -1599,16 +1604,12 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 	ret = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0,
 			 handler->data_sock);
-	if (ret < 0) {
-		lxc_sync_fini(handler);
-		return -1;
-	}
+	if (ret < 0)
+		goto out_sync_fini;
 
 	ret = resolve_clone_flags(handler);
-	if (ret < 0) {
-		lxc_sync_fini(handler);
-		return -1;
-	}
+	if (ret < 0)
+		goto out_sync_fini;
 
 	if (handler->ns_clone_flags & CLONE_NEWNET) {
 		if (!lxc_list_empty(&conf->network)) {
@@ -1621,8 +1622,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 			ret = lxc_find_gateway_addresses(handler);
 			if (ret < 0) {
 				ERROR("Failed to find gateway addresses");
-				lxc_sync_fini(handler);
-				return -1;
+				goto out_sync_fini;
 			}
 
 			/* That should be done before the clone because we will
@@ -1631,8 +1631,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 			ret = lxc_create_network_priv(handler);
 			if (ret < 0) {
 				ERROR("Failed to create the network");
-				lxc_sync_fini(handler);
-				return -1;
+				goto out_delete_net;
 			}
 		}
 	}
@@ -1891,6 +1890,8 @@ out_delete_net:
 
 out_abort:
 	lxc_abort(name, handler);
+
+out_sync_fini:
 	lxc_sync_fini(handler);
 	if (handler->pinfd >= 0) {
 		close(handler->pinfd);
@@ -1906,6 +1907,7 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 {
 	int ret, status;
 	struct lxc_conf *conf = handler->conf;
+	struct cgroup_ops *cgroup_ops;
 
 	ret = lxc_init(name, handler);
 	if (ret < 0) {
@@ -1915,9 +1917,23 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	handler->ops = ops;
 	handler->data = data;
 	handler->daemonize = daemonize;
+	cgroup_ops = handler->cgroup_ops;
 
 	if (!attach_block_device(handler->conf)) {
 		ERROR("Failed to attach block device");
+		ret = -1;
+		goto out_fini_nonet;
+	}
+
+	if (!cgroup_ops->monitor_create(cgroup_ops, handler)) {
+		ERROR("Failed to create monitor cgroup");
+		ret = -1;
+		goto out_fini_nonet;
+	}
+
+	if (!cgroup_ops->monitor_enter(cgroup_ops, handler->monitor_pid)) {
+		ERROR("Failed to enter monitor cgroup");
+		ret = -1;
 		goto out_fini_nonet;
 	}
 
@@ -1962,6 +1978,7 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 
 	if (!handler->init_died && handler->pid > 0) {
 		ERROR("Child process is not killed");
+		ret = -1;
 		goto out_abort;
 	}
 

@@ -28,6 +28,10 @@
 #include <stddef.h>
 #include <sys/types.h>
 
+#define PAYLOAD_CGROUP "lxc.payload"
+#define MONITOR_CGROUP "lxc.monitor"
+#define PIVOT_CGROUP "lxc.pivot"
+
 struct lxc_handler;
 struct lxc_conf;
 struct lxc_list;
@@ -65,6 +69,9 @@ typedef enum {
  * @container_full_path
  * - The full path to the containers cgroup.
  *
+ * @monitor_full_path
+ * - The full path to the monitor's cgroup.
+ *
  * @version
  * - legacy hierarchy
  *   If the hierarchy is a legacy hierarchy this will be set to
@@ -74,10 +81,16 @@ typedef enum {
  *   CGROUP2_SUPER_MAGIC.
  */
 struct hierarchy {
+	/*
+	 * cgroup2 only: what files need to be chowned to delegate a cgroup to
+	 * an unprivileged user.
+	 */
+	char **cgroup2_chown;
 	char **controllers;
 	char *mountpoint;
 	char *container_base_path;
 	char *container_full_path;
+	char *monitor_full_path;
 	int version;
 };
 
@@ -92,6 +105,9 @@ struct cgroup_ops {
 	char **cgroup_use;
 	char *cgroup_pattern;
 	char *container_cgroup;
+
+	/* Static memory, do not free.*/
+	const char *monitor_pattern;
 
 	/* @hierarchies
 	 * - A NULL-terminated array of struct hierarchy, one per legacy
@@ -124,11 +140,14 @@ struct cgroup_ops {
 	cgroup_layout_t cgroup_layout;
 
 	bool (*data_init)(struct cgroup_ops *ops);
-	void (*destroy)(struct cgroup_ops *ops, struct lxc_handler *handler);
+	void (*payload_destroy)(struct cgroup_ops *ops, struct lxc_handler *handler);
+	void (*monitor_destroy)(struct cgroup_ops *ops, struct lxc_handler *handler);
+	bool (*monitor_create)(struct cgroup_ops *ops, struct lxc_handler *handler);
+	bool (*monitor_enter)(struct cgroup_ops *ops, pid_t pid);
 	bool (*payload_create)(struct cgroup_ops *ops, struct lxc_handler *handler);
 	bool (*payload_enter)(struct cgroup_ops *ops, pid_t pid);
 	const char *(*get_cgroup)(struct cgroup_ops *ops, const char *controller);
-	bool (*escape)(const struct cgroup_ops *ops);
+	bool (*escape)(const struct cgroup_ops *ops, struct lxc_conf *conf);
 	int (*num_hierarchies)(struct cgroup_ops *ops);
 	bool (*get_hierarchies)(struct cgroup_ops *ops, int n, char ***out);
 	int (*set)(struct cgroup_ops *ops, const char *filename,
@@ -146,7 +165,7 @@ struct cgroup_ops {
 	int (*nrtasks)(struct cgroup_ops *ops);
 };
 
-extern struct cgroup_ops *cgroup_init(struct lxc_handler *handler);
+extern struct cgroup_ops *cgroup_init(struct lxc_conf *conf);
 extern void cgroup_exit(struct cgroup_ops *ops);
 
 extern void prune_init_scope(char *cg);

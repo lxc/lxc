@@ -45,35 +45,41 @@
 
 lxc_log_define(freezer, lxc);
 
-static int do_freeze_thaw(bool freeze, const char *name, const char *lxcpath)
+static int do_freeze_thaw(bool freeze, struct lxc_conf *conf, const char *name,
+			  const char *lxcpath)
 {
 	int ret;
 	char v[100];
 	struct cgroup_ops *cgroup_ops;
-	const char *state = freeze ? "FROZEN" : "THAWED";
-	size_t state_len = 6;
+	const char *state;
+	size_t state_len;
 	lxc_state_t new_state = freeze ? FROZEN : THAWED;
 
-	cgroup_ops = cgroup_init(NULL);
+	state = lxc_state2str(new_state);
+	state_len = strlen(state);
+
+	cgroup_ops = cgroup_init(conf);
 	if (!cgroup_ops)
 		return -1;
 
 	ret = cgroup_ops->set(cgroup_ops, "freezer.state", state, name, lxcpath);
 	if (ret < 0) {
 		cgroup_exit(cgroup_ops);
-		ERROR("Failed to freeze %s", name);
+		ERROR("Failed to %s %s",
+		      (new_state == FROZEN ? "freeze" : "unfreeze"), name);
 		return -1;
 	}
 
 	for (;;) {
-		ret = cgroup_ops->get(cgroup_ops, "freezer.state", v, sizeof(v), name, lxcpath);
+		ret = cgroup_ops->get(cgroup_ops, "freezer.state", v, sizeof(v),
+				      name, lxcpath);
 		if (ret < 0) {
 			cgroup_exit(cgroup_ops);
 			ERROR("Failed to get freezer state of %s", name);
 			return -1;
 		}
 
-		v[99] = '\0';
+		v[sizeof(v) - 1] = '\0';
 		v[lxc_char_right_gc(v, strlen(v))] = '\0';
 
 		ret = strncmp(v, state, state_len);
@@ -88,14 +94,14 @@ static int do_freeze_thaw(bool freeze, const char *name, const char *lxcpath)
 	}
 }
 
-int lxc_freeze(const char *name, const char *lxcpath)
+int lxc_freeze(struct lxc_conf *conf, const char *name, const char *lxcpath)
 {
 	lxc_cmd_serve_state_clients(name, lxcpath, FREEZING);
 	lxc_monitor_send_state(name, FREEZING, lxcpath);
-	return do_freeze_thaw(true, name, lxcpath);
+	return do_freeze_thaw(true, conf, name, lxcpath);
 }
 
-int lxc_unfreeze(const char *name, const char *lxcpath)
+int lxc_unfreeze(struct lxc_conf *conf, const char *name, const char *lxcpath)
 {
-	return do_freeze_thaw(false, name, lxcpath);
+	return do_freeze_thaw(false, conf, name, lxcpath);
 }
