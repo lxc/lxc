@@ -468,7 +468,7 @@ static int __rtnl_enumerate(int link_af, int addr_af, __s32 netns_id,
 	if (fd < 0)
 		return -1;
 
-	r = setsockopt(fd, SOL_NETLINK, NETLINK_DUMP_STRICT_CHK, &(int){1},
+	r = setsockopt(fd, SOL_NETLINK, NETLINK_GET_STRICT_CHK, &(int){1},
 		       sizeof(int));
 	if (r < 0 && netns_id >= 0) {
 		close(fd);

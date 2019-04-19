@@ -240,8 +240,8 @@ extern int __build_bug_on_failed;
 #define prctl_arg(x) ((unsigned long)x)
 
 /* networking */
-#ifndef NETLINK_DUMP_STRICT_CHK
-#define NETLINK_DUMP_STRICT_CHK 12
+#ifndef NETLINK_GET_STRICT_CHK
+#define NETLINK_GET_STRICT_CHK 12
 #endif
 
 #ifndef SOL_NETLINK
