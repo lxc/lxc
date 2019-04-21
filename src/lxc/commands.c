@@ -47,6 +47,7 @@
 #include "log.h"
 #include "lxc.h"
 #include "lxclock.h"
+#include "lxcseccomp.h"
 #include "mainloop.h"
 #include "memory_utils.h"
 #include "monitor.h"
@@ -97,6 +98,7 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 		[LXC_CMD_ADD_STATE_CLIENT]    = "add_state_client",
 		[LXC_CMD_CONSOLE_LOG]         = "console_log",
 		[LXC_CMD_SERVE_STATE_CLIENTS] = "serve_state_clients",
+		[LXC_CMD_SECCOMP_NOTIFY_ADD_LISTENER] = "seccomp_notify_add_listener",
 	};
 
 	if (cmd >= LXC_CMD_MAX)
@@ -244,14 +246,21 @@ static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
 	if (ret < 0 || (size_t)ret != sizeof(cmd->req))
 		return -1;
 
-	if (cmd->req.datalen <= 0)
-		return move_fd(client_fd);
+	if (cmd->req.cmd == LXC_CMD_SECCOMP_NOTIFY_ADD_LISTENER) {
+		int notify_fd = PTR_TO_INT(cmd->req.data);
+		ret = lxc_abstract_unix_send_fds(client_fd, &notify_fd, 1, NULL, 0);
+		if (ret <= 0)
+			return -1;
+	} else {
+		if (cmd->req.datalen <= 0)
+			return move_fd(client_fd);
 
-	errno = EMSGSIZE;
-	ret = lxc_send_nointr(client_fd, (void *)cmd->req.data,
-			      cmd->req.datalen, MSG_NOSIGNAL);
-	if (ret < 0 || ret != (ssize_t)cmd->req.datalen)
-		return -1;
+		errno = EMSGSIZE;
+		ret = lxc_send_nointr(client_fd, (void *)cmd->req.data,
+				      cmd->req.datalen, MSG_NOSIGNAL);
+		if (ret < 0 || ret != (ssize_t)cmd->req.datalen)
+			return -1;
+	}
 
 	return move_fd(client_fd);
 }
@@ -373,7 +382,8 @@ pid_t lxc_cmd_get_init_pid(const char *name, const char *lxcpath)
 }
 
 static int lxc_cmd_get_init_pid_callback(int fd, struct lxc_cmd_req *req,
-					 struct lxc_handler *handler)
+					 struct lxc_handler *handler,
+					 struct lxc_epoll_descr *descr)
 {
 	intmax_t pid = handler->pid;
 
@@ -407,7 +417,8 @@ int lxc_cmd_get_clone_flags(const char *name, const char *lxcpath)
 }
 
 static int lxc_cmd_get_clone_flags_callback(int fd, struct lxc_cmd_req *req,
-					    struct lxc_handler *handler)
+					    struct lxc_handler *handler,
+					    struct lxc_epoll_descr *descr)
 {
 	struct lxc_cmd_rsp rsp = { .data = INT_TO_PTR(handler->ns_clone_flags) };
 
@@ -457,7 +468,8 @@ char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
 }
 
 static int lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
-				       struct lxc_handler *handler)
+				       struct lxc_handler *handler,
+				       struct lxc_epoll_descr *descr)
 {
 	const char *path;
 	struct lxc_cmd_rsp rsp;
@@ -509,7 +521,8 @@ char *lxc_cmd_get_config_item(const char *name, const char *item,
 }
 
 static int lxc_cmd_get_config_item_callback(int fd, struct lxc_cmd_req *req,
-					    struct lxc_handler *handler)
+					    struct lxc_handler *handler,
+					    struct lxc_epoll_descr *descr)
 {
 	__do_free char *cidata = NULL;
 	int cilen;
@@ -575,7 +588,8 @@ int lxc_cmd_get_state(const char *name, const char *lxcpath)
 }
 
 static int lxc_cmd_get_state_callback(int fd, struct lxc_cmd_req *req,
-				      struct lxc_handler *handler)
+				      struct lxc_handler *handler,
+				      struct lxc_epoll_descr *descr)
 {
 	struct lxc_cmd_rsp rsp = { .data = INT_TO_PTR(handler->state) };
 
@@ -622,7 +636,8 @@ int lxc_cmd_stop(const char *name, const char *lxcpath)
 }
 
 static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
-				 struct lxc_handler *handler)
+				 struct lxc_handler *handler,
+				 struct lxc_epoll_descr *descr)
 {
 	struct lxc_cmd_rsp rsp;
 	int stopsignal = SIGKILL;
@@ -665,7 +680,8 @@ int lxc_cmd_terminal_winch(const char *name, const char *lxcpath)
 }
 
 static int lxc_cmd_terminal_winch_callback(int fd, struct lxc_cmd_req *req,
-					   struct lxc_handler *handler)
+					   struct lxc_handler *handler,
+					   struct lxc_epoll_descr *descr)
 {
 	/* should never be called */
 	return -1;
@@ -720,7 +736,8 @@ int lxc_cmd_console(const char *name, int *ttynum, int *fd, const char *lxcpath)
 }
 
 static int lxc_cmd_console_callback(int fd, struct lxc_cmd_req *req,
-				    struct lxc_handler *handler)
+				    struct lxc_handler *handler,
+				    struct lxc_epoll_descr *descr)
 {
 	int masterfd, ret;
 	struct lxc_cmd_rsp rsp;
@@ -773,7 +790,8 @@ char *lxc_cmd_get_name(const char *hashed_sock_name)
 }
 
 static int lxc_cmd_get_name_callback(int fd, struct lxc_cmd_req *req,
-				     struct lxc_handler *handler)
+				     struct lxc_handler *handler,
+				     struct lxc_epoll_descr *descr)
 {
 	struct lxc_cmd_rsp rsp;
 
@@ -811,7 +829,8 @@ char *lxc_cmd_get_lxcpath(const char *hashed_sock_name)
 }
 
 static int lxc_cmd_get_lxcpath_callback(int fd, struct lxc_cmd_req *req,
-					struct lxc_handler *handler)
+					struct lxc_handler *handler,
+					struct lxc_epoll_descr *descr)
 {
 	struct lxc_cmd_rsp rsp;
 
@@ -872,7 +891,8 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 }
 
 static int lxc_cmd_add_state_client_callback(int fd, struct lxc_cmd_req *req,
-					     struct lxc_handler *handler)
+					     struct lxc_handler *handler,
+					     struct lxc_epoll_descr *descr)
 {
 	int ret;
 	struct lxc_cmd_rsp rsp = {0};
@@ -943,7 +963,8 @@ int lxc_cmd_console_log(const char *name, const char *lxcpath,
 }
 
 static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
-					struct lxc_handler *handler)
+					struct lxc_handler *handler,
+					struct lxc_epoll_descr *descr)
 {
 	struct lxc_cmd_rsp rsp;
 	uint64_t buffer_size = handler->conf->console.buffer_size;
@@ -1002,7 +1023,8 @@ int lxc_cmd_serve_state_clients(const char *name, const char *lxcpath,
 }
 
 static int lxc_cmd_serve_state_clients_callback(int fd, struct lxc_cmd_req *req,
-						struct lxc_handler *handler)
+						struct lxc_handler *handler,
+						struct lxc_epoll_descr *descr)
 {
 	int ret;
 	lxc_state_t state = PTR_TO_INT(req->data);
@@ -1025,62 +1047,138 @@ reap_client_fd:
 	return 1;
 }
 
-static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
-			   struct lxc_handler *handler)
+int lxc_cmd_seccomp_notify_add_listener(const char *name, const char *lxcpath,
+					int fd,
+					/* unused */ unsigned int command,
+					/* unused */ unsigned int flags)
 {
-	typedef int (*callback)(int, struct lxc_cmd_req *, struct lxc_handler *);
+
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	int ret, stopped;
+	struct lxc_cmd_rr cmd = {
+		.req = {
+			.cmd = LXC_CMD_SECCOMP_NOTIFY_ADD_LISTENER,
+			.data = INT_TO_PTR(fd),
+		},
+	};
+
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
+	if (ret < 0) {
+		SYSERROR("Failed to execute command");
+		return -1;
+	}
+
+	return cmd.rsp.ret;
+#else
+	return minus_one_set_errno(ENOSYS);
+#endif
+}
+
+static int lxc_cmd_seccomp_notify_add_listener_callback(int fd,
+							struct lxc_cmd_req *req,
+							struct lxc_handler *handler,
+							struct lxc_epoll_descr *descr)
+{
+	struct lxc_cmd_rsp rsp = {0};
+	int ret;
+
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	__do_close_prot_errno int recv_fd = -EBADF;
+	int notify_fd = -EBADF;
+
+	if (!handler->conf->has_seccomp_notify ||
+	    handler->conf->seccomp_notify_proxy_fd < 0) {
+		rsp.ret = -EINVAL;
+		goto send_error;
+	}
+
+	ret = lxc_abstract_unix_recv_fds(fd, &recv_fd, 1, NULL, 0);
+	if (ret <= 0)
+		goto reap_client_fd;
+
+	ret = lxc_mainloop_add_handler(descr, notify_fd, seccomp_notify_handler,
+				       handler);
+	notify_fd = move_fd(recv_fd);
+	if (ret < 0)
+		goto reap_client_fd;
+
+send_error:
+#else
+	rsp.ret = -ENOSYS;
+#endif
+	ret = lxc_cmd_rsp_send(fd, &rsp);
+	if (ret < 0)
+		goto reap_client_fd;
+
+	return 0;
+
+reap_client_fd:
+	/* Special indicator to lxc_cmd_handler() to close the fd and do
+	 * related cleanup.
+	 */
+	return 1;
+}
+
+static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
+			   struct lxc_handler *handler,
+			   struct lxc_epoll_descr *descr)
+{
+	typedef int (*callback)(int, struct lxc_cmd_req *, struct lxc_handler *,
+				struct lxc_epoll_descr *);
 
 	callback cb[LXC_CMD_MAX] = {
-		[LXC_CMD_CONSOLE]             = lxc_cmd_console_callback,
-		[LXC_CMD_TERMINAL_WINCH]      = lxc_cmd_terminal_winch_callback,
-		[LXC_CMD_STOP]                = lxc_cmd_stop_callback,
-		[LXC_CMD_GET_STATE]           = lxc_cmd_get_state_callback,
-		[LXC_CMD_GET_INIT_PID]        = lxc_cmd_get_init_pid_callback,
-		[LXC_CMD_GET_CLONE_FLAGS]     = lxc_cmd_get_clone_flags_callback,
-		[LXC_CMD_GET_CGROUP]          = lxc_cmd_get_cgroup_callback,
-		[LXC_CMD_GET_CONFIG_ITEM]     = lxc_cmd_get_config_item_callback,
-		[LXC_CMD_GET_NAME]            = lxc_cmd_get_name_callback,
-		[LXC_CMD_GET_LXCPATH]         = lxc_cmd_get_lxcpath_callback,
-		[LXC_CMD_ADD_STATE_CLIENT]    = lxc_cmd_add_state_client_callback,
-		[LXC_CMD_CONSOLE_LOG]         = lxc_cmd_console_log_callback,
-		[LXC_CMD_SERVE_STATE_CLIENTS] = lxc_cmd_serve_state_clients_callback,
+		[LXC_CMD_CONSOLE]                     = lxc_cmd_console_callback,
+		[LXC_CMD_TERMINAL_WINCH]              = lxc_cmd_terminal_winch_callback,
+		[LXC_CMD_STOP]                        = lxc_cmd_stop_callback,
+		[LXC_CMD_GET_STATE]                   = lxc_cmd_get_state_callback,
+		[LXC_CMD_GET_INIT_PID]                = lxc_cmd_get_init_pid_callback,
+		[LXC_CMD_GET_CLONE_FLAGS]             = lxc_cmd_get_clone_flags_callback,
+		[LXC_CMD_GET_CGROUP]                  = lxc_cmd_get_cgroup_callback,
+		[LXC_CMD_GET_CONFIG_ITEM]             = lxc_cmd_get_config_item_callback,
+		[LXC_CMD_GET_NAME]                    = lxc_cmd_get_name_callback,
+		[LXC_CMD_GET_LXCPATH]                 = lxc_cmd_get_lxcpath_callback,
+		[LXC_CMD_ADD_STATE_CLIENT]            = lxc_cmd_add_state_client_callback,
+		[LXC_CMD_CONSOLE_LOG]                 = lxc_cmd_console_log_callback,
+		[LXC_CMD_SERVE_STATE_CLIENTS]         = lxc_cmd_serve_state_clients_callback,
+		[LXC_CMD_SECCOMP_NOTIFY_ADD_LISTENER] = lxc_cmd_seccomp_notify_add_listener_callback,
 	};
 
 	if (req->cmd >= LXC_CMD_MAX) {
 		ERROR("Undefined command id %d", req->cmd);
 		return -1;
 	}
-	return cb[req->cmd](fd, req, handler);
+	return cb[req->cmd](fd, req, handler, descr);
 }
 
 static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
-			       struct lxc_epoll_descr *descr,
-			       const lxc_cmd_t cmd)
+			       struct lxc_epoll_descr *descr, const lxc_cmd_t cmd)
 {
 	struct lxc_list *cur, *next;
 
 	lxc_terminal_free(handler->conf, fd);
 	lxc_mainloop_del_handler(descr, fd);
-	if (cmd != LXC_CMD_ADD_STATE_CLIENT) {
-		close(fd);
-		return;
-	}
 
-	lxc_list_for_each_safe(cur, &handler->conf->state_clients, next) {
-		struct lxc_state_client *client = cur->elem;
+	switch (cmd) {
+	case LXC_CMD_ADD_STATE_CLIENT:
+		lxc_list_for_each_safe(cur, &handler->conf->state_clients, next) {
+			struct lxc_state_client *client = cur->elem;
 
-		if (client->clientfd != fd)
-			continue;
+			if (client->clientfd != fd)
+				continue;
 
-		/* kick client from list */
-		lxc_list_del(cur);
-		close(client->clientfd);
-		free(cur->elem);
-		free(cur);
-		/* No need to walk the whole list. If we found the state client
-		 * fd there can't be a second one.
-		 */
+			/* kick client from list */
+			lxc_list_del(cur);
+			close(client->clientfd);
+			free(cur->elem);
+			free(cur);
+			/* No need to walk the whole list. If we found the state
+			 * client fd there can't be a second one.
+			 */
+			break;
+		}
 		break;
+	default:
+		close(fd);
 	}
 }
 
@@ -1139,7 +1237,7 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 		req.data = reqdata;
 	}
 
-	ret = lxc_cmd_process(fd, &req, handler);
+	ret = lxc_cmd_process(fd, &req, handler, descr);
 	if (ret) {
 		/* This is not an error, but only a request to close fd. */
 		ret = LXC_MAINLOOP_CONTINUE;

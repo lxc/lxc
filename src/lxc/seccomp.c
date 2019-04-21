@@ -33,7 +33,9 @@
 
 #include "config.h"
 #include "log.h"
+#include "lxccontainer.h"
 #include "lxcseccomp.h"
+#include "memory_utils.h"
 #include "utils.h"
 
 #ifdef __MIPSEL__
@@ -87,6 +89,10 @@ static const char *get_action_name(uint32_t action)
 		return "trap";
 	case SCMP_ACT_ERRNO(0):
 		return "errno";
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	case SCMP_ACT_USER_NOTIF:
+		return "notify";
+#endif
 	}
 
 	return "invalid action";
@@ -116,6 +122,10 @@ static uint32_t get_v2_default_action(char *line)
 		ret_action = SCMP_ACT_ALLOW;
 	} else if (strncmp(line, "trap", 4) == 0) {
 		ret_action = SCMP_ACT_TRAP;
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	} else if (strncmp(line, "notify", 6) == 0) {
+		ret_action = SCMP_ACT_USER_NOTIF;
+#endif
 	} else if (line[0]) {
 		ERROR("Unrecognized seccomp action \"%s\"", line);
 		return -2;
@@ -928,6 +938,19 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 			goto bad_rule;
 		}
 
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+		if ((rule.action == SCMP_ACT_USER_NOTIF) &&
+		    !conf->has_seccomp_notify) {
+			ret = seccomp_attr_set(conf->seccomp_ctx,
+					       SCMP_FLTATR_NEW_LISTENER, 1);
+			if (ret)
+				goto bad_rule;
+
+			conf->has_seccomp_notify = true;
+			TRACE("Set SCMP_FLTATR_NEW_LISTENER attribute");
+		}
+#endif
+
 		if (!do_resolve_add_rule(SCMP_ARCH_NATIVE, line,
 					 conf->seccomp_ctx, &rule))
 			goto bad_rule;
@@ -1230,6 +1253,19 @@ int lxc_seccomp_load(struct lxc_conf *conf)
 	}
 #endif
 
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	if (conf->has_seccomp_notify) {
+		ret = seccomp_notif_get_fd(conf->seccomp_ctx);
+		if (ret < 0) {
+			errno = -ret;
+			return -1;
+		}
+
+		conf->seccomp_notify_fd = ret;
+		TRACE("Retrieved new seccomp listener fd %d", ret);
+	}
+#endif
+
 	return 0;
 }
 
@@ -1243,5 +1279,57 @@ void lxc_seccomp_free(struct lxc_conf *conf)
 		seccomp_release(conf->seccomp_ctx);
 		conf->seccomp_ctx = NULL;
 	}
+#endif
+
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	close_prot_errno_disarm(conf->seccomp_notify_fd);
+	close_prot_errno_disarm(conf->seccomp_notify_proxy_fd);
+	seccomp_notif_free(conf->seccomp_notify_req, conf->seccomp_notify_resp);
+	conf->seccomp_notify_req = NULL;
+	conf->seccomp_notify_resp = NULL;
+#endif
+}
+
+int seccomp_notify_handler(int fd, uint32_t events, void *data,
+			   struct lxc_epoll_descr *descr)
+{
+
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	int ret;
+	struct lxc_handler *hdlr = data;
+	struct lxc_conf *conf = hdlr->conf;
+	struct seccomp_notif *req = conf->seccomp_notify_req;
+	struct seccomp_notif_resp *resp = conf->seccomp_notify_resp;
+	int listener_proxy_fd = conf->seccomp_notify_proxy_fd;
+	struct seccomp_notify_proxy_msg msg;
+
+	if (listener_proxy_fd < 0)
+		return minus_one_set_errno(EINVAL);
+
+	ret = seccomp_notif_receive(fd, req);
+	if (ret)
+		return minus_one_set_errno(-ret);
+
+	memcpy(&msg.req, req, sizeof(msg.req));
+	msg.monitor_pid = hdlr->monitor_pid;
+	msg.init_pid = hdlr->pid;
+
+	ret = lxc_send_nointr(listener_proxy_fd, &msg, sizeof(msg), MSG_NOSIGNAL);
+	if (ret < 0 || ret != (ssize_t)sizeof(msg))
+		return -1;
+
+	ret = lxc_recv_nointr(listener_proxy_fd, &msg, sizeof(msg), 0);
+	if (ret != (ssize_t)sizeof(msg))
+		return -1;
+
+	memcpy(resp, &msg.resp, sizeof(*resp));
+
+	ret = seccomp_notif_send_resp(fd, resp);
+	if (ret)
+		return minus_one_set_errno(-ret);
+
+	return 0;
+#else
+	return -ENOSYS;
 #endif
 }
