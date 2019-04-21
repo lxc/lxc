@@ -46,6 +46,7 @@ typedef enum {
 	LXC_CMD_ADD_STATE_CLIENT,
 	LXC_CMD_CONSOLE_LOG,
 	LXC_CMD_SERVE_STATE_CLIENTS,
+	LXC_CMD_SECCOMP_NOTIFY_ADD_LISTENER,
 	LXC_CMD_MAX,
 } lxc_cmd_t;
 
@@ -124,5 +125,10 @@ extern int lxc_cmd_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
 extern int lxc_try_cmd(const char *name, const char *lxcpath);
 extern int lxc_cmd_console_log(const char *name, const char *lxcpath,
 			       struct lxc_console_log *log);
+extern int lxc_cmd_seccomp_notify_add_listener(const char *name,
+					       const char *lxcpath,
+					       int fd,
+					       /* unused */ unsigned int command,
+					       /* unused */ unsigned int flags);
 
 #endif /* __commands_h */

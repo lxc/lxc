@@ -407,4 +407,10 @@ enum {
 		__internal_fd__;            \
 	})
 
+#define minus_one_set_errno(__errno__) \
+	({                             \
+		errno = __errno__;     \
+		-1;                    \
+	})
+
 #endif /* __LXC_MACRO_H */

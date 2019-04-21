@@ -853,7 +853,9 @@ static int attach_child_main(struct attach_clone_payload *payload)
 
 	if (init_ctx->container && init_ctx->container->lxc_conf &&
 	    init_ctx->container->lxc_conf->seccomp) {
-		ret = lxc_seccomp_load(init_ctx->container->lxc_conf);
+		struct lxc_conf *conf = init_ctx->container->lxc_conf;
+
+		ret = lxc_seccomp_load(conf);
 		if (ret < 0)
 			goto on_error;
 

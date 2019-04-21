@@ -1085,6 +1085,9 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 
 static int do_start(void *data)
 {
+	struct lxc_handler *handler = data;
+	__do_close_prot_errno int data_sock0 = handler->data_sock[0],
+				  data_sock1 = handler->data_sock[1];
 	int ret;
 	char path[PATH_MAX];
 	uid_t new_uid;
@@ -1093,7 +1096,6 @@ static int do_start(void *data)
 	uid_t nsuid = 0;
 	gid_t nsgid = 0;
 	int devnull_fd = -1;
-	struct lxc_handler *handler = data;
 
 	lxc_sync_fini_parent(handler);
 
@@ -1269,8 +1271,6 @@ static int do_start(void *data)
 
 	/* Setup the container, ip, names, utsname, ... */
 	ret = lxc_setup(handler);
-	close(handler->data_sock[1]);
-	close(handler->data_sock[0]);
 	if (ret < 0) {
 		ERROR("Failed to setup container \"%s\"", handler->name);
 		goto out_warn_father;
@@ -1574,6 +1574,7 @@ static inline int do_share_ns(void *arg)
  */
 static int lxc_spawn(struct lxc_handler *handler)
 {
+	__do_close_prot_errno int data_sock0 = -EBADF, data_sock1 = -EBADF;
 	int i, ret;
 	char pidstr[20];
 	bool wants_to_map_ids;
@@ -1606,6 +1607,8 @@ static int lxc_spawn(struct lxc_handler *handler)
 			 handler->data_sock);
 	if (ret < 0)
 		goto out_sync_fini;
+	data_sock0 = handler->data_sock[0];
+	data_sock1 = handler->data_sock[1];
 
 	ret = resolve_clone_flags(handler);
 	if (ret < 0)
@@ -1962,11 +1965,6 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 		ERROR("Failed to spawn container \"%s\"", name);
 		goto out_detach_blockdev;
 	}
-	/* close parent side of data socket */
-	close(handler->data_sock[0]);
-	handler->data_sock[0] = -1;
-	close(handler->data_sock[1]);
-	handler->data_sock[1] = -1;
 
 	handler->conf->reboot = REBOOT_NONE;
 
