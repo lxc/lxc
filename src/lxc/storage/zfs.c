@@ -101,7 +101,7 @@ int zfs_get_parent_snapshot_exec_wrapper(void *args)
 {
 	struct zfs_args *zfs_args = args;
 
-	execlp("zfs", "zfs", "get", "origin", "-o", "value", "-H",
+	execlp("zfs", "zfs", "get", "-H", "-o", "value", "origin",
 	       zfs_args->dataset, (char *)NULL);
 
 	return -1;
