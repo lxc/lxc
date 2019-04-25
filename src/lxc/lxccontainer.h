@@ -31,6 +31,10 @@
 
 #include <lxc/attach_options.h>
 
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#include <seccomp.h>
+#endif
+
 #ifdef  __cplusplus
 extern "C" {
 #endif
@@ -59,6 +63,21 @@ struct lxc_console_log;
 struct lxc_mount {
 	int version;
 };
+
+enum {
+	LXC_SECCOMP_NOTIFY_GET_FD = 0,
+	LXC_SECCOMP_NOTIFY_MAX,
+};
+
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+struct seccomp_notify_proxy_msg {
+	uint32_t version;
+	struct seccomp_notif req;
+	struct seccomp_notif_resp resp;
+	pid_t monitor_pid;
+	pid_t init_pid;
+};
+#endif
 
 /*!
  * An LXC container.
@@ -867,6 +886,8 @@ struct lxc_container {
 	 */
 	int (*umount)(struct lxc_container *c, const char *target,
 		      unsigned long mountflags, struct lxc_mount *mnt);
+
+	int (*seccomp_notify)(struct lxc_container *c, unsigned int cmd, int fd);
 };
 
 /*!

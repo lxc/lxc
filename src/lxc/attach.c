@@ -853,11 +853,26 @@ static int attach_child_main(struct attach_clone_payload *payload)
 
 	if (init_ctx->container && init_ctx->container->lxc_conf &&
 	    init_ctx->container->lxc_conf->seccomp) {
-		ret = lxc_seccomp_load(init_ctx->container->lxc_conf);
+		struct lxc_conf *conf = init_ctx->container->lxc_conf;
+
+		ret = lxc_seccomp_load(conf);
 		if (ret < 0)
 			goto on_error;
 
 		TRACE("Loaded seccomp profile");
+
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+		if (conf->has_seccomp_notify) {
+			ret = lxc_abstract_unix_send_fds(payload->ipc_socket,
+							 &conf->seccomp_notify_fd,
+							 1, NULL, 0);
+			close_prot_errno_disarm(conf->seccomp_notify_fd);
+			if (ret < 0)
+				goto on_error;
+
+			TRACE("Sent seccomp listener fd to parent");
+		}
+#endif
 	}
 
 	close(payload->ipc_socket);
@@ -1310,6 +1325,25 @@ int lxc_attach(const char *name, const char *lxcpath,
 			close(labelfd);
 			TRACE("Sent LSM label file descriptor %d to child", labelfd);
 		}
+
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+		if (conf->seccomp && conf->has_seccomp_notify) {
+			ret = lxc_abstract_unix_recv_fds(ipc_sockets[0],
+							 &conf->seccomp_notify_fd,
+							 1, NULL, 0);
+			if (ret < 0)
+				goto close_mainloop;
+
+			TRACE("Retrieved seccomp listener fd %d from child",
+			      conf->seccomp_notify_fd);
+			ret = lxc_cmd_seccomp_notify_add_listener(name, lxcpath,
+								  conf->seccomp_notify_fd,
+								  -1, 0);
+			close_prot_errno_disarm(conf->seccomp_notify_fd);
+			if (ret < 0)
+				goto close_mainloop;
+		}
+#endif
 
 		/* We're done, the child process should now execute whatever it
 		 * is that the user requested. The parent can now track it with

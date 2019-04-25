@@ -201,7 +201,8 @@ int lxc_abstract_unix_recv_fds(int fd, int *recvfds, int num_recvfds,
 	struct iovec iov;
 	struct cmsghdr *cmsg = NULL;
 	char buf[1] = {0};
-	size_t cmsgbufsize = CMSG_SPACE(num_recvfds * sizeof(int));
+	size_t cmsgbufsize = CMSG_SPACE(sizeof(struct ucred)) +
+			     CMSG_SPACE(num_recvfds * sizeof(int));
 
 	memset(&msg, 0, sizeof(msg));
 	memset(&iov, 0, sizeof(iov));
@@ -224,12 +225,20 @@ int lxc_abstract_unix_recv_fds(int fd, int *recvfds, int num_recvfds,
 	if (ret <= 0)
 		goto out;
 
-	cmsg = CMSG_FIRSTHDR(&msg);
+	/*
+	 * If SO_PASSCRED is set we will always get a ucred message.
+	 */
+	for (cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+		if (cmsg->cmsg_type != SCM_RIGHTS)
+			continue;
 
-	memset(recvfds, -1, num_recvfds * sizeof(int));
-	if (cmsg && cmsg->cmsg_len == CMSG_LEN(num_recvfds * sizeof(int)) &&
-	    cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS)
-		memcpy(recvfds, CMSG_DATA(cmsg), num_recvfds * sizeof(int));
+		memset(recvfds, -1, num_recvfds * sizeof(int));
+		if (cmsg &&
+		    cmsg->cmsg_len == CMSG_LEN(num_recvfds * sizeof(int)) &&
+		    cmsg->cmsg_level == SOL_SOCKET)
+			memcpy(recvfds, CMSG_DATA(cmsg), num_recvfds * sizeof(int));
+		break;
+	}
 
 out:
 	return ret;
@@ -306,4 +315,74 @@ int lxc_abstract_unix_rcv_credential(int fd, void *data, size_t size)
 
 out:
 	return ret;
+}
+
+int lxc_unix_sockaddr(struct sockaddr_un *ret, const char *path)
+{
+	size_t len;
+
+	len = strlen(path);
+	if (len == 0)
+		return minus_one_set_errno(EINVAL);
+	if (path[0] != '/' && path[0] != '@')
+		return minus_one_set_errno(EINVAL);
+	if (path[1] == '\0')
+		return minus_one_set_errno(EINVAL);
+
+	if (len + 1 > sizeof(ret->sun_path))
+		return minus_one_set_errno(EINVAL);
+
+	*ret = (struct sockaddr_un){
+	    .sun_family = AF_UNIX,
+	};
+
+	if (path[0] == '@') {
+		memcpy(ret->sun_path + 1, path + 1, len);
+		return (int)(offsetof(struct sockaddr_un, sun_path) + len);
+	}
+
+	memcpy(ret->sun_path, path, len + 1);
+	return (int)(offsetof(struct sockaddr_un, sun_path) + len + 1);
+}
+
+int lxc_unix_connect(struct sockaddr_un *addr)
+{
+	__do_close_prot_errno int fd = -EBADF;
+	int ret;
+	ssize_t len;
+
+	fd = socket(PF_UNIX, SOCK_STREAM, SOCK_CLOEXEC);
+	if (fd < 0)
+		return -1;
+
+	if (addr->sun_path[0] == '\0')
+		len = strlen(&addr->sun_path[1]);
+	else
+		len = strlen(&addr->sun_path[0]);
+	ret = connect(fd, (struct sockaddr *)&addr,
+		      offsetof(struct sockaddr_un, sun_path) + len + 1);
+	if (ret < 0)
+		return -1;
+
+	return move_fd(fd);
+}
+
+int lxc_socket_set_timeout(int fd, int rcv_timeout, int snd_timeout)
+{
+	struct timeval out = {0};
+	int ret;
+
+	out.tv_sec = snd_timeout;
+	ret = setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (const void *)&out,
+			 sizeof(out));
+	if (ret < 0)
+		return -1;
+
+	out.tv_sec = rcv_timeout;
+	ret = setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const void *)&out,
+			 sizeof(out));
+	if (ret < 0)
+		return -1;
+
+	return 0;
 }

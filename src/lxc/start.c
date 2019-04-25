@@ -591,6 +591,33 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 		goto out_mainloop_console;
 	}
 
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	if (handler->conf->has_seccomp_notify &&
+	    handler->conf->seccomp_notify_proxy_addr.sun_path[1] != '\0') {
+                __do_close_prot_errno int notify_fd = -EBADF;
+
+		notify_fd = lxc_unix_connect(&handler->conf->seccomp_notify_proxy_addr);
+		if (notify_fd < 0)
+			goto out_mainloop_console;
+
+		/* 30 second timeout */
+		ret = lxc_socket_set_timeout(notify_fd, 30, 30);
+		if (ret)
+			goto out_mainloop_console;
+
+		ret = lxc_mainloop_add_handler(&descr,
+					       handler->conf->seccomp_notify_fd,
+					       seccomp_notify_handler, handler);
+		if (ret < 0) {
+			ERROR("Failed to add seccomp notify handler for %d to mainloop",
+			      handler->conf->seccomp_notify_fd);
+			goto out_mainloop_console;
+		}
+
+		handler->conf->seccomp_notify_proxy_fd = move_fd(notify_fd);
+	}
+#endif
+
 	if (has_console) {
 		struct lxc_terminal *console = &handler->conf->console;
 
@@ -1094,6 +1121,9 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 
 static int do_start(void *data)
 {
+	struct lxc_handler *handler = data;
+	ATTR_UNUSED __do_close_prot_errno int data_sock0 = handler->data_sock[0],
+					      data_sock1 = handler->data_sock[1];
 	int ret;
 	char path[PATH_MAX];
 	uid_t new_uid;
@@ -1102,7 +1132,6 @@ static int do_start(void *data)
 	uid_t nsuid = 0;
 	gid_t nsgid = 0;
 	int devnull_fd = -1;
-	struct lxc_handler *handler = data;
 
 	lxc_sync_fini_parent(handler);
 
@@ -1278,8 +1307,6 @@ static int do_start(void *data)
 
 	/* Setup the container, ip, names, utsname, ... */
 	ret = lxc_setup(handler);
-	close(handler->data_sock[1]);
-	close(handler->data_sock[0]);
 	if (ret < 0) {
 		ERROR("Failed to setup container \"%s\"", handler->name);
 		goto out_warn_father;
@@ -1329,6 +1356,20 @@ static int do_start(void *data)
 	ret = lxc_seccomp_load(handler->conf);
 	if (ret < 0)
 		goto out_warn_father;
+
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	if (handler->conf->has_seccomp_notify) {
+		ret = lxc_abstract_unix_send_fds(data_sock0,
+						 &handler->conf->seccomp_notify_fd,
+						 1, NULL, 0);
+		if (ret < 0) {
+			SYSERROR("Failed to send seccomp notify fd to parent");
+			goto out_warn_father;
+		}
+		close(handler->conf->seccomp_notify_fd);
+		handler->conf->seccomp_notify_fd = -EBADF;
+	}
+#endif
 
 	ret = run_lxc_hooks(handler->name, "start", handler->conf, NULL);
 	if (ret < 0) {
@@ -1592,6 +1633,7 @@ static inline int do_share_ns(void *arg)
  */
 static int lxc_spawn(struct lxc_handler *handler)
 {
+	__do_close_prot_errno int data_sock0 = -EBADF, data_sock1 = -EBADF;
 	int i, ret;
 	char pidstr[20];
 	bool wants_to_map_ids;
@@ -1624,6 +1666,8 @@ static int lxc_spawn(struct lxc_handler *handler)
 			 handler->data_sock);
 	if (ret < 0)
 		goto out_sync_fini;
+	data_sock0 = handler->data_sock[0];
+	data_sock1 = handler->data_sock[1];
 
 	ret = resolve_clone_flags(handler);
 	if (ret < 0)
@@ -1888,6 +1932,26 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 	}
 
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	if (handler->conf->has_seccomp_notify) {
+		ret = lxc_abstract_unix_recv_fds(handler->data_sock[1],
+						 &handler->conf->seccomp_notify_fd,
+						 1, NULL, 0);
+		if (ret < 0) {
+			SYSERROR("Failed to receive seccomp notify fd from child");
+			goto out_delete_net;
+		}
+
+		ret = seccomp_notif_alloc(&handler->conf->seccomp_notify_req,
+					  &handler->conf->seccomp_notify_resp);
+		if (ret) {
+			errno = ret;
+			ret = -1;
+			goto out_delete_net;
+		}
+	}
+#endif
+
 	ret = handler->ops->post_start(handler, handler->data);
 	if (ret < 0)
 		goto out_abort;
@@ -1980,11 +2044,6 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 		ERROR("Failed to spawn container \"%s\"", name);
 		goto out_detach_blockdev;
 	}
-	/* close parent side of data socket */
-	close(handler->data_sock[0]);
-	handler->data_sock[0] = -1;
-	close(handler->data_sock[1]);
-	handler->data_sock[1] = -1;
 
 	handler->conf->reboot = REBOOT_NONE;
 

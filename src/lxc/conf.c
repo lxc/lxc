@@ -2752,6 +2752,14 @@ struct lxc_conf *lxc_conf_init(void)
 	new->lsm_aa_profile = NULL;
 	lxc_list_init(&new->lsm_aa_raw);
 	new->lsm_se_context = NULL;
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	new->has_seccomp_notify = false;
+	new->seccomp_notify_fd = -EBADF;
+	new->seccomp_notify_proxy_fd = -EBADF;
+	memset(&new->seccomp_notify_proxy_addr, 0, sizeof(new->seccomp_notify_proxy_addr));
+	new->seccomp_notify_req = NULL;
+	new->seccomp_notify_resp = NULL;
+#endif
 	new->tmp_umount_proc = false;
 	new->tmp_umount_proc = 0;
 	new->shmount.path_host = NULL;
