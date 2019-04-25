@@ -1873,7 +1873,26 @@ dev/null proc/kcore none bind,relative 0 0
       2
       blacklist
       mknod errno 0
+      ioctl notify
       </programlisting>
+
+      <para>
+      Specifying "errno" as action will cause LXC to register a seccomp filter
+      that will cause a specific errno to be returned ot the caller. The errno
+      value can be specified after the "errno" action word.
+      </para>
+
+      <para>
+      Specifying "notify" as action will cause LXC to register a seccomp
+      listener and retrieve a listener file descriptor from the kernel. When a
+      syscall is made that is registered as "notify" the kernel will generate a
+      poll event and send a message over the file descriptor. The caller can
+      read this message, inspect the syscalls including its arguments. Based on
+      this information the caller is expected to send back a message informing
+      the kernel which action to take. Until that message is sent the kernel
+      will block the calling process. The format of the messages to read and
+      sent is documented in seccomp itself.
+      </para>
 
       <variablelist>
         <varlistentry>
@@ -1897,6 +1916,20 @@ dev/null proc/kcore none bind,relative 0 0
 	      regardless of whether a seccomp profile is already loaded.
 	      This allows nested containers to load their own seccomp profile.
 	      The default setting is 0.
+             </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.seccomp.notify.proxy</option>
+          </term>
+          <listitem>
+            <para>
+	      Specify a unix socket to which LXC will connect and forward
+	      seccomp events to. The path must by in the form
+	      unix:/path/to/socket or unix:@socket. The former specifies a
+	      path-bound unix domain socket while the latter specifies an
+	      abstract unix domain socket.
              </para>
           </listitem>
         </varlistentry>
