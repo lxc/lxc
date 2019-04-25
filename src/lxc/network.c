@@ -69,6 +69,44 @@ lxc_log_define(network, lxc);
 
 typedef int (*instantiate_cb)(struct lxc_handler *, struct lxc_netdev *);
 
+static int lxc_setup_ipv4_routes(struct lxc_list *ip, int ifindex)
+{
+	struct lxc_list *iterator;
+	int err;
+
+	lxc_list_for_each(iterator, ip) {
+		struct lxc_inetdev *inetdev = iterator->elem;
+
+		err = lxc_ipv4_dest_add(ifindex, &inetdev->addr, inetdev->prefix);
+		if (err) {
+			SYSERROR("Failed to setup ipv4 route for network device "
+			         "with ifindex %d", ifindex);
+			return minus_one_set_errno(-err);
+		}
+	}
+
+	return 0;
+}
+
+static int lxc_setup_ipv6_routes(struct lxc_list *ip, int ifindex)
+{
+	struct lxc_list *iterator;
+	int err;
+
+	lxc_list_for_each(iterator, ip) {
+		struct lxc_inet6dev *inet6dev = iterator->elem;
+
+		err = lxc_ipv6_dest_add(ifindex, &inet6dev->addr, inet6dev->prefix);
+		if (err) {
+			SYSERROR("Failed to setup ipv6 route for network device "
+			         "with ifindex %d", ifindex);
+			return minus_one_set_errno(-err);
+		}
+	}
+
+	return 0;
+}
+
 static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	int bridge_index, err;
@@ -180,6 +218,18 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	if (err) {
 		errno = -err;
 		SYSERROR("Failed to set \"%s\" up", veth1);
+		goto out_delete;
+	}
+
+	/* setup ipv4 routes on the host interface */
+	if (lxc_setup_ipv4_routes(&netdev->priv.veth_attr.ipv4_routes, netdev->priv.veth_attr.ifindex)) {
+		ERROR("Failed to setup ipv4 routes for network device \"%s\"", veth1);
+		goto out_delete;
+	}
+
+	/* setup ipv6 routes on the host interface */
+	if (lxc_setup_ipv6_routes(&netdev->priv.veth_attr.ipv6_routes, netdev->priv.veth_attr.ifindex)) {
+		ERROR("Failed to setup ipv6 routes for network device \"%s\"", veth1);
 		goto out_delete;
 	}
 
@@ -1780,7 +1830,7 @@ int lxc_ipv6_gateway_add(int ifindex, struct in6_addr *gw)
 	return ip_gateway_add(AF_INET6, ifindex, gw);
 }
 
-static int ip_route_dest_add(int family, int ifindex, void *dest)
+static int ip_route_dest_add(int family, int ifindex, void *dest, unsigned int netmask)
 {
 	int addrlen, err;
 	struct nl_handler nlh;
@@ -1815,7 +1865,7 @@ static int ip_route_dest_add(int family, int ifindex, void *dest)
 	rt->rtm_scope = RT_SCOPE_LINK;
 	rt->rtm_protocol = RTPROT_BOOT;
 	rt->rtm_type = RTN_UNICAST;
-	rt->rtm_dst_len = addrlen * 8;
+	rt->rtm_dst_len = netmask;
 
 	err = -EINVAL;
 	if (nla_put_buffer(nlmsg, RTA_DST, dest, addrlen))
@@ -1830,14 +1880,14 @@ out:
 	return err;
 }
 
-int lxc_ipv4_dest_add(int ifindex, struct in_addr *dest)
+int lxc_ipv4_dest_add(int ifindex, struct in_addr *dest, unsigned int netmask)
 {
-	return ip_route_dest_add(AF_INET, ifindex, dest);
+	return ip_route_dest_add(AF_INET, ifindex, dest, netmask);
 }
 
-int lxc_ipv6_dest_add(int ifindex, struct in6_addr *dest)
+int lxc_ipv6_dest_add(int ifindex, struct in6_addr *dest, unsigned int netmask)
 {
-	return ip_route_dest_add(AF_INET6, ifindex, dest);
+	return ip_route_dest_add(AF_INET6, ifindex, dest, netmask);
 }
 
 bool is_ovs_bridge(const char *bridge)
@@ -2807,7 +2857,7 @@ static int setup_ipv4_addr(struct lxc_list *ip, int ifindex)
 		if (err) {
 			errno = -err;
 			SYSERROR("Failed to setup ipv4 address for network device "
-			         "with eifindex %d", ifindex);
+			         "with ifindex %d", ifindex);
 			return -1;
 		}
 	}
@@ -2829,7 +2879,7 @@ static int setup_ipv6_addr(struct lxc_list *ip, int ifindex)
 		if (err) {
 			errno = -err;
 			SYSERROR("Failed to setup ipv6 address for network device "
-			         "with eifindex %d", ifindex);
+			         "with ifindex %d", ifindex);
 			return -1;
 		}
 	}
@@ -2988,7 +3038,7 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 
 		err = lxc_ipv4_gateway_add(netdev->ifindex, netdev->ipv4_gateway);
 		if (err) {
-			err = lxc_ipv4_dest_add(netdev->ifindex, netdev->ipv4_gateway);
+			err = lxc_ipv4_dest_add(netdev->ifindex, netdev->ipv4_gateway, 32);
 			if (err) {
 				errno = -err;
 				SYSERROR("Failed to add ipv4 dest for network device \"%s\"",
@@ -3027,7 +3077,7 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 
 		err = lxc_ipv6_gateway_add(netdev->ifindex, netdev->ipv6_gateway);
 		if (err) {
-			err = lxc_ipv6_dest_add(netdev->ifindex, netdev->ipv6_gateway);
+			err = lxc_ipv6_dest_add(netdev->ifindex, netdev->ipv6_gateway, 128);
 			if (err) {
 				errno = -err;
 				SYSERROR("Failed to add ipv6 dest for network device \"%s\"",

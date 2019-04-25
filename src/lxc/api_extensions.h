@@ -44,6 +44,7 @@ static char *api_extensions[] = {
 	"mount_injection_file",
 	"seccomp_allow_nesting",
 	"seccomp_notify",
+	"network_veth_routes",
 };
 
 static size_t nr_api_extensions = sizeof(api_extensions) / sizeof(*api_extensions);

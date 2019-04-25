@@ -375,7 +375,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
           <listitem>
             <para>
               The only allowed values are 0 and 1. Set this to 1 to destroy a
-              container on shutdown. 
+              container on shutdown.
             </para>
           </listitem>
         </varlistentry>
@@ -459,6 +459,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               the <option>lxc.net.[i].veth.pair</option> option (except for
               unprivileged containers where this option is ignored for security
               reasons).
+
+              Static routes can be added on the host pointing to the container using the
+              <option>lxc.net.[i].veth.ipv4.route</option> and
+              <option>lxc.net.[i].veth.ipv6.route</option> options.
+              Several lines specify several routes.
+              The route is in format x.y.z.t/m, eg. 192.168.1.0/24.
             </para>
 
             <para>
@@ -855,7 +861,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             When manually specifying a size for the log file the value should
             be a power of 2 when converted to bytes. Valid size prefixes are
             'KB', 'MB', 'GB'. (Note that all conversions are based on multiples
-            of 1024. That means 'KB' == 'KiB', 'MB' == 'MiB', 'GB' == 'GiB'. 
+            of 1024. That means 'KB' == 'KiB', 'MB' == 'MiB', 'GB' == 'GiB'.
             Additionally, the case of the suffix is ignored, i.e. 'kB', 'KB' and
             'Kb' are treated equally.)
 
@@ -1629,7 +1635,7 @@ dev/null proc/kcore none bind,relative 0 0
             </para>
 
             <para>
-            To inherit the namespace from another container set the 
+            To inherit the namespace from another container set the
             <option>lxc.namespace.share.[namespace identifier]</option> to the name of
             the container, e.g. <option>lxc.namespace.share.pid=c3</option>.
             </para>
@@ -1708,7 +1714,7 @@ dev/null proc/kcore none bind,relative 0 0
           </term>
           <listitem>
             <para>
-              Specify the kernel parameters to be set. The parameters available 
+              Specify the kernel parameters to be set. The parameters available
               are those listed under /proc/sys/.
               Note that not all sysctls are namespaced. Changing Non-namespaced
               sysctls will cause the system-wide setting to be modified.
@@ -1716,7 +1722,7 @@ dev/null proc/kcore none bind,relative 0 0
                 <refentrytitle><command>sysctl</command></refentrytitle>
                 <manvolnum>8</manvolnum>
               </citerefentry>.
-              If used with no value, lxc will clear the parameters specified up 
+              If used with no value, lxc will clear the parameters specified up
               to this point.
             </para>
           </listitem>

@@ -32,3 +32,9 @@ until a reboot succeeded. It takes a timeout argument. When set to `> 0`
 This adds support for injecting and removing mounts into/from a running
 containers. Two new API functions `mount()` and `umount()` are added. They
 mirror the current mount and umount API of the kernel.
+
+## network\_veth\_routes
+
+This introduces the `lxc.net.[i].veth.ipv4.route` and `lxc.net.[i].veth.ipv6.route` properties
+on `veth` type network interfaces. This allows adding static routes on host to the container's
+network interface.

@@ -317,7 +317,7 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 			TRACE("type: none");
 			break;
 		default:
-			ERROR("invalid network type %d", netdev->type);
+			ERROR("Invalid network type %d", netdev->type);
 			return;
 		}
 
@@ -374,6 +374,28 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 					  sizeof(bufinet6));
 				TRACE("ipv6 addr: %s", bufinet6);
 			}
+
+			if (netdev->type == LXC_NET_VETH) {
+				lxc_list_for_each_safe(cur, &netdev->priv.veth_attr.ipv4_routes, next) {
+					inet4dev = cur->elem;
+					if (!inet_ntop(AF_INET, &inet4dev->addr, bufinet4, sizeof(bufinet4))) {
+						ERROR("Invalid ipv4 veth route");
+						return;
+					}
+
+					TRACE("ipv4 veth route: %s/%u", bufinet4, inet4dev->prefix);
+				}
+
+				lxc_list_for_each_safe(cur, &netdev->priv.veth_attr.ipv6_routes, next) {
+					inet6dev = cur->elem;
+					if (!inet_ntop(AF_INET6, &inet6dev->addr, bufinet6, sizeof(bufinet6))) {
+						ERROR("Invalid ipv6 veth route");
+						return;
+					}
+
+					TRACE("ipv6 veth route: %s/%u", bufinet6, inet6dev->prefix);
+				}
+			}
 		}
 	}
 }
@@ -399,6 +421,20 @@ static void lxc_free_netdev(struct lxc_netdev *netdev)
 		lxc_list_del(cur);
 		free(cur->elem);
 		free(cur);
+	}
+
+	if (netdev->type == LXC_NET_VETH) {
+		lxc_list_for_each_safe(cur, &netdev->priv.veth_attr.ipv4_routes, next) {
+			lxc_list_del(cur);
+			free(cur->elem);
+			free(cur);
+		}
+
+		lxc_list_for_each_safe(cur, &netdev->priv.veth_attr.ipv6_routes, next) {
+			lxc_list_del(cur);
+			free(cur->elem);
+			free(cur);
+		}
 	}
 
 	free(netdev);
