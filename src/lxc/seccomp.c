@@ -31,6 +31,7 @@
 #include <sys/mount.h>
 #include <sys/utsname.h>
 
+#include "af_unix.h"
 #include "config.h"
 #include "log.h"
 #include "lxccontainer.h"
@@ -1290,12 +1291,51 @@ void lxc_seccomp_free(struct lxc_conf *conf)
 #endif
 }
 
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+static int seccomp_notify_reconnect(struct lxc_handler *handler)
+{
+	__do_close_prot_errno int notify_fd = -EBADF;
+
+	close_prot_errno_disarm(handler->conf->seccomp_notify_proxy_fd);
+
+	notify_fd = lxc_unix_connect(&handler->conf->seccomp_notify_proxy_addr);
+	if (notify_fd < 0) {
+		SYSERROR("Failed to reconnect to seccomp proxy");
+		return -1;
+	}
+
+	/* 30 second timeout */
+	if (lxc_socket_set_timeout(notify_fd, 30, 30)) {
+		SYSERROR("Failed to set socket timeout");
+		return -1;
+	}
+	handler->conf->seccomp_notify_proxy_fd = move_fd(notify_fd);
+	return 0;
+}
+#endif
+
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+static int seccomp_notify_default_answer(int fd, struct seccomp_notif *req,
+					 struct seccomp_notif_resp *resp,
+					 struct lxc_handler *handler)
+{
+	resp->id = req->id;
+	resp->error = -ENOSYS;
+
+	if (seccomp_notif_send_resp(fd, resp))
+		SYSERROR("Failed to send default message to seccomp");
+
+	return seccomp_notify_reconnect(handler);
+}
+#endif
+
 int seccomp_notify_handler(int fd, uint32_t events, void *data,
 			   struct lxc_epoll_descr *descr)
 {
 
 #if HAVE_DECL_SECCOMP_NOTIF_GET_FD
-	int ret;
+	int reconnect_count, ret;
+	ssize_t bytes;
 	struct lxc_handler *hdlr = data;
 	struct lxc_conf *conf = hdlr->conf;
 	struct seccomp_notif *req = conf->seccomp_notify_req;
@@ -1303,31 +1343,48 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	int listener_proxy_fd = conf->seccomp_notify_proxy_fd;
 	struct seccomp_notify_proxy_msg msg;
 
-	if (listener_proxy_fd < 0)
+	if (listener_proxy_fd < 0) {
+		ERROR("No seccomp proxy registered");
 		return minus_one_set_errno(EINVAL);
+	}
 
 	ret = seccomp_notif_receive(fd, req);
-	if (ret)
-		return minus_one_set_errno(-ret);
+	if (ret) {
+		SYSERROR("Failed to read seccomp notification");
+		goto out;
+	}
 
 	memcpy(&msg.req, req, sizeof(msg.req));
 	msg.monitor_pid = hdlr->monitor_pid;
 	msg.init_pid = hdlr->pid;
 
-	ret = lxc_send_nointr(listener_proxy_fd, &msg, sizeof(msg), MSG_NOSIGNAL);
-	if (ret < 0 || ret != (ssize_t)sizeof(msg))
-		return -1;
+	reconnect_count = 0;
+	do {
+		bytes = lxc_send_nointr(listener_proxy_fd, &msg, sizeof(msg),
+					MSG_NOSIGNAL);
+		if (bytes != (ssize_t)sizeof(msg)) {
+			SYSERROR("Failed to forward message to seccomp proxy");
+			if (seccomp_notify_default_answer(fd, req, resp, hdlr))
+				goto out;
+		}
+	} while (reconnect_count++);
 
-	ret = lxc_recv_nointr(listener_proxy_fd, &msg, sizeof(msg), 0);
-	if (ret != (ssize_t)sizeof(msg))
-		return -1;
+	reconnect_count = 0;
+	do {
+		bytes = lxc_recv_nointr(listener_proxy_fd, &msg, sizeof(msg), 0);
+		if (bytes != (ssize_t)sizeof(msg)) {
+			SYSERROR("Failed to receive message from seccomp proxy");
+			if (seccomp_notify_default_answer(fd, req, resp, hdlr))
+				goto out;
+		}
+	} while (reconnect_count++);
 
 	memcpy(resp, &msg.resp, sizeof(*resp));
-
 	ret = seccomp_notif_send_resp(fd, resp);
 	if (ret)
-		return minus_one_set_errno(-ret);
+		SYSERROR("Failed to send seccomp notification");
 
+out:
 	return 0;
 #else
 	return -ENOSYS;
