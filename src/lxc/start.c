@@ -593,7 +593,18 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 
 #if HAVE_DECL_SECCOMP_NOTIF_GET_FD
 	if (handler->conf->has_seccomp_notify &&
-	    handler->conf->seccomp_notify_proxy_fd >= 0) {
+	    handler->conf->seccomp_notify_proxy_addr.sun_path[1] != '\0') {
+                __do_close_prot_errno int notify_fd = -EBADF;
+
+		notify_fd = lxc_unix_connect(&handler->conf->seccomp_notify_proxy_addr);
+		if (notify_fd < 0)
+			goto out_mainloop_console;
+
+		/* 30 second timeout */
+		ret = lxc_socket_set_timeout(notify_fd, 30, 30);
+		if (ret)
+			goto out_mainloop_console;
+
 		ret = lxc_mainloop_add_handler(&descr,
 					       handler->conf->seccomp_notify_fd,
 					       seccomp_notify_handler, handler);
@@ -602,6 +613,8 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 			      handler->conf->seccomp_notify_fd);
 			goto out_mainloop_console;
 		}
+
+		handler->conf->seccomp_notify_proxy_fd = move_fd(notify_fd);
 	}
 #endif
 

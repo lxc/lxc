@@ -46,6 +46,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "af_unix.h"
 #include "conf.h"
 #include "config.h"
 #include "confile.h"
@@ -147,6 +148,7 @@ lxc_config_define(rootfs_options);
 lxc_config_define(rootfs_path);
 lxc_config_define(seccomp_profile);
 lxc_config_define(seccomp_allow_nesting);
+lxc_config_define(seccomp_notify_proxy);
 lxc_config_define(selinux_context);
 lxc_config_define(signal_halt);
 lxc_config_define(signal_reboot);
@@ -234,6 +236,7 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.rootfs.options",            set_config_rootfs_options,              get_config_rootfs_options,              clr_config_rootfs_options,            },
 	{ "lxc.rootfs.path",               set_config_rootfs_path,                 get_config_rootfs_path,                 clr_config_rootfs_path,               },
 	{ "lxc.seccomp.allow_nesting",     set_config_seccomp_allow_nesting,       get_config_seccomp_allow_nesting,       clr_config_seccomp_allow_nesting,     },
+	{ "lxc.seccomp.notify.proxy",      set_config_seccomp_notify_proxy,        get_config_seccomp_notify_proxy,        clr_config_seccomp_notify_proxy,      },
 	{ "lxc.seccomp.profile",           set_config_seccomp_profile,             get_config_seccomp_profile,             clr_config_seccomp_profile,           },
 	{ "lxc.selinux.context",           set_config_selinux_context,             get_config_selinux_context,             clr_config_selinux_context,           },
 	{ "lxc.signal.halt",               set_config_signal_halt,                 get_config_signal_halt,                 clr_config_signal_halt,               },
@@ -784,9 +787,31 @@ static int set_config_seccomp_allow_nesting(const char *key, const char *value,
 		return -1;
 
 	if (lxc_conf->seccomp_allow_nesting > 1)
+		return minus_one_set_errno(EINVAL);
+
+	return 0;
+}
+
+static int set_config_seccomp_notify_proxy(const char *key, const char *value,
+					   struct lxc_conf *lxc_conf, void *data)
+{
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	const char *offset;
+
+	if (lxc_config_value_empty(value))
+		return clr_config_seccomp_notify_proxy(key, lxc_conf, NULL);
+
+	if (strncmp(value, "unix:", 5) != 0)
+		return minus_one_set_errno(EINVAL);
+
+	offset = value + 5;
+	if (lxc_unix_sockaddr(&lxc_conf->seccomp_notify_proxy_addr, offset) < 0)
 		return -1;
 
 	return 0;
+#else
+	return minus_one_set_errno(ENOSYS);
+#endif
 }
 
 static int set_config_seccomp_profile(const char *key, const char *value,
@@ -3704,6 +3729,19 @@ static int get_config_seccomp_allow_nesting(const char *key, char *retv,
 	return lxc_get_conf_int(c, retv, inlen, c->seccomp_allow_nesting);
 }
 
+static int get_config_seccomp_notify_proxy(const char *key, char *retv, int inlen,
+					   struct lxc_conf *c, void *data)
+{
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	return lxc_get_conf_str(retv, inlen,
+				(c->seccomp_notify_proxy_addr.sun_path[0]) == '/'
+				    ? &c->seccomp_notify_proxy_addr.sun_path[0]
+				    : &c->seccomp_notify_proxy_addr.sun_path[1]);
+#else
+	return minus_one_set_errno(ENOSYS);
+#endif
+}
+
 static int get_config_seccomp_profile(const char *key, char *retv, int inlen,
 				      struct lxc_conf *c, void *data)
 {
@@ -4292,6 +4330,18 @@ static inline int clr_config_seccomp_allow_nesting(const char *key,
 {
 	c->seccomp_allow_nesting = 0;
 	return 0;
+}
+
+static inline int clr_config_seccomp_notify_proxy(const char *key,
+						   struct lxc_conf *c, void *data)
+{
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	memset(&c->seccomp_notify_proxy_addr, 0,
+	       sizeof(c->seccomp_notify_proxy_addr));
+	return 0;
+#else
+	return minus_one_set_errno(ENOSYS);
+#endif
 }
 
 static inline int clr_config_seccomp_profile(const char *key,
