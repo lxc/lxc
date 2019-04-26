@@ -3004,7 +3004,7 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 				if (netdev->ipv4_gateway_auto) {
 					char buf[INET_ADDRSTRLEN];
 					inet_ntop(AF_INET, netdev->ipv4_gateway, buf, sizeof(buf));
-					ERROR("Fried to set autodetected ipv4 gateway \"%s\"", buf);
+					ERROR("Tried to set autodetected ipv4 gateway \"%s\"", buf);
 				}
 				return -1;
 			}
