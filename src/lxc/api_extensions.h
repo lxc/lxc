@@ -45,6 +45,7 @@ static char *api_extensions[] = {
 	"seccomp_allow_nesting",
 	"seccomp_notify",
 	"network_veth_routes",
+	"network_ipvlan",
 };
 
 static size_t nr_api_extensions = sizeof(api_extensions) / sizeof(*api_extensions);

@@ -666,6 +666,11 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
+	if (set_get_compare_clear_save_load(c, "lxc.net.0.type", "ipvlan", tmpf, true)) {
+		lxc_error("%s\n", "lxc.net.0.type");
+		goto non_test_error;
+	}
+
 	if (set_get_compare_clear_save_load(c, "lxc.net.1000.type", "phys", tmpf, true)) {
 		lxc_error("%s\n", "lxc.net.1000.type");
 		goto non_test_error;
@@ -698,6 +703,36 @@ int main(int argc, char *argv[])
 
 	if (set_get_compare_clear_save_load_network(c, "lxc.net.0.macvlan.mode", "bridge", tmpf, true, "macvlan")) {
 		lxc_error("%s\n", "lxc.net.0.macvlan.mode");
+		goto non_test_error;
+	}
+
+	if (set_get_compare_clear_save_load_network(c, "lxc.net.0.ipvlan.mode", "l3", tmpf, true, "ipvlan")) {
+		lxc_error("%s\n", "lxc.net.0.ipvlan.mode");
+		goto non_test_error;
+	}
+
+	if (set_get_compare_clear_save_load_network(c, "lxc.net.0.ipvlan.mode", "l3s", tmpf, true, "ipvlan")) {
+		lxc_error("%s\n", "lxc.net.0.ipvlan.mode");
+		goto non_test_error;
+	}
+
+	if (set_get_compare_clear_save_load_network(c, "lxc.net.0.ipvlan.mode", "l2", tmpf, true, "ipvlan")) {
+		lxc_error("%s\n", "lxc.net.0.ipvlan.mode");
+		goto non_test_error;
+	}
+
+	if (set_get_compare_clear_save_load_network(c, "lxc.net.0.ipvlan.isolation", "bridge", tmpf, true, "ipvlan")) {
+		lxc_error("%s\n", "lxc.net.0.ipvlan.isolation");
+		goto non_test_error;
+	}
+
+	if (set_get_compare_clear_save_load_network(c, "lxc.net.0.ipvlan.isolation", "private", tmpf, true, "ipvlan")) {
+		lxc_error("%s\n", "lxc.net.0.ipvlan.isolation");
+		goto non_test_error;
+	}
+
+	if (set_get_compare_clear_save_load_network(c, "lxc.net.0.ipvlan.isolation", "vepa", tmpf, true, "ipvlan")) {
+		lxc_error("%s\n", "lxc.net.0.ipvlan.isolation");
 		goto non_test_error;
 	}
 

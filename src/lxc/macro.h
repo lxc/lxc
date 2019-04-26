@@ -280,6 +280,14 @@ extern int __build_bug_on_failed;
 #define IFLA_MACVLAN_MODE 1
 #endif
 
+#ifndef IFLA_IPVLAN_MODE
+#define IFLA_IPVLAN_MODE 1
+#endif
+
+#ifndef IFLA_IPVLAN_ISOLATION
+#define IFLA_IPVLAN_ISOLATION 2
+#endif
+
 #ifndef IFLA_NEW_NETNSID
 #define IFLA_NEW_NETNSID 45
 #endif
@@ -331,6 +339,30 @@ extern int __build_bug_on_failed;
 
 #ifndef MACVLAN_MODE_PASSTHRU
 #define MACVLAN_MODE_PASSTHRU 8
+#endif
+
+#ifndef IPVLAN_MODE_L2
+#define IPVLAN_MODE_L2 0
+#endif
+
+#ifndef IPVLAN_MODE_L3
+#define IPVLAN_MODE_L3 1
+#endif
+
+#ifndef IPVLAN_MODE_L3S
+#define IPVLAN_MODE_L3S 2
+#endif
+
+#ifndef IPVLAN_ISOLATION_BRIDGE
+#define IPVLAN_ISOLATION_BRIDGE 0
+#endif
+
+#ifndef IPVLAN_ISOLATION_PRIVATE
+#define IPVLAN_ISOLATION_PRIVATE 1
+#endif
+
+#ifndef IPVLAN_ISOLATION_VEPA
+#define IPVLAN_ISOLATION_VEPA 2
 #endif
 
 /* Attributes of RTM_NEWNSID/RTM_GETNSID messages */

@@ -40,6 +40,7 @@ enum {
 	LXC_NET_EMPTY,
 	LXC_NET_VETH,
 	LXC_NET_MACVLAN,
+	LXC_NET_IPVLAN,
 	LXC_NET_PHYS,
 	LXC_NET_VLAN,
 	LXC_NET_NONE,
@@ -110,6 +111,11 @@ struct ifla_macvlan {
 	int mode; /* private, vepa, bridge, passthru */
 };
 
+struct ifla_ipvlan {
+	int mode; /* l3, l3s, l2 */
+	int isolation; /* bridge, private, vepa */
+};
+
 /* Contains information about the physical network device as seen from the host.
  * @ifindex : The ifindex of the physical network device in the host's network
  *            namespace.
@@ -120,6 +126,7 @@ struct ifla_phys {
 
 union netdev_p {
 	struct ifla_macvlan macvlan_attr;
+	struct ifla_ipvlan ipvlan_attr;
 	struct ifla_phys phys_attr;
 	struct ifla_veth veth_attr;
 	struct ifla_vlan vlan_attr;
