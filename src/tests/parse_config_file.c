@@ -135,6 +135,16 @@ static int set_and_clear_complete_netdev(struct lxc_container *c)
 		return -1;
 	}
 
+	if (!c->set_config_item(c, "lxc.net.1.veth.ipv4.route", "192.0.2.1/32")) {
+		lxc_error("%s\n", "lxc.net.1.veth.ipv4.route");
+		return -1;
+	}
+
+	if (!c->set_config_item(c, "lxc.net.1.veth.ipv6.route", "2001:db8::1/128")) {
+		lxc_error("%s\n", "lxc.net.1.veth.ipv6.route");
+		return -1;
+	}
+
 	if (!c->set_config_item(c, "lxc.net.1.hwaddr",
 				"52:54:00:80:7a:5d")) {
 		lxc_error("%s\n", "lxc.net.1.hwaddr");
@@ -694,6 +704,16 @@ int main(int argc, char *argv[])
 	if (set_get_compare_clear_save_load_network(c, "lxc.net.0.veth.pair", "clusterfuck", tmpf, true, "veth")) {
 		lxc_error("%s\n", "lxc.net.0.veth.pair");
 		goto non_test_error;
+	}
+
+	if (set_get_compare_clear_save_load_network(c, "lxc.net.0.veth.ipv4.route", "192.0.2.1/32", tmpf, true, "veth")) {
+		lxc_error("%s\n", "lxc.net.0.veth.ipv4.route");
+		return -1;
+	}
+
+	if (set_get_compare_clear_save_load_network(c, "lxc.net.0.veth.ipv6.route", "2001:db8::1/128", tmpf, true, "veth")) {
+		lxc_error("%s\n", "lxc.net.0.veth.ipv6.route");
+		return -1;
 	}
 
 	if (set_get_compare_clear_save_load(c, "lxc.net.0.script.up", "/some/up/path", tmpf, true)) {
