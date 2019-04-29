@@ -32,10 +32,12 @@
 #include <sys/utsname.h>
 
 #include "af_unix.h"
+#include "commands.h"
 #include "config.h"
 #include "log.h"
 #include "lxccontainer.h"
 #include "lxcseccomp.h"
+#include "mainloop.h"
 #include "memory_utils.h"
 #include "utils.h"
 
@@ -63,7 +65,7 @@ static int parse_config_v1(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 		}
 
 #if HAVE_SCMP_FILTER_CTX
-		ret = seccomp_rule_add(conf->seccomp_ctx, SCMP_ACT_ALLOW, nr, 0);
+		ret = seccomp_rule_add(conf->seccomp.seccomp_ctx, SCMP_ACT_ALLOW, nr, 0);
 #else
 		ret = seccomp_rule_add(SCMP_ACT_ALLOW, nr, 0);
 #endif
@@ -736,13 +738,13 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 	}
 
 	if (default_policy_action != SCMP_ACT_KILL) {
-		ret = seccomp_reset(conf->seccomp_ctx, default_policy_action);
+		ret = seccomp_reset(conf->seccomp.seccomp_ctx, default_policy_action);
 		if (ret != 0) {
 			ERROR("Error re-initializing Seccomp");
 			return -1;
 		}
 
-		ret = seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_CTL_NNP, 0);
+		ret = seccomp_attr_set(conf->seccomp.seccomp_ctx, SCMP_FLTATR_CTL_NNP, 0);
 		if (ret < 0) {
 			errno = -ret;
 			SYSERROR("Failed to turn off no-new-privs");
@@ -750,7 +752,7 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 		}
 
 #ifdef SCMP_FLTATR_ATL_TSKIP
-		ret = seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_ATL_TSKIP, 1);
+		ret = seccomp_attr_set(conf->seccomp.seccomp_ctx, SCMP_FLTATR_ATL_TSKIP, 1);
 		if (ret < 0) {
 			errno = -ret;
 			SYSWARN("Failed to turn on seccomp nop-skip, continuing");
@@ -941,19 +943,19 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 
 #if HAVE_DECL_SECCOMP_NOTIF_GET_FD
 		if ((rule.action == SCMP_ACT_USER_NOTIF) &&
-		    !conf->has_seccomp_notify) {
-			ret = seccomp_attr_set(conf->seccomp_ctx,
+		    !conf->seccomp.notifier.wants_supervision) {
+			ret = seccomp_attr_set(conf->seccomp.seccomp_ctx,
 					       SCMP_FLTATR_NEW_LISTENER, 1);
 			if (ret)
 				goto bad_rule;
 
-			conf->has_seccomp_notify = true;
+			conf->seccomp.notifier.wants_supervision = true;
 			TRACE("Set SCMP_FLTATR_NEW_LISTENER attribute");
 		}
 #endif
 
 		if (!do_resolve_add_rule(SCMP_ARCH_NATIVE, line,
-					 conf->seccomp_ctx, &rule))
+					 conf->seccomp.seccomp_ctx, &rule))
 			goto bad_rule;
 
 		INFO("Added native rule for arch %d for %s action %d(%s)",
@@ -994,7 +996,7 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 	INFO("Merging compat seccomp contexts into main context");
 	if (ctx.contexts[0]) {
 		if (ctx.needs_merge[0]) {
-			ret = seccomp_merge(conf->seccomp_ctx, ctx.contexts[0]);
+			ret = seccomp_merge(conf->seccomp.seccomp_ctx, ctx.contexts[0]);
 			if (ret < 0) {
 				ERROR("Failed to merge first compat seccomp "
 				      "context into main context");
@@ -1010,7 +1012,7 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 
 	if (ctx.contexts[1]) {
 		if (ctx.needs_merge[1]) {
-			ret = seccomp_merge(conf->seccomp_ctx, ctx.contexts[1]);
+			ret = seccomp_merge(conf->seccomp.seccomp_ctx, ctx.contexts[1]);
 			if (ret < 0) {
 				ERROR("Failed to merge first compat seccomp "
 				      "context into main context");
@@ -1026,7 +1028,7 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 
 	if (ctx.contexts[2]) {
 		if (ctx.needs_merge[2]) {
-			ret = seccomp_merge(conf->seccomp_ctx, ctx.contexts[2]);
+			ret = seccomp_merge(conf->seccomp.seccomp_ctx, ctx.contexts[2]);
 			if (ret < 0) {
 				ERROR("Failed to merge third compat seccomp "
 				      "context into main context");
@@ -1128,7 +1130,7 @@ static bool use_seccomp(const struct lxc_conf *conf)
 	char *line = NULL;
 	bool already_enabled = false, found = false;
 
-	if (conf->seccomp_allow_nesting > 0)
+	if (conf->seccomp.allow_nesting > 0)
 		return true;
 
 	f = fopen("/proc/self/status", "r");
@@ -1167,7 +1169,7 @@ int lxc_read_seccomp_config(struct lxc_conf *conf)
 	int ret;
 	FILE *f;
 
-	if (!conf->seccomp)
+	if (!conf->seccomp.seccomp)
 		return 0;
 
 	if (!use_seccomp(conf))
@@ -1175,8 +1177,8 @@ int lxc_read_seccomp_config(struct lxc_conf *conf)
 
 #if HAVE_SCMP_FILTER_CTX
 	/* XXX for debug, pass in SCMP_ACT_TRAP */
-	conf->seccomp_ctx = seccomp_init(SCMP_ACT_KILL);
-	ret = !conf->seccomp_ctx;
+	conf->seccomp.seccomp_ctx = seccomp_init(SCMP_ACT_KILL);
+	ret = !conf->seccomp.seccomp_ctx;
 #else
 	ret = seccomp_init(SCMP_ACT_KILL) < 0;
 #endif
@@ -1188,7 +1190,7 @@ int lxc_read_seccomp_config(struct lxc_conf *conf)
 /* turn off no-new-privs. We don't want it in lxc, and it breaks
  * with apparmor */
 #if HAVE_SCMP_FILTER_CTX
-	ret = seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_CTL_NNP, 0);
+	ret = seccomp_attr_set(conf->seccomp.seccomp_ctx, SCMP_FLTATR_CTL_NNP, 0);
 #else
 	ret = seccomp_attr_set(SCMP_FLTATR_CTL_NNP, 0);
 #endif
@@ -1199,16 +1201,16 @@ int lxc_read_seccomp_config(struct lxc_conf *conf)
 	}
 
 #ifdef SCMP_FLTATR_ATL_TSKIP
-	ret = seccomp_attr_set(conf->seccomp_ctx, SCMP_FLTATR_ATL_TSKIP, 1);
+	ret = seccomp_attr_set(conf->seccomp.seccomp_ctx, SCMP_FLTATR_ATL_TSKIP, 1);
 	if (ret < 0) {
 		errno = -ret;
 		SYSWARN("Failed to turn on seccomp nop-skip, continuing");
 	}
 #endif
 
-	f = fopen(conf->seccomp, "r");
+	f = fopen(conf->seccomp.seccomp, "r");
 	if (!f) {
-		SYSERROR("Failed to open seccomp policy file %s", conf->seccomp);
+		SYSERROR("Failed to open seccomp policy file %s", conf->seccomp.seccomp);
 		return -1;
 	}
 
@@ -1222,14 +1224,14 @@ int lxc_seccomp_load(struct lxc_conf *conf)
 {
 	int ret;
 
-	if (!conf->seccomp)
+	if (!conf->seccomp.seccomp)
 		return 0;
 
 	if (!use_seccomp(conf))
 		return 0;
 
 #if HAVE_SCMP_FILTER_CTX
-	ret = seccomp_load(conf->seccomp_ctx);
+	ret = seccomp_load(conf->seccomp.seccomp_ctx);
 #else
 	ret = seccomp_load();
 #endif
@@ -1245,7 +1247,7 @@ int lxc_seccomp_load(struct lxc_conf *conf)
 	if ((lxc_log_get_level() <= LXC_LOG_LEVEL_TRACE ||
 	     conf->loglevel <= LXC_LOG_LEVEL_TRACE) &&
 	    lxc_log_fd >= 0) {
-		ret = seccomp_export_pfc(conf->seccomp_ctx, lxc_log_fd);
+		ret = seccomp_export_pfc(conf->seccomp.seccomp_ctx, lxc_log_fd);
 		/* Just give an warning when export error */
 		if (ret < 0) {
 			errno = -ret;
@@ -1255,14 +1257,14 @@ int lxc_seccomp_load(struct lxc_conf *conf)
 #endif
 
 #if HAVE_DECL_SECCOMP_NOTIF_GET_FD
-	if (conf->has_seccomp_notify) {
-		ret = seccomp_notif_get_fd(conf->seccomp_ctx);
+	if (conf->seccomp.notifier.wants_supervision) {
+		ret = seccomp_notif_get_fd(conf->seccomp.seccomp_ctx);
 		if (ret < 0) {
 			errno = -ret;
 			return -1;
 		}
 
-		conf->seccomp_notify_fd = ret;
+		conf->seccomp.notifier.notify_fd = ret;
 		TRACE("Retrieved new seccomp listener fd %d", ret);
 	}
 #endif
@@ -1270,24 +1272,23 @@ int lxc_seccomp_load(struct lxc_conf *conf)
 	return 0;
 }
 
-void lxc_seccomp_free(struct lxc_conf *conf)
+void lxc_seccomp_free(struct lxc_seccomp *seccomp)
 {
-	free(conf->seccomp);
-	conf->seccomp = NULL;
+	free_disarm(seccomp->seccomp);
 
 #if HAVE_SCMP_FILTER_CTX
-	if (conf->seccomp_ctx) {
-		seccomp_release(conf->seccomp_ctx);
-		conf->seccomp_ctx = NULL;
+	if (seccomp->seccomp_ctx) {
+		seccomp_release(seccomp->seccomp_ctx);
+		seccomp->seccomp_ctx = NULL;
 	}
 #endif
 
 #if HAVE_DECL_SECCOMP_NOTIF_GET_FD
-	close_prot_errno_disarm(conf->seccomp_notify_fd);
-	close_prot_errno_disarm(conf->seccomp_notify_proxy_fd);
-	seccomp_notif_free(conf->seccomp_notify_req, conf->seccomp_notify_resp);
-	conf->seccomp_notify_req = NULL;
-	conf->seccomp_notify_resp = NULL;
+	close_prot_errno_disarm(seccomp->notifier.notify_fd);
+	close_prot_errno_disarm(seccomp->notifier.proxy_fd);
+	seccomp_notif_free(seccomp->notifier.req_buf, seccomp->notifier.rsp_buf);
+	seccomp->notifier.req_buf = NULL;
+	seccomp->notifier.rsp_buf = NULL;
 #endif
 }
 
@@ -1296,9 +1297,9 @@ static int seccomp_notify_reconnect(struct lxc_handler *handler)
 {
 	__do_close_prot_errno int notify_fd = -EBADF;
 
-	close_prot_errno_disarm(handler->conf->seccomp_notify_proxy_fd);
+	close_prot_errno_disarm(handler->conf->seccomp.notifier.proxy_fd);
 
-	notify_fd = lxc_unix_connect(&handler->conf->seccomp_notify_proxy_addr);
+	notify_fd = lxc_unix_connect(&handler->conf->seccomp.notifier.proxy_addr);
 	if (notify_fd < 0) {
 		SYSERROR("Failed to reconnect to seccomp proxy");
 		return -1;
@@ -1309,7 +1310,7 @@ static int seccomp_notify_reconnect(struct lxc_handler *handler)
 		SYSERROR("Failed to set socket timeout");
 		return -1;
 	}
-	handler->conf->seccomp_notify_proxy_fd = move_fd(notify_fd);
+	handler->conf->seccomp.notifier.proxy_fd = move_fd(notify_fd);
 	return 0;
 }
 #endif
@@ -1338,9 +1339,9 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	ssize_t bytes;
 	struct lxc_handler *hdlr = data;
 	struct lxc_conf *conf = hdlr->conf;
-	struct seccomp_notif *req = conf->seccomp_notify_req;
-	struct seccomp_notif_resp *resp = conf->seccomp_notify_resp;
-	int listener_proxy_fd = conf->seccomp_notify_proxy_fd;
+	struct seccomp_notif *req = conf->seccomp.notifier.req_buf;
+	struct seccomp_notif_resp *resp = conf->seccomp.notifier.rsp_buf;
+	int listener_proxy_fd = conf->seccomp.notifier.proxy_fd;
 	struct seccomp_notify_proxy_msg msg;
 
 	if (listener_proxy_fd < 0) {
@@ -1389,4 +1390,114 @@ out:
 #else
 	return -ENOSYS;
 #endif
+}
+
+void seccomp_conf_init(struct lxc_conf *conf)
+{
+	conf->seccomp.seccomp = NULL;
+#if HAVE_SCMP_FILTER_CTX
+	conf->seccomp.allow_nesting = 0;
+	memset(&conf->seccomp.seccomp_ctx, 0, sizeof(conf->seccomp.seccomp_ctx));
+#endif /* HAVE_SCMP_FILTER_CTX */
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	conf->seccomp.notifier.wants_supervision = false;
+	conf->seccomp.notifier.notify_fd = -EBADF;
+	conf->seccomp.notifier.proxy_fd = -EBADF;
+	memset(&conf->seccomp.notifier.proxy_addr, 0,
+	       sizeof(conf->seccomp.notifier.proxy_addr));
+	conf->seccomp.notifier.req_buf = NULL;
+	conf->seccomp.notifier.rsp_buf = NULL;
+#endif
+}
+
+int lxc_seccomp_setup_notifier(struct lxc_seccomp *seccomp,
+			       struct lxc_epoll_descr *descr,
+			       struct lxc_handler *handler)
+{
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	if (seccomp->notifier.wants_supervision &&
+	    seccomp->notifier.proxy_addr.sun_path[1] != '\0') {
+		__do_close_prot_errno int notify_fd = -EBADF;
+		int ret;
+
+		notify_fd = lxc_unix_connect(&seccomp->notifier.proxy_addr);
+		if (notify_fd < 0)
+			return -1;
+
+		/* 30 second timeout */
+		ret = lxc_socket_set_timeout(notify_fd, 30, 30);
+		if (ret)
+			return -1;
+
+		ret = lxc_mainloop_add_handler(descr,
+					       seccomp->notifier.notify_fd,
+					       seccomp_notify_handler, handler);
+		if (ret < 0) {
+			ERROR("Failed to add seccomp notify handler for %d to mainloop",
+			      seccomp->notifier.notify_fd);
+			return -1;
+		}
+
+		seccomp->notifier.proxy_fd = move_fd(notify_fd);
+	}
+#endif
+	return 0;
+}
+
+int lxc_seccomp_send_notifier_fd(struct lxc_seccomp *seccomp, int socket_fd)
+{
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	if (seccomp->notifier.wants_supervision) {
+		if (lxc_abstract_unix_send_fds(socket_fd,
+					       &seccomp->notifier.notify_fd, 1,
+					       NULL, 0) < 0)
+			return -1;
+		close_prot_errno_disarm(seccomp->notifier.notify_fd);
+	}
+#endif
+	return 0;
+}
+
+int lxc_seccomp_recv_notifier_fd(struct lxc_seccomp *seccomp, int socket_fd)
+{
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	if (seccomp->notifier.wants_supervision) {
+		int ret;
+
+		ret = lxc_abstract_unix_recv_fds(socket_fd,
+						 &seccomp->notifier.notify_fd,
+						 1, NULL, 0);
+		if (ret < 0)
+			return -1;
+
+		if (seccomp->notifier.proxy_fd >= 0) {
+			ret = seccomp_notif_alloc(&seccomp->notifier.req_buf,
+						  &seccomp->notifier.rsp_buf);
+			if (ret) {
+				errno = ret;
+				return -1;
+			}
+		}
+	}
+#endif
+	return 0;
+}
+
+int lxc_seccomp_add_notifier(const char *name, const char *lxcpath,
+			     struct lxc_seccomp *seccomp)
+{
+
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	if (seccomp->notifier.proxy_fd >= 0) {
+		int ret;
+
+		ret = lxc_cmd_seccomp_notify_add_listener(name, lxcpath,
+		          				  seccomp->notifier.notify_fd,
+							  -1, 0);
+		close_prot_errno_disarm(seccomp->notifier.notify_fd);
+		if (ret < 0)
+			return -1;
+	}
+#endif
+	return 0;
 }

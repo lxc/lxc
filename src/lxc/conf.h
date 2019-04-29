@@ -38,6 +38,7 @@
 #include "compiler.h"
 #include "config.h"
 #include "list.h"
+#include "lxcseccomp.h"
 #include "ringbuf.h"
 #include "start.h"
 #include "terminal.h"
@@ -295,19 +296,7 @@ struct lxc_conf {
 	struct lxc_list lsm_aa_raw;
 	char *lsm_se_context;
 	bool tmp_umount_proc;
-	char *seccomp;  /* filename with the seccomp rules */
-	unsigned int seccomp_allow_nesting;
-#if HAVE_SCMP_FILTER_CTX
-	scmp_filter_ctx seccomp_ctx;
-#endif
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
-	bool has_seccomp_notify;
-	int seccomp_notify_fd;
-	int seccomp_notify_proxy_fd;
-	struct sockaddr_un seccomp_notify_proxy_addr;
-	struct seccomp_notif *seccomp_notify_req;
-	struct seccomp_notif_resp *seccomp_notify_resp;
-#endif
+	struct lxc_seccomp seccomp;
 	int maincmd_fd;
 	unsigned int autodev;  /* if 1, mount and fill a /dev at start */
 	int haltsignal; /* signal used to halt container */

@@ -24,21 +24,86 @@
 #ifndef __LXC_LXCSECCOMP_H
 #define __LXC_LXCSECCOMP_H
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <errno.h>
 #ifdef HAVE_SECCOMP
+#include <linux/seccomp.h>
 #include <seccomp.h>
+#endif
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#include <sys/socket.h>
+#include <sys/un.h>
 #endif
 
 #include "conf.h"
+#include "config.h"
+#include "memory_utils.h"
+
+struct lxc_conf;
+struct lxc_epoll_descr;
+struct lxc_handler;
 
 #ifdef HAVE_SECCOMP
+
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+struct seccomp_notify {
+	bool wants_supervision;
+	int notify_fd;
+	int proxy_fd;
+	struct sockaddr_un proxy_addr;
+	struct seccomp_notif *req_buf;
+	struct seccomp_notif_resp *rsp_buf;
+};
+
+#define HAVE_SECCOMP_NOTIFY 1
+
+#endif /* HAVE_DECL_SECCOMP_NOTIF_GET_FD */
+
+struct lxc_seccomp {
+	char *seccomp;
+#if HAVE_SCMP_FILTER_CTX
+	unsigned int allow_nesting;
+	scmp_filter_ctx seccomp_ctx;
+#endif /* HAVE_SCMP_FILTER_CTX */
+
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	struct seccomp_notify notifier;
+#endif /* HAVE_DECL_SECCOMP_NOTIF_GET_FD */
+};
+
 extern int lxc_seccomp_load(struct lxc_conf *conf);
 extern int lxc_read_seccomp_config(struct lxc_conf *conf);
-extern void lxc_seccomp_free(struct lxc_conf *conf);
+extern void lxc_seccomp_free(struct lxc_seccomp *seccomp);
 extern int seccomp_notify_handler(int fd, uint32_t events, void *data,
 				  struct lxc_epoll_descr *descr);
-
+extern void seccomp_conf_init(struct lxc_conf *conf);
+extern int lxc_seccomp_setup_notifier(struct lxc_seccomp *seccomp,
+				      struct lxc_epoll_descr *descr,
+				      struct lxc_handler *handler);
+extern int lxc_seccomp_send_notifier_fd(struct lxc_seccomp *seccomp,
+					int socket_fd);
+extern int lxc_seccomp_recv_notifier_fd(struct lxc_seccomp *seccomp,
+					int socket_fd);
+extern int lxc_seccomp_add_notifier(const char *name, const char *lxcpath,
+				    struct lxc_seccomp *seccomp);
+static inline int lxc_seccomp_get_notify_fd(struct lxc_seccomp *seccomp)
+{
+#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	return seccomp->notifier.notify_fd;
 #else
+	errno = ENOSYS;
+	return -EBADF;
+#endif
+}
+
+#else /* HAVE_SECCOMP */
+
+struct lxc_seccomp {
+	char *seccomp;
+};
+
 static inline int lxc_seccomp_load(struct lxc_conf *conf)
 {
 	return 0;
@@ -49,16 +114,50 @@ static inline int lxc_read_seccomp_config(struct lxc_conf *conf)
 	return 0;
 }
 
-static inline void lxc_seccomp_free(struct lxc_conf *conf)
+static inline void lxc_seccomp_free(struct lxc_seccomp *seccomp)
 {
-	free(conf->seccomp);
-	conf->seccomp = NULL;
+	free_disarm(seccomp->seccomp);
 }
+
 static inline int seccomp_notify_handler(int fd, uint32_t events, void *data,
 				  struct lxc_epoll_descr *descr)
 {
 	return -ENOSYS;
 }
-#endif
 
-#endif
+static inline void seccomp_conf_init(struct lxc_conf *conf)
+{
+}
+
+static inline int lxc_seccomp_setup_notifier(struct lxc_seccomp *seccomp,
+					     struct lxc_epoll_descr *descr,
+					     struct lxc_handler *handler)
+{
+	return 0;
+}
+
+static inline int lxc_seccomp_send_notifier_fd(struct lxc_seccomp *seccomp,
+					       int socket_fd)
+{
+	return 0;
+}
+
+static inline int lxc_seccomp_recv_notifier_fd(struct lxc_seccomp *seccomp,
+					int socket_fd)
+{
+	return 0;
+}
+
+static inline int lxc_seccomp_add_notifier(const char *name, const char *lxcpath,
+					   struct lxc_seccomp *seccomp)
+{
+	return 0;
+}
+
+static inline int lxc_seccomp_get_notify_fd(struct lxc_seccomp *seccomp)
+{
+	return -EBADF;
+}
+
+#endif /* HAVE_SECCOMP */
+#endif /* __LXC_LXCSECCOMP_H */

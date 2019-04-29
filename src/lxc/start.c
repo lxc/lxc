@@ -591,32 +591,9 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 		goto out_mainloop_console;
 	}
 
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
-	if (handler->conf->has_seccomp_notify &&
-	    handler->conf->seccomp_notify_proxy_addr.sun_path[1] != '\0') {
-                __do_close_prot_errno int notify_fd = -EBADF;
-
-		notify_fd = lxc_unix_connect(&handler->conf->seccomp_notify_proxy_addr);
-		if (notify_fd < 0)
-			goto out_mainloop_console;
-
-		/* 30 second timeout */
-		ret = lxc_socket_set_timeout(notify_fd, 30, 30);
-		if (ret)
-			goto out_mainloop_console;
-
-		ret = lxc_mainloop_add_handler(&descr,
-					       handler->conf->seccomp_notify_fd,
-					       seccomp_notify_handler, handler);
-		if (ret < 0) {
-			ERROR("Failed to add seccomp notify handler for %d to mainloop",
-			      handler->conf->seccomp_notify_fd);
-			goto out_mainloop_console;
-		}
-
-		handler->conf->seccomp_notify_proxy_fd = move_fd(notify_fd);
-	}
-#endif
+	ret = lxc_seccomp_setup_notifier(&handler->conf->seccomp, &descr, handler);
+	if (ret < 0)
+		goto out_mainloop_console;
 
 	if (has_console) {
 		struct lxc_terminal *console = &handler->conf->console;
@@ -1357,19 +1334,11 @@ static int do_start(void *data)
 	if (ret < 0)
 		goto out_warn_father;
 
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
-	if (handler->conf->has_seccomp_notify) {
-		ret = lxc_abstract_unix_send_fds(data_sock0,
-						 &handler->conf->seccomp_notify_fd,
-						 1, NULL, 0);
-		if (ret < 0) {
-			SYSERROR("Failed to send seccomp notify fd to parent");
-			goto out_warn_father;
-		}
-		close(handler->conf->seccomp_notify_fd);
-		handler->conf->seccomp_notify_fd = -EBADF;
+	ret = lxc_seccomp_send_notifier_fd(&handler->conf->seccomp, data_sock0);
+	if (ret < 0) {
+		SYSERROR("Failed to send seccomp notify fd to parent");
+		goto out_warn_father;
 	}
-#endif
 
 	ret = run_lxc_hooks(handler->name, "start", handler->conf, NULL);
 	if (ret < 0) {
@@ -1932,25 +1901,11 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 	}
 
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
-	if (handler->conf->has_seccomp_notify) {
-		ret = lxc_abstract_unix_recv_fds(handler->data_sock[1],
-						 &handler->conf->seccomp_notify_fd,
-						 1, NULL, 0);
-		if (ret < 0) {
-			SYSERROR("Failed to receive seccomp notify fd from child");
-			goto out_delete_net;
-		}
-
-		ret = seccomp_notif_alloc(&handler->conf->seccomp_notify_req,
-					  &handler->conf->seccomp_notify_resp);
-		if (ret) {
-			errno = ret;
-			ret = -1;
-			goto out_delete_net;
-		}
+	ret = lxc_seccomp_recv_notifier_fd(&handler->conf->seccomp, data_sock1);
+	if (ret < 0) {
+		SYSERROR("Failed to receive seccomp notify fd from child");
+		goto out_delete_net;
 	}
-#endif
 
 	ret = handler->ops->post_start(handler, handler->data);
 	if (ret < 0)

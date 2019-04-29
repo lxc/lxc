@@ -28,6 +28,7 @@
 #include <unistd.h>
 #include <libgen.h>
 
+#include "conf.h"
 #include "confile_utils.h"
 #include "lxc/state.h"
 #include "lxctest.h"

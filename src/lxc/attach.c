@@ -608,8 +608,8 @@ static bool fetch_seccomp(struct lxc_container *c, lxc_attach_options_t *options
 
 	if (!(options->namespaces & CLONE_NEWNS) ||
 	    !(options->attach_flags & LXC_ATTACH_LSM)) {
-		free(c->lxc_conf->seccomp);
-		c->lxc_conf->seccomp = NULL;
+		free(c->lxc_conf->seccomp.seccomp);
+		c->lxc_conf->seccomp.seccomp = NULL;
 		return true;
 	}
 
@@ -852,7 +852,7 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	}
 
 	if (init_ctx->container && init_ctx->container->lxc_conf &&
-	    init_ctx->container->lxc_conf->seccomp) {
+	    init_ctx->container->lxc_conf->seccomp.seccomp) {
 		struct lxc_conf *conf = init_ctx->container->lxc_conf;
 
 		ret = lxc_seccomp_load(conf);
@@ -861,18 +861,9 @@ static int attach_child_main(struct attach_clone_payload *payload)
 
 		TRACE("Loaded seccomp profile");
 
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
-		if (conf->has_seccomp_notify) {
-			ret = lxc_abstract_unix_send_fds(payload->ipc_socket,
-							 &conf->seccomp_notify_fd,
-							 1, NULL, 0);
-			close_prot_errno_disarm(conf->seccomp_notify_fd);
-			if (ret < 0)
-				goto on_error;
-
-			TRACE("Sent seccomp listener fd to parent");
-		}
-#endif
+		ret = lxc_seccomp_send_notifier_fd(&conf->seccomp, payload->ipc_socket);
+		if (ret < 0)
+			goto on_error;
 	}
 
 	close(payload->ipc_socket);
@@ -1326,24 +1317,13 @@ int lxc_attach(const char *name, const char *lxcpath,
 			TRACE("Sent LSM label file descriptor %d to child", labelfd);
 		}
 
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
-		if (conf->seccomp && conf->has_seccomp_notify) {
-			ret = lxc_abstract_unix_recv_fds(ipc_sockets[0],
-							 &conf->seccomp_notify_fd,
-							 1, NULL, 0);
-			if (ret < 0)
-				goto close_mainloop;
+		ret = lxc_seccomp_recv_notifier_fd(&conf->seccomp, ipc_sockets[0]);
+		if (ret < 0)
+			goto close_mainloop;
 
-			TRACE("Retrieved seccomp listener fd %d from child",
-			      conf->seccomp_notify_fd);
-			ret = lxc_cmd_seccomp_notify_add_listener(name, lxcpath,
-								  conf->seccomp_notify_fd,
-								  -1, 0);
-			close_prot_errno_disarm(conf->seccomp_notify_fd);
-			if (ret < 0)
-				goto close_mainloop;
-		}
-#endif
+		ret = lxc_seccomp_add_notifier(name, lxcpath, &conf->seccomp);
+		if (ret < 0)
+			goto close_mainloop;
 
 		/* We're done, the child process should now execute whatever it
 		 * is that the user requested. The parent can now track it with

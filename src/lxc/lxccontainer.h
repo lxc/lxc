@@ -31,7 +31,8 @@
 
 #include <lxc/attach_options.h>
 
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#ifdef SCMP_ACT_USER_NOTIF
+#include <linux/seccomp.h>
 #include <seccomp.h>
 #endif
 
@@ -69,7 +70,7 @@ enum {
 	LXC_SECCOMP_NOTIFY_MAX,
 };
 
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#ifdef SCMP_ACT_USER_NOTIF
 struct seccomp_notify_proxy_msg {
 	uint32_t version;
 	struct seccomp_notif req;

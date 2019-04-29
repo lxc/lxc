@@ -55,6 +55,12 @@ static inline void __auto_closedir__(DIR **d)
 		fd = -EBADF;        \
 	}
 
+#define free_disarm(ptr)       \
+	({                     \
+		free(ptr);     \
+		move_ptr(ptr); \
+	})
+
 static inline void __auto_close__(int *fd)
 {
 	close_prot_errno_disarm(*fd);

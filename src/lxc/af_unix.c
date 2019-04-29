@@ -156,7 +156,8 @@ int lxc_abstract_unix_connect(const char *path)
 int lxc_abstract_unix_send_fds(int fd, int *sendfds, int num_sendfds,
 			       void *data, size_t size)
 {
-	__do_free char *cmsgbuf;
+	__do_free char *cmsgbuf = NULL;
+	int ret;
 	struct msghdr msg;
 	struct iovec iov;
 	struct cmsghdr *cmsg = NULL;
@@ -189,13 +190,19 @@ int lxc_abstract_unix_send_fds(int fd, int *sendfds, int num_sendfds,
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 
-	return sendmsg(fd, &msg, MSG_NOSIGNAL);
+again:
+	ret = sendmsg(fd, &msg, MSG_NOSIGNAL);
+	if (ret < 0)
+		if (errno == EINTR)
+			goto again;
+
+	return ret;
 }
 
 int lxc_abstract_unix_recv_fds(int fd, int *recvfds, int num_recvfds,
 			       void *data, size_t size)
 {
-	__do_free char *cmsgbuf;
+	__do_free char *cmsgbuf = NULL;
 	int ret;
 	struct msghdr msg;
 	struct iovec iov;
@@ -221,8 +228,15 @@ int lxc_abstract_unix_recv_fds(int fd, int *recvfds, int num_recvfds,
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 
+again:
 	ret = recvmsg(fd, &msg, 0);
-	if (ret <= 0)
+	if (ret < 0) {
+		if (errno == EINTR)
+			goto again;
+
+		goto out;
+	}
+	if (ret == 0)
 		goto out;
 
 	/*
