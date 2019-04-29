@@ -307,9 +307,10 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 		err = run_script_argv(handler->name,
 				handler->conf->hooks_version, "net",
 				netdev->upscript, "up", argv);
-		if (err < 0)
+		if (err < 0) {
 			lxc_netdev_delete_by_name(peer);
 			return -1;
+		}
 	}
 
 	DEBUG("Instantiated vlan \"%s\" with ifindex is \"%d\" (vlan1000)",
