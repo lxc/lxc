@@ -2752,14 +2752,6 @@ struct lxc_conf *lxc_conf_init(void)
 	new->lsm_aa_profile = NULL;
 	lxc_list_init(&new->lsm_aa_raw);
 	new->lsm_se_context = NULL;
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
-	new->has_seccomp_notify = false;
-	new->seccomp_notify_fd = -EBADF;
-	new->seccomp_notify_proxy_fd = -EBADF;
-	memset(&new->seccomp_notify_proxy_addr, 0, sizeof(new->seccomp_notify_proxy_addr));
-	new->seccomp_notify_req = NULL;
-	new->seccomp_notify_resp = NULL;
-#endif
 	new->tmp_umount_proc = false;
 	new->tmp_umount_proc = 0;
 	new->shmount.path_host = NULL;
@@ -2771,6 +2763,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->init_gid = 0;
 	memset(&new->cgroup_meta, 0, sizeof(struct lxc_cgroup));
 	memset(&new->ns_share, 0, sizeof(char *) * LXC_NS_MAX);
+	seccomp_conf_init(new);
 
 	return new;
 }
@@ -4074,7 +4067,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->lsm_aa_profile);
 	free(conf->lsm_aa_profile_computed);
 	free(conf->lsm_se_context);
-	lxc_seccomp_free(conf);
+	lxc_seccomp_free(&conf->seccomp);
 	lxc_clear_config_caps(conf);
 	lxc_clear_config_keepcaps(conf);
 	lxc_clear_cgroups(conf, "lxc.cgroup", CGROUP_SUPER_MAGIC);

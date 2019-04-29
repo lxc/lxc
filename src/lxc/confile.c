@@ -780,22 +780,27 @@ static int add_hook(struct lxc_conf *lxc_conf, int which, char *hook)
 static int set_config_seccomp_allow_nesting(const char *key, const char *value,
 					    struct lxc_conf *lxc_conf, void *data)
 {
+#ifdef HAVE_SECCOMP
 	if (lxc_config_value_empty(value))
 		return clr_config_seccomp_allow_nesting(key, lxc_conf, NULL);
 
-	if (lxc_safe_uint(value, &lxc_conf->seccomp_allow_nesting) < 0)
+	if (lxc_safe_uint(value, &lxc_conf->seccomp.allow_nesting) < 0)
 		return -1;
 
-	if (lxc_conf->seccomp_allow_nesting > 1)
+	if (lxc_conf->seccomp.allow_nesting > 1)
 		return minus_one_set_errno(EINVAL);
 
 	return 0;
+#else
+	errno = ENOSYS;
+	return -1;
+#endif
 }
 
 static int set_config_seccomp_notify_proxy(const char *key, const char *value,
 					   struct lxc_conf *lxc_conf, void *data)
 {
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#ifdef HAVE_SECCOMP_NOTIFY
 	const char *offset;
 
 	if (lxc_config_value_empty(value))
@@ -805,7 +810,7 @@ static int set_config_seccomp_notify_proxy(const char *key, const char *value,
 		return minus_one_set_errno(EINVAL);
 
 	offset = value + 5;
-	if (lxc_unix_sockaddr(&lxc_conf->seccomp_notify_proxy_addr, offset) < 0)
+	if (lxc_unix_sockaddr(&lxc_conf->seccomp.notifier.proxy_addr, offset) < 0)
 		return -1;
 
 	return 0;
@@ -817,7 +822,7 @@ static int set_config_seccomp_notify_proxy(const char *key, const char *value,
 static int set_config_seccomp_profile(const char *key, const char *value,
 				      struct lxc_conf *lxc_conf, void *data)
 {
-	return set_config_path_item(&lxc_conf->seccomp, value);
+	return set_config_path_item(&lxc_conf->seccomp.seccomp, value);
 }
 
 static int set_config_execute_cmd(const char *key, const char *value,
@@ -3726,17 +3731,22 @@ static int get_config_seccomp_allow_nesting(const char *key, char *retv,
 					    int inlen, struct lxc_conf *c,
 					    void *data)
 {
-	return lxc_get_conf_int(c, retv, inlen, c->seccomp_allow_nesting);
+#ifdef HAVE_SECCOMP
+	return lxc_get_conf_int(c, retv, inlen, c->seccomp.allow_nesting);
+#else
+	errno = ENOSYS;
+	return -1;
+#endif
 }
 
 static int get_config_seccomp_notify_proxy(const char *key, char *retv, int inlen,
 					   struct lxc_conf *c, void *data)
 {
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#ifdef HAVE_SECCOMP_NOTIFY
 	return lxc_get_conf_str(retv, inlen,
-				(c->seccomp_notify_proxy_addr.sun_path[0]) == '/'
-				    ? &c->seccomp_notify_proxy_addr.sun_path[0]
-				    : &c->seccomp_notify_proxy_addr.sun_path[1]);
+				(c->seccomp.notifier.proxy_addr.sun_path[0]) == '/'
+				    ? &c->seccomp.notifier.proxy_addr.sun_path[0]
+				    : &c->seccomp.notifier.proxy_addr.sun_path[1]);
 #else
 	return minus_one_set_errno(ENOSYS);
 #endif
@@ -3745,7 +3755,7 @@ static int get_config_seccomp_notify_proxy(const char *key, char *retv, int inle
 static int get_config_seccomp_profile(const char *key, char *retv, int inlen,
 				      struct lxc_conf *c, void *data)
 {
-	return lxc_get_conf_str(retv, inlen, c->seccomp);
+	return lxc_get_conf_str(retv, inlen, c->seccomp.seccomp);
 }
 
 static int get_config_autodev(const char *key, char *retv, int inlen,
@@ -4328,16 +4338,21 @@ static inline int clr_config_console_size(const char *key, struct lxc_conf *c,
 static inline int clr_config_seccomp_allow_nesting(const char *key,
 						   struct lxc_conf *c, void *data)
 {
-	c->seccomp_allow_nesting = 0;
+#ifdef HAVE_SECCOMP
+	c->seccomp.allow_nesting = 0;
 	return 0;
+#else
+	errno = ENOSYS;
+	return -1;
+#endif
 }
 
 static inline int clr_config_seccomp_notify_proxy(const char *key,
 						   struct lxc_conf *c, void *data)
 {
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
-	memset(&c->seccomp_notify_proxy_addr, 0,
-	       sizeof(c->seccomp_notify_proxy_addr));
+#ifdef HAVE_SECCOMP_NOTIFY
+	memset(&c->seccomp.notifier.proxy_addr, 0,
+	       sizeof(c->seccomp.notifier.proxy_addr));
 	return 0;
 #else
 	return minus_one_set_errno(ENOSYS);
@@ -4347,8 +4362,8 @@ static inline int clr_config_seccomp_notify_proxy(const char *key,
 static inline int clr_config_seccomp_profile(const char *key,
 					     struct lxc_conf *c, void *data)
 {
-	free(c->seccomp);
-	c->seccomp = NULL;
+	free(c->seccomp.seccomp);
+	c->seccomp.seccomp = NULL;
 	return 0;
 }
 

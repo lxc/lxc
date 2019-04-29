@@ -5229,7 +5229,6 @@ out:
 
 static int do_lxcapi_seccomp_notify(struct lxc_container *c, unsigned int cmd, int fd)
 {
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
 	if (!c || !c->lxc_conf)
 		return minus_one_set_errno(-EINVAL);
 
@@ -5238,13 +5237,10 @@ static int do_lxcapi_seccomp_notify(struct lxc_container *c, unsigned int cmd, i
 		if (fd)
 			return minus_one_set_errno(EINVAL);
 
-		return c->lxc_conf->seccomp_notify_fd;
+		return lxc_seccomp_get_notify_fd(&c->lxc_conf->seccomp);
 	}
 
 	return minus_one_set_errno(EINVAL);
-#else
-	return minus_one_set_errno(ENOSYS);
-#endif
 }
 
 WRAP_API_2(int, lxcapi_seccomp_notify, unsigned int, int)

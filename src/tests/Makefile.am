@@ -25,7 +25,8 @@ lxc_test_locktests_SOURCES = locktests.c
 lxc_test_lxcpath_SOURCES = lxcpath.c
 lxc_test_may_control_SOURCES = may_control.c
 lxc_test_mount_injection_SOURCES = mount_injection.c lxctest.h
-lxc_test_parse_config_file_SOURCES = parse_config_file.c lxctest.h
+lxc_test_parse_config_file_SOURCES = parse_config_file.c \
+				     lxctest.h
 lxc_test_raw_clone_SOURCES = lxc_raw_clone.c \
 			     lxctest.h \
 			     ../lxc/namespace.c ../lxc/namespace.h \
@@ -55,6 +56,11 @@ AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 
 if ENABLE_APPARMOR
 AM_CFLAGS += -DHAVE_APPARMOR
+endif
+
+if ENABLE_SECCOMP
+AM_CFLAGS += -DHAVE_SECCOMP \
+	     $(SECCOMP_CFLAGS)
 endif
 
 if ENABLE_SELINUX

@@ -1053,7 +1053,7 @@ int lxc_cmd_seccomp_notify_add_listener(const char *name, const char *lxcpath,
 					/* unused */ unsigned int flags)
 {
 
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#ifdef HAVE_SECCOMP_NOTIFY
 	int ret, stopped;
 	struct lxc_cmd_rr cmd = {
 		.req = {
@@ -1080,43 +1080,39 @@ static int lxc_cmd_seccomp_notify_add_listener_callback(int fd,
 							struct lxc_epoll_descr *descr)
 {
 	struct lxc_cmd_rsp rsp = {0};
-	int ret;
 
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#ifdef HAVE_SECCOMP_NOTIFY
+	int ret;
 	__do_close_prot_errno int recv_fd = -EBADF;
 	int notify_fd = -EBADF;
 
-	if (!handler->conf->has_seccomp_notify ||
-	    handler->conf->seccomp_notify_proxy_fd < 0) {
-		rsp.ret = -EINVAL;
-		goto send_error;
+	ret = lxc_abstract_unix_recv_fds(fd, &recv_fd, 1, NULL, 0);
+	if (ret <= 0) {
+		rsp.ret = -errno;
+		goto out;
 	}
 
-	ret = lxc_abstract_unix_recv_fds(fd, &recv_fd, 1, NULL, 0);
-	if (ret <= 0)
-		goto reap_client_fd;
+	if (!handler->conf->seccomp.notifier.wants_supervision ||
+	    handler->conf->seccomp.notifier.proxy_fd < 0) {
+		SYSERROR("No seccomp proxy fd specified");
+		rsp.ret = -EINVAL;
+		goto out;
+	}
 
-	ret = lxc_mainloop_add_handler(descr, notify_fd, seccomp_notify_handler,
+	ret = lxc_mainloop_add_handler(descr, recv_fd, seccomp_notify_handler,
 				       handler);
+	if (ret < 0) {
+		rsp.ret = -errno;
+		goto out;
+	}
 	notify_fd = move_fd(recv_fd);
-	if (ret < 0)
-		goto reap_client_fd;
 
-send_error:
+out:
 #else
 	rsp.ret = -ENOSYS;
+
 #endif
-	ret = lxc_cmd_rsp_send(fd, &rsp);
-	if (ret < 0)
-		goto reap_client_fd;
-
-	return 0;
-
-reap_client_fd:
-	/* Special indicator to lxc_cmd_handler() to close the fd and do
-	 * related cleanup.
-	 */
-	return 1;
+	return lxc_cmd_rsp_send(fd, &rsp);
 }
 
 static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
