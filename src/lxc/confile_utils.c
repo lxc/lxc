@@ -474,7 +474,7 @@ char *lxc_macvlan_flag_to_mode(int mode)
 	size_t i;
 
 	for (i = 0; i < sizeof(macvlan_mode) / sizeof(macvlan_mode[0]); i++) {
-		if (macvlan_mode[i].mode == mode)
+		if (macvlan_mode[i].mode != mode)
 			continue;
 
 		return macvlan_mode[i].name;
