@@ -79,9 +79,9 @@ extern void lxc_seccomp_free(struct lxc_seccomp *seccomp);
 extern int seccomp_notify_handler(int fd, uint32_t events, void *data,
 				  struct lxc_epoll_descr *descr);
 extern void seccomp_conf_init(struct lxc_conf *conf);
-extern int lxc_seccomp_setup_notifier(struct lxc_seccomp *seccomp,
-				      struct lxc_epoll_descr *descr,
-				      struct lxc_handler *handler);
+extern int lxc_seccomp_setup_proxy(struct lxc_seccomp *seccomp,
+				   struct lxc_epoll_descr *descr,
+				   struct lxc_handler *handler);
 extern int lxc_seccomp_send_notifier_fd(struct lxc_seccomp *seccomp,
 					int socket_fd);
 extern int lxc_seccomp_recv_notifier_fd(struct lxc_seccomp *seccomp,
@@ -129,9 +129,9 @@ static inline void seccomp_conf_init(struct lxc_conf *conf)
 {
 }
 
-static inline int lxc_seccomp_setup_notifier(struct lxc_seccomp *seccomp,
-					     struct lxc_epoll_descr *descr,
-					     struct lxc_handler *handler)
+static inline int lxc_seccomp_setup_proxy(struct lxc_seccomp *seccomp,
+					  struct lxc_epoll_descr *descr,
+					  struct lxc_handler *handler)
 {
 	return 0;
 }
