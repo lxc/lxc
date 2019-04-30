@@ -65,3 +65,22 @@ lxc.net[i].ipvlan.isolation=[bridge|private|vepa] (defaults to bridge)
 lxc.net[i].link=eth0
 lxc.net[i].flags=up
 ```
+
+## network\_l2proxy
+
+This introduces the `lxc.net.[i].l2proxy` that can be either `0` or `1`. Defaults to `0`.
+This, when used with `lxc.net.[i].link`, will add IP neighbour proxy entries on the linked device
+for any IPv4 and IPv6 addresses on the container's network device.
+
+For IPv4 addresses it will check the following sysctl values and fail with an error if not set:
+
+```
+net.ipv4.conf.[link].forwarding=1
+```
+
+For IPv6 addresses it will check the following sysctl values and fail with an error if not set:
+
+```
+net.ipv6.conf.[link].proxy_ndp=1
+net.ipv6.conf.[link].forwarding=1
+```

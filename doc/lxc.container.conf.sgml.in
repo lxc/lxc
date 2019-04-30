@@ -580,6 +580,24 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
         <varlistentry>
           <term>
+            <option>lxc.net.[i].l2proxy</option>
+          </term>
+          <listitem>
+            <para>
+              Controls whether layer 2 IP neighbour proxy entries will be added to the
+              lxc.net.[i].link interface for the IP addresses of the container.
+              Can be set to 0 or 1. Defaults to 0.
+              When used with IPv4 addresses, the following sysctl values need to be set:
+              net.ipv4.conf.[link].forwarding=1
+              When used with IPv6 addresses, the following sysctl values need to be set:
+              net.ipv6.conf.[link].proxy_ndp=1
+              net.ipv6.conf.[link].forwarding=1
+              </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
             <option>lxc.net.[i].mtu</option>
           </term>
           <listitem>
@@ -645,7 +663,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               interface (as specified by the
               <option>lxc.net.[i].link</option> option) and use that as
               the gateway. <option>auto</option> is only available when
-              using the <option>veth</option>, 
+              using the <option>veth</option>,
               <option>macvlan</option> and <option>ipvlan</option> network types.
             </para>
           </listitem>

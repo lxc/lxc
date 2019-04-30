@@ -339,6 +339,10 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 			if (netdev->link[0] != '\0')
 				TRACE("link: %s", netdev->link);
 
+			/* l2proxy only used when link is specified */
+			if (netdev->link[0] != '\0')
+				TRACE("l2proxy: %s", netdev->l2proxy ? "true" : "false");
+
 			if (netdev->name[0] != '\0')
 				TRACE("name: %s", netdev->name);
 

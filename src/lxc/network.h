@@ -171,6 +171,7 @@ struct lxc_netdev {
 	int type;
 	int flags;
 	char link[IFNAMSIZ];
+	bool l2proxy;
 	char name[IFNAMSIZ];
 	char *hwaddr;
 	char *mtu;
