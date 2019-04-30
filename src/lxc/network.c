@@ -69,6 +69,66 @@ lxc_log_define(network, lxc);
 
 typedef int (*instantiate_cb)(struct lxc_handler *, struct lxc_netdev *);
 
+static int lxc_ip_route_dest_add(int family, int ifindex, void *dest, unsigned int netmask)
+{
+	int addrlen, err;
+	struct nl_handler nlh;
+	struct rtmsg *rt;
+	struct nlmsg *answer = NULL, *nlmsg = NULL;
+
+	addrlen = family == AF_INET ? sizeof(struct in_addr)
+				    : sizeof(struct in6_addr);
+
+	err = netlink_open(&nlh, NETLINK_ROUTE);
+	if (err)
+		return err;
+
+	err = -ENOMEM;
+	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
+	if (!nlmsg)
+		goto out;
+
+	answer = nlmsg_alloc_reserve(NLMSG_GOOD_SIZE);
+	if (!answer)
+		goto out;
+
+	nlmsg->nlmsghdr->nlmsg_flags =
+	    NLM_F_ACK | NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL;
+	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWROUTE;
+
+	rt = nlmsg_reserve(nlmsg, sizeof(struct rtmsg));
+	if (!rt)
+		goto out;
+	rt->rtm_family = family;
+	rt->rtm_table = RT_TABLE_MAIN;
+	rt->rtm_scope = RT_SCOPE_LINK;
+	rt->rtm_protocol = RTPROT_BOOT;
+	rt->rtm_type = RTN_UNICAST;
+	rt->rtm_dst_len = netmask;
+
+	err = -EINVAL;
+	if (nla_put_buffer(nlmsg, RTA_DST, dest, addrlen))
+		goto out;
+	if (nla_put_u32(nlmsg, RTA_OIF, ifindex))
+		goto out;
+	err = netlink_transaction(&nlh, nlmsg, answer);
+out:
+	netlink_close(&nlh);
+	nlmsg_free(answer);
+	nlmsg_free(nlmsg);
+	return err;
+}
+
+static int lxc_ipv4_dest_add(int ifindex, struct in_addr *dest, unsigned int netmask)
+{
+	return lxc_ip_route_dest_add(AF_INET, ifindex, dest, netmask);
+}
+
+static int lxc_ipv6_dest_add(int ifindex, struct in6_addr *dest, unsigned int netmask)
+{
+	return lxc_ip_route_dest_add(AF_INET6, ifindex, dest, netmask);
+}
+
 static int lxc_setup_ipv4_routes(struct lxc_list *ip, int ifindex)
 {
 	struct lxc_list *iterator;
@@ -1830,67 +1890,6 @@ int lxc_ipv6_gateway_add(int ifindex, struct in6_addr *gw)
 {
 	return ip_gateway_add(AF_INET6, ifindex, gw);
 }
-
-static int ip_route_dest_add(int family, int ifindex, void *dest, unsigned int netmask)
-{
-	int addrlen, err;
-	struct nl_handler nlh;
-	struct rtmsg *rt;
-	struct nlmsg *answer = NULL, *nlmsg = NULL;
-
-	addrlen = family == AF_INET ? sizeof(struct in_addr)
-				    : sizeof(struct in6_addr);
-
-	err = netlink_open(&nlh, NETLINK_ROUTE);
-	if (err)
-		return err;
-
-	err = -ENOMEM;
-	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
-	if (!nlmsg)
-		goto out;
-
-	answer = nlmsg_alloc_reserve(NLMSG_GOOD_SIZE);
-	if (!answer)
-		goto out;
-
-	nlmsg->nlmsghdr->nlmsg_flags =
-	    NLM_F_ACK | NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL;
-	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWROUTE;
-
-	rt = nlmsg_reserve(nlmsg, sizeof(struct rtmsg));
-	if (!rt)
-		goto out;
-	rt->rtm_family = family;
-	rt->rtm_table = RT_TABLE_MAIN;
-	rt->rtm_scope = RT_SCOPE_LINK;
-	rt->rtm_protocol = RTPROT_BOOT;
-	rt->rtm_type = RTN_UNICAST;
-	rt->rtm_dst_len = netmask;
-
-	err = -EINVAL;
-	if (nla_put_buffer(nlmsg, RTA_DST, dest, addrlen))
-		goto out;
-	if (nla_put_u32(nlmsg, RTA_OIF, ifindex))
-		goto out;
-	err = netlink_transaction(&nlh, nlmsg, answer);
-out:
-	netlink_close(&nlh);
-	nlmsg_free(answer);
-	nlmsg_free(nlmsg);
-	return err;
-}
-
-int lxc_ipv4_dest_add(int ifindex, struct in_addr *dest, unsigned int netmask)
-{
-	return ip_route_dest_add(AF_INET, ifindex, dest, netmask);
-}
-
-int lxc_ipv6_dest_add(int ifindex, struct in6_addr *dest, unsigned int netmask)
-{
-	return ip_route_dest_add(AF_INET6, ifindex, dest, netmask);
-}
-
 bool is_ovs_bridge(const char *bridge)
 {
 	int ret;
