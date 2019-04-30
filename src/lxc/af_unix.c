@@ -351,18 +351,23 @@ int lxc_unix_connect(struct sockaddr_un *addr)
 	int ret;
 	ssize_t len;
 
-	fd = socket(PF_UNIX, SOCK_STREAM, SOCK_CLOEXEC);
-	if (fd < 0)
+	fd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (fd < 0) {
+		SYSERROR("Failed to open new AF_UNIX socket");
 		return -1;
+	}
 
 	if (addr->sun_path[0] == '\0')
 		len = strlen(&addr->sun_path[1]);
 	else
 		len = strlen(&addr->sun_path[0]);
-	ret = connect(fd, (struct sockaddr *)&addr,
-		      offsetof(struct sockaddr_un, sun_path) + len + 1);
-	if (ret < 0)
+
+	ret = connect(fd, (struct sockaddr *)addr,
+		      offsetof(struct sockaddr_un, sun_path) + len);
+	if (ret < 0) {
+		SYSERROR("Failed to bind new AF_UNIX socket");
 		return -1;
+	}
 
 	return move_fd(fd);
 }
