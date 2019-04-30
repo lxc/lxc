@@ -33,6 +33,19 @@ This adds support for injecting and removing mounts into/from a running
 containers. Two new API functions `mount()` and `umount()` are added. They
 mirror the current mount and umount API of the kernel.
 
+## seccomp\_allow\_nesting
+
+This adds support for seccomp filters to be stacked regardless of whether a seccomp profile is
+already loaded. This allows nested containers to load their own seccomp profile.
+
+## seccomp\_notify
+
+This adds "notify" as seccomp action that will cause LXC to register a seccomp listener and retrieve
+a listener file descriptor from the kernel. When a syscall is made that is registered as "notify"
+the kernel will generate a poll event and send a message over the file descriptor.
+
+The caller can read this message, inspect the syscalls including its arguments. Based on this information the caller is expected to send back a message informing the kernel which action to take. Until that message is sent the kernel will block the calling process. The format of the messages to read and sent is documented in seccomp itself.
+
 ## network\_veth\_routes
 
 This introduces the `lxc.net.[i].veth.ipv4.route` and `lxc.net.[i].veth.ipv6.route` properties
