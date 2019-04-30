@@ -303,7 +303,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 
 		err = run_script_argv(handler->name,
 				handler->conf->hooks_version, "net",
-				netdev->upscript, "up", argv);
+				netdev->upscript, "up", argv, netdev->idx);
 		if (err < 0)
 			goto out_delete;
 	}
@@ -361,7 +361,7 @@ static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 
 		err = run_script_argv(handler->name,
 				handler->conf->hooks_version, "net",
-				netdev->upscript, "up", argv);
+				netdev->upscript, "up", argv, netdev->idx);
 		if (err < 0)
 			goto on_error;
 	}
@@ -416,7 +416,7 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 
 		err = run_script_argv(handler->name,
 				handler->conf->hooks_version, "net",
-				netdev->upscript, "up", argv);
+				netdev->upscript, "up", argv, netdev->idx);
 		if (err < 0) {
 			lxc_netdev_delete_by_name(peer);
 			return -1;
@@ -482,7 +482,7 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 		return 0;
 
 	ret = run_script_argv(handler->name, handler->conf->hooks_version,
-			      "net", netdev->upscript, "up", argv);
+			      "net", netdev->upscript, "up", argv, netdev->idx);
 	if (ret < 0)
 		return -1;
 
@@ -502,7 +502,7 @@ static int instantiate_empty(struct lxc_handler *handler, struct lxc_netdev *net
 		return 0;
 
 	ret = run_script_argv(handler->name, handler->conf->hooks_version,
-			      "net", netdev->upscript, "up", argv);
+			      "net", netdev->upscript, "up", argv, netdev->idx);
 	if (ret < 0)
 		return -1;
 
@@ -544,7 +544,7 @@ static int shutdown_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 
 	ret = run_script_argv(handler->name,
 			handler->conf->hooks_version, "net",
-			netdev->downscript, "down", argv);
+			netdev->downscript, "down", argv, netdev->idx);
 	if (ret < 0)
 		return -1;
 
@@ -564,7 +564,7 @@ static int shutdown_macvlan(struct lxc_handler *handler, struct lxc_netdev *netd
 		return 0;
 
 	ret = run_script_argv(handler->name, handler->conf->hooks_version,
-			      "net", netdev->downscript, "down", argv);
+			      "net", netdev->downscript, "down", argv, netdev->idx);
 	if (ret < 0)
 		return -1;
 
@@ -584,7 +584,7 @@ static int shutdown_vlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
 		return 0;
 
 	ret = run_script_argv(handler->name, handler->conf->hooks_version,
-			      "net", netdev->downscript, "down", argv);
+			      "net", netdev->downscript, "down", argv, netdev->idx);
 	if (ret < 0)
 		return -1;
 
@@ -604,7 +604,7 @@ static int shutdown_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
 		return 0;
 
 	ret = run_script_argv(handler->name, handler->conf->hooks_version,
-			      "net", netdev->downscript, "down", argv);
+			      "net", netdev->downscript, "down", argv, netdev->idx);
 	if (ret < 0)
 		return -1;
 
@@ -623,7 +623,7 @@ static int shutdown_empty(struct lxc_handler *handler, struct lxc_netdev *netdev
 		return 0;
 
 	ret = run_script_argv(handler->name, handler->conf->hooks_version,
-			      "net", netdev->downscript, "down", argv);
+			      "net", netdev->downscript, "down", argv, netdev->idx);
 	if (ret < 0)
 		return -1;
 
@@ -2321,7 +2321,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 
 		ret = run_script_argv(lxcname,
 				hooks_version, "net",
-				netdev->upscript, "up", argv);
+				netdev->upscript, "up", argv, netdev->idx);
 		if (ret < 0)
 			return -1;
     }

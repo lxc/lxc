@@ -699,6 +699,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
                  to 1.
                   </para>
                 </listitem>
+
+                <listitem>
+                 <para>
+                 LXC_NET_ID: the network device index ID in the config file.
+                 Note that this information is only available when
+                 <option>lxc.hook.version</option> is set to 1.
+                  </para>
+                </listitem>
               </itemizedlist>
 
               Whether this information is provided in the form of environment

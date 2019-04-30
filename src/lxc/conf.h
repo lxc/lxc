@@ -452,7 +452,7 @@ extern int run_script(const char *name, const char *section, const char *script,
 		      ...);
 extern int run_script_argv(const char *name, unsigned int hook_version,
 			   const char *section, const char *script,
-			   const char *hookname, char **argsin);
+			   const char *hookname, char **argsin, int netdev_idx);
 extern int in_caplist(int cap, struct lxc_list *caps);
 extern int setup_sysctl_parameters(struct lxc_list *sysctls);
 extern int lxc_clear_sysctls(struct lxc_conf *c, const char *key);

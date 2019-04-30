@@ -360,7 +360,7 @@ static int run_buffer(char *buffer)
 
 int run_script_argv(const char *name, unsigned int hook_version,
 		    const char *section, const char *script,
-		    const char *hookname, char **argv)
+		    const char *hookname, char **argv, int netdev_idx)
 {
 	__do_free char *buffer = NULL;
 	int buf_pos, i, ret;
@@ -428,8 +428,6 @@ int run_script_argv(const char *name, unsigned int hook_version,
 		TRACE("Set environment variable: LXC_HOOK_SECTION=%s", section);
 
 		if (strcmp(section, "net") == 0) {
-			char *parent;
-
 			if (!argv || !argv[0])
 				return -1;
 
@@ -441,6 +439,19 @@ int run_script_argv(const char *name, unsigned int hook_version,
 			}
 			TRACE("Set environment variable: LXC_NET_TYPE=%s", argv[0]);
 
+			if (netdev_idx > -1) {
+				char netidx_buf[INTTYPE_TO_STRLEN(int)];
+				sprintf(netidx_buf, "%d", netdev_idx);
+				ret = setenv("LXC_NET_ID", netidx_buf, 1);
+				if (ret < 0) {
+					SYSERROR("Failed to set environment variable: "
+						"LXC_NET_ID=%d", netdev_idx);
+					return -1;
+				}
+				TRACE("Set environment variable: LXC_NET_ID=%d", netdev_idx);
+			}
+
+			char *parent;
 			parent = argv[1] ? argv[1] : "";
 
 			if (strcmp(argv[0], "macvlan") == 0) {
@@ -3729,7 +3740,7 @@ int run_lxc_hooks(const char *name, char *hookname, struct lxc_conf *conf,
 		char *hook = it->elem;
 
 		ret = run_script_argv(name, conf->hooks_version, "lxc", hook,
-				      hookname, argv);
+				      hookname, argv, -1);
 		if (ret < 0)
 			return -1;
 	}
