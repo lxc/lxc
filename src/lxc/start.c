@@ -591,9 +591,11 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 		goto out_mainloop_console;
 	}
 
-	ret = lxc_seccomp_setup_notifier(&handler->conf->seccomp, &descr, handler);
-	if (ret < 0)
+	ret = lxc_seccomp_setup_proxy(&handler->conf->seccomp, &descr, handler);
+	if (ret < 0) {
+		ERROR("Failed to setup seccomp proxy");
 		goto out_mainloop_console;
+	}
 
 	if (has_console) {
 		struct lxc_terminal *console = &handler->conf->console;

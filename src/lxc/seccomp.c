@@ -1410,9 +1410,9 @@ void seccomp_conf_init(struct lxc_conf *conf)
 #endif
 }
 
-int lxc_seccomp_setup_notifier(struct lxc_seccomp *seccomp,
-			       struct lxc_epoll_descr *descr,
-			       struct lxc_handler *handler)
+int lxc_seccomp_setup_proxy(struct lxc_seccomp *seccomp,
+			    struct lxc_epoll_descr *descr,
+			    struct lxc_handler *handler)
 {
 #if HAVE_DECL_SECCOMP_NOTIF_GET_FD
 	if (seccomp->notifier.wants_supervision &&
@@ -1421,20 +1421,32 @@ int lxc_seccomp_setup_notifier(struct lxc_seccomp *seccomp,
 		int ret;
 
 		notify_fd = lxc_unix_connect(&seccomp->notifier.proxy_addr);
-		if (notify_fd < 0)
+		if (notify_fd < 0) {
+			SYSERROR("Failed to connect to seccomp proxy");
 			return -1;
+		}
 
 		/* 30 second timeout */
 		ret = lxc_socket_set_timeout(notify_fd, 30, 30);
-		if (ret)
+		if (ret) {
+			SYSERROR("Failed to set timeouts for seccomp proxy");
 			return -1;
+		}
+
+		ret = seccomp_notif_alloc(&seccomp->notifier.req_buf,
+					  &seccomp->notifier.rsp_buf);
+		if (ret) {
+			ERROR("Failed to allocate seccomp notify request and response buffers");
+			errno = ret;
+			return -1;
+		}
 
 		ret = lxc_mainloop_add_handler(descr,
 					       seccomp->notifier.notify_fd,
 					       seccomp_notify_handler, handler);
 		if (ret < 0) {
 			ERROR("Failed to add seccomp notify handler for %d to mainloop",
-			      seccomp->notifier.notify_fd);
+			      notify_fd);
 			return -1;
 		}
 
@@ -1469,15 +1481,6 @@ int lxc_seccomp_recv_notifier_fd(struct lxc_seccomp *seccomp, int socket_fd)
 						 1, NULL, 0);
 		if (ret < 0)
 			return -1;
-
-		if (seccomp->notifier.proxy_fd >= 0) {
-			ret = seccomp_notif_alloc(&seccomp->notifier.req_buf,
-						  &seccomp->notifier.rsp_buf);
-			if (ret) {
-				errno = ret;
-				return -1;
-			}
-		}
 	}
 #endif
 	return 0;
@@ -1488,11 +1491,11 @@ int lxc_seccomp_add_notifier(const char *name, const char *lxcpath,
 {
 
 #if HAVE_DECL_SECCOMP_NOTIF_GET_FD
-	if (seccomp->notifier.proxy_fd >= 0) {
+	if (seccomp->notifier.wants_supervision) {
 		int ret;
 
 		ret = lxc_cmd_seccomp_notify_add_listener(name, lxcpath,
-		          				  seccomp->notifier.notify_fd,
+							  seccomp->notifier.notify_fd,
 							  -1, 0);
 		close_prot_errno_disarm(seccomp->notifier.notify_fd);
 		if (ret < 0)

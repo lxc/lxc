@@ -1317,13 +1317,15 @@ int lxc_attach(const char *name, const char *lxcpath,
 			TRACE("Sent LSM label file descriptor %d to child", labelfd);
 		}
 
-		ret = lxc_seccomp_recv_notifier_fd(&conf->seccomp, ipc_sockets[0]);
-		if (ret < 0)
-			goto close_mainloop;
+		if (conf && conf->seccomp.seccomp) {
+			ret = lxc_seccomp_recv_notifier_fd(&conf->seccomp, ipc_sockets[0]);
+			if (ret < 0)
+				goto close_mainloop;
 
-		ret = lxc_seccomp_add_notifier(name, lxcpath, &conf->seccomp);
-		if (ret < 0)
-			goto close_mainloop;
+			ret = lxc_seccomp_add_notifier(name, lxcpath, &conf->seccomp);
+			if (ret < 0)
+				goto close_mainloop;
+		}
 
 		/* We're done, the child process should now execute whatever it
 		 * is that the user requested. The parent can now track it with
