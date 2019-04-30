@@ -47,7 +47,17 @@ struct lxc_handler;
 
 #ifdef HAVE_SECCOMP
 
+
 #if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+
+struct seccomp_notify_proxy_msg {
+	uint32_t version;
+	struct seccomp_notif req;
+	struct seccomp_notif_resp resp;
+	pid_t monitor_pid;
+	pid_t init_pid;
+} __attribute__((packed, aligned(8)));
+
 struct seccomp_notify {
 	bool wants_supervision;
 	int notify_fd;

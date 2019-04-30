@@ -31,11 +31,6 @@
 
 #include <lxc/attach_options.h>
 
-#ifdef SCMP_ACT_USER_NOTIF
-#include <linux/seccomp.h>
-#include <seccomp.h>
-#endif
-
 #ifdef  __cplusplus
 extern "C" {
 #endif
@@ -69,16 +64,6 @@ enum {
 	LXC_SECCOMP_NOTIFY_GET_FD = 0,
 	LXC_SECCOMP_NOTIFY_MAX,
 };
-
-#ifdef SCMP_ACT_USER_NOTIF
-struct seccomp_notify_proxy_msg {
-	uint32_t version;
-	struct seccomp_notif req;
-	struct seccomp_notif_resp resp;
-	pid_t monitor_pid;
-	pid_t init_pid;
-};
-#endif
 
 /*!
  * An LXC container.
