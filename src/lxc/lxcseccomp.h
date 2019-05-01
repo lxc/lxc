@@ -56,7 +56,7 @@ struct seccomp_notify_proxy_msg {
 	struct seccomp_notif_resp resp;
 	pid_t monitor_pid;
 	pid_t init_pid;
-} __attribute__((packed, aligned(8)));
+};
 
 struct seccomp_notify {
 	bool wants_supervision;
