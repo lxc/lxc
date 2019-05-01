@@ -1342,7 +1342,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	struct seccomp_notif *req = conf->seccomp.notifier.req_buf;
 	struct seccomp_notif_resp *resp = conf->seccomp.notifier.rsp_buf;
 	int listener_proxy_fd = conf->seccomp.notifier.proxy_fd;
-	struct seccomp_notify_proxy_msg msg;
+	struct seccomp_notify_proxy_msg msg = {0};
 
 	if (listener_proxy_fd < 0) {
 		ERROR("No seccomp proxy registered");
