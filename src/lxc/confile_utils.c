@@ -299,6 +299,17 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 				      mode ? mode : "(invalid mode)");
 			}
 			break;
+		case LXC_NET_IPVLAN:
+			TRACE("type: ipvlan");
+
+			char *mode;
+			mode = lxc_ipvlan_flag_to_mode(netdev->priv.ipvlan_attr.mode);
+			TRACE("ipvlan mode: %s", mode ? mode : "(invalid mode)");
+
+			char *isolation;
+			isolation = lxc_ipvlan_flag_to_isolation(netdev->priv.ipvlan_attr.isolation);
+			TRACE("ipvlan isolation: %s", isolation ? isolation : "(invalid isolation)");
+			break;
 		case LXC_NET_VLAN:
 			TRACE("type: vlan");
 			TRACE("vlan id: %d", netdev->priv.vlan_attr.vid);
@@ -514,6 +525,74 @@ char *lxc_macvlan_flag_to_mode(int mode)
 			continue;
 
 		return macvlan_mode[i].name;
+	}
+
+	return NULL;
+}
+
+static struct lxc_ipvlan_mode {
+	char *name;
+	int mode;
+} ipvlan_mode[] = {
+    { "l3",  IPVLAN_MODE_L3  },
+    { "l3s", IPVLAN_MODE_L3S },
+    { "l2",  IPVLAN_MODE_L2  },
+};
+
+int lxc_ipvlan_mode_to_flag(int *mode, const char *value)
+{
+	for (size_t i = 0; i < sizeof(ipvlan_mode) / sizeof(ipvlan_mode[0]); i++) {
+		if (strcmp(ipvlan_mode[i].name, value) != 0)
+			continue;
+
+		*mode = ipvlan_mode[i].mode;
+		return 0;
+	}
+
+	return -1;
+}
+
+char *lxc_ipvlan_flag_to_mode(int mode)
+{
+	for (size_t i = 0; i < sizeof(ipvlan_mode) / sizeof(ipvlan_mode[0]); i++) {
+		if (ipvlan_mode[i].mode != mode)
+			continue;
+
+		return ipvlan_mode[i].name;
+	}
+
+	return NULL;
+}
+
+static struct lxc_ipvlan_isolation {
+	char *name;
+	int flag;
+} ipvlan_isolation[] = {
+    { "bridge",  IPVLAN_ISOLATION_BRIDGE  },
+    { "private", IPVLAN_ISOLATION_PRIVATE },
+    { "vepa",    IPVLAN_ISOLATION_VEPA    },
+};
+
+int lxc_ipvlan_isolation_to_flag(int *flag, const char *value)
+{
+	for (size_t i = 0; i < sizeof(ipvlan_isolation) / sizeof(ipvlan_isolation[0]); i++) {
+		if (strcmp(ipvlan_isolation[i].name, value) != 0)
+			continue;
+
+		*flag = ipvlan_isolation[i].flag;
+		return 0;
+	}
+
+	return -1;
+}
+
+char *lxc_ipvlan_flag_to_isolation(int flag)
+{
+	for (size_t i = 0; i < sizeof(ipvlan_isolation) / sizeof(ipvlan_isolation[0]); i++) {
+		if (ipvlan_isolation[i].flag != flag)
+			continue;
+
+		return ipvlan_isolation[i].name;
 	}
 
 	return NULL;

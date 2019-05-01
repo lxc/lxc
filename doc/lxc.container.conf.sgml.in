@@ -485,7 +485,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               different macvlan on the same upper device. The accepted
               modes are <option>private</option>, <option>vepa</option>,
               <option>bridge</option> and <option>passthru</option>.
-	      In <option>private</option> mode, the device never
+              In <option>private</option> mode, the device never
               communicates with any other device on the same upper_dev (default).
               In <option>vepa</option> mode, the new Virtual Ethernet Port
               Aggregator (VEPA) mode, it assumes that the adjacent
@@ -508,6 +508,41 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               the physical interface are forwarded to the macvlan
               interface. Only one macvlan interface in <option>passthru</option>
               mode is possible for one physical interface.
+            </para>
+
+            <para>
+              <option>ipvlan:</option> an ipvlan interface is linked
+              with the interface specified by
+              the <option>lxc.net.[i].link</option> and assigned to
+              the container.
+              <option>lxc.net.[i].ipvlan.mode</option> specifies the
+              mode the ipvlan will use to communicate between
+              different ipvlan on the same upper device. The accepted
+              modes are <option>l3</option>, <option>l3s</option> and
+              <option>l2</option>. It defaults to <option>l3</option> mode.
+              In <option>l3</option> mode TX processing up to L3 happens on the stack instance
+              attached to the slave device and packets are switched to the stack instance of the
+              master device for the L2 processing and routing from that instance will be
+              used before packets are queued on the outbound device. In this mode the slaves
+              will not receive nor can send multicast / broadcast traffic.
+              In <option>l3s</option> mode TX processing is very similar to the L3 mode except that
+              iptables (conn-tracking) works in this mode and hence it is L3-symmetric (L3s).
+              This will have slightly less performance but that shouldn't matter since you are
+              choosing this mode over plain-L3 mode to make conn-tracking work.
+              In <option>l2</option> mode TX processing happens on the stack instance attached to
+              the slave device and packets are switched and queued to the master device to send
+              out. In this mode the slaves will RX/TX multicast and broadcast (if applicable) as well.
+              <option>lxc.net.[i].ipvlan.isolation</option> specifies the isolation mode.
+              The accepted isolation values are <option>bridge</option>,
+              <option>private</option> and <option>vepa</option>.
+              It defaults to <option>bridge</option>.
+              In <option>bridge</option> isolation mode slaves can cross-talk among themselves
+              apart from talking through the master device.
+              In <option>private</option> isolation mode the port is set in private mode.
+              i.e. port won't allow cross communication between slaves.
+              In <option>vepa</option> isolation mode the port is set in VEPA mode.
+              i.e. port will offload switching functionality to the external entity as
+              described in 802.1Qbg.
             </para>
 
             <para>
@@ -610,8 +645,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               interface (as specified by the
               <option>lxc.net.[i].link</option> option) and use that as
               the gateway. <option>auto</option> is only available when
-              using the <option>veth</option> and
-              <option>macvlan</option> network types.
+              using the <option>veth</option>, 
+              <option>macvlan</option> and <option>ipvlan</option> network types.
             </para>
           </listitem>
         </varlistentry>
@@ -644,8 +679,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               interface (as specified by the
               <option>lxc.net.[i].link</option> option) and use that as
               the gateway. <option>auto</option> is only available when
-              using the <option>veth</option> and
-              <option>macvlan</option> network types.
+              using the <option>veth</option>,
+              <option>macvlan</option> and <option>ipvlan</option> network types.
             </para>
           </listitem>
         </varlistentry>
@@ -680,7 +715,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
                 <listitem>
                  <para>
                  LXC_NET_TYPE: the network type. This is one of the valid
-                 network types listed here (e.g. 'macvlan', 'veth').
+                 network types listed here (e.g. 'vlan', 'macvlan', 'ipvlan', 'veth').
                   </para>
                 </listitem>
 
@@ -746,7 +781,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
                 <listitem>
                  <para>
                  LXC_NET_TYPE: the network type. This is one of the valid
-                 network types listed here (e.g. 'macvlan', 'veth').
+                 network types listed here (e.g. 'vlan', 'macvlan', 'ipvlan', 'veth').
                   </para>
                 </listitem>
 

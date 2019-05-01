@@ -376,6 +376,147 @@ on_error:
 	return -1;
 }
 
+static int lxc_ipvlan_create(const char *master, const char *name, int mode, int isolation)
+{
+	int err, index, len;
+	struct ifinfomsg *ifi;
+	struct nl_handler nlh;
+	struct rtattr *nest, *nest2;
+	struct nlmsg *answer = NULL, *nlmsg = NULL;
+
+	len = strlen(master);
+	if (len == 1 || len >= IFNAMSIZ)
+		return minus_one_set_errno(EINVAL);
+
+	len = strlen(name);
+	if (len == 1 || len >= IFNAMSIZ)
+		return minus_one_set_errno(EINVAL);
+
+	index = if_nametoindex(master);
+	if (!index)
+		return minus_one_set_errno(EINVAL);
+
+	err = netlink_open(&nlh, NETLINK_ROUTE);
+	if (err)
+		return minus_one_set_errno(-err);
+
+	err = -ENOMEM;
+	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
+	if (!nlmsg)
+		goto out;
+
+	answer = nlmsg_alloc_reserve(NLMSG_GOOD_SIZE);
+	if (!answer)
+		goto out;
+
+	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL | NLM_F_ACK;
+	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
+
+	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
+	if (!ifi) {
+		goto out;
+	}
+	ifi->ifi_family = AF_UNSPEC;
+
+	err = -EPROTO;
+	nest = nla_begin_nested(nlmsg, IFLA_LINKINFO);
+	if (!nest)
+		goto out;
+
+	if (nla_put_string(nlmsg, IFLA_INFO_KIND, "ipvlan"))
+		goto out;
+
+	if (mode) {
+		nest2 = nla_begin_nested(nlmsg, IFLA_INFO_DATA);
+		if (!nest2)
+			goto out;
+
+		if (nla_put_u32(nlmsg, IFLA_IPVLAN_MODE, mode))
+			goto out;
+
+		/* if_link.h does not define the isolation flag value for bridge mode so we define it as 0
+		 * and only send mode if mode >0 as default mode is bridge anyway according to ipvlan docs.
+		 */
+		if (isolation > 0) {
+			if (nla_put_u16(nlmsg, IFLA_IPVLAN_ISOLATION, isolation))
+				goto out;
+		}
+
+		nla_end_nested(nlmsg, nest2);
+	}
+
+	nla_end_nested(nlmsg, nest);
+
+	if (nla_put_u32(nlmsg, IFLA_LINK, index))
+		goto out;
+
+	if (nla_put_string(nlmsg, IFLA_IFNAME, name))
+		goto out;
+
+	err = netlink_transaction(&nlh, nlmsg, answer);
+out:
+	netlink_close(&nlh);
+	nlmsg_free(answer);
+	nlmsg_free(nlmsg);
+	if (err < 0)
+		return minus_one_set_errno(-err);
+	return 0;
+}
+
+static int instantiate_ipvlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
+{
+	char peerbuf[IFNAMSIZ], *peer;
+	int err;
+
+	if (netdev->link[0] == '\0') {
+		ERROR("No link for ipvlan network device specified");
+		return -1;
+	}
+
+	err = snprintf(peerbuf, sizeof(peerbuf), "ipXXXXXX");
+	if (err < 0 || (size_t)err >= sizeof(peerbuf))
+		return -1;
+
+	peer = lxc_mkifname(peerbuf);
+	if (!peer)
+		return -1;
+
+	err = lxc_ipvlan_create(netdev->link, peer, netdev->priv.ipvlan_attr.mode, netdev->priv.ipvlan_attr.isolation);
+	if (err) {
+		SYSERROR("Failed to create ipvlan interface \"%s\" on \"%s\"", peer, netdev->link);
+		goto on_error;
+	}
+
+	netdev->ifindex = if_nametoindex(peer);
+	if (!netdev->ifindex) {
+		ERROR("Failed to retrieve ifindex for \"%s\"", peer);
+		goto on_error;
+	}
+
+	if (netdev->upscript) {
+		char *argv[] = {
+		    "ipvlan",
+		    netdev->link,
+		    NULL,
+		};
+
+		err = run_script_argv(handler->name,
+				handler->conf->hooks_version, "net",
+				netdev->upscript, "up", argv);
+		if (err < 0)
+			goto on_error;
+	}
+
+	DEBUG("Instantiated ipvlan \"%s\" with ifindex is %d and mode %d",
+	      peer, netdev->ifindex, netdev->priv.macvlan_attr.mode);
+
+	return 0;
+
+on_error:
+	lxc_netdev_delete_by_name(peer);
+	return -1;
+}
+
 static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	char peer[IFNAMSIZ];
@@ -518,6 +659,7 @@ static int instantiate_none(struct lxc_handler *handler, struct lxc_netdev *netd
 static  instantiate_cb netdev_conf[LXC_NET_MAXCONFTYPE + 1] = {
 	[LXC_NET_VETH]    = instantiate_veth,
 	[LXC_NET_MACVLAN] = instantiate_macvlan,
+	[LXC_NET_IPVLAN]  = instantiate_ipvlan,
 	[LXC_NET_VLAN]    = instantiate_vlan,
 	[LXC_NET_PHYS]    = instantiate_phys,
 	[LXC_NET_EMPTY]   = instantiate_empty,
@@ -556,6 +698,26 @@ static int shutdown_macvlan(struct lxc_handler *handler, struct lxc_netdev *netd
 	int ret;
 	char *argv[] = {
 		"macvlan",
+		netdev->link,
+		NULL,
+	};
+
+	if (!netdev->downscript)
+		return 0;
+
+	ret = run_script_argv(handler->name, handler->conf->hooks_version,
+			      "net", netdev->downscript, "down", argv);
+	if (ret < 0)
+		return -1;
+
+	return 0;
+}
+
+static int shutdown_ipvlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
+{
+	int ret;
+	char *argv[] = {
+		"ipvlan",
 		netdev->link,
 		NULL,
 	};
@@ -638,6 +800,7 @@ static int shutdown_none(struct lxc_handler *handler, struct lxc_netdev *netdev)
 static  instantiate_cb netdev_deconf[LXC_NET_MAXCONFTYPE + 1] = {
 	[LXC_NET_VETH]    = shutdown_veth,
 	[LXC_NET_MACVLAN] = shutdown_macvlan,
+	[LXC_NET_IPVLAN]  = shutdown_ipvlan,
 	[LXC_NET_VLAN]    = shutdown_vlan,
 	[LXC_NET_PHYS]    = shutdown_phys,
 	[LXC_NET_EMPTY]   = shutdown_empty,
@@ -2012,6 +2175,7 @@ static const char *const lxc_network_types[LXC_NET_MAXCONFTYPE + 1] = {
 	[LXC_NET_EMPTY]   = "empty",
 	[LXC_NET_VETH]    = "veth",
 	[LXC_NET_MACVLAN] = "macvlan",
+	[LXC_NET_IPVLAN]  = "ipvlan",
 	[LXC_NET_PHYS]    = "phys",
 	[LXC_NET_VLAN]    = "vlan",
 	[LXC_NET_NONE]    = "none",

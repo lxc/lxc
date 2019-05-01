@@ -130,6 +130,8 @@ lxc_config_define(net_ipv6_address);
 lxc_config_define(net_ipv6_gateway);
 lxc_config_define(net_link);
 lxc_config_define(net_macvlan_mode);
+lxc_config_define(net_ipvlan_mode);
+lxc_config_define(net_ipvlan_isolation);
 lxc_config_define(net_mtu);
 lxc_config_define(net_name);
 lxc_config_define(net_nic);
@@ -221,6 +223,8 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.net.ipv6.gateway",          set_config_net_ipv6_gateway,            get_config_net_ipv6_gateway,            clr_config_net_ipv6_gateway,          },
 	{ "lxc.net.link",                  set_config_net_link,                    get_config_net_link,                    clr_config_net_link,                  },
 	{ "lxc.net.macvlan.mode",          set_config_net_macvlan_mode,            get_config_net_macvlan_mode,            clr_config_net_macvlan_mode,          },
+	{ "lxc.net.ipvlan.mode",           set_config_net_ipvlan_mode,             get_config_net_ipvlan_mode,             clr_config_net_ipvlan_mode,           },
+	{ "lxc.net.ipvlan.isolation",      set_config_net_ipvlan_isolation,        get_config_net_ipvlan_isolation,        clr_config_net_ipvlan_isolation,      },
 	{ "lxc.net.mtu",                   set_config_net_mtu,                     get_config_net_mtu,                     clr_config_net_mtu,                   },
 	{ "lxc.net.name",                  set_config_net_name,                    get_config_net_name,                    clr_config_net_name,                  },
 	{ "lxc.net.script.down",           set_config_net_script_down,             get_config_net_script_down,             clr_config_net_script_down,           },
@@ -291,21 +295,24 @@ static int set_config_net_type(const char *key, const char *value,
 	if (!netdev)
 		return -1;
 
-	if (!strcmp(value, "veth")) {
+	if (strcmp(value, "veth") == 0) {
 		netdev->type = LXC_NET_VETH;
 		lxc_list_init(&netdev->priv.veth_attr.ipv4_routes);
 		lxc_list_init(&netdev->priv.veth_attr.ipv6_routes);
-	} else if (!strcmp(value, "macvlan")) {
+	} else if (strcmp(value, "macvlan") == 0) {
 		netdev->type = LXC_NET_MACVLAN;
-		lxc_macvlan_mode_to_flag(&netdev->priv.macvlan_attr.mode,
-					 "private");
-	} else if (!strcmp(value, "vlan")) {
+		lxc_macvlan_mode_to_flag(&netdev->priv.macvlan_attr.mode, "private");
+	} else if (strcmp(value, "ipvlan") == 0) {
+		netdev->type = LXC_NET_IPVLAN;
+		lxc_ipvlan_mode_to_flag(&netdev->priv.ipvlan_attr.mode, "l3");
+		lxc_ipvlan_isolation_to_flag(&netdev->priv.ipvlan_attr.isolation, "bridge");
+	} else if (strcmp(value, "vlan") == 0) {
 		netdev->type = LXC_NET_VLAN;
-	} else if (!strcmp(value, "phys")) {
+	} else if (strcmp(value, "phys") == 0) {
 		netdev->type = LXC_NET_PHYS;
-	} else if (!strcmp(value, "empty")) {
+	} else if (strcmp(value, "empty") == 0) {
 		netdev->type = LXC_NET_EMPTY;
-	} else if (!strcmp(value, "none")) {
+	} else if (strcmp(value, "none") == 0) {
 		netdev->type = LXC_NET_NONE;
 	} else {
 		ERROR("Invalid network type %s", value);
@@ -436,6 +443,44 @@ static int set_config_net_macvlan_mode(const char *key, const char *value,
 		return -1;
 
 	return lxc_macvlan_mode_to_flag(&netdev->priv.macvlan_attr.mode, value);
+}
+
+static int set_config_net_ipvlan_mode(const char *key, const char *value,
+				       struct lxc_conf *lxc_conf, void *data)
+{
+	struct lxc_netdev *netdev = data;
+
+	if (lxc_config_value_empty(value))
+		return clr_config_net_ipvlan_mode(key, lxc_conf, data);
+
+	if (!netdev)
+		return minus_one_set_errno(EINVAL);
+
+	if (netdev->type != LXC_NET_IPVLAN) {
+		SYSERROR("Invalid ipvlan mode \"%s\", can only be used with ipvlan network", value);
+		return minus_one_set_errno(EINVAL);
+	}
+
+	return lxc_ipvlan_mode_to_flag(&netdev->priv.ipvlan_attr.mode, value);
+}
+
+static int set_config_net_ipvlan_isolation(const char *key, const char *value,
+				       struct lxc_conf *lxc_conf, void *data)
+{
+	struct lxc_netdev *netdev = data;
+
+	if (lxc_config_value_empty(value))
+		return clr_config_net_ipvlan_isolation(key, lxc_conf, data);
+
+	if (!netdev)
+		return minus_one_set_errno(EINVAL);
+
+	if (netdev->type != LXC_NET_IPVLAN) {
+		SYSERROR("Invalid ipvlan isolation \"%s\", can only be used with ipvlan network", value);
+		return minus_one_set_errno(EINVAL);
+	}
+
+	return lxc_ipvlan_isolation_to_flag(&netdev->priv.ipvlan_attr.isolation, value);
 }
 
 static int set_config_net_hwaddr(const char *key, const char *value,
@@ -4931,6 +4976,38 @@ static int clr_config_net_macvlan_mode(const char *key,
 	return 0;
 }
 
+static int clr_config_net_ipvlan_mode(const char *key,
+				       struct lxc_conf *lxc_conf, void *data)
+{
+	struct lxc_netdev *netdev = data;
+
+	if (!netdev)
+		return minus_one_set_errno(EINVAL);
+
+	if (netdev->type != LXC_NET_IPVLAN)
+		return 0;
+
+	netdev->priv.ipvlan_attr.mode = -1;
+
+	return 0;
+}
+
+static int clr_config_net_ipvlan_isolation(const char *key,
+				       struct lxc_conf *lxc_conf, void *data)
+{
+	struct lxc_netdev *netdev = data;
+
+	if (!netdev)
+		return minus_one_set_errno(EINVAL);
+
+	if (netdev->type != LXC_NET_IPVLAN)
+		return 0;
+
+	netdev->priv.ipvlan_attr.isolation = -1;
+
+	return 0;
+}
+
 static int clr_config_net_veth_pair(const char *key, struct lxc_conf *lxc_conf,
 				    void *data)
 {
@@ -5257,6 +5334,84 @@ static int get_config_net_macvlan_mode(const char *key, char *retv, int inlen,
 		break;
 	case MACVLAN_MODE_PASSTHRU:
 		mode = "passthru";
+		break;
+	default:
+		mode = "(invalid)";
+		break;
+	}
+
+	strprint(retv, inlen, "%s", mode);
+
+	return fulllen;
+}
+
+static int get_config_net_ipvlan_mode(const char *key, char *retv, int inlen,
+				       struct lxc_conf *c, void *data)
+{
+	int len;
+	int fulllen = 0;
+	const char *mode;
+	struct lxc_netdev *netdev = data;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	if (!netdev)
+		return minus_one_set_errno(EINVAL);
+
+	if (netdev->type != LXC_NET_IPVLAN)
+		return 0;
+
+	switch (netdev->priv.ipvlan_attr.mode) {
+	case IPVLAN_MODE_L3:
+		mode = "l3";
+		break;
+	case IPVLAN_MODE_L3S:
+		mode = "l3s";
+		break;
+	case IPVLAN_MODE_L2:
+		mode = "l2";
+		break;
+	default:
+		mode = "(invalid)";
+		break;
+	}
+
+	strprint(retv, inlen, "%s", mode);
+
+	return fulllen;
+}
+
+static int get_config_net_ipvlan_isolation(const char *key, char *retv, int inlen,
+				       struct lxc_conf *c, void *data)
+{
+	int len;
+	int fulllen = 0;
+	const char *mode;
+	struct lxc_netdev *netdev = data;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	if (!netdev)
+		return minus_one_set_errno(EINVAL);
+
+	if (netdev->type != LXC_NET_IPVLAN)
+		return 0;
+
+	switch (netdev->priv.ipvlan_attr.isolation) {
+	case IPVLAN_ISOLATION_BRIDGE:
+		mode = "bridge";
+		break;
+	case IPVLAN_ISOLATION_PRIVATE:
+		mode = "private";
+		break;
+	case IPVLAN_ISOLATION_VEPA:
+		mode = "vepa";
 		break;
 	default:
 		mode = "(invalid)";
@@ -5717,6 +5872,10 @@ int lxc_list_net(struct lxc_conf *c, const char *key, char *retv, int inlen)
 		break;
 	case LXC_NET_MACVLAN:
 		strprint(retv, inlen, "macvlan.mode\n");
+		break;
+	case LXC_NET_IPVLAN:
+		strprint(retv, inlen, "ipvlan.mode\n");
+		strprint(retv, inlen, "ipvlan.isolation\n");
 		break;
 	case LXC_NET_VLAN:
 		strprint(retv, inlen, "vlan.id\n");

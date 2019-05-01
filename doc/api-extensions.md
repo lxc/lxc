@@ -51,3 +51,17 @@ The caller can read this message, inspect the syscalls including its arguments. 
 This introduces the `lxc.net.[i].veth.ipv4.route` and `lxc.net.[i].veth.ipv6.route` properties
 on `veth` type network interfaces. This allows adding static routes on host to the container's
 network interface.
+
+## network\_ipvlan
+
+This introduces the `ipvlan` network type.
+
+Example usage:
+
+```
+lxc.net[i].type=ipvlan
+lxc.net[i].ipvlan.mode=[l3|l3s|l2] (defaults to l3)
+lxc.net[i].ipvlan.isolation=[bridge|private|vepa] (defaults to bridge)
+lxc.net[i].link=eth0
+lxc.net[i].flags=up
+```

@@ -58,6 +58,10 @@ extern bool lxc_remove_nic_by_idx(struct lxc_conf *conf, unsigned int idx);
 extern void lxc_free_networks(struct lxc_list *networks);
 extern int lxc_macvlan_mode_to_flag(int *mode, const char *value);
 extern char *lxc_macvlan_flag_to_mode(int mode);
+extern int lxc_ipvlan_mode_to_flag(int *mode, const char *value);
+extern char *lxc_ipvlan_flag_to_mode(int mode);
+extern int lxc_ipvlan_isolation_to_flag(int *mode, const char *value);
+extern char *lxc_ipvlan_flag_to_isolation(int mode);
 
 extern int set_config_string_item(char **conf_item, const char *value);
 extern int set_config_string_item_max(char **conf_item, const char *value,
