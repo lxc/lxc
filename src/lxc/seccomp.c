@@ -1335,8 +1335,10 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 {
 
 #if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+	__do_close_prot_errno int fd_mem = -EBADF;
 	int reconnect_count, ret;
 	ssize_t bytes;
+	char mem_path[6 + 21 + 5];
 	struct lxc_handler *hdlr = data;
 	struct lxc_conf *conf = hdlr->conf;
 	struct seccomp_notif *req = conf->seccomp.notifier.req_buf;
@@ -1355,20 +1357,41 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 		goto out;
 	}
 
+	snprintf(mem_path, sizeof(mem_path), "/proc/%d/mem", req->pid);
+	fd_mem = open(mem_path, O_RDONLY | O_CLOEXEC);
+	if (fd_mem < 0) {
+		(void)seccomp_notify_default_answer(fd, req, resp, hdlr);
+		SYSERROR("Failed to open process memory for seccomp notify request");
+		goto out;
+	}
+
+	/*
+	 * Make sure that the fd for /proc/<pid>/mem we just opened still
+	 * refers to the correct process's memory.
+	 */
+	ret = seccomp_notif_id_valid(fd, req->id);
+	if (ret < 0) {
+		(void)seccomp_notify_default_answer(fd, req, resp, hdlr);
+		SYSERROR("Invalid seccomp notify request id");
+		goto out;
+	}
+
 	memcpy(&msg.req, req, sizeof(msg.req));
 	msg.monitor_pid = hdlr->monitor_pid;
 	msg.init_pid = hdlr->pid;
 
 	reconnect_count = 0;
 	do {
-		bytes = lxc_send_nointr(listener_proxy_fd, &msg, sizeof(msg),
-					MSG_NOSIGNAL);
+		bytes = lxc_unix_send_fds(listener_proxy_fd, &fd_mem, 1, &msg,
+					  sizeof(msg));
 		if (bytes != (ssize_t)sizeof(msg)) {
 			SYSERROR("Failed to forward message to seccomp proxy");
 			if (seccomp_notify_default_answer(fd, req, resp, hdlr))
 				goto out;
 		}
 	} while (reconnect_count++);
+
+	close_prot_errno_disarm(fd_mem);
 
 	reconnect_count = 0;
 	do {
