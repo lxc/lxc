@@ -729,23 +729,27 @@ static int lxc_container_name_to_pid(const char *lxcname_or_pid,
 	return pid;
 }
 
-int lxc_inherit_namespace(const char *lxcname_or_pid, const char *lxcpath,
+int lxc_inherit_namespace(const char *nsfd_path, const char *lxcpath,
 			  const char *namespace)
 {
 	int fd, pid;
 	char *dup, *lastslash;
 
-	lastslash = strrchr(lxcname_or_pid, '/');
+	if (nsfd_path[0] == '/') {
+		return open(nsfd_path, O_RDONLY | O_CLOEXEC);
+	}
+
+	lastslash = strrchr(nsfd_path, '/');
 	if (lastslash) {
-		dup = strdup(lxcname_or_pid);
+		dup = strdup(nsfd_path);
 		if (!dup)
 			return -1;
 
-		dup[lastslash - lxcname_or_pid] = '\0';
+		dup[lastslash - nsfd_path] = '\0';
 		pid = lxc_container_name_to_pid(lastslash + 1, dup);
 		free(dup);
 	} else {
-		pid = lxc_container_name_to_pid(lxcname_or_pid, lxcpath);
+		pid = lxc_container_name_to_pid(nsfd_path, lxcpath);
 	}
 
 	if (pid < 0)
