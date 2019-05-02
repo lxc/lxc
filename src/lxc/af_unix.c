@@ -199,6 +199,12 @@ again:
 	return ret;
 }
 
+int lxc_unix_send_fds(int fd, int *sendfds, int num_sendfds, void *data,
+		      size_t size)
+{
+	return lxc_abstract_unix_send_fds(fd, sendfds, num_sendfds, data, size);
+}
+
 int lxc_abstract_unix_recv_fds(int fd, int *recvfds, int num_recvfds,
 			       void *data, size_t size)
 {
