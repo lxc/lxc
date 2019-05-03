@@ -147,7 +147,7 @@ ssize_t lxc_read_nointr_expect(int fd, void *buf, size_t count, const void *expe
 	ssize_t ret;
 
 	ret = lxc_read_nointr(fd, buf, count);
-	if (ret <= 0)
+	if (ret < 0)
 		return ret;
 
 	if ((size_t)ret != count)
@@ -158,7 +158,18 @@ ssize_t lxc_read_nointr_expect(int fd, void *buf, size_t count, const void *expe
 		return -1;
 	}
 
-	return ret;
+	return 0;
+}
+
+ssize_t lxc_read_file_expect(const char *path, void *buf, size_t count, const void *expected_buf)
+{
+	__do_close_prot_errno int fd = -EBADF;
+
+	fd = open(path, O_RDONLY | O_CLOEXEC);
+	if (fd < 0)
+		return -1;
+
+	return lxc_read_nointr_expect(fd, buf, count, expected_buf);
 }
 
 bool file_exists(const char *f)

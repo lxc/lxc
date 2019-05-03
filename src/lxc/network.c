@@ -1660,6 +1660,24 @@ static int proc_sys_net_write(const char *path, const char *value)
 	return err;
 }
 
+static int lxc_is_ip_forwarding_enabled(const char *ifname, int family)
+{
+	int ret;
+	char path[PATH_MAX];
+	char buf[1] = "";
+
+	if (family != AF_INET && family != AF_INET6)
+		return minus_one_set_errno(EINVAL);
+
+	ret = snprintf(path, PATH_MAX, "/proc/sys/net/%s/conf/%s/%s",
+		       family == AF_INET ? "ipv4" : "ipv6", ifname,
+		       "forwarding");
+	if (ret < 0 || (size_t)ret >= PATH_MAX)
+		return minus_one_set_errno(E2BIG);
+
+	return lxc_read_file_expect(path, buf, 1, "1");
+}
+
 static int neigh_proxy_set(const char *ifname, int family, int flag)
 {
 	int ret;
@@ -1675,6 +1693,24 @@ static int neigh_proxy_set(const char *ifname, int family, int flag)
 		return -E2BIG;
 
 	return proc_sys_net_write(path, flag ? "1" : "0");
+}
+
+static int lxc_is_ip_neigh_proxy_enabled(const char *ifname, int family)
+{
+	int ret;
+	char path[PATH_MAX];
+	char buf[1] = "";
+
+	if (family != AF_INET && family != AF_INET6)
+		return minus_one_set_errno(EINVAL);
+
+	ret = snprintf(path, PATH_MAX, "/proc/sys/net/%s/conf/%s/%s",
+		       family == AF_INET ? "ipv4" : "ipv6", ifname,
+		       family == AF_INET ? "proxy_arp" : "proxy_ndp");
+	if (ret < 0 || (size_t)ret >= PATH_MAX)
+		return minus_one_set_errno(E2BIG);
+
+	return lxc_read_file_expect(path, buf, 1, "1");
 }
 
 int lxc_neigh_proxy_on(const char *name, int family)
@@ -2679,6 +2715,155 @@ clear_ifindices:
 	return true;
 }
 
+struct ip_proxy_args {
+	const char *ip;
+	const char *dev;
+};
+
+static int lxc_add_ip_neigh_proxy_exec_wrapper(void *data)
+{
+	struct ip_proxy_args *args = data;
+
+	execlp("ip", "ip", "neigh", "add", "proxy", args->ip, "dev", args->dev, (char *)NULL);
+	return -1;
+}
+
+static int lxc_del_ip_neigh_proxy_exec_wrapper(void *data)
+{
+	struct ip_proxy_args *args = data;
+
+	execlp("ip", "ip", "neigh", "flush", "proxy", args->ip, "dev", args->dev, (char *)NULL);
+	return -1;
+}
+
+static int lxc_add_ip_neigh_proxy(const char *ip, const char *dev)
+{
+	int ret;
+	char cmd_output[PATH_MAX];
+	struct ip_proxy_args args = {
+		.ip = ip,
+		.dev = dev,
+	};
+
+	ret = run_command(cmd_output, sizeof(cmd_output), lxc_add_ip_neigh_proxy_exec_wrapper, &args);
+	if (ret < 0) {
+		ERROR("Failed to add ip proxy \"%s\" to dev \"%s\": %s", ip, dev, cmd_output);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int lxc_del_ip_neigh_proxy(const char *ip, const char *dev)
+{
+	int ret;
+	char cmd_output[PATH_MAX];
+	struct ip_proxy_args args = {
+		.ip = ip,
+		.dev = dev,
+	};
+
+	ret = run_command(cmd_output, sizeof(cmd_output), lxc_del_ip_neigh_proxy_exec_wrapper, &args);
+	if (ret < 0) {
+		ERROR("Failed to delete ip proxy \"%s\" to dev \"%s\": %s", ip, dev, cmd_output);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int lxc_setup_l2proxy(struct lxc_netdev *netdev) {
+	struct lxc_list *cur, *next;
+	struct lxc_inetdev *inet4dev;
+	struct lxc_inet6dev *inet6dev;
+	char bufinet4[INET_ADDRSTRLEN], bufinet6[INET6_ADDRSTRLEN];
+
+	/* If IPv4 addresses are specified, then check that sysctl is configured correctly. */
+	if (!lxc_list_empty(&netdev->ipv4)) {
+		/* Check for net.ipv4.conf.[link].forwarding=1 */
+		if (lxc_is_ip_forwarding_enabled(netdev->link, AF_INET) < 0) {
+			ERROR("Requires sysctl net.ipv4.conf.%s.forwarding=1", netdev->link);
+			return minus_one_set_errno(EINVAL);
+		}
+	}
+
+	/* If IPv6 addresses are specified, then check that sysctl is configured correctly. */
+	if (!lxc_list_empty(&netdev->ipv6)) {
+		/* Check for net.ipv6.conf.[link].proxy_ndp=1 */
+		if (lxc_is_ip_neigh_proxy_enabled(netdev->link, AF_INET6) < 0) {
+			ERROR("Requires sysctl net.ipv6.conf.%s.proxy_ndp=1", netdev->link);
+			return minus_one_set_errno(EINVAL);
+		}
+
+		/* Check for net.ipv6.conf.[link].forwarding=1 */
+		if (lxc_is_ip_forwarding_enabled(netdev->link, AF_INET6) < 0) {
+			ERROR("Requires sysctl net.ipv6.conf.%s.forwarding=1", netdev->link);
+			return minus_one_set_errno(EINVAL);
+		}
+	}
+
+	lxc_list_for_each_safe(cur, &netdev->ipv4, next) {
+		inet4dev = cur->elem;
+		if (!inet_ntop(AF_INET, &inet4dev->addr, bufinet4, sizeof(bufinet4)))
+			return minus_one_set_errno(-errno);
+
+		if (lxc_add_ip_neigh_proxy(bufinet4, netdev->link) < 0)
+			return minus_one_set_errno(EINVAL);
+	}
+
+	lxc_list_for_each_safe(cur, &netdev->ipv6, next) {
+		inet6dev = cur->elem;
+		if (!inet_ntop(AF_INET6, &inet6dev->addr, bufinet6, sizeof(bufinet6)))
+			return minus_one_set_errno(-errno);
+
+		if (lxc_add_ip_neigh_proxy(bufinet6, netdev->link) < 0)
+			return minus_one_set_errno(EINVAL);
+	}
+
+	return 0;
+}
+
+static int lxc_delete_l2proxy(struct lxc_netdev *netdev) {
+	struct lxc_list *cur, *next;
+	struct lxc_inetdev *inet4dev;
+	struct lxc_inet6dev *inet6dev;
+	char bufinet4[INET_ADDRSTRLEN], bufinet6[INET6_ADDRSTRLEN];
+	int err = 0;
+
+	lxc_list_for_each_safe(cur, &netdev->ipv4, next) {
+		inet4dev = cur->elem;
+		if (!inet_ntop(AF_INET, &inet4dev->addr, bufinet4, sizeof(bufinet4))) {
+			err = -1;
+			SYSERROR("Failed to convert IP for l2proxy removal on dev \"%s\"", netdev->link);
+			continue; /* Try to remove any other l2proxy entries */
+		}
+
+		if (lxc_del_ip_neigh_proxy(bufinet4, netdev->link) < 0) {
+			err = -1;
+			continue; /* Try to remove any other l2proxy entries */
+		}
+	}
+
+	lxc_list_for_each_safe(cur, &netdev->ipv6, next) {
+		inet6dev = cur->elem;
+		if (!inet_ntop(AF_INET6, &inet6dev->addr, bufinet6, sizeof(bufinet6))) {
+			err = -1;
+			SYSERROR("Failed to convert IP for l2proxy removal on dev \"%s\"", netdev->link);
+			continue; /* Try to remove any other l2proxy entries */
+		}
+
+		if (lxc_del_ip_neigh_proxy(bufinet6, netdev->link) < 0) {
+			err = -1;
+			continue; /* Try to remove any other l2proxy entries */
+		}
+	}
+
+	if (err < 0)
+		return minus_one_set_errno(EINVAL);
+
+	return 0;
+}
+
 int lxc_create_network_priv(struct lxc_handler *handler)
 {
 	struct lxc_list *iterator;
@@ -2695,11 +2880,18 @@ int lxc_create_network_priv(struct lxc_handler *handler)
 			return -1;
 		}
 
+		/* Setup l2proxy entries if enabled and used with a link property */
+		if (netdev->l2proxy && netdev->link[0] != '\0') {
+			if (lxc_setup_l2proxy(netdev)) {
+				ERROR("Failed to setup l2proxy");
+				return -1;
+			}
+		}
+
 		if (netdev_conf[netdev->type](handler, netdev)) {
 			ERROR("Failed to create network device");
 			return -1;
 		}
-
 	}
 
 	return 0;
@@ -2794,6 +2986,13 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 		 */
 		if (!netdev->ifindex)
 			continue;
+
+		/* Delete l2proxy entries if enabled and used with a link property */
+		if (netdev->l2proxy && netdev->link[0] != '\0') {
+			if (lxc_delete_l2proxy(netdev))
+				WARN("Failed to delete all l2proxy config");
+				/* Don't return, let the network be cleaned up as normal. */
+		}
 
 		if (netdev->type == LXC_NET_PHYS) {
 			ret = lxc_netdev_rename_by_index(netdev->ifindex, netdev->link);

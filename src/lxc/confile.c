@@ -129,6 +129,7 @@ lxc_config_define(net_ipv4_gateway);
 lxc_config_define(net_ipv6_address);
 lxc_config_define(net_ipv6_gateway);
 lxc_config_define(net_link);
+lxc_config_define(net_l2proxy);
 lxc_config_define(net_macvlan_mode);
 lxc_config_define(net_ipvlan_mode);
 lxc_config_define(net_ipvlan_isolation);
@@ -222,6 +223,7 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.net.ipv6.address",          set_config_net_ipv6_address,            get_config_net_ipv6_address,            clr_config_net_ipv6_address,          },
 	{ "lxc.net.ipv6.gateway",          set_config_net_ipv6_gateway,            get_config_net_ipv6_gateway,            clr_config_net_ipv6_gateway,          },
 	{ "lxc.net.link",                  set_config_net_link,                    get_config_net_link,                    clr_config_net_link,                  },
+	{ "lxc.net.l2proxy",               set_config_net_l2proxy,                 get_config_net_l2proxy,                 clr_config_net_l2proxy,               },
 	{ "lxc.net.macvlan.mode",          set_config_net_macvlan_mode,            get_config_net_macvlan_mode,            clr_config_net_macvlan_mode,          },
 	{ "lxc.net.ipvlan.mode",           set_config_net_ipvlan_mode,             get_config_net_ipvlan_mode,             clr_config_net_ipvlan_mode,           },
 	{ "lxc.net.ipvlan.isolation",      set_config_net_ipvlan_isolation,        get_config_net_ipvlan_isolation,        clr_config_net_ipvlan_isolation,      },
@@ -401,6 +403,35 @@ static int set_config_net_link(const char *key, const char *value,
 		ret = network_ifname(netdev->link, value, sizeof(netdev->link));
 
 	return ret;
+}
+
+static int set_config_net_l2proxy(const char *key, const char *value,
+				     struct lxc_conf *lxc_conf, void *data)
+{
+	struct lxc_netdev *netdev = data;
+	unsigned int val = 0;
+	int ret;
+
+	if (lxc_config_value_empty(value))
+		return clr_config_net_l2proxy(key, lxc_conf, data);
+
+	if (!netdev)
+		return minus_one_set_errno(EINVAL);
+
+	ret = lxc_safe_uint(value, &val);
+	if (ret < 0)
+		return minus_one_set_errno(-ret);
+
+	switch (val) {
+	case 0:
+		netdev->l2proxy = false;
+		return 0;
+	case 1:
+		netdev->l2proxy = true;
+		return 0;
+	}
+
+	return minus_one_set_errno(EINVAL);
 }
 
 static int set_config_net_name(const char *key, const char *value,
@@ -4960,6 +4991,19 @@ static int clr_config_net_link(const char *key, struct lxc_conf *lxc_conf,
 	return 0;
 }
 
+static int clr_config_net_l2proxy(const char *key, struct lxc_conf *lxc_conf,
+			       void *data)
+{
+	struct lxc_netdev *netdev = data;
+
+	if (!netdev)
+		return minus_one_set_errno(EINVAL);
+
+	netdev->l2proxy = false;
+
+	return 0;
+}
+
 static int clr_config_net_macvlan_mode(const char *key,
 				       struct lxc_conf *lxc_conf, void *data)
 {
@@ -5280,6 +5324,13 @@ static int get_config_net_link(const char *key, char *retv, int inlen,
 		strprint(retv, inlen, "%s", netdev->link);
 
 	return fulllen;
+}
+
+static int get_config_net_l2proxy(const char *key, char *retv, int inlen,
+			       struct lxc_conf *c, void *data)
+{
+	struct lxc_netdev *netdev = data;
+	return lxc_get_conf_bool(c, retv, inlen, netdev->l2proxy);
 }
 
 static int get_config_net_name(const char *key, char *retv, int inlen,
