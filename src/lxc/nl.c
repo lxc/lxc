@@ -295,7 +295,7 @@ extern int netlink_open(struct nl_handler *handler, int protocol)
 
 	memset(handler, 0, sizeof(*handler));
 
-	handler->fd = socket(AF_NETLINK, SOCK_RAW, protocol);
+	handler->fd = socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, protocol);
 	if (handler->fd < 0)
 		return -errno;
 

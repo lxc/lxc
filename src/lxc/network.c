@@ -1939,7 +1939,7 @@ int lxc_bridge_attach(const char *bridge, const char *ifname)
 	if (is_ovs_bridge(bridge))
 		return lxc_ovs_attach_bridge(bridge, ifname);
 
-	fd = socket(AF_INET, SOCK_STREAM, 0);
+	fd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (fd < 0)
 		return -errno;
 
@@ -2043,7 +2043,7 @@ int setup_private_host_hw_addr(char *veth1)
 	int err, sockfd;
 	struct ifreq ifr;
 
-	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+	sockfd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sockfd < 0)
 		return -errno;
 
@@ -2779,7 +2779,7 @@ static int setup_hw_addr(char *hwaddr, const char *ifname)
 	ifr.ifr_name[IFNAMSIZ-1] = '\0';
 	memcpy((char *) &ifr.ifr_hwaddr, (char *) &sockaddr, sizeof(sockaddr));
 
-	fd = socket(AF_INET, SOCK_DGRAM, 0);
+	fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (fd < 0)
 		return -1;
 

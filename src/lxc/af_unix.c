@@ -81,7 +81,7 @@ int lxc_abstract_unix_open(const char *path, int type, int flags)
 	ssize_t len;
 	struct sockaddr_un addr;
 
-	fd = socket(PF_UNIX, type, 0);
+	fd = socket(PF_UNIX, type | SOCK_CLOEXEC, 0);
 	if (fd < 0)
 		return -1;
 
@@ -129,7 +129,7 @@ int lxc_abstract_unix_connect(const char *path)
 	ssize_t len;
 	struct sockaddr_un addr;
 
-	fd = socket(PF_UNIX, SOCK_STREAM, 0);
+	fd = socket(PF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (fd < 0)
 		return -1;
 
@@ -351,7 +351,7 @@ int lxc_unix_connect(struct sockaddr_un *addr)
 	int ret;
 	ssize_t len;
 
-	fd = socket(AF_UNIX, SOCK_STREAM, 0);
+	fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (fd < 0) {
 		SYSERROR("Failed to open new AF_UNIX socket");
 		return -1;
