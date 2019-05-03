@@ -68,8 +68,9 @@
 lxc_log_define(network, lxc);
 
 typedef int (*instantiate_cb)(struct lxc_handler *, struct lxc_netdev *);
+static const char loDev[] = "lo";
 
-static int lxc_ip_route_dest_add(int family, int ifindex, void *dest, unsigned int netmask)
+static int lxc_ip_route_dest(__u16 nlmsg_type, int family, int ifindex, void *dest, unsigned int netmask)
 {
 	int addrlen, err;
 	struct nl_handler nlh;
@@ -94,7 +95,7 @@ static int lxc_ip_route_dest_add(int family, int ifindex, void *dest, unsigned i
 
 	nlmsg->nlmsghdr->nlmsg_flags =
 	    NLM_F_ACK | NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL;
-	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWROUTE;
+	nlmsg->nlmsghdr->nlmsg_type = nlmsg_type;
 
 	rt = nlmsg_reserve(nlmsg, sizeof(struct rtmsg));
 	if (!rt)
@@ -121,12 +122,22 @@ out:
 
 static int lxc_ipv4_dest_add(int ifindex, struct in_addr *dest, unsigned int netmask)
 {
-	return lxc_ip_route_dest_add(AF_INET, ifindex, dest, netmask);
+	return lxc_ip_route_dest(RTM_NEWROUTE, AF_INET, ifindex, dest, netmask);
 }
 
 static int lxc_ipv6_dest_add(int ifindex, struct in6_addr *dest, unsigned int netmask)
 {
-	return lxc_ip_route_dest_add(AF_INET6, ifindex, dest, netmask);
+	return lxc_ip_route_dest(RTM_NEWROUTE, AF_INET6, ifindex, dest, netmask);
+}
+
+static int lxc_ipv4_dest_del(int ifindex, struct in_addr *dest, unsigned int netmask)
+{
+	return lxc_ip_route_dest(RTM_DELROUTE, AF_INET, ifindex, dest, netmask);
+}
+
+static int lxc_ipv6_dest_del(int ifindex, struct in6_addr *dest, unsigned int netmask)
+{
+	return lxc_ip_route_dest(RTM_DELROUTE, AF_INET6, ifindex, dest, netmask);
 }
 
 static int lxc_setup_ipv4_routes(struct lxc_list *ip, int ifindex)
@@ -2777,6 +2788,8 @@ static int lxc_setup_l2proxy(struct lxc_netdev *netdev) {
 	struct lxc_inetdev *inet4dev;
 	struct lxc_inet6dev *inet6dev;
 	char bufinet4[INET_ADDRSTRLEN], bufinet6[INET6_ADDRSTRLEN];
+	int err = 0;
+	unsigned int lo_ifindex = 0;
 
 	/* If IPv4 addresses are specified, then check that sysctl is configured correctly. */
 	if (!lxc_list_empty(&netdev->ipv4)) {
@@ -2802,6 +2815,22 @@ static int lxc_setup_l2proxy(struct lxc_netdev *netdev) {
 		}
 	}
 
+	/* Perform IPVLAN specific checks. */
+	if (netdev->type == LXC_NET_IPVLAN) {
+		/* Check mode is l3s as other modes do not work with l2proxy. */
+		if (netdev->priv.ipvlan_attr.mode != IPVLAN_MODE_L3S) {
+			ERROR("Requires ipvlan mode on dev \"%s\" be l3s when used with l2proxy", netdev->link);
+			return minus_one_set_errno(EINVAL);
+		}
+
+		/* Retrieve local-loopback interface index for use with IPVLAN static routes. */
+		lo_ifindex = if_nametoindex(loDev);
+		if (lo_ifindex == 0) {
+			ERROR("Failed to retrieve ifindex for \"%s\" routing cleanup", loDev);
+			return minus_one_set_errno(EINVAL);
+		}
+	}
+
 	lxc_list_for_each_safe(cur, &netdev->ipv4, next) {
 		inet4dev = cur->elem;
 		if (!inet_ntop(AF_INET, &inet4dev->addr, bufinet4, sizeof(bufinet4)))
@@ -2809,6 +2838,15 @@ static int lxc_setup_l2proxy(struct lxc_netdev *netdev) {
 
 		if (lxc_add_ip_neigh_proxy(bufinet4, netdev->link) < 0)
 			return minus_one_set_errno(EINVAL);
+
+		/* IPVLAN requires a route to local-loopback to trigger l2proxy. */
+		if (netdev->type == LXC_NET_IPVLAN) {
+			err = lxc_ipv4_dest_add(lo_ifindex, &inet4dev->addr, 32);
+			if (err < 0) {
+				ERROR("Failed to add ipv4 dest \"%s\" for network device \"%s\"", bufinet4, loDev);
+				return minus_one_set_errno(-err);
+			}
+		}
 	}
 
 	lxc_list_for_each_safe(cur, &netdev->ipv6, next) {
@@ -2818,47 +2856,108 @@ static int lxc_setup_l2proxy(struct lxc_netdev *netdev) {
 
 		if (lxc_add_ip_neigh_proxy(bufinet6, netdev->link) < 0)
 			return minus_one_set_errno(EINVAL);
+
+		/* IPVLAN requires a route to local-loopback to trigger l2proxy. */
+		if (netdev->type == LXC_NET_IPVLAN) {
+			err = lxc_ipv6_dest_add(lo_ifindex, &inet6dev->addr, 128);
+			if (err < 0) {
+				ERROR("Failed to add ipv6 dest \"%s\" for network device \"%s\"", bufinet6, loDev);
+				return minus_one_set_errno(-err);
+			}
+		}
 	}
 
 	return 0;
 }
 
+static int lxc_delete_ipv4_l2proxy(struct in_addr *ip, char *link, unsigned int lo_ifindex) {
+	char bufinet4[INET_ADDRSTRLEN];
+	unsigned int errCount = 0;
+
+	if (!inet_ntop(AF_INET, ip, bufinet4, sizeof(bufinet4))) {
+		SYSERROR("Failed to convert IP for l2proxy ipv4 removal on dev \"%s\"", link);
+		return minus_one_set_errno(EINVAL);
+	}
+
+	/* If a local-loopback ifindex supplied remove the static route to the lo device. */
+	if (lo_ifindex > 0) {
+		if (lxc_ipv4_dest_del(lo_ifindex, ip, 32) < 0) {
+			errCount++;
+			ERROR("Failed to delete ipv4 dest \"%s\" for network ifindex \"%u\"", bufinet4, lo_ifindex);
+		}
+	}
+
+	/* If link is supplied remove the IP neigh proxy entry for this IP on the device. */
+	if (link[0] != '\0') {
+		if (lxc_del_ip_neigh_proxy(bufinet4, link) < 0)
+			errCount++;
+	}
+
+	if (errCount > 0)
+		return minus_one_set_errno(EINVAL);
+
+	return 0;
+}
+
+static int lxc_delete_ipv6_l2proxy(struct in6_addr *ip, char *link, unsigned int lo_ifindex) {
+	char bufinet6[INET6_ADDRSTRLEN];
+	unsigned int errCount = 0;
+
+	if (!inet_ntop(AF_INET6, ip, bufinet6, sizeof(bufinet6))) {
+		SYSERROR("Failed to convert IP for l2proxy ipv6 removal on dev \"%s\"", link);
+		return minus_one_set_errno(EINVAL);
+	}
+
+	/* If a local-loopback ifindex supplied remove the static route to the lo device. */
+	if (lo_ifindex > 0) {
+		if (lxc_ipv6_dest_del(lo_ifindex, ip, 128) < 0) {
+			errCount++;
+			ERROR("Failed to delete ipv6 dest \"%s\" for network ifindex \"%u\"", bufinet6, lo_ifindex);
+		}
+	}
+
+	/* If link is supplied remove the IP neigh proxy entry for this IP on the device. */
+	if (link[0] != '\0') {
+		if (lxc_del_ip_neigh_proxy(bufinet6, link) < 0)
+			errCount++;
+	}
+
+	if (errCount > 0)
+		return minus_one_set_errno(EINVAL);
+
+	return 0;
+}
+
 static int lxc_delete_l2proxy(struct lxc_netdev *netdev) {
+	unsigned int lo_ifindex = 0;
+	unsigned int errCount = 0;
 	struct lxc_list *cur, *next;
 	struct lxc_inetdev *inet4dev;
 	struct lxc_inet6dev *inet6dev;
-	char bufinet4[INET_ADDRSTRLEN], bufinet6[INET6_ADDRSTRLEN];
-	int err = 0;
+
+	/* Perform IPVLAN specific checks. */
+	if (netdev->type == LXC_NET_IPVLAN) {
+		/* Retrieve local-loopback interface index for use with IPVLAN static routes. */
+		lo_ifindex = if_nametoindex(loDev);
+		if (lo_ifindex == 0) {
+			errCount++;
+			ERROR("Failed to retrieve ifindex for \"%s\" routing cleanup", loDev);
+		}
+	}
 
 	lxc_list_for_each_safe(cur, &netdev->ipv4, next) {
 		inet4dev = cur->elem;
-		if (!inet_ntop(AF_INET, &inet4dev->addr, bufinet4, sizeof(bufinet4))) {
-			err = -1;
-			SYSERROR("Failed to convert IP for l2proxy removal on dev \"%s\"", netdev->link);
-			continue; /* Try to remove any other l2proxy entries */
-		}
-
-		if (lxc_del_ip_neigh_proxy(bufinet4, netdev->link) < 0) {
-			err = -1;
-			continue; /* Try to remove any other l2proxy entries */
-		}
+		if (lxc_delete_ipv4_l2proxy(&inet4dev->addr, netdev->link, lo_ifindex) < 0)
+			errCount++;
 	}
 
 	lxc_list_for_each_safe(cur, &netdev->ipv6, next) {
 		inet6dev = cur->elem;
-		if (!inet_ntop(AF_INET6, &inet6dev->addr, bufinet6, sizeof(bufinet6))) {
-			err = -1;
-			SYSERROR("Failed to convert IP for l2proxy removal on dev \"%s\"", netdev->link);
-			continue; /* Try to remove any other l2proxy entries */
-		}
-
-		if (lxc_del_ip_neigh_proxy(bufinet6, netdev->link) < 0) {
-			err = -1;
-			continue; /* Try to remove any other l2proxy entries */
-		}
+		if (lxc_delete_ipv6_l2proxy(&inet6dev->addr, netdev->link, lo_ifindex) < 0)
+			errCount++;
 	}
 
-	if (err < 0)
+	if (errCount > 0)
 		return minus_one_set_errno(EINVAL);
 
 	return 0;
