@@ -84,3 +84,10 @@ For IPv6 addresses it will check the following sysctl values and fail with an er
 net.ipv6.conf.[link].proxy_ndp=1
 net.ipv6.conf.[link].forwarding=1
 ```
+
+## network\_gateway\_device\_route
+
+This introduces the ability to specify `lxc.net.[i].ipv4.gateway` and/or
+`lxc.net.[i].ipv6.gateway` with a value of `dev` which will cause the default gateway
+inside the container to be created as a device route without destination gateway IP needed.
+This is primarily intended for use with layer 3 networking devices, such as IPVLAN.

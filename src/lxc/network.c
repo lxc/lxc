@@ -2063,8 +2063,12 @@ static int ip_gateway_add(int family, int ifindex, void *gw)
 	rt->rtm_dst_len = 0;
 
 	err = -EINVAL;
-	if (nla_put_buffer(nlmsg, RTA_GATEWAY, gw, addrlen))
-		goto out;
+
+	/* If gateway address not supplied, then a device route will be created instead */
+	if (gw != NULL) {
+		if (nla_put_buffer(nlmsg, RTA_GATEWAY, gw, addrlen))
+			goto out;
+	}
 
 	/* Adding the interface index enables the use of link-local
 	 * addresses for the gateway.
@@ -3381,12 +3385,12 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 	}
 
 	/* We can only set up the default routes after bringing
-	 * up the interface, sine bringing up the interface adds
+	 * up the interface, since bringing up the interface adds
 	 * the link-local routes and we can't add a default
 	 * route if the gateway is not reachable. */
 
 	/* setup ipv4 gateway on the interface */
-	if (netdev->ipv4_gateway) {
+	if (netdev->ipv4_gateway || netdev->ipv4_gateway_dev) {
 		if (!(netdev->flags & IFF_UP)) {
 			ERROR("Cannot add ipv4 gateway for network device "
 			      "\"%s\" when not bringing up the interface", ifname);
@@ -3399,33 +3403,43 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 			return -1;
 		}
 
-		err = lxc_ipv4_gateway_add(netdev->ifindex, netdev->ipv4_gateway);
-		if (err) {
-			err = lxc_ipv4_dest_add(netdev->ifindex, netdev->ipv4_gateway, 32);
-			if (err) {
-				errno = -err;
-				SYSERROR("Failed to add ipv4 dest for network device \"%s\"",
+		/* Setup device route if ipv4_gateway_dev is enabled */
+		if (netdev->ipv4_gateway_dev) {
+			err = lxc_ipv4_gateway_add(netdev->ifindex, NULL);
+			if (err < 0) {
+				SYSERROR("Failed to setup ipv4 gateway to network device \"%s\"",
 				         ifname);
+				return minus_one_set_errno(-err);
 			}
-
+		} else {
 			err = lxc_ipv4_gateway_add(netdev->ifindex, netdev->ipv4_gateway);
 			if (err) {
-				errno = -err;
-				SYSERROR("Failed to setup ipv4 gateway for network device \"%s\"",
-				         ifname);
-
-				if (netdev->ipv4_gateway_auto) {
-					char buf[INET_ADDRSTRLEN];
-					inet_ntop(AF_INET, netdev->ipv4_gateway, buf, sizeof(buf));
-					ERROR("Tried to set autodetected ipv4 gateway \"%s\"", buf);
+				err = lxc_ipv4_dest_add(netdev->ifindex, netdev->ipv4_gateway, 32);
+				if (err) {
+					errno = -err;
+					SYSERROR("Failed to add ipv4 dest for network device \"%s\"",
+						ifname);
 				}
-				return -1;
+
+				err = lxc_ipv4_gateway_add(netdev->ifindex, netdev->ipv4_gateway);
+				if (err) {
+					errno = -err;
+					SYSERROR("Failed to setup ipv4 gateway for network device \"%s\"",
+						ifname);
+
+					if (netdev->ipv4_gateway_auto) {
+						char buf[INET_ADDRSTRLEN];
+						inet_ntop(AF_INET, netdev->ipv4_gateway, buf, sizeof(buf));
+						ERROR("Tried to set autodetected ipv4 gateway \"%s\"", buf);
+					}
+					return -1;
+				}
 			}
 		}
 	}
 
 	/* setup ipv6 gateway on the interface */
-	if (netdev->ipv6_gateway) {
+	if (netdev->ipv6_gateway || netdev->ipv6_gateway_dev) {
 		if (!(netdev->flags & IFF_UP)) {
 			ERROR("Cannot add ipv6 gateway for network device "
 			      "\"%s\" when not bringing up the interface", ifname);
@@ -3438,29 +3452,39 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 			return -1;
 		}
 
-		err = lxc_ipv6_gateway_add(netdev->ifindex, netdev->ipv6_gateway);
-		if (err) {
-			err = lxc_ipv6_dest_add(netdev->ifindex, netdev->ipv6_gateway, 128);
-			if (err) {
-				errno = -err;
-				SYSERROR("Failed to add ipv6 dest for network device \"%s\"",
+		/* Setup device route if ipv6_gateway_dev is enabled */
+		if (netdev->ipv6_gateway_dev) {
+			err = lxc_ipv6_gateway_add(netdev->ifindex, NULL);
+			if (err < 0) {
+				SYSERROR("Failed to setup ipv6 gateway to network device \"%s\"",
 				         ifname);
+				return minus_one_set_errno(-err);
 			}
-
+		} else {
 			err = lxc_ipv6_gateway_add(netdev->ifindex, netdev->ipv6_gateway);
 			if (err) {
-				errno = -err;
-				SYSERROR("Failed to setup ipv6 gateway for network device \"%s\"",
-				         ifname);
-
-				if (netdev->ipv6_gateway_auto) {
-					char buf[INET6_ADDRSTRLEN];
-					inet_ntop(AF_INET6, netdev->ipv6_gateway, buf, sizeof(buf));
-					ERROR("Tried to set autodetected ipv6 "
-					      "gateway for network device "
-					      "\"%s\"", buf);
+				err = lxc_ipv6_dest_add(netdev->ifindex, netdev->ipv6_gateway, 128);
+				if (err) {
+					errno = -err;
+					SYSERROR("Failed to add ipv6 dest for network device \"%s\"",
+						ifname);
 				}
-				return -1;
+
+				err = lxc_ipv6_gateway_add(netdev->ifindex, netdev->ipv6_gateway);
+				if (err) {
+					errno = -err;
+					SYSERROR("Failed to setup ipv6 gateway for network device \"%s\"",
+						ifname);
+
+					if (netdev->ipv6_gateway_auto) {
+						char buf[INET6_ADDRSTRLEN];
+						inet_ntop(AF_INET6, netdev->ipv6_gateway, buf, sizeof(buf));
+						ERROR("Tried to set autodetected ipv6 "
+						"gateway for network device "
+						"\"%s\"", buf);
+					}
+					return -1;
+				}
 			}
 		}
 	}

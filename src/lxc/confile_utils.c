@@ -361,6 +361,9 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 			TRACE("ipv4 gateway auto: %s",
 			      netdev->ipv4_gateway_auto ? "true" : "false");
 
+			TRACE("ipv4 gateway dev: %s",
+			      netdev->ipv4_gateway_dev ? "true" : "false");
+
 			if (netdev->ipv4_gateway) {
 				inet_ntop(AF_INET, netdev->ipv4_gateway,
 					  bufinet4, sizeof(bufinet4));
@@ -376,6 +379,9 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 
 			TRACE("ipv6 gateway auto: %s",
 			      netdev->ipv6_gateway_auto ? "true" : "false");
+
+			TRACE("ipv6 gateway dev: %s",
+			      netdev->ipv6_gateway_dev ? "true" : "false");
 
 			if (netdev->ipv6_gateway) {
 				inet_ntop(AF_INET6, netdev->ipv6_gateway,
