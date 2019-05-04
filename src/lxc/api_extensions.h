@@ -47,6 +47,7 @@ static char *api_extensions[] = {
 	"network_veth_routes",
 	"network_ipvlan",
 	"network_l2proxy",
+	"network_gateway_device_route",
 };
 
 static size_t nr_api_extensions = sizeof(api_extensions) / sizeof(*api_extensions);

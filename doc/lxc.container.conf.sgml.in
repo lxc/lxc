@@ -665,6 +665,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               the gateway. <option>auto</option> is only available when
               using the <option>veth</option>,
               <option>macvlan</option> and <option>ipvlan</option> network types.
+              Can also have the special value of <option>dev</option>,
+              which means to set the default gateway as a device route.
+              This is primarily for use with layer 3 network modes, such as IPVLAN.
             </para>
           </listitem>
         </varlistentry>
@@ -699,6 +702,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               the gateway. <option>auto</option> is only available when
               using the <option>veth</option>,
               <option>macvlan</option> and <option>ipvlan</option> network types.
+              Can also have the special value of <option>dev</option>,
+              which means to set the default gateway as a device route.
+              This is primarily for use with layer 3 network modes, such as IPVLAN.
             </para>
           </listitem>
         </varlistentry>

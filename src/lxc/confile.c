@@ -686,9 +686,13 @@ static int set_config_net_ipv4_gateway(const char *key, const char *value,
 
 	free(netdev->ipv4_gateway);
 
-	if (!strcmp(value, "auto")) {
+	if (strcmp(value, "auto") == 0) {
 		netdev->ipv4_gateway = NULL;
 		netdev->ipv4_gateway_auto = true;
+	} else if (strcmp(value, "dev") == 0) {
+		netdev->ipv4_gateway = NULL;
+		netdev->ipv4_gateway_auto = false;
+		netdev->ipv4_gateway_dev = true;
 	} else {
 		int ret;
 		struct in_addr *gw;
@@ -853,9 +857,13 @@ static int set_config_net_ipv6_gateway(const char *key, const char *value,
 
 	free(netdev->ipv6_gateway);
 
-	if (!strcmp(value, "auto")) {
+	if (strcmp(value, "auto") == 0) {
 		netdev->ipv6_gateway = NULL;
 		netdev->ipv6_gateway_auto = true;
+	} else if (strcmp(value, "dev") == 0) {
+		netdev->ipv6_gateway = NULL;
+		netdev->ipv6_gateway_auto = false;
+		netdev->ipv6_gateway_dev = true;
 	} else {
 		int ret;
 		struct in6_addr *gw;
@@ -5625,6 +5633,8 @@ static int get_config_net_ipv4_gateway(const char *key, char *retv, int inlen,
 
 	if (netdev->ipv4_gateway_auto) {
 		strprint(retv, inlen, "auto");
+	} else if (netdev->ipv4_gateway_dev) {
+		strprint(retv, inlen, "dev");
 	} else if (netdev->ipv4_gateway) {
 		inet_ntop(AF_INET, netdev->ipv4_gateway, buf, sizeof(buf));
 		strprint(retv, inlen, "%s", buf);
@@ -5714,6 +5724,8 @@ static int get_config_net_ipv6_gateway(const char *key, char *retv, int inlen,
 
 	if (netdev->ipv6_gateway_auto) {
 		strprint(retv, inlen, "auto");
+	} else if (netdev->ipv6_gateway_dev) {
+		strprint(retv, inlen, "dev");
 	} else if (netdev->ipv6_gateway) {
 		inet_ntop(AF_INET6, netdev->ipv6_gateway, buf, sizeof(buf));
 		strprint(retv, inlen, "%s", buf);

@@ -108,6 +108,16 @@ static int set_and_clear_complete_netdev(struct lxc_container *c)
 		return -1;
 	}
 
+	if (!c->set_config_item(c, "lxc.net.1.ipv4.gateway", "auto")) {
+		lxc_error("%s\n", "lxc.net.1.ipv4.gateway");
+		return -1;
+	}
+
+	if (!c->set_config_item(c, "lxc.net.1.ipv4.gateway", "dev")) {
+		lxc_error("%s\n", "lxc.net.1.ipv4.gateway");
+		return -1;
+	}
+
 	if (!c->set_config_item(c, "lxc.net.1.ipv6.address",
 				"2003:db8:1:0:214:1234:fe0b:3596/64")) {
 		lxc_error("%s\n", "lxc.net.1.ipv6.address");
@@ -116,6 +126,16 @@ static int set_and_clear_complete_netdev(struct lxc_container *c)
 
 	if (!c->set_config_item(c, "lxc.net.1.ipv6.gateway",
 				"2003:db8:1:0::1")) {
+		lxc_error("%s\n", "lxc.net.1.ipv6.gateway");
+		return -1;
+	}
+
+	if (!c->set_config_item(c, "lxc.net.1.ipv6.gateway", "auto")) {
+		lxc_error("%s\n", "lxc.net.1.ipv6.gateway");
+		return -1;
+	}
+
+	if (!c->set_config_item(c, "lxc.net.1.ipv6.gateway", "dev")) {
 		lxc_error("%s\n", "lxc.net.1.ipv6.gateway");
 		return -1;
 	}
@@ -781,7 +801,27 @@ int main(int argc, char *argv[])
 		goto non_test_error;
 	}
 
+	if (set_get_compare_clear_save_load(c, "lxc.net.0.ipv4.gateway", "auto", tmpf, true)) {
+		lxc_error("%s\n", "lxc.net.0.ipv4.gateway");
+		goto non_test_error;
+	}
+
+	if (set_get_compare_clear_save_load(c, "lxc.net.0.ipv4.gateway", "dev", tmpf, true)) {
+		lxc_error("%s\n", "lxc.net.0.ipv4.gateway");
+		goto non_test_error;
+	}
+
 	if (set_get_compare_clear_save_load(c, "lxc.net.0.ipv6.gateway", "2003:db8:1::1", tmpf, true)) {
+		lxc_error("%s\n", "lxc.net.0.ipv6.gateway");
+		goto non_test_error;
+	}
+
+	if (set_get_compare_clear_save_load(c, "lxc.net.0.ipv6.gateway", "auto", tmpf, true)) {
+		lxc_error("%s\n", "lxc.net.0.ipv6.gateway");
+		goto non_test_error;
+	}
+
+	if (set_get_compare_clear_save_load(c, "lxc.net.0.ipv6.gateway", "dev", tmpf, true)) {
 		lxc_error("%s\n", "lxc.net.0.ipv6.gateway");
 		goto non_test_error;
 	}

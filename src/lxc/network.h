@@ -156,9 +156,11 @@ union netdev_p {
  * @ipv6              : a list of ipv6 addresses to be set on the network device
  * @ipv4_gateway_auto : whether the ipv4 gateway is to be automatically gathered
  *                      from the associated @link
+ * @ipv4_gateway_dev  : whether the ipv4 gateway is to be set as a device route
  * @ipv4_gateway      : ipv4 gateway
  * @ipv6_gateway_auto : whether the ipv6 gateway is to be automatically gathered
  *                      from the associated @link
+ * @ipv6_gateway_dev  : whether the ipv6 gateway is to be set as a device route
  * @ipv6_gateway      : ipv6 gateway
  * @upscript          : a script filename to be executed during interface
  *                      configuration
@@ -179,8 +181,10 @@ struct lxc_netdev {
 	struct lxc_list ipv4;
 	struct lxc_list ipv6;
 	bool ipv4_gateway_auto;
+	bool ipv4_gateway_dev;
 	struct in_addr *ipv4_gateway;
 	bool ipv6_gateway_auto;
+	bool ipv6_gateway_dev;
 	struct in6_addr *ipv6_gateway;
 	char *upscript;
 	char *downscript;
