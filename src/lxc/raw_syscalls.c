@@ -9,6 +9,7 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+#include "compiler.h"
 #include "config.h"
 #include "macro.h"
 #include "raw_syscalls.h"
@@ -32,7 +33,7 @@ int lxc_raw_execveat(int dirfd, const char *pathname, char *const argv[],
  * The nice thing about this is that we get fork() behavior. That is
  * lxc_raw_clone() returns 0 in the child and the child pid in the parent.
  */
-pid_t lxc_raw_clone(unsigned long flags)
+__returns_twice pid_t lxc_raw_clone(unsigned long flags)
 {
 	/*
 	 * These flags don't interest at all so we don't jump through any hoops
