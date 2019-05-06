@@ -406,14 +406,21 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	}
 
 	if (siginfo.ssi_signo == SIGHUP) {
-		kill(hdlr->pid, SIGTERM);
+		if (hdlr->proc_pidfd >= 0)
+			lxc_raw_pidfd_send_signal(hdlr->proc_pidfd, SIGTERM, NULL, 0);
+		else
+			kill(hdlr->pid, SIGTERM);
 		INFO("Killing %d since terminal hung up", hdlr->pid);
 		return hdlr->init_died ? LXC_MAINLOOP_CLOSE
 				       : LXC_MAINLOOP_CONTINUE;
 	}
 
 	if (siginfo.ssi_signo != SIGCHLD) {
-		kill(hdlr->pid, siginfo.ssi_signo);
+		if (hdlr->proc_pidfd >= 0)
+			lxc_raw_pidfd_send_signal(hdlr->proc_pidfd,
+						  siginfo.ssi_signo, NULL, 0);
+		else
+			kill(hdlr->pid, siginfo.ssi_signo);
 		INFO("Forwarded signal %d to pid %d", siginfo.ssi_signo, hdlr->pid);
 		return hdlr->init_died ? LXC_MAINLOOP_CLOSE
 				       : LXC_MAINLOOP_CONTINUE;
@@ -658,6 +665,8 @@ void lxc_zero_handler(struct lxc_handler *handler)
 
 	handler->pinfd = -1;
 
+	handler->proc_pidfd = -EBADF;
+
 	handler->sigfd = -1;
 
 	for (i = 0; i < LXC_NS_MAX; i++)
@@ -677,6 +686,9 @@ void lxc_free_handler(struct lxc_handler *handler)
 {
 	if (handler->pinfd >= 0)
 		close(handler->pinfd);
+
+	if (handler->proc_pidfd >= 0)
+		close(handler->proc_pidfd);
 
 	if (handler->sigfd >= 0)
 		close(handler->sigfd);
@@ -722,6 +734,7 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 	handler->conf = conf;
 	handler->lxcpath = lxcpath;
 	handler->pinfd = -1;
+	handler->proc_pidfd = -EBADF;
 	handler->sigfd = -EBADF;
 	handler->init_died = false;
 	handler->state_socket_pair[0] = handler->state_socket_pair[1] = -1;
@@ -1088,7 +1101,7 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 	lxc_set_state(name, handler, ABORTING);
 
 	if (handler->pid > 0) {
-		ret = kill(handler->pid, SIGKILL);
+		ret = lxc_raw_pidfd_send_signal(handler->proc_pidfd, SIGKILL, NULL, 0);
 		if (ret < 0)
 			SYSERROR("Failed to send SIGKILL to %d", handler->pid);
 	}
@@ -1595,6 +1608,27 @@ static inline int do_share_ns(void *arg)
 	return 0;
 }
 
+static int proc_pidfd_open(pid_t pid)
+{
+	__do_close_prot_errno int proc_pidfd = -EBADF;
+	char path[100];
+
+	snprintf(path, sizeof(path), "/proc/%d", pid);
+	proc_pidfd = open(path, O_DIRECTORY | O_RDONLY | O_CLOEXEC);
+	if (proc_pidfd < 0) {
+		SYSERROR("Failed to open %s", path);
+		return -1;
+	}
+
+	/* Test whether we can send signals. */
+	if (lxc_raw_pidfd_send_signal(proc_pidfd, 0, NULL, 0)) {
+		SYSERROR("Failed to send signal through pidfd");
+		return -1;
+	}
+
+	return move_fd(proc_pidfd);
+}
+
 /* lxc_spawn() performs crucial setup tasks and clone()s the new process which
  * exec()s the requested container binary.
  * Note that lxc_spawn() runs in the parent namespaces. Any operations performed
@@ -1721,6 +1755,10 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 	}
 	TRACE("Cloned child process %d", handler->pid);
+
+	handler->proc_pidfd = proc_pidfd_open(handler->pid);
+	if (handler->proc_pidfd < 0 && (errno != ENOSYS))
+		goto out_delete_net;
 
 	for (i = 0; i < LXC_NS_MAX; i++)
 		if (handler->ns_on_clone_flags & ns_info[i].clone_flag)
