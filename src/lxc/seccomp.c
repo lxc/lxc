@@ -1338,7 +1338,10 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	__do_close_prot_errno int fd_mem = -EBADF;
 	int reconnect_count, ret;
 	ssize_t bytes;
-	char mem_path[6 + 21 + 5];
+	char mem_path[6 /* /proc/ */
+		      + INTTYPE_TO_STRLEN(int64_t)
+		      + 3 /* mem */
+		      + 1 /* \0 */];
 	struct lxc_handler *hdlr = data;
 	struct lxc_conf *conf = hdlr->conf;
 	struct seccomp_notif *req = conf->seccomp.notifier.req_buf;
