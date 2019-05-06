@@ -108,3 +108,14 @@ pid_t lxc_raw_clone_cb(int (*fn)(void *), void *args, unsigned long flags)
 
 	return pid;
 }
+
+int lxc_raw_pidfd_send_signal(int pidfd, int sig, siginfo_t *info,
+			      unsigned int flags)
+{
+#ifdef __NR_pidfd_send_signal
+	syscall(__NR_pidfd_send_signal, pidfd, sig, info, flags);
+#else
+	errno = ENOSYS;
+#endif
+	return -1;
+}
