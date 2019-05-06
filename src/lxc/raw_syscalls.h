@@ -26,6 +26,7 @@
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
@@ -91,5 +92,8 @@ static inline pid_t lxc_raw_gettid(void)
 	return lxc_raw_getpid();
 #endif
 }
+
+extern int lxc_raw_pidfd_send_signal(int pidfd, int sig, siginfo_t *info,
+				     unsigned int flags);
 
 #endif /* __LXC_RAW_SYSCALL_H */
