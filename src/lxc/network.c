@@ -555,8 +555,23 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 	netdev->ifindex = if_nametoindex(peer);
 	if (!netdev->ifindex) {
 		ERROR("Failed to retrieve ifindex for \"%s\"", peer);
-		lxc_netdev_delete_by_name(peer);
-		return -1;
+		goto on_error;
+	}
+
+	if (netdev->mtu) {
+		err = lxc_safe_uint(netdev->mtu, &mtu);
+		if (err < 0) {
+			errno = -err;
+			SYSERROR("Failed to parse mtu \"%s\" for interface \"%s\"", netdev->mtu, peer);
+			goto on_error;
+		}
+
+		err = lxc_netdev_set_mtu(peer, mtu);
+		if (err) {
+			errno = -err;
+			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"", netdev->mtu, peer);
+			goto on_error;
+		}
 	}
 
 	if (netdev->upscript) {
@@ -570,32 +585,18 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 				handler->conf->hooks_version, "net",
 				netdev->upscript, "up", argv);
 		if (err < 0) {
-			lxc_netdev_delete_by_name(peer);
-			return -1;
+			goto on_error;
 		}
 	}
 
 	DEBUG("Instantiated vlan \"%s\" with ifindex is \"%d\" (vlan1000)",
 	      peer, netdev->ifindex);
-	if (netdev->mtu) {
-		if (lxc_safe_uint(netdev->mtu, &mtu) < 0) {
-			ERROR("Failed to retrieve mtu from \"%d\"/\"%s\".",
-			      netdev->ifindex,
-			      netdev->name[0] != '\0' ? netdev->name : "(null)");
-			return -1;
-		}
-
-		err = lxc_netdev_set_mtu(peer, mtu);
-		if (err) {
-			errno = -err;
-			SYSERROR("Failed to set mtu \"%s\" for \"%s\"",
-			         netdev->mtu, peer);
-			lxc_netdev_delete_by_name(peer);
-			return -1;
-		}
-	}
 
 	return 0;
+
+on_error:
+	lxc_netdev_delete_by_name(peer);
+	return -1;
 }
 
 static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
