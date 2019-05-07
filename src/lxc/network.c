@@ -3377,6 +3377,7 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 	int err;
 	const char *net_type_name;
 	char *current_ifname = ifname;
+	char bufinet4[INET_ADDRSTRLEN], bufinet6[INET6_ADDRSTRLEN];
 
 	/* empty network namespace */
 	if (!netdev->ifindex) {
@@ -3501,11 +3502,6 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 		}
 	}
 
-	/* We can only set up the default routes after bringing
-	 * up the interface, since bringing up the interface adds
-	 * the link-local routes and we can't add a default
-	 * route if the gateway is not reachable. */
-
 	/* setup ipv4 gateway on the interface */
 	if (netdev->ipv4_gateway || netdev->ipv4_gateway_dev) {
 		if (!(netdev->flags & IFF_UP)) {
@@ -3529,26 +3525,31 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 				return minus_one_set_errno(-err);
 			}
 		} else {
+			/* Check the gateway address is valid */
+			if (!inet_ntop(AF_INET, netdev->ipv4_gateway, bufinet4, sizeof(bufinet4)))
+				return minus_one_set_errno(errno);
+
+			/* Try adding a default route to the gateway address */
 			err = lxc_ipv4_gateway_add(netdev->ifindex, netdev->ipv4_gateway);
-			if (err) {
+			if (err < 0) {
+				/* If adding the default route fails, this could be because the
+				 * gateway address is in a different subnet to the container's address.
+				 * To work around this, we try adding a static device route to the
+				 * gateway address first, and then try again.
+				 */
 				err = lxc_ipv4_dest_add(netdev->ifindex, netdev->ipv4_gateway, 32);
-				if (err) {
+				if (err < 0) {
 					errno = -err;
-					SYSERROR("Failed to add ipv4 dest for network device \"%s\"",
-						ifname);
+					SYSERROR("Failed to add ipv4 dest \"%s\" for network device \"%s\"",
+						bufinet4, ifname);
+					return -1;
 				}
 
 				err = lxc_ipv4_gateway_add(netdev->ifindex, netdev->ipv4_gateway);
-				if (err) {
+				if (err < 0) {
 					errno = -err;
-					SYSERROR("Failed to setup ipv4 gateway for network device \"%s\"",
-						ifname);
-
-					if (netdev->ipv4_gateway_auto) {
-						char buf[INET_ADDRSTRLEN];
-						inet_ntop(AF_INET, netdev->ipv4_gateway, buf, sizeof(buf));
-						ERROR("Tried to set autodetected ipv4 gateway \"%s\"", buf);
-					}
+					SYSERROR("Failed to setup ipv4 gateway \"%s\" for network device \"%s\"",
+						bufinet4, ifname);
 					return -1;
 				}
 			}
@@ -3578,28 +3579,31 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 				return minus_one_set_errno(-err);
 			}
 		} else {
+			/* Check the gateway address is valid */
+			if (!inet_ntop(AF_INET6, netdev->ipv6_gateway, bufinet6, sizeof(bufinet6)))
+				return minus_one_set_errno(errno);
+
+			/* Try adding a default route to the gateway address */
 			err = lxc_ipv6_gateway_add(netdev->ifindex, netdev->ipv6_gateway);
-			if (err) {
+			if (err < 0) {
+				/* If adding the default route fails, this could be because the
+				 * gateway address is in a different subnet to the container's address.
+				 * To work around this, we try adding a static device route to the
+				 * gateway address first, and then try again.
+				 */
 				err = lxc_ipv6_dest_add(netdev->ifindex, netdev->ipv6_gateway, 128);
-				if (err) {
+				if (err < 0) {
 					errno = -err;
-					SYSERROR("Failed to add ipv6 dest for network device \"%s\"",
-						ifname);
+					SYSERROR("Failed to add ipv6 dest \"%s\" for network device \"%s\"",
+						bufinet6, ifname);
+					return -1;
 				}
 
 				err = lxc_ipv6_gateway_add(netdev->ifindex, netdev->ipv6_gateway);
-				if (err) {
+				if (err < 0) {
 					errno = -err;
-					SYSERROR("Failed to setup ipv6 gateway for network device \"%s\"",
-						ifname);
-
-					if (netdev->ipv6_gateway_auto) {
-						char buf[INET6_ADDRSTRLEN];
-						inet_ntop(AF_INET6, netdev->ipv6_gateway, buf, sizeof(buf));
-						ERROR("Tried to set autodetected ipv6 "
-						"gateway for network device "
-						"\"%s\"", buf);
-					}
+					SYSERROR("Failed to setup ipv6 gateway \"%s\" for network device \"%s\"",
+						bufinet6, ifname);
 					return -1;
 				}
 			}
