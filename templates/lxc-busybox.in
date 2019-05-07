@@ -89,15 +89,15 @@ ${rootfs}/usr/lib64"
       echo "lxc.mount.entry = /dev/${dev} dev/${dev} none bind,optional,create=file 0 0" >> "${path}/config"
     done
   else
-    mknod -m 666 "${rootfs}/tty" c 5 0       || res=1
-    mknod -m 666 "${rootfs}/console" c 5 1   || res=1
-    mknod -m 666 "${rootfs}/tty0" c 4 0      || res=1
-    mknod -m 666 "${rootfs}/tty1" c 4 0      || res=1
-    mknod -m 666 "${rootfs}/tty5" c 4 0      || res=1
-    mknod -m 600 "${rootfs}/ram0" b 1 0      || res=1
-    mknod -m 666 "${rootfs}/null" c 1 3      || res=1
-    mknod -m 666 "${rootfs}/zero" c 1 5      || res=1
-    mknod -m 666 "${rootfs}/urandom" c 1 9   || res=1
+    mknod -m 666 "${rootfs}/dev/tty" c 5 0       || res=1
+    mknod -m 666 "${rootfs}/dev/console" c 5 1   || res=1
+    mknod -m 666 "${rootfs}/dev/tty0" c 4 0      || res=1
+    mknod -m 666 "${rootfs}/dev/tty1" c 4 0      || res=1
+    mknod -m 666 "${rootfs}/dev/tty5" c 4 0      || res=1
+    mknod -m 600 "${rootfs}/dev/ram0" b 1 0      || res=1
+    mknod -m 666 "${rootfs}/dev/null" c 1 3      || res=1
+    mknod -m 666 "${rootfs}/dev/zero" c 1 5      || res=1
+    mknod -m 666 "${rootfs}/dev/urandom" c 1 9   || res=1
   fi
 
   # root user defined
