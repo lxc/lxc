@@ -478,6 +478,7 @@ static int instantiate_ipvlan(struct lxc_handler *handler, struct lxc_netdev *ne
 {
 	char peerbuf[IFNAMSIZ], *peer;
 	int err;
+	unsigned int mtu = 0;
 
 	if (netdev->link[0] == '\0') {
 		ERROR("No link for ipvlan network device specified");
@@ -502,6 +503,22 @@ static int instantiate_ipvlan(struct lxc_handler *handler, struct lxc_netdev *ne
 	if (!netdev->ifindex) {
 		ERROR("Failed to retrieve ifindex for \"%s\"", peer);
 		goto on_error;
+	}
+
+	if (netdev->mtu) {
+		err = lxc_safe_uint(netdev->mtu, &mtu);
+		if (err < 0) {
+			errno = -err;
+			SYSERROR("Failed to parse mtu \"%s\" for interface \"%s\"", netdev->mtu, peer);
+			goto on_error;
+		}
+
+		err = lxc_netdev_set_mtu(peer, mtu);
+		if (err < 0) {
+			errno = -err;
+			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"", netdev->mtu, peer);
+			goto on_error;
+		}
 	}
 
 	if (netdev->upscript) {
