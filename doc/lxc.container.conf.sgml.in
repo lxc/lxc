@@ -1943,7 +1943,7 @@ dev/null proc/kcore none bind,relative 0 0
 
       <para>
       Specifying "errno" as action will cause LXC to register a seccomp filter
-      that will cause a specific errno to be returned ot the caller. The errno
+      that will cause a specific errno to be returned to the caller. The errno
       value can be specified after the "errno" action word.
       </para>
 
