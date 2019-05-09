@@ -266,7 +266,7 @@ static bool clone_attach_nbd(const char *nbd, const char *path)
 	data.nbd = nbd;
 	data.path = path;
 
-	pid = lxc_clone(do_attach_nbd, &data, CLONE_NEWPID);
+	pid = lxc_clone(do_attach_nbd, &data, CLONE_NEWPID, NULL);
 	if (pid < 0)
 		return false;
 

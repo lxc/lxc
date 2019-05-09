@@ -388,7 +388,7 @@ int main(int argc, char *argv[])
 	start_arg.want_hostname = my_args.want_hostname;
 	start_arg.want_default_mounts = my_args.want_default_mounts;
 
-	pid = lxc_clone(do_start, &start_arg, my_args.flags);
+	pid = lxc_clone(do_start, &start_arg, my_args.flags, NULL);
 	if (pid < 0) {
 		ERROR("Failed to clone");
 		free_ifname_list();
