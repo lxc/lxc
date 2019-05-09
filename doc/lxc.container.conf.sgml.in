@@ -1630,6 +1630,12 @@ dev/null proc/kcore none bind,relative 0 0
             process wants to inherit the other's network namespace it usually
             needs to inherit the user namespace as well.
             </para>
+
+            <para>
+            Note that without careful additional configuration of an LSM,
+            sharing user+pid namespaces with a task may allow that task to
+            escalate privileges to that of the task calling liblxc.
+            </para>
           </listitem>
         </varlistentry>
       </variablelist>
