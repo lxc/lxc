@@ -149,6 +149,7 @@
 #define LXC_LINELEN 4096
 #define LXC_IDMAPLEN 4096
 #define LXC_MAX_BUFFER 4096
+#define LXC_NAMESPACE_NAME_MAX 256
 
 /* /proc/       =    6
  *                +
