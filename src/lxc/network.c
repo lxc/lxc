@@ -213,6 +213,7 @@ static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 {
 	char peerbuf[IFNAMSIZ], *peer;
 	int err;
+	unsigned int mtu = 0;
 
 	if (netdev->link[0] == '\0') {
 		ERROR("No link for macvlan network device specified");
@@ -240,6 +241,22 @@ static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 	if (!netdev->ifindex) {
 		ERROR("Failed to retrieve ifindex for \"%s\"", peer);
 		goto on_error;
+	}
+
+	if (netdev->mtu) {
+		err = lxc_safe_uint(netdev->mtu, &mtu);
+		if (err < 0) {
+			errno = -err;
+			SYSERROR("Failed to parse mtu \"%s\" for interface \"%s\"", netdev->mtu, peer);
+			goto on_error;
+		}
+
+		err = lxc_netdev_set_mtu(peer, mtu);
+		if (err < 0) {
+			errno = -err;
+			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"", netdev->mtu, peer);
+			goto on_error;
+		}
 	}
 
 	if (netdev->upscript) {
@@ -313,7 +330,7 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 		}
 	}
 
-	DEBUG("Instantiated vlan \"%s\" with ifindex is \"%d\" (vlan1000)",
+	DEBUG("Instantiated vlan \"%s\" with ifindex is \"%d\"",
 	      peer, netdev->ifindex);
 	if (netdev->mtu) {
 		if (lxc_safe_uint(netdev->mtu, &mtu) < 0) {
@@ -338,12 +355,8 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 
 static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
-	int ret;
-	char *argv[] = {
-		"phys",
-		netdev->link,
-		NULL,
-	};
+	int err;
+	unsigned int mtu = 0;
 
 	if (netdev->link[0] == '\0') {
 		ERROR("No link for physical interface specified");
@@ -368,13 +381,38 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 	 */
 	netdev->priv.phys_attr.ifindex = netdev->ifindex;
 
-	if (!netdev->upscript)
-		return 0;
+	if (netdev->mtu) {
+		err = lxc_safe_uint(netdev->mtu, &mtu);
+		if (err < 0) {
+			errno = -err;
+			SYSERROR("Failed to parse mtu \"%s\" for interface \"%s\"", netdev->mtu, netdev->link);
+			return -1;
+		}
 
-	ret = run_script_argv(handler->name, handler->conf->hooks_version,
-			      "net", netdev->upscript, "up", argv);
-	if (ret < 0)
-		return -1;
+		err = lxc_netdev_set_mtu(netdev->link, mtu);
+		if (err < 0) {
+			errno = -err;
+			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"", netdev->mtu, netdev->link);
+			return -1;
+		}
+	}
+
+	if (netdev->upscript) {
+		char *argv[] = {
+		    "phys",
+		    netdev->link,
+		    NULL,
+		};
+
+		err = run_script_argv(handler->name,
+				handler->conf->hooks_version, "net",
+				netdev->upscript, "up", argv);
+		if (err < 0) {
+			return -1;
+		}
+	}
+
+	DEBUG("Instantiated phys \"%s\" with ifindex is \"%d\"", netdev->link, netdev->ifindex);
 
 	return 0;
 }
