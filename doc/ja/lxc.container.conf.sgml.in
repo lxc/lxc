@@ -604,6 +604,12 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               the <option>lxc.net.[i].veth.pair</option> option (except for
               unprivileged containers where this option is ignored for security
               reasons).
+
+              Static routes can be added on the host pointing to the container using the
+              <option>lxc.net.[i].veth.ipv4.route</option> and
+              <option>lxc.net.[i].veth.ipv6.route</option> options.
+              Several lines specify several routes.
+              The route is in format x.y.z.t/m, eg. 192.168.1.0/24.
               -->
               <option>veth:</option > 一方がコンテナに、もう一方が <option>lxc.net.[i].link</option> オプションで指定されたブリッジに接続されるペアの仮想イーサネットデバイスを作成します。
               もし、ブリッジが指定されていない場合、veth ペアデバイスは作成されますが、ブリッジには接続されません。
@@ -611,6 +617,10 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <command>lxc</command> はコンテナ外の設定を扱うことはありません。
               デフォルトでは、<command>lxc</command> がコンテナの外部に属するネットワークデバイスに対する名前を決定します。
               しかし、もしこの名前を自分で指定したい場合、<option>lxc.net.[i].veth.pair</option> オプションを使って名前を設定し、lxc に対して指定をすることができます (非特権コンテナの場合をのぞきます。セキュリティ上の理由からこのオプションは無視されます)。
+
+              <option>lxc.net.[i].veth.ipv4.route</option>、<option>lxc.net.[i].veth.ipv6.route</option> オプションを使って、静的ルーティングをコンテナを指し示すホスト上に追加できます。
+              複数のルートがある場合は複数の設定を指定します。
+              ルートは x.y.z.t/m の形式です。例: 192.168.1.0/24
             </para>
 
             <para>
@@ -661,7 +671,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               mode is possible for one physical interface.
               -->
               <option>macvlan:</option> macvlan インターフェースは <option>lxc.net.[i].link</option> により指定されるインターフェースとリンクし、コンテナに割り当てられます。
-              <option>lxc.net.[i].macvlan.mode</option> でモードを指定すると、その macvlan の指定を、同じ上位デバイスで異なる macvlan の間の通信をする時に使います。
+              <option>lxc.net.[i].macvlan.mode</option> でモードを指定すると、その macvlan の指定を、同じ上位デバイスで異なる macvlan 間の通信をする時に使います。
               指定できるモードは <option>private</option>、<option>vepa</option>、<option>bridge</option>、<option>passthru</option> のいずれかです。
               <option>private</option> モードの場合、デバイスは同じ上位デバイスの他のデバイスとの通信を行いません (デフォルト)。
               新しい仮想イーサネットポート集約モード (Virtual Ethernet Port Aggregator (VEPA)) である <option>vepa</option> モードの場合、隣接したポートが、ソースとデスティネーションの両方が macvlan ポートに対してローカルであるフレームを全て返すと仮定します。
@@ -674,6 +684,58 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               しかし、reflective relay からフレームが返ってきたときは、再度それを配送することはしません。
               全ての MAC アドレスを知っているので、ブリッジモジュールのように、macvlan ブリッジモードは学習や STP の必要はありません。
               <option>passthru</option> モードの場合、物理インターフェースで受け取った全てのフレームは macvlan インターフェースに転送されます。<option>passthru</option> モードの場合、ひとつの macvlan インターフェースだけが、ひとつの物理インターフェースに対して設定できます。
+            </para>
+
+            <para>
+              <!--
+              <option>ipvlan:</option> an ipvlan interface is linked
+              with the interface specified by
+              the <option>lxc.net.[i].link</option> and assigned to
+              the container.
+              <option>lxc.net.[i].ipvlan.mode</option> specifies the
+              mode the ipvlan will use to communicate between
+              different ipvlan on the same upper device. The accepted
+              modes are <option>l3</option>, <option>l3s</option> and
+              <option>l2</option>. It defaults to <option>l3</option> mode.
+              In <option>l3</option> mode TX processing up to L3 happens on the stack instance
+              attached to the slave device and packets are switched to the stack instance of the
+              master device for the L2 processing and routing from that instance will be
+              used before packets are queued on the outbound device. In this mode the slaves
+              will not receive nor can send multicast / broadcast traffic.
+              In <option>l3s</option> mode TX processing is very similar to the L3 mode except that
+              iptables (conn-tracking) works in this mode and hence it is L3-symmetric (L3s).
+              This will have slightly less performance but that shouldn't matter since you are
+              choosing this mode over plain-L3 mode to make conn-tracking work.
+              In <option>l2</option> mode TX processing happens on the stack instance attached to
+              the slave device and packets are switched and queued to the master device to send
+              out. In this mode the slaves will RX/TX multicast and broadcast (if applicable) as well.
+              <option>lxc.net.[i].ipvlan.isolation</option> specifies the isolation mode.
+              The accepted isolation values are <option>bridge</option>,
+              <option>private</option> and <option>vepa</option>.
+              It defaults to <option>bridge</option>.
+              In <option>bridge</option> isolation mode slaves can cross-talk among themselves
+              apart from talking through the master device.
+              In <option>private</option> isolation mode the port is set in private mode.
+              i.e. port won't allow cross communication between slaves.
+              In <option>vepa</option> isolation mode the port is set in VEPA mode.
+              i.e. port will offload switching functionality to the external entity as
+              described in 802.1Qbg.
+              -->
+              <option>ipvlan:</option> ipvlan インターフェースは <option>lxc.net.[i].link</option> により指定されるインターフェースとリンクし、コンテナに割り当てられます。
+              <option>lxc.net.[i].ipvlan.mode</option> でモードを指定すると、その ipvlan の指定を、同じ上位デバイスで異なる ipvlan 間の通信をする時に使います。
+              指定できるモードは <option>l3</option>、<option>l3s</option>、<option>l2</option> で、デフォルトは <option>l3</option> モードです。
+              <option>l3</option> モードでは、L3 までの TX (送信) 処理はスレーブデバイスにアタッチされたスタックインスタンス上で行われます。
+              そしてパケットは、L2 処理のためにマスターデバイスのスタックインスタンスにスイッチされます。このインスタンスからのルーティングは、発信デバイス上でキューに入る前に使われます。
+              このモードでは、スレーブはマルチキャスト・ブロードキャストのトラフィックを受信しませんし、送信もできません。
+              <option>l3s</option> モードは、TX (送信) 処理は L3 モードと非常に似ていますが、iptables (conn-tracking) がこのモードで動作します。
+              それゆえに L3対称 (symmetric) (L3s) です。このモードは若干パフォーマンスが低下しますが、conn-tracking (接続追跡) が動作するように、普通の L3 モードの代わりにこのモードを選んでいるので問題にはならないはずです。
+              <option>l2</option> モードでは、TX (送信) 処理はスレーブデバイスにアタッチされたスタックインスンタンス上で行われます。
+              パケットは送信のため、マスターデバイスにスイッチされ、マスターデバイス上でキューに入ります。このモードでは、スレーブはマルチキャストも（該当する場合）ブロードキャストも RX/TX (送受信) 処理します。
+
+              <option>lxc.net.[i].ipvlan.isolation</option> は隔離モードを指定します。隔離モードには <option>bridge</option>、<option>private</option>、<option>vepa</option> が指定できます。デフォルトは <option>bridge</option> モードです。
+              <option>bridge</option> 隔離モードでは、スレーブはマスターデバイス経由の通信とは別に、スレーブ同士で通信できます。
+              <option>private</option> 隔離モードでは、ポートはプライベートに設定されます。つまり、スレーブ間の通信はできません。
+              <option>vepa</option> 隔離モードでは、ポートは VEPA モードに設定されます。つまり、802.1Qbg で説明されているように、ポートはスイッチング機能を外部エンティティにオフロードします。
             </para>
 
             <para>
@@ -719,6 +781,32 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               -->
               実際のネットワークトラフィックに使うインターフェースを指定します。
             </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.net.[i].l2proxy</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              Controls whether layer 2 IP neighbour proxy entries will be added to the
+              lxc.net.[i].link interface for the IP addresses of the container.
+              Can be set to 0 or 1. Defaults to 0.
+              When used with IPv4 addresses, the following sysctl values need to be set:
+              net.ipv4.conf.[link].forwarding=1
+              When used with IPv6 addresses, the following sysctl values need to be set:
+              net.ipv6.conf.[link].proxy_ndp=1
+              net.ipv6.conf.[link].forwarding=1
+                -->
+              レイヤ 2 IP 近隣プロキシエントリを、コンテナの IP アドレスに対応する lxc.net.[i].link インターフェースに追加するかどうかを制御します。0 か 1 が設定でき、デフォルトは 0 です。
+              IPv4 アドレスで使う場合は、次の sysctl 設定が必要です:
+              net.ipv4.conf.[link].forwarding=1
+              IPv6 アドレスで使う場合は、次の sysctl 設定が必要です:
+              net.ipv6.conf.[link].proxy_ndp=1
+              net.ipv6.conf.[link].forwarding=1
+              </para>
           </listitem>
         </varlistentry>
 
@@ -802,11 +890,15 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               interface (as specified by the
               <option>lxc.net.[i].link</option> option) and use that as
               the gateway. <option>auto</option> is only available when
-              using the <option>veth</option> and
-              <option>macvlan</option> network types.
+              using the <option>veth</option>,
+              <option>macvlan</option> and <option>ipvlan</option> network types.
+              Can also have the special value of <option>dev</option>,
+              which means to set the default gateway as a device route.
+              This is primarily for use with layer 3 network modes, such as IPVLAN.
               -->
               コンテナでゲートウェイとして使う IPv4 アドレスを指定します。アドレスは x.y.z.t というフォーマットです。例) 192.168.1.123
-              <option>auto</option> という特別な値を指定できます。これは (<option>lxc.net.[i].link</option> で指定した) ブリッジインターフェースの最初のアドレスを使用し、それをゲートウェイに使うという意味になります。<option>auto</option> はネットワークタイプとして <option>veth</option> と <option>macvlan</option> を指定している時だけ有効となります。
+              <option>auto</option> という特別な値を指定できます。これは (<option>lxc.net.[i].link</option> で指定した) ブリッジインターフェースの最初のアドレスを使用し、それをゲートウェイに使うという意味になります。<option>auto</option> はネットワークタイプとして <option>veth</option>、<option>macvlan</option>、<option>ipvlan</option> を指定している時だけ有効となります。
+              特別な値である <option>dev</option> も設定できます。これはデバイスのルートとしてデフォルトゲートウェイを設定するという意味です。これは主に、IPVLAN のようなレイヤ 3 のネットワークモードで使用します。
             </para>
           </listitem>
         </varlistentry>
@@ -844,11 +936,15 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               interface (as specified by the
               <option>lxc.net.[i].link</option> option) and use that as
               the gateway. <option>auto</option> is only available when
-              using the <option>veth</option> and
-              <option>macvlan</option> network types.
+              using the <option>veth</option>,
+              <option>macvlan</option> and <option>ipvlan</option> network types.
+              Can also have the special value of <option>dev</option>,
+              which means to set the default gateway as a device route.
+              This is primarily for use with layer 3 network modes, such as IPVLAN.
               -->
               コンテナでゲートウェイとして使う IPv6 アドレスを指定します。アドレスは x::y というフォーマットです。例) 2003:db8:1:0::1
-              <option>auto</option> という特別な値を記述する事も可能です。これは (<option>lxc.net.[i].link</option> で指定した) ブリッジインターフェースの最初のアドレスを使用し、それをゲートウェイに使うという意味になります。<option>auto</option> はネットワークタイプとして <option>veth</option> と <option>macvlan</option> を指定している時だけ有効となります。
+              <option>auto</option> という特別な値を記述する事も可能です。これは (<option>lxc.net.[i].link</option> で指定した) ブリッジインターフェースの最初のアドレスを使用し、それをゲートウェイに使うという意味になります。<option>auto</option> はネットワークタイプとして <option>veth</option>、<option>macvlan</option>、<option>ipvlan</option> を指定している時だけ有効となります。
+              特別な値である <option>dev</option> も設定できます。これはデバイスのルートとしてデフォルトゲートウェイを設定するという意味です。これは主に、IPVLAN のようなレイヤ 3 のネットワークモードで使用します。
             </para>
           </listitem>
         </varlistentry>
@@ -888,8 +984,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
                 <listitem>
                  <para>
-                 LXC_NET_TYPE: ネットワークタイプ。有効なネットワークタイプのうちのひとつです (例: 'macvlan', 'veth') <!-- the network type. This is one of the valid
-                 network types listed here (e.g. 'macvlan', 'veth'). -->
+                 LXC_NET_TYPE: ネットワークタイプ。有効なネットワークタイプのうちのひとつです (例: 'vlan', 'macvlan', 'ipvlan', 'veth') <!-- the network type. This is one of the valid
+                 network types listed here (e.g. 'vlan', 'macvlan', 'ipvlan', 'veth'). -->
                   </para>
                 </listitem>
 
@@ -966,9 +1062,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                 </listitem>
 
                 <listitem>
-                 <para>
-                 LXC_NET_TYPE: ネットワークタイプ。有効なネットワークタイプのうちのひとつです (例: 'macvlan', 'veth') <!-- the network type. This is one of the valid
-                 network types listed here (e.g. 'macvlan', 'veth'). -->
+                  <para>
+                 LXC_NET_TYPE: ネットワークタイプ。有効なネットワークタイプのうちのひとつです (例: 'vlan', 'macvlan', 'ipvlan', 'veth') <!-- the network type. This is one of the valid
+                 network types listed here (e.g. 'vlan', 'macvlan', 'ipvlan', 'veth'). -->
                   </para>
                 </listitem>
 
@@ -2500,7 +2596,37 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
       2
       blacklist
       mknod errno 0
+      ioctl notify
       </programlisting>
+
+      <para>
+        <!--
+      Specifying "errno" as action will cause LXC to register a seccomp filter
+      that will cause a specific errno to be returned to the caller. The errno
+      value can be specified after the "errno" action word.
+          -->
+        アクションとして "errno" を指定すると、LXC は seccomp フィルタを登録します。これにより、指定した errno を呼び出し元に返します。
+        errno の値は "errno" という単語の後に指定します。
+      </para>
+
+      <para>
+        <!--
+      Specifying "notify" as action will cause LXC to register a seccomp
+      listener and retrieve a listener file descriptor from the kernel. When a
+      syscall is made that is registered as "notify" the kernel will generate a
+      poll event and send a message over the file descriptor. The caller can
+      read this message, inspect the syscalls including its arguments. Based on
+      this information the caller is expected to send back a message informing
+      the kernel which action to take. Until that message is sent the kernel
+      will block the calling process. The format of the messages to read and
+      sent is documented in seccomp itself.
+          -->
+        アクションとして "notify" を指定すると、LXC は seccomp リスナーを登録し、カーネルからリスナーのファイルディスクリプタを取得します。
+        "notify" として指定しているシステムコールが作成されると、カーネルは poll イベントを生成し、ファイルディスクリプタを通してメッセージを送信します。
+        呼び出し元はこのメッセージを読み、引数を含めてシステムコールを調査できます。
+        呼び出し元はこの情報に基づき、どのアクションを取るべきかをカーネルに知らせるメッセージを送り返すことが期待されます。
+        このメッセージが送られるまで、カーネルは呼び出し元のプロセスをブロックします。読み書きするメッセージのフォーマットは seccomp 自身に記述されています。
+      </para>
 
       <variablelist>
         <varlistentry>
@@ -2523,15 +2649,34 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           </term>
           <listitem>
             <para>
-	      <!--
+              <!--
               If this flag is set to 1, then seccomp filters will be stacked
               regardless of whether a seccomp profile is already loaded.
               This allows nested containers to load their own seccomp profile.
               The default setting is 0.
-		-->
-	      このオプションを 1 に設定すると、すでに seccomp プロファイルがロードされている、いないに関わらず、seccomp フィルタが重ね合わせられます。
-	      これにより、ネストされたコンテナが自身の seccomp プロファイルをロードできます。
-	      デフォルト値は 0 です。
+                -->
+              このオプションを 1 に設定すると、すでに seccomp プロファイルがロードされている、いないに関わらず、seccomp フィルタが重ね合わせられます。
+              これにより、ネストされたコンテナが自身の seccomp プロファイルをロードできます。
+              デフォルト値は 0 です。
+             </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.seccomp.notify.proxy</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              Specify a unix socket to which LXC will connect and forward
+              seccomp events to. The path must by in the form
+              unix:/path/to/socket or unix:@socket. The former specifies a
+              path-bound unix domain socket while the latter specifies an
+              abstract unix domain socket.
+                -->
+              LXC が接続し、seccomp イベントを転送する UNIX ソケットを指定します。
+              パスは unix:/path/to/socket もしくは unix:@socket の形式でなければなりません。
+              前者はパス指定の UNIX ドメインソケットを指定し、後者は抽象 (abstract) UNIX ドメインソケットの指定です。
              </para>
           </listitem>
         </varlistentry>
