@@ -724,9 +724,13 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <option>ipvlan:</option> ipvlan インターフェースは <option>lxc.net.[i].link</option> により指定されるインターフェースとリンクし、コンテナに割り当てられます。
               <option>lxc.net.[i].ipvlan.mode</option> でモードを指定すると、その ipvlan の指定を、同じ上位デバイスで異なる ipvlan 間の通信をする時に使います。
               指定できるモードは <option>l3</option>、<option>l3s</option>、<option>l2</option> で、デフォルトは <option>l3</option> モードです。
-              <option>l3</option> モードでは、L3 までの TX (送信) 処理はスレーブデバイスにアタッチされたスタックインスタンス上で行われます。そしてパケットは、L2 処理のためにマスターデバイスのスタックインスタンスにスイッチされます。このインスタンスからのルーティングは、発信デバイス上でキューに入る前に使われます。このモードでは、スレーブはマルチキャスト・ブロードキャストのトラフィックを受信しませんし、受け取ることもできません。
-              <option>l3s</option> モードは、TX (送信) 処理は L3 モードと非常に似ていますが、iptables (conn-tracking) がこのモードで動作します。それゆえに L3対称 (symmetric) (L3s) です。このモードは若干パフォーマンスが低下しますが、conn-tracking (接続追跡) が動作するように、普通の L3 モードの代わりにこのモードを選んでいるので問題にはならないはずです。
-              <option>l2</option> モードでは、TX (送信) 処理はスレーブデバイスにアタッチされたスタックインスンタンス上で行われます。パケットを送信するのに、マスターデバイスにスイッチされ、マスターデバイス上でキューに入ります。このモードでは、スレーブはマルチキャストも（該当する場合）ブロードキャストも RX/TX (送受信) 処理します。
+              <option>l3</option> モードでは、L3 までの TX (送信) 処理はスレーブデバイスにアタッチされたスタックインスタンス上で行われます。
+              そしてパケットは、L2 処理のためにマスターデバイスのスタックインスタンスにスイッチされます。このインスタンスからのルーティングは、発信デバイス上でキューに入る前に使われます。
+              このモードでは、スレーブはマルチキャスト・ブロードキャストのトラフィックを受信しませんし、送信もできません。
+              <option>l3s</option> モードは、TX (送信) 処理は L3 モードと非常に似ていますが、iptables (conn-tracking) がこのモードで動作します。
+              それゆえに L3対称 (symmetric) (L3s) です。このモードは若干パフォーマンスが低下しますが、conn-tracking (接続追跡) が動作するように、普通の L3 モードの代わりにこのモードを選んでいるので問題にはならないはずです。
+              <option>l2</option> モードでは、TX (送信) 処理はスレーブデバイスにアタッチされたスタックインスンタンス上で行われます。
+              パケットは送信のため、マスターデバイスにスイッチされ、マスターデバイス上でキューに入ります。このモードでは、スレーブはマルチキャストも（該当する場合）ブロードキャストも RX/TX (送受信) 処理します。
 
               <option>lxc.net.[i].ipvlan.isolation</option> は隔離モードを指定します。隔離モードには <option>bridge</option>、<option>private</option>、<option>vepa</option> が指定できます。デフォルトは <option>bridge</option> モードです。
               <option>bridge</option> 隔離モードでは、スレーブはマスターデバイス経由の通信とは別に、スレーブ同士で通信できます。
@@ -786,7 +790,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
           </term>
           <listitem>
             <para>
-	      <!--
+              <!--
               Controls whether layer 2 IP neighbour proxy entries will be added to the
               lxc.net.[i].link interface for the IP addresses of the container.
               Can be set to 0 or 1. Defaults to 0.
@@ -795,11 +799,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               When used with IPv6 addresses, the following sysctl values need to be set:
               net.ipv6.conf.[link].proxy_ndp=1
               net.ipv6.conf.[link].forwarding=1
-		-->
-	      レイヤ 2 IP 近隣プロキシエントリを、コンテナの IP アドレスに対応する lxc.net.[i].link インターフェースに追加するかどうかを制御します。0 か 1 が設定でき、デフォルトは 0 です。
-	      IPv4 アドレスで使う場合は、次の sysctl 設定が必要です:
-	      net.ipv4.conf.[link].forwarding=1
-	      IPv6 アドレスで使う場合は、次の sysctl 設定が必要です:
+                -->
+              レイヤ 2 IP 近隣プロキシエントリを、コンテナの IP アドレスに対応する lxc.net.[i].link インターフェースに追加するかどうかを制御します。0 か 1 が設定でき、デフォルトは 0 です。
+              IPv4 アドレスで使う場合は、次の sysctl 設定が必要です:
+              net.ipv4.conf.[link].forwarding=1
+              IPv6 アドレスで使う場合は、次の sysctl 設定が必要です:
               net.ipv6.conf.[link].proxy_ndp=1
               net.ipv6.conf.[link].forwarding=1
               </para>
