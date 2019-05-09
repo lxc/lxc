@@ -406,7 +406,9 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	}
 
 	if (siginfo.ssi_signo == SIGHUP) {
-		if (hdlr->proc_pidfd >= 0)
+		if (hdlr->pidfd >= 0)
+			lxc_raw_pidfd_send_signal(hdlr->pidfd, SIGTERM, NULL, 0);
+		else if (hdlr->proc_pidfd >= 0)
 			lxc_raw_pidfd_send_signal(hdlr->proc_pidfd, SIGTERM, NULL, 0);
 		else
 			kill(hdlr->pid, SIGTERM);
@@ -416,7 +418,10 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	}
 
 	if (siginfo.ssi_signo != SIGCHLD) {
-		if (hdlr->proc_pidfd >= 0)
+		if (hdlr->pidfd >= 0)
+			lxc_raw_pidfd_send_signal(hdlr->pidfd,
+						  siginfo.ssi_signo, NULL, 0);
+		else if (hdlr->proc_pidfd >= 0)
 			lxc_raw_pidfd_send_signal(hdlr->proc_pidfd,
 						  siginfo.ssi_signo, NULL, 0);
 		else
@@ -659,6 +664,8 @@ void lxc_zero_handler(struct lxc_handler *handler)
 
 	handler->pinfd = -1;
 
+	handler->pidfd = -EBADF;
+
 	handler->proc_pidfd = -EBADF;
 
 	handler->sigfd = -1;
@@ -680,6 +687,9 @@ void lxc_free_handler(struct lxc_handler *handler)
 {
 	if (handler->pinfd >= 0)
 		close(handler->pinfd);
+
+	if (handler->pidfd >= 0)
+		close(handler->pidfd);
 
 	if (handler->proc_pidfd >= 0)
 		close(handler->proc_pidfd);
@@ -728,6 +738,7 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 	handler->conf = conf;
 	handler->lxcpath = lxcpath;
 	handler->pinfd = -1;
+	handler->pidfd = -EBADF;
 	handler->proc_pidfd = -EBADF;
 	handler->sigfd = -EBADF;
 	handler->init_died = false;
@@ -1081,19 +1092,23 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 
 void lxc_abort(const char *name, struct lxc_handler *handler)
 {
-	int ret, status;
+	int ret = 0;
+	int status;
 
 	lxc_set_state(name, handler, ABORTING);
 
-	if (handler->pid > 0) {
+	if (handler->pidfd > 0)
+		ret = lxc_raw_pidfd_send_signal(handler->pidfd, SIGKILL, NULL, 0);
+	else if (handler->proc_pidfd > 0)
 		ret = lxc_raw_pidfd_send_signal(handler->proc_pidfd, SIGKILL, NULL, 0);
-		if (ret < 0)
-			SYSERROR("Failed to send SIGKILL to %d", handler->pid);
-	}
+	else if (handler->pid > 0)
+		ret = kill(handler->pid, SIGKILL);
+	if (ret < 0)
+		SYSERROR("Failed to send SIGKILL to %d", handler->pid);
 
-	while ((ret = waitpid(-1, &status, 0)) > 0) {
-		;
-	}
+	do {
+		ret = waitpid(-1, &status, 0);
+	} while (ret > 0);
 }
 
 static int do_start(void *data)
@@ -1571,7 +1586,8 @@ static inline int do_share_ns(void *arg)
 
 	flags = handler->ns_on_clone_flags;
 	flags |= CLONE_PARENT;
-	handler->pid = lxc_raw_clone_cb(do_start, handler, flags, NULL);
+	handler->pid = lxc_raw_clone_cb(do_start, handler, CLONE_PIDFD | flags,
+					&handler->pidfd);
 	if (handler->pid < 0)
 		return -1;
 
@@ -1718,7 +1734,8 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	} else {
 		handler->pid = lxc_raw_clone_cb(do_start, handler,
-						handler->ns_on_clone_flags, NULL);
+						CLONE_PIDFD | handler->ns_on_clone_flags,
+						&handler->pidfd);
 	}
 	if (handler->pid < 0) {
 		SYSERROR(LXC_CLONE_ERROR);
@@ -1726,9 +1743,11 @@ static int lxc_spawn(struct lxc_handler *handler)
 	}
 	TRACE("Cloned child process %d", handler->pid);
 
-	handler->proc_pidfd = proc_pidfd_open(handler->pid);
-	if (handler->proc_pidfd < 0 && (errno != ENOSYS))
-		goto out_delete_net;
+	if (handler->pidfd < 0) {
+		handler->proc_pidfd = proc_pidfd_open(handler->pid);
+		if (handler->proc_pidfd < 0 && (errno != ENOSYS))
+			goto out_delete_net;
+	}
 
 	for (i = 0; i < LXC_NS_MAX; i++)
 		if (handler->ns_on_clone_flags & ns_info[i].clone_flag)
