@@ -56,31 +56,41 @@ __returns_twice pid_t lxc_raw_clone(unsigned long flags)
 		 * boolean flag whether this is the child or the parent in %o1.
 		 * Inline assembly is needed to get the flag returned in %o1.
 		 */
-		int child_pid, in_child, ret;
+		register long g1 asm("g1") = __NR_clone;
+		register long o0 asm("o0") = flags | SIGCHLD;
+		register long o1 asm("o1") = 0; /* is parent/child indicator */
+		long is_error, retval, in_child;
+		pid_t child_pid;
 
-                asm volatile("mov %3, %%g1\n\t"
-                             "mov %4, %%o0\n\t"
-                             "mov 0 , %%o1\n\t"
+		asm volatile(
 #if defined(__arch64__)
-                             "t 0x6d\n\t"
+		    "t 0x6d\n\t" /* 64-bit trap */
 #else
-                             "t 0x10\n\t"
+		    "t 0x10\n\t" /* 32-bit trap */
 #endif
-                             "addx %%g0, 0, %2\n\t"
-                             "mov %%o1, %0\n\t"
-                             "mov %%o0, %1" :
-                             "=r"(in_child), "=r"(child_pid), "=r"(ret) :
-                             "i"(__NR_clone), "r"(flags | SIGCHLD) :
-                             "%o1", "%o0", "%g1", "cc" );
+		    /*
+		     * catch errors: On sparc, the carry bit (csr) in the
+		     * processor status register (psr) is used instead of a
+		     * full register.
+		     */
+		    "addx %%g0, 0, %g1"
+		    : "=r"(g1), "=r"(o0), "=r"(o1) /* outputs */
+		    : "r"(g1), "r"(o0), "r"(o1)    /* inputs */
+		    : "%cc");		           /* clobbers */
 
-		if (ret) {
-			errno = child_pid;
+		is_error = g1;
+		retval = o0;
+		in_child = o1;
+
+		if (is_error) {
+			errno = retval;
 			return -1;
 		}
 
 		if (in_child)
 			return 0;
 
+		child_pid = retval;
 		return child_pid;
 	}
 #elif defined(__ia64__)
