@@ -1412,7 +1412,7 @@ int lxc_attach(const char *name, const char *lxcpath,
 	payload.exec_function = exec_function;
 	payload.exec_payload = exec_payload;
 
-	pid = lxc_raw_clone(CLONE_PARENT);
+	pid = lxc_raw_clone(CLONE_PARENT, NULL);
 	if (pid < 0) {
 		SYSERROR("Failed to clone attached process");
 		shutdown(ipc_sockets[1], SHUT_RDWR);
