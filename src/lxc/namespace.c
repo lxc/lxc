@@ -54,7 +54,7 @@ static int do_clone(void *arg)
 }
 
 #define __LXC_STACK_SIZE 4096
-pid_t lxc_clone(int (*fn)(void *), void *arg, int flags)
+pid_t lxc_clone(int (*fn)(void *), void *arg, int flags, int *pidfd)
 {
 	size_t stack_size;
 	pid_t ret;
@@ -66,9 +66,9 @@ pid_t lxc_clone(int (*fn)(void *), void *arg, int flags)
 	stack_size = __LXC_STACK_SIZE;
 
 #ifdef __ia64__
-	ret = __clone2(do_clone, stack, stack_size, flags | SIGCHLD, &clone_arg);
+	ret = __clone2(do_clone, stack, stack_size, flags | SIGCHLD, &clone_arg, pidfd);
 #else
-	ret = clone(do_clone, stack + stack_size, flags | SIGCHLD, &clone_arg);
+	ret = clone(do_clone, stack + stack_size, flags | SIGCHLD, &clone_arg, pidfd);
 #endif
 	if (ret < 0)
 		SYSERROR("Failed to clone (%#x)", flags);
