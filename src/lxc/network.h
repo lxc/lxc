@@ -122,6 +122,7 @@ struct ifla_ipvlan {
  */
 struct ifla_phys {
 	int ifindex;
+	int mtu;
 };
 
 union netdev_p {
