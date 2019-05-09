@@ -42,25 +42,10 @@
 
 lxc_log_define(namespace, lxc);
 
-struct clone_arg {
-	int (*fn)(void *);
-	void *arg;
-};
-
-static int do_clone(void *arg)
-{
-	struct clone_arg *clone_arg = arg;
-	return clone_arg->fn(clone_arg->arg);
-}
-
 #define __LXC_STACK_SIZE 4096
 pid_t lxc_clone(int (*fn)(void *), void *arg, int flags, int *pidfd)
 {
 	pid_t ret;
-	struct clone_arg clone_arg = {
-	    .fn = fn,
-	    .arg = arg,
-	};
 	void *stack;
 
 	stack = malloc(__LXC_STACK_SIZE);
@@ -70,9 +55,9 @@ pid_t lxc_clone(int (*fn)(void *), void *arg, int flags, int *pidfd)
 	}
 
 #ifdef __ia64__
-	ret = __clone2(fn, stack, __LXC_STACK_SIZE, flags | SIGCHLD, &clone_arg, pidfd);
+	ret = __clone2(fn, stack, __LXC_STACK_SIZE, flags | SIGCHLD, arg, pidfd);
 #else
-	ret = clone(fn, stack + __LXC_STACK_SIZE, flags | SIGCHLD, &clone_arg, pidfd);
+	ret = clone(fn, stack + __LXC_STACK_SIZE, flags | SIGCHLD, arg, pidfd);
 #endif
 	if (ret < 0)
 		SYSERROR("Failed to clone (%#x)", flags);
