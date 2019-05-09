@@ -30,6 +30,11 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+/* clone */
+#ifndef CLONE_PIDFD
+#define CLONE_PIDFD 0x00001000
+#endif
+
 /*
  * lxc_raw_clone() - create a new process
  *
@@ -57,7 +62,7 @@
  * - must call lxc_raw_getpid():
  *   The child must use lxc_raw_getpid() to retrieve its pid.
  */
-extern pid_t lxc_raw_clone(unsigned long flags);
+extern pid_t lxc_raw_clone(unsigned long flags, int *pidfd);
 
 /*
  * lxc_raw_clone_cb() - create a new process
@@ -70,7 +75,8 @@ extern pid_t lxc_raw_clone(unsigned long flags);
  * All other comments that apply to lxc_raw_clone() apply to lxc_raw_clone_cb()
  * as well.
  */
-extern pid_t lxc_raw_clone_cb(int (*fn)(void *), void *args, unsigned long flags);
+extern pid_t lxc_raw_clone_cb(int (*fn)(void *), void *args,
+			      unsigned long flags, int *pidfd);
 
 extern int lxc_raw_execveat(int dirfd, const char *pathname, char *const argv[],
 			    char *const envp[], int flags);

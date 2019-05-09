@@ -33,7 +33,7 @@ int lxc_raw_execveat(int dirfd, const char *pathname, char *const argv[],
  * The nice thing about this is that we get fork() behavior. That is
  * lxc_raw_clone() returns 0 in the child and the child pid in the parent.
  */
-__returns_twice pid_t lxc_raw_clone(unsigned long flags)
+__returns_twice pid_t lxc_raw_clone(unsigned long flags, int *pidfd)
 {
 	/*
 	 * These flags don't interest at all so we don't jump through any hoops
@@ -48,7 +48,7 @@ __returns_twice pid_t lxc_raw_clone(unsigned long flags)
 	/* On s390/s390x and cris the order of the first and second arguments
 	 * of the system call is reversed.
 	 */
-	return syscall(__NR_clone, NULL, flags | SIGCHLD);
+	return syscall(__NR_clone, NULL, flags | SIGCHLD, pidfd);
 #elif defined(__sparc__) && defined(__arch64__)
 	{
 		/*
@@ -59,6 +59,7 @@ __returns_twice pid_t lxc_raw_clone(unsigned long flags)
 		register long g1 asm("g1") = __NR_clone;
 		register long o0 asm("o0") = flags | SIGCHLD;
 		register long o1 asm("o1") = 0; /* is parent/child indicator */
+		register long o2 asm("o2") = (unsigned long)pidfd;
 		long is_error, retval, in_child;
 		pid_t child_pid;
 
@@ -74,9 +75,9 @@ __returns_twice pid_t lxc_raw_clone(unsigned long flags)
 		     * full register.
 		     */
 		    "addx %%g0, 0, %g1"
-		    : "=r"(g1), "=r"(o0), "=r"(o1) /* outputs */
-		    : "r"(g1), "r"(o0), "r"(o1)    /* inputs */
-		    : "%cc");		           /* clobbers */
+		    : "=r"(g1), "=r"(o0), "=r"(o1), "=r"(o2) /* outputs */
+		    : "r"(g1), "r"(o0), "r"(o1), "r"(o2)     /* inputs */
+		    : "%cc");				     /* clobbers */
 
 		is_error = g1;
 		retval = o0;
@@ -95,17 +96,18 @@ __returns_twice pid_t lxc_raw_clone(unsigned long flags)
 	}
 #elif defined(__ia64__)
 	/* On ia64 the stack and stack size are passed as separate arguments. */
-	return syscall(__NR_clone, flags | SIGCHLD, NULL, prctl_arg(0));
+	return syscall(__NR_clone, flags | SIGCHLD, NULL, prctl_arg(0), pidfd);
 #else
-	return syscall(__NR_clone, flags | SIGCHLD, NULL);
+	return syscall(__NR_clone, flags | SIGCHLD, NULL, pidfd);
 #endif
 }
 
-pid_t lxc_raw_clone_cb(int (*fn)(void *), void *args, unsigned long flags)
+pid_t lxc_raw_clone_cb(int (*fn)(void *), void *args, unsigned long flags,
+		       int *pidfd)
 {
 	pid_t pid;
 
-	pid = lxc_raw_clone(flags);
+	pid = lxc_raw_clone(flags, pidfd);
 	if (pid < 0)
 		return -1;
 

@@ -4337,7 +4337,7 @@ int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	d.p[1] = p[1];
 
 	/* Clone child in new user namespace. */
-	pid = lxc_raw_clone_cb(run_userns_fn, &d, CLONE_NEWUSER);
+	pid = lxc_raw_clone_cb(run_userns_fn, &d, CLONE_NEWUSER, NULL);
 	if (pid < 0) {
 		ERROR("Failed to clone process in new user namespace");
 		goto on_error;

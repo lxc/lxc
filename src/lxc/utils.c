@@ -1609,7 +1609,7 @@ int run_command_internal(char *buf, size_t buf_size, int (*child_fn)(void *), vo
 		return -1;
 	}
 
-	child = lxc_raw_clone(0);
+	child = lxc_raw_clone(0, NULL);
 	if (child < 0) {
 		close(pipefd[0]);
 		close(pipefd[1]);
