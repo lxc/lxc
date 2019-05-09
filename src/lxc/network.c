@@ -355,7 +355,7 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 
 static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
-	int err;
+	int err, mtu_orig = 0;
 	unsigned int mtu = 0;
 
 	if (netdev->link[0] == '\0') {
@@ -380,6 +380,15 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 	 * namespace.
 	 */
 	netdev->priv.phys_attr.ifindex = netdev->ifindex;
+
+	/* Get original device MTU setting and store for restoration after container shutdown. */
+	mtu_orig = netdev_get_mtu(netdev->ifindex);
+	if (mtu_orig < 0) {
+		SYSERROR("Failed to get original mtu for interface \"%s\"", netdev->link);
+		return minus_one_set_errno(-mtu_orig);
+	}
+
+	netdev->priv.phys_attr.mtu = mtu_orig;
 
 	if (netdev->mtu) {
 		err = lxc_safe_uint(netdev->mtu, &mtu);
@@ -2626,11 +2635,22 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 				WARN("Failed to rename interface with index %d "
 				     "from \"%s\" to its initial name \"%s\"",
 				     netdev->ifindex, netdev->name, netdev->link);
-			else
+			else {
 				TRACE("Renamed interface with index %d from "
 				      "\"%s\" to its initial name \"%s\"",
 				      netdev->ifindex, netdev->name,
 				      netdev->link);
+
+				/* Restore original MTU */
+				ret = lxc_netdev_set_mtu(netdev->link, netdev->priv.phys_attr.mtu);
+				if (ret < 0) {
+					WARN("Failed to set interface \"%s\" to its initial mtu \"%d\"",
+						netdev->link, netdev->priv.phys_attr.mtu);
+				} else {
+					TRACE("Restored interface \"%s\" to its initial mtu \"%d\"",
+						netdev->link, netdev->priv.phys_attr.mtu);
+				}
+			}
 			goto clear_ifindices;
 		}
 

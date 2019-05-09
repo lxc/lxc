@@ -114,6 +114,7 @@ struct ifla_macvlan {
  */
 struct ifla_phys {
 	int ifindex;
+	int mtu;
 };
 
 union netdev_p {
