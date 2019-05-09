@@ -91,3 +91,8 @@ This introduces the ability to specify `lxc.net.[i].ipv4.gateway` and/or
 `lxc.net.[i].ipv6.gateway` with a value of `dev` which will cause the default gateway
 inside the container to be created as a device route without destination gateway IP needed.
 This is primarily intended for use with layer 3 networking devices, such as IPVLAN.
+
+## network\_phys\_macvlan\_mtu
+
+This introduces the ability to specify a custom MTU for `phys` and `macvlan` devices using the
+`lxc.net.[i].mtu` property.
