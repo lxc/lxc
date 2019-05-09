@@ -1735,7 +1735,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		pid_t attacher_pid;
 
 		attacher_pid = lxc_clone(do_share_ns, handler,
-					 CLONE_VFORK | CLONE_VM | CLONE_FILES);
+					 CLONE_VFORK | CLONE_VM | CLONE_FILES, NULL);
 		if (attacher_pid < 0) {
 			SYSERROR(LXC_CLONE_ERROR);
 			goto out_delete_net;

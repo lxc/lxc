@@ -133,7 +133,7 @@ int clone(int (*fn)(void *), void *child_stack,
  * - should call lxc_raw_getpid():
  *   The child should use lxc_raw_getpid() to retrieve its pid.
  */
-extern pid_t lxc_clone(int (*fn)(void *), void *arg, int flags);
+extern pid_t lxc_clone(int (*fn)(void *), void *arg, int flags, int *pidfd);
 
 extern int lxc_namespace_2_cloneflag(const char *namespace);
 extern int lxc_namespace_2_ns_idx(const char *namespace);
