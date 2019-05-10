@@ -185,7 +185,7 @@ configure_busybox()
 
   # copy busybox in the rootfs
   if ! cp "${BUSYBOX_EXE}" "${rootfs}/bin"; then
-    echo "ERROR: Failed to copy busybox binary"
+    echo "ERROR: Failed to copy busybox binary" 1>&2
     return 1
   fi
 
@@ -287,7 +287,7 @@ eval set -- "$options"
 while true
 do
   case "$1" in
-    -h|--help)    usage && exit 1;;
+    -h|--help)    usage && exit 0;;
     -n|--name)    name=$2; shift 2;;
     -p|--path)    path=$2; shift 2;;
     --rootfs)     rootfs=$2; shift 2;;
@@ -307,7 +307,7 @@ fi
 # Make sure busybox is present
 BUSYBOX_EXE=`which busybox`
 if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to find busybox binary"
+    echo "ERROR: Failed to find busybox binary" 1>&2
     exit 1
 fi
 
@@ -322,21 +322,21 @@ if [ -z "$rootfs" ]; then
 fi
 
 if ! install_busybox "${rootfs}" "${name}"; then
-  echo "ERROR: Failed to install rootfs"
+  echo "ERROR: Failed to install rootfs" 1>&2
   exit 1
 fi
 
 if ! configure_busybox "${rootfs}"; then
-  echo "ERROR: Failed to configure busybox"
+  echo "ERROR: Failed to configure busybox" 1>&2
   exit 1
 fi
 
 if ! copy_configuration "${path}" "${rootfs}" "${name}"; then
-  echo "ERROR: Failed to write config file"
+  echo "ERROR: Failed to write config file" 1>&2
   exit 1
 fi
 
 if ! remap_userns "${path}"; then
-  echo "ERROR: Failed to change idmappings"
+  echo "ERROR: Failed to change idmappings" 1>&2
   exit 1
 fi
