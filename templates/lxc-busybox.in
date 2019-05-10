@@ -279,13 +279,13 @@ LXC internal arguments:
 
 BUSYBOX template specific arguments:
 
-  [ --bbpath <path> ]: busybox pathname (default: ${BUSYBOX_EXE})
+  [ --busybox-path <path> ]: busybox pathname (default: ${BUSYBOX_EXE})
 
 EOF
   return 0
 }
 
-if ! options=$(getopt -o hp:n: -l help,rootfs:,path:,name:,mapped-uid:,mapped-gid:,bbpath: -- "$@"); then
+if ! options=$(getopt -o hp:n: -l help,rootfs:,path:,name:,mapped-uid:,mapped-gid:,busybox-path: -- "$@"); then
   usage
   exit 1
 fi
@@ -300,7 +300,7 @@ do
     --rootfs)     rootfs=$2; shift 2;;
     --mapped-uid) LXC_MAPPED_UID=$2; shift 2;;
     --mapped-gid) LXC_MAPPED_GID=$2; shift 2;;
-    --bbpath) BUSYBOX_EXE=$2; shift 2;;
+    --busybox-path) BUSYBOX_EXE=$2; shift 2;;
     --)           shift 1; break ;;
     *)            break ;;
   esac
