@@ -5249,6 +5249,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 {
 	struct lxc_container *c;
 	size_t len;
+	int rc;
 
 	if (!name)
 		return NULL;
@@ -5302,10 +5303,26 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 		goto err;
 	}
 
-	if (ongoing_create(c) == 2) {
+	rc = ongoing_create(c);
+	switch(rc) {
+	// Uncompleted container creation
+	case 2:
 		ERROR("Failed to complete container creation for %s", c->name);
 		container_destroy(c, NULL);
 		lxcapi_clear_config(c);
+		break;
+	// Container creation is on tracks
+	case 1:
+		goto err;
+		break;
+	// Error
+	case -1:
+		// No display if privilege problem
+		if (EACCES != errno && EPERM != errno) {
+			ERROR("Failed checking for incomplete container %s creation", c->name);
+		}
+		goto err;
+		break;
 	}
 
 	c->daemonize = true;
