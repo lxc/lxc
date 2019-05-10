@@ -23,7 +23,7 @@
 LXC_MAPPED_UID=
 LXC_MAPPED_GID=
 
-BUSYBOX_EXE=
+BUSYBOX_EXE=`which busybox`
 
 # Make sure the usual locations are in PATH
 export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
@@ -266,19 +266,26 @@ usage() {
 LXC busybox image builder
 
 Special arguments:
-[ -h | --help ]: Print this help message and exit.
 
-LXC internal arguments (do not pass manually!):
-[ --name <name> ]: The container name
-[ --path <path> ]: The path to the container
-[ --rootfs <rootfs> ]: The path to the container's rootfs
-[ --mapped-uid <map> ]: A uid map (user namespaces)
-[ --mapped-gid <map> ]: A gid map (user namespaces)
+  [ -h | --help ]: Print this help message and exit.
+
+LXC internal arguments:
+
+  [ --name <name> ]: The container name
+  [ --path <path> ]: The path to the container
+  [ --rootfs <rootfs> ]: The path to the container's rootfs (default: config or <path>/rootfs)
+  [ --mapped-uid <map> ]: A uid map (user namespaces)
+  [ --mapped-gid <map> ]: A gid map (user namespaces)
+
+BUSYBOX template specific arguments:
+
+  [ --bbpath <path> ]: busybox pathname (default: ${BUSYBOX_EXE})
+
 EOF
   return 0
 }
 
-if ! options=$(getopt -o hp:n: -l help,rootfs:,path:,name:,mapped-uid:,mapped-gid: -- "$@"); then
+if ! options=$(getopt -o hp:n: -l help,rootfs:,path:,name:,mapped-uid:,mapped-gid:,bbpath: -- "$@"); then
   usage
   exit 1
 fi
@@ -293,21 +300,25 @@ do
     --rootfs)     rootfs=$2; shift 2;;
     --mapped-uid) LXC_MAPPED_UID=$2; shift 2;;
     --mapped-gid) LXC_MAPPED_GID=$2; shift 2;;
+    --bbpath) BUSYBOX_EXE=$2; shift 2;;
     --)           shift 1; break ;;
     *)            break ;;
   esac
 done
 
 # Check that we have all variables we need
-if [ -z "${name}" ] || [ -z "${path}" ] || [ -z "${rootfs}" ]; then
-    echo "ERROR: Please pass the name, path, and rootfs for the container" 1>&2
+if [ -z "${name}" ] || [ -z "${path}" ]; then
+    echo "ERROR: Please pass the name and path for the container" 1>&2
     exit 1
 fi
 
 # Make sure busybox is present
-BUSYBOX_EXE=`which busybox`
-if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to find busybox binary" 1>&2
+if [ -z "${BUSYBOX_EXE}" ]; then
+    echo "ERROR: Please pass a pathname for busybox binary" 1>&2
+    exit 1
+fi
+if [ ! -x "${BUSYBOX_EXE}" ]; then
+    echo "ERROR: Failed to find busybox binary (${BUSYBOX_EXE})" 1>&2
     exit 1
 fi
 
