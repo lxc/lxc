@@ -132,7 +132,8 @@ static bool config_file_exists(const char *lxcpath, const char *cname)
 	return file_exists(fname);
 }
 
-/* A few functions to help detect when a container creation failed. If a
+/*
+ * A few functions to help detect when a container creation failed. If a
  * container creation was killed partway through, then trying to actually start
  * that container could harm the host. We detect this by creating a 'partial'
  * file under the container directory, and keeping an advisory lock. When
@@ -140,30 +141,39 @@ static bool config_file_exists(const char *lxcpath, const char *cname)
  * start a container, if we find that file, without a flock, we remove the
  * container.
  */
+enum {
+	LXC_CREATE_FAILED = -1,
+	LXC_CREATE_SUCCESS = 0,
+	LXC_CREATE_ONGOING = 1,
+	LXC_CREATE_INCOMPLETE = 2,
+};
+
 static int ongoing_create(struct lxc_container *c)
 {
+	__do_close_prot_errno int fd = -EBADF;
 	__do_free char *path = NULL;
-	int fd, ret;
-	size_t len;
 	struct flock lk = {0};
+	int ret;
+	size_t len;
 
 	len = strlen(c->config_path) + strlen(c->name) + 10;
 	path = must_realloc(NULL, len);
 	ret = snprintf(path, len, "%s/%s/partial", c->config_path, c->name);
 	if (ret < 0 || (size_t)ret >= len)
-		return -1;
+		return LXC_CREATE_FAILED;
 
 	fd = open(path, O_RDWR | O_CLOEXEC);
 	if (fd < 0) {
 		if (errno != ENOENT)
-			return -1;
+			return LXC_CREATE_FAILED;
 
-		return 0;
+		return LXC_CREATE_SUCCESS;
 	}
 
 	lk.l_type = F_WRLCK;
 	lk.l_whence = SEEK_SET;
-	/* F_OFD_GETLK requires that l_pid be set to 0 otherwise the kernel
+	/*
+	 * F_OFD_GETLK requires that l_pid be set to 0 otherwise the kernel
 	 * will EINVAL us.
 	 */
 	lk.l_pid = 0;
@@ -175,15 +185,13 @@ static int ongoing_create(struct lxc_container *c)
 			ret = 0;
 	}
 
-	close(fd);
-
 	/* F_OFD_GETLK will not send us back a pid so don't check it. */
 	if (ret == 0)
 		/* Create is still ongoing. */
-		return 1;
+		return LXC_CREATE_ONGOING;
 
 	/* Create completed but partial is still there. */
-	return 2;
+	return LXC_CREATE_INCOMPLETE;
 }
 
 static int create_partial(struct lxc_container *c)
@@ -869,13 +877,14 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		return false;
 
 	ret = ongoing_create(c);
-	if (ret < 0) {
+	switch (ret) {
+	case LXC_CREATE_FAILED:
 		ERROR("Failed checking for incomplete container creation");
 		return false;
-	} else if (ret == 1) {
+	case LXC_CREATE_ONGOING:
 		ERROR("Ongoing container creation detected");
 		return false;
-	} else if (ret == 2) {
+	case LXC_CREATE_INCOMPLETE:
 		ERROR("Failed to create container");
 		do_lxcapi_destroy(c);
 		return false;
@@ -4974,6 +4983,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 {
 	struct lxc_container *c;
 	size_t len;
+	int rc;
 
 	if (!name)
 		return NULL;
@@ -5027,10 +5037,24 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 		goto err;
 	}
 
-	if (ongoing_create(c) == 2) {
-		ERROR("Failed to complete container creation for %s", c->name);
+	rc = ongoing_create(c);
+	switch (rc) {
+	case LXC_CREATE_INCOMPLETE:
+		SYSERROR("Failed to complete container creation for %s", c->name);
 		container_destroy(c, NULL);
 		lxcapi_clear_config(c);
+		break;
+	case LXC_CREATE_ONGOING:
+		/* container creation going on */
+		break;
+	case LXC_CREATE_FAILED:
+		/* container creation failed */
+		if (errno != EACCES && errno != EPERM) {
+			/* insufficient privileges */
+			SYSERROR("Failed checking for incomplete container %s creation", c->name);
+			goto err;
+		}
+		break;
 	}
 
 	c->daemonize = true;
