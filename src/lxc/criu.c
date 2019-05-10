@@ -375,7 +375,7 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 	}
 
 	if (opts->user->verbose)
-		DECLARE_ARG("-vvvvvv");
+		DECLARE_ARG("-v4");
 
 	if (opts->user->action_script) {
 		DECLARE_ARG("--action-script");
