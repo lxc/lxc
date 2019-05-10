@@ -334,6 +334,7 @@ static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 {
 	char peerbuf[IFNAMSIZ], *peer;
 	int err;
+	unsigned int mtu = 0;
 
 	if (netdev->link[0] == '\0') {
 		ERROR("No link for macvlan network device specified");
@@ -361,6 +362,22 @@ static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 	if (!netdev->ifindex) {
 		ERROR("Failed to retrieve ifindex for \"%s\"", peer);
 		goto on_error;
+	}
+
+	if (netdev->mtu) {
+		err = lxc_safe_uint(netdev->mtu, &mtu);
+		if (err < 0) {
+			errno = -err;
+			SYSERROR("Failed to parse mtu \"%s\" for interface \"%s\"", netdev->mtu, peer);
+			goto on_error;
+		}
+
+		err = lxc_netdev_set_mtu(peer, mtu);
+		if (err < 0) {
+			errno = -err;
+			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"", netdev->mtu, peer);
+			goto on_error;
+		}
 	}
 
 	if (netdev->upscript) {
@@ -606,7 +623,7 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 		}
 	}
 
-	DEBUG("Instantiated vlan \"%s\" with ifindex is \"%d\" (vlan1000)",
+	DEBUG("Instantiated vlan \"%s\" with ifindex is \"%d\"",
 	      peer, netdev->ifindex);
 
 	return 0;
@@ -618,12 +635,8 @@ on_error:
 
 static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
-	int ret;
-	char *argv[] = {
-		"phys",
-		netdev->link,
-		NULL,
-	};
+	int err, mtu_orig = 0;
+	unsigned int mtu = 0;
 
 	if (netdev->link[0] == '\0') {
 		ERROR("No link for physical interface specified");
@@ -648,13 +661,47 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 	 */
 	netdev->priv.phys_attr.ifindex = netdev->ifindex;
 
-	if (!netdev->upscript)
-		return 0;
+	/* Get original device MTU setting and store for restoration after container shutdown. */
+	mtu_orig = netdev_get_mtu(netdev->ifindex);
+	if (mtu_orig < 0) {
+		SYSERROR("Failed to get original mtu for interface \"%s\"", netdev->link);
+		return minus_one_set_errno(-mtu_orig);
+	}
 
-	ret = run_script_argv(handler->name, handler->conf->hooks_version,
-			      "net", netdev->upscript, "up", argv);
-	if (ret < 0)
-		return -1;
+	netdev->priv.phys_attr.mtu = mtu_orig;
+
+	if (netdev->mtu) {
+		err = lxc_safe_uint(netdev->mtu, &mtu);
+		if (err < 0) {
+			errno = -err;
+			SYSERROR("Failed to parse mtu \"%s\" for interface \"%s\"", netdev->mtu, netdev->link);
+			return -1;
+		}
+
+		err = lxc_netdev_set_mtu(netdev->link, mtu);
+		if (err < 0) {
+			errno = -err;
+			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"", netdev->mtu, netdev->link);
+			return -1;
+		}
+	}
+
+	if (netdev->upscript) {
+		char *argv[] = {
+		    "phys",
+		    netdev->link,
+		    NULL,
+		};
+
+		err = run_script_argv(handler->name,
+				handler->conf->hooks_version, "net",
+				netdev->upscript, "up", argv);
+		if (err < 0) {
+			return -1;
+		}
+	}
+
+	DEBUG("Instantiated phys \"%s\" with ifindex is \"%d\"", netdev->link, netdev->ifindex);
 
 	return 0;
 }
@@ -3121,11 +3168,22 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 				WARN("Failed to rename interface with index %d "
 				     "from \"%s\" to its initial name \"%s\"",
 				     netdev->ifindex, netdev->name, netdev->link);
-			else
+			else {
 				TRACE("Renamed interface with index %d from "
 				      "\"%s\" to its initial name \"%s\"",
 				      netdev->ifindex, netdev->name,
 				      netdev->link);
+
+				/* Restore original MTU */
+				ret = lxc_netdev_set_mtu(netdev->link, netdev->priv.phys_attr.mtu);
+				if (ret < 0) {
+					WARN("Failed to set interface \"%s\" to its initial mtu \"%d\"",
+						netdev->link, netdev->priv.phys_attr.mtu);
+				} else {
+					TRACE("Restored interface \"%s\" to its initial mtu \"%d\"",
+						netdev->link, netdev->priv.phys_attr.mtu);
+				}
+			}
 			goto clear_ifindices;
 		}
 
