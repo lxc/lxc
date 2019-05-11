@@ -427,7 +427,7 @@ bool zfs_snapshot(struct lxc_conf *conf, struct lxc_storage *orig,
 	if (ret < 0 || ret >= PATH_MAX) {
 		ERROR("Failed to create string");
 		free(snapshot);
-		return -1;
+		return false;
 	}
 
 	cmd_args.dataset = lxc_storage_get_path(new->src, new->type);
