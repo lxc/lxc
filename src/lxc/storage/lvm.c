@@ -535,13 +535,13 @@ bool lvm_create_clone(struct lxc_conf *conf, struct lxc_storage *orig,
 		if (!newsize && blk_getsize(orig, &size) < 0) {
 			ERROR("Failed to detect size of logical volume \"%s\"",
 			      orig->src);
-			return -1;
+			return false;
 		}
 
 		/* detect filesystem */
 		if (detect_fs(orig, fstype, 100) < 0) {
 			INFO("Failed to detect filesystem type for \"%s\"", orig->src);
-			return -1;
+			return false;
 		}
 	} else if (!newsize) {
 			size = DEFAULT_FS_SIZE;
@@ -553,7 +553,7 @@ bool lvm_create_clone(struct lxc_conf *conf, struct lxc_storage *orig,
 	ret = do_lvm_create(src, size, thinpool);
 	if (ret < 0) {
 		ERROR("Failed to create lvm storage volume \"%s\"", src);
-		return -1;
+		return false;
 	}
 
 	cmd_args[0] = fstype;
@@ -563,7 +563,7 @@ bool lvm_create_clone(struct lxc_conf *conf, struct lxc_storage *orig,
 	if (ret < 0) {
 		ERROR("Failed to create new filesystem \"%s\" for lvm storage "
 		      "volume \"%s\": %s", fstype, src, cmd_output);
-		return -1;
+		return false;
 	}
 
 	data.orig = orig;
