@@ -1273,7 +1273,6 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 		if (!cgroup_ops) {
 			ERROR("failed to cgroup_init()");
 			_exit(EXIT_FAILURE);
-			return -1;
 		}
 
 		os.pipefd = criuout[1];
