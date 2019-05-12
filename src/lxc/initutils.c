@@ -242,7 +242,7 @@ int setproctitle(char *title)
 {
 	__do_fclose FILE *f = NULL;
 	int i, fd, len;
-	char *buf_ptr;
+	char *buf_ptr, *tmp_proctitle;
 	char buf[LXC_LINELEN];
 	int ret = 0;
 	ssize_t bytes_read = 0;
@@ -305,9 +305,11 @@ int setproctitle(char *title)
 	 * want to have room for it. */
 	len = strlen(title) + 1;
 
-	proctitle = realloc(proctitle, len);
-	if (!proctitle)
+	tmp_proctitle = realloc(proctitle, len);
+	if (!tmp_proctitle)
 		return -1;
+
+	proctitle = tmp_proctitle;
 
 	arg_start = (unsigned long)proctitle;
 	arg_end = arg_start + len;
