@@ -418,7 +418,7 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 
 #if HAVE_M_FORMAT
 #define SYSTRACE(format, ...)                              \
-		TRACE("%m - " format, ##__VA_ARGS__);
+		TRACE("%m - " format, ##__VA_ARGS__)
 #else
 #define SYSTRACE(format, ...)                              \
 	do {                                               \
