@@ -416,53 +416,94 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 	LXC_FATAL(&locinfo, format, ##__VA_ARGS__);			\
 } while (0)
 
+#if HAVE_M_FORMAT
+#define SYSTRACE(format, ...)                              \
+		TRACE("%m - " format, ##__VA_ARGS__);
+#else
 #define SYSTRACE(format, ...)                              \
 	do {                                               \
 		lxc_log_strerror_r;                        \
 		TRACE("%s - " format, ptr, ##__VA_ARGS__); \
 	} while (0)
+#endif
 
+#if HAVE_M_FORMAT
+#define SYSDEBUG(format, ...)                              \
+                DEBUG("%m - " format, ##__VA_ARGS__)
+#else
 #define SYSDEBUG(format, ...)                              \
 	do {                                               \
 		lxc_log_strerror_r;                        \
 		DEBUG("%s - " format, ptr, ##__VA_ARGS__); \
 	} while (0)
+#endif
 
+
+#if HAVE_M_FORMAT
+#define SYSINFO(format, ...)                              \
+                INFO("%m - " format, ##__VA_ARGS__)
+#else
 #define SYSINFO(format, ...)                              \
 	do {                                              \
 		lxc_log_strerror_r;                       \
 		INFO("%s - " format, ptr, ##__VA_ARGS__); \
 	} while (0)
+#endif
 
+#if HAVE_M_FORMAT
+#define SYSNOTICE(format, ...)                              \
+		NOTICE("%m - " format, ##__VA_ARGS__)
+#else
 #define SYSNOTICE(format, ...)                              \
 	do {                                                \
 		lxc_log_strerror_r;                         \
 		NOTICE("%s - " format, ptr, ##__VA_ARGS__); \
 	} while (0)
+#endif
 
+#if HAVE_M_FORMAT
+#define SYSWARN(format, ...)                              \
+		WARN("%m - " format, ##__VA_ARGS__)
+#else
 #define SYSWARN(format, ...)                              \
 	do {                                              \
 		lxc_log_strerror_r;                       \
 		WARN("%s - " format, ptr, ##__VA_ARGS__); \
 	} while (0)
+#endif
 
+#if HAVE_M_FORMAT
+#define SYSERROR(format, ...)                              \
+		ERROR("%m - " format, ##__VA_ARGS__)
+#else
 #define SYSERROR(format, ...)                              \
 	do {                                               \
 		lxc_log_strerror_r;                        \
 		ERROR("%s - " format, ptr, ##__VA_ARGS__); \
 	} while (0)
+#endif
 
+#if HAVE_M_FORMAT
+#define CMD_SYSERROR(format, ...)                                    \
+		fprintf(stderr, "%m - " format, ##__VA_ARGS__)
+#else
 #define CMD_SYSERROR(format, ...)                                    \
 	do {                                                         \
 		lxc_log_strerror_r;                                  \
 		fprintf(stderr, "%s - " format, ptr, ##__VA_ARGS__); \
 	} while (0)
+#endif
 
+#if HAVE_M_FORMAT
+#define CMD_SYSINFO(format, ...)                            \
+		printf("%m - " format, ##__VA_ARGS__)
+#else
 #define CMD_SYSINFO(format, ...)                            \
 	do {                                                \
 		lxc_log_strerror_r;                         \
 		printf("%s - " format, ptr, ##__VA_ARGS__); \
 	} while (0)
+#endif
 
 extern int lxc_log_fd;
 
