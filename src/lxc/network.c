@@ -2505,6 +2505,8 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 				TRACE("Renamed interface with index %d to its "
 				      "initial name \"%s\"",
 				      netdev->ifindex, netdev->link);
+
+			ret = netdev_deconf[netdev->type](handler, netdev);
 			goto clear_ifindices;
 		}
 
@@ -2691,6 +2693,8 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 						netdev->link, netdev->priv.phys_attr.mtu);
 				}
 			}
+
+			ret = netdev_deconf[netdev->type](handler, netdev);
 			goto clear_ifindices;
 		}
 
