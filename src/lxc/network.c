@@ -883,6 +883,46 @@ static  instantiate_cb netdev_deconf[LXC_NET_MAXCONFTYPE + 1] = {
 	[LXC_NET_NONE]    = shutdown_none,
 };
 
+static int lxc_netdev_move_by_index_fd(int ifindex, int fd, const char *ifname)
+{
+	int err;
+	struct nl_handler nlh;
+	struct ifinfomsg *ifi;
+	struct nlmsg *nlmsg = NULL;
+
+	err = netlink_open(&nlh, NETLINK_ROUTE);
+	if (err)
+		return err;
+
+	err = -ENOMEM;
+	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
+	if (!nlmsg)
+		goto out;
+
+	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
+
+	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
+	if (!ifi)
+		goto out;
+	ifi->ifi_family = AF_UNSPEC;
+	ifi->ifi_index = ifindex;
+
+	if (nla_put_u32(nlmsg, IFLA_NET_NS_FD, fd))
+		goto out;
+
+	if (ifname != NULL) {
+		if (nla_put_string(nlmsg, IFLA_IFNAME, ifname))
+			goto out;
+	}
+
+	err = netlink_transaction(&nlh, nlmsg, nlmsg);
+out:
+	netlink_close(&nlh);
+	nlmsg_free(nlmsg);
+	return err;
+}
+
 int lxc_netdev_move_by_index(int ifindex, pid_t pid, const char *ifname)
 {
 	int err;
@@ -3306,7 +3346,7 @@ int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler)
 
 	TRACE("Moving physical network devices back to parent network namespace");
 
-	oldfd = lxc_preserve_ns(lxc_raw_getpid(), "net");
+	oldfd = lxc_preserve_ns(handler->monitor_pid, "net");
 	if (oldfd < 0) {
 		SYSERROR("Failed to preserve network namespace");
 		return -1;
@@ -3334,7 +3374,7 @@ int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler)
 			continue;
 		}
 
-		ret = lxc_netdev_move_by_name(ifname, 1, netdev->link);
+		ret = lxc_netdev_move_by_index_fd(netdev->ifindex, oldfd, netdev->link);
 		if (ret < 0)
 			WARN("Error moving network device \"%s\" back to "
 			     "network namespace", ifname);
