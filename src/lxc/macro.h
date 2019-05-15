@@ -261,6 +261,10 @@ extern int __build_bug_on_failed;
 #define IFLA_NET_NS_PID 19
 #endif
 
+#ifndef IFLA_NET_NS_FD
+#define IFLA_NET_NS_FD 28
+#endif
+
 #ifndef IFLA_INFO_KIND
 #define IFLA_INFO_KIND 1
 #endif
