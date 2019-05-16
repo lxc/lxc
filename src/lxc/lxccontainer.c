@@ -4023,7 +4023,7 @@ static int lxcapi_attach(struct lxc_container *c, lxc_attach_exec_t exec_functio
 
 	current_config = c->lxc_conf;
 
-	ret = lxc_attach(c->name, c->config_path, exec_function, exec_payload, options, attached_process);
+	ret = lxc_attach(c, exec_function, exec_payload, options, attached_process);
 	current_config = NULL;
 	return ret;
 }
@@ -4040,7 +4040,7 @@ static int do_lxcapi_attach_run_wait(struct lxc_container *c, lxc_attach_options
 	command.program = (char*)program;
 	command.argv = (char**)argv;
 
-	r = lxc_attach(c->name, c->config_path, lxc_attach_run_command, &command, options, &pid);
+	r = lxc_attach(c, lxc_attach_run_command, &command, options, &pid);
 	if (r < 0) {
 		ERROR("ups");
 		return r;
