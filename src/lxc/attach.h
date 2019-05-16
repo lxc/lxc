@@ -41,7 +41,7 @@ struct lxc_proc_context_info {
 	int ns_fd[LXC_NS_MAX];
 };
 
-extern int lxc_attach(const char *name, const char *lxcpath,
+extern int lxc_attach(struct lxc_container *container,
 		      lxc_attach_exec_t exec_function, void *exec_payload,
 		      lxc_attach_options_t *options, pid_t *attached_process);
 
