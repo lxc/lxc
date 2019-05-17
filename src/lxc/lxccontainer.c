@@ -4055,7 +4055,9 @@ static bool do_lxcapi_rename(struct lxc_container *c, const char *newname)
 
 WRAP_API_1(bool, lxcapi_rename, const char *)
 
-static int lxcapi_attach(struct lxc_container *c, lxc_attach_exec_t exec_function, void *exec_payload, lxc_attach_options_t *options, pid_t *attached_process)
+static int lxcapi_attach(struct lxc_container *c,
+			 lxc_attach_exec_t exec_function, void *exec_payload,
+			 lxc_attach_options_t *options, pid_t *attached_process)
 {
 	int ret;
 
@@ -4064,33 +4066,37 @@ static int lxcapi_attach(struct lxc_container *c, lxc_attach_exec_t exec_functio
 
 	current_config = c->lxc_conf;
 
-	ret = lxc_attach(c, exec_function, exec_payload, options, attached_process);
+	ret = lxc_attach(c, exec_function, exec_payload, options,
+			 attached_process);
 	current_config = NULL;
 	return ret;
 }
 
-static int do_lxcapi_attach_run_wait(struct lxc_container *c, lxc_attach_options_t *options, const char *program, const char * const argv[])
+static int do_lxcapi_attach_run_wait(struct lxc_container *c,
+				     lxc_attach_options_t *options,
+				     const char *program,
+				     const char *const argv[])
 {
 	lxc_attach_command_t command;
 	pid_t pid;
-	int r;
+	int ret;
 
 	if (!c)
 		return -1;
 
-	command.program = (char*)program;
-	command.argv = (char**)argv;
+	command.program = (char *)program;
+	command.argv = (char **)argv;
 
-	r = lxc_attach(c, lxc_attach_run_command, &command, options, &pid);
-	if (r < 0) {
-		ERROR("ups");
-		return r;
-	}
+	ret = lxc_attach(c, lxc_attach_run_command, &command, options, &pid);
+	if (ret < 0)
+		return ret;
 
 	return lxc_wait_for_pid_status(pid);
 }
 
-static int lxcapi_attach_run_wait(struct lxc_container *c, lxc_attach_options_t *options, const char *program, const char * const argv[])
+static int lxcapi_attach_run_wait(struct lxc_container *c,
+				  lxc_attach_options_t *options,
+				  const char *program, const char *const argv[])
 {
 	int ret;
 
