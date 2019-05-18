@@ -919,10 +919,6 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	INFO("Container \"%s\" is initialized", name);
 	return 0;
 
-out_destroy_cgroups:
-	handler->cgroup_ops->payload_destroy(handler->cgroup_ops, handler);
-	handler->cgroup_ops->monitor_destroy(handler->cgroup_ops, handler);
-
 out_delete_terminal:
 	lxc_terminal_delete(&handler->conf->console);
 
