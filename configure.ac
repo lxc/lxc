@@ -656,7 +656,7 @@ int main(void)
     return 1;
   }
 }],
-[fmt_m=yes], [fmt_m=no],, [fmt_m=no])
+[fmt_m=yes], [fmt_m=no], [fmt_m=no])
 if test "x$fmt_m" = "xyes"; then
 	AC_DEFINE([HAVE_M_FORMAT], 1, [Have %m format])
 	AC_MSG_RESULT([yes])
