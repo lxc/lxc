@@ -378,16 +378,18 @@ static ssize_t get_max_cpus(char *cpulist)
 }
 
 #define __ISOL_CPUS "/sys/devices/system/cpu/isolated"
+#define __OFFLINE_CPUS "/sys/devices/system/cpu/offline"
 static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 {
 	__do_free char *cpulist = NULL, *fpath = NULL, *isolcpus = NULL,
-		       *posscpus = NULL;
-	__do_free uint32_t *isolmask = NULL, *possmask = NULL;
+		       *offlinecpus = NULL, *posscpus = NULL;
+	__do_free uint32_t *isolmask = NULL, *offlinemask = NULL,
+			   *possmask = NULL;
 	int ret;
 	ssize_t i;
 	char oldv;
 	char *lastslash;
-	ssize_t maxisol = 0, maxposs = 0;
+	ssize_t maxisol = 0, maxoffline = 0, maxposs = 0;
 	bool bret = false, flipped_bit = false;
 
 	lastslash = strrchr(path, '/');
@@ -409,54 +411,50 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 	if (maxposs < 0 || maxposs >= INT_MAX - 1)
 		return false;
 
-	if (!file_exists(__ISOL_CPUS)) {
-		/* This system doesn't expose isolated cpus. */
-		DEBUG("The path \""__ISOL_CPUS"\" to read isolated cpus from does not exist");
-		/* No isolated cpus but we weren't already initialized by
-		 * someone. We should simply copy the parents cpuset.cpus
-		 * values.
-		 */
-		if (!am_initialized) {
-			DEBUG("Copying cpu settings of parent cgroup");
-			cpulist = posscpus;
-			goto copy_parent;
+	if (file_exists(__ISOL_CPUS)) {
+		isolcpus = read_file(__ISOL_CPUS);
+		if (!isolcpus) {
+			SYSERROR("Failed to read file \"%s\"", __ISOL_CPUS);
+			return false;
 		}
-		/* No isolated cpus but we were already initialized by someone.
-		 * Nothing more to do for us.
-		 */
-		return true;
-	}
 
-	isolcpus = read_file(__ISOL_CPUS);
-	if (!isolcpus) {
-		SYSERROR("Failed to read file \""__ISOL_CPUS"\"");
-		return false;
-	}
-	if (!isdigit(isolcpus[0])) {
-		TRACE("No isolated cpus detected");
-		/* No isolated cpus but we weren't already initialized by
-		 * someone. We should simply copy the parents cpuset.cpus
-		 * values.
-		 */
-		if (!am_initialized) {
-			DEBUG("Copying cpu settings of parent cgroup");
-			cpulist = posscpus;
-			goto copy_parent;
+		if (isdigit(isolcpus[0])) {
+			/* Get maximum number of cpus found in isolated cpuset. */
+			maxisol = get_max_cpus(isolcpus);
+			if (maxisol < 0 || maxisol >= INT_MAX - 1)
+				return false;
 		}
-		/* No isolated cpus but we were already initialized by someone.
-		 * Nothing more to do for us.
-		 */
-		return true;
+
+		if (maxposs < maxisol)
+			maxposs = maxisol;
+		maxposs++;
+	} else {
+		TRACE("The path \""__ISOL_CPUS"\" to read isolated cpus from does not exist");
 	}
 
-	/* Get maximum number of cpus found in isolated cpuset. */
-	maxisol = get_max_cpus(isolcpus);
-	if (maxisol < 0 || maxisol >= INT_MAX - 1)
-		return false;
+	if (file_exists(__OFFLINE_CPUS)) {
+		offlinecpus = read_file(__OFFLINE_CPUS);
+		if (!offlinecpus) {
+			SYSERROR("Failed to read file \"%s\"", __OFFLINE_CPUS);
+			return false;
+		}
 
-	if (maxposs < maxisol)
-		maxposs = maxisol;
-	maxposs++;
+		if (isdigit(offlinecpus[0])) {
+			/* Get maximum number of cpus found in offline cpuset. */
+			maxoffline = get_max_cpus(offlinecpus);
+			if (maxoffline < 0 || maxoffline >= INT_MAX - 1)
+				return false;
+		}
+
+		if (maxposs < maxoffline)
+			maxposs = maxoffline;
+		maxposs++;
+	} else {
+		TRACE("The path \""__OFFLINE_CPUS"\" to read offline cpus from does not exist");
+	}
+
+	if ((maxisol == 0) && (maxoffline == 0))
+		goto copy_parent;
 
 	possmask = lxc_cpumask(posscpus, maxposs);
 	if (!possmask) {
@@ -464,14 +462,26 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 		return false;
 	}
 
-	isolmask = lxc_cpumask(isolcpus, maxposs);
-	if (!isolmask) {
-		ERROR("Failed to create cpumask for isolated cpus");
-		return false;
+	if (maxisol > 0) {
+		isolmask = lxc_cpumask(isolcpus, maxposs);
+		if (!isolmask) {
+			ERROR("Failed to create cpumask for isolated cpus");
+			return false;
+		}
+	}
+
+	if (maxoffline > 0) {
+		offlinemask = lxc_cpumask(offlinecpus, maxposs);
+		if (!offlinemask) {
+			ERROR("Failed to create cpumask for offline cpus");
+			return false;
+		}
 	}
 
 	for (i = 0; i <= maxposs; i++) {
-		if (!is_set(i, isolmask) || !is_set(i, possmask))
+		if ((isolmask && !is_set(i, isolmask)) ||
+		    (offlinemask && !is_set(i, offlinemask)) ||
+		    !is_set(i, possmask))
 			continue;
 
 		flipped_bit = true;
@@ -479,10 +489,10 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 	}
 
 	if (!flipped_bit) {
-		DEBUG("No isolated cpus present in cpuset");
+		DEBUG("No isolated or offline cpus present in cpuset");
 		return true;
 	}
-	DEBUG("Removed isolated cpus from cpuset");
+	DEBUG("Removed isolated or offline cpus from cpuset");
 
 	cpulist = lxc_cpumask_to_cpulist(possmask, maxposs);
 	if (!cpulist) {
@@ -491,14 +501,19 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 	}
 
 copy_parent:
-	*lastslash = oldv;
-	fpath = must_make_path(path, "cpuset.cpus", NULL);
-	ret = lxc_write_to_file(fpath, cpulist, strlen(cpulist), false, 0666);
-	if (cpulist == posscpus)
-		cpulist = NULL;
-	if (ret < 0) {
-		SYSERROR("Failed to write cpu list to \"%s\"", fpath);
-		return false;
+	if (!am_initialized) {
+		*lastslash = oldv;
+		fpath = must_make_path(path, "cpuset.cpus", NULL);
+		ret = lxc_write_to_file(fpath, cpulist, strlen(cpulist), false,
+					0666);
+		if (cpulist == posscpus)
+			cpulist = NULL;
+		if (ret < 0) {
+			SYSERROR("Failed to write cpu list to \"%s\"", fpath);
+			return false;
+		}
+
+		TRACE("Copied cpu settings of parent cgroup");
 	}
 
 	return true;
