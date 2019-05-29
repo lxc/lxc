@@ -42,7 +42,7 @@
 
 lxc_log_define(namespace, lxc);
 
-#define __LXC_STACK_SIZE 4096
+#define __LXC_STACK_SIZE (8 * 1024 * 1024)
 pid_t lxc_clone(int (*fn)(void *), void *arg, int flags, int *pidfd)
 {
 	pid_t ret;
