@@ -42,6 +42,10 @@
 
 lxc_log_define(namespace, lxc);
 
+/*
+ * Let's use the "standard stack limit" (i.e. glibc thread size default) for
+ * stack sizes: 8MB.
+ */
 #define __LXC_STACK_SIZE (8 * 1024 * 1024)
 pid_t lxc_clone(int (*fn)(void *), void *arg, int flags, int *pidfd)
 {
