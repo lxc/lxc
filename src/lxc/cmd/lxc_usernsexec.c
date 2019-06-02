@@ -441,8 +441,10 @@ int main(int argc, char *argv[])
 	close(pipe_fds2[0]);
 
 	ret = lxc_read_nointr(pipe_fds1[0], buf, 1);
-	if (ret <= 0)
+	if (ret <= 0) {
 		CMD_SYSERROR("Failed to read from pipe file descriptor %d", pipe_fds1[0]);
+		_exit(EXIT_FAILURE);
+	}
 
 	buf[0] = '1';
 
