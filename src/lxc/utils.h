@@ -26,6 +26,10 @@
 /* Properly support loop devices on 32bit systems. */
 #define _FILE_OFFSET_BITS 64
 
+#ifndef MAX_GRBUF_SIZE
+#define MAX_GRBUF_SIZE 65536
+#endif
+
 #include <errno.h>
 #include <linux/loop.h>
 #include <linux/types.h>
