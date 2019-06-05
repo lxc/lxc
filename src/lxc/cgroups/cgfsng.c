@@ -453,8 +453,10 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 		TRACE("The path \""__OFFLINE_CPUS"\" to read offline cpus from does not exist");
 	}
 
-	if ((maxisol == 0) && (maxoffline == 0))
+	if ((maxisol == 0) && (maxoffline == 0)) {
+		cpulist = move_ptr(posscpus);
 		goto copy_parent;
+	}
 
 	possmask = lxc_cpumask(posscpus, maxposs);
 	if (!possmask) {
@@ -506,8 +508,6 @@ copy_parent:
 		fpath = must_make_path(path, "cpuset.cpus", NULL);
 		ret = lxc_write_to_file(fpath, cpulist, strlen(cpulist), false,
 					0666);
-		if (cpulist == posscpus)
-			cpulist = NULL;
 		if (ret < 0) {
 			SYSERROR("Failed to write cpu list to \"%s\"", fpath);
 			return false;
