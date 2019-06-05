@@ -99,6 +99,9 @@ ${rootfs}/usr/lib64"
     mknod -m 666 "${rootfs}/dev/zero" c 1 5      || res=1
     mknod -m 666 "${rootfs}/dev/urandom" c 1 9   || res=1
   fi
+  
+  # make /tmp accessible to any user (with sticky bit)
+  chmod 1777 "${rootfs}/tmp" || return 1
 
   # root user defined
   cat <<EOF >> "${rootfs}/etc/passwd"
