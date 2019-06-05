@@ -79,6 +79,7 @@
 #include "syscall_wrappers.h"
 #include "terminal.h"
 #include "utils.h"
+#include "uuid.h"
 
 #ifdef MAJOR_IN_MKDEV
 #include <sys/mkdev.h>
@@ -3434,6 +3435,56 @@ static bool execveat_supported(void)
 	return true;
 }
 
+static int lxc_setup_boot_id(void)
+{
+	int ret;
+	const char *boot_id_path = "/proc/sys/kernel/random/boot_id";
+	const char *mock_boot_id_path = "/dev/.lxc-boot-id";
+	lxc_id128_t n;
+
+	if (access(boot_id_path, F_OK))
+		return 0;
+
+	memset(&n, 0, sizeof(n));
+	if (lxc_id128_randomize(&n)) {
+		SYSERROR("Failed to generate random data for uuid");
+		return -1;
+	}
+
+	ret = lxc_id128_write(mock_boot_id_path, n);
+	if (ret < 0) {
+		SYSERROR("Failed to write uuid to %s", mock_boot_id_path);
+		return -1;
+	}
+
+	ret = chmod(mock_boot_id_path, 0444);
+	if (ret < 0) {
+		SYSERROR("Failed to chown %s", mock_boot_id_path);
+		(void)unlink(mock_boot_id_path);
+		return -1;
+	}
+
+	ret = mount(mock_boot_id_path, boot_id_path, NULL, MS_BIND, NULL);
+	if (ret < 0) {
+		SYSERROR("Failed to mount %s to %s", mock_boot_id_path,
+			 boot_id_path);
+		(void)unlink(mock_boot_id_path);
+		return -1;
+	}
+
+	ret = mount(NULL, boot_id_path, NULL,
+		    (MS_BIND | MS_REMOUNT | MS_RDONLY | MS_NOSUID | MS_NOEXEC |
+		     MS_NODEV),
+		    NULL);
+	if (ret < 0) {
+		SYSERROR("Failed to remount %s read-only", boot_id_path);
+		(void)unlink(mock_boot_id_path);
+		return -1;
+	}
+
+	return 0;
+}
+
 int lxc_setup(struct lxc_handler *handler)
 {
 	int ret;
@@ -3590,6 +3641,10 @@ int lxc_setup(struct lxc_handler *handler)
 		ERROR("Failed to pivot root into rootfs");
 		return -1;
 	}
+
+	/* Setting the boot-id is best-effort for now. */
+	if (lxc_conf->autodev > 0)
+		(void)lxc_setup_boot_id();
 
 	ret = lxc_setup_devpts(lxc_conf);
 	if (ret < 0) {

@@ -44,7 +44,8 @@ noinst_HEADERS = attach.h \
 		 ../tests/lxctest.h \
 		 tools/arguments.h \
 		 storage/storage_utils.h \
-		 utils.h
+		 utils.h \
+		 uuid.h
 
 if IS_BIONIC
 noinst_HEADERS += ../include/fexecve.h \
@@ -141,6 +142,7 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    syscall_wrappers.h \
 		    terminal.c \
 		    utils.c utils.h \
+		    uuid.c uuid.h \
 		    version.h \
 		    $(LSM_SOURCES)
 
