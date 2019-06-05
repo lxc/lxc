@@ -2008,7 +2008,7 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	ret = lxc_init(name, handler);
 	if (ret < 0) {
 		ERROR("Failed to initialize container \"%s\"", name);
-		return -1;
+		goto out_fini_nonet;
 	}
 	handler->ops = ops;
 	handler->data = data;
