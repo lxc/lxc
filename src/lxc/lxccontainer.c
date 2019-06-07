@@ -1320,12 +1320,13 @@ static struct lxc_storage *do_storage_create(struct lxc_container *c,
 	return bdev;
 }
 
-static char *lxcbasename(char *path)
+/* Strip path and return name of file for argv[0] passed to execvp */
+static char *lxctemplatefilename(char *tpath)
 {
 	char *p;
 
-	p = path + strlen(path) - 1;
-	while (*p != '/' && p > path)
+	p = tpath + strlen(tpath) - 1;
+	while ( (p-1) >= tpath && *(p-1) != '/')
 		p--;
 
 	return p;
@@ -1451,7 +1452,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 		newargv = malloc(nargs * sizeof(*newargv));
 		if (!newargv)
 			_exit(EXIT_FAILURE);
-		newargv[0] = lxcbasename(tpath);
+		newargv[0] = lxctemplatefilename(tpath);
 
 		/* --path */
 		len = strlen(c->config_path) + strlen(c->name) + strlen("--path=") + 2;
