@@ -93,7 +93,7 @@ static const char *get_action_name(uint32_t action)
 	case SCMP_ACT_ERRNO(0):
 		return "errno";
 #if HAVE_DECL_SECCOMP_NOTIF_GET_FD
-	case SCMP_ACT_USER_NOTIF:
+	case SCMP_ACT_NOTIFY:
 		return "notify";
 #endif
 	}
@@ -127,7 +127,7 @@ static uint32_t get_v2_default_action(char *line)
 		ret_action = SCMP_ACT_TRAP;
 #if HAVE_DECL_SECCOMP_NOTIF_GET_FD
 	} else if (strncmp(line, "notify", 6) == 0) {
-		ret_action = SCMP_ACT_USER_NOTIF;
+		ret_action = SCMP_ACT_NOTIFY;
 #endif
 	} else if (line[0]) {
 		ERROR("Unrecognized seccomp action \"%s\"", line);
@@ -942,7 +942,7 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 		}
 
 #if HAVE_DECL_SECCOMP_NOTIF_GET_FD
-		if ((rule.action == SCMP_ACT_USER_NOTIF) &&
+		if ((rule.action == SCMP_ACT_NOTIFY) &&
 		    !conf->seccomp.notifier.wants_supervision) {
 			ret = seccomp_attr_set(conf->seccomp.seccomp_ctx,
 					       SCMP_FLTATR_NEW_LISTENER, 1);
