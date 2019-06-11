@@ -1286,7 +1286,7 @@ void lxc_seccomp_free(struct lxc_seccomp *seccomp)
 #if HAVE_DECL_SECCOMP_NOTIF_GET_FD
 	close_prot_errno_disarm(seccomp->notifier.notify_fd);
 	close_prot_errno_disarm(seccomp->notifier.proxy_fd);
-	seccomp_notif_free(seccomp->notifier.req_buf, seccomp->notifier.rsp_buf);
+	seccomp_notify_free(seccomp->notifier.req_buf, seccomp->notifier.rsp_buf);
 	seccomp->notifier.req_buf = NULL;
 	seccomp->notifier.rsp_buf = NULL;
 #endif
