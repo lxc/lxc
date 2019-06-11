@@ -1258,7 +1258,7 @@ int lxc_seccomp_load(struct lxc_conf *conf)
 
 #if HAVE_DECL_SECCOMP_NOTIF_GET_FD
 	if (conf->seccomp.notifier.wants_supervision) {
-		ret = seccomp_notif_get_fd(conf->seccomp.seccomp_ctx);
+		ret = seccomp_notify_fd(conf->seccomp.seccomp_ctx);
 		if (ret < 0) {
 			errno = -ret;
 			return -1;
