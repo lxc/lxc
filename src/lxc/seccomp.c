@@ -945,12 +945,12 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 		if ((rule.action == SCMP_ACT_NOTIFY) &&
 		    !conf->seccomp.notifier.wants_supervision) {
 			ret = seccomp_attr_set(conf->seccomp.seccomp_ctx,
-					       SCMP_FLTATR_NEW_LISTENER, 1);
+					       SECCOMP_FILTER_FLAG_NEW_LISTENER, 1);
 			if (ret)
 				goto bad_rule;
 
 			conf->seccomp.notifier.wants_supervision = true;
-			TRACE("Set SCMP_FLTATR_NEW_LISTENER attribute");
+			TRACE("Set SECCOMP_FILTER_FLAG_NEW_LISTENER attribute");
 		}
 #endif
 
