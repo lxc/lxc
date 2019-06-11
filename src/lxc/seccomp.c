@@ -1372,7 +1372,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	 * Make sure that the fd for /proc/<pid>/mem we just opened still
 	 * refers to the correct process's memory.
 	 */
-	ret = seccomp_notif_id_valid(fd, req->id);
+	ret = seccomp_notify_id_valid(fd, req->id);
 	if (ret < 0) {
 		(void)seccomp_notify_default_answer(fd, req, resp, hdlr);
 		SYSERROR("Invalid seccomp notify request id");
