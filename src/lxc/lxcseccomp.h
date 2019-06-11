@@ -45,6 +45,10 @@ struct lxc_conf;
 struct lxc_epoll_descr;
 struct lxc_handler;
 
+#ifndef SECCOMP_FILTER_FLAG_NEW_LISTENER
+#define SECCOMP_FILTER_FLAG_NEW_LISTENER (1UL << 3)
+#endif
+
 #ifdef HAVE_SECCOMP
 
 
