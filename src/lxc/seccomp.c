@@ -1459,7 +1459,7 @@ int lxc_seccomp_setup_proxy(struct lxc_seccomp *seccomp,
 			return -1;
 		}
 
-		ret = seccomp_notif_alloc(&seccomp->notifier.req_buf,
+		ret = seccomp_notify_alloc(&seccomp->notifier.req_buf,
 					  &seccomp->notifier.rsp_buf);
 		if (ret) {
 			ERROR("Failed to allocate seccomp notify request and response buffers");
