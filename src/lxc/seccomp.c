@@ -1354,7 +1354,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 		return minus_one_set_errno(EINVAL);
 	}
 
-	ret = seccomp_notif_receive(fd, req);
+	ret = seccomp_notify_receive(fd, req);
 	if (ret) {
 		SYSERROR("Failed to read seccomp notification");
 		goto out;
