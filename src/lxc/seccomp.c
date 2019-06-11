@@ -92,8 +92,8 @@ static const char *get_action_name(uint32_t action)
 		return "trap";
 	case SCMP_ACT_ERRNO(0):
 		return "errno";
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
-	case SCMP_ACT_USER_NOTIF:
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
+	case SCMP_ACT_NOTIFY:
 		return "notify";
 #endif
 	}
@@ -125,9 +125,9 @@ static uint32_t get_v2_default_action(char *line)
 		ret_action = SCMP_ACT_ALLOW;
 	} else if (strncmp(line, "trap", 4) == 0) {
 		ret_action = SCMP_ACT_TRAP;
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	} else if (strncmp(line, "notify", 6) == 0) {
-		ret_action = SCMP_ACT_USER_NOTIF;
+		ret_action = SCMP_ACT_NOTIFY;
 #endif
 	} else if (line[0]) {
 		ERROR("Unrecognized seccomp action \"%s\"", line);
@@ -941,8 +941,8 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 			goto bad_rule;
 		}
 
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
-		if ((rule.action == SCMP_ACT_USER_NOTIF) &&
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
+		if ((rule.action == SCMP_ACT_NOTIFY) &&
 		    !conf->seccomp.notifier.wants_supervision) {
 			ret = seccomp_attr_set(conf->seccomp.seccomp_ctx,
 					       SCMP_FLTATR_NEW_LISTENER, 1);
@@ -1256,9 +1256,9 @@ int lxc_seccomp_load(struct lxc_conf *conf)
 	}
 #endif
 
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	if (conf->seccomp.notifier.wants_supervision) {
-		ret = seccomp_notif_get_fd(conf->seccomp.seccomp_ctx);
+		ret = seccomp_notify_fd(conf->seccomp.seccomp_ctx);
 		if (ret < 0) {
 			errno = -ret;
 			return -1;
@@ -1283,16 +1283,16 @@ void lxc_seccomp_free(struct lxc_seccomp *seccomp)
 	}
 #endif
 
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	close_prot_errno_disarm(seccomp->notifier.notify_fd);
 	close_prot_errno_disarm(seccomp->notifier.proxy_fd);
-	seccomp_notif_free(seccomp->notifier.req_buf, seccomp->notifier.rsp_buf);
+	seccomp_notify_free(seccomp->notifier.req_buf, seccomp->notifier.rsp_buf);
 	seccomp->notifier.req_buf = NULL;
 	seccomp->notifier.rsp_buf = NULL;
 #endif
 }
 
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 static int seccomp_notify_reconnect(struct lxc_handler *handler)
 {
 	__do_close_prot_errno int notify_fd = -EBADF;
@@ -1315,7 +1315,7 @@ static int seccomp_notify_reconnect(struct lxc_handler *handler)
 }
 #endif
 
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 static int seccomp_notify_default_answer(int fd, struct seccomp_notif *req,
 					 struct seccomp_notif_resp *resp,
 					 struct lxc_handler *handler)
@@ -1323,7 +1323,7 @@ static int seccomp_notify_default_answer(int fd, struct seccomp_notif *req,
 	resp->id = req->id;
 	resp->error = -ENOSYS;
 
-	if (seccomp_notif_send_resp(fd, resp))
+	if (seccomp_notify_respond(fd, resp))
 		SYSERROR("Failed to send default message to seccomp");
 
 	return seccomp_notify_reconnect(handler);
@@ -1334,7 +1334,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 			   struct lxc_epoll_descr *descr)
 {
 
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	__do_close_prot_errno int fd_mem = -EBADF;
 	int reconnect_count, ret;
 	ssize_t bytes;
@@ -1354,7 +1354,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 		return minus_one_set_errno(EINVAL);
 	}
 
-	ret = seccomp_notif_receive(fd, req);
+	ret = seccomp_notify_receive(fd, req);
 	if (ret) {
 		SYSERROR("Failed to read seccomp notification");
 		goto out;
@@ -1372,7 +1372,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	 * Make sure that the fd for /proc/<pid>/mem we just opened still
 	 * refers to the correct process's memory.
 	 */
-	ret = seccomp_notif_id_valid(fd, req->id);
+	ret = seccomp_notify_id_valid(fd, req->id);
 	if (ret < 0) {
 		(void)seccomp_notify_default_answer(fd, req, resp, hdlr);
 		SYSERROR("Invalid seccomp notify request id");
@@ -1407,7 +1407,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	} while (reconnect_count++);
 
 	memcpy(resp, &msg.resp, sizeof(*resp));
-	ret = seccomp_notif_send_resp(fd, resp);
+	ret = seccomp_notify_respond(fd, resp);
 	if (ret)
 		SYSERROR("Failed to send seccomp notification");
 
@@ -1425,7 +1425,7 @@ void seccomp_conf_init(struct lxc_conf *conf)
 	conf->seccomp.allow_nesting = 0;
 	memset(&conf->seccomp.seccomp_ctx, 0, sizeof(conf->seccomp.seccomp_ctx));
 #endif /* HAVE_SCMP_FILTER_CTX */
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	conf->seccomp.notifier.wants_supervision = false;
 	conf->seccomp.notifier.notify_fd = -EBADF;
 	conf->seccomp.notifier.proxy_fd = -EBADF;
@@ -1440,7 +1440,7 @@ int lxc_seccomp_setup_proxy(struct lxc_seccomp *seccomp,
 			    struct lxc_epoll_descr *descr,
 			    struct lxc_handler *handler)
 {
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	if (seccomp->notifier.wants_supervision &&
 	    seccomp->notifier.proxy_addr.sun_path[1] != '\0') {
 		__do_close_prot_errno int notify_fd = -EBADF;
@@ -1459,7 +1459,7 @@ int lxc_seccomp_setup_proxy(struct lxc_seccomp *seccomp,
 			return -1;
 		}
 
-		ret = seccomp_notif_alloc(&seccomp->notifier.req_buf,
+		ret = seccomp_notify_alloc(&seccomp->notifier.req_buf,
 					  &seccomp->notifier.rsp_buf);
 		if (ret) {
 			ERROR("Failed to allocate seccomp notify request and response buffers");
@@ -1484,7 +1484,7 @@ int lxc_seccomp_setup_proxy(struct lxc_seccomp *seccomp,
 
 int lxc_seccomp_send_notifier_fd(struct lxc_seccomp *seccomp, int socket_fd)
 {
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	if (seccomp->notifier.wants_supervision) {
 		if (lxc_abstract_unix_send_fds(socket_fd,
 					       &seccomp->notifier.notify_fd, 1,
@@ -1498,7 +1498,7 @@ int lxc_seccomp_send_notifier_fd(struct lxc_seccomp *seccomp, int socket_fd)
 
 int lxc_seccomp_recv_notifier_fd(struct lxc_seccomp *seccomp, int socket_fd)
 {
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	if (seccomp->notifier.wants_supervision) {
 		int ret;
 
@@ -1516,7 +1516,7 @@ int lxc_seccomp_add_notifier(const char *name, const char *lxcpath,
 			     struct lxc_seccomp *seccomp)
 {
 
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	if (seccomp->notifier.wants_supervision) {
 		int ret;
 

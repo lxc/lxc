@@ -32,7 +32,7 @@
 #include <linux/seccomp.h>
 #include <seccomp.h>
 #endif
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 #include <sys/socket.h>
 #include <sys/un.h>
 #endif
@@ -48,7 +48,7 @@ struct lxc_handler;
 #ifdef HAVE_SECCOMP
 
 
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 
 struct seccomp_notify_proxy_msg {
 	uint32_t version;
@@ -69,7 +69,7 @@ struct seccomp_notify {
 
 #define HAVE_SECCOMP_NOTIFY 1
 
-#endif /* HAVE_DECL_SECCOMP_NOTIF_GET_FD */
+#endif /* HAVE_DECL_SECCOMP_NOTIFY_FD */
 
 struct lxc_seccomp {
 	char *seccomp;
@@ -78,9 +78,9 @@ struct lxc_seccomp {
 	scmp_filter_ctx seccomp_ctx;
 #endif /* HAVE_SCMP_FILTER_CTX */
 
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	struct seccomp_notify notifier;
-#endif /* HAVE_DECL_SECCOMP_NOTIF_GET_FD */
+#endif /* HAVE_DECL_SECCOMP_NOTIFY_FD */
 };
 
 extern int lxc_seccomp_load(struct lxc_conf *conf);
@@ -100,7 +100,7 @@ extern int lxc_seccomp_add_notifier(const char *name, const char *lxcpath,
 				    struct lxc_seccomp *seccomp);
 static inline int lxc_seccomp_get_notify_fd(struct lxc_seccomp *seccomp)
 {
-#if HAVE_DECL_SECCOMP_NOTIF_GET_FD
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
 	return seccomp->notifier.notify_fd;
 #else
 	errno = ENOSYS;
