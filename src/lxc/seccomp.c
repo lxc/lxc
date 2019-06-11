@@ -1323,7 +1323,7 @@ static int seccomp_notify_default_answer(int fd, struct seccomp_notif *req,
 	resp->id = req->id;
 	resp->error = -ENOSYS;
 
-	if (seccomp_notif_send_resp(fd, resp))
+	if (seccomp_notify_respond(fd, resp))
 		SYSERROR("Failed to send default message to seccomp");
 
 	return seccomp_notify_reconnect(handler);
@@ -1407,7 +1407,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	} while (reconnect_count++);
 
 	memcpy(resp, &msg.resp, sizeof(*resp));
-	ret = seccomp_notif_send_resp(fd, resp);
+	ret = seccomp_notify_respond(fd, resp);
 	if (ret)
 		SYSERROR("Failed to send seccomp notification");
 
