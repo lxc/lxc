@@ -3700,29 +3700,14 @@ int run_lxc_hooks(const char *name, char *hookname, struct lxc_conf *conf,
 		  char *argv[])
 {
 	struct lxc_list *it;
-	int which = -1;
+	int which;
 
-	if (strcmp(hookname, "pre-start") == 0)
-		which = LXCHOOK_PRESTART;
-	else if (strcmp(hookname, "start-host") == 0)
-		which = LXCHOOK_START_HOST;
-	else if (strcmp(hookname, "pre-mount") == 0)
-		which = LXCHOOK_PREMOUNT;
-	else if (strcmp(hookname, "mount") == 0)
-		which = LXCHOOK_MOUNT;
-	else if (strcmp(hookname, "autodev") == 0)
-		which = LXCHOOK_AUTODEV;
-	else if (strcmp(hookname, "start") == 0)
-		which = LXCHOOK_START;
-	else if (strcmp(hookname, "stop") == 0)
-		which = LXCHOOK_STOP;
-	else if (strcmp(hookname, "post-stop") == 0)
-		which = LXCHOOK_POSTSTOP;
-	else if (strcmp(hookname, "clone") == 0)
-		which = LXCHOOK_CLONE;
-	else if (strcmp(hookname, "destroy") == 0)
-		which = LXCHOOK_DESTROY;
-	else
+	for (which = 0; which < NUM_LXC_HOOKS; which ++) {
+		if (strcmp(hookname, lxchook_names[which]) == 0)
+			break;
+	}
+
+	if (which >= NUM_LXC_HOOKS)
 		return -1;
 
 	lxc_list_for_each (it, &conf->hooks[which]) {
