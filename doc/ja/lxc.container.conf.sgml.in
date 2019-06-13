@@ -2175,6 +2175,16 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
                 -->
               ふたつのプロセスが異なるユーザ名前空間に存在し、そのうちのひとつが他のネットワーク名前空間を継承したい場合、通常はユーザ名前空間も同様に継承する必要があることに注意が必要です。
             </para>
+
+            <para>
+	      <!--
+            Note that without careful additional configuration of an LSM,
+            sharing user+pid namespaces with a task may allow that task to
+            escalate privileges to that of the task calling liblxc.
+		-->
+	      LSM で慎重に設定を追加しないで、タスクでユーザ + PID 名前空間を共有すると、そのタスクは liblxc を呼び出したタスクの権限に昇格できることに注意が必要です。
+            </para>
+
           </listitem>
         </varlistentry>
       </variablelist>
