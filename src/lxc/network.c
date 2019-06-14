@@ -858,8 +858,10 @@ int lxc_netdev_rename_by_index(int ifindex, const char *newname)
 		return err;
 
 	len = strlen(newname);
-	if (len == 1 || len >= IFNAMSIZ)
+	if (len == 1 || len >= IFNAMSIZ) {
+		err = -EINVAL;
 		goto out;
+	}
 
 	err = -ENOMEM;
 	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
