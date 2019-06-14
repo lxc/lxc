@@ -207,8 +207,8 @@ if ENABLE_APPARMOR
 AM_CFLAGS += -DHAVE_APPARMOR
 endif
 
-if ENABLE_GNUTLS
-AM_CFLAGS += -DHAVE_LIBGNUTLS
+if ENABLE_OPENSSL
+AM_CFLAGS += -DHAVE_OPENSSL
 endif
 
 if ENABLE_SECCOMP
@@ -240,7 +240,7 @@ liblxc_la_LDFLAGS = -pthread \
 		    -version-info @LXC_ABI_MAJOR@
 
 liblxc_la_LIBADD = $(CAP_LIBS) \
-		   $(GNUTLS_LIBS) \
+		   $(OPENSSL_LIBS) \
 		   $(SELINUX_LIBS) \
 		   $(SECCOMP_LIBS)
 
@@ -298,7 +298,7 @@ endif
 
 LDADD = liblxc.la \
 	@CAP_LIBS@ \
-	@GNUTLS_LIBS@ \
+	@OPENSSL_LIBS@ \
 	@SECCOMP_LIBS@ \
 	@SELINUX_LIBS@
 

@@ -76,6 +76,10 @@
 #include "utils.h"
 #include "version.h"
 
+#if HAVE_OPENSSL
+#include <openssl/evp.h>
+#endif
+
 /* major()/minor() */
 #ifdef MAJOR_IN_MKDEV
 #include <sys/mkdev.h>
@@ -1632,9 +1636,9 @@ static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 	char *contents;
 	FILE *f;
 	int ret = -1;
-#if HAVE_LIBGNUTLS
-	int i;
-	unsigned char md_value[SHA_DIGEST_LENGTH];
+#if HAVE_OPENSSL
+	int i, md_len = 0;
+	unsigned char md_value[EVP_MAX_MD_SIZE];
 	char *tpath;
 #endif
 
@@ -1675,14 +1679,14 @@ static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 	if (ret < 0)
 		goto out_free_contents;
 
-#if HAVE_LIBGNUTLS
+#if HAVE_OPENSSL
 	tpath = get_template_path(t);
 	if (!tpath) {
 		ERROR("Invalid template \"%s\" specified", t);
 		goto out_free_contents;
 	}
 
-	ret = sha1sum_file(tpath, md_value);
+	ret = sha1sum_file(tpath, md_value, &md_len);
 	if (ret < 0) {
 		ERROR("Failed to get sha1sum of %s", tpath);
 		free(tpath);
@@ -1708,9 +1712,9 @@ static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 		fprintf(f, "\n");
 	}
 
-#if HAVE_LIBGNUTLS
+#if HAVE_OPENSSL
 	fprintf(f, "# Template script checksum (SHA-1): ");
-	for (i=0; i<SHA_DIGEST_LENGTH; i++)
+	for (i=0; i<md_len; i++)
 		fprintf(f, "%02x", md_value[i]);
 	fprintf(f, "\n");
 #endif
