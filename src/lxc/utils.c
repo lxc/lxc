@@ -330,17 +330,30 @@ again:
 	return status;
 }
 
-#if HAVE_LIBGNUTLS
-#include <gnutls/gnutls.h>
-#include <gnutls/crypto.h>
+#ifdef HAVE_OPENSSL
+#include <openssl/evp.h>
 
-__attribute__((constructor))
-static void gnutls_lxc_init(void)
+static int do_sha1_hash(const char *buf, int buflen, unsigned char *md_value, int *md_len)
 {
-	gnutls_global_init();
+	EVP_MD_CTX *mdctx;
+	const EVP_MD *md;
+
+	md = EVP_get_digestbyname("sha1");
+	if(!md) {
+		printf("Unknown message digest: sha1\n");
+		return -1;
+	}
+
+	mdctx = EVP_MD_CTX_new();
+	EVP_DigestInit_ex(mdctx, md, NULL);
+	EVP_DigestUpdate(mdctx, buf, buflen);
+	EVP_DigestFinal_ex(mdctx, md_value, md_len);
+	EVP_MD_CTX_free(mdctx);
+
+	return 0;
 }
 
-int sha1sum_file(char *fnam, unsigned char *digest)
+int sha1sum_file(char *fnam, unsigned char *digest, int *md_len)
 {
 	char *buf;
 	int ret;
@@ -394,7 +407,7 @@ int sha1sum_file(char *fnam, unsigned char *digest)
 	}
 
 	buf[flen] = '\0';
-	ret = gnutls_hash_fast(GNUTLS_DIG_SHA1, buf, flen, (void *)digest);
+	ret = do_sha1_hash(buf, flen, (void *)digest, md_len);
 	free(buf);
 	return ret;
 }

@@ -257,6 +257,8 @@ fi
 
 AM_CONDITIONAL([ENABLE_API_DOCS], [test "x$HAVE_DOXYGEN" != "x"])
 
+AC_CONFIG_MACRO_DIRS([config])
+
 # Apparmor
 AC_ARG_ENABLE([apparmor],
 	[AC_HELP_STRING([--enable-apparmor], [enable apparmor support [default=auto]])],
@@ -267,20 +269,21 @@ if test "$enable_apparmor" = "auto" ; then
 fi
 AM_CONDITIONAL([ENABLE_APPARMOR], [test "x$enable_apparmor" = "xyes"])
 
-# GnuTLS
-AC_ARG_ENABLE([gnutls],
-	[AC_HELP_STRING([--enable-gnutls], [enable GnuTLS support [default=auto]])],
-	[], [enable_gnutls=auto])
+# OpenSSL
+# libssl-dev
+AC_ARG_ENABLE([openssl],
+	[AC_HELP_STRING([--enable-openssl], [enable OpenSSL support [default=auto]])],
+	[], [enable_openssl=auto])
 
-if test "$enable_gnutls" = "auto" ; then
-	AC_CHECK_LIB([gnutls], [gnutls_hash_fast], [enable_gnutls=yes], [enable_gnutls=no])
+if test "$enable_openssl" = "auto" ; then
+	AC_CHECK_LIB([ssl], [OPENSSL_init_ssl], [enable_openssl=yes], [enable_openssl=no])
+
 fi
-AM_CONDITIONAL([ENABLE_GNUTLS], [test "x$enable_gnutls" = "xyes"])
+AM_CONDITIONAL([ENABLE_OPENSSL], [test "x$enable_openssl" = "xyes"])
 
-AM_COND_IF([ENABLE_GNUTLS],
-	[AC_CHECK_HEADER([gnutls/gnutls.h],[],[AC_MSG_ERROR([You must install the GnuTLS development package in order to compile lxc])])
-	AC_CHECK_LIB([gnutls], [gnutls_hash_fast],[true],[AC_MSG_ERROR([You must install the GnuTLS development package in order to compile lxc])])
-	AC_SUBST([GNUTLS_LIBS], [-lgnutls])])
+AM_COND_IF([ENABLE_OPENSSL],
+	[AC_CHECK_HEADER([openssl/engine.h],[],[AC_MSG_ERROR([You must install the OpenSSL development package in order to compile lxc])])
+	AC_SUBST([OPENSSL_LIBS], '-lssl -lcrypto')])
 
 # SELinux
 AC_ARG_ENABLE([selinux],
@@ -1014,7 +1017,7 @@ Environment:
  - distribution: $with_distro
  - init script type(s): $init_script
  - rpath: $enable_rpath
- - GnuTLS: $enable_gnutls
+ - OpenSSL: $enable_openssl
  - Bash integration: $enable_bash
 
 Security features:
