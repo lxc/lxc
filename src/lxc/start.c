@@ -1826,23 +1826,24 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (!cgroup_ops->chown(cgroup_ops, handler->conf))
 		goto out_delete_net;
 
-	/* Now we're ready to preserve the network namespace */
-	ret = lxc_try_preserve_ns(handler->pid, "net");
-	if (ret < 0) {
-		if (ret != -EOPNOTSUPP) {
-			SYSERROR("Failed to preserve net namespace");
-			goto out_delete_net;
+	/* If not done yet, we're now ready to preserve the network namespace */
+	if (handler->nsfd[LXC_NS_NET] < 0) {
+		ret = lxc_try_preserve_ns(handler->pid, "net");
+		if (ret < 0) {
+			if (ret != -EOPNOTSUPP) {
+				SYSERROR("Failed to preserve net namespace");
+				goto out_delete_net;
+			}
+		} else {
+			handler->nsfd[LXC_NS_NET] = ret;
+			DEBUG("Preserved net namespace via fd %d", ret);
 		}
-	} else {
-		handler->nsfd[LXC_NS_NET] = ret;
-		DEBUG("Preserved net namespace via fd %d", ret);
-
-		ret = lxc_netns_set_nsid(handler->nsfd[LXC_NS_NET]);
-		if (ret < 0)
-			SYSWARN("Failed to allocate new network namespace id");
-		else
-			TRACE("Allocated new network namespace id");
 	}
+	ret = lxc_netns_set_nsid(handler->nsfd[LXC_NS_NET]);
+	if (ret < 0)
+		SYSWARN("Failed to allocate new network namespace id");
+	else
+		TRACE("Allocated new network namespace id");
 
 	/* Create the network configuration. */
 	if (handler->ns_clone_flags & CLONE_NEWNET) {
