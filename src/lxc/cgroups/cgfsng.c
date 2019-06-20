@@ -400,6 +400,7 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 	oldv = *lastslash;
 	*lastslash = '\0';
 	fpath = must_make_path(path, "cpuset.cpus", NULL);
+	*lastslash = oldv;
 	posscpus = read_file(fpath);
 	if (!posscpus) {
 		SYSERROR("Failed to read file \"%s\"", fpath);
@@ -504,7 +505,6 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 
 copy_parent:
 	if (!am_initialized) {
-		*lastslash = oldv;
 		fpath = must_make_path(path, "cpuset.cpus", NULL);
 		ret = lxc_write_to_file(fpath, cpulist, strlen(cpulist), false,
 					0666);
