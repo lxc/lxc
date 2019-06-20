@@ -4228,7 +4228,7 @@ static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 
 	strftime(buffer, 25, "%Y:%m:%d %H:%M:%S", &tm_info);
 
-	char *dfnam = alloca(strlen(snappath) + 1 + strlen(newname) + 1 + strlen(LXC_TIMESTAMP_FNAME) + 1);
+	dfnam = alloca(strlen(snappath) + 1 + strlen(newname) + 1 + strlen(LXC_TIMESTAMP_FNAME) + 1);
 	sprintf(dfnam, "%s/%s/%s", snappath, newname, LXC_TIMESTAMP_FNAME);
 	f = fopen(dfnam, "w");
 	if (!f) {
