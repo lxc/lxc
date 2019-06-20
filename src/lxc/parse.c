@@ -98,7 +98,7 @@ int lxc_file_for_each_line_mmap(const char *file, lxc_file_cb callback, void *da
 	fd = open(file, O_RDONLY | O_CLOEXEC);
 	if (fd < 0) {
 		SYSERROR("Failed to open file \"%s\"", file);
-		return -1;
+		goto on_error;
 	}
 
 	/* sendfile() handles up to 2GB. No config file should be that big. */
