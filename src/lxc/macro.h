@@ -418,4 +418,11 @@ enum {
 		-1;                    \
 	})
 
+/* Container's specific file/directory names */
+#define LXC_CONFIG_FNAME      "config"
+#define LXC_PARTIAL_FNAME     "partial"
+#define LXC_ROOTFS_DNAME      "rootfs"
+#define LXC_TIMESTAMP_FNAME   "ts"
+#define LXC_COMMENT_FNAME     "comment"
+
 #endif /* __LXC_MACRO_H */
