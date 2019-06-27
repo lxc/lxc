@@ -1765,7 +1765,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 					const char *root, int type)
 {
 	__do_free char *tmpfspath = NULL;
-	int i, ret;
+	int ret;
 	bool has_cgns = false, retval = false, wants_force_mount = false;
 
 	if (!ops->hierarchies)
@@ -1803,7 +1803,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	if (ret < 0)
 		goto on_error;
 
-	for (i = 0; ops->hierarchies[i]; i++) {
+	for (int i = 0; ops->hierarchies[i]; i++) {
 		__do_free char *controllerpath = NULL, *path2 = NULL;
 		struct hierarchy *h = ops->hierarchies[i];
 		char *controller = strrchr(h->mountpoint, '/');
