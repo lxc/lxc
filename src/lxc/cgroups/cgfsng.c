@@ -1715,10 +1715,10 @@ static int cg_legacy_mount_controllers(int type, struct hierarchy *h,
 static int __cg_mount_direct(int type, struct hierarchy *h,
 			     const char *controllerpath)
 {
-	 int ret;
 	 __do_free char *controllers = NULL;
 	 char *fstype = "cgroup2";
 	 unsigned long flags = 0;
+	 int ret;
 
 	 flags |= MS_NOSUID;
 	 flags |= MS_NOEXEC;
