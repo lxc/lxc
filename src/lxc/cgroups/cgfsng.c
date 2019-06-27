@@ -320,6 +320,7 @@ static char *lxc_cpumask_to_cpulist(uint32_t *bitarr, size_t nbits)
 {
 	int ret;
 	size_t i;
+	char *tmp = NULL;
 	char **cpulist = NULL;
 	char numstr[INTTYPE_TO_STRLEN(size_t)] = {0};
 
@@ -343,7 +344,10 @@ static char *lxc_cpumask_to_cpulist(uint32_t *bitarr, size_t nbits)
 	if (!cpulist)
 		return NULL;
 
-	return lxc_string_join(",", (const char **)cpulist, false);
+	tmp = lxc_string_join(",", (const char **)cpulist, false);
+	lxc_free_array((void **)cpulist, free);
+
+	return tmp;
 }
 
 static ssize_t get_max_cpus(char *cpulist)
