@@ -2396,13 +2396,10 @@ static bool __cg_unified_setup_limits(struct cgroup_ops *ops,
 }
 
 __cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
-					       struct lxc_conf *conf,
-					       bool do_devices)
+					     struct lxc_conf *conf,
+					     bool do_devices)
 {
-	bool bret;
-
-	bret = __cg_legacy_setup_limits(ops, &conf->cgroup, do_devices);
-	if (!bret)
+	if (!__cg_legacy_setup_limits(ops, &conf->cgroup, do_devices))
 		return false;
 
 	return __cg_unified_setup_limits(ops, &conf->cgroup2);
