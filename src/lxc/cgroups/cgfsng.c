@@ -1898,14 +1898,12 @@ static int recursive_count_nrtasks(char *dirname)
 __cgfsng_ops static int cgfsng_nrtasks(struct cgroup_ops *ops)
 {
 	__do_free char *path = NULL;
-	int count;
 
 	if (!ops->container_cgroup || !ops->hierarchies)
 		return -1;
 
 	path = must_make_path(ops->hierarchies[0]->container_full_path, NULL);
-	count = recursive_count_nrtasks(path);
-	return count;
+	return recursive_count_nrtasks(path);
 }
 
 /* Only root needs to escape to the cgroup of its init. */
