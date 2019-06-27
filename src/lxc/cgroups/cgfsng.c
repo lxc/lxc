@@ -2097,8 +2097,7 @@ __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops, const char *name,
 		return false;
 
 	for (i = 0; ops->hierarchies[i]; i++) {
-		__do_free char *path = NULL;
-		char *fullpath = NULL;
+		__do_free char *fullpath = NULL, *path = NULL;
 		struct hierarchy *h = ops->hierarchies[i];
 
 		if (h->version == CGROUP2_SUPER_MAGIC) {
