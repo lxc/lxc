@@ -1546,7 +1546,7 @@ static int chowmod(char *path, uid_t chown_uid, gid_t chown_gid,
  */
 static int chown_cgroup_wrapper(void *data)
 {
-	int i, ret;
+	int ret;
 	uid_t destuid;
 	struct generic_userns_exec_data *arg = data;
 	uid_t nsuid = (arg->conf->root_nsuid_map != NULL) ? 0 : arg->conf->init_uid;
@@ -1576,7 +1576,7 @@ static int chown_cgroup_wrapper(void *data)
 	if (destuid == LXC_INVALID_UID)
 		destuid = 0;
 
-	for (i = 0; arg->hierarchies[i]; i++) {
+	for (int i = 0; arg->hierarchies[i]; i++) {
 		__do_free char *fullpath = NULL;
 		char *path = arg->hierarchies[i]->container_full_path;
 
