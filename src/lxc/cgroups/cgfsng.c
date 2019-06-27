@@ -2086,7 +2086,7 @@ on_error:
 __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops, const char *name,
 					 const char *lxcpath, pid_t pid)
 {
-	int i, len, ret;
+	int len, ret;
 	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
 
 	if (!ops->hierarchies)
@@ -2096,7 +2096,7 @@ __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops, const char *name,
 	if (len < 0 || (size_t)len >= sizeof(pidstr))
 		return false;
 
-	for (i = 0; ops->hierarchies[i]; i++) {
+	for (int i = 0; ops->hierarchies[i]; i++) {
 		__do_free char *fullpath = NULL, *path = NULL;
 		struct hierarchy *h = ops->hierarchies[i];
 
