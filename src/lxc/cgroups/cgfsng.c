@@ -2411,15 +2411,13 @@ __cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
 static bool cgroup_use_wants_controllers(const struct cgroup_ops *ops,
 				       char **controllers)
 {
-	char **cur_ctrl, **cur_use;
-
 	if (!ops->cgroup_use)
 		return true;
 
-	for (cur_ctrl = controllers; cur_ctrl && *cur_ctrl; cur_ctrl++) {
+	for (char **cur_ctrl = controllers; cur_ctrl && *cur_ctrl; cur_ctrl++) {
 		bool found = false;
 
-		for (cur_use = ops->cgroup_use; cur_use && *cur_use; cur_use++) {
+		for (char **cur_use = ops->cgroup_use; cur_use && *cur_use; cur_use++) {
 			if (strcmp(*cur_use, *cur_ctrl) != 0)
 				continue;
 
