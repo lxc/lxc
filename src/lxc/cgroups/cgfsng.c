@@ -1912,12 +1912,10 @@ __cgfsng_ops static int cgfsng_nrtasks(struct cgroup_ops *ops)
 __cgfsng_ops static bool cgfsng_escape(const struct cgroup_ops *ops,
 					 struct lxc_conf *conf)
 {
-	int i;
-
 	if (conf->cgroup_meta.relative || geteuid() || !ops->hierarchies)
 		return true;
 
-	for (i = 0; ops->hierarchies[i]; i++) {
+	for (int i = 0; ops->hierarchies[i]; i++) {
 		int ret;
 		__do_free char *fullpath = NULL;
 
