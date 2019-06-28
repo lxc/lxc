@@ -1282,6 +1282,7 @@ static struct lxc_storage *do_storage_create(struct lxc_container *c,
 
 	if (!c->set_config_item(c, "lxc.rootfs.path", bdev->src)) {
 		ERROR("Failed to set \"lxc.rootfs.path = %s\"", bdev->src);
+		storage_put(bdev);
 		return NULL;
 	}
 
