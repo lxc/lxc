@@ -1113,7 +1113,6 @@ static int do_start(void *data)
 	ATTR_UNUSED __do_close_prot_errno int data_sock0 = handler->data_sock[0],
 					      data_sock1 = handler->data_sock[1];
 	int ret;
-	char path[PATH_MAX];
 	uid_t new_uid;
 	gid_t new_gid;
 	struct lxc_list *iterator;
@@ -1220,11 +1219,6 @@ static int do_start(void *data)
 		goto out_warn_father;
 	}
 
-	ret = snprintf(path, sizeof(path), "%s/dev/null",
-		       handler->conf->rootfs.mount);
-	if (ret < 0 || ret >= sizeof(path))
-		goto out_warn_father;
-
 	/* In order to checkpoint restore, we need to have everything in the
 	 * same mount namespace. However, some containers may not have a
 	 * reasonable /dev (in particular, they may not have /dev/null), so we
@@ -1236,6 +1230,13 @@ static int do_start(void *data)
 	 * where it isn't wanted.
 	 */
 	if (handler->daemonize && !handler->conf->autodev) {
+		char path[PATH_MAX];
+		
+		ret = snprintf(path, sizeof(path), "%s/dev/null",
+			       handler->conf->rootfs.mount);
+		if (ret < 0 || ret >= sizeof(path))
+			goto out_warn_father;
+		
 		ret = access(path, F_OK);
 		if (ret != 0) {
 			devnull_fd = open_devnull();
