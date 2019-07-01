@@ -3563,16 +3563,19 @@ int lxc_setup(struct lxc_handler *handler)
 	if (ret < 0)
 		return -1;
 
-	ret = lxc_setup_network_in_child_namespaces(lxc_conf, &lxc_conf->network);
-	if (ret < 0) {
-		ERROR("Failed to setup network");
-		return -1;
-	}
+	if (handler->ns_clone_flags & CLONE_NEWNET) {
+		ret = lxc_setup_network_in_child_namespaces(lxc_conf,
+							    &lxc_conf->network);
+		if (ret < 0) {
+			ERROR("Failed to setup network");
+			return -1;
+		}
 
-	ret = lxc_network_send_name_and_ifindex_to_parent(handler);
-	if (ret < 0) {
-		ERROR("Failed to send network device names and ifindices to parent");
-		return -1;
+		ret = lxc_network_send_name_and_ifindex_to_parent(handler);
+		if (ret < 0) {
+			ERROR("Failed to send network device names and ifindices to parent");
+			return -1;
+		}
 	}
 
 	if (lxc_conf->autodev > 0) {
