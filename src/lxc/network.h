@@ -147,7 +147,10 @@ union netdev_p {
  * @flags             : flag of the network device (IFF_UP, ... )
  * @link              : lxc.net.[i].link, name of bridge or host iface to attach
  *                      if any
- * @name              : lxc.net.[i].name, name of iface on the container side
+ * @name	      : lxc.net.[i].name, name of iface on the container side
+ * @created_name      : the name with which this interface got created before
+ *			being renamed to final_name.
+ *			Currenly only used for veth devices.
  * @hwaddr            : mac address
  * @mtu               : maximum transmission unit
  * @priv              : information specific to the specificed network type
@@ -176,6 +179,7 @@ struct lxc_netdev {
 	char link[IFNAMSIZ];
 	bool l2proxy;
 	char name[IFNAMSIZ];
+	char created_name[IFNAMSIZ];
 	char *hwaddr;
 	char *mtu;
 	union netdev_p priv;
@@ -267,15 +271,9 @@ extern char *lxc_mkifname(char *template);
 extern const char *lxc_net_type_to_str(int type);
 extern int setup_private_host_hw_addr(char *veth1);
 extern int netdev_get_mtu(int ifindex);
-extern int lxc_create_network_priv(struct lxc_handler *handler);
-extern int lxc_network_move_created_netdev_priv(const char *lxcpath,
-						const char *lxcname,
-						struct lxc_list *network,
-						pid_t pid);
+extern int lxc_network_move_created_netdev_priv(struct lxc_handler *handler);
 extern void lxc_delete_network(struct lxc_handler *handler);
 extern int lxc_find_gateway_addresses(struct lxc_handler *handler);
-extern int lxc_create_network_unpriv(const char *lxcpath, const char *lxcname,
-				     struct lxc_list *network, pid_t pid, unsigned int hook_version);
 extern int lxc_requests_empty_network(struct lxc_handler *handler);
 extern int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler);
 extern int lxc_setup_network_in_child_namespaces(const struct lxc_conf *conf,
@@ -286,5 +284,6 @@ extern int lxc_network_send_name_and_ifindex_to_parent(struct lxc_handler *handl
 extern int lxc_network_recv_name_and_ifindex_from_child(struct lxc_handler *handler);
 extern int lxc_netns_set_nsid(int netns_fd);
 extern int lxc_netns_get_nsid(__s32 fd);
+extern int lxc_create_network(struct lxc_handler *handler);
 
 #endif /* __LXC_NETWORK_H */
