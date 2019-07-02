@@ -1546,7 +1546,7 @@ static int chowmod(char *path, uid_t chown_uid, gid_t chown_gid,
  */
 static int chown_cgroup_wrapper(void *data)
 {
-	int i, ret;
+	int ret;
 	uid_t destuid;
 	struct generic_userns_exec_data *arg = data;
 	uid_t nsuid = (arg->conf->root_nsuid_map != NULL) ? 0 : arg->conf->init_uid;
@@ -1576,7 +1576,7 @@ static int chown_cgroup_wrapper(void *data)
 	if (destuid == LXC_INVALID_UID)
 		destuid = 0;
 
-	for (i = 0; arg->hierarchies[i]; i++) {
+	for (int i = 0; arg->hierarchies[i]; i++) {
 		__do_free char *fullpath = NULL;
 		char *path = arg->hierarchies[i]->container_full_path;
 
@@ -1715,10 +1715,10 @@ static int cg_legacy_mount_controllers(int type, struct hierarchy *h,
 static int __cg_mount_direct(int type, struct hierarchy *h,
 			     const char *controllerpath)
 {
-	 int ret;
 	 __do_free char *controllers = NULL;
 	 char *fstype = "cgroup2";
 	 unsigned long flags = 0;
+	 int ret;
 
 	 flags |= MS_NOSUID;
 	 flags |= MS_NOEXEC;
@@ -1765,7 +1765,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 					const char *root, int type)
 {
 	__do_free char *tmpfspath = NULL;
-	int i, ret;
+	int ret;
 	bool has_cgns = false, retval = false, wants_force_mount = false;
 
 	if (!ops->hierarchies)
@@ -1803,7 +1803,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	if (ret < 0)
 		goto on_error;
 
-	for (i = 0; ops->hierarchies[i]; i++) {
+	for (int i = 0; ops->hierarchies[i]; i++) {
 		__do_free char *controllerpath = NULL, *path2 = NULL;
 		struct hierarchy *h = ops->hierarchies[i];
 		char *controller = strrchr(h->mountpoint, '/');
@@ -1898,26 +1898,22 @@ static int recursive_count_nrtasks(char *dirname)
 __cgfsng_ops static int cgfsng_nrtasks(struct cgroup_ops *ops)
 {
 	__do_free char *path = NULL;
-	int count;
 
 	if (!ops->container_cgroup || !ops->hierarchies)
 		return -1;
 
 	path = must_make_path(ops->hierarchies[0]->container_full_path, NULL);
-	count = recursive_count_nrtasks(path);
-	return count;
+	return recursive_count_nrtasks(path);
 }
 
 /* Only root needs to escape to the cgroup of its init. */
 __cgfsng_ops static bool cgfsng_escape(const struct cgroup_ops *ops,
 					 struct lxc_conf *conf)
 {
-	int i;
-
 	if (conf->cgroup_meta.relative || geteuid() || !ops->hierarchies)
 		return true;
 
-	for (i = 0; ops->hierarchies[i]; i++) {
+	for (int i = 0; ops->hierarchies[i]; i++) {
 		int ret;
 		__do_free char *fullpath = NULL;
 
@@ -2086,7 +2082,7 @@ on_error:
 __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops, const char *name,
 					 const char *lxcpath, pid_t pid)
 {
-	int i, len, ret;
+	int len, ret;
 	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
 
 	if (!ops->hierarchies)
@@ -2096,9 +2092,8 @@ __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops, const char *name,
 	if (len < 0 || (size_t)len >= sizeof(pidstr))
 		return false;
 
-	for (i = 0; ops->hierarchies[i]; i++) {
-		__do_free char *path = NULL;
-		char *fullpath = NULL;
+	for (int i = 0; ops->hierarchies[i]; i++) {
+		__do_free char *fullpath = NULL, *path = NULL;
 		struct hierarchy *h = ops->hierarchies[i];
 
 		if (h->version == CGROUP2_SUPER_MAGIC) {
@@ -2396,13 +2391,10 @@ static bool __cg_unified_setup_limits(struct cgroup_ops *ops,
 }
 
 __cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
-					       struct lxc_conf *conf,
-					       bool do_devices)
+					     struct lxc_conf *conf,
+					     bool do_devices)
 {
-	bool bret;
-
-	bret = __cg_legacy_setup_limits(ops, &conf->cgroup, do_devices);
-	if (!bret)
+	if (!__cg_legacy_setup_limits(ops, &conf->cgroup, do_devices))
 		return false;
 
 	return __cg_unified_setup_limits(ops, &conf->cgroup2);
@@ -2411,15 +2403,13 @@ __cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
 static bool cgroup_use_wants_controllers(const struct cgroup_ops *ops,
 				       char **controllers)
 {
-	char **cur_ctrl, **cur_use;
-
 	if (!ops->cgroup_use)
 		return true;
 
-	for (cur_ctrl = controllers; cur_ctrl && *cur_ctrl; cur_ctrl++) {
+	for (char **cur_ctrl = controllers; cur_ctrl && *cur_ctrl; cur_ctrl++) {
 		bool found = false;
 
-		for (cur_use = ops->cgroup_use; cur_use && *cur_use; cur_use++) {
+		for (char **cur_use = ops->cgroup_use; cur_use && *cur_use; cur_use++) {
 			if (strcmp(*cur_use, *cur_ctrl) != 0)
 				continue;
 
@@ -2754,7 +2744,7 @@ __cgfsng_ops static bool cgfsng_data_init(struct cgroup_ops *ops)
 
 struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 {
-	struct cgroup_ops *cgfsng_ops;
+	__do_free struct cgroup_ops *cgfsng_ops = NULL;
 
 	cgfsng_ops = malloc(sizeof(struct cgroup_ops));
 	if (!cgfsng_ops)
@@ -2763,10 +2753,8 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 	memset(cgfsng_ops, 0, sizeof(struct cgroup_ops));
 	cgfsng_ops->cgroup_layout = CGROUP_LAYOUT_UNKNOWN;
 
-	if (!cg_init(cgfsng_ops, conf)) {
-		free(cgfsng_ops);
+	if (!cg_init(cgfsng_ops, conf))
 		return NULL;
-	}
 
 	cgfsng_ops->data_init = cgfsng_data_init;
 	cgfsng_ops->payload_destroy = cgfsng_payload_destroy;
@@ -2790,5 +2778,5 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 	cgfsng_ops->mount = cgfsng_mount;
 	cgfsng_ops->nrtasks = cgfsng_nrtasks;
 
-	return cgfsng_ops;
+	return move_ptr(cgfsng_ops);
 }
