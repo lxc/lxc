@@ -5248,23 +5248,15 @@ out:
 	return ret;
 }
 
-static int do_lxcapi_seccomp_notify(struct lxc_container *c, unsigned int cmd, int fd)
+static int do_lxcapi_seccomp_notify_fd(struct lxc_container *c)
 {
 	if (!c || !c->lxc_conf)
 		return minus_one_set_errno(-EINVAL);
 
-	switch (cmd) {
-	case LXC_SECCOMP_NOTIFY_GET_FD:
-		if (fd)
-			return minus_one_set_errno(EINVAL);
-
-		return lxc_seccomp_get_notify_fd(&c->lxc_conf->seccomp);
-	}
-
-	return minus_one_set_errno(EINVAL);
+	return lxc_seccomp_get_notify_fd(&c->lxc_conf->seccomp);
 }
 
-WRAP_API_2(int, lxcapi_seccomp_notify, unsigned int, int)
+WRAP_API(int, lxcapi_seccomp_notify_fd)
 
 struct lxc_container *lxc_container_new(const char *name, const char *configpath)
 {
@@ -5405,7 +5397,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->console_log = lxcapi_console_log;
 	c->mount = lxcapi_mount;
 	c->umount = lxcapi_umount;
-	c->seccomp_notify = lxcapi_seccomp_notify;
+	c->seccomp_notify_fd = lxcapi_seccomp_notify_fd;
 
 	return c;
 

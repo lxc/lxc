@@ -60,11 +60,6 @@ struct lxc_mount {
 	int version;
 };
 
-enum {
-	LXC_SECCOMP_NOTIFY_GET_FD = 0,
-	LXC_SECCOMP_NOTIFY_MAX,
-};
-
 /*!
  * An LXC container.
  *
@@ -873,7 +868,7 @@ struct lxc_container {
 	int (*umount)(struct lxc_container *c, const char *target,
 		      unsigned long mountflags, struct lxc_mount *mnt);
 
-	int (*seccomp_notify)(struct lxc_container *c, unsigned int cmd, int fd);
+	int (*seccomp_notify_fd)(struct lxc_container *c);
 };
 
 /*!
