@@ -68,7 +68,7 @@
 lxc_log_define(network, lxc);
 
 typedef int (*instantiate_cb)(struct lxc_handler *, struct lxc_netdev *);
-static const char loDev[] = "lo";
+static const char loop_device[] = "lo";
 
 static int lxc_ip_route_dest(__u16 nlmsg_type, int family, int ifindex, void *dest, unsigned int netmask)
 {
@@ -2946,9 +2946,9 @@ static int lxc_setup_l2proxy(struct lxc_netdev *netdev) {
 		}
 
 		/* Retrieve local-loopback interface index for use with IPVLAN static routes. */
-		lo_ifindex = if_nametoindex(loDev);
+		lo_ifindex = if_nametoindex(loop_device);
 		if (lo_ifindex == 0) {
-			ERROR("Failed to retrieve ifindex for \"%s\" routing cleanup", loDev);
+			ERROR("Failed to retrieve ifindex for \"%s\" routing cleanup", loop_device);
 			return minus_one_set_errno(EINVAL);
 		}
 	}
@@ -2965,7 +2965,7 @@ static int lxc_setup_l2proxy(struct lxc_netdev *netdev) {
 		if (netdev->type == LXC_NET_IPVLAN) {
 			err = lxc_ipv4_dest_add(lo_ifindex, &inet4dev->addr, 32);
 			if (err < 0) {
-				ERROR("Failed to add ipv4 dest \"%s\" for network device \"%s\"", bufinet4, loDev);
+				ERROR("Failed to add ipv4 dest \"%s\" for network device \"%s\"", bufinet4, loop_device);
 				return minus_one_set_errno(-err);
 			}
 		}
@@ -2983,7 +2983,7 @@ static int lxc_setup_l2proxy(struct lxc_netdev *netdev) {
 		if (netdev->type == LXC_NET_IPVLAN) {
 			err = lxc_ipv6_dest_add(lo_ifindex, &inet6dev->addr, 128);
 			if (err < 0) {
-				ERROR("Failed to add ipv6 dest \"%s\" for network device \"%s\"", bufinet6, loDev);
+				ERROR("Failed to add ipv6 dest \"%s\" for network device \"%s\"", bufinet6, loop_device);
 				return minus_one_set_errno(-err);
 			}
 		}
@@ -3060,10 +3060,10 @@ static int lxc_delete_l2proxy(struct lxc_netdev *netdev) {
 	/* Perform IPVLAN specific checks. */
 	if (netdev->type == LXC_NET_IPVLAN) {
 		/* Retrieve local-loopback interface index for use with IPVLAN static routes. */
-		lo_ifindex = if_nametoindex(loDev);
+		lo_ifindex = if_nametoindex(loop_device);
 		if (lo_ifindex == 0) {
 			errCount++;
-			ERROR("Failed to retrieve ifindex for \"%s\" routing cleanup", loDev);
+			ERROR("Failed to retrieve ifindex for \"%s\" routing cleanup", loop_device);
 		}
 	}
 
