@@ -332,7 +332,7 @@ out_delete:
 
 static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
-	char peerbuf[IFNAMSIZ], *peer;
+	char peer[IFNAMSIZ];
 	int err;
 	unsigned int mtu = 0;
 
@@ -341,12 +341,11 @@ static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 		return -1;
 	}
 
-	err = snprintf(peerbuf, sizeof(peerbuf), "mcXXXXXX");
-	if (err < 0 || (size_t)err >= sizeof(peerbuf))
+	err = snprintf(peer, sizeof(peer), "mcXXXXXX");
+	if (err < 0 || (size_t)err >= sizeof(peer))
 		return -1;
 
-	peer = lxc_mkifname(peerbuf);
-	if (!peer)
+	if (!lxc_mkifname(peer))
 		return -1;
 
 	err = lxc_macvlan_create(netdev->link, peer,
