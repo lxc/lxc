@@ -666,6 +666,8 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 		return -1;
 	}
 
+	strlcpy(netdev->created_name, netdev->link, IFNAMSIZ);
+
 	/*
 	 * Store the ifindex of the host's network device in the host's
 	 * namespace.
