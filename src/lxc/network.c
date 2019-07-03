@@ -592,6 +592,8 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 		return -1;
 	}
 
+	strlcpy(netdev->created_name, peer, IFNAMSIZ);
+
 	netdev->ifindex = if_nametoindex(peer);
 	if (!netdev->ifindex) {
 		ERROR("Failed to retrieve ifindex for \"%s\"", peer);
