@@ -357,6 +357,8 @@ static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 		goto on_error;
 	}
 
+	strlcpy(netdev->created_name, peer, IFNAMSIZ);
+
 	netdev->ifindex = if_nametoindex(peer);
 	if (!netdev->ifindex) {
 		ERROR("Failed to retrieve ifindex for \"%s\"", peer);
