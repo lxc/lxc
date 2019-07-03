@@ -518,6 +518,8 @@ static int instantiate_ipvlan(struct lxc_handler *handler, struct lxc_netdev *ne
 		goto on_error;
 	}
 
+	strlcpy(netdev->created_name, peer, IFNAMSIZ);
+
 	netdev->ifindex = if_nametoindex(peer);
 	if (!netdev->ifindex) {
 		ERROR("Failed to retrieve ifindex for \"%s\"", peer);
