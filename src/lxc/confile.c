@@ -153,6 +153,7 @@ lxc_config_define(rootfs_options);
 lxc_config_define(rootfs_path);
 lxc_config_define(seccomp_profile);
 lxc_config_define(seccomp_allow_nesting);
+lxc_config_define(seccomp_notify_cookie);
 lxc_config_define(seccomp_notify_proxy);
 lxc_config_define(selinux_context);
 lxc_config_define(signal_halt);
@@ -246,6 +247,7 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.rootfs.options",            set_config_rootfs_options,              get_config_rootfs_options,              clr_config_rootfs_options,            },
 	{ "lxc.rootfs.path",               set_config_rootfs_path,                 get_config_rootfs_path,                 clr_config_rootfs_path,               },
 	{ "lxc.seccomp.allow_nesting",     set_config_seccomp_allow_nesting,       get_config_seccomp_allow_nesting,       clr_config_seccomp_allow_nesting,     },
+	{ "lxc.seccomp.notify.cookie",     set_config_seccomp_notify_cookie,       get_config_seccomp_notify_cookie,       clr_config_seccomp_notify_cookie,     },
 	{ "lxc.seccomp.notify.proxy",      set_config_seccomp_notify_proxy,        get_config_seccomp_notify_proxy,        clr_config_seccomp_notify_proxy,      },
 	{ "lxc.seccomp.profile",           set_config_seccomp_profile,             get_config_seccomp_profile,             clr_config_seccomp_profile,           },
 	{ "lxc.selinux.context",           set_config_selinux_context,             get_config_selinux_context,             clr_config_selinux_context,           },
@@ -1010,6 +1012,16 @@ static int set_config_seccomp_allow_nesting(const char *key, const char *value,
 #else
 	errno = ENOSYS;
 	return -1;
+#endif
+}
+
+static int set_config_seccomp_notify_cookie(const char *key, const char *value,
+					    struct lxc_conf *lxc_conf, void *data)
+{
+#ifdef HAVE_SECCOMP_NOTIFY
+	return set_config_string_item(&lxc_conf->seccomp.notifier.cookie, value);
+#else
+	return minus_one_set_errno(ENOSYS);
 #endif
 }
 
@@ -3955,6 +3967,16 @@ static int get_config_seccomp_allow_nesting(const char *key, char *retv,
 #endif
 }
 
+static int get_config_seccomp_notify_cookie(const char *key, char *retv, int inlen,
+					    struct lxc_conf *c, void *data)
+{
+#ifdef HAVE_SECCOMP_NOTIFY
+	return lxc_get_conf_str(retv, inlen, c->seccomp.notifier.cookie);
+#else
+	return minus_one_set_errno(ENOSYS);
+#endif
+}
+
 static int get_config_seccomp_notify_proxy(const char *key, char *retv, int inlen,
 					   struct lxc_conf *c, void *data)
 {
@@ -4560,6 +4582,18 @@ static inline int clr_config_seccomp_allow_nesting(const char *key,
 #else
 	errno = ENOSYS;
 	return -1;
+#endif
+}
+
+static inline int clr_config_seccomp_notify_cookie(const char *key,
+						   struct lxc_conf *c, void *data)
+{
+#ifdef HAVE_SECCOMP_NOTIFY
+	free(c->seccomp.notifier.cookie);
+	c->seccomp.notifier.cookie = NULL;
+	return 0;
+#else
+	return minus_one_set_errno(ENOSYS);
 #endif
 }
 

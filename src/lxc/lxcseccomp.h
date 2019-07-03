@@ -69,6 +69,7 @@ struct seccomp_notify {
 	struct sockaddr_un proxy_addr;
 	struct seccomp_notif *req_buf;
 	struct seccomp_notif_resp *rsp_buf;
+	char *cookie;
 };
 
 #define HAVE_SECCOMP_NOTIFY 1
