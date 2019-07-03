@@ -217,6 +217,8 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		goto out_delete;
 	}
 
+	strlcpy(netdev->created_name, veth2, IFNAMSIZ);
+
 	/* changing the high byte of the mac address to 0xfe, the bridge interface
 	 * will always keep the host's mac address and not take the mac address
 	 * of a container */
@@ -3144,31 +3146,21 @@ int lxc_network_move_created_netdev_priv(struct lxc_handler *handler)
 
 	lxc_list_for_each(iterator, network) {
 		int ret;
-		char ifname[IFNAMSIZ];
 		struct lxc_netdev *netdev = iterator->elem;
 
 		if (!netdev->ifindex)
 			continue;
 
-		/* retrieve the name of the interface */
-		if (!if_indextoname(netdev->ifindex, ifname)) {
-			ERROR("No interface corresponding to ifindex \"%d\"",
-			      netdev->ifindex);
-			return -1;
-		}
-
-		ret = lxc_netdev_move_by_name(ifname, pid, NULL);
+		ret = lxc_netdev_move_by_index(netdev->ifindex, pid, NULL);
 		if (ret) {
 			errno = -ret;
-			SYSERROR("Failed to move network device \"%s\" to network namespace %d",
-				 ifname, pid);
+			SYSERROR("Failed to move network device \"%s\" with ifindex %d to network namespace %d",
+				 netdev->created_name, netdev->ifindex, pid);
 			return -1;
 		}
 
-		strlcpy(netdev->created_name, ifname, IFNAMSIZ);
-
-		DEBUG("Moved network device \"%s\" to network namespace of %d",
-		      netdev->created_name, pid);
+		DEBUG("Moved network device \"%s\" with ifindex %d to network namespace of %d",
+		      netdev->created_name, netdev->ifindex, pid);
 	}
 
 	return 0;
