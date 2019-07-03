@@ -579,7 +579,8 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 		return -1;
 	}
 
-	err = snprintf(peer, sizeof(peer), "vlan%d-%d", netdev->priv.vlan_attr.vid, vlan_cntr++);
+	err = snprintf(peer, sizeof(peer), "vlan%d-%d",
+		       netdev->priv.vlan_attr.vid, vlan_cntr++);
 	if (err < 0 || (size_t)err >= sizeof(peer))
 		return -1;
 
@@ -601,14 +602,16 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 		err = lxc_safe_uint(netdev->mtu, &mtu);
 		if (err < 0) {
 			errno = -err;
-			SYSERROR("Failed to parse mtu \"%s\" for interface \"%s\"", netdev->mtu, peer);
+			SYSERROR("Failed to parse mtu \"%s\" for interface \"%s\"",
+				 netdev->mtu, peer);
 			goto on_error;
 		}
 
 		err = lxc_netdev_set_mtu(peer, mtu);
 		if (err) {
 			errno = -err;
-			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"", netdev->mtu, peer);
+			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"",
+				 netdev->mtu, peer);
 			goto on_error;
 		}
 	}
@@ -620,16 +623,15 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 		    NULL,
 		};
 
-		err = run_script_argv(handler->name,
-				handler->conf->hooks_version, "net",
-				netdev->upscript, "up", argv);
+		err = run_script_argv(handler->name, handler->conf->hooks_version,
+				      "net", netdev->upscript, "up", argv);
 		if (err < 0) {
 			goto on_error;
 		}
 	}
 
-	DEBUG("Instantiated vlan \"%s\" with ifindex is \"%d\"",
-	      peer, netdev->ifindex);
+	DEBUG("Instantiated vlan \"%s\" with ifindex is \"%d\"", peer,
+	      netdev->ifindex);
 
 	return 0;
 
