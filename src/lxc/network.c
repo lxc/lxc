@@ -3174,6 +3174,17 @@ int lxc_network_move_created_netdev_priv(struct lxc_handler *handler)
 	return 0;
 }
 
+static int network_requires_advanced_setup(int type)
+{
+	if (type == LXC_NET_EMPTY)
+		return false;
+
+	if (type == LXC_NET_NONE)
+		return false;
+
+	return true;
+}
+
 static int lxc_create_network_unpriv(struct lxc_handler *handler)
 {
 	int hooks_version = handler->conf->hooks_version;
@@ -3186,10 +3197,7 @@ static int lxc_create_network_unpriv(struct lxc_handler *handler)
 	lxc_list_for_each(iterator, network) {
 		struct lxc_netdev *netdev = iterator->elem;
 
-		if (netdev->type == LXC_NET_EMPTY)
-			continue;
-
-		if (netdev->type == LXC_NET_NONE)
+		if (!network_requires_advanced_setup(netdev->type))
 			continue;
 
 		if (netdev->type != LXC_NET_VETH) {
@@ -3528,7 +3536,7 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 		netdev->ifindex = if_nametoindex(netdev->created_name);
 		if (!netdev->ifindex)
 			SYSERROR("Failed to retrieve ifindex for network device with name %s",
-				 netdev->name ?: "(null)");
+				 netdev->created_name ?: "(null)");
 	}
 
 	/* get the new ifindex in case of physical netdev */
@@ -3763,7 +3771,7 @@ int lxc_setup_network_in_child_namespaces(const struct lxc_conf *conf,
 	return 0;
 }
 
-int lxc_network_send_veth_names_to_child(struct lxc_handler *handler)
+int lxc_network_send_to_child(struct lxc_handler *handler)
 {
 	struct lxc_list *iterator;
 	struct lxc_list *network = &handler->conf->network;
@@ -3773,7 +3781,7 @@ int lxc_network_send_veth_names_to_child(struct lxc_handler *handler)
 		int ret;
 		struct lxc_netdev *netdev = iterator->elem;
 
-		if (netdev->type != LXC_NET_VETH)
+		if (!network_requires_advanced_setup(netdev->type))
 			continue;
 
 		ret = lxc_send_nointr(data_sock, netdev->name, IFNAMSIZ, MSG_NOSIGNAL);
@@ -3790,7 +3798,7 @@ int lxc_network_send_veth_names_to_child(struct lxc_handler *handler)
 	return 0;
 }
 
-int lxc_network_recv_veth_names_from_parent(struct lxc_handler *handler)
+int lxc_network_recv_from_parent(struct lxc_handler *handler)
 {
 	struct lxc_list *iterator;
 	struct lxc_list *network = &handler->conf->network;
@@ -3800,7 +3808,7 @@ int lxc_network_recv_veth_names_from_parent(struct lxc_handler *handler)
 		int ret;
 		struct lxc_netdev *netdev = iterator->elem;
 
-		if (netdev->type != LXC_NET_VETH)
+		if (!network_requires_advanced_setup(netdev->type))
 			continue;
 
 		ret = lxc_recv_nointr(data_sock, netdev->name, IFNAMSIZ, 0);

@@ -278,8 +278,8 @@ extern int lxc_requests_empty_network(struct lxc_handler *handler);
 extern int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler);
 extern int lxc_setup_network_in_child_namespaces(const struct lxc_conf *conf,
 						 struct lxc_list *network);
-extern int lxc_network_send_veth_names_to_child(struct lxc_handler *handler);
-extern int lxc_network_recv_veth_names_from_parent(struct lxc_handler *handler);
+extern int lxc_network_send_to_child(struct lxc_handler *handler);
+extern int lxc_network_recv_from_parent(struct lxc_handler *handler);
 extern int lxc_network_send_name_and_ifindex_to_parent(struct lxc_handler *handler);
 extern int lxc_network_recv_name_and_ifindex_from_child(struct lxc_handler *handler);
 extern int lxc_netns_set_nsid(int netns_fd);
