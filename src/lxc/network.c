@@ -494,7 +494,7 @@ out:
 
 static int instantiate_ipvlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
-	char peerbuf[IFNAMSIZ], *peer;
+	char peer[IFNAMSIZ];
 	int err;
 	unsigned int mtu = 0;
 
@@ -503,17 +503,18 @@ static int instantiate_ipvlan(struct lxc_handler *handler, struct lxc_netdev *ne
 		return -1;
 	}
 
-	err = snprintf(peerbuf, sizeof(peerbuf), "ipXXXXXX");
-	if (err < 0 || (size_t)err >= sizeof(peerbuf))
+	err = snprintf(peer, sizeof(peer), "ipXXXXXX");
+	if (err < 0 || (size_t)err >= sizeof(peer))
 		return -1;
 
-	peer = lxc_mkifname(peerbuf);
-	if (!peer)
+	if (!lxc_mkifname(peer))
 		return -1;
 
-	err = lxc_ipvlan_create(netdev->link, peer, netdev->priv.ipvlan_attr.mode, netdev->priv.ipvlan_attr.isolation);
+	err = lxc_ipvlan_create(netdev->link, peer, netdev->priv.ipvlan_attr.mode,
+				netdev->priv.ipvlan_attr.isolation);
 	if (err) {
-		SYSERROR("Failed to create ipvlan interface \"%s\" on \"%s\"", peer, netdev->link);
+		SYSERROR("Failed to create ipvlan interface \"%s\" on \"%s\"",
+			 peer, netdev->link);
 		goto on_error;
 	}
 
@@ -527,14 +528,16 @@ static int instantiate_ipvlan(struct lxc_handler *handler, struct lxc_netdev *ne
 		err = lxc_safe_uint(netdev->mtu, &mtu);
 		if (err < 0) {
 			errno = -err;
-			SYSERROR("Failed to parse mtu \"%s\" for interface \"%s\"", netdev->mtu, peer);
+			SYSERROR("Failed to parse mtu \"%s\" for interface \"%s\"",
+				 netdev->mtu, peer);
 			goto on_error;
 		}
 
 		err = lxc_netdev_set_mtu(peer, mtu);
 		if (err < 0) {
 			errno = -err;
-			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"", netdev->mtu, peer);
+			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"",
+				 netdev->mtu, peer);
 			goto on_error;
 		}
 	}
@@ -546,15 +549,14 @@ static int instantiate_ipvlan(struct lxc_handler *handler, struct lxc_netdev *ne
 		    NULL,
 		};
 
-		err = run_script_argv(handler->name,
-				handler->conf->hooks_version, "net",
-				netdev->upscript, "up", argv);
+		err = run_script_argv(handler->name, handler->conf->hooks_version,
+				      "net", netdev->upscript, "up", argv);
 		if (err < 0)
 			goto on_error;
 	}
 
-	DEBUG("Instantiated ipvlan \"%s\" with ifindex is %d and mode %d",
-	      peer, netdev->ifindex, netdev->priv.macvlan_attr.mode);
+	DEBUG("Instantiated ipvlan \"%s\" with ifindex is %d and mode %d", peer,
+	      netdev->ifindex, netdev->priv.macvlan_attr.mode);
 
 	return 0;
 
