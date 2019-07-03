@@ -612,10 +612,8 @@ static bool cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 	}
 
 	/* Already set for us by someone else. */
-	if (v == '1') {
-		DEBUG("\"cgroup.clone_children\" was already set to \"1\"");
-		return true;
-	}
+	if (v == '1')
+		TRACE("\"cgroup.clone_children\" was already set to \"1\"");
 
 	/* copy parent's settings */
 	if (!copy_parent_file(cgpath, "cpuset.mems")) {
