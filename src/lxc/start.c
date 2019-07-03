@@ -1194,7 +1194,7 @@ static int do_start(void *data)
 		goto out_error;
 
 	if (handler->ns_clone_flags & CLONE_NEWNET) {
-		ret = lxc_network_recv_veth_names_from_parent(handler);
+		ret = lxc_network_recv_from_parent(handler);
 		if (ret < 0) {
 			ERROR("Failed to receive veth names from parent");
 			goto out_warn_father;
@@ -1252,12 +1252,12 @@ static int do_start(void *data)
 	 */
 	if (handler->daemonize && !handler->conf->autodev) {
 		char path[PATH_MAX];
-		
+
 		ret = snprintf(path, sizeof(path), "%s/dev/null",
 			       handler->conf->rootfs.mount);
 		if (ret < 0 || ret >= sizeof(path))
 			goto out_warn_father;
-		
+
 		ret = access(path, F_OK);
 		if (ret != 0) {
 			devnull_fd = open_devnull();
@@ -1839,7 +1839,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 			goto out_delete_net;
 		}
 
-		ret = lxc_network_send_veth_names_to_child(handler);
+		ret = lxc_network_send_to_child(handler);
 		if (ret < 0) {
 			ERROR("Failed to send veth names to child");
 			goto out_delete_net;
