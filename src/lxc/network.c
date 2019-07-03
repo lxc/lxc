@@ -652,7 +652,8 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 		return -1;
 	}
 
-	/* Note that we're retrieving the container's ifindex in the host's
+	/*
+	 * Note that we're retrieving the container's ifindex in the host's
 	 * network namespace because we need it to move the device from the
 	 * host's network namespace to the container's network namespace later
 	 * on.
@@ -665,12 +666,16 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 		return -1;
 	}
 
-	/* Store the ifindex of the host's network device in the host's
+	/*
+	 * Store the ifindex of the host's network device in the host's
 	 * namespace.
 	 */
 	netdev->priv.phys_attr.ifindex = netdev->ifindex;
 
-	/* Get original device MTU setting and store for restoration after container shutdown. */
+	/*
+	 * Get original device MTU setting and store for restoration after
+	 * container shutdown.
+	 */
 	mtu_orig = netdev_get_mtu(netdev->ifindex);
 	if (mtu_orig < 0) {
 		SYSERROR("Failed to get original mtu for interface \"%s\"", netdev->link);
@@ -683,14 +688,16 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 		err = lxc_safe_uint(netdev->mtu, &mtu);
 		if (err < 0) {
 			errno = -err;
-			SYSERROR("Failed to parse mtu \"%s\" for interface \"%s\"", netdev->mtu, netdev->link);
+			SYSERROR("Failed to parse mtu \"%s\" for interface \"%s\"",
+				 netdev->mtu, netdev->link);
 			return -1;
 		}
 
 		err = lxc_netdev_set_mtu(netdev->link, mtu);
 		if (err < 0) {
 			errno = -err;
-			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"", netdev->mtu, netdev->link);
+			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"",
+				 netdev->mtu, netdev->link);
 			return -1;
 		}
 	}
@@ -702,15 +709,15 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 		    NULL,
 		};
 
-		err = run_script_argv(handler->name,
-				handler->conf->hooks_version, "net",
-				netdev->upscript, "up", argv);
+		err = run_script_argv(handler->name, handler->conf->hooks_version,
+				      "net", netdev->upscript, "up", argv);
 		if (err < 0) {
 			return -1;
 		}
 	}
 
-	DEBUG("Instantiated phys \"%s\" with ifindex is \"%d\"", netdev->link, netdev->ifindex);
+	DEBUG("Instantiated phys \"%s\" with ifindex is \"%d\"", netdev->link,
+	      netdev->ifindex);
 
 	return 0;
 }
