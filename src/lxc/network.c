@@ -3487,7 +3487,6 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 {
 	char ifname[IFNAMSIZ];
 	int err;
-	const char *net_type_name;
 	char *current_ifname = ifname;
 	char bufinet4[INET_ADDRSTRLEN], bufinet6[INET6_ADDRSTRLEN];
 
@@ -3507,13 +3506,6 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 
 		if (netdev->type == LXC_NET_NONE)
 			return 0;
-
-		if (netdev->type != LXC_NET_VETH) {
-			net_type_name = lxc_net_type_to_str(netdev->type);
-			ERROR("%s networks are not supported for containers "
-			      "not setup up by privileged users", net_type_name);
-			return -1;
-		}
 
 		netdev->ifindex = if_nametoindex(netdev->created_name);
 		if (!netdev->ifindex)
