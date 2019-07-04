@@ -1697,6 +1697,20 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (ret < 0)
 		goto out_sync_fini;
 
+	if (handler->ns_clone_flags & CLONE_NEWNET) {
+		/*
+		* Find gateway addresses from the link device, which is no longer
+		* accessible inside the container. Do this before creating network
+		* interfaces, since goto out_delete_net does not work before
+		* lxc_clone.
+		*/
+		ret = lxc_find_gateway_addresses(handler);
+		if (ret) {
+			ERROR("Failed to find gateway addresses");
+			goto out_sync_fini;
+		}
+	}
+
 	if (!cgroup_ops->payload_create(cgroup_ops, handler)) {
 		ERROR("Failed creating cgroups");
 		goto out_delete_net;
