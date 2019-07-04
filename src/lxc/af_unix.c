@@ -379,13 +379,13 @@ int lxc_unix_sockaddr(struct sockaddr_un *ret, const char *path)
 	return (int)(offsetof(struct sockaddr_un, sun_path) + len + 1);
 }
 
-int lxc_unix_connect(struct sockaddr_un *addr)
+int lxc_unix_connect_type(struct sockaddr_un *addr, int type)
 {
 	__do_close_prot_errno int fd = -EBADF;
 	int ret;
 	ssize_t len;
 
-	fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+	fd = socket(AF_UNIX, type | SOCK_CLOEXEC, 0);
 	if (fd < 0) {
 		SYSERROR("Failed to open new AF_UNIX socket");
 		return -1;
@@ -404,6 +404,11 @@ int lxc_unix_connect(struct sockaddr_un *addr)
 	}
 
 	return move_fd(fd);
+}
+
+int lxc_unix_connect(struct sockaddr_un *addr, int type)
+{
+	return lxc_unix_connect_type(addr, SOCK_STREAM);
 }
 
 int lxc_socket_set_timeout(int fd, int rcv_timeout, int snd_timeout)
