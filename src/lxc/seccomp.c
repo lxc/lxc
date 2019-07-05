@@ -1366,15 +1366,15 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	char *cookie = conf->seccomp.notifier.cookie;
 	uint64_t req_id;
 
-	if (listener_proxy_fd < 0) {
-		ERROR("No seccomp proxy registered");
-		return minus_one_set_errno(EINVAL);
-	}
-
 	ret = seccomp_notify_receive(fd, req);
 	if (ret) {
 		SYSERROR("Failed to read seccomp notification");
 		goto out;
+	}
+
+	if (listener_proxy_fd < 0) {
+		ERROR("No seccomp proxy registered");
+		return minus_one_set_errno(EINVAL);
 	}
 
 	/* remember the ID in case we receive garbage from the proxy */
