@@ -1438,6 +1438,12 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 
 	close_prot_errno_disarm(fd_mem);
 
+	if (msg.__reserved != 0) {
+		ERROR("Proxy filled reserved data in response");
+		seccomp_notify_default_answer(fd, req, resp, hdlr);
+		goto out;
+	}
+
 	if (resp->id != req_id) {
 		resp->id = req_id;
 		ERROR("Proxy returned response with illegal id");
