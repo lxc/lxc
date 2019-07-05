@@ -1374,8 +1374,18 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	}
 
 	if (listener_proxy_fd < 0) {
-		ERROR("No seccomp proxy registered");
-		return seccomp_notify_default_answer(fd, req, resp, hdlr);
+		ret = -1;
+		/* Same condition as for the initial setup_proxy() */
+		if (conf->seccomp.notifier.wants_supervision &&
+		    conf->seccomp.notifier.proxy_addr.sun_path[1] != '\0') {
+			ret = seccomp_notify_reconnect(hdlr);
+		}
+		if (ret) {
+			ERROR("No seccomp proxy registered");
+			return seccomp_notify_default_answer(fd, req, resp,
+							     hdlr);
+		}
+		listener_proxy_fd = conf->seccomp.notifier.proxy_fd;
 	}
 
 	/* remember the ID in case we receive garbage from the proxy */
