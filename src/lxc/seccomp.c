@@ -1349,7 +1349,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 
 #if HAVE_DECL_SECCOMP_NOTIFY_FD
 	__do_close_prot_errno int fd_mem = -EBADF;
-	int reconnect_count, ret;
+	int ret;
 	ssize_t bytes;
 	struct iovec iov[4];
 	size_t iov_len, msg_base_size, msg_full_size;
@@ -1425,17 +1425,13 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 		iov_len = 3;
 	}
 
-	reconnect_count = 0;
-	do {
-		bytes = lxc_abstract_unix_send_fds_iov(listener_proxy_fd,
-						       &fd_mem, 1, iov,
-						       iov_len);
-		if (bytes != (ssize_t)msg_full_size) {
-			SYSERROR("Failed to forward message to seccomp proxy");
-			if (seccomp_notify_default_answer(fd, req, resp, hdlr))
-				goto out;
-		}
-	} while (reconnect_count++);
+	bytes = lxc_abstract_unix_send_fds_iov(listener_proxy_fd, &fd_mem, 1,
+					       iov, iov_len);
+	if (bytes != (ssize_t)msg_full_size) {
+		SYSERROR("Failed to forward message to seccomp proxy");
+		(void)seccomp_notify_default_answer(fd, req, resp, hdlr);
+		goto out;
+	}
 
 	close_prot_errno_disarm(fd_mem);
 
@@ -1452,16 +1448,12 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 		goto out;
 	}
 
-	reconnect_count = 0;
-	do {
-		bytes = lxc_recvmsg_nointr_iov(listener_proxy_fd, iov,iov_len,
-		                               0);
-		if (bytes != (ssize_t)msg_base_size) {
-			SYSERROR("Failed to receive message from seccomp proxy");
-			if (seccomp_notify_default_answer(fd, req, resp, hdlr))
-				goto out;
-		}
-	} while (reconnect_count++);
+	bytes = lxc_recvmsg_nointr_iov(listener_proxy_fd, iov,iov_len, 0);
+	if (bytes != (ssize_t)msg_base_size) {
+		SYSERROR("Failed to receive message from seccomp proxy");
+		(void)seccomp_notify_default_answer(fd, req, resp, hdlr);
+		goto out;
+	}
 
 	ret = seccomp_notify_respond(fd, resp);
 	if (ret)
