@@ -1311,7 +1311,8 @@ static int seccomp_notify_reconnect(struct lxc_handler *handler)
 
 	close_prot_errno_disarm(handler->conf->seccomp.notifier.proxy_fd);
 
-	notify_fd = lxc_unix_connect(&handler->conf->seccomp.notifier.proxy_addr);
+	notify_fd = lxc_unix_connect_type(
+		&handler->conf->seccomp.notifier.proxy_addr, SOCK_SEQPACKET);
 	if (notify_fd < 0) {
 		SYSERROR("Failed to reconnect to seccomp proxy");
 		return -1;
@@ -1501,7 +1502,8 @@ int lxc_seccomp_setup_proxy(struct lxc_seccomp *seccomp,
 		__do_close_prot_errno int notify_fd = -EBADF;
 		int ret;
 
-		notify_fd = lxc_unix_connect(&seccomp->notifier.proxy_addr);
+		notify_fd = lxc_unix_connect_type(&seccomp->notifier.proxy_addr,
+					     SOCK_SEQPACKET);
 		if (notify_fd < 0) {
 			SYSERROR("Failed to connect to seccomp proxy");
 			return -1;
