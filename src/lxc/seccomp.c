@@ -1357,6 +1357,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 		      + INTTYPE_TO_STRLEN(int64_t)
 		      + 3 /* mem */
 		      + 1 /* \0 */];
+	bool reconnected = false;
 	struct lxc_handler *hdlr = data;
 	struct lxc_conf *conf = hdlr->conf;
 	struct seccomp_notif *req = conf->seccomp.notifier.req_buf;
@@ -1425,10 +1426,19 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 		iov_len = 3;
 	}
 
+retry:
 	bytes = lxc_abstract_unix_send_fds_iov(listener_proxy_fd, &fd_mem, 1,
 					       iov, iov_len);
 	if (bytes != (ssize_t)msg_full_size) {
 		SYSERROR("Failed to forward message to seccomp proxy");
+		if (!reconnected) {
+			ret = seccomp_notify_reconnect(hdlr);
+			if (ret == 0) {
+				reconnected = true;
+				goto retry;
+			}
+		}
+
 		(void)seccomp_notify_default_answer(fd, req, resp, hdlr);
 		goto out;
 	}
