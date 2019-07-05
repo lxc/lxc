@@ -49,7 +49,24 @@
 #define MIPS_ARCH_N64 lxc_seccomp_arch_mips64
 #endif
 
+#ifndef SECCOMP_GET_NOTIF_SIZES
+#define SECCOMP_GET_NOTIF_SIZES 3
+#endif
+
 lxc_log_define(seccomp, lxc);
+
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
+static inline int __seccomp(unsigned int operation, unsigned int flags,
+			  void *args)
+{
+#ifdef __NR_seccomp
+	return syscall(__NR_seccomp, operation, flags, args);
+#else
+	errno = ENOSYS;
+	return -1;
+#endif
+}
+#endif
 
 static int parse_config_v1(FILE *f, char *line, size_t *line_bufsz, struct lxc_conf *conf)
 {
@@ -1333,6 +1350,8 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	__do_close_prot_errno int fd_mem = -EBADF;
 	int reconnect_count, ret;
 	ssize_t bytes;
+	struct iovec iov[4];
+	size_t iov_len, msg_base_size, msg_full_size;
 	char mem_path[6 /* /proc/ */
 		      + INTTYPE_TO_STRLEN(int64_t)
 		      + 3 /* mem */
@@ -1343,6 +1362,8 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	struct seccomp_notif_resp *resp = conf->seccomp.notifier.rsp_buf;
 	int listener_proxy_fd = conf->seccomp.notifier.proxy_fd;
 	struct seccomp_notify_proxy_msg msg = {0};
+	char *cookie = conf->seccomp.notifier.cookie;
+	uint64_t req_id;
 
 	if (listener_proxy_fd < 0) {
 		ERROR("No seccomp proxy registered");
@@ -1354,6 +1375,9 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 		SYSERROR("Failed to read seccomp notification");
 		goto out;
 	}
+
+	/* remember the ID in case we receive garbage from the proxy */
+	resp->id = req_id = req->id;
 
 	snprintf(mem_path, sizeof(mem_path), "/proc/%d/mem", req->pid);
 	fd_mem = open(mem_path, O_RDONLY | O_CLOEXEC);
@@ -1374,15 +1398,38 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 		goto out;
 	}
 
-	memcpy(&msg.req, req, sizeof(msg.req));
 	msg.monitor_pid = hdlr->monitor_pid;
 	msg.init_pid = hdlr->pid;
+	memcpy(&msg.sizes, &conf->seccomp.notifier.sizes, sizeof(msg.sizes));
+
+	msg_base_size = 0;
+	iov[0].iov_base = &msg;
+	msg_base_size += (iov[0].iov_len = sizeof(msg));
+	iov[1].iov_base = req;
+	msg_base_size += (iov[1].iov_len = msg.sizes.seccomp_notif);
+	iov[2].iov_base = resp;
+	msg_base_size += (iov[2].iov_len = msg.sizes.seccomp_notif_resp);
+	msg_full_size = msg_base_size;
+
+	if (cookie) {
+		size_t len = strlen(cookie);
+
+		msg.cookie_len = (uint64_t)len;
+
+		iov[3].iov_base = cookie;
+		msg_full_size += (iov[3].iov_len = len);
+
+		iov_len = 4;
+	} else {
+		iov_len = 3;
+	}
 
 	reconnect_count = 0;
 	do {
-		bytes = lxc_unix_send_fds(listener_proxy_fd, &fd_mem, 1, &msg,
-					  sizeof(msg));
-		if (bytes != (ssize_t)sizeof(msg)) {
+		bytes = lxc_abstract_unix_send_fds_iov(listener_proxy_fd,
+						       &fd_mem, 1, iov,
+						       iov_len);
+		if (bytes != (ssize_t)msg_full_size) {
 			SYSERROR("Failed to forward message to seccomp proxy");
 			if (seccomp_notify_default_answer(fd, req, resp, hdlr))
 				goto out;
@@ -1391,17 +1438,24 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 
 	close_prot_errno_disarm(fd_mem);
 
+	if (resp->id != req_id) {
+		resp->id = req_id;
+		ERROR("Proxy returned response with illegal id");
+		(void)seccomp_notify_default_answer(fd, req, resp, hdlr);
+		goto out;
+	}
+
 	reconnect_count = 0;
 	do {
-		bytes = lxc_recv_nointr(listener_proxy_fd, &msg, sizeof(msg), 0);
-		if (bytes != (ssize_t)sizeof(msg)) {
+		bytes = lxc_recvmsg_nointr_iov(listener_proxy_fd, iov,iov_len,
+		                               0);
+		if (bytes != (ssize_t)msg_base_size) {
 			SYSERROR("Failed to receive message from seccomp proxy");
 			if (seccomp_notify_default_answer(fd, req, resp, hdlr))
 				goto out;
 		}
 	} while (reconnect_count++);
 
-	memcpy(resp, &msg.resp, sizeof(*resp));
 	ret = seccomp_notify_respond(fd, resp);
 	if (ret)
 		SYSERROR("Failed to send seccomp notification");
@@ -1451,6 +1505,13 @@ int lxc_seccomp_setup_proxy(struct lxc_seccomp *seccomp,
 		ret = lxc_socket_set_timeout(notify_fd, 30, 30);
 		if (ret) {
 			SYSERROR("Failed to set timeouts for seccomp proxy");
+			return -1;
+		}
+
+		ret = __seccomp(SECCOMP_GET_NOTIF_SIZES, 0,
+				&seccomp->notifier.sizes);
+		if (ret) {
+			SYSERROR("Failed to query seccomp notify struct sizes");
 			return -1;
 		}
 

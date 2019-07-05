@@ -54,12 +54,21 @@ struct lxc_handler;
 
 #if HAVE_DECL_SECCOMP_NOTIFY_FD
 
+#if !HAVE_STRUCT_SECCOMP_NOTIF_SIZES
+struct seccomp_notif_sizes {
+	__u16 seccomp_notif;
+	__u16 seccomp_notif_resp;
+	__u16 seccomp_data;
+};
+#endif
+
 struct seccomp_notify_proxy_msg {
-	uint32_t version;
-	struct seccomp_notif req;
-	struct seccomp_notif_resp resp;
+	uint64_t __reserved;
 	pid_t monitor_pid;
 	pid_t init_pid;
+	struct seccomp_notif_sizes sizes;
+	uint64_t cookie_len;
+	/* followed by: seccomp_notif, seccomp_notif_resp, cookie */
 };
 
 struct seccomp_notify {
@@ -67,6 +76,7 @@ struct seccomp_notify {
 	int notify_fd;
 	int proxy_fd;
 	struct sockaddr_un proxy_addr;
+	struct seccomp_notif_sizes sizes;
 	struct seccomp_notif *req_buf;
 	struct seccomp_notif_resp *rsp_buf;
 	char *cookie;
