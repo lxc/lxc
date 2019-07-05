@@ -1375,7 +1375,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 
 	if (listener_proxy_fd < 0) {
 		ERROR("No seccomp proxy registered");
-		return minus_one_set_errno(EINVAL);
+		return seccomp_notify_default_answer(fd, req, resp, hdlr);
 	}
 
 	/* remember the ID in case we receive garbage from the proxy */
