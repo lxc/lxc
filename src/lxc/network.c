@@ -2473,8 +2473,7 @@ int lxc_find_gateway_addresses(struct lxc_handler *handler)
 			continue;
 
 		if (netdev->type != LXC_NET_VETH && netdev->type != LXC_NET_MACVLAN) {
-			ERROR("Automatic gateway detection is only supported "
-			      "for veth and macvlan");
+			ERROR("Automatic gateway detection is only supported for veth and macvlan");
 			return -1;
 		}
 
@@ -2489,16 +2488,16 @@ int lxc_find_gateway_addresses(struct lxc_handler *handler)
 
 		if (netdev->ipv4_gateway_auto) {
 			if (lxc_ipv4_addr_get(link_index, &netdev->ipv4_gateway)) {
-				ERROR("Failed to automatically find ipv4 gateway "
-				      "address from link interface \"%s\"", netdev->link);
+				ERROR("Failed to automatically find ipv4 gateway address from link interface \"%s\"",
+				      netdev->link);
 				return -1;
 			}
 		}
 
 		if (netdev->ipv6_gateway_auto) {
 			if (lxc_ipv6_addr_get(link_index, &netdev->ipv6_gateway)) {
-				ERROR("Failed to automatically find ipv6 gateway "
-				      "address from link interface \"%s\"", netdev->link);
+				ERROR("Failed to automatically find ipv6 gateway address from link interface \"%s\"",
+				      netdev->link);
 				return -1;
 			}
 		}
@@ -4035,18 +4034,6 @@ int lxc_netns_get_nsid(int fd)
 int lxc_create_network(struct lxc_handler *handler)
 {
 	int ret;
-
-	/*
-	 * Find gateway addresses from the link device, which is no longer
-	 * accessible inside the container. Do this before creating network
-	 * interfaces, since goto out_delete_net does not work before
-	 * lxc_clone.
-	 */
-	ret = lxc_find_gateway_addresses(handler);
-	if (ret) {
-		ERROR("Failed to find gateway addresses");
-		return -1;
-	}
 
 	if (handler->am_root) {
 		ret = lxc_create_network_priv(handler);
