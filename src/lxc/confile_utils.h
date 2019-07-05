@@ -56,6 +56,7 @@ lxc_get_netdev_by_idx(struct lxc_conf *conf, unsigned int idx, bool allocate);
 extern void lxc_log_configured_netdevs(const struct lxc_conf *conf);
 extern bool lxc_remove_nic_by_idx(struct lxc_conf *conf, unsigned int idx);
 extern void lxc_free_networks(struct lxc_list *networks);
+extern int lxc_veth_mode_to_flag(int *mode, const char *value);
 extern int lxc_macvlan_mode_to_flag(int *mode, const char *value);
 extern char *lxc_macvlan_flag_to_mode(int mode);
 extern int lxc_ipvlan_mode_to_flag(int *mode, const char *value);

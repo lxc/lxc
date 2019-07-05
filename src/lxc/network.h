@@ -98,6 +98,7 @@ struct ifla_veth {
 	int ifindex;
 	struct lxc_list ipv4_routes;
 	struct lxc_list ipv6_routes;
+	int mode; /* bridge, router */
 };
 
 struct ifla_vlan {
