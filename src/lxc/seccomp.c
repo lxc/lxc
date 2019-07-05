@@ -1329,17 +1329,15 @@ static int seccomp_notify_reconnect(struct lxc_handler *handler)
 #endif
 
 #if HAVE_DECL_SECCOMP_NOTIFY_FD
-static int seccomp_notify_default_answer(int fd, struct seccomp_notif *req,
-					 struct seccomp_notif_resp *resp,
-					 struct lxc_handler *handler)
+static void seccomp_notify_default_answer(int fd, struct seccomp_notif *req,
+					  struct seccomp_notif_resp *resp,
+					  struct lxc_handler *handler)
 {
 	resp->id = req->id;
 	resp->error = -ENOSYS;
 
 	if (seccomp_notify_respond(fd, resp))
 		SYSERROR("Failed to send default message to seccomp");
-
-	return seccomp_notify_reconnect(handler);
 }
 #endif
 
@@ -1382,8 +1380,8 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 		}
 		if (ret) {
 			ERROR("No seccomp proxy registered");
-			return seccomp_notify_default_answer(fd, req, resp,
-							     hdlr);
+			seccomp_notify_default_answer(fd, req, resp, hdlr);
+			goto out;
 		}
 		listener_proxy_fd = conf->seccomp.notifier.proxy_fd;
 	}
@@ -1394,7 +1392,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	snprintf(mem_path, sizeof(mem_path), "/proc/%d/mem", req->pid);
 	fd_mem = open(mem_path, O_RDONLY | O_CLOEXEC);
 	if (fd_mem < 0) {
-		(void)seccomp_notify_default_answer(fd, req, resp, hdlr);
+		seccomp_notify_default_answer(fd, req, resp, hdlr);
 		SYSERROR("Failed to open process memory for seccomp notify request");
 		goto out;
 	}
@@ -1405,7 +1403,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	 */
 	ret = seccomp_notify_id_valid(fd, req->id);
 	if (ret < 0) {
-		(void)seccomp_notify_default_answer(fd, req, resp, hdlr);
+		seccomp_notify_default_answer(fd, req, resp, hdlr);
 		SYSERROR("Invalid seccomp notify request id");
 		goto out;
 	}
@@ -1449,7 +1447,7 @@ retry:
 			}
 		}
 
-		(void)seccomp_notify_default_answer(fd, req, resp, hdlr);
+		seccomp_notify_default_answer(fd, req, resp, hdlr);
 		goto out;
 	}
 
@@ -1464,14 +1462,14 @@ retry:
 	if (resp->id != req_id) {
 		resp->id = req_id;
 		ERROR("Proxy returned response with illegal id");
-		(void)seccomp_notify_default_answer(fd, req, resp, hdlr);
+		seccomp_notify_default_answer(fd, req, resp, hdlr);
 		goto out;
 	}
 
 	bytes = lxc_recvmsg_nointr_iov(listener_proxy_fd, iov,iov_len, 0);
 	if (bytes != (ssize_t)msg_base_size) {
 		SYSERROR("Failed to receive message from seccomp proxy");
-		(void)seccomp_notify_default_answer(fd, req, resp, hdlr);
+		seccomp_notify_default_answer(fd, req, resp, hdlr);
 		goto out;
 	}
 
