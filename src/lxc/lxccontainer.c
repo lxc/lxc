@@ -5117,33 +5117,37 @@ static int do_lxcapi_mount(struct lxc_container *c, const char *source,
 
 		suff = strrchr(template, '/');
 		if (!suff)
-			_exit(EXIT_FAILURE);
+			goto cleanup_target_in_child;
 
 		ret = snprintf(path, sizeof(path), "%s%s", c->lxc_conf->shmount.path_cont, suff);
 		if (ret < 0 || (size_t)ret >= sizeof(path)) {
 			SYSERROR("Error writing container mountpoint name");
-			_exit(EXIT_FAILURE);
+			goto cleanup_target_in_child;
 		}
 
 		ret = mount(path, target, NULL, MS_MOVE | MS_REC, NULL);
 		if (ret < 0) {
 			SYSERROR("Failed to move the mount from \"%s\" to \"%s\"", path, target);
-			_exit(EXIT_FAILURE);
+			goto cleanup_target_in_child;
 		}
 		TRACE("Moved mount from \"%s\" to \"%s\"", path, target);
 
 		_exit(EXIT_SUCCESS);
+
+	cleanup_target_in_child:
+		(void)remove(target);
+		_exit(EXIT_FAILURE);
 	}
 
 	ret = wait_for_pid(pid);
-	if (ret < 0) {
-		SYSERROR("Wait for the child with pid %ld failed", (long) pid);
-		goto out;
-	}
+	if (ret < 0)
+		SYSERROR("Wait for the child with pid %ld failed", (long)pid);
+	else
+		ret = 0;
 
-	ret = 0;
+	if (umount2(template, MNT_DETACH))
+		SYSWARN("Failed to remove temporary mount \"%s\"", template);
 
-	(void)umount2(template, MNT_DETACH);
 	if (is_dir)
 		(void)rmdir(template);
 	else
