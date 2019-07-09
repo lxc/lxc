@@ -219,7 +219,6 @@ static int lxc_abstract_unix_recv_fds_iov(int fd, int *recvfds, int num_recvfds,
 	int ret;
 	struct msghdr msg;
 	struct cmsghdr *cmsg = NULL;
-	char buf[1] = {0};
 	size_t cmsgbufsize = CMSG_SPACE(sizeof(struct ucred)) +
 			     CMSG_SPACE(num_recvfds * sizeof(int));
 
