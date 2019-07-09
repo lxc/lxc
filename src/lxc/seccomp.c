@@ -1346,9 +1346,11 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 {
 
 #if HAVE_DECL_SECCOMP_NOTIFY_FD
+	__do_close_prot_errno int fd_pid = -EBADF;
 	__do_close_prot_errno int fd_mem = -EBADF;
 	int ret;
 	ssize_t bytes;
+	int send_fd_list[2];
 	struct iovec iov[4];
 	size_t iov_len, msg_base_size, msg_full_size;
 	char mem_path[6 /* /proc/ */
@@ -1388,6 +1390,14 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 
 	/* remember the ID in case we receive garbage from the proxy */
 	resp->id = req_id = req->id;
+
+	snprintf(mem_path, sizeof(mem_path), "/proc/%d", req->pid);
+	fd_pid = open(mem_path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+	if (fd_pid < 0) {
+		seccomp_notify_default_answer(fd, req, resp, hdlr);
+		SYSERROR("Failed to open process pidfd for seccomp notify request");
+		goto out;
+	}
 
 	snprintf(mem_path, sizeof(mem_path), "/proc/%d/mem", req->pid);
 	fd_mem = open(mem_path, O_RDONLY | O_CLOEXEC);
@@ -1434,9 +1444,12 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 		iov_len = 3;
 	}
 
+	send_fd_list[0] = fd_pid;
+	send_fd_list[1] = fd_mem;
+
 retry:
-	bytes = lxc_abstract_unix_send_fds_iov(listener_proxy_fd, &fd_mem, 1,
-					       iov, iov_len);
+	bytes = lxc_abstract_unix_send_fds_iov(listener_proxy_fd, send_fd_list,
+					       2, iov, iov_len);
 	if (bytes != (ssize_t)msg_full_size) {
 		SYSERROR("Failed to forward message to seccomp proxy");
 		if (!reconnected) {
