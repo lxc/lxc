@@ -367,6 +367,7 @@ OLD_CFLAGS="$CFLAGS"
 CFLAGS="$CFLAGS $SECCOMP_CFLAGS"
 AC_CHECK_TYPES([scmp_filter_ctx], [], [], [[#include <seccomp.h>]])
 AC_CHECK_DECLS([seccomp_notify_fd], [], [], [[#include <seccomp.h>]])
+AC_CHECK_TYPES([struct seccomp_notif_sizes], [], [], [[#include <seccomp.h>]])
 AC_CHECK_DECLS([seccomp_syscall_resolve_name_arch], [], [], [[#include <seccomp.h>]])
 CFLAGS="$OLD_CFLAGS"
 

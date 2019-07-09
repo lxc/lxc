@@ -153,19 +153,16 @@ int lxc_abstract_unix_connect(const char *path)
 	return fd;
 }
 
-int lxc_abstract_unix_send_fds(int fd, int *sendfds, int num_sendfds,
-			       void *data, size_t size)
+int lxc_abstract_unix_send_fds_iov(int fd, int *sendfds, int num_sendfds,
+				   struct iovec *iov, size_t iovlen)
 {
 	__do_free char *cmsgbuf = NULL;
 	int ret;
 	struct msghdr msg;
-	struct iovec iov;
 	struct cmsghdr *cmsg = NULL;
-	char buf[1] = {0};
 	size_t cmsgbufsize = CMSG_SPACE(num_sendfds * sizeof(int));
 
 	memset(&msg, 0, sizeof(msg));
-	memset(&iov, 0, sizeof(iov));
 
 	cmsgbuf = malloc(cmsgbufsize);
 	if (!cmsgbuf) {
@@ -185,10 +182,8 @@ int lxc_abstract_unix_send_fds(int fd, int *sendfds, int num_sendfds,
 
 	memcpy(CMSG_DATA(cmsg), sendfds, num_sendfds * sizeof(int));
 
-	iov.iov_base = data ? data : buf;
-	iov.iov_len = data ? size : sizeof(buf);
-	msg.msg_iov = &iov;
-	msg.msg_iovlen = 1;
+	msg.msg_iov = iov;
+	msg.msg_iovlen = iovlen;
 
 again:
 	ret = sendmsg(fd, &msg, MSG_NOSIGNAL);
@@ -199,26 +194,35 @@ again:
 	return ret;
 }
 
+int lxc_abstract_unix_send_fds(int fd, int *sendfds, int num_sendfds,
+			       void *data, size_t size)
+{
+	char buf[1] = {0};
+	struct iovec iov = {
+		.iov_base = data ? data : buf,
+		.iov_len = data ? size : sizeof(buf),
+	};
+	return lxc_abstract_unix_send_fds_iov(fd, sendfds, num_sendfds, &iov,
+					      1);
+}
+
 int lxc_unix_send_fds(int fd, int *sendfds, int num_sendfds, void *data,
 		      size_t size)
 {
 	return lxc_abstract_unix_send_fds(fd, sendfds, num_sendfds, data, size);
 }
 
-int lxc_abstract_unix_recv_fds(int fd, int *recvfds, int num_recvfds,
-			       void *data, size_t size)
+static int lxc_abstract_unix_recv_fds_iov(int fd, int *recvfds, int num_recvfds,
+					  struct iovec *iov, size_t iovlen)
 {
 	__do_free char *cmsgbuf = NULL;
 	int ret;
 	struct msghdr msg;
-	struct iovec iov;
 	struct cmsghdr *cmsg = NULL;
-	char buf[1] = {0};
 	size_t cmsgbufsize = CMSG_SPACE(sizeof(struct ucred)) +
 			     CMSG_SPACE(num_recvfds * sizeof(int));
 
 	memset(&msg, 0, sizeof(msg));
-	memset(&iov, 0, sizeof(iov));
 
 	cmsgbuf = malloc(cmsgbufsize);
 	if (!cmsgbuf) {
@@ -229,10 +233,8 @@ int lxc_abstract_unix_recv_fds(int fd, int *recvfds, int num_recvfds,
 	msg.msg_control = cmsgbuf;
 	msg.msg_controllen = cmsgbufsize;
 
-	iov.iov_base = data ? data : buf;
-	iov.iov_len = data ? size : sizeof(buf);
-	msg.msg_iov = &iov;
-	msg.msg_iovlen = 1;
+	msg.msg_iov = iov;
+	msg.msg_iovlen = iovlen;
 
 again:
 	ret = recvmsg(fd, &msg, 0);
@@ -262,6 +264,17 @@ again:
 
 out:
 	return ret;
+}
+
+int lxc_abstract_unix_recv_fds(int fd, int *recvfds, int num_recvfds,
+			       void *data, size_t size)
+{
+	char buf[1] = {0};
+	struct iovec iov = {
+		.iov_base = data ? data : buf,
+		.iov_len = data ? size : sizeof(buf),
+	};
+	return lxc_abstract_unix_recv_fds_iov(fd, recvfds, num_recvfds, &iov, 1);
 }
 
 int lxc_abstract_unix_send_credential(int fd, void *data, size_t size)
@@ -365,13 +378,13 @@ int lxc_unix_sockaddr(struct sockaddr_un *ret, const char *path)
 	return (int)(offsetof(struct sockaddr_un, sun_path) + len + 1);
 }
 
-int lxc_unix_connect(struct sockaddr_un *addr)
+int lxc_unix_connect_type(struct sockaddr_un *addr, int type)
 {
 	__do_close_prot_errno int fd = -EBADF;
 	int ret;
 	ssize_t len;
 
-	fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+	fd = socket(AF_UNIX, type | SOCK_CLOEXEC, 0);
 	if (fd < 0) {
 		SYSERROR("Failed to open new AF_UNIX socket");
 		return -1;
@@ -390,6 +403,11 @@ int lxc_unix_connect(struct sockaddr_un *addr)
 	}
 
 	return move_fd(fd);
+}
+
+int lxc_unix_connect(struct sockaddr_un *addr, int type)
+{
+	return lxc_unix_connect_type(addr, SOCK_STREAM);
 }
 
 int lxc_socket_set_timeout(int fd, int rcv_timeout, int snd_timeout)

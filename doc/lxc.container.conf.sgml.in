@@ -1997,11 +1997,22 @@ dev/null proc/kcore none bind,relative 0 0
           <listitem>
             <para>
 	      Specify a unix socket to which LXC will connect and forward
-	      seccomp events to. The path must by in the form
+	      seccomp events to. The path must be in the form
 	      unix:/path/to/socket or unix:@socket. The former specifies a
 	      path-bound unix domain socket while the latter specifies an
 	      abstract unix domain socket.
-             </para>
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.seccomp.notify.cookie</option>
+          </term>
+          <listitem>
+            <para>
+	      An additional string sent along with proxied seccomp notification
+	      requests.
+            </para>
           </listitem>
         </varlistentry>
       </variablelist>

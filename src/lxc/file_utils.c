@@ -142,6 +142,24 @@ again:
 	return ret;
 }
 
+ssize_t lxc_recvmsg_nointr_iov(int sockfd, struct iovec *iov, size_t iovlen,
+			       int flags)
+{
+	ssize_t ret;
+	struct msghdr msg;
+
+	memset(&msg, 0, sizeof(msg));
+	msg.msg_iov = iov;
+	msg.msg_iovlen = iovlen;
+
+again:
+	ret = recvmsg(sockfd, &msg, flags);
+	if (ret < 0 && errno == EINTR)
+		goto again;
+
+	return ret;
+}
+
 ssize_t lxc_read_nointr_expect(int fd, void *buf, size_t count, const void *expected_buf)
 {
 	ssize_t ret;

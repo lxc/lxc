@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/uio.h>
 #include <sys/vfs.h>
 #include <unistd.h>
 
@@ -43,6 +44,8 @@ extern ssize_t lxc_read_nointr_expect(int fd, void *buf, size_t count,
 extern ssize_t lxc_read_file_expect(const char *path, void *buf, size_t count,
 				      const void *expected_buf);
 extern ssize_t lxc_recv_nointr(int sockfd, void *buf, size_t len, int flags);
+ssize_t lxc_recvmsg_nointr_iov(int sockfd, struct iovec *iov, size_t iovlen,
+			       int flags);
 
 extern bool file_exists(const char *f);
 extern int print_to_file(const char *file, const char *content);
