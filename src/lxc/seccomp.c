@@ -1479,8 +1479,7 @@ retry:
 		goto out;
 	}
 
-	bytes = lxc_recvmsg_nointr_iov(listener_proxy_fd, iov,iov_len,
-				       MSG_TRUNC);
+	bytes = lxc_recvmsg_nointr_iov(listener_proxy_fd, iov, iov_len, MSG_TRUNC);
 	if (bytes != (ssize_t)msg_base_size) {
 		SYSERROR("Failed to receive message from seccomp proxy");
 		seccomp_notify_default_answer(fd, req, resp, hdlr);
