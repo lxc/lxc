@@ -44,6 +44,11 @@ struct cgroup_ops *cgroup_init(struct lxc_conf *conf)
 {
 	struct cgroup_ops *cgroup_ops;
 
+	if (!conf) {
+		ERROR("No valid conf given");
+		return NULL;
+	}
+
 	cgroup_ops = cgfsng_ops_init(conf);
 	if (!cgroup_ops) {
 		ERROR("Failed to initialize cgroup driver");
