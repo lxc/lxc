@@ -443,14 +443,23 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             <para>
               <option>veth:</option> a virtual ethernet pair
               device is created with one side assigned to the container
-              and the other side attached to a bridge specified by
+              and the other side on the host.
+              <option>lxc.net.[i].veth.mode</option> specifies the
+              mode the veth parent will use on the host.
+              The accepted  modes are <option>bridge</option> and <option>router</option>.
+              The mode defaults to bridge if not specified.
+              In <option>bridge</option> mode the host side is attached to a bridge specified by
               the <option>lxc.net.[i].link</option> option.
-              If the bridge is not specified, then the veth pair device
+              If the bridge link is not specified, then the veth pair device
               will be created but not attached to any bridge.
               Otherwise, the bridge has to be created on the system
               before starting the container.
               <command>lxc</command> won't handle any
               configuration outside of the container.
+              In <option>router</option> mode static routes are created on the host for the
+              container's IP addresses pointing to the host side veth interface.
+              Additionally Proxy ARP and Proxy NDP entries are added on the host side veth interface
+              for the gateway IPs defined in the container to allow the container to reach the host.
               By default, <command>lxc</command> chooses a name for the
               network device belonging to the outside of the
               container, but if you wish to handle

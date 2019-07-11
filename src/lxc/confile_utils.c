@@ -501,6 +501,28 @@ void lxc_free_networks(struct lxc_list *networks)
 	lxc_list_init(networks);
 }
 
+
+static struct lxc_veth_mode {
+	char *name;
+	int mode;
+} veth_mode[] = {
+    { "bridge", VETH_MODE_BRIDGE },
+    { "router", VETH_MODE_ROUTER },
+};
+
+int lxc_veth_mode_to_flag(int *mode, const char *value)
+{
+	for (size_t i = 0; i < sizeof(veth_mode) / sizeof(veth_mode[0]); i++) {
+		if (strcmp(veth_mode[i].name, value) != 0)
+			continue;
+
+		*mode = veth_mode[i].mode;
+		return 0;
+	}
+
+	return minus_one_set_errno(EINVAL);
+}
+
 static struct lxc_macvlan_mode {
 	char *name;
 	int mode;

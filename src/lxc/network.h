@@ -98,6 +98,7 @@ struct ifla_veth {
 	int ifindex;
 	struct lxc_list ipv4_routes;
 	struct lxc_list ipv6_routes;
+	int mode; /* bridge, router */
 };
 
 struct ifla_vlan {
@@ -262,6 +263,12 @@ extern int lxc_neigh_proxy_on(const char *name, int family);
 
 /* Disable neighbor proxying. */
 extern int lxc_neigh_proxy_off(const char *name, int family);
+
+/* Activate IP forwarding. */
+extern int lxc_ip_forwarding_on(const char *name, int family);
+
+/* Disable IP forwarding. */
+extern int lxc_ip_forwarding_off(const char *name, int family);
 
 /* Generate a new unique network interface name.
  * Allocated memory must be freed by caller.

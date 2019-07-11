@@ -178,6 +178,118 @@ static int lxc_setup_ipv6_routes(struct lxc_list *ip, int ifindex)
 	return 0;
 }
 
+static int setup_ipv4_addr_routes(struct lxc_list *ip, int ifindex)
+{
+	struct lxc_list *iterator;
+	int err;
+
+	lxc_list_for_each(iterator, ip) {
+		struct lxc_inetdev *inetdev = iterator->elem;
+
+		err = lxc_ipv4_dest_add(ifindex, &inetdev->addr, 32);
+
+		if (err)
+			return error_log_errno(err,
+				"Failed to setup ipv4 address route for network device with eifindex %d",
+				ifindex);
+	}
+
+	return 0;
+}
+
+static int setup_ipv6_addr_routes(struct lxc_list *ip, int ifindex)
+{
+	struct lxc_list *iterator;
+	int err;
+
+	lxc_list_for_each(iterator, ip) {
+		struct lxc_inet6dev *inet6dev = iterator->elem;
+
+		err = lxc_ipv6_dest_add(ifindex, &inet6dev->addr, 128);
+		if (err)
+			return error_log_errno(err,
+				"Failed to setup ipv6 address route for network device with eifindex %d",
+				ifindex);
+	}
+
+	return 0;
+}
+
+struct ip_proxy_args {
+	const char *ip;
+	const char *dev;
+};
+
+static int lxc_add_ip_neigh_proxy_exec_wrapper(void *data)
+{
+	struct ip_proxy_args *args = data;
+
+	execlp("ip", "ip", "neigh", "add", "proxy", args->ip, "dev", args->dev, (char *)NULL);
+	return -1;
+}
+
+static int lxc_del_ip_neigh_proxy_exec_wrapper(void *data)
+{
+	struct ip_proxy_args *args = data;
+
+	execlp("ip", "ip", "neigh", "flush", "proxy", args->ip, "dev", args->dev, (char *)NULL);
+	return -1;
+}
+
+static int lxc_add_ip_neigh_proxy(const char *ip, const char *dev)
+{
+	int ret;
+	char cmd_output[PATH_MAX] = {0};
+	struct ip_proxy_args args = {
+		.ip = ip,
+		.dev = dev,
+	};
+
+	ret = run_command(cmd_output, sizeof(cmd_output), lxc_add_ip_neigh_proxy_exec_wrapper, &args);
+	if (ret < 0) {
+		ERROR("Failed to add ip proxy \"%s\" to dev \"%s\": %s", ip, dev, cmd_output);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int lxc_del_ip_neigh_proxy(const char *ip, const char *dev)
+{
+	int ret;
+	char cmd_output[PATH_MAX] = {0};
+	struct ip_proxy_args args = {
+		.ip = ip,
+		.dev = dev,
+	};
+
+	ret = run_command(cmd_output, sizeof(cmd_output), lxc_del_ip_neigh_proxy_exec_wrapper, &args);
+	if (ret < 0) {
+		ERROR("Failed to delete ip proxy \"%s\" to dev \"%s\": %s", ip, dev, cmd_output);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int lxc_is_ip_forwarding_enabled(const char *ifname, int family)
+{
+	int ret;
+	char path[PATH_MAX];
+	char buf[1] = "";
+
+	if (family != AF_INET && family != AF_INET6)
+		return minus_one_set_errno(EINVAL);
+
+	ret = snprintf(path, PATH_MAX, "/proc/sys/net/%s/conf/%s/%s",
+		       family == AF_INET ? "ipv4" : "ipv6", ifname,
+		       "forwarding");
+	if (ret < 0 || (size_t)ret >= PATH_MAX)
+		return minus_one_set_errno(E2BIG);
+
+	return lxc_read_file_expect(path, buf, 1, "1");
+}
+
 static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	int bridge_index, err;
@@ -276,7 +388,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		}
 	}
 
-	if (netdev->link[0] != '\0') {
+	if (netdev->link[0] != '\0' && netdev->priv.veth_attr.mode == VETH_MODE_BRIDGE) {
 		err = lxc_bridge_attach(netdev->link, veth1);
 		if (err) {
 			errno = -err;
@@ -304,6 +416,78 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	if (lxc_setup_ipv6_routes(&netdev->priv.veth_attr.ipv6_routes, netdev->priv.veth_attr.ifindex)) {
 		ERROR("Failed to setup ipv6 routes for network device \"%s\"", veth1);
 		goto out_delete;
+	}
+
+	if (netdev->priv.veth_attr.mode == VETH_MODE_ROUTER) {
+		if (netdev->ipv4_gateway) {
+			char bufinet4[INET_ADDRSTRLEN];
+			if (!inet_ntop(AF_INET, netdev->ipv4_gateway, bufinet4, sizeof(bufinet4))) {
+				error_log_errno(-errno, "Failed to convert gateway ipv4 address on \"%s\"", veth1);
+				goto out_delete;
+			}
+
+			err = lxc_ip_forwarding_on(veth1, AF_INET);
+			if (err) {
+				error_log_errno(err, "Failed to activate ipv4 forwarding on \"%s\"", veth1);
+				goto out_delete;
+			}
+
+			err = lxc_add_ip_neigh_proxy(bufinet4, veth1);
+			if (err) {
+				error_log_errno(err, "Failed to add gateway ipv4 proxy on \"%s\"", veth1);
+				goto out_delete;
+			}
+		}
+
+		if (netdev->ipv6_gateway) {
+			char bufinet6[INET6_ADDRSTRLEN];
+
+			if (!inet_ntop(AF_INET6, netdev->ipv6_gateway, bufinet6, sizeof(bufinet6))) {
+				error_log_errno(-errno, "Failed to convert gateway ipv6 address on \"%s\"", veth1);
+				goto out_delete;
+			}
+
+			/* Check for sysctl net.ipv6.conf.all.forwarding=1
+			   Kernel requires this to route any packets for IPv6.
+			*/
+			err = lxc_is_ip_forwarding_enabled("all", AF_INET6);
+			if (err) {
+				error_log_errno(err, "Requires sysctl net.ipv6.conf.all.forwarding=1");
+				goto out_delete;
+			}
+
+			err = lxc_ip_forwarding_on(veth1, AF_INET6);
+			if (err) {
+				error_log_errno(err, "Failed to activate ipv6 forwarding on \"%s\"", veth1);
+				goto out_delete;
+			}
+
+			err = lxc_neigh_proxy_on(veth1, AF_INET6);
+			if (err) {
+				error_log_errno(err, "Failed to activate proxy ndp on \"%s\"", veth1);
+				goto out_delete;
+			}
+
+			err = lxc_add_ip_neigh_proxy(bufinet6, veth1);
+			if (err) {
+				error_log_errno(err, "Failed to add gateway ipv6 proxy on \"%s\"", veth1);
+				goto out_delete;
+			}
+		}
+
+		/* setup ipv4 address routes on the host interface */
+		err = setup_ipv4_addr_routes(&netdev->ipv4, netdev->priv.veth_attr.ifindex);
+		if (err) {
+			error_log_errno(err, "Failed to setup ip address routes for network device \"%s\"", veth1);
+			goto out_delete;
+		}
+
+		/* setup ipv6 address routes on the host interface */
+		err = setup_ipv6_addr_routes(&netdev->ipv6, netdev->priv.veth_attr.ifindex);
+		if (err) {
+			error_log_errno(err, "Failed to setup ip address routes for network device \"%s\"", veth1);
+			goto out_delete;
+		}
 	}
 
 	if (netdev->upscript) {
@@ -1798,22 +1982,30 @@ static int proc_sys_net_write(const char *path, const char *value)
 	return err;
 }
 
-static int lxc_is_ip_forwarding_enabled(const char *ifname, int family)
+static int ip_forwarding_set(const char *ifname, int family, int flag)
 {
 	int ret;
 	char path[PATH_MAX];
-	char buf[1] = "";
 
 	if (family != AF_INET && family != AF_INET6)
-		return minus_one_set_errno(EINVAL);
+		return -EINVAL;
 
 	ret = snprintf(path, PATH_MAX, "/proc/sys/net/%s/conf/%s/%s",
-		       family == AF_INET ? "ipv4" : "ipv6", ifname,
-		       "forwarding");
+		       family == AF_INET ? "ipv4" : "ipv6", ifname, "forwarding");
 	if (ret < 0 || (size_t)ret >= PATH_MAX)
-		return minus_one_set_errno(E2BIG);
+		return -E2BIG;
 
-	return lxc_read_file_expect(path, buf, 1, "1");
+	return proc_sys_net_write(path, flag ? "1" : "0");
+}
+
+int lxc_ip_forwarding_on(const char *name, int family)
+{
+	return ip_forwarding_set(name, family, 1);
+}
+
+int lxc_ip_forwarding_off(const char *name, int family)
+{
+	return ip_forwarding_set(name, family, 0);
 }
 
 static int neigh_proxy_set(const char *ifname, int family, int flag)
@@ -2865,63 +3057,6 @@ clear_ifindices:
 	}
 
 	return true;
-}
-
-struct ip_proxy_args {
-	const char *ip;
-	const char *dev;
-};
-
-static int lxc_add_ip_neigh_proxy_exec_wrapper(void *data)
-{
-	struct ip_proxy_args *args = data;
-
-	execlp("ip", "ip", "neigh", "add", "proxy", args->ip, "dev", args->dev, (char *)NULL);
-	return -1;
-}
-
-static int lxc_del_ip_neigh_proxy_exec_wrapper(void *data)
-{
-	struct ip_proxy_args *args = data;
-
-	execlp("ip", "ip", "neigh", "flush", "proxy", args->ip, "dev", args->dev, (char *)NULL);
-	return -1;
-}
-
-static int lxc_add_ip_neigh_proxy(const char *ip, const char *dev)
-{
-	int ret;
-	char cmd_output[PATH_MAX];
-	struct ip_proxy_args args = {
-		.ip = ip,
-		.dev = dev,
-	};
-
-	ret = run_command(cmd_output, sizeof(cmd_output), lxc_add_ip_neigh_proxy_exec_wrapper, &args);
-	if (ret < 0) {
-		ERROR("Failed to add ip proxy \"%s\" to dev \"%s\": %s", ip, dev, cmd_output);
-		return -1;
-	}
-
-	return 0;
-}
-
-static int lxc_del_ip_neigh_proxy(const char *ip, const char *dev)
-{
-	int ret;
-	char cmd_output[PATH_MAX];
-	struct ip_proxy_args args = {
-		.ip = ip,
-		.dev = dev,
-	};
-
-	ret = run_command(cmd_output, sizeof(cmd_output), lxc_del_ip_neigh_proxy_exec_wrapper, &args);
-	if (ret < 0) {
-		ERROR("Failed to delete ip proxy \"%s\" to dev \"%s\": %s", ip, dev, cmd_output);
-		return -1;
-	}
-
-	return 0;
 }
 
 static int lxc_setup_l2proxy(struct lxc_netdev *netdev) {

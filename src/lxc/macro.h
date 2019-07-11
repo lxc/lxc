@@ -281,6 +281,14 @@ extern int __build_bug_on_failed;
 #define VETH_INFO_PEER 1
 #endif
 
+#ifndef VETH_MODE_BRIDGE
+#define VETH_MODE_BRIDGE 1
+#endif
+
+#ifndef VETH_MODE_ROUTER
+#define VETH_MODE_ROUTER 2
+#endif
+
 #ifndef IFLA_MACVLAN_MODE
 #define IFLA_MACVLAN_MODE 1
 #endif
