@@ -1163,8 +1163,8 @@ int safe_mount(const char *src, const char *dest, const char *fstype,
 		if (srcfd < 0)
 			return srcfd;
 
-		ret = snprintf(srcbuf, 50, "/proc/self/fd/%d", srcfd);
-		if (ret < 0 || ret > 50) {
+		ret = snprintf(srcbuf, sizeof(srcbuf), "/proc/self/fd/%d", srcfd);
+		if (ret < 0 || ret >= (int)sizeof(srcbuf)) {
 			close(srcfd);
 			ERROR("Out of memory");
 			return -EINVAL;
@@ -1183,8 +1183,8 @@ int safe_mount(const char *src, const char *dest, const char *fstype,
 		return destfd;
 	}
 
-	ret = snprintf(destbuf, 50, "/proc/self/fd/%d", destfd);
-	if (ret < 0 || ret > 50) {
+	ret = snprintf(destbuf, sizeof(destbuf), "/proc/self/fd/%d", destfd);
+	if (ret < 0 || ret >= (int)sizeof(destbuf)) {
 		if (srcfd != -1)
 			close(srcfd);
 
