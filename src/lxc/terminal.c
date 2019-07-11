@@ -451,7 +451,7 @@ int lxc_setup_tios(int fd, struct termios *oldtios)
 	struct termios newtios;
 
 	if (!isatty(fd)) {
-		ERROR("File descriptor %d does not refert to a terminal", fd);
+		ERROR("File descriptor %d does not refer to a terminal", fd);
 		return -1;
 	}
 
