@@ -2679,7 +2679,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <para>
               <!--
               Specify a unix socket to which LXC will connect and forward
-              seccomp events to. The path must by in the form
+              seccomp events to. The path must be in the form
               unix:/path/to/socket or unix:@socket. The former specifies a
               path-bound unix domain socket while the latter specifies an
               abstract unix domain socket.
@@ -2688,6 +2688,20 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               パスは unix:/path/to/socket もしくは unix:@socket の形式でなければなりません。
               前者はパス指定の UNIX ドメインソケットを指定し、後者は抽象 (abstract) UNIX ドメインソケットの指定です。
              </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.seccomp.notify.cookie</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              An additional string sent along with proxied seccomp notification
+              requests.
+                -->
+              プロキシーされた seccomp 通知リクエストと一緒に送る追加文字列。
+            </para>
           </listitem>
         </varlistentry>
       </variablelist>
