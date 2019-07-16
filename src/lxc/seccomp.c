@@ -1400,7 +1400,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	}
 
 	snprintf(mem_path, sizeof(mem_path), "/proc/%d/mem", req->pid);
-	fd_mem = open(mem_path, O_RDONLY | O_CLOEXEC);
+	fd_mem = open(mem_path, O_RDWR | O_CLOEXEC);
 	if (fd_mem < 0) {
 		seccomp_notify_default_answer(fd, req, resp, hdlr);
 		SYSERROR("Failed to open process memory for seccomp notify request");
