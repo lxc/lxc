@@ -1260,7 +1260,7 @@ static int mkdir_eexist_on_last(const char *dir, mode_t mode)
 
 	orig_len = strlen(dir);
 	do {
-		__do_free char *makeme;
+		__do_free char *makeme = NULL;
 		int ret;
 		size_t cur_len;
 

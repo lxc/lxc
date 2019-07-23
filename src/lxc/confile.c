@@ -909,9 +909,9 @@ static int set_config_net_ipv6_gateway(const char *key, const char *value,
 static int set_config_net_veth_ipv6_route(const char *key, const char *value,
 				       struct lxc_conf *lxc_conf, void *data)
 {
-	__do_free char *valdup;
-	__do_free struct lxc_inet6dev *inet6dev;
-	__do_free struct lxc_list *list;
+	__do_free char *valdup = NULL;
+	__do_free struct lxc_inet6dev *inet6dev = NULL;
+	__do_free struct lxc_list *list = NULL;
 	int ret;
 	char *netmask, *slash;
 	struct lxc_netdev *netdev = data;
