@@ -1605,7 +1605,10 @@ static int proc_pidfd_open(pid_t pid)
 
 	/* Test whether we can send signals. */
 	if (lxc_raw_pidfd_send_signal(proc_pidfd, 0, NULL, 0)) {
-		SYSERROR("Failed to send signal through pidfd");
+		if (errno != ENOSYS)
+			SYSERROR("Failed to send signal through pidfd");
+		else
+			INFO("Sending signals through pidfds not supported on this kernel");
 		return -1;
 	}
 
