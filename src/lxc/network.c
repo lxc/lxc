@@ -666,7 +666,7 @@ out:
  * will be passed to lxc_netdev_move_wlan() which will free it when done.
  */
 #define PHYSNAME "/sys/class/net/%s/phy80211/name"
-static char *is_wlan(const char *ifname)
+char *is_wlan(const char *ifname)
 {
 	__do_free char *path = NULL;
 	int i, ret;
@@ -739,7 +739,7 @@ static int lxc_netdev_rename_by_name_in_netns(pid_t pid, const char *old,
 	_exit(lxc_netdev_rename_by_name(old, new));
 }
 
-static int lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid,
+int lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid,
 				const char *newname)
 {
 	char *cmd;
