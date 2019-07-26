@@ -213,7 +213,7 @@ static int lxc_attach_to_ns(pid_t pid, struct lxc_proc_context_info *ctx)
 	return 0;
 }
 
-static int lxc_attach_remount_sys_proc(void)
+int lxc_attach_remount_sys_proc(void)
 {
 	int ret;
 
