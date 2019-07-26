@@ -281,4 +281,8 @@ extern char *is_wlan(const char *ifname);
 extern int lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid,
 				const char *newname);
 
+extern char *is_wlan(const char *ifname);
+extern int lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid,
+				const char *newname);
+
 #endif /* __LXC_NETWORK_H */
