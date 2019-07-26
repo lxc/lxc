@@ -1248,22 +1248,21 @@ static int lxc_netdev_rename_by_name_in_netns(pid_t pid, const char *old,
 static int lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid,
 				const char *newname)
 {
-	char *cmd;
+	__do_free char *cmd = NULL;
 	pid_t fpid;
-	int err = -1;
 
 	/* Move phyN into the container.  TODO - do this using netlink.
 	 * However, IIUC this involves a bit more complicated work to talk to
 	 * the 80211 module, so for now just call out to iw.
 	 */
 	cmd = on_path("iw", NULL);
-	if (!cmd)
-		goto out1;
-	free(cmd);
+	if (!cmd) {
+		return -1;
+	}
 
 	fpid = fork();
 	if (fpid < 0)
-		goto out1;
+		return -1;
 
 	if (fpid == 0) {
 		char pidstr[30];
@@ -1274,21 +1273,18 @@ static int lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid,
 	}
 
 	if (wait_for_pid(fpid))
-		goto out1;
+		return -1;
 
-	err = 0;
 	if (newname)
-		err = lxc_netdev_rename_by_name_in_netns(pid, ifname, newname);
+		return lxc_netdev_rename_by_name_in_netns(pid, ifname, newname);
 
-out1:
-	free(physname);
-	return err;
+	return 0;
 }
 
 int lxc_netdev_move_by_name(const char *ifname, pid_t pid, const char* newname)
 {
+	__do_free char *physname = NULL;
 	int index;
-	char *physname;
 
 	if (!ifname)
 		return -EINVAL;
@@ -3279,13 +3275,20 @@ int lxc_network_move_created_netdev_priv(struct lxc_handler *handler)
 		return 0;
 
 	lxc_list_for_each(iterator, network) {
+		__do_free char *physname = NULL;
 		int ret;
 		struct lxc_netdev *netdev = iterator->elem;
 
 		if (!netdev->ifindex)
 			continue;
 
-		ret = lxc_netdev_move_by_index(netdev->ifindex, pid, NULL);
+		if (netdev->type == LXC_NET_PHYS)
+			physname = is_wlan(netdev->link);
+
+		if (physname)
+			ret = lxc_netdev_move_wlan(physname, netdev->link, pid, NULL);
+		else
+			ret = lxc_netdev_move_by_index(netdev->ifindex, pid, NULL);
 		if (ret) {
 			errno = -ret;
 			SYSERROR("Failed to move network device \"%s\" with ifindex %d to network namespace %d",
