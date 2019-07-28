@@ -496,12 +496,12 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 	}
 
 	if (!flipped_bit) {
-		DEBUG("No isolated or offline cpus present in cpuset");
-		return true;
+		cpulist = lxc_cpumask_to_cpulist(possmask, maxposs);
+		TRACE("No isolated or offline cpus present in cpuset");
+	} else {
+		cpulist = move_ptr(posscpus);
+		TRACE("Removed isolated or offline cpus from cpuset");
 	}
-	DEBUG("Removed isolated or offline cpus from cpuset");
-
-	cpulist = lxc_cpumask_to_cpulist(possmask, maxposs);
 	if (!cpulist) {
 		ERROR("Failed to create cpu list");
 		return false;
