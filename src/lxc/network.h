@@ -293,4 +293,8 @@ extern int lxc_netns_set_nsid(int netns_fd);
 extern int lxc_netns_get_nsid(__s32 fd);
 extern int lxc_create_network(struct lxc_handler *handler);
 
+extern char *is_wlan(const char *ifname);
+extern int lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid,
+				const char *newname);
+
 #endif /* __LXC_NETWORK_H */
