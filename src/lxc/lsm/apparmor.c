@@ -132,6 +132,16 @@ static const char AA_PROFILE_BASE[] =
 "#  mount options=(rw,make-unbindable) -> **,\n"
 "#  mount options=(rw,make-runbindable) -> **,\n"
 "\n"
+"# Allow limited modification of mount propagation\n"
+"  mount options=(rw,make-slave) -> /,\n"
+"  mount options=(rw,make-rslave) -> /,\n"
+"  mount options=(rw,make-shared) -> /,\n"
+"  mount options=(rw,make-rshared) -> /,\n"
+"  mount options=(rw,make-private) -> /,\n"
+"  mount options=(rw,make-rprivate) -> /,\n"
+"  mount options=(rw,make-unbindable) -> /,\n"
+"  mount options=(rw,make-runbindable) -> /,\n"
+"\n"
 "  # allow bind-mounts of anything except /proc, /sys and /dev\n"
 "  mount options=(rw,bind) /[^spd]*{,/**},\n"
 "  mount options=(rw,bind) /d[^e]*{,/**},\n"
@@ -150,15 +160,18 @@ static const char AA_PROFILE_BASE[] =
 "  mount options=(rw,bind) /sy[^s]*{,/**},\n"
 "  mount options=(rw,bind) /sys?*{,/**},\n"
 "\n"
-"  # allow various ro-bind-*re*-mounts\n"
-"  mount options=(ro,remount,bind),\n"
-"  mount options=(ro,remount,bind,nosuid),\n"
-"  mount options=(ro,remount,bind,noexec),\n"
-"  mount options=(ro,remount,bind,nodev),\n"
-"  mount options=(ro,remount,bind,nosuid,noexec),\n"
-"  mount options=(ro,remount,bind,noexec,nodev),\n"
-"  mount options=(ro,remount,bind,nodev,nosuid),\n"
-"  mount options=(ro,remount,bind,nosuid,noexec,nodev),\n"
+"  # Allow rbind-mounts of anything except /, /dev, /proc and /sys\n"
+"  mount options=(rw,rbind) /[^spd]*{,/**},\n"
+"  mount options=(rw,rbind) /d[^e]*{,/**},\n"
+"  mount options=(rw,rbind) /de[^v]*{,/**},\n"
+"  mount options=(rw,rbind) /dev?*{,/**},\n"
+"  mount options=(rw,rbind) /p[^r]*{,/**},\n"
+"  mount options=(rw,rbind) /pr[^o]*{,/**},\n"
+"  mount options=(rw,rbind) /pro[^c]*{,/**},\n"
+"  mount options=(rw,rbind) /proc?*{,/**},\n"
+"  mount options=(rw,rbind) /s[^y]*{,/**},\n"
+"  mount options=(rw,rbind) /sy[^s]*{,/**},\n"
+"  mount options=(rw,rbind) /sys?*{,/**},\n"
 "\n"
 "  # allow moving mounts except for /proc, /sys and /dev\n"
 "  mount options=(rw,move) /[^spd]*{,/**},\n"
@@ -324,12 +337,13 @@ static const char AA_PROFILE_NESTING_BASE[] =
 "\n"
 "  mount fstype=proc -> /usr/lib/*/lxc/**,\n"
 "  mount fstype=sysfs -> /usr/lib/*/lxc/**,\n"
-"  mount options=(rw,bind),\n"
-"  mount options=(rw,rbind),\n"
-"  mount options=(rw,make-rshared),\n"
 "\n"
-   /* FIXME: What's the state here on apparmor's side? */
-"  # there doesn't seem to be a way to ask for:\n"
+"  # Allow nested LXD\n"
+"  mount none -> /var/lib/lxd/shmounts/,\n"
+"  mount /var/lib/lxd/shmounts/ -> /var/lib/lxd/shmounts/,\n"
+"  mount options=bind /var/lib/lxd/shmounts/** -> /var/lib/lxd/**,\n"
+"\n"
+"  # FIXME: There doesn't seem to be a way to ask for:\n"
 "  # mount options=(ro,nosuid,nodev,noexec,remount,bind),\n"
 "  # as we always get mount to $cdir/proc/sys with those flags denied\n"
 "  # So allow all mounts until that is straightened out:\n"
@@ -631,6 +645,86 @@ static bool is_privileged(struct lxc_conf *conf)
 	return lxc_list_empty(&conf->id_map);
 }
 
+static const char* AA_ALL_DEST_PATH_LIST[] = {
+	" -> /[^spd]*{,/**},\n",
+	" -> /d[^e]*{,/**},\n",
+	" -> /de[^v]*{,/**},\n",
+	" -> /dev/.[^l]*{,/**},\n",
+	" -> /dev/.l[^x]*{,/**},\n",
+	" -> /dev/.lx[^c]*{,/**},\n",
+	" -> /dev/.lxc?*{,/**},\n",
+	" -> /dev/[^.]*{,/**},\n",
+	" -> /dev?*{,/**},\n",
+	" -> /p[^r]*{,/**},\n",
+	" -> /pr[^o]*{,/**},\n",
+	" -> /pro[^c]*{,/**},\n",
+	" -> /proc?*{,/**},\n",
+	" -> /s[^y]*{,/**},\n",
+	" -> /sy[^s]*{,/**},\n",
+	" -> /sys?*{,/**},\n",
+	NULL,
+};
+
+static const struct mntopt_t {
+	const char *opt;
+	size_t len;
+} REMOUNT_OPTIONS[] = {
+	{ ",nodev", sizeof(",nodev")-1 },
+	{ ",nosuid", sizeof(",nosuid")-1 },
+	{ ",noexec", sizeof(",noexec")-1 },
+};
+
+static void append_remount_rule(char **profile, size_t *size, const char *rule)
+{
+	size_t rule_len = strlen(rule);
+
+	for (const char **dest = AA_ALL_DEST_PATH_LIST; *dest; ++dest) {
+		must_append_sized(profile, size, rule, rule_len);
+		must_append_sized(profile, size, *dest, strlen(*dest));
+	}
+}
+
+static void append_all_remount_rules(char **profile, size_t *size)
+{
+	/*
+	 * That's 30, and we add at most:
+	 * ",nodev,nosuid,noexec,strictatime -> /dev/.lx[^c]*{,/ **},\ n",
+	 * which is anouther ~58, this s hould be enough:
+	 */
+	char buf[128] = "  mount options=(ro,remount,bind";
+	const size_t buf_append_pos = strlen(buf);
+
+	const size_t opt_count = ARRAY_SIZE(REMOUNT_OPTIONS);
+	size_t opt_bits;
+
+	must_append_sized(profile, size,
+			  "# allow various ro-bind-*re*mounts\n",
+			  sizeof("# allow various ro-bind-*re*mounts\n")-1);
+
+	for (opt_bits = 0; opt_bits != 1 << opt_count; ++opt_bits) {
+		size_t at = buf_append_pos;
+		unsigned bit = 1;
+		size_t o;
+
+		for (o = 0; o != opt_count; ++o, bit <<= 1) {
+			if (opt_bits & bit) {
+				const struct mntopt_t *opt = &REMOUNT_OPTIONS[o];
+				memcpy(&buf[at], opt->opt, opt->len);
+				at += opt->len;
+			}
+		}
+
+		memcpy(&buf[at], ")", sizeof(")"));
+		append_remount_rule(profile, size, buf);
+
+		/* noatime and strictatime don't go together */
+		memcpy(&buf[at], ",noatime)", sizeof(",noatime)"));
+		append_remount_rule(profile, size, buf);
+		memcpy(&buf[at], ",strictatime)", sizeof(",strictatime)"));
+		append_remount_rule(profile, size, buf);
+	}
+}
+
 static char *get_apparmor_profile_content(struct lxc_conf *conf, const char *lxcpath)
 {
 	char *profile, *profile_name_full;
@@ -647,6 +741,8 @@ static char *get_apparmor_profile_content(struct lxc_conf *conf, const char *lxc
 
 	must_append_sized(&profile, &size, AA_PROFILE_BASE,
 	                  STRARRAYLEN(AA_PROFILE_BASE));
+
+	append_all_remount_rules(&profile, &size);
 
 	if (aa_supports_unix)
 		must_append_sized(&profile, &size, AA_PROFILE_UNIX_SOCKETS,
