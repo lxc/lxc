@@ -333,7 +333,7 @@ again:
 #ifdef HAVE_OPENSSL
 #include <openssl/evp.h>
 
-static int do_sha1_hash(const char *buf, int buflen, unsigned char *md_value, int *md_len)
+static int do_sha1_hash(const char *buf, int buflen, unsigned char *md_value, unsigned int *md_len)
 {
 	EVP_MD_CTX *mdctx;
 	const EVP_MD *md;
@@ -353,7 +353,7 @@ static int do_sha1_hash(const char *buf, int buflen, unsigned char *md_value, in
 	return 0;
 }
 
-int sha1sum_file(char *fnam, unsigned char *digest, int *md_len)
+int sha1sum_file(char *fnam, unsigned char *digest, unsigned int *md_len)
 {
 	char *buf;
 	int ret;

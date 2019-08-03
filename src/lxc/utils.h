@@ -99,7 +99,7 @@ extern int wait_for_pid(pid_t pid);
 extern int lxc_wait_for_pid_status(pid_t pid);
 
 #if HAVE_OPENSSL
-extern int sha1sum_file(char *fnam, unsigned char *md_value, int *md_len);
+extern int sha1sum_file(char *fnam, unsigned char *md_value, unsigned int *md_len);
 #endif
 
 /* initialize rand with urandom */
