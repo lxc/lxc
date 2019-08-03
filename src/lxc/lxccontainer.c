@@ -1638,7 +1638,8 @@ static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 	FILE *f;
 	int ret = -1;
 #if HAVE_OPENSSL
-	int i, md_len = 0;
+	int i;
+	unsigned int md_len = 0;
 	unsigned char md_value[EVP_MAX_MD_SIZE];
 	char *tpath;
 #endif
