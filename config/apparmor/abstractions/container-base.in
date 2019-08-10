@@ -73,6 +73,7 @@
   # block some other dangerous paths
   deny @{PROC}/kcore rwklx,
   deny @{PROC}/sysrq-trigger rwklx,
+  deny @{PROC}/acpi/** rwklx,
 
   # deny writes in /sys except for /sys/fs/cgroup, also allow
   # fusectl, securityfs and debugfs to be mounted there (read-only)
