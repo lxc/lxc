@@ -459,7 +459,7 @@ static char *lxc_attach_getpwshell(uid_t uid)
 			close(STDERR_FILENO);
 		} else {
 			(void)dup3(fd, STDIN_FILENO, O_CLOEXEC);
-			(void)dup3(fd, STDOUT_FILENO, O_CLOEXEC);
+			(void)dup3(fd, STDERR_FILENO, O_CLOEXEC);
 			close(fd);
 		}
 
