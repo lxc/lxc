@@ -43,6 +43,8 @@
 #include <grp.h>
 #include <linux/kdev_t.h>
 #include <linux/types.h>
+#include <poll.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1958,28 +1960,105 @@ __cgfsng_ops static bool cgfsng_get_hierarchies(struct cgroup_ops *ops, int n, c
 	return true;
 }
 
-#define THAWED "THAWED"
-#define THAWED_LEN (strlen(THAWED))
-
-/* TODO: If the unified cgroup hierarchy grows a freezer controller this needs
- * to be adapted.
- */
-__cgfsng_ops static bool cgfsng_unfreeze(struct cgroup_ops *ops)
+static bool poll_file_ready(int lfd)
 {
 	int ret;
-	__do_free char *fullpath = NULL;
+	struct pollfd pfd = {
+	    .fd = lfd,
+	    .events = POLLIN,
+	    .revents = 0,
+	};
+
+again:
+	ret = poll(&pfd, 1, 60000);
+	if (ret < 0) {
+		if (errno == EINTR)
+			goto again;
+
+		SYSERROR("Failed to poll() on file descriptor");
+		return false;
+	}
+
+	return (pfd.revents & POLLIN);
+}
+
+__cgfsng_ops static bool cgfsng_freeze(struct cgroup_ops *ops)
+{
+	int ret;
+	__do_close_prot_errno int fd = -EBADF;
+	__do_free char *events_file = NULL, *fullpath = NULL, *line = NULL;
+	__do_fclose FILE *f = NULL;
 	struct hierarchy *h;
 
-	h = get_hierarchy(ops, "freezer");
+	if (ops->cgroup_layout != CGROUP_LAYOUT_UNIFIED) {
+		h = get_hierarchy(ops, "freezer");
+		if (!h)
+			return false;
+
+		fullpath = must_make_path(h->container_full_path,
+					  "freezer.state", NULL);
+		return lxc_write_to_file(fullpath, "FROZEN",
+					 STRLITERALLEN("FROZEN"), false,
+					 0666) == 0;
+	}
+
+	h = ops->unified;
 	if (!h)
 		return false;
 
-	fullpath = must_make_path(h->container_full_path, "freezer.state", NULL);
-	ret = lxc_write_to_file(fullpath, THAWED, THAWED_LEN, false, 0666);
+	fullpath = must_make_path(h->container_full_path, "cgroup.freeze", NULL);
+	ret = lxc_write_to_file(fullpath, "1", 1, false, 0666);
 	if (ret < 0)
 		return false;
 
-	return true;
+	events_file =
+	    must_make_path(h->container_full_path, "cgroup.events", NULL);
+	fd = open(events_file, O_RDONLY | O_CLOEXEC);
+	if (fd < 0)
+		return false;
+
+	f = fdopen(fd, "re");
+	if (!f)
+		return false;
+	move_fd(fd);
+
+	for (int i = 0; i < 10 && poll_file_ready(fd); i++) {
+		size_t len;
+
+		while (getline(&line, &len, f) != -1) {
+			if (strcmp(line, "frozen 1") == 0)
+				return true;
+		}
+
+		fseek(f, 0, SEEK_SET);
+	};
+
+	return false;
+}
+
+__cgfsng_ops static bool cgfsng_unfreeze(struct cgroup_ops *ops)
+{
+	__do_free char *fullpath = NULL;
+	struct hierarchy *h;
+
+	if (ops->cgroup_layout != CGROUP_LAYOUT_UNIFIED) {
+		h = get_hierarchy(ops, "freezer");
+		if (!h)
+			return false;
+
+		fullpath = must_make_path(h->container_full_path,
+					  "freezer.state", NULL);
+		return lxc_write_to_file(fullpath, "THAWED",
+					 STRLITERALLEN("THAWED"), false,
+					 0666) == 0;
+	}
+
+	h = ops->unified;
+	if (!h)
+		return false;
+
+	fullpath = must_make_path(h->container_full_path, "cgroup.freeze", NULL);
+	return lxc_write_to_file(fullpath, "0", 1, false, 0666) == 0;
 }
 
 __cgfsng_ops static const char *cgfsng_get_cgroup(struct cgroup_ops *ops,
@@ -2767,6 +2846,7 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 	cgfsng_ops->get_cgroup = cgfsng_get_cgroup;
 	cgfsng_ops->get = cgfsng_get;
 	cgfsng_ops->set = cgfsng_set;
+	cgfsng_ops->freeze = cgfsng_freeze;
 	cgfsng_ops->unfreeze = cgfsng_unfreeze;
 	cgfsng_ops->setup_limits = cgfsng_setup_limits;
 	cgfsng_ops->driver = "cgfsng";
