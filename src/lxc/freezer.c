@@ -62,36 +62,49 @@ static int do_freeze_thaw(bool freeze, struct lxc_conf *conf, const char *name,
 	if (!cgroup_ops)
 		return -1;
 
-	ret = cgroup_ops->set(cgroup_ops, "freezer.state", state, name, lxcpath);
-	if (ret < 0) {
-		cgroup_exit(cgroup_ops);
-		ERROR("Failed to %s %s",
-		      (new_state == FROZEN ? "freeze" : "unfreeze"), name);
-		return -1;
-	}
-
-	for (;;) {
-		ret = cgroup_ops->get(cgroup_ops, "freezer.state", v, sizeof(v),
-				      name, lxcpath);
+	if (cgroup_ops->cgroup_layout != CGROUP_LAYOUT_UNIFIED) {
+		ret = cgroup_ops->set(cgroup_ops, "freezer.state", state, name,
+				      lxcpath);
 		if (ret < 0) {
 			cgroup_exit(cgroup_ops);
-			ERROR("Failed to get freezer state of %s", name);
+			ERROR("Failed to %s %s",
+			      (new_state == FROZEN ? "freeze" : "unfreeze"),
+			      name);
 			return -1;
 		}
 
-		v[sizeof(v) - 1] = '\0';
-		v[lxc_char_right_gc(v, strlen(v))] = '\0';
+		for (;;) {
+			ret = cgroup_ops->get(cgroup_ops, "freezer.state", v,
+					      sizeof(v), name, lxcpath);
+			if (ret < 0) {
+				cgroup_exit(cgroup_ops);
+				ERROR("Failed to get freezer state of %s", name);
+				return -1;
+			}
 
-		ret = strncmp(v, state, state_len);
-		if (ret == 0) {
-			cgroup_exit(cgroup_ops);
-			lxc_cmd_serve_state_clients(name, lxcpath, new_state);
-			lxc_monitor_send_state(name, new_state, lxcpath);
-			return 0;
+			v[sizeof(v) - 1] = '\0';
+			v[lxc_char_right_gc(v, strlen(v))] = '\0';
+
+			ret = strncmp(v, state, state_len);
+			if (ret == 0) {
+				cgroup_exit(cgroup_ops);
+				lxc_cmd_serve_state_clients(name, lxcpath,
+							    new_state);
+				lxc_monitor_send_state(name, new_state, lxcpath);
+				return 0;
+			}
+
+			sleep(1);
 		}
-
-		sleep(1);
 	}
+
+	ret = cgroup_ops->freeze(cgroup_ops);
+	cgroup_exit(cgroup_ops);
+	if (ret < 0)
+		return error_log_errno(-1, "Failed to %s container",
+				       freeze ? "freeze" : "unfreeze");
+
+	return 0;
 }
 
 int lxc_freeze(struct lxc_conf *conf, const char *name, const char *lxcpath)
