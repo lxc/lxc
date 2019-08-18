@@ -367,10 +367,9 @@ int main(int argc, char *argv[])
 		ret = lxc_wait_for_pid_status(pid);
 		if (ret < 0)
 			goto out;
-
-		if (WIFEXITED(ret))
-			wexit = WEXITSTATUS(ret);
 	}
+	if (WIFEXITED(ret))
+		wexit = WEXITSTATUS(ret);
 
 out:
 	lxc_container_put(c);
