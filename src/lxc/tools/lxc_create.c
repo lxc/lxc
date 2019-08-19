@@ -235,6 +235,11 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	if (my_args.dir && my_args.dir[0] != '/') {
+		ERROR("--dir should use absolute path");
+		exit(EXIT_FAILURE);
+	}
+
 	if (strncmp(my_args.template, "none", strlen(my_args.template)) == 0)
 		my_args.template = NULL;
 
