@@ -51,8 +51,13 @@ in_userns() {
     fi
   done < /proc/self/uid_map
 
-  [ "$(cat /proc/self/uid_map)" = "$(cat /proc/1/uid_map)" ] && { echo userns-root; return; }
-    echo yes
+  if [ -e /proc/1/uid_map ]; then
+    if [ "$(cat /proc/self/uid_map)" = "$(cat /proc/1/uid_map)" ]; then
+      echo userns-root
+      return
+    fi
+  fi
+  echo yes
 }
 
 usage() {

@@ -58,8 +58,12 @@ in_userns() {
         echo $fields | grep -q " 0 1$" && { echo userns-root; return; } || true
     done < /proc/self/uid_map
 
-    [ "$(cat /proc/self/uid_map)" = "$(cat /proc/1/uid_map)" ] && \
-        { echo userns-root; return; }
+    if [ -e /proc/1/uid_map ]; then
+        if [ "$(cat /proc/self/uid_map)" = "$(cat /proc/1/uid_map)" ]; then
+            echo userns-root
+            return
+        fi
+    fi
     echo yes
 }
 
