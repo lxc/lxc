@@ -1064,9 +1064,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         <filename>/dev</filename> to be set up as needed in the container
         rootfs.  If lxc.autodev is set to 1, then after mounting the container's
         rootfs LXC will mount a fresh tmpfs under <filename>/dev</filename>
-        (limited to 500k) and fill in a minimal set of initial devices.
+        (limited to 500k by default, unless defined in lxc.devfs_size) and
+        fill in a minimal set of initial devices.
         This is generally required when starting a container containing
-        a "systemd" based "init" but may be optional at other times.  Additional
+        a "systemd" based "init" but may be optional at other times. Additional
         devices in the containers /dev directory may be created through the
         use of the <option>lxc.hook.autodev</option> hook.
       </para>
@@ -1079,6 +1080,19 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             <para>
               Set this to 0 to stop LXC from mounting and populating a minimal
               <filename>/dev</filename> when starting the container.
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.devfs_size</option>
+          </term>
+          <listitem>
+            <para>
+              Set this to define the size of the /dev tmpfs.
+              The default value is 500000 (500K). If the parameter is set
+              but without value, the default value is used.
             </para>
           </listitem>
         </varlistentry>

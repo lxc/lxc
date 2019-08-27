@@ -98,6 +98,7 @@ lxc_config_define(console_logfile);
 lxc_config_define(console_path);
 lxc_config_define(console_rotate);
 lxc_config_define(console_size);
+lxc_config_define(devfs_size);
 lxc_config_define(environment);
 lxc_config_define(ephemeral);
 lxc_config_define(execute_cmd);
@@ -185,6 +186,7 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.console.path",              set_config_console_path,                get_config_console_path,                clr_config_console_path,              },
 	{ "lxc.console.rotate",            set_config_console_rotate,              get_config_console_rotate,              clr_config_console_rotate,            },
 	{ "lxc.console.size",              set_config_console_size,                get_config_console_size,                clr_config_console_size,              },
+	{ "lxc.devfs_size",                set_config_devfs_size,                  get_config_devfs_size,                  clr_config_devfs_size,                },
 	{ "lxc.environment",               set_config_environment,                 get_config_environment,                 clr_config_environment,               },
 	{ "lxc.ephemeral",                 set_config_ephemeral,                   get_config_ephemeral,                   clr_config_ephemeral,                 },
 	{ "lxc.execute.cmd",               set_config_execute_cmd,                 get_config_execute_cmd,                 clr_config_execute_cmd,               },
@@ -1548,6 +1550,20 @@ static int set_config_autodev(const char *key, const char *value,
 
 	if (lxc_conf->autodev > 1)
 		return -1;
+
+	return 0;
+}
+
+static int set_config_devfs_size(const char *key, const char *value,
+			      struct lxc_conf *lxc_conf, void *data)
+{
+	if (lxc_config_value_empty(value)) {
+		lxc_conf->devfs_size = 500000;
+		return 0;
+	}
+
+	if (lxc_safe_int(value, &lxc_conf->devfs_size) < 0)
+		lxc_conf->devfs_size = 500000;
 
 	return 0;
 }
@@ -4020,6 +4036,12 @@ static int get_config_autodev(const char *key, char *retv, int inlen,
 	return lxc_get_conf_int(c, retv, inlen, c->autodev);
 }
 
+static int get_config_devfs_size(const char *key, char *retv, int inlen,
+			      struct lxc_conf *c, void *data)
+{
+	return lxc_get_conf_int(c, retv, inlen, c->devfs_size);
+}
+
 static int get_config_signal_halt(const char *key, char *retv, int inlen,
 				  struct lxc_conf *c, void *data)
 {
@@ -4639,6 +4661,13 @@ static inline int clr_config_autodev(const char *key, struct lxc_conf *c,
 				     void *data)
 {
 	c->autodev = 1;
+	return 0;
+}
+
+static inline int clr_config_devfs_size(const char *key, struct lxc_conf *c,
+				     void *data)
+{
+	c->devfs_size = 500000;
 	return 0;
 }
 
@@ -5956,6 +5985,7 @@ int lxc_list_subkeys(struct lxc_conf *conf, const char *key, char *retv,
 		strprint(retv, inlen, "name\n");
 	} else if (!strcmp(key, "lxc.hook")) {
 		strprint(retv, inlen, "autodev\n");
+		strprint(retv, inlen, "devfs_size\n");
 		strprint(retv, inlen, "clone\n");
 		strprint(retv, inlen, "destroy\n");
 		strprint(retv, inlen, "mount\n");
