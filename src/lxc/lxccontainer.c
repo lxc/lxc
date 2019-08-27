@@ -48,6 +48,7 @@
 #include "api_extensions.h"
 #include "attach.h"
 #include "cgroup.h"
+#include "macro.h"
 #include "commands.h"
 #include "commands_utils.h"
 #include "conf.h"
@@ -130,9 +131,9 @@ static bool config_file_exists(const char *lxcpath, const char *cname)
 	size_t len;
 
 	/* $lxcpath + '/' + $cname + '/config' + \0 */
-	len = strlen(lxcpath) + strlen(cname) + 9;
+	len = strlen(lxcpath) + 1 + strlen(cname) + 1 + strlen(LXC_CONFIG_FNAME) + 1;
 	fname = must_realloc(NULL, len);
-	ret = snprintf(fname, len, "%s/%s/config", lxcpath, cname);
+	ret = snprintf(fname, len, "%s/%s/%s", lxcpath, cname, LXC_CONFIG_FNAME);
 	if (ret < 0 || (size_t)ret >= len)
 		return false;
 
@@ -163,9 +164,9 @@ static int ongoing_create(struct lxc_container *c)
 	int ret;
 	size_t len;
 
-	len = strlen(c->config_path) + strlen(c->name) + 10;
+	len = strlen(c->config_path) + 1 + strlen(c->name) + 1 + strlen(LXC_PARTIAL_FNAME) + 1;
 	path = must_realloc(NULL, len);
-	ret = snprintf(path, len, "%s/%s/partial", c->config_path, c->name);
+	ret = snprintf(path, len, "%s/%s/%s", c->config_path, c->name, LXC_PARTIAL_FNAME);
 	if (ret < 0 || (size_t)ret >= len)
 		return LXC_CREATE_FAILED;
 
@@ -209,9 +210,9 @@ static int create_partial(struct lxc_container *c)
 	struct flock lk = {0};
 
 	/* $lxcpath + '/' + $name + '/partial' + \0 */
-	len = strlen(c->config_path) + strlen(c->name) + 10;
+	len = strlen(c->config_path) + 1 + strlen(c->name) + 1 + strlen(LXC_PARTIAL_FNAME) + 1;
 	path = must_realloc(NULL, len);
-	ret = snprintf(path, len, "%s/%s/partial", c->config_path, c->name);
+	ret = snprintf(path, len, "%s/%s/%s", c->config_path, c->name, LXC_PARTIAL_FNAME);
 	if (ret < 0 || (size_t)ret >= len)
 		return -1;
 
@@ -247,9 +248,9 @@ static void remove_partial(struct lxc_container *c, int fd)
 	close(fd);
 
 	/* $lxcpath + '/' + $name + '/partial' + \0 */
-	len = strlen(c->config_path) + strlen(c->name) + 10;
+	len = strlen(c->config_path) + 1 + strlen(c->name) + 1 + strlen(LXC_PARTIAL_FNAME) + 1;
 	path = must_realloc(NULL, len);
-	ret = snprintf(path, len, "%s/%s/partial", c->config_path, c->name);
+	ret = snprintf(path, len, "%s/%s/%s", c->config_path, c->name, LXC_PARTIAL_FNAME);
 	if (ret < 0 || (size_t)ret >= len)
 		return;
 
@@ -1289,9 +1290,9 @@ static struct lxc_storage *do_storage_create(struct lxc_container *c,
 		ret = snprintf(dest, len, "%s", rpath);
 	} else {
 		const char *lxcpath = do_lxcapi_get_config_path(c);
-		len = strlen(c->name) + strlen(lxcpath) + 9;
+		len = strlen(c->name) + 1 + strlen(lxcpath) + 1 + strlen(LXC_ROOTFS_DNAME) + 1;
 		dest = must_realloc(NULL, len);
-		ret = snprintf(dest, len, "%s/%s/rootfs", lxcpath, c->name);
+		ret = snprintf(dest, len, "%s/%s/%s", lxcpath, c->name, LXC_ROOTFS_DNAME);
 	}
 	if (ret < 0 || (size_t)ret >= len)
 		return NULL;
@@ -3043,7 +3044,7 @@ static bool container_destroy(struct lxc_container *c,
 	 * +
 	 * \0
 	 */
-	len = strlen(p1) + 1 + strlen(c->name) + 1 + 6 + 1;
+	len = strlen(p1) + 1 + strlen(c->name) + 1 + strlen(LXC_CONFIG_FNAME) + 1;
 	path = malloc(len);
 	if (!path) {
 		ERROR("Failed to allocate memory");
@@ -3056,7 +3057,7 @@ static bool container_destroy(struct lxc_container *c,
 	if (storage && (!strcmp(storage->type, "overlay") ||
 			!strcmp(storage->type, "overlayfs")) &&
 	    (storage->flags & LXC_STORAGE_INTERNAL_OVERLAY_RESTORE)) {
-		ret = snprintf(path, len, "%s/%s/config", p1, c->name);
+		ret = snprintf(path, len, "%s/%s/%s", p1, c->name, LXC_CONFIG_FNAME);
 		if (ret < 0 || (size_t)ret >= len)
 			goto out;
 
@@ -3232,12 +3233,12 @@ static bool set_config_filename(struct lxc_container *c)
 		return false;
 
 	/* $lxc_path + "/" + c->name + "/" + "config" + '\0' */
-	len = strlen(c->config_path) + strlen(c->name) + strlen("config") + 3;
+	len = strlen(c->config_path) + 1 + strlen(c->name) + 1 + strlen(LXC_CONFIG_FNAME) + 1;
 	newpath = malloc(len);
 	if (!newpath)
 		return false;
 
-	ret = snprintf(newpath, len, "%s/%s/config", c->config_path, c->name);
+	ret = snprintf(newpath, len, "%s/%s/%s", c->config_path, c->name, LXC_CONFIG_FNAME);
 	if (ret < 0 || ret >= len) {
 		fprintf(stderr, "Error printing out config file name\n");
 		free(newpath);
@@ -3836,7 +3837,7 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	if (!lxcpath)
 		lxcpath = do_lxcapi_get_config_path(c);
 
-	ret = snprintf(newpath, PATH_MAX, "%s/%s/config", lxcpath, newname);
+	ret = snprintf(newpath, PATH_MAX, "%s/%s/%s", lxcpath, newname, LXC_CONFIG_FNAME);
 	if (ret < 0 || ret >= PATH_MAX) {
 		SYSERROR("clone: failed making config pathname");
 		goto out;
@@ -3885,7 +3886,7 @@ static struct lxc_container *do_lxcapi_clone(struct lxc_container *c, const char
 	saved_unexp_conf = NULL;
 	c->lxc_conf->unexpanded_len = saved_unexp_len;
 
-	ret = snprintf(newpath, PATH_MAX, "%s/%s/rootfs", lxcpath, newname);
+	ret = snprintf(newpath, PATH_MAX, "%s/%s/%s", lxcpath, newname, LXC_ROOTFS_DNAME);
 	if (ret < 0 || ret >= PATH_MAX) {
 		SYSERROR("clone: failed making rootfs pathname");
 		goto out;
@@ -4167,6 +4168,7 @@ static bool get_snappath_dir(struct lxc_container *c, char *snappath)
 static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 {
 	__do_free char *dfnam = NULL;
+        int len;
 	int i, flags, ret;
 	time_t timer;
 	struct tm tm_info;
@@ -4230,8 +4232,9 @@ static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 
 	strftime(buffer, 25, "%Y:%m:%d %H:%M:%S", &tm_info);
 
-	dfnam = must_realloc(NULL, strlen(snappath) + strlen(newname) + 5);
-	sprintf(dfnam, "%s/%s/ts", snappath, newname);
+	len = strlen(snappath) + 1 + strlen(newname) + 1 + strlen(LXC_TIMESTAMP_FNAME) + 1;
+	dfnam = must_realloc(NULL, len);
+	snprintf(dfnam, len, "%s/%s/%s", snappath, newname, LXC_TIMESTAMP_FNAME);
 	f = fopen(dfnam, "w");
 	if (!f) {
 		ERROR("Failed to open %s", dfnam);
@@ -4253,10 +4256,10 @@ static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	if (commentfile) {
 		__do_free char *path = NULL;
 		/* $p / $name / comment \0 */
-		int len = strlen(snappath) + strlen(newname) + 10;
+		len = strlen(snappath) + 1 + strlen(newname) + 1 + strlen(LXC_COMMENT_FNAME) + 1;
 
 		path = must_realloc(NULL, len);
-		sprintf(path, "%s/%s/comment", snappath, newname);
+		snprintf(path, len, "%s/%s/%s", snappath, newname, LXC_COMMENT_FNAME);
 		return copy_file(commentfile, path) < 0 ? -1 : i;
 	}
 
@@ -4352,7 +4355,7 @@ static int do_lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot 
 		if (!strcmp(direntp->d_name, ".."))
 			continue;
 
-		ret = snprintf(path2, PATH_MAX, "%s/%s/config", snappath, direntp->d_name);
+		ret = snprintf(path2, PATH_MAX, "%s/%s/%s", snappath, direntp->d_name, LXC_CONFIG_FNAME);
 		if (ret < 0 || ret >= PATH_MAX) {
 			ERROR("pathname too long");
 			goto out_free;
