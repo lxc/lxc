@@ -444,7 +444,8 @@ static char *find_line(char *buf_start, char *buf_end, char *name,
 		if (strncmp(buf_start, name, strlen(name)))
 			*found = false;
 		else
-			*owner = true;
+			if (strlen(name) == (size_t)(end_of_word - buf_start))
+				*owner = true;
 
 		buf_start = end_of_word + 1;
 		while ((buf_start < buf_end) && isblank(*buf_start))
