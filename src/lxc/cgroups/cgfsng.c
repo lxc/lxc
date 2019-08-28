@@ -1764,7 +1764,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 				      struct lxc_handler *handler,
 				      const char *root, int type)
 {
-	__do_free char *tmpfspath = NULL;
+	__do_free char *cgroup_root = NULL;
 	int ret;
 	bool has_cgns = false, retval = false, wants_force_mount = false;
 
@@ -1796,23 +1796,21 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		type = LXC_AUTO_CGROUP_FULL_MIXED;
 
 	if (ops->cgroup_layout == CGROUP_LAYOUT_UNIFIED) {
-		__do_free char *unified_path = NULL;
-
-		unified_path = must_make_path(root, "/sys/fs/cgroup", NULL);
+		cgroup_root = must_make_path(root, "/sys/fs/cgroup", NULL);
 		if (has_cgns && wants_force_mount) {
 			/* If cgroup namespaces are supported but the container
 			 * will not have CAP_SYS_ADMIN after it has started we
 			 * need to mount the cgroups manually.
 			 */
 			return cg_mount_in_cgroup_namespace(type, ops->unified,
-							    unified_path) == 0;
+							    cgroup_root) == 0;
 		}
 
-		return cg_mount_cgroup_full(type, ops->unified, unified_path) == 0;
+		return cg_mount_cgroup_full(type, ops->unified, cgroup_root) == 0;
 	}
 
 	/* mount tmpfs */
-	ret = safe_mount(NULL, tmpfspath, "tmpfs",
+	ret = safe_mount(NULL, cgroup_root, "tmpfs",
 			 MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,
 			 "size=10240k,mode=755", root);
 	if (ret < 0)
@@ -1827,7 +1825,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			continue;
 		controller++;
 
-		controllerpath = must_make_path(tmpfspath, controller, NULL);
+		controllerpath = must_make_path(cgroup_root, controller, NULL);
 		if (dir_exists(controllerpath))
 			continue;
 
