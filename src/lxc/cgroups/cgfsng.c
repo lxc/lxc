@@ -1795,8 +1795,8 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	else if (type == LXC_AUTO_CGROUP_FULL_NOSPEC)
 		type = LXC_AUTO_CGROUP_FULL_MIXED;
 
+	cgroup_root = must_make_path(root, "/sys/fs/cgroup", NULL);
 	if (ops->cgroup_layout == CGROUP_LAYOUT_UNIFIED) {
-		cgroup_root = must_make_path(root, "/sys/fs/cgroup", NULL);
 		if (has_cgns && wants_force_mount) {
 			/* If cgroup namespaces are supported but the container
 			 * will not have CAP_SYS_ADMIN after it has started we
