@@ -2003,6 +2003,9 @@ __cgfsng_ops static bool cgfsng_freeze(struct cgroup_ops *ops)
 	__do_fclose FILE *f = NULL;
 	struct hierarchy *h;
 
+	if (!ops->hierarchies)
+		return true;
+
 	if (ops->cgroup_layout != CGROUP_LAYOUT_UNIFIED) {
 		h = get_hierarchy(ops, "freezer");
 		if (!h)
@@ -2053,6 +2056,9 @@ __cgfsng_ops static bool cgfsng_unfreeze(struct cgroup_ops *ops)
 {
 	__do_free char *fullpath = NULL;
 	struct hierarchy *h;
+
+	if (!ops->hierarchies)
+		return true;
 
 	if (ops->cgroup_layout != CGROUP_LAYOUT_UNIFIED) {
 		h = get_hierarchy(ops, "freezer");
