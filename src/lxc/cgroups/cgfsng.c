@@ -1995,40 +1995,38 @@ again:
 	return (pfd.revents & POLLIN);
 }
 
-__cgfsng_ops static bool cgfsng_freeze(struct cgroup_ops *ops)
+static bool cg_legacy_freeze(struct cgroup_ops *ops)
+{
+	__do_free char *path = NULL;
+	struct hierarchy *h;
+
+	h = get_hierarchy(ops, "freezer");
+	if (!h)
+		return false;
+
+	path = must_make_path(h->container_full_path, "freezer.state", NULL);
+	return lxc_write_to_file(path, "FROZEN", STRLITERALLEN("FROZEN"), false,
+				 0666) == 0;
+}
+
+static bool cg_unified_freeze(struct cgroup_ops *ops)
 {
 	int ret;
 	__do_close_prot_errno int fd = -EBADF;
-	__do_free char *events_file = NULL, *fullpath = NULL, *line = NULL;
+	__do_free char *events_file = NULL, *path = NULL, *line = NULL;
 	__do_fclose FILE *f = NULL;
 	struct hierarchy *h;
-
-	if (!ops->hierarchies)
-		return true;
-
-	if (ops->cgroup_layout != CGROUP_LAYOUT_UNIFIED) {
-		h = get_hierarchy(ops, "freezer");
-		if (!h)
-			return false;
-
-		fullpath = must_make_path(h->container_full_path,
-					  "freezer.state", NULL);
-		return lxc_write_to_file(fullpath, "FROZEN",
-					 STRLITERALLEN("FROZEN"), false,
-					 0666) == 0;
-	}
 
 	h = ops->unified;
 	if (!h)
 		return false;
 
-	fullpath = must_make_path(h->container_full_path, "cgroup.freeze", NULL);
-	ret = lxc_write_to_file(fullpath, "1", 1, false, 0666);
+	path = must_make_path(h->container_full_path, "cgroup.freeze", NULL);
+	ret = lxc_write_to_file(path, "1", 1, false, 0666);
 	if (ret < 0)
 		return false;
 
-	events_file =
-	    must_make_path(h->container_full_path, "cgroup.events", NULL);
+	events_file = must_make_path(h->container_full_path, "cgroup.events", NULL);
 	fd = open(events_file, O_RDONLY | O_CLOEXEC);
 	if (fd < 0)
 		return false;
@@ -2052,32 +2050,53 @@ __cgfsng_ops static bool cgfsng_freeze(struct cgroup_ops *ops)
 	return false;
 }
 
-__cgfsng_ops static bool cgfsng_unfreeze(struct cgroup_ops *ops)
+__cgfsng_ops static bool cgfsng_freeze(struct cgroup_ops *ops)
 {
-	__do_free char *fullpath = NULL;
-	struct hierarchy *h;
-
 	if (!ops->hierarchies)
 		return true;
 
-	if (ops->cgroup_layout != CGROUP_LAYOUT_UNIFIED) {
-		h = get_hierarchy(ops, "freezer");
-		if (!h)
-			return false;
+	if (ops->cgroup_layout != CGROUP_LAYOUT_UNIFIED)
+		return cg_legacy_freeze(ops);
 
-		fullpath = must_make_path(h->container_full_path,
-					  "freezer.state", NULL);
-		return lxc_write_to_file(fullpath, "THAWED",
-					 STRLITERALLEN("THAWED"), false,
-					 0666) == 0;
-	}
+	return cg_unified_freeze(ops);
+}
+
+static bool cg_legacy_unfreeze(struct cgroup_ops *ops)
+{
+	__do_free char *path = NULL;
+	struct hierarchy *h;
+
+	h = get_hierarchy(ops, "freezer");
+	if (!h)
+		return false;
+
+	path = must_make_path(h->container_full_path, "freezer.state", NULL);
+	return lxc_write_to_file(path, "THAWED", STRLITERALLEN("THAWED"), false,
+				 0666) == 0;
+}
+
+static bool cg_unified_unfreeze(struct cgroup_ops *ops)
+{
+	__do_free char *path = NULL;
+	struct hierarchy *h;
 
 	h = ops->unified;
 	if (!h)
 		return false;
 
-	fullpath = must_make_path(h->container_full_path, "cgroup.freeze", NULL);
-	return lxc_write_to_file(fullpath, "0", 1, false, 0666) == 0;
+	path = must_make_path(h->container_full_path, "cgroup.freeze", NULL);
+	return lxc_write_to_file(path, "0", 1, false, 0666) == 0;
+}
+
+__cgfsng_ops static bool cgfsng_unfreeze(struct cgroup_ops *ops)
+{
+	if (!ops->hierarchies)
+		return true;
+
+	if (ops->cgroup_layout != CGROUP_LAYOUT_UNIFIED)
+		return cg_legacy_unfreeze(ops);
+
+	return cg_unified_unfreeze(ops);
 }
 
 __cgfsng_ops static const char *cgfsng_get_cgroup(struct cgroup_ops *ops,
