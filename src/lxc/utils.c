@@ -1549,6 +1549,8 @@ int lxc_prepare_loop_dev(const char *source, char *loop_dev, int flags)
 	memset(&lo64, 0, sizeof(lo64));
 	lo64.lo_flags = flags;
 
+	strlcpy((char *)lo64.lo_file_name, source, LO_NAME_SIZE);
+
 	ret = ioctl(fd_loop, LOOP_SET_STATUS64, &lo64);
 	if (ret < 0) {
 		SYSERROR("Failed to set loop status64");
