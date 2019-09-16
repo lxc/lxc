@@ -344,11 +344,11 @@ static int do_sha1_hash(const char *buf, int buflen, unsigned char *md_value, in
 		return -1;
 	}
 
-	mdctx = EVP_MD_CTX_new();
+	mdctx = EVP_MD_CTX_create();
 	EVP_DigestInit_ex(mdctx, md, NULL);
 	EVP_DigestUpdate(mdctx, buf, buflen);
 	EVP_DigestFinal_ex(mdctx, md_value, md_len);
-	EVP_MD_CTX_free(mdctx);
+	EVP_MD_CTX_destroy(mdctx);
 
 	return 0;
 }
