@@ -864,6 +864,8 @@ AC_CONFIG_FILES([
 	doc/lxc-usernsexec.sgml
 	doc/lxc-wait.sgml
 
+	doc/pam_cgfs.sgml
+
 	doc/lxc.conf.sgml
 	doc/lxc.container.conf.sgml
 	doc/lxc.system.conf.sgml
