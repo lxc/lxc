@@ -412,7 +412,8 @@ static char *get_eow(char *s, char *e)
 
 static char *find_line(char *buf_start, char *buf_end, char *name,
 		       char *net_type, char *net_link, char *net_dev,
-		       bool *owner, bool *found, bool *keep)
+		       bool *owner, bool *found_link, bool *found_dev,
+		       bool *keep)
 {
 	char *end_of_line, *end_of_word, *line;
 
@@ -420,7 +421,8 @@ static char *find_line(char *buf_start, char *buf_end, char *name,
 		size_t len;
 		char netdev_name[IFNAMSIZ];
 
-		*found = false;
+		*found_link = false;
+		*found_dev = false;
 		*keep = true;
 		*owner = false;
 
@@ -441,10 +443,8 @@ static char *find_line(char *buf_start, char *buf_end, char *name,
 		if (!end_of_word)
 			return NULL;
 
-		if (strncmp(buf_start, name, strlen(name)))
-			*found = false;
-		else
-			if (strlen(name) == (size_t)(end_of_word - buf_start))
+		if (!strncmp(buf_start, name, strlen(name)) &&
+			(strlen(name) == (size_t)(end_of_word - buf_start)))
 				*owner = true;
 
 		buf_start = end_of_word + 1;
@@ -457,9 +457,6 @@ static char *find_line(char *buf_start, char *buf_end, char *name,
 		if (!end_of_word)
 			return NULL;
 
-		if (strncmp(buf_start, net_type, strlen(net_type)))
-			*found = false;
-
 		buf_start = end_of_word + 1;
 		while ((buf_start < buf_end) && isblank(*buf_start))
 			buf_start++;
@@ -470,8 +467,9 @@ static char *find_line(char *buf_start, char *buf_end, char *name,
 		if (!end_of_word)
 			return NULL;
 
-		if (strncmp(buf_start, net_link, strlen(net_link)))
-			*found = false;
+		if (!strncmp(buf_start, net_link, strlen(net_link)) &&
+		    (strlen(net_link) == (size_t)(end_of_word - buf_start)))
+			*found_link = true;
 
 		buf_start = end_of_word + 1;
 		while ((buf_start < buf_end) && isblank(*buf_start))
@@ -493,7 +491,7 @@ static char *find_line(char *buf_start, char *buf_end, char *name,
 		*keep = lxc_nic_exists(netdev_name);
 
 		if (net_dev && !strcmp(netdev_name, net_dev))
-			*found = true;
+			*found_dev = true;
 
 		return line;
 
@@ -645,8 +643,8 @@ static bool cull_entries(int fd, char *name, char *net_type, char *net_link,
 	buf_start = buf;
 	buf_end = buf + sb.st_size;
 	while ((buf_start = find_line(buf_start, buf_end, name, net_type,
-				      net_link, net_dev, &(bool){true}, &found,
-				      &keep))) {
+				      net_link, net_dev, &(bool){true}, &(bool){true},
+				      &found, &keep))) {
 		struct entry_line *newe;
 
 		newe = realloc(entry_lines, sizeof(*entry_lines) * (n + 1));
@@ -693,12 +691,13 @@ static int count_entries(char *buf, off_t len, char *name, char *net_type, char 
 {
 	int count = 0;
 	bool owner = false;
+	bool found = false;
 	char *buf_end;
 
 	buf_end = &buf[len];
 	while ((buf = find_line(buf, buf_end, name, net_type, net_link, NULL,
-				&owner, &(bool){true}, &(bool){true}))) {
-		if (owner)
+				&owner, &found, &(bool){true}, &(bool){true}))) {
+		if (owner && found)
 			count++;
 
 		buf = get_eol(buf, buf_end) + 1;
