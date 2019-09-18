@@ -46,6 +46,10 @@ man_MANS += lxc-attach.1 \
 	    lxc-wait.1
 endif
 
+if ENABLE_PAM
+man_MANS += pam_cgfs.8
+endif
+
 if ENABLE_COMMANDS
 man_MANS += lxc-update-config.1 \
 	    lxc-user-nic.1 \
@@ -64,8 +68,12 @@ endif
 	$(db2xman) $<
 	test "$(shell basename $@)" != "$@" && mv $(shell basename $@) $@ || true
 
+%.8 : %.sgml
+	$(db2xman) $<
+	test "$(shell basename $@)" != "$@" && mv $(shell basename $@) $@ || true
+
 lxc-%.sgml : common_options.sgml see_also.sgml
 
 clean-local:
-	$(RM) manpage.* *.7 *.5 *.1 $(man_MANS)
+	$(RM) manpage.* *.7 *.5 *.1 *.8 $(man_MANS)
 endif

@@ -1,0 +1,268 @@
+<!--
+
+lxc: linux Container library
+
+(C) Copyright Canonical Inc. 2019
+
+Authors:
+Venkata Harshavardhan Reddy Allu <venkataharshavardhan_ven@srmuniv.edu.in>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+-->
+
+<!DOCTYPE refentry PUBLIC @docdtd@ [
+
+<!ENTITY seealso SYSTEM "@builddir@/see_also.sgml">
+]>
+
+<refentry>
+
+  <docinfo><date>@LXC_GENERATE_DATE@</date></docinfo>
+
+  <refmeta>
+    <refentrytitle>pam_cgfs</refentrytitle>
+    <manvolnum>8</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>pam_cgfs</refname>
+
+    <refpurpose>
+      cgroup management for unprivileged LXC containers.
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>pam_cgfs.so</command>
+      <arg choice="req">-c <replaceable>kernel_controller,name=named_controller</replaceable></arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title>Description</title>
+
+    <para>
+      LXC has supported fully unprivileged containers since LXC 1.0.
+      Fully unprivileged containers are the safest containers and are run by
+      normal (non-root) users.  This is achieved by using user namespaces by
+      mapping between a range of UIDs and GIDs on the host to a different
+      (unprivileged) range of UIDs and GIDs in the container. That means the uid
+      0 (root) in the container is mapped to an unprivileged user id (something
+      like 1000000) outside of the container and only has rights on resources
+      that it owns itself.
+    </para>
+    <para>
+      Cgroup management of fully unprivileged containers means restricting the
+      resources used by these containers like limiting the CPU usage of a
+      container, or the number of processes it is allowed to spawn, or the
+      memory it is allowed to consume. It is clear that the fully
+      unprivileged containers are run by normal users and there is a need to
+      limit and manage resource consumption among the containers.
+      But unprivileged cgroup management is not easy with most init systems.
+      So, the pam_cgfs.so came into existence.
+    </para>
+
+    <para>
+      The <command>pam_cgfs.so</command> module can handle both pure cgroupfs v1
+      (<filename>/sys/fs/cgroup/$controller</filename>) and pure cgroupfs
+      v2 (<filename>/sys/fs/cgroup</filename>), as well as mixed mounts,
+      where some controllers are mounted in a standard cgroupfs v1 hierarchy
+      (<filename>/sys/fs/cgroup/$controller</filename>) and others in
+      cgroupfs v2 hierarchy (<filename>/sys/fs/cgroup/unified</filename>).
+      Writeable cgroups are either created for all controllers or, if specified,
+      for only controllers listed as arguments on the command line.
+    </para>
+
+    <para>
+      The cgroup created <filename>user/$user/n</filename> will be for the nth
+      session under cgroup kernel controller hierarchy.
+    </para>
+
+    <para>
+      Systems with a systemd init system are treated specifically, both with
+      respect to cgroupfs v1 and cgroupfs v2. For  both, cgroupfs v1 and
+      cgroupfs v2, the module checks whether systemd already placed the user in
+      a cgroup it created <filename>user.slice/user-$uid/session-n.scope
+      </filename> by checking whether $uid == login uid. If so, the login
+      user chown the <filename>session-n.scope</filename>, else a cgroup is
+      created as outlined above (<filename>user/$user/n</filename>) and chown it
+      to login uid. If the init system has already placed the login user inside
+      a session specific group, the <command>pam_cgfs.so</command> module is
+      smart enough to detect it and re-use the cgroup.
+    </para>
+
+    <para>
+      In essence,  the <command>pam_cgfs.so</command> module takes care of
+      placing unprivileged (non-root) users into writable cgroups at login
+      and also cleaning up these cgroup hierarchies on logout, so they are free
+      to delegate resources to containers as needed that have been provided to
+      them.
+    </para>
+
+  </refsect1>
+
+  <refsect1>
+
+    <title>Options</title>
+
+    <variablelist>
+
+	  <varlistentry>
+	    <term> <option>-c <replaceable>controller-list</replaceable></option> </term>
+	   <listitem>
+	    <para>
+        Takes a string argument which sets the list of kernel controllers and
+        named controllers delimited by commas in-between “,”. Named controllers
+        need to be specified in the form “name=$namedcontroller”. Can use “all”
+        enable all cgroup resource controller hierarchies. Specifying “all” and
+        other controllers explicitly returns PAM_SESSION_ERR.
+      </para>
+	   </listitem>
+	  </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  <refsect1>
+    <title>Module types provided</title>
+    <para>
+      Only <option>session</option> module type is provided (and needed).
+    </para>
+  </refsect1>
+
+  <refsect1>
+
+    <title>Return Values</title>
+
+    <variablelist>
+
+      <varlistentry>
+        <term>PAM_SUCCESS</term>
+        <listitem>
+          <para>
+            Writeable cgroups have been created for the user.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>PAM_SESSION_ERR</term>
+        <listitem>
+          <para>
+            Failed to create writable cgroups for the user.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  <refsect1>
+
+    <title>Files</title>
+
+    <variablelist>
+
+      <varlistentry>
+        <term>/etc/pam.d/common-session{,-noninteractive}</term>
+        <listitem>
+          <para>
+            Default configuration is added at the end of these files.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  <refsect1>
+    <title>EXAMPLE</title>
+    <programlisting>
+session optional	pam_cgfs.so -c freezer,memory,named=systemd
+# default configuration
+# user writable cgroups are created under freezer, memory and named cgroup systemd hierarchies.
+# /sys/fs/cgroup/$controller/user/$user/n for freezer,memory.
+# /sys/fs/cgroup/systemd/user.slice/user-$uid/session-n.scope for systemd.
+
+session optional	pam_cgfs.so -c all
+# user writable cgroups are created under all cgroup controllers.
+
+session optional	pam_cgfs.so -c all,memory,freezer
+# invalid argument and returns PAM_SESSION_ERR
+    </programlisting>
+  </refsect1>
+
+  <refsect1>
+    <title>See Also</title>
+
+    <simpara>
+      <citerefentry>
+      <refentrytitle><command>lxc-cgroup</command></refentrytitle>
+      <manvolnum>1</manvolnum>
+      </citerefentry>,
+
+      <citerefentry>
+      <refentrytitle><command>cgroups</command></refentrytitle>
+      <manvolnum>7</manvolnum>
+      </citerefentry>,
+
+      <citerefentry>
+      <refentrytitle><command>user_namespaces</command></refentrytitle>
+      <manvolnum>7</manvolnum>
+      </citerefentry>,
+
+      <citerefentry>
+      <refentrytitle><command>namespaces</command></refentrytitle>
+      <manvolnum>7</manvolnum>
+      </citerefentry>,
+
+      <citerefentry>
+      <refentrytitle><command>pam</command></refentrytitle>
+      <manvolnum>8</manvolnum>
+      </citerefentry>
+    </simpara>
+
+
+  </refsect1>
+
+
+  <refsect1>
+    <title>Author</title>
+    <para>Venkata Harshavardhan Reddy Allu <email>venkataharshavardhan_ven@srmuniv.edu.in</email></para>
+  </refsect1>
+
+</refentry>
+
+<!-- Keep this comment at the end of the file
+Local variables:
+mode: sgml
+sgml-omittag:t
+sgml-shorttag:t
+sgml-minimize-attributes:nil
+sgml-always-quote-attributes:t
+sgml-indent-step:2
+sgml-indent-data:t
+sgml-parent-document:nil
+sgml-default-dtd-file:nil
+sgml-exposed-tags:nil
+sgml-local-catalogs:nil
+sgml-local-ecat-files:nil
+End:
+-->

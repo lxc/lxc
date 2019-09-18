@@ -130,6 +130,7 @@ config/sysconfig/lxc
 doc/*.1
 doc/*.5
 doc/*.7
+doc/*.8
 doc/ja/*.1
 doc/ja/*.5
 doc/ja/*.7
