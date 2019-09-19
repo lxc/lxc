@@ -890,6 +890,8 @@ AC_CONFIG_FILES([
 	doc/ja/lxc-usernsexec.sgml
 	doc/ja/lxc-wait.sgml
 
+	doc/ja/pam_cgfs.sgml
+
 	doc/ja/lxc.conf.sgml
 	doc/ja/lxc.container.conf.sgml
 	doc/ja/lxc.system.conf.sgml
