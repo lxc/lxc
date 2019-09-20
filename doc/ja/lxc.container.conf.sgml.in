@@ -588,14 +588,23 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <!--
               <option>veth:</option> a virtual ethernet pair
               device is created with one side assigned to the container
-              and the other side attached to a bridge specified by
+              and the other side on the host.
+              <option>lxc.net.[i].veth.mode</option> specifies the
+              mode the veth parent will use on the host.
+              The accepted  modes are <option>bridge</option> and <option>router</option>.
+              The mode defaults to bridge if not specified.
+              In <option>bridge</option> mode the host side is attached to a bridge specified by
               the <option>lxc.net.[i].link</option> option.
-              If the bridge is not specified, then the veth pair device
+              If the bridge link is not specified, then the veth pair device
               will be created but not attached to any bridge.
               Otherwise, the bridge has to be created on the system
               before starting the container.
               <command>lxc</command> won't handle any
               configuration outside of the container.
+              In <option>router</option> mode static routes are created on the host for the
+              container's IP addresses pointing to the host side veth interface.
+              Additionally Proxy ARP and Proxy NDP entries are added on the host side veth interface
+              for the gateway IPs defined in the container to allow the container to reach the host.
               By default, <command>lxc</command> chooses a name for the
               network device belonging to the outside of the
               container, but if you wish to handle
@@ -611,10 +620,16 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               Several lines specify several routes.
               The route is in format x.y.z.t/m, eg. 192.168.1.0/24.
               -->
-              <option>veth:</option > 一方がコンテナに、もう一方が <option>lxc.net.[i].link</option> オプションで指定されたブリッジに接続されるペアの仮想イーサネットデバイスを作成します。
+              <option>veth:</option> 一方がコンテナに、もう一方がホストに接続されるペアの仮想イーサネットデバイスを作成します。
+              <option>lxc.net.[i].veth.mode</option> は、veth の親（ホスト側）がホスト上で使うモードを指定します。
+              指定できるモードは <option>bridge</option> と <option>router</option> です。
+              指定しない場合のデフォルトのモードは bridge です。
+              <option>bridge</option> モードでは、ホスト側は、<option>lxc.net.[i].link</option> オプションで指定したブリッジに接続されます。
               もし、ブリッジが指定されていない場合、veth ペアデバイスは作成されますが、ブリッジには接続されません。
               ブリッジはコンテナが開始する前にシステムで事前に設定しておく必要があります。
               <command>lxc</command> はコンテナ外の設定を扱うことはありません。
+              <option>router</option> モードでは、ホスト側の veth インターフェースを指すコンテナの IP アドレスに対して、ホスト上でスタティックルートが作成されます。
+              加えて、コンテナがホストに到達できるために、コンテナ内で定義されたゲートウェイの IP アドレスに対して、Proxy ARP と Proxy NDP エントリがホスト側の veth インターフェースに追加されます。
               デフォルトでは、<command>lxc</command> がコンテナの外部に属するネットワークデバイスに対する名前を決定します。
               しかし、もしこの名前を自分で指定したい場合、<option>lxc.net.[i].veth.pair</option> オプションを使って名前を設定し、lxc に対して指定をすることができます (非特権コンテナの場合をのぞきます。セキュリティ上の理由からこのオプションは無視されます)。
 
