@@ -17,7 +17,7 @@ m4_define([lxc_version],
         ifelse(lxc_version_beta, [], [lxc_version_base], [lxc_version_base.lxc_version_beta])-devel,
         ifelse(lxc_version_beta, [], [lxc_version_base], [lxc_version_base.lxc_version_beta]))])
 
-AC_INIT([lxc], [lxc_version])
+AC_INIT([lxc],[lxc_version])
 
 # We need pkg-config
 PKG_PROG_PKG_CONFIG
@@ -42,7 +42,7 @@ AC_CONFIG_HEADERS([src/config.h])
 AM_INIT_AUTOMAKE([-Wall -Werror -Wno-portability subdir-objects])
 AC_CANONICAL_HOST
 AM_PROG_CC_C_O
-AC_GNU_SOURCE
+AC_USE_SYSTEM_EXTENSIONS
 
 # Test if we have a new enough compiler.
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
@@ -622,7 +622,7 @@ AC_FUNC_STRERROR_R
 
 # Check if "%m" is supported by printf and Co
 AC_MSG_CHECKING([%m format])
-AC_TRY_RUN([
+AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #include <stdio.h>
 int main(void)
 {
@@ -638,8 +638,7 @@ int main(void)
   {
     return 1;
   }
-}],
-[fmt_m=yes], [fmt_m=no], [fmt_m=no])
+}]])],[fmt_m=yes],[fmt_m=no],[fmt_m=no])
 if test "x$fmt_m" = "xyes"; then
 	AC_DEFINE([HAVE_M_FORMAT], 1, [Have %m format])
 	AC_MSG_RESULT([yes])
