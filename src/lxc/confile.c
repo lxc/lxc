@@ -83,6 +83,7 @@ lxc_log_define(confile, lxc);
 					   void *);
 
 lxc_config_define(autodev);
+lxc_config_define(autodev_tmpfs_size);
 lxc_config_define(apparmor_allow_incomplete);
 lxc_config_define(apparmor_allow_nesting);
 lxc_config_define(apparmor_profile);
@@ -173,6 +174,7 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.apparmor.allow_incomplete", set_config_apparmor_allow_incomplete,   get_config_apparmor_allow_incomplete,   clr_config_apparmor_allow_incomplete, },
 	{ "lxc.apparmor.allow_nesting",    set_config_apparmor_allow_nesting,      get_config_apparmor_allow_nesting,      clr_config_apparmor_allow_nesting,    },
 	{ "lxc.apparmor.raw",              set_config_apparmor_raw,                get_config_apparmor_raw,                clr_config_apparmor_raw,              },
+	{ "lxc.autodev.tmpfs.size",        set_config_autodev_tmpfs_size,          get_config_autodev_tmpfs_size,          clr_config_autodev_tmpfs_size,        },
 	{ "lxc.autodev",                   set_config_autodev,                     get_config_autodev,                     clr_config_autodev,                   },
 	{ "lxc.cap.drop",                  set_config_cap_drop,                    get_config_cap_drop,                    clr_config_cap_drop,                  },
 	{ "lxc.cap.keep",                  set_config_cap_keep,                    get_config_cap_keep,                    clr_config_cap_keep,                  },
@@ -1548,6 +1550,20 @@ static int set_config_autodev(const char *key, const char *value,
 
 	if (lxc_conf->autodev > 1)
 		return -1;
+
+	return 0;
+}
+
+static int set_config_autodev_tmpfs_size(const char *key, const char *value,
+			      struct lxc_conf *lxc_conf, void *data)
+{
+	if (lxc_config_value_empty(value)) {
+		lxc_conf->autodevtmpfssize = 500000;
+		return 0;
+	}
+
+	if (lxc_safe_int(value, &lxc_conf->autodevtmpfssize) < 0)
+		lxc_conf->autodevtmpfssize = 500000;
 
 	return 0;
 }
@@ -4020,6 +4036,12 @@ static int get_config_autodev(const char *key, char *retv, int inlen,
 	return lxc_get_conf_int(c, retv, inlen, c->autodev);
 }
 
+static int get_config_autodev_tmpfs_size(const char *key, char *retv, int inlen,
+			      struct lxc_conf *c, void *data)
+{
+	return lxc_get_conf_int(c, retv, inlen, c->autodevtmpfssize);
+}
+
 static int get_config_signal_halt(const char *key, char *retv, int inlen,
 				  struct lxc_conf *c, void *data)
 {
@@ -4639,6 +4661,13 @@ static inline int clr_config_autodev(const char *key, struct lxc_conf *c,
 				     void *data)
 {
 	c->autodev = 1;
+	return 0;
+}
+
+static inline int clr_config_autodev_tmpfs_size(const char *key, struct lxc_conf *c,
+				     void *data)
+{
+	c->autodevtmpfssize = 500000;
 	return 0;
 }
 
@@ -5956,6 +5985,7 @@ int lxc_list_subkeys(struct lxc_conf *conf, const char *key, char *retv,
 		strprint(retv, inlen, "name\n");
 	} else if (!strcmp(key, "lxc.hook")) {
 		strprint(retv, inlen, "autodev\n");
+		strprint(retv, inlen, "autodevtmpfssize\n");
 		strprint(retv, inlen, "clone\n");
 		strprint(retv, inlen, "destroy\n");
 		strprint(retv, inlen, "mount\n");

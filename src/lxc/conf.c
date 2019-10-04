@@ -1135,18 +1135,21 @@ on_error:
  * error, log it but don't fail yet.
  */
 static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
-			 const char *lxcpath)
+			 int autodevtmpfssize, const char *lxcpath)
 {
 	__do_free char *path = NULL;
 	int ret;
 	size_t clen;
 	mode_t cur_mask;
+        char mount_options[128];
 
 	INFO("Preparing \"/dev\"");
 
 	/* $(rootfs->mount) + "/dev/pts" + '\0' */
 	clen = (rootfs->path ? strlen(rootfs->mount) : 0) + 9;
 	path = must_realloc(NULL, clen);
+	sprintf(mount_options, "size=%d,mode=755", (autodevtmpfssize != 0) ? autodevtmpfssize : 500000);
+	DEBUG("Using mount options: %s", mount_options);
 
 	ret = snprintf(path, clen, "%s/dev", rootfs->path ? rootfs->mount : "");
 	if (ret < 0 || (size_t)ret >= clen)
@@ -1160,8 +1163,8 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 		goto reset_umask;
 	}
 
-	ret = safe_mount("none", path, "tmpfs", 0, "size=500000,mode=755",
-			 rootfs->path ? rootfs->mount : NULL);
+	ret = safe_mount("none", path, "tmpfs", 0, mount_options,
+			 rootfs->path ? rootfs->mount : NULL );
 	if (ret < 0) {
 		SYSERROR("Failed to mount tmpfs on \"%s\"", path);
 		goto reset_umask;
@@ -3579,7 +3582,7 @@ int lxc_setup(struct lxc_handler *handler)
 	}
 
 	if (lxc_conf->autodev > 0) {
-		ret = mount_autodev(name, &lxc_conf->rootfs, lxcpath);
+		ret = mount_autodev(name, &lxc_conf->rootfs, lxc_conf->autodevtmpfssize, lxcpath);
 		if (ret < 0) {
 			ERROR("Failed to mount \"/dev\"");
 			return -1;

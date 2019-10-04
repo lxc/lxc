@@ -299,6 +299,7 @@ struct lxc_conf {
 	struct lxc_seccomp seccomp;
 	int maincmd_fd;
 	unsigned int autodev;  /* if 1, mount and fill a /dev at start */
+	int autodevtmpfssize; /* size of the /dev tmpfs */
 	int haltsignal; /* signal used to halt container */
 	int rebootsignal; /* signal used to reboot container */
 	int stopsignal; /* signal used to hard stop container */
@@ -423,6 +424,7 @@ extern int lxc_clear_groups(struct lxc_conf *c);
 extern int lxc_clear_environment(struct lxc_conf *c);
 extern int lxc_clear_limits(struct lxc_conf *c, const char *key);
 extern int lxc_delete_autodev(struct lxc_handler *handler);
+extern int lxc_clear_autodev_tmpfs_size(struct lxc_conf *c);
 extern void lxc_clear_includes(struct lxc_conf *conf);
 extern int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf,
 					 const char *name, const char *lxcpath);
