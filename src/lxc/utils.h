@@ -256,7 +256,7 @@ static inline uint64_t lxc_getpagesize(void)
 extern uint64_t lxc_find_next_power2(uint64_t n);
 
 /* Set a signal the child process will receive after the parent has died. */
-extern int lxc_set_death_signal(int signal, pid_t parent);
+extern int lxc_set_death_signal(int signal, pid_t parent, int parent_status_fd);
 extern int fd_cloexec(int fd, bool cloexec);
 extern int recursive_destroy(char *dirname);
 extern int lxc_setup_keyring(void);
