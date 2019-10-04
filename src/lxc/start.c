@@ -1093,9 +1093,9 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 
 	lxc_set_state(name, handler, ABORTING);
 
-	if (handler->pidfd > 0)
+	if (handler->pidfd >= 0)
 		ret = lxc_raw_pidfd_send_signal(handler->pidfd, SIGKILL, NULL, 0);
-	else if (handler->proc_pidfd > 0)
+	else if (handler->proc_pidfd >= 0)
 		ret = lxc_raw_pidfd_send_signal(handler->proc_pidfd, SIGKILL, NULL, 0);
 	else if (handler->pid > 0)
 		ret = kill(handler->pid, SIGKILL);
