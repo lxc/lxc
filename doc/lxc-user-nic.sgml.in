@@ -86,7 +86,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <filename>@LXC_USERNIC_DB@</filename>.  It ensures that the calling
       user is privileged over the network namespace to which the interface
       will be attached.
-      <command>lxc-user-nic</command> also allows to delete network devices.
+      <command>lxc-user-nic</command> also allows one to delete network devices.
       Currently only ovs ports can be deleted.
     </para>
 
