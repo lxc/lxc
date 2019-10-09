@@ -256,7 +256,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (!c->is_defined(c)) {
-		ERROR("Container is not defined");
+		INFO("Container %s not found.", my_args.name);
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
@@ -264,11 +264,11 @@ int main(int argc, char *argv[])
 	if (my_args.task == SNAP) {
 		bret = do_destroy_with_snapshots(c);
 		if (bret)
-			ERROR("Destroyed container %s including snapshots", my_args.name);
+			INFO("Destroyed container %s including snapshots", my_args.name);
 	} else {
 		bret = do_destroy(c);
 		if (bret)
-			ERROR("Destroyed container %s", my_args.name);
+			INFO("Destroyed container %s", my_args.name);
 	}
 
 	lxc_container_put(c);
