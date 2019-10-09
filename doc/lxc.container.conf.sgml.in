@@ -2578,7 +2578,8 @@ dev/null proc/kcore none bind,relative 0 0
           <listitem>
             <para>
               An integer used to sort the containers when auto-starting
-              a series of containers at once.
+              a series of containers at once. A lower value means an
+              earlier start.
             </para>
           </listitem>
         </varlistentry>
