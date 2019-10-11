@@ -1405,7 +1405,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         <filename>/dev</filename> to be set up as needed in the container
         rootfs.  If lxc.autodev is set to 1, then after mounting the container's
         rootfs LXC will mount a fresh tmpfs under <filename>/dev</filename>
-        (limited to 500k) and fill in a minimal set of initial devices.
+        (limited to 500K by default, unless defined in lxc.autodev.tmpfs.size)
+        and fill in a minimal set of initial devices.
         This is generally required when starting a container containing
         a "systemd" based "init" but may be optional at other times.  Additional
         devices in the containers /dev directory may be created through the
@@ -1413,7 +1414,7 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         -->
         デフォルトでは、lxc はコンテナの <filename>/dev</filename> 以下に fd, stdin, stdout, stderr のシンボリックリンクを作成しますが、自動的にはデバイスノードのエントリは作成しません。
         これは、コンテナの rootfs で必要な設定を行えるようにするものです。
-        lxc.autodev が 1 に設定されている場合、コンテナの rootfs をマウントした後、LXC は新しい tmpfs を <filename>/dev</filename> 以下にマウントします (500k 制限の)。
+        lxc.autodev が 1 に設定されている場合、コンテナの rootfs をマウントした後、LXC は新しい tmpfs を <filename>/dev</filename> 以下にマウントします (デフォルトでは 500k 制限でマウント、lxc.autodev.tmpfs.size で指定可能)。
         そして初期デバイスの最小限のセットを作成します。
         これは、"systemd" ベースの "init" 環境のコンテナを起動する時に通常必要ですが、他の環境の場合はオプショナルなものです。
         コンテナの /dev ディレクトリ内の追加デバイスは <option>lxc.hook.autodev</option> フックを使用して作成されます。
@@ -1430,6 +1431,23 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <filename>/dev</filename> when starting the container.
               -->
               コンテナの起動時に LXC が /dev をマウントして最小限の /dev を作成するのを止めるには、この値を 0 に設定してください。
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.autodev.tmpfs.size</option>
+          </term>
+          <listitem>
+            <para>
+	      <!--
+              Set this to define the size of the /dev tmpfs.
+              The default value is 500000 (500K). If the parameter is used
+              but without value, the default value is used.
+		-->
+	      この設定で /dev tmpfs のサイズを指定します。
+	      デフォルト値は 500000 (500K) です。このパラメータを値なしで使うと、デフォルト値が使われます。
             </para>
           </listitem>
         </varlistentry>
@@ -3423,9 +3441,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <para>
               <!--
               An integer used to sort the containers when auto-starting
-              a series of containers at once.
+              a series of containers at once. A lower value means an
+              earlier start.
               -->
-              多数の自動起動させるコンテナがある場合のコンテナの起動順を決めるのに使う整数を指定します。
+              自動起動させるコンテナが多数ある場合のコンテナの起動順を決めるのに使う整数を指定します。
+              小さい値ほど早く起動します。
             </para>
           </listitem>
         </varlistentry>
