@@ -3441,9 +3441,11 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
             <para>
               <!--
               An integer used to sort the containers when auto-starting
-              a series of containers at once.
+              a series of containers at once. A lower value means an
+              earlier start.
               -->
-              多数の自動起動させるコンテナがある場合のコンテナの起動順を決めるのに使う整数を指定します。
+              自動起動させるコンテナが多数ある場合のコンテナの起動順を決めるのに使う整数を指定します。
+              小さい値ほど早く起動します。
             </para>
           </listitem>
         </varlistentry>
