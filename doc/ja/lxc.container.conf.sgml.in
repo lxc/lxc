@@ -1561,9 +1561,9 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <option>create=dir</option> と <option>create=file</option> は、マウントポイントをマウントする際にディレクトリもしくはファイルを作成します。
               <option>relative</option> を指定すると、マウントされたコンテナルートからの相対パスとして取得されます。
             </para>
-            <screen>
+            <programlisting>
               dev/null proc/kcore none bind,relative 0 0
-            </screen>
+            </programlisting>
             <para>
               <!--
               Will expand dev/null to ${<option>LXC_ROOTFS_MOUNT</option>}/dev/null,
