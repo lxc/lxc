@@ -1172,9 +1172,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               <option>relative</option> source path is taken to be relative to
               the mounted container root. For instance,
              </para>
-<screen>
-dev/null proc/kcore none bind,relative 0 0
-</screen>
+             <programlisting>
+             dev/null proc/kcore none bind,relative 0 0
+             </programlisting>
              <para>
               Will expand dev/null to ${<option>LXC_ROOTFS_MOUNT</option>}/dev/null,
               and mount it to proc/kcore inside the container.
