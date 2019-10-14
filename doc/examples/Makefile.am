@@ -12,6 +12,10 @@ pkgexamples_DATA = \
 	seccomp-v1.conf \
 	seccomp-v2-blacklist.conf \
 	seccomp-v2.conf
+
+uninstall-hook:
+	if test -d $(DESTDIR)$(pkgexamplesdir); then rmdir $(DESTDIR)$(pkgexamplesdir); fi
+
 endif
 
 noinst_DATA = \
@@ -30,3 +34,5 @@ EXTRA_DIST = \
 	seccomp-v1.conf \
 	seccomp-v2-blacklist.conf \
 	seccomp-v2.conf
+
+
