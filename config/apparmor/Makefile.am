@@ -36,9 +36,8 @@ uninstall-apparmor:
 	rm -f $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/lxc-default
 	rm -f $(DESTDIR)$(sysconfdir)/apparmor.d/abstractions/lxc/start-container
 	rm -f $(DESTDIR)$(sysconfdir)/apparmor.d/abstractions/lxc/container-base
-	rmdir $(DESTDIR)$(sysconfdir)/apparmor.d/lxc/ || :
-	rmdir $(DESTDIR)$(sysconfdir)/apparmor.d/abstractions/lxc/ || :
-	rmdir $(DESTDIR)$(sysconfdir)/apparmor.d/ || :
+	if test -d $(DESTDIR)$(sysconfdir)/apparmor.d/lxc; then rmdir $(DESTDIR)$(sysconfdir)/apparmor.d/lxc; fi
+	if test -d $(DESTDIR)$(sysconfdir)/apparmor.d/abstractions/lxc; then rmdir $(DESTDIR)$(sysconfdir)/apparmor.d/abstractions/lxc; fi
 
 install-data-local: install-apparmor
 uninstall-local: uninstall-apparmor
