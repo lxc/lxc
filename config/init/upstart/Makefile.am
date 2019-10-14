@@ -11,7 +11,6 @@ uninstall-upstart:
 	rm -f $(DESTDIR)$(sysconfdir)/init/lxc.conf
 	rm -f $(DESTDIR)$(sysconfdir)/init/lxc-instance.conf
 	rm -f $(DESTDIR)$(sysconfdir)/init/lxc-net.conf
-	rmdir $(DESTDIR)$(sysconfdir)/init || :
 
 install-data-local: install-upstart
 uninstall-local: uninstall-upstart
