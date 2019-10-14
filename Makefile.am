@@ -19,12 +19,9 @@ pcdata_DATA = lxc.pc
 libtool: $(LIBTOOL_DEPS)
 	$(SHELL) ./config.status libtool
 
-install-data-local:
-	$(MKDIR_P) $(DESTDIR)$(LXCPATH)
-	$(MKDIR_P) $(DESTDIR)$(localstatedir)/cache/lxc
-
 ChangeLog::
 	@touch ChangeLog
 
 rpm: dist
 	rpmbuild --clean -ta ${distdir}.tar.gz $(RPMARGS)
+
