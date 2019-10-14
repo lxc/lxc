@@ -18,7 +18,6 @@ install-sysvinit: lxc-containers lxc-net
 uninstall-sysvinit:
 	rm -f $(DESTDIR)$(sysconfdir)/$(initdir)/lxc
 	rm -f $(DESTDIR)$(sysconfdir)/$(initdir)/lxc-net
-	rmdir $(DESTDIR)$(sysconfdir)/$(initdir) || :
 
 install-data-local: install-sysvinit
 uninstall-local: uninstall-sysvinit
