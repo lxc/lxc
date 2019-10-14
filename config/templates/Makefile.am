@@ -9,3 +9,6 @@ templatesconfig_DATA = common.conf \
 		       nesting.conf \
 		       oci.common.conf \
 		       userns.conf
+
+uninstall-hook:
+	if test -d $(DESTDIR)$(templatesconfigdir); then rmdir $(DESTDIR)$(templatesconfigdir); fi
