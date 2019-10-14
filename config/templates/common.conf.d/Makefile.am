@@ -1,6 +1,9 @@
-templatesconfigdir=@LXCTEMPLATECONFIG@/common.conf.d/
+commonconfddir=@LXCTEMPLATECONFIG@/common.conf.d/
 
 EXTRA_DIST = README
 
-templatesconfig_DATA = \
+commonconfd_DATA = \
 	README
+
+uninstall-hook:
+	if test -d $(DESTDIR)$(commonconfddir); then rmdir $(DESTDIR)$(commonconfddir); fi
