@@ -22,3 +22,7 @@ unmount_namespace_SOURCES += \
 endif
 
 EXTRA_DIST=$(hooks_SCRIPTS)
+
+uninstall-hook:
+	if test -d $(DESTDIR)$(hooksdir); then rmdir $(DESTDIR)$(hooksdir); fi
+	if test -d $(DESTDIR)$(datadir)/lxc; then rmdir $(DESTDIR)$(datadir)/lxc; fi
