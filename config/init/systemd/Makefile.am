@@ -15,7 +15,6 @@ uninstall-systemd:
 	rm -f $(DESTDIR)$(SYSTEMD_UNIT_DIR)/lxc.service
 	rm -f $(DESTDIR)$(SYSTEMD_UNIT_DIR)/lxc@.service
 	rm -f $(DESTDIR)$(SYSTEMD_UNIT_DIR)/lxc-net.service
-	rmdir $(DESTDIR)$(SYSTEMD_UNIT_DIR) || :
 
 pkglibexec_SCRIPTS = lxc-apparmor-load
 
