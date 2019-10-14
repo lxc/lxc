@@ -256,7 +256,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (!c->is_defined(c)) {
-		INFO("Container %s not found.", my_args.name);
+		ERROR("Container is not defined");
 		lxc_container_put(c);
 		exit(EXIT_FAILURE);
 	}
