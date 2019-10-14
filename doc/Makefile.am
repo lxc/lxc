@@ -77,3 +77,6 @@ lxc-%.sgml : common_options.sgml see_also.sgml
 clean-local:
 	$(RM) manpage.* *.7 *.5 *.1 *.8 $(man_MANS)
 endif
+
+uninstall-local:
+	if test -d $(DESTDIR)$(docdir); then rmdir $(DESTDIR)$(docdir); fi
