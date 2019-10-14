@@ -1,6 +1,5 @@
-sysconfigdir="@LXC_DISTRO_SYSCONF@"
+sysconfigdir=@LXC_DISTRO_SYSCONF@
 
-sysconfig_DATA = \
-	lxc
+sysconfig_DATA = lxc
 
 EXTRA_DIST = $(sysconfig_DATA)
