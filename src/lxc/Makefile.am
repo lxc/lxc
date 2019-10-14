@@ -490,9 +490,13 @@ install-exec-hook:
 	chmod u+s $(DESTDIR)$(libexecdir)/lxc/lxc-user-nic
 endif
 
+uninstall-hook:
+	if test -d $(DESTDIR)$(pkgincludedir); then rmdir $(DESTDIR)$(pkgincludedir); fi
+
 uninstall-local:
 	$(RM) $(DESTDIR)$(libdir)/liblxc.so*
 	$(RM) $(DESTDIR)$(libdir)/liblxc.a
+	rm -f $(DESTDIR)$(datadir)/lxc/lxc.functions
 if ENABLE_PAM
 if HAVE_PAM
 	$(RM) $(DESTDIR)$(pamdir)/pam_cgfs.so*
