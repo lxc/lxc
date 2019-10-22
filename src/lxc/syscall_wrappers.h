@@ -74,7 +74,7 @@ static inline long __keyctl(int cmd, unsigned long arg2, unsigned long arg3,
 #endif
 
 #ifndef HAVE_MEMFD_CREATE
-static inline int memfd_create(const char *name, unsigned int flags) {
+static inline int memfd_create_lxc(const char *name, unsigned int flags) {
 	#ifndef __NR_memfd_create
 		#if defined __i386__
 			#define __NR_memfd_create 356
@@ -113,6 +113,7 @@ static inline int memfd_create(const char *name, unsigned int flags) {
 	return -1;
 	#endif
 }
+#define memfd_create memfd_create_lxc
 #else
 extern int memfd_create(const char *name, unsigned int flags);
 #endif
