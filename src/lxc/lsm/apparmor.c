@@ -121,6 +121,7 @@ static const char AA_PROFILE_BASE[] =
 "  # block some other dangerous paths\n"
 "  deny @{PROC}/kcore rwklx,\n"
 "  deny @{PROC}/sysrq-trigger rwklx,\n"
+"  deny @{PROC}/acpi/** rwklx,\n"
 "\n"
 "  # deny writes in /sys except for /sys/fs/cgroup, also allow\n"
 "  # fusectl, securityfs and debugfs to be mounted there (read-only)\n"
