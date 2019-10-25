@@ -115,10 +115,10 @@ int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
 
 struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, int dstfd)
 {
-	int ret;
+	__do_free struct lxc_terminal_state *ts = NULL;
 	bool istty = false;
+	int ret;
 	sigset_t mask;
-	struct lxc_terminal_state *ts;
 
 	ts = malloc(sizeof(*ts));
 	if (!ts)
@@ -177,16 +177,23 @@ on_error:
 	return ts;
 }
 
-void lxc_terminal_signal_fini(struct lxc_terminal_state *ts)
+void lxc_terminal_signal_fini(struct lxc_terminal *terminal)
 {
-	if (ts->sigfd >= 0) {
-		close(ts->sigfd);
+	struct lxc_terminal_state *state = terminal->tty_state;
 
-		if (pthread_sigmask(SIG_SETMASK, &ts->oldmask, NULL) < 0)
+	if (!terminal->tty_state)
+		return;
+
+	state = terminal->tty_state;
+	if (state->sigfd >= 0) {
+		close(state->sigfd);
+
+		if (pthread_sigmask(SIG_SETMASK, &state->oldmask, NULL) < 0)
 			SYSWARN("Failed to restore signal mask");
 	}
 
-	free(ts);
+	free(terminal->tty_state);
+	terminal->tty_state = NULL;
 }
 
 static int lxc_terminal_truncate_log_file(struct lxc_terminal *terminal)
@@ -348,10 +355,7 @@ int lxc_terminal_io_cb(int fd, uint32_t events, void *data,
 		if (fd == terminal->master) {
 			terminal->master = -EBADF;
 		} else if (fd == terminal->peer) {
-			if (terminal->tty_state) {
-				lxc_terminal_signal_fini(terminal->tty_state);
-				terminal->tty_state = NULL;
-			}
+			lxc_terminal_signal_fini(terminal);
 			terminal->peer = -EBADF;
 		} else {
 			ERROR("Handler received unexpected file descriptor");
@@ -499,10 +503,7 @@ int lxc_setup_tios(int fd, struct termios *oldtios)
 
 static void lxc_terminal_peer_proxy_free(struct lxc_terminal *terminal)
 {
-	if (terminal->tty_state) {
-		lxc_terminal_signal_fini(terminal->tty_state);
-		terminal->tty_state = NULL;
-	}
+	lxc_terminal_signal_fini(terminal);
 
 	close(terminal->proxy.master);
 	terminal->proxy.master = -1;
@@ -1018,6 +1019,9 @@ int lxc_console(struct lxc_container *c, int ttynum,
 	struct lxc_epoll_descr descr;
 	struct termios oldtios;
 	struct lxc_terminal_state *ts;
+	struct lxc_terminal terminal = {
+		.tty_state = NULL,
+	};
 	int istty = 0;
 
 	ttyfd = lxc_cmd_console(c->name, &ttynum, &masterfd, c->config_path);
@@ -1033,6 +1037,7 @@ int lxc_console(struct lxc_container *c, int ttynum,
 		ret = -1;
 		goto close_fds;
 	}
+	terminal.tty_state = ts;
 	ts->escape = escape;
 	ts->stdoutfd = stdoutfd;
 
@@ -1107,7 +1112,7 @@ close_mainloop:
 	lxc_mainloop_close(&descr);
 
 sigwinch_fini:
-	lxc_terminal_signal_fini(ts);
+	lxc_terminal_signal_fini(&terminal);
 
 close_fds:
 	close(masterfd);
@@ -1171,6 +1176,7 @@ void lxc_terminal_conf_free(struct lxc_terminal *terminal)
 	free(terminal->path);
 	if (terminal->buffer_size > 0 && terminal->ringbuf.addr)
 		lxc_ringbuf_release(&terminal->ringbuf);
+	lxc_terminal_signal_fini(terminal);
 }
 
 int lxc_terminal_map_ids(struct lxc_conf *c, struct lxc_terminal *terminal)
