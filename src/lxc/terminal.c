@@ -174,7 +174,7 @@ on_error:
 		ts->sigfd = -1;
 	}
 
-	return ts;
+	return NULL;
 }
 
 void lxc_terminal_signal_fini(struct lxc_terminal *terminal)
