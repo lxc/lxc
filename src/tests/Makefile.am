@@ -100,6 +100,7 @@ bin_SCRIPTS += lxc-test-automount \
 	       lxc-test-autostart \
 	       lxc-test-cloneconfig \
 	       lxc-test-createconfig \
+	       lxc-test-exit-code \
 	       lxc-test-no-new-privs \
 	       lxc-test-rootfs
 
