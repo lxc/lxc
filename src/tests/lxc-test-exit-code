@@ -1,0 +1,53 @@
+#!/bin/sh
+
+# lxc: linux Container library
+
+# Authors:
+# Florian Margaine <florian@platform.sh>
+#
+# This is a test script for the lxc-attach and lxc-execute
+# programs. It tests whether the exit code is not 0 when a script
+# fails to execute.
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+set -e
+
+FAIL() {
+	echo -n "Failed " >&2
+	echo "$*" >&2
+	lxc-destroy -n busy -f
+	exit 1
+}
+
+# Create a container
+lxc-create -t busybox -n busy || FAIL "creating busybox container"
+
+# Run lxc-execute to make sure it fails when the command fails, and
+# succeed when the command succeeds.
+lxc-execute -n busy -- sh -c 'exit 1' && FAIL "should be failing" || true
+lxc-execute -n busy -- sh -c 'exit 0' || FAIL "should be succeeding"
+
+# Now, start the container and wait for it to be in running state.
+lxc-start -n busy -d || FAIL "starting busybox container"
+lxc-wait -n busy -s RUNNING || FAIL "waiting for busybox container to run"
+
+# And run the same tests on lxc-attach.
+lxc-attach -n busy -- sh -c 'exit 1' && FAIL "should be failing" || true
+lxc-attach -n busy -- sh -c 'exit 0' || FAIL "should be succeeding"
+
+lxc-destroy -n busy -f
+
+exit 0
