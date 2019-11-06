@@ -115,8 +115,8 @@ int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
 
 struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, int dstfd)
 {
+	__do_close_prot_errno int signal_fd = -EBADF;
 	__do_free struct lxc_terminal_state *ts = NULL;
-	bool istty = false;
 	int ret;
 	sigset_t mask;
 
@@ -132,49 +132,40 @@ struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, int dstfd)
 	ret = sigemptyset(&mask);
 	if (ret < 0) {
 		SYSERROR("Failed to initialize an empty signal set");
-		goto on_error;
+		return NULL;
 	}
 
-	istty = (isatty(srcfd) == 1);
-	if (!istty) {
-		INFO("fd %d does not refer to a tty device", srcfd);
-	} else {
+	if (isatty(srcfd)) {
 		ret = sigaddset(&mask, SIGWINCH);
 		if (ret < 0)
 			SYSNOTICE("Failed to add SIGWINCH to signal set");
+	} else {
+		INFO("fd %d does not refer to a tty device", srcfd);
 	}
 
 	/* Exit the mainloop cleanly on SIGTERM. */
 	ret = sigaddset(&mask, SIGTERM);
 	if (ret < 0) {
 		SYSERROR("Failed to add SIGWINCH to signal set");
-		goto on_error;
+		return NULL;
 	}
 
 	ret = pthread_sigmask(SIG_BLOCK, &mask, &ts->oldmask);
 	if (ret < 0) {
 		WARN("Failed to block signals");
-		goto on_error;
+		return NULL;
 	}
 
-	ts->sigfd = signalfd(-1, &mask, SFD_CLOEXEC);
-	if (ts->sigfd < 0) {
+	signal_fd = signalfd(-1, &mask, SFD_CLOEXEC);
+	if (signal_fd < 0) {
 		WARN("Failed to create signal fd");
 		(void)pthread_sigmask(SIG_SETMASK, &ts->oldmask, NULL);
-		goto on_error;
+		return NULL;
 	}
+	ts->sigfd = move_fd(signal_fd);
+	TRACE("Created signal fd %d", ts->sigfd);
 
-	DEBUG("Created signal fd %d", ts->sigfd);
-	return ts;
-
-on_error:
-	ERROR("Failed to create signal fd");
-	if (ts->sigfd >= 0) {
-		close(ts->sigfd);
-		ts->sigfd = -1;
-	}
-
-	return NULL;
+	return move_ptr(ts);
 }
 
 /**
