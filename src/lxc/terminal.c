@@ -177,7 +177,15 @@ on_error:
 	return NULL;
 }
 
-void lxc_terminal_signal_fini(struct lxc_terminal *terminal)
+/**
+ * lxc_terminal_signal_fini: uninstall signal handler
+ *
+ * @terminal: terminal instance
+ *
+ * Restore the saved signal handler that was in effect at the time
+ * lxc_terminal_signal_init() was called.
+ */
+static void lxc_terminal_signal_fini(struct lxc_terminal *terminal)
 {
 	struct lxc_terminal_state *state = terminal->tty_state;
 

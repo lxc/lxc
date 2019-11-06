@@ -262,20 +262,6 @@ extern struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, int dstfd)
 extern int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
 				    struct lxc_epoll_descr *descr);
 
-/**
- * lxc_terminal_signal_fini: uninstall signal handler
- *
- * @terminal
- * - the lxc_terminal
- *
- * Restore the saved signal handler that was in effect at the time
- * lxc_terminal_signal_init() was called.
- *
- * Must be called with process_lock held to protect the lxc_ttys list, or
- * from a non-threaded context.
- */
-extern void lxc_terminal_signal_fini(struct lxc_terminal *terminal);
-
 extern int lxc_terminal_write_ringbuffer(struct lxc_terminal *terminal);
 extern int lxc_terminal_create_log_file(struct lxc_terminal *terminal);
 extern int lxc_terminal_io_cb(int fd, uint32_t events, void *data,
