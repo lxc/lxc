@@ -77,7 +77,7 @@ typedef enum {
  *   If the hierarchy is a legacy hierarchy this will be set to
  *   CGROUP_SUPER_MAGIC.
  * - unified hierarchy
- *   If the hierarchy is a legacy hierarchy this will be set to
+ *   If the hierarchy is a unified hierarchy this will be set to
  *   CGROUP2_SUPER_MAGIC.
  */
 struct hierarchy {
