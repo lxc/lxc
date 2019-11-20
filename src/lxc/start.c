@@ -1321,7 +1321,7 @@ static int do_start(void *data)
 
 	/* Add the requested environment variables to the current environment to
 	 * allow them to be used by the various hooks, such as the start hook
-	 * above.
+	 * below.
 	 */
 	lxc_list_for_each(iterator, &handler->conf->environment) {
 		ret = putenv((char *)iterator->elem);
