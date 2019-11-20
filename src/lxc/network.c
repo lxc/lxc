@@ -1977,7 +1977,7 @@ int lxc_ovs_delete_port(const char *bridge, const char *nic)
 			  lxc_ovs_delete_port_exec, (void *)&args);
 	if (ret < 0) {
 		ERROR("Failed to delete \"%s\" from openvswitch bridge \"%s\": "
-		      "%s", bridge, nic, cmd_output);
+		      "%s", nic, bridge, cmd_output);
 		return -1;
 	}
 
@@ -2005,7 +2005,7 @@ static int lxc_ovs_attach_bridge(const char *bridge, const char *nic)
 			  lxc_ovs_attach_bridge_exec, (void *)&args);
 	if (ret < 0) {
 		ERROR("Failed to attach \"%s\" to openvswitch bridge \"%s\": %s",
-		      bridge, nic, cmd_output);
+		      nic, bridge, cmd_output);
 		return -1;
 	}
 
