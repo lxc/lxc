@@ -2223,7 +2223,7 @@ __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops, const char *name,
 		path = lxc_cmd_get_cgroup_path(name, lxcpath, h->controllers[0]);
 		/* not running */
 		if (!path)
-			continue;
+			return false;
 
 		fullpath = build_full_cgpath_from_monitorpath(h, path, "cgroup.procs");
 		ret = lxc_write_to_file(fullpath, pidstr, len, false, 0666);
