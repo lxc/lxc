@@ -1912,6 +1912,12 @@ static int lxc_spawn(struct lxc_handler *handler)
 	}
 	TRACE("Set up legacy device cgroup controller limits");
 
+	if (!cgroup_ops->devices_activate(cgroup_ops, handler)) {
+		ERROR("Failed to setup cgroup2 device controller limits");
+		goto out_delete_net;
+	}
+	TRACE("Set up cgroup2 device controller limits");
+
 	if (handler->ns_clone_flags & CLONE_NEWCGROUP) {
 		/* Now we're ready to preserve the cgroup namespace */
 		ret = lxc_try_preserve_ns(handler->pid, "cgroup");

@@ -234,6 +234,7 @@ struct lxc_conf {
 	struct {
 		struct lxc_list cgroup;
 		struct lxc_list cgroup2;
+		struct bpf_program *cgroup2_devices;
 	};
 
 	struct {
