@@ -368,6 +368,10 @@ AC_CHECK_TYPES([struct seccomp_notif_sizes], [], [], [[#include <seccomp.h>]])
 AC_CHECK_DECLS([seccomp_syscall_resolve_name_arch], [], [], [[#include <seccomp.h>]])
 CFLAGS="$OLD_CFLAGS"
 
+AC_CHECK_HEADERS([linux/bpf.h], [
+	AC_CHECK_TYPES([struct bpf_cgroup_dev_ctx], [], [], [[#include <linux/bpf.h>]])
+], [], [])
+
 # Configuration examples
 AC_ARG_ENABLE([examples],
 	[AS_HELP_STRING([--enable-examples], [install examples [default=yes]])],

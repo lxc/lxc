@@ -7,6 +7,7 @@ noinst_HEADERS = api_extensions.h \
 		 caps.h \
 		 cgroups/cgroup.h \
 		 cgroups/cgroup_utils.h \
+		 cgroups/cgroup2_devices.h \
 		 compiler.h \
 		 conf.h \
 		 confile.h \
@@ -95,6 +96,7 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    caps.c caps.h \
 		    cgroups/cgfsng.c \
 		    cgroups/cgroup.c cgroups/cgroup.h \
+		    cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		    cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		    compiler.h \
 		    commands.c commands.h \
