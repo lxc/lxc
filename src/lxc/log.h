@@ -512,6 +512,12 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 		-1;                              \
 	})
 
+#define log_trace(__ret__, format, ...)	      \
+	({                                    \
+		TRACE(format, ##__VA_ARGS__); \
+		__ret__;                      \
+	})
+
 extern int lxc_log_fd;
 
 extern int lxc_log_syslog(int facility);
