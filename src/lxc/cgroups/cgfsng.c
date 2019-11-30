@@ -2481,21 +2481,60 @@ out:
 	return ret;
 }
 
+static int bpf_list_add_device(struct lxc_conf *conf, struct device_item *device)
+{
+	__do_free struct lxc_list *list_elem = NULL;
+	__do_free struct device_item *new_device = NULL;
+	struct lxc_list *it;
+
+	lxc_list_for_each(it, &conf->devices) {
+		struct device_item *cur = it->elem;
+
+		if (cur->type != device->type)
+			continue;
+		if (cur->major != device->major)
+			continue;
+		if (cur->minor != device->minor)
+			continue;
+		if (strcmp(cur->access, device->access))
+			continue;
+
+		/*
+		 * The rule is switched from allow to deny or vica versa so
+		 * don't bother allocating just flip the existing one.
+		 */
+		if (cur->allow != device->allow) {
+			cur->allow = device->allow;
+			return log_trace(0, "Reusing existing rule of bpf device program: type %c, major %d, minor %d, access %s, allow %d",
+					 cur->type, cur->major, cur->minor,
+					 cur->access, cur->allow);
+		}
+	}
+
+	list_elem = malloc(sizeof(*list_elem));
+	if (!list_elem)
+		return error_log_errno(ENOMEM, "Failed to allocate new device list");
+
+	new_device = memdup(device, sizeof(struct device_item));
+	if (!new_device)
+		return error_log_errno(ENOMEM, "Failed to allocate new device item");
+
+	lxc_list_add_elem(list_elem, move_ptr(new_device));
+	lxc_list_add_tail(&conf->devices, move_ptr(list_elem));
+
+	return 0;
+}
+
 /*
  * Some of the parsing logic comes from the original cgroup device v1
  * implementation in the kernel.
  */
-static int bpf_device_cgroup_prepare(struct cgroup_ops *ops, const char *key,
+static int bpf_device_cgroup_prepare(struct cgroup_ops *ops,
+				     struct lxc_conf *conf, const char *key,
 				     const char *val)
 {
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
-	struct device_item {
-		char type;
-		int major;
-		int minor;
-		char access[100];
-		int allow;
-	} device_item = {0};
+	struct device_item device_item = {0};
 	int count, ret;
 	char temp[50];
 	struct bpf_program *device;
@@ -2614,6 +2653,11 @@ static int bpf_device_cgroup_prepare(struct cgroup_ops *ops, const char *key,
 		      device_item.type, device_item.major, device_item.minor,
 		      device_item.access, device_item.allow);
 	}
+
+	ret = bpf_list_add_device(conf, &device_item);
+	if (ret)
+		return -1;
+
 #endif
 	return 0;
 }
@@ -2637,7 +2681,7 @@ static bool __cg_unified_setup_limits(struct cgroup_ops *ops,
 		struct lxc_cgroup *cg = iterator->elem;
 
 		if (strncmp("devices", cg->subsystem, 7) == 0) {
-			ret = bpf_device_cgroup_prepare(ops, cg->subsystem,
+			ret = bpf_device_cgroup_prepare(ops, conf, cg->subsystem,
 							cg->value);
 		} else {
 			fullpath = must_make_path(h->container_full_path,

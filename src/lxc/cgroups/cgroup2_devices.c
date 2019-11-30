@@ -7,7 +7,6 @@
 #endif
 #include <errno.h>
 #include <fcntl.h>
-#include <linux/filter.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -24,6 +23,7 @@
 
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
 #include <linux/bpf.h>
+#include <linux/filter.h>
 
 lxc_log_define(cgroup2_devices, cgroup);
 

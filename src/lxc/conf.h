@@ -223,6 +223,14 @@ struct lxc_state_client {
 	lxc_state_t states[MAX_STATE];
 };
 
+struct device_item {
+	char type;
+	int major;
+	int minor;
+	char access[4];
+	int allow;
+};
+
 struct lxc_conf {
 	/* Pointer to the name of the container. Do not free! */
 	const char *name;
@@ -235,6 +243,8 @@ struct lxc_conf {
 		struct lxc_list cgroup;
 		struct lxc_list cgroup2;
 		struct bpf_program *cgroup2_devices;
+		/* This should be reimplemented as a hashmap. */
+		struct lxc_list devices;
 	};
 
 	struct {

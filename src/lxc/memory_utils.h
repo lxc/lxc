@@ -65,4 +65,12 @@ static inline void __auto_close__(int *fd)
 #define __do_fclose __attribute__((__cleanup__(__auto_fclose__)))
 #define __do_closedir __attribute__((__cleanup__(__auto_closedir__)))
 
+static inline void *memdup(const void *data, size_t len)
+{
+	void *copy = NULL;
+
+	copy = len ? malloc(len) : NULL;
+	return copy ? memcpy(copy, data, len) : NULL;
+}
+
 #endif /* __LXC_MEMORY_UTILS_H */

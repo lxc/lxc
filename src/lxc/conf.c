@@ -2684,6 +2684,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->logfd = -1;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->cgroup2);
+	lxc_list_init(&new->devices);
 	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
 	lxc_list_init(&new->caps);
@@ -3823,6 +3824,17 @@ int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version)
 	return 0;
 }
 
+static void lxc_clear_devices(struct lxc_conf *conf)
+{
+	struct lxc_list *list = &conf->devices;
+	struct lxc_list *it, *next;
+
+	lxc_list_for_each_safe(it, list, next) {
+		lxc_list_del(it);
+		free(it);
+	}
+}
+
 int lxc_clear_limits(struct lxc_conf *c, const char *key)
 {
 	struct lxc_list *it, *next;
@@ -4045,6 +4057,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_config_keepcaps(conf);
 	lxc_clear_cgroups(conf, "lxc.cgroup", CGROUP_SUPER_MAGIC);
 	lxc_clear_cgroups(conf, "lxc.cgroup2", CGROUP2_SUPER_MAGIC);
+	lxc_clear_devices(conf);
 	lxc_clear_cgroup2_devices(conf);
 	lxc_clear_hooks(conf, "lxc.hook");
 	lxc_clear_mount_entries(conf);
