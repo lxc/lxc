@@ -92,6 +92,7 @@ struct hierarchy {
 	char *container_full_path;
 	char *monitor_full_path;
 	int version;
+	int bpf_device_controller:1;
 };
 
 struct cgroup_ops {
