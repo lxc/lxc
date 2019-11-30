@@ -2485,7 +2485,7 @@ out:
  * Some of the parsing logic comes from the original cgroup device v1
  * implementation in the kernel.
  */
-static int bpf_device_cgroup_prepare(struct lxc_conf *conf, const char *key,
+static int bpf_device_cgroup_prepare(struct cgroup_ops *ops, const char *key,
 				     const char *val)
 {
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
@@ -2500,8 +2500,8 @@ static int bpf_device_cgroup_prepare(struct lxc_conf *conf, const char *key,
 	char temp[50];
 	struct bpf_program *device;
 
-	if (conf->cgroup2_devices) {
-		device = conf->cgroup2_devices;
+	if (ops->cgroup2_devices) {
+		device = ops->cgroup2_devices;
 	} else {
 		device = bpf_program_new(BPF_PROG_TYPE_CGROUP_DEVICE);
 		if (device && bpf_program_init(device)) {
@@ -2514,7 +2514,7 @@ static int bpf_device_cgroup_prepare(struct lxc_conf *conf, const char *key,
 		return -1;
 	}
 
-	conf->cgroup2_devices = device;
+	ops->cgroup2_devices = device;
 
 	if (strcmp("devices.allow", key) == 0)
 		device_item.allow = 1;
@@ -2637,7 +2637,7 @@ static bool __cg_unified_setup_limits(struct cgroup_ops *ops,
 		struct lxc_cgroup *cg = iterator->elem;
 
 		if (strncmp("devices", cg->subsystem, 7) == 0) {
-			ret = bpf_device_cgroup_prepare(conf, cg->subsystem,
+			ret = bpf_device_cgroup_prepare(ops, cg->subsystem,
 							cg->value);
 		} else {
 			fullpath = must_make_path(h->container_full_path,
@@ -2662,25 +2662,37 @@ __cgfsng_ops bool cgfsng_devices_activate(struct cgroup_ops *ops,
 {
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
 	int ret;
+	struct lxc_conf *conf;
 	struct hierarchy *h = ops->unified;
-	struct bpf_program *device = handler->conf->cgroup2_devices;
+	struct bpf_program *devices_new = ops->cgroup2_devices;
 
 	if (!h)
 		return false;
 
-	if (!device)
+	if (!devices_new)
 		return true;
 
-	ret = bpf_program_finalize(device);
+	ret = bpf_program_finalize(devices_new);
 	if (ret)
 		return false;
 
-	return bpf_program_cgroup_attach(device, BPF_CGROUP_DEVICE,
-					 h->container_full_path,
-					 BPF_F_ALLOW_MULTI) == 0;
-#else
-	return true;
+	ret = bpf_program_cgroup_attach(devices_new, BPF_CGROUP_DEVICE,
+					h->container_full_path,
+					BPF_F_ALLOW_MULTI);
+	if (ret)
+		return false;
+
+	/* Replace old bpf program. */
+	conf = handler->conf;
+	if (conf->cgroup2_devices) {
+		struct bpf_program *old_devices;
+
+		old_devices = move_ptr(conf->cgroup2_devices);
+		conf->cgroup2_devices = move_ptr(ops->cgroup2_devices);
+		bpf_program_free(old_devices);
+	}
 #endif
+	return true;
 }
 
 __cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,

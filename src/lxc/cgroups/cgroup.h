@@ -119,6 +119,13 @@ struct cgroup_ops {
 	struct hierarchy *unified;
 
 	/*
+	 * @cgroup2_devices
+	 * bpf program to limit device access; only applicable to privileged
+	 * containers.
+	 */
+	struct bpf_program *cgroup2_devices;
+
+	/*
 	 * @cgroup_layout
 	 * - What cgroup layout the container is running with.
 	 *   - CGROUP_LAYOUT_UNKNOWN
