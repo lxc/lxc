@@ -420,83 +420,20 @@ enum {
 		-1;                    \
 	})
 
+#define free_replace_move_ptr(a, b) \
+	({                          \
+		free(a);            \
+		(a) = (b);          \
+		(b) = NULL;         \
+		0;                  \
+	})
+
 /* Container's specific file/directory names */
 #define LXC_CONFIG_FNAME      "config"
 #define LXC_PARTIAL_FNAME     "partial"
 #define LXC_ROOTFS_DNAME      "rootfs"
 #define LXC_TIMESTAMP_FNAME   "ts"
 #define LXC_COMMENT_FNAME     "comment"
-
-/* Taken from systemd. */
-#define free_and_replace(a, b) \
-	({                     \
-		free(a);       \
-		(a) = (b);     \
-		(b) = NULL;    \
-		0;             \
-	})
-
-#define XCONCATENATE(x, y) x##y
-#define CONCATENATE(x, y) XCONCATENATE(x, y)
-#define UNIQ_T(x, uniq) CONCATENATE(__unique_prefix_, CONCATENATE(x, uniq))
-#define UNIQ __COUNTER__
-#undef MIN
-#define MIN(a, b) __MIN(UNIQ, (a), UNIQ, (b))
-#define __MIN(aq, a, bq, b)                                                    \
-	({                                                                     \
-		const typeof(a) UNIQ_T(A, aq) = (a);                           \
-		const typeof(b) UNIQ_T(B, bq) = (b);                           \
-		UNIQ_T(A, aq) < UNIQ_T(B, bq) ? UNIQ_T(A, aq) : UNIQ_T(B, bq); \
-	})
-
-/* Taken from the kernel. */
-
-/*
- * min()/max()/clamp() macros must accomplish three things:
- *
- * - avoid multiple evaluations of the arguments (so side-effects like
- *   "x++" happen only once) when non-constant.
- * - perform strict type-checking (to generate warnings instead of
- *   nasty runtime surprises). See the "unnecessary" pointer comparison
- *   in __typecheck().
- * - retain result as a constant expressions when called with only
- *   constant expressions (to avoid tripping VLA warnings in stack
- *   allocation usage).
- */
-#define __typecheck(x, y) (!!(sizeof((typeof(x) *)1 == (typeof(y) *)1)))
-
-/*
- * This returns a constant expression while determining if an argument is
- * a constant expression, most importantly without evaluating the argument.
- * Glory to Martin Uecker <Martin.Uecker@med.uni-goettingen.de>
- */
-#define __is_constexpr(x) \
-	(sizeof(int) == sizeof(*(8 ? ((void *)((long)(x)*0l)) : (int *)8)))
-
-#define __no_side_effects(x, y) (__is_constexpr(x) && __is_constexpr(y))
-
-#define __safe_cmp(x, y) (__typecheck(x, y) && __no_side_effects(x, y))
-
-#define __cmp(x, y, op) ((x)op(y) ? (x) : (y))
-
-#define __cmp_once(x, y, unique_x, unique_y, op) \
-	({                                       \
-		typeof(x) unique_x = (x);        \
-		typeof(y) unique_y = (y);        \
-		__cmp(unique_x, unique_y, op);   \
-	})
-
-#define __careful_cmp(x, y, op)                                  \
-	__builtin_choose_expr(__safe_cmp(x, y), __cmp(x, y, op), \
-			      __cmp_once(x, y, __UNIQUE_ID(__x), \
-					 __UNIQUE_ID(__y), op))
-
-/**
- * min - return minimum of two values of the same or compatible types
- * @x: first value
- * @y: second value
- */
-#define min(x, y) __careful_cmp(x, y, <)
 
 #define ARRAY_SIZE(x)                                                        \
 	(__builtin_choose_expr(!__builtin_types_compatible_p(typeof(x),      \
