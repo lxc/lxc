@@ -359,7 +359,7 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
 	if (ret < 0)
 		return error_log_errno(errno, "Failed to attach bpf program");
 
-	free_and_replace(prog->attached_path, copy);
+	free_replace_move_ptr(prog->attached_path, copy);
 	prog->attached_type = type;
 	prog->attached_flags = flags;
 
