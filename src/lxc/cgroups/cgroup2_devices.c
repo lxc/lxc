@@ -195,33 +195,38 @@ int bpf_program_init(struct bpf_program *prog)
 	return bpf_program_add_instructions(prog, pre_insn, ARRAY_SIZE(pre_insn));
 }
 
-int bpf_program_append_device(struct bpf_program *prog, char type, int major,
-			      int minor, const char *access, int allow)
+int bpf_program_append_device(struct bpf_program *prog, struct device_item *device)
 {
 	int ret;
 	int jump_nr = 1;
 	struct bpf_insn bpf_access_decision[] = {
-	    BPF_MOV64_IMM(BPF_REG_0, allow),
+	    BPF_MOV64_IMM(BPF_REG_0, device->allow),
 	    BPF_EXIT_INSN(),
 	};
 	int access_mask;
 	int device_type;
 
-	device_type = bpf_device_type(type);
+	/* This is a global rule so no need to append anything. */
+	if (device->global_rule >= 0) {
+		prog->blacklist = device->global_rule;
+		return 0;
+	}
+
+	device_type = bpf_device_type(device->type);
 	if (device_type < 0)
-		return error_log_errno(EINVAL, "Invalid bpf cgroup device type %c", type);
+		return error_log_errno(EINVAL, "Invalid bpf cgroup device type %c", device->type);
 
 	if (device_type > 0)
 		jump_nr++;
 
-	access_mask = bpf_access_mask(access);
+	access_mask = bpf_access_mask(device->access);
 	if (!bpf_device_all_access(access_mask))
 		jump_nr += 3;
 
-	if (major >= 0)
+	if (device->major != -1)
 		jump_nr++;
 
-	if (minor >= 0)
+	if (device->minor != -1)
 		jump_nr++;
 
 	if (device_type > 0) {
@@ -247,9 +252,9 @@ int bpf_program_append_device(struct bpf_program *prog, char type, int major,
 			return error_log_errno(errno, "Failed to add instructions to bpf cgroup program");
 	}
 
-	if (major >= 0) {
+	if (device->major >= 0) {
 		struct bpf_insn ins[] = {
-		    BPF_JMP_IMM(BPF_JNE, BPF_REG_4, major, jump_nr--),
+		    BPF_JMP_IMM(BPF_JNE, BPF_REG_4, device->major, jump_nr--),
 		};
 
 		ret = bpf_program_add_instructions(prog, ins, ARRAY_SIZE(ins));
@@ -257,9 +262,9 @@ int bpf_program_append_device(struct bpf_program *prog, char type, int major,
 			return error_log_errno(errno, "Failed to add instructions to bpf cgroup program");
 	}
 
-	if (minor >= 0) {
+	if (device->minor >= 0) {
 		struct bpf_insn ins[] = {
-		    BPF_JMP_IMM(BPF_JNE, BPF_REG_5, minor, jump_nr--),
+		    BPF_JMP_IMM(BPF_JNE, BPF_REG_5, device->minor, jump_nr--),
 		};
 
 		ret = bpf_program_add_instructions(prog, ins, ARRAY_SIZE(ins));
@@ -410,5 +415,95 @@ void lxc_clear_cgroup2_devices(struct lxc_conf *conf)
 		(void)bpf_program_cgroup_detach(conf->cgroup2_devices);
 		(void)bpf_program_free(conf->cgroup2_devices);
 	}
+}
+
+int bpf_list_add_device(struct lxc_conf *conf, struct device_item *device)
+{
+	__do_free struct lxc_list *list_elem = NULL;
+	__do_free struct device_item *new_device = NULL;
+	struct lxc_list *it;
+
+	lxc_list_for_each(it, &conf->devices) {
+		struct device_item *cur = it->elem;
+
+		if (cur->global_rule != -1 && device->global_rule != -1) {
+			TRACE("Switched from %s to %s",
+			      cur->global_rule == 0 ? "whitelist" : "blacklist",
+			      device->global_rule == 0 ? "whitelist"
+						       : "blacklist");
+			cur->global_rule = device->global_rule;
+			return 1;
+		}
+
+		if (cur->type != device->type)
+			continue;
+		if (cur->major != device->major)
+			continue;
+		if (cur->minor != device->minor)
+			continue;
+		if (strcmp(cur->access, device->access))
+			continue;
+
+		/*
+		 * The rule is switched from allow to deny or vica versa so
+		 * don't bother allocating just flip the existing one.
+		 */
+		if (cur->allow != device->allow) {
+			cur->allow = device->allow;
+			return log_trace(0, "Switched existing rule of bpf device program: type %c, major %d, minor %d, access %s, allow %d, global_rule %d",
+					 cur->type, cur->major, cur->minor,
+					 cur->access, cur->allow,
+					 cur->global_rule);
+		}
+
+		return log_trace(1, "Reusing existing rule of bpf device program: type %c, major %d, minor %d, access %s, allow %d, global_rule %d",
+				 cur->type, cur->major, cur->minor, cur->access,
+				 cur->allow, cur->global_rule);
+	}
+
+	list_elem = malloc(sizeof(*list_elem));
+	if (!list_elem)
+		return error_log_errno(ENOMEM, "Failed to allocate new device list");
+
+	new_device = memdup(device, sizeof(struct device_item));
+	if (!new_device)
+		return error_log_errno(ENOMEM, "Failed to allocate new device item");
+
+	lxc_list_add_elem(list_elem, move_ptr(new_device));
+	lxc_list_add_tail(&conf->devices, move_ptr(list_elem));
+
+	return 0;
+}
+
+bool bpf_devices_cgroup_supported(void)
+{
+	const struct bpf_insn dummy[] = {
+	    BPF_MOV64_IMM(BPF_REG_0, 1),
+	    BPF_EXIT_INSN(),
+	};
+
+	__do_bpf_program_free struct bpf_program *prog = NULL;
+	int ret;
+
+	if (geteuid() != 0)
+		return log_error(false, EINVAL,
+				 "The bpf device cgroup requires real root");
+
+	prog = bpf_program_new(BPF_PROG_TYPE_CGROUP_DEVICE);
+	if (prog < 0)
+		return log_error(false,
+				 errno, "Failed to allocate new bpf device cgroup program");
+
+	ret = bpf_program_add_instructions(prog, dummy, ARRAY_SIZE(dummy));
+	if (ret < 0)
+		return log_error(false,
+				 errno, "Failed to add new instructions to bpf device cgroup program");
+
+	ret = bpf_program_load_kernel(prog, NULL, 0);
+	if (ret < 0)
+		return log_error(false,
+				 errno, "Failed to load new bpf device cgroup program");
+
+	return log_trace(true, "The bpf device cgroup is supported");
 }
 #endif

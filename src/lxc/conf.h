@@ -236,6 +236,11 @@ struct device_item {
 	int minor;
 	char access[4];
 	int allow;
+	/* -1 -> no global rule
+	 *  0 -> whitelist (deny all)
+	 *  1 -> blacklist (allow all)
+	 */
+	int global_rule;
 };
 
 struct lxc_conf {
