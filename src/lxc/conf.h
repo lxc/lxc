@@ -230,15 +230,22 @@ struct lxc_state_client {
 	lxc_state_t states[MAX_STATE];
 };
 
+enum {
+	LXC_BPF_DEVICE_CGROUP_WHITELIST  =  0,
+	LXC_BPF_DEVICE_CGROUP_BLACKLIST  =  1,
+	LXC_BPF_DEVICE_CGROUP_LOCAL_RULE = -1,
+};
+
 struct device_item {
 	char type;
 	int major;
 	int minor;
 	char access[4];
 	int allow;
-	/* -1 -> no global rule
-	 *  0 -> whitelist (deny all)
-	 *  1 -> blacklist (allow all)
+	/*
+	 * LXC_BPF_DEVICE_CGROUP_LOCAL_RULE -> no global rule
+	 * LXC_BPF_DEVICE_CGROUP_WHITELIST  -> whitelist (deny all)
+	 * LXC_BPF_DEVICE_CGROUP_BLACKLIST  -> blacklist (allow all)
 	 */
 	int global_rule;
 };

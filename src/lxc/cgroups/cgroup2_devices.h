@@ -63,7 +63,7 @@ static inline int missing_bpf(int cmd, union bpf_attr *attr, size_t size)
 #endif
 
 struct bpf_program {
-	bool blacklist;
+	int device_list_type;
 	int kernel_fd;
 	uint32_t prog_type;
 
