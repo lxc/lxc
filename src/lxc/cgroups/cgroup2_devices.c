@@ -51,6 +51,9 @@ static int bpf_program_add_instructions(struct bpf_program *prog,
 
 void bpf_program_free(struct bpf_program *prog)
 {
+	if (!prog)
+		return;
+
 	(void)bpf_program_cgroup_detach(prog);
 
 	if (prog->kernel_fd >= 0)
@@ -176,6 +179,9 @@ struct bpf_program *bpf_program_new(uint32_t prog_type)
 
 int bpf_program_init(struct bpf_program *prog)
 {
+	if (!prog)
+		return minus_one_set_errno(EINVAL);
+
 	const struct bpf_insn pre_insn[] = {
 	    /* load device type to r2 */
 	    BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_1, offsetof(struct bpf_cgroup_dev_ctx, access_type)),
@@ -205,6 +211,9 @@ int bpf_program_append_device(struct bpf_program *prog, struct device_item *devi
 	};
 	int access_mask;
 	int device_type;
+
+	if (!prog || !device)
+		return minus_one_set_errno(EINVAL);
 
 	/* This is a global rule so no need to append anything. */
 	if (device->global_rule >= 0) {
@@ -287,6 +296,9 @@ int bpf_program_finalize(struct bpf_program *prog)
 	    BPF_EXIT_INSN(),
 	};
 
+	if (!prog)
+		return minus_one_set_errno(EINVAL);
+
 	TRACE("Implementing %s bpf device cgroup program",
 	      prog->blacklist ? "blacklist" : "whitelist");
 	return bpf_program_add_instructions(prog, ins, ARRAY_SIZE(ins));
@@ -326,6 +338,9 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
 	__do_close_prot_errno int fd = -EBADF;
 	union bpf_attr attr;
 	int ret;
+
+	if (!prog)
+		return minus_one_set_errno(EINVAL);
 
 	if (flags & ~(BPF_F_ALLOW_OVERRIDE, BPF_F_ALLOW_MULTI))
 		return error_log_errno(EINVAL, "Invalid flags for bpf program");
