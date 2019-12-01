@@ -2303,11 +2303,13 @@ static int device_cgroup_rule_parse(struct device_item *device, const char *key,
 		device->type = 'a';
 		device->major = -1;
 		device->minor = -1;
-		device->global_rule = device->allow;
+		device->global_rule = device->allow
+					  ? LXC_BPF_DEVICE_CGROUP_BLACKLIST
+					  : LXC_BPF_DEVICE_CGROUP_WHITELIST;
 		device->allow = -1;
 		return 0;
 	} else {
-		device->global_rule = -1;
+		device->global_rule = LXC_BPF_DEVICE_CGROUP_LOCAL_RULE;
 	}
 
 	switch (*val) {

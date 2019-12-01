@@ -173,6 +173,10 @@ struct bpf_program *bpf_program_new(uint32_t prog_type)
 
 	prog->prog_type = prog_type;
 	prog->kernel_fd = -EBADF;
+	/*
+	 * By default a whitelist is used unless the user tells us otherwise.
+	 */
+	prog->device_list_type = LXC_BPF_DEVICE_CGROUP_WHITELIST;
 
 	return move_ptr(prog);
 }
@@ -216,8 +220,8 @@ int bpf_program_append_device(struct bpf_program *prog, struct device_item *devi
 		return minus_one_set_errno(EINVAL);
 
 	/* This is a global rule so no need to append anything. */
-	if (device->global_rule >= 0) {
-		prog->blacklist = device->global_rule;
+	if (device->global_rule > LXC_BPF_DEVICE_CGROUP_LOCAL_RULE) {
+		prog->device_list_type = device->global_rule;
 		return 0;
 	}
 
@@ -292,7 +296,7 @@ int bpf_program_append_device(struct bpf_program *prog, struct device_item *devi
 int bpf_program_finalize(struct bpf_program *prog)
 {
 	struct bpf_insn ins[] = {
-	    BPF_MOV64_IMM(BPF_REG_0, prog->blacklist ? 1 : 0),
+	    BPF_MOV64_IMM(BPF_REG_0, prog->device_list_type),
 	    BPF_EXIT_INSN(),
 	};
 
@@ -300,7 +304,9 @@ int bpf_program_finalize(struct bpf_program *prog)
 		return minus_one_set_errno(EINVAL);
 
 	TRACE("Implementing %s bpf device cgroup program",
-	      prog->blacklist ? "blacklist" : "whitelist");
+	      prog->device_list_type == LXC_BPF_DEVICE_CGROUP_BLACKLIST
+		  ? "blacklist"
+		  : "whitelist");
 	return bpf_program_add_instructions(prog, ins, ARRAY_SIZE(ins));
 }
 
@@ -443,9 +449,12 @@ int bpf_list_add_device(struct lxc_conf *conf, struct device_item *device)
 
 		if (cur->global_rule != -1 && device->global_rule != -1) {
 			TRACE("Switched from %s to %s",
-			      cur->global_rule == 0 ? "whitelist" : "blacklist",
-			      device->global_rule == 0 ? "whitelist"
-						       : "blacklist");
+			      cur->global_rule == LXC_BPF_DEVICE_CGROUP_WHITELIST
+				  ? "whitelist"
+				  : "blacklist",
+			      device->global_rule == LXC_BPF_DEVICE_CGROUP_WHITELIST
+				  ? "whitelist"
+				  : "blacklist");
 			cur->global_rule = device->global_rule;
 			return 1;
 		}
