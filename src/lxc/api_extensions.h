@@ -24,6 +24,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "config.h"
+
 /*
  * api_extensions is the list of all API extensions in the order they were
  * added.
@@ -50,6 +52,9 @@ static char *api_extensions[] = {
 	"network_gateway_device_route",
 	"network_phys_macvlan_mtu",
 	"network_veth_router",
+#ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
+	"cgroup2_devices",
+#endif
 };
 
 static size_t nr_api_extensions = sizeof(api_extensions) / sizeof(*api_extensions);
