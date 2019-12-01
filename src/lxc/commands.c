@@ -1198,7 +1198,6 @@ static int lxc_cmd_seccomp_notify_add_listener_callback(int fd,
 #ifdef HAVE_SECCOMP_NOTIFY
 	int ret;
 	__do_close_prot_errno int recv_fd = -EBADF;
-	int notify_fd = -EBADF;
 
 	ret = lxc_abstract_unix_recv_fds(fd, &recv_fd, 1, NULL, 0);
 	if (ret <= 0) {
@@ -1219,7 +1218,7 @@ static int lxc_cmd_seccomp_notify_add_listener_callback(int fd,
 		rsp.ret = -errno;
 		goto out;
 	}
-	notify_fd = move_fd(recv_fd);
+	move_fd(recv_fd);
 
 out:
 #else
