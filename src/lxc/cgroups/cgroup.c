@@ -30,6 +30,7 @@
 #include <unistd.h>
 
 #include "cgroup.h"
+#include "cgroup2_devices.h"
 #include "conf.h"
 #include "config.h"
 #include "initutils.h"
@@ -85,6 +86,9 @@ void cgroup_exit(struct cgroup_ops *ops)
 
 	free(ops->cgroup_pattern);
 	free(ops->container_cgroup);
+
+	if (ops->cgroup2_devices)
+		bpf_program_free(ops->cgroup2_devices);
 
 	for (it = ops->hierarchies; it && *it; it++) {
 		char **p;

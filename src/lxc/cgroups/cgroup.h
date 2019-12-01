@@ -92,6 +92,7 @@ struct hierarchy {
 	char *container_full_path;
 	char *monitor_full_path;
 	int version;
+	int bpf_device_controller:1;
 };
 
 struct cgroup_ops {
@@ -117,6 +118,13 @@ struct cgroup_ops {
 	struct hierarchy **hierarchies;
 	/* Pointer to the unified hierarchy. Do not free! */
 	struct hierarchy *unified;
+
+	/*
+	 * @cgroup2_devices
+	 * bpf program to limit device access; only applicable to privileged
+	 * containers.
+	 */
+	struct bpf_program *cgroup2_devices;
 
 	/*
 	 * @cgroup_layout

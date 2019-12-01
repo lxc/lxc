@@ -176,6 +176,11 @@ static void must_append_controller(char **klist, char **nlist, char ***clist,
 	(*clist)[newentry] = copy;
 }
 
+static inline bool pure_unified_layout(const struct cgroup_ops *ops)
+{
+	return ops->cgroup_layout == CGROUP_LAYOUT_UNIFIED;
+}
+
 /* Given a handler's cgroup data, return the struct hierarchy for the controller
  * @c, or NULL if there is none.
  */
@@ -196,8 +201,12 @@ struct hierarchy *get_hierarchy(struct cgroup_ops *ops, const char *controller)
 			if (ops->hierarchies[i]->controllers &&
 			    !ops->hierarchies[i]->controllers[0])
 				return ops->hierarchies[i];
-
 			continue;
+		} else if (pure_unified_layout(ops) &&
+			   strcmp(controller, "devices") == 0) {
+			if (ops->unified->bpf_device_controller)
+				return ops->unified;
+			break;
 		}
 
 		if (string_in_list(ops->hierarchies[i]->controllers, controller))
@@ -778,9 +787,9 @@ static char **cg_unified_make_empty_controller(void)
 static char **cg_unified_get_controllers(const char *file)
 {
 	__do_free char *buf = NULL;
-	char *tok;
 	char *sep = " \t\n";
 	char **aret = NULL;
+	char *tok;
 
 	buf = read_file(file);
 	if (!buf)
@@ -2278,12 +2287,117 @@ __cgfsng_ops static int cgfsng_get(struct cgroup_ops *ops, const char *filename,
 	return ret;
 }
 
+static int device_cgroup_rule_parse(struct device_item *device, const char *key,
+				    const char *val)
+{
+	int count, ret;
+	char temp[50];
+
+	if (strcmp("devices.allow", key) == 0)
+		device->allow = 1;
+	else
+		device->allow = 0;
+
+	if (strcmp(val, "a") == 0) {
+		/* global rule */
+		device->type = 'a';
+		device->major = -1;
+		device->minor = -1;
+		device->global_rule = device->allow
+					  ? LXC_BPF_DEVICE_CGROUP_BLACKLIST
+					  : LXC_BPF_DEVICE_CGROUP_WHITELIST;
+		device->allow = -1;
+		return 0;
+	} else {
+		device->global_rule = LXC_BPF_DEVICE_CGROUP_LOCAL_RULE;
+	}
+
+	switch (*val) {
+	case 'a':
+		__fallthrough;
+	case 'b':
+		__fallthrough;
+	case 'c':
+		device->type = *val;
+		break;
+	default:
+		return -1;
+	}
+
+	val++;
+	if (!isspace(*val))
+		return -1;
+	val++;
+	if (*val == '*') {
+		device->major = -1;
+		val++;
+	} else if (isdigit(*val)) {
+		memset(temp, 0, sizeof(temp));
+		for (count = 0; count < sizeof(temp) - 1; count++) {
+			temp[count] = *val;
+			val++;
+			if (!isdigit(*val))
+				break;
+		}
+		ret = lxc_safe_int(temp, &device->major);
+		if (ret)
+			return -1;
+	} else {
+		return -1;
+	}
+	if (*val != ':')
+		return -1;
+	val++;
+
+	/* read minor */
+	if (*val == '*') {
+		device->minor = -1;
+		val++;
+	} else if (isdigit(*val)) {
+		memset(temp, 0, sizeof(temp));
+		for (count = 0; count < sizeof(temp) - 1; count++) {
+			temp[count] = *val;
+			val++;
+			if (!isdigit(*val))
+				break;
+		}
+		ret = lxc_safe_int(temp, &device->minor);
+		if (ret)
+			return -1;
+	} else {
+		return -1;
+	}
+	if (!isspace(*val))
+		return -1;
+	for (val++, count = 0; count < 3; count++, val++) {
+		switch (*val) {
+		case 'r':
+			device->access[count] = *val;
+			break;
+		case 'w':
+			device->access[count] = *val;
+			break;
+		case 'm':
+			device->access[count] = *val;
+			break;
+		case '\n':
+		case '\0':
+			count = 3;
+			break;
+		default:
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 /* Called externally (i.e. from 'lxc-cgroup') to set new cgroup limits.  Here we
  * don't have a cgroup_data set up, so we ask the running container through the
  * commands API for the cgroup path.
  */
 __cgfsng_ops static int cgfsng_set(struct cgroup_ops *ops,
-				     const char *filename, const char *value,
+				     const char *key, const char *value,
 				     const char *name, const char *lxcpath)
 {
 	__do_free char *path = NULL;
@@ -2292,10 +2406,25 @@ __cgfsng_ops static int cgfsng_set(struct cgroup_ops *ops,
 	struct hierarchy *h;
 	int ret = -1;
 
-	controller = must_copy_string(filename);
+	controller = must_copy_string(key);
 	p = strchr(controller, '.');
 	if (p)
 		*p = '\0';
+
+	if (pure_unified_layout(ops) && strcmp(controller, "devices") == 0) {
+		struct device_item device = {0};
+
+		ret = device_cgroup_rule_parse(&device, key, value);
+		if (ret < 0)
+			return error_log_errno(EINVAL, "Failed to parse device string %s=%s",
+					       key, value);
+
+		ret = lxc_cmd_add_bpf_device_cgroup(name, lxcpath, &device);
+		if (ret < 0)
+			return -1;
+
+		return 0;
+	}
 
 	path = lxc_cmd_get_cgroup_path(name, lxcpath, controller);
 	/* not running */
@@ -2306,7 +2435,7 @@ __cgfsng_ops static int cgfsng_set(struct cgroup_ops *ops,
 	if (h) {
 		__do_free char *fullpath = NULL;
 
-		fullpath = build_full_cgpath_from_monitorpath(h, path, filename);
+		fullpath = build_full_cgpath_from_monitorpath(h, path, key);
 		ret = lxc_write_to_file(fullpath, value, strlen(value), false, 0666);
 	}
 
@@ -2485,135 +2614,23 @@ out:
  * Some of the parsing logic comes from the original cgroup device v1
  * implementation in the kernel.
  */
-static int bpf_device_cgroup_prepare(struct lxc_conf *conf, const char *key,
+static int bpf_device_cgroup_prepare(struct cgroup_ops *ops,
+				     struct lxc_conf *conf, const char *key,
 				     const char *val)
 {
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
-	struct device_item {
-		char type;
-		int major;
-		int minor;
-		char access[100];
-		int allow;
-	} device_item = {0};
-	int count, ret;
-	char temp[50];
-	struct bpf_program *device;
+	struct device_item device_item = {0};
+	int ret;
 
-	if (conf->cgroup2_devices) {
-		device = conf->cgroup2_devices;
-	} else {
-		device = bpf_program_new(BPF_PROG_TYPE_CGROUP_DEVICE);
-		if (device && bpf_program_init(device)) {
-			ERROR("Failed to initialize bpf program");
-			return -1;
-		}
-	}
-	if (!device) {
-		ERROR("Failed to create new ebpf device program");
-		return -1;
-	}
+	ret = device_cgroup_rule_parse(&device_item, key, val);
+	if (ret < 0)
+		return error_log_errno(EINVAL,
+				       "Failed to parse device string %s=%s",
+				       key, val);
 
-	conf->cgroup2_devices = device;
-
-	if (strcmp("devices.allow", key) == 0)
-		device_item.allow = 1;
-
-	if (strcmp(val, "a") == 0) {
-		device->blacklist = (device_item.allow == 1);
-		return 0;
-	}
-
-	switch (*val) {
-	case 'a':
-		__fallthrough;
-	case 'b':
-		__fallthrough;
-	case 'c':
-		device_item.type = *val;
-		break;
-	default:
+	ret = bpf_list_add_device(conf, &device_item);
+	if (ret < 0)
 		return -1;
-	}
-
-	val++;
-	if (!isspace(*val))
-		return -1;
-	val++;
-	if (*val == '*') {
-		device_item.major = ~0;
-		val++;
-	} else if (isdigit(*val)) {
-		memset(temp, 0, sizeof(temp));
-		for (count = 0; count < sizeof(temp) - 1; count++) {
-			temp[count] = *val;
-			val++;
-			if (!isdigit(*val))
-				break;
-		}
-		ret = lxc_safe_uint(temp, &device_item.major);
-		if (ret)
-			return -1;
-	} else {
-		return -1;
-	}
-	if (*val != ':')
-		return -1;
-	val++;
-
-	/* read minor */
-	if (*val == '*') {
-		device_item.minor = ~0;
-		val++;
-	} else if (isdigit(*val)) {
-		memset(temp, 0, sizeof(temp));
-		for (count = 0; count < sizeof(temp) - 1; count++) {
-			temp[count] = *val;
-			val++;
-			if (!isdigit(*val))
-				break;
-		}
-		ret = lxc_safe_uint(temp, &device_item.minor);
-		if (ret)
-			return -1;
-	} else {
-		return -1;
-	}
-	if (!isspace(*val))
-		return -1;
-	for (val++, count = 0; count < 3; count++, val++) {
-		switch (*val) {
-		case 'r':
-			device_item.access[count] = *val;
-			break;
-		case 'w':
-			device_item.access[count] = *val;
-			break;
-		case 'm':
-			device_item.access[count] = *val;
-			break;
-		case '\n':
-		case '\0':
-			count = 3;
-			break;
-		default:
-			return -1;
-		}
-	}
-
-	ret = bpf_program_append_device(device, device_item.type, device_item.major,
-					device_item.minor, device_item.access,
-					device_item.allow);
-	if (ret) {
-		ERROR("Failed to add new rule to bpf device program: type %c, major %d, minor %d, access %s, allow %d",
-		      device_item.type, device_item.major, device_item.minor,
-		      device_item.access, device_item.allow);
-		return -1;
-	} else {
-		TRACE("Added new rule to bpf device program: type %c, major %d, minor %d, access %s, allow %d",
-		      device_item.type, device_item.major, device_item.minor,
-		      device_item.access, device_item.allow);
-	}
 #endif
 	return 0;
 }
@@ -2637,7 +2654,7 @@ static bool __cg_unified_setup_limits(struct cgroup_ops *ops,
 		struct lxc_cgroup *cg = iterator->elem;
 
 		if (strncmp("devices", cg->subsystem, 7) == 0) {
-			ret = bpf_device_cgroup_prepare(conf, cg->subsystem,
+			ret = bpf_device_cgroup_prepare(ops, conf, cg->subsystem,
 							cg->value);
 		} else {
 			fullpath = must_make_path(h->container_full_path,
@@ -2661,26 +2678,59 @@ __cgfsng_ops bool cgfsng_devices_activate(struct cgroup_ops *ops,
 					  struct lxc_handler *handler)
 {
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
+	__do_bpf_program_free struct bpf_program *devices = NULL;
+	struct lxc_conf *conf = handler->conf;
+	struct hierarchy *unified = ops->unified;
 	int ret;
-	struct hierarchy *h = ops->unified;
-	struct bpf_program *device = handler->conf->cgroup2_devices;
+	struct lxc_list *it;
+	struct bpf_program *devices_old;
 
-	if (!h)
+	if (!unified)
 		return false;
 
-	if (!device)
+	if (lxc_list_empty(&conf->devices))
 		return true;
 
-	ret = bpf_program_finalize(device);
-	if (ret)
-		return false;
+	devices = bpf_program_new(BPF_PROG_TYPE_CGROUP_DEVICE);
+	if (!devices)
+		return log_error(false, ENOMEM,
+				 "Failed to create new bpf program");
 
-	return bpf_program_cgroup_attach(device, BPF_CGROUP_DEVICE,
-					 h->container_full_path,
-					 BPF_F_ALLOW_MULTI) == 0;
-#else
-	return true;
+	ret = bpf_program_init(devices);
+	if (ret)
+		return log_error(false, ENOMEM,
+				 "Failed to initialize bpf program");
+
+	lxc_list_for_each(it, &conf->devices) {
+		struct device_item *cur = it->elem;
+
+		ret = bpf_program_append_device(devices, cur);
+		if (ret)
+			return log_error(false,
+					 ENOMEM, "Failed to add new rule to bpf device program: type %c, major %d, minor %d, access %s, allow %d, global_rule %d",
+					 cur->type, cur->major, cur->minor,
+					 cur->access, cur->allow, cur->global_rule);
+		TRACE("Added rule to bpf device program: type %c, major %d, minor %d, access %s, allow %d, global_rule %d",
+		      cur->type, cur->major, cur->minor, cur->access,
+		      cur->allow, cur->global_rule);
+	}
+
+	ret = bpf_program_finalize(devices);
+	if (ret)
+		return log_error(false, ENOMEM, "Failed to finalize bpf program");
+
+	ret = bpf_program_cgroup_attach(devices, BPF_CGROUP_DEVICE,
+					unified->container_full_path,
+					BPF_F_ALLOW_MULTI);
+	if (ret)
+		return log_error(false, ENOMEM, "Failed to attach bpf program");
+
+	/* Replace old bpf program. */
+	devices_old = move_ptr(conf->cgroup2_devices);
+	conf->cgroup2_devices = move_ptr(devices);
+	devices = move_ptr(devices_old);
 #endif
+	return true;
 }
 
 __cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
@@ -2988,6 +3038,9 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 	new = add_hierarchy(&ops->hierarchies, delegatable, mountpoint, base_cgroup, CGROUP2_SUPER_MAGIC);
 	if (!unprivileged)
 		cg_unified_delegate(&new->cgroup2_chown);
+
+	if (bpf_devices_cgroup_supported())
+		new->bpf_device_controller = 1;
 
 	ops->cgroup_layout = CGROUP_LAYOUT_UNIFIED;
 	ops->unified = new;

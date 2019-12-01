@@ -230,6 +230,26 @@ struct lxc_state_client {
 	lxc_state_t states[MAX_STATE];
 };
 
+enum {
+	LXC_BPF_DEVICE_CGROUP_WHITELIST  =  0,
+	LXC_BPF_DEVICE_CGROUP_BLACKLIST  =  1,
+	LXC_BPF_DEVICE_CGROUP_LOCAL_RULE = -1,
+};
+
+struct device_item {
+	char type;
+	int major;
+	int minor;
+	char access[4];
+	int allow;
+	/*
+	 * LXC_BPF_DEVICE_CGROUP_LOCAL_RULE -> no global rule
+	 * LXC_BPF_DEVICE_CGROUP_WHITELIST  -> whitelist (deny all)
+	 * LXC_BPF_DEVICE_CGROUP_BLACKLIST  -> blacklist (allow all)
+	 */
+	int global_rule;
+};
+
 struct lxc_conf {
 	/* Pointer to the name of the container. Do not free! */
 	const char *name;
@@ -242,6 +262,8 @@ struct lxc_conf {
 		struct lxc_list cgroup;
 		struct lxc_list cgroup2;
 		struct bpf_program *cgroup2_devices;
+		/* This should be reimplemented as a hashmap. */
+		struct lxc_list devices;
 	};
 
 	struct {

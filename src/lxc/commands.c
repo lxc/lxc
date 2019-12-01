@@ -39,6 +39,7 @@
 
 #include "af_unix.h"
 #include "cgroup.h"
+#include "cgroups/cgroup2_devices.h"
 #include "commands.h"
 #include "commands_utils.h"
 #include "conf.h"
@@ -85,20 +86,21 @@ lxc_log_define(commands, lxc);
 static const char *lxc_cmd_str(lxc_cmd_t cmd)
 {
 	static const char *const cmdname[LXC_CMD_MAX] = {
-		[LXC_CMD_CONSOLE]             = "console",
-		[LXC_CMD_TERMINAL_WINCH]      = "terminal_winch",
-		[LXC_CMD_STOP]                = "stop",
-		[LXC_CMD_GET_STATE]           = "get_state",
-		[LXC_CMD_GET_INIT_PID]        = "get_init_pid",
-		[LXC_CMD_GET_CLONE_FLAGS]     = "get_clone_flags",
-		[LXC_CMD_GET_CGROUP]          = "get_cgroup",
-		[LXC_CMD_GET_CONFIG_ITEM]     = "get_config_item",
-		[LXC_CMD_GET_NAME]            = "get_name",
-		[LXC_CMD_GET_LXCPATH]         = "get_lxcpath",
-		[LXC_CMD_ADD_STATE_CLIENT]    = "add_state_client",
-		[LXC_CMD_CONSOLE_LOG]         = "console_log",
-		[LXC_CMD_SERVE_STATE_CLIENTS] = "serve_state_clients",
-		[LXC_CMD_SECCOMP_NOTIFY_ADD_LISTENER] = "seccomp_notify_add_listener",
+		[LXC_CMD_CONSOLE]			= "console",
+		[LXC_CMD_TERMINAL_WINCH]      		= "terminal_winch",
+		[LXC_CMD_STOP]                		= "stop",
+		[LXC_CMD_GET_STATE]           		= "get_state",
+		[LXC_CMD_GET_INIT_PID]        		= "get_init_pid",
+		[LXC_CMD_GET_CLONE_FLAGS]     		= "get_clone_flags",
+		[LXC_CMD_GET_CGROUP]          		= "get_cgroup",
+		[LXC_CMD_GET_CONFIG_ITEM]     		= "get_config_item",
+		[LXC_CMD_GET_NAME]            		= "get_name",
+		[LXC_CMD_GET_LXCPATH]         		= "get_lxcpath",
+		[LXC_CMD_ADD_STATE_CLIENT]		= "add_state_client",
+		[LXC_CMD_CONSOLE_LOG]			= "console_log",
+		[LXC_CMD_SERVE_STATE_CLIENTS]		= "serve_state_clients",
+		[LXC_CMD_SECCOMP_NOTIFY_ADD_LISTENER]	= "seccomp_notify_add_listener",
+		[LXC_CMD_ADD_BPF_DEVICE_CGROUP]		= "add_bpf_device_cgroup",
 	};
 
 	if (cmd >= LXC_CMD_MAX)
@@ -925,6 +927,118 @@ reap_client_fd:
 	return 1;
 }
 
+int lxc_cmd_add_bpf_device_cgroup(const char *name, const char *lxcpath,
+				  struct device_item *device)
+{
+#ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
+	int stopped = 0;
+	struct lxc_cmd_rr cmd = {
+	    .req = {
+		.cmd     = LXC_CMD_ADD_BPF_DEVICE_CGROUP,
+		.data    = device,
+		.datalen = sizeof(struct device_item),
+	    },
+	};
+	int ret;
+
+	if (strlen(device->access) > STRLITERALLEN("rwm"))
+		return error_log_errno(EINVAL, "Invalid access mode specified %s",
+				       device->access);
+
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
+	if (ret < 0 || cmd.rsp.ret < 0)
+		return error_log_errno(errno, "Failed to add new bpf device cgroup rule");
+
+	return 0;
+#else
+	return minus_one_set_errno(ENOSYS);
+#endif
+}
+
+static int lxc_cmd_add_bpf_device_cgroup_callback(int fd, struct lxc_cmd_req *req,
+						  struct lxc_handler *handler,
+						  struct lxc_epoll_descr *descr)
+{
+#ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
+	__do_bpf_program_free struct bpf_program *devices = NULL;
+	struct lxc_cmd_rsp rsp = {0};
+	struct lxc_conf *conf = handler->conf;
+	struct hierarchy *unified = handler->cgroup_ops->unified;
+	struct lxc_list *list_elem = NULL;
+	struct device_item *new_device = NULL;
+	int ret;
+	struct lxc_list *it;
+	struct device_item *device;
+	struct bpf_program *devices_old;
+
+	if (req->datalen <= 0)
+		goto reap_client_fd;
+
+	if (req->datalen != sizeof(struct device_item))
+		goto reap_client_fd;
+
+	if (!req->data)
+		goto reap_client_fd;
+	device = (struct device_item *)req->data;
+
+	rsp.ret = -1;
+	if (!unified)
+		goto respond;
+
+	ret = bpf_list_add_device(conf, device);
+	if (ret < 0)
+		goto respond;
+
+	devices = bpf_program_new(BPF_PROG_TYPE_CGROUP_DEVICE);
+	if (!devices)
+		goto respond;
+
+	ret = bpf_program_init(devices);
+	if (ret)
+		goto respond;
+
+	lxc_list_for_each(it, &conf->devices) {
+		struct device_item *cur = it->elem;
+
+		ret = bpf_program_append_device(devices, cur);
+		if (ret)
+			goto respond;
+	}
+
+	ret = bpf_program_finalize(devices);
+	if (ret)
+		goto respond;
+
+	ret = bpf_program_cgroup_attach(devices, BPF_CGROUP_DEVICE,
+					unified->container_full_path,
+					BPF_F_ALLOW_MULTI);
+	if (ret)
+		goto respond;
+
+	/* Replace old bpf program. */
+	devices_old = move_ptr(conf->cgroup2_devices);
+	conf->cgroup2_devices = move_ptr(devices);
+	devices = move_ptr(devices_old);
+
+	rsp.ret = 0;
+
+respond:
+	ret = lxc_cmd_rsp_send(fd, &rsp);
+	if (ret < 0)
+		goto reap_client_fd;
+
+	return 0;
+
+reap_client_fd:
+	/* Special indicator to lxc_cmd_handler() to close the fd and do related
+	 * cleanup.
+	 */
+	return 1;
+#else
+	return minus_one_set_errno(ENOSYS);
+#endif
+}
+
 int lxc_cmd_console_log(const char *name, const char *lxcpath,
 			struct lxc_console_log *log)
 {
@@ -1084,7 +1198,6 @@ static int lxc_cmd_seccomp_notify_add_listener_callback(int fd,
 #ifdef HAVE_SECCOMP_NOTIFY
 	int ret;
 	__do_close_prot_errno int recv_fd = -EBADF;
-	int notify_fd = -EBADF;
 
 	ret = lxc_abstract_unix_recv_fds(fd, &recv_fd, 1, NULL, 0);
 	if (ret <= 0) {
@@ -1105,7 +1218,7 @@ static int lxc_cmd_seccomp_notify_add_listener_callback(int fd,
 		rsp.ret = -errno;
 		goto out;
 	}
-	notify_fd = move_fd(recv_fd);
+	move_fd(recv_fd);
 
 out:
 #else
@@ -1123,20 +1236,21 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 				struct lxc_epoll_descr *);
 
 	callback cb[LXC_CMD_MAX] = {
-		[LXC_CMD_CONSOLE]                     = lxc_cmd_console_callback,
-		[LXC_CMD_TERMINAL_WINCH]              = lxc_cmd_terminal_winch_callback,
-		[LXC_CMD_STOP]                        = lxc_cmd_stop_callback,
-		[LXC_CMD_GET_STATE]                   = lxc_cmd_get_state_callback,
-		[LXC_CMD_GET_INIT_PID]                = lxc_cmd_get_init_pid_callback,
-		[LXC_CMD_GET_CLONE_FLAGS]             = lxc_cmd_get_clone_flags_callback,
-		[LXC_CMD_GET_CGROUP]                  = lxc_cmd_get_cgroup_callback,
-		[LXC_CMD_GET_CONFIG_ITEM]             = lxc_cmd_get_config_item_callback,
-		[LXC_CMD_GET_NAME]                    = lxc_cmd_get_name_callback,
-		[LXC_CMD_GET_LXCPATH]                 = lxc_cmd_get_lxcpath_callback,
-		[LXC_CMD_ADD_STATE_CLIENT]            = lxc_cmd_add_state_client_callback,
-		[LXC_CMD_CONSOLE_LOG]                 = lxc_cmd_console_log_callback,
-		[LXC_CMD_SERVE_STATE_CLIENTS]         = lxc_cmd_serve_state_clients_callback,
-		[LXC_CMD_SECCOMP_NOTIFY_ADD_LISTENER] = lxc_cmd_seccomp_notify_add_listener_callback,
+		[LXC_CMD_CONSOLE]			= lxc_cmd_console_callback,
+		[LXC_CMD_TERMINAL_WINCH]              	= lxc_cmd_terminal_winch_callback,
+		[LXC_CMD_STOP]                        	= lxc_cmd_stop_callback,
+		[LXC_CMD_GET_STATE]                   	= lxc_cmd_get_state_callback,
+		[LXC_CMD_GET_INIT_PID]                	= lxc_cmd_get_init_pid_callback,
+		[LXC_CMD_GET_CLONE_FLAGS]             	= lxc_cmd_get_clone_flags_callback,
+		[LXC_CMD_GET_CGROUP]                  	= lxc_cmd_get_cgroup_callback,
+		[LXC_CMD_GET_CONFIG_ITEM]             	= lxc_cmd_get_config_item_callback,
+		[LXC_CMD_GET_NAME]                    	= lxc_cmd_get_name_callback,
+		[LXC_CMD_GET_LXCPATH]                 	= lxc_cmd_get_lxcpath_callback,
+		[LXC_CMD_ADD_STATE_CLIENT]            	= lxc_cmd_add_state_client_callback,
+		[LXC_CMD_CONSOLE_LOG]                 	= lxc_cmd_console_log_callback,
+		[LXC_CMD_SERVE_STATE_CLIENTS]         	= lxc_cmd_serve_state_clients_callback,
+		[LXC_CMD_SECCOMP_NOTIFY_ADD_LISTENER] 	= lxc_cmd_seccomp_notify_add_listener_callback,
+		[LXC_CMD_ADD_BPF_DEVICE_CGROUP]		= lxc_cmd_add_bpf_device_cgroup_callback,
 	};
 
 	if (req->cmd >= LXC_CMD_MAX) {
