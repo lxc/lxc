@@ -231,9 +231,9 @@ struct lxc_state_client {
 };
 
 enum {
+	LXC_BPF_DEVICE_CGROUP_LOCAL_RULE = -1,
 	LXC_BPF_DEVICE_CGROUP_WHITELIST  =  0,
 	LXC_BPF_DEVICE_CGROUP_BLACKLIST  =  1,
-	LXC_BPF_DEVICE_CGROUP_LOCAL_RULE = -1,
 };
 
 struct device_item {
