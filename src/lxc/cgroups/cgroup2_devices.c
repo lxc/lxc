@@ -447,7 +447,8 @@ int bpf_list_add_device(struct lxc_conf *conf, struct device_item *device)
 	lxc_list_for_each(it, &conf->devices) {
 		struct device_item *cur = it->elem;
 
-		if (cur->global_rule != -1 && device->global_rule != -1) {
+		if (cur->global_rule > LXC_BPF_DEVICE_CGROUP_LOCAL_RULE &&
+		    device->global_rule > LXC_BPF_DEVICE_CGROUP_LOCAL_RULE) {
 			TRACE("Switched from %s to %s",
 			      cur->global_rule == LXC_BPF_DEVICE_CGROUP_WHITELIST
 				  ? "whitelist"
