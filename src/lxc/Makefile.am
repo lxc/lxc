@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LGPL-2.1+
+
 pkginclude_HEADERS = attach_options.h \
 		     lxccontainer.h \
 		     version.h
