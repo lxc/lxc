@@ -511,23 +511,20 @@ bool bpf_devices_cgroup_supported(void)
 	int ret;
 
 	if (geteuid() != 0)
-		return log_error_errno(false,
-				       EINVAL, "The bpf device cgroup requires real root");
+		return log_trace(false,
+				 "The bpf device cgroup requires real root");
 
 	prog = bpf_program_new(BPF_PROG_TYPE_CGROUP_DEVICE);
 	if (prog < 0)
-		return log_error_errno(false,
-				       errno, "Failed to allocate new bpf device cgroup program");
+		return log_trace(false, "Failed to allocate new bpf device cgroup program");
 
 	ret = bpf_program_add_instructions(prog, dummy, ARRAY_SIZE(dummy));
 	if (ret < 0)
-		return log_error_errno(false,
-				       errno, "Failed to add new instructions to bpf device cgroup program");
+		return log_trace(false, "Failed to add new instructions to bpf device cgroup program");
 
 	ret = bpf_program_load_kernel(prog, NULL, 0);
 	if (ret < 0)
-		return log_error_errno(false,
-				       errno, "Failed to load new bpf device cgroup program");
+		return log_trace(false, "Failed to load new bpf device cgroup program");
 
 	return log_trace(true, "The bpf device cgroup is supported");
 }
