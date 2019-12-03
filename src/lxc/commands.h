@@ -48,6 +48,8 @@ typedef enum {
 	LXC_CMD_SERVE_STATE_CLIENTS,
 	LXC_CMD_SECCOMP_NOTIFY_ADD_LISTENER,
 	LXC_CMD_ADD_BPF_DEVICE_CGROUP,
+	LXC_CMD_FREEZE,
+	LXC_CMD_UNFREEZE,
 	LXC_CMD_MAX,
 } lxc_cmd_t;
 
@@ -135,5 +137,7 @@ extern int lxc_cmd_seccomp_notify_add_listener(const char *name,
 struct device_item;
 extern int lxc_cmd_add_bpf_device_cgroup(const char *name, const char *lxcpath,
 					 struct device_item *device);
+extern int lxc_cmd_freeze(const char *name, const char *lxcpath, int timeout);
+extern int lxc_cmd_unfreeze(const char *name, const char *lxcpath, int timeout);
 
 #endif /* __commands_h */
