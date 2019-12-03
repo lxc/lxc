@@ -28,10 +28,13 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/vfs.h>
 #include <unistd.h>
 
+#include "cgroup.h"
 #include "cgroup_utils.h"
 #include "config.h"
+#include "file_utils.h"
 #include "macro.h"
 #include "memory_utils.h"
 #include "utils.h"
@@ -100,4 +103,20 @@ bool test_writeable_v2(char *mountpoint, char *path)
 		return true;
 
 	return (access(cgroup_threads_file, W_OK) == 0);
+}
+
+int unified_cgroup_hierarchy(void)
+{
+
+	int ret;
+	struct statfs fs;
+
+	ret = statfs(DEFAULT_CGROUP_MOUNTPOINT, &fs);
+	if (ret < 0)
+		return -ENOMEDIUM;
+
+	if (is_fs_type(&fs, CGROUP2_SUPER_MAGIC))
+		return CGROUP2_SUPER_MAGIC;
+
+	return 0;
 }

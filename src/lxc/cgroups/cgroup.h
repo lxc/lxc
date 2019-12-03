@@ -184,4 +184,12 @@ extern void cgroup_exit(struct cgroup_ops *ops);
 
 extern void prune_init_scope(char *cg);
 
+static inline void __auto_cgroup_exit__(struct cgroup_ops **ops)
+{
+	if (*ops)
+		cgroup_exit(*ops);
+}
+
+#define __do_cgroup_exit __attribute__((__cleanup__(__auto_cgroup_exit__)))
+
 #endif

@@ -23,6 +23,8 @@
 #ifndef __LXC_STATE_H
 #define __LXC_STATE_H
 
+#define MAX_STATE_LENGTH (8 + 1)
+
 typedef enum {
 	STOPPED,
 	STARTING,
