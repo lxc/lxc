@@ -742,8 +742,8 @@ static char **cg_hybrid_get_controllers(char **klist, char **nlist, char *line,
 	/* Note, if we change how mountinfo works, then our caller will need to
 	 * verify /sys/fs/cgroup/ in this field.
 	 */
-	if (strncmp(p, "/sys/fs/cgroup/", 15) != 0) {
-		ERROR("Found hierarchy not under /sys/fs/cgroup: \"%s\"", p);
+	if (strncmp(p, DEFAULT_CGROUP_MOUNTPOINT "/", 15) != 0) {
+		ERROR("Found hierarchy not under " DEFAULT_CGROUP_MOUNTPOINT ": \"%s\"", p);
 		return NULL;
 	}
 
@@ -844,7 +844,7 @@ static char *cg_hybrid_get_mountpoint(char *line)
 		p++;
 	}
 
-	if (strncmp(p, "/sys/fs/cgroup/", 15) != 0)
+	if (strncmp(p, DEFAULT_CGROUP_MOUNTPOINT "/", 15) != 0)
 		return NULL;
 
 	p2 = strchr(p + 15, ' ');
@@ -1811,7 +1811,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	else if (type == LXC_AUTO_CGROUP_FULL_NOSPEC)
 		type = LXC_AUTO_CGROUP_FULL_MIXED;
 
-	cgroup_root = must_make_path(root, "/sys/fs/cgroup", NULL);
+	cgroup_root = must_make_path(root, DEFAULT_CGROUP_MOUNTPOINT, NULL);
 	if (ops->cgroup_layout == CGROUP_LAYOUT_UNIFIED) {
 		if (has_cgns && wants_force_mount) {
 			/* If cgroup namespaces are supported but the container
@@ -2953,7 +2953,7 @@ static int cg_is_pure_unified(void)
 	int ret;
 	struct statfs fs;
 
-	ret = statfs("/sys/fs/cgroup", &fs);
+	ret = statfs(DEFAULT_CGROUP_MOUNTPOINT, &fs);
 	if (ret < 0)
 		return -ENOMEDIUM;
 
@@ -3019,7 +3019,7 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 	 * further down the hierarchy. If not it is up to the user to delegate
 	 * them to us.
 	 */
-	mountpoint = must_copy_string("/sys/fs/cgroup");
+	mountpoint = must_copy_string(DEFAULT_CGROUP_MOUNTPOINT);
 	subtree_path = must_make_path(mountpoint, base_cgroup,
 				      "cgroup.subtree_control", NULL);
 	delegatable = cg_unified_get_controllers(subtree_path);
