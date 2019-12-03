@@ -28,6 +28,7 @@
 #include <stddef.h>
 #include <sys/types.h>
 
+#define DEFAULT_CGROUP_MOUNTPOINT "/sys/fs/cgroup"
 #define PAYLOAD_CGROUP "lxc.payload"
 #define MONITOR_CGROUP "lxc.monitor"
 #define PIVOT_CGROUP "lxc.pivot"
@@ -92,6 +93,8 @@ struct hierarchy {
 	char *container_full_path;
 	char *monitor_full_path;
 	int version;
+
+	/* cgroup2 only */
 	int bpf_device_controller:1;
 };
 
@@ -162,8 +165,8 @@ struct cgroup_ops {
 		   const char *value, const char *name, const char *lxcpath);
 	int (*get)(struct cgroup_ops *ops, const char *filename, char *value,
 		   size_t len, const char *name, const char *lxcpath);
-	bool (*freeze)(struct cgroup_ops *ops);
-	bool (*unfreeze)(struct cgroup_ops *ops);
+	int (*freeze)(struct cgroup_ops *ops, int timeout);
+	int (*unfreeze)(struct cgroup_ops *ops, int timeout);
 	bool (*setup_limits)(struct cgroup_ops *ops, struct lxc_conf *conf,
 			     bool with_devices);
 	bool (*chown)(struct cgroup_ops *ops, struct lxc_conf *conf);
