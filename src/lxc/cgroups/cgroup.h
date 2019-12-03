@@ -28,6 +28,7 @@
 #include <stddef.h>
 #include <sys/types.h>
 
+#define DEFAULT_CGROUP_MOUNTPOINT "/sys/fs/cgroup"
 #define PAYLOAD_CGROUP "lxc.payload"
 #define MONITOR_CGROUP "lxc.monitor"
 #define PIVOT_CGROUP "lxc.pivot"
@@ -92,6 +93,8 @@ struct hierarchy {
 	char *container_full_path;
 	char *monitor_full_path;
 	int version;
+
+	/* cgroup2 only */
 	int bpf_device_controller:1;
 };
 
