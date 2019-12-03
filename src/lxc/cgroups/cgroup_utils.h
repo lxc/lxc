@@ -48,4 +48,6 @@ extern bool test_writeable_v1(char *mountpoint, char *path);
  */
 extern bool test_writeable_v2(char *mountpoint, char *path);
 
+extern int unified_cgroup_hierarchy(void);
+
 #endif /* __LXC_CGROUP_UTILS_H */

@@ -518,11 +518,17 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 		__ret__;                      \
 	})
 
-#define log_error(__ret__, __errno__, format, ...) \
-	({                                         \
-		errno = __errno__;                 \
-		SYSERROR(format, ##__VA_ARGS__);   \
-		__ret__;                           \
+#define log_error_errno(__ret__, __errno__, format, ...) \
+	({						 \
+		errno = __errno__;			 \
+		SYSERROR(format, ##__VA_ARGS__);	 \
+		__ret__;				 \
+	})
+
+#define log_error(__ret__, format, ...)	      \
+	({				      \
+		ERROR(format, ##__VA_ARGS__); \
+		__ret__;		      \
 	})
 
 extern int lxc_log_fd;

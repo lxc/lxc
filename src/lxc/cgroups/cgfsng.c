@@ -2745,23 +2745,24 @@ __cgfsng_ops bool cgfsng_devices_activate(struct cgroup_ops *ops,
 
 	devices = bpf_program_new(BPF_PROG_TYPE_CGROUP_DEVICE);
 	if (!devices)
-		return log_error(false, ENOMEM,
-				 "Failed to create new bpf program");
+		return log_error_errno(false, ENOMEM,
+				       "Failed to create new bpf program");
 
 	ret = bpf_program_init(devices);
 	if (ret)
-		return log_error(false, ENOMEM,
-				 "Failed to initialize bpf program");
+		return log_error_errno(false, ENOMEM,
+				       "Failed to initialize bpf program");
 
 	lxc_list_for_each(it, &conf->devices) {
 		struct device_item *cur = it->elem;
 
 		ret = bpf_program_append_device(devices, cur);
 		if (ret)
-			return log_error(false,
-					 ENOMEM, "Failed to add new rule to bpf device program: type %c, major %d, minor %d, access %s, allow %d, global_rule %d",
-					 cur->type, cur->major, cur->minor,
-					 cur->access, cur->allow, cur->global_rule);
+			return log_error_errno(false,
+					       ENOMEM, "Failed to add new rule to bpf device program: type %c, major %d, minor %d, access %s, allow %d, global_rule %d",
+					       cur->type, cur->major,
+					       cur->minor, cur->access,
+					       cur->allow, cur->global_rule);
 		TRACE("Added rule to bpf device program: type %c, major %d, minor %d, access %s, allow %d, global_rule %d",
 		      cur->type, cur->major, cur->minor, cur->access,
 		      cur->allow, cur->global_rule);
@@ -2769,13 +2770,15 @@ __cgfsng_ops bool cgfsng_devices_activate(struct cgroup_ops *ops,
 
 	ret = bpf_program_finalize(devices);
 	if (ret)
-		return log_error(false, ENOMEM, "Failed to finalize bpf program");
+		return log_error_errno(false, ENOMEM,
+				       "Failed to finalize bpf program");
 
 	ret = bpf_program_cgroup_attach(devices, BPF_CGROUP_DEVICE,
 					unified->container_full_path,
 					BPF_F_ALLOW_MULTI);
 	if (ret)
-		return log_error(false, ENOMEM, "Failed to attach bpf program");
+		return log_error_errno(false, ENOMEM,
+				       "Failed to attach bpf program");
 
 	/* Replace old bpf program. */
 	devices_old = move_ptr(conf->cgroup2_devices);
@@ -2999,22 +3002,6 @@ static bool cg_hybrid_init(struct cgroup_ops *ops, bool relative,
 	return true;
 }
 
-static int cg_is_pure_unified(void)
-{
-
-	int ret;
-	struct statfs fs;
-
-	ret = statfs(DEFAULT_CGROUP_MOUNTPOINT, &fs);
-	if (ret < 0)
-		return -ENOMEDIUM;
-
-	if (is_fs_type(&fs, CGROUP2_SUPER_MAGIC))
-		return CGROUP2_SUPER_MAGIC;
-
-	return 0;
-}
-
 /* Get current cgroup from /proc/self/cgroup for the cgroupfs v2 hierarchy. */
 static char *cg_unified_get_current_cgroup(bool relative)
 {
@@ -3055,7 +3042,7 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 	struct hierarchy *new;
 	char *base_cgroup = NULL;
 
-	ret = cg_is_pure_unified();
+	ret = unified_cgroup_hierarchy();
 	if (ret == -ENOMEDIUM)
 		return -ENOMEDIUM;
 
