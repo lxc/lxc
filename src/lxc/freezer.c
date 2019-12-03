@@ -98,23 +98,40 @@ static int do_freeze_thaw(bool freeze, struct lxc_conf *conf, const char *name,
 		}
 	}
 
-	ret = cgroup_ops->freeze(cgroup_ops);
+	if (freeze)
+		ret = lxc_cmd_freeze(name, lxcpath, -1);
+	else
+		ret = lxc_cmd_unfreeze(name, lxcpath, -1);
 	cgroup_exit(cgroup_ops);
 	if (ret < 0)
 		return error_log_errno(-1, "Failed to %s container",
 				       freeze ? "freeze" : "unfreeze");
-
 	return 0;
+}
+
+static void notify_state_listeners(const char *name, const char *lxcpath,
+				   lxc_state_t state)
+{
+	lxc_cmd_serve_state_clients(name, lxcpath, state);
+	lxc_monitor_send_state(name, state, lxcpath);
 }
 
 int lxc_freeze(struct lxc_conf *conf, const char *name, const char *lxcpath)
 {
-	lxc_cmd_serve_state_clients(name, lxcpath, FREEZING);
-	lxc_monitor_send_state(name, FREEZING, lxcpath);
-	return do_freeze_thaw(true, conf, name, lxcpath);
+	int ret;
+
+	notify_state_listeners(name, lxcpath, FREEZING);
+	ret = do_freeze_thaw(true, conf, name, lxcpath);
+	notify_state_listeners(name, lxcpath, !ret ? FROZEN : RUNNING);
+	return ret;
 }
 
 int lxc_unfreeze(struct lxc_conf *conf, const char *name, const char *lxcpath)
 {
-	return do_freeze_thaw(false, conf, name, lxcpath);
+	int ret;
+
+	notify_state_listeners(name, lxcpath, THAWED);
+	ret = do_freeze_thaw(false, conf, name, lxcpath);
+	notify_state_listeners(name, lxcpath, !ret ? RUNNING : FROZEN);
+	return ret;
 }

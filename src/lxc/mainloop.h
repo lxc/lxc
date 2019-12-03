@@ -52,4 +52,13 @@ extern int lxc_mainloop_open(struct lxc_epoll_descr *descr);
 
 extern int lxc_mainloop_close(struct lxc_epoll_descr *descr);
 
+static inline void __auto_lxc_mainloop_close__(struct lxc_epoll_descr **descr)
+{
+	if (*descr)
+		lxc_mainloop_close(*descr);
+}
+
+#define __do_lxc_mainloop_close \
+	__attribute__((__cleanup__(__auto_lxc_mainloop_close__)))
+
 #endif

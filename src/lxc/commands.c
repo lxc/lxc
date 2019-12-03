@@ -101,6 +101,8 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 		[LXC_CMD_SERVE_STATE_CLIENTS]		= "serve_state_clients",
 		[LXC_CMD_SECCOMP_NOTIFY_ADD_LISTENER]	= "seccomp_notify_add_listener",
 		[LXC_CMD_ADD_BPF_DEVICE_CGROUP]		= "add_bpf_device_cgroup",
+		[LXC_CMD_FREEZE]			= "freeze",
+		[LXC_CMD_UNFREEZE]			= "unfreeze",
 	};
 
 	if (cmd >= LXC_CMD_MAX)
@@ -650,19 +652,14 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 	memset(&rsp, 0, sizeof(rsp));
 	rsp.ret = kill(handler->pid, stopsignal);
 	if (!rsp.ret) {
-		/* We can't just use lxc_unfreeze() since we are already in the
-		 * context of handling the STOP cmd in lxc-start, and calling
-		 * lxc_unfreeze() would do another cmd (GET_CGROUP) which would
-		 * deadlock us.
-		 */
-		if (!cgroup_ops->get_cgroup(cgroup_ops, "freezer"))
-			return 0;
-
-		if (cgroup_ops->unfreeze(cgroup_ops))
+		rsp.ret = cgroup_ops->unfreeze(cgroup_ops, -1);
+		if (!rsp.ret)
 			return 0;
 
 		ERROR("Failed to unfreeze container \"%s\"", handler->name);
-		rsp.ret = -1;
+		rsp.ret = -errno;
+	} else {
+		rsp.ret = -errno;
 	}
 
 	return lxc_cmd_rsp_send(fd, &rsp);
@@ -1192,6 +1189,72 @@ reap_client_fd:
 	return 1;
 }
 
+int lxc_cmd_freeze(const char *name, const char *lxcpath, int timeout)
+{
+	int ret, stopped;
+	struct lxc_cmd_rr cmd = {
+		.req = {
+			.cmd = LXC_CMD_FREEZE,
+			.data = INT_TO_PTR(timeout),
+		},
+	};
+
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
+	if (ret <= 0 || cmd.rsp.ret < 0)
+		return error_log_errno(errno, "Failed to freeze container");
+
+	return cmd.rsp.ret;
+}
+
+static int lxc_cmd_freeze_callback(int fd, struct lxc_cmd_req *req,
+				   struct lxc_handler *handler,
+				   struct lxc_epoll_descr *descr)
+{
+	int timeout = PTR_TO_INT(req->data);
+	struct lxc_cmd_rsp rsp = {
+	    .ret = -ENOENT,
+	};
+	struct cgroup_ops *ops = handler->cgroup_ops;
+
+	if (ops->cgroup_layout == CGROUP_LAYOUT_UNIFIED)
+		rsp.ret = ops->freeze(ops, timeout);
+
+	return lxc_cmd_rsp_send(fd, &rsp);
+}
+
+int lxc_cmd_unfreeze(const char *name, const char *lxcpath, int timeout)
+{
+	int ret, stopped;
+	struct lxc_cmd_rr cmd = {
+		.req = {
+			.cmd = LXC_CMD_UNFREEZE,
+			.data = INT_TO_PTR(timeout),
+		},
+	};
+
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
+	if (ret <= 0 || cmd.rsp.ret < 0)
+		return error_log_errno(errno, "Failed to unfreeze container");
+
+	return cmd.rsp.ret;
+}
+
+static int lxc_cmd_unfreeze_callback(int fd, struct lxc_cmd_req *req,
+				   struct lxc_handler *handler,
+				   struct lxc_epoll_descr *descr)
+{
+	int timeout = PTR_TO_INT(req->data);
+	struct lxc_cmd_rsp rsp = {
+	    .ret = -ENOENT,
+	};
+	struct cgroup_ops *ops = handler->cgroup_ops;
+
+	if (ops->cgroup_layout == CGROUP_LAYOUT_UNIFIED)
+		rsp.ret = ops->unfreeze(ops, timeout);
+
+	return lxc_cmd_rsp_send(fd, &rsp);
+}
+
 static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 			   struct lxc_handler *handler,
 			   struct lxc_epoll_descr *descr)
@@ -1215,6 +1278,8 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 		[LXC_CMD_SERVE_STATE_CLIENTS]         	= lxc_cmd_serve_state_clients_callback,
 		[LXC_CMD_SECCOMP_NOTIFY_ADD_LISTENER] 	= lxc_cmd_seccomp_notify_add_listener_callback,
 		[LXC_CMD_ADD_BPF_DEVICE_CGROUP]		= lxc_cmd_add_bpf_device_cgroup_callback,
+		[LXC_CMD_FREEZE]			= lxc_cmd_freeze_callback,
+		[LXC_CMD_UNFREEZE]			= lxc_cmd_unfreeze_callback,
 	};
 
 	if (req->cmd >= LXC_CMD_MAX) {

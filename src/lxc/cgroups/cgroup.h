@@ -165,8 +165,8 @@ struct cgroup_ops {
 		   const char *value, const char *name, const char *lxcpath);
 	int (*get)(struct cgroup_ops *ops, const char *filename, char *value,
 		   size_t len, const char *name, const char *lxcpath);
-	bool (*freeze)(struct cgroup_ops *ops);
-	bool (*unfreeze)(struct cgroup_ops *ops);
+	int (*freeze)(struct cgroup_ops *ops, int timeout);
+	int (*unfreeze)(struct cgroup_ops *ops, int timeout);
 	bool (*setup_limits)(struct cgroup_ops *ops, struct lxc_conf *conf,
 			     bool with_devices);
 	bool (*chown)(struct cgroup_ops *ops, struct lxc_conf *conf);
