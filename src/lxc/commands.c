@@ -103,6 +103,7 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 		[LXC_CMD_ADD_BPF_DEVICE_CGROUP]		= "add_bpf_device_cgroup",
 		[LXC_CMD_FREEZE]			= "freeze",
 		[LXC_CMD_UNFREEZE]			= "unfreeze",
+		[LXC_CMD_GET_CGROUP2_FD]		= "get_cgroup2_fd",
 	};
 
 	if (cmd >= LXC_CMD_MAX)
@@ -166,6 +167,9 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		rspdata->ttynum = PTR_TO_INT(rsp->data);
 		rsp->data = rspdata;
 	}
+
+	if (cmd->req.cmd == LXC_CMD_GET_CGROUP2_FD)
+		rsp->data = INT_TO_PTR(rspfd);
 
 	if (rsp->datalen == 0) {
 		DEBUG("Response data length for command \"%s\" is 0",
@@ -1321,6 +1325,44 @@ static int lxc_cmd_unfreeze_callback(int fd, struct lxc_cmd_req *req,
 	return lxc_cmd_rsp_send(fd, &rsp);
 }
 
+int lxc_cmd_get_cgroup2_fd(const char *name, const char *lxcpath)
+{
+	int ret, stopped;
+	struct lxc_cmd_rr cmd = {
+		.req = {
+			.cmd = LXC_CMD_GET_CGROUP2_FD,
+		},
+	};
+
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
+	if (ret <= 0 || cmd.rsp.ret < 0)
+		return error_log_errno(errno, "Failed to retrieve cgroup2 fd");
+
+	return PTR_TO_INT(cmd.rsp.data);
+}
+
+static int lxc_cmd_get_cgroup2_fd_callback(int fd, struct lxc_cmd_req *req,
+					   struct lxc_handler *handler,
+					   struct lxc_epoll_descr *descr)
+{
+	struct lxc_cmd_rsp rsp = {
+		.ret = -EINVAL,
+	};
+	struct cgroup_ops *ops = handler->cgroup_ops;
+	int ret;
+
+	if (ops->cgroup_layout != CGROUP_LAYOUT_UNIFIED)
+		return lxc_cmd_rsp_send(fd, &rsp);
+
+	rsp.ret = 0;
+	ret = lxc_abstract_unix_send_fds(fd, &ops->unified_fd, 1, &rsp,
+					 sizeof(rsp));
+	if (ret < 0)
+		return log_error(1, "Failed to send cgroup2 fd");
+
+	return 0;
+}
+
 static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 			   struct lxc_handler *handler,
 			   struct lxc_epoll_descr *descr)
@@ -1346,6 +1388,7 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 		[LXC_CMD_ADD_BPF_DEVICE_CGROUP]		= lxc_cmd_add_bpf_device_cgroup_callback,
 		[LXC_CMD_FREEZE]			= lxc_cmd_freeze_callback,
 		[LXC_CMD_UNFREEZE]			= lxc_cmd_unfreeze_callback,
+		[LXC_CMD_GET_CGROUP2_FD]		= lxc_cmd_get_cgroup2_fd_callback,
 	};
 
 	if (req->cmd >= LXC_CMD_MAX) {

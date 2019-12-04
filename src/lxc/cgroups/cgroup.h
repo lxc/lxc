@@ -121,6 +121,8 @@ struct cgroup_ops {
 	struct hierarchy **hierarchies;
 	/* Pointer to the unified hierarchy. Do not free! */
 	struct hierarchy *unified;
+	/* File descriptor to the container's cgroup. */
+	int unified_fd;
 
 	/*
 	 * @cgroup2_devices

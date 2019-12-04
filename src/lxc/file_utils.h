@@ -32,6 +32,8 @@
 /* read and write whole files */
 extern int lxc_write_to_file(const char *filename, const void *buf,
 			     size_t count, bool add_newline, mode_t mode);
+extern int lxc_writeat(int dirfd, const char *filename, const void *buf,
+		       size_t count);
 extern int lxc_read_from_file(const char *filename, void *buf, size_t count);
 
 /* send and receive buffers completely */
