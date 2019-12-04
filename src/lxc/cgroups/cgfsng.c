@@ -2771,10 +2771,8 @@ __cgfsng_ops bool cgfsng_devices_activate(struct cgroup_ops *ops,
 	struct lxc_list *it;
 	struct bpf_program *devices_old;
 
-	if (!unified)
-		return false;
-
-	if (lxc_list_empty(&conf->devices))
+	if (!unified || !unified->bpf_device_controller ||
+	    !unified->container_full_path || lxc_list_empty(&conf->devices))
 		return true;
 
 	devices = bpf_program_new(BPF_PROG_TYPE_CGROUP_DEVICE);
