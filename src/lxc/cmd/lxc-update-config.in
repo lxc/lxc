@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LGPL-2.1+
+
 #!/bin/sh
 
 # Make sure the usual locations are in PATH
