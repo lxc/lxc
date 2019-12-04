@@ -1432,7 +1432,7 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 							struct lxc_handler *handler)
 {
 	__do_free char *container_cgroup = NULL, *tmp = NULL;
-	int i;
+	int i, ret;
 	size_t len;
 	char *offset;
 	int idx = 0;
@@ -1463,7 +1463,7 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 
 	do {
 		if (idx) {
-			int ret = snprintf(offset, 5, "-%d", idx);
+			ret = snprintf(offset, 5, "-%d", idx);
 			if (ret < 0 || (size_t)ret >= 5)
 				return false;
 		}
@@ -1488,6 +1488,16 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 
 	INFO("The container process uses \"%s\" as cgroup", container_cgroup);
 	ops->container_cgroup = move_ptr(container_cgroup);
+
+	if (ops->unified && ops->unified->container_full_path) {
+		ret = open(ops->unified->container_full_path,
+			   O_DIRECTORY | O_RDONLY | O_CLOEXEC);
+		if (ret < 0)
+			return log_error_errno(false,
+					       errno, "Failed to open file descriptor for unified hierarchy");
+		ops->unified_fd = ret;
+	}
+
 	return true;
 }
 
@@ -2205,61 +2215,64 @@ static int __cg_unified_attach(const struct hierarchy *h, const char *name,
 			       const char *lxcpath, const char *pidstr,
 			       size_t pidstr_len, const char *controller)
 {
-	__do_free char *base_path = NULL, *container_cgroup = NULL,
-		       *full_path = NULL;
+	__do_close_prot_errno int unified_fd = -EBADF;
+	int idx = 0;
 	int ret;
-	size_t len;
-	int fret = -1, idx = 0;
 
-	container_cgroup = lxc_cmd_get_cgroup_path(name, lxcpath, controller);
-	/* not running */
-	if (!container_cgroup)
-		return 0;
+	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
+	if (unified_fd < 0) {
+		__do_free char *base_path = NULL, *container_cgroup = NULL;
 
-	base_path = must_make_path(h->mountpoint, container_cgroup, NULL);
-	full_path = must_make_path(base_path, "cgroup.procs", NULL);
-	/* cgroup is populated */
-	ret = lxc_write_to_file(full_path, pidstr, pidstr_len, false, 0666);
-	if (ret < 0 && errno != EBUSY)
-		goto on_error;
+		container_cgroup = lxc_cmd_get_cgroup_path(name, lxcpath, controller);
+		/* not running */
+		if (!container_cgroup)
+			return 0;
 
+		base_path = must_make_path(h->mountpoint, container_cgroup, NULL);
+		unified_fd = open(base_path, O_DIRECTORY | O_RDONLY | O_CLOEXEC);
+	}
+	if (unified_fd < 0)
+		return -1;
+
+	ret = lxc_writeat(unified_fd, "cgroup.procs", pidstr, pidstr_len);
 	if (ret == 0)
-		goto on_success;
+		return 0;
+	/* this is a non-leaf node */
+	if (errno != EBUSY)
+		return error_log_errno(errno, "Failed to attach to unified cgroup");
 
-	len = strlen(base_path) + STRLITERALLEN("/lxc-1000") +
-	      STRLITERALLEN("/cgroup-procs");
-	full_path = must_realloc(NULL, len + 1);
 	do {
+		char *slash;
+		char attach_cgroup[STRLITERALLEN("lxc-1000/cgroup.procs") + 1];
+
 		if (idx)
-			ret = snprintf(full_path, len + 1, "%s/lxc-%d",
-				       base_path, idx);
+			ret = snprintf(attach_cgroup, sizeof(attach_cgroup),
+				       "lxc-%d/cgroup.procs", idx);
 		else
-			ret = snprintf(full_path, len + 1, "%s/lxc", base_path);
-		if (ret < 0 || (size_t)ret >= len + 1)
-			goto on_error;
+			ret = snprintf(attach_cgroup, sizeof(attach_cgroup),
+				       "lxc/cgroup.procs");
+		if (ret < 0 || (size_t)ret >= sizeof(attach_cgroup))
+			return -1;
 
-		ret = mkdir_p(full_path, 0755);
+		slash = &attach_cgroup[ret] - STRLITERALLEN("/cgroup.procs");
+		*slash = '\0';
+		ret = mkdirat(unified_fd, attach_cgroup, 0755);
 		if (ret < 0 && errno != EEXIST)
-			goto on_error;
+			return error_log_errno(errno, "Failed to create cgroup %s", attach_cgroup);
 
-		(void)strlcat(full_path, "/cgroup.procs", len + 1);
-		ret = lxc_write_to_file(full_path, pidstr, len, false, 0666);
+		*slash = '/';
+		ret = lxc_writeat(unified_fd, attach_cgroup, pidstr, pidstr_len);
 		if (ret == 0)
-			goto on_success;
+			return 0;
 
 		/* this is a non-leaf node */
 		if (errno != EBUSY)
-			goto on_error;
+			return error_log_errno(errno, "Failed to attach to unified cgroup");
 
 		idx++;
 	} while (idx < 1000);
 
-on_success:
-	if (idx < 1000)
-		fret = 0;
-
-on_error:
-	return fret;
+	return -1;
 }
 
 __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops, const char *name,
@@ -3144,6 +3157,8 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 
 	if (!cg_init(cgfsng_ops, conf))
 		return NULL;
+
+	cgfsng_ops->unified_fd = -EBADF;
 
 	cgfsng_ops->data_init = cgfsng_data_init;
 	cgfsng_ops->payload_destroy = cgfsng_payload_destroy;

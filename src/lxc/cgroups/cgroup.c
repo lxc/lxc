@@ -90,6 +90,9 @@ void cgroup_exit(struct cgroup_ops *ops)
 	if (ops->cgroup2_devices)
 		bpf_program_free(ops->cgroup2_devices);
 
+	if (ops->unified_fd >= 0)
+		close(ops->unified_fd);
+
 	for (it = ops->hierarchies; it && *it; it++) {
 		char **p;
 
