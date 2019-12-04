@@ -1300,7 +1300,7 @@ int lxc_cmd_get_cgroup2_fd(const char *name, const char *lxcpath)
 		return -1;
 
 	if (cmd.rsp.ret < 0)
-		return error_log_errno(errno, "Failed to receive cgroup2 fd");
+		return log_debug_errno(-1, errno, "Failed to receive cgroup2 fd");
 
 	return PTR_TO_INT(cmd.rsp.data);
 }

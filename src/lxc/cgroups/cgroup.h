@@ -192,6 +192,8 @@ static inline void __auto_cgroup_exit__(struct cgroup_ops **ops)
 		cgroup_exit(*ops);
 }
 
+extern int cgroup_attach(const char *name, const char *lxcpath, int64_t pid);
+
 #define __do_cgroup_exit __attribute__((__cleanup__(__auto_cgroup_exit__)))
 
 #endif

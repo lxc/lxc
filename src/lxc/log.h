@@ -544,6 +544,12 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 		__ret__;		      \
 	})
 
+#define log_debug_errno(__ret__, __errno__, format, ...) \
+	({						 \
+		SYSDEBUG(format, ##__VA_ARGS__);	 \
+		__ret__;				 \
+	})
+
 extern int lxc_log_fd;
 
 extern int lxc_log_syslog(int facility);
