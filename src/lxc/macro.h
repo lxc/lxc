@@ -3,6 +3,10 @@
 #ifndef __LXC_MACRO_H
 #define __LXC_MACRO_H
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
+#define __STDC_FORMAT_MACROS
 #include <asm/types.h>
 #include <limits.h>
 #include <linux/if_link.h>
@@ -20,6 +24,8 @@
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
+
+#define INT64_FMT "%" PRId64
 
 /* Define __S_ISTYPE if missing from the C library. */
 #ifndef __S_ISTYPE

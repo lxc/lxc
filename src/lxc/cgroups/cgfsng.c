@@ -2180,38 +2180,14 @@ static inline char *build_full_cgpath_from_monitorpath(struct hierarchy *h,
 	return must_make_path(h->mountpoint, inpath, filename, NULL);
 }
 
-/* Technically, we're always at a delegation boundary here (This is especially
- * true when cgroup namespaces are available.). The reasoning is that in order
- * for us to have been able to start a container in the first place the root
- * cgroup must have been a leaf node. Now, either the container's init system
- * has populated the cgroup and kept it as a leaf node or it has created
- * subtrees. In the former case we will simply attach to the leaf node we
- * created when we started the container in the latter case we create our own
- * cgroup for the attaching process.
- */
-static int __cg_unified_attach(const struct hierarchy *h, const char *name,
-			       const char *lxcpath, const char *pidstr,
-			       size_t pidstr_len, const char *controller)
+static int cgroup_attach_leaf(int unified_fd, int64_t pid)
 {
-	__do_close_prot_errno int unified_fd = -EBADF;
 	int idx = 0;
 	int ret;
+	char pidstr[INTTYPE_TO_STRLEN(int64_t) + 1];
+	size_t pidstr_len;
 
-	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
-	if (unified_fd < 0) {
-		__do_free char *base_path = NULL, *container_cgroup = NULL;
-
-		container_cgroup = lxc_cmd_get_cgroup_path(name, lxcpath, controller);
-		/* not running */
-		if (!container_cgroup)
-			return 0;
-
-		base_path = must_make_path(h->mountpoint, container_cgroup, NULL);
-		unified_fd = open(base_path, O_DIRECTORY | O_RDONLY | O_CLOEXEC);
-	}
-	if (unified_fd < 0)
-		return -1;
-
+	pidstr_len = sprintf(pidstr, INT64_FMT, pid);
 	ret = lxc_writeat(unified_fd, "cgroup.procs", pidstr, pidstr_len);
 	if (ret == 0)
 		return 0;
@@ -2253,6 +2229,51 @@ static int __cg_unified_attach(const struct hierarchy *h, const char *name,
 	return -1;
 }
 
+int cgroup_attach(const char *name, const char *lxcpath, int64_t pid)
+{
+	__do_close_prot_errno int unified_fd = -EBADF;
+
+	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
+	if (unified_fd < 0)
+		return -1;
+
+	return cgroup_attach_leaf(unified_fd, pid);
+}
+
+/* Technically, we're always at a delegation boundary here (This is especially
+ * true when cgroup namespaces are available.). The reasoning is that in order
+ * for us to have been able to start a container in the first place the root
+ * cgroup must have been a leaf node. Now, either the container's init system
+ * has populated the cgroup and kept it as a leaf node or it has created
+ * subtrees. In the former case we will simply attach to the leaf node we
+ * created when we started the container in the latter case we create our own
+ * cgroup for the attaching process.
+ */
+static int __cg_unified_attach(const struct hierarchy *h, const char *name,
+			       const char *lxcpath, pid_t pid,
+			       const char *controller)
+{
+	__do_close_prot_errno int unified_fd = -EBADF;
+	int ret;
+
+	ret = cgroup_attach(name, lxcpath, pid);
+	if (ret < 0) {
+		__do_free char *path = NULL, *cgroup = NULL;
+
+		cgroup = lxc_cmd_get_cgroup_path(name, lxcpath, controller);
+		/* not running */
+		if (!cgroup)
+			return 0;
+
+		path = must_make_path(h->mountpoint, cgroup, NULL);
+		unified_fd = open(path, O_DIRECTORY | O_RDONLY | O_CLOEXEC);
+	}
+	if (unified_fd < 0)
+		return -1;
+
+	return cgroup_attach_leaf(unified_fd, pid);
+}
+
 __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops, const char *name,
 					 const char *lxcpath, pid_t pid)
 {
@@ -2271,7 +2292,7 @@ __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops, const char *name,
 		struct hierarchy *h = ops->hierarchies[i];
 
 		if (h->version == CGROUP2_SUPER_MAGIC) {
-			ret = __cg_unified_attach(h, name, lxcpath, pidstr, len,
+			ret = __cg_unified_attach(h, name, lxcpath, pid,
 						  h->controllers[0]);
 			if (ret < 0)
 				return false;
