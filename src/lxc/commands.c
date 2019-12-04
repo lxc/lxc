@@ -131,19 +131,15 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
  */
 static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 {
-	int ret, rspfd;
+	__do_close_prot_errno int fd_rsp = -EBADF;
+	int ret;
 	struct lxc_cmd_rsp *rsp = &cmd->rsp;
 
-	ret = lxc_abstract_unix_recv_fds(sock, &rspfd, 1, rsp, sizeof(*rsp));
-	if (ret < 0) {
-		SYSWARN("Failed to receive response for command \"%s\"",
-		        lxc_cmd_str(cmd->req.cmd));
-
-		if (errno == ECONNRESET)
-			return -1;
-
-		return -1;
-	}
+	ret = lxc_abstract_unix_recv_fds(sock, &fd_rsp, 1, rsp, sizeof(*rsp));
+	if (ret < 0)
+		return log_warn_errno(-1,
+				      errno, "Failed to receive response for command \"%s\"",
+				      lxc_cmd_str(cmd->req.cmd));
 	TRACE("Command \"%s\" received response", lxc_cmd_str(cmd->req.cmd));
 
 	if (cmd->req.cmd == LXC_CMD_CONSOLE) {
@@ -156,33 +152,31 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 			return 0;
 
 		rspdata = malloc(sizeof(*rspdata));
-		if (!rspdata) {
-			errno = ENOMEM;
-			ERROR("Failed to allocate response buffer for command \"%s\"",
-			      lxc_cmd_str(cmd->req.cmd));
-			return -1;
-		}
+		if (!rspdata)
+			return log_warn_errno(-1,
+					      ENOMEM, "Failed to receive response for command \"%s\"",
+					      lxc_cmd_str(cmd->req.cmd));
 
-		rspdata->masterfd = rspfd;
+		rspdata->masterfd = move_fd(fd_rsp);
 		rspdata->ttynum = PTR_TO_INT(rsp->data);
 		rsp->data = rspdata;
 	}
 
-	if (cmd->req.cmd == LXC_CMD_GET_CGROUP2_FD)
-		rsp->data = INT_TO_PTR(rspfd);
-
-	if (rsp->datalen == 0) {
-		DEBUG("Response data length for command \"%s\" is 0",
-		      lxc_cmd_str(cmd->req.cmd));
-		return ret;
+	if (cmd->req.cmd == LXC_CMD_GET_CGROUP2_FD) {
+		int cgroup2_fd = move_fd(fd_rsp);
+		rsp->data = INT_TO_PTR(cgroup2_fd);
 	}
+
+	if (rsp->datalen == 0)
+		return log_debug(ret,
+				 "Response data length for command \"%s\" is 0",
+				 lxc_cmd_str(cmd->req.cmd));
 
 	if ((rsp->datalen > LXC_CMD_DATA_MAX) &&
-	    (cmd->req.cmd != LXC_CMD_CONSOLE_LOG)) {
-		ERROR("Response data for command \"%s\" is too long: %d bytes > %d",
-		      lxc_cmd_str(cmd->req.cmd), rsp->datalen, LXC_CMD_DATA_MAX);
-		return -1;
-	}
+	    (cmd->req.cmd != LXC_CMD_CONSOLE_LOG))
+		return log_error(-1, "Response data for command \"%s\" is too long: %d bytes > %d",
+				 lxc_cmd_str(cmd->req.cmd), rsp->datalen,
+				 LXC_CMD_DATA_MAX);
 
 	if (cmd->req.cmd == LXC_CMD_CONSOLE_LOG) {
 		rsp->data = malloc(rsp->datalen + 1);
@@ -190,19 +184,16 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 	} else {
 		rsp->data = malloc(rsp->datalen);
 	}
-	if (!rsp->data) {
-		errno = ENOMEM;
-		ERROR("Failed to allocate response buffer for command \"%s\"",
-		      lxc_cmd_str(cmd->req.cmd));
-		return -1;
-	}
+	if (!rsp->data)
+		return log_error_errno(-1,
+				       ENOMEM, "Failed to allocate response buffer for command \"%s\"",
+				       lxc_cmd_str(cmd->req.cmd));
 
 	ret = lxc_recv_nointr(sock, rsp->data, rsp->datalen, 0);
-	if (ret != rsp->datalen) {
-		SYSERROR("Failed to receive response data for command \"%s\"",
-		         lxc_cmd_str(cmd->req.cmd));
-		return -1;
-	}
+	if (ret != rsp->datalen)
+		return log_error_errno(-1,
+				       errno, "Failed to receive response data for command \"%s\"",
+				       lxc_cmd_str(cmd->req.cmd));
 
 	return ret;
 }
@@ -1305,8 +1296,11 @@ int lxc_cmd_get_cgroup2_fd(const char *name, const char *lxcpath)
 	};
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
-	if (ret <= 0 || cmd.rsp.ret < 0)
-		return error_log_errno(errno, "Failed to retrieve cgroup2 fd");
+	if (ret < 0)
+		return -1;
+
+	if (cmd.rsp.ret < 0)
+		return error_log_errno(errno, "Failed to receive cgroup2 fd");
 
 	return PTR_TO_INT(cmd.rsp.data);
 }
@@ -1361,10 +1355,9 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 		[LXC_CMD_GET_CGROUP2_FD]		= lxc_cmd_get_cgroup2_fd_callback,
 	};
 
-	if (req->cmd >= LXC_CMD_MAX) {
-		ERROR("Undefined command id %d", req->cmd);
-		return -1;
-	}
+	if (req->cmd >= LXC_CMD_MAX)
+		return log_error_errno(-1, ENOENT, "Undefined command id %d", req->cmd);
+
 	return cb[req->cmd](fd, req, handler, descr);
 }
 
