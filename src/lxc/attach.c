@@ -1230,16 +1230,21 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 
 		/* Attach to cgroup, if requested. */
 		if (options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) {
-			struct cgroup_ops *cgroup_ops;
+			/*
+			 * If this is the unified hierarchy cgroup_attach() is
+			 * enough.
+			 */
+			ret = cgroup_attach(name, lxcpath, pid);
+			if (ret) {
+				__do_cgroup_exit struct cgroup_ops *cgroup_ops = NULL;
 
-			cgroup_ops = cgroup_init(conf);
-			if (!cgroup_ops)
-				goto on_error;
+				cgroup_ops = cgroup_init(conf);
+				if (!cgroup_ops)
+					goto on_error;
 
-			if (!cgroup_ops->attach(cgroup_ops, name, lxcpath, pid))
-				goto on_error;
-
-			cgroup_exit(cgroup_ops);
+				if (!cgroup_ops->attach(cgroup_ops, name, lxcpath, pid))
+					goto on_error;
+			}
 			TRACE("Moved intermediate process %d into container's cgroups", pid);
 		}
 
