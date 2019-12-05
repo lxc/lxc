@@ -1825,16 +1825,21 @@ static void parse_mntopt(char *opt, unsigned long *flags, char **data, size_t si
 {
 	struct mount_opt *mo;
 
-	/* If opt is found in mount_opt, set or clear flags.
-	 * Otherwise append it to data. */
+	/* If '=' is contained in opt, the option must go into data. */
+	if (!strchr(opt, '=')) {
 
-	for (mo = &mount_opt[0]; mo->name != NULL; mo++) {
-		if (strncmp(opt, mo->name, strlen(mo->name)) == 0) {
-			if (mo->clear)
-				*flags &= ~mo->flag;
-			else
-				*flags |= mo->flag;
-			return;
+		/* If opt is found in mount_opt, set or clear flags.
+		 * Otherwise append it to data. */
+		size_t opt_len = strlen(opt);
+		for (mo = &mount_opt[0]; mo->name != NULL; mo++) {
+			size_t mo_name_len = strlen(mo->name);
+			if (opt_len == mo_name_len && strncmp(opt, mo->name, mo_name_len) == 0) {
+				if (mo->clear)
+					*flags &= ~mo->flag;
+				else
+					*flags |= mo->flag;
+				return;
+			}
 		}
 	}
 
