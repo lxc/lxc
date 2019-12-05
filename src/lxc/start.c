@@ -1530,7 +1530,7 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 		tty->master = ttyfds[0];
 		tty->slave = ttyfds[1];
 		TRACE("Received pty with master fd %d and slave fd %d from "
-		      "parent", tty->master, tty->slave);
+		      "child", tty->master, tty->slave);
 	}
 
 	if (ret < 0)
