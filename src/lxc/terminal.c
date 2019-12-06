@@ -593,7 +593,7 @@ int lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 		if (*ttyreq > ttys->max)
 			goto out;
 
-		if (ttys->tty[*ttyreq - 1].busy)
+		if (ttys->tty[*ttyreq - 1].busy >= 0)
 			goto out;
 
 		/* The requested tty is available. */
@@ -602,7 +602,7 @@ int lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 	}
 
 	/* Search for next available tty, fixup index tty1 => [0]. */
-	for (ttynum = 1; ttynum <= ttys->max && ttys->tty[ttynum - 1].busy; ttynum++) {
+	for (ttynum = 1; ttynum <= ttys->max && ttys->tty[ttynum - 1].busy >= 0; ttynum++) {
 		;
 	}
 
@@ -628,7 +628,7 @@ void lxc_terminal_free(struct lxc_conf *conf, int fd)
 
 	for (i = 0; i < ttys->max; i++)
 		if (ttys->tty[i].busy == fd)
-			ttys->tty[i].busy = 0;
+			ttys->tty[i].busy = -1;
 
 	if (terminal->proxy.busy != fd)
 		return;
