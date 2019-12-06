@@ -88,6 +88,7 @@ struct cgroup_ops {
 	char **cgroup_use;
 	char *cgroup_pattern;
 	char *container_cgroup;
+	char *monitor_cgroup;
 
 	/* Static memory, do not free.*/
 	const char *monitor_pattern;
@@ -135,9 +136,9 @@ struct cgroup_ops {
 	void (*payload_destroy)(struct cgroup_ops *ops, struct lxc_handler *handler);
 	void (*monitor_destroy)(struct cgroup_ops *ops, struct lxc_handler *handler);
 	bool (*monitor_create)(struct cgroup_ops *ops, struct lxc_handler *handler);
-	bool (*monitor_enter)(struct cgroup_ops *ops, pid_t pid);
+	bool (*monitor_enter)(struct cgroup_ops *ops, struct lxc_handler *handler);
 	bool (*payload_create)(struct cgroup_ops *ops, struct lxc_handler *handler);
-	bool (*payload_enter)(struct cgroup_ops *ops, pid_t pid);
+	bool (*payload_enter)(struct cgroup_ops *ops, struct lxc_handler *handler);
 	const char *(*get_cgroup)(struct cgroup_ops *ops, const char *controller);
 	bool (*escape)(const struct cgroup_ops *ops, struct lxc_conf *conf);
 	int (*num_hierarchies)(struct cgroup_ops *ops);
@@ -148,8 +149,9 @@ struct cgroup_ops {
 		   size_t len, const char *name, const char *lxcpath);
 	int (*freeze)(struct cgroup_ops *ops, int timeout);
 	int (*unfreeze)(struct cgroup_ops *ops, int timeout);
-	bool (*setup_limits)(struct cgroup_ops *ops, struct lxc_conf *conf,
-			     bool with_devices);
+	bool (*setup_limits_legacy)(struct cgroup_ops *ops,
+				    struct lxc_conf *conf, bool with_devices);
+	bool (*setup_limits)(struct cgroup_ops *ops, struct lxc_handler *handler);
 	bool (*chown)(struct cgroup_ops *ops, struct lxc_conf *conf);
 	bool (*attach)(struct cgroup_ops *ops, const char *name,
 		       const char *lxcpath, pid_t pid);
@@ -158,6 +160,8 @@ struct cgroup_ops {
 	int (*nrtasks)(struct cgroup_ops *ops);
 	bool (*devices_activate)(struct cgroup_ops *ops,
 				 struct lxc_handler *handler);
+	bool (*monitor_delegate_controllers)(struct cgroup_ops *ops);
+	bool (*payload_delegate_controllers)(struct cgroup_ops *ops);
 };
 
 extern struct cgroup_ops *cgroup_init(struct lxc_conf *conf);

@@ -408,6 +408,12 @@ enum {
 		-1;                    \
 	})
 
+#define ret_set_errno(__ret__, __errno__) \
+	({                                \
+		errno = __errno__;        \
+		__ret__;                  \
+	})
+
 #define free_replace_move_ptr(a, b) \
 	({                          \
 		free(a);            \

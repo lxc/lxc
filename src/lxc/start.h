@@ -89,6 +89,9 @@ struct lxc_handler {
 	 */
 	int proc_pidfd;
 
+	/* The grandfather's pid when double-forking. */
+	pid_t transient_pid;
+
 	/* The monitor's pid. */
 	pid_t monitor_pid;
 

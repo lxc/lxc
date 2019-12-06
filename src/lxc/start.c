@@ -731,6 +731,10 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 		handler->nsfd[i] = -1;
 
 	handler->name = name;
+	if (daemonize)
+		handler->transient_pid = lxc_raw_getpid();
+	else
+		handler->transient_pid = -1;
 
 	if (daemonize && handler->conf->reboot == REBOOT_NONE) {
 		/* Create socketpair() to synchronize on daemonized startup.
@@ -997,8 +1001,10 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	while (namespace_count--)
 		free(namespaces[namespace_count]);
 
-	cgroup_ops->payload_destroy(cgroup_ops, handler);
-	cgroup_ops->monitor_destroy(cgroup_ops, handler);
+	if (cgroup_ops) {
+		cgroup_ops->payload_destroy(cgroup_ops, handler);
+		cgroup_ops->monitor_destroy(cgroup_ops, handler);
+	}
 
 	if (handler->conf->reboot == REBOOT_NONE) {
 		/* For all new state clients simply close the command socket.
@@ -1793,13 +1799,23 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (ret < 0)
 		goto out_delete_net;
 
-	if (!cgroup_ops->setup_limits(cgroup_ops, handler->conf, false)) {
+	if (!cgroup_ops->setup_limits_legacy(cgroup_ops, handler->conf, false)) {
 		ERROR("Failed to setup cgroup limits for container \"%s\"", name);
 		goto out_delete_net;
 	}
 
-	if (!cgroup_ops->payload_enter(cgroup_ops, handler->pid))
+	if (!cgroup_ops->payload_enter(cgroup_ops, handler))
 		goto out_delete_net;
+
+	if (!cgroup_ops->payload_delegate_controllers(cgroup_ops)) {
+		ERROR("Failed to delegate controllers to payload cgroup");
+		goto out_delete_net;
+	}
+
+	if (!cgroup_ops->setup_limits(cgroup_ops, handler)) {
+		ERROR("Failed to setup cgroup limits for container \"%s\"", name);
+		goto out_delete_net;
+	}
 
 	if (!cgroup_ops->chown(cgroup_ops, handler->conf))
 		goto out_delete_net;
@@ -1873,7 +1889,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (ret < 0)
 		goto out_delete_net;
 
-	if (!cgroup_ops->setup_limits(cgroup_ops, handler->conf, true)) {
+	if (!cgroup_ops->setup_limits_legacy(cgroup_ops, handler->conf, true)) {
 		ERROR("Failed to setup legacy device cgroup controller limits");
 		goto out_delete_net;
 	}
@@ -1998,8 +2014,14 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 		goto out_fini_nonet;
 	}
 
-	if (!cgroup_ops->monitor_enter(cgroup_ops, handler->monitor_pid)) {
+	if (!cgroup_ops->monitor_enter(cgroup_ops, handler)) {
 		ERROR("Failed to enter monitor cgroup");
+		ret = -1;
+		goto out_fini_nonet;
+	}
+
+	if (!cgroup_ops->monitor_delegate_controllers(cgroup_ops)) {
+		ERROR("Failed to delegate controllers to monitor cgroup");
 		ret = -1;
 		goto out_fini_nonet;
 	}
