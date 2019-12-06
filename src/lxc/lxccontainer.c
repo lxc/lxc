@@ -824,6 +824,15 @@ static bool wait_on_daemonized_start(struct lxc_handler *handler, int pid)
 {
 	int ret, state;
 
+	/* The first child is going to fork() again and then exits. So we reap
+	 * the first child here.
+	 */
+	ret = wait_for_pid(pid);
+	if (ret < 0)
+		DEBUG("Failed waiting on first child %d", pid);
+	else
+		DEBUG("First child %d exited", pid);
+
 	/* Close write end of the socket pair. */
 	close(handler->state_socket_pair[1]);
 	handler->state_socket_pair[1] = -1;
@@ -833,15 +842,6 @@ static bool wait_on_daemonized_start(struct lxc_handler *handler, int pid)
 	/* Close read end of the socket pair. */
 	close(handler->state_socket_pair[0]);
 	handler->state_socket_pair[0] = -1;
-
-	/* The first child is going to fork() again and then exits. So we reap
-	 * the first child here.
-	 */
-	ret = wait_for_pid(pid);
-	if (ret < 0)
-		DEBUG("Failed waiting on first child %d", pid);
-	else
-		DEBUG("First child %d exited", pid);
 
 	if (state < 0) {
 		SYSERROR("Failed to receive the container state");
@@ -935,17 +935,17 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	if (c->daemonize) {
 		bool started;
 		char title[2048];
-		pid_t pid;
+		pid_t pid_first, pid_second;
 
-		pid = fork();
-		if (pid < 0) {
+		pid_first = fork();
+		if (pid_first < 0) {
 			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
 			return false;
 		}
 
 		/* first parent */
-		if (pid != 0) {
+		if (pid_first != 0) {
 			/* Set to NULL because we don't want father unlink
 			 * the PID file, child will do the free and unlink.
 			 */
@@ -954,7 +954,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			/* Wait for container to tell us whether it started
 			 * successfully.
 			 */
-			started = wait_on_daemonized_start(handler, pid);
+			started = wait_on_daemonized_start(handler, pid_first);
 
 			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
@@ -980,14 +980,14 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		 * POSIX's daemon() function we change to "/" and redirect
 		 * std{in,out,err} to /dev/null.
 		 */
-		pid = fork();
-		if (pid < 0) {
+		pid_second = fork();
+		if (pid_second < 0) {
 			SYSERROR("Failed to fork first child process");
 			_exit(EXIT_FAILURE);
 		}
 
 		/* second parent */
-		if (pid != 0) {
+		if (pid_second != 0) {
 			free_init_cmd(init_cmd);
 			lxc_free_handler(handler);
 			_exit(EXIT_SUCCESS);

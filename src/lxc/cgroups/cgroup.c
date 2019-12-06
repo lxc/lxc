@@ -65,6 +65,7 @@ void cgroup_exit(struct cgroup_ops *ops)
 
 	free(ops->cgroup_pattern);
 	free(ops->container_cgroup);
+	free(ops->monitor_cgroup);
 
 	if (ops->cgroup2_devices)
 		bpf_program_free(ops->cgroup2_devices);
