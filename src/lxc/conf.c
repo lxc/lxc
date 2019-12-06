@@ -981,7 +981,7 @@ int lxc_allocate_ttys(struct lxc_conf *conf)
 			SYSWARN("Failed to set FD_CLOEXEC flag on slave fd %d of "
 			        "tty device \"%s\"", tty->slave, tty->name);
 
-		tty->busy = 0;
+		tty->busy = -1;
 	}
 
 	INFO("Finished creating %zu tty devices", ttys->max);
