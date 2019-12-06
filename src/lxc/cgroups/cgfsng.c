@@ -1184,71 +1184,6 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 	}
 }
 
-static bool cg_unified_create_cgroup(struct hierarchy *h, char *cgname)
-{
-	__do_free char *add_controllers = NULL, *cgroup = NULL;
-	size_t i, parts_len;
-	char **it;
-	size_t full_len = 0;
-	char **parts = NULL;
-	bool bret = false;
-
-	if (h->version != CGROUP2_SUPER_MAGIC)
-		return true;
-
-	if (!h->controllers)
-		return true;
-
-	/* For now we simply enable all controllers that we have detected by
-	 * creating a string like "+memory +pids +cpu +io".
-	 * TODO: In the near future we might want to support "-<controller>"
-	 * etc. but whether supporting semantics like this make sense will need
-	 * some thinking.
-	 */
-	for (it = h->controllers; it && *it; it++) {
-		full_len += strlen(*it) + 2;
-		add_controllers = must_realloc(add_controllers, full_len + 1);
-
-		if (h->controllers[0] == *it)
-			add_controllers[0] = '\0';
-
-		(void)strlcat(add_controllers, "+", full_len + 1);
-		(void)strlcat(add_controllers, *it, full_len + 1);
-
-		if ((it + 1) && *(it + 1))
-			(void)strlcat(add_controllers, " ", full_len + 1);
-	}
-
-	parts = lxc_string_split(cgname, '/');
-	if (!parts)
-		goto on_error;
-
-	parts_len = lxc_array_len((void **)parts);
-	if (parts_len > 0)
-		parts_len--;
-
-	cgroup = must_make_path(h->mountpoint, h->container_base_path, NULL);
-	for (i = 0; i < parts_len; i++) {
-		int ret;
-		__do_free char *target = NULL;
-
-		cgroup = must_append_path(cgroup, parts[i], NULL);
-		target = must_make_path(cgroup, "cgroup.subtree_control", NULL);
-		ret = lxc_write_to_file(target, add_controllers, full_len, false, 0666);
-		if (ret < 0) {
-			SYSERROR("Could not enable \"%s\" controllers in the "
-				 "unified cgroup \"%s\"", add_controllers, cgroup);
-			goto on_error;
-		}
-	}
-
-	bret = true;
-
-on_error:
-	lxc_free_array((void **)parts, free);
-	return bret;
-}
-
 static int mkdir_eexist_on_last(const char *dir, mode_t mode)
 {
 	const char *tmp = dir;
@@ -1298,7 +1233,7 @@ static bool monitor_create_path_for_hierarchy(struct hierarchy *h, char *cgname)
 		return false;
 	}
 
-	return cg_unified_create_cgroup(h, cgname);
+	return true;
 }
 
 static bool container_create_path_for_hierarchy(struct hierarchy *h, char *cgname)
@@ -1317,7 +1252,7 @@ static bool container_create_path_for_hierarchy(struct hierarchy *h, char *cgnam
 		return false;
 	}
 
-	return cg_unified_create_cgroup(h, cgname);
+	return true;
 }
 
 static void remove_path_for_hierarchy(struct hierarchy *h, char *cgname, bool monitor)
@@ -1400,6 +1335,7 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 		return false;
 
 	INFO("The monitor process uses \"%s\" as cgroup", monitor_cgroup);
+	ops->monitor_cgroup = move_ptr(monitor_cgroup);
 	return true;
 }
 
@@ -1479,8 +1415,45 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 	return true;
 }
 
-__cgfsng_ops static bool __do_cgroup_enter(struct cgroup_ops *ops, pid_t pid,
-					     bool monitor)
+__cgfsng_ops static bool cgfsng_monitor_enter(struct cgroup_ops *ops,
+					      struct lxc_handler *handler)
+{
+	int monitor_len, transient_len;
+	char monitor[INTTYPE_TO_STRLEN(pid_t)],
+	    transient[INTTYPE_TO_STRLEN(pid_t)];
+
+	if (!ops->hierarchies)
+		return true;
+
+	monitor_len = snprintf(monitor, sizeof(monitor), "%d", handler->monitor_pid);
+	if (handler->transient_pid > 0)
+		transient_len = snprintf(transient, sizeof(transient), "%d",
+					 handler->transient_pid);
+
+	for (int i = 0; ops->hierarchies[i]; i++) {
+		__do_free char *path = NULL;
+		int ret;
+
+		path = must_make_path(ops->hierarchies[i]->monitor_full_path,
+				      "cgroup.procs", NULL);
+		ret = lxc_writeat(-1, path, monitor, monitor_len);
+		if (ret != 0)
+			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", path);
+
+                if (handler->transient_pid < 0)
+			return true;
+
+		ret = lxc_writeat(-1, path, transient, transient_len);
+		if (ret != 0)
+			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", path);
+	}
+	handler->transient_pid = -1;
+
+	return true;
+}
+
+__cgfsng_ops static bool cgfsng_payload_enter(struct cgroup_ops *ops,
+					      struct lxc_handler *handler)
 {
 	int len;
 	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
@@ -1488,38 +1461,20 @@ __cgfsng_ops static bool __do_cgroup_enter(struct cgroup_ops *ops, pid_t pid,
 	if (!ops->hierarchies)
 		return true;
 
-	len = snprintf(pidstr, sizeof(pidstr), "%d", pid);
-	if (len < 0 || (size_t)len >= sizeof(pidstr))
-		return false;
+	len = snprintf(pidstr, sizeof(pidstr), "%d", handler->pid);
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
-		int ret;
 		__do_free char *path = NULL;
+		int ret;
 
-		if (monitor)
-			path = must_make_path(ops->hierarchies[i]->monitor_full_path,
-					      "cgroup.procs", NULL);
-		else
-			path = must_make_path(ops->hierarchies[i]->container_full_path,
-					      "cgroup.procs", NULL);
-		ret = lxc_write_to_file(path, pidstr, len, false, 0666);
-		if (ret != 0) {
-			SYSERROR("Failed to enter cgroup \"%s\"", path);
-			return false;
-		}
+		path = must_make_path(ops->hierarchies[i]->container_full_path,
+				      "cgroup.procs", NULL);
+		ret = lxc_writeat(-1, path, pidstr, len);
+		if (ret != 0)
+			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", path);
 	}
 
 	return true;
-}
-
-__cgfsng_ops static bool cgfsng_monitor_enter(struct cgroup_ops *ops, pid_t pid)
-{
-	return __do_cgroup_enter(ops, pid, true);
-}
-
-static bool cgfsng_payload_enter(struct cgroup_ops *ops, pid_t pid)
-{
-	return __do_cgroup_enter(ops, pid, false);
 }
 
 static int chowmod(char *path, uid_t chown_uid, gid_t chown_gid,
@@ -2625,11 +2580,12 @@ static int cg_legacy_set_data(struct cgroup_ops *ops, const char *filename,
 	return ret;
 }
 
-static bool __cg_legacy_setup_limits(struct cgroup_ops *ops,
-				     struct lxc_list *cgroup_settings,
-				     bool do_devices)
+__cgfsng_ops static bool cgfsng_setup_limits_legacy(struct cgroup_ops *ops,
+						    struct lxc_conf *conf,
+						    bool do_devices)
 {
 	__do_free struct lxc_list *sorted_cgroup_settings = NULL;
+	struct lxc_list *cgroup_settings = &conf->cgroup;
 	struct lxc_list *iterator, *next;
 	struct lxc_cgroup *cg;
 	bool ret = false;
@@ -2699,12 +2655,13 @@ static int bpf_device_cgroup_prepare(struct cgroup_ops *ops,
 	return 0;
 }
 
-static bool __cg_unified_setup_limits(struct cgroup_ops *ops,
-				      struct lxc_list *cgroup_settings,
-				      struct lxc_conf *conf)
+__cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
+					     struct lxc_handler *handler)
 {
 	struct lxc_list *iterator;
 	struct hierarchy *h = ops->unified;
+	struct lxc_conf *conf = handler->conf;
+	struct lxc_list *cgroup_settings = &conf->cgroup2;
 
 	if (lxc_list_empty(cgroup_settings))
 		return true;
@@ -2798,18 +2755,79 @@ __cgfsng_ops bool cgfsng_devices_activate(struct cgroup_ops *ops,
 	return true;
 }
 
-__cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
-					     struct lxc_conf *conf,
-					     bool do_devices)
+bool __cgfsng_delegate_controllers(struct cgroup_ops *ops, const char *cgroup)
 {
-	if (!__cg_legacy_setup_limits(ops, &conf->cgroup, do_devices))
-		return false;
+	__do_free char *add_controllers = NULL, *base_path = NULL;
+	struct hierarchy *unified = ops->unified;
+	ssize_t parts_len;
+	char **it;
+	size_t full_len = 0;
+	char **parts = NULL;
+	bool bret = false;
 
-	/* for v2 we will have already set up devices */
-	if (do_devices)
+	if (!ops->hierarchies || !pure_unified_layout(ops) ||
+	    !unified->controllers[0])
 		return true;
 
-	return __cg_unified_setup_limits(ops, &conf->cgroup2, conf);
+	/* For now we simply enable all controllers that we have detected by
+	 * creating a string like "+memory +pids +cpu +io".
+	 * TODO: In the near future we might want to support "-<controller>"
+	 * etc. but whether supporting semantics like this make sense will need
+	 * some thinking.
+	 */
+	for (it = unified->controllers; it && *it; it++) {
+		full_len += strlen(*it) + 2;
+		add_controllers = must_realloc(add_controllers, full_len + 1);
+
+		if (unified->controllers[0] == *it)
+			add_controllers[0] = '\0';
+
+		(void)strlcat(add_controllers, "+", full_len + 1);
+		(void)strlcat(add_controllers, *it, full_len + 1);
+
+		if ((it + 1) && *(it + 1))
+			(void)strlcat(add_controllers, " ", full_len + 1);
+	}
+
+	parts = lxc_string_split(cgroup, '/');
+	if (!parts)
+		goto on_error;
+
+	parts_len = lxc_array_len((void **)parts);
+	if (parts_len > 0)
+		parts_len--;
+
+	base_path = must_make_path(unified->mountpoint, unified->container_base_path, NULL);
+	for (ssize_t i = -1; i < parts_len; i++) {
+		int ret;
+		__do_free char *target = NULL;
+
+		if (i >= 0)
+			base_path = must_append_path(base_path, parts[i], NULL);
+		target = must_make_path(base_path, "cgroup.subtree_control", NULL);
+		ret = lxc_writeat(-1, target, add_controllers, full_len);
+		if (ret < 0) {
+			SYSERROR("Could not enable \"%s\" controllers in the unified cgroup \"%s\"", add_controllers, target);
+			goto on_error;
+		}
+		TRACE("Enable \"%s\" controllers in the unified cgroup \"%s\"", add_controllers, target);
+	}
+
+	bret = true;
+
+on_error:
+	lxc_free_array((void **)parts, free);
+	return bret;
+}
+
+__cgfsng_ops bool cgfsng_monitor_delegate_controllers(struct cgroup_ops *ops)
+{
+	return __cgfsng_delegate_controllers(ops, ops->monitor_cgroup);
+}
+
+__cgfsng_ops bool cgfsng_payload_delegate_controllers(struct cgroup_ops *ops)
+{
+	return __cgfsng_delegate_controllers(ops, ops->container_cgroup);
 }
 
 static bool cgroup_use_wants_controllers(const struct cgroup_ops *ops,
@@ -3062,15 +3080,15 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 	base_cgroup = cg_unified_get_current_cgroup(relative);
 	if (!base_cgroup)
 		return -EINVAL;
-	prune_init_scope(base_cgroup);
+	if (!relative)
+		prune_init_scope(base_cgroup);
 
 	/* We assume that we have already been given controllers to delegate
 	 * further down the hierarchy. If not it is up to the user to delegate
 	 * them to us.
 	 */
 	mountpoint = must_copy_string(DEFAULT_CGROUP_MOUNTPOINT);
-	subtree_path = must_make_path(mountpoint, base_cgroup,
-				      "cgroup.subtree_control", NULL);
+	subtree_path = must_make_path(mountpoint, base_cgroup, "cgroup.controllers", NULL);
 	delegatable = cg_unified_get_controllers(subtree_path);
 	if (!delegatable)
 		delegatable = cg_unified_make_empty_controller();
@@ -3162,6 +3180,8 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 	cgfsng_ops->monitor_destroy = cgfsng_monitor_destroy;
 	cgfsng_ops->monitor_create = cgfsng_monitor_create;
 	cgfsng_ops->monitor_enter = cgfsng_monitor_enter;
+	cgfsng_ops->monitor_delegate_controllers = cgfsng_monitor_delegate_controllers;
+	cgfsng_ops->payload_delegate_controllers = cgfsng_payload_delegate_controllers;
 	cgfsng_ops->payload_create = cgfsng_payload_create;
 	cgfsng_ops->payload_enter = cgfsng_payload_enter;
 	cgfsng_ops->escape = cgfsng_escape;
@@ -3172,6 +3192,7 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 	cgfsng_ops->set = cgfsng_set;
 	cgfsng_ops->freeze = cgfsng_freeze;
 	cgfsng_ops->unfreeze = cgfsng_unfreeze;
+	cgfsng_ops->setup_limits_legacy = cgfsng_setup_limits_legacy;
 	cgfsng_ops->setup_limits = cgfsng_setup_limits;
 	cgfsng_ops->driver = "cgfsng";
 	cgfsng_ops->version = "1.0.0";

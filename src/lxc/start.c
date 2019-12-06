@@ -737,6 +737,10 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 		handler->nsfd[i] = -1;
 
 	handler->name = name;
+	if (daemonize)
+		handler->transient_pid = lxc_raw_getpid();
+	else
+		handler->transient_pid = -1;
 
 	if (daemonize && handler->conf->reboot == REBOOT_NONE) {
 		/* Create socketpair() to synchronize on daemonized startup.
@@ -912,17 +916,13 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	ret = lsm_process_prepare(conf, handler->lxcpath);
 	if (ret < 0) {
 		ERROR("Failed to initialize LSM");
-		goto out_destroy_cgroups;
+		goto out_delete_terminal;
 	}
 	TRACE("Initialized LSM");
 
 	INFO("Container \"%s\" is initialized", name);
 	handler->monitor_status_fd = move_fd(status_fd);
 	return 0;
-
-out_destroy_cgroups:
-	handler->cgroup_ops->payload_destroy(handler->cgroup_ops, handler);
-	handler->cgroup_ops->monitor_destroy(handler->cgroup_ops, handler);
 
 out_delete_terminal:
 	lxc_terminal_delete(&handler->conf->console);
@@ -1016,8 +1016,10 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 
 	lsm_process_cleanup(handler->conf, handler->lxcpath);
 
-	cgroup_ops->payload_destroy(cgroup_ops, handler);
-	cgroup_ops->monitor_destroy(cgroup_ops, handler);
+	if (cgroup_ops) {
+		cgroup_ops->payload_destroy(cgroup_ops, handler);
+		cgroup_ops->monitor_destroy(cgroup_ops, handler);
+	}
 
 	if (handler->conf->reboot == REBOOT_NONE) {
 		/* For all new state clients simply close the command socket.
@@ -1813,13 +1815,23 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (ret < 0)
 		goto out_delete_net;
 
-	if (!cgroup_ops->setup_limits(cgroup_ops, handler->conf, false)) {
+	if (!cgroup_ops->setup_limits_legacy(cgroup_ops, handler->conf, false)) {
 		ERROR("Failed to setup cgroup limits for container \"%s\"", name);
 		goto out_delete_net;
 	}
 
-	if (!cgroup_ops->payload_enter(cgroup_ops, handler->pid))
+	if (!cgroup_ops->payload_enter(cgroup_ops, handler))
 		goto out_delete_net;
+
+	if (!cgroup_ops->payload_delegate_controllers(cgroup_ops)) {
+		ERROR("Failed to delegate controllers to payload cgroup");
+		goto out_delete_net;
+	}
+
+	if (!cgroup_ops->setup_limits(cgroup_ops, handler)) {
+		ERROR("Failed to setup cgroup limits for container \"%s\"", name);
+		goto out_delete_net;
+	}
 
 	if (!cgroup_ops->chown(cgroup_ops, handler->conf))
 		goto out_delete_net;
@@ -1883,7 +1895,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (ret < 0)
 		goto out_delete_net;
 
-	if (!cgroup_ops->setup_limits(cgroup_ops, handler->conf, true)) {
+	if (!cgroup_ops->setup_limits_legacy(cgroup_ops, handler->conf, true)) {
 		ERROR("Failed to setup legacy device cgroup controller limits");
 		goto out_delete_net;
 	}
@@ -2015,8 +2027,14 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 		goto out_fini_nonet;
 	}
 
-	if (!cgroup_ops->monitor_enter(cgroup_ops, handler->monitor_pid)) {
+	if (!cgroup_ops->monitor_enter(cgroup_ops, handler)) {
 		ERROR("Failed to enter monitor cgroup");
+		ret = -1;
+		goto out_fini_nonet;
+	}
+
+	if (!cgroup_ops->monitor_delegate_controllers(cgroup_ops)) {
+		ERROR("Failed to delegate controllers to monitor cgroup");
 		ret = -1;
 		goto out_fini_nonet;
 	}
