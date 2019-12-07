@@ -26,13 +26,6 @@
 #define LXC_LOG_PREFIX_SIZE	32
 #define LXC_LOG_BUFFER_SIZE	4096
 
-/* This attribute is required to silence clang warnings */
-#if defined(__GNUC__)
-#define ATTR_UNUSED __attribute__ ((unused))
-#else
-#define ATTR_UNUSED
-#endif
-
 /* predefined lxc log priorities. */
 enum lxc_loglevel {
 	LXC_LOG_LEVEL_TRACE,
