@@ -913,16 +913,16 @@ int lxc_cmd_add_bpf_device_cgroup(const char *name, const char *lxcpath,
 	int ret;
 
 	if (strlen(device->access) > STRLITERALLEN("rwm"))
-		return error_log_errno(EINVAL, "Invalid access mode specified %s",
+		return log_error_errno(-1, EINVAL, "Invalid access mode specified %s",
 				       device->access);
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0 || cmd.rsp.ret < 0)
-		return error_log_errno(errno, "Failed to add new bpf device cgroup rule");
+		return log_error_errno(-1, errno, "Failed to add new bpf device cgroup rule");
 
 	return 0;
 #else
-	return minus_one_set_errno(ENOSYS);
+	return ret_set_errno(-1, ENOSYS);
 #endif
 }
 
@@ -1006,7 +1006,7 @@ reap_client_fd:
 	 */
 	return 1;
 #else
-	return minus_one_set_errno(ENOSYS);
+	return ret_set_errno(-1, ENOSYS);
 #endif
 }
 
@@ -1137,7 +1137,7 @@ int lxc_cmd_seccomp_notify_add_listener(const char *name, const char *lxcpath,
 					/* unused */ unsigned int command,
 					/* unused */ unsigned int flags)
 {
-	return minus_one_set_errno(ENOSYS);
+	return ret_set_errno(-1, ENOSYS);
 }
 
 static int lxc_cmd_seccomp_notify_add_listener_callback(int fd,
@@ -1175,7 +1175,7 @@ int lxc_cmd_freeze(const char *name, const char *lxcpath, int timeout)
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret <= 0 || cmd.rsp.ret < 0)
-		return error_log_errno(errno, "Failed to freeze container");
+		return log_error_errno(-1, errno, "Failed to freeze container");
 
 	return cmd.rsp.ret;
 }
@@ -1208,7 +1208,7 @@ int lxc_cmd_unfreeze(const char *name, const char *lxcpath, int timeout)
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret <= 0 || cmd.rsp.ret < 0)
-		return error_log_errno(errno, "Failed to unfreeze container");
+		return log_error_errno(-1, errno, "Failed to unfreeze container");
 
 	return cmd.rsp.ret;
 }
