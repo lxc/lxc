@@ -1124,11 +1124,22 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 						struct lxc_handler *handler)
 {
 	int len;
-	struct lxc_conf *conf = handler->conf;
 	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
+	struct lxc_conf *conf;
+
+	if (!ops)
+		log_error_errno(return, ENOENT, "Called with uninitialized cgroup operations");
 
 	if (!ops->hierarchies)
 		return;
+
+	if (!handler)
+		log_error_errno(return, EINVAL, "Called with uninitialized handler");
+
+	if (!handler->conf)
+		log_error_errno(return, EINVAL, "Called with uninitialized conf");
+
+	conf = handler->conf;
 
 	len = snprintf(pidstr, sizeof(pidstr), "%d", handler->monitor_pid);
 	if (len < 0 || (size_t)len >= sizeof(pidstr))
@@ -1164,16 +1175,15 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 		 * Make sure not to pass in the ro string literal PIVOT_CGROUP
 		 * here.
 		 */
-		if (!cg_legacy_handle_cpuset_hierarchy(h, pivot_cgroup)) {
-			WARN("Failed to handle legacy cpuset controller");
-			continue;
-		}
+		if (!cg_legacy_handle_cpuset_hierarchy(h, pivot_cgroup))
+			log_warn_errno(continue,
+				       errno, "Failed to handle legacy cpuset controller");
 
 		ret = mkdir_p(pivot_path, 0755);
-		if (ret < 0 && errno != EEXIST) {
-			SYSWARN("Failed to create cgroup \"%s\"\n", pivot_path);
-			continue;
-		}
+		if (ret < 0 && errno != EEXIST)
+			log_warn_errno(continue, errno,
+				       "Failed to create cgroup \"%s\"\n",
+				       pivot_path);
 
 		if (chop)
 			*chop = '/';
@@ -1182,10 +1192,10 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 		 * cgroup.
 		 */
 		ret = lxc_write_to_file(pivot_path, pidstr, len, false, 0666);
-		if (ret != 0) {
-			SYSWARN("Failed to move monitor %s to \"%s\"\n", pidstr, pivot_path);
-			continue;
-		}
+		if (ret != 0)
+			log_warn_errno(continue, errno,
+				       "Failed to move monitor %s to \"%s\"\n",
+				       pidstr, pivot_path);
 
 		ret = recursive_destroy(h->monitor_full_path);
 		if (ret < 0)
