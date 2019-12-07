@@ -2664,11 +2664,18 @@ __cgfsng_ops static bool cgfsng_setup_limits_legacy(struct cgroup_ops *ops,
 	struct lxc_cgroup *cg;
 	bool ret = false;
 
+	if (!ops)
+		return ret_set_errno(false, ENOENT);
+
+	if (!conf)
+		return ret_set_errno(false, EINVAL);
+
+	cgroup_settings = &conf->cgroup;
 	if (lxc_list_empty(cgroup_settings))
 		return true;
 
 	if (!ops->hierarchies)
-		return false;
+		return ret_set_errno(false, EINVAL);
 
 	sorted_cgroup_settings = sort_cgroup_settings(cgroup_settings);
 	if (!sorted_cgroup_settings)
@@ -2679,14 +2686,13 @@ __cgfsng_ops static bool cgfsng_setup_limits_legacy(struct cgroup_ops *ops,
 
 		if (do_devices == !strncmp("devices", cg->subsystem, 7)) {
 			if (cg_legacy_set_data(ops, cg->subsystem, cg->value)) {
-				if (do_devices && (errno == EACCES || errno == EPERM)) {
-					WARN("Failed to set \"%s\" to \"%s\"",
-					     cg->subsystem, cg->value);
-					continue;
-				}
-				WARN("Failed to set \"%s\" to \"%s\"",
-				     cg->subsystem, cg->value);
-				goto out;
+				if (do_devices && (errno == EACCES || errno == EPERM))
+					log_warn_errno(continue,
+						       errno, "Failed to set \"%s\" to \"%s\"",
+						       cg->subsystem, cg->value);
+				log_warn_errno(goto out, errno,
+					       "Failed to set \"%s\" to \"%s\"",
+					       cg->subsystem, cg->value);
 			}
 			DEBUG("Set controller \"%s\" set to \"%s\"",
 			      cg->subsystem, cg->value);
