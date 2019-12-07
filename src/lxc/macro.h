@@ -442,12 +442,6 @@ enum {
 		__internal_fd__;            \
 	})
 
-#define minus_one_set_errno(__errno__) \
-	({                             \
-		errno = __errno__;     \
-		-1;                    \
-	})
-
 #define ret_set_errno(__ret__, __errno__) \
 	({                                \
 		errno = __errno__;        \
