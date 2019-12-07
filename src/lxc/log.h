@@ -523,6 +523,13 @@ __unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 		__ret__;		      \
 	})
 
+#define log_info_errno(__ret__, __errno__, format, ...) \
+	({                                              \
+		errno = __errno__;                      \
+		SYSINFO(format, ##__VA_ARGS__);         \
+		__ret__;                                \
+	})
+
 #define log_info(__ret__, format, ...)       \
 	({                                   \
 		INFO(format, ##__VA_ARGS__); \

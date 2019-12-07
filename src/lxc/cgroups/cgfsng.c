@@ -1545,24 +1545,20 @@ static int chown_cgroup_wrapper(void *data)
 	gid_t nsgid = (arg->conf->root_nsgid_map != NULL) ? 0 : arg->conf->init_gid;
 
 	ret = setresgid(nsgid, nsgid, nsgid);
-	if (ret < 0) {
-		SYSERROR("Failed to setresgid(%d, %d, %d)",
-			 (int)nsgid, (int)nsgid, (int)nsgid);
-		return -1;
-	}
+	if (ret < 0)
+		return log_error_errno(-1, errno,
+				       "Failed to setresgid(%d, %d, %d)",
+				       (int)nsgid, (int)nsgid, (int)nsgid);
 
 	ret = setresuid(nsuid, nsuid, nsuid);
-	if (ret < 0) {
-		SYSERROR("Failed to setresuid(%d, %d, %d)",
-			 (int)nsuid, (int)nsuid, (int)nsuid);
-		return -1;
-	}
+	if (ret < 0)
+		return log_error_errno(-1, errno,
+				       "Failed to setresuid(%d, %d, %d)",
+				       (int)nsuid, (int)nsuid, (int)nsuid);
 
 	ret = setgroups(0, NULL);
-	if (ret < 0 && errno != EPERM) {
-		SYSERROR("Failed to setgroups(0, NULL)");
-		return -1;
-	}
+	if (ret < 0 && errno != EPERM)
+		return log_error_errno(-1, errno, "Failed to setgroups(0, NULL)");
 
 	destuid = get_ns_uid(arg->origuid);
 	if (destuid == LXC_INVALID_UID)
@@ -1574,7 +1570,9 @@ static int chown_cgroup_wrapper(void *data)
 
 		ret = chowmod(path, destuid, nsgid, 0775);
 		if (ret < 0)
-			return -1;
+			log_info_errno(continue,
+				       errno, "Failed to change %s to uid %d and gid %d and mode 0755",
+				       path, destuid, nsgid);
 
 		/* Failures to chown() these are inconvenient but not
 		 * detrimental We leave these owned by the container launcher,
@@ -1585,18 +1583,27 @@ static int chown_cgroup_wrapper(void *data)
 
 		if (arg->hierarchies[i]->version == CGROUP_SUPER_MAGIC) {
 			fullpath = must_make_path(path, "tasks", NULL);
-			(void)chowmod(fullpath, destuid, nsgid, 0664);
+			ret = chowmod(fullpath, destuid, nsgid, 0664);
+			if (ret < 0)
+				SYSINFO("Failed to change %s to uid %d and gid %d and mode 0664",
+					fullpath, destuid, nsgid);
 		}
 
 		fullpath = must_make_path(path, "cgroup.procs", NULL);
-		(void)chowmod(fullpath, destuid, nsgid, 0664);
+		ret = chowmod(fullpath, destuid, nsgid, 0664);
+		if (ret < 0)
+			SYSINFO("Failed to change %s to uid %d and gid %d and mode 0664",
+				fullpath, destuid, nsgid);
 
 		if (arg->hierarchies[i]->version != CGROUP2_SUPER_MAGIC)
 			continue;
 
 		for (char **p = arg->hierarchies[i]->cgroup2_chown; p && *p; p++) {
 			fullpath = must_make_path(path, *p, NULL);
-			(void)chowmod(fullpath, destuid, nsgid, 0664);
+			ret = chowmod(fullpath, destuid, nsgid, 0664);
+			if (ret < 0)
+				SYSINFO("Failed to change %s to uid %d and gid %d and mode 0664",
+					fullpath, destuid, nsgid);
 		}
 	}
 
