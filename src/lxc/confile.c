@@ -3431,7 +3431,6 @@ static int get_config_console_size(const char *key, char *retv, int inlen,
 	return lxc_get_conf_uint64(c, retv, inlen, c->console.log_size);
 }
 
-
 static int get_config_seccomp_profile(const char *key, char *retv, int inlen,
 				      struct lxc_conf *c, void *data)
 {
