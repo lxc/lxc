@@ -2303,6 +2303,9 @@ __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops, const char *name,
 	int len, ret;
 	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
 
+	if (!ops)
+		return ret_set_errno(false, ENOENT);
+
 	if (!ops->hierarchies)
 		return true;
 
@@ -2330,10 +2333,10 @@ __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops, const char *name,
 
 		fullpath = build_full_cgpath_from_monitorpath(h, path, "cgroup.procs");
 		ret = lxc_write_to_file(fullpath, pidstr, len, false, 0666);
-		if (ret < 0) {
-			SYSERROR("Failed to attach %d to %s", (int)pid, fullpath);
-			return false;
-		}
+		if (ret < 0)
+			return log_error_errno(false, errno,
+					       "Failed to attach %d to %s",
+					       (int)pid, fullpath);
 	}
 
 	return true;
