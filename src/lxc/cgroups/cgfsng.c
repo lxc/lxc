@@ -2353,6 +2353,9 @@ __cgfsng_ops static int cgfsng_get(struct cgroup_ops *ops, const char *filename,
 	struct hierarchy *h;
 	int ret = -1;
 
+	if (!ops)
+		return ret_set_errno(-1, ENOENT);
+
 	controller = must_copy_string(filename);
 	p = strchr(controller, '.');
 	if (p)
@@ -2492,6 +2495,9 @@ __cgfsng_ops static int cgfsng_set(struct cgroup_ops *ops,
 	char *p;
 	struct hierarchy *h;
 	int ret = -1;
+
+	if (!ops)
+		return ret_set_errno(-1, ENOENT);
 
 	controller = must_copy_string(key);
 	p = strchr(controller, '.');
