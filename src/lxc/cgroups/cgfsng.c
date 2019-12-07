@@ -1966,6 +1966,9 @@ __cgfsng_ops static int cgfsng_num_hierarchies(struct cgroup_ops *ops)
 {
 	int i = 0;
 
+	if (!ops)
+		return ret_set_errno(-1, ENOENT);
+
 	if (!ops->hierarchies)
 		return 0;
 
