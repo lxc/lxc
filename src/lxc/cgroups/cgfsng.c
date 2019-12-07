@@ -2738,16 +2738,30 @@ static int bpf_device_cgroup_prepare(struct cgroup_ops *ops,
 __cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
 					     struct lxc_handler *handler)
 {
-	struct lxc_list *iterator;
-	struct hierarchy *h = ops->unified;
-	struct lxc_conf *conf = handler->conf;
-	struct lxc_list *cgroup_settings = &conf->cgroup2;
+	struct lxc_list *cgroup_settings, *iterator;
+	struct hierarchy *h;
+	struct lxc_conf *conf;
 
-	if (lxc_list_empty(cgroup_settings))
+	if (!ops)
+		return ret_set_errno(false, ENOENT);
+
+	if (!ops->hierarchies)
 		return true;
 
-	if (!h)
+	if (!ops->container_cgroup)
+		return ret_set_errno(false, EINVAL);
+
+	if (!handler || !handler->conf)
+		return ret_set_errno(false, EINVAL);
+	conf = handler->conf;
+
+	if (lxc_list_empty(&conf->cgroup2))
+		return true;
+	cgroup_settings = &conf->cgroup2;
+
+	if (!ops->unified)
 		return false;
+	h = ops->unified;
 
 	lxc_list_for_each (iterator, cgroup_settings) {
 		__do_free char *fullpath = NULL;
@@ -2762,17 +2776,15 @@ __cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
 						  cg->subsystem, NULL);
 			ret = lxc_write_to_file(fullpath, cg->value,
 						strlen(cg->value), false, 0666);
-			if (ret < 0) {
-				SYSERROR("Failed to set \"%s\" to \"%s\"",
-					 cg->subsystem, cg->value);
-				return false;
-			}
+			if (ret < 0)
+				return log_error_errno(false,
+						       errno, "Failed to set \"%s\" to \"%s\"",
+						       cg->subsystem, cg->value);
 		}
 		TRACE("Set \"%s\" to \"%s\"", cg->subsystem, cg->value);
 	}
 
-	INFO("Limits for the unified cgroup hierarchy have been setup");
-	return true;
+	return log_info(true, "Limits for the unified cgroup hierarchy have been setup");
 }
 
 __cgfsng_ops bool cgfsng_devices_activate(struct cgroup_ops *ops,
