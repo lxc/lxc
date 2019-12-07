@@ -2832,10 +2832,10 @@ bool __cgfsng_delegate_controllers(struct cgroup_ops *ops, const char *cgroup)
 			base_path = must_append_path(base_path, parts[i], NULL);
 		target = must_make_path(base_path, "cgroup.subtree_control", NULL);
 		ret = lxc_writeat(-1, target, add_controllers, full_len);
-		if (ret < 0) {
-			SYSERROR("Could not enable \"%s\" controllers in the unified cgroup \"%s\"", add_controllers, target);
-			goto on_error;
-		}
+		if (ret < 0)
+			log_error_errno(goto on_error,
+					errno, "Could not enable \"%s\" controllers in the unified cgroup \"%s\"",
+					add_controllers, target);
 		TRACE("Enable \"%s\" controllers in the unified cgroup \"%s\"", add_controllers, target);
 	}
 
@@ -2848,11 +2848,17 @@ on_error:
 
 __cgfsng_ops bool cgfsng_monitor_delegate_controllers(struct cgroup_ops *ops)
 {
+	if (!ops)
+		return ret_set_errno(false, ENOENT);
+
 	return __cgfsng_delegate_controllers(ops, ops->monitor_cgroup);
 }
 
 __cgfsng_ops bool cgfsng_payload_delegate_controllers(struct cgroup_ops *ops)
 {
+	if (!ops)
+		return ret_set_errno(false, ENOENT);
+
 	return __cgfsng_delegate_controllers(ops, ops->container_cgroup);
 }
 
