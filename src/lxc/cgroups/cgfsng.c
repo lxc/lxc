@@ -1445,8 +1445,17 @@ __cgfsng_ops static bool cgfsng_monitor_enter(struct cgroup_ops *ops,
 	char monitor[INTTYPE_TO_STRLEN(pid_t)],
 	    transient[INTTYPE_TO_STRLEN(pid_t)];
 
+	if (!ops)
+		return ret_set_errno(false, ENOENT);
+
 	if (!ops->hierarchies)
 		return true;
+
+	if (!ops->monitor_cgroup)
+		return ret_set_errno(false, ENOENT);
+
+	if (!handler || !handler->conf)
+		return ret_set_errno(false, EINVAL);
 
 	monitor_len = snprintf(monitor, sizeof(monitor), "%d", handler->monitor_pid);
 	if (handler->transient_pid > 0)
