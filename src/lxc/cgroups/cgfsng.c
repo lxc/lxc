@@ -2887,8 +2887,7 @@ static void cg_unified_delegate(char ***delegate)
 /* At startup, parse_hierarchies finds all the info we need about cgroup
  * mountpoints and current cgroups, and stores it in @d.
  */
-static bool cg_hybrid_init(struct cgroup_ops *ops, bool relative,
-			   bool unprivileged)
+static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileged)
 {
 	__do_free char *basecginfo = NULL;
 	__do_free char *line = NULL;
@@ -2905,19 +2904,15 @@ static bool cg_hybrid_init(struct cgroup_ops *ops, bool relative,
 	else
 		basecginfo = read_file("/proc/self/cgroup");
 	if (!basecginfo)
-		return false;
+		return ret_set_errno(-1, ENOMEM);
 
 	ret = get_existing_subsystems(&klist, &nlist);
-	if (ret < 0) {
-		ERROR("Failed to retrieve available legacy cgroup controllers");
-		return false;
-	}
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to retrieve available legacy cgroup controllers");
 
 	f = fopen("/proc/self/mountinfo", "r");
-	if (!f) {
-		ERROR("Failed to open \"/proc/self/mountinfo\"");
-		return false;
-	}
+	if (!f)
+		return log_error_errno(-1, errno, "Failed to open \"/proc/self/mountinfo\"");
 
 	lxc_cgfsng_print_basecg_debuginfo(basecginfo, klist, nlist);
 
@@ -2954,22 +2949,18 @@ static bool cg_hybrid_init(struct cgroup_ops *ops, bool relative,
 
 		if (type == CGROUP_SUPER_MAGIC)
 			if (controller_list_is_dup(ops->hierarchies, controller_list))
-				goto next;
+				log_trace_errno(goto next, EEXIST, "Skipping duplicating controller");
 
 		mountpoint = cg_hybrid_get_mountpoint(line);
-		if (!mountpoint) {
-			ERROR("Failed parsing mountpoint from \"%s\"", line);
-			goto next;
-		}
+		if (!mountpoint)
+			log_error_errno(goto next, EINVAL, "Failed parsing mountpoint from \"%s\"", line);
 
 		if (type == CGROUP_SUPER_MAGIC)
 			base_cgroup = cg_hybrid_get_current_cgroup(basecginfo, controller_list[0], CGROUP_SUPER_MAGIC);
 		else
 			base_cgroup = cg_hybrid_get_current_cgroup(basecginfo, NULL, CGROUP2_SUPER_MAGIC);
-		if (!base_cgroup) {
-			ERROR("Failed to find current cgroup");
-			goto next;
-		}
+		if (!base_cgroup)
+			log_error_errno(goto next, EINVAL, "Failed to find current cgroup");
 
 		trim(base_cgroup);
 		prune_init_scope(base_cgroup);
@@ -2978,7 +2969,7 @@ static bool cg_hybrid_init(struct cgroup_ops *ops, bool relative,
 		else
 			writeable = test_writeable_v1(mountpoint, base_cgroup);
 		if (!writeable)
-			goto next;
+			log_trace_errno(goto next, EROFS, "The %s group is not writeable", base_cgroup);
 
 		if (type == CGROUP2_SUPER_MAGIC) {
 			char *cgv2_ctrl_path;
@@ -2998,7 +2989,7 @@ static bool cg_hybrid_init(struct cgroup_ops *ops, bool relative,
 
 		/* Exclude all controllers that cgroup use does not want. */
 		if (!cgroup_use_wants_controllers(ops, controller_list))
-			goto next;
+			log_trace_errno(goto next, EINVAL, "Skipping controller");
 
 		new = add_hierarchy(&ops->hierarchies, controller_list, mountpoint, base_cgroup, type);
 		if (type == CGROUP2_SUPER_MAGIC && !ops->unified) {
@@ -3025,9 +3016,9 @@ static bool cg_hybrid_init(struct cgroup_ops *ops, bool relative,
 	 * controllers are accounted for
 	 */
 	if (!all_controllers_found(ops))
-		return false;
+		return log_error_errno(-1, ENOENT, "Failed to find all required controllers");
 
-	return true;
+	return 0;
 }
 
 /* Get current cgroup from /proc/self/cgroup for the cgroupfs v2 hierarchy. */
@@ -3114,7 +3105,7 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 	return CGROUP2_SUPER_MAGIC;
 }
 
-static bool cg_init(struct cgroup_ops *ops, struct lxc_conf *conf)
+static int cg_init(struct cgroup_ops *ops, struct lxc_conf *conf)
 {
 	int ret;
 	const char *tmp;
@@ -3134,29 +3125,32 @@ static bool cg_init(struct cgroup_ops *ops, struct lxc_conf *conf)
 
 	ret = cg_unified_init(ops, relative, !lxc_list_empty(&conf->id_map));
 	if (ret < 0)
-		return false;
+		return -1;
 
 	if (ret == CGROUP2_SUPER_MAGIC)
-		return true;
+		return 0;
 
 	return cg_hybrid_init(ops, relative, !lxc_list_empty(&conf->id_map));
 }
 
-__cgfsng_ops static bool cgfsng_data_init(struct cgroup_ops *ops)
+__cgfsng_ops static int cgfsng_data_init(struct cgroup_ops *ops)
 {
 	const char *cgroup_pattern;
+
+	if (!ops)
+		return ret_set_errno(-1, ENOENT);
 
 	/* copy system-wide cgroup information */
 	cgroup_pattern = lxc_global_config_value("lxc.cgroup.pattern");
 	if (!cgroup_pattern) {
 		/* lxc.cgroup.pattern is only NULL on error. */
 		ERROR("Failed to retrieve cgroup pattern");
-		return false;
+		return ret_set_errno(-1, ENOMEM);
 	}
 	ops->cgroup_pattern = must_copy_string(cgroup_pattern);
 	ops->monitor_pattern = MONITOR_CGROUP;
 
-	return true;
+	return 0;
 }
 
 struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
@@ -3165,12 +3159,12 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 
 	cgfsng_ops = malloc(sizeof(struct cgroup_ops));
 	if (!cgfsng_ops)
-		return NULL;
+		return ret_set_errno(NULL, ENOMEM);
 
 	memset(cgfsng_ops, 0, sizeof(struct cgroup_ops));
 	cgfsng_ops->cgroup_layout = CGROUP_LAYOUT_UNKNOWN;
 
-	if (!cg_init(cgfsng_ops, conf))
+	if (cg_init(cgfsng_ops, conf))
 		return NULL;
 
 	cgfsng_ops->unified_fd = -EBADF;
