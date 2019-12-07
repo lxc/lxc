@@ -1119,7 +1119,7 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 static int do_start(void *data)
 {
 	struct lxc_handler *handler = data;
-	__unused __do_close_prot_errno int data_sock0 = handler->data_sock[0],
+	__lxc_unused __do_close_prot_errno int data_sock0 = handler->data_sock[0],
 					   data_sock1 = handler->data_sock[1];
 	__do_close_prot_errno int status_fd = -EBADF;
 	int ret;

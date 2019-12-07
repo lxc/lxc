@@ -47,9 +47,9 @@
 
 /* This attribute is required to silence clang warnings */
 #if defined(__GNUC__)
-#define __unused __attribute__ ((unused))
+#define __lxc_unused __attribute__ ((unused))
 #else
-#define __unused
+#define __lxc_unused
 #endif
 
 #define __cgfsng_ops
