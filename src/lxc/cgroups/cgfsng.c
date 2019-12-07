@@ -2890,29 +2890,30 @@ static bool cgroup_use_wants_controllers(const struct cgroup_ops *ops,
 
 static void cg_unified_delegate(char ***delegate)
 {
-	__do_free char *tmp = NULL;
-	int idx;
+	__do_free char *buf = NULL;
 	char *standard[] = {"cgroup.subtree_control", "cgroup.threads", NULL};
+	char *token;
+	int idx;
 
-	tmp = read_file("/sys/kernel/cgroup/delegate");
-	if (!tmp) {
+	buf = read_file("/sys/kernel/cgroup/delegate");
+	if (!buf) {
 		for (char **p = standard; p && *p; p++) {
 			idx = append_null_to_list((void ***)delegate);
 			(*delegate)[idx] = must_copy_string(*p);
 		}
-	} else {
-		char *token;
-		lxc_iterate_parts (token, tmp, " \t\n") {
-			/*
-			 * We always need to chown this for both cgroup and
-			 * cgroup2.
-			 */
-			if (strcmp(token, "cgroup.procs") == 0)
-				continue;
+		log_warn_errno(return, errno, "Failed to read /sys/kernel/cgroup/delegate");
+	}
 
-			idx = append_null_to_list((void ***)delegate);
-			(*delegate)[idx] = must_copy_string(token);
-		}
+	lxc_iterate_parts (token, buf, " \t\n") {
+		/*
+		 * We always need to chown this for both cgroup and
+		 * cgroup2.
+		 */
+		if (strcmp(token, "cgroup.procs") == 0)
+			continue;
+
+		idx = append_null_to_list((void ***)delegate);
+		(*delegate)[idx] = must_copy_string(token);
 	}
 }
 
@@ -3106,9 +3107,10 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 	if (!relative)
 		prune_init_scope(base_cgroup);
 
-	/* We assume that we have already been given controllers to delegate
-	 * further down the hierarchy. If not it is up to the user to delegate
-	 * them to us.
+	/*
+	 * We assume that the cgroup we're currently in has been delegated to
+	 * us and we are free to further delege all of the controllers listed
+	 * in cgroup.controllers further down the hierarchy.
 	 */
 	mountpoint = must_copy_string(DEFAULT_CGROUP_MOUNTPOINT);
 	subtree_path = must_make_path(mountpoint, base_cgroup, "cgroup.controllers", NULL);
@@ -3126,7 +3128,7 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 	 */
 
 	new = add_hierarchy(&ops->hierarchies, delegatable, mountpoint, base_cgroup, CGROUP2_SUPER_MAGIC);
-	if (!unprivileged)
+	if (unprivileged)
 		cg_unified_delegate(&new->cgroup2_chown);
 
 	if (bpf_devices_cgroup_supported())
