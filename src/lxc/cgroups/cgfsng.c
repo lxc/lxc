@@ -1941,7 +1941,7 @@ static bool cg_legacy_freeze(struct cgroup_ops *ops)
 
 	h = get_hierarchy(ops, "freezer");
 	if (!h)
-		return minus_one_set_errno(ENOENT);
+		return ret_set_errno(-1, ENOENT);
 
 	path = must_make_path(h->container_full_path, "freezer.state", NULL);
 	return lxc_write_to_file(path, "FROZEN", STRLITERALLEN("FROZEN"), false, 0666);
@@ -1992,10 +1992,10 @@ static int cg_unified_freeze(struct cgroup_ops *ops, int timeout)
 
 	h = ops->unified;
 	if (!h)
-		return minus_one_set_errno(ENOENT);
+		return ret_set_errno(-1, ENOENT);
 
 	if (!h->container_full_path)
-		return minus_one_set_errno(EEXIST);
+		return ret_set_errno(-1, EEXIST);
 
 	if (timeout != 0) {
 		__do_free char *events_file = NULL;
@@ -2003,27 +2003,27 @@ static int cg_unified_freeze(struct cgroup_ops *ops, int timeout)
 		events_file = must_make_path(h->container_full_path, "cgroup.events", NULL);
 		fd = open(events_file, O_RDONLY | O_CLOEXEC);
 		if (fd < 0)
-			return error_log_errno(errno, "Failed to open cgroup.events file");
+			return log_error_errno(-1, errno, "Failed to open cgroup.events file");
 
 		ret = lxc_mainloop_open(&descr);
 		if (ret)
-			return error_log_errno(errno, "Failed to create epoll instance to wait for container freeze");
+			return log_error_errno(-1, errno, "Failed to create epoll instance to wait for container freeze");
 
 		/* automatically cleaned up now */
 		descr_ptr = &descr;
 
 		ret = lxc_mainloop_add_handler(&descr, fd, freezer_cgroup_events_cb, INT_TO_PTR((int){1}));
 		if (ret < 0)
-			return error_log_errno(errno, "Failed to add cgroup.events fd handler to mainloop");
+			return log_error_errno(-1, errno, "Failed to add cgroup.events fd handler to mainloop");
 	}
 
 	path = must_make_path(h->container_full_path, "cgroup.freeze", NULL);
 	ret = lxc_write_to_file(path, "1", 1, false, 0666);
 	if (ret < 0)
-		return error_log_errno(errno, "Failed to open cgroup.freeze file");
+		return log_error_errno(-1, errno, "Failed to open cgroup.freeze file");
 
 	if (timeout != 0 && lxc_mainloop(&descr, timeout))
-		return error_log_errno(errno, "Failed to wait for container to be frozen");
+		return log_error_errno(-1, errno, "Failed to wait for container to be frozen");
 
 	return 0;
 }
@@ -2031,7 +2031,7 @@ static int cg_unified_freeze(struct cgroup_ops *ops, int timeout)
 __cgfsng_ops static int cgfsng_freeze(struct cgroup_ops *ops, int timeout)
 {
 	if (!ops->hierarchies)
-		return minus_one_set_errno(ENOENT);
+		return ret_set_errno(-1, ENOENT);
 
 	if (ops->cgroup_layout != CGROUP_LAYOUT_UNIFIED)
 		return cg_legacy_freeze(ops);
@@ -2046,7 +2046,7 @@ static int cg_legacy_unfreeze(struct cgroup_ops *ops)
 
 	h = get_hierarchy(ops, "freezer");
 	if (!h)
-		return minus_one_set_errno(ENOENT);
+		return ret_set_errno(-1, ENOENT);
 
 	path = must_make_path(h->container_full_path, "freezer.state", NULL);
 	return lxc_write_to_file(path, "THAWED", STRLITERALLEN("THAWED"), false, 0666);
@@ -2063,10 +2063,10 @@ static int cg_unified_unfreeze(struct cgroup_ops *ops, int timeout)
 
 	h = ops->unified;
 	if (!h)
-		return minus_one_set_errno(ENOENT);
+		return ret_set_errno(-1, ENOENT);
 
 	if (!h->container_full_path)
-		return minus_one_set_errno(EEXIST);
+		return ret_set_errno(-1, EEXIST);
 
 	if (timeout != 0) {
 		__do_free char *events_file = NULL;
@@ -2074,27 +2074,27 @@ static int cg_unified_unfreeze(struct cgroup_ops *ops, int timeout)
 		events_file = must_make_path(h->container_full_path, "cgroup.events", NULL);
 		fd = open(events_file, O_RDONLY | O_CLOEXEC);
 		if (fd < 0)
-			return error_log_errno(errno, "Failed to open cgroup.events file");
+			return log_error_errno(-1, errno, "Failed to open cgroup.events file");
 
 		ret = lxc_mainloop_open(&descr);
 		if (ret)
-			return error_log_errno(errno, "Failed to create epoll instance to wait for container unfreeze");
+			return log_error_errno(-1, errno, "Failed to create epoll instance to wait for container unfreeze");
 
 		/* automatically cleaned up now */
 		descr_ptr = &descr;
 
 		ret = lxc_mainloop_add_handler(&descr, fd, freezer_cgroup_events_cb, INT_TO_PTR((int){0}));
 		if (ret < 0)
-			return error_log_errno(errno, "Failed to add cgroup.events fd handler to mainloop");
+			return log_error_errno(-1, errno, "Failed to add cgroup.events fd handler to mainloop");
 	}
 
 	path = must_make_path(h->container_full_path, "cgroup.freeze", NULL);
 	ret = lxc_write_to_file(path, "0", 1, false, 0666);
 	if (ret < 0)
-		return error_log_errno(errno, "Failed to open cgroup.freeze file");
+		return log_error_errno(-1, errno, "Failed to open cgroup.freeze file");
 
 	if (timeout != 0 && lxc_mainloop(&descr, timeout))
-		return error_log_errno(errno, "Failed to wait for container to be unfrozen");
+		return log_error_errno(-1, errno, "Failed to wait for container to be unfrozen");
 
 	return 0;
 }
@@ -2102,7 +2102,7 @@ static int cg_unified_unfreeze(struct cgroup_ops *ops, int timeout)
 __cgfsng_ops static int cgfsng_unfreeze(struct cgroup_ops *ops, int timeout)
 {
 	if (!ops->hierarchies)
-		return minus_one_set_errno(ENOENT);
+		return ret_set_errno(-1, ENOENT);
 
 	if (ops->cgroup_layout != CGROUP_LAYOUT_UNIFIED)
 		return cg_legacy_unfreeze(ops);
@@ -2148,7 +2148,7 @@ static int cgroup_attach_leaf(int unified_fd, int64_t pid)
 		return 0;
 	/* this is a non-leaf node */
 	if (errno != EBUSY)
-		return error_log_errno(errno, "Failed to attach to unified cgroup");
+		return log_error_errno(-1, errno, "Failed to attach to unified cgroup");
 
 	do {
 		char *slash;
@@ -2167,7 +2167,7 @@ static int cgroup_attach_leaf(int unified_fd, int64_t pid)
 		*slash = '\0';
 		ret = mkdirat(unified_fd, attach_cgroup, 0755);
 		if (ret < 0 && errno != EEXIST)
-			return error_log_errno(errno, "Failed to create cgroup %s", attach_cgroup);
+			return log_error_errno(-1, errno, "Failed to create cgroup %s", attach_cgroup);
 
 		*slash = '/';
 		ret = lxc_writeat(unified_fd, attach_cgroup, pidstr, pidstr_len);
@@ -2176,7 +2176,7 @@ static int cgroup_attach_leaf(int unified_fd, int64_t pid)
 
 		/* this is a non-leaf node */
 		if (errno != EBUSY)
-			return error_log_errno(errno, "Failed to attach to unified cgroup");
+			return log_error_errno(-1, errno, "Failed to attach to unified cgroup");
 
 		idx++;
 	} while (idx < 1000);
@@ -2435,7 +2435,7 @@ __cgfsng_ops static int cgfsng_set(struct cgroup_ops *ops,
 
 		ret = device_cgroup_rule_parse(&device, key, value);
 		if (ret < 0)
-			return error_log_errno(EINVAL, "Failed to parse device string %s=%s",
+			return log_error_errno(-1, EINVAL, "Failed to parse device string %s=%s",
 					       key, value);
 
 		ret = lxc_cmd_add_bpf_device_cgroup(name, lxcpath, &device);
@@ -2644,7 +2644,7 @@ static int bpf_device_cgroup_prepare(struct cgroup_ops *ops,
 
 	ret = device_cgroup_rule_parse(&device_item, key, val);
 	if (ret < 0)
-		return error_log_errno(EINVAL,
+		return log_error_errno(-1, EINVAL,
 				       "Failed to parse device string %s=%s",
 				       key, val);
 
@@ -3072,14 +3072,14 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 
 	ret = unified_cgroup_hierarchy();
 	if (ret == -ENOMEDIUM)
-		return -ENOMEDIUM;
+		return ret_errno(ENOMEDIUM);
 
 	if (ret != CGROUP2_SUPER_MAGIC)
 		return 0;
 
 	base_cgroup = cg_unified_get_current_cgroup(relative);
 	if (!base_cgroup)
-		return -EINVAL;
+		return ret_errno(EINVAL);
 	if (!relative)
 		prune_init_scope(base_cgroup);
 
