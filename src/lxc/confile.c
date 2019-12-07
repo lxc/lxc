@@ -401,11 +401,11 @@ static int set_config_net_l2proxy(const char *key, const char *value,
 		return clr_config_net_l2proxy(key, lxc_conf, data);
 
 	if (!netdev)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	ret = lxc_safe_uint(value, &val);
 	if (ret < 0)
-		return minus_one_set_errno(-ret);
+		return ret_set_errno(-1, -ret);
 
 	switch (val) {
 	case 0:
@@ -416,7 +416,7 @@ static int set_config_net_l2proxy(const char *key, const char *value,
 		return 0;
 	}
 
-	return minus_one_set_errno(EINVAL);
+	return ret_set_errno(-1, EINVAL);
 }
 
 static int set_config_net_name(const char *key, const char *value,
@@ -485,11 +485,11 @@ static int set_config_net_ipvlan_mode(const char *key, const char *value,
 		return clr_config_net_ipvlan_mode(key, lxc_conf, data);
 
 	if (!netdev)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	if (netdev->type != LXC_NET_IPVLAN) {
 		SYSERROR("Invalid ipvlan mode \"%s\", can only be used with ipvlan network", value);
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 	}
 
 	return lxc_ipvlan_mode_to_flag(&netdev->priv.ipvlan_attr.mode, value);
@@ -504,11 +504,11 @@ static int set_config_net_ipvlan_isolation(const char *key, const char *value,
 		return clr_config_net_ipvlan_isolation(key, lxc_conf, data);
 
 	if (!netdev)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	if (netdev->type != LXC_NET_IPVLAN) {
 		SYSERROR("Invalid ipvlan isolation \"%s\", can only be used with ipvlan network", value);
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 	}
 
 	return lxc_ipvlan_isolation_to_flag(&netdev->priv.ipvlan_attr.isolation, value);
@@ -729,11 +729,11 @@ static int set_config_net_veth_ipv4_route(const char *key, const char *value,
 		return clr_config_net_veth_ipv4_route(key, lxc_conf, data);
 
 	if (!netdev)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	if (netdev->type != LXC_NET_VETH) {
 		SYSERROR("Invalid ipv4 route \"%s\", can only be used with veth network", value);
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 	}
 
 	inetdev = malloc(sizeof(*inetdev));
@@ -754,22 +754,22 @@ static int set_config_net_veth_ipv4_route(const char *key, const char *value,
 
 	slash = strchr(valdup, '/');
 	if (!slash)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	*slash = '\0';
 	slash++;
 	if (*slash == '\0')
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	netmask = slash;
 
 	ret = lxc_safe_uint(netmask, &inetdev->prefix);
 	if (ret < 0 || inetdev->prefix > 32)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	ret = inet_pton(AF_INET, valdup, &inetdev->addr);
 	if (!ret || ret < 0)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	lxc_list_add_tail(&netdev->priv.veth_attr.ipv4_routes, list);
 	move_ptr(inetdev);
@@ -900,11 +900,11 @@ static int set_config_net_veth_ipv6_route(const char *key, const char *value,
 		return clr_config_net_veth_ipv6_route(key, lxc_conf, data);
 
 	if (!netdev)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	if (netdev->type != LXC_NET_VETH) {
 		SYSERROR("Invalid ipv6 route \"%s\", can only be used with veth network", value);
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 	}
 
 	inet6dev = malloc(sizeof(*inet6dev));
@@ -925,22 +925,22 @@ static int set_config_net_veth_ipv6_route(const char *key, const char *value,
 
 	slash = strchr(valdup, '/');
 	if (!slash)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	*slash = '\0';
 	slash++;
 	if (*slash == '\0')
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	netmask = slash;
 
 	ret = lxc_safe_uint(netmask, &inet6dev->prefix);
 	if (ret < 0 || inet6dev->prefix > 128)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	ret = inet_pton(AF_INET6, valdup, &inet6dev->addr);
 	if (!ret || ret < 0)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	lxc_list_add_tail(&netdev->priv.veth_attr.ipv6_routes, list);
 	move_ptr(inet6dev);
@@ -1004,7 +1004,7 @@ static int set_config_seccomp_allow_nesting(const char *key, const char *value,
 		return -1;
 
 	if (lxc_conf->seccomp.allow_nesting > 1)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	return 0;
 #else
@@ -1019,7 +1019,7 @@ static int set_config_seccomp_notify_cookie(const char *key, const char *value,
 #ifdef HAVE_SECCOMP_NOTIFY
 	return set_config_string_item(&lxc_conf->seccomp.notifier.cookie, value);
 #else
-	return minus_one_set_errno(ENOSYS);
+	return ret_set_errno(-1, ENOSYS);
 #endif
 }
 
@@ -1033,7 +1033,7 @@ static int set_config_seccomp_notify_proxy(const char *key, const char *value,
 		return clr_config_seccomp_notify_proxy(key, lxc_conf, NULL);
 
 	if (strncmp(value, "unix:", 5) != 0)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	offset = value + 5;
 	if (lxc_unix_sockaddr(&lxc_conf->seccomp.notifier.proxy_addr, offset) < 0)
@@ -1041,7 +1041,7 @@ static int set_config_seccomp_notify_proxy(const char *key, const char *value,
 
 	return 0;
 #else
-	return minus_one_set_errno(ENOSYS);
+	return ret_set_errno(-1, ENOSYS);
 #endif
 }
 
@@ -3985,7 +3985,7 @@ static int get_config_seccomp_notify_cookie(const char *key, char *retv, int inl
 #ifdef HAVE_SECCOMP_NOTIFY
 	return lxc_get_conf_str(retv, inlen, c->seccomp.notifier.cookie);
 #else
-	return minus_one_set_errno(ENOSYS);
+	return ret_set_errno(-1, ENOSYS);
 #endif
 }
 
@@ -3998,7 +3998,7 @@ static int get_config_seccomp_notify_proxy(const char *key, char *retv, int inle
 				    ? &c->seccomp.notifier.proxy_addr.sun_path[0]
 				    : &c->seccomp.notifier.proxy_addr.sun_path[1]);
 #else
-	return minus_one_set_errno(ENOSYS);
+	return ret_set_errno(-1, ENOSYS);
 #endif
 }
 
@@ -4611,7 +4611,7 @@ static inline int clr_config_seccomp_notify_cookie(const char *key,
 	c->seccomp.notifier.cookie = NULL;
 	return 0;
 #else
-	return minus_one_set_errno(ENOSYS);
+	return ret_set_errno(-1, ENOSYS);
 #endif
 }
 
@@ -4623,7 +4623,7 @@ static inline int clr_config_seccomp_notify_proxy(const char *key,
 	       sizeof(c->seccomp.notifier.proxy_addr));
 	return 0;
 #else
-	return minus_one_set_errno(ENOSYS);
+	return ret_set_errno(-1, ENOSYS);
 #endif
 }
 
@@ -5064,7 +5064,7 @@ static int clr_config_net_l2proxy(const char *key, struct lxc_conf *lxc_conf,
 	struct lxc_netdev *netdev = data;
 
 	if (!netdev)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	netdev->l2proxy = false;
 
@@ -5093,7 +5093,7 @@ static int clr_config_net_ipvlan_mode(const char *key,
 	struct lxc_netdev *netdev = data;
 
 	if (!netdev)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	if (netdev->type != LXC_NET_IPVLAN)
 		return 0;
@@ -5109,7 +5109,7 @@ static int clr_config_net_ipvlan_isolation(const char *key,
 	struct lxc_netdev *netdev = data;
 
 	if (!netdev)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	if (netdev->type != LXC_NET_IPVLAN)
 		return 0;
@@ -5125,7 +5125,7 @@ static int clr_config_net_veth_mode(const char *key,
 	struct lxc_netdev *netdev = data;
 
 	if (!netdev)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	if (netdev->type != LXC_NET_VETH)
 		return 0;
@@ -5493,7 +5493,7 @@ static int get_config_net_ipvlan_mode(const char *key, char *retv, int inlen,
 		memset(retv, 0, inlen);
 
 	if (!netdev)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	if (netdev->type != LXC_NET_IPVLAN)
 		return 0;
@@ -5532,7 +5532,7 @@ static int get_config_net_ipvlan_isolation(const char *key, char *retv, int inle
 		memset(retv, 0, inlen);
 
 	if (!netdev)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	if (netdev->type != LXC_NET_IPVLAN)
 		return 0;
@@ -5571,7 +5571,7 @@ static int get_config_net_veth_mode(const char *key, char *retv, int inlen,
 		memset(retv, 0, inlen);
 
 	if (!netdev)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	if (netdev->type != LXC_NET_VETH)
 		return 0;
@@ -5800,7 +5800,7 @@ static int get_config_net_veth_ipv4_route(const char *key, char *retv, int inlen
 		memset(retv, 0, inlen);
 
 	if (!netdev)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	if (netdev->type != LXC_NET_VETH)
 		return 0;
@@ -5891,7 +5891,7 @@ static int get_config_net_veth_ipv6_route(const char *key, char *retv, int inlen
 		memset(retv, 0, inlen);
 
 	if (!netdev)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	if (netdev->type != LXC_NET_VETH)
 		return 0;
