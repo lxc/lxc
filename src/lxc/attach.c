@@ -1009,10 +1009,10 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	}
 
 	if (!container)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	if (!lxc_container_get(container))
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	name = container->name;
 	lxcpath = container->config_path;
