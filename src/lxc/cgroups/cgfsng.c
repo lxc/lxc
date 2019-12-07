@@ -1930,23 +1930,33 @@ __cgfsng_ops static int cgfsng_nrtasks(struct cgroup_ops *ops)
 
 /* Only root needs to escape to the cgroup of its init. */
 __cgfsng_ops static bool cgfsng_escape(const struct cgroup_ops *ops,
-					 struct lxc_conf *conf)
+				       struct lxc_conf *conf)
 {
-	if (geteuid() || !ops->hierarchies)
+	if (!ops)
+		return ret_set_errno(false, ENOENT);
+
+	if (!ops->hierarchies)
+		return true;
+
+	if (!conf)
+		return ret_set_errno(false, EINVAL);
+
+	if (geteuid())
 		return true;
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
-		int ret;
 		__do_free char *fullpath = NULL;
+		int ret;
 
-		fullpath = must_make_path(ops->hierarchies[i]->mountpoint,
-					  ops->hierarchies[i]->container_base_path,
-					  "cgroup.procs", NULL);
+		fullpath =
+		    must_make_path(ops->hierarchies[i]->mountpoint,
+				   ops->hierarchies[i]->container_base_path,
+				   "cgroup.procs", NULL);
 		ret = lxc_write_to_file(fullpath, "0", 2, false, 0666);
-		if (ret != 0) {
-			SYSERROR("Failed to escape to cgroup \"%s\"", fullpath);
-			return false;
-		}
+		if (ret != 0)
+			return log_error_errno(false,
+					       errno, "Failed to escape to cgroup \"%s\"",
+					       fullpath);
 	}
 
 	return true;
