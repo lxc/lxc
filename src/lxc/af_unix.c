@@ -302,14 +302,14 @@ int lxc_unix_sockaddr(struct sockaddr_un *ret, const char *path)
 
 	len = strlen(path);
 	if (len == 0)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 	if (path[0] != '/' && path[0] != '@')
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 	if (path[1] == '\0')
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	if (len + 1 > sizeof(ret->sun_path))
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	*ret = (struct sockaddr_un){
 	    .sun_family = AF_UNIX,
