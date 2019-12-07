@@ -245,10 +245,10 @@ static inline void __lxc_log(const struct lxc_log_category *category,
  */
 #define lxc_log_priority_define(acategory, LEVEL)				\
 										\
-ATTR_UNUSED __attribute__ ((format (printf, 2, 3)))				\
+__unused __attribute__ ((format (printf, 2, 3)))				\
 static inline void LXC_##LEVEL(struct lxc_log_locinfo *, const char *, ...);	\
 										\
-ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
+__unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 					   const char* format, ...)		\
 {										\
 	if (lxc_log_priority_is_enabled(acategory, LXC_LOG_LEVEL_##LEVEL)) {	\
