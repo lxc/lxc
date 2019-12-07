@@ -2810,12 +2810,26 @@ __cgfsng_ops bool cgfsng_devices_activate(struct cgroup_ops *ops,
 {
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
 	__do_bpf_program_free struct bpf_program *devices = NULL;
-	struct lxc_conf *conf = handler->conf;
-	struct hierarchy *unified = ops->unified;
 	int ret;
+	struct lxc_conf *conf;
+	struct hierarchy *unified;
 	struct lxc_list *it;
 	struct bpf_program *devices_old;
 
+	if (!ops)
+		return ret_set_errno(false, ENOENT);
+
+	if (!ops->hierarchies)
+		return true;
+
+	if (!ops->container_cgroup)
+		return ret_set_errno(false, EEXIST);
+
+	if (!handler || !handler->conf)
+		return ret_set_errno(false, EINVAL);
+	conf = handler->conf;
+
+	unified = ops->unified;
 	if (!unified || !unified->bpf_device_controller ||
 	    !unified->container_full_path || lxc_list_empty(&conf->devices))
 		return true;
