@@ -1491,8 +1491,17 @@ __cgfsng_ops static bool cgfsng_payload_enter(struct cgroup_ops *ops,
 	int len;
 	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
 
+	if (!ops)
+		return ret_set_errno(false, ENOENT);
+
 	if (!ops->hierarchies)
 		return true;
+
+	if (!ops->container_cgroup)
+		return ret_set_errno(false, ENOENT);
+
+	if (!handler || !handler->conf)
+		return ret_set_errno(false, EINVAL);
 
 	len = snprintf(pidstr, sizeof(pidstr), "%d", handler->pid);
 
