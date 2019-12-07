@@ -1933,8 +1933,11 @@ __cgfsng_ops static int cgfsng_nrtasks(struct cgroup_ops *ops)
 {
 	__do_free char *path = NULL;
 
+	if (!ops)
+		return ret_set_errno(-1, ENOENT);
+
 	if (!ops->container_cgroup || !ops->hierarchies)
-		return -1;
+		return ret_set_errno(-1, EINVAL);
 
 	path = must_make_path(ops->hierarchies[0]->container_full_path, NULL);
 	return recursive_count_nrtasks(path);
