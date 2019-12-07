@@ -2170,39 +2170,41 @@ static inline char *build_full_cgpath_from_monitorpath(struct hierarchy *h,
 
 static int cgroup_attach_leaf(int unified_fd, int64_t pid)
 {
-	int idx = 0;
+	int idx = 1;
 	int ret;
 	char pidstr[INTTYPE_TO_STRLEN(int64_t) + 1];
+	char attach_cgroup[STRLITERALLEN("lxc-1000/cgroup.procs") + 1];
 	size_t pidstr_len;
 
+	/* Create leaf cgroup. */
+	ret = mkdirat(unified_fd, "lxc", 0755);
+	if (ret < 0 && errno != EEXIST)
+		return log_error_errno(-1, errno, "Failed to create leaf cgroup \"lxc\"");
+
 	pidstr_len = sprintf(pidstr, INT64_FMT, pid);
-	ret = lxc_writeat(unified_fd, "cgroup.procs", pidstr, pidstr_len);
+	ret = lxc_writeat(unified_fd, "lxc/cgroup.procs", pidstr, pidstr_len);
+	if (ret < 0)
+		ret = lxc_writeat(unified_fd, "cgroup.procs", pidstr, pidstr_len);
 	if (ret == 0)
 		return 0;
+
 	/* this is a non-leaf node */
 	if (errno != EBUSY)
 		return log_error_errno(-1, errno, "Failed to attach to unified cgroup");
 
 	do {
 		char *slash;
-		char attach_cgroup[STRLITERALLEN("lxc-1000/cgroup.procs") + 1];
 
-		if (idx)
-			ret = snprintf(attach_cgroup, sizeof(attach_cgroup),
-				       "lxc-%d/cgroup.procs", idx);
-		else
-			ret = snprintf(attach_cgroup, sizeof(attach_cgroup),
-				       "lxc/cgroup.procs");
-		if (ret < 0 || (size_t)ret >= sizeof(attach_cgroup))
-			return -1;
-
+		sprintf(attach_cgroup, "lxc-%d/cgroup.procs", idx);
 		slash = &attach_cgroup[ret] - STRLITERALLEN("/cgroup.procs");
 		*slash = '\0';
+
 		ret = mkdirat(unified_fd, attach_cgroup, 0755);
 		if (ret < 0 && errno != EEXIST)
 			return log_error_errno(-1, errno, "Failed to create cgroup %s", attach_cgroup);
 
 		*slash = '/';
+
 		ret = lxc_writeat(unified_fd, attach_cgroup, pidstr, pidstr_len);
 		if (ret == 0)
 			return 0;
@@ -2214,7 +2216,7 @@ static int cgroup_attach_leaf(int unified_fd, int64_t pid)
 		idx++;
 	} while (idx < 1000);
 
-	return -1;
+	return log_error_errno(-1, errno, "Failed to attach to unified cgroup");
 }
 
 int cgroup_attach(const char *name, const char *lxcpath, int64_t pid)
