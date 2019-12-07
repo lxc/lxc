@@ -2176,18 +2176,19 @@ __cgfsng_ops static int cgfsng_unfreeze(struct cgroup_ops *ops, int timeout)
 }
 
 __cgfsng_ops static const char *cgfsng_get_cgroup(struct cgroup_ops *ops,
-						    const char *controller)
+						  const char *controller)
 {
 	struct hierarchy *h;
 
 	h = get_hierarchy(ops, controller);
-	if (!h) {
-		WARN("Failed to find hierarchy for controller \"%s\"",
-		     controller ? controller : "(null)");
-		return NULL;
-	}
+	if (!h)
+		return log_warn_errno(NULL,
+				      ENOENT, "Failed to find hierarchy for controller \"%s\"",
+				      controller ? controller : "(null)");
 
-	return h->container_full_path ? h->container_full_path + strlen(h->mountpoint) : NULL;
+	return h->container_full_path
+		   ? h->container_full_path + strlen(h->mountpoint)
+		   : NULL;
 }
 
 /* Given a cgroup path returned from lxc_cmd_get_cgroup_path, build a full path,
