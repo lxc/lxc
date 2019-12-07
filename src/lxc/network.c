@@ -364,7 +364,7 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 	mtu_orig = netdev_get_mtu(netdev->ifindex);
 	if (mtu_orig < 0) {
 		SYSERROR("Failed to get original mtu for interface \"%s\"", netdev->link);
-		return minus_one_set_errno(-mtu_orig);
+		return ret_set_errno(-1, -mtu_orig);
 	}
 
 	netdev->priv.phys_attr.mtu = mtu_orig;
