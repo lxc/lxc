@@ -1086,8 +1086,17 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 	int ret;
 	struct generic_userns_exec_data wrap;
 
+	if (!ops)
+		log_error_errno(return, ENOENT, "Called with uninitialized cgroup operations");
+
 	if (!ops->hierarchies)
 		return;
+
+	if (!handler)
+		log_error_errno(return, EINVAL, "Called with uninitialized handler");
+
+	if (!handler->conf)
+		log_error_errno(return, EINVAL, "Called with uninitialized conf");
 
 	wrap.origuid = 0;
 	wrap.container_cgroup = ops->container_cgroup;
