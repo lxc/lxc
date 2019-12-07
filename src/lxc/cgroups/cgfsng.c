@@ -1303,13 +1303,21 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 	char *offset, *tmp;
 	int i, idx = 0;
 	size_t len;
-	struct lxc_conf *conf = handler->conf;
+	struct lxc_conf *conf;
 
-	if (!conf)
-		return false;
+	if (!ops)
+		return ret_set_errno(false, ENOENT);
 
 	if (!ops->hierarchies)
 		return true;
+
+	if (ops->monitor_cgroup)
+		return ret_set_errno(false, EEXIST);
+
+	if (!handler || !handler->conf)
+		return ret_set_errno(false, EINVAL);
+
+	conf = handler->conf;
 
 	if (conf->cgroup_meta.dir)
 		tmp = lxc_string_join("/",
@@ -1320,7 +1328,7 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 	else
 		tmp = must_make_path(ops->monitor_pattern, handler->name, NULL);
 	if (!tmp)
-		return false;
+		return ret_set_errno(false, ENOMEM);
 
 	len = strlen(tmp) + 5; /* leave room for -NNN\0 */
 	monitor_cgroup = must_realloc(tmp, len);
@@ -1328,11 +1336,8 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 	*offset = 0;
 
 	do {
-		if (idx) {
-			int ret = snprintf(offset, 5, "-%d", idx);
-			if (ret < 0 || (size_t)ret >= 5)
-				return false;
-		}
+		if (idx)
+			sprintf(offset, "-%d", idx);
 
 		for (i = 0; ops->hierarchies[i]; i++) {
 			if (!monitor_create_path_for_hierarchy(ops->hierarchies[i],
@@ -1351,11 +1356,10 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 	} while (ops->hierarchies[i] && idx > 0 && idx < 1000);
 
 	if (idx == 1000)
-		return false;
+		return ret_set_errno(false, ERANGE);
 
-	INFO("The monitor process uses \"%s\" as cgroup", monitor_cgroup);
 	ops->monitor_cgroup = move_ptr(monitor_cgroup);
-	return true;
+	return log_info(true, "The monitor process uses \"%s\" as cgroup", monitor_cgroup);
 }
 
 /* Try to create the same cgroup in all hierarchies. Start with cgroup_pattern;
