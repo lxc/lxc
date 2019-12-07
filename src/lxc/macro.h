@@ -454,6 +454,12 @@ enum {
 		__ret__;                  \
 	})
 
+#define ret_errno(__errno__)       \
+	({                         \
+		errno = __errno__; \
+		-__errno__;        \
+	})
+
 #define free_replace_move_ptr(a, b) \
 	({                          \
 		free(a);            \
