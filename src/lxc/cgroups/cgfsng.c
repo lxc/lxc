@@ -1978,9 +1978,13 @@ __cgfsng_ops static int cgfsng_num_hierarchies(struct cgroup_ops *ops)
 	return i;
 }
 
-__cgfsng_ops static bool cgfsng_get_hierarchies(struct cgroup_ops *ops, int n, char ***out)
+__cgfsng_ops static bool cgfsng_get_hierarchies(struct cgroup_ops *ops, int n,
+						char ***out)
 {
 	int i;
+
+	if (!ops)
+		return ret_set_errno(false, ENOENT);
 
 	if (!ops->hierarchies)
 		return false;
@@ -1988,13 +1992,12 @@ __cgfsng_ops static bool cgfsng_get_hierarchies(struct cgroup_ops *ops, int n, c
 	/* sanity check n */
 	for (i = 0; i < n; i++)
 		if (!ops->hierarchies[i])
-			return false;
+			return ret_set_errno(false, ENOENT);
 
 	*out = ops->hierarchies[i]->controllers;
 
 	return true;
 }
-
 
 static bool cg_legacy_freeze(struct cgroup_ops *ops)
 {
