@@ -1359,7 +1359,7 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 		return ret_set_errno(false, ERANGE);
 
 	ops->monitor_cgroup = move_ptr(monitor_cgroup);
-	return log_info(true, "The monitor process uses \"%s\" as cgroup", monitor_cgroup);
+	return log_info(true, "The monitor process uses \"%s\" as cgroup", ops->monitor_cgroup);
 }
 
 /* Try to create the same cgroup in all hierarchies. Start with cgroup_pattern;
