@@ -512,7 +512,7 @@ __unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 
 #define log_debug_errno(__ret__, __errno__, format, ...) \
 	({						 \
-		errno = __errno__;			\
+		errno = __errno__;		         \
 		SYSDEBUG(format, ##__VA_ARGS__);	 \
 		__ret__;				 \
 	})
@@ -521,6 +521,12 @@ __unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 	({				      \
 		DEBUG(format, ##__VA_ARGS__); \
 		__ret__;		      \
+	})
+
+#define log_info(__ret__, format, ...)       \
+	({                                   \
+		INFO(format, ##__VA_ARGS__); \
+		__ret__;                     \
 	})
 
 extern int lxc_log_fd;
