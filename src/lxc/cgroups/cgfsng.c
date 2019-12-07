@@ -1621,14 +1621,23 @@ static int chown_cgroup_wrapper(void *data)
 }
 
 __cgfsng_ops static bool cgfsng_chown(struct cgroup_ops *ops,
-					struct lxc_conf *conf)
+				      struct lxc_conf *conf)
 {
 	struct generic_userns_exec_data wrap;
 
-	if (lxc_list_empty(&conf->id_map))
-		return true;
+	if (!ops)
+		return ret_set_errno(false, ENOENT);
 
 	if (!ops->hierarchies)
+		return true;
+
+	if (!ops->container_cgroup)
+		return ret_set_errno(false, ENOENT);
+
+	if (!conf)
+		return ret_set_errno(false, EINVAL);
+
+	if (lxc_list_empty(&conf->id_map))
 		return true;
 
 	wrap.origuid = geteuid();
@@ -1636,11 +1645,8 @@ __cgfsng_ops static bool cgfsng_chown(struct cgroup_ops *ops,
 	wrap.hierarchies = ops->hierarchies;
 	wrap.conf = conf;
 
-	if (userns_exec_1(conf, chown_cgroup_wrapper, &wrap,
-			  "chown_cgroup_wrapper") < 0) {
-		ERROR("Error requesting cgroup chown in new user namespace");
-		return false;
-	}
+	if (userns_exec_1(conf, chown_cgroup_wrapper, &wrap, "chown_cgroup_wrapper") < 0)
+		return log_error_errno(false, errno, "Error requesting cgroup chown in new user namespace");
 
 	return true;
 }
