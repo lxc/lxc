@@ -1366,32 +1366,36 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
  * next cgroup_pattern-1, -2, ..., -999.
  */
 __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
-							struct lxc_handler *handler)
+						      struct lxc_handler *handler)
 {
 	__do_free char *container_cgroup = NULL, *tmp = NULL;
+	int idx = 0;
 	int i, ret;
 	size_t len;
 	char *offset;
-	int idx = 0;
-	struct lxc_conf *conf = handler->conf;
+	struct lxc_conf *conf;
 
-	if (ops->container_cgroup)
-		return false;
-
-	if (!conf)
-		return false;
+	if (!ops)
+		return ret_set_errno(false, ENOENT);
 
 	if (!ops->hierarchies)
 		return true;
+
+	if (ops->container_cgroup)
+		return ret_set_errno(false, EEXIST);
+
+	if (!handler || !handler->conf)
+		return ret_set_errno(false, EINVAL);
+
+	conf = handler->conf;
 
 	if (conf->cgroup_meta.dir)
 		tmp = lxc_string_join("/", (const char *[]){conf->cgroup_meta.dir, handler->name, NULL}, false);
 	else
 		tmp = lxc_string_replace("%n", handler->name, ops->cgroup_pattern);
-	if (!tmp) {
-		ERROR("Failed expanding cgroup name pattern");
-		return false;
-	}
+	if (!tmp)
+		return log_error_errno(false, ENOMEM,
+				       "Failed expanding cgroup name pattern");
 
 	len = strlen(tmp) + 5; /* leave room for -NNN\0 */
 	container_cgroup = must_realloc(NULL, len);
@@ -1399,11 +1403,8 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 	offset = container_cgroup + len - 5;
 
 	do {
-		if (idx) {
-			ret = snprintf(offset, 5, "-%d", idx);
-			if (ret < 0 || (size_t)ret >= 5)
-				return false;
-		}
+		if (idx)
+			sprintf(offset, "-%d", idx);
 
 		for (i = 0; ops->hierarchies[i]; i++) {
 			if (!container_create_path_for_hierarchy(ops->hierarchies[i],
@@ -1421,7 +1422,7 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 	} while (ops->hierarchies[i] && idx > 0 && idx < 1000);
 
 	if (idx == 1000)
-		return false;
+		return ret_set_errno(false, ERANGE);
 
 	INFO("The container process uses \"%s\" as cgroup", container_cgroup);
 	ops->container_cgroup = move_ptr(container_cgroup);
