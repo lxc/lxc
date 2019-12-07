@@ -1783,8 +1783,14 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	int ret;
 	bool has_cgns = false, retval = false, wants_force_mount = false;
 
+	if (!ops)
+		return ret_set_errno(false, ENOENT);
+
 	if (!ops->hierarchies)
 		return true;
+
+	if (!handler || !handler->conf)
+		return ret_set_errno(false, EINVAL);
 
 	if ((type & LXC_AUTO_CGROUP_MASK) == 0)
 		return true;
@@ -1845,10 +1851,10 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			continue;
 
 		ret = mkdir(controllerpath, 0755);
-		if (ret < 0) {
-			SYSERROR("Error creating cgroup path: %s", controllerpath);
-			goto on_error;
-		}
+		if (ret < 0)
+			log_error_errno(goto on_error, errno,
+					"Error creating cgroup path: %s",
+					controllerpath);
 
 		if (has_cgns && wants_force_mount) {
 			/* If cgroup namespaces are supported but the container
