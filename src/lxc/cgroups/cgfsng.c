@@ -500,13 +500,11 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 
 copy_parent:
 	if (!am_initialized) {
-		fpath = must_make_path(path, "cpuset.cpus", NULL);
-		ret = lxc_write_to_file(fpath, cpulist, strlen(cpulist), false,
-					0666);
-		if (ret < 0) {
-			SYSERROR("Failed to write cpu list to \"%s\"", fpath);
-			return false;
-		}
+		ret = lxc_write_openat(path, "cpuset.cpus", cpulist, strlen(cpulist));
+		if (ret < 0)
+			return log_error_errno(false,
+					       errno, "Failed to write cpu list to \"%s/cpuset.cpus\"",
+					       path);
 
 		TRACE("Copied cpu settings of parent cgroup");
 	}
@@ -517,7 +515,7 @@ copy_parent:
 /* Copy contents of parent(@path)/@file to @path/@file */
 static bool copy_parent_file(char *path, char *file)
 {
-	__do_free char *child_path = NULL, *parent_path = NULL, *value = NULL;
+	__do_free char *parent_path = NULL, *value = NULL;
 	int ret;
 	char oldv;
 	int len = 0;
@@ -545,11 +543,15 @@ static bool copy_parent_file(char *path, char *file)
 	}
 
 	*lastslash = oldv;
-	child_path = must_make_path(path, file, NULL);
-	ret = lxc_write_to_file(child_path, value, len, false, 0666);
+	ret = lxc_write_openat(path, file, value, len);
 	if (ret < 0)
-		SYSERROR("Failed to write \"%s\" to file \"%s\"", value, child_path);
+		SYSERROR("Failed to write \"%s\" to file \"%s/%s\"", value, path, file);
 	return ret >= 0;
+}
+
+static bool is_unified_hierarchy(const struct hierarchy *h)
+{
+	return h->version == CGROUP2_SUPER_MAGIC;
 }
 
 /* Initialize the cpuset hierarchy in first directory of @gname and set
@@ -559,10 +561,14 @@ static bool copy_parent_file(char *path, char *file)
  */
 static bool cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 {
-	__do_free char *cgpath = NULL, *clonechildrenpath = NULL;
+	__do_free char *cgpath = NULL;
+	__do_close_prot_errno int cgroup_fd = -EBADF;
 	int ret;
 	char v;
 	char *slash;
+
+	if (is_unified_hierarchy(h))
+		return true;
 
 	if (!string_in_list(h->controllers, "cpuset"))
 		return true;
@@ -585,14 +591,13 @@ static bool cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 		}
 	}
 
-	clonechildrenpath = must_make_path(cgpath, "cgroup.clone_children", NULL);
-	/* unified hierarchy doesn't have clone_children */
-	if (!file_exists(clonechildrenpath))
-		return true;
+	cgroup_fd = lxc_open_dirfd(cgpath);
+	if (cgroup_fd < 0)
+		return false;
 
-	ret = lxc_read_from_file(clonechildrenpath, &v, 1);
+	ret = lxc_readat(cgroup_fd, "cgroup.clone_children", &v, 1);
 	if (ret < 0) {
-		SYSERROR("Failed to read file \"%s\"", clonechildrenpath);
+		SYSERROR("Failed to read file \"%s/cgroup.clone_children\"", cgpath);
 		return false;
 	}
 
@@ -612,10 +617,10 @@ static bool cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 		return false;
 	}
 
-	ret = lxc_write_to_file(clonechildrenpath, "1", 1, false, 0666);
+	ret = lxc_writeat(cgroup_fd, "cgroup.clone_children", "1", 1);
 	if (ret < 0) {
 		/* Set clone_children so children inherit our settings */
-		SYSERROR("Failed to write 1 to \"%s\"", clonechildrenpath);
+		SYSERROR("Failed to write 1 to \"%s/cgroup.clone_children\"", cgpath);
 		return false;
 	}
 
@@ -2016,15 +2021,14 @@ __cgfsng_ops static bool cgfsng_get_hierarchies(struct cgroup_ops *ops, int n,
 
 static bool cg_legacy_freeze(struct cgroup_ops *ops)
 {
-	__do_free char *path = NULL;
 	struct hierarchy *h;
 
 	h = get_hierarchy(ops, "freezer");
 	if (!h)
 		return ret_set_errno(-1, ENOENT);
 
-	path = must_make_path(h->container_full_path, "freezer.state", NULL);
-	return lxc_write_to_file(path, "FROZEN", STRLITERALLEN("FROZEN"), false, 0666);
+	return lxc_write_openat(h->container_full_path, "freezer.state",
+				"FROZEN", STRLITERALLEN("FROZEN"));
 }
 
 static int freezer_cgroup_events_cb(int fd, uint32_t events, void *cbdata,
@@ -2064,7 +2068,6 @@ static int freezer_cgroup_events_cb(int fd, uint32_t events, void *cbdata,
 static int cg_unified_freeze(struct cgroup_ops *ops, int timeout)
 {
 	__do_close_prot_errno int fd = -EBADF;
-	__do_free char *path = NULL;
 	__do_lxc_mainloop_close struct lxc_epoll_descr *descr_ptr = NULL;
 	int ret;
 	struct lxc_epoll_descr descr;
@@ -2097,8 +2100,7 @@ static int cg_unified_freeze(struct cgroup_ops *ops, int timeout)
 			return log_error_errno(-1, errno, "Failed to add cgroup.events fd handler to mainloop");
 	}
 
-	path = must_make_path(h->container_full_path, "cgroup.freeze", NULL);
-	ret = lxc_write_to_file(path, "1", 1, false, 0666);
+	ret = lxc_write_openat(h->container_full_path, "cgroup.freeze", "1", 1);
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to open cgroup.freeze file");
 
@@ -2121,21 +2123,19 @@ __cgfsng_ops static int cgfsng_freeze(struct cgroup_ops *ops, int timeout)
 
 static int cg_legacy_unfreeze(struct cgroup_ops *ops)
 {
-	__do_free char *path = NULL;
 	struct hierarchy *h;
 
 	h = get_hierarchy(ops, "freezer");
 	if (!h)
 		return ret_set_errno(-1, ENOENT);
 
-	path = must_make_path(h->container_full_path, "freezer.state", NULL);
-	return lxc_write_to_file(path, "THAWED", STRLITERALLEN("THAWED"), false, 0666);
+	return lxc_write_openat(h->container_full_path, "freezer.state",
+				"THAWED", STRLITERALLEN("THAWED"));
 }
 
 static int cg_unified_unfreeze(struct cgroup_ops *ops, int timeout)
 {
 	__do_close_prot_errno int fd = -EBADF;
-	__do_free char *path = NULL;
 	__do_lxc_mainloop_close struct lxc_epoll_descr *descr_ptr = NULL;
 	int ret;
 	struct lxc_epoll_descr descr;
@@ -2168,8 +2168,7 @@ static int cg_unified_unfreeze(struct cgroup_ops *ops, int timeout)
 			return log_error_errno(-1, errno, "Failed to add cgroup.events fd handler to mainloop");
 	}
 
-	path = must_make_path(h->container_full_path, "cgroup.freeze", NULL);
-	ret = lxc_write_to_file(path, "0", 1, false, 0666);
+	ret = lxc_write_openat(h->container_full_path, "cgroup.freeze", "0", 1);
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to open cgroup.freeze file");
 
@@ -2638,12 +2637,10 @@ static int cg_legacy_set_data(struct cgroup_ops *ops, const char *filename,
 			      const char *value)
 {
 	__do_free char *controller = NULL;
-	__do_free char *fullpath = NULL;
 	char *p;
 	/* "b|c <2^64-1>:<2^64-1> r|w|m" = 47 chars max */
 	char converted_value[50];
 	struct hierarchy *h;
-	int ret = 0;
 
 	controller = must_copy_string(filename);
 	p = strchr(controller, '.');
@@ -2651,6 +2648,8 @@ static int cg_legacy_set_data(struct cgroup_ops *ops, const char *filename,
 		*p = '\0';
 
 	if (strcmp("devices.allow", filename) == 0 && value[0] == '/') {
+		int ret;
+
 		ret = convert_devpath(value, converted_value);
 		if (ret < 0)
 			return ret;
@@ -2667,9 +2666,7 @@ static int cg_legacy_set_data(struct cgroup_ops *ops, const char *filename,
 		return -ENOENT;
 	}
 
-	fullpath = must_make_path(h->container_full_path, filename, NULL);
-	ret = lxc_write_to_file(fullpath, value, strlen(value), false, 0666);
-	return ret;
+	return lxc_write_openat(h->container_full_path, filename, value, strlen(value));
 }
 
 __cgfsng_ops static bool cgfsng_setup_limits_legacy(struct cgroup_ops *ops,
@@ -2782,18 +2779,16 @@ __cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
 	h = ops->unified;
 
 	lxc_list_for_each (iterator, cgroup_settings) {
-		__do_free char *fullpath = NULL;
-		int ret;
 		struct lxc_cgroup *cg = iterator->elem;
+		int ret;
 
 		if (strncmp("devices", cg->subsystem, 7) == 0) {
 			ret = bpf_device_cgroup_prepare(ops, conf, cg->subsystem,
 							cg->value);
 		} else {
-			fullpath = must_make_path(h->container_full_path,
-						  cg->subsystem, NULL);
-			ret = lxc_write_to_file(fullpath, cg->value,
-						strlen(cg->value), false, 0666);
+			ret = lxc_write_openat(h->container_full_path,
+					       cg->subsystem, cg->value,
+					       strlen(cg->value));
 			if (ret < 0)
 				return log_error_errno(false,
 						       errno, "Failed to set \"%s\" to \"%s\"",
