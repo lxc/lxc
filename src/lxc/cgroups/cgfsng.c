@@ -2394,6 +2394,31 @@ __cgfsng_ops static int cgfsng_get(struct cgroup_ops *ops, const char *filename,
 	return ret;
 }
 
+static int device_cgroup_parse_access(struct device_item *device, const char *val)
+{
+	for (int count = 0; count < 3; count++, val++) {
+		switch (*val) {
+		case 'r':
+			device->access[count] = *val;
+			break;
+		case 'w':
+			device->access[count] = *val;
+			break;
+		case 'm':
+			device->access[count] = *val;
+			break;
+		case '\n':
+		case '\0':
+			count = 3;
+			break;
+		default:
+			return ret_errno(EINVAL);
+		}
+	}
+
+	return 0;
+}
+
 static int device_cgroup_rule_parse(struct device_item *device, const char *key,
 				    const char *val)
 {
@@ -2476,27 +2501,8 @@ static int device_cgroup_rule_parse(struct device_item *device, const char *key,
 	}
 	if (!isspace(*val))
 		return -1;
-	for (val++, count = 0; count < 3; count++, val++) {
-		switch (*val) {
-		case 'r':
-			device->access[count] = *val;
-			break;
-		case 'w':
-			device->access[count] = *val;
-			break;
-		case 'm':
-			device->access[count] = *val;
-			break;
-		case '\n':
-		case '\0':
-			count = 3;
-			break;
-		default:
-			return -1;
-		}
-	}
 
-	return 0;
+	return device_cgroup_parse_access(device, ++val);
 }
 
 /* Called externally (i.e. from 'lxc-cgroup') to set new cgroup limits.  Here we
@@ -2559,19 +2565,19 @@ __cgfsng_ops static int cgfsng_set(struct cgroup_ops *ops,
  * line. Return <0 on error. Dest is a preallocated buffer long enough to hold
  * the output.
  */
-static int convert_devpath(const char *invalue, char *dest)
+static int device_cgroup_rule_parse_devpath(struct device_item *device,
+					    const char *devpath)
 {
 	__do_free char *path = NULL;
-	int n_parts;
-	char *p, type;
-	unsigned long minor, major;
-	struct stat sb;
-	int ret = -EINVAL;
 	char *mode = NULL;
+	int n_parts, ret;
+	char *p;
+	struct stat sb;
 
-	path = must_copy_string(invalue);
+	path = must_copy_string(devpath);
 
-	/* Read path followed by mode. Ignore any trailing text.
+	/*
+	 * Read path followed by mode. Ignore any trailing text.
 	 * A '    # comment' would be legal. Technically other text is not
 	 * legal, we could check for that if we cared to.
 	 */
@@ -2591,43 +2597,59 @@ static int convert_devpath(const char *invalue, char *dest)
 		mode = p;
 
 		if (*p == '\0')
-			goto out;
+			return ret_set_errno(-1, EINVAL);
 	}
 
+	if (device_cgroup_parse_access(device, mode) < 0)
+		return -1;
+
 	if (n_parts == 1)
-		goto out;
+		return ret_set_errno(-1, EINVAL);
 
 	ret = stat(path, &sb);
 	if (ret < 0)
-		goto out;
+		return ret_set_errno(-1, errno);
 
 	mode_t m = sb.st_mode & S_IFMT;
 	switch (m) {
 	case S_IFBLK:
-		type = 'b';
+		device->type = 'b';
 		break;
 	case S_IFCHR:
-		type = 'c';
+		device->type = 'c';
 		break;
 	default:
-		ERROR("Unsupported device type %i for \"%s\"", m, path);
-		ret = -EINVAL;
-		goto out;
+		return log_error_errno(-1, EINVAL,
+				       "Unsupported device type %i for \"%s\"",
+				       m, path);
 	}
 
-	major = MAJOR(sb.st_rdev);
-	minor = MINOR(sb.st_rdev);
-	ret = snprintf(dest, 50, "%c %lu:%lu %s", type, major, minor, mode);
-	if (ret < 0 || ret >= 50) {
-		ERROR("Error on configuration value \"%c %lu:%lu %s\" (max 50 "
-		      "chars)", type, major, minor, mode);
-		ret = -ENAMETOOLONG;
-		goto out;
-	}
-	ret = 0;
+	device->major = MAJOR(sb.st_rdev);
+	device->minor = MINOR(sb.st_rdev);
+	device->allow = 1;
+	device->global_rule = LXC_BPF_DEVICE_CGROUP_LOCAL_RULE;
 
-out:
-	return ret;
+	return 0;
+}
+
+static int convert_devpath(const char *invalue, char *dest)
+{
+	struct device_item device = {0};
+	int ret;
+
+	ret = device_cgroup_rule_parse_devpath(&device, invalue);
+	if (ret < 0)
+		return -1;
+
+	ret = snprintf(dest, 50, "%c %d:%d %s", device.type, device.major,
+		       device.minor, device.access);
+	if (ret < 0 || ret >= 50)
+		return log_error_errno(-1,
+				       ENAMETOOLONG, "Error on configuration value \"%c %d:%d %s\" (max 50 chars)",
+				       device.type, device.major, device.minor,
+				       device.access);
+
+	return 0;
 }
 
 /* Called from setup_limits - here we have the container's cgroup_data because
@@ -2737,7 +2759,10 @@ static int bpf_device_cgroup_prepare(struct cgroup_ops *ops,
 	struct device_item device_item = {0};
 	int ret;
 
-	ret = device_cgroup_rule_parse(&device_item, key, val);
+	if (strcmp("devices.allow", key) == 0 && *val == '/')
+		ret = device_cgroup_rule_parse_devpath(&device_item, val);
+	else
+		ret = device_cgroup_rule_parse(&device_item, key, val);
 	if (ret < 0)
 		return log_error_errno(-1, EINVAL,
 				       "Failed to parse device string %s=%s",
