@@ -24,19 +24,16 @@ struct cgroup_ops *cgroup_init(struct lxc_conf *conf)
 {
 	struct cgroup_ops *cgroup_ops;
 
-	if (!conf) {
-		ERROR("No valid conf given");
-		return NULL;
-	}
+	if (!conf)
+		return log_error_errno(NULL, EINVAL, "No valid conf given");
 
 	cgroup_ops = cgfsng_ops_init(conf);
-	if (!cgroup_ops) {
-		ERROR("Failed to initialize cgroup driver");
-		return NULL;
-	}
+	if (!cgroup_ops)
+		return log_error_errno(NULL, errno, "Failed to initialize cgroup driver");
 
-	if (!cgroup_ops->data_init(cgroup_ops))
-		return NULL;
+	if (cgroup_ops->data_init(cgroup_ops))
+		return log_error_errno(NULL, errno,
+				       "Failed to initialize cgroup data");
 
 	TRACE("Initialized cgroup driver %s", cgroup_ops->driver);
 

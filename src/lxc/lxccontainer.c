@@ -5262,7 +5262,7 @@ out:
 static int do_lxcapi_seccomp_notify_fd(struct lxc_container *c)
 {
 	if (!c || !c->lxc_conf)
-		return minus_one_set_errno(-EINVAL);
+		return ret_set_errno(-1, -EINVAL);
 
 	return lxc_seccomp_get_notify_fd(&c->lxc_conf->seccomp);
 }

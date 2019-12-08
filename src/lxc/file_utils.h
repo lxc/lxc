@@ -15,8 +15,11 @@
 /* read and write whole files */
 extern int lxc_write_to_file(const char *filename, const void *buf,
 			     size_t count, bool add_newline, mode_t mode);
+extern int lxc_readat(int dirfd, const char *filename, void *buf, size_t count);
 extern int lxc_writeat(int dirfd, const char *filename, const void *buf,
 		       size_t count);
+extern int lxc_write_openat(const char *dir, const char *filename,
+			    const void *buf, size_t count);
 extern int lxc_read_from_file(const char *filename, void *buf, size_t count);
 
 /* send and receive buffers completely */
@@ -47,5 +50,6 @@ extern ssize_t lxc_sendfile_nointr(int out_fd, int in_fd, off_t *offset,
 				   size_t count);
 extern char *file_to_buf(char *path, size_t *length);
 extern int fd_to_fd(int from, int to);
+extern int lxc_open_dirfd(const char *dir);
 
 #endif /* __LXC_FILE_UTILS_H */

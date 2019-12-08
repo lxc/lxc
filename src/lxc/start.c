@@ -1119,8 +1119,8 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 static int do_start(void *data)
 {
 	struct lxc_handler *handler = data;
-	ATTR_UNUSED __do_close_prot_errno int data_sock0 = handler->data_sock[0],
-					      data_sock1 = handler->data_sock[1];
+	__lxc_unused __do_close_prot_errno int data_sock0 = handler->data_sock[0],
+					   data_sock1 = handler->data_sock[1];
 	__do_close_prot_errno int status_fd = -EBADF;
 	int ret;
 	uid_t new_uid;
@@ -1132,7 +1132,7 @@ static int do_start(void *data)
 
 	lxc_sync_fini_parent(handler);
 
-	if (lxc_abstract_unix_recv_fds(handler->data_sock[1], &status_fd, 1, NULL, 0) < 0) {
+	if (lxc_abstract_unix_recv_fds(data_sock1, &status_fd, 1, NULL, 0) < 0) {
 		ERROR("Failed to receive status file descriptor to child process");
 		goto out_warn_father;
 	}

@@ -35,11 +35,11 @@ static int bpf_program_add_instructions(struct bpf_program *prog,
 	struct bpf_insn *new_insn;
 
 	if (prog->kernel_fd >= 0)
-		return error_log_errno(EBUSY, "Refusing to update bpf cgroup program that's already loaded");
+		return log_error_errno(-1, EBUSY, "Refusing to update bpf cgroup program that's already loaded");
 
 	new_insn = realloc(prog->instructions, sizeof(struct bpf_insn) * (count + prog->n_instructions));
 	if (!new_insn)
-		return error_log_errno(ENOMEM, "Failed to reallocate bpf cgroup program");
+		return log_error_errno(-1, ENOMEM, "Failed to reallocate bpf cgroup program");
 
 	prog->instructions = new_insn;
 	memcpy(prog->instructions + prog->n_instructions, instructions,
@@ -184,7 +184,7 @@ struct bpf_program *bpf_program_new(uint32_t prog_type)
 int bpf_program_init(struct bpf_program *prog)
 {
 	if (!prog)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	const struct bpf_insn pre_insn[] = {
 	    /* load device type to r2 */
@@ -217,7 +217,7 @@ int bpf_program_append_device(struct bpf_program *prog, struct device_item *devi
 	int device_type;
 
 	if (!prog || !device)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	/* This is a global rule so no need to append anything. */
 	if (device->global_rule > LXC_BPF_DEVICE_CGROUP_LOCAL_RULE) {
@@ -227,7 +227,7 @@ int bpf_program_append_device(struct bpf_program *prog, struct device_item *devi
 
 	device_type = bpf_device_type(device->type);
 	if (device_type < 0)
-		return error_log_errno(EINVAL, "Invalid bpf cgroup device type %c", device->type);
+		return log_error_errno(-1, EINVAL, "Invalid bpf cgroup device type %c", device->type);
 
 	if (device_type > 0)
 		jump_nr++;
@@ -249,7 +249,7 @@ int bpf_program_append_device(struct bpf_program *prog, struct device_item *devi
 
 		ret = bpf_program_add_instructions(prog, ins, ARRAY_SIZE(ins));
 		if (ret)
-			return error_log_errno(errno, "Failed to add instructions to bpf cgroup program");
+			return log_error_errno(-1, errno, "Failed to add instructions to bpf cgroup program");
 	}
 
 	if (!bpf_device_all_access(access_mask)) {
@@ -262,7 +262,7 @@ int bpf_program_append_device(struct bpf_program *prog, struct device_item *devi
 		jump_nr -= 3;
 		ret = bpf_program_add_instructions(prog, ins, ARRAY_SIZE(ins));
 		if (ret)
-			return error_log_errno(errno, "Failed to add instructions to bpf cgroup program");
+			return log_error_errno(-1, errno, "Failed to add instructions to bpf cgroup program");
 	}
 
 	if (device->major >= 0) {
@@ -272,7 +272,7 @@ int bpf_program_append_device(struct bpf_program *prog, struct device_item *devi
 
 		ret = bpf_program_add_instructions(prog, ins, ARRAY_SIZE(ins));
 		if (ret)
-			return error_log_errno(errno, "Failed to add instructions to bpf cgroup program");
+			return log_error_errno(-1, errno, "Failed to add instructions to bpf cgroup program");
 	}
 
 	if (device->minor >= 0) {
@@ -282,13 +282,13 @@ int bpf_program_append_device(struct bpf_program *prog, struct device_item *devi
 
 		ret = bpf_program_add_instructions(prog, ins, ARRAY_SIZE(ins));
 		if (ret)
-			return error_log_errno(errno, "Failed to add instructions to bpf cgroup program");
+			return log_error_errno(-1, errno, "Failed to add instructions to bpf cgroup program");
 	}
 
 	ret = bpf_program_add_instructions(prog, bpf_access_decision,
 					    ARRAY_SIZE(bpf_access_decision));
 	if (ret)
-		return error_log_errno(errno, "Failed to add instructions to bpf cgroup program");
+		return log_error_errno(-1, errno, "Failed to add instructions to bpf cgroup program");
 
 	return 0;
 }
@@ -301,7 +301,7 @@ int bpf_program_finalize(struct bpf_program *prog)
 	};
 
 	if (!prog)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	TRACE("Implementing %s bpf device cgroup program",
 	      prog->device_list_type == LXC_BPF_DEVICE_CGROUP_BLACKLIST
@@ -332,7 +332,7 @@ static int bpf_program_load_kernel(struct bpf_program *prog, char *log_buf,
 
 	prog->kernel_fd = bpf(BPF_PROG_LOAD, &attr, sizeof(attr));
 	if (prog->kernel_fd < 0)
-		return error_log_errno(errno, "Failed to load bpf program");
+		return log_error_errno(-1, errno, "Failed to load bpf program");
 
 	return 0;
 }
@@ -346,17 +346,17 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
 	int ret;
 
 	if (!prog)
-		return minus_one_set_errno(EINVAL);
+		return ret_set_errno(-1, EINVAL);
 
 	if (flags & ~(BPF_F_ALLOW_OVERRIDE, BPF_F_ALLOW_MULTI))
-		return error_log_errno(EINVAL, "Invalid flags for bpf program");
+		return log_error_errno(-1, EINVAL, "Invalid flags for bpf program");
 
 	if (prog->attached_path) {
 		if (prog->attached_type != type)
-			return error_log_errno(EBUSY, "Wrong type for bpf program");
+			return log_error_errno(-1, EBUSY, "Wrong type for bpf program");
 
 		if (prog->attached_flags != flags)
-			return error_log_errno(EBUSY, "Wrong flags for bpf program");
+			return log_error_errno(-1, EBUSY, "Wrong flags for bpf program");
 
 		if (flags != BPF_F_ALLOW_OVERRIDE)
 			return true;
@@ -364,15 +364,15 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
 
 	ret = bpf_program_load_kernel(prog, NULL, 0);
 	if (ret < 0)
-		return error_log_errno(ret, "Failed to load bpf program");
+		return log_error_errno(-1, ret, "Failed to load bpf program");
 
 	copy = strdup(path);
 	if (!copy)
-		return error_log_errno(ENOMEM, "Failed to duplicate cgroup path %s", path);
+		return log_error_errno(-1, ENOMEM, "Failed to duplicate cgroup path %s", path);
 
 	fd = open(path, O_DIRECTORY | O_RDONLY | O_CLOEXEC);
 	if (fd < 0)
-		return error_log_errno(errno, "Failed to open cgroup path %s", path);
+		return log_error_errno(-1, errno, "Failed to open cgroup path %s", path);
 
 	attr = (union bpf_attr){
 	    .attach_type	= type,
@@ -383,7 +383,7 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
 
 	ret = bpf(BPF_PROG_ATTACH, &attr, sizeof(attr));
 	if (ret < 0)
-		return error_log_errno(errno, "Failed to attach bpf program");
+		return log_error_errno(-1, errno, "Failed to attach bpf program");
 
 	free_replace_move_ptr(prog->attached_path, copy);
 	prog->attached_type = type;
@@ -407,7 +407,7 @@ int bpf_program_cgroup_detach(struct bpf_program *prog)
 	fd = open(prog->attached_path, O_DIRECTORY | O_RDONLY | O_CLOEXEC);
 	if (fd < 0) {
 		if (errno != ENOENT)
-			return error_log_errno(errno, "Failed to open attach cgroup %s",
+			return log_error_errno(-1, errno, "Failed to open attach cgroup %s",
 					       prog->attached_path);
 	} else {
 		union bpf_attr attr;
@@ -420,7 +420,7 @@ int bpf_program_cgroup_detach(struct bpf_program *prog)
 
 		ret = bpf(BPF_PROG_DETACH, &attr, sizeof(attr));
 		if (ret < 0)
-			return error_log_errno(errno, "Failed to detach bpf program from cgroup %s",
+			return log_error_errno(-1, errno, "Failed to detach bpf program from cgroup %s",
 					       prog->attached_path);
 	}
 
@@ -488,11 +488,11 @@ int bpf_list_add_device(struct lxc_conf *conf, struct device_item *device)
 
 	list_elem = malloc(sizeof(*list_elem));
 	if (!list_elem)
-		return error_log_errno(ENOMEM, "Failed to allocate new device list");
+		return log_error_errno(-1, ENOMEM, "Failed to allocate new device list");
 
 	new_device = memdup(device, sizeof(struct device_item));
 	if (!new_device)
-		return error_log_errno(ENOMEM, "Failed to allocate new device item");
+		return log_error_errno(-1, ENOMEM, "Failed to allocate new device item");
 
 	lxc_list_add_elem(list_elem, move_ptr(new_device));
 	lxc_list_add_tail(&conf->devices, move_ptr(list_elem));

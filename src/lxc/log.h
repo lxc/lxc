@@ -26,13 +26,6 @@
 #define LXC_LOG_PREFIX_SIZE	32
 #define LXC_LOG_BUFFER_SIZE	4096
 
-/* This attribute is required to silence clang warnings */
-#if defined(__GNUC__)
-#define ATTR_UNUSED __attribute__ ((unused))
-#else
-#define ATTR_UNUSED
-#endif
-
 /* predefined lxc log priorities. */
 enum lxc_loglevel {
 	LXC_LOG_LEVEL_TRACE,
@@ -245,10 +238,10 @@ static inline void __lxc_log(const struct lxc_log_category *category,
  */
 #define lxc_log_priority_define(acategory, LEVEL)				\
 										\
-ATTR_UNUSED __attribute__ ((format (printf, 2, 3)))				\
+__lxc_unused __attribute__ ((format (printf, 2, 3)))				\
 static inline void LXC_##LEVEL(struct lxc_log_locinfo *, const char *, ...);	\
 										\
-ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
+__lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 					   const char* format, ...)		\
 {										\
 	if (lxc_log_priority_is_enabled(acategory, LXC_LOG_LEVEL_##LEVEL)) {	\
@@ -484,19 +477,6 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 	} while (0)
 #endif
 
-#define error_log_errno(__errno__, format, ...)  \
-	({                                       \
-		errno = __errno__;               \
-		SYSERROR(format, ##__VA_ARGS__); \
-		-1;                              \
-	})
-
-#define log_trace(__ret__, format, ...)	      \
-	({                                    \
-		TRACE(format, ##__VA_ARGS__); \
-		__ret__;                      \
-	})
-
 #define log_error_errno(__ret__, __errno__, format, ...) \
 	({						 \
 		errno = __errno__;			 \
@@ -510,11 +490,31 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 		__ret__;		      \
 	})
 
+#define log_trace_errno(__ret__, __errno__, format, ...) \
+	({                                               \
+		errno = __errno__;			 \
+		SYSTRACE(format, ##__VA_ARGS__);         \
+		__ret__;                                 \
+	})
+
+#define log_trace(__ret__, format, ...)	      \
+	({                                    \
+		TRACE(format, ##__VA_ARGS__); \
+		__ret__;                      \
+	})
+
 #define log_warn_errno(__ret__, __errno__, format, ...) \
 	({						\
 		errno = __errno__;			\
 		SYSWARN(format, ##__VA_ARGS__);		\
 		__ret__;				\
+	})
+
+#define log_debug_errno(__ret__, __errno__, format, ...) \
+	({						 \
+		errno = __errno__;		         \
+		SYSDEBUG(format, ##__VA_ARGS__);	 \
+		__ret__;				 \
 	})
 
 #define log_debug(__ret__, format, ...)	      \
@@ -523,10 +523,17 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 		__ret__;		      \
 	})
 
-#define log_debug_errno(__ret__, __errno__, format, ...) \
-	({						 \
-		SYSDEBUG(format, ##__VA_ARGS__);	 \
-		__ret__;				 \
+#define log_info_errno(__ret__, __errno__, format, ...) \
+	({                                              \
+		errno = __errno__;                      \
+		SYSINFO(format, ##__VA_ARGS__);         \
+		__ret__;                                \
+	})
+
+#define log_info(__ret__, format, ...)       \
+	({                                   \
+		INFO(format, ##__VA_ARGS__); \
+		__ret__;                     \
 	})
 
 extern int lxc_log_fd;

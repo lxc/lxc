@@ -45,6 +45,13 @@
 #define __returns_twice __attribute__((returns_twice))
 #endif
 
+/* This attribute is required to silence clang warnings */
+#if defined(__GNUC__)
+#define __lxc_unused __attribute__ ((unused))
+#else
+#define __lxc_unused
+#endif
+
 #define __cgfsng_ops
 
 #endif /* __LXC_COMPILER_H */

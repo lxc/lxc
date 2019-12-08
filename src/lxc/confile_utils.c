@@ -503,7 +503,7 @@ int lxc_veth_mode_to_flag(int *mode, const char *value)
 		return 0;
 	}
 
-	return minus_one_set_errno(EINVAL);
+	return ret_set_errno(-1, EINVAL);
 }
 
 static struct lxc_macvlan_mode {
