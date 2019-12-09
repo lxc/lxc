@@ -44,7 +44,8 @@ int lxc_writeat(int dirfd, const char *filename, const void *buf, size_t count)
 	__do_close_prot_errno int fd = -EBADF;
 	ssize_t ret;
 
-	fd = openat(dirfd, filename, O_WRONLY | O_CLOEXEC);
+	fd = openat(dirfd, filename,
+		    O_WRONLY | O_CLOEXEC | O_NOCTTY | O_NOFOLLOW);
 	if (fd < 0)
 		return -1;
 
@@ -60,7 +61,7 @@ int lxc_write_openat(const char *dir, const char *filename, const void *buf,
 {
 	__do_close_prot_errno int dirfd = -EBADF;
 
-	dirfd = open(dir, O_DIRECTORY | O_RDONLY | O_CLOEXEC);
+	dirfd = open(dir, O_DIRECTORY | O_RDONLY | O_CLOEXEC | O_NOCTTY | O_NOFOLLOW);
 	if (dirfd < 0)
 		return -1;
 
