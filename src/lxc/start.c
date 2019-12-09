@@ -1820,8 +1820,9 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 	}
 
-	if (!cgroup_ops->payload_enter(cgroup_ops, handler))
+	if (!cgroup_ops->payload_enter(cgroup_ops, handler)) {
 		goto out_delete_net;
+	}
 
 	if (!cgroup_ops->payload_delegate_controllers(cgroup_ops)) {
 		ERROR("Failed to delegate controllers to payload cgroup");

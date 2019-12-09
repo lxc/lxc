@@ -7,10 +7,14 @@
 #include <stddef.h>
 #include <sys/types.h>
 
+#include "macro.h"
+
 #define DEFAULT_CGROUP_MOUNTPOINT "/sys/fs/cgroup"
-#define PAYLOAD_CGROUP "lxc.payload"
-#define MONITOR_CGROUP "lxc.monitor"
-#define PIVOT_CGROUP "lxc.pivot"
+#define DEFAULT_PAYLOAD_CGROUP_PREFIX "lxc.payload."
+#define DEFAULT_MONITOR_CGROUP_PREFIX "lxc.monitor."
+#define CGROUP_CREATE_RETRY "-NNNN"
+#define CGROUP_CREATE_RETRY_LEN (STRLITERALLEN(CGROUP_CREATE_RETRY))
+#define CGROUP_PIVOT "lxc.pivot"
 
 struct lxc_handler;
 struct lxc_conf;
@@ -89,9 +93,6 @@ struct cgroup_ops {
 	char *cgroup_pattern;
 	char *container_cgroup;
 	char *monitor_cgroup;
-
-	/* Static memory, do not free.*/
-	const char *monitor_pattern;
 
 	/* @hierarchies
 	 * - A NULL-terminated array of struct hierarchy, one per legacy

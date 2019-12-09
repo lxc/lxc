@@ -382,7 +382,6 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 			   *possmask = NULL;
 	int ret;
 	ssize_t i;
-	char oldv;
 	char *lastslash;
 	ssize_t maxisol = 0, maxoffline = 0, maxposs = 0;
 	bool bret = false, flipped_bit = false;
@@ -392,10 +391,9 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 		ERROR("Failed to detect \"/\" in \"%s\"", path);
 		return bret;
 	}
-	oldv = *lastslash;
 	*lastslash = '\0';
 	fpath = must_make_path(path, "cpuset.cpus", NULL);
-	*lastslash = oldv;
+	*lastslash = '/';
 	posscpus = read_file(fpath);
 	if (!posscpus) {
 		SYSERROR("Failed to read file \"%s\"", fpath);
@@ -516,37 +514,38 @@ copy_parent:
 static bool copy_parent_file(char *path, char *file)
 {
 	__do_free char *parent_path = NULL, *value = NULL;
-	int ret;
-	char oldv;
 	int len = 0;
 	char *lastslash = NULL;
+	int ret;
 
 	lastslash = strrchr(path, '/');
-	if (!lastslash) {
-		ERROR("Failed to detect \"/\" in \"%s\"", path);
-		return false;
-	}
-	oldv = *lastslash;
+	if (!lastslash)
+		return log_error_errno(false, ENOENT,
+				       "Failed to detect \"/\" in \"%s\"", path);
+
 	*lastslash = '\0';
 	parent_path = must_make_path(path, file, NULL);
+	*lastslash = '/';
+
 	len = lxc_read_from_file(parent_path, NULL, 0);
-	if (len <= 0) {
-		SYSERROR("Failed to determine buffer size");
-		return false;
-	}
+	if (len <= 0)
+		return log_error_errno(false, errno,
+				       "Failed to determine buffer size");
 
 	value = must_realloc(NULL, len + 1);
+	value[len] = '\0';
 	ret = lxc_read_from_file(parent_path, value, len);
-	if (ret != len) {
-		SYSERROR("Failed to read from parent file \"%s\"", parent_path);
-		return false;
-	}
+	if (ret != len)
+		return log_error_errno(false, errno,
+				       "Failed to read from parent file \"%s\"",
+				       parent_path);
 
-	*lastslash = oldv;
 	ret = lxc_write_openat(path, file, value, len);
-	if (ret < 0)
-		SYSERROR("Failed to write \"%s\" to file \"%s/%s\"", value, path, file);
-	return ret >= 0;
+	if (ret < 0 && errno != EACCES)
+		return log_error_errno(false,
+				       errno, "Failed to write \"%s\" to file \"%s/%s\"",
+				       value, path, file);
+	return true;
 }
 
 static bool is_unified_hierarchy(const struct hierarchy *h)
@@ -558,9 +557,13 @@ static bool is_unified_hierarchy(const struct hierarchy *h)
  * cgroup.clone_children so that children inherit settings. Since the
  * h->base_path is populated by init or ourselves, we know it is already
  * initialized.
+ *
+ * returns -1 on error, 0 when we didn't created a cgroup, 1 if we created a
+ * cgroup.
  */
-static bool cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
+static int cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 {
+	int fret = -1;
 	__do_free char *cgpath = NULL;
 	__do_close_prot_errno int cgroup_fd = -EBADF;
 	int ret;
@@ -568,10 +571,10 @@ static bool cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 	char *slash;
 
 	if (is_unified_hierarchy(h))
-		return true;
+		return 0;
 
 	if (!string_in_list(h->controllers, "cpuset"))
-		return true;
+		return 0;
 
 	if (*cgname == '/')
 		cgname++;
@@ -583,48 +586,41 @@ static bool cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 	if (slash)
 		*slash = '/';
 
+	fret = 1;
 	ret = mkdir(cgpath, 0755);
 	if (ret < 0) {
-		if (errno != EEXIST) {
-			SYSERROR("Failed to create directory \"%s\"", cgpath);
-			return false;
-		}
+		if (errno != EEXIST)
+			return log_error_errno(-1, errno, "Failed to create directory \"%s\"", cgpath);
+
+		fret = 0;
 	}
 
 	cgroup_fd = lxc_open_dirfd(cgpath);
 	if (cgroup_fd < 0)
-		return false;
+		return -1;
 
 	ret = lxc_readat(cgroup_fd, "cgroup.clone_children", &v, 1);
-	if (ret < 0) {
-		SYSERROR("Failed to read file \"%s/cgroup.clone_children\"", cgpath);
-		return false;
-	}
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to read file \"%s/cgroup.clone_children\"", cgpath);
 
 	/* Make sure any isolated cpus are removed from cpuset.cpus. */
-	if (!cg_legacy_filter_and_set_cpus(cgpath, v == '1')) {
-		SYSERROR("Failed to remove isolated cpus");
-		return false;
-	}
+	if (!cg_legacy_filter_and_set_cpus(cgpath, v == '1'))
+		return log_error_errno(-1, errno, "Failed to remove isolated cpus");
 
 	/* Already set for us by someone else. */
 	if (v == '1')
 		TRACE("\"cgroup.clone_children\" was already set to \"1\"");
 
 	/* copy parent's settings */
-	if (!copy_parent_file(cgpath, "cpuset.mems")) {
-		SYSERROR("Failed to copy \"cpuset.mems\" settings");
-		return false;
-	}
+	if (!copy_parent_file(cgpath, "cpuset.mems"))
+		return log_error_errno(-1, errno, "Failed to copy \"cpuset.mems\" settings");
 
+	/* Set clone_children so children inherit our settings */
 	ret = lxc_writeat(cgroup_fd, "cgroup.clone_children", "1", 1);
-	if (ret < 0) {
-		/* Set clone_children so children inherit our settings */
-		SYSERROR("Failed to write 1 to \"%s/cgroup.clone_children\"", cgpath);
-		return false;
-	}
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to write 1 to \"%s/cgroup.clone_children\"", cgpath);
 
-	return true;
+	return fret;
 }
 
 /* Given two null-terminated lists of strings, return true if any string is in
@@ -1152,10 +1148,9 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
 		__do_free char *pivot_path = NULL;
-		int ret;
-		char *chop;
-		char pivot_cgroup[] = PIVOT_CGROUP;
+		char pivot_cgroup[] = CGROUP_PIVOT;
 		struct hierarchy *h = ops->hierarchies[i];
+		int ret;
 
 		if (!h->monitor_full_path)
 			continue;
@@ -1164,25 +1159,18 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 			pivot_path = must_make_path(h->mountpoint,
 						    h->container_base_path,
 						    conf->cgroup_meta.dir,
-						    PIVOT_CGROUP,
-						    "cgroup.procs", NULL);
+						    CGROUP_PIVOT, NULL);
 		else
 			pivot_path = must_make_path(h->mountpoint,
 						    h->container_base_path,
-						    PIVOT_CGROUP,
-						    "cgroup.procs", NULL);
-
-		chop = strrchr(pivot_path, '/');
-		if (chop)
-			*chop = '\0';
+						    CGROUP_PIVOT, NULL);
 
 		/*
-		 * Make sure not to pass in the ro string literal PIVOT_CGROUP
+		 * Make sure not to pass in the ro string literal CGROUP_PIVOT
 		 * here.
 		 */
-		if (!cg_legacy_handle_cpuset_hierarchy(h, pivot_cgroup))
-			log_warn_errno(continue,
-				       errno, "Failed to handle legacy cpuset controller");
+		if (cg_legacy_handle_cpuset_hierarchy(h, pivot_cgroup) < 0)
+			log_warn_errno(continue, errno, "Failed to handle legacy cpuset controller");
 
 		ret = mkdir_p(pivot_path, 0755);
 		if (ret < 0 && errno != EEXIST)
@@ -1190,13 +1178,11 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 				       "Failed to create cgroup \"%s\"\n",
 				       pivot_path);
 
-		if (chop)
-			*chop = '/';
-
-		/* Move ourselves into the pivot cgroup to delete our own
+		/*
+		 * Move ourselves into the pivot cgroup to delete our own
 		 * cgroup.
 		 */
-		ret = lxc_write_to_file(pivot_path, pidstr, len, false, 0666);
+		ret = lxc_write_openat(pivot_path, "cgroup.procs", pidstr, len);
 		if (ret != 0)
 			log_warn_errno(continue, errno,
 				       "Failed to move monitor %s to \"%s\"\n",
@@ -1241,73 +1227,66 @@ static int mkdir_eexist_on_last(const char *dir, mode_t mode)
 	return 0;
 }
 
-static bool monitor_create_path_for_hierarchy(struct hierarchy *h, char *cgname)
+static bool create_cgroup_tree(struct hierarchy *h, const char *cgroup_tree,
+			       char *cgroup_leaf, bool payload)
 {
-	int ret;
+	__do_free char *path = NULL;
+	int ret, ret_cpuset;
 
-	if (!cg_legacy_handle_cpuset_hierarchy(h, cgname)) {
-		ERROR("Failed to handle legacy cpuset controller");
-		return false;
-	}
+	path = must_make_path(h->mountpoint, h->container_base_path, cgroup_leaf, NULL);
+	if (dir_exists(path))
+		return log_warn_errno(false, errno, "The %s cgroup already existed", path);
 
-	h->monitor_full_path = must_make_path(h->mountpoint, h->container_base_path, cgname, NULL);
-	ret = mkdir_eexist_on_last(h->monitor_full_path, 0755);
+	ret_cpuset = cg_legacy_handle_cpuset_hierarchy(h, cgroup_leaf);
+	if (ret_cpuset < 0)
+		return log_error_errno(false, errno, "Failed to handle legacy cpuset controller");
+
+	ret = mkdir_eexist_on_last(path, 0755);
 	if (ret < 0) {
-		ERROR("Failed to create cgroup \"%s\"", h->monitor_full_path);
-		return false;
+		/*
+		 * This is the cpuset controller and
+		 * cg_legacy_handle_cpuset_hierarchy() has created our target
+		 * directory for us to ensure correct initialization.
+		 */
+		if (ret_cpuset != 1 || cgroup_tree)
+			return log_error_errno(false, errno, "Failed to create %s cgroup", path);
 	}
 
-	return true;
-}
-
-static bool container_create_path_for_hierarchy(struct hierarchy *h, char *cgname)
-{
-	int ret;
-
-	if (!cg_legacy_handle_cpuset_hierarchy(h, cgname)) {
-		ERROR("Failed to handle legacy cpuset controller");
-		return false;
-	}
-
-	h->container_full_path = must_make_path(h->mountpoint, h->container_base_path, cgname, NULL);
-	ret = mkdir_eexist_on_last(h->container_full_path, 0755);
-	if (ret < 0) {
-		ERROR("Failed to create cgroup \"%s\"", h->container_full_path);
-		return false;
-	}
-
-	return true;
-}
-
-static void remove_path_for_hierarchy(struct hierarchy *h, char *cgname, bool monitor)
-{
-	int ret;
-	char *full_path;
-
-	if (monitor)
-		full_path = h->monitor_full_path;
+	if (payload)
+		h->container_full_path = move_ptr(path);
 	else
+		h->monitor_full_path = move_ptr(path);
+
+	return true;
+}
+
+static void cgroup_remove_leaf(struct hierarchy *h, bool payload)
+{
+	__do_free char *full_path = NULL;
+
+	if (payload)
 		full_path = h->container_full_path;
-
-	ret = rmdir(full_path);
-	if (ret < 0)
-		SYSERROR("Failed to rmdir(\"%s\") from failed creation attempt", full_path);
-
-	free(full_path);
-
-	if (monitor)
-		h->monitor_full_path = NULL;
 	else
+		full_path = h->monitor_full_path;
+
+	if (rmdir(full_path))
+		SYSWARN("Failed to rmdir(\"%s\") cgroup", full_path);
+
+	if (payload)
 		h->container_full_path = NULL;
+	else
+		h->monitor_full_path = NULL;
 }
 
 __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 						      struct lxc_handler *handler)
 {
 	__do_free char *monitor_cgroup = NULL;
-	char *offset, *tmp;
-	int i, idx = 0;
+	const char *cgroup_tree;
+	int idx = 0;
+	int i;
 	size_t len;
+	char *suffix;
 	struct lxc_conf *conf;
 
 	if (!ops)
@@ -1323,40 +1302,36 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 		return ret_set_errno(false, EINVAL);
 
 	conf = handler->conf;
+	cgroup_tree = conf->cgroup_meta.dir;
 
-	if (conf->cgroup_meta.dir)
-		tmp = lxc_string_join("/",
-				      (const char *[]){conf->cgroup_meta.dir,
-						       ops->monitor_pattern,
-						       handler->name, NULL},
-				      false);
+	if (cgroup_tree)
+		monitor_cgroup = must_concat(&len, conf->cgroup_meta.dir, "/",
+					     DEFAULT_MONITOR_CGROUP_PREFIX,
+					     handler->name,
+					     CGROUP_CREATE_RETRY, NULL);
 	else
-		tmp = must_make_path(ops->monitor_pattern, handler->name, NULL);
-	if (!tmp)
+		monitor_cgroup = must_concat(&len, DEFAULT_MONITOR_CGROUP_PREFIX,
+					     handler->name,
+					     CGROUP_CREATE_RETRY, NULL);
+	if (!monitor_cgroup)
 		return ret_set_errno(false, ENOMEM);
 
-	len = strlen(tmp) + 5; /* leave room for -NNN\0 */
-	monitor_cgroup = must_realloc(tmp, len);
-	offset = monitor_cgroup + len - 5;
-	*offset = 0;
-
+	suffix = monitor_cgroup + len - CGROUP_CREATE_RETRY_LEN;
+	*suffix = '\0';
 	do {
 		if (idx)
-			sprintf(offset, "-%d", idx);
+			sprintf(suffix, "-%d", idx);
 
 		for (i = 0; ops->hierarchies[i]; i++) {
-			if (!monitor_create_path_for_hierarchy(ops->hierarchies[i],
-							       monitor_cgroup)) {
-				ERROR("Failed to create cgroup \"%s\"",
-				      ops->hierarchies[i]->monitor_full_path);
-				for (int j = 0; j < i; j++)
-					remove_path_for_hierarchy(ops->hierarchies[j],
-								  monitor_cgroup,
-								  true);
+			if (create_cgroup_tree(ops->hierarchies[i], cgroup_tree, monitor_cgroup, false))
+				continue;
 
-				idx++;
-				break;
-			}
+			ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->monitor_full_path ?: "(null)");
+			for (int j = 0; j < i; j++)
+				cgroup_remove_leaf(ops->hierarchies[j], false);
+
+			idx++;
+			break;
 		}
 	} while (ops->hierarchies[i] && idx > 0 && idx < 1000);
 
@@ -1367,17 +1342,19 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 	return log_info(true, "The monitor process uses \"%s\" as cgroup", ops->monitor_cgroup);
 }
 
-/* Try to create the same cgroup in all hierarchies. Start with cgroup_pattern;
+/*
+ * Try to create the same cgroup in all hierarchies. Start with cgroup_pattern;
  * next cgroup_pattern-1, -2, ..., -999.
  */
 __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 						      struct lxc_handler *handler)
 {
-	__do_free char *container_cgroup = NULL, *tmp = NULL;
+	__do_free char *container_cgroup = NULL;
+	const char *cgroup_tree;
 	int idx = 0;
-	int i, ret;
+	int i;
 	size_t len;
-	char *offset;
+	char *suffix;
 	struct lxc_conf *conf;
 
 	if (!ops)
@@ -1393,46 +1370,45 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 		return ret_set_errno(false, EINVAL);
 
 	conf = handler->conf;
+	cgroup_tree = conf->cgroup_meta.dir;
 
-	if (conf->cgroup_meta.dir)
-		tmp = lxc_string_join("/", (const char *[]){conf->cgroup_meta.dir, handler->name, NULL}, false);
+	if (cgroup_tree)
+		container_cgroup = must_concat(&len, cgroup_tree, "/",
+					     DEFAULT_PAYLOAD_CGROUP_PREFIX,
+					     handler->name,
+					     CGROUP_CREATE_RETRY, NULL);
 	else
-		tmp = lxc_string_replace("%n", handler->name, ops->cgroup_pattern);
-	if (!tmp)
-		return log_error_errno(false, ENOMEM,
-				       "Failed expanding cgroup name pattern");
+		container_cgroup = must_concat(&len, DEFAULT_PAYLOAD_CGROUP_PREFIX,
+					     handler->name,
+					     CGROUP_CREATE_RETRY, NULL);
+	if (!container_cgroup)
+		return ret_set_errno(false, ENOMEM);
 
-	len = strlen(tmp) + 5; /* leave room for -NNN\0 */
-	container_cgroup = must_realloc(NULL, len);
-	(void)strlcpy(container_cgroup, tmp, len);
-	offset = container_cgroup + len - 5;
-
+	suffix = container_cgroup + len - CGROUP_CREATE_RETRY_LEN;
+	*suffix = '\0';
 	do {
 		if (idx)
-			sprintf(offset, "-%d", idx);
+			sprintf(suffix, "-%d", idx);
 
 		for (i = 0; ops->hierarchies[i]; i++) {
-			if (!container_create_path_for_hierarchy(ops->hierarchies[i],
-								 container_cgroup)) {
-				ERROR("Failed to create cgroup \"%s\"",
-				      ops->hierarchies[i]->container_full_path);
-				for (int j = 0; j < i; j++)
-					remove_path_for_hierarchy(ops->hierarchies[j],
-								  container_cgroup,
-								  false);
-				idx++;
-				break;
-			}
+			if (create_cgroup_tree(ops->hierarchies[i], cgroup_tree, container_cgroup, true))
+				continue;
+
+			ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->container_full_path ?: "(null)");
+			for (int j = 0; j < i; j++)
+				cgroup_remove_leaf(ops->hierarchies[j], true);
+
+			idx++;
+			break;
 		}
 	} while (ops->hierarchies[i] && idx > 0 && idx < 1000);
 
 	if (idx == 1000)
 		return ret_set_errno(false, ERANGE);
 
-	INFO("The container process uses \"%s\" as cgroup", container_cgroup);
-	ops->container_cgroup = move_ptr(container_cgroup);
-
 	if (ops->unified && ops->unified->container_full_path) {
+		int ret;
+
 		ret = open(ops->unified->container_full_path,
 			   O_DIRECTORY | O_RDONLY | O_CLOEXEC);
 		if (ret < 0)
@@ -1441,6 +1417,8 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 		ops->unified_fd = ret;
 	}
 
+	ops->container_cgroup = move_ptr(container_cgroup);
+	INFO("The container process uses \"%s\" as cgroup", ops->container_cgroup);
 	return true;
 }
 
@@ -3300,7 +3278,6 @@ __cgfsng_ops static int cgfsng_data_init(struct cgroup_ops *ops)
 		return ret_set_errno(-1, ENOMEM);
 	}
 	ops->cgroup_pattern = must_copy_string(cgroup_pattern);
-	ops->monitor_pattern = MONITOR_CGROUP;
 
 	return 0;
 }

@@ -510,7 +510,7 @@ static inline char *apparmor_dir(const char *ctname, const char *lxcpath)
 
 static inline char *apparmor_profile_full(const char *ctname, const char *lxcpath)
 {
-	return shorten_apparmor_name(must_concat("lxc-", ctname, "_<", lxcpath, ">", NULL));
+	return shorten_apparmor_name(must_concat(NULL, "lxc-", ctname, "_<", lxcpath, ">", NULL));
 }
 
 /* Like apparmor_profile_full() but with slashes replaced by hyphens */
@@ -639,7 +639,7 @@ static char *get_apparmor_profile_content(struct lxc_conf *conf, const char *lxc
 
 	profile_name_full = apparmor_profile_full(conf->name, lxcpath);
 
-	profile = must_concat(
+	profile = must_concat(NULL,
 "#include <tunables/global>\n"
 "profile \"", profile_name_full, "\" flags=(attach_disconnected,mediate_deleted) {\n",
 	                      NULL);
@@ -663,7 +663,7 @@ static char *get_apparmor_profile_content(struct lxc_conf *conf, const char *lxc
 		                  STRARRAYLEN(AA_PROFILE_STACKING_BASE));
 
 		namespace = apparmor_namespace(conf->name, lxcpath);
-		temp = must_concat("  change_profile -> \":", namespace, ":*\",\n"
+		temp = must_concat(NULL, "  change_profile -> \":", namespace, ":*\",\n"
 		                   "  change_profile -> \":", namespace, "://*\",\n",
 		                   NULL);
 		free(namespace);
@@ -682,7 +682,7 @@ static char *get_apparmor_profile_content(struct lxc_conf *conf, const char *lxc
 		if (!aa_can_stack || aa_is_stacked) {
 			char *temp;
 
-			temp = must_concat("  change_profile -> \"",
+			temp = must_concat(NULL, "  change_profile -> \"",
 			                   profile_name_full, "\",\n", NULL);
 			must_append_sized(&profile, &size, temp, strlen(temp));
 			free(temp);
