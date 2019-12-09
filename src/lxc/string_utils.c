@@ -730,7 +730,7 @@ int lxc_safe_long_long(const char *numstr, long long int *converted)
 	return 0;
 }
 
-char *must_concat(const char *first, ...)
+char *must_concat(size_t *len, const char *first, ...)
 {
 	va_list args;
 	char *cur, *dest;
@@ -751,6 +751,8 @@ char *must_concat(const char *first, ...)
 	va_end(args);
 
 	dest[cur_len] = '\0';
+	if (len)
+		*len = cur_len;
 	return dest;
 }
 

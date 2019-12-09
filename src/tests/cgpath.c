@@ -46,11 +46,9 @@
 /*
  * test_running_container: test cgroup functions against a running container
  *
- * @group : name of the container group or NULL for default "lxc"
  * @name  : name of the container
  */
-static int test_running_container(const char *lxcpath,
-				  const char *group, const char *name)
+static int test_running_container(const char *lxcpath, const char *name)
 {
 	int ret = -1;
 	struct lxc_container *c = NULL;
@@ -59,7 +57,7 @@ static int test_running_container(const char *lxcpath,
 	char  value[NAME_MAX], value_save[NAME_MAX];
 	struct cgroup_ops *cgroup_ops;
 
-	sprintf(relpath, "%s/%s", group ? group : "lxc.payload", name);
+	sprintf(relpath, DEFAULT_PAYLOAD_CGROUP_PREFIX "%s", name);
 
 	if ((c = lxc_container_new(name, lxcpath)) == NULL) {
 		TSTERR("container %s couldn't instantiate", name);
@@ -128,8 +126,7 @@ err1:
 	return ret;
 }
 
-static int test_container(const char *lxcpath,
-			  const char *group, const char *name,
+static int test_container(const char *lxcpath, const char *name,
 			  const char *template)
 {
 	int ret;
@@ -165,7 +162,7 @@ static int test_container(const char *lxcpath,
 		goto out3;
 	}
 
-	ret = test_running_container(lxcpath, group, name);
+	ret = test_running_container(lxcpath, name);
 
 	c->stop(c);
 out3:
@@ -195,17 +192,17 @@ int main()
 	 * the container ourselves because valgrind gets confused by lxc's
 	 * internal calls to clone.
 	 */
-	if (test_running_container(NULL, NULL, "bb01") < 0)
+	if (test_running_container(NULL, "bb01") < 0)
 		goto out;
 	printf("Running container cgroup tests...Passed\n");
 
 	#else
 
-	if (test_container(NULL, NULL, MYNAME, "busybox") < 0)
+	if (test_container(NULL, MYNAME, "busybox") < 0)
 		goto out;
 	printf("Container creation tests...Passed\n");
 
-	if (test_container("/var/lib/lxctest2", NULL, MYNAME, "busybox") < 0)
+	if (test_container("/var/lib/lxctest2", MYNAME, "busybox") < 0)
 		goto out;
 	printf("Container creation with LXCPATH tests...Passed\n");
 

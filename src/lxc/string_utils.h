@@ -79,7 +79,7 @@ extern int parse_byte_size_string(const char *s, int64_t *converted);
  * Concatenate all passed-in strings into one path. Do not fail. If any piece
  * is not prefixed with '/', add a '/'.
  */
-__attribute__((sentinel)) extern char *must_concat(const char *first, ...);
+__attribute__((sentinel)) extern char *must_concat(size_t *len, const char *first, ...);
 __attribute__((sentinel)) extern char *must_make_path(const char *first, ...);
 __attribute__((sentinel)) extern char *must_append_path(char *first, ...);
 
