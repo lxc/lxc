@@ -553,7 +553,8 @@ static bool is_unified_hierarchy(const struct hierarchy *h)
 	return h->version == CGROUP2_SUPER_MAGIC;
 }
 
-/* Initialize the cpuset hierarchy in first directory of @gname and set
+/*
+ * Initialize the cpuset hierarchy in first directory of @cgroup_leaf and set
  * cgroup.clone_children so that children inherit settings. Since the
  * h->base_path is populated by init or ourselves, we know it is already
  * initialized.
@@ -561,14 +562,16 @@ static bool is_unified_hierarchy(const struct hierarchy *h)
  * returns -1 on error, 0 when we didn't created a cgroup, 1 if we created a
  * cgroup.
  */
-static int cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
+static int cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h,
+					     const char *cgroup_leaf)
 {
 	int fret = -1;
-	__do_free char *cgpath = NULL;
+	__do_free char *parent_or_self = NULL, *dup = NULL;
 	__do_close_prot_errno int cgroup_fd = -EBADF;
+	size_t len;
 	int ret;
 	char v;
-	char *slash;
+	char *leaf, *slash;
 
 	if (is_unified_hierarchy(h))
 		return 0;
@@ -576,35 +579,40 @@ static int cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 	if (!string_in_list(h->controllers, "cpuset"))
 		return 0;
 
-	if (*cgname == '/')
-		cgname++;
-	slash = strchr(cgname, '/');
+	if (!cgroup_leaf)
+		return ret_set_errno(-1, EINVAL);
+
+	dup = strdup(cgroup_leaf);
+	if (!dup)
+		return ret_set_errno(-1, ENOMEM);
+
+	leaf += strspn(leaf, "/");
+	slash = strchr(leaf, '/');
 	if (slash)
 		*slash = '\0';
-
-	cgpath = must_make_path(h->mountpoint, h->container_base_path, cgname, NULL);
+	parent_or_self = must_make_path(h->mountpoint, h->container_base_path, leaf, NULL);
 	if (slash)
 		*slash = '/';
 
 	fret = 1;
-	ret = mkdir(cgpath, 0755);
+	ret = mkdir(parent_or_self, 0755);
 	if (ret < 0) {
 		if (errno != EEXIST)
-			return log_error_errno(-1, errno, "Failed to create directory \"%s\"", cgpath);
+			return log_error_errno(-1, errno, "Failed to create directory \"%s\"", parent_or_self);
 
 		fret = 0;
 	}
 
-	cgroup_fd = lxc_open_dirfd(cgpath);
+	cgroup_fd = lxc_open_dirfd(parent_or_self);
 	if (cgroup_fd < 0)
 		return -1;
 
 	ret = lxc_readat(cgroup_fd, "cgroup.clone_children", &v, 1);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to read file \"%s/cgroup.clone_children\"", cgpath);
+		return log_error_errno(-1, errno, "Failed to read file \"%s/cgroup.clone_children\"", parent_or_self);
 
 	/* Make sure any isolated cpus are removed from cpuset.cpus. */
-	if (!cg_legacy_filter_and_set_cpus(cgpath, v == '1'))
+	if (!cg_legacy_filter_and_set_cpus(parent_or_self, v == '1'))
 		return log_error_errno(-1, errno, "Failed to remove isolated cpus");
 
 	/* Already set for us by someone else. */
@@ -612,13 +620,13 @@ static int cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 		TRACE("\"cgroup.clone_children\" was already set to \"1\"");
 
 	/* copy parent's settings */
-	if (!copy_parent_file(cgpath, "cpuset.mems"))
+	if (!copy_parent_file(parent_or_self, "cpuset.mems"))
 		return log_error_errno(-1, errno, "Failed to copy \"cpuset.mems\" settings");
 
 	/* Set clone_children so children inherit our settings */
 	ret = lxc_writeat(cgroup_fd, "cgroup.clone_children", "1", 1);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to write 1 to \"%s/cgroup.clone_children\"", cgpath);
+		return log_error_errno(-1, errno, "Failed to write 1 to \"%s/cgroup.clone_children\"", parent_or_self);
 
 	return fret;
 }
@@ -1228,7 +1236,7 @@ static int mkdir_eexist_on_last(const char *dir, mode_t mode)
 }
 
 static bool create_cgroup_tree(struct hierarchy *h, const char *cgroup_tree,
-			       char *cgroup_leaf, bool payload)
+			       const char *cgroup_leaf, bool payload)
 {
 	__do_free char *path = NULL;
 	int ret, ret_cpuset;
