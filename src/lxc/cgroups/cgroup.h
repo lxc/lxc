@@ -14,7 +14,6 @@
 #define DEFAULT_MONITOR_CGROUP_PREFIX "lxc.monitor."
 #define CGROUP_CREATE_RETRY "-NNNN"
 #define CGROUP_CREATE_RETRY_LEN (STRLITERALLEN(CGROUP_CREATE_RETRY))
-#define CGROUP_PIVOT "lxc.pivot"
 
 struct lxc_handler;
 struct lxc_conf;
