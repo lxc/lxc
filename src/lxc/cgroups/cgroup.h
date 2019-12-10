@@ -78,7 +78,7 @@ struct hierarchy {
 	int version;
 
 	/* cgroup2 only */
-	int bpf_device_controller:1;
+	unsigned int bpf_device_controller:1;
 };
 
 struct cgroup_ops {
