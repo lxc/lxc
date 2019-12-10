@@ -199,13 +199,6 @@ extern int run_command(char *buf, size_t buf_size, int (*child_fn)(void *),
 extern int run_command_status(char *buf, size_t buf_size, int (*child_fn)(void *),
 		       void *args);
 
-/* Concatenate all passed-in strings into one path. Do not fail. If any piece
- * is not prefixed with '/', add a '/'.
- */
-__attribute__((sentinel)) extern char *must_concat(const char *first, ...);
-__attribute__((sentinel)) extern char *must_make_path(const char *first, ...);
-__attribute__((sentinel)) extern char *must_append_path(char *first, ...);
-
 /* return copy of string @entry;  do not fail. */
 extern char *must_copy_string(const char *entry);
 
