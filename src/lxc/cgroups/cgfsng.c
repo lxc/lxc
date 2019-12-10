@@ -382,7 +382,6 @@ static bool cg_legacy_filter_and_set_cpus(const char *parent_cgroup,
 	ssize_t maxisol = 0, maxoffline = 0, maxposs = 0;
 	bool flipped_bit = false;
 
-	SYSERROR("AAAA: %s | %s", parent_cgroup, child_cgroup);
 	fpath = must_make_path(parent_cgroup, "cpuset.cpus", NULL);
 	posscpus = read_file(fpath);
 	if (!posscpus)
@@ -998,12 +997,10 @@ static void lxc_cgfsng_print_basecg_debuginfo(char *basecginfo, char **klist,
 static int cgroup_rmdir(struct hierarchy **hierarchies,
 			const char *container_cgroup)
 {
-	int i;
-
 	if (!container_cgroup || !hierarchies)
 		return 0;
 
-	for (i = 0; hierarchies[i]; i++) {
+	for (int i = 0; hierarchies[i]; i++) {
 		int ret;
 		struct hierarchy *h = hierarchies[i];
 
@@ -1031,30 +1028,26 @@ struct generic_userns_exec_data {
 
 static int cgroup_rmdir_wrapper(void *data)
 {
-	int ret;
 	struct generic_userns_exec_data *arg = data;
 	uid_t nsuid = (arg->conf->root_nsuid_map != NULL) ? 0 : arg->conf->init_uid;
 	gid_t nsgid = (arg->conf->root_nsgid_map != NULL) ? 0 : arg->conf->init_gid;
+	int ret;
 
 	ret = setresgid(nsgid, nsgid, nsgid);
-	if (ret < 0) {
-		SYSERROR("Failed to setresgid(%d, %d, %d)", (int)nsgid,
-			 (int)nsgid, (int)nsgid);
-		return -1;
-	}
+	if (ret < 0)
+		return log_error_errno(-1, errno,
+				       "Failed to setresgid(%d, %d, %d)",
+				       (int)nsgid, (int)nsgid, (int)nsgid);
 
 	ret = setresuid(nsuid, nsuid, nsuid);
-	if (ret < 0) {
-		SYSERROR("Failed to setresuid(%d, %d, %d)", (int)nsuid,
-			 (int)nsuid, (int)nsuid);
-		return -1;
-	}
+	if (ret < 0)
+		return log_error_errno(-1, errno,
+				       "Failed to setresuid(%d, %d, %d)",
+				       (int)nsuid, (int)nsuid, (int)nsuid);
 
 	ret = setgroups(0, NULL);
-	if (ret < 0 && errno != EPERM) {
-		SYSERROR("Failed to setgroups(0, NULL)");
-		return -1;
-	}
+	if (ret < 0 && errno != EPERM)
+		return log_error_errno(-1, errno, "Failed to setgroups(0, NULL)");
 
 	return cgroup_rmdir(arg->hierarchies, arg->container_cgroup);
 }
@@ -1063,7 +1056,6 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 						struct lxc_handler *handler)
 {
 	int ret;
-	struct generic_userns_exec_data wrap;
 
 	if (!ops)
 		log_error_errno(return, ENOENT, "Called with uninitialized cgroup operations");
@@ -1076,11 +1068,6 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 
 	if (!handler->conf)
 		log_error_errno(return, EINVAL, "Called with uninitialized conf");
-
-	wrap.origuid = 0;
-	wrap.container_cgroup = ops->container_cgroup;
-	wrap.hierarchies = ops->hierarchies;
-	wrap.conf = handler->conf;
 
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
 	ret = bpf_program_cgroup_detach(handler->conf->cgroup2_devices);
@@ -1088,15 +1075,20 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 		WARN("Failed to detach bpf program from cgroup");
 #endif
 
-	if (handler->conf && !lxc_list_empty(&handler->conf->id_map))
+	if (handler->conf && !lxc_list_empty(&handler->conf->id_map)) {
+		struct generic_userns_exec_data wrap = {
+		    .origuid = 0,
+		    .container_cgroup = ops->container_cgroup,
+		    .hierarchies = ops->hierarchies,
+		    .conf = handler->conf,
+		};
 		ret = userns_exec_1(handler->conf, cgroup_rmdir_wrapper, &wrap,
 				    "cgroup_rmdir_wrapper");
-	else
+	} else {
 		ret = cgroup_rmdir(ops->hierarchies, ops->container_cgroup);
-	if (ret < 0) {
-		WARN("Failed to destroy cgroups");
-		return;
 	}
+	if (ret < 0)
+		log_warn_errno(return, errno, "Failed to destroy cgroups");
 }
 
 __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
@@ -1104,7 +1096,6 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 {
 	int len;
 	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
-	struct lxc_conf *conf;
 
 	if (!ops)
 		log_error_errno(return, ENOENT, "Called with uninitialized cgroup operations");
@@ -1115,56 +1106,24 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 	if (!handler)
 		log_error_errno(return, EINVAL, "Called with uninitialized handler");
 
-	if (!handler->conf)
-		log_error_errno(return, EINVAL, "Called with uninitialized conf");
-
-	conf = handler->conf;
-
 	len = snprintf(pidstr, sizeof(pidstr), "%d", handler->monitor_pid);
 	if (len < 0 || (size_t)len >= sizeof(pidstr))
 		return;
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
-		__do_free char *pivot_path = NULL;
-		char pivot_cgroup[] = CGROUP_PIVOT;
+		__do_free char *base_path = NULL;
 		struct hierarchy *h = ops->hierarchies[i];
 		int ret;
 
 		if (!h->monitor_full_path)
 			continue;
 
-		if (conf && conf->cgroup_meta.dir)
-			pivot_path = must_make_path(h->mountpoint,
-						    h->container_base_path,
-						    conf->cgroup_meta.dir,
-						    CGROUP_PIVOT, NULL);
-		else
-			pivot_path = must_make_path(h->mountpoint,
-						    h->container_base_path,
-						    CGROUP_PIVOT, NULL);
-
-		/*
-		 * Make sure not to pass in the ro string literal CGROUP_PIVOT
-		 * here.
-		 */
-		if (cg_legacy_handle_cpuset_hierarchy(h, pivot_cgroup) < 0)
-			log_warn_errno(continue, errno, "Failed to handle legacy cpuset controller");
-
-		ret = mkdir_p(pivot_path, 0755);
-		if (ret < 0 && errno != EEXIST)
-			log_warn_errno(continue, errno,
-				       "Failed to create cgroup \"%s\"\n",
-				       pivot_path);
-
-		/*
-		 * Move ourselves into the pivot cgroup to delete our own
-		 * cgroup.
-		 */
-		ret = lxc_write_openat(pivot_path, "cgroup.procs", pidstr, len);
+		base_path = must_make_path(h->mountpoint, h->container_base_path, NULL);
+		ret = lxc_write_openat(base_path, "cgroup.procs", pidstr, len);
 		if (ret != 0)
 			log_warn_errno(continue, errno,
-				       "Failed to move monitor %s to \"%s\"\n",
-				       pidstr, pivot_path);
+				       "Failed to move monitor %s to \"%s\"",
+				       pidstr, base_path);
 
 		ret = recursive_destroy(h->monitor_full_path);
 		if (ret < 0)

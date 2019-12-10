@@ -1783,21 +1783,19 @@ int fd_cloexec(int fd, bool cloexec)
 	return 0;
 }
 
-int recursive_destroy(char *dirname)
+int recursive_destroy(const char *dirname)
 {
+	__do_closedir DIR *dir = NULL;
+	int fret = 0;
 	int ret;
 	struct dirent *direntp;
-	DIR *dir;
-	int r = 0;
 
 	dir = opendir(dirname);
-	if (!dir) {
-		SYSERROR("Failed to open dir \"%s\"", dirname);
-		return -1;
-	}
+	if (!dir)
+		return log_error_errno(-1, errno, "Failed to open dir \"%s\"", dirname);
 
 	while ((direntp = readdir(dir))) {
-		char *pathname;
+		__do_free char *pathname = NULL;
 		struct stat mystat;
 
 		if (!strcmp(direntp->d_name, ".") ||
@@ -1805,44 +1803,28 @@ int recursive_destroy(char *dirname)
 			continue;
 
 		pathname = must_make_path(dirname, direntp->d_name, NULL);
-
 		ret = lstat(pathname, &mystat);
 		if (ret < 0) {
-			if (!r)
+			if (!fret)
 				SYSWARN("Failed to stat \"%s\"", pathname);
 
-			r = -1;
-			goto next;
+			fret = -1;
+			continue;
 		}
 
 		if (!S_ISDIR(mystat.st_mode))
-			goto next;
+			continue;
 
 		ret = recursive_destroy(pathname);
 		if (ret < 0)
-			r = -1;
-
-	next:
-		free(pathname);
+			fret = -1;
 	}
 
 	ret = rmdir(dirname);
-	if (ret < 0) {
-		if (!r)
-			SYSWARN("Failed to delete \"%s\"", dirname);
+	if (ret < 0)
+		return log_warn_errno(-1, errno, "Failed to delete \"%s\"", dirname);
 
-		r = -1;
-	}
-
-	ret = closedir(dir);
-	if (ret < 0) {
-		if (!r)
-			SYSWARN("Failed to delete \"%s\"", dirname);
-
-		r = -1;
-	}
-
-	return r;
+	return fret;
 }
 
 int lxc_setup_keyring(void)
