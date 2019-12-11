@@ -1226,7 +1226,7 @@ static int lxc_cmd_freeze_callback(int fd, struct lxc_cmd_req *req,
 	};
 	struct cgroup_ops *ops = handler->cgroup_ops;
 
-	if (ops->cgroup_layout == CGROUP_LAYOUT_UNIFIED)
+	if (pure_unified_layout(ops))
 		rsp.ret = ops->freeze(ops, timeout);
 
 	return lxc_cmd_rsp_send(fd, &rsp);
@@ -1259,7 +1259,7 @@ static int lxc_cmd_unfreeze_callback(int fd, struct lxc_cmd_req *req,
 	};
 	struct cgroup_ops *ops = handler->cgroup_ops;
 
-	if (ops->cgroup_layout == CGROUP_LAYOUT_UNIFIED)
+	if (pure_unified_layout(ops))
 		rsp.ret = ops->unfreeze(ops, timeout);
 
 	return lxc_cmd_rsp_send(fd, &rsp);
@@ -1294,11 +1294,11 @@ static int lxc_cmd_get_cgroup2_fd_callback(int fd, struct lxc_cmd_req *req,
 	struct cgroup_ops *ops = handler->cgroup_ops;
 	int ret;
 
-	if (ops->cgroup_layout != CGROUP_LAYOUT_UNIFIED)
+	if (!pure_unified_layout(ops) || !ops->unified)
 		return lxc_cmd_rsp_send(fd, &rsp);
 
 	rsp.ret = 0;
-	ret = lxc_abstract_unix_send_fds(fd, &ops->unified_fd, 1, &rsp,
+	ret = lxc_abstract_unix_send_fds(fd, &ops->unified->cgfd_con, 1, &rsp,
 					 sizeof(rsp));
 	if (ret < 0)
 		return log_error(1, "Failed to send cgroup2 fd");
