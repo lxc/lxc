@@ -67,9 +67,6 @@ void cgroup_exit(struct cgroup_ops *ops)
 	if (ops->cgroup2_devices)
 		bpf_program_free(ops->cgroup2_devices);
 
-	if (ops->unified_fd >= 0)
-		close(ops->unified_fd);
-
 	for (it = ops->hierarchies; it && *it; it++) {
 		char **p;
 
@@ -85,6 +82,10 @@ void cgroup_exit(struct cgroup_ops *ops)
 		free((*it)->container_base_path);
 		free((*it)->container_full_path);
 		free((*it)->monitor_full_path);
+		if ((*it)->cgfd_mon >= 0)
+			close((*it)->cgfd_con);
+		if ((*it)->cgfd_mon >= 0)
+			close((*it)->cgfd_mon);
 		free(*it);
 	}
 	free(ops->hierarchies);

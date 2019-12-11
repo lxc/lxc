@@ -21,7 +21,7 @@
 
 int lxc_open_dirfd(const char *dir)
 {
-	return open(dir, O_DIRECTORY | O_RDONLY | O_CLOEXEC);
+	return open(dir, O_DIRECTORY | O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
 }
 
 int lxc_readat(int dirfd, const char *filename, void *buf, size_t count)

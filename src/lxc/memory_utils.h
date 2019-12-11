@@ -55,4 +55,6 @@ static inline void *memdup(const void *data, size_t len)
 	return copy ? memcpy(copy, data, len) : NULL;
 }
 
+#define zalloc(__size__) (calloc(1, __size__))
+
 #endif /* __LXC_MEMORY_UTILS_H */
