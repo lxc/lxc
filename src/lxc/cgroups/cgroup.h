@@ -14,6 +14,7 @@
 #define DEFAULT_MONITOR_CGROUP_PREFIX "lxc.monitor."
 #define CGROUP_CREATE_RETRY "-NNNN"
 #define CGROUP_CREATE_RETRY_LEN (STRLITERALLEN(CGROUP_CREATE_RETRY))
+#define CGROUP_PIVOT "lxc.pivot"
 
 struct lxc_handler;
 struct lxc_conf;
@@ -78,6 +79,11 @@ struct hierarchy {
 
 	/* cgroup2 only */
 	unsigned int bpf_device_controller:1;
+
+	/* monitor cgroup fd */
+	int cgfd_con;
+	/* container cgroup fd */
+	int cgfd_mon;
 };
 
 struct cgroup_ops {
@@ -101,8 +107,6 @@ struct cgroup_ops {
 	struct hierarchy **hierarchies;
 	/* Pointer to the unified hierarchy. Do not free! */
 	struct hierarchy *unified;
-	/* File descriptor to the container's cgroup. */
-	int unified_fd;
 
 	/*
 	 * @cgroup2_devices
@@ -178,5 +182,10 @@ static inline void __auto_cgroup_exit__(struct cgroup_ops **ops)
 extern int cgroup_attach(const char *name, const char *lxcpath, int64_t pid);
 
 #define __do_cgroup_exit __attribute__((__cleanup__(__auto_cgroup_exit__)))
+
+static inline bool pure_unified_layout(const struct cgroup_ops *ops)
+{
+	return ops->cgroup_layout == CGROUP_LAYOUT_UNIFIED;
+}
 
 #endif

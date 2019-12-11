@@ -155,11 +155,6 @@ static void must_append_controller(char **klist, char **nlist, char ***clist,
 	(*clist)[newentry] = copy;
 }
 
-static inline bool pure_unified_layout(const struct cgroup_ops *ops)
-{
-	return ops->cgroup_layout == CGROUP_LAYOUT_UNIFIED;
-}
-
 /* Given a handler's cgroup data, return the struct hierarchy for the controller
  * @c, or NULL if there is none.
  */
@@ -770,14 +765,13 @@ static struct hierarchy *add_hierarchy(struct hierarchy ***h, char **clist, char
 	struct hierarchy *new;
 	int newentry;
 
-	new = must_realloc(NULL, sizeof(*new));
+	new = zalloc(sizeof(*new));
 	new->controllers = clist;
 	new->mountpoint = mountpoint;
 	new->container_base_path = container_base_path;
-	new->container_full_path = NULL;
-	new->monitor_full_path = NULL;
 	new->version = type;
-	new->cgroup2_chown = NULL;
+	new->cgfd_con = -EBADF;
+	new->cgfd_mon = -EBADF;
 
 	newentry = append_null_to_list((void ***)h);
 	(*h)[newentry] = new;
@@ -1096,6 +1090,7 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 {
 	int len;
 	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
+	const struct lxc_conf *conf;
 
 	if (!ops)
 		log_error_errno(return, ENOENT, "Called with uninitialized cgroup operations");
@@ -1106,25 +1101,44 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 	if (!handler)
 		log_error_errno(return, EINVAL, "Called with uninitialized handler");
 
+	if (!handler->conf)
+		log_error_errno(return, EINVAL, "Called with uninitialized conf");
+	conf = handler->conf;
+
 	len = snprintf(pidstr, sizeof(pidstr), "%d", handler->monitor_pid);
 	if (len < 0 || (size_t)len >= sizeof(pidstr))
 		return;
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
-		__do_free char *base_path = NULL;
+		__do_free char *pivot_path = NULL;
 		struct hierarchy *h = ops->hierarchies[i];
 		int ret;
 
 		if (!h->monitor_full_path)
 			continue;
 
-		base_path = must_make_path(h->mountpoint, h->container_base_path, NULL);
-		ret = lxc_write_openat(base_path, "cgroup.procs", pidstr, len);
+		if (conf && conf->cgroup_meta.dir)
+			pivot_path = must_make_path(h->mountpoint,
+						    h->container_base_path,
+						    conf->cgroup_meta.dir,
+						    CGROUP_PIVOT, NULL);
+		else
+			pivot_path = must_make_path(h->mountpoint,
+						    h->container_base_path,
+						    CGROUP_PIVOT, NULL);
+
+		ret = mkdir_p(pivot_path, 0755);
+		if (ret < 0 && errno != EEXIST)
+			log_error_errno(goto try_recursive_destroy, errno,
+					"Failed to create %s", pivot_path);
+
+		ret = lxc_write_openat(pivot_path, "cgroup.procs", pidstr, len);
 		if (ret != 0)
 			log_warn_errno(continue, errno,
 				       "Failed to move monitor %s to \"%s\"",
-				       pidstr, base_path);
+				       pidstr, pivot_path);
 
+try_recursive_destroy:
 		ret = recursive_destroy(h->monitor_full_path);
 		if (ret < 0)
 			WARN("Failed to destroy \"%s\"", h->monitor_full_path);
@@ -1189,10 +1203,17 @@ static bool create_cgroup_tree(struct hierarchy *h, const char *cgroup_tree,
 			return log_error_errno(false, errno, "Failed to create %s cgroup", path);
 	}
 
-	if (payload)
+	if (payload) {
+		h->cgfd_con = lxc_open_dirfd(path);
+		if (h->cgfd_con < 0)
+			return log_error_errno(false, errno, "Failed to open %s", path);
 		h->container_full_path = move_ptr(path);
-	else
+	} else {
+		h->cgfd_mon = lxc_open_dirfd(path);
+		if (h->cgfd_mon < 0)
+			return log_error_errno(false, errno, "Failed to open %s", path);
 		h->monitor_full_path = move_ptr(path);
+	}
 
 	return true;
 }
@@ -1201,10 +1222,15 @@ static void cgroup_remove_leaf(struct hierarchy *h, bool payload)
 {
 	__do_free char *full_path = NULL;
 
-	if (payload)
+	if (payload) {
+		__lxc_unused __do_close_prot_errno int fd = move_fd(h->cgfd_con);
+		h->cgfd_con = -EBADF;
 		full_path = h->container_full_path;
-	else
+	} else {
+		__lxc_unused __do_close_prot_errno int fd = move_fd(h->cgfd_mon);
+		h->cgfd_mon = -EBADF;
 		full_path = h->monitor_full_path;
+	}
 
 	if (rmdir(full_path))
 		SYSWARN("Failed to rmdir(\"%s\") cgroup", full_path);
@@ -1343,17 +1369,6 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 	if (idx == 1000)
 		return ret_set_errno(false, ERANGE);
 
-	if (ops->unified && ops->unified->container_full_path) {
-		int ret;
-
-		ret = open(ops->unified->container_full_path,
-			   O_DIRECTORY | O_RDONLY | O_CLOEXEC);
-		if (ret < 0)
-			return log_error_errno(false,
-					       errno, "Failed to open file descriptor for unified hierarchy");
-		ops->unified_fd = ret;
-	}
-
 	ops->container_cgroup = move_ptr(container_cgroup);
 	INFO("The container process uses \"%s\" as cgroup", ops->container_cgroup);
 	return true;
@@ -1380,25 +1395,31 @@ __cgfsng_ops static bool cgfsng_monitor_enter(struct cgroup_ops *ops,
 
 	monitor_len = snprintf(monitor, sizeof(monitor), "%d", handler->monitor_pid);
 	if (handler->transient_pid > 0)
-		transient_len = snprintf(transient, sizeof(transient), "%d",
-					 handler->transient_pid);
+		transient_len = snprintf(transient, sizeof(transient), "%d", handler->transient_pid);
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
-		__do_free char *path = NULL;
+		struct hierarchy *h = ops->hierarchies[i];
 		int ret;
 
-		path = must_make_path(ops->hierarchies[i]->monitor_full_path,
-				      "cgroup.procs", NULL);
-		ret = lxc_writeat(-1, path, monitor, monitor_len);
-		if (ret != 0)
-			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", path);
+		ret = lxc_writeat(h->cgfd_mon, "cgroup.procs", monitor, monitor_len);
+		if (ret)
+			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", h->monitor_full_path);
 
                 if (handler->transient_pid < 0)
 			return true;
 
-		ret = lxc_writeat(-1, path, transient, transient_len);
-		if (ret != 0)
-			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", path);
+		ret = lxc_writeat(h->cgfd_mon, "cgroup.procs", transient, transient_len);
+		if (ret)
+			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", h->monitor_full_path);
+
+		/*
+		 * We don't keep the fds for non-unified hierarchies around
+		 * mainly because we don't make use of them anymore after the
+		 * core cgroup setup is done but also because they're quite a
+		 * lot of them.
+		 */
+		if (!is_unified_hierarchy(h))
+			close_prot_errno_disarm(h->cgfd_mon);
 	}
 	handler->transient_pid = -1;
 
@@ -1426,35 +1447,43 @@ __cgfsng_ops static bool cgfsng_payload_enter(struct cgroup_ops *ops,
 	len = snprintf(pidstr, sizeof(pidstr), "%d", handler->pid);
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
-		__do_free char *path = NULL;
+		struct hierarchy *h = ops->hierarchies[i];
 		int ret;
 
-		path = must_make_path(ops->hierarchies[i]->container_full_path,
-				      "cgroup.procs", NULL);
-		ret = lxc_writeat(-1, path, pidstr, len);
+		ret = lxc_writeat(h->cgfd_con, "cgroup.procs", pidstr, len);
 		if (ret != 0)
-			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", path);
+			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", h->container_full_path);
+
+		/*
+		 * We don't keep the fds for non-unified hierarchies around
+		 * mainly because we don't make use of them anymore after the
+		 * core cgroup setup is done but also because they're quite a
+		 * lot of them.
+		 */
+		if (!is_unified_hierarchy(h))
+			close_prot_errno_disarm(h->cgfd_con);
 	}
 
 	return true;
 }
 
-static int chowmod(char *path, uid_t chown_uid, gid_t chown_gid,
-		   mode_t chmod_mode)
+static int fchowmodat(int dirfd, const char *path, uid_t chown_uid,
+		      gid_t chown_gid, mode_t chmod_mode)
 {
 	int ret;
 
-	ret = chown(path, chown_uid, chown_gid);
-	if (ret < 0) {
-		SYSWARN("Failed to chown(%s, %d, %d)", path, (int)chown_uid, (int)chown_gid);
-		return -1;
-	}
+	ret = fchownat(dirfd, path, chown_uid, chown_gid,
+		       AT_EMPTY_PATH | AT_SYMLINK_NOFOLLOW);
+	if (ret < 0)
+		return log_warn_errno(-1,
+				      errno, "Failed to fchownat(%d, %s, %d, %d, AT_EMPTY_PATH | AT_SYMLINK_NOFOLLOW )",
+				      dirfd, path, (int)chown_uid,
+				      (int)chown_gid);
 
-	ret = chmod(path, chmod_mode);
-	if (ret < 0) {
-		SYSWARN("Failed to chmod(%s, %d)", path, (int)chmod_mode);
-		return -1;
-	}
+	ret = fchmodat(dirfd, (*path != '\0') ? path : ".", chmod_mode, 0);
+	if (ret < 0)
+		return log_warn_errno(-1, errno, "Failed to fchmodat(%d, %s, %d, AT_SYMLINK_NOFOLLOW)",
+				      dirfd, path, (int)chmod_mode);
 
 	return 0;
 }
@@ -1495,46 +1524,28 @@ static int chown_cgroup_wrapper(void *data)
 		destuid = 0;
 
 	for (int i = 0; arg->hierarchies[i]; i++) {
-		__do_free char *fullpath = NULL;
-		char *path = arg->hierarchies[i]->container_full_path;
+		int dirfd = arg->hierarchies[i]->cgfd_con;
 
-		ret = chowmod(path, destuid, nsgid, 0775);
-		if (ret < 0)
-			log_info_errno(continue,
-				       errno, "Failed to change %s to uid %d and gid %d and mode 0755",
-				       path, destuid, nsgid);
+		(void)fchowmodat(dirfd, "", destuid, nsgid, 0775);
 
-		/* Failures to chown() these are inconvenient but not
+		/*
+		 * Failures to chown() these are inconvenient but not
 		 * detrimental We leave these owned by the container launcher,
 		 * so that container root can write to the files to attach.  We
 		 * chmod() them 664 so that container systemd can write to the
 		 * files (which systemd in wily insists on doing).
 		 */
 
-		if (arg->hierarchies[i]->version == CGROUP_SUPER_MAGIC) {
-			fullpath = must_make_path(path, "tasks", NULL);
-			ret = chowmod(fullpath, destuid, nsgid, 0664);
-			if (ret < 0)
-				SYSINFO("Failed to change %s to uid %d and gid %d and mode 0664",
-					fullpath, destuid, nsgid);
-		}
+		if (arg->hierarchies[i]->version == CGROUP_SUPER_MAGIC)
+			(void)fchowmodat(dirfd, "tasks", destuid, nsgid, 0664);
 
-		fullpath = must_make_path(path, "cgroup.procs", NULL);
-		ret = chowmod(fullpath, destuid, nsgid, 0664);
-		if (ret < 0)
-			SYSINFO("Failed to change %s to uid %d and gid %d and mode 0664",
-				fullpath, destuid, nsgid);
+		(void)fchowmodat(dirfd, "cgroup.procs", destuid, nsgid, 0664);
 
 		if (arg->hierarchies[i]->version != CGROUP2_SUPER_MAGIC)
 			continue;
 
-		for (char **p = arg->hierarchies[i]->cgroup2_chown; p && *p; p++) {
-			fullpath = must_make_path(path, *p, NULL);
-			ret = chowmod(fullpath, destuid, nsgid, 0664);
-			if (ret < 0)
-				SYSINFO("Failed to change %s to uid %d and gid %d and mode 0664",
-					fullpath, destuid, nsgid);
-		}
+		for (char **p = arg->hierarchies[i]->cgroup2_chown; p && *p; p++)
+			(void)fchowmodat(dirfd, *p, destuid, nsgid, 0664);
 	}
 
 	return 0;
@@ -3232,8 +3243,6 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 
 	if (cg_init(cgfsng_ops, conf))
 		return NULL;
-
-	cgfsng_ops->unified_fd = -EBADF;
 
 	cgfsng_ops->data_init = cgfsng_data_init;
 	cgfsng_ops->payload_destroy = cgfsng_payload_destroy;
