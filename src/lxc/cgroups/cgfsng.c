@@ -271,12 +271,12 @@ static uint32_t *lxc_cpumask(char *buf, size_t nbits)
 {
 	char *token;
 	size_t arrlen;
-	uint32_t *bitarr;
+	__do_free uint32_t *bitarr = NULL;
 
 	arrlen = BITS_TO_LONGS(nbits);
 	bitarr = calloc(arrlen, sizeof(uint32_t));
 	if (!bitarr)
-		return NULL;
+		return ret_set_errno(NULL, ENOMEM);
 
 	lxc_iterate_parts(token, buf, ",") {
 		errno = 0;
@@ -289,21 +289,17 @@ static uint32_t *lxc_cpumask(char *buf, size_t nbits)
 		if (range)
 			end = strtoul(range + 1, NULL, 0);
 
-		if (!(start <= end)) {
-			free(bitarr);
-			return NULL;
-		}
+		if (!(start <= end))
+			return ret_set_errno(NULL, EINVAL);
 
-		if (end >= nbits) {
-			free(bitarr);
-			return NULL;
-		}
+		if (end >= nbits)
+			return ret_set_errno(NULL, EINVAL);
 
 		while (start <= end)
 			set_bit(start++, bitarr);
 	}
 
-	return bitarr;
+	return move_ptr(bitarr);
 }
 
 /* Turn cpumask into simple, comma-separated cpulist. */
@@ -328,12 +324,12 @@ static char *lxc_cpumask_to_cpulist(uint32_t *bitarr, size_t nbits)
 		ret = lxc_append_string(&cpulist, numstr);
 		if (ret < 0) {
 			lxc_free_array((void **)cpulist, free);
-			return NULL;
+			return ret_set_errno(NULL, ENOMEM);
 		}
 	}
 
 	if (!cpulist)
-		return NULL;
+		return ret_set_errno(NULL, ENOMEM);
 
 	tmp = lxc_string_join(",", (const char **)cpulist, false);
 	lxc_free_array((void **)cpulist, free);
@@ -374,7 +370,8 @@ static ssize_t get_max_cpus(char *cpulist)
 
 #define __ISOL_CPUS "/sys/devices/system/cpu/isolated"
 #define __OFFLINE_CPUS "/sys/devices/system/cpu/offline"
-static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
+static bool cg_legacy_filter_and_set_cpus(const char *parent_cgroup,
+					  char *child_cgroup, bool am_initialized)
 {
 	__do_free char *cpulist = NULL, *fpath = NULL, *isolcpus = NULL,
 		       *offlinecpus = NULL, *posscpus = NULL;
@@ -382,23 +379,13 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 			   *possmask = NULL;
 	int ret;
 	ssize_t i;
-	char *lastslash;
 	ssize_t maxisol = 0, maxoffline = 0, maxposs = 0;
-	bool bret = false, flipped_bit = false;
+	bool flipped_bit = false;
 
-	lastslash = strrchr(path, '/');
-	if (!lastslash) {
-		ERROR("Failed to detect \"/\" in \"%s\"", path);
-		return bret;
-	}
-	*lastslash = '\0';
-	fpath = must_make_path(path, "cpuset.cpus", NULL);
-	*lastslash = '/';
+	fpath = must_make_path(parent_cgroup, "cpuset.cpus", NULL);
 	posscpus = read_file(fpath);
-	if (!posscpus) {
-		SYSERROR("Failed to read file \"%s\"", fpath);
-		return false;
-	}
+	if (!posscpus)
+		return log_error_errno(false, errno, "Failed to read file \"%s\"", fpath);
 
 	/* Get maximum number of cpus found in possible cpuset. */
 	maxposs = get_max_cpus(posscpus);
@@ -407,10 +394,8 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 
 	if (file_exists(__ISOL_CPUS)) {
 		isolcpus = read_file(__ISOL_CPUS);
-		if (!isolcpus) {
-			SYSERROR("Failed to read file \"%s\"", __ISOL_CPUS);
-			return false;
-		}
+		if (!isolcpus)
+			return log_error_errno(false, errno, "Failed to read file \"%s\"", __ISOL_CPUS);
 
 		if (isdigit(isolcpus[0])) {
 			/* Get maximum number of cpus found in isolated cpuset. */
@@ -428,10 +413,8 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 
 	if (file_exists(__OFFLINE_CPUS)) {
 		offlinecpus = read_file(__OFFLINE_CPUS);
-		if (!offlinecpus) {
-			SYSERROR("Failed to read file \"%s\"", __OFFLINE_CPUS);
-			return false;
-		}
+		if (!offlinecpus)
+			return log_error_errno(false, errno, "Failed to read file \"%s\"", __OFFLINE_CPUS);
 
 		if (isdigit(offlinecpus[0])) {
 			/* Get maximum number of cpus found in offline cpuset. */
@@ -453,25 +436,19 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 	}
 
 	possmask = lxc_cpumask(posscpus, maxposs);
-	if (!possmask) {
-		ERROR("Failed to create cpumask for possible cpus");
-		return false;
-	}
+	if (!possmask)
+		return log_error_errno(false, errno, "Failed to create cpumask for possible cpus");
 
 	if (maxisol > 0) {
 		isolmask = lxc_cpumask(isolcpus, maxposs);
-		if (!isolmask) {
-			ERROR("Failed to create cpumask for isolated cpus");
-			return false;
-		}
+		if (!isolmask)
+			return log_error_errno(false, errno, "Failed to create cpumask for isolated cpus");
 	}
 
 	if (maxoffline > 0) {
 		offlinemask = lxc_cpumask(offlinecpus, maxposs);
-		if (!offlinemask) {
-			ERROR("Failed to create cpumask for offline cpus");
-			return false;
-		}
+		if (!offlinemask)
+			return log_error_errno(false, errno, "Failed to create cpumask for offline cpus");
 	}
 
 	for (i = 0; i <= maxposs; i++) {
@@ -491,18 +468,16 @@ static bool cg_legacy_filter_and_set_cpus(char *path, bool am_initialized)
 		cpulist = move_ptr(posscpus);
 		TRACE("Removed isolated or offline cpus from cpuset");
 	}
-	if (!cpulist) {
-		ERROR("Failed to create cpu list");
-		return false;
-	}
+	if (!cpulist)
+		return log_error_errno(false, errno, "Failed to create cpu list");
 
 copy_parent:
 	if (!am_initialized) {
-		ret = lxc_write_openat(path, "cpuset.cpus", cpulist, strlen(cpulist));
+		ret = lxc_write_openat(child_cgroup, "cpuset.cpus", cpulist, strlen(cpulist));
 		if (ret < 0)
 			return log_error_errno(false,
 					       errno, "Failed to write cpu list to \"%s/cpuset.cpus\"",
-					       path);
+					       child_cgroup);
 
 		TRACE("Copied cpu settings of parent cgroup");
 	}
@@ -511,40 +486,32 @@ copy_parent:
 }
 
 /* Copy contents of parent(@path)/@file to @path/@file */
-static bool copy_parent_file(char *path, char *file)
+static bool copy_parent_file(const char *parent_cgroup,
+			     const char *child_cgroup, const char *file)
 {
-	__do_free char *parent_path = NULL, *value = NULL;
+	__do_free char *parent_file = NULL, *value = NULL;
 	int len = 0;
-	char *lastslash = NULL;
 	int ret;
 
-	lastslash = strrchr(path, '/');
-	if (!lastslash)
-		return log_error_errno(false, ENOENT,
-				       "Failed to detect \"/\" in \"%s\"", path);
-
-	*lastslash = '\0';
-	parent_path = must_make_path(path, file, NULL);
-	*lastslash = '/';
-
-	len = lxc_read_from_file(parent_path, NULL, 0);
+	parent_file = must_make_path(parent_cgroup, file, NULL);
+	len = lxc_read_from_file(parent_file, NULL, 0);
 	if (len <= 0)
 		return log_error_errno(false, errno,
 				       "Failed to determine buffer size");
 
 	value = must_realloc(NULL, len + 1);
 	value[len] = '\0';
-	ret = lxc_read_from_file(parent_path, value, len);
+	ret = lxc_read_from_file(parent_file, value, len);
 	if (ret != len)
 		return log_error_errno(false, errno,
 				       "Failed to read from parent file \"%s\"",
-				       parent_path);
+				       parent_file);
 
-	ret = lxc_write_openat(path, file, value, len);
+	ret = lxc_write_openat(child_cgroup, file, value, len);
 	if (ret < 0 && errno != EACCES)
 		return log_error_errno(false,
 				       errno, "Failed to write \"%s\" to file \"%s/%s\"",
-				       value, path, file);
+				       value, child_cgroup, file);
 	return true;
 }
 
@@ -553,7 +520,8 @@ static bool is_unified_hierarchy(const struct hierarchy *h)
 	return h->version == CGROUP2_SUPER_MAGIC;
 }
 
-/* Initialize the cpuset hierarchy in first directory of @gname and set
+/*
+ * Initialize the cpuset hierarchy in first directory of @cgroup_leaf and set
  * cgroup.clone_children so that children inherit settings. Since the
  * h->base_path is populated by init or ourselves, we know it is already
  * initialized.
@@ -561,14 +529,15 @@ static bool is_unified_hierarchy(const struct hierarchy *h)
  * returns -1 on error, 0 when we didn't created a cgroup, 1 if we created a
  * cgroup.
  */
-static int cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
+static int cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h,
+					     const char *cgroup_leaf)
 {
-	int fret = -1;
-	__do_free char *cgpath = NULL;
+	__do_free char *parent_cgroup = NULL, *child_cgroup = NULL, *dup = NULL;
 	__do_close_prot_errno int cgroup_fd = -EBADF;
+	int fret = -1;
 	int ret;
 	char v;
-	char *slash;
+	char *leaf, *slash;
 
 	if (is_unified_hierarchy(h))
 		return 0;
@@ -576,35 +545,43 @@ static int cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 	if (!string_in_list(h->controllers, "cpuset"))
 		return 0;
 
-	if (*cgname == '/')
-		cgname++;
-	slash = strchr(cgname, '/');
+	if (!cgroup_leaf)
+		return ret_set_errno(-1, EINVAL);
+
+	dup = strdup(cgroup_leaf);
+	if (!dup)
+		return ret_set_errno(-1, ENOMEM);
+
+	parent_cgroup = must_make_path(h->mountpoint, h->container_base_path, NULL);
+
+	leaf = dup;
+	leaf += strspn(leaf, "/");
+	slash = strchr(leaf, '/');
 	if (slash)
 		*slash = '\0';
-
-	cgpath = must_make_path(h->mountpoint, h->container_base_path, cgname, NULL);
+	child_cgroup = must_make_path(parent_cgroup, leaf, NULL);
 	if (slash)
 		*slash = '/';
 
 	fret = 1;
-	ret = mkdir(cgpath, 0755);
+	ret = mkdir(child_cgroup, 0755);
 	if (ret < 0) {
 		if (errno != EEXIST)
-			return log_error_errno(-1, errno, "Failed to create directory \"%s\"", cgpath);
+			return log_error_errno(-1, errno, "Failed to create directory \"%s\"", child_cgroup);
 
 		fret = 0;
 	}
 
-	cgroup_fd = lxc_open_dirfd(cgpath);
+	cgroup_fd = lxc_open_dirfd(child_cgroup);
 	if (cgroup_fd < 0)
 		return -1;
 
 	ret = lxc_readat(cgroup_fd, "cgroup.clone_children", &v, 1);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to read file \"%s/cgroup.clone_children\"", cgpath);
+		return log_error_errno(-1, errno, "Failed to read file \"%s/cgroup.clone_children\"", child_cgroup);
 
 	/* Make sure any isolated cpus are removed from cpuset.cpus. */
-	if (!cg_legacy_filter_and_set_cpus(cgpath, v == '1'))
+	if (!cg_legacy_filter_and_set_cpus(parent_cgroup, child_cgroup, v == '1'))
 		return log_error_errno(-1, errno, "Failed to remove isolated cpus");
 
 	/* Already set for us by someone else. */
@@ -612,13 +589,13 @@ static int cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h, char *cgname)
 		TRACE("\"cgroup.clone_children\" was already set to \"1\"");
 
 	/* copy parent's settings */
-	if (!copy_parent_file(cgpath, "cpuset.mems"))
+	if (!copy_parent_file(parent_cgroup, child_cgroup, "cpuset.mems"))
 		return log_error_errno(-1, errno, "Failed to copy \"cpuset.mems\" settings");
 
 	/* Set clone_children so children inherit our settings */
 	ret = lxc_writeat(cgroup_fd, "cgroup.clone_children", "1", 1);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to write 1 to \"%s/cgroup.clone_children\"", cgpath);
+		return log_error_errno(-1, errno, "Failed to write 1 to \"%s/cgroup.clone_children\"", child_cgroup);
 
 	return fret;
 }
@@ -1020,12 +997,10 @@ static void lxc_cgfsng_print_basecg_debuginfo(char *basecginfo, char **klist,
 static int cgroup_rmdir(struct hierarchy **hierarchies,
 			const char *container_cgroup)
 {
-	int i;
-
 	if (!container_cgroup || !hierarchies)
 		return 0;
 
-	for (i = 0; hierarchies[i]; i++) {
+	for (int i = 0; hierarchies[i]; i++) {
 		int ret;
 		struct hierarchy *h = hierarchies[i];
 
@@ -1053,30 +1028,26 @@ struct generic_userns_exec_data {
 
 static int cgroup_rmdir_wrapper(void *data)
 {
-	int ret;
 	struct generic_userns_exec_data *arg = data;
 	uid_t nsuid = (arg->conf->root_nsuid_map != NULL) ? 0 : arg->conf->init_uid;
 	gid_t nsgid = (arg->conf->root_nsgid_map != NULL) ? 0 : arg->conf->init_gid;
+	int ret;
 
 	ret = setresgid(nsgid, nsgid, nsgid);
-	if (ret < 0) {
-		SYSERROR("Failed to setresgid(%d, %d, %d)", (int)nsgid,
-			 (int)nsgid, (int)nsgid);
-		return -1;
-	}
+	if (ret < 0)
+		return log_error_errno(-1, errno,
+				       "Failed to setresgid(%d, %d, %d)",
+				       (int)nsgid, (int)nsgid, (int)nsgid);
 
 	ret = setresuid(nsuid, nsuid, nsuid);
-	if (ret < 0) {
-		SYSERROR("Failed to setresuid(%d, %d, %d)", (int)nsuid,
-			 (int)nsuid, (int)nsuid);
-		return -1;
-	}
+	if (ret < 0)
+		return log_error_errno(-1, errno,
+				       "Failed to setresuid(%d, %d, %d)",
+				       (int)nsuid, (int)nsuid, (int)nsuid);
 
 	ret = setgroups(0, NULL);
-	if (ret < 0 && errno != EPERM) {
-		SYSERROR("Failed to setgroups(0, NULL)");
-		return -1;
-	}
+	if (ret < 0 && errno != EPERM)
+		return log_error_errno(-1, errno, "Failed to setgroups(0, NULL)");
 
 	return cgroup_rmdir(arg->hierarchies, arg->container_cgroup);
 }
@@ -1085,7 +1056,6 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 						struct lxc_handler *handler)
 {
 	int ret;
-	struct generic_userns_exec_data wrap;
 
 	if (!ops)
 		log_error_errno(return, ENOENT, "Called with uninitialized cgroup operations");
@@ -1098,11 +1068,6 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 
 	if (!handler->conf)
 		log_error_errno(return, EINVAL, "Called with uninitialized conf");
-
-	wrap.origuid = 0;
-	wrap.container_cgroup = ops->container_cgroup;
-	wrap.hierarchies = ops->hierarchies;
-	wrap.conf = handler->conf;
 
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
 	ret = bpf_program_cgroup_detach(handler->conf->cgroup2_devices);
@@ -1110,15 +1075,20 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 		WARN("Failed to detach bpf program from cgroup");
 #endif
 
-	if (handler->conf && !lxc_list_empty(&handler->conf->id_map))
+	if (handler->conf && !lxc_list_empty(&handler->conf->id_map)) {
+		struct generic_userns_exec_data wrap = {
+		    .origuid = 0,
+		    .container_cgroup = ops->container_cgroup,
+		    .hierarchies = ops->hierarchies,
+		    .conf = handler->conf,
+		};
 		ret = userns_exec_1(handler->conf, cgroup_rmdir_wrapper, &wrap,
 				    "cgroup_rmdir_wrapper");
-	else
+	} else {
 		ret = cgroup_rmdir(ops->hierarchies, ops->container_cgroup);
-	if (ret < 0) {
-		WARN("Failed to destroy cgroups");
-		return;
 	}
+	if (ret < 0)
+		log_warn_errno(return, errno, "Failed to destroy cgroups");
 }
 
 __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
@@ -1126,7 +1096,6 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 {
 	int len;
 	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
-	struct lxc_conf *conf;
 
 	if (!ops)
 		log_error_errno(return, ENOENT, "Called with uninitialized cgroup operations");
@@ -1137,56 +1106,24 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 	if (!handler)
 		log_error_errno(return, EINVAL, "Called with uninitialized handler");
 
-	if (!handler->conf)
-		log_error_errno(return, EINVAL, "Called with uninitialized conf");
-
-	conf = handler->conf;
-
 	len = snprintf(pidstr, sizeof(pidstr), "%d", handler->monitor_pid);
 	if (len < 0 || (size_t)len >= sizeof(pidstr))
 		return;
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
-		__do_free char *pivot_path = NULL;
-		char pivot_cgroup[] = CGROUP_PIVOT;
+		__do_free char *base_path = NULL;
 		struct hierarchy *h = ops->hierarchies[i];
 		int ret;
 
 		if (!h->monitor_full_path)
 			continue;
 
-		if (conf && conf->cgroup_meta.dir)
-			pivot_path = must_make_path(h->mountpoint,
-						    h->container_base_path,
-						    conf->cgroup_meta.dir,
-						    CGROUP_PIVOT, NULL);
-		else
-			pivot_path = must_make_path(h->mountpoint,
-						    h->container_base_path,
-						    CGROUP_PIVOT, NULL);
-
-		/*
-		 * Make sure not to pass in the ro string literal CGROUP_PIVOT
-		 * here.
-		 */
-		if (cg_legacy_handle_cpuset_hierarchy(h, pivot_cgroup) < 0)
-			log_warn_errno(continue, errno, "Failed to handle legacy cpuset controller");
-
-		ret = mkdir_p(pivot_path, 0755);
-		if (ret < 0 && errno != EEXIST)
-			log_warn_errno(continue, errno,
-				       "Failed to create cgroup \"%s\"\n",
-				       pivot_path);
-
-		/*
-		 * Move ourselves into the pivot cgroup to delete our own
-		 * cgroup.
-		 */
-		ret = lxc_write_openat(pivot_path, "cgroup.procs", pidstr, len);
+		base_path = must_make_path(h->mountpoint, h->container_base_path, NULL);
+		ret = lxc_write_openat(base_path, "cgroup.procs", pidstr, len);
 		if (ret != 0)
 			log_warn_errno(continue, errno,
-				       "Failed to move monitor %s to \"%s\"\n",
-				       pidstr, pivot_path);
+				       "Failed to move monitor %s to \"%s\"",
+				       pidstr, base_path);
 
 		ret = recursive_destroy(h->monitor_full_path);
 		if (ret < 0)
@@ -1228,7 +1165,7 @@ static int mkdir_eexist_on_last(const char *dir, mode_t mode)
 }
 
 static bool create_cgroup_tree(struct hierarchy *h, const char *cgroup_tree,
-			       char *cgroup_leaf, bool payload)
+			       const char *cgroup_leaf, bool payload)
 {
 	__do_free char *path = NULL;
 	int ret, ret_cpuset;

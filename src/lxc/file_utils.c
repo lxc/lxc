@@ -13,6 +13,7 @@
 
 #include "config.h"
 #include "file_utils.h"
+#include "log.h"
 #include "macro.h"
 #include "memory_utils.h"
 #include "string_utils.h"
