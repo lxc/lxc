@@ -1413,9 +1413,9 @@ __cgfsng_ops static bool cgfsng_monitor_enter(struct cgroup_ops *ops,
 			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", h->monitor_full_path);
 
 		/*
-		 * We don't keep the fds for non-unified hierarchies around
+		 * we don't keep the fds for non-unified hierarchies around
 		 * mainly because we don't make use of them anymore after the
-		 * core cgroup setup is done but also because they're quite a
+		 * core cgroup setup is done but also because there are quite a
 		 * lot of them.
 		 */
 		if (!is_unified_hierarchy(h))
@@ -1453,15 +1453,6 @@ __cgfsng_ops static bool cgfsng_payload_enter(struct cgroup_ops *ops,
 		ret = lxc_writeat(h->cgfd_con, "cgroup.procs", pidstr, len);
 		if (ret != 0)
 			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", h->container_full_path);
-
-		/*
-		 * We don't keep the fds for non-unified hierarchies around
-		 * mainly because we don't make use of them anymore after the
-		 * core cgroup setup is done but also because they're quite a
-		 * lot of them.
-		 */
-		if (!is_unified_hierarchy(h))
-			close_prot_errno_disarm(h->cgfd_con);
 	}
 
 	return true;
@@ -1580,6 +1571,27 @@ __cgfsng_ops static bool cgfsng_chown(struct cgroup_ops *ops,
 		return log_error_errno(false, errno, "Error requesting cgroup chown in new user namespace");
 
 	return true;
+}
+
+__cgfsng_ops void cgfsng_payload_finalize(struct cgroup_ops *ops)
+{
+	if (!ops)
+		return;
+
+	if (!ops->hierarchies)
+		return;
+
+	for (int i = 0; ops->hierarchies[i]; i++) {
+		struct hierarchy *h = ops->hierarchies[i];
+		/*
+		 * we don't keep the fds for non-unified hierarchies around
+		 * mainly because we don't make use of them anymore after the
+		 * core cgroup setup is done but also because there are quite a
+		 * lot of them.
+		 */
+		if (!is_unified_hierarchy(h))
+			close_prot_errno_disarm(h->cgfd_con);
+	}
 }
 
 /* cgroup-full:* is done, no need to create subdirs */
@@ -3253,6 +3265,7 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 	cgfsng_ops->payload_delegate_controllers = cgfsng_payload_delegate_controllers;
 	cgfsng_ops->payload_create = cgfsng_payload_create;
 	cgfsng_ops->payload_enter = cgfsng_payload_enter;
+	cgfsng_ops->payload_finalize = cgfsng_payload_finalize;
 	cgfsng_ops->escape = cgfsng_escape;
 	cgfsng_ops->num_hierarchies = cgfsng_num_hierarchies;
 	cgfsng_ops->get_hierarchies = cgfsng_get_hierarchies;
