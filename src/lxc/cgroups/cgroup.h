@@ -166,6 +166,7 @@ struct cgroup_ops {
 				 struct lxc_handler *handler);
 	bool (*monitor_delegate_controllers)(struct cgroup_ops *ops);
 	bool (*payload_delegate_controllers)(struct cgroup_ops *ops);
+	void (*payload_finalize)(struct cgroup_ops *ops);
 };
 
 extern struct cgroup_ops *cgroup_init(struct lxc_conf *conf);

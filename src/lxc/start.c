@@ -1916,6 +1916,9 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
+	cgroup_ops->payload_finalize(cgroup_ops);
+	TRACE("Finished setting up cgroups");
+
 	/* Run any host-side start hooks */
 	ret = run_lxc_hooks(name, "start-host", conf, NULL);
 	if (ret < 0) {
