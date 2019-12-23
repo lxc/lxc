@@ -438,6 +438,12 @@ AC_ARG_ENABLE([asan],
 	[enable_asan=$enableval], [enable_asan=no])
 AM_CONDITIONAL([ENABLE_ASAN], [test "x$enable_asan" = "xyes"])
 
+# Build with UBSAN commands
+AC_ARG_ENABLE([ubsan],
+	[AS_HELP_STRING([--enable-ubsan], [build with ubsan sanitizer enabled [default=no]])],
+	[enable_asan=$enableval], [enable_ubsan=no])
+AM_CONDITIONAL([ENABLE_UBSAN], [test "x$enable_ubsan" = "xyes"])
+
 # Optional test binaries
 AC_ARG_ENABLE([tests],
 	[AS_HELP_STRING([--enable-tests], [build test/example binaries [default=no]])],
