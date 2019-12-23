@@ -240,6 +240,7 @@ endif
 liblxc_la_CFLAGS = -fPIC \
 		   -DPIC \
 		   $(AM_CFLAGS) \
+		   $(LIBLXC_SANITIZER) \
 		   -pthread
 if ENABLE_ASAN
 liblxc_la_CFLAGS += -fsanitize=address \
