@@ -1,6 +1,5 @@
-# SPDX-License-Identifier: LGPL-2.1+
-
 #!/bin/sh
+# SPDX-License-Identifier: LGPL-2.1+
 
 # Allow environment variables to override config
 : ${CONFIG:=/proc/config.gz}
