@@ -83,12 +83,6 @@ struct lxc_handler {
 	/* The child's pidfd. */
 	int pidfd;
 
-	/*
-	 * File descriptor for the /proc/<pid> directory of the container's
-	 * init process.
-	 */
-	int proc_pidfd;
-
 	/* The grandfather's pid when double-forking. */
 	pid_t transient_pid;
 
