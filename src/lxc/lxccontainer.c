@@ -1387,7 +1387,7 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 				 * rsync the contents into
 				 * <container-path>/<container-name>/rootfs.
 				 * However, the overlay mount function will
-				 * mount will mount
+				 * mount
 				 * <container-path>/<container-name>/delta0
 				 * over
 				 * <container-path>/<container-name>/rootfs
