@@ -65,6 +65,7 @@ int lxc_mainloop_add_handler(struct lxc_epoll_descr *descr, int fd,
 	struct epoll_event ev;
 	struct mainloop_handler *handler;
 	struct lxc_list *item;
+
 	if (fd < 0)
 		return -1;
 
