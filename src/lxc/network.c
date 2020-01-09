@@ -2520,9 +2520,10 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 		     netdev->link);
 
 clear_ifindices:
-		/* We need to clear any ifindices we recorded so liblxc won't
-		 * have cached stale data which would cause it to fail on reboot
-		 * we're we don't re-read the on-disk config file.
+		/*
+		 * We need to clear any ifindices we recorded so liblxc won't
+		 * have cached stale data which would cause it to fail on
+		 * reboot where we don't re-read the on-disk config file.
 		 */
 		netdev->ifindex = 0;
 		if (netdev->type == LXC_NET_PHYS) {
