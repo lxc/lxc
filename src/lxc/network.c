@@ -2653,6 +2653,12 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 		if (!netdev->ifindex)
 			continue;
 
+		/*
+		 * If the network device has been moved back from the
+		 * containers network namespace, update the ifindex.
+		 */
+		netdev->ifindex = if_nametoindex(netdev->name);
+
 		if (netdev->type == LXC_NET_PHYS) {
 			ret = lxc_netdev_rename_by_index(netdev->ifindex, netdev->link);
 			if (ret < 0)
@@ -2683,26 +2689,6 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 		ret = netdev_deconf[netdev->type](handler, netdev);
 		if (ret < 0)
 			WARN("Failed to deconfigure network device");
-
-		/* Recent kernels remove the virtual interfaces when the network
-		 * namespace is destroyed but in case we did not move the
-		 * interface to the network namespace, we have to destroy it.
-		 */
-		ret = lxc_netdev_delete_by_index(netdev->ifindex);
-		if (ret < 0) {
-			if (errno != ENODEV) {
-				WARN("Failed to remove interface \"%s\" with index %d",
-				     netdev->name[0] != '\0' ? netdev->name : "(null)",
-				     netdev->ifindex);
-				goto clear_ifindices;
-			}
-			INFO("Interface \"%s\" with index %d already deleted or existing in different network namespace",
-			     netdev->name[0] != '\0' ? netdev->name : "(null)",
-			     netdev->ifindex);
-		}
-		INFO("Removed interface \"%s\" with index %d",
-		     netdev->name[0] != '\0' ? netdev->name : "(null)",
-		     netdev->ifindex);
 
 		if (netdev->type != LXC_NET_VETH)
 			goto clear_ifindices;
