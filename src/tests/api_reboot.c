@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
 		 */
 		sleep(5);
 
-		if (!c->reboot2(c, -1)) {
+		if (!c->reboot2(c, 60)) {
 			lxc_error("%s\n", "Failed to reboot container \"reboot\"");
 			goto on_error_stop;
 		}
