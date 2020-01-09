@@ -271,10 +271,10 @@ static int lxc_is_ip_forwarding_enabled(const char *ifname, int family)
 
 static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
-	int bridge_index, err;
+	int err;
+	unsigned int mtu;
 	char *veth1, *veth2;
 	char veth1buf[IFNAMSIZ], veth2buf[IFNAMSIZ];
-	unsigned int mtu = 0;
 
 	if (netdev->priv.veth_attr.pair[0] != '\0') {
 		veth1 = netdev->priv.veth_attr.pair;
@@ -299,13 +299,25 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 
 	veth2 = lxc_mkifname(veth2buf);
 	if (!veth2)
-		goto out_delete;
+		return -1;
 
-	err = lxc_veth_create(veth1, veth2);
+	if (netdev->mtu && lxc_safe_uint(netdev->mtu, &mtu)) {
+		return log_error_errno(-1, errno, "Failed to parse mtu");
+	} else if (netdev->link[0] != '\0') {
+		int ifindex_mtu;
+
+		ifindex_mtu = if_nametoindex(netdev->link);
+		if (ifindex_mtu) {
+			mtu = netdev_get_mtu(ifindex_mtu);
+			INFO("Retrieved mtu %d from %s", mtu, netdev->link);
+		}
+	}
+
+	err = lxc_veth_create(veth1, veth2, handler->pid, mtu);
 	if (err) {
 		errno = -err;
 		SYSERROR("Failed to create veth pair \"%s\" and \"%s\"", veth1, veth2);
-		goto out_delete;
+		return -1;
 	}
 
 	strlcpy(netdev->created_name, veth2, IFNAMSIZ);
@@ -327,42 +339,11 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		goto out_delete;
 	}
 
-	/* Note that we're retrieving the container's ifindex in the host's
-	 * network namespace because we need it to move the device from the
-	 * host's network namespace to the container's network namespace later
-	 * on.
-	 */
-	netdev->ifindex = if_nametoindex(veth2);
-	if (!netdev->ifindex) {
-		ERROR("Failed to retrieve ifindex for \"%s\"", veth2);
-		goto out_delete;
-	}
-
-	if (netdev->mtu) {
-		if (lxc_safe_uint(netdev->mtu, &mtu) < 0)
-			WARN("Failed to parse mtu");
-		else
-			INFO("Retrieved mtu %d", mtu);
-	} else if (netdev->link[0] != '\0') {
-		bridge_index = if_nametoindex(netdev->link);
-		if (bridge_index) {
-			mtu = netdev_get_mtu(bridge_index);
-			INFO("Retrieved mtu %d from %s", mtu, netdev->link);
-		} else {
-			mtu = netdev_get_mtu(netdev->ifindex);
-			INFO("Retrieved mtu %d from %s", mtu, veth2);
-		}
-	}
-
 	if (mtu) {
 		err = lxc_netdev_set_mtu(veth1, mtu);
-		if (!err)
-			err = lxc_netdev_set_mtu(veth2, mtu);
-
 		if (err) {
 			errno = -err;
-			SYSERROR("Failed to set mtu \"%d\" for veth pair \"%s\" "
-			         "and \"%s\"", mtu, veth1, veth2);
+			SYSERROR("Failed to set mtu \"%d\" for veth pair \"%s\" ", mtu, veth1);
 			goto out_delete;
 		}
 	}
@@ -484,14 +465,12 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 			goto out_delete;
 	}
 
-	DEBUG("Instantiated veth \"%s/%s\", index is \"%d\"", veth1, veth2,
-	      netdev->ifindex);
+	DEBUG("Instantiated veth tunnel \"%s <--> %s\"", veth1, veth2);
 
 	return 0;
 
 out_delete:
-	if (netdev->ifindex != 0)
-		lxc_netdev_delete_by_name(veth1);
+	lxc_netdev_delete_by_name(veth1);
 	return -1;
 }
 
@@ -499,7 +478,6 @@ static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 {
 	char peer[IFNAMSIZ];
 	int err;
-	unsigned int mtu = 0;
 
 	if (netdev->link[0] == '\0') {
 		ERROR("No link for macvlan network device specified");
@@ -531,6 +509,8 @@ static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 	}
 
 	if (netdev->mtu) {
+		unsigned int mtu;
+
 		err = lxc_safe_uint(netdev->mtu, &mtu);
 		if (err < 0) {
 			errno = -err;
@@ -661,7 +641,6 @@ static int instantiate_ipvlan(struct lxc_handler *handler, struct lxc_netdev *ne
 {
 	char peer[IFNAMSIZ];
 	int err;
-	unsigned int mtu = 0;
 
 	if (netdev->link[0] == '\0') {
 		ERROR("No link for ipvlan network device specified");
@@ -692,19 +671,19 @@ static int instantiate_ipvlan(struct lxc_handler *handler, struct lxc_netdev *ne
 	}
 
 	if (netdev->mtu) {
+		unsigned int mtu;
+
 		err = lxc_safe_uint(netdev->mtu, &mtu);
 		if (err < 0) {
 			errno = -err;
-			SYSERROR("Failed to parse mtu \"%s\" for interface \"%s\"",
-				 netdev->mtu, peer);
+			SYSERROR("Failed to parse mtu \"%s\" for interface \"%s\"", netdev->mtu, peer);
 			goto on_error;
 		}
 
 		err = lxc_netdev_set_mtu(peer, mtu);
 		if (err < 0) {
 			errno = -err;
-			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"",
-				 netdev->mtu, peer);
+			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"", netdev->mtu, peer);
 			goto on_error;
 		}
 	}
@@ -737,7 +716,6 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 	char peer[IFNAMSIZ];
 	int err;
 	static uint16_t vlan_cntr = 0;
-	unsigned int mtu = 0;
 
 	if (netdev->link[0] == '\0') {
 		ERROR("No link for vlan network device specified");
@@ -766,19 +744,19 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 	}
 
 	if (netdev->mtu) {
+		unsigned int mtu;
+
 		err = lxc_safe_uint(netdev->mtu, &mtu);
 		if (err < 0) {
 			errno = -err;
-			SYSERROR("Failed to parse mtu \"%s\" for interface \"%s\"",
-				 netdev->mtu, peer);
+			SYSERROR("Failed to parse mtu \"%s\" for interface \"%s\"", netdev->mtu, peer);
 			goto on_error;
 		}
 
 		err = lxc_netdev_set_mtu(peer, mtu);
-		if (err) {
+		if (err < 0) {
 			errno = -err;
-			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"",
-				 netdev->mtu, peer);
+			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"", netdev->mtu, peer);
 			goto on_error;
 		}
 	}
@@ -810,7 +788,6 @@ on_error:
 static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	int err, mtu_orig = 0;
-	unsigned int mtu = 0;
 
 	if (netdev->link[0] == '\0') {
 		ERROR("No link for physical interface specified");
@@ -852,6 +829,8 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 	netdev->priv.phys_attr.mtu = mtu_orig;
 
 	if (netdev->mtu) {
+		unsigned int mtu;
+
 		err = lxc_safe_uint(netdev->mtu, &mtu);
 		if (err < 0) {
 			errno = -err;
@@ -863,8 +842,7 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 		err = lxc_netdev_set_mtu(netdev->link, mtu);
 		if (err < 0) {
 			errno = -err;
-			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"",
-				 netdev->mtu, netdev->link);
+			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"", netdev->mtu, netdev->link);
 			return -1;
 		}
 	}
@@ -1642,7 +1620,7 @@ out:
 
 int lxc_netdev_set_mtu(const char *name, int mtu)
 {
-	int err, index, len;
+	int err, len;
 	struct ifinfomsg *ifi;
 	struct nl_handler nlh;
 	struct nlmsg *answer = NULL, *nlmsg = NULL;
@@ -1665,11 +1643,6 @@ int lxc_netdev_set_mtu(const char *name, int mtu)
 	if (!answer)
 		goto out;
 
-	err = -EINVAL;
-	index = if_nametoindex(name);
-	if (!index)
-		goto out;
-
 	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
 
@@ -1679,7 +1652,9 @@ int lxc_netdev_set_mtu(const char *name, int mtu)
 		goto out;
 	}
 	ifi->ifi_family = AF_UNSPEC;
-	ifi->ifi_index = index;
+
+	if (nla_put_string(nlmsg, IFLA_IFNAME, name))
+		goto out;
 
 	if (nla_put_u32(nlmsg, IFLA_MTU, mtu))
 		goto out;
@@ -1702,7 +1677,7 @@ int lxc_netdev_down(const char *name)
 	return netdev_set_flag(name, 0);
 }
 
-int lxc_veth_create(const char *name1, const char *name2)
+int lxc_veth_create(const char *name1, const char *name2, pid_t pid, unsigned int mtu)
 {
 	int err, len;
 	struct ifinfomsg *ifi;
@@ -1764,6 +1739,12 @@ int lxc_veth_create(const char *name1, const char *name2)
 	}
 
 	if (nla_put_string(nlmsg, IFLA_IFNAME, name2))
+		goto out;
+
+	if (mtu > 0 && nla_put_u32(nlmsg, IFLA_MTU, mtu))
+		goto out;
+
+	if (pid > 0 && nla_put_u32(nlmsg, IFLA_NET_NS_PID, pid))
 		goto out;
 
 	nla_end_nested(nlmsg, nest3);
@@ -3926,6 +3907,7 @@ int lxc_network_recv_from_parent(struct lxc_handler *handler)
 		ret = lxc_recv_nointr(data_sock, netdev->created_name, IFNAMSIZ, 0);
 		if (ret < 0)
 			return -1;
+
 		TRACE("Received network device name \"%s\" from parent", netdev->created_name);
 	}
 
