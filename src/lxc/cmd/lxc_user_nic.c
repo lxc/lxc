@@ -487,11 +487,11 @@ static char *find_line(char *buf_start, char *buf_end, char *name,
 	return NULL;
 }
 
-static int instantiate_veth(char *veth1, char *veth2)
+static int instantiate_veth(char *veth1, char *veth2, pid_t pid, unsigned int mtu)
 {
 	int ret;
 
-	ret = lxc_veth_create(veth1, veth2);
+	ret = lxc_veth_create(veth1, veth2, pid, mtu);
 	if (ret < 0) {
 		errno = -ret;
 		CMD_SYSERROR("Failed to create %s-%s\n", veth1, veth2);
@@ -524,8 +524,9 @@ static int get_mtu(char *name)
 
 static int create_nic(char *nic, char *br, int pid, char **cnic)
 {
+	unsigned int mtu = 1500;
+	int ret;
 	char veth1buf[IFNAMSIZ], veth2buf[IFNAMSIZ];
-	int mtu, ret;
 
 	ret = snprintf(veth1buf, IFNAMSIZ, "%s", nic);
 	if (ret < 0 || ret >= IFNAMSIZ) {
@@ -539,28 +540,24 @@ static int create_nic(char *nic, char *br, int pid, char **cnic)
 		return -1;
 	}
 
+	if (strcmp(br, "none"))
+		mtu = get_mtu(br);
+	if (!mtu)
+		mtu = 1500;
+
 	/* create the nics */
-	ret = instantiate_veth(veth1buf, veth2buf);
+	ret = instantiate_veth(veth1buf, veth2buf, pid, mtu);
 	if (ret < 0) {
 		usernic_error("%s", "Error creating veth tunnel\n");
 		return -1;
 	}
 
 	if (strcmp(br, "none")) {
-		/* copy the bridge's mtu to both ends */
-		mtu = get_mtu(br);
 		if (mtu > 0) {
 			ret = lxc_netdev_set_mtu(veth1buf, mtu);
 			if (ret < 0) {
 				usernic_error("Failed to set mtu to %d on %s\n",
 					      mtu, veth1buf);
-				goto out_del;
-			}
-
-			ret = lxc_netdev_set_mtu(veth2buf, mtu);
-			if (ret < 0) {
-				usernic_error("Failed to set mtu to %d on %s\n",
-					      mtu, veth2buf);
 				goto out_del;
 			}
 		}
@@ -571,14 +568,6 @@ static int create_nic(char *nic, char *br, int pid, char **cnic)
 			usernic_error("Error attaching %s to %s\n", veth1buf, br);
 			goto out_del;
 		}
-	}
-
-	/* pass veth2 to target netns */
-	ret = lxc_netdev_move_by_name(veth2buf, pid, NULL);
-	if (ret < 0) {
-		usernic_error("Error moving %s to network namespace of %d\n",
-			      veth2buf, pid);
-		goto out_del;
 	}
 
 	*cnic = strdup(veth2buf);

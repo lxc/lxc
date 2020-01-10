@@ -47,6 +47,7 @@
 lxc_log_define(network, lxc);
 
 typedef int (*instantiate_cb)(struct lxc_handler *, struct lxc_netdev *);
+typedef int (*instantiate_ns_cb)(struct lxc_netdev *);
 static const char loop_device[] = "lo";
 
 static int lxc_ip_route_dest(__u16 nlmsg_type, int family, int ifindex, void *dest, unsigned int netmask)
@@ -271,10 +272,10 @@ static int lxc_is_ip_forwarding_enabled(const char *ifname, int family)
 
 static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
-	int bridge_index, err;
+	int err;
+	unsigned int mtu;
 	char *veth1, *veth2;
 	char veth1buf[IFNAMSIZ], veth2buf[IFNAMSIZ];
-	unsigned int mtu = 0;
 
 	if (netdev->priv.veth_attr.pair[0] != '\0') {
 		veth1 = netdev->priv.veth_attr.pair;
@@ -299,13 +300,25 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 
 	veth2 = lxc_mkifname(veth2buf);
 	if (!veth2)
-		goto out_delete;
+		return -1;
 
-	err = lxc_veth_create(veth1, veth2);
+	if (netdev->mtu && lxc_safe_uint(netdev->mtu, &mtu)) {
+		return log_error_errno(-1, errno, "Failed to parse mtu");
+	} else if (netdev->link[0] != '\0') {
+		int ifindex_mtu;
+
+		ifindex_mtu = if_nametoindex(netdev->link);
+		if (ifindex_mtu) {
+			mtu = netdev_get_mtu(ifindex_mtu);
+			INFO("Retrieved mtu %d from %s", mtu, netdev->link);
+		}
+	}
+
+	err = lxc_veth_create(veth1, veth2, handler->pid, mtu);
 	if (err) {
 		errno = -err;
 		SYSERROR("Failed to create veth pair \"%s\" and \"%s\"", veth1, veth2);
-		goto out_delete;
+		return -1;
 	}
 
 	strlcpy(netdev->created_name, veth2, IFNAMSIZ);
@@ -327,42 +340,11 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		goto out_delete;
 	}
 
-	/* Note that we're retrieving the container's ifindex in the host's
-	 * network namespace because we need it to move the device from the
-	 * host's network namespace to the container's network namespace later
-	 * on.
-	 */
-	netdev->ifindex = if_nametoindex(veth2);
-	if (!netdev->ifindex) {
-		ERROR("Failed to retrieve ifindex for \"%s\"", veth2);
-		goto out_delete;
-	}
-
-	if (netdev->mtu) {
-		if (lxc_safe_uint(netdev->mtu, &mtu) < 0)
-			WARN("Failed to parse mtu");
-		else
-			INFO("Retrieved mtu %d", mtu);
-	} else if (netdev->link[0] != '\0') {
-		bridge_index = if_nametoindex(netdev->link);
-		if (bridge_index) {
-			mtu = netdev_get_mtu(bridge_index);
-			INFO("Retrieved mtu %d from %s", mtu, netdev->link);
-		} else {
-			mtu = netdev_get_mtu(netdev->ifindex);
-			INFO("Retrieved mtu %d from %s", mtu, veth2);
-		}
-	}
-
 	if (mtu) {
 		err = lxc_netdev_set_mtu(veth1, mtu);
-		if (!err)
-			err = lxc_netdev_set_mtu(veth2, mtu);
-
 		if (err) {
 			errno = -err;
-			SYSERROR("Failed to set mtu \"%d\" for veth pair \"%s\" "
-			         "and \"%s\"", mtu, veth1, veth2);
+			SYSERROR("Failed to set mtu \"%d\" for veth pair \"%s\" ", mtu, veth1);
 			goto out_delete;
 		}
 	}
@@ -484,14 +466,12 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 			goto out_delete;
 	}
 
-	DEBUG("Instantiated veth \"%s/%s\", index is \"%d\"", veth1, veth2,
-	      netdev->ifindex);
+	DEBUG("Instantiated veth tunnel \"%s <--> %s\"", veth1, veth2);
 
 	return 0;
 
 out_delete:
-	if (netdev->ifindex != 0)
-		lxc_netdev_delete_by_name(veth1);
+	lxc_netdev_delete_by_name(veth1);
 	return -1;
 }
 
@@ -499,7 +479,6 @@ static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 {
 	char peer[IFNAMSIZ];
 	int err;
-	unsigned int mtu = 0;
 
 	if (netdev->link[0] == '\0') {
 		ERROR("No link for macvlan network device specified");
@@ -523,6 +502,8 @@ static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 	}
 
 	strlcpy(netdev->created_name, peer, IFNAMSIZ);
+	if (netdev->name[0] == '\0')
+		(void)strlcpy(netdev->name, peer, IFNAMSIZ);
 
 	netdev->ifindex = if_nametoindex(peer);
 	if (!netdev->ifindex) {
@@ -531,6 +512,8 @@ static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 	}
 
 	if (netdev->mtu) {
+		unsigned int mtu;
+
 		err = lxc_safe_uint(netdev->mtu, &mtu);
 		if (err < 0) {
 			errno = -err;
@@ -661,7 +644,6 @@ static int instantiate_ipvlan(struct lxc_handler *handler, struct lxc_netdev *ne
 {
 	char peer[IFNAMSIZ];
 	int err;
-	unsigned int mtu = 0;
 
 	if (netdev->link[0] == '\0') {
 		ERROR("No link for ipvlan network device specified");
@@ -684,6 +666,8 @@ static int instantiate_ipvlan(struct lxc_handler *handler, struct lxc_netdev *ne
 	}
 
 	strlcpy(netdev->created_name, peer, IFNAMSIZ);
+	if (netdev->name[0] == '\0')
+		(void)strlcpy(netdev->name, peer, IFNAMSIZ);
 
 	netdev->ifindex = if_nametoindex(peer);
 	if (!netdev->ifindex) {
@@ -692,19 +676,19 @@ static int instantiate_ipvlan(struct lxc_handler *handler, struct lxc_netdev *ne
 	}
 
 	if (netdev->mtu) {
+		unsigned int mtu;
+
 		err = lxc_safe_uint(netdev->mtu, &mtu);
 		if (err < 0) {
 			errno = -err;
-			SYSERROR("Failed to parse mtu \"%s\" for interface \"%s\"",
-				 netdev->mtu, peer);
+			SYSERROR("Failed to parse mtu \"%s\" for interface \"%s\"", netdev->mtu, peer);
 			goto on_error;
 		}
 
 		err = lxc_netdev_set_mtu(peer, mtu);
 		if (err < 0) {
 			errno = -err;
-			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"",
-				 netdev->mtu, peer);
+			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"", netdev->mtu, peer);
 			goto on_error;
 		}
 	}
@@ -737,7 +721,6 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 	char peer[IFNAMSIZ];
 	int err;
 	static uint16_t vlan_cntr = 0;
-	unsigned int mtu = 0;
 
 	if (netdev->link[0] == '\0') {
 		ERROR("No link for vlan network device specified");
@@ -758,6 +741,8 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 	}
 
 	strlcpy(netdev->created_name, peer, IFNAMSIZ);
+	if (netdev->name[0] == '\0')
+		(void)strlcpy(netdev->name, peer, IFNAMSIZ);
 
 	netdev->ifindex = if_nametoindex(peer);
 	if (!netdev->ifindex) {
@@ -766,19 +751,19 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 	}
 
 	if (netdev->mtu) {
+		unsigned int mtu;
+
 		err = lxc_safe_uint(netdev->mtu, &mtu);
 		if (err < 0) {
 			errno = -err;
-			SYSERROR("Failed to parse mtu \"%s\" for interface \"%s\"",
-				 netdev->mtu, peer);
+			SYSERROR("Failed to parse mtu \"%s\" for interface \"%s\"", netdev->mtu, peer);
 			goto on_error;
 		}
 
 		err = lxc_netdev_set_mtu(peer, mtu);
-		if (err) {
+		if (err < 0) {
 			errno = -err;
-			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"",
-				 netdev->mtu, peer);
+			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"", netdev->mtu, peer);
 			goto on_error;
 		}
 	}
@@ -810,7 +795,6 @@ on_error:
 static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	int err, mtu_orig = 0;
-	unsigned int mtu = 0;
 
 	if (netdev->link[0] == '\0') {
 		ERROR("No link for physical interface specified");
@@ -832,6 +816,8 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 	}
 
 	strlcpy(netdev->created_name, netdev->link, IFNAMSIZ);
+	if (netdev->name[0] == '\0')
+		(void)strlcpy(netdev->name, netdev->link, IFNAMSIZ);
 
 	/*
 	 * Store the ifindex of the host's network device in the host's
@@ -852,6 +838,8 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 	netdev->priv.phys_attr.mtu = mtu_orig;
 
 	if (netdev->mtu) {
+		unsigned int mtu;
+
 		err = lxc_safe_uint(netdev->mtu, &mtu);
 		if (err < 0) {
 			errno = -err;
@@ -863,8 +851,7 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 		err = lxc_netdev_set_mtu(netdev->link, mtu);
 		if (err < 0) {
 			errno = -err;
-			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"",
-				 netdev->mtu, netdev->link);
+			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"", netdev->mtu, netdev->link);
 			return -1;
 		}
 	}
@@ -923,6 +910,102 @@ static  instantiate_cb netdev_conf[LXC_NET_MAXCONFTYPE + 1] = {
 	[LXC_NET_PHYS]    = instantiate_phys,
 	[LXC_NET_EMPTY]   = instantiate_empty,
 	[LXC_NET_NONE]    = instantiate_none,
+};
+
+static int instantiate_ns_veth(struct lxc_netdev *netdev)
+{
+	char current_ifname[IFNAMSIZ];
+
+	netdev->ifindex = if_nametoindex(netdev->created_name);
+	if (!netdev->ifindex)
+		return log_error_errno(-1,
+				       errno, "Failed to retrieve ifindex for network device with name %s",
+				       netdev->created_name);
+
+	if (netdev->name[0] == '\0')
+		(void)strlcpy(netdev->name, "eth%d", IFNAMSIZ);
+
+	if (strcmp(netdev->created_name, netdev->name) != 0) {
+		int ret;
+
+		ret = lxc_netdev_rename_by_name(netdev->created_name, netdev->name);
+		if (ret)
+			return log_error_errno(-1,
+					       -ret, "Failed to rename network device \"%s\" to \"%s\"",
+					       netdev->created_name,
+					       netdev->name);
+
+		TRACE("Renamed network device from \"%s\" to \"%s\"", netdev->created_name, netdev->name);
+	}
+
+	/*
+	 * Re-read the name of the interface because its name has changed and
+	 * would be automatically allocated by the system
+	 */
+	if (!if_indextoname(netdev->ifindex, current_ifname))
+		return log_error_errno(-1,
+				       errno, "Failed get name for network device with ifindex %d",
+				       netdev->ifindex);
+
+	/*
+	 * Now update the recorded name of the network device to reflect the
+	 * name of the network device in the child's network namespace. We will
+	 * later on send this information back to the parent.
+	 */
+	(void)strlcpy(netdev->name, current_ifname, IFNAMSIZ);
+
+	return 0;
+}
+
+static int __instantiate_common(struct lxc_netdev *netdev)
+{
+	netdev->ifindex = if_nametoindex(netdev->name);
+	if (!netdev->ifindex)
+		return log_error_errno(-1,
+				       errno, "Failed to retrieve ifindex for network device with name %s",
+				       netdev->name);
+
+	return 0;
+}
+
+static int instantiate_ns_macvlan(struct lxc_netdev *netdev)
+{
+	return __instantiate_common(netdev);
+}
+
+static int instantiate_ns_ipvlan(struct lxc_netdev *netdev)
+{
+	return __instantiate_common(netdev);
+}
+
+static int instantiate_ns_vlan(struct lxc_netdev *netdev)
+{
+	return __instantiate_common(netdev);
+}
+
+static int instantiate_ns_phys(struct lxc_netdev *netdev)
+{
+	return __instantiate_common(netdev);
+}
+
+static int instantiate_ns_empty(struct lxc_netdev *netdev)
+{
+	return 0;
+}
+
+static int instantiate_ns_none(struct lxc_netdev *netdev)
+{
+	return 0;
+}
+
+static  instantiate_ns_cb netdev_ns_conf[LXC_NET_MAXCONFTYPE + 1] = {
+	[LXC_NET_VETH]    = instantiate_ns_veth,
+	[LXC_NET_MACVLAN] = instantiate_ns_macvlan,
+	[LXC_NET_IPVLAN]  = instantiate_ns_ipvlan,
+	[LXC_NET_VLAN]    = instantiate_ns_vlan,
+	[LXC_NET_PHYS]    = instantiate_ns_phys,
+	[LXC_NET_EMPTY]   = instantiate_ns_empty,
+	[LXC_NET_NONE]    = instantiate_ns_none,
 };
 
 static int shutdown_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
@@ -1642,7 +1725,7 @@ out:
 
 int lxc_netdev_set_mtu(const char *name, int mtu)
 {
-	int err, index, len;
+	int err, len;
 	struct ifinfomsg *ifi;
 	struct nl_handler nlh;
 	struct nlmsg *answer = NULL, *nlmsg = NULL;
@@ -1665,11 +1748,6 @@ int lxc_netdev_set_mtu(const char *name, int mtu)
 	if (!answer)
 		goto out;
 
-	err = -EINVAL;
-	index = if_nametoindex(name);
-	if (!index)
-		goto out;
-
 	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
 
@@ -1679,7 +1757,9 @@ int lxc_netdev_set_mtu(const char *name, int mtu)
 		goto out;
 	}
 	ifi->ifi_family = AF_UNSPEC;
-	ifi->ifi_index = index;
+
+	if (nla_put_string(nlmsg, IFLA_IFNAME, name))
+		goto out;
 
 	if (nla_put_u32(nlmsg, IFLA_MTU, mtu))
 		goto out;
@@ -1702,7 +1782,7 @@ int lxc_netdev_down(const char *name)
 	return netdev_set_flag(name, 0);
 }
 
-int lxc_veth_create(const char *name1, const char *name2)
+int lxc_veth_create(const char *name1, const char *name2, pid_t pid, unsigned int mtu)
 {
 	int err, len;
 	struct ifinfomsg *ifi;
@@ -1764,6 +1844,12 @@ int lxc_veth_create(const char *name1, const char *name2)
 	}
 
 	if (nla_put_string(nlmsg, IFLA_IFNAME, name2))
+		goto out;
+
+	if (mtu > 0 && nla_put_u32(nlmsg, IFLA_MTU, mtu))
+		goto out;
+
+	if (pid > 0 && nla_put_u32(nlmsg, IFLA_NET_NS_PID, pid))
 		goto out;
 
 	nla_end_nested(nlmsg, nest3);
@@ -3018,9 +3104,10 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 		     netdev->link);
 
 clear_ifindices:
-		/* We need to clear any ifindices we recorded so liblxc won't
-		 * have cached stale data which would cause it to fail on reboot
-		 * we're we don't re-read the on-disk config file.
+		/*
+		 * We need to clear any ifindices we recorded so liblxc won't
+		 * have cached stale data which would cause it to fail on
+		 * reboot where we don't re-read the on-disk config file.
 		 */
 		netdev->ifindex = 0;
 		if (netdev->type == LXC_NET_PHYS) {
@@ -3267,7 +3354,7 @@ int lxc_network_move_created_netdev_priv(struct lxc_handler *handler)
 		if (physname)
 			ret = lxc_netdev_move_wlan(physname, netdev->link, pid, NULL);
 		else
-			ret = lxc_netdev_move_by_index(netdev->ifindex, pid, NULL);
+			ret = lxc_netdev_move_by_index(netdev->ifindex, pid, netdev->name);
 		if (ret) {
 			errno = -ret;
 			SYSERROR("Failed to move network device \"%s\" with ifindex %d to network namespace %d",
@@ -3341,6 +3428,12 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 		if (!netdev->ifindex)
 			continue;
 
+		/*
+		 * If the network device has been moved back from the
+		 * containers network namespace, update the ifindex.
+		 */
+		netdev->ifindex = if_nametoindex(netdev->name);
+
 		/* Delete l2proxy entries if enabled and used with a link property */
 		if (netdev->l2proxy && netdev->link[0] != '\0') {
 			if (lxc_delete_l2proxy(netdev))
@@ -3378,26 +3471,6 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 		ret = netdev_deconf[netdev->type](handler, netdev);
 		if (ret < 0)
 			WARN("Failed to deconfigure network device");
-
-		/* Recent kernels remove the virtual interfaces when the network
-		 * namespace is destroyed but in case we did not move the
-		 * interface to the network namespace, we have to destroy it.
-		 */
-		ret = lxc_netdev_delete_by_index(netdev->ifindex);
-		if (ret < 0) {
-			if (errno != ENODEV) {
-				WARN("Failed to remove interface \"%s\" with index %d",
-				     netdev->name[0] != '\0' ? netdev->name : "(null)",
-				     netdev->ifindex);
-				goto clear_ifindices;
-			}
-			INFO("Interface \"%s\" with index %d already deleted or existing in different network namespace",
-			     netdev->name[0] != '\0' ? netdev->name : "(null)",
-			     netdev->ifindex);
-		}
-		INFO("Removed interface \"%s\" with index %d",
-		     netdev->name[0] != '\0' ? netdev->name : "(null)",
-		     netdev->ifindex);
 
 		if (netdev->type != LXC_NET_VETH)
 			goto clear_ifindices;
@@ -3617,98 +3690,26 @@ static int setup_ipv6_addr(struct lxc_list *ip, int ifindex)
 	return 0;
 }
 
-static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
+static int lxc_network_setup_in_child_namespaces_common(struct lxc_netdev *netdev)
 {
-	char ifname[IFNAMSIZ];
 	int err;
-	char *current_ifname = ifname;
 	char bufinet4[INET_ADDRSTRLEN], bufinet6[INET6_ADDRSTRLEN];
 
 	/* empty network namespace */
-	if (!netdev->ifindex) {
-		if (netdev->flags & IFF_UP) {
-			err = lxc_netdev_up("lo");
-			if (err) {
-				errno = -err;
-				SYSERROR("Failed to set the loopback network device up");
-				return -1;
-			}
-		}
-
-		if (netdev->type == LXC_NET_EMPTY)
-			return 0;
-
-		if (netdev->type == LXC_NET_NONE)
-			return 0;
-
-		netdev->ifindex = if_nametoindex(netdev->created_name);
-		if (!netdev->ifindex)
-			SYSERROR("Failed to retrieve ifindex for network device with name %s",
-				 netdev->created_name ?: "(null)");
-	}
-
-	/* get the new ifindex in case of physical netdev */
-	if (netdev->type == LXC_NET_PHYS) {
-		netdev->ifindex = if_nametoindex(netdev->link);
-		if (!netdev->ifindex) {
-			ERROR("Failed to get ifindex for network device \"%s\"",
-			      netdev->link);
-			return -1;
-		}
-	}
-
-	/* retrieve the name of the interface */
-	if (!if_indextoname(netdev->ifindex, current_ifname)) {
-		SYSERROR("Failed to retrieve name for network device with ifindex %d",
-			 netdev->ifindex);
-		return -1;
-	}
-
-	/* Default: let the system choose an interface name.
-	 * When the IFLA_IFNAME attribute is passed something like "<prefix>%d"
-	 * netlink will replace the format specifier with an appropriate index.
-	 */
-	if (netdev->name[0] == '\0') {
-		if (netdev->type == LXC_NET_PHYS)
-			(void)strlcpy(netdev->name, netdev->link, IFNAMSIZ);
-		else
-			(void)strlcpy(netdev->name, "eth%d", IFNAMSIZ);
-	}
-
-	/* rename the interface name */
-	if (strcmp(current_ifname, netdev->name) != 0) {
-		err = lxc_netdev_rename_by_name(current_ifname, netdev->name);
+	if (!netdev->ifindex && netdev->flags & IFF_UP) {
+		err = lxc_netdev_up("lo");
 		if (err) {
 			errno = -err;
-			SYSERROR("Failed to rename network device \"%s\" to \"%s\"",
-			         current_ifname, netdev->name);
+			SYSERROR( "Failed to set the loopback network device up");
 			return -1;
 		}
-
-		TRACE("Renamed network device from \"%s\" to \"%s\"",
-		      current_ifname, netdev->name);
 	}
-
-	/* Re-read the name of the interface because its name has changed
-	 * and would be automatically allocated by the system
-	 */
-	if (!if_indextoname(netdev->ifindex, current_ifname)) {
-		ERROR("Failed get name for network device with ifindex %d",
-		      netdev->ifindex);
-		return -1;
-	}
-
-	/* Now update the recorded name of the network device to reflect the
-	 * name of the network device in the child's network namespace. We will
-	 * later on send this information back to the parent.
-	 */
-	(void)strlcpy(netdev->name, current_ifname, IFNAMSIZ);
 
 	/* set a mac address */
 	if (netdev->hwaddr) {
-		if (setup_hw_addr(netdev->hwaddr, current_ifname)) {
+		if (setup_hw_addr(netdev->hwaddr, netdev->name)) {
 			ERROR("Failed to setup hw address for network device \"%s\"",
-			      current_ifname);
+			      netdev->name);
 			return -1;
 		}
 	}
@@ -3716,24 +3717,24 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 	/* setup ipv4 addresses on the interface */
 	if (setup_ipv4_addr(&netdev->ipv4, netdev->ifindex)) {
 		ERROR("Failed to setup ip addresses for network device \"%s\"",
-		      current_ifname);
+		      netdev->name);
 		return -1;
 	}
 
 	/* setup ipv6 addresses on the interface */
 	if (setup_ipv6_addr(&netdev->ipv6, netdev->ifindex)) {
 		ERROR("Failed to setup ipv6 addresses for network device \"%s\"",
-		      current_ifname);
+		      netdev->name);
 		return -1;
 	}
 
 	/* set the network device up */
 	if (netdev->flags & IFF_UP) {
-		err = lxc_netdev_up(current_ifname);
+		err = lxc_netdev_up(netdev->name);
 		if (err) {
 			errno = -err;
 			SYSERROR("Failed to set network device \"%s\" up",
-			         current_ifname);
+			         netdev->name);
 			return -1;
 		}
 
@@ -3750,13 +3751,13 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 	if (netdev->ipv4_gateway || netdev->ipv4_gateway_dev) {
 		if (!(netdev->flags & IFF_UP)) {
 			ERROR("Cannot add ipv4 gateway for network device "
-			      "\"%s\" when not bringing up the interface", current_ifname);
+			      "\"%s\" when not bringing up the interface", netdev->name);
 			return -1;
 		}
 
 		if (lxc_list_empty(&netdev->ipv4)) {
 			ERROR("Cannot add ipv4 gateway for network device "
-			      "\"%s\" when not assigning an address", current_ifname);
+			      "\"%s\" when not assigning an address", netdev->name);
 			return -1;
 		}
 
@@ -3765,7 +3766,7 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 			err = lxc_ipv4_gateway_add(netdev->ifindex, NULL);
 			if (err < 0) {
 				SYSERROR("Failed to setup ipv4 gateway to network device \"%s\"",
-				         current_ifname);
+				         netdev->name);
 				return ret_set_errno(-1, -err);
 			}
 		} else {
@@ -3785,7 +3786,7 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 				if (err < 0) {
 					errno = -err;
 					SYSERROR("Failed to add ipv4 dest \"%s\" for network device \"%s\"",
-						bufinet4, current_ifname);
+						bufinet4, netdev->name);
 					return -1;
 				}
 
@@ -3793,7 +3794,7 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 				if (err < 0) {
 					errno = -err;
 					SYSERROR("Failed to setup ipv4 gateway \"%s\" for network device \"%s\"",
-						bufinet4, current_ifname);
+						bufinet4, netdev->name);
 					return -1;
 				}
 			}
@@ -3804,13 +3805,13 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 	if (netdev->ipv6_gateway || netdev->ipv6_gateway_dev) {
 		if (!(netdev->flags & IFF_UP)) {
 			ERROR("Cannot add ipv6 gateway for network device \"%s\" when not bringing up the interface",
-			      current_ifname);
+			      netdev->name);
 			return -1;
 		}
 
 		if (lxc_list_empty(&netdev->ipv6) && !IN6_IS_ADDR_LINKLOCAL(netdev->ipv6_gateway)) {
 			ERROR("Cannot add ipv6 gateway for network device \"%s\" when not assigning an address",
-			      current_ifname);
+			      netdev->name);
 			return -1;
 		}
 
@@ -3819,7 +3820,7 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 			err = lxc_ipv6_gateway_add(netdev->ifindex, NULL);
 			if (err < 0) {
 				SYSERROR("Failed to setup ipv6 gateway to network device \"%s\"",
-				         current_ifname);
+				         netdev->name);
 				return ret_set_errno(-1, -err);
 			}
 		} else {
@@ -3839,7 +3840,7 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 				if (err < 0) {
 					errno = -err;
 					SYSERROR("Failed to add ipv6 dest \"%s\" for network device \"%s\"",
-						bufinet6, current_ifname);
+						bufinet6, netdev->name);
 					return -1;
 				}
 
@@ -3847,14 +3848,14 @@ static int lxc_setup_netdev_in_child_namespaces(struct lxc_netdev *netdev)
 				if (err < 0) {
 					errno = -err;
 					SYSERROR("Failed to setup ipv6 gateway \"%s\" for network device \"%s\"",
-						bufinet6, current_ifname);
+						bufinet6, netdev->name);
 					return -1;
 				}
 			}
 		}
 	}
 
-	DEBUG("Network device \"%s\" has been setup", current_ifname);
+	DEBUG("Network device \"%s\" has been setup", netdev->name);
 
 	return 0;
 }
@@ -3864,10 +3865,14 @@ int lxc_setup_network_in_child_namespaces(const struct lxc_conf *conf,
 {
 	struct lxc_list *iterator;
 
-	lxc_list_for_each(iterator, network) {
+	lxc_list_for_each (iterator, network) {
 		struct lxc_netdev *netdev = iterator->elem;
+		int ret;
 
-		if (lxc_setup_netdev_in_child_namespaces(netdev)) {
+		ret = netdev_ns_conf[netdev->type](netdev);
+		if (!ret)
+			ret = lxc_network_setup_in_child_namespaces_common(netdev);
+		if (ret) {
 			ERROR("Failed to setup netdev");
 			return -1;
 		}
@@ -3926,6 +3931,7 @@ int lxc_network_recv_from_parent(struct lxc_handler *handler)
 		ret = lxc_recv_nointr(data_sock, netdev->created_name, IFNAMSIZ, 0);
 		if (ret < 0)
 			return -1;
+
 		TRACE("Received network device name \"%s\" from parent", netdev->created_name);
 	}
 
