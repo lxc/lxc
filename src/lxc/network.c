@@ -273,7 +273,7 @@ static int lxc_is_ip_forwarding_enabled(const char *ifname, int family)
 static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	int err;
-	unsigned int mtu;
+	unsigned int mtu = 1500;
 	char *veth1, *veth2;
 	char veth1buf[IFNAMSIZ], veth2buf[IFNAMSIZ];
 
@@ -302,8 +302,10 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	if (!veth2)
 		return -1;
 
-	if (netdev->mtu && lxc_safe_uint(netdev->mtu, &mtu)) {
-		return log_error_errno(-1, errno, "Failed to parse mtu");
+	/* if mtu is specified in config then use that, otherwise inherit from link device if provided. */
+	if (netdev->mtu) {
+		if (lxc_safe_uint(netdev->mtu, &mtu))
+			return log_error_errno(-1, errno, "Failed to parse mtu");
 	} else if (netdev->link[0] != '\0') {
 		int ifindex_mtu;
 
