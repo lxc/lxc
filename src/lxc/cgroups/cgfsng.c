@@ -3000,8 +3000,11 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 		return log_error_errno(-1, errno, "Failed to retrieve available legacy cgroup controllers");
 
 	f = fopen("/proc/self/mountinfo", "r");
-	if (!f)
+	if (!f) {
+		free_string_list(klist);
+		free_string_list(nlist);
 		return log_error_errno(-1, errno, "Failed to open \"/proc/self/mountinfo\"");
+	}
 
 	lxc_cgfsng_print_basecg_debuginfo(basecginfo, klist, nlist);
 
