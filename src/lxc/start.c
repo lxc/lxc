@@ -1079,11 +1079,13 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 	if (handler->pidfd >= 0) {
 		ret = lxc_raw_pidfd_send_signal(handler->pidfd, SIGKILL, NULL, 0);
 		if (ret)
-			SYSWARN("Failed to send SIGKILL via pidfd %d for process %d", handler->pidfd, handler->pid);
+			SYSWARN("Failed to send SIGKILL via pidfd %d for process %d",
+				handler->pidfd, handler->pid);
 	}
 
-	if (ret && (errno != ESRCH) && kill(handler->pid, SIGKILL))
-		SYSERROR("Failed to send SIGKILL to %d", handler->pid);
+	if (!ret || errno != ESRCH)
+		if (kill(handler->pid, SIGKILL))
+			SYSWARN("Failed to send SIGKILL to %d", handler->pid);
 
 	do {
 		ret = waitpid(-1, &status, 0);
