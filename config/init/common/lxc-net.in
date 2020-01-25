@@ -8,6 +8,7 @@ varlib="@LOCALSTATEDIR@/lib"
 #   or in @LXC_DISTRO_SYSCONF@/lxc-net
 
 USE_LXC_BRIDGE="true"
+LXC_FIREWALL_SETUP="true"
 LXC_BRIDGE="lxcbr0"
 LXC_BRIDGE_MAC="00:16:3e:00:00:00"
 LXC_ADDR="10.0.3.1"
@@ -26,8 +27,10 @@ LXC_IPV6_NAT="false"
 
 [ ! -f $distrosysconfdir/lxc ] || . $distrosysconfdir/lxc
 
-use_iptables_lock="-w"
-iptables -w -L -n > /dev/null 2>&1 || use_iptables_lock=""
+if [ "$LXC_FIREWALL_SETUP" = "true" ]; then
+    use_iptables_lock="-w"
+    iptables -w -L -n > /dev/null 2>&1 || use_iptables_lock=""
+fi
 
 _netmask2cidr ()
 {
@@ -97,18 +100,22 @@ start() {
         echo 0 > /proc/sys/net/ipv6/conf/${LXC_BRIDGE}/autoconf
         ip -6 addr add dev ${LXC_BRIDGE} ${LXC_IPV6_ADDR}/${LXC_IPV6_MASK}
         if [ "$LXC_IPV6_NAT" = "true" ]; then
-            ip6tables $use_iptables_lock -t nat -A POSTROUTING -s ${LXC_IPV6_NETWORK} ! -d ${LXC_IPV6_NETWORK} -j MASQUERADE
+            if [ "$LXC_FIREWALL_SETUP" = "true" ]; then
+                ip6tables $use_iptables_lock -t nat -A POSTROUTING -s ${LXC_IPV6_NETWORK} ! -d ${LXC_IPV6_NETWORK} -j MASQUERADE
+            fi
         fi
         LXC_IPV6_ARG="--dhcp-range=${LXC_IPV6_ADDR},ra-only --listen-address ${LXC_IPV6_ADDR}"
     fi
-    iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p udp --dport 67 -j ACCEPT
-    iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p tcp --dport 67 -j ACCEPT
-    iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p udp --dport 53 -j ACCEPT
-    iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p tcp --dport 53 -j ACCEPT
-    iptables $use_iptables_lock -I FORWARD -i ${LXC_BRIDGE} -j ACCEPT
-    iptables $use_iptables_lock -I FORWARD -o ${LXC_BRIDGE} -j ACCEPT
-    iptables $use_iptables_lock -t nat -A POSTROUTING -s ${LXC_NETWORK} ! -d ${LXC_NETWORK} -j MASQUERADE
-    iptables $use_iptables_lock -t mangle -A POSTROUTING -o ${LXC_BRIDGE} -p udp -m udp --dport 68 -j CHECKSUM --checksum-fill
+    if [ "$LXC_FIREWALL_SETUP" = "true" ]; then
+        iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p udp --dport 67 -j ACCEPT
+        iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p tcp --dport 67 -j ACCEPT
+        iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p udp --dport 53 -j ACCEPT
+        iptables $use_iptables_lock -I INPUT -i ${LXC_BRIDGE} -p tcp --dport 53 -j ACCEPT
+        iptables $use_iptables_lock -I FORWARD -i ${LXC_BRIDGE} -j ACCEPT
+        iptables $use_iptables_lock -I FORWARD -o ${LXC_BRIDGE} -j ACCEPT
+        iptables $use_iptables_lock -t nat -A POSTROUTING -s ${LXC_NETWORK} ! -d ${LXC_NETWORK} -j MASQUERADE
+        iptables $use_iptables_lock -t mangle -A POSTROUTING -o ${LXC_BRIDGE} -p udp -m udp --dport 68 -j CHECKSUM --checksum-fill
+    fi
 
     LXC_DOMAIN_ARG=""
     if [ -n "$LXC_DOMAIN" ]; then
@@ -151,18 +158,22 @@ stop() {
     [ -f "${varrun}/network_up" ] || [ "$1" = "force" ] || { echo "lxc-net isn't running"; exit 1; }
 
     if [ -d /sys/class/net/${LXC_BRIDGE} ]; then
-        _ifdown 
-        iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p udp --dport 67 -j ACCEPT
-        iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p tcp --dport 67 -j ACCEPT
-        iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p udp --dport 53 -j ACCEPT
-        iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p tcp --dport 53 -j ACCEPT
-        iptables $use_iptables_lock -D FORWARD -i ${LXC_BRIDGE} -j ACCEPT
-        iptables $use_iptables_lock -D FORWARD -o ${LXC_BRIDGE} -j ACCEPT
-        iptables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_NETWORK} ! -d ${LXC_NETWORK} -j MASQUERADE
-        iptables $use_iptables_lock -t mangle -D POSTROUTING -o ${LXC_BRIDGE} -p udp -m udp --dport 68 -j CHECKSUM --checksum-fill
+        _ifdown
+        if [ "$LXC_FIREWALL_SETUP" = "true" ]; then
+            iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p udp --dport 67 -j ACCEPT
+            iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p tcp --dport 67 -j ACCEPT
+            iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p udp --dport 53 -j ACCEPT
+            iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p tcp --dport 53 -j ACCEPT
+            iptables $use_iptables_lock -D FORWARD -i ${LXC_BRIDGE} -j ACCEPT
+            iptables $use_iptables_lock -D FORWARD -o ${LXC_BRIDGE} -j ACCEPT
+            iptables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_NETWORK} ! -d ${LXC_NETWORK} -j MASQUERADE
+            iptables $use_iptables_lock -t mangle -D POSTROUTING -o ${LXC_BRIDGE} -p udp -m udp --dport 68 -j CHECKSUM --checksum-fill
+        fi
 
         if [ "$LXC_IPV6_NAT" = "true" ]; then
-            ip6tables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_IPV6_NETWORK} ! -d ${LXC_IPV6_NETWORK} -j MASQUERADE
+            if [ "$LXC_FIREWALL_SETUP" = "true" ]; then
+                ip6tables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_IPV6_NETWORK} ! -d ${LXC_IPV6_NETWORK} -j MASQUERADE
+            fi
         fi
 
         pid=`cat "${varrun}"/dnsmasq.pid 2>/dev/null` && kill -9 $pid
