@@ -487,7 +487,7 @@ AC_ARG_WITH([rootfs-path],
 # cgroup pattern specification
 AC_ARG_WITH([cgroup-pattern],
 	[AS_HELP_STRING([--with-cgroup-pattern=pattern], [pattern for container cgroups])],
-	[with_cgroup_pattern=$withval], [with_cgroup_pattern=['lxc.payload/%n']])
+	[with_cgroup_pattern=$withval], [with_cgroup_pattern=['lxc.payload.%n']])
 
 # The path for the apparmor_parser's cache for generated apparmor profiles
 AC_ARG_WITH([apparmor-cache-dir],
