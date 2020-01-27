@@ -485,7 +485,7 @@ AC_ARG_WITH([rootfs-path],
 # cgroup pattern specification
 AC_ARG_WITH([cgroup-pattern],
 	[AS_HELP_STRING([--with-cgroup-pattern=pattern], [pattern for container cgroups])],
-	[with_cgroup_pattern=$withval], [with_cgroup_pattern=['lxc.payload/%n']])
+	[with_cgroup_pattern=$withval], [with_cgroup_pattern=['lxc.payload.%n']])
 
 # Container log path.  By default, use $lxcpath.
 AC_MSG_CHECKING([Whether to place logfiles in container config path])
