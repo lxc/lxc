@@ -298,6 +298,7 @@ struct lxc_conf {
 	unsigned int lsm_aa_allow_incomplete;
 	struct lxc_list lsm_aa_raw;
 	char *lsm_se_context;
+	char *lsm_se_keyring_context;
 	bool tmp_umount_proc;
 	struct lxc_seccomp seccomp;
 	int maincmd_fd;

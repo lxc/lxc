@@ -2742,6 +2742,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->lsm_aa_profile = NULL;
 	lxc_list_init(&new->lsm_aa_raw);
 	new->lsm_se_context = NULL;
+	new->lsm_se_keyring_context = NULL;
 	new->tmp_umount_proc = false;
 	new->tmp_umount_proc = 0;
 	new->shmount.path_host = NULL;
@@ -3533,6 +3534,7 @@ int lxc_setup(struct lxc_handler *handler)
 	int ret;
 	const char *lxcpath = handler->lxcpath, *name = handler->name;
 	struct lxc_conf *lxc_conf = handler->conf;
+	char *keyring_context = NULL;
 
 	ret = lxc_setup_rootfs_prepare_root(lxc_conf, name, lxcpath);
 	if (ret < 0) {
@@ -3548,7 +3550,13 @@ int lxc_setup(struct lxc_handler *handler)
 		}
 	}
 
-	ret = lxc_setup_keyring();
+	if (lxc_conf->lsm_se_keyring_context) {
+		keyring_context = lxc_conf->lsm_se_keyring_context;
+	} else if (lxc_conf->lsm_se_context) {
+		keyring_context = lxc_conf->lsm_se_context;
+	}
+
+	ret = lxc_setup_keyring(keyring_context);
 	if (ret < 0)
 		return -1;
 

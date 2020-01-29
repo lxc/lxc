@@ -84,5 +84,8 @@ allow lxc_t self:packet_socket create_socket_perms;
 allow lxc_t self:rawip_socket create_socket_perms;
 allow lxc_t self:netlink_route_socket create_netlink_socket_perms;
 
+# Needed to set label that the keyring will be created with
+allow lxc_t self:process { setkeycreate };
+
 dontaudit lxc_t sysctl_kernel_t:file write;
 dontaudit lxc_t sysctl_modprobe_t:file write;

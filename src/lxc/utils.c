@@ -27,6 +27,7 @@
 
 #include "config.h"
 #include "log.h"
+#include "lsm/lsm.h"
 #include "lxclock.h"
 #include "memory_utils.h"
 #include "namespace.h"
@@ -1835,10 +1836,16 @@ int recursive_destroy(const char *dirname)
 	return fret;
 }
 
-int lxc_setup_keyring(void)
+int lxc_setup_keyring(char *keyring_label)
 {
 	key_serial_t keyring;
 	int ret = 0;
+
+	if (keyring_label) {
+		if (lsm_keyring_label_set(keyring_label) < 0) {
+			ERROR("Couldn't set keyring label");
+		}
+	}
 
 	/* Try to allocate a new session keyring for the container to prevent
 	 * information leaks.

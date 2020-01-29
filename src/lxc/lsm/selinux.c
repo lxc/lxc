@@ -85,11 +85,24 @@ static int selinux_process_label_set(const char *inlabel, struct lxc_conf *conf,
 	return 0;
 }
 
+/*
+ * selinux_keyring_label_set: Set SELinux context that will be assigned to the keyring
+ *
+ * @label   : label string
+ *
+ * Returns 0 on success, < 0 on failure
+ */
+static int selinux_keyring_label_set(char *label)
+{
+	return setkeycreatecon_raw(label);
+};
+
 static struct lsm_drv selinux_drv = {
 	.name = "SELinux",
 	.enabled           = is_selinux_enabled,
 	.process_label_get = selinux_process_label_get,
 	.process_label_set = selinux_process_label_set,
+	.keyring_label_set = selinux_keyring_label_set,
 };
 
 struct lsm_drv *lsm_selinux_drv_init(void)

@@ -136,6 +136,7 @@ lxc_config_define(seccomp_allow_nesting);
 lxc_config_define(seccomp_notify_cookie);
 lxc_config_define(seccomp_notify_proxy);
 lxc_config_define(selinux_context);
+lxc_config_define(selinux_context_keyring);
 lxc_config_define(signal_halt);
 lxc_config_define(signal_reboot);
 lxc_config_define(signal_stop);
@@ -233,6 +234,7 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.seccomp.notify.proxy",      set_config_seccomp_notify_proxy,        get_config_seccomp_notify_proxy,        clr_config_seccomp_notify_proxy,      },
 	{ "lxc.seccomp.profile",           set_config_seccomp_profile,             get_config_seccomp_profile,             clr_config_seccomp_profile,           },
 	{ "lxc.selinux.context",           set_config_selinux_context,             get_config_selinux_context,             clr_config_selinux_context,           },
+	{ "lxc.selinux.context.keyring",   set_config_selinux_context_keyring,     get_config_selinux_context_keyring,     clr_config_selinux_context_keyring    },
 	{ "lxc.signal.halt",               set_config_signal_halt,                 get_config_signal_halt,                 clr_config_signal_halt,               },
 	{ "lxc.signal.reboot",             set_config_signal_reboot,               get_config_signal_reboot,               clr_config_signal_reboot,             },
 	{ "lxc.signal.stop",               set_config_signal_stop,                 get_config_signal_stop,                 clr_config_signal_stop,               },
@@ -1467,6 +1469,12 @@ static int set_config_selinux_context(const char *key, const char *value,
 				      struct lxc_conf *lxc_conf, void *data)
 {
 	return set_config_string_item(&lxc_conf->lsm_se_context, value);
+}
+
+static int set_config_selinux_context_keyring(const char *key, const char *value,
+					      struct lxc_conf *lxc_conf, void *data)
+{
+	return set_config_string_item(&lxc_conf->lsm_se_keyring_context, value);
 }
 
 static int set_config_log_file(const char *key, const char *value,
@@ -3539,6 +3547,13 @@ static int get_config_selinux_context(const char *key, char *retv, int inlen,
 	return lxc_get_conf_str(retv, inlen, c->lsm_se_context);
 }
 
+static int get_config_selinux_context_keyring(const char *key, char *retv, int inlen,
+					      struct lxc_conf *c, void *data)
+{
+	return lxc_get_conf_str(retv, inlen, c->lsm_se_keyring_context);
+}
+
+
 /* If you ask for a specific cgroup value, i.e. lxc.cgroup.devices.list, then
  * just the value(s) will be printed. Since there still could be more than one,
  * it is newline-separated.
@@ -4402,6 +4417,14 @@ static inline int clr_config_selinux_context(const char *key,
 {
 	free(c->lsm_se_context);
 	c->lsm_se_context = NULL;
+	return 0;
+}
+
+static inline int clr_config_selinux_context_keyring(const char *key,
+						     struct lxc_conf *c, void *data)
+{
+	free(c->lsm_se_keyring_context);
+	c->lsm_se_keyring_context = NULL;
 	return 0;
 }
 
@@ -5951,6 +5974,7 @@ int lxc_list_subkeys(struct lxc_conf *conf, const char *key, char *retv,
 		strprint(retv, inlen, "dir\n");
 	} else if (!strcmp(key, "lxc.selinux")) {
 		strprint(retv, inlen, "context\n");
+		strprint(retv, inlen, "context.keyring\n");
 	} else if (!strcmp(key, "lxc.mount")) {
 		strprint(retv, inlen, "auto\n");
 		strprint(retv, inlen, "entry\n");
