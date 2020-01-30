@@ -89,6 +89,7 @@ lxc_config_define(init_cmd);
 lxc_config_define(init_cwd);
 lxc_config_define(init_gid);
 lxc_config_define(init_uid);
+lxc_config_define(keyring_session);
 lxc_config_define(log_file);
 lxc_config_define(log_level);
 lxc_config_define(log_syslog);
@@ -188,6 +189,7 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.init.gid",                  set_config_init_gid,                    get_config_init_gid,                    clr_config_init_gid,                  },
 	{ "lxc.init.uid",                  set_config_init_uid,                    get_config_init_uid,                    clr_config_init_uid,                  },
 	{ "lxc.init.cwd",                  set_config_init_cwd,                    get_config_init_cwd,                    clr_config_init_cwd,                  },
+	{ "lxc.keyring.session",           set_config_keyring_session,             get_config_keyring_session,             clr_config_keyring_session            },
 	{ "lxc.log.file",                  set_config_log_file,                    get_config_log_file,                    clr_config_log_file,                  },
 	{ "lxc.log.level",                 set_config_log_level,                   get_config_log_level,                   clr_config_log_level,                 },
 	{ "lxc.log.syslog",                set_config_log_syslog,                  get_config_log_syslog,                  clr_config_log_syslog,                },
@@ -1477,6 +1479,12 @@ static int set_config_selinux_context_keyring(const char *key, const char *value
 	return set_config_string_item(&lxc_conf->lsm_se_keyring_context, value);
 }
 
+static int set_config_keyring_session(const char *key, const char *value,
+				      struct lxc_conf *lxc_conf, void *data)
+{
+	return set_config_bool_item(&lxc_conf->keyring_disable_session, value, false);
+}
+
 static int set_config_log_file(const char *key, const char *value,
 			      struct lxc_conf *c, void *data)
 {
@@ -2547,26 +2555,7 @@ static int set_config_rootfs_path(const char *key, const char *value,
 static int set_config_rootfs_managed(const char *key, const char *value,
 				     struct lxc_conf *lxc_conf, void *data)
 {
-	unsigned int val = 0;
-
-	if (lxc_config_value_empty(value)) {
-		lxc_conf->rootfs.managed = true;
-		return 0;
-	}
-
-	if (lxc_safe_uint(value, &val) < 0)
-		return -EINVAL;
-
-	switch (val) {
-	case 0:
-		lxc_conf->rootfs.managed = false;
-		return 0;
-	case 1:
-		lxc_conf->rootfs.managed = true;
-		return 0;
-	}
-
-	return -EINVAL;
+	return set_config_bool_item(&lxc_conf->rootfs.managed, value, true);
 }
 
 static int set_config_rootfs_mount(const char *key, const char *value,
@@ -3553,6 +3542,12 @@ static int get_config_selinux_context_keyring(const char *key, char *retv, int i
 	return lxc_get_conf_str(retv, inlen, c->lsm_se_keyring_context);
 }
 
+static int get_config_keyring_session(const char *key, char *retv, int inlen,
+				      struct lxc_conf *c, void *data)
+{
+	return lxc_get_conf_bool(c, retv, inlen, c->keyring_disable_session);
+}
+
 
 /* If you ask for a specific cgroup value, i.e. lxc.cgroup.devices.list, then
  * just the value(s) will be printed. Since there still could be more than one,
@@ -4425,6 +4420,13 @@ static inline int clr_config_selinux_context_keyring(const char *key,
 {
 	free(c->lsm_se_keyring_context);
 	c->lsm_se_keyring_context = NULL;
+	return 0;
+}
+
+static inline int clr_config_keyring_session(const char *key,
+					     struct lxc_conf *c, void *data)
+{
+	c->keyring_disable_session = false;
 	return 0;
 }
 
@@ -6015,6 +6017,8 @@ int lxc_list_subkeys(struct lxc_conf *conf, const char *key, char *retv,
 		strprint(retv, inlen, "order\n");
 	} else if (!strcmp(key, "lxc.monitor")) {
 		strprint(retv, inlen, "unshare\n");
+	} else if (!strcmp(key, "lxc.keyring")) {
+		strprint(retv, inlen, "session\n");
 	} else {
 		fulllen = -1;
 	}

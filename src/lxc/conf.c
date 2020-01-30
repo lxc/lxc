@@ -2743,6 +2743,7 @@ struct lxc_conf *lxc_conf_init(void)
 	lxc_list_init(&new->lsm_aa_raw);
 	new->lsm_se_context = NULL;
 	new->lsm_se_keyring_context = NULL;
+	new->keyring_disable_session = false;
 	new->tmp_umount_proc = false;
 	new->tmp_umount_proc = 0;
 	new->shmount.path_host = NULL;
@@ -3550,15 +3551,17 @@ int lxc_setup(struct lxc_handler *handler)
 		}
 	}
 
-	if (lxc_conf->lsm_se_keyring_context) {
-		keyring_context = lxc_conf->lsm_se_keyring_context;
-	} else if (lxc_conf->lsm_se_context) {
-		keyring_context = lxc_conf->lsm_se_context;
-	}
+	if (!lxc_conf->keyring_disable_session) {
+		if (lxc_conf->lsm_se_keyring_context) {
+			keyring_context = lxc_conf->lsm_se_keyring_context;
+		} else if (lxc_conf->lsm_se_context) {
+			keyring_context = lxc_conf->lsm_se_context;
+		}
 
-	ret = lxc_setup_keyring(keyring_context);
-	if (ret < 0)
-		return -1;
+		ret = lxc_setup_keyring(keyring_context);
+		if (ret < 0)
+			return -1;
+	}
 
 	if (handler->ns_clone_flags & CLONE_NEWNET) {
 		ret = lxc_setup_network_in_child_namespaces(lxc_conf,

@@ -299,6 +299,7 @@ struct lxc_conf {
 	struct lxc_list lsm_aa_raw;
 	char *lsm_se_context;
 	char *lsm_se_keyring_context;
+	bool keyring_disable_session;
 	bool tmp_umount_proc;
 	struct lxc_seccomp seccomp;
 	int maincmd_fd;

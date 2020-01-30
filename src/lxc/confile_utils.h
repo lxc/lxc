@@ -51,6 +51,8 @@ extern int set_config_string_item(char **conf_item, const char *value);
 extern int set_config_string_item_max(char **conf_item, const char *value,
 				      size_t max);
 extern int set_config_path_item(char **conf_item, const char *value);
+extern int set_config_bool_item(bool *conf_item, const char *value,
+                                bool empty_conf_action);
 extern int config_ip_prefix(struct in_addr *addr);
 extern int network_ifname(char *valuep, const char *value, size_t size);
 extern void rand_complete_hwaddr(char *hwaddr);
