@@ -649,6 +649,30 @@ int set_config_path_item(char **conf_item, const char *value)
 	return set_config_string_item_max(conf_item, value, PATH_MAX);
 }
 
+int set_config_bool_item(bool *conf_item, const char *value, bool empty_conf_action)
+{
+	unsigned int val = 0;
+
+	if (lxc_config_value_empty(value)) {
+		*conf_item = empty_conf_action;
+		return 0;
+	}
+
+	if (lxc_safe_uint(value, &val) < 0)
+		return -EINVAL;
+
+	switch (val) {
+	case 0:
+		*conf_item = false;
+		return 0;
+	case 1:
+		*conf_item = true;
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
 int config_ip_prefix(struct in_addr *addr)
 {
 	if (IN_CLASSA(addr->s_addr))

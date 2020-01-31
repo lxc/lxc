@@ -1932,6 +1932,44 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             <programlisting>lxc.selinux.context = system_u:system_r:lxc_t:s0:c22</programlisting>
           </listitem>
         </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.selinux.context.keyring</option>
+          </term>
+          <listitem>
+            <para>
+              Specify the SELinux context under which the container's keyring
+              should be created. By default this the same as lxc.selinux.context, or
+              the the context lxc is executed under if lxc.selinux.context has not been set.
+            </para>
+            <programlisting>lxc.selinux.context.keyring = system_u:system_r:lxc_t:s0:c22</programlisting>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </refsect2>
+
+    <refsect2>
+      <title>Kernel Keyring</title>
+      <para>
+        The Linux Keyring facility is primarily a way for various
+        kernel components to retain or cache security data, authentication
+        keys, encryption keys, and other data in the kernel. By default lxc
+        will create a new session keyring for the started application.
+      </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>lxc.keyring.session</option>
+          </term>
+          <listitem>
+            <para>
+              Disable the creation of new session keyring by lxc. The started
+              application will then inherit the current session keyring.
+              By default, or when passing the value 1, a new keyring will be created.
+            </para>
+            <programlisting>lxc.keyring.session = 0</programlisting>
+          </listitem>
+        </varlistentry>
       </variablelist>
     </refsect2>
 

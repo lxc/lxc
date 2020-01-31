@@ -193,3 +193,16 @@ void lsm_process_cleanup(struct lxc_conf *conf, const char *lxcpath)
 
 	drv->cleanup(conf, lxcpath);
 }
+
+int lsm_keyring_label_set(char *label) {
+
+	if (!drv) {
+		ERROR("LSM driver not inited");
+		return -1;
+	}
+
+	if (!drv->keyring_label_set)
+		return 0;
+
+	return drv->keyring_label_set(label);
+}
