@@ -4240,7 +4240,7 @@ static struct lxc_config_t *get_network_config_ops(const char *key,
 		}
 
 		memmove(copy + 8, idx_end + 1, strlen(idx_end + 1));
-		copy[strlen(key) - numstrlen + 1] = '\0';
+		copy[strlen(key) - (numstrlen + 1)] = '\0';
 
 		config = lxc_get_config(copy);
 		if (!config) {
