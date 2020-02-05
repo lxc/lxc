@@ -148,6 +148,17 @@ lxc_config_define(uts_name);
 lxc_config_define(sysctl);
 lxc_config_define(proc);
 
+/*
+ * Important Note:
+ * If a new config option is added to this table, be aware that 
+ * the order in which the options are places into the table matters.
+ * That means that more specific options of a namespace have to be
+ * placed above more generic ones.
+ *
+ * For instance: If lxc.ab is placed before lxc.ab.c, the config option
+ * lxc.ab.c will always be matched to lxc.ab. That is, the lxc.ab.c option
+ * has to be placed above lxc.ab.
+ */
 static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.arch",                      set_config_personality,                 get_config_personality,                 clr_config_personality,               },
 	{ "lxc.apparmor.profile",          set_config_apparmor_profile,            get_config_apparmor_profile,            clr_config_apparmor_profile,          },
@@ -235,8 +246,8 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.seccomp.notify.cookie",     set_config_seccomp_notify_cookie,       get_config_seccomp_notify_cookie,       clr_config_seccomp_notify_cookie,     },
 	{ "lxc.seccomp.notify.proxy",      set_config_seccomp_notify_proxy,        get_config_seccomp_notify_proxy,        clr_config_seccomp_notify_proxy,      },
 	{ "lxc.seccomp.profile",           set_config_seccomp_profile,             get_config_seccomp_profile,             clr_config_seccomp_profile,           },
-	{ "lxc.selinux.context",           set_config_selinux_context,             get_config_selinux_context,             clr_config_selinux_context,           },
 	{ "lxc.selinux.context.keyring",   set_config_selinux_context_keyring,     get_config_selinux_context_keyring,     clr_config_selinux_context_keyring    },
+	{ "lxc.selinux.context",           set_config_selinux_context,             get_config_selinux_context,             clr_config_selinux_context,           },
 	{ "lxc.signal.halt",               set_config_signal_halt,                 get_config_signal_halt,                 clr_config_signal_halt,               },
 	{ "lxc.signal.reboot",             set_config_signal_reboot,               get_config_signal_reboot,               clr_config_signal_reboot,             },
 	{ "lxc.signal.stop",               set_config_signal_stop,                 get_config_signal_stop,                 clr_config_signal_stop,               },
@@ -4929,7 +4940,7 @@ static struct lxc_config_t *get_network_config_ops(const char *key,
 		}
 
 		memmove(copy + 8, idx_end + 1, strlen(idx_end + 1));
-		copy[strlen(key) - numstrlen + 1] = '\0';
+		copy[strlen(key) - (numstrlen + 1)] = '\0';
 
 		config = lxc_get_config(copy);
 		if (!config) {
