@@ -130,6 +130,17 @@ lxc_config_define(uts_name);
 lxc_config_define(sysctl);
 lxc_config_define(proc);
 
+/*
+ * Important Note:
+ * If a new config option is added to this table, be aware that 
+ * the order in which the options are places into the table matters.
+ * That means that more specific options of a namespace have to be
+ * placed above more generic ones.
+ *
+ * For instance: If lxc.ab is placed before lxc.ab.c, the config option
+ * lxc.ab.c will always be matched to lxc.ab. That is, the lxc.ab.c option
+ * has to be placed above lxc.ab.
+ */
 static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.arch",                      set_config_personality,                 get_config_personality,                 clr_config_personality,               },
 	{ "lxc.apparmor.profile",          set_config_apparmor_profile,            get_config_apparmor_profile,            clr_config_apparmor_profile,          },
