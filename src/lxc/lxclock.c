@@ -169,6 +169,8 @@ struct lxc_lock *lxc_newlock(const char *lxcpath, const char *name)
 	l->type = LXC_LOCK_FLOCK;
 	l->u.f.fname = lxclock_name(lxcpath, name);
 	if (!l->u.f.fname) {
+		if (!name)
+			free(l->u.sem);
 		free(l);
 		l = NULL;
 		goto on_error;
