@@ -1181,14 +1181,14 @@ static int do_start(void *data)
 		if (!handler->conf->root_nsgid_map)
 			nsgid = handler->conf->init_gid;
 
-		if (!lxc_switch_uid_gid(nsuid, nsgid))
-			goto out_warn_father;
-
 		/* Drop groups only after we switched to a valid gid in the new
 		 * user namespace.
 		 */
 		if (!lxc_setgroups(0, NULL) &&
 		    (handler->am_root || errno != EPERM))
+			goto out_warn_father;
+
+		if (!lxc_switch_uid_gid(nsuid, nsgid))
 			goto out_warn_father;
 
 		ret = prctl(PR_SET_DUMPABLE, prctl_arg(1), prctl_arg(0),
@@ -1424,9 +1424,6 @@ static int do_start(void *data)
 	if (new_gid == nsgid)
 		new_gid = LXC_INVALID_GID;
 
-	if (!lxc_switch_uid_gid(new_uid, new_gid))
-		goto out_warn_father;
-
 	/* If we are in a new user namespace we already dropped all groups when
 	 * we switched to root in the new user namespace further above. Only
 	 * drop groups if we can, so ensure that we have necessary privilege.
@@ -1437,6 +1434,9 @@ static int do_start(void *data)
 		#endif
 			if (!lxc_setgroups(0, NULL))
 				goto out_warn_father;
+
+	if (!lxc_switch_uid_gid(new_uid, new_gid))
+		goto out_warn_father;
 
 	ret = lxc_ambient_caps_down();
 	if (ret < 0) {
