@@ -374,13 +374,12 @@ int btrfs_snapshot_wrapper(void *data)
 	const char *src;
 	struct rsync_data_char *arg = data;
 
+	(void)lxc_setgroups(0, NULL);
+
 	if (setgid(0) < 0) {
 		ERROR("Failed to setgid to 0");
 		return -1;
 	}
-
-	if (setgroups(0, NULL) < 0)
-		WARN("Failed to clear groups");
 
 	if (setuid(0) < 0) {
 		ERROR("Failed to setuid to 0");

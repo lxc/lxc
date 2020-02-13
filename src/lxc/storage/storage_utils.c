@@ -465,13 +465,12 @@ int storage_destroy_wrapper(void *data)
 {
 	struct lxc_conf *conf = data;
 
+	(void)lxc_setgroups(0, NULL);
+
 	if (setgid(0) < 0) {
 		SYSERROR("Failed to setgid to 0");
 		return -1;
 	}
-
-	if (setgroups(0, NULL) < 0)
-		SYSWARN("Failed to clear groups");
 
 	if (setuid(0) < 0) {
 		SYSERROR("Failed to setuid to 0");

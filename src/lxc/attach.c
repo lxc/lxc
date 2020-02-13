@@ -769,6 +769,9 @@ static int attach_child_main(struct attach_clone_payload *payload)
 			goto on_error;
 	}
 
+	if (!lxc_setgroups(0, NULL) && errno != EPERM)
+		goto on_error;
+
 	if (options->namespaces & CLONE_NEWUSER) {
 		/* Check whether nsuid 0 has a mapping. */
 		ns_root_uid = get_ns_uid(0);
@@ -788,9 +791,6 @@ static int attach_child_main(struct attach_clone_payload *payload)
 		if (!lxc_switch_uid_gid(ns_root_uid, ns_root_gid))
 			goto on_error;
 	}
-
-	if (!lxc_setgroups(0, NULL) && errno != EPERM)
-		goto on_error;
 
 	/* Set {u,g}id. */
 	if (options->uid != LXC_INVALID_UID)

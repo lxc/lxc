@@ -1027,6 +1027,9 @@ static int cgroup_rmdir_wrapper(void *data)
 	gid_t nsgid = (arg->conf->root_nsgid_map != NULL) ? 0 : arg->conf->init_gid;
 	int ret;
 
+	if (!lxc_setgroups(0, NULL) && errno != EPERM)
+		return log_error_errno(-1, errno, "Failed to setgroups(0, NULL)");
+
 	ret = setresgid(nsgid, nsgid, nsgid);
 	if (ret < 0)
 		return log_error_errno(-1, errno,
@@ -1038,10 +1041,6 @@ static int cgroup_rmdir_wrapper(void *data)
 		return log_error_errno(-1, errno,
 				       "Failed to setresuid(%d, %d, %d)",
 				       (int)nsuid, (int)nsuid, (int)nsuid);
-
-	ret = setgroups(0, NULL);
-	if (ret < 0 && errno != EPERM)
-		return log_error_errno(-1, errno, "Failed to setgroups(0, NULL)");
 
 	return cgroup_rmdir(arg->hierarchies, arg->container_cgroup);
 }
@@ -1494,6 +1493,9 @@ static int chown_cgroup_wrapper(void *data)
 	uid_t nsuid = (arg->conf->root_nsuid_map != NULL) ? 0 : arg->conf->init_uid;
 	gid_t nsgid = (arg->conf->root_nsgid_map != NULL) ? 0 : arg->conf->init_gid;
 
+	if (!lxc_setgroups(0, NULL) && errno != EPERM)
+		return log_error_errno(-1, errno, "Failed to setgroups(0, NULL)");
+
 	ret = setresgid(nsgid, nsgid, nsgid);
 	if (ret < 0)
 		return log_error_errno(-1, errno,
@@ -1505,10 +1507,6 @@ static int chown_cgroup_wrapper(void *data)
 		return log_error_errno(-1, errno,
 				       "Failed to setresuid(%d, %d, %d)",
 				       (int)nsuid, (int)nsuid, (int)nsuid);
-
-	ret = setgroups(0, NULL);
-	if (ret < 0 && errno != EPERM)
-		return log_error_errno(-1, errno, "Failed to setgroups(0, NULL)");
 
 	destuid = get_ns_uid(arg->origuid);
 	if (destuid == LXC_INVALID_UID)
