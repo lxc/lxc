@@ -161,7 +161,6 @@ struct cgroup_ops {
 		       const char *lxcpath, pid_t pid);
 	bool (*mount)(struct cgroup_ops *ops, struct lxc_handler *handler,
 		      const char *root, int type);
-	int (*nrtasks)(struct cgroup_ops *ops);
 	bool (*devices_activate)(struct cgroup_ops *ops,
 				 struct lxc_handler *handler);
 	bool (*monitor_delegate_controllers)(struct cgroup_ops *ops);
