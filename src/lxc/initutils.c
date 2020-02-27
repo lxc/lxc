@@ -84,13 +84,13 @@ const char *lxc_global_config_value(const char *option_name)
 		sprintf(user_config_path, "%s/.config/lxc/lxc.conf", user_home);
 		sprintf(user_default_config_path, "%s/.config/lxc/default.conf", user_home);
 		sprintf(user_lxc_path, "%s/.local/share/lxc/", user_home);
-		user_cgroup_pattern = strdup("%n");
 	}
 	else {
 		user_config_path = strdup(LXC_GLOBAL_CONF);
 		user_default_config_path = strdup(LXC_DEFAULT_CONFIG);
 		user_lxc_path = strdup(LXCPATH);
-		user_cgroup_pattern = strdup(DEFAULT_CGROUP_PATTERN);
+		if (strcmp(DEFAULT_CGROUP_PATTERN, "") != 0)
+			user_cgroup_pattern = strdup(DEFAULT_CGROUP_PATTERN);
 	}
 
 	const char * const (*ptr)[2];

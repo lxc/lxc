@@ -1243,7 +1243,7 @@ static void cgroup_remove_leaf(struct hierarchy *h, bool payload)
 __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 						      struct lxc_handler *handler)
 {
-	__do_free char *monitor_cgroup = NULL;
+	__do_free char *monitor_cgroup = NULL, *__cgroup_tree = NULL;
 	const char *cgroup_tree;
 	int idx = 0;
 	int i;
@@ -1264,17 +1264,23 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 		return ret_set_errno(false, EINVAL);
 
 	conf = handler->conf;
-	cgroup_tree = conf->cgroup_meta.dir;
 
-	if (cgroup_tree)
+	if (conf->cgroup_meta.dir) {
+		cgroup_tree = conf->cgroup_meta.dir;
 		monitor_cgroup = must_concat(&len, conf->cgroup_meta.dir, "/",
 					     DEFAULT_MONITOR_CGROUP_PREFIX,
 					     handler->name,
 					     CGROUP_CREATE_RETRY, NULL);
-	else
+	} else if (ops->cgroup_pattern) {
+		__cgroup_tree = lxc_string_replace("%n", handler->name, ops->cgroup_pattern);
+		cgroup_tree = __cgroup_tree;
+		monitor_cgroup = must_concat(&len, cgroup_tree,
+					     CGROUP_CREATE_RETRY, NULL);
+	} else {
 		monitor_cgroup = must_concat(&len, DEFAULT_MONITOR_CGROUP_PREFIX,
 					     handler->name,
 					     CGROUP_CREATE_RETRY, NULL);
+	}
 	if (!monitor_cgroup)
 		return ret_set_errno(false, ENOMEM);
 
@@ -1311,7 +1317,7 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 						      struct lxc_handler *handler)
 {
-	__do_free char *container_cgroup = NULL;
+	__do_free char *container_cgroup = NULL, *__cgroup_tree = NULL;
 	const char *cgroup_tree;
 	int idx = 0;
 	int i;
@@ -1332,17 +1338,23 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 		return ret_set_errno(false, EINVAL);
 
 	conf = handler->conf;
-	cgroup_tree = conf->cgroup_meta.dir;
 
-	if (cgroup_tree)
+	if (conf->cgroup_meta.dir) {
+		cgroup_tree = conf->cgroup_meta.dir;
 		container_cgroup = must_concat(&len, cgroup_tree, "/",
 					     DEFAULT_PAYLOAD_CGROUP_PREFIX,
 					     handler->name,
 					     CGROUP_CREATE_RETRY, NULL);
-	else
+	} else if (ops->cgroup_pattern) {
+		__cgroup_tree = lxc_string_replace("%n", handler->name, ops->cgroup_pattern);
+		cgroup_tree = __cgroup_tree;
+		container_cgroup = must_concat(&len, cgroup_tree,
+					       CGROUP_CREATE_RETRY, NULL);
+	} else {
 		container_cgroup = must_concat(&len, DEFAULT_PAYLOAD_CGROUP_PREFIX,
 					     handler->name,
 					     CGROUP_CREATE_RETRY, NULL);
+	}
 	if (!container_cgroup)
 		return ret_set_errno(false, ENOMEM);
 
@@ -3179,12 +3191,8 @@ __cgfsng_ops static int cgfsng_data_init(struct cgroup_ops *ops)
 
 	/* copy system-wide cgroup information */
 	cgroup_pattern = lxc_global_config_value("lxc.cgroup.pattern");
-	if (!cgroup_pattern) {
-		/* lxc.cgroup.pattern is only NULL on error. */
-		ERROR("Failed to retrieve cgroup pattern");
-		return ret_set_errno(-1, ENOMEM);
-	}
-	ops->cgroup_pattern = must_copy_string(cgroup_pattern);
+	if (cgroup_pattern && strcmp(cgroup_pattern, "") != 0)
+		ops->cgroup_pattern = must_copy_string(cgroup_pattern);
 
 	return 0;
 }
