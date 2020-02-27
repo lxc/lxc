@@ -1223,21 +1223,14 @@ static void cgroup_remove_leaf(struct hierarchy *h, bool payload)
 
 	if (payload) {
 		__lxc_unused __do_close_prot_errno int fd = move_fd(h->cgfd_con);
-		h->cgfd_con = -EBADF;
-		full_path = h->container_full_path;
+		full_path = move_ptr(h->container_full_path);
 	} else {
 		__lxc_unused __do_close_prot_errno int fd = move_fd(h->cgfd_mon);
-		h->cgfd_mon = -EBADF;
-		full_path = h->monitor_full_path;
+		full_path = move_ptr(h->monitor_full_path);
 	}
 
-	if (rmdir(full_path))
+	if (full_path && rmdir(full_path))
 		SYSWARN("Failed to rmdir(\"%s\") cgroup", full_path);
-
-	if (payload)
-		h->container_full_path = NULL;
-	else
-		h->monitor_full_path = NULL;
 }
 
 __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
@@ -1273,10 +1266,15 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 					     CGROUP_CREATE_RETRY, NULL);
 	} else if (ops->cgroup_pattern) {
 		__cgroup_tree = lxc_string_replace("%n", handler->name, ops->cgroup_pattern);
+		if (!__cgroup_tree)
+			return ret_set_errno(false, ENOMEM);
+
 		cgroup_tree = __cgroup_tree;
-		monitor_cgroup = must_concat(&len, cgroup_tree,
+		monitor_cgroup = must_concat(&len, cgroup_tree, "/",
+					     DEFAULT_MONITOR_CGROUP,
 					     CGROUP_CREATE_RETRY, NULL);
 	} else {
+		cgroup_tree = NULL;
 		monitor_cgroup = must_concat(&len, DEFAULT_MONITOR_CGROUP_PREFIX,
 					     handler->name,
 					     CGROUP_CREATE_RETRY, NULL);
@@ -1347,10 +1345,15 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 					     CGROUP_CREATE_RETRY, NULL);
 	} else if (ops->cgroup_pattern) {
 		__cgroup_tree = lxc_string_replace("%n", handler->name, ops->cgroup_pattern);
+		if (!__cgroup_tree)
+			return ret_set_errno(false, ENOMEM);
+
 		cgroup_tree = __cgroup_tree;
-		container_cgroup = must_concat(&len, cgroup_tree,
+		container_cgroup = must_concat(&len, cgroup_tree, "/",
+					       DEFAULT_PAYLOAD_CGROUP,
 					       CGROUP_CREATE_RETRY, NULL);
 	} else {
+		cgroup_tree = NULL;
 		container_cgroup = must_concat(&len, DEFAULT_PAYLOAD_CGROUP_PREFIX,
 					     handler->name,
 					     CGROUP_CREATE_RETRY, NULL);
