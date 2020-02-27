@@ -169,8 +169,7 @@ const char *lxc_global_config_value(const char *option_name)
 				free(user_lxc_path);
 				user_lxc_path = copy_global_config_value(slider1);
 				remove_trailing_slashes(user_lxc_path);
-				values[i] = user_lxc_path;
-				user_lxc_path = NULL;
+				values[i] = move_ptr(user_lxc_path);
 				goto out;
 			}
 
@@ -182,19 +181,14 @@ const char *lxc_global_config_value(const char *option_name)
 	/* could not find value, use default */
 	if (strcmp(option_name, "lxc.lxcpath") == 0) {
 		remove_trailing_slashes(user_lxc_path);
-		values[i] = user_lxc_path;
-		user_lxc_path = NULL;
-	}
-	else if (strcmp(option_name, "lxc.default_config") == 0) {
-		values[i] = user_default_config_path;
-		user_default_config_path = NULL;
-	}
-	else if (strcmp(option_name, "lxc.cgroup.pattern") == 0) {
-		values[i] = user_cgroup_pattern;
-		user_cgroup_pattern = NULL;
-	}
-	else
+		values[i] = move_ptr(user_lxc_path);
+	} else if (strcmp(option_name, "lxc.default_config") == 0) {
+		values[i] = move_ptr(user_default_config_path);
+	} else if (strcmp(option_name, "lxc.cgroup.pattern") == 0) {
+		values[i] = move_ptr(user_cgroup_pattern);
+	} else {
 		values[i] = (*ptr)[1];
+	}
 
 	/* special case: if default value is NULL,
 	 * and there is no config, don't view that
