@@ -76,7 +76,7 @@ __returns_twice pid_t lxc_raw_clone(unsigned long flags, int *pidfd)
 		     * processor status register (psr) is used instead of a
 		     * full register.
 		     */
-		    "addx %%g0, 0, %g1"
+		    "addx %%g0, 0, %%g1"
 		    : "=r"(g1), "=r"(o0), "=r"(o1), "=r"(o2) /* outputs */
 		    : "r"(g1), "r"(o0), "r"(o1), "r"(o2)     /* inputs */
 		    : "%cc");				     /* clobbers */
