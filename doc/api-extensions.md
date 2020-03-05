@@ -105,3 +105,16 @@ This introduces the ability to specify a `lxc.net.[i].veth.mode` setting, which 
 In "router" mode static routes are created on the host for the container's IP addresses pointing to
 the host side veth interface. In addition to the routes, a static IP neighbour proxy is added to
 the host side veth interface for the IPv4 and IPv6 gateway IPs.
+
+
+# cgroup2\_devices
+
+This enables `LXC` to make use of the new devices controller in the unified
+cgroup hierarchy. `LXC` will now create, load, and attach bpf program to the
+cgroup of the container when the controller is available.
+
+# cgroup2
+
+This enables `LXC` to make complete use of the unified cgroup hierarchy. With
+this extension it is possible to run `LXC` containers on systems that use
+a pure unified cgroup layout.
