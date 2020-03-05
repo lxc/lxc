@@ -1724,9 +1724,10 @@ static int process_dead(/* takes */ int status_fd)
 		return -1;
 
 	/* transfer ownership of fd */
-	f = fdopen(move_fd(dupfd), "re");
+	f = fdopen(dupfd, "re");
 	if (!f)
 		return -1;
+	move_fd(dupfd);
 
 	ret = 0;
 	while (getline(&line, &n, f) != -1) {
