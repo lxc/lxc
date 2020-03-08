@@ -382,6 +382,13 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	}
 
 	if (netdev->priv.veth_attr.mode == VETH_MODE_ROUTER) {
+		/* sleep for a short period of time to work around a bug that intermittently prevents IP neighbour
+		   proxy entries from being added using lxc_ip_neigh_proxy below. When the issue occurs the entries
+		   appear to be added successfully but then do not appear in the proxy list. The length of time
+		   slept doesn't appear to be important, only that the process sleeps for a short period of time.
+		*/
+		nanosleep((const struct timespec[]){{0, 1000}}, NULL);
+
 		if (netdev->ipv4_gateway) {
 			char bufinet4[INET_ADDRSTRLEN];
 			if (!inet_ntop(AF_INET, netdev->ipv4_gateway, bufinet4, sizeof(bufinet4))) {
