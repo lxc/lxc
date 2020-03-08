@@ -200,56 +200,49 @@ struct ip_proxy_args {
 	const char *dev;
 };
 
-static int lxc_add_ip_neigh_proxy_exec_wrapper(void *data)
+static int lxc_ip_neigh_proxy(__u16 nlmsg_type, int family, int ifindex, void *dest)
 {
-	struct ip_proxy_args *args = data;
+	int addrlen, err;
+	struct nl_handler nlh;
+	struct ndmsg *rt;
+	struct nlmsg *answer = NULL, *nlmsg = NULL;
 
-	execlp("ip", "ip", "neigh", "add", "proxy", args->ip, "dev", args->dev, (char *)NULL);
-	return -1;
-}
+	addrlen = family == AF_INET ? sizeof(struct in_addr) : sizeof(struct in6_addr);
 
-static int lxc_del_ip_neigh_proxy_exec_wrapper(void *data)
-{
-	struct ip_proxy_args *args = data;
+	err = netlink_open(&nlh, NETLINK_ROUTE);
+	if (err)
+		return err;
 
-	execlp("ip", "ip", "neigh", "flush", "proxy", args->ip, "dev", args->dev, (char *)NULL);
-	return -1;
-}
+	err = -ENOMEM;
+	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
+	if (!nlmsg)
+		goto out;
 
-static int lxc_add_ip_neigh_proxy(const char *ip, const char *dev)
-{
-	int ret;
-	char cmd_output[PATH_MAX] = {0};
-	struct ip_proxy_args args = {
-		.ip = ip,
-		.dev = dev,
-	};
+	answer = nlmsg_alloc_reserve(NLMSG_GOOD_SIZE);
+	if (!answer)
+		goto out;
 
-	ret = run_command(cmd_output, sizeof(cmd_output), lxc_add_ip_neigh_proxy_exec_wrapper, &args);
-	if (ret < 0) {
-		ERROR("Failed to add ip proxy \"%s\" to dev \"%s\": %s", ip, dev, cmd_output);
-		return -1;
-	}
+	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_ACK | NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL;
+	nlmsg->nlmsghdr->nlmsg_type = nlmsg_type;
 
-	return 0;
-}
+	rt = nlmsg_reserve(nlmsg, sizeof(struct ndmsg));
+	if (!rt)
+		goto out;
+	rt->ndm_ifindex = ifindex;
+	rt->ndm_flags = NTF_PROXY;
+	rt->ndm_type = NDA_DST;
+	rt->ndm_family = family;
 
-static int lxc_del_ip_neigh_proxy(const char *ip, const char *dev)
-{
-	int ret;
-	char cmd_output[PATH_MAX] = {0};
-	struct ip_proxy_args args = {
-		.ip = ip,
-		.dev = dev,
-	};
+	err = -EINVAL;
+	if (nla_put_buffer(nlmsg, NDA_DST, dest, addrlen))
+		goto out;
 
-	ret = run_command(cmd_output, sizeof(cmd_output), lxc_del_ip_neigh_proxy_exec_wrapper, &args);
-	if (ret < 0) {
-		ERROR("Failed to delete ip proxy \"%s\" to dev \"%s\": %s", ip, dev, cmd_output);
-		return -1;
-	}
-
-	return 0;
+	err = netlink_transaction(&nlh, nlmsg, answer);
+out:
+	netlink_close(&nlh);
+	nlmsg_free(answer);
+	nlmsg_free(nlmsg);
+	return err;
 }
 
 static int lxc_is_ip_forwarding_enabled(const char *ifname, int family)
@@ -395,7 +388,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 				goto out_delete;
 			}
 
-			err = lxc_add_ip_neigh_proxy(bufinet4, veth1);
+			err = lxc_ip_neigh_proxy(RTM_NEWNEIGH, AF_INET, netdev->priv.veth_attr.ifindex, netdev->ipv4_gateway);
 			if (err) {
 				log_error_errno(-1, err, "Failed to add gateway ipv4 proxy on \"%s\"", veth1);
 				goto out_delete;
@@ -431,7 +424,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 				goto out_delete;
 			}
 
-			err = lxc_add_ip_neigh_proxy(bufinet6, veth1);
+			err = lxc_ip_neigh_proxy(RTM_NEWNEIGH, AF_INET6, netdev->priv.veth_attr.ifindex, netdev->ipv6_gateway);
 			if (err) {
 				log_error_errno(-1, err, "Failed to add gateway ipv6 proxy on \"%s\"", veth1);
 				goto out_delete;
@@ -3129,7 +3122,14 @@ static int lxc_setup_l2proxy(struct lxc_netdev *netdev) {
 	struct lxc_inet6dev *inet6dev;
 	char bufinet4[INET_ADDRSTRLEN], bufinet6[INET6_ADDRSTRLEN];
 	int err = 0;
-	unsigned int lo_ifindex = 0;
+	unsigned int lo_ifindex = 0, link_ifindex = 0;
+
+	link_ifindex = if_nametoindex(netdev->link);
+	if (link_ifindex == 0) {
+		ERROR("Failed to retrieve ifindex for \"%s\" l2proxy setup", netdev->link);
+		return ret_set_errno(-1, EINVAL);
+	}
+
 
 	/* If IPv4 addresses are specified, then check that sysctl is configured correctly. */
 	if (!lxc_list_empty(&netdev->ipv4)) {
@@ -3176,7 +3176,7 @@ static int lxc_setup_l2proxy(struct lxc_netdev *netdev) {
 		if (!inet_ntop(AF_INET, &inet4dev->addr, bufinet4, sizeof(bufinet4)))
 			return ret_set_errno(-1, -errno);
 
-		if (lxc_add_ip_neigh_proxy(bufinet4, netdev->link) < 0)
+		if (lxc_ip_neigh_proxy(RTM_NEWNEIGH, AF_INET, link_ifindex, &inet4dev->addr) < 0)
 			return ret_set_errno(-1, EINVAL);
 
 		/* IPVLAN requires a route to local-loopback to trigger l2proxy. */
@@ -3194,7 +3194,7 @@ static int lxc_setup_l2proxy(struct lxc_netdev *netdev) {
 		if (!inet_ntop(AF_INET6, &inet6dev->addr, bufinet6, sizeof(bufinet6)))
 			return ret_set_errno(-1, -errno);
 
-		if (lxc_add_ip_neigh_proxy(bufinet6, netdev->link) < 0)
+		if (lxc_ip_neigh_proxy(RTM_NEWNEIGH, AF_INET6, link_ifindex, &inet6dev->addr) < 0)
 			return ret_set_errno(-1, EINVAL);
 
 		/* IPVLAN requires a route to local-loopback to trigger l2proxy. */
@@ -3212,7 +3212,7 @@ static int lxc_setup_l2proxy(struct lxc_netdev *netdev) {
 
 static int lxc_delete_ipv4_l2proxy(struct in_addr *ip, char *link, unsigned int lo_ifindex) {
 	char bufinet4[INET_ADDRSTRLEN];
-	unsigned int errCount = 0;
+	unsigned int errCount = 0, link_ifindex = 0;
 
 	if (!inet_ntop(AF_INET, ip, bufinet4, sizeof(bufinet4))) {
 		SYSERROR("Failed to convert IP for l2proxy ipv4 removal on dev \"%s\"", link);
@@ -3229,7 +3229,13 @@ static int lxc_delete_ipv4_l2proxy(struct in_addr *ip, char *link, unsigned int 
 
 	/* If link is supplied remove the IP neigh proxy entry for this IP on the device. */
 	if (link[0] != '\0') {
-		if (lxc_del_ip_neigh_proxy(bufinet4, link) < 0)
+		link_ifindex = if_nametoindex(link);
+		if (link_ifindex == 0) {
+			ERROR("Failed to retrieve ifindex for \"%s\" l2proxy cleanup", link);
+			return ret_set_errno(-1, EINVAL);
+		}
+
+		if (lxc_ip_neigh_proxy(RTM_DELNEIGH, AF_INET, link_ifindex, ip) < 0)
 			errCount++;
 	}
 
@@ -3241,7 +3247,7 @@ static int lxc_delete_ipv4_l2proxy(struct in_addr *ip, char *link, unsigned int 
 
 static int lxc_delete_ipv6_l2proxy(struct in6_addr *ip, char *link, unsigned int lo_ifindex) {
 	char bufinet6[INET6_ADDRSTRLEN];
-	unsigned int errCount = 0;
+	unsigned int errCount = 0, link_ifindex = 0;
 
 	if (!inet_ntop(AF_INET6, ip, bufinet6, sizeof(bufinet6))) {
 		SYSERROR("Failed to convert IP for l2proxy ipv6 removal on dev \"%s\"", link);
@@ -3258,7 +3264,13 @@ static int lxc_delete_ipv6_l2proxy(struct in6_addr *ip, char *link, unsigned int
 
 	/* If link is supplied remove the IP neigh proxy entry for this IP on the device. */
 	if (link[0] != '\0') {
-		if (lxc_del_ip_neigh_proxy(bufinet6, link) < 0)
+		link_ifindex = if_nametoindex(link);
+		if (link_ifindex == 0) {
+			ERROR("Failed to retrieve ifindex for \"%s\" l2proxy cleanup", link);
+			return ret_set_errno(-1, EINVAL);
+		}
+
+		if (lxc_ip_neigh_proxy(RTM_DELNEIGH, AF_INET6, link_ifindex, ip) < 0)
 			errCount++;
 	}
 
