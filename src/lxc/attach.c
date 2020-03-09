@@ -894,10 +894,8 @@ static int lxc_attach_terminal(struct lxc_conf *conf,
 	lxc_terminal_init(terminal);
 
 	ret = lxc_terminal_create(terminal);
-	if (ret < 0) {
-		ERROR("Failed to create terminal");
-		return -1;
-	}
+	if (ret < 0)
+		return log_error(-1, "Failed to create terminal");
 
 	/* Shift ttys to container. */
 	ret = lxc_terminal_map_ids(conf, terminal);
@@ -920,16 +918,13 @@ static int lxc_attach_terminal_mainloop_init(struct lxc_terminal *terminal,
 	int ret;
 
 	ret = lxc_mainloop_open(descr);
-	if (ret < 0) {
-		ERROR("Failed to create mainloop");
-		return -1;
-	}
+	if (ret < 0)
+		return log_error(-1, "Failed to create mainloop");
 
 	ret = lxc_terminal_mainloop_add(descr, terminal);
 	if (ret < 0) {
-		ERROR("Failed to add handlers to mainloop");
 		lxc_mainloop_close(descr);
-		return -1;
+		return log_error(-1, "Failed to add handlers to mainloop");
 	}
 
 	return 0;
@@ -971,10 +966,8 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	struct attach_clone_payload payload = {0};
 
 	ret = access("/proc/self/ns", X_OK);
-	if (ret) {
-		SYSERROR("Does this kernel version support namespaces?");
-		return -1;
-	}
+	if (ret)
+		return log_error_errno(-1, errno, "Does this kernel version support namespaces?");
 
 	if (!container)
 		return ret_set_errno(-1, EINVAL);
@@ -990,9 +983,8 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 
 	init_pid = lxc_cmd_get_init_pid(name, lxcpath);
 	if (init_pid < 0) {
-		ERROR("Failed to get init pid");
 		lxc_container_put(container);
-		return -1;
+		return log_error(-1, "Failed to get init pid");
 	}
 
 	init_ctx = lxc_proc_get_context_info(init_pid);
@@ -1452,8 +1444,7 @@ int lxc_attach_run_command(void *payload)
 		}
 	}
 
-	SYSERROR("Failed to exec \"%s\"", cmd->program);
-	return ret;
+	return log_error_errno(ret, errno, "Failed to exec \"%s\"", cmd->program);
 }
 
 int lxc_attach_run_shell(void* payload)
