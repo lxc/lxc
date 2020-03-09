@@ -2803,10 +2803,11 @@ out:
 
 void mod_all_rdeps(struct lxc_container *c, bool inc)
 {
-	struct lxc_container *p;
-	char *lxcpath = NULL, *lxcname = NULL, path[PATH_MAX];
+	__do_free char *lxcpath = NULL, *lxcname = NULL;
+	__do_fclose FILE *f = NULL;
 	size_t pathlen = 0, namelen = 0;
-	FILE *f;
+	struct lxc_container *p;
+	char path[PATH_MAX];
 	int ret;
 
 	ret = snprintf(path, PATH_MAX, "%s/%s/lxc_rdepends",
@@ -2817,13 +2818,13 @@ void mod_all_rdeps(struct lxc_container *c, bool inc)
 	}
 
 	f = fopen(path, "re");
-	if (f == NULL)
+	if (!f)
 		return;
 
 	while (getline(&lxcpath, &pathlen, f) != -1) {
 		if (getline(&lxcname, &namelen, f) == -1) {
 			ERROR("badly formatted file %s", path);
-			goto out;
+			return;
 		}
 
 		remove_trailing_newlines(lxcpath);
@@ -2841,47 +2842,36 @@ void mod_all_rdeps(struct lxc_container *c, bool inc)
 
 		lxc_container_put(p);
 	}
-
-out:
-	free(lxcpath);
-	free(lxcname);
-	fclose(f);
 }
 
 static bool has_fs_snapshots(struct lxc_container *c)
 {
-	FILE *f;
+	__do_fclose FILE *f = NULL;
 	char path[PATH_MAX];
 	int ret, v;
 	struct stat fbuf;
-	bool bret = false;
 
 	ret = snprintf(path, PATH_MAX, "%s/%s/lxc_snapshots", c->config_path,
 			c->name);
 	if (ret < 0 || ret > PATH_MAX)
-		goto out;
+		return false;
 
 	/* If the file doesn't exist there are no snapshots. */
 	if (stat(path, &fbuf) < 0)
-		goto out;
+		return false;
 
 	v = fbuf.st_size;
 	if (v != 0) {
 		f = fopen(path, "re");
 		if (!f)
-			goto out;
+			return false;
 
 		ret = fscanf(f, "%d", &v);
-		fclose(f);
-		/* TODO: Figure out what to do with the return value of fscanf. */
 		if (ret != 1)
 			INFO("Container uses new lxc-snapshots format %s", path);
 	}
 
-	bret = v != 0;
-
-out:
-	return bret;
+	return v != 0;
 }
 
 static bool has_snapshots(struct lxc_container *c)
@@ -3528,30 +3518,20 @@ static void copy_rdepends(struct lxc_container *c, struct lxc_container *c0)
 
 static bool add_rdepends(struct lxc_container *c, struct lxc_container *c0)
 {
+	__do_fclose FILE *f = NULL;
 	int ret;
 	char path[PATH_MAX];
-	FILE *f;
-	bool bret;
 
-	ret = snprintf(path, PATH_MAX, "%s/%s/lxc_rdepends", c->config_path,
-		c->name);
-	if (ret < 0 || ret >= PATH_MAX)
+	ret = snprintf(path, sizeof(path), "%s/%s/lxc_rdepends", c->config_path, c->name);
+	if (ret < 0 || ret >= sizeof(path))
 		return false;
 
 	f = fopen(path, "ae");
 	if (!f)
 		return false;
 
-	bret = true;
-
 	/* If anything goes wrong, just return an error. */
-	if (fprintf(f, "%s\n%s\n", c0->config_path, c0->name) < 0)
-		bret = false;
-
-	if (fclose(f) != 0)
-		bret = false;
-
-	return bret;
+	return fprintf(f, "%s\n%s\n", c0->config_path, c0->name) > 0;
 }
 
 /*
@@ -4274,9 +4254,10 @@ static char *get_snapcomment_path(char* snappath, char *name)
 
 static char *get_timestamp(char* snappath, char *name)
 {
-	char path[PATH_MAX], *s = NULL;
+	__do_free char *s = NULL;
+	__do_fclose FILE *fin = NULL;
+	char path[PATH_MAX];
 	int ret, len;
-	FILE *fin;
 
 	ret = snprintf(path, PATH_MAX, "%s/%s/ts", snappath, name);
 	if (ret < 0 || ret >= PATH_MAX)
@@ -4293,16 +4274,12 @@ static char *get_timestamp(char* snappath, char *name)
 		s = malloc(len+1);
 		if (s) {
 			s[len] = '\0';
-			if (fread(s, 1, len, fin) != len) {
-				SYSERROR("reading timestamp");
-				free(s);
-				s = NULL;
-			}
+			if (fread(s, 1, len, fin) != len)
+				return log_error_errno(NULL, errno, "reading timestamp");
 		}
 	}
 
-	fclose(fin);
-	return s;
+	return move_ptr(s);
 }
 
 static int do_lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot **ret_snaps)
@@ -4365,9 +4342,6 @@ static int do_lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot 
 		snaps[count].timestamp = get_timestamp(snappath, direntp->d_name);
 		count++;
 	}
-
-	if (closedir(dir))
-		WARN("Failed to close directory");
 
 	*ret_snaps = snaps;
 	return count;
@@ -5516,9 +5490,10 @@ free_bad:
 int list_active_containers(const char *lxcpath, char ***nret,
 			   struct lxc_container ***cret)
 {
+	__do_free char *line = NULL;
+	__do_fclose FILE *f = NULL;
 	int i, ret = -1, cret_cnt = 0, ct_name_cnt = 0;
 	int lxcpath_len;
-	char *line = NULL;
 	char **ct_name = NULL;
 	size_t len = 0;
 	struct lxc_container *c = NULL;
@@ -5534,7 +5509,7 @@ int list_active_containers(const char *lxcpath, char ***nret,
 	if (nret)
 		*nret = NULL;
 
-	FILE *f = fopen("/proc/net/unix", "re");
+	f = fopen("/proc/net/unix", "re");
 	if (!f)
 		return -1;
 
@@ -5662,8 +5637,6 @@ free_ct_name:
 	}
 
 out:
-	free(line);
-	fclose(f);
 	return ret;
 }
 
