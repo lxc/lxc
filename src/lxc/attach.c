@@ -518,8 +518,8 @@ static void lxc_attach_get_init_uidgid(uid_t *init_uid, gid_t *init_gid)
 	int ret;
 	size_t line_bufsz = 0;
 	long value = -1;
-	uid_t uid = (uid_t)-1;
-	gid_t gid = (gid_t)-1;
+	uid_t uid = LXC_INVALID_UID;
+	gid_t gid = LXC_INVALID_GID;
 
 	ret = snprintf(proc_fn, LXC_PROC_STATUS_LEN, "/proc/%d/status", 1);
 	if (ret < 0 || ret >= LXC_PROC_STATUS_LEN)
@@ -542,15 +542,15 @@ static void lxc_attach_get_init_uidgid(uid_t *init_uid, gid_t *init_gid)
 				gid = (gid_t)value;
 		}
 
-		if (uid != (uid_t)-1 && gid != (gid_t)-1)
+		if (uid != LXC_INVALID_UID && gid != LXC_INVALID_GID)
 			break;
 	}
 
 	/* Only override arguments if we found something. */
-	if (uid != (uid_t)-1)
+	if (uid != LXC_INVALID_UID)
 		*init_uid = uid;
 
-	if (gid != (gid_t)-1)
+	if (gid != LXC_INVALID_GID)
 		*init_gid = gid;
 
 	/* TODO: we should also parse supplementary groups and use
