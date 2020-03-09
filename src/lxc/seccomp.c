@@ -1133,16 +1133,16 @@ bad_line:
  */
 static bool use_seccomp(const struct lxc_conf *conf)
 {
+	__do_free char *line = NULL;
+	__do_fclose FILE *f = NULL;
 	int ret, v;
-	FILE *f;
 	size_t line_bufsz = 0;
-	char *line = NULL;
 	bool already_enabled = false, found = false;
 
 	if (conf->seccomp.allow_nesting > 0)
 		return true;
 
-	f = fopen("/proc/self/status", "r");
+	f = fopen("/proc/self/status", "re");
 	if (!f)
 		return true;
 
@@ -1157,8 +1157,6 @@ static bool use_seccomp(const struct lxc_conf *conf)
 			break;
 		}
 	}
-	free(line);
-	fclose(f);
 
 	if (!found) {
 		INFO("Seccomp is not enabled in the kernel");
@@ -1175,8 +1173,8 @@ static bool use_seccomp(const struct lxc_conf *conf)
 
 int lxc_read_seccomp_config(struct lxc_conf *conf)
 {
+	__do_fclose FILE *f = NULL;
 	int ret;
-	FILE *f;
 
 	if (!conf->seccomp.seccomp)
 		return 0;
@@ -1217,16 +1215,13 @@ int lxc_read_seccomp_config(struct lxc_conf *conf)
 	}
 #endif
 
-	f = fopen(conf->seccomp.seccomp, "r");
+	f = fopen(conf->seccomp.seccomp, "re");
 	if (!f) {
 		SYSERROR("Failed to open seccomp policy file %s", conf->seccomp.seccomp);
 		return -1;
 	}
 
-	ret = parse_config(f, conf);
-	fclose(f);
-
-	return ret;
+	return parse_config(f, conf);
 }
 
 int lxc_seccomp_load(struct lxc_conf *conf)

@@ -486,8 +486,8 @@ static bool write_int(char *path, int v)
 /* Recursively remove directory and its parents. */
 static int recursive_rmdir(char *dirname)
 {
+	__do_closedir DIR *dir = NULL;
 	struct dirent *direntp;
-	DIR *dir;
 	int r = 0;
 
 	dir = opendir(dirname);
@@ -522,12 +522,6 @@ next:
 	}
 
 	if (rmdir(dirname) < 0) {
-		if (!r)
-			pam_cgfs_debug("Failed to delete %s: %s\n", dirname, strerror(errno));
-		r = -1;
-	}
-
-	if (closedir(dir) < 0) {
 		if (!r)
 			pam_cgfs_debug("Failed to delete %s: %s\n", dirname, strerror(errno));
 		r = -1;

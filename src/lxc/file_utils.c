@@ -235,7 +235,7 @@ int print_to_file(const char *file, const char *content)
 	FILE *f;
 	int ret = 0;
 
-	f = fopen(file, "w");
+	f = fopen(file, "we");
 	if (!f)
 		return -1;
 
@@ -395,45 +395,6 @@ again:
 	return ret;
 }
 
-char *file_to_buf(char *path, size_t *length)
-{
-	int fd;
-	char buf[PATH_MAX];
-	char *copy = NULL;
-
-	if (!length)
-		return NULL;
-
-	fd = open(path, O_RDONLY | O_CLOEXEC);
-	if (fd < 0)
-		return NULL;
-
-	*length = 0;
-	for (;;) {
-		int n;
-		char *old = copy;
-
-		n = lxc_read_nointr(fd, buf, sizeof(buf));
-		if (n < 0)
-			goto on_error;
-		if (!n)
-			break;
-
-		copy = must_realloc(old, (*length + n) * sizeof(*old));
-		memcpy(copy + *length, buf, n);
-		*length += n;
-	}
-
-	close(fd);
-	return copy;
-
-on_error:
-	close(fd);
-	free(copy);
-
-	return NULL;
-}
-
 int fd_to_fd(int from, int to)
 {
 	for (;;) {
@@ -462,4 +423,81 @@ int fd_to_fd(int from, int to)
 	}
 
 	return 0;
+}
+
+static char *fd_to_buf(int fd, size_t *length)
+{
+	__do_free char *copy = NULL;
+
+	if (!length)
+		return NULL;
+
+	*length = 0;
+	for (;;) {
+		ssize_t bytes_read;
+		char buf[4096];
+		char *old = copy;
+
+		bytes_read = lxc_read_nointr(fd, buf, sizeof(buf));
+		if (bytes_read < 0)
+			return NULL;
+
+		if (!bytes_read)
+			break;
+
+		copy = must_realloc(old, (*length + bytes_read) * sizeof(*old));
+		memcpy(copy + *length, buf, bytes_read);
+		*length += bytes_read;
+	}
+
+	return move_ptr(copy);
+}
+
+char *file_to_buf(const char *path, size_t *length)
+{
+	__do_close_prot_errno int fd = -EBADF;
+
+	if (!length)
+		return NULL;
+
+	fd = open(path, O_RDONLY | O_CLOEXEC);
+	if (fd < 0)
+		return NULL;
+
+	return fd_to_buf(fd, length);
+}
+
+FILE *fopen_cached(const char *path, const char *mode, void **caller_freed_buffer)
+{
+	__do_free char *buf = NULL;
+	size_t len = 0;
+	FILE *f;
+
+	buf = file_to_buf(path, &len);
+	if (!buf)
+		return NULL;
+
+	f = fmemopen(buf, len, mode);
+	if (!f)
+		return NULL;
+	*caller_freed_buffer = move_ptr(buf);
+	return f;
+}
+
+FILE *fdopen_cached(int fd, const char *mode, void **caller_freed_buffer)
+{
+	__do_free char *buf = NULL;
+	size_t len = 0;
+	FILE *f;
+
+	buf = fd_to_buf(fd, &len);
+	if (!buf)
+		return NULL;
+
+	f = fmemopen(buf, len, mode);
+	if (!f)
+		return NULL;
+
+	*caller_freed_buffer = move_ptr(buf);
+	return f;
 }

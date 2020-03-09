@@ -719,7 +719,7 @@ WRAP_API_2(bool, lxcapi_wait, const char *, int)
 
 static bool am_single_threaded(void)
 {
-	DIR *dir;
+	__do_closedir DIR *dir = NULL;
 	struct dirent *direntp;
 	int count = 0;
 
@@ -738,7 +738,6 @@ static bool am_single_threaded(void)
 		if (count > 1)
 			break;
 	}
-	closedir(dir);
 
 	return count == 1;
 }
@@ -1649,7 +1648,7 @@ static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 	char *tpath;
 #endif
 
-	f = fopen(path, "r");
+	f = fopen(path, "re");
 	if (f == NULL)
 		return false;
 
@@ -1702,7 +1701,7 @@ static bool prepend_lxc_header(char *path, const char *t, char *const argv[])
 	free(tpath);
 #endif
 
-	f = fopen(path, "w");
+	f = fopen(path, "we");
 	if (f == NULL) {
 		SYSERROR("Reopening config for writing");
 		free(contents);
@@ -2699,7 +2698,7 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 
 	/* If we find an lxc-snapshot file using the old format only listing the
 	 * number of snapshots we will keep using it. */
-	f1 = fopen(path, "r");
+	f1 = fopen(path, "re");
 	if (f1) {
 		n = fscanf(f1, "%d", &v);
 		fclose(f1);
@@ -2714,7 +2713,7 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 
 	if (n == 1) {
 		v += inc ? 1 : -1;
-		f1 = fopen(path, "w");
+		f1 = fopen(path, "we");
 		if (!f1)
 			goto out;
 
@@ -2733,7 +2732,7 @@ static bool mod_rdep(struct lxc_container *c0, struct lxc_container *c, bool inc
 		/* Here we know that we have or can use an lxc-snapshot file
 		 * using the new format. */
 		if (inc) {
-			f1 = fopen(path, "a");
+			f1 = fopen(path, "ae");
 			if (!f1)
 				goto out;
 
@@ -2817,7 +2816,7 @@ void mod_all_rdeps(struct lxc_container *c, bool inc)
 		return;
 	}
 
-	f = fopen(path, "r");
+	f = fopen(path, "re");
 	if (f == NULL)
 		return;
 
@@ -2868,7 +2867,7 @@ static bool has_fs_snapshots(struct lxc_container *c)
 
 	v = fbuf.st_size;
 	if (v != 0) {
-		f = fopen(path, "r");
+		f = fopen(path, "re");
 		if (!f)
 			goto out;
 
@@ -2887,10 +2886,10 @@ out:
 
 static bool has_snapshots(struct lxc_container *c)
 {
+	__do_closedir DIR *dir = NULL;
 	char path[PATH_MAX];
 	struct dirent *direntp;
-	int count=0;
-	DIR *dir;
+	int count = 0;
 
 	if (!get_snappath_dir(c, path))
 		return false;
@@ -2909,7 +2908,6 @@ static bool has_snapshots(struct lxc_container *c)
 		break;
 	}
 
-	closedir(dir);
 	return count > 0;
 }
 
@@ -3540,7 +3538,7 @@ static bool add_rdepends(struct lxc_container *c, struct lxc_container *c0)
 	if (ret < 0 || ret >= PATH_MAX)
 		return false;
 
-	f = fopen(path, "a");
+	f = fopen(path, "ae");
 	if (!f)
 		return false;
 
@@ -3736,7 +3734,7 @@ static int clone_update_rootfs(struct clone_update_data *data)
 		if (!file_exists(path))
 			return 0;
 
-		if (!(fout = fopen(path, "w"))) {
+		if (!(fout = fopen(path, "we"))) {
 			SYSERROR("unable to open %s: ignoring", path);
 			return 0;
 		}
@@ -4216,7 +4214,7 @@ static int do_lxcapi_snapshot(struct lxc_container *c, const char *commentfile)
 	len = strlen(snappath) + 1 + strlen(newname) + 1 + strlen(LXC_TIMESTAMP_FNAME) + 1;
 	dfnam = must_realloc(NULL, len);
 	snprintf(dfnam, len, "%s/%s/%s", snappath, newname, LXC_TIMESTAMP_FNAME);
-	f = fopen(dfnam, "w");
+	f = fopen(dfnam, "we");
 	if (!f) {
 		ERROR("Failed to open %s", dfnam);
 		return -1;
@@ -4284,7 +4282,7 @@ static char *get_timestamp(char* snappath, char *name)
 	if (ret < 0 || ret >= PATH_MAX)
 		return NULL;
 
-	fin = fopen(path, "r");
+	fin = fopen(path, "re");
 	if (!fin)
 		return NULL;
 
@@ -4309,11 +4307,11 @@ static char *get_timestamp(char* snappath, char *name)
 
 static int do_lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot **ret_snaps)
 {
+	__do_closedir DIR *dir = NULL;
 	char snappath[PATH_MAX], path2[PATH_MAX];
 	int count = 0, ret;
 	struct dirent *direntp;
 	struct lxc_snapshot *snaps =NULL, *nsnaps;
-	DIR *dir;
 
 	if (!c || !lxcapi_is_defined(c))
 		return -1;
@@ -4376,16 +4374,11 @@ static int do_lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot 
 
 out_free:
 	if (snaps) {
-		int i;
-
-		for (i=0; i<count; i++)
+		for (int i = 0; i < count; i++)
 			lxcsnap_free(&snaps[i]);
 
 		free(snaps);
 	}
-
-	if (closedir(dir))
-		WARN("Failed to close directory");
 
 	return -1;
 }
@@ -4499,7 +4492,7 @@ err:
 
 static bool remove_all_snapshots(const char *path)
 {
-	DIR *dir;
+	__do_closedir DIR *dir = NULL;
 	struct dirent *direntp;
 	bool bret = true;
 
@@ -4521,8 +4514,6 @@ static bool remove_all_snapshots(const char *path)
 			continue;
 		}
 	}
-
-	closedir(dir);
 
 	if (rmdir(path))
 		SYSERROR("Error removing directory %s", path);
@@ -5433,7 +5424,7 @@ int lxc_get_wait_states(const char **states)
  */
 int list_defined_containers(const char *lxcpath, char ***names, struct lxc_container ***cret)
 {
-	DIR *dir;
+	__do_closedir DIR *dir = NULL;
 	int i, cfound = 0, nfound = 0;
 	struct dirent *direntp;
 	struct lxc_container *c;
@@ -5504,23 +5495,21 @@ int list_defined_containers(const char *lxcpath, char ***names, struct lxc_conta
 		nfound++;
 	}
 
-	closedir(dir);
 	return nfound;
 
 free_bad:
 	if (names && *names) {
-		for (i=0; i<cfound; i++)
+		for (i = 0; i < cfound; i++)
 			free((*names)[i]);
 		free(*names);
 	}
 
 	if (cret && *cret) {
-		for (i=0; i<nfound; i++)
+		for (i = 0; i < nfound; i++)
 			lxc_container_put((*cret)[i]);
 		free(*cret);
 	}
 
-	closedir(dir);
 	return -1;
 }
 
@@ -5545,7 +5534,7 @@ int list_active_containers(const char *lxcpath, char ***nret,
 	if (nret)
 		*nret = NULL;
 
-	FILE *f = fopen("/proc/net/unix", "r");
+	FILE *f = fopen("/proc/net/unix", "re");
 	if (!f)
 		return -1;
 

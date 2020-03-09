@@ -195,7 +195,7 @@ static int read_default_map(char *fnam, int which, char *user)
 	int ret = -1;
 	size_t sz = 0;
 
-	fin = fopen(fnam, "r");
+	fin = fopen(fnam, "re");
 	if (!fin)
 		return -1;
 

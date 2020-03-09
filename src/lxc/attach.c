@@ -429,7 +429,7 @@ static char *lxc_attach_getpwshell(uid_t uid)
 
 	close(pipes[1]);
 
-	pipe_f = fdopen(pipes[0], "r");
+	pipe_f = fdopen(pipes[0], "re");
 	if (!pipe_f) {
 		close(pipes[0]);
 		goto reap_child;
@@ -525,7 +525,7 @@ static void lxc_attach_get_init_uidgid(uid_t *init_uid, gid_t *init_gid)
 	if (ret < 0 || ret >= LXC_PROC_STATUS_LEN)
 		return;
 
-	proc_file = fopen(proc_fn, "r");
+	proc_file = fopen(proc_fn, "re");
 	if (!proc_file)
 		return;
 

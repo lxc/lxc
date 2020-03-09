@@ -1392,7 +1392,7 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
 		int progress = 0;
 		size_t len = 0;
 
-		f = fopen("./proc/self/mountinfo", "r");
+		f = fopen("./proc/self/mountinfo", "re");
 		if (!f) {
 			SYSERROR("Failed to open \"/proc/self/mountinfo\"");
 			return -1;
@@ -2366,6 +2366,7 @@ FILE *make_anonymous_mount_file(struct lxc_list *mount,
 				bool include_nesting_helpers)
 {
 	__do_close_prot_errno int fd = -EBADF;
+	FILE *f;
 	int ret;
 	char *mount_entry;
 	struct lxc_list *iterator;
@@ -2412,7 +2413,10 @@ FILE *make_anonymous_mount_file(struct lxc_list *mount,
 	if (ret < 0)
 		return NULL;
 
-	return fdopen(move_fd(fd), "r+");
+	f = fdopen(fd, "re+");
+	if (f)
+		move_fd(fd); /* Transfer ownership of fd. */
+	return f;
 }
 
 static int setup_mount_entries(const struct lxc_conf *conf,
@@ -3304,7 +3308,7 @@ again:
 		return;
 	}
 
-	f = fdopen(memfd, "r");
+	f = fdopen(memfd, "re");
 	if (!f) {
 		SYSERROR("Failed to open copy of \"/proc/self/mountinfo\" to mark all shared. Continuing");
 		return;
@@ -4704,7 +4708,7 @@ void suggest_default_idmap(void)
 	if (!gname)
 		return;
 
-	subuid_f = fopen(subuidfile, "r");
+	subuid_f = fopen(subuidfile, "re");
 	if (!subuid_f) {
 		ERROR("Your system is not configured with subuids");
 		return;
@@ -4741,7 +4745,7 @@ void suggest_default_idmap(void)
 			WARN("Could not parse UID range");
 	}
 
-	subgid_f = fopen(subgidfile, "r");
+	subgid_f = fopen(subgidfile, "re");
 	if (!subgid_f) {
 		ERROR("Your system is not configured with subgids");
 		return;
