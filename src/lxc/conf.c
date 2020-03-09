@@ -3547,7 +3547,7 @@ int lxc_setup(struct lxc_handler *handler)
 		return -1;
 	}
 
-	if (handler->nsfd[LXC_NS_UTS] == -1) {
+	if (handler->nsfd[LXC_NS_UTS] == -EBADF) {
 		ret = setup_utsname(lxc_conf->utsname);
 		if (ret < 0) {
 			ERROR("Failed to setup the utsname %s", name);

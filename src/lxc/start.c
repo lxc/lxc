@@ -122,9 +122,9 @@ static int lxc_try_preserve_ns(const int pid, const char *ns)
 					       errno, "Failed to preserve %s namespace",
 					       ns);
 
-		return log_error_errno(-EOPNOTSUPP,
-				       errno, "Kernel does not support preserving %s namespaces",
-				       ns);
+		return log_warn_errno(-EOPNOTSUPP,
+				      errno, "Kernel does not support preserving %s namespaces",
+				      ns);
 	}
 
 	return fd;
@@ -646,7 +646,7 @@ void lxc_free_handler(struct lxc_handler *handler)
 
 	if (handler->conf && handler->conf->reboot == REBOOT_NONE)
 		if (handler->conf->maincmd_fd >= 0)
-			lxc_abstract_unix_close(handler->conf->maincmd_fd);
+			close_prot_errno_disarm(handler->conf->maincmd_fd);
 
 	if (handler->monitor_status_fd >= 0)
 		close_prot_errno_disarm(handler->monitor_status_fd);
@@ -892,8 +892,7 @@ out_aborting:
 	(void)lxc_set_state(name, handler, ABORTING);
 
 out_close_maincmd_fd:
-	lxc_abstract_unix_close(conf->maincmd_fd);
-	conf->maincmd_fd = -1;
+	close_prot_errno_disarm(conf->maincmd_fd);
 	return -1;
 }
 
@@ -981,8 +980,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		 * the command socket causing a new process to get ECONNREFUSED
 		 * because we haven't yet closed the command socket.
 		 */
-		lxc_abstract_unix_close(handler->conf->maincmd_fd);
-		handler->conf->maincmd_fd = -EBADF;
+		close_prot_errno_disarm(handler->conf->maincmd_fd);
 		TRACE("Closed command socket");
 
 		/* This function will try to connect to the legacy lxc-monitord
@@ -1641,7 +1639,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	 */
 	if (!wants_to_map_ids) {
 		handler->pinfd = pin_rootfs(conf->rootfs.path);
-		if (handler->pinfd == -1)
+		if (handler->pinfd == -EBADF)
 			INFO("Failed to pin the rootfs for container \"%s\"", handler->name);
 	}
 

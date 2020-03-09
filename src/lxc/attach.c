@@ -92,7 +92,8 @@ static struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 
 	info->lsm_label = lsm_process_label_get(pid);
 	info->ns_inherited = 0;
-	memset(info->ns_fd, -1, sizeof(int) * LXC_NS_MAX);
+	for (int i = 0; i < LXC_NS_MAX; i++)
+		info->ns_fd[i] = -EBADF;
 
 	return move_ptr(info);
 }
