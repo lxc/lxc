@@ -935,8 +935,6 @@ static int lxc_cmd_add_bpf_device_cgroup_callback(int fd, struct lxc_cmd_req *re
 	struct lxc_cmd_rsp rsp = {0};
 	struct lxc_conf *conf = handler->conf;
 	struct hierarchy *unified = handler->cgroup_ops->unified;
-	struct lxc_list *list_elem = NULL;
-	struct device_item *new_device = NULL;
 	int ret;
 	struct lxc_list *it;
 	struct device_item *device;
