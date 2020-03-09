@@ -52,9 +52,6 @@
 #define __lxc_unused
 #endif
 
-/* Indicates taking ownership */
-#define __owns
-
 #define __cgfsng_ops
 
 #endif /* __LXC_COMPILER_H */
