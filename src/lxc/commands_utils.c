@@ -171,7 +171,7 @@ int lxc_cmd_connect(const char *name, const char *lxcpath,
 	return client_fd;
 }
 
-int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
+int lxc_add_state_client(__owns int state_client_fd, struct lxc_handler *handler,
 			 lxc_state_t states[MAX_STATE])
 {
 	__do_free struct lxc_state_client *newclient = NULL;
