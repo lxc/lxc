@@ -566,8 +566,7 @@ static bool fetch_seccomp(struct lxc_container *c, lxc_attach_options_t *options
 
 	if (!(options->namespaces & CLONE_NEWNS) ||
 	    !(options->attach_flags & LXC_ATTACH_LSM)) {
-		free(c->lxc_conf->seccomp.seccomp);
-		c->lxc_conf->seccomp.seccomp = NULL;
+		free_disarm(c->lxc_conf->seccomp.seccomp);
 		return true;
 	}
 
@@ -582,10 +581,8 @@ static bool fetch_seccomp(struct lxc_container *c, lxc_attach_options_t *options
 		INFO("Failed to retrieve lxc.seccomp.profile");
 
 		path = c->get_running_config_item(c, "lxc.seccomp");
-		if (!path) {
-			INFO("Failed to retrieve lxc.seccomp");
-			return true;
-		}
+		if (!path)
+			return log_info(true, "Failed to retrieve lxc.seccomp");
 	}
 
 	/* Copy the value into the new lxc_conf. */
@@ -595,13 +592,10 @@ static bool fetch_seccomp(struct lxc_container *c, lxc_attach_options_t *options
 
 	/* Attempt to parse the resulting config. */
 	ret = lxc_read_seccomp_config(c->lxc_conf);
-	if (ret < 0) {
-		ERROR("Failed to retrieve seccomp policy");
-		return false;
-	}
+	if (ret < 0)
+		return log_error(false, "Failed to retrieve seccomp policy");
 
-	INFO("Retrieved seccomp policy");
-	return true;
+	return log_info(true, "Retrieved seccomp policy");
 }
 
 static bool no_new_privs(struct lxc_container *c, lxc_attach_options_t *options)
