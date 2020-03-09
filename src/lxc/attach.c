@@ -603,17 +603,13 @@ static bool no_new_privs(struct lxc_container *c, lxc_attach_options_t *options)
 	__do_free char *val = NULL;
 
 	/* Remove current setting. */
-	if (!c->set_config_item(c, "lxc.no_new_privs", "")) {
-		INFO("Failed to unset lxc.no_new_privs");
-		return false;
-	}
+	if (!c->set_config_item(c, "lxc.no_new_privs", ""))
+		return log_info(false, "Failed to unset lxc.no_new_privs");
 
 	/* Retrieve currently active setting. */
 	val = c->get_running_config_item(c, "lxc.no_new_privs");
-	if (!val) {
-		INFO("Failed to retrieve lxc.no_new_privs");
-		return false;
-	}
+	if (!val)
+		return log_info(false, "Failed to retrieve lxc.no_new_privs");
 
 	/* Set currently active setting. */
 	return c->set_config_item(c, "lxc.no_new_privs", val);
