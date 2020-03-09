@@ -431,6 +431,13 @@ static char *lxc_attach_getpwshell(uid_t uid)
 	close(pipes[1]);
 
 	pipe_f = fdopen(pipes[0], "r");
+	if (!pipe_f) {
+		close(pipes[0]);
+		goto reap_child;
+	}
+	/* Transfer ownership of pipes[0] to pipe_f. */
+	move_fd(pipes[0]);
+
 	while (getline(&line, &line_bufsz, pipe_f) != -1) {
 		int i;
 		long value;
@@ -493,6 +500,7 @@ static char *lxc_attach_getpwshell(uid_t uid)
 		found = true;
 	}
 
+reap_child:
 	ret = wait_for_pid(pid);
 	if (ret < 0) {
 		free(result);
