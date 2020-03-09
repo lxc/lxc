@@ -365,14 +365,13 @@ static int lxc_attach_set_environment(struct lxc_proc_context_info *init_ctx,
 
 static char *lxc_attach_getpwshell(uid_t uid)
 {
-	__do_free char *line = NULL;
+	__do_free char *line = NULL, *result = NULL;
 	__do_fclose FILE *pipe_f = NULL;
 	int fd, ret;
 	pid_t pid;
 	int pipes[2];
 	bool found = false;
 	size_t line_bufsz = 0;
-	char *result = NULL;
 
 	/* We need to fork off a process that runs the getent program, and we
 	 * need to capture its output, so we use a pipe for that purpose.
@@ -489,7 +488,7 @@ static char *lxc_attach_getpwshell(uid_t uid)
 		if (!token)
 			continue;
 
-		free(result);
+		free_disarm(result);
 		result = strdup(token);
 
 		/* Sanity check that there are no fields after that. */
@@ -502,17 +501,13 @@ static char *lxc_attach_getpwshell(uid_t uid)
 
 reap_child:
 	ret = wait_for_pid(pid);
-	if (ret < 0) {
-		free(result);
+	if (ret < 0)
 		return NULL;
-	}
 
-	if (!found) {
-		free(result);
+	if (!found)
 		return NULL;
-	}
 
-	return result;
+	return move_ptr(result);
 }
 
 static void lxc_attach_get_init_uidgid(uid_t *init_uid, gid_t *init_gid)
