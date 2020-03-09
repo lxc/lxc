@@ -195,7 +195,6 @@ int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
 		lxc_list_add_elem(tmplist, newclient);
 		lxc_list_add_tail(&handler->conf->state_clients, tmplist);
 	} else {
-		close(state_client_fd);
 		return state;
 	}
 
