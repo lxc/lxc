@@ -863,7 +863,7 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 	return MAX_STATE;
 }
 
-static int lxc_cmd_add_state_client_callback(int fd, struct lxc_cmd_req *req,
+static int lxc_cmd_add_state_client_callback(__owns int fd, struct lxc_cmd_req *req,
 					     struct lxc_handler *handler,
 					     struct lxc_epoll_descr *descr)
 {
@@ -888,6 +888,10 @@ static int lxc_cmd_add_state_client_callback(int fd, struct lxc_cmd_req *req,
 	ret = lxc_cmd_rsp_send(fd, &rsp);
 	if (ret < 0)
 		goto reap_client_fd;
+
+	/* close fd if state is already achieved to avoid leakage */
+	if (rsp.ret != MAX_STATE)
+		close(fd);
 
 	return 0;
 
