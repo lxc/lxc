@@ -94,9 +94,7 @@ static void print_top_failing_dir(const char *path)
 
 		ret = access(copy, X_OK);
 		if (ret != 0) {
-			SYSERROR("Could not access %s. Please grant it x "
-				 "access, or add an ACL for the container "
-				 "root", copy);
+			SYSERROR("Could not access %s. Please grant it x access, or add an ACL for the container " "root", copy);
 			return;
 		}
 		*p = saved;
@@ -105,14 +103,11 @@ static void print_top_failing_dir(const char *path)
 
 static void lxc_put_nsfds(struct lxc_handler *handler)
 {
-	int i;
-
-	for (i = 0; i < LXC_NS_MAX; i++) {
+	for (int i = 0; i < LXC_NS_MAX; i++) {
 		if (handler->nsfd[i] < 0)
 			continue;
 
-		close(handler->nsfd[i]);
-		handler->nsfd[i] = -EBADF;
+		close_prot_errno_disarm(handler->nsfd[i]);
 	}
 }
 
@@ -122,13 +117,14 @@ static int lxc_try_preserve_ns(const int pid, const char *ns)
 
 	fd = lxc_preserve_ns(pid, ns);
 	if (fd < 0) {
-		if (errno != ENOENT) {
-			SYSERROR("Failed to preserve %s namespace", ns);
-			return -EINVAL;
-		}
+		if (errno != ENOENT)
+			return log_error_errno(-EINVAL,
+					       errno, "Failed to preserve %s namespace",
+					       ns);
 
-		SYSWARN("Kernel does not support preserving %s namespaces", ns);
-		return -EOPNOTSUPP;
+		return log_error_errno(-EOPNOTSUPP,
+				       errno, "Kernel does not support preserving %s namespaces",
+				       ns);
 	}
 
 	return fd;
@@ -187,23 +183,18 @@ static bool match_dlog_fds(struct dirent *direntp)
 	int ret;
 
 	ret = snprintf(path, PATH_MAX, "/proc/self/fd/%s", direntp->d_name);
-	if (ret < 0 || ret >= PATH_MAX) {
-		ERROR("Failed to create file descriptor name");
-		return false;
-	}
+	if (ret < 0 || ret >= PATH_MAX)
+		return log_error(false, "Failed to create file descriptor name");
 
 	linklen = readlink(path, link, PATH_MAX);
-	if (linklen < 0) {
-		SYSERROR("Failed to read link path - \"%s\"", path);
-		return false;
-	} else if (linklen >= PATH_MAX) {
-		ERROR("The name of link path is too long - \"%s\"", path);
-		return false;
-	}
+	if (linklen < 0)
+		return log_error(false, "Failed to read link path - \"%s\"", path);
+	else if (linklen >= PATH_MAX)
+		return log_error(false, "The name of link path is too long - \"%s\"", path);
 
-	if (strcmp(link, "/dev/log_main") == 0 ||
-	    strcmp(link, "/dev/log_system") == 0 ||
-	    strcmp(link, "/dev/log_radio") == 0)
+	if (strcmp(link, "/dev/log_main")	== 0 ||
+	    strcmp(link, "/dev/log_system")	== 0 ||
+	    strcmp(link, "/dev/log_radio")	== 0)
 		return true;
 
 	return false;
@@ -223,10 +214,8 @@ int lxc_check_inherited(struct lxc_conf *conf, bool closeall,
 
 restart:
 	dir = opendir("/proc/self/fd");
-	if (!dir) {
-		SYSWARN("Failed to open directory");
-		return -1;
-	}
+	if (!dir)
+		return log_warn(-1, "Failed to open directory");
 
 	fddir = dirfd(dir);
 
@@ -319,16 +308,14 @@ static int setup_signal_fd(sigset_t *oldmask)
 	}
 
 	ret = pthread_sigmask(SIG_BLOCK, &mask, oldmask);
-	if (ret < 0) {
-		SYSERROR("Failed to set signal mask");
-		return -EBADF;
-	}
+	if (ret < 0)
+		return log_error_errno(-EBADF, errno,
+				       "Failed to set signal mask");
 
 	ret = signalfd(-1, &mask, SFD_CLOEXEC);
-	if (ret < 0) {
-		SYSERROR("Failed to create signal file descriptor");
-		return -EBADF;
-	}
+	if (ret < 0)
+		return log_error_errno(-EBADF,
+				       errno, "Failed to create signal file descriptor");
 
 	TRACE("Created signal file descriptor %d", ret);
 
@@ -344,15 +331,11 @@ static int signal_handler(int fd, uint32_t events, void *data,
 	struct lxc_handler *hdlr = data;
 
 	ret = lxc_read_nointr(fd, &siginfo, sizeof(siginfo));
-	if (ret < 0) {
-		ERROR("Failed to read signal info from signal file descriptor %d", fd);
-		return LXC_MAINLOOP_ERROR;
-	}
+	if (ret < 0)
+		return log_error(LXC_MAINLOOP_ERROR, "Failed to read signal info from signal file descriptor %d", fd);
 
-	if (ret != sizeof(siginfo)) {
-		ERROR("Unexpected size for struct signalfd_siginfo");
-		return -EINVAL;
-	}
+	if (ret != sizeof(siginfo))
+		return log_error(-EINVAL, "Unexpected size for struct signalfd_siginfo");
 
 	/* Check whether init is running. */
 	info.si_pid = 0;
@@ -425,9 +408,7 @@ static int signal_handler(int fd, uint32_t events, void *data,
 				       : LXC_MAINLOOP_CONTINUE;
 	}
 
-	DEBUG("Container init process %d exited", hdlr->pid);
-
-	return LXC_MAINLOOP_CLOSE;
+	return log_debug(LXC_MAINLOOP_CLOSE, "Container init process %d exited", hdlr->pid);
 }
 
 int lxc_serve_state_clients(const char *name, struct lxc_handler *handler,
@@ -445,10 +426,8 @@ int lxc_serve_state_clients(const char *name, struct lxc_handler *handler,
 
 	TRACE("Set container state to %s", lxc_state2str(state));
 
-	if (lxc_list_empty(&handler->conf->state_clients)) {
-		TRACE("No state clients registered");
-		return 0;
-	}
+	if (lxc_list_empty(&handler->conf->state_clients))
+		return log_trace(0, "No state clients registered");
 
 	retlen = strlcpy(msg.name, name, sizeof(msg.name));
 	if (retlen >= sizeof(msg.name))
@@ -507,17 +486,14 @@ again:
 		return -1;
 	}
 
-	if (ret != sizeof(int)) {
-		ERROR("Message too long : %d", handler->state_socket_pair[1]);
-		return -1;
-	}
+	if (ret != sizeof(int))
+		return log_error(-1, "Message too long : %d", handler->state_socket_pair[1]);
 
 	TRACE("Sent container state \"%s\" to %d", lxc_state2str(state),
 	      handler->state_socket_pair[1]);
 
 	/* Close write end of the socket pair. */
-	close(handler->state_socket_pair[1]);
-	handler->state_socket_pair[1] = -1;
+	close_prot_errno_disarm(handler->state_socket_pair[1]);
 
 	return 0;
 }
@@ -528,10 +504,8 @@ int lxc_set_state(const char *name, struct lxc_handler *handler,
 	int ret;
 
 	ret = lxc_serve_state_socket_pair(name, handler, state);
-	if (ret < 0) {
-		ERROR("Failed to synchronize via anonymous pair of unix sockets");
-		return -1;
-	}
+	if (ret < 0)
+		return log_error(-1, "Failed to synchronize via anonymous pair of unix sockets");
 
 	ret = lxc_serve_state_clients(name, handler, state);
 	if (ret < 0)
@@ -636,39 +610,37 @@ out_sigfd:
 
 void lxc_zero_handler(struct lxc_handler *handler)
 {
-	int i;
-
 	memset(handler, 0, sizeof(struct lxc_handler));
 
-	handler->pinfd = -1;
+	handler->pinfd = -EBADF;
 
 	handler->pidfd = -EBADF;
 
-	handler->sigfd = -1;
+	handler->sigfd = -EBADF;
 
-	for (i = 0; i < LXC_NS_MAX; i++)
-		handler->nsfd[i] = -1;
+	for (int i = 0; i < LXC_NS_MAX; i++)
+		handler->nsfd[i] = -EBADF;
 
-	handler->data_sock[0] = -1;
-	handler->data_sock[1] = -1;
+	handler->data_sock[0] = -EBADF;
+	handler->data_sock[1] = -EBADF;
 
-	handler->state_socket_pair[0] = -1;
-	handler->state_socket_pair[1] = -1;
+	handler->state_socket_pair[0] = -EBADF;
+	handler->state_socket_pair[1] = -EBADF;
 
-	handler->sync_sock[0] = -1;
-	handler->sync_sock[1] = -1;
+	handler->sync_sock[0] = -EBADF;
+	handler->sync_sock[1] = -EBADF;
 }
 
 void lxc_free_handler(struct lxc_handler *handler)
 {
 	if (handler->pinfd >= 0)
-		close(handler->pinfd);
+		close_prot_errno_disarm(handler->pinfd);
 
 	if (handler->pidfd >= 0)
-		close(handler->pidfd);
+		close_prot_errno_disarm(handler->pidfd);
 
 	if (handler->sigfd >= 0)
-		close(handler->sigfd);
+		close_prot_errno_disarm(handler->sigfd);
 
 	lxc_put_nsfds(handler);
 
@@ -677,26 +649,25 @@ void lxc_free_handler(struct lxc_handler *handler)
 			lxc_abstract_unix_close(handler->conf->maincmd_fd);
 
 	if (handler->monitor_status_fd >= 0)
-		close(handler->monitor_status_fd);
+		close_prot_errno_disarm(handler->monitor_status_fd);
 
 	if (handler->state_socket_pair[0] >= 0)
-		close(handler->state_socket_pair[0]);
+		close_prot_errno_disarm(handler->state_socket_pair[0]);
 
 	if (handler->state_socket_pair[1] >= 0)
-		close(handler->state_socket_pair[1]);
+		close_prot_errno_disarm(handler->state_socket_pair[1]);
 
 	if (handler->cgroup_ops)
 		cgroup_exit(handler->cgroup_ops);
 
 	handler->conf = NULL;
-	free(handler);
-	handler = NULL;
+	free_disarm(handler);
 }
 
 struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 				     const char *lxcpath, bool daemonize)
 {
-	int i, ret;
+	int ret;
 	struct lxc_handler *handler;
 
 	handler = malloc(sizeof(*handler));
@@ -710,20 +681,22 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 	 * as root so this should be fine.
 	 */
 	handler->am_root = !am_guest_unpriv();
-	handler->data_sock[0] = handler->data_sock[1] = -1;
 	handler->conf = conf;
 	handler->lxcpath = lxcpath;
+	handler->init_died = false;
+	handler->data_sock[0] = -EBADF;
+	handler->data_sock[1] = -EBADF;
 	handler->monitor_status_fd = -EBADF;
-	handler->pinfd = -1;
+	handler->pinfd = -EBADF;
 	handler->pidfd = -EBADF;
 	handler->sigfd = -EBADF;
-	handler->init_died = false;
-	handler->state_socket_pair[0] = handler->state_socket_pair[1] = -1;
+	handler->state_socket_pair[0] = -EBADF;
+	handler->state_socket_pair[1] = -EBADF;
 	if (handler->conf->reboot == REBOOT_NONE)
 		lxc_list_init(&handler->conf->state_clients);
 
-	for (i = 0; i < LXC_NS_MAX; i++)
-		handler->nsfd[i] = -1;
+	for (int i = 0; i < LXC_NS_MAX; i++)
+		handler->nsfd[i] = -EBADF;
 
 	handler->name = name;
 	if (daemonize)
@@ -807,50 +780,43 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	if (conf->rcfile) {
 		ret = setenv("LXC_CONFIG_FILE", conf->rcfile, 1);
 		if (ret < 0)
-			SYSERROR("Failed to set environment variable: "
-				 "LXC_CONFIG_FILE=%s", conf->rcfile);
+			SYSERROR("Failed to set environment variable: LXC_CONFIG_FILE=%s", conf->rcfile);
 	}
 
 	if (conf->rootfs.mount) {
 		ret = setenv("LXC_ROOTFS_MOUNT", conf->rootfs.mount, 1);
 		if (ret < 0)
-			SYSERROR("Failed to set environment variable: "
-				 "LXC_ROOTFS_MOUNT=%s", conf->rootfs.mount);
+			SYSERROR("Failed to set environment variable: LXC_ROOTFS_MOUNT=%s", conf->rootfs.mount);
 	}
 
 	if (conf->rootfs.path) {
 		ret = setenv("LXC_ROOTFS_PATH", conf->rootfs.path, 1);
 		if (ret < 0)
-			SYSERROR("Failed to set environment variable: "
-				 "LXC_ROOTFS_PATH=%s", conf->rootfs.path);
+			SYSERROR("Failed to set environment variable: LXC_ROOTFS_PATH=%s", conf->rootfs.path);
 	}
 
 	if (conf->console.path) {
 		ret = setenv("LXC_CONSOLE", conf->console.path, 1);
 		if (ret < 0)
-			SYSERROR("Failed to set environment variable: "
-				 "LXC_CONSOLE=%s", conf->console.path);
+			SYSERROR("Failed to set environment variable: LXC_CONSOLE=%s", conf->console.path);
 	}
 
 	if (conf->console.log_path) {
 		ret = setenv("LXC_CONSOLE_LOGPATH", conf->console.log_path, 1);
 		if (ret < 0)
-			SYSERROR("Failed to set environment variable: "
-				 "LXC_CONSOLE_LOGPATH=%s", conf->console.log_path);
+			SYSERROR("Failed to set environment variable: LXC_CONSOLE_LOGPATH=%s", conf->console.log_path);
 	}
 
 	if (cgns_supported()) {
 		ret = setenv("LXC_CGNS_AWARE", "1", 1);
 		if (ret < 0)
-			SYSERROR("Failed to set environment variable "
-				 "LXC_CGNS_AWARE=1");
+			SYSERROR("Failed to set environment variable LXC_CGNS_AWARE=1");
 	}
 
 	loglevel = lxc_log_priority_to_string(lxc_log_get_level());
 	ret = setenv("LXC_LOG_LEVEL", loglevel, 1);
 	if (ret < 0)
-		SYSERROR("Set environment variable LXC_LOG_LEVEL=%s",
-			 loglevel);
+		SYSERROR("Set environment variable LXC_LOG_LEVEL=%s", loglevel);
 
 	if (conf->hooks_version == 0)
 		ret = setenv("LXC_HOOK_VERSION", "0", 1);
@@ -933,7 +899,7 @@ out_close_maincmd_fd:
 
 void lxc_fini(const char *name, struct lxc_handler *handler)
 {
-	int i, ret;
+	int ret;
 	pid_t self;
 	struct lxc_list *cur, *next;
 	char *namespaces[LXC_NS_MAX + 1];
@@ -946,7 +912,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	lxc_set_state(name, handler, STOPPING);
 
 	self = lxc_raw_getpid();
-	for (i = 0; i < LXC_NS_MAX; i++) {
+	for (int i = 0; i < LXC_NS_MAX; i++) {
 		if (handler->nsfd[i] < 0)
 			continue;
 
@@ -957,7 +923,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		else
 			ret = asprintf(&namespaces[namespace_count],
 				      "/proc/%d/fd/%d", self, handler->nsfd[i]);
-		if (ret == -1) {
+		if (ret < 0) {
 			SYSERROR("Failed to allocate memory");
 			break;
 		}
@@ -982,15 +948,13 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	if (handler->conf->reboot > REBOOT_NONE) {
 		ret = setenv("LXC_TARGET", "reboot", 1);
 		if (ret < 0)
-			SYSERROR("Failed to set environment variable: "
-				 "LXC_TARGET=reboot");
+			SYSERROR("Failed to set environment variable: LXC_TARGET=reboot");
 	}
 
 	if (handler->conf->reboot == REBOOT_NONE) {
 		ret = setenv("LXC_TARGET", "stop", 1);
 		if (ret < 0)
-			SYSERROR("Failed to set environment variable: "
-				 "LXC_TARGET=stop");
+			SYSERROR("Failed to set environment variable: LXC_TARGET=stop");
 	}
 
 	if (handler->conf->hooks_version == 0)
@@ -1018,7 +982,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		 * because we haven't yet closed the command socket.
 		 */
 		lxc_abstract_unix_close(handler->conf->maincmd_fd);
-		handler->conf->maincmd_fd = -1;
+		handler->conf->maincmd_fd = -EBADF;
 		TRACE("Closed command socket");
 
 		/* This function will try to connect to the legacy lxc-monitord
@@ -1047,8 +1011,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 
 			ret = setenv("LXC_TARGET", "stop", 1);
 			if (ret < 0)
-				WARN("Failed to set environment variable: "
-				     "LXC_TARGET=stop");
+				WARN("Failed to set environment variable: LXC_TARGET=stop");
 		}
 	}
 
@@ -1251,9 +1214,7 @@ static int do_start(void *data)
 
 			if (devnull_fd < 0)
 				goto out_warn_father;
-			WARN("Using /dev/null from the host for container "
-			     "init's standard file descriptors. Migration will "
-			     "not work");
+			WARN("Using /dev/null from the host for container init's standard file descriptors. Migration will not work");
 		}
 	}
 
@@ -1321,12 +1282,10 @@ static int do_start(void *data)
 		ret = prctl(PR_SET_NO_NEW_PRIVS, prctl_arg(1), prctl_arg(0),
 			    prctl_arg(0), prctl_arg(0));
 		if (ret < 0) {
-			SYSERROR("Could not set PR_SET_NO_NEW_PRIVS to block "
-				 "execve() gainable privileges");
+			SYSERROR("Could not set PR_SET_NO_NEW_PRIVS to block execve() gainable privileges");
 			goto out_warn_father;
 		}
-		DEBUG("Set PR_SET_NO_NEW_PRIVS to block execve() gainable "
-		      "privileges");
+		DEBUG("Set PR_SET_NO_NEW_PRIVS to block execve() gainable privileges");
 	}
 
 	/* Some init's such as busybox will set sane tty settings on stdin,
@@ -1341,8 +1300,8 @@ static int do_start(void *data)
 		 else
 			 ret = lxc_terminal_set_stdfds(handler->conf->console.slave);
 		 if (ret < 0) {
-			ERROR("Failed to redirect std{in,out,err} to pty file "
-			      "descriptor %d", handler->conf->console.slave);
+			ERROR("Failed to redirect std{in,out,err} to pty file descriptor %d",
+			      handler->conf->console.slave);
 			goto out_warn_father;
 		 }
 	 }
@@ -1522,8 +1481,7 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 		tty->busy = -1;
 		tty->master = ttyfds[0];
 		tty->slave = ttyfds[1];
-		TRACE("Received pty with master fd %d and slave fd %d from "
-		      "child", tty->master, tty->slave);
+		TRACE("Received pty with master fd %d and slave fd %d from child", tty->master, tty->slave);
 	}
 
 	if (ret < 0)
@@ -2072,8 +2030,7 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 
 	ret = lxc_restore_phys_nics_to_netns(handler);
 	if (ret < 0)
-		ERROR("Failed to move physical network devices back to parent "
-		      "network namespace");
+		ERROR("Failed to move physical network devices back to parent network namespace");
 
 	if (handler->pinfd >= 0) {
 		close(handler->pinfd);

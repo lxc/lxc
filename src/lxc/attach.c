@@ -325,7 +325,7 @@ static int lxc_attach_set_environment(struct lxc_proc_context_info *init_ctx,
 
 	ret = putenv("container=lxc");
 	if (ret < 0)
-		return log_warn(-1, errno, "Failed to set environment variable");
+		return log_warn(-1, "Failed to set environment variable");
 
 	/* Set container environment variables.*/
 	if (init_ctx && init_ctx->container && init_ctx->container->lxc_conf) {
