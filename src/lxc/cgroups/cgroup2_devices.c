@@ -348,7 +348,7 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
 	if (!prog)
 		return ret_set_errno(-1, EINVAL);
 
-	if (flags & ~(BPF_F_ALLOW_OVERRIDE, BPF_F_ALLOW_MULTI))
+	if (flags & ~(BPF_F_ALLOW_OVERRIDE | BPF_F_ALLOW_MULTI))
 		return log_error_errno(-1, EINVAL, "Invalid flags for bpf program");
 
 	if (prog->attached_path) {
