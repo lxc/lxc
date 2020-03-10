@@ -1327,8 +1327,7 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 	lxc_terminal_free(handler->conf, fd);
 	lxc_mainloop_del_handler(descr, fd);
 
-	switch (cmd) {
-	case LXC_CMD_ADD_STATE_CLIENT:
+	if (cmd == LXC_CMD_ADD_STATE_CLIENT) {
 		lxc_list_for_each_safe(cur, &handler->conf->state_clients, next) {
 			struct lxc_state_client *client = cur->elem;
 
@@ -1344,7 +1343,8 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 			 * No need to walk the whole list. If we found the state
 			 * client fd there can't be a second one.
 			 */
-			break;
+			TRACE("Closed state client fd %d\n", fd);
+			return;
 		}
 
 		/*
@@ -1353,10 +1353,10 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 		 * was already reached by the time we were ready to add it. So
 		 * fallthrough and clean it up.
 		 */
-		__fallthrough;
-	default:
-		close(fd);
+		TRACE("Closing state client fd %d not present in state client list\n", fd);
 	}
+
+	close(fd);
 }
 
 static int lxc_cmd_handler(int fd, uint32_t events, void *data,
