@@ -414,8 +414,8 @@ enum {
 #define PTR_TO_INT(p) ((int)((intptr_t)(p)))
 #define INT_TO_PTR(u) ((void *)((intptr_t)(u)))
 
-#define PTR_TO_INTMAX(p) ((intmax_t)((intptr_t)(p)))
-#define INTMAX_TO_PTR(u) ((void *)((intptr_t)(u)))
+#define PTR_TO_PID(p) ((pid_t)((intptr_t)(p)))
+#define PID_TO_PTR(u) ((void *)((intptr_t)(u)))
 
 #define PTR_TO_UINT64(p) ((uint64_t)((intptr_t)(p)))
 
