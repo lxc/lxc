@@ -41,7 +41,9 @@ lxc_test_shortlived_SOURCES = shortlived.c
 lxc_test_shutdowntest_SOURCES = shutdowntest.c
 lxc_test_snapshot_SOURCES = snapshot.c
 lxc_test_startone_SOURCES = startone.c
-lxc_test_state_server_SOURCES = state_server.c lxctest.h
+lxc_test_state_server_SOURCES = state_server.c \
+				lxctest.h \
+				../lxc/compiler.h
 lxc_test_utils_SOURCES = lxc-test-utils.c lxctest.h
 
 AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \

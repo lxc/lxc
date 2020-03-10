@@ -30,6 +30,7 @@
 
 #include "lxc/lxccontainer.h"
 #include "lxctest.h"
+#include "../lxc/compiler.h"
 
 struct thread_args {
 	int thread_id;
@@ -38,7 +39,7 @@ struct thread_args {
 	struct lxc_container *c;
 };
 
-static void *state_wrapper(void *data)
+__noreturn static void *state_wrapper(void *data)
 {
 	struct thread_args *args = data;
 
@@ -50,7 +51,6 @@ static void *state_wrapper(void *data)
 		  args->thread_id, args->timeout, args->success ? "SUCCESS" : "FAILED");
 
 	pthread_exit(NULL);
-	return NULL;
 }
 
 int main(int argc, char *argv[])
