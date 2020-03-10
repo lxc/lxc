@@ -34,7 +34,9 @@ lxc_test_raw_clone_SOURCES = lxc_raw_clone.c \
 			     ../lxc/utils.c ../lxc/utils.h
 lxc_test_reboot_SOURCES = reboot.c
 lxc_test_saveconfig_SOURCES = saveconfig.c
-lxc_test_share_ns_SOURCES = share_ns.c lxctest.h
+lxc_test_share_ns_SOURCES = share_ns.c \
+			    lxctest.h \
+			    ../lxc/compiler.h
 lxc_test_shortlived_SOURCES = shortlived.c
 lxc_test_shutdowntest_SOURCES = shutdowntest.c
 lxc_test_snapshot_SOURCES = snapshot.c

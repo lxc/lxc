@@ -30,6 +30,7 @@
 
 #include "lxc/lxccontainer.h"
 #include "lxctest.h"
+#include "../lxc/compiler.h"
 
 struct thread_args {
 	int thread_id;
@@ -39,7 +40,7 @@ struct thread_args {
 	char inherited_net_ns[4096];
 };
 
-void *ns_sharing_wrapper(void *data)
+__noreturn void *ns_sharing_wrapper(void *data)
 {
 	int init_pid;
 	ssize_t ret;
@@ -56,7 +57,7 @@ void *ns_sharing_wrapper(void *data)
 	c = lxc_container_new(name, NULL);
 	if (!c) {
 		lxc_error("Failed to create container \"%s\"\n", name);
-		return NULL;
+		goto out_pthread_exit;
 	}
 
 	if (c->is_defined(c)) {
@@ -168,8 +169,8 @@ out:
 	if (!c->destroy(c))
 		lxc_error("Failed to destroy container \"%s\"\n", name);
 
+out_pthread_exit:
 	pthread_exit(NULL);
-	return NULL;
 }
 
 int main(int argc, char *argv[])
