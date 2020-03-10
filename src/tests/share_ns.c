@@ -35,8 +35,8 @@ struct thread_args {
 	int thread_id;
 	bool success;
 	pid_t init_pid;
-	char *inherited_ipc_ns;
-	char *inherited_net_ns;
+	char inherited_ipc_ns[4096];
+	char inherited_net_ns[4096];
 };
 
 void *ns_sharing_wrapper(void *data)
@@ -45,8 +45,8 @@ void *ns_sharing_wrapper(void *data)
 	ssize_t ret;
 	char name[100];
 	char owning_ns_init_pid[100];
-	char proc_ns_path[4096];
-	char ns_buf[4096];
+	char proc_ns_path[256];
+	char ns_buf[256];
 	struct lxc_container *c;
 	struct thread_args *args = data;
 
@@ -162,15 +162,11 @@ void *ns_sharing_wrapper(void *data)
 	args->success = true;
 
 out:
-	if (c->is_running(c) && !c->stop(c)) {
+	if (c->is_running(c) && !c->stop(c))
 		lxc_error("Failed to stop container \"%s\"\n", name);
-		goto out;
-	}
 
-	if (!c->destroy(c)) {
+	if (!c->destroy(c))
 		lxc_error("Failed to destroy container \"%s\"\n", name);
-		goto out;
-	}
 
 	pthread_exit(NULL);
 	return NULL;
@@ -178,15 +174,18 @@ out:
 
 int main(int argc, char *argv[])
 {
+	struct thread_args *args = NULL;
+	size_t nthreads = 10;
 	int i, init_pid, j;
 	char proc_ns_path[4096];
 	char ipc_ns_buf[4096];
 	char net_ns_buf[4096];
 	pthread_attr_t attr;
 	pthread_t threads[10];
-	struct thread_args args[10];
 	struct lxc_container *c;
 	int ret = EXIT_FAILURE;
+
+	pthread_attr_init(&attr);
 
 	c = lxc_container_new("owning-ns", NULL);
 	if (!c) {
@@ -263,24 +262,28 @@ int main(int argc, char *argv[])
 
 	sleep(5);
 
-	pthread_attr_init(&attr);
+	args = malloc(sizeof(struct thread_args) * nthreads);
+	if (!args) {
+		lxc_error("%s\n", "Failed to allocate memory");
+		goto on_error_stop;
+	}
 
 	for (j = 0; j < 10; j++) {
 		lxc_debug("Starting namespace sharing test iteration %d\n", j);
 
-		for (i = 0; i < 10; i++) {
+		for (i = 0; i < nthreads; i++) {
 			args[i].thread_id = i;
 			args[i].success = false;
 			args[i].init_pid = init_pid;
-			args[i].inherited_ipc_ns = ipc_ns_buf;
-			args[i].inherited_net_ns = net_ns_buf;
+			memcpy(args[i].inherited_ipc_ns, ipc_ns_buf, sizeof(args[i].inherited_ipc_ns));
+			memcpy(args[i].inherited_net_ns, net_ns_buf, sizeof(args[i].inherited_net_ns));
 
-			ret = pthread_create(&threads[i], &attr, ns_sharing_wrapper, (void *) &args[i]);
+			ret = pthread_create(&threads[i], &attr, ns_sharing_wrapper, (void *)&args[i]);
 			if (ret != 0)
 				goto on_error_stop;
 		}
 
-		for (i = 0; i < 10; i++) {
+		for (i = 0; i < nthreads; i++) {
 			ret = pthread_join(threads[i], NULL);
 			if (ret != 0)
 				goto on_error_stop;
@@ -295,6 +298,9 @@ int main(int argc, char *argv[])
 	ret = EXIT_SUCCESS;
 
 on_error_stop:
+	free(args);
+	pthread_attr_destroy(&attr);
+
 	if (c->is_running(c) && !c->stop(c))
 		lxc_error("%s\n", "Failed to stop container \"owning-ns\"");
 
@@ -305,5 +311,6 @@ on_error_put:
 	lxc_container_put(c);
 	if (ret == EXIT_SUCCESS)
 		lxc_debug("%s\n", "All state namespace sharing tests passed");
+
 	exit(ret);
 }

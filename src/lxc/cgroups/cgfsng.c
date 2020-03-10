@@ -54,19 +54,6 @@
 
 lxc_log_define(cgfsng, cgroup);
 
-static void free_string_list(char **clist)
-{
-	int i;
-
-	if (!clist)
-		return;
-
-	for (i = 0; clist[i]; i++)
-		free(clist[i]);
-
-	free(clist);
-}
-
 /* Given a pointer to a null-terminated array of pointers, realloc to add one
  * entry, and point the new entry to NULL. Do not fail. Return the index to the
  * second-to-last entry - that is, the one which is now available for use
@@ -2940,12 +2927,11 @@ static void cg_unified_delegate(char ***delegate)
  */
 static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileged)
 {
-	__do_free char *basecginfo = NULL;
-	__do_free char *line = NULL;
+	__do_free char *basecginfo = NULL, *line = NULL;
+	__do_free_string_list char **klist = NULL, **nlist = NULL;
 	__do_fclose FILE *f = NULL;
 	int ret;
 	size_t len = 0;
-	char **klist = NULL, **nlist = NULL;
 
 	/* Root spawned containers escape the current cgroup, so use init's
 	 * cgroups as our base in that case.
@@ -2968,11 +2954,11 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 	lxc_cgfsng_print_basecg_debuginfo(basecginfo, klist, nlist);
 
 	while (getline(&line, &len, f) != -1) {
+		__do_free char *base_cgroup = NULL, *mountpoint = NULL;
+		__do_free_string_list char **controller_list = NULL;
 		int type;
 		bool writeable;
 		struct hierarchy *new;
-		char *base_cgroup = NULL, *mountpoint = NULL;
-		char **controller_list = NULL;
 
 		type = get_cgroup_version(line);
 		if (type == 0)
@@ -3000,18 +2986,18 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 
 		if (type == CGROUP_SUPER_MAGIC)
 			if (controller_list_is_dup(ops->hierarchies, controller_list))
-				log_trace_errno(goto next, EEXIST, "Skipping duplicating controller");
+				log_trace_errno(continue, EEXIST, "Skipping duplicating controller");
 
 		mountpoint = cg_hybrid_get_mountpoint(line);
 		if (!mountpoint)
-			log_error_errno(goto next, EINVAL, "Failed parsing mountpoint from \"%s\"", line);
+			log_error_errno(continue, EINVAL, "Failed parsing mountpoint from \"%s\"", line);
 
 		if (type == CGROUP_SUPER_MAGIC)
 			base_cgroup = cg_hybrid_get_current_cgroup(basecginfo, controller_list[0], CGROUP_SUPER_MAGIC);
 		else
 			base_cgroup = cg_hybrid_get_current_cgroup(basecginfo, NULL, CGROUP2_SUPER_MAGIC);
 		if (!base_cgroup)
-			log_error_errno(goto next, EINVAL, "Failed to find current cgroup");
+			log_error_errno(continue, EINVAL, "Failed to find current cgroup");
 
 		trim(base_cgroup);
 		prune_init_scope(base_cgroup);
@@ -3020,7 +3006,7 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 		else
 			writeable = test_writeable_v1(mountpoint, base_cgroup);
 		if (!writeable)
-			log_trace_errno(goto next, EROFS, "The %s group is not writeable", base_cgroup);
+			log_trace_errno(continue, EROFS, "The %s group is not writeable", base_cgroup);
 
 		if (type == CGROUP2_SUPER_MAGIC) {
 			char *cgv2_ctrl_path;
@@ -3040,25 +3026,15 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 
 		/* Exclude all controllers that cgroup use does not want. */
 		if (!cgroup_use_wants_controllers(ops, controller_list))
-			log_trace_errno(goto next, EINVAL, "Skipping controller");
+			log_trace_errno(continue, EINVAL, "Skipping controller");
 
-		new = add_hierarchy(&ops->hierarchies, controller_list, mountpoint, base_cgroup, type);
+		new = add_hierarchy(&ops->hierarchies, move_ptr(controller_list), move_ptr(mountpoint), move_ptr(base_cgroup), type);
 		if (type == CGROUP2_SUPER_MAGIC && !ops->unified) {
 			if (unprivileged)
 				cg_unified_delegate(&new->cgroup2_chown);
 			ops->unified = new;
 		}
-
-		continue;
-
-	next:
-		free_string_list(controller_list);
-		free(mountpoint);
-		free(base_cgroup);
 	}
-
-	free_string_list(klist);
-	free_string_list(nlist);
 
 	TRACE("Writable cgroup hierarchies:");
 	lxc_cgfsng_print_hierarchies(ops);
