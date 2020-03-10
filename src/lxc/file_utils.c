@@ -470,6 +470,7 @@ char *file_to_buf(const char *path, size_t *length)
 
 FILE *fopen_cached(const char *path, const char *mode, void **caller_freed_buffer)
 {
+#ifdef HAVE_FMEMOPEN
 	__do_free char *buf = NULL;
 	size_t len = 0;
 	FILE *f;
@@ -483,13 +484,17 @@ FILE *fopen_cached(const char *path, const char *mode, void **caller_freed_buffe
 		return NULL;
 	*caller_freed_buffer = move_ptr(buf);
 	return f;
+#else
+	return fopen(path, mode);
+#endif
 }
 
 FILE *fdopen_cached(int fd, const char *mode, void **caller_freed_buffer)
 {
+	FILE *f;
+#ifdef HAVE_FMEMOPEN
 	__do_free char *buf = NULL;
 	size_t len = 0;
-	FILE *f;
 
 	buf = fd_to_buf(fd, &len);
 	if (!buf)
@@ -500,5 +505,21 @@ FILE *fdopen_cached(int fd, const char *mode, void **caller_freed_buffer)
 		return NULL;
 
 	*caller_freed_buffer = move_ptr(buf);
+
+#else
+
+	__do_close_prot_errno int dupfd = -EBADF;
+
+	dupfd = dup(fd);
+	if (dupfd < 0)
+		return NULL;
+
+	f = fdopen(dupfd, "re");
+	if (!f)
+		return NULL;
+
+	/* Transfer ownership of fd. */
+	move_fd(dupfd);
+#endif
 	return f;
 }
