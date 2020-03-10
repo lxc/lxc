@@ -287,10 +287,9 @@ static uint32_t *lxc_cpumask(char *buf, size_t nbits)
 /* Turn cpumask into simple, comma-separated cpulist. */
 static char *lxc_cpumask_to_cpulist(uint32_t *bitarr, size_t nbits)
 {
+	__do_free_string_list char **cpulist = NULL;
 	int ret;
 	size_t i;
-	char *tmp = NULL;
-	char **cpulist = NULL;
 	char numstr[INTTYPE_TO_STRLEN(size_t)] = {0};
 
 	for (i = 0; i <= nbits; i++) {
@@ -298,25 +297,18 @@ static char *lxc_cpumask_to_cpulist(uint32_t *bitarr, size_t nbits)
 			continue;
 
 		ret = snprintf(numstr, sizeof(numstr), "%zu", i);
-		if (ret < 0 || (size_t)ret >= sizeof(numstr)) {
-			lxc_free_array((void **)cpulist, free);
+		if (ret < 0 || (size_t)ret >= sizeof(numstr))
 			return NULL;
-		}
 
 		ret = lxc_append_string(&cpulist, numstr);
-		if (ret < 0) {
-			lxc_free_array((void **)cpulist, free);
+		if (ret < 0)
 			return ret_set_errno(NULL, ENOMEM);
-		}
 	}
 
 	if (!cpulist)
 		return ret_set_errno(NULL, ENOMEM);
 
-	tmp = lxc_string_join(",", (const char **)cpulist, false);
-	lxc_free_array((void **)cpulist, free);
-
-	return tmp;
+	return lxc_string_join(",", (const char **)cpulist, false);
 }
 
 static ssize_t get_max_cpus(char *cpulist)
@@ -666,10 +658,10 @@ static char **cg_hybrid_get_controllers(char **klist, char **nlist, char *line,
 	/* The fourth field is /sys/fs/cgroup/comma-delimited-controller-list
 	 * for legacy hierarchies.
 	 */
+	__do_free_string_list char **aret = NULL;
 	int i;
 	char *p2, *tok;
 	char *p = line, *sep = ",";
-	char **aret = NULL;
 
 	for (i = 0; i < 4; i++) {
 		p = strchr(p, ' ');
@@ -710,24 +702,24 @@ static char **cg_hybrid_get_controllers(char **klist, char **nlist, char *line,
 	}
 	*p2 = ' ';
 
-	return aret;
+	return move_ptr(aret);
 }
 
 static char **cg_unified_make_empty_controller(void)
 {
+	__do_free_string_list char **aret = NULL;
 	int newentry;
-	char **aret = NULL;
 
 	newentry = append_null_to_list((void ***)&aret);
 	aret[newentry] = NULL;
-	return aret;
+	return move_ptr(aret);
 }
 
 static char **cg_unified_get_controllers(const char *file)
 {
 	__do_free char *buf = NULL;
+	__do_free_string_list char **aret = NULL;
 	char *sep = " \t\n";
-	char **aret = NULL;
 	char *tok;
 
 	buf = read_file(file);
@@ -743,7 +735,7 @@ static char **cg_unified_get_controllers(const char *file)
 		aret[newentry] = copy;
 	}
 
-	return aret;
+	return move_ptr(aret);
 }
 
 static struct hierarchy *add_hierarchy(struct hierarchy ***h, char **clist, char *mountpoint,
@@ -2789,12 +2781,11 @@ __cgfsng_ops bool cgfsng_devices_activate(struct cgroup_ops *ops,
 bool __cgfsng_delegate_controllers(struct cgroup_ops *ops, const char *cgroup)
 {
 	__do_free char *add_controllers = NULL, *base_path = NULL;
+	__do_free_string_list char **parts = NULL;
 	struct hierarchy *unified = ops->unified;
 	ssize_t parts_len;
 	char **it;
 	size_t full_len = 0;
-	char **parts = NULL;
-	bool bret = false;
 
 	if (!ops->hierarchies || !pure_unified_layout(ops) ||
 	    !unified->controllers[0])
@@ -2822,7 +2813,7 @@ bool __cgfsng_delegate_controllers(struct cgroup_ops *ops, const char *cgroup)
 
 	parts = lxc_string_split(cgroup, '/');
 	if (!parts)
-		goto on_error;
+		return false;
 
 	parts_len = lxc_array_len((void **)parts);
 	if (parts_len > 0)
@@ -2838,17 +2829,12 @@ bool __cgfsng_delegate_controllers(struct cgroup_ops *ops, const char *cgroup)
 		target = must_make_path(base_path, "cgroup.subtree_control", NULL);
 		ret = lxc_writeat(-1, target, add_controllers, full_len);
 		if (ret < 0)
-			log_error_errno(goto on_error,
-					errno, "Could not enable \"%s\" controllers in the unified cgroup \"%s\"",
-					add_controllers, target);
+			return log_error_errno(false, errno, "Could not enable \"%s\" controllers in the unified cgroup \"%s\"",
+					       add_controllers, target);
 		TRACE("Enable \"%s\" controllers in the unified cgroup \"%s\"", add_controllers, target);
 	}
 
-	bret = true;
-
-on_error:
-	lxc_free_array((void **)parts, free);
-	return bret;
+	return true;
 }
 
 __cgfsng_ops bool cgfsng_monitor_delegate_controllers(struct cgroup_ops *ops)
