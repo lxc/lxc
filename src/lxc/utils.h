@@ -73,6 +73,13 @@ extern struct lxc_popen_FILE *lxc_popen(const char *command);
  */
 extern int lxc_pclose(struct lxc_popen_FILE *fp);
 
+static inline void __auto_lxc_pclose__(struct lxc_popen_FILE **f)
+{
+	if (*f)
+		lxc_pclose(*f);
+}
+#define __do_lxc_pclose __attribute__((__cleanup__(__auto_lxc_pclose__)))
+
 /*
  * wait on a child we forked
  */
