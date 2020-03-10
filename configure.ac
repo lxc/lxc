@@ -701,6 +701,10 @@ AC_CHECK_FUNCS([strlcat],
 	AM_CONDITIONAL(HAVE_STRLCAT, true)
 	AC_DEFINE(HAVE_STRLCAT,1,[Have strlcat]),
 	AM_CONDITIONAL(HAVE_STRLCAT, false))
+AC_CHECK_FUNCS([fmemopen],
+	AM_CONDITIONAL(HAVE_FMEMOPEN, true)
+	AC_DEFINE(HAVE_FMEMOPEN,1,[Have fmemopen]),
+	AM_CONDITIONAL(HAVE_FMEMOPEN, false))
 
 # HAVE_STRUCT_RTNL_LINK_STATS64={0,1}
 AC_CHECK_TYPES([struct rtnl_link_stats64], [], [], [[#include <linux/if_link.h>]])
