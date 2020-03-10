@@ -39,26 +39,18 @@ int lxc_cmd_sock_rcv_state(int state_client_fd, int timeout)
 		out.tv_sec = timeout;
 		ret = setsockopt(state_client_fd, SOL_SOCKET, SO_RCVTIMEO,
 				(const void *)&out, sizeof(out));
-		if (ret < 0) {
-			SYSERROR("Failed to set %ds timeout on container "
-				 "state socket",
-				 timeout);
-			return -1;
-		}
+		if (ret < 0)
+			return log_error_errno(-1, errno, "Failed to set %ds timeout on container state socket", timeout);
 	}
 
 	memset(&msg, 0, sizeof(msg));
 
 	ret = lxc_recv_nointr(state_client_fd, &msg, sizeof(msg), 0);
-	if (ret < 0) {
-		SYSERROR("Failed to receive message");
-		return -1;
-	}
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to receive message");
 
-	TRACE("Received state %s from state client %d",
-	      lxc_state2str(msg.value), state_client_fd);
-
-	return msg.value;
+	return log_trace(msg.value, "Received state %s from state client %d",
+			 lxc_state2str(msg.value), state_client_fd);
 }
 
 /* Register a new state client and retrieve state from command socket. */
@@ -110,26 +102,20 @@ int lxc_make_abstract_socket_name(char *path, size_t pathlen,
 
 	if (hashed_sock_name != NULL) {
 		ret = snprintf(offset, len, "lxc/%s/%s", hashed_sock_name, suffix);
-		if (ret < 0 || ret >= len) {
-			ERROR("Failed to create abstract socket name");
-			return -1;
-		}
+		if (ret < 0 || (size_t)ret >= len)
+			return log_error_errno(-1, errno, "Failed to create abstract socket name");
 		return 0;
 	}
 
 	if (!lxcpath) {
 		lxcpath = lxc_global_config_value("lxc.lxcpath");
-		if (!lxcpath) {
-			ERROR("Failed to allocate memory");
-			return -1;
-		}
+		if (!lxcpath)
+			return log_error(-1, "Failed to allocate memory");
 	}
 
 	ret = snprintf(offset, len, "%s/%s/%s", lxcpath, name, suffix);
-	if (ret < 0) {
-		ERROR("Failed to create abstract socket name");
-		return -1;
-	}
+	if (ret < 0 || (size_t)ret >= len)
+		return log_error_errno(-1, errno, "Failed to create abstract socket name");
 	if (ret < len)
 		return 0;
 
@@ -137,17 +123,13 @@ int lxc_make_abstract_socket_name(char *path, size_t pathlen,
 	tmplen = strlen(name) + strlen(lxcpath) + 2;
 	tmppath = must_realloc(NULL, tmplen);
 	ret = snprintf(tmppath, tmplen, "%s/%s", lxcpath, name);
-	if (ret < 0 || (size_t)ret >= tmplen) {
-		ERROR("Failed to create abstract socket name");
-		return -1;
-	}
+	if (ret < 0 || (size_t)ret >= tmplen)
+		return log_error_errno(-1, errno, "Failed to create abstract socket name");
 
 	hash = fnv_64a_buf(tmppath, ret, FNV1A_64_INIT);
 	ret = snprintf(offset, len, "lxc/%016" PRIx64 "/%s", hash, suffix);
-	if (ret < 0 || ret >= len) {
-		ERROR("Failed to create abstract socket name");
-		return -1;
-	}
+	if (ret < 0 || ret >= len)
+		return log_error_errno(-1, errno, "Failed to create abstract socket name");
 
 	return 0;
 }
@@ -198,8 +180,7 @@ int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
 		return state;
 	}
 
-	TRACE("Added state client %d to state client list", state_client_fd);
 	move_ptr(newclient);
 	move_ptr(tmplist);
-	return MAX_STATE;
+	return log_trace(MAX_STATE, "Added state client %d to state client list", state_client_fd);
 }
