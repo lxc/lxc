@@ -329,13 +329,13 @@ int lxc_try_cmd(const char *name, const char *lxcpath)
 pid_t lxc_cmd_get_init_pid(const char *name, const char *lxcpath)
 {
 	int ret, stopped;
-	intmax_t pid = -1;
+	pid_t pid = -1;
 	struct lxc_cmd_rr cmd = {
 		.req = {
 			.cmd = LXC_CMD_GET_INIT_PID
 		},
 		.rsp = {
-			.data = INTMAX_TO_PTR(pid)
+			.data = PID_TO_PTR(pid)
 		}
 	};
 
@@ -343,7 +343,7 @@ pid_t lxc_cmd_get_init_pid(const char *name, const char *lxcpath)
 	if (ret < 0)
 		return -1;
 
-	pid = PTR_TO_INTMAX(cmd.rsp.data);
+	pid = PTR_TO_PID(cmd.rsp.data);
 	if (pid < 0)
 		return -1;
 
@@ -357,10 +357,8 @@ static int lxc_cmd_get_init_pid_callback(int fd, struct lxc_cmd_req *req,
 					 struct lxc_handler *handler,
 					 struct lxc_epoll_descr *descr)
 {
-	intmax_t pid = handler->pid;
-
 	struct lxc_cmd_rsp rsp = {
-		.data = INTMAX_TO_PTR(pid)
+		.data = PID_TO_PTR(handler->pid)
 	};
 
 	return lxc_cmd_rsp_send(fd, &rsp);
