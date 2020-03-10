@@ -873,10 +873,6 @@ static int lxc_cmd_add_state_client_callback(__owns int fd, struct lxc_cmd_req *
 	if (ret < 0)
 		goto reap_client_fd;
 
-	/* close fd if state is already achieved to avoid leakage */
-	if (rsp.ret != MAX_STATE)
-		close(fd);
-
 	return 0;
 
 reap_client_fd:
@@ -1344,12 +1340,20 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 			close(client->clientfd);
 			free(cur->elem);
 			free(cur);
-			/* No need to walk the whole list. If we found the state
+			/*
+			 * No need to walk the whole list. If we found the state
 			 * client fd there can't be a second one.
 			 */
 			break;
 		}
-		break;
+
+		/*
+		 * We didn't add the state client to the list. Either because
+		 * we failed to allocate memory (unlikely) or because the state
+		 * was already reached by the time we were ready to add it. So
+		 * fallthrough and clean it up.
+		 */
+		__fallthrough;
 	default:
 		close(fd);
 	}
