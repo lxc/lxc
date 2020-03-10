@@ -141,12 +141,12 @@ on_error:
 
 int lxc_file_for_each_line(const char *file, lxc_file_cb callback, void *data)
 {
-	FILE *f;
+	__do_fclose FILE *f = NULL;
+	__do_free char *line = NULL;
 	int err = 0;
-	char *line = NULL;
 	size_t len = 0;
 
-	f = fopen(file, "r");
+	f = fopen(file, "re");
 	if (!f) {
 		SYSERROR("Failed to open \"%s\"", file);
 		return -1;
@@ -164,7 +164,5 @@ int lxc_file_for_each_line(const char *file, lxc_file_cb callback, void *data)
 		}
 	}
 
-	free(line);
-	fclose(f);
 	return err;
 }

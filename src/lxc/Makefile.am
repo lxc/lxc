@@ -382,6 +382,9 @@ init_lxc_SOURCES = cmd/lxc_init.c \
 		   parse.c parse.h \
 		   raw_syscalls.c raw_syscalls.h \
 		   string_utils.c string_utils.h
+
+init_lxc_LDFLAGS = -pthread
+
 lxc_monitord_SOURCES = cmd/lxc_monitord.c \
 		       af_unix.c af_unix.h \
 		       log.c log.h \
@@ -446,7 +449,7 @@ if !HAVE_STRLCAT
 init_lxc_static_SOURCES += ../include/strlcat.c ../include/strlcat.h
 endif
 
-init_lxc_static_LDFLAGS = -all-static
+init_lxc_static_LDFLAGS = -all-static -pthread
 init_lxc_static_LDADD = @CAP_LIBS@
 init_lxc_static_CFLAGS = $(AM_CFLAGS) -DNO_LXC_CONF
 endif

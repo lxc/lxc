@@ -24,6 +24,7 @@
 #include "file_utils.h"
 #include "initutils.h"
 #include "macro.h"
+#include "memory_utils.h"
 #include "raw_syscalls.h"
 #include "string_utils.h"
 
@@ -93,7 +94,7 @@ inline static bool am_guest_unpriv(void) {
 /* are we unprivileged with respect to init_user_ns */
 inline static bool am_host_unpriv(void)
 {
-	FILE *f;
+	__do_fclose FILE *f = NULL;
 	uid_t user, host, count;
 	int ret;
 
@@ -103,20 +104,15 @@ inline static bool am_host_unpriv(void)
 	/* Now: are we in a user namespace? Because then we're also
 	 * unprivileged.
 	 */
-	f = fopen("/proc/self/uid_map", "r");
-	if (!f) {
+	f = fopen("/proc/self/uid_map", "re");
+	if (!f)
 		return false;
-	}
 
 	ret = fscanf(f, "%u %u %u", &user, &host, &count);
-	fclose(f);
-	if (ret != 3) {
+	if (ret != 3)
 		return false;
-	}
 
-	if (user != 0 || host != 0 || count != UINT32_MAX)
-		return true;
-	return false;
+	return user != 0 || host != 0 || count != UINT32_MAX;
 }
 
 /*

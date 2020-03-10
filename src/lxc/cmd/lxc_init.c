@@ -85,7 +85,7 @@ static void prevent_forking(void)
 	char path[PATH_MAX];
 	size_t len = 0;
 
-	f = fopen("/proc/self/cgroup", "r");
+	f = fopen("/proc/self/cgroup", "re");
 	if (!f)
 		return;
 
@@ -150,7 +150,7 @@ static void kill_children(pid_t pid)
 		return;
 	}
 
-	f = fopen(path, "r");
+	f = fopen(path, "re");
 	if (!f) {
 		if (my_args.quiet)
 			fprintf(stderr, "Failed to open %s\n", path);

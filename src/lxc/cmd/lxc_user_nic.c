@@ -323,7 +323,7 @@ static int get_alloted(char *me, char *intype, char *link,
 	int count = 0;
 	size_t len = 0;
 
-	fin = fopen(LXC_USERNIC_CONF, "r");
+	fin = fopen(LXC_USERNIC_CONF, "re");
 	if (!fin) {
 		CMD_SYSERROR("Failed to open \"%s\"\n", LXC_USERNIC_CONF);
 		return -1;

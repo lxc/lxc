@@ -1238,43 +1238,37 @@ out:
 #define PHYSNAME "/sys/class/net/%s/phy80211/name"
 char *is_wlan(const char *ifname)
 {
-	__do_free char *path = NULL;
+	__do_fclose FILE *f = NULL;
+	__do_free char *path = NULL, *physname = NULL;
 	int i, ret;
 	long physlen;
 	size_t len;
-	FILE *f;
-	char *physname = NULL;
 
 	len = strlen(ifname) + strlen(PHYSNAME) - 1;
 	path = must_realloc(NULL, len + 1);
 	ret = snprintf(path, len, PHYSNAME, ifname);
 	if (ret < 0 || (size_t)ret >= len)
-		goto bad;
+		return NULL;
 
-	f = fopen(path, "r");
+	f = fopen(path, "re");
 	if (!f)
-		goto bad;
+		return NULL;
 
 	/* Feh - sb.st_size is always 4096. */
 	fseek(f, 0, SEEK_END);
 	physlen = ftell(f);
 	fseek(f, 0, SEEK_SET);
-	if (physlen < 0) {
-		fclose(f);
-		goto bad;
-	}
+	if (physlen < 0)
+		return NULL;
 
 	physname = malloc(physlen + 1);
-	if (!physname) {
-		fclose(f);
-		goto bad;
-	}
+	if (!physname)
+		return NULL;
 
 	memset(physname, 0, physlen + 1);
 	ret = fread(physname, 1, physlen, f);
-	fclose(f);
 	if (ret < 0)
-		goto bad;
+		return NULL;
 
 	for (i = 0; i < physlen; i++) {
 		if (physname[i] == '\n')
@@ -1284,11 +1278,7 @@ char *is_wlan(const char *ifname)
 			break;
 	}
 
-	return physname;
-
-bad:
-	free(physname);
-	return NULL;
+	return move_ptr(physname);
 }
 
 static int lxc_netdev_rename_by_name_in_netns(pid_t pid, const char *old,

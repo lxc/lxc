@@ -150,7 +150,7 @@ lxc_config_define(proc);
 
 /*
  * Important Note:
- * If a new config option is added to this table, be aware that 
+ * If a new config option is added to this table, be aware that
  * the order in which the options are places into the table matters.
  * That means that more specific options of a namespace have to be
  * placed above more generic ones.
@@ -2464,8 +2464,8 @@ int append_unexp_config_line(const char *line, struct lxc_conf *conf)
 
 static int do_includedir(const char *dirp, struct lxc_conf *lxc_conf)
 {
+	__do_closedir DIR *dir = NULL;
 	struct dirent *direntp;
-	DIR *dir;
 	char path[PATH_MAX];
 	int len;
 	int ret = -1;
@@ -2489,21 +2489,15 @@ static int do_includedir(const char *dirp, struct lxc_conf *lxc_conf)
 			continue;
 
 		len = snprintf(path, PATH_MAX, "%s/%s", dirp, fnam);
-		if (len < 0 || len >= PATH_MAX) {
-			ret = -1;
-			goto out;
-		}
+		if (len < 0 || len >= PATH_MAX)
+			return -1;
 
 		ret = lxc_config_read(path, lxc_conf, true);
 		if (ret < 0)
-			goto out;
+			return -1;
 	}
-	ret = 0;
 
-out:
-	closedir(dir);
-
-	return ret;
+	return 0;
 }
 
 static int set_config_includefiles(const char *key, const char *value,
