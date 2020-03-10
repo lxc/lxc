@@ -13,10 +13,34 @@
 
 #include "macro.h"
 
+#define define_cleanup_attribute(type, func)     \
+	static inline void func##_ptr(type *ptr) \
+	{                                        \
+		if (*ptr)                        \
+			func(*ptr);              \
+	}
+
+#define free_disarm(ptr)       \
+	({                     \
+		free(ptr);     \
+		move_ptr(ptr); \
+	})
+
 static inline void __auto_free__(void *p)
 {
 	free(*(void **)p);
 }
+
+static inline void free_string_list(char **list)
+{
+	if (list) {
+		for (int i = 0; list[i]; i++)
+			free(list[i]);
+		free_disarm(list);
+	}
+}
+define_cleanup_attribute(char **, free_string_list);
+#define __do_free_string_list __attribute__((__cleanup__(free_string_list_ptr)))
 
 static inline void __auto_fclose__(FILE **f)
 {
@@ -37,12 +61,6 @@ static inline void __auto_closedir__(DIR **d)
 		errno = _e_;        \
 		fd = -EBADF;        \
 	}
-
-#define free_disarm(ptr)       \
-	({                     \
-		free(ptr);     \
-		move_ptr(ptr); \
-	})
 
 static inline void __auto_close__(int *fd)
 {
