@@ -117,9 +117,7 @@ cgroup of the container when the controller is available.
 
 # cgroup2
 
-This enables `LXC` to make complete use of the unified cgroup hierarchy. With
-this extension it is possible to run `LXC` containers on systems that use
-a pure unified cgroup layout.
+This enables `LXC` to make complete use of the unified cgroup hierarchy. With this extension it is possible to run `LXC` containers on systems that use a pure unified cgroup layout.
 
 # init\_pidfd
 
