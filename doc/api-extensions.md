@@ -46,6 +46,8 @@ the kernel will generate a poll event and send a message over the file descripto
 
 The caller can read this message, inspect the syscalls including its arguments. Based on this information the caller is expected to send back a message informing the kernel which action to take. Until that message is sent the kernel will block the calling process. The format of the messages to read and sent is documented in seccomp itself.
 
+A new API function `seccomp_notify_fd()` has been added which allows callers to retrieve the notifier fd for the container's seccomp filter.
+
 ## network\_veth\_routes
 
 This introduces the `lxc.net.[i].veth.ipv4.route` and `lxc.net.[i].veth.ipv6.route` properties
