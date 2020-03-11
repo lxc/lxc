@@ -1,22 +1,4 @@
-/* apparmor
- *
- * Copyright © 2012 Serge Hallyn <serge.hallyn@ubuntu.com>.
- * Copyright © 2012 Canonical Ltd.
- *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU Lesser General Public
- *  License as published by the Free Software Foundation; either
- *  version 2.1 of the License, or (at your option) any later version.
-
- *  This library is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *  Lesser General Public License for more details.
-
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- */
+/* SPDX-License-Identifier: LGPL-2.1+ */
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -121,6 +103,7 @@ static const char AA_PROFILE_BASE[] =
 "  # block some other dangerous paths\n"
 "  deny @{PROC}/kcore rwklx,\n"
 "  deny @{PROC}/sysrq-trigger rwklx,\n"
+"  deny @{PROC}/acpi/** rwklx,\n"
 "\n"
 "  # deny writes in /sys except for /sys/fs/cgroup, also allow\n"
 "  # fusectl, securityfs and debugfs to be mounted there (read-only)\n"
@@ -527,7 +510,7 @@ static inline char *apparmor_dir(const char *ctname, const char *lxcpath)
 
 static inline char *apparmor_profile_full(const char *ctname, const char *lxcpath)
 {
-	return shorten_apparmor_name(must_concat("lxc-", ctname, "_<", lxcpath, ">", NULL));
+	return shorten_apparmor_name(must_concat(NULL, "lxc-", ctname, "_<", lxcpath, ">", NULL));
 }
 
 /* Like apparmor_profile_full() but with slashes replaced by hyphens */
@@ -656,7 +639,7 @@ static char *get_apparmor_profile_content(struct lxc_conf *conf, const char *lxc
 
 	profile_name_full = apparmor_profile_full(conf->name, lxcpath);
 
-	profile = must_concat(
+	profile = must_concat(NULL,
 "#include <tunables/global>\n"
 "profile \"", profile_name_full, "\" flags=(attach_disconnected,mediate_deleted) {\n",
 	                      NULL);
@@ -680,7 +663,7 @@ static char *get_apparmor_profile_content(struct lxc_conf *conf, const char *lxc
 		                  STRARRAYLEN(AA_PROFILE_STACKING_BASE));
 
 		namespace = apparmor_namespace(conf->name, lxcpath);
-		temp = must_concat("  change_profile -> \":", namespace, ":*\",\n"
+		temp = must_concat(NULL, "  change_profile -> \":", namespace, ":*\",\n"
 		                   "  change_profile -> \":", namespace, "://*\",\n",
 		                   NULL);
 		free(namespace);
@@ -699,7 +682,7 @@ static char *get_apparmor_profile_content(struct lxc_conf *conf, const char *lxc
 		if (!aa_can_stack || aa_is_stacked) {
 			char *temp;
 
-			temp = must_concat("  change_profile -> \"",
+			temp = must_concat(NULL, "  change_profile -> \"",
 			                   profile_name_full, "\",\n", NULL);
 			must_append_sized(&profile, &size, temp, strlen(temp));
 			free(temp);

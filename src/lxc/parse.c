@@ -1,25 +1,4 @@
-/*
- * lxc: linux Container library
- *
- * (C) Copyright IBM Corp. 2007, 2008
- *
- * Authors:
- * Daniel Lezcano <daniel.lezcano at free.fr>
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
- */
+/* SPDX-License-Identifier: LGPL-2.1+ */
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -162,12 +141,12 @@ on_error:
 
 int lxc_file_for_each_line(const char *file, lxc_file_cb callback, void *data)
 {
-	FILE *f;
+	__do_fclose FILE *f = NULL;
+	__do_free char *line = NULL;
 	int err = 0;
-	char *line = NULL;
 	size_t len = 0;
 
-	f = fopen(file, "r");
+	f = fopen(file, "re");
 	if (!f) {
 		SYSERROR("Failed to open \"%s\"", file);
 		return -1;
@@ -185,7 +164,5 @@ int lxc_file_for_each_line(const char *file, lxc_file_cb callback, void *data)
 		}
 	}
 
-	free(line);
-	fclose(f);
 	return err;
 }

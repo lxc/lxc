@@ -75,7 +75,6 @@ ${rootfs}/mnt \
 ${rootfs}/tmp \
 ${rootfs}/var/log \
 ${rootfs}/var/run \
-${rootfs}/usr/share/udhcpc \
 ${rootfs}/dev/pts \
 ${rootfs}/dev/shm \
 ${rootfs}/lib \
@@ -140,7 +139,7 @@ EOF
   chmod 644 "${rootfs}/etc/inittab" || return 1
 
   # Look for the pathname of "default.script" from the help of udhcpc
-  DEF_SCRIPT=`${BUSYBOX_EXE} udhcpc -h 2>&1 | grep -- '-s,--script PROG' | cut -d'/' -f2- | cut -d')' -f1`
+  DEF_SCRIPT=`${BUSYBOX_EXE} udhcpc --help 2>&1 | egrep -- '-s.*Run PROG' | cut -d'/' -f2- | cut -d')' -f1`
   DEF_SCRIPT_DIR=`dirname /${DEF_SCRIPT}`
   mkdir -p ${rootfs}/${DEF_SCRIPT_DIR}
   chmod 644 ${rootfs}/${DEF_SCRIPT_DIR} || return 1

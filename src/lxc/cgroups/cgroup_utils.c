@@ -1,26 +1,4 @@
-/*
- * lxc: linux Container library
- *
- * Copyright © 2017 Canonical Ltd.
- *
- * Authors:
- * Serge Hallyn <serge.hallyn@ubuntu.com>
- * Christian Brauner <christian.brauner@ubuntu.com>
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
- */
+/* SPDX-License-Identifier: LGPL-2.1+ */
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -28,10 +6,13 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/vfs.h>
 #include <unistd.h>
 
+#include "cgroup.h"
 #include "cgroup_utils.h"
 #include "config.h"
+#include "file_utils.h"
 #include "macro.h"
 #include "memory_utils.h"
 #include "utils.h"
@@ -100,4 +81,20 @@ bool test_writeable_v2(char *mountpoint, char *path)
 		return true;
 
 	return (access(cgroup_threads_file, W_OK) == 0);
+}
+
+int unified_cgroup_hierarchy(void)
+{
+
+	int ret;
+	struct statfs fs;
+
+	ret = statfs(DEFAULT_CGROUP_MOUNTPOINT, &fs);
+	if (ret < 0)
+		return -ENOMEDIUM;
+
+	if (is_fs_type(&fs, CGROUP2_SUPER_MAGIC))
+		return CGROUP2_SUPER_MAGIC;
+
+	return 0;
 }

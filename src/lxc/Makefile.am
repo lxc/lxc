@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LGPL-2.1+
+
 pkginclude_HEADERS = attach_options.h \
 		     lxccontainer.h \
 		     version.h
@@ -7,6 +9,7 @@ noinst_HEADERS = api_extensions.h \
 		 caps.h \
 		 cgroups/cgroup.h \
 		 cgroups/cgroup_utils.h \
+		 cgroups/cgroup2_devices.h \
 		 compiler.h \
 		 conf.h \
 		 confile.h \
@@ -95,6 +98,7 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    caps.c caps.h \
 		    cgroups/cgfsng.c \
 		    cgroups/cgroup.c cgroups/cgroup.h \
+		    cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		    cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		    compiler.h \
 		    commands.c commands.h \
@@ -236,10 +240,15 @@ endif
 liblxc_la_CFLAGS = -fPIC \
 		   -DPIC \
 		   $(AM_CFLAGS) \
+		   $(LIBLXC_SANITIZER) \
 		   -pthread
 if ENABLE_ASAN
 liblxc_la_CFLAGS += -fsanitize=address \
 		    -fno-omit-frame-pointer
+endif
+
+if ENABLE_UBSAN
+liblxc_la_CFLAGS += -fsanitize=undefined
 endif
 
 liblxc_la_LDFLAGS = -pthread \
@@ -373,6 +382,9 @@ init_lxc_SOURCES = cmd/lxc_init.c \
 		   parse.c parse.h \
 		   raw_syscalls.c raw_syscalls.h \
 		   string_utils.c string_utils.h
+
+init_lxc_LDFLAGS = -pthread
+
 lxc_monitord_SOURCES = cmd/lxc_monitord.c \
 		       af_unix.c af_unix.h \
 		       log.c log.h \
@@ -437,7 +449,7 @@ if !HAVE_STRLCAT
 init_lxc_static_SOURCES += ../include/strlcat.c ../include/strlcat.h
 endif
 
-init_lxc_static_LDFLAGS = -all-static
+init_lxc_static_LDFLAGS = -all-static -pthread
 init_lxc_static_LDADD = @CAP_LIBS@
 init_lxc_static_CFLAGS = $(AM_CFLAGS) -DNO_LXC_CONF
 endif

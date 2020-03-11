@@ -16,6 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define _GNU_SOURCE
 #include <alloca.h>
 #include <errno.h>
 #include <pthread.h>
@@ -30,23 +31,26 @@
 
 #include "lxc/lxccontainer.h"
 #include "lxctest.h"
+#include "../lxc/compiler.h"
+
+#define TEST_DEFAULT_BUF_SIZE 256
 
 struct thread_args {
 	int thread_id;
 	bool success;
 	pid_t init_pid;
-	char *inherited_ipc_ns;
-	char *inherited_net_ns;
+	char inherited_ipc_ns[TEST_DEFAULT_BUF_SIZE];
+	char inherited_net_ns[TEST_DEFAULT_BUF_SIZE];
 };
 
-void *ns_sharing_wrapper(void *data)
+__noreturn static void *ns_sharing_wrapper(void *data)
 {
 	int init_pid;
 	ssize_t ret;
 	char name[100];
 	char owning_ns_init_pid[100];
-	char proc_ns_path[4096];
-	char ns_buf[4096];
+	char proc_ns_path[TEST_DEFAULT_BUF_SIZE];
+	char ns_buf[TEST_DEFAULT_BUF_SIZE];
 	struct lxc_container *c;
 	struct thread_args *args = data;
 
@@ -56,7 +60,7 @@ void *ns_sharing_wrapper(void *data)
 	c = lxc_container_new(name, NULL);
 	if (!c) {
 		lxc_error("Failed to create container \"%s\"\n", name);
-		return NULL;
+		goto out_pthread_exit;
 	}
 
 	if (c->is_defined(c)) {
@@ -73,6 +77,8 @@ void *ns_sharing_wrapper(void *data)
 		lxc_error("Container \"%s\" is not defined\n", name);
 		goto out;
 	}
+
+	c->clear_config(c);
 
 	if (!c->load_config(c, NULL)) {
 		lxc_error("Failed to load config for container \"%s\"\n", name);
@@ -131,7 +137,7 @@ void *ns_sharing_wrapper(void *data)
 		lxc_error("Failed to retrieve ipc namespace for container \"%s\"\n", name);
 		goto out;
 	}
-	ns_buf[ret] = '\0';
+	ns_buf[ret == 0 ? ret : ret - 1] = '\0';
 
 	if (strcmp(args->inherited_ipc_ns, ns_buf) != 0) {
 		lxc_error("Failed to inherit ipc namespace from container \"owning-ns\": %s != %s\n", args->inherited_ipc_ns, ns_buf);
@@ -151,7 +157,7 @@ void *ns_sharing_wrapper(void *data)
 		lxc_error("Failed to retrieve ipc namespace for container \"%s\"\n", name);
 		goto out;
 	}
-	ns_buf[ret] = '\0';
+	ns_buf[ret == 0 ? ret : ret - 1] = '\0';
 
 	if (strcmp(args->inherited_net_ns, ns_buf) != 0) {
 		lxc_error("Failed to inherit net namespace from container \"owning-ns\": %s != %s\n", args->inherited_net_ns, ns_buf);
@@ -162,31 +168,32 @@ void *ns_sharing_wrapper(void *data)
 	args->success = true;
 
 out:
-	if (c->is_running(c) && !c->stop(c)) {
+	if (c->is_running(c) && !c->stop(c))
 		lxc_error("Failed to stop container \"%s\"\n", name);
-		goto out;
-	}
 
-	if (!c->destroy(c)) {
+	if (!c->destroy(c))
 		lxc_error("Failed to destroy container \"%s\"\n", name);
-		goto out;
-	}
 
+	lxc_container_put(c);
+
+out_pthread_exit:
 	pthread_exit(NULL);
-	return NULL;
 }
 
 int main(int argc, char *argv[])
 {
+	struct thread_args *args = NULL;
+	pthread_t *threads = NULL;
+	size_t nthreads = 10;
 	int i, init_pid, j;
-	char proc_ns_path[4096];
-	char ipc_ns_buf[4096];
-	char net_ns_buf[4096];
+	char proc_ns_path[TEST_DEFAULT_BUF_SIZE];
+	char ipc_ns_buf[TEST_DEFAULT_BUF_SIZE];
+	char net_ns_buf[TEST_DEFAULT_BUF_SIZE];
 	pthread_attr_t attr;
-	pthread_t threads[10];
-	struct thread_args args[10];
 	struct lxc_container *c;
 	int ret = EXIT_FAILURE;
+
+	pthread_attr_init(&attr);
 
 	c = lxc_container_new("owning-ns", NULL);
 	if (!c) {
@@ -196,17 +203,17 @@ int main(int argc, char *argv[])
 
 	if (c->is_defined(c)) {
 		lxc_error("%s\n", "Container \"owning-ns\" is defined");
-		goto on_error_put;
+		goto on_error_stop;
 	}
 
 	if (!c->createl(c, "busybox", NULL, NULL, 0, NULL)) {
 		lxc_error("%s\n", "Failed to create busybox container \"owning-ns\"");
-		goto on_error_put;
+		goto on_error_stop;
 	}
 
 	if (!c->is_defined(c)) {
 		lxc_error("%s\n", "Container \"owning-ns\" is not defined");
-		goto on_error_put;
+		goto on_error_stop;
 	}
 
 	c->clear_config(c);
@@ -263,47 +270,69 @@ int main(int argc, char *argv[])
 
 	sleep(5);
 
-	pthread_attr_init(&attr);
+	args = malloc(sizeof(struct thread_args) * nthreads);
+	if (!args) {
+		lxc_error("%s\n", "Failed to allocate memory");
+		goto on_error_stop;
+	}
+
+	threads = malloc(sizeof(pthread_t) * nthreads);
+	if (!threads) {
+		lxc_error("%s\n", "Failed to allocate memory");
+		goto on_error_stop;
+	}
 
 	for (j = 0; j < 10; j++) {
+		bool had_error = false;
+
 		lxc_debug("Starting namespace sharing test iteration %d\n", j);
 
-		for (i = 0; i < 10; i++) {
+		for (i = 0; i < nthreads; i++) {
+			memset(&args[i], 0, sizeof(struct thread_args));
+			memset(&threads[i], 0, sizeof(pthread_t));
+
 			args[i].thread_id = i;
 			args[i].success = false;
 			args[i].init_pid = init_pid;
-			args[i].inherited_ipc_ns = ipc_ns_buf;
-			args[i].inherited_net_ns = net_ns_buf;
+			snprintf(args[i].inherited_ipc_ns, sizeof(args[i].inherited_ipc_ns), "%s", ipc_ns_buf);
+			snprintf(args[i].inherited_net_ns, sizeof(args[i].inherited_net_ns), "%s", net_ns_buf);
 
-			ret = pthread_create(&threads[i], &attr, ns_sharing_wrapper, (void *) &args[i]);
+			ret = pthread_create(&threads[i], &attr, ns_sharing_wrapper, (void *)&args[i]);
 			if (ret != 0)
 				goto on_error_stop;
 		}
 
-		for (i = 0; i < 10; i++) {
+		for (i = 0; i < nthreads; i++) {
 			ret = pthread_join(threads[i], NULL);
 			if (ret != 0)
 				goto on_error_stop;
 
 			if (!args[i].success) {
 				lxc_error("ns sharing thread %d failed\n", args[i].thread_id);
-				goto on_error_stop;
+				had_error = true;
 			}
 		}
+
+		if (had_error)
+			goto on_error_stop;
 	}
 
 	ret = EXIT_SUCCESS;
 
 on_error_stop:
+	free(args);
+	free(threads);
+	pthread_attr_destroy(&attr);
+
 	if (c->is_running(c) && !c->stop(c))
 		lxc_error("%s\n", "Failed to stop container \"owning-ns\"");
 
 	if (!c->destroy(c))
 		lxc_error("%s\n", "Failed to destroy container \"owning-ns\"");
 
-on_error_put:
 	lxc_container_put(c);
 	if (ret == EXIT_SUCCESS)
 		lxc_debug("%s\n", "All state namespace sharing tests passed");
+
 	exit(ret);
 }

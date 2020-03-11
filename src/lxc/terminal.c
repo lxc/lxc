@@ -1,25 +1,4 @@
-/*
- * lxc: linux Container library
- *
- * (C) Copyright IBM Corp. 2007, 2008
- *
- * Authors:
- * Daniel Lezcano <daniel.lezcano at free.fr>
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
- */
+/* SPDX-License-Identifier: LGPL-2.1+ */
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -115,10 +94,10 @@ int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
 
 struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, int dstfd)
 {
+	__do_close_prot_errno int signal_fd = -EBADF;
+	__do_free struct lxc_terminal_state *ts = NULL;
 	int ret;
-	bool istty = false;
 	sigset_t mask;
-	struct lxc_terminal_state *ts;
 
 	ts = malloc(sizeof(*ts));
 	if (!ts)
@@ -132,61 +111,67 @@ struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, int dstfd)
 	ret = sigemptyset(&mask);
 	if (ret < 0) {
 		SYSERROR("Failed to initialize an empty signal set");
-		goto on_error;
+		return NULL;
 	}
 
-	istty = (isatty(srcfd) == 1);
-	if (!istty) {
-		INFO("fd %d does not refer to a tty device", srcfd);
-	} else {
+	if (isatty(srcfd)) {
 		ret = sigaddset(&mask, SIGWINCH);
 		if (ret < 0)
 			SYSNOTICE("Failed to add SIGWINCH to signal set");
+	} else {
+		INFO("fd %d does not refer to a tty device", srcfd);
 	}
 
 	/* Exit the mainloop cleanly on SIGTERM. */
 	ret = sigaddset(&mask, SIGTERM);
 	if (ret < 0) {
 		SYSERROR("Failed to add SIGWINCH to signal set");
-		goto on_error;
+		return NULL;
 	}
 
 	ret = pthread_sigmask(SIG_BLOCK, &mask, &ts->oldmask);
 	if (ret < 0) {
 		WARN("Failed to block signals");
-		goto on_error;
+		return NULL;
 	}
 
-	ts->sigfd = signalfd(-1, &mask, SFD_CLOEXEC);
-	if (ts->sigfd < 0) {
+	signal_fd = signalfd(-1, &mask, SFD_CLOEXEC);
+	if (signal_fd < 0) {
 		WARN("Failed to create signal fd");
 		(void)pthread_sigmask(SIG_SETMASK, &ts->oldmask, NULL);
-		goto on_error;
+		return NULL;
 	}
+	ts->sigfd = move_fd(signal_fd);
+	TRACE("Created signal fd %d", ts->sigfd);
 
-	DEBUG("Created signal fd %d", ts->sigfd);
-	return ts;
-
-on_error:
-	ERROR("Failed to create signal fd");
-	if (ts->sigfd >= 0) {
-		close(ts->sigfd);
-		ts->sigfd = -1;
-	}
-
-	return ts;
+	return move_ptr(ts);
 }
 
-void lxc_terminal_signal_fini(struct lxc_terminal_state *ts)
+/**
+ * lxc_terminal_signal_fini: uninstall signal handler
+ *
+ * @terminal: terminal instance
+ *
+ * Restore the saved signal handler that was in effect at the time
+ * lxc_terminal_signal_init() was called.
+ */
+static void lxc_terminal_signal_fini(struct lxc_terminal *terminal)
 {
-	if (ts->sigfd >= 0) {
-		close(ts->sigfd);
+	struct lxc_terminal_state *state = terminal->tty_state;
 
-		if (pthread_sigmask(SIG_SETMASK, &ts->oldmask, NULL) < 0)
+	if (!terminal->tty_state)
+		return;
+
+	state = terminal->tty_state;
+	if (state->sigfd >= 0) {
+		close(state->sigfd);
+
+		if (pthread_sigmask(SIG_SETMASK, &state->oldmask, NULL) < 0)
 			SYSWARN("Failed to restore signal mask");
 	}
 
-	free(ts);
+	free(terminal->tty_state);
+	terminal->tty_state = NULL;
 }
 
 static int lxc_terminal_truncate_log_file(struct lxc_terminal *terminal)
@@ -348,10 +333,7 @@ int lxc_terminal_io_cb(int fd, uint32_t events, void *data,
 		if (fd == terminal->master) {
 			terminal->master = -EBADF;
 		} else if (fd == terminal->peer) {
-			if (terminal->tty_state) {
-				lxc_terminal_signal_fini(terminal->tty_state);
-				terminal->tty_state = NULL;
-			}
+			lxc_terminal_signal_fini(terminal);
 			terminal->peer = -EBADF;
 		} else {
 			ERROR("Handler received unexpected file descriptor");
@@ -499,10 +481,7 @@ int lxc_setup_tios(int fd, struct termios *oldtios)
 
 static void lxc_terminal_peer_proxy_free(struct lxc_terminal *terminal)
 {
-	if (terminal->tty_state) {
-		lxc_terminal_signal_fini(terminal->tty_state);
-		terminal->tty_state = NULL;
-	}
+	lxc_terminal_signal_fini(terminal);
 
 	close(terminal->proxy.master);
 	terminal->proxy.master = -1;
@@ -614,7 +593,7 @@ int lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 		if (*ttyreq > ttys->max)
 			goto out;
 
-		if (ttys->tty[*ttyreq - 1].busy)
+		if (ttys->tty[*ttyreq - 1].busy >= 0)
 			goto out;
 
 		/* The requested tty is available. */
@@ -623,7 +602,7 @@ int lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttyreq)
 	}
 
 	/* Search for next available tty, fixup index tty1 => [0]. */
-	for (ttynum = 1; ttynum <= ttys->max && ttys->tty[ttynum - 1].busy; ttynum++) {
+	for (ttynum = 1; ttynum <= ttys->max && ttys->tty[ttynum - 1].busy >= 0; ttynum++) {
 		;
 	}
 
@@ -649,7 +628,7 @@ void lxc_terminal_free(struct lxc_conf *conf, int fd)
 
 	for (i = 0; i < ttys->max; i++)
 		if (ttys->tty[i].busy == fd)
-			ttys->tty[i].busy = 0;
+			ttys->tty[i].busy = -1;
 
 	if (terminal->proxy.busy != fd)
 		return;
@@ -1018,6 +997,9 @@ int lxc_console(struct lxc_container *c, int ttynum,
 	struct lxc_epoll_descr descr;
 	struct termios oldtios;
 	struct lxc_terminal_state *ts;
+	struct lxc_terminal terminal = {
+		.tty_state = NULL,
+	};
 	int istty = 0;
 
 	ttyfd = lxc_cmd_console(c->name, &ttynum, &masterfd, c->config_path);
@@ -1033,6 +1015,7 @@ int lxc_console(struct lxc_container *c, int ttynum,
 		ret = -1;
 		goto close_fds;
 	}
+	terminal.tty_state = ts;
 	ts->escape = escape;
 	ts->stdoutfd = stdoutfd;
 
@@ -1107,7 +1090,7 @@ close_mainloop:
 	lxc_mainloop_close(&descr);
 
 sigwinch_fini:
-	lxc_terminal_signal_fini(ts);
+	lxc_terminal_signal_fini(&terminal);
 
 close_fds:
 	close(masterfd);
@@ -1171,6 +1154,7 @@ void lxc_terminal_conf_free(struct lxc_terminal *terminal)
 	free(terminal->path);
 	if (terminal->buffer_size > 0 && terminal->ringbuf.addr)
 		lxc_ringbuf_release(&terminal->ringbuf);
+	lxc_terminal_signal_fini(terminal);
 }
 
 int lxc_terminal_map_ids(struct lxc_conf *c, struct lxc_terminal *terminal)

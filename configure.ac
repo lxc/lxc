@@ -368,6 +368,10 @@ AC_CHECK_TYPES([struct seccomp_notif_sizes], [], [], [[#include <seccomp.h>]])
 AC_CHECK_DECLS([seccomp_syscall_resolve_name_arch], [], [], [[#include <seccomp.h>]])
 CFLAGS="$OLD_CFLAGS"
 
+AC_CHECK_HEADERS([linux/bpf.h], [
+	AC_CHECK_TYPES([struct bpf_cgroup_dev_ctx], [], [], [[#include <linux/bpf.h>]])
+], [], [])
+
 # Configuration examples
 AC_ARG_ENABLE([examples],
 	[AS_HELP_STRING([--enable-examples], [install examples [default=yes]])],
@@ -436,6 +440,12 @@ AC_ARG_ENABLE([asan],
 	[enable_asan=$enableval], [enable_asan=no])
 AM_CONDITIONAL([ENABLE_ASAN], [test "x$enable_asan" = "xyes"])
 
+# Build with UBSAN commands
+AC_ARG_ENABLE([ubsan],
+	[AS_HELP_STRING([--enable-ubsan], [build with ubsan sanitizer enabled [default=no]])],
+	[enable_asan=$enableval], [enable_ubsan=no])
+AM_CONDITIONAL([ENABLE_UBSAN], [test "x$enable_ubsan" = "xyes"])
+
 # Optional test binaries
 AC_ARG_ENABLE([tests],
 	[AS_HELP_STRING([--enable-tests], [build test/example binaries [default=no]])],
@@ -477,7 +487,7 @@ AC_ARG_WITH([rootfs-path],
 # cgroup pattern specification
 AC_ARG_WITH([cgroup-pattern],
 	[AS_HELP_STRING([--with-cgroup-pattern=pattern], [pattern for container cgroups])],
-	[with_cgroup_pattern=$withval], [with_cgroup_pattern=['lxc.payload/%n']])
+	[with_cgroup_pattern=$withval], [with_cgroup_pattern=['']])
 
 # The path for the apparmor_parser's cache for generated apparmor profiles
 AC_ARG_WITH([apparmor-cache-dir],
@@ -691,6 +701,10 @@ AC_CHECK_FUNCS([strlcat],
 	AM_CONDITIONAL(HAVE_STRLCAT, true)
 	AC_DEFINE(HAVE_STRLCAT,1,[Have strlcat]),
 	AM_CONDITIONAL(HAVE_STRLCAT, false))
+AC_CHECK_FUNCS([fmemopen],
+	AM_CONDITIONAL(HAVE_FMEMOPEN, true)
+	AC_DEFINE(HAVE_FMEMOPEN,1,[Have fmemopen]),
+	AM_CONDITIONAL(HAVE_FMEMOPEN, false))
 
 # HAVE_STRUCT_RTNL_LINK_STATS64={0,1}
 AC_CHECK_TYPES([struct rtnl_link_stats64], [], [], [[#include <linux/if_link.h>]])
@@ -713,8 +727,8 @@ AX_CHECK_COMPILE_FLAG([-Wcast-align], [CFLAGS="$CFLAGS -Wcast-align"],,[-Werror]
 AX_CHECK_COMPILE_FLAG([-Wstrict-prototypes], [CFLAGS="$CFLAGS -Wstrict-prototypes"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-fno-strict-aliasing], [CFLAGS="$CFLAGS -fno-strict-aliasing"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-fstack-clash-protection], [CFLAGS="$CFLAGS -fstack-clash-protection"],,[-Werror])
-AX_CHECK_COMPILE_FLAG([-fstack-protector-strong], [CFLAGS="$CFLAGS -fstack-protector-strong"],,[-Werror])
-AX_CHECK_COMPILE_FLAG([--param=ssp-buffer-size=4], [CFLAGS="$CFLAGS --param=ssp-buffer-size=4"],,[-Werror])
+AX_CHECK_LINK_FLAG([-fstack-protector-strong], [CFLAGS="$CFLAGS -fstack-protector-strong"],,[-Werror])
+AX_CHECK_LINK_FLAG([--param=ssp-buffer-size=4], [CFLAGS="$CFLAGS --param=ssp-buffer-size=4"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-g], [CFLAGS="$CFLAGS -g"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([--mcet -fcf-protection], [CFLAGS="$CFLAGS --mcet -fcf-protection"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-Werror=implicit-function-declaration], [CFLAGS="$CFLAGS -Werror=implicit-function-declaration"],,[-Werror])
@@ -722,6 +736,7 @@ AX_CHECK_COMPILE_FLAG([-Wlogical-op], [CFLAGS="$CFLAGS -Wlogical-op"],,[-Werror]
 AX_CHECK_COMPILE_FLAG([-Wmissing-include-dirs], [CFLAGS="$CFLAGS -Wmissing-include-dirs"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-Wold-style-definition], [CFLAGS="$CFLAGS -Wold-style-definition"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-Winit-self], [CFLAGS="$CFLAGS -Winit-self"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-Wunused-but-set-variable], [CFLAGS="$CFLAGS -Wunused-but-set-variable"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-Wfloat-equal], [CFLAGS="$CFLAGS -Wfloat-equal"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-Wsuggest-attribute=noreturn], [CFLAGS="$CFLAGS -Wsuggest-attribute=noreturn"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-Werror=return-type], [CFLAGS="$CFLAGS -Werror=return-type"],,[-Werror])

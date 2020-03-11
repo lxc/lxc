@@ -1,25 +1,5 @@
-/*
- * lxc: linux Container library
- *
- * (C) Copyright IBM Corp. 2007, 2008
- *
- * Authors:
- * Daniel Lezcano <daniel.lezcano at free.fr>
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
- */
+/* SPDX-License-Identifier: LGPL-2.1+ */
+
 #ifndef __LXC_CONF_H
 #define __LXC_CONF_H
 
@@ -230,6 +210,26 @@ struct lxc_state_client {
 	lxc_state_t states[MAX_STATE];
 };
 
+enum {
+	LXC_BPF_DEVICE_CGROUP_LOCAL_RULE = -1,
+	LXC_BPF_DEVICE_CGROUP_WHITELIST  =  0,
+	LXC_BPF_DEVICE_CGROUP_BLACKLIST  =  1,
+};
+
+struct device_item {
+	char type;
+	int major;
+	int minor;
+	char access[4];
+	int allow;
+	/*
+	 * LXC_BPF_DEVICE_CGROUP_LOCAL_RULE -> no global rule
+	 * LXC_BPF_DEVICE_CGROUP_WHITELIST  -> whitelist (deny all)
+	 * LXC_BPF_DEVICE_CGROUP_BLACKLIST  -> blacklist (allow all)
+	 */
+	int global_rule;
+};
+
 struct lxc_conf {
 	/* Pointer to the name of the container. Do not free! */
 	const char *name;
@@ -241,6 +241,9 @@ struct lxc_conf {
 	struct {
 		struct lxc_list cgroup;
 		struct lxc_list cgroup2;
+		struct bpf_program *cgroup2_devices;
+		/* This should be reimplemented as a hashmap. */
+		struct lxc_list devices;
 	};
 
 	struct {
@@ -295,6 +298,8 @@ struct lxc_conf {
 	unsigned int lsm_aa_allow_incomplete;
 	struct lxc_list lsm_aa_raw;
 	char *lsm_se_context;
+	char *lsm_se_keyring_context;
+	bool keyring_disable_session;
 	bool tmp_umount_proc;
 	struct lxc_seccomp seccomp;
 	int maincmd_fd;

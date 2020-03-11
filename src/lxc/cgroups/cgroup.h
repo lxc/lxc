@@ -1,25 +1,4 @@
-/*
- * lxc: linux Container library
- *
- * (C) Copyright IBM Corp. 2007, 2008
- *
- * Authors:
- * Daniel Lezcano <daniel.lezcano at free.fr>
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
- */
+/* SPDX-License-Identifier: LGPL-2.1+ */
 
 #ifndef __LXC_CGROUP_H
 #define __LXC_CGROUP_H
@@ -28,9 +7,16 @@
 #include <stddef.h>
 #include <sys/types.h>
 
-#define PAYLOAD_CGROUP "lxc.payload"
-#define MONITOR_CGROUP "lxc.monitor"
-#define PIVOT_CGROUP "lxc.pivot"
+#include "macro.h"
+
+#define DEFAULT_CGROUP_MOUNTPOINT "/sys/fs/cgroup"
+#define DEFAULT_PAYLOAD_CGROUP_PREFIX "lxc.payload."
+#define DEFAULT_MONITOR_CGROUP_PREFIX "lxc.monitor."
+#define DEFAULT_PAYLOAD_CGROUP "payload"
+#define DEFAULT_MONITOR_CGROUP "monitor"
+#define CGROUP_CREATE_RETRY "-NNNN"
+#define CGROUP_CREATE_RETRY_LEN (STRLITERALLEN(CGROUP_CREATE_RETRY))
+#define CGROUP_PIVOT "lxc.pivot"
 
 struct lxc_handler;
 struct lxc_conf;
@@ -77,7 +63,7 @@ typedef enum {
  *   If the hierarchy is a legacy hierarchy this will be set to
  *   CGROUP_SUPER_MAGIC.
  * - unified hierarchy
- *   If the hierarchy is a legacy hierarchy this will be set to
+ *   If the hierarchy is a unified hierarchy this will be set to
  *   CGROUP2_SUPER_MAGIC.
  */
 struct hierarchy {
@@ -92,6 +78,14 @@ struct hierarchy {
 	char *container_full_path;
 	char *monitor_full_path;
 	int version;
+
+	/* cgroup2 only */
+	unsigned int bpf_device_controller:1;
+
+	/* monitor cgroup fd */
+	int cgfd_con;
+	/* container cgroup fd */
+	int cgfd_mon;
 };
 
 struct cgroup_ops {
@@ -105,9 +99,7 @@ struct cgroup_ops {
 	char **cgroup_use;
 	char *cgroup_pattern;
 	char *container_cgroup;
-
-	/* Static memory, do not free.*/
-	const char *monitor_pattern;
+	char *monitor_cgroup;
 
 	/* @hierarchies
 	 * - A NULL-terminated array of struct hierarchy, one per legacy
@@ -117,6 +109,13 @@ struct cgroup_ops {
 	struct hierarchy **hierarchies;
 	/* Pointer to the unified hierarchy. Do not free! */
 	struct hierarchy *unified;
+
+	/*
+	 * @cgroup2_devices
+	 * bpf program to limit device access; only applicable to privileged
+	 * containers.
+	 */
+	struct bpf_program *cgroup2_devices;
 
 	/*
 	 * @cgroup_layout
@@ -139,13 +138,13 @@ struct cgroup_ops {
 	 */
 	cgroup_layout_t cgroup_layout;
 
-	bool (*data_init)(struct cgroup_ops *ops);
+	int (*data_init)(struct cgroup_ops *ops);
 	void (*payload_destroy)(struct cgroup_ops *ops, struct lxc_handler *handler);
 	void (*monitor_destroy)(struct cgroup_ops *ops, struct lxc_handler *handler);
 	bool (*monitor_create)(struct cgroup_ops *ops, struct lxc_handler *handler);
-	bool (*monitor_enter)(struct cgroup_ops *ops, pid_t pid);
+	bool (*monitor_enter)(struct cgroup_ops *ops, struct lxc_handler *handler);
 	bool (*payload_create)(struct cgroup_ops *ops, struct lxc_handler *handler);
-	bool (*payload_enter)(struct cgroup_ops *ops, pid_t pid);
+	bool (*payload_enter)(struct cgroup_ops *ops, struct lxc_handler *handler);
 	const char *(*get_cgroup)(struct cgroup_ops *ops, const char *controller);
 	bool (*escape)(const struct cgroup_ops *ops, struct lxc_conf *conf);
 	int (*num_hierarchies)(struct cgroup_ops *ops);
@@ -154,21 +153,41 @@ struct cgroup_ops {
 		   const char *value, const char *name, const char *lxcpath);
 	int (*get)(struct cgroup_ops *ops, const char *filename, char *value,
 		   size_t len, const char *name, const char *lxcpath);
-	bool (*freeze)(struct cgroup_ops *ops);
-	bool (*unfreeze)(struct cgroup_ops *ops);
-	bool (*setup_limits)(struct cgroup_ops *ops, struct lxc_conf *conf,
-			     bool with_devices);
+	int (*freeze)(struct cgroup_ops *ops, int timeout);
+	int (*unfreeze)(struct cgroup_ops *ops, int timeout);
+	bool (*setup_limits_legacy)(struct cgroup_ops *ops,
+				    struct lxc_conf *conf, bool with_devices);
+	bool (*setup_limits)(struct cgroup_ops *ops, struct lxc_handler *handler);
 	bool (*chown)(struct cgroup_ops *ops, struct lxc_conf *conf);
 	bool (*attach)(struct cgroup_ops *ops, const char *name,
 		       const char *lxcpath, pid_t pid);
 	bool (*mount)(struct cgroup_ops *ops, struct lxc_handler *handler,
 		      const char *root, int type);
-	int (*nrtasks)(struct cgroup_ops *ops);
+	bool (*devices_activate)(struct cgroup_ops *ops,
+				 struct lxc_handler *handler);
+	bool (*monitor_delegate_controllers)(struct cgroup_ops *ops);
+	bool (*payload_delegate_controllers)(struct cgroup_ops *ops);
+	void (*payload_finalize)(struct cgroup_ops *ops);
 };
 
 extern struct cgroup_ops *cgroup_init(struct lxc_conf *conf);
 extern void cgroup_exit(struct cgroup_ops *ops);
 
 extern void prune_init_scope(char *cg);
+
+static inline void __auto_cgroup_exit__(struct cgroup_ops **ops)
+{
+	if (*ops)
+		cgroup_exit(*ops);
+}
+
+extern int cgroup_attach(const char *name, const char *lxcpath, int64_t pid);
+
+#define __do_cgroup_exit __attribute__((__cleanup__(__auto_cgroup_exit__)))
+
+static inline bool pure_unified_layout(const struct cgroup_ops *ops)
+{
+	return ops->cgroup_layout == CGROUP_LAYOUT_UNIFIED;
+}
 
 #endif

@@ -1,25 +1,4 @@
-/*
- * lxc: linux Container library
- *
- * (C) Copyright IBM Corp. 2007, 2008
- *
- * Authors:
- * Daniel Lezcano <daniel.lezcano at free.fr>
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
- */
+/* SPDX-License-Identifier: LGPL-2.1+ */
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -33,7 +12,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "cgroup.h"
+#include "cgroups/cgroup.h"
+#include "cgroups/cgroup_utils.h"
 #include "commands.h"
 #include "config.h"
 #include "error.h"
@@ -45,15 +25,21 @@
 
 lxc_log_define(freezer, lxc);
 
+static void notify_state_listeners(const char *name, const char *lxcpath,
+				   lxc_state_t state)
+{
+	(void)lxc_cmd_serve_state_clients(name, lxcpath, state);
+	(void)lxc_monitor_send_state(name, state, lxcpath);
+}
+
 static int do_freeze_thaw(bool freeze, struct lxc_conf *conf, const char *name,
 			  const char *lxcpath)
 {
+	__do_cgroup_exit struct cgroup_ops *cgroup_ops = NULL;
+	lxc_state_t new_state = freeze ? FROZEN : THAWED;
 	int ret;
-	char v[100];
-	struct cgroup_ops *cgroup_ops;
 	const char *state;
 	size_t state_len;
-	lxc_state_t new_state = freeze ? FROZEN : THAWED;
 
 	state = lxc_state2str(new_state);
 	state_len = strlen(state);
@@ -62,59 +48,54 @@ static int do_freeze_thaw(bool freeze, struct lxc_conf *conf, const char *name,
 	if (!cgroup_ops)
 		return -1;
 
-	if (cgroup_ops->cgroup_layout != CGROUP_LAYOUT_UNIFIED) {
-		ret = cgroup_ops->set(cgroup_ops, "freezer.state", state, name,
-				      lxcpath);
-		if (ret < 0) {
-			cgroup_exit(cgroup_ops);
-			ERROR("Failed to %s %s",
-			      (new_state == FROZEN ? "freeze" : "unfreeze"),
-			      name);
-			return -1;
-		}
-
-		for (;;) {
-			ret = cgroup_ops->get(cgroup_ops, "freezer.state", v,
-					      sizeof(v), name, lxcpath);
-			if (ret < 0) {
-				cgroup_exit(cgroup_ops);
-				ERROR("Failed to get freezer state of %s", name);
-				return -1;
-			}
-
-			v[sizeof(v) - 1] = '\0';
-			v[lxc_char_right_gc(v, strlen(v))] = '\0';
-
-			ret = strncmp(v, state, state_len);
-			if (ret == 0) {
-				cgroup_exit(cgroup_ops);
-				lxc_cmd_serve_state_clients(name, lxcpath,
-							    new_state);
-				lxc_monitor_send_state(name, new_state, lxcpath);
-				return 0;
-			}
-
-			sleep(1);
-		}
-	}
-
-	ret = cgroup_ops->freeze(cgroup_ops);
-	cgroup_exit(cgroup_ops);
+	ret = cgroup_ops->set(cgroup_ops, "freezer.state", state, name, lxcpath);
 	if (ret < 0)
-		return error_log_errno(-1, "Failed to %s container",
-				       freeze ? "freeze" : "unfreeze");
+		return log_error(-1, "Failed to %s %s",
+				 freeze ? "freeze" : "unfreeze", name);
+
+	for (;;) {
+		char cur_state[MAX_STATE_LENGTH] = "";
+
+		ret = cgroup_ops->get(cgroup_ops, "freezer.state", cur_state,
+				      sizeof(cur_state), name, lxcpath);
+		if (ret < 0)
+			return log_error(-1, "Failed to get freezer state of %s", name);
+
+		cur_state[lxc_char_right_gc(cur_state, strlen(cur_state))] = '\0';
+		ret = strncmp(cur_state, state, state_len);
+		if (ret == 0) {
+			notify_state_listeners(name, lxcpath, new_state);
+			return 0;
+		}
+
+		sleep(1);
+	}
 
 	return 0;
 }
 
 int lxc_freeze(struct lxc_conf *conf, const char *name, const char *lxcpath)
 {
-	lxc_cmd_serve_state_clients(name, lxcpath, FREEZING);
-	lxc_monitor_send_state(name, FREEZING, lxcpath);
-	return do_freeze_thaw(true, conf, name, lxcpath);
+	int ret;
+
+	notify_state_listeners(name, lxcpath, FREEZING);
+	if (unified_cgroup_hierarchy() > 0)
+		ret = lxc_cmd_freeze(name, lxcpath, -1);
+	else
+		ret = do_freeze_thaw(true, conf, name, lxcpath);
+	notify_state_listeners(name, lxcpath, !ret ? FROZEN : RUNNING);
+	return ret;
 }
 
 int lxc_unfreeze(struct lxc_conf *conf, const char *name, const char *lxcpath)
 {
-	return do_freeze_thaw(false, conf, name, lxcpath);
+	int ret;
+
+	notify_state_listeners(name, lxcpath, THAWED);
+	if (unified_cgroup_hierarchy() > 0)
+		ret = lxc_cmd_unfreeze(name, lxcpath, -1);
+	else
+		ret = do_freeze_thaw(false, conf, name, lxcpath);
+	notify_state_listeners(name, lxcpath, !ret ? RUNNING : FROZEN);
+	return ret;
 }

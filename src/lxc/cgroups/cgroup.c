@@ -1,25 +1,4 @@
-/*
- * lxc: linux Container library
- *
- * (C) Copyright IBM Corp. 2007, 2008
- *
- * Authors:
- * Daniel Lezcano <daniel.lezcano at free.fr>
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
- */
+/* SPDX-License-Identifier: LGPL-2.1+ */
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -30,6 +9,7 @@
 #include <unistd.h>
 
 #include "cgroup.h"
+#include "cgroup2_devices.h"
 #include "conf.h"
 #include "config.h"
 #include "initutils.h"
@@ -44,19 +24,18 @@ struct cgroup_ops *cgroup_init(struct lxc_conf *conf)
 {
 	struct cgroup_ops *cgroup_ops;
 
-	if (!conf) {
-		ERROR("No valid conf given");
-		return NULL;
-	}
+	if (!conf)
+		return log_error_errno(NULL, EINVAL, "No valid conf given");
 
 	cgroup_ops = cgfsng_ops_init(conf);
-	if (!cgroup_ops) {
-		ERROR("Failed to initialize cgroup driver");
-		return NULL;
-	}
+	if (!cgroup_ops)
+		return log_error_errno(NULL, errno, "Failed to initialize cgroup driver");
 
-	if (!cgroup_ops->data_init(cgroup_ops))
-		return NULL;
+	if (cgroup_ops->data_init(cgroup_ops)) {
+		cgroup_exit(cgroup_ops);
+		return log_error_errno(NULL, errno,
+				       "Failed to initialize cgroup data");
+	}
 
 	TRACE("Initialized cgroup driver %s", cgroup_ops->driver);
 
@@ -74,26 +53,25 @@ struct cgroup_ops *cgroup_init(struct lxc_conf *conf)
 
 void cgroup_exit(struct cgroup_ops *ops)
 {
-	char **cur;
-	struct hierarchy **it;
-
 	if (!ops)
 		return;
 
-	for (cur = ops->cgroup_use; cur && *cur; cur++)
+	for (char **cur = ops->cgroup_use; cur && *cur; cur++)
 		free(*cur);
 
 	free(ops->cgroup_pattern);
 	free(ops->container_cgroup);
+	free(ops->monitor_cgroup);
 
-	for (it = ops->hierarchies; it && *it; it++) {
-		char **p;
+	if (ops->cgroup2_devices)
+		bpf_program_free(ops->cgroup2_devices);
 
-		for (p = (*it)->controllers; p && *p; p++)
+	for (struct hierarchy **it = ops->hierarchies; it && *it; it++) {
+		for (char **p = (*it)->controllers; p && *p; p++)
 			free(*p);
 		free((*it)->controllers);
 
-		for (p = (*it)->cgroup2_chown; p && *p; p++)
+		for (char **p = (*it)->cgroup2_chown; p && *p; p++)
 			free(*p);
 		free((*it)->cgroup2_chown);
 
@@ -101,6 +79,10 @@ void cgroup_exit(struct cgroup_ops *ops)
 		free((*it)->container_base_path);
 		free((*it)->container_full_path);
 		free((*it)->monitor_full_path);
+		if ((*it)->cgfd_mon >= 0)
+			close((*it)->cgfd_con);
+		if ((*it)->cgfd_mon >= 0)
+			close((*it)->cgfd_mon);
 		free(*it);
 	}
 	free(ops->hierarchies);

@@ -1,22 +1,4 @@
-/* liblxcapi
- *
- * Copyright © 2018 Christian Brauner <christian.brauner@ubuntu.com>.
- * Copyright © 2018 Canonical Ltd.
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
-
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
-
- * You should have received a copy of the GNU Lesser General Public License
- * along with this library; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- */
+/* SPDX-License-Identifier: LGPL-2.1+ */
 
 #ifndef __LXC_FILE_UTILS_H
 #define __LXC_FILE_UTILS_H
@@ -33,6 +15,11 @@
 /* read and write whole files */
 extern int lxc_write_to_file(const char *filename, const void *buf,
 			     size_t count, bool add_newline, mode_t mode);
+extern int lxc_readat(int dirfd, const char *filename, void *buf, size_t count);
+extern int lxc_writeat(int dirfd, const char *filename, const void *buf,
+		       size_t count);
+extern int lxc_write_openat(const char *dir, const char *filename,
+			    const void *buf, size_t count);
 extern int lxc_read_from_file(const char *filename, void *buf, size_t count);
 
 /* send and receive buffers completely */
@@ -61,7 +48,11 @@ extern bool is_fs_type(const struct statfs *fs, fs_type_magic magic_val);
 extern FILE *fopen_cloexec(const char *path, const char *mode);
 extern ssize_t lxc_sendfile_nointr(int out_fd, int in_fd, off_t *offset,
 				   size_t count);
-extern char *file_to_buf(char *path, size_t *length);
+extern char *file_to_buf(const char *path, size_t *length);
 extern int fd_to_fd(int from, int to);
+extern int lxc_open_dirfd(const char *dir);
+extern FILE *fdopen_cached(int fd, const char *mode, void **caller_freed_buffer);
+extern FILE *fopen_cached(const char *path, const char *mode,
+			  void **caller_freed_buffer);
 
 #endif /* __LXC_FILE_UTILS_H */

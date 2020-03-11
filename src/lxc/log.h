@@ -1,26 +1,5 @@
-/*
- * lxc: linux Container library
- *
- * (C) Copyright IBM Corp. 2007, 2008
- *
- * Authors:
- * Daniel Lezcano <daniel.lezcano at free.fr>
- * Cedric Le Goater <legoater@free.fr>
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
- */
+/* SPDX-License-Identifier: LGPL-2.1+ */
+
 #ifndef __LXC_LOG_H
 #define __LXC_LOG_H
 
@@ -46,13 +25,6 @@
 
 #define LXC_LOG_PREFIX_SIZE	32
 #define LXC_LOG_BUFFER_SIZE	4096
-
-/* This attribute is required to silence clang warnings */
-#if defined(__GNUC__)
-#define ATTR_UNUSED __attribute__ ((unused))
-#else
-#define ATTR_UNUSED
-#endif
 
 /* predefined lxc log priorities. */
 enum lxc_loglevel {
@@ -266,10 +238,10 @@ static inline void __lxc_log(const struct lxc_log_category *category,
  */
 #define lxc_log_priority_define(acategory, LEVEL)				\
 										\
-ATTR_UNUSED __attribute__ ((format (printf, 2, 3)))				\
+__lxc_unused __attribute__ ((format (printf, 2, 3)))				\
 static inline void LXC_##LEVEL(struct lxc_log_locinfo *, const char *, ...);	\
 										\
-ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
+__lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 					   const char* format, ...)		\
 {										\
 	if (lxc_log_priority_is_enabled(acategory, LXC_LOG_LEVEL_##LEVEL)) {	\
@@ -505,11 +477,69 @@ ATTR_UNUSED static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 	} while (0)
 #endif
 
-#define error_log_errno(__errno__, format, ...) 	\
+#define log_error_errno(__ret__, __errno__, format, ...) \
+	({						 \
+		errno = __errno__;			 \
+		SYSERROR(format, ##__VA_ARGS__);	 \
+		__ret__;				 \
+	})
+
+#define log_error(__ret__, format, ...)	      \
+	({				      \
+		ERROR(format, ##__VA_ARGS__); \
+		__ret__;		      \
+	})
+
+#define log_trace_errno(__ret__, __errno__, format, ...) \
+	({                                               \
+		errno = __errno__;			 \
+		SYSTRACE(format, ##__VA_ARGS__);         \
+		__ret__;                                 \
+	})
+
+#define log_trace(__ret__, format, ...)	      \
+	({                                    \
+		TRACE(format, ##__VA_ARGS__); \
+		__ret__;                      \
+	})
+
+#define log_warn_errno(__ret__, __errno__, format, ...) \
 	({						\
 		errno = __errno__;			\
-		SYSERROR(format, ##__VA_ARGS__);	\
-		-1;					\
+		SYSWARN(format, ##__VA_ARGS__);		\
+		__ret__;				\
+	})
+
+#define log_warn(__ret__, format, ...)       \
+	({                                   \
+		WARN(format, ##__VA_ARGS__); \
+		__ret__;                     \
+	})
+
+#define log_debug_errno(__ret__, __errno__, format, ...) \
+	({						 \
+		errno = __errno__;		         \
+		SYSDEBUG(format, ##__VA_ARGS__);	 \
+		__ret__;				 \
+	})
+
+#define log_debug(__ret__, format, ...)	      \
+	({				      \
+		DEBUG(format, ##__VA_ARGS__); \
+		__ret__;		      \
+	})
+
+#define log_info_errno(__ret__, __errno__, format, ...) \
+	({                                              \
+		errno = __errno__;                      \
+		SYSINFO(format, ##__VA_ARGS__);         \
+		__ret__;                                \
+	})
+
+#define log_info(__ret__, format, ...)       \
+	({                                   \
+		INFO(format, ##__VA_ARGS__); \
+		__ret__;                     \
 	})
 
 extern int lxc_log_fd;

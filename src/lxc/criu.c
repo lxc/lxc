@@ -1,25 +1,4 @@
-/*
- * lxc: linux Container library
- *
- * Copyright © 2014-2015 Canonical Ltd.
- *
- * Authors:
- * Tycho Andersen <tycho.andersen@canonical.com>
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
- */
+/* SPDX-License-Identifier: LGPL-2.1+ */
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -110,7 +89,7 @@ static int load_tty_major_minor(char *directory, char *output, int len)
 		return -1;
 	}
 
-	f = fopen(path, "r");
+	f = fopen(path, "re");
 	if (!f) {
 		/* This means we're coming from a liblxc which didn't export
 		 * the tty info. In this case they had to have lxc.console.path
@@ -814,7 +793,7 @@ static bool criu_version_ok(char **version)
 			return false;
 		}
 
-		f = fdopen(pipes[0], "r");
+		f = fdopen(pipes[0], "re");
 		if (!f) {
 			close(pipes[0]);
 			return false;
@@ -1106,7 +1085,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 					goto out_fini_handler;
 				}
 
-				FILE *f = fopen(buf, "r");
+				FILE *f = fopen(buf, "re");
 				if (!f) {
 					SYSERROR("couldn't read restore's children file %s", buf);
 					goto out_fini_handler;
@@ -1223,7 +1202,7 @@ static int save_tty_major_minor(char *directory, struct lxc_container *c, char *
 		return -1;
 	}
 
-	f = fopen(path, "w");
+	f = fopen(path, "we");
 	if (!f) {
 		SYSERROR("failed to open %s", path);
 		return -1;

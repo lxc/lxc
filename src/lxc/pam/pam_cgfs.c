@@ -1,37 +1,4 @@
-/* pam-cgfs
- *
- * Copyright © 2016 Canonical, Inc
- * Author: Serge Hallyn <serge.hallyn@ubuntu.com>
- * Author: Christian Brauner <christian.brauner@ubuntu.com>
- *
- * When a user logs in, this pam module will create cgroups which the user may
- * administer. It handles both pure cgroupfs v1 and pure cgroupfs v2, as well as
- * mixed mounts, where some controllers are mounted in a standard cgroupfs v1
- * hierarchy location (/sys/fs/cgroup/<controller>) and others are in the
- * cgroupfs v2 hierarchy.
- * Writeable cgroups are either created for all controllers or, if specified,
- * for any controllers listed on the command line.
- * The cgroup created will be "user/$user/0" for the first session,
- * "user/$user/1" for the second, etc.
- *
- * Systems with a systemd init system are treated specially, both with respect
- * to cgroupfs v1 and cgroupfs v2. For both, cgroupfs v1 and cgroupfs v2, We
- * check whether systemd already placed us in a cgroup it created:
- *
- *	user.slice/user-uid.slice/session-n.scope
- *
- * by checking whether uid == our uid. If it did, we simply chown the last
- * part (session-n.scope). If it did not we create a cgroup as outlined above
- * (user/$user/n) and chown it to our uid.
- * The same holds for cgroupfs v2 where this assumptions becomes crucial:
- * We __have to__ be placed in our under the cgroup systemd created for us on
- * login, otherwise things like starting an xserver or similar will not work.
- *
- * All requested cgroups must be mounted under /sys/fs/cgroup/$controller,
- * no messing around with finding mountpoints.
- *
- * See COPYING file for details.
- */
+/* SPDX-License-Identifier: LGPL-2.1+ */
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -110,7 +77,6 @@ static inline void clear_bit(unsigned bit, uint32_t *bitarr)
 	bitarr[bit / NBITS] &= ~(1 << (bit % NBITS));
 }
 static char *copy_to_eol(char *s);
-static void free_string_list(char **list);
 static char *get_mountpoint(char *line);
 static bool get_uid_gid(const char *user, uid_t *uid, gid_t *gid);
 static int handle_login(const char *user, uid_t uid, gid_t gid);
@@ -487,16 +453,6 @@ static size_t string_list_length(char **list)
 	return len;
 }
 
-/* Free null-terminated array of strings. */
-static void free_string_list(char **list)
-{
-	char **it;
-
-	for (it = list; it && *it; it++)
-		free(*it);
-	free(list);
-}
-
 /* Write single integer to file. */
 static bool write_int(char *path, int v)
 {
@@ -519,8 +475,8 @@ static bool write_int(char *path, int v)
 /* Recursively remove directory and its parents. */
 static int recursive_rmdir(char *dirname)
 {
+	__do_closedir DIR *dir = NULL;
 	struct dirent *direntp;
-	DIR *dir;
 	int r = 0;
 
 	dir = opendir(dirname);
@@ -555,12 +511,6 @@ next:
 	}
 
 	if (rmdir(dirname) < 0) {
-		if (!r)
-			pam_cgfs_debug("Failed to delete %s: %s\n", dirname, strerror(errno));
-		r = -1;
-	}
-
-	if (closedir(dir) < 0) {
 		if (!r)
 			pam_cgfs_debug("Failed to delete %s: %s\n", dirname, strerror(errno));
 		r = -1;

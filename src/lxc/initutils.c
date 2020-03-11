@@ -1,25 +1,4 @@
-/*
- * lxc: linux Container library
- *
- * (C) Copyright IBM Corp. 2007, 2008
- *
- * Authors:
- * Daniel Lezcano <daniel.lezcano at free.fr>
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
- */
+/* SPDX-License-Identifier: LGPL-2.1+ */
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -105,13 +84,13 @@ const char *lxc_global_config_value(const char *option_name)
 		sprintf(user_config_path, "%s/.config/lxc/lxc.conf", user_home);
 		sprintf(user_default_config_path, "%s/.config/lxc/default.conf", user_home);
 		sprintf(user_lxc_path, "%s/.local/share/lxc/", user_home);
-		user_cgroup_pattern = strdup("lxc.payload/%n");
 	}
 	else {
 		user_config_path = strdup(LXC_GLOBAL_CONF);
 		user_default_config_path = strdup(LXC_DEFAULT_CONFIG);
 		user_lxc_path = strdup(LXCPATH);
-		user_cgroup_pattern = strdup(DEFAULT_CGROUP_PATTERN);
+		if (strcmp(DEFAULT_CGROUP_PATTERN, "") != 0)
+			user_cgroup_pattern = strdup(DEFAULT_CGROUP_PATTERN);
 	}
 
 	const char * const (*ptr)[2];
@@ -190,8 +169,7 @@ const char *lxc_global_config_value(const char *option_name)
 				free(user_lxc_path);
 				user_lxc_path = copy_global_config_value(slider1);
 				remove_trailing_slashes(user_lxc_path);
-				values[i] = user_lxc_path;
-				user_lxc_path = NULL;
+				values[i] = move_ptr(user_lxc_path);
 				goto out;
 			}
 
@@ -203,19 +181,14 @@ const char *lxc_global_config_value(const char *option_name)
 	/* could not find value, use default */
 	if (strcmp(option_name, "lxc.lxcpath") == 0) {
 		remove_trailing_slashes(user_lxc_path);
-		values[i] = user_lxc_path;
-		user_lxc_path = NULL;
-	}
-	else if (strcmp(option_name, "lxc.default_config") == 0) {
-		values[i] = user_default_config_path;
-		user_default_config_path = NULL;
-	}
-	else if (strcmp(option_name, "lxc.cgroup.pattern") == 0) {
-		values[i] = user_cgroup_pattern;
-		user_cgroup_pattern = NULL;
-	}
-	else
+		values[i] = move_ptr(user_lxc_path);
+	} else if (strcmp(option_name, "lxc.default_config") == 0) {
+		values[i] = move_ptr(user_default_config_path);
+	} else if (strcmp(option_name, "lxc.cgroup.pattern") == 0) {
+		values[i] = move_ptr(user_cgroup_pattern);
+	} else {
 		values[i] = (*ptr)[1];
+	}
 
 	/* special case: if default value is NULL,
 	 * and there is no config, don't view that

@@ -1,21 +1,4 @@
-/* liblxcapi
- *
- * Copyright © 2017 Christian Brauner <christian.brauner@ubuntu.com>.
- * Copyright © 2017 Canonical Ltd.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2, as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
+/* SPDX-License-Identifier: LGPL-2.1+ */
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -520,7 +503,7 @@ int lxc_veth_mode_to_flag(int *mode, const char *value)
 		return 0;
 	}
 
-	return minus_one_set_errno(EINVAL);
+	return ret_set_errno(-1, EINVAL);
 }
 
 static struct lxc_macvlan_mode {
@@ -664,6 +647,30 @@ int set_config_string_item_max(char **conf_item, const char *value, size_t max)
 int set_config_path_item(char **conf_item, const char *value)
 {
 	return set_config_string_item_max(conf_item, value, PATH_MAX);
+}
+
+int set_config_bool_item(bool *conf_item, const char *value, bool empty_conf_action)
+{
+	unsigned int val = 0;
+
+	if (lxc_config_value_empty(value)) {
+		*conf_item = empty_conf_action;
+		return 0;
+	}
+
+	if (lxc_safe_uint(value, &val) < 0)
+		return -EINVAL;
+
+	switch (val) {
+	case 0:
+		*conf_item = false;
+		return 0;
+	case 1:
+		*conf_item = true;
+		return 0;
+	}
+
+	return -EINVAL;
 }
 
 int config_ip_prefix(struct in_addr *addr)

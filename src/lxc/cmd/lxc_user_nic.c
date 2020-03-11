@@ -1,21 +1,4 @@
-/*
- *
- * Copyright © 2013 Serge Hallyn <serge.hallyn@ubuntu.com>.
- * Copyright © 2013 Canonical Ltd.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2, as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
+/* SPDX-License-Identifier: LGPL-2.1+ */
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -340,7 +323,7 @@ static int get_alloted(char *me, char *intype, char *link,
 	int count = 0;
 	size_t len = 0;
 
-	fin = fopen(LXC_USERNIC_CONF, "r");
+	fin = fopen(LXC_USERNIC_CONF, "re");
 	if (!fin) {
 		CMD_SYSERROR("Failed to open \"%s\"\n", LXC_USERNIC_CONF);
 		return -1;
@@ -504,11 +487,11 @@ static char *find_line(char *buf_start, char *buf_end, char *name,
 	return NULL;
 }
 
-static int instantiate_veth(char *veth1, char *veth2)
+static int instantiate_veth(char *veth1, char *veth2, pid_t pid, unsigned int mtu)
 {
 	int ret;
 
-	ret = lxc_veth_create(veth1, veth2);
+	ret = lxc_veth_create(veth1, veth2, pid, mtu);
 	if (ret < 0) {
 		errno = -ret;
 		CMD_SYSERROR("Failed to create %s-%s\n", veth1, veth2);
@@ -541,8 +524,9 @@ static int get_mtu(char *name)
 
 static int create_nic(char *nic, char *br, int pid, char **cnic)
 {
+	unsigned int mtu = 1500;
+	int ret;
 	char veth1buf[IFNAMSIZ], veth2buf[IFNAMSIZ];
-	int mtu, ret;
 
 	ret = snprintf(veth1buf, IFNAMSIZ, "%s", nic);
 	if (ret < 0 || ret >= IFNAMSIZ) {
@@ -556,28 +540,24 @@ static int create_nic(char *nic, char *br, int pid, char **cnic)
 		return -1;
 	}
 
+	if (strcmp(br, "none"))
+		mtu = get_mtu(br);
+	if (!mtu)
+		mtu = 1500;
+
 	/* create the nics */
-	ret = instantiate_veth(veth1buf, veth2buf);
+	ret = instantiate_veth(veth1buf, veth2buf, pid, mtu);
 	if (ret < 0) {
 		usernic_error("%s", "Error creating veth tunnel\n");
 		return -1;
 	}
 
 	if (strcmp(br, "none")) {
-		/* copy the bridge's mtu to both ends */
-		mtu = get_mtu(br);
 		if (mtu > 0) {
 			ret = lxc_netdev_set_mtu(veth1buf, mtu);
 			if (ret < 0) {
 				usernic_error("Failed to set mtu to %d on %s\n",
 					      mtu, veth1buf);
-				goto out_del;
-			}
-
-			ret = lxc_netdev_set_mtu(veth2buf, mtu);
-			if (ret < 0) {
-				usernic_error("Failed to set mtu to %d on %s\n",
-					      mtu, veth2buf);
 				goto out_del;
 			}
 		}
@@ -588,14 +568,6 @@ static int create_nic(char *nic, char *br, int pid, char **cnic)
 			usernic_error("Error attaching %s to %s\n", veth1buf, br);
 			goto out_del;
 		}
-	}
-
-	/* pass veth2 to target netns */
-	ret = lxc_netdev_move_by_name(veth2buf, pid, NULL);
-	if (ret < 0) {
-		usernic_error("Error moving %s to network namespace of %d\n",
-			      veth2buf, pid);
-		goto out_del;
 	}
 
 	*cnic = strdup(veth2buf);

@@ -1,25 +1,5 @@
-/*
- * lxc: linux Container library
- *
- * (C) Copyright IBM Corp. 2007, 2008
- *
- * Authors:
- * Daniel Lezcano <daniel.lezcano at free.fr>
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
- */
+/* SPDX-License-Identifier: LGPL-2.1+ */
+
 #ifndef __LXC_NETWORK_H
 #define __LXC_NETWORK_H
 
@@ -223,7 +203,8 @@ extern int lxc_netdev_down(const char *name);
 extern int lxc_netdev_set_mtu(const char *name, int mtu);
 
 /* Create a virtual network devices. */
-extern int lxc_veth_create(const char *name1, const char *name2);
+extern int lxc_veth_create(const char *name1, const char *name2, pid_t pid,
+			   unsigned int mtu);
 extern int lxc_macvlan_create(const char *master, const char *name, int mode);
 extern int lxc_vlan_create(const char *master, const char *name,
 			   unsigned short vid);

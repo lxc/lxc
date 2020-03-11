@@ -21,7 +21,7 @@
 #include <lxc/lxccontainer.h>
 
 #define NAME "device_add_remove_test"
-#define DEVICE "/dev/network_latency"
+#define DEVICE "/dev/loop-control"
 
 int main(int argc, char *argv[])
 {

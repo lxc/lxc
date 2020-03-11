@@ -1,25 +1,4 @@
-/*
- * lxc: linux Container library
- *
- * (C) Copyright IBM Corp. 2007, 2010
- *
- * Authors:
- * Daniel Lezcano <daniel.lezcano at free.fr>
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
- */
+/* SPDX-License-Identifier: LGPL-2.1+ */
 
 #ifndef __LXC_TERMINAL_H
 #define __LXC_TERMINAL_H
@@ -261,20 +240,6 @@ extern struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, int dstfd)
  */
 extern int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
 				    struct lxc_epoll_descr *descr);
-
-/**
- * lxc_terminal_signal_fini: uninstall signal handler
- *
- * @ts
- * - the lxc_terminal_state returned by lxc_terminal_signal_init
- *
- * Restore the saved signal handler that was in effect at the time
- * lxc_terminal_signal_init() was called.
- *
- * Must be called with process_lock held to protect the lxc_ttys list, or
- * from a non-threaded context.
- */
-extern void lxc_terminal_signal_fini(struct lxc_terminal_state *ts);
 
 extern int lxc_terminal_write_ringbuffer(struct lxc_terminal *terminal);
 extern int lxc_terminal_create_log_file(struct lxc_terminal *terminal);

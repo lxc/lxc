@@ -1,25 +1,4 @@
-/*
- * lxc: linux Container library
- *
- * Copyright © 2017 Canonical Ltd.
- *
- * Authors:
- * Christian Brauner <christian.brauner@ubuntu.com>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
- */
+/* SPDX-License-Identifier: LGPL-2.1+ */
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -486,13 +465,12 @@ int storage_destroy_wrapper(void *data)
 {
 	struct lxc_conf *conf = data;
 
+	(void)lxc_setgroups(0, NULL);
+
 	if (setgid(0) < 0) {
 		SYSERROR("Failed to setgid to 0");
 		return -1;
 	}
-
-	if (setgroups(0, NULL) < 0)
-		SYSWARN("Failed to clear groups");
 
 	if (setuid(0) < 0) {
 		SYSERROR("Failed to setuid to 0");

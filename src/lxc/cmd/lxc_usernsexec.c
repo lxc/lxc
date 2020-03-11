@@ -1,26 +1,4 @@
-/*
- * (C) Copyright IBM Corp. 2008
- * (C) Copyright Canonical, Inc 2010-2013
- *
- * Authors:
- * Serge Hallyn <serge.hallyn@ubuntu.com>
- * (Once upon a time, this was based on nsexec from the IBM
- *  container tools)
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
- */
+/* SPDX-License-Identifier: LGPL-2.1+ */
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -57,12 +35,13 @@ extern int lxc_log_fd;
 
 static void usage(const char *name)
 {
-	printf("usage: %s [-h] [-m <uid-maps>] -- [command [arg ..]]\n", name);
+	printf("usage: %s [-h] [-m <uid-maps>] [-s] -- [command [arg ..]]\n", name);
 	printf("\n");
 	printf("  -h            this message\n");
 	printf("\n");
 	printf("  -m <uid-maps> uid maps to use\n");
 	printf("\n");
+	printf("  -s:           map self\n");
 	printf("  uid-maps: [u|g|b]:ns_id:host_id:range\n");
 	printf("            [u|g|b]: map user id, group id, or both\n");
 	printf("            ns_id: the base id in the new namespace\n");
@@ -136,18 +115,40 @@ static int do_child(void *vargv)
 
 static struct lxc_list active_map;
 
+static int add_map_entry(long host_id, long ns_id, long range, int which)
+{
+	struct lxc_list *tmp = NULL;
+	struct id_map *newmap;
+
+	newmap = malloc(sizeof(*newmap));
+	if (!newmap)
+		return -1;
+
+	newmap->hostid = host_id;
+	newmap->nsid = ns_id;
+	newmap->range = range;
+	newmap->idtype = which;
+	tmp = malloc(sizeof(*tmp));
+	if (!tmp) {
+		free(newmap);
+		return -1;
+	}
+
+	tmp->elem = newmap;
+	lxc_list_add_tail(&active_map, tmp);
+	return 0;
+}
+
 /*
  * Given a string like "b:0:100000:10", map both uids and gids 0-10 to 100000
  * to 100010
  */
 static int parse_map(char *map)
 {
-	int i, ret;
+	int i, ret, idtype;
 	long host_id, ns_id, range;
 	char which;
-	struct id_map *newmap;
 	char types[2] = {'u', 'g'};
-	struct lxc_list *tmp = NULL;
 
 	if (!map)
 		return -1;
@@ -163,27 +164,14 @@ static int parse_map(char *map)
 		if (which != types[i] && which != 'b')
 			continue;
 
-		newmap = malloc(sizeof(*newmap));
-		if (!newmap)
-			return -1;
-
-		newmap->hostid = host_id;
-		newmap->nsid = ns_id;
-		newmap->range = range;
-
 		if (types[i] == 'u')
-			newmap->idtype = ID_TYPE_UID;
+			idtype = ID_TYPE_UID;
 		else
-			newmap->idtype = ID_TYPE_GID;
+			idtype = ID_TYPE_GID;
 
-		tmp = malloc(sizeof(*tmp));
-		if (!tmp) {
-			free(newmap);
-			return -1;
-		}
-
-		tmp->elem = newmap;
-		lxc_list_add_tail(&active_map, tmp);
+		ret = add_map_entry(host_id, ns_id, range, idtype);
+		if (ret < 0)
+			return ret;
 	}
 
 	return 0;
@@ -206,10 +194,8 @@ static int read_default_map(char *fnam, int which, char *user)
 	unsigned long ul1, ul2;
 	int ret = -1;
 	size_t sz = 0;
-	struct lxc_list *tmp = NULL;
-	struct id_map *newmap = NULL;
 
-	fin = fopen(fnam, "r");
+	fin = fopen(fnam, "re");
 	if (!fin)
 		return -1;
 
@@ -237,26 +223,7 @@ static int read_default_map(char *fnam, int which, char *user)
 		if (ret < 0)
 			break;
 
-		ret = -1;
-		newmap = malloc(sizeof(*newmap));
-		if (!newmap)
-			break;
-
-		newmap->nsid = 0;
-		newmap->idtype = which;
-		newmap->hostid = ul1;
-		newmap->range = ul2;
-
-		tmp = malloc(sizeof(*tmp));
-		if (!tmp) {
-			free(newmap);
-			break;
-		}
-
-		tmp->elem = newmap;
-		lxc_list_add_tail(&active_map, tmp);
-
-		ret = 0;
+		ret = add_map_entry(ul1, 0, ul2, which);
 		break;
 	}
 
@@ -299,6 +266,42 @@ static int find_default_map(void)
 	return 0;
 }
 
+static bool is_in_ns_range(long id, struct id_map *map)
+{
+	if (id < map->nsid)
+		return false;
+	if (id >= map->nsid + map->range)
+		return false;
+	return true;
+}
+
+static bool do_map_self(void)
+{
+	struct id_map *map;
+	long nsuid = 0, nsgid = 0;
+	struct lxc_list *tmp = NULL;
+	int ret;
+
+	lxc_list_for_each(tmp, &active_map) {
+		map = tmp->elem;
+		if (map->idtype == ID_TYPE_UID) {
+			if (is_in_ns_range(nsuid, map))
+				nsuid += map->range;
+		} else {
+			if (is_in_ns_range(nsgid, map))
+				nsgid += map->range;
+		}
+	}
+
+	ret = add_map_entry(getgid(), nsgid, 1, ID_TYPE_GID);
+	if (ret < 0)
+		return false;
+	ret = add_map_entry(getuid(), nsuid, 1, ID_TYPE_UID);
+	if (ret < 0)
+		return false;
+	return true;
+}
+
 int main(int argc, char *argv[])
 {
 	int c, pid, ret, status;
@@ -308,6 +311,7 @@ int main(int argc, char *argv[])
 	unsigned long flags = CLONE_NEWUSER | CLONE_NEWNS;
 	char ttyname0[256] = {0}, ttyname1[256] = {0}, ttyname2[256] = {0};
 	char *default_args[] = {"/bin/sh", NULL};
+	bool map_self = false;
 
 	lxc_log_fd = STDERR_FILENO;
 
@@ -333,7 +337,7 @@ int main(int argc, char *argv[])
 
 	lxc_list_init(&active_map);
 
-	while ((c = getopt(argc, argv, "m:h")) != EOF) {
+	while ((c = getopt(argc, argv, "m:hs")) != EOF) {
 		switch (c) {
 		case 'm':
 			ret = parse_map(optarg);
@@ -345,6 +349,9 @@ int main(int argc, char *argv[])
 		case 'h':
 			usage(argv[0]);
 			_exit(EXIT_SUCCESS);
+		case 's':
+			map_self = true;
+			break;
 		default:
 			usage(argv[0]);
 			_exit(EXIT_FAILURE);
@@ -355,6 +362,15 @@ int main(int argc, char *argv[])
 		ret = find_default_map();
 		if (ret < 0) {
 			fprintf(stderr, "Failed to find subuid or subgid allocation\n");
+			_exit(EXIT_FAILURE);
+		}
+	}
+
+	// Do we want to support map-self with no other allocations?
+	// If so we should move this above the previous block.
+	if (map_self) {
+		if (!do_map_self()) {
+			fprintf(stderr, "Failed mapping own uid\n");
 			_exit(EXIT_FAILURE);
 		}
 	}

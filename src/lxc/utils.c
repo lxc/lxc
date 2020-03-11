@@ -1,25 +1,4 @@
-/*
- * lxc: linux Container library
- *
- * (C) Copyright IBM Corp. 2007, 2008
- *
- * Authors:
- * Daniel Lezcano <daniel.lezcano at free.fr>
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
- */
+/* SPDX-License-Identifier: LGPL-2.1+ */
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -48,6 +27,7 @@
 
 #include "config.h"
 #include "log.h"
+#include "lsm/lsm.h"
 #include "lxclock.h"
 #include "memory_utils.h"
 #include "namespace.h"
@@ -534,19 +514,17 @@ int lxc_pclose(struct lxc_popen_FILE *fp)
 
 int randseed(bool srand_it)
 {
-	FILE *f;
+	__do_fclose FILE *f = NULL;
 	/*
 	 * srand pre-seed function based on /dev/urandom
 	 */
 	unsigned int seed = time(NULL) + getpid();
 
-	f = fopen("/dev/urandom", "r");
+	f = fopen("/dev/urandom", "re");
 	if (f) {
 		int ret = fread(&seed, sizeof(seed), 1, f);
 		if (ret != 1)
 			SYSDEBUG("Unable to fread /dev/urandom, fallback to time+pid rand seed");
-
-		fclose(f);
 	}
 
 	if (srand_it)
@@ -557,12 +535,12 @@ int randseed(bool srand_it)
 
 uid_t get_ns_uid(uid_t orig)
 {
-	char *line = NULL;
+	__do_free char *line = NULL;
+	__do_fclose FILE *f = NULL;
 	size_t sz = 0;
 	uid_t nsid, hostid, range;
-	FILE *f;
 
-	f = fopen("/proc/self/uid_map", "r");
+	f = fopen("/proc/self/uid_map", "re");
 	if (!f) {
 		SYSERROR("Failed to open uid_map");
 		return 0;
@@ -572,28 +550,21 @@ uid_t get_ns_uid(uid_t orig)
 		if (sscanf(line, "%u %u %u", &nsid, &hostid, &range) != 3)
 			continue;
 
-		if (hostid <= orig && hostid + range > orig) {
-			nsid += orig - hostid;
-			goto found;
-		}
+		if (hostid <= orig && hostid + range > orig)
+			return nsid += orig - hostid;
 	}
 
-	nsid = LXC_INVALID_UID;
-
-found:
-	fclose(f);
-	free(line);
-	return nsid;
+	return LXC_INVALID_UID;
 }
 
 gid_t get_ns_gid(gid_t orig)
 {
-	char *line = NULL;
+	__do_free char *line = NULL;
+	__do_fclose FILE *f = NULL;
 	size_t sz = 0;
 	gid_t nsid, hostid, range;
-	FILE *f;
 
-	f = fopen("/proc/self/gid_map", "r");
+	f = fopen("/proc/self/gid_map", "re");
 	if (!f) {
 		SYSERROR("Failed to open gid_map");
 		return 0;
@@ -603,18 +574,11 @@ gid_t get_ns_gid(gid_t orig)
 		if (sscanf(line, "%u %u %u", &nsid, &hostid, &range) != 3)
 			continue;
 
-		if (hostid <= orig && hostid + range > orig) {
-			nsid += orig - hostid;
-			goto found;
-		}
+		if (hostid <= orig && hostid + range > orig)
+			return nsid += orig - hostid;
 	}
 
-	nsid = LXC_INVALID_GID;
-
-found:
-	fclose(f);
-	free(line);
-	return nsid;
+	return LXC_INVALID_GID;
 }
 
 bool dir_exists(const char *path)
@@ -660,7 +624,7 @@ bool is_shared_mountpoint(const char *path)
 	int i;
 	size_t len = 0;
 
-	f = fopen("/proc/self/mountinfo", "r");
+	f = fopen("/proc/self/mountinfo", "re");
 	if (!f)
 		return 0;
 
@@ -742,19 +706,19 @@ bool switch_to_ns(pid_t pid, const char *ns)
  */
 bool detect_ramfs_rootfs(void)
 {
-	FILE *f;
-	char *p, *p2;
-	char *line = NULL;
+	__do_free char *line = NULL;
+	__do_free void *fopen_cache = NULL;
+	__do_fclose FILE *f = NULL;
 	size_t len = 0;
-	int i;
 
-	f = fopen("/proc/self/mountinfo", "r");
-	if (!f) {
-		SYSERROR("Failed to open mountinfo");
+	f = fopen_cached("/proc/self/mountinfo", "re", &fopen_cache);
+	if (!f)
 		return false;
-	}
 
 	while (getline(&line, &len, f) != -1) {
+		int i;
+		char *p, *p2;
+
 		for (p = line, i = 0; p && i < 4; i++)
 			p = strchr(p + 1, ' ');
 		if (!p)
@@ -763,22 +727,15 @@ bool detect_ramfs_rootfs(void)
 		p2 = strchr(p + 1, ' ');
 		if (!p2)
 			continue;
-
 		*p2 = '\0';
 		if (strcmp(p + 1, "/") == 0) {
 			/* This is '/'. Is it the ramfs? */
 			p = strchr(p2 + 1, '-');
-			if (p && strncmp(p, "- rootfs rootfs ", 16) == 0) {
-				free(line);
-				fclose(f);
-				INFO("Rootfs is located on ramfs");
+			if (p && strncmp(p, "- rootfs rootfs ", 16) == 0)
 				return true;
-			}
 		}
 	}
 
-	free(line);
-	fclose(f);
 	return false;
 }
 
@@ -1337,21 +1294,21 @@ int null_stdfds(void)
 #define __PROC_STATUS_LEN (6 + INTTYPE_TO_STRLEN(pid_t) + 7 + 1)
 bool task_blocks_signal(pid_t pid, int signal)
 {
+	__do_free char *line = NULL;
+	__do_fclose FILE *f = NULL;
 	int ret;
 	char status[__PROC_STATUS_LEN] = {0};
-	FILE *f;
 	uint64_t sigblk = 0, one = 1;
 	size_t n = 0;
 	bool bret = false;
-	char *line = NULL;
 
 	ret = snprintf(status, __PROC_STATUS_LEN, "/proc/%d/status", pid);
 	if (ret < 0 || ret >= __PROC_STATUS_LEN)
 		return bret;
 
-	f = fopen(status, "r");
+	f = fopen(status, "re");
 	if (!f)
-		return bret;
+		return false;
 
 	while (getline(&line, &n, f) != -1) {
 		char *numstr;
@@ -1362,7 +1319,7 @@ bool task_blocks_signal(pid_t pid, int signal)
 		numstr = lxc_trim_whitespace_in_place(line + 7);
 		ret = lxc_safe_uint64(numstr, &sigblk, 16);
 		if (ret < 0)
-			goto out;
+			return false;
 
 		break;
 	}
@@ -1370,9 +1327,6 @@ bool task_blocks_signal(pid_t pid, int signal)
 	if (sigblk & (one << (signal - 1)))
 		bret = true;
 
-out:
-	free(line);
-	fclose(f);
 	return bret;
 }
 
@@ -1743,10 +1697,12 @@ static int process_dead(/* takes */ int status_fd)
 	if (fd_cloexec(dupfd, true) < 0)
 		return -1;
 
-	/* transfer ownership of fd */
-	f = fdopen(move_fd(dupfd), "re");
+	f = fdopen(dupfd, "re");
 	if (!f)
 		return -1;
+
+	/* Transfer ownership of fd. */
+	move_fd(dupfd);
 
 	ret = 0;
 	while (getline(&line, &n, f) != -1) {
@@ -1812,21 +1768,19 @@ int fd_cloexec(int fd, bool cloexec)
 	return 0;
 }
 
-int recursive_destroy(char *dirname)
+int recursive_destroy(const char *dirname)
 {
+	__do_closedir DIR *dir = NULL;
+	int fret = 0;
 	int ret;
 	struct dirent *direntp;
-	DIR *dir;
-	int r = 0;
 
 	dir = opendir(dirname);
-	if (!dir) {
-		SYSERROR("Failed to open dir \"%s\"", dirname);
-		return -1;
-	}
+	if (!dir)
+		return log_error_errno(-1, errno, "Failed to open dir \"%s\"", dirname);
 
 	while ((direntp = readdir(dir))) {
-		char *pathname;
+		__do_free char *pathname = NULL;
 		struct stat mystat;
 
 		if (!strcmp(direntp->d_name, ".") ||
@@ -1834,50 +1788,40 @@ int recursive_destroy(char *dirname)
 			continue;
 
 		pathname = must_make_path(dirname, direntp->d_name, NULL);
-
 		ret = lstat(pathname, &mystat);
 		if (ret < 0) {
-			if (!r)
+			if (!fret)
 				SYSWARN("Failed to stat \"%s\"", pathname);
 
-			r = -1;
-			goto next;
+			fret = -1;
+			continue;
 		}
 
 		if (!S_ISDIR(mystat.st_mode))
-			goto next;
+			continue;
 
 		ret = recursive_destroy(pathname);
 		if (ret < 0)
-			r = -1;
-
-	next:
-		free(pathname);
+			fret = -1;
 	}
 
 	ret = rmdir(dirname);
-	if (ret < 0) {
-		if (!r)
-			SYSWARN("Failed to delete \"%s\"", dirname);
+	if (ret < 0)
+		return log_warn_errno(-1, errno, "Failed to delete \"%s\"", dirname);
 
-		r = -1;
-	}
-
-	ret = closedir(dir);
-	if (ret < 0) {
-		if (!r)
-			SYSWARN("Failed to delete \"%s\"", dirname);
-
-		r = -1;
-	}
-
-	return r;
+	return fret;
 }
 
-int lxc_setup_keyring(void)
+int lxc_setup_keyring(char *keyring_label)
 {
 	key_serial_t keyring;
 	int ret = 0;
+
+	if (keyring_label) {
+		if (lsm_keyring_label_set(keyring_label) < 0) {
+			ERROR("Couldn't set keyring label");
+		}
+	}
 
 	/* Try to allocate a new session keyring for the container to prevent
 	 * information leaks.

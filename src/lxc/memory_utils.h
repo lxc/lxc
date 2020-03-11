@@ -1,22 +1,4 @@
-/* liblxcapi
- *
- * Copyright © 2019 Christian Brauner <christian.brauner@ubuntu.com>.
- * Copyright © 2019 Canonical Ltd.
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
-
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
-
- * You should have received a copy of the GNU Lesser General Public License
- * along with this library; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- */
+/* SPDX-License-Identifier: LGPL-2.1+ */
 
 #ifndef __LXC_MEMORY_UTILS_H
 #define __LXC_MEMORY_UTILS_H
@@ -30,10 +12,34 @@
 
 #include "macro.h"
 
+#define define_cleanup_attribute(type, func)     \
+	static inline void func##_ptr(type *ptr) \
+	{                                        \
+		if (*ptr)                        \
+			func(*ptr);              \
+	}
+
+#define free_disarm(ptr)       \
+	({                     \
+		free(ptr);     \
+		move_ptr(ptr); \
+	})
+
 static inline void __auto_free__(void *p)
 {
 	free(*(void **)p);
 }
+
+static inline void free_string_list(char **list)
+{
+	if (list) {
+		for (int i = 0; list[i]; i++)
+			free(list[i]);
+		free_disarm(list);
+	}
+}
+define_cleanup_attribute(char **, free_string_list);
+#define __do_free_string_list __attribute__((__cleanup__(free_string_list_ptr)))
 
 static inline void __auto_fclose__(FILE **f)
 {
@@ -55,12 +61,6 @@ static inline void __auto_closedir__(DIR **d)
 		fd = -EBADF;        \
 	}
 
-#define free_disarm(ptr)       \
-	({                     \
-		free(ptr);     \
-		move_ptr(ptr); \
-	})
-
 static inline void __auto_close__(int *fd)
 {
 	close_prot_errno_disarm(*fd);
@@ -70,5 +70,15 @@ static inline void __auto_close__(int *fd)
 #define __do_free __attribute__((__cleanup__(__auto_free__)))
 #define __do_fclose __attribute__((__cleanup__(__auto_fclose__)))
 #define __do_closedir __attribute__((__cleanup__(__auto_closedir__)))
+
+static inline void *memdup(const void *data, size_t len)
+{
+	void *copy = NULL;
+
+	copy = len ? malloc(len) : NULL;
+	return copy ? memcpy(copy, data, len) : NULL;
+}
+
+#define zalloc(__size__) (calloc(1, __size__))
 
 #endif /* __LXC_MEMORY_UTILS_H */
