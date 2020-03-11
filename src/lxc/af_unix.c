@@ -191,9 +191,8 @@ static int lxc_abstract_unix_recv_fds_iov(int fd, int *recvfds, int num_recvfds,
 	do {
 		ret = recvmsg(fd, &msg, 0);
 	} while (ret < 0 && errno == EINTR);
-	if (!ret)
-		return 0;
-
+	if (ret < 0 || ret == 0)
+		return ret;
 
 	/*
 	 * If SO_PASSCRED is set we will always get a ucred message.
