@@ -471,8 +471,7 @@ static int lxc_serve_state_socket_pair(const char *name,
 		return 0;
 
 	/* Close read end of the socket pair. */
-	close(handler->state_socket_pair[0]);
-	handler->state_socket_pair[0] = -1;
+	close_prot_errno_disarm(handler->state_socket_pair[0]);
 
 again:
 	ret = lxc_abstract_unix_send_credential(handler->state_socket_pair[1],
@@ -582,8 +581,7 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 	TRACE("Mainloop is ready");
 
 	ret = lxc_mainloop(&descr, -1);
-	close(descr.epfd);
-	descr.epfd = -EBADF;
+	close_prot_errno_disarm(descr.epfd);
 	if (ret < 0 || !handler->init_died)
 		goto out_mainloop_console;
 
@@ -601,9 +599,8 @@ out_mainloop:
 	TRACE("Closed mainloop");
 
 out_sigfd:
-	close(handler->sigfd);
 	TRACE("Closed signal file descriptor %d", handler->sigfd);
-	handler->sigfd = -EBADF;
+	close_prot_errno_disarm(handler->sigfd);
 
 	return ret;
 }
@@ -611,6 +608,8 @@ out_sigfd:
 void lxc_zero_handler(struct lxc_handler *handler)
 {
 	memset(handler, 0, sizeof(struct lxc_handler));
+
+	handler->state = STOPPED;
 
 	handler->pinfd = -EBADF;
 
@@ -633,33 +632,16 @@ void lxc_zero_handler(struct lxc_handler *handler)
 
 void lxc_free_handler(struct lxc_handler *handler)
 {
-	if (handler->pinfd >= 0)
-		close_prot_errno_disarm(handler->pinfd);
-
-	if (handler->pidfd >= 0)
-		close_prot_errno_disarm(handler->pidfd);
-
-	if (handler->sigfd >= 0)
-		close_prot_errno_disarm(handler->sigfd);
-
+	close_prot_errno_disarm(handler->pinfd);
+	close_prot_errno_disarm(handler->pidfd);
+	close_prot_errno_disarm(handler->sigfd);
 	lxc_put_nsfds(handler);
-
 	if (handler->conf && handler->conf->reboot == REBOOT_NONE)
-		if (handler->conf->maincmd_fd >= 0)
-			close_prot_errno_disarm(handler->conf->maincmd_fd);
-
-	if (handler->monitor_status_fd >= 0)
-		close_prot_errno_disarm(handler->monitor_status_fd);
-
-	if (handler->state_socket_pair[0] >= 0)
-		close_prot_errno_disarm(handler->state_socket_pair[0]);
-
-	if (handler->state_socket_pair[1] >= 0)
-		close_prot_errno_disarm(handler->state_socket_pair[1]);
-
-	if (handler->cgroup_ops)
-		cgroup_exit(handler->cgroup_ops);
-
+		close_prot_errno_disarm(handler->conf->maincmd_fd);
+	close_prot_errno_disarm(handler->monitor_status_fd);
+	close_prot_errno_disarm(handler->state_socket_pair[0]);
+	close_prot_errno_disarm(handler->state_socket_pair[1]);
+	cgroup_exit(handler->cgroup_ops);
 	handler->conf = NULL;
 	free_disarm(handler);
 }
@@ -1114,8 +1096,7 @@ static int do_start(void *data)
 	}
 
 	/* Don't leak the pinfd to the container. */
-	if (handler->pinfd >= 0)
-		close(handler->pinfd);
+	close_prot_errno_disarm(handler->pinfd);
 
 	ret = lxc_sync_wait_parent(handler, LXC_SYNC_STARTUP);
 	if (ret < 0)
@@ -1324,7 +1305,7 @@ static int do_start(void *data)
 		goto out_warn_father;
 	}
 
-	close(handler->sigfd);
+	close_prot_errno_disarm(handler->sigfd);
 
 	if (handler->conf->console.slave < 0 && handler->daemonize) {
 		if (devnull_fd < 0) {
@@ -1340,10 +1321,7 @@ static int do_start(void *data)
 		}
 	}
 
-	if (devnull_fd >= 0) {
-		close(devnull_fd);
-		devnull_fd = -1;
-	}
+	close_prot_errno_disarm(devnull_fd);
 
 	setsid();
 
@@ -1446,8 +1424,7 @@ out_warn_father:
 	lxc_sync_wake_parent(handler, LXC_SYNC_ERROR);
 
 out_error:
-	if (devnull_fd >= 0)
-		close(devnull_fd);
+	close_prot_errno_disarm(devnull_fd);
 
 	return -1;
 }
@@ -1910,10 +1887,7 @@ out_abort:
 
 out_sync_fini:
 	lxc_sync_fini(handler);
-	if (handler->pinfd >= 0) {
-		close(handler->pinfd);
-		handler->pinfd = -1;
-	}
+	close_prot_errno_disarm(handler->pinfd);
 
 	return -1;
 }
@@ -2030,10 +2004,7 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	if (ret < 0)
 		ERROR("Failed to move physical network devices back to parent network namespace");
 
-	if (handler->pinfd >= 0) {
-		close(handler->pinfd);
-		handler->pinfd = -1;
-	}
+	close_prot_errno_disarm(handler->pinfd);
 
 	lxc_monitor_send_exit_code(name, status, handler->lxcpath);
 	lxc_error_set_and_log(handler->pid, status);
