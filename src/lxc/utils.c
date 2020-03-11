@@ -63,21 +63,20 @@ extern bool btrfs_try_remove_subvol(const char *path);
 static int _recursive_rmdir(const char *dirname, dev_t pdev,
 			    const char *exclude, int level, bool onedev)
 {
-	struct dirent *direntp;
-	DIR *dir;
-	int ret, failed = 0;
-	char pathname[PATH_MAX];
+	__do_closedir DIR *dir = NULL;
+	int failed = 0;
 	bool hadexclude = false;
+	int ret;
+	struct dirent *direntp;
+	char pathname[PATH_MAX];
 
 	dir = opendir(dirname);
-	if (!dir) {
-		ERROR("Failed to open \"%s\"", dirname);
-		return -1;
-	}
+	if (!dir)
+		return log_error(-1, "Failed to open \"%s\"", dirname);
 
 	while ((direntp = readdir(dir))) {
-		struct stat mystat;
 		int rc;
+		struct stat mystat;
 
 		if (!strcmp(direntp->d_name, ".") ||
 		    !strcmp(direntp->d_name, ".."))
@@ -86,14 +85,14 @@ static int _recursive_rmdir(const char *dirname, dev_t pdev,
 		rc = snprintf(pathname, PATH_MAX, "%s/%s", dirname, direntp->d_name);
 		if (rc < 0 || rc >= PATH_MAX) {
 			ERROR("The name of path is too long");
-			failed=1;
+			failed = 1;
 			continue;
 		}
 
 		if (!level && exclude && !strcmp(direntp->d_name, exclude)) {
 			ret = rmdir(pathname);
 			if (ret < 0) {
-				switch(errno) {
+				switch (errno) {
 				case ENOTEMPTY:
 					INFO("Not deleting snapshot \"%s\"", pathname);
 					hadexclude = true;
@@ -121,48 +120,38 @@ static int _recursive_rmdir(const char *dirname, dev_t pdev,
 		}
 
 		if (onedev && mystat.st_dev != pdev) {
-			/* TODO should we be checking /proc/self/mountinfo for
-			 * pathname and not doing this if found? */
 			if (btrfs_try_remove_subvol(pathname))
 				INFO("Removed btrfs subvolume at \"%s\"", pathname);
 			continue;
 		}
 
 		if (S_ISDIR(mystat.st_mode)) {
-			if (_recursive_rmdir(pathname, pdev, exclude, level+1, onedev) < 0)
-				failed=1;
+			if (_recursive_rmdir(pathname, pdev, exclude, level + 1, onedev) < 0)
+				failed = 1;
 		} else {
 			if (unlink(pathname) < 0) {
 				SYSERROR("Failed to delete \"%s\"", pathname);
-				failed=1;
+				failed = 1;
 			}
 		}
 	}
 
 	if (rmdir(dirname) < 0 && !btrfs_try_remove_subvol(dirname) && !hadexclude) {
 		SYSERROR("Failed to delete \"%s\"", dirname);
-		failed=1;
-	}
-
-	ret = closedir(dir);
-	if (ret) {
-		SYSERROR("Failed to close directory \"%s\"", dirname);
-		failed=1;
+		failed = 1;
 	}
 
 	return failed ? -1 : 0;
 }
 
-/* In overlayfs, st_dev is unreliable. So on overlayfs we don't do the
- * lxc_rmdir_onedev()
+/*
+ * In overlayfs, st_dev is unreliable. So on overlayfs we don't do the
+ * lxc_rmdir_onedev().
  */
-static bool is_native_overlayfs(const char *path)
+static inline bool is_native_overlayfs(const char *path)
 {
-	if (has_fs_type(path, OVERLAY_SUPER_MAGIC) ||
-	    has_fs_type(path, OVERLAYFS_SUPER_MAGIC))
-		return true;
-
-	return false;
+	return has_fs_type(path, OVERLAY_SUPER_MAGIC) ||
+	       has_fs_type(path, OVERLAYFS_SUPER_MAGIC);
 }
 
 /* returns 0 on success, -1 if there were any failures */
@@ -178,8 +167,7 @@ extern int lxc_rmdir_onedev(const char *path, const char *exclude)
 		if (errno == ENOENT)
 			return 0;
 
-		SYSERROR("Failed to stat \"%s\"", path);
-		return -1;
+		return log_error_errno(-1, errno, "Failed to stat \"%s\"", path);
 	}
 
 	return _recursive_rmdir(path, mystat.st_dev, exclude, 0, onedev);
@@ -210,25 +198,20 @@ int mkdir_p(const char *dir, mode_t mode)
 	const char *orig = dir;
 
 	do {
+		__do_free char *makeme = NULL;
 		int ret;
-		char *makeme;
 
 		dir = tmp + strspn(tmp, "/");
 		tmp = dir + strcspn(dir, "/");
 
-		errno = ENOMEM;
 		makeme = strndup(orig, dir - orig);
 		if (!makeme)
-			return -1;
+			return ret_set_errno(-1, ENOMEM);
 
 		ret = mkdir(makeme, mode);
-		if (ret < 0 && errno != EEXIST) {
-			SYSERROR("Failed to create directory \"%s\"", makeme);
-			free(makeme);
-			return -1;
-		}
+		if (ret < 0 && errno != EEXIST)
+			return log_error_errno(-1, errno, "Failed to create directory \"%s\"", makeme);
 
-		free(makeme);
 	} while (tmp != dir);
 
 	return 0;
@@ -237,36 +220,31 @@ int mkdir_p(const char *dir, mode_t mode)
 char *get_rundir()
 {
 	char *rundir;
+	size_t len;
 	const char *homedir;
 	struct stat sb;
 
 	if (stat(RUNTIME_PATH, &sb) < 0)
 		return NULL;
 
-	if (geteuid() == sb.st_uid || getegid() == sb.st_gid) {
-		rundir = strdup(RUNTIME_PATH);
-		return rundir;
-	}
+	if (geteuid() == sb.st_uid || getegid() == sb.st_gid)
+		return strdup(RUNTIME_PATH);
 
 	rundir = getenv("XDG_RUNTIME_DIR");
-	if (rundir) {
-		rundir = strdup(rundir);
-		return rundir;
-	}
+	if (rundir)
+		return strdup(rundir);
 
 	INFO("XDG_RUNTIME_DIR isn't set in the environment");
 	homedir = getenv("HOME");
-	if (!homedir) {
-		ERROR("HOME isn't set in the environment");
-		return NULL;
-	}
+	if (!homedir)
+		return log_error(NULL, "HOME isn't set in the environment");
 
-	rundir = malloc(sizeof(char) * (17 + strlen(homedir)));
+	len = strlen(homedir) + 17;
+	rundir = malloc(sizeof(char) * len);
 	if (!rundir)
 		return NULL;
 
-	sprintf(rundir, "%s/.cache/lxc/run/", homedir);
-
+	snprintf(rundir, len, "%s/.cache/lxc/run/", homedir);
 	return rundir;
 }
 
@@ -328,16 +306,15 @@ again:
 #ifdef HAVE_OPENSSL
 #include <openssl/evp.h>
 
-static int do_sha1_hash(const char *buf, int buflen, unsigned char *md_value, unsigned int *md_len)
+static int do_sha1_hash(const char *buf, int buflen, unsigned char *md_value,
+			unsigned int *md_len)
 {
 	EVP_MD_CTX *mdctx;
 	const EVP_MD *md;
 
 	md = EVP_get_digestbyname("sha1");
-	if(!md) {
-		printf("Unknown message digest: sha1\n");
-		return -1;
-	}
+	if (!md)
+		return log_error(-1, "Unknown message digest: sha1\n");
 
 	mdctx = EVP_MD_CTX_create();
 	EVP_DigestInit_ex(mdctx, md, NULL);
@@ -350,60 +327,37 @@ static int do_sha1_hash(const char *buf, int buflen, unsigned char *md_value, un
 
 int sha1sum_file(char *fnam, unsigned char *digest, unsigned int *md_len)
 {
-	char *buf;
+	__do_free char *buf = NULL;
+	__do_fclose FILE *f = NULL;
 	int ret;
-	FILE *f;
 	long flen;
 
 	if (!fnam)
 		return -1;
 
 	f = fopen_cloexec(fnam, "r");
-	if (!f) {
-		SYSERROR("Failed to open template \"%s\"", fnam);
-		return -1;
-	}
+	if (!f)
+		return log_error_errno(-1, errno, "Failed to open template \"%s\"", fnam);
 
-	if (fseek(f, 0, SEEK_END) < 0) {
-		SYSERROR("Failed to seek to end of template");
-		fclose(f);
-		return -1;
-	}
+	if (fseek(f, 0, SEEK_END) < 0)
+		return log_error_errno(-1, errno, "Failed to seek to end of template");
 
-	if ((flen = ftell(f)) < 0) {
-		SYSERROR("Failed to tell size of template");
-		fclose(f);
-		return -1;
-	}
+	flen = ftell(f);
+	if (flen < 0)
+		return log_error_errno(-1, errno, "Failed to tell size of template");
 
-	if (fseek(f, 0, SEEK_SET) < 0) {
-		SYSERROR("Failed to seek to start of template");
-		fclose(f);
-		return -1;
-	}
+	if (fseek(f, 0, SEEK_SET) < 0)
+		return log_error_errno(-1, errno, "Failed to seek to start of template");
 
-	if ((buf = malloc(flen+1)) == NULL) {
-		SYSERROR("Out of memory");
-		fclose(f);
-		return -1;
-	}
+	buf = malloc(flen + 1);
+	if (!buf)
+		return log_error_errno(-1, ENOMEM, "Out of memory");
 
-	if (fread(buf, 1, flen, f) != flen) {
-		SYSERROR("Failed to read template");
-		free(buf);
-		fclose(f);
-		return -1;
-	}
-
-	if (fclose(f) < 0) {
-		SYSERROR("Failed to close template");
-		free(buf);
-		return -1;
-	}
+	if (fread(buf, 1, flen, f) != flen)
+		return log_error_errno(-1, errno, "Failed to read template");
 
 	buf[flen] = '\0';
 	ret = do_sha1_hash(buf, flen, (void *)digest, md_len);
-	free(buf);
 	return ret;
 }
 #endif
@@ -556,10 +510,8 @@ uid_t get_ns_uid(uid_t orig)
 	uid_t nsid, hostid, range;
 
 	f = fopen("/proc/self/uid_map", "re");
-	if (!f) {
-		SYSERROR("Failed to open uid_map");
-		return 0;
-	}
+	if (!f)
+		return log_error_errno(0, errno, "Failed to open uid_map");
 
 	while (getline(&line, &sz, f) != -1) {
 		if (sscanf(line, "%u %u %u", &nsid, &hostid, &range) != 3)
@@ -580,10 +532,8 @@ gid_t get_ns_gid(gid_t orig)
 	gid_t nsid, hostid, range;
 
 	f = fopen("/proc/self/gid_map", "re");
-	if (!f) {
-		SYSERROR("Failed to open gid_map");
-		return 0;
-	}
+	if (!f)
+		return log_error_errno(0, errno, "Failed to open gid_map");
 
 	while (getline(&line, &sz, f) != -1) {
 		if (sscanf(line, "%u %u %u", &nsid, &hostid, &range) != 3)
@@ -697,17 +647,12 @@ bool switch_to_ns(pid_t pid, const char *ns)
 		return false;
 
 	fd = open(nspath, O_RDONLY | O_CLOEXEC);
-	if (fd < 0) {
-		SYSERROR("Failed to open \"%s\"", nspath);
-		return false;
-	}
+	if (fd < 0)
+		return log_error_errno(false, errno, "Failed to open \"%s\"", nspath);
 
 	ret = setns(fd, 0);
-	if (ret) {
-		SYSERROR("Failed to set process %d to \"%s\" of %d.", pid, ns,
-			 fd);
-		return false;
-	}
+	if (ret)
+		return log_error_errno(false, errno, "Failed to set process %d to \"%s\" of %d", pid, ns, fd);
 
 	return true;
 }
@@ -756,7 +701,8 @@ bool detect_ramfs_rootfs(void)
 
 char *on_path(const char *cmd, const char *rootfs)
 {
-	char *entry = NULL, *path = NULL;
+	__do_free char *path = NULL;
+	char *entry = NULL;
 	char cmdpath[PATH_MAX];
 	int ret;
 
@@ -768,7 +714,7 @@ char *on_path(const char *cmd, const char *rootfs)
 	if (!path)
 		return NULL;
 
-	lxc_iterate_parts (entry, path, ":") {
+	lxc_iterate_parts(entry, path, ":") {
 		if (rootfs)
 			ret = snprintf(cmdpath, PATH_MAX, "%s/%s/%s", rootfs,
 				       entry, cmd);
@@ -777,13 +723,10 @@ char *on_path(const char *cmd, const char *rootfs)
 		if (ret < 0 || ret >= PATH_MAX)
 			continue;
 
-		if (access(cmdpath, X_OK) == 0) {
-			free(path);
+		if (access(cmdpath, X_OK) == 0)
 			return strdup(cmdpath);
-		}
 	}
 
-	free(path);
 	return NULL;
 }
 
