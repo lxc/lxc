@@ -83,6 +83,7 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 		[LXC_CMD_FREEZE]			= "freeze",
 		[LXC_CMD_UNFREEZE]			= "unfreeze",
 		[LXC_CMD_GET_CGROUP2_FD]		= "get_cgroup2_fd",
+		[LXC_CMD_GET_INIT_PIDFD]        	= "get_init_pidfd",
 	};
 
 	if (cmd >= LXC_CMD_MAX)
@@ -144,6 +145,11 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 	if (cmd->req.cmd == LXC_CMD_GET_CGROUP2_FD) {
 		int cgroup2_fd = move_fd(fd_rsp);
 		rsp->data = INT_TO_PTR(cgroup2_fd);
+	}
+
+	if (cmd->req.cmd == LXC_CMD_GET_INIT_PIDFD) {
+		int init_pidfd = move_fd(fd_rsp);
+		rsp->data = INT_TO_PTR(init_pidfd);
 	}
 
 	if (rsp->datalen == 0)
@@ -368,6 +374,43 @@ static int lxc_cmd_get_init_pid_callback(int fd, struct lxc_cmd_req *req,
 	ret = lxc_cmd_rsp_send(fd, &rsp);
 	if (ret < 0)
 		return LXC_CMD_REAP_CLIENT_FD;
+
+	return 0;
+}
+
+int lxc_cmd_get_init_pidfd(const char *name, const char *lxcpath)
+{
+	int ret, stopped;
+	struct lxc_cmd_rr cmd = {
+		.req = {
+			.cmd = LXC_CMD_GET_INIT_PIDFD,
+		},
+	};
+
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
+	if (ret < 0)
+		return log_debug_errno(-1, errno, "Failed to process init pidfd command");
+
+	if (cmd.rsp.ret < 0)
+		return log_debug_errno(-EBADF, errno, "Failed to receive init pidfd");
+
+	return PTR_TO_INT(cmd.rsp.data);
+}
+
+static int lxc_cmd_get_init_pidfd_callback(int fd, struct lxc_cmd_req *req,
+					   struct lxc_handler *handler,
+					   struct lxc_epoll_descr *descr)
+{
+	struct lxc_cmd_rsp rsp = {
+		.ret = 0,
+	};
+	int ret;
+
+	if (handler->pidfd < 0)
+		rsp.ret = -EBADF;
+	ret = lxc_abstract_unix_send_fds(fd, &handler->pidfd, 1, &rsp, sizeof(rsp));
+	if (ret < 0)
+		return log_error(LXC_CMD_REAP_CLIENT_FD, "Failed to send init pidfd");
 
 	return 0;
 }
@@ -1329,6 +1372,7 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 		[LXC_CMD_FREEZE]			= lxc_cmd_freeze_callback,
 		[LXC_CMD_UNFREEZE]			= lxc_cmd_unfreeze_callback,
 		[LXC_CMD_GET_CGROUP2_FD]		= lxc_cmd_get_cgroup2_fd_callback,
+		[LXC_CMD_GET_INIT_PIDFD]                = lxc_cmd_get_init_pidfd_callback,
 	};
 
 	if (req->cmd >= LXC_CMD_MAX)
