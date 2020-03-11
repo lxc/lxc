@@ -2094,11 +2094,9 @@ static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 		return true;
 
 	pidfd = do_lxcapi_init_pidfd(c);
-	if (pidfd < 0) {
-		pid = do_lxcapi_init_pid(c);
-		if (pid <= 0)
-			return true;
-	}
+	pid = do_lxcapi_init_pid(c);
+	if (pid <= 0)
+		return true;
 
 	/* Detect whether we should send SIGRTMIN + 3 (e.g. systemd). */
 	if (c->lxc_conf && c->lxc_conf->haltsignal)
@@ -2106,8 +2104,10 @@ static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 	else if (task_blocks_signal(pid, (SIGRTMIN + 3)))
 		haltsignal = (SIGRTMIN + 3);
 
-	/* Add a new state client before sending the shutdown signal so that we
-	 * don't miss a state.
+
+	/*
+	 * Add a new state client before sending the shutdown signal so
+	 * that we don't miss a state.
 	 */
 	if (timeout != 0) {
 		states[STOPPED] = 1;
@@ -2124,23 +2124,41 @@ static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 
 		if (ret < MAX_STATE)
 			return false;
-	}
 
-	/* Send shutdown signal to container. */
-	if (pidfd >= 0) {
-		killret = lxc_raw_pidfd_send_signal(pidfd, haltsignal, NULL, 0);
-		if (killret < 0)
-			return log_warn(false, "Failed to send signal %d to pidfd %d",
-					haltsignal, pidfd);
+		if (pidfd >= 0) {
+			struct pollfd pidfd_poll = {
+			    .events = POLLIN,
+			    .fd = pidfd,
+			};
 
-		TRACE("Sent signal %d to pidfd %d", haltsignal, pidfd);
-	} else {
-		killret = kill(pid, haltsignal);
-		if (killret < 0)
-			return log_warn(false, "Failed to send signal %d to pid %d",
-					haltsignal, pid);
+			killret = lxc_raw_pidfd_send_signal(pidfd, haltsignal,
+							    NULL, 0);
+			if (killret < 0)
+				return log_warn(false, "Failed to send signal %d to pidfd %d",
+						haltsignal, pidfd);
 
-		TRACE("Sent signal %d to pid %d", haltsignal, pid);
+			TRACE("Sent signal %d to pidfd %d", haltsignal, pidfd);
+
+			/*
+			 * No need for going through all of the state server
+			 * complications anymore. We can just poll on pidfds. :)
+			 */
+
+			if (timeout != 0) {
+				ret = poll(&pidfd_poll, 1, timeout);
+				if (ret < 0 || !(pidfd_poll.revents & POLLIN))
+					return false;
+
+				TRACE("Pidfd polling detected container exit");
+			}
+		} else {
+			killret = kill(pid, haltsignal);
+			if (killret < 0)
+				return log_warn(false, "Failed to send signal %d to pid %d",
+						haltsignal, pid);
+
+			TRACE("Sent signal %d to pid %d", haltsignal, pid);
+		}
 	}
 
 	if (timeout == 0)
