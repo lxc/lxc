@@ -98,12 +98,9 @@ This introduces the ability to specify a custom MTU for `phys` and `macvlan` dev
 
 # network\_veth\_router
 
-This introduces the ability to specify a `lxc.net.[i].veth.mode` setting, which takes a value of
-"bridge" or "router". This defaults to "bridge".
+This introduces the ability to specify a `lxc.net.[i].veth.mode` setting, which takes a value of "bridge" or "router". This defaults to "bridge".
 
-In "router" mode static routes are created on the host for the container's IP addresses pointing to
-the host side veth interface. In addition to the routes, a static IP neighbour proxy is added to
-the host side veth interface for the IPv4 and IPv6 gateway IPs.
+In "router" mode static routes are created on the host for the container's IP addresses pointing to the host side veth interface. In addition to the routes, a static IP neighbour proxy is added to the host side veth interface for the IPv4 and IPv6 gateway IPs.
 
 
 # cgroup2\_devices
