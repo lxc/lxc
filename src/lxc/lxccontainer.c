@@ -2064,10 +2064,11 @@ WRAP_API_1(bool, lxcapi_reboot2, int)
 
 static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 {
+	__do_close_prot_errno int state_client_fd = -EBADF;
+	int haltsignal = SIGPWR;
+	lxc_state_t states[MAX_STATE] = {0};
 	int killret, ret;
 	pid_t pid;
-	int haltsignal = SIGPWR, state_client_fd = -EBADF;
-	lxc_state_t states[MAX_STATE] = {0};
 
 	if (!c)
 		return false;
@@ -2107,20 +2108,15 @@ static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 
 	/* Send shutdown signal to container. */
 	killret = kill(pid, haltsignal);
-	if (killret < 0) {
-		if (state_client_fd >= 0)
-			close(state_client_fd);
+	if (killret < 0)
+		return log_warn(false, "Failed to send signal %d to pid %d", haltsignal, pid);
 
-		WARN("Failed to send signal %d to pid %d", haltsignal, pid);
-		return false;
-	}
 	TRACE("Sent signal %d to pid %d", haltsignal, pid);
 
 	if (timeout == 0)
 		return true;
 
 	ret = lxc_cmd_sock_rcv_state(state_client_fd, timeout);
-	close(state_client_fd);
 	if (ret < 0)
 		return false;
 
