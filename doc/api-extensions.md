@@ -40,9 +40,7 @@ already loaded. This allows nested containers to load their own seccomp profile.
 
 ## seccomp\_notify
 
-This adds "notify" as seccomp action that will cause LXC to register a seccomp listener and retrieve
-a listener file descriptor from the kernel. When a syscall is made that is registered as "notify"
-the kernel will generate a poll event and send a message over the file descriptor.
+This adds "notify" as seccomp action that will cause LXC to register a seccomp listener and retrieve a listener file descriptor from the kernel. When a syscall is made that is registered as "notify" the kernel will generate a poll event and send a message over the file descriptor.
 
 The caller can read this message, inspect the syscalls including its arguments. Based on this information the caller is expected to send back a message informing the kernel which action to take. Until that message is sent the kernel will block the calling process. The format of the messages to read and sent is documented in seccomp itself.
 
