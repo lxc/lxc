@@ -1298,7 +1298,7 @@ static int lxc_cmd_get_cgroup2_fd_callback(int fd, struct lxc_cmd_req *req,
 	ret = lxc_abstract_unix_send_fds(fd, &ops->unified->cgfd_con, 1, &rsp,
 					 sizeof(rsp));
 	if (ret < 0)
-		return log_error(1, "Failed to send cgroup2 fd");
+		return log_error(LXC_CMD_REAP_CLIENT_FD, "Failed to send cgroup2 fd");
 
 	return 0;
 }
