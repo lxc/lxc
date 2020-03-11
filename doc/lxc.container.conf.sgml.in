@@ -1940,7 +1940,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             <para>
               Specify the SELinux context under which the container's keyring
               should be created. By default this the same as lxc.selinux.context, or
-              the the context lxc is executed under if lxc.selinux.context has not been set.
+              the context lxc is executed under if lxc.selinux.context has not been set.
             </para>
             <programlisting>lxc.selinux.context.keyring = system_u:system_r:lxc_t:s0:c22</programlisting>
           </listitem>
