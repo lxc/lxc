@@ -111,9 +111,7 @@ the host side veth interface for the IPv4 and IPv6 gateway IPs.
 
 # cgroup2\_devices
 
-This enables `LXC` to make use of the new devices controller in the unified
-cgroup hierarchy. `LXC` will now create, load, and attach bpf program to the
-cgroup of the container when the controller is available.
+This enables `LXC` to make use of the new devices controller in the unified cgroup hierarchy. `LXC` will now create, load, and attach bpf program to the cgroup of the container when the controller is available.
 
 # cgroup2
 
