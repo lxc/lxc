@@ -611,6 +611,16 @@ static pid_t do_lxcapi_init_pid(struct lxc_container *c)
 
 WRAP_API(pid_t, lxcapi_init_pid)
 
+static int do_lxcapi_init_pidfd(struct lxc_container *c)
+{
+	if (!c)
+		return ret_errno(EBADF);
+
+	return lxc_cmd_get_init_pidfd(c->name, c->config_path);
+}
+
+WRAP_API(int, lxcapi_init_pidfd)
+
 static bool load_config_locked(struct lxc_container *c, const char *fname)
 {
 	if (!c->lxc_conf)
@@ -5319,6 +5329,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->console = lxcapi_console;
 	c->console_getfd = lxcapi_console_getfd;
 	c->init_pid = lxcapi_init_pid;
+	c->init_pidfd = lxcapi_init_pidfd;
 	c->load_config = lxcapi_load_config;
 	c->want_daemonize = lxcapi_want_daemonize;
 	c->want_close_all_fds = lxcapi_want_close_all_fds;

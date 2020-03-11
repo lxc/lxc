@@ -856,6 +856,15 @@ struct lxc_container {
 	 * \return file descriptor for container's seccomp filter
 	 */
 	int (*seccomp_notify_fd)(struct lxc_container *c);
+
+	/*!
+	 * \brief Retrieve a pidfd for the container's init process.
+	 *
+	 * \param c Container.
+	 *
+	 * \return pidfd of init process of the container.
+	 */
+	int (*init_pidfd)(struct lxc_container *c);
 };
 
 /*!
