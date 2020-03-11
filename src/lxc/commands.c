@@ -688,8 +688,17 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 	if (handler->conf->stopsignal)
 		stopsignal = handler->conf->stopsignal;
 	memset(&rsp, 0, sizeof(rsp));
-	rsp.ret = kill(handler->pid, stopsignal);
+
+	if (handler-> pidfd >= 0)
+		rsp.ret = lxc_raw_pidfd_send_signal(handler->pidfd, stopsignal, NULL, 0);
+	else
+		rsp.ret = kill(handler->pid, stopsignal);
 	if (!rsp.ret) {
+		if (handler->pidfd >= 0)
+			TRACE("Sent signal %d to pidfd %d", stopsignal, handler->pidfd);
+		else
+			TRACE("Sent signal %d to pidfd %d", stopsignal, handler->pid);
+
 		rsp.ret = cgroup_ops->unfreeze(cgroup_ops, -1);
 		if (!rsp.ret)
 			return 0;

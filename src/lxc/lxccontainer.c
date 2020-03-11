@@ -1976,8 +1976,9 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 
 static bool do_lxcapi_reboot(struct lxc_container *c)
 {
+	__do_close_prot_errno int pidfd = -EBADF;
+	pid_t pid = -1;
 	int ret;
-	pid_t pid;
 	int rebootsignal = SIGINT;
 
 	if (!c)
@@ -1986,18 +1987,23 @@ static bool do_lxcapi_reboot(struct lxc_container *c)
 	if (!do_lxcapi_is_running(c))
 		return false;
 
-	pid = do_lxcapi_init_pid(c);
-	if (pid <= 0)
-		return false;
+	pidfd = do_lxcapi_init_pidfd(c);
+	if (pidfd < 0) {
+		pid = do_lxcapi_init_pid(c);
+		if (pid <= 0)
+			return false;
+	}
 
 	if (c->lxc_conf && c->lxc_conf->rebootsignal)
 		rebootsignal = c->lxc_conf->rebootsignal;
 
-	ret = kill(pid, rebootsignal);
-	if (ret < 0) {
-		WARN("Failed to send signal %d to pid %d", rebootsignal, pid);
-		return false;
-	}
+	if (pidfd >= 0)
+		ret = lxc_raw_pidfd_send_signal(pidfd, rebootsignal, NULL, 0);
+	else
+		ret = kill(pid, rebootsignal);
+	if (ret < 0)
+		return log_warn(false, "Failed to send signal %d to pid %d",
+				rebootsignal, pid);
 
 	return true;
 }
@@ -2006,10 +2012,11 @@ WRAP_API(bool, lxcapi_reboot)
 
 static bool do_lxcapi_reboot2(struct lxc_container *c, int timeout)
 {
-	int killret, ret;
-	pid_t pid;
-	int rebootsignal = SIGINT, state_client_fd = -1;
+	__do_close_prot_errno int pidfd = -EBADF, state_client_fd = -EBADF;
+	int rebootsignal = SIGINT;
+	pid_t pid = -1;
 	lxc_state_t states[MAX_STATE] = {0};
+	int killret, ret;
 
 	if (!c)
 		return false;
@@ -2017,9 +2024,12 @@ static bool do_lxcapi_reboot2(struct lxc_container *c, int timeout)
 	if (!do_lxcapi_is_running(c))
 		return true;
 
-	pid = do_lxcapi_init_pid(c);
-	if (pid <= 0)
-		return true;
+	pidfd = do_lxcapi_init_pidfd(c);
+	if (pidfd < 0) {
+		pid = do_lxcapi_init_pid(c);
+		if (pid <= 0)
+			return true;
+	}
 
 	if (c->lxc_conf && c->lxc_conf->rebootsignal)
 		rebootsignal = c->lxc_conf->rebootsignal;
@@ -2045,21 +2055,18 @@ static bool do_lxcapi_reboot2(struct lxc_container *c, int timeout)
 	}
 
 	/* Send reboot signal to container. */
-	killret = kill(pid, rebootsignal);
-	if (killret < 0) {
-		if (state_client_fd >= 0)
-			close(state_client_fd);
-
-		WARN("Failed to send signal %d to pid %d", rebootsignal, pid);
-		return false;
-	}
+	if (pidfd >= 0)
+		killret = lxc_raw_pidfd_send_signal(pidfd, rebootsignal, NULL, 0);
+	else
+		killret = kill(pid, rebootsignal);
+	if (killret < 0)
+		return log_warn(false, "Failed to send signal %d to pid %d", rebootsignal, pid);
 	TRACE("Sent signal %d to pid %d", rebootsignal, pid);
 
 	if (timeout == 0)
 		return true;
 
 	ret = lxc_cmd_sock_rcv_state(state_client_fd, timeout);
-	close(state_client_fd);
 	if (ret < 0)
 		return false;
 
@@ -2074,11 +2081,11 @@ WRAP_API_1(bool, lxcapi_reboot2, int)
 
 static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 {
-	__do_close_prot_errno int state_client_fd = -EBADF;
+	__do_close_prot_errno int pidfd = -EBADF, state_client_fd = -EBADF;
 	int haltsignal = SIGPWR;
+	pid_t pid = -1;
 	lxc_state_t states[MAX_STATE] = {0};
 	int killret, ret;
-	pid_t pid;
 
 	if (!c)
 		return false;
@@ -2086,9 +2093,12 @@ static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 	if (!do_lxcapi_is_running(c))
 		return true;
 
-	pid = do_lxcapi_init_pid(c);
-	if (pid <= 0)
-		return true;
+	pidfd = do_lxcapi_init_pidfd(c);
+	if (pidfd < 0) {
+		pid = do_lxcapi_init_pid(c);
+		if (pid <= 0)
+			return true;
+	}
 
 	/* Detect whether we should send SIGRTMIN + 3 (e.g. systemd). */
 	if (c->lxc_conf && c->lxc_conf->haltsignal)
@@ -2117,11 +2127,21 @@ static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 	}
 
 	/* Send shutdown signal to container. */
-	killret = kill(pid, haltsignal);
-	if (killret < 0)
-		return log_warn(false, "Failed to send signal %d to pid %d", haltsignal, pid);
+	if (pidfd >= 0) {
+		killret = lxc_raw_pidfd_send_signal(pidfd, haltsignal, NULL, 0);
+		if (killret < 0)
+			return log_warn(false, "Failed to send signal %d to pidfd %d",
+					haltsignal, pidfd);
 
-	TRACE("Sent signal %d to pid %d", haltsignal, pid);
+		TRACE("Sent signal %d to pidfd %d", haltsignal, pidfd);
+	} else {
+		killret = kill(pid, haltsignal);
+		if (killret < 0)
+			return log_warn(false, "Failed to send signal %d to pid %d",
+					haltsignal, pid);
+
+		TRACE("Sent signal %d to pid %d", haltsignal, pid);
+	}
 
 	if (timeout == 0)
 		return true;

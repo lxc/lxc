@@ -1869,10 +1869,6 @@ bool lxc_can_use_pidfd(int pidfd)
 	if (pidfd < 0)
 		return log_error(false, "Kernel does not support pidfds");
 
-	ret = lxc_raw_pidfd_send_signal(pidfd, 0, NULL, 0);
-	if (ret)
-		return log_error_errno(false, errno, "Kernel does not support sending signals through pidfds");
-
 	/*
 	 * We don't care whether or not children were in a waitable state. We
 	 * just care whether waitid() recognizes P_PIDFD.
