@@ -12,6 +12,7 @@
 #include <inttypes.h>
 #include <libgen.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -289,6 +290,20 @@ again:
 		return -1;
 
 	return 0;
+}
+
+int wait_for_pidfd(int pidfd)
+{
+	int ret;
+	siginfo_t info = {
+		.si_signo = 0,
+	};
+
+	do {
+		ret = waitid(P_PIDFD, pidfd, &info, __WALL | WEXITED);
+	} while (ret < 0 && errno == EINTR);
+
+	return !ret && WIFEXITED(info.si_status) && WEXITSTATUS(info.si_status) == 0;
 }
 
 int lxc_wait_for_pid_status(pid_t pid)
@@ -1845,4 +1860,39 @@ int lxc_setup_keyring(char *keyring_label)
 	}
 
 	return ret;
+}
+
+bool lxc_can_use_pidfd(int pidfd)
+{
+	int ret;
+
+	if (pidfd < 0)
+		return log_error(false, "Kernel does not support pidfds");
+
+	ret = lxc_raw_pidfd_send_signal(pidfd, 0, NULL, 0);
+	if (ret)
+		return log_error_errno(false, errno, "Kernel does not support sending signals through pidfds");
+
+	/*
+	 * We don't care whether or not children were in a waitable state. We
+	 * just care whether waitid() recognizes P_PIDFD.
+	 *
+	 * Btw, while I have your attention, the above waitid() code is an
+	 * excellent example of how _not_ to do flag-based kernel APIs. So if
+	 * you ever go into kernel development or are already and you add this
+	 * kind of flag potpourri even though you have read this comment shame
+	 * on you. May the gods of operating system development have mercy on
+	 * your soul because I won't.
+	 */
+	ret = waitid(P_PIDFD, pidfd, NULL,
+		    /* Type of children to wait for. */
+		    __WALL |
+		    /* How to wait for them. */
+		    WNOHANG | WNOWAIT |
+		    /* What state to wait for. */
+		    WEXITED | WSTOPPED | WCONTINUED);
+	if (ret < 0)
+		return log_error_errno(false, errno, "Kernel does not support waiting on processes through pidfds");
+
+	return log_trace(true, "Kernel supports pidfds");
 }

@@ -7,6 +7,7 @@
 #define _GNU_SOURCE 1
 #endif
 #include <sched.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -16,6 +17,11 @@
 /* clone */
 #ifndef CLONE_PIDFD
 #define CLONE_PIDFD 0x00001000
+#endif
+
+/* waitid */
+#ifndef P_PIDFD
+#define P_PIDFD 3
 #endif
 
 /*
