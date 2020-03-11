@@ -96,25 +96,25 @@ This is primarily intended for use with layer 3 networking devices, such as IPVL
 This introduces the ability to specify a custom MTU for `phys` and `macvlan` devices using the
 `lxc.net.[i].mtu` property.
 
-# network\_veth\_router
+## network\_veth\_router
 
 This introduces the ability to specify a `lxc.net.[i].veth.mode` setting, which takes a value of "bridge" or "router". This defaults to "bridge".
 
 In "router" mode static routes are created on the host for the container's IP addresses pointing to the host side veth interface. In addition to the routes, a static IP neighbour proxy is added to the host side veth interface for the IPv4 and IPv6 gateway IPs.
 
 
-# cgroup2\_devices
+## cgroup2\_devices
 
 This enables `LXC` to make use of the new devices controller in the unified cgroup hierarchy. `LXC` will now create, load, and attach bpf program to the cgroup of the container when the controller is available.
 
-# cgroup2
+## cgroup2
 
 This enables `LXC` to make complete use of the unified cgroup hierarchy. With this extension it is possible to run `LXC` containers on systems that use a pure unified cgroup layout.
 
-# init\_pidfd
+## init\_pidfd
 
 This adds a new API function `init_pidfd()` which allows to retrieve a pidfd for the container's init process allowing process management interactions such as sending signal to be completely reliable and rac-e free.
 
-# pidfd
+## pidfd
 
 When running on kernels that support pidfds LXC will rely on them for most operations. This makes interacting with containers not just more reliable it also makes it significantly safer and eliminates various races inherent to PID-based kernel APIs. LXC will require that the running kernel at least support `pidfd_send_signal()`, `CLONE_PIDFD`, `P_PIDFD`, and pidfd polling support. Any kernel starting with `Linux 5.4` should have full support for pidfds.
