@@ -114,22 +114,25 @@ int lxc_make_abstract_socket_name(char *path, size_t pathlen,
 	}
 
 	ret = snprintf(offset, len, "%s/%s/%s", lxcpath, name, suffix);
-	if (ret < 0 || (size_t)ret >= len)
-		return log_error_errno(-1, errno, "Failed to create abstract socket name");
-	if (ret < len)
-		return 0;
-
-	/* ret >= len; lxcpath or name is too long.  hash both */
-	tmplen = strlen(name) + strlen(lxcpath) + 2;
-	tmppath = must_realloc(NULL, tmplen);
-	ret = snprintf(tmppath, tmplen, "%s/%s", lxcpath, name);
-	if (ret < 0 || (size_t)ret >= tmplen)
+	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to create abstract socket name");
 
-	hash = fnv_64a_buf(tmppath, ret, FNV1A_64_INIT);
-	ret = snprintf(offset, len, "lxc/%016" PRIx64 "/%s", hash, suffix);
-	if (ret < 0 || ret >= len)
-		return log_error_errno(-1, errno, "Failed to create abstract socket name");
+	/*
+	 * ret >= len. This means lxcpath and name are too long. We need to
+	 * hash both.
+	 */
+	if (ret >= len) {
+		tmplen = strlen(name) + strlen(lxcpath) + 2;
+		tmppath = must_realloc(NULL, tmplen);
+		ret = snprintf(tmppath, tmplen, "%s/%s", lxcpath, name);
+		if (ret < 0 || (size_t)ret >= tmplen)
+			return log_error_errno(-1, errno, "Failed to create abstract socket name");
+
+		hash = fnv_64a_buf(tmppath, ret, FNV1A_64_INIT);
+		ret = snprintf(offset, len, "lxc/%016" PRIx64 "/%s", hash, suffix);
+		if (ret < 0 || (size_t)ret >= len)
+			return log_error_errno(-1, errno, "Failed to create abstract socket name");
+	}
 
 	return 0;
 }
