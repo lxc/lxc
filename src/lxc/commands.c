@@ -1322,29 +1322,33 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 			       struct lxc_epoll_descr *descr, const lxc_cmd_t cmd)
 {
-	struct lxc_list *cur, *next;
-
 	lxc_terminal_free(handler->conf, fd);
 	lxc_mainloop_del_handler(descr, fd);
 
 	if (cmd == LXC_CMD_ADD_STATE_CLIENT) {
+		struct lxc_list *cur, *next;
+
 		lxc_list_for_each_safe(cur, &handler->conf->state_clients, next) {
 			struct lxc_state_client *client = cur->elem;
 
 			if (client->clientfd != fd)
 				continue;
 
-			/* kick client from list */
+			/*
+			 * Only kick client from list so it can't be found
+			 * anymore. The actual close happens, as for all other
+			 * file descriptors, below.
+			 */
 			lxc_list_del(cur);
-			close(client->clientfd);
 			free(cur->elem);
 			free(cur);
+
 			/*
 			 * No need to walk the whole list. If we found the state
 			 * client fd there can't be a second one.
 			 */
-			TRACE("Closed state client fd %d\n", fd);
-			return;
+			TRACE("Found state client fd %d in state client list", fd);
+			break;
 		}
 
 		/*
@@ -1353,7 +1357,7 @@ static void lxc_cmd_fd_cleanup(int fd, struct lxc_handler *handler,
 		 * was already reached by the time we were ready to add it. So
 		 * fallthrough and clean it up.
 		 */
-		TRACE("Closing state client fd %d not present in state client list\n", fd);
+		TRACE("Closing state client fd %d", fd);
 	}
 
 	close(fd);
