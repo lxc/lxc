@@ -35,8 +35,7 @@ mirror the current mount and umount API of the kernel.
 
 ## seccomp\_allow\_nesting
 
-This adds support for seccomp filters to be stacked regardless of whether a seccomp profile is
-already loaded. This allows nested containers to load their own seccomp profile.
+This adds support for seccomp filters to be stacked regardless of whether a seccomp profile is already loaded. This allows nested containers to load their own seccomp profile.
 
 ## seccomp\_notify
 
