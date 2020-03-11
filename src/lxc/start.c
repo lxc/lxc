@@ -1659,6 +1659,10 @@ static int lxc_spawn(struct lxc_handler *handler)
 	}
 	TRACE("Cloned child process %d", handler->pid);
 
+	/* Verify that we can actually make use of pidfds. */
+	if (!lxc_can_use_pidfd(handler->pidfd))
+		close_prot_errno_disarm(handler->pidfd);
+
 	ret = snprintf(pidstr, 20, "%d", handler->pid);
 	if (ret < 0 || ret >= 20)
 		goto out_delete_net;

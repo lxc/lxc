@@ -848,7 +848,23 @@ struct lxc_container {
 	int (*umount)(struct lxc_container *c, const char *target,
 		      unsigned long mountflags, struct lxc_mount *mnt);
 
+	/*!
+	 * \brief Retrieve a file descriptor for the container's seccomp filter.
+	 *
+	 * \param c Container
+	 *
+	 * \return file descriptor for container's seccomp filter
+	 */
 	int (*seccomp_notify_fd)(struct lxc_container *c);
+
+	/*!
+	 * \brief Retrieve a pidfd for the container's init process.
+	 *
+	 * \param c Container.
+	 *
+	 * \return pidfd of init process of the container.
+	 */
+	int (*init_pidfd)(struct lxc_container *c);
 };
 
 /*!

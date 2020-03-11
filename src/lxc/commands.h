@@ -11,6 +11,13 @@
 #include "macro.h"
 #include "state.h"
 
+/*
+ * Value command callbacks should return when they want the client fd to be
+ * cleaned up by the main loop. This is most certainly what you want unless you
+ * have specific reasons to keep the file descriptor alive.
+ */
+#define LXC_CMD_REAP_CLIENT_FD 1
+
 typedef enum {
 	LXC_CMD_CONSOLE,
 	LXC_CMD_TERMINAL_WINCH,
@@ -30,6 +37,7 @@ typedef enum {
 	LXC_CMD_FREEZE,
 	LXC_CMD_UNFREEZE,
 	LXC_CMD_GET_CGROUP2_FD,
+	LXC_CMD_GET_INIT_PIDFD,
 	LXC_CMD_MAX,
 } lxc_cmd_t;
 
@@ -77,6 +85,7 @@ extern char *lxc_cmd_get_config_item(const char *name, const char *item, const c
 extern char *lxc_cmd_get_name(const char *hashed_sock);
 extern char *lxc_cmd_get_lxcpath(const char *hashed_sock);
 extern pid_t lxc_cmd_get_init_pid(const char *name, const char *lxcpath);
+extern int lxc_cmd_get_init_pidfd(const char *name, const char *lxcpath);
 extern int lxc_cmd_get_state(const char *name, const char *lxcpath);
 extern int lxc_cmd_stop(const char *name, const char *lxcpath);
 

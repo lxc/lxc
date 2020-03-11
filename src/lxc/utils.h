@@ -85,6 +85,7 @@ static inline void __auto_lxc_pclose__(struct lxc_popen_FILE **f)
  */
 extern int wait_for_pid(pid_t pid);
 extern int lxc_wait_for_pid_status(pid_t pid);
+extern int wait_for_pidfd(int pidfd);
 
 #if HAVE_OPENSSL
 extern int sha1sum_file(char *fnam, unsigned char *md_value, unsigned int *md_len);
@@ -236,5 +237,6 @@ extern int lxc_set_death_signal(int signal, pid_t parent, int parent_status_fd);
 extern int fd_cloexec(int fd, bool cloexec);
 extern int recursive_destroy(const char *dirname);
 extern int lxc_setup_keyring(char *keyring_label);
+extern bool lxc_can_use_pidfd(int pidfd);
 
 #endif /* __LXC_UTILS_H */

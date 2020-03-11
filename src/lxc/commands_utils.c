@@ -185,5 +185,6 @@ int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
 
 	move_ptr(newclient);
 	move_ptr(tmplist);
-	return log_trace(MAX_STATE, "Added state client %d to state client list", state_client_fd);
+	TRACE("Added state client fd %d to state client list", state_client_fd);
+	return MAX_STATE;
 }
