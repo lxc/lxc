@@ -1,7 +1,17 @@
+dist: bionic
+sudo: required
 language: c
+
 compiler:
  - gcc
  - clang
+
+arch:
+ - amd64
+ - arm64
+ - ppc64le
+ - s390x
+
 before_install:
  - sudo add-apt-repository ppa:ubuntu-lxc/daily -y
  - sudo apt-get update -qq
