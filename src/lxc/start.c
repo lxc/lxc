@@ -860,7 +860,7 @@ out_restore_sigmask:
 	return -1;
 }
 
-void lxc_fini(struct lxc_handler *handler)
+void lxc_end(struct lxc_handler *handler)
 {
 	int ret;
 	pid_t self;
@@ -2007,7 +2007,7 @@ __private_goto2:
 	detach_block_device(handler->conf);
 
 __private_goto3:
-	lxc_fini(handler);
+	lxc_end(handler);
 
 	return ret;
 

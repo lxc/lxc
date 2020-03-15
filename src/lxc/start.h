@@ -150,7 +150,7 @@ extern struct lxc_handler *lxc_init_handler(const char *name,
 extern void lxc_zero_handler(struct lxc_handler *handler);
 extern void lxc_free_handler(struct lxc_handler *handler);
 extern int lxc_init(const char *name, struct lxc_handler *handler);
-extern void lxc_fini(struct lxc_handler *handler);
+extern void lxc_end(struct lxc_handler *handler);
 
 /* lxc_check_inherited: Check for any open file descriptors and close them if
  *                      requested.

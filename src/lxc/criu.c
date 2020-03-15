@@ -1135,7 +1135,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		ret = lxc_poll(c->name, handler);
 		if (ret)
 			lxc_abort(handler);
-		lxc_fini(handler);
+		lxc_end(handler);
 		_exit(ret);
 	}
 
@@ -1145,7 +1145,7 @@ out_fini_handler:
 	if (pipes[1] >= 0)
 		close(pipes[1]);
 
-	lxc_fini(handler);
+	lxc_end(handler);
 
 out:
 	if (status_pipe >= 0) {
