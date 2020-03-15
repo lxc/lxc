@@ -724,7 +724,7 @@ on_error:
 
 int lxc_init(const char *name, struct lxc_handler *handler)
 {
-	__do_close_prot_errno int status_fd = -EBADF;
+	__do_close int status_fd = -EBADF;
 	int ret;
 	const char *loglevel;
 	struct lxc_conf *conf = handler->conf;
@@ -1053,9 +1053,9 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 static int do_start(void *data)
 {
 	struct lxc_handler *handler = data;
-	__lxc_unused __do_close_prot_errno int data_sock0 = handler->data_sock[0],
+	__lxc_unused __do_close int data_sock0 = handler->data_sock[0],
 					   data_sock1 = handler->data_sock[1];
-	__do_close_prot_errno int status_fd = -EBADF;
+	__do_close int status_fd = -EBADF;
 	int ret;
 	uid_t new_uid;
 	gid_t new_gid;
@@ -1557,7 +1557,7 @@ static inline int do_share_ns(void *arg)
  */
 static int lxc_spawn(struct lxc_handler *handler)
 {
-	__do_close_prot_errno int data_sock0 = -EBADF, data_sock1 = -EBADF;
+	__do_close int data_sock0 = -EBADF, data_sock1 = -EBADF;
 	int i, ret;
 	char pidstr[20];
 	bool wants_to_map_ids;

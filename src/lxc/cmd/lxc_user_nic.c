@@ -73,7 +73,7 @@ __noreturn static void usage(bool fail)
 
 static int open_and_lock(const char *path)
 {
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 	int ret;
 	struct flock lk;
 

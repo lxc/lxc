@@ -494,7 +494,7 @@ static int cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h,
 					     const char *cgroup_leaf)
 {
 	__do_free char *parent_cgroup = NULL, *child_cgroup = NULL, *dup = NULL;
-	__do_close_prot_errno int cgroup_fd = -EBADF;
+	__do_close int cgroup_fd = -EBADF;
 	int fret = -1;
 	int ret;
 	char v;
@@ -1169,10 +1169,10 @@ static void cgroup_remove_leaf(struct hierarchy *h, bool payload)
 	__do_free char *full_path = NULL;
 
 	if (payload) {
-		__lxc_unused __do_close_prot_errno int fd = move_fd(h->cgfd_con);
+		__lxc_unused __do_close int fd = move_fd(h->cgfd_con);
 		full_path = move_ptr(h->container_full_path);
 	} else {
-		__lxc_unused __do_close_prot_errno int fd = move_fd(h->cgfd_mon);
+		__lxc_unused __do_close int fd = move_fd(h->cgfd_mon);
 		full_path = move_ptr(h->monitor_full_path);
 	}
 
@@ -1866,7 +1866,7 @@ static bool cg_legacy_freeze(struct cgroup_ops *ops)
 static int freezer_cgroup_events_cb(int fd, uint32_t events, void *cbdata,
 				    struct lxc_epoll_descr *descr)
 {
-	__do_close_prot_errno int duped_fd = -EBADF;
+	__do_close int duped_fd = -EBADF;
 	__do_free char *line = NULL;
 	__do_fclose FILE *f = NULL;
 	int state = PTR_TO_INT(cbdata);
@@ -1899,7 +1899,7 @@ static int freezer_cgroup_events_cb(int fd, uint32_t events, void *cbdata,
 
 static int cg_unified_freeze(struct cgroup_ops *ops, int timeout)
 {
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 	__do_lxc_mainloop_close struct lxc_epoll_descr *descr_ptr = NULL;
 	int ret;
 	struct lxc_epoll_descr descr;
@@ -1967,7 +1967,7 @@ static int cg_legacy_unfreeze(struct cgroup_ops *ops)
 
 static int cg_unified_unfreeze(struct cgroup_ops *ops, int timeout)
 {
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 	__do_lxc_mainloop_close struct lxc_epoll_descr *descr_ptr = NULL;
 	int ret;
 	struct lxc_epoll_descr descr;
@@ -2099,7 +2099,7 @@ static int cgroup_attach_leaf(int unified_fd, int64_t pid)
 
 int cgroup_attach(const char *name, const char *lxcpath, int64_t pid)
 {
-	__do_close_prot_errno int unified_fd = -EBADF;
+	__do_close int unified_fd = -EBADF;
 
 	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
 	if (unified_fd < 0)
@@ -2121,7 +2121,7 @@ static int __cg_unified_attach(const struct hierarchy *h, const char *name,
 			       const char *lxcpath, pid_t pid,
 			       const char *controller)
 {
-	__do_close_prot_errno int unified_fd = -EBADF;
+	__do_close int unified_fd = -EBADF;
 	int ret;
 
 	ret = cgroup_attach(name, lxcpath, pid);

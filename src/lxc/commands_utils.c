@@ -57,7 +57,7 @@ int lxc_cmd_sock_rcv_state(int state_client_fd, int timeout)
 int lxc_cmd_sock_get_state(const char *name, const char *lxcpath,
 			   lxc_state_t states[MAX_STATE], int timeout)
 {
-	__do_close_prot_errno int state_client_fd = -EBADF;
+	__do_close int state_client_fd = -EBADF;
 	int ret;
 
 	ret = lxc_cmd_add_state_client(name, lxcpath, states, &state_client_fd);

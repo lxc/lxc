@@ -635,7 +635,7 @@ int detect_shared_rootfs(void)
 
 bool switch_to_ns(pid_t pid, const char *ns)
 {
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 	int ret;
 	char nspath[STRLITERALLEN("/proc//ns/")
 		    + INTTYPE_TO_STRLEN(pid_t)
@@ -1642,7 +1642,7 @@ uint64_t lxc_find_next_power2(uint64_t n)
 
 static int process_dead(/* takes */ int status_fd)
 {
-	__do_close_prot_errno int dupfd = -EBADF;
+	__do_close int dupfd = -EBADF;
 	__do_free char *line = NULL;
 	__do_fclose FILE *f = NULL;
 	int ret = 0;

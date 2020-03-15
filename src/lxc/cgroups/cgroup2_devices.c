@@ -341,7 +341,7 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
 			      const char *path, uint32_t flags)
 {
 	__do_free char *copy = NULL;
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 	union bpf_attr attr;
 	int ret;
 
@@ -396,7 +396,7 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
 int bpf_program_cgroup_detach(struct bpf_program *prog)
 {
 	int ret;
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 
 	if (!prog)
 		return 0;

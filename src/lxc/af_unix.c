@@ -53,7 +53,7 @@ static ssize_t lxc_abstract_unix_set_sockaddr(struct sockaddr_un *addr,
 
 int lxc_abstract_unix_open(const char *path, int type, int flags)
 {
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 	int ret;
 	ssize_t len;
 	struct sockaddr_un addr;
@@ -90,7 +90,7 @@ void lxc_abstract_unix_close(int fd)
 
 int lxc_abstract_unix_connect(const char *path)
 {
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 	int ret;
 	ssize_t len;
 	struct sockaddr_un addr;
@@ -326,7 +326,7 @@ int lxc_unix_sockaddr(struct sockaddr_un *ret, const char *path)
 
 int lxc_unix_connect_type(struct sockaddr_un *addr, int type)
 {
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 	int ret;
 	ssize_t len;
 

@@ -65,7 +65,7 @@ static int parse_argv(char ***argv)
 
 static int is_memfd(void)
 {
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 	int seals;
 
 	fd = open("/proc/self/exe", O_RDONLY | O_CLOEXEC);
@@ -87,7 +87,7 @@ static int is_memfd(void)
 
 static void lxc_rexec_as_memfd(char **argv, char **envp, const char *memfd_name)
 {
-	__do_close_prot_errno int execfd = -EBADF, fd = -EBADF, memfd = -EBADF,
+	__do_close int execfd = -EBADF, fd = -EBADF, memfd = -EBADF,
 				  tmpfd = -EBADF;
 	int ret;
 	ssize_t bytes_sent = 0;

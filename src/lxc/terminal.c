@@ -94,7 +94,7 @@ int lxc_terminal_signalfd_cb(int fd, uint32_t events, void *cbdata,
 
 struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, int dstfd)
 {
-	__do_close_prot_errno int signal_fd = -EBADF;
+	__do_close int signal_fd = -EBADF;
 	__do_free struct lxc_terminal_state *ts = NULL;
 	int ret;
 	sigset_t mask;

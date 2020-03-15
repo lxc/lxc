@@ -27,7 +27,7 @@ int lxc_open_dirfd(const char *dir)
 
 int lxc_readat(int dirfd, const char *filename, void *buf, size_t count)
 {
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 	ssize_t ret;
 
 	fd = openat(dirfd, filename, O_RDONLY | O_CLOEXEC);
@@ -43,7 +43,7 @@ int lxc_readat(int dirfd, const char *filename, void *buf, size_t count)
 
 int lxc_writeat(int dirfd, const char *filename, const void *buf, size_t count)
 {
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 	ssize_t ret;
 
 	fd = openat(dirfd, filename,
@@ -61,7 +61,7 @@ int lxc_writeat(int dirfd, const char *filename, const void *buf, size_t count)
 int lxc_write_openat(const char *dir, const char *filename, const void *buf,
 		     size_t count)
 {
-	__do_close_prot_errno int dirfd = -EBADF;
+	__do_close int dirfd = -EBADF;
 
 	dirfd = open(dir, O_DIRECTORY | O_RDONLY | O_CLOEXEC | O_NOCTTY | O_NOFOLLOW);
 	if (dirfd < 0)
@@ -73,7 +73,7 @@ int lxc_write_openat(const char *dir, const char *filename, const void *buf,
 int lxc_write_to_file(const char *filename, const void *buf, size_t count,
 		      bool add_newline, mode_t mode)
 {
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 	ssize_t ret;
 
 	fd = open(filename, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode);
@@ -98,7 +98,7 @@ int lxc_write_to_file(const char *filename, const void *buf, size_t count,
 
 int lxc_read_from_file(const char *filename, void *buf, size_t count)
 {
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 	ssize_t ret;
 
 	fd = open(filename, O_RDONLY | O_CLOEXEC);
@@ -203,7 +203,7 @@ ssize_t lxc_read_nointr_expect(int fd, void *buf, size_t count,
 ssize_t lxc_read_file_expect(const char *path, void *buf, size_t count,
 			     const void *expected_buf)
 {
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 
 	fd = open(path, O_RDONLY | O_CLOEXEC);
 	if (fd < 0)
@@ -268,7 +268,7 @@ int lxc_count_file_lines(const char *fn)
 
 int lxc_make_tmpfile(char *template, bool rm)
 {
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 	int ret;
 	mode_t msk;
 
@@ -322,7 +322,7 @@ bool fhas_fs_type(int fd, fs_type_magic magic_val)
 
 FILE *fopen_cloexec(const char *path, const char *mode)
 {
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 	int open_mode = 0, step = 0;
 	FILE *f;
 
@@ -430,7 +430,7 @@ static char *fd_to_buf(int fd, size_t *length)
 
 char *file_to_buf(const char *path, size_t *length)
 {
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 
 	if (!length)
 		return NULL;
@@ -482,7 +482,7 @@ FILE *fdopen_cached(int fd, const char *mode, void **caller_freed_buffer)
 
 #else
 
-	__do_close_prot_errno int dupfd = -EBADF;
+	__do_close int dupfd = -EBADF;
 
 	dupfd = dup(fd);
 	if (dupfd < 0)
