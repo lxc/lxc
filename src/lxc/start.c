@@ -860,13 +860,14 @@ out_restore_sigmask:
 	return -1;
 }
 
-void lxc_fini(const char *name, struct lxc_handler *handler)
+void lxc_fini(struct lxc_handler *handler)
 {
 	int ret;
 	pid_t self;
 	struct lxc_list *cur, *next;
 	char *namespaces[LXC_NS_MAX + 1];
 	size_t namespace_count = 0;
+	const char *name = handler->name;
 	struct cgroup_ops *cgroup_ops = handler->cgroup_ops;
 
 	/* The STOPPING state is there for future cleanup code which can take
@@ -1010,12 +1011,12 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	lxc_free_handler(handler);
 }
 
-void lxc_abort(const char *name, struct lxc_handler *handler)
+void lxc_abort(struct lxc_handler *handler)
 {
 	int ret = 0;
 	int status;
 
-	lxc_set_state(name, handler, ABORTING);
+	lxc_set_state(handler->name, handler, ABORTING);
 
 	if (handler->pidfd >= 0) {
 		ret = lxc_raw_pidfd_send_signal(handler->pidfd, SIGKILL, NULL, 0);
@@ -1870,7 +1871,7 @@ out_delete_net:
 		lxc_delete_network(handler);
 
 out_abort:
-	lxc_abort(name, handler);
+	lxc_abort(handler);
 
 out_sync_fini:
 	lxc_sync_fini(handler);
@@ -2006,21 +2007,21 @@ __private_goto2:
 	detach_block_device(handler->conf);
 
 __private_goto3:
-	lxc_fini(name, handler);
+	lxc_fini(handler);
 
 	return ret;
 
 /* These are the droids you are looking for. */
 out_abort:
-	lxc_abort(name, handler);
+	lxc_abort(handler);
 	goto __private_goto3;
 
 out_detach_blockdev:
-	lxc_abort(name, handler);
+	lxc_abort(handler);
 	goto __private_goto2;
 
 out_delete_network:
-	lxc_abort(name, handler);
+	lxc_abort(handler);
 	goto __private_goto1;
 }
 
