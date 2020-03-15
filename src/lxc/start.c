@@ -959,6 +959,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		TRACE("Set container state to \"STOPPED\"");
 	} else {
 		lxc_set_state(name, handler, STOPPED);
+		TRACE("Set container state to \"STOPPED\"");
 	}
 
 	/* Avoid lingering namespace references. */
