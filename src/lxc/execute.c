@@ -96,6 +96,6 @@ int lxc_execute(const char *name, char *const argv[], int quiet,
 
 	TRACE("Doing lxc_execute");
 	handler->conf->is_execute = true;
-	return __lxc_start(name, handler, &execute_start_ops, &args, lxcpath,
+	return __lxc_start(handler, &execute_start_ops, &args, lxcpath,
 			   daemonize, error_num);
 }

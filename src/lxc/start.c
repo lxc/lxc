@@ -1879,11 +1879,11 @@ out_sync_fini:
 	return -1;
 }
 
-int __lxc_start(const char *name, struct lxc_handler *handler,
-		struct lxc_operations* ops, void *data, const char *lxcpath,
-		bool daemonize, int *error_num)
+int __lxc_start(struct lxc_handler *handler, struct lxc_operations *ops,
+		void *data, const char *lxcpath, bool daemonize, int *error_num)
 {
 	int ret, status;
+	const char *name = handler->name;
 	struct lxc_conf *conf = handler->conf;
 	struct cgroup_ops *cgroup_ops;
 
@@ -2052,7 +2052,7 @@ static struct lxc_operations start_ops = {
 	.post_start = post_start
 };
 
-int lxc_start(const char *name, char *const argv[], struct lxc_handler *handler,
+int lxc_start(char *const argv[], struct lxc_handler *handler,
 	      const char *lxcpath, bool daemonize, int *error_num)
 {
 	struct start_args start_arg = {
@@ -2060,7 +2060,7 @@ int lxc_start(const char *name, char *const argv[], struct lxc_handler *handler,
 	};
 
 	TRACE("Doing lxc_start");
-	return __lxc_start(name, handler, &start_ops, &start_arg, lxcpath, daemonize, error_num);
+	return __lxc_start(handler, &start_ops, &start_arg, lxcpath, daemonize, error_num);
 }
 
 static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
