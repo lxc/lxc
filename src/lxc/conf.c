@@ -941,13 +941,13 @@ int lxc_allocate_ttys(struct lxc_conf *conf)
 		/* Prevent leaking the file descriptors to the container */
 		ret = fd_cloexec(tty->master, true);
 		if (ret < 0)
-			SYSWARN("Failed to set FD_CLOEXEC flag on master fd %d of "
-			        "tty device \"%s\"", tty->master, tty->name);
+			SYSWARN("Failed to set FD_CLOEXEC flag on master fd %d of tty device \"%s\"",
+				tty->master, tty->name);
 
 		ret = fd_cloexec(tty->slave, true);
 		if (ret < 0)
-			SYSWARN("Failed to set FD_CLOEXEC flag on slave fd %d of "
-			        "tty device \"%s\"", tty->slave, tty->name);
+			SYSWARN("Failed to set FD_CLOEXEC flag on slave fd %d of tty device \"%s\"",
+				tty->slave, tty->name);
 
 		tty->busy = -1;
 	}
