@@ -1889,7 +1889,7 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	ret = lxc_init(name, handler);
 	if (ret < 0) {
 		ERROR("Failed to initialize container \"%s\"", name);
-		goto out_fini_nonet;
+		goto out_abort;
 	}
 	handler->ops = ops;
 	handler->data = data;
@@ -1899,25 +1899,25 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	if (!attach_block_device(handler->conf)) {
 		ERROR("Failed to attach block device");
 		ret = -1;
-		goto out_fini_nonet;
+		goto out_abort;
 	}
 
 	if (!cgroup_ops->monitor_create(cgroup_ops, handler)) {
 		ERROR("Failed to create monitor cgroup");
 		ret = -1;
-		goto out_fini_nonet;
+		goto out_abort;
 	}
 
 	if (!cgroup_ops->monitor_enter(cgroup_ops, handler)) {
 		ERROR("Failed to enter monitor cgroup");
 		ret = -1;
-		goto out_fini_nonet;
+		goto out_abort;
 	}
 
 	if (!cgroup_ops->monitor_delegate_controllers(cgroup_ops)) {
 		ERROR("Failed to delegate controllers to monitor cgroup");
 		ret = -1;
-		goto out_fini_nonet;
+		goto out_abort;
 	}
 
 	if (geteuid() == 0 && !lxc_list_empty(&conf->id_map)) {
@@ -1926,7 +1926,7 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 			ret = unshare(CLONE_NEWNS);
 			if (ret < 0) {
 				ERROR("Failed to unshare CLONE_NEWNS");
-				goto out_fini_nonet;
+				goto out_abort;
 			}
 			INFO("Unshared CLONE_NEWNS");
 
@@ -1934,7 +1934,7 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 			ret = lxc_setup_rootfs_prepare_root(conf, name, lxcpath);
 			if (ret < 0) {
 				ERROR("Error setting up rootfs mount as root before spawn");
-				goto out_fini_nonet;
+				goto out_abort;
 			}
 			INFO("Set up container rootfs as host root");
 		}
@@ -1951,13 +1951,13 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	ret = lxc_poll(name, handler);
 	if (ret) {
 		ERROR("LXC mainloop exited with error: %d", ret);
-		goto out_abort;
+		goto out_delete_network;
 	}
 
 	if (!handler->init_died && handler->pid > 0) {
 		ERROR("Child process is not killed");
 		ret = -1;
-		goto out_abort;
+		goto out_delete_network;
 	}
 
 	status = lxc_wait_for_pid_status(handler->pid);
@@ -1997,31 +1997,30 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	if (error_num)
 		*error_num = handler->exit_status;
 
-/* These are the goto targets you are not allowed to jump to. */
-__out_fini:
+/* These are not the droids you are looking for. */
+__private_goto1:
 	lxc_delete_network(handler);
 
-__out_detach_blockdev:
+__private_goto2:
 	detach_block_device(handler->conf);
 
-__out_fini_nonet:
+__private_goto3:
 	lxc_fini(name, handler);
 
 	return ret;
 
-/* These are the goto targets you want to jump to. */
-out_fini_nonet:
+/* These are the droids you are looking for. */
+out_abort:
 	lxc_abort(name, handler);
-	goto __out_fini_nonet;
+	goto __private_goto3;
 
 out_detach_blockdev:
 	lxc_abort(name, handler);
-	goto __out_detach_blockdev;
+	goto __private_goto2;
 
-out_abort:
+out_delete_network:
 	lxc_abort(name, handler);
-	goto __out_fini;
-
+	goto __private_goto1;
 }
 
 struct start_args {
