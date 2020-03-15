@@ -35,7 +35,7 @@ static void notify_state_listeners(const char *name, const char *lxcpath,
 static int do_freeze_thaw(bool freeze, struct lxc_conf *conf, const char *name,
 			  const char *lxcpath)
 {
-	__do_cgroup_exit struct cgroup_ops *cgroup_ops = NULL;
+	call_cleaner(cgroup_exit) struct cgroup_ops *cgroup_ops = NULL;
 	lxc_state_t new_state = freeze ? FROZEN : THAWED;
 	int ret;
 	const char *state;

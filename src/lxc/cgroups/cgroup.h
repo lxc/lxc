@@ -8,6 +8,7 @@
 #include <sys/types.h>
 
 #include "macro.h"
+#include "memory_utils.h"
 
 #define DEFAULT_CGROUP_MOUNTPOINT "/sys/fs/cgroup"
 #define DEFAULT_PAYLOAD_CGROUP_PREFIX "lxc.payload."
@@ -171,19 +172,13 @@ struct cgroup_ops {
 };
 
 extern struct cgroup_ops *cgroup_init(struct lxc_conf *conf);
+
 extern void cgroup_exit(struct cgroup_ops *ops);
+define_cleanup_function(struct cgroup_ops *, cgroup_exit);
 
 extern void prune_init_scope(char *cg);
 
-static inline void __auto_cgroup_exit__(struct cgroup_ops **ops)
-{
-	if (*ops)
-		cgroup_exit(*ops);
-}
-
 extern int cgroup_attach(const char *name, const char *lxcpath, int64_t pid);
-
-#define __do_cgroup_exit __attribute__((__cleanup__(__auto_cgroup_exit__)))
 
 static inline bool pure_unified_layout(const struct cgroup_ops *ops)
 {

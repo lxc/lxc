@@ -1176,7 +1176,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 			 */
 			ret = cgroup_attach(name, lxcpath, pid);
 			if (ret) {
-				__do_cgroup_exit struct cgroup_ops *cgroup_ops = NULL;
+				call_cleaner(cgroup_exit) struct cgroup_ops *cgroup_ops = NULL;
 
 				cgroup_ops = cgroup_init(conf);
 				if (!cgroup_ops)
