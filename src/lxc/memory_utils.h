@@ -33,7 +33,7 @@ static inline void close_prot_errno_disarm_function(int *fd)
 {
        close_prot_errno_disarm(*fd);
 }
-#define __do_close_prot_errno call_cleaner(close_prot_errno_disarm)
+#define __do_close call_cleaner(close_prot_errno_disarm)
 
 define_cleanup_function(FILE *, fclose);
 #define __do_fclose call_cleaner(fclose)

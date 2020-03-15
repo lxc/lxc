@@ -1380,7 +1380,7 @@ int lxc_chroot(const struct lxc_rootfs *rootfs)
  */
 static int lxc_pivot_root(const char *rootfs)
 {
-	__do_close_prot_errno int oldroot = -EBADF, newroot = -EBADF;
+	__do_close int oldroot = -EBADF, newroot = -EBADF;
 	int ret;
 
 	oldroot = open("/", O_DIRECTORY | O_RDONLY | O_CLOEXEC);
@@ -2193,7 +2193,7 @@ static const char nesting_helpers[] =
 FILE *make_anonymous_mount_file(struct lxc_list *mount,
 				bool include_nesting_helpers)
 {
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 	FILE *f;
 	int ret;
 	char *mount_entry;
@@ -2567,12 +2567,12 @@ struct lxc_conf *lxc_conf_init(void)
 int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 		     size_t buf_size)
 {
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 	int ret;
 	char path[PATH_MAX];
 
 	if (geteuid() != 0 && idtype == ID_TYPE_GID) {
-		__do_close_prot_errno int setgroups_fd = -EBADF;
+		__do_close int setgroups_fd = -EBADF;
 
 		ret = snprintf(path, PATH_MAX, "/proc/%d/setgroups", pid);
 		if (ret < 0 || ret >= PATH_MAX)
@@ -3018,7 +3018,7 @@ void remount_all_slave(void)
 {
 	__do_free char *line = NULL;
 	__do_fclose FILE *f = NULL;
-	__do_close_prot_errno int memfd = -EBADF, mntinfo_fd = -EBADF;
+	__do_close int memfd = -EBADF, mntinfo_fd = -EBADF;
 	int ret;
 	ssize_t copied;
 	size_t len = 0;

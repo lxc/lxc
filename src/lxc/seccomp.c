@@ -1299,7 +1299,7 @@ void lxc_seccomp_free(struct lxc_seccomp *seccomp)
 #if HAVE_DECL_SECCOMP_NOTIFY_FD
 static int seccomp_notify_reconnect(struct lxc_handler *handler)
 {
-	__do_close_prot_errno int notify_fd = -EBADF;
+	__do_close int notify_fd = -EBADF;
 
 	close_prot_errno_disarm(handler->conf->seccomp.notifier.proxy_fd);
 
@@ -1338,8 +1338,8 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 {
 
 #if HAVE_DECL_SECCOMP_NOTIFY_FD
-	__do_close_prot_errno int fd_pid = -EBADF;
-	__do_close_prot_errno int fd_mem = -EBADF;
+	__do_close int fd_pid = -EBADF;
+	__do_close int fd_mem = -EBADF;
 	int ret;
 	ssize_t bytes;
 	int send_fd_list[2];
@@ -1514,7 +1514,7 @@ int lxc_seccomp_setup_proxy(struct lxc_seccomp *seccomp,
 #if HAVE_DECL_SECCOMP_NOTIFY_FD
 	if (seccomp->notifier.wants_supervision &&
 	    seccomp->notifier.proxy_addr.sun_path[1] != '\0') {
-		__do_close_prot_errno int notify_fd = -EBADF;
+		__do_close int notify_fd = -EBADF;
 		int ret;
 
 		notify_fd = lxc_unix_connect_type(&seccomp->notifier.proxy_addr,

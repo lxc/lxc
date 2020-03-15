@@ -140,7 +140,7 @@ enum {
 
 static int ongoing_create(struct lxc_container *c)
 {
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 	__do_free char *path = NULL;
 	struct flock lk = {0};
 	int ret;
@@ -1976,7 +1976,7 @@ static bool lxcapi_create(struct lxc_container *c, const char *t,
 
 static bool do_lxcapi_reboot(struct lxc_container *c)
 {
-	__do_close_prot_errno int pidfd = -EBADF;
+	__do_close int pidfd = -EBADF;
 	pid_t pid = -1;
 	int ret;
 	int rebootsignal = SIGINT;
@@ -2012,7 +2012,7 @@ WRAP_API(bool, lxcapi_reboot)
 
 static bool do_lxcapi_reboot2(struct lxc_container *c, int timeout)
 {
-	__do_close_prot_errno int pidfd = -EBADF, state_client_fd = -EBADF;
+	__do_close int pidfd = -EBADF, state_client_fd = -EBADF;
 	int rebootsignal = SIGINT;
 	pid_t pid = -1;
 	lxc_state_t states[MAX_STATE] = {0};
@@ -2081,7 +2081,7 @@ WRAP_API_1(bool, lxcapi_reboot2, int)
 
 static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 {
-	__do_close_prot_errno int pidfd = -EBADF, state_client_fd = -EBADF;
+	__do_close int pidfd = -EBADF, state_client_fd = -EBADF;
 	int haltsignal = SIGPWR;
 	pid_t pid = -1;
 	lxc_state_t states[MAX_STATE] = {0};

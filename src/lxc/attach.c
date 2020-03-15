@@ -131,7 +131,7 @@ static void lxc_proc_put_context_info(struct lxc_proc_context_info *ctx)
  */
 static int in_same_namespace(pid_t pid1, pid_t pid2, const char *ns)
 {
-	__do_close_prot_errno int ns_fd1 = -1, ns_fd2 = -1;
+	__do_close int ns_fd1 = -1, ns_fd2 = -1;
 	int ret = -1;
 	struct stat ns_st1, ns_st2;
 

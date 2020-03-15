@@ -39,7 +39,7 @@ static lxc_id128_t make_v4_uuid(lxc_id128_t id)
 
 static int get_random_bytes(void *p, size_t n)
 {
-	__do_close_prot_errno int fd = -1;
+	__do_close int fd = -1;
 	ssize_t bytes = 0;
 
 	fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC | O_NOCTTY);

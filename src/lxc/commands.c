@@ -111,7 +111,7 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
  */
 static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 {
-	__do_close_prot_errno int fd_rsp = -EBADF;
+	__do_close int fd_rsp = -EBADF;
 	int ret;
 	struct lxc_cmd_rsp *rsp = &cmd->rsp;
 
@@ -214,7 +214,7 @@ static int lxc_cmd_rsp_send(int fd, struct lxc_cmd_rsp *rsp)
 static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
 			const char *lxcpath, const char *hashed_sock_name)
 {
-	__do_close_prot_errno int client_fd = -EBADF;
+	__do_close int client_fd = -EBADF;
 	ssize_t ret = -1;
 
 	client_fd = lxc_cmd_connect(name, lxcpath, hashed_sock_name, "command");
@@ -267,7 +267,7 @@ static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
 static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 		   const char *lxcpath, const char *hashed_sock_name)
 {
-	__do_close_prot_errno int client_fd = -EBADF;
+	__do_close int client_fd = -EBADF;
 	int ret = -1;
 	bool stay_connected = false;
 
@@ -898,7 +898,7 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 			     lxc_state_t states[MAX_STATE],
 			     int *state_client_fd)
 {
-	__do_close_prot_errno int clientfd = -EBADF;
+	__do_close int clientfd = -EBADF;
 	int state, stopped;
 	ssize_t ret;
 	struct lxc_cmd_rr cmd = {
@@ -1217,7 +1217,7 @@ static int lxc_cmd_seccomp_notify_add_listener_callback(int fd,
 
 #ifdef HAVE_SECCOMP_NOTIFY
 	int ret;
-	__do_close_prot_errno int recv_fd = -EBADF;
+	__do_close int recv_fd = -EBADF;
 
 	ret = lxc_abstract_unix_recv_fds(fd, &recv_fd, 1, NULL, 0);
 	if (ret <= 0) {
@@ -1505,7 +1505,7 @@ out_close:
 static int lxc_cmd_accept(int fd, uint32_t events, void *data,
 			  struct lxc_epoll_descr *descr)
 {
-	__do_close_prot_errno int connection = -EBADF;
+	__do_close int connection = -EBADF;
 	int opt = 1, ret = -1;
 
 	connection = accept(fd, NULL, 0);
@@ -1531,7 +1531,7 @@ static int lxc_cmd_accept(int fd, uint32_t events, void *data,
 
 int lxc_cmd_init(const char *name, const char *lxcpath, const char *suffix)
 {
-	__do_close_prot_errno int fd = -EBADF;
+	__do_close int fd = -EBADF;
 	int ret;
 	char path[LXC_AUDS_ADDR_LEN] = {0};
 
