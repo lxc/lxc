@@ -805,10 +805,8 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	TRACE("Set environment variables");
 
 	ret = run_lxc_hooks(name, "pre-start", conf, NULL);
-	if (ret < 0) {
-		ERROR("Failed to run lxc.hook.pre-start for container \"%s\"", name);
-		goto out_aborting;
-	}
+	if (ret < 0)
+		return log_error(-1, "Failed to run lxc.hook.pre-start for container \"%s\"", name);
 	TRACE("Ran pre-start hooks");
 
 	/* The signal fd has to be created before forking otherwise if the child
@@ -816,10 +814,8 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	 * and the command will be stuck.
 	 */
 	handler->sigfd = setup_signal_fd(&handler->oldmask);
-	if (handler->sigfd < 0) {
-		ERROR("Failed to setup SIGCHLD fd handler.");
-		goto out_aborting;
-	}
+	if (handler->sigfd < 0)
+		return log_error(-1, "Failed to setup SIGCHLD fd handler.");
 	TRACE("Set up signal fd");
 
 	/* Do this after setting up signals since it might unblock SIGWINCH. */
@@ -860,9 +856,6 @@ out_delete_terminal:
 
 out_restore_sigmask:
 	(void)pthread_sigmask(SIG_SETMASK, &handler->oldmask, NULL);
-
-out_aborting:
-	(void)lxc_set_state(name, handler, ABORTING);
 
 	return -1;
 }
@@ -1030,7 +1023,7 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 				handler->pidfd, handler->pid);
 	}
 
-	if (!ret || errno != ESRCH && handler->pid > 0)
+	if ((!ret || errno != ESRCH) && handler->pid > 0)
 		if (kill(handler->pid, SIGKILL))
 			SYSWARN("Failed to send SIGKILL to %d", handler->pid);
 
@@ -2004,19 +1997,31 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	if (error_num)
 		*error_num = handler->exit_status;
 
-out_fini:
+/* These are the goto targets you are not allowed to jump to. */
+__out_fini:
 	lxc_delete_network(handler);
 
-out_detach_blockdev:
+__out_detach_blockdev:
 	detach_block_device(handler->conf);
 
-out_fini_nonet:
+__out_fini_nonet:
 	lxc_fini(name, handler);
+
 	return ret;
+
+/* These are the goto targets you want to jump to. */
+out_fini_nonet:
+	lxc_abort(name, handler);
+	goto __out_fini_nonet;
+
+out_detach_blockdev:
+	lxc_abort(name, handler);
+	goto __out_detach_blockdev;
 
 out_abort:
 	lxc_abort(name, handler);
-	goto out_fini;
+	goto __out_fini;
+
 }
 
 struct start_args {
