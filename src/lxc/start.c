@@ -731,27 +731,21 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 
 	handler->monitor_pid = lxc_raw_getpid();
 	status_fd = open("/proc/self/status", O_RDONLY | O_CLOEXEC);
-	if (status_fd < 0) {
-		SYSERROR("Failed to open monitor status fd");
-		goto out_close_maincmd_fd;
-	}
+	if (status_fd < 0)
+		return log_error_errno(-1, errno, "Failed to open monitor status fd");
 
 	lsm_init();
 	TRACE("Initialized LSM");
 
 	ret = lxc_read_seccomp_config(conf);
-	if (ret < 0) {
-		ERROR("Failed loading seccomp policy");
-		goto out_close_maincmd_fd;
-	}
+	if (ret < 0)
+		return log_error(-1, "Failed loading seccomp policy");
 	TRACE("Read seccomp policy");
 
 	/* Begin by setting the state to STARTING. */
 	ret = lxc_set_state(name, handler, STARTING);
-	if (ret < 0) {
-		ERROR("Failed to set state to \"%s\"", lxc_state2str(STARTING));
-		goto out_close_maincmd_fd;
-	}
+	if (ret < 0)
+		return log_error(-1, "Failed to set state to \"%s\"", lxc_state2str(STARTING));
 	TRACE("Set container state to \"STARTING\"");
 
 	/* Start of environment variable setup for hooks. */
@@ -824,7 +818,7 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	handler->sigfd = setup_signal_fd(&handler->oldmask);
 	if (handler->sigfd < 0) {
 		ERROR("Failed to setup SIGCHLD fd handler.");
-		goto out_delete_tty;
+		goto out_aborting;
 	}
 	TRACE("Set up signal fd");
 
@@ -867,14 +861,9 @@ out_delete_terminal:
 out_restore_sigmask:
 	(void)pthread_sigmask(SIG_SETMASK, &handler->oldmask, NULL);
 
-out_delete_tty:
-	lxc_delete_tty(&conf->ttys);
-
 out_aborting:
 	(void)lxc_set_state(name, handler, ABORTING);
 
-out_close_maincmd_fd:
-	close_prot_errno_disarm(conf->maincmd_fd);
 	return -1;
 }
 
@@ -1041,7 +1030,7 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 				handler->pidfd, handler->pid);
 	}
 
-	if (!ret || errno != ESRCH)
+	if (!ret || errno != ESRCH && handler->pid > 0)
 		if (kill(handler->pid, SIGKILL))
 			SYSWARN("Failed to send SIGKILL to %d", handler->pid);
 
