@@ -731,27 +731,21 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 
 	handler->monitor_pid = lxc_raw_getpid();
 	status_fd = open("/proc/self/status", O_RDONLY | O_CLOEXEC);
-	if (status_fd < 0) {
-		SYSERROR("Failed to open monitor status fd");
-		goto out_close_maincmd_fd;
-	}
+	if (status_fd < 0)
+		return log_error_errno(-1, errno, "Failed to open monitor status fd");
 
 	lsm_init();
 	TRACE("Initialized LSM");
 
 	ret = lxc_read_seccomp_config(conf);
-	if (ret < 0) {
-		ERROR("Failed loading seccomp policy");
-		goto out_close_maincmd_fd;
-	}
+	if (ret < 0)
+		return log_error(-1, "Failed loading seccomp policy");
 	TRACE("Read seccomp policy");
 
 	/* Begin by setting the state to STARTING. */
 	ret = lxc_set_state(name, handler, STARTING);
-	if (ret < 0) {
-		ERROR("Failed to set state to \"%s\"", lxc_state2str(STARTING));
-		goto out_close_maincmd_fd;
-	}
+	if (ret < 0)
+		return log_error(-1, "Failed to set state to \"%s\"", lxc_state2str(STARTING));
 	TRACE("Set container state to \"STARTING\"");
 
 	/* Start of environment variable setup for hooks. */
@@ -811,10 +805,8 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	TRACE("Set environment variables");
 
 	ret = run_lxc_hooks(name, "pre-start", conf, NULL);
-	if (ret < 0) {
-		ERROR("Failed to run lxc.hook.pre-start for container \"%s\"", name);
-		goto out_aborting;
-	}
+	if (ret < 0)
+		return log_error(-1, "Failed to run lxc.hook.pre-start for container \"%s\"", name);
 	TRACE("Ran pre-start hooks");
 
 	/* The signal fd has to be created before forking otherwise if the child
@@ -822,10 +814,8 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	 * and the command will be stuck.
 	 */
 	handler->sigfd = setup_signal_fd(&handler->oldmask);
-	if (handler->sigfd < 0) {
-		ERROR("Failed to setup SIGCHLD fd handler.");
-		goto out_delete_tty;
-	}
+	if (handler->sigfd < 0)
+		return log_error(-1, "Failed to setup SIGCHLD fd handler.");
 	TRACE("Set up signal fd");
 
 	/* Do this after setting up signals since it might unblock SIGWINCH. */
@@ -867,24 +857,17 @@ out_delete_terminal:
 out_restore_sigmask:
 	(void)pthread_sigmask(SIG_SETMASK, &handler->oldmask, NULL);
 
-out_delete_tty:
-	lxc_delete_tty(&conf->ttys);
-
-out_aborting:
-	(void)lxc_set_state(name, handler, ABORTING);
-
-out_close_maincmd_fd:
-	close_prot_errno_disarm(conf->maincmd_fd);
 	return -1;
 }
 
-void lxc_fini(const char *name, struct lxc_handler *handler)
+void lxc_end(struct lxc_handler *handler)
 {
 	int ret;
 	pid_t self;
 	struct lxc_list *cur, *next;
 	char *namespaces[LXC_NS_MAX + 1];
 	size_t namespace_count = 0;
+	const char *name = handler->name;
 	struct cgroup_ops *cgroup_ops = handler->cgroup_ops;
 
 	/* The STOPPING state is there for future cleanup code which can take
@@ -977,6 +960,7 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 		TRACE("Set container state to \"STOPPED\"");
 	} else {
 		lxc_set_state(name, handler, STOPPED);
+		TRACE("Set container state to \"STOPPED\"");
 	}
 
 	/* Avoid lingering namespace references. */
@@ -1027,12 +1011,12 @@ void lxc_fini(const char *name, struct lxc_handler *handler)
 	lxc_free_handler(handler);
 }
 
-void lxc_abort(const char *name, struct lxc_handler *handler)
+void lxc_abort(struct lxc_handler *handler)
 {
 	int ret = 0;
 	int status;
 
-	lxc_set_state(name, handler, ABORTING);
+	lxc_set_state(handler->name, handler, ABORTING);
 
 	if (handler->pidfd >= 0) {
 		ret = lxc_raw_pidfd_send_signal(handler->pidfd, SIGKILL, NULL, 0);
@@ -1041,7 +1025,7 @@ void lxc_abort(const char *name, struct lxc_handler *handler)
 				handler->pidfd, handler->pid);
 	}
 
-	if (!ret || errno != ESRCH)
+	if ((!ret || errno != ESRCH) && handler->pid > 0)
 		if (kill(handler->pid, SIGKILL))
 			SYSWARN("Failed to send SIGKILL to %d", handler->pid);
 
@@ -1887,7 +1871,7 @@ out_delete_net:
 		lxc_delete_network(handler);
 
 out_abort:
-	lxc_abort(name, handler);
+	lxc_abort(handler);
 
 out_sync_fini:
 	lxc_sync_fini(handler);
@@ -1896,18 +1880,18 @@ out_sync_fini:
 	return -1;
 }
 
-int __lxc_start(const char *name, struct lxc_handler *handler,
-		struct lxc_operations* ops, void *data, const char *lxcpath,
-		bool daemonize, int *error_num)
+int __lxc_start(struct lxc_handler *handler, struct lxc_operations *ops,
+		void *data, const char *lxcpath, bool daemonize, int *error_num)
 {
 	int ret, status;
+	const char *name = handler->name;
 	struct lxc_conf *conf = handler->conf;
 	struct cgroup_ops *cgroup_ops;
 
 	ret = lxc_init(name, handler);
 	if (ret < 0) {
 		ERROR("Failed to initialize container \"%s\"", name);
-		goto out_fini_nonet;
+		goto out_abort;
 	}
 	handler->ops = ops;
 	handler->data = data;
@@ -1917,25 +1901,25 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	if (!attach_block_device(handler->conf)) {
 		ERROR("Failed to attach block device");
 		ret = -1;
-		goto out_fini_nonet;
+		goto out_abort;
 	}
 
 	if (!cgroup_ops->monitor_create(cgroup_ops, handler)) {
 		ERROR("Failed to create monitor cgroup");
 		ret = -1;
-		goto out_fini_nonet;
+		goto out_abort;
 	}
 
 	if (!cgroup_ops->monitor_enter(cgroup_ops, handler)) {
 		ERROR("Failed to enter monitor cgroup");
 		ret = -1;
-		goto out_fini_nonet;
+		goto out_abort;
 	}
 
 	if (!cgroup_ops->monitor_delegate_controllers(cgroup_ops)) {
 		ERROR("Failed to delegate controllers to monitor cgroup");
 		ret = -1;
-		goto out_fini_nonet;
+		goto out_abort;
 	}
 
 	if (geteuid() == 0 && !lxc_list_empty(&conf->id_map)) {
@@ -1944,7 +1928,7 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 			ret = unshare(CLONE_NEWNS);
 			if (ret < 0) {
 				ERROR("Failed to unshare CLONE_NEWNS");
-				goto out_fini_nonet;
+				goto out_abort;
 			}
 			INFO("Unshared CLONE_NEWNS");
 
@@ -1952,7 +1936,7 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 			ret = lxc_setup_rootfs_prepare_root(conf, name, lxcpath);
 			if (ret < 0) {
 				ERROR("Error setting up rootfs mount as root before spawn");
-				goto out_fini_nonet;
+				goto out_abort;
 			}
 			INFO("Set up container rootfs as host root");
 		}
@@ -1969,13 +1953,13 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	ret = lxc_poll(name, handler);
 	if (ret) {
 		ERROR("LXC mainloop exited with error: %d", ret);
-		goto out_abort;
+		goto out_delete_network;
 	}
 
 	if (!handler->init_died && handler->pid > 0) {
 		ERROR("Child process is not killed");
 		ret = -1;
-		goto out_abort;
+		goto out_delete_network;
 	}
 
 	status = lxc_wait_for_pid_status(handler->pid);
@@ -2015,19 +1999,30 @@ int __lxc_start(const char *name, struct lxc_handler *handler,
 	if (error_num)
 		*error_num = handler->exit_status;
 
-out_fini:
+/* These are not the droids you are looking for. */
+__private_goto1:
 	lxc_delete_network(handler);
 
-out_detach_blockdev:
+__private_goto2:
 	detach_block_device(handler->conf);
 
-out_fini_nonet:
-	lxc_fini(name, handler);
+__private_goto3:
+	lxc_end(handler);
+
 	return ret;
 
+/* These are the droids you are looking for. */
 out_abort:
-	lxc_abort(name, handler);
-	goto out_fini;
+	lxc_abort(handler);
+	goto __private_goto3;
+
+out_detach_blockdev:
+	lxc_abort(handler);
+	goto __private_goto2;
+
+out_delete_network:
+	lxc_abort(handler);
+	goto __private_goto1;
 }
 
 struct start_args {
@@ -2058,7 +2053,7 @@ static struct lxc_operations start_ops = {
 	.post_start = post_start
 };
 
-int lxc_start(const char *name, char *const argv[], struct lxc_handler *handler,
+int lxc_start(char *const argv[], struct lxc_handler *handler,
 	      const char *lxcpath, bool daemonize, int *error_num)
 {
 	struct start_args start_arg = {
@@ -2066,7 +2061,7 @@ int lxc_start(const char *name, char *const argv[], struct lxc_handler *handler,
 	};
 
 	TRACE("Doing lxc_start");
-	return __lxc_start(name, handler, &start_ops, &start_arg, lxcpath, daemonize, error_num);
+	return __lxc_start(handler, &start_ops, &start_arg, lxcpath, daemonize, error_num);
 }
 
 static void lxc_destroy_container_on_signal(struct lxc_handler *handler,

@@ -142,7 +142,7 @@ extern int lxc_set_state(const char *name, struct lxc_handler *handler,
 extern int lxc_serve_state_clients(const char *name,
 				   struct lxc_handler *handler,
 				   lxc_state_t state);
-extern void lxc_abort(const char *name, struct lxc_handler *handler);
+extern void lxc_abort(struct lxc_handler *handler);
 extern struct lxc_handler *lxc_init_handler(const char *name,
 					    struct lxc_conf *conf,
 					    const char *lxcpath,
@@ -150,7 +150,7 @@ extern struct lxc_handler *lxc_init_handler(const char *name,
 extern void lxc_zero_handler(struct lxc_handler *handler);
 extern void lxc_free_handler(struct lxc_handler *handler);
 extern int lxc_init(const char *name, struct lxc_handler *handler);
-extern void lxc_fini(const char *name, struct lxc_handler *handler);
+extern void lxc_end(struct lxc_handler *handler);
 
 /* lxc_check_inherited: Check for any open file descriptors and close them if
  *                      requested.
@@ -161,9 +161,8 @@ extern void lxc_fini(const char *name, struct lxc_handler *handler);
  */
 extern int lxc_check_inherited(struct lxc_conf *conf, bool closeall,
 			       int *fds_to_ignore, size_t len_fds);
-extern int __lxc_start(const char *, struct lxc_handler *,
-		       struct lxc_operations *, void *, const char *, bool,
-		       int *);
+extern int __lxc_start(struct lxc_handler *, struct lxc_operations *, void *,
+		       const char *, bool, int *);
 
 extern int resolve_clone_flags(struct lxc_handler *handler);
 
