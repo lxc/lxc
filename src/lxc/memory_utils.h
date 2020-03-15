@@ -12,12 +12,14 @@
 
 #include "macro.h"
 
-#define define_cleanup_attribute(type, func)     \
-	static inline void func##_ptr(type *ptr) \
-	{                                        \
-		if (*ptr)                        \
-			func(*ptr);              \
+#define define_cleanup_function(type, cleaner)           \
+	static inline void cleaner##_function(type *ptr) \
+	{                                                \
+		if (*ptr)                                \
+			cleaner(*ptr);                   \
 	}
+
+#define call_cleaner(cleaner) __attribute__((__cleanup__(cleaner##_function)))
 
 #define free_disarm(ptr)       \
 	({                     \
@@ -38,8 +40,9 @@ static inline void free_string_list(char **list)
 		free_disarm(list);
 	}
 }
-define_cleanup_attribute(char **, free_string_list);
-#define __do_free_string_list __attribute__((__cleanup__(free_string_list_ptr)))
+define_cleanup_function(char **, free_string_list);
+#define __do_free_string_list \
+	__attribute__((__cleanup__(free_string_list_function)))
 
 static inline void __auto_fclose__(FILE **f)
 {
