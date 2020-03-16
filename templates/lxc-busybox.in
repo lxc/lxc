@@ -236,7 +236,7 @@ lxc.cap.drop = sys_module mac_admin mac_override sys_time
 #lxc.apparmor.profile = unconfined
 
 lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
-lxc.mount.entry = shm /dev/shm tmpfs defaults 0 0
+lxc.mount.entry = shm dev/shm tmpfs defaults 0 0
 EOF
 
   libdirs="\
