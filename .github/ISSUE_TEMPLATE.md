@@ -25,5 +25,5 @@ A brief description of what failed or what could be improved.
 # Information to attach
 
  - [ ] any relevant kernel output (`dmesg`)
- - [ ] container log (The <log> file from running `lxc-start -n <c> -l <log> -o DEBUG`)
+ - [ ] container log (The <log> file from running `lxc-start -n <c> -l TRACE -o <logfile> `)
  - [ ] the containers configuration file
