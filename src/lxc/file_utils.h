@@ -24,6 +24,8 @@ extern int lxc_read_from_file(const char *filename, void *buf, size_t count);
 
 /* send and receive buffers completely */
 extern ssize_t lxc_write_nointr(int fd, const void *buf, size_t count);
+extern ssize_t lxc_pwrite_nointr(int fd, const void *buf, size_t count,
+				 off_t offset);
 extern ssize_t lxc_send_nointr(int sockfd, void *buf, size_t len, int flags);
 extern ssize_t lxc_read_nointr(int fd, void *buf, size_t count);
 extern ssize_t lxc_read_nointr_expect(int fd, void *buf, size_t count,
@@ -49,6 +51,7 @@ extern FILE *fopen_cloexec(const char *path, const char *mode);
 extern ssize_t lxc_sendfile_nointr(int out_fd, int in_fd, off_t *offset,
 				   size_t count);
 extern char *file_to_buf(const char *path, size_t *length);
+extern int fd_to_buf(int fd, char **buf, size_t *length);
 extern int fd_to_fd(int from, int to);
 extern int lxc_open_dirfd(const char *dir);
 extern FILE *fdopen_cached(int fd, const char *mode, void **caller_freed_buffer);
