@@ -132,6 +132,8 @@ Options :\n\
 	.checker      = NULL,
 	.log_priority = "ERROR",
 	.log_file     = "none",
+	.uid          = LXC_INVALID_UID,
+	.gid          = LXC_INVALID_GID,
 };
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg)
@@ -345,10 +347,10 @@ int main(int argc, char *argv[])
 			goto out;
 	}
 
-	if (my_args.uid)
+	if (my_args.uid != LXC_INVALID_UID)
 		attach_options.uid = my_args.uid;
 
-	if (my_args.gid)
+	if (my_args.gid != LXC_INVALID_GID)
 		attach_options.gid = my_args.gid;
 
 	if (command.program) {

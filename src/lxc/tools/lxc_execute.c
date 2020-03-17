@@ -63,6 +63,8 @@ Options :\n\
 	.log_priority = "ERROR",
 	.log_file     = "none",
 	.daemonize    = 0,
+	.uid          = LXC_INVALID_UID,
+	.gid          = LXC_INVALID_GID,
 };
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg)
@@ -190,7 +192,7 @@ int main(int argc, char *argv[])
 	if (!bret)
 		goto out;
 
-	if (my_args.uid) {
+	if (my_args.uid != LXC_INVALID_UID) {
 		char buf[256];
 
 		ret = snprintf(buf, 256, "%d", my_args.uid);
@@ -202,7 +204,7 @@ int main(int argc, char *argv[])
 			goto out;
 	}
 
-	if (my_args.gid) {
+	if (my_args.gid != LXC_INVALID_GID) {
 		char buf[256];
 
 		ret = snprintf(buf, 256, "%d", my_args.gid);
