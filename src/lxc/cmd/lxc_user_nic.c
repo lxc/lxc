@@ -3,7 +3,6 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
-#include <alloca.h>
 #include <arpa/inet.h>
 #include <ctype.h>
 #include <errno.h>
@@ -32,6 +31,7 @@
 
 #include "compiler.h"
 #include "config.h"
+#include "file_utils.h"
 #include "log.h"
 #include "memory_utils.h"
 #include "network.h"
@@ -77,7 +77,7 @@ static int open_and_lock(const char *path)
 	int ret;
 	struct flock lk;
 
-	fd = open(path, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
+	fd = open(path, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR | O_CLOEXEC);
 	if (fd < 0) {
 		CMD_SYSERROR("Failed to open \"%s\"\n", path);
 		return -1;
@@ -592,40 +592,35 @@ struct entry_line {
 static bool cull_entries(int fd, char *name, char *net_type, char *net_link,
 			 char *net_dev, bool *found_nicname)
 {
+	__do_free char *buf = NULL;
 	__do_free struct entry_line *entry_lines = NULL;
-	int i, ret;
-	char *buf, *buf_end, *buf_start;
-	struct stat sb;
 	int n = 0;
+	size_t length = 0;
+	int ret;
+	char *buf_end, *buf_start;
 	bool found, keep;
 
-	ret = fstat(fd, &sb);
+	ret = fd_to_buf(fd, &buf, &length);
 	if (ret < 0) {
-		CMD_SYSERROR("Failed to fstat\n");
+		CMD_SYSERROR("Failed to read database file\n");
 		return false;
 	}
-
-	if (!sb.st_size)
+	if (lseek(fd, 0, SEEK_SET) < 0)
 		return false;
 
-	buf = lxc_strmmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-	if (buf == MAP_FAILED) {
-		CMD_SYSERROR("Failed to establish shared memory mapping\n");
+	if (length == 0)
 		return false;
-	}
 
 	buf_start = buf;
-	buf_end = buf + sb.st_size;
+	buf_end = buf + length;
 	while ((buf_start = find_line(buf_start, buf_end, name, net_type,
 				      net_link, net_dev, &(bool){true}, &found,
 				      &keep))) {
 		struct entry_line *newe;
 
 		newe = realloc(entry_lines, sizeof(*entry_lines) * (n + 1));
-		if (!newe) {
-			lxc_strmunmap(buf, sb.st_size);
+		if (!newe)
 			return false;
-		}
 
 		if (found)
 			*found_nicname = true;
@@ -643,7 +638,7 @@ static bool cull_entries(int fd, char *name, char *net_type, char *net_link,
 
 	buf_start = buf;
 
-	for (i = 0; i < n; i++) {
+	for (int i = 0; i < n; i++) {
 		if (!entry_lines[i].keep)
 			continue;
 
@@ -653,12 +648,7 @@ static bool cull_entries(int fd, char *name, char *net_type, char *net_link,
 		buf_start++;
 	}
 
-	ret = ftruncate(fd, buf_start - buf);
-	lxc_strmunmap(buf, sb.st_size);
-	if (ret < 0)
-		CMD_SYSERROR("Failed to set new file size\n");
-
-	return true;
+	return ftruncate(fd, buf_start - buf) == 0;
 }
 
 static int count_entries(char *buf, off_t len, char *name, char *net_type, char *net_link)
@@ -685,14 +675,13 @@ static int count_entries(char *buf, off_t len, char *name, char *net_type, char 
 static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 			      char *intype, char *br, int allowed, char **cnic)
 {
-	__do_free char *newline = NULL;
+	__do_free char *buf = NULL, *newline = NULL;
+	size_t length = 0;
 	int ret;
 	size_t slen;
 	char *owner;
 	char nicname[IFNAMSIZ];
-	struct stat sb;
 	struct alloted_s *n;
-	char *buf = NULL;
 	uid_t uid;
 
 	for (n = names; n != NULL; n = n->next)
@@ -703,34 +692,27 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 
 	owner = names->name;
 
-	ret = fstat(fd, &sb);
+	ret = fd_to_buf(fd, &buf, &length);
 	if (ret < 0) {
-		CMD_SYSERROR("Failed to fstat\n");
-		return NULL;
+		CMD_SYSERROR("Failed to read database file\n");
+		return false;
 	}
+	if (lseek(fd, 0, SEEK_SET) < 0)
+		return false;
 
-	if (sb.st_size > 0) {
-		buf = lxc_strmmap(NULL, sb.st_size, PROT_READ | PROT_WRITE,
-				  MAP_SHARED, fd, 0);
-		if (buf == MAP_FAILED) {
-			CMD_SYSERROR("Failed to establish shared memory mapping\n");
-			return NULL;
-		}
-
+	if (length > 0) {
 		owner = NULL;
 
 		for (n = names; n != NULL; n = n->next) {
 			int count;
 
-			count = count_entries(buf, sb.st_size, n->name, intype, br);
+			count = count_entries(buf, length, n->name, intype, br);
 			if (count >= n->allowed)
 				continue;
 
 			owner = n->name;
 			break;
 		}
-
-		lxc_strmunmap(buf, sb.st_size);
 	}
 
 	if (!owner)
@@ -787,29 +769,12 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 		return NULL;
 	}
 
-	/* Note that the file needs to be truncated to the size **without** the
-	 * \0 byte! Files are not \0-terminated!
-	 */
-	ret = ftruncate(fd, sb.st_size + slen);
+	if (lxc_pwrite_nointr(fd, newline, slen, length) != slen)
+		CMD_SYSERROR("Failed to append new entry \"%s\" to database file", newline);
+
+	ret = ftruncate(fd, length + slen);
 	if (ret < 0)
 		CMD_SYSERROR("Failed to truncate file\n");
-
-	buf = lxc_strmmap(NULL, sb.st_size + slen, PROT_READ | PROT_WRITE,
-			  MAP_SHARED, fd, 0);
-	if (buf == MAP_FAILED) {
-		CMD_SYSERROR("Failed to establish shared memory mapping\n");
-
-		if (lxc_netdev_delete_by_name(nicname) != 0)
-			usernic_error("Error unlinking %s\n", nicname);
-
-		return NULL;
-	}
-
-	/* Note that the memory needs to be moved in the buffer **without** the
-	 * \0 byte! Files are not \0-terminated!
-	 */
-	memmove(buf + sb.st_size, newline, slen);
-	lxc_strmunmap(buf, sb.st_size + slen);
 
 	return strdup(nicname);
 }

@@ -133,6 +133,17 @@ ssize_t lxc_write_nointr(int fd, const void *buf, size_t count)
 	return ret;
 }
 
+ssize_t lxc_pwrite_nointr(int fd, const void *buf, size_t count, off_t offset)
+{
+	ssize_t ret;
+
+	do {
+		ret = pwrite(fd, buf, count, offset);
+	} while (ret < 0 && errno == EINTR);
+
+	return ret;
+}
+
 ssize_t lxc_send_nointr(int sockfd, void *buf, size_t len, int flags)
 {
 	ssize_t ret;
@@ -400,37 +411,39 @@ int fd_to_fd(int from, int to)
 	return 0;
 }
 
-static char *fd_to_buf(int fd, size_t *length)
+int fd_to_buf(int fd, char **buf, size_t *length)
 {
 	__do_free char *copy = NULL;
 
 	if (!length)
-		return NULL;
+		return 0;
 
 	*length = 0;
 	for (;;) {
 		ssize_t bytes_read;
-		char buf[4096];
+		char chunk[4096];
 		char *old = copy;
 
-		bytes_read = lxc_read_nointr(fd, buf, sizeof(buf));
+		bytes_read = lxc_read_nointr(fd, chunk, sizeof(chunk));
 		if (bytes_read < 0)
-			return NULL;
+			return 0;
 
 		if (!bytes_read)
 			break;
 
 		copy = must_realloc(old, (*length + bytes_read) * sizeof(*old));
-		memcpy(copy + *length, buf, bytes_read);
+		memcpy(copy + *length, chunk, bytes_read);
 		*length += bytes_read;
 	}
 
-	return move_ptr(copy);
+	*buf = move_ptr(copy);
+	return 0;
 }
 
 char *file_to_buf(const char *path, size_t *length)
 {
 	__do_close int fd = -EBADF;
+	char *buf = NULL;
 
 	if (!length)
 		return NULL;
@@ -439,7 +452,10 @@ char *file_to_buf(const char *path, size_t *length)
 	if (fd < 0)
 		return NULL;
 
-	return fd_to_buf(fd, length);
+	if (fd_to_buf(fd, &buf, length) < 0)
+		return NULL;
+
+	return buf;
 }
 
 FILE *fopen_cached(const char *path, const char *mode, void **caller_freed_buffer)
@@ -470,8 +486,7 @@ FILE *fdopen_cached(int fd, const char *mode, void **caller_freed_buffer)
 	__do_free char *buf = NULL;
 	size_t len = 0;
 
-	buf = fd_to_buf(fd, &len);
-	if (!buf)
+	if (fd_to_buf(fd, &buf, &len) < 0)
 		return NULL;
 
 	f = fmemopen(buf, len, mode);
