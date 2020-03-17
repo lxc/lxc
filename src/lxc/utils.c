@@ -1833,5 +1833,9 @@ bool lxc_can_use_pidfd(int pidfd)
 	if (ret < 0)
 		return log_error_errno(false, errno, "Kernel does not support waiting on processes through pidfds");
 
+	ret = lxc_raw_pidfd_send_signal(pidfd, 0, NULL, 0);
+	if (ret)
+		return log_error_errno(false, errno, "Kernel does not support sending singals through pidfds");
+
 	return log_trace(true, "Kernel supports pidfds");
 }

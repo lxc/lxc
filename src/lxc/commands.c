@@ -689,7 +689,7 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 		stopsignal = handler->conf->stopsignal;
 	memset(&rsp, 0, sizeof(rsp));
 
-	if (handler-> pidfd >= 0)
+	if (handler->pidfd >= 0)
 		rsp.ret = lxc_raw_pidfd_send_signal(handler->pidfd, stopsignal, NULL, 0);
 	else
 		rsp.ret = kill(handler->pid, stopsignal);
