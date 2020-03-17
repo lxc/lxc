@@ -236,7 +236,7 @@ lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
 lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
 lxc.mount.entry = shm dev/shm tmpfs defaults,create=dir 0 0
-lxc.mount.entry = mqueue dev/mqueue mqueue defaults,create=dir 0 0
+lxc.mount.entry = mqueue dev/mqueue mqueue defaults,optional,create=dir 0 0
 EOF
 
   libdirs="\
