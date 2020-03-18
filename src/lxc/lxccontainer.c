@@ -81,19 +81,6 @@
 #include "include/strlcpy.h"
 #endif
 
-/* Define faccessat() if missing from the C library */
-#ifndef HAVE_FACCESSAT
-static int faccessat(int __fd, const char *__file, int __type, int __flag)
-{
-#ifdef __NR_faccessat
-	return syscall(__NR_faccessat, __fd, __file, __type, __flag);
-#else
-	errno = ENOSYS;
-	return -1;
-#endif
-}
-#endif
-
 lxc_log_define(lxccontainer, lxc);
 
 static bool do_lxcapi_destroy(struct lxc_container *c);

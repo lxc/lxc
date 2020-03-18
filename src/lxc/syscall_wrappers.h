@@ -16,6 +16,7 @@
 #include <unistd.h>
 
 #include "config.h"
+#include "syscall_numbers.h"
 
 #ifdef HAVE_LINUX_MEMFD_H
 #include <linux/memfd.h>
@@ -31,12 +32,7 @@ typedef int32_t key_serial_t;
 static inline long __keyctl(int cmd, unsigned long arg2, unsigned long arg3,
 			    unsigned long arg4, unsigned long arg5)
 {
-#ifdef __NR_keyctl
 	return syscall(__NR_keyctl, cmd, arg2, arg3, arg4, arg5);
-#else
-	errno = ENOSYS;
-	return -1;
-#endif
 }
 #define keyctl __keyctl
 #endif
@@ -56,90 +52,29 @@ static inline long __keyctl(int cmd, unsigned long arg2, unsigned long arg3,
 #endif
 
 #ifndef HAVE_MEMFD_CREATE
-static inline int memfd_create_lxc(const char *name, unsigned int flags) {
-	#ifndef __NR_memfd_create
-		#if defined __i386__
-			#define __NR_memfd_create 356
-		#elif defined __x86_64__
-			#define __NR_memfd_create 319
-		#elif defined __arm__
-			#define __NR_memfd_create 385
-		#elif defined __aarch64__
-			#define __NR_memfd_create 279
-		#elif defined __s390__
-			#define __NR_memfd_create 350
-		#elif defined __powerpc__
-			#define __NR_memfd_create 360
-		#elif defined __sparc__
-			#define __NR_memfd_create 348
-		#elif defined __blackfin__
-			#define __NR_memfd_create 390
-		#elif defined __ia64__
-			#define __NR_memfd_create 1340
-		#elif defined _MIPS_SIM
-			#if _MIPS_SIM == _MIPS_SIM_ABI32
-				#define __NR_memfd_create 4354
-			#endif
-			#if _MIPS_SIM == _MIPS_SIM_NABI32
-				#define __NR_memfd_create 6318
-			#endif
-			#if _MIPS_SIM == _MIPS_SIM_ABI64
-				#define __NR_memfd_create 5314
-			#endif
-		#endif
-	#endif
-	#ifdef __NR_memfd_create
+static inline int memfd_create_lxc(const char *name, unsigned int flags)
+{
 	return syscall(__NR_memfd_create, name, flags);
-	#else
-	errno = ENOSYS;
-	return -1;
-	#endif
 }
 #define memfd_create memfd_create_lxc
 #else
 extern int memfd_create(const char *name, unsigned int flags);
 #endif
 
-#if !HAVE_PIVOT_ROOT
+#ifndef HAVE_PIVOT_ROOT
 static int pivot_root(const char *new_root, const char *put_old)
 {
-#ifdef __NR_pivot_root
 	return syscall(__NR_pivot_root, new_root, put_old);
-#else
-	errno = ENOSYS;
-	return -1;
-#endif
 }
 #else
 extern int pivot_root(const char *new_root, const char *put_old);
-#endif
-
-#if !defined(__NR_setns) && !defined(__NR_set_ns)
-	#if defined(__x86_64__)
-		#define __NR_setns 308
-	#elif defined(__i386__)
-		#define __NR_setns 346
-	#elif defined(__arm__)
-		#define __NR_setns 375
-	#elif defined(__aarch64__)
-		#define __NR_setns 375
-	#elif defined(__powerpc__)
-		#define __NR_setns 350
-	#elif defined(__s390__)
-		#define __NR_setns 339
-	#endif
 #endif
 
 /* Define sethostname() if missing from the C library */
 #ifndef HAVE_SETHOSTNAME
 static inline int sethostname(const char *name, size_t len)
 {
-#ifdef __NR_sethostname
 	return syscall(__NR_sethostname, name, len);
-#else
-	errno = ENOSYS;
-	return -1;
-#endif
 }
 #endif
 
@@ -147,14 +82,7 @@ static inline int sethostname(const char *name, size_t len)
 #ifndef HAVE_SETNS
 static inline int setns(int fd, int nstype)
 {
-#ifdef __NR_setns
 	return syscall(__NR_setns, fd, nstype);
-#elif defined(__NR_set_ns)
-	return syscall(__NR_set_ns, fd, nstype);
-#else
-	errno = ENOSYS;
-	return -1;
-#endif
 }
 #endif
 
@@ -179,48 +107,6 @@ struct signalfd_siginfo {
 	uint8_t __pad[48];
 };
 
-#ifndef __NR_signalfd4
-/* assume kernel headers are too old */
-#if __i386__
-#define __NR_signalfd4 327
-#elif __x86_64__
-#define __NR_signalfd4 289
-#elif __powerpc__
-#define __NR_signalfd4 313
-#elif __s390x__
-#define __NR_signalfd4 322
-#elif __arm__
-#define __NR_signalfd4 355
-#elif __mips__ && _MIPS_SIM == _ABIO32
-#define __NR_signalfd4 4324
-#elif __mips__ && _MIPS_SIM == _ABI64
-#define __NR_signalfd4 5283
-#elif __mips__ && _MIPS_SIM == _ABIN32
-#define __NR_signalfd4 6287
-#endif
-#endif
-
-#ifndef __NR_signalfd
-/* assume kernel headers are too old */
-#if __i386__
-#define __NR_signalfd 321
-#elif __x86_64__
-#define __NR_signalfd 282
-#elif __powerpc__
-#define __NR_signalfd 305
-#elif __s390x__
-#define __NR_signalfd 316
-#elif __arm__
-#define __NR_signalfd 349
-#elif __mips__ && _MIPS_SIM == _ABIO32
-#define __NR_signalfd 4317
-#elif __mips__ && _MIPS_SIM == _ABI64
-#define __NR_signalfd 5276
-#elif __mips__ && _MIPS_SIM == _ABIN32
-#define __NR_signalfd 6280
-#endif
-#endif
-
 static inline int signalfd(int fd, const sigset_t *mask, int flags)
 {
 	int retval;
@@ -237,15 +123,18 @@ static inline int signalfd(int fd, const sigset_t *mask, int flags)
 #ifndef HAVE_UNSHARE
 static inline int unshare(int flags)
 {
-#ifdef __NR_unshare
 	return syscall(__NR_unshare, flags);
-#else
-	errno = ENOSYS;
-	return -1;
-#endif
 }
 #else
 extern int unshare(int);
+#endif
+
+/* Define faccessat() if missing from the C library */
+#ifndef HAVE_FACCESSAT
+static int faccessat(int __fd, const char *__file, int __type, int __flag)
+{
+	return syscall(__NR_faccessat, __fd, __file, __type, __flag);
+}
 #endif
 
 #endif /* __LXC_SYSCALL_WRAPPER_H */

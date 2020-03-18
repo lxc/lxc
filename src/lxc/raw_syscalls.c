@@ -15,16 +15,12 @@
 #include "config.h"
 #include "macro.h"
 #include "raw_syscalls.h"
+#include "syscall_numbers.h"
 
 int lxc_raw_execveat(int dirfd, const char *pathname, char *const argv[],
 		     char *const envp[], int flags)
 {
-#ifdef __NR_execveat
-	syscall(__NR_execveat, dirfd, pathname, argv, envp, flags);
-#else
-	errno = ENOSYS;
-#endif
-	return -1;
+	return syscall(__NR_execveat, dirfd, pathname, argv, envp, flags);
 }
 
 /*
@@ -122,11 +118,6 @@ pid_t lxc_raw_clone_cb(int (*fn)(void *), void *args, unsigned long flags,
 
 	return pid;
 }
-
-/* For all the architectures we care about it's the same syscall number. */
-#ifndef __NR_pidfd_send_signal
-#define __NR_pidfd_send_signal 424
-#endif
 
 int lxc_raw_pidfd_send_signal(int pidfd, int sig, siginfo_t *info,
 			      unsigned int flags)

@@ -38,12 +38,7 @@ lxc_log_define(seccomp, lxc);
 static inline int __seccomp(unsigned int operation, unsigned int flags,
 			  void *args)
 {
-#ifdef __NR_seccomp
 	return syscall(__NR_seccomp, operation, flags, args);
-#else
-	errno = ENOSYS;
-	return -1;
-#endif
 }
 #endif
 

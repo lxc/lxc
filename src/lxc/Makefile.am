@@ -43,6 +43,7 @@ noinst_HEADERS = api_extensions.h \
 		 storage/storage_utils.h \
 		 storage/zfs.h \
 		 string_utils.h \
+		 syscall_numbers.h \
 		 syscall_wrappers.h \
 		 terminal.h \
 		 ../tests/lxctest.h \
@@ -145,6 +146,7 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    storage/zfs.c storage/zfs.h \
 		    string_utils.c string_utils.h \
 		    sync.c sync.h \
+		    syscall_numbers.h \
 		    syscall_wrappers.h \
 		    terminal.c \
 		    utils.c utils.h \
@@ -360,6 +362,7 @@ lxc_top_SOURCES = tools/lxc_top.c \
 lxc_unfreeze_SOURCES = tools/lxc_unfreeze.c \
 		       tools/arguments.c tools/arguments.h
 lxc_unshare_SOURCES = tools/lxc_unshare.c \
+		      syscall_numbers.h \
 		      tools/arguments.c tools/arguments.h
 lxc_wait_SOURCES = tools/lxc_wait.c \
 		   tools/arguments.c tools/arguments.h
@@ -381,6 +384,7 @@ init_lxc_SOURCES = cmd/lxc_init.c \
 		   memory_utils.h \
 		   parse.c parse.h \
 		   raw_syscalls.c raw_syscalls.h \
+		   syscall_numbers.h \
 		   string_utils.c string_utils.h
 
 init_lxc_LDFLAGS = -pthread
@@ -391,6 +395,7 @@ lxc_monitord_SOURCES = cmd/lxc_monitord.c \
 		       mainloop.c mainloop.h \
 		       monitor.c monitor.h \
 		       raw_syscalls.c raw_syscalls.h \
+		       syscall_numbers.h \
 		       utils.c utils.h
 lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
 		       ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
@@ -399,6 +404,7 @@ lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
 		       network.c network.h \
 		       parse.c parse.h \
 		       raw_syscalls.c raw_syscalls.h \
+		       syscall_numbers.h \
 		       file_utils.c file_utils.h \
 		       string_utils.c string_utils.h \
 		       syscall_wrappers.h
