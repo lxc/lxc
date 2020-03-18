@@ -17,50 +17,24 @@
 
 #include "conf.h"
 #include "config.h"
+#include "syscall_numbers.h"
 
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
 #include <linux/bpf.h>
 #include <linux/filter.h>
 #endif
 
-#if !HAVE_BPF
-#if !(defined __NR_bpf && __NR_bpf > 0)
-#if defined __NR_bpf
-#undef __NR_bpf
-#endif
-#if defined __i386__
-#define __NR_bpf 357
-#elif defined __x86_64__
-#define __NR_bpf 321
-#elif defined __aarch64__
-#define __NR_bpf 280
-#elif defined __arm__
-#define __NR_bpf 386
-#elif defined __sparc__
-#define __NR_bpf 349
-#elif defined __s390__
-#define __NR_bpf 351
-#elif defined __tilegx__
-#define __NR_bpf 280
-#else
-#warning "__NR_bpf not defined for your architecture"
-#endif
-#endif
+#ifndef HAVE_BPF
 
 union bpf_attr;
 
 static inline int missing_bpf(int cmd, union bpf_attr *attr, size_t size)
 {
-#ifdef __NR_bpf
-	return (int)syscall(__NR_bpf, cmd, attr, size);
-#else
-	errno = ENOSYS;
-	return -1;
-#endif
+	return syscall(__NR_bpf, cmd, attr, size);
 }
 
 #define bpf missing_bpf
-#endif
+#endif /* HAVE_BPF */
 
 struct bpf_program {
 	int device_list_type;
@@ -70,7 +44,7 @@ struct bpf_program {
 	size_t n_instructions;
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
 	struct bpf_insn *instructions;
-#endif
+#endif /* HAVE_STRUCT_BPF_CGROUP_DEV_CTX */
 
 	char *attached_path;
 	int attached_type;
@@ -97,7 +71,7 @@ static inline void __auto_bpf_program_free__(struct bpf_program **prog)
 	}
 }
 int bpf_list_add_device(struct lxc_conf *conf, struct device_item *device);
-#else
+#else /* !HAVE_STRUCT_BPF_CGROUP_DEV_CTX */
 static inline struct bpf_program *bpf_program_new(uint32_t prog_type)
 {
 	errno = ENOSYS;
@@ -160,7 +134,7 @@ static inline int bpf_list_add_device(struct lxc_conf *conf,
 	errno = ENOSYS;
 	return -1;
 }
-#endif
+#endif /* !HAVE_STRUCT_BPF_CGROUP_DEV_CTX */
 
 #define __do_bpf_program_free \
 	__attribute__((__cleanup__(__auto_bpf_program_free__)))

@@ -41,7 +41,6 @@ struct start_arg {
 };
 
 static int my_parser(struct lxc_arguments *args, int c, char *arg);
-static inline int sethostname_including_android(const char *name, size_t len);
 static int get_namespace_flags(char *namespaces);
 static bool lookup_user(const char *oparg, uid_t *uid);
 static int mount_fs(const char *source, const char *target, const char *type);
@@ -127,23 +126,6 @@ static int my_parser(struct lxc_arguments *args, int c, char *arg)
 		break;
 	}
 	return 0;
-}
-
-/* Define sethostname() if missing from the C library also workaround some
- * quirky with having this defined in multiple places.
- */
-static inline int sethostname_including_android(const char *name, size_t len)
-{
-#ifndef HAVE_SETHOSTNAME
-#ifdef __NR_sethostname
-	return syscall(__NR_sethostname, name, len);
-#else
-	errno = ENOSYS;
-	return -1;
-#endif
-#else
-	return sethostname(name, len);
-#endif
 }
 
 static int get_namespace_flags(char *namespaces)
@@ -266,7 +248,7 @@ static int do_start(void *arg)
 		lxc_setup_fs();
 
 	if ((start_arg->flags & CLONE_NEWUTS) && want_hostname)
-		if (sethostname_including_android(want_hostname, strlen(want_hostname)) < 0) {
+		if (sethostname(want_hostname, strlen(want_hostname)) < 0) {
 			SYSERROR("Failed to set hostname %s", want_hostname);
 			_exit(EXIT_FAILURE);
 		}

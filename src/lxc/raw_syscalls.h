@@ -81,7 +81,7 @@ static inline pid_t lxc_raw_getpid(void)
 
 static inline pid_t lxc_raw_gettid(void)
 {
-#ifdef __NR_gettid
+#if __NR_gettid > 0
 	return syscall(__NR_gettid);
 #else
 	return lxc_raw_getpid();
