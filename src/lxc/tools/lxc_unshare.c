@@ -26,6 +26,8 @@
 #include "list.h"
 #include "log.h"
 #include "namespace.h"
+#include "syscall_numbers.h"
+#include "syscall_wrappers.h"
 #include "utils.h"
 
 lxc_log_define(lxc_unshare, lxc);

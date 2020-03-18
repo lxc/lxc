@@ -363,6 +363,7 @@ lxc_unfreeze_SOURCES = tools/lxc_unfreeze.c \
 		       tools/arguments.c tools/arguments.h
 lxc_unshare_SOURCES = tools/lxc_unshare.c \
 		      syscall_numbers.h \
+		      syscall_wrapper.h \
 		      tools/arguments.c tools/arguments.h
 lxc_wait_SOURCES = tools/lxc_wait.c \
 		   tools/arguments.c tools/arguments.h
