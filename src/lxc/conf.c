@@ -1875,11 +1875,9 @@ static int mount_entry(const char *fsname, const char *target,
 			 * does not have any flags which are not already in
 			 * mountflags, then skip the remount.
 			 */
-			if (!(mountflags & MS_REMOUNT)) {
-				if (!(required_flags & ~mountflags)) {
-					DEBUG("Mountflags already were %lu, skipping remount", mountflags);
-					goto skipremount;
-				}
+			if (!(mountflags & MS_REMOUNT) && !(required_flags & ~mountflags)) {
+				DEBUG("Mountflags already were %lu, skipping remount", mountflags);
+				goto skipremount;
 			}
 
 			mountflags |= required_flags;
