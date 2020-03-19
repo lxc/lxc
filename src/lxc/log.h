@@ -477,69 +477,79 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 	} while (0)
 #endif
 
-#define log_error_errno(__ret__, __errno__, format, ...) \
-	({						 \
-		errno = __errno__;			 \
-		SYSERROR(format, ##__VA_ARGS__);	 \
-		__ret__;				 \
+#define log_error_errno(__ret__, __errno__, format, ...)      \
+	({                                                    \
+		typeof(__ret__) __internal_ret__ = (__ret__); \
+		errno = (__errno__);                          \
+		SYSERROR(format, ##__VA_ARGS__);              \
+		__internal_ret__;                             \
 	})
 
-#define log_error(__ret__, format, ...)	      \
-	({				      \
-		ERROR(format, ##__VA_ARGS__); \
-		__ret__;		      \
+#define log_error(__ret__, format, ...)                       \
+	({                                                    \
+		typeof(__ret__) __internal_ret__ = (__ret__); \
+		ERROR(format, ##__VA_ARGS__);                 \
+		__internal_ret__;                             \
 	})
 
-#define log_trace_errno(__ret__, __errno__, format, ...) \
-	({                                               \
-		errno = __errno__;			 \
-		SYSTRACE(format, ##__VA_ARGS__);         \
-		__ret__;                                 \
+#define log_trace_errno(__ret__, __errno__, format, ...)      \
+	({                                                    \
+		typeof(__ret__) __internal_ret__ = (__ret__); \
+		errno = __errno__;                            \
+		SYSTRACE(format, ##__VA_ARGS__);              \
+		__internal_ret__;                             \
 	})
 
-#define log_trace(__ret__, format, ...)	      \
-	({                                    \
-		TRACE(format, ##__VA_ARGS__); \
-		__ret__;                      \
+#define log_trace(__ret__, format, ...)                       \
+	({                                                    \
+		typeof(__ret__) __internal_ret__ = (__ret__); \
+		TRACE(format, ##__VA_ARGS__);                 \
+		__internal_ret__;                             \
 	})
 
-#define log_warn_errno(__ret__, __errno__, format, ...) \
-	({						\
-		errno = __errno__;			\
-		SYSWARN(format, ##__VA_ARGS__);		\
-		__ret__;				\
+#define log_warn_errno(__ret__, __errno__, format, ...)       \
+	({                                                    \
+		typeof(__ret__) __internal_ret__ = (__ret__); \
+		errno = __errno__;                            \
+		SYSWARN(format, ##__VA_ARGS__);               \
+		__internal_ret__;                             \
 	})
 
-#define log_warn(__ret__, format, ...)       \
-	({                                   \
-		WARN(format, ##__VA_ARGS__); \
-		__ret__;                     \
+#define log_warn(__ret__, format, ...)                        \
+	({                                                    \
+		typeof(__ret__) __internal_ret__ = (__ret__); \
+		WARN(format, ##__VA_ARGS__);                  \
+		__internal_ret__;                             \
 	})
 
-#define log_debug_errno(__ret__, __errno__, format, ...) \
-	({						 \
-		errno = __errno__;		         \
-		SYSDEBUG(format, ##__VA_ARGS__);	 \
-		__ret__;				 \
+#define log_debug_errno(__ret__, __errno__, format, ...)      \
+	({                                                    \
+		typeof(__ret__) __internal_ret__ = (__ret__); \
+		errno = __errno__;                            \
+		SYSDEBUG(format, ##__VA_ARGS__);              \
+		__internal_ret__;                             \
 	})
 
-#define log_debug(__ret__, format, ...)	      \
-	({				      \
-		DEBUG(format, ##__VA_ARGS__); \
-		__ret__;		      \
+#define log_debug(__ret__, format, ...)                       \
+	({                                                    \
+		typeof(__ret__) __internal_ret__ = (__ret__); \
+		DEBUG(format, ##__VA_ARGS__);                 \
+		__internal_ret__;                             \
 	})
 
-#define log_info_errno(__ret__, __errno__, format, ...) \
-	({                                              \
-		errno = __errno__;                      \
-		SYSINFO(format, ##__VA_ARGS__);         \
-		__ret__;                                \
+#define log_info_errno(__ret__, __errno__, format, ...)       \
+	({                                                    \
+		typeof(__ret__) __internal_ret__ = (__ret__); \
+		errno = __errno__;                            \
+		SYSINFO(format, ##__VA_ARGS__);               \
+		__internal_ret__;                             \
 	})
 
-#define log_info(__ret__, format, ...)       \
-	({                                   \
-		INFO(format, ##__VA_ARGS__); \
-		__ret__;                     \
+#define log_info(__ret__, format, ...)                        \
+	({                                                    \
+		typeof(__ret__) __internal_ret__ = (__ret__); \
+		INFO(format, ##__VA_ARGS__);                  \
+		__internal_ret__;                             \
 	})
 
 extern int lxc_log_fd;

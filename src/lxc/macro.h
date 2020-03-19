@@ -442,24 +442,23 @@ enum {
 		__internal_fd__;            \
 	})
 
-#define ret_set_errno(__ret__, __errno__) \
-	({                                \
-		errno = __errno__;        \
-		__ret__;                  \
+#define ret_set_errno(__ret__, __errno__)                     \
+	({                                                    \
+		typeof(__ret__) __internal_ret__ = (__ret__); \
+		errno = (__errno__);                          \
+		__internal_ret__;                             \
 	})
 
-#define ret_errno(__errno__)       \
-	({                         \
-		errno = __errno__; \
-		-__errno__;        \
+#define ret_errno(__errno__)         \
+	({                           \
+		errno = (__errno__); \
+		-(__errno__);        \
 	})
 
-#define free_replace_move_ptr(a, b) \
-	({                          \
-		free(a);            \
-		(a) = (b);          \
-		(b) = NULL;         \
-		0;                  \
+#define free_move_ptr(a, b)          \
+	({                           \
+		free(a);             \
+		(a) = move_ptr((b)); \
 	})
 
 /* Container's specific file/directory names */

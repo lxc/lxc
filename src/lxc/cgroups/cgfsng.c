@@ -1002,17 +1002,23 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 {
 	int ret;
 
-	if (!ops)
-		log_error_errno(return, ENOENT, "Called with uninitialized cgroup operations");
+	if (!ops) {
+		ERROR("Called with uninitialized cgroup operations");
+		return;
+	}
 
 	if (!ops->hierarchies)
 		return;
 
-	if (!handler)
-		log_error_errno(return, EINVAL, "Called with uninitialized handler");
+	if (!handler) {
+		ERROR("Called with uninitialized handler");
+		return;
+	}
 
-	if (!handler->conf)
-		log_error_errno(return, EINVAL, "Called with uninitialized conf");
+	if (!handler->conf) {
+		ERROR("Called with uninitialized conf");
+		return;
+	}
 
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
 	ret = bpf_program_cgroup_detach(handler->conf->cgroup2_devices);
@@ -1033,7 +1039,7 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 		ret = cgroup_rmdir(ops->hierarchies, ops->container_cgroup);
 	}
 	if (ret < 0)
-		log_warn_errno(return, errno, "Failed to destroy cgroups");
+		SYSWARN("Failed to destroy cgroups");
 }
 
 __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
@@ -1043,17 +1049,23 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
 	const struct lxc_conf *conf;
 
-	if (!ops)
-		log_error_errno(return, ENOENT, "Called with uninitialized cgroup operations");
+	if (!ops) {
+		ERROR("Called with uninitialized cgroup operations");
+		return;
+	}
 
 	if (!ops->hierarchies)
 		return;
 
-	if (!handler)
-		log_error_errno(return, EINVAL, "Called with uninitialized handler");
+	if (!handler) {
+		ERROR("Called with uninitialized handler");
+		return;
+	}
 
-	if (!handler->conf)
-		log_error_errno(return, EINVAL, "Called with uninitialized conf");
+	if (!handler->conf) {
+		ERROR("Called with uninitialized conf");
+		return;
+	}
 	conf = handler->conf;
 
 	len = snprintf(pidstr, sizeof(pidstr), "%d", handler->monitor_pid);
@@ -1079,15 +1091,16 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 						    CGROUP_PIVOT, NULL);
 
 		ret = mkdir_p(pivot_path, 0755);
-		if (ret < 0 && errno != EEXIST)
-			log_error_errno(goto try_recursive_destroy, errno,
-					"Failed to create %s", pivot_path);
+		if (ret < 0 && errno != EEXIST) {
+			ERROR("Failed to create %s", pivot_path);
+			goto try_recursive_destroy;
+		}
 
 		ret = lxc_write_openat(pivot_path, "cgroup.procs", pidstr, len);
-		if (ret != 0)
-			log_warn_errno(continue, errno,
-				       "Failed to move monitor %s to \"%s\"",
-				       pidstr, pivot_path);
+		if (ret != 0) {
+			SYSWARN("Failed to move monitor %s to \"%s\"", pidstr, pivot_path);
+			continue;
+		}
 
 try_recursive_destroy:
 		ret = recursive_destroy(h->monitor_full_path);
@@ -1741,10 +1754,10 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			continue;
 
 		ret = mkdir(controllerpath, 0755);
-		if (ret < 0)
-			log_error_errno(goto on_error, errno,
-					"Error creating cgroup path: %s",
-					controllerpath);
+		if (ret < 0) {
+			ERROR("Error creating cgroup path: %s", controllerpath);
+			goto on_error;
+		}
 
 		if (has_cgns && wants_force_mount) {
 			/* If cgroup namespaces are supported but the container
@@ -2544,11 +2557,12 @@ __cgfsng_ops static bool cgfsng_setup_limits_legacy(struct cgroup_ops *ops,
 
 		if (do_devices == !strncmp("devices", cg->subsystem, 7)) {
 			if (cg_legacy_set_data(ops, cg->subsystem, cg->value)) {
-				if (do_devices && (errno == EACCES || errno == EPERM))
-					log_warn_errno(continue, errno, "Failed to set \"%s\" to \"%s\"",
-						       cg->subsystem, cg->value);
-				log_warn_errno(goto out, errno, "Failed to set \"%s\" to \"%s\"",
-					       cg->subsystem, cg->value);
+				if (do_devices && (errno == EACCES || errno == EPERM)) {
+					SYSWARN("Failed to set \"%s\" to \"%s\"", cg->subsystem, cg->value);
+					continue;
+				}
+				SYSERROR("Failed to set \"%s\" to \"%s\"", cg->subsystem, cg->value);
+				goto out;
 			}
 			DEBUG("Set controller \"%s\" set to \"%s\"", cg->subsystem, cg->value);
 		}
@@ -2830,7 +2844,8 @@ static void cg_unified_delegate(char ***delegate)
 			idx = append_null_to_list((void ***)delegate);
 			(*delegate)[idx] = must_copy_string(*p);
 		}
-		log_warn_errno(return, errno, "Failed to read /sys/kernel/cgroup/delegate");
+		SYSWARN("Failed to read /sys/kernel/cgroup/delegate");
+		return;
 	}
 
 	lxc_iterate_parts (token, buf, " \t\n") {
@@ -2909,19 +2924,25 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 			continue;
 
 		if (type == CGROUP_SUPER_MAGIC)
-			if (controller_list_is_dup(ops->hierarchies, controller_list))
-				log_trace_errno(continue, EEXIST, "Skipping duplicating controller");
+			if (controller_list_is_dup(ops->hierarchies, controller_list)) {
+				TRACE("Skipping duplicating controller");
+				continue;
+			}
 
 		mountpoint = cg_hybrid_get_mountpoint(line);
-		if (!mountpoint)
-			log_error_errno(continue, EINVAL, "Failed parsing mountpoint from \"%s\"", line);
+		if (!mountpoint) {
+			ERROR("Failed parsing mountpoint from \"%s\"", line);
+			continue;
+		}
 
 		if (type == CGROUP_SUPER_MAGIC)
 			base_cgroup = cg_hybrid_get_current_cgroup(basecginfo, controller_list[0], CGROUP_SUPER_MAGIC);
 		else
 			base_cgroup = cg_hybrid_get_current_cgroup(basecginfo, NULL, CGROUP2_SUPER_MAGIC);
-		if (!base_cgroup)
-			log_error_errno(continue, EINVAL, "Failed to find current cgroup");
+		if (!base_cgroup) {
+			ERROR("Failed to find current cgroup");
+			continue;
+		}
 
 		trim(base_cgroup);
 		prune_init_scope(base_cgroup);
@@ -2929,8 +2950,10 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 			writeable = test_writeable_v2(mountpoint, base_cgroup);
 		else
 			writeable = test_writeable_v1(mountpoint, base_cgroup);
-		if (!writeable)
-			log_trace_errno(continue, EROFS, "The %s group is not writeable", base_cgroup);
+		if (!writeable) {
+			TRACE("The %s group is not writeable", base_cgroup);
+			continue;
+		}
 
 		if (type == CGROUP2_SUPER_MAGIC) {
 			char *cgv2_ctrl_path;
@@ -2949,8 +2972,10 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 		}
 
 		/* Exclude all controllers that cgroup use does not want. */
-		if (!cgroup_use_wants_controllers(ops, controller_list))
-			log_trace_errno(continue, EINVAL, "Skipping controller");
+		if (!cgroup_use_wants_controllers(ops, controller_list)) {
+			TRACE("Skipping controller");
+			continue;
+		}
 
 		new = add_hierarchy(&ops->hierarchies, move_ptr(controller_list), move_ptr(mountpoint), move_ptr(base_cgroup), type);
 		if (type == CGROUP2_SUPER_MAGIC && !ops->unified) {
