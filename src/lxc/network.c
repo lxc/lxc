@@ -3359,7 +3359,7 @@ int lxc_network_move_created_netdev_priv(struct lxc_handler *handler)
 			physname = is_wlan(netdev->link);
 
 		if (physname)
-			ret = lxc_netdev_move_wlan(physname, netdev->link, pid, NULL);
+			ret = lxc_netdev_move_wlan(physname, netdev->link, pid, netdev->name);
 		else
 			ret = lxc_netdev_move_by_index(netdev->ifindex, pid, netdev->name);
 		if (ret) {
