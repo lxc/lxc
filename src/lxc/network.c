@@ -129,11 +129,8 @@ static int lxc_setup_ipv4_routes(struct lxc_list *ip, int ifindex)
 		struct lxc_inetdev *inetdev = iterator->elem;
 
 		err = lxc_ipv4_dest_add(ifindex, &inetdev->addr, inetdev->prefix);
-		if (err) {
-			SYSERROR("Failed to setup ipv4 route for network device "
-			         "with ifindex %d", ifindex);
-			return ret_set_errno(-1, -err);
-		}
+		if (err)
+			return log_error_errno(-1, -err, "Failed to setup ipv4 route for network device with ifindex %d", ifindex);
 	}
 
 	return 0;
@@ -148,11 +145,8 @@ static int lxc_setup_ipv6_routes(struct lxc_list *ip, int ifindex)
 		struct lxc_inet6dev *inet6dev = iterator->elem;
 
 		err = lxc_ipv6_dest_add(ifindex, &inet6dev->addr, inet6dev->prefix);
-		if (err) {
-			SYSERROR("Failed to setup ipv6 route for network device "
-			         "with ifindex %d", ifindex);
-			return ret_set_errno(-1, -err);
-		}
+		if (err)
+			return log_error_errno(-1, -err, "Failed to setup ipv6 route for network device with ifindex %d", ifindex);
 	}
 
 	return 0;
@@ -169,9 +163,7 @@ static int setup_ipv4_addr_routes(struct lxc_list *ip, int ifindex)
 		err = lxc_ipv4_dest_add(ifindex, &inetdev->addr, 32);
 
 		if (err)
-			return log_error_errno(-1, err,
-				"Failed to setup ipv4 address route for network device with eifindex %d",
-				ifindex);
+			return log_error_errno(-1, err, "Failed to setup ipv4 address route for network device with eifindex %d", ifindex);
 	}
 
 	return 0;
@@ -187,9 +179,7 @@ static int setup_ipv6_addr_routes(struct lxc_list *ip, int ifindex)
 
 		err = lxc_ipv6_dest_add(ifindex, &inet6dev->addr, 128);
 		if (err)
-			return log_error_errno(-1, err,
-				"Failed to setup ipv6 address route for network device with eifindex %d",
-				ifindex);
+			return log_error_errno(-1, err, "Failed to setup ipv6 address route for network device with eifindex %d", ifindex);
 	}
 
 	return 0;
@@ -254,10 +244,10 @@ static int lxc_is_ip_forwarding_enabled(const char *ifname, int family)
 	if (family != AF_INET && family != AF_INET6)
 		return ret_set_errno(-1, EINVAL);
 
-	ret = snprintf(path, PATH_MAX, "/proc/sys/net/%s/conf/%s/%s",
+	ret = snprintf(path, sizeof(path), "/proc/sys/net/%s/conf/%s/%s",
 		       family == AF_INET ? "ipv4" : "ipv6", ifname,
 		       "forwarding");
-	if (ret < 0 || (size_t)ret >= PATH_MAX)
+	if (ret < 0 || (size_t)ret >= sizeof(path))
 		return ret_set_errno(-1, E2BIG);
 
 	return lxc_read_file_expect(path, buf, 1, "1");
@@ -310,11 +300,8 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	}
 
 	err = lxc_veth_create(veth1, veth2, handler->pid, mtu);
-	if (err) {
-		errno = -err;
-		SYSERROR("Failed to create veth pair \"%s\" and \"%s\"", veth1, veth2);
-		return -1;
-	}
+	if (err)
+		return log_error_errno(-1, -err, "Failed to create veth pair \"%s\" and \"%s\"", veth1, veth2);
 
 	strlcpy(netdev->created_name, veth2, IFNAMSIZ);
 
@@ -385,19 +372,19 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		if (netdev->ipv4_gateway) {
 			char bufinet4[INET_ADDRSTRLEN];
 			if (!inet_ntop(AF_INET, netdev->ipv4_gateway, bufinet4, sizeof(bufinet4))) {
-				log_error_errno(-1, -errno, "Failed to convert gateway ipv4 address on \"%s\"", veth1);
+				SYSERROR("Failed to convert gateway ipv4 address on \"%s\"", veth1);
 				goto out_delete;
 			}
 
 			err = lxc_ip_forwarding_on(veth1, AF_INET);
 			if (err) {
-				log_error_errno(-1, err, "Failed to activate ipv4 forwarding on \"%s\"", veth1);
+				SYSERROR("Failed to activate ipv4 forwarding on \"%s\"", veth1);
 				goto out_delete;
 			}
 
 			err = lxc_ip_neigh_proxy(RTM_NEWNEIGH, AF_INET, netdev->priv.veth_attr.ifindex, netdev->ipv4_gateway);
 			if (err) {
-				log_error_errno(-1, err, "Failed to add gateway ipv4 proxy on \"%s\"", veth1);
+				SYSERROR("Failed to add gateway ipv4 proxy on \"%s\"", veth1);
 				goto out_delete;
 			}
 		}
@@ -406,7 +393,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 			char bufinet6[INET6_ADDRSTRLEN];
 
 			if (!inet_ntop(AF_INET6, netdev->ipv6_gateway, bufinet6, sizeof(bufinet6))) {
-				log_error_errno(-1, -errno, "Failed to convert gateway ipv6 address on \"%s\"", veth1);
+				SYSERROR("Failed to convert gateway ipv6 address on \"%s\"", veth1);
 				goto out_delete;
 			}
 
@@ -415,25 +402,25 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 			*/
 			err = lxc_is_ip_forwarding_enabled("all", AF_INET6);
 			if (err) {
-				log_error_errno(-1, err, "Requires sysctl net.ipv6.conf.all.forwarding=1");
+				SYSERROR("Requires sysctl net.ipv6.conf.all.forwarding=1");
 				goto out_delete;
 			}
 
 			err = lxc_ip_forwarding_on(veth1, AF_INET6);
 			if (err) {
-				log_error_errno(-1, err, "Failed to activate ipv6 forwarding on \"%s\"", veth1);
+				SYSERROR("Failed to activate ipv6 forwarding on \"%s\"", veth1);
 				goto out_delete;
 			}
 
 			err = lxc_neigh_proxy_on(veth1, AF_INET6);
 			if (err) {
-				log_error_errno(-1, err, "Failed to activate proxy ndp on \"%s\"", veth1);
+				SYSERROR("Failed to activate proxy ndp on \"%s\"", veth1);
 				goto out_delete;
 			}
 
 			err = lxc_ip_neigh_proxy(RTM_NEWNEIGH, AF_INET6, netdev->priv.veth_attr.ifindex, netdev->ipv6_gateway);
 			if (err) {
-				log_error_errno(-1, err, "Failed to add gateway ipv6 proxy on \"%s\"", veth1);
+				SYSERROR("Failed to add gateway ipv6 proxy on \"%s\"", veth1);
 				goto out_delete;
 			}
 		}
@@ -441,14 +428,14 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		/* setup ipv4 address routes on the host interface */
 		err = setup_ipv4_addr_routes(&netdev->ipv4, netdev->priv.veth_attr.ifindex);
 		if (err) {
-			log_error_errno(-1, err, "Failed to setup ip address routes for network device \"%s\"", veth1);
+			SYSERROR("Failed to setup ip address routes for network device \"%s\"", veth1);
 			goto out_delete;
 		}
 
 		/* setup ipv6 address routes on the host interface */
 		err = setup_ipv6_addr_routes(&netdev->ipv6, netdev->priv.veth_attr.ifindex);
 		if (err) {
-			log_error_errno(-1, err, "Failed to setup ip address routes for network device \"%s\"", veth1);
+			SYSERROR("Failed to setup ip address routes for network device \"%s\"", veth1);
 			goto out_delete;
 		}
 	}
@@ -798,10 +785,8 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 {
 	int err, mtu_orig = 0;
 
-	if (is_empty_string(netdev->link)) {
-		ERROR("No link for physical interface specified");
-		return -1;
-	}
+	if (is_empty_string(netdev->link))
+		return log_error_errno(-1, errno, "No link for physical interface specified");
 
 	/*
 	 * Note that we're retrieving the container's ifindex in the host's
@@ -812,10 +797,8 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 	 * device in the host's namespace.
 	 */
 	netdev->ifindex = if_nametoindex(netdev->link);
-	if (!netdev->ifindex) {
-		ERROR("Failed to retrieve ifindex for \"%s\"", netdev->link);
-		return -1;
-	}
+	if (!netdev->ifindex)
+		return log_error_errno(-1, errno, "Failed to retrieve ifindex for \"%s\"", netdev->link);
 
 	strlcpy(netdev->created_name, netdev->link, IFNAMSIZ);
 	if (is_empty_string(netdev->name))
@@ -832,10 +815,8 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 	 * container shutdown.
 	 */
 	mtu_orig = netdev_get_mtu(netdev->ifindex);
-	if (mtu_orig < 0) {
-		SYSERROR("Failed to get original mtu for interface \"%s\"", netdev->link);
-		return ret_set_errno(-1, -mtu_orig);
-	}
+	if (mtu_orig < 0)
+		return log_error_errno(-1, -mtu_orig, "Failed to get original mtu for interface \"%s\"", netdev->link);
 
 	netdev->priv.phys_attr.mtu = mtu_orig;
 
@@ -843,19 +824,12 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 		unsigned int mtu;
 
 		err = lxc_safe_uint(netdev->mtu, &mtu);
-		if (err < 0) {
-			errno = -err;
-			SYSERROR("Failed to parse mtu \"%s\" for interface \"%s\"",
-				 netdev->mtu, netdev->link);
-			return -1;
-		}
+		if (err < 0)
+			return log_error_errno(-1, -err, "Failed to parse mtu \"%s\" for interface \"%s\"", netdev->mtu, netdev->link);
 
 		err = lxc_netdev_set_mtu(netdev->link, mtu);
-		if (err < 0) {
-			errno = -err;
-			SYSERROR("Failed to set mtu \"%s\" for interface \"%s\"", netdev->mtu, netdev->link);
-			return -1;
-		}
+		if (err < 0)
+			return log_error_errno(-1, -err, "Failed to set mtu \"%s\" for interface \"%s\"", netdev->mtu, netdev->link);
 	}
 
 	if (netdev->upscript) {
@@ -867,9 +841,8 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 
 		err = run_script_argv(handler->name, handler->conf->hooks_version,
 				      "net", netdev->upscript, "up", argv);
-		if (err < 0) {
+		if (err < 0)
 			return -1;
-		}
 	}
 
 	DEBUG("Instantiated phys \"%s\" with ifindex is \"%d\"", netdev->link,
@@ -932,8 +905,7 @@ static int instantiate_ns_veth(struct lxc_netdev *netdev)
 
 		ret = lxc_netdev_rename_by_name(netdev->created_name, netdev->name);
 		if (ret)
-			return log_error_errno(-1,
-					       -ret, "Failed to rename network device \"%s\" to \"%s\"",
+			return log_error_errno(-1, -ret, "Failed to rename network device \"%s\" to \"%s\"",
 					       netdev->created_name,
 					       netdev->name);
 
@@ -945,9 +917,7 @@ static int instantiate_ns_veth(struct lxc_netdev *netdev)
 	 * would be automatically allocated by the system
 	 */
 	if (!if_indextoname(netdev->ifindex, current_ifname))
-		return log_error_errno(-1,
-				       errno, "Failed get name for network device with ifindex %d",
-				       netdev->ifindex);
+		return log_error_errno(-1, errno, "Failed get name for network device with ifindex %d", netdev->ifindex);
 
 	/*
 	 * Now update the recorded name of the network device to reflect the
@@ -963,9 +933,7 @@ static int __instantiate_common(struct lxc_netdev *netdev)
 {
 	netdev->ifindex = if_nametoindex(netdev->name);
 	if (!netdev->ifindex)
-		return log_error_errno(-1,
-				       errno, "Failed to retrieve ifindex for network device with name %s",
-				       netdev->name);
+		return log_error_errno(-1, errno, "Failed to retrieve ifindex for network device with name %s", netdev->name);
 
 	return 0;
 }
@@ -1306,9 +1274,8 @@ int lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid,
 	 * the 80211 module, so for now just call out to iw.
 	 */
 	cmd = on_path("iw", NULL);
-	if (!cmd) {
+	if (!cmd)
 		return -1;
-	}
 
 	fpid = fork();
 	if (fpid < 0)
@@ -1317,8 +1284,7 @@ int lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid,
 	if (fpid == 0) {
 		char pidstr[30];
 		sprintf(pidstr, "%d", pid);
-		execlp("iw", "iw", "phy", physname, "set", "netns", pidstr,
-		       (char *)NULL);
+		execlp("iw", "iw", "phy", physname, "set", "netns", pidstr, (char *)NULL);
 		_exit(EXIT_FAILURE);
 	}
 
@@ -1654,7 +1620,6 @@ int netdev_get_mtu(int ifindex)
 		msg = answer->nlmsghdr;
 
 		while (NLMSG_OK(msg, recv_len)) {
-
 			/* Stop reading if we see an error message */
 			if (msg->nlmsg_type == NLMSG_ERROR) {
 				struct nlmsgerr *errmsg =
@@ -1676,7 +1641,8 @@ int netdev_get_mtu(int ifindex)
 				    msg->nlmsg_len - NLMSG_LENGTH(sizeof(*ifi));
 				res = 0;
 				while (RTA_OK(rta, attr_len)) {
-					/* Found a local address for the
+					/*
+					   Found a local address for the
 					 * requested interface, return it.
 					 */
 					if (rta->rta_type == IFLA_MTU) {
@@ -2039,9 +2005,9 @@ static int ip_forwarding_set(const char *ifname, int family, int flag)
 	if (family != AF_INET && family != AF_INET6)
 		return -EINVAL;
 
-	ret = snprintf(path, PATH_MAX, "/proc/sys/net/%s/conf/%s/%s",
+	ret = snprintf(path, sizeof(path), "/proc/sys/net/%s/conf/%s/%s",
 		       family == AF_INET ? "ipv4" : "ipv6", ifname, "forwarding");
-	if (ret < 0 || (size_t)ret >= PATH_MAX)
+	if (ret < 0 || (size_t)ret >= sizeof(path))
 		return -E2BIG;
 
 	return proc_sys_net_write(path, flag ? "1" : "0");
@@ -2065,10 +2031,10 @@ static int neigh_proxy_set(const char *ifname, int family, int flag)
 	if (family != AF_INET && family != AF_INET6)
 		return -EINVAL;
 
-	ret = snprintf(path, PATH_MAX, "/proc/sys/net/%s/conf/%s/%s",
+	ret = snprintf(path, sizeof(path), "/proc/sys/net/%s/conf/%s/%s",
 		       family == AF_INET ? "ipv4" : "ipv6", ifname,
 		       family == AF_INET ? "proxy_arp" : "proxy_ndp");
-	if (ret < 0 || (size_t)ret >= PATH_MAX)
+	if (ret < 0 || (size_t)ret >= sizeof(path))
 		return -E2BIG;
 
 	return proc_sys_net_write(path, flag ? "1" : "0");
@@ -2083,10 +2049,10 @@ static int lxc_is_ip_neigh_proxy_enabled(const char *ifname, int family)
 	if (family != AF_INET && family != AF_INET6)
 		return ret_set_errno(-1, EINVAL);
 
-	ret = snprintf(path, PATH_MAX, "/proc/sys/net/%s/conf/%s/%s",
+	ret = snprintf(path, sizeof(path), "/proc/sys/net/%s/conf/%s/%s",
 		       family == AF_INET ? "ipv4" : "ipv6", ifname,
 		       family == AF_INET ? "proxy_arp" : "proxy_ndp");
-	if (ret < 0 || (size_t)ret >= PATH_MAX)
+	if (ret < 0 || (size_t)ret >= sizeof(path))
 		return ret_set_errno(-1, E2BIG);
 
 	return lxc_read_file_expect(path, buf, 1, "1");
@@ -2502,8 +2468,7 @@ static int lxc_ovs_delete_port_exec(void *data)
 {
 	struct ovs_veth_args *args = data;
 
-	execlp("ovs-vsctl", "ovs-vsctl", "del-port", args->bridge, args->nic,
-	       (char *)NULL);
+	execlp("ovs-vsctl", "ovs-vsctl", "del-port", args->bridge, args->nic, (char *)NULL);
 	return -1;
 }
 
@@ -2517,11 +2482,8 @@ int lxc_ovs_delete_port(const char *bridge, const char *nic)
 	args.nic = nic;
 	ret = run_command(cmd_output, sizeof(cmd_output),
 			  lxc_ovs_delete_port_exec, (void *)&args);
-	if (ret < 0) {
-		ERROR("Failed to delete \"%s\" from openvswitch bridge \"%s\": "
-		      "%s", nic, bridge, cmd_output);
-		return -1;
-	}
+	if (ret < 0)
+		return log_error(-1, "Failed to delete \"%s\" from openvswitch bridge \"%s\": %s", nic, bridge, cmd_output);
 
 	return 0;
 }
@@ -2530,8 +2492,7 @@ static int lxc_ovs_attach_bridge_exec(void *data)
 {
 	struct ovs_veth_args *args = data;
 
-	execlp("ovs-vsctl", "ovs-vsctl", "add-port", args->bridge, args->nic,
-	       (char *)NULL);
+	execlp("ovs-vsctl", "ovs-vsctl", "add-port", args->bridge, args->nic, (char *)NULL);
 	return -1;
 }
 
@@ -2545,11 +2506,8 @@ static int lxc_ovs_attach_bridge(const char *bridge, const char *nic)
 	args.nic = nic;
 	ret = run_command(cmd_output, sizeof(cmd_output),
 			  lxc_ovs_attach_bridge_exec, (void *)&args);
-	if (ret < 0) {
-		ERROR("Failed to attach \"%s\" to openvswitch bridge \"%s\": %s",
-		      nic, bridge, cmd_output);
-		return -1;
-	}
+	if (ret < 0)
+		return log_error(-1, "Failed to attach \"%s\" to openvswitch bridge \"%s\": %s", nic, bridge, cmd_output);
 
 	return 0;
 }
@@ -2631,10 +2589,8 @@ char *lxc_mkifname(char *template)
 
 	/* Get all the network interfaces. */
 	ret = netns_getifaddrs(&ifaddr, -1, &(bool){false});
-	if (ret < 0) {
-		SYSERROR("Failed to get network interfaces");
-		return NULL;
-	}
+	if (ret < 0)
+		return log_error_errno(NULL, errno, "Failed to get network interfaces");
 
 	/* Generate random names until we find one that doesn't exist. */
 	for (;;) {
@@ -2713,14 +2669,11 @@ int lxc_find_gateway_addresses(struct lxc_handler *handler)
 		if (!netdev->ipv4_gateway_auto && !netdev->ipv6_gateway_auto)
 			continue;
 
-		if (netdev->type != LXC_NET_VETH && netdev->type != LXC_NET_MACVLAN) {
-			ERROR("Automatic gateway detection is only supported for veth and macvlan");
-			return -1;
-		}
+		if (netdev->type != LXC_NET_VETH && netdev->type != LXC_NET_MACVLAN)
+			return log_error_errno(-1, EINVAL, "Automatic gateway detection is only supported for veth and macvlan");
 
 		if (is_empty_string(netdev->link)) {
-			ERROR("Automatic gateway detection needs a link interface");
-			return -1;
+			return log_error_errno(-1, errno, "Automatic gateway detection needs a link interface");
 		}
 
 		link_index = if_nametoindex(netdev->link);
@@ -2728,19 +2681,13 @@ int lxc_find_gateway_addresses(struct lxc_handler *handler)
 			return -EINVAL;
 
 		if (netdev->ipv4_gateway_auto) {
-			if (lxc_ipv4_addr_get(link_index, &netdev->ipv4_gateway)) {
-				ERROR("Failed to automatically find ipv4 gateway address from link interface \"%s\"",
-				      netdev->link);
-				return -1;
-			}
+			if (lxc_ipv4_addr_get(link_index, &netdev->ipv4_gateway))
+				return log_error_errno(-1, errno, "Failed to automatically find ipv4 gateway address from link interface \"%s\"", netdev->link);
 		}
 
 		if (netdev->ipv6_gateway_auto) {
-			if (lxc_ipv6_addr_get(link_index, &netdev->ipv6_gateway)) {
-				ERROR("Failed to automatically find ipv6 gateway address from link interface \"%s\"",
-				      netdev->link);
-				return -1;
-			}
+			if (lxc_ipv6_addr_get(link_index, &netdev->ipv6_gateway))
+				return log_error_errno(-1, errno, "Failed to automatically find ipv6 gateway address from link interface \"%s\"", netdev->link);
 		}
 	}
 
@@ -2759,23 +2706,18 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	char buffer[PATH_MAX] = {0};
 	size_t retlen;
 
-	if (netdev->type != LXC_NET_VETH) {
-		ERROR("Network type %d not support for unprivileged use", netdev->type);
-		return -1;
-	}
+	if (netdev->type != LXC_NET_VETH)
+		return log_error_errno(-1, errno, "Network type %d not support for unprivileged use", netdev->type);
 
 	ret = pipe(pipefd);
-	if (ret < 0) {
-		SYSERROR("Failed to create pipe");
-		return -1;
-	}
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to create pipe");
 
 	child = fork();
 	if (child < 0) {
-		SYSERROR("Failed to create new process");
 		close(pipefd[0]);
 		close(pipefd[1]);
-		return -1;
+		return log_error_errno(-1, errno, "Failed to create new process");
 	}
 
 	if (child == 0) {
@@ -2824,7 +2766,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	/* close the write-end of the pipe */
 	close(pipefd[1]);
 
-	bytes = lxc_read_nointr(pipefd[0], &buffer, PATH_MAX);
+	bytes = lxc_read_nointr(pipefd[0], &buffer, sizeof(buffer));
 	if (bytes < 0) {
 		SYSERROR("Failed to read from pipe file descriptor");
 		close(pipefd[0]);
@@ -2834,19 +2776,14 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 
 	ret = wait_for_pid(child);
 	close(pipefd[0]);
-	if (ret != 0 || bytes < 0) {
-		ERROR("lxc-user-nic failed to configure requested network: %s",
-		      buffer[0] != '\0' ? buffer : "(null)");
-		return -1;
-	}
+	if (ret != 0 || bytes < 0)
+		return log_error(-1, "lxc-user-nic failed to configure requested network: %s", buffer[0] != '\0' ? buffer : "(null)");
 	TRACE("Received output \"%s\" from lxc-user-nic", buffer);
 
 	/* netdev->name */
 	token = strtok_r(buffer, ":", &saveptr);
-	if (!token) {
-		ERROR("Failed to parse lxc-user-nic output");
-		return -1;
-	}
+	if (!token)
+		return log_error(-1, "Failed to parse lxc-user-nic output");
 
 	/*
 	 * lxc-user-nic will take care of proper network device naming. So
@@ -2856,52 +2793,35 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	retlen = strlcpy(netdev->name, token, IFNAMSIZ);
 	if (retlen < IFNAMSIZ)
 		retlen = strlcpy(netdev->created_name, token, IFNAMSIZ);
-	if (retlen >= IFNAMSIZ) {
-		ERROR("Container side veth device name returned by lxc-user-nic is too long");
-		return -E2BIG;
-	}
+	if (retlen >= IFNAMSIZ)
+		return log_error_errno(-1, E2BIG, "Container side veth device name returned by lxc-user-nic is too long");
 
 	/* netdev->ifindex */
 	token = strtok_r(NULL, ":", &saveptr);
-	if (!token) {
-		ERROR("Failed to parse lxc-user-nic output");
-		return -1;
-	}
+	if (!token)
+		return log_error(-1, "Failed to parse lxc-user-nic output");
 
 	ret = lxc_safe_int(token, &netdev->ifindex);
-	if (ret < 0) {
-		errno = -ret;
-		SYSERROR("Failed to convert string \"%s\" to integer", token);
-		return -1;
-	}
+	if (ret < 0)
+		return log_error_errno(-1, -ret, "Failed to convert string \"%s\" to integer", token);
 
 	/* netdev->priv.veth_attr.veth1 */
 	token = strtok_r(NULL, ":", &saveptr);
-	if (!token) {
-		ERROR("Failed to parse lxc-user-nic output");
-		return -1;
-	}
+	if (!token)
+		return log_error(-1, "Failed to parse lxc-user-nic output");
 
 	retlen = strlcpy(netdev->priv.veth_attr.veth1, token, IFNAMSIZ);
-	if (retlen >= IFNAMSIZ) {
-		ERROR("Host side veth device name returned by lxc-user-nic is "
-		      "too long");
-		return -E2BIG;
-	}
+	if (retlen >= IFNAMSIZ)
+		return log_error_errno(-1, E2BIG, "Host side veth device name returned by lxc-user-nic is too long");
 
 	/* netdev->priv.veth_attr.ifindex */
 	token = strtok_r(NULL, ":", &saveptr);
-	if (!token) {
-		ERROR("Failed to parse lxc-user-nic output");
-		return -1;
-	}
+	if (!token)
+		return log_error(-1, "Failed to parse lxc-user-nic output");
 
 	ret = lxc_safe_int(token, &netdev->priv.veth_attr.ifindex);
-	if (ret < 0) {
-		errno = -ret;
-		SYSERROR("Failed to convert string \"%s\" to integer", token);
-		return -1;
-	}
+	if (ret < 0)
+		return log_error_errno(-1, -ret, "Failed to convert string \"%s\" to integer", token);
 
 	if (netdev->upscript) {
 		char *argv[] = {
@@ -2929,23 +2849,18 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	int pipefd[2];
 	char buffer[PATH_MAX] = {0};
 
-	if (netdev->type != LXC_NET_VETH) {
-		ERROR("Network type %d not support for unprivileged use", netdev->type);
-		return -1;
-	}
+	if (netdev->type != LXC_NET_VETH)
+		return log_error_errno(-1, EINVAL, "Network type %d not support for unprivileged use", netdev->type);
 
 	ret = pipe(pipefd);
-	if (ret < 0) {
-		SYSERROR("Failed to create pipe");
-		return -1;
-	}
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to create pipe");
 
 	child = fork();
 	if (child < 0) {
-		SYSERROR("Failed to create new process");
 		close(pipefd[0]);
 		close(pipefd[1]);
-		return -1;
+		return log_error_errno(-1, errno, "Failed to create new process");
 	}
 
 	if (child == 0) {
@@ -2987,7 +2902,7 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcna
 
 	close(pipefd[1]);
 
-	bytes = lxc_read_nointr(pipefd[0], &buffer, PATH_MAX);
+	bytes = lxc_read_nointr(pipefd[0], &buffer, sizeof(buffer));
 	if (bytes < 0) {
 		SYSERROR("Failed to read from pipe file descriptor.");
 		close(pipefd[0]);
@@ -2996,12 +2911,10 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	}
 
 	ret = wait_for_pid(child);
-	close(pipefd[0]);
-	if (ret != 0 || bytes < 0) {
-		ERROR("lxc-user-nic failed to delete requested network: %s",
-		      !is_empty_string(buffer) ? buffer : "(null)");
-		return -1;
-	}
+	close_prot_errno_disarm(pipefd[0]);
+	if (ret != 0 || bytes < 0)
+		return log_error_errno(-1, errno, "lxc-user-nic failed to delete requested network: %s",
+				       !is_empty_string(buffer) ? buffer : "(null)");
 
 	return 0;
 }
@@ -3025,11 +2938,8 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 
 	*netns_path = '\0';
 
-	if (handler->nsfd[LXC_NS_NET] < 0) {
-		DEBUG("Cannot not guarantee safe deletion of network devices. "
-		      "Manual cleanup maybe needed");
-		return false;
-	}
+	if (handler->nsfd[LXC_NS_NET] < 0)
+		return log_debug(false, "Cannot not guarantee safe deletion of network devices. Manual cleanup maybe needed");
 
 	ret = snprintf(netns_path, sizeof(netns_path), "/proc/%d/fd/%d",
 		       lxc_raw_getpid(), handler->nsfd[LXC_NS_NET]);
@@ -3050,12 +2960,10 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 			ret = lxc_netdev_rename_by_index(netdev->ifindex,
 							 netdev->link);
 			if (ret < 0)
-				WARN("Failed to rename interface with index %d "
-				     "to its initial name \"%s\"",
+				WARN("Failed to rename interface with index %d to its initial name \"%s\"",
 				     netdev->ifindex, netdev->link);
 			else
-				TRACE("Renamed interface with index %d to its "
-				      "initial name \"%s\"",
+				TRACE("Renamed interface with index %d to its initial name \"%s\"",
 				      netdev->ifindex, netdev->link);
 
 			ret = netdev_deconf[netdev->type](handler, netdev);
@@ -3083,12 +2991,10 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 						     handler->name, netdev,
 						     netns_path);
 		if (ret < 0) {
-			WARN("Failed to remove port \"%s\" from openvswitch "
-			     "bridge \"%s\"", hostveth, netdev->link);
+			WARN("Failed to remove port \"%s\" from openvswitch bridge \"%s\"", hostveth, netdev->link);
 			goto clear_ifindices;
 		}
-		INFO("Removed interface \"%s\" from \"%s\"", hostveth,
-		     netdev->link);
+		INFO("Removed interface \"%s\" from \"%s\"", hostveth, netdev->link);
 
 clear_ifindices:
 		/*
@@ -3117,50 +3023,38 @@ static int lxc_setup_l2proxy(struct lxc_netdev *netdev) {
 	unsigned int lo_ifindex = 0, link_ifindex = 0;
 
 	link_ifindex = if_nametoindex(netdev->link);
-	if (link_ifindex == 0) {
-		ERROR("Failed to retrieve ifindex for \"%s\" l2proxy setup", netdev->link);
-		return ret_set_errno(-1, EINVAL);
-	}
+	if (link_ifindex == 0)
+		return log_error_errno(-1, errno, "Failed to retrieve ifindex for \"%s\" l2proxy setup", netdev->link);
 
 
 	/* If IPv4 addresses are specified, then check that sysctl is configured correctly. */
 	if (!lxc_list_empty(&netdev->ipv4)) {
 		/* Check for net.ipv4.conf.[link].forwarding=1 */
-		if (lxc_is_ip_forwarding_enabled(netdev->link, AF_INET) < 0) {
-			ERROR("Requires sysctl net.ipv4.conf.%s.forwarding=1", netdev->link);
-			return ret_set_errno(-1, EINVAL);
-		}
+		if (lxc_is_ip_forwarding_enabled(netdev->link, AF_INET) < 0)
+			return log_error_errno(-1, EINVAL, "Requires sysctl net.ipv4.conf.%s.forwarding=1", netdev->link);
 	}
 
 	/* If IPv6 addresses are specified, then check that sysctl is configured correctly. */
 	if (!lxc_list_empty(&netdev->ipv6)) {
 		/* Check for net.ipv6.conf.[link].proxy_ndp=1 */
-		if (lxc_is_ip_neigh_proxy_enabled(netdev->link, AF_INET6) < 0) {
-			ERROR("Requires sysctl net.ipv6.conf.%s.proxy_ndp=1", netdev->link);
-			return ret_set_errno(-1, EINVAL);
-		}
+		if (lxc_is_ip_neigh_proxy_enabled(netdev->link, AF_INET6) < 0)
+			return log_error_errno(-1, EINVAL, "Requires sysctl net.ipv6.conf.%s.proxy_ndp=1", netdev->link);
 
 		/* Check for net.ipv6.conf.[link].forwarding=1 */
-		if (lxc_is_ip_forwarding_enabled(netdev->link, AF_INET6) < 0) {
-			ERROR("Requires sysctl net.ipv6.conf.%s.forwarding=1", netdev->link);
-			return ret_set_errno(-1, EINVAL);
-		}
+		if (lxc_is_ip_forwarding_enabled(netdev->link, AF_INET6) < 0)
+			return log_error_errno(-1, EINVAL, "Requires sysctl net.ipv6.conf.%s.forwarding=1", netdev->link);
 	}
 
 	/* Perform IPVLAN specific checks. */
 	if (netdev->type == LXC_NET_IPVLAN) {
 		/* Check mode is l3s as other modes do not work with l2proxy. */
-		if (netdev->priv.ipvlan_attr.mode != IPVLAN_MODE_L3S) {
-			ERROR("Requires ipvlan mode on dev \"%s\" be l3s when used with l2proxy", netdev->link);
-			return ret_set_errno(-1, EINVAL);
-		}
+		if (netdev->priv.ipvlan_attr.mode != IPVLAN_MODE_L3S)
+			return log_error_errno(-1, EINVAL, "Requires ipvlan mode on dev \"%s\" be l3s when used with l2proxy", netdev->link);
 
 		/* Retrieve local-loopback interface index for use with IPVLAN static routes. */
 		lo_ifindex = if_nametoindex(loop_device);
-		if (lo_ifindex == 0) {
-			ERROR("Failed to retrieve ifindex for \"%s\" routing cleanup", loop_device);
-			return ret_set_errno(-1, EINVAL);
-		}
+		if (lo_ifindex == 0)
+			return log_error_errno(-1, EINVAL, "Failed to retrieve ifindex for \"%s\" routing cleanup", loop_device);
 	}
 
 	lxc_list_for_each_safe(cur, &netdev->ipv4, next) {
@@ -3174,10 +3068,8 @@ static int lxc_setup_l2proxy(struct lxc_netdev *netdev) {
 		/* IPVLAN requires a route to local-loopback to trigger l2proxy. */
 		if (netdev->type == LXC_NET_IPVLAN) {
 			err = lxc_ipv4_dest_add(lo_ifindex, &inet4dev->addr, 32);
-			if (err < 0) {
-				ERROR("Failed to add ipv4 dest \"%s\" for network device \"%s\"", bufinet4, loop_device);
-				return ret_set_errno(-1, -err);
-			}
+			if (err < 0)
+				return log_error_errno(-1, -err, "Failed to add ipv4 dest \"%s\" for network device \"%s\"", bufinet4, loop_device);
 		}
 	}
 
@@ -3192,29 +3084,27 @@ static int lxc_setup_l2proxy(struct lxc_netdev *netdev) {
 		/* IPVLAN requires a route to local-loopback to trigger l2proxy. */
 		if (netdev->type == LXC_NET_IPVLAN) {
 			err = lxc_ipv6_dest_add(lo_ifindex, &inet6dev->addr, 128);
-			if (err < 0) {
-				ERROR("Failed to add ipv6 dest \"%s\" for network device \"%s\"", bufinet6, loop_device);
-				return ret_set_errno(-1, -err);
-			}
+			if (err < 0)
+				return log_error_errno(-1, -err, "Failed to add ipv6 dest \"%s\" for network device \"%s\"", bufinet6, loop_device);
 		}
 	}
 
 	return 0;
 }
 
-static int lxc_delete_ipv4_l2proxy(struct in_addr *ip, char *link, unsigned int lo_ifindex) {
+static int lxc_delete_ipv4_l2proxy(struct in_addr *ip, char *link, unsigned int lo_ifindex)
+{
 	char bufinet4[INET_ADDRSTRLEN];
-	unsigned int errCount = 0, link_ifindex = 0;
+	bool had_error = false;
+	unsigned int link_ifindex = 0;
 
-	if (!inet_ntop(AF_INET, ip, bufinet4, sizeof(bufinet4))) {
-		SYSERROR("Failed to convert IP for l2proxy ipv4 removal on dev \"%s\"", link);
-		return ret_set_errno(-1, EINVAL);
-	}
+	if (!inet_ntop(AF_INET, ip, bufinet4, sizeof(bufinet4)))
+		return log_error_errno(-1, EINVAL, "Failed to convert IP for l2proxy ipv4 removal on dev \"%s\"", link);
 
 	/* If a local-loopback ifindex supplied remove the static route to the lo device. */
 	if (lo_ifindex > 0) {
 		if (lxc_ipv4_dest_del(lo_ifindex, ip, 32) < 0) {
-			errCount++;
+			had_error = true;
 			ERROR("Failed to delete ipv4 dest \"%s\" for network ifindex \"%u\"", bufinet4, lo_ifindex);
 		}
 	}
@@ -3222,34 +3112,32 @@ static int lxc_delete_ipv4_l2proxy(struct in_addr *ip, char *link, unsigned int 
 	/* If link is supplied remove the IP neigh proxy entry for this IP on the device. */
 	if (!is_empty_string(link)) {
 		link_ifindex = if_nametoindex(link);
-		if (link_ifindex == 0) {
-			ERROR("Failed to retrieve ifindex for \"%s\" l2proxy cleanup", link);
-			return ret_set_errno(-1, EINVAL);
-		}
+		if (link_ifindex == 0)
+			return log_error_errno(-1, EINVAL, "Failed to retrieve ifindex for \"%s\" l2proxy cleanup", link);
 
 		if (lxc_ip_neigh_proxy(RTM_DELNEIGH, AF_INET, link_ifindex, ip) < 0)
-			errCount++;
+			had_error = true;
 	}
 
-	if (errCount > 0)
+	if (had_error)
 		return ret_set_errno(-1, EINVAL);
 
 	return 0;
 }
 
-static int lxc_delete_ipv6_l2proxy(struct in6_addr *ip, char *link, unsigned int lo_ifindex) {
+static int lxc_delete_ipv6_l2proxy(struct in6_addr *ip, char *link, unsigned int lo_ifindex)
+{
 	char bufinet6[INET6_ADDRSTRLEN];
-	unsigned int errCount = 0, link_ifindex = 0;
+	bool had_error = false;
+	unsigned int link_ifindex = 0;
 
-	if (!inet_ntop(AF_INET6, ip, bufinet6, sizeof(bufinet6))) {
-		SYSERROR("Failed to convert IP for l2proxy ipv6 removal on dev \"%s\"", link);
-		return ret_set_errno(-1, EINVAL);
-	}
+	if (!inet_ntop(AF_INET6, ip, bufinet6, sizeof(bufinet6)))
+		return log_error_errno(-1, EINVAL, "Failed to convert IP for l2proxy ipv6 removal on dev \"%s\"", link);
 
 	/* If a local-loopback ifindex supplied remove the static route to the lo device. */
 	if (lo_ifindex > 0) {
 		if (lxc_ipv6_dest_del(lo_ifindex, ip, 128) < 0) {
-			errCount++;
+			had_error = true;
 			ERROR("Failed to delete ipv6 dest \"%s\" for network ifindex \"%u\"", bufinet6, lo_ifindex);
 		}
 	}
@@ -3263,10 +3151,10 @@ static int lxc_delete_ipv6_l2proxy(struct in6_addr *ip, char *link, unsigned int
 		}
 
 		if (lxc_ip_neigh_proxy(RTM_DELNEIGH, AF_INET6, link_ifindex, ip) < 0)
-			errCount++;
+			had_error = true;
 	}
 
-	if (errCount > 0)
+	if (had_error)
 		return ret_set_errno(-1, EINVAL);
 
 	return 0;
@@ -3315,23 +3203,17 @@ static int lxc_create_network_priv(struct lxc_handler *handler)
 	lxc_list_for_each(iterator, network) {
 		struct lxc_netdev *netdev = iterator->elem;
 
-		if (netdev->type < 0 || netdev->type > LXC_NET_MAXCONFTYPE) {
-			ERROR("Invalid network configuration type %d", netdev->type);
-			return -1;
-		}
+		if (netdev->type < 0 || netdev->type > LXC_NET_MAXCONFTYPE)
+			return log_error_errno(-1, EINVAL, "Invalid network configuration type %d", netdev->type);
 
 		/* Setup l2proxy entries if enabled and used with a link property */
 		if (netdev->l2proxy && !is_empty_string(netdev->link)) {
-			if (lxc_setup_l2proxy(netdev)) {
-				ERROR("Failed to setup l2proxy");
-				return -1;
-			}
+			if (lxc_setup_l2proxy(netdev))
+				return log_error_errno(-1, errno, "Failed to setup l2proxy");
 		}
 
-		if (netdev_conf[netdev->type](handler, netdev)) {
-			ERROR("Failed to create network device");
-			return -1;
-		}
+		if (netdev_conf[netdev->type](handler, netdev))
+			return log_error_errno(-1, errno, "Failed to create network device");
 	}
 
 	return 0;
@@ -3361,12 +3243,10 @@ int lxc_network_move_created_netdev_priv(struct lxc_handler *handler)
 			ret = lxc_netdev_move_wlan(physname, netdev->link, pid, netdev->name);
 		else
 			ret = lxc_netdev_move_by_index(netdev->ifindex, pid, netdev->name);
-		if (ret) {
-			errno = -ret;
-			SYSERROR("Failed to move network device \"%s\" with ifindex %d to network namespace %d",
-				 netdev->created_name, netdev->ifindex, pid);
-			return -1;
-		}
+		if (ret)
+			return log_error_errno(-1, -ret, "Failed to move network device \"%s\" with ifindex %d to network namespace %d",
+					       netdev->created_name,
+					       netdev->ifindex, pid);
 
 		DEBUG("Moved network device \"%s\" with ifindex %d to network namespace of %d",
 		      netdev->created_name, netdev->ifindex, pid);
@@ -3401,11 +3281,9 @@ static int lxc_create_network_unpriv(struct lxc_handler *handler)
 		if (!network_requires_advanced_setup(netdev->type))
 			continue;
 
-		if (netdev->type != LXC_NET_VETH) {
-			ERROR("Networks of type %s are not supported by unprivileged containers",
-			      lxc_net_type_to_str(netdev->type));
-			return -1;
-		}
+		if (netdev->type != LXC_NET_VETH)
+			return log_error_errno(-1, EINVAL, "Networks of type %s are not supported by unprivileged containers",
+					       lxc_net_type_to_str(netdev->type));
 
 		if (netdev->mtu)
 			INFO("mtu ignored due to insufficient privilege");
@@ -3531,7 +3409,7 @@ int lxc_requests_empty_network(struct lxc_handler *handler)
 	if (lxc_list_empty(network))
 		return 0;
 
-	lxc_list_for_each(iterator, network) {
+	lxc_list_for_each (iterator, network) {
 		struct lxc_netdev *netdev = iterator->elem;
 
 		if (netdev->type == LXC_NET_NONE)
@@ -3539,20 +3417,22 @@ int lxc_requests_empty_network(struct lxc_handler *handler)
 		else
 			found_nic = true;
 	}
+
 	if (found_none && !found_nic)
 		return 1;
+
 	return 0;
 }
 
 /* try to move physical nics to the init netns */
 int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler)
 {
-	int ret;
-	int oldfd;
-	char ifname[IFNAMSIZ];
-	struct lxc_list *iterator;
+	__do_close int oldfd = -EBADF;
 	int netnsfd = handler->nsfd[LXC_NS_NET];
 	struct lxc_conf *conf = handler->conf;
+	int ret;
+	char ifname[IFNAMSIZ];
+	struct lxc_list *iterator;
 
 	/* We need CAP_NET_ADMIN in the parent namespace in order to setns() to
 	 * the parent network namespace. We won't have this capability if we are
@@ -3564,17 +3444,12 @@ int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler)
 	TRACE("Moving physical network devices back to parent network namespace");
 
 	oldfd = lxc_preserve_ns(handler->monitor_pid, "net");
-	if (oldfd < 0) {
-		SYSERROR("Failed to preserve network namespace");
-		return -1;
-	}
+	if (oldfd < 0)
+		return log_error_errno(-1, errno, "Failed to preserve network namespace");
 
 	ret = setns(netnsfd, CLONE_NEWNET);
-	if (ret < 0) {
-		SYSERROR("Failed to enter network namespace");
-		close(oldfd);
-		return -1;
-	}
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to enter network namespace");
 
 	lxc_list_for_each(iterator, &conf->network) {
 		struct lxc_netdev *netdev = iterator->elem;
@@ -3586,42 +3461,34 @@ int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler)
 		 * namespace.
 		 */
 		if (!if_indextoname(netdev->ifindex, ifname)) {
-			WARN("No interface corresponding to ifindex %d",
-			     netdev->ifindex);
+			WARN("No interface corresponding to ifindex %d", netdev->ifindex);
 			continue;
 		}
 
 		ret = lxc_netdev_move_by_index_fd(netdev->ifindex, oldfd, netdev->link);
 		if (ret < 0)
-			WARN("Error moving network device \"%s\" back to "
-			     "network namespace", ifname);
+			WARN("Error moving network device \"%s\" back to network namespace", ifname);
 		else
-			TRACE("Moved network device \"%s\" back to network "
-			      "namespace", ifname);
+			TRACE("Moved network device \"%s\" back to network namespace", ifname);
 	}
 
 	ret = setns(oldfd, CLONE_NEWNET);
-	close(oldfd);
-	if (ret < 0) {
-		SYSERROR("Failed to enter network namespace");
-		return -1;
-	}
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to enter network namespace");
 
 	return 0;
 }
 
 static int setup_hw_addr(char *hwaddr, const char *ifname)
 {
+	__do_close int fd = -EBADF;
 	struct sockaddr sockaddr;
 	struct ifreq ifr;
-	int ret, fd;
+	int ret;
 
 	ret = lxc_convert_mac(hwaddr, &sockaddr);
-	if (ret) {
-		errno = -ret;
-		SYSERROR("Mac address \"%s\" conversion failed", hwaddr);
-		return -1;
-	}
+	if (ret)
+		return log_error_errno(-1, -ret, "Mac address \"%s\" conversion failed", hwaddr);
 
 	memcpy(ifr.ifr_name, ifname, IFNAMSIZ);
 	ifr.ifr_name[IFNAMSIZ-1] = '\0';
@@ -3635,10 +3502,7 @@ static int setup_hw_addr(char *hwaddr, const char *ifname)
 	if (ret)
 		SYSERROR("Failed to perform ioctl");
 
-	close(fd);
-
-	DEBUG("Mac address \"%s\" on \"%s\" has been setup", hwaddr,
-	      ifr.ifr_name);
+	DEBUG("Mac address \"%s\" on \"%s\" has been setup", hwaddr, ifr.ifr_name);
 
 	return ret;
 }
@@ -3653,12 +3517,8 @@ static int setup_ipv4_addr(struct lxc_list *ip, int ifindex)
 
 		err = lxc_ipv4_addr_add(ifindex, &inetdev->addr,
 					&inetdev->bcast, inetdev->prefix);
-		if (err) {
-			errno = -err;
-			SYSERROR("Failed to setup ipv4 address for network device "
-			         "with ifindex %d", ifindex);
-			return -1;
-		}
+		if (err)
+			return log_error_errno(-1, -err, "Failed to setup ipv4 address for network device with ifindex %d", ifindex);
 	}
 
 	return 0;
@@ -3675,12 +3535,8 @@ static int setup_ipv6_addr(struct lxc_list *ip, int ifindex)
 		err = lxc_ipv6_addr_add(ifindex, &inet6dev->addr,
 					&inet6dev->mcast, &inet6dev->acast,
 					inet6dev->prefix);
-		if (err) {
-			errno = -err;
-			SYSERROR("Failed to setup ipv6 address for network device "
-			         "with ifindex %d", ifindex);
-			return -1;
-		}
+		if (err)
+			return log_error_errno(-1, -err, "Failed to setup ipv6 address for network device with ifindex %d", ifindex);
 	}
 
 	return 0;
@@ -3694,77 +3550,47 @@ static int lxc_network_setup_in_child_namespaces_common(struct lxc_netdev *netde
 	/* empty network namespace */
 	if (!netdev->ifindex && netdev->flags & IFF_UP) {
 		err = lxc_netdev_up("lo");
-		if (err) {
-			errno = -err;
-			SYSERROR( "Failed to set the loopback network device up");
-			return -1;
-		}
+		if (err)
+			return log_error_errno(-1, -err, "Failed to set the loopback network device up");
 	}
 
 	/* set a mac address */
-	if (netdev->hwaddr) {
-		if (setup_hw_addr(netdev->hwaddr, netdev->name)) {
-			ERROR("Failed to setup hw address for network device \"%s\"",
-			      netdev->name);
-			return -1;
-		}
-	}
+	if (netdev->hwaddr && setup_hw_addr(netdev->hwaddr, netdev->name))
+		return log_error_errno(-1, errno, "Failed to setup hw address for network device \"%s\"", netdev->name);
 
 	/* setup ipv4 addresses on the interface */
-	if (setup_ipv4_addr(&netdev->ipv4, netdev->ifindex)) {
-		ERROR("Failed to setup ip addresses for network device \"%s\"",
-		      netdev->name);
-		return -1;
-	}
+	if (setup_ipv4_addr(&netdev->ipv4, netdev->ifindex))
+		return log_error_errno(-1, errno, "Failed to setup ip addresses for network device \"%s\"", netdev->name);
 
 	/* setup ipv6 addresses on the interface */
-	if (setup_ipv6_addr(&netdev->ipv6, netdev->ifindex)) {
-		ERROR("Failed to setup ipv6 addresses for network device \"%s\"",
-		      netdev->name);
-		return -1;
-	}
+	if (setup_ipv6_addr(&netdev->ipv6, netdev->ifindex))
+		return log_error_errno(-1, errno, "Failed to setup ipv6 addresses for network device \"%s\"", netdev->name);
 
 	/* set the network device up */
 	if (netdev->flags & IFF_UP) {
 		err = lxc_netdev_up(netdev->name);
-		if (err) {
-			errno = -err;
-			SYSERROR("Failed to set network device \"%s\" up",
-			         netdev->name);
-			return -1;
-		}
+		if (err)
+			return log_error_errno(-1, -err, "Failed to set network device \"%s\" up", netdev->name);
 
 		/* the network is up, make the loopback up too */
 		err = lxc_netdev_up("lo");
-		if (err) {
-			errno = -err;
-			SYSERROR("Failed to set the loopback network device up");
-			return -1;
-		}
+		if (err)
+			return log_error_errno(-1, -err, "Failed to set the loopback network device up");
 	}
 
 	/* setup ipv4 gateway on the interface */
 	if (netdev->ipv4_gateway || netdev->ipv4_gateway_dev) {
-		if (!(netdev->flags & IFF_UP)) {
-			ERROR("Cannot add ipv4 gateway for network device "
-			      "\"%s\" when not bringing up the interface", netdev->name);
-			return -1;
-		}
+		if (!(netdev->flags & IFF_UP))
+			return log_error(-1, "Cannot add ipv4 gateway for network device \"%s\" when not bringing up the interface", netdev->name);
 
-		if (lxc_list_empty(&netdev->ipv4)) {
-			ERROR("Cannot add ipv4 gateway for network device "
-			      "\"%s\" when not assigning an address", netdev->name);
-			return -1;
-		}
+		if (lxc_list_empty(&netdev->ipv4))
+			return log_error(-1, "Cannot add ipv4 gateway for network device \"%s\" when not assigning an address", netdev->name);
 
 		/* Setup device route if ipv4_gateway_dev is enabled */
 		if (netdev->ipv4_gateway_dev) {
 			err = lxc_ipv4_gateway_add(netdev->ifindex, NULL);
-			if (err < 0) {
-				SYSERROR("Failed to setup ipv4 gateway to network device \"%s\"",
-				         netdev->name);
-				return ret_set_errno(-1, -err);
-			}
+			if (err < 0)
+				return log_error_errno(-1, -err, "Failed to setup ipv4 gateway to network device \"%s\"", netdev->name);
 		} else {
 			/* Check the gateway address is valid */
 			if (!inet_ntop(AF_INET, netdev->ipv4_gateway, bufinet4, sizeof(bufinet4)))
@@ -3779,46 +3605,29 @@ static int lxc_network_setup_in_child_namespaces_common(struct lxc_netdev *netde
 				 * gateway address first, and then try again.
 				 */
 				err = lxc_ipv4_dest_add(netdev->ifindex, netdev->ipv4_gateway, 32);
-				if (err < 0) {
-					errno = -err;
-					SYSERROR("Failed to add ipv4 dest \"%s\" for network device \"%s\"",
-						bufinet4, netdev->name);
-					return -1;
-				}
+				if (err < 0)
+					return log_error_errno(-1, -err, "Failed to add ipv4 dest \"%s\" for network device \"%s\"", bufinet4, netdev->name);
 
 				err = lxc_ipv4_gateway_add(netdev->ifindex, netdev->ipv4_gateway);
-				if (err < 0) {
-					errno = -err;
-					SYSERROR("Failed to setup ipv4 gateway \"%s\" for network device \"%s\"",
-						bufinet4, netdev->name);
-					return -1;
-				}
+				if (err < 0)
+					return log_error_errno(-1, -err, "Failed to setup ipv4 gateway \"%s\" for network device \"%s\"", bufinet4, netdev->name);
 			}
 		}
 	}
 
 	/* setup ipv6 gateway on the interface */
 	if (netdev->ipv6_gateway || netdev->ipv6_gateway_dev) {
-		if (!(netdev->flags & IFF_UP)) {
-			ERROR("Cannot add ipv6 gateway for network device \"%s\" when not bringing up the interface",
-			      netdev->name);
-			return -1;
-		}
+		if (!(netdev->flags & IFF_UP))
+			return log_error(-1, "Cannot add ipv6 gateway for network device \"%s\" when not bringing up the interface", netdev->name);
 
-		if (lxc_list_empty(&netdev->ipv6) && !IN6_IS_ADDR_LINKLOCAL(netdev->ipv6_gateway)) {
-			ERROR("Cannot add ipv6 gateway for network device \"%s\" when not assigning an address",
-			      netdev->name);
-			return -1;
-		}
+		if (lxc_list_empty(&netdev->ipv6) && !IN6_IS_ADDR_LINKLOCAL(netdev->ipv6_gateway))
+			return log_error(-1, "Cannot add ipv6 gateway for network device \"%s\" when not assigning an address", netdev->name);
 
 		/* Setup device route if ipv6_gateway_dev is enabled */
 		if (netdev->ipv6_gateway_dev) {
 			err = lxc_ipv6_gateway_add(netdev->ifindex, NULL);
-			if (err < 0) {
-				SYSERROR("Failed to setup ipv6 gateway to network device \"%s\"",
-				         netdev->name);
-				return ret_set_errno(-1, -err);
-			}
+			if (err < 0)
+				return log_error_errno(-1, -err, "Failed to setup ipv6 gateway to network device \"%s\"", netdev->name);
 		} else {
 			/* Check the gateway address is valid */
 			if (!inet_ntop(AF_INET6, netdev->ipv6_gateway, bufinet6, sizeof(bufinet6)))
@@ -3833,20 +3642,12 @@ static int lxc_network_setup_in_child_namespaces_common(struct lxc_netdev *netde
 				 * gateway address first, and then try again.
 				 */
 				err = lxc_ipv6_dest_add(netdev->ifindex, netdev->ipv6_gateway, 128);
-				if (err < 0) {
-					errno = -err;
-					SYSERROR("Failed to add ipv6 dest \"%s\" for network device \"%s\"",
-						bufinet6, netdev->name);
-					return -1;
-				}
+				if (err < 0)
+					return log_error_errno(-1, errno, "Failed to add ipv6 dest \"%s\" for network device \"%s\"", bufinet6, netdev->name);
 
 				err = lxc_ipv6_gateway_add(netdev->ifindex, netdev->ipv6_gateway);
-				if (err < 0) {
-					errno = -err;
-					SYSERROR("Failed to setup ipv6 gateway \"%s\" for network device \"%s\"",
-						bufinet6, netdev->name);
-					return -1;
-				}
+				if (err < 0)
+					return log_error_errno(-1, -err, "Failed to setup ipv6 gateway \"%s\" for network device \"%s\"", bufinet6, netdev->name);
 			}
 		}
 	}
@@ -3868,10 +3669,8 @@ int lxc_setup_network_in_child_namespaces(const struct lxc_conf *conf,
 		ret = netdev_ns_conf[netdev->type](netdev);
 		if (!ret)
 			ret = lxc_network_setup_in_child_namespaces_common(netdev);
-		if (ret) {
-			ERROR("Failed to setup netdev");
-			return -1;
-		}
+		if (ret)
+			return log_error_errno(-1, errno, "Failed to setup netdev");
 	}
 
 	if (!lxc_list_empty(network))
