@@ -270,7 +270,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	char *veth1, *veth2;
 	char veth1buf[IFNAMSIZ], veth2buf[IFNAMSIZ];
 
-	if (netdev->priv.veth_attr.pair[0] != '\0') {
+	if (!is_empty_string(netdev->priv.veth_attr.pair)) {
 		veth1 = netdev->priv.veth_attr.pair;
 		if (handler->conf->reboot)
 			lxc_netdev_delete_by_name(veth1);
@@ -299,7 +299,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	if (netdev->mtu) {
 		if (lxc_safe_uint(netdev->mtu, &mtu))
 			return log_error_errno(-1, errno, "Failed to parse mtu");
-	} else if (netdev->link[0] != '\0') {
+	} else if (!is_empty_string(netdev->link)) {
 		int ifindex_mtu;
 
 		ifindex_mtu = if_nametoindex(netdev->link);
@@ -344,7 +344,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		}
 	}
 
-	if (netdev->link[0] != '\0' && netdev->priv.veth_attr.mode == VETH_MODE_BRIDGE) {
+	if (!is_empty_string(netdev->link) && netdev->priv.veth_attr.mode == VETH_MODE_BRIDGE) {
 		err = lxc_bridge_attach(netdev->link, veth1);
 		if (err) {
 			errno = -err;
@@ -482,7 +482,7 @@ static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 	char peer[IFNAMSIZ];
 	int err;
 
-	if (netdev->link[0] == '\0') {
+	if (is_empty_string(netdev->link)) {
 		ERROR("No link for macvlan network device specified");
 		return -1;
 	}
@@ -647,7 +647,7 @@ static int instantiate_ipvlan(struct lxc_handler *handler, struct lxc_netdev *ne
 	char peer[IFNAMSIZ];
 	int err;
 
-	if (netdev->link[0] == '\0') {
+	if (is_empty_string(netdev->link)) {
 		ERROR("No link for ipvlan network device specified");
 		return -1;
 	}
@@ -724,7 +724,7 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 	int err;
 	static uint16_t vlan_cntr = 0;
 
-	if (netdev->link[0] == '\0') {
+	if (is_empty_string(netdev->link)) {
 		ERROR("No link for vlan network device specified");
 		return -1;
 	}
@@ -798,7 +798,7 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 {
 	int err, mtu_orig = 0;
 
-	if (netdev->link[0] == '\0') {
+	if (is_empty_string(netdev->link)) {
 		ERROR("No link for physical interface specified");
 		return -1;
 	}
@@ -1023,7 +1023,7 @@ static int shutdown_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 	if (!netdev->downscript)
 		return 0;
 
-	if (netdev->priv.veth_attr.pair[0] != '\0')
+	if (!is_empty_string(netdev->priv.veth_attr.pair))
 		argv[2] = netdev->priv.veth_attr.pair;
 	else
 		argv[2] = netdev->priv.veth_attr.veth1;
@@ -2718,7 +2718,7 @@ int lxc_find_gateway_addresses(struct lxc_handler *handler)
 			return -1;
 		}
 
-		if (netdev->link[0] == '\0') {
+		if (is_empty_string(netdev->link)) {
 			ERROR("Automatic gateway detection needs a link interface");
 			return -1;
 		}
@@ -2792,7 +2792,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 			_exit(EXIT_FAILURE);
 		}
 
-		if (netdev->link[0] != '\0')
+		if (!is_empty_string(netdev->link))
 			retlen = strlcpy(netdev_link, netdev->link, IFNAMSIZ);
 		else
 			retlen = strlcpy(netdev_link, "none", IFNAMSIZ);
@@ -2962,18 +2962,17 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcna
 			_exit(EXIT_FAILURE);
 		}
 
-		if (netdev->priv.veth_attr.pair[0] != '\0')
+		if (!is_empty_string(netdev->priv.veth_attr.pair))
 			hostveth = netdev->priv.veth_attr.pair;
 		else
 			hostveth = netdev->priv.veth_attr.veth1;
-		if (hostveth[0] == '\0') {
+		if (is_empty_string(hostveth)) {
 			SYSERROR("Host side veth device name is missing");
 			_exit(EXIT_FAILURE);
 		}
 
-		if (netdev->link[0] == '\0') {
-			SYSERROR("Network link for network device \"%s\" is "
-				 "missing", netdev->priv.veth_attr.veth1);
+		if (is_empty_string(netdev->link)) {
+			SYSERROR("Network link for network device \"%s\" is missing", netdev->priv.veth_attr.veth1);
 			_exit(EXIT_FAILURE);
 		}
 
@@ -3000,7 +2999,7 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	close(pipefd[0]);
 	if (ret != 0 || bytes < 0) {
 		ERROR("lxc-user-nic failed to delete requested network: %s",
-		      buffer[0] != '\0' ? buffer : "(null)");
+		      !is_empty_string(buffer) ? buffer : "(null)");
 		return -1;
 	}
 
@@ -3070,14 +3069,14 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 		if (netdev->type != LXC_NET_VETH)
 			goto clear_ifindices;
 
-		if (netdev->link[0] == '\0' || !is_ovs_bridge(netdev->link))
+		if (is_empty_string(netdev->link) || !is_ovs_bridge(netdev->link))
 			goto clear_ifindices;
 
-		if (netdev->priv.veth_attr.pair[0] != '\0')
+		if (!is_empty_string(netdev->priv.veth_attr.pair))
 			hostveth = netdev->priv.veth_attr.pair;
 		else
 			hostveth = netdev->priv.veth_attr.veth1;
-		if (hostveth[0] == '\0')
+		if (is_empty_string(hostveth))
 			goto clear_ifindices;
 
 		ret = lxc_delete_network_unpriv_exec(handler->lxcpath,
@@ -3221,7 +3220,7 @@ static int lxc_delete_ipv4_l2proxy(struct in_addr *ip, char *link, unsigned int 
 	}
 
 	/* If link is supplied remove the IP neigh proxy entry for this IP on the device. */
-	if (link[0] != '\0') {
+	if (!is_empty_string(link)) {
 		link_ifindex = if_nametoindex(link);
 		if (link_ifindex == 0) {
 			ERROR("Failed to retrieve ifindex for \"%s\" l2proxy cleanup", link);
@@ -3256,7 +3255,7 @@ static int lxc_delete_ipv6_l2proxy(struct in6_addr *ip, char *link, unsigned int
 	}
 
 	/* If link is supplied remove the IP neigh proxy entry for this IP on the device. */
-	if (link[0] != '\0') {
+	if (!is_empty_string(link)) {
 		link_ifindex = if_nametoindex(link);
 		if (link_ifindex == 0) {
 			ERROR("Failed to retrieve ifindex for \"%s\" l2proxy cleanup", link);
@@ -3322,7 +3321,7 @@ static int lxc_create_network_priv(struct lxc_handler *handler)
 		}
 
 		/* Setup l2proxy entries if enabled and used with a link property */
-		if (netdev->l2proxy && netdev->link[0] != '\0') {
+		if (netdev->l2proxy && !is_empty_string(netdev->link)) {
 			if (lxc_setup_l2proxy(netdev)) {
 				ERROR("Failed to setup l2proxy");
 				return -1;
@@ -3442,7 +3441,7 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 		netdev->ifindex = if_nametoindex(netdev->name);
 
 		/* Delete l2proxy entries if enabled and used with a link property */
-		if (netdev->l2proxy && netdev->link[0] != '\0') {
+		if (netdev->l2proxy && !is_empty_string(netdev->link)) {
 			if (lxc_delete_l2proxy(netdev))
 				WARN("Failed to delete all l2proxy config");
 				/* Don't return, let the network be cleaned up as normal. */
@@ -3485,11 +3484,11 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 		/* Explicitly delete host veth device to prevent lingering
 		 * devices. We had issues in LXD around this.
 		 */
-		if (netdev->priv.veth_attr.pair[0] != '\0')
+		if (!is_empty_string(netdev->priv.veth_attr.pair))
 			hostveth = netdev->priv.veth_attr.pair;
 		else
 			hostveth = netdev->priv.veth_attr.veth1;
-		if (hostveth[0] == '\0')
+		if (is_empty_string(hostveth))
 			goto clear_ifindices;
 
 		if (is_empty_string(netdev->link) || !is_ovs_bridge(netdev->link)) {
