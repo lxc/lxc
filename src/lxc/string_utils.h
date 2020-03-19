@@ -98,4 +98,9 @@ extern char *lxc_trim_whitespace_in_place(char *buffer);
 extern int lxc_is_line_empty(const char *line);
 extern void remove_trailing_slashes(char *p);
 
+static inline bool is_empty_string(const char *s)
+{
+	return !s || strcmp(s, "") == 0;
+}
+
 #endif /* __LXC_STRING_UTILS_H */

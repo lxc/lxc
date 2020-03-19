@@ -504,7 +504,7 @@ static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 	}
 
 	strlcpy(netdev->created_name, peer, IFNAMSIZ);
-	if (netdev->name[0] == '\0')
+	if (is_empty_string(netdev->name))
 		(void)strlcpy(netdev->name, peer, IFNAMSIZ);
 
 	netdev->ifindex = if_nametoindex(peer);
@@ -668,7 +668,7 @@ static int instantiate_ipvlan(struct lxc_handler *handler, struct lxc_netdev *ne
 	}
 
 	strlcpy(netdev->created_name, peer, IFNAMSIZ);
-	if (netdev->name[0] == '\0')
+	if (is_empty_string(netdev->name))
 		(void)strlcpy(netdev->name, peer, IFNAMSIZ);
 
 	netdev->ifindex = if_nametoindex(peer);
@@ -743,7 +743,7 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 	}
 
 	strlcpy(netdev->created_name, peer, IFNAMSIZ);
-	if (netdev->name[0] == '\0')
+	if (is_empty_string(netdev->name))
 		(void)strlcpy(netdev->name, peer, IFNAMSIZ);
 
 	netdev->ifindex = if_nametoindex(peer);
@@ -818,7 +818,7 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 	}
 
 	strlcpy(netdev->created_name, netdev->link, IFNAMSIZ);
-	if (netdev->name[0] == '\0')
+	if (is_empty_string(netdev->name))
 		(void)strlcpy(netdev->name, netdev->link, IFNAMSIZ);
 
 	/*
@@ -924,7 +924,7 @@ static int instantiate_ns_veth(struct lxc_netdev *netdev)
 				       errno, "Failed to retrieve ifindex for network device with name %s",
 				       netdev->created_name);
 
-	if (netdev->name[0] == '\0')
+	if (is_empty_string(netdev->name))
 		(void)strlcpy(netdev->name, "eth%d", IFNAMSIZ);
 
 	if (strcmp(netdev->created_name, netdev->name) != 0) {
@@ -1179,10 +1179,8 @@ static int lxc_netdev_move_by_index_fd(int ifindex, int fd, const char *ifname)
 	if (nla_put_u32(nlmsg, IFLA_NET_NS_FD, fd))
 		goto out;
 
-	if (ifname != NULL) {
-		if (nla_put_string(nlmsg, IFLA_IFNAME, ifname))
-			goto out;
-	}
+	if (!is_empty_string(ifname) && nla_put_string(nlmsg, IFLA_IFNAME, ifname))
+		goto out;
 
 	err = netlink_transaction(&nlh, nlmsg, nlmsg);
 out:
@@ -1219,10 +1217,8 @@ int lxc_netdev_move_by_index(int ifindex, pid_t pid, const char *ifname)
 	if (nla_put_u32(nlmsg, IFLA_NET_NS_PID, pid))
 		goto out;
 
-	if (ifname != NULL) {
-		if (nla_put_string(nlmsg, IFLA_IFNAME, ifname))
-			goto out;
-	}
+	if (!is_empty_string(ifname) && nla_put_string(nlmsg, IFLA_IFNAME, ifname))
+		goto out;
 
 	err = netlink_transaction(&nlh, nlmsg, nlmsg);
 out:
@@ -2812,8 +2808,8 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 
 		INFO("Execing lxc-user-nic create %s %s %s veth %s %s", lxcpath,
 		     lxcname, pidstr, netdev_link,
-		     netdev->name[0] != '\0' ? netdev->name : "(null)");
-		if (netdev->name[0] != '\0')
+		     !is_empty_string(netdev->name) ? netdev->name : "(null)");
+		if (!is_empty_string(netdev->name))
 			execlp(LXC_USERNIC_PATH, LXC_USERNIC_PATH, "create",
 			       lxcpath, lxcname, pidstr, "veth", netdev_link,
 			       netdev->name, (char *)NULL);
