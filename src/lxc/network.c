@@ -3492,29 +3492,19 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 		if (hostveth[0] == '\0')
 			goto clear_ifindices;
 
-		ret = lxc_netdev_delete_by_name(hostveth);
-		if (ret < 0) {
-			WARN("Failed to remove interface \"%s\" from \"%s\"",
-			     hostveth, netdev->link);
-			goto clear_ifindices;
-		}
-		INFO("Removed interface \"%s\" from \"%s\"", hostveth, netdev->link);
+		if (is_empty_string(netdev->link) || !is_ovs_bridge(netdev->link)) {
+			ret = lxc_netdev_delete_by_name(hostveth);
+			if (ret < 0)
+				WARN("Failed to remove interface \"%s\" from \"%s\"", hostveth, netdev->link);
 
-		if (netdev->link[0] == '\0' || !is_ovs_bridge(netdev->link)) {
-			netdev->priv.veth_attr.veth1[0] = '\0';
-			netdev->ifindex = 0;
-			netdev->priv.veth_attr.ifindex = 0;
-			goto clear_ifindices;
-		}
+			INFO("Removed interface \"%s\" from \"%s\"", hostveth, netdev->link);
+		} else if (!is_empty_string(netdev->link)) {
+			ret = lxc_ovs_delete_port(netdev->link, hostveth);
+			if (ret < 0)
+				WARN("Failed to remove port \"%s\" from openvswitch bridge \"%s\"", hostveth, netdev->link);
 
-		/* Delete the openvswitch port. */
-		ret = lxc_ovs_delete_port(netdev->link, hostveth);
-		if (ret < 0)
-			WARN("Failed to remove port \"%s\" from openvswitch "
-			     "bridge \"%s\"", hostveth, netdev->link);
-		else
-			INFO("Removed port \"%s\" from openvswitch bridge \"%s\"",
-			     hostveth, netdev->link);
+			INFO("Removed port \"%s\" from openvswitch bridge \"%s\"", hostveth, netdev->link);
+		}
 
 clear_ifindices:
 		/* We need to clear any ifindices we recorded so liblxc won't
