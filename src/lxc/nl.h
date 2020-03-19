@@ -5,6 +5,8 @@
 
 #include <stdio.h>
 
+#include "memory_utils.h"
+
 /*
  * Use this as a good size to allocate generic netlink messages
  */
@@ -64,10 +66,9 @@ int netlink_open(struct nl_handler *handler, int protocol);
  *  the handler is no longer valid
  *
  * @handler: a handler to the netlink socket
- *
- * Returns 0 on success, < 0 otherwise
  */
-int netlink_close(struct nl_handler *handler);
+void netlink_close(struct nl_handler *handler);
+define_cleanup_function(struct nl_handler *, netlink_close);
 
 /*
  * netlink_rcv : receive a netlink message from the kernel.
@@ -231,6 +232,7 @@ void *nlmsg_reserve(struct nlmsg *nlmsg, size_t len);
  * @nlmsg: the netlink message to be freed
  */
 void nlmsg_free(struct nlmsg *nlmsg);
+define_cleanup_function(struct nlmsg *, nlmsg_free);
 
 /*
  * nlmsg_data : returns a pointer to the data contained in the netlink message

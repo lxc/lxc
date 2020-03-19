@@ -52,26 +52,26 @@ static const char loop_device[] = "lo";
 
 static int lxc_ip_route_dest(__u16 nlmsg_type, int family, int ifindex, void *dest, unsigned int netmask)
 {
-	int addrlen, err;
+	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
 	struct nl_handler nlh;
+	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
+	int addrlen, err;
 	struct rtmsg *rt;
-	struct nlmsg *answer = NULL, *nlmsg = NULL;
 
 	addrlen = family == AF_INET ? sizeof(struct in_addr)
 				    : sizeof(struct in6_addr);
 
-	err = netlink_open(&nlh, NETLINK_ROUTE);
+	err = netlink_open(nlh_ptr, NETLINK_ROUTE);
 	if (err)
 		return err;
 
-	err = -ENOMEM;
 	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
 	if (!nlmsg)
-		goto out;
+		return -ENOMEM;
 
 	answer = nlmsg_alloc_reserve(NLMSG_GOOD_SIZE);
 	if (!answer)
-		goto out;
+		err = -ENOMEM;
 
 	nlmsg->nlmsghdr->nlmsg_flags =
 	    NLM_F_ACK | NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL;
@@ -79,7 +79,8 @@ static int lxc_ip_route_dest(__u16 nlmsg_type, int family, int ifindex, void *de
 
 	rt = nlmsg_reserve(nlmsg, sizeof(struct rtmsg));
 	if (!rt)
-		goto out;
+		err = -ENOMEM;
+
 	rt->rtm_family = family;
 	rt->rtm_table = RT_TABLE_MAIN;
 	rt->rtm_scope = RT_SCOPE_LINK;
@@ -87,17 +88,13 @@ static int lxc_ip_route_dest(__u16 nlmsg_type, int family, int ifindex, void *de
 	rt->rtm_type = RTN_UNICAST;
 	rt->rtm_dst_len = netmask;
 
-	err = -EINVAL;
 	if (nla_put_buffer(nlmsg, RTA_DST, dest, addrlen))
-		goto out;
+		return -EINVAL;
+
 	if (nla_put_u32(nlmsg, RTA_OIF, ifindex))
-		goto out;
-	err = netlink_transaction(&nlh, nlmsg, answer);
-out:
-	netlink_close(&nlh);
-	nlmsg_free(answer);
-	nlmsg_free(nlmsg);
-	return err;
+		return -EINVAL;
+
+	return netlink_transaction(nlh_ptr, nlmsg, answer);
 }
 
 static int lxc_ipv4_dest_add(int ifindex, struct in_addr *dest, unsigned int netmask)
@@ -192,47 +189,42 @@ struct ip_proxy_args {
 
 static int lxc_ip_neigh_proxy(__u16 nlmsg_type, int family, int ifindex, void *dest)
 {
-	int addrlen, err;
+	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
 	struct nl_handler nlh;
+	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
+	int addrlen, err;
 	struct ndmsg *rt;
-	struct nlmsg *answer = NULL, *nlmsg = NULL;
 
 	addrlen = family == AF_INET ? sizeof(struct in_addr) : sizeof(struct in6_addr);
 
-	err = netlink_open(&nlh, NETLINK_ROUTE);
+	err = netlink_open(nlh_ptr, NETLINK_ROUTE);
 	if (err)
 		return err;
 
-	err = -ENOMEM;
 	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
 	if (!nlmsg)
-		goto out;
+		return -ENOMEM;
 
 	answer = nlmsg_alloc_reserve(NLMSG_GOOD_SIZE);
 	if (!answer)
-		goto out;
+		return -ENOMEM;
 
 	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_ACK | NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL;
 	nlmsg->nlmsghdr->nlmsg_type = nlmsg_type;
 
 	rt = nlmsg_reserve(nlmsg, sizeof(struct ndmsg));
 	if (!rt)
-		goto out;
+		return -ENOMEM;
+
 	rt->ndm_ifindex = ifindex;
 	rt->ndm_flags = NTF_PROXY;
 	rt->ndm_type = NDA_DST;
 	rt->ndm_family = family;
 
-	err = -EINVAL;
 	if (nla_put_buffer(nlmsg, NDA_DST, dest, addrlen))
-		goto out;
+		return -EINVAL;
 
-	err = netlink_transaction(&nlh, nlmsg, answer);
-out:
-	netlink_close(&nlh);
-	nlmsg_free(answer);
-	nlmsg_free(nlmsg);
-	return err;
+	return netlink_transaction(nlh_ptr, nlmsg, answer);
 }
 
 static int lxc_is_ip_forwarding_enabled(const char *ifname, int family)
@@ -544,69 +536,66 @@ on_error:
 
 static int lxc_ipvlan_create(const char *master, const char *name, int mode, int isolation)
 {
+	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
+	struct nl_handler nlh;
+	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int err, index, len;
 	struct ifinfomsg *ifi;
-	struct nl_handler nlh;
 	struct rtattr *nest, *nest2;
-	struct nlmsg *answer = NULL, *nlmsg = NULL;
 
 	len = strlen(master);
 	if (len == 1 || len >= IFNAMSIZ)
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
 	len = strlen(name);
 	if (len == 1 || len >= IFNAMSIZ)
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
 	index = if_nametoindex(master);
 	if (!index)
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
-	err = netlink_open(&nlh, NETLINK_ROUTE);
+	err = netlink_open(nlh_ptr, NETLINK_ROUTE);
 	if (err)
-		return ret_set_errno(-1, -err);
+		return ret_errno(-err);
 
-	err = -ENOMEM;
 	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
 	if (!nlmsg)
-		goto out;
+		return ret_errno(ENOMEM);
 
 	answer = nlmsg_alloc_reserve(NLMSG_GOOD_SIZE);
 	if (!answer)
-		goto out;
+		return ret_errno(ENOMEM);
 
 	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL | NLM_F_ACK;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
-	if (!ifi) {
-		goto out;
-	}
+	if (!ifi)
+		return ret_errno(ENOMEM);
 	ifi->ifi_family = AF_UNSPEC;
 
-	err = -EPROTO;
 	nest = nla_begin_nested(nlmsg, IFLA_LINKINFO);
 	if (!nest)
-		goto out;
+		return ret_errno(EPROTO);
 
 	if (nla_put_string(nlmsg, IFLA_INFO_KIND, "ipvlan"))
-		goto out;
+		return ret_errno(EPROTO);
 
 	if (mode) {
 		nest2 = nla_begin_nested(nlmsg, IFLA_INFO_DATA);
 		if (!nest2)
-			goto out;
+			return ret_errno(EPROTO);
 
 		if (nla_put_u32(nlmsg, IFLA_IPVLAN_MODE, mode))
-			goto out;
+			return ret_errno(EPROTO);
 
 		/* if_link.h does not define the isolation flag value for bridge mode so we define it as 0
 		 * and only send mode if mode >0 as default mode is bridge anyway according to ipvlan docs.
 		 */
-		if (isolation > 0) {
-			if (nla_put_u16(nlmsg, IFLA_IPVLAN_ISOLATION, isolation))
-				goto out;
-		}
+		if (isolation > 0 &&
+		    nla_put_u16(nlmsg, IFLA_IPVLAN_ISOLATION, isolation))
+			return ret_errno(EPROTO);
 
 		nla_end_nested(nlmsg, nest2);
 	}
@@ -614,19 +603,12 @@ static int lxc_ipvlan_create(const char *master, const char *name, int mode, int
 	nla_end_nested(nlmsg, nest);
 
 	if (nla_put_u32(nlmsg, IFLA_LINK, index))
-		goto out;
+		return ret_errno(EPROTO);
 
 	if (nla_put_string(nlmsg, IFLA_IFNAME, name))
-		goto out;
+		return ret_errno(EPROTO);
 
-	err = netlink_transaction(&nlh, nlmsg, answer);
-out:
-	netlink_close(&nlh);
-	nlmsg_free(answer);
-	nlmsg_free(nlmsg);
-	if (err < 0)
-		return ret_set_errno(-1, -err);
-	return 0;
+	return netlink_transaction(nlh_ptr, nlmsg, answer);
 }
 
 static int instantiate_ipvlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
@@ -1121,78 +1103,72 @@ static  instantiate_cb netdev_deconf[LXC_NET_MAXCONFTYPE + 1] = {
 
 static int lxc_netdev_move_by_index_fd(int ifindex, int fd, const char *ifname)
 {
-	int err;
+	call_cleaner(nlmsg_free) struct nlmsg *nlmsg = NULL;
 	struct nl_handler nlh;
+	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
+	int err;
 	struct ifinfomsg *ifi;
-	struct nlmsg *nlmsg = NULL;
 
-	err = netlink_open(&nlh, NETLINK_ROUTE);
+	err = netlink_open(nlh_ptr, NETLINK_ROUTE);
 	if (err)
 		return err;
 
-	err = -ENOMEM;
 	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
 	if (!nlmsg)
-		goto out;
+		return ret_errno(ENOMEM);
 
 	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
 	if (!ifi)
-		goto out;
+		return ret_errno(ENOMEM);
+
 	ifi->ifi_family = AF_UNSPEC;
 	ifi->ifi_index = ifindex;
 
 	if (nla_put_u32(nlmsg, IFLA_NET_NS_FD, fd))
-		goto out;
+		return ret_errno(ENOMEM);
 
 	if (!is_empty_string(ifname) && nla_put_string(nlmsg, IFLA_IFNAME, ifname))
-		goto out;
+		return ret_errno(ENOMEM);
 
-	err = netlink_transaction(&nlh, nlmsg, nlmsg);
-out:
-	netlink_close(&nlh);
-	nlmsg_free(nlmsg);
-	return err;
+	return netlink_transaction(nlh_ptr, nlmsg, nlmsg);
 }
 
 int lxc_netdev_move_by_index(int ifindex, pid_t pid, const char *ifname)
 {
-	int err;
+	call_cleaner(nlmsg_free) struct nlmsg *nlmsg = NULL;
 	struct nl_handler nlh;
+	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
+	int err;
 	struct ifinfomsg *ifi;
-	struct nlmsg *nlmsg = NULL;
 
-	err = netlink_open(&nlh, NETLINK_ROUTE);
+	err = netlink_open(nlh_ptr, NETLINK_ROUTE);
 	if (err)
 		return err;
 
-	err = -ENOMEM;
 	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
 	if (!nlmsg)
-		goto out;
+		return ret_errno(ENOMEM);
 
 	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
 	if (!ifi)
-		goto out;
+		return ret_errno(ENOMEM);
+
 	ifi->ifi_family = AF_UNSPEC;
 	ifi->ifi_index = ifindex;
 
 	if (nla_put_u32(nlmsg, IFLA_NET_NS_PID, pid))
-		goto out;
+		return ret_errno(ENOMEM);
 
 	if (!is_empty_string(ifname) && nla_put_string(nlmsg, IFLA_IFNAME, ifname))
-		goto out;
+		return ret_errno(ENOMEM);
 
-	err = netlink_transaction(&nlh, nlmsg, nlmsg);
-out:
-	netlink_close(&nlh);
-	nlmsg_free(nlmsg);
-	return err;
+	return netlink_transaction(nlh_ptr, nlmsg, nlmsg);
 }
 
 /* If we are asked to move a wireless interface, then we must actually move its
@@ -1318,39 +1294,35 @@ int lxc_netdev_move_by_name(const char *ifname, pid_t pid, const char* newname)
 
 int lxc_netdev_delete_by_index(int ifindex)
 {
+	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
+	struct nl_handler nlh;
+	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int err;
 	struct ifinfomsg *ifi;
-	struct nl_handler nlh;
-	struct nlmsg *answer = NULL, *nlmsg = NULL;
 
-	err = netlink_open(&nlh, NETLINK_ROUTE);
+	err = netlink_open(nlh_ptr, NETLINK_ROUTE);
 	if (err)
 		return err;
 
-	err = -ENOMEM;
 	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
 	if (!nlmsg)
-		goto out;
+		return ret_errno(ENOMEM);
 
 	answer = nlmsg_alloc_reserve(NLMSG_GOOD_SIZE);
 	if (!answer)
-		goto out;
+		return ret_errno(ENOMEM);
 
 	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_ACK | NLM_F_REQUEST;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_DELLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
 	if (!ifi)
-		goto out;
+		return ret_errno(ENOMEM);
+
 	ifi->ifi_family = AF_UNSPEC;
 	ifi->ifi_index = ifindex;
 
-	err = netlink_transaction(&nlh, nlmsg, answer);
-out:
-	netlink_close(&nlh);
-	nlmsg_free(answer);
-	nlmsg_free(nlmsg);
-	return err;
+	return netlink_transaction(nlh_ptr, nlmsg, answer);
 }
 
 int lxc_netdev_delete_by_name(const char *name)
@@ -1366,48 +1338,42 @@ int lxc_netdev_delete_by_name(const char *name)
 
 int lxc_netdev_rename_by_index(int ifindex, const char *newname)
 {
+	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
+	struct nl_handler nlh;
+	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int err, len;
 	struct ifinfomsg *ifi;
-	struct nl_handler nlh;
-	struct nlmsg *answer = NULL, *nlmsg = NULL;
 
-	err = netlink_open(&nlh, NETLINK_ROUTE);
+	err = netlink_open(nlh_ptr, NETLINK_ROUTE);
 	if (err)
 		return err;
 
 	len = strlen(newname);
-	if (len == 1 || len >= IFNAMSIZ) {
-		err = -EINVAL;
-		goto out;
-	}
+	if (len == 1 || len >= IFNAMSIZ)
+		return ret_errno(EINVAL);
 
-	err = -ENOMEM;
 	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
 	if (!nlmsg)
-		goto out;
+		return ret_errno(ENOMEM);
 
 	answer = nlmsg_alloc_reserve(NLMSG_GOOD_SIZE);
 	if (!answer)
-		goto out;
+		return ret_errno(ENOMEM);
 
 	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_ACK | NLM_F_REQUEST;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
 	if (!ifi)
-		goto out;
+		return ret_errno(ENOMEM);
+
 	ifi->ifi_family = AF_UNSPEC;
 	ifi->ifi_index = ifindex;
 
 	if (nla_put_string(nlmsg, IFLA_IFNAME, newname))
-		goto out;
+		return ret_errno(ENOMEM);
 
-	err = netlink_transaction(&nlh, nlmsg, answer);
-out:
-	netlink_close(&nlh);
-	nlmsg_free(answer);
-	nlmsg_free(nlmsg);
-	return err;
+	return netlink_transaction(nlh_ptr, nlmsg, answer);
 }
 
 int lxc_netdev_rename_by_name(const char *oldname, const char *newname)
@@ -1427,110 +1393,95 @@ int lxc_netdev_rename_by_name(const char *oldname, const char *newname)
 
 int netdev_set_flag(const char *name, int flag)
 {
+	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
+	struct nl_handler nlh;
+	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int err, index, len;
 	struct ifinfomsg *ifi;
-	struct nl_handler nlh;
-	struct nlmsg *answer = NULL, *nlmsg = NULL;
 
-	err = netlink_open(&nlh, NETLINK_ROUTE);
+	err = netlink_open(nlh_ptr, NETLINK_ROUTE);
 	if (err)
 		return err;
 
-	err = -EINVAL;
 	len = strlen(name);
 	if (len == 1 || len >= IFNAMSIZ)
-		goto out;
+		return ret_errno(EINVAL);
 
-	err = -ENOMEM;
 	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
 	if (!nlmsg)
-		goto out;
+		return ret_errno(ENOMEM);
 
 	answer = nlmsg_alloc_reserve(NLMSG_GOOD_SIZE);
 	if (!answer)
-		goto out;
+		return ret_errno(ENOMEM);
 
-	err = -EINVAL;
 	index = if_nametoindex(name);
 	if (!index)
-		goto out;
+		return ret_errno(EINVAL);
 
 	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_NEWLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
-	if (!ifi) {
-		err = -ENOMEM;
-		goto out;
-	}
+	if (!ifi)
+		return ret_errno(ENOMEM);
+
 	ifi->ifi_family = AF_UNSPEC;
 	ifi->ifi_index = index;
 	ifi->ifi_change |= IFF_UP;
 	ifi->ifi_flags |= flag;
 
-	err = netlink_transaction(&nlh, nlmsg, answer);
-out:
-	netlink_close(&nlh);
-	nlmsg_free(nlmsg);
-	nlmsg_free(answer);
-	return err;
+	return netlink_transaction(nlh_ptr, nlmsg, answer);
 }
 
 int netdev_get_flag(const char *name, int *flag)
 {
+	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
+	struct nl_handler nlh;
+	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
 	int err, index, len;
 	struct ifinfomsg *ifi;
-	struct nl_handler nlh;
-	struct nlmsg *answer = NULL, *nlmsg = NULL;
 
 	if (!name)
-		return -EINVAL;
+		return ret_errno(EINVAL);
 
-	err = netlink_open(&nlh, NETLINK_ROUTE);
+	err = netlink_open(nlh_ptr, NETLINK_ROUTE);
 	if (err)
 		return err;
 
-	err = -EINVAL;
 	len = strlen(name);
 	if (len == 1 || len >= IFNAMSIZ)
-		goto out;
+		return ret_errno(EINVAL);
 
-	err = -ENOMEM;
 	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
 	if (!nlmsg)
-		goto out;
+		return ret_errno(ENOMEM);
 
 	answer = nlmsg_alloc_reserve(NLMSG_GOOD_SIZE);
 	if (!answer)
-		goto out;
+		return ret_errno(ENOMEM);
 
-	err = -EINVAL;
 	index = if_nametoindex(name);
 	if (!index)
-		goto out;
+		return ret_errno(EINVAL);
 
 	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_REQUEST;
 	nlmsg->nlmsghdr->nlmsg_type = RTM_GETLINK;
 
 	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
-	if (!ifi) {
-		err = -ENOMEM;
-		goto out;
-	}
+	if (!ifi)
+		return ret_errno(ENOMEM);
+
 	ifi->ifi_family = AF_UNSPEC;
 	ifi->ifi_index = index;
 
-	err = netlink_transaction(&nlh, nlmsg, answer);
+	err = netlink_transaction(nlh_ptr, nlmsg, answer);
 	if (err)
-		goto out;
+		return ret_set_errno(-1, errno);
 
 	ifi = NLMSG_DATA(answer->nlmsghdr);
 
 	*flag = ifi->ifi_flags;
-out:
-	netlink_close(&nlh);
-	nlmsg_free(nlmsg);
-	nlmsg_free(answer);
 	return err;
 }
 

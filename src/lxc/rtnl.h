@@ -44,10 +44,8 @@ extern int rtnetlink_open(struct rtnl_handler *handler);
  * genetlink_close : close a route netlink socket
  *
  * @handler: the handler of the socket to be closed
- *
- * Returns 0 on success, < 0 otherwise
  */
-extern int rtnetlink_close(struct rtnl_handler *handler);
+extern void rtnetlink_close(struct rtnl_handler *handler);
 
 /*
  * rtnetlink_rcv : receive a route netlink socket, it is up
