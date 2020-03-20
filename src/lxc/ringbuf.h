@@ -36,7 +36,8 @@ extern int lxc_ringbuf_read(struct lxc_ringbuf *buf, char *out, size_t *len);
 
 static inline void lxc_ringbuf_release(struct lxc_ringbuf *buf)
 {
-	munmap(buf->addr, buf->size * 2);
+	if (buf->addr)
+		munmap(buf->addr, buf->size * 2);
 }
 
 static inline void lxc_ringbuf_clear(struct lxc_ringbuf *buf)
