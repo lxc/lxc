@@ -19,16 +19,19 @@
 
 lxc_log_define(nl, lxc);
 
-extern size_t nlmsg_len(const struct nlmsg *nlmsg)
+size_t nlmsg_len(const struct nlmsg *nlmsg)
 {
 	return nlmsg->nlmsghdr->nlmsg_len - NLMSG_HDRLEN;
 }
 
-extern void *nlmsg_data(struct nlmsg *nlmsg)
+void *nlmsg_data(struct nlmsg *nlmsg)
 {
-	char *data = ((char *)nlmsg) + NLMSG_HDRLEN;
+	char *data;
+
+	data = ((char *)nlmsg) + NLMSG_HDRLEN;
 	if (!nlmsg_len(nlmsg))
-		return NULL;
+		return ret_set_errno(NULL, EINVAL);
+
 	return data;
 }
 
@@ -40,7 +43,7 @@ static int nla_put(struct nlmsg *nlmsg, int attr,
 	size_t tlen = NLMSG_ALIGN(nlmsg->nlmsghdr->nlmsg_len) + RTA_ALIGN(rtalen);
 
 	if (tlen > nlmsg->cap)
-		return -ENOMEM;
+		return ret_errno(ENOMEM);
 
 	rta = NLMSG_TAIL(nlmsg->nlmsghdr);
 	rta->rta_type = attr;
@@ -48,41 +51,42 @@ static int nla_put(struct nlmsg *nlmsg, int attr,
 	if (data && len)
 		memcpy(RTA_DATA(rta), data, len);
 	nlmsg->nlmsghdr->nlmsg_len = tlen;
+
 	return 0;
 }
 
-extern int nla_put_buffer(struct nlmsg *nlmsg, int attr,
-			  const void *data, size_t size)
+int nla_put_buffer(struct nlmsg *nlmsg, int attr, const void *data, size_t size)
 {
 	return nla_put(nlmsg, attr, data, size);
 }
 
-extern int nla_put_string(struct nlmsg *nlmsg, int attr, const char *string)
+int nla_put_string(struct nlmsg *nlmsg, int attr, const char *string)
 {
 	return nla_put(nlmsg, attr, string, strlen(string) + 1);
 }
 
-extern int nla_put_u32(struct nlmsg *nlmsg, int attr, int value)
+int nla_put_u32(struct nlmsg *nlmsg, int attr, int value)
 {
 	return nla_put(nlmsg, attr, &value, sizeof(value));
 }
 
-extern int nla_put_u16(struct nlmsg *nlmsg, int attr, unsigned short value)
+int nla_put_u16(struct nlmsg *nlmsg, int attr, unsigned short value)
 {
 	return nla_put(nlmsg, attr, &value, 2);
 }
 
-extern int nla_put_attr(struct nlmsg *nlmsg, int attr)
+int nla_put_attr(struct nlmsg *nlmsg, int attr)
 {
 	return nla_put(nlmsg, attr, NULL, 0);
 }
 
 struct rtattr *nla_begin_nested(struct nlmsg *nlmsg, int attr)
 {
-	struct rtattr *rtattr = NLMSG_TAIL(nlmsg->nlmsghdr);
+	struct rtattr *rtattr;
 
+	rtattr = NLMSG_TAIL(nlmsg->nlmsghdr);
 	if (nla_put_attr(nlmsg, attr))
-		return NULL;
+		return ret_set_errno(NULL, ENOMEM);
 
 	return rtattr;
 }
@@ -92,37 +96,34 @@ void nla_end_nested(struct nlmsg *nlmsg, struct rtattr *attr)
 	attr->rta_len = (void *)NLMSG_TAIL(nlmsg->nlmsghdr) - (void *)attr;
 }
 
-extern struct nlmsg *nlmsg_alloc(size_t size)
+struct nlmsg *nlmsg_alloc(size_t size)
 {
-	struct nlmsg *nlmsg;
+	__do_free struct nlmsg *nlmsg = NULL;
 	size_t len = NLMSG_HDRLEN + NLMSG_ALIGN(size);
 
-	nlmsg = (struct nlmsg *)malloc(sizeof(struct nlmsg));
+	nlmsg = malloc(sizeof(struct nlmsg));
 	if (!nlmsg)
-		return NULL;
+		return ret_set_errno(NULL, ENOMEM);
 
-	nlmsg->nlmsghdr = (struct nlmsghdr *)malloc(len);
+	nlmsg->nlmsghdr = malloc(len);
 	if (!nlmsg->nlmsghdr)
-		goto errout;
+		return ret_set_errno(NULL, ENOMEM);
 
 	memset(nlmsg->nlmsghdr, 0, len);
 	nlmsg->cap = len;
 	nlmsg->nlmsghdr->nlmsg_len = NLMSG_HDRLEN;
 
-	return nlmsg;
-errout:
-	free(nlmsg);
-	return NULL;
+	return move_ptr(nlmsg);
 }
 
-extern void *nlmsg_reserve(struct nlmsg *nlmsg, size_t len)
+void *nlmsg_reserve(struct nlmsg *nlmsg, size_t len)
 {
 	void *buf;
 	size_t nlmsg_len = nlmsg->nlmsghdr->nlmsg_len;
 	size_t tlen = NLMSG_ALIGN(len);
 
 	if (nlmsg_len + tlen > nlmsg->cap)
-		return NULL;
+		return ret_set_errno(NULL, ENOMEM);
 
 	buf = ((char *)(nlmsg->nlmsghdr)) + nlmsg_len;
 	nlmsg->nlmsghdr->nlmsg_len += tlen;
@@ -133,29 +134,28 @@ extern void *nlmsg_reserve(struct nlmsg *nlmsg, size_t len)
 	return buf;
 }
 
-extern struct nlmsg *nlmsg_alloc_reserve(size_t size)
+struct nlmsg *nlmsg_alloc_reserve(size_t size)
 {
 	struct nlmsg *nlmsg;
 
 	nlmsg = nlmsg_alloc(size);
 	if (!nlmsg)
-		return NULL;
+		return ret_set_errno(NULL, ENOMEM);
 
 	/* Just set message length to cap directly. */
 	nlmsg->nlmsghdr->nlmsg_len = nlmsg->cap;
 	return nlmsg;
 }
 
-extern void nlmsg_free(struct nlmsg *nlmsg)
+void nlmsg_free(struct nlmsg *nlmsg)
 {
-	if (!nlmsg)
-		return;
-
-	free(nlmsg->nlmsghdr);
-	free(nlmsg);
+	if (nlmsg) {
+		free(nlmsg->nlmsghdr);
+		free(nlmsg);
+	}
 }
 
-extern int __netlink_recv(struct nl_handler *handler, struct nlmsghdr *nlmsghdr)
+int __netlink_recv(struct nl_handler *handler, struct nlmsghdr *nlmsghdr)
 {
 	int ret;
 	struct sockaddr_nl nladdr;
@@ -182,26 +182,24 @@ again:
 		if (errno == EINTR)
 			goto again;
 
-		return -1;
+		return ret_errno(errno);
 	}
 
 	if (!ret)
 		return 0;
 
-	if (msg.msg_flags & MSG_TRUNC && (ret == nlmsghdr->nlmsg_len)) {
-		errno = EMSGSIZE;
-		ret = -1;
-	}
+	if (msg.msg_flags & MSG_TRUNC && (ret == nlmsghdr->nlmsg_len))
+		return ret_errno(EMSGSIZE);
 
 	return ret;
 }
 
-extern int netlink_rcv(struct nl_handler *handler, struct nlmsg *answer)
+int netlink_rcv(struct nl_handler *handler, struct nlmsg *answer)
 {
 	return __netlink_recv(handler, answer->nlmsghdr);
 }
 
-extern int __netlink_send(struct nl_handler *handler, struct nlmsghdr *nlmsghdr)
+int __netlink_send(struct nl_handler *handler, struct nlmsghdr *nlmsghdr)
 {
 	int ret;
 	struct sockaddr_nl nladdr;
@@ -223,7 +221,7 @@ extern int __netlink_send(struct nl_handler *handler, struct nlmsghdr *nlmsghdr)
 
 	ret = sendmsg(handler->fd, &msg, MSG_NOSIGNAL);
 	if (ret < 0)
-		return -1;
+		return ret_errno(errno);
 
 	return ret;
 }
@@ -241,21 +239,19 @@ extern int __netlink_transaction(struct nl_handler *handler,
 
 	ret = __netlink_send(handler, request);
 	if (ret < 0)
-		return -1;
+		return ret;
 
 	ret = __netlink_recv(handler, answer);
 	if (ret < 0)
-		return -1;
+		return ret;
 
-	ret = 0;
 	if (answer->nlmsg_type == NLMSG_ERROR) {
 		struct nlmsgerr *err = (struct nlmsgerr *)NLMSG_DATA(answer);
-		errno = -err->error;
 		if (err->error < 0)
-			ret = -1;
+			return ret_errno(-err->error);
 	}
 
-	return ret;
+	return 0;
 }
 
 extern int netlink_transaction(struct nl_handler *handler,
@@ -267,56 +263,44 @@ extern int netlink_transaction(struct nl_handler *handler,
 
 extern int netlink_open(struct nl_handler *handler, int protocol)
 {
+	__do_close int fd = -EBADF;
 	socklen_t socklen;
 	int sndbuf = 32768;
 	int rcvbuf = 32768;
-	int err;
 
 	memset(handler, 0, sizeof(*handler));
+	handler->fd = -EBADF;
 
-	handler->fd = socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, protocol);
-	if (handler->fd < 0)
-		return -errno;
+	fd = socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, protocol);
+	if (fd < 0)
+		return ret_errno(errno);
 
-	if (setsockopt(handler->fd, SOL_SOCKET, SO_SNDBUF,
-		       &sndbuf, sizeof(sndbuf)) < 0)
-		goto err_with_errno;
+	if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sndbuf, sizeof(sndbuf)) < 0)
+		return ret_errno(errno);
 
-	if (setsockopt(handler->fd, SOL_SOCKET, SO_RCVBUF,
-		       &rcvbuf,sizeof(rcvbuf)) < 0)
-		goto err_with_errno;
+	if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf,sizeof(rcvbuf)) < 0)
+		return ret_errno(errno);
 
 	memset(&handler->local, 0, sizeof(handler->local));
 	handler->local.nl_family = AF_NETLINK;
 	handler->local.nl_groups = 0;
 
-	if (bind(handler->fd, (struct sockaddr*)&handler->local,
-		 sizeof(handler->local)) < 0)
-		goto err_with_errno;
+	if (bind(fd, (struct sockaddr*)&handler->local, sizeof(handler->local)) < 0)
+		return ret_errno(errno);
 
 	socklen = sizeof(handler->local);
-	if (getsockname(handler->fd, (struct sockaddr*)&handler->local,
-			&socklen) < 0)
-		goto err_with_errno;
+	if (getsockname(fd, (struct sockaddr*)&handler->local, &socklen) < 0)
+		return ret_errno(errno);
 
-	if (socklen != sizeof(handler->local)) {
-		err = -EINVAL;
-		goto errclose;
-	}
+	if (socklen != sizeof(handler->local))
+		return ret_errno(EINVAL);
 
-	if (handler->local.nl_family != AF_NETLINK) {
-		err = -EINVAL;
-		goto errclose;
-	}
+	if (handler->local.nl_family != AF_NETLINK)
+		return ret_errno(EINVAL);
 
 	handler->seq = time(NULL);
-
+	handler->fd = move_fd(fd);
 	return 0;
-err_with_errno:
-	err = -errno;
-errclose:
-	close(handler->fd);
-	return err;
 }
 
 extern void netlink_close(struct nl_handler *handler)
@@ -330,9 +314,8 @@ int addattr(struct nlmsghdr *n, size_t maxlen, int type, const void *data,
 	int len = RTA_LENGTH(alen);
 	struct rtattr *rta;
 
-	errno = EMSGSIZE;
 	if (NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(len) > maxlen)
-		return -1;
+		return ret_errno(EMSGSIZE);
 
 	rta = NLMSG_TAIL(n);
 	rta->rta_type = type;
