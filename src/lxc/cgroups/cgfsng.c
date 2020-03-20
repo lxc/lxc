@@ -895,13 +895,15 @@ static int get_existing_subsystems(char ***klist, char ***nlist)
 	return 0;
 }
 
-static void trim(char *s)
+static char *trim(char *s)
 {
 	size_t len;
 
 	len = strlen(s);
 	while ((len > 1) && (s[len - 1] == '\n'))
 		s[--len] = '\0';
+
+	return s;
 }
 
 static void lxc_cgfsng_print_hierarchies(struct cgroup_ops *ops)
@@ -1683,8 +1685,8 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 				      const char *root, int type)
 {
 	__do_free char *cgroup_root = NULL;
+	bool has_cgns = false, wants_force_mount = false;
 	int ret;
-	bool has_cgns = false, retval = false, wants_force_mount = false;
 
 	if (!ops)
 		return ret_set_errno(false, ENOENT);
@@ -1722,12 +1724,12 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	cgroup_root = must_make_path(root, DEFAULT_CGROUP_MOUNTPOINT, NULL);
 	if (ops->cgroup_layout == CGROUP_LAYOUT_UNIFIED) {
 		if (has_cgns && wants_force_mount) {
-			/* If cgroup namespaces are supported but the container
+			/*
+			 * If cgroup namespaces are supported but the container
 			 * will not have CAP_SYS_ADMIN after it has started we
 			 * need to mount the cgroups manually.
 			 */
-			return cg_mount_in_cgroup_namespace(type, ops->unified,
-							    cgroup_root) == 0;
+			return cg_mount_in_cgroup_namespace(type, ops->unified, cgroup_root) == 0;
 		}
 
 		return cg_mount_cgroup_full(type, ops->unified, cgroup_root) == 0;
@@ -1738,7 +1740,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			 MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,
 			 "size=10240k,mode=755", root);
 	if (ret < 0)
-		goto on_error;
+		return false;
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
 		__do_free char *controllerpath = NULL, *path2 = NULL;
@@ -1754,10 +1756,8 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			continue;
 
 		ret = mkdir(controllerpath, 0755);
-		if (ret < 0) {
-			ERROR("Error creating cgroup path: %s", controllerpath);
-			goto on_error;
-		}
+		if (ret < 0)
+			return log_error_errno(false, errno, "Error creating cgroup path: %s", controllerpath);
 
 		if (has_cgns && wants_force_mount) {
 			/* If cgroup namespaces are supported but the container
@@ -1766,14 +1766,14 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			 */
 			ret = cg_mount_in_cgroup_namespace(type, h, controllerpath);
 			if (ret < 0)
-				goto on_error;
+				return false;
 
 			continue;
 		}
 
 		ret = cg_mount_cgroup_full(type, h, controllerpath);
 		if (ret < 0)
-			goto on_error;
+			return false;
 
 		if (!cg_mount_needs_subdirs(type))
 			continue;
@@ -1782,17 +1782,15 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 				       ops->container_cgroup, NULL);
 		ret = mkdir_p(path2, 0755);
 		if (ret < 0)
-			goto on_error;
+			return false;
 
 		ret = cg_legacy_mount_controllers(type, h, controllerpath,
 						  path2, ops->container_cgroup);
 		if (ret < 0)
-			goto on_error;
+			return false;
 	}
-	retval = true;
 
-on_error:
-	return retval;
+	return true;
 }
 
 /* Only root needs to escape to the cgroup of its init. */
@@ -3001,8 +2999,8 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 static char *cg_unified_get_current_cgroup(bool relative)
 {
 	__do_free char *basecginfo = NULL;
+	char *copy;
 	char *base_cgroup;
-	char *copy = NULL;
 
 	if (!relative && (geteuid() == 0))
 		basecginfo = read_file("/proc/1/cgroup");
@@ -3013,18 +3011,14 @@ static char *cg_unified_get_current_cgroup(bool relative)
 
 	base_cgroup = strstr(basecginfo, "0::/");
 	if (!base_cgroup)
-		goto cleanup_on_err;
+		return NULL;
 
 	base_cgroup = base_cgroup + 3;
 	copy = copy_to_eol(base_cgroup);
 	if (!copy)
-		goto cleanup_on_err;
+		return NULL;
 
-cleanup_on_err:
-	if (copy)
-		trim(copy);
-
-	return copy;
+	return trim(copy);
 }
 
 static int cg_unified_init(struct cgroup_ops *ops, bool relative,
