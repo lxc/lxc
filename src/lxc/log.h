@@ -456,27 +456,28 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 #endif
 
 #if HAVE_M_FORMAT
-#define CMD_SYSERROR(format, ...)                                            \
-	fprintf(stderr, "%m - %s: %d: %s: " format "\n", __FILE__, __LINE__, \
+#define CMD_SYSERROR(format, ...)                                             \
+	fprintf(stderr, "%s: %d: %s - %m - " format "\n", __FILE__, __LINE__, \
 		__func__, ##__VA_ARGS__);
 #else
-#define CMD_SYSERROR(format, ...)                                          \
-	do {                                                               \
-		lxc_log_strerror_r;                                        \
-		fprintf(stderr, "%s - %s: %d: %s: " format "\n", __FILE__, \
-			__LINE__, __func__, ptr, ##__VA_ARGS__);           \
+#define CMD_SYSERROR(format, ...)                                           \
+	do {                                                                \
+		lxc_log_strerror_r;                                         \
+		fprintf(stderr, "%s: %d: %s - %s - " format "\n", __FILE__, \
+			__LINE__, __func__, ptr, ##__VA_ARGS__);            \
 	} while (0)
 #endif
 
 #if HAVE_M_FORMAT
-#define CMD_SYSINFO(format, ...)                            \
-		printf("%m - " format, ##__VA_ARGS__)
+#define CMD_SYSINFO(format, ...)                                               \
+	printf("%s: %d: %s - %m - " format "\n", __FILE__, __LINE__, __func__, \
+	       ##__VA_ARGS__);
 #else
-#define CMD_SYSINFO(format, ...)                                            \
-	do {                                                                \
-		lxc_log_strerror_r;                                         \
-		prinft("%s - %s: %d: %s: " format "\n", __FILE__, __LINE__, \
-		       __func__, ptr, ##__VA_ARGS__);                       \
+#define CMD_SYSINFO(format, ...)                                             \
+	do {                                                                 \
+		lxc_log_strerror_r;                                          \
+		printf("%s: %d: %s - %s - " format "\n", __FILE__, __LINE__, \
+		       __func__, ptr, ##__VA_ARGS__);                        \
 	} while (0)
 #endif
 
