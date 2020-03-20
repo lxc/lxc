@@ -319,11 +319,9 @@ errclose:
 	return err;
 }
 
-extern int netlink_close(struct nl_handler *handler)
+extern void netlink_close(struct nl_handler *handler)
 {
-	close(handler->fd);
-	handler->fd = -1;
-	return 0;
+	close_prot_errno_disarm(handler->fd);
 }
 
 int addattr(struct nlmsghdr *n, size_t maxlen, int type, const void *data,

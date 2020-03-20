@@ -21,9 +21,9 @@ extern int rtnetlink_open(struct rtnl_handler *handler)
 	return netlink_open(&handler->nlh, NETLINK_ROUTE);
 }
 
-extern int rtnetlink_close(struct rtnl_handler *handler)
+extern void rtnetlink_close(struct rtnl_handler *handler)
 {
-	return netlink_close(&handler->nlh);
+	netlink_close(&handler->nlh);
 }
 
 #pragma GCC diagnostic push
