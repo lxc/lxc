@@ -464,7 +464,7 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 	do {                                                               \
 		lxc_log_strerror_r;                                        \
 		fprintf(stderr, "%s - %s: %d: %s: " format "\n", __FILE__, \
-			__LINE__, __func__, ##__VA_ARGS__);
+			__LINE__, __func__, ##__VA_ARGS__);                \
 	} while (0)
 #endif
 
