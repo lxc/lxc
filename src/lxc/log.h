@@ -456,13 +456,15 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 #endif
 
 #if HAVE_M_FORMAT
-#define CMD_SYSERROR(format, ...)                                    \
-		fprintf(stderr, "%m - " format, ##__VA_ARGS__)
+#define CMD_SYSERROR(format, ...)                                            \
+	fprintf(stderr, "%m - %s: %d: %s: " format "\n", __FILE__, __LINE__, \
+		__func__, ##__VA_ARGS__);
 #else
-#define CMD_SYSERROR(format, ...)                                    \
-	do {                                                         \
-		lxc_log_strerror_r;                                  \
-		fprintf(stderr, "%s - " format, ptr, ##__VA_ARGS__); \
+#define CMD_SYSERROR(format, ...)                                          \
+	do {                                                               \
+		lxc_log_strerror_r;                                        \
+		fprintf(stderr, "%s - %s: %d: %s: " format "\n", __FILE__, \
+			__LINE__, __func__, ##__VA_ARGS__);
 	} while (0)
 #endif
 
