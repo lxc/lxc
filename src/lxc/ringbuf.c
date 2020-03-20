@@ -20,9 +20,9 @@
 
 int lxc_ringbuf_create(struct lxc_ringbuf *buf, size_t size)
 {
+	__do_close int memfd = -EBADF;
 	char *tmp;
 	int ret;
-	int memfd = -1;
 
 	buf->size = size;
 	buf->r_off = 0;
@@ -63,14 +63,10 @@ int lxc_ringbuf_create(struct lxc_ringbuf *buf, size_t size)
 	if (tmp == MAP_FAILED || tmp != (buf->addr + buf->size))
 		goto on_error;
 
-	close(memfd);
-
 	return 0;
 
 on_error:
 	lxc_ringbuf_release(buf);
-	if (memfd >= 0)
-		close(memfd);
 	return -1;
 }
 

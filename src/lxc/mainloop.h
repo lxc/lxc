@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include "list.h"
+#include "memory_utils.h"
 
 #define LXC_MAINLOOP_ERROR -1
 #define LXC_MAINLOOP_CONTINUE 0
@@ -29,15 +30,8 @@ extern int lxc_mainloop_del_handler(struct lxc_epoll_descr *descr, int fd);
 
 extern int lxc_mainloop_open(struct lxc_epoll_descr *descr);
 
-extern int lxc_mainloop_close(struct lxc_epoll_descr *descr);
+extern void lxc_mainloop_close(struct lxc_epoll_descr *descr);
 
-static inline void __auto_lxc_mainloop_close__(struct lxc_epoll_descr **descr)
-{
-	if (*descr)
-		lxc_mainloop_close(*descr);
-}
-
-#define __do_lxc_mainloop_close \
-	__attribute__((__cleanup__(__auto_lxc_mainloop_close__)))
+define_cleanup_function(struct lxc_epoll_descr *, lxc_mainloop_close);
 
 #endif
