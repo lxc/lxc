@@ -737,11 +737,6 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	lsm_init();
 	TRACE("Initialized LSM");
 
-	ret = lxc_read_seccomp_config(conf);
-	if (ret < 0)
-		return log_error(-1, "Failed loading seccomp policy");
-	TRACE("Read seccomp policy");
-
 	/* Begin by setting the state to STARTING. */
 	ret = lxc_set_state(name, handler, STARTING);
 	if (ret < 0)
@@ -839,6 +834,11 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 		goto out_delete_terminal;
 	}
 	TRACE("Initialized cgroup driver");
+
+	ret = lxc_read_seccomp_config(conf);
+	if (ret < 0)
+		return log_error(-1, "Failed loading seccomp policy");
+	TRACE("Read seccomp policy");
 
 	ret = lsm_process_prepare(conf, handler->lxcpath);
 	if (ret < 0) {
