@@ -53,6 +53,14 @@
 
 #define usernic_error(format, ...) usernic_debug_stream(stderr, format, __VA_ARGS__)
 
+#define cmd_error_errno(__ret__, __errno__, format, ...)      \
+	({                                                    \
+		typeof(__ret__) __internal_ret__ = (__ret__); \
+		errno = (__errno__);                          \
+		CMD_SYSERROR(format, ##__VA_ARGS__);          \
+		__internal_ret__;                             \
+	})
+
 __noreturn static void usage(bool fail)
 {
 	fprintf(stderr, "Description:\n");
@@ -493,19 +501,19 @@ static int instantiate_veth(char *veth1, char *veth2, pid_t pid, unsigned int mt
 
 	ret = lxc_veth_create(veth1, veth2, pid, mtu);
 	if (ret < 0) {
-		errno = -ret;
 		CMD_SYSERROR("Failed to create %s-%s\n", veth1, veth2);
-		return -1;
+		return ret_errno(-ret);
 	}
 
-	/* Changing the high byte of the mac address to 0xfe, the bridge
+	/*
+	 * Changing the high byte of the mac address to 0xfe, the bridge
 	 * interface will always keep the host's mac address and not take the
 	 * mac address of a container.
 	 */
 	ret = setup_private_host_hw_addr(veth1);
 	if (ret < 0) {
-		errno = -ret;
 		CMD_SYSERROR("Failed to change mac address of host interface %s\n", veth1);
+		return ret_errno(-ret);
 	}
 
 	return netdev_set_flag(veth1, IFF_UP);
@@ -769,12 +777,24 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 		return NULL;
 	}
 
-	if (lxc_pwrite_nointr(fd, newline, slen, length) != slen)
+	if (lxc_pwrite_nointr(fd, newline, slen, length) != slen) {
 		CMD_SYSERROR("Failed to append new entry \"%s\" to database file", newline);
 
+		if (lxc_netdev_delete_by_name(nicname) != 0)
+			usernic_error("Error unlinking %s\n", nicname);
+
+		return NULL;
+	}
+
 	ret = ftruncate(fd, length + slen);
-	if (ret < 0)
+	if (ret < 0) {
 		CMD_SYSERROR("Failed to truncate file\n");
+
+		if (lxc_netdev_delete_by_name(nicname) != 0)
+			usernic_error("Error unlinking %s\n", nicname);
+
+		return NULL;
+	}
 
 	return strdup(nicname);
 }
@@ -814,113 +834,84 @@ again:
 static char *lxc_secure_rename_in_ns(int pid, char *oldname, char *newname,
 				     int *container_veth_ifidx)
 {
-	int ofd, ret;
+	__do_close int fd = -EBADF, ofd = -EBADF;
+	int fret = -1;
+	int ifindex, ret;
 	pid_t pid_self;
 	uid_t ruid, suid, euid;
 	char ifname[IFNAMSIZ];
-	char *string_ret = NULL, *name = NULL;
-	int fd = -1, ifindex = -1;
 
 	pid_self = lxc_raw_getpid();
 
 	ofd = lxc_preserve_ns(pid_self, "net");
-	if (ofd < 0) {
-		usernic_error("Failed opening network namespace path for %d", pid_self);
-		return NULL;
-	}
+	if (ofd < 0)
+		return cmd_error_errno(NULL, errno, "Failed opening network namespace path for %d", pid_self);
 
 	fd = lxc_preserve_ns(pid, "net");
-	if (fd < 0) {
-		usernic_error("Failed opening network namespace path for %d", pid);
-		goto do_partial_cleanup;
-	}
+	if (fd < 0)
+		return cmd_error_errno(NULL, errno, "Failed opening network namespace path for %d", pid);
 
 	ret = getresuid(&ruid, &euid, &suid);
-	if (ret < 0) {
-		CMD_SYSERROR("Failed to retrieve real, effective, and saved user IDs\n");
-		goto do_partial_cleanup;
-	}
+	if (ret < 0)
+		return cmd_error_errno(NULL, errno, "Failed to retrieve real, effective, and saved user IDs\n");
 
 	ret = setns(fd, CLONE_NEWNET);
-	close(fd);
-	fd = -1;
-	if (ret < 0) {
-		CMD_SYSERROR("Failed to setns() to the network namespace of the container with PID %d\n",
-			     pid);
-		goto do_partial_cleanup;
-	}
+	if (ret < 0)
+		return cmd_error_errno(NULL, errno, "Failed to setns() to the network namespace of the container with PID %d\n", pid);
 
 	ret = setresuid(ruid, ruid, 0);
 	if (ret < 0) {
-		CMD_SYSERROR("Failed to drop privilege by setting effective user id and real user id to %d, and saved user ID to 0\n",
-			     ruid);
-		/* It's ok to jump to do_full_cleanup here since setresuid()
-		 * will succeed when trying to set real, effective, and saved to
-		 * values they currently have.
+		CMD_SYSERROR("Failed to drop privilege by setting effective user id and real user id to %d, and saved user ID to 0\n", ruid);
+		/*
+		 * It's ok to jump to do_full_cleanup here since setresuid()
+		 * will succeed when trying to set real, effective, and saved
+		 * to values they currently have.
 		 */
-		goto do_full_cleanup;
+		goto out_setns;
 	}
 
 	/* Check if old interface exists. */
 	ifindex = if_nametoindex(oldname);
 	if (!ifindex) {
 		CMD_SYSERROR("Failed to get netdev index\n");
-		goto do_full_cleanup;
+		goto out_setresuid;
 	}
 
-	/* When the IFLA_IFNAME attribute is passed something like "<prefix>%d"
+	/*
+	 * When the IFLA_IFNAME attribute is passed something like "<prefix>%d"
 	 * netlink will replace the format specifier with an appropriate index.
 	 * So we pass "eth%d".
 	 */
-	if (newname)
-		name = newname;
-	else
-		name = "eth%d";
-
-	ret = lxc_netdev_rename_by_name(oldname, name);
-	name = NULL;
+	ret = lxc_netdev_rename_by_name(oldname, newname ? newname : "eth%d");
 	if (ret < 0) {
-		usernic_error("Error %d renaming netdev %s to %s in container\n",
-		              ret, oldname, newname ? newname : "eth%d");
-		goto do_full_cleanup;
+		CMD_SYSERROR("Error %d renaming netdev %s to %s in container\n", ret, oldname, newname ? newname : "eth%d");
+		goto out_setresuid;
 	}
 
 	/* Retrieve new name for interface. */
 	if (!if_indextoname(ifindex, ifname)) {
 		CMD_SYSERROR("Failed to get new netdev name\n");
-		goto do_full_cleanup;
+		goto out_setresuid;
 	}
 
-	/* Allocation failure for strdup() is checked below. */
-	name = strdup(ifname);
-	string_ret = name;
-	*container_veth_ifidx = ifindex;
+	fret = 0;
 
-do_full_cleanup:
+out_setresuid:
 	ret = setresuid(ruid, euid, suid);
-	if (ret < 0) {
-		CMD_SYSERROR("Failed to restore privilege by setting effective user id to %d, real user id to %d, and saved user ID to %d\n",
-			     ruid, euid, suid);
+	if (ret < 0)
+		return cmd_error_errno(NULL, errno, "Failed to restore privilege by setting effective user id to %d, real user id to %d, and saved user ID to %d\n",
+				       ruid, euid, suid);
 
-		string_ret = NULL;
-	}
-
+out_setns:
 	ret = setns(ofd, CLONE_NEWNET);
-	if (ret < 0) {
-		CMD_SYSERROR("Failed to setns() to original network namespace of PID %d\n", ofd);
-		string_ret = NULL;
-	}
+	if (ret < 0)
+		return cmd_error_errno(NULL, errno, "Failed to setns() to original network namespace of PID %d\n", ofd);
 
-do_partial_cleanup:
-	if (fd >= 0)
-		close(fd);
+	if (fret < 0)
+		return NULL;
 
-	if (!string_ret && name)
-		free(name);
-
-	close(ofd);
-
-	return string_ret;
+	*container_veth_ifidx = ifindex;
+	return strdup(ifname);
 }
 
 /* If the caller (real uid, not effective uid) may read the /proc/[pid]/ns/net,
