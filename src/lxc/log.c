@@ -23,6 +23,7 @@
 #include "file_utils.h"
 #include "log.h"
 #include "lxccontainer.h"
+#include "memory_utils.h"
 #include "utils.h"
 
 #ifndef HAVE_STRLCPY
@@ -42,7 +43,7 @@
  */
 #define LXC_LOG_TIME_SIZE ((INTTYPE_TO_STRLEN(uint64_t)) * 2)
 
-int lxc_log_fd = -1;
+int lxc_log_fd = -EBADF;
 static int syslog_enable = 0;
 int lxc_quiet_specified;
 int lxc_log_use_global_fd;
@@ -93,12 +94,12 @@ static const char *lxc_log_get_container_name()
 
 static char *lxc_log_get_va_msg(struct lxc_log_event *event)
 {
-	char *msg;
+	__do_free char *msg = NULL;
 	int rc, len;
 	va_list args;
 
 	if (!event)
-		return NULL;
+		return ret_set_errno(NULL, EINVAL);
 
 	va_copy(args, *event->vap);
 #pragma GCC diagnostic push
@@ -109,25 +110,22 @@ static char *lxc_log_get_va_msg(struct lxc_log_event *event)
 
 	msg = malloc(len * sizeof(char));
 	if (!msg)
-		return NULL;
+		return ret_set_errno(NULL, ENOMEM);
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-nonliteral"
 	rc = vsnprintf(msg, len, event->fmt, *event->vap);
 #pragma GCC diagnostic pop
-	if (rc == -1 || rc >= len) {
-		free(msg);
-		return NULL;
-	}
+	if (rc < 0 || rc >= len)
+		return ret_set_errno(NULL, EIO);
 
-	return msg;
+	return move_ptr(msg);
 }
 
-/*---------------------------------------------------------------------------*/
 static int log_append_syslog(const struct lxc_log_appender *appender,
 			     struct lxc_log_event *event)
 {
-	char *msg;
+	__do_free char *msg = NULL;
 	const char *log_container_name;
 
 	if (!syslog_enable)
@@ -147,12 +145,10 @@ static int log_append_syslog(const struct lxc_log_appender *appender,
 	       event->locinfo->file, event->locinfo->func,
 	       event->locinfo->line,
 	       msg);
-	free(msg);
 
 	return 0;
 }
 
-/*---------------------------------------------------------------------------*/
 static int log_append_stderr(const struct lxc_log_appender *appender,
 			     struct lxc_log_event *event)
 {
@@ -177,7 +173,6 @@ static int log_append_stderr(const struct lxc_log_appender *appender,
 	return 0;
 }
 
-/*---------------------------------------------------------------------------*/
 static int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespec *time)
 {
 	int64_t epoch_to_days, z, era, doe, yoe, year, doy, mp, day, month,
@@ -185,7 +180,8 @@ static int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespe
 	char nanosec[INTTYPE_TO_STRLEN(int64_t)];
 	int ret;
 
-	/* See https://howardhinnant.github.io/date_algorithms.html for an
+	/*
+	 * See https://howardhinnant.github.io/date_algorithms.html for an
 	 * explanation of the algorithm used here.
 	 */
 
@@ -195,17 +191,20 @@ static int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespe
 	/* Shift the Epoch from 1970-01-01 to 0000-03-01. */
 	z = epoch_to_days + 719468;
 
-	/* compute the era from the serial date by simply dividing by the number
+	/*
+	 * Compute the era from the serial date by simply dividing by the number
 	 * of days in an era (146097).
 	 */
 	era = (z >= 0 ? z : z - 146096) / 146097;
 
-	/* The day-of-era (doe) can then be found by subtracting the era number
+	/*
+	 * The day-of-era (doe) can then be found by subtracting the era number
 	 * times the number of days per era, from the serial date.
 	 */
 	doe = (z - era * 146097);
 
-	/* From the day-of-era (doe), the year-of-era (yoe, range [0, 399]) can
+	/*
+	 * From the day-of-era (doe), the year-of-era (yoe, range [0, 399]) can
 	 * be computed.
 	 */
 	yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
@@ -213,7 +212,8 @@ static int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespe
 	/* Given year-of-era, and era, one can now compute the year. */
 	year = yoe + era * 400;
 
-	/* Also the day-of-year, again with the year beginning on Mar. 1, can be
+	/*
+	 * Also the day-of-year, again with the year beginning on Mar. 1, can be
 	 * computed from the day-of-era and year-of-era.
 	 */
 	doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
@@ -221,25 +221,30 @@ static int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespe
 	/* Given day-of-year, find the month number. */
 	mp = (5 * doy + 2) / 153;
 
-	/* From day-of-year and month-of-year we can now easily compute
+	/*
+	 * From day-of-year and month-of-year we can now easily compute
 	 * day-of-month.
 	 */
 	day = doy - (153 * mp + 2) / 5 + 1;
 
-	/* Transform the month number from the [0, 11] / [Mar, Feb] system to
+	/*
+	 * Transform the month number from the [0, 11] / [Mar, Feb] system to
 	 * the civil system: [1, 12] to find the correct month.
 	 */
 	month = mp + (mp < 10 ? 3 : -9);
 
-	/* The algorithm assumes that a year begins on 1 March, so add 1 before
-	 * that. */
+	/*
+	 * The algorithm assumes that a year begins on 1 March, so add 1 before
+	 * that.
+	 */
 	if (month < 3)
 		year++;
 
 	/* Transform days in the epoch to seconds. */
 	d_in_s = epoch_to_days * 86400;
 
-	/* To find the current hour simply substract the Epoch_to_days from the
+	/*
+	 * To find the current hour simply substract the Epoch_to_days from the
 	 * total Epoch and divide by the number of seconds in an hour.
 	 */
 	hours = (time->tv_sec - d_in_s) / 3600;
@@ -247,23 +252,26 @@ static int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespe
 	/* Transform hours to seconds. */
 	h_in_s = hours * 3600;
 
-	/* Calculate minutes by subtracting the seconds for all days in the
+	/*
+	 * Calculate minutes by subtracting the seconds for all days in the
 	 * epoch and for all hours in the epoch and divide by the number of
 	 * minutes in an hour.
 	 */
 	minutes = (time->tv_sec - d_in_s - h_in_s) / 60;
 
-	/* Calculate the seconds by subtracting the seconds for all days in the
+	/*
+	 * Calculate the seconds by subtracting the seconds for all days in the
 	 * epoch, hours in the epoch and minutes in the epoch.
 	 */
 	seconds = (time->tv_sec - d_in_s - h_in_s - (minutes * 60));
 
 	/* Make string from nanoseconds. */
 	ret = snprintf(nanosec, sizeof(nanosec), "%"PRId64, (int64_t)time->tv_nsec);
-	if (ret < 0 || ret >= sizeof(nanosec))
-		return -1;
+	if (ret < 0 || (size_t)ret >= sizeof(nanosec))
+		return ret_errno(EIO);
 
-	/* Create final timestamp for the log and shorten nanoseconds to 3
+	/*
+	 * Create final timestamp for the log and shorten nanoseconds to 3
 	 * digit precision.
 	 */
 	ret = snprintf(buf, bufsize,
@@ -271,12 +279,13 @@ static int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespe
 		       "%02" PRId64 "%02" PRId64 ".%.3s",
 		       year, month, day, hours, minutes, seconds, nanosec);
 	if (ret < 0 || (size_t)ret >= bufsize)
-		return -1;
+		return ret_errno(EIO);
 
 	return 0;
 }
 
-/* This function needs to make extra sure that it is thread-safe. We had some
+/*
+ * This function needs to make extra sure that it is thread-safe. We had some
  * problems with that before. This especially involves time-conversion
  * functions. I don't want to find any localtime() or gmtime() functions or
  * relatives in here. Not even localtime_r() or gmtime_r() or relatives. They
@@ -299,29 +308,29 @@ static int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespe
 static int log_append_logfile(const struct lxc_log_appender *appender,
 			      struct lxc_log_event *event)
 {
+	int fd_to_use = -EBADF;
 	char buffer[LXC_LOG_BUFFER_SIZE];
 	char date_time[LXC_LOG_TIME_SIZE];
 	int n;
 	ssize_t ret;
-	int fd_to_use = -1;
 	const char *log_container_name;
 
 #ifndef NO_LXC_CONF
-	if (current_config)
-		if (!lxc_log_use_global_fd)
-			fd_to_use = current_config->logfd;
+	if (current_config && !lxc_log_use_global_fd)
+		fd_to_use = current_config->logfd;
 #endif
 
 	log_container_name = lxc_log_get_container_name();
 
-	if (fd_to_use == -1)
+	if (fd_to_use < 0)
 		fd_to_use = lxc_log_fd;
 
-	if (fd_to_use == -1)
+	if (fd_to_use < 0)
 		return 0;
 
-	if (lxc_unix_epoch_to_utc(date_time, LXC_LOG_TIME_SIZE, &event->timestamp) < 0)
-		return -1;
+	ret = lxc_unix_epoch_to_utc(date_time, LXC_LOG_TIME_SIZE, &event->timestamp);
+	if (ret)
+		return ret;
 
 	n = snprintf(buffer, sizeof(buffer),
 		     "%s%s%s %s %-8s %s - %s:%s:%d - ",
@@ -334,7 +343,7 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 		     event->locinfo->file, event->locinfo->func,
 		     event->locinfo->line);
 	if (n < 0)
-		return n;
+		return ret_errno(EIO);
 
 	if ((size_t)n < STRARRAYLEN(buffer)) {
 #pragma GCC diagnostic push
@@ -359,8 +368,11 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 static int log_append_dlog(const struct lxc_log_appender *appender,
 			     struct lxc_log_event *event)
 {
-	char *msg = lxc_log_get_va_msg(event);
-	const char *log_container_name = lxc_log_get_container_name();
+	__do_free char *msg = NULL;
+	const char *log_container_name;
+
+	log_container_name = lxc_log_get_container_name();
+	msg = lxc_log_get_va_msg(event);
 
 	switch (event->priority) {
 	case LXC_LOG_LEVEL_TRACE:
@@ -401,7 +413,6 @@ static int log_append_dlog(const struct lxc_log_appender *appender,
 		break;
 	}
 
-	free(msg);
 	return 0;
 }
 #endif
@@ -455,15 +466,15 @@ struct lxc_log_category lxc_log_category_lxc = {
 };
 #endif
 
-/*---------------------------------------------------------------------------*/
 static int build_dir(const char *name)
 {
-	char *e, *n, *p;
+	__do_free char *n = NULL;
+	char *e, *p;
 
 	/* Make copy of the string since we'll be modifying it. */
 	n = strdup(name);
 	if (!n)
-		return -1;
+		return ret_errno(ENOMEM);
 
 	e = &n[strlen(n)];
 	for (p = n + 1; p < e; p++) {
@@ -474,39 +485,31 @@ static int build_dir(const char *name)
 		*p = '\0';
 
 		ret = lxc_unpriv(mkdir(n, 0755));
-		if (ret && errno != EEXIST) {
-			SYSERROR("Failed to create directory \"%s\"", n);
-			free(n);
-			return -1;
-		}
+		if (ret && errno != EEXIST)
+			return log_error_errno(-errno, errno, "Failed to create directory \"%s\"", n);
 
 		*p = '/';
 	}
 
-	free(n);
 	return 0;
 }
 
-/*---------------------------------------------------------------------------*/
 static int log_open(const char *name)
 {
-	int fd;
+	__do_close int fd = -EBADF;
 	int newfd;
 
 	fd = lxc_unpriv(open(name, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0660));
-	if (fd < 0) {
-		SYSERROR("Failed to open log file \"%s\"", name);
-		return -1;
-	}
+	if (fd < 0)
+		return log_error_errno(-errno, errno, "Failed to open log file \"%s\"", name);
 
 	if (fd > 2)
-		return fd;
+		return move_fd(fd);
 
 	newfd = fcntl(fd, F_DUPFD_CLOEXEC, STDERR_FILENO);
-	if (newfd == -1)
-		SYSERROR("Failed to dup log fd %d", fd);
+	if (newfd < 0)
+		return log_error_errno(-errno, errno, "Failed to dup log fd %d", fd);
 
-	close(fd);
 	return newfd;
 }
 
@@ -518,13 +521,13 @@ static int log_open(const char *name)
  */
 static char *build_log_path(const char *name, const char *lxcpath)
 {
-	char *p;
+	__do_free char *p = NULL;
 	int ret;
 	size_t len;
 	bool use_dir;
 
 	if (!name)
-		return NULL;
+		return ret_set_errno(NULL, EINVAL);
 
 #if USE_CONFIGPATH_LOGS
 	use_dir = true;
@@ -553,18 +556,16 @@ static char *build_log_path(const char *name, const char *lxcpath)
 
 	p = malloc(len);
 	if (!p)
-		return p;
+		return ret_set_errno(NULL, ENOMEM);
 
 	if (use_dir)
 		ret = snprintf(p, len, "%s/%s/%s.log", lxcpath, name, name);
 	else
 		ret = snprintf(p, len, "%s/%s.log", lxcpath, name);
-	if (ret < 0 || (size_t)ret >= len) {
-		free(p);
-		return NULL;
-	}
+	if (ret < 0 || (size_t)ret >= len)
+		return ret_set_errno(NULL, EIO);
 
-	return p;
+	return move_ptr(p);
 }
 
 /*
@@ -578,15 +579,15 @@ static char *build_log_path(const char *name, const char *lxcpath)
 static int __lxc_log_set_file(const char *fname, int create_dirs)
 {
 	/* we are overriding the default. */
-	if (lxc_log_fd != -1)
+	if (lxc_log_fd >= 0)
 		lxc_log_close();
 
 	if (!fname)
-		return -1;
+		return ret_errno(EINVAL);
 
 	if (strlen(fname) == 0) {
 		log_fname = NULL;
-		return -1;
+		return ret_errno(EINVAL);
 	}
 
 #if USE_CONFIGPATH_LOGS
@@ -595,14 +596,12 @@ static int __lxc_log_set_file(const char *fname, int create_dirs)
 	 */
 	if (create_dirs)
 #endif
-	if (build_dir(fname)) {
-		SYSERROR("Failed to create dir for log file \"%s\"", fname);
-		return -1;
-	}
+	if (build_dir(fname))
+		return log_error_errno(-errno, errno, "Failed to create dir for log file \"%s\"", fname);
 
 	lxc_log_fd = log_open(fname);
-	if (lxc_log_fd == -1)
-		return -1;
+	if (lxc_log_fd < 0)
+		return lxc_log_fd;
 
 	log_fname = strdup(fname);
 	return 0;
@@ -610,18 +609,13 @@ static int __lxc_log_set_file(const char *fname, int create_dirs)
 
 static int _lxc_log_set_file(const char *name, const char *lxcpath, int create_dirs)
 {
-	char *logfile;
-	int ret;
+	__do_free char *logfile = NULL;
 
 	logfile = build_log_path(name, lxcpath);
-	if (!logfile) {
-		ERROR("Could not build log path");
-		return -1;
-	}
+	if (!logfile)
+		return log_error_errno(-errno, errno, "Could not build log path");
 
-	ret = __lxc_log_set_file(logfile, create_dirs);
-	free(logfile);
-	return ret;
+	return __lxc_log_set_file(logfile, create_dirs);
 }
 
 /*
@@ -635,12 +629,10 @@ int lxc_log_init(struct lxc_log *log)
 	int lxc_priority = LXC_LOG_LEVEL_ERROR;
 
 	if (!log)
-		return -1;
+		return ret_errno(EINVAL);
 
-	if (lxc_log_fd != -1) {
-		WARN("Log already initialized");
-		return 0;
-	}
+	if (lxc_log_fd >= 0)
+		return log_warn_errno(0, EOPNOTSUPP, "Log already initialized");
 
 	if (log->level)
 		lxc_priority = lxc_log_priority_to_int(log->level);
@@ -665,10 +657,8 @@ int lxc_log_init(struct lxc_log *log)
 			return 0;
 
 		ret = __lxc_log_set_file(log->file, 1);
-		if (ret < 0) {
-			ERROR("Failed to enable logfile");
-			return -1;
-		}
+		if (ret < 0)
+			return log_error_errno(-1, errno, "Failed to enable logfile");
 
 		lxc_log_use_global_fd = 1;
 	} else {
@@ -703,7 +693,7 @@ int lxc_log_init(struct lxc_log *log)
 		ret = 0;
 	}
 
-	if (lxc_log_fd != -1) {
+	if (lxc_log_fd >= 0) {
 		lxc_log_category_lxc.appender = &log_appender_logfile;
 		lxc_log_category_lxc.appender->next = &log_appender_stderr;
 	}
@@ -715,17 +705,11 @@ void lxc_log_close(void)
 {
 	closelog();
 
-	free(log_vmname);
-	log_vmname = NULL;
+	free_disarm(log_vmname);
 
-	if (lxc_log_fd == -1)
-		return;
+	close_prot_errno_disarm(lxc_log_fd);
 
-	close(lxc_log_fd);
-	lxc_log_fd = -1;
-
-	free(log_fname);
-	log_fname = NULL;
+	free_disarm(log_fname);
 }
 
 int lxc_log_syslog(int facility)
@@ -741,10 +725,9 @@ int lxc_log_syslog(int facility)
 	appender = lxc_log_category_lxc.appender;
 	/* Check if syslog was already added, to avoid creating a loop */
 	while (appender) {
-		if (appender == &log_appender_syslog) {
-			/* not an error: openlog re-opened the connection */
+		/* not an error: openlog re-opened the connection */
+		if (appender == &log_appender_syslog)
 			return 0;
-		}
 		appender = appender->next;
 	}
 
@@ -768,10 +751,8 @@ inline void lxc_log_enable_syslog(void)
  */
 int lxc_log_set_level(int *dest, int level)
 {
-	if (level < 0 || level >= LXC_LOG_LEVEL_NOTSET) {
-		ERROR("Invalid log priority %d", level);
-		return -1;
-	}
+	if (level < 0 || level >= LXC_LOG_LEVEL_NOTSET)
+		return log_error_errno(-EINVAL, EINVAL, "Invalid log priority %d", level);
 
 	*dest = level;
 	return 0;
@@ -788,7 +769,7 @@ bool lxc_log_has_valid_level(void)
 
 	log_level = lxc_log_get_level();
 	if (log_level < 0 || log_level >= LXC_LOG_LEVEL_NOTSET)
-		return false;
+		return ret_set_errno(false, EINVAL);
 
 	return true;
 }
@@ -800,17 +781,15 @@ bool lxc_log_has_valid_level(void)
  */
 int lxc_log_set_file(int *fd, const char *fname)
 {
-	if (*fd >= 0) {
-		close(*fd);
-		*fd = -1;
-	}
+	if (*fd >= 0)
+		close_prot_errno_disarm(*fd);
 
 	if (build_dir(fname))
-		return -1;
+		return -errno;
 
 	*fd = log_open(fname);
 	if (*fd < 0)
-		return -1;
+		return -errno;
 
 	return 0;
 }
