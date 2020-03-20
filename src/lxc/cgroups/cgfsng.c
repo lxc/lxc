@@ -1913,7 +1913,7 @@ static int freezer_cgroup_events_cb(int fd, uint32_t events, void *cbdata,
 static int cg_unified_freeze(struct cgroup_ops *ops, int timeout)
 {
 	__do_close int fd = -EBADF;
-	__do_lxc_mainloop_close struct lxc_epoll_descr *descr_ptr = NULL;
+	call_cleaner(lxc_mainloop_close) struct lxc_epoll_descr *descr_ptr = NULL;
 	int ret;
 	struct lxc_epoll_descr descr;
 	struct hierarchy *h;
@@ -1981,7 +1981,7 @@ static int cg_legacy_unfreeze(struct cgroup_ops *ops)
 static int cg_unified_unfreeze(struct cgroup_ops *ops, int timeout)
 {
 	__do_close int fd = -EBADF;
-	__do_lxc_mainloop_close struct lxc_epoll_descr *descr_ptr = NULL;
+	call_cleaner(lxc_mainloop_close)struct lxc_epoll_descr *descr_ptr = NULL;
 	int ret;
 	struct lxc_epoll_descr descr;
 	struct hierarchy *h;
