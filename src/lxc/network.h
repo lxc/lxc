@@ -251,10 +251,12 @@ extern int lxc_ip_forwarding_on(const char *name, int family);
 /* Disable IP forwarding. */
 extern int lxc_ip_forwarding_off(const char *name, int family);
 
-/* Generate a new unique network interface name.
- * Allocated memory must be freed by caller.
+/*
+ * Generate a new unique network interface name.
+ *
+ * Allows for 62^n unique combinations.
  */
-extern char *lxc_mkifname(char *template);
+extern char *lxc_ifname_alnum_case_sensitive(char *template);
 
 extern const char *lxc_net_type_to_str(int type);
 extern int setup_private_host_hw_addr(char *veth1);

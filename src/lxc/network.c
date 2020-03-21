@@ -261,7 +261,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		if (err < 0 || (size_t)err >= sizeof(veth1buf))
 			return -1;
 
-		veth1 = lxc_mkifname(veth1buf);
+		veth1 = lxc_ifname_alnum_case_sensitive(veth1buf);
 		if (!veth1)
 			return -1;
 
@@ -273,7 +273,7 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	if (err < 0 || (size_t)err >= sizeof(veth2buf))
 		return -1;
 
-	veth2 = lxc_mkifname(veth2buf);
+	veth2 = lxc_ifname_alnum_case_sensitive(veth2buf);
 	if (!veth2)
 		return -1;
 
@@ -470,7 +470,7 @@ static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 	if (err < 0 || (size_t)err >= sizeof(peer))
 		return -1;
 
-	if (!lxc_mkifname(peer))
+	if (!lxc_ifname_alnum_case_sensitive(peer))
 		return -1;
 
 	err = lxc_macvlan_create(netdev->link, peer,
@@ -625,7 +625,7 @@ static int instantiate_ipvlan(struct lxc_handler *handler, struct lxc_netdev *ne
 	if (err < 0 || (size_t)err >= sizeof(peer))
 		return -1;
 
-	if (!lxc_mkifname(peer))
+	if (!lxc_ifname_alnum_case_sensitive(peer))
 		return -1;
 
 	err = lxc_ipvlan_create(netdev->link, peer, netdev->priv.ipvlan_attr.mode,
@@ -2446,9 +2446,9 @@ const char *lxc_net_type_to_str(int type)
 	return lxc_network_types[type];
 }
 
-static const char padchar[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+static const char padchar[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-char *lxc_mkifname(char *template)
+char *lxc_ifname_alnum_case_sensitive(char *template)
 {
 	int ret;
 	struct netns_ifaddrs *ifa, *ifaddr;

@@ -735,7 +735,7 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 	if (ret < 0 || (size_t)ret >= sizeof(nicname))
 		return NULL;
 
-	if (!lxc_mkifname(nicname))
+	if (!lxc_ifname_alnum_case_sensitive(nicname))
 		return NULL;
 
 	ret = create_nic(nicname, br, pid, cnic);
