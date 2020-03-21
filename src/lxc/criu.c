@@ -903,7 +903,7 @@ static bool restore_net_info(struct lxc_container *c)
 
 		if (netdev->priv.veth_attr.pair[0] == '\0' &&
 		    netdev->priv.veth_attr.veth1[0] == '\0') {
-			if (!lxc_mkifname(template))
+			if (!lxc_ifname_alnum_case_sensitive(template))
 				goto out_unlock;
 
 			(void)strlcpy(netdev->priv.veth_attr.veth1, template, IFNAMSIZ);

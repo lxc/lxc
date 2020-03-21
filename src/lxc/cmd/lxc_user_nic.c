@@ -727,15 +727,21 @@ static char *get_nic_if_avail(int fd, struct alloted_s *names, int pid,
 		return NULL;
 
         uid = getuid();
-	/* for POSIX integer uids the network device name schema is vethUID_XXXXX */
+	/*
+	 * For POSIX integer uids the network device name schema is
+	 * vethUID_XXXX.
+	 * With four random characters passed to
+	 * lxc_ifname_alnum_case_sensitive() we get 62^4 = 14776336
+	 * combinations per uid. That's plenty of network devices for now.
+	 */
 	if (uid > 0 && uid <= 65536)
-		ret = snprintf(nicname, sizeof(nicname), "veth%d_XXXXX", uid);
+		ret = snprintf(nicname, sizeof(nicname), "veth%d_XXXX", uid);
 	else
 		ret = snprintf(nicname, sizeof(nicname), "vethXXXXXX");
 	if (ret < 0 || (size_t)ret >= sizeof(nicname))
 		return NULL;
 
-	if (!lxc_mkifname(nicname))
+	if (!lxc_ifname_alnum_case_sensitive(nicname))
 		return NULL;
 
 	ret = create_nic(nicname, br, pid, cnic);
