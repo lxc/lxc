@@ -766,7 +766,7 @@ static char *mount_tmpfs(const char *oldname, const char *newname,
 	fd = -1;
 
 	ret = fprintf(fp, "#! /bin/sh\n"
-			  "mount -n -t tmpfs -o mode=0755 none %s/%s\n",
+			  "mount -n -t tmpfs -o mode=0755 none %s/%s/overlay\n",
 		      path, newname);
 	if (ret < 0)
 		goto err_close;
