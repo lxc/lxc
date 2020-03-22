@@ -906,7 +906,7 @@ int btrfs_destroy(struct lxc_storage *orig)
 }
 
 int btrfs_create(struct lxc_storage *bdev, const char *dest, const char *n,
-		 struct bdev_specs *specs)
+		 struct bdev_specs *specs, const struct lxc_conf *conf)
 {
 	int ret;
 	size_t len;

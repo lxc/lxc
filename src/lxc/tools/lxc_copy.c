@@ -772,9 +772,11 @@ static char *mount_tmpfs(const char *oldname, const char *newname,
 		goto err_close;
 
 	if (!arg->keepname) {
-		ret = fprintf(fp, "mkdir -p %s/%s/delta0/etc\n"
-				  "echo %s > %s/%s/delta0/etc/hostname\n",
-			      path, newname, newname, path, newname);
+		ret = fprintf(fp,
+			      "mkdir -p %s/%s/%s/etc\n"
+			      "echo %s > %s/%s/%s/etc/hostname\n",
+			      path, newname, LXC_OVERLAY_DELTA_PATH, newname,
+			      path, newname, LXC_OVERLAY_DELTA_PATH);
 		if (ret < 0)
 			goto err_close;
 	}

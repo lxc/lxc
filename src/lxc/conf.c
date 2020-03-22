@@ -2795,8 +2795,8 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 /* Return the host uid/gid to which the container root is mapped in val.
  * Return true if id was found, false otherwise.
  */
-bool get_mapped_rootid(struct lxc_conf *conf, enum idtype idtype,
-		       unsigned long *val)
+static bool get_mapped_rootid(const struct lxc_conf *conf, enum idtype idtype,
+			      unsigned long *val)
 {
 	unsigned nsid;
 	struct id_map *map;
@@ -2820,7 +2820,7 @@ bool get_mapped_rootid(struct lxc_conf *conf, enum idtype idtype,
 	return false;
 }
 
-int mapped_hostid(unsigned id, struct lxc_conf *conf, enum idtype idtype)
+int mapped_hostid(unsigned id, const struct lxc_conf *conf, enum idtype idtype)
 {
 	struct id_map *map;
 	struct lxc_list *it;
@@ -2871,7 +2871,7 @@ int chown_mapped_root_exec_wrapper(void *args)
  * root is privileged with respect to hostuid/hostgid X, allowing
  * him to do the chown.
  */
-int chown_mapped_root(const char *path, struct lxc_conf *conf)
+int chown_mapped_root(const char *path, const struct lxc_conf *conf)
 {
 	uid_t rootuid, rootgid;
 	unsigned long val;

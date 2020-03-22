@@ -5,9 +5,19 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 #include <stdio.h>
 
 #include "conf.h"
+#include "macro.h"
+
+#define LXC_OVERLAY_PRIVATE_DIR "overlay"
+#define LXC_OVERLAY_DELTA_DIR "delta"
+#define LXC_OVERLAY_WORK_DIR "work"
+#define LXC_OVERLAY_DELTA_PATH LXC_OVERLAY_PRIVATE_DIR "/" LXC_OVERLAY_DELTA_DIR
+#define LXC_OVERLAY_WORK_PATH LXC_OVERLAY_PRIVATE_DIR "/" LXC_OVERLAY_WORK_DIR
+#define LXC_OVERLAY_PATH_LEN \
+	(STRLITERALLEN(LXC_OVERLAY_PRIVATE_DIR) + STRLITERALLEN("/") + 256 + 1)
 
 struct lxc_storage;
 struct lxc_conf;

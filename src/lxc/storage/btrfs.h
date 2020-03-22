@@ -366,8 +366,8 @@ extern int btrfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 			    const char *oldname, const char *cname,
 			    const char *oldpath, const char *lxcpath, int snap,
 			    uint64_t newsize, struct lxc_conf *conf);
-extern int btrfs_create(struct lxc_storage *bdev, const char *dest,
-			const char *n, struct bdev_specs *specs);
+extern int btrfs_create(struct lxc_storage *bdev, const char *dest, const char *n,
+			struct bdev_specs *specs, const struct lxc_conf *conf);
 extern int btrfs_destroy(struct lxc_storage *orig);
 extern bool btrfs_detect(const char *path);
 extern int btrfs_mount(struct lxc_storage *bdev);

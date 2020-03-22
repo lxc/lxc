@@ -609,7 +609,7 @@ int lvm_destroy(struct lxc_storage *orig)
 }
 
 int lvm_create(struct lxc_storage *bdev, const char *dest, const char *n,
-	       struct bdev_specs *specs)
+	       struct bdev_specs *specs, const struct lxc_conf *conf)
 {
 	const char *vg, *thinpool, *fstype, *lv = n;
 	uint64_t sz;

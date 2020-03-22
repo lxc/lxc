@@ -25,7 +25,7 @@ extern int ovl_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 			  const char *oldpath, const char *lxcpath, int snap,
 			  uint64_t newsize, struct lxc_conf *conf);
 extern int ovl_create(struct lxc_storage *bdev, const char *dest, const char *n,
-		      struct bdev_specs *specs);
+		      struct bdev_specs *specs, const struct lxc_conf *conf);
 extern int ovl_destroy(struct lxc_storage *orig);
 extern bool ovl_detect(const char *path);
 extern int ovl_mount(struct lxc_storage *bdev);

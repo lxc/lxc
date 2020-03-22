@@ -259,7 +259,8 @@ struct lxc_storage *storage_get(const char *type)
 
 static struct lxc_storage *do_storage_create(const char *dest, const char *type,
 					     const char *cname,
-					     struct bdev_specs *specs)
+					     struct bdev_specs *specs,
+					     const struct lxc_conf *conf)
 {
 	int ret;
 	struct lxc_storage *bdev;
@@ -271,7 +272,7 @@ static struct lxc_storage *do_storage_create(const char *dest, const char *type,
 	if (!bdev)
 		return NULL;
 
-	ret = bdev->ops->create(bdev, dest, cname, specs);
+	ret = bdev->ops->create(bdev, dest, cname, specs, conf);
 	if (ret < 0) {
 		storage_put(bdev);
 		return NULL;
@@ -521,14 +522,15 @@ on_error_put_orig:
  * @specs: details about the backing store to create, like fstype
  */
 struct lxc_storage *storage_create(const char *dest, const char *type,
-				   const char *cname, struct bdev_specs *specs)
+				   const char *cname, struct bdev_specs *specs,
+				   const struct lxc_conf *conf)
 {
 	int ret;
 	struct lxc_storage *bdev;
 	char *best_options[] = {"btrfs", "zfs", "lvm", "dir", "rbd", NULL};
 
 	if (!type)
-		return do_storage_create(dest, "dir", cname, specs);
+		return do_storage_create(dest, "dir", cname, specs, conf);
 
 	ret = strcmp(type, "best");
 	if (ret == 0) {
@@ -537,7 +539,7 @@ struct lxc_storage *storage_create(const char *dest, const char *type,
 		 * opinionated preferences.
 		 */
 		for (i = 0; best_options[i]; i++) {
-			bdev = do_storage_create(dest, best_options[i], cname, specs);
+			bdev = do_storage_create(dest, best_options[i], cname, specs, conf);
 			if (bdev)
 				return bdev;
 		}
@@ -552,13 +554,13 @@ struct lxc_storage *storage_create(const char *dest, const char *type,
 
 		dup = must_copy_string(type);
 		lxc_iterate_parts(token, dup, ",") {
-			bdev = do_storage_create(dest, token, cname, specs);
+			bdev = do_storage_create(dest, token, cname, specs, conf);
 			if (bdev)
 				return bdev;
 		}
 	}
 
-	return do_storage_create(dest, type, cname, specs);
+	return do_storage_create(dest, type, cname, specs, conf);
 }
 
 bool storage_destroy(struct lxc_conf *conf)
