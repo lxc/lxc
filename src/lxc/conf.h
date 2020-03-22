@@ -437,9 +437,9 @@ extern int lxc_setup(struct lxc_handler *handler);
 extern int lxc_setup_parent(struct lxc_handler *handler);
 extern int setup_resource_limits(struct lxc_list *limits, pid_t pid);
 extern int find_unmapped_nsid(struct lxc_conf *conf, enum idtype idtype);
-extern int mapped_hostid(unsigned id, struct lxc_conf *conf,
+extern int mapped_hostid(unsigned id, const struct lxc_conf *conf,
 			 enum idtype idtype);
-extern int chown_mapped_root(const char *path, struct lxc_conf *conf);
+extern int chown_mapped_root(const char *path, const struct lxc_conf *conf);
 extern int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
 			 const char *fn_name);
 extern int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *),

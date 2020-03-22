@@ -1275,7 +1275,7 @@ static struct lxc_storage *do_storage_create(struct lxc_container *c,
 	if (ret < 0 || (size_t)ret >= len)
 		return NULL;
 
-	bdev = storage_create(dest, type, c->name, specs);
+	bdev = storage_create(dest, type, c->name, specs, c->lxc_conf);
 	if (!bdev) {
 		ERROR("Failed to create \"%s\" storage", type);
 		return NULL;
@@ -1290,8 +1290,7 @@ static struct lxc_storage *do_storage_create(struct lxc_container *c,
 	/* If we are not root, chown the rootfs dir to root in the target user
 	 * namespace.
 	 */
-	ret = geteuid();
-	if (ret != 0 || (c->lxc_conf && !lxc_list_empty(&c->lxc_conf->id_map))) {
+	if (am_guest_unpriv() || !lxc_list_empty(&c->lxc_conf->id_map)) {
 		ret = chown_mapped_root(bdev->dest, c->lxc_conf);
 		if (ret < 0) {
 			ERROR("Error chowning \"%s\" to container root", bdev->dest);

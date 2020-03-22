@@ -91,7 +91,7 @@ int nbd_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 }
 
 int nbd_create(struct lxc_storage *bdev, const char *dest, const char *n,
-	       struct bdev_specs *specs)
+	       struct bdev_specs *specs, const struct lxc_conf *conf)
 {
 	return -ENOSYS;
 }

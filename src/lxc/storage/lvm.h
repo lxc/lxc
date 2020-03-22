@@ -24,7 +24,7 @@ extern int lvm_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
 			  uint64_t newsize, struct lxc_conf *conf);
 extern int lvm_destroy(struct lxc_storage *orig);
 extern int lvm_create(struct lxc_storage *bdev, const char *dest, const char *n,
-		      struct bdev_specs *specs);
+		      struct bdev_specs *specs, const struct lxc_conf *conf);
 extern bool lvm_create_clone(struct lxc_conf *conf, struct lxc_storage *orig,
 			     struct lxc_storage *new, uint64_t newsize);
 extern bool lvm_create_snapshot(struct lxc_conf *conf, struct lxc_storage *orig,

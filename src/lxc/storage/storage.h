@@ -54,7 +54,7 @@ struct lxc_storage_ops {
 	int (*umount)(struct lxc_storage *bdev);
 	int (*destroy)(struct lxc_storage *bdev);
 	int (*create)(struct lxc_storage *bdev, const char *dest, const char *n,
-		      struct bdev_specs *specs);
+		      struct bdev_specs *specs, const struct lxc_conf *conf);
 	/* given original mount, rename the paths for cloned container */
 	int (*clone_paths)(struct lxc_storage *orig, struct lxc_storage *new,
 			   const char *oldname, const char *cname,
@@ -111,7 +111,8 @@ extern struct lxc_storage *storage_copy(struct lxc_container *c,
 					bool *needs_rdep);
 extern struct lxc_storage *storage_create(const char *dest, const char *type,
 					  const char *cname,
-					  struct bdev_specs *specs);
+					  struct bdev_specs *specs,
+					  const struct lxc_conf *conf);
 extern void storage_put(struct lxc_storage *bdev);
 extern bool storage_destroy(struct lxc_conf *conf);
 extern bool rootfs_is_blockdev(struct lxc_conf *conf);

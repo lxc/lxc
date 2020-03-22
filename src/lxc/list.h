@@ -58,19 +58,19 @@ static inline void lxc_list_add_elem(struct lxc_list *list, void *elem)
 }
 
 /* Retrieve first element of list. */
-static inline void *lxc_list_first_elem(struct lxc_list *list)
+static inline void *lxc_list_first_elem(const struct lxc_list *list)
 {
 	return list->next->elem;
 }
 
 /* Retrieve last element of list. */
-static inline void *lxc_list_last_elem(struct lxc_list *list)
+static inline void *lxc_list_last_elem(const struct lxc_list *list)
 {
 	return list->prev->elem;
 }
 
 /* Determine if list is empty. */
-static inline int lxc_list_empty(struct lxc_list *list)
+static inline int lxc_list_empty(const struct lxc_list *list)
 {
 	return list == list->next;
 }
