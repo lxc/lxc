@@ -315,6 +315,11 @@ int lvm_is_thin_pool(const char *path)
 	return lvm_compare_lv_attr(path, 0, 't');
 }
 
+static inline bool fs_needs_new_uuid(const char *fstype)
+{
+	return strcmp(fstype, "xfs") == 0 || strcmp(fstype, "btrfs") == 0;
+}
+
 static int lvm_snapshot_create_new_uuid_wrapper(void *data)
 {
 	struct lvcreate_args *args = data;
@@ -330,8 +335,9 @@ static int lvm_snapshot_create_new_uuid_wrapper(void *data)
 
 static int lvm_snapshot(struct lxc_storage *orig, const char *path, uint64_t size)
 {
+	__do_free char *pathdup = NULL;
 	int ret;
-	char *lv, *pathdup;
+	char *lv;
 	char sz[24];
 	char fstype[100];
 	char cmd_output[PATH_MAX];
@@ -339,24 +345,17 @@ static int lvm_snapshot(struct lxc_storage *orig, const char *path, uint64_t siz
 	const char *origsrc;
 	struct lvcreate_args cmd_args = {0};
 
-	ret = snprintf(sz, 24, "%" PRIu64 "b", size);
-	if (ret < 0 || ret >= 24) {
-		ERROR("Failed to create string");
-		return -1;
-	}
+	ret = snprintf(sz, sizeof(sz), "%" PRIu64 "b", size);
+	if (ret < 0 || (size_t)ret >= sizeof(sz))
+		return log_error_errno(-EIO, EIO, "Failed to create string");
 
 	pathdup = strdup(path);
-	if (!pathdup) {
-		ERROR("Failed to duplicate string \"%s\"", path);
-		return -1;
-	}
+	if (!pathdup)
+		return log_error_errno(-ENOMEM, ENOMEM, "Failed to duplicate string \"%s\"", path);
 
 	lv = strrchr(pathdup, '/');
-	if (!lv) {
-		ERROR("Failed to detect \"/\" in string \"%s\"", pathdup);
-		free(pathdup);
-		return -1;
-	}
+	if (!lv)
+		return log_error_errno(-ENOENT, ENOENT, "Failed to detect \"/\" in string \"%s\"", pathdup);
 	repairchar = *lv;
 	*lv = '\0';
 	lv++;
@@ -368,12 +367,10 @@ static int lvm_snapshot(struct lxc_storage *orig, const char *path, uint64_t siz
 	 */
 	origsrc = lxc_storage_get_path(orig->src, "lvm");
 	ret = lvm_is_thin_volume(origsrc);
-	if (ret < 0) {
-		free(pathdup);
+	if (ret < 0)
 		return -1;
-	} else if (ret) {
+	else if (ret)
 		cmd_args.thinpool = origsrc;
-	}
 
 	cmd_args.lv = lv;
 	cmd_args.source_lv = origsrc;
@@ -382,17 +379,15 @@ static int lvm_snapshot(struct lxc_storage *orig, const char *path, uint64_t siz
 	      origsrc, sz);
 	ret = run_command(cmd_output, sizeof(cmd_output),
 			  lvm_snapshot_exec_wrapper, (void *)&cmd_args);
-	if (ret < 0) {
-		ERROR("Failed to create logical volume \"%s\": %s", lv, cmd_output);
-		free(pathdup);
-		return -1;
-	}
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to create logical volume \"%s\": %s",
+				       lv, cmd_output);
 
-	if (detect_fs(orig, fstype, 100) < 0) {
-		INFO("Failed to detect filesystem type for \"%s\"", origsrc);
-		free(pathdup);
-		return -1;
-	}
+	if (detect_fs(orig, fstype, 100) < 0)
+		return log_error_errno(-EINVAL, EINVAL, "Failed to detect filesystem type for \"%s\"", origsrc);
+
+	if (!fs_needs_new_uuid(fstype))
+		return 0;
 
 	/* repair path */
 	lv--;
@@ -401,13 +396,10 @@ static int lvm_snapshot(struct lxc_storage *orig, const char *path, uint64_t siz
 	cmd_args.fstype = fstype;
 	ret = run_command(cmd_output, sizeof(cmd_output),
 			  lvm_snapshot_create_new_uuid_wrapper, (void *)&cmd_args);
-	if (ret < 0) {
-		ERROR("Failed to create new uuid for volume \"%s\": %s", pathdup, cmd_output);
-		free(pathdup);
-		return -1;
-	}
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to create new uuid for volume \"%s\": %s",
+				       pathdup, cmd_output);
 
-	free(pathdup);
 	return 0;
 }
 
