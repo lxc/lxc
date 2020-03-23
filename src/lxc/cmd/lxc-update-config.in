@@ -46,8 +46,18 @@ done
 
 cp "${CONFIGPATH}" "${CONFIGPATH}.backup"
 
+# Deal with lxc.rootfs.backend lines
+DRIVER=""
+while read -r LINE; do
+	DRIVER=$(echo $LINE | sed -n 's/\([[:blank:]]*\|#*\)\(lxc\.rootfs\.backend\)\([[:blank:]]*\|\)\(=[[:blank:]]*\|\)\([[:alnum:]]*\)\([[:space:]]*\)/\5/p')
+done < "${CONFIGPATH}"
+
+if [ -z "${DRIVER}" ]; then
+	DRIVER="dir"
+fi
+sed -i 's/\([[:blank:]*]\|#*\)\(lxc\.rootfs\)\([[:blank:]*]\|\)\(=[[:blank:]]*\)\(.*\)/\1lxc\.rootfs\.path\3\4'"${DRIVER}"':\5/g' "${CONFIGPATH}"
+
 sed -i \
--e 's/\([[:blank:]*]\|#*\)\(lxc\.rootfs\)\([[:blank:]*]\|=\)/\1lxc\.rootfs\.path\3/g' \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.id_map\)\([[:blank:]*]\|=\)/\1lxc\.idmap\3/g' \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.pts\)\([[:blank:]*]\|=\)/\1lxc\.pty\.max\3/g' \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.tty\)\([[:blank:]*]\|=\)/\1lxc\.tty\.max\3/g' \
@@ -57,7 +67,6 @@ sed -i \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.se_context\)\([[:blank:]*]\|=\)/\1lxc\.selinux\.context\3/g' \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.mount\)\([[:blank:]*]\|=\)/\1lxc\.mount\.fstab\3/g' \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.utsname\)\([[:blank:]*]\|=\)/\1lxc\.uts\.name\3/g' \
--e 's/\([[:blank:]*]\|#*\)\(lxc\.rootfs\)\([[:blank:]*]\|=\)/\1lxc\.rootfs\.path\3/g' \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.seccomp\)\([[:blank:]*]\|=\)/\1lxc\.seccomp\.profile\3/g' \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.console\)\([[:blank:]*]\|=\)/\1lxc\.console\.path\3/g' \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.haltsignal\)\([[:blank:]*]\|=\)/\1lxc\.signal\.halt\3/g' \
