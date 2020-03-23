@@ -19,6 +19,8 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
+/* Needs to be after sys/mount.h header */
+#include <linux/fs.h>
 #include <sys/param.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>
@@ -129,9 +131,28 @@ static int _recursive_rmdir(const char *dirname, dev_t pdev,
 			if (_recursive_rmdir(pathname, pdev, exclude, level + 1, onedev) < 0)
 				failed = 1;
 		} else {
-			if (unlink(pathname) < 0) {
-				SYSERROR("Failed to delete \"%s\"", pathname);
-				failed = 1;
+			ret = unlink(pathname);
+			if (ret < 0) {
+				__do_close int fd = -EBADF;
+
+				fd = open(pathname, O_RDONLY | O_CLOEXEC | O_NONBLOCK);
+				if (fd >= 0) {
+					/* The file might be marked immutable. */
+					int attr = 0;
+					ret = ioctl(fd, FS_IOC_GETFLAGS, &attr);
+					if (ret < 0)
+						SYSERROR("Failed to retrieve file flags");
+					attr &= ~FS_IMMUTABLE_FL;
+					ret = ioctl(fd, FS_IOC_SETFLAGS, &attr);
+					if (ret < 0)
+						SYSERROR("Failed to set file flags");
+				}
+
+				ret = unlink(pathname);
+				if (ret < 0) {
+					SYSERROR("Failed to delete \"%s\"", pathname);
+					failed = 1;
+				}
 			}
 		}
 	}
