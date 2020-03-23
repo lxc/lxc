@@ -66,7 +66,6 @@ LXC container image downloader
 
 Special arguments:
 [ -h | --help ]: Print this help message and exit.
-[ -l | --list ]: List all available images and exit.
 [ -m | --metadata ]: Path to the metadata for the image.
 [ -f | --fstree ]: Path to the filesystem tree for the image.
 
