@@ -1,6 +1,6 @@
 AC_PREREQ([2.69])
 
-m4_define([lxc_devel], 0)
+m4_define([lxc_devel], 1)
 m4_define([lxc_version_major], 4)
 m4_define([lxc_version_minor], 0)
 m4_define([lxc_version_micro], 0)
