@@ -797,6 +797,8 @@ AC_CONFIG_FILES([
 	lxc.pc
 	lxc.spec
 
+	coccinelle/Makefile
+
 	config/Makefile
 	config/apparmor/Makefile
 	config/apparmor/abstractions/start-container

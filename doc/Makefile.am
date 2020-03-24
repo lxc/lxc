@@ -9,10 +9,10 @@ if ENABLE_API_DOCS
 SUBDIRS += api
 endif
 
-EXTRA_DIST = \
-	lxc.container.conf \
-	lxc.system.conf \
-	FAQ.txt
+EXTRA_DIST = api-extensions.md \
+	     lxc.container.conf \
+	     lxc.system.conf \
+	     FAQ.txt
 
 if ENABLE_DOCBOOK
 man_MANS = lxc.conf.5 \
