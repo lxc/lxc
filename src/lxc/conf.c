@@ -1847,15 +1847,14 @@ static int mount_entry(const char *fsname, const char *target,
 	}
 
 	if ((mountflags & MS_REMOUNT) || (mountflags & MS_BIND)) {
-		unsigned long required_flags = 0;
 
 		DEBUG("Remounting \"%s\" on \"%s\" to respect bind or remount options",
 		      srcpath ? srcpath : "(none)", target ? target : "(none)");
 
-		if (mountflags & MS_RDONLY)
-			required_flags |= MS_RDONLY;
 #ifdef HAVE_STATVFS
 		if (srcpath && statvfs(srcpath, &sb) == 0) {
+			unsigned long required_flags = 0;
+
 			if (sb.f_flag & MS_NOSUID)
 				required_flags |= MS_NOSUID;
 
@@ -1875,7 +1874,8 @@ static int mount_entry(const char *fsname, const char *target,
 			 * does not have any flags which are not already in
 			 * mountflags, then skip the remount.
 			 */
-			if (!(mountflags & MS_REMOUNT) && !(required_flags & ~mountflags)) {
+			if (!(mountflags & MS_REMOUNT) &&
+			    (!(required_flags & ~mountflags) && !(mountflags & MS_RDONLY))) {
 				DEBUG("Mountflags already were %lu, skipping remount", mountflags);
 				goto skipremount;
 			}
