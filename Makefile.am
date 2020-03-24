@@ -3,13 +3,16 @@
 ACLOCAL_AMFLAGS = -I config
 
 LIBTOOL_DEPS = @LIBTOOL_DEPS@
-SUBDIRS = config src templates doc hooks
-DIST_SUBDIRS = config src templates doc hooks
-EXTRA_DIST = \
-	autogen.sh \
-	lxc.spec \
-	CONTRIBUTING \
-	MAINTAINERS
+SUBDIRS = config coccinelle src templates doc hooks
+DIST_SUBDIRS = config coccinelle  src templates doc hooks
+EXTRA_DIST = autogen.sh \
+	     lxc.spec \
+	     CONTRIBUTING \
+	     CODING_STYLE.md \
+	     LICENSE.GPL2 \
+	     LICENSE.LGPL2.1 \
+	     MAINTAINERS \
+	     README.md
 
 RPMARGS =
 

@@ -158,6 +158,7 @@ EXTRA_DIST = basic.c \
 	     lxc-test-checkpoint-restore \
 	     lxc-test-cloneconfig \
 	     lxc-test-createconfig \
+	     lxc-test-exit-code \
 	     lxc-test-no-new-privs \
 	     lxc-test-snapdeps \
 	     lxc-test-symlink \
@@ -172,7 +173,8 @@ EXTRA_DIST = basic.c \
 	     snapshot.c \
 	     startone.c \
 	     state_server.c \
-	     share_ns.c
+	     share_ns.c \
+	     travis.sh
 
 clean-local:
 	rm -f lxc-test-utils-*
