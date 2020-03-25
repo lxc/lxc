@@ -1,6 +1,6 @@
 [Unit]
 Description=LXC Container Initialization and Autoboot Code
-After=network.target lxc-net.service
+After=network.target lxc-net.service remote-fs.target
 Wants=lxc-net.service
 Documentation=man:lxc-autostart man:lxc
 
