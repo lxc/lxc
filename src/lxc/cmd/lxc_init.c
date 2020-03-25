@@ -70,9 +70,6 @@ struct arguments {
 	int argc;
 };
 
-static int arguments_parse(struct arguments *my_args, int argc,
-			   char *const argv[]);
-
 static struct arguments my_args = {
 	.options   = long_options,
 	.shortopts = short_options
@@ -189,6 +186,99 @@ static void remove_self(void)
 	ret = unlink(path);
 	if (ret < 0)
 		return;
+}
+
+__noreturn static void print_usage_exit(const struct option longopts[])
+
+{
+	fprintf(stderr, "Usage: lxc-init [-n|--name=NAME] [-h|--help] [--usage] [--version]\n\
+		[-q|--quiet] [-P|--lxcpath=LXCPATH]\n");
+	exit(EXIT_SUCCESS);
+}
+
+__noreturn static void print_version_exit(void)
+{
+	printf("%s\n", LXC_VERSION);
+	exit(EXIT_SUCCESS);
+}
+
+static void print_help(void)
+{
+	fprintf(stderr, "\
+Usage: lxc-init --name=NAME -- COMMAND\n\
+\n\
+  lxc-init start a COMMAND as PID 2 inside a container\n\
+\n\
+Options :\n\
+  -n, --name=NAME                  NAME of the container\n\
+  -q, --quiet                      Don't produce any output\n\
+  -P, --lxcpath=PATH               Use specified container path\n\
+  -?, --help                       Give this help list\n\
+      --usage                      Give a short usage message\n\
+      --version                    Print the version number\n\
+\n\
+Mandatory or optional arguments to long options are also mandatory or optional\n\
+for any corresponding short options.\n\
+\n\
+See the lxc-init man page for further information.\n\n");
+}
+
+static int arguments_parse(struct arguments *args, int argc,
+			   char *const argv[])
+{
+	for (;;) {
+		int c;
+		int index = 0;
+
+		c = getopt_long(argc, argv, args->shortopts, args->options, &index);
+		if (c == -1)
+			break;
+		switch (c) {
+		case 'n':
+			args->name = optarg;
+			break;
+		case 'o':
+			break;
+		case 'l':
+			break;
+		case 'q':
+			args->quiet = true;
+			break;
+		case 'P':
+			remove_trailing_slashes(optarg);
+			args->lxcpath = optarg;
+			break;
+		case OPT_USAGE:
+			print_usage_exit(args->options);
+		case OPT_VERSION:
+			print_version_exit();
+		case '?':
+			print_help();
+			exit(EXIT_FAILURE);
+		case 'h':
+			print_help();
+			exit(EXIT_SUCCESS);
+		}
+	}
+
+	/*
+	 * Reclaim the remaining command arguments
+	 */
+	args->argv = &argv[optind];
+	args->argc = argc - optind;
+
+	/* If no lxcpath was given, use default */
+	if (!args->lxcpath)
+		args->lxcpath = lxc_global_config_value("lxc.lxcpath");
+
+	/* Check the command options */
+	if (!args->name) {
+		if (!args->quiet)
+			fprintf(stderr, "lxc-init: missing container name, use --name option\n");
+		return -1;
+	}
+
+	return 0;
 }
 
 int main(int argc, char *argv[])
@@ -425,97 +515,4 @@ out:
 	if (ret < 0)
 		exit(EXIT_FAILURE);
 	exit(exit_with);
-}
-
-__noreturn static void print_usage_exit(const struct option longopts[])
-
-{
-	fprintf(stderr, "Usage: lxc-init [-n|--name=NAME] [-h|--help] [--usage] [--version]\n\
-		[-q|--quiet] [-P|--lxcpath=LXCPATH]\n");
-	exit(EXIT_SUCCESS);
-}
-
-__noreturn static void print_version_exit(void)
-{
-	printf("%s\n", LXC_VERSION);
-	exit(EXIT_SUCCESS);
-}
-
-static void print_help(void)
-{
-	fprintf(stderr, "\
-Usage: lxc-init --name=NAME -- COMMAND\n\
-\n\
-  lxc-init start a COMMAND as PID 2 inside a container\n\
-\n\
-Options :\n\
-  -n, --name=NAME                  NAME of the container\n\
-  -q, --quiet                      Don't produce any output\n\
-  -P, --lxcpath=PATH               Use specified container path\n\
-  -?, --help                       Give this help list\n\
-      --usage                      Give a short usage message\n\
-      --version                    Print the version number\n\
-\n\
-Mandatory or optional arguments to long options are also mandatory or optional\n\
-for any corresponding short options.\n\
-\n\
-See the lxc-init man page for further information.\n\n");
-}
-
-static int arguments_parse(struct arguments *args, int argc,
-			   char *const argv[])
-{
-	for (;;) {
-		int c;
-		int index = 0;
-
-		c = getopt_long(argc, argv, args->shortopts, args->options, &index);
-		if (c == -1)
-			break;
-		switch (c) {
-		case 'n':
-			args->name = optarg;
-			break;
-		case 'o':
-			break;
-		case 'l':
-			break;
-		case 'q':
-			args->quiet = true;
-			break;
-		case 'P':
-			remove_trailing_slashes(optarg);
-			args->lxcpath = optarg;
-			break;
-		case OPT_USAGE:
-			print_usage_exit(args->options);
-		case OPT_VERSION:
-			print_version_exit();
-		case '?':
-			print_help();
-			exit(EXIT_FAILURE);
-		case 'h':
-			print_help();
-			exit(EXIT_SUCCESS);
-		}
-	}
-
-	/*
-	 * Reclaim the remaining command arguments
-	 */
-	args->argv = &argv[optind];
-	args->argc = argc - optind;
-
-	/* If no lxcpath was given, use default */
-	if (!args->lxcpath)
-		args->lxcpath = lxc_global_config_value("lxc.lxcpath");
-
-	/* Check the command options */
-	if (!args->name) {
-		if (!args->quiet)
-			fprintf(stderr, "lxc-init: missing container name, use --name option\n");
-		return -1;
-	}
-
-	return 0;
 }
