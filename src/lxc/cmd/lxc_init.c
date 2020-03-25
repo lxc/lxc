@@ -87,7 +87,8 @@ static void prevent_forking(void)
 		return;
 
 	while (getline(&line, &len, f) != -1) {
-		int fd, ret;
+		__do_close int fd = -EBADF;
+		int ret;
 		char *p, *p2;
 
 		p = strchr(line, ':');
@@ -118,7 +119,7 @@ static void prevent_forking(void)
 			return;
 		}
 
-		fd = open(path, O_WRONLY);
+		fd = open(path, O_WRONLY | O_CLOEXEC);
 		if (fd < 0) {
 			if (my_args.quiet)
 				fprintf(stderr, "Failed to open \"%s\"\n", path);
@@ -129,7 +130,6 @@ static void prevent_forking(void)
 		if (ret != 1 && !my_args.quiet)
 			fprintf(stderr, "Failed to write to \"%s\"\n", path);
 
-		close(fd);
 		return;
 	}
 }
