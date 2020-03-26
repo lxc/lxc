@@ -138,9 +138,9 @@ bool dir_detect(const char *path)
 
 int dir_mount(struct lxc_storage *bdev)
 {
-	int ret;
+	char *mntdata = NULL;
 	unsigned long mflags = 0, mntflags = 0, pflags = 0;
-	char *mntdata;
+	int ret;
 	const char *src;
 
 	if (strcmp(bdev->type, "dir"))
