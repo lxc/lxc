@@ -138,7 +138,7 @@ bool dir_detect(const char *path)
 
 int dir_mount(struct lxc_storage *bdev)
 {
-	char *mntdata = NULL;
+	__do_free char *mntdata = NULL;
 	unsigned long mflags = 0, mntflags = 0, pflags = 0;
 	int ret;
 	const char *src;
@@ -152,14 +152,12 @@ int dir_mount(struct lxc_storage *bdev)
 	ret = parse_mntopts(bdev->mntopts, &mntflags, &mntdata);
 	if (ret < 0) {
 		ERROR("Failed to parse mount options \"%s\"", bdev->mntopts);
-		free(mntdata);
 		return -EINVAL;
 	}
 
 	ret = parse_propagationopts(bdev->mntopts, &pflags);
 	if (ret < 0) {
 		ERROR("Failed to parse propagation options \"%s\"", bdev->mntopts);
-		free(mntdata);
 		return -EINVAL;
 	}
 
@@ -175,12 +173,10 @@ int dir_mount(struct lxc_storage *bdev)
 
 	if (ret < 0) {
 		SYSERROR("Failed to mount \"%s\" on \"%s\"", src, bdev->dest);
-		free(mntdata);
 		return -1;
 	}
 
 	TRACE("Mounted \"%s\" on \"%s\"", src, bdev->dest);
-	free(mntdata);
 	return ret;
 }
 
