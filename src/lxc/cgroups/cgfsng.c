@@ -2057,12 +2057,11 @@ static inline char *build_full_cgpath_from_monitorpath(struct hierarchy *h,
 	return must_make_path(h->mountpoint, inpath, filename, NULL);
 }
 
-static int cgroup_attach_leaf(int unified_fd, int64_t pid)
+static int cgroup_attach_leaf(const struct lxc_conf *conf, int unified_fd, pid_t pid)
 {
 	int idx = 1;
 	int ret;
 	char pidstr[INTTYPE_TO_STRLEN(int64_t) + 1];
-	char attach_cgroup[STRLITERALLEN("lxc-1000/cgroup.procs") + 1];
 	size_t pidstr_len;
 
 	/* Create leaf cgroup. */
@@ -2070,7 +2069,7 @@ static int cgroup_attach_leaf(int unified_fd, int64_t pid)
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-1, errno, "Failed to create leaf cgroup \"lxc\"");
 
-	pidstr_len = sprintf(pidstr, INT64_FMT, pid);
+	pidstr_len = sprintf(pidstr, INT64_FMT, (int64_t)pid);
 	ret = lxc_writeat(unified_fd, "lxc/cgroup.procs", pidstr, pidstr_len);
 	if (ret < 0)
 		ret = lxc_writeat(unified_fd, "cgroup.procs", pidstr, pidstr_len);
@@ -2082,6 +2081,8 @@ static int cgroup_attach_leaf(int unified_fd, int64_t pid)
 		return log_error_errno(-1, errno, "Failed to attach to unified cgroup");
 
 	do {
+		bool rm = false;
+		char attach_cgroup[STRLITERALLEN("lxc-1000/cgroup.procs") + 1];
 		char *slash;
 
 		sprintf(attach_cgroup, "lxc-%d/cgroup.procs", idx);
@@ -2091,12 +2092,17 @@ static int cgroup_attach_leaf(int unified_fd, int64_t pid)
 		ret = mkdirat(unified_fd, attach_cgroup, 0755);
 		if (ret < 0 && errno != EEXIST)
 			return log_error_errno(-1, errno, "Failed to create cgroup %s", attach_cgroup);
+		if (ret == 0)
+			rm = true;
 
 		*slash = '/';
 
 		ret = lxc_writeat(unified_fd, attach_cgroup, pidstr, pidstr_len);
 		if (ret == 0)
 			return 0;
+
+		if (rm && unlinkat(unified_fd, attach_cgroup, AT_REMOVEDIR))
+			SYSERROR("Failed to remove cgroup \"%d(%s)\"", unified_fd, attach_cgroup);
 
 		/* this is a non-leaf node */
 		if (errno != EBUSY)
@@ -2108,15 +2114,66 @@ static int cgroup_attach_leaf(int unified_fd, int64_t pid)
 	return log_error_errno(-1, errno, "Failed to attach to unified cgroup");
 }
 
-int cgroup_attach(const char *name, const char *lxcpath, int64_t pid)
+struct userns_exec_unified_attach_data {
+	const struct lxc_conf *conf;
+	int unified_fd;
+	pid_t pid;
+	uid_t origuid;
+};
+
+static int cgroup_unified_attach_wrapper(void *data)
+{
+	struct userns_exec_unified_attach_data *args = data;
+	uid_t nsuid = (args->conf->root_nsuid_map != NULL) ? 0 : args->conf->init_uid;
+	gid_t nsgid = (args->conf->root_nsgid_map != NULL) ? 0 : args->conf->init_gid;
+	int ret;
+
+	if (!args->conf || args->unified_fd < 0 || args->pid <= 0)
+		return ret_errno(EINVAL);
+
+	if (!lxc_setgroups(0, NULL) && errno != EPERM)
+		return log_error_errno(-1, errno, "Failed to setgroups(0, NULL)");
+
+	ret = setresgid(nsgid, nsgid, nsgid);
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to setresgid(%d, %d, %d)",
+				       (int)nsgid, (int)nsgid, (int)nsgid);
+
+	ret = setresuid(nsuid, nsuid, nsuid);
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to setresuid(%d, %d, %d)",
+				       (int)nsuid, (int)nsuid, (int)nsuid);
+
+	return cgroup_attach_leaf(args->conf, args->unified_fd, args->pid);
+}
+
+int cgroup_attach(const struct lxc_conf *conf, const char *name,
+		  const char *lxcpath, pid_t pid)
 {
 	__do_close int unified_fd = -EBADF;
+	int ret;
+
+	if (!conf || !name || !lxcpath || pid <= 0)
+		return ret_errno(EINVAL);
 
 	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
 	if (unified_fd < 0)
-		return -1;
+		return ret_errno(EBADF);
 
-	return cgroup_attach_leaf(unified_fd, pid);
+	if (!lxc_list_empty(&conf->id_map)) {
+		struct userns_exec_unified_attach_data args = {
+			.conf		= conf,
+			.unified_fd	= unified_fd,
+			.pid		= pid,
+		};
+
+		ret = userns_exec_1(conf, cgroup_unified_attach_wrapper, &args,
+				    "cgroup_unified_attach_wrapper");
+	} else {
+		ret = cgroup_attach_leaf(conf, unified_fd, pid);
+	}
+
+	return ret;
 }
 
 /* Technically, we're always at a delegation boundary here (This is especially
@@ -2128,14 +2185,18 @@ int cgroup_attach(const char *name, const char *lxcpath, int64_t pid)
  * created when we started the container in the latter case we create our own
  * cgroup for the attaching process.
  */
-static int __cg_unified_attach(const struct hierarchy *h, const char *name,
+static int __cg_unified_attach(const struct hierarchy *h,
+			       const struct lxc_conf *conf, const char *name,
 			       const char *lxcpath, pid_t pid,
 			       const char *controller)
 {
 	__do_close int unified_fd = -EBADF;
 	int ret;
 
-	ret = cgroup_attach(name, lxcpath, pid);
+	if (!conf || !name || !lxcpath || pid <= 0)
+		return ret_errno(EINVAL);
+
+	ret = cgroup_attach(conf, name, lxcpath, pid);
 	if (ret < 0) {
 		__do_free char *path = NULL, *cgroup = NULL;
 
@@ -2148,13 +2209,28 @@ static int __cg_unified_attach(const struct hierarchy *h, const char *name,
 		unified_fd = open(path, O_DIRECTORY | O_RDONLY | O_CLOEXEC);
 	}
 	if (unified_fd < 0)
-		return -1;
+		return ret_errno(EBADF);
 
-	return cgroup_attach_leaf(unified_fd, pid);
+	if (!lxc_list_empty(&conf->id_map)) {
+		struct userns_exec_unified_attach_data args = {
+			.conf		= conf,
+			.unified_fd	= unified_fd,
+			.pid		= pid,
+		};
+
+		ret = userns_exec_1(conf, cgroup_unified_attach_wrapper, &args,
+				    "cgroup_unified_attach_wrapper");
+	} else {
+		ret = cgroup_attach_leaf(conf, unified_fd, pid);
+	}
+
+	return ret;
 }
 
-__cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops, const char *name,
-					 const char *lxcpath, pid_t pid)
+__cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops,
+				       const struct lxc_conf *conf,
+				       const char *name, const char *lxcpath,
+				       pid_t pid)
 {
 	int len, ret;
 	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
@@ -2174,7 +2250,7 @@ __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops, const char *name,
 		struct hierarchy *h = ops->hierarchies[i];
 
 		if (h->version == CGROUP2_SUPER_MAGIC) {
-			ret = __cg_unified_attach(h, name, lxcpath, pid,
+			ret = __cg_unified_attach(h, conf, name, lxcpath, pid,
 						  h->controllers[0]);
 			if (ret < 0)
 				return false;
