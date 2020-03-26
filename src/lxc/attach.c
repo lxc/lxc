@@ -1174,7 +1174,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 			 * If this is the unified hierarchy cgroup_attach() is
 			 * enough.
 			 */
-			ret = cgroup_attach(name, lxcpath, pid);
+			ret = cgroup_attach(conf, name, lxcpath, pid);
 			if (ret) {
 				call_cleaner(cgroup_exit) struct cgroup_ops *cgroup_ops = NULL;
 
@@ -1182,7 +1182,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 				if (!cgroup_ops)
 					goto on_error;
 
-				if (!cgroup_ops->attach(cgroup_ops, name, lxcpath, pid))
+				if (!cgroup_ops->attach(cgroup_ops, conf, name, lxcpath, pid))
 					goto on_error;
 			}
 			TRACE("Moved intermediate process %d into container's cgroups", pid);

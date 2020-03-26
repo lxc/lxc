@@ -160,8 +160,8 @@ struct cgroup_ops {
 				    struct lxc_conf *conf, bool with_devices);
 	bool (*setup_limits)(struct cgroup_ops *ops, struct lxc_handler *handler);
 	bool (*chown)(struct cgroup_ops *ops, struct lxc_conf *conf);
-	bool (*attach)(struct cgroup_ops *ops, const char *name,
-		       const char *lxcpath, pid_t pid);
+	bool (*attach)(struct cgroup_ops *ops, const struct lxc_conf *conf,
+		       const char *name, const char *lxcpath, pid_t pid);
 	bool (*mount)(struct cgroup_ops *ops, struct lxc_handler *handler,
 		      const char *root, int type);
 	bool (*devices_activate)(struct cgroup_ops *ops,
@@ -178,7 +178,8 @@ define_cleanup_function(struct cgroup_ops *, cgroup_exit);
 
 extern void prune_init_scope(char *cg);
 
-extern int cgroup_attach(const char *name, const char *lxcpath, int64_t pid);
+extern int cgroup_attach(const struct lxc_conf *conf, const char *name,
+			 const char *lxcpath, pid_t pid);
 
 static inline bool pure_unified_layout(const struct cgroup_ops *ops)
 {
