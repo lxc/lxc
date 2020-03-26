@@ -27,11 +27,13 @@
 #include "strlcpy.h"
 #endif
 
-size_t strlcat(char *d, const char *s, size_t n)
+size_t strlcat(char *src, const char *append, size_t len)
 {
-	size_t l = strnlen(d, n);
-	if (l == n)
-		return l + strlen(s);
+	size_t src_len;
 
-	return l + strlcpy(d + l, s, n - l);
+	src_len = strnlen(src, len);
+	if (src_len == len)
+		return src_len + strlen(append);
+
+	return src_len + strlcpy(src + src_len, append, len - src_len);
 }

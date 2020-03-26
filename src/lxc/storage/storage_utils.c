@@ -315,9 +315,8 @@ int find_fstype_cb(char *buffer, void *data)
 		const char *target;
 		const char *options;
 	} *cbarg = data;
-
-	unsigned long mntflags;
-	char *mntdata;
+	unsigned long mntflags = 0;
+	char *mntdata = NULL;
 	char *fstype;
 
 	/* we don't try 'nodev' entries */

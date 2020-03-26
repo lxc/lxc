@@ -24,6 +24,6 @@
 
 #include <stdio.h>
 
-extern size_t strlcat(char *d, const char *s, size_t n);
+extern size_t strlcat(char *src, const char *append, size_t len);
 
 #endif

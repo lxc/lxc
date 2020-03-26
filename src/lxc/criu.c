@@ -367,9 +367,9 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		goto err;
 
 	while (getmntent_r(mnts, &mntent, buf, sizeof(buf))) {
-		char *mntdata;
+		unsigned long flags = 0;
+		char *mntdata = NULL;
 		char arg[2 * PATH_MAX + 2];
-		unsigned long flags;
 
 		if (parse_mntopts(mntent.mnt_opts, &flags, &mntdata) < 0)
 			goto err;
