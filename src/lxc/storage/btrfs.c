@@ -192,8 +192,8 @@ bool btrfs_detect(const char *path)
 
 int btrfs_mount(struct lxc_storage *bdev)
 {
-	unsigned long mntflags;
-	char *mntdata;
+	unsigned long mntflags = 0;
+	char *mntdata = NULL;
 	const char *src;
 	int ret;
 

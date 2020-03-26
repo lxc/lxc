@@ -2572,9 +2572,9 @@ static int set_config_rootfs_mount(const char *key, const char *value,
 static int set_config_rootfs_options(const char *key, const char *value,
 				     struct lxc_conf *lxc_conf, void *data)
 {
-	int ret;
 	unsigned long mflags = 0, pflags = 0;
 	char *mdata = NULL, *opts = NULL;
+	int ret;
 	struct lxc_rootfs *rootfs = &lxc_conf->rootfs;
 
 	ret = parse_mntopts(value, &mflags, &mdata);

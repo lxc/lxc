@@ -342,13 +342,12 @@ bool ovl_detect(const char *path)
 
 int ovl_mount(struct lxc_storage *bdev)
 {
-	__do_free char *options = NULL,
-							 *options_work = NULL;
+	__do_free char *options = NULL, *options_work = NULL;
+	unsigned long mntflags = 0;
+	char *mntdata = NULL;
 	char *tmp, *dup, *lower, *upper;
 	char *work, *lastslash;
 	size_t len, len2;
-	unsigned long mntflags;
-	char *mntdata;
 	int ret, ret2;
 
 	if (strcmp(bdev->type, "overlay") && strcmp(bdev->type, "overlayfs"))

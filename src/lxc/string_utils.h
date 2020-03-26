@@ -10,6 +10,10 @@
 #include "initutils.h"
 #include "macro.h"
 
+#ifndef HAVE_STRLCAT
+#include "include/strlcat.h"
+#endif
+
 /* convert variadic argument lists to arrays (for execl type argument lists) */
 extern char **lxc_va_arg_list_to_argv(va_list ap, size_t skip, int do_strdup);
 extern const char **lxc_va_arg_list_to_argv_const(va_list ap, size_t skip);
@@ -101,6 +105,17 @@ extern void remove_trailing_slashes(char *p);
 static inline bool is_empty_string(const char *s)
 {
 	return !s || strcmp(s, "") == 0;
+}
+
+static inline ssize_t safe_strlcat(char *src, const char *append, size_t len)
+{
+	size_t new_len;
+
+	new_len = strlcat(src, append, len);
+	if (new_len >= len)
+		return ret_errno(EINVAL);
+
+	return (ssize_t)new_len;
 }
 
 #endif /* __LXC_STRING_UTILS_H */

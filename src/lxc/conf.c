@@ -1694,61 +1694,70 @@ static int lxc_setup_console(const struct lxc_rootfs *rootfs,
 	return lxc_setup_ttydir_console(rootfs, console, ttydir);
 }
 
-static void parse_mntopt(char *opt, unsigned long *flags, char **data, size_t size)
+static int parse_mntopt(char *opt, unsigned long *flags, char **data, size_t size)
 {
-	struct mount_opt *mo;
+	ssize_t ret;
 
 	/* If '=' is contained in opt, the option must go into data. */
 	if (!strchr(opt, '=')) {
-
-		/* If opt is found in mount_opt, set or clear flags.
-		 * Otherwise append it to data. */
+		/*
+		 * If opt is found in mount_opt, set or clear flags.
+		 * Otherwise append it to data.
+		 */
 		size_t opt_len = strlen(opt);
-		for (mo = &mount_opt[0]; mo->name != NULL; mo++) {
+		for (struct mount_opt *mo = &mount_opt[0]; mo->name != NULL; mo++) {
 			size_t mo_name_len = strlen(mo->name);
+
 			if (opt_len == mo_name_len && strncmp(opt, mo->name, mo_name_len) == 0) {
 				if (mo->clear)
 					*flags &= ~mo->flag;
 				else
 					*flags |= mo->flag;
-				return;
+				return 0;
 			}
 		}
 	}
 
-	if (strlen(*data))
-		(void)strlcat(*data, ",", size);
+	if (strlen(*data)) {
+		ret = strlcat(*data, ",", size);
+		if (ret < 0)
+			return log_error_errno(ret, errno, "Failed to append \",\" to %s", *data);
+	}
 
-	(void)strlcat(*data, opt, size);
+	ret = strlcat(*data, opt, size);
+	if (ret < 0)
+		return log_error_errno(ret, errno, "Failed to append \"%s\" to %s", opt, *data);
+
+	return 0;
 }
 
 int parse_mntopts(const char *mntopts, unsigned long *mntflags, char **mntdata)
 {
-	__do_free char *data = NULL, *s = NULL;
-	char *p;
+	__do_free char *mntopts_new = NULL, *mntopts_dup = NULL;
+	char *mntopt_cur = NULL;
 	size_t size;
 
-	*mntdata = NULL;
-	*mntflags = 0L;
+	if (*mntdata || *mntflags)
+		return ret_errno(EINVAL);
 
 	if (!mntopts)
 		return 0;
 
-	s = strdup(mntopts);
-	if (!s)
-		return -1;
+	mntopts_dup = strdup(mntopts);
+	if (!mntopts_dup)
+		return ret_errno(ENOMEM);
 
-	size = strlen(s) + 1;
-	data = malloc(size);
-	if (!data)
-		return -1;
-	*data = 0;
+	size = strlen(mntopts_dup) + 1;
+	mntopts_new = zalloc(size);
+	if (!mntopts_new)
+		return ret_errno(ENOMEM);
 
-	lxc_iterate_parts(p, s, ",")
-		parse_mntopt(p, mntflags, &data, size);
+	lxc_iterate_parts(mntopt_cur, mntopts_dup, ",")
+		if (parse_mntopt(mntopt_cur, mntflags, &mntopts_new, size) < 0)
+			return ret_errno(EINVAL);
 
-	if (*data)
-		*mntdata = move_ptr(data);
+	if (*mntopts_new)
+		*mntdata = move_ptr(mntopts_new);
 
 	return 0;
 }
@@ -2001,11 +2010,10 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 					 const char *lxc_path)
 {
 	__do_free char *mntdata = NULL;
-	int ret;
-	unsigned long mntflags;
-	bool dev, optional, relative;
-	unsigned long pflags = 0;
+	unsigned long mntflags = 0, pflags = 0;
 	char *rootfs_path = NULL;
+	int ret;
+	bool dev, optional, relative;
 
 	optional = hasmntopt(mntent, "optional") != NULL;
 	dev = hasmntopt(mntent, "dev") != NULL;
@@ -2030,7 +2038,7 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 
 	ret = parse_mntopts(mntent->mnt_opts, &mntflags, &mntdata);
 	if (ret < 0)
-		return -1;
+		return ret;
 
 	ret = mount_entry(mntent->mnt_fsname, path, mntent->mnt_type, mntflags,
 			  pflags, mntdata, optional, dev, relative, rootfs_path);

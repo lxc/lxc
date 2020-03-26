@@ -159,11 +159,12 @@ bool zfs_detect(const char *path)
 
 int zfs_mount(struct lxc_storage *bdev)
 {
+	unsigned long mntflags = 0;
+	char *mntdata = NULL;
 	int ret;
 	size_t oldlen, newlen, totallen;
-	char *mntdata, *tmp;
+	char *tmp;
 	const char *src;
-	unsigned long mntflags;
 	char cmd_output[PATH_MAX] = {0};
 
 	if (strcmp(bdev->type, "zfs"))
