@@ -1440,7 +1440,7 @@ static int lxc_setup_rootfs_switch_root(const struct lxc_rootfs *rootfs)
 	return lxc_pivot_root(rootfs->mount);
 }
 
-static const struct id_map *find_mapped_nsid_entry(struct lxc_conf *conf,
+static const struct id_map *find_mapped_nsid_entry(const struct lxc_conf *conf,
 						   unsigned id,
 						   enum idtype idtype)
 {
@@ -2845,7 +2845,7 @@ int mapped_hostid(unsigned id, const struct lxc_conf *conf, enum idtype idtype)
 	return -1;
 }
 
-int find_unmapped_nsid(struct lxc_conf *conf, enum idtype idtype)
+int find_unmapped_nsid(const struct lxc_conf *conf, enum idtype idtype)
 {
 	struct id_map *map;
 	struct lxc_list *it;
@@ -3869,7 +3869,7 @@ static int run_userns_fn(void *data)
 	return d->fn(d->arg);
 }
 
-static struct id_map *mapped_nsid_add(struct lxc_conf *conf, unsigned id,
+static struct id_map *mapped_nsid_add(const struct lxc_conf *conf, unsigned id,
 				      enum idtype idtype)
 {
 	const struct id_map *map;
@@ -3887,7 +3887,7 @@ static struct id_map *mapped_nsid_add(struct lxc_conf *conf, unsigned id,
 	return retmap;
 }
 
-static struct id_map *find_mapped_hostid_entry(struct lxc_conf *conf,
+static struct id_map *find_mapped_hostid_entry(const struct lxc_conf *conf,
 					       unsigned id, enum idtype idtype)
 {
 	struct id_map *map;
@@ -3911,7 +3911,7 @@ static struct id_map *find_mapped_hostid_entry(struct lxc_conf *conf,
 /* Allocate a new {g,u}id mapping for the given {g,u}id. Re-use an already
  * existing one or establish a new one.
  */
-static struct id_map *mapped_hostid_add(struct lxc_conf *conf, uid_t id,
+static struct id_map *mapped_hostid_add(const struct lxc_conf *conf, uid_t id,
 					enum idtype type)
 {
 	__do_free struct id_map *entry = NULL;
@@ -3940,7 +3940,7 @@ static struct id_map *mapped_hostid_add(struct lxc_conf *conf, uid_t id,
 	return move_ptr(entry);
 }
 
-struct lxc_list *get_minimal_idmap(struct lxc_conf *conf)
+static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf)
 {
 	__do_free struct id_map *container_root_uid = NULL,
 				*container_root_gid = NULL,
@@ -4044,7 +4044,7 @@ struct lxc_list *get_minimal_idmap(struct lxc_conf *conf)
  * retrieve from the container's configured {g,u}id mappings as it must have been
  * there to start the container in the first place.
  */
-int userns_exec_1(struct lxc_conf *conf, int (*fn)(void *), void *data,
+int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *), void *data,
 		  const char *fn_name)
 {
 	pid_t pid;
