@@ -2124,8 +2124,8 @@ struct userns_exec_unified_attach_data {
 static int cgroup_unified_attach_wrapper(void *data)
 {
 	struct userns_exec_unified_attach_data *args = data;
-	uid_t nsuid = (args->conf->root_nsuid_map != NULL) ? 0 : args->conf->init_uid;
-	gid_t nsgid = (args->conf->root_nsgid_map != NULL) ? 0 : args->conf->init_gid;
+	uid_t nsuid;
+	gid_t nsgid;
 	int ret;
 
 	if (!args->conf || args->unified_fd < 0 || args->pid <= 0)
@@ -2133,6 +2133,9 @@ static int cgroup_unified_attach_wrapper(void *data)
 
 	if (!lxc_setgroups(0, NULL) && errno != EPERM)
 		return log_error_errno(-1, errno, "Failed to setgroups(0, NULL)");
+
+	nsuid = (args->conf->root_nsuid_map != NULL) ? 0 : args->conf->init_uid;
+	nsgid = (args->conf->root_nsgid_map != NULL) ? 0 : args->conf->init_gid;
 
 	ret = setresgid(nsgid, nsgid, nsgid);
 	if (ret < 0)
@@ -2191,23 +2194,27 @@ static int __cg_unified_attach(const struct hierarchy *h,
 			       const char *controller)
 {
 	__do_close int unified_fd = -EBADF;
+	__do_free char *path = NULL, *cgroup = NULL;
 	int ret;
 
 	if (!conf || !name || !lxcpath || pid <= 0)
 		return ret_errno(EINVAL);
 
 	ret = cgroup_attach(conf, name, lxcpath, pid);
-	if (ret < 0) {
-		__do_free char *path = NULL, *cgroup = NULL;
+	if (ret == 0)
+		return log_trace(0, "Attached to unified cgroup via command handler");
+	if (ret != -EBADF)
+		return log_error_errno(ret, errno, "Failed to attach to unified cgroup");
 
-		cgroup = lxc_cmd_get_cgroup_path(name, lxcpath, controller);
-		/* not running */
-		if (!cgroup)
-			return 0;
+	/* Fall back to retrieving the path for the unified cgroup. */
+	cgroup = lxc_cmd_get_cgroup_path(name, lxcpath, controller);
+	/* not running */
+	if (!cgroup)
+		return 0;
 
-		path = must_make_path(h->mountpoint, cgroup, NULL);
-		unified_fd = open(path, O_DIRECTORY | O_RDONLY | O_CLOEXEC);
-	}
+	path = must_make_path(h->mountpoint, cgroup, NULL);
+
+	unified_fd = open(path, O_PATH | O_DIRECTORY | O_CLOEXEC);
 	if (unified_fd < 0)
 		return ret_errno(EBADF);
 
