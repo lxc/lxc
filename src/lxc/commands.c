@@ -1450,7 +1450,7 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 		if (errno == EACCES) {
 			/* We don't care for the peer, just send and close. */
 			struct lxc_cmd_rsp rsp = {
-				.ret = ret,
+				.ret = -EPERM,
 			};
 
 			lxc_cmd_rsp_send(fd, &rsp);
@@ -1464,14 +1464,11 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 
 	if (ret != sizeof(req)) {
 		WARN("Failed to receive full command request. Ignoring request for \"%s\"", lxc_cmd_str(req.cmd));
-		ret = -1;
 		goto out_close;
 	}
 
 	if ((req.datalen > LXC_CMD_DATA_MAX) && (req.cmd != LXC_CMD_CONSOLE_LOG)) {
 		ERROR("Received command data length %d is too large for command \"%s\"", req.datalen, lxc_cmd_str(req.cmd));
-		errno = EFBIG;
-		ret = -EFBIG;
 		goto out_close;
 	}
 
@@ -1480,7 +1477,6 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 		ret = lxc_recv_nointr(fd, reqdata, req.datalen, 0);
 		if (ret != req.datalen) {
 			WARN("Failed to receive full command request. Ignoring request for \"%s\"", lxc_cmd_str(req.cmd));
-			ret = LXC_MAINLOOP_ERROR;
 			goto out_close;
 		}
 
@@ -1490,12 +1486,11 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 	ret = lxc_cmd_process(fd, &req, handler, descr);
 	if (ret) {
 		/* This is not an error, but only a request to close fd. */
-		ret = LXC_MAINLOOP_CONTINUE;
 		goto out_close;
 	}
 
 out:
-	return ret;
+	return LXC_MAINLOOP_CONTINUE;
 
 out_close:
 	lxc_cmd_fd_cleanup(fd, handler, descr, req.cmd);
