@@ -2118,7 +2118,6 @@ struct userns_exec_unified_attach_data {
 	const struct lxc_conf *conf;
 	int unified_fd;
 	pid_t pid;
-	uid_t origuid;
 };
 
 static int cgroup_unified_attach_wrapper(void *data)
