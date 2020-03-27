@@ -3496,6 +3496,7 @@ static int lxc_free_idmap(struct lxc_list *id_map)
 
 	return 0;
 }
+define_cleanup_function(struct lxc_list *, lxc_free_idmap);
 
 int lxc_clear_idmaps(struct lxc_conf *c)
 {
@@ -3846,19 +3847,18 @@ struct userns_fn_data {
 
 static int run_userns_fn(void *data)
 {
+	struct userns_fn_data *d = data;
 	int ret;
 	char c;
-	struct userns_fn_data *d = data;
 
-	/* Close write end of the pipe. */
-	close(d->p[1]);
+	close_prot_errno_disarm(d->p[1]);
 
-	/* Wait for parent to finish establishing a new mapping in the user
+	/*
+	 * Wait for parent to finish establishing a new mapping in the user
 	 * namespace we are executing in.
 	 */
 	ret = lxc_read_nointr(d->p[0], &c, 1);
-	/* Close read end of the pipe. */
-	close(d->p[0]);
+	close_prot_errno_disarm(d->p[0]);
 	if (ret != 1)
 		return -1;
 
@@ -4033,7 +4033,8 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf)
 	return move_ptr(idmap);
 }
 
-/* Run a function in a new user namespace.
+/*
+ * Run a function in a new user namespace.
  * The caller's euid/egid will be mapped if it is not already.
  * Afaict, userns_exec_1() is only used to operate based on privileges for the
  * user's own {g,u}id on the host and for the container root's unmapped {g,u}id.
@@ -4047,30 +4048,29 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf)
 int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *), void *data,
 		  const char *fn_name)
 {
-	pid_t pid;
-	int p[2];
-	struct userns_fn_data d;
-	struct lxc_list *idmap;
+	call_cleaner(lxc_free_idmap) struct lxc_list *idmap = NULL;
 	int ret = -1, status = -1;
 	char c = '1';
+	pid_t pid;
+	int pipe_fds[2];
+	struct userns_fn_data d;
 
 	if (!conf)
 		return -EINVAL;
 
 	idmap = get_minimal_idmap(conf);
 	if (!idmap)
-		return -1;
+		return ret_errno(ENOENT);
 
-	ret = pipe2(p, O_CLOEXEC);
-	if (ret < 0) {
-		SYSERROR("Failed to create pipe");
-		return -1;
-	}
-	d.fn = fn;
-	d.fn_name = fn_name;
-	d.arg = data;
-	d.p[0] = p[0];
-	d.p[1] = p[1];
+	ret = pipe2(pipe_fds, O_CLOEXEC);
+	if (ret < 0)
+		return -errno;
+
+	d.fn		= fn;
+	d.fn_name	= fn_name;
+	d.arg		= data;
+	d.p[0]		= pipe_fds[0];
+	d.p[1]		= pipe_fds[1];
 
 	/* Clone child in new user namespace. */
 	pid = lxc_raw_clone_cb(run_userns_fn, &d, CLONE_NEWUSER, NULL);
@@ -4079,21 +4079,17 @@ int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *), void *data,
 		goto on_error;
 	}
 
-	close(p[0]);
-	p[0] = -1;
+	close_prot_errno_disarm(pipe_fds[0]);
 
 	if (lxc_log_get_level() == LXC_LOG_LEVEL_TRACE ||
 	    conf->loglevel == LXC_LOG_LEVEL_TRACE) {
 		struct id_map *map;
 		struct lxc_list *it;
 
-		lxc_list_for_each (it, idmap) {
+		lxc_list_for_each(it, idmap) {
 			map = it->elem;
-			TRACE("Establishing %cid mapping for \"%d\" in new "
-			      "user namespace: nsuid %lu - hostid %lu - range "
-			      "%lu",
-			      (map->idtype == ID_TYPE_UID) ? 'u' : 'g', pid,
-			      map->nsid, map->hostid, map->range);
+			TRACE("Establishing %cid mapping for \"%d\" in new user namespace: nsuid %lu - hostid %lu - range %lu",
+			      (map->idtype == ID_TYPE_UID) ? 'u' : 'g', pid, map->nsid, map->hostid, map->range);
 		}
 	}
 
@@ -4105,15 +4101,14 @@ int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *), void *data,
 	}
 
 	/* Tell child to proceed. */
-	if (lxc_write_nointr(p[1], &c, 1) != 1) {
+	if (lxc_write_nointr(pipe_fds[1], &c, 1) != 1) {
 		SYSERROR("Failed telling child process \"%d\" to proceed", pid);
 		goto on_error;
 	}
 
 on_error:
-	if (p[0] != -1)
-		close(p[0]);
-	close(p[1]);
+	close_prot_errno_disarm(pipe_fds[0]);
+	close_prot_errno_disarm(pipe_fds[1]);
 
 	/* Wait for child to finish. */
 	if (pid > 0)
