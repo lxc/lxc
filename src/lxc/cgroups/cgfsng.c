@@ -2057,11 +2057,8 @@ static inline char *build_full_cgpath_from_monitorpath(struct hierarchy *h,
 	return must_make_path(h->mountpoint, inpath, filename, NULL);
 }
 
-#define LXC_UNIFIED_ATTACH_CGROUP_LEN STRLITERALLEN("/lxc-1000/cgroup.procs")
-static int cgroup_attach_leaf(const struct lxc_conf *conf, char *unified_path,
-			      int unified_fd, pid_t pid)
+static int cgroup_attach_leaf(const struct lxc_conf *conf, int unified_fd, pid_t pid)
 {
-	__do_free char *path = NULL;
 	int idx = 1;
 	int ret;
 	char pidstr[INTTYPE_TO_STRLEN(int64_t) + 1];
@@ -2071,11 +2068,6 @@ static int cgroup_attach_leaf(const struct lxc_conf *conf, char *unified_path,
 	ret = mkdirat(unified_fd, "lxc", 0755);
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-1, errno, "Failed to create leaf cgroup \"lxc\"");
-
-	path = must_make_path(unified_path, "lxc", NULL);
-	ret = chown_mapped_root(path, conf);
-	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to chown \"%s\"", path);
 
 	pidstr_len = sprintf(pidstr, INT64_FMT, (int64_t)pid);
 	ret = lxc_writeat(unified_fd, "lxc/cgroup.procs", pidstr, pidstr_len);
@@ -2088,10 +2080,9 @@ static int cgroup_attach_leaf(const struct lxc_conf *conf, char *unified_path,
 	if (errno != EBUSY)
 		return log_error_errno(-1, errno, "Failed to attach to unified cgroup");
 
-	free_disarm(path);
 	do {
 		bool rm = false;
-		char attach_cgroup[LXC_UNIFIED_ATTACH_CGROUP_LEN + 1];
+		char attach_cgroup[STRLITERALLEN("lxc-1000/cgroup.procs") + 1];
 		char *slash;
 
 		sprintf(attach_cgroup, "lxc-%d/cgroup.procs", idx);
@@ -2105,12 +2096,6 @@ static int cgroup_attach_leaf(const struct lxc_conf *conf, char *unified_path,
 			rm = true;
 
 		*slash = '/';
-
-		path = must_make_path(unified_path, attach_cgroup, NULL);
-		ret = chown_mapped_root(path, conf);
-		if (ret < 0)
-			return log_error_errno(-1, errno, "Failed to chown \"%s\"", path);
-		free_disarm(path);
 
 		ret = lxc_writeat(unified_fd, attach_cgroup, pidstr, pidstr_len);
 		if (ret == 0)
@@ -2129,14 +2114,46 @@ static int cgroup_attach_leaf(const struct lxc_conf *conf, char *unified_path,
 	return log_error_errno(-1, errno, "Failed to attach to unified cgroup");
 }
 
+struct userns_exec_unified_attach_data {
+	const struct lxc_conf *conf;
+	int unified_fd;
+	pid_t pid;
+};
+
+static int cgroup_unified_attach_wrapper(void *data)
+{
+	struct userns_exec_unified_attach_data *args = data;
+	uid_t nsuid;
+	gid_t nsgid;
+	int ret;
+
+	if (!args->conf || args->unified_fd < 0 || args->pid <= 0)
+		return ret_errno(EINVAL);
+
+	if (!lxc_setgroups(0, NULL) && errno != EPERM)
+		return log_error_errno(-1, errno, "Failed to setgroups(0, NULL)");
+
+	nsuid = (args->conf->root_nsuid_map != NULL) ? 0 : args->conf->init_uid;
+	nsgid = (args->conf->root_nsgid_map != NULL) ? 0 : args->conf->init_gid;
+
+	ret = setresgid(nsgid, nsgid, nsgid);
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to setresgid(%d, %d, %d)",
+				       (int)nsgid, (int)nsgid, (int)nsgid);
+
+	ret = setresuid(nsuid, nsuid, nsuid);
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to setresuid(%d, %d, %d)",
+				       (int)nsuid, (int)nsuid, (int)nsuid);
+
+	return cgroup_attach_leaf(args->conf, args->unified_fd, args->pid);
+}
+
 int cgroup_attach(const struct lxc_conf *conf, const char *name,
 		  const char *lxcpath, pid_t pid)
 {
 	__do_close int unified_fd = -EBADF;
-	__do_free char *buf = NULL;
 	int ret;
-	ssize_t len;
-	struct stat st;
 
 	if (!conf || !name || !lxcpath || pid <= 0)
 		return ret_errno(EINVAL);
@@ -2145,24 +2162,20 @@ int cgroup_attach(const struct lxc_conf *conf, const char *name,
 	if (unified_fd < 0)
 		return ret_errno(EBADF);
 
-	ret = fstatat(unified_fd, "", &st, AT_EMPTY_PATH | AT_SYMLINK_NOFOLLOW);
-	if (ret < 0)
-		return -errno;
+	if (!lxc_list_empty(&conf->id_map)) {
+		struct userns_exec_unified_attach_data args = {
+			.conf		= conf,
+			.unified_fd	= unified_fd,
+			.pid		= pid,
+		};
 
-	if (st.st_size == 0)
-		return ret_errno(EINVAL);
+		ret = userns_exec_1(conf, cgroup_unified_attach_wrapper, &args,
+				    "cgroup_unified_attach_wrapper");
+	} else {
+		ret = cgroup_attach_leaf(conf, unified_fd, pid);
+	}
 
-	buf = zalloc(st.st_size);
-	if (!buf)
-		return ret_errno(ENOMEM);
-
-	len = readlinkat(unified_fd, "", buf, st.st_size);
-	if (len < 0)
-		return -errno;
-	if (len >= st.st_size)
-		return ret_errno(E2BIG);
-
-	return cgroup_attach_leaf(conf, buf, unified_fd, pid);
+	return ret;
 }
 
 /* Technically, we're always at a delegation boundary here (This is especially
@@ -2204,7 +2217,20 @@ static int __cg_unified_attach(const struct hierarchy *h,
 	if (unified_fd < 0)
 		return ret_errno(EBADF);
 
-	return cgroup_attach_leaf(conf, path, unified_fd, pid);
+	if (!lxc_list_empty(&conf->id_map)) {
+		struct userns_exec_unified_attach_data args = {
+			.conf		= conf,
+			.unified_fd	= unified_fd,
+			.pid		= pid,
+		};
+
+		ret = userns_exec_1(conf, cgroup_unified_attach_wrapper, &args,
+				    "cgroup_unified_attach_wrapper");
+	} else {
+		ret = cgroup_attach_leaf(conf, unified_fd, pid);
+	}
+
+	return ret;
 }
 
 __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops,
