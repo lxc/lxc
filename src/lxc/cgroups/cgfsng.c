@@ -2194,23 +2194,27 @@ static int __cg_unified_attach(const struct hierarchy *h,
 			       const char *controller)
 {
 	__do_close int unified_fd = -EBADF;
+	__do_free char *path = NULL, *cgroup = NULL;
 	int ret;
 
 	if (!conf || !name || !lxcpath || pid <= 0)
 		return ret_errno(EINVAL);
 
 	ret = cgroup_attach(conf, name, lxcpath, pid);
-	if (ret < 0) {
-		__do_free char *path = NULL, *cgroup = NULL;
+	if (ret == 0)
+		return log_trace(0, "Attached to unified cgroup via command handler");
+	if (ret != -EBADF)
+		return log_error_errno(ret, errno, "Failed to attach to unified cgroup");
 
-		cgroup = lxc_cmd_get_cgroup_path(name, lxcpath, controller);
-		/* not running */
-		if (!cgroup)
-			return 0;
+	/* Fall back to retrieving the path for the unified cgroup. */
+	cgroup = lxc_cmd_get_cgroup_path(name, lxcpath, controller);
+	/* not running */
+	if (!cgroup)
+		return 0;
 
-		path = must_make_path(h->mountpoint, cgroup, NULL);
-		unified_fd = open(path, O_DIRECTORY | O_RDONLY | O_CLOEXEC);
-	}
+	path = must_make_path(h->mountpoint, cgroup, NULL);
+
+	unified_fd = open(path, O_PATH | O_DIRECTORY | O_CLOEXEC);
 	if (unified_fd < 0)
 		return ret_errno(EBADF);
 
