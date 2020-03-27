@@ -335,7 +335,7 @@ static int signal_handler(int fd, uint32_t events, void *data,
 		return log_error(LXC_MAINLOOP_ERROR, "Failed to read signal info from signal file descriptor %d", fd);
 
 	if (ret != sizeof(siginfo))
-		return log_error(-EINVAL, "Unexpected size for struct signalfd_siginfo");
+		return log_error(LXC_MAINLOOP_ERROR, "Unexpected size for struct signalfd_siginfo");
 
 	/* Check whether init is running. */
 	info.si_pid = 0;

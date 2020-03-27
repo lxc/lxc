@@ -1326,8 +1326,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	}
 
 	/* close unneeded file descriptors */
-	close(ipc_sockets[0]);
-	ipc_sockets[0] = -EBADF;
+	close_prot_errno_disarm(ipc_sockets[0]);
 
 	if (options->attach_flags & LXC_ATTACH_TERMINAL) {
 		lxc_attach_terminal_close_master(&terminal);

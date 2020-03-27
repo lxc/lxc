@@ -1478,10 +1478,8 @@ retry:
 		SYSERROR("Failed to send seccomp notification");
 
 out:
-	return 0;
-#else
-	return -ENOSYS;
 #endif
+	return LXC_MAINLOOP_CONTINUE;
 }
 
 void seccomp_conf_init(struct lxc_conf *conf)
