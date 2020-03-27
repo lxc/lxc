@@ -4120,6 +4120,110 @@ on_error:
 	return ret;
 }
 
+int userns_exec_minimal(const struct lxc_conf *conf, int (*fn)(void *), void *data)
+{
+	call_cleaner(lxc_free_idmap) struct lxc_list *idmap = NULL;
+	int ret = -1, status = -1;
+	ssize_t rret;
+	char c = '1';
+	pid_t pid;
+	int sock_fds[2];
+
+	if (!conf)
+		return -EINVAL;
+
+	idmap = get_minimal_idmap(conf);
+	if (!idmap)
+		return ret_errno(ENOENT);
+
+	ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, sock_fds);
+	if (ret < 0)
+		return -errno;
+
+	pid = fork();
+	if (pid < 0) {
+		ERROR("Failed to clone process in new user namespace");
+		goto on_error;
+	}
+
+	if (pid == 0) {
+		close_prot_errno_disarm(sock_fds[1]);
+
+		ret = unshare(CLONE_NEWUSER);
+		if (ret < 0)
+			_exit(EXIT_FAILURE);
+
+		rret = lxc_write_nointr(sock_fds[0], &c, 1);
+		if (rret != 1)
+			_exit(EXIT_FAILURE);
+
+		ret = lxc_read_nointr(sock_fds[0], &c, 1);
+		if (ret != 1)
+			_exit(EXIT_FAILURE);
+
+		close_prot_errno_disarm(sock_fds[0]);
+
+		if (!lxc_setgroups(0, NULL) && errno != EPERM)
+			_exit(EXIT_FAILURE);
+
+		if (!lxc_switch_uid_gid(0, 0))
+			_exit(EXIT_FAILURE);
+
+		ret = fn(data);
+		if (ret)
+			_exit(EXIT_FAILURE);
+
+		_exit(EXIT_SUCCESS);
+	}
+
+	close_prot_errno_disarm(sock_fds[0]);
+
+	if (lxc_log_get_level() == LXC_LOG_LEVEL_TRACE ||
+	    conf->loglevel == LXC_LOG_LEVEL_TRACE) {
+		struct id_map *map;
+		struct lxc_list *it;
+
+		lxc_list_for_each(it, idmap) {
+			map = it->elem;
+			TRACE("Establishing %cid mapping for \"%d\" in new user namespace: nsuid %lu - hostid %lu - range %lu",
+			      (map->idtype == ID_TYPE_UID) ? 'u' : 'g', pid, map->nsid, map->hostid, map->range);
+		}
+	}
+
+	ret = lxc_read_nointr(sock_fds[1], &c, 1);
+	if (ret != 1) {
+		SYSERROR("Failed waiting for child process %d\" to tell us to proceed", pid);
+		goto on_error;
+	}
+
+	/* Set up {g,u}id mapping for user namespace of child process. */
+	ret = lxc_map_ids(idmap, pid);
+	if (ret < 0) {
+		ERROR("Error setting up {g,u}id mappings for child process \"%d\"", pid);
+		goto on_error;
+	}
+
+	/* Tell child to proceed. */
+	ret = lxc_write_nointr(sock_fds[1], &c, 1);
+	if (ret != 1) {
+		SYSERROR("Failed telling child process \"%d\" to proceed", pid);
+		goto on_error;
+	}
+
+on_error:
+	close_prot_errno_disarm(sock_fds[0]);
+	close_prot_errno_disarm(sock_fds[1]);
+
+	/* Wait for child to finish. */
+	if (pid > 0)
+		status = wait_for_pid(pid);
+
+	if (status < 0)
+		ret = -1;
+
+	return ret;
+}
+
 int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
 		     const char *fn_name)
 {
