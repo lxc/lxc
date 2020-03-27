@@ -2065,12 +2065,12 @@ static int cgroup_attach_leaf(const struct lxc_conf *conf, int unified_fd, pid_t
 	size_t pidstr_len;
 
 	/* Create leaf cgroup. */
-	ret = mkdirat(unified_fd, "lxc", 0755);
+	ret = mkdirat(unified_fd, ".lxc", 0755);
 	if (ret < 0 && errno != EEXIST)
-		return log_error_errno(-1, errno, "Failed to create leaf cgroup \"lxc\"");
+		return log_error_errno(-1, errno, "Failed to create leaf cgroup \".lxc\"");
 
 	pidstr_len = sprintf(pidstr, INT64_FMT, (int64_t)pid);
-	ret = lxc_writeat(unified_fd, "lxc/cgroup.procs", pidstr, pidstr_len);
+	ret = lxc_writeat(unified_fd, ".lxc/cgroup.procs", pidstr, pidstr_len);
 	if (ret < 0)
 		ret = lxc_writeat(unified_fd, "cgroup.procs", pidstr, pidstr_len);
 	if (ret == 0)
@@ -2082,10 +2082,11 @@ static int cgroup_attach_leaf(const struct lxc_conf *conf, int unified_fd, pid_t
 
 	do {
 		bool rm = false;
-		char attach_cgroup[STRLITERALLEN("lxc-1000/cgroup.procs") + 1];
+		char attach_cgroup[STRLITERALLEN(".lxc-1000/cgroup.procs") + 1];
 		char *slash;
 
-		sprintf(attach_cgroup, "lxc-%d/cgroup.procs", idx);
+		snprintf(attach_cgroup, STRLITERALLEN(".lxc-%d/cgroup.procs"),
+			 ".lxc-%d/cgroup.procs", idx);
 		slash = &attach_cgroup[ret] - STRLITERALLEN("/cgroup.procs");
 		*slash = '\0';
 
