@@ -467,5 +467,6 @@ extern int setup_proc_filesystem(struct lxc_list *procs, pid_t pid);
 extern int lxc_clear_procs(struct lxc_conf *c, const char *key);
 extern int lxc_clear_apparmor_raw(struct lxc_conf *c);
 extern int lxc_clear_namespace(struct lxc_conf *c);
+extern int userns_exec_minimal(const struct lxc_conf *conf, int (*fn)(void *), void *data);
 
 #endif /* __LXC_CONF_H */

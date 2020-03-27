@@ -2169,8 +2169,7 @@ int cgroup_attach(const struct lxc_conf *conf, const char *name,
 			.pid		= pid,
 		};
 
-		ret = userns_exec_1(conf, cgroup_unified_attach_wrapper, &args,
-				    "cgroup_unified_attach_wrapper");
+		ret = userns_exec_minimal(conf, cgroup_unified_attach_wrapper, &args);
 	} else {
 		ret = cgroup_attach_leaf(conf, unified_fd, pid);
 	}
@@ -2224,8 +2223,7 @@ static int __cg_unified_attach(const struct hierarchy *h,
 			.pid		= pid,
 		};
 
-		ret = userns_exec_1(conf, cgroup_unified_attach_wrapper, &args,
-				    "cgroup_unified_attach_wrapper");
+		ret = userns_exec_minimal(conf, cgroup_unified_attach_wrapper, &args);
 	} else {
 		ret = cgroup_attach_leaf(conf, unified_fd, pid);
 	}
