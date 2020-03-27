@@ -2123,28 +2123,9 @@ struct userns_exec_unified_attach_data {
 static int cgroup_unified_attach_wrapper(void *data)
 {
 	struct userns_exec_unified_attach_data *args = data;
-	uid_t nsuid;
-	gid_t nsgid;
-	int ret;
 
 	if (!args->conf || args->unified_fd < 0 || args->pid <= 0)
 		return ret_errno(EINVAL);
-
-	if (!lxc_setgroups(0, NULL) && errno != EPERM)
-		return log_error_errno(-1, errno, "Failed to setgroups(0, NULL)");
-
-	nsuid = (args->conf->root_nsuid_map != NULL) ? 0 : args->conf->init_uid;
-	nsgid = (args->conf->root_nsgid_map != NULL) ? 0 : args->conf->init_gid;
-
-	ret = setresgid(nsgid, nsgid, nsgid);
-	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to setresgid(%d, %d, %d)",
-				       (int)nsgid, (int)nsgid, (int)nsgid);
-
-	ret = setresuid(nsuid, nsuid, nsuid);
-	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to setresuid(%d, %d, %d)",
-				       (int)nsuid, (int)nsuid, (int)nsuid);
 
 	return cgroup_attach_leaf(args->conf, args->unified_fd, args->pid);
 }

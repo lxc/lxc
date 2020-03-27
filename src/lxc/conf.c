@@ -3940,7 +3940,8 @@ static struct id_map *mapped_hostid_add(const struct lxc_conf *conf, uid_t id,
 	return move_ptr(entry);
 }
 
-static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf)
+static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
+					  uid_t *resuid, gid_t *resgid)
 {
 	__do_free struct id_map *container_root_uid = NULL,
 				*container_root_gid = NULL,
@@ -4029,7 +4030,12 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf)
 	/* idmap will now keep track of that memory. */
 	move_ptr(host_gid_map);
 
-	TRACE("Allocated minimal idmapping");
+	TRACE("Allocated minimal idmapping for ns uid %d and ns gid %d", nsuid, nsgid);
+
+	if (resuid)
+		*resuid = nsuid;
+	if (resgid)
+		*resgid = nsgid;
 	return move_ptr(idmap);
 }
 
@@ -4058,7 +4064,7 @@ int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *), void *data,
 	if (!conf)
 		return -EINVAL;
 
-	idmap = get_minimal_idmap(conf);
+	idmap = get_minimal_idmap(conf, NULL, NULL);
 	if (!idmap)
 		return ret_errno(ENOENT);
 
@@ -4123,16 +4129,17 @@ on_error:
 int userns_exec_minimal(const struct lxc_conf *conf, int (*fn)(void *), void *data)
 {
 	call_cleaner(lxc_free_idmap) struct lxc_list *idmap = NULL;
-	int ret = -1, status = -1;
-	ssize_t rret;
+	uid_t resuid = LXC_INVALID_UID;
+	gid_t resgid = LXC_INVALID_GID;
 	char c = '1';
+	ssize_t ret;
 	pid_t pid;
 	int sock_fds[2];
 
-	if (!conf)
-		return -EINVAL;
+	if (!conf || !fn || !data)
+		return ret_errno(EINVAL);
 
-	idmap = get_minimal_idmap(conf);
+	idmap = get_minimal_idmap(conf, &resuid, &resgid);
 	if (!idmap)
 		return ret_errno(ENOENT);
 
@@ -4142,7 +4149,7 @@ int userns_exec_minimal(const struct lxc_conf *conf, int (*fn)(void *), void *da
 
 	pid = fork();
 	if (pid < 0) {
-		ERROR("Failed to clone process in new user namespace");
+		SYSERROR("Failed to create new process");
 		goto on_error;
 	}
 
@@ -4150,11 +4157,13 @@ int userns_exec_minimal(const struct lxc_conf *conf, int (*fn)(void *), void *da
 		close_prot_errno_disarm(sock_fds[1]);
 
 		ret = unshare(CLONE_NEWUSER);
-		if (ret < 0)
+		if (ret < 0) {
+			SYSERROR("Failed to unshare new user namespace");
 			_exit(EXIT_FAILURE);
+		}
 
-		rret = lxc_write_nointr(sock_fds[0], &c, 1);
-		if (rret != 1)
+		ret = lxc_write_nointr(sock_fds[0], &c, 1);
+		if (ret != 1)
 			_exit(EXIT_FAILURE);
 
 		ret = lxc_read_nointr(sock_fds[0], &c, 1);
@@ -4166,12 +4175,25 @@ int userns_exec_minimal(const struct lxc_conf *conf, int (*fn)(void *), void *da
 		if (!lxc_setgroups(0, NULL) && errno != EPERM)
 			_exit(EXIT_FAILURE);
 
-		if (!lxc_switch_uid_gid(0, 0))
+		ret = setresgid(resgid, resgid, resgid);
+		if (ret < 0) {
+			SYSERROR("Failed to setresgid(%d, %d, %d)",
+				 resgid, resgid, resgid);
 			_exit(EXIT_FAILURE);
+		}
+
+		ret = setresuid(resuid, resuid, resuid);
+		if (ret < 0) {
+			SYSERROR("Failed to setresuid(%d, %d, %d)",
+				 resuid, resuid, resuid);
+			_exit(EXIT_FAILURE);
+		}
 
 		ret = fn(data);
-		if (ret)
+		if (ret) {
+			SYSERROR("Running function in new user namespace failed");
 			_exit(EXIT_FAILURE);
+		}
 
 		_exit(EXIT_SUCCESS);
 	}
@@ -4215,13 +4237,10 @@ on_error:
 	close_prot_errno_disarm(sock_fds[1]);
 
 	/* Wait for child to finish. */
-	if (pid > 0)
-		status = wait_for_pid(pid);
+	if (pid < 0)
+		return -1;
 
-	if (status < 0)
-		ret = -1;
-
-	return ret;
+	return wait_for_pid(pid);
 }
 
 int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
