@@ -1082,6 +1082,12 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 		if (!h->monitor_full_path)
 			continue;
 
+		/* Monitor might have died before we entered the cgroup. */
+		if (handler->monitor_pid <= 0) {
+			WARN("No valid monitor process found while destroying cgroups");
+			goto try_recursive_destroy;
+		}
+
 		if (conf && conf->cgroup_meta.dir)
 			pivot_path = must_make_path(h->mountpoint,
 						    h->container_base_path,
@@ -1098,12 +1104,10 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 			goto try_recursive_destroy;
 		}
 
-		if (handler->monitor_pid != 0) {
-			ret = lxc_write_openat(pivot_path, "cgroup.procs", pidstr, len);
-			if (ret != 0) {
-				SYSWARN("Failed to move monitor %s to \"%s\"", pidstr, pivot_path);
-				continue;
-			}
+		ret = lxc_write_openat(pivot_path, "cgroup.procs", pidstr, len);
+		if (ret != 0) {
+			SYSWARN("Failed to move monitor %s to \"%s\"", pidstr, pivot_path);
+			continue;
 		}
 
 try_recursive_destroy:
