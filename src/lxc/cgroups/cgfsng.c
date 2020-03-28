@@ -958,7 +958,7 @@ static int cgroup_tree_remove(struct hierarchy **hierarchies,
 		if (!h->container_full_path)
 			continue;
 
-		ret = recursive_destroy(h->container_full_path);
+		ret = lxc_rm_rf(h->container_full_path);
 		if (ret < 0)
 			WARN("Failed to destroy \"%s\"", h->container_full_path);
 
@@ -1085,7 +1085,7 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 		/* Monitor might have died before we entered the cgroup. */
 		if (handler->monitor_pid <= 0) {
 			WARN("No valid monitor process found while destroying cgroups");
-			goto try_recursive_destroy;
+			goto try_lxc_rm_rf;
 		}
 
 		if (conf && conf->cgroup_meta.dir)
@@ -1101,7 +1101,7 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 		ret = mkdir_p(pivot_path, 0755);
 		if (ret < 0 && errno != EEXIST) {
 			ERROR("Failed to create %s", pivot_path);
-			goto try_recursive_destroy;
+			goto try_lxc_rm_rf;
 		}
 
 		ret = lxc_write_openat(pivot_path, "cgroup.procs", pidstr, len);
@@ -1110,8 +1110,8 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 			continue;
 		}
 
-try_recursive_destroy:
-		ret = recursive_destroy(h->monitor_full_path);
+try_lxc_rm_rf:
+		ret = lxc_rm_rf(h->monitor_full_path);
 		if (ret < 0)
 			WARN("Failed to destroy \"%s\"", h->monitor_full_path);
 	}
