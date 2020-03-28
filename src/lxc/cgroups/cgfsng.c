@@ -1098,10 +1098,12 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 			goto try_recursive_destroy;
 		}
 
-		ret = lxc_write_openat(pivot_path, "cgroup.procs", pidstr, len);
-		if (ret != 0) {
-			SYSWARN("Failed to move monitor %s to \"%s\"", pidstr, pivot_path);
-			continue;
+		if (handler->monitor_pid != 0) {
+			ret = lxc_write_openat(pivot_path, "cgroup.procs", pidstr, len);
+			if (ret != 0) {
+				SYSWARN("Failed to move monitor %s to \"%s\"", pidstr, pivot_path);
+				continue;
+			}
 		}
 
 try_recursive_destroy:
