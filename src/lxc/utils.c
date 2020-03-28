@@ -1747,7 +1747,7 @@ int fd_cloexec(int fd, bool cloexec)
 	return 0;
 }
 
-int recursive_destroy(const char *dirname)
+int lxc_rm_rf(const char *dirname)
 {
 	__do_closedir DIR *dir = NULL;
 	int fret = 0;
@@ -1779,7 +1779,7 @@ int recursive_destroy(const char *dirname)
 		if (!S_ISDIR(mystat.st_mode))
 			continue;
 
-		ret = recursive_destroy(pathname);
+		ret = lxc_rm_rf(pathname);
 		if (ret < 0)
 			fret = -1;
 	}

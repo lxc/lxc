@@ -415,7 +415,7 @@ static bool lxc_setup_shmount(const char *shmount_path)
 static void lxc_teardown_shmount(char *shmount_path)
 {
 	(void)umount2(shmount_path, MNT_DETACH);
-	(void)recursive_destroy(shmount_path);
+	(void)lxc_rm_rf(shmount_path);
 }
 
 int main(int argc, char *argv[])

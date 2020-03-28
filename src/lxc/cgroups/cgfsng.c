@@ -945,7 +945,7 @@ static void lxc_cgfsng_print_basecg_debuginfo(char *basecginfo, char **klist,
 		TRACE("named subsystem %d: %s", k, *it);
 }
 
-static int cgroup_rmdir(struct hierarchy **hierarchies,
+static int cgroup_tree_remove(struct hierarchy **hierarchies,
 			const char *container_cgroup)
 {
 	if (!container_cgroup || !hierarchies)
@@ -958,7 +958,7 @@ static int cgroup_rmdir(struct hierarchy **hierarchies,
 		if (!h->container_full_path)
 			continue;
 
-		ret = recursive_destroy(h->container_full_path);
+		ret = lxc_rm_rf(h->container_full_path);
 		if (ret < 0)
 			WARN("Failed to destroy \"%s\"", h->container_full_path);
 
@@ -976,7 +976,7 @@ struct generic_userns_exec_data {
 	char *path;
 };
 
-static int cgroup_rmdir_wrapper(void *data)
+static int cgroup_tree_remove_wrapper(void *data)
 {
 	struct generic_userns_exec_data *arg = data;
 	uid_t nsuid = (arg->conf->root_nsuid_map != NULL) ? 0 : arg->conf->init_uid;
@@ -996,7 +996,7 @@ static int cgroup_rmdir_wrapper(void *data)
 		return log_error_errno(-1, errno, "Failed to setresuid(%d, %d, %d)",
 				       (int)nsuid, (int)nsuid, (int)nsuid);
 
-	return cgroup_rmdir(arg->hierarchies, arg->container_cgroup);
+	return cgroup_tree_remove(arg->hierarchies, arg->container_cgroup);
 }
 
 __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
@@ -1035,10 +1035,10 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 			.hierarchies		= ops->hierarchies,
 			.origuid		= 0,
 		};
-		ret = userns_exec_1(handler->conf, cgroup_rmdir_wrapper, &wrap,
-				    "cgroup_rmdir_wrapper");
+		ret = userns_exec_1(handler->conf, cgroup_tree_remove_wrapper,
+				    &wrap, "cgroup_tree_remove_wrapper");
 	} else {
-		ret = cgroup_rmdir(ops->hierarchies, ops->container_cgroup);
+		ret = cgroup_tree_remove(ops->hierarchies, ops->container_cgroup);
 	}
 	if (ret < 0)
 		SYSWARN("Failed to destroy cgroups");
@@ -1082,6 +1082,12 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 		if (!h->monitor_full_path)
 			continue;
 
+		/* Monitor might have died before we entered the cgroup. */
+		if (handler->monitor_pid <= 0) {
+			WARN("No valid monitor process found while destroying cgroups");
+			goto try_lxc_rm_rf;
+		}
+
 		if (conf && conf->cgroup_meta.dir)
 			pivot_path = must_make_path(h->mountpoint,
 						    h->container_base_path,
@@ -1095,19 +1101,17 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 		ret = mkdir_p(pivot_path, 0755);
 		if (ret < 0 && errno != EEXIST) {
 			ERROR("Failed to create %s", pivot_path);
-			goto try_recursive_destroy;
+			goto try_lxc_rm_rf;
 		}
 
-		if (handler->monitor_pid != 0) {
-			ret = lxc_write_openat(pivot_path, "cgroup.procs", pidstr, len);
-			if (ret != 0) {
-				SYSWARN("Failed to move monitor %s to \"%s\"", pidstr, pivot_path);
-				continue;
-			}
+		ret = lxc_write_openat(pivot_path, "cgroup.procs", pidstr, len);
+		if (ret != 0) {
+			SYSWARN("Failed to move monitor %s to \"%s\"", pidstr, pivot_path);
+			continue;
 		}
 
-try_recursive_destroy:
-		ret = recursive_destroy(h->monitor_full_path);
+try_lxc_rm_rf:
+		ret = lxc_rm_rf(h->monitor_full_path);
 		if (ret < 0)
 			WARN("Failed to destroy \"%s\"", h->monitor_full_path);
 	}
@@ -1141,7 +1145,7 @@ static int mkdir_eexist_on_last(const char *dir, mode_t mode)
 	return 0;
 }
 
-static bool create_cgroup_tree(struct hierarchy *h, const char *cgroup_tree,
+static bool cgroup_tree_create(struct hierarchy *h, const char *cgroup_tree,
 			       const char *cgroup_leaf, bool payload)
 {
 	__do_free char *path = NULL;
@@ -1181,7 +1185,7 @@ static bool create_cgroup_tree(struct hierarchy *h, const char *cgroup_tree,
 	return true;
 }
 
-static void cgroup_remove_leaf(struct hierarchy *h, bool payload)
+static void cgroup_tree_leaf_remove(struct hierarchy *h, bool payload)
 {
 	__do_free char *full_path = NULL;
 
@@ -1253,12 +1257,12 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 			sprintf(suffix, "-%d", idx);
 
 		for (i = 0; ops->hierarchies[i]; i++) {
-			if (create_cgroup_tree(ops->hierarchies[i], cgroup_tree, monitor_cgroup, false))
+			if (cgroup_tree_create(ops->hierarchies[i], cgroup_tree, monitor_cgroup, false))
 				continue;
 
 			ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->monitor_full_path ?: "(null)");
 			for (int j = 0; j < i; j++)
-				cgroup_remove_leaf(ops->hierarchies[j], false);
+				cgroup_tree_leaf_remove(ops->hierarchies[j], false);
 
 			idx++;
 			break;
@@ -1332,12 +1336,12 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 			sprintf(suffix, "-%d", idx);
 
 		for (i = 0; ops->hierarchies[i]; i++) {
-			if (create_cgroup_tree(ops->hierarchies[i], cgroup_tree, container_cgroup, true))
+			if (cgroup_tree_create(ops->hierarchies[i], cgroup_tree, container_cgroup, true))
 				continue;
 
 			ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->container_full_path ?: "(null)");
 			for (int j = 0; j < i; j++)
-				cgroup_remove_leaf(ops->hierarchies[j], true);
+				cgroup_tree_leaf_remove(ops->hierarchies[j], true);
 
 			idx++;
 			break;
