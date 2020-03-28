@@ -2085,8 +2085,10 @@ static int cgroup_attach_leaf(const struct lxc_conf *conf, int unified_fd, pid_t
 		char attach_cgroup[STRLITERALLEN(".lxc-1000/cgroup.procs") + 1];
 		char *slash;
 
-		snprintf(attach_cgroup, STRLITERALLEN(".lxc-%d/cgroup.procs"),
-			 ".lxc-%d/cgroup.procs", idx);
+		ret = snprintf(attach_cgroup, sizeof(attach_cgroup), ".lxc-%d/cgroup.procs", idx);
+		if (ret < 0 || (size_t)ret >= sizeof(attach_cgroup))
+			return ret_errno(EIO);
+
 		slash = &attach_cgroup[ret] - STRLITERALLEN("/cgroup.procs");
 		*slash = '\0';
 
