@@ -730,7 +730,7 @@ static bool do_remove_btrfs_children(struct my_btrfs_tree *tree, u64 root_id,
 	return true;
 }
 
-static int btrfs_recursive_destroy(const char *path)
+static int btrfs_lxc_rm_rf(const char *path)
 {
 	u64 root_id;
 	int fd;
@@ -893,7 +893,7 @@ bool btrfs_try_remove_subvol(const char *path)
 	if (!btrfs_detect(path))
 		return false;
 
-	return btrfs_recursive_destroy(path) == 0;
+	return btrfs_lxc_rm_rf(path) == 0;
 }
 
 int btrfs_destroy(struct lxc_storage *orig)
@@ -902,7 +902,7 @@ int btrfs_destroy(struct lxc_storage *orig)
 
 	src = lxc_storage_get_path(orig->src, "btrfs");
 
-	return btrfs_recursive_destroy(src);
+	return btrfs_lxc_rm_rf(src);
 }
 
 int btrfs_create(struct lxc_storage *bdev, const char *dest, const char *n,

@@ -1071,7 +1071,7 @@ static int ls_remove_lock(const char *path, const char *name,
 	if (check < 0 || (size_t)check >= *len_lockpath)
 		goto out;
 
-	ret = recursive_destroy(*lockpath);
+	ret = lxc_rm_rf(*lockpath);
 	if (ret < 0)
 		WARN("Failed to destroy \"%s\"", *lockpath);
 
