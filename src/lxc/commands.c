@@ -325,6 +325,34 @@ int lxc_try_cmd(const char *name, const char *lxcpath)
 	return 0;
 }
 
+/*
+ * Validate that the input is a proper string parameter. If not,
+ * send an EINVAL response and return -1.
+ *
+ * Precondition: there is non-zero-length data available.
+ */
+static int validate_string_request(int fd, const struct lxc_cmd_req *req)
+{
+	int ret;
+	size_t maxlen = req->datalen - 1;
+	const char *data = req->data;
+
+	if (data[maxlen] == 0 && strnlen(data, maxlen) == maxlen)
+		return 0;
+
+	struct lxc_cmd_rsp rsp = {
+		.ret = -EINVAL,
+		.datalen = 0,
+		.data = NULL,
+	};
+
+	ret = lxc_cmd_rsp_send(fd, &rsp);
+	if (ret < 0)
+		return LXC_CMD_REAP_CLIENT_FD;
+
+	return -1;
+}
+
 /* Implementations of the commands and their callbacks */
 
 /*
@@ -506,10 +534,15 @@ static int lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
 	struct lxc_cmd_rsp rsp;
 	struct cgroup_ops *cgroup_ops = handler->cgroup_ops;
 
-	if (req->datalen > 0)
+	if (req->datalen > 0) {
+		ret = validate_string_request(fd, req);
+		if (ret != 0)
+			return ret;
+
 		path = cgroup_ops->get_cgroup(cgroup_ops, req->data);
-	else
+	} else {
 		path = cgroup_ops->get_cgroup(cgroup_ops, NULL);
+	}
 	if (!path)
 		return -1;
 
