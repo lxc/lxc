@@ -30,6 +30,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "af_unix.h"
 #include "caps.h"
 #include "cgroup.h"
 #include "cgroup2_devices.h"
@@ -2123,20 +2124,80 @@ static int cgroup_attach_leaf(const struct lxc_conf *conf, int unified_fd, pid_t
 	return log_error_errno(-1, errno, "Failed to attach to unified cgroup");
 }
 
+static int cgroup_attach_create_leaf(const struct lxc_conf *conf,
+				     int unified_fd, int *sk_fd)
+{
+	__do_close int sk = *sk_fd, target_fd = -EBADF;
+	ssize_t ret;
+
+	/* Create leaf cgroup. */
+	ret = mkdirat(unified_fd, ".lxc", 0755);
+	if (ret < 0 && errno != EEXIST)
+		return log_error_errno(-1, errno, "Failed to create leaf cgroup \".lxc\"");
+
+	target_fd = openat(unified_fd, ".lxc/cgroup.procs", O_WRONLY | O_CLOEXEC | O_NOFOLLOW);
+	if (target_fd < 0)
+		return log_error_errno(-errno, errno, "Failed to open \".lxc/cgroup.procs\"");
+
+	ret = lxc_abstract_unix_send_fds(sk, &target_fd, 1, NULL, 0);
+	if (ret <= 0)
+		return log_error_errno(-errno, errno, "Failed to send \".lxc/cgroup.procs\" fd %d", target_fd);
+
+	return log_debug(0, "Sent target cgroup fd %d", target_fd);
+}
+
+static int cgroup_attach_move_into_leaf(const struct lxc_conf *conf,
+					int *sk_fd, pid_t pid)
+{
+	__do_close int sk = *sk_fd, target_fd = -EBADF;
+	char pidstr[INTTYPE_TO_STRLEN(int64_t) + 1];
+	size_t pidstr_len;
+	ssize_t ret;
+
+	ret = lxc_abstract_unix_recv_fds(sk, &target_fd, 1, NULL, 0);
+	if (ret <= 0)
+		return log_error_errno(-1, errno, "Failed to receive target cgroup fd");
+
+	pidstr_len = sprintf(pidstr, INT64_FMT, (int64_t)pid);
+
+	ret = lxc_write_nointr(target_fd, pidstr, pidstr_len);
+	if (ret != pidstr_len && errno != EBUSY)
+		return log_error_errno(-1, errno, "Failed to move process into target cgroup");
+
+	return log_debug(0, "Moved process into target cgroup");
+}
+
 struct userns_exec_unified_attach_data {
 	const struct lxc_conf *conf;
 	int unified_fd;
+	int sk_pair[2];
 	pid_t pid;
 };
 
-static int cgroup_unified_attach_wrapper(void *data)
+static int cgroup_unified_attach_child_wrapper(void *data)
 {
 	struct userns_exec_unified_attach_data *args = data;
 
-	if (!args->conf || args->unified_fd < 0 || args->pid <= 0)
+	if (!args->conf || args->unified_fd < 0 || args->pid <= 0 ||
+	    args->sk_pair[0] < 0 || args->sk_pair[1] < 0)
 		return ret_errno(EINVAL);
 
-	return cgroup_attach_leaf(args->conf, args->unified_fd, args->pid);
+	close_prot_errno_disarm(args->sk_pair[0]);
+	return cgroup_attach_create_leaf(args->conf, args->unified_fd,
+					 &args->sk_pair[1]);
+}
+
+static int cgroup_unified_attach_parent_wrapper(void *data)
+{
+	struct userns_exec_unified_attach_data *args = data;
+
+	if (!args->conf || args->unified_fd < 0 || args->pid <= 0 ||
+	    args->sk_pair[0] < 0 || args->sk_pair[1] < 0)
+		return ret_errno(EINVAL);
+
+	close_prot_errno_disarm(args->sk_pair[1]);
+	return cgroup_attach_move_into_leaf(args->conf, &args->sk_pair[0],
+					    args->pid);
 }
 
 int cgroup_attach(const struct lxc_conf *conf, const char *name,
@@ -2159,7 +2220,15 @@ int cgroup_attach(const struct lxc_conf *conf, const char *name,
 			.pid		= pid,
 		};
 
-		ret = userns_exec_minimal(conf, cgroup_unified_attach_wrapper, &args);
+		ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, args.sk_pair);
+		if (ret < 0)
+			return -errno;
+
+		ret = userns_exec_minimal(conf,
+					  cgroup_unified_attach_parent_wrapper,
+					  &args,
+					  cgroup_unified_attach_child_wrapper,
+					  &args);
 	} else {
 		ret = cgroup_attach_leaf(conf, unified_fd, pid);
 	}
@@ -2213,7 +2282,15 @@ static int __cg_unified_attach(const struct hierarchy *h,
 			.pid		= pid,
 		};
 
-		ret = userns_exec_minimal(conf, cgroup_unified_attach_wrapper, &args);
+		ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, args.sk_pair);
+		if (ret < 0)
+			return -errno;
+
+		ret = userns_exec_minimal(conf,
+					  cgroup_unified_attach_parent_wrapper,
+					  &args,
+					  cgroup_unified_attach_child_wrapper,
+					  &args);
 	} else {
 		ret = cgroup_attach_leaf(conf, unified_fd, pid);
 	}
