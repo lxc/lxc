@@ -2127,9 +2127,8 @@ static int cgroup_attach_leaf(const struct lxc_conf *conf, int unified_fd, pid_t
 static int cgroup_attach_create_leaf(const struct lxc_conf *conf,
 				     int unified_fd, int *sk_fd)
 {
-	__do_close int sk = *sk_fd;
-	int target_fds[2] = {-EBADF, -EBADF};
-	__do_close int target_fd1 = target_fds[0], target_fd2 = target_fds[1];
+	__do_close int sk = *sk_fd, target_fd0 = -EBADF, target_fd1 = -EBADF;
+	int target_fds[2];
 	ssize_t ret;
 
 	/* Create leaf cgroup. */
@@ -2137,28 +2136,29 @@ static int cgroup_attach_create_leaf(const struct lxc_conf *conf,
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-1, errno, "Failed to create leaf cgroup \".lxc\"");
 
-	target_fd1 = openat(unified_fd, ".lxc/cgroup.procs", O_WRONLY | O_CLOEXEC | O_NOFOLLOW);
+	target_fd0 = openat(unified_fd, ".lxc/cgroup.procs", O_WRONLY | O_CLOEXEC | O_NOFOLLOW);
+	if (target_fd0 < 0)
+		return log_error_errno(-errno, errno, "Failed to open \".lxc/cgroup.procs\"");
+	target_fds[0] = target_fd0;
+
+	target_fd1 = openat(unified_fd, "cgroup.procs", O_WRONLY | O_CLOEXEC | O_NOFOLLOW);
 	if (target_fd1 < 0)
 		return log_error_errno(-errno, errno, "Failed to open \".lxc/cgroup.procs\"");
-
-	target_fd2 = openat(unified_fd, "cgroup.procs", O_WRONLY | O_CLOEXEC | O_NOFOLLOW);
-	if (target_fd2 < 0)
-		return log_error_errno(-errno, errno, "Failed to open \".lxc/cgroup.procs\"");
+	target_fds[1] = target_fd1;
 
 	ret = lxc_abstract_unix_send_fds(sk, target_fds, 2, NULL, 0);
 	if (ret <= 0)
 		return log_error_errno(-errno, errno, "Failed to send \".lxc/cgroup.procs\" fds %d and %d",
-				       target_fd1, target_fd2);
+				       target_fd0, target_fd1);
 
-	return log_debug(0, "Sent target cgroup fds %d and %d", target_fd1, target_fd2);
+	return log_debug(0, "Sent target cgroup fds %d and %d", target_fd0, target_fd1);
 }
 
 static int cgroup_attach_move_into_leaf(const struct lxc_conf *conf,
 					int *sk_fd, pid_t pid)
 {
-	__do_close int sk = *sk_fd;
-	int target_fds[2] = {-EBADF, -EBADF};
-	__do_close int target_fd1 = target_fds[0], target_fd2 = target_fds[1];
+	__do_close int sk = *sk_fd, target_fd0 = -EBADF, target_fd1 = -EBADF;
+	int target_fds[2];
 	char pidstr[INTTYPE_TO_STRLEN(int64_t) + 1];
 	size_t pidstr_len;
 	ssize_t ret;
@@ -2166,16 +2166,21 @@ static int cgroup_attach_move_into_leaf(const struct lxc_conf *conf,
 	ret = lxc_abstract_unix_recv_fds(sk, target_fds, 2, NULL, 0);
 	if (ret <= 0)
 		return log_error_errno(-1, errno, "Failed to receive target cgroup fd");
+	target_fd0 = target_fds[0];
+	target_fd1 = target_fds[1];
 
 	pidstr_len = sprintf(pidstr, INT64_FMT, (int64_t)pid);
 
-	ret = lxc_write_nointr(target_fd1, pidstr, pidstr_len);
-	if (ret != pidstr_len && errno == EBUSY)
-		ret = lxc_write_nointr(target_fd2, pidstr, pidstr_len);
-	if (ret != pidstr_len)
-		return log_error_errno(-1, errno, "Failed to move process into target cgroup");
+	ret = lxc_write_nointr(target_fd0, pidstr, pidstr_len);
+	if (ret > 0 && ret == pidstr_len)
+		return log_debug(0, "Moved process into target cgroup via fd %d", target_fd0);
 
-	return log_debug(0, "Moved process into target cgroup");
+	ret = lxc_write_nointr(target_fd1, pidstr, pidstr_len);
+	if (ret > 0 && ret == pidstr_len)
+		return log_debug(0, "Moved process into target cgroup via fd %d", target_fd1);
+
+	return log_debug_errno(-1, errno, "Failed to move process into target cgroup via fd %d and %d",
+			       target_fd0, target_fd1);
 }
 
 struct userns_exec_unified_attach_data {
