@@ -4126,7 +4126,9 @@ on_error:
 	return ret;
 }
 
-int userns_exec_minimal(const struct lxc_conf *conf, int (*fn)(void *), void *data)
+int userns_exec_minimal(const struct lxc_conf *conf,
+			int (*fn_parent)(void *), void *fn_parent_data,
+			int (*fn_child)(void *), void *fn_child_data)
 {
 	call_cleaner(lxc_free_idmap) struct lxc_list *idmap = NULL;
 	uid_t resuid = LXC_INVALID_UID;
@@ -4136,7 +4138,7 @@ int userns_exec_minimal(const struct lxc_conf *conf, int (*fn)(void *), void *da
 	pid_t pid;
 	int sock_fds[2];
 
-	if (!conf || !fn || !data)
+	if (!conf || !fn_child)
 		return ret_errno(EINVAL);
 
 	idmap = get_minimal_idmap(conf, &resuid, &resgid);
@@ -4189,7 +4191,7 @@ int userns_exec_minimal(const struct lxc_conf *conf, int (*fn)(void *), void *da
 			_exit(EXIT_FAILURE);
 		}
 
-		ret = fn(data);
+		ret = fn_child(fn_child_data);
 		if (ret) {
 			SYSERROR("Running function in new user namespace failed");
 			_exit(EXIT_FAILURE);
@@ -4230,6 +4232,11 @@ int userns_exec_minimal(const struct lxc_conf *conf, int (*fn)(void *), void *da
 	if (ret != 1) {
 		SYSERROR("Failed telling child process \"%d\" to proceed", pid);
 		goto on_error;
+	}
+
+	if (fn_parent && fn_parent(fn_parent_data)) {
+		SYSERROR("Running parent function failed");
+		_exit(EXIT_FAILURE);
 	}
 
 on_error:
