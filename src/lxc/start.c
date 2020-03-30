@@ -1703,6 +1703,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	}
 
 	if (!cgroup_ops->payload_enter(cgroup_ops, handler)) {
+		ERROR("Failed to enter cgroups");
 		goto out_delete_net;
 	}
 
