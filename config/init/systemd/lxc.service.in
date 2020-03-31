@@ -10,6 +10,7 @@ RemainAfterExit=yes
 ExecStartPre=@LIBEXECDIR@/lxc/lxc-apparmor-load
 ExecStart=@LIBEXECDIR@/lxc/lxc-containers start
 ExecStop=@LIBEXECDIR@/lxc/lxc-containers stop
+ExecReload=@LIBEXECDIR@/lxc/lxc-apparmor-load
 # Environment=BOOTUP=serial
 # Environment=CONSOLETYPE=serial
 Delegate=yes
