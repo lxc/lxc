@@ -813,6 +813,7 @@ AC_CONFIG_FILES([
 	config/init/systemd/lxc.service
 	config/init/systemd/lxc@.service
 	config/init/systemd/lxc-net.service
+	config/init/systemd/lxc-monitord.service
 	config/init/sysvinit/Makefile
 	config/init/sysvinit/lxc-containers
 	config/init/sysvinit/lxc-net

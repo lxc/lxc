@@ -1,0 +1,12 @@
+[Unit]
+Description=LXC Container Monitoring Daemon
+After=syslog.service network.target
+
+[Service]
+Type=simple
+ExecStart=@LIBEXECDIR@/lxc/lxc-monitord --daemon
+StandardOutput=syslog
+StandardError=syslog
+
+[Install]
+WantedBy=multi-user.target

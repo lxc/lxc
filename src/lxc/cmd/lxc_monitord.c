@@ -338,17 +338,44 @@ static void lxc_monitord_sig_handler(int sig)
 
 int main(int argc, char *argv[])
 {
-	int ret, pipefd;
+	int ret, pipefd = -1;
 	char logpath[PATH_MAX];
 	sigset_t mask;
-	char *lxcpath = argv[1];
+	const char *lxcpath = NULL;
 	bool mainloop_opened = false;
 	bool monitord_created = false;
+	bool persistent = false;
 	struct lxc_log log;
 
-	if (argc != 3) {
+	if (argc > 1 && !strcmp(argv[1], "--daemon")) {
+		persistent = true;
+		--argc;
+		++argv;
+	}
+
+	if (argc > 1) {
+		lxcpath = argv[1];
+		--argc;
+		++argv;
+	} else {
+		lxcpath = lxc_global_config_value("lxc.lxcpath");
+		if (!lxcpath) {
+			ERROR("Failed to get default lxcpath");
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	if (argc > 1) {
+		if (lxc_safe_int(argv[1], &pipefd) < 0)
+			exit(EXIT_FAILURE);
+		--argc;
+		++argv;
+	}
+
+	if (argc != 1 || (persistent != (pipefd == -1))) {
 		fprintf(stderr,
-			"Usage: lxc-monitord lxcpath sync-pipe-fd\n\n"
+			"Usage: lxc-monitord lxcpath sync-pipe-fd\n"
+			"       lxc-monitord --daemon lxcpath\n\n"
 			"NOTE: lxc-monitord is intended for use by lxc internally\n"
 			"      and does not need to be run by hand\n\n");
 		exit(EXIT_FAILURE);
@@ -370,9 +397,6 @@ int main(int argc, char *argv[])
 	if (ret)
 		INFO("Failed to open log file %s, log will be lost", lxcpath);
 	lxc_log_options_no_override();
-
-	if (lxc_safe_int(argv[2], &pipefd) < 0)
-		exit(EXIT_FAILURE);
 
 	if (sigfillset(&mask) ||
 	    sigdelset(&mask, SIGILL)  ||
@@ -406,15 +430,17 @@ int main(int argc, char *argv[])
 		goto on_error;
 	monitord_created = true;
 
-	/* sync with parent, we're ignoring the return from write
-	 * because regardless if it works or not, the following
-	 * close will sync us with the parent process. the
-	 * if-empty-statement construct is to quiet the
-	 * warn-unused-result warning.
-	 */
-	if (lxc_write_nointr(pipefd, "S", 1))
-		;
-	close(pipefd);
+	if (pipefd != -1) {
+		/* sync with parent, we're ignoring the return from write
+		 * because regardless if it works or not, the following
+		 * close will sync us with the parent process. the
+		 * if-empty-statement construct is to quiet the
+		 * warn-unused-result warning.
+		 */
+		if (lxc_write_nointr(pipefd, "S", 1))
+			;
+		close(pipefd);
+	}
 
 	if (lxc_monitord_mainloop_add(&monitor)) {
 		ERROR("Failed to add mainloop handlers");
@@ -425,7 +451,7 @@ int main(int argc, char *argv[])
 	       lxc_raw_getpid(), monitor.lxcpath);
 
 	for (;;) {
-		ret = lxc_mainloop(&monitor.descr, 1000 * 30);
+		ret = lxc_mainloop(&monitor.descr, persistent ? -1 : 1000 * 30);
 		if (ret) {
 			ERROR("mainloop returned an error");
 			break;
