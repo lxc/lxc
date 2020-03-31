@@ -119,6 +119,7 @@ config/bash/lxc
 config/init/common/lxc-containers
 config/init/common/lxc-net
 config/init/systemd/lxc-autostart-helper
+config/init/systemd/lxc-monitord.service
 config/init/systemd/lxc-net.service
 config/init/systemd/lxc.service
 config/init/systemd/lxc@.service

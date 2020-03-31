@@ -251,6 +251,7 @@ fi
 %{_unitdir}/lxc-net.service
 %{_unitdir}/lxc.service
 %{_unitdir}/lxc@.service
+%{_unitdir}/lxc-monitord.service
 %else
 %{_sysconfdir}/rc.d/init.d/lxc
 %{_sysconfdir}/rc.d/init.d/lxc-net
