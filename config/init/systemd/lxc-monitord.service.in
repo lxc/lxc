@@ -1,6 +1,7 @@
 [Unit]
 Description=LXC Container Monitoring Daemon
 After=syslog.service network.target
+Documentation=man:lxc
 
 [Service]
 Type=simple
