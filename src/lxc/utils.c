@@ -1860,3 +1860,48 @@ bool lxc_can_use_pidfd(int pidfd)
 
 	return log_trace(true, "Kernel supports pidfds");
 }
+
+void fix_stdio_permissions(uid_t uid)
+{
+	int std_fds[3] = {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO};
+	int devnull_fd = -1;
+	int ret;
+	int i = 0;
+	struct stat st;
+	struct stat null_st;
+
+	devnull_fd = open_devnull();
+	if (devnull_fd < 0) {
+		ERROR("Open /dev/null failed");
+		goto out;
+	}
+	
+	ret = fstat(devnull_fd, &null_st);
+
+	for (; i < 3; i++) {
+		ret = fstat(std_fds[i], &st);
+		if (ret != 0) {
+			ERROR("Failed to get fd %d stat", std_fds[i]);
+			continue;
+		}
+
+		if (st.st_rdev == null_st.st_rdev) {
+			continue;
+		}
+
+		ret = fchown(std_fds[i], uid, st.st_gid);
+		if (ret != 0) {
+			ERROR("Failed to change fd %d owner", std_fds[i]);
+		}
+
+		ret = fchmod(std_fds[i], 0700);
+		if (ret != 0) {
+			ERROR("Failed to change fd %d mode", std_fds[i]);
+		}
+	}
+
+out:
+	if (devnull_fd >= 0) {
+		close(devnull_fd);
+	}
+}
