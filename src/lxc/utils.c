@@ -1336,7 +1336,7 @@ bool lxc_switch_uid_gid(uid_t uid, gid_t gid)
 	int ret = 0;
 
 	if (gid != LXC_INVALID_GID) {
-		ret = setgid(gid);
+		ret = setresgid(gid, gid, gid);
 		if (ret < 0) {
 			SYSERROR("Failed to switch to gid %d", gid);
 			return false;
@@ -1345,7 +1345,7 @@ bool lxc_switch_uid_gid(uid_t uid, gid_t gid)
 	}
 
 	if (uid != LXC_INVALID_UID) {
-		ret = setuid(uid);
+		ret = setresuid(uid, uid, uid);
 		if (ret < 0) {
 			SYSERROR("Failed to switch to uid %d", uid);
 			return false;
