@@ -2131,7 +2131,7 @@ static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 			 */
 
 			if (timeout != 0) {
-				ret = poll(&pidfd_poll, 1, timeout);
+				ret = poll(&pidfd_poll, 1, timeout * 1000);
 				if (ret < 0 || !(pidfd_poll.revents & POLLIN))
 					return false;
 
