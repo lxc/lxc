@@ -303,7 +303,7 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		 * the handler the restore task created.
 		 */
 		if (!strcmp(opts->action, "dump") || !strcmp(opts->action, "pre-dump")) {
-			path = lxc_cmd_get_cgroup_path(opts->c->name, opts->c->config_path, controllers[0]);
+			path = lxc_cmd_get_limiting_cgroup_path(opts->c->name, opts->c->config_path, controllers[0]);
 			if (!path) {
 				ERROR("failed to get cgroup path for %s", controllers[0]);
 				goto err;
@@ -311,7 +311,7 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		} else {
 			const char *p;
 
-			p = cgroup_ops->get_cgroup(cgroup_ops, controllers[0]);
+			p = cgroup_ops->get_limiting_cgroup(cgroup_ops, controllers[0]);
 			if (!p) {
 				ERROR("failed to get cgroup path for %s", controllers[0]);
 				goto err;
@@ -406,9 +406,9 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		DECLARE_ARG("-t");
 		DECLARE_ARG(pid);
 
-		freezer_relative = lxc_cmd_get_cgroup_path(opts->c->name,
-							   opts->c->config_path,
-							   "freezer");
+		freezer_relative = lxc_cmd_get_limiting_cgroup_path(opts->c->name,
+								    opts->c->config_path,
+								    "freezer");
 		if (!freezer_relative) {
 			ERROR("failed getting freezer path");
 			goto err;

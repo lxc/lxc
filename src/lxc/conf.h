@@ -60,6 +60,9 @@ struct lxc_cgroup {
 		struct /* meta */ {
 			char *controllers;
 			char *dir;
+			char *monitor_dir;
+			char *container_dir;
+			char *namespace_dir;
 			bool relative;
 		};
 	};
