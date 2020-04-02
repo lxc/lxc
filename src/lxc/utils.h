@@ -239,7 +239,6 @@ extern int lxc_rm_rf(const char *dirname);
 extern int lxc_setup_keyring(char *keyring_label);
 extern bool lxc_can_use_pidfd(int pidfd);
 
-/* Fix the permissions of init PID's STDIO within the container to the specified user */
-extern void fix_stdio_permissions(uid_t uid);
+extern int fix_stdio_permissions(uid_t uid);
 
 #endif /* __LXC_UTILS_H */
