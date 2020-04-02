@@ -1360,7 +1360,7 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 __cgfsng_ops static bool cgfsng_monitor_enter(struct cgroup_ops *ops,
 					      struct lxc_handler *handler)
 {
-	int monitor_len, transient_len;
+	int monitor_len, transient_len = 0;
 	char monitor[INTTYPE_TO_STRLEN(pid_t)],
 	    transient[INTTYPE_TO_STRLEN(pid_t)];
 
