@@ -71,6 +71,9 @@ lxc_config_define(cap_keep);
 lxc_config_define(cgroup_controller);
 lxc_config_define(cgroup2_controller);
 lxc_config_define(cgroup_dir);
+lxc_config_define(cgroup_monitor_dir);
+lxc_config_define(cgroup_container_dir);
+lxc_config_define(cgroup_container_inner_dir);
 lxc_config_define(cgroup_relative);
 lxc_config_define(console_buffer_size);
 lxc_config_define(console_logfile);
@@ -170,6 +173,9 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.cap.drop",                  set_config_cap_drop,                    get_config_cap_drop,                    clr_config_cap_drop,                  },
 	{ "lxc.cap.keep",                  set_config_cap_keep,                    get_config_cap_keep,                    clr_config_cap_keep,                  },
 	{ "lxc.cgroup2",                   set_config_cgroup2_controller,          get_config_cgroup2_controller,          clr_config_cgroup2_controller,        },
+	{ "lxc.cgroup.dir.monitor",        set_config_cgroup_monitor_dir,          get_config_cgroup_monitor_dir,          clr_config_cgroup_monitor_dir,        },
+	{ "lxc.cgroup.dir.container",      set_config_cgroup_container_dir,        get_config_cgroup_container_dir,        clr_config_cgroup_container_dir,      },
+	{ "lxc.cgroup.dir.container.inner",set_config_cgroup_container_inner_dir,  get_config_cgroup_container_inner_dir,  clr_config_cgroup_container_inner_dir,},
 	{ "lxc.cgroup.dir",                set_config_cgroup_dir,                  get_config_cgroup_dir,                  clr_config_cgroup_dir,                },
 	{ "lxc.cgroup.relative",           set_config_cgroup_relative,             get_config_cgroup_relative,             clr_config_cgroup_relative,           },
 	{ "lxc.cgroup",                    set_config_cgroup_controller,           get_config_cgroup_controller,           clr_config_cgroup_controller,         },
@@ -1719,6 +1725,48 @@ static int set_config_cgroup_dir(const char *key, const char *value,
 		return clr_config_cgroup_dir(key, lxc_conf, NULL);
 
 	return set_config_string_item(&lxc_conf->cgroup_meta.dir, value);
+}
+
+static int set_config_cgroup_monitor_dir(const char *key, const char *value,
+					 struct lxc_conf *lxc_conf, void *data)
+{
+	if (lxc_config_value_empty(value))
+		return clr_config_cgroup_monitor_dir(key, lxc_conf, NULL);
+
+	return set_config_string_item(&lxc_conf->cgroup_meta.monitor_dir,
+				      value);
+}
+
+static int set_config_cgroup_container_dir(const char *key, const char *value,
+					   struct lxc_conf *lxc_conf,
+					   void *data)
+{
+	if (lxc_config_value_empty(value))
+		return clr_config_cgroup_container_dir(key, lxc_conf, NULL);
+
+	return set_config_string_item(&lxc_conf->cgroup_meta.container_dir,
+				      value);
+}
+
+static int set_config_cgroup_container_inner_dir(const char *key,
+						 const char *value,
+						 struct lxc_conf *lxc_conf,
+						 void *data)
+{
+	if (lxc_config_value_empty(value))
+		return clr_config_cgroup_container_inner_dir(key, lxc_conf,
+							     NULL);
+
+	if (strchr(value, '/') ||
+	    strcmp(value, ".") == 0 ||
+	    strcmp(value, "..") == 0)
+	{
+		ERROR("lxc.cgroup.dir.container.inner must be a single directory name");
+		return -1;
+	}
+
+	return set_config_string_item(&lxc_conf->cgroup_meta.namespace_dir,
+				      value);
 }
 
 static int set_config_cgroup_relative(const char *key, const char *value,
@@ -3644,6 +3692,58 @@ static int get_config_cgroup_dir(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
+static int get_config_cgroup_monitor_dir(const char *key, char *retv, int inlen,
+					 struct lxc_conf *lxc_conf, void *data)
+{
+	int len;
+	int fulllen = 0;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	strprint(retv, inlen, "%s", lxc_conf->cgroup_meta.monitor_dir);
+
+	return fulllen;
+}
+
+static int get_config_cgroup_container_dir(const char *key, char *retv,
+					   int inlen,
+					   struct lxc_conf *lxc_conf,
+					   void *data)
+{
+	int len;
+	int fulllen = 0;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	strprint(retv, inlen, "%s", lxc_conf->cgroup_meta.container_dir);
+
+	return fulllen;
+}
+
+static int get_config_cgroup_container_inner_dir(const char *key, char *retv,
+						 int inlen,
+						 struct lxc_conf *lxc_conf,
+						 void *data)
+{
+	int len;
+	int fulllen = 0;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	strprint(retv, inlen, "%s", lxc_conf->cgroup_meta.namespace_dir);
+
+	return fulllen;
+}
+
 static inline int get_config_cgroup_relative(const char *key, char *retv,
 					     int inlen, struct lxc_conf *lxc_conf,
 					     void *data)
@@ -4455,6 +4555,30 @@ static int clr_config_cgroup_dir(const char *key, struct lxc_conf *lxc_conf,
 		lxc_conf->cgroup_meta.dir = NULL;
 	}
 
+	return 0;
+}
+
+static int clr_config_cgroup_monitor_dir(const char *key,
+					 struct lxc_conf *lxc_conf,
+					 void *data)
+{
+	free_disarm(lxc_conf->cgroup_meta.monitor_dir);
+	return 0;
+}
+
+static int clr_config_cgroup_container_dir(const char *key,
+					   struct lxc_conf *lxc_conf,
+					   void *data)
+{
+	free_disarm(lxc_conf->cgroup_meta.container_dir);
+	return 0;
+}
+
+static int clr_config_cgroup_container_inner_dir(const char *key,
+						 struct lxc_conf *lxc_conf,
+						 void *data)
+{
+	free_disarm(lxc_conf->cgroup_meta.namespace_dir);
 	return 0;
 }
 

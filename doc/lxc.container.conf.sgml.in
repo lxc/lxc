@@ -1573,6 +1573,53 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         </varlistentry>
         <varlistentry>
           <term>
+            <option>lxc.cgroup.dir.container</option>
+          </term>
+          <listitem>
+            <para>
+              This is similar to <option>lxc.cgroup.dir</option>, but must be
+              used together with <option>lxc.cgroup.dir.monitor</option> and
+              affects only the container's cgroup path. This option is mutually
+              exclusive with <option>lxc.cgroup.dir</option>.
+              Note that the final path the container attaches to may be
+              extended further by the
+              <option>lxc.cgroup.dir.container.namespace</option> option.
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.cgroup.dir.monitor</option>
+          </term>
+          <listitem>
+            <para>
+              This is the monitor process counterpart to
+              <option>lxc.cgroup.dir.container</option>.
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.cgroup.dir.container.namespace</option>
+          </term>
+          <listitem>
+            <para>
+              Specify an additional subdirectory where the cgroup namespace
+              will be created. With this option, the cgroup limits will be
+              applied to the outer path specified in
+              <option>lxc.cgroup.dir.container</option>, which is not accessible
+              from within the container, making it possible to better enforce
+              limits for privileged containers in a way they cannot override
+              them.
+              This only works in conjunction with the
+              <option>lxc.cgroup.dir.container</option> and
+              <option>lxc.cgroup.dir.monitor</option> options and has otherwise
+              no effect.
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
             <option>lxc.cgroup.relative</option>
           </term>
           <listitem>
