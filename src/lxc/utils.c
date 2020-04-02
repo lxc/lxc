@@ -1861,47 +1861,46 @@ bool lxc_can_use_pidfd(int pidfd)
 	return log_trace(true, "Kernel supports pidfds");
 }
 
-void fix_stdio_permissions(uid_t uid)
+int fix_stdio_permissions(uid_t uid)
 {
-	int std_fds[3] = {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO};
-	int devnull_fd = -1;
+	__do_close int devnull_fd = -EBADF;
+	int fret = 0;
+	int std_fds[] = {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO};
 	int ret;
-	int i = 0;
-	struct stat st;
-	struct stat null_st;
+	struct stat st, st_null;
 
 	devnull_fd = open_devnull();
-	if (devnull_fd < 0) {
-		ERROR("Open /dev/null failed");
-		goto out;
-	}
-	
-	ret = fstat(devnull_fd, &null_st);
+	if (devnull_fd < 0)
+		return log_warn_errno(-1, errno, "Failed to open \"/dev/null\"");
 
-	for (; i < 3; i++) {
+	ret = fstat(devnull_fd, &st_null);
+	if (ret)
+		return log_warn_errno(-errno, errno, "Failed to stat \"/dev/null\"");
+
+	for (int i = 0; i < ARRAY_SIZE(std_fds); i++) {
 		ret = fstat(std_fds[i], &st);
-		if (ret != 0) {
-			ERROR("Failed to get fd %d stat", std_fds[i]);
+		if (ret) {
+			SYSWARN("Failed to stat standard I/O file descriptor %d", std_fds[i]);
+			fret = -1;
 			continue;
 		}
 
-		if (st.st_rdev == null_st.st_rdev) {
+		if (st.st_rdev == st_null.st_rdev)
 			continue;
-		}
 
 		ret = fchown(std_fds[i], uid, st.st_gid);
-		if (ret != 0) {
-			ERROR("Failed to change fd %d owner", std_fds[i]);
+		if (ret) {
+			SYSWARN("Failed to chown standard I/O file descriptor %d to uid %d and gid %d",
+				std_fds[i], uid, st.st_gid);
+			fret = -1;
 		}
 
 		ret = fchmod(std_fds[i], 0700);
-		if (ret != 0) {
-			ERROR("Failed to change fd %d mode", std_fds[i]);
+		if (ret) {
+			SYSWARN("Failed to chmod standard I/O file descriptor %d", std_fds[i]);
+			fret = -1;
 		}
 	}
 
-out:
-	if (devnull_fd >= 0) {
-		close(devnull_fd);
-	}
+	return fret;
 }

@@ -1363,9 +1363,11 @@ static int do_start(void *data)
 
 	if (new_gid == nsgid)
 		new_gid = LXC_INVALID_GID;
-	
+
 	/* Make sure that the processes STDIO is correctly owned by the user that we are switching to */
-	fix_stdio_permissions(new_uid);
+	ret = fix_stdio_permissions(new_uid);
+	if (ret)
+		WARN("Failed to ajust stdio permissions");
 
 	/* If we are in a new user namespace we already dropped all groups when
 	 * we switched to root in the new user namespace further above. Only
