@@ -933,8 +933,10 @@ void lxc_end(struct lxc_handler *handler)
 
 	lsm_process_cleanup(handler->conf, handler->lxcpath);
 
-	cgroup_ops->payload_destroy(cgroup_ops, handler);
-	cgroup_ops->monitor_destroy(cgroup_ops, handler);
+	if (cgroup_ops) {
+		cgroup_ops->payload_destroy(cgroup_ops, handler);
+		cgroup_ops->monitor_destroy(cgroup_ops, handler);
+	}
 
 	if (handler->conf->reboot == REBOOT_NONE) {
 		/* For all new state clients simply close the command socket.
