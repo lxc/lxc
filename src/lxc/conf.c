@@ -3832,6 +3832,9 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_apparmor_raw(conf);
 	lxc_clear_namespace(conf);
 	free(conf->cgroup_meta.dir);
+	free(conf->cgroup_meta.monitor_dir);
+	free(conf->cgroup_meta.container_dir);
+	free(conf->cgroup_meta.namespace_dir);
 	free(conf->cgroup_meta.controllers);
 	free(conf->shmount.path_host);
 	free(conf->shmount.path_cont);

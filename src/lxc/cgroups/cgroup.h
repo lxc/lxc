@@ -54,7 +54,11 @@ typedef enum {
  *   init's cgroup (if root).
  *
  * @container_full_path
- * - The full path to the containers cgroup.
+ * - The full path to the container's cgroup.
+ *
+ * @container_limit_path
+ * - The full path to the container's limiting cgroup. May simply point to
+ *   container_full_path.
  *
  * @monitor_full_path
  * - The full path to the monitor's cgroup.
@@ -77,15 +81,18 @@ struct hierarchy {
 	char *mountpoint;
 	char *container_base_path;
 	char *container_full_path;
+	char *container_limit_path;
 	char *monitor_full_path;
 	int version;
 
 	/* cgroup2 only */
 	unsigned int bpf_device_controller:1;
 
-	/* monitor cgroup fd */
-	int cgfd_con;
 	/* container cgroup fd */
+	int cgfd_con;
+	/* limiting cgroup fd (may be equal to cgfd_con if not separated) */
+	int cgfd_limit;
+	/* monitor cgroup fd */
 	int cgfd_mon;
 };
 
@@ -169,6 +176,7 @@ struct cgroup_ops {
 	bool (*monitor_delegate_controllers)(struct cgroup_ops *ops);
 	bool (*payload_delegate_controllers)(struct cgroup_ops *ops);
 	void (*payload_finalize)(struct cgroup_ops *ops);
+	const char *(*get_limiting_cgroup)(struct cgroup_ops *ops, const char *controller);
 };
 
 extern struct cgroup_ops *cgroup_init(struct lxc_conf *conf);

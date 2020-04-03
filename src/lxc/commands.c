@@ -84,6 +84,8 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 		[LXC_CMD_UNFREEZE]			= "unfreeze",
 		[LXC_CMD_GET_CGROUP2_FD]		= "get_cgroup2_fd",
 		[LXC_CMD_GET_INIT_PIDFD]        	= "get_init_pidfd",
+		[LXC_CMD_GET_LIMITING_CGROUP]		= "get_limiting_cgroup",
+		[LXC_CMD_GET_LIMITING_CGROUP2_FD]	= "get_limiting_cgroup2_fd",
 	};
 
 	if (cmd >= LXC_CMD_MAX)
@@ -142,7 +144,9 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		rsp->data = rspdata;
 	}
 
-	if (cmd->req.cmd == LXC_CMD_GET_CGROUP2_FD) {
+	if (cmd->req.cmd == LXC_CMD_GET_CGROUP2_FD ||
+	    cmd->req.cmd == LXC_CMD_GET_LIMITING_CGROUP2_FD)
+	{
 		int cgroup2_fd = move_fd(fd_rsp);
 		rsp->data = INT_TO_PTR(cgroup2_fd);
 	}
@@ -483,25 +487,14 @@ static int lxc_cmd_get_clone_flags_callback(int fd, struct lxc_cmd_req *req,
 	return 0;
 }
 
-/*
- * lxc_cmd_get_cgroup_path: Calculate a container's cgroup path for a
- * particular subsystem. This is the cgroup path relative to the root
- * of the cgroup filesystem.
- *
- * @name      : name of container to connect to
- * @lxcpath   : the lxcpath in which the container is running
- * @subsystem : the subsystem being asked about
- *
- * Returns the path on success, NULL on failure. The caller must free() the
- * returned path.
- */
-char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
-			      const char *subsystem)
+static char *lxc_cmd_get_cgroup_path_do(const char *name, const char *lxcpath,
+					const char *subsystem,
+					lxc_cmd_t command)
 {
 	int ret, stopped;
 	struct lxc_cmd_rr cmd = {
 		.req = {
-			.cmd = LXC_CMD_GET_CGROUP,
+			.cmd = command,
 			.data = subsystem,
 			.datalen = 0,
 		},
@@ -525,24 +518,72 @@ char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
 	return cmd.rsp.data;
 }
 
-static int lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
-				       struct lxc_handler *handler,
-				       struct lxc_epoll_descr *descr)
+/*
+ * lxc_cmd_get_cgroup_path: Calculate a container's cgroup path for a
+ * particular subsystem. This is the cgroup path relative to the root
+ * of the cgroup filesystem.
+ *
+ * @name      : name of container to connect to
+ * @lxcpath   : the lxcpath in which the container is running
+ * @subsystem : the subsystem being asked about
+ *
+ * Returns the path on success, NULL on failure. The caller must free() the
+ * returned path.
+ */
+char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
+			      const char *subsystem)
+{
+	return lxc_cmd_get_cgroup_path_do(name, lxcpath, subsystem,
+					  LXC_CMD_GET_CGROUP);
+}
+
+/*
+ * lxc_cmd_get_limiting_cgroup_path: Calculate a container's limiting cgroup
+ * path for a particular subsystem. This is the cgroup path relative to the
+ * root of the cgroup filesystem. This may be the same as the path returned by
+ * lxc_cmd_get_cgroup_path if the container doesn't have a limiting path prefix
+ * set.
+ *
+ * @name      : name of container to connect to
+ * @lxcpath   : the lxcpath in which the container is running
+ * @subsystem : the subsystem being asked about
+ *
+ * Returns the path on success, NULL on failure. The caller must free() the
+ * returned path.
+ */
+char *lxc_cmd_get_limiting_cgroup_path(const char *name, const char *lxcpath,
+				       const char *subsystem)
+{
+	return lxc_cmd_get_cgroup_path_do(name, lxcpath, subsystem,
+					  LXC_CMD_GET_LIMITING_CGROUP);
+}
+
+static int lxc_cmd_get_cgroup_callback_do(int fd, struct lxc_cmd_req *req,
+					  struct lxc_handler *handler,
+					  struct lxc_epoll_descr *descr,
+					  bool limiting_cgroup)
 {
 	int ret;
 	const char *path;
+	const void *reqdata;
 	struct lxc_cmd_rsp rsp;
 	struct cgroup_ops *cgroup_ops = handler->cgroup_ops;
+	const char *(*get_fn)(struct cgroup_ops *ops, const char *controller);
 
 	if (req->datalen > 0) {
 		ret = validate_string_request(fd, req);
 		if (ret != 0)
 			return ret;
-
-		path = cgroup_ops->get_cgroup(cgroup_ops, req->data);
+		reqdata = req->data;
 	} else {
-		path = cgroup_ops->get_cgroup(cgroup_ops, NULL);
+		reqdata = NULL;
 	}
+
+	get_fn = (limiting_cgroup ? cgroup_ops->get_cgroup
+				  : cgroup_ops->get_limiting_cgroup);
+
+	path = get_fn(cgroup_ops, reqdata);
+
 	if (!path)
 		return -1;
 
@@ -555,6 +596,20 @@ static int lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
 		return LXC_CMD_REAP_CLIENT_FD;
 
 	return 0;
+}
+
+static int lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
+				       struct lxc_handler *handler,
+				       struct lxc_epoll_descr *descr)
+{
+	return lxc_cmd_get_cgroup_callback_do(fd, req, handler, descr, false);
+}
+
+static int lxc_cmd_get_limiting_cgroup_callback(int fd, struct lxc_cmd_req *req,
+						struct lxc_handler *handler,
+						struct lxc_epoll_descr *descr)
+{
+	return lxc_cmd_get_cgroup_callback_do(fd, req, handler, descr, true);
 }
 
 /*
@@ -1366,26 +1421,46 @@ int lxc_cmd_get_cgroup2_fd(const char *name, const char *lxcpath)
 	return PTR_TO_INT(cmd.rsp.data);
 }
 
-static int lxc_cmd_get_cgroup2_fd_callback(int fd, struct lxc_cmd_req *req,
-					   struct lxc_handler *handler,
-					   struct lxc_epoll_descr *descr)
+static int lxc_cmd_get_cgroup2_fd_callback_do(int fd, struct lxc_cmd_req *req,
+					      struct lxc_handler *handler,
+					      struct lxc_epoll_descr *descr,
+					      bool limiting_cgroup)
 {
 	struct lxc_cmd_rsp rsp = {
 		.ret = -EINVAL,
 	};
 	struct cgroup_ops *ops = handler->cgroup_ops;
-	int ret;
+	int ret, send_fd;
 
 	if (!pure_unified_layout(ops) || !ops->unified)
 		return lxc_cmd_rsp_send(fd, &rsp);
 
+	send_fd = limiting_cgroup ? ops->unified->cgfd_limit
+				  : ops->unified->cgfd_con;
+
 	rsp.ret = 0;
-	ret = lxc_abstract_unix_send_fds(fd, &ops->unified->cgfd_con, 1, &rsp,
-					 sizeof(rsp));
+	ret = lxc_abstract_unix_send_fds(fd, &send_fd, 1, &rsp, sizeof(rsp));
 	if (ret < 0)
 		return log_error(LXC_CMD_REAP_CLIENT_FD, "Failed to send cgroup2 fd");
 
 	return 0;
+}
+
+static int lxc_cmd_get_cgroup2_fd_callback(int fd, struct lxc_cmd_req *req,
+					   struct lxc_handler *handler,
+					   struct lxc_epoll_descr *descr)
+{
+	return lxc_cmd_get_cgroup2_fd_callback_do(fd, req, handler, descr,
+						  false);
+}
+
+static int lxc_cmd_get_limiting_cgroup2_fd_callback(int fd,
+						    struct lxc_cmd_req *req,
+						    struct lxc_handler *handler,
+						    struct lxc_epoll_descr *descr)
+{
+	return lxc_cmd_get_cgroup2_fd_callback_do(fd, req, handler, descr,
+						  true);
 }
 
 static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
@@ -1415,6 +1490,8 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 		[LXC_CMD_UNFREEZE]			= lxc_cmd_unfreeze_callback,
 		[LXC_CMD_GET_CGROUP2_FD]		= lxc_cmd_get_cgroup2_fd_callback,
 		[LXC_CMD_GET_INIT_PIDFD]                = lxc_cmd_get_init_pidfd_callback,
+		[LXC_CMD_GET_LIMITING_CGROUP]           = lxc_cmd_get_limiting_cgroup_callback,
+		[LXC_CMD_GET_LIMITING_CGROUP2_FD]       = lxc_cmd_get_limiting_cgroup2_fd_callback,
 	};
 
 	if (req->cmd >= LXC_CMD_MAX)
