@@ -1754,19 +1754,14 @@ static int set_config_cgroup_container_inner_dir(const char *key,
 						 void *data)
 {
 	if (lxc_config_value_empty(value))
-		return clr_config_cgroup_container_inner_dir(key, lxc_conf,
-							     NULL);
+		return clr_config_cgroup_container_inner_dir(key, lxc_conf, NULL);
 
 	if (strchr(value, '/') ||
 	    strcmp(value, ".") == 0 ||
 	    strcmp(value, "..") == 0)
-	{
-		ERROR("lxc.cgroup.dir.container.inner must be a single directory name");
-		return -1;
-	}
+		return log_error_errno(-EINVAL, EINVAL, "lxc.cgroup.dir.container.inner must be a single directory name");
 
-	return set_config_string_item(&lxc_conf->cgroup_meta.namespace_dir,
-				      value);
+	return set_config_string_item(&lxc_conf->cgroup_meta.namespace_dir, value);
 }
 
 static int set_config_cgroup_relative(const char *key, const char *value,
