@@ -1239,7 +1239,6 @@ static bool check_cgroup_dir_config(struct lxc_conf *conf)
 	const char *monitor_dir = conf->cgroup_meta.monitor_dir,
 		   *container_dir = conf->cgroup_meta.container_dir,
 		   *namespace_dir = conf->cgroup_meta.namespace_dir;
-	size_t prefix_len;
 
 	/* none of the new options are set, all is fine */
 	if (!monitor_dir && !container_dir && !namespace_dir)
