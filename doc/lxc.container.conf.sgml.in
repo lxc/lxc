@@ -1583,7 +1583,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               exclusive with <option>lxc.cgroup.dir</option>.
               Note that the final path the container attaches to may be
               extended further by the
-              <option>lxc.cgroup.dir.container.namespace</option> option.
+              <option>lxc.cgroup.dir.container.inner</option> option.
             </para>
           </listitem>
         </varlistentry>
@@ -1600,7 +1600,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         </varlistentry>
         <varlistentry>
           <term>
-            <option>lxc.cgroup.dir.container.namespace</option>
+            <option>lxc.cgroup.dir.container.inner</option>
           </term>
           <listitem>
             <para>
