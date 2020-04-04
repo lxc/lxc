@@ -38,6 +38,7 @@ static char *api_extensions[] = {
 	"cgroup2_devices",
 #endif
 	"cgroup2",
+	"cgroup_advanced_isolation",
 };
 
 static size_t nr_api_extensions = sizeof(api_extensions) / sizeof(*api_extensions);
