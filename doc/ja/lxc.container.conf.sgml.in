@@ -2101,6 +2101,63 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         </varlistentry>
         <varlistentry>
           <term>
+            <option>lxc.cgroup.dir.container</option>
+          </term>
+          <listitem>
+            <para>
+	      <!--
+              This is similar to <option>lxc.cgroup.dir</option>, but must be
+              used together with <option>lxc.cgroup.dir.monitor</option> and
+              affects only the container's cgroup path. This option is mutually
+              exclusive with <option>lxc.cgroup.dir</option>.
+              Note that the final path the container attaches to may be
+              extended further by the
+              <option>lxc.cgroup.dir.container.inner</option> option.
+	      -->
+	      これは <option>lxc.cgroup.dir</option> と同様の設定ですが、かならず <option>lxc.cgroup.dir.monitor</option> と同時に使わなければなりません。そして、設定はコンテナの cgroup パスにのみ影響を与えます。このオプションは <option>lxc.cgroup.dir</option> と同時に設定できません。コンテナがアタッチされる最終的なパスは <option>lxc.cgroup.dir.container.inner</option> オプションによりさらに変更される可能性があります。
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.cgroup.dir.monitor</option>
+          </term>
+          <listitem>
+            <para>
+	      <!--
+              This is the monitor process counterpart to
+              <option>lxc.cgroup.dir.container</option>.
+	      -->
+	      このオプションは、モニタプロセスに対して<option>lxc.cgroup.dir.container</option> と同様の働きをします。
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>lxc.cgroup.dir.container.inner</option>
+          </term>
+          <listitem>
+            <para>
+	      <!--
+              Specify an additional subdirectory where the cgroup namespace
+              will be created. With this option, the cgroup limits will be
+              applied to the outer path specified in
+              <option>lxc.cgroup.dir.container</option>, which is not accessible
+              from within the container, making it possible to better enforce
+              limits for privileged containers in a way they cannot override
+              them.
+              This only works in conjunction with the
+              <option>lxc.cgroup.dir.container</option> and
+              <option>lxc.cgroup.dir.monitor</option> options and has otherwise
+              no effect.
+	      -->
+	      cgroup 名前空間が作られる追加のサブディレクトリを指定します。このオプションを使うと、cgroup の制限は <option>lxc.cgroup.dir.container</option> で指定した外部パスに適用されます。<option>lxc.cgroup.dir.container</option> はコンテナ内部からアクセスできないため、特権コンテナに対する制限を上書きできない方法でよりよい方法で強制できます。
+	      このオプションは <option>lxc.cgroup.dir.container</option> と <option>lxc.cgroup.dir.monitor</option> と同時に指定したときのみ機能し、それ以外の場合は効果がありません。
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
             <option>lxc.cgroup.relative</option>
           </term>
           <listitem>
