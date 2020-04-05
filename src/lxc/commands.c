@@ -579,8 +579,8 @@ static int lxc_cmd_get_cgroup_callback_do(int fd, struct lxc_cmd_req *req,
 		reqdata = NULL;
 	}
 
-	get_fn = (limiting_cgroup ? cgroup_ops->get_cgroup
-				  : cgroup_ops->get_limiting_cgroup);
+	get_fn = (limiting_cgroup ? cgroup_ops->get_limiting_cgroup
+				  : cgroup_ops->get_cgroup);
 
 	path = get_fn(cgroup_ops, reqdata);
 
