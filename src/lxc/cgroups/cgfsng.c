@@ -1155,11 +1155,12 @@ static int mkdir_eexist_on_last(const char *dir, mode_t mode)
 	return 0;
 }
 
-static bool cgroup_tree_create(struct hierarchy *h, const char *cgroup_tree,
+static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
+			       struct hierarchy *h, const char *cgroup_tree,
 			       const char *cgroup_leaf, bool payload,
 			       const char *cgroup_limit_dir)
 {
-	__do_free char *path = NULL;
+	__do_free char *path = NULL, *limit_path = NULL;
 	int ret, ret_cpuset;
 
 	path = must_make_path(h->mountpoint, h->container_base_path, cgroup_leaf, NULL);
@@ -1169,6 +1170,37 @@ static bool cgroup_tree_create(struct hierarchy *h, const char *cgroup_tree,
 	ret_cpuset = cg_legacy_handle_cpuset_hierarchy(h, cgroup_leaf);
 	if (ret_cpuset < 0)
 		return log_error_errno(false, errno, "Failed to handle legacy cpuset controller");
+
+	if (payload && cgroup_limit_dir) {
+		/* with isolation both parts need to not already exist */
+		limit_path = must_make_path(h->mountpoint,
+					    h->container_base_path,
+					    cgroup_limit_dir, NULL);
+
+		ret = mkdir_eexist_on_last(limit_path, 0755);
+		if (ret < 0)
+			return log_error_errno(false, errno,
+			                       "Failed to create %s limiting cgroup",
+			                       limit_path);
+
+		h->cgfd_limit = lxc_open_dirfd(limit_path);
+		if (h->cgfd_limit < 0)
+			return log_error_errno(false, errno,
+					       "Failed to open %s", path);
+		h->container_limit_path = move_ptr(limit_path);
+
+		/*
+		 * With isolation the devices legacy cgroup needs to be
+		 * iinitialized early, as it typically contains an 'a' (all)
+		 * line, which is not possible once a subdirectory has been
+		 * created.
+		 */
+		if (string_in_list(h->controllers, "devices")) {
+			ret = ops->setup_limits_legacy(ops, conf, true);
+			if (ret < 0)
+				return ret;
+		}
+	}
 
 	ret = mkdir_eexist_on_last(path, 0755);
 	if (ret < 0) {
@@ -1186,16 +1218,10 @@ static bool cgroup_tree_create(struct hierarchy *h, const char *cgroup_tree,
 		if (h->cgfd_con < 0)
 			return log_error_errno(false, errno, "Failed to open %s", path);
 		h->container_full_path = move_ptr(path);
-		if (cgroup_limit_dir) {
-			path = must_make_path(h->mountpoint, h->container_base_path, cgroup_limit_dir, NULL);
-			h->cgfd_limit = lxc_open_dirfd(path);
-			if (h->cgfd_limit < 0)
-				return log_error_errno(false, errno, "Failed to open %s", path);
-			h->container_limit_path = move_ptr(path);
-		} else {
-			h->container_limit_path = h->container_full_path;
+		if (h->cgfd_limit < 0)
 			h->cgfd_limit = h->cgfd_con;
-		}
+		if (!h->container_limit_path)
+			h->container_limit_path = h->container_full_path;
 	} else {
 		h->cgfd_mon = lxc_open_dirfd(path);
 		if (h->cgfd_mon < 0)
@@ -1322,7 +1348,9 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 			sprintf(suffix, "-%d", idx);
 
 		for (i = 0; ops->hierarchies[i]; i++) {
-			if (cgroup_tree_create(ops->hierarchies[i], cgroup_tree, monitor_cgroup, false, NULL))
+			if (cgroup_tree_create(ops, handler->conf,
+				               ops->hierarchies[i], cgroup_tree,
+				               monitor_cgroup, false, NULL))
 				continue;
 
 			ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->monitor_full_path ?: "(null)");
@@ -1382,9 +1410,14 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 		if (!limiting_cgroup)
 			return ret_set_errno(false, ENOMEM);
 
-		container_cgroup = must_make_path(limiting_cgroup,
-						  conf->cgroup_meta.namespace_dir,
-						  NULL);
+		if (conf->cgroup_meta.namespace_dir) {
+			container_cgroup = must_make_path(limiting_cgroup,
+							  conf->cgroup_meta.namespace_dir,
+							  NULL);
+		} else {
+			/* explicit paths but without isolation */
+			container_cgroup = move_ptr(limiting_cgroup);
+		}
 	} else if (conf->cgroup_meta.dir) {
 		cgroup_tree = conf->cgroup_meta.dir;
 		container_cgroup = must_concat(&len, cgroup_tree, "/",
@@ -1418,7 +1451,8 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 			sprintf(suffix, "-%d", idx);
 
 		for (i = 0; ops->hierarchies[i]; i++) {
-			if (cgroup_tree_create(ops->hierarchies[i], cgroup_tree,
+			if (cgroup_tree_create(ops, handler->conf,
+					       ops->hierarchies[i], cgroup_tree,
 					       container_cgroup, true,
 					       limiting_cgroup))
 				continue;
