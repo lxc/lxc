@@ -1784,7 +1784,12 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (ret < 0)
 		goto out_delete_net;
 
-	if (!cgroup_ops->setup_limits_legacy(cgroup_ops, handler->conf, true)) {
+	/*
+	 * with isolation the limiting devices cgroup was already setup, so
+	 * only setup devices here if we have no namespace directory
+	 */
+	if (!handler->conf->cgroup_meta.namespace_dir &&
+	    !cgroup_ops->setup_limits_legacy(cgroup_ops, handler->conf, true)) {
 		ERROR("Failed to setup legacy device cgroup controller limits");
 		goto out_delete_net;
 	}
