@@ -1039,14 +1039,13 @@ static int do_start(void *data)
 	struct lxc_handler *handler = data;
 	__lxc_unused __do_close int data_sock0 = handler->data_sock[0],
 					   data_sock1 = handler->data_sock[1];
-	__do_close int status_fd = -EBADF;
+	__do_close int devnull_fd = -EBADF, status_fd = -EBADF;
 	int ret;
 	uid_t new_uid;
 	gid_t new_gid;
 	struct lxc_list *iterator;
 	uid_t nsuid = 0;
 	gid_t nsgid = 0;
-	int devnull_fd = -1;
 
 	lxc_sync_fini_parent(handler);
 
@@ -1401,20 +1400,20 @@ static int do_start(void *data)
 		}
 	}
 
-	/* After this call, we are in error because this ops should not return
+	/*
+	 * After this call, we are in error because this ops should not return
 	 * as it execs.
 	 */
 	handler->ops->start(handler, handler->data);
 
 out_warn_father:
-	/* We want the parent to know something went wrong, so we return a
+	/*
+	 * We want the parent to know something went wrong, so we return a
 	 * special error code.
 	 */
 	lxc_sync_wake_parent(handler, LXC_SYNC_ERROR);
 
 out_error:
-	close_prot_errno_disarm(devnull_fd);
-
 	return -1;
 }
 

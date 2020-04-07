@@ -189,7 +189,7 @@ static int lxc_abstract_unix_recv_fds_iov(int fd, int *recvfds, int num_recvfds,
 	msg.msg_iovlen = iovlen;
 
 	do {
-		ret = recvmsg(fd, &msg, 0);
+		ret = recvmsg(fd, &msg, MSG_CMSG_CLOEXEC);
 	} while (ret < 0 && errno == EINTR);
 	if (ret < 0 || ret == 0)
 		return ret;
