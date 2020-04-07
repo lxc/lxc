@@ -200,13 +200,10 @@ static char **get_groupnames(void)
 			}
 			buf = new_buf;
 		}
-		if (!grentp) {
-			if (ret == 0)
-				usernic_error("%s", "Could not find matched group record\n");
 
-			CMD_SYSERROR("Failed to get group name: %u\n", group_ids[i]);
-			return NULL;
-		}
+		/* If a group is not found, just ignore it. */
+		if (!grentp)
+			continue;
 
 		groupnames[i] = strdup(grent.gr_name);
 		if (!groupnames[i]) {
