@@ -1354,6 +1354,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	char *cookie = conf->seccomp.notifier.cookie;
 	uint64_t req_id;
 
+	memset(req, 0, sizeof(*req));
 	ret = seccomp_notify_receive(fd, req);
 	if (ret) {
 		SYSERROR("Failed to read seccomp notification");
