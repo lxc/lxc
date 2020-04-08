@@ -133,26 +133,14 @@ static char *get_username(void)
 	return strdup(pwent.pw_name);
 }
 
-static void free_groupnames(char **groupnames)
-{
-	int i;
-
-	if (!groupnames)
-		return;
-
-	for (i = 0; groupnames[i]; i++)
-		free(groupnames[i]);
-
-	free(groupnames);
-}
 
 static char **get_groupnames(void)
 {
 	__do_free char *buf = NULL;
 	__do_free gid_t *group_ids = NULL;
+	__do_free_string_list char **groupnames = NULL;
 	int ngroups;
 	int ret, i;
-	char **groupnames;
 	struct group grent;
 	struct group *grentp = NULL;
 	size_t bufsize;
@@ -161,9 +149,10 @@ static char **get_groupnames(void)
 	if (ngroups < 0) {
 		CMD_SYSERROR("Failed to get number of groups the user belongs to\n");
 		return NULL;
-	} else if (ngroups == 0) {
-		return NULL;
 	}
+
+	if (ngroups == 0)
+		return NULL;
 
 	group_ids = malloc(sizeof(gid_t) * ngroups);
 	if (!group_ids) {
@@ -177,13 +166,11 @@ static char **get_groupnames(void)
 		return NULL;
 	}
 
-	groupnames = malloc(sizeof(char *) * (ngroups + 1));
+	groupnames = zalloc(sizeof(char *) * (ngroups + 1));
 	if (!groupnames) {
 		CMD_SYSERROR("Failed to allocate memory while getting group names\n");
 		return NULL;
 	}
-
-	memset(groupnames, 0, sizeof(char *) * (ngroups + 1));
 
 	bufsize = sysconf(_SC_GETGR_R_SIZE_MAX);
 	if (bufsize == -1)
@@ -191,52 +178,41 @@ static char **get_groupnames(void)
 
 	buf = malloc(bufsize);
 	if (!buf) {
-		free_groupnames(groupnames);
 		CMD_SYSERROR("Failed to allocate memory while getting group names\n");
 		return NULL;
 	}
 
 	for (i = 0; i < ngroups; i++) {
 		while ((ret = getgrgid_r(group_ids[i], &grent, buf, bufsize, &grentp)) == ERANGE) {
+			char *new_buf;
+
 			bufsize <<= 1;
 			if (bufsize > MAX_GRBUF_SIZE) {
-				usernic_error("Failed to get group members: %u\n",
-				      group_ids[i]);
-				free(buf);
-				free(group_ids);
-				free_groupnames(groupnames);
+				usernic_error("Failed to get group members: %u\n", group_ids[i]);
 				return NULL;
 			}
-			char *new_buf = realloc(buf, bufsize);
+
+			new_buf = realloc(buf, bufsize);
 			if (!new_buf) {
-				usernic_error("Failed to allocate memory while getting group "
-					      "names: %s\n",
+				usernic_error("Failed to allocate memory while getting group names: %s\n",
 					      strerror(errno));
-				free(buf);
-				free(group_ids);
-				free_groupnames(groupnames);
 				return NULL;
 			}
 			buf = new_buf;
 		}
-		if (!grentp) {
-			if (ret == 0)
-				usernic_error("%s", "Could not find matched group record\n");
 
-			CMD_SYSERROR("Failed to get group name: %u\n", group_ids[i]);
-			free_groupnames(groupnames);
-			return NULL;
-		}
+		/* If a group is not found, just ignore it. */
+		if (!grentp)
+			continue;
 
 		groupnames[i] = strdup(grent.gr_name);
 		if (!groupnames[i]) {
 			usernic_error("Failed to copy group name \"%s\"", grent.gr_name);
-			free_groupnames(groupnames);
 			return NULL;
 		}
 	}
 
-	return groupnames;
+	return move_ptr(groupnames);
 }
 
 static bool name_is_in_groupnames(char *name, char **groupnames)
@@ -325,9 +301,9 @@ static int get_alloted(char *me, char *intype, char *link,
 {
 	__do_free char *line = NULL;
 	__do_fclose FILE *fin = NULL;
+	__do_free_string_list char **groups = NULL;
 	int n, ret;
 	char name[100], type[100], br[100];
-	char **groups;
 	int count = 0;
 	size_t len = 0;
 
@@ -378,8 +354,6 @@ static int get_alloted(char *me, char *intype, char *link,
 
 		count += n;
 	}
-
-	free_groupnames(groups);
 
 	/* Now return the total number of nics that this user can create. */
 	return count;
