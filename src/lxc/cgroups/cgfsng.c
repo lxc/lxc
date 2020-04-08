@@ -672,7 +672,7 @@ static char **cg_hybrid_get_controllers(char **klist, char **nlist, char *line,
 		if (!dup)
 			return NULL;
 
-		lxc_iterate_parts (tok, dup, sep)
+		lxc_iterate_parts(tok, dup, sep)
 			must_append_controller(klist, nlist, &aret, tok);
 	}
 	*p2 = ' ';
@@ -3009,7 +3009,7 @@ static void cg_unified_delegate(char ***delegate)
 		return;
 	}
 
-	lxc_iterate_parts (token, buf, " \t\n") {
+	lxc_iterate_parts(token, buf, " \t\n") {
 		/*
 		 * We always need to chown this for both cgroup and
 		 * cgroup2.
