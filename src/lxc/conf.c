@@ -2679,19 +2679,10 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	struct id_map *map;
 	struct lxc_list *iterator;
 	enum idtype type;
-	/* strlen("new@idmap") = 9
-	 * +
-	 * strlen(" ") = 1
-	 * +
-	 * INTTYPE_TO_STRLEN(uint32_t)
-	 * +
-	 * strlen(" ") = 1
-	 *
-	 * We add some additional space to make sure that we really have
-	 * LXC_IDMAPLEN bytes available for our the {g,u]id mapping.
-	 */
 	int ret = 0, gidmap = 0, uidmap = 0;
-	char mapbuf[9 + 1 + INTTYPE_TO_STRLEN(uint32_t) + 1 + LXC_IDMAPLEN] = {0};
+	char mapbuf[STRLITERALLEN("new@idmap") + STRLITERALLEN(" ") +
+		    INTTYPE_TO_STRLEN(pid_t) + STRLITERALLEN(" ") +
+		    LXC_IDMAPLEN] = {0};
 	bool had_entry = false, use_shadow = false;
 	int hostuid, hostgid;
 
@@ -3488,7 +3479,7 @@ static int lxc_free_idmap(struct lxc_list *id_map)
 {
 	struct lxc_list *it, *next;
 
-	lxc_list_for_each_safe (it, id_map, next) {
+	lxc_list_for_each_safe(it, id_map, next) {
 		lxc_list_del(it);
 		free(it->elem);
 		free(it);
@@ -3927,18 +3918,19 @@ static struct id_map *mapped_hostid_add(const struct lxc_conf *conf, uid_t id,
 
 	/* Reuse existing mapping. */
 	tmp = find_mapped_hostid_entry(conf, id, type);
-	if (tmp)
-		return memcpy(entry, tmp, sizeof(*entry));
+	if (tmp) {
+		memcpy(entry, tmp, sizeof(*entry));
+	} else {
+		/* Find new mapping. */
+		hostid_mapped = find_unmapped_nsid(conf, type);
+		if (hostid_mapped < 0)
+			return log_debug(NULL, "Failed to find free mapping for id %d", id);
 
-	/* Find new mapping. */
-	hostid_mapped = find_unmapped_nsid(conf, type);
-	if (hostid_mapped < 0)
-		return log_debug(NULL, "Failed to find free mapping for id %d", id);
-
-	entry->idtype = type;
-	entry->nsid = hostid_mapped;
-	entry->hostid = (unsigned long)id;
-	entry->range = 1;
+		entry->idtype = type;
+		entry->nsid = hostid_mapped;
+		entry->hostid = (unsigned long)id;
+		entry->range = 1;
+	}
 
 	return move_ptr(entry);
 }
@@ -3996,7 +3988,7 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 	lxc_list_add_elem(tmplist, container_root_uid);
 	lxc_list_add_tail(idmap, tmplist);
 
-	if (host_uid_map && (host_uid_map != container_root_uid)) {
+	if (host_uid_map != container_root_uid) {
 		/* idmap will now keep track of that memory. */
 		move_ptr(container_root_uid);
 
@@ -4018,7 +4010,7 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 	lxc_list_add_elem(tmplist, container_root_gid);
 	lxc_list_add_tail(idmap, tmplist);
 
-	if (host_gid_map && (host_gid_map != container_root_gid)) {
+	if (host_gid_map != container_root_gid) {
 		/* idmap will now keep track of that memory. */
 		move_ptr(container_root_gid);
 
@@ -4060,9 +4052,13 @@ int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *), void *data,
 	call_cleaner(lxc_free_idmap) struct lxc_list *idmap = NULL;
 	int ret = -1, status = -1;
 	char c = '1';
+	struct userns_fn_data d = {
+	    .arg	= data,
+	    .fn		= fn,
+	    .fn_name	= fn_name,
+	};
 	pid_t pid;
 	int pipe_fds[2];
-	struct userns_fn_data d;
 
 	if (!conf)
 		return -EINVAL;
@@ -4075,9 +4071,6 @@ int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *), void *data,
 	if (ret < 0)
 		return -errno;
 
-	d.fn		= fn;
-	d.fn_name	= fn_name;
-	d.arg		= data;
 	d.p[0]		= pipe_fds[0];
 	d.p[1]		= pipe_fds[1];
 
