@@ -2679,19 +2679,10 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	struct id_map *map;
 	struct lxc_list *iterator;
 	enum idtype type;
-	/* strlen("new@idmap") = 9
-	 * +
-	 * strlen(" ") = 1
-	 * +
-	 * INTTYPE_TO_STRLEN(uint32_t)
-	 * +
-	 * strlen(" ") = 1
-	 *
-	 * We add some additional space to make sure that we really have
-	 * LXC_IDMAPLEN bytes available for our the {g,u]id mapping.
-	 */
 	int ret = 0, gidmap = 0, uidmap = 0;
-	char mapbuf[9 + 1 + INTTYPE_TO_STRLEN(uint32_t) + 1 + LXC_IDMAPLEN] = {0};
+	char mapbuf[STRLITERALLEN("new@idmap") + STRLITERALLEN(" ") +
+		    INTTYPE_TO_STRLEN(pid_t) + STRLITERALLEN(" ") +
+		    LXC_IDMAPLEN] = {0};
 	bool had_entry = false, use_shadow = false;
 	int hostuid, hostgid;
 
