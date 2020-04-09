@@ -3488,7 +3488,7 @@ static int lxc_free_idmap(struct lxc_list *id_map)
 {
 	struct lxc_list *it, *next;
 
-	lxc_list_for_each_safe (it, id_map, next) {
+	lxc_list_for_each_safe(it, id_map, next) {
 		lxc_list_del(it);
 		free(it->elem);
 		free(it);
@@ -3996,7 +3996,7 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 	lxc_list_add_elem(tmplist, container_root_uid);
 	lxc_list_add_tail(idmap, tmplist);
 
-	if (host_uid_map && (host_uid_map != container_root_uid)) {
+	if (host_uid_map != container_root_uid) {
 		/* idmap will now keep track of that memory. */
 		move_ptr(container_root_uid);
 
@@ -4018,7 +4018,7 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 	lxc_list_add_elem(tmplist, container_root_gid);
 	lxc_list_add_tail(idmap, tmplist);
 
-	if (host_gid_map && (host_gid_map != container_root_gid)) {
+	if (host_gid_map != container_root_gid) {
 		/* idmap will now keep track of that memory. */
 		move_ptr(container_root_gid);
 
@@ -4060,9 +4060,13 @@ int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *), void *data,
 	call_cleaner(lxc_free_idmap) struct lxc_list *idmap = NULL;
 	int ret = -1, status = -1;
 	char c = '1';
+	struct userns_fn_data d = {
+	    .arg	= data,
+	    .fn		= fn,
+	    .fn_name	= fn_name,
+	};
 	pid_t pid;
 	int pipe_fds[2];
-	struct userns_fn_data d;
 
 	if (!conf)
 		return -EINVAL;
@@ -4075,9 +4079,6 @@ int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *), void *data,
 	if (ret < 0)
 		return -errno;
 
-	d.fn		= fn;
-	d.fn_name	= fn_name;
-	d.arg		= data;
 	d.p[0]		= pipe_fds[0];
 	d.p[1]		= pipe_fds[1];
 
