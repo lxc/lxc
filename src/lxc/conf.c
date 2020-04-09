@@ -3915,18 +3915,19 @@ static struct id_map *mapped_hostid_add(const struct lxc_conf *conf, uid_t id,
 
 	/* Reuse existing mapping. */
 	tmp = find_mapped_hostid_entry(conf, id, type);
-	if (tmp)
-		return memcpy(entry, tmp, sizeof(*entry));
+	if (tmp) {
+		memcpy(entry, tmp, sizeof(*entry));
+	} else {
+		/* Find new mapping. */
+		hostid_mapped = find_unmapped_nsid(conf, type);
+		if (hostid_mapped < 0)
+			return log_debug(NULL, "Failed to find free mapping for id %d", id);
 
-	/* Find new mapping. */
-	hostid_mapped = find_unmapped_nsid(conf, type);
-	if (hostid_mapped < 0)
-		return log_debug(NULL, "Failed to find free mapping for id %d", id);
-
-	entry->idtype = type;
-	entry->nsid = hostid_mapped;
-	entry->hostid = (unsigned long)id;
-	entry->range = 1;
+		entry->idtype = type;
+		entry->nsid = hostid_mapped;
+		entry->hostid = (unsigned long)id;
+		entry->range = 1;
+	}
 
 	return move_ptr(entry);
 }
