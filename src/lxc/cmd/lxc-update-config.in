@@ -74,7 +74,7 @@ sed -i \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.stopsignal\)\([[:blank:]*]\|=\)/\1lxc\.signal\.stop\3/g' \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.syslog\)\([[:blank:]*]\|=\)/\1lxc\.log\.syslog\3/g' \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.loglevel\)\([[:blank:]*]\|=\)/\1lxc\.log\.level\3/g' \
--e 's/\([[:blank:]*]\|#*\)\(lxc\.logfile\)\([[:blank:]*]\|=\)/1lxc\.log\.file\3/g' \
+-e 's/\([[:blank:]*]\|#*\)\(lxc\.logfile\)\([[:blank:]*]\|=\)/\1lxc\.log\.file\3/g' \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.init_cmd\)\([[:blank:]*]\|=\)/\1lxc\.init\.cmd\3/g' \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.init_uid\)\([[:blank:]*]\|=\)/\1lxc\.init\.uid\3/g' \
 -e 's/\([[:blank:]*]\|#*\)\(lxc\.init_gid\)\([[:blank:]*]\|=\)/\1lxc\.init\.gid\3/g' \
