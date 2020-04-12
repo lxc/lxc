@@ -348,8 +348,7 @@ fi
 # shellcheck disable=SC2039
 # shellcheck disable=SC2068
 umoci --log=error unpack ${umoci_args[@]} --image "${DOWNLOAD_TEMP}:latest" "${LXC_ROOTFS}.tmp"
-rmdir "${LXC_ROOTFS}"
-mv "${LXC_ROOTFS}.tmp/rootfs" "${LXC_ROOTFS}"
+find "${LXC_ROOTFS}.tmp/rootfs" -mindepth 1 -maxdepth 1 -exec mv '{}' "${LXC_ROOTFS}/" \;
 
 OCI_CONF_FILE=$(getconfigpath "${DOWNLOAD_TEMP}" latest)
 LXC_CONF_FILE="${LXC_PATH}/config"
