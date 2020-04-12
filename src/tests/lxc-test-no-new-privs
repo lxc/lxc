@@ -36,11 +36,13 @@ cleanup() {
 
 trap cleanup EXIT SIGHUP SIGINT SIGTERM
 
-mkdir -p /etc/lxc/
-cat > /etc/lxc/default.conf << EOF
+if [ ! -d /etc/lxc ]; then
+    mkdir -p /etc/lxc/
+    cat > /etc/lxc/default.conf << EOF
 lxc.net.0.type = veth
 lxc.net.0.link = lxcbr0
 EOF
+fi
 
 ARCH=i386
 if type dpkg >/dev/null 2>&1; then
