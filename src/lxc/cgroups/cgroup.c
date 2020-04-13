@@ -79,7 +79,7 @@ void cgroup_exit(struct cgroup_ops *ops)
 		free((*it)->container_base_path);
 		free((*it)->container_full_path);
 		free((*it)->monitor_full_path);
-		if ((*it)->cgfd_mon >= 0)
+		if ((*it)->cgfd_con >= 0)
 			close((*it)->cgfd_con);
 		if ((*it)->cgfd_mon >= 0)
 			close((*it)->cgfd_mon);
