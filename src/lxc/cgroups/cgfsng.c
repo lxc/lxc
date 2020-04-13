@@ -1194,11 +1194,9 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		 * line, which is not possible once a subdirectory has been
 		 * created.
 		 */
-		if (string_in_list(h->controllers, "devices")) {
-			ret = ops->setup_limits_legacy(ops, conf, true);
-			if (ret < 0)
-				return ret;
-		}
+		if (string_in_list(h->controllers, "devices") &&
+		    !ops->setup_limits_legacy(ops, conf, true))
+			return log_error(false, "Failed to setup legacy device limits");
 	}
 
 	ret = mkdir_eexist_on_last(path, 0755);
