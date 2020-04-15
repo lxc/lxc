@@ -2605,6 +2605,9 @@ static int device_cgroup_rule_parse_devpath(struct device_item *device,
 			return ret_set_errno(-1, EINVAL);
 	}
 
+	if (!mode)
+		return ret_errno(EINVAL);
+
 	if (device_cgroup_parse_access(device, mode) < 0)
 		return -1;
 
