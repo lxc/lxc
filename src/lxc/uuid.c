@@ -116,7 +116,7 @@ int lxc_id128_write_fd(int fd, lxc_id128_t id)
 
 int lxc_id128_write(const char *p, lxc_id128_t id)
 {
-	int fd = -1;
+	__do_close int fd = -EBADF;
 
         fd = open(p, O_WRONLY|O_CREAT|O_CLOEXEC|O_NOCTTY|O_TRUNC, 0444);
         if (fd < 0)
