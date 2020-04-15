@@ -159,8 +159,8 @@ bool zfs_detect(const char *path)
 
 int zfs_mount(struct lxc_storage *bdev)
 {
+	__do_free char *mntdata = NULL;
 	unsigned long mntflags = 0;
-	char *mntdata = NULL;
 	int ret;
 	size_t oldlen, newlen, totallen;
 	char *tmp;
@@ -176,7 +176,6 @@ int zfs_mount(struct lxc_storage *bdev)
 	ret = parse_mntopts(bdev->mntopts, &mntflags, &mntdata);
 	if (ret < 0) {
 		ERROR("Failed to parse mount options");
-		free(mntdata);
 		return -22;
 	}
 
@@ -221,7 +220,6 @@ int zfs_mount(struct lxc_storage *bdev)
 	tmp = realloc(mntdata, totallen);
 	if (!tmp) {
 		ERROR("Failed to reallocate memory");
-		free(mntdata);
 		return -1;
 	}
 	mntdata = tmp;
@@ -229,12 +227,10 @@ int zfs_mount(struct lxc_storage *bdev)
 	ret = snprintf((mntdata + oldlen), newlen, ",zfsutil,mntpoint=%s", src);
 	if (ret < 0 || (size_t)ret >= newlen) {
 		ERROR("Failed to create string");
-		free(mntdata);
 		return -1;
 	}
 
 	ret = mount(src, bdev->dest, "zfs", mntflags, mntdata);
-	free(mntdata);
 	if (ret < 0 && errno != EBUSY) {
 		SYSERROR("Failed to mount \"%s\" on \"%s\"", src, bdev->dest);
 		return -1;
