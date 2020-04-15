@@ -391,7 +391,7 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 	LXC_FATAL(&locinfo, format, ##__VA_ARGS__);			\
 } while (0)
 
-#if HAVE_M_FORMAT
+#if HAVE_M_FORMAT && !ENABLE_COVERITY_BUILD
 #define SYSTRACE(format, ...)                              \
 		TRACE("%m - " format, ##__VA_ARGS__)
 #else
@@ -402,7 +402,7 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 	} while (0)
 #endif
 
-#if HAVE_M_FORMAT
+#if HAVE_M_FORMAT && !ENABLE_COVERITY_BUILD
 #define SYSDEBUG(format, ...)                              \
                 DEBUG("%m - " format, ##__VA_ARGS__)
 #else
@@ -414,7 +414,7 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 #endif
 
 
-#if HAVE_M_FORMAT
+#if HAVE_M_FORMAT && !ENABLE_COVERITY_BUILD
 #define SYSINFO(format, ...)                              \
                 INFO("%m - " format, ##__VA_ARGS__)
 #else
@@ -425,7 +425,7 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 	} while (0)
 #endif
 
-#if HAVE_M_FORMAT
+#if HAVE_M_FORMAT && !ENABLE_COVERITY_BUILD
 #define SYSNOTICE(format, ...)                              \
 		NOTICE("%m - " format, ##__VA_ARGS__)
 #else
@@ -436,7 +436,7 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 	} while (0)
 #endif
 
-#if HAVE_M_FORMAT
+#if HAVE_M_FORMAT && !ENABLE_COVERITY_BUILD
 #define SYSWARN(format, ...)                              \
 		WARN("%m - " format, ##__VA_ARGS__)
 #else
@@ -447,7 +447,7 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 	} while (0)
 #endif
 
-#if HAVE_M_FORMAT
+#if HAVE_M_FORMAT && !ENABLE_COVERITY_BUILD
 #define SYSERROR(format, ...)                              \
 		ERROR("%m - " format, ##__VA_ARGS__)
 #else
@@ -458,7 +458,7 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 	} while (0)
 #endif
 
-#if HAVE_M_FORMAT
+#if HAVE_M_FORMAT && !ENABLE_COVERITY_BUILD
 #define CMD_SYSERROR(format, ...)                                             \
 	fprintf(stderr, "%s: %d: %s - %m - " format "\n", __FILE__, __LINE__, \
 		__func__, ##__VA_ARGS__);
@@ -471,7 +471,7 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 	} while (0)
 #endif
 
-#if HAVE_M_FORMAT
+#if HAVE_M_FORMAT && !ENABLE_COVERITY_BUILD
 #define CMD_SYSINFO(format, ...)                                               \
 	printf("%s: %d: %s - %m - " format "\n", __FILE__, __LINE__, __func__, \
 	       ##__VA_ARGS__);

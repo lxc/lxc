@@ -37,6 +37,6 @@ addons:
     # Where email notification of build analysis results will be sent
     notification_email: christian.brauner@ubuntu.com
 
-    build_command_prepend: "./autogen.sh && mkdir build && cd build && ../configure --enable-tests --with-distro=unknown --disable-rpath --enable-tests --enable-memfd-rexec --enable-seccomp --enable-static --enable-werror"
+    build_command_prepend: "./autogen.sh && mkdir build && cd build && ../configure --enable-coverity-build --enable-tests --with-distro=unknown --disable-rpath --enable-tests --enable-memfd-rexec --enable-seccomp --enable-static --enable-werror"
     build_command: "make -j4"
     branch_pattern: master
