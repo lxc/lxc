@@ -2844,6 +2844,9 @@ bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 				      netdev->ifindex, netdev->link);
 
 			ret = netdev_deconf[netdev->type](handler, netdev);
+			if (ret < 0)
+				WARN("Failed to deconfigure interface with index %d and initial name \"%s\"",
+				     netdev->ifindex, netdev->link);
 			goto clear_ifindices;
 		}
 
@@ -3226,6 +3229,9 @@ bool lxc_delete_network_priv(struct lxc_handler *handler)
 			}
 
 			ret = netdev_deconf[netdev->type](handler, netdev);
+			if (ret < 0)
+				WARN("Failed to deconfigure interface with index %d and initial name \"%s\"",
+				     netdev->ifindex, netdev->link);
 			goto clear_ifindices;
 		}
 
