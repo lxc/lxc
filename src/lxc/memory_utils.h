@@ -41,10 +41,10 @@ define_cleanup_function(FILE *, fclose);
 define_cleanup_function(DIR *, closedir);
 #define __do_closedir call_cleaner(closedir)
 
-#define free_disarm(ptr)       \
-	({                     \
-		free(ptr);     \
-		move_ptr(ptr); \
+#define free_disarm(ptr)    \
+	({                  \
+		free(ptr);  \
+		ptr = NULL; \
 	})
 
 static inline void free_disarm_function(void *ptr)
