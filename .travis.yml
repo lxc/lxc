@@ -22,3 +22,21 @@ notifications:
     recipients:
       - lxc-devel@lists.linuxcontainers.org
   webhooks: https://linuxcontainers.org/webhook-lxcbot/
+
+env:
+ global:
+   - secure: "HlNoguS2Sjyj7Mbb644wrHZqdp/p7I7gX00XoUzLRcFosmVdYpHo6Ix8pt9ddC5tDfX05pl5x8OBwrccY+picb9NDNCt7C5TlNcuyyDROnMJW5q33j4EZRI91sBQdmn2uorMzi/CnHEtvUw20+sjBOqIqvpnUV2SMaZiWGC1Eec="
+
+addons:
+  coverity_scan:
+
+    project:
+      name: lxc/lxc
+      description: "LXC - Linux Containers https://linuxcontainers.org/lxc"
+
+    # Where email notification of build analysis results will be sent
+    notification_email: christian.brauner@ubuntu.com
+
+    build_command_prepend: "./autogen.sh && mkdir build && cd build && ../configure --enable-tests --with-distro=unknown --disable-rpath --enable-tests --enable-memfd-rexec --enable-seccomp --enable-static --enable-werror"
+    build_command: "make -j4"
+    branch_pattern: master
