@@ -169,13 +169,12 @@ extern char **environ;
 
 int lxc_rexec(const char *memfd_name)
 {
+	__do_free_string_list char **argv = NULL;
 	int ret;
-	char **argv = NULL;
 
 	ret = is_memfd();
 	if (ret < 0 && ret == -ENOTRECOVERABLE) {
-		fprintf(stderr,
-			"%s - Failed to determine whether this is a memfd\n",
+		fprintf(stderr, "%s - Failed to determine whether this is a memfd\n",
 			strerror(errno));
 		return -1;
 	} else if (ret > 0) {
@@ -184,8 +183,7 @@ int lxc_rexec(const char *memfd_name)
 
 	ret = parse_argv(&argv);
 	if (ret < 0) {
-		fprintf(stderr,
-			"%s - Failed to parse command line parameters\n",
+		fprintf(stderr, "%s - Failed to parse command line parameters\n",
 			strerror(errno));
 		return -1;
 	}
