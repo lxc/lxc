@@ -88,7 +88,7 @@ static int is_memfd(void)
 static void lxc_rexec_as_memfd(char **argv, char **envp, const char *memfd_name)
 {
 	__do_close int execfd = -EBADF, fd = -EBADF, memfd = -EBADF,
-				  tmpfd = -EBADF;
+		       tmpfd = -EBADF;
 	int ret;
 	ssize_t bytes_sent = 0;
 	struct stat st = {0};
@@ -143,7 +143,7 @@ static void lxc_rexec_as_memfd(char **argv, char **envp, const char *memfd_name)
 		if (fcntl(memfd, F_ADD_SEALS, LXC_MEMFD_REXEC_SEALS))
 			return;
 
-		execfd = memfd;
+		execfd = move_fd(memfd);
 	} else {
 		char procfd[LXC_PROC_PID_FD_LEN];
 
