@@ -3,6 +3,9 @@
 #ifndef __LXC_LOG_H
 #define __LXC_LOG_H
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
