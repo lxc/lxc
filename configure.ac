@@ -767,6 +767,11 @@ AC_ARG_ENABLE([thread-safety],
 	[enable_thread_safety=$enableval], [enable_thread_safety=yes])
 AM_CONDITIONAL([ENFORCE_THREAD_SAFETY], [test "x$enable_thread_safety" = "xyes"])
 
+AC_ARG_ENABLE([coverity-build],
+	[AS_HELP_STRING([--enable-coverity-build], [handle coverity builds [default=no]])],
+	[enable_coverity_build=$enableval], [enable_coverity_build=yes])
+AM_CONDITIONAL([ENABLE_COVERITY_BUILD], [test "x$enable_coverity_build" = "xyes"])
+
 AC_ARG_ENABLE([dlog],
 	[AS_HELP_STRING([--enable-dlog], [enable dlog support [default=no]])],
 	[enable_dlog=$enableval], [enable_dlog=no])
