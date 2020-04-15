@@ -167,7 +167,7 @@ struct bpf_program *bpf_program_new(uint32_t prog_type)
 {
 	__do_free struct bpf_program *prog = NULL;
 
-	prog = calloc(1, sizeof(struct bpf_program));
+	prog = zalloc(sizeof(struct bpf_program));
 	if (!prog)
 		return NULL;
 
@@ -183,9 +183,6 @@ struct bpf_program *bpf_program_new(uint32_t prog_type)
 
 int bpf_program_init(struct bpf_program *prog)
 {
-	if (!prog)
-		return ret_set_errno(-1, EINVAL);
-
 	const struct bpf_insn pre_insn[] = {
 	    /* load device type to r2 */
 	    BPF_LDX_MEM(BPF_W, BPF_REG_2, BPF_REG_1, offsetof(struct bpf_cgroup_dev_ctx, access_type)),
@@ -202,19 +199,17 @@ int bpf_program_init(struct bpf_program *prog)
 	    BPF_LDX_MEM(BPF_W, BPF_REG_5, BPF_REG_1, offsetof(struct bpf_cgroup_dev_ctx, minor)),
 	};
 
+	if (!prog)
+		return ret_set_errno(-1, EINVAL);
+
 	return bpf_program_add_instructions(prog, pre_insn, ARRAY_SIZE(pre_insn));
 }
 
 int bpf_program_append_device(struct bpf_program *prog, struct device_item *device)
 {
-	int ret;
 	int jump_nr = 1;
-	struct bpf_insn bpf_access_decision[] = {
-	    BPF_MOV64_IMM(BPF_REG_0, device->allow),
-	    BPF_EXIT_INSN(),
-	};
-	int access_mask;
-	int device_type;
+	int access_mask, device_type, ret;
+	struct bpf_insn bpf_access_decision[2];
 
 	if (!prog || !device)
 		return ret_set_errno(-1, EINVAL);
@@ -285,6 +280,8 @@ int bpf_program_append_device(struct bpf_program *prog, struct device_item *devi
 			return log_error_errno(-1, errno, "Failed to add instructions to bpf cgroup program");
 	}
 
+	bpf_access_decision[0] = BPF_MOV64_IMM(BPF_REG_0, device->allow);
+	bpf_access_decision[1] = BPF_EXIT_INSN();
 	ret = bpf_program_add_instructions(prog, bpf_access_decision,
 					    ARRAY_SIZE(bpf_access_decision));
 	if (ret)
@@ -295,10 +292,7 @@ int bpf_program_append_device(struct bpf_program *prog, struct device_item *devi
 
 int bpf_program_finalize(struct bpf_program *prog)
 {
-	struct bpf_insn ins[] = {
-	    BPF_MOV64_IMM(BPF_REG_0, prog->device_list_type),
-	    BPF_EXIT_INSN(),
-	};
+	struct bpf_insn ins[2];
 
 	if (!prog)
 		return ret_set_errno(-1, EINVAL);
@@ -307,6 +301,9 @@ int bpf_program_finalize(struct bpf_program *prog)
 	      prog->device_list_type == LXC_BPF_DEVICE_CGROUP_BLACKLIST
 		  ? "blacklist"
 		  : "whitelist");
+
+	ins[0] = BPF_MOV64_IMM(BPF_REG_0, prog->device_list_type);
+	ins[1] = BPF_EXIT_INSN();
 	return bpf_program_add_instructions(prog, ins, ARRAY_SIZE(ins));
 }
 
@@ -340,12 +337,12 @@ static int bpf_program_load_kernel(struct bpf_program *prog, char *log_buf,
 int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
 			      const char *path, uint32_t flags)
 {
-	__do_free char *copy = NULL;
 	__do_close int fd = -EBADF;
+	__do_free char *copy = NULL;
 	union bpf_attr attr;
 	int ret;
 
-	if (!prog)
+	if (!path || !prog)
 		return ret_set_errno(-1, EINVAL);
 
 	if (flags & ~(BPF_F_ALLOW_OVERRIDE | BPF_F_ALLOW_MULTI))
@@ -395,8 +392,8 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
 
 int bpf_program_cgroup_detach(struct bpf_program *prog)
 {
-	int ret;
 	__do_close int fd = -EBADF;
+	int ret;
 
 	if (!prog)
 		return 0;
@@ -443,6 +440,9 @@ int bpf_list_add_device(struct lxc_conf *conf, struct device_item *device)
 	__do_free struct lxc_list *list_elem = NULL;
 	__do_free struct device_item *new_device = NULL;
 	struct lxc_list *it;
+
+	if (!conf || !device)
+		return ret_errno(EINVAL);
 
 	lxc_list_for_each(it, &conf->devices) {
 		struct device_item *cur = it->elem;
@@ -502,12 +502,11 @@ int bpf_list_add_device(struct lxc_conf *conf, struct device_item *device)
 
 bool bpf_devices_cgroup_supported(void)
 {
+	__do_bpf_program_free struct bpf_program *prog = NULL;
 	const struct bpf_insn dummy[] = {
 	    BPF_MOV64_IMM(BPF_REG_0, 1),
 	    BPF_EXIT_INSN(),
 	};
-
-	__do_bpf_program_free struct bpf_program *prog = NULL;
 	int ret;
 
 	if (geteuid() != 0)
@@ -515,7 +514,7 @@ bool bpf_devices_cgroup_supported(void)
 				 "The bpf device cgroup requires real root");
 
 	prog = bpf_program_new(BPF_PROG_TYPE_CGROUP_DEVICE);
-	if (prog < 0)
+	if (!prog)
 		return log_trace(false, "Failed to allocate new bpf device cgroup program");
 
 	ret = bpf_program_add_instructions(prog, dummy, ARRAY_SIZE(dummy));

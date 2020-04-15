@@ -62,10 +62,13 @@ int lxc_cmd_sock_get_state(const char *name, const char *lxcpath,
 
 	ret = lxc_cmd_add_state_client(name, lxcpath, states, &state_client_fd);
 	if (ret < 0)
-		return -1;
+		return ret_errno(EINVAL);
 
 	if (ret < MAX_STATE)
 		return ret;
+
+	if (state_client_fd < 0)
+		return ret_errno(EBADF);
 
 	return lxc_cmd_sock_rcv_state(state_client_fd, timeout);
 }
