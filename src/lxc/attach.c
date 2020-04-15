@@ -1018,6 +1018,8 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		}
 	}
 	conf = init_ctx->container->lxc_conf;
+	if (!conf)
+		return log_error_errno(-EINVAL, EINVAL, "Missing container confifg");
 
 	if (!fetch_seccomp(init_ctx->container, options))
 		WARN("Failed to get seccomp policy");
@@ -1275,7 +1277,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 			TRACE("Sent LSM label file descriptor %d to child", labelfd);
 		}
 
-		if (conf && conf->seccomp.seccomp) {
+		if (conf->seccomp.seccomp) {
 			ret = lxc_seccomp_recv_notifier_fd(&conf->seccomp, ipc_sockets[0]);
 			if (ret < 0)
 				goto close_mainloop;
