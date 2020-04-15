@@ -514,7 +514,7 @@ bool bpf_devices_cgroup_supported(void)
 				 "The bpf device cgroup requires real root");
 
 	prog = bpf_program_new(BPF_PROG_TYPE_CGROUP_DEVICE);
-	if (prog < 0)
+	if (!prog)
 		return log_trace(false, "Failed to allocate new bpf device cgroup program");
 
 	ret = bpf_program_add_instructions(prog, dummy, ARRAY_SIZE(dummy));
