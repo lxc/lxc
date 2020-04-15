@@ -1011,7 +1011,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 			}
 
 			if (mount(rootfs->path, rootfs->mount, NULL, MS_BIND, NULL) < 0) {
-				rmdir(rootfs->mount);
+				(void)rmdir(rootfs->mount);
 				goto out_fini_handler;
 			}
 		}
@@ -1046,7 +1046,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		/* exec_criu() returning is an error */
 		exec_criu(cgroup_ops, c->lxc_conf, &os);
 		umount(rootfs->mount);
-		rmdir(rootfs->mount);
+		(void)rmdir(rootfs->mount);
 		goto out_fini_handler;
 	} else {
 		char title[2048];
@@ -1323,7 +1323,7 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 fail:
 	close(criuout[0]);
 	close(criuout[1]);
-	rmdir(opts->directory);
+	(void)rmdir(opts->directory);
 	free(criu_version);
 	return false;
 }
