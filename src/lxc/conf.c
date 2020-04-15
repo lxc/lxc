@@ -3982,45 +3982,35 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 	tmplist = malloc(sizeof(*tmplist));
 	if (!tmplist)
 		return NULL;
-	lxc_list_add_elem(tmplist, container_root_uid);
+	/* idmap will now keep track of that memory. */
+	lxc_list_add_elem(tmplist, move_ptr(host_uid_map));
 	lxc_list_add_tail(idmap, tmplist);
 
 	if (container_root_uid) {
-		/* idmap will now keep track of that memory. */
-		move_ptr(container_root_uid);
-
 		/* Add container root to the map. */
 		tmplist = malloc(sizeof(*tmplist));
 		if (!tmplist)
 			return NULL;
-		lxc_list_add_elem(tmplist, host_uid_map);
+		/* idmap will now keep track of that memory. */
+		lxc_list_add_elem(tmplist, move_ptr(container_root_uid));
 		lxc_list_add_tail(idmap, tmplist);
 	}
-	/* idmap will now keep track of that memory. */
-	move_ptr(container_root_uid);
-	/* idmap will now keep track of that memory. */
-	move_ptr(host_uid_map);
 
 	tmplist = malloc(sizeof(*tmplist));
 	if (!tmplist)
 		return NULL;
-	lxc_list_add_elem(tmplist, container_root_gid);
+	/* idmap will now keep track of that memory. */
+	lxc_list_add_elem(tmplist, move_ptr(host_gid_map));
 	lxc_list_add_tail(idmap, tmplist);
 
 	if (container_root_gid) {
-		/* idmap will now keep track of that memory. */
-		move_ptr(container_root_gid);
-
 		tmplist = malloc(sizeof(*tmplist));
 		if (!tmplist)
 			return NULL;
-		lxc_list_add_elem(tmplist, host_gid_map);
+		/* idmap will now keep track of that memory. */
+		lxc_list_add_elem(tmplist, move_ptr(container_root_gid));
 		lxc_list_add_tail(idmap, tmplist);
 	}
-	/* idmap will now keep track of that memory. */
-	move_ptr(container_root_gid);
-	/* idmap will now keep track of that memory. */
-	move_ptr(host_gid_map);
 
 	TRACE("Allocated minimal idmapping for ns uid %d and ns gid %d", nsuid, nsgid);
 
