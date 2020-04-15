@@ -3951,7 +3951,7 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 	euid = geteuid();
 	if (euid >= container_root_uid->hostid &&
 	    euid < (container_root_uid->hostid + container_root_uid->range))
-		host_uid_map = container_root_uid;
+		host_uid_map = move_ptr(container_root_uid);
 
 	container_root_gid = mapped_nsid_add(conf, nsgid, ID_TYPE_GID);
 	if (!container_root_gid)
@@ -3959,7 +3959,7 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 	egid = getegid();
 	if (egid >= container_root_gid->hostid &&
 	    egid < (container_root_gid->hostid + container_root_gid->range))
-		host_gid_map = container_root_gid;
+		host_gid_map = move_ptr(container_root_gid);
 
 	/* Check whether the {g,u}id of the user has a mapping. */
 	if (!host_uid_map)
@@ -3985,7 +3985,7 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 	lxc_list_add_elem(tmplist, container_root_uid);
 	lxc_list_add_tail(idmap, tmplist);
 
-	if (host_uid_map != container_root_uid) {
+	if (container_root_uid) {
 		/* idmap will now keep track of that memory. */
 		move_ptr(container_root_uid);
 
@@ -4007,7 +4007,7 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 	lxc_list_add_elem(tmplist, container_root_gid);
 	lxc_list_add_tail(idmap, tmplist);
 
-	if (host_gid_map != container_root_gid) {
+	if (container_root_gid) {
 		/* idmap will now keep track of that memory. */
 		move_ptr(container_root_gid);
 
