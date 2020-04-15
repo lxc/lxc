@@ -485,10 +485,9 @@ static int build_dir(const char *name)
 		*p = '\0';
 
 		ret = lxc_unpriv(mkdir(n, 0755));
+		*p = '/';
 		if (ret && errno != EEXIST)
 			return log_error_errno(-errno, errno, "Failed to create directory \"%s\"", n);
-
-		*p = '/';
 	}
 
 	return 0;
