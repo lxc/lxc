@@ -901,11 +901,13 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 	return 0;
 }
 
+define_cleanup_function(struct lxc_tty_info *, lxc_delete_tty);
+
 int lxc_allocate_ttys(struct lxc_conf *conf)
 {
-	__do_free struct lxc_terminal_info *tty_new = NULL;
+	struct lxc_terminal_info *tty_new = NULL;
 	int ret;
-	struct lxc_tty_info *ttys = &conf->ttys;
+	call_cleaner(lxc_delete_tty) struct lxc_tty_info *ttys = &conf->ttys;
 
 	/* no tty in the configuration */
 	if (ttys->max == 0)
@@ -924,14 +926,12 @@ int lxc_allocate_ttys(struct lxc_conf *conf)
 		ret = openpty(&tty->master, &tty->slave, NULL, NULL, NULL);
 		if (ret < 0) {
 			ttys->max = i;
-			lxc_delete_tty(ttys);
 			return log_error_errno(-ENOTTY, ENOTTY, "Failed to create tty %zu", i);
 		}
 
 		ret = ttyname_r(tty->slave, tty->name, sizeof(tty->name));
 		if (ret < 0) {
 			ttys->max = i;
-			lxc_delete_tty(ttys);
 			return log_error_errno(-ENOTTY, ENOTTY, "Failed to retrieve name of tty %zu slave", i);
 		}
 
@@ -953,7 +953,7 @@ int lxc_allocate_ttys(struct lxc_conf *conf)
 	}
 
 	INFO("Finished creating %zu tty devices", ttys->max);
-	ttys->tty = move_ptr(tty_new);
+	move_ptr(ttys);
 	return 0;
 }
 
