@@ -766,11 +766,23 @@ AC_ARG_ENABLE([thread-safety],
 	[AS_HELP_STRING([--enable-thread-safety], [enforce thread-safety otherwise fail the build [default=yes]])],
 	[enable_thread_safety=$enableval], [enable_thread_safety=yes])
 AM_CONDITIONAL([ENFORCE_THREAD_SAFETY], [test "x$enable_thread_safety" = "xyes"])
+if test "x$enable_thread_safety" = "xyes"; then
+	AC_DEFINE([ENFORCE_THREAD_SAFETY], 1, [enforce thread-safety otherwise fail the build])
+	AC_MSG_RESULT([yes])
+else
+	AC_MSG_RESULT([no])
+fi
 
 AC_ARG_ENABLE([coverity-build],
-	[AS_HELP_STRING([--enable-coverity-build], [handle coverity builds [default=no]])],
-	[enable_coverity_build=$enableval], [enable_coverity_build=yes])
+	[AS_HELP_STRING([--enable-coverity-build], [build for use with Coverity [default=no]])],
+	[enable_coverity_build=$enableval], [enable_coverity_build=no])
 AM_CONDITIONAL([ENABLE_COVERITY_BUILD], [test "x$enable_coverity_build" = "xyes"])
+if test "x$enable_coverity_build" = "xyes"; then
+	AC_DEFINE([ENABLE_COVERITY_BUILD], 1, [build for use with Coverity])
+	AC_MSG_RESULT([yes])
+else
+	AC_MSG_RESULT([no])
+fi
 
 AC_ARG_ENABLE([dlog],
 	[AS_HELP_STRING([--enable-dlog], [enable dlog support [default=no]])],
@@ -1043,9 +1055,10 @@ Documentation:
  - user documentation: $enable_doc
 
 Debugging:
- - tests: $enable_tests
  - ASAN: $enable_asan
+ - Coverity: $enable_coverity_build
  - mutex debugging: $enable_mutex_debugging
+ - tests: $enable_tests
 
 Paths:
  - Logs in configpath: $enable_configpath_log

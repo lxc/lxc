@@ -17,6 +17,7 @@
 #include <time.h>
 
 #include "conf.h"
+#include "config.h"
 
 #ifndef O_CLOEXEC
 #define O_CLOEXEC 02000000
