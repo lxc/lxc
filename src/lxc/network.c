@@ -586,7 +586,7 @@ static int lxc_ipvlan_create(const char *master, const char *name, int mode, int
 	if (!nest2)
 		return ret_errno(EPROTO);
 
-	if (nla_put_u32(nlmsg, IFLA_IPVLAN_MODE, mode))
+	if (nla_put_u16(nlmsg, IFLA_IPVLAN_MODE, mode))
 		return ret_errno(EPROTO);
 
 	/* if_link.h does not define the isolation flag value for bridge mode (unlike IPVLAN_F_PRIVATE and
