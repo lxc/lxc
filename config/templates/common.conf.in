@@ -15,6 +15,8 @@ lxc.cap.drop = mac_admin mac_override sys_time sys_module sys_rawio
 # Ensure hostname is changed on clone
 lxc.hook.clone = @LXCHOOKDIR@/clonehostname
 
+# Default legacy cgroup configuration
+#
 # CGroup whitelist
 lxc.cgroup.devices.deny = a
 ## Allow any mknod (but not reading/writing the node)
@@ -41,6 +43,35 @@ lxc.cgroup.devices.allow = c 1:9 rwm
 lxc.cgroup.devices.allow = c 136:* rwm
 ### fuse
 lxc.cgroup.devices.allow = c 10:229 rwm
+
+# Default unified cgroup configuration
+#
+# CGroup whitelist
+lxc.cgroup2.devices.deny = a
+## Allow any mknod (but not reading/writing the node)
+lxc.cgroup2.devices.allow = c *:* m
+lxc.cgroup2.devices.allow = b *:* m
+## Allow specific devices
+### /dev/null
+lxc.cgroup2.devices.allow = c 1:3 rwm
+### /dev/zero
+lxc.cgroup2.devices.allow = c 1:5 rwm
+### /dev/full
+lxc.cgroup2.devices.allow = c 1:7 rwm
+### /dev/tty
+lxc.cgroup2.devices.allow = c 5:0 rwm
+### /dev/console
+lxc.cgroup2.devices.allow = c 5:1 rwm
+### /dev/ptmx
+lxc.cgroup2.devices.allow = c 5:2 rwm
+### /dev/random
+lxc.cgroup2.devices.allow = c 1:8 rwm
+### /dev/urandom
+lxc.cgroup2.devices.allow = c 1:9 rwm
+### /dev/pts/*
+lxc.cgroup2.devices.allow = c 136:* rwm
+### fuse
+lxc.cgroup2.devices.allow = c 10:229 rwm
 
 # Setup the default mounts
 lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
