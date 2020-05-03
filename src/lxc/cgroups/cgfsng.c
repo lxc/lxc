@@ -2792,9 +2792,12 @@ __cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
 		return ret_set_errno(false, EINVAL);
 	conf = handler->conf;
 
-	if (lxc_list_empty(&conf->cgroup2))
-		return true;
 	cgroup_settings = &conf->cgroup2;
+	if (lxc_list_empty(cgroup_settings))
+		return true;
+
+	if (!pure_unified_layout(ops))
+		return log_warn_errno(true, EINVAL, "Ignoring cgroup2 limits on legacy cgroup system");
 
 	if (!ops->unified)
 		return false;
