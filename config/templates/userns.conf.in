@@ -1,6 +1,14 @@
 # CAP_SYS_ADMIN in init-user-ns is required for cgroup.devices
+#
+# Default legacy cgroup configuration
+#
 lxc.cgroup.devices.deny =
 lxc.cgroup.devices.allow =
+
+# Default unified cgroup configuration
+#
+lxc.cgroup2.devices.deny =
+lxc.cgroup2.devices.allow =
 
 # Start with a full set of capabilities in user namespaces.
 lxc.cap.drop =

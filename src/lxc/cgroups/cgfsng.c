@@ -1826,11 +1826,24 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		wants_force_mount = true;
 	}
 
-	if (!wants_force_mount){
+	if (!wants_force_mount) {
 		if (!lxc_list_empty(&handler->conf->keepcaps))
 			wants_force_mount = !in_caplist(CAP_SYS_ADMIN, &handler->conf->keepcaps);
 		else
 			wants_force_mount = in_caplist(CAP_SYS_ADMIN, &handler->conf->caps);
+
+		/*
+		 * Most recent distro versions currently have init system that
+		 * do support cgroup2 but do not mount it by default unless
+		 * explicitly told so even if the host is cgroup2 only. That
+		 * means they often will fail to boot. Fix this by pre-mounting
+		 * cgroup2 by default. We will likely need to be doing this a
+		 * few years until all distros have switched over to cgroup2 at
+		 * which point we can safely assume that their init systems
+		 * will mount it themselves.
+		 */
+		if (pure_unified_layout(ops))
+			wants_force_mount = true;
 	}
 
 	has_cgns = cgns_supported();
@@ -2928,9 +2941,12 @@ __cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
 		return ret_set_errno(false, EINVAL);
 	conf = handler->conf;
 
-	if (lxc_list_empty(&conf->cgroup2))
-		return true;
 	cgroup_settings = &conf->cgroup2;
+	if (lxc_list_empty(cgroup_settings))
+		return true;
+
+	if (!pure_unified_layout(ops))
+		return log_warn_errno(true, EINVAL, "Ignoring cgroup2 limits on legacy cgroup system");
 
 	if (!ops->unified)
 		return false;
