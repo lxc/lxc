@@ -1167,13 +1167,16 @@ int lxc_terminal_map_ids(struct lxc_conf *c, struct lxc_terminal *terminal)
 	if (strcmp(terminal->name, "") == 0)
 		return 0;
 
-	ret = chown_mapped_root(terminal->name, c);
+	if (terminal->slave >= 0)
+		ret = userns_exec_mapped_root(terminal->name, terminal->slave, c);
+	else
+		ret = userns_exec_mapped_root(terminal->name, terminal->slave, c);
 	if (ret < 0) {
-		ERROR("Failed to chown terminal \"%s\"", terminal->name);
-		return -1;
+		return log_error(-1, "Failed to chown terminal %d(%s)",
+				 terminal->slave, terminal->name);
 	}
 
-	TRACE("Chowned terminal \"%s\"", terminal->name);
+	TRACE("Chowned terminal %d(%s)", terminal->slave, terminal->name);
 
 	return 0;
 }
