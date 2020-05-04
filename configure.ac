@@ -622,7 +622,7 @@ AC_CHECK_HEADER([ifaddrs.h],
 AC_HEADER_MAJOR
 
 # Check for some syscalls functions
-AC_CHECK_FUNCS([setns pivot_root sethostname unshare rand_r confstr faccessat gettid memfd_create])
+AC_CHECK_FUNCS([setns pivot_root sethostname unshare rand_r confstr faccessat gettid memfd_create move_mount open_tree])
 
 # Check for strerror_r() support. Defines:
 # - HAVE_STRERROR_R if available

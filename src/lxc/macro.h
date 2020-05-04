@@ -57,6 +57,20 @@
 #define CAP_SETGID 6
 #endif
 
+/* move_mount */
+#ifndef MOVE_MOUNT_F_EMPTY_PATH
+#define MOVE_MOUNT_F_EMPTY_PATH 0x00000004 /* Empty from path permitted */
+#endif
+
+/* open_tree */
+#ifndef OPEN_TREE_CLONE
+#define OPEN_TREE_CLONE 1 /* Clone the target tree and attach the clone */
+#endif
+
+#ifndef OPEN_TREE_CLOEXEC
+#define OPEN_TREE_CLOEXEC O_CLOEXEC /* Close the file on execve() */
+#endif
+
 /* prctl */
 #ifndef PR_CAPBSET_READ
 #define PR_CAPBSET_READ 23
