@@ -470,5 +470,7 @@ extern int lxc_clear_namespace(struct lxc_conf *c);
 extern int userns_exec_minimal(const struct lxc_conf *conf,
 			       int (*fn_parent)(void *), void *fn_parent_data,
 			       int (*fn_child)(void *), void *fn_child_data);
+extern int userns_exec_mapped_root(const char *path, int path_fd,
+				   const struct lxc_conf *conf);
 
 #endif /* __LXC_CONF_H */
