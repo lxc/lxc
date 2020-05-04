@@ -2791,11 +2791,11 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 	return 0;
 }
 
-/* Return the host uid/gid to which the container root is mapped in val.
+/*
+ * Return the host uid/gid to which the container root is mapped in val.
  * Return true if id was found, false otherwise.
  */
-static bool get_mapped_rootid(const struct lxc_conf *conf, enum idtype idtype,
-			      unsigned long *val)
+static id_t get_mapped_rootid(const struct lxc_conf *conf, enum idtype idtype)
 {
 	unsigned nsid;
 	struct id_map *map;
@@ -2812,11 +2812,13 @@ static bool get_mapped_rootid(const struct lxc_conf *conf, enum idtype idtype,
 			continue;
 		if (map->nsid != nsid)
 			continue;
-		*val = map->hostid;
-		return true;
+		return map->hostid;
 	}
 
-	return false;
+	if (idtype == ID_TYPE_UID)
+		return LXC_INVALID_UID;
+
+	return LXC_INVALID_GID;
 }
 
 int mapped_hostid(unsigned id, const struct lxc_conf *conf, enum idtype idtype)
@@ -2873,7 +2875,6 @@ int chown_mapped_root_exec_wrapper(void *args)
 int chown_mapped_root(const char *path, const struct lxc_conf *conf)
 {
 	uid_t rootuid, rootgid;
-	unsigned long val;
 	int hostuid, hostgid, ret;
 	struct stat sb;
 	char map1[100], map2[100], map3[100], map4[100], map5[100];
@@ -2895,17 +2896,15 @@ int chown_mapped_root(const char *path, const struct lxc_conf *conf)
 			 NULL};
 	char cmd_output[PATH_MAX];
 
-	hostuid = geteuid();
-	hostgid = getegid();
-
-	if (!get_mapped_rootid(conf, ID_TYPE_UID, &val))
+	rootuid = get_mapped_rootid(conf, ID_TYPE_UID);
+	if (!uid_valid(rootuid))
 		return log_error(-1, "No uid mapping for container root");
-	rootuid = (uid_t)val;
 
-	if (!get_mapped_rootid(conf, ID_TYPE_GID, &val))
+	rootgid = get_mapped_rootid(conf, ID_TYPE_GID);
+	if (!gid_valid(rootgid))
 		return log_error(-1, "No gid mapping for container root");
-	rootgid = (gid_t)val;
 
+	hostuid = geteuid();
 	if (hostuid == 0) {
 		if (chown(path, rootuid, rootgid) < 0)
 			return log_error(-1, "Error chowning %s", path);
@@ -2929,6 +2928,7 @@ int chown_mapped_root(const char *path, const struct lxc_conf *conf)
 	 * A file has to be group-owned by a gid mapped into the
 	 * container, or the container won't be privileged over it.
 	 */
+	hostgid = getegid();
 	DEBUG("trying to chown \"%s\" to %d", path, hostgid);
 	if (sb.st_uid == hostuid &&
 	    mapped_hostid(sb.st_gid, conf, ID_TYPE_GID) < 0 &&
@@ -4418,6 +4418,224 @@ on_error:
 		free(host_gid_map);
 
 	return ret;
+}
+
+static int add_idmap_entry(struct lxc_list *idmap, enum idtype idtype,
+			   unsigned long nsid, unsigned long hostid,
+			   unsigned long range)
+{
+	__do_free struct id_map *new_idmap = NULL;
+	__do_free struct lxc_list *new_list = NULL;
+
+	new_idmap = zalloc(sizeof(*new_idmap));
+	if (!new_idmap)
+		return ret_errno(ENOMEM);
+
+	new_idmap->idtype = idtype;
+	new_idmap->hostid = hostid;
+	new_idmap->nsid = nsid;
+	new_idmap->range = range;
+
+	new_list = zalloc(sizeof(*new_list));
+	if (!new_list)
+		return ret_errno(ENOMEM);
+
+	new_list->elem = move_ptr(new_idmap);
+	lxc_list_add_tail(idmap, move_ptr(new_list));
+
+	INFO("Adding id map: type %c nsid %lu hostid %lu range %lu",
+	     idtype == ID_TYPE_UID ? 'u' : 'g', nsid, hostid, range);
+	return 0;
+}
+
+int userns_exec_mapped_root(const char *path, int path_fd,
+			    const struct lxc_conf *conf)
+{
+	call_cleaner(lxc_free_idmap) struct lxc_list *idmap = NULL;
+	__do_close int fd = -EBADF;
+	int target_fd = -EBADF;
+	char c = '1';
+	ssize_t ret;
+	pid_t pid;
+	int sock_fds[2];
+	uid_t container_host_uid, hostuid;
+	gid_t container_host_gid, hostgid;
+	struct stat st;
+
+	if (!conf || (!path && path_fd < 0))
+		return ret_errno(EINVAL);
+
+	if (!path)
+		path = "(null)";
+
+	container_host_uid = get_mapped_rootid(conf, ID_TYPE_UID);
+	if (!uid_valid(container_host_uid))
+		return log_error(-1, "No uid mapping for container root");
+
+	container_host_gid = get_mapped_rootid(conf, ID_TYPE_GID);
+	if (!gid_valid(container_host_gid))
+		return log_error(-1, "No gid mapping for container root");
+
+	if (path) {
+		fd = open(path, O_RDWR | O_CLOEXEC | O_NOCTTY);
+		if (fd < 0)
+			return log_error_errno(-errno, errno, "Failed to open \"%s\"", path);
+		target_fd = fd;
+	} else {
+		target_fd = path_fd;
+	}
+
+	hostuid = geteuid();
+	/* We are root so chown directly. */
+	if (hostuid == 0) {
+		ret = fchown(target_fd, container_host_uid, container_host_gid);
+		if (ret)
+			return log_error_errno(-errno, errno,
+					       "Failed to fchown(%d(%s), %d, %d)",
+					       target_fd, path, container_host_uid,
+					       container_host_gid);
+		return log_trace(0, "Chowned %d(%s) to uid %d and %d", target_fd, path,
+				 container_host_uid, container_host_gid);
+	}
+
+	/* The container's root host id matches  */
+	if (container_host_uid == hostuid)
+		return log_info(0, "Container root id is mapped to our uid");
+
+	/* Get the current ids of our target. */
+	ret = fstat(target_fd, &st);
+	if (ret)
+		return log_error_errno(-errno, errno, "Failed to stat \"%s\"", path);
+
+	hostgid = getegid();
+	if (st.st_uid == hostuid && mapped_hostid(st.st_gid, conf, ID_TYPE_GID) < 0) {
+		ret = fchown(target_fd, -1, hostgid);
+		if (ret)
+			return log_error_errno(-errno, errno,
+					       "Failed to fchown(%d(%s), -1, %d)",
+					       target_fd, path, hostgid);
+	}
+
+	idmap = malloc(sizeof(*idmap));
+	if (!idmap)
+		return -ENOMEM;
+	lxc_list_init(idmap);
+
+	/* "u:0:rootuid:1" */
+	ret = add_idmap_entry(idmap, ID_TYPE_UID, 0, container_host_uid, 1);
+	if (ret < 0)
+		return log_error_errno(ret, -ret, "Failed to add idmap entry");
+
+	/* "u:hostuid:hostuid:1" */
+	ret = add_idmap_entry(idmap, ID_TYPE_UID, hostuid, hostuid, 1);
+	if (ret < 0)
+		return log_error_errno(ret, -ret, "Failed to add idmap entry");
+
+	/* "g:0:rootgid:1" */
+	ret = add_idmap_entry(idmap, ID_TYPE_GID, 0, container_host_gid, 1);
+	if (ret < 0)
+		return log_error_errno(ret, -ret, "Failed to add idmap entry");
+
+	/* "g:hostgid:hostgid:1" */
+	ret = add_idmap_entry(idmap, ID_TYPE_GID, hostgid, hostgid, 1);
+	if (ret < 0)
+		return log_error_errno(ret, -ret, "Failed to add idmap entry");
+
+	if (hostgid != st.st_gid) {
+		/* "g:pathgid:rootgid+pathgid:1" */
+		ret = add_idmap_entry(idmap, ID_TYPE_GID, st.st_gid,
+				      container_host_gid + (gid_t)st.st_gid, 1);
+		if (ret < 0)
+			return log_error_errno(ret, -ret, "Failed to add idmap entry");
+	}
+
+	ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, sock_fds);
+	if (ret < 0)
+		return -errno;
+
+	pid = fork();
+	if (pid < 0) {
+		SYSERROR("Failed to create new process");
+		goto on_error;
+	}
+
+	if (pid == 0) {
+		close_prot_errno_disarm(sock_fds[1]);
+
+		ret = unshare(CLONE_NEWUSER);
+		if (ret < 0) {
+			SYSERROR("Failed to unshare new user namespace");
+			_exit(EXIT_FAILURE);
+		}
+
+		ret = lxc_write_nointr(sock_fds[0], &c, 1);
+		if (ret != 1)
+			_exit(EXIT_FAILURE);
+
+		ret = lxc_read_nointr(sock_fds[0], &c, 1);
+		if (ret != 1)
+			_exit(EXIT_FAILURE);
+
+		close_prot_errno_disarm(sock_fds[0]);
+
+		if (!lxc_switch_uid_gid(0, 0))
+			_exit(EXIT_FAILURE);
+
+		if (!lxc_setgroups(0, NULL))
+			_exit(EXIT_FAILURE);
+
+		ret = chown(path, 0, st.st_gid);
+		if (ret) {
+			SYSERROR("Failed to chown \"%s\"", path);
+			_exit(EXIT_FAILURE);
+		}
+
+		_exit(EXIT_SUCCESS);
+	}
+
+	close_prot_errno_disarm(sock_fds[0]);
+
+	if (lxc_log_get_level() == LXC_LOG_LEVEL_TRACE ||
+	    conf->loglevel == LXC_LOG_LEVEL_TRACE) {
+		struct id_map *map;
+		struct lxc_list *it;
+
+		lxc_list_for_each(it, idmap) {
+			map = it->elem;
+			TRACE("Establishing %cid mapping for \"%d\" in new user namespace: nsuid %lu - hostid %lu - range %lu",
+			      (map->idtype == ID_TYPE_UID) ? 'u' : 'g', pid, map->nsid, map->hostid, map->range);
+		}
+	}
+
+	ret = lxc_read_nointr(sock_fds[1], &c, 1);
+	if (ret != 1) {
+		SYSERROR("Failed waiting for child process %d\" to tell us to proceed", pid);
+		goto on_error;
+	}
+
+	/* Set up {g,u}id mapping for user namespace of child process. */
+	ret = lxc_map_ids(idmap, pid);
+	if (ret < 0) {
+		ERROR("Error setting up {g,u}id mappings for child process \"%d\"", pid);
+		goto on_error;
+	}
+
+	/* Tell child to proceed. */
+	ret = lxc_write_nointr(sock_fds[1], &c, 1);
+	if (ret != 1) {
+		SYSERROR("Failed telling child process \"%d\" to proceed", pid);
+		goto on_error;
+	}
+
+on_error:
+	close_prot_errno_disarm(sock_fds[0]);
+	close_prot_errno_disarm(sock_fds[1]);
+
+	/* Wait for child to finish. */
+	if (pid < 0)
+		return -1;
+
+	return wait_for_pid(pid);
 }
 
 /* not thread-safe, do not use from api without first forking */

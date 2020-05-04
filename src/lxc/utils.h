@@ -241,4 +241,14 @@ extern bool lxc_can_use_pidfd(int pidfd);
 
 extern int fix_stdio_permissions(uid_t uid);
 
+static inline bool uid_valid(uid_t uid)
+{
+	return uid != LXC_INVALID_UID;
+}
+
+static inline bool gid_valid(gid_t gid)
+{
+	return gid != LXC_INVALID_GID;
+}
+
 #endif /* __LXC_UTILS_H */
