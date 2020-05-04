@@ -1576,7 +1576,8 @@ static int setup_personality(int persona)
 }
 
 static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
-				 const struct lxc_terminal *console)
+				 const struct lxc_terminal *console,
+				 int pts_mnt_fd)
 {
 	int ret;
 	char path[PATH_MAX];
@@ -1589,7 +1590,8 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	if (ret < 0 || (size_t)ret >= sizeof(path))
 		return -1;
 
-	/* When we are asked to setup a console we remove any previous
+	/*
+	 * When we are asked to setup a console we remove any previous
 	 * /dev/console bind-mounts.
 	 */
 	if (file_exists(path)) {
@@ -1600,7 +1602,8 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 			DEBUG("Cleared all (%d) mounts from \"%s\"", ret, path);
 	}
 
-	/* For unprivileged containers autodev or automounts will already have
+	/*
+	 * For unprivileged containers autodev or automounts will already have
 	 * taken care of creating /dev/console.
 	 */
 	ret = mknod(path, S_IFREG | 0000, 0);
@@ -1611,17 +1614,20 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	if (ret < 0)
 		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", S_IXUSR | S_IXGRP, console->name);
 
-	ret = safe_mount(console->name, path, "none", MS_BIND, 0, rootfs_path);
+	if (pts_mnt_fd >= 0)
+		ret = move_mount(pts_mnt_fd, "", -EBADF, path, MOVE_MOUNT_F_EMPTY_PATH);
+	else
+		ret = safe_mount(console->name, path, "none", MS_BIND, 0, rootfs_path);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to mount \"%s\" on \"%s\"", console->name, path);
+		return log_error_errno(-1, errno, "Failed to mount %d(%s) on \"%s\"", pts_mnt_fd, console->name, path);
 
-	DEBUG("Mounted pts device \"%s\" onto \"%s\"", console->name, path);
+	DEBUG("Mounted pts device %d(%s) onto \"%s\"", pts_mnt_fd, console->name, path);
 	return 0;
 }
 
 static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 				    const struct lxc_terminal *console,
-				    char *ttydir)
+				    char *ttydir, int pts_mnt_fd)
 {
 	int ret;
 	char path[PATH_MAX], lxcpath[PATH_MAX];
@@ -1669,9 +1675,12 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", S_IXUSR | S_IXGRP, console->name);
 
 	/* bind mount console->name to '/dev/<ttydir>/console' */
-	ret = safe_mount(console->name, lxcpath, "none", MS_BIND, 0, rootfs_path);
+	if (pts_mnt_fd >= 0)
+		ret = move_mount(pts_mnt_fd, "", -EBADF, path, MOVE_MOUNT_F_EMPTY_PATH);
+	else
+		ret = safe_mount(console->name, lxcpath, "none", MS_BIND, 0, rootfs_path);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to mount \"%s\" on \"%s\"", console->name, lxcpath);
+		return log_error_errno(-1, errno, "Failed to mount %d(%s) on \"%s\"", pts_mnt_fd, console->name, lxcpath);
 	DEBUG("Mounted \"%s\" onto \"%s\"", console->name, lxcpath);
 
 	/* bind mount '/dev/<ttydir>/console'  to '/dev/console'  */
@@ -1685,13 +1694,14 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 }
 
 static int lxc_setup_console(const struct lxc_rootfs *rootfs,
-			     const struct lxc_terminal *console, char *ttydir)
+			     const struct lxc_terminal *console, char *ttydir,
+			     int pts_mnt_fd)
 {
 
 	if (!ttydir)
-		return lxc_setup_dev_console(rootfs, console);
+		return lxc_setup_dev_console(rootfs, console, pts_mnt_fd);
 
-	return lxc_setup_ttydir_console(rootfs, console, ttydir);
+	return lxc_setup_ttydir_console(rootfs, console, ttydir, pts_mnt_fd);
 }
 
 static int parse_mntopt(char *opt, unsigned long *flags, char **data, size_t size)
@@ -3267,6 +3277,7 @@ static int lxc_setup_boot_id(void)
 
 int lxc_setup(struct lxc_handler *handler)
 {
+	__do_close int pts_mnt_fd = -EBADF;
 	int ret;
 	const char *lxcpath = handler->lxcpath, *name = handler->name;
 	struct lxc_conf *lxc_conf = handler->conf;
@@ -3304,6 +3315,12 @@ int lxc_setup(struct lxc_handler *handler)
 		if (ret < 0)
 			return log_error(-1, "Failed to send network device names and ifindices to parent");
 	}
+
+	pts_mnt_fd = open_tree(-EBADF, lxc_conf->console.name,
+			       OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC | AT_EMPTY_PATH);
+	if (pts_mnt_fd < 0)
+		SYSTRACE("Failed to create detached mount for container's console \"%s\"",
+			 lxc_conf->console.name);
 
 	if (lxc_conf->autodev > 0) {
 		ret = mount_autodev(name, &lxc_conf->rootfs, lxc_conf->autodevtmpfssize, lxcpath);
@@ -3377,18 +3394,18 @@ int lxc_setup(struct lxc_handler *handler)
 	if (!verify_start_hooks(lxc_conf))
 		return log_error(-1, "Failed to verify start hooks");
 
+	ret = lxc_create_tmp_proc_mount(lxc_conf);
+	if (ret < 0)
+		return log_error(-1, "Failed to \"/proc\" LSMs");
+
 	ret = lxc_setup_console(&lxc_conf->rootfs, &lxc_conf->console,
-				lxc_conf->ttys.dir);
+				lxc_conf->ttys.dir, pts_mnt_fd);
 	if (ret < 0)
 		return log_error(-1, "Failed to setup console");
 
 	ret = lxc_setup_dev_symlinks(&lxc_conf->rootfs);
 	if (ret < 0)
 		return log_error(-1, "Failed to setup \"/dev\" symlinks");
-
-	ret = lxc_create_tmp_proc_mount(lxc_conf);
-	if (ret < 0)
-		return log_error(-1, "Failed to \"/proc\" LSMs");
 
 	ret = lxc_setup_rootfs_switch_root(&lxc_conf->rootfs);
 	if (ret < 0)
@@ -4476,8 +4493,8 @@ int userns_exec_mapped_root(const char *path, int path_fd,
 	if (!gid_valid(container_host_gid))
 		return log_error(-1, "No gid mapping for container root");
 
-	if (path) {
-		fd = open(path, O_RDWR | O_CLOEXEC | O_NOCTTY);
+	if (path_fd < 0) {
+		fd = open(path, O_RDWR | O_CLOEXEC | O_NOCTTY | O_PATH);
 		if (fd < 0)
 			return log_error_errno(-errno, errno, "Failed to open \"%s\"", path);
 		target_fd = fd;

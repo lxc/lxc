@@ -137,4 +137,28 @@ static int faccessat(int __fd, const char *__file, int __type, int __flag)
 }
 #endif
 
+#ifndef HAVE_MOVE_MOUNT
+static inline int move_mount_lxc(int from_dfd, const char *from_pathname,
+				 int to_dfd, const char *to_pathname,
+				 unsigned int flags)
+{
+	return syscall(__NR_move_mount, from_dfd, from_pathname, to_dfd,
+		       to_pathname, flags);
+}
+#define move_mount move_mount_lxc
+#else
+extern int move_mount(int from_dfd, const char *from_pathname, int to_dfd,
+		      const char *to_pathname, unsigned int flags);
+#endif
+
+#ifndef HAVE_OPEN_TREE
+static inline int open_tree_lxc(int dfd, const char *filename, unsigned int flags)
+{
+	return syscall(__NR_open_tree, dfd, filename, flags);
+}
+#define open_tree open_tree_lxc
+#else
+extern int open_tree(int dfd, const char *filename, unsigned int flags);
+#endif
+
 #endif /* __LXC_SYSCALL_WRAPPER_H */
