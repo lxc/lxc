@@ -12,27 +12,52 @@
 #include <sys/vfs.h>
 #include <unistd.h>
 
+#include "compiler.h"
+
 /* read and write whole files */
 extern int lxc_write_to_file(const char *filename, const void *buf,
-			     size_t count, bool add_newline, mode_t mode);
-extern int lxc_readat(int dirfd, const char *filename, void *buf, size_t count);
+			     size_t count, bool add_newline, mode_t mode)
+__access_r(2, 3);
+
+extern int lxc_readat(int dirfd, const char *filename, void *buf, size_t count)
+__access_w(3, 4);
+
 extern int lxc_writeat(int dirfd, const char *filename, const void *buf,
-		       size_t count);
+		       size_t count)
+__access_r(3, 4);
+
 extern int lxc_write_openat(const char *dir, const char *filename,
-			    const void *buf, size_t count);
-extern int lxc_read_from_file(const char *filename, void *buf, size_t count);
+			    const void *buf, size_t count)
+__access_r(3, 4);
+
+extern int lxc_read_from_file(const char *filename, void *buf, size_t count)
+__access_w(2, 3);
 
 /* send and receive buffers completely */
-extern ssize_t lxc_write_nointr(int fd, const void *buf, size_t count);
+extern ssize_t lxc_write_nointr(int fd, const void *buf, size_t count)
+__access_r(2, 3);
+
 extern ssize_t lxc_pwrite_nointr(int fd, const void *buf, size_t count,
-				 off_t offset);
-extern ssize_t lxc_send_nointr(int sockfd, void *buf, size_t len, int flags);
-extern ssize_t lxc_read_nointr(int fd, void *buf, size_t count);
+				 off_t offset)
+__access_r(2, 3);
+
+extern ssize_t lxc_send_nointr(int sockfd, void *buf, size_t len, int flags)
+__access_r(2, 3);
+
+extern ssize_t lxc_read_nointr(int fd, void *buf, size_t count)
+__access_w(2, 3);
+
 extern ssize_t lxc_read_nointr_expect(int fd, void *buf, size_t count,
-				      const void *expected_buf);
+				      const void *expected_buf)
+__access_w(2, 3);
+
 extern ssize_t lxc_read_file_expect(const char *path, void *buf, size_t count,
-				      const void *expected_buf);
-extern ssize_t lxc_recv_nointr(int sockfd, void *buf, size_t len, int flags);
+				      const void *expected_buf)
+__access_w(2, 3);
+
+extern ssize_t lxc_recv_nointr(int sockfd, void *buf, size_t len, int flags)
+__access_w(2, 3);
+
 ssize_t lxc_recvmsg_nointr_iov(int sockfd, struct iovec *iov, size_t iovlen,
 			       int flags);
 
