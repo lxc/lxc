@@ -753,6 +753,10 @@ AX_CHECK_COMPILE_FLAG([-Wnested-externs], [CFLAGS="$CFLAGS -Wnested-externs"],,[
 AX_CHECK_COMPILE_FLAG([-fasynchronous-unwind-tables], [CFLAGS="$CFLAGS -fasynchronous-unwind-tables"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-pipe], [CFLAGS="$CFLAGS -pipe"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-fexceptions], [CFLAGS="$CFLAGS -fexceptions"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-Warray-bounds], [CFLAGS="$CFLAGS -Warray-bounds"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-Wrestrict], [CFLAGS="$CFLAGS -Wrestrict"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-Wreturn-local-addr], [CFLAGS="$CFLAGS -Wreturn-local-addr"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-Wstringop-overflow], [CFLAGS="$CFLAGS -Wstringop-overflow"],,[-Werror])
 
 AX_CHECK_LINK_FLAG([-z relro], [LDFLAGS="$LDFLAGS -z relro"],,[])
 AX_CHECK_LINK_FLAG([-z now], [LDFLAGS="$LDFLAGS -z now"],,[])
