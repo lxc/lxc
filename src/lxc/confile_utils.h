@@ -5,6 +5,7 @@
 
 #include <stdbool.h>
 
+#include "compiler.h"
 #include "conf.h"
 #include "confile_utils.h"
 
@@ -49,12 +50,16 @@ extern char *lxc_ipvlan_flag_to_isolation(int mode);
 
 extern int set_config_string_item(char **conf_item, const char *value);
 extern int set_config_string_item_max(char **conf_item, const char *value,
-				      size_t max);
+				      size_t max)
+__access_r(2, 3);
+
 extern int set_config_path_item(char **conf_item, const char *value);
 extern int set_config_bool_item(bool *conf_item, const char *value,
                                 bool empty_conf_action);
 extern int config_ip_prefix(struct in_addr *addr);
-extern int network_ifname(char *valuep, const char *value, size_t size);
+extern int network_ifname(char *valuep, const char *value, size_t size)
+__access_r(2, 3);
+
 extern void rand_complete_hwaddr(char *hwaddr);
 extern bool lxc_config_net_is_hwaddr(const char *line);
 extern bool new_hwaddr(char *hwaddr);

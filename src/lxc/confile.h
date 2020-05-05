@@ -9,6 +9,8 @@
 #include <lxc/attach_options.h>
 #include <lxc/lxccontainer.h>
 
+#include "compiler.h"
+
 struct lxc_conf;
 struct lxc_list;
 
@@ -46,21 +48,24 @@ struct new_config_item {
 extern struct lxc_config_t *lxc_get_config(const char *key);
 
 /* List all available config items. */
-extern int lxc_list_config_items(char *retv, int inlen);
+extern int lxc_list_config_items(char *retv, int inlen)
+__access_rw(1, 2);
 
 /* Given a configuration key namespace (e.g. lxc.apparmor) list all associated
  * subkeys for that namespace.
  * Must be implemented when adding a new configuration key.
  */
 extern int lxc_list_subkeys(struct lxc_conf *conf, const char *key, char *retv,
-			    int inlen);
+			    int inlen)
+__access_rw(3, 4);
 
 /* List all configuration items associated with a given network. For example
  * pass "lxc.net.[i]" to retrieve all configuration items associated with
  * the network associated with index [i].
  */
 extern int lxc_list_net(struct lxc_conf *c, const char *key, char *retv,
-			int inlen);
+			int inlen)
+__access_rw(3, 4);
 
 extern int lxc_config_read(const char *file, struct lxc_conf *conf,
 			   bool from_include);
