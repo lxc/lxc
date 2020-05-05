@@ -404,7 +404,8 @@ struct lxc_conf {
 };
 
 extern int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
-			    size_t buf_size);
+			    size_t buf_size)
+__access_r(3, 4);
 
 #ifdef HAVE_TLS
 extern thread_local struct lxc_conf *current_config;
