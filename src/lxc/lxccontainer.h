@@ -90,7 +90,7 @@ struct lxc_container {
 	 * \private
 	 * Container configuration.
 	 *
-	 * \internal FIXME: do we want the whole lxc_handler?
+	 * \internal TODO: do we want the whole lxc_handler?
 	 */
 	struct lxc_conf *lxc_conf;
 
