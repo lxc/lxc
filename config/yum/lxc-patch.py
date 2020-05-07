@@ -24,7 +24,6 @@
 import os
 from fnmatch import fnmatch
 from yum.plugins import TYPE_INTERACTIVE
-from yum.plugins import PluginYumExit
 
 requires_api_version = '2.0'
 plugin_type = (TYPE_INTERACTIVE,)
