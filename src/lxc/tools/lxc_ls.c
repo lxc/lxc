@@ -1166,6 +1166,9 @@ static int ls_recv_str(int fd, char **buf)
 	if (ret != sizeof(slen))
 		return -1;
 
+	if (slen == SIZE_MAX)
+		return -1;
+
 	if (slen > 0) {
 		*buf = malloc(sizeof(char) * (slen + 1));
 		if (!*buf)
