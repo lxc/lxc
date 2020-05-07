@@ -122,7 +122,7 @@ static const char AA_PROFILE_BASE[] =
 "  deny /sys/kernel/debug/{,**} rwklx,\n"
 "\n"
 "  # allow paths to be made slave, shared, private or unbindable\n"
-"  # FIXME: This currently doesn't work due to the apparmor parser treating those as allowing all mounts.\n"
+"  # TODO: This currently doesn't work due to the apparmor parser treating those as allowing all mounts.\n"
 "#  mount options=(rw,make-slave) -> **,\n"
 "#  mount options=(rw,make-rslave) -> **,\n"
 "#  mount options=(rw,make-shared) -> **,\n"
@@ -343,7 +343,7 @@ static const char AA_PROFILE_NESTING_BASE[] =
 "  mount /var/lib/lxd/shmounts/ -> /var/lib/lxd/shmounts/,\n"
 "  mount options=bind /var/lib/lxd/shmounts/** -> /var/lib/lxd/**,\n"
 "\n"
-"  # FIXME: There doesn't seem to be a way to ask for:\n"
+"  # TODO: There doesn't seem to be a way to ask for:\n"
 "  # mount options=(ro,nosuid,nodev,noexec,remount,bind),\n"
 "  # as we always get mount to $cdir/proc/sys with those flags denied\n"
 "  # So allow all mounts until that is straightened out:\n"
@@ -538,7 +538,7 @@ static inline char *apparmor_namespace(const char *ctname, const char *lxcpath)
 	return full;
 }
 
-/* FIXME: This is currently run only in the context of a constructor (via the
+/* TODO: This is currently run only in the context of a constructor (via the
  * initial lsm_init() called due to its __attribute__((constructor)), so we
  * do not have ERROR/... macros available, so there are some fprintf(stderr)s
  * in there.
@@ -560,7 +560,7 @@ static bool check_apparmor_parser_version()
 		lxc_pclose(parserpipe);
 		/* We stay silent for now as this most likely means the shell
 		 * lxc_popen executed failed to find the apparmor_parser binary.
-		 * See the FIXME comment above for details.
+		 * See the TODO comment above for details.
 		 */
 		return false;
 	}

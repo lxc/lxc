@@ -26,7 +26,7 @@ enum {
 
 	/* The following are off by default: */
 	LXC_ATTACH_REMOUNT_PROC_SYS      = 0x00010000, /*!< Remount /proc filesystem */
-	LXC_ATTACH_LSM_NOW               = 0x00020000, /*!< FIXME: unknown */
+	LXC_ATTACH_LSM_NOW               = 0x00020000, /*!< TODO: currently unused */
 	/* Set PR_SET_NO_NEW_PRIVS to block execve() gainable privileges. */
 	LXC_ATTACH_NO_NEW_PRIVS		 = 0x00040000, /*!< PR_SET_NO_NEW_PRIVS */
 	LXC_ATTACH_TERMINAL              = 0x00080000, /*!< Allocate new terminal for attached process. */
