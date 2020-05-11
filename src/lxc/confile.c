@@ -300,14 +300,18 @@ static int set_config_net_type(const char *key, const char *value,
 		netdev->type = LXC_NET_VETH;
 		lxc_list_init(&netdev->priv.veth_attr.ipv4_routes);
 		lxc_list_init(&netdev->priv.veth_attr.ipv6_routes);
-		lxc_veth_mode_to_flag(&netdev->priv.veth_attr.mode, "bridge");
+		if (!lxc_veth_flag_to_mode(netdev->priv.veth_attr.mode))
+			lxc_veth_mode_to_flag(&netdev->priv.veth_attr.mode, "bridge");
 	} else if (strcmp(value, "macvlan") == 0) {
 		netdev->type = LXC_NET_MACVLAN;
-		lxc_macvlan_mode_to_flag(&netdev->priv.macvlan_attr.mode, "private");
+		if (!lxc_macvlan_flag_to_mode(netdev->priv.veth_attr.mode))
+			lxc_macvlan_mode_to_flag(&netdev->priv.macvlan_attr.mode, "private");
 	} else if (strcmp(value, "ipvlan") == 0) {
 		netdev->type = LXC_NET_IPVLAN;
-		lxc_ipvlan_mode_to_flag(&netdev->priv.ipvlan_attr.mode, "l3");
-		lxc_ipvlan_isolation_to_flag(&netdev->priv.ipvlan_attr.isolation, "bridge");
+		if (!lxc_ipvlan_flag_to_mode(netdev->priv.ipvlan_attr.mode))
+			lxc_ipvlan_mode_to_flag(&netdev->priv.ipvlan_attr.mode, "l3");
+		if (!lxc_ipvlan_flag_to_isolation(netdev->priv.ipvlan_attr.isolation))
+			lxc_ipvlan_isolation_to_flag(&netdev->priv.ipvlan_attr.isolation, "bridge");
 	} else if (strcmp(value, "vlan") == 0) {
 		netdev->type = LXC_NET_VLAN;
 	} else if (strcmp(value, "phys") == 0) {

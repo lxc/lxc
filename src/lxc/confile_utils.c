@@ -506,6 +506,18 @@ int lxc_veth_mode_to_flag(int *mode, const char *value)
 	return ret_set_errno(-1, EINVAL);
 }
 
+char *lxc_veth_flag_to_mode(int mode)
+{
+	for (size_t i = 0; i < sizeof(veth_mode) / sizeof(veth_mode[0]); i++) {
+		if (veth_mode[i].mode != mode)
+			continue;
+
+		return veth_mode[i].name;
+	}
+
+	return NULL;
+}
+
 static struct lxc_macvlan_mode {
 	char *name;
 	int mode;
