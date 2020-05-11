@@ -1180,6 +1180,11 @@ static int ls_recv_str(int fd, char **buf)
 			return -1;
 		}
 
+		if (slen == SIZE_MAX) {
+			free(*buf);
+			return -1;
+		}
+
 		(*buf)[slen] = '\0';
 	}
 
