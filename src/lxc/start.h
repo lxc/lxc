@@ -10,6 +10,7 @@
 #include <sys/un.h>
 
 #include "conf.h"
+#include "macro.h"
 #include "namespace.h"
 #include "state.h"
 
@@ -122,6 +123,9 @@ struct lxc_handler {
 	int exit_status;
 
 	struct cgroup_ops *cgroup_ops;
+
+	/* Internal fds that always need to stay open. */
+	int keep_fds[3];
 };
 
 struct execute_args {
@@ -160,6 +164,11 @@ extern void lxc_end(struct lxc_handler *handler);
  */
 extern int lxc_check_inherited(struct lxc_conf *conf, bool closeall,
 			       int *fds_to_ignore, size_t len_fds);
+static inline int inherit_fds(struct lxc_handler *handler, bool closeall)
+{
+	return lxc_check_inherited(handler->conf, closeall, handler->keep_fds,
+				   ARRAY_SIZE(handler->keep_fds));
+}
 extern int __lxc_start(struct lxc_handler *, struct lxc_operations *, void *,
 		       const char *, bool, int *);
 
