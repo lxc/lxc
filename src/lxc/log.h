@@ -563,7 +563,8 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 extern int lxc_log_fd;
 
 extern int lxc_log_syslog(int facility);
-extern void lxc_log_enable_syslog(void);
+extern void lxc_log_syslog_enable(void);
+extern void lxc_log_syslog_disable(void);
 extern int lxc_log_set_level(int *dest, int level);
 extern int lxc_log_get_level(void);
 extern bool lxc_log_has_valid_level(void);

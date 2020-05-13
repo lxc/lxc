@@ -212,6 +212,13 @@ int lxc_check_inherited(struct lxc_conf *conf, bool closeall,
 	if (conf && conf->close_all_fds)
 		closeall = true;
 
+	/*
+	 * Disable syslog at this point to avoid the above logging
+	 * function to open a new fd and make the check_inherited function
+	 * enter an infinite loop.
+	 */
+	lxc_log_syslog_disable();
+
 restart:
 	dir = opendir("/proc/self/fd");
 	if (!dir)
@@ -272,21 +279,24 @@ restart:
 
 #endif
 		if (closeall) {
-			close(fd);
+			if (close(fd))
+				SYSINFO("Closed inherited fd %d", fd);
+			else
+				INFO("Closed inherited fd %d", fd);
 			closedir(dir);
-			INFO("Closed inherited fd %d", fd);
 			goto restart;
 		}
 		WARN("Inherited fd %d", fd);
 	}
+	closedir(dir);
 
-	/* Only enable syslog at this point to avoid the above logging function
-	 * to open a new fd and make the check_inherited function enter an
-	 * infinite loop.
+	/*
+	 * Only enable syslog at this point to avoid the above logging
+	 * function to open a new fd and make the check_inherited function
+	 * enter an infinite loop.
 	 */
-	lxc_log_enable_syslog();
+	lxc_log_syslog_enable();
 
-	closedir(dir); /* cannot fail */
 	return 0;
 }
 
@@ -605,32 +615,7 @@ out_sigfd:
 	return ret;
 }
 
-void lxc_zero_handler(struct lxc_handler *handler)
-{
-	memset(handler, 0, sizeof(struct lxc_handler));
-
-	handler->state = STOPPED;
-
-	handler->pinfd = -EBADF;
-
-	handler->pidfd = -EBADF;
-
-	handler->sigfd = -EBADF;
-
-	for (int i = 0; i < LXC_NS_MAX; i++)
-		handler->nsfd[i] = -EBADF;
-
-	handler->data_sock[0] = -EBADF;
-	handler->data_sock[1] = -EBADF;
-
-	handler->state_socket_pair[0] = -EBADF;
-	handler->state_socket_pair[1] = -EBADF;
-
-	handler->sync_sock[0] = -EBADF;
-	handler->sync_sock[1] = -EBADF;
-}
-
-void lxc_free_handler(struct lxc_handler *handler)
+void lxc_put_handler(struct lxc_handler *handler)
 {
 	close_prot_errno_disarm(handler->pinfd);
 	close_prot_errno_disarm(handler->pidfd);
@@ -642,21 +627,26 @@ void lxc_free_handler(struct lxc_handler *handler)
 	close_prot_errno_disarm(handler->state_socket_pair[0]);
 	close_prot_errno_disarm(handler->state_socket_pair[1]);
 	cgroup_exit(handler->cgroup_ops);
-	handler->conf = NULL;
-	free_disarm(handler);
+	if (handler->conf && handler->conf->reboot == REBOOT_NONE)
+		free_disarm(handler);
+	else
+		handler->conf = NULL;
 }
 
-struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
+struct lxc_handler *lxc_init_handler(struct lxc_handler *old,
+				     const char *name, struct lxc_conf *conf,
 				     const char *lxcpath, bool daemonize)
 {
+	int nr_keep_fds = 0;
 	int ret;
 	struct lxc_handler *handler;
 
-	handler = malloc(sizeof(*handler));
+	if (!old)
+		handler = zalloc(sizeof(*handler));
+	else
+		handler = old;
 	if (!handler)
 		return NULL;
-
-	memset(handler, 0, sizeof(*handler));
 
 	/* Note that am_guest_unpriv() checks the effective uid. We
 	 * probably don't care if we are real root only if we are running
@@ -701,6 +691,8 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 		TRACE("Created anonymous pair {%d,%d} of unix sockets",
 		      handler->state_socket_pair[0],
 		      handler->state_socket_pair[1]);
+		handler->keep_fds[nr_keep_fds++] = handler->state_socket_pair[0];
+		handler->keep_fds[nr_keep_fds++] = handler->state_socket_pair[1];
 	}
 
 	if (handler->conf->reboot == REBOOT_NONE) {
@@ -709,6 +701,7 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 			ERROR("Failed to set up command socket");
 			goto on_error;
 		}
+		handler->keep_fds[nr_keep_fds++] = handler->conf->maincmd_fd;
 	}
 
 	TRACE("Unix domain socket %d for command server is ready",
@@ -717,7 +710,7 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 	return handler;
 
 on_error:
-	lxc_free_handler(handler);
+	lxc_put_handler(handler);
 
 	return NULL;
 }
@@ -1008,7 +1001,7 @@ void lxc_end(struct lxc_handler *handler)
 	if (handler->conf->ephemeral == 1 && handler->conf->reboot != REBOOT_REQ)
 		lxc_destroy_container_on_signal(handler, name);
 
-	lxc_free_handler(handler);
+	lxc_put_handler(handler);
 }
 
 void lxc_abort(struct lxc_handler *handler)

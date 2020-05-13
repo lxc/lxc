@@ -830,14 +830,12 @@ static bool wait_on_daemonized_start(struct lxc_handler *handler, int pid)
 		DEBUG("First child %d exited", pid);
 
 	/* Close write end of the socket pair. */
-	close(handler->state_socket_pair[1]);
-	handler->state_socket_pair[1] = -1;
+	close_prot_errno_disarm(handler->state_socket_pair[1]);
 
 	state = lxc_rcv_status(handler->state_socket_pair[0]);
 
 	/* Close read end of the socket pair. */
-	close(handler->state_socket_pair[0]);
-	handler->state_socket_pair[0] = -1;
+	close_prot_errno_disarm(handler->state_socket_pair[0]);
 
 	if (state < 0) {
 		SYSERROR("Failed to receive the container state");
@@ -867,7 +865,6 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		NULL,
 	};
 	char **init_cmd = NULL;
-	int keepfds[3] = {-1, -1, -1};
 
 	/* container does exist */
 	if (!c)
@@ -901,7 +898,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	conf = c->lxc_conf;
 
 	/* initialize handler */
-	handler = lxc_init_handler(c->name, conf, c->config_path, c->daemonize);
+	handler = lxc_init_handler(NULL, c->name, conf, c->config_path, c->daemonize);
 
 	container_mem_unlock(c);
 	if (!handler)
@@ -918,7 +915,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	if (!argv) {
 		if (useinit) {
 			ERROR("No valid init detected");
-			lxc_free_handler(handler);
+			lxc_put_handler(handler);
 			return false;
 		}
 		argv = default_args;
@@ -936,7 +933,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		pid_first = fork();
 		if (pid_first < 0) {
 			free_init_cmd(init_cmd);
-			lxc_free_handler(handler);
+			lxc_put_handler(handler);
 			return false;
 		}
 
@@ -953,7 +950,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			started = wait_on_daemonized_start(handler, pid_first);
 
 			free_init_cmd(init_cmd);
-			lxc_free_handler(handler);
+			lxc_put_handler(handler);
 			return started;
 		}
 
@@ -985,7 +982,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		/* second parent */
 		if (pid_second != 0) {
 			free_init_cmd(init_cmd);
-			lxc_free_handler(handler);
+			lxc_put_handler(handler);
 			_exit(EXIT_SUCCESS);
 		}
 
@@ -998,11 +995,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 			_exit(EXIT_FAILURE);
 		}
 
-		keepfds[0] = handler->conf->maincmd_fd;
-		keepfds[1] = handler->state_socket_pair[0];
-		keepfds[2] = handler->state_socket_pair[1];
-		ret = lxc_check_inherited(conf, true, keepfds,
-					  sizeof(keepfds) / sizeof(keepfds[0]));
+		ret = inherit_fds(handler, true);
 		if (ret < 0)
 			_exit(EXIT_FAILURE);
 
@@ -1020,7 +1013,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 	} else if (!am_single_threaded()) {
 		ERROR("Cannot start non-daemonized container when threaded");
 		free_init_cmd(init_cmd);
-		lxc_free_handler(handler);
+		lxc_put_handler(handler);
 		return false;
 	}
 
@@ -1034,7 +1027,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		w = snprintf(pidstr, sizeof(pidstr), "%d", lxc_raw_getpid());
 		if (w < 0 || (size_t)w >= sizeof(pidstr)) {
 			free_init_cmd(init_cmd);
-			lxc_free_handler(handler);
+			lxc_put_handler(handler);
 
 			SYSERROR("Failed to write monitor pid to \"%s\"", c->pidfile);
 
@@ -1047,7 +1040,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		ret = lxc_write_to_file(c->pidfile, pidstr, w, false, 0600);
 		if (ret < 0) {
 			free_init_cmd(init_cmd);
-			lxc_free_handler(handler);
+			lxc_put_handler(handler);
 
 			SYSERROR("Failed to write monitor pid to \"%s\"", c->pidfile);
 
@@ -1065,7 +1058,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		ret = unshare(CLONE_NEWNS);
 		if (ret < 0) {
 			SYSERROR("Failed to unshare mount namespace");
-			lxc_free_handler(handler);
+			lxc_put_handler(handler);
 			ret = 1;
 			goto on_error;
 		}
@@ -1073,7 +1066,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		ret = mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL);
 		if (ret < 0) {
 			SYSERROR("Failed to make / rslave at startup");
-			lxc_free_handler(handler);
+			lxc_put_handler(handler);
 			ret = 1;
 			goto on_error;
 		}
@@ -1082,20 +1075,16 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 reboot:
 	if (conf->reboot == REBOOT_INIT) {
 		/* initialize handler */
-		handler = lxc_init_handler(c->name, conf, c->config_path, c->daemonize);
+		handler = lxc_init_handler(handler, c->name, conf, c->config_path, c->daemonize);
 		if (!handler) {
 			ret = 1;
 			goto on_error;
 		}
 	}
 
-	keepfds[0] = handler->conf->maincmd_fd;
-	keepfds[1] = handler->state_socket_pair[0];
-	keepfds[2] = handler->state_socket_pair[1];
-	ret = lxc_check_inherited(conf, c->daemonize, keepfds,
-				  sizeof(keepfds) / sizeof(keepfds[0]));
+	ret = inherit_fds(handler, c->daemonize);
 	if (ret < 0) {
-		lxc_free_handler(handler);
+		lxc_put_handler(handler);
 		ret = 1;
 		goto on_error;
 	}

@@ -44,7 +44,7 @@
 #define LXC_LOG_TIME_SIZE ((INTTYPE_TO_STRLEN(uint64_t)) * 2)
 
 int lxc_log_fd = -EBADF;
-static int syslog_enable = 0;
+static bool wants_syslog = false;
 int lxc_quiet_specified;
 int lxc_log_use_global_fd;
 static int lxc_loglevel_specified;
@@ -128,7 +128,7 @@ static int log_append_syslog(const struct lxc_log_appender *appender,
 	__do_free char *msg = NULL;
 	const char *log_container_name;
 
-	if (!syslog_enable)
+	if (!wants_syslog)
 		return 0;
 
 	log_container_name = lxc_log_get_container_name();
@@ -738,9 +738,14 @@ int lxc_log_syslog(int facility)
 	return 0;
 }
 
-inline void lxc_log_enable_syslog(void)
+void lxc_log_syslog_enable(void)
 {
-	syslog_enable = 1;
+	wants_syslog = true;
+}
+
+void lxc_log_syslog_disable(void)
+{
+	wants_syslog = false;
 }
 
 /*
