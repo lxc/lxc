@@ -605,7 +605,7 @@ out_sigfd:
 	return ret;
 }
 
-void lxc_free_handler(struct lxc_handler *handler)
+void lxc_put_handler(struct lxc_handler *handler)
 {
 	close_prot_errno_disarm(handler->pinfd);
 	close_prot_errno_disarm(handler->pidfd);
@@ -617,21 +617,25 @@ void lxc_free_handler(struct lxc_handler *handler)
 	close_prot_errno_disarm(handler->state_socket_pair[0]);
 	close_prot_errno_disarm(handler->state_socket_pair[1]);
 	cgroup_exit(handler->cgroup_ops);
-	handler->conf = NULL;
-	free_disarm(handler);
+	if (handler->conf && handler->conf->reboot == REBOOT_NONE)
+		free_disarm(handler);
+	else
+		handler->conf = NULL;
 }
 
-struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
+struct lxc_handler *lxc_init_handler(struct lxc_handler *old,
+				     const char *name, struct lxc_conf *conf,
 				     const char *lxcpath, bool daemonize)
 {
 	int ret;
 	struct lxc_handler *handler;
 
-	handler = malloc(sizeof(*handler));
+	if (!old)
+		handler = zalloc(sizeof(*handler));
+	else
+		handler = old;
 	if (!handler)
 		return NULL;
-
-	memset(handler, 0, sizeof(*handler));
 
 	/* Note that am_guest_unpriv() checks the effective uid. We
 	 * probably don't care if we are real root only if we are running
@@ -692,7 +696,7 @@ struct lxc_handler *lxc_init_handler(const char *name, struct lxc_conf *conf,
 	return handler;
 
 on_error:
-	lxc_free_handler(handler);
+	lxc_put_handler(handler);
 
 	return NULL;
 }
@@ -983,7 +987,7 @@ void lxc_end(struct lxc_handler *handler)
 	if (handler->conf->ephemeral == 1 && handler->conf->reboot != REBOOT_REQ)
 		lxc_destroy_container_on_signal(handler, name);
 
-	lxc_free_handler(handler);
+	lxc_put_handler(handler);
 }
 
 void lxc_abort(struct lxc_handler *handler)
