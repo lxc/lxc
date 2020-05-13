@@ -212,6 +212,13 @@ int lxc_check_inherited(struct lxc_conf *conf, bool closeall,
 	if (conf && conf->close_all_fds)
 		closeall = true;
 
+	/*
+	 * Disable syslog at this point to avoid the above logging
+	 * function to open a new fd and make the check_inherited function
+	 * enter an infinite loop.
+	 */
+	lxc_log_syslog_disable();
+
 restart:
 	dir = opendir("/proc/self/fd");
 	if (!dir)
@@ -272,21 +279,24 @@ restart:
 
 #endif
 		if (closeall) {
-			close(fd);
+			if (close(fd))
+				SYSINFO("Closed inherited fd %d", fd);
+			else
+				INFO("Closed inherited fd %d", fd);
 			closedir(dir);
-			INFO("Closed inherited fd %d", fd);
 			goto restart;
 		}
 		WARN("Inherited fd %d", fd);
 	}
+	closedir(dir);
 
-	/* Only enable syslog at this point to avoid the above logging function
-	 * to open a new fd and make the check_inherited function enter an
-	 * infinite loop.
+	/*
+	 * Only enable syslog at this point to avoid the above logging
+	 * function to open a new fd and make the check_inherited function
+	 * enter an infinite loop.
 	 */
-	lxc_log_enable_syslog();
+	lxc_log_syslog_enable();
 
-	closedir(dir); /* cannot fail */
 	return 0;
 }
 
