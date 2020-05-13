@@ -867,7 +867,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		NULL,
 	};
 	char **init_cmd = NULL;
-	int keepfds[3] = {-1, -1, -1};
+	int keepfds[3] = {-EBADF, -EBADF, -EBADF};
 
 	/* container does exist */
 	if (!c)
@@ -1001,8 +1001,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 		keepfds[0] = handler->conf->maincmd_fd;
 		keepfds[1] = handler->state_socket_pair[0];
 		keepfds[2] = handler->state_socket_pair[1];
-		ret = lxc_check_inherited(conf, true, keepfds,
-					  sizeof(keepfds) / sizeof(keepfds[0]));
+		ret = lxc_check_inherited(conf, true, keepfds, ARRAY_SIZE(keepfds));
 		if (ret < 0)
 			_exit(EXIT_FAILURE);
 
@@ -1092,8 +1091,7 @@ reboot:
 	keepfds[0] = handler->conf->maincmd_fd;
 	keepfds[1] = handler->state_socket_pair[0];
 	keepfds[2] = handler->state_socket_pair[1];
-	ret = lxc_check_inherited(conf, c->daemonize, keepfds,
-				  sizeof(keepfds) / sizeof(keepfds[0]));
+	ret = lxc_check_inherited(conf, c->daemonize, keepfds, ARRAY_SIZE(keepfds));
 	if (ret < 0) {
 		lxc_free_handler(handler);
 		ret = 1;
