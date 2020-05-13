@@ -627,6 +627,7 @@ struct lxc_handler *lxc_init_handler(struct lxc_handler *old,
 				     const char *name, struct lxc_conf *conf,
 				     const char *lxcpath, bool daemonize)
 {
+	int nr_keep_fds = 0;
 	int ret;
 	struct lxc_handler *handler;
 
@@ -680,6 +681,8 @@ struct lxc_handler *lxc_init_handler(struct lxc_handler *old,
 		TRACE("Created anonymous pair {%d,%d} of unix sockets",
 		      handler->state_socket_pair[0],
 		      handler->state_socket_pair[1]);
+		handler->keep_fds[nr_keep_fds++] = handler->state_socket_pair[0];
+		handler->keep_fds[nr_keep_fds++] = handler->state_socket_pair[1];
 	}
 
 	if (handler->conf->reboot == REBOOT_NONE) {
@@ -688,6 +691,7 @@ struct lxc_handler *lxc_init_handler(struct lxc_handler *old,
 			ERROR("Failed to set up command socket");
 			goto on_error;
 		}
+		handler->keep_fds[nr_keep_fds++] = handler->conf->maincmd_fd;
 	}
 
 	TRACE("Unix domain socket %d for command server is ready",
