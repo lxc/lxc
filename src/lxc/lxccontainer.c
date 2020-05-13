@@ -830,14 +830,12 @@ static bool wait_on_daemonized_start(struct lxc_handler *handler, int pid)
 		DEBUG("First child %d exited", pid);
 
 	/* Close write end of the socket pair. */
-	close(handler->state_socket_pair[1]);
-	handler->state_socket_pair[1] = -1;
+	close_prot_errno_disarm(handler->state_socket_pair[1]);
 
 	state = lxc_rcv_status(handler->state_socket_pair[0]);
 
 	/* Close read end of the socket pair. */
-	close(handler->state_socket_pair[0]);
-	handler->state_socket_pair[0] = -1;
+	close_prot_errno_disarm(handler->state_socket_pair[0]);
 
 	if (state < 0) {
 		SYSERROR("Failed to receive the container state");
