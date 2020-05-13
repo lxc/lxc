@@ -143,11 +143,11 @@ extern int lxc_serve_state_clients(const char *name,
 				   struct lxc_handler *handler,
 				   lxc_state_t state);
 extern void lxc_abort(struct lxc_handler *handler);
-extern struct lxc_handler *lxc_init_handler(const char *name,
+extern struct lxc_handler *lxc_init_handler(struct lxc_handler *old,
+					    const char *name,
 					    struct lxc_conf *conf,
-					    const char *lxcpath,
-					    bool daemonize);
-extern void lxc_free_handler(struct lxc_handler *handler);
+					    const char *lxcpath, bool daemonize);
+extern void lxc_put_handler(struct lxc_handler *handler);
 extern int lxc_init(const char *name, struct lxc_handler *handler);
 extern void lxc_end(struct lxc_handler *handler);
 
