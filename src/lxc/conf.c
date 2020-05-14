@@ -1575,6 +1575,11 @@ static int setup_personality(int persona)
 	return 0;
 }
 
+static inline bool wants_console(const struct lxc_terminal *terminal)
+{
+	return !terminal->path || strcmp(terminal->path, "none");
+}
+
 static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 				 const struct lxc_terminal *console,
 				 int pts_mnt_fd)
@@ -1583,7 +1588,7 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	char path[PATH_MAX];
 	char *rootfs_path = rootfs->path ? rootfs->mount : "";
 
-	if (console->path && !strcmp(console->path, "none"))
+	if (!wants_console(console))
 		return 0;
 
 	ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs_path);
@@ -1614,13 +1619,24 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	if (ret < 0)
 		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", S_IXUSR | S_IXGRP, console->name);
 
-	if (pts_mnt_fd >= 0)
+	if (pts_mnt_fd >= 0) {
 		ret = move_mount(pts_mnt_fd, "", -EBADF, path, MOVE_MOUNT_F_EMPTY_PATH);
-	else
-		ret = safe_mount(console->name, path, "none", MS_BIND, 0, rootfs_path);
+		if (!ret) {
+			DEBUG("Moved mount \"%s\" onto \"%s\"", console->name, path);
+			goto finish;
+		}
+
+		if (ret && errno != ENOSYS)
+			return log_error_errno(-1, errno,
+					       "Failed to mount %d(%s) on \"%s\"",
+					       pts_mnt_fd, console->name, path);
+	}
+
+	ret = safe_mount(console->name, path, "none", MS_BIND, 0, rootfs_path);
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to mount %d(%s) on \"%s\"", pts_mnt_fd, console->name, path);
 
+finish:
 	DEBUG("Mounted pts device %d(%s) onto \"%s\"", pts_mnt_fd, console->name, path);
 	return 0;
 }
@@ -1633,7 +1649,7 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 	char path[PATH_MAX], lxcpath[PATH_MAX];
 	char *rootfs_path = rootfs->path ? rootfs->mount : "";
 
-	if (console->path && !strcmp(console->path, "none"))
+	if (!wants_console(console))
 		return 0;
 
 	/* create rootfs/dev/<ttydir> directory */
@@ -1675,14 +1691,25 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", S_IXUSR | S_IXGRP, console->name);
 
 	/* bind mount console->name to '/dev/<ttydir>/console' */
-	if (pts_mnt_fd >= 0)
-		ret = move_mount(pts_mnt_fd, "", -EBADF, path, MOVE_MOUNT_F_EMPTY_PATH);
-	else
-		ret = safe_mount(console->name, lxcpath, "none", MS_BIND, 0, rootfs_path);
+	if (pts_mnt_fd >= 0) {
+		ret = move_mount(pts_mnt_fd, "", -EBADF, lxcpath, MOVE_MOUNT_F_EMPTY_PATH);
+		if (!ret) {
+			DEBUG("Moved mount \"%s\" onto \"%s\"", console->name, lxcpath);
+			goto finish;
+		}
+
+		if (ret && errno != ENOSYS)
+			return log_error_errno(-1, errno,
+					       "Failed to mount %d(%s) on \"%s\"",
+					       pts_mnt_fd, console->name, lxcpath);
+	}
+
+	ret = safe_mount(console->name, lxcpath, "none", MS_BIND, 0, rootfs_path);
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to mount %d(%s) on \"%s\"", pts_mnt_fd, console->name, lxcpath);
 	DEBUG("Mounted \"%s\" onto \"%s\"", console->name, lxcpath);
 
+finish:
 	/* bind mount '/dev/<ttydir>/console'  to '/dev/console'  */
 	ret = safe_mount(lxcpath, path, "none", MS_BIND, 0, rootfs_path);
 	if (ret < 0)
@@ -3316,11 +3343,16 @@ int lxc_setup(struct lxc_handler *handler)
 			return log_error(-1, "Failed to send network device names and ifindices to parent");
 	}
 
-	pts_mnt_fd = open_tree(-EBADF, lxc_conf->console.name,
-			       OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC | AT_EMPTY_PATH);
-	if (pts_mnt_fd < 0)
-		SYSTRACE("Failed to create detached mount for container's console \"%s\"",
-			 lxc_conf->console.name);
+	if (wants_console(&lxc_conf->console)) {
+		pts_mnt_fd = open_tree(-EBADF, lxc_conf->console.name,
+				       OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC | AT_EMPTY_PATH);
+		if (pts_mnt_fd < 0)
+			SYSTRACE("Failed to create detached mount for container's console \"%s\"",
+				 lxc_conf->console.name);
+		else
+			TRACE("Created detached mount for container's console \"%s\"",
+			      lxc_conf->console.name);
+	}
 
 	if (lxc_conf->autodev > 0) {
 		ret = mount_autodev(name, &lxc_conf->rootfs, lxc_conf->autodevtmpfssize, lxcpath);
