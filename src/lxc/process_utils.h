@@ -6,6 +6,7 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
+#include <linux/sched.h>
 #include <sched.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -13,6 +14,9 @@
 #include <stdlib.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+
+#include "config.h"
+#include "syscall_numbers.h"
 
 #ifndef CSIGNAL
 #define CSIGNAL 0x000000ff /* signal mask to be sent at exit */
@@ -136,6 +140,49 @@
 #define P_PIDFD 3
 #endif
 
+#ifndef CLONE_ARGS_SIZE_VER0
+#define CLONE_ARGS_SIZE_VER0 64 /* sizeof first published struct */
+#endif
+
+#ifndef CLONE_ARGS_SIZE_VER1
+#define CLONE_ARGS_SIZE_VER1 80 /* sizeof second published struct */
+#endif
+
+#ifndef CLONE_ARGS_SIZE_VER2
+#define CLONE_ARGS_SIZE_VER2 88 /* sizeof third published struct */
+#endif
+
+#ifndef HAVE_STRUCT_CLONE_ARGS
+struct clone_args {
+	__aligned_u64 flags;
+	__aligned_u64 pidfd;
+	__aligned_u64 child_tid;
+	__aligned_u64 parent_tid;
+	__aligned_u64 exit_signal;
+	__aligned_u64 stack;
+	__aligned_u64 stack_size;
+	__aligned_u64 tls;
+	__aligned_u64 set_tid;
+	__aligned_u64 set_tid_size;
+	__aligned_u64 cgroup;
+};
+#endif
+
+struct lxc_clone_args {
+	struct clone_args;
+#ifndef HAVE_STRUCT_CLONE_ARGS_SET_TID
+	__aligned_u64 set_tid;
+	__aligned_u64 set_tid_size;
+#endif
+#ifndef HAVE_STRUCT_CLONE_ARGS_CGROUP
+	__aligned_u64 cgroup;
+#endif
+};
+
+static inline pid_t lxc_clone3(struct lxc_clone_args *args, size_t size)
+{
+	return syscall(__NR_clone3, (struct clone_args *)args, size);
+}
 
 #if defined(__ia64__)
 int __clone2(int (*__fn)(void *__arg), void *__child_stack_base,

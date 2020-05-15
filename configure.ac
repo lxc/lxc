@@ -622,7 +622,11 @@ AC_CHECK_HEADER([ifaddrs.h],
 AC_HEADER_MAJOR
 
 # Check for some syscalls functions
-AC_CHECK_FUNCS([setns pivot_root sethostname unshare rand_r confstr faccessat gettid memfd_create move_mount open_tree execveat])
+AC_CHECK_FUNCS([setns pivot_root sethostname unshare rand_r confstr faccessat gettid memfd_create move_mount open_tree execveat clone3])
+# HAVE_STRUCT_CLONE_ARGS={0,1}
+AC_CHECK_TYPES([struct clone_args], [], [], [[#include <linux/sched.h>]])
+AC_CHECK_MEMBERS([struct clone_args.set_tid],[],[],[[#include <linux/sched.h>]])
+AC_CHECK_MEMBERS([struct clone_args.cgroup],[],[],[[#include <linux/sched.h>]])
 
 # Check for strerror_r() support. Defines:
 # - HAVE_STRERROR_R if available
@@ -761,7 +765,7 @@ AX_CHECK_COMPILE_FLAG([-Wstringop-overflow], [CFLAGS="$CFLAGS -Wstringop-overflo
 AX_CHECK_LINK_FLAG([-z relro], [LDFLAGS="$LDFLAGS -z relro"],,[])
 AX_CHECK_LINK_FLAG([-z now], [LDFLAGS="$LDFLAGS -z now"],,[])
 
-CFLAGS="$CFLAGS -Wvla -std=gnu11"
+CFLAGS="$CFLAGS -Wvla -std=gnu11 -fms-extensions"
 if test "x$enable_werror" = "xyes"; then
 	CFLAGS="$CFLAGS -Werror"
 fi
