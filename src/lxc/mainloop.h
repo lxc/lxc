@@ -22,6 +22,10 @@ typedef int (*lxc_mainloop_callback_t)(int fd, uint32_t event, void *data,
 
 extern int lxc_mainloop(struct lxc_epoll_descr *descr, int timeout_ms);
 
+extern int lxc_mainloop_add_handler_events(struct lxc_epoll_descr *descr,
+					   int fd, int events,
+					   lxc_mainloop_callback_t callback,
+					   void *data);
 extern int lxc_mainloop_add_handler(struct lxc_epoll_descr *descr, int fd,
 				    lxc_mainloop_callback_t callback,
 				    void *data);
