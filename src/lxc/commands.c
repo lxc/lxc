@@ -509,8 +509,21 @@ static char *lxc_cmd_get_cgroup_path_do(const char *name, const char *lxcpath,
 	if (ret < 0)
 		return NULL;
 
-	if (ret == 0)
+	if (ret == 0) {
+		if (command == LXC_CMD_GET_LIMITING_CGROUP) {
+			/*
+			 * This may indicate that the container was started
+			 * under an ealier version before
+			 * `cgroup_advanced_isolation` as implemented, there
+			 * it sees an unknown command and just closes the
+			 * socket, sending us an EOF.
+			 */
+			return lxc_cmd_get_cgroup_path_do(name, lxcpath,
+							  subsystem,
+							  LXC_CMD_GET_CGROUP);
+		}
 		return NULL;
+	}
 
 	if (cmd.rsp.ret < 0 || cmd.rsp.datalen < 0)
 		return NULL;
