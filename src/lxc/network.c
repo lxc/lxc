@@ -482,10 +482,6 @@ static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 		goto on_error;
 	}
 
-	strlcpy(netdev->created_name, peer, IFNAMSIZ);
-	if (is_empty_string(netdev->name))
-		(void)strlcpy(netdev->name, peer, IFNAMSIZ);
-
 	netdev->ifindex = if_nametoindex(peer);
 	if (!netdev->ifindex) {
 		ERROR("Failed to retrieve ifindex for \"%s\"", peer);
@@ -634,8 +630,6 @@ static int instantiate_ipvlan(struct lxc_handler *handler, struct lxc_netdev *ne
 	}
 
 	strlcpy(netdev->created_name, peer, IFNAMSIZ);
-	if (is_empty_string(netdev->name))
-		(void)strlcpy(netdev->name, peer, IFNAMSIZ);
 
 	netdev->ifindex = if_nametoindex(peer);
 	if (!netdev->ifindex) {
@@ -709,8 +703,6 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 	}
 
 	strlcpy(netdev->created_name, peer, IFNAMSIZ);
-	if (is_empty_string(netdev->name))
-		(void)strlcpy(netdev->name, peer, IFNAMSIZ);
 
 	netdev->ifindex = if_nametoindex(peer);
 	if (!netdev->ifindex) {
@@ -866,7 +858,7 @@ static  instantiate_cb netdev_conf[LXC_NET_MAXCONFTYPE + 1] = {
 	[LXC_NET_NONE]    = instantiate_none,
 };
 
-static int instantiate_ns_veth(struct lxc_netdev *netdev)
+static int __instantiate_common(struct lxc_netdev *netdev)
 {
 	char current_ifname[IFNAMSIZ];
 
@@ -908,13 +900,10 @@ static int instantiate_ns_veth(struct lxc_netdev *netdev)
 	return 0;
 }
 
-static int __instantiate_common(struct lxc_netdev *netdev)
+static int instantiate_ns_veth(struct lxc_netdev *netdev)
 {
-	netdev->ifindex = if_nametoindex(netdev->name);
-	if (!netdev->ifindex)
-		return log_error_errno(-1, errno, "Failed to retrieve ifindex for network device with name %s", netdev->name);
 
-	return 0;
+	return __instantiate_common(netdev);
 }
 
 static int instantiate_ns_macvlan(struct lxc_netdev *netdev)
@@ -934,7 +923,13 @@ static int instantiate_ns_vlan(struct lxc_netdev *netdev)
 
 static int instantiate_ns_phys(struct lxc_netdev *netdev)
 {
-	return __instantiate_common(netdev);
+	netdev->ifindex = if_nametoindex(netdev->name);
+	if (!netdev->ifindex)
+		return log_error_errno(-1, errno,
+				       "Failed to retrieve ifindex for network device with name %s",
+				       netdev->name);
+
+	return 0;
 }
 
 static int instantiate_ns_empty(struct lxc_netdev *netdev)
