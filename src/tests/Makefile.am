@@ -30,7 +30,7 @@ lxc_test_parse_config_file_SOURCES = parse_config_file.c \
 lxc_test_raw_clone_SOURCES = lxc_raw_clone.c \
 			     lxctest.h \
 			     ../lxc/namespace.c ../lxc/namespace.h \
-			     ../lxc/raw_syscalls.c ../lxc/raw_syscalls.h
+			     ../lxc/process_utils.c ../lxc/process_utils.h
 			     ../lxc/utils.c ../lxc/utils.h
 lxc_test_reboot_SOURCES = reboot.c
 lxc_test_saveconfig_SOURCES = saveconfig.c

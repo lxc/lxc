@@ -51,7 +51,7 @@
 #include "namespace.h"
 #include "network.h"
 #include "parse.h"
-#include "raw_syscalls.h"
+#include "process_utils.h"
 #include "ringbuf.h"
 #include "start.h"
 #include "storage.h"
@@ -3245,7 +3245,7 @@ static bool verify_start_hooks(struct lxc_conf *conf)
 
 static bool execveat_supported(void)
 {
-	lxc_raw_execveat(-1, "", NULL, NULL, AT_EMPTY_PATH);
+	execveat(-1, "", NULL, NULL, AT_EMPTY_PATH);
 	if (errno == ENOSYS)
 		return false;
 

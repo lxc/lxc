@@ -13,15 +13,12 @@
 
 #include "compiler.h"
 #include "config.h"
+#include "log.h"
 #include "macro.h"
-#include "raw_syscalls.h"
+#include "process_utils.h"
 #include "syscall_numbers.h"
 
-int lxc_raw_execveat(int dirfd, const char *pathname, char *const argv[],
-		     char *const envp[], int flags)
-{
-	return syscall(__NR_execveat, dirfd, pathname, argv, envp, flags);
-}
+lxc_log_define(process_utils, lxc);
 
 /*
  * This is based on raw_clone in systemd but adapted to our needs. This uses
@@ -123,4 +120,31 @@ int lxc_raw_pidfd_send_signal(int pidfd, int sig, siginfo_t *info,
 			      unsigned int flags)
 {
 	return syscall(__NR_pidfd_send_signal, pidfd, sig, info, flags);
+}
+
+/*
+ * Let's use the "standard stack limit" (i.e. glibc thread size default) for
+ * stack sizes: 8MB.
+ */
+#define __LXC_STACK_SIZE (8 * 1024 * 1024)
+pid_t lxc_clone(int (*fn)(void *), void *arg, int flags, int *pidfd)
+{
+	pid_t ret;
+	void *stack;
+
+	stack = malloc(__LXC_STACK_SIZE);
+	if (!stack) {
+		SYSERROR("Failed to allocate clone stack");
+		return -ENOMEM;
+	}
+
+#ifdef __ia64__
+	ret = __clone2(fn, stack, __LXC_STACK_SIZE, flags | SIGCHLD, arg, pidfd);
+#else
+	ret = clone(fn, stack + __LXC_STACK_SIZE, flags | SIGCHLD, arg, pidfd);
+#endif
+	if (ret < 0)
+		SYSERROR("Failed to clone (%#x)", flags);
+
+	return ret;
 }
