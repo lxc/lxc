@@ -15,6 +15,7 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+#include "compiler.h"
 #include "config.h"
 #include "syscall_numbers.h"
 
@@ -152,8 +153,14 @@
 #define CLONE_ARGS_SIZE_VER2 88 /* sizeof third published struct */
 #endif
 
-#ifndef HAVE_STRUCT_CLONE_ARGS
-struct clone_args {
+#ifndef ptr_to_u64
+#define ptr_to_u64(ptr) ((__u64)((uintptr_t)(ptr)))
+#endif
+#ifndef u64_to_ptr
+#define u64_to_ptr(x) ((void *)(uintptr_t)x)
+#endif
+
+struct lxc_clone_args {
 	__aligned_u64 flags;
 	__aligned_u64 pidfd;
 	__aligned_u64 child_tid;
@@ -166,22 +173,10 @@ struct clone_args {
 	__aligned_u64 set_tid_size;
 	__aligned_u64 cgroup;
 };
-#endif
 
-struct lxc_clone_args {
-	struct clone_args;
-#ifndef HAVE_STRUCT_CLONE_ARGS_SET_TID
-	__aligned_u64 set_tid;
-	__aligned_u64 set_tid_size;
-#endif
-#ifndef HAVE_STRUCT_CLONE_ARGS_CGROUP
-	__aligned_u64 cgroup;
-#endif
-};
-
-static inline pid_t lxc_clone3(struct lxc_clone_args *args, size_t size)
+__returns_twice static inline pid_t lxc_clone3(struct lxc_clone_args *args, size_t size)
 {
-	return syscall(__NR_clone3, (struct clone_args *)args, size);
+	return syscall(__NR_clone3, args, size);
 }
 
 #if defined(__ia64__)

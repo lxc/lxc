@@ -28,16 +28,8 @@ lxc_log_define(process_utils, lxc);
  * The nice thing about this is that we get fork() behavior. That is
  * lxc_raw_clone() returns 0 in the child and the child pid in the parent.
  */
-__returns_twice pid_t lxc_raw_clone(unsigned long flags, int *pidfd)
+__returns_twice static pid_t __lxc_raw_clone(unsigned long flags, int *pidfd)
 {
-	/*
-	 * These flags don't interest at all so we don't jump through any hoops
-	 * of retrieving them and passing them to the kernel.
-	 */
-	errno = EINVAL;
-	if ((flags & (CLONE_VM | CLONE_PARENT_SETTID | CLONE_CHILD_SETTID |
-		      CLONE_CHILD_CLEARTID | CLONE_SETTLS)))
-		return -EINVAL;
 
 #if defined(__s390x__) || defined(__s390__) || defined(__CRIS__)
 	/* On s390/s390x and cris the order of the first and second arguments
@@ -95,6 +87,31 @@ __returns_twice pid_t lxc_raw_clone(unsigned long flags, int *pidfd)
 #else
 	return syscall(__NR_clone, flags | SIGCHLD, NULL, pidfd);
 #endif
+}
+
+__returns_twice pid_t lxc_raw_clone(unsigned long flags, int *pidfd)
+{
+	pid_t pid;
+	struct lxc_clone_args args = {
+		.flags		= flags,
+		.pidfd		= ptr_to_u64(pidfd),
+	};
+
+	if (flags & (CLONE_VM | CLONE_PARENT_SETTID | CLONE_CHILD_SETTID |
+		     CLONE_CHILD_CLEARTID | CLONE_SETTLS))
+		return ret_errno(EINVAL);
+
+	/* On CLONE_PARENT we inherit the parent's exit signal. */
+	if (!(flags & CLONE_PARENT))
+		args.exit_signal = SIGCHLD;
+
+	pid = lxc_clone3(&args, CLONE_ARGS_SIZE_VER0);
+	if (pid < 0 && errno == ENOSYS) {
+		SYSTRACE("Falling back to legacy clone");
+		return __lxc_raw_clone(flags, pidfd);
+	}
+
+	return pid;
 }
 
 pid_t lxc_raw_clone_cb(int (*fn)(void *), void *args, unsigned long flags,
