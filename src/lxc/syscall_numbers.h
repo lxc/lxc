@@ -543,4 +543,24 @@
 	#endif
 #endif
 
+#ifndef __NR_clone3
+	#if defined __alpha__
+		#define __NR_clone3 545
+	#elif defined _MIPS_SIM
+		#if _MIPS_SIM == _MIPS_SIM_ABI32	/* o32 */
+			#define __NR_clone3 4435
+		#endif
+		#if _MIPS_SIM == _MIPS_SIM_NABI32	/* n32 */
+			#define __NR_clone3 6435
+		#endif
+		#if _MIPS_SIM == _MIPS_SIM_ABI64	/* n64 */
+			#define __NR_clone3 5435
+		#endif
+	#elif defined __ia64__
+		#define __NR_clone3 (435 + 1024)
+	#else
+		#define __NR_clone3 435
+	#endif
+#endif
+
 #endif /* __LXC_SYSCALL_NUMBERS_H */
