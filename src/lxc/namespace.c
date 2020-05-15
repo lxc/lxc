@@ -21,33 +21,6 @@
 
 lxc_log_define(namespace, lxc);
 
-/*
- * Let's use the "standard stack limit" (i.e. glibc thread size default) for
- * stack sizes: 8MB.
- */
-#define __LXC_STACK_SIZE (8 * 1024 * 1024)
-pid_t lxc_clone(int (*fn)(void *), void *arg, int flags, int *pidfd)
-{
-	pid_t ret;
-	void *stack;
-
-	stack = malloc(__LXC_STACK_SIZE);
-	if (!stack) {
-		SYSERROR("Failed to allocate clone stack");
-		return -ENOMEM;
-	}
-
-#ifdef __ia64__
-	ret = __clone2(fn, stack, __LXC_STACK_SIZE, flags | SIGCHLD, arg, pidfd);
-#else
-	ret = clone(fn, stack + __LXC_STACK_SIZE, flags | SIGCHLD, arg, pidfd);
-#endif
-	if (ret < 0)
-		SYSERROR("Failed to clone (%#x)", flags);
-
-	return ret;
-}
-
 /* Leave the user namespace at the first position in the array of structs so
  * that we always attach to it first when iterating over the struct and using
  * setns() to switch namespaces. This especially affects lxc_attach(): Suppose

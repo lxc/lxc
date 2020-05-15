@@ -28,7 +28,7 @@
 #include "log.h"
 #include "mainloop.h"
 #include "monitor.h"
-#include "raw_syscalls.h"
+#include "process_utils.h"
 #include "utils.h"
 
 #define CLIENTFDS_CHUNK 64

@@ -27,7 +27,7 @@ noinst_HEADERS = api_extensions.h \
 		 memory_utils.h \
 		 monitor.h \
 		 namespace.h \
-		 raw_syscalls.h \
+		 process_utils.h \
 		 rexec.h \
 		 start.h \
 		 state.h \
@@ -128,7 +128,7 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    network.c network.h \
 		    monitor.c monitor.h \
 		    parse.c parse.h \
-		    raw_syscalls.c raw_syscalls.h \
+		    process_utils.c process_utils.h \
 		    ringbuf.c ringbuf.h \
 		    rtnl.c rtnl.h \
 		    state.c state.h \
@@ -384,7 +384,7 @@ init_lxc_SOURCES = cmd/lxc_init.c \
 		   initutils.c initutils.h \
 		   memory_utils.h \
 		   parse.c parse.h \
-		   raw_syscalls.c raw_syscalls.h \
+		   process_utils.c process_utils.h \
 		   syscall_numbers.h \
 		   string_utils.c string_utils.h
 
@@ -395,7 +395,7 @@ lxc_monitord_SOURCES = cmd/lxc_monitord.c \
 		       log.c log.h \
 		       mainloop.c mainloop.h \
 		       monitor.c monitor.h \
-		       raw_syscalls.c raw_syscalls.h \
+		       process_utils.c process_utils.h \
 		       syscall_numbers.h \
 		       utils.c utils.h
 lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
@@ -404,7 +404,7 @@ lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
 		       memory_utils.h \
 		       network.c network.h \
 		       parse.c parse.h \
-		       raw_syscalls.c raw_syscalls.h \
+		       process_utils.c process_utils.h \
 		       syscall_numbers.h \
 		       file_utils.c file_utils.h \
 		       string_utils.c string_utils.h \
