@@ -1149,7 +1149,7 @@ static int mkdir_eexist_on_last(const char *dir, mode_t mode)
 
 		ret = mkdir(makeme, mode);
 		if (ret < 0 && ((errno != EEXIST) || (orig_len == cur_len)))
-			return log_error_errno(-1, errno, "Failed to create directory \"%s\"", makeme);
+			return log_warn_errno(-1, errno, "Failed to create directory \"%s\"", makeme);
 	} while (tmp != dir);
 
 	return 0;
@@ -1179,9 +1179,9 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 
 		ret = mkdir_eexist_on_last(limit_path, 0755);
 		if (ret < 0)
-			return log_error_errno(false, errno,
-			                       "Failed to create %s limiting cgroup",
-			                       limit_path);
+			return log_debug_errno(false,
+					      errno, "Failed to create %s limiting cgroup",
+					      limit_path);
 
 		h->cgfd_limit = lxc_open_dirfd(limit_path);
 		if (h->cgfd_limit < 0)
@@ -1210,7 +1210,7 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		 * directory for us to ensure correct initialization.
 		 */
 		if (ret_cpuset != 1 || cgroup_tree)
-			return log_error_errno(false, errno, "Failed to create %s cgroup", path);
+			return log_debug_errno(false, errno, "Failed to create %s cgroup", path);
 	}
 
 	if (payload) {
@@ -1353,7 +1353,7 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 				               monitor_cgroup, false, NULL))
 				continue;
 
-			ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->monitor_full_path ?: "(null)");
+			DEBUG("Failed to create cgroup \"%s\"", ops->hierarchies[i]->monitor_full_path ?: "(null)");
 			for (int j = 0; j < i; j++)
 				cgroup_tree_leaf_remove(ops->hierarchies[j], false);
 
@@ -1363,7 +1363,7 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
 	} while (ops->hierarchies[i] && idx > 0 && idx < 1000 && suffix);
 
 	if (idx == 1000 || (!suffix && idx != 0))
-		return ret_set_errno(false, ERANGE);
+		return log_error_errno(false, ERANGE, "Failed to create monitor cgroup");
 
 	ops->monitor_cgroup = move_ptr(monitor_cgroup);
 	return log_info(true, "The monitor process uses \"%s\" as cgroup", ops->monitor_cgroup);
@@ -1457,7 +1457,7 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 					       limiting_cgroup))
 				continue;
 
-			ERROR("Failed to create cgroup \"%s\"", ops->hierarchies[i]->container_full_path ?: "(null)");
+			DEBUG("Failed to create cgroup \"%s\"", ops->hierarchies[i]->container_full_path ?: "(null)");
 			for (int j = 0; j < i; j++)
 				cgroup_tree_leaf_remove(ops->hierarchies[j], true);
 
@@ -1467,7 +1467,7 @@ __cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
 	} while (ops->hierarchies[i] && idx > 0 && idx < 1000 && suffix);
 
 	if (idx == 1000 || (!suffix && idx != 0))
-		return ret_set_errno(false, ERANGE);
+		return log_error_errno(false, ERANGE, "Failed to create container cgroup");
 
 	ops->container_cgroup = move_ptr(container_cgroup);
 	INFO("The container process uses \"%s\" as cgroup", ops->container_cgroup);
