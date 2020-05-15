@@ -2042,7 +2042,11 @@ static int freezer_cgroup_events_cb(int fd, uint32_t events, void *cbdata,
 	return LXC_MAINLOOP_CONTINUE;
 }
 
-static int cg_unified_freeze(struct cgroup_ops *ops, int timeout)
+static int cg_unified_freeze_do(struct cgroup_ops *ops, int timeout,
+				const char *state_string,
+				int state_num,
+				const char *epoll_error,
+				const char *wait_error)
 {
 	__do_close int fd = -EBADF;
 	call_cleaner(lxc_mainloop_close) struct lxc_epoll_descr *descr_ptr = NULL;
@@ -2067,24 +2071,31 @@ static int cg_unified_freeze(struct cgroup_ops *ops, int timeout)
 
 		ret = lxc_mainloop_open(&descr);
 		if (ret)
-			return log_error_errno(-1, errno, "Failed to create epoll instance to wait for container freeze");
+			return log_error_errno(-1, errno, "%s", epoll_error);
 
 		/* automatically cleaned up now */
 		descr_ptr = &descr;
 
-		ret = lxc_mainloop_add_handler(&descr, fd, freezer_cgroup_events_cb, INT_TO_PTR((int){1}));
+		ret = lxc_mainloop_add_handler(&descr, fd, freezer_cgroup_events_cb, INT_TO_PTR(state_num));
 		if (ret < 0)
 			return log_error_errno(-1, errno, "Failed to add cgroup.events fd handler to mainloop");
 	}
 
-	ret = lxc_write_openat(h->container_full_path, "cgroup.freeze", "1", 1);
+	ret = lxc_write_openat(h->container_full_path, "cgroup.freeze", state_string, 1);
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to open cgroup.freeze file");
 
 	if (timeout != 0 && lxc_mainloop(&descr, timeout))
-		return log_error_errno(-1, errno, "Failed to wait for container to be frozen");
+		return log_error_errno(-1, errno, "%s", wait_error);
 
 	return 0;
+}
+
+static int cg_unified_freeze(struct cgroup_ops *ops, int timeout)
+{
+	return cg_unified_freeze_do(ops, timeout, "1", 1,
+		"Failed to create epoll instance to wait for container freeze",
+		"Failed to wait for container to be frozen");
 }
 
 __cgfsng_ops static int cgfsng_freeze(struct cgroup_ops *ops, int timeout)
@@ -2112,47 +2123,9 @@ static int cg_legacy_unfreeze(struct cgroup_ops *ops)
 
 static int cg_unified_unfreeze(struct cgroup_ops *ops, int timeout)
 {
-	__do_close int fd = -EBADF;
-	call_cleaner(lxc_mainloop_close)struct lxc_epoll_descr *descr_ptr = NULL;
-	int ret;
-	struct lxc_epoll_descr descr;
-	struct hierarchy *h;
-
-	h = ops->unified;
-	if (!h)
-		return ret_set_errno(-1, ENOENT);
-
-	if (!h->container_full_path)
-		return ret_set_errno(-1, EEXIST);
-
-	if (timeout != 0) {
-		__do_free char *events_file = NULL;
-
-		events_file = must_make_path(h->container_full_path, "cgroup.events", NULL);
-		fd = open(events_file, O_RDONLY | O_CLOEXEC);
-		if (fd < 0)
-			return log_error_errno(-1, errno, "Failed to open cgroup.events file");
-
-		ret = lxc_mainloop_open(&descr);
-		if (ret)
-			return log_error_errno(-1, errno, "Failed to create epoll instance to wait for container unfreeze");
-
-		/* automatically cleaned up now */
-		descr_ptr = &descr;
-
-		ret = lxc_mainloop_add_handler(&descr, fd, freezer_cgroup_events_cb, INT_TO_PTR((int){0}));
-		if (ret < 0)
-			return log_error_errno(-1, errno, "Failed to add cgroup.events fd handler to mainloop");
-	}
-
-	ret = lxc_write_openat(h->container_full_path, "cgroup.freeze", "0", 1);
-	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to open cgroup.freeze file");
-
-	if (timeout != 0 && lxc_mainloop(&descr, timeout))
-		return log_error_errno(-1, errno, "Failed to wait for container to be unfrozen");
-
-	return 0;
+	return cg_unified_freeze_do(ops, timeout, "0", 0,
+		"Failed to create epoll instance to wait for container unfreeze",
+		"Failed to wait for container to be unfrozen");
 }
 
 __cgfsng_ops static int cgfsng_unfreeze(struct cgroup_ops *ops, int timeout)
