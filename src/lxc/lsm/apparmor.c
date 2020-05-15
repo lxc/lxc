@@ -19,7 +19,7 @@
 #include "log.h"
 #include "lsm.h"
 #include "parse.h"
-#include "raw_syscalls.h"
+#include "process_utils.h"
 #include "utils.h"
 
 lxc_log_define(apparmor, lsm);
