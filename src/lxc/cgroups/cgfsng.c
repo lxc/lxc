@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/epoll.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -2076,7 +2077,7 @@ static int cg_unified_freeze_do(struct cgroup_ops *ops, int timeout,
 		/* automatically cleaned up now */
 		descr_ptr = &descr;
 
-		ret = lxc_mainloop_add_handler(&descr, fd, freezer_cgroup_events_cb, INT_TO_PTR(state_num));
+		ret = lxc_mainloop_add_handler_events(&descr, fd, EPOLLPRI, freezer_cgroup_events_cb, INT_TO_PTR(state_num));
 		if (ret < 0)
 			return log_error_errno(-1, errno, "Failed to add cgroup.events fd handler to mainloop");
 	}
