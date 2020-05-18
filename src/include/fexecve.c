@@ -41,11 +41,9 @@ int fexecve(int fd, char *const argv[], char *const envp[])
 		return -1;
 	}
 
-#ifdef __NR_execveat
-	lxc_raw_execveat(fd, "", argv, envp, AT_EMPTY_PATH);
+	execveat(fd, "", argv, envp, AT_EMPTY_PATH);
 	if (errno != ENOSYS)
 		return -1;
-#endif
 
 	ret = snprintf(procfd, sizeof(procfd), "/proc/self/fd/%d", fd);
 	if (ret < 0 || (size_t)ret >= sizeof(procfd)) {
