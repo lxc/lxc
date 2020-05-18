@@ -482,6 +482,8 @@ static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 		goto on_error;
 	}
 
+	strlcpy(netdev->created_name, peer, IFNAMSIZ);
+
 	netdev->ifindex = if_nametoindex(peer);
 	if (!netdev->ifindex) {
 		ERROR("Failed to retrieve ifindex for \"%s\"", peer);
@@ -3115,9 +3117,9 @@ int lxc_network_move_created_netdev_priv(struct lxc_handler *handler)
 			physname = is_wlan(netdev->link);
 
 		if (physname)
-			ret = lxc_netdev_move_wlan(physname, netdev->link, pid, netdev->name);
+			ret = lxc_netdev_move_wlan(physname, netdev->link, pid, NULL);
 		else
-			ret = lxc_netdev_move_by_index(netdev->ifindex, pid, netdev->name);
+			ret = lxc_netdev_move_by_index(netdev->ifindex, pid, NULL);
 		if (ret)
 			return log_error_errno(-1, -ret, "Failed to move network device \"%s\" with ifindex %d to network namespace %d",
 					       netdev->created_name,
