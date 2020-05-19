@@ -860,7 +860,7 @@ static  instantiate_cb netdev_conf[LXC_NET_MAXCONFTYPE + 1] = {
 	[LXC_NET_NONE]    = instantiate_none,
 };
 
-static int __instantiate_common(struct lxc_netdev *netdev)
+static int __instantiate_ns_common(struct lxc_netdev *netdev)
 {
 	char current_ifname[IFNAMSIZ];
 
@@ -905,33 +905,27 @@ static int __instantiate_common(struct lxc_netdev *netdev)
 static int instantiate_ns_veth(struct lxc_netdev *netdev)
 {
 
-	return __instantiate_common(netdev);
+	return __instantiate_ns_common(netdev);
 }
 
 static int instantiate_ns_macvlan(struct lxc_netdev *netdev)
 {
-	return __instantiate_common(netdev);
+	return __instantiate_ns_common(netdev);
 }
 
 static int instantiate_ns_ipvlan(struct lxc_netdev *netdev)
 {
-	return __instantiate_common(netdev);
+	return __instantiate_ns_common(netdev);
 }
 
 static int instantiate_ns_vlan(struct lxc_netdev *netdev)
 {
-	return __instantiate_common(netdev);
+	return __instantiate_ns_common(netdev);
 }
 
 static int instantiate_ns_phys(struct lxc_netdev *netdev)
 {
-	netdev->ifindex = if_nametoindex(netdev->name);
-	if (!netdev->ifindex)
-		return log_error_errno(-1, errno,
-				       "Failed to retrieve ifindex for network device with name %s",
-				       netdev->name);
-
-	return 0;
+	return __instantiate_ns_common(netdev);
 }
 
 static int instantiate_ns_empty(struct lxc_netdev *netdev)
