@@ -61,7 +61,7 @@ static void opentty(const char *tty, int which)
 
 	fd = open(tty, O_RDWR | O_NONBLOCK);
 	if (fd < 0) {
-		CMD_SYSERROR("Failed to open tty");
+		CMD_SYSINFO("Failed to open tty");
 		return;
 	}
 
