@@ -61,7 +61,7 @@ static void opentty(const char *tty, int which)
 
 	fd = open(tty, O_RDWR | O_NONBLOCK);
 	if (fd < 0) {
-		CMD_SYSERROR("Failed to open tty");
+		CMD_SYSINFO("Failed to open tty");
 		return;
 	}
 
@@ -87,11 +87,11 @@ static int do_child(void *vargv)
 	int ret;
 	char **argv = (char **)vargv;
 
-	/* Assume we want to become root */
-	if (!lxc_switch_uid_gid(0, 0))
+	if (!lxc_setgroups(0, NULL))
 		return -1;
 
-	if (!lxc_setgroups(0, NULL))
+	/* Assume we want to become root */
+	if (!lxc_switch_uid_gid(0, 0))
 		return -1;
 
 	ret = unshare(CLONE_NEWNS);
