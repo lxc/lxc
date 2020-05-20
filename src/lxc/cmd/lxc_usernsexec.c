@@ -87,11 +87,11 @@ static int do_child(void *vargv)
 	int ret;
 	char **argv = (char **)vargv;
 
-	/* Assume we want to become root */
-	if (!lxc_switch_uid_gid(0, 0))
+	if (!lxc_setgroups(0, NULL))
 		return -1;
 
-	if (!lxc_setgroups(0, NULL))
+	/* Assume we want to become root */
+	if (!lxc_switch_uid_gid(0, 0))
 		return -1;
 
 	ret = unshare(CLONE_NEWNS);
