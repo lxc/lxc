@@ -80,7 +80,6 @@ static void opentty(const char *tty, int which)
 		close(fd);
 	}
 }
-/* Code copy end */
 
 static int do_child(void *vargv)
 {
