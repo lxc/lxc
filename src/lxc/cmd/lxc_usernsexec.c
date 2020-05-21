@@ -41,6 +41,12 @@ static void usage(const char *name)
 	printf("\n");
 	printf("  -m <uid-maps> uid maps to use\n");
 	printf("\n");
+	printf("  -b <id> uid and gid to use\n");
+	printf("\n");
+	printf("  -u <id> uid to use\n");
+	printf("\n");
+	printf("  -g <id> gid to use\n");
+	printf("\n");
 	printf("  -s:           map self\n");
 	printf("  uid-maps: [u|g|b]:ns_id:host_id:range\n");
 	printf("            [u|g|b]: map user id, group id, or both\n");
@@ -81,32 +87,28 @@ static void opentty(const char *tty, int which)
 	}
 }
 
-static int do_child(void *vargv)
+struct child_args {
+	char **argv;
+	char *tty_stdin;
+	char *tty_stdout;
+	char *tty_stderr;
+};
+
+static int do_child(void *payload)
 {
-	int ret;
-	char **argv = (char **)vargv;
+	struct child_args *args = payload;
 
-	if (setgroups(0, NULL) && errno != EPERM)
-		return -1;
-
-	/* Assume we want to become root */
-	if (!lxc_switch_uid_gid(0, 0))
-		return -1;
-
-	ret = unshare(CLONE_NEWNS);
-	if (ret < 0) {
-		CMD_SYSERROR("Failed to unshare mount namespace");
+	if (mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL)) {
+		CMD_SYSERROR("Failed to remount \"/\"");
 		return -1;
 	}
 
-	ret = mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL);
-	if (ret) {
-		CMD_SYSINFO("Failed to make \"/\" rslave");
-		return -1;
-	}
+	opentty(args->tty_stdin, STDIN_FILENO);
+	opentty(args->tty_stdout, STDOUT_FILENO);
+	opentty(args->tty_stderr, STDERR_FILENO);
 
-	execvp(argv[0], argv);
-	CMD_SYSERROR("Failed to execute \"%s\"", argv[0]);
+	execvp(args->argv[0], args->argv);
+	CMD_SYSERROR("Failed to execute \"%s\"", args->argv[0]);
 	return -1;
 }
 
@@ -301,14 +303,17 @@ static bool do_map_self(void)
 
 int main(int argc, char *argv[])
 {
-	int c, pid, ret, status;
-	char buf[1];
-	int pipe_fds1[2], /* child tells parent it has unshared */
-	    pipe_fds2[2]; /* parent tells child it is mapped and may proceed */
-	unsigned long flags = CLONE_NEWUSER | CLONE_NEWNS;
+	int c, ret;
 	char ttyname0[256] = {0}, ttyname1[256] = {0}, ttyname2[256] = {0};
 	char *default_args[] = {"/bin/sh", NULL};
 	bool map_self = false;
+	uid_t nsuid = 0;
+	gid_t nsgid = 0;
+	struct child_args args = {
+		.tty_stdin	= ttyname0,
+		.tty_stdout	= ttyname1,
+		.tty_stderr	= ttyname2,
+	};
 
 	lxc_log_fd = STDERR_FILENO;
 
@@ -334,8 +339,29 @@ int main(int argc, char *argv[])
 
 	lxc_list_init(&active_map);
 
-	while ((c = getopt(argc, argv, "m:hs")) != EOF) {
+	while ((c = getopt(argc, argv, "b:g:hm:su:")) != EOF) {
+		int val;
 		switch (c) {
+		case 'b':
+			ret = lxc_safe_int(optarg, &val);
+			if (ret) {
+				fprintf(stderr, "%m - Failed to parse gid %s\n", optarg);
+				_exit(EXIT_FAILURE);
+			}
+			nsuid = (val < 0) ? LXC_INVALID_UID : val;
+			nsgid = nsuid;
+			break;
+		case 'g':
+			ret = lxc_safe_int(optarg, &val);
+			if (ret) {
+				fprintf(stderr, "%m - Failed to parse gid %s\n", optarg);
+				_exit(EXIT_FAILURE);
+			}
+			nsgid = (val < 0) ? LXC_INVALID_GID : val;
+			break;
+		case 'h':
+			usage(argv[0]);
+			_exit(EXIT_SUCCESS);
 		case 'm':
 			ret = parse_map(optarg);
 			if (ret < 0) {
@@ -343,11 +369,16 @@ int main(int argc, char *argv[])
 				_exit(EXIT_FAILURE);
 			}
 			break;
-		case 'h':
-			usage(argv[0]);
-			_exit(EXIT_SUCCESS);
 		case 's':
 			map_self = true;
+			break;
+		case 'u':
+			ret = lxc_safe_int(optarg, &val);
+			if (ret) {
+				fprintf(stderr, "%m - Failed to parse uid %s\n", optarg);
+				_exit(EXIT_FAILURE);
+			}
+			nsuid = (val < 0) ? LXC_INVALID_UID : val;
 			break;
 		default:
 			usage(argv[0]);
@@ -363,8 +394,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	// Do we want to support map-self with no other allocations?
-	// If so we should move this above the previous block.
+	/*
+	 * Do we want to support map-self with no other allocations?
+	 * If so we should move this above the previous block.
+	 */
 	if (map_self) {
 		if (!do_map_self()) {
 			fprintf(stderr, "Failed mapping own uid\n");
@@ -376,106 +409,8 @@ int main(int argc, char *argv[])
 	argc = argc - optind;
 	if (argc < 1)
 		argv = default_args;
+	args.argv = argv;
 
-	ret = pipe2(pipe_fds1, O_CLOEXEC);
-	if (ret < 0) {
-		CMD_SYSERROR("Failed to open new pipe");
-		_exit(EXIT_FAILURE);
-	}
-
-	ret = pipe2(pipe_fds2, O_CLOEXEC);
-	if (ret < 0) {
-		CMD_SYSERROR("Failed to open new pipe");
-		close(pipe_fds1[0]);
-		close(pipe_fds1[1]);
-		_exit(EXIT_FAILURE);
-	}
-
-	pid = fork();
-	if (pid < 0) {
-		close(pipe_fds1[0]);
-		close(pipe_fds1[1]);
-		close(pipe_fds2[0]);
-		close(pipe_fds2[1]);
-		_exit(EXIT_FAILURE);
-	}
-
-	if (pid == 0) {
-		close(pipe_fds1[0]);
-		close(pipe_fds2[1]);
-
-		opentty(ttyname0, STDIN_FILENO);
-		opentty(ttyname1, STDOUT_FILENO);
-		opentty(ttyname2, STDERR_FILENO);
-
-		ret = unshare(flags);
-		if (ret < 0) {
-			CMD_SYSERROR("Failed to unshare mount and user namespace");
-			close(pipe_fds1[1]);
-			close(pipe_fds2[0]);
-			_exit(EXIT_FAILURE);
-		}
-
-		buf[0] = '1';
-		ret = lxc_write_nointr(pipe_fds1[1], buf, 1);
-		if (ret != 1) {
-			CMD_SYSERROR("Failed to write to pipe file descriptor %d",
-				     pipe_fds1[1]);
-			close(pipe_fds1[1]);
-			close(pipe_fds2[0]);
-			_exit(EXIT_FAILURE);
-		}
-
-		ret = lxc_read_nointr(pipe_fds2[0], buf, 1);
-		if (ret != 1) {
-			CMD_SYSERROR("Failed to read from pipe file descriptor %d",
-				     pipe_fds2[0]);
-			close(pipe_fds1[1]);
-			close(pipe_fds2[0]);
-			_exit(EXIT_FAILURE);
-		}
-
-		close(pipe_fds1[1]);
-		close(pipe_fds2[0]);
-
-		if (buf[0] != '1') {
-			fprintf(stderr, "Received unexpected value from parent process\n");
-			_exit(EXIT_FAILURE);
-		}
-
-		ret = do_child((void *)argv);
-		if (ret < 0)
-			_exit(EXIT_FAILURE);
-
-		_exit(EXIT_SUCCESS);
-	}
-
-	close(pipe_fds1[1]);
-	close(pipe_fds2[0]);
-
-	ret = lxc_read_nointr(pipe_fds1[0], buf, 1);
-	if (ret <= 0) {
-		CMD_SYSERROR("Failed to read from pipe file descriptor %d", pipe_fds1[0]);
-		_exit(EXIT_FAILURE);
-	}
-
-	buf[0] = '1';
-
-	ret = lxc_map_ids(&active_map, pid);
-	if (ret < 0)
-		fprintf(stderr, "Failed to write id mapping for child process\n");
-
-	ret = lxc_write_nointr(pipe_fds2[1], buf, 1);
-	if (ret < 0) {
-		CMD_SYSERROR("Failed to write to pipe file descriptor %d", pipe_fds2[1]);
-		_exit(EXIT_FAILURE);
-	}
-
-	ret = waitpid(pid, &status, __WALL);
-	if (ret < 0) {
-		CMD_SYSERROR("Failed to wait on child process");
-		_exit(EXIT_FAILURE);
-	}
-
-	_exit(WEXITSTATUS(status));
+	_exit(userns_exec(CLONE_NEWUSER | CLONE_NEWNS, &active_map, do_child,
+			  &args, nsuid, nsgid));
 }

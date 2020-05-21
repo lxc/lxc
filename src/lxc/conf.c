@@ -4074,6 +4074,86 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 	return move_ptr(idmap);
 }
 
+int userns_exec(unsigned int flags, struct lxc_list *idmap,
+		int (*fn_child)(void *), void *fn_child_data,
+		uid_t nsuid, gid_t nsgid)
+{
+	char c = '1';
+	ssize_t ret;
+	pid_t pid;
+	int sock_fds[2];
+
+	if (!fn_child)
+		return ret_errno(EINVAL);
+
+	ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, sock_fds);
+	if (ret < 0)
+		return -errno;
+
+	pid = lxc_raw_clone(CLONE_NEWUSER | CLONE_NEWNS, NULL);
+	if (pid < 0) {
+		SYSERROR("Failed to create new process");
+		goto on_error;
+	}
+
+	if (pid == 0) {
+		close_prot_errno_disarm(sock_fds[1]);
+
+		ret = lxc_read_nointr(sock_fds[0], &c, 1);
+		if (ret != 1)
+			_exit(EXIT_FAILURE);
+
+		close_prot_errno_disarm(sock_fds[0]);
+
+		if (!setgroups(0, NULL) && errno != EPERM)
+			_exit(EXIT_FAILURE);
+
+		if (gid_valid(nsgid) && setresgid(nsgid, nsgid, nsgid)) {
+			SYSERROR("Failed to setresgid(%d, %d, %d)", nsgid, nsgid, nsgid);
+			_exit(EXIT_FAILURE);
+		}
+
+		if (uid_valid(nsuid) && setresuid(nsuid, nsuid, nsuid)) {
+			SYSERROR("Failed to setresuid(%d, %d, %d)", nsuid, nsuid, nsuid);
+			_exit(EXIT_FAILURE);
+		}
+
+		ret = fn_child(fn_child_data);
+		if (ret) {
+			SYSERROR("Running function in new user namespace failed");
+			_exit(EXIT_FAILURE);
+		}
+
+		_exit(EXIT_SUCCESS);
+	}
+
+	close_prot_errno_disarm(sock_fds[0]);
+
+	/* Set up {g,u}id mapping for user namespace of child process. */
+	ret = lxc_map_ids(idmap, pid);
+	if (ret < 0) {
+		ERROR("Error setting up {g,u}id mappings for child process \"%d\"", pid);
+		goto on_error;
+	}
+
+	/* Tell child to proceed. */
+	ret = lxc_write_nointr(sock_fds[1], &c, 1);
+	if (ret != 1) {
+		SYSERROR("Failed telling child process \"%d\" to proceed", pid);
+		goto on_error;
+	}
+
+on_error:
+	close_prot_errno_disarm(sock_fds[0]);
+	close_prot_errno_disarm(sock_fds[1]);
+
+	/* Wait for child to finish. */
+	if (pid < 0)
+		return -1;
+
+	return wait_for_pid(pid);
+}
+
 /*
  * Run a function in a new user namespace.
  * The caller's euid/egid will be mapped if it is not already.

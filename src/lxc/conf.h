@@ -476,5 +476,8 @@ extern int userns_exec_minimal(const struct lxc_conf *conf,
 			       int (*fn_child)(void *), void *fn_child_data);
 extern int userns_exec_mapped_root(const char *path, int path_fd,
 				   const struct lxc_conf *conf);
+extern int userns_exec(unsigned int flags, struct lxc_list *idmap,
+		       int (*fn_child)(void *), void *fn_child_data,
+		       uid_t uid, gid_t gid);
 
 #endif /* __LXC_CONF_H */
