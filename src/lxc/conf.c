@@ -59,6 +59,7 @@
 #include "syscall_wrappers.h"
 #include "terminal.h"
 #include "utils.h"
+#include "utils_no_static.h"
 #include "uuid.h"
 
 #ifdef MAJOR_IN_MKDEV
@@ -4685,62 +4686,6 @@ on_error:
 		return -1;
 
 	return wait_for_pid(pid);
-}
-
-/* not thread-safe, do not use from api without first forking */
-static char *getuname(void)
-{
-	__do_free char *buf = NULL;
-	struct passwd pwent;
-	struct passwd *pwentp = NULL;
-	size_t bufsize;
-	int ret;
-
-	bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
-	if (bufsize == -1)
-		bufsize = 1024;
-
-	buf = malloc(bufsize);
-	if (!buf)
-		return NULL;
-
-	ret = getpwuid_r(geteuid(), &pwent, buf, bufsize, &pwentp);
-	if (!pwentp) {
-		if (ret == 0)
-			WARN("Could not find matched password record.");
-
-		return log_error(NULL, "Failed to get password record - %u", geteuid());
-	}
-
-	return strdup(pwent.pw_name);
-}
-
-/* not thread-safe, do not use from api without first forking */
-static char *getgname(void)
-{
-	__do_free char *buf = NULL;
-	struct group grent;
-	struct group *grentp = NULL;
-	size_t bufsize;
-	int ret;
-
-	bufsize = sysconf(_SC_GETGR_R_SIZE_MAX);
-	if (bufsize == -1)
-		bufsize = 1024;
-
-	buf = malloc(bufsize);
-	if (!buf)
-		return NULL;
-
-	ret = getgrgid_r(getegid(), &grent, buf, bufsize, &grentp);
-	if (!grentp) {
-		if (ret == 0)
-			WARN("Could not find matched group record");
-
-		return log_error(NULL, "Failed to get group record - %u", getegid());
-	}
-
-	return strdup(grent.gr_name);
 }
 
 /* not thread-safe, do not use from api without first forking */
