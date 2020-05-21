@@ -100,12 +100,10 @@ static int do_child(void *vargv)
 		return -1;
 	}
 
-	if (detect_shared_rootfs()) {
-		ret = mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL);
-		if (ret < 0) {
-			CMD_SYSINFO("Failed to make \"/\" rslave");
-			return -1;
-		}
+	ret = mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL);
+	if (ret) {
+		CMD_SYSINFO("Failed to make \"/\" rslave");
+		return -1;
 	}
 
 	execvp(argv[0], argv);
