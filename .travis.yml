@@ -29,7 +29,7 @@ env:
 
 addons:
   coverity_scan:
-
+    build_script_url: https://dl.stgraber.org/coverity_travis.sh
     project:
       name: lxc/lxc
       description: "LXC - Linux Containers https://linuxcontainers.org/lxc"
