@@ -38,6 +38,7 @@ static char *api_extensions[] = {
 	"cgroup2_devices",
 #endif
 	"cgroup2",
+	"pidfd",
 	"cgroup_advanced_isolation",
 };
 
