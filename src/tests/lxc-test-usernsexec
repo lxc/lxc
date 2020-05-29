@@ -1,0 +1,261 @@
+#!/bin/bash
+#
+# This is a bash test case to test lxc-usernsexec.
+# It basically supports usring lxc-usernsexec to execute itself
+# and then create files and check that their ownership is as expected.
+#
+# It requires that the current user has at least 1 value in subuid and /etc/subgid
+TEMP_D=""
+set -f
+
+fail() { echo "$@" 1>&2; exit 1; }
+error() { echo "$@" 1>&2; }
+skip() {
+    error "SKIP:" "$@"
+    exit 0
+}
+
+collect_owners() {
+    # collect_owners([--dir=dir], file1, file2 ...)
+    # set _RET to a space delimited array of
+    #   <file1>:owner:group <file2>:owner:group ...
+    local out="" ret="" dir=""
+    if [ "${1#--dir=}" != "$1" ]; then
+        dir="${1#--dir=}"
+        shift
+    fi
+    for arg in "$@"; do
+        # drop the :* so that input can be same as touch_files.
+        out=$(stat --format "%n:%u:%g" "${dir}${arg}") || {
+            error "failed to stat ${arg}"
+            return 1;
+        }
+        ret="$ret ${out##*/}"
+    done
+    _RET="${ret# }"
+}
+
+cleanup() {
+    if [ -d "$TEMP_D" ]; then
+        rm -Rf "$TEMP_D"
+    fi
+}
+
+touch_files() {
+    # touch_files tok [tok ...]
+    # tok is filename:chown_id:chown_gid
+    # if chown_id or chown_gid is empty, then chown will do the right thing
+    # and only change the provided value.
+    local args="" tok="" fname="" uidgid=""
+    args=( "$@" )
+    for tok in "$@"; do
+        fname=${tok%%:*}
+        uidgid=${tok#$fname}
+        uidgid=${uidgid#:}
+        : > "$fname" || { error "failed to create $fname"; return 1; }
+        [ -z "$uidgid" ] && continue
+        chown $uidgid "$fname" || { error "failed to chmod '$uidgid' $fname ($?)"; return 1; }
+    done
+}
+
+inside_cleanup() {
+    local f=""
+    rm -f "${FILES[@]}"
+    echo "$STATUS" >&5
+    echo "$STATUS" >&6
+}
+
+set_files() {
+    local x=""
+    FILES=( )
+    for x in "$@"; do
+        FILES[${#FILES[@]}]="${x%%:*}"
+    done
+}
+
+inside() {
+    # this what gets run inside the usernsexec environment.
+    # basically expects arguments of <filename>:uid:gid
+    # it will create the file, and then chmod it to the provided uid:gid
+    # it writes to file descriptor 5 a single line with space delimited
+    #   exit_value uid gid [<filename>:<owner>:<group> ... ]
+    STATUS=127
+    trap inside_cleanup EXIT
+    local uid="" gid="" x=""
+
+    uid=$(id -u) || fail "failed execution of id -u"
+    gid=$(id -g) || fail "failed execution of id -g"
+
+    set_files "$@"
+
+    touch_files "$@" || fail "failed to create files"
+
+    collect_owners "${FILES[@]}" || fail "failed to collect owners"
+    result="$_RET"
+
+    # tell caller we are done.
+    echo "0" "$uid" "$gid" "$result" >&5
+    STATUS=0
+
+    # let the caller do things while the files are around.
+    read -t 30 x <&6
+
+    exit
+}
+
+runtest() {
+    # runtest(mydir, nsexec_args, [inside [...]])
+    #  - use 'mydir' as a working dir.
+    #  - execute lxc-usernsexec $nsexec_args -- <self> inside <inside args>
+    #
+    # write to stdout
+    #  exit_value inside_exit_value inside_uid:inside_gid <results>
+    #
+    # where results are a list of space separated
+    #    filename:uid:gid
+    # for each file passed in inside_args
+    [ $# -ge 3 ] || { error "runtest expects 2 args"; return 1; }
+    local mydir="$1" nsexec_args="$2"
+    shift 2
+    local ret inside_owners t=""
+    KIDPID=""
+
+    mkfifo "${mydir}/5" && exec 5<>"${mydir}/5" || return
+    mkfifo "${mydir}/6" && exec 6<>"${mydir}/6" || return
+    mkdir --mode=777 "${mydir}/work" || return
+    cd "${mydir}/work"
+
+    set_files "$@"
+
+    local results="" oresults="" iresults="" iuid="" igid="" n=0
+
+    error "$" $USERNSEXEC ${nsexec_args} -- "$MYPATH" inside "$*"
+    ${USERNSEXEC} ${nsexec_args} -- "$MYPATH" inside "$@" &
+    KIDPID=$!
+
+    [ -d "/proc/$KIDPID" ] || {
+        wait $KIDPID
+        fail "kid $KIDPID died quickly $?"
+    }
+
+    # if lxc-usernsexec fails to execute MYPATH inside, then
+    # the read below would timeout.  To avoid a long timeout,
+    # we do a short timeout and check the pid is alive.
+    while ! read -t 1 ret iuid igid inside_owners <&5; do
+        n=$((n+1))
+        if [ ! -d "/proc/$KIDPID" ]; then
+            wait $KIDPID
+            fail "kid $KIDPID is gone $?"
+        fi
+        [ $n -ge 30 ] && fail "child never wrote to pipe"
+    done
+    iresults=( $inside_owners )
+
+    collect_owners "--dir=${mydir}/work/" "${FILES[@]}" || return
+    oresults=( $_RET )
+
+    echo 0 >&6
+    wait
+
+    ret=$?
+
+    results=( )
+    for((i=0;i<${#iresults[@]};i++)); do
+        results[$i]="${oresults[$i]}:${iresults[$i]#*:}"
+    done
+
+    echo 0 $ret "$iuid:$igid" "${results[@]}"
+}
+
+runcheck() {
+    local name="$1" expected="$2" nsexec_args="$3" found=""
+    shift 3
+    mkdir "${TEMP_D}/$name" || fail "failed mkdir <TEMP_D>/$name.d"
+    local err="${TEMP_D}/$name.err"
+    out=$("$MYPATH" runtest "${TEMP_D}/$name" "$nsexec_args" "$@" 2>"$err") || {
+        error "$name: FAIL - runtest failed $?"
+        [ -n "$out" ] && error "  $out"
+        sed 's,^,  ,' "$err" 1>&2
+        ERRORS="${ERRORS} $name"
+        return 1
+    }
+    set -- $out
+    local parentrc=$1 kidrc=$2 iuidgid="$3" found=""
+    shift 3
+    found="$*"
+    [ "$parentrc" = "0" -a "$kidrc" = "0" ] || {
+        error "$name: FAIL - parentrc=$parentrc kidrc=$kidrc found=$found"
+        ERRORS="${ERRORS} $name"
+        return 1
+    }
+    [ "$expected" = "$found" ] && {
+        error "$name: PASS"
+        PASS="${PASSES} $name"
+        return 0
+    }
+    echo "$name: FAIL expected '$expected' != found '$found'"
+    FAILS="${FAILS} $name"
+    return 1
+}
+
+USERNSEXEC=${USERNSEXEC:-lxc-usernsexec}
+if [ "$1" = "inside" ]; then
+    shift
+    inside "$@"
+    exit
+elif [ "$1" = "runtest" ]; then
+    shift
+    runtest "$@"
+    exit
+fi
+
+name=$(id --user --name) || fail "failed to get username"
+subuid=$(awk -F: '$1 == n { print $2; exit(0); }' "n=$name" /etc/subuid) &&
+    [ -n "$subuid" ] || skip "did not find $name in /etc/subuid"
+
+subgid=$(awk -F: '$1 == n { print $2; exit(0); }' "n=$name" /etc/subgid) &&
+    [ -n "$subgid" ] || skip "did not find $name in /etc/subgid"
+
+
+uid=$(id --user) || fail "failed to get uid"
+gid=$(id --group) || fail "failed to get gid"
+
+mapuid="u:0:$uid:1"
+mapgid="g:0:$gid:1"
+
+ver=$(dpkg-query --show lxc-utils | awk '{print $2}')
+error "uid=$uid gid=$gid name=$name subuid=$subuid subgid=$subgid ver=$ver"
+error "lxc-utils=$ver kver=$(uname -r)"
+error "USERNSEXEC=$USERNSEXEC"
+
+TEMP_D=$(mktemp -d)
+trap cleanup EXIT
+MYPATH=$(readlink -f "$0") || { echo "failed to get full path to self: $0"; exit 1; }
+export MYPATH
+
+PASSES=""; FAILS=""; ERRORS=""
+runcheck nouidgid  "f0:$subuid:$subgid:0:0" "" f0
+
+runcheck myuidgid  "f0:$uid:$gid:0:0" \
+    "-m$mapuid -m$mapgid" f0
+
+runcheck subuidgid \
+    "f0:$subuid:$subgid:0:0" \
+    "-mu:0:$subuid:1 -mg:0:$subgid:1" f0:0:0
+
+runcheck bothsets  "f0:$uid:$gid:0:0 f1:$subuid:$subgid:1:1 f2:$uid:$subgid:0:1" \
+    "-m$mapuid -m$mapgid -mu:1:$subuid:1 -mg:1:$subgid:1" \
+    f0 f1:1:1 f2::1
+
+runcheck mismatch "f0:$uid:$subgid:0:0 f1:$subuid:$gid:15:31" \
+    "-mu:0:$uid:1 -mg:0:$subgid:1 -mu:15:$subuid:1 -mg:31:$gid:1" \
+    f0 f1:15:31
+
+FAILS=${FAILS# }
+ERRORS=${ERRORS# }
+PASSES=${PASSES# }
+
+[ -z "${FAILS}" ] || error "FAILS: ${FAILS}"
+[ -z "${ERRORS}" ] || error "ERRORS: ${ERRORS}"
+[ -z "${FAILS}" -a -z "${ERRORS}" ] || exit 1
+exit 0

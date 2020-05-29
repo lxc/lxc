@@ -114,7 +114,8 @@ bin_SCRIPTS += lxc-test-automount \
 	       lxc-test-createconfig \
 	       lxc-test-exit-code \
 	       lxc-test-no-new-privs \
-	       lxc-test-rootfs
+	       lxc-test-rootfs \
+	       lxc-test-usernsexec
 
 if DISTRO_UBUNTU
 bin_SCRIPTS += lxc-test-lxc-attach \
@@ -163,6 +164,7 @@ EXTRA_DIST = basic.c \
 	     lxc-test-snapdeps \
 	     lxc-test-symlink \
 	     lxc-test-unpriv \
+	     lxc-test-usernsexec \
 	     lxc-test-utils.c \
 	     may_control.c \
 	     mount_injection.c \
