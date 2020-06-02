@@ -6,6 +6,7 @@
 #
 # It requires that the current user has at least 1 value in subuid and /etc/subgid
 TEMP_D=""
+VERBOSITY=0
 set -f
 
 fail() { echo "$@" 1>&2; exit 1; }
@@ -13,6 +14,11 @@ error() { echo "$@" 1>&2; }
 skip() {
     error "SKIP:" "$@"
     exit 0
+}
+debug() {
+    local level=${1}; shift;
+    [ "${level}" -gt "${VERBOSITY}" ] && return
+    error "${@}"
 }
 
 collect_owners() {
@@ -198,7 +204,101 @@ runcheck() {
     return 1
 }
 
+setup_Usage() {
+    cat <<EOF
+${0} setup_and_run [-- run-args]
+
+setup the system by creating a user (default is '${asuser:-test-userns}')
+and then run test as that user.  Must be root.
+
+If user exists, then do not create the user.
+
+     -v | --verbose                 - be more verbose
+      --create-subuid=UID:RANGE
+      --create-subgid=UID:RANGE     if adding subuid/subgid use this START:RANGE
+                                    example (default) 3000000000:5
+EOF
+}
+
+setup_and_run() {
+    local short_opts="hv"
+    local long_opts="help,user:,create-subuid:,create-subgid:,verbose"
+    local getopt_out=""
+    getopt_out=$(getopt --name "${0##*/}" \
+        --options "${short_opts}" --long "${long_opts}" -- "$@") &&
+        eval set -- "${getopt_out}" ||
+        { bad_Usage; return; }
+
+    local cur="" next="" asuser="test-userns"
+    local create_subuid="3000000000:5" create_subgid="3000000000:5"
+    while [ $# -ne 0 ]; do
+        cur="$1"; next="$2";
+        case "$cur" in
+            -h|--help) setup_Usage ; exit 0;;
+               --user) asuser="$next"; shift;;
+               --create-subuid) create_subuid=$next; shift;;
+               --create-subgid) create_subgid=$next; shift;;
+            -v|--verbose) VERBOSITY=$((${VERBOSITY}+1));;
+            --) shift; break;;
+        esac
+        shift;
+    done
+
+    local pt_args=""
+    pt_args=( "$@" )
+
+    if [ "$(id -u)" != "0" ]; then
+        error "Sorry, setup_and_run has to be done as root, not uid=$(id -u)"
+        return 1
+    fi
+
+    local home="/home/$asuser"
+    if [ ! -d "$home" ]; then
+        debug 1 "creating user $asuser"
+        useradd "$asuser" --create-home "--home-dir=$home" || {
+            error "failed to create $asuser"
+            return 1
+        }
+    else
+        debug 1 "$asuser existed"
+    fi
+
+    local subuid="" subgid=""
+    subuid=$(awk -F: '$1 == n { print $2; exit(0); }' "n=$asuser" /etc/subuid) || {
+        error "failed to read /etc/subuid for $asuser"
+        return 1
+    }
+
+    if [ -n "$subuid" ]; then
+        debug 1 "$asuser already had subuid=$subuid"
+    else
+        debug 1 "adding $asuser:$create_subuid to /etc/subuid"
+        echo "$asuser:$create_subuid" >> /etc/subuid || {
+            error "failed to add $asuser to /etc/subuid"
+        }
+    fi
+
+    subgid=$(awk -F: '$1 == n { print $2; exit(0); }' "n=$asuser" /etc/subgid) || {
+        error "failed to read /etc/subgid for $asuser"
+        return 1
+    }
+    if [ -n "$subgid" ]; then
+        debug 1 "$asuser already had subgid=$subgid"
+    else
+        debug 1 "adding $asuser:$create_subgid to /etc/subgid"
+        echo "$asuser:$create_subgid" >> /etc/subgid || {
+            error "failed to add $asuser to /etc/subgid"
+        }
+    fi
+
+    debug 0 "as $asuser executing ${MYPATH} ${pt_args[*]}"
+    sudo -Hu "$asuser" "${MYPATH}" "${pt_args[@]}"
+}
+
 USERNSEXEC=${USERNSEXEC:-lxc-usernsexec}
+MYPATH=$(readlink -f "$0") || { echo "failed to get full path to self: $0"; exit 1; }
+export MYPATH
+
 if [ "$1" = "inside" ]; then
     shift
     inside "$@"
@@ -207,14 +307,23 @@ elif [ "$1" = "runtest" ]; then
     shift
     runtest "$@"
     exit
+elif [ "$1" = "setup_and_run" ]; then
+    shift
+    setup_and_run "$@"
+    exit
 fi
 
 name=$(id --user --name) || fail "failed to get username"
+if [ "$name" = "root" ]; then
+    setup_and_run "$@"
+    exit
+fi
+
 subuid=$(awk -F: '$1 == n { print $2; exit(0); }' "n=$name" /etc/subuid) &&
-    [ -n "$subuid" ] || skip "did not find $name in /etc/subuid"
+    [ -n "$subuid" ] || fail "did not find $name in /etc/subuid"
 
 subgid=$(awk -F: '$1 == n { print $2; exit(0); }' "n=$name" /etc/subgid) &&
-    [ -n "$subgid" ] || skip "did not find $name in /etc/subgid"
+    [ -n "$subgid" ] || fail "did not find $name in /etc/subgid"
 
 
 uid=$(id --user) || fail "failed to get uid"
@@ -230,8 +339,6 @@ error "USERNSEXEC=$USERNSEXEC"
 
 TEMP_D=$(mktemp -d)
 trap cleanup EXIT
-MYPATH=$(readlink -f "$0") || { echo "failed to get full path to self: $0"; exit 1; }
-export MYPATH
 
 PASSES=""; FAILS=""; ERRORS=""
 runcheck nouidgid  "f0:$subuid:$subgid:0:0" "" f0
