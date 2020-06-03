@@ -245,6 +245,90 @@ static int lxc_is_ip_forwarding_enabled(const char *ifname, int family)
 	return lxc_read_file_expect(path, buf, 1, "1");
 }
 
+struct bridge_vlan_info {
+	__u16 flags;
+	__u16 vid;
+};
+
+static int lxc_bridge_vlan(unsigned int ifindex, unsigned short operation, unsigned short vlan_id, bool tagged)
+{
+	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
+	struct nl_handler nlh;
+	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
+	int err;
+	struct ifinfomsg *ifi;
+	struct rtattr *nest;
+	unsigned short bridge_flags = 0;
+	struct bridge_vlan_info vlan_info;
+
+	err = netlink_open(nlh_ptr, NETLINK_ROUTE);
+	if (err)
+		return err;
+
+	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
+	if (!nlmsg)
+		return ret_errno(ENOMEM);
+
+	answer = nlmsg_alloc_reserve(NLMSG_GOOD_SIZE);
+	if (!answer)
+		return ret_errno(ENOMEM);
+
+	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+	nlmsg->nlmsghdr->nlmsg_type = operation;
+
+	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
+	if (!ifi)
+		return ret_errno(ENOMEM);
+	ifi->ifi_family = AF_BRIDGE;
+	ifi->ifi_index = ifindex;
+
+	nest = nla_begin_nested(nlmsg, IFLA_AF_SPEC);
+	if (!nest)
+		return ret_errno(ENOMEM);
+
+	bridge_flags |= BRIDGE_FLAGS_MASTER;
+	if (nla_put_u16(nlmsg, IFLA_BRIDGE_FLAGS, bridge_flags))
+		return ret_errno(ENOMEM);
+
+	vlan_info.vid = vlan_id;
+	vlan_info.flags = 0;
+	if (!tagged)
+		vlan_info.flags = BRIDGE_VLAN_INFO_PVID | BRIDGE_VLAN_INFO_UNTAGGED;
+
+	if (nla_put_buffer(nlmsg, IFLA_BRIDGE_VLAN_INFO, &vlan_info, sizeof(struct bridge_vlan_info)))
+		return ret_errno(ENOMEM);
+
+	nla_end_nested(nlmsg, nest);
+
+	return netlink_transaction(nlh_ptr, nlmsg, answer);
+}
+
+static int lxc_bridge_vlan_add(unsigned int ifindex, unsigned short vlan_id, bool tagged)
+{
+	return lxc_bridge_vlan(ifindex, RTM_SETLINK, vlan_id, tagged);
+}
+
+static int lxc_bridge_vlan_del(unsigned int ifindex, unsigned short vlan_id)
+{
+	return lxc_bridge_vlan(ifindex, RTM_DELLINK, vlan_id, false);
+}
+
+static int lxc_bridge_vlan_add_tagged(unsigned int ifindex, struct lxc_list *vlan_ids)
+{
+	struct lxc_list *iterator;
+	int err;
+
+	lxc_list_for_each(iterator, vlan_ids) {
+		unsigned short vlan_id = PTR_TO_USHORT(iterator->elem);
+
+		err = lxc_bridge_vlan_add(ifindex, vlan_id, true);
+		if (err)
+			return log_error_errno(-1, -err, "Failed to add tagged vlan \"%u\" to ifindex \"%d\"", vlan_id, ifindex);
+	}
+
+	return 0;
+}
+
 static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	int err;
