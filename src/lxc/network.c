@@ -324,11 +324,15 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	}
 
 	if (!is_empty_string(netdev->link) && netdev->priv.veth_attr.mode == VETH_MODE_BRIDGE) {
+		if (!lxc_nic_exists(netdev->link)) {
+			SYSERROR("Failed to attach \"%s\" to bridge \"%s\", bridge interface doesn't exist", veth1, netdev->link);
+			goto out_delete;
+		}
+
 		err = lxc_bridge_attach(netdev->link, veth1);
 		if (err) {
 			errno = -err;
-			SYSERROR("Failed to attach \"%s\" to bridge \"%s\"",
-			         veth1, netdev->link);
+			SYSERROR("Failed to attach \"%s\" to bridge \"%s\"", veth1, netdev->link);
 			goto out_delete;
 		}
 		INFO("Attached \"%s\" to bridge \"%s\"", veth1, netdev->link);
