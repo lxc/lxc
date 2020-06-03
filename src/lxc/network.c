@@ -329,12 +329,109 @@ static int lxc_bridge_vlan_add_tagged(unsigned int ifindex, struct lxc_list *vla
 	return 0;
 }
 
+static int validate_veth(struct lxc_netdev *netdev)
+{
+	if (netdev->priv.veth_attr.mode != VETH_MODE_BRIDGE || is_empty_string(netdev->link)) {
+		/* Check that veth.vlan.id isn't being used in non bridge veth.mode. */
+		if (netdev->priv.veth_attr.vlan_id_set)
+			return log_error_errno(-1, EINVAL, "Cannot use veth vlan.id when not in bridge mode or no bridge link specified");
+
+		/* Check that veth.vlan.tagged.id isn't being used in non bridge veth.mode. */
+		if (lxc_list_len(&netdev->priv.veth_attr.vlan_tagged_ids) > 0)
+			return log_error_errno(-1, EINVAL, "Cannot use veth vlan.id when not in bridge mode or no bridge link specified");
+	}
+
+	if (netdev->priv.veth_attr.vlan_id_set) {
+		struct lxc_list *it;
+		lxc_list_for_each(it, &netdev->priv.veth_attr.vlan_tagged_ids) {
+			unsigned short i = PTR_TO_USHORT(it->elem);
+			if (i == netdev->priv.veth_attr.vlan_id)
+				return log_error_errno(-1, EINVAL, "Cannot use same veth vlan.id \"%u\" in vlan.tagged.id", netdev->priv.veth_attr.vlan_id);
+		}
+	}
+
+	return 0;
+}
+
+static int setup_veth_native_bridge_vlan(char *veth1, struct lxc_netdev *netdev)
+{
+	int err, rc, veth1index;
+	char path[STRLITERALLEN("/sys/class/net//bridge/vlan_filtering") + IFNAMSIZ + 1];
+	char buf[5]; /* Sufficient size to fit max VLAN ID (4094) and null char. */
+
+	/* Skip setup if no VLAN options are specified. */
+	if (!netdev->priv.veth_attr.vlan_id_set && lxc_list_len(&netdev->priv.veth_attr.vlan_tagged_ids) <= 0)
+		return 0;
+
+	/* Check vlan filtering is enabled on parent bridge. */
+	rc = snprintf(path, sizeof(path), "/sys/class/net/%s/bridge/vlan_filtering", netdev->link);
+	if (rc < 0 || (size_t)rc >= sizeof(path))
+		return -1;
+
+	rc = lxc_read_from_file(path, buf, sizeof(buf));
+	if (rc < 0)
+		return log_error_errno(rc, errno, "Failed reading from \"%s\"", path);
+
+	buf[rc - 1] = '\0';
+
+	if (strcmp(buf, "1") != 0)
+		return log_error_errno(-1, EPERM, "vlan_filtering is not enabled on \"%s\"", netdev->link);
+
+	/* Get veth1 ifindex for use with netlink. */
+	veth1index = if_nametoindex(veth1);
+	if (!veth1index)
+		return log_error_errno(-1, errno, "Failed getting ifindex of \"%s\"", netdev->link);
+
+	/* Configure untagged VLAN settings on bridge port if specified. */
+	if (netdev->priv.veth_attr.vlan_id_set) {
+		unsigned short default_pvid;
+
+		/* Get the bridge's default VLAN PVID. */
+		rc = snprintf(path, sizeof(path), "/sys/class/net/%s/bridge/default_pvid", netdev->link);
+		if (rc < 0 || (size_t)rc >= sizeof(path))
+			return -1;
+
+		rc = lxc_read_from_file(path, buf, sizeof(buf));
+		if (rc < 0)
+			return log_error_errno(rc, errno, "Failed reading from \"%s\"", path);
+
+		buf[rc - 1] = '\0';
+		err = get_u16(&default_pvid, buf, 0);
+		if (err)
+			return log_error_errno(-1, EINVAL, "Failed parsing default_pvid of \"%s\"", netdev->link);
+
+		/* If the default PVID on the port is not the specified untagged VLAN, then delete it. */
+		if (default_pvid != netdev->priv.veth_attr.vlan_id) {
+			err = lxc_bridge_vlan_del(veth1index, default_pvid);
+			if (err)
+				return log_error_errno(err, errno, "Failed to delete default untagged vlan \"%u\" on \"%s\"", default_pvid, veth1);
+		}
+
+		if (netdev->priv.veth_attr.vlan_id > BRIDGE_VLAN_NONE) {
+			err = lxc_bridge_vlan_add(veth1index, netdev->priv.veth_attr.vlan_id, false);
+			if (err)
+				return log_error_errno(err, errno, "Failed to add untagged vlan \"%u\" on \"%s\"", netdev->priv.veth_attr.vlan_id, veth1);
+		}
+	}
+
+	/* Configure tagged VLAN settings on bridge port if specified. */
+	err = lxc_bridge_vlan_add_tagged(veth1index, &netdev->priv.veth_attr.vlan_tagged_ids);
+	if (err)
+		return log_error_errno(err, errno, "Failed to add tagged vlans on \"%s\"", veth1);
+
+	return 0;
+}
+
 static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	int err;
 	unsigned int mtu = 1500;
 	char *veth1, *veth2;
 	char veth1buf[IFNAMSIZ], veth2buf[IFNAMSIZ];
+
+	err = validate_veth(netdev);
+	if (err)
+		return err;
 
 	if (!is_empty_string(netdev->priv.veth_attr.pair)) {
 		veth1 = netdev->priv.veth_attr.pair;
@@ -420,6 +517,14 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 			goto out_delete;
 		}
 		INFO("Attached \"%s\" to bridge \"%s\"", veth1, netdev->link);
+
+		if (!is_ovs_bridge(netdev->link)) {
+			err = setup_veth_native_bridge_vlan(veth1, netdev);
+			if (err) {
+				SYSERROR("Failed to setup native bridge vlan on \"%s\"", veth1);
+				goto out_delete;
+			}
+		}
 	}
 
 	err = lxc_netdev_up(veth1);
