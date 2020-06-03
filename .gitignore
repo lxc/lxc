@@ -16,6 +16,7 @@
 
 Makefile.in
 Makefile
+COPYING
 
 aclocal.m4
 autom4te.cache
