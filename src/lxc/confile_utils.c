@@ -449,6 +449,11 @@ static void lxc_free_netdev(struct lxc_netdev *netdev)
 			free(cur->elem);
 			free(cur);
 		}
+
+		lxc_list_for_each_safe(cur, &netdev->priv.veth_attr.vlan_tagged_ids, next) {
+			lxc_list_del(cur);
+			free(cur);
+		}
 	}
 
 	free(netdev);
