@@ -384,6 +384,10 @@ extern int __build_bug_on_failed;
 #define BRIDGE_VLAN_NONE -1 /* Bridge VLAN option set to "none". */
 #endif
 
+#ifndef BRIDGE_VLAN_ID_MAX
+#define BRIDGE_VLAN_ID_MAX 4094 /* Bridge VLAN MAX VLAN ID. */
+#endif
+
 #ifndef BRIDGE_FLAGS_MASTER
 #define BRIDGE_FLAGS_MASTER 1 /* Bridge command to/from master */
 #endif
