@@ -380,6 +380,10 @@ extern int __build_bug_on_failed;
 #define IPVLAN_ISOLATION_VEPA 2
 #endif
 
+#ifndef BRIDGE_VLAN_NONE
+#define BRIDGE_VLAN_NONE -1 /* Bridge VLAN option set to "none". */
+#endif
+
 #ifndef BRIDGE_FLAGS_MASTER
 #define BRIDGE_FLAGS_MASTER 1 /* Bridge command to/from master */
 #endif
