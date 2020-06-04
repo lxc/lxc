@@ -274,6 +274,11 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 			if (netdev->priv.veth_attr.vlan_id_set)
 				TRACE("veth vlan id: %d", netdev->priv.veth_attr.vlan_id);
 
+			lxc_list_for_each_safe(cur, &netdev->priv.veth_attr.vlan_tagged_ids, next) {
+				unsigned short vlan_tagged_id = PTR_TO_USHORT(cur->elem);
+				TRACE("veth vlan tagged id: %u", vlan_tagged_id);
+			}
+
 			break;
 		case LXC_NET_MACVLAN:
 			TRACE("type: macvlan");
