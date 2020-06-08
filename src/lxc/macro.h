@@ -433,6 +433,9 @@ enum {
 
 #define PTR_TO_UINT64(p) ((uint64_t)((intptr_t)(p)))
 
+#define UINT_TO_PTR(u) ((void *) ((uintptr_t) (u)))
+#define PTR_TO_USHORT(p) ((unsigned short)((uintptr_t)(p)))
+
 #define LXC_INVALID_UID ((uid_t)-1)
 #define LXC_INVALID_GID ((gid_t)-1)
 
