@@ -422,6 +422,112 @@ static int setup_veth_native_bridge_vlan(char *veth1, struct lxc_netdev *netdev)
 	return 0;
 }
 
+struct ovs_veth_vlan_args {
+	const char *nic;
+	const char *vlan_mode;	/* Port VLAN mode. */
+	short vlan_id;		/* PVID VLAN ID. */
+	const char *trunks;	/* Comma delimited list of tagged VLAN IDs. */
+};
+
+
+static int lxc_ovs_setup_bridge_vlan_exec(void *data)
+{
+	struct ovs_veth_vlan_args *args = data;
+	const char *vlan_mode = "", *tag = "", *trunks = "";
+
+	vlan_mode = must_concat(NULL, "vlan_mode=", args->vlan_mode, (char *)NULL);
+
+	if (args->vlan_id >= 0) {
+		char buf[5];
+		int rc;
+
+		rc = snprintf(buf, sizeof(buf), "%u", args->vlan_id);
+		if (rc < 0 || (size_t)rc >= sizeof(buf))
+			return log_error_errno(-1, EINVAL, "Failed to parse ovs bridge vlan \"%u\"", args->vlan_id);
+
+		tag = must_concat(NULL, "tag=", buf, (char *)NULL);
+	}
+
+
+	if (strcmp(args->trunks, "") != 0)
+		trunks = must_concat(NULL, "trunks=", args->trunks, (char *)NULL);
+
+	/* Detect the combination of vlan_id and trunks specified and convert to ovs-vsctl command. */
+	if (strcmp(tag, "") != 0 && strcmp(trunks, "") != 0)
+		execlp("ovs-vsctl", "ovs-vsctl", "set", "port", args->nic, vlan_mode, tag, trunks, (char *)NULL);
+	else if (strcmp(tag, "") != 0)
+		execlp("ovs-vsctl", "ovs-vsctl", "set", "port", args->nic, vlan_mode, tag, (char *)NULL);
+	else if (strcmp(trunks, "") != 0)
+		execlp("ovs-vsctl", "ovs-vsctl", "set", "port", args->nic, vlan_mode, trunks, (char *)NULL);
+	else
+		return -EINVAL;
+
+	return -errno;
+}
+
+static int setup_veth_ovs_bridge_vlan(char *veth1, struct lxc_netdev *netdev)
+{
+	int taggedLength = lxc_list_len(&netdev->priv.veth_attr.vlan_tagged_ids);
+	struct ovs_veth_vlan_args args;
+	args.nic = veth1;
+	args.vlan_mode = "";
+	args.vlan_id = -1;
+	args.trunks = "";
+
+	/* Skip setup if no VLAN options are specified. */
+	if (!netdev->priv.veth_attr.vlan_id_set && taggedLength <= 0)
+		return 0;
+
+	/* Configure untagged VLAN settings on bridge port if specified. */
+	if (netdev->priv.veth_attr.vlan_id_set) {
+		if (netdev->priv.veth_attr.vlan_id == BRIDGE_VLAN_NONE && taggedLength <= 0)
+			return log_error_errno(-1, EINVAL, "Cannot use vlan.id=none with openvswitch bridges when not using vlan.tagged.id");
+
+		/* Configure the untagged 'native' membership settings of the port if VLAN ID specified.
+		 * Also set the vlan_mode=access, which will drop any tagged frames.
+		 * Order is important here, as vlan_mode is set to "access", assuming that vlan.tagged.id is not
+		 * used. If vlan.tagged.id is specified, then we expect it to also change the vlan_mode as needed.
+		 */
+		if (netdev->priv.veth_attr.vlan_id > BRIDGE_VLAN_NONE) {
+			args.vlan_mode = "access";
+			args.vlan_id = netdev->priv.veth_attr.vlan_id;
+		}
+	}
+
+	if (taggedLength > 0) {
+		args.vlan_mode = "trunk"; /* Default to only allowing tagged frames (drop untagged frames). */
+
+		if (netdev->priv.veth_attr.vlan_id > BRIDGE_VLAN_NONE) {
+			/* If untagged vlan mode isn't "none" then allow untagged frames for port's 'native' VLAN. */
+			args.vlan_mode  = "native-untagged";
+		}
+
+		struct lxc_list *iterator;
+		lxc_list_for_each(iterator, &netdev->priv.veth_attr.vlan_tagged_ids) {
+			unsigned short vlan_id = PTR_TO_USHORT(iterator->elem);
+			char buf[5]; /* Sufficient size to fit max VLAN ID (4094) null char. */
+			int rc;
+
+			rc = snprintf(buf, sizeof(buf), "%u", vlan_id);
+			if (rc < 0 || (size_t)rc >= sizeof(buf))
+				return log_error_errno(-1, EINVAL, "Failed to parse tagged vlan \"%u\" for interface \"%s\"", vlan_id, veth1);
+
+			args.trunks = must_concat(NULL, args.trunks, buf, ",", (char *)NULL);
+		}
+	}
+
+	if (strcmp(args.vlan_mode, "") != 0) {
+		int ret;
+		char cmd_output[PATH_MAX];
+
+		ret = run_command(cmd_output, sizeof(cmd_output), lxc_ovs_setup_bridge_vlan_exec, (void *)&args);
+		if (ret < 0)
+			return log_error_errno(-1, ret, "Failed to setup openvswitch vlan on port \"%s\": %s", args.nic, cmd_output);
+	}
+
+	return 0;
+}
+
 static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	int err;
