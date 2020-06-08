@@ -624,7 +624,14 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		}
 		INFO("Attached \"%s\" to bridge \"%s\"", veth1, netdev->link);
 
-		if (!is_ovs_bridge(netdev->link)) {
+		if (is_ovs_bridge(netdev->link)) {
+			err = setup_veth_ovs_bridge_vlan(veth1, netdev);
+			if (err) {
+				SYSERROR("Failed to setup openvswitch bridge vlan on \"%s\"", veth1);
+				lxc_ovs_delete_port(netdev->link, veth1);
+				goto out_delete;
+			}
+		} else {
 			err = setup_veth_native_bridge_vlan(veth1, netdev);
 			if (err) {
 				SYSERROR("Failed to setup native bridge vlan on \"%s\"", veth1);
