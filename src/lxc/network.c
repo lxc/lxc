@@ -182,11 +182,6 @@ static int setup_ipv6_addr_routes(struct lxc_list *ip, int ifindex)
 	return 0;
 }
 
-struct ip_proxy_args {
-	const char *ip;
-	const char *dev;
-};
-
 static int lxc_ip_neigh_proxy(__u16 nlmsg_type, int family, int ifindex, void *dest)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
@@ -426,38 +421,44 @@ struct ovs_veth_vlan_args {
 	const char *nic;
 	const char *vlan_mode;	/* Port VLAN mode. */
 	short vlan_id;		/* PVID VLAN ID. */
-	const char *trunks;	/* Comma delimited list of tagged VLAN IDs. */
+	char *trunks;		/* Comma delimited list of tagged VLAN IDs. */
 };
 
+static inline void free_ovs_veth_vlan_args(struct ovs_veth_vlan_args *args)
+{
+	free_disarm(args->trunks);
+}
 
 static int lxc_ovs_setup_bridge_vlan_exec(void *data)
 {
 	struct ovs_veth_vlan_args *args = data;
-	const char *vlan_mode = "", *tag = "", *trunks = "";
+       __do_free char *vlan_mode = NULL, *tag = NULL, *trunks = NULL;
+
+	if (!args->vlan_mode)
+		return ret_errno(EINVAL);
 
 	vlan_mode = must_concat(NULL, "vlan_mode=", args->vlan_mode, (char *)NULL);
 
-	if (args->vlan_id >= 0) {
+	if (args->vlan_id > BRIDGE_VLAN_NONE) {
 		char buf[5];
 		int rc;
 
 		rc = snprintf(buf, sizeof(buf), "%u", args->vlan_id);
 		if (rc < 0 || (size_t)rc >= sizeof(buf))
-			return log_error_errno(-1, EINVAL, "Failed to parse ovs bridge vlan \"%u\"", args->vlan_id);
+			return log_error_errno(-1, EINVAL, "Failed to parse ovs bridge vlan \"%d\"", args->vlan_id);
 
 		tag = must_concat(NULL, "tag=", buf, (char *)NULL);
 	}
 
-
-	if (strcmp(args->trunks, "") != 0)
+	if (args->trunks)
 		trunks = must_concat(NULL, "trunks=", args->trunks, (char *)NULL);
 
 	/* Detect the combination of vlan_id and trunks specified and convert to ovs-vsctl command. */
-	if (strcmp(tag, "") != 0 && strcmp(trunks, "") != 0)
+	if (tag && trunks)
 		execlp("ovs-vsctl", "ovs-vsctl", "set", "port", args->nic, vlan_mode, tag, trunks, (char *)NULL);
-	else if (strcmp(tag, "") != 0)
+	else if (tag)
 		execlp("ovs-vsctl", "ovs-vsctl", "set", "port", args->nic, vlan_mode, tag, (char *)NULL);
-	else if (strcmp(trunks, "") != 0)
+	else if (trunks)
 		execlp("ovs-vsctl", "ovs-vsctl", "set", "port", args->nic, vlan_mode, trunks, (char *)NULL);
 	else
 		return -EINVAL;
@@ -470,9 +471,9 @@ static int setup_veth_ovs_bridge_vlan(char *veth1, struct lxc_netdev *netdev)
 	int taggedLength = lxc_list_len(&netdev->priv.veth_attr.vlan_tagged_ids);
 	struct ovs_veth_vlan_args args;
 	args.nic = veth1;
-	args.vlan_mode = "";
-	args.vlan_id = -1;
-	args.trunks = "";
+	args.vlan_mode = NULL;
+	args.vlan_id = BRIDGE_VLAN_NONE;
+	args.trunks = NULL;
 
 	/* Skip setup if no VLAN options are specified. */
 	if (!netdev->priv.veth_attr.vlan_id_set && taggedLength <= 0)
@@ -509,22 +510,30 @@ static int setup_veth_ovs_bridge_vlan(char *veth1, struct lxc_netdev *netdev)
 			int rc;
 
 			rc = snprintf(buf, sizeof(buf), "%u", vlan_id);
-			if (rc < 0 || (size_t)rc >= sizeof(buf))
+			if (rc < 0 || (size_t)rc >= sizeof(buf)) {
+				free_ovs_veth_vlan_args(&args);
 				return log_error_errno(-1, EINVAL, "Failed to parse tagged vlan \"%u\" for interface \"%s\"", vlan_id, veth1);
+			}
 
-			args.trunks = must_concat(NULL, args.trunks, buf, ",", (char *)NULL);
+			if (args.trunks)
+				args.trunks = must_concat(NULL, args.trunks, buf, ",", (char *)NULL);
+			else
+				args.trunks = must_concat(NULL, buf, ",", (char *)NULL);
 		}
 	}
 
-	if (strcmp(args.vlan_mode, "") != 0) {
+	if (args.vlan_mode) {
 		int ret;
 		char cmd_output[PATH_MAX];
 
 		ret = run_command(cmd_output, sizeof(cmd_output), lxc_ovs_setup_bridge_vlan_exec, (void *)&args);
-		if (ret < 0)
+		if (ret < 0) {
+			free_ovs_veth_vlan_args(&args);
 			return log_error_errno(-1, ret, "Failed to setup openvswitch vlan on port \"%s\": %s", args.nic, cmd_output);
+		}
 	}
 
+	free_ovs_veth_vlan_args(&args);
 	return 0;
 }
 
