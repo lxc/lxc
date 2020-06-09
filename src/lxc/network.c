@@ -433,11 +433,14 @@ struct ovs_veth_vlan_args {
 static int lxc_ovs_setup_bridge_vlan_exec(void *data)
 {
 	struct ovs_veth_vlan_args *args = data;
-	const char *vlan_mode = "", *tag = "", *trunks = "";
+       __do_free char *vlan_mode = NULL, *tag = NULL, *trunks = NULL;
+
+	if (!args->vlan_mode)
+		return ret_errno(EINVAL);
 
 	vlan_mode = must_concat(NULL, "vlan_mode=", args->vlan_mode, (char *)NULL);
 
-	if (args->vlan_id >= 0) {
+	if (args->vlan_id > BRIDGE_VLAN_NONE) {
 		char buf[5];
 		int rc;
 
@@ -449,15 +452,15 @@ static int lxc_ovs_setup_bridge_vlan_exec(void *data)
 	}
 
 
-	if (strcmp(args->trunks, "") != 0)
+	if (args->trunks)
 		trunks = must_concat(NULL, "trunks=", args->trunks, (char *)NULL);
 
 	/* Detect the combination of vlan_id and trunks specified and convert to ovs-vsctl command. */
-	if (strcmp(tag, "") != 0 && strcmp(trunks, "") != 0)
+	if (tag && trunks)
 		execlp("ovs-vsctl", "ovs-vsctl", "set", "port", args->nic, vlan_mode, tag, trunks, (char *)NULL);
-	else if (strcmp(tag, "") != 0)
+	else if (tag)
 		execlp("ovs-vsctl", "ovs-vsctl", "set", "port", args->nic, vlan_mode, tag, (char *)NULL);
-	else if (strcmp(trunks, "") != 0)
+	else if (trunks)
 		execlp("ovs-vsctl", "ovs-vsctl", "set", "port", args->nic, vlan_mode, trunks, (char *)NULL);
 	else
 		return -EINVAL;
