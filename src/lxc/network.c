@@ -245,12 +245,299 @@ static int lxc_is_ip_forwarding_enabled(const char *ifname, int family)
 	return lxc_read_file_expect(path, buf, 1, "1");
 }
 
+struct bridge_vlan_info {
+	__u16 flags;
+	__u16 vid;
+};
+
+static int lxc_bridge_vlan(unsigned int ifindex, unsigned short operation, unsigned short vlan_id, bool tagged)
+{
+	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
+	struct nl_handler nlh;
+	call_cleaner(netlink_close) struct nl_handler *nlh_ptr = &nlh;
+	int err;
+	struct ifinfomsg *ifi;
+	struct rtattr *nest;
+	unsigned short bridge_flags = 0;
+	struct bridge_vlan_info vlan_info;
+
+	err = netlink_open(nlh_ptr, NETLINK_ROUTE);
+	if (err)
+		return err;
+
+	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
+	if (!nlmsg)
+		return ret_errno(ENOMEM);
+
+	answer = nlmsg_alloc_reserve(NLMSG_GOOD_SIZE);
+	if (!answer)
+		return ret_errno(ENOMEM);
+
+	nlmsg->nlmsghdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+	nlmsg->nlmsghdr->nlmsg_type = operation;
+
+	ifi = nlmsg_reserve(nlmsg, sizeof(struct ifinfomsg));
+	if (!ifi)
+		return ret_errno(ENOMEM);
+	ifi->ifi_family = AF_BRIDGE;
+	ifi->ifi_index = ifindex;
+
+	nest = nla_begin_nested(nlmsg, IFLA_AF_SPEC);
+	if (!nest)
+		return ret_errno(ENOMEM);
+
+	bridge_flags |= BRIDGE_FLAGS_MASTER;
+	if (nla_put_u16(nlmsg, IFLA_BRIDGE_FLAGS, bridge_flags))
+		return ret_errno(ENOMEM);
+
+	vlan_info.vid = vlan_id;
+	vlan_info.flags = 0;
+	if (!tagged)
+		vlan_info.flags = BRIDGE_VLAN_INFO_PVID | BRIDGE_VLAN_INFO_UNTAGGED;
+
+	if (nla_put_buffer(nlmsg, IFLA_BRIDGE_VLAN_INFO, &vlan_info, sizeof(struct bridge_vlan_info)))
+		return ret_errno(ENOMEM);
+
+	nla_end_nested(nlmsg, nest);
+
+	return netlink_transaction(nlh_ptr, nlmsg, answer);
+}
+
+static int lxc_bridge_vlan_add(unsigned int ifindex, unsigned short vlan_id, bool tagged)
+{
+	return lxc_bridge_vlan(ifindex, RTM_SETLINK, vlan_id, tagged);
+}
+
+static int lxc_bridge_vlan_del(unsigned int ifindex, unsigned short vlan_id)
+{
+	return lxc_bridge_vlan(ifindex, RTM_DELLINK, vlan_id, false);
+}
+
+static int lxc_bridge_vlan_add_tagged(unsigned int ifindex, struct lxc_list *vlan_ids)
+{
+	struct lxc_list *iterator;
+	int err;
+
+	lxc_list_for_each(iterator, vlan_ids) {
+		unsigned short vlan_id = PTR_TO_USHORT(iterator->elem);
+
+		err = lxc_bridge_vlan_add(ifindex, vlan_id, true);
+		if (err)
+			return log_error_errno(-1, -err, "Failed to add tagged vlan \"%u\" to ifindex \"%d\"", vlan_id, ifindex);
+	}
+
+	return 0;
+}
+
+static int validate_veth(struct lxc_netdev *netdev)
+{
+	if (netdev->priv.veth_attr.mode != VETH_MODE_BRIDGE || is_empty_string(netdev->link)) {
+		/* Check that veth.vlan.id isn't being used in non bridge veth.mode. */
+		if (netdev->priv.veth_attr.vlan_id_set)
+			return log_error_errno(-1, EINVAL, "Cannot use veth vlan.id when not in bridge mode or no bridge link specified");
+
+		/* Check that veth.vlan.tagged.id isn't being used in non bridge veth.mode. */
+		if (lxc_list_len(&netdev->priv.veth_attr.vlan_tagged_ids) > 0)
+			return log_error_errno(-1, EINVAL, "Cannot use veth vlan.id when not in bridge mode or no bridge link specified");
+	}
+
+	if (netdev->priv.veth_attr.vlan_id_set) {
+		struct lxc_list *it;
+		lxc_list_for_each(it, &netdev->priv.veth_attr.vlan_tagged_ids) {
+			unsigned short i = PTR_TO_USHORT(it->elem);
+			if (i == netdev->priv.veth_attr.vlan_id)
+				return log_error_errno(-1, EINVAL, "Cannot use same veth vlan.id \"%u\" in vlan.tagged.id", netdev->priv.veth_attr.vlan_id);
+		}
+	}
+
+	return 0;
+}
+
+static int setup_veth_native_bridge_vlan(char *veth1, struct lxc_netdev *netdev)
+{
+	int err, rc, veth1index;
+	char path[STRLITERALLEN("/sys/class/net//bridge/vlan_filtering") + IFNAMSIZ + 1];
+	char buf[5]; /* Sufficient size to fit max VLAN ID (4094) and null char. */
+
+	/* Skip setup if no VLAN options are specified. */
+	if (!netdev->priv.veth_attr.vlan_id_set && lxc_list_len(&netdev->priv.veth_attr.vlan_tagged_ids) <= 0)
+		return 0;
+
+	/* Check vlan filtering is enabled on parent bridge. */
+	rc = snprintf(path, sizeof(path), "/sys/class/net/%s/bridge/vlan_filtering", netdev->link);
+	if (rc < 0 || (size_t)rc >= sizeof(path))
+		return -1;
+
+	rc = lxc_read_from_file(path, buf, sizeof(buf));
+	if (rc < 0)
+		return log_error_errno(rc, errno, "Failed reading from \"%s\"", path);
+
+	buf[rc - 1] = '\0';
+
+	if (strcmp(buf, "1") != 0)
+		return log_error_errno(-1, EPERM, "vlan_filtering is not enabled on \"%s\"", netdev->link);
+
+	/* Get veth1 ifindex for use with netlink. */
+	veth1index = if_nametoindex(veth1);
+	if (!veth1index)
+		return log_error_errno(-1, errno, "Failed getting ifindex of \"%s\"", netdev->link);
+
+	/* Configure untagged VLAN settings on bridge port if specified. */
+	if (netdev->priv.veth_attr.vlan_id_set) {
+		unsigned short default_pvid;
+
+		/* Get the bridge's default VLAN PVID. */
+		rc = snprintf(path, sizeof(path), "/sys/class/net/%s/bridge/default_pvid", netdev->link);
+		if (rc < 0 || (size_t)rc >= sizeof(path))
+			return -1;
+
+		rc = lxc_read_from_file(path, buf, sizeof(buf));
+		if (rc < 0)
+			return log_error_errno(rc, errno, "Failed reading from \"%s\"", path);
+
+		buf[rc - 1] = '\0';
+		err = get_u16(&default_pvid, buf, 0);
+		if (err)
+			return log_error_errno(-1, EINVAL, "Failed parsing default_pvid of \"%s\"", netdev->link);
+
+		/* If the default PVID on the port is not the specified untagged VLAN, then delete it. */
+		if (default_pvid != netdev->priv.veth_attr.vlan_id) {
+			err = lxc_bridge_vlan_del(veth1index, default_pvid);
+			if (err)
+				return log_error_errno(err, errno, "Failed to delete default untagged vlan \"%u\" on \"%s\"", default_pvid, veth1);
+		}
+
+		if (netdev->priv.veth_attr.vlan_id > BRIDGE_VLAN_NONE) {
+			err = lxc_bridge_vlan_add(veth1index, netdev->priv.veth_attr.vlan_id, false);
+			if (err)
+				return log_error_errno(err, errno, "Failed to add untagged vlan \"%u\" on \"%s\"", netdev->priv.veth_attr.vlan_id, veth1);
+		}
+	}
+
+	/* Configure tagged VLAN settings on bridge port if specified. */
+	err = lxc_bridge_vlan_add_tagged(veth1index, &netdev->priv.veth_attr.vlan_tagged_ids);
+	if (err)
+		return log_error_errno(err, errno, "Failed to add tagged vlans on \"%s\"", veth1);
+
+	return 0;
+}
+
+struct ovs_veth_vlan_args {
+	const char *nic;
+	const char *vlan_mode;	/* Port VLAN mode. */
+	short vlan_id;		/* PVID VLAN ID. */
+	const char *trunks;	/* Comma delimited list of tagged VLAN IDs. */
+};
+
+
+static int lxc_ovs_setup_bridge_vlan_exec(void *data)
+{
+	struct ovs_veth_vlan_args *args = data;
+	const char *vlan_mode = "", *tag = "", *trunks = "";
+
+	vlan_mode = must_concat(NULL, "vlan_mode=", args->vlan_mode, (char *)NULL);
+
+	if (args->vlan_id >= 0) {
+		char buf[5];
+		int rc;
+
+		rc = snprintf(buf, sizeof(buf), "%u", args->vlan_id);
+		if (rc < 0 || (size_t)rc >= sizeof(buf))
+			return log_error_errno(-1, EINVAL, "Failed to parse ovs bridge vlan \"%u\"", args->vlan_id);
+
+		tag = must_concat(NULL, "tag=", buf, (char *)NULL);
+	}
+
+
+	if (strcmp(args->trunks, "") != 0)
+		trunks = must_concat(NULL, "trunks=", args->trunks, (char *)NULL);
+
+	/* Detect the combination of vlan_id and trunks specified and convert to ovs-vsctl command. */
+	if (strcmp(tag, "") != 0 && strcmp(trunks, "") != 0)
+		execlp("ovs-vsctl", "ovs-vsctl", "set", "port", args->nic, vlan_mode, tag, trunks, (char *)NULL);
+	else if (strcmp(tag, "") != 0)
+		execlp("ovs-vsctl", "ovs-vsctl", "set", "port", args->nic, vlan_mode, tag, (char *)NULL);
+	else if (strcmp(trunks, "") != 0)
+		execlp("ovs-vsctl", "ovs-vsctl", "set", "port", args->nic, vlan_mode, trunks, (char *)NULL);
+	else
+		return -EINVAL;
+
+	return -errno;
+}
+
+static int setup_veth_ovs_bridge_vlan(char *veth1, struct lxc_netdev *netdev)
+{
+	int taggedLength = lxc_list_len(&netdev->priv.veth_attr.vlan_tagged_ids);
+	struct ovs_veth_vlan_args args;
+	args.nic = veth1;
+	args.vlan_mode = "";
+	args.vlan_id = -1;
+	args.trunks = "";
+
+	/* Skip setup if no VLAN options are specified. */
+	if (!netdev->priv.veth_attr.vlan_id_set && taggedLength <= 0)
+		return 0;
+
+	/* Configure untagged VLAN settings on bridge port if specified. */
+	if (netdev->priv.veth_attr.vlan_id_set) {
+		if (netdev->priv.veth_attr.vlan_id == BRIDGE_VLAN_NONE && taggedLength <= 0)
+			return log_error_errno(-1, EINVAL, "Cannot use vlan.id=none with openvswitch bridges when not using vlan.tagged.id");
+
+		/* Configure the untagged 'native' membership settings of the port if VLAN ID specified.
+		 * Also set the vlan_mode=access, which will drop any tagged frames.
+		 * Order is important here, as vlan_mode is set to "access", assuming that vlan.tagged.id is not
+		 * used. If vlan.tagged.id is specified, then we expect it to also change the vlan_mode as needed.
+		 */
+		if (netdev->priv.veth_attr.vlan_id > BRIDGE_VLAN_NONE) {
+			args.vlan_mode = "access";
+			args.vlan_id = netdev->priv.veth_attr.vlan_id;
+		}
+	}
+
+	if (taggedLength > 0) {
+		args.vlan_mode = "trunk"; /* Default to only allowing tagged frames (drop untagged frames). */
+
+		if (netdev->priv.veth_attr.vlan_id > BRIDGE_VLAN_NONE) {
+			/* If untagged vlan mode isn't "none" then allow untagged frames for port's 'native' VLAN. */
+			args.vlan_mode  = "native-untagged";
+		}
+
+		struct lxc_list *iterator;
+		lxc_list_for_each(iterator, &netdev->priv.veth_attr.vlan_tagged_ids) {
+			unsigned short vlan_id = PTR_TO_USHORT(iterator->elem);
+			char buf[5]; /* Sufficient size to fit max VLAN ID (4094) null char. */
+			int rc;
+
+			rc = snprintf(buf, sizeof(buf), "%u", vlan_id);
+			if (rc < 0 || (size_t)rc >= sizeof(buf))
+				return log_error_errno(-1, EINVAL, "Failed to parse tagged vlan \"%u\" for interface \"%s\"", vlan_id, veth1);
+
+			args.trunks = must_concat(NULL, args.trunks, buf, ",", (char *)NULL);
+		}
+	}
+
+	if (strcmp(args.vlan_mode, "") != 0) {
+		int ret;
+		char cmd_output[PATH_MAX];
+
+		ret = run_command(cmd_output, sizeof(cmd_output), lxc_ovs_setup_bridge_vlan_exec, (void *)&args);
+		if (ret < 0)
+			return log_error_errno(-1, ret, "Failed to setup openvswitch vlan on port \"%s\": %s", args.nic, cmd_output);
+	}
+
+	return 0;
+}
+
 static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	int err;
 	unsigned int mtu = 1500;
 	char *veth1, *veth2;
 	char veth1buf[IFNAMSIZ], veth2buf[IFNAMSIZ];
+
+	err = validate_veth(netdev);
+	if (err)
+		return err;
 
 	if (!is_empty_string(netdev->priv.veth_attr.pair)) {
 		veth1 = netdev->priv.veth_attr.pair;
@@ -324,14 +611,33 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 	}
 
 	if (!is_empty_string(netdev->link) && netdev->priv.veth_attr.mode == VETH_MODE_BRIDGE) {
+		if (!lxc_nic_exists(netdev->link)) {
+			SYSERROR("Failed to attach \"%s\" to bridge \"%s\", bridge interface doesn't exist", veth1, netdev->link);
+			goto out_delete;
+		}
+
 		err = lxc_bridge_attach(netdev->link, veth1);
 		if (err) {
 			errno = -err;
-			SYSERROR("Failed to attach \"%s\" to bridge \"%s\"",
-			         veth1, netdev->link);
+			SYSERROR("Failed to attach \"%s\" to bridge \"%s\"", veth1, netdev->link);
 			goto out_delete;
 		}
 		INFO("Attached \"%s\" to bridge \"%s\"", veth1, netdev->link);
+
+		if (is_ovs_bridge(netdev->link)) {
+			err = setup_veth_ovs_bridge_vlan(veth1, netdev);
+			if (err) {
+				SYSERROR("Failed to setup openvswitch bridge vlan on \"%s\"", veth1);
+				lxc_ovs_delete_port(netdev->link, veth1);
+				goto out_delete;
+			}
+		} else {
+			err = setup_veth_native_bridge_vlan(veth1, netdev);
+			if (err) {
+				SYSERROR("Failed to setup native bridge vlan on \"%s\"", veth1);
+				goto out_delete;
+			}
+		}
 	}
 
 	err = lxc_netdev_up(veth1);
@@ -555,7 +861,7 @@ static int lxc_ipvlan_create(const char *master, const char *name, int mode, int
 
 	err = netlink_open(nlh_ptr, NETLINK_ROUTE);
 	if (err)
-		return ret_errno(-err);
+		return err;
 
 	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
 	if (!nlmsg)

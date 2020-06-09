@@ -776,6 +776,21 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	if (set_get_compare_clear_save_load_network(c, "lxc.net.0.veth.vlan.id", "none", tmpf, false, "veth")) {
+		lxc_error("%s\n", "lxc.net.0.veth.vlan.id");
+		return -1;
+	}
+
+	if (set_get_compare_clear_save_load_network(c, "lxc.net.0.veth.vlan.id", "2", tmpf, true, "veth")) {
+		lxc_error("%s\n", "lxc.net.0.veth.vlan.id");
+		return -1;
+	}
+
+	if (set_get_compare_clear_save_load_network(c, "lxc.net.0.veth.vlan.tagged.id", "2", tmpf, true, "veth")) {
+		lxc_error("%s\n", "lxc.net.0.veth.vlan.tagged.id");
+		return -1;
+	}
+
 	if (set_get_compare_clear_save_load(c, "lxc.net.0.script.up", "/some/up/path", tmpf, true)) {
 		lxc_error("%s\n", "lxc.net.0.script.up");
 		goto non_test_error;

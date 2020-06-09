@@ -40,6 +40,7 @@ static char *api_extensions[] = {
 	"cgroup2",
 	"pidfd",
 	"cgroup_advanced_isolation",
+	"network_bridge_vlan",
 };
 
 static size_t nr_api_extensions = sizeof(api_extensions) / sizeof(*api_extensions);

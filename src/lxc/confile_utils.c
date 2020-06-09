@@ -257,6 +257,7 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 		switch (netdev->type) {
 		case LXC_NET_VETH:
 			TRACE("type: veth");
+			TRACE("veth mode: %d", netdev->priv.veth_attr.mode);
 
 			if (netdev->priv.veth_attr.pair[0] != '\0')
 				TRACE("veth pair: %s",
@@ -269,6 +270,15 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 			if (netdev->priv.veth_attr.ifindex > 0)
 				TRACE("host side ifindex for veth device: %d",
 				      netdev->priv.veth_attr.ifindex);
+
+			if (netdev->priv.veth_attr.vlan_id_set)
+				TRACE("veth vlan id: %d", netdev->priv.veth_attr.vlan_id);
+
+			lxc_list_for_each_safe(cur, &netdev->priv.veth_attr.vlan_tagged_ids, next) {
+				unsigned short vlan_tagged_id = PTR_TO_USHORT(cur->elem);
+				TRACE("veth vlan tagged id: %u", vlan_tagged_id);
+			}
+
 			break;
 		case LXC_NET_MACVLAN:
 			TRACE("type: macvlan");
@@ -437,6 +447,11 @@ static void lxc_free_netdev(struct lxc_netdev *netdev)
 		lxc_list_for_each_safe(cur, &netdev->priv.veth_attr.ipv6_routes, next) {
 			lxc_list_del(cur);
 			free(cur->elem);
+			free(cur);
+		}
+
+		lxc_list_for_each_safe(cur, &netdev->priv.veth_attr.vlan_tagged_ids, next) {
+			lxc_list_del(cur);
 			free(cur);
 		}
 	}

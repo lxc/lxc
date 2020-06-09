@@ -474,6 +474,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               <option>lxc.net.[i].veth.ipv6.route</option> options.
               Several lines specify several routes.
               The route is in format x.y.z.t/m, eg. 192.168.1.0/24.
+
+              In <option>bridge</option> mode untagged VLAN membership can be set with the
+              <option>lxc.net.[i].veth.vlan.id</option> option. It accepts a special value of 'none' indicating
+              that the container port should be removed from the bridge's default untagged VLAN.
+              The <option>lxc.net.[i].veth.vlan.tagged.id</option> option can be specified multiple times to set
+              the container's bridge port membership to one or more tagged VLANs.
             </para>
 
             <para>
