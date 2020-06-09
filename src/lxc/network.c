@@ -445,11 +445,10 @@ static int lxc_ovs_setup_bridge_vlan_exec(void *data)
 
 		rc = snprintf(buf, sizeof(buf), "%u", args->vlan_id);
 		if (rc < 0 || (size_t)rc >= sizeof(buf))
-			return log_error_errno(-1, EINVAL, "Failed to parse ovs bridge vlan \"%u\"", args->vlan_id);
+			return log_error_errno(-1, EINVAL, "Failed to parse ovs bridge vlan \"%d\"", args->vlan_id);
 
 		tag = must_concat(NULL, "tag=", buf, (char *)NULL);
 	}
-
 
 	if (args->trunks)
 		trunks = must_concat(NULL, "trunks=", args->trunks, (char *)NULL);
