@@ -510,8 +510,10 @@ static int setup_veth_ovs_bridge_vlan(char *veth1, struct lxc_netdev *netdev)
 			int rc;
 
 			rc = snprintf(buf, sizeof(buf), "%u", vlan_id);
-			if (rc < 0 || (size_t)rc >= sizeof(buf))
+			if (rc < 0 || (size_t)rc >= sizeof(buf)) {
+				free_ovs_veth_vlan_args(&args);
 				return log_error_errno(-1, EINVAL, "Failed to parse tagged vlan \"%u\" for interface \"%s\"", vlan_id, veth1);
+			}
 
 			if (args.trunks)
 				args.trunks = must_concat(NULL, args.trunks, buf, ",", (char *)NULL);
@@ -525,10 +527,13 @@ static int setup_veth_ovs_bridge_vlan(char *veth1, struct lxc_netdev *netdev)
 		char cmd_output[PATH_MAX];
 
 		ret = run_command(cmd_output, sizeof(cmd_output), lxc_ovs_setup_bridge_vlan_exec, (void *)&args);
-		if (ret < 0)
+		if (ret < 0) {
+			free_ovs_veth_vlan_args(&args);
 			return log_error_errno(-1, ret, "Failed to setup openvswitch vlan on port \"%s\": %s", args.nic, cmd_output);
+		}
 	}
 
+	free_ovs_veth_vlan_args(&args);
 	return 0;
 }
 
