@@ -559,7 +559,7 @@ static int lxc_ipvlan_create(const char *master, const char *name, int mode, int
 
 	err = netlink_open(nlh_ptr, NETLINK_ROUTE);
 	if (err)
-		return ret_errno(-err);
+		return err;
 
 	nlmsg = nlmsg_alloc(NLMSG_GOOD_SIZE);
 	if (!nlmsg)
