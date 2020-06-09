@@ -182,11 +182,6 @@ static int setup_ipv6_addr_routes(struct lxc_list *ip, int ifindex)
 	return 0;
 }
 
-struct ip_proxy_args {
-	const char *ip;
-	const char *dev;
-};
-
 static int lxc_ip_neigh_proxy(__u16 nlmsg_type, int family, int ifindex, void *dest)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
