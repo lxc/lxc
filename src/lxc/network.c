@@ -421,9 +421,13 @@ struct ovs_veth_vlan_args {
 	const char *nic;
 	const char *vlan_mode;	/* Port VLAN mode. */
 	short vlan_id;		/* PVID VLAN ID. */
-	const char *trunks;	/* Comma delimited list of tagged VLAN IDs. */
+	char *trunks;		/* Comma delimited list of tagged VLAN IDs. */
 };
 
+static inline void free_ovs_veth_vlan_args(struct ovs_veth_vlan_args *args)
+{
+	free_disarm(args->trunks);
+}
 
 static int lxc_ovs_setup_bridge_vlan_exec(void *data)
 {
