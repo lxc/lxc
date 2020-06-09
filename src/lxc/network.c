@@ -473,9 +473,9 @@ static int setup_veth_ovs_bridge_vlan(char *veth1, struct lxc_netdev *netdev)
 	int taggedLength = lxc_list_len(&netdev->priv.veth_attr.vlan_tagged_ids);
 	struct ovs_veth_vlan_args args;
 	args.nic = veth1;
-	args.vlan_mode = "";
-	args.vlan_id = -1;
-	args.trunks = "";
+	args.vlan_mode = NULL;
+	args.vlan_id = BRIDGE_VLAN_NONE;
+	args.trunks = NULL;
 
 	/* Skip setup if no VLAN options are specified. */
 	if (!netdev->priv.veth_attr.vlan_id_set && taggedLength <= 0)
@@ -515,11 +515,14 @@ static int setup_veth_ovs_bridge_vlan(char *veth1, struct lxc_netdev *netdev)
 			if (rc < 0 || (size_t)rc >= sizeof(buf))
 				return log_error_errno(-1, EINVAL, "Failed to parse tagged vlan \"%u\" for interface \"%s\"", vlan_id, veth1);
 
-			args.trunks = must_concat(NULL, args.trunks, buf, ",", (char *)NULL);
+			if (args.trunks)
+				args.trunks = must_concat(NULL, args.trunks, buf, ",", (char *)NULL);
+			else
+				args.trunks = must_concat(NULL, buf, ",", (char *)NULL);
 		}
 	}
 
-	if (strcmp(args.vlan_mode, "") != 0) {
+	if (args.vlan_mode) {
 		int ret;
 		char cmd_output[PATH_MAX];
 
