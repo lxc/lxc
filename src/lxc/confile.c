@@ -5906,7 +5906,7 @@ static int get_config_net_veth_vlan_tagged_id(const char *key, char *retv, int i
 	struct lxc_netdev *netdev = data;
 
 	if (!netdev)
-		ret_errno(EINVAL);
+		return ret_errno(EINVAL);
 
 	if (netdev->type != LXC_NET_VETH)
 		return 0;
