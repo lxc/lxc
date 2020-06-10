@@ -1082,6 +1082,7 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 	for (int i = 0; ops->hierarchies[i]; i++) {
 		__do_free char *pivot_path = NULL;
 		struct hierarchy *h = ops->hierarchies[i];
+		size_t offset;
 		int ret;
 
 		if (!h->monitor_full_path)
@@ -1094,19 +1095,19 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 		}
 
 		if (conf && conf->cgroup_meta.monitor_dir)
-			pivot_path = must_make_path(h->mountpoint,
-						    h->container_base_path,
-						    conf->cgroup_meta.monitor_dir,
-						    CGROUP_PIVOT, NULL);
+			pivot_path = must_make_path(h->mountpoint, h->container_base_path,
+						    conf->cgroup_meta.monitor_dir, CGROUP_PIVOT, NULL);
 		else if (conf && conf->cgroup_meta.dir)
-			pivot_path = must_make_path(h->mountpoint,
-						    h->container_base_path,
-						    conf->cgroup_meta.dir,
-						    CGROUP_PIVOT, NULL);
+			pivot_path = must_make_path(h->mountpoint, h->container_base_path,
+						    conf->cgroup_meta.dir, CGROUP_PIVOT, NULL);
 		else
-			pivot_path = must_make_path(h->mountpoint,
-						    h->container_base_path,
+			pivot_path = must_make_path(h->mountpoint, h->container_base_path,
 						    CGROUP_PIVOT, NULL);
+
+		offset = strlen(h->mountpoint) + strlen(h->container_base_path);
+
+		if (cg_legacy_handle_cpuset_hierarchy(h, pivot_path + offset))
+			SYSWARN("Failed to initialize cpuset %s/" CGROUP_PIVOT, pivot_path);
 
 		ret = mkdir_p(pivot_path, 0755);
 		if (ret < 0 && errno != EEXIST) {
