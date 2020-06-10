@@ -50,6 +50,7 @@ noinst_HEADERS = api_extensions.h \
 		 tools/arguments.h \
 		 storage/storage_utils.h \
 		 utils.h \
+		 utils_no_static.h \
 		 uuid.h
 
 if IS_BIONIC
@@ -150,6 +151,7 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    syscall_wrappers.h \
 		    terminal.c \
 		    utils.c utils.h \
+		    utils_no_static.c utils_no_static.h \
 		    uuid.c uuid.h \
 		    version.h \
 		    $(LSM_SOURCES)
@@ -418,6 +420,7 @@ lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c \
 			 memory_utils.h \
 			 string_utils.c string_utils.h \
 			 syscall_wrappers.h \
+			 utils_no_static.c utils_no_static.h
 			 utils.c utils.h
 endif
 
