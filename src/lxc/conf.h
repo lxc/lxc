@@ -443,7 +443,6 @@ extern int setup_resource_limits(struct lxc_list *limits, pid_t pid);
 extern int find_unmapped_nsid(const struct lxc_conf *conf, enum idtype idtype);
 extern int mapped_hostid(unsigned id, const struct lxc_conf *conf,
 			 enum idtype idtype);
-extern int chown_mapped_root(const char *path, const struct lxc_conf *conf);
 extern int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *),
 			 void *data, const char *fn_name);
 extern int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *),
@@ -476,5 +475,9 @@ extern int userns_exec_minimal(const struct lxc_conf *conf,
 			       int (*fn_child)(void *), void *fn_child_data);
 extern int userns_exec_mapped_root(const char *path, int path_fd,
 				   const struct lxc_conf *conf);
+static inline int chown_mapped_root(const char *path, const struct lxc_conf *conf)
+{
+	return userns_exec_mapped_root(path, -EBADF, conf);
+}
 
 #endif /* __LXC_CONF_H */
