@@ -2896,127 +2896,6 @@ again:
 	return freeid;
 }
 
-int chown_mapped_root_exec_wrapper(void *args)
-{
-	execvp("lxc-usernsexec", args);
-	return -1;
-}
-
-/* chown_mapped_root: for an unprivileged user with uid/gid X to
- * chown a dir to subuid/subgid Y, he needs to run chown as root
- * in a userns where nsid 0 is mapped to hostuid/hostgid Y, and
- * nsid Y is mapped to hostuid/hostgid X.  That way, the container
- * root is privileged with respect to hostuid/hostgid X, allowing
- * him to do the chown.
- */
-int chown_mapped_root(const char *path, const struct lxc_conf *conf)
-{
-	uid_t rootuid, rootgid;
-	int hostuid, hostgid, ret;
-	struct stat sb;
-	char map1[100], map2[100], map3[100], map4[100], map5[100];
-	char ugid[100];
-	const char *args1[] = {"lxc-usernsexec",
-			 "-m", map1,
-			 "-m", map2,
-			 "-m", map3,
-			 "-m", map5,
-			 "--", "chown", ugid, path,
-			 NULL};
-	const char *args2[] = {"lxc-usernsexec",
-			 "-m", map1,
-			 "-m", map2,
-			 "-m", map3,
-			 "-m", map4,
-			 "-m", map5,
-			 "--", "chown", ugid, path,
-			 NULL};
-	char cmd_output[PATH_MAX];
-
-	rootuid = get_mapped_rootid(conf, ID_TYPE_UID);
-	if (!uid_valid(rootuid))
-		return log_error(-1, "No uid mapping for container root");
-
-	rootgid = get_mapped_rootid(conf, ID_TYPE_GID);
-	if (!gid_valid(rootgid))
-		return log_error(-1, "No gid mapping for container root");
-
-	hostuid = geteuid();
-	if (hostuid == 0) {
-		if (chown(path, rootuid, rootgid) < 0)
-			return log_error(-1, "Error chowning %s", path);
-
-		return 0;
-	}
-
-	/* nothing to do */
-	if (rootuid == hostuid)
-		return log_info(0, "Container root is our uid; no need to chown");
-
-	/* save the current gid of "path" */
-	if (stat(path, &sb) < 0)
-		return log_error(-1, "Error stat %s", path);
-
-	/* Update the path argument in case this was overlayfs. */
-	args1[sizeof(args1) / sizeof(args1[0]) - 2] = path;
-	args2[sizeof(args2) / sizeof(args2[0]) - 2] = path;
-
-	/*
-	 * A file has to be group-owned by a gid mapped into the
-	 * container, or the container won't be privileged over it.
-	 */
-	hostgid = getegid();
-	DEBUG("trying to chown \"%s\" to %d", path, hostgid);
-	if (sb.st_uid == hostuid &&
-	    mapped_hostid(sb.st_gid, conf, ID_TYPE_GID) < 0 &&
-	    chown(path, -1, hostgid) < 0)
-		return log_error(-1, "Failed chgrping %s", path);
-
-	/* "u:0:rootuid:1" */
-	ret = snprintf(map1, 100, "u:0:%d:1", rootuid);
-	if (ret < 0 || ret >= 100)
-		return log_error(-1, "Error uid printing map string");
-
-	/* "u:hostuid:hostuid:1" */
-	ret = snprintf(map2, 100, "u:%d:%d:1", hostuid, hostuid);
-	if (ret < 0 || ret >= 100)
-		return log_error(-1, "Error uid printing map string");
-
-	/* "g:0:rootgid:1" */
-	ret = snprintf(map3, 100, "g:0:%d:1", rootgid);
-	if (ret < 0 || ret >= 100)
-		return log_error(-1, "Error gid printing map string");
-
-	/* "g:pathgid:rootgid+pathgid:1" */
-	ret = snprintf(map4, 100, "g:%d:%d:1", (gid_t)sb.st_gid,
-		       rootgid + (gid_t)sb.st_gid);
-	if (ret < 0 || ret >= 100)
-		return log_error(-1, "Error gid printing map string");
-
-	/* "g:hostgid:hostgid:1" */
-	ret = snprintf(map5, 100, "g:%d:%d:1", hostgid, hostgid);
-	if (ret < 0 || ret >= 100)
-		return log_error(-1, "Error gid printing map string");
-
-	/* "0:pathgid" (chown) */
-	ret = snprintf(ugid, 100, "0:%d", (gid_t)sb.st_gid);
-	if (ret < 0 || ret >= 100)
-		return log_error(-1, "Error owner printing format string for chown");
-
-	if (hostgid == sb.st_gid)
-		ret = run_command(cmd_output, sizeof(cmd_output),
-				  chown_mapped_root_exec_wrapper,
-				  (void *)args1);
-	else
-		ret = run_command(cmd_output, sizeof(cmd_output),
-				  chown_mapped_root_exec_wrapper,
-				  (void *)args2);
-	if (ret < 0)
-		ERROR("lxc-usernsexec failed: %s", cmd_output);
-
-	return ret;
-}
-
 /* NOTE: Must not be called from inside the container namespace! */
 int lxc_create_tmp_proc_mount(struct lxc_conf *conf)
 {
@@ -4526,7 +4405,7 @@ int userns_exec_mapped_root(const char *path, int path_fd,
 		return log_error(-1, "No gid mapping for container root");
 
 	if (path_fd < 0) {
-		fd = open(path, O_RDWR | O_CLOEXEC | O_NOCTTY | O_PATH);
+		fd = open(path, O_CLOEXEC | O_NOCTTY);
 		if (fd < 0)
 			return log_error_errno(-errno, errno, "Failed to open \"%s\"", path);
 		target_fd = fd;
@@ -4563,6 +4442,7 @@ int userns_exec_mapped_root(const char *path, int path_fd,
 			return log_error_errno(-errno, errno,
 					       "Failed to fchown(%d(%s), -1, %d)",
 					       target_fd, path, hostgid);
+		TRACE("Chowned %d(%s) to -1:%d", target_fd, path, hostgid);
 	}
 
 	idmap = malloc(sizeof(*idmap));
@@ -4633,12 +4513,13 @@ int userns_exec_mapped_root(const char *path, int path_fd,
 		if (!lxc_setgroups(0, NULL))
 			_exit(EXIT_FAILURE);
 
-		ret = chown(path, 0, st.st_gid);
+		ret = fchown(target_fd, 0, st.st_gid);
 		if (ret) {
-			SYSERROR("Failed to chown \"%s\"", path);
+			SYSERROR("Failed to chown %d(%s) to -1:%d", target_fd, path, st.st_gid);
 			_exit(EXIT_FAILURE);
 		}
 
+		TRACE("Chowned %d(%s) to 0:%d", target_fd, path, st.st_gid);
 		_exit(EXIT_SUCCESS);
 	}
 
