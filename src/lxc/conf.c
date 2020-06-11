@@ -4560,6 +4560,7 @@ int userns_exec_mapped_root(const char *path, int path_fd,
 			return log_error_errno(-errno, errno,
 					       "Failed to fchown(%d(%s), -1, %d)",
 					       target_fd, path, hostgid);
+		TRACE("Chowned %d(%s) to -1:%d", target_fd, path, hostgid);
 	}
 
 	idmap = malloc(sizeof(*idmap));
@@ -4632,10 +4633,11 @@ int userns_exec_mapped_root(const char *path, int path_fd,
 
 		ret = fchown(target_fd, 0, st.st_gid);
 		if (ret) {
-			SYSERROR("Failed to chown \"%s\"", path);
+			SYSERROR("Failed to chown %d(%s) to -1:%d", target_fd, path, st.st_gid);
 			_exit(EXIT_FAILURE);
 		}
 
+		TRACE("Chowned %d(%s) to 0:%d", target_fd, path, st.st_gid);
 		_exit(EXIT_SUCCESS);
 	}
 
