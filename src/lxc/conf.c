@@ -4633,7 +4633,7 @@ int userns_exec_mapped_root(const char *path, int path_fd,
 		if (!lxc_setgroups(0, NULL))
 			_exit(EXIT_FAILURE);
 
-		ret = chown(path, 0, st.st_gid);
+		ret = fchown(target_fd, 0, st.st_gid);
 		if (ret) {
 			SYSERROR("Failed to chown \"%s\"", path);
 			_exit(EXIT_FAILURE);
