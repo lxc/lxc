@@ -1185,7 +1185,6 @@ WRAP_API(bool, lxcapi_stop)
 
 static int do_create_container_dir(const char *path, struct lxc_conf *conf)
 {
-	__do_free char *p = NULL;
 	int lasterr;
 	int ret = -1;
 
@@ -1201,10 +1200,8 @@ static int do_create_container_dir(const char *path, struct lxc_conf *conf)
 		ret = 0;
 	}
 
-	p = must_copy_string(path);
-
 	if (!lxc_list_empty(&conf->id_map)) {
-		ret = chown_mapped_root(p, conf);
+		ret = chown_mapped_root(path, conf);
 		if (ret < 0)
 			ret = -1;
 	}
