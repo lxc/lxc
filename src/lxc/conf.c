@@ -4523,7 +4523,7 @@ int userns_exec_mapped_root(const char *path, int path_fd,
 		return log_error(-1, "No gid mapping for container root");
 
 	if (path_fd < 0) {
-		fd = open(path, O_RDWR | O_CLOEXEC | O_NOCTTY | O_PATH);
+		fd = open(path, O_CLOEXEC | O_NOCTTY);
 		if (fd < 0)
 			return log_error_errno(-errno, errno, "Failed to open \"%s\"", path);
 		target_fd = fd;
