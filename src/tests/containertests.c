@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
 
 	str = c->config_file_name(c);
 #define CONFIGFNAM LXCPATH "/" MYNAME "/config"
-	if (!str || strcmp(str, CONFIGFNAM)) {
+	if (str && strcmp(str, CONFIGFNAM)) {
 		fprintf(stderr, "%d: got wrong config file name (%s, not %s)\n", __LINE__, str, CONFIGFNAM);
 		goto out;
 	}
