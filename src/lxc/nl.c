@@ -106,8 +106,10 @@ struct nlmsg *nlmsg_alloc(size_t size)
 		return ret_set_errno(NULL, ENOMEM);
 
 	nlmsg->nlmsghdr = malloc(len);
-	if (!nlmsg->nlmsghdr)
+	if (!nlmsg->nlmsghdr) {
+		free(nlmsg);
 		return ret_set_errno(NULL, ENOMEM);
+	}
 
 	memset(nlmsg->nlmsghdr, 0, len);
 	nlmsg->cap = len;
