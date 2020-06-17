@@ -563,7 +563,7 @@ struct lxc_container {
 	 * \param c Container.
 	 * \param[in,out] ttynum Terminal number to attempt to allocate,
 	 *  or \c -1 to allocate the first available tty.
-	 * \param[out] masterfd File descriptor referring to the master side of the pty.
+	 * \param[out] ptmxfd File descriptor referring to the ptmx side of the pty.
 	 *
 	 * \return tty file descriptor number on success, or \c -1 on
 	 *  failure.
@@ -575,7 +575,7 @@ struct lxc_container {
 	 *  descriptor when no longer required so that it may be allocated
 	 *  by another caller.
 	 */
-	int (*console_getfd)(struct lxc_container *c, int *ttynum, int *masterfd);
+	int (*console_getfd)(struct lxc_container *c, int *ttynum, int *ptmxfd);
 
 	/*!
 	 * \brief Allocate and run a console tty.
