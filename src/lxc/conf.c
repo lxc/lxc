@@ -921,33 +921,33 @@ int lxc_allocate_ttys(struct lxc_conf *conf)
 	for (size_t i = 0; i < ttys->max; i++) {
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
-		tty->master = -EBADF;
-		tty->slave = -EBADF;
-		ret = openpty(&tty->master, &tty->slave, NULL, NULL, NULL);
+		tty->ptmx = -EBADF;
+		tty->pts = -EBADF;
+		ret = openpty(&tty->ptmx, &tty->pts, NULL, NULL, NULL);
 		if (ret < 0) {
 			ttys->max = i;
 			return log_error_errno(-ENOTTY, ENOTTY, "Failed to create tty %zu", i);
 		}
 
-		ret = ttyname_r(tty->slave, tty->name, sizeof(tty->name));
+		ret = ttyname_r(tty->pts, tty->name, sizeof(tty->name));
 		if (ret < 0) {
 			ttys->max = i;
-			return log_error_errno(-ENOTTY, ENOTTY, "Failed to retrieve name of tty %zu slave", i);
+			return log_error_errno(-ENOTTY, ENOTTY, "Failed to retrieve name of tty %zu pts", i);
 		}
 
-		DEBUG("Created tty \"%s\" with master fd %d and slave fd %d",
-		      tty->name, tty->master, tty->slave);
+		DEBUG("Created tty \"%s\" with ptmx fd %d and pts fd %d",
+		      tty->name, tty->ptmx, tty->pts);
 
 		/* Prevent leaking the file descriptors to the container */
-		ret = fd_cloexec(tty->master, true);
+		ret = fd_cloexec(tty->ptmx, true);
 		if (ret < 0)
-			SYSWARN("Failed to set FD_CLOEXEC flag on master fd %d of tty device \"%s\"",
-				tty->master, tty->name);
+			SYSWARN("Failed to set FD_CLOEXEC flag on ptmx fd %d of tty device \"%s\"",
+				tty->ptmx, tty->name);
 
-		ret = fd_cloexec(tty->slave, true);
+		ret = fd_cloexec(tty->pts, true);
 		if (ret < 0)
-			SYSWARN("Failed to set FD_CLOEXEC flag on slave fd %d of tty device \"%s\"",
-				tty->slave, tty->name);
+			SYSWARN("Failed to set FD_CLOEXEC flag on pts fd %d of tty device \"%s\"",
+				tty->pts, tty->name);
 
 		tty->busy = -1;
 	}
@@ -964,8 +964,8 @@ void lxc_delete_tty(struct lxc_tty_info *ttys)
 
 	for (int i = 0; i < ttys->max; i++) {
 		struct lxc_terminal_info *tty = &ttys->tty[i];
-		close_prot_errno_disarm(tty->master);
-		close_prot_errno_disarm(tty->slave);
+		close_prot_errno_disarm(tty->ptmx);
+		close_prot_errno_disarm(tty->pts);
 	}
 
 	free_disarm(ttys->tty);
@@ -986,15 +986,15 @@ static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 		int ttyfds[2];
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
-		ttyfds[0] = tty->master;
-		ttyfds[1] = tty->slave;
+		ttyfds[0] = tty->ptmx;
+		ttyfds[1] = tty->pts;
 
 		ret = lxc_abstract_unix_send_fds(sock, ttyfds, 2, NULL, 0);
 		if (ret < 0)
 			break;
 
-		TRACE("Sent tty \"%s\" with master fd %d and slave fd %d to parent",
-		      tty->name, tty->master, tty->slave);
+		TRACE("Sent tty \"%s\" with ptmx fd %d and pts fd %d to parent",
+		      tty->name, tty->ptmx, tty->pts);
 	}
 
 	if (ret < 0)
@@ -1615,7 +1615,7 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-errno, errno, "Failed to create console");
 
-	ret = fchmod(console->slave, S_IXUSR | S_IXGRP);
+	ret = fchmod(console->pts, S_IXUSR | S_IXGRP);
 	if (ret < 0)
 		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", S_IXUSR | S_IXGRP, console->name);
 
@@ -1686,7 +1686,7 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-errno, errno, "Failed to create console");
 
-	ret = fchmod(console->slave, S_IXUSR | S_IXGRP);
+	ret = fchmod(console->pts, S_IXUSR | S_IXGRP);
 	if (ret < 0)
 		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", S_IXUSR | S_IXGRP, console->name);
 
@@ -2546,10 +2546,10 @@ struct lxc_conf *lxc_conf_init(void)
 	new->console.path = NULL;
 	new->console.peer = -1;
 	new->console.proxy.busy = -1;
-	new->console.proxy.master = -1;
-	new->console.proxy.slave = -1;
-	new->console.master = -1;
-	new->console.slave = -1;
+	new->console.proxy.ptmx = -1;
+	new->console.proxy.pts = -1;
+	new->console.ptmx = -1;
+	new->console.pts = -1;
 	new->console.name[0] = '\0';
 	memset(&new->console.ringbuf, 0, sizeof(struct lxc_ringbuf));
 	new->maincmd_fd = -1;

@@ -108,7 +108,7 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
  * stored directly in data and datalen will be 0.
  *
  * As a special case, the response for LXC_CMD_CONSOLE is created
- * here as it contains an fd for the master pty passed through the
+ * here as it contains an fd for the ptmx pty passed through the
  * unix socket.
  */
 static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
@@ -139,7 +139,7 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 					      ENOMEM, "Failed to receive response for command \"%s\"",
 					      lxc_cmd_str(cmd->req.cmd));
 
-		rspdata->masterfd = move_fd(fd_rsp);
+		rspdata->ptmxfd = move_fd(fd_rsp);
 		rspdata->ttynum = PTR_TO_INT(rsp->data);
 		rsp->data = rspdata;
 	}
@@ -844,7 +844,7 @@ static int lxc_cmd_terminal_winch_callback(int fd, struct lxc_cmd_req *req,
  * @name           : name of container to connect to
  * @ttynum         : in:  the tty to open or -1 for next available
  *                 : out: the tty allocated
- * @fd             : out: file descriptor for master side of pty
+ * @fd             : out: file descriptor for ptmx side of pty
  * @lxcpath        : the lxcpath in which the container is running
  *
  * Returns fd holding tty allocated on success, < 0 on failure
@@ -871,11 +871,11 @@ int lxc_cmd_console(const char *name, int *ttynum, int *fd, const char *lxcpath)
 	if (ret == 0)
 		return log_error(-1, "tty number %d invalid, busy or all ttys busy", *ttynum);
 
-	if (rspdata->masterfd < 0)
+	if (rspdata->ptmxfd < 0)
 		return log_error(-1, "Unable to allocate fd for tty %d", rspdata->ttynum);
 
 	ret = cmd.rsp.ret; /* socket fd */
-	*fd = rspdata->masterfd;
+	*fd = rspdata->ptmxfd;
 	*ttynum = rspdata->ttynum;
 
 	return log_info(ret, "Alloced fd %d for tty %d via socket %d", *fd, rspdata->ttynum, ret);
@@ -885,17 +885,17 @@ static int lxc_cmd_console_callback(int fd, struct lxc_cmd_req *req,
 				    struct lxc_handler *handler,
 				    struct lxc_epoll_descr *descr)
 {
-	int masterfd, ret;
+	int ptmxfd, ret;
 	struct lxc_cmd_rsp rsp;
 	int ttynum = PTR_TO_INT(req->data);
 
-	masterfd = lxc_terminal_allocate(handler->conf, fd, &ttynum);
-	if (masterfd < 0)
+	ptmxfd = lxc_terminal_allocate(handler->conf, fd, &ttynum);
+	if (ptmxfd < 0)
 		return LXC_CMD_REAP_CLIENT_FD;
 
 	memset(&rsp, 0, sizeof(rsp));
 	rsp.data = INT_TO_PTR(ttynum);
-	ret = lxc_abstract_unix_send_fds(fd, &masterfd, 1, &rsp, sizeof(rsp));
+	ret = lxc_abstract_unix_send_fds(fd, &ptmxfd, 1, &rsp, sizeof(rsp));
 	if (ret < 0) {
 		lxc_terminal_free(handler->conf, fd);
 		return log_error_errno(LXC_CMD_REAP_CLIENT_FD, errno,

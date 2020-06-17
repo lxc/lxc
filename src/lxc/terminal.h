@@ -15,14 +15,14 @@ struct lxc_conf;
 struct lxc_epoll_descr;
 
 struct lxc_terminal_info {
-	/* the path name of the slave side */
+	/* the path name of the pts side */
 	char name[PATH_MAX];
 
-	/* the file descriptor of the master */
-	int master;
+	/* the file descriptor of the ptmx */
+	int ptmx;
 
-	/* the file descriptor of the slave */
-	int slave;
+	/* the file descriptor of the pts */
+	int pts;
 
 	/* whether the terminal is currently used */
 	int busy;
@@ -32,7 +32,7 @@ struct lxc_terminal_state {
 	struct lxc_list node;
 	int stdinfd;
 	int stdoutfd;
-	int masterfd;
+	int ptmxfd;
 
 	/* Escape sequence to use for exiting the terminal. A single char can
 	 * be specified. The terminal can then exited by doing: Ctrl +
@@ -57,8 +57,8 @@ struct lxc_terminal_state {
 };
 
 struct lxc_terminal {
-	int slave;
-	int master;
+	int pts;
+	int ptmx;
 	int peer;
 	struct lxc_terminal_info proxy;
 	struct lxc_epoll_descr *descr;
@@ -102,10 +102,10 @@ extern int  lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttynum
 
 /**
  * Create a new terminal:
- * - calls openpty() to allocate a master/slave pair
- * - sets the FD_CLOEXEC flag on the master/slave fds
+ * - calls openpty() to allocate a ptmx/pts pair
+ * - sets the FD_CLOEXEC flag on the ptmx/pts fds
  * - allocates either the current controlling terminal (default) or a user
- *   specified terminal as proxy for the newly created master/slave pair
+ *   specified terminal as proxy for the newly created ptmx/pts pair
  * - sets up SIGWINCH handler, winsz, and new terminal settings
  *   (Handlers for SIGWINCH and I/O are not registered in a mainloop.)
  */
@@ -164,7 +164,7 @@ extern int  lxc_console(struct lxc_container *c, int ttynum,
  * the range specified by lxc.tty.max to allocate a specific tty.
  */
 extern int lxc_terminal_getfd(struct lxc_container *c, int *ttynum,
-			      int *masterfd);
+			      int *ptmxfd);
 
 /**
  * Make fd a duplicate of the standard file descriptors. The fd is made a
@@ -183,12 +183,12 @@ extern int lxc_terminal_stdin_cb(int fd, uint32_t events, void *cbdata,
 				 struct lxc_epoll_descr *descr);
 
 /**
- * Handler for events on the master fd of the terminal. To be registered via
+ * Handler for events on the ptmx fd of the terminal. To be registered via
  * the corresponding functions declared and defined in mainloop.{c,h} or
  * lxc_terminal_mainloop_add().
  * This function exits the loop cleanly when an EPOLLHUP event is received.
  */
-extern int lxc_terminal_master_cb(int fd, uint32_t events, void *cbdata,
+extern int lxc_terminal_ptmx_cb(int fd, uint32_t events, void *cbdata,
 				  struct lxc_epoll_descr *descr);
 
 /**
@@ -202,9 +202,9 @@ extern int lxc_setup_tios(int fd, struct termios *oldtios);
  * lxc_terminal_winsz: propagate winsz from one terminal to another
  *
  * @srcfd
- * - terminal to get size from (typically a slave pty)
+ * - terminal to get size from (typically a pts pty)
  * @dstfd
- * - terminal to set size on (typically a master pty)
+ * - terminal to set size on (typically a ptmx pty)
  */
 extern void lxc_terminal_winsz(int srcfd, int dstfd);
 

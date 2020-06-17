@@ -629,7 +629,7 @@ static signed long get_personality(const char *name, const char *lxcpath)
 
 struct attach_clone_payload {
 	int ipc_socket;
-	int terminal_slave_fd;
+	int terminal_pts_fd;
 	lxc_attach_options_t *options;
 	struct lxc_proc_context_info *init_ctx;
 	lxc_attach_exec_t exec_function;
@@ -639,7 +639,7 @@ struct attach_clone_payload {
 static void lxc_put_attach_clone_payload(struct attach_clone_payload *p)
 {
 	close_prot_errno_disarm(p->ipc_socket);
-	close_prot_errno_disarm(p->terminal_slave_fd);
+	close_prot_errno_disarm(p->terminal_pts_fd);
 	if (p->init_ctx) {
 		lxc_proc_put_context_info(p->init_ctx);
 		p->init_ctx = NULL;
@@ -860,13 +860,13 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	}
 
 	if (options->attach_flags & LXC_ATTACH_TERMINAL) {
-		ret = lxc_terminal_prepare_login(payload->terminal_slave_fd);
+		ret = lxc_terminal_prepare_login(payload->terminal_pts_fd);
 		if (ret < 0) {
-			SYSERROR("Failed to prepare terminal file descriptor %d", payload->terminal_slave_fd);
+			SYSERROR("Failed to prepare terminal file descriptor %d", payload->terminal_pts_fd);
 			goto on_error;
 		}
 
-		TRACE("Prepared terminal file descriptor %d", payload->terminal_slave_fd);
+		TRACE("Prepared terminal file descriptor %d", payload->terminal_pts_fd);
 	}
 
 	/* Avoid unnecessary syscalls. */
@@ -936,14 +936,14 @@ static int lxc_attach_terminal_mainloop_init(struct lxc_terminal *terminal,
 	return 0;
 }
 
-static inline void lxc_attach_terminal_close_master(struct lxc_terminal *terminal)
+static inline void lxc_attach_terminal_close_ptmx(struct lxc_terminal *terminal)
 {
-	close_prot_errno_disarm(terminal->master);
+	close_prot_errno_disarm(terminal->ptmx);
 }
 
-static inline void lxc_attach_terminal_close_slave(struct lxc_terminal *terminal)
+static inline void lxc_attach_terminal_close_pts(struct lxc_terminal *terminal)
 {
-	close_prot_errno_disarm(terminal->slave);
+	close_prot_errno_disarm(terminal->pts);
 }
 
 static inline void lxc_attach_terminal_close_peer(struct lxc_terminal *terminal)
@@ -1173,7 +1173,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		free(cwd);
 		lxc_proc_close_ns_fd(init_ctx);
 		if (options->attach_flags & LXC_ATTACH_TERMINAL)
-			lxc_attach_terminal_close_slave(&terminal);
+			lxc_attach_terminal_close_pts(&terminal);
 
 		/* Attach to cgroup, if requested. */
 		if (options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) {
@@ -1336,7 +1336,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	close_prot_errno_disarm(ipc_sockets[0]);
 
 	if (options->attach_flags & LXC_ATTACH_TERMINAL) {
-		lxc_attach_terminal_close_master(&terminal);
+		lxc_attach_terminal_close_ptmx(&terminal);
 		lxc_attach_terminal_close_peer(&terminal);
 		lxc_attach_terminal_close_log(&terminal);
 	}
@@ -1381,7 +1381,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	payload.ipc_socket = ipc_sockets[1];
 	payload.options = options;
 	payload.init_ctx = init_ctx;
-	payload.terminal_slave_fd = terminal.slave;
+	payload.terminal_pts_fd = terminal.pts;
 	payload.exec_function = exec_function;
 	payload.exec_payload = exec_payload;
 
@@ -1411,7 +1411,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	}
 
 	if (options->attach_flags & LXC_ATTACH_TERMINAL)
-		lxc_attach_terminal_close_slave(&terminal);
+		lxc_attach_terminal_close_pts(&terminal);
 
 	/* Tell grandparent the pid of the pid of the newly created child. */
 	ret = lxc_write_nointr(ipc_sockets[1], &pid, sizeof(pid));

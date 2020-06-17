@@ -1020,7 +1020,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		os.action = "restore";
 		os.user = opts;
 		os.c = c;
-		os.console_fd = c->lxc_conf->console.slave;
+		os.console_fd = c->lxc_conf->console.pts;
 		os.criu_version = criu_version;
 		os.handler = handler;
 
