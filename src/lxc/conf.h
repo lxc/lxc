@@ -451,7 +451,7 @@ extern int parse_mntopts(const char *mntopts, unsigned long *mntflags,
 			 char **mntdata);
 extern int parse_propagationopts(const char *mntopts, unsigned long *pflags);
 extern void tmp_proc_unmount(struct lxc_conf *lxc_conf);
-extern void remount_all_slave(void);
+extern void turn_into_dependent_mounts(void);
 extern void suggest_default_idmap(void);
 extern FILE *make_anonymous_mount_file(struct lxc_list *mount,
 				       bool include_nesting_helpers);

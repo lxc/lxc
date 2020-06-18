@@ -194,12 +194,8 @@ int lxc_attach_remount_sys_proc(void)
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to unshare mount namespace");
 
-	if (detect_shared_rootfs()) {
-		if (mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL)) {
-			SYSERROR("Failed to make / rslave");
-			ERROR("Continuing...");
-		}
-	}
+	if (detect_shared_rootfs() && mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL))
+		SYSERROR("Failed to recursively turn root mount tree into dependent mount. Continuing...");
 
 	/* Assume /proc is always mounted, so remount it. */
 	ret = umount2("/proc", MNT_DETACH);

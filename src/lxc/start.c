@@ -1935,7 +1935,7 @@ int __lxc_start(struct lxc_handler *handler, struct lxc_operations *ops,
 			}
 			INFO("Unshared CLONE_NEWNS");
 
-			remount_all_slave();
+			turn_into_dependent_mounts();
 			ret = lxc_setup_rootfs_prepare_root(conf, name, lxcpath);
 			if (ret < 0) {
 				ERROR("Error setting up rootfs mount as root before spawn");

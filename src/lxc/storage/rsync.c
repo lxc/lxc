@@ -78,12 +78,8 @@ int lxc_rsync(struct rsync_data *data)
 		return -1;
 	}
 
-	ret = detect_shared_rootfs();
-	if (ret) {
-		ret = mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL);
-		if (ret < 0)
-			SYSERROR("Failed to make \"/\" a slave mount");
-	}
+	if (detect_shared_rootfs() && mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL))
+		SYSERROR("Failed to recursively turn root mount tree into dependent mount");
 
 	ret = orig->ops->mount(orig);
 	if (ret < 0) {

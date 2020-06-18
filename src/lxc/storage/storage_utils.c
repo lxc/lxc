@@ -165,11 +165,8 @@ int detect_fs(struct lxc_storage *bdev, char *type, int len)
 	if (unshare(CLONE_NEWNS) < 0)
 		_exit(EXIT_FAILURE);
 
-	if (detect_shared_rootfs())
-		if (mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL)) {
-			SYSERROR("Failed to make / rslave");
-			ERROR("Continuing...");
-		}
+	if (detect_shared_rootfs() && mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL))
+		SYSERROR("Failed to recursively turn root mount tree into dependent mount. Continuing...");
 
 	ret = mount_unknown_fs(srcdev, bdev->dest, bdev->mntopts);
 	if (ret < 0) {

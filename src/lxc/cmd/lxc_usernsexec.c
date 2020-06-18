@@ -103,7 +103,7 @@ static int do_child(void *vargv)
 	if (detect_shared_rootfs()) {
 		ret = mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL);
 		if (ret < 0) {
-			CMD_SYSINFO("Failed to make \"/\" rslave");
+			CMD_SYSINFO("Failed to recursively turn root mount tree into dependent mount");
 			return -1;
 		}
 	}
