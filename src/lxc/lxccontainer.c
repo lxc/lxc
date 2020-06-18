@@ -1065,7 +1065,7 @@ static bool do_lxcapi_start(struct lxc_container *c, int useinit, char * const a
 
 		ret = mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL);
 		if (ret < 0) {
-			SYSERROR("Failed to make / rslave at startup");
+			SYSERROR("Failed to recursively turn root mount tree into dependent mount. Continuing...");
 			lxc_put_handler(handler);
 			ret = 1;
 			goto on_error;
@@ -1345,14 +1345,8 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 				_exit(EXIT_FAILURE);
 			}
 
-			ret = detect_shared_rootfs();
-			if (ret == 1) {
-				ret = mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL);
-				if (ret < 0) {
-					SYSERROR("Failed to make \"/\" rslave");
-					ERROR("Continuing...");
-				}
-			}
+			if (detect_shared_rootfs() && mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL))
+				SYSERROR("Failed to recursively turn root mount tree into dependent mount. Continuing...");
 		}
 
 		if (strcmp(bdev->type, "dir") != 0 && strcmp(bdev->type, "btrfs") != 0) {
@@ -3671,12 +3665,8 @@ static int clone_update_rootfs(struct clone_update_data *data)
 			return -1;
 		}
 
-		if (detect_shared_rootfs()) {
-			if (mount(NULL, "/", NULL, MS_SLAVE|MS_REC, NULL)) {
-				SYSERROR("Failed to make / rslave");
-				ERROR("Continuing...");
-			}
-		}
+		if (detect_shared_rootfs() && mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL))
+			SYSERROR("Failed to recursively turn root mount tree into dependent mount. Continuing...");
 
 		if (bdev->ops->mount(bdev) < 0) {
 			storage_put(bdev);

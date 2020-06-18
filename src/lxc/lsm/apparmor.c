@@ -121,7 +121,7 @@ static const char AA_PROFILE_BASE[] =
 "  # deny reads from debugfs\n"
 "  deny /sys/kernel/debug/{,**} rwklx,\n"
 "\n"
-"  # allow paths to be made slave, shared, private or unbindable\n"
+"  # allow paths to be made dependent, shared, private or unbindable\n"
 "  # TODO: This currently doesn't work due to the apparmor parser treating those as allowing all mounts.\n"
 "#  mount options=(rw,make-slave) -> **,\n"
 "#  mount options=(rw,make-rslave) -> **,\n"

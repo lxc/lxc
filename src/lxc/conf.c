@@ -1232,7 +1232,7 @@ static int lxc_mount_rootfs(struct lxc_conf *conf)
 	if (!rootfs->path) {
 		ret = mount("", "/", NULL, MS_SLAVE | MS_REC, 0);
 		if (ret < 0)
-			return log_error_errno(-1, errno, "Failed to remount \"/\" MS_REC | MS_SLAVE");
+			return log_error_errno(-1, errno, "Failed to recursively turn root mount tree into dependent mount");
 
 		return 0;
 	}
@@ -1409,12 +1409,12 @@ static int lxc_pivot_root(const char *rootfs)
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to enter old root directory");
 
-	/* Make oldroot rslave to make sure our umounts don't propagate to the
+	/* Make oldroot a depedent mount to make sure our umounts don't propagate to the
 	 * host.
 	 */
 	ret = mount("", ".", "", MS_SLAVE | MS_REC, NULL);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to make oldroot rslave");
+		return log_error_errno(-1, errno, "Failed to recursively turn old root mount tree into dependent mount");
 
 	ret = umount2(".", MNT_DETACH);
 	if (ret < 0)
@@ -2923,8 +2923,8 @@ void tmp_proc_unmount(struct lxc_conf *lxc_conf)
 	lxc_conf->tmp_umount_proc = false;
 }
 
-/* Walk /proc/mounts and change any shared entries to slave. */
-void remount_all_slave(void)
+/* Walk /proc/mounts and change any shared entries to dependent mounts. */
+void turn_into_dependent_mounts(void)
 {
 	__do_free char *line = NULL;
 	__do_fclose FILE *f = NULL;
@@ -3001,13 +3001,12 @@ again:
 		null_endofword(target);
 		ret = mount(NULL, target, NULL, MS_SLAVE, NULL);
 		if (ret < 0) {
-			SYSERROR("Failed to make \"%s\" MS_SLAVE", target);
-			ERROR("Continuing...");
+			SYSERROR("Failed to recursively turn old root mount tree into dependent mount. Continuing...");
 			continue;
 		}
-		TRACE("Remounted \"%s\" as MS_SLAVE", target);
+		TRACE("Recursively turned old root mount tree into dependent mount");
 	}
-	TRACE("Remounted all mount table entries as MS_SLAVE");
+	TRACE("Turned all mount table entries into dependent mount");
 }
 
 static int lxc_execute_bind_init(struct lxc_handler *handler)
@@ -3083,7 +3082,7 @@ int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const char *name,
 		return log_trace(0, "Bind mounted container / onto itself");
 	}
 
-	remount_all_slave();
+	turn_into_dependent_mounts();
 
 	ret = run_lxc_hooks(name, "pre-mount", conf, NULL);
 	if (ret < 0)
