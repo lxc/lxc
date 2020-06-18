@@ -389,7 +389,7 @@ extern int __build_bug_on_failed;
 #endif
 
 #ifndef BRIDGE_FLAGS_MASTER
-#define BRIDGE_FLAGS_MASTER 1 /* Bridge command to/from primary */
+#define BRIDGE_FLAGS_MASTER 1 /* Bridge command to/from parent */
 #endif
 
 #ifndef BRIDGE_VLAN_INFO_PVID

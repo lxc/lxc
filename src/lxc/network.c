@@ -847,7 +847,7 @@ on_error:
 	return -1;
 }
 
-static int lxc_ipvlan_create(const char *primary, const char *name, int mode, int isolation)
+static int lxc_ipvlan_create(const char *parent, const char *name, int mode, int isolation)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
 	struct nl_handler nlh;
@@ -856,7 +856,7 @@ static int lxc_ipvlan_create(const char *primary, const char *name, int mode, in
 	struct ifinfomsg *ifi;
 	struct rtattr *nest, *nest2;
 
-	len = strlen(primary);
+	len = strlen(parent);
 	if (len == 1 || len >= IFNAMSIZ)
 		return ret_errno(EINVAL);
 
@@ -864,7 +864,7 @@ static int lxc_ipvlan_create(const char *primary, const char *name, int mode, in
 	if (len == 1 || len >= IFNAMSIZ)
 		return ret_errno(EINVAL);
 
-	index = if_nametoindex(primary);
+	index = if_nametoindex(parent);
 	if (!index)
 		return ret_errno(EINVAL);
 
@@ -2052,7 +2052,7 @@ int lxc_veth_create(const char *name1, const char *name2, pid_t pid, unsigned in
 }
 
 /* TODO: merge with lxc_macvlan_create */
-int lxc_vlan_create(const char *primary, const char *name, unsigned short vlanid)
+int lxc_vlan_create(const char *parent, const char *name, unsigned short vlanid)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
 	struct nl_handler nlh;
@@ -2065,7 +2065,7 @@ int lxc_vlan_create(const char *primary, const char *name, unsigned short vlanid
 	if (err)
 		return err;
 
-	len = strlen(primary);
+	len = strlen(parent);
 	if (len == 1 || len >= IFNAMSIZ)
 		return ret_errno(EINVAL);
 
@@ -2081,7 +2081,7 @@ int lxc_vlan_create(const char *primary, const char *name, unsigned short vlanid
 	if (!answer)
 		return ret_errno(ENOMEM);
 
-	lindex = if_nametoindex(primary);
+	lindex = if_nametoindex(parent);
 	if (!lindex)
 		return ret_errno(EINVAL);
 
@@ -2120,7 +2120,7 @@ int lxc_vlan_create(const char *primary, const char *name, unsigned short vlanid
 	return netlink_transaction(nlh_ptr, nlmsg, answer);
 }
 
-int lxc_macvlan_create(const char *primary, const char *name, int mode)
+int lxc_macvlan_create(const char *parent, const char *name, int mode)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
 	struct nl_handler nlh;
@@ -2133,7 +2133,7 @@ int lxc_macvlan_create(const char *primary, const char *name, int mode)
 	if (err)
 		return err;
 
-	len = strlen(primary);
+	len = strlen(parent);
 	if (len == 1 || len >= IFNAMSIZ)
 		return ret_errno(EINVAL);
 
@@ -2149,7 +2149,7 @@ int lxc_macvlan_create(const char *primary, const char *name, int mode)
 	if (!answer)
 		return ret_errno(ENOMEM);
 
-	index = if_nametoindex(primary);
+	index = if_nametoindex(parent);
 	if (!index)
 		return ret_errno(EINVAL);
 
