@@ -27,10 +27,12 @@
 #include <termios.h>
 #include <sys/ioctl.h>
 
-/* Create pseudo tty master slave pair with NAME and set terminal
-   attributes according to TERMP and WINP and return handles for both
-   ends in AMASTER and ASLAVE.  */
-extern int openpty (int *__amaster, int *__aslave, char *__name,
+/*
+ * Create pseudo tty ptmx pts pair with @__name and set terminal
+ * attributes according to @__termp and @__winp and return handles for both
+ * ends in @__aptmx and @__apts.
+ */
+extern int openpty (int *__aptmx, int *__apts, char *__name,
 		    const struct termios *__termp,
 		    const struct winsize *__winp);
 
