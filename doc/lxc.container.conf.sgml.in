@@ -536,25 +536,25 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               modes are <option>l3</option>, <option>l3s</option> and
               <option>l2</option>. It defaults to <option>l3</option> mode.
               In <option>l3</option> mode TX processing up to L3 happens on the stack instance
-              attached to the slave device and packets are switched to the stack instance of the
-              master device for the L2 processing and routing from that instance will be
-              used before packets are queued on the outbound device. In this mode the slaves
+              attached to the dependent device and packets are switched to the stack instance of the
+              parent device for the L2 processing and routing from that instance will be
+              used before packets are queued on the outbound device. In this mode the dependent devices
               will not receive nor can send multicast / broadcast traffic.
               In <option>l3s</option> mode TX processing is very similar to the L3 mode except that
               iptables (conn-tracking) works in this mode and hence it is L3-symmetric (L3s).
               This will have slightly less performance but that shouldn't matter since you are
               choosing this mode over plain-L3 mode to make conn-tracking work.
               In <option>l2</option> mode TX processing happens on the stack instance attached to
-              the slave device and packets are switched and queued to the master device to send
-              out. In this mode the slaves will RX/TX multicast and broadcast (if applicable) as well.
+              the dependent device and packets are switched and queued to the parent device to send devices
+              out. In this mode the dependent devices will RX/TX multicast and broadcast (if applicable) as well.
               <option>lxc.net.[i].ipvlan.isolation</option> specifies the isolation mode.
               The accepted isolation values are <option>bridge</option>,
               <option>private</option> and <option>vepa</option>.
               It defaults to <option>bridge</option>.
-              In <option>bridge</option> isolation mode slaves can cross-talk among themselves
-              apart from talking through the master device.
+              In <option>bridge</option> isolation mode dependent devices can cross-talk among themselves
+              apart from talking through the parent device.
               In <option>private</option> isolation mode the port is set in private mode.
-              i.e. port won't allow cross communication between slaves.
+              i.e. port won't allow cross communication between dependent devices.
               In <option>vepa</option> isolation mode the port is set in VEPA mode.
               i.e. port will offload switching functionality to the external entity as
               described in 802.1Qbg.
@@ -1170,7 +1170,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
               Specify a mount point corresponding to a line in the
               fstab format.
 
-              Moreover lxc supports mount propagation, such as rslave or
+              Moreover lxc supports mount propagation, such as rshared or
               rprivate, and adds three additional mount options.
               <option>optional</option> don't fail if mount does not work.
               <option>create=dir</option> or <option>create=file</option>

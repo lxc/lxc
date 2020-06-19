@@ -34,43 +34,43 @@
 
 #define _PATH_DEVPTMX "/dev/ptmx"
 
-int openpty (int *amaster, int *aslave, char *name, struct termios *termp,
+int openpty (int *aptmx, int *apts, char *name, struct termios *termp,
        struct winsize *winp)
 {
    char buf[PATH_MAX];
-   int master, slave;
+   int ptmx, pts;
 
-   master = open(_PATH_DEVPTMX, O_RDWR);
-   if (master == -1)
+   ptmx = open(_PATH_DEVPTMX, O_RDWR);
+   if (ptmx == -1)
        return -1;
 
-   if (grantpt(master))
+   if (grantpt(ptmx))
        goto fail;
 
-   if (unlockpt(master))
+   if (unlockpt(ptmx))
        goto fail;
 
-   if (ptsname_r(master, buf, sizeof buf))
+   if (ptsname_r(ptmx, buf, sizeof buf))
        goto fail;
 
-   slave = open(buf, O_RDWR | O_NOCTTY);
-   if (slave == -1)
+   pts = open(buf, O_RDWR | O_NOCTTY);
+   if (pts == -1)
        goto fail;
 
    /* XXX Should we ignore errors here?  */
    if (termp)
-       tcsetattr(slave, TCSAFLUSH, termp);
+       tcsetattr(pts, TCSAFLUSH, termp);
    if (winp)
-       ioctl(slave, TIOCSWINSZ, winp);
+       ioctl(pts, TIOCSWINSZ, winp);
 
-   *amaster = master;
-   *aslave = slave;
+   *aptmx = ptmx;
+   *apts = pts;
    if (name != NULL)
        strcpy(name, buf);
 
    return 0;
 
 fail:
-   close(master);
+   close(ptmx);
    return -1;
 }

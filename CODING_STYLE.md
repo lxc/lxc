@@ -733,11 +733,11 @@ __do_closedir __attribute__((__cleanup__(__auto_closedir__)))
 ```
 For example:
 ```c
-void remount_all_slave(void)
+void turn_into_dependent_mounts(void)
 {
 	__do_free char *line = NULL;
 	__do_fclose FILE *f = NULL;
-	__do_close_prot_errno int memfd = -EBADF, mntinfo_fd = -EBADF;
+	__do_close int memfd = -EBADF, mntinfo_fd = -EBADF;
 	int ret;
 	ssize_t copied;
 	size_t len = 0;
@@ -780,7 +780,7 @@ again:
 		return;
 	}
 
-	f = fdopen(memfd, "r");
+	f = fdopen(memfd, "re");
 	if (!f) {
 		SYSERROR("Failed to open copy of \"/proc/self/mountinfo\" to mark all shared. Continuing");
 		return;
@@ -810,12 +810,11 @@ again:
 		null_endofword(target);
 		ret = mount(NULL, target, NULL, MS_SLAVE, NULL);
 		if (ret < 0) {
-			SYSERROR("Failed to make \"%s\" MS_SLAVE", target);
-			ERROR("Continuing...");
+			SYSERROR("Failed to recursively turn old root mount tree into dependent mount. Continuing...");
 			continue;
 		}
-		TRACE("Remounted \"%s\" as MS_SLAVE", target);
+		TRACE("Recursively turned old root mount tree into dependent mount");
 	}
-	TRACE("Remounted all mount table entries as MS_SLAVE");
+	TRACE("Turned all mount table entries into dependent mount");
 }
 ```
