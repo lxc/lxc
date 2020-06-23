@@ -46,7 +46,7 @@ _ifdown() {
 _ifup() {
     MASK=`_netmask2cidr ${LXC_NETMASK}`
     CIDR_ADDR="${LXC_ADDR}/${MASK}"
-    ip addr add ${CIDR_ADDR} dev ${LXC_BRIDGE}
+    ip addr add ${CIDR_ADDR} broadcast + dev ${LXC_BRIDGE}
     ip link set dev ${LXC_BRIDGE} address $LXC_BRIDGE_MAC
     ip link set dev ${LXC_BRIDGE} up
 }
