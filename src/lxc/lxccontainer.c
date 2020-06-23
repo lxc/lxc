@@ -2090,41 +2090,41 @@ static bool do_lxcapi_shutdown(struct lxc_container *c, int timeout)
 
 		if (ret < MAX_STATE)
 			return false;
+	}
 
-		if (pidfd >= 0) {
-			struct pollfd pidfd_poll = {
-			    .events = POLLIN,
-			    .fd = pidfd,
-			};
+	if (pidfd >= 0) {
+		struct pollfd pidfd_poll = {
+		    .events = POLLIN,
+		    .fd = pidfd,
+		};
 
-			killret = lxc_raw_pidfd_send_signal(pidfd, haltsignal,
-							    NULL, 0);
-			if (killret < 0)
-				return log_warn(false, "Failed to send signal %d to pidfd %d",
-						haltsignal, pidfd);
+		killret = lxc_raw_pidfd_send_signal(pidfd, haltsignal,
+						    NULL, 0);
+		if (killret < 0)
+			return log_warn(false, "Failed to send signal %d to pidfd %d",
+					haltsignal, pidfd);
 
-			TRACE("Sent signal %d to pidfd %d", haltsignal, pidfd);
+		TRACE("Sent signal %d to pidfd %d", haltsignal, pidfd);
 
-			/*
-			 * No need for going through all of the state server
-			 * complications anymore. We can just poll on pidfds. :)
-			 */
+		/*
+		 * No need for going through all of the state server
+		 * complications anymore. We can just poll on pidfds. :)
+		 */
 
-			if (timeout != 0) {
-				ret = poll(&pidfd_poll, 1, timeout * 1000);
-				if (ret < 0 || !(pidfd_poll.revents & POLLIN))
-					return false;
+		if (timeout != 0) {
+			ret = poll(&pidfd_poll, 1, timeout * 1000);
+			if (ret < 0 || !(pidfd_poll.revents & POLLIN))
+				return false;
 
-				TRACE("Pidfd polling detected container exit");
-			}
-		} else {
-			killret = kill(pid, haltsignal);
-			if (killret < 0)
-				return log_warn(false, "Failed to send signal %d to pid %d",
-						haltsignal, pid);
-
-			TRACE("Sent signal %d to pid %d", haltsignal, pid);
+			TRACE("Pidfd polling detected container exit");
 		}
+	} else {
+		killret = kill(pid, haltsignal);
+		if (killret < 0)
+			return log_warn(false, "Failed to send signal %d to pid %d",
+					haltsignal, pid);
+
+		TRACE("Sent signal %d to pid %d", haltsignal, pid);
 	}
 
 	if (timeout == 0)
