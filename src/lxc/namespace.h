@@ -15,6 +15,7 @@ enum {
 	LXC_NS_IPC,
 	LXC_NS_NET,
 	LXC_NS_CGROUP,
+	LXC_NS_TIME,
 	LXC_NS_MAX
 };
 

@@ -512,3 +512,30 @@ FILE *fdopen_cached(int fd, const char *mode, void **caller_freed_buffer)
 #endif
 	return f;
 }
+
+int timens_offset_write(clockid_t clk_id, int64_t s_offset, int64_t ns_offset)
+{
+	__do_close int fd = -EBADF;
+	int ret;
+	ssize_t len;
+	char buf[INTTYPE_TO_STRLEN(int) +
+		 STRLITERALLEN(" ") + INTTYPE_TO_STRLEN(int64_t) +
+		 STRLITERALLEN(" ") + INTTYPE_TO_STRLEN(int64_t) + 1];
+
+	if (clk_id == CLOCK_MONOTONIC_COARSE || clk_id == CLOCK_MONOTONIC_RAW)
+		clk_id = CLOCK_MONOTONIC;
+
+	fd = open("/proc/self/timens_offsets", O_WRONLY | O_CLOEXEC);
+	if (fd < 0)
+		return -errno;
+
+	len = snprintf(buf, sizeof(buf), "%d %" PRId64 " %" PRId64, clk_id, s_offset, ns_offset);
+	if (len < 0 || len >= sizeof(buf))
+		return ret_errno(EFBIG);
+
+	ret = lxc_write_nointr(fd, buf, len);
+	if (ret < 0 || (size_t)ret != len)
+		return -EIO;
+
+	return 0;
+}
