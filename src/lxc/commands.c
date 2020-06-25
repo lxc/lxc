@@ -1508,7 +1508,7 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 	};
 
 	if (req->cmd >= LXC_CMD_MAX)
-		return log_error_errno(-1, ENOENT, "Undefined command id %d", req->cmd);
+		return log_trace_errno(-1, EINVAL, "Invalid command id %d", req->cmd);
 
 	return cb[req->cmd](fd, req, handler, descr);
 }
