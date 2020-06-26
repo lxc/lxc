@@ -619,6 +619,12 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <option>lxc.net.[i].veth.ipv6.route</option> options.
               Several lines specify several routes.
               The route is in format x.y.z.t/m, eg. 192.168.1.0/24.
+
+              In <option>bridge</option> mode untagged VLAN membership can be set with the
+              <option>lxc.net.[i].veth.vlan.id</option> option. It accepts a special value of 'none' indicating
+              that the container port should be removed from the bridge's default untagged VLAN.
+              The <option>lxc.net.[i].veth.vlan.tagged.id</option> option can be specified multiple times to set
+              the container's bridge port membership to one or more tagged VLANs.
               -->
               <option>veth:</option> 一方がコンテナに、もう一方がホストに接続されるペアの仮想イーサネットデバイスを作成します。
               <option>lxc.net.[i].veth.mode</option> は、veth の親（ホスト側）がホスト上で使うモードを指定します。
@@ -636,6 +642,8 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
               <option>lxc.net.[i].veth.ipv4.route</option>、<option>lxc.net.[i].veth.ipv6.route</option> オプションを使って、静的ルーティングをコンテナを指し示すホスト上に追加できます。
               複数のルートがある場合は複数の設定を指定します。
               ルートは x.y.z.t/m の形式です。例: 192.168.1.0/24
+
+	      <option>bridge</option> モードでは、タグなし VLAN は <option>lxc.net.[i].veth.vlan.id</option> で設定できます。このオプションでは、コンテナポートをブリッジのデフォルトのタグなし VLAN から削除するための特別な値 'none' が指定できます。コンテナのブリッジポートを複数のタグ付き VLAN に所属させるために、<option>lxc.net.[i].veth.vlan.tagged.id</option> を複数回指定できます。
             </para>
 
             <para>
@@ -2409,6 +2417,39 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
           </listitem>
         </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.time.offset.boot</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+            Specify a positive or negative offset for the boottime clock. The
+            format accepts hours (h), minutes (m), seconds (s),
+            milliseconds (ms), microseconds (us), and nanoseconds (ns).
+                -->
+              ブートタイム(boottime)クロックの正または負のオフセット値を指定します。フォーマットは、時(h)、分(m)、秒(s)、ミリ秒(ms)、マイクロ秒(us)、ナノ秒(ns)を指定できます。
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.time.offset.monotonic</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+            Specify a positive or negative offset for the montonic clock. The
+            format accepts hours (h), minutes (m), seconds (s),
+            milliseconds (ms), microseconds (us), and nanoseconds (ns).
+                -->
+              monotonicクロックの正または負のオフセット値を指定します。フォーマットは、時(h)、分(m)、秒(s)、ミリ秒(ms)、マイクロ秒(us)、ナノ秒(ns)を指定できます。
+            </para>
+          </listitem>
+        </varlistentry>
+
       </variablelist>
     </refsect2>
 
