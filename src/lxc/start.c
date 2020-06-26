@@ -1870,6 +1870,20 @@ static int lxc_spawn(struct lxc_handler *handler)
 	cgroup_ops->payload_finalize(cgroup_ops);
 	TRACE("Finished setting up cgroups");
 
+	if (handler->ns_clone_flags & CLONE_NEWTIME) {
+		/* Now we're ready to preserve the cgroup namespace */
+		ret = lxc_try_preserve_ns(handler->pid, "time");
+		if (ret < 0) {
+			if (ret != -EOPNOTSUPP) {
+				SYSERROR("Failed to preserve time namespace");
+				goto out_delete_net;
+			}
+		} else {
+			handler->nsfd[LXC_NS_TIME] = ret;
+			DEBUG("Preserved time namespace via fd %d", ret);
+		}
+	}
+
 	/* Run any host-side start hooks */
 	ret = run_lxc_hooks(name, "start-host", conf, NULL);
 	if (ret < 0) {

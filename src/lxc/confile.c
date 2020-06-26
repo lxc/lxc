@@ -2831,22 +2831,26 @@ static int set_config_time_offset_boot(const char *key, const char *value,
 	if (ret)
 		return ret;
 
-	/* TODO: Handle overflow. */
 	unit = lxc_trim_whitespace_in_place(buf);
-	if (strcmp(unit, "h") == 0)
-		lxc_conf->timens.s_boot = offset * 3600;
-	else if (strcmp(unit, "m") == 0)
-		lxc_conf->timens.s_boot = offset * 60;
-	else if (strcmp(unit, "s") == 0)
+	if (strcmp(unit, "h") == 0) {
+		if (!multiply_overflow(offset, 3600, &lxc_conf->timens.s_boot))
+			return -EOVERFLOW;
+	} else if (strcmp(unit, "m") == 0) {
+		if (!multiply_overflow(offset, 60, &lxc_conf->timens.s_boot))
+			return -EOVERFLOW;
+	} else if (strcmp(unit, "s") == 0) {
 		lxc_conf->timens.s_boot = offset;
-	else if (strcmp(unit, "ms") == 0)
-		lxc_conf->timens.ns_boot = offset * 1000000;
-	else if (strcmp(unit, "us") == 0)
-		lxc_conf->timens.ns_boot = offset * 1000;
-	else if (strcmp(unit, "ns") == 0)
+	} else if (strcmp(unit, "ms") == 0) {
+		if (!multiply_overflow(offset, 1000000, &lxc_conf->timens.ns_boot))
+			return -EOVERFLOW;
+	} else if (strcmp(unit, "us") == 0) {
+		if (!multiply_overflow(offset, 1000, &lxc_conf->timens.ns_boot))
+			return -EOVERFLOW;
+	} else if (strcmp(unit, "ns") == 0) {
 		lxc_conf->timens.ns_boot = offset;
-	else
+	} else {
 		return ret_errno(EINVAL);
+	}
 
 	return 0;
 }
@@ -2866,22 +2870,26 @@ static int set_config_time_offset_monotonic(const char *key, const char *value,
 	if (ret)
 		return ret;
 
-	// TODO: Handle overflow.
 	unit = lxc_trim_whitespace_in_place(buf);
-	if (strcmp(unit, "h") == 0)
-		lxc_conf->timens.s_monotonic = offset * 3600;
-	else if (strcmp(unit, "m") == 0)
-		lxc_conf->timens.s_monotonic = offset * 60;
-	else if (strcmp(unit, "s") == 0)
+	if (strcmp(unit, "h") == 0) {
+		if (!multiply_overflow(offset, 3600, &lxc_conf->timens.s_monotonic))
+			return -EOVERFLOW;
+	} else if (strcmp(unit, "m") == 0) {
+		if (!multiply_overflow(offset, 60, &lxc_conf->timens.s_monotonic))
+			return -EOVERFLOW;
+	} else if (strcmp(unit, "s") == 0) {
 		lxc_conf->timens.s_monotonic = offset;
-	else if (strcmp(unit, "ms") == 0)
-		lxc_conf->timens.ns_monotonic = offset * 1000000;
-	else if (strcmp(unit, "us") == 0)
-		lxc_conf->timens.ns_monotonic = offset * 1000;
-	else if (strcmp(unit, "ns") == 0)
+	} else if (strcmp(unit, "ms") == 0) {
+		if (!multiply_overflow(offset, 1000000, &lxc_conf->timens.ns_monotonic))
+			return -EOVERFLOW;
+	} else if (strcmp(unit, "us") == 0) {
+		if (!multiply_overflow(offset, 1000, &lxc_conf->timens.ns_monotonic))
+			return -EOVERFLOW;
+	} else if (strcmp(unit, "ns") == 0) {
 		lxc_conf->timens.ns_monotonic = offset;
-	else
+	} else {
 		return ret_errno(EINVAL);
+	}
 
 	return 0;
 }
