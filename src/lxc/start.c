@@ -1205,6 +1205,55 @@ static int do_start(void *data)
 		}
 	}
 
+	if (handler->ns_clone_flags & CLONE_NEWTIME) {
+		ret = unshare(CLONE_NEWTIME);
+		if (ret < 0) {
+			if (errno != EINVAL) {
+				SYSERROR("Failed to unshare CLONE_NEWTIME");
+				goto out_warn_father;
+			}
+
+			handler->ns_clone_flags &= ~CLONE_NEWTIME;
+			SYSINFO("Kernel does not support CLONE_NEWTIME");
+		} else {
+			__do_close int timens_fd = -EBADF;
+
+			INFO("Unshared CLONE_NEWTIME");
+
+			if (handler->conf->timens.s_boot)
+				ret = timens_offset_write(CLOCK_BOOTTIME, handler->conf->timens.s_boot, 0);
+			else if (handler->conf->timens.ns_boot)
+				ret = timens_offset_write(CLOCK_BOOTTIME, 0, handler->conf->timens.ns_boot);
+			if (ret) {
+				SYSERROR("Failed to write CLONE_BOOTTIME offset");
+				goto out_warn_father;
+			}
+			TRACE("Wrote CLOCK_BOOTTIME offset");
+
+			if (handler->conf->timens.s_monotonic)
+				ret = timens_offset_write(CLOCK_MONOTONIC, handler->conf->timens.s_monotonic, 0);
+			else if (handler->conf->timens.ns_monotonic)
+				ret = timens_offset_write(CLOCK_MONOTONIC, 0, handler->conf->timens.ns_monotonic);
+			if (ret) {
+				SYSERROR("Failed to write CLONE_MONOTONIC offset");
+				goto out_warn_father;
+			}
+			TRACE("Wrote CLOCK_MONOTONIC offset");
+
+			timens_fd = open("/proc/self/ns/time_for_children", O_RDONLY | O_CLOEXEC);
+			if (timens_fd < 0) {
+				SYSERROR("Failed to open \"/proc/self/ns/time_for_children\"");
+				goto out_warn_father;
+			}
+
+			ret = setns(timens_fd, CLONE_NEWTIME);
+ 			if (ret) {
+				SYSERROR("Failed to setns(%d(\"/proc/self/ns/time_for_children\"))", timens_fd);
+				goto out_warn_father;
+			}
+		}
+	}
+
 	/* Add the requested environment variables to the current environment to
 	 * allow them to be used by the various hooks, such as the start hook
 	 * below.
@@ -1452,6 +1501,8 @@ int resolve_clone_flags(struct lxc_handler *handler)
 {
 	int i;
 	struct lxc_conf *conf = handler->conf;
+	bool wants_timens = conf->timens.s_boot || conf->timens.ns_boot ||
+			    conf->timens.s_monotonic || conf->timens.ns_monotonic;
 
 	for (i = 0; i < LXC_NS_MAX; i++) {
 		if (conf->ns_keep) {
@@ -1470,6 +1521,9 @@ int resolve_clone_flags(struct lxc_handler *handler)
 			if (i == LXC_NS_CGROUP && !cgns_supported())
 				continue;
 
+			if (i == LXC_NS_TIME && !wants_timens)
+				continue;
+
 			handler->ns_clone_flags |= ns_info[i].clone_flag;
 		}
 
@@ -1479,6 +1533,9 @@ int resolve_clone_flags(struct lxc_handler *handler)
 		handler->ns_clone_flags &= ~ns_info[i].clone_flag;
 		TRACE("Sharing %s namespace", ns_info[i].proc_name);
 	}
+
+	if (wants_timens && (conf->ns_keep & ns_info[LXC_NS_TIME].clone_flag))
+		return log_trace_errno(-1, EINVAL, "Requested to keep time namespace while also specifying offsets");
 
 	return 0;
 }
@@ -1613,6 +1670,9 @@ static int lxc_spawn(struct lxc_handler *handler)
 	}
 	/* The cgroup namespace gets unshare()ed not clone()ed. */
 	handler->ns_on_clone_flags &= ~CLONE_NEWCGROUP;
+
+	/* The time namespace (currently) gets unshare()ed not clone()ed. */
+	handler->ns_on_clone_flags &= ~CLONE_NEWTIME;
 
 	if (share_ns) {
 		pid_t attacher_pid;

@@ -233,6 +233,16 @@ struct device_item {
 	int global_rule;
 };
 
+struct timens_offsets {
+	/* Currently, either s_boot or ns_boot is set, but not both. */
+	int64_t s_boot;
+	int64_t ns_boot;
+
+	/* Currently, either s_monotonic or ns_monotonic is set, but not both. */
+	int64_t s_monotonic;
+	int64_t ns_monotonic;
+};
+
 struct lxc_conf {
 	/* Pointer to the name of the container. Do not free! */
 	const char *name;
@@ -401,6 +411,8 @@ struct lxc_conf {
 		/* Absolute path (in the container) to the shared mount point */
 		char *path_cont;
 	} shmount;
+
+	struct timens_offsets timens;
 };
 
 extern int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,

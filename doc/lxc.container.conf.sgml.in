@@ -1806,6 +1806,33 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             </para>
           </listitem>
         </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.time.offset.boot</option>
+          </term>
+          <listitem>
+            <para>
+	    Specify a positive or negative offset for the boottime clock. The
+	    format accepts hours (h), minutes (m), seconds (s),
+	    milliseconds (ms), microseconds (us), and nanoseconds (ns).
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.time.offset.monotonic</option>
+          </term>
+          <listitem>
+            <para>
+	    Specify a positive or negative offset for the montonic clock. The
+	    format accepts hours (h), minutes (m), seconds (s),
+	    milliseconds (ms), microseconds (us), and nanoseconds (ns).
+            </para>
+          </listitem>
+        </varlistentry>
+
       </variablelist>
     </refsect2>
 

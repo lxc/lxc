@@ -2599,6 +2599,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->init_gid = 0;
 	memset(&new->cgroup_meta, 0, sizeof(struct lxc_cgroup));
 	memset(&new->ns_share, 0, sizeof(char *) * LXC_NS_MAX);
+	memset(&new->timens, 0, sizeof(struct timens_offsets));
 	seccomp_conf_init(new);
 
 	return new;

@@ -122,3 +122,8 @@ When running on kernels that support pidfds LXC will rely on them for most opera
 ## cgroup\_advanced\_isolation
 
 Privileged containers will usually be able to override the cgroup limits given to them. This introduces three new configuration keys `lxc.cgroup.dir.monitor`, `lxc.cgroup.dir.container`, and `lxc.cgroup.dir.container.inner`. The `lxc.cgroup.dir.monitor` and `lxc.cgroup.dir.container` keys can be used to set to place the `monitor` and the `container` into different cgroups. The `lxc.cgroup.dir.container.inner` key can be set to a cgroup that is concatenated with `lxc.cgroup.dir.container`. When `lxc.cgroup.dir.container.inner` is set the container will be placed into the `lxc.cgroup.dir.container.inner` cgroup but the limits will be set in the `lxc.cgroup.dir.container` cgroup. This way privileged containers cannot escape their cgroup limits.
+
+
+## time\_namespace
+
+This adds time namespace support to LXC.

@@ -667,6 +667,51 @@ int lxc_safe_uint64(const char *numstr, uint64_t *converted, int base)
 	return 0;
 }
 
+int lxc_safe_int64_residual(const char *numstr, int64_t *converted, int base, char *residual,
+			    size_t residual_len)
+{
+	char *remaining = NULL;
+	int64_t u;
+
+	if (residual && residual_len == 0)
+		return ret_errno(EINVAL);
+
+	if (!residual && residual_len != 0)
+		return ret_errno(EINVAL);
+
+	while (isspace(*numstr))
+		numstr++;
+
+	errno = 0;
+	u = strtoll(numstr, &remaining, base);
+	if (errno == ERANGE && u == INT64_MAX)
+		return -ERANGE;
+
+	if (remaining == numstr)
+		return -EINVAL;
+
+	if (residual) {
+		size_t len = 0;
+
+		if (*remaining == '\0') {
+			memset(residual, 0, residual_len);
+			goto out;
+		}
+
+		len = strlen(remaining);
+		if (len >= residual_len)
+			return -EINVAL;
+
+		memcpy(residual, remaining, len);
+	} else if (*remaining != '\0') {
+		return -EINVAL;
+	}
+
+out:
+	*converted = u;
+	return 0;
+}
+
 int lxc_safe_int(const char *numstr, int *converted)
 {
 	char *err = NULL;
