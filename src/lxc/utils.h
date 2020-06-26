@@ -251,4 +251,6 @@ static inline bool gid_valid(gid_t gid)
 	return gid != LXC_INVALID_GID;
 }
 
+extern bool multiply_overflow(int64_t base, uint64_t mult, int64_t *res);
+
 #endif /* __LXC_UTILS_H */
