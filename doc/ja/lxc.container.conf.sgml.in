@@ -2417,6 +2417,39 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
           </listitem>
         </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.time.offset.boot</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+            Specify a positive or negative offset for the boottime clock. The
+            format accepts hours (h), minutes (m), seconds (s),
+            milliseconds (ms), microseconds (us), and nanoseconds (ns).
+                -->
+              ブートタイム(boottime)クロックの正または負のオフセット値を指定します。フォーマットは、時(h)、分(m)、秒(s)、ミリ秒(ms)、マイクロ秒(us)、ナノ秒(ns)を指定できます。
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>
+            <option>lxc.time.offset.monotonic</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+            Specify a positive or negative offset for the montonic clock. The
+            format accepts hours (h), minutes (m), seconds (s),
+            milliseconds (ms), microseconds (us), and nanoseconds (ns).
+                -->
+              monotonicクロックの正または負のオフセット値を指定します。フォーマットは、時(h)、分(m)、秒(s)、ミリ秒(ms)、マイクロ秒(us)、ナノ秒(ns)を指定できます。
+            </para>
+          </listitem>
+        </varlistentry>
+
       </variablelist>
     </refsect2>
 
