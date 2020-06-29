@@ -1081,8 +1081,7 @@ static int do_start(void *data)
 	/* Unshare CLONE_NEWNET after CLONE_NEWUSER. See
 	 * https://github.com/lxc/lxd/issues/1978.
 	 */
-	if ((handler->ns_clone_flags & (CLONE_NEWNET | CLONE_NEWUSER)) ==
-	    (CLONE_NEWNET | CLONE_NEWUSER)) {
+	if (handler->ns_unshare_flags & CLONE_NEWNET) {
 		ret = unshare(CLONE_NEWNET);
 		if (ret < 0) {
 			SYSERROR("Failed to unshare CLONE_NEWNET");
@@ -1190,7 +1189,7 @@ static int do_start(void *data)
 	 *
 	 *	8:cpuset:/
 	 */
-	if (handler->ns_clone_flags & CLONE_NEWCGROUP) {
+	if (handler->ns_unshare_flags & CLONE_NEWCGROUP) {
 		ret = unshare(CLONE_NEWCGROUP);
 		if (ret < 0) {
 			if (errno != EINVAL) {
@@ -1205,7 +1204,7 @@ static int do_start(void *data)
 		}
 	}
 
-	if (handler->ns_clone_flags & CLONE_NEWTIME) {
+	if (handler->ns_unshare_flags & CLONE_NEWTIME) {
 		ret = unshare(CLONE_NEWTIME);
 		if (ret < 0) {
 			if (errno != EINVAL) {
@@ -1537,6 +1536,22 @@ int resolve_clone_flags(struct lxc_handler *handler)
 	if (wants_timens && (conf->ns_keep & ns_info[LXC_NS_TIME].clone_flag))
 		return log_trace_errno(-1, EINVAL, "Requested to keep time namespace while also specifying offsets");
 
+	/* Deal with namespaces that are unshared. */
+	if (handler->ns_clone_flags & CLONE_NEWTIME)
+		handler->ns_unshare_flags |= CLONE_NEWTIME;
+
+	if (!pure_unified_layout(handler->cgroup_ops) && handler->ns_clone_flags & CLONE_NEWCGROUP)
+		handler->ns_unshare_flags |= CLONE_NEWCGROUP;
+
+	if ((handler->ns_clone_flags & (CLONE_NEWNET | CLONE_NEWUSER)) ==
+	    (CLONE_NEWNET | CLONE_NEWUSER))
+		handler->ns_unshare_flags |= CLONE_NEWNET;
+
+	/* Deal with namespaces that are spawned. */
+	handler->ns_on_clone_flags = handler->ns_clone_flags & ~handler->ns_unshare_flags;
+
+	handler->clone_flags = handler->ns_on_clone_flags | CLONE_PIDFD;
+
 	return 0;
 }
 
@@ -1659,21 +1674,6 @@ static int lxc_spawn(struct lxc_handler *handler)
 	}
 
 	/* Create a process in a new set of namespaces. */
-	handler->ns_on_clone_flags = handler->ns_clone_flags;
-	if (handler->ns_clone_flags & CLONE_NEWUSER) {
-		/* If CLONE_NEWUSER and CLONE_NEWNET was requested, we need to
-		 * clone a new user namespace first and only later unshare our
-		 * network namespace to ensure that network devices ownership is
-		 * set up correctly.
-		 */
-		handler->ns_on_clone_flags &= ~CLONE_NEWNET;
-	}
-	/* The cgroup namespace gets unshare()ed not clone()ed. */
-	handler->ns_on_clone_flags &= ~CLONE_NEWCGROUP;
-
-	/* The time namespace (currently) gets unshare()ed not clone()ed. */
-	handler->ns_on_clone_flags &= ~CLONE_NEWTIME;
-
 	if (share_ns) {
 		pid_t attacher_pid;
 
@@ -1689,15 +1689,64 @@ static int lxc_spawn(struct lxc_handler *handler)
 			SYSERROR("Intermediate process failed");
 			goto out_delete_net;
 		}
+
+		if (handler->pid < 0) {
+			SYSERROR(LXC_CLONE_ERROR);
+			goto out_delete_net;
+		}
 	} else {
-		handler->pid = lxc_raw_clone_cb(do_start, handler,
-						CLONE_PIDFD | handler->ns_on_clone_flags,
-						&handler->pidfd);
+		int cgroup_fd;
+
+		struct lxc_clone_args clone_args = {
+			.flags = handler->clone_flags,
+			.pidfd = ptr_to_u64(&handler->pidfd),
+			.exit_signal = SIGCHLD,
+		};
+
+		if (handler->ns_clone_flags & CLONE_NEWCGROUP) {
+			cgroup_fd = cgroup_unified_fd(cgroup_ops);
+			if (cgroup_fd >= 0) {
+				handler->clone_flags	|= CLONE_INTO_CGROUP;
+				clone_args.flags	|= CLONE_INTO_CGROUP;
+				clone_args.cgroup	= cgroup_fd;
+			}
+		}
+
+		/* Try to spawn directly into target cgroup. */
+		handler->pid = lxc_clone3(&clone_args, CLONE_ARGS_SIZE_VER2);
+		if (handler->pid < 0) {
+			SYSTRACE("Failed to spawn container directly into target cgroup");
+
+			/* Kernel might simply be too old for CLONE_INTO_CGROUP. */
+			handler->clone_flags		&= ~(CLONE_INTO_CGROUP | CLONE_NEWCGROUP);
+			handler->ns_on_clone_flags	&= ~CLONE_NEWCGROUP;
+			handler->ns_unshare_flags	|= CLONE_NEWCGROUP;
+
+			clone_args.flags		= handler->clone_flags;
+
+			handler->pid = lxc_clone3(&clone_args, CLONE_ARGS_SIZE_VER0);
+		} else if (cgroup_fd >= 0) {
+			TRACE("Spawned container directly into target cgroup via cgroup2 fd %d", cgroup_fd);
+		}
+
+		/* Kernel might be too old for clone3(). */
+		if (handler->pid < 0) {
+			SYSTRACE("Failed to spawn container via clone3()");
+			handler->pid = lxc_raw_legacy_clone(handler->clone_flags, &handler->pidfd);
+		}
+
+		if (handler->pid < 0) {
+			SYSERROR(LXC_CLONE_ERROR);
+			goto out_delete_net;
+		}
+
+		if (handler->pid == 0) {
+			(void)do_start(handler);
+			_exit(EXIT_FAILURE);
+		}
 	}
-	if (handler->pid < 0) {
-		SYSERROR(LXC_CLONE_ERROR);
-		goto out_delete_net;
-	}
+	if (handler->pidfd < 0)
+		handler->clone_flags &= ~CLONE_PIDFD;
 	TRACE("Cloned child process %d", handler->pid);
 
 	/* Verify that we can actually make use of pidfds. */
@@ -1853,7 +1902,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	}
 	TRACE("Set up cgroup2 device controller limits");
 
-	if (handler->ns_clone_flags & CLONE_NEWCGROUP) {
+	if (handler->ns_unshare_flags & CLONE_NEWCGROUP) {
 		/* Now we're ready to preserve the cgroup namespace */
 		ret = lxc_try_preserve_ns(handler->pid, "cgroup");
 		if (ret < 0) {
@@ -1870,7 +1919,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	cgroup_ops->payload_finalize(cgroup_ops);
 	TRACE("Finished setting up cgroups");
 
-	if (handler->ns_clone_flags & CLONE_NEWTIME) {
+	if (handler->ns_unshare_flags & CLONE_NEWTIME) {
 		/* Now we're ready to preserve the cgroup namespace */
 		ret = lxc_try_preserve_ns(handler->pid, "time");
 		if (ret < 0) {

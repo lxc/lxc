@@ -28,7 +28,7 @@ lxc_log_define(process_utils, lxc);
  * The nice thing about this is that we get fork() behavior. That is
  * lxc_raw_clone() returns 0 in the child and the child pid in the parent.
  */
-__returns_twice static pid_t __lxc_raw_clone(unsigned long flags, int *pidfd)
+__returns_twice pid_t lxc_raw_legacy_clone(unsigned long flags, int *pidfd)
 {
 
 #if defined(__s390x__) || defined(__s390__) || defined(__CRIS__)
@@ -108,7 +108,7 @@ __returns_twice pid_t lxc_raw_clone(unsigned long flags, int *pidfd)
 	pid = lxc_clone3(&args, CLONE_ARGS_SIZE_VER0);
 	if (pid < 0 && errno == ENOSYS) {
 		SYSTRACE("Falling back to legacy clone");
-		return __lxc_raw_clone(flags, pidfd);
+		return lxc_raw_legacy_clone(flags, pidfd);
 	}
 
 	return pid;

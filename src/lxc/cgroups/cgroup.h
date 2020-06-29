@@ -194,4 +194,12 @@ static inline bool pure_unified_layout(const struct cgroup_ops *ops)
 	return ops->cgroup_layout == CGROUP_LAYOUT_UNIFIED;
 }
 
+static inline int cgroup_unified_fd(const struct cgroup_ops *ops)
+{
+	if (!ops->unified)
+		return -EBADF;
+
+	return ops->unified->cgfd_con;
+}
+
 #endif
