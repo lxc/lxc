@@ -26,20 +26,18 @@ struct lxc_handler {
 	 *   list the clone flags that were unshare()ed rather then clone()ed
 	 *   because of ordering requirements (e.g. e.g. CLONE_NEWNET and
 	 *   CLONE_NEWUSER) or implementation details.
-         *
-	 * @ns_keep_flags;
-	 * - The clone flags for the namespaces that the container will inherit
-	 *   from the parent. They are not recorded in the handler itself but
-	 *   are present in the container's config.
 	 *
-	 * @ns_share_flags;
-	 * - The clone flags for the namespaces that the container will share
-	 *   with another process.  They are not recorded in the handler itself
-	 *   but are present in the container's config.
+	 * @ns_unshare_flags
+	 * - Flags for namespaces that were unshared, not cloned.
+	 *
+	 * @clone_flags
+	 * - ns_on_clone flags | other flags used to create container.
 	 */
 	struct /* lxc_ns */ {
-		int ns_clone_flags;
-		int ns_on_clone_flags;
+		unsigned int ns_clone_flags;
+		unsigned int ns_on_clone_flags;
+		unsigned int ns_unshare_flags;
+		unsigned int clone_flags;
 	};
 
 	/* File descriptor to pin the rootfs for privileged containers. */

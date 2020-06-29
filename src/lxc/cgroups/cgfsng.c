@@ -1551,6 +1551,9 @@ __cgfsng_ops static bool cgfsng_payload_enter(struct cgroup_ops *ops,
 		struct hierarchy *h = ops->hierarchies[i];
 		int ret;
 
+		if (is_unified_hierarchy(h) && handler->clone_flags & CLONE_INTO_CGROUP)
+			continue;
+
 		ret = lxc_writeat(h->cgfd_con, "cgroup.procs", pidstr, len);
 		if (ret != 0)
 			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", h->container_full_path);

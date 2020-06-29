@@ -240,6 +240,7 @@ extern pid_t lxc_clone(int (*fn)(void *), void *arg, int flags, int *pidfd);
  *   The child must use lxc_raw_getpid() to retrieve its pid.
  */
 extern pid_t lxc_raw_clone(unsigned long flags, int *pidfd);
+extern pid_t lxc_raw_legacy_clone(unsigned long flags, int *pidfd);
 
 /*
  * lxc_raw_clone_cb() - create a new process
