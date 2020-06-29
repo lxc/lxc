@@ -1695,7 +1695,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 			goto out_delete_net;
 		}
 	} else {
-		int cgroup_fd;
+		int cgroup_fd = -EBADF;
 
 		struct lxc_clone_args clone_args = {
 			.flags = handler->clone_flags,
