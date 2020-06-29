@@ -770,17 +770,6 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	else
 		new_gid = ns_root_gid;
 
-	if ((init_ctx->container && init_ctx->container->lxc_conf &&
-	     init_ctx->container->lxc_conf->no_new_privs) ||
-	    (options->attach_flags & LXC_ATTACH_NO_NEW_PRIVS)) {
-		ret = prctl(PR_SET_NO_NEW_PRIVS, prctl_arg(1), prctl_arg(0),
-			    prctl_arg(0), prctl_arg(0));
-		if (ret < 0)
-			goto on_error;
-
-		TRACE("Set PR_SET_NO_NEW_PRIVS");
-	}
-
 	if (needs_lsm) {
 		bool on_exec;
 
@@ -793,6 +782,17 @@ static int attach_child_main(struct attach_clone_payload *payload)
 			goto on_error;
 
 		TRACE("Set %s LSM label to \"%s\"", lsm_name(), init_ctx->lsm_label);
+	}
+
+	if ((init_ctx->container && init_ctx->container->lxc_conf &&
+	     init_ctx->container->lxc_conf->no_new_privs) ||
+	    (options->attach_flags & LXC_ATTACH_NO_NEW_PRIVS)) {
+		ret = prctl(PR_SET_NO_NEW_PRIVS, prctl_arg(1), prctl_arg(0),
+			    prctl_arg(0), prctl_arg(0));
+		if (ret < 0)
+			goto on_error;
+
+		TRACE("Set PR_SET_NO_NEW_PRIVS");
 	}
 
 	if (init_ctx->container && init_ctx->container->lxc_conf &&
