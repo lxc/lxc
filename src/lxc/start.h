@@ -3,6 +3,8 @@
 #ifndef __LXC_START_H
 #define __LXC_START_H
 
+#include <linux/sched.h>
+#include <sched.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <sys/param.h>
@@ -37,7 +39,7 @@ struct lxc_handler {
 		unsigned int ns_clone_flags;
 		unsigned int ns_on_clone_flags;
 		unsigned int ns_unshare_flags;
-		unsigned int clone_flags;
+		__aligned_u64 clone_flags;
 	};
 
 	/* File descriptor to pin the rootfs for privileged containers. */
