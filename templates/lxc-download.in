@@ -134,8 +134,8 @@ gpg_setup() {
 
   success=
   for _ in $(seq 3); do
-    if $(gpg --keyserver "${DOWNLOAD_KEYSERVER}" ${DOWNLOAD_GPG_PROXY:-} \
-      --recv-keys "${DOWNLOAD_KEYID}" >/dev/null 2>&1); then
+    if gpg --keyserver "${DOWNLOAD_KEYSERVER}" ${DOWNLOAD_GPG_PROXY:-} \
+      --recv-keys "${DOWNLOAD_KEYID}" >/dev/null 2>&1; then
       success=1
       break
     fi
@@ -327,7 +327,7 @@ if ! command -V mktemp >/dev/null 2>&1; then
   DOWNLOAD_TEMP="${DOWNLOAD_TEMP}/tmp/lxc-download.$$"
 elif [ -n "${DOWNLOAD_TEMP}" ]; then
   mkdir -p "${DOWNLOAD_TEMP}"
-  DOWNLOAD_TEMP="$(mktemp -p ${DOWNLOAD_TEMP} -d)"
+  DOWNLOAD_TEMP="$(mktemp -p "${DOWNLOAD_TEMP}" -d)"
 else
   DOWNLOAD_TEMP="${DOWNLOAD_TEMP}$(mktemp -d)"
 fi
