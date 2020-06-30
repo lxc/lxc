@@ -327,7 +327,7 @@ if ! command -V mktemp >/dev/null 2>&1; then
   DOWNLOAD_TEMP="${DOWNLOAD_TEMP}/tmp/lxc-download.$$"
 elif [ -n "${DOWNLOAD_TEMP}" ]; then
   mkdir -p "${DOWNLOAD_TEMP}"
-  DOWNLOAD_TEMP="$(mktemp -p ${DOWNLOAD_TEMP} -d)"
+  DOWNLOAD_TEMP="$(mktemp -p "${DOWNLOAD_TEMP}" -d)"
 else
   DOWNLOAD_TEMP="${DOWNLOAD_TEMP}$(mktemp -d)"
 fi
