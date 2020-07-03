@@ -215,8 +215,8 @@ struct lxc_state_client {
 
 enum {
 	LXC_BPF_DEVICE_CGROUP_LOCAL_RULE = -1,
-	LXC_BPF_DEVICE_CGROUP_WHITELIST  =  0,
-	LXC_BPF_DEVICE_CGROUP_BLACKLIST  =  1,
+	LXC_BPF_DEVICE_CGROUP_ALLOWLIST  =  0,
+	LXC_BPF_DEVICE_CGROUP_DENYLIST  =  1,
 };
 
 struct device_item {
@@ -227,8 +227,8 @@ struct device_item {
 	int allow;
 	/*
 	 * LXC_BPF_DEVICE_CGROUP_LOCAL_RULE -> no global rule
-	 * LXC_BPF_DEVICE_CGROUP_WHITELIST  -> whitelist (deny all)
-	 * LXC_BPF_DEVICE_CGROUP_BLACKLIST  -> blacklist (allow all)
+	 * LXC_BPF_DEVICE_CGROUP_ALLOWLIST  -> allowlist (deny all)
+	 * LXC_BPF_DEVICE_CGROUP_DENYLIST   -> denylist (allow all)
 	 */
 	int global_rule;
 };
