@@ -2655,7 +2655,7 @@ __cgfsng_ops static int cgfsng_set(struct cgroup_ops *ops,
 		*p = '\0';
 
 	if (pure_unified_layout(ops) && strcmp(controller, "devices") == 0) {
-		struct device_item device = {0};
+		struct device_item device = {};
 
 		ret = device_cgroup_rule_parse(&device, key, value);
 		if (ret < 0)
@@ -2762,7 +2762,7 @@ static int device_cgroup_rule_parse_devpath(struct device_item *device,
 
 static int convert_devpath(const char *invalue, char *dest)
 {
-	struct device_item device = {0};
+	struct device_item device = {};
 	int ret;
 
 	ret = device_cgroup_rule_parse_devpath(&device, invalue);
@@ -2882,7 +2882,7 @@ static int bpf_device_cgroup_prepare(struct cgroup_ops *ops,
 				     const char *val)
 {
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
-	struct device_item device_item = {0};
+	struct device_item device_item = {};
 	int ret;
 
 	if (strcmp("devices.allow", key) == 0 && *val == '/')

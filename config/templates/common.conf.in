@@ -17,7 +17,7 @@ lxc.hook.clone = @LXCHOOKDIR@/clonehostname
 
 # Default legacy cgroup configuration
 #
-# CGroup whitelist
+# CGroup allowlist
 lxc.cgroup.devices.deny = a
 ## Allow any mknod (but not reading/writing the node)
 lxc.cgroup.devices.allow = c *:* m
@@ -46,7 +46,7 @@ lxc.cgroup.devices.allow = c 10:229 rwm
 
 # Default unified cgroup configuration
 #
-# CGroup whitelist
+# CGroup allowlist
 lxc.cgroup2.devices.deny = a
 ## Allow any mknod (but not reading/writing the node)
 lxc.cgroup2.devices.allow = c *:* m

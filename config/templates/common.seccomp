@@ -1,5 +1,5 @@
 2
-blacklist
+denylist
 reject_force_umount  # comment this to allow umount -f;  not recommended
 [all]
 kexec_load errno 1

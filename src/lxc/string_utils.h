@@ -120,4 +120,14 @@ static inline ssize_t safe_strlcat(char *src, const char *append, size_t len)
 	return (ssize_t)new_len;
 }
 
+static inline bool strnequal(const char *str, const char *eq, size_t len)
+{
+	return strncmp(str, eq, len) == 0;
+}
+
+static inline bool strequal(const char *str, const char *eq)
+{
+	return strcmp(str, eq) == 0;
+}
+
 #endif /* __LXC_STRING_UTILS_H */

@@ -118,29 +118,32 @@ void bpf_program_free(struct bpf_program *prog)
 			   .off = 0,                   \
 			   .imm = 0})
 
-static int bpf_access_mask(const char *acc)
+static int bpf_access_mask(const char *acc, int *mask)
 {
-	int mask = 0;
+	*mask = 0;
 
 	if (!acc)
-		return mask;
+		return 0;
 
-	for (; *acc; acc++)
+	for (; *acc; acc++) {
 		switch (*acc) {
 		case 'r':
-			mask |= BPF_DEVCG_ACC_READ;
+			*mask |= BPF_DEVCG_ACC_READ;
 			break;
 		case 'w':
-			mask |= BPF_DEVCG_ACC_WRITE;
+			*mask |= BPF_DEVCG_ACC_WRITE;
 			break;
 		case 'm':
-			mask |= BPF_DEVCG_ACC_MKNOD;
+			*mask |= BPF_DEVCG_ACC_MKNOD;
 			break;
+		case '\0':
+			continue;
 		default:
 			return -EINVAL;
 		}
+	}
 
-	return mask;
+	return 0;
 }
 
 static int bpf_device_type(char type)
@@ -174,7 +177,7 @@ struct bpf_program *bpf_program_new(uint32_t prog_type)
 	prog->prog_type = prog_type;
 	prog->kernel_fd = -EBADF;
 	/*
-	 * By default a whitelist is used unless the user tells us otherwise.
+	 * By default a allowlist is used unless the user tells us otherwise.
 	 */
 	prog->device_list_type = LXC_BPF_DEVICE_CGROUP_ALLOWLIST;
 
@@ -227,7 +230,10 @@ int bpf_program_append_device(struct bpf_program *prog, struct device_item *devi
 	if (device_type > 0)
 		jump_nr++;
 
-	access_mask = bpf_access_mask(device->access);
+	ret = bpf_access_mask(device->access, &access_mask);
+	if (ret < 0)
+		return log_error_errno(ret, -ret, "Invalid access mask specified %s", device->access);
+
 	if (!bpf_device_all_access(access_mask))
 		jump_nr += 3;
 
@@ -299,8 +305,8 @@ int bpf_program_finalize(struct bpf_program *prog)
 
 	TRACE("Implementing %s bpf device cgroup program",
 	      prog->device_list_type == LXC_BPF_DEVICE_CGROUP_DENYLIST
-		  ? "blacklist"
-		  : "whitelist");
+		  ? "denylist"
+		  : "allowlist");
 
 	ins[0] = BPF_MOV64_IMM(BPF_REG_0, prog->device_list_type);
 	ins[1] = BPF_EXIT_INSN();
@@ -451,11 +457,11 @@ int bpf_list_add_device(struct lxc_conf *conf, struct device_item *device)
 		    device->global_rule > LXC_BPF_DEVICE_CGROUP_LOCAL_RULE) {
 			TRACE("Switched from %s to %s",
 			      cur->global_rule == LXC_BPF_DEVICE_CGROUP_ALLOWLIST
-				  ? "whitelist"
-				  : "blacklist",
+				  ? "allowlist"
+				  : "denylist",
 			      device->global_rule == LXC_BPF_DEVICE_CGROUP_ALLOWLIST
-				  ? "whitelist"
-				  : "blacklist");
+				  ? "allowlist"
+				  : "denylist");
 			cur->global_rule = device->global_rule;
 			return 1;
 		}
