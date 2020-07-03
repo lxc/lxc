@@ -174,7 +174,7 @@ struct bpf_program *bpf_program_new(uint32_t prog_type)
 	prog->prog_type = prog_type;
 	prog->kernel_fd = -EBADF;
 	/*
-	 * By default a whitelist is used unless the user tells us otherwise.
+	 * By default a allowlist is used unless the user tells us otherwise.
 	 */
 	prog->device_list_type = LXC_BPF_DEVICE_CGROUP_ALLOWLIST;
 
