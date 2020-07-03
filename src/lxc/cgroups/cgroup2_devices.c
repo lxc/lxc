@@ -299,8 +299,8 @@ int bpf_program_finalize(struct bpf_program *prog)
 
 	TRACE("Implementing %s bpf device cgroup program",
 	      prog->device_list_type == LXC_BPF_DEVICE_CGROUP_DENYLIST
-		  ? "blacklist"
-		  : "whitelist");
+		  ? "denylist"
+		  : "allowlist");
 
 	ins[0] = BPF_MOV64_IMM(BPF_REG_0, prog->device_list_type);
 	ins[1] = BPF_EXIT_INSN();
@@ -451,11 +451,11 @@ int bpf_list_add_device(struct lxc_conf *conf, struct device_item *device)
 		    device->global_rule > LXC_BPF_DEVICE_CGROUP_LOCAL_RULE) {
 			TRACE("Switched from %s to %s",
 			      cur->global_rule == LXC_BPF_DEVICE_CGROUP_ALLOWLIST
-				  ? "whitelist"
-				  : "blacklist",
+				  ? "allowlist"
+				  : "denylist",
 			      device->global_rule == LXC_BPF_DEVICE_CGROUP_ALLOWLIST
-				  ? "whitelist"
-				  : "blacklist");
+				  ? "allowlist"
+				  : "denylist");
 			cur->global_rule = device->global_rule;
 			return 1;
 		}
