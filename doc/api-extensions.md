@@ -127,3 +127,7 @@ Privileged containers will usually be able to override the cgroup limits given t
 ## time\_namespace
 
 This adds time namespace support to LXC.
+
+## seccomp\_allow\_deny\_syntax
+
+This adds the ability to use "denylist" and "allowlist" in seccomp v2 policies.
