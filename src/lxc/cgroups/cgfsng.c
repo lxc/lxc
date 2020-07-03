@@ -2562,8 +2562,8 @@ static int device_cgroup_rule_parse(struct device_item *device, const char *key,
 		device->major = -1;
 		device->minor = -1;
 		device->global_rule = device->allow
-					  ? LXC_BPF_DEVICE_CGROUP_BLACKLIST
-					  : LXC_BPF_DEVICE_CGROUP_WHITELIST;
+					  ? LXC_BPF_DEVICE_CGROUP_DENYLIST
+					  : LXC_BPF_DEVICE_CGROUP_ALLOWLIST;
 		device->allow = -1;
 		return 0;
 	}
