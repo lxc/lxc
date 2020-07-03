@@ -1736,17 +1736,17 @@ proc proc proc nodev,noexec,nosuid 0 0
       <para>
         <!--
         Versions 1 and 2 are currently supported.  In version 1, the
-	policy is a simple whitelist.  The second line therefore must
-	read "whitelist", with the rest of the file containing one (numeric)
-	syscall number per line.  Each syscall number is whitelisted,
-	while every unlisted number is blacklisted for use in the container
+	policy is a simple allowlist.  The second line therefore must
+	read "allowlist", with the rest of the file containing one (numeric)
+	syscall number per line.  Each syscall number is allowlisted,
+	while every unlisted number is denylisted for use in the container
         -->
-        현재는 버전1과 2만 지원된다. 버전 1에서는 정책은 단순한 화이트리스트이다. 그러므로 두번째 라인은 반드시 "whitelist"여야 한다. 파일의 나머지 내용은 한 줄에 하나의 시스템콜 번호로 채워진다. 화이트리스트에 없는 번호는 컨테이너에서 블랙리스트로 들어간다.
+        현재는 버전1과 2만 지원된다. 버전 1에서는 정책은 단순한 화이트리스트이다. 그러므로 두번째 라인은 반드시 "allowlist"여야 한다. 파일의 나머지 내용은 한 줄에 하나의 시스템콜 번호로 채워진다. 화이트리스트에 없는 번호는 컨테이너에서 블랙리스트로 들어간다.
       </para>
 
       <para>
         <!--
-       In version 2, the policy may be blacklist or whitelist,
+       In version 2, the policy may be denylist or allowlist,
        supports per-rule and per-policy default actions, and supports
        per-architecture system call resolution from textual names.
           -->
@@ -1754,7 +1754,7 @@ proc proc proc nodev,noexec,nosuid 0 0
       </para>
       <para>
         <!--
-       An example blacklist policy, in which all system calls are
+       An example denylist policy, in which all system calls are
        allowed except for mknod, which will simply do nothing and
        return 0 (success), looks like:
        -->
@@ -1762,7 +1762,7 @@ proc proc proc nodev,noexec,nosuid 0 0
       </para>
 <screen>
 2
-blacklist
+denylist
 mknod errno 0
 </screen>
       <variablelist>

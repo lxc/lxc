@@ -10,7 +10,7 @@ pkgexamples_DATA = \
 	lxc-veth.conf \
 	lxc-complex.conf \
 	seccomp-v1.conf \
-	seccomp-v2-blacklist.conf \
+	seccomp-v2-denylist.conf \
 	seccomp-v2.conf
 endif
 
@@ -23,10 +23,10 @@ noinst_DATA = \
 	lxc-veth.conf.in \
 	lxc-complex.conf.in \
 	seccomp-v1.conf \
-	seccomp-v2-blacklist.conf \
+	seccomp-v2-denylist.conf \
 	seccomp-v2.conf
 
 EXTRA_DIST = \
 	seccomp-v1.conf \
-	seccomp-v2-blacklist.conf \
+	seccomp-v2-denylist.conf \
 	seccomp-v2.conf
