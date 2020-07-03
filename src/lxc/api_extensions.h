@@ -42,6 +42,7 @@ static char *api_extensions[] = {
 	"cgroup_advanced_isolation",
 	"network_bridge_vlan",
 	"time_namespace",
+	"seccomp_allow_deny_syntax",
 };
 
 static size_t nr_api_extensions = sizeof(api_extensions) / sizeof(*api_extensions);
