@@ -118,29 +118,32 @@ void bpf_program_free(struct bpf_program *prog)
 			   .off = 0,                   \
 			   .imm = 0})
 
-static int bpf_access_mask(const char *acc)
+static int bpf_access_mask(const char *acc, int *mask)
 {
-	int mask = 0;
+	*mask = 0;
 
 	if (!acc)
-		return mask;
+		return 0;
 
-	for (; *acc; acc++)
+	for (; *acc; acc++) {
 		switch (*acc) {
 		case 'r':
-			mask |= BPF_DEVCG_ACC_READ;
+			*mask |= BPF_DEVCG_ACC_READ;
 			break;
 		case 'w':
-			mask |= BPF_DEVCG_ACC_WRITE;
+			*mask |= BPF_DEVCG_ACC_WRITE;
 			break;
 		case 'm':
-			mask |= BPF_DEVCG_ACC_MKNOD;
+			*mask |= BPF_DEVCG_ACC_MKNOD;
 			break;
+		case '\0':
+			continue;
 		default:
 			return -EINVAL;
 		}
+	}
 
-	return mask;
+	return 0;
 }
 
 static int bpf_device_type(char type)
@@ -227,7 +230,10 @@ int bpf_program_append_device(struct bpf_program *prog, struct device_item *devi
 	if (device_type > 0)
 		jump_nr++;
 
-	access_mask = bpf_access_mask(device->access);
+	ret = bpf_access_mask(device->access, &access_mask);
+	if (ret < 0)
+		return log_error_errno(ret, -ret, "Invalid access mask specified %s", device->access);
+
 	if (!bpf_device_all_access(access_mask))
 		jump_nr += 3;
 
