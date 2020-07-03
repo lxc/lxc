@@ -39,6 +39,7 @@ static char *api_extensions[] = {
 #endif
 	"cgroup2",
 	"pidfd",
+	"seccomp_allow_deny_syntax",
 };
 
 static size_t nr_api_extensions = sizeof(api_extensions) / sizeof(*api_extensions);

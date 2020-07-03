@@ -118,3 +118,7 @@ This adds a new API function `init_pidfd()` which allows to retrieve a pidfd for
 ## pidfd
 
 When running on kernels that support pidfds LXC will rely on them for most operations. This makes interacting with containers not just more reliable it also makes it significantly safer and eliminates various races inherent to PID-based kernel APIs. LXC will require that the running kernel at least support `pidfd_send_signal()`, `CLONE_PIDFD`, `P_PIDFD`, and pidfd polling support. Any kernel starting with `Linux 5.4` should have full support for pidfds.
+
+## seccomp\_allow\_deny\_syntax
+
+This adds the ability to use "denylist" and "allowlist" in seccomp v2 policies.
