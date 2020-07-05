@@ -32,9 +32,9 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 
-#define _PATH_DEVPTMX "/dev/ptx"
+#define _PATH_DEVPTMX "/dev/ptmx"
 
-int openpty (int *aptx, int *apts, char *name, struct termios *termp,
+int openpty (int *aptx, int *apty, char *name, struct termios *termp,
        struct winsize *winp)
 {
    char buf[PATH_MAX];
@@ -64,7 +64,7 @@ int openpty (int *aptx, int *apts, char *name, struct termios *termp,
        ioctl(pty, TIOCSWINSZ, winp);
 
    *aptx = ptx;
-   *apts = pty;
+   *apty = pty;
    if (name != NULL)
        strcpy(name, buf);
 
