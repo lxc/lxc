@@ -27,6 +27,18 @@
 
 lxc_log_define(cgroup2_devices, cgroup);
 
+#ifndef BPF_LOG_LEVEL1
+#define BPF_LOG_LEVEL1 1
+#endif
+
+#ifndef BPF_LOG_LEVEL2
+#define BPF_LOG_LEVEL2 2
+#endif
+
+#ifndef BPF_LOG_LEVEL
+#define BPF_LOG_LEVEL (BPF_LOG_LEVEL1 | BPF_LOG_LEVEL2)
+#endif
+
 static int bpf_program_add_instructions(struct bpf_program *prog,
 					const struct bpf_insn *instructions,
 					size_t count)
@@ -118,10 +130,8 @@ void bpf_program_free(struct bpf_program *prog)
 			   .off = 0,                   \
 			   .imm = 0})
 
-static int bpf_access_mask(const char *acc, int *mask)
+static int bpf_access_mask(const char *acc, __u32 *mask)
 {
-	*mask = 0;
-
 	if (!acc)
 		return 0;
 
@@ -136,8 +146,6 @@ static int bpf_access_mask(const char *acc, int *mask)
 		case 'm':
 			*mask |= BPF_DEVCG_ACC_MKNOD;
 			break;
-		case '\0':
-			continue;
 		default:
 			return -EINVAL;
 		}
@@ -160,10 +168,9 @@ static int bpf_device_type(char type)
 	return -1;
 }
 
-static inline bool bpf_device_all_access(int access_mask)
+static inline bool bpf_device_all_access(__u32 access_mask)
 {
-	return (access_mask == (BPF_DEVCG_ACC_READ | BPF_DEVCG_ACC_WRITE |
-				BPF_DEVCG_ACC_MKNOD));
+	return access_mask == (BPF_DEVCG_ACC_READ | BPF_DEVCG_ACC_WRITE | BPF_DEVCG_ACC_MKNOD);
 }
 
 struct bpf_program *bpf_program_new(uint32_t prog_type)
@@ -211,7 +218,8 @@ int bpf_program_init(struct bpf_program *prog)
 int bpf_program_append_device(struct bpf_program *prog, struct device_item *device)
 {
 	int jump_nr = 1;
-	int access_mask, device_type, ret;
+	__u32 access_mask = 0;
+	int device_type, ret;
 	struct bpf_insn bpf_access_decision[2];
 
 	if (!prog || !device)
@@ -223,6 +231,13 @@ int bpf_program_append_device(struct bpf_program *prog, struct device_item *devi
 		return 0;
 	}
 
+	ret = bpf_access_mask(device->access, &access_mask);
+	if (ret < 0)
+		return log_error_errno(ret, -ret, "Invalid access mask specified %s", device->access);
+
+	if (!bpf_device_all_access(access_mask))
+		jump_nr++;
+
 	device_type = bpf_device_type(device->type);
 	if (device_type < 0)
 		return log_error_errno(-1, EINVAL, "Invalid bpf cgroup device type %c", device->type);
@@ -230,22 +245,17 @@ int bpf_program_append_device(struct bpf_program *prog, struct device_item *devi
 	if (device_type > 0)
 		jump_nr++;
 
-	ret = bpf_access_mask(device->access, &access_mask);
-	if (ret < 0)
-		return log_error_errno(ret, -ret, "Invalid access mask specified %s", device->access);
-
-	if (!bpf_device_all_access(access_mask))
-		jump_nr += 3;
-
 	if (device->major != -1)
 		jump_nr++;
 
 	if (device->minor != -1)
 		jump_nr++;
 
-	if (device_type > 0) {
+	if (!bpf_device_all_access(access_mask)) {
 		struct bpf_insn ins[] = {
-		    BPF_JMP_IMM(BPF_JNE, BPF_REG_2, device_type, jump_nr--),
+		    BPF_MOV32_REG(BPF_REG_1, BPF_REG_3),
+		    BPF_ALU32_IMM(BPF_AND, BPF_REG_1, access_mask),
+		    BPF_JMP_REG(BPF_JNE, BPF_REG_1, BPF_REG_3, jump_nr--),
 		};
 
 		ret = bpf_program_add_instructions(prog, ins, ARRAY_SIZE(ins));
@@ -253,14 +263,11 @@ int bpf_program_append_device(struct bpf_program *prog, struct device_item *devi
 			return log_error_errno(-1, errno, "Failed to add instructions to bpf cgroup program");
 	}
 
-	if (!bpf_device_all_access(access_mask)) {
+	if (device_type > 0) {
 		struct bpf_insn ins[] = {
-		    BPF_MOV32_REG(BPF_REG_1, BPF_REG_3),
-		    BPF_ALU32_IMM(BPF_AND, BPF_REG_1, access_mask),
-		    BPF_JMP_REG(BPF_JNE, BPF_REG_1, BPF_REG_3, jump_nr),
+		    BPF_JMP_IMM(BPF_JNE, BPF_REG_2, device_type, jump_nr--),
 		};
 
-		jump_nr -= 3;
 		ret = bpf_program_add_instructions(prog, ins, ARRAY_SIZE(ins));
 		if (ret)
 			return log_error_errno(-1, errno, "Failed to add instructions to bpf cgroup program");
@@ -289,7 +296,7 @@ int bpf_program_append_device(struct bpf_program *prog, struct device_item *devi
 	bpf_access_decision[0] = BPF_MOV64_IMM(BPF_REG_0, device->allow);
 	bpf_access_decision[1] = BPF_EXIT_INSN();
 	ret = bpf_program_add_instructions(prog, bpf_access_decision,
-					    ARRAY_SIZE(bpf_access_decision));
+					   ARRAY_SIZE(bpf_access_decision));
 	if (ret)
 		return log_error_errno(-1, errno, "Failed to add instructions to bpf cgroup program");
 
@@ -314,7 +321,7 @@ int bpf_program_finalize(struct bpf_program *prog)
 }
 
 static int bpf_program_load_kernel(struct bpf_program *prog, char *log_buf,
-				   size_t log_size)
+				   __u32 log_size, __u32 log_level)
 {
 	union bpf_attr attr;
 
@@ -329,14 +336,15 @@ static int bpf_program_load_kernel(struct bpf_program *prog, char *log_buf,
 	    .insn_cnt	= prog->n_instructions,
 	    .license	= PTR_TO_UINT64("GPL"),
 	    .log_buf	= PTR_TO_UINT64(log_buf),
-	    .log_level	= !!log_buf,
+	    .log_level	= log_level,
 	    .log_size	= log_size,
 	};
 
 	prog->kernel_fd = bpf(BPF_PROG_LOAD, &attr, sizeof(attr));
 	if (prog->kernel_fd < 0)
-		return log_error_errno(-1, errno, "Failed to load bpf program");
+		return log_error_errno(-1, errno, "Failed to load bpf program: %s", log_buf);
 
+	TRACE("Loaded bpf program: %s", log_buf);
 	return 0;
 }
 
@@ -365,7 +373,7 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
 			return true;
 	}
 
-	ret = bpf_program_load_kernel(prog, NULL, 0);
+	ret = bpf_program_load_kernel(prog, NULL, 0, 0);
 	if (ret < 0)
 		return log_error_errno(-1, ret, "Failed to load bpf program");
 
@@ -527,7 +535,7 @@ bool bpf_devices_cgroup_supported(void)
 	if (ret < 0)
 		return log_trace(false, "Failed to add new instructions to bpf device cgroup program");
 
-	ret = bpf_program_load_kernel(prog, NULL, 0);
+	ret = bpf_program_load_kernel(prog, NULL, 0, 0);
 	if (ret < 0)
 		return log_trace(false, "Failed to load new bpf device cgroup program");
 

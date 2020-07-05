@@ -2934,17 +2934,13 @@ __cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
 		struct lxc_cgroup *cg = iterator->elem;
 		int ret;
 
-		if (strncmp("devices", cg->subsystem, 7) == 0) {
-			ret = bpf_device_cgroup_prepare(ops, conf, cg->subsystem,
-							cg->value);
-		} else {
-			ret = lxc_write_openat(h->container_limit_path,
-					       cg->subsystem, cg->value,
-					       strlen(cg->value));
-			if (ret < 0)
-				return log_error_errno(false, errno, "Failed to set \"%s\" to \"%s\"",
-						       cg->subsystem, cg->value);
-		}
+		if (strncmp("devices", cg->subsystem, 7) == 0)
+			ret = bpf_device_cgroup_prepare(ops, conf, cg->subsystem, cg->value);
+		else
+			ret = lxc_write_openat(h->container_limit_path, cg->subsystem, cg->value, strlen(cg->value));
+		if (ret < 0)
+			return log_error_errno(false, errno, "Failed to set \"%s\" to \"%s\"", cg->subsystem, cg->value);
+
 		TRACE("Set \"%s\" to \"%s\"", cg->subsystem, cg->value);
 	}
 
