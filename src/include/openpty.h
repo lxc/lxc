@@ -28,7 +28,7 @@
 #include <sys/ioctl.h>
 
 /*
- * Create pseudo tty ptx pts pair with @__name and set terminal
+ * Create pseudo tty ptx pty pair with @__name and set terminal
  * attributes according to @__termp and @__winp and return handles for both
  * ends in @__aptx and @__apts.
  */

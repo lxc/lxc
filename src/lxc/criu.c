@@ -67,7 +67,7 @@ struct criu_opts {
 	struct lxc_handler *handler;
 	int console_fd;
 	/* The path that is bind mounted from /dev/console, if any. We don't
-	 * want to use `--ext-mount-map auto`'s result here because the pts
+	 * want to use `--ext-mount-map auto`'s result here because the pty
 	 * device may have a different path (e.g. if the pty number is
 	 * different) on the target host. NULL if lxc.console.path = "none".
 	 */
@@ -1020,7 +1020,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		os.action = "restore";
 		os.user = opts;
 		os.c = c;
-		os.console_fd = c->lxc_conf->console.pts;
+		os.console_fd = c->lxc_conf->console.pty;
 		os.criu_version = criu_version;
 		os.handler = handler;
 

@@ -922,21 +922,21 @@ int lxc_allocate_ttys(struct lxc_conf *conf)
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
 		tty->ptx = -EBADF;
-		tty->pts = -EBADF;
-		ret = openpty(&tty->ptx, &tty->pts, NULL, NULL, NULL);
+		tty->pty = -EBADF;
+		ret = openpty(&tty->ptx, &tty->pty, NULL, NULL, NULL);
 		if (ret < 0) {
 			ttys->max = i;
 			return log_error_errno(-ENOTTY, ENOTTY, "Failed to create tty %zu", i);
 		}
 
-		ret = ttyname_r(tty->pts, tty->name, sizeof(tty->name));
+		ret = ttyname_r(tty->pty, tty->name, sizeof(tty->name));
 		if (ret < 0) {
 			ttys->max = i;
-			return log_error_errno(-ENOTTY, ENOTTY, "Failed to retrieve name of tty %zu pts", i);
+			return log_error_errno(-ENOTTY, ENOTTY, "Failed to retrieve name of tty %zu pty", i);
 		}
 
-		DEBUG("Created tty \"%s\" with ptx fd %d and pts fd %d",
-		      tty->name, tty->ptx, tty->pts);
+		DEBUG("Created tty \"%s\" with ptx fd %d and pty fd %d",
+		      tty->name, tty->ptx, tty->pty);
 
 		/* Prevent leaking the file descriptors to the container */
 		ret = fd_cloexec(tty->ptx, true);
@@ -944,10 +944,10 @@ int lxc_allocate_ttys(struct lxc_conf *conf)
 			SYSWARN("Failed to set FD_CLOEXEC flag on ptx fd %d of tty device \"%s\"",
 				tty->ptx, tty->name);
 
-		ret = fd_cloexec(tty->pts, true);
+		ret = fd_cloexec(tty->pty, true);
 		if (ret < 0)
-			SYSWARN("Failed to set FD_CLOEXEC flag on pts fd %d of tty device \"%s\"",
-				tty->pts, tty->name);
+			SYSWARN("Failed to set FD_CLOEXEC flag on pty fd %d of tty device \"%s\"",
+				tty->pty, tty->name);
 
 		tty->busy = -1;
 	}
@@ -965,7 +965,7 @@ void lxc_delete_tty(struct lxc_tty_info *ttys)
 	for (int i = 0; i < ttys->max; i++) {
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 		close_prot_errno_disarm(tty->ptx);
-		close_prot_errno_disarm(tty->pts);
+		close_prot_errno_disarm(tty->pty);
 	}
 
 	free_disarm(ttys->tty);
@@ -987,14 +987,14 @@ static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
 		ttyfds[0] = tty->ptx;
-		ttyfds[1] = tty->pts;
+		ttyfds[1] = tty->pty;
 
 		ret = lxc_abstract_unix_send_fds(sock, ttyfds, 2, NULL, 0);
 		if (ret < 0)
 			break;
 
-		TRACE("Sent tty \"%s\" with ptx fd %d and pts fd %d to parent",
-		      tty->name, tty->ptx, tty->pts);
+		TRACE("Sent tty \"%s\" with ptx fd %d and pty fd %d to parent",
+		      tty->name, tty->ptx, tty->pty);
 	}
 
 	if (ret < 0)
@@ -1582,7 +1582,7 @@ static inline bool wants_console(const struct lxc_terminal *terminal)
 
 static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 				 const struct lxc_terminal *console,
-				 int pts_mnt_fd)
+				 int pty_mnt_fd)
 {
 	int ret;
 	char path[PATH_MAX];
@@ -1615,12 +1615,12 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-errno, errno, "Failed to create console");
 
-	ret = fchmod(console->pts, S_IXUSR | S_IXGRP);
+	ret = fchmod(console->pty, S_IXUSR | S_IXGRP);
 	if (ret < 0)
 		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", S_IXUSR | S_IXGRP, console->name);
 
-	if (pts_mnt_fd >= 0) {
-		ret = move_mount(pts_mnt_fd, "", -EBADF, path, MOVE_MOUNT_F_EMPTY_PATH);
+	if (pty_mnt_fd >= 0) {
+		ret = move_mount(pty_mnt_fd, "", -EBADF, path, MOVE_MOUNT_F_EMPTY_PATH);
 		if (!ret) {
 			DEBUG("Moved mount \"%s\" onto \"%s\"", console->name, path);
 			goto finish;
@@ -1629,21 +1629,21 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 		if (ret && errno != ENOSYS)
 			return log_error_errno(-1, errno,
 					       "Failed to mount %d(%s) on \"%s\"",
-					       pts_mnt_fd, console->name, path);
+					       pty_mnt_fd, console->name, path);
 	}
 
 	ret = safe_mount(console->name, path, "none", MS_BIND, 0, rootfs_path);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to mount %d(%s) on \"%s\"", pts_mnt_fd, console->name, path);
+		return log_error_errno(-1, errno, "Failed to mount %d(%s) on \"%s\"", pty_mnt_fd, console->name, path);
 
 finish:
-	DEBUG("Mounted pts device %d(%s) onto \"%s\"", pts_mnt_fd, console->name, path);
+	DEBUG("Mounted pty device %d(%s) onto \"%s\"", pty_mnt_fd, console->name, path);
 	return 0;
 }
 
 static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 				    const struct lxc_terminal *console,
-				    char *ttydir, int pts_mnt_fd)
+				    char *ttydir, int pty_mnt_fd)
 {
 	int ret;
 	char path[PATH_MAX], lxcpath[PATH_MAX];
@@ -1686,13 +1686,13 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-errno, errno, "Failed to create console");
 
-	ret = fchmod(console->pts, S_IXUSR | S_IXGRP);
+	ret = fchmod(console->pty, S_IXUSR | S_IXGRP);
 	if (ret < 0)
 		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", S_IXUSR | S_IXGRP, console->name);
 
 	/* bind mount console->name to '/dev/<ttydir>/console' */
-	if (pts_mnt_fd >= 0) {
-		ret = move_mount(pts_mnt_fd, "", -EBADF, lxcpath, MOVE_MOUNT_F_EMPTY_PATH);
+	if (pty_mnt_fd >= 0) {
+		ret = move_mount(pty_mnt_fd, "", -EBADF, lxcpath, MOVE_MOUNT_F_EMPTY_PATH);
 		if (!ret) {
 			DEBUG("Moved mount \"%s\" onto \"%s\"", console->name, lxcpath);
 			goto finish;
@@ -1701,12 +1701,12 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 		if (ret && errno != ENOSYS)
 			return log_error_errno(-1, errno,
 					       "Failed to mount %d(%s) on \"%s\"",
-					       pts_mnt_fd, console->name, lxcpath);
+					       pty_mnt_fd, console->name, lxcpath);
 	}
 
 	ret = safe_mount(console->name, lxcpath, "none", MS_BIND, 0, rootfs_path);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to mount %d(%s) on \"%s\"", pts_mnt_fd, console->name, lxcpath);
+		return log_error_errno(-1, errno, "Failed to mount %d(%s) on \"%s\"", pty_mnt_fd, console->name, lxcpath);
 	DEBUG("Mounted \"%s\" onto \"%s\"", console->name, lxcpath);
 
 finish:
@@ -1722,13 +1722,13 @@ finish:
 
 static int lxc_setup_console(const struct lxc_rootfs *rootfs,
 			     const struct lxc_terminal *console, char *ttydir,
-			     int pts_mnt_fd)
+			     int pty_mnt_fd)
 {
 
 	if (!ttydir)
-		return lxc_setup_dev_console(rootfs, console, pts_mnt_fd);
+		return lxc_setup_dev_console(rootfs, console, pty_mnt_fd);
 
-	return lxc_setup_ttydir_console(rootfs, console, ttydir, pts_mnt_fd);
+	return lxc_setup_ttydir_console(rootfs, console, ttydir, pty_mnt_fd);
 }
 
 static int parse_mntopt(char *opt, unsigned long *flags, char **data, size_t size)
@@ -2547,9 +2547,9 @@ struct lxc_conf *lxc_conf_init(void)
 	new->console.peer = -1;
 	new->console.proxy.busy = -1;
 	new->console.proxy.ptx = -1;
-	new->console.proxy.pts = -1;
+	new->console.proxy.pty = -1;
 	new->console.ptx = -1;
-	new->console.pts = -1;
+	new->console.pty = -1;
 	new->console.name[0] = '\0';
 	memset(&new->console.ringbuf, 0, sizeof(struct lxc_ringbuf));
 	new->maincmd_fd = -1;
@@ -3182,7 +3182,7 @@ static int lxc_setup_boot_id(void)
 
 int lxc_setup(struct lxc_handler *handler)
 {
-	__do_close int pts_mnt_fd = -EBADF;
+	__do_close int pty_mnt_fd = -EBADF;
 	int ret;
 	const char *lxcpath = handler->lxcpath, *name = handler->name;
 	struct lxc_conf *lxc_conf = handler->conf;
@@ -3222,9 +3222,9 @@ int lxc_setup(struct lxc_handler *handler)
 	}
 
 	if (wants_console(&lxc_conf->console)) {
-		pts_mnt_fd = open_tree(-EBADF, lxc_conf->console.name,
+		pty_mnt_fd = open_tree(-EBADF, lxc_conf->console.name,
 				       OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC | AT_EMPTY_PATH);
-		if (pts_mnt_fd < 0)
+		if (pty_mnt_fd < 0)
 			SYSTRACE("Failed to create detached mount for container's console \"%s\"",
 				 lxc_conf->console.name);
 		else
@@ -3309,7 +3309,7 @@ int lxc_setup(struct lxc_handler *handler)
 		return log_error(-1, "Failed to \"/proc\" LSMs");
 
 	ret = lxc_setup_console(&lxc_conf->rootfs, &lxc_conf->console,
-				lxc_conf->ttys.dir, pts_mnt_fd);
+				lxc_conf->ttys.dir, pty_mnt_fd);
 	if (ret < 0)
 		return log_error(-1, "Failed to setup console");
 

@@ -38,7 +38,7 @@ int openpty (int *aptx, int *apts, char *name, struct termios *termp,
        struct winsize *winp)
 {
    char buf[PATH_MAX];
-   int ptx, pts;
+   int ptx, pty;
 
    ptx = open(_PATH_DEVPTMX, O_RDWR);
    if (ptx == -1)
@@ -50,21 +50,21 @@ int openpty (int *aptx, int *apts, char *name, struct termios *termp,
    if (unlockpt(ptx))
        goto fail;
 
-   if (ptsname_r(ptx, buf, sizeof buf))
+   if (ptyname_r(ptx, buf, sizeof buf))
        goto fail;
 
-   pts = open(buf, O_RDWR | O_NOCTTY);
-   if (pts == -1)
+   pty = open(buf, O_RDWR | O_NOCTTY);
+   if (pty == -1)
        goto fail;
 
    /* XXX Should we ignore errors here?  */
    if (termp)
-       tcsetattr(pts, TCSAFLUSH, termp);
+       tcsetattr(pty, TCSAFLUSH, termp);
    if (winp)
-       ioctl(pts, TIOCSWINSZ, winp);
+       ioctl(pty, TIOCSWINSZ, winp);
 
    *aptx = ptx;
-   *apts = pts;
+   *apts = pty;
    if (name != NULL)
        strcpy(name, buf);
 

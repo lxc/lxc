@@ -939,7 +939,7 @@ static inline void lxc_attach_terminal_close_ptx(struct lxc_terminal *terminal)
 
 static inline void lxc_attach_terminal_close_pts(struct lxc_terminal *terminal)
 {
-	close_prot_errno_disarm(terminal->pts);
+	close_prot_errno_disarm(terminal->pty);
 }
 
 static inline void lxc_attach_terminal_close_peer(struct lxc_terminal *terminal)
@@ -1377,7 +1377,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	payload.ipc_socket = ipc_sockets[1];
 	payload.options = options;
 	payload.init_ctx = init_ctx;
-	payload.terminal_pts_fd = terminal.pts;
+	payload.terminal_pts_fd = terminal.pty;
 	payload.exec_function = exec_function;
 	payload.exec_payload = exec_payload;
 
