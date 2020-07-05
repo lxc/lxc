@@ -1297,14 +1297,14 @@ static int do_start(void *data)
 	 * setup on its console ie. the pty allocated in lxc_terminal_setup() so
 	 * make sure that that pty is stdin,stdout,stderr.
 	 */
-	 if (handler->conf->console.pts >= 0) {
+	 if (handler->conf->console.pty >= 0) {
 		 if (handler->daemonize || !handler->conf->is_execute)
-			 ret = set_stdfds(handler->conf->console.pts);
+			 ret = set_stdfds(handler->conf->console.pty);
 		 else
-			 ret = lxc_terminal_set_stdfds(handler->conf->console.pts);
+			 ret = lxc_terminal_set_stdfds(handler->conf->console.pty);
 		 if (ret < 0) {
 			ERROR("Failed to redirect std{in,out,err} to pty file descriptor %d",
-			      handler->conf->console.pts);
+			      handler->conf->console.pty);
 			goto out_warn_father;
 		 }
 	 }
@@ -1331,7 +1331,7 @@ static int do_start(void *data)
 
 	close_prot_errno_disarm(handler->sigfd);
 
-	if (handler->conf->console.pts < 0 && handler->daemonize) {
+	if (handler->conf->console.pty < 0 && handler->daemonize) {
 		if (devnull_fd < 0) {
 			devnull_fd = open_devnull();
 			if (devnull_fd < 0)
@@ -1483,9 +1483,9 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 
 		tty = &ttys->tty[i];
 		tty->busy = -1;
-		tty->ptmx = ttyfds[0];
-		tty->pts = ttyfds[1];
-		TRACE("Received pty with ptmx fd %d and pts fd %d from child", tty->ptmx, tty->pts);
+		tty->ptx = ttyfds[0];
+		tty->pty = ttyfds[1];
+		TRACE("Received pty with ptx fd %d and pty fd %d from child", tty->ptx, tty->pty);
 	}
 
 	if (ret < 0)

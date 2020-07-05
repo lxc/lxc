@@ -32,45 +32,45 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 
-#define _PATH_DEVPTMX "/dev/ptmx"
+#define _PATH_DEVPTMX "/dev/ptx"
 
-int openpty (int *aptmx, int *apts, char *name, struct termios *termp,
+int openpty (int *aptx, int *apts, char *name, struct termios *termp,
        struct winsize *winp)
 {
    char buf[PATH_MAX];
-   int ptmx, pts;
+   int ptx, pty;
 
-   ptmx = open(_PATH_DEVPTMX, O_RDWR);
-   if (ptmx == -1)
+   ptx = open(_PATH_DEVPTMX, O_RDWR);
+   if (ptx == -1)
        return -1;
 
-   if (grantpt(ptmx))
+   if (grantpt(ptx))
        goto fail;
 
-   if (unlockpt(ptmx))
+   if (unlockpt(ptx))
        goto fail;
 
-   if (ptsname_r(ptmx, buf, sizeof buf))
+   if (ptyname_r(ptx, buf, sizeof buf))
        goto fail;
 
-   pts = open(buf, O_RDWR | O_NOCTTY);
-   if (pts == -1)
+   pty = open(buf, O_RDWR | O_NOCTTY);
+   if (pty == -1)
        goto fail;
 
    /* XXX Should we ignore errors here?  */
    if (termp)
-       tcsetattr(pts, TCSAFLUSH, termp);
+       tcsetattr(pty, TCSAFLUSH, termp);
    if (winp)
-       ioctl(pts, TIOCSWINSZ, winp);
+       ioctl(pty, TIOCSWINSZ, winp);
 
-   *aptmx = ptmx;
-   *apts = pts;
+   *aptx = ptx;
+   *apts = pty;
    if (name != NULL)
        strcpy(name, buf);
 
    return 0;
 
 fail:
-   close(ptmx);
+   close(ptx);
    return -1;
 }

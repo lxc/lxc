@@ -844,7 +844,7 @@ by Sungbae Yoo <sungbae.yoo at samsung.com>
               <!--
 	      If set, the container will have a new pseudo tty
 	      instance, making this private to it. The value specifies
-              the maximum number of pseudo ttys allowed for a pts
+              the maximum number of pseudo ttys allowed for a pty
               instance (this limitation is not implemented yet).
               -->
               만약 지정되었다면, 컨테이너는 새 pseudo tty 인스턴스를 갖는다. 그리고 이것을 자기자신 전용으로 만든다. 지정하는 값은 pseudo tty의 최대 개수를 지정한다. (이 제한은 아직 구현되지 않았다)
