@@ -1434,9 +1434,9 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 
 		tty = &ttys->tty[i];
 		tty->busy = -1;
-		tty->ptmx = ttyfds[0];
+		tty->ptx = ttyfds[0];
 		tty->pts = ttyfds[1];
-		TRACE("Received pty with ptmx fd %d and pts fd %d from child", tty->ptmx, tty->pts);
+		TRACE("Received pty with ptx fd %d and pts fd %d from child", tty->ptx, tty->pts);
 	}
 
 	if (ret < 0)

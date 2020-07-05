@@ -921,9 +921,9 @@ int lxc_allocate_ttys(struct lxc_conf *conf)
 	for (size_t i = 0; i < ttys->max; i++) {
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
-		tty->ptmx = -EBADF;
+		tty->ptx = -EBADF;
 		tty->pts = -EBADF;
-		ret = openpty(&tty->ptmx, &tty->pts, NULL, NULL, NULL);
+		ret = openpty(&tty->ptx, &tty->pts, NULL, NULL, NULL);
 		if (ret < 0) {
 			ttys->max = i;
 			return log_error_errno(-ENOTTY, ENOTTY, "Failed to create tty %zu", i);
@@ -935,14 +935,14 @@ int lxc_allocate_ttys(struct lxc_conf *conf)
 			return log_error_errno(-ENOTTY, ENOTTY, "Failed to retrieve name of tty %zu pts", i);
 		}
 
-		DEBUG("Created tty \"%s\" with ptmx fd %d and pts fd %d",
-		      tty->name, tty->ptmx, tty->pts);
+		DEBUG("Created tty \"%s\" with ptx fd %d and pts fd %d",
+		      tty->name, tty->ptx, tty->pts);
 
 		/* Prevent leaking the file descriptors to the container */
-		ret = fd_cloexec(tty->ptmx, true);
+		ret = fd_cloexec(tty->ptx, true);
 		if (ret < 0)
-			SYSWARN("Failed to set FD_CLOEXEC flag on ptmx fd %d of tty device \"%s\"",
-				tty->ptmx, tty->name);
+			SYSWARN("Failed to set FD_CLOEXEC flag on ptx fd %d of tty device \"%s\"",
+				tty->ptx, tty->name);
 
 		ret = fd_cloexec(tty->pts, true);
 		if (ret < 0)
@@ -964,7 +964,7 @@ void lxc_delete_tty(struct lxc_tty_info *ttys)
 
 	for (int i = 0; i < ttys->max; i++) {
 		struct lxc_terminal_info *tty = &ttys->tty[i];
-		close_prot_errno_disarm(tty->ptmx);
+		close_prot_errno_disarm(tty->ptx);
 		close_prot_errno_disarm(tty->pts);
 	}
 
@@ -986,15 +986,15 @@ static int lxc_send_ttys_to_parent(struct lxc_handler *handler)
 		int ttyfds[2];
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
-		ttyfds[0] = tty->ptmx;
+		ttyfds[0] = tty->ptx;
 		ttyfds[1] = tty->pts;
 
 		ret = lxc_abstract_unix_send_fds(sock, ttyfds, 2, NULL, 0);
 		if (ret < 0)
 			break;
 
-		TRACE("Sent tty \"%s\" with ptmx fd %d and pts fd %d to parent",
-		      tty->name, tty->ptmx, tty->pts);
+		TRACE("Sent tty \"%s\" with ptx fd %d and pts fd %d to parent",
+		      tty->name, tty->ptx, tty->pts);
 	}
 
 	if (ret < 0)
@@ -2546,9 +2546,9 @@ struct lxc_conf *lxc_conf_init(void)
 	new->console.path = NULL;
 	new->console.peer = -1;
 	new->console.proxy.busy = -1;
-	new->console.proxy.ptmx = -1;
+	new->console.proxy.ptx = -1;
 	new->console.proxy.pts = -1;
-	new->console.ptmx = -1;
+	new->console.ptx = -1;
 	new->console.pts = -1;
 	new->console.name[0] = '\0';
 	memset(&new->console.ringbuf, 0, sizeof(struct lxc_ringbuf));

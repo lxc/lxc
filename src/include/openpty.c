@@ -32,25 +32,25 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 
-#define _PATH_DEVPTMX "/dev/ptmx"
+#define _PATH_DEVPTMX "/dev/ptx"
 
-int openpty (int *aptmx, int *apts, char *name, struct termios *termp,
+int openpty (int *aptx, int *apts, char *name, struct termios *termp,
        struct winsize *winp)
 {
    char buf[PATH_MAX];
-   int ptmx, pts;
+   int ptx, pts;
 
-   ptmx = open(_PATH_DEVPTMX, O_RDWR);
-   if (ptmx == -1)
+   ptx = open(_PATH_DEVPTMX, O_RDWR);
+   if (ptx == -1)
        return -1;
 
-   if (grantpt(ptmx))
+   if (grantpt(ptx))
        goto fail;
 
-   if (unlockpt(ptmx))
+   if (unlockpt(ptx))
        goto fail;
 
-   if (ptsname_r(ptmx, buf, sizeof buf))
+   if (ptsname_r(ptx, buf, sizeof buf))
        goto fail;
 
    pts = open(buf, O_RDWR | O_NOCTTY);
@@ -63,7 +63,7 @@ int openpty (int *aptmx, int *apts, char *name, struct termios *termp,
    if (winp)
        ioctl(pts, TIOCSWINSZ, winp);
 
-   *aptmx = ptmx;
+   *aptx = ptx;
    *apts = pts;
    if (name != NULL)
        strcpy(name, buf);
@@ -71,6 +71,6 @@ int openpty (int *aptmx, int *apts, char *name, struct termios *termp,
    return 0;
 
 fail:
-   close(ptmx);
+   close(ptx);
    return -1;
 }
