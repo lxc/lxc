@@ -873,7 +873,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
             <para>
               If set, the container will have a new pseudo tty
               instance, making this private to it. The value specifies
-              the maximum number of pseudo ttys allowed for a pts
+              the maximum number of pseudo ttys allowed for a pty
               instance (this limitation is not implemented yet).
             </para>
           </listitem>

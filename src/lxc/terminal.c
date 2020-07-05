@@ -486,8 +486,8 @@ static void lxc_terminal_peer_proxy_free(struct lxc_terminal *terminal)
 	close(terminal->proxy.ptx);
 	terminal->proxy.ptx = -1;
 
-	close(terminal->proxy.pts);
-	terminal->proxy.pts = -1;
+	close(terminal->proxy.pty);
+	terminal->proxy.pty = -1;
 
 	terminal->proxy.busy = -1;
 
@@ -521,17 +521,17 @@ static int lxc_terminal_peer_proxy_alloc(struct lxc_terminal *terminal,
 	/* This is the proxy terminal that will be given to the client, and
 	 * that the real terminal ptx will send to / recv from.
 	 */
-	ret = openpty(&terminal->proxy.ptx, &terminal->proxy.pts, NULL,
+	ret = openpty(&terminal->proxy.ptx, &terminal->proxy.pty, NULL,
 		      NULL, NULL);
 	if (ret < 0) {
 		SYSERROR("Failed to open proxy terminal");
 		return -1;
 	}
 
-	ret = ttyname_r(terminal->proxy.pts, terminal->proxy.name,
+	ret = ttyname_r(terminal->proxy.pty, terminal->proxy.name,
 			sizeof(terminal->proxy.name));
 	if (ret < 0) {
-		SYSERROR("Failed to retrieve name of proxy terminal pts");
+		SYSERROR("Failed to retrieve name of proxy terminal pty");
 		goto on_error;
 	}
 
@@ -541,13 +541,13 @@ static int lxc_terminal_peer_proxy_alloc(struct lxc_terminal *terminal,
 		goto on_error;
 	}
 
-	ret = fd_cloexec(terminal->proxy.pts, true);
+	ret = fd_cloexec(terminal->proxy.pty, true);
 	if (ret < 0) {
-		SYSERROR("Failed to set FD_CLOEXEC flag on proxy terminal pts");
+		SYSERROR("Failed to set FD_CLOEXEC flag on proxy terminal pty");
 		goto on_error;
 	}
 
-	ret = lxc_setup_tios(terminal->proxy.pts, &oldtermio);
+	ret = lxc_setup_tios(terminal->proxy.pty, &oldtermio);
 	if (ret < 0)
 		goto on_error;
 
@@ -556,14 +556,14 @@ static int lxc_terminal_peer_proxy_alloc(struct lxc_terminal *terminal,
 		goto on_error;
 
 	terminal->tty_state = ts;
-	terminal->peer = terminal->proxy.pts;
+	terminal->peer = terminal->proxy.pty;
 	terminal->proxy.busy = sockfd;
 	ret = lxc_terminal_mainloop_add_peer(terminal);
 	if (ret < 0)
 		goto on_error;
 
-	NOTICE("Opened proxy terminal with ptx fd %d and pts fd %d",
-	       terminal->proxy.ptx, terminal->proxy.pts);
+	NOTICE("Opened proxy terminal with ptx fd %d and pty fd %d",
+	       terminal->proxy.ptx, terminal->proxy.pty);
 	return 0;
 
 on_error:
@@ -633,7 +633,7 @@ void lxc_terminal_free(struct lxc_conf *conf, int fd)
 	if (terminal->proxy.busy != fd)
 		return;
 
-	lxc_mainloop_del_handler(terminal->descr, terminal->proxy.pts);
+	lxc_mainloop_del_handler(terminal->descr, terminal->proxy.pty);
 	lxc_terminal_peer_proxy_free(terminal);
 }
 
@@ -753,9 +753,9 @@ void lxc_terminal_delete(struct lxc_terminal *terminal)
 		close(terminal->ptx);
 	terminal->ptx = -1;
 
-	if (terminal->pts >= 0)
-		close(terminal->pts);
-	terminal->pts = -1;
+	if (terminal->pty >= 0)
+		close(terminal->pty);
+	terminal->pty = -1;
 
 	if (terminal->log_fd >= 0)
 		close(terminal->log_fd);
@@ -832,15 +832,15 @@ int lxc_terminal_create(struct lxc_terminal *terminal)
 {
 	int ret;
 
-	ret = openpty(&terminal->ptx, &terminal->pts, NULL, NULL, NULL);
+	ret = openpty(&terminal->ptx, &terminal->pty, NULL, NULL, NULL);
 	if (ret < 0) {
 		SYSERROR("Failed to open terminal");
 		return -1;
 	}
 
-	ret = ttyname_r(terminal->pts, terminal->name, sizeof(terminal->name));
+	ret = ttyname_r(terminal->pty, terminal->name, sizeof(terminal->name));
 	if (ret < 0) {
-		SYSERROR("Failed to retrieve name of terminal pts");
+		SYSERROR("Failed to retrieve name of terminal pty");
 		goto err;
 	}
 
@@ -850,9 +850,9 @@ int lxc_terminal_create(struct lxc_terminal *terminal)
 		goto err;
 	}
 
-	ret = fd_cloexec(terminal->pts, true);
+	ret = fd_cloexec(terminal->pty, true);
 	if (ret < 0) {
-		SYSERROR("Failed to set FD_CLOEXEC flag on terminal pts");
+		SYSERROR("Failed to set FD_CLOEXEC flag on terminal pty");
 		goto err;
 	}
 
@@ -1134,14 +1134,14 @@ void lxc_terminal_info_init(struct lxc_terminal_info *terminal)
 {
 	terminal->name[0] = '\0';
 	terminal->ptx = -EBADF;
-	terminal->pts = -EBADF;
+	terminal->pty = -EBADF;
 	terminal->busy = -1;
 }
 
 void lxc_terminal_init(struct lxc_terminal *terminal)
 {
 	memset(terminal, 0, sizeof(*terminal));
-	terminal->pts = -EBADF;
+	terminal->pty = -EBADF;
 	terminal->ptx = -EBADF;
 	terminal->peer = -EBADF;
 	terminal->log_fd = -EBADF;
@@ -1167,13 +1167,13 @@ int lxc_terminal_map_ids(struct lxc_conf *c, struct lxc_terminal *terminal)
 	if (strcmp(terminal->name, "") == 0)
 		return 0;
 
-	ret = userns_exec_mapped_root(terminal->name, terminal->pts, c);
+	ret = userns_exec_mapped_root(terminal->name, terminal->pty, c);
 	if (ret < 0) {
 		return log_error(-1, "Failed to chown terminal %d(%s)",
-				 terminal->pts, terminal->name);
+				 terminal->pty, terminal->name);
 	}
 
-	TRACE("Chowned terminal %d(%s)", terminal->pts, terminal->name);
+	TRACE("Chowned terminal %d(%s)", terminal->pty, terminal->name);
 
 	return 0;
 }

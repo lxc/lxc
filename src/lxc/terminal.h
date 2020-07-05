@@ -15,14 +15,14 @@ struct lxc_conf;
 struct lxc_epoll_descr;
 
 struct lxc_terminal_info {
-	/* the path name of the pts side */
+	/* the path name of the pty side */
 	char name[PATH_MAX];
 
 	/* the file descriptor of the ptx */
 	int ptx;
 
-	/* the file descriptor of the pts */
-	int pts;
+	/* the file descriptor of the pty */
+	int pty;
 
 	/* whether the terminal is currently used */
 	int busy;
@@ -57,7 +57,7 @@ struct lxc_terminal_state {
 };
 
 struct lxc_terminal {
-	int pts;
+	int pty;
 	int ptx;
 	int peer;
 	struct lxc_terminal_info proxy;
@@ -102,10 +102,10 @@ extern int  lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, int *ttynum
 
 /**
  * Create a new terminal:
- * - calls openpty() to allocate a ptx/pts pair
- * - sets the FD_CLOEXEC flag on the ptx/pts fds
+ * - calls openpty() to allocate a ptx/pty pair
+ * - sets the FD_CLOEXEC flag on the ptx/pty fds
  * - allocates either the current controlling terminal (default) or a user
- *   specified terminal as proxy for the newly created ptx/pts pair
+ *   specified terminal as proxy for the newly created ptx/pty pair
  * - sets up SIGWINCH handler, winsz, and new terminal settings
  *   (Handlers for SIGWINCH and I/O are not registered in a mainloop.)
  */
@@ -202,7 +202,7 @@ extern int lxc_setup_tios(int fd, struct termios *oldtios);
  * lxc_terminal_winsz: propagate winsz from one terminal to another
  *
  * @srcfd
- * - terminal to get size from (typically a pts pty)
+ * - terminal to get size from (typically a pty pty)
  * @dstfd
  * - terminal to set size on (typically a ptx pty)
  */
