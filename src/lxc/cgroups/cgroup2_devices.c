@@ -325,26 +325,30 @@ static int bpf_program_load_kernel(struct bpf_program *prog, char *log_buf,
 {
 	union bpf_attr attr;
 
+	if ((log_size != 0 && !log_buf) || (log_size == 0 && log_buf))
+		return ret_errno(EINVAL);
+
 	if (prog->kernel_fd >= 0) {
 		memset(log_buf, 0, log_size);
 		return 0;
 	}
 
 	attr = (union bpf_attr){
-	    .prog_type	= prog->prog_type,
-	    .insns	= PTR_TO_UINT64(prog->instructions),
-	    .insn_cnt	= prog->n_instructions,
-	    .license	= PTR_TO_UINT64("GPL"),
-	    .log_buf	= PTR_TO_UINT64(log_buf),
-	    .log_level	= log_level,
-	    .log_size	= log_size,
+		.prog_type	= prog->prog_type,
+		.insns		= PTR_TO_UINT64(prog->instructions),
+		.insn_cnt	= prog->n_instructions,
+		.license	= PTR_TO_UINT64("GPL"),
+		.log_buf	= PTR_TO_UINT64(log_buf),
+		.log_level	= log_level,
+		.log_size	= log_size,
 	};
 
 	prog->kernel_fd = bpf(BPF_PROG_LOAD, &attr, sizeof(attr));
 	if (prog->kernel_fd < 0)
-		return log_error_errno(-1, errno, "Failed to load bpf program: %s", log_buf);
+		return log_error_errno(-1, errno, "Failed to load bpf program: %s",
+				       log_buf ?: "(null)");
 
-	TRACE("Loaded bpf program: %s", log_buf);
+	TRACE("Loaded bpf program: %s", log_buf ?: "(null)");
 	return 0;
 }
 
