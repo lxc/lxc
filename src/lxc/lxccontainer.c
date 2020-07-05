@@ -537,12 +537,12 @@ static bool do_lxcapi_unfreeze(struct lxc_container *c)
 
 WRAP_API(bool, lxcapi_unfreeze)
 
-static int do_lxcapi_console_getfd(struct lxc_container *c, int *ttynum, int *ptmxfd)
+static int do_lxcapi_console_getfd(struct lxc_container *c, int *ttynum, int *ptxfd)
 {
 	if (!c)
 		return -1;
 
-	return lxc_terminal_getfd(c, ttynum, ptmxfd);
+	return lxc_terminal_getfd(c, ttynum, ptxfd);
 }
 
 WRAP_API_2(int, lxcapi_console_getfd, int *, int *)

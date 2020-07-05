@@ -932,9 +932,9 @@ static int lxc_attach_terminal_mainloop_init(struct lxc_terminal *terminal,
 	return 0;
 }
 
-static inline void lxc_attach_terminal_close_ptmx(struct lxc_terminal *terminal)
+static inline void lxc_attach_terminal_close_ptx(struct lxc_terminal *terminal)
 {
-	close_prot_errno_disarm(terminal->ptmx);
+	close_prot_errno_disarm(terminal->ptx);
 }
 
 static inline void lxc_attach_terminal_close_pts(struct lxc_terminal *terminal)
@@ -1332,7 +1332,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	close_prot_errno_disarm(ipc_sockets[0]);
 
 	if (options->attach_flags & LXC_ATTACH_TERMINAL) {
-		lxc_attach_terminal_close_ptmx(&terminal);
+		lxc_attach_terminal_close_ptx(&terminal);
 		lxc_attach_terminal_close_peer(&terminal);
 		lxc_attach_terminal_close_log(&terminal);
 	}

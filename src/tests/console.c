@@ -37,14 +37,14 @@
 } while (0)
 
 static void test_console_close_all(int ttyfd[MAXCONSOLES],
-				   int ptmxfd[MAXCONSOLES])
+				   int ptxfd[MAXCONSOLES])
 {
 	int i;
 
 	for (i = 0; i < MAXCONSOLES; i++) {
-		if (ptmxfd[i] != -1) {
-			close(ptmxfd[i]);
-			ptmxfd[i] = -1;
+		if (ptxfd[i] != -1) {
+			close(ptxfd[i]);
+			ptxfd[i] = -1;
 		}
 
 		if (ttyfd[i] != -1) {
@@ -59,14 +59,14 @@ static int test_console_running_container(struct lxc_container *c)
 	int nrconsoles, i, ret = -1;
 	int ttynum  [MAXCONSOLES];
 	int ttyfd   [MAXCONSOLES];
-	int ptmxfd[MAXCONSOLES];
+	int ptxfd[MAXCONSOLES];
 
 	for (i = 0; i < MAXCONSOLES; i++)
-		ttynum[i] = ttyfd[i] = ptmxfd[i] = -1;
+		ttynum[i] = ttyfd[i] = ptxfd[i] = -1;
 
 	ttynum[0] = 1;
 
-	ret = c->console_getfd(c, &ttynum[0], &ptmxfd[0]);
+	ret = c->console_getfd(c, &ttynum[0], &ptxfd[0]);
 	if (ret < 0) {
 		TSTERR("console allocate failed");
 		goto err1;
@@ -79,12 +79,12 @@ static int test_console_running_container(struct lxc_container *c)
 	}
 
 	/* attempt to alloc same ttynum */
-	ret = c->console_getfd(c, &ttynum[0], &ptmxfd[1]);
+	ret = c->console_getfd(c, &ttynum[0], &ptxfd[1]);
 	if (ret != -1) {
 		TSTERR("console allocate should fail for allocated ttynum %d", ttynum[0]);
 		goto err2;
 	}
-	close(ptmxfd[0]); ptmxfd[0] = -1;
+	close(ptxfd[0]); ptxfd[0] = -1;
 	close(ttyfd[0]); ttyfd[0] = -1;
 
 	/* ensure we can allocate all consoles, we do this a few times to
@@ -92,7 +92,7 @@ static int test_console_running_container(struct lxc_container *c)
 	 */
 	for (i = 0; i < 10; i++) {
 		for (nrconsoles = 0; nrconsoles < MAXCONSOLES; nrconsoles++) {
-			ret = c->console_getfd(c, &ttynum[nrconsoles], &ptmxfd[nrconsoles]);
+			ret = c->console_getfd(c, &ttynum[nrconsoles], &ptxfd[nrconsoles]);
 			if (ret < 0)
 				break;
 			ttyfd[nrconsoles] = ret;
@@ -103,13 +103,13 @@ static int test_console_running_container(struct lxc_container *c)
 			goto err2;
 		}
 
-		test_console_close_all(ttyfd, ptmxfd);
+		test_console_close_all(ttyfd, ptxfd);
 	}
 
 	ret = 0;
 
 err2:
-	test_console_close_all(ttyfd, ptmxfd);
+	test_console_close_all(ttyfd, ptxfd);
 
 err1:
 	return ret;
