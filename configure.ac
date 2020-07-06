@@ -663,7 +663,7 @@ fi
 AC_CHECK_LIB(pthread, main)
 AC_CHECK_FUNCS(statvfs)
 AC_CHECK_LIB(util, openpty)
-AC_CHECK_FUNCS([openpty hasmntopt setmntent endmntent utmpxname])
+AC_CHECK_FUNCS([hasmntopt setmntent endmntent utmpxname])
 AC_CHECK_FUNCS([getgrgid_r],
 	AM_CONDITIONAL(HAVE_GETGRGID_R, true)
 	AC_DEFINE(HAVE_GETGRGID_R,1,[Have getgrgid_r]),
@@ -684,6 +684,10 @@ AC_CHECK_FUNCS([keyctl],
 	AM_CONDITIONAL(HAVE_KEYCTL, true)
 	AC_DEFINE(HAVE_KEYCTL,1,[Have keyctl]),
 	AM_CONDITIONAL(HAVE_KEYCTL, false))
+AC_CHECK_FUNCS([openpty],
+	AM_CONDITIONAL(HAVE_OPENPTY, true)
+	AC_DEFINE(HAVE_OPENPTY,1,[Have openpty]),
+	AM_CONDITIONAL(HAVE_OPENPTY, false))
 AC_CHECK_FUNCS([prlimit],
 	AM_CONDITIONAL(HAVE_PRLIMIT, true)
 	AC_DEFINE(HAVE_PRLIMIT,1,[Have prlimit]),
