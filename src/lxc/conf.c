@@ -69,7 +69,7 @@
 #include <sys/statvfs.h>
 #endif
 
-#if HAVE_PTY_H
+#if HAVE_OPENPTY
 #include <pty.h>
 #else
 #include <../include/openpty.h>

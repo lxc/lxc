@@ -54,8 +54,11 @@ noinst_HEADERS = api_extensions.h \
 
 if IS_BIONIC
 noinst_HEADERS += ../include/fexecve.h \
-		  ../include/lxcmntent.h \
-		  ../include/openpty.h
+		  ../include/lxcmntent.h
+endif
+
+if !HAVE_OPENPTY
+noinst_HEADERS += ../include/openpty.h
 endif
 
 if !HAVE_PRLIMIT
@@ -156,8 +159,11 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 
 if IS_BIONIC
 liblxc_la_SOURCES += ../include/fexecve.c ../include/fexecve.h \
-		     ../include/lxcmntent.c ../include/lxcmntent.h \
-		     ../include/openpty.c ../include/openpty.h
+		     ../include/lxcmntent.c ../include/lxcmntent.h
+endif
+
+if !HAVE_OPENPTY
+liblxc_la_SOURCES += ../include/openpty.c ../include/openpty.h
 endif
 
 if !HAVE_GETGRGID_R
