@@ -1,76 +1,136 @@
- /*
- * openpty: glibc implementation
- *
- * Copyright (C) 1998, 1999, 2004 Free Software Foundation, Inc.
- *
- * Authors:
- * Zack Weinberg <zack@rabi.phys.columbia.edu>, 1998.
- *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU Lesser General Public
- *  License as published by the Free Software Foundation; either
- *  version 2.1 of the License, or (at your option) any later version.
+/* SPDX-License-Identifier: LGPL-2.1+ */
 
- *  This library is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *  Lesser General Public License for more details.
-
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- */
-
-#define _XOPEN_SOURCE       /* See feature_test_macros(7) */
+#define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
 #include <termios.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/ioctl.h>
 
-#define _PATH_DEVPTMX "/dev/ptmx"
+#ifdef HAVE_PTY_H
+#include <pty.h>
+#endif
 
-int openpty (int *aptx, int *apty, char *name, struct termios *termp,
-       struct winsize *winp)
+static int pts_name(int fd, char **pts, size_t buf_len)
 {
-   char buf[PATH_MAX];
-   int ptx, pty;
+	int rv;
+	char *buf = *pts;
 
-   ptx = open(_PATH_DEVPTMX, O_RDWR);
-   if (ptx == -1)
-       return -1;
+	for (;;) {
+		char *new_buf;
 
-   if (grantpt(ptx))
-       goto fail;
+		if (buf_len) {
+			rv = ptsname_r(fd, buf, buf_len);
 
-   if (unlockpt(ptx))
-       goto fail;
+			if (rv != 0 || memchr(buf, '\0', buf_len))
+				/* We either got an error, or we succeeded and the
+				   returned name fit in the buffer.  */
+				break;
 
-   if (ptyname_r(ptx, buf, sizeof buf))
-       goto fail;
+			/* Try again with a longer buffer.  */
+			buf_len += buf_len; /* Double it */
+		} else
+			/* No initial buffer; start out by mallocing one.  */
+			buf_len = 128; /* First time guess.  */
 
-   pty = open(buf, O_RDWR | O_NOCTTY);
-   if (pty == -1)
-       goto fail;
+		if (buf != *pts)
+			/* We've already malloced another buffer at least once.  */
+			new_buf = realloc(buf, buf_len);
+		else
+			new_buf = malloc(buf_len);
+		if (!new_buf) {
+			rv = -1;
+			break;
+		}
+		buf = new_buf;
+	}
 
-   /* XXX Should we ignore errors here?  */
-   if (termp)
-       tcsetattr(pty, TCSAFLUSH, termp);
-   if (winp)
-       ioctl(pty, TIOCSWINSZ, winp);
+	if (rv == 0)
+		*pts = buf; /* Return buffer to the user.  */
+	else if (buf != *pts)
+		free(buf); /* Free what we malloced when returning an error.  */
 
-   *aptx = ptx;
-   *apty = pty;
-   if (name != NULL)
-       strcpy(name, buf);
+	return rv;
+}
 
-   return 0;
+int __unlockpt(int fd)
+{
+#ifdef TIOCSPTLCK
+	int unlock = 0;
 
-fail:
-   close(ptx);
-   return -1;
+	if (ioctl(fd, TIOCSPTLCK, &unlock)) {
+		if (errno != EINVAL)
+			return -1;
+	}
+#endif
+	return 0;
+}
+
+int openpty(int *ptx, int *pty, char *name, const struct termios *termp,
+	    const struct winsize *winp)
+{
+	char _buf[PATH_MAX];
+	char *buf = _buf;
+	int ptx_fd, ret = -1, pty_fd = -1;
+
+	*buf = '\0';
+
+	ptx_fd = open("/dev/ptmx", O_RDWR | O_NOCTTY);
+	if (ptx_fd == -1)
+		return -1;
+
+	if (__unlockpt(ptx_fd))
+		goto on_error;
+
+#ifdef TIOCGPTPEER
+	/* Try to allocate pty_fd solely based on ptx_fd first. */
+	pty_fd = ioctl(ptx_fd, TIOCGPTPEER, O_RDWR | O_NOCTTY);
+#endif
+	if (pty_fd == -1) {
+		/* Fallback to path-based pty_fd allocation in case kernel doesn't
+		 * support TIOCGPTPEER.
+		 */
+		if (pts_name(ptx_fd, &buf, sizeof(_buf)))
+			goto on_error;
+
+		pty_fd = open(buf, O_RDWR | O_NOCTTY);
+		if (pty_fd == -1)
+			goto on_error;
+	}
+
+	if (termp)
+		tcsetattr(pty_fd, TCSAFLUSH, termp);
+#ifdef TIOCSWINSZ
+	if (winp)
+		ioctl(pty_fd, TIOCSWINSZ, winp);
+#endif
+
+	*ptx = ptx_fd;
+	*pty = pty_fd;
+	if (name != NULL) {
+		if (*buf == '\0')
+			if (pts_name(ptx_fd, &buf, sizeof(_buf)))
+				goto on_error;
+
+		strcpy(name, buf);
+	}
+
+	ret = 0;
+
+on_error:
+	if (ret == -1) {
+		close(ptx_fd);
+
+		if (pty_fd != -1)
+			close(pty_fd);
+	}
+
+	if (buf != _buf)
+		free(buf);
+
+	return ret;
 }
