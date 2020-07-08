@@ -52,6 +52,8 @@ is_probed() {
     fi
 }
 
+echo "LXC version $(lxc-start --version)"
+
 if [ ! -f $CONFIG ]; then
     echo "Kernel configuration not found at $CONFIG; searching..."
     KVER="`uname -r`"
