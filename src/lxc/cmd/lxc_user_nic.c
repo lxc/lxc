@@ -35,6 +35,7 @@
 #include "log.h"
 #include "memory_utils.h"
 #include "network.h"
+#include "nl.h"
 #include "parse.h"
 #include "process_utils.h"
 #include "string_utils.h"

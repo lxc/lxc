@@ -217,7 +217,6 @@ AM_CFLAGS = -DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	    -I $(top_srcdir)/src/lxc \
 	    -I $(top_srcdir)/src/lxc/storage \
 	    -I $(top_srcdir)/src/lxc/cgroups
-
 if ENABLE_APPARMOR
 AM_CFLAGS += -DHAVE_APPARMOR
 endif
@@ -409,6 +408,7 @@ lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
 		       log.c log.h \
 		       memory_utils.h \
 		       network.c network.h \
+		       nl.c nl.h \
 		       parse.c parse.h \
 		       process_utils.c process_utils.h \
 		       syscall_numbers.h \

@@ -75,4 +75,8 @@
 #endif
 #endif
 
+#ifndef __hidden
+#define __hidden __attribute__((visibility("hidden")))
+#endif
+
 #endif /* __LXC_COMPILER_H */
