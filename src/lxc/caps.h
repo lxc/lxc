@@ -6,20 +6,20 @@
 #include <stdbool.h>
 
 #include "config.h"
+#include "compiler.h"
 
 #if HAVE_LIBCAP
 #include <linux/types.h> /* workaround for libcap < 2.17 bug */
 #include <sys/capability.h>
 
-extern int lxc_caps_down(void);
-extern int lxc_caps_up(void);
-extern int lxc_ambient_caps_up(void);
-extern int lxc_ambient_caps_down(void);
-extern int lxc_caps_init(void);
-extern int lxc_caps_last_cap(void);
-extern bool lxc_proc_cap_is_set(cap_value_t cap, cap_flag_t flag);
-extern bool lxc_file_cap_is_set(const char *path, cap_value_t cap,
-				cap_flag_t flag);
+__hidden extern int lxc_caps_down(void);
+__hidden extern int lxc_caps_up(void);
+__hidden extern int lxc_ambient_caps_up(void);
+__hidden extern int lxc_ambient_caps_down(void);
+__hidden extern int lxc_caps_init(void);
+__hidden extern int lxc_caps_last_cap(void);
+__hidden extern bool lxc_proc_cap_is_set(cap_value_t cap, cap_flag_t flag);
+__hidden extern bool lxc_file_cap_is_set(const char *path, cap_value_t cap, cap_flag_t flag);
 #else
 static inline int lxc_caps_down(void)
 {
