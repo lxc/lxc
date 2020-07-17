@@ -403,9 +403,8 @@ struct lxc_conf {
 	} shmount;
 };
 
-extern int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
-			    size_t buf_size)
-__access_r(3, 4);
+__hidden extern int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf, size_t buf_size)
+    __access_r(3, 4);
 
 #ifdef HAVE_TLS
 extern thread_local struct lxc_conf *current_config;
@@ -413,68 +412,61 @@ extern thread_local struct lxc_conf *current_config;
 extern struct lxc_conf *current_config;
 #endif
 
-extern int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf,
-			 char *argv[]);
-extern int detect_shared_rootfs(void);
-extern struct lxc_conf *lxc_conf_init(void);
-extern void lxc_conf_free(struct lxc_conf *conf);
-extern int pin_rootfs(const char *rootfs);
-extern int lxc_map_ids(struct lxc_list *idmap, pid_t pid);
-extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
-extern void lxc_delete_tty(struct lxc_tty_info *ttys);
-extern int lxc_clear_config_caps(struct lxc_conf *c);
-extern int lxc_clear_config_keepcaps(struct lxc_conf *c);
-extern int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version);
-extern int lxc_clear_mount_entries(struct lxc_conf *c);
-extern int lxc_clear_automounts(struct lxc_conf *c);
-extern int lxc_clear_hooks(struct lxc_conf *c, const char *key);
-extern int lxc_clear_idmaps(struct lxc_conf *c);
-extern int lxc_clear_groups(struct lxc_conf *c);
-extern int lxc_clear_environment(struct lxc_conf *c);
-extern int lxc_clear_limits(struct lxc_conf *c, const char *key);
-extern int lxc_delete_autodev(struct lxc_handler *handler);
-extern int lxc_clear_autodev_tmpfs_size(struct lxc_conf *c);
-extern void lxc_clear_includes(struct lxc_conf *conf);
-extern int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf,
-					 const char *name, const char *lxcpath);
-extern int lxc_setup(struct lxc_handler *handler);
-extern int lxc_setup_parent(struct lxc_handler *handler);
-extern int setup_resource_limits(struct lxc_list *limits, pid_t pid);
-extern int find_unmapped_nsid(const struct lxc_conf *conf, enum idtype idtype);
-extern int mapped_hostid(unsigned id, const struct lxc_conf *conf,
-			 enum idtype idtype);
-extern int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *),
-			 void *data, const char *fn_name);
-extern int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *),
-			    void *data, const char *fn_name);
-extern int parse_mntopts(const char *mntopts, unsigned long *mntflags,
-			 char **mntdata);
-extern int parse_propagationopts(const char *mntopts, unsigned long *pflags);
-extern void tmp_proc_unmount(struct lxc_conf *lxc_conf);
-extern void turn_into_dependent_mounts(void);
-extern void suggest_default_idmap(void);
-extern FILE *make_anonymous_mount_file(struct lxc_list *mount,
-				       bool include_nesting_helpers);
-extern struct lxc_list *sort_cgroup_settings(struct lxc_list *cgroup_settings);
-extern unsigned long add_required_remount_flags(const char *s, const char *d,
-						unsigned long flags);
-extern int run_script(const char *name, const char *section, const char *script,
-		      ...);
-extern int run_script_argv(const char *name, unsigned int hook_version,
-			   const char *section, const char *script,
-			   const char *hookname, char **argsin);
-extern int in_caplist(int cap, struct lxc_list *caps);
-extern int setup_sysctl_parameters(struct lxc_list *sysctls);
-extern int lxc_clear_sysctls(struct lxc_conf *c, const char *key);
-extern int setup_proc_filesystem(struct lxc_list *procs, pid_t pid);
-extern int lxc_clear_procs(struct lxc_conf *c, const char *key);
-extern int lxc_clear_apparmor_raw(struct lxc_conf *c);
-extern int lxc_clear_namespace(struct lxc_conf *c);
-extern int userns_exec_minimal(const struct lxc_conf *conf,
-			       int (*fn_parent)(void *), void *fn_parent_data,
-			       int (*fn_child)(void *), void *fn_child_data);
-extern int userns_exec_mapped_root(const char *path, int path_fd,
-				   const struct lxc_conf *conf);
+__hidden extern int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf, char *argv[]);
+__hidden extern struct lxc_conf *lxc_conf_init(void);
+__hidden extern void lxc_conf_free(struct lxc_conf *conf);
+__hidden extern int pin_rootfs(const char *rootfs);
+__hidden extern int lxc_map_ids(struct lxc_list *idmap, pid_t pid);
+__hidden extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
+__hidden extern void lxc_delete_tty(struct lxc_tty_info *ttys);
+__hidden extern int lxc_clear_config_caps(struct lxc_conf *c);
+__hidden extern int lxc_clear_config_keepcaps(struct lxc_conf *c);
+__hidden extern int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version);
+__hidden extern int lxc_clear_mount_entries(struct lxc_conf *c);
+__hidden extern int lxc_clear_automounts(struct lxc_conf *c);
+__hidden extern int lxc_clear_hooks(struct lxc_conf *c, const char *key);
+__hidden extern int lxc_clear_idmaps(struct lxc_conf *c);
+__hidden extern int lxc_clear_groups(struct lxc_conf *c);
+__hidden extern int lxc_clear_environment(struct lxc_conf *c);
+__hidden extern int lxc_clear_limits(struct lxc_conf *c, const char *key);
+__hidden extern int lxc_delete_autodev(struct lxc_handler *handler);
+__hidden extern int lxc_clear_autodev_tmpfs_size(struct lxc_conf *c);
+__hidden extern void lxc_clear_includes(struct lxc_conf *conf);
+__hidden extern int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const char *name,
+						  const char *lxcpath);
+__hidden extern int lxc_setup(struct lxc_handler *handler);
+__hidden extern int lxc_setup_parent(struct lxc_handler *handler);
+__hidden extern int setup_resource_limits(struct lxc_list *limits, pid_t pid);
+__hidden extern int find_unmapped_nsid(const struct lxc_conf *conf, enum idtype idtype);
+__hidden extern int mapped_hostid(unsigned id, const struct lxc_conf *conf, enum idtype idtype);
+__hidden extern int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *), void *data,
+				  const char *fn_name);
+__hidden extern int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
+				     const char *fn_name);
+__hidden extern int parse_mntopts(const char *mntopts, unsigned long *mntflags, char **mntdata);
+__hidden extern int parse_propagationopts(const char *mntopts, unsigned long *pflags);
+__hidden extern void tmp_proc_unmount(struct lxc_conf *lxc_conf);
+__hidden extern void turn_into_dependent_mounts(void);
+__hidden extern void suggest_default_idmap(void);
+__hidden extern FILE *make_anonymous_mount_file(struct lxc_list *mount, bool include_nesting_helpers);
+__hidden extern struct lxc_list *sort_cgroup_settings(struct lxc_list *cgroup_settings);
+__hidden extern unsigned long add_required_remount_flags(const char *s, const char *d,
+							 unsigned long flags);
+__hidden extern int run_script(const char *name, const char *section, const char *script, ...);
+__hidden extern int run_script_argv(const char *name, unsigned int hook_version, const char *section,
+				    const char *script, const char *hookname, char **argsin);
+__hidden extern int in_caplist(int cap, struct lxc_list *caps);
+__hidden extern int setup_sysctl_parameters(struct lxc_list *sysctls);
+__hidden extern int lxc_clear_sysctls(struct lxc_conf *c, const char *key);
+__hidden extern int setup_proc_filesystem(struct lxc_list *procs, pid_t pid);
+__hidden extern int lxc_clear_procs(struct lxc_conf *c, const char *key);
+__hidden extern int lxc_clear_apparmor_raw(struct lxc_conf *c);
+__hidden extern int lxc_clear_namespace(struct lxc_conf *c);
+__hidden extern int userns_exec_minimal(const struct lxc_conf *conf, int (*fn_parent)(void *),
+					void *fn_parent_data, int (*fn_child)(void *),
+					void *fn_child_data);
+__hidden extern int userns_exec_mapped_root(const char *path, int path_fd,
+					    const struct lxc_conf *conf);
 static inline int chown_mapped_root(const char *path, const struct lxc_conf *conf)
 {
 	return userns_exec_mapped_root(path, -EBADF, conf);

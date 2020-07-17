@@ -18,7 +18,7 @@ lxc_log_define(error, lxc);
  *   128+n       signal n received by the application
  *   255         lxc error
  */
-extern int  lxc_error_set_and_log(int pid, int status)
+extern int lxc_error_set_and_log(int pid, int status)
 {
 	int ret = 0;
 
