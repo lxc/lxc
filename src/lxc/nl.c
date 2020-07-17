@@ -19,7 +19,7 @@
 
 lxc_log_define(nl, lxc);
 
-size_t nlmsg_len(const struct nlmsg *nlmsg)
+static size_t nlmsg_len(const struct nlmsg *nlmsg)
 {
 	return nlmsg->nlmsghdr->nlmsg_len - NLMSG_HDRLEN;
 }

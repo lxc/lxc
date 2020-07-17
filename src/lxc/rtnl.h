@@ -3,6 +3,8 @@
 #ifndef __LXC_RTNL_H
 #define __LXC_RTNL_H
 
+#include <compiler.h>
+
 /*
  * Use this as a good size to allocate route netlink messages
  */
@@ -38,14 +40,14 @@ struct rtnlmsg {
  *
  * Returns 0 on success, < 0 otherwise
  */
-extern int rtnetlink_open(struct rtnl_handler *handler);
+__hidden extern int rtnetlink_open(struct rtnl_handler *handler);
 
 /*
  * genetlink_close : close a route netlink socket
  *
  * @handler: the handler of the socket to be closed
  */
-extern void rtnetlink_close(struct rtnl_handler *handler);
+__hidden extern void rtnetlink_close(struct rtnl_handler *handler);
 
 /*
  * rtnetlink_rcv : receive a route netlink socket, it is up
@@ -56,7 +58,7 @@ extern void rtnetlink_close(struct rtnl_handler *handler);
  *
  * Returns 0 on success, < 0 otherwise
  */
-extern int rtnetlink_rcv(struct rtnl_handler *handler, struct rtnlmsg *rtnlmsg);
+__hidden extern int rtnetlink_rcv(struct rtnl_handler *handler, struct rtnlmsg *rtnlmsg);
 
 /*
  * rtnetlink_send : send a route netlink socket, it is up
@@ -67,12 +69,11 @@ extern int rtnetlink_rcv(struct rtnl_handler *handler, struct rtnlmsg *rtnlmsg);
  *
  * Returns 0 on success, < 0 otherwise
  */
-extern int rtnetlink_send(struct rtnl_handler *handler,
-			  struct rtnlmsg *rtnlmsg);
+__hidden extern int rtnetlink_send(struct rtnl_handler *handler, struct rtnlmsg *rtnlmsg);
 
-struct genlmsg *genlmsg_alloc(size_t size);
+__hidden struct genlmsg *genlmsg_alloc(size_t size);
 
-extern void rtnlmsg_free(struct rtnlmsg *rtnlmsg);
+__hidden extern void rtnlmsg_free(struct rtnlmsg *rtnlmsg);
 
 /*
  * rtnetlink_transaction : send and receive a route netlink message in one shot
@@ -83,8 +84,9 @@ extern void rtnlmsg_free(struct rtnlmsg *rtnlmsg);
  *
  * Returns 0 on success, < 0 otherwise
  */
-extern int rtnetlink_transaction(struct rtnl_handler *handler,
-				 struct rtnlmsg *request,
-				 struct rtnlmsg *answer);
+__hidden extern int rtnetlink_transaction(struct rtnl_handler *handler, struct rtnlmsg *request,
+					  struct rtnlmsg *answer);
+
+__hidden struct rtnlmsg *rtnlmsg_alloc(size_t size);
 
 #endif /* __LXC_RTNL_H */
