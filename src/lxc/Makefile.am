@@ -331,6 +331,7 @@ LDADD = liblxc.la \
 if ENABLE_TOOLS
 lxc_attach_SOURCES = tools/lxc_attach.c \
 		     tools/arguments.c tools/arguments.h \
+		     caps.c caps.h \
 		     rexec.c rexec.h \
 		     string_utils.c string_utils.h
 lxc_autostart_SOURCES = tools/lxc_autostart.c \
@@ -353,6 +354,7 @@ lxc_device_SOURCES = tools/lxc_device.c \
 		     string_utils.c string_utils.h
 lxc_execute_SOURCES = tools/lxc_execute.c \
 		      tools/arguments.c tools/arguments.h \
+		      caps.c caps.h \
 		      string_utils.c string_utils.h
 lxc_freeze_SOURCES = tools/lxc_freeze.c \
 		     tools/arguments.c tools/arguments.h \
@@ -373,6 +375,7 @@ lxc_copy_SOURCES = tools/lxc_copy.c \
 		   string_utils.c string_utils.h
 lxc_start_SOURCES = tools/lxc_start.c \
 		    tools/arguments.c tools/arguments.h \
+		    caps.c caps.h \
 		    string_utils.c string_utils.h
 lxc_stop_SOURCES = tools/lxc_stop.c \
 		   tools/arguments.c tools/arguments.h \
@@ -385,6 +388,7 @@ lxc_unfreeze_SOURCES = tools/lxc_unfreeze.c \
 		       string_utils.c string_utils.h
 lxc_unshare_SOURCES = tools/lxc_unshare.c \
 		      tools/arguments.c tools/arguments.h \
+		      caps.c caps.h \
 		      string_utils.c string_utils.h \
 		      syscall_numbers.h \
 		      syscall_wrappers.h
@@ -419,6 +423,7 @@ init_lxc_LDFLAGS = -pthread
 
 lxc_monitord_SOURCES = cmd/lxc_monitord.c \
 		       af_unix.c af_unix.h \
+		       caps.c caps.h \
 		       log.c log.h \
 		       mainloop.c mainloop.h \
 		       monitor.c monitor.h \
@@ -428,6 +433,7 @@ lxc_monitord_SOURCES = cmd/lxc_monitord.c \
 		       utils.c utils.h
 lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
 		       ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
+		       caps.c caps.h \
 		       log.c log.h \
 		       memory_utils.h \
 		       network.c network.h \
@@ -440,6 +446,7 @@ lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
 		       syscall_wrappers.h
 lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c \
 			 af_unix.c af_unix.h \
+			 caps.c caps.h \
 			 conf.c conf.h \
 			 file_utils.c file_utils.h \
 			 list.h \
