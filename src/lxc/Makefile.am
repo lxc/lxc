@@ -330,55 +330,77 @@ LDADD = liblxc.la \
 
 if ENABLE_TOOLS
 lxc_attach_SOURCES = tools/lxc_attach.c \
+		     tools/arguments.c tools/arguments.h \
 		     rexec.c rexec.h \
-		     tools/arguments.c tools/arguments.h
+		     string_utils.c string_utils.h
 lxc_autostart_SOURCES = tools/lxc_autostart.c \
-			tools/arguments.c tools/arguments.h
+			tools/arguments.c tools/arguments.h \
+			string_utils.c string_utils.h
 lxc_cgroup_SOURCES = tools/lxc_cgroup.c \
-		     tools/arguments.c tools/arguments.h
+		     tools/arguments.c tools/arguments.h \
+		     string_utils.c string_utils.h
 lxc_config_SOURCES = tools/lxc_config.c \
-		     tools/arguments.c tools/arguments.h
+		     tools/arguments.c tools/arguments.h \
+		     string_utils.c string_utils.h
 lxc_console_SOURCES = tools/lxc_console.c \
-		      tools/arguments.c tools/arguments.h
+		      tools/arguments.c tools/arguments.h \
+		      string_utils.c string_utils.h
 lxc_destroy_SOURCES = tools/lxc_destroy.c \
-		      tools/arguments.c tools/arguments.h
+		      tools/arguments.c tools/arguments.h \
+		      string_utils.c string_utils.h
 lxc_device_SOURCES = tools/lxc_device.c \
-		     tools/arguments.c tools/arguments.h
+		     tools/arguments.c tools/arguments.h \
+		     string_utils.c string_utils.h
 lxc_execute_SOURCES = tools/lxc_execute.c \
-		      tools/arguments.c tools/arguments.h
+		      tools/arguments.c tools/arguments.h \
+		      string_utils.c string_utils.h
 lxc_freeze_SOURCES = tools/lxc_freeze.c \
-		     tools/arguments.c tools/arguments.h
+		     tools/arguments.c tools/arguments.h \
+		     string_utils.c string_utils.h
 lxc_info_SOURCES = tools/lxc_info.c \
-		   tools/arguments.c tools/arguments.h
+		   tools/arguments.c tools/arguments.h \
+		   string_utils.c string_utils.h
 lxc_monitor_SOURCES = tools/lxc_monitor.c \
+		      tools/arguments.c tools/arguments.h \
 		      macro.h \
-		      tools/arguments.c tools/arguments.h
+		      string_utils.c string_utils.h
 lxc_ls_SOURCES = tools/lxc_ls.c \
-		 tools/arguments.c tools/arguments.h
+		 tools/arguments.c tools/arguments.h \
+		 string_utils.c string_utils.h
 lxc_copy_SOURCES = tools/lxc_copy.c \
 		   tools/arguments.c tools/arguments.h \
-		   storage/storage_utils.c storage/storage_utils.h
+		   storage/storage_utils.c storage/storage_utils.h \
+		   string_utils.c string_utils.h
 lxc_start_SOURCES = tools/lxc_start.c \
-		    tools/arguments.c tools/arguments.h
+		    tools/arguments.c tools/arguments.h \
+		    string_utils.c string_utils.h
 lxc_stop_SOURCES = tools/lxc_stop.c \
-		   tools/arguments.c tools/arguments.h
+		   tools/arguments.c tools/arguments.h \
+		   string_utils.c string_utils.h
 lxc_top_SOURCES = tools/lxc_top.c \
-		  tools/arguments.c tools/arguments.h
+		  tools/arguments.c tools/arguments.h \
+		  string_utils.c string_utils.h
 lxc_unfreeze_SOURCES = tools/lxc_unfreeze.c \
-		       tools/arguments.c tools/arguments.h
+		       tools/arguments.c tools/arguments.h \
+		       string_utils.c string_utils.h
 lxc_unshare_SOURCES = tools/lxc_unshare.c \
+		      tools/arguments.c tools/arguments.h \
+		      string_utils.c string_utils.h \
 		      syscall_numbers.h \
-		      syscall_wrappers.h \
-		      tools/arguments.c tools/arguments.h
+		      syscall_wrappers.h
 lxc_wait_SOURCES = tools/lxc_wait.c \
-		   tools/arguments.c tools/arguments.h
+		   tools/arguments.c tools/arguments.h \
+		   string_utils.c string_utils.h
 lxc_create_SOURCES = tools/lxc_create.c \
 		     tools/arguments.c tools/arguments.h \
-		     storage/storage_utils.c storage/storage_utils.h
+		     storage/storage_utils.c storage/storage_utils.h \
+		     string_utils.c string_utils.h
 lxc_snapshot_SOURCES = tools/lxc_snapshot.c \
-		       tools/arguments.c tools/arguments.h
+		       tools/arguments.c tools/arguments.h \
+		       string_utils.c string_utils.h
 lxc_checkpoint_SOURCES = tools/lxc_checkpoint.c \
-			 tools/arguments.c tools/arguments.h
+			 tools/arguments.c tools/arguments.h \
+			 string_utils.c string_utils.h1
 endif
 
 if ENABLE_COMMANDS
@@ -401,6 +423,7 @@ lxc_monitord_SOURCES = cmd/lxc_monitord.c \
 		       mainloop.c mainloop.h \
 		       monitor.c monitor.h \
 		       process_utils.c process_utils.h \
+		       string_utils.c string_utils.h \
 		       syscall_numbers.h \
 		       utils.c utils.h
 lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
