@@ -4,20 +4,19 @@
 #define _GNU_SOURCE 1
 #endif
 #include <sys/prctl.h>
+#include <sys/syscall.h>
+#include <unistd.h>
 
 #include "compiler.h"
 #include "config.h"
 #include "file_utils.h"
 #include "initutils.h"
-#include "log.h"
 #include "macro.h"
 #include "memory_utils.h"
 
 #ifndef HAVE_STRLCPY
 #include "include/strlcpy.h"
 #endif
-
-lxc_log_define(initutils, lxc);
 
 static char *copy_global_config_value(char *p)
 {
@@ -310,8 +309,6 @@ int setproctitle(char *title)
 		    prctl_arg(sizeof(prctl_map)), prctl_arg(0));
 	if (ret == 0)
 		(void)strlcpy((char *)arg_start, title, len);
-	else
-		SYSWARN("Failed to set cmdline");
 
 	return ret;
 }
