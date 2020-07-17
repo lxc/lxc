@@ -6,7 +6,10 @@ lxc_test_api_reboot_SOURCES = api_reboot.c
 lxc_test_apparmor_SOURCES = aa.c
 lxc_test_attach_SOURCES = attach.c
 lxc_test_basic_SOURCES = basic.c
-lxc_test_cgpath_SOURCES = cgpath.c
+lxc_test_cgpath_SOURCES = cgpath.c \
+			  ../lxc/af_unix.c ../lxc/af_unix.h \
+			  ../lxc/commands.c ../lxc/commands.h \
+			  ../lxc/string_utils.c ../lxc/string_utils.h
 lxc_test_clonetest_SOURCES = clonetest.c
 lxc_test_concurrent_SOURCES = concurrent.c
 lxc_test_config_jump_table_SOURCES = config_jump_table.c lxctest.h
