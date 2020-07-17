@@ -2437,7 +2437,6 @@ static const char padchar[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLM
 
 char *lxc_ifname_alnum_case_sensitive(char *template)
 {
-	int ret;
 	char name[IFNAMSIZ];
 	size_t i = 0;
 #ifdef HAVE_RAND_R
@@ -2467,9 +2466,8 @@ char *lxc_ifname_alnum_case_sensitive(char *template)
 			}
 		}
 
-		if (if_nametoindex(name) == 0) {
+		if (if_nametoindex(name) == 0)
 			break;
-		}
 	}
 
 	(void)strlcpy(template, name, strlen(template) + 1);
