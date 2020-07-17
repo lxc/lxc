@@ -466,7 +466,7 @@ lxc_checkpoint_SOURCES = tools/lxc_checkpoint.c \
 			 af_unix.c af_unix.h \
 			 caps.c caps.h \
 			 conf.c conf.h \
-			 string_utils.c string_utils.h1
+			 string_utils.c string_utils.h
 endif
 
 if ENABLE_COMMANDS
