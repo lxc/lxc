@@ -2754,9 +2754,7 @@ static const char padchar[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLM
 char *lxc_ifname_alnum_case_sensitive(char *template)
 {
 	int ret;
-	struct netns_ifaddrs *ifa, *ifaddr;
 	char name[IFNAMSIZ];
-	bool exists = false;
 	size_t i = 0;
 #ifdef HAVE_RAND_R
 	unsigned int seed;
@@ -2770,17 +2768,10 @@ char *lxc_ifname_alnum_case_sensitive(char *template)
 	if (strlen(template) >= IFNAMSIZ)
 		return NULL;
 
-	/* Get all the network interfaces. */
-	ret = netns_getifaddrs(&ifaddr, -1, &(bool){false});
-	if (ret < 0)
-		return log_error_errno(NULL, errno, "Failed to get network interfaces");
-
 	/* Generate random names until we find one that doesn't exist. */
 	for (;;) {
 		name[0] = '\0';
 		(void)strlcpy(name, template, IFNAMSIZ);
-
-		exists = false;
 
 		for (i = 0; i < strlen(name); i++) {
 			if (name[i] == 'X') {
@@ -2792,18 +2783,11 @@ char *lxc_ifname_alnum_case_sensitive(char *template)
 			}
 		}
 
-		for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-			if (!strcmp(ifa->ifa_name, name)) {
-				exists = true;
-				break;
-			}
-		}
-
-		if (!exists)
+		if (if_nametoindex(name) == 0) {
 			break;
+		}
 	}
 
-	netns_freeifaddrs(ifaddr);
 	(void)strlcpy(template, name, strlen(template) + 1);
 
 	return template;
