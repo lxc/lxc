@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 
+#include "compiler.h"
 #include "memory_utils.h"
 
 /*
@@ -59,7 +60,7 @@ struct nlmsg {
  *
  * Return 0 on success, < 0 otherwise
  */
-int netlink_open(struct nl_handler *handler, int protocol);
+__hidden extern int netlink_open(struct nl_handler *handler, int protocol);
 
 /*
  * netlink_close : close a netlink socket, after this call,
@@ -67,7 +68,7 @@ int netlink_open(struct nl_handler *handler, int protocol);
  *
  * @handler: a handler to the netlink socket
  */
-void netlink_close(struct nl_handler *handler);
+__hidden extern void netlink_close(struct nl_handler *handler);
 define_cleanup_function(struct nl_handler *, netlink_close);
 
 /*
@@ -80,8 +81,8 @@ define_cleanup_function(struct nl_handler *, netlink_close);
  *
  * Returns 0 on success, < 0 otherwise
  */
-int netlink_rcv(struct nl_handler *handler, struct nlmsg *nlmsg);
-int __netlink_recv(struct nl_handler *handler, struct nlmsghdr *nlmsg);
+__hidden extern int netlink_rcv(struct nl_handler *handler, struct nlmsg *nlmsg);
+__hidden extern int __netlink_recv(struct nl_handler *handler, struct nlmsghdr *nlmsg);
 
 /*
  * netlink_send: send a netlink message to the kernel. It is up
@@ -92,8 +93,8 @@ int __netlink_recv(struct nl_handler *handler, struct nlmsghdr *nlmsg);
  *
  * Returns 0 on success, < 0 otherwise
  */
-int netlink_send(struct nl_handler *handler, struct nlmsg *nlmsg);
-int __netlink_send(struct nl_handler *handler, struct nlmsghdr *nlmsg);
+__hidden extern int netlink_send(struct nl_handler *handler, struct nlmsg *nlmsg);
+__hidden extern int __netlink_send(struct nl_handler *handler, struct nlmsghdr *nlmsg);
 
 /*
  * netlink_transaction: send a request to the kernel and read the response.
@@ -106,10 +107,10 @@ int __netlink_send(struct nl_handler *handler, struct nlmsghdr *nlmsg);
  *
  * Returns 0 on success, < 0 otherwise
  */
-int netlink_transaction(struct nl_handler *handler,
-			struct nlmsg *request, struct nlmsg *answer);
-int __netlink_transaction(struct nl_handler *handler, struct nlmsghdr *request,
-			  struct nlmsghdr *answer);
+__hidden extern int netlink_transaction(struct nl_handler *handler, struct nlmsg *request,
+					struct nlmsg *answer);
+__hidden extern int __netlink_transaction(struct nl_handler *handler, struct nlmsghdr *request,
+					  struct nlmsghdr *answer);
 
 /*
  * nla_put_string: copy a null terminated string to a netlink message
@@ -121,7 +122,7 @@ int __netlink_transaction(struct nl_handler *handler, struct nlmsghdr *request,
  *
  * Returns 0 on success, < 0 otherwise
  */
-int nla_put_string(struct nlmsg *nlmsg, int attr, const char *string);
+__hidden int nla_put_string(struct nlmsg *nlmsg, int attr, const char *string);
 
 /*
  * nla_put_buffer: copy a buffer with a specified size to a netlink
@@ -178,7 +179,7 @@ int nla_put_attr(struct nlmsg *nlmsg, int attr);
  * Returns current nested pointer to be reused
  * to nla_end_nested.
  */
-struct rtattr *nla_begin_nested(struct nlmsg *nlmsg, int attr);
+__hidden extern struct rtattr *nla_begin_nested(struct nlmsg *nlmsg, int attr);
 
 /*
  * nla_end_nested: end the nesting attribute
@@ -188,7 +189,7 @@ struct rtattr *nla_begin_nested(struct nlmsg *nlmsg, int attr);
  *
  * Returns the current
  */
-void nla_end_nested(struct nlmsg *nlmsg, struct rtattr *attr);
+__hidden extern void nla_end_nested(struct nlmsg *nlmsg, struct rtattr *attr);
 
 /*
  * nlmsg_allocate : allocate a netlink message. The netlink format message
@@ -205,7 +206,7 @@ void nla_end_nested(struct nlmsg *nlmsg, struct rtattr *attr);
  *
  * Returns a pointer to the newly allocated netlink message, NULL otherwise
  */
-struct nlmsg *nlmsg_alloc(size_t size);
+__hidden extern struct nlmsg *nlmsg_alloc(size_t size);
 
 /*
  * nlmsg_alloc_reserve: like nlmsg_alloc(), but reserve the whole payload
@@ -214,7 +215,7 @@ struct nlmsg *nlmsg_alloc(size_t size);
  *
  * @size: the capacity of the payload to be allocated.
  */
-struct nlmsg *nlmsg_alloc_reserve(size_t size);
+__hidden extern struct nlmsg *nlmsg_alloc_reserve(size_t size);
 
 /*
  * Reserve room for additional data at the tail of a netlink message
@@ -224,14 +225,14 @@ struct nlmsg *nlmsg_alloc_reserve(size_t size);
  *
  * Returns a pointer to newly reserved room or NULL
  */
-void *nlmsg_reserve(struct nlmsg *nlmsg, size_t len);
+__hidden extern void *nlmsg_reserve(struct nlmsg *nlmsg, size_t len);
 
 /*
  * nlmsg_free : free a previously allocate message
  *
  * @nlmsg: the netlink message to be freed
  */
-void nlmsg_free(struct nlmsg *nlmsg);
+__hidden extern void nlmsg_free(struct nlmsg *nlmsg);
 define_cleanup_function(struct nlmsg *, nlmsg_free);
 
 /*
@@ -241,9 +242,9 @@ define_cleanup_function(struct nlmsg *, nlmsg_free);
  *
  * Returns a pointer to the netlink data or NULL if there is no data
  */
-void *nlmsg_data(struct nlmsg *nlmsg);
+__hidden extern void *nlmsg_data(struct nlmsg *nlmsg);
 
-extern int addattr(struct nlmsghdr *n, size_t maxlen, int type,
-		   const void *data, size_t alen);
+__hidden extern int addattr(struct nlmsghdr *n, size_t maxlen, int type,
+			    const void *data, size_t alen);
 
 #endif
