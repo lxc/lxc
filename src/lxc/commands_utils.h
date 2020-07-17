@@ -8,11 +8,9 @@
 #include "state.h"
 #include "commands.h"
 
-int lxc_make_abstract_socket_name(char *path, size_t pathlen,
-				  const char *lxcname,
-				  const char *lxcpath,
-				  const char *hashed_sock_name,
-				  const char *suffix);
+__hidden extern int lxc_make_abstract_socket_name(char *path, size_t pathlen, const char *lxcname,
+						  const char *lxcpath, const char *hashed_sock_name,
+						  const char *suffix);
 
 /* lxc_cmd_sock_get_state      Register a new state client fd in the container's
  *                             in-memory handler and retrieve the requested
@@ -24,8 +22,8 @@ int lxc_make_abstract_socket_name(char *path, size_t pathlen,
  * @return                     Return  < 0 on error
  *                                     < MAX_STATE current container state
  */
-extern int lxc_cmd_sock_get_state(const char *name, const char *lxcpath,
-				  lxc_state_t states[MAX_STATE], int timeout);
+__hidden extern int lxc_cmd_sock_get_state(const char *name, const char *lxcpath,
+					   lxc_state_t states[MAX_STATE], int timeout);
 
 /* lxc_cmd_sock_rcv_state      Retrieve the requested state from a state client
  *                             fd registerd in the container's in-memory
@@ -36,7 +34,7 @@ extern int lxc_cmd_sock_get_state(const char *name, const char *lxcpath,
  * @return                     Return  < 0 on error
  *                                     < MAX_STATE current container state
  */
-extern int lxc_cmd_sock_rcv_state(int state_client_fd, int timeout);
+__hidden extern int lxc_cmd_sock_rcv_state(int state_client_fd, int timeout);
 
 /* lxc_add_state_client        Add a new state client to the container's
  *                             in-memory handler.
@@ -48,9 +46,8 @@ extern int lxc_cmd_sock_rcv_state(int state_client_fd, int timeout);
  * @return                     Return  < 0 on error
  *                                       0 on success
  */
-extern int lxc_add_state_client(int state_client_fd,
-				struct lxc_handler *handler,
-				lxc_state_t states[MAX_STATE]);
+__hidden extern int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
+					 lxc_state_t states[MAX_STATE]);
 
 /* lxc_cmd_connect             Connect to the container's command socket.
  *
@@ -62,7 +59,7 @@ extern int lxc_add_state_client(int state_client_fd,
  * @return                     Return   < 0 on error
  *                                     >= 0 client fd
  */
-extern int lxc_cmd_connect(const char *name, const char *lxcpath,
-			   const char *hashed_sock_name, const char *suffix);
+__hidden extern int lxc_cmd_connect(const char *name, const char *lxcpath,
+				    const char *hashed_sock_name, const char *suffix);
 
 #endif /* __LXC_COMMANDS_UTILS_H */

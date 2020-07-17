@@ -9,6 +9,7 @@ lxc_test_basic_SOURCES = basic.c
 lxc_test_cgpath_SOURCES = cgpath.c \
 			  ../lxc/af_unix.c ../lxc/af_unix.h \
 			  ../lxc/commands.c ../lxc/commands.h \
+			  ../lxc/commands_utils.c ../lxc/commands_utils.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h
 lxc_test_clonetest_SOURCES = clonetest.c
 lxc_test_concurrent_SOURCES = concurrent.c
