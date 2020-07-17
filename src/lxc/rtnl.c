@@ -16,12 +16,12 @@
 #include "nl.h"
 #include "rtnl.h"
 
-extern int rtnetlink_open(struct rtnl_handler *handler)
+int rtnetlink_open(struct rtnl_handler *handler)
 {
 	return netlink_open(&handler->nlh, NETLINK_ROUTE);
 }
 
-extern void rtnetlink_close(struct rtnl_handler *handler)
+void rtnetlink_close(struct rtnl_handler *handler)
 {
 	netlink_close(&handler->nlh);
 }
@@ -29,20 +29,19 @@ extern void rtnetlink_close(struct rtnl_handler *handler)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-align"
 
-extern int rtnetlink_rcv(struct rtnl_handler *handler, struct rtnlmsg *rtnlmsg)
+int rtnetlink_rcv(struct rtnl_handler *handler, struct rtnlmsg *rtnlmsg)
 {
 	return netlink_rcv(&handler->nlh, (struct nlmsg *)&rtnlmsg->nlmsghdr);
 }
 
-extern int rtnetlink_send(struct rtnl_handler *handler, struct rtnlmsg *rtnlmsg)
+int rtnetlink_send(struct rtnl_handler *handler, struct rtnlmsg *rtnlmsg)
 {
 
 	return netlink_send(&handler->nlh, (struct nlmsg *)&rtnlmsg->nlmsghdr);
 }
 
-extern int rtnetlink_transaction(struct rtnl_handler *handler,
-				 struct rtnlmsg *request,
-				 struct rtnlmsg *answer)
+int rtnetlink_transaction(struct rtnl_handler *handler, struct rtnlmsg *request,
+			  struct rtnlmsg *answer)
 {
 	return netlink_transaction(&handler->nlh,
 				   (struct nlmsg *)&request->nlmsghdr,
@@ -51,7 +50,7 @@ extern int rtnetlink_transaction(struct rtnl_handler *handler,
 
 #pragma GCC diagnostic pop
 
-extern struct rtnlmsg *rtnlmsg_alloc(size_t size)
+struct rtnlmsg *rtnlmsg_alloc(size_t size)
 {
 	/*
 	size_t len;
@@ -63,4 +62,4 @@ extern struct rtnlmsg *rtnlmsg_alloc(size_t size)
 	return NULL;
 }
 
-extern void rtnlmsg_free(struct rtnlmsg *rtnlmsg) { free(rtnlmsg); }
+void rtnlmsg_free(struct rtnlmsg *rtnlmsg) { free(rtnlmsg); }
