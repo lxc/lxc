@@ -31,7 +31,8 @@ lxc_test_raw_clone_SOURCES = lxc_raw_clone.c \
 			     lxctest.h \
 			     ../lxc/namespace.c ../lxc/namespace.h \
 			     ../lxc/process_utils.c ../lxc/process_utils.h
-			     ../lxc/utils.c ../lxc/utils.h
+			     ../lxc/utils.c ../lxc/utils.h \
+			     ../lxc/string_utils.c ../lxc/string_utils.h
 lxc_test_reboot_SOURCES = reboot.c
 lxc_test_saveconfig_SOURCES = saveconfig.c
 lxc_test_share_ns_SOURCES = share_ns.c \
@@ -44,7 +45,8 @@ lxc_test_startone_SOURCES = startone.c
 lxc_test_state_server_SOURCES = state_server.c \
 				lxctest.h \
 				../lxc/compiler.h
-lxc_test_utils_SOURCES = lxc-test-utils.c lxctest.h
+lxc_test_utils_SOURCES = lxc-test-utils.c lxctest.h \
+			 ../lxc/string_utils.c ../lxc/string_utils.h
 
 AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	  -DLXCPATH=\"$(LXCPATH)\" \
