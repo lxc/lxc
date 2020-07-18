@@ -8,12 +8,25 @@ lxc_test_attach_SOURCES = attach.c
 lxc_test_basic_SOURCES = basic.c
 lxc_test_cgpath_SOURCES = cgpath.c \
 			  ../lxc/af_unix.c ../lxc/af_unix.h \
+			  ../lxc/caps.c ../lxc/caps.h \
 			  ../lxc/commands.c ../lxc/commands.h \
 			  ../lxc/commands_utils.c ../lxc/commands_utils.h \
+			  ../lxc/conf.c ../lxc/conf.h \
+			  ../lxc/confile.c ../lxc/confile.h \
+			  ../lxc/network.c ../lxc/network.h \
+			  ../lxc/nl.c ../lxc/nl.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h
 lxc_test_clonetest_SOURCES = clonetest.c
 lxc_test_concurrent_SOURCES = concurrent.c
-lxc_test_config_jump_table_SOURCES = config_jump_table.c lxctest.h
+lxc_test_config_jump_table_SOURCES = config_jump_table.c \
+				     lxctest.h \
+				     ../lxc/af_unix.c ../lxc/af_unix.h \
+				     ../lxc/caps.c ../lxc/caps.h \
+				     ../lxc/conf.c ../lxc/conf.h \
+				     ../lxc/confile.c ../lxc/confile.h \
+				     ../lxc/network.c ../lxc/network.h \
+				     ../lxc/nl.c ../lxc/nl.h \
+				     ../lxc/string_utils.c ../lxc/string_utils.h
 lxc_test_console_SOURCES = console.c
 lxc_test_console_log_SOURCES = console_log.c lxctest.h
 lxc_test_containertests_SOURCES = containertests.c
@@ -56,12 +69,15 @@ AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	  -DLXCPATH=\"$(LXCPATH)\" \
 	  -DLXC_GLOBAL_CONF=\"$(LXC_GLOBAL_CONF)\" \
 	  -DLXCINITDIR=\"$(LXCINITDIR)\" \
+	  -DLIBEXECDIR=\"$(LIBEXECDIR)\" \
 	  -DLXC_DEFAULT_CONFIG=\"$(LXC_DEFAULT_CONFIG)\" \
 	  -DRUNTIME_PATH=\"$(RUNTIME_PATH)\" \
+	  -DSBINDIR=\"$(SBINDIR)\" \
 	  -I $(top_srcdir)/src \
 	  -I $(top_srcdir)/src/lxc \
 	  -I $(top_srcdir)/src/lxc/cgroups \
 	  -I $(top_srcdir)/src/lxc/tools \
+	  -I $(top_srcdir)/src/lxc/storage \
 	  -pthread
 
 if ENABLE_APPARMOR
