@@ -402,6 +402,7 @@ lxc_ls_SOURCES = tools/lxc_ls.c \
 		 af_unix.c af_unix.h \
 		 caps.c caps.h \
 		 conf.c conf.h \
+		 memory_utils.h \
 		 string_utils.c string_utils.h
 lxc_copy_SOURCES = tools/lxc_copy.c \
 		   tools/arguments.c tools/arguments.h \
