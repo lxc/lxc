@@ -117,7 +117,7 @@ int lxc_make_abstract_socket_name(char *path, size_t pathlen,
 	}
 
 	ret = snprintf(offset, len, "%s/%s/%s", lxcpath, name, suffix);
-	if (ret < 0)
+	if (ret < 0 || (size_t)ret >= len)
 		return log_error_errno(-1, errno, "Failed to create abstract socket name");
 
 	/*
