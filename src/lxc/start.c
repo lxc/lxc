@@ -1097,7 +1097,7 @@ static int do_start(void *data)
 	if (ret < 0)
 		goto out_error;
 
-	if (handler->ns_unshare_flags & CLONE_NEWNET) {
+	if (handler->ns_clone_flags & CLONE_NEWNET) {
 		ret = lxc_network_recv_from_parent(handler);
 		if (ret < 0) {
 			ERROR("Failed to receive veth names from parent");
