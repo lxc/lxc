@@ -1,6 +1,11 @@
 if ENABLE_TESTS
 
-LDADD = ../lxc/liblxc.la
+LDADD = ../lxc/liblxc.la \
+	@CAP_LIBS@ \
+	@OPENSSL_LIBS@ \
+	@SECCOMP_LIBS@ \
+	@SELINUX_LIBS@ \
+	@DLOG_LIBS@
 
 lxc_test_api_reboot_SOURCES = api_reboot.c \
 			      ../lxc/af_unix.c ../lxc/af_unix.h \
@@ -16,6 +21,10 @@ lxc_test_api_reboot_SOURCES = api_reboot.c \
 			      ../lxc/network.c ../lxc/network.h \
 			      ../lxc/nl.c ../lxc/nl.h \
 			      ../lxc/string_utils.c ../lxc/string_utils.h
+if ENABLE_SECCOMP
+lxc_test_api_reboot_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
+endif
+
 lxc_test_apparmor_SOURCES = aa.c
 lxc_test_attach_SOURCES = attach.c \
 			  ../lxc/af_unix.c ../lxc/af_unix.h \
@@ -31,6 +40,10 @@ lxc_test_attach_SOURCES = attach.c \
 			  ../lxc/network.c ../lxc/network.h \
 			  ../lxc/nl.c ../lxc/nl.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h
+if ENABLE_SECCOMP
+lxc_test_attach_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
+endif
+
 lxc_test_basic_SOURCES = basic.c
 lxc_test_cgpath_SOURCES = cgpath.c \
 			  ../lxc/af_unix.c ../lxc/af_unix.h \
@@ -46,6 +59,10 @@ lxc_test_cgpath_SOURCES = cgpath.c \
 			  ../lxc/network.c ../lxc/network.h \
 			  ../lxc/nl.c ../lxc/nl.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h
+if ENABLE_SECCOMP
+lxc_test_cgpath_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
+endif
+
 lxc_test_clonetest_SOURCES = clonetest.c
 lxc_test_concurrent_SOURCES = concurrent.c
 lxc_test_config_jump_table_SOURCES = config_jump_table.c \
@@ -63,6 +80,10 @@ lxc_test_config_jump_table_SOURCES = config_jump_table.c \
 				     ../lxc/network.c ../lxc/network.h \
 				     ../lxc/nl.c ../lxc/nl.h \
 				     ../lxc/string_utils.c ../lxc/string_utils.h
+if ENABLE_SECCOMP
+lxc_test_config_jump_table_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
+endif
+
 lxc_test_console_SOURCES = console.c
 lxc_test_console_log_SOURCES = console_log.c lxctest.h
 lxc_test_containertests_SOURCES = containertests.c
@@ -99,6 +120,10 @@ lxc_test_parse_config_file_SOURCES = parse_config_file.c \
 				     ../lxc/network.c ../lxc/network.h \
 				     ../lxc/nl.c ../lxc/nl.h \
 				     ../lxc/string_utils.c ../lxc/string_utils.h
+if ENABLE_SECCOMP
+lxc_test_parse_config_file_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
+endif
+
 lxc_test_raw_clone_SOURCES = lxc_raw_clone.c \
 			     lxctest.h \
 			     ../lxc/caps.c ../lxc/caps.h \
@@ -137,6 +162,9 @@ lxc_test_utils_SOURCES = lxc-test-utils.c \
 			  ../lxc/network.c ../lxc/network.h \
 			  ../lxc/nl.c ../lxc/nl.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h
+if ENABLE_SECCOMP
+lxc_test_utils_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
+endif
 
 AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	  -DLXCPATH=\"$(LXCPATH)\" \

@@ -16,6 +16,7 @@
 #include <sys/un.h>
 #endif
 
+#include "compiler.h"
 #include "conf.h"
 #include "config.h"
 #include "memory_utils.h"
@@ -77,21 +78,19 @@ struct lxc_seccomp {
 #endif /* HAVE_DECL_SECCOMP_NOTIFY_FD */
 };
 
-extern int lxc_seccomp_load(struct lxc_conf *conf);
-extern int lxc_read_seccomp_config(struct lxc_conf *conf);
-extern void lxc_seccomp_free(struct lxc_seccomp *seccomp);
-extern int seccomp_notify_handler(int fd, uint32_t events, void *data,
-				  struct lxc_epoll_descr *descr);
-extern void seccomp_conf_init(struct lxc_conf *conf);
-extern int lxc_seccomp_setup_proxy(struct lxc_seccomp *seccomp,
-				   struct lxc_epoll_descr *descr,
-				   struct lxc_handler *handler);
-extern int lxc_seccomp_send_notifier_fd(struct lxc_seccomp *seccomp,
-					int socket_fd);
-extern int lxc_seccomp_recv_notifier_fd(struct lxc_seccomp *seccomp,
-					int socket_fd);
-extern int lxc_seccomp_add_notifier(const char *name, const char *lxcpath,
-				    struct lxc_seccomp *seccomp);
+__hidden extern int lxc_seccomp_load(struct lxc_conf *conf);
+__hidden extern int lxc_read_seccomp_config(struct lxc_conf *conf);
+__hidden extern void lxc_seccomp_free(struct lxc_seccomp *seccomp);
+__hidden extern int seccomp_notify_handler(int fd, uint32_t events, void *data,
+					   struct lxc_epoll_descr *descr);
+__hidden extern void seccomp_conf_init(struct lxc_conf *conf);
+__hidden extern int lxc_seccomp_setup_proxy(struct lxc_seccomp *seccomp,
+					    struct lxc_epoll_descr *descr,
+					    struct lxc_handler *handler);
+__hidden extern int lxc_seccomp_send_notifier_fd(struct lxc_seccomp *seccomp, int socket_fd);
+__hidden extern int lxc_seccomp_recv_notifier_fd(struct lxc_seccomp *seccomp, int socket_fd);
+__hidden extern int lxc_seccomp_add_notifier(const char *name, const char *lxcpath,
+					     struct lxc_seccomp *seccomp);
 static inline int lxc_seccomp_get_notify_fd(struct lxc_seccomp *seccomp)
 {
 #if HAVE_DECL_SECCOMP_NOTIFY_FD
