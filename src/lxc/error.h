@@ -6,6 +6,8 @@
 #define LXC_CLONE_ERROR "Failed to clone a new set of namespaces"
 #define LXC_UNPRIV_EOPNOTSUPP "the requested function %s is not currently supported with unprivileged containers"
 
-extern int  lxc_error_set_and_log(int pid, int status);
+#include "compiler.h"
+
+__hidden extern int lxc_error_set_and_log(int pid, int status);
 
 #endif
