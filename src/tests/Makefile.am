@@ -2,9 +2,31 @@ if ENABLE_TESTS
 
 LDADD = ../lxc/liblxc.la
 
-lxc_test_api_reboot_SOURCES = api_reboot.c
+lxc_test_api_reboot_SOURCES = api_reboot.c \
+			      ../lxc/af_unix.c ../lxc/af_unix.h \
+			      ../lxc/caps.c ../lxc/caps.h \
+			      ../lxc/commands.c ../lxc/commands.h \
+			      ../lxc/commands_utils.c ../lxc/commands_utils.h \
+			      ../lxc/conf.c ../lxc/conf.h \
+			      ../lxc/confile.c ../lxc/confile.h \
+			      ../lxc/confile_utils.c ../lxc/confile_utils.h \
+			      ../lxc/file_utils.c ../lxc/file_utils.h \
+			      ../lxc/network.c ../lxc/network.h \
+			      ../lxc/nl.c ../lxc/nl.h \
+			      ../lxc/string_utils.c ../lxc/string_utils.h
 lxc_test_apparmor_SOURCES = aa.c
-lxc_test_attach_SOURCES = attach.c
+lxc_test_attach_SOURCES = attach.c \
+			  ../lxc/af_unix.c ../lxc/af_unix.h \
+			  ../lxc/caps.c ../lxc/caps.h \
+			  ../lxc/commands.c ../lxc/commands.h \
+			  ../lxc/commands_utils.c ../lxc/commands_utils.h \
+			  ../lxc/conf.c ../lxc/conf.h \
+			  ../lxc/confile.c ../lxc/confile.h \
+			  ../lxc/confile_utils.c ../lxc/confile_utils.h \
+			  ../lxc/file_utils.c ../lxc/file_utils.h \
+			  ../lxc/network.c ../lxc/network.h \
+			  ../lxc/nl.c ../lxc/nl.h \
+			  ../lxc/string_utils.c ../lxc/string_utils.h
 lxc_test_basic_SOURCES = basic.c
 lxc_test_cgpath_SOURCES = cgpath.c \
 			  ../lxc/af_unix.c ../lxc/af_unix.h \
@@ -14,6 +36,7 @@ lxc_test_cgpath_SOURCES = cgpath.c \
 			  ../lxc/conf.c ../lxc/conf.h \
 			  ../lxc/confile.c ../lxc/confile.h \
 			  ../lxc/confile_utils.c ../lxc/confile_utils.h \
+			  ../lxc/file_utils.c ../lxc/file_utils.h \
 			  ../lxc/network.c ../lxc/network.h \
 			  ../lxc/nl.c ../lxc/nl.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h
@@ -28,6 +51,7 @@ lxc_test_config_jump_table_SOURCES = config_jump_table.c \
 				     ../lxc/conf.c ../lxc/conf.h \
 				     ../lxc/confile.c ../lxc/confile.h \
 				     ../lxc/confile_utils.c ../lxc/confile_utils.h \
+				     ../lxc/file_utils.c ../lxc/file_utils.h \
 				     ../lxc/network.c ../lxc/network.h \
 				     ../lxc/nl.c ../lxc/nl.h \
 				     ../lxc/string_utils.c ../lxc/string_utils.h
@@ -45,7 +69,10 @@ lxc_test_list_SOURCES = list.c
 lxc_test_locktests_SOURCES = locktests.c
 lxc_test_lxcpath_SOURCES = lxcpath.c
 lxc_test_may_control_SOURCES = may_control.c
-lxc_test_mount_injection_SOURCES = mount_injection.c lxctest.h
+lxc_test_mount_injection_SOURCES = mount_injection.c \
+				   lxctest.h \
+				   ../lxc/file_utils.c ../lxc/file_utils.h \
+				   ../lxc/string_utils.c ../lxc/string_utils.h
 lxc_test_parse_config_file_SOURCES = parse_config_file.c \
 				     lxctest.h \
 				     ../lxc/af_unix.c ../lxc/af_unix.h \
@@ -53,6 +80,7 @@ lxc_test_parse_config_file_SOURCES = parse_config_file.c \
 				     ../lxc/conf.c ../lxc/conf.h \
 				     ../lxc/confile.c ../lxc/confile.h \
 				     ../lxc/confile_utils.c ../lxc/confile_utils.h \
+				     ../lxc/file_utils.c ../lxc/file_utils.h \
 				     ../lxc/network.c ../lxc/network.h \
 				     ../lxc/nl.c ../lxc/nl.h \
 				     ../lxc/string_utils.c ../lxc/string_utils.h
@@ -67,7 +95,9 @@ lxc_test_saveconfig_SOURCES = saveconfig.c
 lxc_test_share_ns_SOURCES = share_ns.c \
 			    lxctest.h \
 			    ../lxc/compiler.h
-lxc_test_shortlived_SOURCES = shortlived.c
+lxc_test_shortlived_SOURCES = shortlived.c \
+			      ../lxc/file_utils.c ../lxc/file_utils.h \
+			      ../lxc/string_utils.c ../lxc/string_utils.h
 lxc_test_shutdowntest_SOURCES = shutdowntest.c
 lxc_test_snapshot_SOURCES = snapshot.c
 lxc_test_startone_SOURCES = startone.c
@@ -83,6 +113,7 @@ lxc_test_utils_SOURCES = lxc-test-utils.c \
 			  ../lxc/conf.c ../lxc/conf.h \
 			  ../lxc/confile.c ../lxc/confile.h \
 			  ../lxc/confile_utils.c ../lxc/confile_utils.h \
+			  ../lxc/file_utils.c ../lxc/file_utils.h \
 			  ../lxc/network.c ../lxc/network.h \
 			  ../lxc/nl.c ../lxc/nl.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h
