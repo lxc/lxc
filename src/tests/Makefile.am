@@ -11,6 +11,7 @@ lxc_test_api_reboot_SOURCES = api_reboot.c \
 			      ../lxc/confile.c ../lxc/confile.h \
 			      ../lxc/confile_utils.c ../lxc/confile_utils.h \
 			      ../lxc/file_utils.c ../lxc/file_utils.h \
+			      ../lxc/initutils.c ../lxc/initutils.h \
 			      ../lxc/network.c ../lxc/network.h \
 			      ../lxc/nl.c ../lxc/nl.h \
 			      ../lxc/string_utils.c ../lxc/string_utils.h
@@ -24,6 +25,7 @@ lxc_test_attach_SOURCES = attach.c \
 			  ../lxc/confile.c ../lxc/confile.h \
 			  ../lxc/confile_utils.c ../lxc/confile_utils.h \
 			  ../lxc/file_utils.c ../lxc/file_utils.h \
+			  ../lxc/initutils.c ../lxc/initutils.h \
 			  ../lxc/network.c ../lxc/network.h \
 			  ../lxc/nl.c ../lxc/nl.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h
@@ -37,6 +39,7 @@ lxc_test_cgpath_SOURCES = cgpath.c \
 			  ../lxc/confile.c ../lxc/confile.h \
 			  ../lxc/confile_utils.c ../lxc/confile_utils.h \
 			  ../lxc/file_utils.c ../lxc/file_utils.h \
+			  ../lxc/initutils.c ../lxc/initutils.h \
 			  ../lxc/network.c ../lxc/network.h \
 			  ../lxc/nl.c ../lxc/nl.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h
@@ -52,6 +55,7 @@ lxc_test_config_jump_table_SOURCES = config_jump_table.c \
 				     ../lxc/confile.c ../lxc/confile.h \
 				     ../lxc/confile_utils.c ../lxc/confile_utils.h \
 				     ../lxc/file_utils.c ../lxc/file_utils.h \
+				     ../lxc/initutils.c ../lxc/initutils.h \
 				     ../lxc/network.c ../lxc/network.h \
 				     ../lxc/nl.c ../lxc/nl.h \
 				     ../lxc/string_utils.c ../lxc/string_utils.h
@@ -81,6 +85,7 @@ lxc_test_parse_config_file_SOURCES = parse_config_file.c \
 				     ../lxc/confile.c ../lxc/confile.h \
 				     ../lxc/confile_utils.c ../lxc/confile_utils.h \
 				     ../lxc/file_utils.c ../lxc/file_utils.h \
+				     ../lxc/initutils.c ../lxc/initutils.h \
 				     ../lxc/network.c ../lxc/network.h \
 				     ../lxc/nl.c ../lxc/nl.h \
 				     ../lxc/string_utils.c ../lxc/string_utils.h
@@ -114,6 +119,7 @@ lxc_test_utils_SOURCES = lxc-test-utils.c \
 			  ../lxc/confile.c ../lxc/confile.h \
 			  ../lxc/confile_utils.c ../lxc/confile_utils.h \
 			  ../lxc/file_utils.c ../lxc/file_utils.h \
+			  ../lxc/initutils.c ../lxc/initutils.h \
 			  ../lxc/network.c ../lxc/network.h \
 			  ../lxc/nl.c ../lxc/nl.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h
@@ -124,6 +130,7 @@ AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	  -DLXCINITDIR=\"$(LXCINITDIR)\" \
 	  -DLIBEXECDIR=\"$(LIBEXECDIR)\" \
 	  -DLXC_DEFAULT_CONFIG=\"$(LXC_DEFAULT_CONFIG)\" \
+	  -DDEFAULT_CGROUP_PATTERN=\"$(DEFAULT_CGROUP_PATTERN)\" \
 	  -DRUNTIME_PATH=\"$(RUNTIME_PATH)\" \
 	  -DSBINDIR=\"$(SBINDIR)\" \
 	  -I $(top_srcdir)/src \
