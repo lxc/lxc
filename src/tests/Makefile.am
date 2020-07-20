@@ -18,6 +18,7 @@ lxc_test_api_reboot_SOURCES = api_reboot.c \
 			      ../lxc/file_utils.c ../lxc/file_utils.h \
 			      ../lxc/initutils.c ../lxc/initutils.h \
 			      ../lxc/log.c ../lxc/log.h \
+			      ../lxc/mainloop.c ../lxc/mainloop.h \
 			      ../lxc/network.c ../lxc/network.h \
 			      ../lxc/nl.c ../lxc/nl.h \
 			      ../lxc/string_utils.c ../lxc/string_utils.h
@@ -37,6 +38,7 @@ lxc_test_attach_SOURCES = attach.c \
 			  ../lxc/file_utils.c ../lxc/file_utils.h \
 			  ../lxc/initutils.c ../lxc/initutils.h \
 			  ../lxc/log.c ../lxc/log.h \
+			  ../lxc/mainloop.c ../lxc/mainloop.h \
 			  ../lxc/network.c ../lxc/network.h \
 			  ../lxc/nl.c ../lxc/nl.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h
@@ -56,6 +58,7 @@ lxc_test_cgpath_SOURCES = cgpath.c \
 			  ../lxc/file_utils.c ../lxc/file_utils.h \
 			  ../lxc/initutils.c ../lxc/initutils.h \
 			  ../lxc/log.c ../lxc/log.h \
+			  ../lxc/mainloop.c ../lxc/mainloop.h \
 			  ../lxc/network.c ../lxc/network.h \
 			  ../lxc/nl.c ../lxc/nl.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h
@@ -77,6 +80,7 @@ lxc_test_config_jump_table_SOURCES = config_jump_table.c \
 				     ../lxc/file_utils.c ../lxc/file_utils.h \
 				     ../lxc/initutils.c ../lxc/initutils.h \
 				     ../lxc/log.c ../lxc/log.h \
+				     ../lxc/mainloop.c ../lxc/mainloop.h \
 				     ../lxc/network.c ../lxc/network.h \
 				     ../lxc/nl.c ../lxc/nl.h \
 				     ../lxc/string_utils.c ../lxc/string_utils.h
@@ -159,6 +163,7 @@ lxc_test_utils_SOURCES = lxc-test-utils.c \
 			  ../lxc/file_utils.c ../lxc/file_utils.h \
 			  ../lxc/initutils.c ../lxc/initutils.h \
 			  ../lxc/log.c ../lxc/log.h \
+			  ../lxc/mainloop.c ../lxc/mainloop.h \
 			  ../lxc/network.c ../lxc/network.h \
 			  ../lxc/nl.c ../lxc/nl.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h
