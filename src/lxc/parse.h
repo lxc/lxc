@@ -13,17 +13,16 @@ typedef int (*lxc_dir_cb)(const char *name, const char *directory,
 
 typedef int (*lxc_file_cb)(char *buffer, void *data);
 
-__hot extern int lxc_file_for_each_line(const char *file, lxc_file_cb callback,
-					void *data);
+__hidden __hot extern int lxc_file_for_each_line(const char *file, lxc_file_cb callback, void *data);
 
-__hot extern int lxc_file_for_each_line_mmap(const char *file,
-					     lxc_file_cb callback, void *data);
+__hidden __hot extern int lxc_file_for_each_line_mmap(const char *file, lxc_file_cb callback,
+						      void *data);
 
 /* mmap() wrapper. lxc_strmmap() will take care to \0-terminate files so that
  * normal string-handling functions can be used on the buffer. */
-extern void *lxc_strmmap(void *addr, size_t length, int prot, int flags, int fd,
-			 off_t offset);
+__hidden extern void *lxc_strmmap(void *addr, size_t length, int prot, int flags, int fd,
+				  off_t offset);
 /* munmap() wrapper. Use it to free memory mmap()ed with lxc_strmmap(). */
-extern int lxc_strmunmap(void *addr, size_t length);
+__hidden extern int lxc_strmunmap(void *addr, size_t length);
 
-#endif
+#endif /* __LXC_PARSE_H */
