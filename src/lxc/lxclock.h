@@ -11,6 +11,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "compiler.h"
+
 #ifndef F_OFD_GETLK
 #define F_OFD_GETLK	36
 #endif
@@ -71,7 +73,7 @@ struct lxc_lock {
  * freed when the container is freed), and \c u.f.fd = -1.
  *
  */
-extern struct lxc_lock *lxc_newlock(const char *lxcpath, const char *name);
+__hidden extern struct lxc_lock *lxc_newlock(const char *lxcpath, const char *name);
 
 /*!
  * \brief Take an existing lock.
@@ -89,7 +91,7 @@ extern struct lxc_lock *lxc_newlock(const char *lxcpath, const char *name);
  * (except in the test case) I may remove the support for it in sem as
  * well.
  */
-extern int lxclock(struct lxc_lock *lock, int timeout);
+__hidden extern int lxclock(struct lxc_lock *lock, int timeout);
 
 /*!
  * \brief Unlock specified lock previously locked using \ref lxclock().
@@ -99,24 +101,24 @@ extern int lxclock(struct lxc_lock *lock, int timeout);
  * \return \c 0 on success, \c -2 if provided lock was not already held,
  * otherwise \c -1 with \c errno saved from \c fcntl(2) or sem_post function.
  */
-extern int lxcunlock(struct lxc_lock *lock);
+__hidden extern int lxcunlock(struct lxc_lock *lock);
 
 /*!
  * \brief Free a lock created by \ref lxc_newlock().
  *
  * \param lock Lock.
  */
-extern void lxc_putlock(struct lxc_lock *lock);
+__hidden extern void lxc_putlock(struct lxc_lock *lock);
 
 /*!
  * \brief Lock the current process.
  */
-extern void process_lock(void);
+__hidden extern void process_lock(void);
 
 /*!
  * \brief Unlock the current process.
  */
-extern void process_unlock(void);
+__hidden extern void process_unlock(void);
 
 struct lxc_container;
 
@@ -127,14 +129,14 @@ struct lxc_container;
  *
  * \return As for \ref lxclock().
  */
-extern int container_mem_lock(struct lxc_container *c);
+__hidden extern int container_mem_lock(struct lxc_container *c);
 
 /*!
  * \brief Unlock the containers memory.
  *
  * \param c Container.
  */
-extern void container_mem_unlock(struct lxc_container *c);
+__hidden extern void container_mem_unlock(struct lxc_container *c);
 
 /*!
  * \brief Lock the containers disk data.
@@ -144,7 +146,7 @@ extern void container_mem_unlock(struct lxc_container *c);
  * \return \c 0 on success, or an \ref lxclock() error return
  * values on error.
  */
-extern int container_disk_lock(struct lxc_container *c);
+__hidden extern int container_disk_lock(struct lxc_container *c);
 
 /*!
  * \brief Unlock the containers disk data.
@@ -152,6 +154,6 @@ extern int container_disk_lock(struct lxc_container *c);
  * \param c Container.
  *
  */
-extern void container_disk_unlock(struct lxc_container *c);
+__hidden extern void container_disk_unlock(struct lxc_container *c);
 
 #endif
