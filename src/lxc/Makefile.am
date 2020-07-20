@@ -518,7 +518,7 @@ if ENABLE_COMMANDS
 # Binaries shipping with liblxc
 init_lxc_SOURCES = cmd/lxc_init.c \
 		   compiler.h \
-		   error.h \
+		   error.c error.h \
 		   initutils.c initutils.h \
 		   memory_utils.h \
 		   parse.c parse.h \
