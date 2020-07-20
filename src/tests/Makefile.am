@@ -74,7 +74,12 @@ lxc_test_device_add_remove_SOURCES = device_add_remove.c
 lxc_test_getkeys_SOURCES = getkeys.c
 lxc_test_get_item_SOURCES = get_item.c
 lxc_test_list_SOURCES = list.c
-lxc_test_locktests_SOURCES = locktests.c
+lxc_test_locktests_SOURCES = locktests.c \
+			     ../lxc/caps.c ../lxc/caps.h \
+			     ../lxc/file_utils.c ../lxc/file_utils.h \
+			     ../lxc/log.c ../lxc/log.h \
+			     ../lxc/lxclock.c ../lxc/lxclock.h \
+			     ../lxc/string_utils.c ../lxc/string_utils.h
 lxc_test_lxcpath_SOURCES = lxcpath.c
 lxc_test_may_control_SOURCES = may_control.c
 lxc_test_mount_injection_SOURCES = mount_injection.c \
