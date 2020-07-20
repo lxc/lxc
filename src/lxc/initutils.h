@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "compiler.h"
 #include "string_utils.h"
 
 #define DEFAULT_VG "lxc"
@@ -47,8 +48,8 @@ struct prctl_mm_map {
 };
 #endif
 
-extern const char *lxc_global_config_value(const char *option_name);
+__hidden extern const char *lxc_global_config_value(const char *option_name);
 
-extern int setproctitle(char *title);
+__hidden extern int setproctitle(char *title);
 
 #endif /* __LXC_INITUTILS_H */
