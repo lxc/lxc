@@ -338,6 +338,7 @@ lxc_attach_SOURCES = tools/lxc_attach.c \
 		     confile_utils.c confile_utils.h \
 		     file_utils.c file_utils.h \
 		     initutils.c initutils.h \
+		     log.c log.h \
 		     rexec.c rexec.h \
 		     string_utils.c string_utils.h
 lxc_autostart_SOURCES = tools/lxc_autostart.c \
@@ -349,6 +350,7 @@ lxc_autostart_SOURCES = tools/lxc_autostart.c \
 			confile_utils.c confile_utils.h \
 			file_utils.c file_utils.h \
 			initutils.c initutils.h \
+			log.c log.h \
 			string_utils.c string_utils.h
 lxc_cgroup_SOURCES = tools/lxc_cgroup.c \
 		     tools/arguments.c tools/arguments.h \
@@ -359,6 +361,7 @@ lxc_cgroup_SOURCES = tools/lxc_cgroup.c \
 		     confile_utils.c confile_utils.h \
 		     file_utils.c file_utils.h \
 		     initutils.c initutils.h \
+		     log.c log.h \
 		     string_utils.c string_utils.h
 lxc_config_SOURCES = tools/lxc_config.c \
 		     tools/arguments.c tools/arguments.h \
@@ -369,6 +372,7 @@ lxc_config_SOURCES = tools/lxc_config.c \
 		     confile_utils.c confile_utils.h \
 		     file_utils.c file_utils.h \
 		     initutils.c initutils.h \
+		     log.c log.h \
 		     string_utils.c string_utils.h
 lxc_console_SOURCES = tools/lxc_console.c \
 		      tools/arguments.c tools/arguments.h \
@@ -379,6 +383,7 @@ lxc_console_SOURCES = tools/lxc_console.c \
 		      confile_utils.c confile_utils.h \
 		      file_utils.c file_utils.h \
 		      initutils.c initutils.h \
+		      log.c log.h \
 		      string_utils.c string_utils.h
 lxc_destroy_SOURCES = tools/lxc_destroy.c \
 		      tools/arguments.c tools/arguments.h \
@@ -389,6 +394,7 @@ lxc_destroy_SOURCES = tools/lxc_destroy.c \
 		      confile_utils.c confile_utils.h \
 		      file_utils.c file_utils.h \
 		      initutils.c initutils.h \
+		      log.c log.h \
 		      string_utils.c string_utils.h
 lxc_device_SOURCES = tools/lxc_device.c \
 		     tools/arguments.c tools/arguments.h \
@@ -399,6 +405,7 @@ lxc_device_SOURCES = tools/lxc_device.c \
 		     confile_utils.c confile_utils.h \
 		     file_utils.c file_utils.h \
 		     initutils.c initutils.h \
+		     log.c log.h \
 		     string_utils.c string_utils.h
 lxc_execute_SOURCES = tools/lxc_execute.c \
 		      tools/arguments.c tools/arguments.h \
@@ -409,6 +416,7 @@ lxc_execute_SOURCES = tools/lxc_execute.c \
 		      confile_utils.c confile_utils.h \
 		      file_utils.c file_utils.h \
 		      initutils.c initutils.h \
+		      log.c log.h \
 		      string_utils.c string_utils.h
 lxc_freeze_SOURCES = tools/lxc_freeze.c \
 		     tools/arguments.c tools/arguments.h \
@@ -419,6 +427,7 @@ lxc_freeze_SOURCES = tools/lxc_freeze.c \
 		     confile_utils.c confile_utils.h \
 		     file_utils.c file_utils.h \
 		     initutils.c initutils.h \
+		     log.c log.h \
 		     string_utils.c string_utils.h
 lxc_info_SOURCES = tools/lxc_info.c \
 		   tools/arguments.c tools/arguments.h \
@@ -429,6 +438,7 @@ lxc_info_SOURCES = tools/lxc_info.c \
 		   confile_utils.c confile_utils.h \
 		   file_utils.c file_utils.h \
 		   initutils.c initutils.h \
+		   log.c log.h \
 		   string_utils.c string_utils.h
 lxc_monitor_SOURCES = tools/lxc_monitor.c \
 		      tools/arguments.c tools/arguments.h \
@@ -439,6 +449,7 @@ lxc_monitor_SOURCES = tools/lxc_monitor.c \
 		      confile_utils.c confile_utils.h \
 		      file_utils.c file_utils.h \
 		      initutils.c initutils.h \
+		      log.c log.h \
 		      macro.h \
 		      string_utils.c string_utils.h
 lxc_ls_SOURCES = tools/lxc_ls.c \
@@ -450,6 +461,7 @@ lxc_ls_SOURCES = tools/lxc_ls.c \
 		 confile_utils.c confile_utils.h \
 		 file_utils.c file_utils.h \
 		 initutils.c initutils.h \
+		 log.c log.h \
 		 memory_utils.h \
 		 string_utils.c string_utils.h
 lxc_copy_SOURCES = tools/lxc_copy.c \
@@ -461,6 +473,7 @@ lxc_copy_SOURCES = tools/lxc_copy.c \
 		   confile_utils.c confile_utils.h \
 		   file_utils.c file_utils.h \
 		   initutils.c initutils.h \
+		   log.c log.h \
 		   storage/storage_utils.c storage/storage_utils.h \
 		   string_utils.c string_utils.h
 lxc_start_SOURCES = tools/lxc_start.c \
@@ -472,6 +485,7 @@ lxc_start_SOURCES = tools/lxc_start.c \
 		    confile_utils.c confile_utils.h \
 		    file_utils.c file_utils.h \
 		    initutils.c initutils.h \
+		    log.c log.h \
 		    string_utils.c string_utils.h
 lxc_stop_SOURCES = tools/lxc_stop.c \
 		   tools/arguments.c tools/arguments.h \
@@ -482,6 +496,7 @@ lxc_stop_SOURCES = tools/lxc_stop.c \
 		   confile_utils.c confile_utils.h \
 		   file_utils.c file_utils.h \
 		   initutils.c initutils.h \
+		   log.c log.h \
 		   string_utils.c string_utils.h
 lxc_top_SOURCES = tools/lxc_top.c \
 		  tools/arguments.c tools/arguments.h \
@@ -492,6 +507,7 @@ lxc_top_SOURCES = tools/lxc_top.c \
 		  confile_utils.c confile_utils.h \
 		  file_utils.c file_utils.h \
 		  initutils.c initutils.h \
+		  log.c log.h \
 		  string_utils.c string_utils.h
 lxc_unfreeze_SOURCES = tools/lxc_unfreeze.c \
 		       tools/arguments.c tools/arguments.h \
@@ -502,6 +518,7 @@ lxc_unfreeze_SOURCES = tools/lxc_unfreeze.c \
 		       confile_utils.c confile_utils.h \
 		       file_utils.c file_utils.h \
 		       initutils.c initutils.h \
+		       log.c log.h \
 		       string_utils.c string_utils.h
 lxc_unshare_SOURCES = tools/lxc_unshare.c \
 		      tools/arguments.c tools/arguments.h \
@@ -512,6 +529,7 @@ lxc_unshare_SOURCES = tools/lxc_unshare.c \
 		      confile_utils.c confile_utils.h \
 		      file_utils.c file_utils.h \
 		      initutils.c initutils.h \
+		      log.c log.h \
 		      string_utils.c string_utils.h \
 		      syscall_numbers.h \
 		      syscall_wrappers.h
@@ -524,6 +542,7 @@ lxc_wait_SOURCES = tools/lxc_wait.c \
 		   confile_utils.c confile_utils.h \
 		   file_utils.c file_utils.h \
 		   initutils.c initutils.h \
+		   log.c log.h \
 		   string_utils.c string_utils.h
 lxc_create_SOURCES = tools/lxc_create.c \
 		     tools/arguments.c tools/arguments.h \
@@ -534,6 +553,7 @@ lxc_create_SOURCES = tools/lxc_create.c \
 		     confile_utils.c confile_utils.h \
 		     file_utils.c file_utils.h \
 		     initutils.c initutils.h \
+		     log.c log.h \
 		     storage/storage_utils.c storage/storage_utils.h \
 		     string_utils.c string_utils.h
 lxc_snapshot_SOURCES = tools/lxc_snapshot.c \
@@ -545,6 +565,7 @@ lxc_snapshot_SOURCES = tools/lxc_snapshot.c \
 		       confile_utils.c confile_utils.h \
 		       file_utils.c file_utils.h \
 		       initutils.c initutils.h \
+		       log.c log.h \
 		       string_utils.c string_utils.h
 lxc_checkpoint_SOURCES = tools/lxc_checkpoint.c \
 			 tools/arguments.c tools/arguments.h \
@@ -555,16 +576,19 @@ lxc_checkpoint_SOURCES = tools/lxc_checkpoint.c \
 			 confile_utils.c confile_utils.h \
 			 file_utils.c file_utils.h \
 			 initutils.c initutils.h \
+			 log.c log.h \
 			 string_utils.c string_utils.h
 endif
 
 if ENABLE_COMMANDS
 # Binaries shipping with liblxc
 init_lxc_SOURCES = cmd/lxc_init.c \
+		   caps.c caps.h \
 		   compiler.h \
 		   error.c error.h \
 		   file_utils.c file_utils.h \
 		   initutils.c initutils.h \
+		   log.c log.h \
 		   memory_utils.h \
 		   parse.c parse.h \
 		   process_utils.c process_utils.h \

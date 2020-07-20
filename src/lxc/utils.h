@@ -203,12 +203,6 @@ extern int run_command(char *buf, size_t buf_size, int (*child_fn)(void *),
 extern int run_command_status(char *buf, size_t buf_size, int (*child_fn)(void *),
 		       void *args);
 
-/* return copy of string @entry;  do not fail. */
-extern char *must_copy_string(const char *entry);
-
-/* Re-allocate a pointer, do not fail */
-extern void *must_realloc(void *orig, size_t sz);
-
 extern bool lxc_nic_exists(char *nic);
 
 static inline uint64_t lxc_getpagesize(void)

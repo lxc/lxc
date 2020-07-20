@@ -16,6 +16,7 @@
 #include <syslog.h>
 #include <time.h>
 
+#include "compiler.h"
 #include "conf.h"
 #include "config.h"
 
@@ -84,7 +85,7 @@ struct lxc_log_category {
 };
 
 #ifndef NO_LXC_CONF
-extern int lxc_log_use_global_fd;
+__hidden extern int lxc_log_use_global_fd;
 #endif
 
 /*
@@ -560,17 +561,18 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 		__internal_ret__;                             \
 	})
 
-extern int lxc_log_fd;
+__hidden extern int lxc_log_fd;
 
-extern int lxc_log_syslog(int facility);
-extern void lxc_log_syslog_enable(void);
-extern void lxc_log_syslog_disable(void);
-extern int lxc_log_set_level(int *dest, int level);
-extern int lxc_log_get_level(void);
-extern bool lxc_log_has_valid_level(void);
-extern int lxc_log_set_file(int *fd, const char *fname);
-extern const char *lxc_log_get_file(void);
-extern void lxc_log_set_prefix(const char *prefix);
-extern const char *lxc_log_get_prefix(void);
-extern void lxc_log_options_no_override(void);
-#endif
+__hidden extern int lxc_log_syslog(int facility);
+__hidden extern void lxc_log_syslog_enable(void);
+__hidden extern void lxc_log_syslog_disable(void);
+__hidden extern int lxc_log_set_level(int *dest, int level);
+__hidden extern int lxc_log_get_level(void);
+__hidden extern bool lxc_log_has_valid_level(void);
+__hidden extern int lxc_log_set_file(int *fd, const char *fname);
+__hidden extern const char *lxc_log_get_file(void);
+__hidden extern void lxc_log_set_prefix(const char *prefix);
+__hidden extern const char *lxc_log_get_prefix(void);
+__hidden extern void lxc_log_options_no_override(void);
+
+#endif /* __LXC_LOG_H */
