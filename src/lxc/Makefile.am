@@ -553,6 +553,7 @@ lxc_stop_SOURCES = tools/lxc_stop.c \
 		   file_utils.c file_utils.h \
 		   initutils.c initutils.h \
 		   log.c log.h \
+		   mainloop.c mainloop.h \
 		   string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_stop_SOURCES += seccomp.c lxcseccomp.h
@@ -568,6 +569,7 @@ lxc_top_SOURCES = tools/lxc_top.c \
 		  file_utils.c file_utils.h \
 		  initutils.c initutils.h \
 		  log.c log.h \
+		  mainloop.c mainloop.h \
 		  string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_top_SOURCES += seccomp.c lxcseccomp.h
