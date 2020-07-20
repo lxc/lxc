@@ -491,6 +491,7 @@ lxc_monitor_SOURCES = tools/lxc_monitor.c \
 		      initutils.c initutils.h \
 		      log.c log.h \
 		      macro.h \
+		      monitor.c monitor.h \
 		      string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_monitor_SOURCES += seccomp.c lxcseccomp.h
