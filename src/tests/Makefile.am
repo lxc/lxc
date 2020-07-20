@@ -13,6 +13,7 @@ lxc_test_cgpath_SOURCES = cgpath.c \
 			  ../lxc/commands_utils.c ../lxc/commands_utils.h \
 			  ../lxc/conf.c ../lxc/conf.h \
 			  ../lxc/confile.c ../lxc/confile.h \
+			  ../lxc/confile_utils.c ../lxc/confile_utils.h \
 			  ../lxc/network.c ../lxc/network.h \
 			  ../lxc/nl.c ../lxc/nl.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h
@@ -22,8 +23,11 @@ lxc_test_config_jump_table_SOURCES = config_jump_table.c \
 				     lxctest.h \
 				     ../lxc/af_unix.c ../lxc/af_unix.h \
 				     ../lxc/caps.c ../lxc/caps.h \
+				     ../lxc/commands.c ../lxc/commands.h \
+				     ../lxc/commands_utils.c ../lxc/commands_utils.h \
 				     ../lxc/conf.c ../lxc/conf.h \
 				     ../lxc/confile.c ../lxc/confile.h \
+				     ../lxc/confile_utils.c ../lxc/confile_utils.h \
 				     ../lxc/network.c ../lxc/network.h \
 				     ../lxc/nl.c ../lxc/nl.h \
 				     ../lxc/string_utils.c ../lxc/string_utils.h
@@ -43,7 +47,15 @@ lxc_test_lxcpath_SOURCES = lxcpath.c
 lxc_test_may_control_SOURCES = may_control.c
 lxc_test_mount_injection_SOURCES = mount_injection.c lxctest.h
 lxc_test_parse_config_file_SOURCES = parse_config_file.c \
-				     lxctest.h
+				     lxctest.h \
+				     ../lxc/af_unix.c ../lxc/af_unix.h \
+				     ../lxc/caps.c ../lxc/caps.h \
+				     ../lxc/conf.c ../lxc/conf.h \
+				     ../lxc/confile.c ../lxc/confile.h \
+				     ../lxc/confile_utils.c ../lxc/confile_utils.h \
+				     ../lxc/network.c ../lxc/network.h \
+				     ../lxc/nl.c ../lxc/nl.h \
+				     ../lxc/string_utils.c ../lxc/string_utils.h
 lxc_test_raw_clone_SOURCES = lxc_raw_clone.c \
 			     lxctest.h \
 			     ../lxc/namespace.c ../lxc/namespace.h \
@@ -62,8 +74,18 @@ lxc_test_startone_SOURCES = startone.c
 lxc_test_state_server_SOURCES = state_server.c \
 				lxctest.h \
 				../lxc/compiler.h
-lxc_test_utils_SOURCES = lxc-test-utils.c lxctest.h \
-			 ../lxc/string_utils.c ../lxc/string_utils.h
+lxc_test_utils_SOURCES = lxc-test-utils.c \
+			 lxctest.h \
+			  ../lxc/af_unix.c ../lxc/af_unix.h \
+			  ../lxc/caps.c ../lxc/caps.h \
+			  ../lxc/commands.c ../lxc/commands.h \
+			  ../lxc/commands_utils.c ../lxc/commands_utils.h \
+			  ../lxc/conf.c ../lxc/conf.h \
+			  ../lxc/confile.c ../lxc/confile.h \
+			  ../lxc/confile_utils.c ../lxc/confile_utils.h \
+			  ../lxc/network.c ../lxc/network.h \
+			  ../lxc/nl.c ../lxc/nl.h \
+			  ../lxc/string_utils.c ../lxc/string_utils.h
 
 AM_CFLAGS=-DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
 	  -DLXCPATH=\"$(LXCPATH)\" \
