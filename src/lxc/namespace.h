@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 
+#include "compiler.h"
+
 enum {
 	LXC_NS_USER,
 	LXC_NS_MNT,
@@ -19,16 +21,16 @@ enum {
 	LXC_NS_MAX
 };
 
-extern const struct ns_info {
+__hidden extern const struct ns_info {
 	const char *proc_name;
 	int clone_flag;
 	const char *flag_name;
 	const char *env_name;
 } ns_info[LXC_NS_MAX];
 
-extern int lxc_namespace_2_cloneflag(const char *namespace);
-extern int lxc_namespace_2_ns_idx(const char *namespace);
-extern int lxc_namespace_2_std_identifiers(char *namespaces);
-extern int lxc_fill_namespace_flags(char *flaglist, int *flags);
+__hidden extern int lxc_namespace_2_cloneflag(const char *namespace);
+__hidden extern int lxc_namespace_2_ns_idx(const char *namespace);
+__hidden extern int lxc_namespace_2_std_identifiers(char *namespaces);
+__hidden extern int lxc_fill_namespace_flags(char *flaglist, int *flags);
 
-#endif
+#endif /* __LXC_NAMESPACE_H */

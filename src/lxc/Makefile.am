@@ -339,6 +339,7 @@ lxc_attach_SOURCES = tools/lxc_attach.c \
 		     file_utils.c file_utils.h \
 		     initutils.c initutils.h \
 		     log.c log.h \
+		     namespace.c namespace.h \
 		     rexec.c rexec.h \
 		     string_utils.c string_utils.h
 if ENABLE_SECCOMP
@@ -355,6 +356,7 @@ lxc_autostart_SOURCES = tools/lxc_autostart.c \
 			file_utils.c file_utils.h \
 			initutils.c initutils.h \
 			log.c log.h \
+			namespace.c namespace.h \
 			string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_autostart_SOURCES += seccomp.c lxcseccomp.h
@@ -370,6 +372,7 @@ lxc_cgroup_SOURCES = tools/lxc_cgroup.c \
 		     file_utils.c file_utils.h \
 		     initutils.c initutils.h \
 		     log.c log.h \
+		     namespace.c namespace.h \
 		     string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_cgroup_SOURCES += seccomp.c lxcseccomp.h
@@ -385,6 +388,7 @@ lxc_config_SOURCES = tools/lxc_config.c \
 		     file_utils.c file_utils.h \
 		     initutils.c initutils.h \
 		     log.c log.h \
+		     namespace.c namespace.h \
 		     string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_config_SOURCES += seccomp.c lxcseccomp.h
@@ -400,6 +404,7 @@ lxc_console_SOURCES = tools/lxc_console.c \
 		      file_utils.c file_utils.h \
 		      initutils.c initutils.h \
 		      log.c log.h \
+		      namespace.c namespace.h \
 		      string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_console_SOURCES += seccomp.c lxcseccomp.h
@@ -415,6 +420,7 @@ lxc_destroy_SOURCES = tools/lxc_destroy.c \
 		      file_utils.c file_utils.h \
 		      initutils.c initutils.h \
 		      log.c log.h \
+		      namespace.c namespace.h \
 		      string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_destroy_SOURCES += seccomp.c lxcseccomp.h
@@ -430,6 +436,7 @@ lxc_device_SOURCES = tools/lxc_device.c \
 		     file_utils.c file_utils.h \
 		     initutils.c initutils.h \
 		     log.c log.h \
+		     namespace.c namespace.h \
 		     string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_device_SOURCES += seccomp.c lxcseccomp.h
@@ -445,6 +452,7 @@ lxc_execute_SOURCES = tools/lxc_execute.c \
 		      file_utils.c file_utils.h \
 		      initutils.c initutils.h \
 		      log.c log.h \
+		      namespace.c namespace.h \
 		      string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_execute_SOURCES += seccomp.c lxcseccomp.h
@@ -460,6 +468,7 @@ lxc_freeze_SOURCES = tools/lxc_freeze.c \
 		     file_utils.c file_utils.h \
 		     initutils.c initutils.h \
 		     log.c log.h \
+		     namespace.c namespace.h \
 		     string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_freeze_SOURCES += seccomp.c lxcseccomp.h
@@ -475,6 +484,7 @@ lxc_info_SOURCES = tools/lxc_info.c \
 		   file_utils.c file_utils.h \
 		   initutils.c initutils.h \
 		   log.c log.h \
+		   namespace.c namespace.h \
 		   string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_info_SOURCES += seccomp.c lxcseccomp.h
@@ -492,6 +502,7 @@ lxc_monitor_SOURCES = tools/lxc_monitor.c \
 		      log.c log.h \
 		      macro.h \
 		      monitor.c monitor.h \
+		      namespace.c namespace.h \
 		      string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_monitor_SOURCES += seccomp.c lxcseccomp.h
@@ -508,6 +519,7 @@ lxc_ls_SOURCES = tools/lxc_ls.c \
 		 initutils.c initutils.h \
 		 log.c log.h \
 		 memory_utils.h \
+		 namespace.c namespace.h \
 		 string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_ls_SOURCES += seccomp.c lxcseccomp.h
@@ -523,6 +535,7 @@ lxc_copy_SOURCES = tools/lxc_copy.c \
 		   file_utils.c file_utils.h \
 		   initutils.c initutils.h \
 		   log.c log.h \
+		   namespace.c namespace.h \
 		   storage/storage_utils.c storage/storage_utils.h \
 		   string_utils.c string_utils.h
 if ENABLE_SECCOMP
@@ -539,6 +552,7 @@ lxc_start_SOURCES = tools/lxc_start.c \
 		    file_utils.c file_utils.h \
 		    initutils.c initutils.h \
 		    log.c log.h \
+		    namespace.c namespace.h \
 		    string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_start_SOURCES += seccomp.c lxcseccomp.h
@@ -555,6 +569,7 @@ lxc_stop_SOURCES = tools/lxc_stop.c \
 		   initutils.c initutils.h \
 		   log.c log.h \
 		   mainloop.c mainloop.h \
+		   namespace.c namespace.h \
 		   string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_stop_SOURCES += seccomp.c lxcseccomp.h
@@ -571,6 +586,7 @@ lxc_top_SOURCES = tools/lxc_top.c \
 		  initutils.c initutils.h \
 		  log.c log.h \
 		  mainloop.c mainloop.h \
+		  namespace.c namespace.h \
 		  string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_top_SOURCES += seccomp.c lxcseccomp.h
@@ -586,6 +602,7 @@ lxc_unfreeze_SOURCES = tools/lxc_unfreeze.c \
 		       file_utils.c file_utils.h \
 		       initutils.c initutils.h \
 		       log.c log.h \
+		       namespace.c namespace.h \
 		       string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_unfreeze_SOURCES += seccomp.c lxcseccomp.h
@@ -601,6 +618,7 @@ lxc_unshare_SOURCES = tools/lxc_unshare.c \
 		      file_utils.c file_utils.h \
 		      initutils.c initutils.h \
 		      log.c log.h \
+		      namespace.c namespace.h \
 		      string_utils.c string_utils.h \
 		      syscall_numbers.h \
 		      syscall_wrappers.h
@@ -618,6 +636,7 @@ lxc_wait_SOURCES = tools/lxc_wait.c \
 		   file_utils.c file_utils.h \
 		   initutils.c initutils.h \
 		   log.c log.h \
+		   namespace.c namespace.h \
 		   string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_wait_SOURCES += seccomp.c lxcseccomp.h
@@ -633,6 +652,7 @@ lxc_create_SOURCES = tools/lxc_create.c \
 		     file_utils.c file_utils.h \
 		     initutils.c initutils.h \
 		     log.c log.h \
+		     namespace.c namespace.h \
 		     storage/storage_utils.c storage/storage_utils.h \
 		     string_utils.c string_utils.h
 if ENABLE_SECCOMP
@@ -649,6 +669,7 @@ lxc_snapshot_SOURCES = tools/lxc_snapshot.c \
 		       file_utils.c file_utils.h \
 		       initutils.c initutils.h \
 		       log.c log.h \
+		       namespace.c namespace.h \
 		       string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_snapshot_SOURCES += seccomp.c lxcseccomp.h
@@ -664,6 +685,7 @@ lxc_checkpoint_SOURCES = tools/lxc_checkpoint.c \
 			 file_utils.c file_utils.h \
 			 initutils.c initutils.h \
 			 log.c log.h \
+			 namespace.c namespace.h \
 			 string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_checkpoint_SOURCES += seccomp.c lxcseccomp.h
@@ -702,6 +724,7 @@ lxc_monitord_SOURCES = cmd/lxc_monitord.c \
 		       log.c log.h \
 		       mainloop.c mainloop.h \
 		       monitor.c monitor.h \
+		       namespace.c namespace.h \
 		       process_utils.c process_utils.h \
 		       string_utils.c string_utils.h \
 		       syscall_numbers.h \
@@ -721,6 +744,7 @@ lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
 		       initutils.c initutils.h \
 		       log.c log.h \
 		       memory_utils.h \
+		       namespace.c namespace.h \
 		       network.c network.h \
 		       nl.c nl.h \
 		       parse.c parse.h \
@@ -744,6 +768,7 @@ lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c \
 			 log.c log.h \
 			 macro.h \
 			 memory_utils.h \
+			 namespace.c namespace.h \
 			 string_utils.c string_utils.h \
 			 syscall_wrappers.h \
 			 utils.c utils.h
