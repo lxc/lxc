@@ -356,7 +356,8 @@ lxc_attach_SOURCES = tools/lxc_attach.c \
 		     state.c state.h \
 		     string_utils.c string_utils.h \
 		     sync.c sync.h \
-		     terminal.c terminal.h
+		     terminal.c terminal.h \
+		     utils.c utils.h
 if ENABLE_SECCOMP
 lxc_attach_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -387,7 +388,8 @@ lxc_autostart_SOURCES = tools/lxc_autostart.c \
 			state.c state.h \
 			string_utils.c string_utils.h \
 			sync.c sync.h \
-			terminal.c terminal.h
+			terminal.c terminal.h \
+			utils.c utils.h
 if ENABLE_SECCOMP
 lxc_autostart_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -418,7 +420,8 @@ lxc_cgroup_SOURCES = tools/lxc_cgroup.c \
 		     state.c state.h \
 		     string_utils.c string_utils.h \
 		     sync.c sync.h \
-		     terminal.c terminal.h
+		     terminal.c terminal.h \
+		     utils.c utils.h
 if ENABLE_SECCOMP
 lxc_cgroup_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -449,7 +452,8 @@ lxc_config_SOURCES = tools/lxc_config.c \
 		     state.c state.h \
 		     string_utils.c string_utils.h \
 		     sync.c sync.h \
-		     terminal.c terminal.h
+		     terminal.c terminal.h \
+		     utils.c utils.h
 if ENABLE_SECCOMP
 lxc_config_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -480,7 +484,8 @@ lxc_console_SOURCES = tools/lxc_console.c \
 		      state.c state.h \
 		      string_utils.c string_utils.h \
 		      sync.c sync.h \
-		      terminal.c terminal.h
+		      terminal.c terminal.h \
+		      utils.c utils.h
 if ENABLE_SECCOMP
 lxc_console_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -511,7 +516,8 @@ lxc_destroy_SOURCES = tools/lxc_destroy.c \
 		      state.c state.h \
 		      string_utils.c string_utils.h \
 		      sync.c sync.h \
-		      terminal.c terminal.h
+		      terminal.c terminal.h \
+		      utils.c utils.h
 if ENABLE_SECCOMP
 lxc_destroy_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -542,7 +548,8 @@ lxc_device_SOURCES = tools/lxc_device.c \
 		     state.c state.h \
 		     string_utils.c string_utils.h \
 		     sync.c sync.h \
-		     terminal.c terminal.h
+		     terminal.c terminal.h \
+		     utils.c utils.h
 if ENABLE_SECCOMP
 lxc_device_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -573,7 +580,8 @@ lxc_execute_SOURCES = tools/lxc_execute.c \
 		      state.c state.h \
 		      string_utils.c string_utils.h \
 		      sync.c sync.h \
-		      terminal.c terminal.h
+		      terminal.c terminal.h \
+		      utils.c utils.h
 if ENABLE_SECCOMP
 lxc_execute_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -604,7 +612,8 @@ lxc_freeze_SOURCES = tools/lxc_freeze.c \
 		     state.c state.h \
 		     string_utils.c string_utils.h \
 		     sync.c sync.h \
-		     terminal.c terminal.h
+		     terminal.c terminal.h \
+		     utils.c utils.h
 if ENABLE_SECCOMP
 lxc_freeze_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -635,7 +644,8 @@ lxc_info_SOURCES = tools/lxc_info.c \
 		   state.c state.h \
 		   string_utils.c string_utils.h \
 		   sync.c sync.h \
-		   terminal.c terminal.h
+		   terminal.c terminal.h \
+		   utils.c utils.h
 if ENABLE_SECCOMP
 lxc_info_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -667,7 +677,8 @@ lxc_monitor_SOURCES = tools/lxc_monitor.c \
 		      state.c state.h \
 		      string_utils.c string_utils.h \
 		      sync.c sync.h \
-		      terminal.c terminal.h
+		      terminal.c terminal.h \
+		      utils.c utils.h
 if ENABLE_SECCOMP
 lxc_monitor_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -699,7 +710,8 @@ lxc_ls_SOURCES = tools/lxc_ls.c \
 		 state.c state.h \
 		 string_utils.c string_utils.h \
 		 sync.c sync.h \
-		 terminal.c terminal.h
+		 terminal.c terminal.h \
+		 utils.c utils.h
 if ENABLE_SECCOMP
 lxc_ls_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -731,7 +743,8 @@ lxc_copy_SOURCES = tools/lxc_copy.c \
 		   storage/storage_utils.c storage/storage_utils.h \
 		   string_utils.c string_utils.h \
 		   sync.c sync.h \
-		   terminal.c terminal.h
+		   terminal.c terminal.h \
+		   utils.c utils.h
 if ENABLE_SECCOMP
 lxc_copy_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -762,7 +775,8 @@ lxc_start_SOURCES = tools/lxc_start.c \
 		    state.c state.h \
 		    string_utils.c string_utils.h \
 		    sync.c sync.h \
-		    terminal.c terminal.h
+		    terminal.c terminal.h \
+		    utils.c utils.h
 if ENABLE_SECCOMP
 lxc_start_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -793,7 +807,8 @@ lxc_stop_SOURCES = tools/lxc_stop.c \
 		   state.c state.h \
 		   string_utils.c string_utils.h \
 		   sync.c sync.h \
-		   terminal.c terminal.h
+		   terminal.c terminal.h \
+		   utils.c utils.h
 if ENABLE_SECCOMP
 lxc_stop_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -824,7 +839,8 @@ lxc_top_SOURCES = tools/lxc_top.c \
 		  state.c state.h \
 		  string_utils.c string_utils.h \
 		  sync.c sync.h \
-		  terminal.c terminal.h
+		  terminal.c terminal.h \
+		  utils.c utils.h
 if ENABLE_SECCOMP
 lxc_top_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -855,7 +871,8 @@ lxc_unfreeze_SOURCES = tools/lxc_unfreeze.c \
 		       state.c state.h \
 		       string_utils.c string_utils.h \
 		       sync.c sync.h \
-		       terminal.c terminal.h
+		       terminal.c terminal.h \
+		       utils.c utils.h
 if ENABLE_SECCOMP
 lxc_unfreeze_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -888,7 +905,8 @@ lxc_unshare_SOURCES = tools/lxc_unshare.c \
 		      sync.c sync.h \
 		      syscall_numbers.h \
 		      syscall_wrappers.h \
-		      terminal.c terminal.h
+		      terminal.c terminal.h \
+		      utils.c utils.h
 if ENABLE_SECCOMP
 lxc_unshare_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -919,7 +937,8 @@ lxc_wait_SOURCES = tools/lxc_wait.c \
 		   state.c state.h \
 		   string_utils.c string_utils.h \
 		   sync.c sync.h \
-		   terminal.c terminal.h
+		   terminal.c terminal.h \
+		   utils.c utils.h
 if ENABLE_SECCOMP
 lxc_wait_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -951,7 +970,8 @@ lxc_create_SOURCES = tools/lxc_create.c \
 		     storage/storage_utils.c storage/storage_utils.h \
 		     string_utils.c string_utils.h \
 		     sync.c sync.h \
-		     terminal.c terminal.h
+		     terminal.c terminal.h \
+		     utils.c utils.h
 if ENABLE_SECCOMP
 lxc_create_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -982,7 +1002,8 @@ lxc_snapshot_SOURCES = tools/lxc_snapshot.c \
 		       state.c state.h \
 		       string_utils.c string_utils.h \
 		       sync.c sync.h \
-		       terminal.c terminal.h
+		       terminal.c terminal.h \
+		       utils.c utils.h
 if ENABLE_SECCOMP
 lxc_snapshot_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -1013,7 +1034,8 @@ lxc_checkpoint_SOURCES = tools/lxc_checkpoint.c \
 			 state.c state.h \
 			 string_utils.c string_utils.h \
 			 sync.c sync.h \
-			 terminal.c terminal.h
+			 terminal.c terminal.h \
+			 utils.c utils.h
 if ENABLE_SECCOMP
 lxc_checkpoint_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -1102,7 +1124,8 @@ lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
 		       sync.c sync.h \
 		       syscall_numbers.h \
 		       syscall_wrappers.h \
-		       terminal.c terminal.h
+		       terminal.c terminal.h \
+		       utils.c utils.h
 if ENABLE_SECCOMP
 lxc_user_nic_SOURCES += seccomp.c lxcseccomp.h
 endif
