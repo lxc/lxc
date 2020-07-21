@@ -353,6 +353,7 @@ lxc_attach_SOURCES = tools/lxc_attach.c \
 		     rexec.c rexec.h \
 		     ringbuf.c ringbuf.h \
 		     start.c start.h \
+		     state.c state.h \
 		     string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_attach_SOURCES += seccomp.c lxcseccomp.h
@@ -381,6 +382,7 @@ lxc_autostart_SOURCES = tools/lxc_autostart.c \
 			process_utils.c process_utils.h \
 			ringbuf.c ringbuf.h \
 			start.c start.h \
+			state.c state.h \
 			string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_autostart_SOURCES += seccomp.c lxcseccomp.h
@@ -409,6 +411,7 @@ lxc_cgroup_SOURCES = tools/lxc_cgroup.c \
 		     process_utils.c process_utils.h \
 		     ringbuf.c ringbuf.h \
 		     start.c start.h \
+		     state.c state.h \
 		     string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_cgroup_SOURCES += seccomp.c lxcseccomp.h
@@ -437,6 +440,7 @@ lxc_config_SOURCES = tools/lxc_config.c \
 		     process_utils.c process_utils.h \
 		     ringbuf.c ringbuf.h \
 		     start.c start.h \
+		     state.c state.h \
 		     string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_config_SOURCES += seccomp.c lxcseccomp.h
@@ -465,6 +469,7 @@ lxc_console_SOURCES = tools/lxc_console.c \
 		      process_utils.c process_utils.h \
 		      ringbuf.c ringbuf.h \
 		      start.c start.h \
+		      state.c state.h \
 		      string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_console_SOURCES += seccomp.c lxcseccomp.h
@@ -493,6 +498,7 @@ lxc_destroy_SOURCES = tools/lxc_destroy.c \
 		      process_utils.c process_utils.h \
 		      ringbuf.c ringbuf.h \
 		      start.c start.h \
+		      state.c state.h \
 		      string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_destroy_SOURCES += seccomp.c lxcseccomp.h
@@ -521,6 +527,7 @@ lxc_device_SOURCES = tools/lxc_device.c \
 		     process_utils.c process_utils.h \
 		     ringbuf.c ringbuf.h \
 		     start.c start.h \
+		     state.c state.h \
 		     string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_device_SOURCES += seccomp.c lxcseccomp.h
@@ -549,6 +556,7 @@ lxc_execute_SOURCES = tools/lxc_execute.c \
 		      process_utils.c process_utils.h \
 		      ringbuf.c ringbuf.h \
 		      start.c start.h \
+		      state.c state.h \
 		      string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_execute_SOURCES += seccomp.c lxcseccomp.h
@@ -577,6 +585,7 @@ lxc_freeze_SOURCES = tools/lxc_freeze.c \
 		     process_utils.c process_utils.h \
 		     ringbuf.c ringbuf.h \
 		     start.c start.h \
+		     state.c state.h \
 		     string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_freeze_SOURCES += seccomp.c lxcseccomp.h
@@ -605,6 +614,7 @@ lxc_info_SOURCES = tools/lxc_info.c \
 		   process_utils.c process_utils.h \
 		   ringbuf.c ringbuf.h \
 		   start.c start.h \
+		   state.c state.h \
 		   string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_info_SOURCES += seccomp.c lxcseccomp.h
@@ -634,6 +644,7 @@ lxc_monitor_SOURCES = tools/lxc_monitor.c \
 		      process_utils.c process_utils.h \
 		      ringbuf.c ringbuf.h \
 		      start.c start.h \
+		      state.c state.h \
 		      string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_monitor_SOURCES += seccomp.c lxcseccomp.h
@@ -663,6 +674,7 @@ lxc_ls_SOURCES = tools/lxc_ls.c \
 		 process_utils.c process_utils.h \
 		 ringbuf.c ringbuf.h \
 		 start.c start.h \
+		 state.c state.h \
 		 string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_ls_SOURCES += seccomp.c lxcseccomp.h
@@ -691,6 +703,7 @@ lxc_copy_SOURCES = tools/lxc_copy.c \
 		   process_utils.c process_utils.h \
 		   ringbuf.c ringbuf.h \
 		   start.c start.h \
+		   state.c state.h \
 		   storage/storage_utils.c storage/storage_utils.h \
 		   string_utils.c string_utils.h
 if ENABLE_SECCOMP
@@ -720,6 +733,7 @@ lxc_start_SOURCES = tools/lxc_start.c \
 		    process_utils.c process_utils.h \
 		    ringbuf.c ringbuf.h \
 		    start.c start.h \
+		    state.c state.h \
 		    string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_start_SOURCES += seccomp.c lxcseccomp.h
@@ -748,6 +762,7 @@ lxc_stop_SOURCES = tools/lxc_stop.c \
 		   process_utils.c process_utils.h \
 		   ringbuf.c ringbuf.h \
 		   start.c start.h \
+		   state.c state.h \
 		   string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_stop_SOURCES += seccomp.c lxcseccomp.h
@@ -776,6 +791,7 @@ lxc_top_SOURCES = tools/lxc_top.c \
 		  process_utils.c process_utils.h \
 		  ringbuf.c ringbuf.h \
 		  start.c start.h \
+		  state.c state.h \
 		  string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_top_SOURCES += seccomp.c lxcseccomp.h
@@ -804,6 +820,7 @@ lxc_unfreeze_SOURCES = tools/lxc_unfreeze.c \
 		       process_utils.c process_utils.h \
 		       ringbuf.c ringbuf.h \
 		       start.c start.h \
+		       state.c state.h \
 		       string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_unfreeze_SOURCES += seccomp.c lxcseccomp.h
@@ -832,6 +849,7 @@ lxc_unshare_SOURCES = tools/lxc_unshare.c \
 		      process_utils.c process_utils.h \
 		      ringbuf.c ringbuf.h \
 		      start.c start.h \
+		      state.c state.h \
 		      string_utils.c string_utils.h \
 		      syscall_numbers.h \
 		      syscall_wrappers.h
@@ -862,6 +880,7 @@ lxc_wait_SOURCES = tools/lxc_wait.c \
 		   process_utils.c process_utils.h \
 		   ringbuf.c ringbuf.h \
 		   start.c start.h \
+		   state.c state.h \
 		   string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_wait_SOURCES += seccomp.c lxcseccomp.h
@@ -890,6 +909,7 @@ lxc_create_SOURCES = tools/lxc_create.c \
 		     process_utils.c process_utils.h \
 		     ringbuf.c ringbuf.h \
 		     start.c start.h \
+		     state.c state.h \
 		     storage/storage_utils.c storage/storage_utils.h \
 		     string_utils.c string_utils.h
 if ENABLE_SECCOMP
@@ -919,6 +939,7 @@ lxc_snapshot_SOURCES = tools/lxc_snapshot.c \
 		       process_utils.c process_utils.h \
 		       ringbuf.c ringbuf.h \
 		       start.c start.h \
+		       state.c state.h \
 		       string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_snapshot_SOURCES += seccomp.c lxcseccomp.h
@@ -947,6 +968,7 @@ lxc_checkpoint_SOURCES = tools/lxc_checkpoint.c \
 			 process_utils.c process_utils.h \
 			 ringbuf.c ringbuf.h \
 			 start.c start.h \
+			 state.c state.h \
 			 string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_checkpoint_SOURCES += seccomp.c lxcseccomp.h
@@ -997,6 +1019,7 @@ lxc_monitord_SOURCES = cmd/lxc_monitord.c \
 		       process_utils.c process_utils.h \
 		       ringbuf.c ringbuf.h \
 		       start.c start.h \
+		       state.c state.h \
 		       string_utils.c string_utils.h \
 		       syscall_numbers.h \
 		       utils.c utils.h
@@ -1028,6 +1051,7 @@ lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
 		       process_utils.c process_utils.h \
 		       ringbuf.c ringbuf.h \
 		       start.c start.h \
+		       state.c state.h \
 		       string_utils.c string_utils.h \
 		       syscall_numbers.h \
 		       syscall_wrappers.h
@@ -1060,6 +1084,7 @@ lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c \
 			 process_utils.c process_utils.h \
 			 ringbuf.c ringbuf.h \
 			 start.c start.h \
+			 state.c state.h \
 			 string_utils.c string_utils.h \
 			 syscall_wrappers.h \
 			 utils.c utils.h

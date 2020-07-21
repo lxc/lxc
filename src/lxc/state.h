@@ -3,6 +3,8 @@
 #ifndef __LXC_STATE_H
 #define __LXC_STATE_H
 
+#include "compiler.h"
+
 #define MAX_STATE_LENGTH (8 + 1)
 
 typedef enum {
@@ -23,10 +25,11 @@ enum {
 	REBOOT_INIT
 };
 
-extern lxc_state_t lxc_getstate(const char *name, const char *lxcpath);
+__hidden extern lxc_state_t lxc_getstate(const char *name, const char *lxcpath);
 
-extern lxc_state_t lxc_str2state(const char *state);
-extern const char *lxc_state2str(lxc_state_t state);
-extern int lxc_wait(const char *lxcname, const char *states, int timeout, const char *lxcpath);
+__hidden extern lxc_state_t lxc_str2state(const char *state);
+__hidden extern const char *lxc_state2str(lxc_state_t state);
+__hidden extern int lxc_wait(const char *lxcname, const char *states, int timeout,
+			     const char *lxcpath);
 
-#endif
+#endif /* __LXC_STATE_H */
