@@ -15,16 +15,20 @@ lxc_test_api_reboot_SOURCES = api_reboot.c \
 			      ../lxc/conf.c ../lxc/conf.h \
 			      ../lxc/confile.c ../lxc/confile.h \
 			      ../lxc/confile_utils.c ../lxc/confile_utils.h \
+			      ../lxc/error.c ../lxc/error.h \
 			      ../lxc/file_utils.c ../lxc/file_utils.h \
 			      ../lxc/initutils.c ../lxc/initutils.h \
 			      ../lxc/log.c ../lxc/log.h \
+			      ../lxc/lxclock.c ../lxc/lxclock.h \
 			      ../lxc/mainloop.c ../lxc/mainloop.h \
+			      ../lxc/monitor.c ../lxc/monitor.h \
 			      ../lxc/namespace.c ../lxc/namespace.h \
 			      ../lxc/network.c ../lxc/network.h \
 			      ../lxc/nl.c ../lxc/nl.h \
 			      ../lxc/parse.c ../lxc/parse.h \
 			      ../lxc/process_utils.c ../lxc/process_utils.h \
 			      ../lxc/ringbuf.c ../lxc/ringbuf.h \
+			      ../lxc/start.c ../lxc/start.h \
 			      ../lxc/string_utils.c ../lxc/string_utils.h
 if ENABLE_SECCOMP
 lxc_test_api_reboot_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
@@ -39,16 +43,20 @@ lxc_test_attach_SOURCES = attach.c \
 			  ../lxc/conf.c ../lxc/conf.h \
 			  ../lxc/confile.c ../lxc/confile.h \
 			  ../lxc/confile_utils.c ../lxc/confile_utils.h \
+			  ../lxc/error.c ../lxc/error.h \
 			  ../lxc/file_utils.c ../lxc/file_utils.h \
 			  ../lxc/initutils.c ../lxc/initutils.h \
 			  ../lxc/log.c ../lxc/log.h \
+			  ../lxc/lxclock.c ../lxc/lxclock.h \
 			  ../lxc/mainloop.c ../lxc/mainloop.h \
+			  ../lxc/monitor.c ../lxc/monitor.h \
 			  ../lxc/namespace.c ../lxc/namespace.h \
 			  ../lxc/network.c ../lxc/network.h \
 			  ../lxc/nl.c ../lxc/nl.h \
 			  ../lxc/parse.c ../lxc/parse.h \
 			  ../lxc/process_utils.c ../lxc/process_utils.h \
 			  ../lxc/ringbuf.c ../lxc/ringbuf.h \
+			  ../lxc/start.c ../lxc/start.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h
 if ENABLE_SECCOMP
 lxc_test_attach_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
@@ -63,16 +71,20 @@ lxc_test_cgpath_SOURCES = cgpath.c \
 			  ../lxc/conf.c ../lxc/conf.h \
 			  ../lxc/confile.c ../lxc/confile.h \
 			  ../lxc/confile_utils.c ../lxc/confile_utils.h \
+			  ../lxc/error.c ../lxc/error.h \
 			  ../lxc/file_utils.c ../lxc/file_utils.h \
 			  ../lxc/initutils.c ../lxc/initutils.h \
 			  ../lxc/log.c ../lxc/log.h \
+			  ../lxc/lxclock.c ../lxc/lxclock.h \
 			  ../lxc/mainloop.c ../lxc/mainloop.h \
+			  ../lxc/monitor.c ../lxc/monitor.h \
 			  ../lxc/namespace.c ../lxc/namespace.h \
 			  ../lxc/network.c ../lxc/network.h \
 			  ../lxc/nl.c ../lxc/nl.h \
 			  ../lxc/parse.c ../lxc/parse.h \
 			  ../lxc/process_utils.c ../lxc/process_utils.h \
 			  ../lxc/ringbuf.c ../lxc/ringbuf.h \
+			  ../lxc/start.c ../lxc/start.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h
 if ENABLE_SECCOMP
 lxc_test_cgpath_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
@@ -89,16 +101,20 @@ lxc_test_config_jump_table_SOURCES = config_jump_table.c \
 				     ../lxc/conf.c ../lxc/conf.h \
 				     ../lxc/confile.c ../lxc/confile.h \
 				     ../lxc/confile_utils.c ../lxc/confile_utils.h \
+				     ../lxc/error.c ../lxc/error.h \
 				     ../lxc/file_utils.c ../lxc/file_utils.h \
 				     ../lxc/initutils.c ../lxc/initutils.h \
 				     ../lxc/log.c ../lxc/log.h \
+				     ../lxc/lxclock.c ../lxc/lxclock.h \
 				     ../lxc/mainloop.c ../lxc/mainloop.h \
+				     ../lxc/monitor.c ../lxc/monitor.h \
 				     ../lxc/namespace.c ../lxc/namespace.h \
 				     ../lxc/network.c ../lxc/network.h \
 				     ../lxc/nl.c ../lxc/nl.h \
 				     ../lxc/parse.c ../lxc/parse.h \
 				     ../lxc/process_utils.c ../lxc/process_utils.h \
 				     ../lxc/ringbuf.c ../lxc/ringbuf.h \
+				     ../lxc/start.c ../lxc/start.h \
 				     ../lxc/string_utils.c ../lxc/string_utils.h
 if ENABLE_SECCOMP
 lxc_test_config_jump_table_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
@@ -131,18 +147,25 @@ lxc_test_parse_config_file_SOURCES = parse_config_file.c \
 				     lxctest.h \
 				     ../lxc/af_unix.c ../lxc/af_unix.h \
 				     ../lxc/caps.c ../lxc/caps.h \
+				     ../lxc/commands.c ../lxc/commands.h \
+				     ../lxc/commands_utils.c ../lxc/commands_utils.h \
 				     ../lxc/conf.c ../lxc/conf.h \
 				     ../lxc/confile.c ../lxc/confile.h \
 				     ../lxc/confile_utils.c ../lxc/confile_utils.h \
+				     ../lxc/error.c ../lxc/error.h \
 				     ../lxc/file_utils.c ../lxc/file_utils.h \
 				     ../lxc/initutils.c ../lxc/initutils.h \
 				     ../lxc/log.c ../lxc/log.h \
+				     ../lxc/lxclock.c ../lxc/lxclock.h \
+				     ../lxc/mainloop.c ../lxc/mainloop.h \
+				     ../lxc/monitor.c ../lxc/monitor.h \
 				     ../lxc/namespace.c ../lxc/namespace.h \
 				     ../lxc/network.c ../lxc/network.h \
 				     ../lxc/nl.c ../lxc/nl.h \
 				     ../lxc/parse.c ../lxc/parse.h \
 				     ../lxc/process_utils.c ../lxc/process_utils.h \
 				     ../lxc/ringbuf.c ../lxc/ringbuf.h \
+				     ../lxc/start.c ../lxc/start.h \
 				     ../lxc/string_utils.c ../lxc/string_utils.h
 if ENABLE_SECCOMP
 lxc_test_parse_config_file_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
@@ -180,16 +203,20 @@ lxc_test_utils_SOURCES = lxc-test-utils.c \
 			  ../lxc/conf.c ../lxc/conf.h \
 			  ../lxc/confile.c ../lxc/confile.h \
 			  ../lxc/confile_utils.c ../lxc/confile_utils.h \
+			  ../lxc/error.c ../lxc/error.h \
 			  ../lxc/file_utils.c ../lxc/file_utils.h \
 			  ../lxc/initutils.c ../lxc/initutils.h \
 			  ../lxc/log.c ../lxc/log.h \
+			  ../lxc/lxclock.c ../lxc/lxclock.h \
 			  ../lxc/mainloop.c ../lxc/mainloop.h \
+			  ../lxc/monitor.c ../lxc/monitor.h \
 			  ../lxc/namespace.c ../lxc/namespace.h \
 			  ../lxc/network.c ../lxc/network.h \
 			  ../lxc/nl.c ../lxc/nl.h \
 			  ../lxc/parse.c ../lxc/parse.h \
 			  ../lxc/process_utils.c ../lxc/process_utils.h \
 			  ../lxc/ringbuf.c ../lxc/ringbuf.h \
+			  ../lxc/start.c ../lxc/start.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h
 if ENABLE_SECCOMP
 lxc_test_utils_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
