@@ -29,6 +29,7 @@ lxc_test_api_reboot_SOURCES = api_reboot.c \
 			      ../lxc/process_utils.c ../lxc/process_utils.h \
 			      ../lxc/ringbuf.c ../lxc/ringbuf.h \
 			      ../lxc/start.c ../lxc/start.h \
+			      ../lxc/state.c ../lxc/state.h \
 			      ../lxc/string_utils.c ../lxc/string_utils.h
 if ENABLE_SECCOMP
 lxc_test_api_reboot_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
@@ -57,6 +58,7 @@ lxc_test_attach_SOURCES = attach.c \
 			  ../lxc/process_utils.c ../lxc/process_utils.h \
 			  ../lxc/ringbuf.c ../lxc/ringbuf.h \
 			  ../lxc/start.c ../lxc/start.h \
+			  ../lxc/state.c ../lxc/state.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h
 if ENABLE_SECCOMP
 lxc_test_attach_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
@@ -85,6 +87,7 @@ lxc_test_cgpath_SOURCES = cgpath.c \
 			  ../lxc/process_utils.c ../lxc/process_utils.h \
 			  ../lxc/ringbuf.c ../lxc/ringbuf.h \
 			  ../lxc/start.c ../lxc/start.h \
+			  ../lxc/state.c ../lxc/state.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h
 if ENABLE_SECCOMP
 lxc_test_cgpath_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
@@ -115,6 +118,7 @@ lxc_test_config_jump_table_SOURCES = config_jump_table.c \
 				     ../lxc/process_utils.c ../lxc/process_utils.h \
 				     ../lxc/ringbuf.c ../lxc/ringbuf.h \
 				     ../lxc/start.c ../lxc/start.h \
+				     ../lxc/state.c ../lxc/state.h \
 				     ../lxc/string_utils.c ../lxc/string_utils.h
 if ENABLE_SECCOMP
 lxc_test_config_jump_table_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
@@ -166,6 +170,7 @@ lxc_test_parse_config_file_SOURCES = parse_config_file.c \
 				     ../lxc/process_utils.c ../lxc/process_utils.h \
 				     ../lxc/ringbuf.c ../lxc/ringbuf.h \
 				     ../lxc/start.c ../lxc/start.h \
+				     ../lxc/state.c ../lxc/state.h \
 				     ../lxc/string_utils.c ../lxc/string_utils.h
 if ENABLE_SECCOMP
 lxc_test_parse_config_file_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
@@ -217,6 +222,7 @@ lxc_test_utils_SOURCES = lxc-test-utils.c \
 			  ../lxc/process_utils.c ../lxc/process_utils.h \
 			  ../lxc/ringbuf.c ../lxc/ringbuf.h \
 			  ../lxc/start.c ../lxc/start.h \
+			  ../lxc/state.c ../lxc/state.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h
 if ENABLE_SECCOMP
 lxc_test_utils_SOURCES += ../lxc/seccomp.c ../lxc/lxcseccomp.h
