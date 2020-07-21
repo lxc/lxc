@@ -20,6 +20,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "compiler.h"
 #include "conf.h"
 #include "config.h"
 #include "list.h"
@@ -31,7 +32,7 @@
 #include "syscall_wrappers.h"
 #include "utils.h"
 
-extern int lxc_log_fd;
+__hidden extern int lxc_log_fd;
 
 static void usage(const char *name)
 {

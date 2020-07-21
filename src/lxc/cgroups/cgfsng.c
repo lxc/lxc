@@ -145,7 +145,7 @@ static void must_append_controller(char **klist, char **nlist, char ***clist,
 /* Given a handler's cgroup data, return the struct hierarchy for the controller
  * @c, or NULL if there is none.
  */
-struct hierarchy *get_hierarchy(struct cgroup_ops *ops, const char *controller)
+static struct hierarchy *get_hierarchy(struct cgroup_ops *ops, const char *controller)
 {
 	if (!ops->hierarchies)
 		return log_trace_errno(NULL, errno, "There are no useable cgroup controllers");
@@ -948,8 +948,7 @@ static void lxc_cgfsng_print_basecg_debuginfo(char *basecginfo, char **klist,
 		TRACE("named subsystem %d: %s", k, *it);
 }
 
-static int cgroup_tree_remove(struct hierarchy **hierarchies,
-			const char *container_cgroup)
+static int cgroup_tree_remove(struct hierarchy **hierarchies, const char *container_cgroup)
 {
 	if (!container_cgroup || !hierarchies)
 		return 0;
@@ -1283,8 +1282,7 @@ static bool check_cgroup_dir_config(struct lxc_conf *conf)
 	return true;
 }
 
-__cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
-						      struct lxc_handler *handler)
+__cgfsng_ops static bool cgfsng_monitor_create(struct cgroup_ops *ops, struct lxc_handler *handler)
 {
 	__do_free char *monitor_cgroup = NULL, *__cgroup_tree = NULL;
 	const char *cgroup_tree;
@@ -1372,8 +1370,7 @@ __cgfsng_ops static inline bool cgfsng_monitor_create(struct cgroup_ops *ops,
  * Try to create the same cgroup in all hierarchies. Start with cgroup_pattern;
  * next cgroup_pattern-1, -2, ..., -999.
  */
-__cgfsng_ops static inline bool cgfsng_payload_create(struct cgroup_ops *ops,
-						      struct lxc_handler *handler)
+__cgfsng_ops static bool cgfsng_payload_create(struct cgroup_ops *ops, struct lxc_handler *handler)
 {
 	__do_free char *container_cgroup = NULL,
 		       *__cgroup_tree = NULL,
@@ -1672,7 +1669,7 @@ __cgfsng_ops static bool cgfsng_chown(struct cgroup_ops *ops,
 	return true;
 }
 
-__cgfsng_ops void cgfsng_payload_finalize(struct cgroup_ops *ops)
+__cgfsng_ops static void cgfsng_payload_finalize(struct cgroup_ops *ops)
 {
 	if (!ops)
 		return;
@@ -2947,8 +2944,7 @@ __cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
 	return log_info(true, "Limits for the unified cgroup hierarchy have been setup");
 }
 
-__cgfsng_ops bool cgfsng_devices_activate(struct cgroup_ops *ops,
-					  struct lxc_handler *handler)
+__cgfsng_ops static bool cgfsng_devices_activate(struct cgroup_ops *ops, struct lxc_handler *handler)
 {
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
 	__do_bpf_program_free struct bpf_program *devices = NULL;
@@ -3023,7 +3019,7 @@ __cgfsng_ops bool cgfsng_devices_activate(struct cgroup_ops *ops,
 	return true;
 }
 
-bool __cgfsng_delegate_controllers(struct cgroup_ops *ops, const char *cgroup)
+static bool __cgfsng_delegate_controllers(struct cgroup_ops *ops, const char *cgroup)
 {
 	__do_free char *add_controllers = NULL, *base_path = NULL;
 	__do_free_string_list char **parts = NULL;
@@ -3082,7 +3078,7 @@ bool __cgfsng_delegate_controllers(struct cgroup_ops *ops, const char *cgroup)
 	return true;
 }
 
-__cgfsng_ops bool cgfsng_monitor_delegate_controllers(struct cgroup_ops *ops)
+__cgfsng_ops static bool cgfsng_monitor_delegate_controllers(struct cgroup_ops *ops)
 {
 	if (!ops)
 		return ret_set_errno(false, ENOENT);
@@ -3090,7 +3086,7 @@ __cgfsng_ops bool cgfsng_monitor_delegate_controllers(struct cgroup_ops *ops)
 	return __cgfsng_delegate_controllers(ops, ops->monitor_cgroup);
 }
 
-__cgfsng_ops bool cgfsng_payload_delegate_controllers(struct cgroup_ops *ops)
+__cgfsng_ops static bool cgfsng_payload_delegate_controllers(struct cgroup_ops *ops)
 {
 	if (!ops)
 		return ret_set_errno(false, ENOENT);

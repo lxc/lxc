@@ -1544,7 +1544,7 @@ pop_stack:
 	return umounts;
 }
 
-int run_command_internal(char *buf, size_t buf_size, int (*child_fn)(void *), void *args, bool wait_status)
+static int run_command_internal(char *buf, size_t buf_size, int (*child_fn)(void *), void *args, bool wait_status)
 {
 	pid_t child;
 	int ret, fret, pipefd[2];

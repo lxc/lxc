@@ -30,6 +30,7 @@
 #include "cgroup.h"
 #include "commands.h"
 #include "commands_utils.h"
+#include "compiler.h"
 #include "conf.h"
 #include "config.h"
 #include "confile_utils.h"

@@ -29,7 +29,7 @@ struct rbd_args {
 	const char *size;
 };
 
-int rbd_create_wrapper(void *data)
+static int rbd_create_wrapper(void *data)
 {
 	struct rbd_args *args = data;
 
@@ -39,7 +39,7 @@ int rbd_create_wrapper(void *data)
 	return -1;
 }
 
-int rbd_map_wrapper(void *data)
+static int rbd_map_wrapper(void *data)
 {
 	struct rbd_args *args = data;
 
@@ -49,7 +49,7 @@ int rbd_map_wrapper(void *data)
 	return -1;
 }
 
-int rbd_unmap_wrapper(void *data)
+static int rbd_unmap_wrapper(void *data)
 {
 	struct rbd_args *args = data;
 
@@ -58,7 +58,7 @@ int rbd_unmap_wrapper(void *data)
 	return -1;
 }
 
-int rbd_delete_wrapper(void *data)
+static int rbd_delete_wrapper(void *data)
 {
 	struct rbd_args *args = data;
 

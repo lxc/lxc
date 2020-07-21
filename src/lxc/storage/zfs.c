@@ -28,7 +28,7 @@ struct zfs_args {
 	void *argv;
 };
 
-int zfs_detect_exec_wrapper(void *data)
+static int zfs_detect_exec_wrapper(void *data)
 {
 	struct zfs_args *args = data;
 
@@ -38,7 +38,7 @@ int zfs_detect_exec_wrapper(void *data)
 	return -1;
 }
 
-int zfs_create_exec_wrapper(void *args)
+static int zfs_create_exec_wrapper(void *args)
 {
 	struct zfs_args *zfs_args = args;
 
@@ -47,7 +47,7 @@ int zfs_create_exec_wrapper(void *args)
 	return -1;
 }
 
-int zfs_delete_exec_wrapper(void *args)
+static int zfs_delete_exec_wrapper(void *args)
 {
 	struct zfs_args *zfs_args = args;
 
@@ -56,7 +56,7 @@ int zfs_delete_exec_wrapper(void *args)
 	return -1;
 }
 
-int zfs_snapshot_exec_wrapper(void *args)
+static int zfs_snapshot_exec_wrapper(void *args)
 {
 	struct zfs_args *zfs_args = args;
 
@@ -65,7 +65,7 @@ int zfs_snapshot_exec_wrapper(void *args)
 	return -1;
 }
 
-int zfs_clone_exec_wrapper(void *args)
+static int zfs_clone_exec_wrapper(void *args)
 {
 	struct zfs_args *zfs_args = args;
 
@@ -76,7 +76,7 @@ int zfs_clone_exec_wrapper(void *args)
 	return -1;
 }
 
-int zfs_get_parent_snapshot_exec_wrapper(void *args)
+static int zfs_get_parent_snapshot_exec_wrapper(void *args)
 {
 	struct zfs_args *zfs_args = args;
 
