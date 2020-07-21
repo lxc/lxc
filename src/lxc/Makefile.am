@@ -333,6 +333,9 @@ lxc_attach_SOURCES = tools/lxc_attach.c \
 		     tools/arguments.c tools/arguments.h \
 		     af_unix.c af_unix.h \
 		     caps.c caps.h \
+		     cgroups/cgroup.c cgroups/cgroup.h \
+		     cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		     cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		     commands.c commands.h \
 		     commands_utils.c commands_utils.h \
 		     conf.c conf.h \
@@ -367,6 +370,9 @@ lxc_autostart_SOURCES = tools/lxc_autostart.c \
 			tools/arguments.c tools/arguments.h \
 			af_unix.c af_unix.h \
 			caps.c caps.h \
+			cgroups/cgroup.c cgroups/cgroup.h \
+			cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+			cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 			commands.c commands.h \
 			commands_utils.c commands_utils.h \
 			conf.c conf.h \
@@ -400,6 +406,9 @@ lxc_cgroup_SOURCES = tools/lxc_cgroup.c \
 		     tools/arguments.c tools/arguments.h \
 		     af_unix.c af_unix.h \
 		     caps.c caps.h \
+		     cgroups/cgroup.c cgroups/cgroup.h \
+		     cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		     cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		     commands.c commands.h \
 		     commands_utils.c commands_utils.h \
 		     conf.c conf.h \
@@ -433,6 +442,9 @@ lxc_config_SOURCES = tools/lxc_config.c \
 		     tools/arguments.c tools/arguments.h \
 		     af_unix.c af_unix.h \
 		     caps.c caps.h \
+		     cgroups/cgroup.c cgroups/cgroup.h \
+		     cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		     cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		     commands.c commands.h \
 		     commands_utils.c commands_utils.h \
 		     conf.c conf.h \
@@ -466,6 +478,9 @@ lxc_console_SOURCES = tools/lxc_console.c \
 		      tools/arguments.c tools/arguments.h \
 		      af_unix.c af_unix.h \
 		      caps.c caps.h \
+		      cgroups/cgroup.c cgroups/cgroup.h \
+		      cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		      cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		      commands.c commands.h \
 		      commands_utils.c commands_utils.h \
 		      conf.c conf.h \
@@ -499,6 +514,9 @@ lxc_destroy_SOURCES = tools/lxc_destroy.c \
 		      tools/arguments.c tools/arguments.h \
 		      af_unix.c af_unix.h \
 		      caps.c caps.h \
+		      cgroups/cgroup.c cgroups/cgroup.h \
+		      cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		      cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		      commands.c commands.h \
 		      commands_utils.c commands_utils.h \
 		      conf.c conf.h \
@@ -532,6 +550,9 @@ lxc_device_SOURCES = tools/lxc_device.c \
 		     tools/arguments.c tools/arguments.h \
 		     af_unix.c af_unix.h \
 		     caps.c caps.h \
+		     cgroups/cgroup.c cgroups/cgroup.h \
+		     cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		     cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		     commands.c commands.h \
 		     commands_utils.c commands_utils.h \
 		     conf.c conf.h \
@@ -565,6 +586,9 @@ lxc_execute_SOURCES = tools/lxc_execute.c \
 		      tools/arguments.c tools/arguments.h \
 		      af_unix.c af_unix.h \
 		      caps.c caps.h \
+		      cgroups/cgroup.c cgroups/cgroup.h \
+		      cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		      cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		      commands.c commands.h \
 		      commands_utils.c commands_utils.h \
 		      conf.c conf.h \
@@ -598,6 +622,9 @@ lxc_freeze_SOURCES = tools/lxc_freeze.c \
 		     tools/arguments.c tools/arguments.h \
 		     af_unix.c af_unix.h \
 		     caps.c caps.h \
+		     cgroups/cgroup.c cgroups/cgroup.h \
+		     cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		     cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		     commands.c commands.h \
 		     commands_utils.c commands_utils.h \
 		     conf.c conf.h \
@@ -631,6 +658,9 @@ lxc_info_SOURCES = tools/lxc_info.c \
 		   tools/arguments.c tools/arguments.h \
 		   af_unix.c af_unix.h \
 		   caps.c caps.h \
+		   cgroups/cgroup.c cgroups/cgroup.h \
+		   cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		   cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		   commands.c commands.h \
 		   commands_utils.c commands_utils.h \
 		   conf.c conf.h \
@@ -664,6 +694,9 @@ lxc_monitor_SOURCES = tools/lxc_monitor.c \
 		      tools/arguments.c tools/arguments.h \
 		      af_unix.c af_unix.h \
 		      caps.c caps.h \
+		      cgroups/cgroup.c cgroups/cgroup.h \
+		      cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		      cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		      commands.c commands.h \
 		      commands_utils.c commands_utils.h \
 		      conf.c conf.h \
@@ -698,6 +731,9 @@ lxc_ls_SOURCES = tools/lxc_ls.c \
 		 tools/arguments.c tools/arguments.h \
 		 af_unix.c af_unix.h \
 		 caps.c caps.h \
+		 cgroups/cgroup.c cgroups/cgroup.h \
+		 cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		 cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		 commands.c commands.h \
 		 commands_utils.c commands_utils.h \
 		 conf.c conf.h \
@@ -732,6 +768,9 @@ lxc_copy_SOURCES = tools/lxc_copy.c \
 		   tools/arguments.c tools/arguments.h \
 		   af_unix.c af_unix.h \
 		   caps.c caps.h \
+		   cgroups/cgroup.c cgroups/cgroup.h \
+		   cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		   cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		   commands.c commands.h \
 		   commands_utils.c commands_utils.h \
 		   conf.c conf.h \
@@ -766,6 +805,9 @@ lxc_start_SOURCES = tools/lxc_start.c \
 		    tools/arguments.c tools/arguments.h \
 		    af_unix.c af_unix.h \
 		    caps.c caps.h \
+		    cgroups/cgroup.c cgroups/cgroup.h \
+		    cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		    cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		    commands.c commands.h \
 		    commands_utils.c commands_utils.h \
 		    conf.c conf.h \
@@ -799,6 +841,9 @@ lxc_stop_SOURCES = tools/lxc_stop.c \
 		   tools/arguments.c tools/arguments.h \
 		   af_unix.c af_unix.h \
 		   caps.c caps.h \
+		   cgroups/cgroup.c cgroups/cgroup.h \
+		   cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		   cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		   commands.c commands.h \
 		   commands_utils.c commands_utils.h \
 		   conf.c conf.h \
@@ -832,6 +877,9 @@ lxc_top_SOURCES = tools/lxc_top.c \
 		  tools/arguments.c tools/arguments.h \
 		  af_unix.c af_unix.h \
 		  caps.c caps.h \
+		  cgroups/cgroup.c cgroups/cgroup.h \
+		  cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		  cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		  commands.c commands.h \
 		  commands_utils.c commands_utils.h \
 		  conf.c conf.h \
@@ -865,6 +913,9 @@ lxc_unfreeze_SOURCES = tools/lxc_unfreeze.c \
 		       tools/arguments.c tools/arguments.h \
 		       af_unix.c af_unix.h \
 		       caps.c caps.h \
+		       cgroups/cgroup.c cgroups/cgroup.h \
+		       cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		       cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		       commands.c commands.h \
 		       commands_utils.c commands_utils.h \
 		       conf.c conf.h \
@@ -898,6 +949,9 @@ lxc_unshare_SOURCES = tools/lxc_unshare.c \
 		      tools/arguments.c tools/arguments.h \
 		      af_unix.c af_unix.h \
 		      caps.c caps.h \
+		      cgroups/cgroup.c cgroups/cgroup.h \
+		      cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		      cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		      commands.c commands.h \
 		      commands_utils.c commands_utils.h \
 		      conf.c conf.h \
@@ -933,6 +987,9 @@ lxc_wait_SOURCES = tools/lxc_wait.c \
 		   tools/arguments.c tools/arguments.h \
 		   af_unix.c af_unix.h \
 		   caps.c caps.h \
+		   cgroups/cgroup.c cgroups/cgroup.h \
+		   cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		   cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		   commands.c commands.h \
 		   commands_utils.c commands_utils.h \
 		   conf.c conf.h \
@@ -966,6 +1023,9 @@ lxc_create_SOURCES = tools/lxc_create.c \
 		     tools/arguments.c tools/arguments.h \
 		     af_unix.c af_unix.h \
 		     caps.c caps.h \
+		     cgroups/cgroup.c cgroups/cgroup.h \
+		     cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		     cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		     commands.c commands.h \
 		     commands_utils.c commands_utils.h \
 		     conf.c conf.h \
@@ -1000,6 +1060,9 @@ lxc_snapshot_SOURCES = tools/lxc_snapshot.c \
 		       tools/arguments.c tools/arguments.h \
 		       af_unix.c af_unix.h \
 		       caps.c caps.h \
+		       cgroups/cgroup.c cgroups/cgroup.h \
+		       cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		       cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		       commands.c commands.h \
 		       commands_utils.c commands_utils.h \
 		       conf.c conf.h \
@@ -1033,6 +1096,9 @@ lxc_checkpoint_SOURCES = tools/lxc_checkpoint.c \
 			 tools/arguments.c tools/arguments.h \
 			 af_unix.c af_unix.h \
 			 caps.c caps.h \
+			 cgroups/cgroup.c cgroups/cgroup.h \
+			 cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+			 cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 			 commands.c commands.h \
 			 commands_utils.c commands_utils.h \
 			 conf.c conf.h \
@@ -1088,6 +1154,9 @@ init_lxc_LDFLAGS = -pthread
 lxc_monitord_SOURCES = cmd/lxc_monitord.c \
 		       af_unix.c af_unix.h \
 		       caps.c caps.h \
+		       cgroups/cgroup.c cgroups/cgroup.h \
+		       cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		       cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		       commands.c commands.h \
 		       commands_utils.c commands_utils.h \
 		       conf.c conf.h \
@@ -1122,6 +1191,9 @@ lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
 		       ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		       af_unix.c af_unix.h \
 		       caps.c caps.h \
+		       cgroups/cgroup.c cgroups/cgroup.h \
+		       cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+		       cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 		       commands.c commands.h \
 		       commands_utils.c commands_utils.h \
 		       conf.c conf.h \
@@ -1157,6 +1229,9 @@ endif
 lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c \
 			 af_unix.c af_unix.h \
 			 caps.c caps.h \
+			 cgroups/cgroup.c cgroups/cgroup.h \
+			 cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+			 cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
 			 commands.c commands.h \
 			 commands_utils.c commands_utils.h \
 			 conf.c conf.h \
