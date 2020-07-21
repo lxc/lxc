@@ -332,6 +332,7 @@ lxc_attach_SOURCES = tools/lxc_attach.c \
 		     tools/arguments.c tools/arguments.h \
 		     af_unix.c af_unix.h \
 		     caps.c caps.h \
+		     cgroups/cgfsng.c \
 		     cgroups/cgroup.c cgroups/cgroup.h \
 		     cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		     cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -342,6 +343,7 @@ lxc_attach_SOURCES = tools/lxc_attach.c \
 		     confile_utils.c confile_utils.h \
 		     error.c error.h \
 		     file_utils.c file_utils.h \
+		     ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		     initutils.c initutils.h \
 		     log.c log.h \
 		     lxclock.c lxclock.h \
@@ -381,6 +383,7 @@ lxc_autostart_SOURCES = tools/lxc_autostart.c \
 			tools/arguments.c tools/arguments.h \
 			af_unix.c af_unix.h \
 			caps.c caps.h \
+			cgroups/cgfsng.c \
 			cgroups/cgroup.c cgroups/cgroup.h \
 			cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 			cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -391,6 +394,7 @@ lxc_autostart_SOURCES = tools/lxc_autostart.c \
 			confile_utils.c confile_utils.h \
 			error.c error.h \
 			file_utils.c file_utils.h \
+			../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 			initutils.c initutils.h \
 			log.c log.h \
 			lxclock.c lxclock.h \
@@ -429,6 +433,7 @@ lxc_cgroup_SOURCES = tools/lxc_cgroup.c \
 		     tools/arguments.c tools/arguments.h \
 		     af_unix.c af_unix.h \
 		     caps.c caps.h \
+		     cgroups/cgfsng.c \
 		     cgroups/cgroup.c cgroups/cgroup.h \
 		     cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		     cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -439,6 +444,7 @@ lxc_cgroup_SOURCES = tools/lxc_cgroup.c \
 		     confile_utils.c confile_utils.h \
 		     error.c error.h \
 		     file_utils.c file_utils.h \
+		     ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		     initutils.c initutils.h \
 		     log.c log.h \
 		     lxclock.c lxclock.h \
@@ -477,6 +483,7 @@ lxc_config_SOURCES = tools/lxc_config.c \
 		     tools/arguments.c tools/arguments.h \
 		     af_unix.c af_unix.h \
 		     caps.c caps.h \
+		     cgroups/cgfsng.c \
 		     cgroups/cgroup.c cgroups/cgroup.h \
 		     cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		     cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -487,6 +494,7 @@ lxc_config_SOURCES = tools/lxc_config.c \
 		     confile_utils.c confile_utils.h \
 		     error.c error.h \
 		     file_utils.c file_utils.h \
+		     ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		     initutils.c initutils.h \
 		     log.c log.h \
 		     lxclock.c lxclock.h \
@@ -525,6 +533,7 @@ lxc_console_SOURCES = tools/lxc_console.c \
 		      tools/arguments.c tools/arguments.h \
 		      af_unix.c af_unix.h \
 		      caps.c caps.h \
+		      cgroups/cgfsng.c \
 		      cgroups/cgroup.c cgroups/cgroup.h \
 		      cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		      cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -535,6 +544,7 @@ lxc_console_SOURCES = tools/lxc_console.c \
 		      confile_utils.c confile_utils.h \
 		      error.c error.h \
 		      file_utils.c file_utils.h \
+		      ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		      initutils.c initutils.h \
 		      log.c log.h \
 		      lxclock.c lxclock.h \
@@ -573,6 +583,7 @@ lxc_destroy_SOURCES = tools/lxc_destroy.c \
 		      tools/arguments.c tools/arguments.h \
 		      af_unix.c af_unix.h \
 		      caps.c caps.h \
+		      cgroups/cgfsng.c \
 		      cgroups/cgroup.c cgroups/cgroup.h \
 		      cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		      cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -583,6 +594,7 @@ lxc_destroy_SOURCES = tools/lxc_destroy.c \
 		      confile_utils.c confile_utils.h \
 		      error.c error.h \
 		      file_utils.c file_utils.h \
+		      ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		      initutils.c initutils.h \
 		      log.c log.h \
 		      lxclock.c lxclock.h \
@@ -621,6 +633,7 @@ lxc_device_SOURCES = tools/lxc_device.c \
 		     tools/arguments.c tools/arguments.h \
 		     af_unix.c af_unix.h \
 		     caps.c caps.h \
+		     cgroups/cgfsng.c \
 		     cgroups/cgroup.c cgroups/cgroup.h \
 		     cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		     cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -631,6 +644,7 @@ lxc_device_SOURCES = tools/lxc_device.c \
 		     confile_utils.c confile_utils.h \
 		     error.c error.h \
 		     file_utils.c file_utils.h \
+		     ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		     initutils.c initutils.h \
 		     log.c log.h \
 		     lxclock.c lxclock.h \
@@ -669,6 +683,7 @@ lxc_execute_SOURCES = tools/lxc_execute.c \
 		      tools/arguments.c tools/arguments.h \
 		      af_unix.c af_unix.h \
 		      caps.c caps.h \
+		      cgroups/cgfsng.c \
 		      cgroups/cgroup.c cgroups/cgroup.h \
 		      cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		      cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -679,6 +694,7 @@ lxc_execute_SOURCES = tools/lxc_execute.c \
 		      confile_utils.c confile_utils.h \
 		      error.c error.h \
 		      file_utils.c file_utils.h \
+		      ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		      initutils.c initutils.h \
 		      log.c log.h \
 		      lxclock.c lxclock.h \
@@ -717,6 +733,7 @@ lxc_freeze_SOURCES = tools/lxc_freeze.c \
 		     tools/arguments.c tools/arguments.h \
 		     af_unix.c af_unix.h \
 		     caps.c caps.h \
+		     cgroups/cgfsng.c \
 		     cgroups/cgroup.c cgroups/cgroup.h \
 		     cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		     cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -727,6 +744,7 @@ lxc_freeze_SOURCES = tools/lxc_freeze.c \
 		     confile_utils.c confile_utils.h \
 		     error.c error.h \
 		     file_utils.c file_utils.h \
+		     ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		     initutils.c initutils.h \
 		     log.c log.h \
 		     lxclock.c lxclock.h \
@@ -765,6 +783,7 @@ lxc_info_SOURCES = tools/lxc_info.c \
 		   tools/arguments.c tools/arguments.h \
 		   af_unix.c af_unix.h \
 		   caps.c caps.h \
+		   cgroups/cgfsng.c \
 		   cgroups/cgroup.c cgroups/cgroup.h \
 		   cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		   cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -775,6 +794,7 @@ lxc_info_SOURCES = tools/lxc_info.c \
 		   confile_utils.c confile_utils.h \
 		   error.c error.h \
 		   file_utils.c file_utils.h \
+		   ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		   initutils.c initutils.h \
 		   log.c log.h \
 		   lxclock.c lxclock.h \
@@ -813,6 +833,7 @@ lxc_monitor_SOURCES = tools/lxc_monitor.c \
 		      tools/arguments.c tools/arguments.h \
 		      af_unix.c af_unix.h \
 		      caps.c caps.h \
+		      cgroups/cgfsng.c \
 		      cgroups/cgroup.c cgroups/cgroup.h \
 		      cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		      cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -823,6 +844,7 @@ lxc_monitor_SOURCES = tools/lxc_monitor.c \
 		      confile_utils.c confile_utils.h \
 		      error.c error.h \
 		      file_utils.c file_utils.h \
+		      ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		      initutils.c initutils.h \
 		      log.c log.h \
 		      lxclock.c lxclock.h \
@@ -862,6 +884,7 @@ lxc_ls_SOURCES = tools/lxc_ls.c \
 		 tools/arguments.c tools/arguments.h \
 		 af_unix.c af_unix.h \
 		 caps.c caps.h \
+		 cgroups/cgfsng.c \
 		 cgroups/cgroup.c cgroups/cgroup.h \
 		 cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		 cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -872,6 +895,7 @@ lxc_ls_SOURCES = tools/lxc_ls.c \
 		 confile_utils.c confile_utils.h \
 		 error.c error.h \
 		 file_utils.c file_utils.h \
+		 ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		 initutils.c initutils.h \
 		 log.c log.h \
 		 lxclock.c lxclock.h \
@@ -911,6 +935,7 @@ lxc_copy_SOURCES = tools/lxc_copy.c \
 		   tools/arguments.c tools/arguments.h \
 		   af_unix.c af_unix.h \
 		   caps.c caps.h \
+		   cgroups/cgfsng.c \
 		   cgroups/cgroup.c cgroups/cgroup.h \
 		   cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		   cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -921,6 +946,7 @@ lxc_copy_SOURCES = tools/lxc_copy.c \
 		   confile_utils.c confile_utils.h \
 		   error.c error.h \
 		   file_utils.c file_utils.h \
+		   ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		   initutils.c initutils.h \
 		   log.c log.h \
 		   lxclock.c lxclock.h \
@@ -959,6 +985,7 @@ lxc_start_SOURCES = tools/lxc_start.c \
 		    tools/arguments.c tools/arguments.h \
 		    af_unix.c af_unix.h \
 		    caps.c caps.h \
+		    cgroups/cgfsng.c \
 		    cgroups/cgroup.c cgroups/cgroup.h \
 		    cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		    cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -969,6 +996,7 @@ lxc_start_SOURCES = tools/lxc_start.c \
 		    confile_utils.c confile_utils.h \
 		    error.c error.h \
 		    file_utils.c file_utils.h \
+		    ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		    initutils.c initutils.h \
 		    log.c log.h \
 		    lxclock.c lxclock.h \
@@ -1007,6 +1035,7 @@ lxc_stop_SOURCES = tools/lxc_stop.c \
 		   tools/arguments.c tools/arguments.h \
 		   af_unix.c af_unix.h \
 		   caps.c caps.h \
+		   cgroups/cgfsng.c \
 		   cgroups/cgroup.c cgroups/cgroup.h \
 		   cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		   cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -1017,6 +1046,7 @@ lxc_stop_SOURCES = tools/lxc_stop.c \
 		   confile_utils.c confile_utils.h \
 		   error.c error.h \
 		   file_utils.c file_utils.h \
+		   ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		   initutils.c initutils.h \
 		   log.c log.h \
 		   lxclock.c lxclock.h \
@@ -1055,6 +1085,7 @@ lxc_top_SOURCES = tools/lxc_top.c \
 		  tools/arguments.c tools/arguments.h \
 		  af_unix.c af_unix.h \
 		  caps.c caps.h \
+		  cgroups/cgfsng.c \
 		  cgroups/cgroup.c cgroups/cgroup.h \
 		  cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		  cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -1065,6 +1096,7 @@ lxc_top_SOURCES = tools/lxc_top.c \
 		  confile_utils.c confile_utils.h \
 		  error.c error.h \
 		  file_utils.c file_utils.h \
+		  ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		  initutils.c initutils.h \
 		  log.c log.h \
 		  lxclock.c lxclock.h \
@@ -1103,6 +1135,7 @@ lxc_unfreeze_SOURCES = tools/lxc_unfreeze.c \
 		       tools/arguments.c tools/arguments.h \
 		       af_unix.c af_unix.h \
 		       caps.c caps.h \
+		       cgroups/cgfsng.c \
 		       cgroups/cgroup.c cgroups/cgroup.h \
 		       cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		       cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -1113,6 +1146,7 @@ lxc_unfreeze_SOURCES = tools/lxc_unfreeze.c \
 		       confile_utils.c confile_utils.h \
 		       error.c error.h \
 		       file_utils.c file_utils.h \
+		       ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		       initutils.c initutils.h \
 		       log.c log.h \
 		       lxclock.c lxclock.h \
@@ -1151,6 +1185,7 @@ lxc_unshare_SOURCES = tools/lxc_unshare.c \
 		      tools/arguments.c tools/arguments.h \
 		      af_unix.c af_unix.h \
 		      caps.c caps.h \
+		      cgroups/cgfsng.c \
 		      cgroups/cgroup.c cgroups/cgroup.h \
 		      cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		      cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -1161,6 +1196,7 @@ lxc_unshare_SOURCES = tools/lxc_unshare.c \
 		      confile_utils.c confile_utils.h \
 		      error.c error.h \
 		      file_utils.c file_utils.h \
+		      ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		      initutils.c initutils.h \
 		      log.c log.h \
 		      lxclock.c lxclock.h \
@@ -1201,6 +1237,7 @@ lxc_wait_SOURCES = tools/lxc_wait.c \
 		   tools/arguments.c tools/arguments.h \
 		   af_unix.c af_unix.h \
 		   caps.c caps.h \
+		   cgroups/cgfsng.c \
 		   cgroups/cgroup.c cgroups/cgroup.h \
 		   cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		   cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -1211,6 +1248,7 @@ lxc_wait_SOURCES = tools/lxc_wait.c \
 		   confile_utils.c confile_utils.h \
 		   error.c error.h \
 		   file_utils.c file_utils.h \
+		   ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		   initutils.c initutils.h \
 		   log.c log.h \
 		   lxclock.c lxclock.h \
@@ -1249,6 +1287,7 @@ lxc_create_SOURCES = tools/lxc_create.c \
 		     tools/arguments.c tools/arguments.h \
 		     af_unix.c af_unix.h \
 		     caps.c caps.h \
+		     cgroups/cgfsng.c \
 		     cgroups/cgroup.c cgroups/cgroup.h \
 		     cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		     cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -1259,6 +1298,7 @@ lxc_create_SOURCES = tools/lxc_create.c \
 		     confile_utils.c confile_utils.h \
 		     error.c error.h \
 		     file_utils.c file_utils.h \
+		     ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		     initutils.c initutils.h \
 		     log.c log.h \
 		     lxclock.c lxclock.h \
@@ -1297,6 +1337,7 @@ lxc_snapshot_SOURCES = tools/lxc_snapshot.c \
 		       tools/arguments.c tools/arguments.h \
 		       af_unix.c af_unix.h \
 		       caps.c caps.h \
+		       cgroups/cgfsng.c \
 		       cgroups/cgroup.c cgroups/cgroup.h \
 		       cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		       cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -1307,6 +1348,7 @@ lxc_snapshot_SOURCES = tools/lxc_snapshot.c \
 		       confile_utils.c confile_utils.h \
 		       error.c error.h \
 		       file_utils.c file_utils.h \
+		       ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		       initutils.c initutils.h \
 		       log.c log.h \
 		       lxclock.c lxclock.h \
@@ -1345,6 +1387,7 @@ lxc_checkpoint_SOURCES = tools/lxc_checkpoint.c \
 			 tools/arguments.c tools/arguments.h \
 			 af_unix.c af_unix.h \
 			 caps.c caps.h \
+			 cgroups/cgfsng.c \
 			 cgroups/cgroup.c cgroups/cgroup.h \
 			 cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 			 cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -1355,6 +1398,7 @@ lxc_checkpoint_SOURCES = tools/lxc_checkpoint.c \
 			 confile_utils.c confile_utils.h \
 			 error.c error.h \
 			 file_utils.c file_utils.h \
+			 ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 			 initutils.c initutils.h \
 			 log.c log.h \
 			 lxclock.c lxclock.h \
@@ -1415,6 +1459,7 @@ init_lxc_LDFLAGS = -pthread
 lxc_monitord_SOURCES = cmd/lxc_monitord.c \
 		       af_unix.c af_unix.h \
 		       caps.c caps.h \
+		       cgroups/cgfsng.c \
 		       cgroups/cgroup.c cgroups/cgroup.h \
 		       cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		       cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -1425,6 +1470,7 @@ lxc_monitord_SOURCES = cmd/lxc_monitord.c \
 		       confile_utils.c confile_utils.h \
 		       error.c error.h \
 		       file_utils.c file_utils.h \
+		       ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		       initutils.c initutils.h \
 		       log.c log.h \
 		       lxclock.c lxclock.h \
@@ -1461,9 +1507,9 @@ lxc_monitord_SOURCES += seccomp.c lxcseccomp.h
 endif
 
 lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
-		       ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		       af_unix.c af_unix.h \
 		       caps.c caps.h \
+		       cgroups/cgfsng.c \
 		       cgroups/cgroup.c cgroups/cgroup.h \
 		       cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 		       cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -1474,6 +1520,7 @@ lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
 		       confile_utils.c confile_utils.h \
 		       error.c error.h \
 		       file_utils.c file_utils.h \
+		       ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		       initutils.c initutils.h \
 		       log.c log.h \
 		       lxclock.c lxclock.h \
@@ -1514,6 +1561,7 @@ endif
 lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c \
 			 af_unix.c af_unix.h \
 			 caps.c caps.h \
+			 cgroups/cgfsng.c \
 			 cgroups/cgroup.c cgroups/cgroup.h \
 			 cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
 			 cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
@@ -1524,6 +1572,7 @@ lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c \
 			 confile_utils.c confile_utils.h \
 			 error.c error.h \
 			 file_utils.c file_utils.h \
+			 ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 			 initutils.c initutils.h \
 			 list.h \
 			 log.c log.h \

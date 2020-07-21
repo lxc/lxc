@@ -28,8 +28,8 @@
 #define F_DUPFD_CLOEXEC 1030
 #endif
 
-#define LXC_LOG_PREFIX_SIZE	32
-#define LXC_LOG_BUFFER_SIZE	4096
+#define LXC_LOG_PREFIX_SIZE 32
+#define LXC_LOG_BUFFER_SIZE 4096
 
 /* predefined lxc log priorities. */
 enum lxc_loglevel {
@@ -277,13 +277,13 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 /*
  * Helper macro to define and use static categories.
  */
-#define lxc_log_category_define(name, parent)				\
-	extern struct lxc_log_category lxc_log_category_##parent;	\
-	struct lxc_log_category lxc_log_category_##name = {		\
-		#name,							\
-		LXC_LOG_LEVEL_NOTSET,					\
-		NULL,							\
-		&lxc_log_category_##parent				\
+#define lxc_log_category_define(name, parent)					\
+	__hidden extern struct lxc_log_category lxc_log_category_##parent;	\
+	__hidden struct lxc_log_category lxc_log_category_##name = {		\
+		#name,								\
+		LXC_LOG_LEVEL_NOTSET,						\
+		NULL,								\
+		&lxc_log_category_##parent					\
 	};
 
 #define lxc_log_define(name, parent)					\

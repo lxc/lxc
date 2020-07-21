@@ -14,6 +14,7 @@
 #include "macro.h"
 #include "memory_utils.h"
 #include "process_utils.h"
+#include "rexec.h"
 #include "string_utils.h"
 #include "syscall_wrappers.h"
 
