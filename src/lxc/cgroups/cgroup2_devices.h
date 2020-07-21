@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "compiler.h"
 #include "conf.h"
 #include "config.h"
 #include "syscall_numbers.h"
@@ -52,17 +53,17 @@ struct bpf_program {
 };
 
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
-struct bpf_program *bpf_program_new(uint32_t prog_type);
-int bpf_program_init(struct bpf_program *prog);
-int bpf_program_append_device(struct bpf_program *prog,
-			      struct device_item *device);
-int bpf_program_finalize(struct bpf_program *prog);
-int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
-			      const char *path, uint32_t flags);
-int bpf_program_cgroup_detach(struct bpf_program *prog);
-void bpf_program_free(struct bpf_program *prog);
-void lxc_clear_cgroup2_devices(struct lxc_conf *conf);
-bool bpf_devices_cgroup_supported(void);
+__hidden extern struct bpf_program *bpf_program_new(uint32_t prog_type);
+__hidden extern int bpf_program_init(struct bpf_program *prog);
+__hidden extern int bpf_program_append_device(struct bpf_program *prog, struct device_item *device);
+__hidden extern int bpf_program_finalize(struct bpf_program *prog);
+__hidden extern int bpf_program_cgroup_attach(struct bpf_program *prog, int type, const char *path,
+					      uint32_t flags);
+__hidden extern int bpf_program_cgroup_detach(struct bpf_program *prog);
+__hidden extern void bpf_program_free(struct bpf_program *prog);
+__hidden extern void lxc_clear_cgroup2_devices(struct lxc_conf *conf);
+__hidden extern bool bpf_devices_cgroup_supported(void);
+
 static inline void __auto_bpf_program_free__(struct bpf_program **prog)
 {
 	if (*prog) {
@@ -70,8 +71,11 @@ static inline void __auto_bpf_program_free__(struct bpf_program **prog)
 		*prog = NULL;
 	}
 }
-int bpf_list_add_device(struct lxc_conf *conf, struct device_item *device);
+
+__hidden extern int bpf_list_add_device(struct lxc_conf *conf, struct device_item *device);
+
 #else /* !HAVE_STRUCT_BPF_CGROUP_DEV_CTX */
+
 static inline struct bpf_program *bpf_program_new(uint32_t prog_type)
 {
 	errno = ENOSYS;

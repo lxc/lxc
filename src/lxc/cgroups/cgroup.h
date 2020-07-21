@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include <sys/types.h>
 
+#include "compiler.h"
 #include "macro.h"
 #include "memory_utils.h"
 
@@ -179,15 +180,15 @@ struct cgroup_ops {
 	const char *(*get_limiting_cgroup)(struct cgroup_ops *ops, const char *controller);
 };
 
-extern struct cgroup_ops *cgroup_init(struct lxc_conf *conf);
+__hidden extern struct cgroup_ops *cgroup_init(struct lxc_conf *conf);
 
-extern void cgroup_exit(struct cgroup_ops *ops);
+__hidden extern void cgroup_exit(struct cgroup_ops *ops);
 define_cleanup_function(struct cgroup_ops *, cgroup_exit);
 
-extern void prune_init_scope(char *cg);
+__hidden extern void prune_init_scope(char *cg);
 
-extern int cgroup_attach(const struct lxc_conf *conf, const char *name,
-			 const char *lxcpath, pid_t pid);
+__hidden extern int cgroup_attach(const struct lxc_conf *conf, const char *name,
+				  const char *lxcpath, pid_t pid);
 
 static inline bool pure_unified_layout(const struct cgroup_ops *ops)
 {
@@ -202,4 +203,4 @@ static inline int cgroup_unified_fd(const struct cgroup_ops *ops)
 	return ops->unified->cgfd_con;
 }
 
-#endif
+#endif /* __LXC_CGROUP_H */
