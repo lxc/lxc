@@ -48,7 +48,6 @@ noinst_HEADERS = api_extensions.h \
 		 terminal.h \
 		 ../tests/lxctest.h \
 		 tools/arguments.h \
-		 storage/storage_utils.h \
 		 utils.h \
 		 uuid.h
 
@@ -357,6 +356,17 @@ lxc_attach_SOURCES = tools/lxc_attach.c \
 		     ringbuf.c ringbuf.h \
 		     start.c start.h \
 		     state.c state.h \
+		     storage/btrfs.c storage/btrfs.h \
+		     storage/dir.c storage/dir.h \
+		     storage/loop.c storage/loop.h \
+		     storage/lvm.c storage/lvm.h \
+		     storage/nbd.c storage/nbd.h \
+		     storage/overlay.c storage/overlay.h \
+		     storage/rbd.c storage/rbd.h \
+		     storage/rsync.c storage/rsync.h \
+		     storage/storage.c storage/storage.h \
+		     storage/storage_utils.c storage/storage_utils.h \
+		     storage/zfs.c storage/zfs.h \
 		     string_utils.c string_utils.h \
 		     sync.c sync.h \
 		     terminal.c terminal.h \
@@ -394,6 +404,17 @@ lxc_autostart_SOURCES = tools/lxc_autostart.c \
 			ringbuf.c ringbuf.h \
 			start.c start.h \
 			state.c state.h \
+			storage/btrfs.c storage/btrfs.h \
+			storage/dir.c storage/dir.h \
+			storage/loop.c storage/loop.h \
+			storage/lvm.c storage/lvm.h \
+			storage/nbd.c storage/nbd.h \
+			storage/overlay.c storage/overlay.h \
+			storage/rbd.c storage/rbd.h \
+			storage/rsync.c storage/rsync.h \
+			storage/storage.c storage/storage.h \
+			storage/storage_utils.c storage/storage_utils.h \
+			storage/zfs.c storage/zfs.h \
 			string_utils.c string_utils.h \
 			sync.c sync.h \
 			terminal.c terminal.h \
@@ -431,6 +452,17 @@ lxc_cgroup_SOURCES = tools/lxc_cgroup.c \
 		     ringbuf.c ringbuf.h \
 		     start.c start.h \
 		     state.c state.h \
+		     storage/btrfs.c storage/btrfs.h \
+		     storage/dir.c storage/dir.h \
+		     storage/loop.c storage/loop.h \
+		     storage/lvm.c storage/lvm.h \
+		     storage/nbd.c storage/nbd.h \
+		     storage/overlay.c storage/overlay.h \
+		     storage/rbd.c storage/rbd.h \
+		     storage/rsync.c storage/rsync.h \
+		     storage/storage.c storage/storage.h \
+		     storage/storage_utils.c storage/storage_utils.h \
+		     storage/zfs.c storage/zfs.h \
 		     string_utils.c string_utils.h \
 		     sync.c sync.h \
 		     terminal.c terminal.h \
@@ -468,6 +500,17 @@ lxc_config_SOURCES = tools/lxc_config.c \
 		     ringbuf.c ringbuf.h \
 		     start.c start.h \
 		     state.c state.h \
+		     storage/btrfs.c storage/btrfs.h \
+		     storage/dir.c storage/dir.h \
+		     storage/loop.c storage/loop.h \
+		     storage/lvm.c storage/lvm.h \
+		     storage/nbd.c storage/nbd.h \
+		     storage/overlay.c storage/overlay.h \
+		     storage/rbd.c storage/rbd.h \
+		     storage/rsync.c storage/rsync.h \
+		     storage/storage.c storage/storage.h \
+		     storage/storage_utils.c storage/storage_utils.h \
+		     storage/zfs.c storage/zfs.h \
 		     string_utils.c string_utils.h \
 		     sync.c sync.h \
 		     terminal.c terminal.h \
@@ -505,6 +548,17 @@ lxc_console_SOURCES = tools/lxc_console.c \
 		      ringbuf.c ringbuf.h \
 		      start.c start.h \
 		      state.c state.h \
+		      storage/btrfs.c storage/btrfs.h \
+		      storage/dir.c storage/dir.h \
+		      storage/loop.c storage/loop.h \
+		      storage/lvm.c storage/lvm.h \
+		      storage/nbd.c storage/nbd.h \
+		      storage/overlay.c storage/overlay.h \
+		      storage/rbd.c storage/rbd.h \
+		      storage/rsync.c storage/rsync.h \
+		      storage/storage.c storage/storage.h \
+		      storage/storage_utils.c storage/storage_utils.h \
+		      storage/zfs.c storage/zfs.h \
 		      string_utils.c string_utils.h \
 		      sync.c sync.h \
 		      terminal.c terminal.h \
@@ -542,6 +596,17 @@ lxc_destroy_SOURCES = tools/lxc_destroy.c \
 		      ringbuf.c ringbuf.h \
 		      start.c start.h \
 		      state.c state.h \
+		      storage/btrfs.c storage/btrfs.h \
+		      storage/dir.c storage/dir.h \
+		      storage/loop.c storage/loop.h \
+		      storage/lvm.c storage/lvm.h \
+		      storage/nbd.c storage/nbd.h \
+		      storage/overlay.c storage/overlay.h \
+		      storage/rbd.c storage/rbd.h \
+		      storage/rsync.c storage/rsync.h \
+		      storage/storage.c storage/storage.h \
+		      storage/storage_utils.c storage/storage_utils.h \
+		      storage/zfs.c storage/zfs.h \
 		      string_utils.c string_utils.h \
 		      sync.c sync.h \
 		      terminal.c terminal.h \
@@ -579,6 +644,17 @@ lxc_device_SOURCES = tools/lxc_device.c \
 		     ringbuf.c ringbuf.h \
 		     start.c start.h \
 		     state.c state.h \
+		     storage/btrfs.c storage/btrfs.h \
+		     storage/dir.c storage/dir.h \
+		     storage/loop.c storage/loop.h \
+		     storage/lvm.c storage/lvm.h \
+		     storage/nbd.c storage/nbd.h \
+		     storage/overlay.c storage/overlay.h \
+		     storage/rbd.c storage/rbd.h \
+		     storage/rsync.c storage/rsync.h \
+		     storage/storage.c storage/storage.h \
+		     storage/storage_utils.c storage/storage_utils.h \
+		     storage/zfs.c storage/zfs.h \
 		     string_utils.c string_utils.h \
 		     sync.c sync.h \
 		     terminal.c terminal.h \
@@ -616,6 +692,17 @@ lxc_execute_SOURCES = tools/lxc_execute.c \
 		      ringbuf.c ringbuf.h \
 		      start.c start.h \
 		      state.c state.h \
+		      storage/btrfs.c storage/btrfs.h \
+		      storage/dir.c storage/dir.h \
+		      storage/loop.c storage/loop.h \
+		      storage/lvm.c storage/lvm.h \
+		      storage/nbd.c storage/nbd.h \
+		      storage/overlay.c storage/overlay.h \
+		      storage/rbd.c storage/rbd.h \
+		      storage/rsync.c storage/rsync.h \
+		      storage/storage.c storage/storage.h \
+		      storage/storage_utils.c storage/storage_utils.h \
+		      storage/zfs.c storage/zfs.h \
 		      string_utils.c string_utils.h \
 		      sync.c sync.h \
 		      terminal.c terminal.h \
@@ -653,6 +740,17 @@ lxc_freeze_SOURCES = tools/lxc_freeze.c \
 		     ringbuf.c ringbuf.h \
 		     start.c start.h \
 		     state.c state.h \
+		     storage/btrfs.c storage/btrfs.h \
+		     storage/dir.c storage/dir.h \
+		     storage/loop.c storage/loop.h \
+		     storage/lvm.c storage/lvm.h \
+		     storage/nbd.c storage/nbd.h \
+		     storage/overlay.c storage/overlay.h \
+		     storage/rbd.c storage/rbd.h \
+		     storage/rsync.c storage/rsync.h \
+		     storage/storage.c storage/storage.h \
+		     storage/storage_utils.c storage/storage_utils.h \
+		     storage/zfs.c storage/zfs.h \
 		     string_utils.c string_utils.h \
 		     sync.c sync.h \
 		     terminal.c terminal.h \
@@ -690,6 +788,17 @@ lxc_info_SOURCES = tools/lxc_info.c \
 		   ringbuf.c ringbuf.h \
 		   start.c start.h \
 		   state.c state.h \
+		   storage/btrfs.c storage/btrfs.h \
+		   storage/dir.c storage/dir.h \
+		   storage/loop.c storage/loop.h \
+		   storage/lvm.c storage/lvm.h \
+		   storage/nbd.c storage/nbd.h \
+		   storage/overlay.c storage/overlay.h \
+		   storage/rbd.c storage/rbd.h \
+		   storage/rsync.c storage/rsync.h \
+		   storage/storage.c storage/storage.h \
+		   storage/storage_utils.c storage/storage_utils.h \
+		   storage/zfs.c storage/zfs.h \
 		   string_utils.c string_utils.h \
 		   sync.c sync.h \
 		   terminal.c terminal.h \
@@ -728,6 +837,17 @@ lxc_monitor_SOURCES = tools/lxc_monitor.c \
 		      ringbuf.c ringbuf.h \
 		      start.c start.h \
 		      state.c state.h \
+		      storage/btrfs.c storage/btrfs.h \
+		      storage/dir.c storage/dir.h \
+		      storage/loop.c storage/loop.h \
+		      storage/lvm.c storage/lvm.h \
+		      storage/nbd.c storage/nbd.h \
+		      storage/overlay.c storage/overlay.h \
+		      storage/rbd.c storage/rbd.h \
+		      storage/rsync.c storage/rsync.h \
+		      storage/storage.c storage/storage.h \
+		      storage/storage_utils.c storage/storage_utils.h \
+		      storage/zfs.c storage/zfs.h \
 		      string_utils.c string_utils.h \
 		      sync.c sync.h \
 		      terminal.c terminal.h \
@@ -766,6 +886,17 @@ lxc_ls_SOURCES = tools/lxc_ls.c \
 		 ringbuf.c ringbuf.h \
 		 start.c start.h \
 		 state.c state.h \
+		 storage/btrfs.c storage/btrfs.h \
+		 storage/dir.c storage/dir.h \
+		 storage/loop.c storage/loop.h \
+		 storage/lvm.c storage/lvm.h \
+		 storage/nbd.c storage/nbd.h \
+		 storage/overlay.c storage/overlay.h \
+		 storage/rbd.c storage/rbd.h \
+		 storage/rsync.c storage/rsync.h \
+		 storage/storage.c storage/storage.h \
+		 storage/storage_utils.c storage/storage_utils.h \
+		 storage/zfs.c storage/zfs.h \
 		 string_utils.c string_utils.h \
 		 sync.c sync.h \
 		 terminal.c terminal.h \
@@ -803,7 +934,17 @@ lxc_copy_SOURCES = tools/lxc_copy.c \
 		   ringbuf.c ringbuf.h \
 		   start.c start.h \
 		   state.c state.h \
+		   storage/btrfs.c storage/btrfs.h \
+		   storage/dir.c storage/dir.h \
+		   storage/loop.c storage/loop.h \
+		   storage/lvm.c storage/lvm.h \
+		   storage/nbd.c storage/nbd.h \
+		   storage/overlay.c storage/overlay.h \
+		   storage/rbd.c storage/rbd.h \
+		   storage/rsync.c storage/rsync.h \
+		   storage/storage.c storage/storage.h \
 		   storage/storage_utils.c storage/storage_utils.h \
+		   storage/zfs.c storage/zfs.h \
 		   string_utils.c string_utils.h \
 		   sync.c sync.h \
 		   terminal.c terminal.h \
@@ -841,6 +982,17 @@ lxc_start_SOURCES = tools/lxc_start.c \
 		    ringbuf.c ringbuf.h \
 		    start.c start.h \
 		    state.c state.h \
+		    storage/btrfs.c storage/btrfs.h \
+		    storage/dir.c storage/dir.h \
+		    storage/loop.c storage/loop.h \
+		    storage/lvm.c storage/lvm.h \
+		    storage/nbd.c storage/nbd.h \
+		    storage/overlay.c storage/overlay.h \
+		    storage/rbd.c storage/rbd.h \
+		    storage/rsync.c storage/rsync.h \
+		    storage/storage.c storage/storage.h \
+		    storage/storage_utils.c storage/storage_utils.h \
+		    storage/zfs.c storage/zfs.h \
 		    string_utils.c string_utils.h \
 		    sync.c sync.h \
 		    terminal.c terminal.h \
@@ -878,6 +1030,17 @@ lxc_stop_SOURCES = tools/lxc_stop.c \
 		   ringbuf.c ringbuf.h \
 		   start.c start.h \
 		   state.c state.h \
+		   storage/btrfs.c storage/btrfs.h \
+		   storage/dir.c storage/dir.h \
+		   storage/loop.c storage/loop.h \
+		   storage/lvm.c storage/lvm.h \
+		   storage/nbd.c storage/nbd.h \
+		   storage/overlay.c storage/overlay.h \
+		   storage/rbd.c storage/rbd.h \
+		   storage/rsync.c storage/rsync.h \
+		   storage/storage.c storage/storage.h \
+		   storage/storage_utils.c storage/storage_utils.h \
+		   storage/zfs.c storage/zfs.h \
 		   string_utils.c string_utils.h \
 		   sync.c sync.h \
 		   terminal.c terminal.h \
@@ -915,6 +1078,17 @@ lxc_top_SOURCES = tools/lxc_top.c \
 		  ringbuf.c ringbuf.h \
 		  start.c start.h \
 		  state.c state.h \
+		  storage/btrfs.c storage/btrfs.h \
+		  storage/dir.c storage/dir.h \
+		  storage/loop.c storage/loop.h \
+		  storage/lvm.c storage/lvm.h \
+		  storage/nbd.c storage/nbd.h \
+		  storage/overlay.c storage/overlay.h \
+		  storage/rbd.c storage/rbd.h \
+		  storage/rsync.c storage/rsync.h \
+		  storage/storage.c storage/storage.h \
+		  storage/storage_utils.c storage/storage_utils.h \
+		  storage/zfs.c storage/zfs.h \
 		  string_utils.c string_utils.h \
 		  sync.c sync.h \
 		  terminal.c terminal.h \
@@ -952,6 +1126,17 @@ lxc_unfreeze_SOURCES = tools/lxc_unfreeze.c \
 		       ringbuf.c ringbuf.h \
 		       start.c start.h \
 		       state.c state.h \
+		       storage/btrfs.c storage/btrfs.h \
+		       storage/dir.c storage/dir.h \
+		       storage/loop.c storage/loop.h \
+		       storage/lvm.c storage/lvm.h \
+		       storage/nbd.c storage/nbd.h \
+		       storage/overlay.c storage/overlay.h \
+		       storage/rbd.c storage/rbd.h \
+		       storage/rsync.c storage/rsync.h \
+		       storage/storage.c storage/storage.h \
+		       storage/storage_utils.c storage/storage_utils.h \
+		       storage/zfs.c storage/zfs.h \
 		       string_utils.c string_utils.h \
 		       sync.c sync.h \
 		       terminal.c terminal.h \
@@ -989,6 +1174,17 @@ lxc_unshare_SOURCES = tools/lxc_unshare.c \
 		      ringbuf.c ringbuf.h \
 		      start.c start.h \
 		      state.c state.h \
+		      storage/btrfs.c storage/btrfs.h \
+		      storage/dir.c storage/dir.h \
+		      storage/loop.c storage/loop.h \
+		      storage/lvm.c storage/lvm.h \
+		      storage/nbd.c storage/nbd.h \
+		      storage/overlay.c storage/overlay.h \
+		      storage/rbd.c storage/rbd.h \
+		      storage/rsync.c storage/rsync.h \
+		      storage/storage.c storage/storage.h \
+		      storage/storage_utils.c storage/storage_utils.h \
+		      storage/zfs.c storage/zfs.h \
 		      string_utils.c string_utils.h \
 		      sync.c sync.h \
 		      syscall_numbers.h \
@@ -1028,6 +1224,17 @@ lxc_wait_SOURCES = tools/lxc_wait.c \
 		   ringbuf.c ringbuf.h \
 		   start.c start.h \
 		   state.c state.h \
+		   storage/btrfs.c storage/btrfs.h \
+		   storage/dir.c storage/dir.h \
+		   storage/loop.c storage/loop.h \
+		   storage/lvm.c storage/lvm.h \
+		   storage/nbd.c storage/nbd.h \
+		   storage/overlay.c storage/overlay.h \
+		   storage/rbd.c storage/rbd.h \
+		   storage/rsync.c storage/rsync.h \
+		   storage/storage.c storage/storage.h \
+		   storage/storage_utils.c storage/storage_utils.h \
+		   storage/zfs.c storage/zfs.h \
 		   string_utils.c string_utils.h \
 		   sync.c sync.h \
 		   terminal.c terminal.h \
@@ -1065,7 +1272,17 @@ lxc_create_SOURCES = tools/lxc_create.c \
 		     ringbuf.c ringbuf.h \
 		     start.c start.h \
 		     state.c state.h \
+		     storage/btrfs.c storage/btrfs.h \
+		     storage/dir.c storage/dir.h \
+		     storage/loop.c storage/loop.h \
+		     storage/lvm.c storage/lvm.h \
+		     storage/nbd.c storage/nbd.h \
+		     storage/overlay.c storage/overlay.h \
+		     storage/rbd.c storage/rbd.h \
+		     storage/rsync.c storage/rsync.h \
+		     storage/storage.c storage/storage.h \
 		     storage/storage_utils.c storage/storage_utils.h \
+		     storage/zfs.c storage/zfs.h \
 		     string_utils.c string_utils.h \
 		     sync.c sync.h \
 		     terminal.c terminal.h \
@@ -1103,6 +1320,17 @@ lxc_snapshot_SOURCES = tools/lxc_snapshot.c \
 		       ringbuf.c ringbuf.h \
 		       start.c start.h \
 		       state.c state.h \
+		       storage/btrfs.c storage/btrfs.h \
+		       storage/dir.c storage/dir.h \
+		       storage/loop.c storage/loop.h \
+		       storage/lvm.c storage/lvm.h \
+		       storage/nbd.c storage/nbd.h \
+		       storage/overlay.c storage/overlay.h \
+		       storage/rbd.c storage/rbd.h \
+		       storage/rsync.c storage/rsync.h \
+		       storage/storage.c storage/storage.h \
+		       storage/storage_utils.c storage/storage_utils.h \
+		       storage/zfs.c storage/zfs.h \
 		       string_utils.c string_utils.h \
 		       sync.c sync.h \
 		       terminal.c terminal.h \
@@ -1140,6 +1368,17 @@ lxc_checkpoint_SOURCES = tools/lxc_checkpoint.c \
 			 ringbuf.c ringbuf.h \
 			 start.c start.h \
 			 state.c state.h \
+			 storage/btrfs.c storage/btrfs.h \
+			 storage/dir.c storage/dir.h \
+			 storage/loop.c storage/loop.h \
+			 storage/lvm.c storage/lvm.h \
+			 storage/nbd.c storage/nbd.h \
+			 storage/overlay.c storage/overlay.h \
+			 storage/rbd.c storage/rbd.h \
+			 storage/rsync.c storage/rsync.h \
+			 storage/storage.c storage/storage.h \
+			 storage/storage_utils.c storage/storage_utils.h \
+			 storage/zfs.c storage/zfs.h \
 			 string_utils.c string_utils.h \
 			 sync.c sync.h \
 			 terminal.c terminal.h \
@@ -1199,6 +1438,17 @@ lxc_monitord_SOURCES = cmd/lxc_monitord.c \
 		       ringbuf.c ringbuf.h \
 		       start.c start.h \
 		       state.c state.h \
+		       storage/btrfs.c storage/btrfs.h \
+		       storage/dir.c storage/dir.h \
+		       storage/loop.c storage/loop.h \
+		       storage/lvm.c storage/lvm.h \
+		       storage/nbd.c storage/nbd.h \
+		       storage/overlay.c storage/overlay.h \
+		       storage/rbd.c storage/rbd.h \
+		       storage/rsync.c storage/rsync.h \
+		       storage/storage.c storage/storage.h \
+		       storage/storage_utils.c storage/storage_utils.h \
+		       storage/zfs.c storage/zfs.h \
 		       string_utils.c string_utils.h \
 		       sync.c sync.h \
 		       syscall_numbers.h \
@@ -1238,6 +1488,17 @@ lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
 		       ringbuf.c ringbuf.h \
 		       start.c start.h \
 		       state.c state.h \
+		       storage/btrfs.c storage/btrfs.h \
+		       storage/dir.c storage/dir.h \
+		       storage/loop.c storage/loop.h \
+		       storage/lvm.c storage/lvm.h \
+		       storage/nbd.c storage/nbd.h \
+		       storage/overlay.c storage/overlay.h \
+		       storage/rbd.c storage/rbd.h \
+		       storage/rsync.c storage/rsync.h \
+		       storage/storage.c storage/storage.h \
+		       storage/storage_utils.c storage/storage_utils.h \
+		       storage/zfs.c storage/zfs.h \
 		       string_utils.c string_utils.h \
 		       sync.c sync.h \
 		       syscall_numbers.h \
@@ -1279,6 +1540,17 @@ lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c \
 			 ringbuf.c ringbuf.h \
 			 start.c start.h \
 			 state.c state.h \
+			 storage/btrfs.c storage/btrfs.h \
+			 storage/dir.c storage/dir.h \
+			 storage/loop.c storage/loop.h \
+			 storage/lvm.c storage/lvm.h \
+			 storage/nbd.c storage/nbd.h \
+			 storage/overlay.c storage/overlay.h \
+			 storage/rbd.c storage/rbd.h \
+			 storage/rsync.c storage/rsync.h \
+			 storage/storage.c storage/storage.h \
+			 storage/storage_utils.c storage/storage_utils.h \
+			 storage/zfs.c storage/zfs.h \
 			 string_utils.c string_utils.h \
 			 sync.c sync.h \
 			 syscall_wrappers.h \

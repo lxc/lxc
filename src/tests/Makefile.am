@@ -45,6 +45,17 @@ lxc_test_api_reboot_SOURCES = api_reboot.c \
 			      ../lxc/ringbuf.c ../lxc/ringbuf.h \
 			      ../lxc/start.c ../lxc/start.h \
 			      ../lxc/state.c ../lxc/state.h \
+			      ../lxc/storage/btrfs.c ../lxc/storage/btrfs.h \
+			      ../lxc/storage/dir.c ../lxc/storage/dir.h \
+			      ../lxc/storage/loop.c ../lxc/storage/loop.h \
+			      ../lxc/storage/lvm.c ../lxc/storage/lvm.h \
+			      ../lxc/storage/nbd.c ../lxc/storage/nbd.h \
+			      ../lxc/storage/overlay.c ../lxc/storage/overlay.h \
+			      ../lxc/storage/rbd.c ../lxc/storage/rbd.h \
+			      ../lxc/storage/rsync.c ../lxc/storage/rsync.h \
+			      ../lxc/storage/storage.c ../lxc/storage/storage.h \
+			      ../lxc/storage/storage_utils.c ../lxc/storage/storage_utils.h \
+			      ../lxc/storage/zfs.c ../lxc/storage/zfs.h \
 			      ../lxc/sync.c ../lxc/sync.h \
 			      ../lxc/string_utils.c ../lxc/string_utils.h \
 			      ../lxc/terminal.c ../lxc/terminal.h \
@@ -81,6 +92,17 @@ lxc_test_apparmor_SOURCES = aa.c \
 			    ../lxc/ringbuf.c ../lxc/ringbuf.h \
 			    ../lxc/start.c ../lxc/start.h \
 			    ../lxc/state.c ../lxc/state.h \
+			    ../lxc/storage/btrfs.c ../lxc/storage/btrfs.h \
+			    ../lxc/storage/dir.c ../lxc/storage/dir.h \
+			    ../lxc/storage/loop.c ../lxc/storage/loop.h \
+			    ../lxc/storage/lvm.c ../lxc/storage/lvm.h \
+			    ../lxc/storage/nbd.c ../lxc/storage/nbd.h \
+			    ../lxc/storage/overlay.c ../lxc/storage/overlay.h \
+			    ../lxc/storage/rbd.c ../lxc/storage/rbd.h \
+			    ../lxc/storage/rsync.c ../lxc/storage/rsync.h \
+			    ../lxc/storage/storage.c ../lxc/storage/storage.h \
+			    ../lxc/storage/storage_utils.c ../lxc/storage/storage_utils.h \
+			    ../lxc/storage/zfs.c ../lxc/storage/zfs.h \
 			    ../lxc/sync.c ../lxc/sync.h \
 			    ../lxc/string_utils.c ../lxc/string_utils.h \
 			    ../lxc/terminal.c ../lxc/terminal.h \
@@ -117,6 +139,17 @@ lxc_test_attach_SOURCES = attach.c \
 			  ../lxc/ringbuf.c ../lxc/ringbuf.h \
 			  ../lxc/start.c ../lxc/start.h \
 			  ../lxc/state.c ../lxc/state.h \
+			  ../lxc/storage/btrfs.c ../lxc/storage/btrfs.h \
+			  ../lxc/storage/dir.c ../lxc/storage/dir.h \
+			  ../lxc/storage/loop.c ../lxc/storage/loop.h \
+			  ../lxc/storage/lvm.c ../lxc/storage/lvm.h \
+			  ../lxc/storage/nbd.c ../lxc/storage/nbd.h \
+			  ../lxc/storage/overlay.c ../lxc/storage/overlay.h \
+			  ../lxc/storage/rbd.c ../lxc/storage/rbd.h \
+			  ../lxc/storage/rsync.c ../lxc/storage/rsync.h \
+			  ../lxc/storage/storage.c ../lxc/storage/storage.h \
+			  ../lxc/storage/storage_utils.c ../lxc/storage/storage_utils.h \
+			  ../lxc/storage/zfs.c ../lxc/storage/zfs.h \
 			  ../lxc/sync.c ../lxc/sync.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h \
 			  ../lxc/terminal.c ../lxc/terminal.h \
@@ -154,6 +187,17 @@ lxc_test_cgpath_SOURCES = cgpath.c \
 			  ../lxc/ringbuf.c ../lxc/ringbuf.h \
 			  ../lxc/start.c ../lxc/start.h \
 			  ../lxc/state.c ../lxc/state.h \
+			  ../lxc/storage/btrfs.c ../lxc/storage/btrfs.h \
+			  ../lxc/storage/dir.c ../lxc/storage/dir.h \
+			  ../lxc/storage/loop.c ../lxc/storage/loop.h \
+			  ../lxc/storage/lvm.c ../lxc/storage/lvm.h \
+			  ../lxc/storage/nbd.c ../lxc/storage/nbd.h \
+			  ../lxc/storage/overlay.c ../lxc/storage/overlay.h \
+			  ../lxc/storage/rbd.c ../lxc/storage/rbd.h \
+			  ../lxc/storage/rsync.c ../lxc/storage/rsync.h \
+			  ../lxc/storage/storage.c ../lxc/storage/storage.h \
+			  ../lxc/storage/storage_utils.c ../lxc/storage/storage_utils.h \
+			  ../lxc/storage/zfs.c ../lxc/storage/zfs.h \
 			  ../lxc/sync.c ../lxc/sync.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h \
 			  ../lxc/terminal.c ../lxc/terminal.h \
@@ -193,6 +237,17 @@ lxc_test_config_jump_table_SOURCES = config_jump_table.c \
 				     ../lxc/ringbuf.c ../lxc/ringbuf.h \
 				     ../lxc/start.c ../lxc/start.h \
 				     ../lxc/state.c ../lxc/state.h \
+				     ../lxc/storage/btrfs.c ../lxc/storage/btrfs.h \
+				     ../lxc/storage/dir.c ../lxc/storage/dir.h \
+				     ../lxc/storage/loop.c ../lxc/storage/loop.h \
+				     ../lxc/storage/lvm.c ../lxc/storage/lvm.h \
+				     ../lxc/storage/nbd.c ../lxc/storage/nbd.h \
+				     ../lxc/storage/overlay.c ../lxc/storage/overlay.h \
+				     ../lxc/storage/rbd.c ../lxc/storage/rbd.h \
+				     ../lxc/storage/rsync.c ../lxc/storage/rsync.h \
+				     ../lxc/storage/storage.c ../lxc/storage/storage.h \
+				     ../lxc/storage/storage_utils.c ../lxc/storage/storage_utils.h \
+				     ../lxc/storage/zfs.c ../lxc/storage/zfs.h \
 				     ../lxc/sync.c ../lxc/sync.h \
 				     ../lxc/string_utils.c ../lxc/string_utils.h \
 				     ../lxc/terminal.c ../lxc/terminal.h \
@@ -240,6 +295,17 @@ lxc_test_locktests_SOURCES = locktests.c \
 			     ../lxc/ringbuf.c ../lxc/ringbuf.h \
 			     ../lxc/start.c ../lxc/start.h \
 			     ../lxc/state.c ../lxc/state.h \
+			     ../lxc/storage/btrfs.c ../lxc/storage/btrfs.h \
+			     ../lxc/storage/dir.c ../lxc/storage/dir.h \
+			     ../lxc/storage/loop.c ../lxc/storage/loop.h \
+			     ../lxc/storage/lvm.c ../lxc/storage/lvm.h \
+			     ../lxc/storage/nbd.c ../lxc/storage/nbd.h \
+			     ../lxc/storage/overlay.c ../lxc/storage/overlay.h \
+			     ../lxc/storage/rbd.c ../lxc/storage/rbd.h \
+			     ../lxc/storage/rsync.c ../lxc/storage/rsync.h \
+			     ../lxc/storage/storage.c ../lxc/storage/storage.h \
+			     ../lxc/storage/storage_utils.c ../lxc/storage/storage_utils.h \
+			     ../lxc/storage/zfs.c ../lxc/storage/zfs.h \
 			     ../lxc/sync.c ../lxc/sync.h \
 			     ../lxc/string_utils.c ../lxc/string_utils.h \
 			     ../lxc/terminal.c ../lxc/terminal.h \
@@ -279,6 +345,17 @@ lxc_test_mount_injection_SOURCES = mount_injection.c \
 				   ../lxc/ringbuf.c ../lxc/ringbuf.h \
 				   ../lxc/start.c ../lxc/start.h \
 				   ../lxc/state.c ../lxc/state.h \
+				   ../lxc/storage/btrfs.c ../lxc/storage/btrfs.h \
+				   ../lxc/storage/dir.c ../lxc/storage/dir.h \
+				   ../lxc/storage/loop.c ../lxc/storage/loop.h \
+				   ../lxc/storage/lvm.c ../lxc/storage/lvm.h \
+				   ../lxc/storage/nbd.c ../lxc/storage/nbd.h \
+				   ../lxc/storage/overlay.c ../lxc/storage/overlay.h \
+				   ../lxc/storage/rbd.c ../lxc/storage/rbd.h \
+				   ../lxc/storage/rsync.c ../lxc/storage/rsync.h \
+				   ../lxc/storage/storage.c ../lxc/storage/storage.h \
+				   ../lxc/storage/storage_utils.c ../lxc/storage/storage_utils.h \
+				   ../lxc/storage/zfs.c ../lxc/storage/zfs.h \
 				   ../lxc/sync.c ../lxc/sync.h \
 				   ../lxc/string_utils.c ../lxc/string_utils.h \
 				   ../lxc/terminal.c ../lxc/terminal.h \
@@ -316,6 +393,17 @@ lxc_test_parse_config_file_SOURCES = parse_config_file.c \
 				     ../lxc/ringbuf.c ../lxc/ringbuf.h \
 				     ../lxc/start.c ../lxc/start.h \
 				     ../lxc/state.c ../lxc/state.h \
+				     ../lxc/storage/btrfs.c ../lxc/storage/btrfs.h \
+				     ../lxc/storage/dir.c ../lxc/storage/dir.h \
+				     ../lxc/storage/loop.c ../lxc/storage/loop.h \
+				     ../lxc/storage/lvm.c ../lxc/storage/lvm.h \
+				     ../lxc/storage/nbd.c ../lxc/storage/nbd.h \
+				     ../lxc/storage/overlay.c ../lxc/storage/overlay.h \
+				     ../lxc/storage/rbd.c ../lxc/storage/rbd.h \
+				     ../lxc/storage/rsync.c ../lxc/storage/rsync.h \
+				     ../lxc/storage/storage.c ../lxc/storage/storage.h \
+				     ../lxc/storage/storage_utils.c ../lxc/storage/storage_utils.h \
+				     ../lxc/storage/zfs.c ../lxc/storage/zfs.h \
 				     ../lxc/sync.c ../lxc/sync.h \
 				     ../lxc/string_utils.c ../lxc/string_utils.h \
 				     ../lxc/terminal.c ../lxc/terminal.h \
@@ -353,6 +441,17 @@ lxc_test_raw_clone_SOURCES = lxc_raw_clone.c \
 			     ../lxc/ringbuf.c ../lxc/ringbuf.h \
 			     ../lxc/start.c ../lxc/start.h \
 			     ../lxc/state.c ../lxc/state.h \
+			     ../lxc/storage/btrfs.c ../lxc/storage/btrfs.h \
+			     ../lxc/storage/dir.c ../lxc/storage/dir.h \
+			     ../lxc/storage/loop.c ../lxc/storage/loop.h \
+			     ../lxc/storage/lvm.c ../lxc/storage/lvm.h \
+			     ../lxc/storage/nbd.c ../lxc/storage/nbd.h \
+			     ../lxc/storage/overlay.c ../lxc/storage/overlay.h \
+			     ../lxc/storage/rbd.c ../lxc/storage/rbd.h \
+			     ../lxc/storage/rsync.c ../lxc/storage/rsync.h \
+			     ../lxc/storage/storage.c ../lxc/storage/storage.h \
+			     ../lxc/storage/storage_utils.c ../lxc/storage/storage_utils.h \
+			     ../lxc/storage/zfs.c ../lxc/storage/zfs.h \
 			     ../lxc/sync.c ../lxc/sync.h \
 			     ../lxc/string_utils.c ../lxc/string_utils.h \
 			     ../lxc/terminal.c ../lxc/terminal.h \
@@ -404,6 +503,17 @@ lxc_test_utils_SOURCES = lxc-test-utils.c \
 			  ../lxc/ringbuf.c ../lxc/ringbuf.h \
 			  ../lxc/start.c ../lxc/start.h \
 			  ../lxc/state.c ../lxc/state.h \
+			  ../lxc/storage/btrfs.c ../lxc/storage/btrfs.h \
+			  ../lxc/storage/dir.c ../lxc/storage/dir.h \
+			  ../lxc/storage/loop.c ../lxc/storage/loop.h \
+			  ../lxc/storage/lvm.c ../lxc/storage/lvm.h \
+			  ../lxc/storage/nbd.c ../lxc/storage/nbd.h \
+			  ../lxc/storage/overlay.c ../lxc/storage/overlay.h \
+			  ../lxc/storage/rbd.c ../lxc/storage/rbd.h \
+			  ../lxc/storage/rsync.c ../lxc/storage/rsync.h \
+			  ../lxc/storage/storage.c ../lxc/storage/storage.h \
+			  ../lxc/storage/storage_utils.c ../lxc/storage/storage_utils.h \
+			  ../lxc/storage/zfs.c ../lxc/storage/zfs.h \
 			  ../lxc/sync.c ../lxc/sync.h \
 			  ../lxc/string_utils.c ../lxc/string_utils.h \
 			  ../lxc/terminal.c ../lxc/terminal.h \

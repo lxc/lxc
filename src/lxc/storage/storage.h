@@ -14,6 +14,8 @@
 #include <mntent.h>
 #endif
 
+#include "compiler.h"
+
 #ifndef MS_DIRSYNC
 #define MS_DIRSYNC 128
 #endif
@@ -99,23 +101,19 @@ struct lxc_storage {
  *                  type specifications.  If the <storage type> prefix is not
  *                  detected liblxc will try to detect the storage type.
  */
-extern bool storage_is_dir(struct lxc_conf *conf);
-extern bool storage_can_backup(struct lxc_conf *conf);
-
-extern struct lxc_storage *storage_init(struct lxc_conf *conf);
-
-extern struct lxc_storage *storage_copy(struct lxc_container *c,
-					const char *cname, const char *lxcpath,
-					const char *bdevtype, int flags,
-					const char *bdevdata, uint64_t newsize,
-					bool *needs_rdep);
-extern struct lxc_storage *storage_create(const char *dest, const char *type,
-					  const char *cname,
-					  struct bdev_specs *specs,
-					  const struct lxc_conf *conf);
-extern void storage_put(struct lxc_storage *bdev);
-extern bool storage_destroy(struct lxc_conf *conf);
-extern bool rootfs_is_blockdev(struct lxc_conf *conf);
-extern const char *lxc_storage_get_path(char *src, const char *prefix);
+__hidden extern bool storage_is_dir(struct lxc_conf *conf);
+__hidden extern bool storage_can_backup(struct lxc_conf *conf);
+__hidden extern struct lxc_storage *storage_init(struct lxc_conf *conf);
+__hidden extern struct lxc_storage *storage_copy(struct lxc_container *c, const char *cname,
+						 const char *lxcpath, const char *bdevtype,
+						 int flags, const char *bdevdata, uint64_t newsize,
+						 bool *needs_rdep);
+__hidden extern struct lxc_storage *storage_create(const char *dest, const char *type,
+						   const char *cname, struct bdev_specs *specs,
+						   const struct lxc_conf *conf);
+__hidden extern void storage_put(struct lxc_storage *bdev);
+__hidden extern bool storage_destroy(struct lxc_conf *conf);
+__hidden extern bool rootfs_is_blockdev(struct lxc_conf *conf);
+__hidden extern const char *lxc_storage_get_path(char *src, const char *prefix);
 
 #endif /* #define __LXC_STORAGE_H */
