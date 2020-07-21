@@ -10,6 +10,7 @@
 
 #include "cgroup.h"
 #include "cgroup2_devices.h"
+#include "compiler.h"
 #include "conf.h"
 #include "config.h"
 #include "initutils.h"
@@ -18,7 +19,7 @@
 
 lxc_log_define(cgroup, lxc);
 
-extern struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf);
+__hidden extern struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf);
 
 struct cgroup_ops *cgroup_init(struct lxc_conf *conf)
 {

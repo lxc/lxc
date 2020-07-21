@@ -45,7 +45,7 @@
 
 int lxc_log_fd = -EBADF;
 static bool wants_syslog = false;
-int lxc_quiet_specified;
+static int lxc_quiet_specified;
 int lxc_log_use_global_fd;
 static int lxc_loglevel_specified;
 

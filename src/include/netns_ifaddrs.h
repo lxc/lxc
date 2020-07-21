@@ -12,6 +12,7 @@ extern "C" {
 #include <stdbool.h>
 #include <sys/socket.h>
 
+#include "compiler.h"
 #include "netns_ifaddrs.h"
 
 struct netns_ifaddrs {
@@ -50,9 +51,9 @@ struct netns_ifaddrs {
 #define __ifa_broadaddr ifa_ifu.ifu_broadaddr
 #define __ifa_dstaddr ifa_ifu.ifu_dstaddr
 
-extern void netns_freeifaddrs(struct netns_ifaddrs *);
-extern int netns_getifaddrs(struct netns_ifaddrs **ifap, __s32 netns_id,
-			    bool *netnsid_aware);
+__hidden extern void netns_freeifaddrs(struct netns_ifaddrs *);
+__hidden extern int netns_getifaddrs(struct netns_ifaddrs **ifap, __s32 netns_id,
+				     bool *netnsid_aware);
 
 #ifdef __cplusplus
 }

@@ -206,7 +206,7 @@ enum lxchooks {
 	NUM_LXC_HOOKS
 };
 
-extern char *lxchook_names[NUM_LXC_HOOKS];
+__hidden extern char *lxchook_names[NUM_LXC_HOOKS];
 
 struct lxc_state_client {
 	int clientfd;

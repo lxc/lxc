@@ -14,6 +14,7 @@
 #include <sys/syscall.h>
 #include <sys/un.h>
 
+#include "af_unix.h"
 #include "config.h"
 #include "log.h"
 #include "macro.h"
@@ -349,7 +350,7 @@ int lxc_unix_connect_type(struct sockaddr_un *addr, int type)
 	return move_fd(fd);
 }
 
-int lxc_unix_connect(struct sockaddr_un *addr, int type)
+int lxc_unix_connect(struct sockaddr_un *addr)
 {
 	return lxc_unix_connect_type(addr, SOCK_STREAM);
 }

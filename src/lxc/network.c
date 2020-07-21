@@ -1421,7 +1421,7 @@ int netdev_set_flag(const char *name, int flag)
 	return netlink_transaction(nlh_ptr, nlmsg, answer);
 }
 
-int netdev_get_flag(const char *name, int *flag)
+static int netdev_get_flag(const char *name, int *flag)
 {
 	call_cleaner(nlmsg_free) struct nlmsg *answer = NULL, *nlmsg = NULL;
 	struct nl_handler nlh;
@@ -2768,7 +2768,7 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	return 0;
 }
 
-bool lxc_delete_network_unpriv(struct lxc_handler *handler)
+static bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 {
 	int ret;
 	struct lxc_list *iterator;
@@ -3148,7 +3148,7 @@ static int lxc_create_network_unpriv(struct lxc_handler *handler)
 	return 0;
 }
 
-bool lxc_delete_network_priv(struct lxc_handler *handler)
+static bool lxc_delete_network_priv(struct lxc_handler *handler)
 {
 	int ret;
 	struct lxc_list *iterator;

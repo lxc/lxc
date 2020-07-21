@@ -12,6 +12,7 @@ extern "C" {
 #include <sys/select.h>
 #include <sys/types.h>
 
+#include "compiler.h"
 #include "state.h"
 
 struct lxc_msg;
@@ -32,8 +33,8 @@ struct lxc_handler;
  * @daemonize    : whether or not the container is daemonized
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_start(char *const argv[], struct lxc_handler *handler,
-		     const char *lxcpath, bool daemonize, int *error_num);
+__hidden extern int lxc_start(char *const argv[], struct lxc_handler *handler, const char *lxcpath,
+			      bool daemonize, int *error_num);
 
 /*
  * Start the specified command inside an application container
@@ -44,39 +45,37 @@ extern int lxc_start(char *const argv[], struct lxc_handler *handler,
  * @daemonize    : whether or not the container is daemonized
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_execute(const char *name, char *const argv[], int quiet,
-		       struct lxc_handler *handler, const char *lxcpath,
-		       bool daemonize, int *error_num);
+__hidden extern int lxc_execute(const char *name, char *const argv[], int quiet,
+				struct lxc_handler *handler, const char *lxcpath, bool daemonize,
+				int *error_num);
 
 /*
  * Close the fd associated with the monitoring
  * @fd : the file descriptor provided by lxc_monitor_open
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_monitor_close(int fd);
+__hidden extern int lxc_monitor_close(int fd);
 
 /*
  * Freeze all the tasks running inside the container <name>
  * @name : the container name
  * Returns 0 on success, < 0 otherwise
  */
-extern int lxc_freeze(struct lxc_conf *conf, const char *name,
-		      const char *lxcpath);
+__hidden extern int lxc_freeze(struct lxc_conf *conf, const char *name, const char *lxcpath);
 
 /*
  * Unfreeze all previously frozen tasks.
  * @name : the name of the container
  * Return 0 on success, < 0 otherwise
  */
-extern int lxc_unfreeze(struct lxc_conf *conf, const char *name,
-			const char *lxcpath);
+__hidden extern int lxc_unfreeze(struct lxc_conf *conf, const char *name, const char *lxcpath);
 
 /*
  * Retrieve the container state
  * @name : the name of the container
  * Returns the state of the container on success, < 0 otherwise
  */
-extern lxc_state_t lxc_state(const char *name, const char *lxcpath);
+__hidden extern lxc_state_t lxc_state(const char *name, const char *lxcpath);
 
 /*
  * Create and return a new lxccontainer struct.
@@ -105,17 +104,16 @@ extern int lxc_get_wait_states(const char **states);
 /*
  * Add a dependency to a container
  */
-extern int add_rdepend(struct lxc_conf *lxc_conf, char *rdepend);
+__hidden extern int add_rdepend(struct lxc_conf *lxc_conf, char *rdepend);
 
 /*
  * Set a key/value configuration option. Requires that to take a lock on the
  * in-memory config of the container.
  */
-extern int lxc_set_config_item_locked(struct lxc_conf *conf, const char *key,
-				      const char *v);
+__hidden extern int lxc_set_config_item_locked(struct lxc_conf *conf, const char *key, const char *v);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif
+#endif /* __LXC_LXC_H */

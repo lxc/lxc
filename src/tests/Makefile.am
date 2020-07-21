@@ -22,6 +22,7 @@ endif
 lxc_test_api_reboot_SOURCES = api_reboot.c \
 			      ../lxc/af_unix.c ../lxc/af_unix.h \
 			      ../lxc/caps.c ../lxc/caps.h \
+			      ../lxc/cgroups/cgfsng.c \
 			      ../lxc/cgroups/cgroup.c ../lxc/cgroups/cgroup.h \
 			      ../lxc/cgroups/cgroup2_devices.c ../lxc/cgroups/cgroup2_devices.h \
 			      ../lxc/cgroups/cgroup_utils.c ../lxc/cgroups/cgroup_utils.h \
@@ -32,6 +33,7 @@ lxc_test_api_reboot_SOURCES = api_reboot.c \
 			      ../lxc/confile_utils.c ../lxc/confile_utils.h \
 			      ../lxc/error.c ../lxc/error.h \
 			      ../lxc/file_utils.c ../lxc/file_utils.h \
+			      ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 			      ../lxc/initutils.c ../lxc/initutils.h \
 			      ../lxc/log.c ../lxc/log.h \
 			      ../lxc/lxclock.c ../lxc/lxclock.h \
@@ -69,6 +71,7 @@ endif
 lxc_test_apparmor_SOURCES = aa.c \
 			    ../lxc/af_unix.c ../lxc/af_unix.h \
 			    ../lxc/caps.c ../lxc/caps.h \
+			    ../lxc/cgroups/cgfsng.c \
 			    ../lxc/cgroups/cgroup.c ../lxc/cgroups/cgroup.h \
 			    ../lxc/cgroups/cgroup2_devices.c ../lxc/cgroups/cgroup2_devices.h \
 			    ../lxc/cgroups/cgroup_utils.c ../lxc/cgroups/cgroup_utils.h \
@@ -79,6 +82,7 @@ lxc_test_apparmor_SOURCES = aa.c \
 			    ../lxc/confile_utils.c ../lxc/confile_utils.h \
 			    ../lxc/error.c ../lxc/error.h \
 			    ../lxc/file_utils.c ../lxc/file_utils.h \
+			    ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 			    ../lxc/initutils.c ../lxc/initutils.h \
 			    ../lxc/log.c ../lxc/log.h \
 			    ../lxc/lxclock.c ../lxc/lxclock.h \
@@ -116,6 +120,7 @@ endif
 lxc_test_attach_SOURCES = attach.c \
 			  ../lxc/af_unix.c ../lxc/af_unix.h \
 			  ../lxc/caps.c ../lxc/caps.h \
+			  ../lxc/cgroups/cgfsng.c \
 			  ../lxc/cgroups/cgroup.c ../lxc/cgroups/cgroup.h \
 			  ../lxc/cgroups/cgroup2_devices.c ../lxc/cgroups/cgroup2_devices.h \
 			  ../lxc/cgroups/cgroup_utils.c ../lxc/cgroups/cgroup_utils.h \
@@ -126,6 +131,7 @@ lxc_test_attach_SOURCES = attach.c \
 			  ../lxc/confile_utils.c ../lxc/confile_utils.h \
 			  ../lxc/error.c ../lxc/error.h \
 			  ../lxc/file_utils.c ../lxc/file_utils.h \
+			  ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 			  ../lxc/initutils.c ../lxc/initutils.h \
 			  ../lxc/log.c ../lxc/log.h \
 			  ../lxc/lxclock.c ../lxc/lxclock.h \
@@ -164,6 +170,7 @@ lxc_test_basic_SOURCES = basic.c
 lxc_test_cgpath_SOURCES = cgpath.c \
 			  ../lxc/af_unix.c ../lxc/af_unix.h \
 			  ../lxc/caps.c ../lxc/caps.h \
+			  ../lxc/cgroups/cgfsng.c \
 			  ../lxc/cgroups/cgroup.c ../lxc/cgroups/cgroup.h \
 			  ../lxc/cgroups/cgroup2_devices.c ../lxc/cgroups/cgroup2_devices.h \
 			  ../lxc/cgroups/cgroup_utils.c ../lxc/cgroups/cgroup_utils.h \
@@ -174,6 +181,7 @@ lxc_test_cgpath_SOURCES = cgpath.c \
 			  ../lxc/confile_utils.c ../lxc/confile_utils.h \
 			  ../lxc/error.c ../lxc/error.h \
 			  ../lxc/file_utils.c ../lxc/file_utils.h \
+			  ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 			  ../lxc/initutils.c ../lxc/initutils.h \
 			  ../lxc/log.c ../lxc/log.h \
 			  ../lxc/lxclock.c ../lxc/lxclock.h \
@@ -214,6 +222,7 @@ lxc_test_config_jump_table_SOURCES = config_jump_table.c \
 				     lxctest.h \
 				     ../lxc/af_unix.c ../lxc/af_unix.h \
 				     ../lxc/caps.c ../lxc/caps.h \
+				     ../lxc/cgroups/cgfsng.c \
 				     ../lxc/cgroups/cgroup.c ../lxc/cgroups/cgroup.h \
 				     ../lxc/cgroups/cgroup2_devices.c ../lxc/cgroups/cgroup2_devices.h \
 				     ../lxc/cgroups/cgroup_utils.c ../lxc/cgroups/cgroup_utils.h \
@@ -224,6 +233,7 @@ lxc_test_config_jump_table_SOURCES = config_jump_table.c \
 				     ../lxc/confile_utils.c ../lxc/confile_utils.h \
 				     ../lxc/error.c ../lxc/error.h \
 				     ../lxc/file_utils.c ../lxc/file_utils.h \
+				     ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 				     ../lxc/initutils.c ../lxc/initutils.h \
 				     ../lxc/log.c ../lxc/log.h \
 				     ../lxc/lxclock.c ../lxc/lxclock.h \
@@ -272,6 +282,7 @@ lxc_test_list_SOURCES = list.c
 lxc_test_locktests_SOURCES = locktests.c \
 			     ../lxc/af_unix.c ../lxc/af_unix.h \
 			     ../lxc/caps.c ../lxc/caps.h \
+			     ../lxc/cgroups/cgfsng.c \
 			     ../lxc/cgroups/cgroup.c ../lxc/cgroups/cgroup.h \
 			     ../lxc/cgroups/cgroup2_devices.c ../lxc/cgroups/cgroup2_devices.h \
 			     ../lxc/cgroups/cgroup_utils.c ../lxc/cgroups/cgroup_utils.h \
@@ -282,6 +293,7 @@ lxc_test_locktests_SOURCES = locktests.c \
 			     ../lxc/confile_utils.c ../lxc/confile_utils.h \
 			     ../lxc/error.c ../lxc/error.h \
 			     ../lxc/file_utils.c ../lxc/file_utils.h \
+			     ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 			     ../lxc/initutils.c ../lxc/initutils.h \
 			     ../lxc/log.c ../lxc/log.h \
 			     ../lxc/lxclock.c ../lxc/lxclock.h \
@@ -322,6 +334,7 @@ lxc_test_mount_injection_SOURCES = mount_injection.c \
 				   lxctest.h \
 				   ../lxc/af_unix.c ../lxc/af_unix.h \
 				   ../lxc/caps.c ../lxc/caps.h \
+				   ../lxc/cgroups/cgfsng.c \
 				   ../lxc/cgroups/cgroup.c ../lxc/cgroups/cgroup.h \
 				   ../lxc/cgroups/cgroup2_devices.c ../lxc/cgroups/cgroup2_devices.h \
 				   ../lxc/cgroups/cgroup_utils.c ../lxc/cgroups/cgroup_utils.h \
@@ -332,6 +345,7 @@ lxc_test_mount_injection_SOURCES = mount_injection.c \
 				   ../lxc/confile_utils.c ../lxc/confile_utils.h \
 				   ../lxc/error.c ../lxc/error.h \
 				   ../lxc/file_utils.c ../lxc/file_utils.h \
+				   ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 				   ../lxc/initutils.c ../lxc/initutils.h \
 				   ../lxc/log.c ../lxc/log.h \
 				   ../lxc/lxclock.c ../lxc/lxclock.h \
@@ -370,6 +384,7 @@ lxc_test_parse_config_file_SOURCES = parse_config_file.c \
 				     lxctest.h \
 				     ../lxc/af_unix.c ../lxc/af_unix.h \
 				     ../lxc/caps.c ../lxc/caps.h \
+				     ../lxc/cgroups/cgfsng.c \
 				     ../lxc/cgroups/cgroup.c ../lxc/cgroups/cgroup.h \
 				     ../lxc/cgroups/cgroup2_devices.c ../lxc/cgroups/cgroup2_devices.h \
 				     ../lxc/cgroups/cgroup_utils.c ../lxc/cgroups/cgroup_utils.h \
@@ -380,6 +395,7 @@ lxc_test_parse_config_file_SOURCES = parse_config_file.c \
 				     ../lxc/confile_utils.c ../lxc/confile_utils.h \
 				     ../lxc/error.c ../lxc/error.h \
 				     ../lxc/file_utils.c ../lxc/file_utils.h \
+				     ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 				     ../lxc/initutils.c ../lxc/initutils.h \
 				     ../lxc/log.c ../lxc/log.h \
 				     ../lxc/lxclock.c ../lxc/lxclock.h \
@@ -418,6 +434,7 @@ lxc_test_raw_clone_SOURCES = lxc_raw_clone.c \
 			     lxctest.h \
 			     ../lxc/af_unix.c ../lxc/af_unix.h \
 			     ../lxc/caps.c ../lxc/caps.h \
+			     ../lxc/cgroups/cgfsng.c \
 			     ../lxc/cgroups/cgroup.c ../lxc/cgroups/cgroup.h \
 			     ../lxc/cgroups/cgroup2_devices.c ../lxc/cgroups/cgroup2_devices.h \
 			     ../lxc/cgroups/cgroup_utils.c ../lxc/cgroups/cgroup_utils.h \
@@ -428,6 +445,7 @@ lxc_test_raw_clone_SOURCES = lxc_raw_clone.c \
 			     ../lxc/confile_utils.c ../lxc/confile_utils.h \
 			     ../lxc/error.c ../lxc/error.h \
 			     ../lxc/file_utils.c ../lxc/file_utils.h \
+			     ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 			     ../lxc/initutils.c ../lxc/initutils.h \
 			     ../lxc/log.c ../lxc/log.h \
 			     ../lxc/lxclock.c ../lxc/lxclock.h \
@@ -480,6 +498,7 @@ lxc_test_utils_SOURCES = lxc-test-utils.c \
 			 lxctest.h \
 			  ../lxc/af_unix.c ../lxc/af_unix.h \
 			  ../lxc/caps.c ../lxc/caps.h \
+			  ../lxc/cgroups/cgfsng.c \
 			  ../lxc/cgroups/cgroup.c ../lxc/cgroups/cgroup.h \
 			  ../lxc/cgroups/cgroup2_devices.c ../lxc/cgroups/cgroup2_devices.h \
 			  ../lxc/cgroups/cgroup_utils.c ../lxc/cgroups/cgroup_utils.h \
@@ -490,6 +509,7 @@ lxc_test_utils_SOURCES = lxc-test-utils.c \
 			  ../lxc/confile_utils.c ../lxc/confile_utils.h \
 			  ../lxc/error.c ../lxc/error.h \
 			  ../lxc/file_utils.c ../lxc/file_utils.h \
+			  ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 			  ../lxc/initutils.c ../lxc/initutils.h \
 			  ../lxc/log.c ../lxc/log.h \
 			  ../lxc/lxclock.c ../lxc/lxclock.h \

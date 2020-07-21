@@ -903,7 +903,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 
 define_cleanup_function(struct lxc_tty_info *, lxc_delete_tty);
 
-int lxc_allocate_ttys(struct lxc_conf *conf)
+static int lxc_allocate_ttys(struct lxc_conf *conf)
 {
 	struct lxc_terminal_info *tty_new = NULL;
 	int ret;
@@ -1262,7 +1262,7 @@ static int lxc_mount_rootfs(struct lxc_conf *conf)
 	return 0;
 }
 
-int lxc_chroot(const struct lxc_rootfs *rootfs)
+static int lxc_chroot(const struct lxc_rootfs *rootfs)
 {
 	__do_free char *nroot = NULL;
 	int i, ret;
@@ -2701,7 +2701,7 @@ static int idmaptool_on_path_and_privileged(const char *binary, cap_value_t cap)
 	return 1;
 }
 
-int lxc_map_ids_exec_wrapper(void *args)
+static int lxc_map_ids_exec_wrapper(void *args)
 {
 	execl("/bin/sh", "sh", "-c", (char *)args, (char *)NULL);
 	return -1;
@@ -2897,7 +2897,7 @@ again:
 }
 
 /* NOTE: Must not be called from inside the container namespace! */
-int lxc_create_tmp_proc_mount(struct lxc_conf *conf)
+static int lxc_create_tmp_proc_mount(struct lxc_conf *conf)
 {
 	int mounted;
 
