@@ -333,18 +333,26 @@ lxc_attach_SOURCES = tools/lxc_attach.c \
 		     tools/arguments.c tools/arguments.h \
 		     af_unix.c af_unix.h \
 		     caps.c caps.h \
+		     commands.c commands.h \
+		     commands_utils.c commands_utils.h \
 		     conf.c conf.h \
 		     confile.c confile.h \
 		     confile_utils.c confile_utils.h \
+		     error.c error.h \
 		     file_utils.c file_utils.h \
 		     initutils.c initutils.h \
 		     log.c log.h \
+		     lxclock.c lxclock.h \
+		     mainloop.c mainloop.h \
+		     monitor.c monitor.h \
 		     namespace.c namespace.h \
 		     network.c network.h \
 		     nl.c nl.h \
 		     parse.c parse.h \
 		     process_utils.c process_utils.h \
 		     rexec.c rexec.h \
+		     ringbuf.c ringbuf.h \
+		     start.c start.h \
 		     string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_attach_SOURCES += seccomp.c lxcseccomp.h
@@ -354,17 +362,25 @@ lxc_autostart_SOURCES = tools/lxc_autostart.c \
 			tools/arguments.c tools/arguments.h \
 			af_unix.c af_unix.h \
 			caps.c caps.h \
+			commands.c commands.h \
+			commands_utils.c commands_utils.h \
 			conf.c conf.h \
 			confile.c confile.h \
 			confile_utils.c confile_utils.h \
+			error.c error.h \
 			file_utils.c file_utils.h \
 			initutils.c initutils.h \
 			log.c log.h \
+			lxclock.c lxclock.h \
+			mainloop.c mainloop.h \
+			monitor.c monitor.h \
 			namespace.c namespace.h \
 			network.c network.h \
 			nl.c nl.h \
 			parse.c parse.h \
 			process_utils.c process_utils.h \
+			ringbuf.c ringbuf.h \
+			start.c start.h \
 			string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_autostart_SOURCES += seccomp.c lxcseccomp.h
@@ -374,17 +390,25 @@ lxc_cgroup_SOURCES = tools/lxc_cgroup.c \
 		     tools/arguments.c tools/arguments.h \
 		     af_unix.c af_unix.h \
 		     caps.c caps.h \
+		     commands.c commands.h \
+		     commands_utils.c commands_utils.h \
 		     conf.c conf.h \
 		     confile.c confile.h \
 		     confile_utils.c confile_utils.h \
+		     error.c error.h \
 		     file_utils.c file_utils.h \
 		     initutils.c initutils.h \
 		     log.c log.h \
+		     lxclock.c lxclock.h \
+		     mainloop.c mainloop.h \
+		     monitor.c monitor.h \
 		     namespace.c namespace.h \
 		     network.c network.h \
 		     nl.c nl.h \
 		     parse.c parse.h \
 		     process_utils.c process_utils.h \
+		     ringbuf.c ringbuf.h \
+		     start.c start.h \
 		     string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_cgroup_SOURCES += seccomp.c lxcseccomp.h
@@ -394,17 +418,25 @@ lxc_config_SOURCES = tools/lxc_config.c \
 		     tools/arguments.c tools/arguments.h \
 		     af_unix.c af_unix.h \
 		     caps.c caps.h \
+		     commands.c commands.h \
+		     commands_utils.c commands_utils.h \
 		     conf.c conf.h \
 		     confile.c confile.h \
 		     confile_utils.c confile_utils.h \
+		     error.c error.h \
 		     file_utils.c file_utils.h \
 		     initutils.c initutils.h \
 		     log.c log.h \
+		     lxclock.c lxclock.h \
+		     mainloop.c mainloop.h \
+		     monitor.c monitor.h \
 		     namespace.c namespace.h \
 		     network.c network.h \
 		     nl.c nl.h \
 		     parse.c parse.h \
 		     process_utils.c process_utils.h \
+		     ringbuf.c ringbuf.h \
+		     start.c start.h \
 		     string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_config_SOURCES += seccomp.c lxcseccomp.h
@@ -414,17 +446,25 @@ lxc_console_SOURCES = tools/lxc_console.c \
 		      tools/arguments.c tools/arguments.h \
 		      af_unix.c af_unix.h \
 		      caps.c caps.h \
+		      commands.c commands.h \
+		      commands_utils.c commands_utils.h \
 		      conf.c conf.h \
 		      confile.c confile.h \
 		      confile_utils.c confile_utils.h \
+		      error.c error.h \
 		      file_utils.c file_utils.h \
 		      initutils.c initutils.h \
 		      log.c log.h \
+		      lxclock.c lxclock.h \
+		      mainloop.c mainloop.h \
+		      monitor.c monitor.h \
 		      namespace.c namespace.h \
 		      network.c network.h \
 		      nl.c nl.h \
 		      parse.c parse.h \
 		      process_utils.c process_utils.h \
+		      ringbuf.c ringbuf.h \
+		      start.c start.h \
 		      string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_console_SOURCES += seccomp.c lxcseccomp.h
@@ -434,17 +474,25 @@ lxc_destroy_SOURCES = tools/lxc_destroy.c \
 		      tools/arguments.c tools/arguments.h \
 		      af_unix.c af_unix.h \
 		      caps.c caps.h \
+		      commands.c commands.h \
+		      commands_utils.c commands_utils.h \
 		      conf.c conf.h \
 		      confile.c confile.h \
 		      confile_utils.c confile_utils.h \
+		      error.c error.h \
 		      file_utils.c file_utils.h \
 		      initutils.c initutils.h \
 		      log.c log.h \
+		      lxclock.c lxclock.h \
+		      mainloop.c mainloop.h \
+		      monitor.c monitor.h \
 		      namespace.c namespace.h \
 		      network.c network.h \
 		      nl.c nl.h \
 		      parse.c parse.h \
 		      process_utils.c process_utils.h \
+		      ringbuf.c ringbuf.h \
+		      start.c start.h \
 		      string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_destroy_SOURCES += seccomp.c lxcseccomp.h
@@ -454,17 +502,25 @@ lxc_device_SOURCES = tools/lxc_device.c \
 		     tools/arguments.c tools/arguments.h \
 		     af_unix.c af_unix.h \
 		     caps.c caps.h \
+		     commands.c commands.h \
+		     commands_utils.c commands_utils.h \
 		     conf.c conf.h \
 		     confile.c confile.h \
 		     confile_utils.c confile_utils.h \
+		     error.c error.h \
 		     file_utils.c file_utils.h \
 		     initutils.c initutils.h \
 		     log.c log.h \
+		     lxclock.c lxclock.h \
+		     mainloop.c mainloop.h \
+		     monitor.c monitor.h \
 		     namespace.c namespace.h \
 		     network.c network.h \
 		     nl.c nl.h \
 		     parse.c parse.h \
 		     process_utils.c process_utils.h \
+		     ringbuf.c ringbuf.h \
+		     start.c start.h \
 		     string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_device_SOURCES += seccomp.c lxcseccomp.h
@@ -474,17 +530,25 @@ lxc_execute_SOURCES = tools/lxc_execute.c \
 		      tools/arguments.c tools/arguments.h \
 		      af_unix.c af_unix.h \
 		      caps.c caps.h \
+		      commands.c commands.h \
+		      commands_utils.c commands_utils.h \
 		      conf.c conf.h \
 		      confile.c confile.h \
 		      confile_utils.c confile_utils.h \
+		      error.c error.h \
 		      file_utils.c file_utils.h \
 		      initutils.c initutils.h \
 		      log.c log.h \
+		      lxclock.c lxclock.h \
+		      mainloop.c mainloop.h \
+		      monitor.c monitor.h \
 		      namespace.c namespace.h \
 		      network.c network.h \
 		      nl.c nl.h \
 		      parse.c parse.h \
 		      process_utils.c process_utils.h \
+		      ringbuf.c ringbuf.h \
+		      start.c start.h \
 		      string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_execute_SOURCES += seccomp.c lxcseccomp.h
@@ -494,17 +558,25 @@ lxc_freeze_SOURCES = tools/lxc_freeze.c \
 		     tools/arguments.c tools/arguments.h \
 		     af_unix.c af_unix.h \
 		     caps.c caps.h \
+		     commands.c commands.h \
+		     commands_utils.c commands_utils.h \
 		     conf.c conf.h \
 		     confile.c confile.h \
 		     confile_utils.c confile_utils.h \
+		     error.c error.h \
 		     file_utils.c file_utils.h \
 		     initutils.c initutils.h \
 		     log.c log.h \
+		     lxclock.c lxclock.h \
+		     mainloop.c mainloop.h \
+		     monitor.c monitor.h \
 		     namespace.c namespace.h \
 		     network.c network.h \
 		     nl.c nl.h \
 		     parse.c parse.h \
 		     process_utils.c process_utils.h \
+		     ringbuf.c ringbuf.h \
+		     start.c start.h \
 		     string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_freeze_SOURCES += seccomp.c lxcseccomp.h
@@ -514,17 +586,25 @@ lxc_info_SOURCES = tools/lxc_info.c \
 		   tools/arguments.c tools/arguments.h \
 		   af_unix.c af_unix.h \
 		   caps.c caps.h \
+		   commands.c commands.h \
+		   commands_utils.c commands_utils.h \
 		   conf.c conf.h \
 		   confile.c confile.h \
 		   confile_utils.c confile_utils.h \
+		   error.c error.h \
 		   file_utils.c file_utils.h \
 		   initutils.c initutils.h \
 		   log.c log.h \
+		   lxclock.c lxclock.h \
+		   mainloop.c mainloop.h \
+		   monitor.c monitor.h \
 		   namespace.c namespace.h \
 		   network.c network.h \
 		   nl.c nl.h \
 		   parse.c parse.h \
 		   process_utils.c process_utils.h \
+		   ringbuf.c ringbuf.h \
+		   start.c start.h \
 		   string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_info_SOURCES += seccomp.c lxcseccomp.h
@@ -534,19 +614,26 @@ lxc_monitor_SOURCES = tools/lxc_monitor.c \
 		      tools/arguments.c tools/arguments.h \
 		      af_unix.c af_unix.h \
 		      caps.c caps.h \
+		      commands.c commands.h \
+		      commands_utils.c commands_utils.h \
 		      conf.c conf.h \
 		      confile.c confile.h \
 		      confile_utils.c confile_utils.h \
+		      error.c error.h \
 		      file_utils.c file_utils.h \
 		      initutils.c initutils.h \
 		      log.c log.h \
+		      lxclock.c lxclock.h \
 		      macro.h \
+		      mainloop.c mainloop.h \
 		      monitor.c monitor.h \
 		      namespace.c namespace.h \
 		      network.c network.h \
 		      nl.c nl.h \
 		      parse.c parse.h \
 		      process_utils.c process_utils.h \
+		      ringbuf.c ringbuf.h \
+		      start.c start.h \
 		      string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_monitor_SOURCES += seccomp.c lxcseccomp.h
@@ -556,18 +643,26 @@ lxc_ls_SOURCES = tools/lxc_ls.c \
 		 tools/arguments.c tools/arguments.h \
 		 af_unix.c af_unix.h \
 		 caps.c caps.h \
+		 commands.c commands.h \
+		 commands_utils.c commands_utils.h \
 		 conf.c conf.h \
 		 confile.c confile.h \
 		 confile_utils.c confile_utils.h \
+		 error.c error.h \
 		 file_utils.c file_utils.h \
 		 initutils.c initutils.h \
 		 log.c log.h \
+		 lxclock.c lxclock.h \
+		 mainloop.c mainloop.h \
 		 memory_utils.h \
+		 monitor.c monitor.h \
 		 namespace.c namespace.h \
 		 network.c network.h \
 		 nl.c nl.h \
 		 parse.c parse.h \
 		 process_utils.c process_utils.h \
+		 ringbuf.c ringbuf.h \
+		 start.c start.h \
 		 string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_ls_SOURCES += seccomp.c lxcseccomp.h
@@ -577,17 +672,25 @@ lxc_copy_SOURCES = tools/lxc_copy.c \
 		   tools/arguments.c tools/arguments.h \
 		   af_unix.c af_unix.h \
 		   caps.c caps.h \
+		   commands.c commands.h \
+		   commands_utils.c commands_utils.h \
 		   conf.c conf.h \
 		   confile.c confile.h \
 		   confile_utils.c confile_utils.h \
+		   error.c error.h \
 		   file_utils.c file_utils.h \
 		   initutils.c initutils.h \
 		   log.c log.h \
+		   lxclock.c lxclock.h \
+		   mainloop.c mainloop.h \
+		   monitor.c monitor.h \
 		   namespace.c namespace.h \
 		   network.c network.h \
 		   nl.c nl.h \
 		   parse.c parse.h \
 		   process_utils.c process_utils.h \
+		   ringbuf.c ringbuf.h \
+		   start.c start.h \
 		   storage/storage_utils.c storage/storage_utils.h \
 		   string_utils.c string_utils.h
 if ENABLE_SECCOMP
@@ -598,17 +701,25 @@ lxc_start_SOURCES = tools/lxc_start.c \
 		    tools/arguments.c tools/arguments.h \
 		    af_unix.c af_unix.h \
 		    caps.c caps.h \
+		    commands.c commands.h \
+		    commands_utils.c commands_utils.h \
 		    conf.c conf.h \
 		    confile.c confile.h \
 		    confile_utils.c confile_utils.h \
+		    error.c error.h \
 		    file_utils.c file_utils.h \
 		    initutils.c initutils.h \
 		    log.c log.h \
+		    lxclock.c lxclock.h \
+		    mainloop.c mainloop.h \
+		    monitor.c monitor.h \
 		    namespace.c namespace.h \
 		    network.c network.h \
 		    nl.c nl.h \
 		    parse.c parse.h \
 		    process_utils.c process_utils.h \
+		    ringbuf.c ringbuf.h \
+		    start.c start.h \
 		    string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_start_SOURCES += seccomp.c lxcseccomp.h
@@ -618,18 +729,25 @@ lxc_stop_SOURCES = tools/lxc_stop.c \
 		   tools/arguments.c tools/arguments.h \
 		   af_unix.c af_unix.h \
 		   caps.c caps.h \
+		   commands.c commands.h \
+		   commands_utils.c commands_utils.h \
 		   conf.c conf.h \
 		   confile.c confile.h \
 		   confile_utils.c confile_utils.h \
+		   error.c error.h \
 		   file_utils.c file_utils.h \
 		   initutils.c initutils.h \
 		   log.c log.h \
+		   lxclock.c lxclock.h \
 		   mainloop.c mainloop.h \
+		   monitor.c monitor.h \
 		   namespace.c namespace.h \
 		   network.c network.h \
 		   nl.c nl.h \
 		   parse.c parse.h \
 		   process_utils.c process_utils.h \
+		   ringbuf.c ringbuf.h \
+		   start.c start.h \
 		   string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_stop_SOURCES += seccomp.c lxcseccomp.h
@@ -639,18 +757,25 @@ lxc_top_SOURCES = tools/lxc_top.c \
 		  tools/arguments.c tools/arguments.h \
 		  af_unix.c af_unix.h \
 		  caps.c caps.h \
+		  commands.c commands.h \
+		  commands_utils.c commands_utils.h \
 		  conf.c conf.h \
 		  confile.c confile.h \
 		  confile_utils.c confile_utils.h \
+		  error.c error.h \
 		  file_utils.c file_utils.h \
 		  initutils.c initutils.h \
 		  log.c log.h \
+		  lxclock.c lxclock.h \
 		  mainloop.c mainloop.h \
+		  monitor.c monitor.h \
 		  namespace.c namespace.h \
 		  network.c network.h \
 		  nl.c nl.h \
 		  parse.c parse.h \
 		  process_utils.c process_utils.h \
+		  ringbuf.c ringbuf.h \
+		  start.c start.h \
 		  string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_top_SOURCES += seccomp.c lxcseccomp.h
@@ -660,17 +785,25 @@ lxc_unfreeze_SOURCES = tools/lxc_unfreeze.c \
 		       tools/arguments.c tools/arguments.h \
 		       af_unix.c af_unix.h \
 		       caps.c caps.h \
+		       commands.c commands.h \
+		       commands_utils.c commands_utils.h \
 		       conf.c conf.h \
 		       confile.c confile.h \
 		       confile_utils.c confile_utils.h \
+		       error.c error.h \
 		       file_utils.c file_utils.h \
 		       initutils.c initutils.h \
 		       log.c log.h \
+		       lxclock.c lxclock.h \
+		       mainloop.c mainloop.h \
+		       monitor.c monitor.h \
 		       namespace.c namespace.h \
 		       network.c network.h \
 		       nl.c nl.h \
 		       parse.c parse.h \
 		       process_utils.c process_utils.h \
+		       ringbuf.c ringbuf.h \
+		       start.c start.h \
 		       string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_unfreeze_SOURCES += seccomp.c lxcseccomp.h
@@ -680,17 +813,25 @@ lxc_unshare_SOURCES = tools/lxc_unshare.c \
 		      tools/arguments.c tools/arguments.h \
 		      af_unix.c af_unix.h \
 		      caps.c caps.h \
+		      commands.c commands.h \
+		      commands_utils.c commands_utils.h \
 		      conf.c conf.h \
 		      confile.c confile.h \
 		      confile_utils.c confile_utils.h \
+		      error.c error.h \
 		      file_utils.c file_utils.h \
 		      initutils.c initutils.h \
 		      log.c log.h \
+		      lxclock.c lxclock.h \
+		      mainloop.c mainloop.h \
+		      monitor.c monitor.h \
 		      namespace.c namespace.h \
 		      network.c network.h \
 		      nl.c nl.h \
 		      parse.c parse.h \
 		      process_utils.c process_utils.h \
+		      ringbuf.c ringbuf.h \
+		      start.c start.h \
 		      string_utils.c string_utils.h \
 		      syscall_numbers.h \
 		      syscall_wrappers.h
@@ -702,17 +843,25 @@ lxc_wait_SOURCES = tools/lxc_wait.c \
 		   tools/arguments.c tools/arguments.h \
 		   af_unix.c af_unix.h \
 		   caps.c caps.h \
+		   commands.c commands.h \
+		   commands_utils.c commands_utils.h \
 		   conf.c conf.h \
 		   confile.c confile.h \
 		   confile_utils.c confile_utils.h \
+		   error.c error.h \
 		   file_utils.c file_utils.h \
 		   initutils.c initutils.h \
 		   log.c log.h \
+		   lxclock.c lxclock.h \
+		   mainloop.c mainloop.h \
+		   monitor.c monitor.h \
 		   namespace.c namespace.h \
 		   network.c network.h \
 		   nl.c nl.h \
 		   parse.c parse.h \
 		   process_utils.c process_utils.h \
+		   ringbuf.c ringbuf.h \
+		   start.c start.h \
 		   string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_wait_SOURCES += seccomp.c lxcseccomp.h
@@ -722,17 +871,25 @@ lxc_create_SOURCES = tools/lxc_create.c \
 		     tools/arguments.c tools/arguments.h \
 		     af_unix.c af_unix.h \
 		     caps.c caps.h \
+		     commands.c commands.h \
+		     commands_utils.c commands_utils.h \
 		     conf.c conf.h \
 		     confile.c confile.h \
 		     confile_utils.c confile_utils.h \
+		     error.c error.h \
 		     file_utils.c file_utils.h \
 		     initutils.c initutils.h \
 		     log.c log.h \
+		     lxclock.c lxclock.h \
+		     mainloop.c mainloop.h \
+		     monitor.c monitor.h \
 		     namespace.c namespace.h \
 		     network.c network.h \
 		     nl.c nl.h \
 		     parse.c parse.h \
 		     process_utils.c process_utils.h \
+		     ringbuf.c ringbuf.h \
+		     start.c start.h \
 		     storage/storage_utils.c storage/storage_utils.h \
 		     string_utils.c string_utils.h
 if ENABLE_SECCOMP
@@ -743,17 +900,25 @@ lxc_snapshot_SOURCES = tools/lxc_snapshot.c \
 		       tools/arguments.c tools/arguments.h \
 		       af_unix.c af_unix.h \
 		       caps.c caps.h \
+		       commands.c commands.h \
+		       commands_utils.c commands_utils.h \
 		       conf.c conf.h \
 		       confile.c confile.h \
 		       confile_utils.c confile_utils.h \
+		       error.c error.h \
 		       file_utils.c file_utils.h \
 		       initutils.c initutils.h \
 		       log.c log.h \
+		       lxclock.c lxclock.h \
+		       mainloop.c mainloop.h \
+		       monitor.c monitor.h \
 		       namespace.c namespace.h \
 		       network.c network.h \
 		       nl.c nl.h \
 		       parse.c parse.h \
 		       process_utils.c process_utils.h \
+		       ringbuf.c ringbuf.h \
+		       start.c start.h \
 		       string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_snapshot_SOURCES += seccomp.c lxcseccomp.h
@@ -763,17 +928,25 @@ lxc_checkpoint_SOURCES = tools/lxc_checkpoint.c \
 			 tools/arguments.c tools/arguments.h \
 			 af_unix.c af_unix.h \
 			 caps.c caps.h \
+			 commands.c commands.h \
+			 commands_utils.c commands_utils.h \
 			 conf.c conf.h \
 			 confile.c confile.h \
 			 confile_utils.c confile_utils.h \
+			 error.c error.h \
 			 file_utils.c file_utils.h \
 			 initutils.c initutils.h \
 			 log.c log.h \
+			 lxclock.c lxclock.h \
+			 mainloop.c mainloop.h \
+			 monitor.c monitor.h \
 			 namespace.c namespace.h \
 			 network.c network.h \
 			 nl.c nl.h \
 			 parse.c parse.h \
 			 process_utils.c process_utils.h \
+			 ringbuf.c ringbuf.h \
+			 start.c start.h \
 			 string_utils.c string_utils.h
 if ENABLE_SECCOMP
 lxc_checkpoint_SOURCES += seccomp.c lxcseccomp.h
@@ -793,8 +966,9 @@ init_lxc_SOURCES = cmd/lxc_init.c \
 		   memory_utils.h \
 		   parse.c parse.h \
 		   process_utils.c process_utils.h \
-		   syscall_numbers.h \
-		   string_utils.c string_utils.h
+		   ringbuf.c ringbuf.h \
+		   string_utils.c string_utils.h \
+		   syscall_numbers.h
 if ENABLE_SECCOMP
 init_lxc_SOURCES += seccomp.c lxcseccomp.h
 endif
@@ -804,12 +978,16 @@ init_lxc_LDFLAGS = -pthread
 lxc_monitord_SOURCES = cmd/lxc_monitord.c \
 		       af_unix.c af_unix.h \
 		       caps.c caps.h \
+		       commands.c commands.h \
+		       commands_utils.c commands_utils.h \
 		       conf.c conf.h \
 		       confile.c confile.h \
 		       confile_utils.c confile_utils.h \
+		       error.c error.h \
 		       file_utils.c file_utils.h \
 		       initutils.c initutils.h \
 		       log.c log.h \
+		       lxclock.c lxclock.h \
 		       mainloop.c mainloop.h \
 		       monitor.c monitor.h \
 		       namespace.c namespace.h \
@@ -817,6 +995,8 @@ lxc_monitord_SOURCES = cmd/lxc_monitord.c \
 		       nl.c nl.h \
 		       parse.c parse.h \
 		       process_utils.c process_utils.h \
+		       ringbuf.c ringbuf.h \
+		       start.c start.h \
 		       string_utils.c string_utils.h \
 		       syscall_numbers.h \
 		       utils.c utils.h
@@ -828,20 +1008,28 @@ lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
 		       ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
 		       af_unix.c af_unix.h \
 		       caps.c caps.h \
+		       commands.c commands.h \
+		       commands_utils.c commands_utils.h \
 		       conf.c conf.h \
 		       confile.c confile.h \
 		       confile_utils.c confile_utils.h \
+		       error.c error.h \
 		       file_utils.c file_utils.h \
 		       initutils.c initutils.h \
 		       log.c log.h \
+		       lxclock.c lxclock.h \
+		       mainloop.c mainloop.h \
 		       memory_utils.h \
+		       monitor.c monitor.h \
 		       namespace.c namespace.h \
 		       network.c network.h \
 		       nl.c nl.h \
 		       parse.c parse.h \
 		       process_utils.c process_utils.h \
-		       syscall_numbers.h \
+		       ringbuf.c ringbuf.h \
+		       start.c start.h \
 		       string_utils.c string_utils.h \
+		       syscall_numbers.h \
 		       syscall_wrappers.h
 if ENABLE_SECCOMP
 lxc_user_nic_SOURCES += seccomp.c lxcseccomp.h
@@ -850,20 +1038,28 @@ endif
 lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c \
 			 af_unix.c af_unix.h \
 			 caps.c caps.h \
+			 commands.c commands.h \
+			 commands_utils.c commands_utils.h \
 			 conf.c conf.h \
 			 confile.c confile.h \
 			 confile_utils.c confile_utils.h \
+			 error.c error.h \
 			 file_utils.c file_utils.h \
 			 initutils.c initutils.h \
 			 list.h \
 			 log.c log.h \
+			 lxclock.c lxclock.h \
 			 macro.h \
+			 mainloop.c mainloop.h \
 			 memory_utils.h \
+			 monitor.c monitor.h \
 			 namespace.c namespace.h \
 			 network.c network.h \
 			 nl.c nl.h \
 			 parse.c parse.h \
 			 process_utils.c process_utils.h \
+			 ringbuf.c ringbuf.h \
+			 start.c start.h \
 			 string_utils.c string_utils.h \
 			 syscall_wrappers.h \
 			 utils.c utils.h
