@@ -191,4 +191,14 @@ static inline int fsconfig_lxc(int fd, unsigned int cmd, const char *key, const 
 extern int fsconfig(int fd, unsigned int cmd, const char *key, const void *value, int aux);
 #endif
 
+#ifndef HAVE_FSMOUNT
+static inline int fsmount_lxc(int fs_fd, unsigned int flags, unsigned int attr_flags)
+{
+	return syscall(__NR_fsmount, fs_fd, flags, attr_flags);
+}
+#define fsmount fsmount_lxc
+#else
+extern int fsmount(int fs_fd, unsigned int flags, unsigned int attr_flags);
+#endif
+
 #endif /* __LXC_SYSCALL_WRAPPER_H */
