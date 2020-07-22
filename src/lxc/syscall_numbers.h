@@ -623,4 +623,24 @@
 	#endif
 #endif
 
+#ifndef __NR_fsmount
+	#if defined __alpha__
+		#define __NR_fsmount 542
+	#elif defined _MIPS_SIM
+		#if _MIPS_SIM == _MIPS_SIM_ABI32	/* o32 */
+			#define __NR_fsmount 4432
+		#endif
+		#if _MIPS_SIM == _MIPS_SIM_NABI32	/* n32 */
+			#define __NR_fsmount 6432
+		#endif
+		#if _MIPS_SIM == _MIPS_SIM_ABI64	/* n64 */
+			#define __NR_fsmount 5432
+		#endif
+	#elif defined __ia64__
+		#define __NR_fsmount (432 + 1024)
+	#else
+		#define __NR_fsmount 432
+	#endif
+#endif
+
 #endif /* __LXC_SYSCALL_NUMBERS_H */
