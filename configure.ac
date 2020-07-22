@@ -622,7 +622,7 @@ AC_CHECK_HEADER([ifaddrs.h],
 AC_HEADER_MAJOR
 
 # Check for some syscalls functions
-AC_CHECK_FUNCS([setns pivot_root sethostname unshare rand_r confstr faccessat gettid memfd_create move_mount open_tree execveat clone3 fsopen fspick fsconfig])
+AC_CHECK_FUNCS([setns pivot_root sethostname unshare rand_r confstr faccessat gettid memfd_create move_mount open_tree execveat clone3 fsopen fspick fsconfig fsmount])
 AC_CHECK_TYPES([struct clone_args], [], [], [[#include <linux/sched.h>]])
 AC_CHECK_MEMBERS([struct clone_args.set_tid],[],[],[[#include <linux/sched.h>]])
 AC_CHECK_MEMBERS([struct clone_args.cgroup],[],[],[[#include <linux/sched.h>]])
