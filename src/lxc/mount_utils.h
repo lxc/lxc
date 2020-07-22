@@ -148,4 +148,6 @@ __hidden extern int mnt_attributes_new(unsigned int old_flags, unsigned int *new
 
 __hidden extern int mnt_attributes_old(unsigned int new_flags, unsigned int *old_flags);
 
+__hidden extern int mount_filesystem(const char *fs_name, const char *path, unsigned int attr_flags);
+
 #endif /* __LXC_MOUNT_UTILS_H */
