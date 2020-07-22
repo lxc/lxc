@@ -3,15 +3,21 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mount.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
+#include "log.h"
 #include "macro.h"
 #include "memory_utils.h"
 #include "mount_utils.h"
 #include "syscall_numbers.h"
 #include "syscall_wrappers.h"
+
+lxc_log_define(mount_utils, lxc);
 
 int mnt_attributes_new(unsigned int old_flags, unsigned int *new_flags)
 {
@@ -107,4 +113,28 @@ int mnt_attributes_old(unsigned int new_flags, unsigned int *old_flags)
 
 	*old_flags |= flags;
 	return new_flags;
+}
+
+int mount_filesystem(const char *fs_name, const char *path, unsigned int attr_flags)
+{
+	__do_close int fsfd = -EBADF;
+	unsigned int old_flags = 0;
+
+	fsfd = fsopen(fs_name, FSOPEN_CLOEXEC);
+	if (fsfd >= 0) {
+		__do_close int mfd = -EBADF;
+
+		if (fsconfig(fsfd, FSCONFIG_CMD_CREATE, NULL, NULL, 0))
+			return -1;
+
+		mfd = fsmount(fsfd, FSMOUNT_CLOEXEC, attr_flags);
+		if (mfd < 0)
+			return -1;
+
+		return move_mount(mfd, "", AT_FDCWD, path, MOVE_MOUNT_F_EMPTY_PATH);
+	}
+
+	TRACE("Falling back to old mount api");
+	mnt_attributes_old(attr_flags, &old_flags);
+	return mount("none", path, fs_name, old_flags, NULL);
 }
