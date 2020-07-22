@@ -85,7 +85,7 @@ struct lxc_log_category {
 };
 
 #ifndef NO_LXC_CONF
-__hidden extern int lxc_log_use_global_fd;
+extern int lxc_log_use_global_fd;
 #endif
 
 /*
@@ -278,8 +278,8 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
  * Helper macro to define and use static categories.
  */
 #define lxc_log_category_define(name, parent)					\
-	__hidden extern struct lxc_log_category lxc_log_category_##parent;	\
-	__hidden struct lxc_log_category lxc_log_category_##name = {		\
+	extern struct lxc_log_category lxc_log_category_##parent;	\
+	struct lxc_log_category lxc_log_category_##name = {		\
 		#name,								\
 		LXC_LOG_LEVEL_NOTSET,						\
 		NULL,								\
@@ -561,7 +561,7 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 		__internal_ret__;                             \
 	})
 
-__hidden extern int lxc_log_fd;
+extern int lxc_log_fd;
 
 __hidden extern int lxc_log_syslog(int facility);
 __hidden extern void lxc_log_syslog_enable(void);
