@@ -171,4 +171,14 @@ static inline int fsopen_lxc(const char *fs_name, unsigned int flags)
 extern int fsopen(const char *fs_name, unsigned int flags);
 #endif
 
+#ifndef HAVE_FSPICK
+static inline int fspick_lxc(int dfd, const char *path, unsigned int flags)
+{
+	return syscall(__NR_fspick, dfd, path, flags);
+}
+#define fspick fspick_lxc
+#else
+extern int fspick(int dfd, const char *path, unsigned int flags);
+#endif
+
 #endif /* __LXC_SYSCALL_WRAPPER_H */
