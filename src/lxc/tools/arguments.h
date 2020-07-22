@@ -11,6 +11,8 @@
 
 #include <lxc/lxccontainer.h>
 
+#include "compiler.h"
+
 struct lxc_arguments;
 
 typedef int (*lxc_arguments_parser_t)(struct lxc_arguments *, int, char *);
@@ -152,13 +154,11 @@ struct lxc_arguments {
 #define OPT_SHARE_UTS OPT_USAGE - 5
 #define OPT_SHARE_PID OPT_USAGE - 6
 
-extern int lxc_arguments_parse(struct lxc_arguments *args, int argc,
-			       char *const argv[]);
+__hidden extern int lxc_arguments_parse(struct lxc_arguments *args, int argc, char *const argv[]);
 
-extern int lxc_arguments_str_to_int(struct lxc_arguments *args,
-				    const char *str);
+__hidden extern int lxc_arguments_str_to_int(struct lxc_arguments *args, const char *str);
 
-extern bool lxc_setup_shared_ns(struct lxc_arguments *args, struct lxc_container *c);
+__hidden extern bool lxc_setup_shared_ns(struct lxc_arguments *args, struct lxc_container *c);
 
 #define lxc_info(arg, fmt, args...)                                                \
 	do {                                                                       \

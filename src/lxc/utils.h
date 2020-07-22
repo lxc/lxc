@@ -21,6 +21,7 @@
 #include <sys/vfs.h>
 #include <unistd.h>
 
+#include "compiler.h"
 #include "file_utils.h"
 #include "initutils.h"
 #include "macro.h"
@@ -29,10 +30,10 @@
 #include "string_utils.h"
 
 /* returns 1 on success, 0 if there were any failures */
-extern int lxc_rmdir_onedev(const char *path, const char *exclude);
-extern int get_u16(unsigned short *val, const char *arg, int base);
-extern int mkdir_p(const char *dir, mode_t mode);
-extern char *get_rundir(void);
+__hidden extern int lxc_rmdir_onedev(const char *path, const char *exclude);
+__hidden extern int get_u16(unsigned short *val, const char *arg, int base);
+__hidden extern int mkdir_p(const char *dir, mode_t mode);
+__hidden extern char *get_rundir(void);
 
 /* Define getline() if missing from the C library */
 #ifndef HAVE_GETLINE
@@ -64,14 +65,14 @@ struct lxc_popen_FILE {
  * Returns pointer to struct lxc_popen_FILE, that should be freed with lxc_pclose().
  * On error returns NULL.
  */
-extern struct lxc_popen_FILE *lxc_popen(const char *command);
+__hidden extern struct lxc_popen_FILE *lxc_popen(const char *command);
 
 /* pclose() replacement to be used on struct lxc_popen_FILE *,
  * returned by lxc_popen().
  * Waits for associated process to terminate, returns its exit status and
  * frees resources, pointed to by struct lxc_popen_FILE *.
  */
-extern int lxc_pclose(struct lxc_popen_FILE *fp);
+__hidden extern int lxc_pclose(struct lxc_popen_FILE *fp);
 
 static inline void __auto_lxc_pclose__(struct lxc_popen_FILE **f)
 {
@@ -83,16 +84,16 @@ static inline void __auto_lxc_pclose__(struct lxc_popen_FILE **f)
 /*
  * wait on a child we forked
  */
-extern int wait_for_pid(pid_t pid);
-extern int lxc_wait_for_pid_status(pid_t pid);
-extern int wait_for_pidfd(int pidfd);
+__hidden extern int wait_for_pid(pid_t pid);
+__hidden extern int lxc_wait_for_pid_status(pid_t pid);
+__hidden extern int wait_for_pidfd(int pidfd);
 
 #if HAVE_OPENSSL
-extern int sha1sum_file(char *fnam, unsigned char *md_value, unsigned int *md_len);
+__hidden extern int sha1sum_file(char *fnam, unsigned char *md_value, unsigned int *md_len);
 #endif
 
 /* initialize rand with urandom */
-extern int randseed(bool);
+__hidden extern int randseed(bool);
 
 /* are we unprivileged with respect to our namespaces */
 inline static bool am_guest_unpriv(void) {
@@ -126,52 +127,51 @@ inline static bool am_host_unpriv(void)
 /*
  * parse /proc/self/uid_map to find what @orig maps to
  */
-extern uid_t get_ns_uid(uid_t orig);
+__hidden extern uid_t get_ns_uid(uid_t orig);
 /*
  * parse /proc/self/gid_map to find what @orig maps to
  */
-extern gid_t get_ns_gid(gid_t orig);
+__hidden extern gid_t get_ns_gid(gid_t orig);
 
-extern bool dir_exists(const char *path);
+__hidden extern bool dir_exists(const char *path);
 
 #define FNV1A_64_INIT ((uint64_t)0xcbf29ce484222325ULL)
-extern uint64_t fnv_64a_buf(void *buf, size_t len, uint64_t hval);
+__hidden extern uint64_t fnv_64a_buf(void *buf, size_t len, uint64_t hval);
 
-extern bool is_shared_mountpoint(const char *path);
-extern int detect_shared_rootfs(void);
-extern bool detect_ramfs_rootfs(void);
-extern char *on_path(const char *cmd, const char *rootfs);
-extern bool cgns_supported(void);
-extern char *choose_init(const char *rootfs);
-extern bool switch_to_ns(pid_t pid, const char *ns);
-extern char *get_template_path(const char *t);
-extern int safe_mount(const char *src, const char *dest, const char *fstype,
-		      unsigned long flags, const void *data,
-		      const char *rootfs);
-extern int lxc_mount_proc_if_needed(const char *rootfs);
-extern int open_devnull(void);
-extern int set_stdfds(int fd);
-extern int null_stdfds(void);
-extern int lxc_preserve_ns(const int pid, const char *ns);
+__hidden extern bool is_shared_mountpoint(const char *path);
+__hidden extern int detect_shared_rootfs(void);
+__hidden extern bool detect_ramfs_rootfs(void);
+__hidden extern char *on_path(const char *cmd, const char *rootfs);
+__hidden extern bool cgns_supported(void);
+__hidden extern char *choose_init(const char *rootfs);
+__hidden extern bool switch_to_ns(pid_t pid, const char *ns);
+__hidden extern char *get_template_path(const char *t);
+__hidden extern int safe_mount(const char *src, const char *dest, const char *fstype,
+			       unsigned long flags, const void *data, const char *rootfs);
+__hidden extern int lxc_mount_proc_if_needed(const char *rootfs);
+__hidden extern int open_devnull(void);
+__hidden extern int set_stdfds(int fd);
+__hidden extern int null_stdfds(void);
+__hidden extern int lxc_preserve_ns(const int pid, const char *ns);
 
 /* Check whether a signal is blocked by a process. */
-extern bool task_blocks_signal(pid_t pid, int signal);
+__hidden extern bool task_blocks_signal(pid_t pid, int signal);
 
 /* Switch to a new uid and gid.
  * If LXC_INVALID_{G,U}ID is passed then the set{g,u}id() will not be called.
  */
-extern bool lxc_switch_uid_gid(uid_t uid, gid_t gid);
-extern bool lxc_setgroups(int size, gid_t list[]);
+__hidden extern bool lxc_switch_uid_gid(uid_t uid, gid_t gid);
+__hidden extern bool lxc_setgroups(int size, gid_t list[]);
 
 /* Find an unused loop device and associate it with source. */
-extern int lxc_prepare_loop_dev(const char *source, char *loop_dev, int flags);
+__hidden extern int lxc_prepare_loop_dev(const char *source, char *loop_dev, int flags);
 
 /* Clear all mounts on a given node.
  * >= 0 successfully cleared. The number returned is the number of umounts
  *      performed.
  * < 0  error umounting. Return -errno.
  */
-extern int lxc_unstack_mountpoint(const char *path, bool lazy);
+__hidden extern int lxc_unstack_mountpoint(const char *path, bool lazy);
 
 /*
  * run_command runs a command and collect it's std{err,out} output in buf.
@@ -185,8 +185,7 @@ extern int lxc_unstack_mountpoint(const char *path, bool lazy);
  *                     function must exec.
  * @param[in] args     Arguments to be passed to child_fn.
  */
-extern int run_command(char *buf, size_t buf_size, int (*child_fn)(void *),
-		       void *args);
+__hidden extern int run_command(char *buf, size_t buf_size, int (*child_fn)(void *), void *args);
 
 /*
  * run_command runs a command and collect it's std{err,out} output in buf, returns exit status.
@@ -200,16 +199,10 @@ extern int run_command(char *buf, size_t buf_size, int (*child_fn)(void *),
  *                     function must exec.
  * @param[in] args     Arguments to be passed to child_fn.
  */
-extern int run_command_status(char *buf, size_t buf_size, int (*child_fn)(void *),
-		       void *args);
+__hidden extern int run_command_status(char *buf, size_t buf_size, int (*child_fn)(void *),
+				       void *args);
 
-/* return copy of string @entry;  do not fail. */
-extern char *must_copy_string(const char *entry);
-
-/* Re-allocate a pointer, do not fail */
-extern void *must_realloc(void *orig, size_t sz);
-
-extern bool lxc_nic_exists(char *nic);
+__hidden extern bool lxc_nic_exists(char *nic);
 
 static inline uint64_t lxc_getpagesize(void)
 {
@@ -230,16 +223,16 @@ static inline uint64_t lxc_getpagesize(void)
  * If the caller passes in 0 they will receive 0 in return since this is invalid
  * input and 0 is not a power of 2.
  */
-extern uint64_t lxc_find_next_power2(uint64_t n);
+__hidden extern uint64_t lxc_find_next_power2(uint64_t n);
 
 /* Set a signal the child process will receive after the parent has died. */
-extern int lxc_set_death_signal(int signal, pid_t parent, int parent_status_fd);
-extern int fd_cloexec(int fd, bool cloexec);
-extern int lxc_rm_rf(const char *dirname);
-extern int lxc_setup_keyring(char *keyring_label);
-extern bool lxc_can_use_pidfd(int pidfd);
+__hidden extern int lxc_set_death_signal(int signal, pid_t parent, int parent_status_fd);
+__hidden extern int fd_cloexec(int fd, bool cloexec);
+__hidden extern int lxc_rm_rf(const char *dirname);
+__hidden extern int lxc_setup_keyring(char *keyring_label);
+__hidden extern bool lxc_can_use_pidfd(int pidfd);
 
-extern int fix_stdio_permissions(uid_t uid);
+__hidden extern int fix_stdio_permissions(uid_t uid);
 
 static inline bool uid_valid(uid_t uid)
 {
@@ -251,6 +244,6 @@ static inline bool gid_valid(gid_t gid)
 	return gid != LXC_INVALID_GID;
 }
 
-extern bool multiply_overflow(int64_t base, uint64_t mult, int64_t *res);
+__hidden extern bool multiply_overflow(int64_t base, uint64_t mult, int64_t *res);
 
 #endif /* __LXC_UTILS_H */

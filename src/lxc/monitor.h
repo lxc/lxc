@@ -8,6 +8,8 @@
 #include <sys/param.h>
 #include <sys/un.h>
 
+#include "compiler.h"
+
 typedef enum {
 	lxc_msg_state,
 	lxc_msg_priority,
@@ -16,25 +18,23 @@ typedef enum {
 
 struct lxc_msg {
 	lxc_msg_type_t type;
-	char name[NAME_MAX+1];
+	char name[NAME_MAX + 1];
 	int value;
 };
 
-extern int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr);
-extern int lxc_monitor_fifo_name(const char *lxcpath, char *fifo_path,
-				 size_t fifo_path_sz, int do_mkdirp);
-extern void lxc_monitor_send_state(const char *name, lxc_state_t state,
-			    const char *lxcpath);
-extern void lxc_monitor_send_exit_code(const char *name, int exit_code,
-			    const char *lxcpath);
-extern int lxc_monitord_spawn(const char *lxcpath);
+__hidden extern int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr);
+__hidden extern int lxc_monitor_fifo_name(const char *lxcpath, char *fifo_path, size_t fifo_path_sz,
+					  int do_mkdirp);
+__hidden extern void lxc_monitor_send_state(const char *name, lxc_state_t state, const char *lxcpath);
+__hidden extern void lxc_monitor_send_exit_code(const char *name, int exit_code, const char *lxcpath);
+__hidden extern int lxc_monitord_spawn(const char *lxcpath);
 
 /*
  * Open the monitoring mechanism for a specific container
  * The function will return an fd corresponding to the events
  * Returns a file descriptor on success, < 0 otherwise
  */
-extern int lxc_monitor_open(const char *lxcpath);
+__hidden extern int lxc_monitor_open(const char *lxcpath);
 
 /*
  * Blocking read for the next container state change
@@ -43,7 +43,7 @@ extern int lxc_monitor_open(const char *lxcpath);
  * Returns 0 if the monitored container has exited, > 0 if
  * data was read, < 0 otherwise
  */
-extern int lxc_monitor_read(int fd, struct lxc_msg *msg);
+__hidden extern int lxc_monitor_read(int fd, struct lxc_msg *msg);
 
 /*
  * Blocking read for the next container state change with timeout
@@ -53,7 +53,7 @@ extern int lxc_monitor_read(int fd, struct lxc_msg *msg);
  * Returns 0 if the monitored container has exited, > 0 if
  * data was read, < 0 otherwise
  */
-extern int lxc_monitor_read_timeout(int fd, struct lxc_msg *msg, int timeout);
+__hidden extern int lxc_monitor_read_timeout(int fd, struct lxc_msg *msg, int timeout);
 
 /*
  * Blocking read from multiple monitors for the next container state
@@ -65,8 +65,7 @@ extern int lxc_monitor_read_timeout(int fd, struct lxc_msg *msg, int timeout);
  * Returns 0 if the monitored container has exited, > 0 if
  * data was read, < 0 otherwise
  */
-extern int lxc_monitor_read_fdset(struct pollfd *fds, nfds_t nfds, struct lxc_msg *msg,
-			   int timeout);
+__hidden extern int lxc_monitor_read_fdset(struct pollfd *fds, nfds_t nfds, struct lxc_msg *msg,
+					   int timeout);
 
-
-#endif
+#endif /* __LXC_MONITOR_H */

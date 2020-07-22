@@ -109,7 +109,7 @@ static const struct lxc_storage_ops lvm_ops = {
 };
 
 /* nbd */
-const struct lxc_storage_ops nbd_ops = {
+static const struct lxc_storage_ops nbd_ops = {
     .detect = &nbd_detect,
     .mount = &nbd_mount,
     .umount = &nbd_umount,
@@ -234,7 +234,7 @@ static const struct lxc_storage_type *storage_query(struct lxc_conf *conf)
 	return &bdevs[i];
 }
 
-struct lxc_storage *storage_get(const char *type)
+static struct lxc_storage *storage_get(const char *type)
 {
 	size_t i;
 	struct lxc_storage *bdev;

@@ -10,6 +10,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "compiler.h"
 #include "list.h"
 
 struct lxc_conf;
@@ -180,107 +181,102 @@ struct lxc_netdev {
 };
 
 /* Convert a string mac address to a socket structure. */
-extern int lxc_convert_mac(char *macaddr, struct sockaddr *sockaddr);
+__hidden extern int lxc_convert_mac(char *macaddr, struct sockaddr *sockaddr);
 
 /* Move a device between namespaces. */
-extern int lxc_netdev_move_by_index(int ifindex, pid_t pid, const char *ifname);
-extern int lxc_netdev_move_by_name(const char *ifname, pid_t pid,
-				   const char *newname);
+__hidden extern int lxc_netdev_move_by_index(int ifindex, pid_t pid, const char *ifname);
+__hidden extern int lxc_netdev_move_by_name(const char *ifname, pid_t pid, const char *newname);
 
 /* Delete a network device. */
-extern int lxc_netdev_delete_by_name(const char *name);
-extern int lxc_netdev_delete_by_index(int ifindex);
+__hidden extern int lxc_netdev_delete_by_name(const char *name);
+__hidden extern int lxc_netdev_delete_by_index(int ifindex);
 
 /* Change the device name. */
-extern int lxc_netdev_rename_by_name(const char *oldname, const char *newname);
-extern int lxc_netdev_rename_by_index(int ifindex, const char *newname);
+__hidden extern int lxc_netdev_rename_by_name(const char *oldname, const char *newname);
+__hidden extern int lxc_netdev_rename_by_index(int ifindex, const char *newname);
 
-extern int netdev_set_flag(const char *name, int flag);
+__hidden extern int netdev_set_flag(const char *name, int flag);
 
 /* Set the device network up or down. */
-extern int lxc_netdev_isup(const char *name);
-extern int lxc_netdev_up(const char *name);
-extern int lxc_netdev_down(const char *name);
+__hidden extern int lxc_netdev_isup(const char *name);
+__hidden extern int lxc_netdev_up(const char *name);
+__hidden extern int lxc_netdev_down(const char *name);
 
 /* Change the mtu size for the specified device. */
-extern int lxc_netdev_set_mtu(const char *name, int mtu);
+__hidden extern int lxc_netdev_set_mtu(const char *name, int mtu);
 
 /* Create a virtual network devices. */
-extern int lxc_veth_create(const char *name1, const char *name2, pid_t pid,
-			   unsigned int mtu);
-extern int lxc_macvlan_create(const char *parent, const char *name, int mode);
-extern int lxc_vlan_create(const char *parent, const char *name,
-			   unsigned short vid);
+__hidden extern int lxc_veth_create(const char *name1, const char *name2, pid_t pid,
+				    unsigned int mtu);
+__hidden extern int lxc_macvlan_create(const char *parent, const char *name, int mode);
+__hidden extern int lxc_vlan_create(const char *parent, const char *name, unsigned short vid);
 
 /* Set ip address. */
-extern int lxc_ipv6_addr_add(int ifindex, struct in6_addr *addr,
-			     struct in6_addr *mcast,
-			     struct in6_addr *acast, int prefix);
+__hidden extern int lxc_ipv6_addr_add(int ifindex, struct in6_addr *addr, struct in6_addr *mcast,
+				      struct in6_addr *acast, int prefix);
 
-extern int lxc_ipv4_addr_add(int ifindex, struct in_addr *addr,
-			     struct in_addr *bcast, int prefix);
+__hidden extern int lxc_ipv4_addr_add(int ifindex, struct in_addr *addr, struct in_addr *bcast,
+				      int prefix);
 
 /* Get ip address. */
-extern int lxc_ipv4_addr_get(int ifindex, struct in_addr **res);
-extern int lxc_ipv6_addr_get(int ifindex, struct in6_addr **res);
+__hidden extern int lxc_ipv4_addr_get(int ifindex, struct in_addr **res);
+__hidden extern int lxc_ipv6_addr_get(int ifindex, struct in6_addr **res);
 
 /* Set default route. */
-extern int lxc_ipv4_gateway_add(int ifindex, struct in_addr *gw);
-extern int lxc_ipv6_gateway_add(int ifindex, struct in6_addr *gw);
+__hidden extern int lxc_ipv4_gateway_add(int ifindex, struct in_addr *gw);
+__hidden extern int lxc_ipv6_gateway_add(int ifindex, struct in6_addr *gw);
 
 /* Attach an interface to the bridge. */
-extern int lxc_bridge_attach(const char *bridge, const char *ifname);
-extern int lxc_ovs_delete_port(const char *bridge, const char *nic);
+__hidden extern int lxc_bridge_attach(const char *bridge, const char *ifname);
+__hidden extern int lxc_ovs_delete_port(const char *bridge, const char *nic);
 
-extern bool is_ovs_bridge(const char *bridge);
+__hidden extern bool is_ovs_bridge(const char *bridge);
 
 /* Create default gateway. */
-extern int lxc_route_create_default(const char *addr, const char *ifname,
-				    int gateway);
+__hidden extern int lxc_route_create_default(const char *addr, const char *ifname, int gateway);
 
 /* Delete default gateway. */
-extern int lxc_route_delete_default(const char *addr, const char *ifname,
-				    int gateway);
+__hidden extern int lxc_route_delete_default(const char *addr, const char *ifname, int gateway);
 
 /* Activate neighbor proxying. */
-extern int lxc_neigh_proxy_on(const char *name, int family);
+__hidden extern int lxc_neigh_proxy_on(const char *name, int family);
 
 /* Disable neighbor proxying. */
-extern int lxc_neigh_proxy_off(const char *name, int family);
+__hidden extern int lxc_neigh_proxy_off(const char *name, int family);
 
 /* Activate IP forwarding. */
-extern int lxc_ip_forwarding_on(const char *name, int family);
+__hidden extern int lxc_ip_forwarding_on(const char *name, int family);
 
 /* Disable IP forwarding. */
-extern int lxc_ip_forwarding_off(const char *name, int family);
+__hidden extern int lxc_ip_forwarding_off(const char *name, int family);
 
 /*
  * Generate a new unique network interface name.
  *
  * Allows for 62^n unique combinations.
  */
-extern char *lxc_ifname_alnum_case_sensitive(char *template);
+__hidden extern char *lxc_ifname_alnum_case_sensitive(char *template);
 
-extern const char *lxc_net_type_to_str(int type);
-extern int setup_private_host_hw_addr(char *veth1);
-extern int netdev_get_mtu(int ifindex);
-extern int lxc_network_move_created_netdev_priv(struct lxc_handler *handler);
-extern void lxc_delete_network(struct lxc_handler *handler);
-extern int lxc_find_gateway_addresses(struct lxc_handler *handler);
-extern int lxc_requests_empty_network(struct lxc_handler *handler);
-extern int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler);
-extern int lxc_setup_network_in_child_namespaces(const struct lxc_conf *conf,
-						 struct lxc_list *network);
-extern int lxc_network_send_to_child(struct lxc_handler *handler);
-extern int lxc_network_recv_from_parent(struct lxc_handler *handler);
-extern int lxc_network_send_name_and_ifindex_to_parent(struct lxc_handler *handler);
-extern int lxc_network_recv_name_and_ifindex_from_child(struct lxc_handler *handler);
-extern int lxc_netns_set_nsid(int netns_fd);
-extern int lxc_netns_get_nsid(__s32 fd);
-extern int lxc_create_network(struct lxc_handler *handler);
+__hidden extern const char *lxc_net_type_to_str(int type);
+__hidden extern int setup_private_host_hw_addr(char *veth1);
+__hidden extern int netdev_get_mtu(int ifindex);
+__hidden extern int lxc_network_move_created_netdev_priv(struct lxc_handler *handler);
+__hidden extern void lxc_delete_network(struct lxc_handler *handler);
+__hidden extern int lxc_find_gateway_addresses(struct lxc_handler *handler);
+__hidden extern int lxc_requests_empty_network(struct lxc_handler *handler);
+__hidden extern int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler);
+__hidden extern int lxc_setup_network_in_child_namespaces(const struct lxc_conf *conf,
+							  struct lxc_list *network);
+__hidden extern int lxc_network_send_to_child(struct lxc_handler *handler);
+__hidden extern int lxc_network_recv_from_parent(struct lxc_handler *handler);
+__hidden extern int lxc_network_send_name_and_ifindex_to_parent(struct lxc_handler *handler);
+__hidden extern int lxc_network_recv_name_and_ifindex_from_child(struct lxc_handler *handler);
+__hidden extern int lxc_netns_set_nsid(int netns_fd);
+__hidden extern int lxc_netns_get_nsid(__s32 fd);
+__hidden extern int lxc_create_network(struct lxc_handler *handler);
 
-extern char *is_wlan(const char *ifname);
-extern int lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid,
-				const char *newname);
+__hidden extern char *is_wlan(const char *ifname);
+__hidden extern int lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid,
+					 const char *newname);
 
 #endif /* __LXC_NETWORK_H */

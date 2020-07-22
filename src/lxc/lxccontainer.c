@@ -3540,7 +3540,7 @@ static bool add_rdepends(struct lxc_container *c, struct lxc_container *c0)
  * then default to those even if not requested.
  * Currently we only do this for btrfs.
  */
-bool should_default_to_snapshot(struct lxc_container *c0,
+static bool should_default_to_snapshot(struct lxc_container *c0,
 				struct lxc_container *c1)
 {
 	__do_free char *p0 = NULL, *p1 = NULL;

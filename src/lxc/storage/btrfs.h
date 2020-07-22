@@ -8,8 +8,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "compiler.h"
+
 #ifndef BTRFS_SUPER_MAGIC
-#  define BTRFS_SUPER_MAGIC       0x9123683E
+#define BTRFS_SUPER_MAGIC 0x9123683E
 #endif
 
 typedef uint8_t u8;
@@ -31,8 +33,7 @@ struct btrfs_ioctl_space_args {
 
 #define BTRFS_IOCTL_MAGIC 0x94
 #define BTRFS_IOC_SUBVOL_GETFLAGS _IOR(BTRFS_IOCTL_MAGIC, 25, unsigned long long)
-#define BTRFS_IOC_SPACE_INFO _IOWR(BTRFS_IOCTL_MAGIC, 20, \
-                                    struct btrfs_ioctl_space_args)
+#define BTRFS_IOC_SPACE_INFO _IOWR(BTRFS_IOCTL_MAGIC, 20, struct btrfs_ioctl_space_args)
 
 #define BTRFS_FSID_SIZE 16
 struct btrfs_ioctl_fs_info_args {
@@ -42,9 +43,7 @@ struct btrfs_ioctl_fs_info_args {
 	unsigned long long reserved[124];
 };
 
-#define BTRFS_IOC_FS_INFO _IOR(BTRFS_IOCTL_MAGIC, 31, \
-		struct btrfs_ioctl_fs_info_args)
-
+#define BTRFS_IOC_FS_INFO _IOR(BTRFS_IOCTL_MAGIC, 31, struct btrfs_ioctl_fs_info_args)
 
 #define BTRFS_SUBVOL_NAME_MAX 4039
 #define BTRFS_PATH_NAME_MAX 4087
@@ -55,14 +54,10 @@ struct btrfs_ioctl_vol_args {
 };
 
 #define BTRFS_IOCTL_MAGIC 0x94
-#define BTRFS_IOC_SUBVOL_CREATE_V2 _IOW(BTRFS_IOCTL_MAGIC, 24, \
-                                   struct btrfs_ioctl_vol_args_v2)
-#define BTRFS_IOC_SNAP_CREATE_V2 _IOW(BTRFS_IOCTL_MAGIC, 23, \
-                                   struct btrfs_ioctl_vol_args_v2)
-#define BTRFS_IOC_SUBVOL_CREATE _IOW(BTRFS_IOCTL_MAGIC, 14, \
-                                   struct btrfs_ioctl_vol_args)
-#define BTRFS_IOC_SNAP_DESTROY _IOW(BTRFS_IOCTL_MAGIC, 15, \
-                                   struct btrfs_ioctl_vol_args)
+#define BTRFS_IOC_SUBVOL_CREATE_V2 _IOW(BTRFS_IOCTL_MAGIC, 24, struct btrfs_ioctl_vol_args_v2)
+#define BTRFS_IOC_SNAP_CREATE_V2 _IOW(BTRFS_IOCTL_MAGIC, 23, struct btrfs_ioctl_vol_args_v2)
+#define BTRFS_IOC_SUBVOL_CREATE _IOW(BTRFS_IOCTL_MAGIC, 14, struct btrfs_ioctl_vol_args)
+#define BTRFS_IOC_SNAP_DESTROY _IOW(BTRFS_IOCTL_MAGIC, 15, struct btrfs_ioctl_vol_args)
 
 #define BTRFS_QGROUP_INHERIT_SET_LIMITS (1ULL << 0)
 
@@ -185,8 +180,7 @@ struct btrfs_ioctl_search_args {
 	char buf[BTRFS_SEARCH_ARGS_BUFSIZE];
 };
 
-#define BTRFS_IOC_TREE_SEARCH _IOWR(BTRFS_IOCTL_MAGIC, 17, \
-                                   struct btrfs_ioctl_search_args)
+#define BTRFS_IOC_TREE_SEARCH _IOWR(BTRFS_IOCTL_MAGIC, 17, struct btrfs_ioctl_search_args)
 #define BTRFS_UUID_SIZE 16
 
 struct btrfs_timespec {
@@ -283,8 +277,7 @@ struct btrfs_root_item {
 	__le64 reserved[8]; /* for future */
 } __attribute__ ((__packed__));
 
-#define BTRFS_IOC_INO_LOOKUP _IOWR(BTRFS_IOCTL_MAGIC, 18, \
-                                   struct btrfs_ioctl_ino_lookup_args)
+#define BTRFS_IOC_INO_LOOKUP _IOWR(BTRFS_IOCTL_MAGIC, 18, struct btrfs_ioctl_ino_lookup_args)
 
 #define BTRFS_INO_LOOKUP_PATH_MAX 4080
 struct btrfs_ioctl_ino_lookup_args {
@@ -362,30 +355,28 @@ struct my_btrfs_tree {
 	int num;
 };
 
-extern int btrfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
-			    const char *oldname, const char *cname,
-			    const char *oldpath, const char *lxcpath, int snap,
-			    uint64_t newsize, struct lxc_conf *conf);
-extern int btrfs_create(struct lxc_storage *bdev, const char *dest, const char *n,
-			struct bdev_specs *specs, const struct lxc_conf *conf);
-extern int btrfs_destroy(struct lxc_storage *orig);
-extern bool btrfs_detect(const char *path);
-extern int btrfs_mount(struct lxc_storage *bdev);
-extern int btrfs_umount(struct lxc_storage *bdev);
+__hidden extern int btrfs_clonepaths(struct lxc_storage *orig, struct lxc_storage *new,
+				     const char *oldname, const char *cname, const char *oldpath,
+				     const char *lxcpath, int snap, uint64_t newsize,
+				     struct lxc_conf *conf);
+__hidden extern int btrfs_create(struct lxc_storage *bdev, const char *dest, const char *n,
+				 struct bdev_specs *specs, const struct lxc_conf *conf);
+__hidden extern int btrfs_destroy(struct lxc_storage *orig);
+__hidden extern bool btrfs_detect(const char *path);
+__hidden extern int btrfs_mount(struct lxc_storage *bdev);
+__hidden extern int btrfs_umount(struct lxc_storage *bdev);
 
-extern char *get_btrfs_subvol_path(int fd, u64 dir_id, u64 objid, char *name,
-				   u16 name_len);
-extern int btrfs_list_get_path_rootid(int fd, u64 *treeid);
-extern bool is_btrfs_fs(const char *path);
-extern int is_btrfs_subvol(const char *path);
-extern bool btrfs_try_remove_subvol(const char *path);
-extern int btrfs_same_fs(const char *orig, const char *new);
-extern int btrfs_snapshot(const char *orig, const char *new);
-extern int btrfs_snapshot_wrapper(void *data);
-extern bool btrfs_create_clone(struct lxc_conf *conf, struct lxc_storage *orig,
-			       struct lxc_storage *new, uint64_t newsize);
-extern bool btrfs_create_snapshot(struct lxc_conf *conf,
-				  struct lxc_storage *orig,
-				  struct lxc_storage *new, uint64_t newsize);
+__hidden extern char *get_btrfs_subvol_path(int fd, u64 dir_id, u64 objid, char *name, u16 name_len);
+__hidden extern int btrfs_list_get_path_rootid(int fd, u64 *treeid);
+__hidden extern bool is_btrfs_fs(const char *path);
+__hidden extern int is_btrfs_subvol(const char *path);
+__hidden extern bool btrfs_try_remove_subvol(const char *path);
+__hidden extern int btrfs_same_fs(const char *orig, const char *new);
+__hidden extern int btrfs_snapshot(const char *orig, const char *new);
+__hidden extern int btrfs_snapshot_wrapper(void *data);
+__hidden extern bool btrfs_create_clone(struct lxc_conf *conf, struct lxc_storage *orig,
+					struct lxc_storage *new, uint64_t newsize);
+__hidden extern bool btrfs_create_snapshot(struct lxc_conf *conf, struct lxc_storage *orig,
+					   struct lxc_storage *new, uint64_t newsize);
 
 #endif /* __LXC_BTRFS_H */

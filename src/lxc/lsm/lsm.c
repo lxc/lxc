@@ -9,6 +9,7 @@
 #include <sys/param.h>
 #include <unistd.h>
 
+#include "compiler.h"
 #include "conf.h"
 #include "config.h"
 #include "log.h"
@@ -18,9 +19,9 @@ lxc_log_define(lsm, lxc);
 
 static struct lsm_drv *drv = NULL;
 
-extern struct lsm_drv *lsm_apparmor_drv_init(void);
-extern struct lsm_drv *lsm_selinux_drv_init(void);
-extern struct lsm_drv *lsm_nop_drv_init(void);
+__hidden extern struct lsm_drv *lsm_apparmor_drv_init(void);
+__hidden extern struct lsm_drv *lsm_selinux_drv_init(void);
+__hidden extern struct lsm_drv *lsm_nop_drv_init(void);
 
 __attribute__((constructor))
 void lsm_init(void)

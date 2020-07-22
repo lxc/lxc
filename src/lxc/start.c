@@ -30,6 +30,7 @@
 #include "cgroup.h"
 #include "commands.h"
 #include "commands_utils.h"
+#include "compiler.h"
 #include "conf.h"
 #include "config.h"
 #include "confile_utils.h"
@@ -2125,30 +2126,28 @@ int __lxc_start(struct lxc_handler *handler, struct lxc_operations *ops,
 	if (error_num)
 		*error_num = handler->exit_status;
 
-/* These are not the droids you are looking for. */
-__private_goto1:
 	lxc_delete_network(handler);
-
-__private_goto2:
 	detach_block_device(handler->conf);
-
-__private_goto3:
 	lxc_end(handler);
-
 	return ret;
 
-/* These are the droids you are looking for. */
 out_abort:
 	lxc_abort(handler);
-	goto __private_goto3;
+	lxc_end(handler);
+	return ret;
 
 out_detach_blockdev:
 	lxc_abort(handler);
-	goto __private_goto2;
+	detach_block_device(handler->conf);
+	lxc_end(handler);
+	return ret;
 
 out_delete_network:
 	lxc_abort(handler);
-	goto __private_goto1;
+	lxc_delete_network(handler);
+	detach_block_device(handler->conf);
+	lxc_end(handler);
+	return ret;
 }
 
 struct start_args {

@@ -122,7 +122,7 @@ __hidden extern int __netlink_transaction(struct nl_handler *handler, struct nlm
  *
  * Returns 0 on success, < 0 otherwise
  */
-__hidden int nla_put_string(struct nlmsg *nlmsg, int attr, const char *string);
+__hidden extern int nla_put_string(struct nlmsg *nlmsg, int attr, const char *string);
 
 /*
  * nla_put_buffer: copy a buffer with a specified size to a netlink
@@ -135,8 +135,7 @@ __hidden int nla_put_string(struct nlmsg *nlmsg, int attr, const char *string);
  *
  * Returns 0 on success, < 0 otherwise
  */
-int nla_put_buffer(struct nlmsg *nlmsg, int attr,
-		   const void *data, size_t size);
+__hidden extern int nla_put_buffer(struct nlmsg *nlmsg, int attr, const void *data, size_t size);
 
 /*
  * nla_put_u32: copy an integer to a netlink message attribute
@@ -147,7 +146,7 @@ int nla_put_buffer(struct nlmsg *nlmsg, int attr,
  *
  * Returns 0 on success, < 0 otherwise
  */
-int nla_put_u32(struct nlmsg *nlmsg, int attr, int value);
+__hidden extern int nla_put_u32(struct nlmsg *nlmsg, int attr, int value);
 
 /*
  * nla_put_u16: copy an integer to a netlink message attribute
@@ -158,7 +157,7 @@ int nla_put_u32(struct nlmsg *nlmsg, int attr, int value);
  *
  * Returns 0 on success, < 0 otherwise
  */
-int nla_put_u16(struct nlmsg *nlmsg, int attr, unsigned short value);
+__hidden extern int nla_put_u16(struct nlmsg *nlmsg, int attr, unsigned short value);
 
 /*
  * nla_put_attr: add an attribute name to a netlink
@@ -168,7 +167,7 @@ int nla_put_u16(struct nlmsg *nlmsg, int attr, unsigned short value);
  *
  * Returns 0 on success, < 0 otherwise
  */
-int nla_put_attr(struct nlmsg *nlmsg, int attr);
+__hidden extern int nla_put_attr(struct nlmsg *nlmsg, int attr);
 
 /*
  * nla_begin_nested: begin the nesting attribute

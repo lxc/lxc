@@ -317,7 +317,7 @@ enum lxc_hostarch_t {
 	lxc_seccomp_arch_unknown = 999,
 };
 
-int get_hostarch(void)
+static int get_hostarch(void)
 {
 	struct utsname uts;
 	if (uname(&uts) < 0) {
@@ -351,8 +351,8 @@ int get_hostarch(void)
 	return lxc_seccomp_arch_unknown;
 }
 
-scmp_filter_ctx get_new_ctx(enum lxc_hostarch_t n_arch,
-			    uint32_t default_policy_action, bool *needs_merge)
+static scmp_filter_ctx get_new_ctx(enum lxc_hostarch_t n_arch, uint32_t default_policy_action,
+				   bool *needs_merge)
 {
 	int ret;
 	uint32_t arch;
@@ -485,8 +485,8 @@ scmp_filter_ctx get_new_ctx(enum lxc_hostarch_t n_arch,
 	return ctx;
 }
 
-bool do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
-			 struct seccomp_v2_rule *rule)
+static bool do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
+				struct seccomp_v2_rule *rule)
 {
 	int i, nr, ret;
 	struct scmp_arg_cmp arg_cmp[6];

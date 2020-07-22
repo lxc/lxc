@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <sys/mman.h>
 
+#include "compiler.h"
+
 /**
  * lxc_ringbuf - Implements a simple and efficient memory mapped ringbuffer.
  * - The "addr" field of struct lxc_ringbuf is considered immutable. Instead the
@@ -29,10 +31,10 @@ struct lxc_ringbuf {
  *
  * @param[in] size	Size of the new ringbuffer as a power of 2.
  */
-extern int lxc_ringbuf_create(struct lxc_ringbuf *buf, size_t size);
-extern void lxc_ringbuf_move_read_addr(struct lxc_ringbuf *buf, size_t len);
-extern int lxc_ringbuf_write(struct lxc_ringbuf *buf, const char *msg, size_t len);
-extern int lxc_ringbuf_read(struct lxc_ringbuf *buf, char *out, size_t *len);
+__hidden extern int lxc_ringbuf_create(struct lxc_ringbuf *buf, size_t size);
+__hidden extern void lxc_ringbuf_move_read_addr(struct lxc_ringbuf *buf, size_t len);
+__hidden extern int lxc_ringbuf_write(struct lxc_ringbuf *buf, const char *msg, size_t len);
+__hidden extern int lxc_ringbuf_read(struct lxc_ringbuf *buf, char *out, size_t *len);
 
 static inline void lxc_ringbuf_release(struct lxc_ringbuf *buf)
 {
