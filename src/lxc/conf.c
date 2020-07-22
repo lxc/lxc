@@ -48,6 +48,7 @@
 #include "lxcseccomp.h"
 #include "macro.h"
 #include "memory_utils.h"
+#include "mount_utils.h"
 #include "namespace.h"
 #include "network.h"
 #include "parse.h"

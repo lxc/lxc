@@ -26,6 +26,7 @@ noinst_HEADERS = api_extensions.h \
 		 macro.h \
 		 memory_utils.h \
 		 monitor.h \
+		 mount_utils.h \
 		 namespace.h \
 		 process_utils.h \
 		 rexec.h \
@@ -125,6 +126,7 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    macro.h \
 		    memory_utils.h \
 		    mainloop.c mainloop.h \
+		    mount_utils.c mount_utils.h \
 		    namespace.c namespace.h \
 		    network.c network.h \
 		    nl.c nl.h \
