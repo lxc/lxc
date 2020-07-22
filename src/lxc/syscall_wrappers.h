@@ -181,4 +181,14 @@ static inline int fspick_lxc(int dfd, const char *path, unsigned int flags)
 extern int fspick(int dfd, const char *path, unsigned int flags);
 #endif
 
+#ifndef HAVE_FSCONFIG
+static inline int fsconfig_lxc(int fd, unsigned int cmd, const char *key, const void *value, int aux)
+{
+	return syscall(__NR_fsconfig, fd, cmd, key, value, aux);
+}
+#define fsconfig fsconfig_lxc
+#else
+extern int fsconfig(int fd, unsigned int cmd, const char *key, const void *value, int aux);
+#endif
+
 #endif /* __LXC_SYSCALL_WRAPPER_H */
