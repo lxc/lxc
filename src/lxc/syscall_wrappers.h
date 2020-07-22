@@ -161,4 +161,14 @@ static inline int open_tree_lxc(int dfd, const char *filename, unsigned int flag
 extern int open_tree(int dfd, const char *filename, unsigned int flags);
 #endif
 
+#ifndef HAVE_FSOPEN
+static inline int fsopen_lxc(const char *fs_name, unsigned int flags)
+{
+	return syscall(__NR_fsopen, fs_name, flags);
+}
+#define fsopen fsopen_lxc
+#else
+extern int fsopen(const char *fs_name, unsigned int flags);
+#endif
+
 #endif /* __LXC_SYSCALL_WRAPPER_H */
