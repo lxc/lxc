@@ -1440,22 +1440,16 @@ endif
 if ENABLE_COMMANDS
 # Binaries shipping with liblxc
 init_lxc_SOURCES = cmd/lxc_init.c \
+		   af_unix.c af_unix.h \
 		   caps.c caps.h \
-		   compiler.h \
 		   error.c error.h \
 		   file_utils.c file_utils.h \
 		   initutils.c initutils.h \
 		   log.c log.h \
+		   macro.h \
 		   memory_utils.h \
-		   parse.c parse.h \
-		   process_utils.c process_utils.h \
-		   ringbuf.c ringbuf.h \
-		   string_utils.c string_utils.h \
-		   syscall_numbers.h
-if ENABLE_SECCOMP
-init_lxc_SOURCES += seccomp.c lxcseccomp.h
-endif
-
+		   namespace.c namespace.h \
+		   string_utils.c string_utils.h
 init_lxc_LDFLAGS = -pthread
 
 lxc_monitord_SOURCES = cmd/lxc_monitord.c \
