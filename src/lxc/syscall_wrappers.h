@@ -161,4 +161,44 @@ static inline int open_tree_lxc(int dfd, const char *filename, unsigned int flag
 extern int open_tree(int dfd, const char *filename, unsigned int flags);
 #endif
 
+#ifndef HAVE_FSOPEN
+static inline int fsopen_lxc(const char *fs_name, unsigned int flags)
+{
+	return syscall(__NR_fsopen, fs_name, flags);
+}
+#define fsopen fsopen_lxc
+#else
+extern int fsopen(const char *fs_name, unsigned int flags);
+#endif
+
+#ifndef HAVE_FSPICK
+static inline int fspick_lxc(int dfd, const char *path, unsigned int flags)
+{
+	return syscall(__NR_fspick, dfd, path, flags);
+}
+#define fspick fspick_lxc
+#else
+extern int fspick(int dfd, const char *path, unsigned int flags);
+#endif
+
+#ifndef HAVE_FSCONFIG
+static inline int fsconfig_lxc(int fd, unsigned int cmd, const char *key, const void *value, int aux)
+{
+	return syscall(__NR_fsconfig, fd, cmd, key, value, aux);
+}
+#define fsconfig fsconfig_lxc
+#else
+extern int fsconfig(int fd, unsigned int cmd, const char *key, const void *value, int aux);
+#endif
+
+#ifndef HAVE_FSMOUNT
+static inline int fsmount_lxc(int fs_fd, unsigned int flags, unsigned int attr_flags)
+{
+	return syscall(__NR_fsmount, fs_fd, flags, attr_flags);
+}
+#define fsmount fsmount_lxc
+#else
+extern int fsmount(int fs_fd, unsigned int flags, unsigned int attr_flags);
+#endif
+
 #endif /* __LXC_SYSCALL_WRAPPER_H */

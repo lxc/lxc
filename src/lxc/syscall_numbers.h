@@ -563,4 +563,84 @@
 	#endif
 #endif
 
+#ifndef __NR_fsopen
+	#if defined __alpha__
+		#define __NR_fsopen 540
+	#elif defined _MIPS_SIM
+		#if _MIPS_SIM == _MIPS_SIM_ABI32	/* o32 */
+			#define __NR_fsopen 4430
+		#endif
+		#if _MIPS_SIM == _MIPS_SIM_NABI32	/* n32 */
+			#define __NR_fsopen 6430
+		#endif
+		#if _MIPS_SIM == _MIPS_SIM_ABI64	/* n64 */
+			#define __NR_fsopen 5430
+		#endif
+	#elif defined __ia64__
+		#define __NR_fsopen (430 + 1024)
+	#else
+		#define __NR_fsopen 430
+	#endif
+#endif
+
+#ifndef __NR_fspick
+	#if defined __alpha__
+		#define __NR_fspick 543
+	#elif defined _MIPS_SIM
+		#if _MIPS_SIM == _MIPS_SIM_ABI32	/* o32 */
+			#define __NR_fspick 4433
+		#endif
+		#if _MIPS_SIM == _MIPS_SIM_NABI32	/* n32 */
+			#define __NR_fspick 6433
+		#endif
+		#if _MIPS_SIM == _MIPS_SIM_ABI64	/* n64 */
+			#define __NR_fspick 5433
+		#endif
+	#elif defined __ia64__
+		#define __NR_fspick (433 + 1024)
+	#else
+		#define __NR_fspick 433
+	#endif
+#endif
+
+#ifndef __NR_fsconfig
+	#if defined __alpha__
+		#define __NR_fsconfig 541
+	#elif defined _MIPS_SIM
+		#if _MIPS_SIM == _MIPS_SIM_ABI32	/* o32 */
+			#define __NR_fsconfig 4431
+		#endif
+		#if _MIPS_SIM == _MIPS_SIM_NABI32	/* n32 */
+			#define __NR_fsconfig 6431
+		#endif
+		#if _MIPS_SIM == _MIPS_SIM_ABI64	/* n64 */
+			#define __NR_fsconfig 5431
+		#endif
+	#elif defined __ia64__
+		#define __NR_fsconfig (431 + 1024)
+	#else
+		#define __NR_fsconfig 431
+	#endif
+#endif
+
+#ifndef __NR_fsmount
+	#if defined __alpha__
+		#define __NR_fsmount 542
+	#elif defined _MIPS_SIM
+		#if _MIPS_SIM == _MIPS_SIM_ABI32	/* o32 */
+			#define __NR_fsmount 4432
+		#endif
+		#if _MIPS_SIM == _MIPS_SIM_NABI32	/* n32 */
+			#define __NR_fsmount 6432
+		#endif
+		#if _MIPS_SIM == _MIPS_SIM_ABI64	/* n64 */
+			#define __NR_fsmount 5432
+		#endif
+	#elif defined __ia64__
+		#define __NR_fsmount (432 + 1024)
+	#else
+		#define __NR_fsmount 432
+	#endif
+#endif
+
 #endif /* __LXC_SYSCALL_NUMBERS_H */
