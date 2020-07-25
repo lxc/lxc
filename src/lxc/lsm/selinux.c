@@ -32,15 +32,11 @@ lxc_log_define(selinux, lsm);
  */
 static char *selinux_process_label_get(pid_t pid)
 {
-	security_context_t ctx;
 	char *label;
 
-	if (getpidcon_raw(pid, &ctx) < 0) {
-		SYSERROR("failed to get SELinux context for pid %d", pid);
-		return NULL;
-	}
-	label = strdup((char *)ctx);
-	freecon(ctx);
+	if (getpidcon_raw(pid, &label) < 0)
+		return log_error_errno(NULL, errno, "failed to get SELinux context for pid %d", pid);
+
 	return label;
 }
 
@@ -63,10 +59,8 @@ static int selinux_process_label_set(const char *inlabel, struct lxc_conf *conf,
 	const char *label;
 
 	label = inlabel ? inlabel : conf->lsm_se_context;
-	if (!label) {
-
+	if (!label)
 		label = DEFAULT_LABEL;
-	}
 
 	if (strcmp(label, "unconfined_t") == 0)
 		return 0;
@@ -75,11 +69,9 @@ static int selinux_process_label_set(const char *inlabel, struct lxc_conf *conf,
 		ret = setexeccon_raw((char *)label);
 	else
 		ret = setcon_raw((char *)label);
-	if (ret < 0) {
-		SYSERROR("Failed to set SELinux%s context to \"%s\"",
-			 on_exec ? " exec" : "", label);
-		return -1;
-	}
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to set SELinux%s context to \"%s\"",
+				       on_exec ? " exec" : "", label);
 
 	INFO("Changed SELinux%s context to \"%s\"", on_exec ? " exec" : "", label);
 	return 0;
@@ -98,16 +90,17 @@ static int selinux_keyring_label_set(char *label)
 };
 
 static struct lsm_drv selinux_drv = {
-	.name = "SELinux",
-	.enabled           = is_selinux_enabled,
-	.process_label_get = selinux_process_label_get,
-	.process_label_set = selinux_process_label_set,
-	.keyring_label_set = selinux_keyring_label_set,
+	.name			= "SELinux",
+	.enabled		= is_selinux_enabled,
+	.process_label_get	= selinux_process_label_get,
+	.process_label_set	= selinux_process_label_set,
+	.keyring_label_set	= selinux_keyring_label_set,
 };
 
 struct lsm_drv *lsm_selinux_drv_init(void)
 {
 	if (!is_selinux_enabled())
 		return NULL;
+
 	return &selinux_drv;
 }
