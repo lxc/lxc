@@ -1373,6 +1373,9 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	char *cookie = conf->seccomp.notifier.cookie;
 	uint64_t req_id;
 
+	if (events & EPOLLHUP)
+		return log_trace(LXC_MAINLOOP_CLOSE, "Syscall supervisee already exited");
+
 	memset(req, 0, sizeof(*req));
 	ret = seccomp_notify_receive(fd, req);
 	if (ret) {
