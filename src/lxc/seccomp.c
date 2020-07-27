@@ -7,6 +7,7 @@
 #include <seccomp.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/epoll.h>
 #include <sys/mount.h>
 #include <sys/utsname.h>
 
