@@ -112,8 +112,10 @@ static inline int signalfd(int fd, const sigset_t *mask, int flags)
 	int retval;
 
 	retval = syscall(__NR_signalfd4, fd, mask, _NSIG / 8, flags);
+#ifdef __NR_signalfd
 	if (errno == ENOSYS && flags == 0)
 		retval = syscall(__NR_signalfd, fd, mask, _NSIG / 8);
+#endif
 
 	return retval;
 }
