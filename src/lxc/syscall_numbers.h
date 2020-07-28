@@ -228,9 +228,6 @@
 		#if _MIPS_SIM == _MIPS_SIM_ABI64	/* n64 */
 			#define __NR_signalfd 5276
 		#endif
-	#else
-		#define -1
-		#warning "__NR_signalfd not defined for your architecture"
 	#endif
 #endif
 
