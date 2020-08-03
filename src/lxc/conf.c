@@ -3416,7 +3416,14 @@ static int lxc_free_idmap(struct lxc_list *id_map)
 
 	return 0;
 }
-define_cleanup_function(struct lxc_list *, lxc_free_idmap);
+
+static int __lxc_free_idmap(struct lxc_list *id_map)
+{
+	lxc_free_idmap(id_map);
+	free(id_map);
+	return 0;
+}
+define_cleanup_function(struct lxc_list *, __lxc_free_idmap);
 
 int lxc_clear_idmaps(struct lxc_conf *c)
 {
@@ -3968,7 +3975,7 @@ static struct lxc_list *get_minimal_idmap(const struct lxc_conf *conf,
 int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *), void *data,
 		  const char *fn_name)
 {
-	call_cleaner(lxc_free_idmap) struct lxc_list *idmap = NULL;
+	call_cleaner(__lxc_free_idmap) struct lxc_list *idmap = NULL;
 	int ret = -1, status = -1;
 	char c = '1';
 	struct userns_fn_data d = {
@@ -4045,7 +4052,7 @@ int userns_exec_minimal(const struct lxc_conf *conf,
 			int (*fn_parent)(void *), void *fn_parent_data,
 			int (*fn_child)(void *), void *fn_child_data)
 {
-	call_cleaner(lxc_free_idmap) struct lxc_list *idmap = NULL;
+	call_cleaner(__lxc_free_idmap) struct lxc_list *idmap = NULL;
 	uid_t resuid = LXC_INVALID_UID;
 	gid_t resgid = LXC_INVALID_GID;
 	char c = '1';
@@ -4336,10 +4343,8 @@ on_error:
 	if (pid > 0)
 		ret = wait_for_pid(pid);
 
-	if (idmap) {
-		lxc_free_idmap(idmap);
-		free(idmap);
-	}
+	if (idmap)
+		__lxc_free_idmap(idmap);
 
 	if (host_uid_map && (host_uid_map != container_root_uid))
 		free(host_uid_map);
@@ -4380,7 +4385,7 @@ static int add_idmap_entry(struct lxc_list *idmap, enum idtype idtype,
 int userns_exec_mapped_root(const char *path, int path_fd,
 			    const struct lxc_conf *conf)
 {
-	call_cleaner(lxc_free_idmap) struct lxc_list *idmap = NULL;
+	call_cleaner(__lxc_free_idmap) struct lxc_list *idmap = NULL;
 	__do_close int fd = -EBADF;
 	int target_fd = -EBADF;
 	char c = '1';
