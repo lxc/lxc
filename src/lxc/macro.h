@@ -504,4 +504,12 @@ enum {
 							     typeof(&*(x))), \
 			       sizeof(x) / sizeof((x)[0]), ((void)0)))
 
+#ifndef TIOCGPTPEER
+	#if defined __sparc__
+		#define TIOCGPTPEER _IO('t', 137)
+	#else
+		#define TIOCGPTPEER _IO('T', 0x41)
+	#endif
+#endif
+
 #endif /* __LXC_MACRO_H */
