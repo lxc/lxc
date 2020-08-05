@@ -41,6 +41,7 @@ typedef enum {
 	LXC_CMD_GET_INIT_PIDFD,
 	LXC_CMD_GET_LIMITING_CGROUP,
 	LXC_CMD_GET_LIMITING_CGROUP2_FD,
+	LXC_CMD_GET_DEVPTS_FD,
 	LXC_CMD_MAX,
 } lxc_cmd_t;
 
@@ -132,5 +133,6 @@ __hidden extern int lxc_cmd_get_cgroup2_fd(const char *name, const char *lxcpath
 __hidden extern char *lxc_cmd_get_limiting_cgroup_path(const char *name, const char *lxcpath,
 						       const char *subsystem);
 __hidden extern int lxc_cmd_get_limiting_cgroup2_fd(const char *name, const char *lxcpath);
+__hidden extern int lxc_cmd_get_devpts_fd(const char *name, const char *lxcpath);
 
 #endif /* __commands_h */

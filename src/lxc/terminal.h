@@ -110,7 +110,8 @@ __hidden extern int  lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, in
  * - sets up SIGWINCH handler, winsz, and new terminal settings
  *   (Handlers for SIGWINCH and I/O are not registered in a mainloop.)
  */
-__hidden extern int lxc_terminal_create(struct lxc_terminal *console);
+__hidden extern int lxc_terminal_create(const char *name, const char *lxcpath,
+					struct lxc_terminal *console);
 
 /**
  * lxc_terminal_setup: Create a new terminal.

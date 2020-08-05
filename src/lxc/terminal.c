@@ -828,7 +828,7 @@ int lxc_terminal_create_log_file(struct lxc_terminal *terminal)
 	return 0;
 }
 
-int lxc_terminal_create(struct lxc_terminal *terminal)
+static int lxc_terminal_create_foreign(struct lxc_terminal *terminal)
 {
 	int ret;
 
@@ -869,6 +869,59 @@ err:
 	return -ENODEV;
 }
 
+static int lxc_terminal_create_native(const char *name, const char *lxcpath,
+				      struct lxc_terminal *terminal)
+{
+	__do_close int devpts_fd = -EBADF, ptx_fd = -EBADF, pty_fd = -EBADF;
+	int ret;
+
+	devpts_fd = lxc_cmd_get_devpts_fd(name, lxcpath);
+	if (devpts_fd < 0)
+		return log_error_errno(-1, errno, "Failed to receive devpts fd");
+
+	ptx_fd = openat(devpts_fd, "ptmx", O_RDWR | O_NOCTTY | O_CLOEXEC);
+	if (ptx_fd < 0)
+		return log_error_errno(-1, errno, "Failed to open terminal multiplexer device");
+
+	ret = grantpt(ptx_fd);
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to grant access to multiplexer device");
+
+	ret = unlockpt(ptx_fd);
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to unlock multiplexer device device");
+
+	pty_fd = ioctl(ptx_fd, TIOCGPTPEER, O_RDWR | O_NOCTTY | O_CLOEXEC);
+	if (pty_fd < 0)
+		return log_error_errno(-1, errno, "Failed to allocate new pty device");
+
+	ret = ttyname_r(terminal->pty, terminal->name, sizeof(terminal->name));
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to retrieve name of terminal pty");
+
+	terminal->ptx = move_fd(ptx_fd);
+	terminal->pty = move_fd(pty_fd);
+	ret = lxc_terminal_peer_default(terminal);
+	if (ret < 0) {
+		ERROR("Failed to allocate proxy terminal");
+		goto err;
+	}
+
+	return 0;
+
+err:
+	lxc_terminal_delete(terminal);
+	return -ENODEV;
+}
+
+int lxc_terminal_create(const char *name, const char *lxcpath, struct lxc_terminal *terminal)
+{
+	if (!lxc_terminal_create_native(name, lxcpath, terminal))
+		return 0;
+
+	return lxc_terminal_create_foreign(terminal);
+}
+
 int lxc_terminal_setup(struct lxc_conf *conf)
 {
 	int ret;
@@ -879,7 +932,7 @@ int lxc_terminal_setup(struct lxc_conf *conf)
 		return 0;
 	}
 
-	ret = lxc_terminal_create(terminal);
+	ret = lxc_terminal_create_foreign(terminal);
 	if (ret < 0)
 		return -1;
 

@@ -980,6 +980,7 @@ void lxc_end(struct lxc_handler *handler)
 
 	lxc_terminal_delete(&handler->conf->console);
 	lxc_delete_tty(&handler->conf->ttys);
+	close_prot_errno_disarm(handler->conf->devpts_fd);
 
 	/* The command socket is now closed, no more state clients can register
 	 * themselves from now on. So free the list of state clients.
@@ -1958,6 +1959,14 @@ static int lxc_spawn(struct lxc_handler *handler)
 			goto out_delete_net;
 		}
 	}
+
+	ret = lxc_abstract_unix_recv_fds(data_sock1, &handler->conf->devpts_fd, 1, NULL, 0);
+	if (ret < 0) {
+		SYSERROR("Failed to receive devpts fd from child");
+		goto out_delete_net;
+	}
+	if (ret == 0)
+		handler->conf->devpts_fd = -EBADF;
 
 	/* Now all networks are created, network devices are moved into place,
 	 * and the correct names and ifindices in the respective namespaces have
