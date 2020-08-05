@@ -1472,13 +1472,16 @@ static const struct id_map *find_mapped_nsid_entry(const struct lxc_conf *conf,
 	return retmap;
 }
 
-static int lxc_setup_devpts(struct lxc_conf *conf)
+static int lxc_setup_devpts(struct lxc_handler *handler)
 {
+	__do_close int devpts_fd = -EBADF;
 	int ret;
 	char **opts;
 	char devpts_mntopts[256];
 	char *mntopt_sets[5];
 	char default_devpts_mntopts[256] = "gid=5,newinstance,ptmxmode=0666,mode=0620";
+	struct lxc_conf *conf = handler->conf;
+	int sock = handler->data_sock[0];
 
 	if (conf->pty_max <= 0)
 		return log_debug(0, "No new devpts instance will be mounted since no pts devices are requested");
@@ -1520,6 +1523,16 @@ static int lxc_setup_devpts(struct lxc_conf *conf)
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to mount new devpts instance");
 	DEBUG("Mount new devpts instance with options \"%s\"", *opts);
+
+	devpts_fd = open_tree(-EBADF, "/dev/pts", OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC | AT_EMPTY_PATH);
+	if (devpts_fd < 0) {
+		TRACE("Failed to create detached devpts mount");
+		ret = lxc_abstract_unix_send_fds(sock, NULL, 0, NULL, 0);
+	} else {
+		ret = lxc_abstract_unix_send_fds(sock, &devpts_fd, 1, NULL, 0);
+	}
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to send devpts fd to parent");
 
 	/* Remove any pre-existing /dev/ptmx file. */
 	ret = remove("/dev/ptmx");
@@ -3326,7 +3339,7 @@ int lxc_setup(struct lxc_handler *handler)
 	if (lxc_conf->autodev > 0)
 		(void)lxc_setup_boot_id();
 
-	ret = lxc_setup_devpts(lxc_conf);
+	ret = lxc_setup_devpts(handler);
 	if (ret < 0)
 		return log_error(-1, "Failed to setup new devpts instance");
 

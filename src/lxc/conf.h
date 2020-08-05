@@ -282,6 +282,8 @@ struct lxc_conf {
 	struct lxc_terminal console;
 	/* maximum pty devices allowed by devpts mount */
 	size_t pty_max;
+	/* file descriptor for the container's /dev/pts mount */
+	int devpts_fd;
 
 	/* set to true when rootfs has been setup */
 	bool rootfs_setup;
