@@ -1524,7 +1524,7 @@ static int lxc_setup_devpts(struct lxc_handler *handler)
 		return log_error_errno(-1, errno, "Failed to mount new devpts instance");
 	DEBUG("Mount new devpts instance with options \"%s\"", *opts);
 
-	devpts_fd = open_tree(-EBADF, "/dev/pts", OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC | AT_EMPTY_PATH);
+	devpts_fd = openat(-EBADF, "/dev/pts", O_CLOEXEC | O_DIRECTORY | O_PATH | O_NOFOLLOW);
 	if (devpts_fd < 0) {
 		TRACE("Failed to create detached devpts mount");
 		ret = lxc_abstract_unix_send_fds(sock, NULL, 0, NULL, 0);
