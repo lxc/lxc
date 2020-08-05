@@ -889,14 +889,14 @@ on_error:
 	_exit(EXIT_FAILURE);
 }
 
-static int lxc_attach_terminal(struct lxc_conf *conf,
+static int lxc_attach_terminal(const char *name, const char *lxcpath, struct lxc_conf *conf,
 			       struct lxc_terminal *terminal)
 {
 	int ret;
 
 	lxc_terminal_init(terminal);
 
-	ret = lxc_terminal_create(terminal);
+	ret = lxc_terminal_create(name, lxcpath, terminal);
 	if (ret < 0)
 		return log_error(-1, "Failed to create terminal");
 
@@ -1091,7 +1091,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	}
 
 	if (options->attach_flags & LXC_ATTACH_TERMINAL) {
-		ret = lxc_attach_terminal(conf, &terminal);
+		ret = lxc_attach_terminal(name, lxcpath, conf, &terminal);
 		if (ret < 0) {
 			ERROR("Failed to setup new terminal");
 			free(cwd);
