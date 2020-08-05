@@ -865,6 +865,15 @@ struct lxc_container {
 	 * \return pidfd of init process of the container.
 	 */
 	int (*init_pidfd)(struct lxc_container *c);
+
+	/*!
+	 * \brief Retrieve a mount fd for the container's devpts instance.
+	 *
+	 * \param c Container.
+	 *
+	 * \return Mount fd of the container's devpts instance.
+	 */
+	int (*devpts_fd)(struct lxc_container *c);
 };
 
 /*!

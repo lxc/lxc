@@ -131,3 +131,8 @@ This adds time namespace support to LXC.
 ## seccomp\_allow\_deny\_syntax
 
 This adds the ability to use "denylist" and "allowlist" in seccomp v2 policies.
+
+## devpts\_fd
+
+This adds the ability to allocate a file descriptor for the devpts instance of
+the container.

@@ -86,6 +86,7 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 		[LXC_CMD_GET_INIT_PIDFD]        	= "get_init_pidfd",
 		[LXC_CMD_GET_LIMITING_CGROUP]		= "get_limiting_cgroup",
 		[LXC_CMD_GET_LIMITING_CGROUP2_FD]	= "get_limiting_cgroup2_fd",
+		[LXC_CMD_GET_DEVPTS_FD]			= "get_devpts_fd",
 	};
 
 	if (cmd >= LXC_CMD_MAX)
@@ -154,6 +155,11 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 	if (cmd->req.cmd == LXC_CMD_GET_INIT_PIDFD) {
 		int init_pidfd = move_fd(fd_rsp);
 		rsp->data = INT_TO_PTR(init_pidfd);
+	}
+
+	if (cmd->req.cmd == LXC_CMD_GET_DEVPTS_FD) {
+		int devpts_fd = move_fd(fd_rsp);
+		rsp->data = INT_TO_PTR(devpts_fd);
 	}
 
 	if (rsp->datalen == 0)
@@ -443,6 +449,43 @@ static int lxc_cmd_get_init_pidfd_callback(int fd, struct lxc_cmd_req *req,
 	ret = lxc_abstract_unix_send_fds(fd, &handler->pidfd, 1, &rsp, sizeof(rsp));
 	if (ret < 0)
 		return log_error(LXC_CMD_REAP_CLIENT_FD, "Failed to send init pidfd");
+
+	return 0;
+}
+
+int lxc_cmd_get_devpts_fd(const char *name, const char *lxcpath)
+{
+	int ret, stopped;
+	struct lxc_cmd_rr cmd = {
+		.req = {
+			.cmd = LXC_CMD_GET_DEVPTS_FD,
+		},
+	};
+
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
+	if (ret < 0)
+		return log_debug_errno(-1, errno, "Failed to process devpts fd command");
+
+	if (cmd.rsp.ret < 0)
+		return log_debug_errno(-EBADF, errno, "Failed to receive devpts fd");
+
+	return PTR_TO_INT(cmd.rsp.data);
+}
+
+static int lxc_cmd_get_devpts_fd_callback(int fd, struct lxc_cmd_req *req,
+					  struct lxc_handler *handler,
+					  struct lxc_epoll_descr *descr)
+{
+	struct lxc_cmd_rsp rsp = {
+		.ret = 0,
+	};
+	int ret;
+
+	if (!handler->conf || handler->conf->devpts_fd < 0)
+		rsp.ret = -EBADF;
+	ret = lxc_abstract_unix_send_fds(fd, &handler->conf->devpts_fd, 1, &rsp, sizeof(rsp));
+	if (ret < 0)
+		return log_error(LXC_CMD_REAP_CLIENT_FD, "Failed to send devpts fd");
 
 	return 0;
 }
@@ -1505,6 +1548,7 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 		[LXC_CMD_GET_INIT_PIDFD]                = lxc_cmd_get_init_pidfd_callback,
 		[LXC_CMD_GET_LIMITING_CGROUP]           = lxc_cmd_get_limiting_cgroup_callback,
 		[LXC_CMD_GET_LIMITING_CGROUP2_FD]       = lxc_cmd_get_limiting_cgroup2_fd_callback,
+		[LXC_CMD_GET_DEVPTS_FD]			= lxc_cmd_get_devpts_fd_callback,
 	};
 
 	if (req->cmd >= LXC_CMD_MAX)
