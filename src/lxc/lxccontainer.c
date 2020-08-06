@@ -5240,6 +5240,16 @@ static int do_lxcapi_seccomp_notify_fd(struct lxc_container *c)
 
 WRAP_API(int, lxcapi_seccomp_notify_fd)
 
+static int do_lxcapi_seccomp_notify_fd_active(struct lxc_container *c)
+{
+	if (!c || !c->lxc_conf)
+		return ret_set_errno(-1, -EINVAL);
+
+	return lxc_cmd_get_seccomp_notify_fd(c->name, c->config_path);
+}
+
+WRAP_API(int, lxcapi_seccomp_notify_fd_active)
+
 struct lxc_container *lxc_container_new(const char *name, const char *configpath)
 {
 	struct lxc_container *c;
@@ -5382,6 +5392,7 @@ struct lxc_container *lxc_container_new(const char *name, const char *configpath
 	c->mount = lxcapi_mount;
 	c->umount = lxcapi_umount;
 	c->seccomp_notify_fd = lxcapi_seccomp_notify_fd;
+	c->seccomp_notify_fd_active = lxcapi_seccomp_notify_fd_active;
 
 	return c;
 
