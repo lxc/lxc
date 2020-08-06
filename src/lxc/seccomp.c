@@ -1357,7 +1357,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	__do_close int fd_mem = -EBADF;
 	int ret;
 	ssize_t bytes;
-	int send_fd_list[2];
+	int send_fd_list[3];
 	struct iovec iov[4];
 	size_t iov_len, msg_base_size, msg_full_size;
 	char mem_path[6 /* /proc/ */
@@ -1460,10 +1460,10 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 
 	send_fd_list[0] = fd_pid;
 	send_fd_list[1] = fd_mem;
+	send_fd_list[2] = fd;
 
 retry:
-	bytes = lxc_abstract_unix_send_fds_iov(listener_proxy_fd, send_fd_list,
-					       2, iov, iov_len);
+	bytes = lxc_abstract_unix_send_fds_iov(listener_proxy_fd, send_fd_list, 3, iov, iov_len);
 	if (bytes != (ssize_t)msg_full_size) {
 		SYSERROR("Failed to forward message to seccomp proxy");
 		if (!reconnected) {
