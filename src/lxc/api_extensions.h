@@ -41,6 +41,7 @@ static char *api_extensions[] = {
 	"pidfd",
 	"seccomp_allow_deny_syntax",
 	"devpts_fd",
+	"seccomp_notify_fd_active",
 };
 
 static size_t nr_api_extensions = sizeof(api_extensions) / sizeof(*api_extensions);
