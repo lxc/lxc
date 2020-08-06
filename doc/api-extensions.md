@@ -136,3 +136,7 @@ This adds the ability to use "denylist" and "allowlist" in seccomp v2 policies.
 
 This adds the ability to allocate a file descriptor for the devpts instance of
 the container.
+
+## seccomp\_notify\_fd\_active
+
+Retrieve the seccomp notifier fd from a running container.

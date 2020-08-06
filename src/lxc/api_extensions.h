@@ -44,6 +44,7 @@ static char *api_extensions[] = {
 	"time_namespace",
 	"seccomp_allow_deny_syntax",
 	"devpts_fd",
+	"seccomp_notify_fd_active",
 };
 
 static size_t nr_api_extensions = sizeof(api_extensions) / sizeof(*api_extensions);
