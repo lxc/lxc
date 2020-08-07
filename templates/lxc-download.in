@@ -139,7 +139,6 @@ gpg_setup() {
       success=1
       break
     fi
-    break
   done
 
   if [ -z "${success}" ]; then
