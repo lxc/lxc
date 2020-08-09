@@ -1074,7 +1074,7 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 		goto reset_umask;
 	}
 
-	ret = safe_mount_beneath(path, "none", "dev", "tmpfs", 0, mount_options);
+	ret = safe_mount_beneath_at(root_mntpt_fd, "none", "dev", "tmpfs", 0, mount_options);
 	if (ret < 0) {
 		__do_free char *fallback_path = NULL;
 

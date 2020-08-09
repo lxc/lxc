@@ -1079,11 +1079,10 @@ out:
 	return dirfd;
 }
 
-int safe_mount_beneath(const char *beneath, const char *src, const char *dst, const char *fstype,
-		       unsigned int flags, const void *data)
+int __safe_mount_beneath_at(int beneath_fd, const char *src, const char *dst, const char *fstype,
+			    unsigned int flags, const void *data)
 {
-	__do_close int beneath_fd = -EBADF, source_fd = -EBADF, target_fd = -EBADF;
-	const char *path = beneath ? beneath : "/";
+	__do_close int source_fd = -EBADF, target_fd = -EBADF;
 	struct lxc_open_how how = {
 		.flags		= O_RDONLY | O_CLOEXEC | O_PATH,
 		.resolve	= RESOLVE_NO_XDEV | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS | RESOLVE_BENEATH,
@@ -1091,9 +1090,8 @@ int safe_mount_beneath(const char *beneath, const char *src, const char *dst, co
 	int ret;
 	char src_buf[LXC_PROC_PID_FD_LEN], tgt_buf[LXC_PROC_PID_FD_LEN];
 
-	beneath_fd = openat(-1, beneath, O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH);
 	if (beneath_fd < 0)
-		return log_error_errno(-errno, errno, "Failed to open %s", path);
+		return -EINVAL;
 
 	if ((flags & MS_BIND) && src && src[0] != '/') {
 		source_fd = openat2(beneath_fd, src, &how, sizeof(how));
@@ -1115,6 +1113,25 @@ int safe_mount_beneath(const char *beneath, const char *src, const char *dst, co
 		ret = mount(src, tgt_buf, fstype, flags, data);
 
 	return ret;
+}
+
+int safe_mount_beneath(const char *beneath, const char *src, const char *dst, const char *fstype,
+		       unsigned int flags, const void *data)
+{
+	__do_close int beneath_fd = -EBADF;
+	const char *path = beneath ? beneath : "/";
+
+	beneath_fd = openat(-1, beneath, O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH);
+	if (beneath_fd < 0)
+		return log_error_errno(-errno, errno, "Failed to open %s", path);
+
+	return __safe_mount_beneath_at(beneath_fd, src, dst, fstype, flags, data);
+}
+
+int safe_mount_beneath_at(int beneath_fd, const char *src, const char *dst, const char *fstype,
+			  unsigned int flags, const void *data)
+{
+	return __safe_mount_beneath_at(beneath_fd, src, dst, fstype, flags, data);
 }
 
 /*
