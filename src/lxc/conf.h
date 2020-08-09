@@ -146,8 +146,10 @@ struct lxc_tty_info {
  * @mountflags : the portion of @options that are flags
  * @data       : the portion of @options that are not flags
  * @managed    : whether it is managed by LXC
+ * @mntpt_fd   : fd for @mount
  */
 struct lxc_rootfs {
+	int mntpt_fd;
 	char *path;
 	char *mount;
 	char *bdev_type;
