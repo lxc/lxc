@@ -1077,7 +1077,7 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 		goto reset_umask;
 	}
 
-	ret = safe_mount("none", path, "tmpfs", 0, mount_options,
+	ret = safe_mount("none", "dev", "tmpfs", 0, mount_options,
 			 rootfs->path ? rootfs->mount : NULL );
 	if (ret < 0) {
 		SYSERROR("Failed to mount tmpfs on \"%s\"", path);
