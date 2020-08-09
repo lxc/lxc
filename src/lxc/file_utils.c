@@ -539,3 +539,15 @@ int timens_offset_write(clockid_t clk_id, int64_t s_offset, int64_t ns_offset)
 
 	return 0;
 }
+
+bool exists_dir_at(int dir_fd, const char *path)
+{
+	struct stat sb;
+	int ret;
+
+	ret = fstatat(dir_fd, path, &sb, 0);
+	if (ret < 0)
+		return false;
+
+	return S_ISDIR(sb.st_mode);
+}
