@@ -72,5 +72,6 @@ __hidden extern int fd_to_fd(int from, int to);
 __hidden extern int lxc_open_dirfd(const char *dir);
 __hidden extern FILE *fdopen_cached(int fd, const char *mode, void **caller_freed_buffer);
 __hidden extern FILE *fopen_cached(const char *path, const char *mode, void **caller_freed_buffer);
+__hidden extern bool exists_dir_at(int dir_fd, const char *path);
 
 #endif /* __LXC_FILE_UTILS_H */

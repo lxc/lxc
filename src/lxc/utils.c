@@ -569,15 +569,7 @@ gid_t get_ns_gid(gid_t orig)
 
 bool dir_exists(const char *path)
 {
-	struct stat sb;
-	int ret;
-
-	ret = stat(path, &sb);
-	if (ret < 0)
-		/* Could be something other than eexist, just say "no". */
-		return false;
-
-	return S_ISDIR(sb.st_mode);
+	return exists_dir_at(-1, path);
 }
 
 /* Note we don't use SHA-1 here as we don't want to depend on HAVE_GNUTLS.
