@@ -1874,9 +1874,17 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	}
 
 	/* mount tmpfs */
-	ret = safe_mount(NULL, cgroup_root, "tmpfs",
-			 MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,
-			 "size=10240k,mode=755", root);
+	ret = safe_mount_beneath(root, NULL, DEFAULT_CGROUP_MOUNTPOINT, "tmpfs",
+				 MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,
+				 "size=10240k,mode=755");
+	if (ret < 0) {
+		if (errno != ENOSYS)
+			return false;
+
+		ret = safe_mount(NULL, cgroup_root, "tmpfs",
+				 MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,
+				 "size=10240k,mode=755", root);
+	}
 	if (ret < 0)
 		return false;
 
