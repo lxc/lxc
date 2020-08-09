@@ -1136,39 +1136,33 @@ enum {
 
 static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 {
+	__do_close int dev_dir_fd = -EBADF;
 	int i, ret;
-	char path[PATH_MAX];
 	mode_t cmask;
 	int use_mknod = LXC_DEVNODE_MKNOD;
 
-	ret = snprintf(path, PATH_MAX, "%s/dev",
-		       rootfs->path ? rootfs->mount : "");
-	if (ret < 0 || ret >= PATH_MAX)
-		return -1;
-
 	/* ignore, just don't try to fill in */
-	if (!dir_exists(path))
+	if (!exists_dir_at(rootfs->mntpt_fd, "dev"))
 		return 0;
+
+	dev_dir_fd = openat(rootfs->mntpt_fd, "dev/", O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH | O_NOFOLLOW);
+	if (dev_dir_fd < 0)
+		return -errno;
 
 	INFO("Populating \"/dev\"");
 
 	cmask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
 	for (i = 0; i < sizeof(lxc_devices) / sizeof(lxc_devices[0]); i++) {
-		char hostpath[PATH_MAX];
+		char hostpath[PATH_MAX], path[PATH_MAX];
 		const struct lxc_device_node *device = &lxc_devices[i];
 
-		ret = snprintf(path, PATH_MAX, "%s/dev/%s",
-			       rootfs->path ? rootfs->mount : "", device->name);
-		if (ret < 0 || ret >= PATH_MAX)
-			return -1;
-
 		if (use_mknod >= LXC_DEVNODE_MKNOD) {
-			ret = mknod(path, device->mode, makedev(device->maj, device->min));
+			ret = mknodat(dev_dir_fd, device->name, device->mode, makedev(device->maj, device->min));
 			if (ret == 0 || (ret < 0 && errno == EEXIST)) {
-				DEBUG("Created device node \"%s\"", path);
+				DEBUG("Created device node \"%s\"", device->name);
 			} else if (ret < 0) {
 				if (errno != EPERM)
-					return log_error_errno(-1, errno, "Failed to create device node \"%s\"", path);
+					return log_error_errno(-1, errno, "Failed to create device node \"%s\"", device->name);
 
 				use_mknod = LXC_DEVNODE_BIND;
 			}
@@ -1178,19 +1172,19 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 				continue;
 
 			if (use_mknod == LXC_DEVNODE_MKNOD) {
+				__do_close int fd = -EBADF;
 				/* See
 				 * - https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=55956b59df336f6738da916dbb520b6e37df9fbd
 				 * - https://lists.linuxfoundation.org/pipermail/containers/2018-June/039176.html
 				 */
-				ret = open(path, O_RDONLY | O_CLOEXEC);
-				if (ret >= 0) {
-					close_prot_errno_disarm(ret);
+				fd = openat(dev_dir_fd, device->name, O_RDONLY | O_CLOEXEC);
+				if (fd >= 0) {
 					/* Device nodes are fully useable. */
 					use_mknod = LXC_DEVNODE_OPEN;
 					continue;
 				}
 
-				SYSTRACE("Failed to open \"%s\" device", path);
+				SYSTRACE("Failed to open \"%s\" device", device->name);
 				/* Device nodes are only partially useable. */
 				use_mknod = LXC_DEVNODE_PARTIAL;
 			}
@@ -1201,22 +1195,25 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 			 * nodes the prio mknod() call will have created the
 			 * device node so we can use it as a bind-mount target.
 			 */
-			ret = mknod(path, S_IFREG | 0000, 0);
+			ret = mknodat(dev_dir_fd, device->name, S_IFREG | 0000, 0);
 			if (ret < 0 && errno != EEXIST)
-				return log_error_errno(-1, errno, "Failed to create file \"%s\"", path);
+				return log_error_errno(-1, errno, "Failed to create file \"%s\"", device->name);
 		}
 
 		/* Fallback to bind-mounting the device from the host. */
-		ret = snprintf(hostpath, PATH_MAX, "/dev/%s", device->name);
-		if (ret < 0 || ret >= PATH_MAX)
-			return -1;
+		snprintf(hostpath, sizeof(hostpath), "/dev/%s", device->name);
 
-		ret = safe_mount(hostpath, path, 0, MS_BIND, NULL,
-				 rootfs->path ? rootfs->mount : NULL);
+		ret = safe_mount_beneath_at(dev_dir_fd, hostpath, device->name, NULL, MS_BIND, NULL);
+		if (ret < 0) {
+			const char *mntpt = rootfs->path ? rootfs->mount : NULL;
+			if (errno == ENOSYS) {
+				snprintf(path, sizeof(path), "%s/dev/%s", mntpt, device->name);
+				ret = safe_mount(hostpath, path, 0, MS_BIND, NULL, rootfs->path ? rootfs->mount : NULL);
+			}
+		}
 		if (ret < 0)
-			return log_error_errno(-1, errno, "Failed to bind mount host device node \"%s\" onto \"%s\"",
-					       hostpath, path);
-		DEBUG("Bind mounted host device node \"%s\" onto \"%s\"", hostpath, path);
+			return log_error_errno(-1, errno, "Failed to bind mount host device node \"%s\" onto \"%s\"", hostpath, device->name);
+		DEBUG("Bind mounted host device node \"%s\" onto \"%s\"", hostpath, device->name);
 	}
 	(void)umask(cmask);
 
