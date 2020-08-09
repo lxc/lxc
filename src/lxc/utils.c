@@ -1079,6 +1079,44 @@ out:
 	return dirfd;
 }
 
+int safe_mount_beneath(const char *beneath, const char *src, const char *dst, const char *fstype,
+		       unsigned int flags, const void *data)
+{
+	__do_close int beneath_fd = -EBADF, source_fd = -EBADF, target_fd = -EBADF;
+	const char *path = beneath ? beneath : "/";
+	struct lxc_open_how how = {
+		.flags		= O_RDONLY | O_CLOEXEC | O_PATH,
+		.resolve	= RESOLVE_NO_XDEV | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS | RESOLVE_BENEATH,
+	};
+	int ret;
+	char src_buf[LXC_PROC_PID_FD_LEN], tgt_buf[LXC_PROC_PID_FD_LEN];
+
+	beneath_fd = openat(-1, beneath, O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH);
+	if (beneath_fd < 0)
+		return log_error_errno(-errno, errno, "Failed to open %s", path);
+
+	if ((flags & MS_BIND) && src && src[0] != '/') {
+		source_fd = openat2(beneath_fd, src, &how, sizeof(how));
+		if (source_fd < 0)
+			return -errno;
+		snprintf(src_buf, sizeof(src_buf), "/proc/self/fd/%d", source_fd);
+	} else {
+		src_buf[0] = '\0';
+	}
+
+	target_fd = openat2(beneath_fd, dst, &how, sizeof(how));
+	if (target_fd < 0)
+		return -errno;
+	snprintf(tgt_buf, sizeof(tgt_buf), "/proc/self/fd/%d", target_fd);
+
+	if (!is_empty_string(src_buf))
+		ret = mount(src_buf, tgt_buf, fstype, flags, data);
+	else
+		ret = mount(src, tgt_buf, fstype, flags, data);
+
+	return ret;
+}
+
 /*
  * Safely mount a path into a container, ensuring that the mount target
  * is under the container's @rootfs.  (If @rootfs is NULL, then the container

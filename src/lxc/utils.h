@@ -246,4 +246,7 @@ static inline bool gid_valid(gid_t gid)
 
 __hidden extern bool multiply_overflow(int64_t base, uint64_t mult, int64_t *res);
 
+extern int safe_mount_beneath(const char *beneath, const char *src, const char *dst,
+			      const char *fstype, unsigned int flags, const void *data);
+
 #endif /* __LXC_UTILS_H */
