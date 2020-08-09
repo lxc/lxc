@@ -1233,12 +1233,16 @@ static int lxc_mount_rootfs(struct lxc_conf *conf)
 {
 	int ret;
 	struct lxc_storage *bdev;
-	const struct lxc_rootfs *rootfs = &conf->rootfs;
+	struct lxc_rootfs *rootfs = &conf->rootfs;
 
 	if (!rootfs->path) {
 		ret = mount("", "/", NULL, MS_SLAVE | MS_REC, 0);
 		if (ret < 0)
 			return log_error_errno(-1, errno, "Failed to recursively turn root mount tree into dependent mount");
+
+		rootfs->mntpt_fd = openat(-1, "/", O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH);
+		if (rootfs->mntpt_fd < 0)
+			return -errno;
 
 		return 0;
 	}
@@ -1264,6 +1268,10 @@ static int lxc_mount_rootfs(struct lxc_conf *conf)
 	DEBUG("Mounted rootfs \"%s\" onto \"%s\" with options \"%s\"",
 	      rootfs->path, rootfs->mount,
 	      rootfs->options ? rootfs->options : "(null)");
+
+	rootfs->mntpt_fd = openat(-1, rootfs->mount, O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH);
+	if (rootfs->mntpt_fd < 0)
+		return -errno;
 
 	return 0;
 }
@@ -2580,6 +2588,7 @@ struct lxc_conf *lxc_conf_init(void)
 		return NULL;
 	}
 	new->rootfs.managed = true;
+	new->rootfs.mntpt_fd = -EBADF;
 	new->logfd = -1;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->cgroup2);
@@ -3377,6 +3386,7 @@ int lxc_setup(struct lxc_handler *handler)
 		return log_error(-1, "Failed to drop capabilities");
 	}
 
+	close_prot_errno_disarm(lxc_conf->rootfs.mntpt_fd);
 	NOTICE("The container \"%s\" is set up", name);
 
 	return 0;
@@ -3740,6 +3750,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->rootfs.options);
 	free(conf->rootfs.path);
 	free(conf->rootfs.data);
+	close_prot_errno_disarm(conf->rootfs.mntpt_fd);
 	free(conf->logfile);
 	if (conf->logfd != -1)
 		close(conf->logfd);
