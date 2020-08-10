@@ -111,6 +111,7 @@ __hidden extern int  lxc_terminal_allocate(struct lxc_conf *conf, int sockfd, in
  *   (Handlers for SIGWINCH and I/O are not registered in a mainloop.)
  */
 __hidden extern int lxc_terminal_create(const char *name, const char *lxcpath,
+					struct lxc_conf *conf,
 					struct lxc_terminal *console);
 
 /**
@@ -250,6 +251,5 @@ __hidden extern int lxc_terminal_prepare_login(int fd);
 __hidden extern void lxc_terminal_conf_free(struct lxc_terminal *terminal);
 __hidden extern void lxc_terminal_info_init(struct lxc_terminal_info *terminal);
 __hidden extern void lxc_terminal_init(struct lxc_terminal *terminal);
-__hidden extern int lxc_terminal_map_ids(struct lxc_conf *c, struct lxc_terminal *terminal);
 
 #endif /* __LXC_TERMINAL_H */
