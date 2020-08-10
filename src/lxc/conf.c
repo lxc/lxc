@@ -3211,13 +3211,49 @@ static int lxc_setup_boot_id(void)
 	return 0;
 }
 
+static int lxc_setup_keyring(const struct lsm_ops *lsm_ops, const struct lxc_conf *conf)
+{
+	key_serial_t keyring;
+	int ret = 0;
+
+	if (conf->lsm_se_keyring_context)
+		ret = lsm_ops->keyring_label_set(conf->lsm_se_keyring_context);
+	else if (conf->lsm_se_context)
+		ret = lsm_ops->keyring_label_set(conf->lsm_se_context);
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to set keyring context");
+
+	/*
+	 * Try to allocate a new session keyring for the container to prevent
+	 * information leaks.
+	 */
+	keyring = keyctl(KEYCTL_JOIN_SESSION_KEYRING, prctl_arg(0),
+			 prctl_arg(0), prctl_arg(0), prctl_arg(0));
+	if (keyring < 0) {
+		switch (errno) {
+		case ENOSYS:
+			DEBUG("The keyctl() syscall is not supported or blocked");
+			break;
+		case EACCES:
+			__fallthrough;
+		case EPERM:
+			DEBUG("Failed to access kernel keyring. Continuing...");
+			break;
+		default:
+			SYSERROR("Failed to create kernel keyring");
+			break;
+		}
+	}
+
+	return ret;
+}
+
 int lxc_setup(struct lxc_handler *handler)
 {
 	__do_close int pty_mnt_fd = -EBADF;
 	int ret;
 	const char *lxcpath = handler->lxcpath, *name = handler->name;
 	struct lxc_conf *lxc_conf = handler->conf;
-	char *keyring_context = NULL;
 
 	ret = lxc_setup_rootfs_prepare_root(lxc_conf, name, lxcpath);
 	if (ret < 0)
@@ -3230,15 +3266,9 @@ int lxc_setup(struct lxc_handler *handler)
 	}
 
 	if (!lxc_conf->keyring_disable_session) {
-		if (lxc_conf->lsm_se_keyring_context) {
-			keyring_context = lxc_conf->lsm_se_keyring_context;
-		} else if (lxc_conf->lsm_se_context) {
-			keyring_context = lxc_conf->lsm_se_context;
-		}
-
-		ret = lxc_setup_keyring(keyring_context);
+		ret = lxc_setup_keyring(handler->lsm_ops, lxc_conf);
 		if (ret < 0)
-			return -1;
+			return log_error(-1, "Failed to setup container keyring");
 	}
 
 	if (handler->ns_clone_flags & CLONE_NEWNET) {

@@ -24,7 +24,7 @@
 
 lxc_log_define(apparmor, lsm);
 
-/* set by lsm_apparmor_drv_init if true */
+/* set by lsm_apparmor_ops_init if true */
 static int aa_enabled = 0;
 static bool aa_parser_available = false;
 static bool aa_supports_unix = false;
@@ -1128,6 +1128,55 @@ out:
 	return ret;
 }
 
+static int apparmor_keyring_label_set(const char *label)
+{
+	return 0;
+}
+
+static int apparmor_process_label_fd_get(pid_t pid, bool on_exec)
+{
+	int ret = -1;
+	int labelfd;
+	char path[LXC_LSMATTRLEN];
+
+	if (on_exec)
+		TRACE("On-exec not supported with AppArmor");
+
+	ret = snprintf(path, LXC_LSMATTRLEN, "/proc/%d/attr/current", pid);
+	if (ret < 0 || ret >= LXC_LSMATTRLEN)
+		return -1;
+
+	labelfd = open(path, O_RDWR);
+	if (labelfd < 0)
+		return log_error_errno(-errno, errno, "Unable to open AppArmor LSM label file descriptor");
+
+	return labelfd;
+}
+
+static int apparmor_process_label_set_at(int label_fd, const char *label, bool on_exec)
+{
+	int ret = -1;
+	size_t len;
+	__do_free char *command = NULL;
+
+	if (on_exec)
+		log_trace(0, "Changing AppArmor profile on exec not supported");
+
+	len = strlen(label) + strlen("changeprofile ") + 1;
+	command = malloc(len);
+	if (!command)
+		return ret_errno(ENOMEM);
+
+	ret = snprintf(command, len, "changeprofile %s", label);
+	if (ret < 0 || (size_t)ret >= len)
+		return -EFBIG;
+
+	ret = lxc_write_nointr(label_fd, command, len - 1);
+
+	INFO("Set AppArmor label to \"%s\"", label);
+	return 0;
+}
+
 /*
  * apparmor_process_label_set: Set AppArmor process profile
  *
@@ -1169,13 +1218,13 @@ static int apparmor_process_label_set(const char *inlabel, struct lxc_conf *conf
 		return 0;
 	}
 	tid = lxc_raw_gettid();
-	label_fd = lsm_process_label_fd_get(tid, on_exec);
+	label_fd = apparmor_process_label_fd_get(tid, on_exec);
 	if (label_fd < 0) {
 		SYSERROR("Failed to change AppArmor profile to %s", label);
 		return -1;
 	}
 
-	ret = lsm_process_label_set_at(label_fd, label, on_exec);
+	ret = apparmor_process_label_set_at(label_fd, label, on_exec);
 	close(label_fd);
 	if (ret < 0) {
 		ERROR("Failed to change AppArmor profile to %s", label);
@@ -1186,16 +1235,19 @@ static int apparmor_process_label_set(const char *inlabel, struct lxc_conf *conf
 	return 0;
 }
 
-static struct lsm_drv apparmor_drv = {
-	.name = "AppArmor",
-	.enabled           = apparmor_enabled,
-	.process_label_get = apparmor_process_label_get,
-	.process_label_set = apparmor_process_label_set,
-	.prepare           = apparmor_prepare,
-	.cleanup           = apparmor_cleanup,
+static struct lsm_ops apparmor_ops = {
+	.name			= "AppArmor",
+	.cleanup           	= apparmor_cleanup,
+	.enabled		= apparmor_enabled,
+	.keyring_label_set	= apparmor_keyring_label_set,
+	.prepare           	= apparmor_prepare,
+	.process_label_fd_get	= apparmor_process_label_fd_get,
+	.process_label_get 	= apparmor_process_label_get,
+	.process_label_set 	= apparmor_process_label_set,
+	.process_label_set_at	= apparmor_process_label_set_at,
 };
 
-struct lsm_drv *lsm_apparmor_drv_init(void)
+const struct lsm_ops *lsm_apparmor_ops_init(void)
 {
 	bool have_mac_admin = false;
 
@@ -1225,5 +1277,5 @@ struct lsm_drv *lsm_apparmor_drv_init(void)
 
 out:
 	aa_enabled = 1;
-	return &apparmor_drv;
+	return &apparmor_ops;
 }

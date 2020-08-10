@@ -47,14 +47,16 @@
 static const char *lsm_config_key = NULL;
 static const char *lsm_label = NULL;
 
+const struct lsm_ops *lsm_ops;
+
 static void test_lsm_detect(void)
 {
-	if (lsm_enabled()) {
-		if (!strcmp(lsm_name(), "SELinux")) {
+	if (lsm_ops->enabled()) {
+		if (!strcmp(lsm_ops->name, "SELinux")) {
 			lsm_config_key = "lxc.selinux.context";
 			lsm_label      = "unconfined_u:unconfined_r:lxc_t:s0-s0:c0.c1023";
 		}
-		else if (!strcmp(lsm_name(), "AppArmor")) {
+		else if (!strcmp(lsm_ops->name, "AppArmor")) {
 			lsm_config_key = "lxc.apparmor.profile";
 			if (file_exists("/proc/self/ns/cgroup"))
 				lsm_label      = "lxc-container-default-cgns";
@@ -62,7 +64,7 @@ static void test_lsm_detect(void)
 				lsm_label      = "lxc-container-default";
 		}
 		else {
-			TSTERR("unknown lsm %s enabled, add test code here", lsm_name());
+			TSTERR("unknown lsm %s enabled, add test code here", lsm_ops->name);
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -78,7 +80,7 @@ static void test_attach_lsm_set_config(struct lxc_container *ct)
 
 static int test_attach_lsm_func_func(void* payload)
 {
-	TSTOUT("%s", lsm_process_label_get(syscall(SYS_getpid)));
+	TSTOUT("%s", lsm_ops->process_label_get(syscall(SYS_getpid)));
 	return 0;
 }
 
@@ -328,7 +330,7 @@ static struct lxc_container *test_ct_create(const char *lxcpath,
 		goto out2;
 	}
 
-	if (lsm_enabled())
+	if (lsm_ops->enabled())
 		test_attach_lsm_set_config(ct);
 
 	ct->want_daemonize(ct, true);
@@ -368,7 +370,7 @@ static int test_attach(const char *lxcpath, const char *name, const char *templa
 		goto err2;
 	}
 
-	if (lsm_enabled()) {
+	if (lsm_ops->enabled()) {
 		ret = test_attach_lsm_cmd(ct);
 		if (ret < 0) {
 			TSTERR("attach lsm cmd test failed");
@@ -397,6 +399,8 @@ int main(int argc, char *argv[])
 	int fret = EXIT_FAILURE;
 
 	(void)strlcpy(template, P_tmpdir"/attach_XXXXXX", sizeof(template));
+
+	lsm_ops = lsm_init();
 
 	i = lxc_make_tmpfile(template, false);
 	if (i < 0) {
