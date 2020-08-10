@@ -524,3 +524,10 @@ bool exists_dir_at(int dir_fd, const char *path)
 
 	return S_ISDIR(sb.st_mode);
 }
+
+bool exists_file_at(int dir_fd, const char *path)
+{
+	struct stat sb;
+
+	return fstatat(dir_fd, path, &sb, 0) == 0;
+}
