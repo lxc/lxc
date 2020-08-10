@@ -876,7 +876,7 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	/* Make sure that the processes STDIO is correctly owned by the user that we are switching to */
 	ret = fix_stdio_permissions(new_uid);
 	if (ret)
-		WARN("Failed to ajust stdio permissions");
+		WARN("Failed to adjust stdio permissions");
 
 	if (!lxc_switch_uid_gid(new_uid, new_gid))
 		goto on_error;
@@ -896,23 +896,11 @@ static int lxc_attach_terminal(const char *name, const char *lxcpath, struct lxc
 
 	lxc_terminal_init(terminal);
 
-	ret = lxc_terminal_create(name, lxcpath, terminal);
+	ret = lxc_terminal_create(name, lxcpath, conf, terminal);
 	if (ret < 0)
 		return log_error(-1, "Failed to create terminal");
 
-	/* Shift ttys to container. */
-	ret = lxc_terminal_map_ids(conf, terminal);
-	if (ret < 0) {
-		ERROR("Failed to chown terminal");
-		goto on_error;
-	}
-
 	return 0;
-
-on_error:
-	lxc_terminal_delete(terminal);
-	lxc_terminal_conf_free(terminal);
-	return -1;
 }
 
 static int lxc_attach_terminal_mainloop_init(struct lxc_terminal *terminal,
