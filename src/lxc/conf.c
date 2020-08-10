@@ -1610,15 +1610,15 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	if (!wants_console(console))
 		return 0;
 
-	ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs_path);
-	if (ret < 0 || (size_t)ret >= sizeof(path))
-		return -1;
-
 	/*
 	 * When we are asked to setup a console we remove any previous
 	 * /dev/console bind-mounts.
 	 */
-	if (file_exists(path)) {
+	if (exists_file_at(rootfs->dev_mntpt_fd, "console")) {
+		ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs_path);
+		if (ret < 0 || (size_t)ret >= sizeof(path))
+			return -1;
+
 		ret = lxc_unstack_mountpoint(path, false);
 		if (ret < 0)
 			return log_error_errno(-ret, errno, "Failed to unmount \"%s\"", path);
@@ -1630,7 +1630,7 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	 * For unprivileged containers autodev or automounts will already have
 	 * taken care of creating /dev/console.
 	 */
-	ret = mknod(path, S_IFREG | 0000, 0);
+	ret = mknodat(rootfs->dev_mntpt_fd, "console", S_IFREG | 0000, 0);
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-errno, errno, "Failed to create console");
 
@@ -1639,7 +1639,7 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", S_IXUSR | S_IXGRP, console->name);
 
 	if (pty_mnt_fd >= 0) {
-		ret = move_mount(pty_mnt_fd, "", -EBADF, path, MOVE_MOUNT_F_EMPTY_PATH);
+		ret = move_mount(pty_mnt_fd, "", rootfs->dev_mntpt_fd, "console", MOVE_MOUNT_F_EMPTY_PATH);
 		if (!ret) {
 			DEBUG("Moved mount \"%s\" onto \"%s\"", console->name, path);
 			goto finish;
@@ -1651,9 +1651,18 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 					       pty_mnt_fd, console->name, path);
 	}
 
-	ret = safe_mount(console->name, path, "none", MS_BIND, 0, rootfs_path);
-	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to mount %d(%s) on \"%s\"", pty_mnt_fd, console->name, path);
+	ret = safe_mount_beneath_at(rootfs->dev_mntpt_fd, console->name, "console", NULL, MS_BIND, NULL);
+	if (ret < 0) {
+		if (errno == ENOSYS) {
+			ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs_path);
+			if (ret < 0 || (size_t)ret >= sizeof(path))
+				return -1;
+
+			ret = safe_mount(console->name, path, "none", MS_BIND, NULL, rootfs_path);
+			if (ret < 0)
+				return log_error_errno(-1, errno, "Failed to mount %d(%s) on \"%s\"", pty_mnt_fd, console->name, path);
+		}
+	}
 
 finish:
 	DEBUG("Mounted pty device %d(%s) onto \"%s\"", pty_mnt_fd, console->name, path);
@@ -2581,6 +2590,7 @@ struct lxc_conf *lxc_conf_init(void)
 	}
 	new->rootfs.managed = true;
 	new->rootfs.mntpt_fd = -EBADF;
+	new->rootfs.dev_mntpt_fd = -EBADF;
 	new->logfd = -1;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->cgroup2);
@@ -3259,6 +3269,11 @@ int lxc_setup(struct lxc_handler *handler)
 			return log_error(-1, "Failed to mount \"/dev\"");
 	}
 
+	lxc_conf->rootfs.dev_mntpt_fd = openat(lxc_conf->rootfs.mntpt_fd, "dev",
+						O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_NOFOLLOW);
+	if (lxc_conf->rootfs.dev_mntpt_fd < 0 && errno != ENOENT)
+		return log_error_errno(-errno, errno, "Failed to open \"/dev\"");
+
 	/* Do automatic mounts (mainly /proc and /sys), but exclude those that
 	 * need to wait until other stuff has finished.
 	 */
@@ -3378,7 +3393,8 @@ int lxc_setup(struct lxc_handler *handler)
 		return log_error(-1, "Failed to drop capabilities");
 	}
 
-	close_prot_errno_disarm(lxc_conf->rootfs.mntpt_fd);
+	close_prot_errno_disarm(lxc_conf->rootfs.mntpt_fd)
+	close_prot_errno_disarm(lxc_conf->rootfs.dev_mntpt_fd)
 	NOTICE("The container \"%s\" is set up", name);
 
 	return 0;
@@ -3743,6 +3759,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->rootfs.path);
 	free(conf->rootfs.data);
 	close_prot_errno_disarm(conf->rootfs.mntpt_fd);
+	close_prot_errno_disarm(conf->rootfs.dev_mntpt_fd);
 	free(conf->logfile);
 	if (conf->logfd != -1)
 		close(conf->logfd);

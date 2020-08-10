@@ -139,17 +139,19 @@ struct lxc_tty_info {
 
 /* Defines a structure to store the rootfs location, the
  * optionals pivot_root, rootfs mount paths
- * @path       : the rootfs source (directory or device)
- * @mount      : where it is mounted
- * @bev_type   : optional backing store type
- * @options    : mount options
- * @mountflags : the portion of @options that are flags
- * @data       : the portion of @options that are not flags
- * @managed    : whether it is managed by LXC
- * @mntpt_fd   : fd for @mount
+ * @path         : the rootfs source (directory or device)
+ * @mount        : where it is mounted
+ * @bev_type     : optional backing store type
+ * @options      : mount options
+ * @mountflags   : the portion of @options that are flags
+ * @data         : the portion of @options that are not flags
+ * @managed      : whether it is managed by LXC
+ * @mntpt_fd	 : fd for @mount
+ * @dev_mntpt_fd : fd for /dev of the container
  */
 struct lxc_rootfs {
 	int mntpt_fd;
+	int dev_mntpt_fd;
 	char *path;
 	char *mount;
 	char *bdev_type;
