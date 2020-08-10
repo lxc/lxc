@@ -1838,41 +1838,6 @@ int lxc_rm_rf(const char *dirname)
 	return fret;
 }
 
-int lxc_setup_keyring(char *keyring_label)
-{
-	key_serial_t keyring;
-	int ret = 0;
-
-	if (keyring_label) {
-		if (lsm_keyring_label_set(keyring_label) < 0) {
-			ERROR("Couldn't set keyring label");
-		}
-	}
-
-	/* Try to allocate a new session keyring for the container to prevent
-	 * information leaks.
-	 */
-	keyring = keyctl(KEYCTL_JOIN_SESSION_KEYRING, prctl_arg(0),
-			 prctl_arg(0), prctl_arg(0), prctl_arg(0));
-	if (keyring < 0) {
-		switch (errno) {
-		case ENOSYS:
-			DEBUG("The keyctl() syscall is not supported or blocked");
-			break;
-		case EACCES:
-			__fallthrough;
-		case EPERM:
-			DEBUG("Failed to access kernel keyring. Continuing...");
-			break;
-		default:
-			SYSERROR("Failed to create kernel keyring");
-			break;
-		}
-	}
-
-	return ret;
-}
-
 bool lxc_can_use_pidfd(int pidfd)
 {
 	int ret;

@@ -19,6 +19,7 @@ struct lxc_proc_context_info {
 	unsigned long long capability_mask;
 	int ns_inherited;
 	int ns_fd[LXC_NS_MAX];
+	const struct lsm_ops *lsm_ops;
 };
 
 __hidden extern int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
