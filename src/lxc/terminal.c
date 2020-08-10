@@ -828,7 +828,31 @@ int lxc_terminal_create_log_file(struct lxc_terminal *terminal)
 	return 0;
 }
 
-static int lxc_terminal_create_foreign(struct lxc_terminal *terminal)
+static int lxc_terminal_map_ids(struct lxc_conf *c, struct lxc_terminal *terminal)
+{
+	int ret;
+
+	if (lxc_list_empty(&c->id_map))
+		return 0;
+
+	if (is_empty_string(terminal->name) && terminal->pty < 0)
+		return 0;
+
+	if (terminal->pty >= 0)
+		ret = userns_exec_mapped_root(NULL, terminal->pty, c);
+	else
+		ret = userns_exec_mapped_root(terminal->name, -EBADF, c);
+	if (ret < 0)
+		return log_error(-1, "Failed to chown terminal %d(%s)", terminal->pty,
+				 !is_empty_string(terminal->name) ? terminal->name : "(null)");
+
+	TRACE("Chowned terminal %d(%s)", terminal->pty,
+	      !is_empty_string(terminal->name) ? terminal->name : "(null)");
+
+	return 0;
+}
+
+static int lxc_terminal_create_foreign(struct lxc_conf *conf, struct lxc_terminal *terminal)
 {
 	int ret;
 
@@ -836,6 +860,12 @@ static int lxc_terminal_create_foreign(struct lxc_terminal *terminal)
 	if (ret < 0) {
 		SYSERROR("Failed to open terminal");
 		return -1;
+	}
+
+	ret = lxc_terminal_map_ids(conf, terminal);
+	if (ret < 0) {
+		SYSERROR("Failed to change ownership of terminal multiplexer device");
+		goto err;
 	}
 
 	ret = ttyname_r(terminal->pty, terminal->name, sizeof(terminal->name));
@@ -869,38 +899,40 @@ err:
 	return -ENODEV;
 }
 
-static int lxc_terminal_create_native(const char *name, const char *lxcpath,
+static int lxc_terminal_create_native(const char *name, const char *lxcpath, struct lxc_conf *conf,
 				      struct lxc_terminal *terminal)
 {
-	__do_close int devpts_fd = -EBADF, ptx_fd = -EBADF, pty_fd = -EBADF;
+	__do_close int devpts_fd = -EBADF;
 	int ret;
 
 	devpts_fd = lxc_cmd_get_devpts_fd(name, lxcpath);
 	if (devpts_fd < 0)
 		return log_error_errno(-1, errno, "Failed to receive devpts fd");
 
-	ptx_fd = openat(devpts_fd, "ptmx", O_RDWR | O_NOCTTY | O_CLOEXEC);
-	if (ptx_fd < 0)
+	terminal->ptx = open_beneath(devpts_fd, "ptmx", O_RDWR | O_NOCTTY | O_CLOEXEC);
+	if (terminal->ptx < 0)
 		return log_error_errno(-1, errno, "Failed to open terminal multiplexer device");
 
-	ret = grantpt(ptx_fd);
-	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to grant access to multiplexer device");
+	ret = unlockpt(terminal->ptx);
+	if (ret < 0) {
+		SYSERROR("Failed to unlock multiplexer device device");
+		goto err;
+	}
 
-	ret = unlockpt(ptx_fd);
-	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to unlock multiplexer device device");
+	terminal->pty = ioctl(terminal->ptx, TIOCGPTPEER, O_RDWR | O_NOCTTY | O_CLOEXEC);
+	if (terminal->pty < 0) {
+		SYSERROR("Failed to allocate new pty device");
+		goto err;
+	}
 
-	pty_fd = ioctl(ptx_fd, TIOCGPTPEER, O_RDWR | O_NOCTTY | O_CLOEXEC);
-	if (pty_fd < 0)
-		return log_error_errno(-1, errno, "Failed to allocate new pty device");
+	// ret = lxc_terminal_map_ids(conf, terminal);
 
 	ret = ttyname_r(terminal->pty, terminal->name, sizeof(terminal->name));
-	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to retrieve name of terminal pty");
+	if (ret < 0) {
+		SYSERROR("Failed to retrieve name of terminal pty");
+		goto err;
+	}
 
-	terminal->ptx = move_fd(ptx_fd);
-	terminal->pty = move_fd(pty_fd);
 	ret = lxc_terminal_peer_default(terminal);
 	if (ret < 0) {
 		ERROR("Failed to allocate proxy terminal");
@@ -914,12 +946,13 @@ err:
 	return -ENODEV;
 }
 
-int lxc_terminal_create(const char *name, const char *lxcpath, struct lxc_terminal *terminal)
+int lxc_terminal_create(const char *name, const char *lxcpath, struct lxc_conf *conf,
+			struct lxc_terminal *terminal)
 {
-	if (!lxc_terminal_create_native(name, lxcpath, terminal))
+	if (!lxc_terminal_create_native(name, lxcpath, conf, terminal))
 		return 0;
 
-	return lxc_terminal_create_foreign(terminal);
+	return lxc_terminal_create_foreign(conf, terminal);
 }
 
 int lxc_terminal_setup(struct lxc_conf *conf)
@@ -932,7 +965,7 @@ int lxc_terminal_setup(struct lxc_conf *conf)
 		return 0;
 	}
 
-	ret = lxc_terminal_create_foreign(terminal);
+	ret = lxc_terminal_create_foreign(conf, terminal);
 	if (ret < 0)
 		return -1;
 
@@ -1208,25 +1241,4 @@ void lxc_terminal_conf_free(struct lxc_terminal *terminal)
 	if (terminal->buffer_size > 0 && terminal->ringbuf.addr)
 		lxc_ringbuf_release(&terminal->ringbuf);
 	lxc_terminal_signal_fini(terminal);
-}
-
-int lxc_terminal_map_ids(struct lxc_conf *c, struct lxc_terminal *terminal)
-{
-	int ret;
-
-	if (lxc_list_empty(&c->id_map))
-		return 0;
-
-	if (strcmp(terminal->name, "") == 0)
-		return 0;
-
-	ret = userns_exec_mapped_root(terminal->name, terminal->pty, c);
-	if (ret < 0) {
-		return log_error(-1, "Failed to chown terminal %d(%s)",
-				 terminal->pty, terminal->name);
-	}
-
-	TRACE("Chowned terminal %d(%s)", terminal->pty, terminal->name);
-
-	return 0;
 }
