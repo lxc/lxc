@@ -16,6 +16,7 @@
 #include <unistd.h>
 
 #include "config.h"
+#include "macro.h"
 #include "syscall_numbers.h"
 
 #ifdef HAVE_LINUX_MEMFD_H
@@ -24,6 +25,10 @@
 
 #ifdef HAVE_SYS_SIGNALFD_H
 #include <sys/signalfd.h>
+#endif
+
+#ifdef HAVE_STRUCT_OPEN_HOW
+#include <linux/openat2.h>
 #endif
 
 typedef int32_t key_serial_t;
@@ -202,5 +207,62 @@ static inline int fsmount_lxc(int fs_fd, unsigned int flags, unsigned int attr_f
 #else
 extern int fsmount(int fs_fd, unsigned int flags, unsigned int attr_flags);
 #endif
+
+/*
+ * Arguments for how openat2(2) should open the target path. If only @flags and
+ * @mode are non-zero, then openat2(2) operates very similarly to openat(2).
+ *
+ * However, unlike openat(2), unknown or invalid bits in @flags result in
+ * -EINVAL rather than being silently ignored. @mode must be zero unless one of
+ * {O_CREAT, O_TMPFILE} are set.
+ *
+ * @flags: O_* flags.
+ * @mode: O_CREAT/O_TMPFILE file mode.
+ * @resolve: RESOLVE_* flags.
+ */
+struct lxc_open_how {
+	__u64 flags;
+	__u64 mode;
+	__u64 resolve;
+};
+
+/* how->resolve flags for openat2(2). */
+#ifndef RESOLVE_NO_XDEV
+#define RESOLVE_NO_XDEV		0x01 /* Block mount-point crossings
+					(includes bind-mounts). */
+#endif
+
+#ifndef RESOLVE_NO_MAGICLINKS
+#define RESOLVE_NO_MAGICLINKS	0x02 /* Block traversal through procfs-style
+					"magic-links". */
+#endif
+
+#ifndef RESOLVE_NO_SYMLINKS
+#define RESOLVE_NO_SYMLINKS	0x04 /* Block traversal through all symlinks
+					(implies OEXT_NO_MAGICLINKS) */
+#endif
+
+#ifndef RESOLVE_BENEATH
+#define RESOLVE_BENEATH		0x08 /* Block "lexical" trickery like
+					"..", symlinks, and absolute
+					paths which escape the dirfd. */
+#endif
+
+#ifndef RESOLVE_IN_ROOT
+#define RESOLVE_IN_ROOT		0x10 /* Make all jumps to "/" and ".."
+					be scoped inside the dirfd
+					(similar to chroot(2)). */
+#endif
+
+#ifndef HAVE_OPENAT2
+static inline int openat2(int dfd, const char *filename, struct lxc_open_how *how, size_t size)
+{
+	/* When struct open_how is updated we should update lxc as well. */
+#ifdef HAVE_STRUCT_OPEN_HOW
+	BUILD_BUG_ON(sizeof(struct lxc_open_how) != sizeof(struct open_how));
+#endif
+	return syscall(__NR_openat2, dfd, filename, (struct open_how *)how, size);
+}
+#endif /* HAVE_OPENAT2 */
 
 #endif /* __LXC_SYSCALL_WRAPPER_H */

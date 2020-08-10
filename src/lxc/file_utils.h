@@ -73,5 +73,6 @@ __hidden extern int lxc_open_dirfd(const char *dir);
 __hidden extern FILE *fdopen_cached(int fd, const char *mode, void **caller_freed_buffer);
 __hidden extern FILE *fopen_cached(const char *path, const char *mode, void **caller_freed_buffer);
 __hidden extern int timens_offset_write(clockid_t clk_id, int64_t s_offset, int64_t ns_offset);
+__hidden extern bool exists_dir_at(int dir_fd, const char *path);
 
 #endif /* __LXC_FILE_UTILS_H */

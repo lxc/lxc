@@ -569,15 +569,7 @@ gid_t get_ns_gid(gid_t orig)
 
 bool dir_exists(const char *path)
 {
-	struct stat sb;
-	int ret;
-
-	ret = stat(path, &sb);
-	if (ret < 0)
-		/* Could be something other than eexist, just say "no". */
-		return false;
-
-	return S_ISDIR(sb.st_mode);
+	return exists_dir_at(-1, path);
 }
 
 /* Note we don't use SHA-1 here as we don't want to depend on HAVE_GNUTLS.
@@ -1077,6 +1069,61 @@ static int open_without_symlink(const char *target, const char *prefix_skip)
 out:
 	free(dup);
 	return dirfd;
+}
+
+int __safe_mount_beneath_at(int beneath_fd, const char *src, const char *dst, const char *fstype,
+			    unsigned int flags, const void *data)
+{
+	__do_close int source_fd = -EBADF, target_fd = -EBADF;
+	struct lxc_open_how how = {
+		.flags		= O_RDONLY | O_CLOEXEC | O_PATH,
+		.resolve	= RESOLVE_NO_XDEV | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS | RESOLVE_BENEATH,
+	};
+	int ret;
+	char src_buf[LXC_PROC_PID_FD_LEN], tgt_buf[LXC_PROC_PID_FD_LEN];
+
+	if (beneath_fd < 0)
+		return -EINVAL;
+
+	if ((flags & MS_BIND) && src && src[0] != '/') {
+		source_fd = openat2(beneath_fd, src, &how, sizeof(how));
+		if (source_fd < 0)
+			return -errno;
+		snprintf(src_buf, sizeof(src_buf), "/proc/self/fd/%d", source_fd);
+	} else {
+		src_buf[0] = '\0';
+	}
+
+	target_fd = openat2(beneath_fd, dst, &how, sizeof(how));
+	if (target_fd < 0)
+		return -errno;
+	snprintf(tgt_buf, sizeof(tgt_buf), "/proc/self/fd/%d", target_fd);
+
+	if (!is_empty_string(src_buf))
+		ret = mount(src_buf, tgt_buf, fstype, flags, data);
+	else
+		ret = mount(src, tgt_buf, fstype, flags, data);
+
+	return ret;
+}
+
+int safe_mount_beneath(const char *beneath, const char *src, const char *dst, const char *fstype,
+		       unsigned int flags, const void *data)
+{
+	__do_close int beneath_fd = -EBADF;
+	const char *path = beneath ? beneath : "/";
+
+	beneath_fd = openat(-1, beneath, O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH);
+	if (beneath_fd < 0)
+		return log_error_errno(-errno, errno, "Failed to open %s", path);
+
+	return __safe_mount_beneath_at(beneath_fd, src, dst, fstype, flags, data);
+}
+
+int safe_mount_beneath_at(int beneath_fd, const char *src, const char *dst, const char *fstype,
+			  unsigned int flags, const void *data)
+{
+	return __safe_mount_beneath_at(beneath_fd, src, dst, fstype, flags, data);
 }
 
 /*
