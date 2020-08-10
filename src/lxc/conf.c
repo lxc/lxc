@@ -4555,7 +4555,7 @@ int userns_exec_mapped_root(const char *path, int path_fd,
 
 		ret = fchown(target_fd, 0, st.st_gid);
 		if (ret) {
-			SYSERROR("Failed to chown %d(%s) to -1:%d", target_fd, path, st.st_gid);
+			SYSERROR("Failed to chown %d(%s) to 0:%d", target_fd, path, st.st_gid);
 			_exit(EXIT_FAILURE);
 		}
 

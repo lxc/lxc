@@ -815,13 +815,6 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	}
 	TRACE("Created console");
 
-	ret = lxc_terminal_map_ids(conf, &conf->console);
-	if (ret < 0) {
-		ERROR("Failed to chown console");
-		goto out_delete_terminal;
-	}
-	TRACE("Chowned console");
-
 	handler->cgroup_ops = cgroup_init(handler->conf);
 	if (!handler->cgroup_ops) {
 		ERROR("Failed to initialize cgroup driver");

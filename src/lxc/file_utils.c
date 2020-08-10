@@ -18,6 +18,7 @@
 #include "macro.h"
 #include "memory_utils.h"
 #include "string_utils.h"
+#include "syscall_wrappers.h"
 #include "utils.h"
 
 int lxc_open_dirfd(const char *dir)
@@ -530,4 +531,22 @@ bool exists_file_at(int dir_fd, const char *path)
 	struct stat sb;
 
 	return fstatat(dir_fd, path, &sb, 0) == 0;
+}
+
+int open_beneath(int dir_fd, const char *path, unsigned int flags)
+{
+	__do_close int fd = -EBADF;
+	struct lxc_open_how how = {
+		.flags		= flags,
+		.resolve	= RESOLVE_NO_XDEV | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS | RESOLVE_BENEATH,
+	};
+
+	fd = openat2(dir_fd, path, &how, sizeof(how));
+	if (fd >= 0)
+		return move_fd(fd);
+
+	if (errno != ENOSYS)
+		return -errno;
+
+	return openat(dir_fd, path, O_NOFOLLOW | flags);
 }
