@@ -24,14 +24,43 @@ static int nop_enabled(void)
 	return 0;
 }
 
-static struct lsm_drv nop_drv = {
-	.name = "nop",
-	.enabled           = nop_enabled,
-	.process_label_get = nop_process_label_get,
-	.process_label_set = nop_process_label_set,
+static int nop_keyring_label_set(const char *label)
+{
+	return 0;
+}
+
+static int nop_prepare(struct lxc_conf *conf, const char *lxcpath)
+{
+	return 0;
+}
+
+static void nop_cleanup(struct lxc_conf *conf, const char *lxcpath)
+{
+}
+
+static int nop_process_label_fd_get(pid_t pid, bool on_exec)
+{
+	return 0;
+}
+
+static int nop_process_label_set_at(int label_fd, const char *label, bool on_exec)
+{
+	return 0;
+}
+
+static struct lsm_ops nop_ops = {
+	.name			= "nop",
+	.cleanup		= nop_cleanup,
+	.enabled		= nop_enabled,
+	.keyring_label_set	= nop_keyring_label_set,
+	.prepare		= nop_prepare,
+	.process_label_fd_get	= nop_process_label_fd_get,
+	.process_label_get	= nop_process_label_get,
+	.process_label_set	= nop_process_label_set,
+	.process_label_set_at	= nop_process_label_set_at,
 };
 
-struct lsm_drv *lsm_nop_drv_init(void)
+const struct lsm_ops *lsm_nop_ops_init(void)
 {
-	return &nop_drv;
+	return &nop_ops;
 }

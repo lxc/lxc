@@ -4,6 +4,7 @@
 #define _GNU_SOURCE 1
 #endif
 #include <errno.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mount.h>
@@ -24,15 +25,14 @@
 
 lxc_log_define(apparmor, lsm);
 
-/* set by lsm_apparmor_drv_init if true */
-static int aa_enabled = 0;
-static bool aa_parser_available = false;
-static bool aa_supports_unix = false;
-static bool aa_can_stack = false;
-static bool aa_is_stacked = false;
-static bool aa_admin = false;
-
-static int mount_features_enabled = 0;
+/* set by lsm_apparmor_ops_init if true */
+static atomic_int aa_enabled ;
+static atomic_int aa_parser_available = -1;
+static atomic_int aa_supports_unix;
+static atomic_int aa_can_stack;
+static atomic_int aa_is_stacked;
+static atomic_int aa_admin;
+static atomic_int mount_features_enabled;
 
 #define AA_DEF_PROFILE "lxc-container-default"
 #define AA_DEF_PROFILE_CGNS "lxc-container-default-cgns"
@@ -375,7 +375,7 @@ static const char AA_PROFILE_UNPRIVILEGED[] =
 
 static bool check_mount_feature_enabled(void)
 {
-	return mount_features_enabled == 1;
+	return atomic_load(&mount_features_enabled);
 }
 
 static void load_mount_features_enabled(void)
@@ -385,13 +385,13 @@ static void load_mount_features_enabled(void)
 
 	ret = stat(AA_MOUNT_RESTR, &statbuf);
 	if (ret == 0)
-		mount_features_enabled = 1;
+		atomic_store(&mount_features_enabled, 1);
 }
 
 /* aa_getcon is not working right now.  Use our hand-rolled version below */
 static int apparmor_enabled(void)
 {
-	FILE *fin;
+	__do_fclose FILE *fin = NULL;
 	char e;
 	int ret;
 
@@ -399,7 +399,6 @@ static int apparmor_enabled(void)
 	if (!fin)
 		return 0;
 	ret = fscanf(fin, "%c", &e);
-	fclose(fin);
 	if (ret == 1 && e == 'Y') {
 		load_mount_features_enabled();
 		return 1;
@@ -545,14 +544,17 @@ static inline char *apparmor_namespace(const char *ctname, const char *lxcpath)
  */
 static bool check_apparmor_parser_version()
 {
+	int major = 0, minor = 0, micro = 0, ret = 0;
 	struct lxc_popen_FILE *parserpipe;
 	int rc;
-	int major = 0, minor = 0, micro = 0;
+
+	if (atomic_load(&aa_parser_available) >= 0)
+		return false;
 
 	parserpipe = lxc_popen("apparmor_parser --version");
 	if (!parserpipe) {
 		fprintf(stderr, "Failed to run check for apparmor_parser\n");
-		return false;
+		goto out;
 	}
 
 	rc = fscanf(parserpipe->f, "AppArmor parser version %d.%d.%d", &major, &minor, &micro);
@@ -562,24 +564,27 @@ static bool check_apparmor_parser_version()
 		 * lxc_popen executed failed to find the apparmor_parser binary.
 		 * See the TODO comment above for details.
 		 */
-		return false;
+		goto out;
 	}
 
 	rc = lxc_pclose(parserpipe);
 	if (rc < 0) {
 		fprintf(stderr, "Error waiting for child process\n");
-		return false;
+		goto out;
 	}
 	if (rc != 0) {
 		fprintf(stderr, "'apparmor_parser --version' executed with an error status\n");
-		return false;
+		goto out;
 	}
 
-	aa_supports_unix = (major > 2) ||
-	                   (major == 2 && minor > 10) ||
-	                   (major == 2 && minor == 10 && micro >= 95);
+	if ((major > 2) || (major == 2 && minor > 10) || (major == 2 && minor == 10 && micro >= 95))
+		atomic_store(&aa_supports_unix, 1);
 
-	return true;
+	ret = 1;
+
+out:
+	atomic_store(&aa_parser_available, ret);
+	return ret == 1;
 }
 
 static bool file_is_yes(const char *path)
@@ -744,7 +749,7 @@ static char *get_apparmor_profile_content(struct lxc_conf *conf, const char *lxc
 
 	append_all_remount_rules(&profile, &size);
 
-	if (aa_supports_unix)
+	if (atomic_load(&aa_supports_unix))
 		must_append_sized(&profile, &size, AA_PROFILE_UNIX_SOCKETS,
 		                  STRARRAYLEN(AA_PROFILE_UNIX_SOCKETS));
 
@@ -752,7 +757,7 @@ static char *get_apparmor_profile_content(struct lxc_conf *conf, const char *lxc
 		must_append_sized(&profile, &size, AA_PROFILE_CGROUP_NAMESPACES,
 		                  STRARRAYLEN(AA_PROFILE_CGROUP_NAMESPACES));
 
-	if (aa_can_stack && !aa_is_stacked) {
+	if (atomic_load(&aa_can_stack) && !atomic_load(&aa_is_stacked)) {
 		char *namespace, *temp;
 
 		must_append_sized(&profile, &size, AA_PROFILE_STACKING_BASE,
@@ -775,7 +780,7 @@ static char *get_apparmor_profile_content(struct lxc_conf *conf, const char *lxc
 		must_append_sized(&profile, &size, AA_PROFILE_NESTING_BASE,
 		                  STRARRAYLEN(AA_PROFILE_NESTING_BASE));
 
-		if (!aa_can_stack || aa_is_stacked) {
+		if (!atomic_load(&aa_can_stack) || atomic_load(&aa_is_stacked)) {
 			char *temp;
 
 			temp = must_concat(NULL, "  change_profile -> \"",
@@ -836,7 +841,7 @@ static bool make_apparmor_namespace(struct lxc_conf *conf, const char *lxcpath)
 {
 	char *path;
 
-	if (!aa_can_stack || aa_is_stacked)
+	if (!atomic_load(&aa_can_stack) || atomic_load(&aa_is_stacked))
 		return true;
 
 	path = make_apparmor_namespace_path(conf->name, lxcpath);
@@ -1021,7 +1026,7 @@ out_ok:
  */
 static void apparmor_cleanup(struct lxc_conf *conf, const char *lxcpath)
 {
-	if (!aa_admin)
+	if (!atomic_load(&aa_admin))
 		return;
 
 	if (!conf->lsm_aa_profile_created)
@@ -1039,7 +1044,7 @@ static int apparmor_prepare(struct lxc_conf *conf, const char *lxcpath)
 	const char *label;
 	char *curlabel = NULL, *genlabel = NULL;
 
-	if (!aa_enabled) {
+	if (!atomic_load(&aa_enabled)) {
 		ERROR("AppArmor not enabled");
 		return -1;
 	}
@@ -1054,7 +1059,7 @@ static int apparmor_prepare(struct lxc_conf *conf, const char *lxcpath)
 	}
 
 	if (label && strcmp(label, AA_GENERATED) == 0) {
-		if (!aa_parser_available) {
+		if (!check_apparmor_parser_version()) {
 			ERROR("Cannot use generated profile: apparmor_parser not available");
 			goto out;
 		}
@@ -1071,7 +1076,7 @@ static int apparmor_prepare(struct lxc_conf *conf, const char *lxcpath)
 			goto out;
 		}
 
-		if (aa_can_stack && !aa_is_stacked) {
+		if (atomic_load(&aa_can_stack) && !atomic_load(&aa_is_stacked)) {
 			char *namespace = apparmor_namespace(conf->name, lxcpath);
 			size_t llen = strlen(genlabel);
 			must_append_sized(&genlabel, &llen, "//&:", STRARRAYLEN("//&:"));
@@ -1085,7 +1090,7 @@ static int apparmor_prepare(struct lxc_conf *conf, const char *lxcpath)
 
 	curlabel = apparmor_process_label_get(lxc_raw_getpid());
 
-	if (!aa_can_stack && aa_needs_transition(curlabel)) {
+	if (!atomic_load(&aa_can_stack) && aa_needs_transition(curlabel)) {
 		/* we're already confined, and stacking isn't supported */
 
 		if (!label || strcmp(curlabel, label) == 0) {
@@ -1128,6 +1133,55 @@ out:
 	return ret;
 }
 
+static int apparmor_keyring_label_set(const char *label)
+{
+	return 0;
+}
+
+static int apparmor_process_label_fd_get(pid_t pid, bool on_exec)
+{
+	int ret = -1;
+	int labelfd;
+	char path[LXC_LSMATTRLEN];
+
+	if (on_exec)
+		TRACE("On-exec not supported with AppArmor");
+
+	ret = snprintf(path, LXC_LSMATTRLEN, "/proc/%d/attr/current", pid);
+	if (ret < 0 || ret >= LXC_LSMATTRLEN)
+		return -1;
+
+	labelfd = open(path, O_RDWR);
+	if (labelfd < 0)
+		return log_error_errno(-errno, errno, "Unable to open AppArmor LSM label file descriptor");
+
+	return labelfd;
+}
+
+static int apparmor_process_label_set_at(int label_fd, const char *label, bool on_exec)
+{
+	int ret = -1;
+	size_t len;
+	__do_free char *command = NULL;
+
+	if (on_exec)
+		log_trace(0, "Changing AppArmor profile on exec not supported");
+
+	len = strlen(label) + strlen("changeprofile ") + 1;
+	command = malloc(len);
+	if (!command)
+		return ret_errno(ENOMEM);
+
+	ret = snprintf(command, len, "changeprofile %s", label);
+	if (ret < 0 || (size_t)ret >= len)
+		return -EFBIG;
+
+	ret = lxc_write_nointr(label_fd, command, len - 1);
+
+	INFO("Set AppArmor label to \"%s\"", label);
+	return 0;
+}
+
 /*
  * apparmor_process_label_set: Set AppArmor process profile
  *
@@ -1147,7 +1201,7 @@ static int apparmor_process_label_set(const char *inlabel, struct lxc_conf *conf
 	pid_t tid;
 	const char *label;
 
-	if (!aa_enabled) {
+	if (!atomic_load(&aa_enabled)) {
 		ERROR("AppArmor not enabled");
 		return -1;
 	}
@@ -1169,13 +1223,13 @@ static int apparmor_process_label_set(const char *inlabel, struct lxc_conf *conf
 		return 0;
 	}
 	tid = lxc_raw_gettid();
-	label_fd = lsm_process_label_fd_get(tid, on_exec);
+	label_fd = apparmor_process_label_fd_get(tid, on_exec);
 	if (label_fd < 0) {
 		SYSERROR("Failed to change AppArmor profile to %s", label);
 		return -1;
 	}
 
-	ret = lsm_process_label_set_at(label_fd, label, on_exec);
+	ret = apparmor_process_label_set_at(label_fd, label, on_exec);
 	close(label_fd);
 	if (ret < 0) {
 		ERROR("Failed to change AppArmor profile to %s", label);
@@ -1186,31 +1240,33 @@ static int apparmor_process_label_set(const char *inlabel, struct lxc_conf *conf
 	return 0;
 }
 
-static struct lsm_drv apparmor_drv = {
-	.name = "AppArmor",
-	.enabled           = apparmor_enabled,
-	.process_label_get = apparmor_process_label_get,
-	.process_label_set = apparmor_process_label_set,
-	.prepare           = apparmor_prepare,
-	.cleanup           = apparmor_cleanup,
+static struct lsm_ops apparmor_ops = {
+	.name			= "AppArmor",
+	.cleanup           	= apparmor_cleanup,
+	.enabled		= apparmor_enabled,
+	.keyring_label_set	= apparmor_keyring_label_set,
+	.prepare           	= apparmor_prepare,
+	.process_label_fd_get	= apparmor_process_label_fd_get,
+	.process_label_get 	= apparmor_process_label_get,
+	.process_label_set 	= apparmor_process_label_set,
+	.process_label_set_at	= apparmor_process_label_set_at,
 };
 
-struct lsm_drv *lsm_apparmor_drv_init(void)
+const struct lsm_ops *lsm_apparmor_ops_init(void)
 {
 	bool have_mac_admin = false;
+	bool can_stack, is_stacked;
 
 	if (!apparmor_enabled())
 		return NULL;
 
-	/* We only support generated profiles when apparmor_parser is usable */
-	if (!check_apparmor_parser_version())
-		goto out;
-
-	aa_parser_available = true;
-
-	aa_can_stack = apparmor_can_stack();
-	if (aa_can_stack)
-		aa_is_stacked = file_is_yes("/sys/kernel/security/apparmor/.ns_stacked");
+	can_stack = apparmor_can_stack();
+	if (can_stack) {
+		atomic_store(&aa_can_stack, 1);
+		is_stacked = file_is_yes("/sys/kernel/security/apparmor/.ns_stacked");
+		if (is_stacked)
+			atomic_store(&aa_is_stacked, 1);
+	}
 
 	#if HAVE_LIBCAP
 	have_mac_admin = lxc_proc_cap_is_set(CAP_SETGID, CAP_EFFECTIVE);
@@ -1218,12 +1274,11 @@ struct lsm_drv *lsm_apparmor_drv_init(void)
 
 	if (!have_mac_admin)
 		WARN("Per-container AppArmor profiles are disabled because the mac_admin capability is missing");
-	else if (am_host_unpriv() && !aa_is_stacked)
+	else if (am_host_unpriv() && !atomic_load(&aa_is_stacked))
 		WARN("Per-container AppArmor profiles are disabled because LXC is running in an unprivileged container without stacking");
 	else
-		aa_admin = true;
+		atomic_store(&aa_admin, 1);
 
-out:
-	aa_enabled = 1;
-	return &apparmor_drv;
+	atomic_store(&aa_enabled, 1);
+	return &apparmor_ops;
 }

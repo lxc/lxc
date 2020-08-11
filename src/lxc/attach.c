@@ -91,7 +91,9 @@ static struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 	if (!found)
 		return log_error_errno(NULL, ENOENT, "Failed to read capability bounding set from %s", proc_fn);
 
-	info->lsm_label = lsm_process_label_get(pid);
+	info->lsm_ops = lsm_init();
+
+	info->lsm_label = info->lsm_ops->process_label_get(pid);
 	info->ns_inherited = 0;
 	for (int i = 0; i < LXC_NS_MAX; i++)
 		info->ns_fd[i] = -EBADF;
@@ -777,12 +779,12 @@ static int attach_child_main(struct attach_clone_payload *payload)
 		/* Change into our new LSM profile. */
 		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? true : false;
 
-		ret = lsm_process_label_set_at(lsm_fd, init_ctx->lsm_label, on_exec);
+		ret = init_ctx->lsm_ops->process_label_set_at(lsm_fd, init_ctx->lsm_label, on_exec);
 		close(lsm_fd);
 		if (ret < 0)
 			goto on_error;
 
-		TRACE("Set %s LSM label to \"%s\"", lsm_name(), init_ctx->lsm_label);
+		TRACE("Set %s LSM label to \"%s\"", init_ctx->lsm_ops->name, init_ctx->lsm_label);
 	}
 
 	if ((init_ctx->container && init_ctx->container->lxc_conf &&
@@ -1242,7 +1244,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 
 			ret = -1;
 			on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? true : false;
-			labelfd = lsm_process_label_fd_get(attached_pid, on_exec);
+			labelfd = init_ctx->lsm_ops->process_label_fd_get(attached_pid, on_exec);
 			if (labelfd < 0)
 				goto close_mainloop;
 
