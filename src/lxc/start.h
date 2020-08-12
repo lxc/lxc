@@ -128,7 +128,8 @@ struct lxc_handler {
 	/* Internal fds that always need to stay open. */
 	int keep_fds[3];
 
-	const struct lsm_ops *lsm_ops;
+	/* Static memory, don't free. */
+	struct lsm_ops *lsm_ops;
 };
 
 struct execute_args {

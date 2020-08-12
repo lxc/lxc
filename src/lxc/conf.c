@@ -3210,15 +3210,15 @@ static int lxc_setup_boot_id(void)
 	return 0;
 }
 
-static int lxc_setup_keyring(const struct lsm_ops *lsm_ops, const struct lxc_conf *conf)
+static int lxc_setup_keyring(struct lsm_ops *lsm_ops, const struct lxc_conf *conf)
 {
 	key_serial_t keyring;
 	int ret = 0;
 
 	if (conf->lsm_se_keyring_context)
-		ret = lsm_ops->keyring_label_set(conf->lsm_se_keyring_context);
+		ret = lsm_ops->keyring_label_set(lsm_ops, conf->lsm_se_keyring_context);
 	else if (conf->lsm_se_context)
-		ret = lsm_ops->keyring_label_set(conf->lsm_se_context);
+		ret = lsm_ops->keyring_label_set(lsm_ops, conf->lsm_se_context);
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to set keyring context");
 
