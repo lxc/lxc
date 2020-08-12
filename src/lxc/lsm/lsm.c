@@ -21,9 +21,9 @@ __hidden extern struct lsm_ops *lsm_apparmor_ops_init(void);
 __hidden extern struct lsm_ops *lsm_selinux_ops_init(void);
 __hidden extern struct lsm_ops *lsm_nop_ops_init(void);
 
-const struct lsm_ops *lsm_init(void)
+struct lsm_ops *lsm_init(void)
 {
-	const struct lsm_ops *ops = NULL;
+	struct lsm_ops *ops = NULL;
 
 	#if HAVE_APPARMOR
 	ops = lsm_apparmor_ops_init();

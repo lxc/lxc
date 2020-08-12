@@ -30,7 +30,7 @@ lxc_log_define(selinux, lsm);
  *
  * Note that this relies on /proc being available.
  */
-static char *selinux_process_label_get(pid_t pid)
+static char *selinux_process_label_get(struct lsm_ops *ops, pid_t pid)
 {
 	char *label;
 
@@ -52,8 +52,8 @@ static char *selinux_process_label_get(pid_t pid)
  *
  * Notes: This relies on /proc being available.
  */
-static int selinux_process_label_set(const char *inlabel, struct lxc_conf *conf,
-				     bool on_exec)
+static int selinux_process_label_set(struct lsm_ops *ops, const char *inlabel,
+				     struct lxc_conf *conf, bool on_exec)
 {
 	int ret;
 	const char *label;
@@ -84,21 +84,21 @@ static int selinux_process_label_set(const char *inlabel, struct lxc_conf *conf,
  *
  * Returns 0 on success, < 0 on failure
  */
-static int selinux_keyring_label_set(const char *label)
+static int selinux_keyring_label_set(struct lsm_ops *ops, const char *label)
 {
 	return setkeycreatecon_raw(label);
 }
 
-static int selinux_prepare(struct lxc_conf *conf, const char *lxcpath)
+static int selinux_prepare(struct lsm_ops *ops, struct lxc_conf *conf, const char *lxcpath)
 {
 	return 0;
 }
 
-static void selinux_cleanup(struct lxc_conf *conf, const char *lxcpath)
+static void selinux_cleanup(struct lsm_ops *ops, struct lxc_conf *conf, const char *lxcpath)
 {
 }
 
-static int selinux_process_label_fd_get(pid_t pid, bool on_exec)
+static int selinux_process_label_fd_get(struct lsm_ops *ops, pid_t pid, bool on_exec)
 {
 	int ret = -1;
 	int labelfd;
@@ -118,7 +118,7 @@ static int selinux_process_label_fd_get(pid_t pid, bool on_exec)
 	return labelfd;
 }
 
-static int selinux_process_label_set_at(int label_fd, const char *label, bool on_exec)
+static int selinux_process_label_set_at(struct lsm_ops *ops, int label_fd, const char *label, bool on_exec)
 {
 	int ret;
 
@@ -133,19 +133,31 @@ static int selinux_process_label_set_at(int label_fd, const char *label, bool on
 	return 0;
 }
 
+static int selinux_enabled(struct lsm_ops *ops)
+{
+	return is_selinux_enabled();
+}
+
 static struct lsm_ops selinux_ops = {
-	.name			= "SELinux",
-	.cleanup		= selinux_cleanup,
-	.enabled		= is_selinux_enabled,
-	.keyring_label_set	= selinux_keyring_label_set,
-	.prepare		= selinux_prepare,
-	.process_label_fd_get	= selinux_process_label_fd_get,
-	.process_label_get	= selinux_process_label_get,
-	.process_label_set	= selinux_process_label_set,
-	.process_label_set_at	= selinux_process_label_set_at,
+	.name				= "SELinux",
+	.aa_admin			= -1,
+	.aa_can_stack			= -1,
+	.aa_enabled			= -1,
+	.aa_is_stacked			= -1,
+	.aa_mount_features_enabled	= -1,
+	.aa_parser_available		= -1,
+	.aa_supports_unix		= -1,
+	.cleanup			= selinux_cleanup,
+	.enabled			= selinux_enabled,
+	.keyring_label_set		= selinux_keyring_label_set,
+	.prepare			= selinux_prepare,
+	.process_label_fd_get		= selinux_process_label_fd_get,
+	.process_label_get		= selinux_process_label_get,
+	.process_label_set		= selinux_process_label_set,
+	.process_label_set_at		= selinux_process_label_set_at,
 };
 
-const struct lsm_ops *lsm_selinux_ops_init(void)
+struct lsm_ops *lsm_selinux_ops_init(void)
 {
 	if (!is_selinux_enabled())
 		return NULL;
