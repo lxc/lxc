@@ -8,59 +8,66 @@
 #include "config.h"
 #include "lsm/lsm.h"
 
-static char *nop_process_label_get(pid_t pid)
+static char *nop_process_label_get(struct lsm_ops *ops, pid_t pid)
 {
 	return NULL;
 }
 
-static int nop_process_label_set(const char *label, struct lxc_conf *conf,
+static int nop_process_label_set(struct lsm_ops *ops, const char *label, struct lxc_conf *conf,
 				 bool on_exec)
 {
 	return 0;
 }
 
-static int nop_enabled(void)
+static int nop_enabled(struct lsm_ops *ops)
 {
 	return 0;
 }
 
-static int nop_keyring_label_set(const char *label)
+static int nop_keyring_label_set(struct lsm_ops *ops, const char *label)
 {
 	return 0;
 }
 
-static int nop_prepare(struct lxc_conf *conf, const char *lxcpath)
+static int nop_prepare(struct lsm_ops *ops, struct lxc_conf *conf, const char *lxcpath)
 {
 	return 0;
 }
 
-static void nop_cleanup(struct lxc_conf *conf, const char *lxcpath)
+static void nop_cleanup(struct lsm_ops *ops, struct lxc_conf *conf, const char *lxcpath)
 {
 }
 
-static int nop_process_label_fd_get(pid_t pid, bool on_exec)
+static int nop_process_label_fd_get(struct lsm_ops *ops, pid_t pid, bool on_exec)
 {
 	return 0;
 }
 
-static int nop_process_label_set_at(int label_fd, const char *label, bool on_exec)
+static int nop_process_label_set_at(struct lsm_ops *ops, int label_fd, const char *label, bool on_exec)
 {
 	return 0;
 }
 
 static struct lsm_ops nop_ops = {
-	.name			= "nop",
-	.cleanup		= nop_cleanup,
-	.enabled		= nop_enabled,
-	.keyring_label_set	= nop_keyring_label_set,
-	.prepare		= nop_prepare,
-	.process_label_fd_get	= nop_process_label_fd_get,
-	.process_label_get	= nop_process_label_get,
-	.process_label_set	= nop_process_label_set,
-	.process_label_set_at	= nop_process_label_set_at,
+	.name				= "nop",
+	.aa_admin			= -1,
+	.aa_can_stack			= -1,
+	.aa_enabled			= -1,
+	.aa_is_stacked			= -1,
+	.aa_mount_features_enabled	= -1,
+	.aa_parser_available		= -1,
+	.aa_supports_unix		= -1,
+	.cleanup			= nop_cleanup,
+    	.enabled			= nop_enabled,
+    	.keyring_label_set		= nop_keyring_label_set,
+    	.prepare			= nop_prepare,
+    	.process_label_fd_get		= nop_process_label_fd_get,
+    	.process_label_get		= nop_process_label_get,
+    	.process_label_set		= nop_process_label_set,
+    	.process_label_set_at		= nop_process_label_set_at,
 };
 
-const struct lsm_ops *lsm_nop_ops_init(void)
+struct lsm_ops *lsm_nop_ops_init(void)
 {
 	return &nop_ops;
 }
