@@ -827,7 +827,7 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 		return log_error(-1, "Failed loading seccomp policy");
 	TRACE("Read seccomp policy");
 
-	ret = handler->lsm_ops->prepare(conf, handler->lxcpath);
+	ret = handler->lsm_ops->prepare(handler->lsm_ops, conf, handler->lxcpath);
 	if (ret < 0) {
 		ERROR("Failed to initialize LSM");
 		goto out_delete_terminal;
@@ -918,7 +918,7 @@ void lxc_end(struct lxc_handler *handler)
 	while (namespace_count--)
 		free(namespaces[namespace_count]);
 
-	handler->lsm_ops->cleanup(handler->conf, handler->lxcpath);
+	handler->lsm_ops->cleanup(handler->lsm_ops, handler->conf, handler->lxcpath);
 
 	if (cgroup_ops) {
 		cgroup_ops->payload_destroy(cgroup_ops, handler);
@@ -1269,7 +1269,7 @@ static int do_start(void *data)
 	}
 
 	/* Set the label to change to when we exec(2) the container's init. */
-	ret = handler->lsm_ops->process_label_set(NULL, handler->conf, true);
+	ret = handler->lsm_ops->process_label_set(handler->lsm_ops, NULL, handler->conf, true);
 	if (ret < 0)
 		goto out_warn_father;
 
