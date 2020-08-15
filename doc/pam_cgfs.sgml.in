@@ -77,14 +77,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     </para>
 
     <para>
-      The <command>pam_cgfs.so</command> module can handle both pure cgroupfs v1
-      (<filename>/sys/fs/cgroup/$controller</filename>) and pure cgroupfs
-      v2 (<filename>/sys/fs/cgroup</filename>), as well as mixed mounts,
+      The <command>pam_cgfs.so</command> module can handle pure cgroupfs v1
+      (<filename>/sys/fs/cgroup/$controller</filename>) and mixed mounts,
       where some controllers are mounted in a standard cgroupfs v1 hierarchy
       (<filename>/sys/fs/cgroup/$controller</filename>) and others in
       cgroupfs v2 hierarchy (<filename>/sys/fs/cgroup/unified</filename>).
       Writeable cgroups are either created for all controllers or, if specified,
-      for only controllers listed as arguments on the command line.
+      for only controllers listed as arguments on the command line. 
+      Pure cgroup v2 mount is not covered by the pam_cgfs.so module.
     </para>
 
     <para>
