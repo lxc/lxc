@@ -704,7 +704,7 @@ bool detect_ramfs_rootfs(void)
 		if (strcmp(p + 1, "/") == 0) {
 			/* This is '/'. Is it the ramfs? */
 			p = strchr(p2 + 1, '-');
-			if (p && strncmp(p, "- rootfs rootfs ", 16) == 0)
+			if (p && strncmp(p, "- rootfs ", 9) == 0)
 				return true;
 		}
 	}
