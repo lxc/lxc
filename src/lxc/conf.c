@@ -2187,8 +2187,7 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 	return mount_entry_on_generic(mntent, path, rootfs, lxc_name, lxc_path);
 }
 
-static int mount_file_entries(const struct lxc_conf *conf,
-			      const struct lxc_rootfs *rootfs, FILE *file,
+static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file,
 			      const char *lxc_name, const char *lxc_path)
 {
 	char buf[PATH_MAX];
@@ -2237,7 +2236,7 @@ static int setup_mount(const struct lxc_conf *conf,
 	if (!f)
 		return log_error_errno(-1, errno, "Failed to open \"%s\"", fstab);
 
-	ret = mount_file_entries(conf, rootfs, f, lxc_name, lxc_path);
+	ret = mount_file_entries(rootfs, f, lxc_name, lxc_path);
 	if (ret < 0)
 		ERROR("Failed to set up mount entries");
 
@@ -2324,7 +2323,7 @@ static int setup_mount_entries(const struct lxc_conf *conf,
 	if (!f)
 		return -1;
 
-	return mount_file_entries(conf, rootfs, f, lxc_name, lxc_path);
+	return mount_file_entries(rootfs, f, lxc_name, lxc_path);
 }
 
 static int parse_cap(const char *cap)
