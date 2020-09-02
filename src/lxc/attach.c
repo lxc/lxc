@@ -1384,14 +1384,10 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 
 	if (pid == 0) {
 		if (options->attach_flags & LXC_ATTACH_TERMINAL) {
-			if (terminal.tty_state)
-			{
-				ret = pthread_sigmask(SIG_SETMASK,
-							  &terminal.tty_state->oldmask, NULL);
-				if (ret < 0) {
-					SYSERROR("Failed to reset signal mask");
-					_exit(EXIT_FAILURE);
-				}
+			ret = lxc_terminal_signal_sigmask_safe_blocked(&terminal);
+			if (ret < 0) {
+				SYSERROR("Failed to reset signal mask");
+				_exit(EXIT_FAILURE);
 			}
 		}
 
