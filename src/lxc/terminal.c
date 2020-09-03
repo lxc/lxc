@@ -147,6 +147,16 @@ struct lxc_terminal_state *lxc_terminal_signal_init(int srcfd, int dstfd)
 	return move_ptr(ts);
 }
 
+int lxc_terminal_signal_sigmask_safe_blocked(struct lxc_terminal *terminal)
+{
+	struct lxc_terminal_state *state = terminal->tty_state;
+
+	if (!state)
+		return 0;
+
+	return pthread_sigmask(SIG_SETMASK, &state->oldmask, NULL);
+}
+
 /**
  * lxc_terminal_signal_fini: uninstall signal handler
  *
