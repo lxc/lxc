@@ -765,9 +765,11 @@ AX_CHECK_COMPILE_FLAG([-Warray-bounds], [CFLAGS="$CFLAGS -Warray-bounds"],,[-Wer
 AX_CHECK_COMPILE_FLAG([-Wrestrict], [CFLAGS="$CFLAGS -Wrestrict"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-Wreturn-local-addr], [CFLAGS="$CFLAGS -Wreturn-local-addr"],,[-Werror])
 AX_CHECK_COMPILE_FLAG([-Wstringop-overflow], [CFLAGS="$CFLAGS -Wstringop-overflow"],,[-Werror])
+AX_CHECK_COMPILE_FLAG([-flto], [CFLAGS="$CFLAGS -flto"],,[-Werror])
 
 AX_CHECK_LINK_FLAG([-z relro], [LDFLAGS="$LDFLAGS -z relro"],,[])
 AX_CHECK_LINK_FLAG([-z now], [LDFLAGS="$LDFLAGS -z now"],,[])
+AX_CHECK_LINK_FLAG([-flto], [LDFLAGS="$LDFLAGS -flto"],,[])
 
 CFLAGS="$CFLAGS -Wvla -std=gnu11 -fms-extensions"
 if test "x$enable_werror" = "xyes"; then
