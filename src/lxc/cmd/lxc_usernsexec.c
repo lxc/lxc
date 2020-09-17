@@ -88,7 +88,7 @@ static int do_child(void *vargv)
 	int ret;
 	char **argv = (char **)vargv;
 
-	if (!lxc_setgroups(0, NULL))
+	if (!lxc_setgroups(0, NULL) && errno != EPERM)
 		return -1;
 
 	/* Assume we want to become root */
