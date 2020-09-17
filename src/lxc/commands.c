@@ -895,11 +895,8 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 			TRACE("Sent signal %d to pidfd %d", stopsignal, handler->pid);
 
 		rsp.ret = cgroup_ops->unfreeze(cgroup_ops, -1);
-		if (!rsp.ret)
-			return 0;
-
-		ERROR("Failed to unfreeze container \"%s\"", handler->name);
-		rsp.ret = -errno;
+		if (rsp.ret)
+			WARN("Failed to unfreeze container \"%s\"", handler->name);
 	} else {
 		rsp.ret = -errno;
 	}
