@@ -14,8 +14,6 @@ ExecStop=@BINDIR@/lxc-stop -n %i
 # Environment=BOOTUP=serial
 # Environment=CONSOLETYPE=serial
 Delegate=yes
-StandardOutput=syslog
-StandardError=syslog
 
 [Install]
 WantedBy=multi-user.target

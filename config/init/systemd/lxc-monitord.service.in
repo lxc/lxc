@@ -6,8 +6,6 @@ Documentation=man:lxc
 [Service]
 Type=simple
 ExecStart=@LIBEXECDIR@/lxc/lxc-monitord --daemon
-StandardOutput=syslog
-StandardError=syslog
 
 [Install]
 WantedBy=multi-user.target
