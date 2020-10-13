@@ -531,6 +531,11 @@ static bool do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
 		return true;
 	}
 
+	if (arch != SCMP_ARCH_NATIVE && seccomp_syscall_resolve_name_arch(arch, line) < 0) {
+		INFO("The syscall \"%s\" nr:%d is not supported on compat arch:%d", line, nr, arch);
+		return true;
+	}
+
 	memset(&arg_cmp, 0, sizeof(arg_cmp));
 	for (i = 0; i < rule->args_num; i++) {
 		INFO("arg_cmp[%d]: SCMP_CMP(%u, %llu, %llu, %llu)", i,
