@@ -1377,7 +1377,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	int listener_proxy_fd = conf->seccomp.notifier.proxy_fd;
 	struct seccomp_notify_proxy_msg msg = {0};
 	char *cookie = conf->seccomp.notifier.cookie;
-	uint64_t req_id;
+	__u64 req_id;
 
 	if (events & EPOLLHUP) {
 		lxc_mainloop_del_handler(descr, fd);
@@ -1409,6 +1409,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 
 	/* remember the ID in case we receive garbage from the proxy */
 	resp->id = req_id = req->id;
+	TRACE("Received seccomp notification with id(%llu)", req_id);
 
 	snprintf(mem_path, sizeof(mem_path), "/proc/%d", req->pid);
 	fd_pid = open(mem_path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
@@ -1433,7 +1434,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	ret = seccomp_notify_id_valid(fd, req->id);
 	if (ret < 0) {
 		seccomp_notify_default_answer(fd, req, resp, hdlr);
-		SYSERROR("Invalid seccomp notify request id");
+		SYSERROR("Invalid seccomp notify request id(%llu)", req->id);
 		goto out;
 	}
 
@@ -1492,8 +1493,8 @@ retry:
 	}
 
 	if (resp->id != req_id) {
+		ERROR("Proxy returned response with illegal id(%llu) != id(%llu)", resp->id, req_id);
 		resp->id = req_id;
-		ERROR("Proxy returned response with illegal id");
 		seccomp_notify_default_answer(fd, req, resp, hdlr);
 		goto out;
 	}
@@ -1505,9 +1506,16 @@ retry:
 		goto out;
 	}
 
+	if (resp->id != req_id) {
+		ERROR("Proxy returned response with illegal id(%llu) != id(%llu)", resp->id, req_id);
+		resp->id = req_id;
+	}
+
 	ret = seccomp_notify_respond(fd, resp);
 	if (ret)
 		SYSERROR("Failed to send seccomp notification");
+	else
+		TRACE("Sent response for seccomp notification with id(%llu)", resp->id);
 
 out:
 #endif
