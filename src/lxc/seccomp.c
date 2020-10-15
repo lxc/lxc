@@ -1347,9 +1347,14 @@ static void seccomp_notify_default_answer(int fd, struct seccomp_notif *req,
 {
 	resp->id = req->id;
 	resp->error = -ENOSYS;
+	resp->val = 0;
+	resp->flags = 0;
 
 	if (seccomp_notify_respond(fd, resp))
-		SYSERROR("Failed to send default message to seccomp");
+		SYSERROR("Failed to send default message to seccomp notification with id(%llu)", resp->id);
+	else
+		TRACE("Sent default response for seccomp notification with id(%llu)", resp->id);
+	memset(resp, 0, handler->conf->seccomp.notifier.sizes.seccomp_notif_resp);
 }
 #endif
 
@@ -1385,7 +1390,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 		return log_trace(0, "Removing seccomp notifier fd %d", fd);
 	}
 
-	memset(req, 0, sizeof(*req));
+	memset(req, 0, conf->seccomp.notifier.sizes.seccomp_notif);
 	ret = seccomp_notify_receive(fd, req);
 	if (ret) {
 		SYSERROR("Failed to read seccomp notification");
@@ -1516,6 +1521,7 @@ retry:
 		SYSERROR("Failed to send seccomp notification");
 	else
 		TRACE("Sent response for seccomp notification with id(%llu)", resp->id);
+	memset(resp, 0, conf->seccomp.notifier.sizes.seccomp_notif_resp);
 
 out:
 #endif
