@@ -1351,9 +1351,11 @@ static void seccomp_notify_default_answer(int fd, struct seccomp_notif *req,
 	resp->flags = 0;
 
 	if (seccomp_notify_respond(fd, resp))
-		SYSERROR("Failed to send default message to seccomp notification with id(%llu)", resp->id);
+		SYSERROR("Failed to send default message to seccomp notification with id(%llu)",
+			 (long long unsigned int)resp->id);
 	else
-		TRACE("Sent default response for seccomp notification with id(%llu)", resp->id);
+		TRACE("Sent default response for seccomp notification with id(%llu)",
+		      (long long unsigned int)resp->id);
 	memset(resp, 0, handler->conf->seccomp.notifier.sizes.seccomp_notif_resp);
 }
 #endif
@@ -1414,7 +1416,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 
 	/* remember the ID in case we receive garbage from the proxy */
 	resp->id = req_id = req->id;
-	TRACE("Received seccomp notification with id(%llu)", req_id);
+	TRACE("Received seccomp notification with id(%llu)", (long long unsigned int)req_id);
 
 	snprintf(mem_path, sizeof(mem_path), "/proc/%d", req->pid);
 	fd_pid = open(mem_path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
@@ -1439,7 +1441,7 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	ret = seccomp_notify_id_valid(fd, req->id);
 	if (ret < 0) {
 		seccomp_notify_default_answer(fd, req, resp, hdlr);
-		SYSERROR("Invalid seccomp notify request id(%llu)", req->id);
+		SYSERROR("Invalid seccomp notify request id(%llu)", (long long unsigned int)req->id);
 		goto out;
 	}
 
@@ -1498,7 +1500,8 @@ retry:
 	}
 
 	if (resp->id != req_id) {
-		ERROR("Proxy returned response with illegal id(%llu) != id(%llu)", resp->id, req_id);
+		ERROR("Proxy returned response with illegal id(%llu) != id(%llu)",
+		      (long long unsigned int)resp->id, (long long unsigned int)req_id);
 		resp->id = req_id;
 		seccomp_notify_default_answer(fd, req, resp, hdlr);
 		goto out;
@@ -1512,7 +1515,8 @@ retry:
 	}
 
 	if (resp->id != req_id) {
-		ERROR("Proxy returned response with illegal id(%llu) != id(%llu)", resp->id, req_id);
+		ERROR("Proxy returned response with illegal id(%llu) != id(%llu)",
+		      (long long unsigned int)resp->id, (long long unsigned int)req_id);
 		resp->id = req_id;
 	}
 
@@ -1520,7 +1524,8 @@ retry:
 	if (ret)
 		SYSERROR("Failed to send seccomp notification");
 	else
-		TRACE("Sent response for seccomp notification with id(%llu)", resp->id);
+		TRACE("Sent response for seccomp notification with id(%llu)",
+		      (long long unsigned int)resp->id);
 	memset(resp, 0, conf->seccomp.notifier.sizes.seccomp_notif_resp);
 
 out:
