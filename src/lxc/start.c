@@ -1953,13 +1953,14 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	ret = lxc_abstract_unix_recv_fds(data_sock1, &handler->conf->devpts_fd, 1, NULL, 0);
+	ret = lxc_abstract_unix_recv_fds(data_sock1, &handler->conf->devpts_fd, 1,
+					 &handler->conf->devpts_fd,
+					 sizeof(handler->conf->devpts_fd));
 	if (ret < 0) {
 		SYSERROR("Failed to receive devpts fd from child");
 		goto out_delete_net;
 	}
-	if (ret == 0)
-		handler->conf->devpts_fd = -EBADF;
+	TRACE("Received devpts file descriptor %d from child", handler->conf->devpts_fd);
 
 	/* Now all networks are created, network devices are moved into place,
 	 * and the correct names and ifindices in the respective namespaces have
