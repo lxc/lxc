@@ -56,36 +56,44 @@ static int __sync_barrier(int fd, int sequence)
 	if (__sync_wake(fd, sequence))
 		return -1;
 
-	return __sync_wait(fd, sequence+1);
+	return __sync_wait(fd, sequence + 1);
 }
 
 int lxc_sync_barrier_parent(struct lxc_handler *handler, int sequence)
 {
+	TRACE("Child waking parent with sequence %s and waiting for sequence %s",
+	      sync_to_string(sequence), sync_to_string(sequence + 1));
 	return __sync_barrier(handler->sync_sock[0], sequence);
 }
 
 int lxc_sync_barrier_child(struct lxc_handler *handler, int sequence)
 {
+	TRACE("Parent waking child with sequence %s and waiting with sequence %s",
+	      sync_to_string(sequence), sync_to_string(sequence + 1));
 	return __sync_barrier(handler->sync_sock[1], sequence);
 }
 
 int lxc_sync_wake_parent(struct lxc_handler *handler, int sequence)
 {
+	TRACE("Child waking parent with sequence %s", sync_to_string(sequence));
 	return __sync_wake(handler->sync_sock[0], sequence);
 }
 
 int lxc_sync_wait_parent(struct lxc_handler *handler, int sequence)
 {
+	TRACE("Parent waiting for child with sequence %s", sync_to_string(sequence));
 	return __sync_wait(handler->sync_sock[0], sequence);
 }
 
 int lxc_sync_wait_child(struct lxc_handler *handler, int sequence)
 {
+	TRACE("Child waiting for parent with sequence %s", sync_to_string(sequence));
 	return __sync_wait(handler->sync_sock[1], sequence);
 }
 
 int lxc_sync_wake_child(struct lxc_handler *handler, int sequence)
 {
+	TRACE("Child waking parent with sequence %s", sync_to_string(sequence));
 	return __sync_wake(handler->sync_sock[1], sequence);
 }
 
@@ -102,6 +110,7 @@ int lxc_sync_init(struct lxc_handler *handler)
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to make socket close-on-exec");
 
+	TRACE("Initialized synchronization infrastructure");
 	return 0;
 }
 
