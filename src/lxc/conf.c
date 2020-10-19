@@ -1531,13 +1531,15 @@ static int lxc_setup_devpts(struct lxc_handler *handler)
 
 	devpts_fd = openat(-EBADF, "/dev/pts", O_CLOEXEC | O_DIRECTORY | O_PATH | O_NOFOLLOW);
 	if (devpts_fd < 0) {
+		devpts_fd = -EBADF;
 		TRACE("Failed to create detached devpts mount");
-		ret = lxc_abstract_unix_send_fds(sock, NULL, 0, NULL, 0);
+		ret = lxc_abstract_unix_send_fds(sock, NULL, 0, &devpts_fd, sizeof(int));
 	} else {
 		ret = lxc_abstract_unix_send_fds(sock, &devpts_fd, 1, NULL, 0);
 	}
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to send devpts fd to parent");
+	TRACE("Sent devpts file descriptor %d to parent", devpts_fd);
 
 	/* Remove any pre-existing /dev/ptmx file. */
 	ret = remove("/dev/ptmx");
