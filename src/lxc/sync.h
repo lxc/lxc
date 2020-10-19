@@ -20,6 +20,34 @@ enum {
 	LXC_SYNC_ERROR		= -1 /* Used to report errors from another process */
 };
 
+static inline const char *sync_to_string(int state)
+{
+	switch (state) {
+	case LXC_SYNC_STARTUP:
+		return "startup";
+	case LXC_SYNC_CONFIGURE:
+		return "configure";
+	case LXC_SYNC_POST_CONFIGURE:
+		return "post-configure";
+	case LXC_SYNC_CGROUP:
+		return "cgroup";
+	case LXC_SYNC_CGROUP_UNSHARE:
+		return "cgroup-unshare";
+	case LXC_SYNC_CGROUP_LIMITS:
+		return "cgroup-limits";
+	case LXC_SYNC_READY_START:
+		return "ready-start";
+	case LXC_SYNC_RESTART:
+		return "restart";
+	case LXC_SYNC_POST_RESTART:
+		return "post-restart";
+	case LXC_SYNC_ERROR:
+		return "error";
+	default:
+		return "invalid sync state";
+	}
+}
+
 __hidden extern int lxc_sync_init(struct lxc_handler *handler);
 __hidden extern void lxc_sync_fini(struct lxc_handler *);
 __hidden extern void lxc_sync_fini_parent(struct lxc_handler *);
