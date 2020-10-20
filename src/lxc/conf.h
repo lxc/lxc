@@ -490,4 +490,6 @@ static inline int chown_mapped_root(const char *path, const struct lxc_conf *con
 	return userns_exec_mapped_root(path, -EBADF, conf);
 }
 
+__hidden int lxc_setup_devpts_parent(struct lxc_handler *handler);
+
 #endif /* __LXC_CONF_H */
