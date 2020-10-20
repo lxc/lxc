@@ -1477,7 +1477,23 @@ static const struct id_map *find_mapped_nsid_entry(const struct lxc_conf *conf,
 	return retmap;
 }
 
-static int lxc_setup_devpts(struct lxc_handler *handler)
+int lxc_setup_devpts_parent(struct lxc_handler *handler)
+{
+	int ret;
+
+	if (handler->conf->pty_max <= 0)
+		return 0;
+
+	ret = lxc_abstract_unix_recv_fds(handler->data_sock[1], &handler->conf->devpts_fd, 1,
+					 &handler->conf->devpts_fd, sizeof(handler->conf->devpts_fd));
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to receive devpts fd from child");
+
+	TRACE("Received devpts file descriptor %d from child", handler->conf->devpts_fd);
+	return 0;
+}
+
+static int lxc_setup_devpts_child(struct lxc_handler *handler)
 {
 	__do_close int devpts_fd = -EBADF;
 	int ret;
@@ -1533,13 +1549,7 @@ static int lxc_setup_devpts(struct lxc_handler *handler)
 	if (devpts_fd < 0) {
 		devpts_fd = -EBADF;
 		TRACE("Failed to create detached devpts mount");
-		ret = lxc_abstract_unix_send_fds(sock, NULL, 0, &devpts_fd, sizeof(int));
-	} else {
-		ret = lxc_abstract_unix_send_fds(sock, &devpts_fd, 1, NULL, 0);
 	}
-	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to send devpts fd to parent");
-	TRACE("Sent devpts file descriptor %d to parent", devpts_fd);
 
 	/* Remove any pre-existing /dev/ptmx file. */
 	ret = remove("/dev/ptmx");
@@ -1575,6 +1585,14 @@ static int lxc_setup_devpts(struct lxc_handler *handler)
 		return log_error_errno(-1, errno, "Failed to create symlink from \"/dev/ptmx\" to \"/dev/pts/ptmx\"");
 	DEBUG("Created symlink from \"/dev/ptmx\" to \"/dev/pts/ptmx\"");
 
+	if (devpts_fd < 0)
+		ret = lxc_abstract_unix_send_fds(sock, NULL, 0, &devpts_fd, sizeof(int));
+	else
+		ret = lxc_abstract_unix_send_fds(sock, &devpts_fd, 1, NULL, 0);
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to send devpts fd to parent");
+
+	TRACE("Sent devpts file descriptor %d to parent", devpts_fd);
 	return 0;
 }
 
@@ -3391,7 +3409,7 @@ int lxc_setup(struct lxc_handler *handler)
 	if (lxc_conf->autodev > 0)
 		(void)lxc_setup_boot_id();
 
-	ret = lxc_setup_devpts(handler);
+	ret = lxc_setup_devpts_child(handler);
 	if (ret < 0)
 		return log_error(-1, "Failed to setup new devpts instance");
 
