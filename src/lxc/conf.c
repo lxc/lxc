@@ -1549,7 +1549,14 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	if (devpts_fd < 0) {
 		devpts_fd = -EBADF;
 		TRACE("Failed to create detached devpts mount");
+		ret = lxc_abstract_unix_send_fds(sock, NULL, 0, &devpts_fd, sizeof(int));
+	} else {
+		ret = lxc_abstract_unix_send_fds(sock, &devpts_fd, 1, NULL, 0);
 	}
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to send devpts fd to parent");
+
+	TRACE("Sent devpts file descriptor %d to parent", devpts_fd);
 
 	/* Remove any pre-existing /dev/ptmx file. */
 	ret = remove("/dev/ptmx");
@@ -1583,16 +1590,8 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	ret = symlink("/dev/pts/ptmx", "/dev/ptmx");
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to create symlink from \"/dev/ptmx\" to \"/dev/pts/ptmx\"");
+
 	DEBUG("Created symlink from \"/dev/ptmx\" to \"/dev/pts/ptmx\"");
-
-	if (devpts_fd < 0)
-		ret = lxc_abstract_unix_send_fds(sock, NULL, 0, &devpts_fd, sizeof(int));
-	else
-		ret = lxc_abstract_unix_send_fds(sock, &devpts_fd, 1, NULL, 0);
-	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to send devpts fd to parent");
-
-	TRACE("Sent devpts file descriptor %d to parent", devpts_fd);
 	return 0;
 }
 
