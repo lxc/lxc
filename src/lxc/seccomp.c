@@ -486,7 +486,14 @@ static scmp_filter_ctx get_new_ctx(enum lxc_hostarch_t n_arch, uint32_t default_
 	return ctx;
 }
 
-static bool do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
+enum lxc_seccomp_rule_status_t {
+  lxc_seccomp_rule_added = 0,
+  lxc_seccomp_rule_err,
+  lxc_seccomp_rule_undefined_syscall,
+  lxc_seccomp_rule_unsupported_arch,
+};
+
+static enum lxc_seccomp_rule_status_t do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
 				struct seccomp_v2_rule *rule)
 {
 	int i, nr, ret;
@@ -496,7 +503,7 @@ static bool do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
 	if (arch && ret != 0) {
 		errno = -ret;
 		SYSERROR("Seccomp: rule and context arch do not match (arch %d)", arch);
-		return false;
+		return lxc_seccomp_rule_err;
 	}
 
 	/*get the syscall name*/
@@ -511,29 +518,28 @@ static bool do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
 		if (ret < 0) {
 			errno = -ret;
 			SYSERROR("Failed loading rule to reject force umount");
-			return false;
+			return lxc_seccomp_rule_err;
 		}
 
 		INFO("Set seccomp rule to reject force umounts");
-		return true;
+		return lxc_seccomp_rule_added;
 	}
 
 	nr = seccomp_syscall_resolve_name(line);
 	if (nr == __NR_SCMP_ERROR) {
-		WARN("Failed to resolve syscall \"%s\"", line);
-		WARN("This syscall will NOT be handled by seccomp");
-		return true;
+		INFO("The syscall[%s] is is undefined on host native arch", line);
+		return lxc_seccomp_rule_undefined_syscall;
 	}
 
-	if (nr < 0) {
-		WARN("Got negative return value %d for syscall \"%s\"", nr, line);
-		WARN("This syscall will NOT be handled by seccomp");
-		return true;
+	// The syscall resolves to a pseudo syscall and may be available on compat archs.
+	if (nr < 0 && arch == SCMP_ARCH_NATIVE) {
+		DEBUG("The syscall[%d:%s] is a pseudo syscall and not available on host native arch.", nr, line);
+		return lxc_seccomp_rule_unsupported_arch;
 	}
 
 	if (arch != SCMP_ARCH_NATIVE && seccomp_syscall_resolve_name_arch(arch, line) < 0) {
-		INFO("The syscall \"%s\" nr:%d is not supported on compat arch:%d", line, nr, arch);
-		return true;
+		DEBUG("The syscall[%d:%s] is not supported on compat arch[%u]", nr, line, arch);
+		return lxc_seccomp_rule_unsupported_arch;
 	}
 
 	memset(&arg_cmp, 0, sizeof(arg_cmp));
@@ -555,16 +561,20 @@ static bool do_resolve_add_rule(uint32_t arch, char *line, scmp_filter_ctx ctx,
 					      rule->args_value[i].value);
 	}
 
+	INFO("Adding %s rule for syscall[%d:%s] action[%d:%s] arch[%u]",
+			  (arch == SCMP_ARCH_NATIVE) ? "native" : "compat",
+			  nr, line, rule->action, get_action_name(rule->action), arch);
+
 	ret = seccomp_rule_add_exact_array(ctx, rule->action, nr,
 					   rule->args_num, arg_cmp);
 	if (ret < 0) {
 		errno = -ret;
-		SYSERROR("Failed loading rule for %s (nr %d action %d (%s))",
-		         line, nr, rule->action, get_action_name(rule->action));
-		return false;
+		SYSERROR("Failed to add rule for syscall[%d:%s] action[%d:%s] arch[%u]",
+		         nr, line, rule->action, get_action_name(rule->action), arch);
+		return lxc_seccomp_rule_err;
 	}
 
-	return true;
+	return lxc_seccomp_rule_added;
 }
 
 /*
@@ -983,42 +993,30 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 		}
 #endif
 
-		if (!do_resolve_add_rule(SCMP_ARCH_NATIVE, line,
-					 conf->seccomp.seccomp_ctx, &rule))
-			goto bad_rule;
 
-		INFO("Added native rule for arch %d for %s action %d(%s)",
-		     SCMP_ARCH_NATIVE, line, rule.action,
-		     get_action_name(rule.action));
+		ret = do_resolve_add_rule(SCMP_ARCH_NATIVE, line,
+					 conf->seccomp.seccomp_ctx, &rule);
+		if (ret == lxc_seccomp_rule_err)
+			goto bad_rule;
+		if (ret == lxc_seccomp_rule_undefined_syscall)
+			continue;
 
 		if (ctx.architectures[0] != SCMP_ARCH_NATIVE) {
-			if (!do_resolve_add_rule(ctx.architectures[0], line,
+			if (lxc_seccomp_rule_err == do_resolve_add_rule(ctx.architectures[0], line,
 						 ctx.contexts[0], &rule))
 				goto bad_rule;
-
-			INFO("Added compat rule for arch %d for %s action %d(%s)",
-			     ctx.architectures[0], line, rule.action,
-			     get_action_name(rule.action));
 		}
 
 		if (ctx.architectures[1] != SCMP_ARCH_NATIVE) {
-			if (!do_resolve_add_rule(ctx.architectures[1], line,
+			if (lxc_seccomp_rule_err == do_resolve_add_rule(ctx.architectures[1], line,
 						 ctx.contexts[1], &rule))
 				goto bad_rule;
-
-			INFO("Added compat rule for arch %d for %s action %d(%s)",
-			     ctx.architectures[1], line, rule.action,
-			     get_action_name(rule.action));
 		}
 
 		if (ctx.architectures[2] != SCMP_ARCH_NATIVE) {
-			if (!do_resolve_add_rule(ctx.architectures[2], line,
+			if (lxc_seccomp_rule_err == do_resolve_add_rule(ctx.architectures[2], line,
 						ctx.contexts[2], &rule))
 				goto bad_rule;
-
-			INFO("Added native rule for arch %d for %s action %d(%s)",
-			     ctx.architectures[2], line, rule.action,
-			     get_action_name(rule.action));
 		}
 	}
 
