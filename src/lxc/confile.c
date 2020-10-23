@@ -263,6 +263,18 @@ static struct lxc_config_t config_jump_table[] = {
 
 static const size_t config_jump_table_size = sizeof(config_jump_table) / sizeof(struct lxc_config_t);
 
+struct lxc_config_t *lxc_get_config_exact(const char *key)
+{
+	size_t i;
+
+	for (i = 0; i < config_jump_table_size; i++)
+		if (!strcmp(config_jump_table[i].name, key))
+			return &config_jump_table[i];
+
+	return NULL;
+}
+
+
 struct lxc_config_t *lxc_get_config(const char *key)
 {
 	size_t i;

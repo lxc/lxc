@@ -600,6 +600,11 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
+	if (lxc_config_item_is_supported("lxc.arch.nonsense")) {
+		fprintf(stderr, "%d: failed to detect \"lxc.arch.nonsense\" as unsupported configuration item\n", __LINE__);
+		goto out;
+	}
+
 	if (c->set_config_item(c, "lxc.notaconfigkey", "invalid")) {
 		fprintf(stderr, "%d: Managed to set \"lxc.notaconfigkey\"\n", __LINE__);
 		goto out;
