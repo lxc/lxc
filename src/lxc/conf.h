@@ -61,6 +61,7 @@ struct lxc_cgroup {
 			char *controllers;
 			char *dir;
 			char *monitor_dir;
+			char *monitor_pivot_dir;
 			char *container_dir;
 			char *namespace_dir;
 			bool relative;
