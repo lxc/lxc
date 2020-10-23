@@ -653,6 +653,8 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 			default_rule_action = SCMP_ACT_ALLOW;
 	}
 
+	DEBUG("Host native arch is [%u]", seccomp_arch_native());
+
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.architectures[0] = SCMP_ARCH_NATIVE;
 	ctx.architectures[1] = SCMP_ARCH_NATIVE;
@@ -1001,23 +1003,15 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 		if (ret == lxc_seccomp_rule_undefined_syscall)
 			continue;
 
-		if (ctx.architectures[0] != SCMP_ARCH_NATIVE) {
-			if (lxc_seccomp_rule_err == do_resolve_add_rule(ctx.architectures[0], line,
-						 ctx.contexts[0], &rule))
-				goto bad_rule;
+		for (int i = 0; i < 3; i++ ) {
+			uint32_t arch = ctx.architectures[i];
+			if (arch != SCMP_ARCH_NATIVE && arch != seccomp_arch_native()) {
+				if (lxc_seccomp_rule_err == do_resolve_add_rule(arch, line,
+							ctx.contexts[i], &rule))
+					goto bad_rule;
+			}
 		}
 
-		if (ctx.architectures[1] != SCMP_ARCH_NATIVE) {
-			if (lxc_seccomp_rule_err == do_resolve_add_rule(ctx.architectures[1], line,
-						 ctx.contexts[1], &rule))
-				goto bad_rule;
-		}
-
-		if (ctx.architectures[2] != SCMP_ARCH_NATIVE) {
-			if (lxc_seccomp_rule_err == do_resolve_add_rule(ctx.architectures[2], line,
-						ctx.contexts[2], &rule))
-				goto bad_rule;
-		}
 	}
 
 	INFO("Merging compat seccomp contexts into main context");
