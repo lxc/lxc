@@ -5749,7 +5749,7 @@ free_ct_name:
 
 bool lxc_config_item_is_supported(const char *key)
 {
-	return !!lxc_get_config(key);
+	return !!lxc_get_config_exact(key);
 }
 
 bool lxc_has_api_extension(const char *extension)
