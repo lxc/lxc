@@ -73,6 +73,7 @@ lxc_config_define(cgroup_controller);
 lxc_config_define(cgroup2_controller);
 lxc_config_define(cgroup_dir);
 lxc_config_define(cgroup_monitor_dir);
+lxc_config_define(cgroup_monitor_pivot_dir);
 lxc_config_define(cgroup_container_dir);
 lxc_config_define(cgroup_container_inner_dir);
 lxc_config_define(cgroup_relative);
@@ -178,6 +179,7 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.cap.drop",                   set_config_cap_drop,                   get_config_cap_drop,                   clr_config_cap_drop,                   },
 	{ "lxc.cap.keep",                   set_config_cap_keep,                   get_config_cap_keep,                   clr_config_cap_keep,                   },
 	{ "lxc.cgroup2",                    set_config_cgroup2_controller,         get_config_cgroup2_controller,         clr_config_cgroup2_controller,         },
+	{ "lxc.cgroup.dir.monitor.pivot",   set_config_cgroup_monitor_pivot_dir,   get_config_cgroup_monitor_pivot_dir,   clr_config_cgroup_monitor_pivot_dir,   },
 	{ "lxc.cgroup.dir.monitor",         set_config_cgroup_monitor_dir,         get_config_cgroup_monitor_dir,         clr_config_cgroup_monitor_dir,         },
 	{ "lxc.cgroup.dir.container.inner", set_config_cgroup_container_inner_dir, get_config_cgroup_container_inner_dir, clr_config_cgroup_container_inner_dir, },
 	{ "lxc.cgroup.dir.container",       set_config_cgroup_container_dir,       get_config_cgroup_container_dir,       clr_config_cgroup_container_dir,       },
@@ -1823,6 +1825,16 @@ static int set_config_cgroup_monitor_dir(const char *key, const char *value,
 		return clr_config_cgroup_monitor_dir(key, lxc_conf, NULL);
 
 	return set_config_string_item(&lxc_conf->cgroup_meta.monitor_dir,
+				      value);
+}
+
+static int set_config_cgroup_monitor_pivot_dir(const char *key, const char *value,
+					 struct lxc_conf *lxc_conf, void *data)
+{
+	if (lxc_config_value_empty(value))
+		return clr_config_cgroup_monitor_pivot_dir(key, lxc_conf, NULL);
+
+	return set_config_string_item(&lxc_conf->cgroup_meta.monitor_pivot_dir,
 				      value);
 }
 
@@ -3870,6 +3882,22 @@ static int get_config_cgroup_monitor_dir(const char *key, char *retv, int inlen,
 	return fulllen;
 }
 
+static int get_config_cgroup_monitor_pivot_dir(const char *key, char *retv, int inlen,
+					 struct lxc_conf *lxc_conf, void *data)
+{
+	int len;
+	int fulllen = 0;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	strprint(retv, inlen, "%s", lxc_conf->cgroup_meta.monitor_pivot_dir);
+
+	return fulllen;
+}
+
 static int get_config_cgroup_container_dir(const char *key, char *retv,
 					   int inlen,
 					   struct lxc_conf *lxc_conf,
@@ -4765,6 +4793,14 @@ static int clr_config_cgroup_monitor_dir(const char *key,
 					 void *data)
 {
 	free_disarm(lxc_conf->cgroup_meta.monitor_dir);
+	return 0;
+}
+
+static int clr_config_cgroup_monitor_pivot_dir(const char *key,
+					 struct lxc_conf *lxc_conf,
+					 void *data)
+{
+	free_disarm(lxc_conf->cgroup_meta.monitor_pivot_dir);
 	return 0;
 }
 

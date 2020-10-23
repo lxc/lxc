@@ -1093,7 +1093,10 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 			goto try_lxc_rm_rf;
 		}
 
-		if (conf && conf->cgroup_meta.monitor_dir)
+		if (conf && conf->cgroup_meta.monitor_pivot_dir)
+			pivot_path = must_make_path(h->mountpoint, h->container_base_path,
+						    conf->cgroup_meta.monitor_pivot_dir, CGROUP_PIVOT, NULL);
+		else if (conf && conf->cgroup_meta.monitor_dir)
 			pivot_path = must_make_path(h->mountpoint, h->container_base_path,
 						    conf->cgroup_meta.monitor_dir, CGROUP_PIVOT, NULL);
 		else if (conf && conf->cgroup_meta.dir)
