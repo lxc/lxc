@@ -93,17 +93,18 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
 
     <para>
       <!--
-      The <command>pam_cgfs.so</command> module can handle both pure cgroupfs v1
-      (<filename>/sys/fs/cgroup/$controller</filename>) and pure cgroupfs
-      v2 (<filename>/sys/fs/cgroup</filename>), as well as mixed mounts,
+      The <command>pam_cgfs.so</command> module can handle pure cgroupfs v1
+      (<filename>/sys/fs/cgroup/$controller</filename>) and mixed mounts,
       where some controllers are mounted in a standard cgroupfs v1 hierarchy
       (<filename>/sys/fs/cgroup/$controller</filename>) and others in
       cgroupfs v2 hierarchy (<filename>/sys/fs/cgroup/unified</filename>).
       Writeable cgroups are either created for all controllers or, if specified,
-      for only controllers listed as arguments on the command line.
-      -->
-      <command>pam_cgfs.so</command> モジュールは、cgroupfs v1 (<filename>/sys/fs/cgroup/$controller</filename>) と cgroupfs v2 (<filename>/sys/fs/cgroup</filename>) のいずれも扱えます。また、コントローラのいくつかが cgroupfs v1 ツリー (<filename>/sys/fs/cgroup/$controller</filename>) で、それ以外が cgroupfs v2 (<filename>/sys/fs/cgroup/unified</filename>) ツリーと言ったようなミックスでも扱えます。
+      for only controllers listed as arguments on the command line. 
+      Pure cgroup v2 mount is not covered by the pam_cgfs.so module.
+	-->
+      <command>pam_cgfs.so</command> モジュールは、純粋な cgroupfs v1 (<filename>/sys/fs/cgroup/$controller</filename>) ツリーと、コントローラのいくつかが cgroupfs v1 ツリー (<filename>/sys/fs/cgroup/$controller</filename>) で、それ以外が cgroupfs v2 (<filename>/sys/fs/cgroup/unified</filename>) ツリーと言ったようなミックスマウントを扱えます。
       書き込み可能な cgroup がすべてのコントローラ用に作られます。また、引数で指定すれば、指定したコントローラのみ書き込み可能な cgroup が作られます。
+      純粋な cgroup v2 のみのマウントは pam_cgfs.so モジュールでは対象外です。
     </para>
 
     <para>
