@@ -1606,6 +1606,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         </varlistentry>
         <varlistentry>
           <term>
+            <option>lxc.cgroup.dir.monitor.pivot</option>
+          </term>
+          <listitem>
+            <para>
+              On container termination the PID of the monitor process is attached to this cgroup.
+              This path should not be a subpath of any other configured cgroup dir to ensure
+              proper removal of other cgroup paths on container termination.
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
             <option>lxc.cgroup.dir.container.inner</option>
           </term>
           <listitem>
