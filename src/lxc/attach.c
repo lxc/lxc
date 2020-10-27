@@ -657,6 +657,7 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	bool needs_lsm = (options->namespaces & CLONE_NEWNS) &&
 			 (options->attach_flags & LXC_ATTACH_LSM) &&
 			 init_ctx->lsm_label;
+	char *lsm_label = NULL;
 
 	/* A description of the purpose of this functionality is provided in the
 	 * lxc-attach(1) manual page. We have to remount here and not in the
@@ -778,9 +779,9 @@ static int attach_child_main(struct attach_clone_payload *payload)
 
 		/* Change into our new LSM profile. */
 		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? true : false;
-
+		lsm_label = options->lsm_label ? options->lsm_label : init_ctx->lsm_label;
 		ret = init_ctx->lsm_ops->process_label_set_at(init_ctx->lsm_ops, lsm_fd,
-							      init_ctx->lsm_label, on_exec);
+							      lsm_label, on_exec);
 		close(lsm_fd);
 		if (ret < 0)
 			goto on_error;
