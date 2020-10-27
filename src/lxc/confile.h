@@ -45,6 +45,9 @@ struct new_config_item {
 };
 
 /* Get the jump table entry for the given configuration key. */
+__hidden extern struct lxc_config_t *lxc_get_config_exact(const char *key);
+
+/* Get the jump table entry if entry name is a prefix of the given configuration key. */
 __hidden extern struct lxc_config_t *lxc_get_config(const char *key);
 
 /* List all available config items. */
