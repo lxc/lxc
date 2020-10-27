@@ -113,6 +113,9 @@ typedef struct lxc_attach_options_t {
 
 	/*! File descriptor to log output. */
 	int log_fd;
+
+	/*! lsm label to set. */
+	char *lsm_label;
 } lxc_attach_options_t;
 
 /*! Default attach options to use */
