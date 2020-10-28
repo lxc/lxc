@@ -487,9 +487,12 @@ static int lxc_cmd_get_devpts_fd_callback(int fd, struct lxc_cmd_req *req,
 	};
 	int ret;
 
-	if (!handler->conf || handler->conf->devpts_fd < 0)
+	if (!handler->conf || handler->conf->devpts_fd < 0) {
 		rsp.ret = -EBADF;
-	ret = lxc_abstract_unix_send_fds(fd, &handler->conf->devpts_fd, 1, &rsp, sizeof(rsp));
+		ret = lxc_abstract_unix_send_fds(fd, NULL, 0, &rsp, sizeof(rsp));
+	} else {
+		ret = lxc_abstract_unix_send_fds(fd, &handler->conf->devpts_fd, 1, &rsp, sizeof(rsp));
+	}
 	if (ret < 0)
 		return log_error(LXC_CMD_REAP_CLIENT_FD, "Failed to send devpts fd");
 
