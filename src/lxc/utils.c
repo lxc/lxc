@@ -1097,7 +1097,9 @@ int __safe_mount_beneath_at(int beneath_fd, const char *src, const char *dst, co
 	target_fd = openat2(beneath_fd, dst, &how, sizeof(how));
 	if (target_fd < 0)
 		return -errno;
-	snprintf(tgt_buf, sizeof(tgt_buf), "/proc/self/fd/%d", target_fd);
+	ret = snprintf(tgt_buf, sizeof(tgt_buf), "/proc/self/fd/%d", target_fd);
+	if (ret < 0 || ret >= sizeof(tgt_buf))
+		return -EIO;
 
 	if (!is_empty_string(src_buf))
 		ret = mount(src_buf, tgt_buf, fstype, flags, data);
@@ -1113,7 +1115,7 @@ int safe_mount_beneath(const char *beneath, const char *src, const char *dst, co
 	__do_close int beneath_fd = -EBADF;
 	const char *path = beneath ? beneath : "/";
 
-	beneath_fd = openat(-1, beneath, O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH);
+	beneath_fd = openat(-1, path, O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH);
 	if (beneath_fd < 0)
 		return log_error_errno(-errno, errno, "Failed to open %s", path);
 
