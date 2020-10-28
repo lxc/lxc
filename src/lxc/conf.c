@@ -1207,7 +1207,9 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 		if (ret < 0) {
 			const char *mntpt = rootfs->path ? rootfs->mount : NULL;
 			if (errno == ENOSYS) {
-				snprintf(path, sizeof(path), "%s/dev/%s", mntpt, device->name);
+				ret = snprintf(path, sizeof(path), "%s/dev/%s", mntpt, device->name);
+				if (ret < 0 || ret >= sizeof(path))
+					return log_error(-1, "Failed to create device path for %s", device->name);
 				ret = safe_mount(hostpath, path, 0, MS_BIND, NULL, rootfs->path ? rootfs->mount : NULL);
 			}
 		}
