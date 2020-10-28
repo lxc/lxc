@@ -30,6 +30,7 @@ enum {
 	/* Set PR_SET_NO_NEW_PRIVS to block execve() gainable privileges. */
 	LXC_ATTACH_NO_NEW_PRIVS		 = 0x00040000, /*!< PR_SET_NO_NEW_PRIVS */
 	LXC_ATTACH_TERMINAL              = 0x00080000, /*!< Allocate new terminal for attached process. */
+	LXC_ATTACH_LSM_LABEL             = 0x00100000, /*!< Set custom LSM label specified in @lsm_label. */
 
 	/* We have 16 bits for things that are on by default and 16 bits that
 	 * are off by default, that should be sufficient to keep binary
