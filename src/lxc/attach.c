@@ -779,7 +779,10 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 
 		/* Change into our new LSM profile. */
 		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? true : false;
-		lsm_label = options->lsm_label ? options->lsm_label : init_ctx->lsm_label;
+		if (options->attach_flags & LXC_ATTACH_LSM_LABEL)
+			lsm_label = options->lsm_label;
+		if (!lsm_label)
+			lsm_label = init_ctx->lsm_label;
 		ret = init_ctx->lsm_ops->process_label_set_at(init_ctx->lsm_ops, lsm_fd,
 							      lsm_label, on_exec);
 		close(lsm_fd);
