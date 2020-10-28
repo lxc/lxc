@@ -1113,7 +1113,7 @@ int safe_mount_beneath(const char *beneath, const char *src, const char *dst, co
 	__do_close int beneath_fd = -EBADF;
 	const char *path = beneath ? beneath : "/";
 
-	beneath_fd = openat(-1, beneath, O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH);
+	beneath_fd = openat(-1, path, O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH);
 	if (beneath_fd < 0)
 		return log_error_errno(-errno, errno, "Failed to open %s", path);
 
