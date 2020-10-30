@@ -1346,7 +1346,12 @@ bool lxc_setgroups(int size, gid_t list[])
 		SYSERROR("Failed to setgroups()");
 		return false;
 	}
-	NOTICE("Dropped additional groups");
+	if (size == 0)
+		NOTICE("Dropped additional groups");
+	else {
+		for(int i = 0; i < size; i++)
+			NOTICE("Kept additional group with GID %d", list[i]);
+	}
 
 	return true;
 }

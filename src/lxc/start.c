@@ -1410,8 +1410,16 @@ static int do_start(void *data)
 		#if HAVE_LIBCAP
 		if (lxc_proc_cap_is_set(CAP_SETGID, CAP_EFFECTIVE))
 		#endif
-			if (!lxc_setgroups(0, NULL))
-				goto out_warn_father;
+		{
+			if (handler->conf->init_groups.size > 0) {
+				if (!lxc_setgroups(handler->conf->init_groups.size,
+						   handler->conf->init_groups.list))
+					goto out_warn_father;
+			} else {
+				if (!lxc_setgroups(0, NULL))
+					goto out_warn_father;
+			}
+		}
 
 	if (!lxc_switch_uid_gid(new_uid, new_gid))
 		goto out_warn_father;

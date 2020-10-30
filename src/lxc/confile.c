@@ -94,6 +94,7 @@ lxc_config_define(init_cmd);
 lxc_config_define(init_cwd);
 lxc_config_define(init_gid);
 lxc_config_define(init_uid);
+lxc_config_define(init_groups);
 lxc_config_define(keyring_session);
 lxc_config_define(log_file);
 lxc_config_define(log_level);
@@ -211,6 +212,7 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.include",                    set_config_includefiles,               get_config_includefiles,               clr_config_includefiles,               },
 	{ "lxc.init.cmd",                   set_config_init_cmd,                   get_config_init_cmd,                   clr_config_init_cmd,                   },
 	{ "lxc.init.gid",                   set_config_init_gid,                   get_config_init_gid,                   clr_config_init_gid,                   },
+	{ "lxc.init.groups",                set_config_init_groups,                get_config_init_groups,                clr_config_init_groups,                },
 	{ "lxc.init.uid",                   set_config_init_uid,                   get_config_init_uid,                   clr_config_init_uid,                   },
 	{ "lxc.init.cwd",                   set_config_init_cwd,                   get_config_init_cwd,                   clr_config_init_cwd,                   },
 	{ "lxc.keyring.session",            set_config_keyring_session,            get_config_keyring_session,            clr_config_keyring_session             },
@@ -1175,6 +1177,53 @@ static int set_config_init_gid(const char *key, const char *value,
 
 	lxc_conf->init_gid = init_gid;
 
+	return 0;
+}
+
+static int set_config_init_groups(const char *key, const char *value,
+				  struct lxc_conf *lxc_conf, void *data)
+{
+	char *value_dup, *token;
+	int num_groups = 0;
+	gid_t *init_groups;
+	int iter = 0;
+
+	if (lxc_config_value_empty(value))
+		return clr_config_init_groups(key, lxc_conf, NULL);
+
+	value_dup = strdup(value);
+	if (!value_dup)
+		return -1;
+
+	lxc_iterate_parts(token, value_dup, " \t") num_groups++;
+
+	if (num_groups == 0) {
+		free(value_dup);
+		return clr_config_init_groups(key, lxc_conf, NULL);
+	}
+
+	init_groups = malloc(sizeof(gid_t) * num_groups);
+	if (!init_groups) {
+		free(value_dup);
+		return -1;
+	}
+
+	strcpy(value_dup, value);
+	lxc_iterate_parts(token, value_dup, " \t")
+	{
+		gid_t group;
+		if (lxc_safe_uint(token, &group) < 0) {
+			free(value_dup);
+			free(init_groups);
+			return -1;
+		}
+		init_groups[iter++] = group;
+	}
+
+	lxc_conf->init_groups.size = num_groups;
+	lxc_conf->init_groups.list = init_groups;
+
+	free(value_dup);
 	return 0;
 }
 
@@ -4278,6 +4327,27 @@ static int get_config_init_gid(const char *key, char *retv, int inlen,
 	return lxc_get_conf_int(c, retv, inlen, c->init_gid);
 }
 
+static int get_config_init_groups(const char *key, char *retv, int inlen,
+				  struct lxc_conf *c, void *data)
+{
+	int fulllen = 0, len;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	if (c->init_groups.size == 0) {
+		return 0;
+	}
+
+	for (int i = 0; i < c->init_groups.size; i++)
+		strprint(retv, inlen, "%s%d", (i > 0) ? " " : "",
+			 c->init_groups.list[i]);
+
+	return fulllen;
+}
+
 static int get_config_ephemeral(const char *key, char *retv, int inlen,
 				struct lxc_conf *c, void *data)
 {
@@ -4961,6 +5031,15 @@ static inline int clr_config_init_gid(const char *key, struct lxc_conf *c,
 				      void *data)
 {
 	c->init_gid = 0;
+	return 0;
+}
+
+static inline int clr_config_init_groups(const char *key, struct lxc_conf *c,
+					 void *data)
+{
+	free(c->init_groups.list);
+	c->init_groups.list = NULL;
+	c->init_groups.size = 0;
 	return 0;
 }
 
