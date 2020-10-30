@@ -406,6 +406,10 @@ struct lxc_conf {
 	 * should run under when using lxc-execute */
 	uid_t init_uid;
 	gid_t init_gid;
+	struct {
+		int size;
+		gid_t *list;
+	} init_groups;
 
 	/* indicator if the container will be destroyed on shutdown */
 	unsigned int ephemeral;

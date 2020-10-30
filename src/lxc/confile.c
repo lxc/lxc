@@ -4618,6 +4618,14 @@ static inline int clr_config_init_gid(const char *key, struct lxc_conf *c,
 	return 0;
 }
 
+static inline int clr_config_init_groups(const char *key, struct lxc_conf *c,
+					 void *data)
+{
+	free_disarm(c->init_groups.list);
+	c->init_groups.size = 0;
+	return 0;
+}
+
 static inline int clr_config_ephemeral(const char *key, struct lxc_conf *c,
 				       void *data)
 {
