@@ -1280,6 +1280,9 @@ int lxc_seccomp_load(struct lxc_conf *conf)
 			return -1;
 		}
 
+		if (fd_make_nonblocking(ret))
+			return log_error_errno(-1, errno, "Failed to make seccomp listener fd non-blocking");;
+
 		conf->seccomp.notifier.notify_fd = ret;
 		TRACE("Retrieved new seccomp listener fd %d", ret);
 	}
@@ -1387,7 +1390,10 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	memset(req, 0, conf->seccomp.notifier.sizes.seccomp_notif);
 	ret = seccomp_notify_receive(fd, req);
 	if (ret) {
-		SYSERROR("Failed to read seccomp notification");
+		if (errno == ENOENT)
+			TRACE("Intercepted system call aborted");
+		else
+			SYSERROR("Failed to read seccomp notification");
 		goto out;
 	}
 
