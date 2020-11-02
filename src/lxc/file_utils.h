@@ -75,5 +75,6 @@ __hidden extern FILE *fopen_cached(const char *path, const char *mode, void **ca
 __hidden extern bool exists_dir_at(int dir_fd, const char *path);
 __hidden extern bool exists_file_at(int dir_fd, const char *path);
 __hidden extern int open_beneath(int dir_fd, const char *path, unsigned int flags);
+__hidden int fd_make_nonblocking(int fd);
 
 #endif /* __LXC_FILE_UTILS_H */

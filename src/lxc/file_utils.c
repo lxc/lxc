@@ -550,3 +550,15 @@ int open_beneath(int dir_fd, const char *path, unsigned int flags)
 
 	return openat(dir_fd, path, O_NOFOLLOW | flags);
 }
+
+int fd_make_nonblocking(int fd)
+{
+	int flags;
+
+	flags = fcntl(fd, F_GETFL);
+	if (flags < 0)
+		return -1;
+
+	flags &= ~O_NONBLOCK;
+	return fcntl(fd, F_SETFL, flags);
+}

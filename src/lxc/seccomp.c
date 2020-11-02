@@ -1280,6 +1280,9 @@ int lxc_seccomp_load(struct lxc_conf *conf)
 			return -1;
 		}
 
+		if (fd_make_nonblocking(ret))
+			return log_error_errno(-1, errno, "Failed to make seccomp listener fd non-blocking");;
+
 		conf->seccomp.notifier.notify_fd = ret;
 		TRACE("Retrieved new seccomp listener fd %d", ret);
 	}
