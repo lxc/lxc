@@ -1390,7 +1390,10 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	memset(req, 0, conf->seccomp.notifier.sizes.seccomp_notif);
 	ret = seccomp_notify_receive(fd, req);
 	if (ret) {
-		SYSERROR("Failed to read seccomp notification");
+		if (errno == ENOENT)
+			TRACE("Intercepted system call aborted");
+		else
+			SYSERROR("Failed to read seccomp notification");
 		goto out;
 	}
 
