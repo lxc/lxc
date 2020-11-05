@@ -883,7 +883,7 @@ static int attach_child_main(struct attach_clone_payload *payload)
 	/* Make sure that the processes STDIO is correctly owned by the user that we are switching to */
 	ret = fix_stdio_permissions(new_uid);
 	if (ret)
-		WARN("Failed to adjust stdio permissions");
+		INFO("Failed to adjust stdio permissions");
 
 	if (!lxc_switch_uid_gid(new_uid, new_gid))
 		goto on_error;
