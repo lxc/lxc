@@ -1885,11 +1885,11 @@ int fix_stdio_permissions(uid_t uid)
 
 	devnull_fd = open_devnull();
 	if (devnull_fd < 0)
-		return log_warn_errno(-1, errno, "Failed to open \"/dev/null\"");
+		return log_trace_errno(-1, errno, "Failed to open \"/dev/null\"");
 
 	ret = fstat(devnull_fd, &st_null);
 	if (ret)
-		return log_warn_errno(-errno, errno, "Failed to stat \"/dev/null\"");
+		return log_trace_errno(-errno, errno, "Failed to stat \"/dev/null\"");
 
 	for (int i = 0; i < ARRAY_SIZE(std_fds); i++) {
 		ret = fstat(std_fds[i], &st);
@@ -1904,14 +1904,15 @@ int fix_stdio_permissions(uid_t uid)
 
 		ret = fchown(std_fds[i], uid, st.st_gid);
 		if (ret) {
-			SYSWARN("Failed to chown standard I/O file descriptor %d to uid %d and gid %d",
-				std_fds[i], uid, st.st_gid);
+			TRACE("Failed to chown standard I/O file descriptor %d to uid %d and gid %d",
+			      std_fds[i], uid, st.st_gid);
 			fret = -1;
+			continue;
 		}
 
 		ret = fchmod(std_fds[i], 0700);
 		if (ret) {
-			SYSWARN("Failed to chmod standard I/O file descriptor %d", std_fds[i]);
+			TRACE("Failed to chmod standard I/O file descriptor %d", std_fds[i]);
 			fret = -1;
 		}
 	}
