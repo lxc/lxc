@@ -654,7 +654,7 @@ static char **cg_hybrid_get_controllers(char **klist, char **nlist, char *line,
 	 * verify /sys/fs/cgroup/ in this field.
 	 */
 	if (strncmp(p, DEFAULT_CGROUP_MOUNTPOINT "/", 15) != 0)
-		return log_error(NULL, "Found hierarchy not under " DEFAULT_CGROUP_MOUNTPOINT ": \"%s\"", p);
+		return log_warn(NULL, "Found hierarchy not under " DEFAULT_CGROUP_MOUNTPOINT ": \"%s\"", p);
 
 	p += 15;
 	p2 = strchr(p, ' ');
@@ -3239,7 +3239,7 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 
 		mountpoint = cg_hybrid_get_mountpoint(line);
 		if (!mountpoint) {
-			ERROR("Failed parsing mountpoint from \"%s\"", line);
+			WARN("Failed parsing mountpoint from \"%s\"", line);
 			continue;
 		}
 
@@ -3248,7 +3248,7 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 		else
 			base_cgroup = cg_hybrid_get_current_cgroup(basecginfo, NULL, CGROUP2_SUPER_MAGIC);
 		if (!base_cgroup) {
-			ERROR("Failed to find current cgroup");
+			WARN("Failed to find current cgroup");
 			continue;
 		}
 
