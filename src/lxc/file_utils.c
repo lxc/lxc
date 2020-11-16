@@ -382,8 +382,10 @@ ssize_t lxc_sendfile_nointr(int out_fd, int in_fd, off_t *offset, size_t count)
 	return ret;
 }
 
-int fd_to_fd(int from, int to)
+ssize_t __fd_to_fd(int from, int to)
 {
+	ssize_t total_bytes = 0;
+
 	for (;;) {
 		uint8_t buf[PATH_MAX];
 		uint8_t *p = buf;
@@ -407,9 +409,10 @@ int fd_to_fd(int from, int to)
 			bytes_to_write -= bytes_written;
 			p += bytes_written;
 		} while (bytes_to_write > 0);
+		total_bytes += bytes_to_write;
 	}
 
-	return 0;
+	return total_bytes;
 }
 
 int fd_to_buf(int fd, char **buf, size_t *length)
