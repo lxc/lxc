@@ -2980,9 +2980,9 @@ void turn_into_dependent_mounts(void)
 	__do_free char *line = NULL;
 	__do_fclose FILE *f = NULL;
 	__do_close int memfd = -EBADF, mntinfo_fd = -EBADF;
-	int ret;
-	ssize_t copied;
 	size_t len = 0;
+	ssize_t copied;
+	int ret;
 
 	mntinfo_fd = open("/proc/self/mountinfo", O_RDONLY | O_CLOEXEC);
 	if (mntinfo_fd < 0) {
@@ -3006,12 +3006,8 @@ void turn_into_dependent_mounts(void)
 		}
 	}
 
-again:
-	copied = lxc_sendfile_nointr(memfd, mntinfo_fd, NULL, LXC_SENDFILE_MAX);
+	copied = fd_to_fd(mntinfo_fd, memfd);
 	if (copied < 0) {
-		if (errno == EINTR)
-			goto again;
-
 		SYSERROR("Failed to copy \"/proc/self/mountinfo\"");
 		return;
 	}
