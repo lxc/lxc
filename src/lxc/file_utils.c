@@ -399,6 +399,7 @@ ssize_t __fd_to_fd(int from, int to)
 			break;
 
 		bytes_to_write = (size_t)bytes_read;
+		total_bytes += bytes_read;
 		do {
 			ssize_t bytes_written;
 
@@ -409,7 +410,6 @@ ssize_t __fd_to_fd(int from, int to)
 			bytes_to_write -= bytes_written;
 			p += bytes_written;
 		} while (bytes_to_write > 0);
-		total_bytes += bytes_to_write;
 	}
 
 	return total_bytes;
