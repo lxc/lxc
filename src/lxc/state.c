@@ -100,10 +100,8 @@ int lxc_wait(const char *lxcname, const char *states, int timeout,
 		if (state >= 0)
 			break;
 
-		if (errno != ECONNREFUSED) {
-			SYSERROR("Failed to receive state from monitor");
-			return -1;
-		}
+		if (errno != ECONNREFUSED)
+			return log_error_errno(-1, errno, "Failed to receive state from monitor");
 
 		if (timeout > 0)
 			timeout--;
