@@ -130,6 +130,10 @@ gpg_setup() {
 
   mkdir -p "${DOWNLOAD_TEMP}/gpg"
   chmod 700 "${DOWNLOAD_TEMP}/gpg"
+
+  if [ -z "${STANDARD_RESOLVER:-}" ]; then
+    echo "standard-resolver" > "${DOWNLOAD_TEMP}/gpg/dirmngr.conf"
+  fi
   export GNUPGHOME="${DOWNLOAD_TEMP}/gpg"
 
   success=
