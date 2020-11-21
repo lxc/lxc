@@ -2142,6 +2142,22 @@ by KATOH Yasufumi <karma at jazz.email.ne.jp>
         </varlistentry>
         <varlistentry>
           <term>
+            <option>lxc.cgroup.dir.monitor.pivot</option>
+          </term>
+          <listitem>
+            <para>
+              <!--
+              On container termination the PID of the monitor process is attached to this cgroup.
+              This path should not be a subpath of any other configured cgroup dir to ensure
+              proper removal of other cgroup paths on container termination.
+              -->
+              コンテナ終了時に、モニタープロセスの PID がここで指定した cgroup にアタッチされます。
+              コンテナ終了時に、他の cgroup パスが確実に適切に削除されるように、ここに設定するパスは他で設定した cgroup ディレクトリのサブパスにすべきではありません。
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
             <option>lxc.cgroup.dir.container.inner</option>
           </term>
           <listitem>
