@@ -3289,6 +3289,13 @@ int lxc_restore_phys_nics_to_netns(struct lxc_handler *handler)
 	char ifname[IFNAMSIZ];
 	struct lxc_list *iterator;
 
+	/*
+	 * If we weren't asked to clone a new network namespace, there's
+	 * nothing to restore.
+	 */
+	if (!(handler->ns_clone_flags & CLONE_NEWNET))
+		return 0;
+
 	/* We need CAP_NET_ADMIN in the parent namespace in order to setns() to
 	 * the parent network namespace. We won't have this capability if we are
 	 * unprivileged.
