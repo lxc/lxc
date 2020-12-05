@@ -78,6 +78,7 @@ start() {
     [ ! -d /sys/class/net/${LXC_BRIDGE} ] && ip link add dev ${LXC_BRIDGE} type bridge
     echo 1 > /proc/sys/net/ipv4/ip_forward
     echo 0 > /proc/sys/net/ipv6/conf/${LXC_BRIDGE}/accept_dad || true
+    echo 1 > /proc/sys/net/ipv6/conf/${LXC_BRIDGE}/disable_ipv6
 
     # if we are run from systemd on a system with selinux enabled,
     # the mkdir will create /run/lxc as init_var_run_t which dnsmasq
@@ -93,6 +94,7 @@ start() {
 
     LXC_IPV6_ARG=""
     if [ -n "$LXC_IPV6_ADDR" ] && [ -n "$LXC_IPV6_MASK" ] && [ -n "$LXC_IPV6_NETWORK" ]; then
+        echo 0 > /proc/sys/net/ipv6/conf/${LXC_BRIDGE}/disable_ipv6
         echo 1 > /proc/sys/net/ipv6/conf/all/forwarding
         echo 0 > /proc/sys/net/ipv6/conf/${LXC_BRIDGE}/autoconf
         ip -6 addr add dev ${LXC_BRIDGE} ${LXC_IPV6_ADDR}/${LXC_IPV6_MASK}
