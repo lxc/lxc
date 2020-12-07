@@ -26,7 +26,7 @@
 #endif
 
 #ifndef MAX_GRBUF_SIZE
-#define MAX_GRBUF_SIZE 65536
+#define MAX_GRBUF_SIZE 2097152
 #endif
 
 #define INT64_FMT "%" PRId64
