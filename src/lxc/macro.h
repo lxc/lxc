@@ -25,6 +25,10 @@
 #define PATH_MAX 4096
 #endif
 
+#ifndef MAX_GRBUF_SIZE
+#define MAX_GRBUF_SIZE 65536
+#endif
+
 #define INT64_FMT "%" PRId64
 
 /* Define __S_ISTYPE if missing from the C library. */
