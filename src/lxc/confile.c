@@ -5326,7 +5326,7 @@ static int clr_config_net_veth_pair(const char *key, struct lxc_conf *lxc_conf,
 	struct lxc_netdev *netdev = data;
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	netdev->priv.veth_attr.pair[0] = '\0';
 
