@@ -1574,13 +1574,17 @@ static int set_config_log_level(const char *key, const char *value,
 	}
 
 	if (value[0] >= '0' && value[0] <= '9') {
-		if (lxc_safe_int(value, &newlevel) < 0)
-			return -1;
+		int ret;
+
+		ret = lxc_safe_int(value, &newlevel);
+		if (ret)
+			return ret_errno(EINVAL);
 	} else {
 		newlevel = lxc_log_priority_to_int(value);
 	}
 
-	/* Store these values in the lxc_conf, and then try to set for actual
+	/*
+	 * Store these values in the lxc_conf, and then try to set for actual
 	 * current logging.
 	 */
 	lxc_conf->loglevel = newlevel;
