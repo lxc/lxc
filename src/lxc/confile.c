@@ -4992,10 +4992,9 @@ static int clr_config_net_script_down(const char *key,
 	struct lxc_netdev *netdev = data;
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
-	free(netdev->downscript);
-	netdev->downscript = NULL;
+	free_disarm(netdev->downscript);
 
 	return 0;
 }
