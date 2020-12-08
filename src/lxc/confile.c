@@ -4930,8 +4930,7 @@ static inline int clr_config_execute_cmd(const char *key, struct lxc_conf *c,
 static inline int clr_config_init_cmd(const char *key, struct lxc_conf *c,
 				      void *data)
 {
-	free(c->init_cmd);
-	c->init_cmd = NULL;
+	free_disarm(c->init_cmd);
 	return 0;
 }
 
