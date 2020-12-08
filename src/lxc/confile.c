@@ -1514,16 +1514,19 @@ static int set_config_log_level(const char *key, const char *value,
 static int set_config_autodev(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf, void *data)
 {
+	int ret;
+
 	if (lxc_config_value_empty(value)) {
 		lxc_conf->autodev = 0;
 		return 0;
 	}
 
-	if (lxc_safe_uint(value, &lxc_conf->autodev) < 0)
-		return -1;
+	ret = lxc_safe_uint(value, &lxc_conf->autodev);
+	if (ret)
+		return ret_errno(EINVAL);
 
 	if (lxc_conf->autodev > 1)
-		return -1;
+		return ret_errno(EINVAL);
 
 	return 0;
 }
