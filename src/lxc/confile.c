@@ -4363,8 +4363,7 @@ static inline int clr_config_rootfs_managed(const char *key, struct lxc_conf *c,
 static inline int clr_config_rootfs_mount(const char *key, struct lxc_conf *c,
 					  void *data)
 {
-	free(c->rootfs.mount);
-	c->rootfs.mount = NULL;
+	free_disarm(c->rootfs.mount);
 	return 0;
 }
 
