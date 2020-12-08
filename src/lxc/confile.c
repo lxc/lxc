@@ -5193,7 +5193,7 @@ static int get_config_net_flags(const char *key, char *retv, int inlen,
 		memset(retv, 0, inlen);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	if (netdev->flags & IFF_UP)
 		strprint(retv, inlen, "up");
