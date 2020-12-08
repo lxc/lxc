@@ -1381,16 +1381,19 @@ static int set_config_apparmor_allow_incomplete(const char *key,
 						struct lxc_conf *lxc_conf,
 						void *data)
 {
+	int ret;
+
 	if (lxc_config_value_empty(value)) {
 		lxc_conf->lsm_aa_allow_incomplete = 0;
 		return 0;
 	}
 
-	if (lxc_safe_uint(value, &lxc_conf->lsm_aa_allow_incomplete) < 0)
-		return -1;
+	ret = lxc_safe_uint(value, &lxc_conf->lsm_aa_allow_incomplete);
+	if (ret)
+		return ret;
 
 	if (lxc_conf->lsm_aa_allow_incomplete > 1)
-		return -1;
+		return ret_errno(EINVAL);
 
 	return 0;
 }
