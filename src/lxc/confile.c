@@ -1676,7 +1676,7 @@ static int set_config_signal_stop(const char *key, const char *value,
 
 	sig_n = sig_parse(value);
 	if (sig_n < 0)
-		return -1;
+		return ret_errno(EINVAL);
 
 	lxc_conf->stopsignal = sig_n;
 
