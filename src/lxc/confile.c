@@ -1969,7 +1969,7 @@ static int set_config_mount_fstab(const char *key, const char *value,
 {
 	if (lxc_config_value_empty(value)) {
 		clr_config_mount_fstab(key, lxc_conf, NULL);
-		return -1;
+		return ret_errno(EINVAL);
 	}
 
 	return set_config_path_item(&lxc_conf->fstab, value);
