@@ -1185,7 +1185,7 @@ static int set_config_pty_max(const char *key, const char *value,
 
 	ret = lxc_safe_uint(value, &max);
 	if (ret < 0)
-		return -1;
+		return ret_errno(EINVAL);
 
 	lxc_conf->pty_max = max;
 
