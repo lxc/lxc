@@ -4581,8 +4581,7 @@ static inline int clr_config_selinux_context(const char *key,
 static inline int clr_config_selinux_context_keyring(const char *key,
 						     struct lxc_conf *c, void *data)
 {
-	free(c->lsm_se_keyring_context);
-	c->lsm_se_keyring_context = NULL;
+	free_disarm(c->lsm_se_keyring_context);
 	return 0;
 }
 
