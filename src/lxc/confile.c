@@ -2490,7 +2490,7 @@ static int set_config_rootfs_options(const char *key, const char *value,
 static int set_config_uts_name(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf, void *data)
 {
-	struct utsname *utsname;
+	__do_free struct utsname *utsname = NULL;
 
 	if (lxc_config_value_empty(value)) {
 		clr_config_uts_name(key, lxc_conf, NULL);
@@ -2499,16 +2499,14 @@ static int set_config_uts_name(const char *key, const char *value,
 
 	utsname = malloc(sizeof(*utsname));
 	if (!utsname)
-		return -1;
+		return ret_errno(ENOMEM);
 
-	if (strlen(value) >= sizeof(utsname->nodename)) {
-		free(utsname);
-		return -1;
-	}
+	if (strlen(value) >= sizeof(utsname->nodename))
+		return ret_errno(EINVAL);
 
 	(void)strlcpy(utsname->nodename, value, sizeof(utsname->nodename));
 	free(lxc_conf->utsname);
-	lxc_conf->utsname = utsname;
+	lxc_conf->utsname = move_ptr(utsname);
 
 	return 0;
 }
