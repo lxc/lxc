@@ -4544,8 +4544,7 @@ static inline int clr_config_tty_dir(const char *key, struct lxc_conf *c,
 static inline int clr_config_apparmor_profile(const char *key,
 					      struct lxc_conf *c, void *data)
 {
-	free(c->lsm_aa_profile);
-	c->lsm_aa_profile = NULL;
+	free_disarm(c->lsm_aa_profile);
 	return 0;
 }
 
