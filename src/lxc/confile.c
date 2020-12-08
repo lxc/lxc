@@ -4902,7 +4902,7 @@ static int clr_config_net_macvlan_mode(const char *key,
 	struct lxc_netdev *netdev = data;
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	if (netdev->type != LXC_NET_MACVLAN)
 		return 0;
