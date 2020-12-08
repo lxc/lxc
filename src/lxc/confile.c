@@ -1816,10 +1816,9 @@ static int set_config_prlimit(const char *key, const char *value,
 static int set_config_sysctl(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
+	__do_free struct lxc_list *sysctl_list = NULL;
+	call_cleaner(free_lxc_sysctl) struct lxc_sysctl *sysctl_elem = NULL;
 	struct lxc_list *iter;
-	char *replace_value = NULL;
-	struct lxc_list *sysctl_list = NULL;
-	struct lxc_sysctl *sysctl_elem = NULL;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_sysctl(key, lxc_conf, NULL);
@@ -1831,6 +1830,8 @@ static int set_config_sysctl(const char *key, const char *value,
 
 	/* find existing list element */
 	lxc_list_for_each(iter, &lxc_conf->sysctls) {
+		__do_free char *replace_value = NULL;
+
 		sysctl_elem = iter->elem;
 
 		if (strcmp(key, sysctl_elem->key) != 0)
@@ -1838,10 +1839,10 @@ static int set_config_sysctl(const char *key, const char *value,
 
 		replace_value = strdup(value);
 		if (!replace_value)
-			return -1;
+			return ret_errno(EINVAL);
 
 		free(sysctl_elem->value);
-		sysctl_elem->value = replace_value;
+		sysctl_elem->value = move_ptr(replace_value);
 
 		return 0;
 	}
@@ -1849,36 +1850,25 @@ static int set_config_sysctl(const char *key, const char *value,
 	/* allocate list element */
 	sysctl_list = malloc(sizeof(*sysctl_list));
 	if (!sysctl_list)
-		goto on_error;
+		return ret_errno(ENOMEM);
 
 	sysctl_elem = malloc(sizeof(*sysctl_elem));
 	if (!sysctl_elem)
-		goto on_error;
+		return ret_errno(ENOMEM);
 	memset(sysctl_elem, 0, sizeof(*sysctl_elem));
 
 	sysctl_elem->key = strdup(key);
 	if (!sysctl_elem->key)
-		goto on_error;
+		return ret_errno(ENOMEM);
 
 	sysctl_elem->value = strdup(value);
 	if (!sysctl_elem->value)
-		goto on_error;
+		return ret_errno(ENOMEM);
 
-	lxc_list_add_elem(sysctl_list, sysctl_elem);
-	lxc_list_add_tail(&lxc_conf->sysctls, sysctl_list);
+	lxc_list_add_elem(sysctl_list, move_ptr(sysctl_elem));
+	lxc_list_add_tail(&lxc_conf->sysctls, move_ptr(sysctl_list));
 
 	return 0;
-
-on_error:
-	free(sysctl_list);
-
-	if (sysctl_elem) {
-		free(sysctl_elem->key);
-		free(sysctl_elem->value);
-		free(sysctl_elem);
-	}
-
-	return -1;
 }
 
 static int set_config_proc(const char *key, const char *value,

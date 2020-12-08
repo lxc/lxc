@@ -121,6 +121,16 @@ struct lxc_sysctl {
 	char *value;
 };
 
+static void free_lxc_sysctl(struct lxc_sysctl *ptr)
+{
+	if (ptr) {
+		free(ptr->key);
+		free(ptr->value);
+		free_disarm(ptr);
+	}
+}
+define_cleanup_function(struct lxc_sysctl *, free_lxc_sysctl);
+
 /*
  * Defines a structure to configure proc filesystem at runtime.
  * @filename : the proc filesystem will be configured without the "lxc.proc" prefix
