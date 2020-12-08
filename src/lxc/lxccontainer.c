@@ -2340,20 +2340,21 @@ static char **do_lxcapi_get_interfaces(struct lxc_container *c)
 	char **interfaces = NULL;
 	char interface[IFNAMSIZ];
 
-	if (pipe2(pipefd, O_CLOEXEC) < 0)
-		return NULL;
+	if (pipe2(pipefd, O_CLOEXEC))
+		return log_error_errno(NULL, errno, "Failed to create pipe");
 
 	pid = fork();
 	if (pid < 0) {
-		SYSERROR("Failed to fork task to get interfaces information");
 		close(pipefd[0]);
 		close(pipefd[1]);
-		return NULL;
+		return log_error_errno(NULL, errno, "Failed to fork task to get interfaces information");
 	}
 
-	if (pid == 0) { /* child */
-		int ret = 1, nbytes;
-		struct netns_ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
+	if (pid == 0) {
+		call_cleaner(netns_freeifaddrs) struct netns_ifaddrs *ifaddrs = NULL;
+		struct netns_ifaddrs *ifa = NULL;
+		int ret = 1;
+		int nbytes;
 
 		/* close the read-end of the pipe */
 		close(pipefd[0]);
@@ -2364,15 +2365,15 @@ static char **do_lxcapi_get_interfaces(struct lxc_container *c)
 		}
 
 		/* Grab the list of interfaces */
-		if (netns_getifaddrs(&interfaceArray, -1, &(bool){false})) {
+		if (netns_getifaddrs(&ifaddrs, -1, &(bool){false})) {
 			SYSERROR("Failed to get interfaces list");
 			goto out;
 		}
 
 		/* Iterate through the interfaces */
-		for (tempIfAddr = interfaceArray; tempIfAddr != NULL;
-		     tempIfAddr = tempIfAddr->ifa_next) {
-			nbytes = lxc_write_nointr(pipefd[1], tempIfAddr->ifa_name, IFNAMSIZ);
+		for (ifa = ifaddrs; ifa != NULL;
+		     ifa = ifa->ifa_next) {
+			nbytes = lxc_write_nointr(pipefd[1], ifa->ifa_name, IFNAMSIZ);
 			if (nbytes < 0)
 				goto out;
 
@@ -2382,9 +2383,6 @@ static char **do_lxcapi_get_interfaces(struct lxc_container *c)
 		ret = 0;
 
 	out:
-		if (interfaceArray)
-			netns_freeifaddrs(interfaceArray);
-
 		/* close the write-end of the pipe, thus sending EOF to the reader */
 		close(pipefd[1]);
 		_exit(ret);
@@ -2405,7 +2403,7 @@ static char **do_lxcapi_get_interfaces(struct lxc_container *c)
 		count++;
 	}
 
-	if (wait_for_pid(pid) != 0) {
+	if (wait_for_pid(pid)) {
 		for (i = 0; i < count; i++)
 			free(interfaces[i]);
 
@@ -2436,10 +2434,8 @@ static char **do_lxcapi_get_ips(struct lxc_container *c, const char *interface,
 	char **addresses = NULL;
 
 	ret = pipe2(pipefd, O_CLOEXEC);
-	if (ret < 0) {
-		SYSERROR("Failed to create pipe");
-		return NULL;
-	}
+	if (ret < 0)
+		return log_error_errno(NULL, errno, "Failed to create pipe");
 
 	pid = fork();
 	if (pid < 0) {
@@ -2450,11 +2446,12 @@ static char **do_lxcapi_get_ips(struct lxc_container *c, const char *interface,
 	}
 
 	if (pid == 0) {
+		call_cleaner(netns_freeifaddrs) struct netns_ifaddrs *ifaddrs = NULL;
+		struct netns_ifaddrs *ifa = NULL;
 		ssize_t nbytes;
 		char addressOutputBuffer[INET6_ADDRSTRLEN];
 		char *address_ptr = NULL;
-		void *tempAddrPtr = NULL;
-		struct netns_ifaddrs *interfaceArray = NULL, *tempIfAddr = NULL;
+		void *address_ptr_tmp = NULL;
 
 		/* close the read-end of the pipe */
 		close(pipefd[0]);
@@ -2465,52 +2462,50 @@ static char **do_lxcapi_get_ips(struct lxc_container *c, const char *interface,
 		}
 
 		/* Grab the list of interfaces */
-		if (netns_getifaddrs(&interfaceArray, -1, &(bool){false})) {
+		if (netns_getifaddrs(&ifaddrs, -1, &(bool){false})) {
 			SYSERROR("Failed to get interfaces list");
 			goto out;
 		}
 
 		/* Iterate through the interfaces */
-		for (tempIfAddr = interfaceArray; tempIfAddr;
-		     tempIfAddr = tempIfAddr->ifa_next) {
-			if (tempIfAddr->ifa_addr == NULL)
+		for (ifa = ifaddrs; ifa; ifa = ifa->ifa_next) {
+			if (ifa->ifa_addr == NULL)
 				continue;
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-align"
 
-			if (tempIfAddr->ifa_addr->sa_family == AF_INET) {
+			if (ifa->ifa_addr->sa_family == AF_INET) {
 				if (family && strcmp(family, "inet"))
 					continue;
 
-				tempAddrPtr = &((struct sockaddr_in *)tempIfAddr->ifa_addr)->sin_addr;
+				address_ptr_tmp = &((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
 			} else {
 				if (family && strcmp(family, "inet6"))
 					continue;
 
-				if (((struct sockaddr_in6 *)tempIfAddr->ifa_addr)->sin6_scope_id != scope)
+				if (((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_scope_id != scope)
 					continue;
 
-				tempAddrPtr = &((struct sockaddr_in6 *)tempIfAddr->ifa_addr)->sin6_addr;
+				address_ptr_tmp = &((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_addr;
 			}
 
 #pragma GCC diagnostic pop
 
-			if (interface && strcmp(interface, tempIfAddr->ifa_name))
+			if (interface && strcmp(interface, ifa->ifa_name))
 				continue;
-			else if (!interface && strcmp("lo", tempIfAddr->ifa_name) == 0)
+			else if (!interface && strcmp("lo", ifa->ifa_name) == 0)
 				continue;
 
-			address_ptr = (char *)inet_ntop(tempIfAddr->ifa_addr->sa_family,
-						    tempAddrPtr, addressOutputBuffer,
-						    sizeof(addressOutputBuffer));
+			address_ptr = (char *)inet_ntop(ifa->ifa_addr->sa_family, address_ptr_tmp,
+							addressOutputBuffer,
+							sizeof(addressOutputBuffer));
 			if (!address_ptr)
 				continue;
 
 			nbytes = lxc_write_nointr(pipefd[1], address_ptr, INET6_ADDRSTRLEN);
 			if (nbytes != INET6_ADDRSTRLEN) {
-				SYSERROR("Failed to send ipv6 address \"%s\"",
-					 address_ptr);
+				SYSERROR("Failed to send ipv6 address \"%s\"", address_ptr);
 				goto out;
 			}
 
@@ -2520,9 +2515,6 @@ static char **do_lxcapi_get_ips(struct lxc_container *c, const char *interface,
 		ret = 0;
 
 	out:
-		if (interfaceArray)
-			netns_freeifaddrs(interfaceArray);
-
 		/* close the write-end of the pipe, thus sending EOF to the reader */
 		close(pipefd[1]);
 		_exit(ret);
@@ -2540,7 +2532,7 @@ static char **do_lxcapi_get_ips(struct lxc_container *c, const char *interface,
 		count++;
 	}
 
-	if (wait_for_pid(pid) != 0) {
+	if (wait_for_pid(pid)) {
 		for (i = 0; i < count; i++)
 			free(addresses[i]);
 
