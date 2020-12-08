@@ -5531,31 +5531,25 @@ static int clr_config_net_veth_ipv6_route(const char *key,
 static int get_config_net_nic(const char *key, char *retv, int inlen,
 			      struct lxc_conf *c, void *data)
 {
-	int ret;
+	__do_free char *deindexed_key = NULL;
+	ssize_t idx = -1;
 	const char *idxstring;
 	struct lxc_config_t *config;
 	struct lxc_netdev *netdev;
-	ssize_t idx = -1;
-	char *deindexed_key = NULL;
 
 	idxstring = key + 8;
 	if (!isdigit(*idxstring))
-		return -1;
+		return ret_errno(EINVAL);
 
 	config = get_network_config_ops(key, c, &idx, &deindexed_key);
 	if (!config || idx < 0)
-		return -1;
+		return -errno;
 
 	netdev = lxc_get_netdev_by_idx(c, (unsigned int)idx, false);
-	if (!netdev) {
-		free(deindexed_key);
-		return -1;
-	}
+	if (!netdev)
+		return ret_errno(EINVAL);
 
-	ret = config->get(deindexed_key, retv, inlen, c, netdev);
-	free(deindexed_key);
-
-	return ret;
+	return config->get(deindexed_key, retv, inlen, c, netdev);
 }
 
 static int get_config_net_type(const char *key, char *retv, int inlen,
