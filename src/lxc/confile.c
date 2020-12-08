@@ -5371,10 +5371,9 @@ static int clr_config_net_script_up(const char *key, struct lxc_conf *lxc_conf,
 	struct lxc_netdev *netdev = data;
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
-	free(netdev->upscript);
-	netdev->upscript = NULL;
+	free_disarm(netdev->upscript);
 
 	return 0;
 }
