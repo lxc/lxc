@@ -4537,8 +4537,7 @@ static inline int clr_config_tty_max(const char *key, struct lxc_conf *c,
 static inline int clr_config_tty_dir(const char *key, struct lxc_conf *c,
 				    void *data)
 {
-	free(c->ttys.dir);
-	c->ttys.dir = NULL;
+	free_disarm(c->ttys.dir);
 	return 0;
 }
 
