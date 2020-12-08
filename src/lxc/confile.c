@@ -5050,29 +5050,24 @@ static struct lxc_config_t *get_network_config_ops(const char *key,
 						   ssize_t *idx,
 						   char **deindexed_key)
 {
+	__do_free char *copy = NULL;
+	struct lxc_config_t *config = NULL;
 	int ret;
 	unsigned int tmpidx;
 	size_t numstrlen;
-	char *copy, *idx_start, *idx_end;
-	struct lxc_config_t *config = NULL;
+	char *idx_start, *idx_end;
 
 	/* check that this is a sensible network key */
-	if (strncmp("lxc.net.", key, 8)) {
-		ERROR("Invalid network configuration key \"%s\"", key);
-		return NULL;
-	}
+	if (strncmp("lxc.net.", key, 8))
+		return log_error_errno(NULL, EINVAL, "Invalid network configuration key \"%s\"", key);
 
 	copy = strdup(key);
-	if (!copy) {
-		ERROR("Failed to duplicate string \"%s\"", key);
-		return NULL;
-	}
+	if (!copy)
+		return log_error_errno(NULL, ENOMEM, "Failed to duplicate string \"%s\"", key);
 
 	/* lxc.net.<n> */
-	if (!isdigit(*(key + 8))) {
-		ERROR("Failed to detect digit in string \"%s\"", key + 8);
-		goto on_error;
-	}
+	if (!isdigit(*(key + 8)))
+		return log_error_errno(NULL, EINVAL, "Failed to detect digit in string \"%s\"", key + 8);
 
 	/* beginning of index string */
 	idx_start = (copy + 7);
@@ -5086,22 +5081,16 @@ static struct lxc_config_t *get_network_config_ops(const char *key,
 	/* parse current index */
 	ret = lxc_safe_uint((idx_start + 1), &tmpidx);
 	if (ret < 0) {
-		errno = -ret;
-		SYSERROR("Failed to parse unsigned integer from string \"%s\"",
-		         idx_start + 1);
 		*idx = ret;
-		goto on_error;
+		return log_error_errno(NULL, -ret, "Failed to parse unsigned integer from string \"%s\"", idx_start + 1);
 	}
 
 	/* This, of course is utterly nonsensical on so many levels, but
 	 * better safe than sorry.
 	 * (Checking for INT_MAX here is intentional.)
 	 */
-	if (tmpidx == INT_MAX) {
-		SYSERROR("Number of configured networks would overflow the "
-		         "counter");
-		goto on_error;
-	}
+	if (tmpidx == INT_MAX)
+		return log_error_errno(NULL, ERANGE, "Number of configured networks would overflow the counter");
 	*idx = tmpidx;
 
 	numstrlen = strlen((idx_start + 1));
@@ -5112,29 +5101,21 @@ static struct lxc_config_t *get_network_config_ops(const char *key,
 	/* lxc.net.<idx>.<subkey> */
 	if (idx_end) {
 		*idx_end = '.';
-		if (strlen(idx_end + 1) == 0) {
-			ERROR("No subkey in network configuration key \"%s\"", key);
-			goto on_error;
-		}
+		if (strlen(idx_end + 1) == 0)
+			return log_error_errno(NULL, EINVAL, "No subkey in network configuration key \"%s\"", key);
 
 		memmove(copy + 8, idx_end + 1, strlen(idx_end + 1));
 		copy[strlen(key) - (numstrlen + 1)] = '\0';
 
 		config = lxc_get_config(copy);
-		if (!config) {
-			ERROR("Unknown network configuration key \"%s\"", key);
-			goto on_error;
-		}
+		if (!config)
+			return log_error_errno(NULL, ENOENT, "Unknown network configuration key \"%s\"", key);
 	}
 
 	if (deindexed_key)
-		*deindexed_key = copy;
+		*deindexed_key = move_ptr(copy);
 
 	return config;
-
-on_error:
-	free(copy);
-	return NULL;
 }
 
 /* Config entry is something like "lxc.net.0.ipv4" the key 'lxc.net.' was
@@ -5144,34 +5125,28 @@ on_error:
 static int set_config_net_nic(const char *key, const char *value,
 			      struct lxc_conf *lxc_conf, void *data)
 {
-	int ret;
+	__do_free char *deindexed_key = NULL;
+	ssize_t idx = -1;
 	const char *idxstring;
 	struct lxc_config_t *config;
 	struct lxc_netdev *netdev;
-	ssize_t idx = -1;
-	char *deindexed_key = NULL;
 
 	idxstring = key + 8;
 	if (!isdigit(*idxstring))
-		return -1;
+		return ret_errno(EINVAL);
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_nic(key, lxc_conf, data);
 
 	config = get_network_config_ops(key, lxc_conf, &idx, &deindexed_key);
 	if (!config || idx < 0)
-		return -1;
+		return -errno;
 
 	netdev = lxc_get_netdev_by_idx(lxc_conf, (unsigned int)idx, true);
-	if (!netdev) {
-		free(deindexed_key);
-		return -1;
-	}
+	if (!netdev)
+		return ret_errno(EINVAL);
 
-	ret = config->set(deindexed_key, value, lxc_conf, netdev);
-	free(deindexed_key);
-
-	return ret;
+	return config->set(deindexed_key, value, lxc_conf, netdev);
 }
 
 static int clr_config_net_nic(const char *key, struct lxc_conf *lxc_conf,
