@@ -4669,8 +4669,7 @@ static inline int clr_config_log_level(const char *key, struct lxc_conf *c,
 static inline int clr_config_log_file(const char *key, struct lxc_conf *c,
 				     void *data)
 {
-	free(c->logfile);
-	c->logfile = NULL;
+	free_disarm(c->logfile);
 	return 0;
 }
 
