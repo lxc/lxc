@@ -1391,14 +1391,14 @@ static int set_config_group(const char *key, const char *value,
 static int set_config_environment(const char *key, const char *value,
 				  struct lxc_conf *lxc_conf, void *data)
 {
-	struct lxc_list *list_item = NULL;
+	__do_free struct lxc_list *list_item = NULL;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_environment(lxc_conf);
 
 	list_item = malloc(sizeof(*list_item));
 	if (!list_item)
-		goto on_error;
+		return ret_errno(ENOMEM);
 
 	if (!strchr(value, '=')) {
 		const char *env_val;
@@ -1407,7 +1407,7 @@ static int set_config_environment(const char *key, const char *value,
 
 		env_val = getenv(env_key);
 		if (!env_val)
-			goto on_error;
+			return ret_errno(ENOENT);
 
 		env_var[0] = env_key;
 		env_var[1] = env_val;
@@ -1417,16 +1417,11 @@ static int set_config_environment(const char *key, const char *value,
 	}
 
 	if (!list_item->elem)
-		goto on_error;
+		return ret_errno(ENOMEM);
 
-	lxc_list_add_tail(&lxc_conf->environment, list_item);
+	lxc_list_add_tail(&lxc_conf->environment, move_ptr(list_item));
 
 	return 0;
-
-on_error:
-	free(list_item);
-
-	return -1;
 }
 
 static int set_config_tty_max(const char *key, const char *value,
