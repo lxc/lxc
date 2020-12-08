@@ -4134,7 +4134,7 @@ static int get_config_seccomp_notify_proxy(const char *key, char *retv, int inle
 				    ? &c->seccomp.notifier.proxy_addr.sun_path[0]
 				    : &c->seccomp.notifier.proxy_addr.sun_path[1]);
 #else
-	return ret_set_errno(-1, ENOSYS);
+	return ret_errno(ENOSYS);
 #endif
 }
 
