@@ -98,6 +98,15 @@ struct lxc_limit {
 	struct rlimit limit;
 };
 
+static void free_lxc_limit(struct lxc_limit *ptr)
+{
+	if (ptr) {
+		free(ptr->resource);
+		free_disarm(ptr);
+	}
+}
+define_cleanup_function(struct lxc_limit *, free_lxc_limit);
+
 enum idtype {
 	ID_TYPE_UID,
 	ID_TYPE_GID
