@@ -1161,8 +1161,9 @@ static int set_config_hooks_version(const char *key, const char *value,
 static int set_config_personality(const char *key, const char *value,
 				  struct lxc_conf *lxc_conf, void *data)
 {
-	signed long personality = lxc_config_parse_arch(value);
+	signed long personality;
 
+	personality = lxc_config_parse_arch(value);
 	if (personality >= 0)
 		lxc_conf->personality = personality;
 	else
