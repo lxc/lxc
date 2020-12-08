@@ -1249,7 +1249,7 @@ static int set_config_monitor(const char *key, const char *value,
 	if (strcmp(key + 12, "unshare") == 0)
 		return lxc_safe_uint(value, &lxc_conf->monitor_unshare);
 
-	return -1;
+	return ret_errno(EINVAL);
 }
 
 static int set_config_monitor_signal_pdeath(const char *key, const char *value,
