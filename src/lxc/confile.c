@@ -1694,8 +1694,8 @@ static int set_config_cgroup_relative(const char *key, const char *value,
 		return clr_config_cgroup_relative(key, lxc_conf, NULL);
 
 	ret = lxc_safe_uint(value, &converted);
-	if (ret < 0)
-		return -ret;
+	if (ret)
+		return ret;
 
 	if (converted == 1) {
 		lxc_conf->cgroup_meta.relative = true;
@@ -1707,7 +1707,7 @@ static int set_config_cgroup_relative(const char *key, const char *value,
 		return 0;
 	}
 
-	return -EINVAL;
+	return ret_errno(EINVAL);
 }
 
 static bool parse_limit_value(const char **value, rlim_t *res)
