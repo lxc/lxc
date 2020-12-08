@@ -4427,8 +4427,7 @@ static inline int clr_config_console_path(const char *key, struct lxc_conf *c,
 static inline int clr_config_console_logfile(const char *key,
 					     struct lxc_conf *c, void *data)
 {
-	free(c->console.log_path);
-	c->console.log_path = NULL;
+	free_disarm(c->console.log_path);
 	return 0;
 }
 
