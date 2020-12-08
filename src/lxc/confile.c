@@ -5173,7 +5173,7 @@ static int get_config_net_type(const char *key, char *retv, int inlen,
 		memset(retv, 0, inlen);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	strprint(retv, inlen, "%s", lxc_net_type_to_str(netdev->type));
 
