@@ -3157,13 +3157,12 @@ bool clone_update_unexp_ovl_paths(struct lxc_conf *conf, const char *oldpath,
 				  const char *newpath, const char *oldname,
 				  const char *newname, const char *ovldir)
 {
-	__do_free char *newdir = NULL,
-							 *olddir = NULL;
+	__do_free char *newdir = NULL, *olddir = NULL;
+	char *lstart = conf->unexpanded_config;
+	const char *key = "lxc.mount.entry";
 	int ret;
 	char *lend, *p, *q;
 	size_t newdirlen, olddirlen;
-	char *lstart = conf->unexpanded_config;
-	const char *key = "lxc.mount.entry";
 
 	olddirlen = strlen(ovldir) + strlen(oldpath) + strlen(oldname) + 2;
 	olddir = must_realloc(NULL, olddirlen + 1);
