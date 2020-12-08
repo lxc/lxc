@@ -2267,29 +2267,26 @@ static int set_config_console_size(const char *key, const char *value,
 	}
 
 	ret = parse_byte_size_string(value, &size);
-	if (ret < 0)
-		return -1;
+	if (ret)
+		return ret_errno(EINVAL);
 
 	if (size < 0)
-		return -EINVAL;
+		return ret_errno(EINVAL);
 
 	/* must be at least a page size */
 	pgsz = lxc_getpagesize();
 	if ((uint64_t)size < pgsz) {
-		NOTICE("Requested ringbuffer size for the console is %" PRId64
-		       " but must be at least %" PRId64
-		       " bytes. Setting ringbuffer size to %" PRId64 " bytes",
+		NOTICE("Requested ringbuffer size for the console is %" PRId64 " but must be at least %" PRId64 " bytes. Setting ringbuffer size to %" PRId64 " bytes",
 		       size, pgsz, pgsz);
 		size = pgsz;
 	}
 
 	log_size = lxc_find_next_power2((uint64_t)size);
 	if (log_size == 0)
-		return -EINVAL;
+		return ret_errno(EINVAL);
 
 	if (log_size != size)
-		NOTICE("Passed size was not a power of 2. Rounding log size to "
-		       "next power of two: %" PRIu64 " bytes", log_size);
+		NOTICE("Passed size was not a power of 2. Rounding log size to next power of two: %" PRIu64 " bytes", log_size);
 
 	lxc_conf->console.log_size = log_size;
 
