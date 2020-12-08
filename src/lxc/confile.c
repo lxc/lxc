@@ -2463,30 +2463,26 @@ static int set_config_rootfs_mount(const char *key, const char *value,
 static int set_config_rootfs_options(const char *key, const char *value,
 				     struct lxc_conf *lxc_conf, void *data)
 {
+	__do_free char *mdata = NULL, *opts = NULL;
 	unsigned long mflags = 0, pflags = 0;
-	char *mdata = NULL, *opts = NULL;
-	int ret;
 	struct lxc_rootfs *rootfs = &lxc_conf->rootfs;
+	int ret;
 
 	ret = parse_mntopts(value, &mflags, &mdata);
 	if (ret < 0)
-		return -EINVAL;
+		return ret_errno(EINVAL);
 
 	ret = parse_propagationopts(value, &pflags);
-	if (ret < 0) {
-		free(mdata);
-		return -EINVAL;
-	}
+	if (ret < 0)
+		return ret_errno(EINVAL);
 
 	ret = set_config_string_item(&opts, value);
-	if (ret < 0) {
-		free(mdata);
-		return -ENOMEM;
-	}
+	if (ret < 0)
+		return ret_errno(ENOMEM);
 
 	rootfs->mountflags = mflags | pflags;
-	rootfs->options = opts;
-	rootfs->data = mdata;
+	rootfs->options = move_ptr(opts);
+	rootfs->data = move_ptr(mdata);
 
 	return 0;
 }
