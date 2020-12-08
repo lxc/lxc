@@ -5687,10 +5687,10 @@ static int get_config_net_macvlan_mode(const char *key, char *retv, int inlen,
 static int get_config_net_ipvlan_mode(const char *key, char *retv, int inlen,
 				       struct lxc_conf *c, void *data)
 {
-	int len;
 	int fulllen = 0;
-	const char *mode;
 	struct lxc_netdev *netdev = data;
+	int len;
+	const char *mode;
 
 	if (!retv)
 		inlen = 0;
@@ -5698,7 +5698,7 @@ static int get_config_net_ipvlan_mode(const char *key, char *retv, int inlen,
 		memset(retv, 0, inlen);
 
 	if (!netdev)
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
 	if (netdev->type != LXC_NET_IPVLAN)
 		return 0;
