@@ -5485,10 +5485,9 @@ static int clr_config_net_ipv6_gateway(const char *key,
 	struct lxc_netdev *netdev = data;
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
-	free(netdev->ipv6_gateway);
-	netdev->ipv6_gateway = NULL;
+	free_disarm(netdev->ipv6_gateway);
 
 	return 0;
 }
