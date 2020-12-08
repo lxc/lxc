@@ -4918,7 +4918,7 @@ static int clr_config_net_ipvlan_mode(const char *key,
 	struct lxc_netdev *netdev = data;
 
 	if (!netdev)
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
 	if (netdev->type != LXC_NET_IPVLAN)
 		return 0;
