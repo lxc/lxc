@@ -1281,6 +1281,7 @@ static int set_config_pty_max(const char *key, const char *value,
 static int set_config_start(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
+	int ret;
 	bool is_empty;
 
 	is_empty = lxc_config_value_empty(value);
@@ -1291,11 +1292,12 @@ static int set_config_start(const char *key, const char *value,
 			return 0;
 		}
 
-		if (lxc_safe_uint(value, &lxc_conf->start_auto) < 0)
-			return -1;
+		ret = lxc_safe_uint(value, &lxc_conf->start_auto);
+		if (ret)
+			return ret;
 
 		if (lxc_conf->start_auto > 1)
-			return -1;
+			return ret_errno(EINVAL);
 
 		return 0;
 	} else if (*(key + 10) == 'd') { /* lxc.start.delay */
@@ -1314,7 +1316,7 @@ static int set_config_start(const char *key, const char *value,
 		return lxc_safe_int(value, &lxc_conf->start_order);
 	}
 
-	return -1;
+	return ret_errno(EINVAL);
 }
 
 static int set_config_monitor(const char *key, const char *value,
