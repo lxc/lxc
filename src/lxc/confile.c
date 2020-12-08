@@ -2270,16 +2270,16 @@ static int set_config_cap_keep(const char *key, const char *value,
 static int set_config_cap_drop(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf, void *data)
 {
-	char *dropcaps, *token;
-	struct lxc_list *droplist;
-	int ret = -1;
+	__do_free char *dropcaps = NULL;
+	__do_free struct lxc_list *droplist = NULL;
+	char *token;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_config_caps(lxc_conf);
 
 	dropcaps = strdup(value);
 	if (!dropcaps)
-		return -1;
+		return ret_errno(ENOMEM);
 
 	/* In case several capability drop is specified in a single line
 	 * split these caps in a single element for the list.
@@ -2287,23 +2287,16 @@ static int set_config_cap_drop(const char *key, const char *value,
 	lxc_iterate_parts(token, dropcaps, " \t") {
 		droplist = malloc(sizeof(*droplist));
 		if (!droplist)
-			goto on_error;
+			return ret_errno(ENOMEM);
 
 		droplist->elem = strdup(token);
-		if (!droplist->elem) {
-			free(droplist);
-			goto on_error;
-		}
+		if (!droplist->elem)
+			return ret_errno(ENOMEM);
 
-		lxc_list_add_tail(&lxc_conf->caps, droplist);
+		lxc_list_add_tail(&lxc_conf->caps, move_ptr(droplist));
 	}
 
-        ret = 0;
-
-on_error:
-	free(dropcaps);
-
-	return ret;
+	return 0;
 }
 
 static int set_config_console_path(const char *key, const char *value,
