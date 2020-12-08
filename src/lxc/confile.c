@@ -4828,7 +4828,7 @@ static inline int clr_config_seccomp_notify_proxy(const char *key,
 	       sizeof(c->seccomp.notifier.proxy_addr));
 	return 0;
 #else
-	return ret_set_errno(-1, ENOSYS);
+	return ret_errno(ENOSYS);
 #endif
 }
 
