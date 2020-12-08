@@ -4805,8 +4805,7 @@ static inline int clr_config_seccomp_allow_nesting(const char *key,
 	c->seccomp.allow_nesting = 0;
 	return 0;
 #else
-	errno = ENOSYS;
-	return -1;
+	return ret_errno(ENOSYS);
 #endif
 }
 
