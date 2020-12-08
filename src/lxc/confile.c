@@ -5462,13 +5462,13 @@ static int clr_config_net_ipv4_address(const char *key,
 }
 
 static int clr_config_net_veth_ipv4_route(const char *key,
-				       struct lxc_conf *lxc_conf, void *data)
+					  struct lxc_conf *lxc_conf, void *data)
 {
 	struct lxc_netdev *netdev = data;
 	struct lxc_list *cur, *next;
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	lxc_list_for_each_safe(cur, &netdev->priv.veth_attr.ipv4_routes, next) {
 		lxc_list_del(cur);
