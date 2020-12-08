@@ -4379,8 +4379,7 @@ static inline int clr_config_rootfs_options(const char *key, struct lxc_conf *c,
 static inline int clr_config_uts_name(const char *key, struct lxc_conf *c,
 				     void *data)
 {
-	free(c->utsname);
-	c->utsname = NULL;
+	free_disarm(c->utsname);
 	return 0;
 }
 
