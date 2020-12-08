@@ -2671,34 +2671,28 @@ static int set_config_namespace_clone(const char *key, const char *value,
 static int set_config_namespace_keep(const char *key, const char *value,
 				     struct lxc_conf *lxc_conf, void *data)
 {
-	char *ns, *token;
+	__do_free char *ns = NULL;
+	char *token;
 	int cloneflag = 0;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_namespace_keep(key, lxc_conf, data);
 
-	if (lxc_conf->ns_clone != 0) {
-		errno = EINVAL;
-		SYSERROR("Cannot set both \"lxc.namespace.clone\" and "
-		         "\"lxc.namespace.keep\"");
-		return -EINVAL;
-	}
+	if (lxc_conf->ns_clone != 0)
+		return log_error_errno(-EINVAL, EINVAL, "Cannot set both \"lxc.namespace.clone\" and \"lxc.namespace.keep\"");
 
 	ns = strdup(value);
 	if (!ns)
-		return -1;
+		return ret_errno(ENOMEM);
 
 	lxc_iterate_parts(token, ns, " \t") {
 		token += lxc_char_left_gc(token, strlen(token));
 		token[lxc_char_right_gc(token, strlen(token))] = '\0';
 		cloneflag = lxc_namespace_2_cloneflag(token);
-		if (cloneflag < 0) {
-			free(ns);
-			return -EINVAL;
-		}
+		if (cloneflag < 0)
+			return ret_errno(EINVAL);
 		lxc_conf->ns_keep |= cloneflag;
 	}
-	free(ns);
 
 	return 0;
 }
