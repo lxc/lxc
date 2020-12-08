@@ -3256,17 +3256,15 @@ static int set_config_log_syslog(const char *key, const char *value,
 {
 	int facility;
 
-	if (lxc_conf->syslog) {
-		free(lxc_conf->syslog);
-		lxc_conf->syslog = NULL;
-	}
+	if (lxc_conf->syslog)
+		free_disarm(lxc_conf->syslog);
 
 	if (lxc_config_value_empty(value))
 		return 0;
 
 	facility = lxc_syslog_priority_to_int(value);
 	if (facility == -EINVAL)
-		return -1;
+		return ret_errno(EINVAL);
 
 	lxc_log_syslog(facility);
 
