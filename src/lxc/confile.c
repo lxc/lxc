@@ -4489,8 +4489,7 @@ static inline int clr_config_seccomp_notify_proxy(const char *key,
 static inline int clr_config_seccomp_profile(const char *key,
 					     struct lxc_conf *c, void *data)
 {
-	free(c->seccomp.seccomp);
-	c->seccomp.seccomp = NULL;
+	free_disarm(c->seccomp.seccomp);
 	return 0;
 }
 
