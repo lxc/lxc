@@ -1484,14 +1484,17 @@ static int set_config_apparmor_allow_nesting(const char *key,
 					     struct lxc_conf *lxc_conf,
 					     void *data)
 {
+	int ret;
+
 	if (lxc_config_value_empty(value))
 		return clr_config_apparmor_allow_nesting(key, lxc_conf, NULL);
 
-	if (lxc_safe_uint(value, &lxc_conf->lsm_aa_allow_nesting) < 0)
-		return -1;
+	ret = lxc_safe_uint(value, &lxc_conf->lsm_aa_allow_nesting);
+	if (ret)
+		return ret;
 
 	if (lxc_conf->lsm_aa_allow_nesting > 1)
-		return -1;
+		return ret_errno(EINVAL);
 
 	return 0;
 }
