@@ -2875,10 +2875,8 @@ int write_config(int fd, const struct lxc_conf *conf)
 		return 0;
 
 	ret = lxc_write_nointr(fd, conf->unexpanded_config, len);
-	if (ret < 0) {
-		SYSERROR("Failed to write configuration file");
-		return -1;
-	}
+	if (ret < 0)
+		return log_error_errno(-errno, errno, "Failed to write configuration file");
 
 	return 0;
 }
