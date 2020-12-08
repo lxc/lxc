@@ -1265,13 +1265,13 @@ static int set_config_monitor_signal_pdeath(const char *key, const char *value,
 
 		sig_n = sig_parse(value);
 		if (sig_n < 0)
-			return -1;
+			return ret_errno(EINVAL);
 
 		lxc_conf->monitor_signal_pdeath = sig_n;
 		return 0;
 	}
 
-	return -EINVAL;
+	return ret_errno(EINVAL);
 }
 
 static int set_config_group(const char *key, const char *value,
