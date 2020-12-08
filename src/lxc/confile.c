@@ -1437,7 +1437,7 @@ static int set_config_tty_max(const char *key, const char *value,
 
 	ret = lxc_safe_uint(value, &nbtty);
 	if (ret < 0)
-		return -1;
+		return ret;
 
 	lxc_conf->ttys.max = nbtty;
 
