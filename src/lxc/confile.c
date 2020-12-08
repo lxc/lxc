@@ -4574,8 +4574,7 @@ static inline int clr_config_apparmor_raw(const char *key,
 static inline int clr_config_selinux_context(const char *key,
 					     struct lxc_conf *c, void *data)
 {
-	free(c->lsm_se_context);
-	c->lsm_se_context = NULL;
+	free_disarm(c->lsm_se_context);
 	return 0;
 }
 
