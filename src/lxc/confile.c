@@ -3641,7 +3641,7 @@ static int __get_config_cgroup_controller(const char *key, char *retv,
 		namespaced_token = "lxc.cgroup.";
 		namespaced_token_len = STRLITERALLEN("lxc.cgroup.");
 	} else {
-		return -1;
+		return ret_errno(EINVAL);
 	}
 
 	if (strcmp(key, global_token) == 0)
@@ -3649,7 +3649,7 @@ static int __get_config_cgroup_controller(const char *key, char *retv,
 	else if (strncmp(key, namespaced_token, namespaced_token_len) == 0)
 		key += namespaced_token_len;
 	else
-		return -1;
+		return ret_errno(EINVAL);
 
 	lxc_list_for_each(it, &c->cgroup) {
 		struct lxc_cgroup *cg = it->elem;
