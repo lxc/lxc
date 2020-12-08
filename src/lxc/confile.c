@@ -359,17 +359,16 @@ static int set_config_net_flags(const char *key, const char *value,
 static int create_matched_ifnames(const char *value, struct lxc_conf *lxc_conf,
 				  struct lxc_netdev *netdev)
 {
-	struct netns_ifaddrs *ifaddr, *ifa;
+	call_cleaner(netns_freeifaddrs) struct netns_ifaddrs *ifaddr = NULL;
+	struct netns_ifaddrs *ifa;
 	int n;
 	int ret = 0;
 	const char *type_key = "lxc.net.type";
 	const char *link_key = "lxc.net.link";
 	const char *tmpvalue = "phys";
 
-	if (netns_getifaddrs(&ifaddr, -1, &(bool){false}) < 0) {
-		SYSERROR("Failed to get network interfaces");
-		return -1;
-	}
+	if (netns_getifaddrs(&ifaddr, -1, &(bool){false}) < 0)
+		return log_error_errno(-1, errno, "Failed to get network interfaces");
 
 	for (ifa = ifaddr, n = 0; ifa != NULL; ifa = ifa->ifa_next, n++) {
 		if (!ifa->ifa_addr)
@@ -394,9 +393,6 @@ static int create_matched_ifnames(const char *value, struct lxc_conf *lxc_conf,
 			}
 		}
 	}
-
-	netns_freeifaddrs(ifaddr);
-	ifaddr = NULL;
 
 	return ret;
 }
