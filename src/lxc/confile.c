@@ -2208,24 +2208,22 @@ static int set_config_mount_auto(const char *key, const char *value,
 static int set_config_mount(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
-	char *mntelem;
-	struct lxc_list *mntlist;
+	__do_free char *mntelem = NULL;
+	__do_free struct lxc_list *mntlist = NULL;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_mount_entries(lxc_conf);
 
 	mntlist = malloc(sizeof(*mntlist));
 	if (!mntlist)
-		return -1;
+		return ret_errno(ENOMEM);
 
 	mntelem = strdup(value);
-	if (!mntelem) {
-		free(mntlist);
-		return -1;
-	}
-	mntlist->elem = mntelem;
+	if (!mntelem)
+		return ret_errno(ENOMEM);
 
-	lxc_list_add_tail(&lxc_conf->mount_list, mntlist);
+	mntlist->elem = move_ptr(mntelem);
+	lxc_list_add_tail(&lxc_conf->mount_list, move_ptr(mntlist));
 
 	return 0;
 }
