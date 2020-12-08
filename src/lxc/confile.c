@@ -5634,7 +5634,7 @@ static int get_config_net_name(const char *key, char *retv, int inlen,
 		memset(retv, 0, inlen);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	if (netdev->name[0] != '\0')
 		strprint(retv, inlen, "%s", netdev->name);
