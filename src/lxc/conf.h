@@ -141,6 +141,16 @@ struct lxc_proc {
 	char *value;
 };
 
+static void free_lxc_proc(struct lxc_proc *ptr)
+{
+	if (ptr) {
+		free(ptr->filename);
+		free(ptr->value);
+		free_disarm(ptr);
+	}
+}
+define_cleanup_function(struct lxc_proc *, free_lxc_proc);
+
 /*
  * id_map is an id map entry.  Form in confile is:
  * lxc.idmap = u 0    9800 100
