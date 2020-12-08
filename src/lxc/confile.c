@@ -4591,8 +4591,7 @@ static inline int clr_config_init_cmd(const char *key, struct lxc_conf *c,
 static inline int clr_config_init_cwd(const char *key, struct lxc_conf *c,
 				      void *data)
 {
-	free(c->init_cwd);
-	c->init_cwd = NULL;
+	free_disarm(c->init_cwd);
 	return 0;
 }
 
