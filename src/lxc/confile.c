@@ -4396,7 +4396,7 @@ static int get_config_proc(const char *key, char *retv, int inlen,
 	else if (strncmp(key, "lxc.proc.", STRLITERALLEN("lxc.proc.")) == 0)
 		key += STRLITERALLEN("lxc.proc.");
 	else
-		return -1;
+		return ret_errno(EINVAL);
 
 	lxc_list_for_each(it, &c->procs) {
 		struct lxc_proc *proc = it->elem;
