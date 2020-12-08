@@ -4089,7 +4089,7 @@ static int get_config_sysctl(const char *key, char *retv, int inlen,
 	else if (strncmp(key, "lxc.sysctl.", STRLITERALLEN("lxc.sysctl.")) == 0)
 		key += STRLITERALLEN("lxc.sysctl.");
 	else
-		return -1;
+		return ret_errno(EINVAL);
 
 	lxc_list_for_each(it, &c->sysctls) {
 		struct lxc_sysctl *elem = it->elem;
