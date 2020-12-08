@@ -4349,8 +4349,7 @@ static inline int clr_config_mount_fstab(const char *key, struct lxc_conf *c,
 static inline int clr_config_rootfs_path(const char *key, struct lxc_conf *c,
 					 void *data)
 {
-	free(c->rootfs.path);
-	c->rootfs.path = NULL;
+	free_disarm(c->rootfs.path);
 	return 0;
 }
 
