@@ -1914,29 +1914,27 @@ static int set_config_proc(const char *key, const char *value,
 static int set_config_idmaps(const char *key, const char *value,
 			     struct lxc_conf *lxc_conf, void *data)
 {
+	__do_free struct lxc_list *idmaplist = NULL;
+	__do_free struct id_map *idmap = NULL;
 	unsigned long hostid, nsid, range;
 	char type;
 	int ret;
-	struct lxc_list *idmaplist = NULL;
-	struct id_map *idmap = NULL;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_idmaps(lxc_conf);
 
 	idmaplist = malloc(sizeof(*idmaplist));
 	if (!idmaplist)
-		goto on_error;
+		return ret_errno(ENOMEM);
 
 	idmap = malloc(sizeof(*idmap));
 	if (!idmap)
-		goto on_error;
+		return ret_errno(ENOMEM);
 	memset(idmap, 0, sizeof(*idmap));
 
 	ret = parse_idmaps(value, &type, &nsid, &hostid, &range);
-	if (ret < 0) {
-		ERROR("Failed to parse id mappings");
-		goto on_error;
-	}
+	if (ret < 0)
+		return log_error_errno(-EINVAL, EINVAL, "Failed to parse id mappings");
 
 	INFO("Read uid map: type %c nsid %lu hostid %lu range %lu", type, nsid, hostid, range);
 	if (type == 'u')
@@ -1944,7 +1942,7 @@ static int set_config_idmaps(const char *key, const char *value,
 	else if (type == 'g')
 		idmap->idtype = ID_TYPE_GID;
 	else
-		goto on_error;
+		return ret_errno(EINVAL);
 
 	idmap->hostid = hostid;
 	idmap->nsid = nsid;
@@ -1960,15 +1958,10 @@ static int set_config_idmaps(const char *key, const char *value,
 		if (idmap->nsid == 0)
 			lxc_conf->root_nsgid_map = idmap;
 
-	idmap = NULL;
+	move_ptr(idmap);
+	move_ptr(idmaplist);
 
 	return 0;
-
-on_error:
-	free(idmaplist);
-	free(idmap);
-
-	return -1;
 }
 
 static int set_config_mount_fstab(const char *key, const char *value,
