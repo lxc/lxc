@@ -5210,7 +5210,7 @@ static int clr_config_net_name(const char *key, struct lxc_conf *lxc_conf,
 	struct lxc_netdev *netdev = data;
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	netdev->name[0] = '\0';
 
