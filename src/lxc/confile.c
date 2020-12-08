@@ -4577,8 +4577,7 @@ static inline int clr_config_environment(const char *key, struct lxc_conf *c,
 static inline int clr_config_execute_cmd(const char *key, struct lxc_conf *c,
 				      void *data)
 {
-	free(c->execute_cmd);
-	c->execute_cmd = NULL;
+	free_disarm(c->execute_cmd);
 	return 0;
 }
 
