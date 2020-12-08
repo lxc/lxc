@@ -2715,18 +2715,18 @@ static int set_config_time_offset_boot(const char *key, const char *value,
 	unit = lxc_trim_whitespace_in_place(buf);
 	if (strcmp(unit, "h") == 0) {
 		if (!multiply_overflow(offset, 3600, &lxc_conf->timens.s_boot))
-			return -EOVERFLOW;
+			return ret_errno(EOVERFLOW);
 	} else if (strcmp(unit, "m") == 0) {
 		if (!multiply_overflow(offset, 60, &lxc_conf->timens.s_boot))
-			return -EOVERFLOW;
+			return ret_errno(EOVERFLOW);
 	} else if (strcmp(unit, "s") == 0) {
 		lxc_conf->timens.s_boot = offset;
 	} else if (strcmp(unit, "ms") == 0) {
 		if (!multiply_overflow(offset, 1000000, &lxc_conf->timens.ns_boot))
-			return -EOVERFLOW;
+			return ret_errno(EOVERFLOW);
 	} else if (strcmp(unit, "us") == 0) {
 		if (!multiply_overflow(offset, 1000, &lxc_conf->timens.ns_boot))
-			return -EOVERFLOW;
+			return ret_errno(EOVERFLOW);
 	} else if (strcmp(unit, "ns") == 0) {
 		lxc_conf->timens.ns_boot = offset;
 	} else {
