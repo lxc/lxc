@@ -2002,9 +2002,9 @@ static int set_config_sysctl(const char *key, const char *value,
 static int set_config_proc(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
+	__do_free struct lxc_list *proclist = NULL;
+	call_cleaner(free_lxc_proc) struct lxc_proc *procelem = NULL;
 	const char *subkey;
-	struct lxc_list *proclist = NULL;
-	struct lxc_proc *procelem = NULL;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_proc(key, lxc_conf, NULL);
@@ -2014,39 +2014,29 @@ static int set_config_proc(const char *key, const char *value,
 
 	subkey = key + STRLITERALLEN("lxc.proc.");
 	if (*subkey == '\0')
-		return -EINVAL;
+		return ret_errno(EINVAL);
 
 	proclist = malloc(sizeof(*proclist));
 	if (!proclist)
-		goto on_error;
+		return ret_errno(ENOMEM);
 
 	procelem = malloc(sizeof(*procelem));
 	if (!procelem)
-		goto on_error;
+		return ret_errno(ENOMEM);
 	memset(procelem, 0, sizeof(*procelem));
 
 	procelem->filename = strdup(subkey);
+	if (!procelem->filename)
+		return ret_errno(ENOMEM);
+
 	procelem->value = strdup(value);
+	if (!procelem->value)
+		return ret_errno(ENOMEM);
 
-	if (!procelem->filename || !procelem->value)
-		goto on_error;
-
-	proclist->elem = procelem;
-
-	lxc_list_add_tail(&lxc_conf->procs, proclist);
+	proclist->elem = move_ptr(procelem);
+	lxc_list_add_tail(&lxc_conf->procs, move_ptr(proclist));
 
 	return 0;
-
-on_error:
-	free(proclist);
-
-	if (procelem) {
-		free(procelem->filename);
-		free(procelem->value);
-		free(procelem);
-	}
-
-	return -1;
 }
 
 static int set_config_idmaps(const char *key, const char *value,
