@@ -5615,7 +5615,7 @@ static int get_config_net_link(const char *key, char *retv, int inlen,
 }
 
 static int get_config_net_l2proxy(const char *key, char *retv, int inlen,
-			       struct lxc_conf *c, void *data)
+				  struct lxc_conf *c, void *data)
 {
 	struct lxc_netdev *netdev = data;
 	return lxc_get_conf_bool(c, retv, inlen, netdev->l2proxy);
