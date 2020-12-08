@@ -4305,7 +4305,7 @@ static int get_config_prlimit(const char *key, char *retv, int inlen,
 	else if (strncmp(key, "lxc.prlimit.", 12) == 0)
 		key += 12;
 	else
-		return -1;
+		return ret_errno(EINVAL);
 
 	lxc_list_for_each(it, &c->limits) {
 		/* 2 colon separated 64 bit integers or the word 'unlimited' */
