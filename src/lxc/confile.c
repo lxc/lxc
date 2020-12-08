@@ -1657,7 +1657,7 @@ static int set_config_signal_reboot(const char *key, const char *value,
 
 	sig_n = sig_parse(value);
 	if (sig_n < 0)
-		return -1;
+		return ret_errno(EINVAL);
 
 	lxc_conf->rebootsignal = sig_n;
 
