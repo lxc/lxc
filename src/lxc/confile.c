@@ -3979,14 +3979,14 @@ static int get_config_hooks(const char *key, char *retv, int inlen,
 
 	subkey = strchr(key, '.');
 	if (!subkey)
-		return -1;
+		return ret_errno(EINVAL);
 
 	subkey = strchr(subkey + 1, '.');
 	if (!subkey)
-		return -1;
+		return ret_errno(EINVAL);
 	subkey++;
 	if (*subkey == '\0')
-		return -1;
+		return ret_errno(EINVAL);
 
 	for (i = 0; i < NUM_LXC_HOOKS; i++) {
 		if (strcmp(lxchook_names[i], subkey) == 0) {
@@ -3996,7 +3996,7 @@ static int get_config_hooks(const char *key, char *retv, int inlen,
 	}
 
 	if (found == -1)
-		return -1;
+		return ret_errno(EINVAL);
 
 	if (!retv)
 		inlen = 0;
