@@ -1605,10 +1605,10 @@ static int set_config_signal_stop(const char *key, const char *value,
 static int __set_config_cgroup_controller(const char *key, const char *value,
 					  struct lxc_conf *lxc_conf, int version)
 {
+	__do_free struct lxc_list *cglist = NULL;
+	call_cleaner(free_lxc_cgroup) struct lxc_cgroup *cgelem = NULL;
 	const char *subkey, *token;
 	size_t token_len;
-	struct lxc_list *cglist = NULL;
-	struct lxc_cgroup *cgelem = NULL;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_cgroups(lxc_conf, key, version);
@@ -1620,53 +1620,44 @@ static int __set_config_cgroup_controller(const char *key, const char *value,
 		token = "lxc.cgroup.";
 		token_len = 11;
 	} else {
-		return -EINVAL;
+		return ret_errno(EINVAL);
 	}
 
 	if (strncmp(key, token, token_len) != 0)
-		return -EINVAL;
+		return ret_errno(EINVAL);
 
 	subkey = key + token_len;
 	if (*subkey == '\0')
-		return -EINVAL;
+		return ret_errno(EINVAL);
 
 	cglist = malloc(sizeof(*cglist));
 	if (!cglist)
-		goto out;
+		return ret_errno(ENOMEM);
 
 	cgelem = malloc(sizeof(*cgelem));
 	if (!cgelem)
-		goto out;
+		return ret_errno(ENOMEM);
 	memset(cgelem, 0, sizeof(*cgelem));
 
 	cgelem->subsystem = strdup(subkey);
 	if (!cgelem->subsystem)
-		goto out;
+		return ret_errno(ENOMEM);
 
 	cgelem->value = strdup(value);
 	if (!cgelem->value)
-		goto out;
+		return ret_errno(ENOMEM);
 
 	cgelem->version = version;
 
-	lxc_list_add_elem(cglist, cgelem);
+	lxc_list_add_elem(cglist, move_ptr(cgelem));
 
 	if (version == CGROUP2_SUPER_MAGIC)
 		lxc_list_add_tail(&lxc_conf->cgroup2, cglist);
 	else
 		lxc_list_add_tail(&lxc_conf->cgroup, cglist);
+	move_ptr(cglist);
 
 	return 0;
-
-out:
-	free(cglist);
-	if (cgelem) {
-		free(cgelem->subsystem);
-		free(cgelem->value);
-		free(cgelem);
-	}
-
-	return -1;
 }
 
 static int set_config_cgroup_controller(const char *key, const char *value,

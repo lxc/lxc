@@ -19,6 +19,7 @@
 #include "config.h"
 #include "list.h"
 #include "lxcseccomp.h"
+#include "memory_utils.h"
 #include "ringbuf.h"
 #include "start.h"
 #include "terminal.h"
@@ -67,6 +68,16 @@ struct lxc_cgroup {
 		};
 	};
 };
+
+static void free_lxc_cgroup(struct lxc_cgroup *ptr)
+{
+	if (ptr) {
+		free(ptr->subsystem);
+		free(ptr->value);
+		free_disarm(ptr);
+	}
+}
+define_cleanup_function(struct lxc_cgroup *, free_lxc_cgroup);
 
 #if !HAVE_SYS_RESOURCE_H
 #define RLIM_INFINITY ((unsigned long)-1)
