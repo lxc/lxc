@@ -5058,7 +5058,7 @@ static int clr_config_net_ipv4_address(const char *key,
 	struct lxc_list *cur, *next;
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	lxc_list_for_each_safe(cur, &netdev->ipv4, next) {
 		lxc_list_del(cur);
