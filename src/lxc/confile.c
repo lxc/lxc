@@ -4342,8 +4342,7 @@ static inline int clr_config_mount_auto(const char *key, struct lxc_conf *c,
 static inline int clr_config_mount_fstab(const char *key, struct lxc_conf *c,
 					 void *data)
 {
-	free(c->fstab);
-	c->fstab = NULL;
+	free_disarm(c->fstab);
 	return 0;
 }
 
