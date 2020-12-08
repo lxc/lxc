@@ -4813,11 +4813,10 @@ static inline int clr_config_seccomp_notify_cookie(const char *key,
 						   struct lxc_conf *c, void *data)
 {
 #ifdef HAVE_SECCOMP_NOTIFY
-	free(c->seccomp.notifier.cookie);
-	c->seccomp.notifier.cookie = NULL;
+	free_disarm(c->seccomp.notifier.cookie);
 	return 0;
 #else
-	return ret_set_errno(-1, ENOSYS);
+	return ret_errno(ENOSYS);
 #endif
 }
 
