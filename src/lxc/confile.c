@@ -2336,10 +2336,11 @@ int append_unexp_config_line(const char *line, struct lxc_conf *conf)
 
 	linelen = strlen(line);
 	while (conf->unexpanded_alloced <= len + linelen + 2) {
-		char *tmp = realloc(conf->unexpanded_config,
-				    conf->unexpanded_alloced + 1024);
+		char *tmp;
+
+		tmp = realloc(conf->unexpanded_config, conf->unexpanded_alloced + 1024);
 		if (!tmp)
-			return -1;
+			return ret_errno(EINVAL);
 
 		if (!conf->unexpanded_config)
 			*tmp = '\0';
