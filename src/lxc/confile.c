@@ -3266,13 +3266,12 @@ bool clone_update_unexp_hooks(struct lxc_conf *conf, const char *oldpath,
 			      const char *newpath, const char *oldname,
 			      const char *newname)
 {
-	__do_free char *newdir = NULL,
-							 *olddir = NULL;
+	__do_free char *newdir = NULL, *olddir = NULL;
+	char *lstart = conf->unexpanded_config;
+	const char *key = "lxc.hook";
 	int ret;
 	char *lend, *p;
-	char *lstart = conf->unexpanded_config;
 	size_t newdirlen, olddirlen;
-	const char *key = "lxc.hook";
 
 	olddirlen = strlen(oldpath) + strlen(oldname) + 1;
 	olddir = must_realloc(NULL, olddirlen + 1);
