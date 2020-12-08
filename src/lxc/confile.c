@@ -2871,10 +2871,10 @@ static int parse_line(char *buffer, void *data)
 
 static struct new_config_item *parse_new_conf_line(char *buffer)
 {
-	char *dot, *key, *line, *linep, *value;
-	int ret = 0;
+	__do_free char *k = NULL, *linep = NULL, *v = NULL;
+	__do_free struct new_config_item *new = NULL;
 	char *dup = buffer;
-	struct new_config_item *new = NULL;
+	char *dot, *key, *line, *value;
 
 	linep = line = strdup(dup);
 	if (!line)
@@ -2884,14 +2884,11 @@ static struct new_config_item *parse_new_conf_line(char *buffer)
 
 	/* martian option - don't add it to the config itself */
 	if (strncmp(line, "lxc.", 4))
-		goto on_error;
+		return 0;
 
-	ret = -1;
 	dot = strchr(line, '=');
-	if (!dot) {
-		ERROR("Invalid configuration item: %s", line);
-		goto on_error;
-	}
+	if (!dot)
+		return log_error_errno(NULL, EINVAL, "Invalid configuration line: %s", line);
 
 	*dot = '\0';
 	value = dot + 1;
@@ -2912,29 +2909,21 @@ static struct new_config_item *parse_new_conf_line(char *buffer)
 		}
 	}
 
-	ret = -1;
 	new = malloc(sizeof(struct new_config_item));
 	if (!new)
-		goto on_error;
+		return NULL;
 
-	new->key = strdup(key);
-	new->val = strdup(value);
-	if (!new->val || !new->key)
-		goto on_error;
+	k = strdup(key);
+	if (!k)
+		return NULL;
 
-	ret = 0;
+	v = strdup(value);
+	if (!v)
+		return NULL;
 
-on_error:
-	free(linep);
-
-	if (ret < 0 && new) {
-		free(new->key);
-		free(new->val);
-		free(new);
-		new = NULL;
-	}
-
-	return new;
+	new->key = move_ptr(k);
+	new->val = move_ptr(v);
+	return move_ptr(new);
 }
 
 int lxc_config_read(const char *file, struct lxc_conf *conf, bool from_include)
