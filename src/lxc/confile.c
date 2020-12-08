@@ -3815,7 +3815,7 @@ static int get_config_idmaps(const char *key, char *retv, int inlen,
 			       (map->idtype == ID_TYPE_UID) ? 'u' : 'g',
 			       map->nsid, map->hostid, map->range);
 		if (ret < 0 || ret >= __LXC_IDMAP_STR_BUF)
-			return -1;
+			return ret_errno(EIO);
 
 		strprint(retv, inlen, "%s%s", buf, (listlen-- > 1) ? "\n" : "");
 	}
