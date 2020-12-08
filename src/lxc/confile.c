@@ -2107,16 +2107,16 @@ int add_elem_to_mount_list(const char *value, struct lxc_conf *lxc_conf) {
 static int set_config_cap_keep(const char *key, const char *value,
 			       struct lxc_conf *lxc_conf, void *data)
 {
-	char *keepcaps, *token;
-	struct lxc_list *keeplist;
-	int ret = -1;
+	__do_free char *keepcaps = NULL;
+	__do_free struct lxc_list *keeplist = NULL;
+	char *token;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_config_keepcaps(lxc_conf);
 
 	keepcaps = strdup(value);
 	if (!keepcaps)
-		return -1;
+		return ret_errno(ENOMEM);
 
 	/* In case several capability keep is specified in a single line
 	 * split these caps in a single element for the list.
@@ -2127,23 +2127,16 @@ static int set_config_cap_keep(const char *key, const char *value,
 
 		keeplist = malloc(sizeof(*keeplist));
 		if (!keeplist)
-			goto on_error;
+			return ret_errno(ENOMEM);
 
 		keeplist->elem = strdup(token);
-		if (!keeplist->elem) {
-			free(keeplist);
-			goto on_error;
-		}
+		if (!keeplist->elem)
+			return ret_errno(ENOMEM);
 
-		lxc_list_add_tail(&lxc_conf->keepcaps, keeplist);
+		lxc_list_add_tail(&lxc_conf->keepcaps, move_ptr(keeplist));
 	}
 
-	ret = 0;
-
-on_error:
-	free(keepcaps);
-
-	return ret;
+	return 0;
 }
 
 static int set_config_cap_drop(const char *key, const char *value,
