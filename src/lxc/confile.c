@@ -4890,8 +4890,7 @@ static inline int clr_config_start(const char *key, struct lxc_conf *c,
 static inline int clr_config_log_syslog(const char *key, struct lxc_conf *c,
 				    void *data)
 {
-	free(c->syslog);
-	c->syslog = NULL;
+	free_disarm(c->syslog);
 	return 0;
 }
 
