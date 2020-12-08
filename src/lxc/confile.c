@@ -2490,16 +2490,15 @@ static int do_includedir(const char *dirp, struct lxc_conf *lxc_conf)
 {
 	__do_closedir DIR *dir = NULL;
 	struct dirent *direntp;
-	char path[PATH_MAX];
-	int len;
-	int ret = -1;
+	int len, ret;
 
 	dir = opendir(dirp);
 	if (!dir)
-		return -1;
+		return -errno;
 
 	while ((direntp = readdir(dir))) {
 		const char *fnam;
+		char path[PATH_MAX];
 
 		fnam = direntp->d_name;
 		if (!strcmp(fnam, "."))
@@ -2514,11 +2513,11 @@ static int do_includedir(const char *dirp, struct lxc_conf *lxc_conf)
 
 		len = snprintf(path, PATH_MAX, "%s/%s", dirp, fnam);
 		if (len < 0 || len >= PATH_MAX)
-			return -1;
+			return ret_errno(EIO);
 
 		ret = lxc_config_read(path, lxc_conf, true);
 		if (ret < 0)
-			return -1;
+			return ret;
 	}
 
 	return 0;
