@@ -3274,6 +3274,7 @@ static int set_config_log_syslog(const char *key, const char *value,
 static int set_config_no_new_privs(const char *key, const char *value,
 				   struct lxc_conf *lxc_conf, void *data)
 {
+	int ret;
 	unsigned int v;
 
 	if (lxc_config_value_empty(value)) {
@@ -3281,11 +3282,12 @@ static int set_config_no_new_privs(const char *key, const char *value,
 		return 0;
 	}
 
-	if (lxc_safe_uint(value, &v) < 0)
-		return -1;
+	ret = lxc_safe_uint(value, &v);
+	if (ret < 0)
+		return ret;
 
 	if (v > 1)
-		return -1;
+		return ret_errno(EINVAL);
 
 	lxc_conf->no_new_privs = v ? true : false;
 
