@@ -5042,7 +5042,7 @@ static int clr_config_namespace_share(const char *key,
 static int get_config_includefiles(const char *key, char *retv, int inlen,
 				   struct lxc_conf *c, void *data)
 {
-	return -ENOSYS;
+	return ret_errno(ENOSYS);
 }
 
 static struct lxc_config_t *get_network_config_ops(const char *key,
