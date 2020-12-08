@@ -1861,23 +1861,23 @@ static bool parse_limit_value(const char **value, rlim_t *res)
 static int set_config_prlimit(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
+	__do_free struct lxc_list *limlist = NULL;
+	call_cleaner(free_lxc_limit) struct lxc_limit *limelem = NULL;
 	struct lxc_list *iter;
 	struct rlimit limit;
 	rlim_t limit_value;
-	struct lxc_list *limlist = NULL;
-	struct lxc_limit *limelem = NULL;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_limits(lxc_conf, key);
 
 	if (strncmp(key, "lxc.prlimit.", STRLITERALLEN("lxc.prlimit.")) != 0)
-		return -1;
+		return ret_errno(EINVAL);
 
 	key += STRLITERALLEN("lxc.prlimit.");
 
 	/* soft limit comes first in the value */
 	if (!parse_limit_value(&value, &limit_value))
-		return -1;
+		return ret_errno(EINVAL);
 
 	limit.rlim_cur = limit_value;
 
@@ -1888,7 +1888,7 @@ static int set_config_prlimit(const char *key, const char *value,
 	if (*value == ':')
 		++value;
 	else if (*value) /* any other character is an error here */
-		return -1;
+		return ret_errno(EINVAL);
 
 	while (isspace(*value))
 		++value;
@@ -1896,7 +1896,7 @@ static int set_config_prlimit(const char *key, const char *value,
 	/* optional hard limit */
 	if (*value) {
 		if (!parse_limit_value(&value, &limit_value))
-			return -1;
+			return ret_errno(EINVAL);
 
 		limit.rlim_max = limit_value;
 
@@ -1905,7 +1905,7 @@ static int set_config_prlimit(const char *key, const char *value,
 			++value;
 
 		if (*value)
-			return -1;
+			return ret_errno(EINVAL);
 	} else {
 		/* a single value sets both hard and soft limit */
 		limit.rlim_max = limit.rlim_cur;
@@ -1923,32 +1923,22 @@ static int set_config_prlimit(const char *key, const char *value,
 	/* allocate list element */
 	limlist = malloc(sizeof(*limlist));
 	if (!limlist)
-		goto on_error;
+		return ret_errno(ENOMEM);
 
 	limelem = malloc(sizeof(*limelem));
 	if (!limelem)
-		goto on_error;
+		return ret_errno(ENOMEM);
 	memset(limelem, 0, sizeof(*limelem));
 
 	limelem->resource = strdup(key);
 	if (!limelem->resource)
-		goto on_error;
+		return ret_errno(ENOMEM);
 
 	limelem->limit = limit;
-	lxc_list_add_elem(limlist, limelem);;
-	lxc_list_add_tail(&lxc_conf->limits, limlist);
+	lxc_list_add_elem(limlist, move_ptr(limelem));;
+	lxc_list_add_tail(&lxc_conf->limits, move_ptr(limlist));
 
 	return 0;
-
-on_error:
-	free(limlist);
-
-	if (limelem) {
-		free(limelem->resource);
-		free(limelem);
-	}
-
-	return -1;
 }
 
 static int set_config_sysctl(const char *key, const char *value,
