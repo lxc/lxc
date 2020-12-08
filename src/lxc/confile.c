@@ -1105,10 +1105,8 @@ static int set_config_hooks(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return lxc_clear_hooks(lxc_conf, key);
 
-	if (strcmp(key + 4, "hook") == 0) {
-		ERROR("lxc.hook must not have a value");
-		return -1;
-	}
+	if (strcmp(key + 4, "hook") == 0)
+		return log_error_errno(-EINVAL, EINVAL, "lxc.hook must not have a value");
 
 	copy = strdup(value);
 	if (!copy)
@@ -1151,11 +1149,9 @@ static int set_config_hooks_version(const char *key, const char *value,
 	if (ret < 0)
 		return -1;
 
-	if (tmp > 1) {
-		ERROR("Invalid hook version specified. Currently only 0 "
-		      "(legacy) and 1 are supported");
-		return -1;
-	}
+	if (tmp > 1)
+		return log_error_errno(-EINVAL,
+				       EINVAL, "Invalid hook version specified. Currently only 0 (legacy) and 1 are supported");
 
 	lxc_conf->hooks_version = tmp;
 
