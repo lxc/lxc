@@ -3847,7 +3847,7 @@ static int get_config_seccomp_notify_cookie(const char *key, char *retv, int inl
 #ifdef HAVE_SECCOMP_NOTIFY
 	return lxc_get_conf_str(retv, inlen, c->seccomp.notifier.cookie);
 #else
-	return ret_set_errno(-1, ENOSYS);
+	return ret_errno(ENOSYS);
 #endif
 }
 
