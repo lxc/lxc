@@ -1504,26 +1504,22 @@ static int set_config_apparmor_raw(const char *key,
 				   struct lxc_conf *lxc_conf,
 				   void *data)
 {
-	char *elem;
-	struct lxc_list *list;
+	__do_free char *elem = NULL;
+	__do_free struct lxc_list *list = NULL;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_apparmor_raw(lxc_conf);
 
 	list = malloc(sizeof(*list));
-	if (!list) {
-		errno = ENOMEM;
-		return -1;
-	}
+	if (!list)
+		return ret_errno(ENOMEM);
 
 	elem = strdup(value);
-	if (!elem) {
-		free(list);
-		return -1;
-	}
-	list->elem = elem;
+	if (!elem)
+		return ret_errno(ENOMEM);
 
-	lxc_list_add_tail(&lxc_conf->lsm_aa_raw, list);
+	list->elem = move_ptr(elem);
+	lxc_list_add_tail(&lxc_conf->lsm_aa_raw, move_ptr(list));
 
 	return 0;
 }
