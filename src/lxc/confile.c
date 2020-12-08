@@ -4420,8 +4420,7 @@ static inline int clr_config_cap_keep(const char *key, struct lxc_conf *c,
 static inline int clr_config_console_path(const char *key, struct lxc_conf *c,
 					  void *data)
 {
-	free(c->console.path);
-	c->console.path = NULL;
+	free_disarm(c->console.path);
 	return 0;
 }
 
