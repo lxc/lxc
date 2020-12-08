@@ -4792,16 +4792,16 @@ static int set_config_net_nic(const char *key, const char *value,
 static int clr_config_net_nic(const char *key, struct lxc_conf *lxc_conf,
 			      void *data)
 {
+	__do_free char *deindexed_key = NULL;
+	ssize_t idx = -1;
 	int ret;
 	const char *idxstring;
 	struct lxc_config_t *config;
 	struct lxc_netdev *netdev;
-	ssize_t idx = -1;
-	char *deindexed_key = NULL;
 
 	idxstring = key + 8;
 	if (!isdigit(*idxstring))
-		return -1;
+		return ret_errno(EINVAL);
 
 	/* The left conjunct is pretty self-explanatory. The right conjunct
 	 * checks whether the two pointers are equal. If they are we know that
@@ -4811,8 +4811,9 @@ static int clr_config_net_nic(const char *key, struct lxc_conf *lxc_conf,
 	if (isdigit(*idxstring) && (strrchr(key, '.') == (idxstring - 1))) {
 		unsigned int rmnetdevidx;
 
-		if (lxc_safe_uint(idxstring, &rmnetdevidx) < 0)
-			return -1;
+		ret = lxc_safe_uint(idxstring, &rmnetdevidx);
+		if (ret < 0)
+			return ret;
 
 		/* Remove network from network list. */
 		lxc_remove_nic_by_idx(lxc_conf, rmnetdevidx);
@@ -4821,18 +4822,13 @@ static int clr_config_net_nic(const char *key, struct lxc_conf *lxc_conf,
 
 	config = get_network_config_ops(key, lxc_conf, &idx, &deindexed_key);
 	if (!config || idx < 0)
-		return -1;
+		return -errno;
 
 	netdev = lxc_get_netdev_by_idx(lxc_conf, (unsigned int)idx, false);
-	if (!netdev) {
-		free(deindexed_key);
-		return -1;
-	}
+	if (!netdev)
+		return ret_errno(EINVAL);
 
-	ret = config->clr(deindexed_key, lxc_conf, netdev);
-	free(deindexed_key);
-
-	return ret;
+	return config->clr(deindexed_key, lxc_conf, netdev);
 }
 
 static int clr_config_net_type(const char *key, struct lxc_conf *lxc_conf,
