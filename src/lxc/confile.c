@@ -2106,43 +2106,44 @@ static int set_config_mount_fstab(const char *key, const char *value,
 static int set_config_mount_auto(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf, void *data)
 {
-	char *autos, *token;
+	__do_free char *autos = NULL;
+	char *token;
 	int i;
-	int ret = -1;
 	static struct {
 		const char *token;
 		int mask;
 		int flag;
 	} allowed_auto_mounts[] = {
-	    { "proc",                    LXC_AUTO_PROC_MASK,   LXC_AUTO_PROC_MIXED                                 },
-	    { "proc:mixed",              LXC_AUTO_PROC_MASK,   LXC_AUTO_PROC_MIXED                                 },
-	    { "proc:rw",                 LXC_AUTO_PROC_MASK,   LXC_AUTO_PROC_RW                                    },
-	    { "sys",                     LXC_AUTO_SYS_MASK,    LXC_AUTO_SYS_MIXED                                  },
-	    { "sys:ro",                  LXC_AUTO_SYS_MASK,    LXC_AUTO_SYS_RO                                     },
-	    { "sys:mixed",               LXC_AUTO_SYS_MASK,    LXC_AUTO_SYS_MIXED                                  },
-	    { "sys:rw",                  LXC_AUTO_SYS_MASK,    LXC_AUTO_SYS_RW                                     },
-	    { "cgroup",                  LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_NOSPEC                              },
-	    { "cgroup:mixed",            LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_MIXED                               },
-	    { "cgroup:ro",               LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_RO                                  },
-	    { "cgroup:rw",               LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_RW                                  },
-	    { "cgroup:force",            LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_NOSPEC | LXC_AUTO_CGROUP_FORCE      },
-	    { "cgroup:mixed:force",      LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_MIXED | LXC_AUTO_CGROUP_FORCE       },
-	    { "cgroup:ro:force",         LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_RO | LXC_AUTO_CGROUP_FORCE          },
-	    { "cgroup:rw:force",         LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_RW | LXC_AUTO_CGROUP_FORCE          },
-	    { "cgroup-full",             LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_FULL_NOSPEC                         },
-	    { "cgroup-full:mixed",       LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_FULL_MIXED                          },
-	    { "cgroup-full:ro",          LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_FULL_RO                             },
-	    { "cgroup-full:rw",          LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_FULL_RW                             },
-	    { "cgroup-full:force",       LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_FULL_NOSPEC | LXC_AUTO_CGROUP_FORCE },
-	    { "cgroup-full:mixed:force", LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_FULL_MIXED | LXC_AUTO_CGROUP_FORCE  },
-	    { "cgroup-full:ro:force",    LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_FULL_RO | LXC_AUTO_CGROUP_FORCE     },
-	    { "cgroup-full:rw:force",    LXC_AUTO_CGROUP_MASK, LXC_AUTO_CGROUP_FULL_RW | LXC_AUTO_CGROUP_FORCE     },
-	    { "shmounts:",               LXC_AUTO_SHMOUNTS_MASK, LXC_AUTO_SHMOUNTS                                 },
-	    /* For adding anything that is just a single on/off, but has no
-	    *  options: keep mask and flag identical and just define the enum
-	    *  value as an unused bit so far
-	     */
-	    { NULL,                      0,                    0                                              }
+		{ "proc",			LXC_AUTO_PROC_MASK,	LXC_AUTO_PROC_MIXED					},
+		{ "proc:mixed",			LXC_AUTO_PROC_MASK,	LXC_AUTO_PROC_MIXED					},
+		{ "proc:rw",			LXC_AUTO_PROC_MASK,	LXC_AUTO_PROC_RW					},
+		{ "sys",			LXC_AUTO_SYS_MASK,	LXC_AUTO_SYS_MIXED					},
+		{ "sys:ro",			LXC_AUTO_SYS_MASK,	LXC_AUTO_SYS_RO						},
+		{ "sys:mixed",			LXC_AUTO_SYS_MASK,	LXC_AUTO_SYS_MIXED					},
+		{ "sys:rw",			LXC_AUTO_SYS_MASK,	LXC_AUTO_SYS_RW						},
+		{ "cgroup",			LXC_AUTO_CGROUP_MASK,	LXC_AUTO_CGROUP_NOSPEC					},
+		{ "cgroup:mixed",		LXC_AUTO_CGROUP_MASK,	LXC_AUTO_CGROUP_MIXED					},
+		{ "cgroup:ro",			LXC_AUTO_CGROUP_MASK,	LXC_AUTO_CGROUP_RO					},
+		{ "cgroup:rw",			LXC_AUTO_CGROUP_MASK,	LXC_AUTO_CGROUP_RW					},
+		{ "cgroup:force",		LXC_AUTO_CGROUP_MASK,	LXC_AUTO_CGROUP_NOSPEC | LXC_AUTO_CGROUP_FORCE		},
+		{ "cgroup:mixed:force",		LXC_AUTO_CGROUP_MASK,	LXC_AUTO_CGROUP_MIXED | LXC_AUTO_CGROUP_FORCE		},
+		{ "cgroup:ro:force",		LXC_AUTO_CGROUP_MASK,	LXC_AUTO_CGROUP_RO | LXC_AUTO_CGROUP_FORCE		},
+		{ "cgroup:rw:force",		LXC_AUTO_CGROUP_MASK,	LXC_AUTO_CGROUP_RW | LXC_AUTO_CGROUP_FORCE		},
+		{ "cgroup-full",		LXC_AUTO_CGROUP_MASK,	LXC_AUTO_CGROUP_FULL_NOSPEC				},
+		{ "cgroup-full:mixed",		LXC_AUTO_CGROUP_MASK,	LXC_AUTO_CGROUP_FULL_MIXED				},
+		{ "cgroup-full:ro",		LXC_AUTO_CGROUP_MASK,	LXC_AUTO_CGROUP_FULL_RO					},
+		{ "cgroup-full:rw",		LXC_AUTO_CGROUP_MASK,	LXC_AUTO_CGROUP_FULL_RW					},
+		{ "cgroup-full:force",		LXC_AUTO_CGROUP_MASK,	LXC_AUTO_CGROUP_FULL_NOSPEC | LXC_AUTO_CGROUP_FORCE	},
+		{ "cgroup-full:mixed:force",	LXC_AUTO_CGROUP_MASK,	LXC_AUTO_CGROUP_FULL_MIXED | LXC_AUTO_CGROUP_FORCE	},
+		{ "cgroup-full:ro:force",	LXC_AUTO_CGROUP_MASK,	LXC_AUTO_CGROUP_FULL_RO | LXC_AUTO_CGROUP_FORCE		},
+		{ "cgroup-full:rw:force",	LXC_AUTO_CGROUP_MASK,	LXC_AUTO_CGROUP_FULL_RW | LXC_AUTO_CGROUP_FORCE		},
+		{ "shmounts:",			LXC_AUTO_SHMOUNTS_MASK,	LXC_AUTO_SHMOUNTS					},
+		/*
+		 * For adding anything that is just a single on/off, but has no
+		 * options: keep mask and flag identical and just define the
+		 * enum value as an unused bit so far
+		 */
+		{ NULL,				0,			0							}
 	};
 
 	if (lxc_config_value_empty(value)) {
@@ -2152,7 +2153,7 @@ static int set_config_mount_auto(const char *key, const char *value,
 
 	autos = strdup(value);
 	if (!autos)
-		return -1;
+		return ret_errno(ENOMEM);
 
 	lxc_iterate_parts(token, autos, " \t") {
 		bool is_shmounts = false;
@@ -2168,50 +2169,40 @@ static int set_config_mount_auto(const char *key, const char *value,
 			}
 		}
 
-		if (!allowed_auto_mounts[i].token) {
-			ERROR("Invalid filesystem to automount \"%s\"", token);
-			goto on_error;
-		}
+		if (!allowed_auto_mounts[i].token)
+			return log_error_errno(-EINVAL, EINVAL, "Invalid filesystem to automount \"%s\"", token);
 
 		lxc_conf->auto_mounts &= ~allowed_auto_mounts[i].mask;
 		lxc_conf->auto_mounts |= allowed_auto_mounts[i].flag;
 
 		if (is_shmounts) {
-			char *container_path;
-			char *host_path;
+			__do_free char *container_path = NULL, *host_path = NULL;
+			char *val;
 
-			host_path = token + STRLITERALLEN("shmounts:");
-			if (*host_path == '\0') {
-				SYSERROR("Failed to copy shmounts host path");
-				goto on_error;
-			}
+			val = token + STRLITERALLEN("shmounts:");
+			if (*val == '\0')
+				return log_error_errno(-EINVAL, EINVAL, "Failed to copy shmounts host path");
 
-			container_path = strchr(host_path, ':');
-			if (!container_path || *(container_path + 1) == '\0')
-				container_path = "/dev/.lxc-mounts";
+			host_path = strdup(val);
+			if (!host_path)
+				return log_error_errno(-EINVAL, EINVAL, "Failed to copy shmounts host path");
+
+			val = strchr(host_path, ':');
+			if (!val || *(val + 1) == '\0')
+				val = "/dev/.lxc-mounts";
 			else
-				*container_path++ = '\0';
+				*val++ = '\0';
 
-			lxc_conf->shmount.path_host = strdup(host_path);
-			if (!lxc_conf->shmount.path_host) {
-				SYSERROR("Failed to copy shmounts host path");
-				goto on_error;
-			}
+			container_path = strdup(val);
+			if(!container_path)
+				return log_error_errno(-EINVAL, EINVAL, "Failed to copy shmounts container path");
 
-			lxc_conf->shmount.path_cont = strdup(container_path);
-			if(!lxc_conf->shmount.path_cont) {
-				SYSERROR("Failed to copy shmounts container path");
-				goto on_error;
-			}
+			lxc_conf->shmount.path_host = move_ptr(host_path);
+			lxc_conf->shmount.path_cont = move_ptr(container_path);
 		}
 	}
 
-	ret = 0;
-
-on_error:
-	free(autos);
-
-	return ret;
+	return 0;
 }
 
 static int set_config_mount(const char *key, const char *value,
