@@ -2593,10 +2593,11 @@ struct parse_line_conf {
 
 static int parse_line(char *buffer, void *data)
 {
-	char *dot, *key, *line, *linep, *value;
+	__do_free char *linep = NULL;
+	char *dot, *key, *line, *value;
 	bool empty_line;
 	struct lxc_config_t *config;
-	int ret = 0;
+	int ret;
 	char *dup = buffer;
 	struct parse_line_conf *plc = data;
 
@@ -2611,34 +2612,30 @@ static int parse_line(char *buffer, void *data)
 	 */
 	linep = line = strdup(dup);
 	if (!line)
-		return -1;
+		return ret_errno(ENOMEM);
 
 	if (!plc->from_include) {
 		ret = append_unexp_config_line(line, plc->conf);
 		if (ret < 0)
-			goto on_error;
+			return ret;
 	}
 
 	if (empty_line)
-		goto on_error;
+		return 0;
 
 	line += lxc_char_left_gc(line, strlen(line));
 
 	/* ignore comments */
 	if (line[0] == '#')
-		goto on_error;
+		return 0;
 
 	/* martian option - don't add it to the config itself */
 	if (strncmp(line, "lxc.", 4))
-		goto on_error;
-
-	ret = -1;
+		return 0;
 
 	dot = strchr(line, '=');
-	if (!dot) {
-		ERROR("Invalid configuration line: %s", line);
-		goto on_error;
-	}
+	if (!dot)
+		return log_error_errno(-EINVAL, EINVAL, "Invalid configuration line: %s", line);
 
 	*dot = '\0';
 	value = dot + 1;
@@ -2660,17 +2657,10 @@ static int parse_line(char *buffer, void *data)
 	}
 
 	config = lxc_get_config(key);
-	if (!config) {
-		ERROR("Unknown configuration key \"%s\"", key);
-		goto on_error;
-	}
+	if (!config)
+		return log_error_errno(-EINVAL, EINVAL, "Unknown configuration key \"%s\"", key);
 
-	ret = config->set(key, value, plc->conf, NULL);
-
-on_error:
-	free(linep);
-
-	return ret;
+	return config->set(key, value, plc->conf, NULL);
 }
 
 static struct new_config_item *parse_new_conf_line(char *buffer)
