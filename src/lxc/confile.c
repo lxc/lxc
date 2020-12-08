@@ -3063,7 +3063,7 @@ int lxc_fill_elevated_privileges(char *flaglist, int *flags)
 				aflag = all_privs[i].flag;
 
 		if (aflag < 0)
-			return -1;
+			return ret_errno(EINVAL);
 
 		*flags |= aflag;
 	}
