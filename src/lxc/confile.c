@@ -306,7 +306,7 @@ static int set_config_net_type(const char *key, const char *value,
 		return clr_config_net_type(key, lxc_conf, data);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	if (strcmp(value, "veth") == 0) {
 		netdev->type = LXC_NET_VETH;
@@ -333,8 +333,7 @@ static int set_config_net_type(const char *key, const char *value,
 	} else if (strcmp(value, "none") == 0) {
 		netdev->type = LXC_NET_NONE;
 	} else {
-		ERROR("Invalid network type %s", value);
-		return -1;
+		return log_error(-1, "Invalid network type %s", value);
 	}
 
 	return 0;
@@ -349,7 +348,7 @@ static int set_config_net_flags(const char *key, const char *value,
 		return clr_config_net_flags(key, lxc_conf, data);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	netdev->flags |= IFF_UP;
 
@@ -407,7 +406,7 @@ static int set_config_net_link(const char *key, const char *value,
 		return clr_config_net_link(key, lxc_conf, data);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	if (value[strlen(value) - 1] == '+' && netdev->type == LXC_NET_PHYS)
 		ret = create_matched_ifnames(value, lxc_conf, netdev);
@@ -428,11 +427,11 @@ static int set_config_net_l2proxy(const char *key, const char *value,
 		return clr_config_net_l2proxy(key, lxc_conf, data);
 
 	if (!netdev)
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
 	ret = lxc_safe_uint(value, &val);
 	if (ret < 0)
-		return ret_set_errno(-1, -ret);
+		return ret_errno(-ret);
 
 	switch (val) {
 	case 0:
@@ -455,7 +454,7 @@ static int set_config_net_name(const char *key, const char *value,
 		return clr_config_net_name(key, lxc_conf, data);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	return network_ifname(netdev->name, value, sizeof(netdev->name));
 }
@@ -470,7 +469,7 @@ static int set_config_net_veth_mode(const char *key, const char *value,
 		return clr_config_net_veth_mode(key, lxc_conf, data);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	return lxc_veth_mode_to_flag(&netdev->priv.veth_attr.mode, value);
 }
@@ -484,9 +483,10 @@ static int set_config_net_veth_pair(const char *key, const char *value,
 		return clr_config_net_veth_pair(key, lxc_conf, data);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
-	return network_ifname(netdev->priv.veth_attr.pair, value, sizeof(netdev->priv.veth_attr.pair));
+	return network_ifname(netdev->priv.veth_attr.pair, value,
+			      sizeof(netdev->priv.veth_attr.pair));
 }
 
 static int set_config_net_macvlan_mode(const char *key, const char *value,
@@ -498,7 +498,7 @@ static int set_config_net_macvlan_mode(const char *key, const char *value,
 		return clr_config_net_macvlan_mode(key, lxc_conf, data);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	return lxc_macvlan_mode_to_flag(&netdev->priv.macvlan_attr.mode, value);
 }
@@ -512,12 +512,12 @@ static int set_config_net_ipvlan_mode(const char *key, const char *value,
 		return clr_config_net_ipvlan_mode(key, lxc_conf, data);
 
 	if (!netdev)
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
-	if (netdev->type != LXC_NET_IPVLAN) {
-		SYSERROR("Invalid ipvlan mode \"%s\", can only be used with ipvlan network", value);
-		return ret_set_errno(-1, EINVAL);
-	}
+	if (netdev->type != LXC_NET_IPVLAN)
+		return log_error_errno(-EINVAL,
+				       EINVAL, "Invalid ipvlan mode \"%s\", can only be used with ipvlan network",
+				       value);
 
 	return lxc_ipvlan_mode_to_flag(&netdev->priv.ipvlan_attr.mode, value);
 }
@@ -531,12 +531,12 @@ static int set_config_net_ipvlan_isolation(const char *key, const char *value,
 		return clr_config_net_ipvlan_isolation(key, lxc_conf, data);
 
 	if (!netdev)
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
-	if (netdev->type != LXC_NET_IPVLAN) {
-		SYSERROR("Invalid ipvlan isolation \"%s\", can only be used with ipvlan network", value);
-		return ret_set_errno(-1, EINVAL);
-	}
+	if (netdev->type != LXC_NET_IPVLAN)
+		return log_error_errno(-EINVAL,
+				       EINVAL, "Invalid ipvlan isolation \"%s\", can only be used with ipvlan network",
+				       value);
 
 	return lxc_ipvlan_isolation_to_flag(&netdev->priv.ipvlan_attr.isolation, value);
 }
@@ -551,11 +551,11 @@ static int set_config_net_hwaddr(const char *key, const char *value,
 		return clr_config_net_hwaddr(key, lxc_conf, data);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	new_value = strdup(value);
 	if (!new_value)
-		return -1;
+		return ret_errno(ENOMEM);
 
 	rand_complete_hwaddr(new_value);
 
@@ -580,11 +580,11 @@ static int set_config_net_vlan_id(const char *key, const char *value,
 		return clr_config_net_vlan_id(key, lxc_conf, data);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	ret = get_u16(&netdev->priv.vlan_attr.vid, value, 0);
 	if (ret < 0)
-		return -1;
+		return ret;
 
 	return 0;
 }
@@ -598,7 +598,7 @@ static int set_config_net_mtu(const char *key, const char *value,
 		return clr_config_net_mtu(key, lxc_conf, data);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	return set_config_string_item(&netdev->mtu, value);
 }
@@ -606,39 +606,34 @@ static int set_config_net_mtu(const char *key, const char *value,
 static int set_config_net_ipv4_address(const char *key, const char *value,
 				       struct lxc_conf *lxc_conf, void *data)
 {
+	__do_free char *addr = NULL;
+	__do_free struct lxc_inetdev *inetdev = NULL;
+	__do_free struct lxc_list *list = NULL;
 	int ret;
 	struct lxc_netdev *netdev = data;
-	struct lxc_inetdev *inetdev;
-	struct lxc_list *list;
 	char *cursor, *slash;
-	char *addr = NULL, *bcast = NULL, *prefix = NULL;
+	char *bcast = NULL, *prefix = NULL;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_ipv4_address(key, lxc_conf, data);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	inetdev = malloc(sizeof(*inetdev));
 	if (!inetdev)
-		return -1;
+		return ret_errno(ENOMEM);
 	memset(inetdev, 0, sizeof(*inetdev));
 
 	list = malloc(sizeof(*list));
-	if (!list) {
-		free(inetdev);
-		return -1;
-	}
+	if (!list)
+		return ret_errno(ENOMEM);
 
 	lxc_list_init(list);
-	list->elem = inetdev;
 
 	addr = strdup(value);
-	if (!addr) {
-		free(inetdev);
-		free(list);
-		return -1;
-	}
+	if (!addr)
+		return ret_errno(ENOMEM);
 
 	cursor = strstr(addr, " ");
 	if (cursor) {
@@ -653,35 +648,21 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 	}
 
 	ret = inet_pton(AF_INET, addr, &inetdev->addr);
-	if (!ret || ret < 0) {
-		SYSERROR("Invalid ipv4 address \"%s\"", value);
-		free(inetdev);
-		free(addr);
-		free(list);
-		return -1;
-	}
+	if (!ret || ret < 0)
+		return log_error_errno(-1, errno, "Invalid ipv4 address \"%s\"", value);
 
 	if (bcast) {
 		ret = inet_pton(AF_INET, bcast, &inetdev->bcast);
-		if (!ret || ret < 0) {
-			SYSERROR("Invalid ipv4 broadcast address \"%s\"", value);
-			free(inetdev);
-			free(list);
-			free(addr);
-			return -1;
-		}
+		if (!ret || ret < 0)
+			return log_error_errno(-1, errno, "Invalid ipv4 broadcast address \"%s\"", value);
 
 	}
 
 	/* No prefix specified, determine it from the network class. */
 	if (prefix) {
 		ret = lxc_safe_uint(prefix, &inetdev->prefix);
-		if (ret < 0) {
-			free(inetdev);
-			free(list);
-			free(addr);
-			return -1;
-		}
+		if (ret < 0)
+			return ret;
 	} else {
 		inetdev->prefix = config_ip_prefix(&inetdev->addr);
 	}
@@ -694,8 +675,10 @@ static int set_config_net_ipv4_address(const char *key, const char *value,
 		inetdev->bcast.s_addr |= htonl(INADDR_BROADCAST >> inetdev->prefix);
 	}
 
+	list->elem = inetdev;
 	lxc_list_add_tail(&netdev->ipv4, list);
-	free(addr);
+	move_ptr(inetdev);
+	move_ptr(list);
 
 	return 0;
 }
@@ -721,21 +704,18 @@ static int set_config_net_ipv4_gateway(const char *key, const char *value,
 		netdev->ipv4_gateway_auto = false;
 		netdev->ipv4_gateway_dev = true;
 	} else {
+		__do_free struct in_addr *gw = NULL;
 		int ret;
-		struct in_addr *gw;
 
 		gw = malloc(sizeof(*gw));
 		if (!gw)
-			return -1;
+			return ret_errno(ENOMEM);
 
 		ret = inet_pton(AF_INET, value, gw);
-		if (!ret || ret < 0) {
-			SYSERROR("Invalid ipv4 gateway address \"%s\"", value);
-			free(gw);
-			return -1;
-		}
+		if (!ret || ret < 0)
+			return log_error_errno(-1, errno, "Invalid ipv4 gateway address \"%s\"", value);
 
-		netdev->ipv4_gateway = gw;
+		netdev->ipv4_gateway = move_ptr(gw);
 		netdev->ipv4_gateway_auto = false;
 	}
 
@@ -756,47 +736,47 @@ static int set_config_net_veth_ipv4_route(const char *key, const char *value,
 		return clr_config_net_veth_ipv4_route(key, lxc_conf, data);
 
 	if (!netdev)
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
-	if (netdev->type != LXC_NET_VETH) {
-		SYSERROR("Invalid ipv4 route \"%s\", can only be used with veth network", value);
-		return ret_set_errno(-1, EINVAL);
-	}
+	if (netdev->type != LXC_NET_VETH)
+		return log_error_errno(-EINVAL,
+				       EINVAL, "Invalid ipv4 route \"%s\", can only be used with veth network",
+				       value);
 
 	inetdev = malloc(sizeof(*inetdev));
 	if (!inetdev)
-		return -1;
+		return ret_errno(ENOMEM);
 	memset(inetdev, 0, sizeof(*inetdev));
 
 	list = malloc(sizeof(*list));
 	if (!list)
-		return -1;
+		return ret_errno(ENOMEM);
 
 	lxc_list_init(list);
 	list->elem = inetdev;
 
 	valdup = strdup(value);
 	if (!valdup)
-		return -1;
+		return ret_errno(ENOMEM);
 
 	slash = strchr(valdup, '/');
 	if (!slash)
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
 	*slash = '\0';
 	slash++;
 	if (*slash == '\0')
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
 	netmask = slash;
 
 	ret = lxc_safe_uint(netmask, &inetdev->prefix);
 	if (ret < 0 || inetdev->prefix > 32)
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
 	ret = inet_pton(AF_INET, valdup, &inetdev->addr);
 	if (!ret || ret < 0)
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
 	lxc_list_add_tail(&netdev->priv.veth_attr.ipv4_routes, list);
 	move_ptr(inetdev);
@@ -808,38 +788,33 @@ static int set_config_net_veth_ipv4_route(const char *key, const char *value,
 static int set_config_net_ipv6_address(const char *key, const char *value,
 				       struct lxc_conf *lxc_conf, void *data)
 {
+	__do_free char *valdup = NULL;
+	__do_free struct lxc_inet6dev *inet6dev = NULL;
+	__do_free struct lxc_list *list = NULL;
 	int ret;
 	struct lxc_netdev *netdev = data;
-	struct lxc_inet6dev *inet6dev;
-	struct lxc_list *list;
-	char *slash, *valdup, *netmask;
+	char *slash, *netmask;
 
 	if (lxc_config_value_empty(value))
 		return clr_config_net_ipv6_address(key, lxc_conf, data);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	inet6dev = malloc(sizeof(*inet6dev));
 	if (!inet6dev)
-		return -1;
+		return ret_errno(ENOMEM);
 	memset(inet6dev, 0, sizeof(*inet6dev));
 
 	list = malloc(sizeof(*list));
-	if (!list) {
-		free(inet6dev);
-		return -1;
-	}
+	if (!list)
+		return ret_errno(ENOMEM);
 
 	lxc_list_init(list);
-	list->elem = inet6dev;
 
 	valdup = strdup(value);
-	if (!valdup) {
-		free(list);
-		free(inet6dev);
-		return -1;
-	}
+	if (!valdup)
+		return ret_errno(ENOMEM);
 
 	inet6dev->prefix = 64;
 	slash = strstr(valdup, "/");
@@ -848,25 +823,18 @@ static int set_config_net_ipv6_address(const char *key, const char *value,
 		netmask = slash + 1;
 
 		ret = lxc_safe_uint(netmask, &inet6dev->prefix);
-		if (ret < 0) {
-			free(list);
-			free(inet6dev);
-			free(valdup);
-			return -1;
-		}
+		if (ret < 0)
+			return ret;
 	}
 
 	ret = inet_pton(AF_INET6, valdup, &inet6dev->addr);
-	if (!ret || ret < 0) {
-		SYSERROR("Invalid ipv6 address \"%s\"", valdup);
-		free(list);
-		free(inet6dev);
-		free(valdup);
-		return -1;
-	}
+	if (!ret || ret < 0)
+		return log_error_errno(-EINVAL, EINVAL, "Invalid ipv6 address \"%s\"", valdup);
 
+	list->elem = inet6dev;
 	lxc_list_add_tail(&netdev->ipv6, list);
-	free(valdup);
+	move_ptr(inet6dev);
+	move_ptr(list);
 
 	return 0;
 }
@@ -880,7 +848,7 @@ static int set_config_net_ipv6_gateway(const char *key, const char *value,
 		return clr_config_net_ipv6_gateway(key, lxc_conf, data);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	free(netdev->ipv6_gateway);
 
@@ -893,20 +861,18 @@ static int set_config_net_ipv6_gateway(const char *key, const char *value,
 		netdev->ipv6_gateway_dev = true;
 	} else {
 		int ret;
-		struct in6_addr *gw;
+		__do_free struct in6_addr *gw = NULL;
 
 		gw = malloc(sizeof(*gw));
 		if (!gw)
-			return -1;
+			return ret_errno(ENOMEM);
 
 		ret = inet_pton(AF_INET6, value, gw);
-		if (!ret || ret < 0) {
-			SYSERROR("Invalid ipv6 gateway address \"%s\"", value);
-			free(gw);
-			return -1;
-		}
+		if (!ret || ret < 0)
+			return log_error_errno(-EINVAL, EINVAL,
+					       "Invalid ipv6 gateway address \"%s\"", value);
 
-		netdev->ipv6_gateway = gw;
+		netdev->ipv6_gateway = move_ptr(gw);
 		netdev->ipv6_gateway_auto = false;
 	}
 
@@ -927,24 +893,23 @@ static int set_config_net_veth_ipv6_route(const char *key, const char *value,
 		return clr_config_net_veth_ipv6_route(key, lxc_conf, data);
 
 	if (!netdev)
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
-	if (netdev->type != LXC_NET_VETH) {
-		SYSERROR("Invalid ipv6 route \"%s\", can only be used with veth network", value);
-		return ret_set_errno(-1, EINVAL);
-	}
+	if (netdev->type != LXC_NET_VETH)
+		return log_error_errno(-EINVAL,
+				       EINVAL, "Invalid ipv6 route \"%s\", can only be used with veth network",
+				       value);
 
 	inet6dev = malloc(sizeof(*inet6dev));
 	if (!inet6dev)
-		return -1;
+		return ret_errno(ENOMEM);
 	memset(inet6dev, 0, sizeof(*inet6dev));
 
 	list = malloc(sizeof(*list));
 	if (!list)
-		return -1;
+		return ret_errno(ENOMEM);
 
 	lxc_list_init(list);
-	list->elem = inet6dev;
 
 	valdup = strdup(value);
 	if (!valdup)
@@ -952,23 +917,24 @@ static int set_config_net_veth_ipv6_route(const char *key, const char *value,
 
 	slash = strchr(valdup, '/');
 	if (!slash)
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
 	*slash = '\0';
 	slash++;
 	if (*slash == '\0')
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
 	netmask = slash;
 
 	ret = lxc_safe_uint(netmask, &inet6dev->prefix);
 	if (ret < 0 || inet6dev->prefix > 128)
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
 	ret = inet_pton(AF_INET6, valdup, &inet6dev->addr);
 	if (!ret || ret < 0)
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
+	list->elem = inet6dev;
 	lxc_list_add_tail(&netdev->priv.veth_attr.ipv6_routes, list);
 	move_ptr(inet6dev);
 	move_ptr(list);
@@ -985,7 +951,7 @@ static int set_config_net_script_up(const char *key, const char *value,
 		return clr_config_net_script_up(key, lxc_conf, data);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	return set_config_string_item(&netdev->upscript, value);
 }
@@ -999,22 +965,21 @@ static int set_config_net_script_down(const char *key, const char *value,
 		return clr_config_net_script_down(key, lxc_conf, data);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	return set_config_string_item(&netdev->downscript, value);
 }
 
-static int add_hook(struct lxc_conf *lxc_conf, int which, char *hook)
+static int add_hook(struct lxc_conf *lxc_conf, int which, __owns char *hook)
 {
+	__do_free char *val = hook;
 	struct lxc_list *hooklist;
 
 	hooklist = malloc(sizeof(*hooklist));
-	if (!hooklist) {
-		free(hook);
-		return -1;
-	}
+	if (!hooklist)
+		return ret_errno(ENOMEM);
 
-	hooklist->elem = hook;
+	hooklist->elem = move_ptr(val);
 	lxc_list_add_tail(&lxc_conf->hooks[which], hooklist);
 
 	return 0;
@@ -1135,7 +1100,7 @@ static int set_config_init_gid(const char *key, const char *value,
 static int set_config_hooks(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
-	char *copy;
+	__do_free char *copy = NULL;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_hooks(lxc_conf, key);
@@ -1147,30 +1112,28 @@ static int set_config_hooks(const char *key, const char *value,
 
 	copy = strdup(value);
 	if (!copy)
-		return -1;
+		return ret_errno(ENOMEM);
 
 	if (strcmp(key + 9, "pre-start") == 0)
-		return add_hook(lxc_conf, LXCHOOK_PRESTART, copy);
+		return add_hook(lxc_conf, LXCHOOK_PRESTART, move_ptr(copy));
 	else if (strcmp(key + 9, "start-host") == 0)
-		return add_hook(lxc_conf, LXCHOOK_START_HOST, copy);
+		return add_hook(lxc_conf, LXCHOOK_START_HOST, move_ptr(copy));
 	else if (strcmp(key + 9, "pre-mount") == 0)
-		return add_hook(lxc_conf, LXCHOOK_PREMOUNT, copy);
+		return add_hook(lxc_conf, LXCHOOK_PREMOUNT, move_ptr(copy));
 	else if (strcmp(key + 9, "autodev") == 0)
-		return add_hook(lxc_conf, LXCHOOK_AUTODEV, copy);
+		return add_hook(lxc_conf, LXCHOOK_AUTODEV, move_ptr(copy));
 	else if (strcmp(key + 9, "mount") == 0)
-		return add_hook(lxc_conf, LXCHOOK_MOUNT, copy);
+		return add_hook(lxc_conf, LXCHOOK_MOUNT, move_ptr(copy));
 	else if (strcmp(key + 9, "start") == 0)
-		return add_hook(lxc_conf, LXCHOOK_START, copy);
+		return add_hook(lxc_conf, LXCHOOK_START, move_ptr(copy));
 	else if (strcmp(key + 9, "stop") == 0)
-		return add_hook(lxc_conf, LXCHOOK_STOP, copy);
+		return add_hook(lxc_conf, LXCHOOK_STOP, move_ptr(copy));
 	else if (strcmp(key + 9, "post-stop") == 0)
-		return add_hook(lxc_conf, LXCHOOK_POSTSTOP, copy);
+		return add_hook(lxc_conf, LXCHOOK_POSTSTOP, move_ptr(copy));
 	else if (strcmp(key + 9, "clone") == 0)
-		return add_hook(lxc_conf, LXCHOOK_CLONE, copy);
+		return add_hook(lxc_conf, LXCHOOK_CLONE, move_ptr(copy));
 	else if (strcmp(key + 9, "destroy") == 0)
-		return add_hook(lxc_conf, LXCHOOK_DESTROY, copy);
-
-	free(copy);
+		return add_hook(lxc_conf, LXCHOOK_DESTROY, move_ptr(copy));
 
 	return -1;
 }
