@@ -5018,10 +5018,9 @@ static int clr_config_net_mtu(const char *key, struct lxc_conf *lxc_conf,
 	struct lxc_netdev *netdev = data;
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
-	free(netdev->mtu);
-	netdev->mtu = NULL;
+	free_disarm(netdev->mtu);
 
 	return 0;
 }
