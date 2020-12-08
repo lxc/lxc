@@ -4111,8 +4111,7 @@ static int get_config_seccomp_allow_nesting(const char *key, char *retv,
 #ifdef HAVE_SECCOMP
 	return lxc_get_conf_int(c, retv, inlen, c->seccomp.allow_nesting);
 #else
-	errno = ENOSYS;
-	return -1;
+	return ret_errno(ENOSYS);
 #endif
 }
 
