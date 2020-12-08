@@ -1548,12 +1548,12 @@ static int set_config_log_file(const char *key, const char *value,
 	int ret;
 
 	if (lxc_config_value_empty(value)) {
-		free(c->logfile);
-		c->logfile = NULL;
+		free_disarm(c->logfile);
 		return 0;
 	}
 
-	/* Store these values in the lxc_conf, and then try to set for actual
+	/*
+	 * Store these values in the lxc_conf, and then try to set for actual
 	 * current logging.
 	 */
 	ret = set_config_path_item(&c->logfile, value);
