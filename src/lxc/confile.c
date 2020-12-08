@@ -5606,7 +5606,7 @@ static int get_config_net_link(const char *key, char *retv, int inlen,
 		memset(retv, 0, inlen);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	if (netdev->link[0] != '\0')
 		strprint(retv, inlen, "%s", netdev->link);
