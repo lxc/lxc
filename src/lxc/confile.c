@@ -2736,19 +2736,17 @@ int lxc_config_read(const char *file, struct lxc_conf *conf, bool from_include)
 
 int lxc_config_define_add(struct lxc_list *defines, char *arg)
 {
-	struct lxc_list *dent;
+	__do_free struct lxc_list *dent = NULL;
 
 	dent = malloc(sizeof(struct lxc_list));
 	if (!dent)
-		return -1;
+		return ret_errno(ENOMEM);
 
 	dent->elem = parse_new_conf_line(arg);
-	if (!dent->elem) {
-		free(dent);
-		return -1;
-	}
+	if (!dent->elem)
+		return ret_errno(ENOMEM);
 
-	lxc_list_add_tail(defines, dent);
+	lxc_list_add_tail(defines, move_ptr(dent));
 
 	return 0;
 }
