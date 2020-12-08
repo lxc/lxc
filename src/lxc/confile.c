@@ -2308,19 +2308,19 @@ static int set_config_console_path(const char *key, const char *value,
 static int set_config_console_rotate(const char *key, const char *value,
 				     struct lxc_conf *lxc_conf, void *data)
 {
+	int ret;
+
 	if (lxc_config_value_empty(value)) {
 		lxc_conf->console.log_rotate = 0;
 		return 0;
 	}
 
-	if (lxc_safe_uint(value, &lxc_conf->console.log_rotate) < 0)
-		return -1;
+	ret = lxc_safe_uint(value, &lxc_conf->console.log_rotate);
+	if (ret)
+		return ret_errno(EINVAL);
 
-	if (lxc_conf->console.log_rotate > 1) {
-		ERROR("The \"lxc.console.rotate\" config key can only be set "
-		      "to 0 or 1");
-		return -1;
-	}
+	if (lxc_conf->console.log_rotate > 1)
+		return log_error_errno(-EINVAL, EINVAL, "The \"lxc.console.rotate\" config key can only be set to 0 or 1");
 
 	return 0;
 }
