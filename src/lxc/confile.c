@@ -1358,40 +1358,34 @@ static int set_config_monitor_signal_pdeath(const char *key, const char *value,
 static int set_config_group(const char *key, const char *value,
 			    struct lxc_conf *lxc_conf, void *data)
 {
-	char *groups, *token;
-	struct lxc_list *grouplist;
-	int ret = 0;
+	__do_free char *groups = NULL;
+	char *token;
 
 	if (lxc_config_value_empty(value))
 		return lxc_clear_groups(lxc_conf);
 
 	groups = strdup(value);
 	if (!groups)
-		return -1;
+		return ret_errno(ENOMEM);
 
 	/* In case several groups are specified in a single line split these
 	 * groups in a single element for the list.
 	 */
 	lxc_iterate_parts(token, groups, " \t") {
+		__do_free struct lxc_list *grouplist = NULL;
+
 		grouplist = malloc(sizeof(*grouplist));
-		if (!grouplist) {
-			ret = -1;
-			break;
-		}
+		if (!grouplist)
+			return ret_errno(ENOMEM);
 
 		grouplist->elem = strdup(token);
-		if (!grouplist->elem) {
-			free(grouplist);
-			ret = -1;
-			break;
-		}
+		if (!grouplist->elem)
+			return ret_errno(ENOMEM);
 
-		lxc_list_add_tail(&lxc_conf->groups, grouplist);
+		lxc_list_add_tail(&lxc_conf->groups, move_ptr(grouplist));
 	}
 
-	free(groups);
-
-	return ret;
+	return 0;
 }
 
 static int set_config_environment(const char *key, const char *value,
