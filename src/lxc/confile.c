@@ -4293,10 +4293,8 @@ static inline int clr_config_cgroup2_controller(const char *key,
 static int clr_config_cgroup_dir(const char *key, struct lxc_conf *lxc_conf,
 				 void *data)
 {
-	if (lxc_conf->cgroup_meta.dir) {
-		free(lxc_conf->cgroup_meta.dir);
-		lxc_conf->cgroup_meta.dir = NULL;
-	}
+	if (lxc_conf->cgroup_meta.dir)
+		free_disarm(lxc_conf->cgroup_meta.dir);
 
 	return 0;
 }
