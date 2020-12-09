@@ -1201,7 +1201,9 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 		}
 
 		/* Fallback to bind-mounting the device from the host. */
-		snprintf(hostpath, sizeof(hostpath), "/dev/%s", device->name);
+		ret = snprintf(hostpath, sizeof(hostpath), "/dev/%s", device->name);
+		if (ret < 0 || (size_t)ret >= sizeof(hostpath))
+			return ret_errno(EIO);
 
 		ret = safe_mount_beneath_at(dev_dir_fd, hostpath, device->name, NULL, MS_BIND, NULL);
 		if (ret < 0) {
