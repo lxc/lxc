@@ -491,8 +491,8 @@ static struct lxc_veth_mode {
 	char *name;
 	int mode;
 } veth_mode[] = {
-    { "bridge", VETH_MODE_BRIDGE },
-    { "router", VETH_MODE_ROUTER },
+	{ "bridge", VETH_MODE_BRIDGE },
+	{ "router", VETH_MODE_ROUTER },
 };
 
 int lxc_veth_mode_to_flag(int *mode, const char *value)
