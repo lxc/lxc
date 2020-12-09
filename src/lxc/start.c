@@ -2144,6 +2144,7 @@ out_detach_blockdev:
 
 out_delete_network:
 	lxc_abort(handler);
+	lxc_restore_phys_nics_to_netns(handler);
 	lxc_delete_network(handler);
 	detach_block_device(handler->conf);
 	lxc_end(handler);
