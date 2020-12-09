@@ -15,6 +15,7 @@
 #include "confile_utils.h"
 #include "error.h"
 #include "list.h"
+#include "lxc.h"
 #include "log.h"
 #include "lxccontainer.h"
 #include "macro.h"
@@ -867,37 +868,24 @@ static int lxc_container_name_to_pid(const char *lxcname_or_pid,
 
 	pid = strtol(lxcname_or_pid, &err, 10);
 	if (*err != '\0' || pid < 1) {
-		struct lxc_container *c;
+		__put_lxc_container struct lxc_container *c = NULL;
 
 		c = lxc_container_new(lxcname_or_pid, lxcpath);
-		if (!c) {
-			ERROR("\"%s\" is not a valid pid nor a container name",
-			      lxcname_or_pid);
-			return -1;
-		}
+		if (!c)
+			return log_error_errno(-EINVAL, EINVAL, "\"%s\" is not a valid pid nor a container name", lxcname_or_pid);
 
-		if (!c->may_control(c)) {
-			ERROR("Insufficient privileges to control container "
-			      "\"%s\"", c->name);
-			lxc_container_put(c);
-			return -1;
-		}
+		if (!c->may_control(c))
+			return log_error_errno(-EPERM, EPERM, "Insufficient privileges to control container \"%s\"", c->name);
 
 		pid = c->init_pid(c);
-		if (pid < 1) {
-			ERROR("Container \"%s\" is not running", c->name);
-			lxc_container_put(c);
-			return -1;
-		}
+		if (pid < 1)
+			return log_error_errno(-EINVAL, EINVAL, "Container \"%s\" is not running", c->name);
 
-		lxc_container_put(c);
 	}
 
 	ret = kill(pid, 0);
-	if (ret < 0) {
-		SYSERROR("Failed to send signal to pid %d", (int)pid);
-		return -1;
-	}
+	if (ret < 0)
+		return log_error_errno(-errno, errno, "Failed to send signal to pid %d", (int)pid);
 
 	return pid;
 }
