@@ -5999,14 +5999,15 @@ static int get_config_net_ipv4_gateway(const char *key, char *retv, int inlen,
 		memset(retv, 0, inlen);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	if (netdev->ipv4_gateway_auto) {
 		strprint(retv, inlen, "auto");
 	} else if (netdev->ipv4_gateway_dev) {
 		strprint(retv, inlen, "dev");
 	} else if (netdev->ipv4_gateway) {
-		inet_ntop(AF_INET, netdev->ipv4_gateway, buf, sizeof(buf));
+		if (!inet_ntop(AF_INET, netdev->ipv4_gateway, buf, sizeof(buf)))
+			return -errno;
 		strprint(retv, inlen, "%s", buf);
 	}
 
