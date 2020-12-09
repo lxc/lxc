@@ -460,9 +460,9 @@ bool lxc_remove_nic_by_idx(struct lxc_conf *conf, unsigned int idx)
 void lxc_free_networks(struct lxc_list *networks)
 {
 	struct lxc_list *cur, *next;
-	struct lxc_netdev *netdev;
 
-	lxc_list_for_each_safe(cur, networks, next) {
+	lxc_list_for_each_safe (cur, networks, next) {
+		struct lxc_netdev *netdev = cur->elem;
 		netdev = cur->elem;
 		lxc_free_netdev(netdev);
 		free(cur);
@@ -471,7 +471,6 @@ void lxc_free_networks(struct lxc_list *networks)
 	/* prevent segfaults */
 	lxc_list_init(networks);
 }
-
 
 static struct lxc_veth_mode {
 	char *name;
