@@ -763,8 +763,7 @@ bool new_hwaddr(char *hwaddr)
 		       rand() % 255, rand() % 255);
 #endif
 	if (ret < 0 || ret >= 18) {
-		SYSERROR("Failed to call snprintf()");
-		return false;
+		return log_error_errno(false, EIO, "Failed to call snprintf()");
 	}
 
 	return true;
