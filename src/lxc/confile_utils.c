@@ -505,7 +505,7 @@ int lxc_veth_mode_to_flag(int *mode, const char *value)
 		return 0;
 	}
 
-	return ret_set_errno(-1, EINVAL);
+	return ret_errno(EINVAL);
 }
 
 char *lxc_veth_flag_to_mode(int mode)
