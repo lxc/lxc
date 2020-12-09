@@ -532,9 +532,7 @@ static struct lxc_macvlan_mode {
 
 int lxc_macvlan_mode_to_flag(int *mode, const char *value)
 {
-	size_t i;
-
-	for (i = 0; i < sizeof(macvlan_mode) / sizeof(macvlan_mode[0]); i++) {
+	for (size_t i = 0; i < sizeof(macvlan_mode) / sizeof(macvlan_mode[0]); i++) {
 		if (strcmp(macvlan_mode[i].name, value))
 			continue;
 
@@ -542,7 +540,7 @@ int lxc_macvlan_mode_to_flag(int *mode, const char *value)
 		return 0;
 	}
 
-	return -1;
+	return ret_errno(EINVAL);
 }
 
 char *lxc_macvlan_flag_to_mode(int mode)
