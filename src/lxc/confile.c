@@ -6061,7 +6061,7 @@ static int get_config_net_veth_ipv4_route(const char *key, char *retv, int inlen
 		memset(retv, 0, inlen);
 
 	if (!netdev)
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
 	if (netdev->type != LXC_NET_VETH)
 		return 0;
@@ -6070,7 +6070,8 @@ static int get_config_net_veth_ipv4_route(const char *key, char *retv, int inlen
 
 	lxc_list_for_each(it, &netdev->priv.veth_attr.ipv4_routes) {
 		struct lxc_inetdev *i = it->elem;
-		inet_ntop(AF_INET, &i->addr, buf, sizeof(buf));
+		if (!inet_ntop(AF_INET, &i->addr, buf, sizeof(buf)))
+			return -errno;
 		strprint(retv, inlen, "%s/%u%s", buf, i->prefix,
 			 (listlen-- > 1) ? "\n" : "");
 	}
