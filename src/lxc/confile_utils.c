@@ -1013,12 +1013,12 @@ static int rt_sig_num(const char *signame)
 
 	signame += 4;
 	if (!isdigit(*signame))
-		return -1;
+		return ret_errno(EINVAL);
 
 	sig_n = sig_num(signame);
 	sig_n = rtmax ? SIGRTMAX - sig_n : SIGRTMIN + sig_n;
 	if (sig_n > SIGRTMAX || sig_n < SIGRTMIN)
-		return -1;
+		return ret_errno(EINVAL);
 
 	return sig_n;
 }
