@@ -160,13 +160,13 @@ bool lxc_config_value_empty(const char *value)
 
 struct lxc_netdev *lxc_network_add(struct lxc_list *networks, int idx, bool tail)
 {
-	struct lxc_list *newlist;
-	struct lxc_netdev *netdev = NULL;
+	__do_free struct lxc_list *newlist = NULL;
+	__do_free struct lxc_netdev *netdev = NULL;
 
 	/* network does not exist */
 	netdev = malloc(sizeof(*netdev));
 	if (!netdev)
-		return NULL;
+		return ret_set_errno(NULL, ENOMEM);
 
 	memset(netdev, 0, sizeof(*netdev));
 	lxc_list_init(&netdev->ipv4);
@@ -177,10 +177,8 @@ struct lxc_netdev *lxc_network_add(struct lxc_list *networks, int idx, bool tail
 
 	/* prepare new list */
 	newlist = malloc(sizeof(*newlist));
-	if (!newlist) {
-		free(netdev);
-		return NULL;
-	}
+	if (!newlist)
+		return ret_set_errno(NULL, ENOMEM);
 
 	lxc_list_init(newlist);
 	newlist->elem = netdev;
@@ -189,8 +187,9 @@ struct lxc_netdev *lxc_network_add(struct lxc_list *networks, int idx, bool tail
 		lxc_list_add_tail(networks, newlist);
 	else
 		lxc_list_add(networks, newlist);
+	move_ptr(newlist);
 
-	return netdev;
+	return move_ptr(netdev);
 }
 
 /* Takes care of finding the correct netdev struct in the networks list or
