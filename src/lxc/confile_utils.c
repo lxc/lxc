@@ -524,10 +524,10 @@ static struct lxc_macvlan_mode {
 	char *name;
 	int mode;
 } macvlan_mode[] = {
-    { "private",  MACVLAN_MODE_PRIVATE  },
-    { "vepa",     MACVLAN_MODE_VEPA     },
-    { "bridge",   MACVLAN_MODE_BRIDGE   },
-    { "passthru", MACVLAN_MODE_PASSTHRU },
+	{ "private",  MACVLAN_MODE_PRIVATE  },
+	{ "vepa",     MACVLAN_MODE_VEPA     },
+	{ "bridge",   MACVLAN_MODE_BRIDGE   },
+	{ "passthru", MACVLAN_MODE_PASSTHRU },
 };
 
 int lxc_macvlan_mode_to_flag(int *mode, const char *value)
