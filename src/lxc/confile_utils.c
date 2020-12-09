@@ -605,7 +605,7 @@ char *lxc_ipvlan_flag_to_isolation(int flag)
 		return ipvlan_isolation[i].name;
 	}
 
-	return NULL;
+	return ret_set_errno(NULL, EINVAL);
 }
 
 int set_config_string_item(char **conf_item, const char *value)
