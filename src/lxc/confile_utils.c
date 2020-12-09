@@ -571,7 +571,7 @@ char *lxc_ipvlan_flag_to_mode(int mode)
 		return ipvlan_mode[i].name;
 	}
 
-	return NULL;
+	return ret_set_errno(NULL, EINVAL);
 }
 
 static struct lxc_ipvlan_isolation {
