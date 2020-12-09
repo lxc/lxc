@@ -545,16 +545,14 @@ int lxc_macvlan_mode_to_flag(int *mode, const char *value)
 
 char *lxc_macvlan_flag_to_mode(int mode)
 {
-	size_t i;
-
-	for (i = 0; i < sizeof(macvlan_mode) / sizeof(macvlan_mode[0]); i++) {
+	for (size_t i = 0; i < sizeof(macvlan_mode) / sizeof(macvlan_mode[0]); i++) {
 		if (macvlan_mode[i].mode != mode)
 			continue;
 
 		return macvlan_mode[i].name;
 	}
 
-	return NULL;
+	return ret_set_errno(NULL, EINVAL);
 }
 
 static struct lxc_ipvlan_mode {
