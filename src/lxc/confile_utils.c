@@ -994,10 +994,12 @@ static const struct signame signames[] = {
 
 static int sig_num(const char *sig)
 {
+	int ret;
 	unsigned int signum;
 
-	if (lxc_safe_uint(sig, &signum) < 0)
-		return -1;
+	ret = lxc_safe_uint(sig, &signum);
+	if (ret < 0)
+		return ret;
 
 	return signum;
 }
