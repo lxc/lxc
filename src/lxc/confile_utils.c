@@ -18,6 +18,7 @@
 #include "log.h"
 #include "lxccontainer.h"
 #include "macro.h"
+#include "memory_utils.h"
 #include "network.h"
 #include "parse.h"
 #include "utils.h"
@@ -31,16 +32,16 @@ lxc_log_define(confile_utils, lxc);
 int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 		 unsigned long *hostid, unsigned long *range)
 {
+	__do_free char *dup = NULL;
 	int ret = -1;
 	unsigned long tmp_hostid, tmp_nsid, tmp_range;
 	char tmp_type;
 	char *window, *slide;
-	char *dup = NULL;
 
 	/* Duplicate string. */
 	dup = strdup(idmap);
 	if (!dup)
-		goto on_error;
+		return ret_errno(ENOMEM);
 
 	/* A prototypical idmap entry would be: "u 1000 1000000 65536" */
 
@@ -49,13 +50,11 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 	/* skip whitespace */
 	slide += strspn(slide, " \t\r");
 	if (slide != window && *slide == '\0')
-		goto on_error;
+		return ret_errno(EINVAL);
 
 	/* Validate type. */
-	if (*slide != 'u' && *slide != 'g') {
-		ERROR("Invalid id mapping type: %c", *slide);
-		goto on_error;
-	}
+	if (*slide != 'u' && *slide != 'g')
+		return log_error_errno(-EINVAL, EINVAL, "Invalid id mapping type: %c", *slide);
 
 	/* Assign type. */
 	tmp_type = *slide;
@@ -68,7 +67,7 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 	slide += strspn(slide, " \t\r");
 	/* There must be whitespace. */
 	if (slide == window)
-		goto on_error;
+		return ret_errno(EINVAL);
 
 	/* Mark beginning of nsid. */
 	window = slide;
@@ -76,15 +75,14 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 	slide += strcspn(slide, " \t\r");
 	/* There must be non-whitespace. */
 	if (slide == window || *slide == '\0')
-		goto on_error;
+		return ret_errno(EINVAL);
 	/* Mark end of nsid. */
 	*slide = '\0';
 
 	/* Parse nsid. */
-	if (lxc_safe_ulong(window, &tmp_nsid) < 0) {
-		ERROR("Failed to parse nsid: %s", window);
-		goto on_error;
-	}
+	ret = lxc_safe_ulong(window, &tmp_nsid);
+	if (ret < 0)
+		return log_error_errno(ret, errno, "Failed to parse nsid: %s", window);
 
 	/* Move beyond \0. */
 	slide++;
@@ -94,7 +92,7 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 	 * So only ensure that we're not at the end of the string.
 	 */
 	if (*slide == '\0')
-		goto on_error;
+		return ret_errno(EINVAL);
 
 	/* Mark beginning of hostid. */
 	window = slide;
@@ -102,15 +100,14 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 	slide += strcspn(slide, " \t\r");
 	/* There must be non-whitespace. */
 	if (slide == window || *slide == '\0')
-		goto on_error;
+		return ret_errno(EINVAL);
 	/* Mark end of nsid. */
 	*slide = '\0';
 
 	/* Parse hostid. */
-	if (lxc_safe_ulong(window, &tmp_hostid) < 0) {
-		ERROR("Failed to parse hostid: %s", window);
-		goto on_error;
-	}
+	ret = lxc_safe_ulong(window, &tmp_hostid);
+	if (ret < 0)
+		return log_error_errno(ret, errno, "Failed to parse hostid: %s", window);
 
 	/* Move beyond \0. */
 	slide++;
@@ -120,7 +117,7 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 	 * So only ensure that we're not at the end of the string.
 	 */
 	if (*slide == '\0')
-		goto on_error;
+		return ret_errno(EINVAL);
 
 	/* Mark beginning of range. */
 	window = slide;
@@ -128,35 +125,29 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 	slide += strcspn(slide, " \t\r");
 	/* There must be non-whitespace. */
 	if (slide == window)
-		goto on_error;
+		return ret_errno(EINVAL);
 
 	/* The range is the last valid entry we expect. So make sure that there
 	 * is no trailing garbage and if there is, error out.
 	 */
 	if (*(slide + strspn(slide, " \t\r\n")) != '\0')
-		goto on_error;
+		return ret_errno(EINVAL);
 
 	/* Mark end of range. */
 	*slide = '\0';
 
 	/* Parse range. */
-	if (lxc_safe_ulong(window, &tmp_range) < 0) {
-		ERROR("Failed to parse id mapping range: %s", window);
-		goto on_error;
-	}
+	ret = lxc_safe_ulong(window, &tmp_range);
+	if (ret < 0)
+		return log_error_errno(ret, errno, "Failed to parse id mapping range: %s", window);
 
-	*type = tmp_type;
-	*nsid = tmp_nsid;
+	*type	= tmp_type;
+	*nsid	= tmp_nsid;
 	*hostid = tmp_hostid;
-	*range = tmp_range;
+	*range	= tmp_range;
 
 	/* Yay, we survived. */
-	ret = 0;
-
-on_error:
-	free(dup);
-
-	return ret;
+	return 0;
 }
 
 bool lxc_config_value_empty(const char *value)
