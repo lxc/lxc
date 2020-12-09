@@ -878,8 +878,9 @@ static int lxc_container_name_to_pid(const char *lxcname_or_pid,
 int lxc_inherit_namespace(const char *nsfd_path, const char *lxcpath,
 			  const char *namespace)
 {
+	__do_free char *dup = NULL;
 	int fd, pid;
-	char *dup, *lastslash;
+	char *lastslash;
 
 	if (nsfd_path[0] == '/') {
 		return open(nsfd_path, O_RDONLY | O_CLOEXEC);
@@ -889,21 +890,20 @@ int lxc_inherit_namespace(const char *nsfd_path, const char *lxcpath,
 	if (lastslash) {
 		dup = strdup(nsfd_path);
 		if (!dup)
-			return -1;
+			return ret_errno(ENOMEM);
 
 		dup[lastslash - nsfd_path] = '\0';
-		pid = lxc_container_name_to_pid(lastslash + 1, dup);
-		free(dup);
-	} else {
-		pid = lxc_container_name_to_pid(nsfd_path, lxcpath);
+		lxcpath = lastslash + 1;
+		nsfd_path = lastslash + 1;
 	}
 
+	pid = lxc_container_name_to_pid(nsfd_path, lxcpath);
 	if (pid < 0)
-		return -1;
+		return pid;
 
 	fd = lxc_preserve_ns(pid, namespace);
 	if (fd < 0)
-		return -1;
+		return -errno;
 
 	return fd;
 }
