@@ -101,10 +101,8 @@ static char *lxclock_name(const char *p, const char *n)
 	len += strlen(rundir);
 
 	dest = malloc(len);
-	if (!dest) {
-		free(rundir);
+	if (!dest)
 		return NULL;
-	}
 
 	ret = snprintf(dest, len, "%s/lxc/lock/%s", rundir, p);
 	if (ret < 0 || (size_t)ret >= len) {
@@ -132,20 +130,18 @@ static char *lxclock_name(const char *p, const char *n)
 
 static sem_t *lxc_new_unnamed_sem(void)
 {
+	__do_free sem_t *s = NULL;
 	int ret;
-	sem_t *s;
 
 	s = malloc(sizeof(*s));
 	if (!s)
-		return NULL;
+		return ret_set_errno(NULL, ENOMEM);
 
 	ret = sem_init(s, 0, 1);
-	if (ret < 0) {
-		free(s);
+	if (ret < 0)
 		return NULL;
-	}
 
-	return s;
+	return move_ptr(s);
 }
 
 struct lxc_lock *lxc_newlock(const char *lxcpath, const char *name)
