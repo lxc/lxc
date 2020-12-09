@@ -479,7 +479,7 @@ int main(int argc, char *argv[])
 			break;
 		}
 		default:
-			ret = kill(pid, was_interrupted);
+			kill(pid, was_interrupted);
 			break;
 		}
 		ret = EXIT_SUCCESS;
