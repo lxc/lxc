@@ -17,6 +17,7 @@
 #include "config.h"
 #include "log.h"
 #include "lxclock.h"
+#include "memory_utils.h"
 #include "utils.h"
 
 #ifdef MUTEX_DEBUGGING
@@ -149,35 +150,26 @@ static sem_t *lxc_new_unnamed_sem(void)
 
 struct lxc_lock *lxc_newlock(const char *lxcpath, const char *name)
 {
-	struct lxc_lock *l;
+	__do_free struct lxc_lock *l = NULL;
 
-	l = malloc(sizeof(*l));
+	l = zalloc(sizeof(*l));
 	if (!l)
-		goto on_error;
+		return ret_set_errno(NULL, ENOMEM);
 
-	if (!name) {
+	if (name) {
+		l->type = LXC_LOCK_FLOCK;
+		l->u.f.fname = lxclock_name(lxcpath, name);
+		if (!l->u.f.fname)
+			return ret_set_errno(NULL, ENOMEM);
+		l->u.f.fd = -EBADF;
+	} else {
 		l->type = LXC_LOCK_ANON_SEM;
 		l->u.sem = lxc_new_unnamed_sem();
-		if (!l->u.sem) {
-			free(l);
-			l = NULL;
-		}
-
-		goto on_error;
+		if (!l->u.sem)
+			return ret_set_errno(NULL, ENOMEM);
 	}
 
-	l->type = LXC_LOCK_FLOCK;
-	l->u.f.fname = lxclock_name(lxcpath, name);
-	if (!l->u.f.fname) {
-		free(l);
-		l = NULL;
-		goto on_error;
-	}
-
-	l->u.f.fd = -1;
-
-on_error:
-	return l;
+	return move_ptr(l);
 }
 
 int lxclock(struct lxc_lock *l, int timeout)
