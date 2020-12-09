@@ -170,50 +170,36 @@ struct lxc_lock *lxc_newlock(const char *lxcpath, const char *name)
 
 int lxclock(struct lxc_lock *l, int timeout)
 {
+	int ret = -1;
 	struct flock lk;
-	int ret = -1, saved_errno = errno;
 
-	switch(l->type) {
+	switch (l->type) {
 	case LXC_LOCK_ANON_SEM:
 		if (!timeout) {
 			ret = sem_wait(l->u.sem);
-			if (ret < 0)
-				saved_errno = errno;
 		} else {
 			struct timespec ts;
 
 			ret = clock_gettime(CLOCK_REALTIME, &ts);
-			if (ret < 0) {
-				ret = -2;
-				goto on_error;
-			}
+			if (ret < 0)
+				return -2;
 
 			ts.tv_sec += timeout;
 			ret = sem_timedwait(l->u.sem, &ts);
-			if (ret < 0)
-				saved_errno = errno;
 		}
 
 		break;
 	case LXC_LOCK_FLOCK:
-		ret = -2;
-		if (timeout) {
-			ERROR("Timeouts are not supported with file locks");
-			goto on_error;
-		}
+		if (timeout)
+			return log_error(-2, "Timeouts are not supported with file locks");
 
-		if (!l->u.f.fname) {
-			ERROR("No filename set for file lock");
-			goto on_error;
-		}
+		if (!l->u.f.fname)
+			return log_error(-2, "No filename set for file lock");
 
-		if (l->u.f.fd == -1) {
+		if (l->u.f.fd < 0) {
 			l->u.f.fd = open(l->u.f.fname, O_CREAT | O_RDWR | O_NOFOLLOW | O_CLOEXEC | O_NOCTTY, S_IWUSR | S_IRUSR);
-			if (l->u.f.fd == -1) {
-				SYSERROR("Failed to open \"%s\"", l->u.f.fname);
-				saved_errno = errno;
-				goto on_error;
-			}
+			if (l->u.f.fd < 0)
+				return log_error_errno(-2, errno, "Failed to open \"%s\"", l->u.f.fname);
 		}
 
 		memset(&lk, 0, sizeof(struct flock));
@@ -222,17 +208,13 @@ int lxclock(struct lxc_lock *l, int timeout)
 		lk.l_whence = SEEK_SET;
 
 		ret = fcntl(l->u.f.fd, F_OFD_SETLKW, &lk);
-		if (ret < 0) {
-			if (errno == EINVAL)
-				ret = flock(l->u.f.fd, LOCK_EX);
-			saved_errno = errno;
-		}
-
+		if (ret < 0 && errno == EINVAL)
+			ret = flock(l->u.f.fd, LOCK_EX);
 		break;
+	default:
+		return ret_set_errno(-1, EINVAL);
 	}
 
-on_error:
-	errno = saved_errno;
 	return ret;
 }
 
@@ -252,7 +234,7 @@ int lxcunlock(struct lxc_lock *l)
 
 		break;
 	case LXC_LOCK_FLOCK:
-		if (l->u.f.fd != -1) {
+		if (l->u.f.fd >= 0) {
 			memset(&lk, 0, sizeof(struct flock));
 
 			lk.l_type = F_UNLCK;
@@ -300,7 +282,7 @@ void lxc_putlock(struct lxc_lock *l)
 
 		break;
 	case LXC_LOCK_FLOCK:
-		if (l->u.f.fd != -1) {
+		if (l->u.f.fd >= 0) {
 			close(l->u.f.fd);
 			l->u.f.fd = -1;
 		}
