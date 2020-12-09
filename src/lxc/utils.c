@@ -1094,7 +1094,9 @@ int __safe_mount_beneath_at(int beneath_fd, const char *src, const char *dst, co
 		source_fd = openat2(beneath_fd, src, &how, sizeof(how));
 		if (source_fd < 0)
 			return -errno;
-		snprintf(src_buf, sizeof(src_buf), "/proc/self/fd/%d", source_fd);
+		ret = snprintf(src_buf, sizeof(src_buf), "/proc/self/fd/%d", source_fd);
+		if (ret < 0 || ret >= sizeof(src_buf))
+			return -EIO;
 	} else {
 		src_buf[0] = '\0';
 	}
