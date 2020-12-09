@@ -214,7 +214,7 @@ struct lxc_netdev *lxc_get_netdev_by_idx(struct lxc_conf *conf,
 	}
 
 	if (!allocate)
-		return NULL;
+		return ret_set_errno(NULL, EINVAL);
 
 	return lxc_network_add(insert, idx, true);
 }
