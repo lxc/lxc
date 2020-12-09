@@ -5954,7 +5954,7 @@ static int get_config_net_mtu(const char *key, char *retv, int inlen,
 		memset(retv, 0, inlen);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	if (netdev->mtu)
 		strprint(retv, inlen, "%s", netdev->mtu);
