@@ -80,9 +80,9 @@ static void unlock_mutex(pthread_mutex_t *l)
 
 static char *lxclock_name(const char *p, const char *n)
 {
+	__do_free char *dest = NULL, *rundir = NULL;
 	int ret;
 	size_t len;
-	char *dest, *rundir;
 
 	/* lockfile will be:
 	 * "/run" + "/lxc/lock/$lxcpath/$lxcname + '\0' if root
@@ -104,27 +104,18 @@ static char *lxclock_name(const char *p, const char *n)
 		return NULL;
 
 	ret = snprintf(dest, len, "%s/lxc/lock/%s", rundir, p);
-	if (ret < 0 || (size_t)ret >= len) {
-		free(dest);
-		free(rundir);
-		return NULL;
-	}
+	if (ret < 0 || (size_t)ret >= len)
+		return ret_set_errno(NULL, EIO);
 
 	ret = mkdir_p(dest, 0755);
-	if (ret < 0) {
-		free(dest);
-		free(rundir);
+	if (ret < 0)
 		return NULL;
-	}
 
 	ret = snprintf(dest, len, "%s/lxc/lock/%s/.%s", rundir, p, n);
-	free(rundir);
-	if (ret < 0 || (size_t)ret >= len) {
-		free(dest);
-		return NULL;
-	}
+	if (ret < 0 || (size_t)ret >= len)
+		return ret_set_errno(NULL, EIO);
 
-	return dest;
+	return move_ptr(dest);
 }
 
 static sem_t *lxc_new_unnamed_sem(void)
