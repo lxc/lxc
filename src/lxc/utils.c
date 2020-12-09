@@ -240,7 +240,9 @@ int mkdir_p(const char *dir, mode_t mode)
 
 char *get_rundir()
 {
-	char *rundir;
+	__do_free char *rundir = NULL;
+	char *static_rundir;
+	int ret;
 	size_t len;
 	const char *homedir;
 	struct stat sb;
@@ -251,9 +253,9 @@ char *get_rundir()
 	if (geteuid() == sb.st_uid || getegid() == sb.st_gid)
 		return strdup(RUNTIME_PATH);
 
-	rundir = getenv("XDG_RUNTIME_DIR");
-	if (rundir)
-		return strdup(rundir);
+	static_rundir = getenv("XDG_RUNTIME_DIR");
+	if (static_rundir)
+		return strdup(static_rundir);
 
 	INFO("XDG_RUNTIME_DIR isn't set in the environment");
 	homedir = getenv("HOME");
@@ -265,8 +267,11 @@ char *get_rundir()
 	if (!rundir)
 		return NULL;
 
-	snprintf(rundir, len, "%s/.cache/lxc/run/", homedir);
-	return rundir;
+	ret = snprintf(rundir, len, "%s/.cache/lxc/run/", homedir);
+	if (ret < 0 || (size_t)ret >= len)
+		return ret_set_errno(NULL, EIO);
+
+	return move_ptr(rundir);
 }
 
 int wait_for_pid(pid_t pid)
