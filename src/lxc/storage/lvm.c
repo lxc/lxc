@@ -97,41 +97,32 @@ static int lvm_snapshot_exec_wrapper(void *data)
  */
 static int do_lvm_create(const char *path, uint64_t size, const char *thinpool)
 {
+	__do_free char *pathdup = NULL;
 	int len, ret;
-	char *pathdup, *vg, *lv;
+	char *vg, *lv;
 	char cmd_output[PATH_MAX];
 	char sz[24];
 	__do_free char *tp = NULL;
 	struct lvcreate_args cmd_args = {0};
 
 	ret = snprintf(sz, 24, "%" PRIu64 "b", size);
-	if (ret < 0 || ret >= 24) {
-		ERROR("Failed to create string: %d", ret);
-		return -1;
-	}
+	if (ret < 0 || ret >= 24)
+		return log_error(-EIO, "Failed to create string: %d", ret);
 
 	pathdup = strdup(path);
-	if (!pathdup) {
-		ERROR("Failed to duplicate string \"%s\"", path);
-		return -1;
-	}
+	if (!pathdup)
+		return log_error(-ENOMEM, "Failed to duplicate string \"%s\"", path);
 
 	lv = strrchr(pathdup, '/');
-	if (!lv) {
-		ERROR("Failed to detect \"/\" in string \"%s\"", pathdup);
-		free(pathdup);
-		return -1;
-	}
+	if (!lv)
+		return log_error(-EINVAL, "Failed to detect \"/\" in string \"%s\"", pathdup);
 	*lv = '\0';
 	lv++;
 	TRACE("Parsed logical volume \"%s\"", lv);
 
 	vg = strrchr(pathdup, '/');
-	if (!vg) {
-		ERROR("Failed to detect \"/\" in string \"%s\"", pathdup);
-		free(pathdup);
-		return -1;
-	}
+	if (!vg)
+		return log_error(-EINVAL, "Failed to detect \"/\" in string \"%s\"", pathdup);
 	vg++;
 	TRACE("Parsed volume group \"%s\"", vg);
 
@@ -140,18 +131,13 @@ static int do_lvm_create(const char *path, uint64_t size, const char *thinpool)
 		tp = must_realloc(NULL, len);
 
 		ret = snprintf(tp, len, "%s/%s", pathdup, thinpool);
-		if (ret < 0 || ret >= len) {
-			ERROR("Failed to create string: %d", ret);
-			free(pathdup);
-			return -1;
-		}
+		if (ret < 0 || ret >= len)
+			return log_error(-EIO, "Failed to create string: %d", ret);
 
 		ret = lvm_is_thin_pool(tp);
 		TRACE("got %d for thin pool at path: %s", ret, tp);
 		if (ret < 0) {
-			ERROR("Failed to detect whether \"%s\" is a thinpool", tp);
-			free(pathdup);
-			return -1;
+			return log_error(-EINVAL, "Failed to detect whether \"%s\" is a thinpool", tp);
 		} else if (!ret) {
 			TRACE("Detected that \"%s\" is not a thinpool", tp);
 			tp = NULL;
@@ -165,30 +151,23 @@ static int do_lvm_create(const char *path, uint64_t size, const char *thinpool)
 	cmd_args.lv = lv;
 	cmd_args.size = sz;
 	cmd_args.sigwipe = true;
-	TRACE("Creating new lvm storage volume \"%s\" on volume group \"%s\" "
-	      "of size \"%s\"", lv, vg, sz);
-	ret = run_command_status(cmd_output, sizeof(cmd_output),
-			  lvm_create_exec_wrapper, (void *)&cmd_args);
+	TRACE("Creating new lvm storage volume \"%s\" on volume group \"%s\" of size \"%s\"", lv, vg, sz);
+	ret = run_command_status(cmd_output, sizeof(cmd_output), lvm_create_exec_wrapper,
+				 (void *)&cmd_args);
 
 	/* If lvcreate is old and doesn't support signature wiping, try again without it.
 	 * Test for exit code EINVALID_CMD_LINE(3) of lvcreate command.
 	 */
 	if (WIFEXITED(ret) && WEXITSTATUS(ret) == 3) {
 		cmd_args.sigwipe = false;
-		ret = run_command(cmd_output, sizeof(cmd_output),
-			      lvm_create_exec_wrapper, (void *)&cmd_args);
+		ret = run_command(cmd_output, sizeof(cmd_output), lvm_create_exec_wrapper,
+				  (void *)&cmd_args);
 	}
 
-	if (ret != 0) {
-		ERROR("Failed to create logical volume \"%s\": %s", lv,
-		      cmd_output);
-		free(pathdup);
-		return -1;
-	}
-	TRACE("Created new lvm storage volume \"%s\" on volume group \"%s\" "
-	      "of size \"%s\"", lv, vg, sz);
+	if (ret != 0)
+		return log_error(-1, "Failed to create logical volume \"%s\": %s", lv, cmd_output);
+	TRACE("Created new lvm storage volume \"%s\" on volume group \"%s\" of size \"%s\"", lv, vg, sz);
 
-	free(pathdup);
 	return ret;
 }
 
