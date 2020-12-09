@@ -628,19 +628,15 @@ int set_config_string_item(char **conf_item, const char *value)
 	char *new_value;
 
 	if (lxc_config_value_empty(value)) {
-		free(*conf_item);
-		*conf_item = NULL;
+		free_disarm(*conf_item);
 		return 0;
 	}
 
 	new_value = strdup(value);
-	if (!new_value) {
-		SYSERROR("Failed to duplicate string \"%s\"", value);
-		return -1;
-	}
+	if (!new_value)
+		return log_error_errno(-ENOMEM, ENOMEM, "Failed to duplicate string \"%s\"", value);
 
-	free(*conf_item);
-	*conf_item = new_value;
+	free_move_ptr(*conf_item, new_value);
 	return 0;
 }
 
