@@ -5814,7 +5814,7 @@ int lxc_list_subkeys(struct lxc_conf *conf, const char *key, char *retv,
 	} else if (!strcmp(key, "lxc.keyring")) {
 		strprint(retv, inlen, "session\n");
 	} else {
-		fulllen = -1;
+		fulllen = ret_errno(EINVAL);
 	}
 
 	return fulllen;
