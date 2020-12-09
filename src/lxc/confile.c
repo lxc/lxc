@@ -5694,7 +5694,7 @@ static int get_config_net_ipv6_address(const char *key, char *retv, int inlen,
 }
 
 static int get_config_net_veth_ipv6_route(const char *key, char *retv, int inlen,
-				       struct lxc_conf *c, void *data)
+					  struct lxc_conf *c, void *data)
 {
 	int len;
 	size_t listlen;
@@ -5709,7 +5709,7 @@ static int get_config_net_veth_ipv6_route(const char *key, char *retv, int inlen
 		memset(retv, 0, inlen);
 
 	if (!netdev)
-		return ret_set_errno(-1, EINVAL);
+		return ret_errno(EINVAL);
 
 	if (netdev->type != LXC_NET_VETH)
 		return 0;
@@ -5718,7 +5718,8 @@ static int get_config_net_veth_ipv6_route(const char *key, char *retv, int inlen
 
 	lxc_list_for_each(it, &netdev->priv.veth_attr.ipv6_routes) {
 		struct lxc_inet6dev *i = it->elem;
-		inet_ntop(AF_INET6, &i->addr, buf, sizeof(buf));
+		if (!inet_ntop(AF_INET6, &i->addr, buf, sizeof(buf)))
+			return -errno;
 		strprint(retv, inlen, "%s/%u%s", buf, i->prefix,
 			 (listlen-- > 1) ? "\n" : "");
 	}
