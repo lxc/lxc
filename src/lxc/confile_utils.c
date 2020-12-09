@@ -578,9 +578,9 @@ static struct lxc_ipvlan_isolation {
 	char *name;
 	int flag;
 } ipvlan_isolation[] = {
-    { "bridge",  IPVLAN_ISOLATION_BRIDGE  },
-    { "private", IPVLAN_ISOLATION_PRIVATE },
-    { "vepa",    IPVLAN_ISOLATION_VEPA    },
+	{ "bridge",  IPVLAN_ISOLATION_BRIDGE  },
+	{ "private", IPVLAN_ISOLATION_PRIVATE },
+	{ "vepa",    IPVLAN_ISOLATION_VEPA    },
 };
 
 int lxc_ipvlan_isolation_to_flag(int *flag, const char *value)
