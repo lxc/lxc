@@ -683,12 +683,11 @@ int network_ifname(char *valuep, const char *value, size_t size)
 	size_t retlen;
 
 	if (!valuep || !value)
-		return -1;
+		return ret_errno(EINVAL);
 
 	retlen = strlcpy(valuep, value, size);
 	if (retlen >= size)
-		ERROR("Network device name \"%s\" is too long (>= %zu)", value,
-		      size);
+		ERROR("Network device name \"%s\" is too long (>= %zu)", value, size);
 
 	return 0;
 }
