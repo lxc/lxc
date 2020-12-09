@@ -5825,7 +5825,7 @@ static int get_config_net_veth_pair(const char *key, char *retv, int inlen,
 }
 
 static int get_config_net_veth_vlan_id(const char *key, char *retv, int inlen,
-				  struct lxc_conf *c, void *data)
+				       struct lxc_conf *c, void *data)
 {
 	int len;
 	int fulllen = 0;
