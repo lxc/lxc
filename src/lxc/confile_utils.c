@@ -627,10 +627,8 @@ int set_config_string_item(char **conf_item, const char *value)
 
 int set_config_string_item_max(char **conf_item, const char *value, size_t max)
 {
-	if (strlen(value) >= max) {
-		ERROR("%s is too long (>= %lu)", value, (unsigned long)max);
-		return -1;
-	}
+	if (strlen(value) >= max)
+		return log_error_errno(-ENAMETOOLONG, ENAMETOOLONG, "%s is too long (>= %lu)", value, (unsigned long)max);
 
 	return set_config_string_item(conf_item, value);
 }
