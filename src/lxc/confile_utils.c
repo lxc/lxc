@@ -593,7 +593,7 @@ int lxc_ipvlan_isolation_to_flag(int *flag, const char *value)
 		return 0;
 	}
 
-	return -1;
+	return ret_errno(EINVAL);
 }
 
 char *lxc_ipvlan_flag_to_isolation(int flag)
