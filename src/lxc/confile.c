@@ -6093,14 +6093,15 @@ static int get_config_net_ipv6_gateway(const char *key, char *retv, int inlen,
 		memset(retv, 0, inlen);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	if (netdev->ipv6_gateway_auto) {
 		strprint(retv, inlen, "auto");
 	} else if (netdev->ipv6_gateway_dev) {
 		strprint(retv, inlen, "dev");
 	} else if (netdev->ipv6_gateway) {
-		inet_ntop(AF_INET6, netdev->ipv6_gateway, buf, sizeof(buf));
+		if (!inet_ntop(AF_INET6, netdev->ipv6_gateway, buf, sizeof(buf)))
+			return -errno;
 		strprint(retv, inlen, "%s", buf);
 	}
 
