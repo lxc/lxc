@@ -221,42 +221,34 @@ int lxclock(struct lxc_lock *l, int timeout)
 int lxcunlock(struct lxc_lock *l)
 {
 	struct flock lk;
-	int ret = 0, saved_errno = errno;
+	int ret = 0;
 
 	switch (l->type) {
 	case LXC_LOCK_ANON_SEM:
-		if (!l->u.sem) {
-			ret = -2;
-		} else {
-			ret = sem_post(l->u.sem);
-			saved_errno = errno;
-		}
+		if (!l->u.sem)
+			return -2;
 
+		ret = sem_post(l->u.sem);
 		break;
 	case LXC_LOCK_FLOCK:
-		if (l->u.f.fd >= 0) {
-			memset(&lk, 0, sizeof(struct flock));
+		if (l->u.f.fd < 0)
+			return -2;
 
-			lk.l_type = F_UNLCK;
-			lk.l_whence = SEEK_SET;
+		memset(&lk, 0, sizeof(struct flock));
 
-			ret = fcntl(l->u.f.fd, F_OFD_SETLK, &lk);
-			if (ret < 0) {
-				if (errno == EINVAL)
-					ret = flock(l->u.f.fd, LOCK_EX | LOCK_NB);
-				saved_errno = errno;
-			}
+		lk.l_type = F_UNLCK;
+		lk.l_whence = SEEK_SET;
 
-			close(l->u.f.fd);
-			l->u.f.fd = -1;
-		} else {
-			ret = -2;
-		}
+		ret = fcntl(l->u.f.fd, F_OFD_SETLK, &lk);
+		if (ret < 0 && errno == EINVAL)
+			ret = flock(l->u.f.fd, LOCK_EX | LOCK_NB);
 
+		close_prot_errno_disarm(l->u.f.fd);
 		break;
+	default:
+		return ret_set_errno(-1, EINVAL);
 	}
 
-	errno = saved_errno;
 	return ret;
 }
 
