@@ -5811,7 +5811,7 @@ static int get_config_net_veth_pair(const char *key, char *retv, int inlen,
 		memset(retv, 0, inlen);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	if (netdev->type != LXC_NET_VETH)
 		return 0;
