@@ -640,6 +640,7 @@ int set_config_path_item(char **conf_item, const char *value)
 
 int set_config_bool_item(bool *conf_item, const char *value, bool empty_conf_action)
 {
+	int ret;
 	unsigned int val = 0;
 
 	if (lxc_config_value_empty(value)) {
@@ -647,8 +648,9 @@ int set_config_bool_item(bool *conf_item, const char *value, bool empty_conf_act
 		return 0;
 	}
 
-	if (lxc_safe_uint(value, &val) < 0)
-		return -EINVAL;
+	ret = lxc_safe_uint(value, &val);
+	if (ret < 0)
+		return ret;
 
 	switch (val) {
 	case 0:
@@ -659,7 +661,7 @@ int set_config_bool_item(bool *conf_item, const char *value, bool empty_conf_act
 		return 0;
 	}
 
-	return -EINVAL;
+	return ret_errno(EINVAL);
 }
 
 int config_ip_prefix(struct in_addr *addr)
