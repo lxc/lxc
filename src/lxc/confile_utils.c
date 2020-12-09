@@ -398,6 +398,9 @@ static void lxc_free_netdev(struct lxc_netdev *netdev)
 {
 	struct lxc_list *cur, *next;
 
+	if (!netdev)
+		return;
+
 	free(netdev->upscript);
 	free(netdev->downscript);
 	free(netdev->hwaddr);
@@ -434,11 +437,12 @@ static void lxc_free_netdev(struct lxc_netdev *netdev)
 	free(netdev);
 }
 
+define_cleanup_function(struct lxc_netdev *, lxc_free_netdev);
+
 bool lxc_remove_nic_by_idx(struct lxc_conf *conf, unsigned int idx)
 {
+	call_cleaner(lxc_free_netdev) struct lxc_netdev *netdev = NULL;
 	struct lxc_list *cur, *next;
-	struct lxc_netdev *netdev;
-	bool found = false;
 
 	lxc_list_for_each_safe(cur, &conf->network, next) {
 		netdev = cur->elem;
@@ -446,17 +450,11 @@ bool lxc_remove_nic_by_idx(struct lxc_conf *conf, unsigned int idx)
 			continue;
 
 		lxc_list_del(cur);
-		found = true;
-		break;
+		free(cur);
+		return true;
 	}
 
-	if (!found)
-		return false;
-
-	lxc_free_netdev(netdev);
-	free(cur);
-
-	return true;
+	return false;
 }
 
 void lxc_free_networks(struct lxc_list *networks)
