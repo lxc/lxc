@@ -517,7 +517,7 @@ char *lxc_veth_flag_to_mode(int mode)
 		return veth_mode[i].name;
 	}
 
-	return NULL;
+	return ret_set_errno(NULL, EINVAL);
 }
 
 static struct lxc_macvlan_mode {
