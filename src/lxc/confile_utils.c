@@ -544,9 +544,9 @@ static struct lxc_ipvlan_mode {
 	char *name;
 	int mode;
 } ipvlan_mode[] = {
-    { "l3",  IPVLAN_MODE_L3  },
-    { "l3s", IPVLAN_MODE_L3S },
-    { "l2",  IPVLAN_MODE_L2  },
+	{ "l3",  IPVLAN_MODE_L3  },
+	{ "l3s", IPVLAN_MODE_L3S },
+	{ "l2",  IPVLAN_MODE_L2  },
 };
 
 int lxc_ipvlan_mode_to_flag(int *mode, const char *value)
