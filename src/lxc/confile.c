@@ -5678,13 +5678,14 @@ static int get_config_net_ipv6_address(const char *key, char *retv, int inlen,
 		memset(retv, 0, inlen);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	listlen = lxc_list_len(&netdev->ipv6);
 
 	lxc_list_for_each(it, &netdev->ipv6) {
 		struct lxc_inet6dev *i = it->elem;
-		inet_ntop(AF_INET6, &i->addr, buf, sizeof(buf));
+		if (!inet_ntop(AF_INET6, &i->addr, buf, sizeof(buf)))
+			return -errno;
 		strprint(retv, inlen, "%s/%u%s", buf, i->prefix,
 			 (listlen-- > 1) ? "\n" : "");
 	}
