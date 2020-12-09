@@ -574,7 +574,7 @@ int lxc_ipvlan_mode_to_flag(int *mode, const char *value)
 		return 0;
 	}
 
-	return -1;
+	return ret_errno(EINVAL);
 }
 
 char *lxc_ipvlan_flag_to_mode(int mode)
