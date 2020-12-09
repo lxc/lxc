@@ -6280,11 +6280,11 @@ int lxc_list_net(struct lxc_conf *c, const char *key, char *retv, int inlen)
 
 	(void)get_network_config_ops(key, c, &idx, NULL);
 	if (idx < 0)
-		return -1;
+		return ret_errno(EINVAL);
 
 	netdev = lxc_get_netdev_by_idx(c, (unsigned int)idx, false);
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	if (!retv)
 		inlen = 0;
