@@ -1054,5 +1054,5 @@ int sig_parse(const char *signame)
 				return signames[n].num;
 	}
 
-	return -1;
+	return ret_errno(EINVAL);
 }
