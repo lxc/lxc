@@ -5891,7 +5891,7 @@ static int get_config_net_script_up(const char *key, char *retv, int inlen,
 		memset(retv, 0, inlen);
 
 	if (!netdev)
-		return -1;
+		return ret_errno(EINVAL);
 
 	if (netdev->upscript)
 		strprint(retv, inlen, "%s", netdev->upscript);
