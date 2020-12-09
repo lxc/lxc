@@ -449,7 +449,7 @@ static int set_config_net_l2proxy(const char *key, const char *value,
 
 	ret = lxc_safe_uint(value, &val);
 	if (ret < 0)
-		return ret_errno(-ret);
+		return ret_errno(ret);
 
 	switch (val) {
 	case 0:
@@ -460,7 +460,7 @@ static int set_config_net_l2proxy(const char *key, const char *value,
 		return 0;
 	}
 
-	return ret_set_errno(-1, EINVAL);
+	return ret_errno(EINVAL);
 }
 
 static int set_config_net_name(const char *key, const char *value,
