@@ -79,36 +79,26 @@ struct criu_opts {
 
 static int load_tty_major_minor(char *directory, char *output, int len)
 {
-	FILE *f;
 	char path[PATH_MAX];
-	int ret;
+	ssize_t ret;
 
 	ret = snprintf(path, sizeof(path), "%s/tty.info", directory);
-	if (ret < 0 || ret >= sizeof(path)) {
-		ERROR("snprintf'd too many characters: %d", ret);
-		return -1;
-	}
+	if (ret < 0 || (size_t)ret >= sizeof(path))
+		return ret_errno(EIO);
 
-	f = fopen(path, "re");
-	if (!f) {
-		/* This means we're coming from a liblxc which didn't export
+	ret = lxc_read_from_file(path, output, len);
+	if (ret < 0) {
+		/*
+		 * This means we're coming from a liblxc which didn't export
 		 * the tty info. In this case they had to have lxc.console.path
 		 * = * none, so there's no problem restoring.
 		 */
 		if (errno == ENOENT)
 			return 0;
 
-		SYSERROR("couldn't open %s", path);
-		return -1;
+		return log_error_errno(-errno, errno, "Failed to open \"%s\"", path);
 	}
 
-	if (!fgets(output, len, f)) {
-		fclose(f);
-		SYSERROR("couldn't read %s", path);
-		return -1;
-	}
-
-	fclose(f);
 	return 0;
 }
 
