@@ -17,6 +17,7 @@
 #include "config.h"
 #include "log.h"
 #include "lxclock.h"
+#include "memory_utils.h"
 #include "utils.h"
 
 #ifdef MUTEX_DEBUGGING
@@ -35,7 +36,6 @@ static inline void dump_stacktrace(void)
 	void *array[MAX_STACKDEPTH];
 	size_t size;
 	char **strings;
-	size_t i;
 
 	size = backtrace(array, MAX_STACKDEPTH);
 	strings = backtrace_symbols(array, size);
@@ -43,7 +43,7 @@ static inline void dump_stacktrace(void)
 	/* Using fprintf here as our logging module is not thread safe. */
 	fprintf(stderr, "\tObtained %zu stack frames\n", size);
 
-	for (i = 0; i < size; i++)
+	for (int i = 0; i < size; i++)
 		fprintf(stderr, "\t\t%s\n", strings[i]);
 
 	free(strings);
@@ -80,9 +80,9 @@ static void unlock_mutex(pthread_mutex_t *l)
 
 static char *lxclock_name(const char *p, const char *n)
 {
+	__do_free char *dest = NULL, *rundir = NULL;
 	int ret;
 	size_t len;
-	char *dest, *rundir;
 
 	/* lockfile will be:
 	 * "/run" + "/lxc/lock/$lxcpath/$lxcname + '\0' if root
@@ -100,134 +100,96 @@ static char *lxclock_name(const char *p, const char *n)
 	len += strlen(rundir);
 
 	dest = malloc(len);
-	if (!dest) {
-		free(rundir);
+	if (!dest)
 		return NULL;
-	}
 
 	ret = snprintf(dest, len, "%s/lxc/lock/%s", rundir, p);
-	if (ret < 0 || (size_t)ret >= len) {
-		free(dest);
-		free(rundir);
-		return NULL;
-	}
+	if (ret < 0 || (size_t)ret >= len)
+		return ret_set_errno(NULL, EIO);
 
 	ret = mkdir_p(dest, 0755);
-	if (ret < 0) {
-		free(dest);
-		free(rundir);
+	if (ret < 0)
 		return NULL;
-	}
 
 	ret = snprintf(dest, len, "%s/lxc/lock/%s/.%s", rundir, p, n);
-	free(rundir);
-	if (ret < 0 || (size_t)ret >= len) {
-		free(dest);
-		return NULL;
-	}
+	if (ret < 0 || (size_t)ret >= len)
+		return ret_set_errno(NULL, EIO);
 
-	return dest;
+	return move_ptr(dest);
 }
 
 static sem_t *lxc_new_unnamed_sem(void)
 {
+	__do_free sem_t *s = NULL;
 	int ret;
-	sem_t *s;
 
 	s = malloc(sizeof(*s));
 	if (!s)
-		return NULL;
+		return ret_set_errno(NULL, ENOMEM);
 
 	ret = sem_init(s, 0, 1);
-	if (ret < 0) {
-		free(s);
+	if (ret < 0)
 		return NULL;
-	}
 
-	return s;
+	return move_ptr(s);
 }
 
 struct lxc_lock *lxc_newlock(const char *lxcpath, const char *name)
 {
-	struct lxc_lock *l;
+	__do_free struct lxc_lock *l = NULL;
 
-	l = malloc(sizeof(*l));
+	l = zalloc(sizeof(*l));
 	if (!l)
-		goto on_error;
+		return ret_set_errno(NULL, ENOMEM);
 
-	if (!name) {
+	if (name) {
+		l->type = LXC_LOCK_FLOCK;
+		l->u.f.fname = lxclock_name(lxcpath, name);
+		if (!l->u.f.fname)
+			return ret_set_errno(NULL, ENOMEM);
+		l->u.f.fd = -EBADF;
+	} else {
 		l->type = LXC_LOCK_ANON_SEM;
 		l->u.sem = lxc_new_unnamed_sem();
-		if (!l->u.sem) {
-			free(l);
-			l = NULL;
-		}
-
-		goto on_error;
+		if (!l->u.sem)
+			return ret_set_errno(NULL, ENOMEM);
 	}
 
-	l->type = LXC_LOCK_FLOCK;
-	l->u.f.fname = lxclock_name(lxcpath, name);
-	if (!l->u.f.fname) {
-		if (!name)
-			free(l->u.sem);
-		free(l);
-		l = NULL;
-		goto on_error;
-	}
-
-	l->u.f.fd = -1;
-
-on_error:
-	return l;
+	return move_ptr(l);
 }
 
 int lxclock(struct lxc_lock *l, int timeout)
 {
+	int ret = -1;
 	struct flock lk;
-	int ret = -1, saved_errno = errno;
 
-	switch(l->type) {
+	switch (l->type) {
 	case LXC_LOCK_ANON_SEM:
 		if (!timeout) {
 			ret = sem_wait(l->u.sem);
-			if (ret < 0)
-				saved_errno = errno;
 		} else {
 			struct timespec ts;
 
 			ret = clock_gettime(CLOCK_REALTIME, &ts);
-			if (ret < 0) {
-				ret = -2;
-				goto on_error;
-			}
+			if (ret < 0)
+				return -2;
 
 			ts.tv_sec += timeout;
 			ret = sem_timedwait(l->u.sem, &ts);
-			if (ret < 0)
-				saved_errno = errno;
 		}
 
 		break;
 	case LXC_LOCK_FLOCK:
-		ret = -2;
-		if (timeout) {
-			ERROR("Timeouts are not supported with file locks");
-			goto on_error;
-		}
+		if (timeout)
+			return log_error(-2, "Timeouts are not supported with file locks");
 
-		if (!l->u.f.fname) {
-			ERROR("No filename set for file lock");
-			goto on_error;
-		}
+		if (!l->u.f.fname)
+			return log_error(-2, "No filename set for file lock");
 
-		if (l->u.f.fd == -1) {
+		if (l->u.f.fd < 0) {
 			l->u.f.fd = open(l->u.f.fname, O_CREAT | O_RDWR | O_NOFOLLOW | O_CLOEXEC | O_NOCTTY, S_IWUSR | S_IRUSR);
-			if (l->u.f.fd == -1) {
-				SYSERROR("Failed to open \"%s\"", l->u.f.fname);
-				saved_errno = errno;
-				goto on_error;
-			}
+			if (l->u.f.fd < 0)
+				return log_error_errno(-2, errno, "Failed to open \"%s\"", l->u.f.fname);
 		}
 
 		memset(&lk, 0, sizeof(struct flock));
@@ -236,59 +198,47 @@ int lxclock(struct lxc_lock *l, int timeout)
 		lk.l_whence = SEEK_SET;
 
 		ret = fcntl(l->u.f.fd, F_OFD_SETLKW, &lk);
-		if (ret < 0) {
-			if (errno == EINVAL)
-				ret = flock(l->u.f.fd, LOCK_EX);
-			saved_errno = errno;
-		}
-
+		if (ret < 0 && errno == EINVAL)
+			ret = flock(l->u.f.fd, LOCK_EX);
 		break;
+	default:
+		return ret_set_errno(-1, EINVAL);
 	}
 
-on_error:
-	errno = saved_errno;
 	return ret;
 }
 
 int lxcunlock(struct lxc_lock *l)
 {
 	struct flock lk;
-	int ret = 0, saved_errno = errno;
+	int ret = 0;
 
 	switch (l->type) {
 	case LXC_LOCK_ANON_SEM:
-		if (!l->u.sem) {
-			ret = -2;
-		} else {
-			ret = sem_post(l->u.sem);
-			saved_errno = errno;
-		}
+		if (!l->u.sem)
+			return -2;
 
+		ret = sem_post(l->u.sem);
 		break;
 	case LXC_LOCK_FLOCK:
-		if (l->u.f.fd != -1) {
-			memset(&lk, 0, sizeof(struct flock));
+		if (l->u.f.fd < 0)
+			return -2;
 
-			lk.l_type = F_UNLCK;
-			lk.l_whence = SEEK_SET;
+		memset(&lk, 0, sizeof(struct flock));
 
-			ret = fcntl(l->u.f.fd, F_OFD_SETLK, &lk);
-			if (ret < 0) {
-				if (errno == EINVAL)
-					ret = flock(l->u.f.fd, LOCK_EX | LOCK_NB);
-				saved_errno = errno;
-			}
+		lk.l_type = F_UNLCK;
+		lk.l_whence = SEEK_SET;
 
-			close(l->u.f.fd);
-			l->u.f.fd = -1;
-		} else {
-			ret = -2;
-		}
+		ret = fcntl(l->u.f.fd, F_OFD_SETLK, &lk);
+		if (ret < 0 && errno == EINVAL)
+			ret = flock(l->u.f.fd, LOCK_EX | LOCK_NB);
 
+		close_prot_errno_disarm(l->u.f.fd);
 		break;
+	default:
+		return ret_set_errno(-1, EINVAL);
 	}
 
-	errno = saved_errno;
 	return ret;
 }
 
@@ -304,24 +254,16 @@ void lxc_putlock(struct lxc_lock *l)
 	if (!l)
 		return;
 
-	switch(l->type) {
+	switch (l->type) {
 	case LXC_LOCK_ANON_SEM:
 		if (l->u.sem) {
 			sem_destroy(l->u.sem);
-			free(l->u.sem);
-			l->u.sem = NULL;
+			free_disarm(l->u.sem);
 		}
-
 		break;
 	case LXC_LOCK_FLOCK:
-		if (l->u.f.fd != -1) {
-			close(l->u.f.fd);
-			l->u.f.fd = -1;
-		}
-
-		free(l->u.f.fname);
-		l->u.f.fname = NULL;
-
+		close_prot_errno_disarm(l->u.f.fd);
+		free_disarm(l->u.f.fname);
 		break;
 	}
 

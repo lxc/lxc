@@ -824,6 +824,7 @@ static int btrfs_lxc_rm_rf(const char *path)
 					ERROR("Out of memory");
 					free_btrfs_tree(tree);
 					close(fd);
+					return -ENOMEM;
 				}
 
 				memcpy(name, tmp, name_len);

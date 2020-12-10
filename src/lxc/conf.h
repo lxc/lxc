@@ -19,6 +19,7 @@
 #include "config.h"
 #include "list.h"
 #include "lxcseccomp.h"
+#include "memory_utils.h"
 #include "ringbuf.h"
 #include "start.h"
 #include "terminal.h"
@@ -69,6 +70,16 @@ struct lxc_cgroup {
 	};
 };
 
+static void free_lxc_cgroup(struct lxc_cgroup *ptr)
+{
+	if (ptr) {
+		free(ptr->subsystem);
+		free(ptr->value);
+		free_disarm(ptr);
+	}
+}
+define_cleanup_function(struct lxc_cgroup *, free_lxc_cgroup);
+
 #if !HAVE_SYS_RESOURCE_H
 #define RLIM_INFINITY ((unsigned long)-1)
 struct rlimit {
@@ -87,6 +98,15 @@ struct lxc_limit {
 	struct rlimit limit;
 };
 
+static void free_lxc_limit(struct lxc_limit *ptr)
+{
+	if (ptr) {
+		free(ptr->resource);
+		free_disarm(ptr);
+	}
+}
+define_cleanup_function(struct lxc_limit *, free_lxc_limit);
+
 enum idtype {
 	ID_TYPE_UID,
 	ID_TYPE_GID
@@ -102,6 +122,16 @@ struct lxc_sysctl {
 	char *value;
 };
 
+static void free_lxc_sysctl(struct lxc_sysctl *ptr)
+{
+	if (ptr) {
+		free(ptr->key);
+		free(ptr->value);
+		free_disarm(ptr);
+	}
+}
+define_cleanup_function(struct lxc_sysctl *, free_lxc_sysctl);
+
 /*
  * Defines a structure to configure proc filesystem at runtime.
  * @filename : the proc filesystem will be configured without the "lxc.proc" prefix
@@ -111,6 +141,16 @@ struct lxc_proc {
 	char *filename;
 	char *value;
 };
+
+static void free_lxc_proc(struct lxc_proc *ptr)
+{
+	if (ptr) {
+		free(ptr->filename);
+		free(ptr->value);
+		free_disarm(ptr);
+	}
+}
+define_cleanup_function(struct lxc_proc *, free_lxc_proc);
 
 /*
  * id_map is an id map entry.  Form in confile is:

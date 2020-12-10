@@ -3012,7 +3012,7 @@ static int lxc_delete_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	int bytes, ret;
 	pid_t child;
 	int pipefd[2];
-	char buffer[PATH_MAX] = {0};
+	char buffer[PATH_MAX] = {};
 
 	if (netdev->type != LXC_NET_VETH)
 		return log_error_errno(-1, EINVAL, "Network type %d not support for unprivileged use", netdev->type);

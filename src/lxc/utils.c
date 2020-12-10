@@ -240,7 +240,9 @@ int mkdir_p(const char *dir, mode_t mode)
 
 char *get_rundir()
 {
-	char *rundir;
+	__do_free char *rundir = NULL;
+	char *static_rundir;
+	int ret;
 	size_t len;
 	const char *homedir;
 	struct stat sb;
@@ -251,9 +253,9 @@ char *get_rundir()
 	if (geteuid() == sb.st_uid || getegid() == sb.st_gid)
 		return strdup(RUNTIME_PATH);
 
-	rundir = getenv("XDG_RUNTIME_DIR");
-	if (rundir)
-		return strdup(rundir);
+	static_rundir = getenv("XDG_RUNTIME_DIR");
+	if (static_rundir)
+		return strdup(static_rundir);
 
 	INFO("XDG_RUNTIME_DIR isn't set in the environment");
 	homedir = getenv("HOME");
@@ -265,8 +267,11 @@ char *get_rundir()
 	if (!rundir)
 		return NULL;
 
-	snprintf(rundir, len, "%s/.cache/lxc/run/", homedir);
-	return rundir;
+	ret = snprintf(rundir, len, "%s/.cache/lxc/run/", homedir);
+	if (ret < 0 || (size_t)ret >= len)
+		return ret_set_errno(NULL, EIO);
+
+	return move_ptr(rundir);
 }
 
 int wait_for_pid(pid_t pid)
@@ -1089,7 +1094,9 @@ int __safe_mount_beneath_at(int beneath_fd, const char *src, const char *dst, co
 		source_fd = openat2(beneath_fd, src, &how, sizeof(how));
 		if (source_fd < 0)
 			return -errno;
-		snprintf(src_buf, sizeof(src_buf), "/proc/self/fd/%d", source_fd);
+		ret = snprintf(src_buf, sizeof(src_buf), "/proc/self/fd/%d", source_fd);
+		if (ret < 0 || ret >= sizeof(src_buf))
+			return -EIO;
 	} else {
 		src_buf[0] = '\0';
 	}
@@ -1372,10 +1379,8 @@ int lxc_preserve_ns(const int pid, const char *ns)
 	ret = snprintf(path, __NS_PATH_LEN, "/proc/%d/ns%s%s", pid,
 		       !ns || strcmp(ns, "") == 0 ? "" : "/",
 		       !ns || strcmp(ns, "") == 0 ? "" : ns);
-	if (ret < 0 || (size_t)ret >= __NS_PATH_LEN) {
-		errno = EFBIG;
-		return -1;
-	}
+	if (ret < 0 || (size_t)ret >= __NS_PATH_LEN)
+		return ret_errno(EIO);
 
 	return open(path, O_RDONLY | O_CLOEXEC);
 }

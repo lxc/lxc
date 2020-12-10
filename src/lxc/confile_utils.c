@@ -15,9 +15,11 @@
 #include "confile_utils.h"
 #include "error.h"
 #include "list.h"
+#include "lxc.h"
 #include "log.h"
 #include "lxccontainer.h"
 #include "macro.h"
+#include "memory_utils.h"
 #include "network.h"
 #include "parse.h"
 #include "utils.h"
@@ -31,16 +33,16 @@ lxc_log_define(confile_utils, lxc);
 int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 		 unsigned long *hostid, unsigned long *range)
 {
+	__do_free char *dup = NULL;
 	int ret = -1;
 	unsigned long tmp_hostid, tmp_nsid, tmp_range;
 	char tmp_type;
 	char *window, *slide;
-	char *dup = NULL;
 
 	/* Duplicate string. */
 	dup = strdup(idmap);
 	if (!dup)
-		goto on_error;
+		return ret_errno(ENOMEM);
 
 	/* A prototypical idmap entry would be: "u 1000 1000000 65536" */
 
@@ -49,13 +51,11 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 	/* skip whitespace */
 	slide += strspn(slide, " \t\r");
 	if (slide != window && *slide == '\0')
-		goto on_error;
+		return ret_errno(EINVAL);
 
 	/* Validate type. */
-	if (*slide != 'u' && *slide != 'g') {
-		ERROR("Invalid id mapping type: %c", *slide);
-		goto on_error;
-	}
+	if (*slide != 'u' && *slide != 'g')
+		return log_error_errno(-EINVAL, EINVAL, "Invalid id mapping type: %c", *slide);
 
 	/* Assign type. */
 	tmp_type = *slide;
@@ -68,7 +68,7 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 	slide += strspn(slide, " \t\r");
 	/* There must be whitespace. */
 	if (slide == window)
-		goto on_error;
+		return ret_errno(EINVAL);
 
 	/* Mark beginning of nsid. */
 	window = slide;
@@ -76,15 +76,14 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 	slide += strcspn(slide, " \t\r");
 	/* There must be non-whitespace. */
 	if (slide == window || *slide == '\0')
-		goto on_error;
+		return ret_errno(EINVAL);
 	/* Mark end of nsid. */
 	*slide = '\0';
 
 	/* Parse nsid. */
-	if (lxc_safe_ulong(window, &tmp_nsid) < 0) {
-		ERROR("Failed to parse nsid: %s", window);
-		goto on_error;
-	}
+	ret = lxc_safe_ulong(window, &tmp_nsid);
+	if (ret < 0)
+		return log_error_errno(ret, errno, "Failed to parse nsid: %s", window);
 
 	/* Move beyond \0. */
 	slide++;
@@ -94,7 +93,7 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 	 * So only ensure that we're not at the end of the string.
 	 */
 	if (*slide == '\0')
-		goto on_error;
+		return ret_errno(EINVAL);
 
 	/* Mark beginning of hostid. */
 	window = slide;
@@ -102,15 +101,14 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 	slide += strcspn(slide, " \t\r");
 	/* There must be non-whitespace. */
 	if (slide == window || *slide == '\0')
-		goto on_error;
+		return ret_errno(EINVAL);
 	/* Mark end of nsid. */
 	*slide = '\0';
 
 	/* Parse hostid. */
-	if (lxc_safe_ulong(window, &tmp_hostid) < 0) {
-		ERROR("Failed to parse hostid: %s", window);
-		goto on_error;
-	}
+	ret = lxc_safe_ulong(window, &tmp_hostid);
+	if (ret < 0)
+		return log_error_errno(ret, errno, "Failed to parse hostid: %s", window);
 
 	/* Move beyond \0. */
 	slide++;
@@ -120,7 +118,7 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 	 * So only ensure that we're not at the end of the string.
 	 */
 	if (*slide == '\0')
-		goto on_error;
+		return ret_errno(EINVAL);
 
 	/* Mark beginning of range. */
 	window = slide;
@@ -128,35 +126,29 @@ int parse_idmaps(const char *idmap, char *type, unsigned long *nsid,
 	slide += strcspn(slide, " \t\r");
 	/* There must be non-whitespace. */
 	if (slide == window)
-		goto on_error;
+		return ret_errno(EINVAL);
 
 	/* The range is the last valid entry we expect. So make sure that there
 	 * is no trailing garbage and if there is, error out.
 	 */
 	if (*(slide + strspn(slide, " \t\r\n")) != '\0')
-		goto on_error;
+		return ret_errno(EINVAL);
 
 	/* Mark end of range. */
 	*slide = '\0';
 
 	/* Parse range. */
-	if (lxc_safe_ulong(window, &tmp_range) < 0) {
-		ERROR("Failed to parse id mapping range: %s", window);
-		goto on_error;
-	}
+	ret = lxc_safe_ulong(window, &tmp_range);
+	if (ret < 0)
+		return log_error_errno(ret, errno, "Failed to parse id mapping range: %s", window);
 
-	*type = tmp_type;
-	*nsid = tmp_nsid;
+	*type	= tmp_type;
+	*nsid	= tmp_nsid;
 	*hostid = tmp_hostid;
-	*range = tmp_range;
+	*range	= tmp_range;
 
 	/* Yay, we survived. */
-	ret = 0;
-
-on_error:
-	free(dup);
-
-	return ret;
+	return 0;
 }
 
 bool lxc_config_value_empty(const char *value)
@@ -169,13 +161,13 @@ bool lxc_config_value_empty(const char *value)
 
 struct lxc_netdev *lxc_network_add(struct lxc_list *networks, int idx, bool tail)
 {
-	struct lxc_list *newlist;
-	struct lxc_netdev *netdev = NULL;
+	__do_free struct lxc_list *newlist = NULL;
+	__do_free struct lxc_netdev *netdev = NULL;
 
 	/* network does not exist */
 	netdev = malloc(sizeof(*netdev));
 	if (!netdev)
-		return NULL;
+		return ret_set_errno(NULL, ENOMEM);
 
 	memset(netdev, 0, sizeof(*netdev));
 	lxc_list_init(&netdev->ipv4);
@@ -186,10 +178,8 @@ struct lxc_netdev *lxc_network_add(struct lxc_list *networks, int idx, bool tail
 
 	/* prepare new list */
 	newlist = malloc(sizeof(*newlist));
-	if (!newlist) {
-		free(netdev);
-		return NULL;
-	}
+	if (!newlist)
+		return ret_set_errno(NULL, ENOMEM);
 
 	lxc_list_init(newlist);
 	newlist->elem = netdev;
@@ -198,8 +188,9 @@ struct lxc_netdev *lxc_network_add(struct lxc_list *networks, int idx, bool tail
 		lxc_list_add_tail(networks, newlist);
 	else
 		lxc_list_add(networks, newlist);
+	move_ptr(newlist);
 
-	return netdev;
+	return move_ptr(netdev);
 }
 
 /* Takes care of finding the correct netdev struct in the networks list or
@@ -224,7 +215,7 @@ struct lxc_netdev *lxc_get_netdev_by_idx(struct lxc_conf *conf,
 	}
 
 	if (!allocate)
-		return NULL;
+		return ret_set_errno(NULL, EINVAL);
 
 	return lxc_network_add(insert, idx, true);
 }
@@ -418,6 +409,9 @@ static void lxc_free_netdev(struct lxc_netdev *netdev)
 {
 	struct lxc_list *cur, *next;
 
+	if (!netdev)
+		return;
+
 	free(netdev->upscript);
 	free(netdev->downscript);
 	free(netdev->hwaddr);
@@ -459,11 +453,12 @@ static void lxc_free_netdev(struct lxc_netdev *netdev)
 	free(netdev);
 }
 
+define_cleanup_function(struct lxc_netdev *, lxc_free_netdev);
+
 bool lxc_remove_nic_by_idx(struct lxc_conf *conf, unsigned int idx)
 {
+	call_cleaner(lxc_free_netdev) struct lxc_netdev *netdev = NULL;
 	struct lxc_list *cur, *next;
-	struct lxc_netdev *netdev;
-	bool found = false;
 
 	lxc_list_for_each_safe(cur, &conf->network, next) {
 		netdev = cur->elem;
@@ -471,25 +466,19 @@ bool lxc_remove_nic_by_idx(struct lxc_conf *conf, unsigned int idx)
 			continue;
 
 		lxc_list_del(cur);
-		found = true;
-		break;
+		free(cur);
+		return true;
 	}
 
-	if (!found)
-		return false;
-
-	lxc_free_netdev(netdev);
-	free(cur);
-
-	return true;
+	return false;
 }
 
 void lxc_free_networks(struct lxc_list *networks)
 {
 	struct lxc_list *cur, *next;
-	struct lxc_netdev *netdev;
 
-	lxc_list_for_each_safe(cur, networks, next) {
+	lxc_list_for_each_safe (cur, networks, next) {
+		struct lxc_netdev *netdev = cur->elem;
 		netdev = cur->elem;
 		lxc_free_netdev(netdev);
 		free(cur);
@@ -499,13 +488,12 @@ void lxc_free_networks(struct lxc_list *networks)
 	lxc_list_init(networks);
 }
 
-
 static struct lxc_veth_mode {
 	char *name;
 	int mode;
 } veth_mode[] = {
-    { "bridge", VETH_MODE_BRIDGE },
-    { "router", VETH_MODE_ROUTER },
+	{ "bridge", VETH_MODE_BRIDGE },
+	{ "router", VETH_MODE_ROUTER },
 };
 
 int lxc_veth_mode_to_flag(int *mode, const char *value)
@@ -518,7 +506,7 @@ int lxc_veth_mode_to_flag(int *mode, const char *value)
 		return 0;
 	}
 
-	return ret_set_errno(-1, EINVAL);
+	return ret_errno(EINVAL);
 }
 
 char *lxc_veth_flag_to_mode(int mode)
@@ -530,24 +518,22 @@ char *lxc_veth_flag_to_mode(int mode)
 		return veth_mode[i].name;
 	}
 
-	return NULL;
+	return ret_set_errno(NULL, EINVAL);
 }
 
 static struct lxc_macvlan_mode {
 	char *name;
 	int mode;
 } macvlan_mode[] = {
-    { "private",  MACVLAN_MODE_PRIVATE  },
-    { "vepa",     MACVLAN_MODE_VEPA     },
-    { "bridge",   MACVLAN_MODE_BRIDGE   },
-    { "passthru", MACVLAN_MODE_PASSTHRU },
+	{ "private",  MACVLAN_MODE_PRIVATE  },
+	{ "vepa",     MACVLAN_MODE_VEPA     },
+	{ "bridge",   MACVLAN_MODE_BRIDGE   },
+	{ "passthru", MACVLAN_MODE_PASSTHRU },
 };
 
 int lxc_macvlan_mode_to_flag(int *mode, const char *value)
 {
-	size_t i;
-
-	for (i = 0; i < sizeof(macvlan_mode) / sizeof(macvlan_mode[0]); i++) {
+	for (size_t i = 0; i < sizeof(macvlan_mode) / sizeof(macvlan_mode[0]); i++) {
 		if (strcmp(macvlan_mode[i].name, value))
 			continue;
 
@@ -555,30 +541,28 @@ int lxc_macvlan_mode_to_flag(int *mode, const char *value)
 		return 0;
 	}
 
-	return -1;
+	return ret_errno(EINVAL);
 }
 
 char *lxc_macvlan_flag_to_mode(int mode)
 {
-	size_t i;
-
-	for (i = 0; i < sizeof(macvlan_mode) / sizeof(macvlan_mode[0]); i++) {
+	for (size_t i = 0; i < sizeof(macvlan_mode) / sizeof(macvlan_mode[0]); i++) {
 		if (macvlan_mode[i].mode != mode)
 			continue;
 
 		return macvlan_mode[i].name;
 	}
 
-	return NULL;
+	return ret_set_errno(NULL, EINVAL);
 }
 
 static struct lxc_ipvlan_mode {
 	char *name;
 	int mode;
 } ipvlan_mode[] = {
-    { "l3",  IPVLAN_MODE_L3  },
-    { "l3s", IPVLAN_MODE_L3S },
-    { "l2",  IPVLAN_MODE_L2  },
+	{ "l3",  IPVLAN_MODE_L3  },
+	{ "l3s", IPVLAN_MODE_L3S },
+	{ "l2",  IPVLAN_MODE_L2  },
 };
 
 int lxc_ipvlan_mode_to_flag(int *mode, const char *value)
@@ -591,7 +575,7 @@ int lxc_ipvlan_mode_to_flag(int *mode, const char *value)
 		return 0;
 	}
 
-	return -1;
+	return ret_errno(EINVAL);
 }
 
 char *lxc_ipvlan_flag_to_mode(int mode)
@@ -603,16 +587,16 @@ char *lxc_ipvlan_flag_to_mode(int mode)
 		return ipvlan_mode[i].name;
 	}
 
-	return NULL;
+	return ret_set_errno(NULL, EINVAL);
 }
 
 static struct lxc_ipvlan_isolation {
 	char *name;
 	int flag;
 } ipvlan_isolation[] = {
-    { "bridge",  IPVLAN_ISOLATION_BRIDGE  },
-    { "private", IPVLAN_ISOLATION_PRIVATE },
-    { "vepa",    IPVLAN_ISOLATION_VEPA    },
+	{ "bridge",  IPVLAN_ISOLATION_BRIDGE  },
+	{ "private", IPVLAN_ISOLATION_PRIVATE },
+	{ "vepa",    IPVLAN_ISOLATION_VEPA    },
 };
 
 int lxc_ipvlan_isolation_to_flag(int *flag, const char *value)
@@ -625,7 +609,7 @@ int lxc_ipvlan_isolation_to_flag(int *flag, const char *value)
 		return 0;
 	}
 
-	return -1;
+	return ret_errno(EINVAL);
 }
 
 char *lxc_ipvlan_flag_to_isolation(int flag)
@@ -637,7 +621,7 @@ char *lxc_ipvlan_flag_to_isolation(int flag)
 		return ipvlan_isolation[i].name;
 	}
 
-	return NULL;
+	return ret_set_errno(NULL, EINVAL);
 }
 
 int set_config_string_item(char **conf_item, const char *value)
@@ -645,28 +629,22 @@ int set_config_string_item(char **conf_item, const char *value)
 	char *new_value;
 
 	if (lxc_config_value_empty(value)) {
-		free(*conf_item);
-		*conf_item = NULL;
+		free_disarm(*conf_item);
 		return 0;
 	}
 
 	new_value = strdup(value);
-	if (!new_value) {
-		SYSERROR("Failed to duplicate string \"%s\"", value);
-		return -1;
-	}
+	if (!new_value)
+		return log_error_errno(-ENOMEM, ENOMEM, "Failed to duplicate string \"%s\"", value);
 
-	free(*conf_item);
-	*conf_item = new_value;
+	free_move_ptr(*conf_item, new_value);
 	return 0;
 }
 
 int set_config_string_item_max(char **conf_item, const char *value, size_t max)
 {
-	if (strlen(value) >= max) {
-		ERROR("%s is too long (>= %lu)", value, (unsigned long)max);
-		return -1;
-	}
+	if (strlen(value) >= max)
+		return log_error_errno(-ENAMETOOLONG, ENAMETOOLONG, "%s is too long (>= %lu)", value, (unsigned long)max);
 
 	return set_config_string_item(conf_item, value);
 }
@@ -678,6 +656,7 @@ int set_config_path_item(char **conf_item, const char *value)
 
 int set_config_bool_item(bool *conf_item, const char *value, bool empty_conf_action)
 {
+	int ret;
 	unsigned int val = 0;
 
 	if (lxc_config_value_empty(value)) {
@@ -685,8 +664,9 @@ int set_config_bool_item(bool *conf_item, const char *value, bool empty_conf_act
 		return 0;
 	}
 
-	if (lxc_safe_uint(value, &val) < 0)
-		return -EINVAL;
+	ret = lxc_safe_uint(value, &val);
+	if (ret < 0)
+		return ret;
 
 	switch (val) {
 	case 0:
@@ -697,7 +677,7 @@ int set_config_bool_item(bool *conf_item, const char *value, bool empty_conf_act
 		return 0;
 	}
 
-	return -EINVAL;
+	return ret_errno(EINVAL);
 }
 
 int config_ip_prefix(struct in_addr *addr)
@@ -719,12 +699,11 @@ int network_ifname(char *valuep, const char *value, size_t size)
 	size_t retlen;
 
 	if (!valuep || !value)
-		return -1;
+		return ret_errno(EINVAL);
 
 	retlen = strlcpy(valuep, value, size);
 	if (retlen >= size)
-		ERROR("Network device name \"%s\" is too long (>= %zu)", value,
-		      size);
+		ERROR("Network device name \"%s\" is too long (>= %zu)", value, size);
 
 	return 0;
 }
@@ -800,8 +779,7 @@ bool new_hwaddr(char *hwaddr)
 		       rand() % 255, rand() % 255);
 #endif
 	if (ret < 0 || ret >= 18) {
-		SYSERROR("Failed to call snprintf()");
-		return false;
+		return log_error_errno(false, EIO, "Failed to call snprintf()");
 	}
 
 	return true;
@@ -890,37 +868,24 @@ static int lxc_container_name_to_pid(const char *lxcname_or_pid,
 
 	pid = strtol(lxcname_or_pid, &err, 10);
 	if (*err != '\0' || pid < 1) {
-		struct lxc_container *c;
+		__put_lxc_container struct lxc_container *c = NULL;
 
 		c = lxc_container_new(lxcname_or_pid, lxcpath);
-		if (!c) {
-			ERROR("\"%s\" is not a valid pid nor a container name",
-			      lxcname_or_pid);
-			return -1;
-		}
+		if (!c)
+			return log_error_errno(-EINVAL, EINVAL, "\"%s\" is not a valid pid nor a container name", lxcname_or_pid);
 
-		if (!c->may_control(c)) {
-			ERROR("Insufficient privileges to control container "
-			      "\"%s\"", c->name);
-			lxc_container_put(c);
-			return -1;
-		}
+		if (!c->may_control(c))
+			return log_error_errno(-EPERM, EPERM, "Insufficient privileges to control container \"%s\"", c->name);
 
 		pid = c->init_pid(c);
-		if (pid < 1) {
-			ERROR("Container \"%s\" is not running", c->name);
-			lxc_container_put(c);
-			return -1;
-		}
+		if (pid < 1)
+			return log_error_errno(-EINVAL, EINVAL, "Container \"%s\" is not running", c->name);
 
-		lxc_container_put(c);
 	}
 
 	ret = kill(pid, 0);
-	if (ret < 0) {
-		SYSERROR("Failed to send signal to pid %d", (int)pid);
-		return -1;
-	}
+	if (ret < 0)
+		return log_error_errno(-errno, errno, "Failed to send signal to pid %d", (int)pid);
 
 	return pid;
 }
@@ -928,8 +893,9 @@ static int lxc_container_name_to_pid(const char *lxcname_or_pid,
 int lxc_inherit_namespace(const char *nsfd_path, const char *lxcpath,
 			  const char *namespace)
 {
+	__do_free char *dup = NULL;
 	int fd, pid;
-	char *dup, *lastslash;
+	char *lastslash;
 
 	if (nsfd_path[0] == '/') {
 		return open(nsfd_path, O_RDONLY | O_CLOEXEC);
@@ -939,21 +905,20 @@ int lxc_inherit_namespace(const char *nsfd_path, const char *lxcpath,
 	if (lastslash) {
 		dup = strdup(nsfd_path);
 		if (!dup)
-			return -1;
+			return ret_errno(ENOMEM);
 
 		dup[lastslash - nsfd_path] = '\0';
-		pid = lxc_container_name_to_pid(lastslash + 1, dup);
-		free(dup);
-	} else {
-		pid = lxc_container_name_to_pid(nsfd_path, lxcpath);
+		lxcpath = lastslash + 1;
+		nsfd_path = lastslash + 1;
 	}
 
+	pid = lxc_container_name_to_pid(nsfd_path, lxcpath);
 	if (pid < 0)
-		return -1;
+		return pid;
 
 	fd = lxc_preserve_ns(pid, namespace);
 	if (fd < 0)
-		return -1;
+		return -errno;
 
 	return fd;
 }
@@ -1044,10 +1009,12 @@ static const struct signame signames[] = {
 
 static int sig_num(const char *sig)
 {
+	int ret;
 	unsigned int signum;
 
-	if (lxc_safe_uint(sig, &signum) < 0)
-		return -1;
+	ret = lxc_safe_uint(sig, &signum);
+	if (ret < 0)
+		return ret;
 
 	return signum;
 }
@@ -1061,12 +1028,12 @@ static int rt_sig_num(const char *signame)
 
 	signame += 4;
 	if (!isdigit(*signame))
-		return -1;
+		return ret_errno(EINVAL);
 
 	sig_n = sig_num(signame);
 	sig_n = rtmax ? SIGRTMAX - sig_n : SIGRTMIN + sig_n;
 	if (sig_n > SIGRTMAX || sig_n < SIGRTMIN)
-		return -1;
+		return ret_errno(EINVAL);
 
 	return sig_n;
 }
@@ -1087,5 +1054,5 @@ int sig_parse(const char *signame)
 				return signames[n].num;
 	}
 
-	return -1;
+	return ret_errno(EINVAL);
 }

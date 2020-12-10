@@ -13,6 +13,7 @@ extern "C" {
 #include <sys/types.h>
 
 #include "compiler.h"
+#include "memory_utils.h"
 #include "state.h"
 
 struct lxc_msg;
@@ -94,6 +95,13 @@ extern int lxc_container_get(struct lxc_container *c);
  * If it is the last reference, free the lxccontainer and return 1.
  */
 extern int lxc_container_put(struct lxc_container *c);
+static inline void put_lxc_container(struct lxc_container *c)
+{
+	if (c)
+		lxc_container_put(c);
+}
+define_cleanup_function(struct lxc_container *, put_lxc_container);
+#define __put_lxc_container call_cleaner(put_lxc_container)
 
 /*
  * Get a list of valid wait states.
