@@ -667,7 +667,7 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 		if (!default_mounts[i].destination)
 			return log_error(-1, "BUG: auto mounts destination %d was NULL", i);
 
-		if(in_caplist(CAP_NET_ADMIN, &conf->caps))
+		if(!in_caplist(CAP_NET_ADMIN, &conf->caps))
 			if(default_mounts[i].net_cap_dropped)
 				continue;
 
