@@ -3135,6 +3135,10 @@ int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const char *name,
 		if (ret < 0)
 			return log_error(-1, "Failed to bind mount container / onto itself");
 
+		conf->rootfs.mntpt_fd = openat(-EBADF, path, O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH | O_NOCTTY);
+		if (conf->rootfs.mntpt_fd < 0)
+			return log_error_errno(-errno, errno, "Failed to open file descriptor for container rootfs");
+
 		return log_trace(0, "Bind mounted container / onto itself");
 	}
 
