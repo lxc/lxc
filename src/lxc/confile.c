@@ -1678,6 +1678,9 @@ static int set_config_cgroup2_controller(const char *key, const char *value,
 static int set_config_cgroup_dir(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf, void *data)
 {
+	if (strcmp(key, "lxc.cgroup.dir") != 0)
+		return ret_errno(EINVAL);
+
 	if (lxc_config_value_empty(value))
 		return clr_config_cgroup_dir(key, lxc_conf, NULL);
 
@@ -3482,6 +3485,9 @@ static int get_config_cgroup_dir(const char *key, char *retv, int inlen,
 	int len;
 	int fulllen = 0;
 
+	if (strcmp(key, "lxc.cgroup.dir") != 0)
+		return ret_errno(EINVAL);
+
 	if (!retv)
 		inlen = 0;
 	else
@@ -4293,6 +4299,9 @@ static inline int clr_config_cgroup2_controller(const char *key,
 static int clr_config_cgroup_dir(const char *key, struct lxc_conf *lxc_conf,
 				 void *data)
 {
+	if (strcmp(key, "lxc.cgroup.dir") != 0)
+		return ret_errno(EINVAL);
+
 	if (lxc_conf->cgroup_meta.dir)
 		free_disarm(lxc_conf->cgroup_meta.dir);
 
