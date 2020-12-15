@@ -91,6 +91,11 @@ start() {
 
     _ifup
 
+    nftables_ver_output=$(nft --version)
+    if [$nftables_ver_output != *"not found"*]; then
+        update-alternatives --set iptables /usr/sbin/iptables-legacy
+    fi
+
     LXC_IPV6_ARG=""
     if [ -n "$LXC_IPV6_ADDR" ] && [ -n "$LXC_IPV6_MASK" ] && [ -n "$LXC_IPV6_NETWORK" ]; then
         echo 1 > /proc/sys/net/ipv6/conf/all/forwarding
@@ -109,6 +114,10 @@ start() {
     iptables $use_iptables_lock -I FORWARD -o ${LXC_BRIDGE} -j ACCEPT
     iptables $use_iptables_lock -t nat -A POSTROUTING -s ${LXC_NETWORK} ! -d ${LXC_NETWORK} -j MASQUERADE
     iptables $use_iptables_lock -t mangle -A POSTROUTING -o ${LXC_BRIDGE} -p udp -m udp --dport 68 -j CHECKSUM --checksum-fill
+
+    if [$nftables_ver_output != *"not found"*]; then
+        update-alternatives --remove iptables /usr/sbin/iptables-legacy
+    fi
 
     LXC_DOMAIN_ARG=""
     if [ -n "$LXC_DOMAIN" ]; then
@@ -152,6 +161,12 @@ stop() {
 
     if [ -d /sys/class/net/${LXC_BRIDGE} ]; then
         _ifdown 
+
+        nftables_ver_output=$(nft --version)
+        if [$nftables_ver_output != *"not found"*]; then
+            update-alternatives --set iptables /usr/sbin/iptables-legacy
+        fi
+
         iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p udp --dport 67 -j ACCEPT
         iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p tcp --dport 67 -j ACCEPT
         iptables $use_iptables_lock -D INPUT -i ${LXC_BRIDGE} -p udp --dport 53 -j ACCEPT
@@ -163,6 +178,10 @@ stop() {
 
         if [ "$LXC_IPV6_NAT" = "true" ]; then
             ip6tables $use_iptables_lock -t nat -D POSTROUTING -s ${LXC_IPV6_NETWORK} ! -d ${LXC_IPV6_NETWORK} -j MASQUERADE
+        fi
+
+        if [$nftables_ver_output != *"not found"*]; then
+            update-alternatives --remove iptables /usr/sbin/iptables-legacy
         fi
 
         pid=`cat "${varrun}"/dnsmasq.pid 2>/dev/null` && kill -9 $pid
