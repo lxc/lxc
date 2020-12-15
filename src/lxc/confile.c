@@ -1214,7 +1214,7 @@ static int set_config_hooks(const char *key, const char *value,
 	else if (strcmp(key + 9, "destroy") == 0)
 		return add_hook(lxc_conf, LXCHOOK_DESTROY, move_ptr(copy));
 
-	return -1;
+	return ret_errno(EINVAL);
 }
 
 static int set_config_hooks_version(const char *key, const char *value,
