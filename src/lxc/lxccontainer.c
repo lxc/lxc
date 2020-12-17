@@ -673,8 +673,7 @@ static char **split_init_cmd(const char *incmd)
 
 	len = strlen(incmd) + 1;
 	copy = alloca(len);
-	strncpy(copy, incmd, len);
-	copy[len-1] = '\0';
+	memcpy(copy, incmd, len);
 
 	do {
 		argv = malloc(sizeof(char *));

@@ -616,7 +616,7 @@ int lxc_get_conf_str(char *retv, int inlen, const char *value)
 	if (!value)
 		return 0;
 	if (retv && inlen >= strlen(value) + 1)
-		strncpy(retv, value, strlen(value) + 1);
+		strncpy(retv, value, inlen);
 
 	return strlen(value);
 }

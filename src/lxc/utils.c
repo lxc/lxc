@@ -2340,13 +2340,16 @@ int parse_byte_size_string(const char *s, int64_t *converted)
 	char *end;
 	char dup[LXC_NUMSTRLEN64 + 2];
 	char suffix[3];
+	size_t s_len;
 
 	if (!s || !strcmp(s, ""))
 		return -EINVAL;
 
-	end = stpncpy(dup, s, sizeof(dup));
-	if (*end != '\0')
+	s_len = strlen(s);
+	if (s_len >= sizeof(dup))
 		return -EINVAL;
+	memcpy(dup, s, s_len + 1);
+	end = dup + s_len;
 
 	if (isdigit(*(end - 1)))
 		suffix_len = 0;
