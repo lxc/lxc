@@ -501,7 +501,7 @@ static int lxc_cmd_get_devpts_fd_callback(int fd, struct lxc_cmd_req *req,
 
 int lxc_cmd_get_seccomp_notify_fd(const char *name, const char *lxcpath)
 {
-#if HAVE_DECL_SECCOMP_NOTIFY_FD
+#ifdef HAVE_SECCOMP_NOTIFY
 	int ret, stopped;
 	struct lxc_cmd_rr cmd = {
 		.req = {
@@ -526,7 +526,7 @@ static int lxc_cmd_get_seccomp_notify_fd_callback(int fd, struct lxc_cmd_req *re
 						  struct lxc_handler *handler,
 						  struct lxc_epoll_descr *descr)
 {
-#if HAVE_DECL_SECCOMP_NOTIFY_FD
+#ifdef HAVE_SECCOMP_NOTIFY
 	struct lxc_cmd_rsp rsp = {
 		.ret = 0,
 	};
