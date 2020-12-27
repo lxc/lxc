@@ -1082,7 +1082,7 @@ int __safe_mount_beneath_at(int beneath_fd, const char *src, const char *dst, co
 	__do_close int source_fd = -EBADF, target_fd = -EBADF;
 	struct lxc_open_how how = {
 		.flags		= O_RDONLY | O_CLOEXEC | O_PATH,
-		.resolve	= RESOLVE_NO_XDEV | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS | RESOLVE_BENEATH,
+		.resolve	= RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS | RESOLVE_BENEATH,
 	};
 	int ret;
 	char src_buf[LXC_PROC_PID_FD_LEN], tgt_buf[LXC_PROC_PID_FD_LEN];
