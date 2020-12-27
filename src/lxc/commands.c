@@ -1198,7 +1198,8 @@ static int lxc_cmd_add_bpf_device_cgroup_callback(int fd, struct lxc_cmd_req *re
 	__do_bpf_program_free struct bpf_program *devices = NULL;
 	struct lxc_cmd_rsp rsp = {0};
 	struct lxc_conf *conf = handler->conf;
-	struct hierarchy *unified = handler->cgroup_ops->unified;
+	struct cgroup_ops *cgroup_ops = handler->cgroup_ops;
+	struct hierarchy *unified = cgroup_ops->unified;
 	int ret;
 	struct lxc_list *it;
 	struct device_item *device;
@@ -1249,8 +1250,8 @@ static int lxc_cmd_add_bpf_device_cgroup_callback(int fd, struct lxc_cmd_req *re
 		goto respond;
 
 	/* Replace old bpf program. */
-	devices_old = move_ptr(conf->cgroup2_devices);
-	conf->cgroup2_devices = move_ptr(devices);
+	devices_old = move_ptr(cgroup_ops->cgroup2_devices);
+	cgroup_ops->cgroup2_devices = move_ptr(devices);
 	devices = move_ptr(devices_old);
 
 	rsp.ret = 0;
