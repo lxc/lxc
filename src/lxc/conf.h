@@ -288,7 +288,6 @@ struct lxc_conf {
 	struct {
 		struct lxc_list cgroup;
 		struct lxc_list cgroup2;
-		struct bpf_program *cgroup2_devices;
 		/* This should be reimplemented as a hashmap. */
 		struct lxc_list devices;
 	};

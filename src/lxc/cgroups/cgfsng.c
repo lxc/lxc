@@ -1027,7 +1027,7 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 	}
 
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
-	ret = bpf_program_cgroup_detach(handler->conf->cgroup2_devices);
+	ret = bpf_program_cgroup_detach(handler->cgroup_ops->cgroup2_devices);
 	if (ret < 0)
 		WARN("Failed to detach bpf program from cgroup");
 #endif
@@ -3027,8 +3027,8 @@ __cgfsng_ops static bool cgfsng_devices_activate(struct cgroup_ops *ops, struct 
 		return log_error_errno(false, ENOMEM, "Failed to attach bpf program");
 
 	/* Replace old bpf program. */
-	devices_old = move_ptr(conf->cgroup2_devices);
-	conf->cgroup2_devices = move_ptr(devices);
+	devices_old = move_ptr(ops->cgroup2_devices);
+	ops->cgroup2_devices = move_ptr(devices);
 	devices = move_ptr(devices_old);
 #endif
 	return true;
