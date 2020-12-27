@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "cgroup.h"
 #include "compiler.h"
 #include "conf.h"
 #include "config.h"
@@ -61,7 +62,7 @@ __hidden extern int bpf_program_cgroup_attach(struct bpf_program *prog, int type
 					      uint32_t flags);
 __hidden extern int bpf_program_cgroup_detach(struct bpf_program *prog);
 __hidden extern void bpf_program_free(struct bpf_program *prog);
-__hidden extern void lxc_clear_cgroup2_devices(struct lxc_conf *conf);
+__hidden extern void bpf_device_program_free(struct cgroup_ops *ops);
 __hidden extern bool bpf_devices_cgroup_supported(void);
 
 static inline void __auto_bpf_program_free__(struct bpf_program **prog)
@@ -119,7 +120,7 @@ static inline void bpf_program_free(struct bpf_program *prog)
 {
 }
 
-static inline void lxc_clear_cgroup2_devices(struct lxc_conf *conf)
+static inline void bpf_device_program_free(struct cgroup_ops *ops)
 {
 }
 

@@ -439,17 +439,18 @@ int bpf_program_cgroup_detach(struct bpf_program *prog)
 					       prog->attached_path);
 	}
 
-	free(prog->attached_path);
-	prog->attached_path = NULL;
+        TRACE("Detached bpf program from cgroup %s", prog->attached_path);
+        free_disarm(prog->attached_path);
 
-	return 0;
+        return 0;
 }
 
-void lxc_clear_cgroup2_devices(struct lxc_conf *conf)
+void bpf_device_program_free(struct cgroup_ops *ops)
 {
-	if (conf->cgroup2_devices) {
-		(void)bpf_program_cgroup_detach(conf->cgroup2_devices);
-		(void)bpf_program_free(conf->cgroup2_devices);
+	if (ops->cgroup2_devices) {
+		(void)bpf_program_cgroup_detach(ops->cgroup2_devices);
+		(void)bpf_program_free(ops->cgroup2_devices);
+		ops->cgroup2_devices = NULL;
 	}
 }
 
