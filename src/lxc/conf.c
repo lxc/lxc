@@ -36,7 +36,6 @@
 #include "af_unix.h"
 #include "caps.h"
 #include "cgroup.h"
-#include "cgroup2_devices.h"
 #include "conf.h"
 #include "config.h"
 #include "confile.h"
@@ -3842,7 +3841,6 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_cgroups(conf, "lxc.cgroup", CGROUP_SUPER_MAGIC);
 	lxc_clear_cgroups(conf, "lxc.cgroup2", CGROUP2_SUPER_MAGIC);
 	lxc_clear_devices(conf);
-	lxc_clear_cgroup2_devices(conf);
 	lxc_clear_hooks(conf, "lxc.hook");
 	lxc_clear_mount_entries(conf);
 	lxc_clear_idmaps(conf);
