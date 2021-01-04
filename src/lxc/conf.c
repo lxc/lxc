@@ -640,8 +640,8 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 		{ 0,                  0,                   NULL,                                             NULL,                         NULL,    0,                                               NULL, 0 }
 	};
 
-	bool has_cap_net_admin = in_caplist(CAP_NET_ADMIN, &conf->caps);
-	for (i = 0; default_mounts[i].match_mask; i++) {
+        bool has_cap_net_admin = lxc_wants_cap(CAP_NET_ADMIN, conf);
+        for (i = 0; default_mounts[i].match_mask; i++) {
 		__do_free char *destination = NULL, *source = NULL;
 		int saved_errno;
 		unsigned long mflags;
