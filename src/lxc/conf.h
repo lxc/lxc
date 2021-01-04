@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <sys/vfs.h>
 
+#include "caps.h"
 #include "compiler.h"
 #include "config.h"
 #include "list.h"
@@ -514,6 +515,18 @@ __hidden extern int run_script(const char *name, const char *section, const char
 __hidden extern int run_script_argv(const char *name, unsigned int hook_version, const char *section,
 				    const char *script, const char *hookname, char **argsin);
 __hidden extern int in_caplist(int cap, struct lxc_list *caps);
+
+static inline bool lxc_wants_cap(int cap, struct lxc_conf *conf)
+{
+	if (lxc_caps_last_cap() < cap)
+		return false;
+
+	if (!lxc_list_empty(&conf->keepcaps))
+		return !in_caplist(cap, &conf->keepcaps);
+
+	return in_caplist(cap, &conf->caps);
+}
+
 __hidden extern int setup_sysctl_parameters(struct lxc_list *sysctls);
 __hidden extern int lxc_clear_sysctls(struct lxc_conf *c, const char *key);
 __hidden extern int setup_proc_filesystem(struct lxc_list *procs, pid_t pid);

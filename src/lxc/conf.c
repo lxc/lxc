@@ -181,56 +181,47 @@ static struct mount_opt propagation_opt[] = {
 
 static struct caps_opt caps_opt[] = {
 #if HAVE_LIBCAP
-	{ "chown",            CAP_CHOWN            },
-	{ "dac_override",     CAP_DAC_OVERRIDE     },
-	{ "dac_read_search",  CAP_DAC_READ_SEARCH  },
-	{ "fowner",           CAP_FOWNER           },
-	{ "fsetid",           CAP_FSETID           },
-	{ "kill",             CAP_KILL             },
-	{ "setgid",           CAP_SETGID           },
-	{ "setuid",           CAP_SETUID           },
-	{ "setpcap",          CAP_SETPCAP          },
-	{ "linux_immutable",  CAP_LINUX_IMMUTABLE  },
-	{ "net_bind_service", CAP_NET_BIND_SERVICE },
-	{ "net_broadcast",    CAP_NET_BROADCAST    },
-	{ "net_admin",        CAP_NET_ADMIN        },
-	{ "net_raw",          CAP_NET_RAW          },
-	{ "ipc_lock",         CAP_IPC_LOCK         },
-	{ "ipc_owner",        CAP_IPC_OWNER        },
-	{ "sys_module",       CAP_SYS_MODULE       },
-	{ "sys_rawio",        CAP_SYS_RAWIO        },
-	{ "sys_chroot",       CAP_SYS_CHROOT       },
-	{ "sys_ptrace",       CAP_SYS_PTRACE       },
-	{ "sys_pacct",        CAP_SYS_PACCT        },
-	{ "sys_admin",        CAP_SYS_ADMIN        },
-	{ "sys_boot",         CAP_SYS_BOOT         },
-	{ "sys_nice",         CAP_SYS_NICE         },
-	{ "sys_resource",     CAP_SYS_RESOURCE     },
-	{ "sys_time",         CAP_SYS_TIME         },
-	{ "sys_tty_config",   CAP_SYS_TTY_CONFIG   },
-	{ "mknod",            CAP_MKNOD            },
-	{ "lease",            CAP_LEASE            },
-#ifdef CAP_AUDIT_READ
-	{ "audit_read",       CAP_AUDIT_READ       },
-#endif
-#ifdef CAP_AUDIT_WRITE
-	{ "audit_write",      CAP_AUDIT_WRITE      },
-#endif
-#ifdef CAP_AUDIT_CONTROL
-	{ "audit_control",    CAP_AUDIT_CONTROL    },
-#endif
-	{ "setfcap",          CAP_SETFCAP          },
-	{ "mac_override",     CAP_MAC_OVERRIDE     },
-	{ "mac_admin",        CAP_MAC_ADMIN        },
-#ifdef CAP_SYSLOG
-	{ "syslog",           CAP_SYSLOG           },
-#endif
-#ifdef CAP_WAKE_ALARM
-	{ "wake_alarm",       CAP_WAKE_ALARM       },
-#endif
-#ifdef CAP_BLOCK_SUSPEND
-	{ "block_suspend",    CAP_BLOCK_SUSPEND    },
-#endif
+	{ "chown",              CAP_CHOWN              },
+	{ "dac_override",       CAP_DAC_OVERRIDE       },
+	{ "dac_read_search",    CAP_DAC_READ_SEARCH    },
+	{ "fowner",             CAP_FOWNER             },
+	{ "fsetid",             CAP_FSETID             },
+	{ "kill",               CAP_KILL               },
+	{ "setgid",             CAP_SETGID             },
+	{ "setuid",             CAP_SETUID             },
+	{ "setpcap",            CAP_SETPCAP            },
+	{ "linux_immutable",    CAP_LINUX_IMMUTABLE    },
+	{ "net_bind_service",   CAP_NET_BIND_SERVICE   },
+	{ "net_broadcast",      CAP_NET_BROADCAST      },
+	{ "net_admin",          CAP_NET_ADMIN          },
+	{ "net_raw",            CAP_NET_RAW            },
+	{ "ipc_lock",           CAP_IPC_LOCK           },
+	{ "ipc_owner",          CAP_IPC_OWNER          },
+	{ "sys_module",         CAP_SYS_MODULE         },
+	{ "sys_rawio",          CAP_SYS_RAWIO          },
+	{ "sys_chroot",         CAP_SYS_CHROOT         },
+	{ "sys_ptrace",         CAP_SYS_PTRACE         },
+	{ "sys_pacct",          CAP_SYS_PACCT          },
+	{ "sys_admin",          CAP_SYS_ADMIN          },
+	{ "sys_boot",           CAP_SYS_BOOT           },
+	{ "sys_nice",           CAP_SYS_NICE           },
+	{ "sys_resource",       CAP_SYS_RESOURCE       },
+	{ "sys_time",           CAP_SYS_TIME           },
+	{ "sys_tty_config",     CAP_SYS_TTY_CONFIG     },
+	{ "mknod",              CAP_MKNOD              },
+	{ "lease",              CAP_LEASE              },
+	{ "audit_write",        CAP_AUDIT_WRITE        },
+	{ "audit_control",      CAP_AUDIT_CONTROL      },
+	{ "setfcap",            CAP_SETFCAP            },
+	{ "mac_override",       CAP_MAC_OVERRIDE       },
+	{ "mac_admin",          CAP_MAC_ADMIN          },
+	{ "syslog",             CAP_SYSLOG             },
+	{ "wake_alarm",         CAP_WAKE_ALARM         },
+	{ "block_suspend",      CAP_BLOCK_SUSPEND      },
+	{ "audit_read",         CAP_AUDIT_READ         },
+	{ "perfmon",            CAP_PERFMON            },
+	{ "bpf",                CAP_BPF                },
+	{ "checkpoint_restore", CAP_CHECKPOINT_RESTORE },
 #endif
 };
 
@@ -649,8 +640,8 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 		{ 0,                  0,                   NULL,                                             NULL,                         NULL,    0,                                               NULL, 0 }
 	};
 
-	bool has_cap_net_admin = in_caplist(CAP_NET_ADMIN, &conf->caps);
-	for (i = 0; default_mounts[i].match_mask; i++) {
+        bool has_cap_net_admin = lxc_wants_cap(CAP_NET_ADMIN, conf);
+        for (i = 0; default_mounts[i].match_mask; i++) {
 		__do_free char *destination = NULL, *source = NULL;
 		int saved_errno;
 		unsigned long mflags;
