@@ -85,6 +85,18 @@
 #define CAP_AUDIT_READ 37
 #endif
 
+#ifndef CAP_PERFMON
+#define CAP_PERFMON 38
+#endif
+
+#ifndef CAP_BPF
+#define CAP_BPF 39
+#endif
+
+#ifndef CAP_CHECKPOINT_RESTORE
+#define CAP_CHECKPOINT_RESTORE 40
+#endif
+
 /* prctl */
 #ifndef PR_CAPBSET_READ
 #define PR_CAPBSET_READ 23
