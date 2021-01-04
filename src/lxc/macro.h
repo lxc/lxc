@@ -49,6 +49,14 @@
 #define CAP_SYS_ADMIN 21
 #endif
 
+#ifndef CAP_AUDIT_WRITE
+#define CAP_AUDIT_WRITE 29
+#endif
+
+#ifndef CAP_AUDIT_CONTROL
+#define CAP_AUDIT_CONTROL 30
+#endif
+
 #ifndef CAP_SETFCAP
 #define CAP_SETFCAP 31
 #endif
@@ -59,6 +67,22 @@
 
 #ifndef CAP_MAC_ADMIN
 #define CAP_MAC_ADMIN 33
+#endif
+
+#ifndef CAP_SYSLOG
+#define CAP_SYSLOG 34
+#endif
+
+#ifndef CAP_WAKE_ALARM
+#define CAP_WAKE_ALARM 35
+#endif
+
+#ifndef CAP_BLOCK_SUSPEND
+#define CAP_BLOCK_SUSPEND 36
+#endif
+
+#ifndef CAP_AUDIT_READ
+#define CAP_AUDIT_READ 37
 #endif
 
 /* prctl */
