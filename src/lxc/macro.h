@@ -37,6 +37,14 @@
 #endif
 
 /* capabilities */
+#ifndef CAP_SETGID
+#define CAP_SETGID 6
+#endif
+
+#ifndef CAP_SETUID
+#define CAP_SETUID 7
+#endif
+
 #ifndef CAP_SYS_ADMIN
 #define CAP_SYS_ADMIN 21
 #endif
@@ -51,14 +59,6 @@
 
 #ifndef CAP_MAC_ADMIN
 #define CAP_MAC_ADMIN 33
-#endif
-
-#ifndef CAP_SETUID
-#define CAP_SETUID 7
-#endif
-
-#ifndef CAP_SETGID
-#define CAP_SETGID 6
 #endif
 
 /* prctl */
