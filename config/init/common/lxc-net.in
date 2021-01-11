@@ -115,10 +115,9 @@ start() {
         LXC_DOMAIN_ARG="-s $LXC_DOMAIN -S /$LXC_DOMAIN/"
     fi
 
-    LXC_DHCP_CONFILE_ARG=""
-    if [ -n "$LXC_DHCP_CONFILE" ]; then
-        LXC_DHCP_CONFILE_ARG="--conf-file=${LXC_DHCP_CONFILE}"
-    fi
+    # lxc's dnsmasq should be hermetic and not read `/etc/dnsmasq.conf` (which
+    # it does by default if `--conf-file` is not present
+    LXC_DHCP_CONFILE_ARG="--conf-file=${LXC_DHCP_CONFILE:-/dev/null}"
 
     # https://lists.linuxcontainers.org/pipermail/lxc-devel/2014-October/010561.html
     for DNSMASQ_USER in lxc-dnsmasq dnsmasq nobody
