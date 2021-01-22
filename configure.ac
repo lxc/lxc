@@ -312,6 +312,14 @@ AM_COND_IF([ENABLE_SECCOMP],
 		AC_CHECK_LIB([seccomp], [seccomp_init],[],[AC_MSG_ERROR([You must install the seccomp development package in order to compile lxc])])
 		AC_SUBST([SECCOMP_LIBS], [-lseccomp])
 		])
+	# HAVE_SCMP_FILTER_CTX=1 will tell us we have libseccomp api >= 1.0.0
+	OLD_CFLAGS="$CFLAGS"
+	CFLAGS="$CFLAGS $SECCOMP_CFLAGS"
+	AC_CHECK_TYPES([scmp_filter_ctx], [], [], [[#include <seccomp.h>]])
+	AC_CHECK_DECLS([seccomp_notify_fd], [], [], [[#include <seccomp.h>]])
+	AC_CHECK_TYPES([struct seccomp_notif_sizes], [], [], [[#include <seccomp.h>]])
+	AC_CHECK_DECLS([seccomp_syscall_resolve_name_arch], [], [], [[#include <seccomp.h>]])
+	CFLAGS="$OLD_CFLAGS"
 	])
 
 AC_MSG_CHECKING(for static libcap)
@@ -358,15 +366,6 @@ AM_COND_IF([ENABLE_CAP],
         # Test whether we support getting file capabilities via cap_get_file().
         AC_CHECK_LIB(cap,cap_get_file, AC_DEFINE(LIBCAP_SUPPORTS_FILE_CAPABILITIES,1,[Have cap_get_file]),[],[])
         AC_SUBST([CAP_LIBS], [-lcap])])
-
-# HAVE_SCMP_FILTER_CTX=1 will tell us we have libseccomp api >= 1.0.0
-OLD_CFLAGS="$CFLAGS"
-CFLAGS="$CFLAGS $SECCOMP_CFLAGS"
-AC_CHECK_TYPES([scmp_filter_ctx], [], [], [[#include <seccomp.h>]])
-AC_CHECK_DECLS([seccomp_notify_fd], [], [], [[#include <seccomp.h>]])
-AC_CHECK_TYPES([struct seccomp_notif_sizes], [], [], [[#include <seccomp.h>]])
-AC_CHECK_DECLS([seccomp_syscall_resolve_name_arch], [], [], [[#include <seccomp.h>]])
-CFLAGS="$OLD_CFLAGS"
 
 AC_CHECK_HEADERS([linux/bpf.h], [
 	AC_CHECK_TYPES([struct bpf_cgroup_dev_ctx], [], [], [[#include <linux/bpf.h>]])
