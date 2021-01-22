@@ -35,7 +35,7 @@
 #include "memory_utils.h"
 #include "network.h"
 #include "parse.h"
-#include "storage.h"
+#include "storage/storage.h"
 #include "utils.h"
 
 #if HAVE_SYS_PERSONALITY_H
