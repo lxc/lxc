@@ -278,9 +278,14 @@ if test "$enable_openssl" = "auto" ; then
 fi
 AM_CONDITIONAL([ENABLE_OPENSSL], [test "x$enable_openssl" = "xyes"])
 
+AC_ARG_ENABLE([static-binaries],
+	[AS_HELP_STRING([--enable-static-binaries], [build all binaries statically [default=no]])],
+	[enable_static_binaries=$enableval], [enable_static_binaries=no])
+AM_CONDITIONAL([ENABLE_STATIC_BINARIES], [test "x$enable_static_binaries" = "xyes"])
+
 AM_COND_IF([ENABLE_OPENSSL],
 	[AC_CHECK_HEADER([openssl/engine.h],[],[AC_MSG_ERROR([You must install the OpenSSL development package in order to compile lxc])])
-	AC_SUBST([OPENSSL_LIBS], '-lssl -lcrypto')])
+	AM_COND_IF([ENABLE_STATIC_BINARIES], [AC_SUBST([OPENSSL_LIBS], '-lssl -lcrypto -ldl')], [AC_SUBST([OPENSSL_LIBS], '-lssl -lcrypto')])])
 
 # SELinux
 AC_ARG_ENABLE([selinux],
@@ -432,6 +437,11 @@ AC_ARG_ENABLE([commands],
 	[AS_HELP_STRING([--enable-commands], [build the liblxc commands [default=yes]])],
 	[enable_commands=$enableval], [enable_commands=yes])
 AM_CONDITIONAL([ENABLE_COMMANDS], [test "x$enable_commands" = "xyes"])
+
+AC_ARG_ENABLE([static-binaries],
+	[AS_HELP_STRING([--enable-static-binaries], [build all binaries statically [default=no]])],
+	[enable_static_binaries=$enableval], [enable_static_binaries=no])
+AM_CONDITIONAL([ENABLE_STATIC_BINARIES], [test "x$enable_static_binaries" = "xyes"])
 
 # Build with ASAN commands
 AC_ARG_ENABLE([asan],
@@ -1039,6 +1049,8 @@ Binaries
    - lxc-monitord:      $enable_commands
    - lxc-user-nic:      $enable_commands
    - lxc-usernsexec:    $enable_commands
+
+ - static binaries: $enable_static_binaries
 
 Environment:
  - compiler: $CC
