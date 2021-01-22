@@ -1832,7 +1832,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	}
 
 	if (!wants_force_mount) {
-		wants_force_mount = lxc_wants_cap(CAP_SYS_ADMIN, handler->conf);
+		wants_force_mount = !lxc_wants_cap(CAP_SYS_ADMIN, handler->conf);
 
 		/*
 		 * Most recent distro versions currently have init system that
@@ -1871,13 +1871,21 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		return cg_mount_cgroup_full(type, ops->unified, cgroup_root) == 0;
 	}
 
-	/* mount tmpfs */
-	ret = safe_mount_beneath(root, NULL, DEFAULT_CGROUP_MOUNTPOINT, "tmpfs",
+	/*
+	 * Mount a tmpfs over DEFAULT_CGROUP_MOUNTPOINT. Note that we're
+	 * relying on RESOLVE_BENEATH so we need to skip the leading "/" in the
+	 * DEFAULT_CGROUP_MOUNTPOINT define.
+	 */
+	ret = safe_mount_beneath(root, NULL,
+				 DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
+				 "tmpfs",
 				 MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,
 				 "size=10240k,mode=755");
 	if (ret < 0) {
 		if (errno != ENOSYS)
-			return false;
+			return log_error_errno(false, errno,
+					       "Failed to mount tmpfs on %s",
+					       DEFAULT_CGROUP_MOUNTPOINT);
 
 		ret = safe_mount(NULL, cgroup_root, "tmpfs",
 				 MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,

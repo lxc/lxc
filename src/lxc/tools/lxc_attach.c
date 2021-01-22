@@ -23,7 +23,9 @@
 #include "config.h"
 #include "confile.h"
 #include "log.h"
+#ifdef ENFORCE_MEMFD_REXEC
 #include "rexec.h"
+#endif
 #include "utils.h"
 
 lxc_log_define(lxc_attach, lxc);

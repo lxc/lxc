@@ -523,11 +523,6 @@ static inline char *apparmor_namespace(const char *ctname, const char *lxcpath)
 	return full;
 }
 
-/* TODO: This is currently run only in the context of a constructor (via the
- * initial lsm_init() called due to its __attribute__((constructor)), so we
- * do not have ERROR/... macros available, so there are some fprintf(stderr)s
- * in there.
- */
 static bool check_apparmor_parser_version(struct lsm_ops *ops)
 {
 	int major = 0, minor = 0, micro = 0, ret = 0;
