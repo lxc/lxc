@@ -35,7 +35,7 @@
 
 #include "af_unix.h"
 #include "caps.h"
-#include "cgroup.h"
+#include "cgroups/cgroup.h"
 #include "conf.h"
 #include "config.h"
 #include "confile.h"
@@ -54,7 +54,7 @@
 #include "process_utils.h"
 #include "ringbuf.h"
 #include "start.h"
-#include "storage.h"
+#include "storage/storage.h"
 #include "storage/overlay.h"
 #include "syscall_wrappers.h"
 #include "terminal.h"
