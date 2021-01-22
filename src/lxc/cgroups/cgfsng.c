@@ -1831,7 +1831,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	}
 
 	if (!wants_force_mount) {
-		wants_force_mount = lxc_wants_cap(CAP_SYS_ADMIN, handler->conf);
+		wants_force_mount = !lxc_wants_cap(CAP_SYS_ADMIN, handler->conf);
 
 		/*
 		 * Most recent distro versions currently have init system that

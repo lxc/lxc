@@ -509,9 +509,9 @@ static inline bool lxc_wants_cap(int cap, struct lxc_conf *conf)
 		return false;
 
 	if (!lxc_list_empty(&conf->keepcaps))
-		return !in_caplist(cap, &conf->keepcaps);
+		return in_caplist(cap, &conf->keepcaps);
 
-	return in_caplist(cap, &conf->caps);
+	return !in_caplist(cap, &conf->caps);
 }
 
 __hidden extern int setup_sysctl_parameters(struct lxc_list *sysctls);
