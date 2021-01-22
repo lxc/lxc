@@ -1583,159 +1583,177 @@ init_lxc_SOURCES = cmd/lxc_init.c \
 		   string_utils.c string_utils.h
 init_lxc_LDFLAGS = -pthread
 
-lxc_monitord_SOURCES = cmd/lxc_monitord.c \
-		       af_unix.c af_unix.h \
-		       caps.c caps.h \
-		       cgroups/cgfsng.c \
-		       cgroups/cgroup.c cgroups/cgroup.h \
-		       cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
-		       cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
-		       commands.c commands.h \
-		       commands_utils.c commands_utils.h \
-		       conf.c conf.h \
-		       confile.c confile.h \
-		       confile_utils.c confile_utils.h \
-		       error.c error.h \
-		       file_utils.c file_utils.h \
-		       ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
-		       initutils.c initutils.h \
-		       log.c log.h \
-		       lxclock.c lxclock.h \
-		       mainloop.c mainloop.h \
-		       monitor.c monitor.h \
-		       namespace.c namespace.h \
-		       network.c network.h \
-		       nl.c nl.h \
-		       parse.c parse.h \
-		       process_utils.c process_utils.h \
-		       ringbuf.c ringbuf.h \
-		       start.c start.h \
-		       state.c state.h \
-		       storage/btrfs.c storage/btrfs.h \
-		       storage/dir.c storage/dir.h \
-		       storage/loop.c storage/loop.h \
-		       storage/lvm.c storage/lvm.h \
-		       storage/nbd.c storage/nbd.h \
-		       storage/overlay.c storage/overlay.h \
-		       storage/rbd.c storage/rbd.h \
-		       storage/rsync.c storage/rsync.h \
-		       storage/storage.c storage/storage.h \
-		       storage/storage_utils.c storage/storage_utils.h \
-		       storage/zfs.c storage/zfs.h \
-		       string_utils.c string_utils.h \
-		       sync.c sync.h \
-		       syscall_numbers.h \
-		       terminal.c terminal.h \
-		       utils.c utils.h \
-		       uuid.c uuid.h \
-		       $(LSM_SOURCES)
+lxc_monitord_SOURCES = cmd/lxc_monitord.c
+
+if ENABLE_STATIC_BINARIES
+lxc_monitord_SOURCES += $(liblxc_la_SOURCES)
+lxc_monitord_LDFLAGS = -all-static -pthread
+else
+lxc_monitord_SOURCES += af_unix.c af_unix.h \
+			caps.c caps.h \
+			cgroups/cgfsng.c \
+			cgroups/cgroup.c cgroups/cgroup.h \
+			cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+			cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
+			commands.c commands.h \
+			commands_utils.c commands_utils.h \
+			conf.c conf.h \
+			confile.c confile.h \
+			confile_utils.c confile_utils.h \
+			error.c error.h \
+			file_utils.c file_utils.h \
+			../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
+			initutils.c initutils.h \
+			log.c log.h \
+			lxclock.c lxclock.h \
+			mainloop.c mainloop.h \
+			monitor.c monitor.h \
+			namespace.c namespace.h \
+			network.c network.h \
+			nl.c nl.h \
+			parse.c parse.h \
+			process_utils.c process_utils.h \
+			ringbuf.c ringbuf.h \
+			start.c start.h \
+			state.c state.h \
+			storage/btrfs.c storage/btrfs.h \
+			storage/dir.c storage/dir.h \
+			storage/loop.c storage/loop.h \
+			storage/lvm.c storage/lvm.h \
+			storage/nbd.c storage/nbd.h \
+			storage/overlay.c storage/overlay.h \
+			storage/rbd.c storage/rbd.h \
+			storage/rsync.c storage/rsync.h \
+			storage/storage.c storage/storage.h \
+			storage/storage_utils.c storage/storage_utils.h \
+			storage/zfs.c storage/zfs.h \
+			string_utils.c string_utils.h \
+			sync.c sync.h \
+			syscall_numbers.h \
+			terminal.c terminal.h \
+			utils.c utils.h \
+			uuid.c uuid.h \
+			$(LSM_SOURCES)
 if ENABLE_SECCOMP
 lxc_monitord_SOURCES += seccomp.c lxcseccomp.h
 endif
+endif
 
-lxc_user_nic_SOURCES = cmd/lxc_user_nic.c \
-		       af_unix.c af_unix.h \
-		       caps.c caps.h \
-		       cgroups/cgfsng.c \
-		       cgroups/cgroup.c cgroups/cgroup.h \
-		       cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
-		       cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
-		       commands.c commands.h \
-		       commands_utils.c commands_utils.h \
-		       conf.c conf.h \
-		       confile.c confile.h \
-		       confile_utils.c confile_utils.h \
-		       error.c error.h \
-		       file_utils.c file_utils.h \
-		       ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
-		       initutils.c initutils.h \
-		       log.c log.h \
-		       lxclock.c lxclock.h \
-		       mainloop.c mainloop.h \
-		       memory_utils.h \
-		       monitor.c monitor.h \
-		       namespace.c namespace.h \
-		       network.c network.h \
-		       nl.c nl.h \
-		       parse.c parse.h \
-		       process_utils.c process_utils.h \
-		       ringbuf.c ringbuf.h \
-		       start.c start.h \
-		       state.c state.h \
-		       storage/btrfs.c storage/btrfs.h \
-		       storage/dir.c storage/dir.h \
-		       storage/loop.c storage/loop.h \
-		       storage/lvm.c storage/lvm.h \
-		       storage/nbd.c storage/nbd.h \
-		       storage/overlay.c storage/overlay.h \
-		       storage/rbd.c storage/rbd.h \
-		       storage/rsync.c storage/rsync.h \
-		       storage/storage.c storage/storage.h \
-		       storage/storage_utils.c storage/storage_utils.h \
-		       storage/zfs.c storage/zfs.h \
-		       string_utils.c string_utils.h \
-		       sync.c sync.h \
-		       syscall_numbers.h \
-		       syscall_wrappers.h \
-		       terminal.c terminal.h \
-		       utils.c utils.h \
-		       uuid.c uuid.h \
-		       $(LSM_SOURCES)
+lxc_user_nic_SOURCES = cmd/lxc_user_nic.c
+
+if ENABLE_STATIC_BINARIES
+lxc_user_nic_SOURCES += $(liblxc_la_SOURCES)
+lxc_user_nic_LDFLAGS = -all-static -pthread
+else
+lxc_user_nic_SOURCES += af_unix.c af_unix.h \
+			caps.c caps.h \
+			cgroups/cgfsng.c \
+			cgroups/cgroup.c cgroups/cgroup.h \
+			cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+			cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
+			commands.c commands.h \
+			commands_utils.c commands_utils.h \
+			conf.c conf.h \
+			confile.c confile.h \
+			confile_utils.c confile_utils.h \
+			error.c error.h \
+			file_utils.c file_utils.h \
+			../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
+			initutils.c initutils.h \
+			log.c log.h \
+			lxclock.c lxclock.h \
+			mainloop.c mainloop.h \
+			memory_utils.h \
+			monitor.c monitor.h \
+			namespace.c namespace.h \
+			network.c network.h \
+			nl.c nl.h \
+			parse.c parse.h \
+			process_utils.c process_utils.h \
+			ringbuf.c ringbuf.h \
+			start.c start.h \
+			state.c state.h \
+			storage/btrfs.c storage/btrfs.h \
+			storage/dir.c storage/dir.h \
+			storage/loop.c storage/loop.h \
+			storage/lvm.c storage/lvm.h \
+			storage/nbd.c storage/nbd.h \
+			storage/overlay.c storage/overlay.h \
+			storage/rbd.c storage/rbd.h \
+			storage/rsync.c storage/rsync.h \
+			storage/storage.c storage/storage.h \
+			storage/storage_utils.c storage/storage_utils.h \
+			storage/zfs.c storage/zfs.h \
+			string_utils.c string_utils.h \
+			sync.c sync.h \
+			syscall_numbers.h \
+			syscall_wrappers.h \
+			terminal.c terminal.h \
+			utils.c utils.h \
+			uuid.c uuid.h \
+			$(LSM_SOURCES)
 if ENABLE_SECCOMP
 lxc_user_nic_SOURCES += seccomp.c lxcseccomp.h
 endif
+endif
 
-lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c \
-			 af_unix.c af_unix.h \
-			 caps.c caps.h \
-			 cgroups/cgfsng.c \
-			 cgroups/cgroup.c cgroups/cgroup.h \
-			 cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
-			 cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
-			 commands.c commands.h \
-			 commands_utils.c commands_utils.h \
-			 conf.c conf.h \
-			 confile.c confile.h \
-			 confile_utils.c confile_utils.h \
-			 error.c error.h \
-			 file_utils.c file_utils.h \
-			 ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
-			 initutils.c initutils.h \
-			 list.h \
-			 log.c log.h \
-			 lxclock.c lxclock.h \
-			 macro.h \
-			 mainloop.c mainloop.h \
-			 memory_utils.h \
-			 monitor.c monitor.h \
-			 namespace.c namespace.h \
-			 network.c network.h \
-			 nl.c nl.h \
-			 parse.c parse.h \
-			 process_utils.c process_utils.h \
-			 ringbuf.c ringbuf.h \
-			 start.c start.h \
-			 state.c state.h \
-			 storage/btrfs.c storage/btrfs.h \
-			 storage/dir.c storage/dir.h \
-			 storage/loop.c storage/loop.h \
-			 storage/lvm.c storage/lvm.h \
-			 storage/nbd.c storage/nbd.h \
-			 storage/overlay.c storage/overlay.h \
-			 storage/rbd.c storage/rbd.h \
-			 storage/rsync.c storage/rsync.h \
-			 storage/storage.c storage/storage.h \
-			 storage/storage_utils.c storage/storage_utils.h \
-			 storage/zfs.c storage/zfs.h \
-			 string_utils.c string_utils.h \
-			 sync.c sync.h \
-			 syscall_wrappers.h \
-			 terminal.c terminal.h \
-			 utils.c utils.h \
-			 uuid.c uuid.h \
-			 $(LSM_SOURCES)
+lxc_usernsexec_SOURCES = cmd/lxc_usernsexec.c
+
+if ENABLE_STATIC_BINARIES
+lxc_usernsexec_SOURCES += $(liblxc_la_SOURCES)
+lxc_usernsexec_LDFLAGS = -all-static -pthread
+else
+lxc_usernsexec_SOURCES += af_unix.c af_unix.h \
+			  caps.c caps.h \
+			  cgroups/cgfsng.c \
+			  cgroups/cgroup.c cgroups/cgroup.h \
+			  cgroups/cgroup2_devices.c cgroups/cgroup2_devices.h \
+			  cgroups/cgroup_utils.c cgroups/cgroup_utils.h \
+			  commands.c commands.h \
+			  commands_utils.c commands_utils.h \
+			  conf.c conf.h \
+			  confile.c confile.h \
+			  confile_utils.c confile_utils.h \
+			  error.c error.h \
+			  file_utils.c file_utils.h \
+			  ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
+			  initutils.c initutils.h \
+			  list.h \
+			  log.c log.h \
+			  lxclock.c lxclock.h \
+			  macro.h \
+			  mainloop.c mainloop.h \
+			  memory_utils.h \
+			  monitor.c monitor.h \
+			  namespace.c namespace.h \
+			  network.c network.h \
+			  nl.c nl.h \
+			  parse.c parse.h \
+			  process_utils.c process_utils.h \
+			  ringbuf.c ringbuf.h \
+			  start.c start.h \
+			  state.c state.h \
+			  storage/btrfs.c storage/btrfs.h \
+			  storage/dir.c storage/dir.h \
+			  storage/loop.c storage/loop.h \
+			  storage/lvm.c storage/lvm.h \
+			  storage/nbd.c storage/nbd.h \
+			  storage/overlay.c storage/overlay.h \
+			  storage/rbd.c storage/rbd.h \
+			  storage/rsync.c storage/rsync.h \
+			  storage/storage.c storage/storage.h \
+			  storage/storage_utils.c storage/storage_utils.h \
+			  storage/zfs.c storage/zfs.h \
+			  string_utils.c string_utils.h \
+			  sync.c sync.h \
+			  syscall_wrappers.h \
+			  terminal.c terminal.h \
+			  utils.c utils.h \
+			  uuid.c uuid.h \
+			  $(LSM_SOURCES)
 if ENABLE_SECCOMP
 lxc_usernsexec_SOURCES += seccomp.c lxcseccomp.h
+endif
 endif
 endif
 
