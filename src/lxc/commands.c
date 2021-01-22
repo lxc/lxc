@@ -17,7 +17,7 @@
 #include <unistd.h>
 
 #include "af_unix.h"
-#include "cgroup.h"
+#include "cgroups/cgroup.h"
 #include "cgroups/cgroup2_devices.h"
 #include "commands.h"
 #include "commands_utils.h"
