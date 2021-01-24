@@ -173,7 +173,7 @@ out1:
 	return ret;
 }
 
-int main()
+int main(int argc, char *argv[])
 {
 	int ret = EXIT_FAILURE;
 

@@ -588,7 +588,7 @@ static bool file_is_yes(const char *path)
 	return rd >= 4 && strncmp(buf, "yes\n", 4) == 0;
 }
 
-static bool apparmor_can_stack()
+static bool apparmor_can_stack(void)
 {
 	int major, minor, scanned;
 	FILE *f;

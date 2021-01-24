@@ -509,7 +509,7 @@ static int do_clone_task(struct lxc_container *c, enum task task, int flags,
 	return ret;
 }
 
-static void free_mnts()
+static void free_mnts(void)
 {
 	unsigned int i;
 	struct mnts *n = NULL;
