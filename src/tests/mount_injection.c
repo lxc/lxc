@@ -371,13 +371,13 @@ out:
 	return ret;
 }
 
-static int do_priv_container_test()
+static int do_priv_container_test(void)
 {
 	const char *config_items[] = {"lxc.mount.auto", "shmounts:/tmp/mount_injection_test", NULL};
 	return perform_container_test(NAME"privileged", config_items);
 }
 
-static int do_unpriv_container_test()
+static int do_unpriv_container_test(void)
 {
 	const char *config_items[] = {
 		"lxc.mount.auto", "shmounts:/tmp/mount_injection_test",

@@ -82,7 +82,7 @@ static int lxc_log_priority_to_syslog(int priority)
 	return LOG_NOTICE;
 }
 
-static const char *lxc_log_get_container_name()
+static const char *lxc_log_get_container_name(void)
 {
 #ifndef NO_LXC_CONF
 	if (current_config && !log_vmname)
@@ -814,7 +814,7 @@ inline const char *lxc_log_get_prefix(void)
 	return log_prefix;
 }
 
-inline void lxc_log_options_no_override()
+inline void lxc_log_options_no_override(void)
 {
 	lxc_quiet_specified = 1;
 	lxc_loglevel_specified = 1;
