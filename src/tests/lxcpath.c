@@ -33,7 +33,7 @@
 	fprintf(stderr, "%d: %s\n", __LINE__, x); \
 } while (0)
 
-int main()
+int main(int argc, char *argv[])
 {
 	struct lxc_container *c;
 	const char *p1, *p2;

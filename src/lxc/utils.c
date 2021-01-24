@@ -238,7 +238,7 @@ int mkdir_p(const char *dir, mode_t mode)
 	return 0;
 }
 
-char *get_rundir()
+char *get_rundir(void)
 {
 	__do_free char *rundir = NULL;
 	char *static_rundir;
