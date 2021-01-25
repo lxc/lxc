@@ -31,6 +31,7 @@ enum {
 	LXC_ATTACH_NO_NEW_PRIVS		 = 0x00040000, /*!< PR_SET_NO_NEW_PRIVS */
 	LXC_ATTACH_TERMINAL              = 0x00080000, /*!< Allocate new terminal for attached process. */
 	LXC_ATTACH_LSM_LABEL             = 0x00100000, /*!< Set custom LSM label specified in @lsm_label. */
+	LXC_ATTACH_SETGROUPS             = 0x00200000, /*!< Set additional group ids specified in @groups. */
 
 	/* We have 16 bits for things that are on by default and 16 bits that
 	 * are off by default, that should be sufficient to keep binary
@@ -93,12 +94,6 @@ typedef struct lxc_attach_options_t {
 	 */
 	gid_t gid;
 
-	/*! The additional group GIDs to run with.
-	 *
-	 * If unset all additional groups are dropped.
-	 */
-	lxc_groups_t groups;
-
 	/*! Environment policy */
 	lxc_attach_env_policy_t env_policy;
 
@@ -128,6 +123,13 @@ typedef struct lxc_attach_options_t {
 
 	/*! lsm label to set. */
 	char *lsm_label;
+
+	/*! The additional group GIDs to run with.
+	 *
+	 * If unset all additional groups are dropped.
+	 */
+	lxc_groups_t groups;
+
 } lxc_attach_options_t;
 
 /*! Default attach options to use */
@@ -139,7 +141,6 @@ typedef struct lxc_attach_options_t {
 		/* .initial_cwd = */    NULL,                                  \
 		/* .uid = */            (uid_t)-1,                             \
 		/* .gid = */            (gid_t)-1,                             \
-		/* .groups = */         { 0, NULL},                            \
 		/* .env_policy = */     LXC_ATTACH_KEEP_ENV,                   \
 		/* .extra_env_vars = */ NULL,                                  \
 		/* .extra_keep_env = */ NULL,                                  \
