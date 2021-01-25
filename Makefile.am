@@ -1,6 +1,8 @@
 # Makefile.am
 
 ACLOCAL_AMFLAGS = -I config
+AM_CFLAGS += $(PTHREAD_CFLAGS)
+AM_LDFLAGS += $(PTHREAD_LIBS)
 
 LIBTOOL_DEPS = @LIBTOOL_DEPS@
 SUBDIRS = config coccinelle src templates doc hooks

@@ -199,25 +199,25 @@ if ENFORCE_MEMFD_REXEC
 liblxc_la_SOURCES += rexec.c rexec.h
 endif
 
-AM_CFLAGS = -DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
-	    -DLXCPATH=\"$(LXCPATH)\" \
-	    -DLXC_GLOBAL_CONF=\"$(LXC_GLOBAL_CONF)\" \
-	    -DLXCINITDIR=\"$(LXCINITDIR)\" \
-	    -DLIBEXECDIR=\"$(LIBEXECDIR)\" \
-	    -DLXCTEMPLATEDIR=\"$(LXCTEMPLATEDIR)\" \
-	    -DLXCTEMPLATECONFIG=\"$(LXCTEMPLATECONFIG)\" \
-	    -DLOGPATH=\"$(LOGPATH)\" \
-	    -DLXC_DEFAULT_CONFIG=\"$(LXC_DEFAULT_CONFIG)\" \
-	    -DLXC_USERNIC_DB=\"$(LXC_USERNIC_DB)\" \
-	    -DLXC_USERNIC_CONF=\"$(LXC_USERNIC_CONF)\" \
-	    -DDEFAULT_CGROUP_PATTERN=\"$(DEFAULT_CGROUP_PATTERN)\" \
-	    -DRUNTIME_PATH=\"$(RUNTIME_PATH)\" \
-	    -DSBINDIR=\"$(SBINDIR)\" \
-	    -DAPPARMOR_CACHE_DIR=\"$(APPARMOR_CACHE_DIR)\" \
-	    -I $(top_srcdir)/src \
-	    -I $(top_srcdir)/src/lxc \
-	    -I $(top_srcdir)/src/lxc/storage \
-	    -I $(top_srcdir)/src/lxc/cgroups
+AM_CFLAGS += -DLXCROOTFSMOUNT=\"$(LXCROOTFSMOUNT)\" \
+	     -DLXCPATH=\"$(LXCPATH)\" \
+	     -DLXC_GLOBAL_CONF=\"$(LXC_GLOBAL_CONF)\" \
+	     -DLXCINITDIR=\"$(LXCINITDIR)\" \
+	     -DLIBEXECDIR=\"$(LIBEXECDIR)\" \
+	     -DLXCTEMPLATEDIR=\"$(LXCTEMPLATEDIR)\" \
+	     -DLXCTEMPLATECONFIG=\"$(LXCTEMPLATECONFIG)\" \
+	     -DLOGPATH=\"$(LOGPATH)\" \
+	     -DLXC_DEFAULT_CONFIG=\"$(LXC_DEFAULT_CONFIG)\" \
+	     -DLXC_USERNIC_DB=\"$(LXC_USERNIC_DB)\" \
+	     -DLXC_USERNIC_CONF=\"$(LXC_USERNIC_CONF)\" \
+	     -DDEFAULT_CGROUP_PATTERN=\"$(DEFAULT_CGROUP_PATTERN)\" \
+	     -DRUNTIME_PATH=\"$(RUNTIME_PATH)\" \
+	     -DSBINDIR=\"$(SBINDIR)\" \
+	     -DAPPARMOR_CACHE_DIR=\"$(APPARMOR_CACHE_DIR)\" \
+	     -I $(top_srcdir)/src \
+	     -I $(top_srcdir)/src/lxc \
+	     -I $(top_srcdir)/src/lxc/storage \
+	     -I $(top_srcdir)/src/lxc/cgroups
 if ENABLE_APPARMOR
 AM_CFLAGS += -DHAVE_APPARMOR
 endif
@@ -316,7 +316,7 @@ pkglibexec_PROGRAMS = lxc-monitord \
 		      lxc-user-nic
 endif
 
-AM_LDFLAGS = -Wl,-E
+AM_LDFLAGS += -Wl,-E
 
 if ENABLE_RPATH
 AM_LDFLAGS += -Wl,-rpath -Wl,$(libdir)
