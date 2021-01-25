@@ -1183,9 +1183,10 @@ static int set_config_init_gid(const char *key, const char *value,
 static int set_config_init_groups(const char *key, const char *value,
 				  struct lxc_conf *lxc_conf, void *data)
 {
-	char *value_dup, *token;
+	__do_free char *value_dup = NULL;
+	__do_free gid_t *init_groups = NULL;
+	char *token;
 	int num_groups = 0;
-	gid_t *init_groups;
 	int iter = 0;
 
 	if (lxc_config_value_empty(value))
@@ -1197,33 +1198,25 @@ static int set_config_init_groups(const char *key, const char *value,
 
 	lxc_iterate_parts(token, value_dup, ",") num_groups++;
 
-	if (num_groups == 0) {
-		free(value_dup);
+	if (num_groups == 0)
 		return clr_config_init_groups(key, lxc_conf, NULL);
-	}
 
 	init_groups = malloc(sizeof(gid_t) * num_groups);
-	if (!init_groups) {
-		free(value_dup);
+	if (!init_groups)
 		return -1;
-	}
 
 	strcpy(value_dup, value);
 	lxc_iterate_parts(token, value_dup, ",")
 	{
 		gid_t group;
-		if (lxc_safe_uint(token, &group) < 0) {
-			free(value_dup);
-			free(init_groups);
+		if (lxc_safe_uint(token, &group) < 0)
 			return -1;
-		}
 		init_groups[iter++] = group;
 	}
 
 	lxc_conf->init_groups.size = num_groups;
-	lxc_conf->init_groups.list = init_groups;
+	lxc_conf->init_groups.list = move_ptr(init_groups);
 
-	free(value_dup);
 	return 0;
 }
 
@@ -5037,8 +5030,7 @@ static inline int clr_config_init_gid(const char *key, struct lxc_conf *c,
 static inline int clr_config_init_groups(const char *key, struct lxc_conf *c,
 					 void *data)
 {
-	free(c->init_groups.list);
-	c->init_groups.list = NULL;
+	free_disarm(c->init_groups.list);
 	c->init_groups.size = 0;
 	return 0;
 }
