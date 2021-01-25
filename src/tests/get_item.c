@@ -141,13 +141,13 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if (!c->set_config_item(c, "lxc.init.groups", "10 20 foo 40")) {
-		printf("%d: failed to set init_groups\n", __LINE__);
+	if (!c->set_config_item(c, "lxc.init.groups", "10,20,foo,40")) {
+		printf("failed to set init_groups to '10,20,foo,40' as expected\n");
 	} else {
 		goto out;
 	}
 
-	if (!c->set_config_item(c, "lxc.init.groups", "10 20 30 40")) {
+	if (!c->set_config_item(c, "lxc.init.groups", "10,20,30,40")) {
 		fprintf(stderr, "%d: failed to set init_groups\n", __LINE__);
 		goto out;
 	}
@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
 			__LINE__, ret);
 		goto out;
 	}
-	ret = strcmp("10 20 30 40", v2);
+	ret = strcmp("10,20,30,40", v2);
 	printf("lxc.init_groups returned %d %s\n", ret, v2);
 	if (ret != 0) {
 		goto out;

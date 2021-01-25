@@ -1195,7 +1195,7 @@ static int set_config_init_groups(const char *key, const char *value,
 	if (!value_dup)
 		return -1;
 
-	lxc_iterate_parts(token, value_dup, " \t") num_groups++;
+	lxc_iterate_parts(token, value_dup, ",") num_groups++;
 
 	if (num_groups == 0) {
 		free(value_dup);
@@ -1209,7 +1209,7 @@ static int set_config_init_groups(const char *key, const char *value,
 	}
 
 	strcpy(value_dup, value);
-	lxc_iterate_parts(token, value_dup, " \t")
+	lxc_iterate_parts(token, value_dup, ",")
 	{
 		gid_t group;
 		if (lxc_safe_uint(token, &group) < 0) {
@@ -4342,7 +4342,7 @@ static int get_config_init_groups(const char *key, char *retv, int inlen,
 	}
 
 	for (int i = 0; i < c->init_groups.size; i++)
-		strprint(retv, inlen, "%s%d", (i > 0) ? " " : "",
+		strprint(retv, inlen, "%s%d", (i > 0) ? "," : "",
 			 c->init_groups.list[i]);
 
 	return fulllen;
