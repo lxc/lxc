@@ -3277,6 +3277,24 @@ int lxc_setup(struct lxc_handler *handler)
 	if (ret < 0)
 		return log_error(-1, "Failed to setup rootfs");
 
+	/* Create mountpoints for /proc and /sys. */
+	char path[PATH_MAX];
+	char *rootfs_path = lxc_conf->rootfs.path ? lxc_conf->rootfs.mount : "";
+
+	ret = snprintf(path, sizeof(path), "%s/proc", rootfs_path);
+	if (ret < 0 || (size_t)ret >= sizeof(path))
+		return log_error(-1, "Path to /proc too long");
+	ret = mkdir(path, 0755);
+	if (ret < 0 && errno != EEXIST)
+		return log_error_errno(-1, errno, "Failed to create \"/proc\" directory");
+
+	ret = snprintf(path, sizeof(path), "%s/sys", rootfs_path);
+	if (ret < 0 || (size_t)ret >= sizeof(path))
+		return log_error(-1, "Path to /sys too long");
+	ret = mkdir(path, 0755);
+	if (ret < 0 && errno != EEXIST)
+		return log_error_errno(-1, errno, "Failed to create \"/sys\" directory");
+
 	if (handler->nsfd[LXC_NS_UTS] == -EBADF) {
 		ret = setup_utsname(lxc_conf->utsname);
 		if (ret < 0)
@@ -3343,7 +3361,6 @@ int lxc_setup(struct lxc_handler *handler)
 	if (lxc_conf->is_execute) {
 		if (execveat_supported()) {
 			int fd;
-			char path[PATH_MAX];
 
 			ret = snprintf(path, PATH_MAX, SBINDIR "/init.lxc.static");
 			if (ret < 0 || ret >= PATH_MAX)
