@@ -404,7 +404,10 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 			goto err;
 		}
 
-		ret = snprintf(log, sizeof(log), "/sys/fs/cgroup/freezer/%s", freezer_relative);
+		if (pure_unified_layout(cgroup_ops))
+			ret = snprintf(log, sizeof(log), "/sys/fs/cgroup/%s", freezer_relative);
+		else
+			ret = snprintf(log, sizeof(log), "/sys/fs/cgroup/freezer/%s", freezer_relative);
 		if (ret < 0 || ret >= sizeof(log))
 			goto err;
 
