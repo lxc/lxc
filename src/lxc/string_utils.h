@@ -85,6 +85,16 @@ __hidden __attribute__((sentinel)) extern char *must_concat(size_t *len, const c
 __hidden __attribute__((sentinel)) extern char *must_make_path(const char *first, ...);
 __hidden __attribute__((sentinel)) extern char *must_append_path(char *first, ...);
 
+#define must_make_path_relative(__first__, ...)                                \
+	({                                                                     \
+		char *__ptr__;                                                 \
+		if (*__first__ == '/')                                         \
+			__ptr__ = must_make_path(".", __first__, __VA_ARGS__); \
+		else                                                           \
+			__ptr__ = must_make_path(__first__, __VA_ARGS__);      \
+		__ptr__;                                                       \
+	})
+
 /* Return copy of string @entry. Do not fail. */
 __hidden extern char *must_copy_string(const char *entry);
 
