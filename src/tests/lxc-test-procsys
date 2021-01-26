@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# lxc: linux Container library
+
+# Authors:
+# Motiejus Jakštys <motiejus@jakstys.lt>
+#
+# Ensure that when /proc and/or /sys do not exist in the container,
+# it is started successfully anyway.
+
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+set -ex
+FAIL() {
+	echo -n "Failed " >&2
+	echo "$*" >&2
+	lxc-destroy -n lxc-test-procsys -f
+	exit 1
+}
+
+lxc-destroy -n lxc-test-procsys -f || :
+lxc-create -t busybox -n lxc-test-procsys
+rmdir /var/lib/lxc/lxc-test-procsys/rootfs/{proc,sys}
+
+lxc-start -n lxc-test-procsys
+lxc-wait -n lxc-test-procsys -s RUNNING || FAIL "waiting for busybox container to run"
+
+lxc-attach -n lxc-test-procsys -- sh -c 'test -f /proc/version' || FAIL "/proc/version not found"
+lxc-attach -n lxc-test-procsys -- sh -c 'test -d /sys/fs' || FAIL "/sys/fs not found"
+
+lxc-destroy -n lxc-test-procsys -f
+exit 0
