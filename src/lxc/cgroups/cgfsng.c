@@ -3297,12 +3297,11 @@ static char *cg_unified_get_current_cgroup(bool relative)
 static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 			   bool unprivileged)
 {
-	__do_free char *subtree_path = NULL;
+	__do_close int cgroup_root_fd = -EBADF;
+	__do_free char *base_cgroup = NULL, *controllers_path = NULL;
 	int ret;
-	char *mountpoint;
 	char **delegatable;
 	struct hierarchy *new;
-	char *base_cgroup = NULL;
 
 	ret = unified_cgroup_hierarchy();
 	if (ret == -ENOMEDIUM)
@@ -3317,14 +3316,18 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 	if (!relative)
 		prune_init_scope(base_cgroup);
 
+	cgroup_root_fd = openat(-EBADF, DEFAULT_CGROUP_MOUNTPOINT,
+				O_NOCTTY | O_CLOEXEC | O_NOFOLLOW | O_DIRECTORY);
+	if (cgroup_root_fd < 0)
+		return -errno;
+
 	/*
 	 * We assume that the cgroup we're currently in has been delegated to
 	 * us and we are free to further delege all of the controllers listed
 	 * in cgroup.controllers further down the hierarchy.
 	 */
-	mountpoint = must_copy_string(DEFAULT_CGROUP_MOUNTPOINT);
-	subtree_path = must_make_path(mountpoint, base_cgroup, "cgroup.controllers", NULL);
-	delegatable = cg_unified_get_controllers(subtree_path);
+	controllers_path = must_make_path_relative(base_cgroup, "cgroup.controllers", NULL);
+	delegatable = cg_unified_get_controllers(cgroup_root_fd, controllers_path);
 	if (!delegatable)
 		delegatable = cg_unified_make_empty_controller();
 	if (!delegatable[0])
@@ -3337,7 +3340,11 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 	 * controllers per container.
 	 */
 
-	new = add_hierarchy(&ops->hierarchies, delegatable, mountpoint, base_cgroup, CGROUP2_SUPER_MAGIC);
+	new = add_hierarchy(&ops->hierarchies,
+			    delegatable,
+			    must_copy_string(DEFAULT_CGROUP_MOUNTPOINT),
+			    move_ptr(base_cgroup),
+			    CGROUP2_SUPER_MAGIC);
 	if (unprivileged)
 		cg_unified_delegate(&new->cgroup2_chown);
 
