@@ -153,14 +153,15 @@ static struct hierarchy *get_hierarchy(struct cgroup_ops *ops, const char *contr
 	for (int i = 0; ops->hierarchies[i]; i++) {
 		if (!controller) {
 			/* This is the empty unified hierarchy. */
-			if (ops->hierarchies[i]->controllers &&
-			    !ops->hierarchies[i]->controllers[0])
+			if (ops->hierarchies[i]->controllers && !ops->hierarchies[i]->controllers[0])
 				return ops->hierarchies[i];
+
 			continue;
 		} else if (pure_unified_layout(ops) &&
 			   strcmp(controller, "devices") == 0) {
 			if (ops->unified->bpf_device_controller)
 				return ops->unified;
+
 			break;
 		}
 
