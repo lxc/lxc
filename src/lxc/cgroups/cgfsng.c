@@ -157,12 +157,24 @@ static struct hierarchy *get_hierarchy(struct cgroup_ops *ops, const char *contr
 				return ops->hierarchies[i];
 
 			continue;
-		} else if (pure_unified_layout(ops) &&
-			   strcmp(controller, "devices") == 0) {
-			if (ops->unified->bpf_device_controller)
-				return ops->unified;
+		}
 
-			break;
+		/*
+		 * Handle controllers with significant implementation changes
+		 * from cgroup to cgroup2.
+		 */
+		if (pure_unified_layout(ops)) {
+			if (strcmp(controller, "devices") == 0) {
+				if (ops->unified->bpf_device_controller)
+					return ops->unified;
+
+				break;
+			} else if (strcmp(controller, "freezer") == 0) {
+				if (ops->unified->freezer_controller)
+					return ops->unified;
+
+				break;
+			}
 		}
 
 		if (string_in_list(ops->hierarchies[i]->controllers, controller))
@@ -1652,6 +1664,27 @@ __cgfsng_ops static void cgfsng_payload_finalize(struct cgroup_ops *ops)
 		if (!is_unified_hierarchy(h))
 			close_prot_errno_disarm(h->cgfd_con);
 	}
+
+	/*
+	 * The checking for freezer support should obviously be done at cgroup
+	 * initialization time but that doesn't work reliable. The freezer
+	 * controller has been demoted (rightly so) to a simple file located in
+	 * each non-root cgroup. At the time when the container is created we
+	 * might still be located in /sys/fs/cgroup and so checking for
+	 * cgroup.freeze won't tell us anything because this file doesn't exist
+	 * in the root cgroup. We could then iterate through /sys/fs/cgroup and
+	 * find an already existing cgroup and then check within that cgroup
+	 * for the existence of cgroup.freeze but that will only work on
+	 * systemd based hosts. Other init systems might not manage cgroups and
+	 * so no cgroup will exist. So we defer until we have created cgroups
+	 * for our container which means we check here.
+	 */
+        if (pure_unified_layout(ops) &&
+            !faccessat(ops->unified->cgfd_con, "cgroup.freeze", F_OK,
+                       AT_SYMLINK_NOFOLLOW)) {
+		TRACE("Unified hierarchy supports freezer");
+		ops->unified->freezer_controller = 1;
+        }
 }
 
 /* cgroup-full:* is done, no need to create subdirs */

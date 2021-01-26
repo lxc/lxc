@@ -89,6 +89,7 @@ struct hierarchy {
 
 	/* cgroup2 only */
 	unsigned int bpf_device_controller:1;
+	unsigned int freezer_controller:1;
 
 	/* container cgroup fd */
 	int cgfd_con;
