@@ -80,5 +80,6 @@ __hidden extern bool exists_dir_at(int dir_fd, const char *path);
 __hidden extern bool exists_file_at(int dir_fd, const char *path);
 __hidden extern int open_beneath(int dir_fd, const char *path, unsigned int flags);
 __hidden int fd_make_nonblocking(int fd);
+__hidden extern char *read_file_at(int dfd, const char *fnam);
 
 #endif /* __LXC_FILE_UTILS_H */

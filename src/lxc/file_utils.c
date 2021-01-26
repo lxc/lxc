@@ -565,3 +565,49 @@ int fd_make_nonblocking(int fd)
 	flags &= ~O_NONBLOCK;
 	return fcntl(fd, F_SETFL, flags);
 }
+
+#define BATCH_SIZE 50
+static void batch_realloc(char **mem, size_t oldlen, size_t newlen)
+{
+	int newbatches = (newlen / BATCH_SIZE) + 1;
+	int oldbatches = (oldlen / BATCH_SIZE) + 1;
+
+	if (!*mem || newbatches > oldbatches)
+		*mem = must_realloc(*mem, newbatches * BATCH_SIZE);
+}
+
+static void append_line(char **dest, size_t oldlen, char *new, size_t newlen)
+{
+	size_t full = oldlen + newlen;
+
+	batch_realloc(dest, oldlen, full + 1);
+
+	memcpy(*dest + oldlen, new, newlen + 1);
+}
+
+/* Slurp in a whole file */
+char *read_file_at(int dfd, const char *fnam)
+{
+	__do_close int fd = -EBADF;
+	__do_free char *buf = NULL, *line = NULL;
+	__do_fclose FILE *f = NULL;
+	size_t len = 0, fulllen = 0;
+	int linelen;
+
+	fd = openat(dfd, fnam, O_NOCTTY | O_CLOEXEC | O_NOFOLLOW | O_RDONLY);
+	if (fd < 0)
+		return NULL;
+
+	f = fdopen(fd, "re");
+	if (!f)
+		return NULL;
+	/* Transfer ownership to fdopen(). */
+	move_fd(fd);
+
+	while ((linelen = getline(&line, &len, f)) != -1) {
+		append_line(&buf, fulllen, line, linelen);
+		fulllen += linelen;
+	}
+
+	return move_ptr(buf);
+}

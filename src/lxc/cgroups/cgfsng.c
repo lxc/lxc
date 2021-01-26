@@ -176,45 +176,6 @@ static struct hierarchy *get_hierarchy(struct cgroup_ops *ops, const char *contr
 	return ret_set_errno(NULL, ENOENT);
 }
 
-#define BATCH_SIZE 50
-static void batch_realloc(char **mem, size_t oldlen, size_t newlen)
-{
-	int newbatches = (newlen / BATCH_SIZE) + 1;
-	int oldbatches = (oldlen / BATCH_SIZE) + 1;
-
-	if (!*mem || newbatches > oldbatches)
-		*mem = must_realloc(*mem, newbatches * BATCH_SIZE);
-}
-
-static void append_line(char **dest, size_t oldlen, char *new, size_t newlen)
-{
-	size_t full = oldlen + newlen;
-
-	batch_realloc(dest, oldlen, full + 1);
-
-	memcpy(*dest + oldlen, new, newlen + 1);
-}
-
-/* Slurp in a whole file */
-static char *read_file(const char *fnam)
-{
-	__do_free char *buf = NULL, *line = NULL;
-	__do_fclose FILE *f = NULL;
-	size_t len = 0, fulllen = 0;
-	int linelen;
-
-	f = fopen(fnam, "re");
-	if (!f)
-		return NULL;
-
-	while ((linelen = getline(&line, &len, f)) != -1) {
-		append_line(&buf, fulllen, line, linelen);
-		fulllen += linelen;
-	}
-
-	return move_ptr(buf);
-}
-
 /* Taken over modified from the kernel sources. */
 #define NBITS 32 /* bits in uint32_t */
 #define DIV_ROUND_UP(n, d) (((n) + (d)-1) / (d))
@@ -350,7 +311,7 @@ static bool cg_legacy_filter_and_set_cpus(const char *parent_cgroup,
 	bool flipped_bit = false;
 
 	fpath = must_make_path(parent_cgroup, "cpuset.cpus", NULL);
-	posscpus = read_file(fpath);
+	posscpus = read_file_at(-EBADF, fpath);
 	if (!posscpus)
 		return log_error_errno(false, errno, "Failed to read file \"%s\"", fpath);
 
@@ -360,7 +321,7 @@ static bool cg_legacy_filter_and_set_cpus(const char *parent_cgroup,
 		return false;
 
 	if (file_exists(__ISOL_CPUS)) {
-		isolcpus = read_file(__ISOL_CPUS);
+		isolcpus = read_file_at(-EBADF, __ISOL_CPUS);
 		if (!isolcpus)
 			return log_error_errno(false, errno, "Failed to read file \"%s\"", __ISOL_CPUS);
 
@@ -379,7 +340,7 @@ static bool cg_legacy_filter_and_set_cpus(const char *parent_cgroup,
 	}
 
 	if (file_exists(__OFFLINE_CPUS)) {
-		offlinecpus = read_file(__OFFLINE_CPUS);
+		offlinecpus = read_file_at(-EBADF, __OFFLINE_CPUS);
 		if (!offlinecpus)
 			return log_error_errno(false, errno, "Failed to read file \"%s\"", __OFFLINE_CPUS);
 
@@ -691,14 +652,14 @@ static char **cg_unified_make_empty_controller(void)
 	return move_ptr(aret);
 }
 
-static char **cg_unified_get_controllers(const char *file)
+static char **cg_unified_get_controllers(int dfd, const char *file)
 {
 	__do_free char *buf = NULL;
 	__do_free_string_list char **aret = NULL;
 	char *sep = " \t\n";
 	char *tok;
 
-	buf = read_file(file);
+	buf = read_file_at(dfd, file);
 	if (!buf)
 		return NULL;
 
@@ -3147,7 +3108,7 @@ static void cg_unified_delegate(char ***delegate)
 	char *token;
 	int idx;
 
-	buf = read_file("/sys/kernel/cgroup/delegate");
+	buf = read_file_at(-EBADF, "/sys/kernel/cgroup/delegate");
 	if (!buf) {
 		for (char **p = standard; p && *p; p++) {
 			idx = append_null_to_list((void ***)delegate);
@@ -3185,9 +3146,9 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 	 * cgroups as our base in that case.
 	 */
 	if (!relative && (geteuid() == 0))
-		basecginfo = read_file("/proc/1/cgroup");
+		basecginfo = read_file_at(-EBADF, "/proc/1/cgroup");
 	else
-		basecginfo = read_file("/proc/self/cgroup");
+		basecginfo = read_file_at(-EBADF, "/proc/self/cgroup");
 	if (!basecginfo)
 		return ret_set_errno(-1, ENOMEM);
 
@@ -3271,7 +3232,7 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 							"cgroup.controllers",
 							NULL);
 
-			controller_list = cg_unified_get_controllers(cgv2_ctrl_path);
+			controller_list = cg_unified_get_controllers(-EBADF, cgv2_ctrl_path);
 			free(cgv2_ctrl_path);
 			if (!controller_list) {
 				controller_list = cg_unified_make_empty_controller();
@@ -3314,9 +3275,9 @@ static char *cg_unified_get_current_cgroup(bool relative)
 	char *base_cgroup;
 
 	if (!relative && (geteuid() == 0))
-		basecginfo = read_file("/proc/1/cgroup");
+		basecginfo = read_file_at(-EBADF, "/proc/1/cgroup");
 	else
-		basecginfo = read_file("/proc/self/cgroup");
+		basecginfo = read_file_at(-EBADF, "/proc/self/cgroup");
 	if (!basecginfo)
 		return NULL;
 
