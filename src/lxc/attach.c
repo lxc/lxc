@@ -644,7 +644,7 @@ static void lxc_put_attach_clone_payload(struct attach_clone_payload *p)
 	}
 }
 
-static int attach_child_main(struct attach_clone_payload *payload)
+static int do_attach(struct attach_clone_payload *payload)
 {
 	int lsm_fd, ret;
 	uid_t new_uid;
@@ -1219,7 +1219,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 				}
 			}
 
-			ret = attach_child_main(&payload);
+			ret = do_attach(&payload);
 			if (ret < 0)
 				ERROR("Failed to exec");
 
