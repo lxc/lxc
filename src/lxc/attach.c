@@ -644,7 +644,7 @@ static void lxc_put_attach_clone_payload(struct attach_clone_payload *p)
 	}
 }
 
-__noreturn static int do_attach(struct attach_clone_payload *payload)
+__noreturn static void do_attach(struct attach_clone_payload *payload)
 {
 	int lsm_fd, ret;
 	uid_t new_uid;
@@ -888,6 +888,7 @@ __noreturn static int do_attach(struct attach_clone_payload *payload)
 
 on_error:
 	lxc_put_attach_clone_payload(payload);
+	ERROR("Failed to attach to container");
 	_exit(EXIT_FAILURE);
 }
 
@@ -1219,11 +1220,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 				}
 			}
 
-			ret = do_attach(&payload);
-			if (ret < 0)
-				ERROR("Failed to exec");
-
-			_exit(EXIT_FAILURE);
+			do_attach(&payload);
 		}
 
 		if (options->attach_flags & LXC_ATTACH_TERMINAL)
