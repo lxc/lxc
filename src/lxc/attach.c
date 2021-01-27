@@ -958,6 +958,9 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	struct lxc_conf *conf;
 	char *name, *lxcpath;
 	struct attach_clone_payload payload = {0};
+	int ret_parent = -1;
+	pid_t to_cleanup_pid;
+	struct lxc_epoll_descr descr = {0};
 
 	ret = access("/proc/self/ns", X_OK);
 	if (ret)
@@ -1151,275 +1154,272 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		return -1;
 	}
 
-	if (pid) {
-		int ret_parent = -1;
-		pid_t to_cleanup_pid = pid;
-		struct lxc_epoll_descr descr = {0};
-
+	if (pid == 0) {
 		/* close unneeded file descriptors */
-		close(ipc_sockets[1]);
-		free(cwd);
+		close_prot_errno_disarm(ipc_sockets[0]);
+
+		if (options->attach_flags & LXC_ATTACH_TERMINAL) {
+			lxc_attach_terminal_close_ptx(&terminal);
+			lxc_attach_terminal_close_peer(&terminal);
+			lxc_attach_terminal_close_log(&terminal);
+		}
+
+		/* Wait for the parent to have setup cgroups. */
+		ret = lxc_read_nointr(ipc_sockets[1], &status, sizeof(status));
+		if (ret != sizeof(status)) {
+			shutdown(ipc_sockets[1], SHUT_RDWR);
+			lxc_proc_put_context_info(init_ctx);
+			_exit(EXIT_FAILURE);
+		}
+
+		TRACE("Intermediate process starting to initialize");
+
+		/* Attach now, create another subprocess later, since pid namespaces
+		 * only really affect the children of the current process.
+		 */
+		ret = lxc_attach_to_ns(init_pid, init_ctx);
+		if (ret < 0) {
+			ERROR("Failed to enter namespaces");
+			shutdown(ipc_sockets[1], SHUT_RDWR);
+			lxc_proc_put_context_info(init_ctx);
+			_exit(EXIT_FAILURE);
+		}
+
+		/* close namespace file descriptors */
 		lxc_proc_close_ns_fd(init_ctx);
+
+		/* Attach succeeded, try to cwd. */
+		if (options->initial_cwd)
+			new_cwd = options->initial_cwd;
+		else
+			new_cwd = cwd;
+		if (new_cwd) {
+			ret = chdir(new_cwd);
+			if (ret < 0)
+				WARN("Could not change directory to \"%s\"", new_cwd);
+		}
+		free(cwd);
+
+		/* Create attached process. */
+		payload.ipc_socket = ipc_sockets[1];
+		payload.options = options;
+		payload.init_ctx = init_ctx;
+		payload.terminal_pts_fd = terminal.pty;
+		payload.exec_function = exec_function;
+		payload.exec_payload = exec_payload;
+
+		pid = lxc_raw_clone(CLONE_PARENT, NULL);
+		if (pid < 0) {
+			SYSERROR("Failed to clone attached process");
+			shutdown(ipc_sockets[1], SHUT_RDWR);
+			lxc_proc_put_context_info(init_ctx);
+			_exit(EXIT_FAILURE);
+		}
+
+		if (pid == 0) {
+			if (options->attach_flags & LXC_ATTACH_TERMINAL) {
+				ret = lxc_terminal_signal_sigmask_safe_blocked(&terminal);
+				if (ret < 0) {
+					SYSERROR("Failed to reset signal mask");
+					_exit(EXIT_FAILURE);
+				}
+			}
+
+			ret = attach_child_main(&payload);
+			if (ret < 0)
+				ERROR("Failed to exec");
+
+			_exit(EXIT_FAILURE);
+		}
+
 		if (options->attach_flags & LXC_ATTACH_TERMINAL)
 			lxc_attach_terminal_close_pts(&terminal);
 
-		/* Attach to cgroup, if requested. */
-		if (options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) {
-			/*
-			 * If this is the unified hierarchy cgroup_attach() is
-			 * enough.
+		/* Tell grandparent the pid of the pid of the newly created child. */
+		ret = lxc_write_nointr(ipc_sockets[1], &pid, sizeof(pid));
+		if (ret != sizeof(pid)) {
+			/* If this really happens here, this is very unfortunate, since
+			 * the parent will not know the pid of the attached process and
+			 * will not be able to wait for it (and we won't either due to
+			 * CLONE_PARENT) so the parent won't be able to reap it and the
+			 * attached process will remain a zombie.
 			 */
-			ret = cgroup_attach(conf, name, lxcpath, pid);
-			if (ret) {
-				call_cleaner(cgroup_exit) struct cgroup_ops *cgroup_ops = NULL;
-
-				cgroup_ops = cgroup_init(conf);
-				if (!cgroup_ops)
-					goto on_error;
-
-				if (!cgroup_ops->attach(cgroup_ops, conf, name, lxcpath, pid))
-					goto on_error;
-			}
-			TRACE("Moved intermediate process %d into container's cgroups", pid);
+			shutdown(ipc_sockets[1], SHUT_RDWR);
+			lxc_proc_put_context_info(init_ctx);
+			_exit(EXIT_FAILURE);
 		}
 
-		/* Setup /proc limits */
-		if (!lxc_list_empty(&conf->procs)) {
-			ret = setup_proc_filesystem(&conf->procs, pid);
-			if (ret < 0)
-				goto on_error;
-		}
+		TRACE("Sending pid %d of attached process", pid);
 
-		/* Setup resource limits */
-		if (!lxc_list_empty(&conf->limits)) {
-			ret = setup_resource_limits(&conf->limits, pid);
-			if (ret < 0)
-				goto on_error;
-		}
-
-		if (options->attach_flags & LXC_ATTACH_TERMINAL) {
-			ret = lxc_attach_terminal_mainloop_init(&terminal, &descr);
-			if (ret < 0)
-				goto on_error;
-
-			TRACE("Initialized terminal mainloop");
-		}
-
-		/* Let the child process know to go ahead. */
-		status = 0;
-		ret = lxc_write_nointr(ipc_sockets[0], &status, sizeof(status));
-		if (ret != sizeof(status))
-			goto close_mainloop;
-
-		TRACE("Told intermediate process to start initializing");
-
-		/* Get pid of attached process from intermediate process. */
-		ret = lxc_read_nointr(ipc_sockets[0], &attached_pid, sizeof(attached_pid));
-		if (ret != sizeof(attached_pid))
-			goto close_mainloop;
-
-		TRACE("Received pid %d of attached process in parent pid namespace", attached_pid);
-
-		/* Ignore SIGKILL (CTRL-C) and SIGQUIT (CTRL-\) - issue #313. */
-		if (options->stdin_fd == 0) {
-			signal(SIGINT, SIG_IGN);
-			signal(SIGQUIT, SIG_IGN);
-		}
-
-		/* Reap intermediate process. */
-		ret = wait_for_pid(pid);
-		if (ret < 0)
-			goto close_mainloop;
-
-		TRACE("Intermediate process %d exited", pid);
-
-		/* We will always have to reap the attached process now. */
-		to_cleanup_pid = attached_pid;
-
-		/* Open LSM fd and send it to child. */
-		if ((options->namespaces & CLONE_NEWNS) &&
-		    (options->attach_flags & LXC_ATTACH_LSM) &&
-		    init_ctx->lsm_label) {
-			int labelfd;
-			bool on_exec;
-
-			ret = -1;
-			on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? true : false;
-			labelfd = init_ctx->lsm_ops->process_label_fd_get(init_ctx->lsm_ops,
-									  attached_pid, on_exec);
-			if (labelfd < 0)
-				goto close_mainloop;
-
-			TRACE("Opened LSM label file descriptor %d", labelfd);
-
-			/* Send child fd of the LSM security module to write to. */
-			ret = lxc_abstract_unix_send_fds(ipc_sockets[0], &labelfd, 1, NULL, 0);
-			if (ret <= 0) {
-				if (ret < 0)
-					SYSERROR("Failed to send lsm label fd");
-
-				close(labelfd);
-				goto close_mainloop;
-			}
-
-			close(labelfd);
-			TRACE("Sent LSM label file descriptor %d to child", labelfd);
-		}
-
-		if (conf->seccomp.seccomp) {
-			ret = lxc_seccomp_recv_notifier_fd(&conf->seccomp, ipc_sockets[0]);
-			if (ret < 0)
-				goto close_mainloop;
-
-			ret = lxc_seccomp_add_notifier(name, lxcpath, &conf->seccomp);
-			if (ret < 0)
-				goto close_mainloop;
-		}
-
-		/* We're done, the child process should now execute whatever it
-		 * is that the user requested. The parent can now track it with
-		 * waitpid() or similar.
-		 */
-
-		*attached_process = attached_pid;
-
-		/* Now shut down communication with child, we're done. */
-		shutdown(ipc_sockets[0], SHUT_RDWR);
-		close(ipc_sockets[0]);
-		ipc_sockets[0] = -1;
-
-		ret_parent = 0;
-		to_cleanup_pid = -1;
-
-		if (options->attach_flags & LXC_ATTACH_TERMINAL) {
-			ret = lxc_mainloop(&descr, -1);
-			if (ret < 0) {
-				ret_parent = -1;
-				to_cleanup_pid = attached_pid;
-			}
-		}
-
-	close_mainloop:
-		if (options->attach_flags & LXC_ATTACH_TERMINAL)
-			lxc_mainloop_close(&descr);
-
-	on_error:
-		if (ipc_sockets[0] >= 0) {
-			shutdown(ipc_sockets[0], SHUT_RDWR);
-			close(ipc_sockets[0]);
-		}
-
-		if (to_cleanup_pid > 0)
-			(void)wait_for_pid(to_cleanup_pid);
-
-		if (options->attach_flags & LXC_ATTACH_TERMINAL) {
-			lxc_terminal_delete(&terminal);
-			lxc_terminal_conf_free(&terminal);
-		}
-
+		/* The rest is in the hands of the initial and the attached process. */
 		lxc_proc_put_context_info(init_ctx);
-		return ret_parent;
+		_exit(EXIT_SUCCESS);
 	}
+
+	to_cleanup_pid = pid;
 
 	/* close unneeded file descriptors */
-	close_prot_errno_disarm(ipc_sockets[0]);
-
-	if (options->attach_flags & LXC_ATTACH_TERMINAL) {
-		lxc_attach_terminal_close_ptx(&terminal);
-		lxc_attach_terminal_close_peer(&terminal);
-		lxc_attach_terminal_close_log(&terminal);
-	}
-
-	/* Wait for the parent to have setup cgroups. */
-	ret = lxc_read_nointr(ipc_sockets[1], &status, sizeof(status));
-	if (ret != sizeof(status)) {
-		shutdown(ipc_sockets[1], SHUT_RDWR);
-		lxc_proc_put_context_info(init_ctx);
-		_exit(EXIT_FAILURE);
-	}
-
-	TRACE("Intermediate process starting to initialize");
-
-	/* Attach now, create another subprocess later, since pid namespaces
-	 * only really affect the children of the current process.
-	 */
-	ret = lxc_attach_to_ns(init_pid, init_ctx);
-	if (ret < 0) {
-		ERROR("Failed to enter namespaces");
-		shutdown(ipc_sockets[1], SHUT_RDWR);
-		lxc_proc_put_context_info(init_ctx);
-		_exit(EXIT_FAILURE);
-	}
-
-	/* close namespace file descriptors */
-	lxc_proc_close_ns_fd(init_ctx);
-
-	/* Attach succeeded, try to cwd. */
-	if (options->initial_cwd)
-		new_cwd = options->initial_cwd;
-	else
-		new_cwd = cwd;
-	if (new_cwd) {
-		ret = chdir(new_cwd);
-		if (ret < 0)
-			WARN("Could not change directory to \"%s\"", new_cwd);
-	}
+	close(ipc_sockets[1]);
 	free(cwd);
-
-	/* Create attached process. */
-	payload.ipc_socket = ipc_sockets[1];
-	payload.options = options;
-	payload.init_ctx = init_ctx;
-	payload.terminal_pts_fd = terminal.pty;
-	payload.exec_function = exec_function;
-	payload.exec_payload = exec_payload;
-
-	pid = lxc_raw_clone(CLONE_PARENT, NULL);
-	if (pid < 0) {
-		SYSERROR("Failed to clone attached process");
-		shutdown(ipc_sockets[1], SHUT_RDWR);
-		lxc_proc_put_context_info(init_ctx);
-		_exit(EXIT_FAILURE);
-	}
-
-	if (pid == 0) {
-		if (options->attach_flags & LXC_ATTACH_TERMINAL) {
-			ret = lxc_terminal_signal_sigmask_safe_blocked(&terminal);
-			if (ret < 0) {
-				SYSERROR("Failed to reset signal mask");
-				_exit(EXIT_FAILURE);
-			}
-		}
-
-		ret = attach_child_main(&payload);
-		if (ret < 0)
-			ERROR("Failed to exec");
-
-		_exit(EXIT_FAILURE);
-	}
-
+	lxc_proc_close_ns_fd(init_ctx);
 	if (options->attach_flags & LXC_ATTACH_TERMINAL)
 		lxc_attach_terminal_close_pts(&terminal);
 
-	/* Tell grandparent the pid of the pid of the newly created child. */
-	ret = lxc_write_nointr(ipc_sockets[1], &pid, sizeof(pid));
-	if (ret != sizeof(pid)) {
-		/* If this really happens here, this is very unfortunate, since
-		 * the parent will not know the pid of the attached process and
-		 * will not be able to wait for it (and we won't either due to
-		 * CLONE_PARENT) so the parent won't be able to reap it and the
-		 * attached process will remain a zombie.
+	/* Attach to cgroup, if requested. */
+	if (options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) {
+		/*
+		 * If this is the unified hierarchy cgroup_attach() is
+		 * enough.
 		 */
-		shutdown(ipc_sockets[1], SHUT_RDWR);
-		lxc_proc_put_context_info(init_ctx);
-		_exit(EXIT_FAILURE);
+		ret = cgroup_attach(conf, name, lxcpath, pid);
+		if (ret) {
+			call_cleaner(cgroup_exit) struct cgroup_ops *cgroup_ops = NULL;
+
+			cgroup_ops = cgroup_init(conf);
+			if (!cgroup_ops)
+				goto on_error;
+
+			if (!cgroup_ops->attach(cgroup_ops, conf, name, lxcpath, pid))
+				goto on_error;
+		}
+		TRACE("Moved intermediate process %d into container's cgroups", pid);
 	}
 
-	TRACE("Sending pid %d of attached process", pid);
+	/* Setup /proc limits */
+	if (!lxc_list_empty(&conf->procs)) {
+		ret = setup_proc_filesystem(&conf->procs, pid);
+		if (ret < 0)
+			goto on_error;
+	}
 
-	/* The rest is in the hands of the initial and the attached process. */
+	/* Setup resource limits */
+	if (!lxc_list_empty(&conf->limits)) {
+		ret = setup_resource_limits(&conf->limits, pid);
+		if (ret < 0)
+			goto on_error;
+	}
+
+	if (options->attach_flags & LXC_ATTACH_TERMINAL) {
+		ret = lxc_attach_terminal_mainloop_init(&terminal, &descr);
+		if (ret < 0)
+			goto on_error;
+
+		TRACE("Initialized terminal mainloop");
+	}
+
+	/* Let the child process know to go ahead. */
+	status = 0;
+	ret = lxc_write_nointr(ipc_sockets[0], &status, sizeof(status));
+	if (ret != sizeof(status))
+		goto close_mainloop;
+
+	TRACE("Told intermediate process to start initializing");
+
+	/* Get pid of attached process from intermediate process. */
+	ret = lxc_read_nointr(ipc_sockets[0], &attached_pid, sizeof(attached_pid));
+	if (ret != sizeof(attached_pid))
+		goto close_mainloop;
+
+	TRACE("Received pid %d of attached process in parent pid namespace", attached_pid);
+
+	/* Ignore SIGKILL (CTRL-C) and SIGQUIT (CTRL-\) - issue #313. */
+	if (options->stdin_fd == 0) {
+		signal(SIGINT, SIG_IGN);
+		signal(SIGQUIT, SIG_IGN);
+	}
+
+	/* Reap intermediate process. */
+	ret = wait_for_pid(pid);
+	if (ret < 0)
+		goto close_mainloop;
+
+	TRACE("Intermediate process %d exited", pid);
+
+	/* We will always have to reap the attached process now. */
+	to_cleanup_pid = attached_pid;
+
+	/* Open LSM fd and send it to child. */
+	if ((options->namespaces & CLONE_NEWNS) &&
+	    (options->attach_flags & LXC_ATTACH_LSM) && init_ctx->lsm_label) {
+		int labelfd;
+		bool on_exec;
+
+		ret = -1;
+		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? true : false;
+		labelfd = init_ctx->lsm_ops->process_label_fd_get(init_ctx->lsm_ops,
+								  attached_pid, on_exec);
+		if (labelfd < 0)
+			goto close_mainloop;
+
+		TRACE("Opened LSM label file descriptor %d", labelfd);
+
+		/* Send child fd of the LSM security module to write to. */
+		ret = lxc_abstract_unix_send_fds(ipc_sockets[0], &labelfd, 1, NULL, 0);
+		if (ret <= 0) {
+			if (ret < 0)
+				SYSERROR("Failed to send lsm label fd");
+
+			close(labelfd);
+			goto close_mainloop;
+		}
+
+		close(labelfd);
+		TRACE("Sent LSM label file descriptor %d to child", labelfd);
+	}
+
+	if (conf->seccomp.seccomp) {
+		ret = lxc_seccomp_recv_notifier_fd(&conf->seccomp, ipc_sockets[0]);
+		if (ret < 0)
+			goto close_mainloop;
+
+		ret = lxc_seccomp_add_notifier(name, lxcpath, &conf->seccomp);
+		if (ret < 0)
+			goto close_mainloop;
+	}
+
+	/* We're done, the child process should now execute whatever it
+	 * is that the user requested. The parent can now track it with
+	 * waitpid() or similar.
+	 */
+
+	*attached_process = attached_pid;
+
+	/* Now shut down communication with child, we're done. */
+	shutdown(ipc_sockets[0], SHUT_RDWR);
+	close(ipc_sockets[0]);
+	ipc_sockets[0] = -1;
+
+	ret_parent = 0;
+	to_cleanup_pid = -1;
+
+	if (options->attach_flags & LXC_ATTACH_TERMINAL) {
+		ret = lxc_mainloop(&descr, -1);
+		if (ret < 0) {
+			ret_parent = -1;
+			to_cleanup_pid = attached_pid;
+		}
+	}
+
+close_mainloop:
+	if (options->attach_flags & LXC_ATTACH_TERMINAL)
+		lxc_mainloop_close(&descr);
+
+on_error:
+	if (ipc_sockets[0] >= 0) {
+		shutdown(ipc_sockets[0], SHUT_RDWR);
+		close(ipc_sockets[0]);
+	}
+
+	if (to_cleanup_pid > 0)
+		(void)wait_for_pid(to_cleanup_pid);
+
+	if (options->attach_flags & LXC_ATTACH_TERMINAL) {
+		lxc_terminal_delete(&terminal);
+		lxc_terminal_conf_free(&terminal);
+	}
+
 	lxc_proc_put_context_info(init_ctx);
-	_exit(EXIT_SUCCESS);
+	return ret_parent;
 }
 
 int lxc_attach_run_command(void *payload)
