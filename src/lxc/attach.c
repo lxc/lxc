@@ -952,9 +952,10 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	       void *exec_payload, lxc_attach_options_t *options,
 	       pid_t *attached_process)
 {
+	__do_free char *cwd = NULL;
 	int i, ret, status;
 	int ipc_sockets[2];
-	char *cwd, *new_cwd;
+	char *new_cwd;
 	signed long personality;
 	pid_t attached_pid, init_pid, pid;
 	struct lxc_proc_context_info *init_ctx;
@@ -1033,7 +1034,6 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		if (options->namespaces == -1) {
 			ERROR("Failed to automatically determine the "
 			      "namespaces which the container uses");
-			free(cwd);
 			lxc_proc_put_context_info(init_ctx);
 			return -1;
 		}
@@ -1083,7 +1083,6 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		for (j = 0; j < i; j++)
 			close(init_ctx->ns_fd[j]);
 
-		free(cwd);
 		lxc_proc_put_context_info(init_ctx);
 		return -1;
 	}
@@ -1092,7 +1091,6 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		ret = lxc_attach_terminal(name, lxcpath, conf, &terminal);
 		if (ret < 0) {
 			ERROR("Failed to setup new terminal");
-			free(cwd);
 			lxc_proc_put_context_info(init_ctx);
 			return -1;
 		}
@@ -1138,7 +1136,6 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, ipc_sockets);
 	if (ret < 0) {
 		SYSERROR("Could not set up required IPC mechanism for attaching");
-		free(cwd);
 		lxc_proc_put_context_info(init_ctx);
 		return -1;
 	}
@@ -1153,7 +1150,6 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	pid = fork();
 	if (pid < 0) {
 		SYSERROR("Failed to create first subprocess");
-		free(cwd);
 		lxc_proc_put_context_info(init_ctx);
 		return -1;
 	}
@@ -1202,7 +1198,6 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 			if (ret < 0)
 				WARN("Could not change directory to \"%s\"", new_cwd);
 		}
-		free(cwd);
 
 		/* Create attached process. */
 		payload.ipc_socket = ipc_sockets[1];
@@ -1264,7 +1259,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 
 	/* close unneeded file descriptors */
 	close(ipc_sockets[1]);
-	free(cwd);
+	free_disarm(cwd);
 	lxc_proc_close_ns_fd(init_ctx);
 	if (options->attach_flags & LXC_ATTACH_TERMINAL)
 		lxc_attach_terminal_close_pts(&terminal);
