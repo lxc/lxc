@@ -1285,6 +1285,8 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		ret = setup_proc_filesystem(&conf->procs, pid);
 		if (ret < 0)
 			goto on_error;
+
+		TRACE("Setup /proc/%d settings", pid);
 	}
 
 	/* Setup resource limits */
@@ -1292,6 +1294,8 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		ret = setup_resource_limits(&conf->limits, pid);
 		if (ret < 0)
 			goto on_error;
+
+		TRACE("Setup resource limits");
 	}
 
 	if (options->attach_flags & LXC_ATTACH_TERMINAL) {
