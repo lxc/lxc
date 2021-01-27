@@ -1340,7 +1340,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	/* Open LSM fd and send it to child. */
 	if ((options->namespaces & CLONE_NEWNS) &&
 	    (options->attach_flags & LXC_ATTACH_LSM) && init_ctx->lsm_label) {
-		int labelfd;
+		__do_close int labelfd = -EBADF;
 		bool on_exec;
 
 		ret = -1;
@@ -1357,12 +1357,9 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		if (ret <= 0) {
 			if (ret < 0)
 				SYSERROR("Failed to send lsm label fd");
-
-			close(labelfd);
 			goto close_mainloop;
 		}
 
-		close(labelfd);
 		TRACE("Sent LSM label file descriptor %d to child", labelfd);
 	}
 
