@@ -644,7 +644,7 @@ static void lxc_put_attach_clone_payload(struct attach_clone_payload *p)
 	}
 }
 
-static int do_attach(struct attach_clone_payload *payload)
+__noreturn static int do_attach(struct attach_clone_payload *payload)
 {
 	int lsm_fd, ret;
 	uid_t new_uid;
