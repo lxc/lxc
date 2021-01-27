@@ -813,8 +813,7 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 			goto on_error;
 	}
 
-	close(payload->ipc_socket);
-	payload->ipc_socket = -EBADF;
+	close_prot_errno_disarm(payload->ipc_socket);
 	lxc_proc_put_context_info(init_ctx);
 	payload->init_ctx = NULL;
 
