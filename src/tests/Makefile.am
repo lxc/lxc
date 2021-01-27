@@ -620,6 +620,7 @@ bin_SCRIPTS += lxc-test-automount \
 	       lxc-test-exit-code \
 	       lxc-test-no-new-privs \
 	       lxc-test-rootfs \
+	       lxc-test-procsys \
 	       lxc-test-usernsexec
 
 if DISTRO_UBUNTU
@@ -658,6 +659,7 @@ EXTRA_DIST = basic.c \
 	     lxc-test-lxc-attach \
 	     lxc-test-automount \
 	     lxc-test-rootfs \
+	     lxc-test-procsys \
 	     lxc-test-autostart \
 	     lxc-test-apparmor-mount \
 	     lxc-test-apparmor-generated \
