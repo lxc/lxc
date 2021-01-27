@@ -1196,12 +1196,12 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		}
 
 		/* Create attached process. */
-		payload.ipc_socket = ipc_sockets[1];
-		payload.options = options;
-		payload.init_ctx = init_ctx;
+		payload.ipc_socket	= ipc_sockets[1];
+		payload.options		= options;
+		payload.init_ctx	= init_ctx;
 		payload.terminal_pts_fd = terminal.pty;
-		payload.exec_function = exec_function;
-		payload.exec_payload = exec_payload;
+		payload.exec_function	= exec_function;
+		payload.exec_payload	= exec_payload;
 
 		pid = lxc_raw_clone(CLONE_PARENT, NULL);
 		if (pid < 0) {
