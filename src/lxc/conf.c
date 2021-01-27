@@ -642,6 +642,20 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
         struct lxc_rootfs *rootfs = &conf->rootfs;
         bool has_cap_net_admin;
 
+        if (flags & LXC_AUTO_PROC_MASK) {
+		ret = mkdirat(rootfs->mntpt_fd, "proc" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+		if (ret < 0 && errno != EEXIST)
+			return log_error_errno(-errno, errno,
+					       "Failed to create proc mountpoint under %d", rootfs->mntpt_fd);
+	}
+
+	if (flags & LXC_AUTO_SYS_MASK) {
+		ret = mkdirat(rootfs->mntpt_fd, "sys" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+		if (ret < 0 && errno != EEXIST)
+			return log_error_errno(-errno, errno,
+					       "Failed to create sysfs mountpoint under %d", rootfs->mntpt_fd);
+	}
+
         has_cap_net_admin = lxc_wants_cap(CAP_NET_ADMIN, conf);
         for (i = 0; default_mounts[i].match_mask; i++) {
 		__do_free char *destination = NULL, *source = NULL;
@@ -3279,24 +3293,6 @@ int lxc_setup(struct lxc_handler *handler)
 	if (ret < 0)
 		return log_error(-1, "Failed to setup rootfs");
 
-	/* Create mountpoints for /proc and /sys. */
-	char path[PATH_MAX];
-	char *rootfs_path = lxc_conf->rootfs.path ? lxc_conf->rootfs.mount : "";
-
-	ret = snprintf(path, sizeof(path), "%s/proc", rootfs_path);
-	if (ret < 0 || (size_t)ret >= sizeof(path))
-		return log_error(-1, "Path to /proc too long");
-	ret = mkdir(path, 0755);
-	if (ret < 0 && errno != EEXIST)
-		return log_error_errno(-1, errno, "Failed to create \"/proc\" directory");
-
-	ret = snprintf(path, sizeof(path), "%s/sys", rootfs_path);
-	if (ret < 0 || (size_t)ret >= sizeof(path))
-		return log_error(-1, "Path to /sys too long");
-	ret = mkdir(path, 0755);
-	if (ret < 0 && errno != EEXIST)
-		return log_error_errno(-1, errno, "Failed to create \"/sys\" directory");
-
 	if (handler->nsfd[LXC_NS_UTS] == -EBADF) {
 		ret = setup_utsname(lxc_conf->utsname);
 		if (ret < 0)
@@ -3363,12 +3359,13 @@ int lxc_setup(struct lxc_handler *handler)
 	if (lxc_conf->is_execute) {
 		if (execveat_supported()) {
 			int fd;
+			char path[STRLITERALLEN(SBINDIR) + STRLITERALLEN("/init.lxc.static") + 1];
 
-			ret = snprintf(path, PATH_MAX, SBINDIR "/init.lxc.static");
+			ret = snprintf(path, sizeof(path), SBINDIR "/init.lxc.static");
 			if (ret < 0 || ret >= PATH_MAX)
 				return log_error(-1, "Path to init.lxc.static too long");
 
-			fd = open(path, O_PATH | O_CLOEXEC);
+			fd = open(path, O_NOCTTY | O_NOFOLLOW | O_CLOEXEC | O_PATH);
 			if (fd < 0)
 				return log_error_errno(-1, errno, "Unable to open lxc.init.static");
 
