@@ -597,7 +597,7 @@ static int add_shmount_to_list(struct lxc_conf *conf)
 
 static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_handler *handler)
 {
-	int i, r;
+	int i, ret;
 	static struct {
 		int match_mask;
 		int match_flag;
@@ -639,8 +639,24 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 		{ LXC_AUTO_SYS_MASK,  LXC_AUTO_SYS_MIXED,  NULL,                                             "%r/sys/devices/virtual/net", NULL,    MS_REMOUNT|MS_BIND|MS_NOSUID|MS_NODEV|MS_NOEXEC, NULL, false },
 		{ 0,                  0,                   NULL,                                             NULL,                         NULL,    0,                                               NULL, false }
 	};
+        struct lxc_rootfs *rootfs = &conf->rootfs;
+        bool has_cap_net_admin;
 
-        bool has_cap_net_admin = lxc_wants_cap(CAP_NET_ADMIN, conf);
+        if (flags & LXC_AUTO_PROC_MASK) {
+		ret = mkdirat(rootfs->mntpt_fd, "proc" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+		if (ret < 0 && errno != EEXIST)
+			return log_error_errno(-errno, errno,
+					       "Failed to create proc mountpoint under %d", rootfs->mntpt_fd);
+	}
+
+	if (flags & LXC_AUTO_SYS_MASK) {
+		ret = mkdirat(rootfs->mntpt_fd, "sys" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+		if (ret < 0 && errno != EEXIST)
+			return log_error_errno(-errno, errno,
+					       "Failed to create sysfs mountpoint under %d", rootfs->mntpt_fd);
+	}
+
+        has_cap_net_admin = lxc_wants_cap(CAP_NET_ADMIN, conf);
         for (i = 0; default_mounts[i].match_mask; i++) {
 		__do_free char *destination = NULL, *source = NULL;
 		int saved_errno;
@@ -650,7 +666,7 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 
 		if (default_mounts[i].source) {
 			/* will act like strdup if %r is not present */
-			source = lxc_string_replace("%r", conf->rootfs.path ? conf->rootfs.mount : "", default_mounts[i].source);
+			source = lxc_string_replace("%r", rootfs->path ? rootfs->mount : "", default_mounts[i].source);
 			if (!source)
 				return -1;
 		}
@@ -664,24 +680,24 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 		}
 
 		/* will act like strdup if %r is not present */
-		destination = lxc_string_replace("%r", conf->rootfs.path ? conf->rootfs.mount : "", default_mounts[i].destination);
+		destination = lxc_string_replace("%r", rootfs->path ? rootfs->mount : "", default_mounts[i].destination);
 		if (!destination)
 			return -1;
 
 		mflags = add_required_remount_flags(source, destination,
 						    default_mounts[i].flags);
-		r = safe_mount(source, destination, default_mounts[i].fstype,
-			       mflags, default_mounts[i].options,
-			       conf->rootfs.path ? conf->rootfs.mount : NULL);
+		ret = safe_mount(source, destination, default_mounts[i].fstype,
+				mflags, default_mounts[i].options,
+				rootfs->path ? rootfs->mount : NULL);
 		saved_errno = errno;
-		if (r < 0 && errno == ENOENT) {
+		if (ret < 0 && errno == ENOENT) {
 			INFO("Mount source or target for \"%s\" on \"%s\" does not exist. Skipping", source, destination);
-			r = 0;
-		} else if (r < 0) {
+			ret = 0;
+		} else if (ret < 0) {
 			SYSERROR("Failed to mount \"%s\" on \"%s\" with flags %lu", source, destination, mflags);
 		}
 
-		if (r < 0) {
+		if (ret < 0) {
 			errno = saved_errno;
 			return -1;
 		}
@@ -720,13 +736,13 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 
 		if (!handler->cgroup_ops->mount(handler->cgroup_ops,
 						handler,
-						conf->rootfs.path ? conf->rootfs.mount : "",
+						rootfs->path ? rootfs->mount : "",
 						cg_flags))
 			return log_error_errno(-1, errno, "Failed to mount \"/sys/fs/cgroup\"");
 	}
 
 	if (flags & LXC_AUTO_SHMOUNTS_MASK) {
-		int ret = add_shmount_to_list(conf);
+		ret = add_shmount_to_list(conf);
 		if (ret < 0)
 			return log_error(-1, "Failed to add shmount entry to container config");
 	}
@@ -3278,24 +3294,6 @@ int lxc_setup(struct lxc_handler *handler)
 	if (ret < 0)
 		return log_error(-1, "Failed to setup rootfs");
 
-	/* Create mountpoints for /proc and /sys. */
-	char path[PATH_MAX];
-	char *rootfs_path = lxc_conf->rootfs.path ? lxc_conf->rootfs.mount : "";
-
-	ret = snprintf(path, sizeof(path), "%s/proc", rootfs_path);
-	if (ret < 0 || (size_t)ret >= sizeof(path))
-		return log_error(-1, "Path to /proc too long");
-	ret = mkdir(path, 0755);
-	if (ret < 0 && errno != EEXIST)
-		return log_error_errno(-1, errno, "Failed to create \"/proc\" directory");
-
-	ret = snprintf(path, sizeof(path), "%s/sys", rootfs_path);
-	if (ret < 0 || (size_t)ret >= sizeof(path))
-		return log_error(-1, "Path to /sys too long");
-	ret = mkdir(path, 0755);
-	if (ret < 0 && errno != EEXIST)
-		return log_error_errno(-1, errno, "Failed to create \"/sys\" directory");
-
 	if (handler->nsfd[LXC_NS_UTS] == -EBADF) {
 		ret = setup_utsname(lxc_conf->utsname);
 		if (ret < 0)
@@ -3362,12 +3360,13 @@ int lxc_setup(struct lxc_handler *handler)
 	if (lxc_conf->is_execute) {
 		if (execveat_supported()) {
 			int fd;
+			char path[STRLITERALLEN(SBINDIR) + STRLITERALLEN("/init.lxc.static") + 1];
 
-			ret = snprintf(path, PATH_MAX, SBINDIR "/init.lxc.static");
+			ret = snprintf(path, sizeof(path), SBINDIR "/init.lxc.static");
 			if (ret < 0 || ret >= PATH_MAX)
 				return log_error(-1, "Path to init.lxc.static too long");
 
-			fd = open(path, O_PATH | O_CLOEXEC);
+			fd = open(path, O_NOCTTY | O_NOFOLLOW | O_CLOEXEC | O_PATH);
 			if (fd < 0)
 				return log_error_errno(-1, errno, "Unable to open lxc.init.static");
 
