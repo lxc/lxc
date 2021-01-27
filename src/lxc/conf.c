@@ -597,7 +597,7 @@ static int add_shmount_to_list(struct lxc_conf *conf)
 
 static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_handler *handler)
 {
-	int i, r;
+	int i, ret;
 	static struct {
 		int match_mask;
 		int match_flag;
@@ -672,18 +672,18 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 
 		mflags = add_required_remount_flags(source, destination,
 						    default_mounts[i].flags);
-		r = safe_mount(source, destination, default_mounts[i].fstype,
-			       mflags, default_mounts[i].options,
-			       rootfs->path ? rootfs->mount : NULL);
+		ret = safe_mount(source, destination, default_mounts[i].fstype,
+				mflags, default_mounts[i].options,
+				rootfs->path ? rootfs->mount : NULL);
 		saved_errno = errno;
-		if (r < 0 && errno == ENOENT) {
+		if (ret < 0 && errno == ENOENT) {
 			INFO("Mount source or target for \"%s\" on \"%s\" does not exist. Skipping", source, destination);
-			r = 0;
-		} else if (r < 0) {
+			ret = 0;
+		} else if (ret < 0) {
 			SYSERROR("Failed to mount \"%s\" on \"%s\" with flags %lu", source, destination, mflags);
 		}
 
-		if (r < 0) {
+		if (ret < 0) {
 			errno = saved_errno;
 			return -1;
 		}
@@ -728,7 +728,7 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 	}
 
 	if (flags & LXC_AUTO_SHMOUNTS_MASK) {
-		int ret = add_shmount_to_list(conf);
+		ret = add_shmount_to_list(conf);
 		if (ret < 0)
 			return log_error(-1, "Failed to add shmount entry to container config");
 	}
