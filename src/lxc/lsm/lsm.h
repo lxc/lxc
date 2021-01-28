@@ -33,6 +33,6 @@ struct lsm_ops {
 	int (*process_label_set_at)(struct lsm_ops *ops, int label_fd, const char *label, bool on_exec);
 };
 
-__hidden extern struct lsm_ops *lsm_init(void);
+__hidden extern struct lsm_ops *lsm_init_static(void);
 
 #endif /* __LXC_LSM_H */

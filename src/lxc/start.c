@@ -728,7 +728,7 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	if (status_fd < 0)
 		return log_error_errno(-1, errno, "Failed to open monitor status fd");
 
-	handler->lsm_ops = lsm_init();
+	handler->lsm_ops = lsm_init_static();
 	TRACE("Initialized LSM");
 
 	/* Begin by setting the state to STARTING. */
