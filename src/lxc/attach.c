@@ -140,25 +140,6 @@ static int get_attach_context(struct attach_context *ctx,
 	return 0;
 }
 
-static inline void lxc_proc_close_ns_fd(struct attach_context *ctx)
-{
-	for (int i = 0; i < LXC_NS_MAX; i++)
-		close_prot_errno_disarm(ctx->ns_fd[i]);
-}
-
-static void put_attach_context(struct attach_context *ctx)
-{
-	free_disarm(ctx->lsm_label);
-
-	if (ctx->container) {
-		lxc_container_put(ctx->container);
-		ctx->container = NULL;
-	}
-
-	lxc_proc_close_ns_fd(ctx);
-	free(ctx);
-}
-
 /**
  * in_same_namespace - Check whether two processes are in the same namespace.
  * @pid1 - PID of the first process.
@@ -205,6 +186,65 @@ static int in_same_namespace(pid_t pid1, pid_t pid2, const char *ns)
 
 	/* processes are in different namespaces */
 	return move_fd(ns_fd2);
+}
+
+static int get_attach_context_nsfds(struct attach_context *ctx,
+				    lxc_attach_options_t *options)
+{
+
+	pid_t pid_self = lxc_raw_getpid();
+
+	for (int i = 0; i < LXC_NS_MAX; i++) {
+		int j;
+
+		if (options->namespaces & ns_info[i].clone_flag)
+			ctx->ns_fd[i] = lxc_preserve_ns(ctx->init_pid, ns_info[i].proc_name);
+		else if (ctx->ns_inherited & ns_info[i].clone_flag)
+			ctx->ns_fd[i] = in_same_namespace(pid_self, ctx->init_pid, ns_info[i].proc_name);
+		else
+			continue;
+
+		if (ctx->ns_fd[i] >= 0)
+			continue;
+
+		if (ctx->ns_fd[i] == -EINVAL) {
+			DEBUG("Inheriting %s namespace from %d", ns_info[i].proc_name, pid_self);
+			ctx->ns_inherited &= ~ns_info[i].clone_flag;
+			continue;
+		}
+
+		/* We failed to preserve the namespace. */
+		SYSERROR("Failed to attach to %s namespace of %d", ns_info[i].proc_name, pid_self);
+
+		/* Close all already opened file descriptors before we return an
+		 * error, so we don't leak them.
+		 */
+		for (j = 0; j < i; j++)
+			close_prot_errno_disarm(ctx->ns_fd[j]);
+
+		return -1;
+	}
+
+	return 0;
+}
+
+static inline void lxc_proc_close_ns_fd(struct attach_context *ctx)
+{
+	for (int i = 0; i < LXC_NS_MAX; i++)
+		close_prot_errno_disarm(ctx->ns_fd[i]);
+}
+
+static void put_attach_context(struct attach_context *ctx)
+{
+	free_disarm(ctx->lsm_label);
+
+	if (ctx->container) {
+		lxc_container_put(ctx->container);
+		ctx->container = NULL;
+	}
+
+	lxc_proc_close_ns_fd(ctx);
+	free(ctx);
 }
 
 static int lxc_attach_to_ns(pid_t pid, struct attach_context *ctx)
@@ -1056,39 +1096,10 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		}
 	}
 
-	pid = lxc_raw_getpid();
-
-	for (i = 0; i < LXC_NS_MAX; i++) {
-		int j;
-
-		if (options->namespaces & ns_info[i].clone_flag)
-			ctx->ns_fd[i] = lxc_preserve_ns(ctx->init_pid, ns_info[i].proc_name);
-		else if (ctx->ns_inherited & ns_info[i].clone_flag)
-			ctx->ns_fd[i] = in_same_namespace(pid, ctx->init_pid, ns_info[i].proc_name);
-		else
-			continue;
-
-		if (ctx->ns_fd[i] >= 0)
-			continue;
-
-		if (ctx->ns_fd[i] == -EINVAL) {
-			DEBUG("Inheriting %s namespace from %d",
-			      ns_info[i].proc_name, pid);
-			ctx->ns_inherited &= ~ns_info[i].clone_flag;
-			continue;
-		}
-
-		/* We failed to preserve the namespace. */
-		SYSERROR("Failed to attach to %s namespace of %d",
-		         ns_info[i].proc_name, pid);
-
-		/* Close all already opened file descriptors before we return an
-		 * error, so we don't leak them.
-		 */
-		for (j = 0; j < i; j++)
-			close(ctx->ns_fd[j]);
-
-		put_attach_context(ctx);
+	ret = get_attach_context_nsfds(ctx, options);
+	if (ret) {
+		ERROR("Failed to get namespace file descriptors");
+		lxc_container_put(container);
 		return -1;
 	}
 
