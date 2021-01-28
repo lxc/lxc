@@ -84,7 +84,7 @@ static struct attach_context *get_attach_context(pid_t pid)
 	if (!proc_file)
 		return log_error_errno(NULL, errno, "Failed to open %s", proc_fn);
 
-	info = calloc(1, sizeof(*info));
+	info = zalloc(sizeof(*info));
 	if (!info)
 		return NULL;
 
@@ -269,7 +269,7 @@ static int lxc_attach_set_environment(struct attach_context *ctx,
 			for (count = 0; extra_keep[count]; count++)
 				;
 
-			extra_keep_store = calloc(count, sizeof(char *));
+			extra_keep_store = zalloc(count * sizeof(char *));
 			if (!extra_keep_store)
 				return -1;
 
