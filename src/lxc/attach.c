@@ -71,6 +71,17 @@ static struct attach_context *alloc_attach_context(void)
 	return zalloc(sizeof(struct attach_context));
 }
 
+static signed long get_personality(const char *name, const char *lxcpath)
+{
+	__do_free char *p = NULL;
+
+	p = lxc_cmd_get_config_item(name, "lxc.arch", lxcpath);
+	if (!p)
+		return -1;
+
+	return lxc_config_parse_arch(p);
+}
+
 static int get_attach_context(struct attach_context *ctx,
 			      struct lxc_container *container)
 {
@@ -115,6 +126,10 @@ static int get_attach_context(struct attach_context *ctx,
 	ctx->ns_inherited = 0;
 	for (int i = 0; i < LXC_NS_MAX; i++)
 		ctx->ns_fd[i] = -EBADF;
+
+	ctx->personality = get_personality(container->name, container->config_path);
+	if (ctx->personality < 0)
+		return log_error_errno(-ENOENT, ENOENT, "Failed to get personality of the container");
 
 	return 0;
 }
@@ -632,17 +647,6 @@ static bool no_new_privs(struct lxc_container *c, lxc_attach_options_t *options)
 	return c->set_config_item(c, "lxc.no_new_privs", val);
 }
 
-static signed long get_personality(const char *name, const char *lxcpath)
-{
-	__do_free char *p = NULL;
-
-	p = lxc_cmd_get_config_item(name, "lxc.arch", lxcpath);
-	if (!p)
-		return -1;
-
-	return lxc_config_parse_arch(p);
-}
-
 struct attach_clone_payload {
 	int ipc_socket;
 	int terminal_pts_fd;
@@ -976,7 +980,6 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	int i, ret, status;
 	char *name, *lxcpath, *new_cwd;
 	int ipc_sockets[2];
-	signed long personality;
 	pid_t attached_pid, pid, to_cleanup_pid;
 	struct attach_context *ctx;
 	struct lxc_terminal terminal;
@@ -1010,14 +1013,6 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		lxc_container_put(container);
 		return -1;
 	}
-
-	personality = get_personality(name, lxcpath);
-	if (ctx->personality < 0) {
-		ERROR("Failed to get personality of the container");
-		put_attach_context(ctx);
-		return -1;
-	}
-	ctx->personality = personality;
 
 	if (!ctx->container->lxc_conf) {
 		ctx->container->lxc_conf = lxc_conf_init();
