@@ -653,6 +653,7 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 	gid_t ns_root_gid = 0;
 	lxc_attach_options_t* options = payload->options;
 	struct lxc_proc_context_info* init_ctx = payload->init_ctx;
+	struct lxc_conf *conf = init_ctx->container->lxc_conf;
 	bool needs_lsm = (options->namespaces & CLONE_NEWNS) &&
 			 (options->attach_flags & LXC_ATTACH_LSM) &&
 			 init_ctx->lsm_label;
@@ -672,7 +673,7 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 		TRACE("Remounted \"/proc\" and \"/sys\"");
 	}
 
-/* Now perform additional attachments. */
+	/* Now perform additional attachments. */
 #if HAVE_SYS_PERSONALITY_H
 	if (options->attach_flags & LXC_ATTACH_SET_PERSONALITY) {
 		long new_personality;
@@ -791,8 +792,7 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 		TRACE("Set %s LSM label to \"%s\"", init_ctx->lsm_ops->name, init_ctx->lsm_label);
 	}
 
-	if ((init_ctx->container && init_ctx->container->lxc_conf &&
-	     init_ctx->container->lxc_conf->no_new_privs) ||
+	if ((init_ctx->container && conf && conf->no_new_privs) ||
 	    (options->attach_flags & LXC_ATTACH_NO_NEW_PRIVS)) {
 		ret = prctl(PR_SET_NO_NEW_PRIVS, prctl_arg(1), prctl_arg(0),
 			    prctl_arg(0), prctl_arg(0));
@@ -802,10 +802,7 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 		TRACE("Set PR_SET_NO_NEW_PRIVS");
 	}
 
-	if (init_ctx->container && init_ctx->container->lxc_conf &&
-	    init_ctx->container->lxc_conf->seccomp.seccomp) {
-		struct lxc_conf *conf = init_ctx->container->lxc_conf;
-
+	if (init_ctx->container && conf && conf->seccomp.seccomp) {
 		ret = lxc_seccomp_load(conf);
 		if (ret < 0)
 			goto on_error;
