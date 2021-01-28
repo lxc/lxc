@@ -55,6 +55,16 @@ lxc_log_define(attach, lxc);
 /* Define default options if no options are supplied by the user. */
 static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_DEFAULT;
 
+struct lxc_proc_context_info {
+	char *lsm_label;
+	struct lxc_container *container;
+	signed long personality;
+	unsigned long long capability_mask;
+	int ns_inherited;
+	int ns_fd[LXC_NS_MAX];
+	struct lsm_ops *lsm_ops;
+};
+
 static struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 {
 	__do_free char *line = NULL;

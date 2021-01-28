@@ -11,16 +11,7 @@
 #include "namespace.h"
 
 struct lxc_conf;
-
-struct lxc_proc_context_info {
-	char *lsm_label;
-	struct lxc_container *container;
-	signed long personality;
-	unsigned long long capability_mask;
-	int ns_inherited;
-	int ns_fd[LXC_NS_MAX];
-	struct lsm_ops *lsm_ops;
-};
+struct lxc_container;
 
 __hidden extern int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 			       void *exec_payload, lxc_attach_options_t *options,
