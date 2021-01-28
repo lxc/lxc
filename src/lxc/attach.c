@@ -65,11 +65,15 @@ struct attach_context {
 	struct lsm_ops *lsm_ops;
 };
 
-static struct attach_context *get_attach_context(pid_t pid)
+static struct attach_context *alloc_attach_context(void)
+{
+	return zalloc(sizeof(struct attach_context));
+}
+
+static int get_attach_context(struct attach_context *ctx, pid_t pid)
 {
 	__do_free char *line = NULL;
 	__do_fclose FILE *proc_file = NULL;
-	__do_free struct attach_context *info = NULL;
 	int ret;
 	bool found;
 	char proc_fn[LXC_PROC_STATUS_LEN];
@@ -78,20 +82,16 @@ static struct attach_context *get_attach_context(pid_t pid)
 	/* Read capabilities. */
 	ret = snprintf(proc_fn, LXC_PROC_STATUS_LEN, "/proc/%d/status", pid);
 	if (ret < 0 || ret >= LXC_PROC_STATUS_LEN)
-		return NULL;
+		return -EIO;
 
 	proc_file = fopen(proc_fn, "re");
 	if (!proc_file)
-		return log_error_errno(NULL, errno, "Failed to open %s", proc_fn);
-
-	info = zalloc(sizeof(*info));
-	if (!info)
-		return NULL;
+		return log_error_errno(-errno, errno, "Failed to open %s", proc_fn);
 
 	found = false;
 
 	while (getline(&line, &line_bufsz, proc_file) != -1) {
-		ret = sscanf(line, "CapBnd: %llx", &info->capability_mask);
+		ret = sscanf(line, "CapBnd: %llx", &ctx->capability_mask);
 		if (ret != EOF && ret == 1) {
 			found = true;
 			break;
@@ -99,16 +99,16 @@ static struct attach_context *get_attach_context(pid_t pid)
 	}
 
 	if (!found)
-		return log_error_errno(NULL, ENOENT, "Failed to read capability bounding set from %s", proc_fn);
+		return log_error_errno(-ENOENT, ENOENT, "Failed to read capability bounding set from %s", proc_fn);
 
-	info->lsm_ops = lsm_init();
+	ctx->lsm_ops = lsm_init();
 
-	info->lsm_label = info->lsm_ops->process_label_get(info->lsm_ops, pid);
-	info->ns_inherited = 0;
+	ctx->lsm_label = ctx->lsm_ops->process_label_get(ctx->lsm_ops, pid);
+	ctx->ns_inherited = 0;
 	for (int i = 0; i < LXC_NS_MAX; i++)
-		info->ns_fd[i] = -EBADF;
+		ctx->ns_fd[i] = -EBADF;
 
-	return move_ptr(info);
+	return 0;
 }
 
 static inline void lxc_proc_close_ns_fd(struct attach_context *ctx)
@@ -996,8 +996,14 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		return log_error(-1, "Failed to get init pid");
 	}
 
-	ctx = get_attach_context(init_pid);
+	ctx = alloc_attach_context();
 	if (!ctx) {
+		lxc_container_put(container);
+		return log_error_errno(-ENOMEM, ENOMEM, "Failed to allocate attach context");
+	}
+
+	ret = get_attach_context(ctx, init_pid);
+	if (ret) {
 		ERROR("Failed to get context of init process: %ld", (long)init_pid);
 		lxc_container_put(container);
 		return -1;
