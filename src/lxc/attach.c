@@ -952,19 +952,17 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	       pid_t *attached_process)
 {
 	__do_free char *cwd = NULL;
+	int ret_parent = -1;
+	struct attach_clone_payload payload = {};
+	struct lxc_epoll_descr descr = {};
 	int i, ret, status;
+	char *name, *lxcpath, *new_cwd;
 	int ipc_sockets[2];
-	char *new_cwd;
 	signed long personality;
-	pid_t attached_pid, init_pid, pid;
+	pid_t attached_pid, init_pid, pid, to_cleanup_pid;
 	struct lxc_proc_context_info *init_ctx;
 	struct lxc_terminal terminal;
 	struct lxc_conf *conf;
-	char *name, *lxcpath;
-	struct attach_clone_payload payload = {0};
-	int ret_parent = -1;
-	pid_t to_cleanup_pid;
-	struct lxc_epoll_descr descr = {0};
 
 	ret = access("/proc/self/ns", X_OK);
 	if (ret)
