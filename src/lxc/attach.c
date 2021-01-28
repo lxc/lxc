@@ -302,7 +302,7 @@ int lxc_attach_remount_sys_proc(void)
 	return 0;
 }
 
-static int lxc_attach_drop_privs(struct attach_context *ctx)
+static int drop_capabilities(struct attach_context *ctx)
 {
 	int last_cap;
 
@@ -760,7 +760,7 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 #endif
 
 	if (options->attach_flags & LXC_ATTACH_DROP_CAPABILITIES) {
-		ret = lxc_attach_drop_privs(ctx);
+		ret = drop_capabilities(ctx);
 		if (ret < 0)
 			goto on_error;
 
