@@ -55,7 +55,7 @@ lxc_log_define(attach, lxc);
 /* Define default options if no options are supplied by the user. */
 static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_DEFAULT;
 
-struct lxc_proc_context_info {
+struct attach_context {
 	char *lsm_label;
 	struct lxc_container *container;
 	signed long personality;
@@ -65,11 +65,11 @@ struct lxc_proc_context_info {
 	struct lsm_ops *lsm_ops;
 };
 
-static struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
+static struct attach_context *lxc_proc_get_context_info(pid_t pid)
 {
 	__do_free char *line = NULL;
 	__do_fclose FILE *proc_file = NULL;
-	__do_free struct lxc_proc_context_info *info = NULL;
+	__do_free struct attach_context *info = NULL;
 	int ret;
 	bool found;
 	char proc_fn[LXC_PROC_STATUS_LEN];
@@ -111,13 +111,13 @@ static struct lxc_proc_context_info *lxc_proc_get_context_info(pid_t pid)
 	return move_ptr(info);
 }
 
-static inline void lxc_proc_close_ns_fd(struct lxc_proc_context_info *ctx)
+static inline void lxc_proc_close_ns_fd(struct attach_context *ctx)
 {
 	for (int i = 0; i < LXC_NS_MAX; i++)
 		close_prot_errno_disarm(ctx->ns_fd[i]);
 }
 
-static void lxc_proc_put_context_info(struct lxc_proc_context_info *ctx)
+static void lxc_proc_put_context_info(struct attach_context *ctx)
 {
 	free_disarm(ctx->lsm_label);
 
@@ -178,7 +178,7 @@ static int in_same_namespace(pid_t pid1, pid_t pid2, const char *ns)
 	return move_fd(ns_fd2);
 }
 
-static int lxc_attach_to_ns(pid_t pid, struct lxc_proc_context_info *ctx)
+static int lxc_attach_to_ns(pid_t pid, struct attach_context *ctx)
 {
 	for (int i = 0; i < LXC_NS_MAX; i++) {
 		int ret;
@@ -233,7 +233,7 @@ int lxc_attach_remount_sys_proc(void)
 	return 0;
 }
 
-static int lxc_attach_drop_privs(struct lxc_proc_context_info *ctx)
+static int lxc_attach_drop_privs(struct attach_context *ctx)
 {
 	int last_cap;
 
@@ -252,7 +252,7 @@ static int lxc_attach_drop_privs(struct lxc_proc_context_info *ctx)
 	return 0;
 }
 
-static int lxc_attach_set_environment(struct lxc_proc_context_info *init_ctx,
+static int lxc_attach_set_environment(struct attach_context *ctx,
 				      enum lxc_attach_env_policy_t policy,
 				      char **extra_env, char **extra_keep)
 {
@@ -337,8 +337,8 @@ static int lxc_attach_set_environment(struct lxc_proc_context_info *init_ctx,
 		return log_warn(-1, "Failed to set environment variable");
 
 	/* Set container environment variables.*/
-	if (init_ctx && init_ctx->container && init_ctx->container->lxc_conf) {
-		lxc_list_for_each(iterator, &init_ctx->container->lxc_conf->environment) {
+	if (ctx && ctx->container && ctx->container->lxc_conf) {
+		lxc_list_for_each(iterator, &ctx->container->lxc_conf->environment) {
 			char *env_tmp;
 
 			env_tmp = strdup((char *)iterator->elem);
@@ -639,7 +639,7 @@ struct attach_clone_payload {
 	int ipc_socket;
 	int terminal_pts_fd;
 	lxc_attach_options_t *options;
-	struct lxc_proc_context_info *init_ctx;
+	struct attach_context *ctx;
 	lxc_attach_exec_t exec_function;
 	void *exec_payload;
 };
@@ -648,9 +648,9 @@ static void lxc_put_attach_clone_payload(struct attach_clone_payload *p)
 {
 	close_prot_errno_disarm(p->ipc_socket);
 	close_prot_errno_disarm(p->terminal_pts_fd);
-	if (p->init_ctx) {
-		lxc_proc_put_context_info(p->init_ctx);
-		p->init_ctx = NULL;
+	if (p->ctx) {
+		lxc_proc_put_context_info(p->ctx);
+		p->ctx = NULL;
 	}
 }
 
@@ -662,11 +662,11 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 	uid_t ns_root_uid = 0;
 	gid_t ns_root_gid = 0;
 	lxc_attach_options_t* options = payload->options;
-	struct lxc_proc_context_info* init_ctx = payload->init_ctx;
-	struct lxc_conf *conf = init_ctx->container->lxc_conf;
+        struct attach_context *ctx = payload->ctx;
+        struct lxc_conf *conf = ctx->container->lxc_conf;
 	bool needs_lsm = (options->namespaces & CLONE_NEWNS) &&
 			 (options->attach_flags & LXC_ATTACH_LSM) &&
-			 init_ctx->lsm_label;
+			 ctx->lsm_label;
 	char *lsm_label = NULL;
 
 	/* A description of the purpose of this functionality is provided in the
@@ -689,7 +689,7 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 		long new_personality;
 
 		if (options->personality < 0)
-			new_personality = init_ctx->personality;
+			new_personality = ctx->personality;
 		else
 			new_personality = options->personality;
 
@@ -702,7 +702,7 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 #endif
 
 	if (options->attach_flags & LXC_ATTACH_DROP_CAPABILITIES) {
-		ret = lxc_attach_drop_privs(init_ctx);
+		ret = lxc_attach_drop_privs(ctx);
 		if (ret < 0)
 			goto on_error;
 
@@ -712,7 +712,7 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 	/* Always set the environment (specify (LXC_ATTACH_KEEP_ENV, NULL, NULL)
 	 * if you want this to be a no-op).
 	 */
-	ret = lxc_attach_set_environment(init_ctx,
+	ret = lxc_attach_set_environment(ctx,
 					 options->env_policy,
 					 options->extra_env_vars,
 					 options->extra_keep_env);
@@ -792,17 +792,17 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 		if (options->attach_flags & LXC_ATTACH_LSM_LABEL)
 			lsm_label = options->lsm_label;
 		if (!lsm_label)
-			lsm_label = init_ctx->lsm_label;
-		ret = init_ctx->lsm_ops->process_label_set_at(init_ctx->lsm_ops, lsm_fd,
-							      lsm_label, on_exec);
+			lsm_label = ctx->lsm_label;
+		ret = ctx->lsm_ops->process_label_set_at(ctx->lsm_ops, lsm_fd,
+							lsm_label, on_exec);
 		close(lsm_fd);
 		if (ret < 0)
 			goto on_error;
 
-		TRACE("Set %s LSM label to \"%s\"", init_ctx->lsm_ops->name, init_ctx->lsm_label);
+		TRACE("Set %s LSM label to \"%s\"", ctx->lsm_ops->name, ctx->lsm_label);
 	}
 
-	if ((init_ctx->container && conf && conf->no_new_privs) ||
+	if ((ctx->container && conf && conf->no_new_privs) ||
 	    (options->attach_flags & LXC_ATTACH_NO_NEW_PRIVS)) {
 		ret = prctl(PR_SET_NO_NEW_PRIVS, prctl_arg(1), prctl_arg(0),
 			    prctl_arg(0), prctl_arg(0));
@@ -812,7 +812,7 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 		TRACE("Set PR_SET_NO_NEW_PRIVS");
 	}
 
-	if (init_ctx->container && conf && conf->seccomp.seccomp) {
+	if (ctx->container && conf && conf->seccomp.seccomp) {
 		ret = lxc_seccomp_load(conf);
 		if (ret < 0)
 			goto on_error;
@@ -825,8 +825,8 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 	}
 
 	close_prot_errno_disarm(payload->ipc_socket);
-	lxc_proc_put_context_info(init_ctx);
-	payload->init_ctx = NULL;
+	lxc_proc_put_context_info(ctx);
+	payload->ctx = NULL;
 
 	/* The following is done after the communication socket is shut down.
 	 * That way, all errors that might (though unlikely) occur up until this
@@ -970,7 +970,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	int ipc_sockets[2];
 	signed long personality;
 	pid_t attached_pid, init_pid, pid, to_cleanup_pid;
-	struct lxc_proc_context_info *init_ctx;
+	struct attach_context *ctx;
 	struct lxc_terminal terminal;
 	struct lxc_conf *conf;
 
@@ -996,38 +996,38 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		return log_error(-1, "Failed to get init pid");
 	}
 
-	init_ctx = lxc_proc_get_context_info(init_pid);
-	if (!init_ctx) {
+	ctx = lxc_proc_get_context_info(init_pid);
+	if (!ctx) {
 		ERROR("Failed to get context of init process: %ld", (long)init_pid);
 		lxc_container_put(container);
 		return -1;
 	}
 
-	init_ctx->container = container;
+	ctx->container = container;
 
 	personality = get_personality(name, lxcpath);
-	if (init_ctx->personality < 0) {
+	if (ctx->personality < 0) {
 		ERROR("Failed to get personality of the container");
-		lxc_proc_put_context_info(init_ctx);
+		lxc_proc_put_context_info(ctx);
 		return -1;
 	}
-	init_ctx->personality = personality;
+	ctx->personality = personality;
 
-	if (!init_ctx->container->lxc_conf) {
-		init_ctx->container->lxc_conf = lxc_conf_init();
-		if (!init_ctx->container->lxc_conf) {
-			lxc_proc_put_context_info(init_ctx);
+	if (!ctx->container->lxc_conf) {
+		ctx->container->lxc_conf = lxc_conf_init();
+		if (!ctx->container->lxc_conf) {
+			lxc_proc_put_context_info(ctx);
 			return -1;
 		}
 	}
-	conf = init_ctx->container->lxc_conf;
+	conf = ctx->container->lxc_conf;
 	if (!conf)
 		return log_error_errno(-EINVAL, EINVAL, "Missing container confifg");
 
-	if (!fetch_seccomp(init_ctx->container, options))
+	if (!fetch_seccomp(ctx->container, options))
 		WARN("Failed to get seccomp policy");
 
-	if (!no_new_privs(init_ctx->container, options))
+	if (!no_new_privs(ctx->container, options))
 		WARN("Could not determine whether PR_SET_NO_NEW_PRIVS is set");
 
 	cwd = getcwd(NULL, 0);
@@ -1041,7 +1041,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		if (options->namespaces == -1) {
 			ERROR("Failed to automatically determine the "
 			      "namespaces which the container uses");
-			lxc_proc_put_context_info(init_ctx);
+			lxc_proc_put_context_info(ctx);
 			return -1;
 		}
 
@@ -1054,7 +1054,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 			if (ns_info[i].clone_flag & options->namespaces)
 				continue;
 
-			init_ctx->ns_inherited |= ns_info[i].clone_flag;
+			ctx->ns_inherited |= ns_info[i].clone_flag;
 		}
 	}
 
@@ -1064,19 +1064,19 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		int j;
 
 		if (options->namespaces & ns_info[i].clone_flag)
-			init_ctx->ns_fd[i] = lxc_preserve_ns(init_pid, ns_info[i].proc_name);
-		else if (init_ctx->ns_inherited & ns_info[i].clone_flag)
-			init_ctx->ns_fd[i] = in_same_namespace(pid, init_pid, ns_info[i].proc_name);
+			ctx->ns_fd[i] = lxc_preserve_ns(init_pid, ns_info[i].proc_name);
+		else if (ctx->ns_inherited & ns_info[i].clone_flag)
+			ctx->ns_fd[i] = in_same_namespace(pid, init_pid, ns_info[i].proc_name);
 		else
 			continue;
 
-		if (init_ctx->ns_fd[i] >= 0)
+		if (ctx->ns_fd[i] >= 0)
 			continue;
 
-		if (init_ctx->ns_fd[i] == -EINVAL) {
+		if (ctx->ns_fd[i] == -EINVAL) {
 			DEBUG("Inheriting %s namespace from %d",
 			      ns_info[i].proc_name, pid);
-			init_ctx->ns_inherited &= ~ns_info[i].clone_flag;
+			ctx->ns_inherited &= ~ns_info[i].clone_flag;
 			continue;
 		}
 
@@ -1088,9 +1088,9 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		 * error, so we don't leak them.
 		 */
 		for (j = 0; j < i; j++)
-			close(init_ctx->ns_fd[j]);
+			close(ctx->ns_fd[j]);
 
-		lxc_proc_put_context_info(init_ctx);
+		lxc_proc_put_context_info(ctx);
 		return -1;
 	}
 
@@ -1098,7 +1098,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		ret = lxc_attach_terminal(name, lxcpath, conf, &terminal);
 		if (ret < 0) {
 			ERROR("Failed to setup new terminal");
-			lxc_proc_put_context_info(init_ctx);
+			lxc_proc_put_context_info(ctx);
 			return -1;
 		}
 
@@ -1143,7 +1143,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, ipc_sockets);
 	if (ret < 0) {
 		SYSERROR("Could not set up required IPC mechanism for attaching");
-		lxc_proc_put_context_info(init_ctx);
+		lxc_proc_put_context_info(ctx);
 		return -1;
 	}
 
@@ -1157,7 +1157,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	pid = fork();
 	if (pid < 0) {
 		SYSERROR("Failed to create first subprocess");
-		lxc_proc_put_context_info(init_ctx);
+		lxc_proc_put_context_info(ctx);
 		return -1;
 	}
 
@@ -1175,7 +1175,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		ret = lxc_read_nointr(ipc_sockets[1], &status, sizeof(status));
 		if (ret != sizeof(status)) {
 			shutdown(ipc_sockets[1], SHUT_RDWR);
-			lxc_proc_put_context_info(init_ctx);
+			lxc_proc_put_context_info(ctx);
 			_exit(EXIT_FAILURE);
 		}
 
@@ -1184,16 +1184,16 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		/* Attach now, create another subprocess later, since pid namespaces
 		 * only really affect the children of the current process.
 		 */
-		ret = lxc_attach_to_ns(init_pid, init_ctx);
+		ret = lxc_attach_to_ns(init_pid, ctx);
 		if (ret < 0) {
 			ERROR("Failed to enter namespaces");
 			shutdown(ipc_sockets[1], SHUT_RDWR);
-			lxc_proc_put_context_info(init_ctx);
+			lxc_proc_put_context_info(ctx);
 			_exit(EXIT_FAILURE);
 		}
 
 		/* close namespace file descriptors */
-		lxc_proc_close_ns_fd(init_ctx);
+		lxc_proc_close_ns_fd(ctx);
 
 		/* Attach succeeded, try to cwd. */
 		if (options->initial_cwd)
@@ -1209,7 +1209,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		/* Create attached process. */
 		payload.ipc_socket	= ipc_sockets[1];
 		payload.options		= options;
-		payload.init_ctx	= init_ctx;
+		payload.ctx		= ctx;
 		payload.terminal_pts_fd = terminal.pty;
 		payload.exec_function	= exec_function;
 		payload.exec_payload	= exec_payload;
@@ -1218,7 +1218,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		if (pid < 0) {
 			SYSERROR("Failed to clone attached process");
 			shutdown(ipc_sockets[1], SHUT_RDWR);
-			lxc_proc_put_context_info(init_ctx);
+			lxc_proc_put_context_info(ctx);
 			_exit(EXIT_FAILURE);
 		}
 
@@ -1247,14 +1247,14 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 			 * attached process will remain a zombie.
 			 */
 			shutdown(ipc_sockets[1], SHUT_RDWR);
-			lxc_proc_put_context_info(init_ctx);
+			lxc_proc_put_context_info(ctx);
 			_exit(EXIT_FAILURE);
 		}
 
 		TRACE("Sending pid %d of attached process", pid);
 
 		/* The rest is in the hands of the initial and the attached process. */
-		lxc_proc_put_context_info(init_ctx);
+		lxc_proc_put_context_info(ctx);
 		_exit(EXIT_SUCCESS);
 	}
 
@@ -1263,7 +1263,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	/* close unneeded file descriptors */
 	close(ipc_sockets[1]);
 	free_disarm(cwd);
-	lxc_proc_close_ns_fd(init_ctx);
+	lxc_proc_close_ns_fd(ctx);
 	if (options->attach_flags & LXC_ATTACH_TERMINAL)
 		lxc_attach_terminal_close_pts(&terminal);
 
@@ -1346,14 +1346,14 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 
 	/* Open LSM fd and send it to child. */
 	if ((options->namespaces & CLONE_NEWNS) &&
-	    (options->attach_flags & LXC_ATTACH_LSM) && init_ctx->lsm_label) {
+	    (options->attach_flags & LXC_ATTACH_LSM) && ctx->lsm_label) {
 		__do_close int labelfd = -EBADF;
 		bool on_exec;
 
 		ret = -1;
 		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? true : false;
-		labelfd = init_ctx->lsm_ops->process_label_fd_get(init_ctx->lsm_ops,
-								  attached_pid, on_exec);
+		labelfd = ctx->lsm_ops->process_label_fd_get(ctx->lsm_ops,
+							     attached_pid, on_exec);
 		if (labelfd < 0)
 			goto close_mainloop;
 
@@ -1421,7 +1421,7 @@ on_error:
 		lxc_terminal_conf_free(&terminal);
 	}
 
-	lxc_proc_put_context_info(init_ctx);
+	lxc_proc_put_context_info(ctx);
 	return ret_parent;
 }
 
