@@ -21,7 +21,7 @@ __hidden extern struct lsm_ops *lsm_apparmor_ops_init(void);
 __hidden extern struct lsm_ops *lsm_selinux_ops_init(void);
 __hidden extern struct lsm_ops *lsm_nop_ops_init(void);
 
-struct lsm_ops *lsm_init(void)
+struct lsm_ops *lsm_init_static(void)
 {
 	struct lsm_ops *ops = NULL;
 
