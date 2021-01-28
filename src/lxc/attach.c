@@ -65,7 +65,7 @@ struct attach_context {
 	struct lsm_ops *lsm_ops;
 };
 
-static struct attach_context *lxc_proc_get_context_info(pid_t pid)
+static struct attach_context *get_attach_context(pid_t pid)
 {
 	__do_free char *line = NULL;
 	__do_fclose FILE *proc_file = NULL;
@@ -117,7 +117,7 @@ static inline void lxc_proc_close_ns_fd(struct attach_context *ctx)
 		close_prot_errno_disarm(ctx->ns_fd[i]);
 }
 
-static void lxc_proc_put_context_info(struct attach_context *ctx)
+static void put_attach_context(struct attach_context *ctx)
 {
 	free_disarm(ctx->lsm_label);
 
@@ -649,7 +649,7 @@ static void lxc_put_attach_clone_payload(struct attach_clone_payload *p)
 	close_prot_errno_disarm(p->ipc_socket);
 	close_prot_errno_disarm(p->terminal_pts_fd);
 	if (p->ctx) {
-		lxc_proc_put_context_info(p->ctx);
+		put_attach_context(p->ctx);
 		p->ctx = NULL;
 	}
 }
@@ -825,7 +825,7 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 	}
 
 	close_prot_errno_disarm(payload->ipc_socket);
-	lxc_proc_put_context_info(ctx);
+	put_attach_context(ctx);
 	payload->ctx = NULL;
 
 	/* The following is done after the communication socket is shut down.
@@ -996,7 +996,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		return log_error(-1, "Failed to get init pid");
 	}
 
-	ctx = lxc_proc_get_context_info(init_pid);
+	ctx = get_attach_context(init_pid);
 	if (!ctx) {
 		ERROR("Failed to get context of init process: %ld", (long)init_pid);
 		lxc_container_put(container);
@@ -1008,7 +1008,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	personality = get_personality(name, lxcpath);
 	if (ctx->personality < 0) {
 		ERROR("Failed to get personality of the container");
-		lxc_proc_put_context_info(ctx);
+		put_attach_context(ctx);
 		return -1;
 	}
 	ctx->personality = personality;
@@ -1016,7 +1016,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	if (!ctx->container->lxc_conf) {
 		ctx->container->lxc_conf = lxc_conf_init();
 		if (!ctx->container->lxc_conf) {
-			lxc_proc_put_context_info(ctx);
+			put_attach_context(ctx);
 			return -1;
 		}
 	}
@@ -1041,7 +1041,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		if (options->namespaces == -1) {
 			ERROR("Failed to automatically determine the "
 			      "namespaces which the container uses");
-			lxc_proc_put_context_info(ctx);
+			put_attach_context(ctx);
 			return -1;
 		}
 
@@ -1090,7 +1090,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		for (j = 0; j < i; j++)
 			close(ctx->ns_fd[j]);
 
-		lxc_proc_put_context_info(ctx);
+		put_attach_context(ctx);
 		return -1;
 	}
 
@@ -1098,7 +1098,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		ret = lxc_attach_terminal(name, lxcpath, conf, &terminal);
 		if (ret < 0) {
 			ERROR("Failed to setup new terminal");
-			lxc_proc_put_context_info(ctx);
+			put_attach_context(ctx);
 			return -1;
 		}
 
@@ -1143,7 +1143,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, ipc_sockets);
 	if (ret < 0) {
 		SYSERROR("Could not set up required IPC mechanism for attaching");
-		lxc_proc_put_context_info(ctx);
+		put_attach_context(ctx);
 		return -1;
 	}
 
@@ -1157,7 +1157,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	pid = fork();
 	if (pid < 0) {
 		SYSERROR("Failed to create first subprocess");
-		lxc_proc_put_context_info(ctx);
+		put_attach_context(ctx);
 		return -1;
 	}
 
@@ -1175,7 +1175,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		ret = lxc_read_nointr(ipc_sockets[1], &status, sizeof(status));
 		if (ret != sizeof(status)) {
 			shutdown(ipc_sockets[1], SHUT_RDWR);
-			lxc_proc_put_context_info(ctx);
+			put_attach_context(ctx);
 			_exit(EXIT_FAILURE);
 		}
 
@@ -1188,7 +1188,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		if (ret < 0) {
 			ERROR("Failed to enter namespaces");
 			shutdown(ipc_sockets[1], SHUT_RDWR);
-			lxc_proc_put_context_info(ctx);
+			put_attach_context(ctx);
 			_exit(EXIT_FAILURE);
 		}
 
@@ -1218,7 +1218,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		if (pid < 0) {
 			SYSERROR("Failed to clone attached process");
 			shutdown(ipc_sockets[1], SHUT_RDWR);
-			lxc_proc_put_context_info(ctx);
+			put_attach_context(ctx);
 			_exit(EXIT_FAILURE);
 		}
 
@@ -1247,14 +1247,14 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 			 * attached process will remain a zombie.
 			 */
 			shutdown(ipc_sockets[1], SHUT_RDWR);
-			lxc_proc_put_context_info(ctx);
+			put_attach_context(ctx);
 			_exit(EXIT_FAILURE);
 		}
 
 		TRACE("Sending pid %d of attached process", pid);
 
 		/* The rest is in the hands of the initial and the attached process. */
-		lxc_proc_put_context_info(ctx);
+		put_attach_context(ctx);
 		_exit(EXIT_SUCCESS);
 	}
 
@@ -1421,7 +1421,7 @@ on_error:
 		lxc_terminal_conf_free(&terminal);
 	}
 
-	lxc_proc_put_context_info(ctx);
+	put_attach_context(ctx);
 	return ret_parent;
 }
 
