@@ -228,7 +228,7 @@ static int get_attach_context_nsfds(struct attach_context *ctx,
 	return 0;
 }
 
-static inline void lxc_proc_close_ns_fd(struct attach_context *ctx)
+static inline void close_nsfds(struct attach_context *ctx)
 {
 	for (int i = 0; i < LXC_NS_MAX; i++)
 		close_prot_errno_disarm(ctx->ns_fd[i]);
@@ -243,7 +243,7 @@ static void put_attach_context(struct attach_context *ctx)
 		ctx->container = NULL;
 	}
 
-	lxc_proc_close_ns_fd(ctx);
+	close_nsfds(ctx);
 	free(ctx);
 }
 
@@ -1056,7 +1056,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	ret = get_attach_context(ctx, container);
 	if (ret) {
 		ERROR("Failed to get attach context");
-		lxc_container_put(container);
+		put_attach_context(ctx);
 		return -1;
 	}
 
@@ -1202,7 +1202,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		}
 
 		/* close namespace file descriptors */
-		lxc_proc_close_ns_fd(ctx);
+		close_nsfds(ctx);
 
 		/* Attach succeeded, try to cwd. */
 		if (options->initial_cwd)
@@ -1272,7 +1272,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	/* close unneeded file descriptors */
 	close(ipc_sockets[1]);
 	free_disarm(cwd);
-	lxc_proc_close_ns_fd(ctx);
+	close_nsfds(ctx);
 	if (options->attach_flags & LXC_ATTACH_TERMINAL)
 		lxc_attach_terminal_close_pts(&terminal);
 
