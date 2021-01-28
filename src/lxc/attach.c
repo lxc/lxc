@@ -120,7 +120,7 @@ static int get_attach_context(struct attach_context *ctx,
 	if (!found)
 		return log_error_errno(-ENOENT, ENOENT, "Failed to read capability bounding set from %s", proc_fn);
 
-	ctx->lsm_ops = lsm_init();
+	ctx->lsm_ops = lsm_init_static();
 
 	ctx->lsm_label = ctx->lsm_ops->process_label_get(ctx->lsm_ops, ctx->init_pid);
 	ctx->ns_inherited = 0;
