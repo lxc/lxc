@@ -131,6 +131,12 @@ static int get_attach_context(struct attach_context *ctx,
 	if (ctx->personality < 0)
 		return log_error_errno(-ENOENT, ENOENT, "Failed to get personality of the container");
 
+	if (!ctx->container->lxc_conf) {
+		ctx->container->lxc_conf = lxc_conf_init();
+		if (!ctx->container->lxc_conf)
+			return log_error_errno(-ENOMEM, ENOMEM, "Failed to allocate new lxc config");
+	}
+
 	return 0;
 }
 
@@ -1014,18 +1020,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		return -1;
 	}
 
-	if (!ctx->container->lxc_conf) {
-		ctx->container->lxc_conf = lxc_conf_init();
-		if (!ctx->container->lxc_conf) {
-			put_attach_context(ctx);
-			return -1;
-		}
-	}
 	conf = ctx->container->lxc_conf;
-	if (!conf) {
-		put_attach_context(ctx);
-		return log_error_errno(-EINVAL, EINVAL, "Missing container confifg");
-	}
 
 	if (!fetch_seccomp(ctx->container, options))
 		WARN("Failed to get seccomp policy");
