@@ -56,6 +56,7 @@ lxc_log_define(attach, lxc);
 static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_DEFAULT;
 
 struct attach_context {
+	int init_pid;
 	char *lsm_label;
 	struct lxc_container *container;
 	signed long personality;
@@ -70,7 +71,8 @@ static struct attach_context *alloc_attach_context(void)
 	return zalloc(sizeof(struct attach_context));
 }
 
-static int get_attach_context(struct attach_context *ctx, pid_t pid)
+static int get_attach_context(struct attach_context *ctx,
+			      struct lxc_container *container)
 {
 	__do_free char *line = NULL;
 	__do_fclose FILE *proc_file = NULL;
@@ -79,8 +81,14 @@ static int get_attach_context(struct attach_context *ctx, pid_t pid)
 	char proc_fn[LXC_PROC_STATUS_LEN];
 	size_t line_bufsz = 0;
 
+	ctx->container = container;
+
+	ctx->init_pid = lxc_cmd_get_init_pid(container->name, container->config_path);
+	if (ctx->init_pid < 0)
+		return log_error(-1, "Failed to get init pid");
+
 	/* Read capabilities. */
-	ret = snprintf(proc_fn, LXC_PROC_STATUS_LEN, "/proc/%d/status", pid);
+	ret = snprintf(proc_fn, LXC_PROC_STATUS_LEN, "/proc/%d/status", ctx->init_pid);
 	if (ret < 0 || ret >= LXC_PROC_STATUS_LEN)
 		return -EIO;
 
@@ -103,7 +111,7 @@ static int get_attach_context(struct attach_context *ctx, pid_t pid)
 
 	ctx->lsm_ops = lsm_init();
 
-	ctx->lsm_label = ctx->lsm_ops->process_label_get(ctx->lsm_ops, pid);
+	ctx->lsm_label = ctx->lsm_ops->process_label_get(ctx->lsm_ops, ctx->init_pid);
 	ctx->ns_inherited = 0;
 	for (int i = 0; i < LXC_NS_MAX; i++)
 		ctx->ns_fd[i] = -EBADF;
@@ -969,7 +977,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	char *name, *lxcpath, *new_cwd;
 	int ipc_sockets[2];
 	signed long personality;
-	pid_t attached_pid, init_pid, pid, to_cleanup_pid;
+	pid_t attached_pid, pid, to_cleanup_pid;
 	struct attach_context *ctx;
 	struct lxc_terminal terminal;
 	struct lxc_conf *conf;
@@ -990,26 +998,18 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	if (!options)
 		options = &attach_static_default_options;
 
-	init_pid = lxc_cmd_get_init_pid(name, lxcpath);
-	if (init_pid < 0) {
-		lxc_container_put(container);
-		return log_error(-1, "Failed to get init pid");
-	}
-
 	ctx = alloc_attach_context();
 	if (!ctx) {
 		lxc_container_put(container);
 		return log_error_errno(-ENOMEM, ENOMEM, "Failed to allocate attach context");
 	}
 
-	ret = get_attach_context(ctx, init_pid);
+	ret = get_attach_context(ctx, container);
 	if (ret) {
-		ERROR("Failed to get context of init process: %ld", (long)init_pid);
+		ERROR("Failed to get attach context");
 		lxc_container_put(container);
 		return -1;
 	}
-
-	ctx->container = container;
 
 	personality = get_personality(name, lxcpath);
 	if (ctx->personality < 0) {
@@ -1027,8 +1027,10 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		}
 	}
 	conf = ctx->container->lxc_conf;
-	if (!conf)
+	if (!conf) {
+		put_attach_context(ctx);
 		return log_error_errno(-EINVAL, EINVAL, "Missing container confifg");
+	}
 
 	if (!fetch_seccomp(ctx->container, options))
 		WARN("Failed to get seccomp policy");
@@ -1070,9 +1072,9 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		int j;
 
 		if (options->namespaces & ns_info[i].clone_flag)
-			ctx->ns_fd[i] = lxc_preserve_ns(init_pid, ns_info[i].proc_name);
+			ctx->ns_fd[i] = lxc_preserve_ns(ctx->init_pid, ns_info[i].proc_name);
 		else if (ctx->ns_inherited & ns_info[i].clone_flag)
-			ctx->ns_fd[i] = in_same_namespace(pid, init_pid, ns_info[i].proc_name);
+			ctx->ns_fd[i] = in_same_namespace(pid, ctx->init_pid, ns_info[i].proc_name);
 		else
 			continue;
 
@@ -1190,7 +1192,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		/* Attach now, create another subprocess later, since pid namespaces
 		 * only really affect the children of the current process.
 		 */
-		ret = lxc_attach_to_ns(init_pid, ctx);
+		ret = lxc_attach_to_ns(ctx->init_pid, ctx);
 		if (ret < 0) {
 			ERROR("Failed to enter namespaces");
 			shutdown(ipc_sockets[1], SHUT_RDWR);
