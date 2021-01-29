@@ -1351,7 +1351,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	TRACE("Received pid %d of attached process in parent pid namespace", attached_pid);
 
 	/* Ignore SIGKILL (CTRL-C) and SIGQUIT (CTRL-\) - issue #313. */
-	if (options->stdin_fd == 0) {
+	if (options->stdin_fd == STDIN_FILENO) {
 		signal(SIGINT, SIG_IGN);
 		signal(SIGQUIT, SIG_IGN);
 	}
