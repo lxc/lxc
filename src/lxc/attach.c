@@ -1187,8 +1187,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		}
 
 		/* Wait for the parent to have setup cgroups. */
-		ret = sync_wait(ipc_sockets[1], ATTACH_SYNC_CGROUP);
-		if (ret) {
+		if (!sync_wait(ipc_sockets[1], ATTACH_SYNC_CGROUP)) {
 			shutdown(ipc_sockets[1], SHUT_RDWR);
 			put_attach_context(ctx);
 			_exit(EXIT_FAILURE);
@@ -1333,8 +1332,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	}
 
 	/* Let the child process know to go ahead. */
-	ret = sync_wake(ipc_sockets[0], ATTACH_SYNC_CGROUP);
-	if (ret)
+	if (!sync_wake(ipc_sockets[0], ATTACH_SYNC_CGROUP))
 		goto close_mainloop;
 
 	TRACE("Told intermediate process to start initializing");
