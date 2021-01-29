@@ -702,7 +702,7 @@ static bool no_new_privs(struct lxc_container *c, lxc_attach_options_t *options)
 	return c->set_config_item(c, "lxc.no_new_privs", val);
 }
 
-struct attach_clone_payload {
+struct attach_payload {
 	int ipc_socket;
 	int terminal_pts_fd;
 	lxc_attach_options_t *options;
@@ -711,7 +711,7 @@ struct attach_clone_payload {
 	void *exec_payload;
 };
 
-static void lxc_put_attach_clone_payload(struct attach_clone_payload *p)
+static void put_attach_payload(struct attach_payload *p)
 {
 	close_prot_errno_disarm(p->ipc_socket);
 	close_prot_errno_disarm(p->terminal_pts_fd);
@@ -721,15 +721,15 @@ static void lxc_put_attach_clone_payload(struct attach_clone_payload *p)
 	}
 }
 
-__noreturn static void do_attach(struct attach_clone_payload *payload)
+__noreturn static void do_attach(struct attach_payload *ap)
 {
 	int lsm_fd, ret;
 	uid_t new_uid;
 	gid_t new_gid;
 	uid_t ns_root_uid = 0;
 	gid_t ns_root_gid = 0;
-	lxc_attach_options_t* options = payload->options;
-        struct attach_context *ctx = payload->ctx;
+	lxc_attach_options_t* options = ap->options;
+        struct attach_context *ctx = ap->ctx;
         struct lxc_conf *conf = ctx->container->lxc_conf;
 	bool needs_lsm = (options->namespaces & CLONE_NEWNS) &&
 			 (options->attach_flags & LXC_ATTACH_LSM) &&
@@ -802,7 +802,7 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 	 * set{g,u}id().
 	 */
 	if (needs_lsm) {
-		ret = lxc_abstract_unix_recv_fds(payload->ipc_socket, &lsm_fd, 1, NULL, 0);
+		ret = lxc_abstract_unix_recv_fds(ap->ipc_socket, &lsm_fd, 1, NULL, 0);
 		if (ret <= 0) {
 			if (ret < 0)
 				SYSERROR("Failed to receive lsm label fd");
@@ -888,14 +888,14 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 
 		TRACE("Loaded seccomp profile");
 
-		ret = lxc_seccomp_send_notifier_fd(&conf->seccomp, payload->ipc_socket);
+		ret = lxc_seccomp_send_notifier_fd(&conf->seccomp, ap->ipc_socket);
 		if (ret < 0)
 			goto on_error;
 	}
 
-	close_prot_errno_disarm(payload->ipc_socket);
+	close_prot_errno_disarm(ap->ipc_socket);
 	put_attach_context(ctx);
-	payload->ctx = NULL;
+	ap->ctx = NULL;
 
 	/* The following is done after the communication socket is shut down.
 	 * That way, all errors that might (though unlikely) occur up until this
@@ -941,13 +941,13 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 	}
 
 	if (options->attach_flags & LXC_ATTACH_TERMINAL) {
-		ret = lxc_terminal_prepare_login(payload->terminal_pts_fd);
+		ret = lxc_terminal_prepare_login(ap->terminal_pts_fd);
 		if (ret < 0) {
-			SYSERROR("Failed to prepare terminal file descriptor %d", payload->terminal_pts_fd);
+			SYSERROR("Failed to prepare terminal file descriptor %d", ap->terminal_pts_fd);
 			goto on_error;
 		}
 
-		TRACE("Prepared terminal file descriptor %d", payload->terminal_pts_fd);
+		TRACE("Prepared terminal file descriptor %d", ap->terminal_pts_fd);
 	}
 
 	/* Avoid unnecessary syscalls. */
@@ -966,10 +966,10 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 		goto on_error;
 
 	/* We're done, so we can now do whatever the user intended us to do. */
-	_exit(payload->exec_function(payload->exec_payload));
+	_exit(ap->exec_function(ap->exec_payload));
 
 on_error:
-	lxc_put_attach_clone_payload(payload);
+	put_attach_payload(ap);
 	ERROR("Failed to attach to container");
 	_exit(EXIT_FAILURE);
 }
@@ -1233,7 +1233,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		}
 
 		if (pid == 0) {
-			struct attach_clone_payload payload = {
+			struct attach_payload ap = {
 				.ipc_socket		= ipc_sockets[1],
 				.options		= options,
 				.ctx			= ctx,
@@ -1251,7 +1251,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 			}
 
 			/* Does not return. */
-			do_attach(&payload);
+			do_attach(&ap);
 		}
 
 		if (options->attach_flags & LXC_ATTACH_TERMINAL)
