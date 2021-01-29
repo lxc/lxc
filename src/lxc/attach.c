@@ -864,7 +864,7 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 			lsm_label = ctx->lsm_label;
 		ret = ctx->lsm_ops->process_label_set_at(ctx->lsm_ops, lsm_fd,
 							lsm_label, on_exec);
-		close(lsm_fd);
+		close_prot_errno_disarm(lsm_fd);
 		if (ret < 0)
 			goto on_error;
 
@@ -1279,7 +1279,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	to_cleanup_pid = pid;
 
 	/* close unneeded file descriptors */
-	close(ipc_sockets[1]);
+	close_prot_errno_disarm(ipc_sockets[1]);
 	close_nsfds(ctx);
 	if (options->attach_flags & LXC_ATTACH_TERMINAL)
 		lxc_attach_terminal_close_pts(&terminal);
@@ -1406,8 +1406,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 
 	/* Now shut down communication with child, we're done. */
 	shutdown(ipc_sockets[0], SHUT_RDWR);
-	close(ipc_sockets[0]);
-	ipc_sockets[0] = -1;
+	close_prot_errno_disarm(ipc_sockets[0]);
 
 	ret_parent = 0;
 	to_cleanup_pid = -1;
@@ -1427,7 +1426,7 @@ close_mainloop:
 on_error:
 	if (ipc_sockets[0] >= 0) {
 		shutdown(ipc_sockets[0], SHUT_RDWR);
-		close(ipc_sockets[0]);
+		close_prot_errno_disarm(ipc_sockets[0]);
 	}
 
 	if (to_cleanup_pid > 0)
