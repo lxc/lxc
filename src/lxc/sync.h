@@ -58,5 +58,7 @@ __hidden extern int lxc_sync_wake_parent(struct lxc_handler *, int);
 __hidden extern int lxc_sync_wait_parent(struct lxc_handler *, int);
 __hidden extern int lxc_sync_barrier_parent(struct lxc_handler *, int);
 __hidden extern int lxc_sync_barrier_child(struct lxc_handler *, int);
+__hidden extern int sync_wait(int fd, int sequence);
+__hidden extern int sync_wake(int fd, int sequence);
 
 #endif /* __LXC_SYNC_H */
