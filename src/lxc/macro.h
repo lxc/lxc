@@ -293,6 +293,19 @@
  *                +
  * \0           =    1
  */
+#define LXC_PROC_PID_LEN \
+	(6 + INTTYPE_TO_STRLEN(pid_t) + 1)
+
+/* /proc/       =    6
+ *                +
+ * <pid-as-str> =   INTTYPE_TO_STRLEN(pid_t)
+ *                +
+ * /fd/         =    4
+ *                +
+ * <fd-as-str>  =   INTTYPE_TO_STRLEN(int)
+ *                +
+ * \0           =    1
+ */
 #define LXC_PROC_PID_FD_LEN \
 	(6 + INTTYPE_TO_STRLEN(pid_t) + 4 + INTTYPE_TO_STRLEN(int) + 1)
 
