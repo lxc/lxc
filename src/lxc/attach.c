@@ -1031,7 +1031,6 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	       pid_t *attached_process)
 {
 	int ret_parent = -1;
-	struct attach_clone_payload payload = {};
 	struct lxc_epoll_descr descr = {};
 	int i, ret, status;
 	char *name, *lxcpath, *new_cwd;
@@ -1225,13 +1224,6 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		free_disarm(cwd);
 
 		/* Create attached process. */
-		payload.ipc_socket	= ipc_sockets[1];
-		payload.options		= options;
-		payload.ctx		= ctx;
-		payload.terminal_pts_fd = terminal.pty;
-		payload.exec_function	= exec_function;
-		payload.exec_payload	= exec_payload;
-
 		pid = lxc_raw_clone(CLONE_PARENT, NULL);
 		if (pid < 0) {
 			SYSERROR("Failed to clone attached process");
@@ -1241,6 +1233,15 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		}
 
 		if (pid == 0) {
+			struct attach_clone_payload payload = {
+				.ipc_socket		= ipc_sockets[1],
+				.options		= options,
+				.ctx			= ctx,
+				.terminal_pts_fd	= terminal.pty,
+				.exec_function		= exec_function,
+				.exec_payload		= exec_payload,
+			};
+
 			if (options->attach_flags & LXC_ATTACH_TERMINAL) {
 				ret = lxc_terminal_signal_sigmask_safe_blocked(&terminal);
 				if (ret < 0) {
@@ -1249,6 +1250,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 				}
 			}
 
+			/* Does not return. */
 			do_attach(&payload);
 		}
 
