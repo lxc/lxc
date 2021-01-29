@@ -58,6 +58,7 @@ static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_D
 
 struct attach_context {
 	int init_pid;
+	int dfd_pid;
 	char *lsm_label;
 	struct lxc_container *container;
 	signed long personality;
@@ -115,11 +116,12 @@ static int get_personality(const char *name, const char *lxcpath,
 static int get_attach_context(struct attach_context *ctx,
 			      struct lxc_container *container)
 {
+	__do_close int fd_status = -EBADF;
 	__do_free char *line = NULL;
-	__do_fclose FILE *proc_file = NULL;
+	__do_fclose FILE *f_status = NULL;
 	int ret;
 	bool found;
-	char proc_fn[LXC_PROC_STATUS_LEN];
+	char path[LXC_PROC_PID_LEN];
 	size_t line_bufsz = 0;
 
 	ctx->container = container;
@@ -128,18 +130,26 @@ static int get_attach_context(struct attach_context *ctx,
 	if (ctx->init_pid < 0)
 		return log_error(-1, "Failed to get init pid");
 
-	/* Read capabilities. */
-	ret = snprintf(proc_fn, LXC_PROC_STATUS_LEN, "/proc/%d/status", ctx->init_pid);
-	if (ret < 0 || ret >= LXC_PROC_STATUS_LEN)
-		return -EIO;
+	ret = snprintf(path, sizeof(path), "/proc/%d", ctx->init_pid);
+	if (ret < 0 || ret >= sizeof(path))
+		return ret_errno(EIO);
 
-	proc_file = fopen(proc_fn, "re");
-	if (!proc_file)
-		return log_error_errno(-errno, errno, "Failed to open %s", proc_fn);
+	ctx->dfd_pid = openat(-EBADF, path, O_CLOEXEC | O_NOCTTY | O_NOFOLLOW | O_PATH | O_DIRECTORY);
+	if (ctx->dfd_pid < 0)
+		return -errno;
+
+	fd_status = openat(ctx->dfd_pid, "status", O_CLOEXEC | O_NOCTTY | O_NOFOLLOW | O_RDONLY);
+	if (fd_status < 0)
+		return -errno;
+
+	f_status = fdopen(fd_status, "re");
+	if (!f_status)
+		return log_error_errno(-errno, errno, "Failed to open file descriptor %d", fd_status);
+	move_fd(fd_status);
 
 	found = false;
 
-	while (getline(&line, &line_bufsz, proc_file) != -1) {
+	while (getline(&line, &line_bufsz, f_status) != -1) {
 		ret = sscanf(line, "CapBnd: %llx", &ctx->capability_mask);
 		if (ret != EOF && ret == 1) {
 			found = true;
@@ -148,7 +158,7 @@ static int get_attach_context(struct attach_context *ctx,
 	}
 
 	if (!found)
-		return log_error_errno(-ENOENT, ENOENT, "Failed to read capability bounding set from %s", proc_fn);
+		return log_error_errno(-ENOENT, ENOENT, "Failed to read capability bounding set from %s/status", path);
 
 	ctx->lsm_ops = lsm_init_static();
 
@@ -266,18 +276,21 @@ static inline void close_nsfds(struct attach_context *ctx)
 
 static void put_attach_context(struct attach_context *ctx)
 {
-	free_disarm(ctx->lsm_label);
+	if (ctx) {
+		free_disarm(ctx->lsm_label);
+		close_prot_errno_disarm(ctx->dfd_pid);
 
-	if (ctx->container) {
-		lxc_container_put(ctx->container);
-		ctx->container = NULL;
+		if (ctx->container) {
+			lxc_container_put(ctx->container);
+			ctx->container = NULL;
+		}
+
+		close_nsfds(ctx);
+		free(ctx);
 	}
-
-	close_nsfds(ctx);
-	free(ctx);
 }
 
-static int attach_nsfds(struct attach_context *ctx)
+static int attach_context_container(struct attach_context *ctx)
 {
 	for (int i = 0; i < LXC_NS_MAX; i++) {
 		int ret;
@@ -296,6 +309,21 @@ static int attach_nsfds(struct attach_context *ctx)
 	}
 
 	return 0;
+}
+
+/*
+ * Place anything in here that needs to be get rid of before we move into the
+ * container's context and fail hard if we can't.
+ */
+static bool attach_context_security_barrier(struct attach_context *ctx)
+{
+	if (ctx) {
+		if (close(ctx->dfd_pid))
+			return false;
+		ctx->dfd_pid = -EBADF;
+	}
+
+	return true;
 }
 
 int lxc_attach_remount_sys_proc(void)
@@ -1201,14 +1229,27 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 			_exit(EXIT_FAILURE);
 		}
 
+		if (!attach_context_security_barrier(ctx)) {
+			shutdown(ipc_sockets[1], SHUT_RDWR);
+			put_attach_context(ctx);
+			_exit(EXIT_FAILURE);
+		}
+
 		TRACE("Intermediate process starting to initialize");
 
 		cwd = getcwd(NULL, 0);
 
-		/* Attach now, create another subprocess later, since pid namespaces
-		 * only really affect the children of the current process.
+		/*
+		 * Attach now, create another subprocess later, since pid
+		 * namespaces only really affect the children of the current
+		 * process.
+		 *
+		 * Note that this is a crucial barrier. We're no moving into
+		 * the container's context so we need to make sure to not leak
+		 * anything sensitive. That especially means things such as
+		 * open file descriptors!
 		 */
-		ret = attach_nsfds(ctx);
+		ret = attach_context_container(ctx);
 		if (ret < 0) {
 			ERROR("Failed to enter namespaces");
 			shutdown(ipc_sockets[1], SHUT_RDWR);
