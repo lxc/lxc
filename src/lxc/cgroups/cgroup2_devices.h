@@ -19,6 +19,7 @@
 #include "compiler.h"
 #include "conf.h"
 #include "config.h"
+#include "memory_utils.h"
 #include "syscall_numbers.h"
 
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
@@ -64,14 +65,6 @@ __hidden extern int bpf_program_cgroup_detach(struct bpf_program *prog);
 __hidden extern void bpf_program_free(struct bpf_program *prog);
 __hidden extern void bpf_device_program_free(struct cgroup_ops *ops);
 __hidden extern bool bpf_devices_cgroup_supported(void);
-
-static inline void __auto_bpf_program_free__(struct bpf_program **prog)
-{
-	if (*prog) {
-		bpf_program_free(*prog);
-		*prog = NULL;
-	}
-}
 
 __hidden extern int bpf_list_add_device(struct lxc_conf *conf, struct device_item *device);
 
@@ -129,10 +122,6 @@ static inline bool bpf_devices_cgroup_supported(void)
 	return false;
 }
 
-static inline void __auto_bpf_program_free__(struct bpf_program **prog)
-{
-}
-
 static inline int bpf_list_add_device(struct lxc_conf *conf,
 				      struct device_item *device)
 {
@@ -141,7 +130,7 @@ static inline int bpf_list_add_device(struct lxc_conf *conf,
 }
 #endif /* !HAVE_STRUCT_BPF_CGROUP_DEV_CTX */
 
-#define __do_bpf_program_free \
-	__attribute__((__cleanup__(__auto_bpf_program_free__)))
+define_cleanup_function(struct bpf_program *, bpf_program_free);
+#define __do_bpf_program_free call_cleaner(bpf_program_free)
 
 #endif /* __LXC_CGROUP2_DEVICES_H */
