@@ -1042,10 +1042,6 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	struct lxc_terminal terminal;
 	struct lxc_conf *conf;
 
-	ret = access("/proc/self/ns", X_OK);
-	if (ret)
-		return log_error_errno(-1, errno, "Does this kernel version support namespaces?");
-
 	if (!container)
 		return ret_set_errno(-1, EINVAL);
 
