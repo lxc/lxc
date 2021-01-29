@@ -1032,7 +1032,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 {
 	int ret_parent = -1;
 	struct lxc_epoll_descr descr = {};
-	int i, ret, status;
+	int ret, status;
 	char *name, *lxcpath, *new_cwd;
 	int ipc_sockets[2];
 	pid_t attached_pid, pid, to_cleanup_pid;
@@ -1060,9 +1060,8 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 
 	ret = get_attach_context(ctx, container);
 	if (ret) {
-		ERROR("Failed to get attach context");
 		put_attach_context(ctx);
-		return -1;
+		return log_error(-1, "Failed to get attach context");
 	}
 
 	conf = ctx->container->lxc_conf;
@@ -1073,20 +1072,15 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	if (!no_new_privs(ctx->container, options))
 		WARN("Could not determine whether PR_SET_NO_NEW_PRIVS is set");
 
-	/* Determine which namespaces the container was created with
-	 * by asking lxc-start, if necessary.
-	 */
+	/* Determine which namespaces the container was created with. */
 	if (options->namespaces == -1) {
 		options->namespaces = lxc_cmd_get_clone_flags(name, lxcpath);
-		/* call failed */
 		if (options->namespaces == -1) {
-			ERROR("Failed to automatically determine the "
-			      "namespaces which the container uses");
 			put_attach_context(ctx);
-			return -1;
+			return log_error(-1, "Failed to automatically determine the namespaces which the container uses");
 		}
 
-		for (i = 0; i < LXC_NS_MAX; i++) {
+		for (int i = 0; i < LXC_NS_MAX; i++) {
 			if (ns_info[i].clone_flag & CLONE_NEWCGROUP)
 				if (!(options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) ||
 				    !cgns_supported())
@@ -1101,17 +1095,15 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 
 	ret = get_attach_context_nsfds(ctx, options);
 	if (ret) {
-		ERROR("Failed to get namespace file descriptors");
 		lxc_container_put(container);
-		return -1;
+		return log_error(-1, "Failed to get namespace file descriptors");
 	}
 
 	if (options->attach_flags & LXC_ATTACH_TERMINAL) {
 		ret = lxc_attach_terminal(name, lxcpath, conf, &terminal);
 		if (ret < 0) {
-			ERROR("Failed to setup new terminal");
 			put_attach_context(ctx);
-			return -1;
+			return log_error(-1, "Failed to setup new terminal");
 		}
 
 		terminal.log_fd = options->log_fd;
@@ -1154,9 +1146,8 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	 */
 	ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, ipc_sockets);
 	if (ret < 0) {
-		SYSERROR("Could not set up required IPC mechanism for attaching");
 		put_attach_context(ctx);
-		return -1;
+		return log_error_errno(-1, errno, "Could not set up required IPC mechanism for attaching");
 	}
 
 	/* Create intermediate subprocess, two reasons:
@@ -1168,9 +1159,8 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	 */
 	pid = fork();
 	if (pid < 0) {
-		SYSERROR("Failed to create first subprocess");
 		put_attach_context(ctx);
-		return -1;
+		return log_error_errno(-1, errno, "Failed to create first subprocess");
 	}
 
 	if (pid == 0) {
