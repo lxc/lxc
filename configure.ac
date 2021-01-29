@@ -61,6 +61,18 @@ if test "x$valid_compiler" = "xno"; then
 	AC_MSG_ERROR([Sorry, your compiler is too old - please upgrade it])
 fi
 
+AC_PROG_GCC_TRADITIONAL
+AC_ENABLE_SHARED
+AC_ENABLE_STATIC
+# Check binaries
+AC_PROG_SED
+case $CC in clang*)
+	AC_CHECK_TOOL([AR], llvm-ar)
+	AC_CHECK_TOOL([NM], llvm-nm)
+	AC_CHECK_TOOL([OBJCOPY], llvm-objcopy)
+	AC_CHECK_TOOL([RANLIB], llvm-ranlib)
+esac
+
 # libtool
 LT_INIT
 AC_SUBST([LIBTOOL_DEPS])
@@ -730,10 +742,6 @@ AC_CHECK_TYPES([struct rtnl_link_stats64], [], [], [[#include <linux/if_link.h>]
 # Check for some libraries
 AX_PTHREAD
 AC_SEARCH_LIBS(clock_gettime, [rt])
-
-# Check for some standard binaries
-AC_PROG_GCC_TRADITIONAL
-AC_PROG_SED
 
 # See if we support thread-local storage.
 LXC_CHECK_TLS
