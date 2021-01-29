@@ -91,7 +91,19 @@ static inline bool sync_wait_fd(int fd, int *fd_recv)
 
 static struct attach_context *alloc_attach_context(void)
 {
-	return zalloc(sizeof(struct attach_context));
+	struct attach_context *ctx;
+
+	ctx = zalloc(sizeof(struct attach_context));
+	if (!ctx)
+		return ret_set_errno(NULL, ENOMEM);
+
+	ctx->dfd_self_pid = -EBADF;
+	ctx->dfd_init_pid = -EBADF;
+
+	for (int i = 0; i < LXC_NS_MAX; i++)
+		ctx->ns_fd[i] = -EBADF;
+
+	return ctx;
 }
 
 static int get_personality(const char *name, const char *lxcpath,
@@ -174,8 +186,6 @@ static int get_attach_context(struct attach_context *ctx,
 	/* Move to file descriptor-only lsm label retrieval. */
 	ctx->lsm_label = ctx->lsm_ops->process_label_get(ctx->lsm_ops, ctx->init_pid);
 	ctx->ns_inherited = 0;
-	for (int i = 0; i < LXC_NS_MAX; i++)
-		ctx->ns_fd[i] = -EBADF;
 
 	ret = get_personality(container->name, container->config_path, &ctx->personality);
 	if (ret)
