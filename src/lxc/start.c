@@ -1069,7 +1069,7 @@ static int do_start(void *data)
 	/* Don't leak the pinfd to the container. */
 	close_prot_errno_disarm(handler->pinfd);
 
-	ret = lxc_sync_wait_parent(handler, LXC_SYNC_STARTUP);
+	ret = lxc_sync_wait_parent(handler, START_SYNC_STARTUP);
 	if (ret < 0)
 		goto out_warn_father;
 
@@ -1088,7 +1088,7 @@ static int do_start(void *data)
 	/* Tell the parent task it can begin to configure the container and wait
 	 * for it to finish.
 	 */
-	ret = lxc_sync_barrier_parent(handler, LXC_SYNC_CONFIGURE);
+	ret = lxc_sync_barrier_parent(handler, START_SYNC_CONFIGURE);
 	if (ret < 0)
 		goto out_error;
 
@@ -1168,7 +1168,7 @@ static int do_start(void *data)
 	}
 
 	/* Ask father to setup cgroups and wait for him to finish. */
-	ret = lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP);
+	ret = lxc_sync_barrier_parent(handler, START_SYNC_CGROUP);
 	if (ret < 0)
 		goto out_error;
 
@@ -1304,7 +1304,7 @@ static int do_start(void *data)
 		}
 	}
 
-	ret = lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP_LIMITS);
+	ret = lxc_sync_barrier_parent(handler, START_SYNC_CGROUP_LIMITS);
 	if (ret < 0)
 		goto out_warn_father;
 
@@ -1398,7 +1398,7 @@ out_warn_father:
 	 * We want the parent to know something went wrong, so we return a
 	 * special error code.
 	 */
-	lxc_sync_wake_parent(handler, LXC_SYNC_ERROR);
+	lxc_sync_wake_parent(handler, SYNC_ERROR);
 
 out_error:
 	return -1;
@@ -1729,11 +1729,11 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	ret = lxc_sync_wake_child(handler, LXC_SYNC_STARTUP);
+	ret = lxc_sync_wake_child(handler, START_SYNC_STARTUP);
 	if (ret < 0)
 		goto out_delete_net;
 
-	ret = lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE);
+	ret = lxc_sync_wait_child(handler, START_SYNC_CONFIGURE);
 	if (ret < 0)
 		goto out_delete_net;
 
@@ -1801,9 +1801,9 @@ static int lxc_spawn(struct lxc_handler *handler)
 	}
 
 	/* Tell the child to continue its initialization. We'll get
-	 * LXC_SYNC_CGROUP when it is ready for us to setup cgroups.
+	 * START_SYNC_CGROUP when it is ready for us to setup cgroups.
 	 */
-	ret = lxc_sync_barrier_child(handler, LXC_SYNC_POST_CONFIGURE);
+	ret = lxc_sync_barrier_child(handler, START_SYNC_POST_CONFIGURE);
 	if (ret < 0)
 		goto out_delete_net;
 
@@ -1815,7 +1815,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	ret = lxc_sync_barrier_child(handler, LXC_SYNC_CGROUP_UNSHARE);
+	ret = lxc_sync_barrier_child(handler, START_SYNC_CGROUP_UNSHARE);
 	if (ret < 0)
 		goto out_delete_net;
 
@@ -1862,11 +1862,11 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 	/* Tell the child to complete its initialization and wait for it to exec
 	 * or return an error. (The child will never return
-	 * LXC_SYNC_READY_START+1. It will either close the sync pipe, causing
+	 * START_SYNC_READY_START+1. It will either close the sync pipe, causing
 	 * lxc_sync_barrier_child to return success, or return a different
 	 * value, causing us to error out).
 	 */
-	ret = lxc_sync_barrier_child(handler, LXC_SYNC_READY_START);
+	ret = lxc_sync_barrier_child(handler, START_SYNC_READY_START);
 	if (ret < 0)
 		goto out_delete_net;
 
