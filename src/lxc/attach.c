@@ -823,7 +823,7 @@ __noreturn static void do_attach(struct attach_payload *ap)
 	 * set{g,u}id().
 	 */
 	if (needs_lsm) {
-		if (!sync_wait_fd(ap->ipc_socket, &lsm_fd)) {
+		if (!sync_wait_fd(ap->ipc_socket, ATTACH_SYNC_LSM(&lsm_fd))) {
 			SYSERROR("Failed to receive lsm label fd");
 			goto on_error;
 		}
@@ -1265,7 +1265,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 			lxc_attach_terminal_close_pts(&terminal);
 
 		/* Tell grandparent the pid of the pid of the newly created child. */
-		if (!sync_wake_pid(ipc_sockets[1], pid)) {
+		if (!sync_wake_pid(ipc_sockets[1], ATTACH_SYNC_PID(pid))) {
 			/* If this really happens here, this is very unfortunate, since
 			 * the parent will not know the pid of the attached process and
 			 * will not be able to wait for it (and we won't either due to
@@ -1345,7 +1345,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	TRACE("Told intermediate process to start initializing");
 
 	/* Get pid of attached process from intermediate process. */
-	if (!sync_wait_pid(ipc_sockets[0], &attached_pid))
+	if (!sync_wait_pid(ipc_sockets[0], ATTACH_SYNC_PID(&attached_pid)))
 		goto close_mainloop;
 
 	TRACE("Received pid %d of attached process in parent pid namespace", attached_pid);
@@ -1382,7 +1382,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		TRACE("Opened LSM label file descriptor %d", labelfd);
 
 		/* Send child fd of the LSM security module to write to. */
-		if (!sync_wake_fd(ipc_sockets[0], labelfd)) {
+		if (!sync_wake_fd(ipc_sockets[0], ATTACH_SYNC_LSM(labelfd))) {
 			SYSERROR("Failed to send lsm label fd");
 			goto close_mainloop;
 		}
