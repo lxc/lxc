@@ -277,7 +277,7 @@ static void put_attach_context(struct attach_context *ctx)
 	free(ctx);
 }
 
-static int lxc_attach_to_ns(pid_t pid, struct attach_context *ctx)
+static int attach_nsfds(struct attach_context *ctx)
 {
 	for (int i = 0; i < LXC_NS_MAX; i++) {
 		int ret;
@@ -287,11 +287,12 @@ static int lxc_attach_to_ns(pid_t pid, struct attach_context *ctx)
 
 		ret = setns(ctx->ns_fd[i], ns_info[i].clone_flag);
 		if (ret < 0)
-			return log_error_errno(-1,
-					       errno, "Failed to attach to %s namespace of %d",
-					       ns_info[i].proc_name, pid);
+			return log_error_errno(-1, errno,
+					       "Failed to attach to %s namespace of %d",
+					       ns_info[i].proc_name, ctx->init_pid);
 
-		DEBUG("Attached to %s namespace of %d", ns_info[i].proc_name, pid);
+		DEBUG("Attached to %s namespace of %d",
+		ns_info[i].proc_name, ctx->init_pid);
 	}
 
 	return 0;
@@ -1207,7 +1208,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		/* Attach now, create another subprocess later, since pid namespaces
 		 * only really affect the children of the current process.
 		 */
-		ret = lxc_attach_to_ns(ctx->init_pid, ctx);
+		ret = attach_nsfds(ctx);
 		if (ret < 0) {
 			ERROR("Failed to enter namespaces");
 			shutdown(ipc_sockets[1], SHUT_RDWR);
