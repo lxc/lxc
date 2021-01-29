@@ -42,6 +42,7 @@
 #include "mount_utils.h"
 #include "namespace.h"
 #include "process_utils.h"
+#include "sync.h"
 #include "syscall_wrappers.h"
 #include "terminal.h"
 #include "utils.h"
@@ -1032,7 +1033,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 {
 	int ret_parent = -1;
 	struct lxc_epoll_descr descr = {};
-	int ret, status;
+	int ret;
 	char *name, *lxcpath, *new_cwd;
 	int ipc_sockets[2];
 	pid_t attached_pid, pid, to_cleanup_pid;
@@ -1176,8 +1177,8 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		}
 
 		/* Wait for the parent to have setup cgroups. */
-		ret = lxc_read_nointr(ipc_sockets[1], &status, sizeof(status));
-		if (ret != sizeof(status)) {
+		ret = sync_wait(ipc_sockets[1], ATTACH_SYNC_CGROUP);
+		if (ret) {
 			shutdown(ipc_sockets[1], SHUT_RDWR);
 			put_attach_context(ctx);
 			_exit(EXIT_FAILURE);
@@ -1323,9 +1324,8 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	}
 
 	/* Let the child process know to go ahead. */
-	status = 0;
-	ret = lxc_write_nointr(ipc_sockets[0], &status, sizeof(status));
-	if (ret != sizeof(status))
+	ret = sync_wake(ipc_sockets[0], ATTACH_SYNC_CGROUP);
+	if (ret)
 		goto close_mainloop;
 
 	TRACE("Told intermediate process to start initializing");
