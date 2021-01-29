@@ -1372,7 +1372,6 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		__do_close int labelfd = -EBADF;
 		bool on_exec;
 
-		ret = -1;
 		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? true : false;
 		labelfd = ctx->lsm_ops->process_label_fd_get(ctx->lsm_ops,
 							     attached_pid, on_exec);
