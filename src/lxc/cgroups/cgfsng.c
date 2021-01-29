@@ -2963,12 +2963,12 @@ __cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
 __cgfsng_ops static bool cgfsng_devices_activate(struct cgroup_ops *ops, struct lxc_handler *handler)
 {
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
-	__do_bpf_program_free struct bpf_program *devices = NULL;
+	__do_bpf_program_free struct bpf_program *prog = NULL;
 	int ret;
 	struct lxc_conf *conf;
 	struct hierarchy *unified;
 	struct lxc_list *it;
-	struct bpf_program *devices_old;
+	struct bpf_program *prog_old;
 
 	if (!ops)
 		return ret_set_errno(false, ENOENT);
@@ -2988,18 +2988,18 @@ __cgfsng_ops static bool cgfsng_devices_activate(struct cgroup_ops *ops, struct 
 	    !unified->container_full_path || lxc_list_empty(&conf->devices))
 		return true;
 
-	devices = bpf_program_new(BPF_PROG_TYPE_CGROUP_DEVICE);
-	if (!devices)
+	prog = bpf_program_new(BPF_PROG_TYPE_CGROUP_DEVICE);
+	if (!prog)
 		return log_error_errno(false, ENOMEM, "Failed to create new bpf program");
 
-	ret = bpf_program_init(devices);
+	ret = bpf_program_init(prog);
 	if (ret)
 		return log_error_errno(false, ENOMEM, "Failed to initialize bpf program");
 
 	lxc_list_for_each(it, &conf->devices) {
 		struct device_item *cur = it->elem;
 
-		ret = bpf_program_append_device(devices, cur);
+		ret = bpf_program_append_device(prog, cur);
 		if (ret)
 			return log_error_errno(false, ENOMEM, "Failed to add new rule to bpf device program: type %c, major %d, minor %d, access %s, allow %d, global_rule %d",
 					       cur->type,
@@ -3017,20 +3017,20 @@ __cgfsng_ops static bool cgfsng_devices_activate(struct cgroup_ops *ops, struct 
 		      cur->global_rule);
 	}
 
-	ret = bpf_program_finalize(devices);
+	ret = bpf_program_finalize(prog);
 	if (ret)
 		return log_error_errno(false, ENOMEM, "Failed to finalize bpf program");
 
-	ret = bpf_program_cgroup_attach(devices, BPF_CGROUP_DEVICE,
+	ret = bpf_program_cgroup_attach(prog, BPF_CGROUP_DEVICE,
 					unified->container_limit_path,
 					BPF_F_ALLOW_MULTI);
 	if (ret)
 		return log_error_errno(false, ENOMEM, "Failed to attach bpf program");
 
 	/* Replace old bpf program. */
-	devices_old = move_ptr(ops->cgroup2_devices);
-	ops->cgroup2_devices = move_ptr(devices);
-	devices = move_ptr(devices_old);
+	prog_old = move_ptr(ops->cgroup2_devices);
+	ops->cgroup2_devices = move_ptr(prog);
+	prog = move_ptr(prog_old);
 #endif
 	return true;
 }
