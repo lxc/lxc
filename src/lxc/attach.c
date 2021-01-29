@@ -1051,7 +1051,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	int ret_parent = -1;
 	struct lxc_epoll_descr descr = {};
 	int ret;
-	char *name, *lxcpath, *new_cwd;
+	char *name, *lxcpath;
 	int ipc_sockets[2];
 	pid_t attached_pid, pid, to_cleanup_pid;
 	struct attach_context *ctx;
@@ -1182,7 +1182,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	}
 
 	if (pid == 0) {
-		char *cwd;
+		char *cwd, *new_cwd;
 
 		/* close unneeded file descriptors */
 		close_prot_errno_disarm(ipc_sockets[0]);
