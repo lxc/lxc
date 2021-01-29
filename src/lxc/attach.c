@@ -1027,6 +1027,16 @@ static inline void lxc_attach_terminal_close_log(struct lxc_terminal *terminal)
 	close_prot_errno_disarm(terminal->log_fd);
 }
 
+static inline bool sync_wake_pid(int fd, pid_t pid)
+{
+	return lxc_write_nointr(fd, &pid, sizeof(pid_t)) == sizeof(pid_t);
+}
+
+static inline bool sync_wait_pid(int fd, pid_t *pid)
+{
+	return lxc_read_nointr(fd, pid, sizeof(pid_t)) == sizeof(pid_t);
+}
+
 int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	       void *exec_payload, lxc_attach_options_t *options,
 	       pid_t *attached_process)
@@ -1249,8 +1259,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 			lxc_attach_terminal_close_pts(&terminal);
 
 		/* Tell grandparent the pid of the pid of the newly created child. */
-		ret = lxc_write_nointr(ipc_sockets[1], &pid, sizeof(pid));
-		if (ret != sizeof(pid)) {
+		if (!sync_wake_pid(ipc_sockets[1], pid)) {
 			/* If this really happens here, this is very unfortunate, since
 			 * the parent will not know the pid of the attached process and
 			 * will not be able to wait for it (and we won't either due to
@@ -1331,8 +1340,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	TRACE("Told intermediate process to start initializing");
 
 	/* Get pid of attached process from intermediate process. */
-	ret = lxc_read_nointr(ipc_sockets[0], &attached_pid, sizeof(attached_pid));
-	if (ret != sizeof(attached_pid))
+	if (!sync_wait_pid(ipc_sockets[0], &attached_pid))
 		goto close_mainloop;
 
 	TRACE("Received pid %d of attached process in parent pid namespace", attached_pid);
