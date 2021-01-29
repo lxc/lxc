@@ -3,6 +3,8 @@
 #ifndef __LXC_SYNC_H
 #define __LXC_SYNC_H
 
+#include <stdbool.h>
+
 #include "compiler.h"
 
 struct lxc_handler;
@@ -27,17 +29,17 @@ enum /* attach */ {
 	ATTACH_SYNC_CGROUP	= 0,
 };
 
-__hidden extern int lxc_sync_init(struct lxc_handler *handler);
+__hidden extern bool lxc_sync_init(struct lxc_handler *handler);
 __hidden extern void lxc_sync_fini(struct lxc_handler *);
 __hidden extern void lxc_sync_fini_parent(struct lxc_handler *);
 __hidden extern void lxc_sync_fini_child(struct lxc_handler *);
-__hidden extern int lxc_sync_wake_child(struct lxc_handler *, int);
-__hidden extern int lxc_sync_wait_child(struct lxc_handler *, int);
-__hidden extern int lxc_sync_wake_parent(struct lxc_handler *, int);
-__hidden extern int lxc_sync_wait_parent(struct lxc_handler *, int);
-__hidden extern int lxc_sync_barrier_parent(struct lxc_handler *, int);
-__hidden extern int lxc_sync_barrier_child(struct lxc_handler *, int);
-__hidden extern int sync_wait(int fd, int sequence);
-__hidden extern int sync_wake(int fd, int sequence);
+__hidden extern bool lxc_sync_wake_child(struct lxc_handler *, int);
+__hidden extern bool lxc_sync_wait_child(struct lxc_handler *, int);
+__hidden extern bool lxc_sync_wake_parent(struct lxc_handler *, int);
+__hidden extern bool lxc_sync_wait_parent(struct lxc_handler *, int);
+__hidden extern bool lxc_sync_barrier_parent(struct lxc_handler *, int);
+__hidden extern bool lxc_sync_barrier_child(struct lxc_handler *, int);
+__hidden extern bool sync_wait(int fd, int sequence);
+__hidden extern bool sync_wake(int fd, int sequence);
 
 #endif /* __LXC_SYNC_H */
