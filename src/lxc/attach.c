@@ -58,7 +58,8 @@ static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_D
 
 struct attach_context {
 	int init_pid;
-	int dfd_pid;
+	int dfd_init_pid;
+	int dfd_self_pid;
 	char *lsm_label;
 	struct lxc_container *container;
 	signed long personality;
@@ -116,7 +117,7 @@ static int get_personality(const char *name, const char *lxcpath,
 static int get_attach_context(struct attach_context *ctx,
 			      struct lxc_container *container)
 {
-	__do_close int fd_status = -EBADF;
+	__do_close int dfd_self_pid = -EBADF, dfd_init_pid = -EBADF, fd_status = -EBADF;
 	__do_free char *line = NULL;
 	__do_fclose FILE *f_status = NULL;
 	int ret;
@@ -130,15 +131,23 @@ static int get_attach_context(struct attach_context *ctx,
 	if (ctx->init_pid < 0)
 		return log_error(-1, "Failed to get init pid");
 
+	ret = snprintf(path, sizeof(path), "/proc/%d", lxc_raw_getpid());
+	if (ret < 0 || ret >= sizeof(path))
+		return ret_errno(EIO);
+
+	dfd_self_pid = openat(-EBADF, path, O_CLOEXEC | O_NOCTTY | O_NOFOLLOW | O_PATH | O_DIRECTORY);
+	if (dfd_self_pid < 0)
+		return -errno;
+
 	ret = snprintf(path, sizeof(path), "/proc/%d", ctx->init_pid);
 	if (ret < 0 || ret >= sizeof(path))
 		return ret_errno(EIO);
 
-	ctx->dfd_pid = openat(-EBADF, path, O_CLOEXEC | O_NOCTTY | O_NOFOLLOW | O_PATH | O_DIRECTORY);
-	if (ctx->dfd_pid < 0)
+	dfd_init_pid = openat(-EBADF, path, O_CLOEXEC | O_NOCTTY | O_NOFOLLOW | O_PATH | O_DIRECTORY);
+	if (dfd_init_pid < 0)
 		return -errno;
 
-	fd_status = openat(ctx->dfd_pid, "status", O_CLOEXEC | O_NOCTTY | O_NOFOLLOW | O_RDONLY);
+	fd_status = openat(dfd_init_pid, "status", O_CLOEXEC | O_NOCTTY | O_NOFOLLOW | O_RDONLY);
 	if (fd_status < 0)
 		return -errno;
 
@@ -162,6 +171,7 @@ static int get_attach_context(struct attach_context *ctx,
 
 	ctx->lsm_ops = lsm_init_static();
 
+	/* Move to file descriptor-only lsm label retrieval. */
 	ctx->lsm_label = ctx->lsm_ops->process_label_get(ctx->lsm_ops, ctx->init_pid);
 	ctx->ns_inherited = 0;
 	for (int i = 0; i < LXC_NS_MAX; i++)
@@ -177,38 +187,27 @@ static int get_attach_context(struct attach_context *ctx,
 			return log_error_errno(-ENOMEM, ENOMEM, "Failed to allocate new lxc config");
 	}
 
+	ctx->dfd_init_pid = move_fd(dfd_init_pid);
+	ctx->dfd_self_pid = move_fd(dfd_self_pid);
 	return 0;
 }
 
-/**
- * in_same_namespace - Check whether two processes are in the same namespace.
- * @pid1 - PID of the first process.
- * @pid2 - PID of the second process.
- * @ns   - Name of the namespace to check. Must correspond to one of the names
- *         for the namespaces as shown in /proc/<pid/ns/
- *
- * If the two processes are not in the same namespace returns an fd to the
- * namespace of the second process identified by @pid2. If the two processes are
- * in the same namespace returns -EINVAL, -1 if an error occurred.
- */
-static int in_same_namespace(pid_t pid1, pid_t pid2, const char *ns)
+static int in_same_namespace(int ns_fd_pid1, int ns_fd_pid2, const char *ns_path)
 {
 	__do_close int ns_fd1 = -EBADF, ns_fd2 = -EBADF;
 	int ret = -1;
 	struct stat ns_st1, ns_st2;
 
-	ns_fd1 = lxc_preserve_ns(pid1, ns);
+	ns_fd1 = openat(ns_fd_pid1, ns_path, O_CLOEXEC | O_NOCTTY | O_RDONLY);
 	if (ns_fd1 < 0) {
-		/* The kernel does not support this namespace. This is not an
-		 * error.
-		 */
+		/* The kernel does not support this namespace. This is not an error. */
 		if (errno == ENOENT)
 			return -EINVAL;
 
 		return -1;
 	}
 
-	ns_fd2 = lxc_preserve_ns(pid2, ns);
+	ns_fd2 = openat(ns_fd_pid2, ns_path, O_CLOEXEC | O_NOCTTY | O_RDONLY);
 	if (ns_fd2 < 0)
 		return -1;
 
@@ -221,7 +220,8 @@ static int in_same_namespace(pid_t pid1, pid_t pid2, const char *ns)
 		return -1;
 
 	/* processes are in the same namespace */
-	if ((ns_st1.st_dev == ns_st2.st_dev) && (ns_st1.st_ino == ns_st2.st_ino))
+        if ((ns_st1.st_dev == ns_st2.st_dev) &&
+            (ns_st1.st_ino == ns_st2.st_ino))
 		return -EINVAL;
 
 	/* processes are in different namespaces */
@@ -231,16 +231,13 @@ static int in_same_namespace(pid_t pid1, pid_t pid2, const char *ns)
 static int get_attach_context_nsfds(struct attach_context *ctx,
 				    lxc_attach_options_t *options)
 {
-
-	pid_t pid_self = lxc_raw_getpid();
-
 	for (int i = 0; i < LXC_NS_MAX; i++) {
 		int j;
 
 		if (options->namespaces & ns_info[i].clone_flag)
-			ctx->ns_fd[i] = lxc_preserve_ns(ctx->init_pid, ns_info[i].proc_name);
+			ctx->ns_fd[i] = openat(ctx->dfd_init_pid, ns_info[i].proc_path, O_CLOEXEC | O_NOCTTY | O_RDONLY);
 		else if (ctx->ns_inherited & ns_info[i].clone_flag)
-			ctx->ns_fd[i] = in_same_namespace(pid_self, ctx->init_pid, ns_info[i].proc_name);
+			ctx->ns_fd[i] = in_same_namespace(ctx->dfd_self_pid, ctx->dfd_init_pid, ns_info[i].proc_path);
 		else
 			continue;
 
@@ -248,13 +245,13 @@ static int get_attach_context_nsfds(struct attach_context *ctx,
 			continue;
 
 		if (ctx->ns_fd[i] == -EINVAL) {
-			DEBUG("Inheriting %s namespace from %d", ns_info[i].proc_name, pid_self);
+			DEBUG("Inheriting %s namespace", ns_info[i].proc_name);
 			ctx->ns_inherited &= ~ns_info[i].clone_flag;
 			continue;
 		}
 
 		/* We failed to preserve the namespace. */
-		SYSERROR("Failed to attach to %s namespace of %d", ns_info[i].proc_name, pid_self);
+		SYSERROR("Failed to preserve %s namespace of %d", ns_info[i].proc_name, ctx->init_pid);
 
 		/* Close all already opened file descriptors before we return an
 		 * error, so we don't leak them.
@@ -278,7 +275,7 @@ static void put_attach_context(struct attach_context *ctx)
 {
 	if (ctx) {
 		free_disarm(ctx->lsm_label);
-		close_prot_errno_disarm(ctx->dfd_pid);
+		close_prot_errno_disarm(ctx->dfd_init_pid);
 
 		if (ctx->container) {
 			lxc_container_put(ctx->container);
@@ -318,9 +315,13 @@ static int attach_context_container(struct attach_context *ctx)
 static bool attach_context_security_barrier(struct attach_context *ctx)
 {
 	if (ctx) {
-		if (close(ctx->dfd_pid))
+		if (close(ctx->dfd_self_pid))
 			return false;
-		ctx->dfd_pid = -EBADF;
+		ctx->dfd_self_pid = -EBADF;
+
+		if (close(ctx->dfd_init_pid))
+			return false;
+		ctx->dfd_init_pid = -EBADF;
 	}
 
 	return true;
