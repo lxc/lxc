@@ -67,6 +67,26 @@ struct attach_context {
 	struct lsm_ops *lsm_ops;
 };
 
+static inline bool sync_wake_pid(int fd, pid_t pid)
+{
+	return lxc_write_nointr(fd, &pid, sizeof(pid_t)) == sizeof(pid_t);
+}
+
+static inline bool sync_wait_pid(int fd, pid_t *pid)
+{
+	return lxc_read_nointr(fd, pid, sizeof(pid_t)) == sizeof(pid_t);
+}
+
+static inline bool sync_wake_fd(int fd, int fd_send)
+{
+	return lxc_abstract_unix_send_fds(fd, &fd_send, 1, NULL, 0) > 0;
+}
+
+static inline bool sync_wait_fd(int fd, int *fd_recv)
+{
+	return lxc_abstract_unix_recv_fds(fd, fd_recv, 1, NULL, 0) > 0;
+}
+
 static struct attach_context *alloc_attach_context(void)
 {
 	return zalloc(sizeof(struct attach_context));
@@ -803,11 +823,8 @@ __noreturn static void do_attach(struct attach_payload *ap)
 	 * set{g,u}id().
 	 */
 	if (needs_lsm) {
-		ret = lxc_abstract_unix_recv_fds(ap->ipc_socket, &lsm_fd, 1, NULL, 0);
-		if (ret <= 0) {
-			if (ret < 0)
-				SYSERROR("Failed to receive lsm label fd");
-
+		if (!sync_wait_fd(ap->ipc_socket, &lsm_fd)) {
+			SYSERROR("Failed to receive lsm label fd");
 			goto on_error;
 		}
 
@@ -1025,16 +1042,6 @@ static inline void lxc_attach_terminal_close_peer(struct lxc_terminal *terminal)
 static inline void lxc_attach_terminal_close_log(struct lxc_terminal *terminal)
 {
 	close_prot_errno_disarm(terminal->log_fd);
-}
-
-static inline bool sync_wake_pid(int fd, pid_t pid)
-{
-	return lxc_write_nointr(fd, &pid, sizeof(pid_t)) == sizeof(pid_t);
-}
-
-static inline bool sync_wait_pid(int fd, pid_t *pid)
-{
-	return lxc_read_nointr(fd, pid, sizeof(pid_t)) == sizeof(pid_t);
 }
 
 int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
@@ -1375,10 +1382,8 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		TRACE("Opened LSM label file descriptor %d", labelfd);
 
 		/* Send child fd of the LSM security module to write to. */
-		ret = lxc_abstract_unix_send_fds(ipc_sockets[0], &labelfd, 1, NULL, 0);
-		if (ret <= 0) {
-			if (ret < 0)
-				SYSERROR("Failed to send lsm label fd");
+		if (!sync_wake_fd(ipc_sockets[0], labelfd)) {
+			SYSERROR("Failed to send lsm label fd");
 			goto close_mainloop;
 		}
 
