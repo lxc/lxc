@@ -32,7 +32,7 @@ int sync_wait(int fd, int sequence)
 	if ((size_t)ret != sizeof(sync))
 		return log_error(-1, "Unexpected sync size: %zu expected %zu", (size_t)ret, sizeof(sync));
 
-	if (sync == LXC_SYNC_ERROR)
+	if (sync == SYNC_ERROR)
 		return log_error(-1, "An error occurred in another process (expected sequence number %d)", sequence);
 
 	if (sync != sequence)
@@ -59,41 +59,69 @@ static int __sync_barrier(int fd, int sequence)
 	return sync_wait(fd, sequence + 1);
 }
 
+static inline const char *start_sync_to_string(int state)
+{
+	switch (state) {
+	case START_SYNC_STARTUP:
+		return "startup";
+	case START_SYNC_CONFIGURE:
+		return "configure";
+	case START_SYNC_POST_CONFIGURE:
+		return "post-configure";
+	case START_SYNC_CGROUP:
+		return "cgroup";
+	case START_SYNC_CGROUP_UNSHARE:
+		return "cgroup-unshare";
+	case START_SYNC_CGROUP_LIMITS:
+		return "cgroup-limits";
+	case START_SYNC_READY_START:
+		return "ready-start";
+	case START_SYNC_RESTART:
+		return "restart";
+	case START_SYNC_POST_RESTART:
+		return "post-restart";
+	case SYNC_ERROR:
+		return "error";
+	default:
+		return "invalid sync state";
+	}
+}
+
 int lxc_sync_barrier_parent(struct lxc_handler *handler, int sequence)
 {
 	TRACE("Child waking parent with sequence %s and waiting for sequence %s",
-	      sync_to_string(sequence), sync_to_string(sequence + 1));
+	      start_sync_to_string(sequence), start_sync_to_string(sequence + 1));
 	return __sync_barrier(handler->sync_sock[0], sequence);
 }
 
 int lxc_sync_barrier_child(struct lxc_handler *handler, int sequence)
 {
 	TRACE("Parent waking child with sequence %s and waiting with sequence %s",
-	      sync_to_string(sequence), sync_to_string(sequence + 1));
+	      start_sync_to_string(sequence), start_sync_to_string(sequence + 1));
 	return __sync_barrier(handler->sync_sock[1], sequence);
 }
 
 int lxc_sync_wake_parent(struct lxc_handler *handler, int sequence)
 {
-	TRACE("Child waking parent with sequence %s", sync_to_string(sequence));
+	TRACE("Child waking parent with sequence %s", start_sync_to_string(sequence));
 	return sync_wake(handler->sync_sock[0], sequence);
 }
 
 int lxc_sync_wait_parent(struct lxc_handler *handler, int sequence)
 {
-	TRACE("Parent waiting for child with sequence %s", sync_to_string(sequence));
+	TRACE("Parent waiting for child with sequence %s", start_sync_to_string(sequence));
 	return sync_wait(handler->sync_sock[0], sequence);
 }
 
 int lxc_sync_wait_child(struct lxc_handler *handler, int sequence)
 {
-	TRACE("Child waiting for parent with sequence %s", sync_to_string(sequence));
+	TRACE("Child waiting for parent with sequence %s", start_sync_to_string(sequence));
 	return sync_wait(handler->sync_sock[1], sequence);
 }
 
 int lxc_sync_wake_child(struct lxc_handler *handler, int sequence)
 {
-	TRACE("Child waking parent with sequence %s", sync_to_string(sequence));
+	TRACE("Child waking parent with sequence %s", start_sync_to_string(sequence));
 	return sync_wake(handler->sync_sock[1], sequence);
 }
 
