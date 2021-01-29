@@ -23,6 +23,7 @@ enum {
 
 __hidden extern const struct ns_info {
 	const char *proc_name;
+	const char *proc_path;
 	int clone_flag;
 	const char *flag_name;
 	const char *env_name;
