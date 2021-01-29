@@ -7,7 +7,11 @@
 
 struct lxc_handler;
 
-enum {
+enum /* generic */ {
+	SYNC_ERROR			= -1 /* Used to report errors from another process */
+};
+
+enum /* start */ {
 	START_SYNC_STARTUP		=  0,
 	START_SYNC_CONFIGURE		=  1,
 	START_SYNC_POST_CONFIGURE	=  2,
@@ -17,7 +21,10 @@ enum {
 	START_SYNC_READY_START		=  6,
 	START_SYNC_RESTART		=  7,
 	START_SYNC_POST_RESTART		=  8,
-	SYNC_ERROR			= -1 /* Used to report errors from another process */
+};
+
+enum /* attach */ {
+	ATTACH_SYNC_CGROUP	= 0,
 };
 
 __hidden extern int lxc_sync_init(struct lxc_handler *handler);
