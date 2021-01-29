@@ -71,15 +71,24 @@ static struct attach_context *alloc_attach_context(void)
 	return zalloc(sizeof(struct attach_context));
 }
 
-static signed long get_personality(const char *name, const char *lxcpath)
+static int get_personality(const char *name, const char *lxcpath,
+			   signed long *personality)
 {
 	__do_free char *p = NULL;
+	signed long per;
 
 	p = lxc_cmd_get_config_item(name, "lxc.arch", lxcpath);
-	if (!p)
-		return -1;
+	if (!p) {
+		*personality = LXC_ARCH_UNCHANGED;
+		return 0;
+	}
 
-	return lxc_config_parse_arch(p);
+	per = lxc_config_parse_arch(p);
+	if (per == LXC_ARCH_UNCHANGED)
+		return ret_errno(EINVAL);
+
+	*personality = per;
+	return 0;
 }
 
 static int get_attach_context(struct attach_context *ctx,
@@ -127,9 +136,9 @@ static int get_attach_context(struct attach_context *ctx,
 	for (int i = 0; i < LXC_NS_MAX; i++)
 		ctx->ns_fd[i] = -EBADF;
 
-	ctx->personality = get_personality(container->name, container->config_path);
-	if (ctx->personality < 0)
-		return log_error_errno(-ENOENT, ENOENT, "Failed to get personality of the container");
+	ret = get_personality(container->name, container->config_path, &ctx->personality);
+	if (ret)
+		return log_error_errno(ret, errno, "Failed to get personality of the container");
 
 	if (!ctx->container->lxc_conf) {
 		ctx->container->lxc_conf = lxc_conf_init();
@@ -751,11 +760,13 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 		else
 			new_personality = options->personality;
 
-		ret = personality(new_personality);
-		if (ret < 0)
-			goto on_error;
+		if (new_personality != LXC_ARCH_UNCHANGED) {
+			ret = personality(new_personality);
+			if (ret < 0)
+				goto on_error;
 
-		TRACE("Set new personality");
+			TRACE("Set new personality");
+		}
 	}
 #endif
 

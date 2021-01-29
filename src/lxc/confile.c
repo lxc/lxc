@@ -2825,7 +2825,7 @@ signed long lxc_config_parse_arch(const char *arch)
 			return pername[i].per;
 #endif
 
-	return -1;
+	return LXC_ARCH_UNCHANGED;
 }
 
 int lxc_fill_elevated_privileges(char *flaglist, int *flags)
