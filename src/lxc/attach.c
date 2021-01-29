@@ -1030,7 +1030,6 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	       void *exec_payload, lxc_attach_options_t *options,
 	       pid_t *attached_process)
 {
-	__do_free char *cwd = NULL;
 	int ret_parent = -1;
 	struct attach_clone_payload payload = {};
 	struct lxc_epoll_descr descr = {};
@@ -1074,8 +1073,6 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 
 	if (!no_new_privs(ctx->container, options))
 		WARN("Could not determine whether PR_SET_NO_NEW_PRIVS is set");
-
-	cwd = getcwd(NULL, 0);
 
 	/* Determine which namespaces the container was created with
 	 * by asking lxc-start, if necessary.
@@ -1178,6 +1175,8 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	}
 
 	if (pid == 0) {
+		char *cwd;
+
 		/* close unneeded file descriptors */
 		close_prot_errno_disarm(ipc_sockets[0]);
 
@@ -1196,6 +1195,8 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		}
 
 		TRACE("Intermediate process starting to initialize");
+
+		cwd = getcwd(NULL, 0);
 
 		/* Attach now, create another subprocess later, since pid namespaces
 		 * only really affect the children of the current process.
@@ -1221,6 +1222,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 			if (ret < 0)
 				WARN("Could not change directory to \"%s\"", new_cwd);
 		}
+		free_disarm(cwd);
 
 		/* Create attached process. */
 		payload.ipc_socket	= ipc_sockets[1];
@@ -1278,7 +1280,6 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 
 	/* close unneeded file descriptors */
 	close(ipc_sockets[1]);
-	free_disarm(cwd);
 	close_nsfds(ctx);
 	if (options->attach_flags & LXC_ATTACH_TERMINAL)
 		lxc_attach_terminal_close_pts(&terminal);
