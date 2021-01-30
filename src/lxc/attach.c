@@ -476,7 +476,7 @@ static int lxc_attach_set_environment(struct attach_context *ctx,
 		return log_warn(-1, "Failed to set environment variable");
 
 	/* Set container environment variables.*/
-	if (ctx && ctx->container && ctx->container->lxc_conf) {
+	if (ctx->container->lxc_conf) {
 		lxc_list_for_each(iterator, &ctx->container->lxc_conf->environment) {
 			char *env_tmp;
 
@@ -929,8 +929,7 @@ __noreturn static void do_attach(struct attach_payload *ap)
 		TRACE("Set %s LSM label to \"%s\"", ctx->lsm_ops->name, ctx->lsm_label);
 	}
 
-	if ((ctx->container && conf && conf->no_new_privs) ||
-	    (options->attach_flags & LXC_ATTACH_NO_NEW_PRIVS)) {
+	if (conf->no_new_privs || (options->attach_flags & LXC_ATTACH_NO_NEW_PRIVS)) {
 		ret = prctl(PR_SET_NO_NEW_PRIVS, prctl_arg(1), prctl_arg(0),
 			    prctl_arg(0), prctl_arg(0));
 		if (ret < 0)
@@ -939,7 +938,7 @@ __noreturn static void do_attach(struct attach_payload *ap)
 		TRACE("Set PR_SET_NO_NEW_PRIVS");
 	}
 
-	if (ctx->container && conf && conf->seccomp.seccomp) {
+	if (conf->seccomp.seccomp) {
 		ret = lxc_seccomp_load(conf);
 		if (ret < 0)
 			goto on_error;
