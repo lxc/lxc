@@ -561,7 +561,8 @@ enum {
 #define PTR_TO_PID(p) ((pid_t)((intptr_t)(p)))
 #define PID_TO_PTR(u) ((void *)((intptr_t)(u)))
 
-#define PTR_TO_UINT64(p) ((uint64_t)((intptr_t)(p)))
+#define PTR_TO_UINT64(p) ((uint64_t)((uintptr_t)(p)))
+#define PTR_TO_U64(p) ((__u64)((uintptr_t)(p)))
 
 #define UINT_TO_PTR(u) ((void *) ((uintptr_t) (u)))
 #define PTR_TO_USHORT(p) ((unsigned short)((uintptr_t)(p)))
