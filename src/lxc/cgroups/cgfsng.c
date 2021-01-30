@@ -2664,8 +2664,8 @@ __cgfsng_ops static int cgfsng_set(struct cgroup_ops *ops,
 	struct hierarchy *h;
 	int ret = -1;
 
-	if (!ops)
-		return ret_set_errno(-1, ENOENT);
+	if (!ops || !key || !value || !name || !lxcpath)
+		return ret_errno(ENOENT);
 
 	controller = must_copy_string(key);
 	p = strchr(controller, '.');
