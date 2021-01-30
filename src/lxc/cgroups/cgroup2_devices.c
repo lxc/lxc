@@ -331,7 +331,7 @@ static int bpf_program_load_kernel(struct bpf_program *prog)
 	if (prog->kernel_fd >= 0)
 		return 0;
 
-	if (lxc_log_get_level() <= LXC_LOG_LEVEL_TRACE) {
+	if (lxc_log_trace()) {
 		log_buf = zalloc(BPF_LOG_BUF_SIZE);
 		if (!log_buf) {
 			WARN("Failed to allocate bpf log buffer");
