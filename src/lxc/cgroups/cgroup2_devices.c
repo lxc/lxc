@@ -52,8 +52,9 @@ static int bpf_program_add_instructions(struct bpf_program *prog,
 	new_insn = realloc(prog->instructions, sizeof(struct bpf_insn) * (count + prog->n_instructions));
 	if (!new_insn)
 		return log_error_errno(-1, ENOMEM, "Failed to reallocate bpf cgroup program");
-
 	prog->instructions = new_insn;
+	memset(prog->instructions + prog->n_instructions, 0,
+	       sizeof(struct bpf_insn) * count);
 	memcpy(prog->instructions + prog->n_instructions, instructions,
 	       sizeof(struct bpf_insn) * count);
 	prog->n_instructions += count;
