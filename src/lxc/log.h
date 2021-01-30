@@ -85,7 +85,7 @@ struct lxc_log_category {
 };
 
 #ifndef NO_LXC_CONF
-extern int lxc_log_use_global_fd;
+extern bool lxc_log_use_global_fd;
 #endif
 
 /*
@@ -574,5 +574,6 @@ __hidden extern const char *lxc_log_get_file(void);
 __hidden extern void lxc_log_set_prefix(const char *prefix);
 __hidden extern const char *lxc_log_get_prefix(void);
 __hidden extern void lxc_log_options_no_override(void);
+__hidden extern int lxc_log_get_fd(void);
 
 #endif /* __LXC_LOG_H */
