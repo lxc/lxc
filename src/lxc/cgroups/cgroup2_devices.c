@@ -245,10 +245,10 @@ int bpf_program_append_device(struct bpf_program *prog, struct device_item *devi
 	if (device_type > 0)
 		jump_nr++;
 
-	if (device->major != -1)
+	if (device->major >= 0)
 		jump_nr++;
 
-	if (device->minor != -1)
+	if (device->minor >= 0)
 		jump_nr++;
 
 	if (!bpf_device_all_access(access_mask)) {
