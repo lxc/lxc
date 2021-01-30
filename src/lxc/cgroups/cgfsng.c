@@ -695,6 +695,8 @@ static struct hierarchy *add_hierarchy(struct hierarchy ***h, char **clist, char
 	int newentry;
 
 	new = zalloc(sizeof(*new));
+	if (!new)
+		return ret_set_errno(NULL, ENOMEM);
 	new->controllers = clist;
 	new->mountpoint = mountpoint;
 	new->container_base_path = container_base_path;
@@ -2662,8 +2664,8 @@ __cgfsng_ops static int cgfsng_set(struct cgroup_ops *ops,
 	struct hierarchy *h;
 	int ret = -1;
 
-	if (!ops)
-		return ret_set_errno(-1, ENOENT);
+	if (!ops || !key || !value || !name || !lxcpath)
+		return ret_errno(ENOENT);
 
 	controller = must_copy_string(key);
 	p = strchr(controller, '.');
@@ -2963,12 +2965,12 @@ __cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
 __cgfsng_ops static bool cgfsng_devices_activate(struct cgroup_ops *ops, struct lxc_handler *handler)
 {
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
-	__do_bpf_program_free struct bpf_program *devices = NULL;
+	__do_bpf_program_free struct bpf_program *prog = NULL;
 	int ret;
 	struct lxc_conf *conf;
 	struct hierarchy *unified;
 	struct lxc_list *it;
-	struct bpf_program *devices_old;
+	struct bpf_program *prog_old;
 
 	if (!ops)
 		return ret_set_errno(false, ENOENT);
@@ -2988,18 +2990,18 @@ __cgfsng_ops static bool cgfsng_devices_activate(struct cgroup_ops *ops, struct 
 	    !unified->container_full_path || lxc_list_empty(&conf->devices))
 		return true;
 
-	devices = bpf_program_new(BPF_PROG_TYPE_CGROUP_DEVICE);
-	if (!devices)
+	prog = bpf_program_new(BPF_PROG_TYPE_CGROUP_DEVICE);
+	if (!prog)
 		return log_error_errno(false, ENOMEM, "Failed to create new bpf program");
 
-	ret = bpf_program_init(devices);
+	ret = bpf_program_init(prog);
 	if (ret)
 		return log_error_errno(false, ENOMEM, "Failed to initialize bpf program");
 
 	lxc_list_for_each(it, &conf->devices) {
 		struct device_item *cur = it->elem;
 
-		ret = bpf_program_append_device(devices, cur);
+		ret = bpf_program_append_device(prog, cur);
 		if (ret)
 			return log_error_errno(false, ENOMEM, "Failed to add new rule to bpf device program: type %c, major %d, minor %d, access %s, allow %d, global_rule %d",
 					       cur->type,
@@ -3017,20 +3019,20 @@ __cgfsng_ops static bool cgfsng_devices_activate(struct cgroup_ops *ops, struct 
 		      cur->global_rule);
 	}
 
-	ret = bpf_program_finalize(devices);
+	ret = bpf_program_finalize(prog);
 	if (ret)
 		return log_error_errno(false, ENOMEM, "Failed to finalize bpf program");
 
-	ret = bpf_program_cgroup_attach(devices, BPF_CGROUP_DEVICE,
+	ret = bpf_program_cgroup_attach(prog, BPF_CGROUP_DEVICE,
 					unified->container_limit_path,
 					BPF_F_ALLOW_MULTI);
 	if (ret)
 		return log_error_errno(false, ENOMEM, "Failed to attach bpf program");
 
 	/* Replace old bpf program. */
-	devices_old = move_ptr(ops->cgroup2_devices);
-	ops->cgroup2_devices = move_ptr(devices);
-	devices = move_ptr(devices_old);
+	prog_old = move_ptr(ops->cgroup2_devices);
+	ops->cgroup2_devices = move_ptr(prog);
+	prog = move_ptr(prog_old);
 #endif
 	return true;
 }
@@ -3283,6 +3285,8 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 		}
 
 		new = add_hierarchy(&ops->hierarchies, move_ptr(controller_list), move_ptr(mountpoint), move_ptr(base_cgroup), type);
+		if (!new)
+			return log_error_errno(-1, errno, "Failed to add cgroup hierarchy");
 		if (type == CGROUP2_SUPER_MAGIC && !ops->unified) {
 			if (unprivileged)
 				cg_unified_delegate(&new->cgroup2_chown);
@@ -3333,9 +3337,9 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 {
 	__do_close int cgroup_root_fd = -EBADF;
 	__do_free char *base_cgroup = NULL, *controllers_path = NULL;
+	__do_free_string_list char **delegatable;
+	__do_free struct hierarchy *new = NULL;
 	int ret;
-	char **delegatable;
-	struct hierarchy *new;
 
 	ret = unified_cgroup_hierarchy();
 	if (ret == -ENOMEDIUM)
@@ -3375,10 +3379,13 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 	 */
 
 	new = add_hierarchy(&ops->hierarchies,
-			    delegatable,
+			    move_ptr(delegatable),
 			    must_copy_string(DEFAULT_CGROUP_MOUNTPOINT),
 			    move_ptr(base_cgroup),
 			    CGROUP2_SUPER_MAGIC);
+	if (!new)
+		return log_error_errno(-1, errno, "Failed to add unified cgroup hierarchy");
+
 	if (unprivileged)
 		cg_unified_delegate(&new->cgroup2_chown);
 
@@ -3386,7 +3393,7 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 		new->bpf_device_controller = 1;
 
 	ops->cgroup_layout = CGROUP_LAYOUT_UNIFIED;
-	ops->unified = new;
+	ops->unified = move_ptr(new);
 
 	return CGROUP2_SUPER_MAGIC;
 }
@@ -3438,11 +3445,10 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 {
 	__do_free struct cgroup_ops *cgfsng_ops = NULL;
 
-	cgfsng_ops = malloc(sizeof(struct cgroup_ops));
+	cgfsng_ops = zalloc(sizeof(struct cgroup_ops));
 	if (!cgfsng_ops)
 		return ret_set_errno(NULL, ENOMEM);
 
-	memset(cgfsng_ops, 0, sizeof(struct cgroup_ops));
 	cgfsng_ops->cgroup_layout = CGROUP_LAYOUT_UNKNOWN;
 
 	if (cg_init(cgfsng_ops, conf))

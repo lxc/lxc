@@ -85,7 +85,7 @@ struct lxc_log_category {
 };
 
 #ifndef NO_LXC_CONF
-extern int lxc_log_use_global_fd;
+extern bool lxc_log_use_global_fd;
 #endif
 
 /*
@@ -568,11 +568,16 @@ __hidden extern void lxc_log_syslog_enable(void);
 __hidden extern void lxc_log_syslog_disable(void);
 __hidden extern int lxc_log_set_level(int *dest, int level);
 __hidden extern int lxc_log_get_level(void);
+static inline bool lxc_log_trace(void)
+{
+	return lxc_log_get_level() <= LXC_LOG_LEVEL_TRACE;
+}
 __hidden extern bool lxc_log_has_valid_level(void);
 __hidden extern int lxc_log_set_file(int *fd, const char *fname);
 __hidden extern const char *lxc_log_get_file(void);
 __hidden extern void lxc_log_set_prefix(const char *prefix);
 __hidden extern const char *lxc_log_get_prefix(void);
 __hidden extern void lxc_log_options_no_override(void);
+__hidden extern int lxc_log_get_fd(void);
 
 #endif /* __LXC_LOG_H */
