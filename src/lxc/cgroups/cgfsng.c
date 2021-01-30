@@ -696,6 +696,8 @@ static struct hierarchy *add_hierarchy(struct hierarchy ***h, char **clist, char
 	int newentry;
 
 	new = zalloc(sizeof(*new));
+	if (!new)
+		return ret_set_errno(NULL, ENOMEM);
 	new->controllers = clist;
 	new->mountpoint = mountpoint;
 	new->container_base_path = container_base_path;
@@ -3283,6 +3285,8 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 		}
 
 		new = add_hierarchy(&ops->hierarchies, move_ptr(controller_list), move_ptr(mountpoint), move_ptr(base_cgroup), type);
+		if (!new)
+			return log_error_errno(-1, errno, "Failed to add cgroup hierarchy");
 		if (type == CGROUP2_SUPER_MAGIC && !ops->unified) {
 			if (unprivileged)
 				cg_unified_delegate(&new->cgroup2_chown);
@@ -3333,8 +3337,8 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 {
 	__do_close int cgroup_root_fd = -EBADF;
 	__do_free char *base_cgroup = NULL, *controllers_path = NULL;
+	__do_free_string_list char **delegatable;
 	int ret;
-	char **delegatable;
 	struct hierarchy *new;
 
 	ret = unified_cgroup_hierarchy();
@@ -3375,10 +3379,13 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 	 */
 
 	new = add_hierarchy(&ops->hierarchies,
-			    delegatable,
+			    move_ptr(delegatable),
 			    must_copy_string(DEFAULT_CGROUP_MOUNTPOINT),
 			    move_ptr(base_cgroup),
 			    CGROUP2_SUPER_MAGIC);
+	if (!new)
+		return log_error_errno(-1, errno, "Failed to add unified cgroup hierarchy");
+
 	if (unprivileged)
 		cg_unified_delegate(&new->cgroup2_chown);
 
