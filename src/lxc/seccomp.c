@@ -1262,7 +1262,7 @@ int lxc_seccomp_load(struct lxc_conf *conf)
 #if HAVE_SCMP_FILTER_CTX
 	if ((lxc_log_get_level() <= LXC_LOG_LEVEL_TRACE ||
 	     conf->loglevel <= LXC_LOG_LEVEL_TRACE) &&
-	    lxc_log_fd >= 0) {
+	     lxc_log_get_fd() >= 0) {
 		ret = seccomp_export_pfc(conf->seccomp.seccomp_ctx, lxc_log_fd);
 		/* Just give an warning when export error */
 		if (ret < 0) {
