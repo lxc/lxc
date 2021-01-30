@@ -762,7 +762,7 @@ int lxc_log_set_level(int *dest, int level)
 	return 0;
 }
 
-inline int lxc_log_get_level(void)
+int lxc_log_get_level(void)
 {
 	return lxc_log_category_lxc.priority;
 }
