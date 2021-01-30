@@ -343,10 +343,10 @@ static int bpf_program_load_kernel(struct bpf_program *prog)
 
 	attr = &(union bpf_attr){
 		.prog_type	= prog->prog_type,
-		.insns		= PTR_TO_UINT64(prog->instructions),
+		.insns		= PTR_TO_U64(prog->instructions),
 		.insn_cnt	= prog->n_instructions,
-		.license	= PTR_TO_UINT64("GPL"),
-		.log_buf	= PTR_TO_UINT64(log_buf),
+		.license	= PTR_TO_U64("GPL"),
+		.log_buf	= PTR_TO_U64(log_buf),
 		.log_level	= log_level,
 		.log_size	= log_size,
 	};
