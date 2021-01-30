@@ -1260,7 +1260,7 @@ int lxc_seccomp_load(struct lxc_conf *conf)
 /* After load seccomp filter into the kernel successfully, export the current seccomp
  * filter to log file */
 #if HAVE_SCMP_FILTER_CTX
-	if (lxc_log_get_level() <= LXC_LOG_LEVEL_TRACE) {
+	if (lxc_log_trace()) {
 		int fd_log;
 
 		fd_log = lxc_log_get_fd();
