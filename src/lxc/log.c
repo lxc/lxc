@@ -778,7 +778,16 @@ int lxc_log_set_level(int *dest, int level)
 
 int lxc_log_get_level(void)
 {
-	return lxc_log_category_lxc.priority;
+	int level = LXC_LOG_LEVEL_NOTSET;
+
+#ifndef NO_LXC_CONF
+	if (current_config)
+		level = current_config->loglevel;
+#endif
+	if (level == LXC_LOG_LEVEL_NOTSET)
+		level = lxc_log_category_lxc.priority;
+
+	return level;
 }
 
 bool lxc_log_has_valid_level(void)
