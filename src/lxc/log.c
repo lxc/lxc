@@ -46,7 +46,7 @@
 int lxc_log_fd = -EBADF;
 static bool wants_syslog = false;
 static int lxc_quiet_specified;
-int lxc_log_use_global_fd;
+bool lxc_log_use_global_fd = false;
 static int lxc_loglevel_specified;
 
 static char log_prefix[LXC_LOG_PREFIX_SIZE] = "lxc";
@@ -90,6 +90,20 @@ static const char *lxc_log_get_container_name(void)
 #endif
 
 	return log_vmname;
+}
+
+int lxc_log_get_fd(void)
+{
+	int fd_log = -EBADF;
+
+#ifndef NO_LXC_CONF
+	if (current_config && !lxc_log_use_global_fd)
+		fd_log = current_config->logfd;
+#endif
+	if (fd_log < 0)
+		fd_log = lxc_log_fd;
+
+	return fd_log;
 }
 
 static char *lxc_log_get_va_msg(struct lxc_log_event *event)
@@ -659,7 +673,7 @@ int lxc_log_init(struct lxc_log *log)
 		if (ret < 0)
 			return log_error_errno(-1, errno, "Failed to enable logfile");
 
-		lxc_log_use_global_fd = 1;
+		lxc_log_use_global_fd = true;
 	} else {
 		/* if no name was specified, there nothing to do */
 		if (!log->name)
