@@ -3338,8 +3338,8 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 	__do_close int cgroup_root_fd = -EBADF;
 	__do_free char *base_cgroup = NULL, *controllers_path = NULL;
 	__do_free_string_list char **delegatable;
+	__do_free struct hierarchy *new = NULL;
 	int ret;
-	struct hierarchy *new;
 
 	ret = unified_cgroup_hierarchy();
 	if (ret == -ENOMEDIUM)
@@ -3393,7 +3393,7 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 		new->bpf_device_controller = 1;
 
 	ops->cgroup_layout = CGROUP_LAYOUT_UNIFIED;
-	ops->unified = new;
+	ops->unified = move_ptr(new);
 
 	return CGROUP2_SUPER_MAGIC;
 }
