@@ -78,7 +78,12 @@ __hidden extern bool lxc_config_define_load(struct lxc_list *defines, struct lxc
 
 __hidden extern void lxc_config_define_free(struct lxc_list *defines);
 
-/* needed for lxc-attach */
+#define LXC_ARCH_UNCHANGED 0xffffffffL
+/*
+ * Parse personality of the container. Returns LXC_ARCH_UNCHANGED if the
+ * personality is not know.
+ * (Used during attach.)
+ */
 __hidden extern signed long lxc_config_parse_arch(const char *arch);
 
 __hidden extern int lxc_fill_elevated_privileges(char *flaglist, int *flags);

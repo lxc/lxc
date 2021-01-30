@@ -400,7 +400,7 @@ int main(int argc, char *argv[])
 
 	(void)strlcpy(template, P_tmpdir"/attach_XXXXXX", sizeof(template));
 
-	lsm_ops = lsm_init();
+	lsm_ops = lsm_init_static();
 
 	i = lxc_make_tmpfile(template, false);
 	if (i < 0) {

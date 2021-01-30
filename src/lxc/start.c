@@ -728,7 +728,7 @@ int lxc_init(const char *name, struct lxc_handler *handler)
 	if (status_fd < 0)
 		return log_error_errno(-1, errno, "Failed to open monitor status fd");
 
-	handler->lsm_ops = lsm_init();
+	handler->lsm_ops = lsm_init_static();
 	TRACE("Initialized LSM");
 
 	/* Begin by setting the state to STARTING. */
@@ -1069,8 +1069,7 @@ static int do_start(void *data)
 	/* Don't leak the pinfd to the container. */
 	close_prot_errno_disarm(handler->pinfd);
 
-	ret = lxc_sync_wait_parent(handler, LXC_SYNC_STARTUP);
-	if (ret < 0)
+	if (!lxc_sync_wait_parent(handler, START_SYNC_STARTUP))
 		goto out_warn_father;
 
 	/* Unshare CLONE_NEWNET after CLONE_NEWUSER. See
@@ -1088,8 +1087,7 @@ static int do_start(void *data)
 	/* Tell the parent task it can begin to configure the container and wait
 	 * for it to finish.
 	 */
-	ret = lxc_sync_barrier_parent(handler, LXC_SYNC_CONFIGURE);
-	if (ret < 0)
+	if (!lxc_sync_barrier_parent(handler, START_SYNC_CONFIGURE))
 		goto out_error;
 
 	if (handler->ns_clone_flags & CLONE_NEWNET) {
@@ -1168,8 +1166,7 @@ static int do_start(void *data)
 	}
 
 	/* Ask father to setup cgroups and wait for him to finish. */
-	ret = lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP);
-	if (ret < 0)
+	if (!lxc_sync_barrier_parent(handler, START_SYNC_CGROUP))
 		goto out_error;
 
 	/* Unshare cgroup namespace after we have setup our cgroups. If we do it
@@ -1353,8 +1350,7 @@ static int do_start(void *data)
 		}
 	}
 
-	ret = lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP_LIMITS);
-	if (ret < 0)
+	if (!lxc_sync_barrier_parent(handler, START_SYNC_CGROUP_LIMITS))
 		goto out_warn_father;
 
 	/* Reset the environment variables the user requested in a clear
@@ -1447,7 +1443,7 @@ out_warn_father:
 	 * We want the parent to know something went wrong, so we return a
 	 * special error code.
 	 */
-	lxc_sync_wake_parent(handler, LXC_SYNC_ERROR);
+	lxc_sync_wake_parent(handler, SYNC_ERROR);
 
 out_error:
 	return -1;
@@ -1630,8 +1626,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		share_ns = true;
 	}
 
-	ret = lxc_sync_init(handler);
-	if (ret < 0)
+	if (!lxc_sync_init(handler))
 		return -1;
 
 	ret = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0,
@@ -1790,12 +1785,10 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	ret = lxc_sync_wake_child(handler, LXC_SYNC_STARTUP);
-	if (ret < 0)
+	if (!lxc_sync_wake_child(handler, START_SYNC_STARTUP))
 		goto out_delete_net;
 
-	ret = lxc_sync_wait_child(handler, LXC_SYNC_CONFIGURE);
-	if (ret < 0)
+	if (!lxc_sync_wait_child(handler, START_SYNC_CONFIGURE))
 		goto out_delete_net;
 
 	if (!cgroup_ops->setup_limits_legacy(cgroup_ops, handler->conf, false)) {
@@ -1862,10 +1855,9 @@ static int lxc_spawn(struct lxc_handler *handler)
 	}
 
 	/* Tell the child to continue its initialization. We'll get
-	 * LXC_SYNC_CGROUP when it is ready for us to setup cgroups.
+	 * START_SYNC_CGROUP when it is ready for us to setup cgroups.
 	 */
-	ret = lxc_sync_barrier_child(handler, LXC_SYNC_POST_CONFIGURE);
-	if (ret < 0)
+	if (!lxc_sync_barrier_child(handler, START_SYNC_POST_CONFIGURE))
 		goto out_delete_net;
 
 	if (!lxc_list_empty(&conf->limits)) {
@@ -1876,8 +1868,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	ret = lxc_sync_barrier_child(handler, LXC_SYNC_CGROUP_UNSHARE);
-	if (ret < 0)
+	if (!lxc_sync_barrier_child(handler, START_SYNC_CGROUP_UNSHARE))
 		goto out_delete_net;
 
 	/*
@@ -1937,12 +1928,11 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 	/* Tell the child to complete its initialization and wait for it to exec
 	 * or return an error. (The child will never return
-	 * LXC_SYNC_READY_START+1. It will either close the sync pipe, causing
+	 * START_SYNC_READY_START+1. It will either close the sync pipe, causing
 	 * lxc_sync_barrier_child to return success, or return a different
 	 * value, causing us to error out).
 	 */
-	ret = lxc_sync_barrier_child(handler, LXC_SYNC_READY_START);
-	if (ret < 0)
+	if (!lxc_sync_barrier_child(handler, START_SYNC_READY_START))
 		goto out_delete_net;
 
 	if (handler->ns_clone_flags & CLONE_NEWNET) {
