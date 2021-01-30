@@ -328,10 +328,8 @@ static int bpf_program_load_kernel(struct bpf_program *prog, char *log_buf,
 	if ((log_size != 0 && !log_buf) || (log_size == 0 && log_buf))
 		return ret_errno(EINVAL);
 
-	if (prog->kernel_fd >= 0) {
-		memset(log_buf, 0, log_size);
+	if (prog->kernel_fd >= 0)
 		return 0;
-	}
 
 	attr = &(union bpf_attr){
 		.prog_type	= prog->prog_type,
