@@ -3438,11 +3438,10 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 {
 	__do_free struct cgroup_ops *cgfsng_ops = NULL;
 
-	cgfsng_ops = malloc(sizeof(struct cgroup_ops));
+	cgfsng_ops = zalloc(sizeof(struct cgroup_ops));
 	if (!cgfsng_ops)
 		return ret_set_errno(NULL, ENOMEM);
 
-	memset(cgfsng_ops, 0, sizeof(struct cgroup_ops));
 	cgfsng_ops->cgroup_layout = CGROUP_LAYOUT_UNKNOWN;
 
 	if (cg_init(cgfsng_ops, conf))
