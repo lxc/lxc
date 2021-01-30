@@ -27,6 +27,7 @@
 
 lxc_log_define(cgroup2_devices, cgroup);
 
+#define BPF_LOG_BUF_SIZE (1 << 23) /* 8MB */
 #ifndef BPF_LOG_LEVEL1
 #define BPF_LOG_LEVEL1 1
 #endif
@@ -321,16 +322,24 @@ int bpf_program_finalize(struct bpf_program *prog)
 	return bpf_program_add_instructions(prog, ins, ARRAY_SIZE(ins));
 }
 
-static int bpf_program_load_kernel(struct bpf_program *prog, char *log_buf,
-				   __u32 log_size, __u32 log_level)
+static int bpf_program_load_kernel(struct bpf_program *prog)
 {
+	__do_free char *log_buf = NULL;
+	__u32 log_level = 0, log_size = 0;
 	union bpf_attr *attr;
-
-	if ((log_size != 0 && !log_buf) || (log_size == 0 && log_buf))
-		return ret_errno(EINVAL);
 
 	if (prog->kernel_fd >= 0)
 		return 0;
+
+	if (lxc_log_get_level() <= LXC_LOG_LEVEL_TRACE) {
+		log_buf = zalloc(BPF_LOG_BUF_SIZE);
+		if (!log_buf) {
+			WARN("Failed to allocate bpf log buffer");
+		} else {
+			log_level = BPF_LOG_LEVEL;
+			log_size = BPF_LOG_BUF_SIZE;
+		}
+	}
 
 	attr = &(union bpf_attr){
 		.prog_type	= prog->prog_type,
@@ -376,7 +385,7 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
 			return true;
 	}
 
-	ret = bpf_program_load_kernel(prog, NULL, 0, 0);
+	ret = bpf_program_load_kernel(prog);
 	if (ret < 0)
 		return log_error_errno(-1, ret, "Failed to load bpf program");
 
@@ -543,7 +552,7 @@ bool bpf_devices_cgroup_supported(void)
 	if (ret < 0)
 		return log_trace(false, "Failed to add new instructions to bpf device cgroup program");
 
-	ret = bpf_program_load_kernel(prog, NULL, 0, 0);
+	ret = bpf_program_load_kernel(prog);
 	if (ret < 0)
 		return log_trace(false, "Failed to load new bpf device cgroup program");
 
