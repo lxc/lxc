@@ -30,6 +30,7 @@ struct lsm_ops {
 	int (*prepare)(struct lsm_ops *ops, struct lxc_conf *conf, const char *lxcpath);
 	void (*cleanup)(struct lsm_ops *ops, struct lxc_conf *conf, const char *lxcpath);
 	int (*process_label_fd_get)(struct lsm_ops *ops, pid_t pid, bool on_exec);
+	char *(*process_label_get_at)(struct lsm_ops *ops, int fd_pid);
 	int (*process_label_set_at)(struct lsm_ops *ops, int label_fd, const char *label, bool on_exec);
 };
 
