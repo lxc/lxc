@@ -57,6 +57,7 @@ lxc_log_define(attach, lxc);
 static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_DEFAULT;
 
 struct attach_context {
+	unsigned int attach_flags;
 	int init_pid;
 	int dfd_init_pid;
 	int dfd_self_pid;
@@ -87,6 +88,12 @@ static inline bool sync_wake_fd(int fd, int fd_send)
 static inline bool sync_wait_fd(int fd, int *fd_recv)
 {
 	return lxc_abstract_unix_recv_fds(fd, fd_recv, 1, NULL, 0) > 0;
+}
+
+static bool attach_lsm(lxc_attach_options_t *options)
+{
+	return (options->namespaces & CLONE_NEWNS) &&
+	       (options->attach_flags & (LXC_ATTACH_LSM | LXC_ATTACH_LSM_LABEL));
 }
 
 static struct attach_context *alloc_attach_context(void)
@@ -127,10 +134,11 @@ static int get_personality(const char *name, const char *lxcpath,
 }
 
 static int get_attach_context(struct attach_context *ctx,
-			      struct lxc_container *container)
+			      struct lxc_container *container,
+			      lxc_attach_options_t *options)
 {
 	__do_close int dfd_self_pid = -EBADF, dfd_init_pid = -EBADF, fd_status = -EBADF;
-	__do_free char *line = NULL;
+	__do_free char *line = NULL, *lsm_label = NULL;
 	__do_fclose FILE *f_status = NULL;
 	int ret;
 	bool found;
@@ -138,6 +146,7 @@ static int get_attach_context(struct attach_context *ctx,
 	size_t line_bufsz = 0;
 
 	ctx->container = container;
+	ctx->attach_flags = options->attach_flags;
 
 	ctx->init_pid = lxc_cmd_get_init_pid(container->name, container->config_path);
 	if (ctx->init_pid < 0)
@@ -183,8 +192,16 @@ static int get_attach_context(struct attach_context *ctx,
 
 	ctx->lsm_ops = lsm_init_static();
 
-	/* Move to file descriptor-only lsm label retrieval. */
-	ctx->lsm_label = ctx->lsm_ops->process_label_get(ctx->lsm_ops, ctx->init_pid);
+	if (attach_lsm(options)) {
+		if (ctx->attach_flags & LXC_ATTACH_LSM_LABEL)
+			lsm_label = options->lsm_label;
+		else
+			lsm_label = ctx->lsm_ops->process_label_get_at(ctx->lsm_ops, dfd_init_pid);
+		if (!lsm_label)
+			WARN("No security context received");
+		else
+			INFO("Retrieved security context %s", lsm_label);
+	}
 	ctx->ns_inherited = 0;
 
 	ret = get_personality(container->name, container->config_path, &ctx->personality);
@@ -199,6 +216,7 @@ static int get_attach_context(struct attach_context *ctx,
 
 	ctx->dfd_init_pid = move_fd(dfd_init_pid);
 	ctx->dfd_self_pid = move_fd(dfd_self_pid);
+	ctx->lsm_label = move_ptr(lsm_label);
 	return 0;
 }
 
@@ -284,7 +302,8 @@ static inline void close_nsfds(struct attach_context *ctx)
 static void put_attach_context(struct attach_context *ctx)
 {
 	if (ctx) {
-		free_disarm(ctx->lsm_label);
+		if (!(ctx->attach_flags & LXC_ATTACH_LSM_LABEL))
+			free_disarm(ctx->lsm_label);
 		close_prot_errno_disarm(ctx->dfd_init_pid);
 
 		if (ctx->container) {
@@ -712,13 +731,12 @@ static bool fetch_seccomp(struct lxc_container *c, lxc_attach_options_t *options
 	int ret;
 	bool bret;
 
-	if (!(options->namespaces & CLONE_NEWNS) ||
-	    !(options->attach_flags & LXC_ATTACH_LSM)) {
+	if (!attach_lsm(options)) {
 		free_disarm(c->lxc_conf->seccomp.seccomp);
 		return true;
 	}
 
-	/* Remove current setting. */
+        /* Remove current setting. */
 	if (!c->set_config_item(c, "lxc.seccomp.profile", "") &&
 	    !c->set_config_item(c, "lxc.seccomp", ""))
 		return false;
@@ -774,9 +792,9 @@ struct attach_payload {
 
 static void put_attach_payload(struct attach_payload *p)
 {
-	close_prot_errno_disarm(p->ipc_socket);
-	close_prot_errno_disarm(p->terminal_pts_fd);
-	if (p->ctx) {
+	if (p) {
+		close_prot_errno_disarm(p->ipc_socket);
+		close_prot_errno_disarm(p->terminal_pts_fd);
 		put_attach_context(p->ctx);
 		p->ctx = NULL;
 	}
@@ -784,6 +802,8 @@ static void put_attach_payload(struct attach_payload *p)
 
 __noreturn static void do_attach(struct attach_payload *ap)
 {
+	lxc_attach_exec_t attach_function = move_ptr(ap->exec_function);
+	void *attach_function_args = move_ptr(ap->exec_payload);
 	int lsm_fd, ret;
 	uid_t new_uid;
 	gid_t new_gid;
@@ -792,10 +812,6 @@ __noreturn static void do_attach(struct attach_payload *ap)
 	lxc_attach_options_t* options = ap->options;
         struct attach_context *ctx = ap->ctx;
         struct lxc_conf *conf = ctx->container->lxc_conf;
-	bool needs_lsm = (options->namespaces & CLONE_NEWNS) &&
-			 (options->attach_flags & LXC_ATTACH_LSM) &&
-			 ctx->lsm_label;
-	char *lsm_label = NULL;
 
 	/* A description of the purpose of this functionality is provided in the
 	 * lxc-attach(1) manual page. We have to remount here and not in the
@@ -851,7 +867,8 @@ __noreturn static void do_attach(struct attach_payload *ap)
 
 	TRACE("Set up environment");
 
-	/* This remark only affects fully unprivileged containers:
+	/*
+	 * This remark only affects fully unprivileged containers:
 	 * Receive fd for LSM security module before we set{g,u}id(). The reason
 	 * is that on set{g,u}id() the kernel will a) make us undumpable and b)
 	 * we will change our effective uid. This means our effective uid will
@@ -862,7 +879,7 @@ __noreturn static void do_attach(struct attach_payload *ap)
 	 * mounted with hidepid={1,2}. So let's get the lsm label fd before the
 	 * set{g,u}id().
 	 */
-	if (needs_lsm) {
+	if (attach_lsm(options) && ctx->lsm_label) {
 		if (!sync_wait_fd(ap->ipc_socket, ATTACH_SYNC_LSM(&lsm_fd))) {
 			SYSERROR("Failed to receive lsm label fd");
 			goto on_error;
@@ -911,17 +928,12 @@ __noreturn static void do_attach(struct attach_payload *ap)
 	else
 		new_gid = ns_root_gid;
 
-	if (needs_lsm) {
+	if (attach_lsm(options) && ctx->lsm_label) {
 		bool on_exec;
 
 		/* Change into our new LSM profile. */
 		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? true : false;
-		if (options->attach_flags & LXC_ATTACH_LSM_LABEL)
-			lsm_label = options->lsm_label;
-		if (!lsm_label)
-			lsm_label = ctx->lsm_label;
-		ret = ctx->lsm_ops->process_label_set_at(ctx->lsm_ops, lsm_fd,
-							lsm_label, on_exec);
+		ret = ctx->lsm_ops->process_label_set_at(ctx->lsm_ops, lsm_fd, ctx->lsm_label, on_exec);
 		close_prot_errno_disarm(lsm_fd);
 		if (ret < 0)
 			goto on_error;
@@ -949,10 +961,6 @@ __noreturn static void do_attach(struct attach_payload *ap)
 		if (ret < 0)
 			goto on_error;
 	}
-
-	close_prot_errno_disarm(ap->ipc_socket);
-	put_attach_context(ctx);
-	ap->ctx = NULL;
 
 	/* The following is done after the communication socket is shut down.
 	 * That way, all errors that might (though unlikely) occur up until this
@@ -1007,6 +1015,8 @@ __noreturn static void do_attach(struct attach_payload *ap)
 		TRACE("Prepared terminal file descriptor %d", ap->terminal_pts_fd);
 	}
 
+	put_attach_payload(ap);
+
 	/* Avoid unnecessary syscalls. */
 	if (new_uid == ns_root_uid)
 		new_uid = LXC_INVALID_UID;
@@ -1023,10 +1033,9 @@ __noreturn static void do_attach(struct attach_payload *ap)
 		goto on_error;
 
 	/* We're done, so we can now do whatever the user intended us to do. */
-	_exit(ap->exec_function(ap->exec_payload));
+	_exit(attach_function(attach_function_args));
 
 on_error:
-	put_attach_payload(ap);
 	ERROR("Failed to attach to container");
 	_exit(EXIT_FAILURE);
 }
@@ -1106,8 +1115,10 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	name = container->name;
 	lxcpath = container->config_path;
 
-	if (!options)
+	if (!options) {
 		options = &attach_static_default_options;
+		options->lsm_label = NULL;
+	}
 
 	ctx = alloc_attach_context();
 	if (!ctx) {
@@ -1115,7 +1126,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		return log_error_errno(-ENOMEM, ENOMEM, "Failed to allocate attach context");
 	}
 
-	ret = get_attach_context(ctx, container);
+	ret = get_attach_context(ctx, container, options);
 	if (ret) {
 		put_attach_context(ctx);
 		return log_error(-1, "Failed to get attach context");
@@ -1419,14 +1430,12 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	to_cleanup_pid = attached_pid;
 
 	/* Open LSM fd and send it to child. */
-	if ((options->namespaces & CLONE_NEWNS) &&
-	    (options->attach_flags & LXC_ATTACH_LSM) && ctx->lsm_label) {
+	if (attach_lsm(options) && ctx->lsm_label) {
 		__do_close int labelfd = -EBADF;
 		bool on_exec;
 
 		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? true : false;
-		labelfd = ctx->lsm_ops->process_label_fd_get(ctx->lsm_ops,
-							     attached_pid, on_exec);
+		labelfd = ctx->lsm_ops->process_label_fd_get(ctx->lsm_ops, attached_pid, on_exec);
 		if (labelfd < 0)
 			goto close_mainloop;
 

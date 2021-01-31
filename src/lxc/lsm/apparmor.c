@@ -441,6 +441,22 @@ again:
 	return buf;
 }
 
+static char *apparmor_process_label_get_at(struct lsm_ops *ops, int fd_pid)
+{
+	__do_free char *label = NULL;
+	size_t len;
+
+	label = read_file_at(fd_pid, "attr/current");
+	if (!label)
+		return log_error_errno(NULL, errno, "Failed to get AppArmor context");
+
+	len = strcspn(label, "\n \t");
+	if (len)
+		label[len] = '\0';
+
+	return move_ptr(label);
+}
+
 /*
  * Probably makes sense to reorganize these to only read
  * the label once
@@ -1237,6 +1253,7 @@ static struct lsm_ops apparmor_ops = {
 	.process_label_fd_get		= apparmor_process_label_fd_get,
 	.process_label_get 		= apparmor_process_label_get,
 	.process_label_set 		= apparmor_process_label_set,
+	.process_label_get_at 		= apparmor_process_label_get_at,
 	.process_label_set_at		= apparmor_process_label_set_at,
 };
 
