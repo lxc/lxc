@@ -70,6 +70,49 @@ struct attach_context {
 	struct lsm_ops *lsm_ops;
 };
 
+static pid_t pidfd_get_pid(int pidfd)
+{
+	__do_free char *line = NULL;
+	__do_fclose FILE *f = NULL;
+	size_t len = 0;
+	char path[STRLITERALLEN("/proc/self/fdinfo/") +
+		  INTTYPE_TO_STRLEN(int) + 1 ] = "/proc/self/fdinfo/";
+	int ret;
+
+	if (pidfd < 0)
+		return -EBADF;
+
+	ret = snprintf(path + STRLITERALLEN("/proc/self/fdinfo/"),
+			INTTYPE_TO_STRLEN(int), "%d", pidfd);
+	if (ret < 0 || ret > (size_t)INTTYPE_TO_STRLEN(int))
+		return ret_errno(EIO);
+
+	f = fopen_cloexec(path, "re");
+	if (!f)
+		return -errno;
+
+	while (getline(&line, &len, f) != -1) {
+		const char *prefix = "Pid:\t";
+		const size_t prefix_len = STRLITERALLEN("Pid:\t");
+		int pid = -ESRCH;
+		char *slider = line;
+
+		if (strncmp(slider, prefix, prefix_len))
+			continue;
+
+		slider += prefix_len;
+		slider = lxc_trim_whitespace_in_place(slider);
+
+		ret = lxc_safe_int(slider, &pid);
+		if (ret)
+			return -ret;
+
+		return pid;
+	}
+
+	return ret_errno(ENOENT);
+}
+
 static inline bool sync_wake_pid(int fd, pid_t pid)
 {
 	return lxc_write_nointr(fd, &pid, sizeof(pid_t)) == sizeof(pid_t);
@@ -137,7 +180,7 @@ static int get_attach_context(struct attach_context *ctx,
 			      struct lxc_container *container,
 			      lxc_attach_options_t *options)
 {
-	__do_close int dfd_self_pid = -EBADF, dfd_init_pid = -EBADF, fd_status = -EBADF;
+	__do_close int dfd_self_pid = -EBADF, dfd_init_pid = -EBADF, fd_status = -EBADF, init_pidfd = -EBADF;
 	__do_free char *line = NULL, *lsm_label = NULL;
 	__do_fclose FILE *f_status = NULL;
 	int ret;
@@ -148,7 +191,12 @@ static int get_attach_context(struct attach_context *ctx,
 	ctx->container = container;
 	ctx->attach_flags = options->attach_flags;
 
-	ctx->init_pid = lxc_cmd_get_init_pid(container->name, container->config_path);
+	init_pidfd = lxc_cmd_get_init_pidfd(container->name, container->config_path);
+	if (init_pidfd >= 0)
+		ctx->init_pid = pidfd_get_pid(init_pidfd);
+	else
+		ctx->init_pid = lxc_cmd_get_init_pid(container->name, container->config_path);
+
 	if (ctx->init_pid < 0)
 		return log_error(-1, "Failed to get init pid");
 
@@ -171,6 +219,14 @@ static int get_attach_context(struct attach_context *ctx,
 	fd_status = openat(dfd_init_pid, "status", O_CLOEXEC | O_NOCTTY | O_NOFOLLOW | O_RDONLY);
 	if (fd_status < 0)
 		return -errno;
+
+	if (init_pidfd >= 0) {
+		ret = lxc_raw_pidfd_send_signal(init_pidfd, 0, NULL, 0);
+		if (ret)
+			return log_error_errno(-errno, errno, "Container process exited or PID has been recycled");
+		else
+			TRACE("Container process still running and PID was not recycled");
+	}
 
 	f_status = fdopen(fd_status, "re");
 	if (!f_status)
