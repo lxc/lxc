@@ -1196,45 +1196,33 @@ static int apparmor_process_label_set_at(struct lsm_ops *ops, int label_fd, cons
 static int apparmor_process_label_set(struct lsm_ops *ops, const char *inlabel,
 				      struct lxc_conf *conf, bool on_exec)
 {
-	int label_fd, ret;
-	pid_t tid;
+	__do_close int label_fd = -EBADF;
+	int ret;
 	const char *label;
 
 	if (!ops->aa_enabled)
-		return log_error(-1, "AppArmor not enabled");
+		return log_error_errno(-EOPNOTSUPP, EOPNOTSUPP, "AppArmor not enabled");
 
 	label = inlabel ? inlabel : conf->lsm_aa_profile_computed;
-	if (!label) {
-		ERROR("LSM wasn't prepared");
-		return -1;
-	}
+	if (!label)
+		return log_error_errno(-EINVAL, EINVAL, "LSM wasn't prepared");
 
 	/* user may request that we just ignore apparmor */
-	if (strcmp(label, AA_UNCHANGED) == 0) {
-		INFO("AppArmor profile unchanged per user request");
-		return 0;
-	}
+	if (strcmp(label, AA_UNCHANGED) == 0)
+		return log_info(0, "AppArmor profile unchanged per user request");
 
-	if (strcmp(label, "unconfined") == 0 && apparmor_am_unconfined(ops)) {
-		INFO("AppArmor profile unchanged");
-		return 0;
-	}
-	tid = lxc_raw_gettid();
-	label_fd = apparmor_process_label_fd_get(ops, tid, on_exec);
-	if (label_fd < 0) {
-		SYSERROR("Failed to change AppArmor profile to %s", label);
-		return -1;
-	}
+	if (strcmp(label, "unconfined") == 0 && apparmor_am_unconfined(ops))
+		return log_info(0, "AppArmor profile unchanged");
+
+	label_fd = apparmor_process_label_fd_get(ops, lxc_raw_gettid(), on_exec);
+	if (label_fd < 0)
+		return log_error_errno(-EINVAL, EINVAL, "Failed to change AppArmor profile to %s", label);
 
 	ret = apparmor_process_label_set_at(ops, label_fd, label, on_exec);
-	close(label_fd);
-	if (ret < 0) {
-		ERROR("Failed to change AppArmor profile to %s", label);
-		return -1;
-	}
+	if (ret < 0)
+		return log_error_errno(-EINVAL, EINVAL, "Failed to change AppArmor profile to %s", label);
 
-	INFO("Changed AppArmor profile to %s", label);
-	return 0;
+	return log_info(0, "Changed AppArmor profile to %s", label);
 }
 
 static struct lsm_ops apparmor_ops = {
