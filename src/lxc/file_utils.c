@@ -553,7 +553,8 @@ static inline int dup_cloexec(int fd)
 	return move_fd(fd_dup);
 }
 
-FILE *fdopenat(int dfd, const char *path, const char *mode)
+FILE *fdopen_at(int dfd, const char *path, const char *mode,
+		unsigned int o_flags, unsigned int resolve_flags)
 {
 	__do_close int fd = -EBADF;
 	__do_fclose FILE *f = NULL;
@@ -561,7 +562,7 @@ FILE *fdopenat(int dfd, const char *path, const char *mode)
 	if (is_empty_string(path))
 		fd = dup_cloexec(dfd);
 	else
-		fd = openat(dfd, path, O_CLOEXEC | O_NOCTTY | O_NOFOLLOW);
+		fd = open_at(dfd, path, o_flags, resolve_flags, 0);
 	if (fd < 0)
 		return NULL;
 
