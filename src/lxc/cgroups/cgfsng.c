@@ -325,7 +325,7 @@ static bool cg_legacy_filter_and_set_cpus(const char *parent_cgroup,
 	bool flipped_bit = false;
 
 	fpath = must_make_path(parent_cgroup, "cpuset.cpus", NULL);
-	posscpus = read_file_at(-EBADF, fpath);
+	posscpus = read_file_at(-EBADF, fpath, PROTECT_OPEN, 0);
 	if (!posscpus)
 		return log_error_errno(false, errno, "Failed to read file \"%s\"", fpath);
 
@@ -335,7 +335,7 @@ static bool cg_legacy_filter_and_set_cpus(const char *parent_cgroup,
 		return false;
 
 	if (file_exists(__ISOL_CPUS)) {
-		isolcpus = read_file_at(-EBADF, __ISOL_CPUS);
+		isolcpus = read_file_at(-EBADF, __ISOL_CPUS, PROTECT_OPEN, 0);
 		if (!isolcpus)
 			return log_error_errno(false, errno, "Failed to read file \"%s\"", __ISOL_CPUS);
 
@@ -354,7 +354,7 @@ static bool cg_legacy_filter_and_set_cpus(const char *parent_cgroup,
 	}
 
 	if (file_exists(__OFFLINE_CPUS)) {
-		offlinecpus = read_file_at(-EBADF, __OFFLINE_CPUS);
+		offlinecpus = read_file_at(-EBADF, __OFFLINE_CPUS, PROTECT_OPEN, 0);
 		if (!offlinecpus)
 			return log_error_errno(false, errno, "Failed to read file \"%s\"", __OFFLINE_CPUS);
 
@@ -673,7 +673,7 @@ static char **cg_unified_get_controllers(int dfd, const char *file)
 	char *sep = " \t\n";
 	char *tok;
 
-	buf = read_file_at(dfd, file);
+	buf = read_file_at(dfd, file, PROTECT_OPEN, 0);
 	if (!buf)
 		return NULL;
 
@@ -3145,7 +3145,7 @@ static void cg_unified_delegate(char ***delegate)
 	char *token;
 	int idx;
 
-	buf = read_file_at(-EBADF, "/sys/kernel/cgroup/delegate");
+	buf = read_file_at(-EBADF, "/sys/kernel/cgroup/delegate", PROTECT_OPEN, 0);
 	if (!buf) {
 		for (char **p = standard; p && *p; p++) {
 			idx = append_null_to_list((void ***)delegate);
@@ -3183,9 +3183,9 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 	 * cgroups as our base in that case.
 	 */
 	if (!relative && (geteuid() == 0))
-		basecginfo = read_file_at(-EBADF, "/proc/1/cgroup");
+		basecginfo = read_file_at(-EBADF, "/proc/1/cgroup", PROTECT_OPEN, 0);
 	else
-		basecginfo = read_file_at(-EBADF, "/proc/self/cgroup");
+		basecginfo = read_file_at(-EBADF, "/proc/self/cgroup", PROTECT_OPEN, 0);
 	if (!basecginfo)
 		return ret_set_errno(-1, ENOMEM);
 
@@ -3314,9 +3314,9 @@ static char *cg_unified_get_current_cgroup(bool relative)
 	char *base_cgroup;
 
 	if (!relative && (geteuid() == 0))
-		basecginfo = read_file_at(-EBADF, "/proc/1/cgroup");
+		basecginfo = read_file_at(-EBADF, "/proc/1/cgroup", PROTECT_OPEN, 0);
 	else
-		basecginfo = read_file_at(-EBADF, "/proc/self/cgroup");
+		basecginfo = read_file_at(-EBADF, "/proc/self/cgroup", PROTECT_OPEN, 0);
 	if (!basecginfo)
 		return NULL;
 

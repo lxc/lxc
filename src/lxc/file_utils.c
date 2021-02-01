@@ -674,7 +674,8 @@ static void append_line(char **dest, size_t oldlen, char *new, size_t newlen)
 }
 
 /* Slurp in a whole file */
-char *read_file_at(int dfd, const char *fnam)
+char *read_file_at(int dfd, const char *fnam,
+		   unsigned int o_flags, unsigned resolve_flags)
 {
 	__do_close int fd = -EBADF;
 	__do_free char *buf = NULL, *line = NULL;
@@ -682,7 +683,7 @@ char *read_file_at(int dfd, const char *fnam)
 	size_t len = 0, fulllen = 0;
 	int linelen;
 
-	fd = openat(dfd, fnam, O_NOCTTY | O_CLOEXEC | O_NOFOLLOW | O_RDONLY);
+	fd = open_at(dfd, fnam, o_flags, resolve_flags, 0);
 	if (fd < 0)
 		return NULL;
 
