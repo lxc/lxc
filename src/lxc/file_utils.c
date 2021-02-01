@@ -621,8 +621,8 @@ bool exists_file_at(int dir_fd, const char *path)
 	return fstatat(dir_fd, path, &sb, 0) == 0;
 }
 
-int open_at(int dfd, const char *path, mode_t mode, unsigned int o_flags,
-	    unsigned int resolve_flags)
+int open_at(int dfd, const char *path, unsigned int o_flags,
+	    unsigned int resolve_flags, mode_t mode)
 {
 	__do_close int fd = -EBADF;
 	struct lxc_open_how how = {
@@ -638,7 +638,7 @@ int open_at(int dfd, const char *path, mode_t mode, unsigned int o_flags,
 	if (errno != ENOSYS)
 		return -errno;
 
-	return openat(dfd, path, O_NOFOLLOW | o_flags);
+	return openat(dfd, path, O_NOFOLLOW | o_flags, mode);
 }
 
 int fd_make_nonblocking(int fd)
