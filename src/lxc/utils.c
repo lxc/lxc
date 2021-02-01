@@ -1779,28 +1779,6 @@ int lxc_set_death_signal(int signal, pid_t parent, int parent_status_fd)
 	return 0;
 }
 
-int fd_cloexec(int fd, bool cloexec)
-{
-	int oflags, nflags;
-
-	oflags = fcntl(fd, F_GETFD, 0);
-	if (oflags < 0)
-		return -errno;
-
-	if (cloexec)
-		nflags = oflags | FD_CLOEXEC;
-	else
-		nflags = oflags & ~FD_CLOEXEC;
-
-	if (nflags == oflags)
-		return 0;
-
-	if (fcntl(fd, F_SETFD, nflags) < 0)
-		return -errno;
-
-	return 0;
-}
-
 int lxc_rm_rf(const char *dirname)
 {
 	__do_closedir DIR *dir = NULL;
@@ -1909,15 +1887,15 @@ int fix_stdio_permissions(uid_t uid)
 
 		ret = fchown(std_fds[i], uid, st.st_gid);
 		if (ret) {
-			TRACE("Failed to chown standard I/O file descriptor %d to uid %d and gid %d",
-			      std_fds[i], uid, st.st_gid);
+			SYSTRACE("Failed to chown standard I/O file descriptor %d to uid %d and gid %d",
+			         std_fds[i], uid, st.st_gid);
 			fret = -1;
 			continue;
 		}
 
 		ret = fchmod(std_fds[i], 0700);
 		if (ret) {
-			TRACE("Failed to chmod standard I/O file descriptor %d", std_fds[i]);
+			SYSTRACE("Failed to chmod standard I/O file descriptor %d", std_fds[i]);
 			fret = -1;
 		}
 	}

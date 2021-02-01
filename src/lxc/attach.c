@@ -56,11 +56,45 @@ lxc_log_define(attach, lxc);
 /* Define default options if no options are supplied by the user. */
 static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_DEFAULT;
 
+/*
+ * The context used to attach to the container.
+ * @attach_flags    : the attach flags specified in lxc_attach_options_t
+ * @init_pid        : the PID of the container's init process
+ * @dfd_init_pid    : file descriptor to /proc/@init_pid
+ *                    __Must be closed in attach_context_security_barrier()__!
+ * @dfd_self_pid    : file descriptor to /proc/self
+ *                    __Must be closed in attach_context_security_barrier()__!
+ * @setup_ns_uid    : if CLONE_NEWUSER is specified will contain the uid used
+ *                    during attach setup.
+ * @setup_ns_gid    : if CLONE_NEWUSER is specified will contain the gid used
+ *                    during attach setup.
+ * @target_ns_uid   : if CLONE_NEWUSER is specified the uid that the final
+ *                    program will be run with.
+ * @target_ns_gid   : if CLONE_NEWUSER is specified the gid that the final
+ *                    program will be run with.
+ * @target_host_uid : if CLONE_NEWUSER is specified the uid that the final
+ *                    program will be run with on the host.
+ * @target_host_gid : if CLONE_NEWUSER is specified the gid that the final
+ *                    program will be run with on the host.
+ * @lsm_label       : LSM label to be used for the attaching process
+ * @container       : the container we're attaching o
+ * @personality     : the personality to use for the final program
+ * @capability      : the capability mask of the @init_pid
+ * @ns_inherited    : flags of namespaces that the final program will inherit
+ *                    from @init_pid
+ * @ns_fd           : file descriptors to @init_pid's namespaces
+ */
 struct attach_context {
 	unsigned int attach_flags;
 	int init_pid;
 	int dfd_init_pid;
 	int dfd_self_pid;
+	uid_t setup_ns_uid;
+	gid_t setup_ns_gid;
+	uid_t target_ns_uid;
+	gid_t target_ns_gid;
+	uid_t target_host_uid;
+	uid_t target_host_gid;
 	char *lsm_label;
 	struct lxc_container *container;
 	signed long personality;
@@ -149,6 +183,13 @@ static struct attach_context *alloc_attach_context(void)
 
 	ctx->dfd_self_pid = -EBADF;
 	ctx->dfd_init_pid = -EBADF;
+	ctx->init_pid = -ESRCH;
+	ctx->setup_ns_uid = LXC_INVALID_UID;
+	ctx->setup_ns_gid = LXC_INVALID_GID;
+	ctx->target_ns_uid = LXC_INVALID_UID;
+	ctx->target_ns_gid = LXC_INVALID_GID;
+	ctx->target_host_uid = LXC_INVALID_UID;
+	ctx->target_host_gid = LXC_INVALID_GID;
 
 	for (int i = 0; i < LXC_NS_MAX; i++)
 		ctx->ns_fd[i] = -EBADF;
@@ -176,17 +217,165 @@ static int get_personality(const char *name, const char *lxcpath,
 	return 0;
 }
 
+static int userns_setup_ids(struct attach_context *ctx,
+			    lxc_attach_options_t *options)
+{
+	__do_free char *line = NULL;
+	__do_fclose FILE *f_gidmap = NULL, *f_uidmap = NULL;
+	size_t len = 0;
+	uid_t init_ns_uid = LXC_INVALID_UID;
+	gid_t init_ns_gid = LXC_INVALID_GID;
+	uid_t nsuid, hostuid, range_uid;
+	gid_t nsgid, hostgid, range_gid;
+
+	if (!(options->namespaces & CLONE_NEWUSER))
+		return 0;
+
+	f_uidmap = fdopenat(ctx->dfd_init_pid, "uid_map", "re");
+	if (!f_uidmap)
+		return log_error_errno(-errno, errno, "Failed to open uid_map");
+
+	while (getline(&line, &len, f_uidmap) != -1) {
+		if (sscanf(line, "%u %u %u", &nsuid, &hostuid, &range_uid) != 3)
+			continue;
+
+		if (0 >= nsuid && 0 < nsuid + range_uid) {
+			ctx->setup_ns_uid = 0;
+			TRACE("Container has mapping for uid 0");
+			break;
+		}
+
+		if (ctx->target_host_uid >= hostuid && ctx->target_host_uid < hostuid + range_uid) {
+			init_ns_uid = (ctx->target_host_uid - hostuid) + nsuid;
+			TRACE("Container runs with uid %d", init_ns_uid);
+		}
+	}
+
+	f_gidmap = fdopenat(ctx->dfd_init_pid, "gid_map", "re");
+	if (!f_gidmap)
+		return log_error_errno(-errno, errno, "Failed to open gid_map");
+
+	while (getline(&line, &len, f_gidmap) != -1) {
+		if (sscanf(line, "%u %u %u", &nsgid, &hostgid, &range_gid) != 3)
+			continue;
+
+		if (0 >= nsgid && 0 < nsgid + range_gid) {
+			ctx->setup_ns_gid = 0;
+			TRACE("Container has mapping for gid 0");
+			break;
+		}
+
+		if (ctx->target_host_gid >= hostgid && ctx->target_host_gid < hostgid + range_gid) {
+			init_ns_gid = (ctx->target_host_gid - hostgid) + nsgid;
+			TRACE("Container runs with gid %d", init_ns_gid);
+		}
+	}
+
+	if (ctx->setup_ns_uid == LXC_INVALID_UID)
+		ctx->setup_ns_uid = init_ns_uid;
+
+	if (ctx->setup_ns_gid == LXC_INVALID_UID)
+		ctx->setup_ns_gid = init_ns_gid;
+
+	/*
+	 * TODO: we should also parse supplementary groups and use
+	 * setgroups() to set them.
+	 */
+
+	return 0;
+}
+
+static void userns_target_ids(struct attach_context *ctx, lxc_attach_options_t *options)
+{
+	if (options->uid != LXC_INVALID_UID)
+		ctx->target_ns_uid = options->uid;
+	else if (options->namespaces & CLONE_NEWUSER)
+		ctx->target_ns_uid = ctx->setup_ns_uid;
+	else
+		ctx->target_ns_uid = 0;
+
+	if (ctx->target_ns_uid == LXC_INVALID_UID)
+		WARN("Invalid uid specified");
+
+	if (options->gid != LXC_INVALID_GID)
+		ctx->target_ns_gid = options->gid;
+	else if (options->namespaces & CLONE_NEWUSER)
+		ctx->target_ns_gid = ctx->setup_ns_gid;
+	else
+		ctx->target_ns_gid = 0;
+
+	if (ctx->target_ns_gid == LXC_INVALID_GID)
+		WARN("Invalid gid specified");
+}
+
+static int parse_init_status(struct attach_context *ctx, lxc_attach_options_t *options)
+{
+	__do_free char *line = NULL;
+	__do_fclose FILE *f = NULL;
+	size_t len = 0;
+	bool caps_found = false;
+	int ret;
+
+	f = fdopenat(ctx->dfd_init_pid, "status", "re");
+	if (!f)
+		return log_error_errno(-errno, errno, "Failed to open status file");
+
+	while (getline(&line, &len, f) != -1) {
+		signed long value = -1;
+
+		/*
+		 * Format is: real, effective, saved set user, fs we only care
+		 * about real uid.
+		 */
+		ret = sscanf(line, "Uid: %ld", &value);
+		if (ret != EOF && ret == 1) {
+			ctx->target_host_uid = (uid_t)value;
+			TRACE("Container's init process runs with hostuid %d", ctx->target_host_uid);
+			goto next;
+		}
+
+		ret = sscanf(line, "Gid: %ld", &value);
+		if (ret != EOF && ret == 1) {
+			ctx->target_host_gid = (gid_t)value;
+			TRACE("Container's init process runs with hostgid %d", ctx->target_host_gid);
+			goto next;
+		}
+
+		ret = sscanf(line, "CapBnd: %llx", &ctx->capability_mask);
+		if (ret != EOF && ret == 1) {
+			caps_found = true;
+			goto next;
+		}
+
+        next:
+		if (ctx->target_host_uid != LXC_INVALID_UID &&
+		    ctx->target_host_gid != LXC_INVALID_GID &&
+		    caps_found)
+			break;
+
+	}
+
+	ret = userns_setup_ids(ctx, options);
+	if (ret)
+		return log_error_errno(ret, errno, "Failed to get setup ids");
+	userns_target_ids(ctx, options);
+
+	/*
+	 * TODO: we should also parse supplementary groups and use
+	 * setgroups() to set them.
+	 */
+
+	return 0;
+}
+
 static int get_attach_context(struct attach_context *ctx,
 			      struct lxc_container *container,
 			      lxc_attach_options_t *options)
 {
-	__do_close int dfd_self_pid = -EBADF, dfd_init_pid = -EBADF, fd_status = -EBADF, init_pidfd = -EBADF;
-	__do_free char *line = NULL, *lsm_label = NULL;
-	__do_fclose FILE *f_status = NULL;
+	__do_close int init_pidfd = -EBADF;
+	__do_free char *lsm_label = NULL;
 	int ret;
-	bool found;
 	char path[LXC_PROC_PID_LEN];
-	size_t line_bufsz = 0;
 
 	ctx->container = container;
 	ctx->attach_flags = options->attach_flags;
@@ -200,25 +389,17 @@ static int get_attach_context(struct attach_context *ctx,
 	if (ctx->init_pid < 0)
 		return log_error(-1, "Failed to get init pid");
 
-	ret = snprintf(path, sizeof(path), "/proc/%d", lxc_raw_getpid());
-	if (ret < 0 || ret >= sizeof(path))
-		return ret_errno(EIO);
-
-	dfd_self_pid = openat(-EBADF, path, O_CLOEXEC | O_NOCTTY | O_NOFOLLOW | O_PATH | O_DIRECTORY);
-	if (dfd_self_pid < 0)
-		return -errno;
+	ctx->dfd_self_pid = openat(-EBADF, "/proc/self", O_CLOEXEC | O_NOCTTY | O_PATH | O_DIRECTORY);
+	if (ctx->dfd_self_pid < 0)
+		return log_error_errno(-errno, errno, "Failed to open /proc/self");
 
 	ret = snprintf(path, sizeof(path), "/proc/%d", ctx->init_pid);
 	if (ret < 0 || ret >= sizeof(path))
 		return ret_errno(EIO);
 
-	dfd_init_pid = openat(-EBADF, path, O_CLOEXEC | O_NOCTTY | O_NOFOLLOW | O_PATH | O_DIRECTORY);
-	if (dfd_init_pid < 0)
-		return -errno;
-
-	fd_status = openat(dfd_init_pid, "status", O_CLOEXEC | O_NOCTTY | O_NOFOLLOW | O_RDONLY);
-	if (fd_status < 0)
-		return -errno;
+	ctx->dfd_init_pid = openat(-EBADF, path, O_CLOEXEC | O_NOCTTY | O_NOFOLLOW | O_PATH | O_DIRECTORY);
+	if (ctx->dfd_init_pid < 0)
+		return log_error_errno(-errno, errno, "Failed to open /proc/%d", ctx->init_pid);
 
 	if (init_pidfd >= 0) {
 		ret = lxc_raw_pidfd_send_signal(init_pidfd, 0, NULL, 0);
@@ -228,23 +409,28 @@ static int get_attach_context(struct attach_context *ctx,
 			TRACE("Container process still running and PID was not recycled");
 	}
 
-	f_status = fdopen(fd_status, "re");
-	if (!f_status)
-		return log_error_errno(-errno, errno, "Failed to open file descriptor %d", fd_status);
-	move_fd(fd_status);
+	/* Determine which namespaces the container was created with. */
+	if (options->namespaces == -1) {
+		options->namespaces = lxc_cmd_get_clone_flags(container->name, container->config_path);
+		if (options->namespaces == -1)
+			return log_error_errno(-EINVAL, EINVAL, "Failed to automatically determine the namespaces which the container uses");
 
-	found = false;
+		for (int i = 0; i < LXC_NS_MAX; i++) {
+			if (ns_info[i].clone_flag & CLONE_NEWCGROUP)
+				if (!(options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) ||
+				    !cgns_supported())
+					continue;
 
-	while (getline(&line, &line_bufsz, f_status) != -1) {
-		ret = sscanf(line, "CapBnd: %llx", &ctx->capability_mask);
-		if (ret != EOF && ret == 1) {
-			found = true;
-			break;
+			if (ns_info[i].clone_flag & options->namespaces)
+				continue;
+
+			ctx->ns_inherited |= ns_info[i].clone_flag;
 		}
 	}
 
-	if (!found)
-		return log_error_errno(-ENOENT, ENOENT, "Failed to read capability bounding set from %s/status", path);
+	ret = parse_init_status(ctx, options);
+	if (ret)
+		return log_error_errno(-errno, errno, "Failed to open parse file");
 
 	ctx->lsm_ops = lsm_init_static();
 
@@ -252,7 +438,7 @@ static int get_attach_context(struct attach_context *ctx,
 		if (ctx->attach_flags & LXC_ATTACH_LSM_LABEL)
 			lsm_label = options->lsm_label;
 		else
-			lsm_label = ctx->lsm_ops->process_label_get_at(ctx->lsm_ops, dfd_init_pid);
+			lsm_label = ctx->lsm_ops->process_label_get_at(ctx->lsm_ops, ctx->dfd_init_pid);
 		if (!lsm_label)
 			WARN("No security context received");
 		else
@@ -270,8 +456,6 @@ static int get_attach_context(struct attach_context *ctx,
 			return log_error_errno(-ENOMEM, ENOMEM, "Failed to allocate new lxc config");
 	}
 
-	ctx->dfd_init_pid = move_fd(dfd_init_pid);
-	ctx->dfd_self_pid = move_fd(dfd_self_pid);
 	ctx->lsm_label = move_ptr(lsm_label);
 	return 0;
 }
@@ -733,54 +917,6 @@ reap_child:
 	return move_ptr(result);
 }
 
-static void lxc_attach_get_init_uidgid(uid_t *init_uid, gid_t *init_gid)
-{
-	__do_free char *line = NULL;
-	__do_fclose FILE *proc_file = NULL;
-	char proc_fn[LXC_PROC_STATUS_LEN];
-	int ret;
-	size_t line_bufsz = 0;
-	long value = -1;
-	uid_t uid = LXC_INVALID_UID;
-	gid_t gid = LXC_INVALID_GID;
-
-	ret = snprintf(proc_fn, LXC_PROC_STATUS_LEN, "/proc/%d/status", 1);
-	if (ret < 0 || ret >= LXC_PROC_STATUS_LEN)
-		return;
-
-	proc_file = fopen(proc_fn, "re");
-	if (!proc_file)
-		return;
-
-	while (getline(&line, &line_bufsz, proc_file) != -1) {
-		/* Format is: real, effective, saved set user, fs we only care
-		 * about real uid.
-		 */
-		ret = sscanf(line, "Uid: %ld", &value);
-		if (ret != EOF && ret == 1) {
-			uid = (uid_t)value;
-		} else {
-			ret = sscanf(line, "Gid: %ld", &value);
-			if (ret != EOF && ret == 1)
-				gid = (gid_t)value;
-		}
-
-		if (uid != LXC_INVALID_UID && gid != LXC_INVALID_GID)
-			break;
-	}
-
-	/* Only override arguments if we found something. */
-	if (uid != LXC_INVALID_UID)
-		*init_uid = uid;
-
-	if (gid != LXC_INVALID_GID)
-		*init_gid = gid;
-
-	/* TODO: we should also parse supplementary groups and use
-	 * setgroups() to set them.
-	 */
-}
-
 static bool fetch_seccomp(struct lxc_container *c, lxc_attach_options_t *options)
 {
 	__do_free char *path = NULL;
@@ -861,10 +997,6 @@ __noreturn static void do_attach(struct attach_payload *ap)
 	lxc_attach_exec_t attach_function = move_ptr(ap->exec_function);
 	void *attach_function_args = move_ptr(ap->exec_payload);
 	int lsm_fd, ret;
-	uid_t new_uid;
-	gid_t new_gid;
-	uid_t ns_root_uid = 0;
-	gid_t ns_root_gid = 0;
 	lxc_attach_options_t* options = ap->options;
         struct attach_context *ctx = ap->ctx;
         struct lxc_conf *conf = ctx->container->lxc_conf;
@@ -953,36 +1085,9 @@ __noreturn static void do_attach(struct attach_payload *ap)
 	if (!lxc_setgroups(0, NULL) && errno != EPERM)
 		goto on_error;
 
-	if (options->namespaces & CLONE_NEWUSER) {
-		/* Check whether nsuid 0 has a mapping. */
-		ns_root_uid = get_ns_uid(0);
-
-		/* Check whether nsgid 0 has a mapping. */
-		ns_root_gid = get_ns_gid(0);
-
-		/* If there's no mapping for nsuid 0 try to retrieve the nsuid
-		 * init was started with.
-		 */
-		if (ns_root_uid == LXC_INVALID_UID)
-			lxc_attach_get_init_uidgid(&ns_root_uid, &ns_root_gid);
-
-		if (ns_root_uid == LXC_INVALID_UID)
+	if (options->namespaces & CLONE_NEWUSER)
+		if (!lxc_switch_uid_gid(ctx->setup_ns_uid, ctx->setup_ns_gid))
 			goto on_error;
-
-		if (!lxc_switch_uid_gid(ns_root_uid, ns_root_gid))
-			goto on_error;
-	}
-
-	/* Set {u,g}id. */
-	if (options->uid != LXC_INVALID_UID)
-		new_uid = options->uid;
-	else
-		new_uid = ns_root_uid;
-
-	if (options->gid != LXC_INVALID_GID)
-		new_gid = options->gid;
-	else
-		new_gid = ns_root_gid;
 
 	if (attach_lsm(options) && ctx->lsm_label) {
 		bool on_exec;
@@ -1028,16 +1133,16 @@ __noreturn static void do_attach(struct attach_payload *ap)
 	 * may want to make sure the fds are closed, for example.
 	 */
 	if (options->stdin_fd >= 0 && options->stdin_fd != STDIN_FILENO)
-		if (dup2(options->stdin_fd, STDIN_FILENO))
-			DEBUG("Failed to replace stdin with %d", options->stdin_fd);
+		if (dup2(options->stdin_fd, STDIN_FILENO) < 0)
+			SYSDEBUG("Failed to replace stdin with %d", options->stdin_fd);
 
 	if (options->stdout_fd >= 0 && options->stdout_fd != STDOUT_FILENO)
-		if (dup2(options->stdout_fd, STDOUT_FILENO))
-			DEBUG("Failed to replace stdout with %d", options->stdin_fd);
+		if (dup2(options->stdout_fd, STDOUT_FILENO) < 0)
+			SYSDEBUG("Failed to replace stdout with %d", options->stdout_fd);
 
 	if (options->stderr_fd >= 0 && options->stderr_fd != STDERR_FILENO)
-		if (dup2(options->stderr_fd, STDERR_FILENO))
-			DEBUG("Failed to replace stderr with %d", options->stdin_fd);
+		if (dup2(options->stderr_fd, STDERR_FILENO) < 0)
+			SYSDEBUG("Failed to replace stderr with %d", options->stderr_fd);
 
 	/* close the old fds */
 	if (options->stdin_fd > STDERR_FILENO)
@@ -1074,18 +1179,21 @@ __noreturn static void do_attach(struct attach_payload *ap)
 	put_attach_payload(ap);
 
 	/* Avoid unnecessary syscalls. */
-	if (new_uid == ns_root_uid)
-		new_uid = LXC_INVALID_UID;
+	if (ctx->setup_ns_uid == ctx->target_ns_uid)
+		ctx->target_ns_uid = LXC_INVALID_UID;
 
-	if (new_gid == ns_root_gid)
-		new_gid = LXC_INVALID_GID;
+	if (ctx->setup_ns_gid == ctx->target_ns_gid)
+		ctx->target_ns_gid = LXC_INVALID_GID;
 
-	/* Make sure that the processes STDIO is correctly owned by the user that we are switching to */
-	ret = fix_stdio_permissions(new_uid);
+	/*
+	 * Make sure that the processes STDIO is correctly owned by the user
+	 * that we are switching to.
+	 */
+	ret = fix_stdio_permissions(ctx->target_ns_uid);
 	if (ret)
 		INFO("Failed to adjust stdio permissions");
 
-	if (!lxc_switch_uid_gid(new_uid, new_gid))
+	if (!lxc_switch_uid_gid(ctx->target_ns_uid, ctx->target_ns_gid))
 		goto on_error;
 
 	/* We're done, so we can now do whatever the user intended us to do. */
@@ -1195,27 +1303,6 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 
 	if (!no_new_privs(ctx->container, options))
 		WARN("Could not determine whether PR_SET_NO_NEW_PRIVS is set");
-
-	/* Determine which namespaces the container was created with. */
-	if (options->namespaces == -1) {
-		options->namespaces = lxc_cmd_get_clone_flags(name, lxcpath);
-		if (options->namespaces == -1) {
-			put_attach_context(ctx);
-			return log_error(-1, "Failed to automatically determine the namespaces which the container uses");
-		}
-
-		for (int i = 0; i < LXC_NS_MAX; i++) {
-			if (ns_info[i].clone_flag & CLONE_NEWCGROUP)
-				if (!(options->attach_flags & LXC_ATTACH_MOVE_TO_CGROUP) ||
-				    !cgns_supported())
-					continue;
-
-			if (ns_info[i].clone_flag & options->namespaces)
-				continue;
-
-			ctx->ns_inherited |= ns_info[i].clone_flag;
-		}
-	}
 
 	ret = get_attach_context_nsfds(ctx, options);
 	if (ret) {
