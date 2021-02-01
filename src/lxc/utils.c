@@ -1831,28 +1831,6 @@ int lxc_set_death_signal(int signal, pid_t parent, int parent_status_fd)
 	return 0;
 }
 
-int fd_cloexec(int fd, bool cloexec)
-{
-	int oflags, nflags;
-
-	oflags = fcntl(fd, F_GETFD, 0);
-	if (oflags < 0)
-		return -errno;
-
-	if (cloexec)
-		nflags = oflags | FD_CLOEXEC;
-	else
-		nflags = oflags & ~FD_CLOEXEC;
-
-	if (nflags == oflags)
-		return 0;
-
-	if (fcntl(fd, F_SETFD, nflags) < 0)
-		return -errno;
-
-	return 0;
-}
-
 int lxc_rm_rf(const char *dirname)
 {
 	__do_closedir DIR *dir = NULL;

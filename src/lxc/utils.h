@@ -223,7 +223,6 @@ __hidden extern uint64_t lxc_find_next_power2(uint64_t n);
 
 /* Set a signal the child process will receive after the parent has died. */
 __hidden extern int lxc_set_death_signal(int signal, pid_t parent, int parent_status_fd);
-__hidden extern int fd_cloexec(int fd, bool cloexec);
 __hidden extern int lxc_rm_rf(const char *dirname);
 __hidden extern bool lxc_can_use_pidfd(int pidfd);
 

@@ -517,6 +517,91 @@ FILE *fdopen_cached(int fd, const char *mode, void **caller_freed_buffer)
 	return f;
 }
 
+int fd_cloexec(int fd, bool cloexec)
+{
+	int oflags, nflags;
+
+	oflags = fcntl(fd, F_GETFD, 0);
+	if (oflags < 0)
+		return -errno;
+
+	if (cloexec)
+		nflags = oflags | FD_CLOEXEC;
+	else
+		nflags = oflags & ~FD_CLOEXEC;
+
+	if (nflags == oflags)
+		return 0;
+
+	if (fcntl(fd, F_SETFD, nflags) < 0)
+		return -errno;
+
+	return 0;
+}
+
+static inline int dup_cloexec(int fd)
+{
+	__do_close int fd_dup = -EBADF;
+
+	fd_dup = dup(fd);
+	if (fd_dup < 0)
+		return -errno;
+
+	if (fd_cloexec(fd_dup, true))
+		return -errno;
+
+	return move_fd(fd_dup);
+}
+
+FILE *fdopenat(int dfd, const char *path, const char *mode)
+{
+	__do_close int fd = -EBADF;
+	__do_fclose FILE *f = NULL;
+
+	if (is_empty_string(path))
+		fd = dup_cloexec(dfd);
+	else
+		fd = openat(dfd, path, O_CLOEXEC | O_NOCTTY | O_NOFOLLOW);
+	if (fd < 0)
+		return NULL;
+
+	f = fdopen(fd, "re");
+	if (!f)
+		return NULL;
+
+	/* Transfer ownership of fd. */
+	move_fd(fd);
+
+	return move_ptr(f);
+}
+
+int timens_offset_write(clockid_t clk_id, int64_t s_offset, int64_t ns_offset)
+{
+	__do_close int fd = -EBADF;
+	int ret;
+	ssize_t len;
+	char buf[INTTYPE_TO_STRLEN(int) +
+		 STRLITERALLEN(" ") + INTTYPE_TO_STRLEN(int64_t) +
+		 STRLITERALLEN(" ") + INTTYPE_TO_STRLEN(int64_t) + 1];
+
+	if (clk_id == CLOCK_MONOTONIC_COARSE || clk_id == CLOCK_MONOTONIC_RAW)
+		clk_id = CLOCK_MONOTONIC;
+
+	fd = open("/proc/self/timens_offsets", O_WRONLY | O_CLOEXEC);
+	if (fd < 0)
+		return -errno;
+
+	len = snprintf(buf, sizeof(buf), "%d %" PRId64 " %" PRId64, clk_id, s_offset, ns_offset);
+	if (len < 0 || len >= sizeof(buf))
+		return ret_errno(EFBIG);
+
+	ret = lxc_write_nointr(fd, buf, len);
+	if (ret < 0 || (size_t)ret != len)
+		return -EIO;
+
+	return 0;
+}
+
 bool exists_dir_at(int dir_fd, const char *path)
 {
 	struct stat sb;
