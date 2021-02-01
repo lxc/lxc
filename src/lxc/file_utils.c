@@ -621,22 +621,24 @@ bool exists_file_at(int dir_fd, const char *path)
 	return fstatat(dir_fd, path, &sb, 0) == 0;
 }
 
-int open_beneath(int dir_fd, const char *path, unsigned int flags)
+int open_at(int dfd, const char *path, mode_t mode, unsigned int o_flags,
+	    unsigned int resolve_flags)
 {
 	__do_close int fd = -EBADF;
 	struct lxc_open_how how = {
-		.flags		= flags,
-		.resolve	= RESOLVE_NO_XDEV | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS | RESOLVE_BENEATH,
+		.flags		= o_flags,
+		.mode		= mode,
+		.resolve	= resolve_flags,
 	};
 
-	fd = openat2(dir_fd, path, &how, sizeof(how));
+	fd = openat2(dfd, path, &how, sizeof(how));
 	if (fd >= 0)
 		return move_fd(fd);
 
 	if (errno != ENOSYS)
 		return -errno;
 
-	return openat(dir_fd, path, O_NOFOLLOW | flags);
+	return openat(dfd, path, O_NOFOLLOW | o_flags);
 }
 
 int fd_make_nonblocking(int fd)
