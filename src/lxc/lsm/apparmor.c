@@ -447,7 +447,7 @@ static char *apparmor_process_label_get_at(struct lsm_ops *ops, int fd_pid)
 	__do_free char *label = NULL;
 	size_t len;
 
-	label = read_file_at(fd_pid, "attr/current", PROTECT_OPEN, 0);
+	label = read_file_at(fd_pid, "attr/current", PROTECT_OPEN, PROTECT_LOOKUP_BENEATH);
 	if (!label)
 		return log_error_errno(NULL, errno, "Failed to get AppArmor context");
 
