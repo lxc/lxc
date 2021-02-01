@@ -231,7 +231,7 @@ static int userns_setup_ids(struct attach_context *ctx,
 	if (!(options->namespaces & CLONE_NEWUSER))
 		return 0;
 
-	f_uidmap = fdopenat(ctx->dfd_init_pid, "uid_map", "re");
+	f_uidmap = fdopen_at(ctx->dfd_init_pid, "uid_map", "re", PROTECT_OPEN, PROTECT_LOOKUP_ABSOLUTE);
 	if (!f_uidmap)
 		return log_error_errno(-errno, errno, "Failed to open uid_map");
 
@@ -251,7 +251,7 @@ static int userns_setup_ids(struct attach_context *ctx,
 		}
 	}
 
-	f_gidmap = fdopenat(ctx->dfd_init_pid, "gid_map", "re");
+	f_gidmap = fdopen_at(ctx->dfd_init_pid, "gid_map", "re", PROTECT_OPEN, PROTECT_LOOKUP_ABSOLUTE);
 	if (!f_gidmap)
 		return log_error_errno(-errno, errno, "Failed to open gid_map");
 
@@ -316,7 +316,7 @@ static int parse_init_status(struct attach_context *ctx, lxc_attach_options_t *o
 	bool caps_found = false;
 	int ret;
 
-	f = fdopenat(ctx->dfd_init_pid, "status", "re");
+	f = fdopen_at(ctx->dfd_init_pid, "status", "re", PROTECT_OPEN, PROTECT_LOOKUP_ABSOLUTE);
 	if (!f)
 		return log_error_errno(-errno, errno, "Failed to open status file");
 
@@ -389,7 +389,9 @@ static int get_attach_context(struct attach_context *ctx,
 	if (ctx->init_pid < 0)
 		return log_error(-1, "Failed to get init pid");
 
-	ctx->dfd_self_pid = openat(-EBADF, "/proc/self", O_CLOEXEC | O_NOCTTY | O_PATH | O_DIRECTORY);
+	ctx->dfd_self_pid = open_at(-EBADF, "/proc/self",
+				    PROTECT_OPATH_FILE & ~O_NOFOLLOW,
+				    (PROTECT_LOOKUP_ABSOLUTE_WITH_SYMLINKS & ~RESOLVE_NO_XDEV), 0);
 	if (ctx->dfd_self_pid < 0)
 		return log_error_errno(-errno, errno, "Failed to open /proc/self");
 
@@ -397,7 +399,9 @@ static int get_attach_context(struct attach_context *ctx,
 	if (ret < 0 || ret >= sizeof(path))
 		return ret_errno(EIO);
 
-	ctx->dfd_init_pid = openat(-EBADF, path, O_CLOEXEC | O_NOCTTY | O_NOFOLLOW | O_PATH | O_DIRECTORY);
+	ctx->dfd_init_pid = open_at(-EBADF, path,
+				    PROTECT_OPATH_DIRECTORY,
+				    (PROTECT_LOOKUP_ABSOLUTE & ~RESOLVE_NO_XDEV), 0);
 	if (ctx->dfd_init_pid < 0)
 		return log_error_errno(-errno, errno, "Failed to open /proc/%d", ctx->init_pid);
 
@@ -460,24 +464,30 @@ static int get_attach_context(struct attach_context *ctx,
 	return 0;
 }
 
-static int in_same_namespace(int ns_fd_pid1, int ns_fd_pid2, const char *ns_path)
+static int same_ns(int ns_fd_pid1, int ns_fd_pid2, const char *ns_path)
 {
 	__do_close int ns_fd1 = -EBADF, ns_fd2 = -EBADF;
 	int ret = -1;
 	struct stat ns_st1, ns_st2;
 
-	ns_fd1 = openat(ns_fd_pid1, ns_path, O_CLOEXEC | O_NOCTTY | O_RDONLY);
+	ns_fd1 = open_at(ns_fd_pid1, ns_path,
+			 PROTECT_OPEN_WITH_TRAILING_SYMLINKS,
+			 (PROTECT_LOOKUP_BENEATH_WITH_MAGICLINKS & ~(RESOLVE_NO_XDEV | RESOLVE_BENEATH)),
+			 0);
 	if (ns_fd1 < 0) {
 		/* The kernel does not support this namespace. This is not an error. */
 		if (errno == ENOENT)
 			return -EINVAL;
 
-		return -1;
+		return log_error_errno(-errno, errno, "Failed to open %d(%s)", ns_fd_pid1, ns_path);
 	}
 
-	ns_fd2 = openat(ns_fd_pid2, ns_path, O_CLOEXEC | O_NOCTTY | O_RDONLY);
+	ns_fd2 = open_at(ns_fd_pid2, ns_path,
+			 PROTECT_OPEN_WITH_TRAILING_SYMLINKS,
+			 (PROTECT_LOOKUP_BENEATH_WITH_MAGICLINKS & ~(RESOLVE_NO_XDEV | RESOLVE_BENEATH)),
+			 0);
 	if (ns_fd2 < 0)
-		return -1;
+		return log_error_errno(-errno, errno, "Failed to open %d(%s)", ns_fd_pid2, ns_path);
 
 	ret = fstat(ns_fd1, &ns_st1);
 	if (ret < 0)
@@ -503,9 +513,15 @@ static int get_attach_context_nsfds(struct attach_context *ctx,
 		int j;
 
 		if (options->namespaces & ns_info[i].clone_flag)
-			ctx->ns_fd[i] = openat(ctx->dfd_init_pid, ns_info[i].proc_path, O_CLOEXEC | O_NOCTTY | O_RDONLY);
+			ctx->ns_fd[i] = open_at(ctx->dfd_init_pid,
+						ns_info[i].proc_path,
+						PROTECT_OPEN_WITH_TRAILING_SYMLINKS,
+						(PROTECT_LOOKUP_BENEATH_WITH_MAGICLINKS & ~(RESOLVE_NO_XDEV | RESOLVE_BENEATH)),
+						0);
 		else if (ctx->ns_inherited & ns_info[i].clone_flag)
-			ctx->ns_fd[i] = in_same_namespace(ctx->dfd_self_pid, ctx->dfd_init_pid, ns_info[i].proc_path);
+			ctx->ns_fd[i] = same_ns(ctx->dfd_self_pid,
+						ctx->dfd_init_pid,
+						ns_info[i].proc_path);
 		else
 			continue;
 
