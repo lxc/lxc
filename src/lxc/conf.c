@@ -4104,8 +4104,7 @@ int userns_exec_1(const struct lxc_conf *conf, int (*fn)(void *), void *data,
 
 	close_prot_errno_disarm(pipe_fds[0]);
 
-	if (lxc_log_get_level() == LXC_LOG_LEVEL_TRACE ||
-	    conf->loglevel == LXC_LOG_LEVEL_TRACE) {
+	if (lxc_log_trace()) {
 		struct id_map *map;
 		struct lxc_list *it;
 
@@ -4219,8 +4218,7 @@ int userns_exec_minimal(const struct lxc_conf *conf,
 
 	close_prot_errno_disarm(sock_fds[0]);
 
-	if (lxc_log_get_level() == LXC_LOG_LEVEL_TRACE ||
-	    conf->loglevel == LXC_LOG_LEVEL_TRACE) {
+	if (lxc_log_trace()) {
 		struct id_map *map;
 		struct lxc_list *it;
 
@@ -4404,8 +4402,7 @@ int userns_exec_full(struct lxc_conf *conf, int (*fn)(void *), void *data,
 	/* idmap will now keep track of that memory. */
 	host_gid_map = NULL;
 
-	if (lxc_log_get_level() == LXC_LOG_LEVEL_TRACE ||
-	    conf->loglevel == LXC_LOG_LEVEL_TRACE) {
+	if (lxc_log_trace()) {
 		lxc_list_for_each (cur, idmap) {
 			map = cur->elem;
 			TRACE("establishing %cid mapping for \"%d\" in new "
@@ -4626,8 +4623,7 @@ int userns_exec_mapped_root(const char *path, int path_fd,
 
 	close_prot_errno_disarm(sock_fds[0]);
 
-	if (lxc_log_get_level() == LXC_LOG_LEVEL_TRACE ||
-	    conf->loglevel == LXC_LOG_LEVEL_TRACE) {
+	if (lxc_log_trace()) {
 		struct id_map *map;
 		struct lxc_list *it;
 
