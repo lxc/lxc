@@ -58,37 +58,43 @@ static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_D
 
 /*
  * The context used to attach to the container.
- * @attach_flags : the attach flags specified in lxc_attach_options_t
- * @init_pid     : the PID of the container's init process
- * @dfd_init_pid : file descriptor to /proc/@init_pid
- *                 __Must be closed in attach_context_security_barrier()__!
- * @dfd_self_pid : file descriptor to /proc/self
- *                 __Must be closed in attach_context_security_barrier()__!
- * @setup_uid    : if CLONE_NEWUSER is specified will contain the uid used
- *                 during attach setup.
- * @setup_gid    : if CLONE_NEWUSER is specified will contain the gid used
- *                 during attach setup.
- * @target_uid   : if CLONE_NEWUSER is specified the uid that the final program
- *                 will be run with.
- * @target_gid   : if CLONE_NEWUSER is specified the gid that the final program
- *                 will be run with.
- * @lsm_label    : LSM label to be used for the attaching process
- * @container    : the container we're attaching o
- * @personality  : the personality to use for the final program
- * @capability   : the capability mask of the @init_pid
- * @ns_inherited : flags of namespaces that the final program will inherit from
- *                 @init_pid
- * @ns_fd        : file descriptors to @init_pid's namespaces
+ * @attach_flags    : the attach flags specified in lxc_attach_options_t
+ * @init_pid        : the PID of the container's init process
+ * @dfd_init_pid    : file descriptor to /proc/@init_pid
+ *                    __Must be closed in attach_context_security_barrier()__!
+ * @dfd_self_pid    : file descriptor to /proc/self
+ *                    __Must be closed in attach_context_security_barrier()__!
+ * @setup_ns_uid    : if CLONE_NEWUSER is specified will contain the uid used
+ *                    during attach setup.
+ * @setup_ns_gid    : if CLONE_NEWUSER is specified will contain the gid used
+ *                    during attach setup.
+ * @target_ns_uid   : if CLONE_NEWUSER is specified the uid that the final
+ *                    program will be run with.
+ * @target_ns_gid   : if CLONE_NEWUSER is specified the gid that the final
+ *                    program will be run with.
+ * @target_host_uid : if CLONE_NEWUSER is specified the uid that the final
+ *                    program will be run with on the host.
+ * @target_host_gid : if CLONE_NEWUSER is specified the gid that the final
+ *                    program will be run with on the host.
+ * @lsm_label       : LSM label to be used for the attaching process
+ * @container       : the container we're attaching o
+ * @personality     : the personality to use for the final program
+ * @capability      : the capability mask of the @init_pid
+ * @ns_inherited    : flags of namespaces that the final program will inherit
+ *                    from @init_pid
+ * @ns_fd           : file descriptors to @init_pid's namespaces
  */
 struct attach_context {
 	unsigned int attach_flags;
 	int init_pid;
 	int dfd_init_pid;
 	int dfd_self_pid;
-	uid_t setup_uid;
-	gid_t setup_gid;
-	uid_t target_uid;
-	gid_t target_gid;
+	uid_t setup_ns_uid;
+	gid_t setup_ns_gid;
+	uid_t target_ns_uid;
+	gid_t target_ns_gid;
+	uid_t target_host_uid;
+	uid_t target_host_gid;
 	char *lsm_label;
 	struct lxc_container *container;
 	signed long personality;
@@ -178,10 +184,12 @@ static struct attach_context *alloc_attach_context(void)
 	ctx->dfd_self_pid = -EBADF;
 	ctx->dfd_init_pid = -EBADF;
 	ctx->init_pid = -ESRCH;
-	ctx->setup_uid = LXC_INVALID_UID;
-	ctx->setup_gid = LXC_INVALID_GID;
-	ctx->target_uid = LXC_INVALID_UID;
-	ctx->target_gid = LXC_INVALID_GID;
+	ctx->setup_ns_uid = LXC_INVALID_UID;
+	ctx->setup_ns_gid = LXC_INVALID_GID;
+	ctx->target_ns_uid = LXC_INVALID_UID;
+	ctx->target_ns_gid = LXC_INVALID_GID;
+	ctx->target_host_uid = LXC_INVALID_UID;
+	ctx->target_host_gid = LXC_INVALID_GID;
 
 	for (int i = 0; i < LXC_NS_MAX; i++)
 		ctx->ns_fd[i] = -EBADF;
@@ -210,8 +218,7 @@ static int get_personality(const char *name, const char *lxcpath,
 }
 
 static int userns_setup_ids(struct attach_context *ctx,
-			    lxc_attach_options_t *options,
-			    uid_t init_hostuid, gid_t init_hostgid)
+			    lxc_attach_options_t *options)
 {
 	__do_free char *line = NULL;
 	__do_fclose FILE *f_gidmap = NULL, *f_uidmap = NULL;
@@ -233,13 +240,13 @@ static int userns_setup_ids(struct attach_context *ctx,
 			continue;
 
 		if (0 >= nsuid && 0 < nsuid + range_uid) {
-			ctx->setup_uid = 0;
+			ctx->setup_ns_uid = 0;
 			TRACE("Container has mapping for uid 0");
 			break;
 		}
 
-		if (init_hostuid >= hostuid && init_hostuid < hostuid + range_uid) {
-			init_ns_uid = (init_hostuid - hostuid) + nsuid;
+		if (ctx->target_host_uid >= hostuid && ctx->target_host_uid < hostuid + range_uid) {
+			init_ns_uid = (ctx->target_host_uid - hostuid) + nsuid;
 			TRACE("Container runs with uid %d", init_ns_uid);
 		}
 	}
@@ -253,22 +260,22 @@ static int userns_setup_ids(struct attach_context *ctx,
 			continue;
 
 		if (0 >= nsgid && 0 < nsgid + range_gid) {
-			ctx->setup_gid = 0;
+			ctx->setup_ns_gid = 0;
 			TRACE("Container has mapping for gid 0");
 			break;
 		}
 
-		if (init_hostgid >= hostgid && init_hostgid < hostgid + range_gid) {
-			init_ns_gid = (init_hostgid - hostgid) + nsgid;
+		if (ctx->target_host_gid >= hostgid && ctx->target_host_gid < hostgid + range_gid) {
+			init_ns_gid = (ctx->target_host_gid - hostgid) + nsgid;
 			TRACE("Container runs with gid %d", init_ns_gid);
 		}
 	}
 
-	if (ctx->setup_uid == LXC_INVALID_UID)
-		ctx->setup_uid = init_ns_uid;
+	if (ctx->setup_ns_uid == LXC_INVALID_UID)
+		ctx->setup_ns_uid = init_ns_uid;
 
-	if (ctx->setup_gid == LXC_INVALID_UID)
-		ctx->setup_gid = init_ns_gid;
+	if (ctx->setup_ns_gid == LXC_INVALID_UID)
+		ctx->setup_ns_gid = init_ns_gid;
 
 	/*
 	 * TODO: we should also parse supplementary groups and use
@@ -281,23 +288,23 @@ static int userns_setup_ids(struct attach_context *ctx,
 static void userns_target_ids(struct attach_context *ctx, lxc_attach_options_t *options)
 {
 	if (options->uid != LXC_INVALID_UID)
-		ctx->target_uid = options->uid;
+		ctx->target_ns_uid = options->uid;
 	else if (options->namespaces & CLONE_NEWUSER)
-		ctx->target_uid = ctx->setup_uid;
+		ctx->target_ns_uid = ctx->setup_ns_uid;
 	else
-		ctx->target_uid = 0;
+		ctx->target_ns_uid = 0;
 
-	if (ctx->target_uid == LXC_INVALID_UID)
+	if (ctx->target_ns_uid == LXC_INVALID_UID)
 		WARN("Invalid uid specified");
 
 	if (options->gid != LXC_INVALID_GID)
-		ctx->target_gid = options->gid;
+		ctx->target_ns_gid = options->gid;
 	else if (options->namespaces & CLONE_NEWUSER)
-		ctx->target_gid = ctx->setup_gid;
+		ctx->target_ns_gid = ctx->setup_ns_gid;
 	else
-		ctx->target_uid = 0;
+		ctx->target_ns_gid = 0;
 
-	if (ctx->target_gid == LXC_INVALID_GID)
+	if (ctx->target_ns_gid == LXC_INVALID_GID)
 		WARN("Invalid gid specified");
 }
 
@@ -308,9 +315,6 @@ static int parse_init_status(struct attach_context *ctx, lxc_attach_options_t *o
 	size_t len = 0;
 	bool caps_found = false;
 	int ret;
-	uid_t init_host_uid = LXC_INVALID_UID;
-	gid_t init_host_gid = LXC_INVALID_GID;
-
 
 	f = fdopenat(ctx->dfd_init_pid, "status", "re");
 	if (!f)
@@ -325,15 +329,15 @@ static int parse_init_status(struct attach_context *ctx, lxc_attach_options_t *o
 		 */
 		ret = sscanf(line, "Uid: %ld", &value);
 		if (ret != EOF && ret == 1) {
-			init_host_uid = (uid_t)value;
-			TRACE("Container's init process runs with hostuid %d", init_host_uid);
+			ctx->target_host_uid = (uid_t)value;
+			TRACE("Container's init process runs with hostuid %d", ctx->target_host_uid);
 			goto next;
 		}
 
 		ret = sscanf(line, "Gid: %ld", &value);
 		if (ret != EOF && ret == 1) {
-			init_host_gid = (gid_t)value;
-			TRACE("Container's init process runs with hostgid %d", init_host_gid);
+			ctx->target_host_gid = (gid_t)value;
+			TRACE("Container's init process runs with hostgid %d", ctx->target_host_gid);
 			goto next;
 		}
 
@@ -344,14 +348,14 @@ static int parse_init_status(struct attach_context *ctx, lxc_attach_options_t *o
 		}
 
         next:
-		if (init_host_uid != LXC_INVALID_UID &&
-		    init_host_gid != LXC_INVALID_GID &&
+		if (ctx->target_host_uid != LXC_INVALID_UID &&
+		    ctx->target_host_gid != LXC_INVALID_GID &&
 		    caps_found)
 			break;
 
 	}
 
-	ret = userns_setup_ids(ctx, options, init_host_uid, init_host_gid);
+	ret = userns_setup_ids(ctx, options);
 	if (ret)
 		return log_error_errno(ret, errno, "Failed to get setup ids");
 	userns_target_ids(ctx, options);
@@ -1082,7 +1086,7 @@ __noreturn static void do_attach(struct attach_payload *ap)
 		goto on_error;
 
 	if (options->namespaces & CLONE_NEWUSER)
-		if (!lxc_switch_uid_gid(ctx->setup_uid, ctx->setup_gid))
+		if (!lxc_switch_uid_gid(ctx->setup_ns_uid, ctx->setup_ns_gid))
 			goto on_error;
 
 	if (attach_lsm(options) && ctx->lsm_label) {
@@ -1174,19 +1178,22 @@ __noreturn static void do_attach(struct attach_payload *ap)
 
 	put_attach_payload(ap);
 
-	/* Make sure that the processes STDIO is correctly owned by the user that we are switching to */
-	ret = fix_stdio_permissions(ctx->target_uid);
+	/* Avoid unnecessary syscalls. */
+	if (ctx->setup_ns_uid == ctx->target_ns_uid)
+		ctx->target_ns_uid = LXC_INVALID_UID;
+
+	if (ctx->setup_ns_gid == ctx->target_ns_gid)
+		ctx->target_ns_gid = LXC_INVALID_GID;
+
+	/*
+	 * Make sure that the processes STDIO is correctly owned by the user
+	 * that we are switching to.
+	 */
+	ret = fix_stdio_permissions(ctx->target_ns_uid);
 	if (ret)
 		INFO("Failed to adjust stdio permissions");
 
-	/* Avoid unnecessary syscalls. */
-	if (ctx->setup_uid == ctx->target_uid)
-		ctx->target_uid = LXC_INVALID_UID;
-
-	if (ctx->setup_gid == ctx->target_gid)
-		ctx->target_gid = LXC_INVALID_GID;
-
-	if (!lxc_switch_uid_gid(ctx->target_uid, ctx->target_gid))
+	if (!lxc_switch_uid_gid(ctx->target_ns_uid, ctx->target_ns_gid))
 		goto on_error;
 
 	/* We're done, so we can now do whatever the user intended us to do. */
