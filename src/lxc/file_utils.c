@@ -517,6 +517,64 @@ FILE *fdopen_cached(int fd, const char *mode, void **caller_freed_buffer)
 	return f;
 }
 
+int fd_cloexec(int fd, bool cloexec)
+{
+	int oflags, nflags;
+
+	oflags = fcntl(fd, F_GETFD, 0);
+	if (oflags < 0)
+		return -errno;
+
+	if (cloexec)
+		nflags = oflags | FD_CLOEXEC;
+	else
+		nflags = oflags & ~FD_CLOEXEC;
+
+	if (nflags == oflags)
+		return 0;
+
+	if (fcntl(fd, F_SETFD, nflags) < 0)
+		return -errno;
+
+	return 0;
+}
+
+static inline int dup_cloexec(int fd)
+{
+	__do_close int fd_dup = -EBADF;
+
+	fd_dup = dup(fd);
+	if (fd_dup < 0)
+		return -errno;
+
+	if (fd_cloexec(fd_dup, true))
+		return -errno;
+
+	return move_fd(fd_dup);
+}
+
+FILE *fdopenat(int dfd, const char *path, const char *mode)
+{
+	__do_close int fd = -EBADF;
+	__do_fclose FILE *f = NULL;
+
+	if (is_empty_string(path))
+		fd = dup_cloexec(dfd);
+	else
+		fd = openat(dfd, path, O_CLOEXEC | O_NOCTTY | O_NOFOLLOW);
+	if (fd < 0)
+		return NULL;
+
+	f = fdopen(fd, "re");
+	if (!f)
+		return NULL;
+
+	/* Transfer ownership of fd. */
+	move_fd(fd);
+
+	return move_ptr(f);
+}
+
 int timens_offset_write(clockid_t clk_id, int64_t s_offset, int64_t ns_offset)
 {
 	__do_close int fd = -EBADF;
