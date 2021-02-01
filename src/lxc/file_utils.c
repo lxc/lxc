@@ -639,7 +639,7 @@ int open_at(int dfd, const char *path, unsigned int o_flags,
 	if (errno != ENOSYS)
 		return -errno;
 
-	return openat(dfd, path, O_NOFOLLOW | o_flags, mode);
+	return openat(dfd, path, o_flags, mode);
 }
 
 int fd_make_nonblocking(int fd)
