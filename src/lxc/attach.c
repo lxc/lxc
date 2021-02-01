@@ -56,6 +56,30 @@ lxc_log_define(attach, lxc);
 /* Define default options if no options are supplied by the user. */
 static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_DEFAULT;
 
+/*
+ * The context used to attach to the container.
+ * @attach_flags : the attach flags specified in lxc_attach_options_t
+ * @init_pid     : the PID of the container's init process
+ * @dfd_init_pid : file descriptor to /proc/@init_pid
+ *                 __Must be closed in attach_context_security_barrier()__!
+ * @dfd_self_pid : file descriptor to /proc/self
+ *                 __Must be closed in attach_context_security_barrier()__!
+ * @setup_uid    : if CLONE_NEWUSER is specified will contain the uid used
+ *                 during attach setup.
+ * @setup_gid    : if CLONE_NEWUSER is specified will contain the gid used
+ *                 during attach setup.
+ * @target_uid   : if CLONE_NEWUSER is specified the uid that the final program
+ *                 will be run with.
+ * @target_gid   : if CLONE_NEWUSER is specified the gid that the final program
+ *                 will be run with.
+ * @lsm_label    : LSM label to be used for the attaching process
+ * @container    : the container we're attaching o
+ * @personality  : the personality to use for the final program
+ * @capability   : the capability mask of the @init_pid
+ * @ns_inherited : flags of namespaces that the final program will inherit from
+ *                 @init_pid
+ * @ns_fd        : file descriptors to @init_pid's namespaces
+ */
 struct attach_context {
 	unsigned int attach_flags;
 	int init_pid;
