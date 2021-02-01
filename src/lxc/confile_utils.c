@@ -225,8 +225,7 @@ void lxc_log_configured_netdevs(const struct lxc_conf *conf)
 	struct lxc_netdev *netdev;
 	struct lxc_list *it = (struct lxc_list *)&conf->network;;
 
-	if ((conf->loglevel != LXC_LOG_LEVEL_TRACE) &&
-	    (lxc_log_get_level() != LXC_LOG_LEVEL_TRACE))
+	if (!lxc_log_trace())
 		return;
 
 	if (lxc_list_empty(it)) {
