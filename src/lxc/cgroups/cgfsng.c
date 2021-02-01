@@ -3337,7 +3337,7 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 {
 	__do_close int cgroup_root_fd = -EBADF;
 	__do_free char *base_cgroup = NULL, *controllers_path = NULL;
-	__do_free_string_list char **delegatable;
+	__do_free_string_list char **delegatable = NULL;
 	int ret;
 	struct hierarchy *new;
 
