@@ -104,24 +104,22 @@ struct attach_context {
 	struct lsm_ops *lsm_ops;
 };
 
-static pid_t pidfd_get_pid(int pidfd)
+static pid_t pidfd_get_pid(int dfd_init_pid, int pidfd)
 {
 	__do_free char *line = NULL;
 	__do_fclose FILE *f = NULL;
 	size_t len = 0;
-	char path[STRLITERALLEN("/proc/self/fdinfo/") +
-		  INTTYPE_TO_STRLEN(int) + 1 ] = "/proc/self/fdinfo/";
+	char path[STRLITERALLEN("fdinfo/") + INTTYPE_TO_STRLEN(int) + 1 ] = "fdinfo/";
 	int ret;
 
-	if (pidfd < 0)
-		return -EBADF;
+	if (dfd_init_pid < 0 || pidfd < 0)
+		return ret_errno(EBADF);
 
-	ret = snprintf(path + STRLITERALLEN("/proc/self/fdinfo/"),
-			INTTYPE_TO_STRLEN(int), "%d", pidfd);
+	ret = snprintf(path + STRLITERALLEN("fdinfo/"), INTTYPE_TO_STRLEN(int), "%d", pidfd);
 	if (ret < 0 || ret > (size_t)INTTYPE_TO_STRLEN(int))
 		return ret_errno(EIO);
 
-	f = fopen_cloexec(path, "re");
+	f = fdopen_at(dfd_init_pid, path, "re", PROTECT_OPEN, PROTECT_LOOKUP_BENEATH);
 	if (!f)
 		return -errno;
 
@@ -380,20 +378,20 @@ static int get_attach_context(struct attach_context *ctx,
 	ctx->container = container;
 	ctx->attach_flags = options->attach_flags;
 
-	init_pidfd = lxc_cmd_get_init_pidfd(container->name, container->config_path);
-	if (init_pidfd >= 0)
-		ctx->init_pid = pidfd_get_pid(init_pidfd);
-	else
-		ctx->init_pid = lxc_cmd_get_init_pid(container->name, container->config_path);
-
-	if (ctx->init_pid < 0)
-		return log_error(-1, "Failed to get init pid");
-
 	ctx->dfd_self_pid = open_at(-EBADF, "/proc/self",
 				    PROTECT_OPATH_FILE & ~O_NOFOLLOW,
 				    (PROTECT_LOOKUP_ABSOLUTE_WITH_SYMLINKS & ~RESOLVE_NO_XDEV), 0);
 	if (ctx->dfd_self_pid < 0)
 		return log_error_errno(-errno, errno, "Failed to open /proc/self");
+
+	init_pidfd = lxc_cmd_get_init_pidfd(container->name, container->config_path);
+	if (init_pidfd >= 0)
+		ctx->init_pid = pidfd_get_pid(ctx->dfd_self_pid, init_pidfd);
+	else
+		ctx->init_pid = lxc_cmd_get_init_pid(container->name, container->config_path);
+
+	if (ctx->init_pid < 0)
+		return log_error(-1, "Failed to get init pid");
 
 	ret = snprintf(path, sizeof(path), "/proc/%d", ctx->init_pid);
 	if (ret < 0 || ret >= sizeof(path))
