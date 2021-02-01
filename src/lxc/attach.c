@@ -361,11 +361,7 @@ static int get_attach_context(struct attach_context *ctx,
 	if (ctx->init_pid < 0)
 		return log_error(-1, "Failed to get init pid");
 
-	ret = snprintf(path, sizeof(path), "/proc/%d", lxc_raw_getpid());
-	if (ret < 0 || ret >= sizeof(path))
-		return ret_errno(EIO);
-
-	ctx->dfd_self_pid = openat(-EBADF, path, O_CLOEXEC | O_NOCTTY | O_NOFOLLOW | O_PATH | O_DIRECTORY);
+	ctx->dfd_self_pid = openat(-EBADF, "/proc/self", O_CLOEXEC | O_NOCTTY | O_PATH | O_DIRECTORY);
 	if (ctx->dfd_self_pid < 0)
 		return log_error_errno(-errno, errno, "Failed to open /proc/self");
 
