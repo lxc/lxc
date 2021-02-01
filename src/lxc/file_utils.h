@@ -91,6 +91,8 @@ static inline int open_beneath(int dfd, const char *path, unsigned int flags)
 	return open_at(dfd, path, flags, PROTECT_LOOKUP_BENEATH, 0);
 }
 __hidden int fd_make_nonblocking(int fd);
-__hidden extern char *read_file_at(int dfd, const char *fnam);
+__hidden extern char *read_file_at(int dfd, const char *fnam,
+                                   unsigned int o_flags,
+                                   unsigned resolve_flags);
 
 #endif /* __LXC_FILE_UTILS_H */
