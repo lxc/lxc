@@ -151,6 +151,7 @@ static struct attach_context *alloc_attach_context(void)
 
 	ctx->dfd_self_pid = -EBADF;
 	ctx->dfd_init_pid = -EBADF;
+	ctx->init_gid = -ESRCH;
 	ctx->init_uid = 0;
 	ctx->init_gid = 0;
 
