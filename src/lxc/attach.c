@@ -827,15 +827,15 @@ __noreturn static void do_attach(struct attach_clone_payload *payload)
 	 * may want to make sure the fds are closed, for example.
 	 */
 	if (options->stdin_fd >= 0 && options->stdin_fd != STDIN_FILENO)
-		if (dup2(options->stdin_fd, STDIN_FILENO))
+		if (dup2(options->stdin_fd, STDIN_FILENO) < 0)
 			SYSDEBUG("Failed to replace stdin with %d", options->stdin_fd);
 
 	if (options->stdout_fd >= 0 && options->stdout_fd != STDOUT_FILENO)
-		if (dup2(options->stdout_fd, STDOUT_FILENO))
+		if (dup2(options->stdout_fd, STDOUT_FILENO) < 0)
 			SYSDEBUG("Failed to replace stdout with %d", options->stdout_fd);
 
 	if (options->stderr_fd >= 0 && options->stderr_fd != STDERR_FILENO)
-		if (dup2(options->stderr_fd, STDERR_FILENO))
+		if (dup2(options->stderr_fd, STDERR_FILENO) < 0)
 			SYSDEBUG("Failed to replace stderr with %d", options->stderr_fd);
 
 	/* close the old fds */
