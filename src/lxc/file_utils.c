@@ -553,7 +553,8 @@ static inline int dup_cloexec(int fd)
 	return move_fd(fd_dup);
 }
 
-FILE *fdopenat(int dfd, const char *path, const char *mode)
+FILE *fdopen_at(int dfd, const char *path, const char *mode,
+		unsigned int o_flags, unsigned int resolve_flags)
 {
 	__do_close int fd = -EBADF;
 	__do_fclose FILE *f = NULL;
@@ -561,7 +562,7 @@ FILE *fdopenat(int dfd, const char *path, const char *mode)
 	if (is_empty_string(path))
 		fd = dup_cloexec(dfd);
 	else
-		fd = openat(dfd, path, O_CLOEXEC | O_NOCTTY | O_NOFOLLOW);
+		fd = open_at(dfd, path, o_flags, resolve_flags, 0);
 	if (fd < 0)
 		return NULL;
 
@@ -621,22 +622,24 @@ bool exists_file_at(int dir_fd, const char *path)
 	return fstatat(dir_fd, path, &sb, 0) == 0;
 }
 
-int open_beneath(int dir_fd, const char *path, unsigned int flags)
+int open_at(int dfd, const char *path, unsigned int o_flags,
+	    unsigned int resolve_flags, mode_t mode)
 {
 	__do_close int fd = -EBADF;
 	struct lxc_open_how how = {
-		.flags		= flags,
-		.resolve	= RESOLVE_NO_XDEV | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS | RESOLVE_BENEATH,
+		.flags		= o_flags,
+		.mode		= mode,
+		.resolve	= resolve_flags,
 	};
 
-	fd = openat2(dir_fd, path, &how, sizeof(how));
+	fd = openat2(dfd, path, &how, sizeof(how));
 	if (fd >= 0)
 		return move_fd(fd);
 
 	if (errno != ENOSYS)
 		return -errno;
 
-	return openat(dir_fd, path, O_NOFOLLOW | flags);
+	return openat(dfd, path, o_flags, mode);
 }
 
 int fd_make_nonblocking(int fd)
@@ -671,7 +674,8 @@ static void append_line(char **dest, size_t oldlen, char *new, size_t newlen)
 }
 
 /* Slurp in a whole file */
-char *read_file_at(int dfd, const char *fnam)
+char *read_file_at(int dfd, const char *fnam,
+		   unsigned int o_flags, unsigned resolve_flags)
 {
 	__do_close int fd = -EBADF;
 	__do_free char *buf = NULL, *line = NULL;
@@ -679,7 +683,7 @@ char *read_file_at(int dfd, const char *fnam)
 	size_t len = 0, fulllen = 0;
 	int linelen;
 
-	fd = openat(dfd, fnam, O_NOCTTY | O_CLOEXEC | O_NOFOLLOW | O_RDONLY);
+	fd = open_at(dfd, fnam, o_flags, resolve_flags, 0);
 	if (fd < 0)
 		return NULL;
 

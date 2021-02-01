@@ -13,6 +13,7 @@
 
 #include "conf.h"
 #include "config.h"
+#include "file_utils.h"
 #include "log.h"
 #include "lsm.h"
 #include "memory_utils.h"
@@ -56,7 +57,7 @@ static char *selinux_process_label_get_at(struct lsm_ops *ops, int fd_pid)
 	__do_free char *label = NULL;
 	size_t len;
 
-	label = read_file_at(fd_pid, "attr/current");
+	label = read_file_at(fd_pid, "attr/current", PROTECT_OPEN, PROTECT_LOOKUP_BENEATH);
 	if (!label)
 		return log_error_errno(NULL, errno, "Failed to get SELinux context");
 

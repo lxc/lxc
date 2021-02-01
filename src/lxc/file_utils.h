@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 #include "compiler.h"
+#include "syscall_wrappers.h"
 
 /* read and write whole files */
 __hidden extern int lxc_write_to_file(const char *filename, const void *buf, size_t count,
@@ -76,13 +77,22 @@ static inline int fd_to_fd(int from, int to)
 __hidden extern int fd_cloexec(int fd, bool cloexec);
 __hidden extern int lxc_open_dirfd(const char *dir);
 __hidden extern FILE *fdopen_cached(int fd, const char *mode, void **caller_freed_buffer);
-__hidden extern FILE *fdopenat(int dfd, const char *path, const char *mode);
+__hidden extern FILE *fdopen_at(int dfd, const char *path, const char *mode,
+                                unsigned int o_flags,
+                                unsigned int resolve_flags);
 __hidden extern FILE *fopen_cached(const char *path, const char *mode, void **caller_freed_buffer);
 __hidden extern int timens_offset_write(clockid_t clk_id, int64_t s_offset, int64_t ns_offset);
 __hidden extern bool exists_dir_at(int dir_fd, const char *path);
 __hidden extern bool exists_file_at(int dir_fd, const char *path);
-__hidden extern int open_beneath(int dir_fd, const char *path, unsigned int flags);
+__hidden extern int open_at(int dfd, const char *path, unsigned int o_flags,
+			    unsigned int resolve_flags, mode_t mode);
+static inline int open_beneath(int dfd, const char *path, unsigned int flags)
+{
+	return open_at(dfd, path, flags, PROTECT_LOOKUP_BENEATH, 0);
+}
 __hidden int fd_make_nonblocking(int fd);
-__hidden extern char *read_file_at(int dfd, const char *fnam);
+__hidden extern char *read_file_at(int dfd, const char *fnam,
+                                   unsigned int o_flags,
+                                   unsigned resolve_flags);
 
 #endif /* __LXC_FILE_UTILS_H */
