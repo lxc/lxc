@@ -61,6 +61,8 @@ struct attach_context {
 	int init_pid;
 	int dfd_init_pid;
 	int dfd_self_pid;
+	uid_t init_uid;
+	gid_t init_gid;
 	char *lsm_label;
 	struct lxc_container *container;
 	signed long personality;
@@ -149,6 +151,8 @@ static struct attach_context *alloc_attach_context(void)
 
 	ctx->dfd_self_pid = -EBADF;
 	ctx->dfd_init_pid = -EBADF;
+	ctx->init_uid = 0;
+	ctx->init_gid = 0;
 
 	for (int i = 0; i < LXC_NS_MAX; i++)
 		ctx->ns_fd[i] = -EBADF;
@@ -176,17 +180,75 @@ static int get_personality(const char *name, const char *lxcpath,
 	return 0;
 }
 
+static int parse_init_status(struct attach_context *ctx, lxc_attach_options_t *options)
+{
+	__do_free char *line = NULL;
+	__do_fclose FILE *f = NULL;
+	size_t len = 0;
+	bool caps_found = false;
+	bool uid_found, gid_found;
+
+	f = fdopenat(ctx->dfd_init_pid, "status", "re");
+	if (!f)
+		return -errno;
+
+	if (options->namespaces & CLONE_NEWUSER)
+		uid_found = gid_found = false;
+	else
+		uid_found = gid_found = true;
+
+	while (getline(&line, &len, f) != -1) {
+		signed long value = -1;
+		int ret;
+
+		if (options->namespaces & CLONE_NEWUSER) {
+			/*
+			 * Format is: real, effective, saved set user, fs we only care
+			 * about real uid.
+			 */
+			ret = sscanf(line, "Uid: %ld", &value);
+			if (ret != EOF && ret == 1) {
+				uid_found = true;
+				ctx->init_uid = (uid_t)value;
+				goto next;
+			}
+
+			ret = sscanf(line, "Gid: %ld", &value);
+			if (ret != EOF && ret == 1) {
+				gid_found = true;
+				ctx->init_gid = (gid_t)value;
+				goto next;
+			}
+		}
+
+		ret = sscanf(line, "CapBnd: %llx", &ctx->capability_mask);
+		if (ret != EOF && ret == 1) {
+			caps_found = true;
+			goto next;
+		}
+
+        next:
+		if (uid_found && gid_found && caps_found)
+			break;
+
+	}
+
+	/*
+	 * TODO: we should also parse supplementary groups and use
+	 * setgroups() to set them.
+	 */
+
+	return 0;
+}
+
 static int get_attach_context(struct attach_context *ctx,
 			      struct lxc_container *container,
 			      lxc_attach_options_t *options)
 {
-	__do_close int dfd_self_pid = -EBADF, dfd_init_pid = -EBADF, fd_status = -EBADF, init_pidfd = -EBADF;
-	__do_free char *line = NULL, *lsm_label = NULL;
-	__do_fclose FILE *f_status = NULL;
+	__do_close int init_pidfd = -EBADF;
+	__do_free char *lsm_label = NULL;
 	int ret;
-	bool found;
 	char path[LXC_PROC_PID_LEN];
-	size_t line_bufsz = 0;
 
 	ctx->container = container;
 	ctx->attach_flags = options->attach_flags;
@@ -204,20 +266,16 @@ static int get_attach_context(struct attach_context *ctx,
 	if (ret < 0 || ret >= sizeof(path))
 		return ret_errno(EIO);
 
-	dfd_self_pid = openat(-EBADF, path, O_CLOEXEC | O_NOCTTY | O_NOFOLLOW | O_PATH | O_DIRECTORY);
-	if (dfd_self_pid < 0)
+	ctx->dfd_self_pid = openat(-EBADF, path, O_CLOEXEC | O_NOCTTY | O_NOFOLLOW | O_PATH | O_DIRECTORY);
+	if (ctx->dfd_self_pid < 0)
 		return -errno;
 
 	ret = snprintf(path, sizeof(path), "/proc/%d", ctx->init_pid);
 	if (ret < 0 || ret >= sizeof(path))
 		return ret_errno(EIO);
 
-	dfd_init_pid = openat(-EBADF, path, O_CLOEXEC | O_NOCTTY | O_NOFOLLOW | O_PATH | O_DIRECTORY);
-	if (dfd_init_pid < 0)
-		return -errno;
-
-	fd_status = openat(dfd_init_pid, "status", O_CLOEXEC | O_NOCTTY | O_NOFOLLOW | O_RDONLY);
-	if (fd_status < 0)
+	ctx->dfd_init_pid = openat(-EBADF, path, O_CLOEXEC | O_NOCTTY | O_NOFOLLOW | O_PATH | O_DIRECTORY);
+	if (ctx->dfd_init_pid < 0)
 		return -errno;
 
 	if (init_pidfd >= 0) {
@@ -228,23 +286,9 @@ static int get_attach_context(struct attach_context *ctx,
 			TRACE("Container process still running and PID was not recycled");
 	}
 
-	f_status = fdopen(fd_status, "re");
-	if (!f_status)
-		return log_error_errno(-errno, errno, "Failed to open file descriptor %d", fd_status);
-	move_fd(fd_status);
-
-	found = false;
-
-	while (getline(&line, &line_bufsz, f_status) != -1) {
-		ret = sscanf(line, "CapBnd: %llx", &ctx->capability_mask);
-		if (ret != EOF && ret == 1) {
-			found = true;
-			break;
-		}
-	}
-
-	if (!found)
-		return log_error_errno(-ENOENT, ENOENT, "Failed to read capability bounding set from %s/status", path);
+	ret = parse_init_status(ctx, options);
+	if (ret)
+		return log_error_errno(-errno, errno, "Failed to open parse status file");
 
 	ctx->lsm_ops = lsm_init_static();
 
@@ -252,7 +296,7 @@ static int get_attach_context(struct attach_context *ctx,
 		if (ctx->attach_flags & LXC_ATTACH_LSM_LABEL)
 			lsm_label = options->lsm_label;
 		else
-			lsm_label = ctx->lsm_ops->process_label_get_at(ctx->lsm_ops, dfd_init_pid);
+			lsm_label = ctx->lsm_ops->process_label_get_at(ctx->lsm_ops, ctx->dfd_init_pid);
 		if (!lsm_label)
 			WARN("No security context received");
 		else
@@ -270,8 +314,6 @@ static int get_attach_context(struct attach_context *ctx,
 			return log_error_errno(-ENOMEM, ENOMEM, "Failed to allocate new lxc config");
 	}
 
-	ctx->dfd_init_pid = move_fd(dfd_init_pid);
-	ctx->dfd_self_pid = move_fd(dfd_self_pid);
 	ctx->lsm_label = move_ptr(lsm_label);
 	return 0;
 }
@@ -733,54 +775,6 @@ reap_child:
 	return move_ptr(result);
 }
 
-static void lxc_attach_get_init_uidgid(uid_t *init_uid, gid_t *init_gid)
-{
-	__do_free char *line = NULL;
-	__do_fclose FILE *proc_file = NULL;
-	char proc_fn[LXC_PROC_STATUS_LEN];
-	int ret;
-	size_t line_bufsz = 0;
-	long value = -1;
-	uid_t uid = LXC_INVALID_UID;
-	gid_t gid = LXC_INVALID_GID;
-
-	ret = snprintf(proc_fn, LXC_PROC_STATUS_LEN, "/proc/%d/status", 1);
-	if (ret < 0 || ret >= LXC_PROC_STATUS_LEN)
-		return;
-
-	proc_file = fopen(proc_fn, "re");
-	if (!proc_file)
-		return;
-
-	while (getline(&line, &line_bufsz, proc_file) != -1) {
-		/* Format is: real, effective, saved set user, fs we only care
-		 * about real uid.
-		 */
-		ret = sscanf(line, "Uid: %ld", &value);
-		if (ret != EOF && ret == 1) {
-			uid = (uid_t)value;
-		} else {
-			ret = sscanf(line, "Gid: %ld", &value);
-			if (ret != EOF && ret == 1)
-				gid = (gid_t)value;
-		}
-
-		if (uid != LXC_INVALID_UID && gid != LXC_INVALID_GID)
-			break;
-	}
-
-	/* Only override arguments if we found something. */
-	if (uid != LXC_INVALID_UID)
-		*init_uid = uid;
-
-	if (gid != LXC_INVALID_GID)
-		*init_gid = gid;
-
-	/* TODO: we should also parse supplementary groups and use
-	 * setgroups() to set them.
-	 */
-}
-
 static bool fetch_seccomp(struct lxc_container *c, lxc_attach_options_t *options)
 {
 	__do_free char *path = NULL;
@@ -964,7 +958,10 @@ __noreturn static void do_attach(struct attach_payload *ap)
 		 * init was started with.
 		 */
 		if (ns_root_uid == LXC_INVALID_UID)
-			lxc_attach_get_init_uidgid(&ns_root_uid, &ns_root_gid);
+			ns_root_uid = ctx->init_uid;
+
+		if (ns_root_gid == LXC_INVALID_UID)
+			ns_root_gid = ctx->init_gid;
 
 		if (ns_root_uid == LXC_INVALID_UID)
 			goto on_error;
