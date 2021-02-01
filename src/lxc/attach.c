@@ -1321,7 +1321,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 
 	ret = get_attach_context_nsfds(ctx, options);
 	if (ret) {
-		lxc_container_put(container);
+		put_attach_context(ctx);
 		return log_error(-1, "Failed to get namespace file descriptors");
 	}
 
