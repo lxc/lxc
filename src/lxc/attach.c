@@ -1190,8 +1190,6 @@ __noreturn static void do_attach(struct attach_payload *ap)
 		TRACE("Prepared terminal file descriptor %d", ap->terminal_pts_fd);
 	}
 
-	put_attach_payload(ap);
-
 	/* Avoid unnecessary syscalls. */
 	if (ctx->setup_ns_uid == ctx->target_ns_uid)
 		ctx->target_ns_uid = LXC_INVALID_UID;
@@ -1210,11 +1208,14 @@ __noreturn static void do_attach(struct attach_payload *ap)
 	if (!lxc_switch_uid_gid(ctx->target_ns_uid, ctx->target_ns_gid))
 		goto on_error;
 
+	put_attach_payload(ap);
+
 	/* We're done, so we can now do whatever the user intended us to do. */
 	_exit(attach_function(attach_function_args));
 
 on_error:
 	ERROR("Failed to attach to container");
+	put_attach_payload(ap);
 	_exit(EXIT_FAILURE);
 }
 
@@ -1320,7 +1321,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 
 	ret = get_attach_context_nsfds(ctx, options);
 	if (ret) {
-		lxc_container_put(container);
+		put_attach_context(ctx);
 		return log_error(-1, "Failed to get namespace file descriptors");
 	}
 
