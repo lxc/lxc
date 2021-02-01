@@ -1008,7 +1008,7 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 		WARN("Failed to detach bpf program from cgroup");
 #endif
 
-	if (handler->conf && !lxc_list_empty(&handler->conf->id_map)) {
+	if (!lxc_list_empty(&handler->conf->id_map)) {
 		struct generic_userns_exec_data wrap = {
 			.conf			= handler->conf,
 			.container_cgroup	= ops->container_cgroup,
@@ -1069,13 +1069,13 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 			goto try_lxc_rm_rf;
 		}
 
-		if (conf && conf->cgroup_meta.monitor_pivot_dir)
+		if (conf->cgroup_meta.monitor_pivot_dir)
 			pivot_path = must_make_path(h->mountpoint, h->container_base_path,
 						    conf->cgroup_meta.monitor_pivot_dir, CGROUP_PIVOT, NULL);
-		else if (conf && conf->cgroup_meta.monitor_dir)
+		else if (conf->cgroup_meta.monitor_dir)
 			pivot_path = must_make_path(h->mountpoint, h->container_base_path,
 						    conf->cgroup_meta.monitor_dir, CGROUP_PIVOT, NULL);
-		else if (conf && conf->cgroup_meta.dir)
+		else if (conf->cgroup_meta.dir)
 			pivot_path = must_make_path(h->mountpoint, h->container_base_path,
 						    conf->cgroup_meta.dir, CGROUP_PIVOT, NULL);
 		else
@@ -3337,7 +3337,7 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 {
 	__do_close int cgroup_root_fd = -EBADF;
 	__do_free char *base_cgroup = NULL, *controllers_path = NULL;
-	__do_free_string_list char **delegatable;
+	__do_free_string_list char **delegatable = NULL;
 	__do_free struct hierarchy *new = NULL;
 	int ret;
 
