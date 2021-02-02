@@ -1130,18 +1130,6 @@ __noreturn static void do_attach(struct attach_payload *ap)
 		TRACE("Set PR_SET_NO_NEW_PRIVS");
 	}
 
-	if (conf->seccomp.seccomp) {
-		ret = lxc_seccomp_load(conf);
-		if (ret < 0)
-			goto on_error;
-
-		TRACE("Loaded seccomp profile");
-
-		ret = lxc_seccomp_send_notifier_fd(&conf->seccomp, ap->ipc_socket);
-		if (ret < 0)
-			goto on_error;
-	}
-
 	/* The following is done after the communication socket is shut down.
 	 * That way, all errors that might (though unlikely) occur up until this
 	 * point will have their messages printed to the original stderr (if
@@ -1209,6 +1197,18 @@ __noreturn static void do_attach(struct attach_payload *ap)
 	ret = fix_stdio_permissions(ctx->target_ns_uid);
 	if (ret)
 		INFO("Failed to adjust stdio permissions");
+
+	if (conf->seccomp.seccomp) {
+		ret = lxc_seccomp_load(conf);
+		if (ret < 0)
+			goto on_error;
+
+		TRACE("Loaded seccomp profile");
+
+		ret = lxc_seccomp_send_notifier_fd(&conf->seccomp, ap->ipc_socket);
+		if (ret < 0)
+			goto on_error;
+	}
 
 	if (!lxc_switch_uid_gid(ctx->target_ns_uid, ctx->target_ns_gid))
 		goto on_error;
