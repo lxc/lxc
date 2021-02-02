@@ -93,5 +93,7 @@ __hidden int fd_make_nonblocking(int fd);
 __hidden extern char *read_file_at(int dfd, const char *fnam,
                                    unsigned int o_flags,
                                    unsigned resolve_flags);
+__hidden extern ssize_t lxc_read_try_buf_at(int dfd, const char *path,
+                                            void *buf, size_t count);
 
 #endif /* __LXC_FILE_UTILS_H */

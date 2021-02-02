@@ -122,6 +122,32 @@ int lxc_read_from_file(const char *filename, void *buf, size_t count)
 	return ret;
 }
 
+ssize_t lxc_read_try_buf_at(int dfd, const char *path, void *buf, size_t count)
+{
+	__do_close int fd = -EBADF;
+	ssize_t ret;
+
+	fd = open_at(dfd, path, PROTECT_OPEN_W, PROTECT_LOOKUP_BENEATH, 0);
+	if (fd < 0)
+		return -errno;
+
+	if (!buf || !count) {
+		char buf2[100];
+		size_t count2 = 0;
+
+		while ((ret = lxc_read_nointr(fd, buf2, 100)) > 0)
+			count2 += ret;
+
+		if (ret >= 0)
+			ret = count2;
+	} else {
+		memset(buf, 0, count);
+		ret = lxc_read_nointr(fd, buf, count);
+	}
+
+	return ret;
+}
+
 ssize_t lxc_write_nointr(int fd, const void *buf, size_t count)
 {
 	ssize_t ret;
