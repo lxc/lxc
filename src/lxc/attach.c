@@ -572,6 +572,8 @@ static void put_attach_context(struct attach_context *ctx)
 
 static int attach_context_container(struct attach_context *ctx)
 {
+	int fret = 0;
+
 	for (int i = 0; i < LXC_NS_MAX; i++) {
 		int ret;
 
@@ -579,16 +581,19 @@ static int attach_context_container(struct attach_context *ctx)
 			continue;
 
 		ret = setns(ctx->ns_fd[i], ns_info[i].clone_flag);
-		if (ret < 0)
-			return log_error_errno(-1, errno,
-					       "Failed to attach to %s namespace of %d",
-					       ns_info[i].proc_name, ctx->init_pid);
+		if (ret)
+			return log_error_errno(-errno, errno, "Failed to attach to %s namespace of %d", ns_info[i].proc_name, ctx->init_pid);
 
-		DEBUG("Attached to %s namespace of %d",
-		ns_info[i].proc_name, ctx->init_pid);
+		DEBUG("Attached to %s namespace of %d", ns_info[i].proc_name, ctx->init_pid);
+
+		if (close(ctx->ns_fd[i])) {
+			fret = -errno;
+			SYSERROR("Failed to close file descriptor for %s namespace", ns_info[i].proc_name);
+		}
+		ctx->ns_fd[i] = -EBADF;
 	}
 
-	return 0;
+	return fret;
 }
 
 /*
@@ -1435,9 +1440,6 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 			put_attach_context(ctx);
 			_exit(EXIT_FAILURE);
 		}
-
-		/* close namespace file descriptors */
-		close_nsfds(ctx);
 
 		/* Attach succeeded, try to cwd. */
 		if (options->initial_cwd)
