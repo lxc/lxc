@@ -2350,42 +2350,6 @@ static int cgroup_unified_attach_parent_wrapper(void *data)
 					    args->pid);
 }
 
-int cgroup_attach(const struct lxc_conf *conf, const char *name,
-		  const char *lxcpath, pid_t pid)
-{
-	__do_close int unified_fd = -EBADF;
-	int ret;
-
-	if (!conf || !name || !lxcpath || pid <= 0)
-		return ret_errno(EINVAL);
-
-	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
-	if (unified_fd < 0)
-		return ret_errno(EBADF);
-
-	if (!lxc_list_empty(&conf->id_map)) {
-		struct userns_exec_unified_attach_data args = {
-			.conf		= conf,
-			.unified_fd	= unified_fd,
-			.pid		= pid,
-		};
-
-		ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, args.sk_pair);
-		if (ret < 0)
-			return -errno;
-
-		ret = userns_exec_minimal(conf,
-					  cgroup_unified_attach_parent_wrapper,
-					  &args,
-					  cgroup_unified_attach_child_wrapper,
-					  &args);
-	} else {
-		ret = cgroup_attach_leaf(conf, unified_fd, pid);
-	}
-
-	return ret;
-}
-
 /* Technically, we're always at a delegation boundary here (This is especially
  * true when cgroup namespaces are available.). The reasoning is that in order
  * for us to have been able to start a container in the first place the root
@@ -3493,6 +3457,42 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 	cgfsng_ops->get_limiting_cgroup			= cgfsng_get_limiting_cgroup;
 
 	return move_ptr(cgfsng_ops);
+}
+
+int cgroup_attach(const struct lxc_conf *conf, const char *name,
+		  const char *lxcpath, pid_t pid)
+{
+	__do_close int unified_fd = -EBADF;
+	int ret;
+
+	if (!conf || !name || !lxcpath || pid <= 0)
+		return ret_errno(EINVAL);
+
+	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
+	if (unified_fd < 0)
+		return ret_errno(EBADF);
+
+	if (!lxc_list_empty(&conf->id_map)) {
+		struct userns_exec_unified_attach_data args = {
+			.conf		= conf,
+			.unified_fd	= unified_fd,
+			.pid		= pid,
+		};
+
+		ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, args.sk_pair);
+		if (ret < 0)
+			return -errno;
+
+		ret = userns_exec_minimal(conf,
+					  cgroup_unified_attach_parent_wrapper,
+					  &args,
+					  cgroup_unified_attach_child_wrapper,
+					  &args);
+	} else {
+		ret = cgroup_attach_leaf(conf, unified_fd, pid);
+	}
+
+	return ret;
 }
 
 /* Connects to command socket therefore isn't callable from command handler. */
