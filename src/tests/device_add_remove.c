@@ -20,13 +20,40 @@
 #include <stdlib.h>
 #include <lxc/lxccontainer.h>
 
+#include "lxctest.h"
+#include "memory_utils.h"
+#include "utils.h"
+
+#ifndef HAVE_STRLCPY
+#include "include/strlcpy.h"
+#endif
+
 #define NAME "device_add_remove_test"
 #define DEVICE "/dev/loop-control"
 
 int main(int argc, char *argv[])
 {
+	__do_close int fd_log = -EBADF;
 	int ret = 1;
+	struct lxc_log log = {};
+	char template[sizeof(P_tmpdir"/attach_XXXXXX")];
 	struct lxc_container *c;
+
+	(void)strlcpy(template, P_tmpdir"/attach_XXXXXX", sizeof(template));
+
+	fd_log = lxc_make_tmpfile(template, false);
+	if (fd_log < 0) {
+		lxc_error("Failed to create temporary log file for container %s\n", NAME);
+		exit(EXIT_FAILURE);
+	}
+	log.name = NAME;
+	log.file = template;
+	log.level = "TRACE";
+	log.prefix = "device_add_remove";
+	log.quiet = false;
+	log.lxcpath = NULL;
+	if (lxc_log_init(&log))
+		goto out;
 
 	c = lxc_container_new(NAME, NULL);
 	if (!c) {
@@ -69,6 +96,17 @@ int main(int argc, char *argv[])
 	ret = 0;
 
 out:
+	if (ret != 0) {
+		char buf[4096];
+		ssize_t buflen;
+		while ((buflen = read(fd_log, buf, 1024)) > 0) {
+			buflen = write(STDERR_FILENO, buf, buflen);
+			if (buflen <= 0)
+				break;
+		}
+	}
+	(void)unlink(template);
+
 	lxc_container_put(c);
 	return ret;
 }
