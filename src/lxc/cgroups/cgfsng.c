@@ -3592,7 +3592,7 @@ static int __cgroup_freeze(int unified_fd,
 	return log_trace(0, "Container now %s", (state_num == 1) ? "frozen" : "unfrozen");
 }
 
-bool cgroup_freeze(const char *name, const char *lxcpath, int timeout)
+int cgroup_freeze(const char *name, const char *lxcpath, int timeout)
 {
 	__do_close int unified_fd = -EBADF;
 	int ret;
@@ -3609,10 +3609,10 @@ bool cgroup_freeze(const char *name, const char *lxcpath, int timeout)
 			      "Failed to create epoll instance to wait for container freeze",
 			      "Failed to wait for container to be frozen");
 	lxc_cmd_notify_state_listeners(name, lxcpath, !ret ? FROZEN : RUNNING);
-	return ret == 0;
+	return ret;
 }
 
-bool cgroup_unfreeze(const char *name, const char *lxcpath, int timeout)
+int cgroup_unfreeze(const char *name, const char *lxcpath, int timeout)
 {
 	__do_close int unified_fd = -EBADF;
 	int ret;
@@ -3629,5 +3629,5 @@ bool cgroup_unfreeze(const char *name, const char *lxcpath, int timeout)
 			      "Failed to create epoll instance to wait for container freeze",
 			      "Failed to wait for container to be frozen");
 	lxc_cmd_notify_state_listeners(name, lxcpath, !ret ? RUNNING : FROZEN);
-	return ret == 0;
+	return ret;
 }

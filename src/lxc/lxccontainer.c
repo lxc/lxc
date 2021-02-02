@@ -507,7 +507,7 @@ WRAP_API(bool, lxcapi_is_running)
 
 static bool do_lxcapi_freeze(struct lxc_container *c)
 {
-	bool bret = true;
+	int ret = 0;
 	lxc_state_t s;
 
 	if (!c || !c->lxc_conf)
@@ -515,19 +515,19 @@ static bool do_lxcapi_freeze(struct lxc_container *c)
 
 	s = lxc_getstate(c->name, c->config_path);
 	if (s != FROZEN) {
-		bret = cgroup_freeze(c->name, c->config_path, -1);
-		if (!bret && errno == ENOCGROUP2)
-			bret = lxc_freeze(c->lxc_conf, c->name, c->config_path);
+		ret = cgroup_freeze(c->name, c->config_path, -1);
+		if (ret == -ENOCGROUP2)
+			ret = lxc_freeze(c->lxc_conf, c->name, c->config_path);
 	}
 
-	return bret;
+	return ret == 0;
 }
 
 WRAP_API(bool, lxcapi_freeze)
 
 static bool do_lxcapi_unfreeze(struct lxc_container *c)
 {
-	bool bret = true;
+	int ret = 0;
 	lxc_state_t s;
 
 	if (!c || !c->lxc_conf)
@@ -535,13 +535,13 @@ static bool do_lxcapi_unfreeze(struct lxc_container *c)
 
 	s = lxc_getstate(c->name, c->config_path);
 	if (s == FROZEN) {
-		bret = cgroup_unfreeze(c->name, c->config_path, -1);
-		if (!bret && errno == ENOCGROUP2)
-			bret = lxc_unfreeze(c->lxc_conf, c->name, c->config_path);
+		ret = cgroup_unfreeze(c->name, c->config_path, -1);
+		if (ret == -ENOCGROUP2)
+			ret = lxc_unfreeze(c->lxc_conf, c->name, c->config_path);
 	}
 
 
-	return bret;
+	return ret == 0;
 }
 
 WRAP_API(bool, lxcapi_unfreeze)

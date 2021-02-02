@@ -62,14 +62,14 @@ __hidden extern int lxc_monitor_close(int fd);
  * @name : the container name
  * Returns 0 on success, < 0 otherwise
  */
-__hidden extern bool lxc_freeze(struct lxc_conf *conf, const char *name, const char *lxcpath);
+__hidden extern int lxc_freeze(struct lxc_conf *conf, const char *name, const char *lxcpath);
 
 /*
  * Unfreeze all previously frozen tasks.
  * @name : the name of the container
  * Return 0 on success, < 0 otherwise
  */
-__hidden extern bool lxc_unfreeze(struct lxc_conf *conf, const char *name, const char *lxcpath);
+__hidden extern int lxc_unfreeze(struct lxc_conf *conf, const char *name, const char *lxcpath);
 
 /*
  * Retrieve the container state
