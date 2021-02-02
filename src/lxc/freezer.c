@@ -68,7 +68,7 @@ static int do_freeze_thaw(bool freeze, struct lxc_conf *conf, const char *name,
 	return 0;
 }
 
-int lxc_freeze(struct lxc_conf *conf, const char *name, const char *lxcpath)
+bool lxc_freeze(struct lxc_conf *conf, const char *name, const char *lxcpath)
 {
 	int ret;
 
@@ -78,10 +78,10 @@ int lxc_freeze(struct lxc_conf *conf, const char *name, const char *lxcpath)
 	else
 		ret = do_freeze_thaw(true, conf, name, lxcpath);
 	lxc_cmd_notify_state_listeners(name, lxcpath, !ret ? FROZEN : RUNNING);
-	return ret;
+	return ret == 0;
 }
 
-int lxc_unfreeze(struct lxc_conf *conf, const char *name, const char *lxcpath)
+bool lxc_unfreeze(struct lxc_conf *conf, const char *name, const char *lxcpath)
 {
 	int ret;
 
@@ -91,5 +91,5 @@ int lxc_unfreeze(struct lxc_conf *conf, const char *name, const char *lxcpath)
 	else
 		ret = do_freeze_thaw(false, conf, name, lxcpath);
 	lxc_cmd_notify_state_listeners(name, lxcpath, !ret ? RUNNING : FROZEN);
-	return ret;
+	return ret == 0;
 }
