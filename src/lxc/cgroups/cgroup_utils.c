@@ -98,3 +98,16 @@ int unified_cgroup_hierarchy(void)
 
 	return 0;
 }
+
+int unified_cgroup_fd(int fd)
+{
+
+	int ret;
+	struct statfs fs;
+
+	ret = fstatfs(fd, &fs);
+	if (!ret && is_fs_type(&fs, CGROUP2_SUPER_MAGIC))
+		return true;
+
+	return false;
+}
