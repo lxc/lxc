@@ -3550,12 +3550,12 @@ int cgroup_set(const char *name, const char *lxcpath,
 	return ret;
 }
 
-static int __cgroup_freeze(int unified_fd,
-			   const char *state_string,
-			   int state_num,
-			   int timeout,
-			   const char *epoll_error,
-			   const char *wait_error)
+static int do_cgroup_freeze(int unified_fd,
+			    const char *state_string,
+			    int state_num,
+			    int timeout,
+			    const char *epoll_error,
+			    const char *wait_error)
 {
 	__do_close int events_fd = -EBADF;
 	call_cleaner(lxc_mainloop_close) struct lxc_epoll_descr *descr_ptr = NULL;
@@ -3592,6 +3592,13 @@ static int __cgroup_freeze(int unified_fd,
 	return log_trace(0, "Container now %s", (state_num == 1) ? "frozen" : "unfrozen");
 }
 
+static inline int __cgroup_freeze(int unified_fd, int timeout)
+{
+	return do_cgroup_freeze(unified_fd, "1", 1, timeout,
+			        "Failed to create epoll instance to wait for container freeze",
+			        "Failed to wait for container to be frozen");
+}
+
 int cgroup_freeze(const char *name, const char *lxcpath, int timeout)
 {
 	__do_close int unified_fd = -EBADF;
@@ -3605,11 +3612,16 @@ int cgroup_freeze(const char *name, const char *lxcpath, int timeout)
 		return ret_errno(ENOCGROUP2);
 
 	lxc_cmd_notify_state_listeners(name, lxcpath, FREEZING);
-	ret = __cgroup_freeze(unified_fd, "1", 1, timeout,
-			      "Failed to create epoll instance to wait for container freeze",
-			      "Failed to wait for container to be frozen");
+	ret = __cgroup_freeze(unified_fd, timeout);
 	lxc_cmd_notify_state_listeners(name, lxcpath, !ret ? FROZEN : RUNNING);
 	return ret;
+}
+
+int __cgroup_unfreeze(int unified_fd, int timeout)
+{
+	return do_cgroup_freeze(unified_fd, "0", 0, timeout,
+			        "Failed to create epoll instance to wait for container freeze",
+			        "Failed to wait for container to be frozen");
 }
 
 int cgroup_unfreeze(const char *name, const char *lxcpath, int timeout)
@@ -3625,9 +3637,7 @@ int cgroup_unfreeze(const char *name, const char *lxcpath, int timeout)
 		return ret_errno(ENOCGROUP2);
 
 	lxc_cmd_notify_state_listeners(name, lxcpath, THAWED);
-	ret = __cgroup_freeze(unified_fd, "0", 0, timeout,
-			      "Failed to create epoll instance to wait for container freeze",
-			      "Failed to wait for container to be frozen");
+	ret = __cgroup_unfreeze(unified_fd, timeout);
 	lxc_cmd_notify_state_listeners(name, lxcpath, !ret ? RUNNING : FROZEN);
 	return ret;
 }
