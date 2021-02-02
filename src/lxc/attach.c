@@ -229,7 +229,7 @@ static int userns_setup_ids(struct attach_context *ctx,
 	if (!(options->namespaces & CLONE_NEWUSER))
 		return 0;
 
-	f_uidmap = fdopen_at(ctx->dfd_init_pid, "uid_map", "re", PROTECT_OPEN, PROTECT_LOOKUP_ABSOLUTE);
+	f_uidmap = fdopen_at(ctx->dfd_init_pid, "uid_map", "re", PROTECT_OPEN, PROTECT_LOOKUP_BENEATH);
 	if (!f_uidmap)
 		return log_error_errno(-errno, errno, "Failed to open uid_map");
 
@@ -249,7 +249,7 @@ static int userns_setup_ids(struct attach_context *ctx,
 		}
 	}
 
-	f_gidmap = fdopen_at(ctx->dfd_init_pid, "gid_map", "re", PROTECT_OPEN, PROTECT_LOOKUP_ABSOLUTE);
+	f_gidmap = fdopen_at(ctx->dfd_init_pid, "gid_map", "re", PROTECT_OPEN, PROTECT_LOOKUP_BENEATH);
 	if (!f_gidmap)
 		return log_error_errno(-errno, errno, "Failed to open gid_map");
 
@@ -314,7 +314,7 @@ static int parse_init_status(struct attach_context *ctx, lxc_attach_options_t *o
 	bool caps_found = false;
 	int ret;
 
-	f = fdopen_at(ctx->dfd_init_pid, "status", "re", PROTECT_OPEN, PROTECT_LOOKUP_ABSOLUTE);
+	f = fdopen_at(ctx->dfd_init_pid, "status", "re", PROTECT_OPEN, PROTECT_LOOKUP_BENEATH);
 	if (!f)
 		return log_error_errno(-errno, errno, "Failed to open status file");
 
