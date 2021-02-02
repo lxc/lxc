@@ -897,7 +897,10 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 		else
 			TRACE("Sent signal %d to pidfd %d", stopsignal, handler->pid);
 
-		ret = cgroup_ops->unfreeze(cgroup_ops, -1);
+		if (pure_unified_layout(cgroup_ops))
+			ret = __cgroup_unfreeze(cgroup_ops->unified->cgfd_limit, -1);
+		else
+			ret = cgroup_ops->unfreeze(cgroup_ops, -1);
 		if (ret)
 			WARN("Failed to unfreeze container \"%s\"", handler->name);
 
