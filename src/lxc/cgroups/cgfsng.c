@@ -3597,6 +3597,9 @@ bool cgroup_freeze(const char *name, const char *lxcpath, int timeout)
 	__do_close int unified_fd = -EBADF;
 	int ret;
 
+	if (is_empty_string(name) || is_empty_string(lxcpath))
+		return ret_errno(EINVAL);
+
 	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
 	if (unified_fd < 0)
 		return ret_errno(ENOCGROUP2);
@@ -3613,6 +3616,9 @@ bool cgroup_unfreeze(const char *name, const char *lxcpath, int timeout)
 {
 	__do_close int unified_fd = -EBADF;
 	int ret;
+
+	if (is_empty_string(name) || is_empty_string(lxcpath))
+		return ret_errno(EINVAL);
 
 	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
 	if (unified_fd < 0)
