@@ -3496,14 +3496,13 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 }
 
 /* Connects to command socket therefore isn't callable from command handler. */
-int cgroup_get(struct lxc_conf *conf,
-	       const char *name, const char *lxcpath,
+int cgroup_get(const char *name, const char *lxcpath,
 	       const char *filename, char *buf, size_t len)
 {
 	__do_close int unified_fd = -EBADF;
 	ssize_t ret;
 
-	if (!conf || is_empty_string(filename) || is_empty_string(name) ||
+	if (is_empty_string(filename) || is_empty_string(name) ||
 	    is_empty_string(lxcpath))
 		return ret_errno(EINVAL);
 
@@ -3522,13 +3521,13 @@ int cgroup_get(struct lxc_conf *conf,
 }
 
 /* Connects to command socket therefore isn't callable from command handler. */
-int cgroup_set(struct lxc_conf *conf, const char *name, const char *lxcpath,
+int cgroup_set(const char *name, const char *lxcpath,
 	       const char *filename, const char *value)
 {
 	__do_close int unified_fd = -EBADF;
 	ssize_t ret;
 
-	if (!conf || is_empty_string(filename) || is_empty_string(value) ||
+	if (is_empty_string(filename) || is_empty_string(value) ||
 	    is_empty_string(name) || is_empty_string(lxcpath))
 		return ret_errno(EINVAL);
 
@@ -3593,7 +3592,7 @@ static int __cgroup_freeze(int unified_fd,
 	return log_trace(0, "Container now %s", (state_num == 1) ? "frozen" : "unfrozen");
 }
 
-bool cgroup_freeze(struct lxc_conf *conf, const char *name, const char *lxcpath, int timeout)
+bool cgroup_freeze(const char *name, const char *lxcpath, int timeout)
 {
 	__do_close int unified_fd = -EBADF;
 	int ret;
@@ -3610,7 +3609,7 @@ bool cgroup_freeze(struct lxc_conf *conf, const char *name, const char *lxcpath,
 	return ret == 0;
 }
 
-bool cgroup_unfreeze(struct lxc_conf *conf, const char *name, const char *lxcpath, int timeout)
+bool cgroup_unfreeze(const char *name, const char *lxcpath, int timeout)
 {
 	__do_close int unified_fd = -EBADF;
 	int ret;
