@@ -1208,6 +1208,7 @@ __noreturn static void do_attach(struct attach_payload *ap)
 		ret = lxc_seccomp_send_notifier_fd(&conf->seccomp, ap->ipc_socket);
 		if (ret < 0)
 			goto on_error;
+		lxc_seccomp_close_notifier_fd(&conf->seccomp);
 	}
 
 	if (!lxc_switch_uid_gid(ctx->target_ns_uid, ctx->target_ns_gid))
@@ -1522,7 +1523,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		 * enough.
 		 */
 		ret = cgroup_attach(conf, name, lxcpath, pid);
-		if (ret) {
+		if (ret == -ENOCGROUP2) {
 			call_cleaner(cgroup_exit) struct cgroup_ops *cgroup_ops = NULL;
 
 			cgroup_ops = cgroup_init(conf);

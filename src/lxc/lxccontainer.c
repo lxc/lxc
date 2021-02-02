@@ -507,32 +507,41 @@ WRAP_API(bool, lxcapi_is_running)
 
 static bool do_lxcapi_freeze(struct lxc_container *c)
 {
+	int ret = 0;
 	lxc_state_t s;
 
 	if (!c || !c->lxc_conf)
 		return false;
 
 	s = lxc_getstate(c->name, c->config_path);
-	if (s != FROZEN)
-		return lxc_freeze(c->lxc_conf, c->name, c->config_path) == 0;
+	if (s != FROZEN) {
+		ret = cgroup_freeze(c->name, c->config_path, -1);
+		if (ret == -ENOCGROUP2)
+			ret = lxc_freeze(c->lxc_conf, c->name, c->config_path);
+	}
 
-	return true;
+	return ret == 0;
 }
 
 WRAP_API(bool, lxcapi_freeze)
 
 static bool do_lxcapi_unfreeze(struct lxc_container *c)
 {
+	int ret = 0;
 	lxc_state_t s;
 
 	if (!c || !c->lxc_conf)
 		return false;
 
 	s = lxc_getstate(c->name, c->config_path);
-	if (s == FROZEN)
-		return lxc_unfreeze(c->lxc_conf, c->name, c->config_path) == 0;
+	if (s == FROZEN) {
+		ret = cgroup_unfreeze(c->name, c->config_path, -1);
+		if (ret == -ENOCGROUP2)
+			ret = lxc_unfreeze(c->lxc_conf, c->name, c->config_path);
+	}
 
-	return true;
+
+	return ret == 0;
 }
 
 WRAP_API(bool, lxcapi_unfreeze)
@@ -3277,6 +3286,7 @@ WRAP_API_1(bool, lxcapi_set_config_path, const char *)
 static bool do_lxcapi_set_cgroup_item(struct lxc_container *c, const char *subsys, const char *value)
 {
 	call_cleaner(cgroup_exit) struct cgroup_ops *cgroup_ops = NULL;
+	int ret;
 
 	if (!c)
 		return false;
@@ -3284,12 +3294,16 @@ static bool do_lxcapi_set_cgroup_item(struct lxc_container *c, const char *subsy
 	if (is_stopped(c))
 		return false;
 
-	cgroup_ops = cgroup_init(c->lxc_conf);
-	if (!cgroup_ops)
-		return false;
+	ret = cgroup_set(c->name, c->config_path, subsys, value);
+	if (ret == -ENOCGROUP2) {
+		cgroup_ops = cgroup_init(c->lxc_conf);
+		if (!cgroup_ops)
+			return false;
 
-	return cgroup_ops->set(cgroup_ops, subsys, value, c->name,
-			       c->config_path) == 0;
+		ret = cgroup_ops->set(cgroup_ops, subsys, value, c->name, c->config_path);
+	}
+
+	return ret == 0;
 }
 
 WRAP_API_2(bool, lxcapi_set_cgroup_item, const char *, const char *)
@@ -3297,6 +3311,7 @@ WRAP_API_2(bool, lxcapi_set_cgroup_item, const char *, const char *)
 static int do_lxcapi_get_cgroup_item(struct lxc_container *c, const char *subsys, char *retv, int inlen)
 {
 	call_cleaner(cgroup_exit) struct cgroup_ops *cgroup_ops = NULL;
+	int ret;
 
 	if (!c)
 		return -1;
@@ -3304,12 +3319,16 @@ static int do_lxcapi_get_cgroup_item(struct lxc_container *c, const char *subsys
 	if (is_stopped(c))
 		return -1;
 
-	cgroup_ops = cgroup_init(c->lxc_conf);
-	if (!cgroup_ops)
-		return -1;
+	ret = cgroup_get(c->name, c->config_path, subsys, retv, inlen);
+	if (ret == -ENOCGROUP2) {
+		cgroup_ops = cgroup_init(c->lxc_conf);
+		if (!cgroup_ops)
+			return -1;
 
-	return cgroup_ops->get(cgroup_ops, subsys, retv, inlen, c->name,
-			       c->config_path);
+		return cgroup_ops->get(cgroup_ops, subsys, retv, inlen, c->name, c->config_path);
+	}
+
+	return ret;
 }
 
 WRAP_API_3(int, lxcapi_get_cgroup_item, const char *, char *, int)

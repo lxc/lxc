@@ -897,7 +897,10 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 		else
 			TRACE("Sent signal %d to pidfd %d", stopsignal, handler->pid);
 
-		ret = cgroup_ops->unfreeze(cgroup_ops, -1);
+		if (pure_unified_layout(cgroup_ops))
+			ret = __cgroup_unfreeze(cgroup_ops->unified->cgfd_limit, -1);
+		else
+			ret = cgroup_ops->unfreeze(cgroup_ops, -1);
 		if (ret)
 			WARN("Failed to unfreeze container \"%s\"", handler->name);
 
@@ -1518,6 +1521,25 @@ int lxc_cmd_get_cgroup2_fd(const char *name, const char *lxcpath)
 	struct lxc_cmd_rr cmd = {
 		.req = {
 			.cmd = LXC_CMD_GET_CGROUP2_FD,
+		},
+	};
+
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
+	if (ret < 0)
+		return -1;
+
+	if (cmd.rsp.ret < 0)
+		return log_debug_errno(cmd.rsp.ret, -cmd.rsp.ret, "Failed to receive cgroup2 fd");
+
+	return PTR_TO_INT(cmd.rsp.data);
+}
+
+int lxc_cmd_get_limiting_cgroup2_fd(const char *name, const char *lxcpath)
+{
+	int ret, stopped;
+	struct lxc_cmd_rr cmd = {
+		.req = {
+			.cmd = LXC_CMD_GET_LIMITING_CGROUP2_FD,
 		},
 	};
 

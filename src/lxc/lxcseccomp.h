@@ -91,6 +91,14 @@ __hidden extern int lxc_seccomp_send_notifier_fd(struct lxc_seccomp *seccomp, in
 __hidden extern int lxc_seccomp_recv_notifier_fd(struct lxc_seccomp *seccomp, int socket_fd);
 __hidden extern int lxc_seccomp_add_notifier(const char *name, const char *lxcpath,
 					     struct lxc_seccomp *seccomp);
+static inline void lxc_seccomp_close_notifier_fd(struct lxc_seccomp *seccomp)
+{
+#if HAVE_DECL_SECCOMP_NOTIFY_FD
+	if (seccomp->notifier.wants_supervision)
+		close_prot_errno_disarm(seccomp->notifier.notify_fd);
+#endif
+}
+
 static inline int lxc_seccomp_get_notify_fd(struct lxc_seccomp *seccomp)
 {
 #if HAVE_DECL_SECCOMP_NOTIFY_FD
@@ -160,6 +168,10 @@ static inline int lxc_seccomp_add_notifier(const char *name, const char *lxcpath
 static inline int lxc_seccomp_get_notify_fd(struct lxc_seccomp *seccomp)
 {
 	return -EBADF;
+}
+
+static inline void lxc_seccomp_close_notifier_fd(struct lxc_seccomp *seccomp)
+{
 }
 
 #endif /* HAVE_SECCOMP */

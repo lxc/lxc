@@ -37,6 +37,7 @@
 #include "cgroup2_devices.h"
 #include "cgroup_utils.h"
 #include "commands.h"
+#include "commands_utils.h"
 #include "conf.h"
 #include "config.h"
 #include "log.h"
@@ -2026,24 +2027,15 @@ static bool cg_legacy_freeze(struct cgroup_ops *ops)
 static int freezer_cgroup_events_cb(int fd, uint32_t events, void *cbdata,
 				    struct lxc_epoll_descr *descr)
 {
-	__do_close int duped_fd = -EBADF;
 	__do_free char *line = NULL;
 	__do_fclose FILE *f = NULL;
 	int state = PTR_TO_INT(cbdata);
 	size_t len;
 	const char *state_string;
 
-	duped_fd = dup(fd);
-	if (duped_fd < 0)
-		return LXC_MAINLOOP_ERROR;
-
-	if (lseek(duped_fd, 0, SEEK_SET) < (off_t)-1)
-		return LXC_MAINLOOP_ERROR;
-
-	f = fdopen(duped_fd, "re");
+	f = fdopen_at(fd, "", "re", PROTECT_OPEN, PROTECT_LOOKUP_BENEATH);
 	if (!f)
 		return LXC_MAINLOOP_ERROR;
-	move_fd(duped_fd);
 
 	if (state == 1)
 		state_string = "frozen 1";
@@ -2053,6 +2045,8 @@ static int freezer_cgroup_events_cb(int fd, uint32_t events, void *cbdata,
 	while (getline(&line, &len, f) != -1)
 		if (strncmp(line, state_string, STRLITERALLEN("frozen") + 2) == 0)
 			return LXC_MAINLOOP_CLOSE;
+
+	rewind(f);
 
 	return LXC_MAINLOOP_CONTINUE;
 }
@@ -2356,42 +2350,6 @@ static int cgroup_unified_attach_parent_wrapper(void *data)
 					    args->pid);
 }
 
-int cgroup_attach(const struct lxc_conf *conf, const char *name,
-		  const char *lxcpath, pid_t pid)
-{
-	__do_close int unified_fd = -EBADF;
-	int ret;
-
-	if (!conf || !name || !lxcpath || pid <= 0)
-		return ret_errno(EINVAL);
-
-	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
-	if (unified_fd < 0)
-		return ret_errno(EBADF);
-
-	if (!lxc_list_empty(&conf->id_map)) {
-		struct userns_exec_unified_attach_data args = {
-			.conf		= conf,
-			.unified_fd	= unified_fd,
-			.pid		= pid,
-		};
-
-		ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, args.sk_pair);
-		if (ret < 0)
-			return -errno;
-
-		ret = userns_exec_minimal(conf,
-					  cgroup_unified_attach_parent_wrapper,
-					  &args,
-					  cgroup_unified_attach_child_wrapper,
-					  &args);
-	} else {
-		ret = cgroup_attach_leaf(conf, unified_fd, pid);
-	}
-
-	return ret;
-}
-
 /* Technically, we're always at a delegation boundary here (This is especially
  * true when cgroup namespaces are available.). The reasoning is that in order
  * for us to have been able to start a container in the first place the root
@@ -2664,8 +2622,9 @@ __cgfsng_ops static int cgfsng_set(struct cgroup_ops *ops,
 	struct hierarchy *h;
 	int ret = -1;
 
-	if (!ops || !key || !value || !name || !lxcpath)
-		return ret_errno(ENOENT);
+	if (!ops || is_empty_string(key) || is_empty_string(value) ||
+	    is_empty_string(name) || is_empty_string(lxcpath))
+		return ret_errno(EINVAL);
 
 	controller = must_copy_string(key);
 	p = strchr(controller, '.');
@@ -3499,4 +3458,187 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 	cgfsng_ops->get_limiting_cgroup			= cgfsng_get_limiting_cgroup;
 
 	return move_ptr(cgfsng_ops);
+}
+
+int cgroup_attach(const struct lxc_conf *conf, const char *name,
+		  const char *lxcpath, pid_t pid)
+{
+	__do_close int unified_fd = -EBADF;
+	int ret;
+
+	if (!conf || is_empty_string(name) || !is_empty_string(lxcpath) || pid <= 0)
+		return ret_errno(EINVAL);
+
+	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
+	if (unified_fd < 0)
+		return ret_errno(ENOCGROUP2);
+
+	if (!lxc_list_empty(&conf->id_map)) {
+		struct userns_exec_unified_attach_data args = {
+			.conf		= conf,
+			.unified_fd	= unified_fd,
+			.pid		= pid,
+		};
+
+		ret = socketpair(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0, args.sk_pair);
+		if (ret < 0)
+			return -errno;
+
+		ret = userns_exec_minimal(conf,
+					  cgroup_unified_attach_parent_wrapper,
+					  &args,
+					  cgroup_unified_attach_child_wrapper,
+					  &args);
+	} else {
+		ret = cgroup_attach_leaf(conf, unified_fd, pid);
+	}
+
+	return ret;
+}
+
+/* Connects to command socket therefore isn't callable from command handler. */
+int cgroup_get(const char *name, const char *lxcpath,
+	       const char *filename, char *buf, size_t len)
+{
+	__do_close int unified_fd = -EBADF;
+	ssize_t ret;
+
+	if (is_empty_string(filename) || is_empty_string(name) ||
+	    is_empty_string(lxcpath))
+		return ret_errno(EINVAL);
+
+	if ((buf && !len) || (len && !buf))
+		return ret_errno(EINVAL);
+
+	unified_fd = lxc_cmd_get_limiting_cgroup2_fd(name, lxcpath);
+	if (unified_fd < 0)
+		return ret_errno(ENOCGROUP2);
+
+	ret = lxc_read_try_buf_at(unified_fd, filename, buf, len);
+	if (ret < 0)
+		SYSERROR("Failed to read cgroup value");
+
+	return ret;
+}
+
+/* Connects to command socket therefore isn't callable from command handler. */
+int cgroup_set(const char *name, const char *lxcpath,
+	       const char *filename, const char *value)
+{
+	__do_close int unified_fd = -EBADF;
+	ssize_t ret;
+
+	if (is_empty_string(filename) || is_empty_string(value) ||
+	    is_empty_string(name) || is_empty_string(lxcpath))
+		return ret_errno(EINVAL);
+
+	unified_fd = lxc_cmd_get_limiting_cgroup2_fd(name, lxcpath);
+	if (unified_fd < 0)
+		return ret_errno(ENOCGROUP2);
+
+	if (strncmp(filename, "devices.", STRLITERALLEN("devices.")) == 0) {
+		struct device_item device = {};
+
+		ret = device_cgroup_rule_parse(&device, filename, value);
+		if (ret < 0)
+			return log_error_errno(-1, EINVAL, "Failed to parse device string %s=%s", filename, value);
+
+		ret = lxc_cmd_add_bpf_device_cgroup(name, lxcpath, &device);
+	} else {
+		ret = lxc_writeat(unified_fd, filename, value, strlen(value));
+	}
+
+	return ret;
+}
+
+static int do_cgroup_freeze(int unified_fd,
+			    const char *state_string,
+			    int state_num,
+			    int timeout,
+			    const char *epoll_error,
+			    const char *wait_error)
+{
+	__do_close int events_fd = -EBADF;
+	call_cleaner(lxc_mainloop_close) struct lxc_epoll_descr *descr_ptr = NULL;
+	int ret;
+	struct lxc_epoll_descr descr = {};
+
+	if (timeout != 0) {
+		ret = lxc_mainloop_open(&descr);
+		if (ret)
+			return log_error_errno(-1, errno, "%s", epoll_error);
+
+		/* automatically cleaned up now */
+		descr_ptr = &descr;
+
+		events_fd = open_at(unified_fd, "cgroup.events", PROTECT_OPEN, PROTECT_LOOKUP_BENEATH, 0);
+		if (events_fd < 0)
+			return log_error_errno(-errno, errno, "Failed to open cgroup.events file");
+
+		ret = lxc_mainloop_add_handler_events(&descr, events_fd, EPOLLPRI, freezer_cgroup_events_cb, INT_TO_PTR(state_num));
+		if (ret < 0)
+			return log_error_errno(-1, errno, "Failed to add cgroup.events fd handler to mainloop");
+	}
+
+	ret = lxc_writeat(unified_fd, "cgroup.freeze", state_string, 1);
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to open cgroup.freeze file");
+
+	if (timeout != 0) {
+		ret = lxc_mainloop(&descr, timeout);
+		if (ret)
+			return log_error_errno(-1, errno, "%s", wait_error);
+	}
+
+	return log_trace(0, "Container now %s", (state_num == 1) ? "frozen" : "unfrozen");
+}
+
+static inline int __cgroup_freeze(int unified_fd, int timeout)
+{
+	return do_cgroup_freeze(unified_fd, "1", 1, timeout,
+			        "Failed to create epoll instance to wait for container freeze",
+			        "Failed to wait for container to be frozen");
+}
+
+int cgroup_freeze(const char *name, const char *lxcpath, int timeout)
+{
+	__do_close int unified_fd = -EBADF;
+	int ret;
+
+	if (is_empty_string(name) || is_empty_string(lxcpath))
+		return ret_errno(EINVAL);
+
+	unified_fd = lxc_cmd_get_limiting_cgroup2_fd(name, lxcpath);
+	if (unified_fd < 0)
+		return ret_errno(ENOCGROUP2);
+
+	lxc_cmd_notify_state_listeners(name, lxcpath, FREEZING);
+	ret = __cgroup_freeze(unified_fd, timeout);
+	lxc_cmd_notify_state_listeners(name, lxcpath, !ret ? FROZEN : RUNNING);
+	return ret;
+}
+
+int __cgroup_unfreeze(int unified_fd, int timeout)
+{
+	return do_cgroup_freeze(unified_fd, "0", 0, timeout,
+			        "Failed to create epoll instance to wait for container freeze",
+			        "Failed to wait for container to be frozen");
+}
+
+int cgroup_unfreeze(const char *name, const char *lxcpath, int timeout)
+{
+	__do_close int unified_fd = -EBADF;
+	int ret;
+
+	if (is_empty_string(name) || is_empty_string(lxcpath))
+		return ret_errno(EINVAL);
+
+	unified_fd = lxc_cmd_get_limiting_cgroup2_fd(name, lxcpath);
+	if (unified_fd < 0)
+		return ret_errno(ENOCGROUP2);
+
+	lxc_cmd_notify_state_listeners(name, lxcpath, THAWED);
+	ret = __cgroup_unfreeze(unified_fd, timeout);
+	lxc_cmd_notify_state_listeners(name, lxcpath, !ret ? RUNNING : FROZEN);
+	return ret;
 }

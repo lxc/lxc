@@ -191,6 +191,13 @@ __hidden extern void prune_init_scope(char *cg);
 
 __hidden extern int cgroup_attach(const struct lxc_conf *conf, const char *name,
 				  const char *lxcpath, pid_t pid);
+__hidden extern int cgroup_get(const char *name, const char *lxcpath,
+                               const char *filename, char *buf, size_t len);
+__hidden extern int cgroup_set(const char *name, const char *lxcpath,
+                               const char *filename, const char *value);
+__hidden extern int cgroup_freeze(const char *name, const char *lxcpath, int timeout);
+__hidden extern int cgroup_unfreeze(const char *name, const char *lxcpath, int timeout);
+__hidden extern int __cgroup_unfreeze(int unified_fd, int timeout);
 
 static inline bool pure_unified_layout(const struct cgroup_ops *ops)
 {
