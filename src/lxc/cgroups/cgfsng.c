@@ -3039,6 +3039,7 @@ __cgfsng_ops static bool cgfsng_devices_activate(struct cgroup_ops *ops, struct 
 
 static bool __cgfsng_delegate_controllers(struct cgroup_ops *ops, const char *cgroup)
 {
+	__do_close int fd_base = -EBADF;
 	__do_free char *add_controllers = NULL, *base_path = NULL;
 	__do_free_string_list char **parts = NULL;
 	struct hierarchy *unified = ops->unified;
@@ -3070,6 +3071,14 @@ static bool __cgfsng_delegate_controllers(struct cgroup_ops *ops, const char *cg
 			(void)strlcat(add_controllers, " ", full_len + 1);
 	}
 
+	base_path = must_make_path(unified->mountpoint, unified->container_base_path, NULL);
+	fd_base = lxc_open_dirfd(base_path);
+	if (fd_base < 0)
+		return false;
+
+	if (!unified_cgroup_fd(fd_base))
+		return log_error_errno(false, EINVAL, "File descriptor does not refer to cgroup2 filesystem");
+
 	parts = lxc_string_split(cgroup, '/');
 	if (!parts)
 		return false;
@@ -3078,19 +3087,26 @@ static bool __cgfsng_delegate_controllers(struct cgroup_ops *ops, const char *cg
 	if (parts_len > 0)
 		parts_len--;
 
-	base_path = must_make_path(unified->mountpoint, unified->container_base_path, NULL);
 	for (ssize_t i = -1; i < parts_len; i++) {
 		int ret;
-		__do_free char *target = NULL;
 
-		if (i >= 0)
-			base_path = must_append_path(base_path, parts[i], NULL);
-		target = must_make_path(base_path, "cgroup.subtree_control", NULL);
-		ret = lxc_writeat(-1, target, add_controllers, full_len);
+		if (i >= 0) {
+			int fd_next;
+
+			fd_next = openat(fd_base, parts[i], PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH);
+			if (fd_next < 0)
+				return log_error_errno(false, errno, "Failed to open %d(%s)", fd_next, parts[i]);
+			close_prot_errno_move(fd_base, fd_next);
+		}
+
+		ret = lxc_writeat(fd_base, "cgroup.subtree_control", add_controllers, full_len);
 		if (ret < 0)
-			return log_error_errno(false, errno, "Could not enable \"%s\" controllers in the unified cgroup \"%s\"",
-					       add_controllers, target);
-		TRACE("Enable \"%s\" controllers in the unified cgroup \"%s\"", add_controllers, target);
+			return log_error_errno(false, errno,
+					       "Could not enable \"%s\" controllers in the unified cgroup %d(%s)",
+					       add_controllers, fd_base, (i >= 0) ? parts[i] : unified->container_base_path);
+
+		TRACE("Enable \"%s\" controllers in the unified cgroup %d(%s)",
+		      add_controllers, fd_base, (i >= 0) ? parts[i] : unified->container_base_path);
 	}
 
 	return true;
