@@ -30,8 +30,10 @@
 #include <sys/stat.h>
 
 #include "cgroup.h"
-#include "lxc.h"
 #include "commands.h"
+#include "lxc.h"
+#include "lxctest.h"
+#include "utils.h"
 
 #ifndef HAVE_STRLCPY
 #include "include/strlcpy.h"
@@ -50,12 +52,31 @@
  */
 static int test_running_container(const char *lxcpath, const char *name)
 {
+	__do_close int fd_log = -EBADF;
 	int ret = -1;
 	struct lxc_container *c = NULL;
+	struct lxc_log log = {};
+	char template[sizeof(P_tmpdir"/attach_XXXXXX")];
 	char *cgrelpath;
 	char  relpath[PATH_MAX+1];
 	char  value[NAME_MAX], value_save[NAME_MAX];
 	struct cgroup_ops *cgroup_ops;
+
+	(void)strlcpy(template, P_tmpdir"/attach_XXXXXX", sizeof(template));
+
+	fd_log = lxc_make_tmpfile(template, false);
+	if (fd_log < 0) {
+		lxc_error("Failed to create temporary log file for container %s\n", name);
+		exit(EXIT_FAILURE);
+	}
+	log.name = name;
+	log.file = template;
+	log.level = "TRACE";
+	log.prefix = "cgpath";
+	log.quiet = false;
+	log.lxcpath = NULL;
+	if (lxc_log_init(&log))
+		goto err1;
 
 	sprintf(relpath, DEFAULT_PAYLOAD_CGROUP_PREFIX "%s", name);
 
@@ -123,6 +144,17 @@ err3:
 err2:
 	lxc_container_put(c);
 err1:
+
+	if (ret != 0) {
+		char buf[4096];
+		ssize_t buflen;
+		while ((buflen = read(fd_log, buf, 1024)) > 0) {
+			buflen = write(STDERR_FILENO, buf, buflen);
+			if (buflen <= 0)
+				break;
+		}
+	}
+	(void)unlink(template);
 	return ret;
 }
 
