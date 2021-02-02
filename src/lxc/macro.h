@@ -670,4 +670,6 @@ enum {
 	#endif
 #endif
 
+#define ENOCGROUP2 ENOMEDIUM
+
 #endif /* __LXC_MACRO_H */
