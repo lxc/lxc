@@ -2500,6 +2500,31 @@ __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops,
 	return true;
 }
 
+int cgroup_get(struct lxc_conf *conf, const char *filename,
+	       char *buf, size_t len,
+	       const char *name, const char *lxcpath)
+{
+	__do_close int unified_fd = -EBADF;
+	ssize_t ret;
+
+	if (!conf || is_empty_string(filename) || is_empty_string(name) ||
+	    is_empty_string(lxcpath))
+		return ret_errno(EINVAL);
+
+	if ((buf && !len) || (len && !buf))
+		return ret_errno(EINVAL);
+
+	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
+	if (unified_fd < 0)
+		return ret_errno(ENOCGROUP2);
+
+	ret = lxc_read_try_buf_at(unified_fd, filename, buf, len);
+	if (ret < 0)
+		SYSERROR("Failed to read cgroup value");
+
+	return ret;
+}
+
 /* Called externally (i.e. from 'lxc-cgroup') to query cgroup limits.  Here we
  * don't have a cgroup_data set up, so we ask the running container through the
  * commands API for the cgroup path.
