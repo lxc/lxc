@@ -1522,7 +1522,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		 * enough.
 		 */
 		ret = cgroup_attach(conf, name, lxcpath, pid);
-		if (ret) {
+		if (ret == -ENOCGROUP2) {
 			call_cleaner(cgroup_exit) struct cgroup_ops *cgroup_ops = NULL;
 
 			cgroup_ops = cgroup_init(conf);
