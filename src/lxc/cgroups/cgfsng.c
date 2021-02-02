@@ -3501,6 +3501,7 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 	return move_ptr(cgfsng_ops);
 }
 
+/* Connects to command socket therefore isn't callable from command handler. */
 int cgroup_get(struct lxc_conf *conf,
 	       const char *name, const char *lxcpath,
 	       const char *filename, char *buf, size_t len)
@@ -3526,6 +3527,7 @@ int cgroup_get(struct lxc_conf *conf,
 	return ret;
 }
 
+/* Connects to command socket therefore isn't callable from command handler. */
 int cgroup_set(struct lxc_conf *conf, const char *name, const char *lxcpath,
 	       const char *filename, const char *value)
 {
