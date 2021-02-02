@@ -3509,7 +3509,7 @@ int cgroup_get(const char *name, const char *lxcpath,
 	if ((buf && !len) || (len && !buf))
 		return ret_errno(EINVAL);
 
-	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
+	unified_fd = lxc_cmd_get_limiting_cgroup2_fd(name, lxcpath);
 	if (unified_fd < 0)
 		return ret_errno(ENOCGROUP2);
 
@@ -3531,7 +3531,7 @@ int cgroup_set(const char *name, const char *lxcpath,
 	    is_empty_string(name) || is_empty_string(lxcpath))
 		return ret_errno(EINVAL);
 
-	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
+	unified_fd = lxc_cmd_get_limiting_cgroup2_fd(name, lxcpath);
 	if (unified_fd < 0)
 		return ret_errno(ENOCGROUP2);
 
@@ -3600,7 +3600,7 @@ int cgroup_freeze(const char *name, const char *lxcpath, int timeout)
 	if (is_empty_string(name) || is_empty_string(lxcpath))
 		return ret_errno(EINVAL);
 
-	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
+	unified_fd = lxc_cmd_get_limiting_cgroup2_fd(name, lxcpath);
 	if (unified_fd < 0)
 		return ret_errno(ENOCGROUP2);
 
@@ -3620,7 +3620,7 @@ int cgroup_unfreeze(const char *name, const char *lxcpath, int timeout)
 	if (is_empty_string(name) || is_empty_string(lxcpath))
 		return ret_errno(EINVAL);
 
-	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
+	unified_fd = lxc_cmd_get_limiting_cgroup2_fd(name, lxcpath);
 	if (unified_fd < 0)
 		return ret_errno(ENOCGROUP2);
 
