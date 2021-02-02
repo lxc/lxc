@@ -104,33 +104,33 @@ static int test_running_container(const char *lxcpath, const char *name)
 		goto err3;
 
 	/* test get/set value using memory.soft_limit_in_bytes file */
-	ret = cgroup_ops->get(cgroup_ops, "memory.soft_limit_in_bytes", value,
-			      sizeof(value), c->name, c->config_path);
-	if (ret < 0) {
+	ret = cgroup_ops->get(cgroup_ops, "pids.max", value, sizeof(value),
+			      c->name, c->config_path);
+        if (ret < 0) {
 		TSTERR("cgroup_get failed");
 		goto err3;
 	}
 	(void)strlcpy(value_save, value, NAME_MAX);
 
-	ret = cgroup_ops->set(cgroup_ops, "memory.soft_limit_in_bytes", "512M",
+	ret = cgroup_ops->set(cgroup_ops, "pids.max", "10000",
 			      c->name, c->config_path);
 	if (ret < 0) {
 		TSTERR("cgroup_set failed %d %d", ret, errno);
 		goto err3;
 	}
-	ret = cgroup_ops->get(cgroup_ops, "memory.soft_limit_in_bytes", value,
+	ret = cgroup_ops->get(cgroup_ops, "pids.max", value,
 			      sizeof(value), c->name, c->config_path);
 	if (ret < 0) {
 		TSTERR("cgroup_get failed");
 		goto err3;
 	}
-	if (strcmp(value, "536870912\n")) {
+	if (strcmp(value, "10000\n")) {
 		TSTERR("cgroup_set_bypath failed to set value >%s<", value);
 		goto err3;
 	}
 
 	/* restore original value */
-	ret = cgroup_ops->set(cgroup_ops, "memory.soft_limit_in_bytes",
+	ret = cgroup_ops->set(cgroup_ops, "pids.max",
 			      value_save, c->name, c->config_path);
 	if (ret < 0) {
 		TSTERR("cgroup_set failed");
