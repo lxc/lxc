@@ -2033,9 +2033,6 @@ static int freezer_cgroup_events_cb(int fd, uint32_t events, void *cbdata,
 	size_t len;
 	const char *state_string;
 
-	if (lseek(fd, 0, SEEK_SET) < (off_t)-1)
-		return LXC_MAINLOOP_ERROR;
-
 	f = fdopen_at(fd, "", "re", PROTECT_OPEN, PROTECT_LOOKUP_BENEATH);
 	if (!f)
 		return LXC_MAINLOOP_ERROR;
@@ -2048,6 +2045,8 @@ static int freezer_cgroup_events_cb(int fd, uint32_t events, void *cbdata,
 	while (getline(&line, &len, f) != -1)
 		if (strncmp(line, state_string, STRLITERALLEN("frozen") + 2) == 0)
 			return LXC_MAINLOOP_CLOSE;
+
+	rewind(f);
 
 	return LXC_MAINLOOP_CONTINUE;
 }
