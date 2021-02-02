@@ -29,6 +29,15 @@
 		fd = -EBADF;        \
 	}
 
+#define close_prot_errno_move(fd, new_fd) \
+	if (fd >= 0) {                       \
+		int _e_ = errno;             \
+		close(fd);                   \
+		errno = _e_;                 \
+		fd = new_fd;                 \
+		new_fd = -EBADF;	     \
+	}
+
 static inline void close_prot_errno_disarm_function(int *fd)
 {
        close_prot_errno_disarm(*fd);
