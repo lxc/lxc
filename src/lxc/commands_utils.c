@@ -190,3 +190,10 @@ int lxc_add_state_client(int state_client_fd, struct lxc_handler *handler,
 	TRACE("Added state client fd %d to state client list", state_client_fd);
 	return MAX_STATE;
 }
+
+void lxc_cmd_notify_state_listeners(const char *name, const char *lxcpath,
+				    lxc_state_t state)
+{
+	(void)lxc_cmd_serve_state_clients(name, lxcpath, state);
+	(void)lxc_monitor_send_state(name, state, lxcpath);
+}
