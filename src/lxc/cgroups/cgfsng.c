@@ -2675,6 +2675,35 @@ static int device_cgroup_rule_parse(struct device_item *device, const char *key,
 	return device_cgroup_parse_access(device, ++val);
 }
 
+int cgroup_set(struct lxc_conf *conf, const char *name, const char *lxcpath,
+	       const char *filename, const char *value)
+{
+	__do_close int unified_fd = -EBADF;
+	ssize_t ret;
+
+	if (!conf || is_empty_string(filename) || is_empty_string(value) ||
+	    is_empty_string(name) || is_empty_string(lxcpath))
+		return ret_errno(EINVAL);
+
+	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
+	if (unified_fd < 0)
+		return ret_errno(ENOCGROUP2);
+
+	if (strncmp(filename, "devices.", STRLITERALLEN("devices.")) == 0) {
+		struct device_item device = {};
+
+		ret = device_cgroup_rule_parse(&device, filename, value);
+		if (ret < 0)
+			return log_error_errno(-1, EINVAL, "Failed to parse device string %s=%s", filename, value);
+
+		ret = lxc_cmd_add_bpf_device_cgroup(name, lxcpath, &device);
+	} else {
+		ret = lxc_writeat(unified_fd, filename, value, strlen(value));
+	}
+
+	return ret;
+}
+
 /* Called externally (i.e. from 'lxc-cgroup') to set new cgroup limits.  Here we
  * don't have a cgroup_data set up, so we ask the running container through the
  * commands API for the cgroup path.
