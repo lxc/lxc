@@ -3470,7 +3470,7 @@ int cgroup_attach(const struct lxc_conf *conf, const char *name,
 
 	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
 	if (unified_fd < 0)
-		return ret_errno(EBADF);
+		return ret_errno(ENOCGROUP2);
 
 	if (!lxc_list_empty(&conf->id_map)) {
 		struct userns_exec_unified_attach_data args = {
