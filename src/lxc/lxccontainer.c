@@ -3277,6 +3277,7 @@ WRAP_API_1(bool, lxcapi_set_config_path, const char *)
 static bool do_lxcapi_set_cgroup_item(struct lxc_container *c, const char *subsys, const char *value)
 {
 	call_cleaner(cgroup_exit) struct cgroup_ops *cgroup_ops = NULL;
+	int ret;
 
 	if (!c)
 		return false;
@@ -3284,12 +3285,16 @@ static bool do_lxcapi_set_cgroup_item(struct lxc_container *c, const char *subsy
 	if (is_stopped(c))
 		return false;
 
-	cgroup_ops = cgroup_init(c->lxc_conf);
-	if (!cgroup_ops)
-		return false;
+	ret = cgroup_set(c->lxc_conf, c->name, c->config_path, subsys, value);
+	if (ret == ENOCGROUP2) {
+		cgroup_ops = cgroup_init(c->lxc_conf);
+		if (!cgroup_ops)
+			return false;
 
-	return cgroup_ops->set(cgroup_ops, subsys, value, c->name,
-			       c->config_path) == 0;
+		ret = cgroup_ops->set(cgroup_ops, subsys, value, c->name, c->config_path) == 0;
+	}
+
+	return ret == 0;
 }
 
 WRAP_API_2(bool, lxcapi_set_cgroup_item, const char *, const char *)
