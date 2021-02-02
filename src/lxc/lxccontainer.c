@@ -507,32 +507,41 @@ WRAP_API(bool, lxcapi_is_running)
 
 static bool do_lxcapi_freeze(struct lxc_container *c)
 {
+	bool bret = true;
 	lxc_state_t s;
 
 	if (!c || !c->lxc_conf)
 		return false;
 
 	s = lxc_getstate(c->name, c->config_path);
-	if (s != FROZEN)
-		return lxc_freeze(c->lxc_conf, c->name, c->config_path) == 0;
+	if (s != FROZEN) {
+		bret = cgroup_freeze(c->lxc_conf, c->name, c->config_path, -1);
+		if (!bret && errno == ENOCGROUP2)
+			bret = lxc_freeze(c->lxc_conf, c->name, c->config_path);
+	}
 
-	return true;
+	return bret;
 }
 
 WRAP_API(bool, lxcapi_freeze)
 
 static bool do_lxcapi_unfreeze(struct lxc_container *c)
 {
+	bool bret = true;
 	lxc_state_t s;
 
 	if (!c || !c->lxc_conf)
 		return false;
 
 	s = lxc_getstate(c->name, c->config_path);
-	if (s == FROZEN)
-		return lxc_unfreeze(c->lxc_conf, c->name, c->config_path) == 0;
+	if (s == FROZEN) {
+		bret = cgroup_unfreeze(c->lxc_conf, c->name, c->config_path, -1);
+		if (!bret && errno == ENOCGROUP2)
+			bret = lxc_unfreeze(c->lxc_conf, c->name, c->config_path);
+	}
 
-	return true;
+
+	return bret;
 }
 
 WRAP_API(bool, lxcapi_unfreeze)
