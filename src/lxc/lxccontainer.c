@@ -515,7 +515,7 @@ static bool do_lxcapi_freeze(struct lxc_container *c)
 
 	s = lxc_getstate(c->name, c->config_path);
 	if (s != FROZEN) {
-		bret = cgroup_freeze(c->lxc_conf, c->name, c->config_path, -1);
+		bret = cgroup_freeze(c->name, c->config_path, -1);
 		if (!bret && errno == ENOCGROUP2)
 			bret = lxc_freeze(c->lxc_conf, c->name, c->config_path);
 	}
@@ -535,7 +535,7 @@ static bool do_lxcapi_unfreeze(struct lxc_container *c)
 
 	s = lxc_getstate(c->name, c->config_path);
 	if (s == FROZEN) {
-		bret = cgroup_unfreeze(c->lxc_conf, c->name, c->config_path, -1);
+		bret = cgroup_unfreeze(c->name, c->config_path, -1);
 		if (!bret && errno == ENOCGROUP2)
 			bret = lxc_unfreeze(c->lxc_conf, c->name, c->config_path);
 	}
@@ -3294,7 +3294,7 @@ static bool do_lxcapi_set_cgroup_item(struct lxc_container *c, const char *subsy
 	if (is_stopped(c))
 		return false;
 
-	ret = cgroup_set(c->lxc_conf, c->name, c->config_path, subsys, value);
+	ret = cgroup_set(c->name, c->config_path, subsys, value);
 	if (ret == ENOCGROUP2) {
 		cgroup_ops = cgroup_init(c->lxc_conf);
 		if (!cgroup_ops)
@@ -3319,7 +3319,7 @@ static int do_lxcapi_get_cgroup_item(struct lxc_container *c, const char *subsys
 	if (is_stopped(c))
 		return -1;
 
-	ret = cgroup_get(c->lxc_conf, c->name, c->config_path, subsys, retv, inlen);
+	ret = cgroup_get(c->name, c->config_path, subsys, retv, inlen);
 	if (ret == ENOCGROUP2) {
 		cgroup_ops = cgroup_init(c->lxc_conf);
 		if (!cgroup_ops)
