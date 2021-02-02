@@ -191,9 +191,9 @@ __hidden extern void prune_init_scope(char *cg);
 
 __hidden extern int cgroup_attach(const struct lxc_conf *conf, const char *name,
 				  const char *lxcpath, pid_t pid);
-__hidden extern int cgroup_get(struct lxc_conf *conf, const char *filename,
-                               char *buf, size_t len, const char *name,
-                               const char *lxcpath);
+__hidden extern int cgroup_get(struct lxc_conf *conf, const char *name,
+                               const char *lxcpath, const char *filename,
+                               char *buf, size_t len);
 
 static inline bool pure_unified_layout(const struct cgroup_ops *ops)
 {

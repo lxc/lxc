@@ -3306,7 +3306,7 @@ static int do_lxcapi_get_cgroup_item(struct lxc_container *c, const char *subsys
 	if (is_stopped(c))
 		return -1;
 
-	ret = cgroup_get(c->lxc_conf, subsys, retv, inlen, c->name, c->config_path);
+	ret = cgroup_get(c->lxc_conf, c->name, c->config_path, subsys, retv, inlen);
 	if (ret == ENOCGROUP2) {
 		cgroup_ops = cgroup_init(c->lxc_conf);
 		if (!cgroup_ops)

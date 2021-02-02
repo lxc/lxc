@@ -2500,9 +2500,9 @@ __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops,
 	return true;
 }
 
-int cgroup_get(struct lxc_conf *conf, const char *filename,
-	       char *buf, size_t len,
-	       const char *name, const char *lxcpath)
+int cgroup_get(struct lxc_conf *conf,
+	       const char *name, const char *lxcpath,
+	       const char *filename, char *buf, size_t len)
 {
 	__do_close int unified_fd = -EBADF;
 	ssize_t ret;
