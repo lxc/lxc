@@ -37,6 +37,7 @@
 #include "cgroup2_devices.h"
 #include "cgroup_utils.h"
 #include "commands.h"
+#include "commands_utils.h"
 #include "conf.h"
 #include "config.h"
 #include "log.h"
@@ -2026,24 +2027,18 @@ static bool cg_legacy_freeze(struct cgroup_ops *ops)
 static int freezer_cgroup_events_cb(int fd, uint32_t events, void *cbdata,
 				    struct lxc_epoll_descr *descr)
 {
-	__do_close int duped_fd = -EBADF;
 	__do_free char *line = NULL;
 	__do_fclose FILE *f = NULL;
 	int state = PTR_TO_INT(cbdata);
 	size_t len;
 	const char *state_string;
 
-	duped_fd = dup(fd);
-	if (duped_fd < 0)
+	if (lseek(fd, 0, SEEK_SET) < (off_t)-1)
 		return LXC_MAINLOOP_ERROR;
 
-	if (lseek(duped_fd, 0, SEEK_SET) < (off_t)-1)
-		return LXC_MAINLOOP_ERROR;
-
-	f = fdopen(duped_fd, "re");
+	f = fdopen_at(fd, "", "re", PROTECT_OPEN, PROTECT_LOOKUP_BENEATH);
 	if (!f)
 		return LXC_MAINLOOP_ERROR;
-	move_fd(duped_fd);
 
 	if (state == 1)
 		state_string = "frozen 1";
@@ -3555,4 +3550,80 @@ int cgroup_set(struct lxc_conf *conf, const char *name, const char *lxcpath,
 	}
 
 	return ret;
+}
+
+static int __cgroup_freeze(int unified_fd,
+			   const char *state_string,
+			   int state_num,
+			   int timeout,
+			   const char *epoll_error,
+			   const char *wait_error)
+{
+	__do_close int events_fd = -EBADF;
+	call_cleaner(lxc_mainloop_close) struct lxc_epoll_descr *descr_ptr = NULL;
+	int ret;
+	struct lxc_epoll_descr descr = {};
+
+	if (timeout != 0) {
+		ret = lxc_mainloop_open(&descr);
+		if (ret)
+			return log_error_errno(-1, errno, "%s", epoll_error);
+
+		/* automatically cleaned up now */
+		descr_ptr = &descr;
+
+		events_fd = open_at(unified_fd, "cgroup.events", PROTECT_OPEN, PROTECT_LOOKUP_BENEATH, 0);
+		if (events_fd < 0)
+			return log_error_errno(-errno, errno, "Failed to open cgroup.events file");
+
+		ret = lxc_mainloop_add_handler_events(&descr, events_fd, EPOLLPRI, freezer_cgroup_events_cb, INT_TO_PTR(state_num));
+		if (ret < 0)
+			return log_error_errno(-1, errno, "Failed to add cgroup.events fd handler to mainloop");
+	}
+
+	ret = lxc_writeat(unified_fd, "cgroup.freeze", state_string, 1);
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to open cgroup.freeze file");
+
+	if (timeout != 0) {
+		ret = lxc_mainloop(&descr, timeout);
+		if (ret)
+			return log_error_errno(-1, errno, "%s", wait_error);
+	}
+
+	return log_trace(0, "Container now %s", (state_num == 1) ? "frozen" : "unfrozen");
+}
+
+bool cgroup_freeze(struct lxc_conf *conf, const char *name, const char *lxcpath, int timeout)
+{
+	__do_close int unified_fd = -EBADF;
+	int ret;
+
+	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
+	if (unified_fd < 0)
+		return ret_errno(ENOCGROUP2);
+
+	lxc_cmd_notify_state_listeners(name, lxcpath, FREEZING);
+	ret = __cgroup_freeze(unified_fd, "1", 1, timeout,
+			      "Failed to create epoll instance to wait for container freeze",
+			      "Failed to wait for container to be frozen");
+	lxc_cmd_notify_state_listeners(name, lxcpath, !ret ? FROZEN : RUNNING);
+	return ret == 0;
+}
+
+bool cgroup_unfreeze(struct lxc_conf *conf, const char *name, const char *lxcpath, int timeout)
+{
+	__do_close int unified_fd = -EBADF;
+	int ret;
+
+	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
+	if (unified_fd < 0)
+		return ret_errno(ENOCGROUP2);
+
+	lxc_cmd_notify_state_listeners(name, lxcpath, THAWED);
+	ret = __cgroup_freeze(unified_fd, "0", 0, timeout,
+			      "Failed to create epoll instance to wait for container freeze",
+			      "Failed to wait for container to be frozen");
+	lxc_cmd_notify_state_listeners(name, lxcpath, !ret ? RUNNING : FROZEN);
+	return ret == 0;
 }

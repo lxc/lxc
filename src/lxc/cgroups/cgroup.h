@@ -196,6 +196,10 @@ __hidden extern int cgroup_get(struct lxc_conf *conf, const char *name,
 __hidden extern int cgroup_set(struct lxc_conf *conf, const char *name,
                                const char *lxcpath, const char *filename,
                                const char *value);
+__hidden extern bool cgroup_freeze(struct lxc_conf *conf, const char *name,
+                                   const char *lxcpath, int timeout);
+__hidden extern bool cgroup_unfreeze(struct lxc_conf *conf, const char *name,
+                                     const char *lxcpath, int timeout);
 
 static inline bool pure_unified_layout(const struct cgroup_ops *ops)
 {
