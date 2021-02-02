@@ -1531,6 +1531,25 @@ int lxc_cmd_get_cgroup2_fd(const char *name, const char *lxcpath)
 	return PTR_TO_INT(cmd.rsp.data);
 }
 
+int lxc_cmd_get_limiting_cgroup2_fd(const char *name, const char *lxcpath)
+{
+	int ret, stopped;
+	struct lxc_cmd_rr cmd = {
+		.req = {
+			.cmd = LXC_CMD_GET_LIMITING_CGROUP2_FD,
+		},
+	};
+
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
+	if (ret < 0)
+		return -1;
+
+	if (cmd.rsp.ret < 0)
+		return log_debug_errno(cmd.rsp.ret, -cmd.rsp.ret, "Failed to receive cgroup2 fd");
+
+	return PTR_TO_INT(cmd.rsp.data);
+}
+
 static int lxc_cmd_get_cgroup2_fd_callback_do(int fd, struct lxc_cmd_req *req,
 					      struct lxc_handler *handler,
 					      struct lxc_epoll_descr *descr,
