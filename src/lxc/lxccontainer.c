@@ -3296,9 +3296,8 @@ WRAP_API_2(bool, lxcapi_set_cgroup_item, const char *, const char *)
 
 static int do_lxcapi_get_cgroup_item(struct lxc_container *c, const char *subsys, char *retv, int inlen)
 {
-	int ret;
-
 	call_cleaner(cgroup_exit) struct cgroup_ops *cgroup_ops = NULL;
+	int ret;
 
 	if (!c)
 		return -1;
