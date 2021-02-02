@@ -194,6 +194,9 @@ __hidden extern int cgroup_attach(const struct lxc_conf *conf, const char *name,
 __hidden extern int cgroup_get(struct lxc_conf *conf, const char *name,
                                const char *lxcpath, const char *filename,
                                char *buf, size_t len);
+__hidden extern int cgroup_set(struct lxc_conf *conf, const char *name,
+                               const char *lxcpath, const char *filename,
+                               const char *value);
 
 static inline bool pure_unified_layout(const struct cgroup_ops *ops)
 {
