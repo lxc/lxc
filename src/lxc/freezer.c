@@ -15,6 +15,7 @@
 #include "cgroups/cgroup.h"
 #include "cgroups/cgroup_utils.h"
 #include "commands.h"
+#include "commands_utils.h"
 #include "config.h"
 #include "error.h"
 #include "log.h"
@@ -24,13 +25,6 @@
 #include "string_utils.h"
 
 lxc_log_define(freezer, lxc);
-
-static void notify_state_listeners(const char *name, const char *lxcpath,
-				   lxc_state_t state)
-{
-	(void)lxc_cmd_serve_state_clients(name, lxcpath, state);
-	(void)lxc_monitor_send_state(name, state, lxcpath);
-}
 
 static int do_freeze_thaw(bool freeze, struct lxc_conf *conf, const char *name,
 			  const char *lxcpath)
@@ -64,7 +58,7 @@ static int do_freeze_thaw(bool freeze, struct lxc_conf *conf, const char *name,
 		cur_state[lxc_char_right_gc(cur_state, strlen(cur_state))] = '\0';
 		ret = strncmp(cur_state, state, state_len);
 		if (ret == 0) {
-			notify_state_listeners(name, lxcpath, new_state);
+			lxc_cmd_notify_state_listeners(name, lxcpath, new_state);
 			return 0;
 		}
 
@@ -78,12 +72,12 @@ int lxc_freeze(struct lxc_conf *conf, const char *name, const char *lxcpath)
 {
 	int ret;
 
-	notify_state_listeners(name, lxcpath, FREEZING);
+	lxc_cmd_notify_state_listeners(name, lxcpath, FREEZING);
 	if (unified_cgroup_hierarchy() > 0)
 		ret = lxc_cmd_freeze(name, lxcpath, -1);
 	else
 		ret = do_freeze_thaw(true, conf, name, lxcpath);
-	notify_state_listeners(name, lxcpath, !ret ? FROZEN : RUNNING);
+	lxc_cmd_notify_state_listeners(name, lxcpath, !ret ? FROZEN : RUNNING);
 	return ret;
 }
 
@@ -91,11 +85,11 @@ int lxc_unfreeze(struct lxc_conf *conf, const char *name, const char *lxcpath)
 {
 	int ret;
 
-	notify_state_listeners(name, lxcpath, THAWED);
+	lxc_cmd_notify_state_listeners(name, lxcpath, THAWED);
 	if (unified_cgroup_hierarchy() > 0)
 		ret = lxc_cmd_unfreeze(name, lxcpath, -1);
 	else
 		ret = do_freeze_thaw(false, conf, name, lxcpath);
-	notify_state_listeners(name, lxcpath, !ret ? RUNNING : FROZEN);
+	lxc_cmd_notify_state_listeners(name, lxcpath, !ret ? RUNNING : FROZEN);
 	return ret;
 }
