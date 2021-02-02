@@ -1638,7 +1638,6 @@ int lxc_seccomp_recv_notifier_fd(struct lxc_seccomp *seccomp, int socket_fd)
 int lxc_seccomp_add_notifier(const char *name, const char *lxcpath,
 			     struct lxc_seccomp *seccomp)
 {
-
 #if HAVE_DECL_SECCOMP_NOTIFY_FD
 	if (seccomp->notifier.wants_supervision) {
 		int ret;
