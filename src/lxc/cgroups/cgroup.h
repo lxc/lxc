@@ -197,6 +197,7 @@ __hidden extern int cgroup_set(const char *name, const char *lxcpath,
                                const char *filename, const char *value);
 __hidden extern int cgroup_freeze(const char *name, const char *lxcpath, int timeout);
 __hidden extern int cgroup_unfreeze(const char *name, const char *lxcpath, int timeout);
+__hidden extern int __cgroup_unfreeze(int unified_fd, int timeout);
 
 static inline bool pure_unified_layout(const struct cgroup_ops *ops)
 {
