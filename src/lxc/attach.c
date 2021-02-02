@@ -229,7 +229,7 @@ static int userns_setup_ids(struct attach_context *ctx,
 	if (!(options->namespaces & CLONE_NEWUSER))
 		return 0;
 
-	f_uidmap = fdopen_at(ctx->dfd_init_pid, "uid_map", "re", PROTECT_OPEN, PROTECT_LOOKUP_ABSOLUTE);
+	f_uidmap = fdopen_at(ctx->dfd_init_pid, "uid_map", "re", PROTECT_OPEN, PROTECT_LOOKUP_BENEATH);
 	if (!f_uidmap)
 		return log_error_errno(-errno, errno, "Failed to open uid_map");
 
@@ -249,7 +249,7 @@ static int userns_setup_ids(struct attach_context *ctx,
 		}
 	}
 
-	f_gidmap = fdopen_at(ctx->dfd_init_pid, "gid_map", "re", PROTECT_OPEN, PROTECT_LOOKUP_ABSOLUTE);
+	f_gidmap = fdopen_at(ctx->dfd_init_pid, "gid_map", "re", PROTECT_OPEN, PROTECT_LOOKUP_BENEATH);
 	if (!f_gidmap)
 		return log_error_errno(-errno, errno, "Failed to open gid_map");
 
@@ -314,7 +314,7 @@ static int parse_init_status(struct attach_context *ctx, lxc_attach_options_t *o
 	bool caps_found = false;
 	int ret;
 
-	f = fdopen_at(ctx->dfd_init_pid, "status", "re", PROTECT_OPEN, PROTECT_LOOKUP_ABSOLUTE);
+	f = fdopen_at(ctx->dfd_init_pid, "status", "re", PROTECT_OPEN, PROTECT_LOOKUP_BENEATH);
 	if (!f)
 		return log_error_errno(-errno, errno, "Failed to open status file");
 
@@ -572,6 +572,8 @@ static void put_attach_context(struct attach_context *ctx)
 
 static int attach_context_container(struct attach_context *ctx)
 {
+	int fret = 0;
+
 	for (int i = 0; i < LXC_NS_MAX; i++) {
 		int ret;
 
@@ -579,16 +581,19 @@ static int attach_context_container(struct attach_context *ctx)
 			continue;
 
 		ret = setns(ctx->ns_fd[i], ns_info[i].clone_flag);
-		if (ret < 0)
-			return log_error_errno(-1, errno,
-					       "Failed to attach to %s namespace of %d",
-					       ns_info[i].proc_name, ctx->init_pid);
+		if (ret)
+			return log_error_errno(-errno, errno, "Failed to attach to %s namespace of %d", ns_info[i].proc_name, ctx->init_pid);
 
-		DEBUG("Attached to %s namespace of %d",
-		ns_info[i].proc_name, ctx->init_pid);
+		DEBUG("Attached to %s namespace of %d", ns_info[i].proc_name, ctx->init_pid);
+
+		if (close(ctx->ns_fd[i])) {
+			fret = -errno;
+			SYSERROR("Failed to close file descriptor for %s namespace", ns_info[i].proc_name);
+		}
+		ctx->ns_fd[i] = -EBADF;
 	}
 
-	return 0;
+	return fret;
 }
 
 /*
@@ -1125,18 +1130,6 @@ __noreturn static void do_attach(struct attach_payload *ap)
 		TRACE("Set PR_SET_NO_NEW_PRIVS");
 	}
 
-	if (conf->seccomp.seccomp) {
-		ret = lxc_seccomp_load(conf);
-		if (ret < 0)
-			goto on_error;
-
-		TRACE("Loaded seccomp profile");
-
-		ret = lxc_seccomp_send_notifier_fd(&conf->seccomp, ap->ipc_socket);
-		if (ret < 0)
-			goto on_error;
-	}
-
 	/* The following is done after the communication socket is shut down.
 	 * That way, all errors that might (though unlikely) occur up until this
 	 * point will have their messages printed to the original stderr (if
@@ -1204,6 +1197,18 @@ __noreturn static void do_attach(struct attach_payload *ap)
 	ret = fix_stdio_permissions(ctx->target_ns_uid);
 	if (ret)
 		INFO("Failed to adjust stdio permissions");
+
+	if (conf->seccomp.seccomp) {
+		ret = lxc_seccomp_load(conf);
+		if (ret < 0)
+			goto on_error;
+
+		TRACE("Loaded seccomp profile");
+
+		ret = lxc_seccomp_send_notifier_fd(&conf->seccomp, ap->ipc_socket);
+		if (ret < 0)
+			goto on_error;
+	}
 
 	if (!lxc_switch_uid_gid(ctx->target_ns_uid, ctx->target_ns_gid))
 		goto on_error;
@@ -1435,9 +1440,6 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 			put_attach_context(ctx);
 			_exit(EXIT_FAILURE);
 		}
-
-		/* close namespace file descriptors */
-		close_nsfds(ctx);
 
 		/* Attach succeeded, try to cwd. */
 		if (options->initial_cwd)

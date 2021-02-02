@@ -23,7 +23,7 @@
 
 int lxc_open_dirfd(const char *dir)
 {
-	return open(dir, O_DIRECTORY | O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
+	return open_at(-EBADF, dir, PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE & ~RESOLVE_NO_XDEV, 0);
 }
 
 int lxc_readat(int dirfd, const char *filename, void *buf, size_t count)
@@ -47,8 +47,7 @@ int lxc_writeat(int dirfd, const char *filename, const void *buf, size_t count)
 	__do_close int fd = -EBADF;
 	ssize_t ret;
 
-	fd = openat(dirfd, filename,
-		    O_WRONLY | O_CLOEXEC | O_NOCTTY | O_NOFOLLOW);
+	fd = open_at(dirfd, filename, PROTECT_OPEN_W_WITH_TRAILING_SYMLINKS, PROTECT_LOOKUP_BENEATH, 0);
 	if (fd < 0)
 		return -1;
 

@@ -30,4 +30,6 @@ __hidden extern bool test_writeable_v2(char *mountpoint, char *path);
 
 __hidden extern int unified_cgroup_hierarchy(void);
 
+__hidden extern int unified_cgroup_fd(int fd);
+
 #endif /* __LXC_CGROUP_UTILS_H */
