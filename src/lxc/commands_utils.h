@@ -62,4 +62,7 @@ __hidden extern int lxc_add_state_client(int state_client_fd, struct lxc_handler
 __hidden extern int lxc_cmd_connect(const char *name, const char *lxcpath,
 				    const char *hashed_sock_name, const char *suffix);
 
+__hidden extern void lxc_cmd_notify_state_listeners(const char *name,
+                                                    const char *lxcpath,
+                                                    lxc_state_t state);
 #endif /* __LXC_COMMANDS_UTILS_H */
