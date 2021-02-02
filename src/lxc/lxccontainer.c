@@ -3300,7 +3300,7 @@ static bool do_lxcapi_set_cgroup_item(struct lxc_container *c, const char *subsy
 		if (!cgroup_ops)
 			return false;
 
-		ret = cgroup_ops->set(cgroup_ops, subsys, value, c->name, c->config_path) == 0;
+		ret = cgroup_ops->set(cgroup_ops, subsys, value, c->name, c->config_path);
 	}
 
 	return ret == 0;

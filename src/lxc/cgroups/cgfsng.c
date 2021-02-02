@@ -2622,8 +2622,9 @@ __cgfsng_ops static int cgfsng_set(struct cgroup_ops *ops,
 	struct hierarchy *h;
 	int ret = -1;
 
-	if (!ops || !key || !value || !name || !lxcpath)
-		return ret_errno(ENOENT);
+	if (!ops || is_empty_string(key) || is_empty_string(value) ||
+	    is_empty_string(name) || is_empty_string(lxcpath))
+		return ret_errno(EINVAL);
 
 	controller = must_copy_string(key);
 	p = strchr(controller, '.');
