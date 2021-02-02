@@ -268,6 +268,9 @@ struct lxc_open_how {
 #define PROTECT_OPEN_WITH_TRAILING_SYMLINKS (O_CLOEXEC | O_NOCTTY | O_RDONLY)
 #define PROTECT_OPEN (PROTECT_OPEN_WITH_TRAILING_SYMLINKS | O_NOFOLLOW)
 
+#define PROTECT_OPEN_W_WITH_TRAILING_SYMLINKS (O_CLOEXEC | O_NOCTTY | O_WRONLY)
+#define PROTECT_OPEN_W (PROTECT_OPEN_WITH_TRAILING_SYMLINKS | O_NOFOLLOW)
+
 #ifndef HAVE_OPENAT2
 static inline int openat2(int dfd, const char *filename, struct lxc_open_how *how, size_t size)
 {
