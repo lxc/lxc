@@ -36,8 +36,8 @@ int main(int argc, char *argv[])
 	__do_close int fd_log = -EBADF;
 	int ret = 1;
 	struct lxc_log log = {};
+	struct lxc_container *c = NULL;
 	char template[sizeof(P_tmpdir"/attach_XXXXXX")];
-	struct lxc_container *c;
 
 	(void)strlcpy(template, P_tmpdir"/attach_XXXXXX", sizeof(template));
 
@@ -107,6 +107,7 @@ out:
 	}
 	(void)unlink(template);
 
-	lxc_container_put(c);
+	if (c)
+		lxc_container_put(c);
 	return ret;
 }
