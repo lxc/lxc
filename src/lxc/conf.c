@@ -2643,8 +2643,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->lsm_se_context = NULL;
 	new->lsm_se_keyring_context = NULL;
 	new->keyring_disable_session = false;
-	new->tmp_umount_proc = false;
-	new->tmp_umount_proc = 0;
+	new->transient_procfs_mnt = false;
 	new->shmount.path_host = NULL;
 	new->shmount.path_cont = NULL;
 
@@ -2957,69 +2956,68 @@ again:
  * my own.  This is needed to have a known-good proc mount for setting
  * up LSMs both at container startup and attach.
  *
- * @rootfs : the rootfs where proc should be mounted
- *
- * Returns < 0 on failure, 0 if the correct proc was already mounted
- * and 1 if a new proc was mounted.
- *
  * NOTE: not to be called from inside the container namespace!
  */
-static int lxc_mount_proc_if_needed(const char *rootfs)
+static int lxc_transient_proc(struct lxc_rootfs *rootfs)
 {
-	char path[PATH_MAX] = {0};
-	int link_to_pid, linklen, mypid, ret;
-	char link[INTTYPE_TO_STRLEN(pid_t)] = {0};
+	__do_close int fd_proc = -EBADF;
+	int link_to_pid, link_len, pid_self, ret;
+	char link[INTTYPE_TO_STRLEN(pid_t) + 1];
 
-	ret = snprintf(path, PATH_MAX, "%s/proc/self", rootfs);
-	if (ret < 0 || ret >= PATH_MAX) {
-		SYSERROR("The name of proc path is too long");
-		return -1;
-	}
-
-	linklen = readlink(path, link, sizeof(link));
-
-	ret = snprintf(path, PATH_MAX, "%s/proc", rootfs);
-	if (ret < 0 || ret >= PATH_MAX) {
-		SYSERROR("The name of proc path is too long");
-		return -1;
-	}
-
-	/* /proc not mounted */
-	if (linklen < 0) {
-		if (mkdir(path, 0755) && errno != EEXIST)
-			return -1;
+	link_len = readlinkat(rootfs->mntpt_fd, "proc/self", link, sizeof(link));
+	if (link_len < 0) {
+		ret = mkdirat(rootfs->mntpt_fd, "proc", 0000);
+		if (ret < 0 && errno != EEXIST)
+			return log_error_errno(-errno, errno, "Failed to create %d(proc)", rootfs->mntpt_fd);
 
 		goto domount;
-	} else if (linklen >= sizeof(link)) {
-		link[linklen - 1] = '\0';
-		ERROR("Readlink returned truncated content: \"%s\"", link);
-		return -1;
+	} else if (link_len >= sizeof(link)) {
+		return log_error_errno(-EIO, EIO, "Truncated link target");
 	}
+	link[link_len] = '\0';
 
-	mypid = lxc_raw_getpid();
-	INFO("I am %d, /proc/self points to \"%s\"", mypid, link);
+	pid_self = lxc_raw_getpid();
+	INFO("Caller's PID is %d; /proc/self points to %s", pid_self, link);
 
-	if (lxc_safe_int(link, &link_to_pid) < 0)
-		return -1;
+	ret = lxc_safe_int(link, &link_to_pid);
+	if (ret)
+		return log_error_errno(-ret, ret, "Failed to parse %s", link);
 
-	/* correct procfs is already mounted */
-	if (link_to_pid == mypid)
-		return 0;
+	/* Correct procfs is already mounted. */
+	if (link_to_pid == pid_self)
+		return log_trace(0, "Correct procfs instance mounted");
 
-	ret = umount2(path, MNT_DETACH);
+	fd_proc = open_at(rootfs->mntpt_fd, "proc", PROTECT_OPATH_DIRECTORY,
+			  PROTECT_LOOKUP_BENEATH_XDEV, 0);
+	if (fd_proc < 0)
+		return log_error_errno(-errno, errno, "Failed to open transient procfs mountpoint");
+
+	ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "/proc/self/fd/%d", fd_proc);
+	if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
+		return ret_errno(EIO);
+
+	ret = umount2(rootfs->buf, MNT_DETACH);
 	if (ret < 0)
-		SYSWARN("Failed to umount \"%s\" with MNT_DETACH", path);
+		SYSWARN("Failed to umount \"%s\" with MNT_DETACH", rootfs->buf);
 
 domount:
 	/* rootfs is NULL */
-	if (!strcmp(rootfs, ""))
-		ret = mount("proc", path, "proc", 0, NULL);
-	else
-		ret = safe_mount("proc", path, "proc", 0, NULL, rootfs);
-	if (ret < 0)
-		return -1;
+	if (!rootfs->path) {
+		ret = mount("proc", rootfs->buf, "proc", 0, NULL);
+	} else {
+		ret = safe_mount_beneath_at(rootfs->mntpt_fd, "none", "proc", "proc", 0, NULL);
+		if (ret < 0) {
+			ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s/proc", rootfs->path ? rootfs->mount : "");
+			if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
+				return ret_errno(EIO);
 
-	INFO("Mounted /proc in container for security transition");
+			ret = safe_mount("proc", rootfs->buf, "proc", 0, NULL, rootfs->mount);
+		}
+	}
+	if (ret < 0)
+		return log_error_errno(-1, errno, "Failed to mount temporary procfs");
+
+	INFO("Created transient procfs mount");
 	return 1;
 }
 
@@ -3028,14 +3026,13 @@ static int lxc_create_tmp_proc_mount(struct lxc_conf *conf)
 {
 	int mounted;
 
-	mounted = lxc_mount_proc_if_needed(conf->rootfs.path ? conf->rootfs.mount : "");
+	mounted = lxc_transient_proc(&conf->rootfs);
 	if (mounted == -1) {
-		SYSERROR("Failed to mount proc in the container");
 		/* continue only if there is no rootfs */
 		if (conf->rootfs.path)
-			return -1;
+			return log_error_errno(-EPERM, EPERM, "Failed to create transient procfs mount");
 	} else if (mounted == 1) {
-		conf->tmp_umount_proc = true;
+		conf->transient_procfs_mnt = true;
 	}
 
 	return 0;
@@ -3043,11 +3040,10 @@ static int lxc_create_tmp_proc_mount(struct lxc_conf *conf)
 
 void tmp_proc_unmount(struct lxc_conf *lxc_conf)
 {
-	if (!lxc_conf->tmp_umount_proc)
-		return;
-
-	(void)umount2("/proc", MNT_DETACH);
-	lxc_conf->tmp_umount_proc = false;
+	if (lxc_conf->transient_procfs_mnt) {
+		(void)umount2("/proc", MNT_DETACH);
+		lxc_conf->transient_procfs_mnt = false;
+	}
 }
 
 /* Walk /proc/mounts and change any shared entries to dependent mounts. */
