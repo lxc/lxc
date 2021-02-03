@@ -52,6 +52,11 @@ enum {
  */
 typedef int (*lxc_attach_exec_t)(void* payload);
 
+typedef struct lxc_groups_t {
+	int size;
+	gid_t *list;
+} lxc_groups_t;
+
 /*!
  * LXC attach options for \ref lxc_container \c attach().
  */
@@ -87,6 +92,12 @@ typedef struct lxc_attach_options_t {
 	 * containers or \c 0 (super-user) if detection fails).
 	 */
 	gid_t gid;
+
+	/*! The additional group GIDs to run with.
+	 *
+	 * If unset all additional groups are dropped.
+	 */
+	lxc_groups_t groups;
 
 	/*! Environment policy */
 	lxc_attach_env_policy_t env_policy;
@@ -128,6 +139,7 @@ typedef struct lxc_attach_options_t {
 		/* .initial_cwd = */    NULL,                                  \
 		/* .uid = */            (uid_t)-1,                             \
 		/* .gid = */            (gid_t)-1,                             \
+		/* .groups = */         { 0, NULL},                            \
 		/* .env_policy = */     LXC_ATTACH_KEEP_ENV,                   \
 		/* .extra_env_vars = */ NULL,                                  \
 		/* .extra_keep_env = */ NULL,                                  \
