@@ -1271,7 +1271,7 @@ static int lxc_mount_rootfs(struct lxc_conf *conf)
 	      rootfs->path, rootfs->mount,
 	      rootfs->options ? rootfs->options : "(null)");
 
-	rootfs->mntpt_fd = openat(-1, rootfs->mount, O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH);
+	rootfs->mntpt_fd = open_at(-EBADF, rootfs->mount, PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
 	if (rootfs->mntpt_fd < 0)
 		return -errno;
 
