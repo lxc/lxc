@@ -183,6 +183,7 @@ struct lxc_tty_info {
  * optionals pivot_root, rootfs mount paths
  * @path         : the rootfs source (directory or device)
  * @mount        : where it is mounted
+ * @buf		 : static buffer to construct paths
  * @bev_type     : optional backing store type
  * @options      : mount options
  * @mountflags   : the portion of @options that are flags
@@ -196,6 +197,7 @@ struct lxc_rootfs {
 	int dev_mntpt_fd;
 	char *path;
 	char *mount;
+	char buf[PATH_MAX];
 	char *bdev_type;
 	char *options;
 	unsigned long mountflags;
@@ -360,7 +362,7 @@ struct lxc_conf {
 	char *lsm_se_context;
 	char *lsm_se_keyring_context;
 	bool keyring_disable_session;
-	bool tmp_umount_proc;
+	bool transient_procfs_mnt;
 	struct lxc_seccomp seccomp;
 	int maincmd_fd;
 	unsigned int autodev;  /* if 1, mount and fill a /dev at start */
