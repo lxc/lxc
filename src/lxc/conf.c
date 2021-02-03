@@ -1242,7 +1242,7 @@ static int lxc_mount_rootfs(struct lxc_conf *conf)
 		if (ret < 0)
 			return log_error_errno(-1, errno, "Failed to recursively turn root mount tree into dependent mount");
 
-		rootfs->mntpt_fd = openat(-1, "/", O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH);
+		rootfs->mntpt_fd = open_at(-EBADF, "/", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE, 0);
 		if (rootfs->mntpt_fd < 0)
 			return -errno;
 
