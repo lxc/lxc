@@ -1505,6 +1505,7 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	char *mntopt_sets[5];
 	char default_devpts_mntopts[256] = "gid=5,newinstance,ptmxmode=0666,mode=0620";
 	struct lxc_conf *conf = handler->conf;
+	struct lxc_rootfs *rootfs = &conf->rootfs;
 	int sock = handler->data_sock[0];
 
 	if (conf->pty_max <= 0)
@@ -1518,7 +1519,7 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	(void)umount2("/dev/pts", MNT_DETACH);
 
 	/* Create mountpoint for devpts instance. */
-	ret = mkdir("/dev/pts", 0755);
+	ret = mkdirat(rootfs->dev_mntpt_fd, "pts", 0755);
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-1, errno, "Failed to create \"/dev/pts\" directory");
 
@@ -1548,7 +1549,7 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 		return log_error_errno(-1, errno, "Failed to mount new devpts instance");
 	DEBUG("Mount new devpts instance with options \"%s\"", *opts);
 
-	devpts_fd = openat(-EBADF, "/dev/pts", O_CLOEXEC | O_DIRECTORY | O_PATH | O_NOFOLLOW);
+	devpts_fd = open_at(rootfs->dev_mntpt_fd, "pts", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV, 0);
 	if (devpts_fd < 0) {
 		devpts_fd = -EBADF;
 		TRACE("Failed to create detached devpts mount");
@@ -1562,7 +1563,7 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	TRACE("Sent devpts file descriptor %d to parent", devpts_fd);
 
 	/* Remove any pre-existing /dev/ptmx file. */
-	ret = remove("/dev/ptmx");
+	ret = unlinkat(rootfs->dev_mntpt_fd, "ptmx", 0);
 	if (ret < 0) {
 		if (errno != ENOENT)
 			return log_error_errno(-1, errno, "Failed to remove existing \"/dev/ptmx\" file");
@@ -1571,7 +1572,7 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	}
 
 	/* Create dummy /dev/ptmx file as bind mountpoint for /dev/pts/ptmx. */
-	ret = mknod("/dev/ptmx", S_IFREG | 0000, 0);
+	ret = mknodat(rootfs->dev_mntpt_fd, "ptmx", S_IFREG | 0000, 0);
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-1, errno, "Failed to create dummy \"/dev/ptmx\" file as bind mount target");
 	DEBUG("Created dummy \"/dev/ptmx\" file as bind mount target");
@@ -1585,12 +1586,12 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 		ERROR("Failed to bind mount \"/dev/pts/ptmx\" to \"/dev/ptmx\"");
 
 	/* Remove the dummy /dev/ptmx file we created above. */
-	ret = remove("/dev/ptmx");
+	ret = unlinkat(rootfs->dev_mntpt_fd, "ptmx", 0);
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to remove existing \"/dev/ptmx\"");
 
 	/* Fallback option: Create symlink /dev/ptmx -> /dev/pts/ptmx. */
-	ret = symlink("/dev/pts/ptmx", "/dev/ptmx");
+	ret = symlinkat("/dev/pts/ptmx", rootfs->dev_mntpt_fd, "/dev/ptmx");
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to create symlink from \"/dev/ptmx\" to \"/dev/pts/ptmx\"");
 
