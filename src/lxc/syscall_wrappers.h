@@ -282,4 +282,19 @@ static inline int openat2(int dfd, const char *filename, struct lxc_open_how *ho
 }
 #endif /* HAVE_OPENAT2 */
 
+#ifndef CLOSE_RANGE_UNSHARE
+#define CLOSE_RANGE_UNSHARE	(1U << 1)
+#endif
+
+#ifndef CLOSE_RANGE_CLOEXEC
+#define CLOSE_RANGE_CLOEXEC	(1U << 2)
+#endif
+
+#ifndef HAVE_CLOSE_RANGE
+static inline int close_range(unsigned int fd, unsigned int max_fd, unsigned int flags)
+{
+	return syscall(__NR_close_range, fd, max_fd, flags);
+}
+#endif
+
 #endif /* __LXC_SYSCALL_WRAPPER_H */
