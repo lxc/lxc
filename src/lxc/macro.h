@@ -672,4 +672,6 @@ enum {
 
 #define ENOCGROUP2 ENOMEDIUM
 
+#define MAX_FILENO ~0U
+
 #endif /* __LXC_MACRO_H */
