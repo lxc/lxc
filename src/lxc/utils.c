@@ -1081,8 +1081,8 @@ int __safe_mount_beneath_at(int beneath_fd, const char *src, const char *dst, co
 {
 	__do_close int source_fd = -EBADF, target_fd = -EBADF;
 	struct lxc_open_how how = {
-		.flags		= O_RDONLY | O_CLOEXEC | O_PATH,
-		.resolve	= RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS | RESOLVE_BENEATH,
+		.flags		= PROTECT_OPATH_DIRECTORY,
+		.resolve	= PROTECT_LOOKUP_BENEATH_WITH_MAGICLINKS,
 	};
 	int ret;
 	char src_buf[LXC_PROC_PID_FD_LEN], tgt_buf[LXC_PROC_PID_FD_LEN];
@@ -1122,7 +1122,7 @@ int safe_mount_beneath(const char *beneath, const char *src, const char *dst, co
 	__do_close int beneath_fd = -EBADF;
 	const char *path = beneath ? beneath : "/";
 
-	beneath_fd = openat(-1, path, O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH);
+	beneath_fd = openat(-1, path, PROTECT_OPATH_DIRECTORY);
 	if (beneath_fd < 0)
 		return log_error_errno(-errno, errno, "Failed to open %s", path);
 
