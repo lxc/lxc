@@ -1154,13 +1154,13 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 	mode_t cmask;
 	int use_mknod = LXC_DEVNODE_MKNOD;
 
-	/* ignore, just don't try to fill in */
-	if (!exists_dir_at(rootfs->mntpt_fd, "dev"))
-		return 0;
-
 	dev_dir_fd = openat(rootfs->mntpt_fd, "dev/", O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH | O_NOFOLLOW);
-	if (dev_dir_fd < 0)
+	if (dev_dir_fd < 0) {
+		if (errno == ENOENT)
+			return log_info(0, "No /dev directory found, skipping setup");
+
 		return -errno;
+	}
 
 	INFO("Populating \"/dev\"");
 
