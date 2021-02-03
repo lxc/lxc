@@ -1149,18 +1149,12 @@ enum {
 
 static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 {
-	__do_close int dev_dir_fd = -EBADF;
 	int i, ret;
 	mode_t cmask;
 	int use_mknod = LXC_DEVNODE_MKNOD;
 
-	dev_dir_fd = openat(rootfs->mntpt_fd, "dev/", O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH | O_NOFOLLOW);
-	if (dev_dir_fd < 0) {
-		if (errno == ENOENT)
-			return log_info(0, "No /dev directory found, skipping setup");
-
-		return -errno;
-	}
+	if (rootfs->dev_mntpt_fd < 0)
+		return log_info(0, "No /dev directory found, skipping setup");
 
 	INFO("Populating \"/dev\"");
 
@@ -1170,7 +1164,7 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 		const struct lxc_device_node *device = &lxc_devices[i];
 
 		if (use_mknod >= LXC_DEVNODE_MKNOD) {
-			ret = mknodat(dev_dir_fd, device->name, device->mode, makedev(device->maj, device->min));
+			ret = mknodat(rootfs->dev_mntpt_fd, device->name, device->mode, makedev(device->maj, device->min));
 			if (ret == 0 || (ret < 0 && errno == EEXIST)) {
 				DEBUG("Created device node \"%s\"", device->name);
 			} else if (ret < 0) {
@@ -1190,7 +1184,7 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 				 * - https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=55956b59df336f6738da916dbb520b6e37df9fbd
 				 * - https://lists.linuxfoundation.org/pipermail/containers/2018-June/039176.html
 				 */
-				fd = openat(dev_dir_fd, device->name, O_RDONLY | O_CLOEXEC);
+				fd = open_at(rootfs->dev_mntpt_fd, device->name, PROTECT_OPEN, PROTECT_LOOKUP_BENEATH, 0);
 				if (fd >= 0) {
 					/* Device nodes are fully useable. */
 					use_mknod = LXC_DEVNODE_OPEN;
@@ -1208,7 +1202,7 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 			 * nodes the prio mknod() call will have created the
 			 * device node so we can use it as a bind-mount target.
 			 */
-			ret = mknodat(dev_dir_fd, device->name, S_IFREG | 0000, 0);
+			ret = mknodat(rootfs->dev_mntpt_fd, device->name, S_IFREG | 0000, 0);
 			if (ret < 0 && errno != EEXIST)
 				return log_error_errno(-1, errno, "Failed to create file \"%s\"", device->name);
 		}
@@ -1218,7 +1212,7 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 		if (ret < 0 || (size_t)ret >= sizeof(hostpath))
 			return ret_errno(EIO);
 
-		ret = safe_mount_beneath_at(dev_dir_fd, hostpath, device->name, NULL, MS_BIND, NULL);
+		ret = safe_mount_beneath_at(rootfs->dev_mntpt_fd, hostpath, device->name, NULL, MS_BIND, NULL);
 		if (ret < 0) {
 			const char *mntpt = rootfs->path ? rootfs->mount : NULL;
 			if (errno == ENOSYS) {
