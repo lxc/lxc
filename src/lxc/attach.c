@@ -277,11 +277,6 @@ static int userns_setup_ids(struct attach_context *ctx,
 	if (ctx->setup_ns_gid == LXC_INVALID_UID)
 		ctx->setup_ns_gid = init_ns_gid;
 
-	/*
-	 * TODO: we should also parse supplementary groups and use
-	 * setgroups() to set them.
-	 */
-
 	return 0;
 }
 
@@ -359,11 +354,6 @@ static int parse_init_status(struct attach_context *ctx, lxc_attach_options_t *o
 	if (ret)
 		return log_error_errno(ret, errno, "Failed to get setup ids");
 	userns_target_ids(ctx, options);
-
-	/*
-	 * TODO: we should also parse supplementary groups and use
-	 * setgroups() to set them.
-	 */
 
 	return 0;
 }
@@ -1214,8 +1204,13 @@ __noreturn static void do_attach(struct attach_payload *ap)
 			goto on_error;
 	}
 
-	if (!lxc_drop_groups() && errno != EPERM)
-		goto on_error;
+	if (options->attach_flags & LXC_ATTACH_SETGROUPS && options->groups.size > 0) {
+		if (!lxc_setgroups(options->groups.list, options->groups.size))
+			goto on_error;
+	} else {
+		if (!lxc_drop_groups() && errno != EPERM)
+			goto on_error;
+	}
 
 	if (options->namespaces & CLONE_NEWUSER)
 		if (!lxc_switch_uid_gid(ctx->setup_ns_uid, ctx->setup_ns_gid))
