@@ -87,6 +87,7 @@ static lxc_attach_options_t attach_static_default_options = LXC_ATTACH_OPTIONS_D
 struct attach_context {
 	unsigned int attach_flags;
 	int init_pid;
+	int init_pidfd;
 	int dfd_init_pid;
 	int dfd_self_pid;
 	uid_t setup_ns_uid;
@@ -179,15 +180,16 @@ static struct attach_context *alloc_attach_context(void)
 	if (!ctx)
 		return ret_set_errno(NULL, ENOMEM);
 
-	ctx->dfd_self_pid = -EBADF;
-	ctx->dfd_init_pid = -EBADF;
-	ctx->init_pid = -ESRCH;
-	ctx->setup_ns_uid = LXC_INVALID_UID;
-	ctx->setup_ns_gid = LXC_INVALID_GID;
-	ctx->target_ns_uid = LXC_INVALID_UID;
-	ctx->target_ns_gid = LXC_INVALID_GID;
-	ctx->target_host_uid = LXC_INVALID_UID;
-	ctx->target_host_gid = LXC_INVALID_GID;
+	ctx->dfd_self_pid	= -EBADF;
+	ctx->dfd_init_pid	= -EBADF;
+	ctx->init_pidfd		= -EBADF;
+	ctx->init_pid		= -ESRCH;
+	ctx->setup_ns_uid	= LXC_INVALID_UID;
+	ctx->setup_ns_gid	= LXC_INVALID_GID;
+	ctx->target_ns_uid	= LXC_INVALID_UID;
+	ctx->target_ns_gid	= LXC_INVALID_GID;
+	ctx->target_host_uid	= LXC_INVALID_UID;
+	ctx->target_host_gid	= LXC_INVALID_GID;
 
 	for (int i = 0; i < LXC_NS_MAX; i++)
 		ctx->ns_fd[i] = -EBADF;
@@ -366,11 +368,29 @@ static int parse_init_status(struct attach_context *ctx, lxc_attach_options_t *o
 	return 0;
 }
 
+static bool pidfd_setns_supported(struct attach_context *ctx)
+{
+	int ret;
+
+	/*
+	 * The ability to attach to time namespaces came after the introduction
+	 * of of using pidfds for attaching to namespaces. To avoid having to
+	 * special-case both CLONE_NEWUSER and CLONE_NEWTIME handling, let's
+	 * use CLONE_NEWTIME as gatekeeper.
+	 */
+	if (ctx->init_pidfd >= 0)
+		ret = setns(ctx->init_pidfd, CLONE_NEWTIME);
+	else
+		ret = -EOPNOTSUPP;
+	TRACE("Attaching to namespaces via pidfds %s",
+	      ret ? "unsupported" : "supported");
+	return ret == 0;
+}
+
 static int get_attach_context(struct attach_context *ctx,
 			      struct lxc_container *container,
 			      lxc_attach_options_t *options)
 {
-	__do_close int init_pidfd = -EBADF;
 	__do_free char *lsm_label = NULL;
 	int ret;
 	char path[LXC_PROC_PID_LEN];
@@ -384,9 +404,9 @@ static int get_attach_context(struct attach_context *ctx,
 	if (ctx->dfd_self_pid < 0)
 		return log_error_errno(-errno, errno, "Failed to open /proc/self");
 
-	init_pidfd = lxc_cmd_get_init_pidfd(container->name, container->config_path);
-	if (init_pidfd >= 0)
-		ctx->init_pid = pidfd_get_pid(ctx->dfd_self_pid, init_pidfd);
+	ctx->init_pidfd = lxc_cmd_get_init_pidfd(container->name, container->config_path);
+	if (ctx->init_pidfd >= 0)
+		ctx->init_pid = pidfd_get_pid(ctx->dfd_self_pid, ctx->init_pidfd);
 	else
 		ctx->init_pid = lxc_cmd_get_init_pid(container->name, container->config_path);
 
@@ -403,12 +423,21 @@ static int get_attach_context(struct attach_context *ctx,
 	if (ctx->dfd_init_pid < 0)
 		return log_error_errno(-errno, errno, "Failed to open /proc/%d", ctx->init_pid);
 
-	if (init_pidfd >= 0) {
-		ret = lxc_raw_pidfd_send_signal(init_pidfd, 0, NULL, 0);
+	if (ctx->init_pidfd >= 0) {
+		ret = lxc_raw_pidfd_send_signal(ctx->init_pidfd, 0, NULL, 0);
 		if (ret)
 			return log_error_errno(-errno, errno, "Container process exited or PID has been recycled");
 		else
 			TRACE("Container process still running and PID was not recycled");
+
+		if (!pidfd_setns_supported(ctx)) {
+			/* We can't risk leaking file descriptors during attach. */
+			if (close(ctx->init_pidfd))
+				return log_error_errno(-errno, errno, "Failed to close pidfd");
+
+			ctx->init_pidfd = -EBADF;
+			TRACE("Attaching to namespaces via pidfds not supported");
+		}
 	}
 
 	/* Determine which namespaces the container was created with. */
@@ -446,7 +475,6 @@ static int get_attach_context(struct attach_context *ctx,
 		else
 			INFO("Retrieved security context %s", lsm_label);
 	}
-	ctx->ns_inherited = 0;
 
 	ret = get_personality(container->name, container->config_path, &ctx->personality);
 	if (ret)
@@ -462,50 +490,77 @@ static int get_attach_context(struct attach_context *ctx,
 	return 0;
 }
 
-static int same_ns(int ns_fd_pid1, int ns_fd_pid2, const char *ns_path)
+static int same_nsfd(int dfd_pid1, int dfd_pid2, const char *ns_path)
 {
-	__do_close int ns_fd1 = -EBADF, ns_fd2 = -EBADF;
-	int ret = -1;
+	int ret;
 	struct stat ns_st1, ns_st2;
 
-	ns_fd1 = open_at(ns_fd_pid1, ns_path,
-			 PROTECT_OPEN_WITH_TRAILING_SYMLINKS,
-			 (PROTECT_LOOKUP_BENEATH_WITH_MAGICLINKS & ~(RESOLVE_NO_XDEV | RESOLVE_BENEATH)),
-			 0);
-	if (ns_fd1 < 0) {
-		/* The kernel does not support this namespace. This is not an error. */
-		if (errno == ENOENT)
-			return -EINVAL;
-
-		return log_error_errno(-errno, errno, "Failed to open %d(%s)", ns_fd_pid1, ns_path);
-	}
-
-	ns_fd2 = open_at(ns_fd_pid2, ns_path,
-			 PROTECT_OPEN_WITH_TRAILING_SYMLINKS,
-			 (PROTECT_LOOKUP_BENEATH_WITH_MAGICLINKS & ~(RESOLVE_NO_XDEV | RESOLVE_BENEATH)),
-			 0);
-	if (ns_fd2 < 0)
-		return log_error_errno(-errno, errno, "Failed to open %d(%s)", ns_fd_pid2, ns_path);
-
-	ret = fstat(ns_fd1, &ns_st1);
-	if (ret < 0)
+	ret = fstatat(dfd_pid1, ns_path, &ns_st1, 0);
+	if (ret)
 		return -1;
 
-	ret = fstat(ns_fd2, &ns_st2);
-	if (ret < 0)
+	ret = fstatat(dfd_pid2, ns_path, &ns_st2, 0);
+	if (ret)
 		return -1;
 
 	/* processes are in the same namespace */
-        if ((ns_st1.st_dev == ns_st2.st_dev) &&
-            (ns_st1.st_ino == ns_st2.st_ino))
+	if ((ns_st1.st_dev == ns_st2.st_dev) &&
+	    (ns_st1.st_ino == ns_st2.st_ino))
 		return -EINVAL;
+
+	return 0;
+}
+
+static int same_ns(int dfd_pid1, int dfd_pid2, const char *ns_path)
+{
+	__do_close int ns_fd2 = -EBADF;
+	int ret = -1;
+
+	ns_fd2 = open_at(dfd_pid2, ns_path, PROTECT_OPEN_WITH_TRAILING_SYMLINKS,
+			 (PROTECT_LOOKUP_BENEATH_WITH_MAGICLINKS &
+			  ~(RESOLVE_NO_XDEV | RESOLVE_BENEATH)), 0);
+	if (ns_fd2 < 0) {
+		/* The kernel does not support this namespace. This is not an error. */
+		if (errno == ENOENT)
+			return -EINVAL;
+		return log_error_errno(-errno, errno, "Failed to open %d(%s)",
+				       dfd_pid2, ns_path);
+	}
+
+	ret = same_nsfd(dfd_pid1, dfd_pid2, ns_path);
+	if (ret < 0)
+		return ret;
 
 	/* processes are in different namespaces */
 	return move_fd(ns_fd2);
 }
 
-static int get_attach_context_nsfds(struct attach_context *ctx,
-				    lxc_attach_options_t *options)
+static int __prepare_namespaces_pidfd(struct attach_context *ctx)
+{
+	for (int i = 0; i < LXC_NS_MAX; i++) {
+		int ret;
+
+		if (!(ctx->ns_inherited & ns_info[i].clone_flag))
+			continue;
+
+		ret = same_nsfd(ctx->dfd_self_pid,
+				ctx->dfd_init_pid,
+				ns_info[i].proc_path);
+		if (ret == -EINVAL)
+			ctx->ns_inherited &= ~ns_info[i].clone_flag;
+		else if (ret < 0)
+			return log_error_errno(-1, errno,
+					       "Failed to determine whether %s namespace is shared",
+					       ns_info[i].proc_name);
+		else
+			TRACE("Shared %s namespace needs attach", ns_info[i].proc_name);
+	}
+
+	return 0;
+}
+
+static int __prepare_namespaces_nsfd(struct attach_context *ctx,
+				     lxc_attach_options_t *options)
 {
 	for (int i = 0; i < LXC_NS_MAX; i++) {
 		int j;
@@ -514,7 +569,8 @@ static int get_attach_context_nsfds(struct attach_context *ctx,
 			ctx->ns_fd[i] = open_at(ctx->dfd_init_pid,
 						ns_info[i].proc_path,
 						PROTECT_OPEN_WITH_TRAILING_SYMLINKS,
-						(PROTECT_LOOKUP_BENEATH_WITH_MAGICLINKS & ~(RESOLVE_NO_XDEV | RESOLVE_BENEATH)),
+						(PROTECT_LOOKUP_BENEATH_WITH_MAGICLINKS &
+						 ~(RESOLVE_NO_XDEV | RESOLVE_BENEATH)),
 						0);
 		else if (ctx->ns_inherited & ns_info[i].clone_flag)
 			ctx->ns_fd[i] = same_ns(ctx->dfd_self_pid,
@@ -527,13 +583,13 @@ static int get_attach_context_nsfds(struct attach_context *ctx,
 			continue;
 
 		if (ctx->ns_fd[i] == -EINVAL) {
-			DEBUG("Inheriting %s namespace", ns_info[i].proc_name);
 			ctx->ns_inherited &= ~ns_info[i].clone_flag;
 			continue;
 		}
 
 		/* We failed to preserve the namespace. */
-		SYSERROR("Failed to preserve %s namespace of %d", ns_info[i].proc_name, ctx->init_pid);
+		SYSERROR("Failed to preserve %s namespace of %d",
+			 ns_info[i].proc_name, ctx->init_pid);
 
 		/* Close all already opened file descriptors before we return an
 		 * error, so we don't leak them.
@@ -547,10 +603,93 @@ static int get_attach_context_nsfds(struct attach_context *ctx,
 	return 0;
 }
 
-static inline void close_nsfds(struct attach_context *ctx)
+static int prepare_namespaces(struct attach_context *ctx,
+			      lxc_attach_options_t *options)
 {
-	for (int i = 0; i < LXC_NS_MAX; i++)
-		close_prot_errno_disarm(ctx->ns_fd[i]);
+	if (ctx->init_pidfd < 0)
+		return __prepare_namespaces_nsfd(ctx, options);
+
+	return __prepare_namespaces_pidfd(ctx);
+}
+
+static inline void put_namespaces(struct attach_context *ctx)
+{
+	if (ctx->init_pidfd < 0) {
+		for (int i = 0; i < LXC_NS_MAX; i++)
+			close_prot_errno_disarm(ctx->ns_fd[i]);
+	}
+}
+
+static int __attach_namespaces_pidfd(struct attach_context *ctx,
+				     lxc_attach_options_t *options)
+{
+	unsigned int ns_flags = options->namespaces | ctx->ns_inherited;
+	int ret;
+
+	/* The common case is to attach to all namespaces. */
+	ret = setns(ctx->init_pidfd, ns_flags);
+	if (ret)
+		return log_error_errno(-errno, errno,
+				       "Failed to attach to namespaces via pidfd");
+
+	/* We can't risk leaking file descriptors into the container. */
+	if (close(ctx->init_pidfd))
+		return log_error_errno(-errno, errno, "Failed to close pidfd");
+	ctx->init_pidfd = -EBADF;
+
+	return log_trace(0, "Attached to container namespaces via pidfd");
+}
+
+static int __attach_namespaces_nsfd(struct attach_context *ctx,
+				    lxc_attach_options_t *options)
+{
+	int fret = 0;
+
+	for (int i = 0; i < LXC_NS_MAX; i++) {
+		int ret;
+
+		if (ctx->ns_fd[i] < 0)
+			continue;
+
+		ret = setns(ctx->ns_fd[i], ns_info[i].clone_flag);
+		if (ret)
+			return log_error_errno(-errno, errno,
+					       "Failed to attach to %s namespace of %d",
+					       ns_info[i].proc_name,
+					       ctx->init_pid);
+
+		if (close(ctx->ns_fd[i])) {
+			fret = -errno;
+			SYSERROR("Failed to close file descriptor for %s namespace",
+				 ns_info[i].proc_name);
+		}
+		ctx->ns_fd[i] = -EBADF;
+	}
+
+	return fret;
+}
+
+static int attach_namespaces(struct attach_context *ctx,
+			     lxc_attach_options_t *options)
+{
+	if (lxc_log_trace()) {
+		for (int i = 0; i < LXC_NS_MAX; i++) {
+			if (ns_info[i].clone_flag & options->namespaces) {
+				TRACE("Attaching to %s namespace", ns_info[i].proc_name);
+				continue;
+			}
+			if (ns_info[i].clone_flag & ctx->ns_inherited) {
+				TRACE("Sharing %s namespace", ns_info[i].proc_name);
+				continue;
+			}
+			TRACE("Inheriting %s namespace", ns_info[i].proc_name);
+		}
+	}
+
+	if (ctx->init_pidfd < 0)
+		return __attach_namespaces_nsfd(ctx, options);
+
+	return __attach_namespaces_pidfd(ctx, options);
 }
 
 static void put_attach_context(struct attach_context *ctx)
@@ -565,35 +704,9 @@ static void put_attach_context(struct attach_context *ctx)
 			ctx->container = NULL;
 		}
 
-		close_nsfds(ctx);
+		put_namespaces(ctx);
 		free(ctx);
 	}
-}
-
-static int attach_context_container(struct attach_context *ctx)
-{
-	int fret = 0;
-
-	for (int i = 0; i < LXC_NS_MAX; i++) {
-		int ret;
-
-		if (ctx->ns_fd[i] < 0)
-			continue;
-
-		ret = setns(ctx->ns_fd[i], ns_info[i].clone_flag);
-		if (ret)
-			return log_error_errno(-errno, errno, "Failed to attach to %s namespace of %d", ns_info[i].proc_name, ctx->init_pid);
-
-		DEBUG("Attached to %s namespace of %d", ns_info[i].proc_name, ctx->init_pid);
-
-		if (close(ctx->ns_fd[i])) {
-			fret = -errno;
-			SYSERROR("Failed to close file descriptor for %s namespace", ns_info[i].proc_name);
-		}
-		ctx->ns_fd[i] = -EBADF;
-	}
-
-	return fret;
 }
 
 /*
@@ -1325,7 +1438,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	if (!no_new_privs(ctx->container, options))
 		WARN("Could not determine whether PR_SET_NO_NEW_PRIVS is set");
 
-	ret = get_attach_context_nsfds(ctx, options);
+	ret = prepare_namespaces(ctx, options);
 	if (ret) {
 		put_attach_context(ctx);
 		return log_error(-1, "Failed to get namespace file descriptors");
@@ -1434,7 +1547,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		 * anything sensitive. That especially means things such as
 		 * open file descriptors!
 		 */
-		ret = attach_context_container(ctx);
+		ret = attach_namespaces(ctx, options);
 		if (ret < 0) {
 			ERROR("Failed to enter namespaces");
 			shutdown(ipc_sockets[1], SHUT_RDWR);
@@ -1512,7 +1625,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 
 	/* close unneeded file descriptors */
 	close_prot_errno_disarm(ipc_sockets[1]);
-	close_nsfds(ctx);
+	put_namespaces(ctx);
 	if (options->attach_flags & LXC_ATTACH_TERMINAL)
 		lxc_attach_terminal_close_pts(&terminal);
 
