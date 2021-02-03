@@ -781,31 +781,30 @@ static const struct dev_symlinks dev_symlinks[] = {
 
 static int lxc_setup_dev_symlinks(const struct lxc_rootfs *rootfs)
 {
-	int i, ret;
-	char path[PATH_MAX];
-	struct stat s;
-
-	for (i = 0; i < sizeof(dev_symlinks) / sizeof(dev_symlinks[0]); i++) {
+	for (int i = 0; i < sizeof(dev_symlinks) / sizeof(dev_symlinks[0]); i++) {
+		int ret;
+		struct stat s;
 		const struct dev_symlinks *d = &dev_symlinks[i];
 
-		ret = snprintf(path, sizeof(path), "%s/dev/%s",
-			       rootfs->path ? rootfs->mount : "", d->name);
-		if (ret < 0 || (size_t)ret >= sizeof(path))
-			return -1;
-
-		/* Stat the path first. If we don't get an error accept it as
+		/*
+		 * Stat the path first. If we don't get an error accept it as
 		 * is and don't try to create it
 		 */
-		ret = stat(path, &s);
+		ret = fstatat(rootfs->dev_mntpt_fd, d->name, &s, 0);
 		if (ret == 0)
 			continue;
 
-		ret = symlink(d->oldpath, path);
-		if (ret && errno != EEXIST) {
-			if (errno == EROFS)
-				WARN("Failed to create \"%s\". Read-only filesystem", path);
-			else
-				return log_error_errno(-1, errno, "Failed to create \"%s\"", path);
+		ret = symlinkat(d->oldpath, rootfs->dev_mntpt_fd, d->name);
+		if (ret) {
+			switch (errno) {
+			case EROFS:
+				WARN("Failed to create \"%s\" on read-only filesystem", d->name);
+				__fallthrough;
+			case EEXIST:
+				break;
+			default:
+				return log_error_errno(-errno, errno, "Failed to create \"%s\"", d->name);
+			}
 		}
 	}
 
@@ -1149,18 +1148,12 @@ enum {
 
 static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 {
-	__do_close int dev_dir_fd = -EBADF;
 	int i, ret;
 	mode_t cmask;
 	int use_mknod = LXC_DEVNODE_MKNOD;
 
-	/* ignore, just don't try to fill in */
-	if (!exists_dir_at(rootfs->mntpt_fd, "dev"))
-		return 0;
-
-	dev_dir_fd = openat(rootfs->mntpt_fd, "dev/", O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH | O_NOFOLLOW);
-	if (dev_dir_fd < 0)
-		return -errno;
+	if (rootfs->dev_mntpt_fd < 0)
+		return log_info(0, "No /dev directory found, skipping setup");
 
 	INFO("Populating \"/dev\"");
 
@@ -1170,7 +1163,7 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 		const struct lxc_device_node *device = &lxc_devices[i];
 
 		if (use_mknod >= LXC_DEVNODE_MKNOD) {
-			ret = mknodat(dev_dir_fd, device->name, device->mode, makedev(device->maj, device->min));
+			ret = mknodat(rootfs->dev_mntpt_fd, device->name, device->mode, makedev(device->maj, device->min));
 			if (ret == 0 || (ret < 0 && errno == EEXIST)) {
 				DEBUG("Created device node \"%s\"", device->name);
 			} else if (ret < 0) {
@@ -1190,7 +1183,7 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 				 * - https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=55956b59df336f6738da916dbb520b6e37df9fbd
 				 * - https://lists.linuxfoundation.org/pipermail/containers/2018-June/039176.html
 				 */
-				fd = openat(dev_dir_fd, device->name, O_RDONLY | O_CLOEXEC);
+				fd = open_at(rootfs->dev_mntpt_fd, device->name, PROTECT_OPEN, PROTECT_LOOKUP_BENEATH, 0);
 				if (fd >= 0) {
 					/* Device nodes are fully useable. */
 					use_mknod = LXC_DEVNODE_OPEN;
@@ -1208,7 +1201,7 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 			 * nodes the prio mknod() call will have created the
 			 * device node so we can use it as a bind-mount target.
 			 */
-			ret = mknodat(dev_dir_fd, device->name, S_IFREG | 0000, 0);
+			ret = mknodat(rootfs->dev_mntpt_fd, device->name, S_IFREG | 0000, 0);
 			if (ret < 0 && errno != EEXIST)
 				return log_error_errno(-1, errno, "Failed to create file \"%s\"", device->name);
 		}
@@ -1218,7 +1211,7 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 		if (ret < 0 || (size_t)ret >= sizeof(hostpath))
 			return ret_errno(EIO);
 
-		ret = safe_mount_beneath_at(dev_dir_fd, hostpath, device->name, NULL, MS_BIND, NULL);
+		ret = safe_mount_beneath_at(rootfs->dev_mntpt_fd, hostpath, device->name, NULL, MS_BIND, NULL);
 		if (ret < 0) {
 			const char *mntpt = rootfs->path ? rootfs->mount : NULL;
 			if (errno == ENOSYS) {
@@ -1278,7 +1271,7 @@ static int lxc_mount_rootfs(struct lxc_conf *conf)
 	      rootfs->path, rootfs->mount,
 	      rootfs->options ? rootfs->options : "(null)");
 
-	rootfs->mntpt_fd = openat(-1, rootfs->mount, O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH);
+	rootfs->mntpt_fd = open_at(-EBADF, rootfs->mount, PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
 	if (rootfs->mntpt_fd < 0)
 		return -errno;
 
@@ -1401,54 +1394,50 @@ static int lxc_chroot(const struct lxc_rootfs *rootfs)
  *    though, so you may need to say mount --bind /nfs/my_root /nfs/my_root
  *    first.
  */
-static int lxc_pivot_root(const char *rootfs)
+static int lxc_pivot_root(const struct lxc_rootfs *rootfs)
 {
-	__do_close int oldroot = -EBADF, newroot = -EBADF;
+	__do_close int fd_oldroot = -EBADF;
 	int ret;
 
-	oldroot = open("/", O_DIRECTORY | O_RDONLY | O_CLOEXEC);
-	if (oldroot < 0)
+	fd_oldroot = open_at(-EBADF, "/", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE, 0);
+	if (fd_oldroot < 0)
 		return log_error_errno(-1, errno, "Failed to open old root directory");
 
-	newroot = open(rootfs, O_DIRECTORY | O_RDONLY | O_CLOEXEC);
-	if (newroot < 0)
-		return log_error_errno(-1, errno, "Failed to open new root directory");
-
 	/* change into new root fs */
-	ret = fchdir(newroot);
+	ret = fchdir(rootfs->mntpt_fd);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to change to new rootfs \"%s\"", rootfs);
+		return log_error_errno(-errno, errno, "Failed to change into new root directory \"%s\"", rootfs->mount);
 
 	/* pivot_root into our new root fs */
 	ret = pivot_root(".", ".");
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to pivot_root()");
+		return log_error_errno(-errno, errno, "Failed to pivot into new root directory \"%s\"", rootfs->mount);
 
 	/* At this point the old-root is mounted on top of our new-root. To
 	 * unmounted it we must not be chdir'd into it, so escape back to
 	 * old-root.
 	 */
-	ret = fchdir(oldroot);
+	ret = fchdir(fd_oldroot);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to enter old root directory");
+		return log_error_errno(-errno, errno, "Failed to enter old root directory");
 
-	/* Make oldroot a depedent mount to make sure our umounts don't propagate to the
-	 * host.
+	/*
+	 * Make fd_oldroot a depedent mount to make sure our umounts don't
+	 * propagate to the host.
 	 */
 	ret = mount("", ".", "", MS_SLAVE | MS_REC, NULL);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to recursively turn old root mount tree into dependent mount");
+		return log_error_errno(-errno, errno, "Failed to recursively turn old root mount tree into dependent mount");
 
 	ret = umount2(".", MNT_DETACH);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to detach old root directory");
+		return log_error_errno(-errno, errno, "Failed to detach old root directory");
 
-	ret = fchdir(newroot);
+	ret = fchdir(rootfs->mntpt_fd);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to re-enter new root directory");
+		return log_error_errno(-errno, errno, "Failed to re-enter new root directory \"%s\"", rootfs->mount);
 
-	TRACE("pivot_root(\"%s\") successful", rootfs);
-
+	TRACE("Changed into new rootfs \"%s\"", rootfs->mount);
 	return 0;
 }
 
@@ -1460,7 +1449,7 @@ static int lxc_setup_rootfs_switch_root(const struct lxc_rootfs *rootfs)
 	if (detect_ramfs_rootfs())
 		return lxc_chroot(rootfs);
 
-	return lxc_pivot_root(rootfs->mount);
+	return lxc_pivot_root(rootfs);
 }
 
 static const struct id_map *find_mapped_nsid_entry(const struct lxc_conf *conf,
@@ -1519,6 +1508,7 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	char *mntopt_sets[5];
 	char default_devpts_mntopts[256] = "gid=5,newinstance,ptmxmode=0666,mode=0620";
 	struct lxc_conf *conf = handler->conf;
+	struct lxc_rootfs *rootfs = &conf->rootfs;
 	int sock = handler->data_sock[0];
 
 	if (conf->pty_max <= 0)
@@ -1532,7 +1522,7 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	(void)umount2("/dev/pts", MNT_DETACH);
 
 	/* Create mountpoint for devpts instance. */
-	ret = mkdir("/dev/pts", 0755);
+	ret = mkdirat(rootfs->dev_mntpt_fd, "pts", 0755);
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-1, errno, "Failed to create \"/dev/pts\" directory");
 
@@ -1562,7 +1552,7 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 		return log_error_errno(-1, errno, "Failed to mount new devpts instance");
 	DEBUG("Mount new devpts instance with options \"%s\"", *opts);
 
-	devpts_fd = openat(-EBADF, "/dev/pts", O_CLOEXEC | O_DIRECTORY | O_PATH | O_NOFOLLOW);
+	devpts_fd = open_at(rootfs->dev_mntpt_fd, "pts", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV, 0);
 	if (devpts_fd < 0) {
 		devpts_fd = -EBADF;
 		TRACE("Failed to create detached devpts mount");
@@ -1576,7 +1566,7 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	TRACE("Sent devpts file descriptor %d to parent", devpts_fd);
 
 	/* Remove any pre-existing /dev/ptmx file. */
-	ret = remove("/dev/ptmx");
+	ret = unlinkat(rootfs->dev_mntpt_fd, "ptmx", 0);
 	if (ret < 0) {
 		if (errno != ENOENT)
 			return log_error_errno(-1, errno, "Failed to remove existing \"/dev/ptmx\" file");
@@ -1585,7 +1575,7 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	}
 
 	/* Create dummy /dev/ptmx file as bind mountpoint for /dev/pts/ptmx. */
-	ret = mknod("/dev/ptmx", S_IFREG | 0000, 0);
+	ret = mknodat(rootfs->dev_mntpt_fd, "ptmx", S_IFREG | 0000, 0);
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-1, errno, "Failed to create dummy \"/dev/ptmx\" file as bind mount target");
 	DEBUG("Created dummy \"/dev/ptmx\" file as bind mount target");
@@ -1599,12 +1589,12 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 		ERROR("Failed to bind mount \"/dev/pts/ptmx\" to \"/dev/ptmx\"");
 
 	/* Remove the dummy /dev/ptmx file we created above. */
-	ret = remove("/dev/ptmx");
+	ret = unlinkat(rootfs->dev_mntpt_fd, "ptmx", 0);
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to remove existing \"/dev/ptmx\"");
 
 	/* Fallback option: Create symlink /dev/ptmx -> /dev/pts/ptmx. */
-	ret = symlink("/dev/pts/ptmx", "/dev/ptmx");
+	ret = symlinkat("/dev/pts/ptmx", rootfs->dev_mntpt_fd, "/dev/ptmx");
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to create symlink from \"/dev/ptmx\" to \"/dev/pts/ptmx\"");
 
@@ -3334,8 +3324,8 @@ int lxc_setup(struct lxc_handler *handler)
 			return log_error(-1, "Failed to mount \"/dev\"");
 	}
 
-	lxc_conf->rootfs.dev_mntpt_fd = openat(lxc_conf->rootfs.mntpt_fd, "dev",
-						O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_NOFOLLOW);
+	lxc_conf->rootfs.dev_mntpt_fd = open_at(lxc_conf->rootfs.mntpt_fd, "dev",
+					        PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV, 0);
 	if (lxc_conf->rootfs.dev_mntpt_fd < 0 && errno != ENOENT)
 		return log_error_errno(-errno, errno, "Failed to open \"/dev\"");
 

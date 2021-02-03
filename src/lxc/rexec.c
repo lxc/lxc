@@ -127,10 +127,13 @@ static void lxc_rexec_as_memfd(char **argv, char **envp, const char *memfd_name)
 		sent = lxc_sendfile_nointr(memfd >= 0 ? memfd : tmpfd, fd, NULL,
 					   st.st_size - bytes_sent);
 		if (sent < 0) {
-			/* Fallback to shoveling data between kernel- and
+			/*
+			 * Fallback to shoveling data between kernel- and
 			 * userspace.
 			 */
-			lseek(fd, 0, SEEK_SET);
+			if (lseek(fd, 0, SEEK_SET) == (off_t) -1)
+				fprintf(stderr, "Failed to seek to beginning of file");
+
 			if (fd_to_fd(fd, memfd >= 0 ? memfd : tmpfd))
 				break;
 
@@ -159,6 +162,9 @@ static void lxc_rexec_as_memfd(char **argv, char **envp, const char *memfd_name)
 	if (execfd < 0)
 		return;
 
+	ret = close_range(STDERR_FILENO, MAX_FILENO, CLOSE_RANGE_CLOEXEC);
+	if (ret && (errno != ENOSYS && errno != EINVAL))
+		fprintf(stderr, "%m - Failed to mark all file descriptors as close-on-exec\n");
 	fexecve(execfd, argv, envp);
 }
 
