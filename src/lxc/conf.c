@@ -2948,6 +2948,77 @@ again:
 	return freeid;
 }
 
+/*
+ * Mount a proc under @rootfs if proc self points to a pid other than
+ * my own.  This is needed to have a known-good proc mount for setting
+ * up LSMs both at container startup and attach.
+ *
+ * @rootfs : the rootfs where proc should be mounted
+ *
+ * Returns < 0 on failure, 0 if the correct proc was already mounted
+ * and 1 if a new proc was mounted.
+ *
+ * NOTE: not to be called from inside the container namespace!
+ */
+static int lxc_mount_proc_if_needed(const char *rootfs)
+{
+	char path[PATH_MAX] = {0};
+	int link_to_pid, linklen, mypid, ret;
+	char link[INTTYPE_TO_STRLEN(pid_t)] = {0};
+
+	ret = snprintf(path, PATH_MAX, "%s/proc/self", rootfs);
+	if (ret < 0 || ret >= PATH_MAX) {
+		SYSERROR("The name of proc path is too long");
+		return -1;
+	}
+
+	linklen = readlink(path, link, sizeof(link));
+
+	ret = snprintf(path, PATH_MAX, "%s/proc", rootfs);
+	if (ret < 0 || ret >= PATH_MAX) {
+		SYSERROR("The name of proc path is too long");
+		return -1;
+	}
+
+	/* /proc not mounted */
+	if (linklen < 0) {
+		if (mkdir(path, 0755) && errno != EEXIST)
+			return -1;
+
+		goto domount;
+	} else if (linklen >= sizeof(link)) {
+		link[linklen - 1] = '\0';
+		ERROR("Readlink returned truncated content: \"%s\"", link);
+		return -1;
+	}
+
+	mypid = lxc_raw_getpid();
+	INFO("I am %d, /proc/self points to \"%s\"", mypid, link);
+
+	if (lxc_safe_int(link, &link_to_pid) < 0)
+		return -1;
+
+	/* correct procfs is already mounted */
+	if (link_to_pid == mypid)
+		return 0;
+
+	ret = umount2(path, MNT_DETACH);
+	if (ret < 0)
+		SYSWARN("Failed to umount \"%s\" with MNT_DETACH", path);
+
+domount:
+	/* rootfs is NULL */
+	if (!strcmp(rootfs, ""))
+		ret = mount("proc", path, "proc", 0, NULL);
+	else
+		ret = safe_mount("proc", path, "proc", 0, NULL, rootfs);
+	if (ret < 0)
+		return -1;
+
+	INFO("Mounted /proc in container for security transition");
+	return 1;
+}
+
 /* NOTE: Must not be called from inside the container namespace! */
 static int lxc_create_tmp_proc_mount(struct lxc_conf *conf)
 {
