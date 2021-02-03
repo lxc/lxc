@@ -1391,54 +1391,50 @@ static int lxc_chroot(const struct lxc_rootfs *rootfs)
  *    though, so you may need to say mount --bind /nfs/my_root /nfs/my_root
  *    first.
  */
-static int lxc_pivot_root(const char *rootfs)
+static int lxc_pivot_root(const struct lxc_rootfs *rootfs)
 {
-	__do_close int oldroot = -EBADF, newroot = -EBADF;
+	__do_close int fd_oldroot = -EBADF;
 	int ret;
 
-	oldroot = open("/", O_DIRECTORY | O_RDONLY | O_CLOEXEC);
-	if (oldroot < 0)
+	fd_oldroot = open_at(-EBADF, "/", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE, 0);
+	if (fd_oldroot < 0)
 		return log_error_errno(-1, errno, "Failed to open old root directory");
 
-	newroot = open(rootfs, O_DIRECTORY | O_RDONLY | O_CLOEXEC);
-	if (newroot < 0)
-		return log_error_errno(-1, errno, "Failed to open new root directory");
-
 	/* change into new root fs */
-	ret = fchdir(newroot);
+	ret = fchdir(rootfs->mntpt_fd);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to change to new rootfs \"%s\"", rootfs);
+		return log_error_errno(-errno, errno, "Failed to change into new root directory \"%s\"", rootfs->mount);
 
 	/* pivot_root into our new root fs */
 	ret = pivot_root(".", ".");
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to pivot_root()");
+		return log_error_errno(-errno, errno, "Failed to pivot into new root directory \"%s\"", rootfs->mount);
 
 	/* At this point the old-root is mounted on top of our new-root. To
 	 * unmounted it we must not be chdir'd into it, so escape back to
 	 * old-root.
 	 */
-	ret = fchdir(oldroot);
+	ret = fchdir(fd_oldroot);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to enter old root directory");
+		return log_error_errno(-errno, errno, "Failed to enter old root directory");
 
-	/* Make oldroot a depedent mount to make sure our umounts don't propagate to the
-	 * host.
+	/*
+	 * Make fd_oldroot a depedent mount to make sure our umounts don't
+	 * propagate to the host.
 	 */
 	ret = mount("", ".", "", MS_SLAVE | MS_REC, NULL);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to recursively turn old root mount tree into dependent mount");
+		return log_error_errno(-errno, errno, "Failed to recursively turn old root mount tree into dependent mount");
 
 	ret = umount2(".", MNT_DETACH);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to detach old root directory");
+		return log_error_errno(-errno, errno, "Failed to detach old root directory");
 
-	ret = fchdir(newroot);
+	ret = fchdir(rootfs->mntpt_fd);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to re-enter new root directory");
+		return log_error_errno(-errno, errno, "Failed to re-enter new root directory \"%s\"", rootfs->mount);
 
-	TRACE("pivot_root(\"%s\") successful", rootfs);
-
+	TRACE("Changed into new rootfs \"%s\"", rootfs->mount);
 	return 0;
 }
 
@@ -1450,7 +1446,7 @@ static int lxc_setup_rootfs_switch_root(const struct lxc_rootfs *rootfs)
 	if (detect_ramfs_rootfs())
 		return lxc_chroot(rootfs);
 
-	return lxc_pivot_root(rootfs->mount);
+	return lxc_pivot_root(rootfs);
 }
 
 static const struct id_map *find_mapped_nsid_entry(const struct lxc_conf *conf,
