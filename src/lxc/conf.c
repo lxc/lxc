@@ -781,31 +781,30 @@ static const struct dev_symlinks dev_symlinks[] = {
 
 static int lxc_setup_dev_symlinks(const struct lxc_rootfs *rootfs)
 {
-	int i, ret;
-	char path[PATH_MAX];
-	struct stat s;
-
-	for (i = 0; i < sizeof(dev_symlinks) / sizeof(dev_symlinks[0]); i++) {
+	for (int i = 0; i < sizeof(dev_symlinks) / sizeof(dev_symlinks[0]); i++) {
+		int ret;
+		struct stat s;
 		const struct dev_symlinks *d = &dev_symlinks[i];
 
-		ret = snprintf(path, sizeof(path), "%s/dev/%s",
-			       rootfs->path ? rootfs->mount : "", d->name);
-		if (ret < 0 || (size_t)ret >= sizeof(path))
-			return -1;
-
-		/* Stat the path first. If we don't get an error accept it as
+		/*
+		 * Stat the path first. If we don't get an error accept it as
 		 * is and don't try to create it
 		 */
-		ret = stat(path, &s);
+		ret = fstatat(rootfs->dev_mntpt_fd, d->name, &s, 0);
 		if (ret == 0)
 			continue;
 
-		ret = symlink(d->oldpath, path);
-		if (ret && errno != EEXIST) {
-			if (errno == EROFS)
-				WARN("Failed to create \"%s\". Read-only filesystem", path);
-			else
-				return log_error_errno(-1, errno, "Failed to create \"%s\"", path);
+		ret = symlinkat(d->oldpath, rootfs->dev_mntpt_fd, d->name);
+		if (ret) {
+			switch (errno) {
+			case EROFS:
+				WARN("Failed to create \"%s\" on read-only filesystem", d->name);
+				__fallthrough;
+			case EEXIST:
+				break;
+			default:
+				return log_error_errno(-errno, errno, "Failed to create \"%s\"", d->name);
+			}
 		}
 	}
 
