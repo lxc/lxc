@@ -3325,7 +3325,8 @@ int lxc_setup(struct lxc_handler *handler)
 	}
 
 	lxc_conf->rootfs.dev_mntpt_fd = open_at(lxc_conf->rootfs.mntpt_fd, "dev",
-					        PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV, 0);
+					        PROTECT_OPATH_DIRECTORY,
+						PROTECT_LOOKUP_BENEATH_XDEV, 0);
 	if (lxc_conf->rootfs.dev_mntpt_fd < 0 && errno != ENOENT)
 		return log_error_errno(-errno, errno, "Failed to open \"/dev\"");
 
