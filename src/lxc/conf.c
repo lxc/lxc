@@ -734,10 +734,7 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 		if (flags & LXC_AUTO_CGROUP_FORCE)
 			cg_flags |= LXC_AUTO_CGROUP_FORCE;
 
-		if (!handler->cgroup_ops->mount(handler->cgroup_ops,
-						handler,
-						rootfs->path ? rootfs->mount : "",
-						cg_flags))
+		if (!handler->cgroup_ops->mount(handler->cgroup_ops, conf, cg_flags))
 			return log_error_errno(-1, errno, "Failed to mount \"/sys/fs/cgroup\"");
 	}
 
