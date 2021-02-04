@@ -1263,6 +1263,53 @@ int mount_at(int dfd,
 	return ret;
 }
 
+int mount_from_at(int dfd_from, const char *path_from,
+		  __u64 o_flags_from,
+		  __u64 resolve_flags_from,
+		  int dfd_to, const char *path_to,
+		  __u64 o_flags_to,
+		  __u64 resolve_flags_to,
+		  const char *fstype, unsigned int mnt_flags, const void *data)
+{
+	__do_close int fd_from = -EBADF, fd_to = -EBADF;
+	struct lxc_open_how how = {};
+	int ret;
+	char src_buf[LXC_PROC_PID_FD_LEN], dst_buf[LXC_PROC_PID_FD_LEN];
+
+	if (is_empty_string(path_from)) {
+		ret = snprintf(src_buf, sizeof(src_buf), "/proc/self/fd/%d", dfd_from);
+	} else {
+		how.flags	= o_flags_from;
+		how.resolve	= resolve_flags_from;
+		fd_from = openat2(dfd_from, path_from, &how, sizeof(how));
+		if (fd_from < 0)
+			return -errno;
+
+		ret = snprintf(src_buf, sizeof(src_buf), "/proc/self/fd/%d", fd_from);
+	}
+	if (ret < 0 || ret >= sizeof(src_buf))
+		return -EIO;
+
+	if (is_empty_string(path_to)) {
+		ret = snprintf(dst_buf, sizeof(dst_buf), "/proc/self/fd/%d", dfd_to);
+	} else {
+		how.flags	= o_flags_to;
+		how.resolve	= resolve_flags_to;
+		fd_to = openat2(dfd_to, path_to, &how, sizeof(how));
+		if (fd_to < 0)
+			return -errno;
+
+		ret = snprintf(dst_buf, sizeof(dst_buf), "/proc/self/fd/%d", fd_to);
+	}
+
+	if (is_empty_string(src_buf))
+		ret = mount(NULL, dst_buf, fstype, mnt_flags, data);
+	else
+		ret = mount(src_buf, dst_buf, fstype, mnt_flags, data);
+
+	return ret;
+}
+
 int open_devnull(void)
 {
 	int fd = open("/dev/null", O_RDWR);
