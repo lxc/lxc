@@ -2232,23 +2232,26 @@ static int cgroup_attach_leaf(const struct lxc_conf *conf, int unified_fd, pid_t
 	int idx = 1;
 	int ret;
 	char pidstr[INTTYPE_TO_STRLEN(int64_t) + 1];
-	size_t pidstr_len;
+	ssize_t pidstr_len;
 
 	/* Create leaf cgroup. */
 	ret = mkdirat(unified_fd, ".lxc", 0755);
 	if (ret < 0 && errno != EEXIST)
-		return log_error_errno(-1, errno, "Failed to create leaf cgroup \".lxc\"");
+		return log_error_errno(-errno, errno, "Failed to create leaf cgroup \".lxc\"");
 
-	pidstr_len = sprintf(pidstr, INT64_FMT, (int64_t)pid);
+	pidstr_len = snprintf(pidstr, sizeof(pidstr), INT64_FMT, (int64_t)pid);
+	if (pidstr_len < 0 || (size_t)pidstr_len >= sizeof(pidstr))
+		return ret_errno(EIO);
+
 	ret = lxc_writeat(unified_fd, ".lxc/cgroup.procs", pidstr, pidstr_len);
 	if (ret < 0)
 		ret = lxc_writeat(unified_fd, "cgroup.procs", pidstr, pidstr_len);
 	if (ret == 0)
-		return 0;
+		return log_trace(0, "Moved process %s into cgroup %d(.lxc)", pidstr, unified_fd);
 
 	/* this is a non-leaf node */
 	if (errno != EBUSY)
-		return log_error_errno(-1, errno, "Failed to attach to unified cgroup");
+		return log_error_errno(-errno, errno, "Failed to attach to unified cgroup");
 
 	do {
 		bool rm = false;
@@ -2280,7 +2283,7 @@ static int cgroup_attach_leaf(const struct lxc_conf *conf, int unified_fd, pid_t
 
 		ret = lxc_writeat(unified_fd, attach_cgroup, pidstr, pidstr_len);
 		if (ret == 0)
-			return 0;
+			return log_trace(0, "Moved process %s into cgroup %d(%s)", pidstr, unified_fd, attach_cgroup);
 
 		if (rm && unlinkat(unified_fd, attach_cgroup, AT_REMOVEDIR))
 			SYSERROR("Failed to remove cgroup \"%d(%s)\"", unified_fd, attach_cgroup);
