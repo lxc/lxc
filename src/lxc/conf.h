@@ -23,6 +23,7 @@
 #include "memory_utils.h"
 #include "ringbuf.h"
 #include "start.h"
+#include "string_utils.h"
 #include "terminal.h"
 
 #if HAVE_SYS_RESOURCE_H
@@ -533,5 +534,12 @@ static inline int chown_mapped_root(const char *path, const struct lxc_conf *con
 }
 
 __hidden int lxc_setup_devpts_parent(struct lxc_handler *handler);
+
+static inline const char *get_rootfs_mnt(const struct lxc_rootfs *rootfs)
+{
+	static const char *s = "/";
+
+	return !is_empty_string(rootfs->path) ? rootfs->mount : s;
+}
 
 #endif /* __LXC_CONF_H */

@@ -115,6 +115,8 @@ static inline bool is_empty_string(const char *s)
 	return !s || strcmp(s, "") == 0;
 }
 
+#define maybe_empty(s) ((!is_empty_string(s)) ? (s) : ("(null)"))
+
 static inline ssize_t safe_strlcat(char *src, const char *append, size_t len)
 {
 	size_t new_len;

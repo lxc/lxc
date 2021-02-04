@@ -1758,50 +1758,72 @@ static int cg_legacy_mount_controllers(int type, struct hierarchy *h,
  * cgroups for the LXC_AUTO_CGROUP_FULL option.
  */
 static int __cg_mount_direct(int type, struct hierarchy *h,
-			     const char *controllerpath)
+			     struct lxc_rootfs *rootfs,
+			     int dfd_mnt_cgroupfs, const char *hierarchy_mnt)
 {
-	 __do_free char *controllers = NULL;
-	 char *fstype = "cgroup2";
-	 unsigned long flags = 0;
-	 int ret;
+	__do_free char *controllers = NULL;
+	unsigned long flags = 0;
+	char *fstype;
+	int ret;
 
-	 flags |= MS_NOSUID;
-	 flags |= MS_NOEXEC;
-	 flags |= MS_NODEV;
-	 flags |= MS_RELATIME;
+	if (dfd_mnt_cgroupfs < 0)
+		return ret_errno(EINVAL);
 
-	 if (type == LXC_AUTO_CGROUP_RO || type == LXC_AUTO_CGROUP_FULL_RO)
-		 flags |= MS_RDONLY;
+	flags |= MS_NOSUID;
+	flags |= MS_NOEXEC;
+	flags |= MS_NODEV;
+	flags |= MS_RELATIME;
 
-	 if (h->version != CGROUP2_SUPER_MAGIC) {
-		 controllers = lxc_string_join(",", (const char **)h->controllers, false);
-		 if (!controllers)
-			 return -ENOMEM;
-		 fstype = "cgroup";
+	if (type == LXC_AUTO_CGROUP_RO || type == LXC_AUTO_CGROUP_FULL_RO)
+		flags |= MS_RDONLY;
+
+	if (is_unified_hierarchy(h)) {
+		fstype = "cgroup2";
+	} else {
+		fstype = "cgroup";
+
+		controllers = lxc_string_join(",", (const char **)h->controllers, false);
+		if (!controllers)
+			return ret_errno(ENOMEM);
 	}
 
-	ret = mount("cgroup", controllerpath, fstype, flags, controllers);
-	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to mount \"%s\" with cgroup filesystem type %s",
-				       controllerpath, fstype);
+	ret = mount_at(dfd_mnt_cgroupfs, NULL, hierarchy_mnt,
+		       PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH, fstype,
+		       flags, controllers);
+	if (ret < 0 && errno == ENOSYS) {
+		__do_free char *target = NULL;
+		const char *rootfs_mnt;
 
-	DEBUG("Mounted \"%s\" with cgroup filesystem type %s", controllerpath, fstype);
+		rootfs_mnt = get_rootfs_mnt(rootfs);
+		target = must_make_path(rootfs_mnt, DEFAULT_CGROUP_MOUNTPOINT, hierarchy_mnt, NULL);
+		ret = safe_mount(NULL, target, fstype, flags, controllers, rootfs_mnt);
+	}
+	if (ret < 0)
+		return log_error_errno(ret, errno, "Failed to mount %s filesystem onto %d(%s)",
+				       fstype, dfd_mnt_cgroupfs, maybe_empty(hierarchy_mnt));
+
+	DEBUG("Mounted cgroup filesystem %s onto %d(%s)",
+	      fstype, dfd_mnt_cgroupfs, maybe_empty(hierarchy_mnt));
 	return 0;
 }
 
 static inline int cg_mount_in_cgroup_namespace(int type, struct hierarchy *h,
-					       const char *controllerpath)
+					       struct lxc_rootfs *rootfs,
+					       int dfd_mnt_cgroupfs,
+					       const char *hierarchy_mnt)
 {
-	return __cg_mount_direct(type, h, controllerpath);
+	return __cg_mount_direct(type, h, rootfs, dfd_mnt_cgroupfs, hierarchy_mnt);
 }
 
 static inline int cg_mount_cgroup_full(int type, struct hierarchy *h,
-				       const char *controllerpath)
+				       struct lxc_rootfs *rootfs,
+				       int dfd_mnt_cgroupfs,
+				       const char *hierarchy_mnt)
 {
 	if (type < LXC_AUTO_CGROUP_FULL_RO || type > LXC_AUTO_CGROUP_FULL_MIXED)
 		return 0;
 
-	return __cg_mount_direct(type, h, controllerpath);
+	return __cg_mount_direct(type, h, rootfs, dfd_mnt_cgroupfs, hierarchy_mnt);
 }
 
 __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
@@ -1811,7 +1833,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	__do_free char *cgroup_root = NULL;
 	bool has_cgns = false, wants_force_mount = false;
 	struct lxc_rootfs *rootfs = &conf->rootfs;
-	const char *root = rootfs->path ? rootfs->mount : "";
+	const char *rootfs_mnt = get_rootfs_mnt(rootfs);
 	int ret;
 
 	if (!ops)
@@ -1857,18 +1879,26 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	else if (type == LXC_AUTO_CGROUP_FULL_NOSPEC)
 		type = LXC_AUTO_CGROUP_FULL_MIXED;
 
-	cgroup_root = must_make_path(root, DEFAULT_CGROUP_MOUNTPOINT, NULL);
-	if (ops->cgroup_layout == CGROUP_LAYOUT_UNIFIED) {
+	/* This is really the codepath that we want. */
+	if (pure_unified_layout(ops)) {
+		dfd_mnt_cgroupfs = open_at(rootfs->mntpt_fd,
+					   DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
+					   PROTECT_OPATH_DIRECTORY,
+					   PROTECT_LOOKUP_BENEATH_XDEV, 0);
+		if (dfd_mnt_cgroupfs < 0)
+			return log_error_errno(-errno, errno, "Failed to open %d(%s)",
+					       rootfs->mntpt_fd, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
+
 		if (has_cgns && wants_force_mount) {
 			/*
 			 * If cgroup namespaces are supported but the container
 			 * will not have CAP_SYS_ADMIN after it has started we
 			 * need to mount the cgroups manually.
 			 */
-			return cg_mount_in_cgroup_namespace(type, ops->unified, cgroup_root) == 0;
+			return cg_mount_in_cgroup_namespace(type, ops->unified, rootfs, dfd_mnt_cgroupfs, "") == 0;
 		}
 
-		return cg_mount_cgroup_full(type, ops->unified, cgroup_root) == 0;
+		return cg_mount_cgroup_full(type, ops->unified, rootfs, dfd_mnt_cgroupfs, "") == 0;
 	}
 
 	/*
@@ -1880,18 +1910,16 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		       PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV,
 		       "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,
 		       "size=10240k,mode=755");
-	if (ret < 0) {
-		if (errno != ENOSYS)
-			return log_error_errno(false, errno,
-					       "Failed to mount tmpfs on %s",
-					       DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
+	if (ret < 0 && errno == ENOSYS) {
+		cgroup_root = must_make_path(rootfs_mnt, DEFAULT_CGROUP_MOUNTPOINT, NULL);
 
 		ret = safe_mount(NULL, cgroup_root, "tmpfs",
 				 MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,
-				 "size=10240k,mode=755", root);
+				 "size=10240k,mode=755", rootfs_mnt);
 	}
 	if (ret < 0)
-		return false;
+		return log_error_errno(false, errno, "Failed to mount tmpfs on %s",
+				       DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
 
 	dfd_mnt_cgroupfs = open_at(rootfs->mntpt_fd,
 				   DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
@@ -1910,41 +1938,41 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			continue;
 		controller++;
 
-		controllerpath = must_make_path(cgroup_root, controller, NULL);
-		if (dir_exists(controllerpath))
-			continue;
-
 		ret = mkdirat(dfd_mnt_cgroupfs, controller, 0000);
 		if (ret < 0)
-			return log_error_errno(false, errno, "Error creating cgroup path: %s", controllerpath);
+			return log_error_errno(false, errno, "Failed to create cgroup mountpoint %d(%s)", dfd_mnt_cgroupfs, controller);
 
 		if (has_cgns && wants_force_mount) {
-			/* If cgroup namespaces are supported but the container
+			/*
+			 * If cgroup namespaces are supported but the container
 			 * will not have CAP_SYS_ADMIN after it has started we
 			 * need to mount the cgroups manually.
 			 */
-			ret = cg_mount_in_cgroup_namespace(type, h, controllerpath);
+			ret = cg_mount_in_cgroup_namespace(type, h, rootfs, dfd_mnt_cgroupfs, controller);
 			if (ret < 0)
 				return false;
 
 			continue;
 		}
 
-		ret = cg_mount_cgroup_full(type, h, controllerpath);
+		/* Here is where the ancient kernel section begins. */
+		ret = cg_mount_cgroup_full(type, h, rootfs, dfd_mnt_cgroupfs, controller);
 		if (ret < 0)
 			return false;
 
 		if (!cg_mount_needs_subdirs(type))
 			continue;
 
-		path2 = must_make_path(controllerpath, h->container_base_path,
-				       ops->container_cgroup, NULL);
+		controllerpath = must_make_path(cgroup_root, controller, NULL);
+		if (dir_exists(controllerpath))
+			continue;
+
+		path2 = must_make_path(controllerpath, h->container_base_path, ops->container_cgroup, NULL);
 		ret = mkdir_p(path2, 0755);
 		if (ret < 0)
 			return false;
 
-		ret = cg_legacy_mount_controllers(type, h, controllerpath,
-						  path2, ops->container_cgroup);
+		ret = cg_legacy_mount_controllers(type, h, controllerpath, path2, ops->container_cgroup);
 		if (ret < 0)
 			return false;
 	}
