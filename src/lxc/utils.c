@@ -1301,6 +1301,8 @@ int mount_from_at(int dfd_from, const char *path_from,
 
 		ret = snprintf(dst_buf, sizeof(dst_buf), "/proc/self/fd/%d", fd_to);
 	}
+	if (ret < 0 || ret >= sizeof(src_buf))
+		return -EIO;
 
 	if (is_empty_string(src_buf))
 		ret = mount(NULL, dst_buf, fstype, mnt_flags, data);
