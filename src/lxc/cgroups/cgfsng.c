@@ -1807,6 +1807,7 @@ static inline int cg_mount_cgroup_full(int type, struct hierarchy *h,
 __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 				      struct lxc_conf *conf, int type)
 {
+	__do_close int dfd_mnt_cgroupfs = -EBADF;
 	__do_free char *cgroup_root = NULL;
 	bool has_cgns = false, wants_force_mount = false;
 	struct lxc_rootfs *rootfs = &conf->rootfs;
@@ -1892,6 +1893,14 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	if (ret < 0)
 		return false;
 
+	dfd_mnt_cgroupfs = open_at(rootfs->mntpt_fd,
+				   DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
+				   PROTECT_OPATH_DIRECTORY,
+				   PROTECT_LOOKUP_BENEATH_XDEV, 0);
+	if (dfd_mnt_cgroupfs < 0)
+		return log_error_errno(-errno, errno, "Failed to open %d(%s)",
+				       rootfs->mntpt_fd, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
+
 	for (int i = 0; ops->hierarchies[i]; i++) {
 		__do_free char *controllerpath = NULL, *path2 = NULL;
 		struct hierarchy *h = ops->hierarchies[i];
@@ -1905,7 +1914,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		if (dir_exists(controllerpath))
 			continue;
 
-		ret = mkdir(controllerpath, 0755);
+		ret = mkdirat(dfd_mnt_cgroupfs, controller, 0000);
 		if (ret < 0)
 			return log_error_errno(false, errno, "Error creating cgroup path: %s", controllerpath);
 
