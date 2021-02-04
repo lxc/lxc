@@ -1882,13 +1882,13 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 
 	/* This is really the codepath that we want. */
 	if (pure_unified_layout(ops)) {
-		dfd_mnt_cgroupfs = open_at(rootfs->mntpt_fd,
+		dfd_mnt_cgroupfs = open_at(rootfs->dfd_mnt,
 					   DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
 					   PROTECT_OPATH_DIRECTORY,
 					   PROTECT_LOOKUP_BENEATH_XDEV, 0);
 		if (dfd_mnt_cgroupfs < 0)
 			return log_error_errno(-errno, errno, "Failed to open %d(%s)",
-					       rootfs->mntpt_fd, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
+					       rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
 
 		if (has_cgns && wants_force_mount) {
 			/*
@@ -1907,7 +1907,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	 * relying on RESOLVE_BENEATH so we need to skip the leading "/" in the
 	 * DEFAULT_CGROUP_MOUNTPOINT define.
 	 */
-	ret = mount_at(rootfs->mntpt_fd, NULL, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
+	ret = mount_at(rootfs->dfd_mnt, NULL, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
 		       PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV,
 		       "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,
 		       "size=10240k,mode=755");
@@ -1922,13 +1922,13 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		return log_error_errno(false, errno, "Failed to mount tmpfs on %s",
 				       DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
 
-	dfd_mnt_cgroupfs = open_at(rootfs->mntpt_fd,
+	dfd_mnt_cgroupfs = open_at(rootfs->dfd_mnt,
 				   DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
 				   PROTECT_OPATH_DIRECTORY,
 				   PROTECT_LOOKUP_BENEATH_XDEV, 0);
 	if (dfd_mnt_cgroupfs < 0)
 		return log_error_errno(-errno, errno, "Failed to open %d(%s)",
-				       rootfs->mntpt_fd, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
+				       rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
 		__do_free char *controllerpath = NULL, *path2 = NULL;

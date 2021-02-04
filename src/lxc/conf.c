@@ -643,17 +643,17 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
         bool has_cap_net_admin;
 
         if (flags & LXC_AUTO_PROC_MASK) {
-		ret = mkdirat(rootfs->mntpt_fd, "proc" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+		ret = mkdirat(rootfs->dfd_mnt, "proc" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 		if (ret < 0 && errno != EEXIST)
 			return log_error_errno(-errno, errno,
-					       "Failed to create proc mountpoint under %d", rootfs->mntpt_fd);
+					       "Failed to create proc mountpoint under %d", rootfs->dfd_mnt);
 	}
 
 	if (flags & LXC_AUTO_SYS_MASK) {
-		ret = mkdirat(rootfs->mntpt_fd, "sys" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+		ret = mkdirat(rootfs->dfd_mnt, "sys" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 		if (ret < 0 && errno != EEXIST)
 			return log_error_errno(-errno, errno,
-					       "Failed to create sysfs mountpoint under %d", rootfs->mntpt_fd);
+					       "Failed to create sysfs mountpoint under %d", rootfs->dfd_mnt);
 	}
 
         has_cap_net_admin = lxc_wants_cap(CAP_NET_ADMIN, conf);
@@ -1071,14 +1071,14 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 	DEBUG("Using mount options: %s", mount_options);
 
 	cur_mask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
-	ret = mkdirat(rootfs->mntpt_fd, "dev" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+	ret = mkdirat(rootfs->dfd_mnt, "dev" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 	if (ret < 0 && errno != EEXIST) {
 		SYSERROR("Failed to create \"/dev\" directory");
 		ret = -errno;
 		goto reset_umask;
 	}
 
-	ret = safe_mount_beneath_at(rootfs->mntpt_fd, "none", "dev", "tmpfs", 0, mount_options);
+	ret = safe_mount_beneath_at(rootfs->dfd_mnt, "none", "dev", "tmpfs", 0, mount_options);
 	if (ret < 0) {
 		__do_free char *fallback_path = NULL;
 
@@ -1103,7 +1103,7 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 	/* If we are running on a devtmpfs mapping, dev/pts may already exist.
 	 * If not, then create it and exit if that fails...
 	 */
-	ret = mkdirat(rootfs->mntpt_fd, "dev/pts", S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+	ret = mkdirat(rootfs->dfd_mnt, "dev/pts", S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 	if (ret < 0 && errno != EEXIST) {
 		SYSERROR("Failed to create directory \"%s\"", path);
 		ret = -errno;
@@ -1262,8 +1262,8 @@ static int lxc_mount_rootfs(struct lxc_conf *conf)
 		if (ret < 0)
 			return log_error_errno(-1, errno, "Failed to recursively turn root mount tree into dependent mount");
 
-		rootfs->mntpt_fd = open_at(-EBADF, "/", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE, 0);
-		if (rootfs->mntpt_fd < 0)
+		rootfs->dfd_mnt = open_at(-EBADF, "/", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE, 0);
+		if (rootfs->dfd_mnt < 0)
 			return -errno;
 
 		return 0;
@@ -1291,8 +1291,8 @@ static int lxc_mount_rootfs(struct lxc_conf *conf)
 	      rootfs->path, rootfs->mount,
 	      rootfs->options ? rootfs->options : "(null)");
 
-	rootfs->mntpt_fd = open_at(-EBADF, rootfs->mount, PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
-	if (rootfs->mntpt_fd < 0)
+	rootfs->dfd_mnt = open_at(-EBADF, rootfs->mount, PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
+	if (rootfs->dfd_mnt < 0)
 		return -errno;
 
 	return 0;
@@ -1424,7 +1424,7 @@ static int lxc_pivot_root(const struct lxc_rootfs *rootfs)
 		return log_error_errno(-1, errno, "Failed to open old root directory");
 
 	/* change into new root fs */
-	ret = fchdir(rootfs->mntpt_fd);
+	ret = fchdir(rootfs->dfd_mnt);
 	if (ret < 0)
 		return log_error_errno(-errno, errno, "Failed to change into new root directory \"%s\"", rootfs->mount);
 
@@ -1453,7 +1453,7 @@ static int lxc_pivot_root(const struct lxc_rootfs *rootfs)
 	if (ret < 0)
 		return log_error_errno(-errno, errno, "Failed to detach old root directory");
 
-	ret = fchdir(rootfs->mntpt_fd);
+	ret = fchdir(rootfs->dfd_mnt);
 	if (ret < 0)
 		return log_error_errno(-errno, errno, "Failed to re-enter new root directory \"%s\"", rootfs->mount);
 
@@ -2633,7 +2633,7 @@ struct lxc_conf *lxc_conf_init(void)
 		return NULL;
 	}
 	new->rootfs.managed = true;
-	new->rootfs.mntpt_fd = -EBADF;
+	new->rootfs.dfd_mnt = -EBADF;
 	new->rootfs.dfd_dev = -EBADF;
 	new->rootfs.dfd_root_host = -EBADF;
 	new->logfd = -1;
@@ -2984,11 +2984,11 @@ static int lxc_transient_proc(struct lxc_rootfs *rootfs)
 	int link_to_pid, link_len, pid_self, ret;
 	char link[INTTYPE_TO_STRLEN(pid_t) + 1];
 
-	link_len = readlinkat(rootfs->mntpt_fd, "proc/self", link, sizeof(link));
+	link_len = readlinkat(rootfs->dfd_mnt, "proc/self", link, sizeof(link));
 	if (link_len < 0) {
-		ret = mkdirat(rootfs->mntpt_fd, "proc", 0000);
+		ret = mkdirat(rootfs->dfd_mnt, "proc", 0000);
 		if (ret < 0 && errno != EEXIST)
-			return log_error_errno(-errno, errno, "Failed to create %d(proc)", rootfs->mntpt_fd);
+			return log_error_errno(-errno, errno, "Failed to create %d(proc)", rootfs->dfd_mnt);
 
 		goto domount;
 	} else if (link_len >= sizeof(link)) {
@@ -3007,7 +3007,7 @@ static int lxc_transient_proc(struct lxc_rootfs *rootfs)
 	if (link_to_pid == pid_self)
 		return log_trace(0, "Correct procfs instance mounted");
 
-	fd_proc = open_at(rootfs->mntpt_fd, "proc", PROTECT_OPATH_DIRECTORY,
+	fd_proc = open_at(rootfs->dfd_mnt, "proc", PROTECT_OPATH_DIRECTORY,
 			  PROTECT_LOOKUP_BENEATH_XDEV, 0);
 	if (fd_proc < 0)
 		return log_error_errno(-errno, errno, "Failed to open transient procfs mountpoint");
@@ -3025,7 +3025,7 @@ domount:
 	if (!rootfs->path) {
 		ret = mount("proc", rootfs->buf, "proc", 0, NULL);
 	} else {
-		ret = safe_mount_beneath_at(rootfs->mntpt_fd, "none", "proc", "proc", 0, NULL);
+		ret = safe_mount_beneath_at(rootfs->dfd_mnt, "none", "proc", "proc", 0, NULL);
 		if (ret < 0) {
 			ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s/proc", rootfs->path ? rootfs->mount : "");
 			if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
@@ -3222,8 +3222,8 @@ int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const char *name,
 		if (ret < 0)
 			return log_error(-1, "Failed to bind mount container / onto itself");
 
-		conf->rootfs.mntpt_fd = openat(-EBADF, path, O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH | O_NOCTTY);
-		if (conf->rootfs.mntpt_fd < 0)
+		conf->rootfs.dfd_mnt = openat(-EBADF, path, O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH | O_NOCTTY);
+		if (conf->rootfs.dfd_mnt < 0)
 			return log_error_errno(-errno, errno, "Failed to open file descriptor for container rootfs");
 
 		return log_trace(0, "Bind mounted container / onto itself");
@@ -3415,7 +3415,7 @@ int lxc_setup(struct lxc_handler *handler)
 			return log_error(-1, "Failed to mount \"/dev\"");
 	}
 
-	lxc_conf->rootfs.dfd_dev = open_at(lxc_conf->rootfs.mntpt_fd, "dev",
+	lxc_conf->rootfs.dfd_dev = open_at(lxc_conf->rootfs.dfd_mnt, "dev",
 					        PROTECT_OPATH_DIRECTORY,
 						PROTECT_LOOKUP_BENEATH_XDEV, 0);
 	if (lxc_conf->rootfs.dfd_dev < 0 && errno != ENOENT)
@@ -3540,7 +3540,7 @@ int lxc_setup(struct lxc_handler *handler)
 		return log_error(-1, "Failed to drop capabilities");
 	}
 
-	close_prot_errno_disarm(lxc_conf->rootfs.mntpt_fd)
+	close_prot_errno_disarm(lxc_conf->rootfs.dfd_mnt)
 	close_prot_errno_disarm(lxc_conf->rootfs.dfd_dev)
 	close_prot_errno_disarm(lxc_conf->rootfs.dfd_root_host)
 	NOTICE("The container \"%s\" is set up", name);
@@ -3906,7 +3906,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->rootfs.options);
 	free(conf->rootfs.path);
 	free(conf->rootfs.data);
-	close_prot_errno_disarm(conf->rootfs.mntpt_fd);
+	close_prot_errno_disarm(conf->rootfs.dfd_mnt);
 	close_prot_errno_disarm(conf->rootfs.dfd_dev);
 	close_prot_errno_disarm(conf->rootfs.dfd_root_host);
 	free(conf->logfile);
