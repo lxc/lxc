@@ -193,6 +193,7 @@ struct lxc_tty_info {
  * @dev_mntpt_fd : fd for /dev of the container
  */
 struct lxc_rootfs {
+	int dfd_root_host;
 	int mntpt_fd;
 	int dev_mntpt_fd;
 	char *path;
