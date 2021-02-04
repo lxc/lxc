@@ -1636,8 +1636,13 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		 * enough.
 		 */
 		ret = cgroup_attach(conf, name, lxcpath, pid);
-		if (ret == -ENOCGROUP2) {
+		if (ret) {
 			call_cleaner(cgroup_exit) struct cgroup_ops *cgroup_ops = NULL;
+
+			if (ret != -ENOCGROUP2) {
+				SYSERROR("Failed to attach cgroup");
+				goto on_error;
+			}
 
 			cgroup_ops = cgroup_init(conf);
 			if (!cgroup_ops)
@@ -1646,6 +1651,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 			if (!cgroup_ops->attach(cgroup_ops, conf, name, lxcpath, pid))
 				goto on_error;
 		}
+
 		TRACE("Moved intermediate process %d into container's cgroups", pid);
 	}
 
