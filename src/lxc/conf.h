@@ -191,12 +191,12 @@ struct lxc_tty_info {
  * @data         : the portion of @options that are not flags
  * @managed      : whether it is managed by LXC
  * @mntpt_fd	 : fd for @mount
- * @dev_mntpt_fd : fd for /dev of the container
+ * @dfd_dev : fd for /dev of the container
  */
 struct lxc_rootfs {
 	int dfd_root_host;
 	int mntpt_fd;
-	int dev_mntpt_fd;
+	int dfd_dev;
 	char *path;
 	char *mount;
 	char buf[PATH_MAX];
