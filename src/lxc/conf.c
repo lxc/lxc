@@ -1664,14 +1664,14 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	if (pty_mnt_fd >= 0) {
 		ret = move_mount(pty_mnt_fd, "", rootfs->dev_mntpt_fd, "console", MOVE_MOUNT_F_EMPTY_PATH);
 		if (!ret) {
-			DEBUG("Moved mount \"%s\" onto \"%s\"", console->name, path);
-			goto finish;
+			DEBUG("Moved mount \"%s\" onto %d(console)", console->name, rootfs->dev_mntpt_fd);
+			return 0;
 		}
 
 		if (ret && errno != ENOSYS)
 			return log_error_errno(-1, errno,
-					       "Failed to mount %d(%s) on \"%s\"",
-					       pty_mnt_fd, console->name, path);
+					       "Failed to mount %d(%s) on %d(console)",
+					       pty_mnt_fd, console->name, rootfs->dev_mntpt_fd);
 	}
 
 	ret = safe_mount_beneath_at(rootfs->dev_mntpt_fd, console->name, "console", NULL, MS_BIND, NULL);
@@ -1687,7 +1687,6 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 		}
 	}
 
-finish:
 	DEBUG("Mounted pty device %d(%s) onto \"%s\"", pty_mnt_fd, console->name, path);
 	return 0;
 }
