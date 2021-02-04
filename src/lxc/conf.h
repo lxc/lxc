@@ -190,12 +190,12 @@ struct lxc_tty_info {
  * @mountflags   : the portion of @options that are flags
  * @data         : the portion of @options that are not flags
  * @managed      : whether it is managed by LXC
- * @mntpt_fd	 : fd for @mount
+ * @dfd_mnt	 : fd for @mount
  * @dfd_dev : fd for /dev of the container
  */
 struct lxc_rootfs {
 	int dfd_root_host;
-	int mntpt_fd;
+	int dfd_mnt;
 	int dfd_dev;
 	char *path;
 	char *mount;
