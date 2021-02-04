@@ -2612,6 +2612,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->rootfs.managed = true;
 	new->rootfs.mntpt_fd = -EBADF;
 	new->rootfs.dev_mntpt_fd = -EBADF;
+	new->rootfs.dfd_root_host = -EBADF;
 	new->logfd = -1;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->cgroup2);
@@ -3184,6 +3185,10 @@ int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const char *name,
 {
 	int ret;
 
+	conf->rootfs.dfd_root_host = open_at(-EBADF, "/", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE, 0);
+	if (conf->rootfs.dfd_root_host < 0)
+		return log_error_errno(-errno, errno, "Failed to open \"/\"");
+
 	if (conf->rootfs_setup) {
 		const char *path = conf->rootfs.mount;
 
@@ -3514,6 +3519,7 @@ int lxc_setup(struct lxc_handler *handler)
 
 	close_prot_errno_disarm(lxc_conf->rootfs.mntpt_fd)
 	close_prot_errno_disarm(lxc_conf->rootfs.dev_mntpt_fd)
+	close_prot_errno_disarm(lxc_conf->rootfs.dfd_root_host)
 	NOTICE("The container \"%s\" is set up", name);
 
 	return 0;
@@ -3879,6 +3885,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->rootfs.data);
 	close_prot_errno_disarm(conf->rootfs.mntpt_fd);
 	close_prot_errno_disarm(conf->rootfs.dev_mntpt_fd);
+	close_prot_errno_disarm(conf->rootfs.dfd_root_host);
 	free(conf->logfile);
 	if (conf->logfd != -1)
 		close(conf->logfd);
