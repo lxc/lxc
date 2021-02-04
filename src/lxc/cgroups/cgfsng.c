@@ -44,6 +44,7 @@
 #include "mainloop.h"
 #include "memory_utils.h"
 #include "storage/storage.h"
+#include "syscall_wrappers.h"
 #include "utils.h"
 
 #ifndef HAVE_STRLCPY
@@ -1801,11 +1802,12 @@ static inline int cg_mount_cgroup_full(int type, struct hierarchy *h,
 }
 
 __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
-				      struct lxc_handler *handler,
-				      const char *root, int type)
+				      struct lxc_conf *conf, int type)
 {
 	__do_free char *cgroup_root = NULL;
 	bool has_cgns = false, wants_force_mount = false;
+	struct lxc_rootfs *rootfs = &conf->rootfs;
+	const char *root = rootfs->path ? rootfs->mount : "";
 	int ret;
 
 	if (!ops)
@@ -1814,7 +1816,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	if (!ops->hierarchies)
 		return true;
 
-	if (!handler || !handler->conf)
+	if (!conf)
 		return ret_set_errno(false, EINVAL);
 
 	if ((type & LXC_AUTO_CGROUP_MASK) == 0)
@@ -1826,7 +1828,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	}
 
 	if (!wants_force_mount) {
-		wants_force_mount = !lxc_wants_cap(CAP_SYS_ADMIN, handler->conf);
+		wants_force_mount = !lxc_wants_cap(CAP_SYS_ADMIN, conf);
 
 		/*
 		 * Most recent distro versions currently have init system that
@@ -1870,16 +1872,15 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	 * relying on RESOLVE_BENEATH so we need to skip the leading "/" in the
 	 * DEFAULT_CGROUP_MOUNTPOINT define.
 	 */
-	ret = safe_mount_beneath(root, NULL,
-				 DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
-				 "tmpfs",
-				 MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,
-				 "size=10240k,mode=755");
+	ret = mount_at(rootfs->mntpt_fd, NULL, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
+		       PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV,
+		       "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,
+		       "size=10240k,mode=755");
 	if (ret < 0) {
 		if (errno != ENOSYS)
 			return log_error_errno(false, errno,
 					       "Failed to mount tmpfs on %s",
-					       DEFAULT_CGROUP_MOUNTPOINT);
+					       DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
 
 		ret = safe_mount(NULL, cgroup_root, "tmpfs",
 				 MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,

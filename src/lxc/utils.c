@@ -1208,6 +1208,58 @@ int safe_mount(const char *src, const char *dest, const char *fstype,
 	return 0;
 }
 
+int mount_at(int dfd,
+	     const char *src_under_dfd,
+	     const char *dst_under_dfd,
+	     __u64 o_flags,
+	     __u64 resolve_flags,
+	     const char *fstype,
+	     unsigned int mnt_flags,
+	     const void *data)
+{
+	__do_close int source_fd = -EBADF, target_fd = -EBADF;
+	struct lxc_open_how how = {
+		.flags		= o_flags,
+		.resolve	= resolve_flags,
+	};
+	int ret;
+	char src_buf[LXC_PROC_PID_FD_LEN], dst_buf[LXC_PROC_PID_FD_LEN];
+
+	if (dfd < 0)
+		return ret_errno(EINVAL);
+
+	if (!is_empty_string(src_buf) && *src_buf == '/')
+		return log_error_errno(-EINVAL, EINVAL, "Absolute path specified");
+
+	if (is_empty_string(dst_under_dfd))
+		return log_error_errno(-EINVAL, EINVAL, "No target path specified");
+
+	if (!is_empty_string(src_under_dfd)) {
+		source_fd = openat2(dfd, src_under_dfd, &how, sizeof(how));
+		if (source_fd < 0)
+			return -errno;
+
+		ret = snprintf(src_buf, sizeof(src_buf), "/proc/self/fd/%d", source_fd);
+		if (ret < 0 || ret >= sizeof(src_buf))
+			return -EIO;
+	}
+
+	target_fd = openat2(dfd, dst_under_dfd, &how, sizeof(how));
+	if (target_fd < 0)
+		return log_error_errno(-errno, errno, "Failed to open %d(%s)", dfd, dst_under_dfd);
+
+	ret = snprintf(dst_buf, sizeof(dst_buf), "/proc/self/fd/%d", target_fd);
+	if (ret < 0 || ret >= sizeof(dst_buf))
+		return -EIO;
+
+	if (!is_empty_string(src_buf))
+		ret = mount(src_under_dfd, dst_buf, fstype, mnt_flags, data);
+	else
+		ret = mount(NULL, dst_buf, fstype, mnt_flags, data);
+
+	return ret;
+}
+
 /*
  * Mount a proc under @rootfs if proc self points to a pid other than
  * my own.  This is needed to have a known-good proc mount for setting

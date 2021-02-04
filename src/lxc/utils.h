@@ -243,5 +243,9 @@ __hidden extern int safe_mount_beneath(const char *beneath, const char *src, con
 				       const char *fstype, unsigned int flags, const void *data);
 __hidden extern int safe_mount_beneath_at(int beneat_fd, const char *src, const char *dst,
 					  const char *fstype, unsigned int flags, const void *data);
+__hidden extern int mount_at(int dfd, const char *src_under_dfd,
+			     const char *dst_under_dfd, __u64 o_flags,
+			     __u64 resolve_flags, const char *fstype,
+			     unsigned int mnt_flags, const void *data);
 
 #endif /* __LXC_UTILS_H */
