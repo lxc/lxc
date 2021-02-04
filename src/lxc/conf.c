@@ -1156,7 +1156,7 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 
 	cmask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
 	for (i = 0; i < sizeof(lxc_devices) / sizeof(lxc_devices[0]); i++) {
-		char hostpath[PATH_MAX], path[PATH_MAX];
+		char device_path[PATH_MAX];
 		const struct lxc_device_node *device = &lxc_devices[i];
 
 		if (use_mknod >= LXC_DEVNODE_MKNOD) {
@@ -1204,23 +1204,46 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 		}
 
 		/* Fallback to bind-mounting the device from the host. */
-		ret = snprintf(hostpath, sizeof(hostpath), "/dev/%s", device->name);
-		if (ret < 0 || (size_t)ret >= sizeof(hostpath))
+		ret = snprintf(device_path, sizeof(device_path), "dev/%s", device->name);
+		if (ret < 0 || (size_t)ret >= sizeof(device_path))
 			return ret_errno(EIO);
 
-		ret = safe_mount_beneath_at(rootfs->dev_mntpt_fd, hostpath, device->name, NULL, MS_BIND, NULL);
+		ret = mount_from_at(rootfs->dfd_root_host, device_path,
+				    PROTECT_OPATH_FILE,
+				    PROTECT_LOOKUP_BENEATH_XDEV,
+				    rootfs->dev_mntpt_fd, device->name,
+				    PROTECT_OPATH_FILE,
+				    PROTECT_LOOKUP_BENEATH,
+				    NULL /* fstype */,
+				    MS_BIND /* mount flags */,
+				    NULL);
 		if (ret < 0) {
-			const char *mntpt = rootfs->path ? rootfs->mount : NULL;
-			if (errno == ENOSYS) {
-				ret = snprintf(path, sizeof(path), "%s/dev/%s", mntpt, device->name);
-				if (ret < 0 || ret >= sizeof(path))
-					return log_error(-1, "Failed to create device path for %s", device->name);
-				ret = safe_mount(hostpath, path, 0, MS_BIND, NULL, rootfs->path ? rootfs->mount : NULL);
-			}
+			char path[PATH_MAX];
+
+			if (errno != ENOSYS)
+				return log_error_errno(-errno, errno,
+						       "Failed to mount %d(%s) to %d(%s)",
+						       rootfs->dfd_root_host,
+						       device_path,
+						       rootfs->dev_mntpt_fd,
+						       device->name);
+
+			ret = snprintf(device_path, sizeof(device_path), "/dev/%s", device->name);
+			if (ret < 0 || (size_t)ret >= sizeof(device_path))
+				return ret_errno(EIO);
+
+			ret = snprintf(path, sizeof(path), "%s/dev/%s", get_rootfs_mnt(rootfs), device->name);
+			if (ret < 0 || ret >= sizeof(path))
+				return log_error(-1, "Failed to create device path for %s", device->name);
+
+			ret = safe_mount(device_path, path, 0, MS_BIND, NULL, get_rootfs_mnt(rootfs));
+			if (ret < 0)
+				return log_error_errno(-1, errno, "Failed to bind mount host device node \"%s\" to \"%s\"", device_path, path);
+
+			DEBUG("Bind mounted host device node \"%s\" to \"%s\"", device_path, path);
+			continue;
 		}
-		if (ret < 0)
-			return log_error_errno(-1, errno, "Failed to bind mount host device node \"%s\" onto \"%s\"", hostpath, device->name);
-		DEBUG("Bind mounted host device node \"%s\" onto \"%s\"", hostpath, device->name);
+		DEBUG("Bind mounted host device %d(%s) to %d(%s)", rootfs->dfd_root_host, device_path, rootfs->dev_mntpt_fd, device->name);
 	}
 	(void)umask(cmask);
 
