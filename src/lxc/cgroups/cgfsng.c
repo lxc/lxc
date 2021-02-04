@@ -3504,7 +3504,7 @@ int cgroup_attach(const struct lxc_conf *conf, const char *name,
 	__do_close int unified_fd = -EBADF;
 	int ret;
 
-	if (!conf || is_empty_string(name) || !is_empty_string(lxcpath) || pid <= 0)
+	if (!conf || is_empty_string(name) || is_empty_string(lxcpath) || pid <= 0)
 		return ret_errno(EINVAL);
 
 	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
