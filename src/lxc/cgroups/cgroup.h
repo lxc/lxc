@@ -172,8 +172,7 @@ struct cgroup_ops {
 	bool (*chown)(struct cgroup_ops *ops, struct lxc_conf *conf);
 	bool (*attach)(struct cgroup_ops *ops, const struct lxc_conf *conf,
 		       const char *name, const char *lxcpath, pid_t pid);
-	bool (*mount)(struct cgroup_ops *ops, struct lxc_handler *handler,
-		      const char *root, int type);
+	bool (*mount)(struct cgroup_ops *ops, struct lxc_conf *conf, int type);
 	bool (*devices_activate)(struct cgroup_ops *ops,
 				 struct lxc_handler *handler);
 	bool (*monitor_delegate_controllers)(struct cgroup_ops *ops);

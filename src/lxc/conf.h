@@ -23,6 +23,7 @@
 #include "memory_utils.h"
 #include "ringbuf.h"
 #include "start.h"
+#include "string_utils.h"
 #include "terminal.h"
 
 #if HAVE_SYS_RESOURCE_H
@@ -189,12 +190,13 @@ struct lxc_tty_info {
  * @mountflags   : the portion of @options that are flags
  * @data         : the portion of @options that are not flags
  * @managed      : whether it is managed by LXC
- * @mntpt_fd	 : fd for @mount
- * @dev_mntpt_fd : fd for /dev of the container
+ * @dfd_mnt	 : fd for @mount
+ * @dfd_dev : fd for /dev of the container
  */
 struct lxc_rootfs {
-	int mntpt_fd;
-	int dev_mntpt_fd;
+	int dfd_host;
+	int dfd_mnt;
+	int dfd_dev;
 	char *path;
 	char *mount;
 	char buf[PATH_MAX];
@@ -546,5 +548,12 @@ static inline int chown_mapped_root(const char *path, const struct lxc_conf *con
 }
 
 __hidden int lxc_setup_devpts_parent(struct lxc_handler *handler);
+
+static inline const char *get_rootfs_mnt(const struct lxc_rootfs *rootfs)
+{
+	static const char *s = "/";
+
+	return !is_empty_string(rootfs->path) ? rootfs->mount : s;
+}
 
 #endif /* __LXC_CONF_H */

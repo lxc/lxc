@@ -643,17 +643,17 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
         bool has_cap_net_admin;
 
         if (flags & LXC_AUTO_PROC_MASK) {
-		ret = mkdirat(rootfs->mntpt_fd, "proc" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+		ret = mkdirat(rootfs->dfd_mnt, "proc" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 		if (ret < 0 && errno != EEXIST)
 			return log_error_errno(-errno, errno,
-					       "Failed to create proc mountpoint under %d", rootfs->mntpt_fd);
+					       "Failed to create proc mountpoint under %d", rootfs->dfd_mnt);
 	}
 
 	if (flags & LXC_AUTO_SYS_MASK) {
-		ret = mkdirat(rootfs->mntpt_fd, "sys" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+		ret = mkdirat(rootfs->dfd_mnt, "sys" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 		if (ret < 0 && errno != EEXIST)
 			return log_error_errno(-errno, errno,
-					       "Failed to create sysfs mountpoint under %d", rootfs->mntpt_fd);
+					       "Failed to create sysfs mountpoint under %d", rootfs->dfd_mnt);
 	}
 
         has_cap_net_admin = lxc_wants_cap(CAP_NET_ADMIN, conf);
@@ -734,10 +734,7 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 		if (flags & LXC_AUTO_CGROUP_FORCE)
 			cg_flags |= LXC_AUTO_CGROUP_FORCE;
 
-		if (!handler->cgroup_ops->mount(handler->cgroup_ops,
-						handler,
-						rootfs->path ? rootfs->mount : "",
-						cg_flags))
+		if (!handler->cgroup_ops->mount(handler->cgroup_ops, conf, cg_flags))
 			return log_error_errno(-1, errno, "Failed to mount \"/sys/fs/cgroup\"");
 	}
 
@@ -790,11 +787,11 @@ static int lxc_setup_dev_symlinks(const struct lxc_rootfs *rootfs)
 		 * Stat the path first. If we don't get an error accept it as
 		 * is and don't try to create it
 		 */
-		ret = fstatat(rootfs->dev_mntpt_fd, d->name, &s, 0);
+		ret = fstatat(rootfs->dfd_dev, d->name, &s, 0);
 		if (ret == 0)
 			continue;
 
-		ret = symlinkat(d->oldpath, rootfs->dev_mntpt_fd, d->name);
+		ret = symlinkat(d->oldpath, rootfs->dfd_dev, d->name);
 		if (ret) {
 			switch (errno) {
 			case EROFS:
@@ -1074,14 +1071,14 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 	DEBUG("Using mount options: %s", mount_options);
 
 	cur_mask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
-	ret = mkdirat(rootfs->mntpt_fd, "dev" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+	ret = mkdirat(rootfs->dfd_mnt, "dev" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 	if (ret < 0 && errno != EEXIST) {
 		SYSERROR("Failed to create \"/dev\" directory");
 		ret = -errno;
 		goto reset_umask;
 	}
 
-	ret = safe_mount_beneath_at(rootfs->mntpt_fd, "none", "dev", "tmpfs", 0, mount_options);
+	ret = safe_mount_beneath_at(rootfs->dfd_mnt, "none", "dev", "tmpfs", 0, mount_options);
 	if (ret < 0) {
 		__do_free char *fallback_path = NULL;
 
@@ -1106,7 +1103,7 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 	/* If we are running on a devtmpfs mapping, dev/pts may already exist.
 	 * If not, then create it and exit if that fails...
 	 */
-	ret = mkdirat(rootfs->mntpt_fd, "dev/pts", S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+	ret = mkdirat(rootfs->dfd_mnt, "dev/pts", S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 	if (ret < 0 && errno != EEXIST) {
 		SYSERROR("Failed to create directory \"%s\"", path);
 		ret = -errno;
@@ -1152,18 +1149,18 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 	mode_t cmask;
 	int use_mknod = LXC_DEVNODE_MKNOD;
 
-	if (rootfs->dev_mntpt_fd < 0)
+	if (rootfs->dfd_dev < 0)
 		return log_info(0, "No /dev directory found, skipping setup");
 
 	INFO("Populating \"/dev\"");
 
 	cmask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
 	for (i = 0; i < sizeof(lxc_devices) / sizeof(lxc_devices[0]); i++) {
-		char hostpath[PATH_MAX], path[PATH_MAX];
+		char device_path[PATH_MAX];
 		const struct lxc_device_node *device = &lxc_devices[i];
 
 		if (use_mknod >= LXC_DEVNODE_MKNOD) {
-			ret = mknodat(rootfs->dev_mntpt_fd, device->name, device->mode, makedev(device->maj, device->min));
+			ret = mknodat(rootfs->dfd_dev, device->name, device->mode, makedev(device->maj, device->min));
 			if (ret == 0 || (ret < 0 && errno == EEXIST)) {
 				DEBUG("Created device node \"%s\"", device->name);
 			} else if (ret < 0) {
@@ -1183,7 +1180,7 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 				 * - https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=55956b59df336f6738da916dbb520b6e37df9fbd
 				 * - https://lists.linuxfoundation.org/pipermail/containers/2018-June/039176.html
 				 */
-				fd = open_at(rootfs->dev_mntpt_fd, device->name, PROTECT_OPEN, PROTECT_LOOKUP_BENEATH, 0);
+				fd = open_at(rootfs->dfd_dev, device->name, PROTECT_OPEN, PROTECT_LOOKUP_BENEATH, 0);
 				if (fd >= 0) {
 					/* Device nodes are fully useable. */
 					use_mknod = LXC_DEVNODE_OPEN;
@@ -1201,29 +1198,52 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 			 * nodes the prio mknod() call will have created the
 			 * device node so we can use it as a bind-mount target.
 			 */
-			ret = mknodat(rootfs->dev_mntpt_fd, device->name, S_IFREG | 0000, 0);
+			ret = mknodat(rootfs->dfd_dev, device->name, S_IFREG | 0000, 0);
 			if (ret < 0 && errno != EEXIST)
 				return log_error_errno(-1, errno, "Failed to create file \"%s\"", device->name);
 		}
 
 		/* Fallback to bind-mounting the device from the host. */
-		ret = snprintf(hostpath, sizeof(hostpath), "/dev/%s", device->name);
-		if (ret < 0 || (size_t)ret >= sizeof(hostpath))
+		ret = snprintf(device_path, sizeof(device_path), "dev/%s", device->name);
+		if (ret < 0 || (size_t)ret >= sizeof(device_path))
 			return ret_errno(EIO);
 
-		ret = safe_mount_beneath_at(rootfs->dev_mntpt_fd, hostpath, device->name, NULL, MS_BIND, NULL);
+		ret = mount_from_at(rootfs->dfd_host, device_path,
+				    PROTECT_OPATH_FILE,
+				    PROTECT_LOOKUP_BENEATH_XDEV,
+				    rootfs->dfd_dev, device->name,
+				    PROTECT_OPATH_FILE,
+				    PROTECT_LOOKUP_BENEATH,
+				    NULL /* fstype */,
+				    MS_BIND /* mount flags */,
+				    NULL);
 		if (ret < 0) {
-			const char *mntpt = rootfs->path ? rootfs->mount : NULL;
-			if (errno == ENOSYS) {
-				ret = snprintf(path, sizeof(path), "%s/dev/%s", mntpt, device->name);
-				if (ret < 0 || ret >= sizeof(path))
-					return log_error(-1, "Failed to create device path for %s", device->name);
-				ret = safe_mount(hostpath, path, 0, MS_BIND, NULL, rootfs->path ? rootfs->mount : NULL);
-			}
+			char path[PATH_MAX];
+
+			if (errno != ENOSYS)
+				return log_error_errno(-errno, errno,
+						       "Failed to mount %d(%s) to %d(%s)",
+						       rootfs->dfd_host,
+						       device_path,
+						       rootfs->dfd_dev,
+						       device->name);
+
+			ret = snprintf(device_path, sizeof(device_path), "/dev/%s", device->name);
+			if (ret < 0 || (size_t)ret >= sizeof(device_path))
+				return ret_errno(EIO);
+
+			ret = snprintf(path, sizeof(path), "%s/dev/%s", get_rootfs_mnt(rootfs), device->name);
+			if (ret < 0 || ret >= sizeof(path))
+				return log_error(-1, "Failed to create device path for %s", device->name);
+
+			ret = safe_mount(device_path, path, 0, MS_BIND, NULL, get_rootfs_mnt(rootfs));
+			if (ret < 0)
+				return log_error_errno(-1, errno, "Failed to bind mount host device node \"%s\" to \"%s\"", device_path, path);
+
+			DEBUG("Bind mounted host device node \"%s\" to \"%s\"", device_path, path);
+			continue;
 		}
-		if (ret < 0)
-			return log_error_errno(-1, errno, "Failed to bind mount host device node \"%s\" onto \"%s\"", hostpath, device->name);
-		DEBUG("Bind mounted host device node \"%s\" onto \"%s\"", hostpath, device->name);
+		DEBUG("Bind mounted host device %d(%s) to %d(%s)", rootfs->dfd_host, device_path, rootfs->dfd_dev, device->name);
 	}
 	(void)umask(cmask);
 
@@ -1242,8 +1262,8 @@ static int lxc_mount_rootfs(struct lxc_conf *conf)
 		if (ret < 0)
 			return log_error_errno(-1, errno, "Failed to recursively turn root mount tree into dependent mount");
 
-		rootfs->mntpt_fd = open_at(-EBADF, "/", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE, 0);
-		if (rootfs->mntpt_fd < 0)
+		rootfs->dfd_mnt = open_at(-EBADF, "/", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE, 0);
+		if (rootfs->dfd_mnt < 0)
 			return -errno;
 
 		return 0;
@@ -1271,8 +1291,8 @@ static int lxc_mount_rootfs(struct lxc_conf *conf)
 	      rootfs->path, rootfs->mount,
 	      rootfs->options ? rootfs->options : "(null)");
 
-	rootfs->mntpt_fd = open_at(-EBADF, rootfs->mount, PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
-	if (rootfs->mntpt_fd < 0)
+	rootfs->dfd_mnt = open_at(-EBADF, rootfs->mount, PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
+	if (rootfs->dfd_mnt < 0)
 		return -errno;
 
 	return 0;
@@ -1404,7 +1424,7 @@ static int lxc_pivot_root(const struct lxc_rootfs *rootfs)
 		return log_error_errno(-1, errno, "Failed to open old root directory");
 
 	/* change into new root fs */
-	ret = fchdir(rootfs->mntpt_fd);
+	ret = fchdir(rootfs->dfd_mnt);
 	if (ret < 0)
 		return log_error_errno(-errno, errno, "Failed to change into new root directory \"%s\"", rootfs->mount);
 
@@ -1433,7 +1453,7 @@ static int lxc_pivot_root(const struct lxc_rootfs *rootfs)
 	if (ret < 0)
 		return log_error_errno(-errno, errno, "Failed to detach old root directory");
 
-	ret = fchdir(rootfs->mntpt_fd);
+	ret = fchdir(rootfs->dfd_mnt);
 	if (ret < 0)
 		return log_error_errno(-errno, errno, "Failed to re-enter new root directory \"%s\"", rootfs->mount);
 
@@ -1522,7 +1542,7 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	(void)umount2("/dev/pts", MNT_DETACH);
 
 	/* Create mountpoint for devpts instance. */
-	ret = mkdirat(rootfs->dev_mntpt_fd, "pts", 0755);
+	ret = mkdirat(rootfs->dfd_dev, "pts", 0755);
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-1, errno, "Failed to create \"/dev/pts\" directory");
 
@@ -1552,7 +1572,7 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 		return log_error_errno(-1, errno, "Failed to mount new devpts instance");
 	DEBUG("Mount new devpts instance with options \"%s\"", *opts);
 
-	devpts_fd = open_at(rootfs->dev_mntpt_fd, "pts", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV, 0);
+	devpts_fd = open_at(rootfs->dfd_dev, "pts", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV, 0);
 	if (devpts_fd < 0) {
 		devpts_fd = -EBADF;
 		TRACE("Failed to create detached devpts mount");
@@ -1566,7 +1586,7 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	TRACE("Sent devpts file descriptor %d to parent", devpts_fd);
 
 	/* Remove any pre-existing /dev/ptmx file. */
-	ret = unlinkat(rootfs->dev_mntpt_fd, "ptmx", 0);
+	ret = unlinkat(rootfs->dfd_dev, "ptmx", 0);
 	if (ret < 0) {
 		if (errno != ENOENT)
 			return log_error_errno(-1, errno, "Failed to remove existing \"/dev/ptmx\" file");
@@ -1575,7 +1595,7 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	}
 
 	/* Create dummy /dev/ptmx file as bind mountpoint for /dev/pts/ptmx. */
-	ret = mknodat(rootfs->dev_mntpt_fd, "ptmx", S_IFREG | 0000, 0);
+	ret = mknodat(rootfs->dfd_dev, "ptmx", S_IFREG | 0000, 0);
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-1, errno, "Failed to create dummy \"/dev/ptmx\" file as bind mount target");
 	DEBUG("Created dummy \"/dev/ptmx\" file as bind mount target");
@@ -1589,12 +1609,12 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 		ERROR("Failed to bind mount \"/dev/pts/ptmx\" to \"/dev/ptmx\"");
 
 	/* Remove the dummy /dev/ptmx file we created above. */
-	ret = unlinkat(rootfs->dev_mntpt_fd, "ptmx", 0);
+	ret = unlinkat(rootfs->dfd_dev, "ptmx", 0);
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to remove existing \"/dev/ptmx\"");
 
 	/* Fallback option: Create symlink /dev/ptmx -> /dev/pts/ptmx. */
-	ret = symlinkat("/dev/pts/ptmx", rootfs->dev_mntpt_fd, "/dev/ptmx");
+	ret = symlinkat("/dev/pts/ptmx", rootfs->dfd_dev, "/dev/ptmx");
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to create symlink from \"/dev/ptmx\" to \"/dev/pts/ptmx\"");
 
@@ -1640,7 +1660,7 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	 * When we are asked to setup a console we remove any previous
 	 * /dev/console bind-mounts.
 	 */
-	if (exists_file_at(rootfs->dev_mntpt_fd, "console")) {
+	if (exists_file_at(rootfs->dfd_dev, "console")) {
 		ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs_path);
 		if (ret < 0 || (size_t)ret >= sizeof(path))
 			return -1;
@@ -1656,7 +1676,7 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	 * For unprivileged containers autodev or automounts will already have
 	 * taken care of creating /dev/console.
 	 */
-	ret = mknodat(rootfs->dev_mntpt_fd, "console", S_IFREG | 0000, 0);
+	ret = mknodat(rootfs->dfd_dev, "console", S_IFREG | 0000, 0);
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-errno, errno, "Failed to create console");
 
@@ -1665,19 +1685,19 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", S_IXUSR | S_IXGRP, console->name);
 
 	if (pty_mnt_fd >= 0) {
-		ret = move_mount(pty_mnt_fd, "", rootfs->dev_mntpt_fd, "console", MOVE_MOUNT_F_EMPTY_PATH);
+		ret = move_mount(pty_mnt_fd, "", rootfs->dfd_dev, "console", MOVE_MOUNT_F_EMPTY_PATH);
 		if (!ret) {
-			DEBUG("Moved mount \"%s\" onto \"%s\"", console->name, path);
-			goto finish;
+			DEBUG("Moved mount \"%s\" onto %d(console)", console->name, rootfs->dfd_dev);
+			return 0;
 		}
 
 		if (ret && errno != ENOSYS)
 			return log_error_errno(-1, errno,
-					       "Failed to mount %d(%s) on \"%s\"",
-					       pty_mnt_fd, console->name, path);
+					       "Failed to mount %d(%s) on %d(console)",
+					       pty_mnt_fd, console->name, rootfs->dfd_dev);
 	}
 
-	ret = safe_mount_beneath_at(rootfs->dev_mntpt_fd, console->name, "console", NULL, MS_BIND, NULL);
+	ret = safe_mount_beneath_at(rootfs->dfd_dev, console->name, "console", NULL, MS_BIND, NULL);
 	if (ret < 0) {
 		if (errno == ENOSYS) {
 			ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs_path);
@@ -1690,7 +1710,6 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 		}
 	}
 
-finish:
 	DEBUG("Mounted pty device %d(%s) onto \"%s\"", pty_mnt_fd, console->name, path);
 	return 0;
 }
@@ -2614,8 +2633,9 @@ struct lxc_conf *lxc_conf_init(void)
 		return NULL;
 	}
 	new->rootfs.managed = true;
-	new->rootfs.mntpt_fd = -EBADF;
-	new->rootfs.dev_mntpt_fd = -EBADF;
+	new->rootfs.dfd_mnt = -EBADF;
+	new->rootfs.dfd_dev = -EBADF;
+	new->rootfs.dfd_host = -EBADF;
 	new->logfd = -1;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->cgroup2);
@@ -2964,11 +2984,11 @@ static int lxc_transient_proc(struct lxc_rootfs *rootfs)
 	int link_to_pid, link_len, pid_self, ret;
 	char link[INTTYPE_TO_STRLEN(pid_t) + 1];
 
-	link_len = readlinkat(rootfs->mntpt_fd, "proc/self", link, sizeof(link));
+	link_len = readlinkat(rootfs->dfd_mnt, "proc/self", link, sizeof(link));
 	if (link_len < 0) {
-		ret = mkdirat(rootfs->mntpt_fd, "proc", 0000);
+		ret = mkdirat(rootfs->dfd_mnt, "proc", 0000);
 		if (ret < 0 && errno != EEXIST)
-			return log_error_errno(-errno, errno, "Failed to create %d(proc)", rootfs->mntpt_fd);
+			return log_error_errno(-errno, errno, "Failed to create %d(proc)", rootfs->dfd_mnt);
 
 		goto domount;
 	} else if (link_len >= sizeof(link)) {
@@ -2987,7 +3007,7 @@ static int lxc_transient_proc(struct lxc_rootfs *rootfs)
 	if (link_to_pid == pid_self)
 		return log_trace(0, "Correct procfs instance mounted");
 
-	fd_proc = open_at(rootfs->mntpt_fd, "proc", PROTECT_OPATH_DIRECTORY,
+	fd_proc = open_at(rootfs->dfd_mnt, "proc", PROTECT_OPATH_DIRECTORY,
 			  PROTECT_LOOKUP_BENEATH_XDEV, 0);
 	if (fd_proc < 0)
 		return log_error_errno(-errno, errno, "Failed to open transient procfs mountpoint");
@@ -3005,7 +3025,7 @@ domount:
 	if (!rootfs->path) {
 		ret = mount("proc", rootfs->buf, "proc", 0, NULL);
 	} else {
-		ret = safe_mount_beneath_at(rootfs->mntpt_fd, "none", "proc", "proc", 0, NULL);
+		ret = safe_mount_beneath_at(rootfs->dfd_mnt, "none", "proc", "proc", 0, NULL);
 		if (ret < 0) {
 			ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s/proc", rootfs->path ? rootfs->mount : "");
 			if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
@@ -3188,6 +3208,10 @@ int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const char *name,
 {
 	int ret;
 
+	conf->rootfs.dfd_host = open_at(-EBADF, "/", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE, 0);
+	if (conf->rootfs.dfd_host < 0)
+		return log_error_errno(-errno, errno, "Failed to open \"/\"");
+
 	if (conf->rootfs_setup) {
 		const char *path = conf->rootfs.mount;
 
@@ -3198,8 +3222,8 @@ int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const char *name,
 		if (ret < 0)
 			return log_error(-1, "Failed to bind mount container / onto itself");
 
-		conf->rootfs.mntpt_fd = openat(-EBADF, path, O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH | O_NOCTTY);
-		if (conf->rootfs.mntpt_fd < 0)
+		conf->rootfs.dfd_mnt = openat(-EBADF, path, O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_PATH | O_NOCTTY);
+		if (conf->rootfs.dfd_mnt < 0)
 			return log_error_errno(-errno, errno, "Failed to open file descriptor for container rootfs");
 
 		return log_trace(0, "Bind mounted container / onto itself");
@@ -3391,10 +3415,10 @@ int lxc_setup(struct lxc_handler *handler)
 			return log_error(-1, "Failed to mount \"/dev\"");
 	}
 
-	lxc_conf->rootfs.dev_mntpt_fd = open_at(lxc_conf->rootfs.mntpt_fd, "dev",
+	lxc_conf->rootfs.dfd_dev = open_at(lxc_conf->rootfs.dfd_mnt, "dev",
 					        PROTECT_OPATH_DIRECTORY,
 						PROTECT_LOOKUP_BENEATH_XDEV, 0);
-	if (lxc_conf->rootfs.dev_mntpt_fd < 0 && errno != ENOENT)
+	if (lxc_conf->rootfs.dfd_dev < 0 && errno != ENOENT)
 		return log_error_errno(-errno, errno, "Failed to open \"/dev\"");
 
 	/* Do automatic mounts (mainly /proc and /sys), but exclude those that
@@ -3516,8 +3540,9 @@ int lxc_setup(struct lxc_handler *handler)
 		return log_error(-1, "Failed to drop capabilities");
 	}
 
-	close_prot_errno_disarm(lxc_conf->rootfs.mntpt_fd)
-	close_prot_errno_disarm(lxc_conf->rootfs.dev_mntpt_fd)
+	close_prot_errno_disarm(lxc_conf->rootfs.dfd_mnt)
+	close_prot_errno_disarm(lxc_conf->rootfs.dfd_dev)
+	close_prot_errno_disarm(lxc_conf->rootfs.dfd_host)
 	NOTICE("The container \"%s\" is set up", name);
 
 	return 0;
@@ -3881,8 +3906,9 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->rootfs.options);
 	free(conf->rootfs.path);
 	free(conf->rootfs.data);
-	close_prot_errno_disarm(conf->rootfs.mntpt_fd);
-	close_prot_errno_disarm(conf->rootfs.dev_mntpt_fd);
+	close_prot_errno_disarm(conf->rootfs.dfd_mnt);
+	close_prot_errno_disarm(conf->rootfs.dfd_dev);
+	close_prot_errno_disarm(conf->rootfs.dfd_host);
 	free(conf->logfile);
 	if (conf->logfd != -1)
 		close(conf->logfd);
