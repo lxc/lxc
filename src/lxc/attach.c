@@ -1472,7 +1472,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	 * that.
 	 *
 	 * IPC mechanism: (X is receiver)
-	 *   initial process        intermediate          attached
+	 *   initial process        transient process   attached process
 	 *        X           <---  send pid of
 	 *                          attached proc,
 	 *                          then exit
@@ -1495,7 +1495,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		return log_error_errno(-1, errno, "Could not set up required IPC mechanism for attaching");
 	}
 
-	/* Create intermediate subprocess, two reasons:
+	/* Create transient process, two reasons:
 	 *       1. We can't setns() in the child itself, since we want to make
 	 *          sure we are properly attached to the pidns.
 	 *       2. Also, the initial thread has to put the attached process
@@ -1532,8 +1532,6 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 			put_attach_context(ctx);
 			_exit(EXIT_FAILURE);
 		}
-
-		TRACE("Intermediate process starting to initialize");
 
 		cwd = getcwd(NULL, 0);
 
@@ -1597,6 +1595,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 			/* Does not return. */
 			do_attach(&ap);
 		}
+		TRACE("Attached process %d started initializing", pid);
 
 		if (options->attach_flags & LXC_ATTACH_TERMINAL)
 			lxc_attach_terminal_close_pts(&terminal);
@@ -1614,12 +1613,11 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 			_exit(EXIT_FAILURE);
 		}
 
-		TRACE("Sending pid %d of attached process", pid);
-
 		/* The rest is in the hands of the initial and the attached process. */
 		put_attach_context(ctx);
 		_exit(EXIT_SUCCESS);
 	}
+	TRACE("Transient process %d started initializing", pid);
 
 	to_cleanup_pid = pid;
 
@@ -1652,7 +1650,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 				goto on_error;
 		}
 
-		TRACE("Moved intermediate process %d into container's cgroups", pid);
+		TRACE("Moved transient process %d into container cgroup", pid);
 	}
 
 	/* Setup /proc limits */
@@ -1685,9 +1683,9 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	if (!sync_wake(ipc_sockets[0], ATTACH_SYNC_CGROUP))
 		goto close_mainloop;
 
-	TRACE("Told intermediate process to start initializing");
+	TRACE("Told transient process to start initializing");
 
-	/* Get pid of attached process from intermediate process. */
+	/* Get pid of attached process from transient process. */
 	if (!sync_wait_pid(ipc_sockets[0], ATTACH_SYNC_PID(&attached_pid)))
 		goto close_mainloop;
 
@@ -1699,12 +1697,12 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		signal(SIGQUIT, SIG_IGN);
 	}
 
-	/* Reap intermediate process. */
+	/* Reap transient process. */
 	ret = wait_for_pid(pid);
 	if (ret < 0)
 		goto close_mainloop;
 
-	TRACE("Intermediate process %d exited", pid);
+	TRACE("Transient process %d exited", pid);
 
 	/* We will always have to reap the attached process now. */
 	to_cleanup_pid = attached_pid;
