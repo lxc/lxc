@@ -1208,7 +1208,7 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 		if (ret < 0 || (size_t)ret >= sizeof(device_path))
 			return ret_errno(EIO);
 
-		ret = mount_from_at(rootfs->dfd_root_host, device_path,
+		ret = mount_from_at(rootfs->dfd_host, device_path,
 				    PROTECT_OPATH_FILE,
 				    PROTECT_LOOKUP_BENEATH_XDEV,
 				    rootfs->dfd_dev, device->name,
@@ -1223,7 +1223,7 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 			if (errno != ENOSYS)
 				return log_error_errno(-errno, errno,
 						       "Failed to mount %d(%s) to %d(%s)",
-						       rootfs->dfd_root_host,
+						       rootfs->dfd_host,
 						       device_path,
 						       rootfs->dfd_dev,
 						       device->name);
@@ -1243,7 +1243,7 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 			DEBUG("Bind mounted host device node \"%s\" to \"%s\"", device_path, path);
 			continue;
 		}
-		DEBUG("Bind mounted host device %d(%s) to %d(%s)", rootfs->dfd_root_host, device_path, rootfs->dfd_dev, device->name);
+		DEBUG("Bind mounted host device %d(%s) to %d(%s)", rootfs->dfd_host, device_path, rootfs->dfd_dev, device->name);
 	}
 	(void)umask(cmask);
 
@@ -2635,7 +2635,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->rootfs.managed = true;
 	new->rootfs.dfd_mnt = -EBADF;
 	new->rootfs.dfd_dev = -EBADF;
-	new->rootfs.dfd_root_host = -EBADF;
+	new->rootfs.dfd_host = -EBADF;
 	new->logfd = -1;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->cgroup2);
@@ -3208,8 +3208,8 @@ int lxc_setup_rootfs_prepare_root(struct lxc_conf *conf, const char *name,
 {
 	int ret;
 
-	conf->rootfs.dfd_root_host = open_at(-EBADF, "/", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE, 0);
-	if (conf->rootfs.dfd_root_host < 0)
+	conf->rootfs.dfd_host = open_at(-EBADF, "/", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE, 0);
+	if (conf->rootfs.dfd_host < 0)
 		return log_error_errno(-errno, errno, "Failed to open \"/\"");
 
 	if (conf->rootfs_setup) {
@@ -3542,7 +3542,7 @@ int lxc_setup(struct lxc_handler *handler)
 
 	close_prot_errno_disarm(lxc_conf->rootfs.dfd_mnt)
 	close_prot_errno_disarm(lxc_conf->rootfs.dfd_dev)
-	close_prot_errno_disarm(lxc_conf->rootfs.dfd_root_host)
+	close_prot_errno_disarm(lxc_conf->rootfs.dfd_host)
 	NOTICE("The container \"%s\" is set up", name);
 
 	return 0;
@@ -3908,7 +3908,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->rootfs.data);
 	close_prot_errno_disarm(conf->rootfs.dfd_mnt);
 	close_prot_errno_disarm(conf->rootfs.dfd_dev);
-	close_prot_errno_disarm(conf->rootfs.dfd_root_host);
+	close_prot_errno_disarm(conf->rootfs.dfd_host);
 	free(conf->logfile);
 	if (conf->logfd != -1)
 		close(conf->logfd);
