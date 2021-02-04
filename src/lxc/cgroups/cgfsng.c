@@ -2310,12 +2310,12 @@ static int cgroup_attach_create_leaf(const struct lxc_conf *conf,
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-1, errno, "Failed to create leaf cgroup \".lxc\"");
 
-	target_fd0 = openat(unified_fd, ".lxc/cgroup.procs", O_WRONLY | O_CLOEXEC | O_NOFOLLOW);
+	target_fd0 = open_at(unified_fd, ".lxc/cgroup.procs", PROTECT_OPEN_W, PROTECT_LOOKUP_BENEATH, 0);
 	if (target_fd0 < 0)
 		return log_error_errno(-errno, errno, "Failed to open \".lxc/cgroup.procs\"");
 	target_fds[0] = target_fd0;
 
-	target_fd1 = openat(unified_fd, "cgroup.procs", O_WRONLY | O_CLOEXEC | O_NOFOLLOW);
+	target_fd1 = open_at(unified_fd, "cgroup.procs", PROTECT_OPEN_W, PROTECT_LOOKUP_BENEATH, 0);
 	if (target_fd1 < 0)
 		return log_error_errno(-errno, errno, "Failed to open \".lxc/cgroup.procs\"");
 	target_fds[1] = target_fd1;
