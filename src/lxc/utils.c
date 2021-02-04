@@ -1263,75 +1263,51 @@ int mount_at(int dfd,
 	return ret;
 }
 
-/*
- * Mount a proc under @rootfs if proc self points to a pid other than
- * my own.  This is needed to have a known-good proc mount for setting
- * up LSMs both at container startup and attach.
- *
- * @rootfs : the rootfs where proc should be mounted
- *
- * Returns < 0 on failure, 0 if the correct proc was already mounted
- * and 1 if a new proc was mounted.
- *
- * NOTE: not to be called from inside the container namespace!
- */
-int lxc_mount_proc_if_needed(const char *rootfs)
+int mount_from_at(int dfd_from, const char *path_from,
+		  __u64 o_flags_from,
+		  __u64 resolve_flags_from,
+		  int dfd_to, const char *path_to,
+		  __u64 o_flags_to,
+		  __u64 resolve_flags_to,
+		  const char *fstype, unsigned int mnt_flags, const void *data)
 {
-	char path[PATH_MAX] = {0};
-	int link_to_pid, linklen, mypid, ret;
-	char link[INTTYPE_TO_STRLEN(pid_t)] = {0};
+	__do_close int fd_from = -EBADF, fd_to = -EBADF;
+	struct lxc_open_how how = {};
+	int ret;
+	char src_buf[LXC_PROC_PID_FD_LEN], dst_buf[LXC_PROC_PID_FD_LEN];
 
-	ret = snprintf(path, PATH_MAX, "%s/proc/self", rootfs);
-	if (ret < 0 || ret >= PATH_MAX) {
-		SYSERROR("The name of proc path is too long");
-		return -1;
+	if (is_empty_string(path_from)) {
+		ret = snprintf(src_buf, sizeof(src_buf), "/proc/self/fd/%d", dfd_from);
+	} else {
+		how.flags	= o_flags_from;
+		how.resolve	= resolve_flags_from;
+		fd_from = openat2(dfd_from, path_from, &how, sizeof(how));
+		if (fd_from < 0)
+			return -errno;
+
+		ret = snprintf(src_buf, sizeof(src_buf), "/proc/self/fd/%d", fd_from);
+	}
+	if (ret < 0 || ret >= sizeof(src_buf))
+		return -EIO;
+
+	if (is_empty_string(path_to)) {
+		ret = snprintf(dst_buf, sizeof(dst_buf), "/proc/self/fd/%d", dfd_to);
+	} else {
+		how.flags	= o_flags_to;
+		how.resolve	= resolve_flags_to;
+		fd_to = openat2(dfd_to, path_to, &how, sizeof(how));
+		if (fd_to < 0)
+			return -errno;
+
+		ret = snprintf(dst_buf, sizeof(dst_buf), "/proc/self/fd/%d", fd_to);
 	}
 
-	linklen = readlink(path, link, sizeof(link));
-
-	ret = snprintf(path, PATH_MAX, "%s/proc", rootfs);
-	if (ret < 0 || ret >= PATH_MAX) {
-		SYSERROR("The name of proc path is too long");
-		return -1;
-	}
-
-	/* /proc not mounted */
-	if (linklen < 0) {
-		if (mkdir(path, 0755) && errno != EEXIST)
-			return -1;
-
-		goto domount;
-	} else if (linklen >= sizeof(link)) {
-		link[linklen - 1] = '\0';
-		ERROR("Readlink returned truncated content: \"%s\"", link);
-		return -1;
-	}
-
-	mypid = lxc_raw_getpid();
-	INFO("I am %d, /proc/self points to \"%s\"", mypid, link);
-
-	if (lxc_safe_int(link, &link_to_pid) < 0)
-		return -1;
-
-	/* correct procfs is already mounted */
-	if (link_to_pid == mypid)
-		return 0;
-
-	ret = umount2(path, MNT_DETACH);
-	if (ret < 0)
-		SYSWARN("Failed to umount \"%s\" with MNT_DETACH", path);
-
-domount:
-	/* rootfs is NULL */
-	if (!strcmp(rootfs, ""))
-		ret = mount("proc", path, "proc", 0, NULL);
+	if (is_empty_string(src_buf))
+		ret = mount(NULL, dst_buf, fstype, mnt_flags, data);
 	else
-		ret = safe_mount("proc", path, "proc", 0, NULL, rootfs);
-	if (ret < 0)
-		return -1;
+		ret = mount(src_buf, dst_buf, fstype, mnt_flags, data);
 
-	INFO("Mounted /proc in container for security transition");
-	return 1;
+	return ret;
 }
 
 int open_devnull(void)
