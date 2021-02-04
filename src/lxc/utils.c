@@ -1231,9 +1231,6 @@ int mount_at(int dfd,
 	if (!is_empty_string(src_buf) && *src_buf == '/')
 		return log_error_errno(-EINVAL, EINVAL, "Absolute path specified");
 
-	if (is_empty_string(dst_under_dfd))
-		return log_error_errno(-EINVAL, EINVAL, "No target path specified");
-
 	if (!is_empty_string(src_under_dfd)) {
 		source_fd = openat2(dfd, src_under_dfd, &how, sizeof(how));
 		if (source_fd < 0)
@@ -1244,11 +1241,17 @@ int mount_at(int dfd,
 			return -EIO;
 	}
 
-	target_fd = openat2(dfd, dst_under_dfd, &how, sizeof(how));
-	if (target_fd < 0)
-		return log_error_errno(-errno, errno, "Failed to open %d(%s)", dfd, dst_under_dfd);
+	if (!is_empty_string(dst_under_dfd)) {
+		target_fd = openat2(dfd, dst_under_dfd, &how, sizeof(how));
+		if (target_fd < 0)
+			return log_error_errno(-errno, errno, "Failed to open %d(%s)", dfd, dst_under_dfd);
 
-	ret = snprintf(dst_buf, sizeof(dst_buf), "/proc/self/fd/%d", target_fd);
+		TRACE("Mounting %d(%s) through /proc/self/fd/%d", target_fd, dst_under_dfd, target_fd);
+		ret = snprintf(dst_buf, sizeof(dst_buf), "/proc/self/fd/%d", target_fd);
+	} else {
+		TRACE("Mounting %d through /proc/self/fd/%d", dfd, dfd);
+		ret = snprintf(dst_buf, sizeof(dst_buf), "/proc/self/fd/%d", dfd);
+	}
 	if (ret < 0 || ret >= sizeof(dst_buf))
 		return -EIO;
 
