@@ -1253,7 +1253,7 @@ int mount_at(int dfd,
 		return -EIO;
 
 	if (!is_empty_string(src_buf))
-		ret = mount(src_under_dfd, dst_buf, fstype, mnt_flags, data);
+		ret = mount(src_buf, dst_buf, fstype, mnt_flags, data);
 	else
 		ret = mount(NULL, dst_buf, fstype, mnt_flags, data);
 
