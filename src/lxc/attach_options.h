@@ -129,26 +129,26 @@ typedef struct lxc_attach_options_t {
 	 * If unset all additional groups are dropped.
 	 */
 	lxc_groups_t groups;
-
 } lxc_attach_options_t;
 
 /*! Default attach options to use */
-#define LXC_ATTACH_OPTIONS_DEFAULT                                             \
-	{                                                                      \
-		/* .attach_flags = */   LXC_ATTACH_DEFAULT,                    \
-		/* .namespaces = */     -1,                                    \
-		/* .personality = */    0xffffffff,                            \
-		/* .initial_cwd = */    NULL,                                  \
-		/* .uid = */            (uid_t)-1,                             \
-		/* .gid = */            (gid_t)-1,                             \
-		/* .env_policy = */     LXC_ATTACH_KEEP_ENV,                   \
-		/* .extra_env_vars = */ NULL,                                  \
-		/* .extra_keep_env = */ NULL,                                  \
-		/* .stdin_fd = */       0,                                     \
-		/* .stdout_fd = */      1,                                     \
-		/* .stderr_fd = */      2,                                     \
-		/* .log_fd    = */      -EBADF,                                \
-		/* .lsm_label = */	NULL,				       \
+#define LXC_ATTACH_OPTIONS_DEFAULT			\
+	{                                               \
+		.attach_flags	= LXC_ATTACH_DEFAULT,   \
+		.namespaces	= -1,                   \
+		.personality	= 0xffffffff,           \
+		.initial_cwd	= NULL,                 \
+		.uid		= (uid_t)-1,            \
+		.gid		= (gid_t)-1,            \
+		.env_policy	= LXC_ATTACH_KEEP_ENV,  \
+		.extra_env_vars = NULL,                 \
+		.extra_keep_env = NULL,                 \
+		.stdin_fd	= 0,                    \
+		.stdout_fd	= 1,                    \
+		.stderr_fd	= 2,                    \
+		.log_fd		= -EBADF,               \
+		.lsm_label	= NULL,			\
+		.groups		= {},			\
 	}
 
 /*!
