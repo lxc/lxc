@@ -156,8 +156,6 @@ __hidden extern int mnt_attributes_new(unsigned int old_flags, unsigned int *new
 
 __hidden extern int mnt_attributes_old(unsigned int new_flags, unsigned int *old_flags);
 
-__hidden extern int mount_filesystem(const char *fs_name, const char *path, unsigned int attr_flags);
-
 __hidden extern int fs_prepare(const char *fs_name, int dfd_from,
 			       const char *path_from, __u64 o_flags_from,
 			       __u64 resolve_flags_from);
@@ -195,7 +193,7 @@ __hidden extern int fd_bind_mount(int dfd_from, const char *path_from,
  */
 static inline bool new_mount_api(void)
 {
-	__do_close int fd;
+	__do_close int fd = -EBADF;
 	static int supported = -1;
 
 	if (supported == -1) {

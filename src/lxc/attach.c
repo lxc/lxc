@@ -734,7 +734,7 @@ int lxc_attach_remount_sys_proc(void)
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to unmount /proc");
 
-	ret = mount_filesystem("proc", "/proc", 0);
+	ret = mount("none", "/proc", "proc", 0, NULL);
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to remount /proc");
 
@@ -747,7 +747,7 @@ int lxc_attach_remount_sys_proc(void)
 		return log_error_errno(-1, errno, "Failed to unmount /sys");
 
 	/* Remount it. */
-	if (ret == 0 && mount_filesystem("sysfs", "/sys", 0))
+	if (ret == 0 && mount("none", "/sys", "sysfs", 0, NULL))
 		return log_error_errno(-1, errno, "Failed to remount /sys");
 
 	return 0;
