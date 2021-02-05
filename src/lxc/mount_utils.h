@@ -157,12 +157,6 @@ __hidden extern int mnt_attributes_old(unsigned int new_flags, unsigned int *old
 
 __hidden extern int mount_filesystem(const char *fs_name, const char *path, unsigned int attr_flags);
 
-__hidden extern int mount_from_at(int dfd_from, const char *path_from,
-				  __u64 o_flags_from, __u64 resolve_flags_from,
-				  int dfd_to, const char *path_to,
-				  __u64 o_flags_to, __u64 resolve_flags_to,
-				  const char *fstype, unsigned int mnt_flags,
-				  const void *data);
 __hidden extern int fs_prepare(const char *fs_name, int dfd_from,
 			       const char *path_from, __u64 o_flags_from,
 			       __u64 resolve_flags_from);
