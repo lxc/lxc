@@ -4,6 +4,7 @@
 #define _GNU_SOURCE 1
 #endif
 #include <fcntl.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mount.h>
@@ -301,4 +302,58 @@ int mount_from_at(int dfd_from, const char *path_from,
 		ret = mount(src_buf, dst_buf, fstype, mnt_flags, data);
 
 	return ret;
+}
+
+int fd_bind_mount(int dfd_from, const char *path_from,
+		  __u64 o_flags_from, __u64 resolve_flags_from,
+		  int dfd_to, const char *path_to,
+		  __u64 o_flags_to, __u64 resolve_flags_to,
+		  unsigned int attr_flags, bool recursive)
+{
+	__do_close int __fd_from = -EBADF, __fd_to = -EBADF;
+	__do_close int fd_tree_from = -EBADF;
+	unsigned int open_tree_flags = AT_EMPTY_PATH | OPEN_TREE_CLONE | OPEN_TREE_CLONE;
+	int fd_from, fd_to, ret;
+
+	if (!is_empty_string(path_from)) {
+		struct lxc_open_how how = {
+			.flags		= o_flags_from,
+			.resolve	= resolve_flags_from,
+		};
+
+		__fd_from = openat2(dfd_from, path_from, &how, sizeof(how));
+		if (__fd_from < 0)
+			return -errno;
+		fd_from = __fd_from;
+	} else {
+		fd_from = dfd_from;
+	}
+
+	if (recursive)
+		open_tree_flags |= AT_RECURSIVE;
+
+	fd_tree_from = open_tree(fd_from, "", open_tree_flags);
+	if (fd_tree_from < 0)
+		return log_error_errno(-errno, errno, "Failed to create detached mount");
+
+	if (!is_empty_string(path_to)) {
+		struct lxc_open_how how = {
+			.flags		= o_flags_to,
+			.resolve	= resolve_flags_to,
+		};
+
+		__fd_to = openat2(dfd_to, path_to, &how, sizeof(how));
+		if (__fd_to < 0)
+			return -errno;
+		fd_to = __fd_to;
+	} else {
+		fd_to = dfd_to;
+	}
+
+	ret = move_mount(fd_tree_from, "", fd_to, "", MOVE_MOUNT_F_EMPTY_PATH | MOVE_MOUNT_T_EMPTY_PATH);
+	if (ret)
+		return log_error_errno(-errno, errno, "Failed to attach detached mount %d to filesystem at %d", fd_tree_from, fd_to);
+
+	TRACE("Attach detached mount %d to filesystem at %d", fd_tree_from, fd_to);
+	return 0;
 }
