@@ -31,6 +31,7 @@ enum {
 	LXC_ATTACH_NO_NEW_PRIVS		 = 0x00040000, /*!< PR_SET_NO_NEW_PRIVS */
 	LXC_ATTACH_TERMINAL              = 0x00080000, /*!< Allocate new terminal for attached process. */
 	LXC_ATTACH_LSM_LABEL             = 0x00100000, /*!< Set custom LSM label specified in @lsm_label. */
+	LXC_ATTACH_SETGROUPS             = 0x00200000, /*!< Set additional group ids specified in @groups. */
 
 	/* We have 16 bits for things that are on by default and 16 bits that
 	 * are off by default, that should be sufficient to keep binary
@@ -52,6 +53,11 @@ enum {
  */
 typedef int (*lxc_attach_exec_t)(void* payload);
 
+typedef struct lxc_groups_t {
+	size_t size;
+	gid_t *list;
+} lxc_groups_t;
+
 /*!
  * LXC attach options for \ref lxc_container \c attach().
  */
@@ -72,7 +78,7 @@ typedef struct lxc_attach_options_t {
 	 * If the current directory does not exist in the container, the root
 	 * directory will be used instead because of kernel defaults.
 	 */
-	char* initial_cwd;
+	char *initial_cwd;
 
 	/*! The user-id to run as.
 	 *
@@ -92,12 +98,12 @@ typedef struct lxc_attach_options_t {
 	lxc_attach_env_policy_t env_policy;
 
 	/*! Extra environment variables to set in the container environment */
-	char** extra_env_vars;
+	char **extra_env_vars;
 
 	/*! Names of environment variables in existing environment to retain
 	 * in container environment.
 	 */
-	char** extra_keep_env;
+	char **extra_keep_env;
 
 	/**@{*/
 	/*! File descriptors for stdin, stdout and stderr,
@@ -117,33 +123,40 @@ typedef struct lxc_attach_options_t {
 
 	/*! lsm label to set. */
 	char *lsm_label;
+
+	/*! The additional group GIDs to run with.
+	 *
+	 * If unset all additional groups are dropped.
+	 */
+	lxc_groups_t groups;
 } lxc_attach_options_t;
 
 /*! Default attach options to use */
-#define LXC_ATTACH_OPTIONS_DEFAULT                                             \
-	{                                                                      \
-		/* .attach_flags = */   LXC_ATTACH_DEFAULT,                    \
-		/* .namespaces = */     -1,                                    \
-		/* .personality = */    0xffffffff,                            \
-		/* .initial_cwd = */    NULL,                                  \
-		/* .uid = */            (uid_t)-1,                             \
-		/* .gid = */            (gid_t)-1,                             \
-		/* .env_policy = */     LXC_ATTACH_KEEP_ENV,                   \
-		/* .extra_env_vars = */ NULL,                                  \
-		/* .extra_keep_env = */ NULL,                                  \
-		/* .stdin_fd = */       0,                                     \
-		/* .stdout_fd = */      1,                                     \
-		/* .stderr_fd = */      2,                                     \
-		/* .log_fd    = */      -EBADF,                                \
-		/* .lsm_label = */	NULL,				       \
+#define LXC_ATTACH_OPTIONS_DEFAULT			\
+	{                                               \
+		.attach_flags	= LXC_ATTACH_DEFAULT,   \
+		.namespaces	= -1,                   \
+		.personality	= 0xffffffff,           \
+		.initial_cwd	= NULL,                 \
+		.uid		= (uid_t)-1,            \
+		.gid		= (gid_t)-1,            \
+		.env_policy	= LXC_ATTACH_KEEP_ENV,  \
+		.extra_env_vars = NULL,                 \
+		.extra_keep_env = NULL,                 \
+		.stdin_fd	= 0,                    \
+		.stdout_fd	= 1,                    \
+		.stderr_fd	= 2,                    \
+		.log_fd		= -EBADF,               \
+		.lsm_label	= NULL,			\
+		.groups		= {},			\
 	}
 
 /*!
  * Representation of a command to run in a container.
  */
 typedef struct lxc_attach_command_t {
-	char* program; /*!< The program to run (passed to execvp) */
-	char** argv;   /*!< The argv pointer of that program, including the program itself in argv[0] */
+	char *program;	/*!< The program to run (passed to execvp) */
+	char **argv;	/*!< The argv pointer of that program, including the program itself in argv[0] */
 } lxc_attach_command_t;
 
 /*!

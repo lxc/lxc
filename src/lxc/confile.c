@@ -94,6 +94,7 @@ lxc_config_define(init_cmd);
 lxc_config_define(init_cwd);
 lxc_config_define(init_gid);
 lxc_config_define(init_uid);
+lxc_config_define(init_groups);
 lxc_config_define(keyring_session);
 lxc_config_define(log_file);
 lxc_config_define(log_level);
@@ -211,6 +212,7 @@ static struct lxc_config_t config_jump_table[] = {
 	{ "lxc.include",                    set_config_includefiles,               get_config_includefiles,               clr_config_includefiles,               },
 	{ "lxc.init.cmd",                   set_config_init_cmd,                   get_config_init_cmd,                   clr_config_init_cmd,                   },
 	{ "lxc.init.gid",                   set_config_init_gid,                   get_config_init_gid,                   clr_config_init_gid,                   },
+	{ "lxc.init.groups",                set_config_init_groups,                get_config_init_groups,                clr_config_init_groups,                },
 	{ "lxc.init.uid",                   set_config_init_uid,                   get_config_init_uid,                   clr_config_init_uid,                   },
 	{ "lxc.init.cwd",                   set_config_init_cwd,                   get_config_init_cwd,                   clr_config_init_cwd,                   },
 	{ "lxc.keyring.session",            set_config_keyring_session,            get_config_keyring_session,            clr_config_keyring_session             },
@@ -1174,6 +1176,64 @@ static int set_config_init_gid(const char *key, const char *value,
 		return -1;
 
 	lxc_conf->init_gid = init_gid;
+
+	return 0;
+}
+
+static int set_config_init_groups(const char *key, const char *value,
+				  struct lxc_conf *lxc_conf, void *data)
+{
+	__do_free char *value_dup = NULL;
+	gid_t *init_groups = NULL;
+	size_t num_groups = 0;
+	size_t idx;
+	char *token;
+
+	if (lxc_config_value_empty(value))
+		return clr_config_init_groups(key, lxc_conf, NULL);
+
+	value_dup = strdup(value);
+	if (!value_dup)
+		return -ENOMEM;
+
+	lxc_iterate_parts(token, value_dup, ",")
+		num_groups++;
+
+	if (num_groups == INT_MAX)
+		return log_error_errno(-ERANGE, ERANGE, "Excessive number of supplementary groups specified");
+
+	/* This means the string wasn't empty and all we found was garbage. */
+	if (num_groups == 0)
+		return log_error_errno(-EINVAL, EINVAL, "No valid groups specified %s", value);
+
+	idx = lxc_conf->init_groups.size;
+	init_groups = realloc(lxc_conf->init_groups.list, sizeof(gid_t) * (idx + num_groups));
+	if (!init_groups)
+		return ret_errno(ENOMEM);
+
+	/*
+	 * Once the realloc() succeeded we need to hand control of the memory
+	 * back to the config otherwise we risk a double-free when
+	 * lxc_conf_free() is called.
+	 */
+	lxc_conf->init_groups.list = init_groups;
+
+	/* Restore duplicated value so we can call lxc_iterate_parts() again. */
+	strcpy(value_dup, value);
+
+	lxc_iterate_parts(token, value_dup, ",") {
+		int ret;
+
+		gid_t group;
+
+		ret = lxc_safe_uint(token, &group);
+		if (ret)
+			return log_error_errno(ret, -ret, "Failed to parse group %s", token);
+
+		init_groups[idx++] = group;
+	}
+
+	lxc_conf->init_groups.size += num_groups;
 
 	return 0;
 }
@@ -4278,6 +4338,26 @@ static int get_config_init_gid(const char *key, char *retv, int inlen,
 	return lxc_get_conf_int(c, retv, inlen, c->init_gid);
 }
 
+static int get_config_init_groups(const char *key, char *retv, int inlen,
+				  struct lxc_conf *c, void *data)
+{
+	int fulllen = 0, len;
+
+	if (!retv)
+		inlen = 0;
+	else
+		memset(retv, 0, inlen);
+
+	if (c->init_groups.size == 0)
+		return 0;
+
+	for (int i = 0; i < c->init_groups.size; i++)
+		strprint(retv, inlen, "%s%d", (i > 0) ? "," : "",
+			 c->init_groups.list[i]);
+
+	return fulllen;
+}
+
 static int get_config_ephemeral(const char *key, char *retv, int inlen,
 				struct lxc_conf *c, void *data)
 {
@@ -4961,6 +5041,14 @@ static inline int clr_config_init_gid(const char *key, struct lxc_conf *c,
 				      void *data)
 {
 	c->init_gid = 0;
+	return 0;
+}
+
+static inline int clr_config_init_groups(const char *key, struct lxc_conf *c,
+					 void *data)
+{
+	c->init_groups.size = 0;
+	free_disarm(c->init_groups.list);
 	return 0;
 }
 

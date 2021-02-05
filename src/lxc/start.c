@@ -1111,7 +1111,7 @@ static int do_start(void *data)
 		/* Drop groups only after we switched to a valid gid in the new
 		 * user namespace.
 		 */
-		if (!lxc_setgroups(0, NULL) &&
+		if (!lxc_drop_groups() &&
 		    (handler->am_root || errno != EPERM))
 			goto out_warn_father;
 
@@ -1406,12 +1406,21 @@ static int do_start(void *data)
 	 * we switched to root in the new user namespace further above. Only
 	 * drop groups if we can, so ensure that we have necessary privilege.
 	 */
-	if (lxc_list_empty(&handler->conf->id_map))
+	if (lxc_list_empty(&handler->conf->id_map)) {
 		#if HAVE_LIBCAP
 		if (lxc_proc_cap_is_set(CAP_SETGID, CAP_EFFECTIVE))
 		#endif
-			if (!lxc_setgroups(0, NULL))
-				goto out_warn_father;
+		{
+			if (handler->conf->init_groups.size > 0) {
+				if (!lxc_setgroups(handler->conf->init_groups.list,
+						   handler->conf->init_groups.size))
+					goto out_warn_father;
+			} else {
+				if (!lxc_drop_groups())
+					goto out_warn_father;
+			}
+		}
+	}
 
 	if (!lxc_switch_uid_gid(new_uid, new_gid))
 		goto out_warn_father;

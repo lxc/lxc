@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <sys/vfs.h>
 
+#include "attach_options.h"
 #include "caps.h"
 #include "compiler.h"
 #include "config.h"
@@ -413,10 +414,12 @@ struct lxc_conf {
 	/* init command */
 	char *init_cmd;
 
-	/* if running in a new user namespace, the UID/GID that init and COMMAND
-	 * should run under when using lxc-execute */
+	/* The uid to use for the container. */
 	uid_t init_uid;
+	/* The gid to use for the container. */
 	gid_t init_gid;
+	/* The groups to use for the container. */
+	lxc_groups_t init_groups;
 
 	/* indicator if the container will be destroyed on shutdown */
 	unsigned int ephemeral;

@@ -2671,6 +2671,7 @@ struct lxc_conf *lxc_conf_init(void)
 	 * default to running as UID/GID 0 when using lxc-execute */
 	new->init_uid = 0;
 	new->init_gid = 0;
+	memset(&new->init_groups, 0, sizeof(lxc_groups_t));
 	memset(&new->cgroup_meta, 0, sizeof(struct lxc_cgroup));
 	memset(&new->ns_share, 0, sizeof(char *) * LXC_NS_MAX);
 	memset(&new->timens, 0, sizeof(struct timens_offsets));
@@ -3919,6 +3920,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->rcfile);
 	free(conf->execute_cmd);
 	free(conf->init_cmd);
+	free(conf->init_groups.list);
 	free(conf->init_cwd);
 	free(conf->unexpanded_config);
 	free(conf->syslog);
@@ -4282,7 +4284,7 @@ int userns_exec_minimal(const struct lxc_conf *conf,
 
 		close_prot_errno_disarm(sock_fds[0]);
 
-		if (!lxc_setgroups(0, NULL) && errno != EPERM)
+		if (!lxc_drop_groups() && errno != EPERM)
 			_exit(EXIT_FAILURE);
 
 		ret = setresgid(resgid, resgid, resgid);
@@ -4700,7 +4702,7 @@ int userns_exec_mapped_root(const char *path, int path_fd,
 		if (!lxc_switch_uid_gid(0, 0))
 			_exit(EXIT_FAILURE);
 
-		if (!lxc_setgroups(0, NULL))
+		if (!lxc_drop_groups())
 			_exit(EXIT_FAILURE);
 
 		ret = fchown(target_fd, 0, st.st_gid);

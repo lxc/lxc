@@ -1444,14 +1444,32 @@ bool lxc_switch_uid_gid(uid_t uid, gid_t gid)
 }
 
 /* Simple convenience function which enables uniform logging. */
-bool lxc_setgroups(int size, gid_t list[])
+bool lxc_drop_groups(void)
 {
-	if (setgroups(size, list) < 0) {
-		SYSERROR("Failed to setgroups()");
-		return false;
-	}
-	NOTICE("Dropped additional groups");
+	int ret;
 
+	ret = setgroups(0, NULL);
+	if (ret)
+		return log_error_errno(false, errno, "Failed to drop supplimentary groups");
+
+	NOTICE("Dropped supplimentary groups");
+	return ret == 0;
+}
+
+bool lxc_setgroups(gid_t list[], size_t size)
+{
+	int ret;
+
+	ret = setgroups(size, list);
+	if (ret)
+		return log_error_errno(false, errno, "Failed to set supplimentary groups");
+
+	if (size > 0 && lxc_log_trace()) {
+		for (size_t i = 0; i < size; i++)
+			TRACE("Setting supplimentary group %d", list[i]);
+	}
+
+	NOTICE("Set supplimentary groups");
 	return true;
 }
 
