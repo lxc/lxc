@@ -1077,20 +1077,11 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 		goto reset_umask;
 	}
 
-	fd_fs = fs_prepare("tmpfs", -EBADF, "", 0, 0);
-	if (fd_fs < 0) {
-		__do_free char *fallback_path = NULL;
+	if (new_mount_api()) {
+		fd_fs = fs_prepare("tmpfs", -EBADF, "", 0, 0);
+		if (fd_fs < 0)
+			return log_error_errno(-errno, errno, "Failed to prepare filesystem context for tmpfs");
 
-		sprintf(mount_options, "size=%zu,mode=755", tmpfs_size);
-		DEBUG("Using mount options: %s", mount_options);
-
-		if (path) {
-			fallback_path = must_make_path(path, "/dev", NULL);
-			ret = safe_mount("none", fallback_path, "tmpfs", 0, mount_options, path);
-		} else {
-			ret = safe_mount("none", "dev", "tmpfs", 0, mount_options, NULL);
-		}
-	} else {
 		sprintf(mount_options, "%zu", tmpfs_size);
 
 		ret = fs_set_property(fd_fs, "mode", "0755");
@@ -1102,6 +1093,18 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 			return log_error_errno(-errno, errno, "Failed to mount tmpfs onto %d(dev)", fd_fs);
 
 		ret = fs_attach(fd_fs, rootfs->dfd_mnt, "dev", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH, 0);
+	} else {
+		__do_free char *fallback_path = NULL;
+
+		sprintf(mount_options, "size=%zu,mode=755", tmpfs_size);
+		DEBUG("Using mount options: %s", mount_options);
+
+		if (path) {
+			fallback_path = must_make_path(path, "/dev", NULL);
+			ret = safe_mount("none", fallback_path, "tmpfs", 0, mount_options, path);
+		} else {
+			ret = safe_mount("none", "dev", "tmpfs", 0, mount_options, NULL);
+		}
 	}
 	if (ret < 0) {
 		SYSERROR("Failed to mount tmpfs on \"%s\"", path);
@@ -1217,22 +1220,15 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 		if (ret < 0 || (size_t)ret >= sizeof(device_path))
 			return ret_errno(EIO);
 
-		ret = fd_bind_mount(rootfs->dfd_host, device_path,
-				    PROTECT_OPATH_FILE,
-				    PROTECT_LOOKUP_BENEATH_XDEV,
-				    rootfs->dfd_dev, device->name,
-				    PROTECT_OPATH_FILE,
-				    PROTECT_LOOKUP_BENEATH, 0, false);
-		if (ret < 0) {
+		if (new_mount_api()) {
+			ret = fd_bind_mount(rootfs->dfd_host, device_path,
+					    PROTECT_OPATH_FILE,
+					    PROTECT_LOOKUP_BENEATH_XDEV,
+					    rootfs->dfd_dev, device->name,
+					    PROTECT_OPATH_FILE,
+					    PROTECT_LOOKUP_BENEATH, 0, false);
+		} else {
 			char path[PATH_MAX];
-
-			if (errno != ENOSYS)
-				return log_error_errno(-errno, errno,
-						       "Failed to mount %d(%s) to %d(%s)",
-						       rootfs->dfd_host,
-						       device_path,
-						       rootfs->dfd_dev,
-						       device->name);
 
 			ret = snprintf(device_path, sizeof(device_path), "/dev/%s", device->name);
 			if (ret < 0 || (size_t)ret >= sizeof(device_path))
