@@ -1184,9 +1184,9 @@ static int set_config_init_groups(const char *key, const char *value,
 				  struct lxc_conf *lxc_conf, void *data)
 {
 	__do_free char *value_dup = NULL;
-	__do_free gid_t *init_groups = NULL;
-	int num_groups = 0;
-	int iter = 0;
+	gid_t *init_groups = NULL;
+	size_t num_groups = 0;
+	size_t idx;
 	char *token;
 
 	if (lxc_config_value_empty(value))
@@ -1199,12 +1199,23 @@ static int set_config_init_groups(const char *key, const char *value,
 	lxc_iterate_parts(token, value_dup, ",")
 		num_groups++;
 
+	if (num_groups == INT_MAX)
+		return log_error_errno(-ERANGE, ERANGE, "Excessive number of supplementary groups specified");
+
 	if (num_groups == 0)
 		return clr_config_init_groups(key, lxc_conf, NULL);
 
-	init_groups = zalloc(sizeof(gid_t) * num_groups);
+	idx = lxc_conf->init_groups.size;
+	init_groups = realloc(lxc_conf->init_groups.list, sizeof(gid_t) * (idx + num_groups));
 	if (!init_groups)
 		return ret_errno(ENOMEM);
+
+	/*
+	 * Once the realloc() succeeded we need to hand control of the memory
+	 * back to the config otherwise we risk a double-free when
+	 * lxc_conf_free() is called.
+	 */
+	lxc_conf->init_groups.list = init_groups;
 
 	/* Restore duplicated value so we can call lxc_iterate_parts() again. */
 	strcpy(value_dup, value);
@@ -1218,11 +1229,10 @@ static int set_config_init_groups(const char *key, const char *value,
 		if (ret)
 			return ret;
 
-		init_groups[iter++] = group;
+		init_groups[idx++] = group;
 	}
 
-	lxc_conf->init_groups.size = num_groups;
-	lxc_conf->init_groups.list = move_ptr(init_groups);
+	lxc_conf->init_groups.size += num_groups;
 
 	return 0;
 }
@@ -5036,8 +5046,8 @@ static inline int clr_config_init_gid(const char *key, struct lxc_conf *c,
 static inline int clr_config_init_groups(const char *key, struct lxc_conf *c,
 					 void *data)
 {
-	free_disarm(c->init_groups.list);
 	c->init_groups.size = 0;
+	free_disarm(c->init_groups.list);
 	return 0;
 }
 

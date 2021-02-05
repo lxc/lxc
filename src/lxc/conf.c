@@ -2671,6 +2671,7 @@ struct lxc_conf *lxc_conf_init(void)
 	 * default to running as UID/GID 0 when using lxc-execute */
 	new->init_uid = 0;
 	new->init_gid = 0;
+	memset(&new->init_groups, 0, sizeof(lxc_groups_t));
 	memset(&new->cgroup_meta, 0, sizeof(struct lxc_cgroup));
 	memset(&new->ns_share, 0, sizeof(char *) * LXC_NS_MAX);
 	memset(&new->timens, 0, sizeof(struct timens_offsets));
