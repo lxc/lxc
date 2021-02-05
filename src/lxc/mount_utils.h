@@ -10,6 +10,7 @@
 
 #include "compiler.h"
 #include "memory_utils.h"
+#include "syscall_wrappers.h"
 
 /* open_tree() flags */
 
@@ -185,5 +186,27 @@ __hidden extern int fd_bind_mount(int dfd_from, const char *path_from,
 				  int dfd_to, const char *path_to,
 				  __u64 o_flags_to, __u64 resolve_flags_to,
 				  unsigned int attr_flags, bool recursive);
+
+/*
+ * We use openat2() as indicator whether or not the new mount api is supported.
+ * First, because openat2() has been introduced after all syscalls from the new
+ * mount api we currently use and second because our hardened mount logic
+ * relies on openat2() to safely resolve paths.
+ */
+static inline bool new_mount_api(void)
+{
+	__do_close int fd;
+	static int supported = -1;
+
+	if (supported == -1) {
+		fd = openat2(-EBADF, "", NULL, 0);
+		if (fd < 0 && errno != ENOSYS)
+			supported = 1;
+		else
+			supported = 0;
+	}
+
+	return supported == 1;
+}
 
 #endif /* __LXC_MOUNT_UTILS_H */
