@@ -12,6 +12,11 @@
 #include "memory_utils.h"
 
 /* open_tree() flags */
+
+#ifndef AT_RECURSIVE
+#define AT_RECURSIVE 0x8000 /* Apply to the entire subtree */
+#endif
+
 #ifndef OPEN_TREE_CLONE
 #define OPEN_TREE_CLONE 1
 #endif
@@ -180,5 +185,11 @@ static inline int fs_mount(const char *fs_name, int dfd_from,
 		return -errno;
 	return fs_attach(fd_fs, dfd_to, path_to, o_flags_to, resolve_flags_to, attr_flags);
 }
+
+__hidden extern int fd_bind_mount(int dfd_from, const char *path_from,
+				  __u64 o_flags_from, __u64 resolve_flags_from,
+				  int dfd_to, const char *path_to,
+				  __u64 o_flags_to, __u64 resolve_flags_to,
+				  unsigned int attr_flags, bool recursive);
 
 #endif /* __LXC_MOUNT_UTILS_H */
