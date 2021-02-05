@@ -78,7 +78,7 @@ typedef struct lxc_attach_options_t {
 	 * If the current directory does not exist in the container, the root
 	 * directory will be used instead because of kernel defaults.
 	 */
-	char* initial_cwd;
+	char *initial_cwd;
 
 	/*! The user-id to run as.
 	 *
@@ -98,12 +98,12 @@ typedef struct lxc_attach_options_t {
 	lxc_attach_env_policy_t env_policy;
 
 	/*! Extra environment variables to set in the container environment */
-	char** extra_env_vars;
+	char **extra_env_vars;
 
 	/*! Names of environment variables in existing environment to retain
 	 * in container environment.
 	 */
-	char** extra_keep_env;
+	char **extra_keep_env;
 
 	/**@{*/
 	/*! File descriptors for stdin, stdout and stderr,
@@ -155,8 +155,8 @@ typedef struct lxc_attach_options_t {
  * Representation of a command to run in a container.
  */
 typedef struct lxc_attach_command_t {
-	char* program; /*!< The program to run (passed to execvp) */
-	char** argv;   /*!< The argv pointer of that program, including the program itself in argv[0] */
+	char *program;	/*!< The program to run (passed to execvp) */
+	char **argv;	/*!< The argv pointer of that program, including the program itself in argv[0] */
 } lxc_attach_command_t;
 
 /*!
