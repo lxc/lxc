@@ -39,6 +39,7 @@ lxc_test_api_reboot_SOURCES = api_reboot.c \
 			      ../lxc/lxclock.c ../lxc/lxclock.h \
 			      ../lxc/mainloop.c ../lxc/mainloop.h \
 			      ../lxc/monitor.c ../lxc/monitor.h \
+			      ../lxc/mount_utils.c ../lxc/mount_utils.h \
 			      ../lxc/namespace.c ../lxc/namespace.h \
 			      ../lxc/network.c ../lxc/network.h \
 			      ../lxc/nl.c ../lxc/nl.h \
@@ -88,6 +89,7 @@ lxc_test_apparmor_SOURCES = aa.c \
 			    ../lxc/lxclock.c ../lxc/lxclock.h \
 			    ../lxc/mainloop.c ../lxc/mainloop.h \
 			    ../lxc/monitor.c ../lxc/monitor.h \
+			    ../lxc/mount_utils.c ../lxc/mount_utils.h \
 			    ../lxc/namespace.c ../lxc/namespace.h \
 			    ../lxc/network.c ../lxc/network.h \
 			    ../lxc/nl.c ../lxc/nl.h \
@@ -137,6 +139,7 @@ lxc_test_attach_SOURCES = attach.c \
 			  ../lxc/lxclock.c ../lxc/lxclock.h \
 			  ../lxc/mainloop.c ../lxc/mainloop.h \
 			  ../lxc/monitor.c ../lxc/monitor.h \
+			  ../lxc/mount_utils.c ../lxc/mount_utils.h \
 			  ../lxc/namespace.c ../lxc/namespace.h \
 			  ../lxc/network.c ../lxc/network.h \
 			  ../lxc/nl.c ../lxc/nl.h \
@@ -187,6 +190,7 @@ lxc_test_cgpath_SOURCES = cgpath.c \
 			  ../lxc/lxclock.c ../lxc/lxclock.h \
 			  ../lxc/mainloop.c ../lxc/mainloop.h \
 			  ../lxc/monitor.c ../lxc/monitor.h \
+			  ../lxc/mount_utils.c ../lxc/mount_utils.h \
 			  ../lxc/namespace.c ../lxc/namespace.h \
 			  ../lxc/network.c ../lxc/network.h \
 			  ../lxc/nl.c ../lxc/nl.h \
@@ -239,6 +243,7 @@ lxc_test_config_jump_table_SOURCES = config_jump_table.c \
 				     ../lxc/lxclock.c ../lxc/lxclock.h \
 				     ../lxc/mainloop.c ../lxc/mainloop.h \
 				     ../lxc/monitor.c ../lxc/monitor.h \
+				     ../lxc/mount_utils.c ../lxc/mount_utils.h \
 				     ../lxc/namespace.c ../lxc/namespace.h \
 				     ../lxc/network.c ../lxc/network.h \
 				     ../lxc/nl.c ../lxc/nl.h \
@@ -295,6 +300,7 @@ lxc_test_device_add_remove_SOURCES = device_add_remove.c \
 				     ../lxc/lxclock.c ../lxc/lxclock.h \
 				     ../lxc/mainloop.c ../lxc/mainloop.h \
 				     ../lxc/monitor.c ../lxc/monitor.h \
+				     ../lxc/mount_utils.c ../lxc/mount_utils.h \
 				     ../lxc/namespace.c ../lxc/namespace.h \
 				     ../lxc/network.c ../lxc/network.h \
 				     ../lxc/nl.c ../lxc/nl.h \
@@ -344,6 +350,7 @@ lxc_test_get_item_SOURCES = get_item.c \
 			    ../lxc/lxclock.c ../lxc/lxclock.h \
 			    ../lxc/mainloop.c ../lxc/mainloop.h \
 			    ../lxc/monitor.c ../lxc/monitor.h \
+			    ../lxc/mount_utils.c ../lxc/mount_utils.h \
 			    ../lxc/namespace.c ../lxc/namespace.h \
 			    ../lxc/network.c ../lxc/network.h \
 			    ../lxc/nl.c ../lxc/nl.h \
@@ -393,6 +400,7 @@ lxc_test_locktests_SOURCES = locktests.c \
 			     ../lxc/lxclock.c ../lxc/lxclock.h \
 			     ../lxc/mainloop.c ../lxc/mainloop.h \
 			     ../lxc/monitor.c ../lxc/monitor.h \
+			     ../lxc/mount_utils.c ../lxc/mount_utils.h \
 			     ../lxc/namespace.c ../lxc/namespace.h \
 			     ../lxc/network.c ../lxc/network.h \
 			     ../lxc/nl.c ../lxc/nl.h \
@@ -445,6 +453,7 @@ lxc_test_mount_injection_SOURCES = mount_injection.c \
 				   ../lxc/lxclock.c ../lxc/lxclock.h \
 				   ../lxc/mainloop.c ../lxc/mainloop.h \
 				   ../lxc/monitor.c ../lxc/monitor.h \
+				   ../lxc/mount_utils.c ../lxc/mount_utils.h \
 				   ../lxc/namespace.c ../lxc/namespace.h \
 				   ../lxc/network.c ../lxc/network.h \
 				   ../lxc/nl.c ../lxc/nl.h \
@@ -495,6 +504,7 @@ lxc_test_parse_config_file_SOURCES = parse_config_file.c \
 				     ../lxc/lxclock.c ../lxc/lxclock.h \
 				     ../lxc/mainloop.c ../lxc/mainloop.h \
 				     ../lxc/monitor.c ../lxc/monitor.h \
+				     ../lxc/mount_utils.c ../lxc/mount_utils.h \
 				     ../lxc/namespace.c ../lxc/namespace.h \
 				     ../lxc/network.c ../lxc/network.h \
 				     ../lxc/nl.c ../lxc/nl.h \
@@ -545,6 +555,7 @@ lxc_test_raw_clone_SOURCES = lxc_raw_clone.c \
 			     ../lxc/lxclock.c ../lxc/lxclock.h \
 			     ../lxc/mainloop.c ../lxc/mainloop.h \
 			     ../lxc/monitor.c ../lxc/monitor.h \
+			     ../lxc/mount_utils.c ../lxc/mount_utils.h \
 			     ../lxc/namespace.c ../lxc/namespace.h \
 			     ../lxc/network.c ../lxc/network.h \
 			     ../lxc/nl.c ../lxc/nl.h \
@@ -609,6 +620,7 @@ lxc_test_utils_SOURCES = lxc-test-utils.c \
 			  ../lxc/lxclock.c ../lxc/lxclock.h \
 			  ../lxc/mainloop.c ../lxc/mainloop.h \
 			  ../lxc/monitor.c ../lxc/monitor.h \
+			  ../lxc/mount_utils.c ../lxc/mount_utils.h \
 			  ../lxc/namespace.c ../lxc/namespace.h \
 			  ../lxc/network.c ../lxc/network.h \
 			  ../lxc/nl.c ../lxc/nl.h \

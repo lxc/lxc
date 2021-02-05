@@ -44,6 +44,7 @@
 #include "macro.h"
 #include "mainloop.h"
 #include "memory_utils.h"
+#include "mount_utils.h"
 #include "storage/storage.h"
 #include "syscall_wrappers.h"
 #include "utils.h"
@@ -1762,42 +1763,65 @@ static int __cg_mount_direct(int type, struct hierarchy *h,
 			     struct lxc_rootfs *rootfs,
 			     int dfd_mnt_cgroupfs, const char *hierarchy_mnt)
 {
-	__do_free char *controllers = NULL;
-	unsigned long flags = 0;
+	__do_close int fd_fs = -EBADF;
+	unsigned int flags = 0;
 	char *fstype;
 	int ret;
 
 	if (dfd_mnt_cgroupfs < 0)
 		return ret_errno(EINVAL);
 
-	flags |= MS_NOSUID;
-	flags |= MS_NOEXEC;
-	flags |= MS_NODEV;
-	flags |= MS_RELATIME;
+	flags |= MOUNT_ATTR_NOSUID;
+	flags |= MOUNT_ATTR_NOEXEC;
+	flags |= MOUNT_ATTR_NODEV;
+	flags |= MOUNT_ATTR_RELATIME;
 
 	if (type == LXC_AUTO_CGROUP_RO || type == LXC_AUTO_CGROUP_FULL_RO)
-		flags |= MS_RDONLY;
+		flags |= MOUNT_ATTR_RDONLY;
 
 	if (is_unified_hierarchy(h)) {
 		fstype = "cgroup2";
 	} else {
 		fstype = "cgroup";
-
-		controllers = lxc_string_join(",", (const char **)h->controllers, false);
-		if (!controllers)
-			return ret_errno(ENOMEM);
 	}
 
-	ret = mount_at(dfd_mnt_cgroupfs, NULL, hierarchy_mnt,
-		       PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH, fstype,
-		       flags, controllers);
-	if (ret < 0 && errno == ENOSYS) {
-		__do_free char *target = NULL;
+	if (new_mount_api()) {
+		fd_fs = fs_prepare(fstype, -EBADF, "", 0, 0);
+		if (fd_fs < 0)
+			return log_error_errno(-errno, errno, "Failed to prepare filesystem context for %s", fstype);
+
+		if (!is_unified_hierarchy(h)) {
+			for (const char **it = (const char **)h->controllers; it && *it; it++) {
+				if (strncmp(*it, "name=", STRLITERALLEN("name=")) == 0)
+					ret = fs_set_property(fd_fs, "name", *it + STRLITERALLEN("name="));
+				else
+					ret = fs_set_property(fd_fs, *it, "");
+				if (ret < 0)
+					return log_error_errno(-errno, errno, "Failed to add %s controller to cgroup filesystem context %d(dev)", *it, fd_fs);
+			}
+		}
+
+		ret = fs_attach(fd_fs, dfd_mnt_cgroupfs, hierarchy_mnt,
+				PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH,
+				flags);
+	} else {
+		__do_free char *controllers = NULL, *target = NULL;
+		unsigned int old_flags = 0;
 		const char *rootfs_mnt;
 
+		if (!is_unified_hierarchy(h)) {
+			controllers = lxc_string_join(",", (const char **)h->controllers, false);
+			if (!controllers)
+				return ret_errno(ENOMEM);
+		}
+
 		rootfs_mnt = get_rootfs_mnt(rootfs);
+		ret = mnt_attributes_old(flags, &old_flags);
+		if (ret)
+			return log_error_errno(-EINVAL, EINVAL, "Unsupported mount properties specified");
+
 		target = must_make_path(rootfs_mnt, DEFAULT_CGROUP_MOUNTPOINT, hierarchy_mnt, NULL);
-		ret = safe_mount(NULL, target, fstype, flags, controllers, rootfs_mnt);
+		ret = safe_mount(NULL, target, fstype, old_flags, controllers, rootfs_mnt);
 	}
 	if (ret < 0)
 		return log_error_errno(ret, errno, "Failed to mount %s filesystem onto %d(%s)",
@@ -1830,7 +1854,7 @@ static inline int cg_mount_cgroup_full(int type, struct hierarchy *h,
 __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 				      struct lxc_conf *conf, int type)
 {
-	__do_close int dfd_mnt_cgroupfs = -EBADF;
+	__do_close int dfd_mnt_cgroupfs = -EBADF, fd_fs = -EBADF;
 	__do_free char *cgroup_root = NULL;
 	bool has_cgns = false, wants_force_mount = false;
 	struct lxc_rootfs *rootfs = &conf->rootfs;
@@ -1907,13 +1931,25 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	 * relying on RESOLVE_BENEATH so we need to skip the leading "/" in the
 	 * DEFAULT_CGROUP_MOUNTPOINT define.
 	 */
-	ret = mount_at(rootfs->dfd_mnt, NULL, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
-		       PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV,
-		       "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,
-		       "size=10240k,mode=755");
-	if (ret < 0 && errno == ENOSYS) {
-		cgroup_root = must_make_path(rootfs_mnt, DEFAULT_CGROUP_MOUNTPOINT, NULL);
+	if (new_mount_api()) {
+		fd_fs = fs_prepare("tmpfs", -EBADF, "", 0, 0);
+		if (fd_fs < 0)
+			return log_error_errno(-errno, errno, "Failed to create new filesystem context for tmpfs");
 
+		ret = fs_set_property(fd_fs, "mode", "0755");
+		if (ret < 0)
+			return log_error_errno(-errno, errno, "Failed to mount tmpfs onto %d(dev)", fd_fs);
+
+		ret = fs_set_property(fd_fs, "size", "10240k");
+		if (ret < 0)
+			return log_error_errno(-errno, errno, "Failed to mount tmpfs onto %d(dev)", fd_fs);
+
+		ret = fs_attach(fd_fs, rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
+				PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV,
+				MOUNT_ATTR_NOSUID | MOUNT_ATTR_NODEV |
+				MOUNT_ATTR_NOEXEC | MOUNT_ATTR_RELATIME);
+	} else {
+		cgroup_root = must_make_path(rootfs_mnt, DEFAULT_CGROUP_MOUNTPOINT, NULL);
 		ret = safe_mount(NULL, cgroup_root, "tmpfs",
 				 MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,
 				 "size=10240k,mode=755", rootfs_mnt);

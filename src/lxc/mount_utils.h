@@ -3,13 +3,21 @@
 #ifndef __LXC_MOUNT_UTILS_H
 #define __LXC_MOUNT_UTILS_H
 
+#include <linux/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mount.h>
 
 #include "compiler.h"
+#include "memory_utils.h"
+#include "syscall_wrappers.h"
 
 /* open_tree() flags */
+
+#ifndef AT_RECURSIVE
+#define AT_RECURSIVE 0x8000 /* Apply to the entire subtree */
+#endif
+
 #ifndef OPEN_TREE_CLONE
 #define OPEN_TREE_CLONE 1
 #endif
@@ -149,5 +157,56 @@ __hidden extern int mnt_attributes_new(unsigned int old_flags, unsigned int *new
 __hidden extern int mnt_attributes_old(unsigned int new_flags, unsigned int *old_flags);
 
 __hidden extern int mount_filesystem(const char *fs_name, const char *path, unsigned int attr_flags);
+
+__hidden extern int fs_prepare(const char *fs_name, int dfd_from,
+			       const char *path_from, __u64 o_flags_from,
+			       __u64 resolve_flags_from);
+__hidden extern int fs_set_property(int fd_fs, const char *key, const char *val);
+__hidden extern int fs_attach(int fd_fs, int dfd_to, const char *path_to,
+			      __u64 o_flags_to, __u64 resolve_flags_to,
+			      unsigned int attr_flags);
+
+static inline int fs_mount(const char *fs_name, int dfd_from,
+			   const char *path_from, __u64 o_flags_from,
+			   __u64 resolve_flags_from, int dfd_to,
+			   const char *path_to, __u64 o_flags_to,
+			   __u64 resolve_flags_to,
+			   unsigned int attr_flags)
+{
+	__do_close int fd_fs = -EBADF;
+
+	fd_fs = fs_prepare(fs_name, dfd_from, path_from, o_flags_from, resolve_flags_from);
+	if (fd_fs < 0)
+		return -errno;
+	return fs_attach(fd_fs, dfd_to, path_to, o_flags_to, resolve_flags_to, attr_flags);
+}
+
+__hidden extern int fd_bind_mount(int dfd_from, const char *path_from,
+				  __u64 o_flags_from, __u64 resolve_flags_from,
+				  int dfd_to, const char *path_to,
+				  __u64 o_flags_to, __u64 resolve_flags_to,
+				  unsigned int attr_flags, bool recursive);
+
+/*
+ * We use openat2() as indicator whether or not the new mount api is supported.
+ * First, because openat2() has been introduced after all syscalls from the new
+ * mount api we currently use and second because our hardened mount logic
+ * relies on openat2() to safely resolve paths.
+ */
+static inline bool new_mount_api(void)
+{
+	__do_close int fd;
+	static int supported = -1;
+
+	if (supported == -1) {
+		fd = openat2(-EBADF, "", NULL, 0);
+		if (fd < 0 && errno != ENOSYS)
+			supported = 1;
+		else
+			supported = 0;
+	}
+
+	return supported == 1;
+}
 
 #endif /* __LXC_MOUNT_UTILS_H */
