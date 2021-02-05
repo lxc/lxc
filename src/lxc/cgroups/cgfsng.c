@@ -44,6 +44,7 @@
 #include "macro.h"
 #include "mainloop.h"
 #include "memory_utils.h"
+#include "mount_utils.h"
 #include "storage/storage.h"
 #include "syscall_wrappers.h"
 #include "utils.h"
