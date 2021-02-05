@@ -9,6 +9,7 @@
 #include <sys/mount.h>
 
 #include "compiler.h"
+#include "memory_utils.h"
 
 /* open_tree() flags */
 #ifndef OPEN_TREE_CLONE
@@ -162,5 +163,27 @@ __hidden extern int mount_from_at(int dfd_from, const char *path_from,
 				  __u64 o_flags_to, __u64 resolve_flags_to,
 				  const char *fstype, unsigned int mnt_flags,
 				  const void *data);
+__hidden extern int fs_prepare(const char *fs_name, int dfd_from,
+			       const char *path_from, __u64 o_flags_from,
+			       __u64 resolve_flags_from);
+__hidden extern int fs_set_property(int fd_fs, const char *key, const char *val);
+__hidden extern int fs_attach(int fd_fs, int dfd_to, const char *path_to,
+			      __u64 o_flags_to, __u64 resolve_flags_to,
+			      unsigned int attr_flags);
+
+static inline int fs_mount(const char *fs_name, int dfd_from,
+			   const char *path_from, __u64 o_flags_from,
+			   __u64 resolve_flags_from, int dfd_to,
+			   const char *path_to, __u64 o_flags_to,
+			   __u64 resolve_flags_to,
+			   unsigned int attr_flags)
+{
+	__do_close int fd_fs = -EBADF;
+
+	fd_fs = fs_prepare(fs_name, dfd_from, path_from, o_flags_from, resolve_flags_from);
+	if (fd_fs < 0)
+		return -errno;
+	return fs_attach(fd_fs, dfd_to, path_to, o_flags_to, resolve_flags_to, attr_flags);
+}
 
 #endif /* __LXC_MOUNT_UTILS_H */
