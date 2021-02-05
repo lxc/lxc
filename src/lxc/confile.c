@@ -1202,8 +1202,9 @@ static int set_config_init_groups(const char *key, const char *value,
 	if (num_groups == INT_MAX)
 		return log_error_errno(-ERANGE, ERANGE, "Excessive number of supplementary groups specified");
 
+	/* This means the string wasn't empty and all we found was garbage. */
 	if (num_groups == 0)
-		return clr_config_init_groups(key, lxc_conf, NULL);
+		return log_error_errno(-EINVAL, EINVAL, "No valid groups specified %s", value);
 
 	idx = lxc_conf->init_groups.size;
 	init_groups = realloc(lxc_conf->init_groups.list, sizeof(gid_t) * (idx + num_groups));
@@ -1227,7 +1228,7 @@ static int set_config_init_groups(const char *key, const char *value,
 
 		ret = lxc_safe_uint(token, &group);
 		if (ret)
-			return ret;
+			return log_error_errno(ret, -ret, "Failed to parse group %s", token);
 
 		init_groups[idx++] = group;
 	}
