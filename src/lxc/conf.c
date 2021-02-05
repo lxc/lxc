@@ -1060,15 +1060,14 @@ on_error:
 static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 			 int autodevtmpfssize, const char *lxcpath)
 {
+	__do_close int fd_fs = -EBADF;
 	const char *path = rootfs->path ? rootfs->mount : NULL;
+	size_t tmpfs_size = (autodevtmpfssize != 0) ? autodevtmpfssize : 500000;
 	int ret;
 	mode_t cur_mask;
         char mount_options[128];
 
 	INFO("Preparing \"/dev\"");
-
-	sprintf(mount_options, "size=%d,mode=755", (autodevtmpfssize != 0) ? autodevtmpfssize : 500000);
-	DEBUG("Using mount options: %s", mount_options);
 
 	cur_mask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
 	ret = mkdirat(rootfs->dfd_mnt, "dev" , S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
@@ -1078,14 +1077,12 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 		goto reset_umask;
 	}
 
-	ret = safe_mount_beneath_at(rootfs->dfd_mnt, "none", "dev", "tmpfs", 0, mount_options);
-	if (ret < 0) {
+	fd_fs = fs_prepare("tmpfs", -EBADF, "", 0, 0);
+	if (fd_fs < 0) {
 		__do_free char *fallback_path = NULL;
 
-		if (errno != ENOSYS) {
-			SYSERROR("Failed to mount tmpfs on \"%s\"", path);
-			goto reset_umask;
-		}
+		sprintf(mount_options, "size=%zu,mode=755", tmpfs_size);
+		DEBUG("Using mount options: %s", mount_options);
 
 		if (path) {
 			fallback_path = must_make_path(path, "/dev", NULL);
@@ -1093,19 +1090,31 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 		} else {
 			ret = safe_mount("none", "dev", "tmpfs", 0, mount_options, NULL);
 		}
-		if (ret < 0) {
-			SYSERROR("Failed to mount tmpfs on \"%s\"", path);
-			goto reset_umask;
-		}
+	} else {
+		sprintf(mount_options, "%zu", tmpfs_size);
+
+		ret = fs_set_property(fd_fs, "mode", "0755");
+		if (ret < 0)
+			return log_error_errno(-errno, errno, "Failed to mount tmpfs onto %d(dev)", fd_fs);
+
+		ret = fs_set_property(fd_fs, "size", mount_options);
+		if (ret < 0)
+			return log_error_errno(-errno, errno, "Failed to mount tmpfs onto %d(dev)", fd_fs);
+
+		ret = fs_attach(fd_fs, rootfs->dfd_mnt, "dev", PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH, 0);
 	}
-	TRACE("Mounted tmpfs on \"%s\"", path);
+	if (ret < 0) {
+		SYSERROR("Failed to mount tmpfs on \"%s\"", path);
+		goto reset_umask;
+	}
+
 
 	/* If we are running on a devtmpfs mapping, dev/pts may already exist.
 	 * If not, then create it and exit if that fails...
 	 */
 	ret = mkdirat(rootfs->dfd_mnt, "dev/pts", S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 	if (ret < 0 && errno != EEXIST) {
-		SYSERROR("Failed to create directory \"%s\"", path);
+		SYSERROR("Failed to create directory \"dev/pts\"");
 		ret = -errno;
 		goto reset_umask;
 	}
