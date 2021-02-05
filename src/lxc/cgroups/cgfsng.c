@@ -1830,7 +1830,7 @@ static inline int cg_mount_cgroup_full(int type, struct hierarchy *h,
 __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 				      struct lxc_conf *conf, int type)
 {
-	__do_close int dfd_mnt_cgroupfs = -EBADF;
+	__do_close int dfd_mnt_cgroupfs = -EBADF, fd_fs = -EBADF;
 	__do_free char *cgroup_root = NULL;
 	bool has_cgns = false, wants_force_mount = false;
 	struct lxc_rootfs *rootfs = &conf->rootfs;
@@ -1907,16 +1907,25 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	 * relying on RESOLVE_BENEATH so we need to skip the leading "/" in the
 	 * DEFAULT_CGROUP_MOUNTPOINT define.
 	 */
-	ret = mount_at(rootfs->dfd_mnt, NULL, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
-		       PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV,
-		       "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,
-		       "size=10240k,mode=755");
-	if (ret < 0 && errno == ENOSYS) {
+	fd_fs = fs_prepare("tmpfs", -EBADF, "", 0, 0);
+	if (fd_fs < 0) {
 		cgroup_root = must_make_path(rootfs_mnt, DEFAULT_CGROUP_MOUNTPOINT, NULL);
-
 		ret = safe_mount(NULL, cgroup_root, "tmpfs",
 				 MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,
 				 "size=10240k,mode=755", rootfs_mnt);
+	} else {
+		ret = fs_set_property(fd_fs, "mode", "0755");
+		if (ret < 0)
+			return log_error_errno(-errno, errno, "Failed to mount tmpfs onto %d(dev)", fd_fs);
+
+		ret = fs_set_property(fd_fs, "size", "10240k");
+		if (ret < 0)
+			return log_error_errno(-errno, errno, "Failed to mount tmpfs onto %d(dev)", fd_fs);
+
+		ret = fs_attach(fd_fs, rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
+				PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV,
+				MOUNT_ATTR_NOSUID | MOUNT_ATTR_NODEV |
+				MOUNT_ATTR_NOEXEC | MOUNT_ATTR_RELATIME);
 	}
 	if (ret < 0)
 		return log_error_errno(false, errno, "Failed to mount tmpfs on %s",
