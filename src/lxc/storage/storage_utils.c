@@ -461,7 +461,7 @@ int storage_destroy_wrapper(void *data)
 {
 	struct lxc_conf *conf = data;
 
-	(void)lxc_setgroups(0, NULL);
+	(void)lxc_drop_groups();
 
 	if (setgid(0) < 0) {
 		SYSERROR("Failed to setgid to 0");

@@ -374,7 +374,7 @@ int btrfs_snapshot_wrapper(void *data)
 	const char *src;
 	struct rsync_data_char *arg = data;
 
-	(void)lxc_setgroups(0, NULL);
+	(void)lxc_drop_groups();
 
 	if (setgid(0) < 0) {
 		ERROR("Failed to setgid to 0");
