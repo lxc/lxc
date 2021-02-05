@@ -1204,7 +1204,8 @@ __noreturn static void do_attach(struct attach_payload *ap)
 			goto on_error;
 	}
 
-	if (options->attach_flags & LXC_ATTACH_SETGROUPS && options->groups.size > 0) {
+	if ((options->attach_flags & LXC_ATTACH_SETGROUPS) &&
+	    options->groups.size > 0) {
 		if (!lxc_setgroups(options->groups.list, options->groups.size))
 			goto on_error;
 	} else {
