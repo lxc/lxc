@@ -1763,42 +1763,62 @@ static int __cg_mount_direct(int type, struct hierarchy *h,
 			     struct lxc_rootfs *rootfs,
 			     int dfd_mnt_cgroupfs, const char *hierarchy_mnt)
 {
-	__do_free char *controllers = NULL;
-	unsigned long flags = 0;
+	__do_close int fd_fs = -EBADF;
+	unsigned int flags = 0;
 	char *fstype;
 	int ret;
 
 	if (dfd_mnt_cgroupfs < 0)
 		return ret_errno(EINVAL);
 
-	flags |= MS_NOSUID;
-	flags |= MS_NOEXEC;
-	flags |= MS_NODEV;
-	flags |= MS_RELATIME;
+	flags |= MOUNT_ATTR_NOSUID;
+	flags |= MOUNT_ATTR_NOEXEC;
+	flags |= MOUNT_ATTR_NODEV;
+	flags |= MOUNT_ATTR_RELATIME;
 
 	if (type == LXC_AUTO_CGROUP_RO || type == LXC_AUTO_CGROUP_FULL_RO)
-		flags |= MS_RDONLY;
+		flags |= MOUNT_ATTR_RDONLY;
 
 	if (is_unified_hierarchy(h)) {
 		fstype = "cgroup2";
 	} else {
 		fstype = "cgroup";
-
-		controllers = lxc_string_join(",", (const char **)h->controllers, false);
-		if (!controllers)
-			return ret_errno(ENOMEM);
 	}
 
-	ret = mount_at(dfd_mnt_cgroupfs, NULL, hierarchy_mnt,
-		       PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH, fstype,
-		       flags, controllers);
-	if (ret < 0 && errno == ENOSYS) {
-		__do_free char *target = NULL;
+	fd_fs = fs_prepare(fstype, -EBADF, "", 0, 0);
+	if (fd_fs < 0) {
+		__do_free char *controllers = NULL, *target = NULL;
+		unsigned int old_flags = 0;
 		const char *rootfs_mnt;
 
+		if (!is_unified_hierarchy(h)) {
+			controllers = lxc_string_join(",", (const char **)h->controllers, false);
+			if (!controllers)
+				return ret_errno(ENOMEM);
+		}
+
 		rootfs_mnt = get_rootfs_mnt(rootfs);
+		ret = mnt_attributes_old(flags, &old_flags);
+		if (ret)
+			return log_error_errno(-EINVAL, EINVAL, "Unsupported mount properties specified");
+
 		target = must_make_path(rootfs_mnt, DEFAULT_CGROUP_MOUNTPOINT, hierarchy_mnt, NULL);
-		ret = safe_mount(NULL, target, fstype, flags, controllers, rootfs_mnt);
+		ret = safe_mount(NULL, target, fstype, old_flags, controllers, rootfs_mnt);
+	} else {
+		if (!is_unified_hierarchy(h)) {
+			for (const char **it = (const char **)h->controllers; it && *it; it++) {
+				if (strncmp(*it, "name=", STRLITERALLEN("name=")) == 0)
+					ret = fs_set_property(fd_fs, "name", *it + STRLITERALLEN("name="));
+				else
+					ret = fs_set_property(fd_fs, *it, "");
+				if (ret < 0)
+					return log_error_errno(-errno, errno, "Failed to add %s controller to cgroup filesystem context %d(dev)", *it, fd_fs);
+			}
+		}
+
+		ret = fs_attach(fd_fs, dfd_mnt_cgroupfs, hierarchy_mnt,
+				PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH,
+				flags);
 	}
 	if (ret < 0)
 		return log_error_errno(ret, errno, "Failed to mount %s filesystem onto %d(%s)",
