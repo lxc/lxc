@@ -54,7 +54,7 @@ enum {
 typedef int (*lxc_attach_exec_t)(void* payload);
 
 typedef struct lxc_groups_t {
-	int size;
+	size_t size;
 	gid_t *list;
 } lxc_groups_t;
 
