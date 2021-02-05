@@ -1785,8 +1785,26 @@ static int __cg_mount_direct(int type, struct hierarchy *h,
 		fstype = "cgroup";
 	}
 
-	fd_fs = fs_prepare(fstype, -EBADF, "", 0, 0);
-	if (fd_fs < 0) {
+	if (new_mount_api()) {
+		fd_fs = fs_prepare(fstype, -EBADF, "", 0, 0);
+		if (fd_fs < 0)
+			return log_error_errno(-errno, errno, "Failed to prepare filesystem context for %s", fstype);
+
+		if (!is_unified_hierarchy(h)) {
+			for (const char **it = (const char **)h->controllers; it && *it; it++) {
+				if (strncmp(*it, "name=", STRLITERALLEN("name=")) == 0)
+					ret = fs_set_property(fd_fs, "name", *it + STRLITERALLEN("name="));
+				else
+					ret = fs_set_property(fd_fs, *it, "");
+				if (ret < 0)
+					return log_error_errno(-errno, errno, "Failed to add %s controller to cgroup filesystem context %d(dev)", *it, fd_fs);
+			}
+		}
+
+		ret = fs_attach(fd_fs, dfd_mnt_cgroupfs, hierarchy_mnt,
+				PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH,
+				flags);
+	} else {
 		__do_free char *controllers = NULL, *target = NULL;
 		unsigned int old_flags = 0;
 		const char *rootfs_mnt;
@@ -1804,21 +1822,6 @@ static int __cg_mount_direct(int type, struct hierarchy *h,
 
 		target = must_make_path(rootfs_mnt, DEFAULT_CGROUP_MOUNTPOINT, hierarchy_mnt, NULL);
 		ret = safe_mount(NULL, target, fstype, old_flags, controllers, rootfs_mnt);
-	} else {
-		if (!is_unified_hierarchy(h)) {
-			for (const char **it = (const char **)h->controllers; it && *it; it++) {
-				if (strncmp(*it, "name=", STRLITERALLEN("name=")) == 0)
-					ret = fs_set_property(fd_fs, "name", *it + STRLITERALLEN("name="));
-				else
-					ret = fs_set_property(fd_fs, *it, "");
-				if (ret < 0)
-					return log_error_errno(-errno, errno, "Failed to add %s controller to cgroup filesystem context %d(dev)", *it, fd_fs);
-			}
-		}
-
-		ret = fs_attach(fd_fs, dfd_mnt_cgroupfs, hierarchy_mnt,
-				PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH,
-				flags);
 	}
 	if (ret < 0)
 		return log_error_errno(ret, errno, "Failed to mount %s filesystem onto %d(%s)",
@@ -1928,13 +1931,11 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	 * relying on RESOLVE_BENEATH so we need to skip the leading "/" in the
 	 * DEFAULT_CGROUP_MOUNTPOINT define.
 	 */
-	fd_fs = fs_prepare("tmpfs", -EBADF, "", 0, 0);
-	if (fd_fs < 0) {
-		cgroup_root = must_make_path(rootfs_mnt, DEFAULT_CGROUP_MOUNTPOINT, NULL);
-		ret = safe_mount(NULL, cgroup_root, "tmpfs",
-				 MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,
-				 "size=10240k,mode=755", rootfs_mnt);
-	} else {
+	if (new_mount_api()) {
+		fd_fs = fs_prepare("tmpfs", -EBADF, "", 0, 0);
+		if (fd_fs < 0)
+			return log_error_errno(-errno, errno, "Failed to create new filesystem context for tmpfs");
+
 		ret = fs_set_property(fd_fs, "mode", "0755");
 		if (ret < 0)
 			return log_error_errno(-errno, errno, "Failed to mount tmpfs onto %d(dev)", fd_fs);
@@ -1947,6 +1948,11 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 				PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV,
 				MOUNT_ATTR_NOSUID | MOUNT_ATTR_NODEV |
 				MOUNT_ATTR_NOEXEC | MOUNT_ATTR_RELATIME);
+	} else {
+		cgroup_root = must_make_path(rootfs_mnt, DEFAULT_CGROUP_MOUNTPOINT, NULL);
+		ret = safe_mount(NULL, cgroup_root, "tmpfs",
+				 MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME,
+				 "size=10240k,mode=755", rootfs_mnt);
 	}
 	if (ret < 0)
 		return log_error_errno(false, errno, "Failed to mount tmpfs on %s",
