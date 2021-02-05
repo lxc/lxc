@@ -194,6 +194,121 @@ int mount_at(int dfd,
 	return ret;
 }
 
+static int __fs_prepare(const char *fs_name, int fd_from)
+{
+	__do_close int fd_fs = -EBADF;
+	char source[LXC_PROC_PID_FD_LEN];
+	int ret;
+
+	/* This helper is only concerned with filesystems. */
+	if (is_empty_string(fs_name))
+		return ret_errno(EINVAL);
+
+	/*
+	 * So here is where I'm a bit disappointed. The new mount api doesn't
+	 * let you specify the block device source through an fd. You need to
+	 * pass a path which is obviously crap and runs afoul of the mission to
+	 * only use fds for mount.
+	 */
+	if (fd_from >= 0) {
+		ret = snprintf(source, sizeof(source), "/proc/self/fd/%d", fd_from);
+		if (ret < 0 || ret >= sizeof(source))
+			return log_error_errno(-EIO, EIO, "Failed to create /proc/self/fd/%d", fd_from);
+	}
+
+	fd_fs = fsopen(fs_name, FSOPEN_CLOEXEC);
+	if (fd_fs < 0)
+		return log_error_errno(-errno, errno, "Failed to create new open new %s filesystem context", fs_name);
+
+	if (fd_from >= 0) {
+		ret = fsconfig(fd_fs, FSCONFIG_SET_STRING, "source", source, 0);
+		if (ret)
+			return log_error_errno(-errno, errno, "Failed to set %s filesystem source to %s", fs_name, source);
+
+		TRACE("Set %s filesystem source property to %s", fs_name, source);
+	}
+
+	TRACE("Finished initializing new %s filesystem context %d", fs_name, fd_fs);
+	return move_fd(fd_fs);
+}
+
+int fs_prepare(const char *fs_name,
+	       int dfd_from, const char *path_from,
+	       __u64 o_flags_from, __u64 resolve_flags_from)
+{
+	__do_close int __fd_from = -EBADF;
+	int fd_from;
+
+	if (!is_empty_string(path_from)) {
+		struct lxc_open_how how = {
+			.flags		= o_flags_from,
+			.resolve	= resolve_flags_from,
+		};
+
+		__fd_from = openat2(dfd_from, path_from, &how, sizeof(how));
+		if (__fd_from < 0)
+			return -errno;
+		fd_from = __fd_from;
+	} else {
+		fd_from = dfd_from;
+	}
+
+	return __fs_prepare(fs_name, fd_from);
+}
+
+int fs_set_property(int fd_fs, const char *key, const char *val)
+{
+	int ret;
+
+	ret = fsconfig(fd_fs, FSCONFIG_SET_STRING, key, val, 0);
+	if (ret < 0)
+		return log_error_errno(-errno, errno,
+				       "Failed to set \"%s\" to \"%s\" on filesystem context %d",
+				       key, val, fd_fs);
+
+	TRACE("Set \"%s\" to \"%s\" on filesystem context %d", key, val, fd_fs);
+	return 0;
+}
+
+int fs_attach(int fd_fs,
+	      int dfd_to, const char *path_to,
+	      __u64 o_flags_to, __u64 resolve_flags_to,
+	      unsigned int attr_flags)
+{
+	__do_close int __fd_to = -EBADF, fd_fsmnt = -EBADF;
+	int fd_to, ret;
+
+	if (!is_empty_string(path_to)) {
+		struct lxc_open_how how = {
+			.flags		= o_flags_to,
+			.resolve	= resolve_flags_to,
+		};
+
+		__fd_to = openat2(dfd_to, path_to, &how, sizeof(how));
+		if (__fd_to < 0)
+			return -errno;
+		fd_to = __fd_to;
+	} else {
+		fd_to = dfd_to;
+	}
+
+	ret = fsconfig(fd_fs, FSCONFIG_CMD_CREATE, NULL, NULL, 0);
+	if (ret < 0)
+		return log_error_errno(-errno, errno, "Failed to finalize filesystem context %d", fd_fs);
+
+	fd_fsmnt = fsmount(fd_fs, FSMOUNT_CLOEXEC, attr_flags);
+	if (fd_fsmnt < 0)
+		return log_error_errno(-errno, errno,
+				       "Failed to create new mount for filesystem context %d", fd_fs);
+
+	ret = move_mount(fd_fsmnt, "", fd_to, "", MOVE_MOUNT_F_EMPTY_PATH | MOVE_MOUNT_T_EMPTY_PATH);
+	if (ret)
+		return log_error_errno(-errno, errno, "Failed to mount %d onto %d", fd_fsmnt, fd_to);
+
+	TRACE("Mounted %d onto %d", fd_fsmnt, fd_to);
+	return 0;
+}
+
 int mount_from_at(int dfd_from, const char *path_from,
 		  __u64 o_flags_from,
 		  __u64 resolve_flags_from,
