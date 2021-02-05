@@ -116,30 +116,6 @@ int mnt_attributes_old(unsigned int new_flags, unsigned int *old_flags)
 	return new_flags;
 }
 
-int mount_filesystem(const char *fs_name, const char *path, unsigned int attr_flags)
-{
-	__do_close int fsfd = -EBADF;
-	unsigned int old_flags = 0;
-
-	fsfd = fsopen(fs_name, FSOPEN_CLOEXEC);
-	if (fsfd >= 0) {
-		__do_close int mfd = -EBADF;
-
-		if (fsconfig(fsfd, FSCONFIG_CMD_CREATE, NULL, NULL, 0))
-			return -1;
-
-		mfd = fsmount(fsfd, FSMOUNT_CLOEXEC, attr_flags);
-		if (mfd < 0)
-			return -1;
-
-		return move_mount(mfd, "", AT_FDCWD, path, MOVE_MOUNT_F_EMPTY_PATH);
-	}
-
-	TRACE("Falling back to old mount api");
-	mnt_attributes_old(attr_flags, &old_flags);
-	return mount("none", path, fs_name, old_flags, NULL);
-}
-
 static int __fs_prepare(const char *fs_name, int fd_from)
 {
 	__do_close int fd_fs = -EBADF;
