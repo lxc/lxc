@@ -356,6 +356,7 @@ lxc_attach_SOURCES += af_unix.c af_unix.h \
 		      lxclock.c lxclock.h \
 		      mainloop.c mainloop.h \
 		      monitor.c monitor.h \
+		      mount_utils.c mount_utils.h \
 		      namespace.c namespace.h \
 		      network.c network.h \
 		      nl.c nl.h \
@@ -413,6 +414,7 @@ lxc_autostart_SOURCES += af_unix.c af_unix.h \
 			 lxclock.c lxclock.h \
 			 mainloop.c mainloop.h \
 			 monitor.c monitor.h \
+			 mount_utils.c mount_utils.h \
 			 namespace.c namespace.h \
 			 network.c network.h \
 			 nl.c nl.h \
@@ -469,6 +471,7 @@ lxc_cgroup_SOURCES += af_unix.c af_unix.h \
 		      lxclock.c lxclock.h \
 		      mainloop.c mainloop.h \
 		      monitor.c monitor.h \
+		      mount_utils.c mount_utils.h \
 		      namespace.c namespace.h \
 		      network.c network.h \
 		      nl.c nl.h \
@@ -525,6 +528,7 @@ lxc_config_SOURCES += af_unix.c af_unix.h \
 		      lxclock.c lxclock.h \
 		      mainloop.c mainloop.h \
 		      monitor.c monitor.h \
+		      mount_utils.c mount_utils.h \
 		      namespace.c namespace.h \
 		      network.c network.h \
 		      nl.c nl.h \
@@ -581,6 +585,7 @@ lxc_console_SOURCES += af_unix.c af_unix.h \
 		       lxclock.c lxclock.h \
 		       mainloop.c mainloop.h \
 		       monitor.c monitor.h \
+		       mount_utils.c mount_utils.h \
 		       namespace.c namespace.h \
 		       network.c network.h \
 		       nl.c nl.h \
@@ -637,6 +642,7 @@ lxc_destroy_SOURCES += af_unix.c af_unix.h \
 		       lxclock.c lxclock.h \
 		       mainloop.c mainloop.h \
 		       monitor.c monitor.h \
+		       mount_utils.c mount_utils.h \
 		       namespace.c namespace.h \
 		       network.c network.h \
 		       nl.c nl.h \
@@ -693,6 +699,7 @@ lxc_device_SOURCES += af_unix.c af_unix.h \
 		      lxclock.c lxclock.h \
 		      mainloop.c mainloop.h \
 		      monitor.c monitor.h \
+		      mount_utils.c mount_utils.h \
 		      namespace.c namespace.h \
 		      network.c network.h \
 		      nl.c nl.h \
@@ -749,6 +756,7 @@ lxc_execute_SOURCES += af_unix.c af_unix.h \
 		       lxclock.c lxclock.h \
 		       mainloop.c mainloop.h \
 		       monitor.c monitor.h \
+		       mount_utils.c mount_utils.h \
 		       namespace.c namespace.h \
 		       network.c network.h \
 		       nl.c nl.h \
@@ -805,6 +813,7 @@ lxc_freeze_SOURCES += af_unix.c af_unix.h \
 		      lxclock.c lxclock.h \
 		      mainloop.c mainloop.h \
 		      monitor.c monitor.h \
+		      mount_utils.c mount_utils.h \
 		      namespace.c namespace.h \
 		      network.c network.h \
 		      nl.c nl.h \
@@ -861,6 +870,7 @@ lxc_info_SOURCES += af_unix.c af_unix.h \
 		    lxclock.c lxclock.h \
 		    mainloop.c mainloop.h \
 		    monitor.c monitor.h \
+		    mount_utils.c mount_utils.h \
 		    namespace.c namespace.h \
 		    network.c network.h \
 		    nl.c nl.h \
@@ -918,6 +928,7 @@ lxc_monitor_SOURCES += af_unix.c af_unix.h \
 		       macro.h \
 		       mainloop.c mainloop.h \
 		       monitor.c monitor.h \
+		       mount_utils.c mount_utils.h \
 		       namespace.c namespace.h \
 		       network.c network.h \
 		       nl.c nl.h \
@@ -975,6 +986,7 @@ lxc_ls_SOURCES += af_unix.c af_unix.h \
 		  mainloop.c mainloop.h \
 		  memory_utils.h \
 		  monitor.c monitor.h \
+		  mount_utils.c mount_utils.h \
 		  namespace.c namespace.h \
 		  network.c network.h \
 		  nl.c nl.h \
@@ -1031,6 +1043,7 @@ lxc_copy_SOURCES += af_unix.c af_unix.h \
 		    lxclock.c lxclock.h \
 		    mainloop.c mainloop.h \
 		    monitor.c monitor.h \
+		    mount_utils.c mount_utils.h \
 		    namespace.c namespace.h \
 		    network.c network.h \
 		    nl.c nl.h \
@@ -1087,6 +1100,7 @@ lxc_start_SOURCES += af_unix.c af_unix.h \
 		     lxclock.c lxclock.h \
 		     mainloop.c mainloop.h \
 		     monitor.c monitor.h \
+		     mount_utils.c mount_utils.h \
 		     namespace.c namespace.h \
 		     network.c network.h \
 		     nl.c nl.h \
@@ -1143,6 +1157,7 @@ lxc_stop_SOURCES += af_unix.c af_unix.h \
 		    lxclock.c lxclock.h \
 		    mainloop.c mainloop.h \
 		    monitor.c monitor.h \
+		    mount_utils.c mount_utils.h \
 		    namespace.c namespace.h \
 		    network.c network.h \
 		    nl.c nl.h \
@@ -1199,6 +1214,7 @@ lxc_top_SOURCES += af_unix.c af_unix.h \
 		   lxclock.c lxclock.h \
 		   mainloop.c mainloop.h \
 		   monitor.c monitor.h \
+		   mount_utils.c mount_utils.h \
 		   namespace.c namespace.h \
 		   network.c network.h \
 		   nl.c nl.h \
@@ -1255,6 +1271,7 @@ lxc_unfreeze_SOURCES += af_unix.c af_unix.h \
 			lxclock.c lxclock.h \
 			mainloop.c mainloop.h \
 			monitor.c monitor.h \
+			mount_utils.c mount_utils.h \
 			namespace.c namespace.h \
 			network.c network.h \
 			nl.c nl.h \
@@ -1311,6 +1328,7 @@ lxc_unshare_SOURCES += af_unix.c af_unix.h \
 		       lxclock.c lxclock.h \
 		       mainloop.c mainloop.h \
 		       monitor.c monitor.h \
+		       mount_utils.c mount_utils.h \
 		       namespace.c namespace.h \
 		       network.c network.h \
 		       nl.c nl.h \
@@ -1369,6 +1387,7 @@ lxc_wait_SOURCES += af_unix.c af_unix.h \
 		    lxclock.c lxclock.h \
 		    mainloop.c mainloop.h \
 		    monitor.c monitor.h \
+		    mount_utils.c mount_utils.h \
 		    namespace.c namespace.h \
 		    network.c network.h \
 		    nl.c nl.h \
@@ -1425,6 +1444,7 @@ lxc_create_SOURCES += af_unix.c af_unix.h \
 		      lxclock.c lxclock.h \
 		      mainloop.c mainloop.h \
 		      monitor.c monitor.h \
+		      mount_utils.c mount_utils.h \
 		      namespace.c namespace.h \
 		      network.c network.h \
 		      nl.c nl.h \
@@ -1481,6 +1501,7 @@ lxc_snapshot_SOURCES += af_unix.c af_unix.h \
 			lxclock.c lxclock.h \
 			mainloop.c mainloop.h \
 			monitor.c monitor.h \
+			mount_utils.c mount_utils.h \
 			namespace.c namespace.h \
 			network.c network.h \
 			nl.c nl.h \
@@ -1537,6 +1558,7 @@ lxc_checkpoint_SOURCES += af_unix.c af_unix.h \
 			  lxclock.c lxclock.h \
 			  mainloop.c mainloop.h \
 			  monitor.c monitor.h \
+			  mount_utils.c mount_utils.h \
 			  namespace.c namespace.h \
 			  network.c network.h \
 			  nl.c nl.h \
@@ -1608,6 +1630,7 @@ lxc_monitord_SOURCES += af_unix.c af_unix.h \
 			lxclock.c lxclock.h \
 			mainloop.c mainloop.h \
 			monitor.c monitor.h \
+			mount_utils.c mount_utils.h \
 			namespace.c namespace.h \
 			network.c network.h \
 			nl.c nl.h \
@@ -1665,6 +1688,7 @@ lxc_user_nic_SOURCES += af_unix.c af_unix.h \
 			mainloop.c mainloop.h \
 			memory_utils.h \
 			monitor.c monitor.h \
+			mount_utils.c mount_utils.h \
 			namespace.c namespace.h \
 			network.c network.h \
 			nl.c nl.h \
@@ -1725,6 +1749,7 @@ lxc_usernsexec_SOURCES += af_unix.c af_unix.h \
 			  mainloop.c mainloop.h \
 			  memory_utils.h \
 			  monitor.c monitor.h \
+			  mount_utils.c mount_utils.h \
 			  namespace.c namespace.h \
 			  network.c network.h \
 			  nl.c nl.h \
