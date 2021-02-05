@@ -1217,15 +1217,12 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 		if (ret < 0 || (size_t)ret >= sizeof(device_path))
 			return ret_errno(EIO);
 
-		ret = mount_from_at(rootfs->dfd_host, device_path,
+		ret = fd_bind_mount(rootfs->dfd_host, device_path,
 				    PROTECT_OPATH_FILE,
 				    PROTECT_LOOKUP_BENEATH_XDEV,
 				    rootfs->dfd_dev, device->name,
 				    PROTECT_OPATH_FILE,
-				    PROTECT_LOOKUP_BENEATH,
-				    NULL /* fstype */,
-				    MS_BIND /* mount flags */,
-				    NULL);
+				    PROTECT_LOOKUP_BENEATH, 0, false);
 		if (ret < 0) {
 			char path[PATH_MAX];
 
