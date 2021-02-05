@@ -195,7 +195,7 @@ __hidden extern int fd_bind_mount(int dfd_from, const char *path_from,
  */
 static inline bool new_mount_api(void)
 {
-	__do_close int fd;
+	__do_close int fd = -EBADF;
 	static int supported = -1;
 
 	if (supported == -1) {
