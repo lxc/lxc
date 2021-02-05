@@ -4277,7 +4277,7 @@ int userns_exec_minimal(const struct lxc_conf *conf,
 
 		close_prot_errno_disarm(sock_fds[0]);
 
-		if (!lxc_setgroups(0, NULL) && errno != EPERM)
+		if (!lxc_drop_groups() && errno != EPERM)
 			_exit(EXIT_FAILURE);
 
 		ret = setresgid(resgid, resgid, resgid);
@@ -4695,7 +4695,7 @@ int userns_exec_mapped_root(const char *path, int path_fd,
 		if (!lxc_switch_uid_gid(0, 0))
 			_exit(EXIT_FAILURE);
 
-		if (!lxc_setgroups(0, NULL))
+		if (!lxc_drop_groups())
 			_exit(EXIT_FAILURE);
 
 		ret = fchown(target_fd, 0, st.st_gid);

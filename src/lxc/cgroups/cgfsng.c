@@ -965,7 +965,7 @@ static int cgroup_tree_remove_wrapper(void *data)
 	gid_t nsgid = (arg->conf->root_nsgid_map != NULL) ? 0 : arg->conf->init_gid;
 	int ret;
 
-	if (!lxc_setgroups(0, NULL) && errno != EPERM)
+	if (!lxc_drop_groups() && errno != EPERM)
 		return log_error_errno(-1, errno, "Failed to setgroups(0, NULL)");
 
 	ret = setresgid(nsgid, nsgid, nsgid);
@@ -1573,7 +1573,7 @@ static int chown_cgroup_wrapper(void *data)
 	uid_t nsuid = (arg->conf->root_nsuid_map != NULL) ? 0 : arg->conf->init_uid;
 	gid_t nsgid = (arg->conf->root_nsgid_map != NULL) ? 0 : arg->conf->init_gid;
 
-	if (!lxc_setgroups(0, NULL) && errno != EPERM)
+	if (!lxc_drop_groups() && errno != EPERM)
 		return log_error_errno(-1, errno, "Failed to setgroups(0, NULL)");
 
 	ret = setresgid(nsgid, nsgid, nsgid);
