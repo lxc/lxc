@@ -35,7 +35,7 @@ int lxc_rsync_exec_wrapper(void *data)
 	if (!lxc_switch_uid_gid(0, 0))
 		return -1;
 
-	if (!lxc_setgroups(0, NULL))
+	if (!lxc_drop_groups())
 		return -1;
 
 	return lxc_rsync_exec(args->src, args->dest);
@@ -96,7 +96,7 @@ int lxc_rsync(struct rsync_data *data)
 	if (!lxc_switch_uid_gid(0, 0))
 		return -1;
 
-	if (!lxc_setgroups(0, NULL))
+	if (!lxc_drop_groups())
 		return -1;
 
 	src = lxc_storage_get_path(orig->dest, orig->type);

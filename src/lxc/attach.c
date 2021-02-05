@@ -1214,7 +1214,7 @@ __noreturn static void do_attach(struct attach_payload *ap)
 			goto on_error;
 	}
 
-	if (!lxc_setgroups(0, NULL) && errno != EPERM)
+	if (!lxc_drop_groups() && errno != EPERM)
 		goto on_error;
 
 	if (options->namespaces & CLONE_NEWUSER)
