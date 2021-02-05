@@ -157,6 +157,7 @@ __hidden extern bool task_blocks_signal(pid_t pid, int signal);
  */
 __hidden extern bool lxc_switch_uid_gid(uid_t uid, gid_t gid);
 __hidden extern bool lxc_setgroups(int size, gid_t list[]);
+__hidden extern bool lxc_drop_groups(void);
 
 /* Find an unused loop device and associate it with source. */
 __hidden extern int lxc_prepare_loop_dev(const char *source, char *loop_dev, int flags);
