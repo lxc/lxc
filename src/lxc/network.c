@@ -1237,8 +1237,10 @@ int lxc_netdev_move_wlan(char *physname, const char *ifname, pid_t pid,
 	 * the 80211 module, so for now just call out to iw.
 	 */
 	cmd = on_path("iw", NULL);
-	if (!cmd)
+	if (!cmd) {
+		ERROR("Couldn't find the application iw in PATH");
 		return -1;
+	}
 
 	fpid = fork();
 	if (fpid < 0)
