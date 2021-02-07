@@ -516,8 +516,6 @@ __hidden extern void turn_into_dependent_mounts(void);
 __hidden extern void suggest_default_idmap(void);
 __hidden extern FILE *make_anonymous_mount_file(struct lxc_list *mount, bool include_nesting_helpers);
 __hidden extern struct lxc_list *sort_cgroup_settings(struct lxc_list *cgroup_settings);
-__hidden extern unsigned long add_required_remount_flags(const char *s, const char *d,
-							 unsigned long flags);
 __hidden extern int run_script(const char *name, const char *section, const char *script, ...);
 __hidden extern int run_script_argv(const char *name, unsigned int hook_version, const char *section,
 				    const char *script, const char *hookname, char **argsin);
