@@ -529,55 +529,6 @@ int pin_rootfs(const char *rootfs)
 	return fd;
 }
 
-/* If we are asking to remount something, make sure that any NOEXEC etc are
- * honored.
- */
-unsigned long add_required_remount_flags(const char *s, const char *d,
-					 unsigned long flags)
-{
-#ifdef HAVE_STATVFS
-	int ret;
-	struct statvfs sb;
-	unsigned long required_flags = 0;
-
-	if (!s)
-		s = d;
-
-	if (!s)
-		return flags;
-
-	ret = statvfs(s, &sb);
-	if (ret < 0)
-		return flags;
-
-	if (flags & MS_REMOUNT) {
-		if (sb.f_flag & MS_NOSUID)
-			required_flags |= MS_NOSUID;
-		if (sb.f_flag & MS_NODEV)
-			required_flags |= MS_NODEV;
-		if (sb.f_flag & MS_RDONLY)
-			required_flags |= MS_RDONLY;
-		if (sb.f_flag & MS_NOEXEC)
-			required_flags |= MS_NOEXEC;
-	}
-
-	if (sb.f_flag & MS_NOATIME)
-		required_flags |= MS_NOATIME;
-	if (sb.f_flag & MS_NODIRATIME)
-		required_flags |= MS_NODIRATIME;
-	if (sb.f_flag & MS_LAZYTIME)
-		required_flags |= MS_LAZYTIME;
-	if (sb.f_flag & MS_RELATIME)
-		required_flags |= MS_RELATIME;
-	if (sb.f_flag & MS_STRICTATIME)
-		required_flags |= MS_STRICTATIME;
-
-	return flags | required_flags;
-#else
-	return flags;
-#endif
-}
-
 static int add_shmount_to_list(struct lxc_conf *conf)
 {
 	char new_mount[PATH_MAX];

@@ -644,7 +644,7 @@ AC_CHECK_HEADER([ifaddrs.h],
 AC_HEADER_MAJOR
 
 # Check for some syscalls functions
-AC_CHECK_FUNCS([setns pivot_root sethostname unshare rand_r confstr faccessat gettid memfd_create move_mount open_tree execveat clone3 fsopen fspick fsconfig fsmount, openat2, close_range])
+AC_CHECK_FUNCS([setns pivot_root sethostname unshare rand_r confstr faccessat gettid memfd_create move_mount open_tree execveat clone3 fsopen fspick fsconfig fsmount, openat2, close_range, statvfs])
 AC_CHECK_TYPES([struct open_how], [], [], [[#include <linux/openat2.h>]])
 AC_CHECK_TYPES([struct clone_args], [], [], [[#include <linux/sched.h>]])
 AC_CHECK_MEMBERS([struct clone_args.set_tid],[],[],[[#include <linux/sched.h>]])
@@ -684,7 +684,6 @@ fi
 
 # Check for some functions
 AC_CHECK_LIB(pthread, main)
-AC_CHECK_FUNCS(statvfs)
 AC_CHECK_LIB(util, openpty)
 AC_CHECK_FUNCS([hasmntopt setmntent endmntent utmpxname])
 AC_CHECK_FUNCS([getgrgid_r],
