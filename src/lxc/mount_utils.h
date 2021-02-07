@@ -207,4 +207,20 @@ static inline bool new_mount_api(void)
 	return supported == 1;
 }
 
+__hidden extern int calc_remount_flags_new(int dfd_from, const char *path_from,
+					   __u64 o_flags_from,
+					   __u64 resolve_flags_from,
+					   bool remount, unsigned long cur_flags,
+					   unsigned int *new_flags);
+
+__hidden extern int calc_remount_flags_old(int dfd_from, const char *path_from,
+					   __u64 o_flags_from,
+					   __u64 resolve_flags_from,
+					   bool remount, unsigned long cur_flags,
+					   unsigned int *old_flags);
+
+__hidden extern unsigned long add_required_remount_flags(const char *s,
+							 const char *d,
+							 unsigned long flags);
+
 #endif /* __LXC_MOUNT_UTILS_H */
