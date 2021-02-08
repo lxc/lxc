@@ -2220,9 +2220,9 @@ static inline void __auto_endmntent__(FILE **f)
 
 #define __do_endmntent __attribute__((__cleanup__(__auto_endmntent__)))
 
-static int setup_mount(const struct lxc_conf *conf,
-		       const struct lxc_rootfs *rootfs, const char *fstab,
-		       const char *lxc_name, const char *lxc_path)
+static int setup_mount_fstab(const struct lxc_conf *conf,
+			      const struct lxc_rootfs *rootfs, const char *fstab,
+			      const char *lxc_name, const char *lxc_path)
 {
 	__do_endmntent FILE *f = NULL;
 	int ret;
@@ -3382,7 +3382,7 @@ int lxc_setup(struct lxc_handler *handler)
 	if (ret < 0)
 		return log_error(-1, "Failed to setup first automatic mounts");
 
-	ret = setup_mount(lxc_conf, &lxc_conf->rootfs, lxc_conf->fstab, name, lxcpath);
+	ret = setup_mount_fstab(lxc_conf, &lxc_conf->rootfs, lxc_conf->fstab, name, lxcpath);
 	if (ret < 0)
 		return log_error(-1, "Failed to setup mounts");
 
