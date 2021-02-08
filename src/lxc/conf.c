@@ -477,56 +477,74 @@ int run_script(const char *name, const char *section, const char *script, ...)
 	return run_buffer(buffer);
 }
 
-/* pin_rootfs
+/* lxc_rootfs_prepare
  * if rootfs is a directory, then open ${rootfs}/.lxc-keep for writing for
  * the duration of the container run, to prevent the container from marking
  * the underlying fs readonly on shutdown. unlink the file immediately so
  * no name pollution is happens.
  * don't unlink on NFS to avoid random named stale handles.
- * return -1 on error.
- * return -2 if nothing needed to be pinned.
- * return an open fd (>=0) if we pinned it.
  */
-int pin_rootfs(const char *rootfs)
+int lxc_rootfs_prepare(struct lxc_rootfs *rootfs, bool userns)
 {
-	__do_free char *absrootfs = NULL;
-	int fd, ret;
-	char absrootfspin[PATH_MAX];
-	struct stat s;
-	struct statfs sfs;
+	__do_close int dfd_path = -EBADF, fd_pin = -EBADF;
+	int ret;
+	struct stat st;
+	struct statfs stfs;
 
-	if (rootfs == NULL || strlen(rootfs) == 0)
-		return -2;
+	if (rootfs->path) {
+		if (rootfs->bdev_type &&
+		    (!strcmp(rootfs->bdev_type, "overlay") ||
+		     !strcmp(rootfs->bdev_type, "overlayfs")))
+			return log_trace_errno(0, EINVAL, "Not pinning on stacking filesystem");
 
-	absrootfs = realpath(rootfs, NULL);
-	if (!absrootfs)
-		return -2;
+		dfd_path = open_at(-EBADF, rootfs->path, PROTECT_OPATH_FILE, 0, 0);
+	} else {
+		dfd_path = open_at(-EBADF, "/", PROTECT_OPATH_FILE, PROTECT_LOOKUP_ABSOLUTE, 0);
+	}
+	if (dfd_path < 0)
+		return log_error_errno(-errno, errno, "Failed to open \"%s\"", rootfs->path);
 
-	ret = stat(absrootfs, &s);
+	if (!rootfs->path)
+		return log_trace(0, "Not pinning because container does not have a rootfs");
+
+	if (userns)
+		return log_trace(0, "Not pinning because container runs in user namespace");
+
+	ret = fstat(dfd_path, &st);
 	if (ret < 0)
-		return -1;
+		return log_trace_errno(-errno, errno, "Failed to retrieve file status");
 
-	if (!S_ISDIR(s.st_mode))
-		return -2;
+	if (!S_ISDIR(st.st_mode))
+		return log_trace_errno(0, ENOTDIR, "Not pinning because file descriptor is not a directory");
 
-	ret = snprintf(absrootfspin, sizeof(absrootfspin), "%s/.lxc-keep", absrootfs);
-	if (ret < 0 || (size_t)ret >= sizeof(absrootfspin))
-		return -1;
+	fd_pin = open_at(dfd_path, ".lxc_keep",
+			 PROTECT_OPEN | O_CREAT,
+			 PROTECT_LOOKUP_BENEATH,
+			 S_IWUSR | S_IRUSR);
+	if (fd_pin < 0)
+		return log_error_errno(-errno, errno, "Failed to pin rootfs");
 
-	fd = open(absrootfspin, O_CREAT | O_RDWR, S_IWUSR | S_IRUSR | O_CLOEXEC);
-	if (fd < 0)
-		return fd;
+	TRACE("Pinned rootfs %d(.lxc_keep)", fd_pin);
 
-	ret = fstatfs (fd, &sfs);
-	if (ret < 0)
-		return fd;
+	ret = fstatfs(fd_pin, &stfs);
+	if (ret < 0) {
+		SYSWARN("Failed to retrieve filesystem status");
+		goto out;
+	}
 
-	if (sfs.f_type == NFS_SUPER_MAGIC)
-		return log_debug(fd, "Rootfs on NFS, not unlinking pin file \"%s\"", absrootfspin);
+	if (stfs.f_type == NFS_SUPER_MAGIC) {
+		DEBUG("Not unlinking pinned file on NFS");
+		goto out;
+	}
 
-	(void)unlink(absrootfspin);
+	if (unlinkat(dfd_path, ".lxc_keep", 0))
+		SYSTRACE("Failed to unlink rootfs pinning file %d(.lxc_keep)", dfd_path);
+	else
+		TRACE("Unlinked pinned file %d(.lxc_keep)", dfd_path);
 
-	return fd;
+out:
+	rootfs->fd_path_pin = move_fd(fd_pin);
+	return 0;
 }
 
 static int add_shmount_to_list(struct lxc_conf *conf)
@@ -2585,6 +2603,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->rootfs.dfd_mnt = -EBADF;
 	new->rootfs.dfd_dev = -EBADF;
 	new->rootfs.dfd_host = -EBADF;
+	new->rootfs.fd_path_pin = -EBADF;
 	new->logfd = -1;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->cgroup2);
@@ -3490,9 +3509,7 @@ int lxc_setup(struct lxc_handler *handler)
 		return log_error(-1, "Failed to drop capabilities");
 	}
 
-	close_prot_errno_disarm(lxc_conf->rootfs.dfd_mnt)
-	close_prot_errno_disarm(lxc_conf->rootfs.dfd_dev)
-	close_prot_errno_disarm(lxc_conf->rootfs.dfd_host)
+	put_lxc_rootfs(&handler->conf->rootfs, true);
 	NOTICE("The container \"%s\" is set up", name);
 
 	return 0;
@@ -3856,9 +3873,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->rootfs.options);
 	free(conf->rootfs.path);
 	free(conf->rootfs.data);
-	close_prot_errno_disarm(conf->rootfs.dfd_mnt);
-	close_prot_errno_disarm(conf->rootfs.dfd_dev);
-	close_prot_errno_disarm(conf->rootfs.dfd_host);
+	put_lxc_rootfs(&conf->rootfs, true);
 	free(conf->logfile);
 	if (conf->logfd != -1)
 		close(conf->logfd);
