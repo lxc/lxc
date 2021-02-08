@@ -1151,7 +1151,7 @@ enum {
 	LXC_DEVNODE_OPEN,
 };
 
-static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
+static int lxc_fill_autodev(struct lxc_rootfs *rootfs)
 {
 	int i, ret;
 	mode_t cmask;
@@ -1164,7 +1164,6 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 
 	cmask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
 	for (i = 0; i < sizeof(lxc_devices) / sizeof(lxc_devices[0]); i++) {
-		char device_path[PATH_MAX];
 		const struct lxc_device_node *device = &lxc_devices[i];
 
 		if (use_mknod >= LXC_DEVNODE_MKNOD) {
@@ -1212,12 +1211,12 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 		}
 
 		/* Fallback to bind-mounting the device from the host. */
-		ret = snprintf(device_path, sizeof(device_path), "dev/%s", device->name);
-		if (ret < 0 || (size_t)ret >= sizeof(device_path))
+		ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "dev/%s", device->name);
+		if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
 			return ret_errno(EIO);
 
 		if (new_mount_api()) {
-			ret = fd_bind_mount(rootfs->dfd_host, device_path,
+			ret = fd_bind_mount(rootfs->dfd_host, rootfs->buf,
 					    PROTECT_OPATH_FILE,
 					    PROTECT_LOOKUP_BENEATH_XDEV,
 					    rootfs->dfd_dev, device->name,
@@ -1226,22 +1225,22 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 		} else {
 			char path[PATH_MAX];
 
-			ret = snprintf(device_path, sizeof(device_path), "/dev/%s", device->name);
-			if (ret < 0 || (size_t)ret >= sizeof(device_path))
+			ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "/dev/%s", device->name);
+			if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
 				return ret_errno(EIO);
 
 			ret = snprintf(path, sizeof(path), "%s/dev/%s", get_rootfs_mnt(rootfs), device->name);
 			if (ret < 0 || ret >= sizeof(path))
 				return log_error(-1, "Failed to create device path for %s", device->name);
 
-			ret = safe_mount(device_path, path, 0, MS_BIND, NULL, get_rootfs_mnt(rootfs));
+			ret = safe_mount(rootfs->buf, path, 0, MS_BIND, NULL, get_rootfs_mnt(rootfs));
 			if (ret < 0)
-				return log_error_errno(-1, errno, "Failed to bind mount host device node \"%s\" to \"%s\"", device_path, path);
+				return log_error_errno(-1, errno, "Failed to bind mount host device node \"%s\" to \"%s\"", rootfs->buf, path);
 
-			DEBUG("Bind mounted host device node \"%s\" to \"%s\"", device_path, path);
+			DEBUG("Bind mounted host device node \"%s\" to \"%s\"", rootfs->buf, path);
 			continue;
 		}
-		DEBUG("Bind mounted host device %d(%s) to %d(%s)", rootfs->dfd_host, device_path, rootfs->dfd_dev, device->name);
+		DEBUG("Bind mounted host device %d(%s) to %d(%s)", rootfs->dfd_host, rootfs->buf, rootfs->dfd_dev, device->name);
 	}
 	(void)umask(cmask);
 
