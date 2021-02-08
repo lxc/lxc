@@ -618,7 +618,6 @@ out_sigfd:
 
 void lxc_put_handler(struct lxc_handler *handler)
 {
-	close_prot_errno_disarm(handler->pinfd);
 	close_prot_errno_disarm(handler->pidfd);
 	close_prot_errno_disarm(handler->sigfd);
 	lxc_put_nsfds(handler);
@@ -660,7 +659,6 @@ struct lxc_handler *lxc_init_handler(struct lxc_handler *old,
 	handler->data_sock[0] = -EBADF;
 	handler->data_sock[1] = -EBADF;
 	handler->monitor_status_fd = -EBADF;
-	handler->pinfd = -EBADF;
 	handler->pidfd = -EBADF;
 	handler->sigfd = -EBADF;
 	handler->state_socket_pair[0] = -EBADF;
@@ -925,6 +923,8 @@ void lxc_end(struct lxc_handler *handler)
 		cgroup_ops->monitor_destroy(cgroup_ops, handler);
 	}
 
+	put_lxc_rootfs(&handler->conf->rootfs, true);
+
 	if (handler->conf->reboot == REBOOT_NONE) {
 		/* For all new state clients simply close the command socket.
 		 * This will inform all state clients that the container is
@@ -1065,9 +1065,6 @@ static int do_start(void *data)
 		SYSERROR("Failed to set signal mask");
 		goto out_warn_father;
 	}
-
-	/* Don't leak the pinfd to the container. */
-	close_prot_errno_disarm(handler->pinfd);
 
 	if (!lxc_sync_wait_parent(handler, START_SYNC_STARTUP))
 		goto out_warn_father;
@@ -1605,10 +1602,10 @@ static int lxc_spawn(struct lxc_handler *handler)
 	 * it readonly.
 	 * If the container is unprivileged then skip rootfs pinning.
 	 */
-	if (!wants_to_map_ids) {
-		handler->pinfd = pin_rootfs(conf->rootfs.path);
-		if (handler->pinfd == -EBADF)
-			INFO("Failed to pin the rootfs for container \"%s\"", handler->name);
+	ret = lxc_rootfs_prepare(&conf->rootfs, wants_to_map_ids);
+	if (ret) {
+		ERROR("Failed to handle rootfs pinning for container \"%s\"", handler->name);
+		goto out_delete_net;
 	}
 
 	/* Create a process in a new set of namespaces. */
@@ -1926,7 +1923,6 @@ out_abort:
 
 out_sync_fini:
 	lxc_sync_fini(handler);
-	close_prot_errno_disarm(handler->pinfd);
 
 	return -1;
 }
@@ -2042,8 +2038,6 @@ int __lxc_start(struct lxc_handler *handler, struct lxc_operations *ops,
 	ret = lxc_restore_phys_nics_to_netns(handler);
 	if (ret < 0)
 		ERROR("Failed to move physical network devices back to parent network namespace");
-
-	close_prot_errno_disarm(handler->pinfd);
 
 	lxc_monitor_send_exit_code(name, status, handler->lxcpath);
 	lxc_error_set_and_log(handler->pid, status);
