@@ -2169,19 +2169,18 @@ skipabs:
 }
 
 static int mount_entry_on_relative_rootfs(struct mntent *mntent,
-					  const struct lxc_rootfs *rootfs,
+					  struct lxc_rootfs *rootfs,
 					  const char *lxc_name,
 					  const char *lxc_path)
 {
 	int ret;
-	char path[PATH_MAX];
 
 	/* relative to root mount point */
-	ret = snprintf(path, sizeof(path), "%s/%s", rootfs->mount, mntent->mnt_dir);
-	if (ret < 0 || (size_t)ret >= sizeof(path))
+	ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s/%s", rootfs->mount, mntent->mnt_dir);
+	if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
 		return -1;
 
-	return mount_entry_on_generic(mntent, path, rootfs, lxc_name, lxc_path);
+	return mount_entry_on_generic(mntent, rootfs->buf, rootfs, lxc_name, lxc_path);
 }
 
 static int mount_file_entries(struct lxc_rootfs *rootfs, FILE *file,
