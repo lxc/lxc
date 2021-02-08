@@ -244,7 +244,7 @@ int fd_bind_mount(int dfd_from, const char *path_from,
 {
 	__do_close int __fd_from = -EBADF, __fd_to = -EBADF;
 	__do_close int fd_tree_from = -EBADF;
-	unsigned int open_tree_flags = AT_EMPTY_PATH | OPEN_TREE_CLONE | OPEN_TREE_CLONE;
+	unsigned int open_tree_flags = AT_EMPTY_PATH | OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC;
 	int fd_from, fd_to, ret;
 
 	if (!is_empty_string(path_from)) {
