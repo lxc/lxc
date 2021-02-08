@@ -2128,14 +2128,13 @@ static inline int mount_entry_on_systemfs(struct lxc_rootfs *rootfs,
 }
 
 static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
-					  const struct lxc_rootfs *rootfs,
+					  struct lxc_rootfs *rootfs,
 					  const char *lxc_name,
 					  const char *lxc_path)
 {
 	int offset;
 	char *aux;
 	const char *lxcpath;
-	char path[PATH_MAX];
 	int ret = 0;
 
 	lxcpath = lxc_global_config_value("lxc.lxcpath");
@@ -2145,13 +2144,13 @@ static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
 	/* If rootfs->path is a blockdev path, allow container fstab to use
 	 * <lxcpath>/<name>/rootfs" as the target prefix.
 	 */
-	ret = snprintf(path, PATH_MAX, "%s/%s/rootfs", lxcpath, lxc_name);
-	if (ret < 0 || ret >= PATH_MAX)
+	ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s/%s/rootfs", lxcpath, lxc_name);
+	if (ret < 0 || ret >= sizeof(rootfs->buf))
 		goto skipvarlib;
 
-	aux = strstr(mntent->mnt_dir, path);
+	aux = strstr(mntent->mnt_dir, rootfs->buf);
 	if (aux) {
-		offset = strlen(path);
+		offset = strlen(rootfs->buf);
 		goto skipabs;
 	}
 
@@ -2162,11 +2161,11 @@ skipvarlib:
 	offset = strlen(rootfs->path);
 
 skipabs:
-	ret = snprintf(path, PATH_MAX, "%s/%s", rootfs->mount, aux + offset);
-	if (ret < 0 || ret >= PATH_MAX)
+	ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s/%s", rootfs->mount, aux + offset);
+	if (ret < 0 || ret >= sizeof(rootfs->buf))
 		return -1;
 
-	return mount_entry_on_generic(mntent, path, rootfs, lxc_name, lxc_path);
+	return mount_entry_on_generic(mntent, rootfs->buf, rootfs, lxc_name, lxc_path);
 }
 
 static int mount_entry_on_relative_rootfs(struct mntent *mntent,
