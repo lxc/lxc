@@ -66,11 +66,12 @@ which newuidmap >/dev/null 2>&1 || { echo "'newuidmap' command is missing" >&2; 
 
 DONE=0
 KNOWN_RELEASES="precise trusty xenial yakkety zesty"
+UNPRIV_LOG=$(mktemp --dry-run)
 cleanup() {
 	cd /
 
-	run_cmd lxc-stop -n c2 -k || true
-	run_cmd lxc-stop -n c1 -k || true
+	run_cmd lxc-stop -n c2 -k -l trace -o "${UNPRIV_LOG}" || true
+	run_cmd lxc-stop -n c1 -k -l trace -o "${UNPRIV_LOG}" || true
 	pkill -u $(id -u $TUSER) -9 || true
 
 	sed -i '/lxcunpriv/d' /run/lxc/nics /etc/lxc/lxc-usernet
@@ -81,6 +82,8 @@ cleanup() {
 	deluser $TUSER
 
 	if [ $DONE -eq 0 ]; then
+		cat "${UNPRIV_LOG}"
+		rm -f "${UNPRIV_LOG}" || true
 		echo "FAIL"
 		exit 1
 	fi
@@ -173,45 +176,45 @@ run_cmd mkdir -p $HDIR/.cache/lxc
     cp -R /var/cache/lxc/download $HDIR/.cache/lxc && \
     chown -R $TUSER: $HDIR/.cache/lxc
 
-run_cmd lxc-create -t download -n c1 -- -d ubuntu -r $release -a $ARCH
+run_cmd lxc-create -t download -n c1 -l trace -o "${UNPRIV_LOG}" -- -d ubuntu -r $release -a $ARCH
 
 # Make sure we can start it - twice
 
 for count in `seq 1 2`; do
-    run_cmd lxc-start -n c1 -d
+    run_cmd lxc-start -n c1 -d -l trace -o "${UNPRIV_LOG}"
 
-    p1=$(run_cmd lxc-info -n c1 -p -H)
+    p1=$(run_cmd lxc-info -n c1 -p -H -l trace -o "${UNPRIV_LOG}")
     [ "$p1" != "-1" ] || { echo "Failed to start container c1 (run $count)"; false; }
 
-    run_cmd lxc-info -n c1
-    run_cmd lxc-attach -n c1 -- /bin/true
+    run_cmd lxc-info -n c1 -l trace -o "${UNPRIV_LOG}"
+    run_cmd lxc-attach -n c1 -l trace -o "${UNPRIV_LOG}" -- /bin/true
 
-    run_cmd lxc-stop -n c1 -k
+    run_cmd lxc-stop -n c1 -k -l trace -o "${UNPRIV_LOG}"
 done
 
-run_cmd lxc-copy -s -n c1 -N c2
-run_cmd lxc-start -n c2 -d
-p1=$(run_cmd lxc-info -n c2 -p -H)
+run_cmd lxc-copy -s -n c1 -N c2 -l trace -o "${UNPRIV_LOG}"
+run_cmd lxc-start -n c2 -d -l trace -o "${UNPRIV_LOG}"
+p1=$(run_cmd lxc-info -n c2 -p -H -l trace -o "${UNPRIV_LOG}")
 [ "$p1" != "-1" ] || { echo "Failed to start container c2"; false; }
 
-run_cmd lxc-stop -n c2 -k
+run_cmd lxc-stop -n c2 -k -l trace -o "${UNPRIV_LOG}"
 
 if which cgm >/dev/null 2>&1; then
     echo "Testing containers under different cgroups per subsystem"
     run_cmd cgm create freezer x1/x2
     cgm movepid freezer x1 $$
-    run_cmd lxc-start -n c1 -d
-    p1=$(run_cmd lxc-info -n c1 -p -H)
+    run_cmd lxc-start -n c1 -d -l trace -o "${UNPRIV_LOG}"
+    p1=$(run_cmd lxc-info -n c1 -p -H -l trace -o "${UNPRIV_LOG}")
     [ "$p1" != "-1" ] || { echo "Failed to start container c1"; false; }
-    run_cmd lxc-info -n c1
-    run_cmd lxc-attach -n c1 -- /bin/true
-    run_cmd lxc-cgroup -n c1 freezer.state
+    run_cmd lxc-info -n c1 -l trace -o "${UNPRIV_LOG}"
+    run_cmd lxc-attach -n c1 -l trace -o "${UNPRIV_LOG}" -- /bin/true
+    run_cmd lxc-cgroup -n c1 freezer.state -l trace -o "${UNPRIV_LOG}"
 
     echo "Testing lxc-attach and lxc-cgroup from different cgroup"
     cgm movepid freezer x2 $$
-    run_cmd lxc-attach -n c1 -- /bin/true
-    run_cmd lxc-cgroup -n c1 freezer.state
-    run_cmd lxc-cgroup -n c1 memory.limit_in_bytes
+    run_cmd lxc-attach -n c1 -l trace -o "${UNPRIV_LOG}" -- /bin/true
+    run_cmd lxc-cgroup -n c1 -l trace -o "${UNPRIV_LOG}" freezer.state
+    run_cmd lxc-cgroup -n c1 -l trace -o "${UNPRIV_LOG}" memory.limit_in_bytes
 fi
 
 DONE=1
