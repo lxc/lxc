@@ -806,70 +806,101 @@ static bool append_ttyname(char **pp, char *name)
 
 static int lxc_setup_ttys(struct lxc_conf *conf)
 {
-	int i, ret;
+	int ret;
+	struct lxc_rootfs *rootfs = &conf->rootfs;
 	const struct lxc_tty_info *ttys = &conf->ttys;
 	char *ttydir = ttys->dir;
-	char path[PATH_MAX], lxcpath[PATH_MAX];
 
 	if (!conf->rootfs.path)
 		return 0;
 
-	for (i = 0; i < ttys->max; i++) {
+	for (int i = 0; i < ttys->max; i++) {
+		__do_close int fd_to = -EBADF;
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
-		ret = snprintf(path, sizeof(path), "/dev/tty%d", i + 1);
-		if (ret < 0 || (size_t)ret >= sizeof(path))
-			return -1;
-
 		if (ttydir) {
-			/* create dev/lxc/tty%d" */
-			ret = snprintf(lxcpath, sizeof(lxcpath),
+			char *tty_name, *tty_path;
+
+			ret = snprintf(rootfs->buf, sizeof(rootfs->buf),
 				       "/dev/%s/tty%d", ttydir, i + 1);
-			if (ret < 0 || (size_t)ret >= sizeof(lxcpath))
-				return -1;
+			if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
+				return ret_errno(-EIO);
 
-			ret = mknod(lxcpath, S_IFREG | 0000, 0);
-			if (ret < 0 && errno != EEXIST) {
-				SYSERROR("Failed to create \"%s\"", lxcpath);
-				return -1;
+			tty_path = &rootfs->buf[STRLITERALLEN("/dev/")];
+			tty_name = tty_path + strlen(ttydir) + 1;
+
+			/* create bind-mount target */
+			fd_to = open_at(rootfs->dfd_dev, tty_path,
+					PROTECT_OPEN_W | O_CREAT,
+					PROTECT_LOOKUP_BENEATH, 0);
+			if (fd_to < 0)
+				return log_error_errno(-errno, errno,
+						       "Failed to create tty mount target %d(%s)",
+						       rootfs->dfd_dev, tty_path);
+
+			ret = unlinkat(rootfs->dfd_dev, tty_name, 0);
+			if (ret < 0 && errno != ENOENT)
+				return log_error_errno(-errno, errno,
+						       "Failed to unlink %d(%s)",
+						       rootfs->dfd_dev, tty_name);
+
+			if (new_mount_api()) {
+				ret = fd_bind_mount(tty->pty, "",
+						    PROTECT_OPATH_FILE,
+						    PROTECT_LOOKUP_BENEATH_XDEV,
+						    fd_to, "",
+						    PROTECT_OPATH_FILE,
+						    PROTECT_LOOKUP_BENEATH_XDEV, 0,
+						    false);
+			} else {
+				ret = mount(tty->name, rootfs->buf, "none", MS_BIND, 0);
 			}
-
-			ret = unlink(path);
-			if (ret < 0 && errno != ENOENT) {
-				SYSERROR("Failed to unlink \"%s\"", path);
-				return -1;
-			}
-
-			ret = mount(tty->name, lxcpath, "none", MS_BIND, 0);
-			if (ret < 0) {
-				SYSWARN("Failed to bind mount \"%s\" onto \"%s\"", tty->name, lxcpath);
-				continue;
-			}
-			DEBUG("Bind mounted \"%s\" onto \"%s\"", tty->name, lxcpath);
-
-			ret = snprintf(lxcpath, sizeof(lxcpath), "%s/tty%d",
-				       ttydir, i + 1);
-			if (ret < 0 || (size_t)ret >= sizeof(lxcpath))
-				return -1;
-
-			ret = symlink(lxcpath, path);
 			if (ret < 0)
-				return log_error_errno(-1, errno, "Failed to create symlink \"%s\" -> \"%s\"", path, lxcpath);
+				return log_error_errno(-errno, errno,
+						       "Failed to bind mount \"%s\" onto \"%s\"",
+						       tty->name, rootfs->buf);
+			DEBUG("Bind mounted \"%s\" onto \"%s\"", tty->name, rootfs->buf);
+
+			ret = symlinkat(tty_path, rootfs->dfd_dev, tty_name);
+			if (ret < 0)
+				return log_error_errno(-errno, errno,
+						       "Failed to create symlink \"%d(%s)\" -> \"%d(%s)\"",
+						       rootfs->dfd_dev, tty_name,
+						       rootfs->dfd_dev, tty_path);
 		} else {
-			/* If we populated /dev, then we need to create
-			 * /dev/ttyN
-			 */
-			ret = mknod(path, S_IFREG | 0000, 0);
-			if (ret < 0) /* this isn't fatal, continue */
-				SYSERROR("Failed to create \"%s\"", path);
+			ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "tty%d", i + 1);
+			if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
+				return ret_errno(-EIO);
 
-			ret = mount(tty->name, path, "none", MS_BIND, 0);
-			if (ret < 0) {
-				SYSERROR("Failed to mount '%s'->'%s'", tty->name, path);
-				continue;
+			/* If we populated /dev, then we need to create /dev/tty<idx>. */
+			fd_to = open_at(rootfs->dfd_dev, rootfs->buf,
+					PROTECT_OPEN_W | O_CREAT,
+					PROTECT_LOOKUP_BENEATH, 0);
+			if (fd_to < 0)
+				return log_error_errno(-errno, errno,
+						       "Failed to create tty mount target %d(%s)",
+						       rootfs->dfd_dev, rootfs->buf);
+
+			if (new_mount_api()) {
+				ret = fd_bind_mount(tty->pty, "",
+						    PROTECT_OPATH_FILE,
+						    PROTECT_LOOKUP_BENEATH_XDEV,
+						    fd_to, "",
+						    PROTECT_OPATH_FILE,
+						    PROTECT_LOOKUP_BENEATH, 0,
+						    false);
+			} else {
+				ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "/dev/tty%d", i + 1);
+				if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
+					return ret_errno(-EIO);
+
+				ret = mount(tty->name, rootfs->buf, "none", MS_BIND, 0);
 			}
-
-			DEBUG("Bind mounted \"%s\" onto \"%s\"", tty->name, path);
+			if (ret < 0)
+				return log_error_errno(-errno, errno,
+						       "Failed to bind mount \"%s\" onto \"%s\"",
+						       tty->name, rootfs->buf);
+			DEBUG("Bind mounted \"%s\" onto \"%s\"", tty->name, rootfs->buf);
 		}
 
 		if (!append_ttyname(&conf->ttys.tty_names, tty->name))
@@ -880,13 +911,11 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 	return 0;
 }
 
-define_cleanup_function(struct lxc_tty_info *, lxc_delete_tty);
-
 static int lxc_allocate_ttys(struct lxc_conf *conf)
 {
 	struct lxc_terminal_info *tty_new = NULL;
 	int ret;
-	call_cleaner(lxc_delete_tty) struct lxc_tty_info *ttys = &conf->ttys;
+	struct lxc_tty_info *ttys = &conf->ttys;
 
 	/* no tty in the configuration */
 	if (ttys->max == 0)
@@ -895,27 +924,25 @@ static int lxc_allocate_ttys(struct lxc_conf *conf)
 	tty_new = malloc(sizeof(struct lxc_terminal_info) * ttys->max);
 	if (!tty_new)
 		return -ENOMEM;
-	ttys->tty = tty_new;
 
-	for (size_t i = 0; i < ttys->max; i++) {
-		struct lxc_terminal_info *tty = &ttys->tty[i];
+	for (size_t i = 0; i < conf->ttys.max; i++) {
+		struct lxc_terminal_info *tty = &tty_new[i];
 
 		tty->ptx = -EBADF;
 		tty->pty = -EBADF;
 		ret = openpty(&tty->ptx, &tty->pty, NULL, NULL, NULL);
 		if (ret < 0) {
-			ttys->max = i;
+			conf->ttys.max = i;
 			return log_error_errno(-ENOTTY, ENOTTY, "Failed to create tty %zu", i);
 		}
 
 		ret = ttyname_r(tty->pty, tty->name, sizeof(tty->name));
 		if (ret < 0) {
-			ttys->max = i;
+			conf->ttys.max = i;
 			return log_error_errno(-ENOTTY, ENOTTY, "Failed to retrieve name of tty %zu pty", i);
 		}
 
-		DEBUG("Created tty \"%s\" with ptx fd %d and pty fd %d",
-		      tty->name, tty->ptx, tty->pty);
+		DEBUG("Created tty with ptx fd %d and pty fd %d", tty->ptx, tty->pty);
 
 		/* Prevent leaking the file descriptors to the container */
 		ret = fd_cloexec(tty->ptx, true);
@@ -932,7 +959,7 @@ static int lxc_allocate_ttys(struct lxc_conf *conf)
 	}
 
 	INFO("Finished creating %zu tty devices", ttys->max);
-	move_ptr(ttys);
+	conf->ttys.tty = move_ptr(tty_new);
 	return 0;
 }
 
