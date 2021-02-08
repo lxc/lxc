@@ -2109,22 +2109,22 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 	return ret;
 }
 
-static inline int mount_entry_on_systemfs(struct mntent *mntent)
+static inline int mount_entry_on_systemfs(struct lxc_rootfs *rootfs,
+					  struct mntent *mntent)
 {
 	int ret;
-	char path[PATH_MAX];
 
 	/* For containers created without a rootfs all mounts are treated as
 	 * absolute paths starting at / on the host.
 	 */
 	if (mntent->mnt_dir[0] != '/')
-		ret = snprintf(path, sizeof(path), "/%s", mntent->mnt_dir);
+		ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "/%s", mntent->mnt_dir);
 	else
-		ret = snprintf(path, sizeof(path), "%s", mntent->mnt_dir);
-	if (ret < 0 || ret >= sizeof(path))
+		ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s", mntent->mnt_dir);
+	if (ret < 0 || ret >= sizeof(rootfs->buf))
 		return -1;
 
-	return mount_entry_on_generic(mntent, path, NULL, NULL, NULL);
+	return mount_entry_on_generic(mntent, rootfs->buf, NULL, NULL, NULL);
 }
 
 static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
@@ -2185,7 +2185,7 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 	return mount_entry_on_generic(mntent, path, rootfs, lxc_name, lxc_path);
 }
 
-static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file,
+static int mount_file_entries(struct lxc_rootfs *rootfs, FILE *file,
 			      const char *lxc_name, const char *lxc_path)
 {
 	char buf[PATH_MAX];
@@ -2195,7 +2195,7 @@ static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file,
 		int ret;
 
 		if (!rootfs->path)
-			ret = mount_entry_on_systemfs(&mntent);
+			ret = mount_entry_on_systemfs(rootfs, &mntent);
 		else if (mntent.mnt_dir[0] != '/')
 			ret = mount_entry_on_relative_rootfs(&mntent, rootfs,
 							     lxc_name, lxc_path);
@@ -2221,8 +2221,8 @@ static inline void __auto_endmntent__(FILE **f)
 #define __do_endmntent __attribute__((__cleanup__(__auto_endmntent__)))
 
 static int setup_mount_fstab(const struct lxc_conf *conf,
-			      const struct lxc_rootfs *rootfs, const char *fstab,
-			      const char *lxc_name, const char *lxc_path)
+			     struct lxc_rootfs *rootfs, const char *fstab,
+			     const char *lxc_name, const char *lxc_path)
 {
 	__do_endmntent FILE *f = NULL;
 	int ret;
@@ -2311,7 +2311,7 @@ FILE *make_anonymous_mount_file(struct lxc_list *mount,
 }
 
 static int setup_mount_entries(const struct lxc_conf *conf,
-			       const struct lxc_rootfs *rootfs,
+			       struct lxc_rootfs *rootfs,
 			       struct lxc_list *mount, const char *lxc_name,
 			       const char *lxc_path)
 {
