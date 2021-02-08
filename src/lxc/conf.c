@@ -1642,12 +1642,11 @@ static inline bool wants_console(const struct lxc_terminal *terminal)
 	return !terminal->path || strcmp(terminal->path, "none");
 }
 
-static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
+static int lxc_setup_dev_console(struct lxc_rootfs *rootfs,
 				 const struct lxc_terminal *console,
 				 int pty_mnt_fd)
 {
 	int ret;
-	char path[PATH_MAX];
 	char *rootfs_path = rootfs->path ? rootfs->mount : "";
 
 	if (!wants_console(console))
@@ -1658,15 +1657,15 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	 * /dev/console bind-mounts.
 	 */
 	if (exists_file_at(rootfs->dfd_dev, "console")) {
-		ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs_path);
-		if (ret < 0 || (size_t)ret >= sizeof(path))
+		ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s/dev/console", rootfs_path);
+		if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
 			return -1;
 
-		ret = lxc_unstack_mountpoint(path, false);
+		ret = lxc_unstack_mountpoint(rootfs->buf, false);
 		if (ret < 0)
-			return log_error_errno(-ret, errno, "Failed to unmount \"%s\"", path);
+			return log_error_errno(-ret, errno, "Failed to unmount \"%s\"", rootfs->buf);
 		else
-			DEBUG("Cleared all (%d) mounts from \"%s\"", ret, path);
+			DEBUG("Cleared all (%d) mounts from \"%s\"", ret, rootfs->buf);
 	}
 
 	/*
@@ -1697,17 +1696,17 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	ret = safe_mount_beneath_at(rootfs->dfd_dev, console->name, "console", NULL, MS_BIND, NULL);
 	if (ret < 0) {
 		if (errno == ENOSYS) {
-			ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs_path);
-			if (ret < 0 || (size_t)ret >= sizeof(path))
+			ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s/dev/console", rootfs_path);
+			if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
 				return -1;
 
-			ret = safe_mount(console->name, path, "none", MS_BIND, NULL, rootfs_path);
+			ret = safe_mount(console->name, rootfs->buf, "none", MS_BIND, NULL, rootfs_path);
 			if (ret < 0)
-				return log_error_errno(-1, errno, "Failed to mount %d(%s) on \"%s\"", pty_mnt_fd, console->name, path);
+				return log_error_errno(-1, errno, "Failed to mount %d(%s) on \"%s\"", pty_mnt_fd, console->name, rootfs->buf);
 		}
 	}
 
-	DEBUG("Mounted pty device %d(%s) onto \"%s\"", pty_mnt_fd, console->name, path);
+	DEBUG("Mounted pty device %d(%s) onto \"%s\"", pty_mnt_fd, console->name, rootfs->buf);
 	return 0;
 }
 
@@ -1790,7 +1789,7 @@ finish:
 	return 0;
 }
 
-static int lxc_setup_console(const struct lxc_rootfs *rootfs,
+static int lxc_setup_console(struct lxc_rootfs *rootfs,
 			     const struct lxc_terminal *console, char *ttydir,
 			     int pty_mnt_fd)
 {
