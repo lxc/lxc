@@ -43,9 +43,6 @@ struct lxc_handler {
 		__aligned_u64 clone_flags;
 	};
 
-	/* File descriptor to pin the rootfs for privileged containers. */
-	int pinfd;
-
 	/* Signal file descriptor. */
 	int sigfd;
 
