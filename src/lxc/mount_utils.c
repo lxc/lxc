@@ -11,12 +11,17 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "file_utils.h"
 #include "log.h"
 #include "macro.h"
 #include "memory_utils.h"
 #include "mount_utils.h"
 #include "syscall_numbers.h"
 #include "syscall_wrappers.h"
+
+#ifdef HAVE_STATVFS
+#include <sys/statvfs.h>
+#endif
 
 lxc_log_define(mount_utils, lxc);
 
@@ -239,7 +244,7 @@ int fd_bind_mount(int dfd_from, const char *path_from,
 {
 	__do_close int __fd_from = -EBADF, __fd_to = -EBADF;
 	__do_close int fd_tree_from = -EBADF;
-	unsigned int open_tree_flags = AT_EMPTY_PATH | OPEN_TREE_CLONE | OPEN_TREE_CLONE;
+	unsigned int open_tree_flags = AT_EMPTY_PATH | OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC;
 	int fd_from, fd_to, ret;
 
 	if (!is_empty_string(path_from)) {
@@ -283,4 +288,153 @@ int fd_bind_mount(int dfd_from, const char *path_from,
 
 	TRACE("Attach detached mount %d to filesystem at %d", fd_tree_from, fd_to);
 	return 0;
+}
+
+int calc_remount_flags_new(int dfd_from, const char *path_from,
+			   __u64 o_flags_from, __u64 resolve_flags_from,
+			   bool remount, unsigned long cur_flags,
+			   unsigned int *new_flags)
+{
+#ifdef HAVE_STATVFS
+	__do_close int fd_from = -EBADF;
+	unsigned int new_required_flags = 0;
+	int ret;
+	struct statvfs sb;
+
+	fd_from = open_at(dfd_from, path_from, o_flags_from, resolve_flags_from, 0);
+	if (fd_from < 0)
+		return log_error_errno(-errno, errno, "Failed to open %d(%s)", dfd_from, maybe_empty(path_from));
+
+	ret = fstatvfs(dfd_from, &sb);
+	if (ret < 0)
+		return log_error_errno(-errno, errno, "Failed to retrieve mount information from %d(%s)", fd_from, maybe_empty(path_from));
+
+	if (remount) {
+		if (sb.f_flag & MS_NOSUID)
+			new_required_flags |= MOUNT_ATTR_NOSUID;
+
+		if (sb.f_flag & MS_NODEV)
+			new_required_flags |= MOUNT_ATTR_NODEV;
+
+		if (sb.f_flag & MS_RDONLY)
+			new_required_flags |= MOUNT_ATTR_RDONLY;
+
+		if (sb.f_flag & MS_NOEXEC)
+			new_required_flags |= MOUNT_ATTR_NOEXEC;
+	}
+
+	if (sb.f_flag & MS_NOATIME)
+		new_required_flags |= MOUNT_ATTR_NOATIME;
+
+	if (sb.f_flag & MS_NODIRATIME)
+		new_required_flags |= MOUNT_ATTR_NODIRATIME;
+
+	if (sb.f_flag & MS_RELATIME)
+		new_required_flags |= MOUNT_ATTR_RELATIME;
+
+	if (sb.f_flag & MS_STRICTATIME)
+		new_required_flags |= MOUNT_ATTR_STRICTATIME;
+
+	*new_flags = (cur_flags | new_required_flags);
+#endif
+	return 0;
+}
+
+int calc_remount_flags_old(int dfd_from, const char *path_from,
+			   __u64 o_flags_from, __u64 resolve_flags_from,
+			   bool remount, unsigned long cur_flags,
+			   unsigned int *old_flags)
+{
+#ifdef HAVE_STATVFS
+	__do_close int fd_from = -EBADF;
+	unsigned int old_required_flags = 0;
+	int ret;
+	struct statvfs sb;
+
+	fd_from = open_at(dfd_from, path_from, o_flags_from, resolve_flags_from, 0);
+	if (fd_from < 0)
+		return log_error_errno(-errno, errno, "Failed to open %d(%s)", dfd_from, maybe_empty(path_from));
+
+	ret = fstatvfs(dfd_from, &sb);
+	if (ret < 0)
+		return log_error_errno(-errno, errno, "Failed to retrieve mount information from %d(%s)", fd_from, maybe_empty(path_from));
+
+	if (remount) {
+		if (sb.f_flag & MS_NOSUID)
+			old_required_flags |= MS_NOSUID;
+
+		if (sb.f_flag & MS_NODEV)
+			old_required_flags |= MS_NODEV;
+
+		if (sb.f_flag & MS_RDONLY)
+			old_required_flags |= MS_RDONLY;
+
+		if (sb.f_flag & MS_NOEXEC)
+			old_required_flags |= MS_NOEXEC;
+	}
+
+	if (sb.f_flag & MS_NOATIME)
+		old_required_flags |= MS_NOATIME;
+
+	if (sb.f_flag & MS_NODIRATIME)
+		old_required_flags |= MS_NODIRATIME;
+
+	if (sb.f_flag & MS_RELATIME)
+		old_required_flags |= MS_RELATIME;
+
+	if (sb.f_flag & MS_STRICTATIME)
+		old_required_flags |= MS_STRICTATIME;
+
+	*old_flags = (cur_flags | old_required_flags);
+#endif
+	return 0;
+}
+
+/* If we are asking to remount something, make sure that any NOEXEC etc are
+ * honored.
+ */
+unsigned long add_required_remount_flags(const char *s, const char *d,
+                                        unsigned long flags)
+{
+#ifdef HAVE_STATVFS
+       int ret;
+       struct statvfs sb;
+       unsigned long required_flags = 0;
+
+       if (!s)
+               s = d;
+
+       if (!s)
+               return flags;
+
+       ret = statvfs(s, &sb);
+       if (ret < 0)
+               return flags;
+
+       if (flags & MS_REMOUNT) {
+               if (sb.f_flag & MS_NOSUID)
+                       required_flags |= MS_NOSUID;
+               if (sb.f_flag & MS_NODEV)
+                       required_flags |= MS_NODEV;
+               if (sb.f_flag & MS_RDONLY)
+                       required_flags |= MS_RDONLY;
+               if (sb.f_flag & MS_NOEXEC)
+                       required_flags |= MS_NOEXEC;
+       }
+
+       if (sb.f_flag & MS_NOATIME)
+               required_flags |= MS_NOATIME;
+       if (sb.f_flag & MS_NODIRATIME)
+               required_flags |= MS_NODIRATIME;
+       if (sb.f_flag & MS_LAZYTIME)
+               required_flags |= MS_LAZYTIME;
+       if (sb.f_flag & MS_RELATIME)
+               required_flags |= MS_RELATIME;
+       if (sb.f_flag & MS_STRICTATIME)
+               required_flags |= MS_STRICTATIME;
+
+       return flags | required_flags;
+#else
+       return flags;
+#endif
 }

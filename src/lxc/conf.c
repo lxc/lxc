@@ -477,105 +477,74 @@ int run_script(const char *name, const char *section, const char *script, ...)
 	return run_buffer(buffer);
 }
 
-/* pin_rootfs
+/* lxc_rootfs_prepare
  * if rootfs is a directory, then open ${rootfs}/.lxc-keep for writing for
  * the duration of the container run, to prevent the container from marking
  * the underlying fs readonly on shutdown. unlink the file immediately so
  * no name pollution is happens.
  * don't unlink on NFS to avoid random named stale handles.
- * return -1 on error.
- * return -2 if nothing needed to be pinned.
- * return an open fd (>=0) if we pinned it.
  */
-int pin_rootfs(const char *rootfs)
+int lxc_rootfs_prepare(struct lxc_rootfs *rootfs, bool userns)
 {
-	__do_free char *absrootfs = NULL;
-	int fd, ret;
-	char absrootfspin[PATH_MAX];
-	struct stat s;
-	struct statfs sfs;
-
-	if (rootfs == NULL || strlen(rootfs) == 0)
-		return -2;
-
-	absrootfs = realpath(rootfs, NULL);
-	if (!absrootfs)
-		return -2;
-
-	ret = stat(absrootfs, &s);
-	if (ret < 0)
-		return -1;
-
-	if (!S_ISDIR(s.st_mode))
-		return -2;
-
-	ret = snprintf(absrootfspin, sizeof(absrootfspin), "%s/.lxc-keep", absrootfs);
-	if (ret < 0 || (size_t)ret >= sizeof(absrootfspin))
-		return -1;
-
-	fd = open(absrootfspin, O_CREAT | O_RDWR, S_IWUSR | S_IRUSR | O_CLOEXEC);
-	if (fd < 0)
-		return fd;
-
-	ret = fstatfs (fd, &sfs);
-	if (ret < 0)
-		return fd;
-
-	if (sfs.f_type == NFS_SUPER_MAGIC)
-		return log_debug(fd, "Rootfs on NFS, not unlinking pin file \"%s\"", absrootfspin);
-
-	(void)unlink(absrootfspin);
-
-	return fd;
-}
-
-/* If we are asking to remount something, make sure that any NOEXEC etc are
- * honored.
- */
-unsigned long add_required_remount_flags(const char *s, const char *d,
-					 unsigned long flags)
-{
-#ifdef HAVE_STATVFS
+	__do_close int dfd_path = -EBADF, fd_pin = -EBADF;
 	int ret;
-	struct statvfs sb;
-	unsigned long required_flags = 0;
+	struct stat st;
+	struct statfs stfs;
 
-	if (!s)
-		s = d;
+	if (rootfs->path) {
+		if (rootfs->bdev_type &&
+		    (!strcmp(rootfs->bdev_type, "overlay") ||
+		     !strcmp(rootfs->bdev_type, "overlayfs")))
+			return log_trace_errno(0, EINVAL, "Not pinning on stacking filesystem");
 
-	if (!s)
-		return flags;
+		dfd_path = open_at(-EBADF, rootfs->path, PROTECT_OPATH_FILE, 0, 0);
+	} else {
+		dfd_path = open_at(-EBADF, "/", PROTECT_OPATH_FILE, PROTECT_LOOKUP_ABSOLUTE, 0);
+	}
+	if (dfd_path < 0)
+		return log_error_errno(-errno, errno, "Failed to open \"%s\"", rootfs->path);
 
-	ret = statvfs(s, &sb);
+	if (!rootfs->path)
+		return log_trace(0, "Not pinning because container does not have a rootfs");
+
+	if (userns)
+		return log_trace(0, "Not pinning because container runs in user namespace");
+
+	ret = fstat(dfd_path, &st);
 	if (ret < 0)
-		return flags;
+		return log_trace_errno(-errno, errno, "Failed to retrieve file status");
 
-	if (flags & MS_REMOUNT) {
-		if (sb.f_flag & MS_NOSUID)
-			required_flags |= MS_NOSUID;
-		if (sb.f_flag & MS_NODEV)
-			required_flags |= MS_NODEV;
-		if (sb.f_flag & MS_RDONLY)
-			required_flags |= MS_RDONLY;
-		if (sb.f_flag & MS_NOEXEC)
-			required_flags |= MS_NOEXEC;
+	if (!S_ISDIR(st.st_mode))
+		return log_trace_errno(0, ENOTDIR, "Not pinning because file descriptor is not a directory");
+
+	fd_pin = open_at(dfd_path, ".lxc_keep",
+			 PROTECT_OPEN | O_CREAT,
+			 PROTECT_LOOKUP_BENEATH,
+			 S_IWUSR | S_IRUSR);
+	if (fd_pin < 0)
+		return log_error_errno(-errno, errno, "Failed to pin rootfs");
+
+	TRACE("Pinned rootfs %d(.lxc_keep)", fd_pin);
+
+	ret = fstatfs(fd_pin, &stfs);
+	if (ret < 0) {
+		SYSWARN("Failed to retrieve filesystem status");
+		goto out;
 	}
 
-	if (sb.f_flag & MS_NOATIME)
-		required_flags |= MS_NOATIME;
-	if (sb.f_flag & MS_NODIRATIME)
-		required_flags |= MS_NODIRATIME;
-	if (sb.f_flag & MS_LAZYTIME)
-		required_flags |= MS_LAZYTIME;
-	if (sb.f_flag & MS_RELATIME)
-		required_flags |= MS_RELATIME;
-	if (sb.f_flag & MS_STRICTATIME)
-		required_flags |= MS_STRICTATIME;
+	if (stfs.f_type == NFS_SUPER_MAGIC) {
+		DEBUG("Not unlinking pinned file on NFS");
+		goto out;
+	}
 
-	return flags | required_flags;
-#else
-	return flags;
-#endif
+	if (unlinkat(dfd_path, ".lxc_keep", 0))
+		SYSTRACE("Failed to unlink rootfs pinning file %d(.lxc_keep)", dfd_path);
+	else
+		TRACE("Unlinked pinned file %d(.lxc_keep)", dfd_path);
+
+out:
+	rootfs->fd_path_pin = move_fd(fd_pin);
+	return 0;
 }
 
 static int add_shmount_to_list(struct lxc_conf *conf)
@@ -837,70 +806,101 @@ static bool append_ttyname(char **pp, char *name)
 
 static int lxc_setup_ttys(struct lxc_conf *conf)
 {
-	int i, ret;
+	int ret;
+	struct lxc_rootfs *rootfs = &conf->rootfs;
 	const struct lxc_tty_info *ttys = &conf->ttys;
 	char *ttydir = ttys->dir;
-	char path[PATH_MAX], lxcpath[PATH_MAX];
 
 	if (!conf->rootfs.path)
 		return 0;
 
-	for (i = 0; i < ttys->max; i++) {
+	for (int i = 0; i < ttys->max; i++) {
+		__do_close int fd_to = -EBADF;
 		struct lxc_terminal_info *tty = &ttys->tty[i];
 
-		ret = snprintf(path, sizeof(path), "/dev/tty%d", i + 1);
-		if (ret < 0 || (size_t)ret >= sizeof(path))
-			return -1;
-
 		if (ttydir) {
-			/* create dev/lxc/tty%d" */
-			ret = snprintf(lxcpath, sizeof(lxcpath),
+			char *tty_name, *tty_path;
+
+			ret = snprintf(rootfs->buf, sizeof(rootfs->buf),
 				       "/dev/%s/tty%d", ttydir, i + 1);
-			if (ret < 0 || (size_t)ret >= sizeof(lxcpath))
-				return -1;
+			if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
+				return ret_errno(-EIO);
 
-			ret = mknod(lxcpath, S_IFREG | 0000, 0);
-			if (ret < 0 && errno != EEXIST) {
-				SYSERROR("Failed to create \"%s\"", lxcpath);
-				return -1;
+			tty_path = &rootfs->buf[STRLITERALLEN("/dev/")];
+			tty_name = tty_path + strlen(ttydir) + 1;
+
+			/* create bind-mount target */
+			fd_to = open_at(rootfs->dfd_dev, tty_path,
+					PROTECT_OPEN_W | O_CREAT,
+					PROTECT_LOOKUP_BENEATH, 0);
+			if (fd_to < 0)
+				return log_error_errno(-errno, errno,
+						       "Failed to create tty mount target %d(%s)",
+						       rootfs->dfd_dev, tty_path);
+
+			ret = unlinkat(rootfs->dfd_dev, tty_name, 0);
+			if (ret < 0 && errno != ENOENT)
+				return log_error_errno(-errno, errno,
+						       "Failed to unlink %d(%s)",
+						       rootfs->dfd_dev, tty_name);
+
+			if (new_mount_api()) {
+				ret = fd_bind_mount(tty->pty, "",
+						    PROTECT_OPATH_FILE,
+						    PROTECT_LOOKUP_BENEATH_XDEV,
+						    fd_to, "",
+						    PROTECT_OPATH_FILE,
+						    PROTECT_LOOKUP_BENEATH_XDEV, 0,
+						    false);
+			} else {
+				ret = mount(tty->name, rootfs->buf, "none", MS_BIND, 0);
 			}
-
-			ret = unlink(path);
-			if (ret < 0 && errno != ENOENT) {
-				SYSERROR("Failed to unlink \"%s\"", path);
-				return -1;
-			}
-
-			ret = mount(tty->name, lxcpath, "none", MS_BIND, 0);
-			if (ret < 0) {
-				SYSWARN("Failed to bind mount \"%s\" onto \"%s\"", tty->name, lxcpath);
-				continue;
-			}
-			DEBUG("Bind mounted \"%s\" onto \"%s\"", tty->name, lxcpath);
-
-			ret = snprintf(lxcpath, sizeof(lxcpath), "%s/tty%d",
-				       ttydir, i + 1);
-			if (ret < 0 || (size_t)ret >= sizeof(lxcpath))
-				return -1;
-
-			ret = symlink(lxcpath, path);
 			if (ret < 0)
-				return log_error_errno(-1, errno, "Failed to create symlink \"%s\" -> \"%s\"", path, lxcpath);
+				return log_error_errno(-errno, errno,
+						       "Failed to bind mount \"%s\" onto \"%s\"",
+						       tty->name, rootfs->buf);
+			DEBUG("Bind mounted \"%s\" onto \"%s\"", tty->name, rootfs->buf);
+
+			ret = symlinkat(tty_path, rootfs->dfd_dev, tty_name);
+			if (ret < 0)
+				return log_error_errno(-errno, errno,
+						       "Failed to create symlink \"%d(%s)\" -> \"%d(%s)\"",
+						       rootfs->dfd_dev, tty_name,
+						       rootfs->dfd_dev, tty_path);
 		} else {
-			/* If we populated /dev, then we need to create
-			 * /dev/ttyN
-			 */
-			ret = mknod(path, S_IFREG | 0000, 0);
-			if (ret < 0) /* this isn't fatal, continue */
-				SYSERROR("Failed to create \"%s\"", path);
+			ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "tty%d", i + 1);
+			if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
+				return ret_errno(-EIO);
 
-			ret = mount(tty->name, path, "none", MS_BIND, 0);
-			if (ret < 0) {
-				SYSERROR("Failed to mount '%s'->'%s'", tty->name, path);
-				continue;
+			/* If we populated /dev, then we need to create /dev/tty<idx>. */
+			fd_to = open_at(rootfs->dfd_dev, rootfs->buf,
+					PROTECT_OPEN_W | O_CREAT,
+					PROTECT_LOOKUP_BENEATH, 0);
+			if (fd_to < 0)
+				return log_error_errno(-errno, errno,
+						       "Failed to create tty mount target %d(%s)",
+						       rootfs->dfd_dev, rootfs->buf);
+
+			if (new_mount_api()) {
+				ret = fd_bind_mount(tty->pty, "",
+						    PROTECT_OPATH_FILE,
+						    PROTECT_LOOKUP_BENEATH_XDEV,
+						    fd_to, "",
+						    PROTECT_OPATH_FILE,
+						    PROTECT_LOOKUP_BENEATH, 0,
+						    false);
+			} else {
+				ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "/dev/tty%d", i + 1);
+				if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
+					return ret_errno(-EIO);
+
+				ret = mount(tty->name, rootfs->buf, "none", MS_BIND, 0);
 			}
-
-			DEBUG("Bind mounted \"%s\" onto \"%s\"", tty->name, path);
+			if (ret < 0)
+				return log_error_errno(-errno, errno,
+						       "Failed to bind mount \"%s\" onto \"%s\"",
+						       tty->name, rootfs->buf);
+			DEBUG("Bind mounted \"%s\" onto \"%s\"", tty->name, rootfs->buf);
 		}
 
 		if (!append_ttyname(&conf->ttys.tty_names, tty->name))
@@ -911,13 +911,11 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 	return 0;
 }
 
-define_cleanup_function(struct lxc_tty_info *, lxc_delete_tty);
-
 static int lxc_allocate_ttys(struct lxc_conf *conf)
 {
 	struct lxc_terminal_info *tty_new = NULL;
 	int ret;
-	call_cleaner(lxc_delete_tty) struct lxc_tty_info *ttys = &conf->ttys;
+	struct lxc_tty_info *ttys = &conf->ttys;
 
 	/* no tty in the configuration */
 	if (ttys->max == 0)
@@ -926,27 +924,25 @@ static int lxc_allocate_ttys(struct lxc_conf *conf)
 	tty_new = malloc(sizeof(struct lxc_terminal_info) * ttys->max);
 	if (!tty_new)
 		return -ENOMEM;
-	ttys->tty = tty_new;
 
-	for (size_t i = 0; i < ttys->max; i++) {
-		struct lxc_terminal_info *tty = &ttys->tty[i];
+	for (size_t i = 0; i < conf->ttys.max; i++) {
+		struct lxc_terminal_info *tty = &tty_new[i];
 
 		tty->ptx = -EBADF;
 		tty->pty = -EBADF;
 		ret = openpty(&tty->ptx, &tty->pty, NULL, NULL, NULL);
 		if (ret < 0) {
-			ttys->max = i;
+			conf->ttys.max = i;
 			return log_error_errno(-ENOTTY, ENOTTY, "Failed to create tty %zu", i);
 		}
 
 		ret = ttyname_r(tty->pty, tty->name, sizeof(tty->name));
 		if (ret < 0) {
-			ttys->max = i;
+			conf->ttys.max = i;
 			return log_error_errno(-ENOTTY, ENOTTY, "Failed to retrieve name of tty %zu pty", i);
 		}
 
-		DEBUG("Created tty \"%s\" with ptx fd %d and pty fd %d",
-		      tty->name, tty->ptx, tty->pty);
+		DEBUG("Created tty with ptx fd %d and pty fd %d", tty->ptx, tty->pty);
 
 		/* Prevent leaking the file descriptors to the container */
 		ret = fd_cloexec(tty->ptx, true);
@@ -963,7 +959,7 @@ static int lxc_allocate_ttys(struct lxc_conf *conf)
 	}
 
 	INFO("Finished creating %zu tty devices", ttys->max);
-	move_ptr(ttys);
+	conf->ttys.tty = move_ptr(tty_new);
 	return 0;
 }
 
@@ -1155,7 +1151,7 @@ enum {
 	LXC_DEVNODE_OPEN,
 };
 
-static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
+static int lxc_fill_autodev(struct lxc_rootfs *rootfs)
 {
 	int i, ret;
 	mode_t cmask;
@@ -1168,7 +1164,6 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 
 	cmask = umask(S_IXUSR | S_IXGRP | S_IXOTH);
 	for (i = 0; i < sizeof(lxc_devices) / sizeof(lxc_devices[0]); i++) {
-		char device_path[PATH_MAX];
 		const struct lxc_device_node *device = &lxc_devices[i];
 
 		if (use_mknod >= LXC_DEVNODE_MKNOD) {
@@ -1216,12 +1211,12 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 		}
 
 		/* Fallback to bind-mounting the device from the host. */
-		ret = snprintf(device_path, sizeof(device_path), "dev/%s", device->name);
-		if (ret < 0 || (size_t)ret >= sizeof(device_path))
+		ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "dev/%s", device->name);
+		if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
 			return ret_errno(EIO);
 
 		if (new_mount_api()) {
-			ret = fd_bind_mount(rootfs->dfd_host, device_path,
+			ret = fd_bind_mount(rootfs->dfd_host, rootfs->buf,
 					    PROTECT_OPATH_FILE,
 					    PROTECT_LOOKUP_BENEATH_XDEV,
 					    rootfs->dfd_dev, device->name,
@@ -1230,22 +1225,22 @@ static int lxc_fill_autodev(const struct lxc_rootfs *rootfs)
 		} else {
 			char path[PATH_MAX];
 
-			ret = snprintf(device_path, sizeof(device_path), "/dev/%s", device->name);
-			if (ret < 0 || (size_t)ret >= sizeof(device_path))
+			ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "/dev/%s", device->name);
+			if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
 				return ret_errno(EIO);
 
 			ret = snprintf(path, sizeof(path), "%s/dev/%s", get_rootfs_mnt(rootfs), device->name);
 			if (ret < 0 || ret >= sizeof(path))
 				return log_error(-1, "Failed to create device path for %s", device->name);
 
-			ret = safe_mount(device_path, path, 0, MS_BIND, NULL, get_rootfs_mnt(rootfs));
+			ret = safe_mount(rootfs->buf, path, 0, MS_BIND, NULL, get_rootfs_mnt(rootfs));
 			if (ret < 0)
-				return log_error_errno(-1, errno, "Failed to bind mount host device node \"%s\" to \"%s\"", device_path, path);
+				return log_error_errno(-1, errno, "Failed to bind mount host device node \"%s\" to \"%s\"", rootfs->buf, path);
 
-			DEBUG("Bind mounted host device node \"%s\" to \"%s\"", device_path, path);
+			DEBUG("Bind mounted host device node \"%s\" to \"%s\"", rootfs->buf, path);
 			continue;
 		}
-		DEBUG("Bind mounted host device %d(%s) to %d(%s)", rootfs->dfd_host, device_path, rootfs->dfd_dev, device->name);
+		DEBUG("Bind mounted host device %d(%s) to %d(%s)", rootfs->dfd_host, rootfs->buf, rootfs->dfd_dev, device->name);
 	}
 	(void)umask(cmask);
 
@@ -1647,12 +1642,11 @@ static inline bool wants_console(const struct lxc_terminal *terminal)
 	return !terminal->path || strcmp(terminal->path, "none");
 }
 
-static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
+static int lxc_setup_dev_console(struct lxc_rootfs *rootfs,
 				 const struct lxc_terminal *console,
 				 int pty_mnt_fd)
 {
 	int ret;
-	char path[PATH_MAX];
 	char *rootfs_path = rootfs->path ? rootfs->mount : "";
 
 	if (!wants_console(console))
@@ -1663,15 +1657,15 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	 * /dev/console bind-mounts.
 	 */
 	if (exists_file_at(rootfs->dfd_dev, "console")) {
-		ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs_path);
-		if (ret < 0 || (size_t)ret >= sizeof(path))
+		ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s/dev/console", rootfs_path);
+		if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
 			return -1;
 
-		ret = lxc_unstack_mountpoint(path, false);
+		ret = lxc_unstack_mountpoint(rootfs->buf, false);
 		if (ret < 0)
-			return log_error_errno(-ret, errno, "Failed to unmount \"%s\"", path);
+			return log_error_errno(-ret, errno, "Failed to unmount \"%s\"", rootfs->buf);
 		else
-			DEBUG("Cleared all (%d) mounts from \"%s\"", ret, path);
+			DEBUG("Cleared all (%d) mounts from \"%s\"", ret, rootfs->buf);
 	}
 
 	/*
@@ -1702,17 +1696,17 @@ static int lxc_setup_dev_console(const struct lxc_rootfs *rootfs,
 	ret = safe_mount_beneath_at(rootfs->dfd_dev, console->name, "console", NULL, MS_BIND, NULL);
 	if (ret < 0) {
 		if (errno == ENOSYS) {
-			ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs_path);
-			if (ret < 0 || (size_t)ret >= sizeof(path))
+			ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s/dev/console", rootfs_path);
+			if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
 				return -1;
 
-			ret = safe_mount(console->name, path, "none", MS_BIND, NULL, rootfs_path);
+			ret = safe_mount(console->name, rootfs->buf, "none", MS_BIND, NULL, rootfs_path);
 			if (ret < 0)
-				return log_error_errno(-1, errno, "Failed to mount %d(%s) on \"%s\"", pty_mnt_fd, console->name, path);
+				return log_error_errno(-1, errno, "Failed to mount %d(%s) on \"%s\"", pty_mnt_fd, console->name, rootfs->buf);
 		}
 	}
 
-	DEBUG("Mounted pty device %d(%s) onto \"%s\"", pty_mnt_fd, console->name, path);
+	DEBUG("Mounted pty device %d(%s) onto \"%s\"", pty_mnt_fd, console->name, rootfs->buf);
 	return 0;
 }
 
@@ -1795,7 +1789,7 @@ finish:
 	return 0;
 }
 
-static int lxc_setup_console(const struct lxc_rootfs *rootfs,
+static int lxc_setup_console(struct lxc_rootfs *rootfs,
 			     const struct lxc_terminal *console, char *ttydir,
 			     int pty_mnt_fd)
 {
@@ -2158,33 +2152,32 @@ static inline int mount_entry_on_generic(struct mntent *mntent,
 	return ret;
 }
 
-static inline int mount_entry_on_systemfs(struct mntent *mntent)
+static inline int mount_entry_on_systemfs(struct lxc_rootfs *rootfs,
+					  struct mntent *mntent)
 {
 	int ret;
-	char path[PATH_MAX];
 
 	/* For containers created without a rootfs all mounts are treated as
 	 * absolute paths starting at / on the host.
 	 */
 	if (mntent->mnt_dir[0] != '/')
-		ret = snprintf(path, sizeof(path), "/%s", mntent->mnt_dir);
+		ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "/%s", mntent->mnt_dir);
 	else
-		ret = snprintf(path, sizeof(path), "%s", mntent->mnt_dir);
-	if (ret < 0 || ret >= sizeof(path))
+		ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s", mntent->mnt_dir);
+	if (ret < 0 || ret >= sizeof(rootfs->buf))
 		return -1;
 
-	return mount_entry_on_generic(mntent, path, NULL, NULL, NULL);
+	return mount_entry_on_generic(mntent, rootfs->buf, NULL, NULL, NULL);
 }
 
 static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
-					  const struct lxc_rootfs *rootfs,
+					  struct lxc_rootfs *rootfs,
 					  const char *lxc_name,
 					  const char *lxc_path)
 {
 	int offset;
 	char *aux;
 	const char *lxcpath;
-	char path[PATH_MAX];
 	int ret = 0;
 
 	lxcpath = lxc_global_config_value("lxc.lxcpath");
@@ -2194,13 +2187,13 @@ static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
 	/* If rootfs->path is a blockdev path, allow container fstab to use
 	 * <lxcpath>/<name>/rootfs" as the target prefix.
 	 */
-	ret = snprintf(path, PATH_MAX, "%s/%s/rootfs", lxcpath, lxc_name);
-	if (ret < 0 || ret >= PATH_MAX)
+	ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s/%s/rootfs", lxcpath, lxc_name);
+	if (ret < 0 || ret >= sizeof(rootfs->buf))
 		goto skipvarlib;
 
-	aux = strstr(mntent->mnt_dir, path);
+	aux = strstr(mntent->mnt_dir, rootfs->buf);
 	if (aux) {
-		offset = strlen(path);
+		offset = strlen(rootfs->buf);
 		goto skipabs;
 	}
 
@@ -2211,30 +2204,29 @@ skipvarlib:
 	offset = strlen(rootfs->path);
 
 skipabs:
-	ret = snprintf(path, PATH_MAX, "%s/%s", rootfs->mount, aux + offset);
-	if (ret < 0 || ret >= PATH_MAX)
+	ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s/%s", rootfs->mount, aux + offset);
+	if (ret < 0 || ret >= sizeof(rootfs->buf))
 		return -1;
 
-	return mount_entry_on_generic(mntent, path, rootfs, lxc_name, lxc_path);
+	return mount_entry_on_generic(mntent, rootfs->buf, rootfs, lxc_name, lxc_path);
 }
 
 static int mount_entry_on_relative_rootfs(struct mntent *mntent,
-					  const struct lxc_rootfs *rootfs,
+					  struct lxc_rootfs *rootfs,
 					  const char *lxc_name,
 					  const char *lxc_path)
 {
 	int ret;
-	char path[PATH_MAX];
 
 	/* relative to root mount point */
-	ret = snprintf(path, sizeof(path), "%s/%s", rootfs->mount, mntent->mnt_dir);
-	if (ret < 0 || (size_t)ret >= sizeof(path))
+	ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s/%s", rootfs->mount, mntent->mnt_dir);
+	if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
 		return -1;
 
-	return mount_entry_on_generic(mntent, path, rootfs, lxc_name, lxc_path);
+	return mount_entry_on_generic(mntent, rootfs->buf, rootfs, lxc_name, lxc_path);
 }
 
-static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file,
+static int mount_file_entries(struct lxc_rootfs *rootfs, FILE *file,
 			      const char *lxc_name, const char *lxc_path)
 {
 	char buf[PATH_MAX];
@@ -2244,7 +2236,7 @@ static int mount_file_entries(const struct lxc_rootfs *rootfs, FILE *file,
 		int ret;
 
 		if (!rootfs->path)
-			ret = mount_entry_on_systemfs(&mntent);
+			ret = mount_entry_on_systemfs(rootfs, &mntent);
 		else if (mntent.mnt_dir[0] != '/')
 			ret = mount_entry_on_relative_rootfs(&mntent, rootfs,
 							     lxc_name, lxc_path);
@@ -2269,9 +2261,8 @@ static inline void __auto_endmntent__(FILE **f)
 
 #define __do_endmntent __attribute__((__cleanup__(__auto_endmntent__)))
 
-static int setup_mount(const struct lxc_conf *conf,
-		       const struct lxc_rootfs *rootfs, const char *fstab,
-		       const char *lxc_name, const char *lxc_path)
+static int setup_mount_fstab(struct lxc_rootfs *rootfs, const char *fstab,
+			     const char *lxc_name, const char *lxc_path)
 {
 	__do_endmntent FILE *f = NULL;
 	int ret;
@@ -2360,9 +2351,8 @@ FILE *make_anonymous_mount_file(struct lxc_list *mount,
 }
 
 static int setup_mount_entries(const struct lxc_conf *conf,
-			       const struct lxc_rootfs *rootfs,
-			       struct lxc_list *mount, const char *lxc_name,
-			       const char *lxc_path)
+			       struct lxc_rootfs *rootfs, struct lxc_list *mount,
+			       const char *lxc_name, const char *lxc_path)
 {
 	__do_fclose FILE *f = NULL;
 
@@ -2638,6 +2628,7 @@ struct lxc_conf *lxc_conf_init(void)
 	new->rootfs.dfd_mnt = -EBADF;
 	new->rootfs.dfd_dev = -EBADF;
 	new->rootfs.dfd_host = -EBADF;
+	new->rootfs.fd_path_pin = -EBADF;
 	new->logfd = -1;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->cgroup2);
@@ -3431,7 +3422,7 @@ int lxc_setup(struct lxc_handler *handler)
 	if (ret < 0)
 		return log_error(-1, "Failed to setup first automatic mounts");
 
-	ret = setup_mount(lxc_conf, &lxc_conf->rootfs, lxc_conf->fstab, name, lxcpath);
+	ret = setup_mount_fstab(&lxc_conf->rootfs, lxc_conf->fstab, name, lxcpath);
 	if (ret < 0)
 		return log_error(-1, "Failed to setup mounts");
 
@@ -3543,9 +3534,7 @@ int lxc_setup(struct lxc_handler *handler)
 		return log_error(-1, "Failed to drop capabilities");
 	}
 
-	close_prot_errno_disarm(lxc_conf->rootfs.dfd_mnt)
-	close_prot_errno_disarm(lxc_conf->rootfs.dfd_dev)
-	close_prot_errno_disarm(lxc_conf->rootfs.dfd_host)
+	put_lxc_rootfs(&handler->conf->rootfs, true);
 	NOTICE("The container \"%s\" is set up", name);
 
 	return 0;
@@ -3909,9 +3898,7 @@ void lxc_conf_free(struct lxc_conf *conf)
 	free(conf->rootfs.options);
 	free(conf->rootfs.path);
 	free(conf->rootfs.data);
-	close_prot_errno_disarm(conf->rootfs.dfd_mnt);
-	close_prot_errno_disarm(conf->rootfs.dfd_dev);
-	close_prot_errno_disarm(conf->rootfs.dfd_host);
+	put_lxc_rootfs(&conf->rootfs, true);
 	free(conf->logfile);
 	if (conf->logfd != -1)
 		close(conf->logfd);

@@ -11,6 +11,7 @@
 #include "log.h"
 #include "macro.h"
 #include "memory_utils.h"
+#include "mount_utils.h"
 #include "storage.h"
 #include "utils.h"
 

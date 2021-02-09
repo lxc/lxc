@@ -196,10 +196,15 @@ struct lxc_tty_info {
  */
 struct lxc_rootfs {
 	int dfd_host;
-	int dfd_mnt;
-	int dfd_dev;
+
 	char *path;
+	int fd_path_pin;
+
+	int dfd_mnt;
 	char *mount;
+
+	int dfd_dev;
+
 	char buf[PATH_MAX];
 	char *bdev_type;
 	char *options;
@@ -481,7 +486,7 @@ extern struct lxc_conf *current_config;
 __hidden extern int run_lxc_hooks(const char *name, char *hook, struct lxc_conf *conf, char *argv[]);
 __hidden extern struct lxc_conf *lxc_conf_init(void);
 __hidden extern void lxc_conf_free(struct lxc_conf *conf);
-__hidden extern int pin_rootfs(const char *rootfs);
+__hidden extern int lxc_rootfs_prepare(struct lxc_rootfs *rootfs, bool userns);
 __hidden extern int lxc_map_ids(struct lxc_list *idmap, pid_t pid);
 __hidden extern int lxc_create_tty(const char *name, struct lxc_conf *conf);
 __hidden extern void lxc_delete_tty(struct lxc_tty_info *ttys);
@@ -516,8 +521,6 @@ __hidden extern void turn_into_dependent_mounts(void);
 __hidden extern void suggest_default_idmap(void);
 __hidden extern FILE *make_anonymous_mount_file(struct lxc_list *mount, bool include_nesting_helpers);
 __hidden extern struct lxc_list *sort_cgroup_settings(struct lxc_list *cgroup_settings);
-__hidden extern unsigned long add_required_remount_flags(const char *s, const char *d,
-							 unsigned long flags);
 __hidden extern int run_script(const char *name, const char *section, const char *script, ...);
 __hidden extern int run_script_argv(const char *name, unsigned int hook_version, const char *section,
 				    const char *script, const char *hookname, char **argsin);
@@ -557,6 +560,17 @@ static inline const char *get_rootfs_mnt(const struct lxc_rootfs *rootfs)
 	static const char *s = "/";
 
 	return !is_empty_string(rootfs->path) ? rootfs->mount : s;
+}
+
+static inline void put_lxc_rootfs(struct lxc_rootfs *rootfs, bool unpin)
+{
+	if (rootfs) {
+		close_prot_errno_disarm(rootfs->dfd_host);
+		close_prot_errno_disarm(rootfs->dfd_mnt);
+		close_prot_errno_disarm(rootfs->dfd_dev);
+		if (unpin)
+			close_prot_errno_disarm(rootfs->fd_path_pin);
+	}
 }
 
 #endif /* __LXC_CONF_H */
