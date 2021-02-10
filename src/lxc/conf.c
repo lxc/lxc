@@ -911,22 +911,23 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 	return 0;
 }
 
+define_cleanup_function(struct lxc_tty_info *, lxc_delete_tty);
+
 static int lxc_allocate_ttys(struct lxc_conf *conf)
 {
-	struct lxc_terminal_info *tty_new = NULL;
+	call_cleaner(lxc_delete_tty) struct lxc_tty_info *ttys = &conf->ttys;
 	int ret;
-	struct lxc_tty_info *ttys = &conf->ttys;
 
 	/* no tty in the configuration */
 	if (ttys->max == 0)
 		return 0;
 
-	tty_new = malloc(sizeof(struct lxc_terminal_info) * ttys->max);
-	if (!tty_new)
+	ttys->tty = zalloc(sizeof(struct lxc_terminal_info) * ttys->max);
+	if (!ttys->tty)
 		return -ENOMEM;
 
 	for (size_t i = 0; i < conf->ttys.max; i++) {
-		struct lxc_terminal_info *tty = &tty_new[i];
+		struct lxc_terminal_info *tty = &ttys->tty[i];
 
 		tty->ptx = -EBADF;
 		tty->pty = -EBADF;
@@ -959,7 +960,7 @@ static int lxc_allocate_ttys(struct lxc_conf *conf)
 	}
 
 	INFO("Finished creating %zu tty devices", ttys->max);
-	conf->ttys.tty = move_ptr(tty_new);
+	move_ptr(ttys);
 	return 0;
 }
 
