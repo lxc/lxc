@@ -2017,8 +2017,8 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 }
 
 /* Only root needs to escape to the cgroup of its init. */
-__cgfsng_ops static bool cgfsng_escape(const struct cgroup_ops *ops,
-				       struct lxc_conf *conf)
+__cgfsng_ops static bool cgfsng_criu_escape(const struct cgroup_ops *ops,
+					    struct lxc_conf *conf)
 {
 	if (!ops)
 		return ret_set_errno(false, ENOENT);
@@ -2048,7 +2048,7 @@ __cgfsng_ops static bool cgfsng_escape(const struct cgroup_ops *ops,
 	return true;
 }
 
-__cgfsng_ops static int cgfsng_num_hierarchies(struct cgroup_ops *ops)
+__cgfsng_ops static int cgfsng_criu_num_hierarchies(struct cgroup_ops *ops)
 {
 	int i = 0;
 
@@ -2064,8 +2064,8 @@ __cgfsng_ops static int cgfsng_num_hierarchies(struct cgroup_ops *ops)
 	return i;
 }
 
-__cgfsng_ops static bool cgfsng_get_hierarchies(struct cgroup_ops *ops, int n,
-						char ***out)
+__cgfsng_ops static bool cgfsng_criu_get_hierarchies(struct cgroup_ops *ops,
+						     int n, char ***out)
 {
 	int i;
 
@@ -3515,9 +3515,6 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 	cgfsng_ops->payload_create			= cgfsng_payload_create;
 	cgfsng_ops->payload_enter			= cgfsng_payload_enter;
 	cgfsng_ops->payload_finalize			= cgfsng_payload_finalize;
-	cgfsng_ops->escape				= cgfsng_escape;
-	cgfsng_ops->num_hierarchies			= cgfsng_num_hierarchies;
-	cgfsng_ops->get_hierarchies			= cgfsng_get_hierarchies;
 	cgfsng_ops->get_cgroup				= cgfsng_get_cgroup;
 	cgfsng_ops->get					= cgfsng_get;
 	cgfsng_ops->set 				= cgfsng_set;
@@ -3532,6 +3529,10 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 	cgfsng_ops->mount 				= cgfsng_mount;
 	cgfsng_ops->devices_activate			= cgfsng_devices_activate;
 	cgfsng_ops->get_limiting_cgroup			= cgfsng_get_limiting_cgroup;
+
+	cgfsng_ops->criu_escape				= cgfsng_criu_escape;
+	cgfsng_ops->criu_num_hierarchies		= cgfsng_criu_num_hierarchies;
+	cgfsng_ops->criu_get_hierarchies		= cgfsng_criu_get_hierarchies;
 
 	return move_ptr(cgfsng_ops);
 }

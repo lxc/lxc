@@ -157,9 +157,9 @@ struct cgroup_ops {
 	bool (*payload_create)(struct cgroup_ops *ops, struct lxc_handler *handler);
 	bool (*payload_enter)(struct cgroup_ops *ops, struct lxc_handler *handler);
 	const char *(*get_cgroup)(struct cgroup_ops *ops, const char *controller);
-	bool (*escape)(const struct cgroup_ops *ops, struct lxc_conf *conf);
-	int (*num_hierarchies)(struct cgroup_ops *ops);
-	bool (*get_hierarchies)(struct cgroup_ops *ops, int n, char ***out);
+	bool (*criu_escape)(const struct cgroup_ops *ops, struct lxc_conf *conf);
+	int (*criu_num_hierarchies)(struct cgroup_ops *ops);
+	bool (*criu_get_hierarchies)(struct cgroup_ops *ops, int n, char ***out);
 	int (*set)(struct cgroup_ops *ops, const char *filename,
 		   const char *value, const char *name, const char *lxcpath);
 	int (*get)(struct cgroup_ops *ops, const char *filename, char *value,
