@@ -1482,12 +1482,16 @@ __cgfsng_ops static bool cgfsng_monitor_enter(struct cgroup_ops *ops,
 		if (ret)
 			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", h->monitor_full_path);
 
+		TRACE("Moved monitor into %s cgroup via %d", h->monitor_full_path, h->cgfd_mon);
+
 		if (handler->transient_pid <= 0)
 			continue;
 
 		ret = lxc_writeat(h->cgfd_mon, "cgroup.procs", transient, transient_len);
 		if (ret)
 			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", h->monitor_full_path);
+
+		TRACE("Moved transient process into %s cgroup via %d", h->monitor_full_path, h->cgfd_mon);
 
 		/*
 		 * we don't keep the fds for non-unified hierarchies around
