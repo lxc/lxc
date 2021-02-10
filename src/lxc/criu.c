@@ -22,6 +22,7 @@
 #include "log.h"
 #include "lxc.h"
 #include "lxclock.h"
+#include "memory_utils.h"
 #include "network.h"
 #include "storage.h"
 #include "syscall_wrappers.h"
@@ -143,11 +144,28 @@ static int cmp_version(const char *v1, const char *v2)
 	return -1;
 }
 
-static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
-		      struct criu_opts *opts)
+struct criu_exec_args {
+	int argc;
+	char *argv[];
+};
+
+static void put_criu_exec_args(struct criu_exec_args *args)
 {
-	char **argv, log[PATH_MAX];
-	int static_args = 23, argc = 0, i, ret;
+	if (args) {
+		for (int i = 0; i < args->argc; i++)
+			free_disarm(args->argv[i]);
+		free_disarm(args);
+	}
+}
+
+define_cleanup_function(struct criu_exec_args *, put_criu_exec_args);
+
+static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
+		     struct criu_opts *opts)
+{
+	call_cleaner(put_criu_exec_args) struct criu_exec_args *args = NULL;
+	char log[PATH_MAX];
+	int static_args = 23, ret;
 	int netnr = 0;
 	struct lxc_list *it;
 	FILE *mnts;
@@ -163,10 +181,8 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 	 * /actual/ root cgroup so that lxcfs thinks criu has enough rights to
 	 * see all cgroups.
 	 */
-	if (!cgroup_ops->criu_escape(cgroup_ops, conf)) {
-		ERROR("failed to escape cgroups");
-		return;
-	}
+	if (!cgroup_ops->criu_escape(cgroup_ops, conf))
+		return log_error_errno(-ENOENT, ENOENT, "Failed to escape to root cgroup");
 
 	/* The command line always looks like:
 	 * criu $(action) --tcp-established --file-locks --link-remap \
@@ -212,13 +228,15 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 
 		ttys[0] = 0;
 		if (load_tty_major_minor(opts->user->directory, ttys, sizeof(ttys)))
-			return;
+			return log_error_errno(-EINVAL, EINVAL, "Failed to load tty information");
 
 		/* --inherit-fd fd[%d]:tty[%s] */
 		if (ttys[0])
 			static_args += 2;
+
+		static_args += lxc_list_len(&opts->c->lxc_conf->network) * 2;
 	} else {
-		return;
+		return log_error_errno(-EINVAL, EINVAL, "Invalid criu operation specified");
 	}
 
 	if (cgroup_ops->criu_num_hierarchies(cgroup_ops) > 0)
@@ -233,33 +251,27 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 	static_args += 2 * lxc_list_len(&opts->c->lxc_conf->mount_list);
 
 	ret = snprintf(log, PATH_MAX, "%s/%s.log", opts->user->directory, opts->action);
-	if (ret < 0 || ret >= PATH_MAX) {
-		ERROR("logfile name too long");
-		return;
-	}
+	if (ret < 0 || ret >= PATH_MAX)
+		return ret_errno(EIO);
 
-	argv = malloc(static_args * sizeof(*argv));
-	if (!argv)
-		return;
+	args = zalloc(sizeof(struct criu_exec_args) + (static_args * sizeof(char **)));
+	if (!args)
+		return log_error_errno(-ENOMEM, ENOMEM, "Failed to allocate static arguments");
 
-	memset(argv, 0, static_args * sizeof(*argv));
-
-#define DECLARE_ARG(arg) 					\
-	do {							\
-		if (arg == NULL) {				\
-			ERROR("Got NULL argument for criu");	\
-			goto err;				\
-		}						\
-		argv[argc++] = strdup(arg);			\
-		if (!argv[argc-1])				\
-			goto err;				\
+#define DECLARE_ARG(arg)                                                                 \
+	do {                                                                             \
+		if (arg == NULL)                                                         \
+			return log_error_errno(-EINVAL, EINVAL,                          \
+					       "Got NULL argument for criu");            \
+		args->argv[(args->argc)++] = strdup(arg);                                \
+		if (!args->argv[args->argc - 1])                                         \
+			return log_error_errno(-ENOMEM, ENOMEM,				 \
+					"Failed to duplicate argumen %s", arg);          \
 	} while (0)
 
-	argv[argc++] = on_path("criu", NULL);
-	if (!argv[argc-1]) {
-		ERROR("Couldn't find criu binary");
-		goto err;
-	}
+	args->argv[(args->argc)++] = on_path("criu", NULL);
+	if (!args->argv[args->argc - 1])
+		return log_error_errno(-ENOENT, ENOENT, "Failed to find criu binary");
 
 	DECLARE_ARG(opts->action);
 	DECLARE_ARG("--tcp-established");
@@ -279,65 +291,47 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 	DECLARE_ARG("-o");
 	DECLARE_ARG(log);
 
-	for (i = 0; i < cgroup_ops->criu_num_hierarchies(cgroup_ops); i++) {
-		char **controllers = NULL, *fullname;
-		char *path, *tmp;
+	for (int i = 0; i < cgroup_ops->criu_num_hierarchies(cgroup_ops); i++) {
+		__do_free char *cgroup_base_path = NULL, *controllers;
+		char **controllers_list = NULL;
+		char *tmp;
 
-		if (!cgroup_ops->criu_get_hierarchies(cgroup_ops, i, &controllers)) {
-			ERROR("failed to get hierarchy %d", i);
-			goto err;
-		}
+		if (!cgroup_ops->criu_get_hierarchies(cgroup_ops, i, &controllers_list))
+			return log_error_errno(-ENOENT, ENOENT, "Failed to retrieve cgroup hierarchies %d", i);
 
-		/* if we are in a dump, we have to ask the monitor process what
+		/*
+		 * If we are in a dump, we have to ask the monitor process what
 		 * the right cgroup is. if this is a restore, we can just use
 		 * the handler the restore task created.
 		 */
 		if (!strcmp(opts->action, "dump") || !strcmp(opts->action, "pre-dump")) {
-			path = lxc_cmd_get_limiting_cgroup_path(opts->c->name, opts->c->config_path, controllers[0]);
-			if (!path) {
-				ERROR("failed to get cgroup path for %s", controllers[0]);
-				goto err;
-			}
+			cgroup_base_path = lxc_cmd_get_limiting_cgroup_path(opts->c->name, opts->c->config_path, controllers_list[0]);
+			if (!cgroup_base_path)
+				return log_error_errno(-ENOENT, ENOENT, "Failed to retrieve limiting cgroup path for %s", controllers_list[0] ?: "(null)");
 		} else {
 			const char *p;
 
-			p = cgroup_ops->get_limiting_cgroup(cgroup_ops, controllers[0]);
-			if (!p) {
-				ERROR("failed to get cgroup path for %s", controllers[0]);
-				goto err;
-			}
+			p = cgroup_ops->get_limiting_cgroup(cgroup_ops, controllers_list[0]);
+			if (!p)
+				return log_error_errno(-ENOENT, ENOENT, "Failed to retrieve limiting cgroup path for %s", controllers_list[0] ?: "(null)");
 
-			path = strdup(p);
-			if (!path) {
-				ERROR("strdup failed");
-				goto err;
-			}
+			cgroup_base_path = strdup(p);
+			if (!cgroup_base_path)
+				return log_error_errno(-ENOMEM, ENOMEM, "Failed to duplicate limiting cgroup path");
 		}
 
-		tmp = lxc_deslashify(path);
-		if (!tmp) {
-			ERROR("Failed to remove extraneous slashes from \"%s\"",
-			      path);
-			free(path);
-			goto err;
-		}
-		free(path);
-		path = tmp;
+		tmp = lxc_deslashify(cgroup_base_path);
+		if (!tmp)
+			return log_error_errno(-ENOMEM, ENOMEM, "Failed to remove extraneous slashes from \"%s\"", tmp);
+		free_move_ptr(cgroup_base_path, tmp);
 
-		fullname = lxc_string_join(",", (const char **) controllers, false);
-		if (!fullname) {
-			ERROR("failed to join controllers");
-			free(path);
-			goto err;
-		}
+		controllers = lxc_string_join(",", (const char **)controllers_list, false);
+		if (!controllers)
+			return log_error_errno(-ENOMEM, ENOMEM, "Failed to join controllers");
 
-		ret = sprintf(buf, "%s:%s", fullname, path);
-		free(path);
-		free(fullname);
-		if (ret < 0 || ret >= sizeof(buf)) {
-			ERROR("sprintf of cgroup root arg failed");
-			goto err;
-		}
+		ret = sprintf(buf, "%s:%s", controllers, cgroup_base_path);
+		if (ret < 0 || ret >= sizeof(buf))
+			return log_error_errno(-EIO, EIO, "sprintf of cgroup root arg failed");
 
 		DECLARE_ARG("--cgroup-root");
 		DECLARE_ARG(buf);
@@ -354,7 +348,7 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 	mnts = make_anonymous_mount_file(&opts->c->lxc_conf->mount_list,
 	                                 opts->c->lxc_conf->lsm_aa_allow_nesting);
 	if (!mnts)
-		goto err;
+		return log_error_errno(-ENOENT, ENOENT, "Failed to create anonymous mount file");
 
 	while (getmntent_r(mnts, &mntent, buf, sizeof(buf))) {
 		unsigned long flags = 0;
@@ -362,7 +356,7 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		char arg[2 * PATH_MAX + 2];
 
 		if (parse_mntopts(mntent.mnt_opts, &flags, &mntdata) < 0)
-			goto err;
+			return log_error_errno(-EINVAL, EINVAL, "Failed to parse mount options");
 
 		free(mntdata);
 
@@ -378,8 +372,7 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 				       mntent.mnt_dir, mntent.mnt_fsname);
 		if (ret < 0 || ret >= sizeof(arg)) {
 			fclose(mnts);
-			ERROR("snprintf failed");
-			goto err;
+			return log_error_errno(-EIO, EIO, "Failed to create mount entry");
 		}
 
 		DECLARE_ARG("--ext-mount-map");
@@ -391,7 +384,7 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		char pid[32], *freezer_relative;
 
 		if (sprintf(pid, "%d", opts->c->init_pid(opts->c)) < 0)
-			goto err;
+			return log_error_errno(-EIO, EIO, "Failed to create init pid entry");
 
 		DECLARE_ARG("-t");
 		DECLARE_ARG(pid);
@@ -399,17 +392,15 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		freezer_relative = lxc_cmd_get_limiting_cgroup_path(opts->c->name,
 								    opts->c->config_path,
 								    "freezer");
-		if (!freezer_relative) {
-			ERROR("failed getting freezer path");
-			goto err;
-		}
+		if (!freezer_relative)
+			return log_error_errno(-ENOENT, ENOENT, "Failed getting freezer path");
 
 		if (pure_unified_layout(cgroup_ops))
 			ret = snprintf(log, sizeof(log), "/sys/fs/cgroup/%s", freezer_relative);
 		else
 			ret = snprintf(log, sizeof(log), "/sys/fs/cgroup/freezer/%s", freezer_relative);
 		if (ret < 0 || ret >= sizeof(log))
-			goto err;
+			return log_error_errno(-EIO, EIO, "Failed to freezer cgroup entry");
 
 		if (!opts->user->disable_skip_in_flight &&
 				strcmp(opts->criu_version, CRIU_IN_FLIGHT_SUPPORT) >= 0)
@@ -447,10 +438,8 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 			char ghost_limit[32];
 
 			ret = sprintf(ghost_limit, "%"PRIu64, opts->user->ghost_limit);
-			if (ret < 0 || ret >= sizeof(ghost_limit)) {
-				ERROR("failed to print ghost limit %"PRIu64, opts->user->ghost_limit);
-				goto err;
-			}
+			if (ret < 0 || ret >= sizeof(ghost_limit))
+				return log_error_errno(-EIO, EIO, "Failed to print ghost limit %"PRIu64, opts->user->ghost_limit);
 
 			DECLARE_ARG("--ghost-limit");
 			DECLARE_ARG(ghost_limit);
@@ -460,8 +449,6 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		if (strcmp(opts->action, "dump") == 0 && !opts->user->stop)
 			DECLARE_ARG("--leave-running");
 	} else if (strcmp(opts->action, "restore") == 0) {
-		void *m;
-		int additional;
 		struct lxc_conf *lxc_conf = opts->c->lxc_conf;
 
 		DECLARE_ARG("--root");
@@ -470,22 +457,20 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		DECLARE_ARG("--restore-sibling");
 
 		if (ttys[0]) {
-			if (opts->console_fd < 0) {
-				ERROR("lxc.console.path configured on source host but not target");
-				goto err;
-			}
+			if (opts->console_fd < 0)
+				return log_error_errno(-EINVAL, EINVAL, "lxc.console.path configured on source host but not target");
 
 			ret = snprintf(buf, sizeof(buf), "fd[%d]:%s", opts->console_fd, ttys);
 			if (ret < 0 || ret >= sizeof(buf))
-				goto err;
+				return log_error_errno(-EIO, EIO, "Failed to create console entry");
 
 			DECLARE_ARG("--inherit-fd");
 			DECLARE_ARG(buf);
 		}
 		if (opts->console_name) {
-			if (snprintf(buf, sizeof(buf), "console:%s", opts->console_name) < 0) {
-				SYSERROR("sprintf'd too many bytes");
-			}
+			if (snprintf(buf, sizeof(buf), "console:%s", opts->console_name) < 0)
+				return log_error_errno(-EIO, EIO, "Failed to create console entry");
+
 			DECLARE_ARG("--ext-mount-map");
 			DECLARE_ARG(buf);
 		}
@@ -496,20 +481,12 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 				ret = snprintf(buf, sizeof(buf), "apparmor:%s", lxc_conf->lsm_aa_profile);
 			else
 				ret = snprintf(buf, sizeof(buf), "selinux:%s", lxc_conf->lsm_se_context);
-
 			if (ret < 0 || ret >= sizeof(buf))
-				goto err;
+				return log_error_errno(-EIO, EIO, "Failed to create lsm entry");
 
 			DECLARE_ARG("--lsm-profile");
 			DECLARE_ARG(buf);
 		}
-
-		additional = lxc_list_len(&opts->c->lxc_conf->network) * 2;
-
-		m = realloc(argv, (argc + additional + 1) * sizeof(*argv));
-		if (!m)
-			goto err;
-		argv = m;
 
 		lxc_list_for_each(it, &opts->c->lxc_conf->network) {
 			size_t retlen;
@@ -530,11 +507,11 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 			if (n->name[0] != '\0') {
 				retlen = strlcpy(eth, n->name, sizeof(eth));
 				if (retlen >= sizeof(eth))
-					goto err;
+					return log_error_errno(-E2BIG, E2BIG, "Failed to append veth device name");
 			} else {
 				ret = snprintf(eth, sizeof(eth), "eth%d", netnr);
 				if (ret < 0 || ret >= sizeof(eth))
-					goto err;
+					return log_error_errno(-E2BIG, E2BIG, "Failed to append veth device name");
 			}
 
 			switch (n->type) {
@@ -545,44 +522,32 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 
 				if (n->link[0] != '\0') {
 					if (external_not_veth)
-						ret = snprintf(buf, sizeof(buf),
-							       "veth[%s]:%s@%s",
-							       eth, veth,
-							       n->link);
+						ret = snprintf(buf, sizeof(buf), "veth[%s]:%s@%s", eth, veth, n->link);
 					else
-						ret = snprintf(buf, sizeof(buf),
-							       "%s=%s@%s", eth,
-							       veth, n->link);
+						ret = snprintf(buf, sizeof(buf), "%s=%s@%s", eth, veth, n->link);
 				} else {
 					if (external_not_veth)
-						ret = snprintf(buf, sizeof(buf),
-							       "veth[%s]:%s",
-							       eth, veth);
+						ret = snprintf(buf, sizeof(buf), "veth[%s]:%s", eth, veth);
 					else
-						ret = snprintf(buf, sizeof(buf),
-							       "%s=%s", eth,
-							       veth);
+						ret = snprintf(buf, sizeof(buf), "%s=%s", eth, veth);
 				}
 				if (ret < 0 || ret >= sizeof(buf))
-					goto err;
+					return log_error_errno(-EIO, EIO, "Failed to append veth device name");
 				break;
 			case LXC_NET_MACVLAN:
-				if (n->link[0] == '\0') {
-					ERROR("no host interface for macvlan %s", n->name);
-					goto err;
-				}
+				if (n->link[0] == '\0')
+					return log_error_errno(-EINVAL, EINVAL, "Failed to find host interface for macvlan %s", n->name);
 
 				ret = snprintf(buf, sizeof(buf), "macvlan[%s]:%s", eth, n->link);
 				if (ret < 0 || ret >= sizeof(buf))
-					goto err;
+					return log_error_errno(-EIO, EIO, "Failed to add macvlan entry");
 				break;
 			case LXC_NET_NONE:
 			case LXC_NET_EMPTY:
 				break;
 			default:
 				/* we have screened for this earlier... */
-				ERROR("unexpected network type %d", n->type);
-				goto err;
+				return log_error_errno(-EINVAL, EINVAL, "Unsupported network type %d", n->type);
 			}
 
 			if (external_not_veth)
@@ -595,15 +560,15 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 
 	}
 
-	argv[argc] = NULL;
+	args->argv[args->argc] = NULL;
 
 	buf[0] = 0;
 	pos = 0;
 
-	for (i = 0; argv[i]; i++) {
-		ret = snprintf(buf + pos, sizeof(buf) - pos, "%s ", argv[i]);
+	for (int i = 0; args->argc; i++) {
+		ret = snprintf(buf + pos, sizeof(buf) - pos, "%s ", args->argv[i]);
 		if (ret < 0 || ret >= sizeof(buf) - pos)
-			goto err;
+			return log_error_errno(-EIO, EIO, "Failed to reorder entries");
 		else
 			pos += ret;
 	}
@@ -613,24 +578,17 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 	/* before criu inits its log, it sometimes prints things to stdout/err;
 	 * let's be sure we capture that.
 	 */
-	if (dup2(opts->pipefd, STDOUT_FILENO) < 0) {
-		SYSERROR("dup2 stdout failed");
-		goto err;
-	}
+	if (dup2(opts->pipefd, STDOUT_FILENO) < 0)
+		return log_error_errno(-errno, errno, "Failed to duplicate stdout");
 
-	if (dup2(opts->pipefd, STDERR_FILENO) < 0) {
-		SYSERROR("dup2 stderr failed");
-		goto err;
-	}
+	if (dup2(opts->pipefd, STDERR_FILENO) < 0)
+		return log_error_errno(-errno, errno, "Failed to duplicate stderr");
 
 	close(opts->pipefd);
 
 #undef DECLARE_ARG
-	execv(argv[0], argv);
-err:
-	for (i = 0; argv[i]; i++)
-		free(argv[i]);
-	free(argv);
+	execv(args->argv[0], args->argv);
+	return -ENOEXEC;
 }
 
 /*
@@ -1037,7 +995,9 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		os.console_name = c->lxc_conf->console.name;
 
 		/* exec_criu() returning is an error */
-		exec_criu(cgroup_ops, c->lxc_conf, &os);
+		ret = exec_criu(cgroup_ops, c->lxc_conf, &os);
+		if (ret)
+			SYSERROR("Failed to execute criu");
 		umount(rootfs->mount);
 		(void)rmdir(rootfs->mount);
 		goto out_fini_handler;
@@ -1262,7 +1222,9 @@ static bool do_dump(struct lxc_container *c, char *mode, struct migrate_opts *op
 		}
 
 		/* exec_criu() returning is an error */
-		exec_criu(cgroup_ops, c->lxc_conf, &os);
+		ret = exec_criu(cgroup_ops, c->lxc_conf, &os);
+		if (ret)
+			SYSERROR("Failed to execute criu");
 		free(criu_version);
 		_exit(EXIT_FAILURE);
 	} else {
