@@ -163,7 +163,7 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 	 * /actual/ root cgroup so that lxcfs thinks criu has enough rights to
 	 * see all cgroups.
 	 */
-	if (!cgroup_ops->escape(cgroup_ops, conf)) {
+	if (!cgroup_ops->criu_escape(cgroup_ops, conf)) {
 		ERROR("failed to escape cgroups");
 		return;
 	}
@@ -221,8 +221,8 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		return;
 	}
 
-	if (cgroup_ops->num_hierarchies(cgroup_ops) > 0)
-		static_args += 2 * cgroup_ops->num_hierarchies(cgroup_ops);
+	if (cgroup_ops->criu_num_hierarchies(cgroup_ops) > 0)
+		static_args += 2 * cgroup_ops->criu_num_hierarchies(cgroup_ops);
 
 	if (opts->user->verbose)
 		static_args++;
@@ -279,11 +279,11 @@ static void exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 	DECLARE_ARG("-o");
 	DECLARE_ARG(log);
 
-	for (i = 0; i < cgroup_ops->num_hierarchies(cgroup_ops); i++) {
+	for (i = 0; i < cgroup_ops->criu_num_hierarchies(cgroup_ops); i++) {
 		char **controllers = NULL, *fullname;
 		char *path, *tmp;
 
-		if (!cgroup_ops->get_hierarchies(cgroup_ops, i, &controllers)) {
+		if (!cgroup_ops->criu_get_hierarchies(cgroup_ops, i, &controllers)) {
 			ERROR("failed to get hierarchy %d", i);
 			goto err;
 		}
