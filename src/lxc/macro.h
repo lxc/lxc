@@ -644,12 +644,6 @@ enum {
 		-(__errno__);        \
 	})
 
-#define free_move_ptr(a, b)          \
-	({                           \
-		free(a);             \
-		(a) = move_ptr((b)); \
-	})
-
 /* Container's specific file/directory names */
 #define LXC_CONFIG_FNAME      "config"
 #define LXC_PARTIAL_FNAME     "partial"
