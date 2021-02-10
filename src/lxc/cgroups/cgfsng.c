@@ -1539,6 +1539,8 @@ __cgfsng_ops static bool cgfsng_payload_enter(struct cgroup_ops *ops,
 		ret = lxc_writeat(h->cgfd_con, "cgroup.procs", pidstr, len);
 		if (ret != 0)
 			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", h->container_full_path);
+
+		TRACE("Moved container into %s cgroup via %d", h->container_full_path, h->cgfd_con);
 	}
 
 	return true;
