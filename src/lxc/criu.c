@@ -164,11 +164,11 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		     struct criu_opts *opts)
 {
 	call_cleaner(put_criu_exec_args) struct criu_exec_args *args = NULL;
+	__do_fclose FILE *f_mnt = NULL;
 	char log[PATH_MAX];
 	int static_args = 23, ret;
 	int netnr = 0;
 	struct lxc_list *it;
-	FILE *mnts;
 	struct mntent mntent;
 
 	char buf[4096], ttys[32];
@@ -344,12 +344,12 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		DECLARE_ARG(opts->user->action_script);
 	}
 
-	mnts = make_anonymous_mount_file(&opts->c->lxc_conf->mount_list,
+	f_mnt = make_anonymous_mount_file(&opts->c->lxc_conf->mount_list,
 	                                 opts->c->lxc_conf->lsm_aa_allow_nesting);
-	if (!mnts)
+	if (!f_mnt)
 		return log_error_errno(-ENOENT, ENOENT, "Failed to create anonymous mount file");
 
-	while (getmntent_r(mnts, &mntent, buf, sizeof(buf))) {
+	while (getmntent_r(f_mnt, &mntent, buf, sizeof(buf))) {
 		unsigned long flags = 0;
 		char *mntdata = NULL;
 		char arg[2 * PATH_MAX + 2];
@@ -370,14 +370,12 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 			ret = snprintf(arg, sizeof(arg), "%s:%s",
 				       mntent.mnt_dir, mntent.mnt_fsname);
 		if (ret < 0 || ret >= sizeof(arg)) {
-			fclose(mnts);
 			return log_error_errno(-EIO, EIO, "Failed to create mount entry");
 		}
 
 		DECLARE_ARG("--ext-mount-map");
 		DECLARE_ARG(arg);
 	}
-	fclose(mnts);
 
 	if (strcmp(opts->action, "dump") == 0 || strcmp(opts->action, "pre-dump") == 0) {
 		char pid[32], *freezer_relative;
