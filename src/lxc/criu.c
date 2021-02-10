@@ -172,7 +172,6 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 	struct mntent mntent;
 
 	char buf[4096], ttys[32];
-	size_t pos;
 
 	/* If we are currently in a cgroup /foo/bar, and the container is in a
 	 * cgroup /lxc/foo, lxcfs will give us an ENOENT if some task in the
@@ -533,6 +532,8 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 				}
 				if (ret < 0 || ret >= sizeof(buf))
 					return log_error_errno(-EIO, EIO, "Failed to append veth device name");
+
+				TRACE("Added veth device entry %s", buf);
 				break;
 			case LXC_NET_MACVLAN:
 				if (n->link[0] == '\0')
@@ -541,6 +542,9 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 				ret = snprintf(buf, sizeof(buf), "macvlan[%s]:%s", eth, n->link);
 				if (ret < 0 || ret >= sizeof(buf))
 					return log_error_errno(-EIO, EIO, "Failed to add macvlan entry");
+
+				TRACE("Added macvlan device entry %s", buf);
+
 				break;
 			case LXC_NET_NONE:
 			case LXC_NET_EMPTY:
@@ -562,18 +566,18 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 
 	args->argv[args->argc] = NULL;
 
-	buf[0] = 0;
-	pos = 0;
+	if (lxc_log_trace()) {
+		buf[0] = 0;
+		for (int i = 0, pos = 0; i < args->argc && args->argv[i]; i++) {
+			ret = snprintf(buf + pos, sizeof(buf) - pos, "%s ", args->argv[i]);
+			if (ret < 0 || ret >= sizeof(buf) - pos)
+				return log_error_errno(-EIO, EIO, "Failed to reorder entries");
+			else
+				pos += ret;
+		}
 
-	for (int i = 0; args->argc; i++) {
-		ret = snprintf(buf + pos, sizeof(buf) - pos, "%s ", args->argv[i]);
-		if (ret < 0 || ret >= sizeof(buf) - pos)
-			return log_error_errno(-EIO, EIO, "Failed to reorder entries");
-		else
-			pos += ret;
+		TRACE("Using command line %s", buf);
 	}
-
-	INFO("execing: %s", buf);
 
 	/* before criu inits its log, it sometimes prints things to stdout/err;
 	 * let's be sure we capture that.
