@@ -887,7 +887,6 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 	struct lxc_handler *handler;
 	int status = 0;
 	int pipes[2] = {-1, -1};
-	struct cgroup_ops *cgroup_ops;
 
 	/* Try to detach from the current controlling tty if it exists.
 	 * Otherwise, lxc_init (via lxc_console) will attach the container's
@@ -909,12 +908,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 	if (lxc_init(c->name, handler) < 0)
 		goto out;
 
-	cgroup_ops = cgroup_init(c->lxc_conf);
-	if (!cgroup_ops)
-		goto out_fini_handler;
-	handler->cgroup_ops = cgroup_ops;
-
-	if (!cgroup_ops->payload_create(cgroup_ops, handler)) {
+	if (!handler->cgroup_ops->payload_create(handler->cgroup_ops, handler)) {
 		ERROR("failed creating groups");
 		goto out_fini_handler;
 	}
@@ -1004,7 +998,7 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		os.console_name = c->lxc_conf->console.name;
 
 		/* exec_criu() returning is an error */
-		ret = exec_criu(cgroup_ops, c->lxc_conf, &os);
+		ret = exec_criu(handler->cgroup_ops, c->lxc_conf, &os);
 		if (ret)
 			SYSERROR("Failed to execute criu");
 		umount(rootfs->mount);
