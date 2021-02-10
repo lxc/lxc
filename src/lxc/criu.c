@@ -373,13 +373,20 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 	}
 
 	if (strcmp(opts->action, "dump") == 0 || strcmp(opts->action, "pre-dump") == 0) {
-		char pid[32], *freezer_relative;
+		pid_t init_pid;
+		char init_pid_str[INTTYPE_TO_STRLEN(int)];
+		char *freezer_relative;
 
-		if (sprintf(pid, "%d", opts->c->init_pid(opts->c)) < 0)
-			return log_error_errno(-EIO, EIO, "Failed to create init pid entry");
+		init_pid = opts->c->init_pid(opts->c);
+		if (init_pid < 0)
+			return log_error_errno(-ESRCH, ESRCH, "Failed to retrieve init pid of container");
+
+		ret = snprintf(init_pid_str, sizeof(init_pid_str), "%d", init_pid);
+		if (ret < 0 || (size_t)ret >= sizeof(init_pid_str))
+			return log_error_errno(-EIO, EIO, "Failed to create entry for init pid of container");
 
 		DECLARE_ARG("-t");
-		DECLARE_ARG(pid);
+		DECLARE_ARG(init_pid_str);
 
 		freezer_relative = lxc_cmd_get_limiting_cgroup_path(opts->c->name,
 								    opts->c->config_path,
