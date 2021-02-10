@@ -350,28 +350,23 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		return log_error_errno(-ENOENT, ENOENT, "Failed to create anonymous mount file");
 
 	while (getmntent_r(f_mnt, &mntent, buf, sizeof(buf))) {
+		__do_free char *mnt_options = NULL;
 		unsigned long flags = 0;
-		char *mntdata = NULL;
 		char arg[2 * PATH_MAX + 2];
 
-		if (parse_mntopts(mntent.mnt_opts, &flags, &mntdata) < 0)
+		if (parse_mntopts(mntent.mnt_opts, &flags, &mnt_options) < 0)
 			return log_error_errno(-EINVAL, EINVAL, "Failed to parse mount options");
-
-		free(mntdata);
 
 		/* only add --ext-mount-map for actual bind mounts */
 		if (!(flags & MS_BIND))
 			continue;
 
 		if (strcmp(opts->action, "dump") == 0)
-			ret = snprintf(arg, sizeof(arg), "/%s:%s",
-				       mntent.mnt_dir, mntent.mnt_dir);
+			ret = snprintf(arg, sizeof(arg), "/%s:%s", mntent.mnt_dir, mntent.mnt_dir);
 		else
-			ret = snprintf(arg, sizeof(arg), "%s:%s",
-				       mntent.mnt_dir, mntent.mnt_fsname);
-		if (ret < 0 || ret >= sizeof(arg)) {
+			ret = snprintf(arg, sizeof(arg), "%s:%s", mntent.mnt_dir, mntent.mnt_fsname);
+		if (ret < 0 || ret >= sizeof(arg))
 			return log_error_errno(-EIO, EIO, "Failed to create mount entry");
-		}
 
 		DECLARE_ARG("--ext-mount-map");
 		DECLARE_ARG(arg);
