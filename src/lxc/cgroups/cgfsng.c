@@ -1483,12 +1483,16 @@ __cgfsng_ops static bool cgfsng_monitor_enter(struct cgroup_ops *ops,
 		if (ret)
 			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", h->monitor_full_path);
 
+		TRACE("Moved monitor into %s cgroup via %d", h->monitor_full_path, h->cgfd_mon);
+
 		if (handler->transient_pid <= 0)
-			return true;
+			continue;
 
 		ret = lxc_writeat(h->cgfd_mon, "cgroup.procs", transient, transient_len);
 		if (ret)
 			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", h->monitor_full_path);
+
+		TRACE("Moved transient process into %s cgroup via %d", h->monitor_full_path, h->cgfd_mon);
 
 		/*
 		 * we don't keep the fds for non-unified hierarchies around
@@ -1528,12 +1532,15 @@ __cgfsng_ops static bool cgfsng_payload_enter(struct cgroup_ops *ops,
 		struct hierarchy *h = ops->hierarchies[i];
 		int ret;
 
-		if (is_unified_hierarchy(h) && handler->clone_flags & CLONE_INTO_CGROUP)
+		if (is_unified_hierarchy(h) &&
+		    (handler->clone_flags & CLONE_INTO_CGROUP))
 			continue;
 
 		ret = lxc_writeat(h->cgfd_con, "cgroup.procs", pidstr, len);
 		if (ret != 0)
 			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", h->container_full_path);
+
+		TRACE("Moved container into %s cgroup via %d", h->container_full_path, h->cgfd_con);
 	}
 
 	return true;
