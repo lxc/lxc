@@ -83,4 +83,10 @@ static inline void *memdup(const void *data, size_t len)
 
 #define zalloc(__size__) (calloc(1, __size__))
 
+#define free_move_ptr(a, b)          \
+	({                           \
+		free(a);             \
+		(a) = move_ptr((b)); \
+	})
+
 #endif /* __LXC_MEMORY_UTILS_H */
