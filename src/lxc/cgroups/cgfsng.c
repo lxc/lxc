@@ -1484,7 +1484,7 @@ __cgfsng_ops static bool cgfsng_monitor_enter(struct cgroup_ops *ops,
 			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", h->monitor_full_path);
 
 		if (handler->transient_pid <= 0)
-			return true;
+			continue;
 
 		ret = lxc_writeat(h->cgfd_mon, "cgroup.procs", transient, transient_len);
 		if (ret)
