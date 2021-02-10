@@ -324,11 +324,16 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 			return log_error_errno(-ENOMEM, ENOMEM, "Failed to remove extraneous slashes from \"%s\"", tmp);
 		free_move_ptr(cgroup_base_path, tmp);
 
-		controllers = lxc_string_join(",", (const char **)controllers_list, false);
-		if (!controllers)
-			return log_error_errno(-ENOMEM, ENOMEM, "Failed to join controllers");
+		if (controllers_list[0]) {
+			controllers = lxc_string_join(",", (const char **)controllers_list, false);
+			if (!controllers)
+				return log_error_errno(-ENOMEM, ENOMEM, "Failed to join controllers");
 
-		ret = sprintf(buf, "%s:%s", controllers, cgroup_base_path);
+			ret = sprintf(buf, "%s:%s", controllers, cgroup_base_path);
+		} else {
+			WARN("No cgroup controllers configured in container's cgroup %s", cgroup_base_path);
+			ret = sprintf(buf, "%s", cgroup_base_path);
+		}
 		if (ret < 0 || ret >= sizeof(buf))
 			return log_error_errno(-EIO, EIO, "sprintf of cgroup root arg failed");
 
