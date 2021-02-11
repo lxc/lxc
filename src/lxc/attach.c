@@ -116,8 +116,8 @@ static pid_t pidfd_get_pid(int dfd_init_pid, int pidfd)
 	if (dfd_init_pid < 0 || pidfd < 0)
 		return ret_errno(EBADF);
 
-	ret = snprintf(path + STRLITERALLEN("fdinfo/"), INTTYPE_TO_STRLEN(int), "%d", pidfd);
-	if (ret < 0 || ret > (size_t)INTTYPE_TO_STRLEN(int))
+	ret = strnprintf(path + STRLITERALLEN("fdinfo/"), INTTYPE_TO_STRLEN(int), "%d", pidfd);
+	if (ret < 0)
 		return ret_errno(EIO);
 
 	f = fdopen_at(dfd_init_pid, path, "re", PROTECT_OPEN, PROTECT_LOOKUP_BENEATH);
@@ -403,8 +403,8 @@ static int get_attach_context(struct attach_context *ctx,
 	if (ctx->init_pid < 0)
 		return log_error(-1, "Failed to get init pid");
 
-	ret = snprintf(path, sizeof(path), "/proc/%d", ctx->init_pid);
-	if (ret < 0 || ret >= sizeof(path))
+	ret = strnprintf(path, sizeof(path), "/proc/%d", ctx->init_pid);
+	if (ret < 0)
 		return ret_errno(EIO);
 
 	ctx->dfd_init_pid = open_at(-EBADF, path,
@@ -947,8 +947,8 @@ static char *lxc_attach_getpwshell(uid_t uid)
 		}
 
 		/* Finish argument list. */
-		ret = snprintf(uid_buf, sizeof(uid_buf), "%ld", (long)uid);
-		if (ret <= 0 || ret >= sizeof(uid_buf))
+		ret = strnprintf(uid_buf, sizeof(uid_buf), "%ld", (long)uid);
+		if (ret <= 0)
 			_exit(EXIT_FAILURE);
 
 		/* Try to run getent program. */
