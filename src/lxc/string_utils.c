@@ -276,9 +276,9 @@ char *lxc_deslashify(const char *path)
 
 char *lxc_append_paths(const char *first, const char *second)
 {
+	__do_free char *result = NULL;
 	int ret;
 	size_t len;
-	char *result = NULL;
 	int pattern_type = 0;
 
 	len = strlen(first) + strlen(second) + 1;
@@ -287,20 +287,18 @@ char *lxc_append_paths(const char *first, const char *second)
 		pattern_type = 1;
 	}
 
-	result = calloc(1, len);
+	result = zalloc(len);
 	if (!result)
 		return NULL;
 
 	if (pattern_type == 0)
-		ret = snprintf(result, len, "%s%s", first, second);
+		ret = strnprintf(result, len, "%s%s", first, second);
 	else
-		ret = snprintf(result, len, "%s/%s", first, second);
-	if (ret < 0 || (size_t)ret >= len) {
-		free(result);
+		ret = strnprintf(result, len, "%s/%s", first, second);
+	if (ret < 0)
 		return NULL;
-	}
 
-	return result;
+	return move_ptr(result);
 }
 
 bool lxc_string_in_list(const char *needle, const char *haystack, char _sep)
