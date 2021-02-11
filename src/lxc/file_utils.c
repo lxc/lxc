@@ -725,3 +725,26 @@ char *read_file_at(int dfd, const char *fnam,
 
 	return move_ptr(buf);
 }
+
+bool same_file_lax(int fda, int fdb)
+{
+	struct stat st_fda, st_fdb;
+
+
+        if (fda == fdb)
+                return true;
+
+        if (fstat(fda, &st_fda) < 0)
+                return false;
+
+        if (fstat(fdb, &st_fdb) < 0)
+                return false;
+
+	errno = EINVAL;
+	if ((st_fda.st_mode & S_IFMT) != (st_fdb.st_mode & S_IFMT))
+		return false;
+
+	errno = EINVAL;
+	return (st_fda.st_dev == st_fdb.st_dev) &&
+	       (st_fda.st_ino == st_fdb.st_ino);
+}
