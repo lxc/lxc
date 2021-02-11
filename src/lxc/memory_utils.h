@@ -89,4 +89,10 @@ static inline void *memdup(const void *data, size_t len)
 		(a) = move_ptr((b)); \
 	})
 
+#define close_move_fd(a, b)         \
+	({                          \
+		close(a);           \
+		(a) = move_fd((b)); \
+	})
+
 #endif /* __LXC_MEMORY_UTILS_H */
