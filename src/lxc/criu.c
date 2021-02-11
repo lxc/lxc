@@ -83,8 +83,8 @@ static int load_tty_major_minor(char *directory, char *output, int len)
 	char path[PATH_MAX];
 	ssize_t ret;
 
-	ret = snprintf(path, sizeof(path), "%s/tty.info", directory);
-	if (ret < 0 || (size_t)ret >= sizeof(path))
+	ret = strnprintf(path, sizeof(path), "%s/tty.info", directory);
+	if (ret < 0)
 		return ret_errno(EIO);
 
 	ret = lxc_read_from_file(path, output, len);
@@ -249,8 +249,8 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 
 	static_args += 2 * lxc_list_len(&opts->c->lxc_conf->mount_list);
 
-	ret = snprintf(log, PATH_MAX, "%s/%s.log", opts->user->directory, opts->action);
-	if (ret < 0 || ret >= PATH_MAX)
+	ret = strnprintf(log, sizeof(log), "%s/%s.log", opts->user->directory, opts->action);
+	if (ret < 0)
 		return ret_errno(EIO);
 
 	args = zalloc(sizeof(struct criu_exec_args) + (static_args * sizeof(char **)));
@@ -367,10 +367,10 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 			continue;
 
 		if (strcmp(opts->action, "dump") == 0)
-			ret = snprintf(arg, sizeof(arg), "/%s:%s", mntent.mnt_dir, mntent.mnt_dir);
+			ret = strnprintf(arg, sizeof(arg), "/%s:%s", mntent.mnt_dir, mntent.mnt_dir);
 		else
-			ret = snprintf(arg, sizeof(arg), "%s:%s", mntent.mnt_dir, mntent.mnt_fsname);
-		if (ret < 0 || ret >= sizeof(arg))
+			ret = strnprintf(arg, sizeof(arg), "%s:%s", mntent.mnt_dir, mntent.mnt_fsname);
+		if (ret < 0)
 			return log_error_errno(-EIO, EIO, "Failed to create mount entry");
 
 		DECLARE_ARG("--ext-mount-map");
@@ -386,8 +386,8 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		if (init_pid < 0)
 			return log_error_errno(-ESRCH, ESRCH, "Failed to retrieve init pid of container");
 
-		ret = snprintf(init_pid_str, sizeof(init_pid_str), "%d", init_pid);
-		if (ret < 0 || (size_t)ret >= sizeof(init_pid_str))
+		ret = strnprintf(init_pid_str, sizeof(init_pid_str), "%d", init_pid);
+		if (ret < 0)
 			return log_error_errno(-EIO, EIO, "Failed to create entry for init pid of container");
 
 		DECLARE_ARG("-t");
@@ -400,10 +400,10 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 			return log_error_errno(-ENOENT, ENOENT, "Failed getting freezer path");
 
 		if (pure_unified_layout(cgroup_ops))
-			ret = snprintf(log, sizeof(log), "/sys/fs/cgroup/%s", freezer_relative);
+			ret = strnprintf(log, sizeof(log), "/sys/fs/cgroup/%s", freezer_relative);
 		else
-			ret = snprintf(log, sizeof(log), "/sys/fs/cgroup/freezer/%s", freezer_relative);
-		if (ret < 0 || ret >= sizeof(log))
+			ret = strnprintf(log, sizeof(log), "/sys/fs/cgroup/freezer/%s", freezer_relative);
+		if (ret < 0)
 			return log_error_errno(-EIO, EIO, "Failed to freezer cgroup entry");
 
 		if (!opts->user->disable_skip_in_flight &&
@@ -464,15 +464,15 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 			if (opts->console_fd < 0)
 				return log_error_errno(-EINVAL, EINVAL, "lxc.console.path configured on source host but not target");
 
-			ret = snprintf(buf, sizeof(buf), "fd[%d]:%s", opts->console_fd, ttys);
-			if (ret < 0 || ret >= sizeof(buf))
+			ret = strnprintf(buf, sizeof(buf), "fd[%d]:%s", opts->console_fd, ttys);
+			if (ret < 0)
 				return log_error_errno(-EIO, EIO, "Failed to create console entry");
 
 			DECLARE_ARG("--inherit-fd");
 			DECLARE_ARG(buf);
 		}
 		if (opts->console_name) {
-			if (snprintf(buf, sizeof(buf), "console:%s", opts->console_name) < 0)
+			if (strnprintf(buf, sizeof(buf), "console:%s", opts->console_name) < 0)
 				return log_error_errno(-EIO, EIO, "Failed to create console entry");
 
 			DECLARE_ARG("--ext-mount-map");
@@ -482,10 +482,10 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		if (lxc_conf->lsm_aa_profile || lxc_conf->lsm_se_context) {
 
 			if (lxc_conf->lsm_aa_profile)
-				ret = snprintf(buf, sizeof(buf), "apparmor:%s", lxc_conf->lsm_aa_profile);
+				ret = strnprintf(buf, sizeof(buf), "apparmor:%s", lxc_conf->lsm_aa_profile);
 			else
-				ret = snprintf(buf, sizeof(buf), "selinux:%s", lxc_conf->lsm_se_context);
-			if (ret < 0 || ret >= sizeof(buf))
+				ret = strnprintf(buf, sizeof(buf), "selinux:%s", lxc_conf->lsm_se_context);
+			if (ret < 0)
 				return log_error_errno(-EIO, EIO, "Failed to create lsm entry");
 
 			DECLARE_ARG("--lsm-profile");
@@ -513,8 +513,8 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 				if (retlen >= sizeof(eth))
 					return log_error_errno(-E2BIG, E2BIG, "Failed to append veth device name");
 			} else {
-				ret = snprintf(eth, sizeof(eth), "eth%d", netnr);
-				if (ret < 0 || ret >= sizeof(eth))
+				ret = strnprintf(eth, sizeof(eth), "eth%d", netnr);
+				if (ret < 0)
 					return log_error_errno(-E2BIG, E2BIG, "Failed to append veth device name");
 			}
 
@@ -526,16 +526,16 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 
 				if (n->link[0] != '\0') {
 					if (external_not_veth)
-						ret = snprintf(buf, sizeof(buf), "veth[%s]:%s@%s", eth, veth, n->link);
+						ret = strnprintf(buf, sizeof(buf), "veth[%s]:%s@%s", eth, veth, n->link);
 					else
-						ret = snprintf(buf, sizeof(buf), "%s=%s@%s", eth, veth, n->link);
+						ret = strnprintf(buf, sizeof(buf), "%s=%s@%s", eth, veth, n->link);
 				} else {
 					if (external_not_veth)
-						ret = snprintf(buf, sizeof(buf), "veth[%s]:%s", eth, veth);
+						ret = strnprintf(buf, sizeof(buf), "veth[%s]:%s", eth, veth);
 					else
-						ret = snprintf(buf, sizeof(buf), "%s=%s", eth, veth);
+						ret = strnprintf(buf, sizeof(buf), "%s=%s", eth, veth);
 				}
-				if (ret < 0 || ret >= sizeof(buf))
+				if (ret < 0)
 					return log_error_errno(-EIO, EIO, "Failed to append veth device name");
 
 				TRACE("Added veth device entry %s", buf);
@@ -544,8 +544,8 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 				if (n->link[0] == '\0')
 					return log_error_errno(-EINVAL, EINVAL, "Failed to find host interface for macvlan %s", n->name);
 
-				ret = snprintf(buf, sizeof(buf), "macvlan[%s]:%s", eth, n->link);
-				if (ret < 0 || ret >= sizeof(buf))
+				ret = strnprintf(buf, sizeof(buf), "macvlan[%s]:%s", eth, n->link);
+				if (ret < 0)
 					return log_error_errno(-EIO, EIO, "Failed to add macvlan entry");
 
 				TRACE("Added macvlan device entry %s", buf);
@@ -574,8 +574,8 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 	if (lxc_log_trace()) {
 		buf[0] = 0;
 		for (int i = 0, pos = 0; i < args->argc && args->argv[i]; i++) {
-			ret = snprintf(buf + pos, sizeof(buf) - pos, "%s ", args->argv[i]);
-			if (ret < 0 || ret >= sizeof(buf) - pos)
+			ret = strnprintf(buf + pos, sizeof(buf) - pos, "%s ", args->argv[i]);
+			if (ret < 0)
 				return log_error_errno(-EIO, EIO, "Failed to reorder entries");
 			else
 				pos += ret;
@@ -857,8 +857,8 @@ static bool restore_net_info(struct lxc_container *c)
 		if (netdev->type != LXC_NET_VETH)
 			continue;
 
-		ret = snprintf(template, sizeof(template), "vethXXXXXX");
-		if (ret < 0 || ret >= sizeof(template))
+		ret = strnprintf(template, sizeof(template), "vethXXXXXX");
+		if (ret < 0)
 			goto out_unlock;
 
 		if (netdev->priv.veth_attr.pair[0] == '\0' &&
@@ -1052,9 +1052,9 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 				ERROR("criu process exited %d, output:\n%s", WEXITSTATUS(status), buf);
 				goto out_fini_handler;
 			} else {
-				ret = snprintf(buf, sizeof(buf), "/proc/self/task/%lu/children", (unsigned long)syscall(__NR_gettid));
-				if (ret < 0 || ret >= sizeof(buf)) {
-					ERROR("snprintf'd too many characters: %d", ret);
+				ret = strnprintf(buf, sizeof(buf), "/proc/self/task/%lu/children", (unsigned long)syscall(__NR_gettid));
+				if (ret < 0) {
+					ERROR("strnprintf'd too many characters: %d", ret);
 					goto out_fini_handler;
 				}
 
@@ -1097,8 +1097,8 @@ static void do_restore(struct lxc_container *c, int status_pipe, struct migrate_
 		 * fail because it's just a beauty thing. We just
 		 * assign the return here to silence potential.
 		 */
-		ret = snprintf(title, sizeof(title), "[lxc monitor] %s %s", c->config_path, c->name);
-		if (ret < 0 || (size_t)ret >= sizeof(title))
+		ret = strnprintf(title, sizeof(title), "[lxc monitor] %s %s", c->config_path, c->name);
+		if (ret < 0)
 			INFO("Setting truncated process name");
 
 		ret = setproctitle(title);
@@ -1149,9 +1149,9 @@ static int save_tty_major_minor(char *directory, struct lxc_container *c, char *
 		return 0;
 	}
 
-	ret = snprintf(path, sizeof(path), "/proc/%d/root/dev/console", c->init_pid(c));
-	if (ret < 0 || ret >= sizeof(path)) {
-		ERROR("snprintf'd too many characters: %d", ret);
+	ret = strnprintf(path, sizeof(path), "/proc/%d/root/dev/console", c->init_pid(c));
+	if (ret < 0) {
+		ERROR("strnprintf'd too many characters: %d", ret);
 		return -1;
 	}
 
@@ -1161,17 +1161,17 @@ static int save_tty_major_minor(char *directory, struct lxc_container *c, char *
 		return -1;
 	}
 
-	ret = snprintf(path, sizeof(path), "%s/tty.info", directory);
-	if (ret < 0 || ret >= sizeof(path)) {
-		ERROR("snprintf'd too many characters: %d", ret);
+	ret = strnprintf(path, sizeof(path), "%s/tty.info", directory);
+	if (ret < 0) {
+		ERROR("strnprintf'd too many characters: %d", ret);
 		return -1;
 	}
 
-	ret = snprintf(tty_id, len, "tty[%llx:%llx]",
+	ret = strnprintf(tty_id, len, "tty[%llx:%llx]",
 					(long long unsigned) sb.st_rdev,
 					(long long unsigned) sb.st_dev);
-	if (ret < 0 || ret >= sizeof(path)) {
-		ERROR("snprintf'd too many characters: %d", ret);
+	if (ret < 0) {
+		ERROR("strnprintf'd too many characters: %d", ret);
 		return -1;
 	}
 
@@ -1313,8 +1313,8 @@ bool __criu_dump(struct lxc_container *c, struct migrate_opts *opts)
 	char path[PATH_MAX];
 	int ret;
 
-	ret = snprintf(path, sizeof(path), "%s/inventory.img", opts->directory);
-	if (ret < 0 || ret >= sizeof(path))
+	ret = strnprintf(path, sizeof(path), "%s/inventory.img", opts->directory);
+	if (ret < 0)
 		return false;
 
 	if (access(path, F_OK) == 0) {
