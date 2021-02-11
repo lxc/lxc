@@ -2574,8 +2574,8 @@ static int do_includedir(const char *dirp, struct lxc_conf *lxc_conf)
 		if (len < 6 || strncmp(fnam + len - 5, ".conf", 5) != 0)
 			continue;
 
-		len = snprintf(path, PATH_MAX, "%s/%s", dirp, fnam);
-		if (len < 0 || len >= PATH_MAX)
+		len = strnprintf(path, sizeof(path), "%s/%s", dirp, fnam);
+		if (len < 0)
 			return ret_errno(EIO);
 
 		ret = lxc_config_read(path, lxc_conf, true);
@@ -3161,10 +3161,10 @@ bool do_append_unexp_config_line(struct lxc_conf *conf, const char *key,
 	tmp = must_realloc(NULL, len);
 
 	if (lxc_config_value_empty(v))
-		ret = snprintf(tmp, len, "%s =", key);
+		ret = strnprintf(tmp, len, "%s =", key);
 	else
-		ret = snprintf(tmp, len, "%s = %s", key, v);
-	if (ret < 0 || ret >= len)
+		ret = strnprintf(tmp, len, "%s = %s", key, v);
+	if (ret < 0)
 		return false;
 
 	/* Save the line verbatim into unexpanded_conf */
@@ -3229,16 +3229,14 @@ bool clone_update_unexp_ovl_paths(struct lxc_conf *conf, const char *oldpath,
 
 	olddirlen = strlen(ovldir) + strlen(oldpath) + strlen(oldname) + 2;
 	olddir = must_realloc(NULL, olddirlen + 1);
-	ret = snprintf(olddir, olddirlen + 1, "%s=%s/%s", ovldir, oldpath,
-		       oldname);
-	if (ret < 0 || ret >= olddirlen + 1)
+	ret = strnprintf(olddir, olddirlen + 1, "%s=%s/%s", ovldir, oldpath, oldname);
+	if (ret < 0)
 		return false;
 
 	newdirlen = strlen(ovldir) + strlen(newpath) + strlen(newname) + 2;
 	newdir = must_realloc(NULL, newdirlen + 1);
-	ret = snprintf(newdir, newdirlen + 1, "%s=%s/%s", ovldir, newpath,
-		       newname);
-	if (ret < 0 || ret >= newdirlen + 1)
+	ret = strnprintf(newdir, newdirlen + 1, "%s=%s/%s", ovldir, newpath, newname);
+	if (ret < 0)
 		return false;
 
 	if (!conf->unexpanded_config)
@@ -3338,14 +3336,14 @@ bool clone_update_unexp_hooks(struct lxc_conf *conf, const char *oldpath,
 
 	olddirlen = strlen(oldpath) + strlen(oldname) + 1;
 	olddir = must_realloc(NULL, olddirlen + 1);
-	ret = snprintf(olddir, olddirlen + 1, "%s/%s", oldpath, oldname);
-	if (ret < 0 || ret >= olddirlen + 1)
+	ret = strnprintf(olddir, olddirlen + 1, "%s/%s", oldpath, oldname);
+	if (ret < 0)
 		return false;
 
 	newdirlen = strlen(newpath) + strlen(newname) + 1;
 	newdir = must_realloc(NULL, newdirlen + 1);
-	ret = snprintf(newdir, newdirlen + 1, "%s/%s", newpath, newname);
-	if (ret < 0 || ret >= newdirlen + 1)
+	ret = strnprintf(newdir, newdirlen + 1, "%s/%s", newpath, newname);
+	if (ret < 0)
 		return false;
 
 	if (!conf->unexpanded_config)
@@ -3877,10 +3875,10 @@ static int get_config_idmaps(const char *key, char *retv, int inlen,
 	listlen = lxc_list_len(&c->id_map);
 	lxc_list_for_each(it, &c->id_map) {
 		struct id_map *map = it->elem;
-		ret = snprintf(buf, __LXC_IDMAP_STR_BUF, "%c %lu %lu %lu",
-			       (map->idtype == ID_TYPE_UID) ? 'u' : 'g',
-			       map->nsid, map->hostid, map->range);
-		if (ret < 0 || ret >= __LXC_IDMAP_STR_BUF)
+		ret = strnprintf(buf, sizeof(buf), "%c %lu %lu %lu",
+				 (map->idtype == ID_TYPE_UID) ? 'u' : 'g',
+				 map->nsid, map->hostid, map->range);
+		if (ret < 0)
 			return ret_errno(EIO);
 
 		strprint(retv, inlen, "%s%s", buf, (listlen-- > 1) ? "\n" : "");
