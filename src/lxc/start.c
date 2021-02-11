@@ -183,8 +183,8 @@ static bool match_dlog_fds(struct dirent *direntp)
 	ssize_t linklen;
 	int ret;
 
-	ret = snprintf(path, PATH_MAX, "/proc/self/fd/%s", direntp->d_name);
-	if (ret < 0 || ret >= PATH_MAX)
+	ret = strnprintf(path, sizeof(path), "/proc/self/fd/%s", direntp->d_name);
+	if (ret < 0)
 		return log_error(false, "Failed to create file descriptor name");
 
 	linklen = readlink(path, link, PATH_MAX);
@@ -1147,9 +1147,9 @@ static int do_start(void *data)
 	if (handler->daemonize && !handler->conf->autodev) {
 		char path[PATH_MAX];
 
-		ret = snprintf(path, sizeof(path), "%s/dev/null",
-			       handler->conf->rootfs.mount);
-		if (ret < 0 || ret >= sizeof(path))
+		ret = strnprintf(path, sizeof(path), "%s/dev/null",
+				 handler->conf->rootfs.mount);
+		if (ret < 0)
 			goto out_warn_father;
 
 		ret = access(path, F_OK);
@@ -1749,8 +1749,8 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (!lxc_can_use_pidfd(handler->pidfd))
 		close_prot_errno_disarm(handler->pidfd);
 
-	ret = snprintf(pidstr, 20, "%d", handler->pid);
-	if (ret < 0 || ret >= 20)
+	ret = strnprintf(pidstr, 20, "%d", handler->pid);
+	if (ret < 0)
 		goto out_delete_net;
 
 	ret = setenv("LXC_PID", pidstr, 1);
@@ -2200,8 +2200,8 @@ static void lxc_destroy_container_on_signal(struct lxc_handler *handler,
 	}
 	INFO("Destroyed rootfs for container \"%s\"", name);
 
-	ret = snprintf(destroy, PATH_MAX, "%s/%s", handler->lxcpath, name);
-	if (ret < 0 || ret >= PATH_MAX) {
+	ret = strnprintf(destroy, sizeof(destroy), "%s/%s", handler->lxcpath, name);
+	if (ret < 0) {
 		ERROR("Error destroying directory for container \"%s\"", name);
 		return;
 	}
