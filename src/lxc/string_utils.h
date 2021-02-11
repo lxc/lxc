@@ -161,4 +161,15 @@ static inline const char *proc_self_fd(int fd)
 	return buf;
 }
 
+static inline const char *fdstr(int fd)
+{
+	static const char *fdstr_invalid = "-EBADF";
+	static char buf[INTTYPE_TO_STRLEN(int)];
+
+	if (strnprintf(buf, sizeof(buf), "%d", fd) < 0)
+		return fdstr_invalid;
+
+	return buf;
+}
+
 #endif /* __LXC_STRING_UTILS_H */
