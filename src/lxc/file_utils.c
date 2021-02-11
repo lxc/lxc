@@ -617,8 +617,8 @@ int timens_offset_write(clockid_t clk_id, int64_t s_offset, int64_t ns_offset)
 	if (fd < 0)
 		return -errno;
 
-	len = snprintf(buf, sizeof(buf), "%d %" PRId64 " %" PRId64, clk_id, s_offset, ns_offset);
-	if (len < 0 || len >= sizeof(buf))
+	len = strnprintf(buf, sizeof(buf), "%d %" PRId64 " %" PRId64, clk_id, s_offset, ns_offset);
+	if (len < 0)
 		return ret_errno(EFBIG);
 
 	ret = lxc_write_nointr(fd, buf, len);
