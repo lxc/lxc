@@ -266,8 +266,8 @@ static char *lxc_cpumask_to_cpulist(uint32_t *bitarr, size_t nbits)
 		if (!is_set(i, bitarr))
 			continue;
 
-		ret = snprintf(numstr, sizeof(numstr), "%zu", i);
-		if (ret < 0 || (size_t)ret >= sizeof(numstr))
+		ret = strnprintf(numstr, sizeof(numstr), "%zu", i);
+		if (ret < 0)
 			return NULL;
 
 		ret = lxc_append_string(&cpulist, numstr);
@@ -1053,8 +1053,8 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 	}
 	conf = handler->conf;
 
-	len = snprintf(pidstr, sizeof(pidstr), "%d", handler->monitor_pid);
-	if (len < 0 || (size_t)len >= sizeof(pidstr))
+	len = strnprintf(pidstr, sizeof(pidstr), "%d", handler->monitor_pid);
+	if (len < 0)
 		return;
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
@@ -1471,9 +1471,15 @@ __cgfsng_ops static bool cgfsng_monitor_enter(struct cgroup_ops *ops,
 	if (!handler || !handler->conf)
 		return ret_set_errno(false, EINVAL);
 
-	monitor_len = snprintf(monitor, sizeof(monitor), "%d", handler->monitor_pid);
-	if (handler->transient_pid > 0)
-		transient_len = snprintf(transient, sizeof(transient), "%d", handler->transient_pid);
+	monitor_len = strnprintf(monitor, sizeof(monitor), "%d", handler->monitor_pid);
+	if (monitor_len < 0)
+		return false;
+
+	if (handler->transient_pid > 0) {
+		transient_len = strnprintf(transient, sizeof(transient), "%d", handler->transient_pid);
+		if (transient_len < 0)
+			return false;
+	}
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
 		struct hierarchy *h = ops->hierarchies[i];
@@ -1526,7 +1532,9 @@ __cgfsng_ops static bool cgfsng_payload_enter(struct cgroup_ops *ops,
 	if (!handler || !handler->conf)
 		return ret_set_errno(false, EINVAL);
 
-	len = snprintf(pidstr, sizeof(pidstr), "%d", handler->pid);
+	len = strnprintf(pidstr, sizeof(pidstr), "%d", handler->pid);
+	if (len < 0)
+		return false;
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
 		struct hierarchy *h = ops->hierarchies[i];
@@ -2283,9 +2291,9 @@ static int cgroup_attach_leaf(const struct lxc_conf *conf, int unified_fd, pid_t
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-errno, errno, "Failed to create leaf cgroup \".lxc\"");
 
-	pidstr_len = snprintf(pidstr, sizeof(pidstr), INT64_FMT, (int64_t)pid);
-	if (pidstr_len < 0 || (size_t)pidstr_len >= sizeof(pidstr))
-		return ret_errno(EIO);
+	pidstr_len = strnprintf(pidstr, sizeof(pidstr), INT64_FMT, (int64_t)pid);
+	if (pidstr_len < 0)
+		return pidstr_len;
 
 	ret = lxc_writeat(unified_fd, ".lxc/cgroup.procs", pidstr, pidstr_len);
 	if (ret < 0)
@@ -2302,9 +2310,9 @@ static int cgroup_attach_leaf(const struct lxc_conf *conf, int unified_fd, pid_t
 		char attach_cgroup[STRLITERALLEN(".lxc-/cgroup.procs") + INTTYPE_TO_STRLEN(int) + 1];
 		char *slash = attach_cgroup;
 
-		ret = snprintf(attach_cgroup, sizeof(attach_cgroup), ".lxc-%d/cgroup.procs", idx);
-		if (ret < 0 || (size_t)ret >= sizeof(attach_cgroup))
-			return ret_errno(EIO);
+		ret = strnprintf(attach_cgroup, sizeof(attach_cgroup), ".lxc-%d/cgroup.procs", idx);
+		if (ret < 0)
+			return ret;
 
 		/*
 		 * This shouldn't really happen but the compiler might complain
@@ -2510,8 +2518,8 @@ __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops,
 	if (!ops->hierarchies)
 		return true;
 
-	len = snprintf(pidstr, sizeof(pidstr), "%d", pid);
-	if (len < 0 || (size_t)len >= sizeof(pidstr))
+	len = strnprintf(pidstr, sizeof(pidstr), "%d", pid);
+	if (len < 0)
 		return false;
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
@@ -2827,11 +2835,13 @@ static int convert_devpath(const char *invalue, char *dest)
 	if (ret < 0)
 		return -1;
 
-	ret = snprintf(dest, 50, "%c %d:%d %s", device.type, device.major,
-		       device.minor, device.access);
-	if (ret < 0 || ret >= 50)
-		return log_error_errno(-1, ENAMETOOLONG, "Error on configuration value \"%c %d:%d %s\" (max 50 chars)",
-				       device.type, device.major, device.minor, device.access);
+	ret = strnprintf(dest, 50, "%c %d:%d %s", device.type, device.major,
+			 device.minor, device.access);
+	if (ret < 0)
+		return log_error_errno(ret, -ret,
+				       "Error on configuration value \"%c %d:%d %s\" (max 50 chars)",
+				       device.type, device.major, device.minor,
+				       device.access);
 
 	return 0;
 }
