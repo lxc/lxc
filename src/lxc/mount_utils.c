@@ -138,8 +138,8 @@ static int __fs_prepare(const char *fs_name, int fd_from)
 	 * only use fds for mount.
 	 */
 	if (fd_from >= 0) {
-		ret = snprintf(source, sizeof(source), "/proc/self/fd/%d", fd_from);
-		if (ret < 0 || ret >= sizeof(source))
+		ret = strnprintf(source, sizeof(source), "/proc/self/fd/%d", fd_from);
+		if (ret < 0)
 			return log_error_errno(-EIO, EIO, "Failed to create /proc/self/fd/%d", fd_from);
 	}
 
