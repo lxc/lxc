@@ -1800,7 +1800,7 @@ static int __cg_mount_direct(int type, struct hierarchy *h,
 		fstype = "cgroup";
 	}
 
-	if (new_mount_api()) {
+	if (can_use_mount_api()) {
 		fd_fs = fs_prepare(fstype, -EBADF, "", 0, 0);
 		if (fd_fs < 0)
 			return log_error_errno(-errno, errno, "Failed to prepare filesystem context for %s", fstype);
@@ -1946,7 +1946,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	 * relying on RESOLVE_BENEATH so we need to skip the leading "/" in the
 	 * DEFAULT_CGROUP_MOUNTPOINT define.
 	 */
-	if (new_mount_api()) {
+	if (can_use_mount_api()) {
 		fd_fs = fs_prepare("tmpfs", -EBADF, "", 0, 0);
 		if (fd_fs < 0)
 			return log_error_errno(-errno, errno, "Failed to create new filesystem context for tmpfs");
