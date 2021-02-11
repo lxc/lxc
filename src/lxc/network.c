@@ -231,10 +231,10 @@ static int lxc_is_ip_forwarding_enabled(const char *ifname, int family)
 	if (family != AF_INET && family != AF_INET6)
 		return ret_set_errno(-1, EINVAL);
 
-	ret = snprintf(path, sizeof(path), "/proc/sys/net/%s/conf/%s/%s",
-		       family == AF_INET ? "ipv4" : "ipv6", ifname,
-		       "forwarding");
-	if (ret < 0 || (size_t)ret >= sizeof(path))
+	ret = strnprintf(path, sizeof(path), "/proc/sys/net/%s/conf/%s/%s",
+			 family == AF_INET ? "ipv4" : "ipv6", ifname,
+			 "forwarding");
+	if (ret < 0)
 		return ret_set_errno(-1, E2BIG);
 
 	return lxc_read_file_expect(path, buf, 1, "1");
@@ -359,8 +359,8 @@ static int setup_veth_native_bridge_vlan(char *veth1, struct lxc_netdev *netdev)
 		return 0;
 
 	/* Check vlan filtering is enabled on parent bridge. */
-	rc = snprintf(path, sizeof(path), "/sys/class/net/%s/bridge/vlan_filtering", netdev->link);
-	if (rc < 0 || (size_t)rc >= sizeof(path))
+	rc = strnprintf(path, sizeof(path), "/sys/class/net/%s/bridge/vlan_filtering", netdev->link);
+	if (rc < 0)
 		return -1;
 
 	rc = lxc_read_from_file(path, buf, sizeof(buf));
@@ -382,8 +382,8 @@ static int setup_veth_native_bridge_vlan(char *veth1, struct lxc_netdev *netdev)
 		unsigned short default_pvid;
 
 		/* Get the bridge's default VLAN PVID. */
-		rc = snprintf(path, sizeof(path), "/sys/class/net/%s/bridge/default_pvid", netdev->link);
-		if (rc < 0 || (size_t)rc >= sizeof(path))
+		rc = strnprintf(path, sizeof(path), "/sys/class/net/%s/bridge/default_pvid", netdev->link);
+		if (rc < 0)
 			return -1;
 
 		rc = lxc_read_from_file(path, buf, sizeof(buf));
@@ -443,8 +443,8 @@ static int lxc_ovs_setup_bridge_vlan_exec(void *data)
 		char buf[5];
 		int rc;
 
-		rc = snprintf(buf, sizeof(buf), "%u", args->vlan_id);
-		if (rc < 0 || (size_t)rc >= sizeof(buf))
+		rc = strnprintf(buf, sizeof(buf), "%u", args->vlan_id);
+		if (rc < 0)
 			return log_error_errno(-1, EINVAL, "Failed to parse ovs bridge vlan \"%d\"", args->vlan_id);
 
 		tag = must_concat(NULL, "tag=", buf, (char *)NULL);
@@ -509,8 +509,8 @@ static int setup_veth_ovs_bridge_vlan(char *veth1, struct lxc_netdev *netdev)
 			char buf[5]; /* Sufficient size to fit max VLAN ID (4094) null char. */
 			int rc;
 
-			rc = snprintf(buf, sizeof(buf), "%u", vlan_id);
-			if (rc < 0 || (size_t)rc >= sizeof(buf)) {
+			rc = strnprintf(buf, sizeof(buf), "%u", vlan_id);
+			if (rc < 0) {
 				free_ovs_veth_vlan_args(&args);
 				return log_error_errno(-1, EINVAL, "Failed to parse tagged vlan \"%u\" for interface \"%s\"", vlan_id, veth1);
 			}
@@ -553,8 +553,8 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		if (handler->conf->reboot)
 			lxc_netdev_delete_by_name(veth1);
 	} else {
-		err = snprintf(veth1buf, sizeof(veth1buf), "vethXXXXXX");
-		if (err < 0 || (size_t)err >= sizeof(veth1buf))
+		err = strnprintf(veth1buf, sizeof(veth1buf), "vethXXXXXX");
+		if (err < 0)
 			return -1;
 
 		veth1 = lxc_ifname_alnum_case_sensitive(veth1buf);
@@ -565,8 +565,8 @@ static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netd
 		memcpy(netdev->priv.veth_attr.veth1, veth1, IFNAMSIZ);
 	}
 
-	err = snprintf(veth2buf, sizeof(veth2buf), "vethXXXXXX");
-	if (err < 0 || (size_t)err >= sizeof(veth2buf))
+	err = strnprintf(veth2buf, sizeof(veth2buf), "vethXXXXXX");
+	if (err < 0)
 		return -1;
 
 	veth2 = lxc_ifname_alnum_case_sensitive(veth2buf);
@@ -781,8 +781,8 @@ static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *n
 		return -1;
 	}
 
-	err = snprintf(peer, sizeof(peer), "mcXXXXXX");
-	if (err < 0 || (size_t)err >= sizeof(peer))
+	err = strnprintf(peer, sizeof(peer), "mcXXXXXX");
+	if (err < 0)
 		return -1;
 
 	if (!lxc_ifname_alnum_case_sensitive(peer))
@@ -931,8 +931,8 @@ static int instantiate_ipvlan(struct lxc_handler *handler, struct lxc_netdev *ne
 		return -1;
 	}
 
-	err = snprintf(peer, sizeof(peer), "ipXXXXXX");
-	if (err < 0 || (size_t)err >= sizeof(peer))
+	err = strnprintf(peer, sizeof(peer), "ipXXXXXX");
+	if (err < 0)
 		return -1;
 
 	if (!lxc_ifname_alnum_case_sensitive(peer))
@@ -1006,9 +1006,9 @@ static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netd
 		return -1;
 	}
 
-	err = snprintf(peer, sizeof(peer), "vlan%d-%d",
-		       netdev->priv.vlan_attr.vid, vlan_cntr++);
-	if (err < 0 || (size_t)err >= sizeof(peer))
+	err = strnprintf(peer, sizeof(peer), "vlan%d-%d",
+			 netdev->priv.vlan_attr.vid, vlan_cntr++);
+	if (err < 0)
 		return -1;
 
 	err = lxc_vlan_create(netdev->link, peer, netdev->priv.vlan_attr.vid);
@@ -1489,8 +1489,8 @@ char *is_wlan(const char *ifname)
 
 	len = strlen(ifname) + strlen(PHYSNAME) - 1;
 	path = must_realloc(NULL, len + 1);
-	ret = snprintf(path, len, PHYSNAME, ifname);
-	if (ret < 0 || (size_t)ret >= len)
+	ret = strnprintf(path, len, PHYSNAME, ifname);
+	if (ret < 0)
 		return NULL;
 
 	f = fopen(path, "re");
@@ -2217,9 +2217,10 @@ static int ip_forwarding_set(const char *ifname, int family, int flag)
 	if (family != AF_INET && family != AF_INET6)
 		return -EINVAL;
 
-	ret = snprintf(path, sizeof(path), "/proc/sys/net/%s/conf/%s/%s",
-		       family == AF_INET ? "ipv4" : "ipv6", ifname, "forwarding");
-	if (ret < 0 || (size_t)ret >= sizeof(path))
+	ret = strnprintf(path, sizeof(path), "/proc/sys/net/%s/conf/%s/%s",
+			 family == AF_INET ? "ipv4" : "ipv6", ifname,
+			 "forwarding");
+	if (ret < 0)
 		return -E2BIG;
 
 	return proc_sys_net_write(path, flag ? "1" : "0");
@@ -2243,10 +2244,10 @@ static int neigh_proxy_set(const char *ifname, int family, int flag)
 	if (family != AF_INET && family != AF_INET6)
 		return -EINVAL;
 
-	ret = snprintf(path, sizeof(path), "/proc/sys/net/%s/conf/%s/%s",
-		       family == AF_INET ? "ipv4" : "ipv6", ifname,
-		       family == AF_INET ? "proxy_arp" : "proxy_ndp");
-	if (ret < 0 || (size_t)ret >= sizeof(path))
+	ret = strnprintf(path, sizeof(path), "/proc/sys/net/%s/conf/%s/%s",
+			 family == AF_INET ? "ipv4" : "ipv6", ifname,
+			 family == AF_INET ? "proxy_arp" : "proxy_ndp");
+	if (ret < 0)
 		return -E2BIG;
 
 	return proc_sys_net_write(path, flag ? "1" : "0");
@@ -2261,10 +2262,10 @@ static int lxc_is_ip_neigh_proxy_enabled(const char *ifname, int family)
 	if (family != AF_INET && family != AF_INET6)
 		return ret_set_errno(-1, EINVAL);
 
-	ret = snprintf(path, sizeof(path), "/proc/sys/net/%s/conf/%s/%s",
-		       family == AF_INET ? "ipv4" : "ipv6", ifname,
-		       family == AF_INET ? "proxy_arp" : "proxy_ndp");
-	if (ret < 0 || (size_t)ret >= sizeof(path))
+	ret = strnprintf(path, sizeof(path), "/proc/sys/net/%s/conf/%s/%s",
+			 family == AF_INET ? "ipv4" : "ipv6", ifname,
+			 family == AF_INET ? "proxy_arp" : "proxy_ndp");
+	if (ret < 0)
 		return ret_set_errno(-1, E2BIG);
 
 	return lxc_read_file_expect(path, buf, 1, "1");
@@ -2629,9 +2630,9 @@ bool is_ovs_bridge(const char *bridge)
 	struct stat sb;
 	char brdirname[22 + IFNAMSIZ + 1] = {0};
 
-	ret = snprintf(brdirname, 22 + IFNAMSIZ + 1, "/sys/class/net/%s/bridge",
-		       bridge);
-	if (ret < 0 || (size_t)ret >= 22 + IFNAMSIZ + 1)
+	ret = strnprintf(brdirname, 22 + IFNAMSIZ + 1,
+			 "/sys/class/net/%s/bridge", bridge);
+	if (ret < 0)
 		return false;
 
 	ret = stat(brdirname, &sb);
@@ -2795,28 +2796,24 @@ char *lxc_ifname_alnum_case_sensitive(char *template)
 
 int setup_private_host_hw_addr(char *veth1)
 {
-	int err, sockfd;
+	__do_close int sockfd = -EBADF;
+	int err;
 	struct ifreq ifr;
 
 	sockfd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sockfd < 0)
 		return -errno;
 
-	err = snprintf((char *)ifr.ifr_name, IFNAMSIZ, "%s", veth1);
-	if (err < 0 || (size_t)err >= IFNAMSIZ) {
-		close(sockfd);
-		return -E2BIG;
-	}
+	err = strnprintf((char *)ifr.ifr_name, IFNAMSIZ, "%s", veth1);
+	if (err < 0)
+		return err;
 
 	err = ioctl(sockfd, SIOCGIFHWADDR, &ifr);
-	if (err < 0) {
-		close(sockfd);
+	if (err < 0)
 		return -errno;
-	}
 
 	ifr.ifr_hwaddr.sa_data[0] = 0xfe;
 	err = ioctl(sockfd, SIOCSIFHWADDR, &ifr);
-	close(sockfd);
 	if (err < 0)
 		return -errno;
 
@@ -2910,8 +2907,8 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 			_exit(EXIT_FAILURE);
 		}
 
-		ret = snprintf(pidstr, sizeof(pidstr), "%d", pid);
-		if (ret < 0 || ret >= sizeof(pidstr))
+		ret = strnprintf(pidstr, sizeof(pidstr), "%d", pid);
+		if (ret < 0)
 			_exit(EXIT_FAILURE);
 		pidstr[sizeof(pidstr) - 1] = '\0';
 
@@ -3108,9 +3105,9 @@ static bool lxc_delete_network_unpriv(struct lxc_handler *handler)
 	if (handler->nsfd[LXC_NS_NET] < 0)
 		return log_debug(false, "Cannot not guarantee safe deletion of network devices. Manual cleanup maybe needed");
 
-	ret = snprintf(netns_path, sizeof(netns_path), "/proc/%d/fd/%d",
-		       lxc_raw_getpid(), handler->nsfd[LXC_NS_NET]);
-	if (ret < 0 || ret >= sizeof(netns_path))
+	ret = strnprintf(netns_path, sizeof(netns_path), "/proc/%d/fd/%d",
+			 lxc_raw_getpid(), handler->nsfd[LXC_NS_NET]);
+	if (ret < 0)
 		return false;
 
 	lxc_list_for_each(iterator, network) {
