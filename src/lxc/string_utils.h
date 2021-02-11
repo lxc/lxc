@@ -138,4 +138,13 @@ static inline bool strequal(const char *str, const char *eq)
 	return strcmp(str, eq) == 0;
 }
 
+#define strnprintf(buf, buf_size, ...)                                            \
+	({                                                                        \
+		int __ret_strnprintf;                                             \
+		__ret_strnprintf = snprintf(buf, buf_size, ##__VA_ARGS__);        \
+		if (__ret_strnprintf < 0 || (size_t)__ret_strnprintf >= buf_size) \
+			__ret_strnprintf = ret_errno(EIO);                        \
+		__ret_strnprintf;                                                 \
+	})
+
 #endif /* __LXC_STRING_UTILS_H */
