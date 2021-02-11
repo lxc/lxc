@@ -50,8 +50,8 @@ int lxc_monitor_fifo_name(const char *lxcpath, char *fifo_path, size_t fifo_path
 		return -1;
 
 	if (do_mkdirp) {
-		ret = snprintf(fifo_path, fifo_path_sz, "%s/lxc/%s", rundir, lxcpath);
-		if (ret < 0 || (size_t)ret >= fifo_path_sz) {
+		ret = strnprintf(fifo_path, fifo_path_sz, "%s/lxc/%s", rundir, lxcpath);
+		if (ret < 0) {
 			ERROR("rundir/lxcpath (%s/%s) too long for monitor fifo", rundir, lxcpath);
 			free(rundir);
 			return -1;
@@ -63,8 +63,8 @@ int lxc_monitor_fifo_name(const char *lxcpath, char *fifo_path, size_t fifo_path
 			return ret;
 		}
 	}
-	ret = snprintf(fifo_path, fifo_path_sz, "%s/lxc/%s/monitor-fifo", rundir, lxcpath);
-	if (ret < 0 || (size_t)ret >= fifo_path_sz) {
+	ret = strnprintf(fifo_path, fifo_path_sz, "%s/lxc/%s/monitor-fifo", rundir, lxcpath);
+	if (ret < 0) {
 		ERROR("rundir/lxcpath (%s/%s) too long for monitor fifo", rundir, lxcpath);
 		free(rundir);
 		return -1;
@@ -163,26 +163,22 @@ int lxc_monitor_sock_name(const char *lxcpath, struct sockaddr_un *addr)
 	/* strlen("lxc/") + strlen("/monitor-sock") + 1 = 18 */
 	len = strlen(lxcpath) + 18;
 	path = must_realloc(NULL, len);
-	ret = snprintf(path, len, "lxc/%s/monitor-sock", lxcpath);
-	if (ret < 0 || (size_t)ret >= len) {
+	ret = strnprintf(path, len, "lxc/%s/monitor-sock", lxcpath);
+	if (ret < 0) {
 		ERROR("Failed to create name for monitor socket");
 		return -1;
 	}
 
-	/* Note: snprintf() will \0-terminate addr->sun_path on the 106th byte
+	/* Note: strnprintf() will \0-terminate addr->sun_path on the 106th byte
 	 * and so the abstract socket name has 105 "meaningful" characters. This
 	 * is absolutely intentional. For further info read the comment for this
 	 * function above!
 	 */
 	len = sizeof(addr->sun_path) - 1;
 	hash = fnv_64a_buf(path, ret, FNV1A_64_INIT);
-	ret = snprintf(addr->sun_path, len, "@lxc/%016" PRIx64 "/%s", hash, lxcpath);
+	ret = strnprintf(addr->sun_path, len, "@lxc/%016" PRIx64 "/%s", hash, lxcpath);
 	if (ret < 0) {
 		ERROR("Failed to create hashed name for monitor socket");
-		goto on_error;
-	} else if ((size_t)ret >= len) {
-		errno = ENAMETOOLONG;
-		SYSERROR("The name of monitor socket too long (%d bytes)", ret);
 		goto on_error;
 	}
 
@@ -353,8 +349,8 @@ int lxc_monitord_spawn(const char *lxcpath)
 
 	close(pipefd[0]);
 
-	ret = snprintf(pipefd_str, sizeof(pipefd_str), "%d", pipefd[1]);
-	if (ret < 0 || ret >= sizeof(pipefd_str)) {
+	ret = strnprintf(pipefd_str, sizeof(pipefd_str), "%d", pipefd[1]);
+	if (ret < 0) {
 		ERROR("Failed to create pid argument to pass to monitord");
 		_exit(EXIT_FAILURE);
 	}
