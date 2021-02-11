@@ -103,17 +103,17 @@ static char *lxclock_name(const char *p, const char *n)
 	if (!dest)
 		return NULL;
 
-	ret = snprintf(dest, len, "%s/lxc/lock/%s", rundir, p);
-	if (ret < 0 || (size_t)ret >= len)
-		return ret_set_errno(NULL, EIO);
+	ret = strnprintf(dest, len, "%s/lxc/lock/%s", rundir, p);
+	if (ret < 0)
+		return NULL;
 
 	ret = mkdir_p(dest, 0755);
 	if (ret < 0)
 		return NULL;
 
-	ret = snprintf(dest, len, "%s/lxc/lock/%s/.%s", rundir, p, n);
-	if (ret < 0 || (size_t)ret >= len)
-		return ret_set_errno(NULL, EIO);
+	ret = strnprintf(dest, len, "%s/lxc/lock/%s/.%s", rundir, p, n);
+	if (ret < 0)
+		return NULL;
 
 	return move_ptr(dest);
 }
