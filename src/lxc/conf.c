@@ -362,10 +362,10 @@ int run_script_argv(const char *name, unsigned int hook_version,
 		return -ENOMEM;
 
 	if (hook_version == 0)
-		buf_pos = snprintf(buffer, size, "exec %s %s %s %s", script, name, section, hookname);
+		buf_pos = strnprintf(buffer, size, "exec %s %s %s %s", script, name, section, hookname);
 	else
-		buf_pos = snprintf(buffer, size, "exec %s", script);
-	if (buf_pos < 0 || (size_t)buf_pos >= size)
+		buf_pos = strnprintf(buffer, size, "exec %s", script);
+	if (buf_pos < 0)
 		return log_error_errno(-1, errno, "Failed to create command line for script \"%s\"", script);
 
 	if (hook_version == 1) {
@@ -422,8 +422,8 @@ int run_script_argv(const char *name, unsigned int hook_version,
 	for (i = 0; argv && argv[i]; i++) {
 		size_t len = size - buf_pos;
 
-		ret = snprintf(buffer + buf_pos, len, " %s", argv[i]);
-		if (ret < 0 || (size_t)ret >= len)
+		ret = strnprintf(buffer + buf_pos, len, " %s", argv[i]);
+		if (ret < 0)
 			return log_error_errno(-1, errno, "Failed to create command line for script \"%s\"", script);
 		buf_pos += ret;
 	}
@@ -457,16 +457,16 @@ int run_script(const char *name, const char *section, const char *script, ...)
 		return -1;
 
 	buffer = must_realloc(NULL, size);
-	ret = snprintf(buffer, size, "exec %s %s %s", script, name, section);
-	if (ret < 0 || ret >= size)
+	ret = strnprintf(buffer, size, "exec %s %s %s", script, name, section);
+	if (ret < 0)
 		return -1;
 
 	va_start(ap, script);
 	while ((p = va_arg(ap, char *))) {
 		int len = size - ret;
 		int rc;
-		rc = snprintf(buffer + ret, len, " %s", p);
-		if (rc < 0 || rc >= len) {
+		rc = strnprintf(buffer + ret, len, " %s", p);
+		if (rc < 0) {
 			va_end(ap);
 			return -1;
 		}
@@ -555,10 +555,10 @@ static int add_shmount_to_list(struct lxc_conf *conf)
 	 */
 	int offset = 1, ret = -1;
 
-	ret = snprintf(new_mount, sizeof(new_mount),
+	ret = strnprintf(new_mount, sizeof(new_mount),
 		       "%s %s none bind,create=dir 0 0", conf->shmount.path_host,
 		       conf->shmount.path_cont + offset);
-	if (ret < 0 || (size_t)ret >= sizeof(new_mount))
+	if (ret < 0)
 		return -1;
 
 	return add_elem_to_mount_list(new_mount, conf);
@@ -821,9 +821,9 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 		if (ttydir) {
 			char *tty_name, *tty_path;
 
-			ret = snprintf(rootfs->buf, sizeof(rootfs->buf),
+			ret = strnprintf(rootfs->buf, sizeof(rootfs->buf),
 				       "/dev/%s/tty%d", ttydir, i + 1);
-			if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
+			if (ret < 0)
 				return ret_errno(-EIO);
 
 			tty_path = &rootfs->buf[STRLITERALLEN("/dev/")];
@@ -868,8 +868,8 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						       rootfs->dfd_dev, tty_name,
 						       rootfs->dfd_dev, tty_path);
 		} else {
-			ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "tty%d", i + 1);
-			if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
+			ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "tty%d", i + 1);
+			if (ret < 0)
 				return ret_errno(-EIO);
 
 			/* If we populated /dev, then we need to create /dev/tty<idx>. */
@@ -890,8 +890,8 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						    PROTECT_LOOKUP_BENEATH, 0,
 						    false);
 			} else {
-				ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "/dev/tty%d", i + 1);
-				if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
+				ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "/dev/tty%d", i + 1);
+				if (ret < 0)
 					return ret_errno(-EIO);
 
 				ret = mount(tty->name, rootfs->buf, "none", MS_BIND, 0);
@@ -1212,8 +1212,8 @@ static int lxc_fill_autodev(struct lxc_rootfs *rootfs)
 		}
 
 		/* Fallback to bind-mounting the device from the host. */
-		ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "dev/%s", device->name);
-		if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
+		ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "dev/%s", device->name);
+		if (ret < 0)
 			return ret_errno(EIO);
 
 		if (new_mount_api()) {
@@ -1226,12 +1226,12 @@ static int lxc_fill_autodev(struct lxc_rootfs *rootfs)
 		} else {
 			char path[PATH_MAX];
 
-			ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "/dev/%s", device->name);
-			if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
+			ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "/dev/%s", device->name);
+			if (ret < 0)
 				return ret_errno(EIO);
 
-			ret = snprintf(path, sizeof(path), "%s/dev/%s", get_rootfs_mnt(rootfs), device->name);
-			if (ret < 0 || ret >= sizeof(path))
+			ret = strnprintf(path, sizeof(path), "%s/dev/%s", get_rootfs_mnt(rootfs), device->name);
+			if (ret < 0)
 				return log_error(-1, "Failed to create device path for %s", device->name);
 
 			ret = safe_mount(rootfs->buf, path, 0, MS_BIND, NULL, get_rootfs_mnt(rootfs));
@@ -1532,9 +1532,9 @@ static int lxc_setup_devpts_child(struct lxc_handler *handler)
 	if (conf->pty_max <= 0)
 		return log_debug(0, "No new devpts instance will be mounted since no pts devices are requested");
 
-	ret = snprintf(devpts_mntopts, sizeof(devpts_mntopts), "%s,max=%zu",
+	ret = strnprintf(devpts_mntopts, sizeof(devpts_mntopts), "%s,max=%zu",
 		       default_devpts_mntopts, conf->pty_max);
-	if (ret < 0 || (size_t)ret >= sizeof(devpts_mntopts))
+	if (ret < 0)
 		return -1;
 
 	(void)umount2("/dev/pts", MNT_DETACH);
@@ -1658,8 +1658,8 @@ static int lxc_setup_dev_console(struct lxc_rootfs *rootfs,
 	 * /dev/console bind-mounts.
 	 */
 	if (exists_file_at(rootfs->dfd_dev, "console")) {
-		ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s/dev/console", rootfs_path);
-		if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
+		ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/dev/console", rootfs_path);
+		if (ret < 0)
 			return -1;
 
 		ret = lxc_unstack_mountpoint(rootfs->buf, false);
@@ -1697,8 +1697,8 @@ static int lxc_setup_dev_console(struct lxc_rootfs *rootfs,
 	ret = safe_mount_beneath_at(rootfs->dfd_dev, console->name, "console", NULL, MS_BIND, NULL);
 	if (ret < 0) {
 		if (errno == ENOSYS) {
-			ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s/dev/console", rootfs_path);
-			if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
+			ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/dev/console", rootfs_path);
+			if (ret < 0)
 				return -1;
 
 			ret = safe_mount(console->name, rootfs->buf, "none", MS_BIND, NULL, rootfs_path);
@@ -1723,8 +1723,8 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 		return 0;
 
 	/* create rootfs/dev/<ttydir> directory */
-	ret = snprintf(path, sizeof(path), "%s/dev/%s", rootfs_path, ttydir);
-	if (ret < 0 || (size_t)ret >= sizeof(path))
+	ret = strnprintf(path, sizeof(path), "%s/dev/%s", rootfs_path, ttydir);
+	if (ret < 0)
 		return -1;
 
 	ret = mkdir(path, 0755);
@@ -1732,16 +1732,16 @@ static int lxc_setup_ttydir_console(const struct lxc_rootfs *rootfs,
 		return log_error_errno(-errno, errno, "Failed to create \"%s\"", path);
  	DEBUG("Created directory for console and tty devices at \"%s\"", path);
 
-	ret = snprintf(lxcpath, sizeof(lxcpath), "%s/dev/%s/console", rootfs_path, ttydir);
-	if (ret < 0 || (size_t)ret >= sizeof(lxcpath))
+	ret = strnprintf(lxcpath, sizeof(lxcpath), "%s/dev/%s/console", rootfs_path, ttydir);
+	if (ret < 0)
 		return -1;
 
 	ret = mknod(lxcpath, S_IFREG | 0000, 0);
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-errno, errno, "Failed to create \"%s\"", lxcpath);
 
-	ret = snprintf(path, sizeof(path), "%s/dev/console", rootfs_path);
-	if (ret < 0 || (size_t)ret >= sizeof(path))
+	ret = strnprintf(path, sizeof(path), "%s/dev/console", rootfs_path);
+	if (ret < 0)
 		return -1;
 
 	if (file_exists(path)) {
@@ -1945,8 +1945,8 @@ static int mount_entry(const char *fsname, const char *target,
 #endif
 
 	if (relative) {
-		ret = snprintf(srcbuf, sizeof(srcbuf), "%s/%s", rootfs ? rootfs : "/", fsname ? fsname : "");
-		if (ret < 0 || ret >= sizeof(srcbuf))
+		ret = strnprintf(srcbuf, sizeof(srcbuf), "%s/%s", rootfs ? rootfs : "/", fsname ? fsname : "");
+		if (ret < 0)
 			return log_error_errno(-1, errno, "source path is too long");
 		srcpath = srcbuf;
 	}
@@ -2162,10 +2162,10 @@ static inline int mount_entry_on_systemfs(struct lxc_rootfs *rootfs,
 	 * absolute paths starting at / on the host.
 	 */
 	if (mntent->mnt_dir[0] != '/')
-		ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "/%s", mntent->mnt_dir);
+		ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "/%s", mntent->mnt_dir);
 	else
-		ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s", mntent->mnt_dir);
-	if (ret < 0 || ret >= sizeof(rootfs->buf))
+		ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s", mntent->mnt_dir);
+	if (ret < 0)
 		return -1;
 
 	return mount_entry_on_generic(mntent, rootfs->buf, NULL, NULL, NULL);
@@ -2188,8 +2188,8 @@ static int mount_entry_on_absolute_rootfs(struct mntent *mntent,
 	/* If rootfs->path is a blockdev path, allow container fstab to use
 	 * <lxcpath>/<name>/rootfs" as the target prefix.
 	 */
-	ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s/%s/rootfs", lxcpath, lxc_name);
-	if (ret < 0 || ret >= sizeof(rootfs->buf))
+	ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/%s/rootfs", lxcpath, lxc_name);
+	if (ret < 0)
 		goto skipvarlib;
 
 	aux = strstr(mntent->mnt_dir, rootfs->buf);
@@ -2205,8 +2205,8 @@ skipvarlib:
 	offset = strlen(rootfs->path);
 
 skipabs:
-	ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s/%s", rootfs->mount, aux + offset);
-	if (ret < 0 || ret >= sizeof(rootfs->buf))
+	ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/%s", rootfs->mount, aux + offset);
+	if (ret < 0)
 		return -1;
 
 	return mount_entry_on_generic(mntent, rootfs->buf, rootfs, lxc_name, lxc_path);
@@ -2220,8 +2220,8 @@ static int mount_entry_on_relative_rootfs(struct mntent *mntent,
 	int ret;
 
 	/* relative to root mount point */
-	ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s/%s", rootfs->mount, mntent->mnt_dir);
-	if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
+	ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/%s", rootfs->mount, mntent->mnt_dir);
+	if (ret < 0)
 		return -1;
 
 	return mount_entry_on_generic(mntent, rootfs->buf, rootfs, lxc_name, lxc_path);
@@ -2548,8 +2548,8 @@ int setup_sysctl_parameters(struct lxc_list *sysctls)
 		if (!tmp)
 			return log_error(-1, "Failed to replace key %s", elem->key);
 
-		ret = snprintf(filename, sizeof(filename), "/proc/sys/%s", tmp);
-		if (ret < 0 || (size_t)ret >= sizeof(filename))
+		ret = strnprintf(filename, sizeof(filename), "/proc/sys/%s", tmp);
+		if (ret < 0)
 			return log_error(-1, "Error setting up sysctl parameters path");
 
 		ret = lxc_write_to_file(filename, elem->value,
@@ -2576,8 +2576,8 @@ int setup_proc_filesystem(struct lxc_list *procs, pid_t pid)
 		if (!tmp)
 			return log_error(-1, "Failed to replace key %s", elem->filename);
 
-		ret = snprintf(filename, sizeof(filename), "/proc/%d/%s", pid, tmp);
-		if (ret < 0 || (size_t)ret >= sizeof(filename))
+		ret = strnprintf(filename, sizeof(filename), "/proc/%d/%s", pid, tmp);
+		if (ret < 0)
 			return log_error(-1, "Error setting up proc filesystem path");
 
 		ret = lxc_write_to_file(filename, elem->value,
@@ -2684,8 +2684,8 @@ int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 	if (geteuid() != 0 && idtype == ID_TYPE_GID) {
 		__do_close int setgroups_fd = -EBADF;
 
-		ret = snprintf(path, PATH_MAX, "/proc/%d/setgroups", pid);
-		if (ret < 0 || ret >= PATH_MAX)
+		ret = strnprintf(path, sizeof(path), "/proc/%d/setgroups", pid);
+		if (ret < 0)
 			return -E2BIG;
 
 		setgroups_fd = open(path, O_WRONLY);
@@ -2701,9 +2701,9 @@ int write_id_mapping(enum idtype idtype, pid_t pid, const char *buf,
 		}
 	}
 
-	ret = snprintf(path, PATH_MAX, "/proc/%d/%cid_map", pid,
+	ret = strnprintf(path, sizeof(path), "/proc/%d/%cid_map", pid,
 		       idtype == ID_TYPE_UID ? 'u' : 'g');
-	if (ret < 0 || ret >= PATH_MAX)
+	if (ret < 0)
 		return -E2BIG;
 
 	fd = open(path, O_WRONLY | O_CLOEXEC);
@@ -2859,7 +2859,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 			had_entry = true;
 
 			left = LXC_IDMAPLEN - (pos - mapbuf);
-			fill = snprintf(pos, left, "%s%lu %lu %lu%s",
+			fill = strnprintf(pos, left, "%s%lu %lu %lu%s",
 					use_shadow ? " " : "", map->nsid,
 					map->hostid, map->range,
 					use_shadow ? "" : "\n");
@@ -2867,7 +2867,7 @@ int lxc_map_ids(struct lxc_list *idmap, pid_t pid)
 			 * The kernel only takes <= 4k for writes to
 			 * /proc/<pid>/{g,u}id_map
 			 */
-			if (fill <= 0 || fill >= left)
+			if (fill <= 0)
 				return log_error_errno(-1, errno, "Too many %cid mappings defined", u_or_g);
 
 			pos += fill;
@@ -3007,8 +3007,8 @@ static int lxc_transient_proc(struct lxc_rootfs *rootfs)
 	if (fd_proc < 0)
 		return log_error_errno(-errno, errno, "Failed to open transient procfs mountpoint");
 
-	ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "/proc/self/fd/%d", fd_proc);
-	if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
+	ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "/proc/self/fd/%d", fd_proc);
+	if (ret < 0)
 		return ret_errno(EIO);
 
 	ret = umount2(rootfs->buf, MNT_DETACH);
@@ -3022,8 +3022,8 @@ domount:
 	} else {
 		ret = safe_mount_beneath_at(rootfs->dfd_mnt, "none", "proc", "proc", 0, NULL);
 		if (ret < 0) {
-			ret = snprintf(rootfs->buf, sizeof(rootfs->buf), "%s/proc", rootfs->path ? rootfs->mount : "");
-			if (ret < 0 || (size_t)ret >= sizeof(rootfs->buf))
+			ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/proc", rootfs->path ? rootfs->mount : "");
+			if (ret < 0)
 				return ret_errno(EIO);
 
 			ret = safe_mount("proc", rootfs->buf, "proc", 0, NULL, rootfs->mount);
@@ -3163,15 +3163,15 @@ static int lxc_execute_bind_init(struct lxc_handler *handler)
 		goto out;
 	}
 
-	ret = snprintf(path, PATH_MAX, SBINDIR "/init.lxc.static");
-	if (ret < 0 || ret >= PATH_MAX)
+	ret = strnprintf(path, sizeof(path), SBINDIR "/init.lxc.static");
+	if (ret < 0)
 		return -1;
 
 	if (!file_exists(path))
 		return log_error_errno(-1, errno, "The file \"%s\" does not exist on host", path);
 
-	ret = snprintf(destpath, PATH_MAX, "%s" P_tmpdir "%s", conf->rootfs.mount, "/.lxc-init");
-	if (ret < 0 || ret >= PATH_MAX)
+	ret = strnprintf(destpath, sizeof(path), "%s" P_tmpdir "%s", conf->rootfs.mount, "/.lxc-init");
+	if (ret < 0)
 		return -1;
 
 	if (!file_exists(destpath)) {
@@ -3247,10 +3247,10 @@ static bool verify_start_hooks(struct lxc_conf *conf)
 		int ret;
 		char *hookname = it->elem;
 
-		ret = snprintf(path, PATH_MAX, "%s%s",
+		ret = strnprintf(path, sizeof(path), "%s%s",
 			       conf->rootfs.path ? conf->rootfs.mount : "",
 			       hookname);
-		if (ret < 0 || ret >= PATH_MAX)
+		if (ret < 0)
 			return false;
 
 		ret = access(path, X_OK);
@@ -3439,8 +3439,8 @@ int lxc_setup(struct lxc_handler *handler)
 			int fd;
 			char path[STRLITERALLEN(SBINDIR) + STRLITERALLEN("/init.lxc.static") + 1];
 
-			ret = snprintf(path, sizeof(path), SBINDIR "/init.lxc.static");
-			if (ret < 0 || ret >= PATH_MAX)
+			ret = strnprintf(path, sizeof(path), SBINDIR "/init.lxc.static");
+			if (ret < 0)
 				return log_error(-1, "Path to init.lxc.static too long");
 
 			fd = open(path, O_NOCTTY | O_NOFOLLOW | O_CLOEXEC | O_PATH);

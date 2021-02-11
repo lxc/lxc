@@ -1418,7 +1418,13 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 	resp->id = req_id = req->id;
 	TRACE("Received seccomp notification with id(%llu)", (long long unsigned int)req_id);
 
-	snprintf(mem_path, sizeof(mem_path), "/proc/%d", req->pid);
+	ret = strnprintf(mem_path, sizeof(mem_path), "/proc/%d", req->pid);
+	if (ret < 0) {
+		seccomp_notify_default_answer(fd, req, resp, hdlr);
+		SYSERROR("Failed to create path to process's proc directory");
+		goto out;
+	}
+
 	fd_pid = open(mem_path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
 	if (fd_pid < 0) {
 		seccomp_notify_default_answer(fd, req, resp, hdlr);
@@ -1426,7 +1432,13 @@ int seccomp_notify_handler(int fd, uint32_t events, void *data,
 		goto out;
 	}
 
-	snprintf(mem_path, sizeof(mem_path), "/proc/%d/mem", req->pid);
+	ret = strnprintf(mem_path, sizeof(mem_path), "/proc/%d/mem", req->pid);
+	if (ret < 0) {
+		seccomp_notify_default_answer(fd, req, resp, hdlr);
+		SYSERROR("Failed to create path to process's virtual memory");
+		goto out;
+	}
+
 	fd_mem = open(mem_path, O_RDWR | O_CLOEXEC);
 	if (fd_mem < 0) {
 		seccomp_notify_default_answer(fd, req, resp, hdlr);
