@@ -84,8 +84,8 @@ static int _recursive_rmdir(const char *dirname, dev_t pdev,
 		    !strcmp(direntp->d_name, ".."))
 			continue;
 
-		rc = snprintf(pathname, PATH_MAX, "%s/%s", dirname, direntp->d_name);
-		if (rc < 0 || rc >= PATH_MAX) {
+		rc = strnprintf(pathname, sizeof(pathname), "%s/%s", dirname, direntp->d_name);
+		if (rc < 0) {
 			ERROR("The name of path is too long");
 			failed = 1;
 			continue;
@@ -267,8 +267,8 @@ char *get_rundir(void)
 	if (!rundir)
 		return NULL;
 
-	ret = snprintf(rundir, len, "%s/.cache/lxc/run/", homedir);
-	if (ret < 0 || (size_t)ret >= len)
+	ret = strnprintf(rundir, len, "%s/.cache/lxc/run/", homedir);
+	if (ret < 0)
 		return ret_set_errno(NULL, EIO);
 
 	return move_ptr(rundir);
@@ -660,8 +660,8 @@ bool switch_to_ns(pid_t pid, const char *ns)
 		    + LXC_NAMESPACE_NAME_MAX];
 
 	/* Switch to new ns */
-	ret = snprintf(nspath, sizeof(nspath), "/proc/%d/ns/%s", pid, ns);
-	if (ret < 0 || ret >= sizeof(nspath))
+	ret = strnprintf(nspath, sizeof(nspath), "/proc/%d/ns/%s", pid, ns);
+	if (ret < 0)
 		return false;
 
 	fd = open(nspath, O_RDONLY | O_CLOEXEC);
@@ -734,11 +734,10 @@ char *on_path(const char *cmd, const char *rootfs)
 
 	lxc_iterate_parts(entry, path, ":") {
 		if (rootfs)
-			ret = snprintf(cmdpath, PATH_MAX, "%s/%s/%s", rootfs,
-				       entry, cmd);
+			ret = strnprintf(cmdpath, sizeof(cmdpath), "%s/%s/%s", rootfs, entry, cmd);
 		else
-			ret = snprintf(cmdpath, PATH_MAX, "%s/%s", entry, cmd);
-		if (ret < 0 || ret >= PATH_MAX)
+			ret = strnprintf(cmdpath, sizeof(cmdpath), "%s/%s", entry, cmd);
+		if (ret < 0)
 			continue;
 
 		if (access(cmdpath, X_OK) == 0)
@@ -788,8 +787,8 @@ char *choose_init(const char *rootfs)
 	else
 		tmp = empty;
 
-	ret = snprintf(retv, PATH_MAX, "%s/%s/%s", tmp, SBINDIR, "/init.lxc");
-	if (ret < 0 || ret >= PATH_MAX) {
+	ret = strnprintf(retv, PATH_MAX, "%s/%s/%s", tmp, SBINDIR, "/init.lxc");
+	if (ret < 0) {
 		ERROR("The name of path is too long");
 		goto out1;
 	}
@@ -797,8 +796,8 @@ char *choose_init(const char *rootfs)
 	if (access(retv, X_OK) == 0)
 		return retv;
 
-	ret = snprintf(retv, PATH_MAX, "%s/%s/%s", tmp, LXCINITDIR, "/lxc/lxc-init");
-	if (ret < 0 || ret >= PATH_MAX) {
+	ret = strnprintf(retv, PATH_MAX, "%s/%s/%s", tmp, LXCINITDIR, "/lxc/lxc-init");
+	if (ret < 0) {
 		ERROR("The name of path is too long");
 		goto out1;
 	}
@@ -806,8 +805,8 @@ char *choose_init(const char *rootfs)
 	if (access(retv, X_OK) == 0)
 		return retv;
 
-	ret = snprintf(retv, PATH_MAX, "%s/usr/lib/lxc/lxc-init", tmp);
-	if (ret < 0 || ret >= PATH_MAX) {
+	ret = strnprintf(retv, PATH_MAX, "%s/usr/lib/lxc/lxc-init", tmp);
+	if (ret < 0) {
 		ERROR("The name of path is too long");
 		goto out1;
 	}
@@ -815,8 +814,8 @@ char *choose_init(const char *rootfs)
 	if (access(retv, X_OK) == 0)
 		return retv;
 
-	ret = snprintf(retv, PATH_MAX, "%s/sbin/lxc-init", tmp);
-	if (ret < 0 || ret >= PATH_MAX) {
+	ret = strnprintf(retv, PATH_MAX, "%s/sbin/lxc-init", tmp);
+	if (ret < 0) {
 		ERROR("The name of path is too long");
 		goto out1;
 	}
@@ -834,8 +833,8 @@ char *choose_init(const char *rootfs)
 	if (rootfs)
 		goto out1;
 
-	ret = snprintf(retv, PATH_MAX, "/init.lxc.static");
-	if (ret < 0 || ret >= PATH_MAX) {
+	ret = strnprintf(retv, PATH_MAX, "/init.lxc.static");
+	if (ret < 0) {
 		WARN("Nonsense - name /lxc.init.static too long");
 		goto out1;
 	}
@@ -874,8 +873,8 @@ char *get_template_path(const char *t)
 	if (!tpath)
 		return NULL;
 
-	ret = snprintf(tpath, len, "%s/lxc-%s", LXCTEMPLATEDIR, t);
-	if (ret < 0 || ret >= len) {
+	ret = strnprintf(tpath, len, "%s/lxc-%s", LXCTEMPLATEDIR, t);
+	if (ret < 0) {
 		free(tpath);
 		return NULL;
 	}
@@ -1094,8 +1093,8 @@ int __safe_mount_beneath_at(int beneath_fd, const char *src, const char *dst, co
 		source_fd = openat2(beneath_fd, src, &how, sizeof(how));
 		if (source_fd < 0)
 			return -errno;
-		ret = snprintf(src_buf, sizeof(src_buf), "/proc/self/fd/%d", source_fd);
-		if (ret < 0 || ret >= sizeof(src_buf))
+		ret = strnprintf(src_buf, sizeof(src_buf), "/proc/self/fd/%d", source_fd);
+		if (ret < 0)
 			return -EIO;
 	} else {
 		src_buf[0] = '\0';
@@ -1104,8 +1103,8 @@ int __safe_mount_beneath_at(int beneath_fd, const char *src, const char *dst, co
 	target_fd = openat2(beneath_fd, dst, &how, sizeof(how));
 	if (target_fd < 0)
 		return log_error_errno(-errno, errno, "Failed to open %d(%s)", beneath_fd, dst);
-	ret = snprintf(tgt_buf, sizeof(tgt_buf), "/proc/self/fd/%d", target_fd);
-	if (ret < 0 || ret >= sizeof(tgt_buf))
+	ret = strnprintf(tgt_buf, sizeof(tgt_buf), "/proc/self/fd/%d", target_fd);
+	if (ret < 0)
 		return -EIO;
 
 	if (!is_empty_string(src_buf))
@@ -1163,8 +1162,8 @@ int safe_mount(const char *src, const char *dest, const char *fstype,
 		if (srcfd < 0)
 			return srcfd;
 
-		ret = snprintf(srcbuf, sizeof(srcbuf), "/proc/self/fd/%d", srcfd);
-		if (ret < 0 || ret >= (int)sizeof(srcbuf)) {
+		ret = strnprintf(srcbuf, sizeof(srcbuf), "/proc/self/fd/%d", srcfd);
+		if (ret < 0) {
 			close(srcfd);
 			ERROR("Out of memory");
 			return -EINVAL;
@@ -1183,8 +1182,8 @@ int safe_mount(const char *src, const char *dest, const char *fstype,
 		return destfd;
 	}
 
-	ret = snprintf(destbuf, sizeof(destbuf), "/proc/self/fd/%d", destfd);
-	if (ret < 0 || ret >= (int)sizeof(destbuf)) {
+	ret = strnprintf(destbuf, sizeof(destbuf), "/proc/self/fd/%d", destfd);
+	if (ret < 0) {
 		if (srcfd != -1)
 			close(srcfd);
 
@@ -1266,8 +1265,8 @@ bool task_blocks_signal(pid_t pid, int signal)
 	size_t n = 0;
 	bool bret = false;
 
-	ret = snprintf(status, __PROC_STATUS_LEN, "/proc/%d/status", pid);
-	if (ret < 0 || ret >= __PROC_STATUS_LEN)
+	ret = strnprintf(status, sizeof(status), "/proc/%d/status", pid);
+	if (ret < 0)
 		return bret;
 
 	f = fopen(status, "re");
@@ -1305,10 +1304,10 @@ int lxc_preserve_ns(const int pid, const char *ns)
 	 * are supported by the kernel by passing in the NULL or the empty
 	 * string.
 	 */
-	ret = snprintf(path, __NS_PATH_LEN, "/proc/%d/ns%s%s", pid,
-		       !ns || strcmp(ns, "") == 0 ? "" : "/",
-		       !ns || strcmp(ns, "") == 0 ? "" : ns);
-	if (ret < 0 || (size_t)ret >= __NS_PATH_LEN)
+	ret = strnprintf(path, sizeof(path), "/proc/%d/ns%s%s", pid,
+			 !ns || strcmp(ns, "") == 0 ? "" : "/",
+			 !ns || strcmp(ns, "") == 0 ? "" : ns);
+	if (ret < 0)
 		return ret_errno(EIO);
 
 	return open(path, O_RDONLY | O_CLOEXEC);
@@ -1404,8 +1403,8 @@ static int lxc_get_unused_loop_dev_legacy(char *loop_name)
 			}
 		}
 
-		ret = snprintf(loop_name, LO_NAME_SIZE, "/dev/%s", dp->d_name);
-		if (ret < 0 || ret >= LO_NAME_SIZE) {
+		ret = strnprintf(loop_name, LO_NAME_SIZE, "/dev/%s", dp->d_name);
+		if (ret < 0) {
 			close(fd);
 			fd = -1;
 			continue;
@@ -1439,15 +1438,15 @@ static int lxc_get_unused_loop_dev(char *name_loop)
 		goto on_error;
 	}
 
-	ret = snprintf(name_loop, LO_NAME_SIZE, "/dev/loop%d", loop_nr);
-	if (ret < 0 || ret >= LO_NAME_SIZE)
+	ret = strnprintf(name_loop, LO_NAME_SIZE, "/dev/loop%d", loop_nr);
+	if (ret < 0)
 		goto on_error;
 
 	fd_tmp = open(name_loop, O_RDWR | O_CLOEXEC);
 	if (fd_tmp < 0) {
 		/* on Android loop devices are moved under /dev/block, give it a shot */
-		ret = snprintf(name_loop, LO_NAME_SIZE, "/dev/block/loop%d", loop_nr);
-                if (ret < 0 || ret >= LO_NAME_SIZE)
+		ret = strnprintf(name_loop, LO_NAME_SIZE, "/dev/block/loop%d", loop_nr);
+                if (ret < 0)
                         goto on_error;
 
 		fd_tmp = open(name_loop, O_RDWR | O_CLOEXEC);
@@ -1633,8 +1632,8 @@ bool lxc_nic_exists(char *nic)
 	if (!strcmp(nic, "none"))
 		return true;
 
-	ret = snprintf(path, __LXC_SYS_CLASS_NET_LEN, "/sys/class/net/%s", nic);
-	if (ret < 0 || (size_t)ret >= __LXC_SYS_CLASS_NET_LEN)
+	ret = strnprintf(path, sizeof(path), "/sys/class/net/%s", nic);
+	if (ret < 0)
 		return false;
 
 	ret = stat(path, &sb);
