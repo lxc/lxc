@@ -438,3 +438,53 @@ unsigned long add_required_remount_flags(const char *s, const char *d,
        return flags;
 #endif
 }
+
+bool can_use_mount_api(void)
+{
+	static int supported = -1;
+
+	if (supported == -1) {
+		__do_close int fd = -EBADF;
+
+		fd = openat2(-EBADF, "", NULL, 0);
+		if (fd > 0 || errno == ENOSYS) {
+			supported = 0;
+			return false;
+		}
+
+		fd = fsmount(-EBADF, 0, 0);
+		if (fd > 0 || errno == ENOSYS) {
+			supported = 0;
+			return false;
+		}
+
+		fd = fsconfig(-EBADF, -EINVAL, NULL, NULL, 0);
+		if (fd > 0 || errno == ENOSYS) {
+			supported = 0;
+			return false;
+		}
+
+		fd = fsopen(NULL, 0);
+		if (fd > 0 || errno == ENOSYS) {
+			supported = 0;
+			return false;
+		}
+
+		fd = move_mount(-EBADF, NULL, -EBADF, NULL, 0);
+		if (fd > 0 || errno == ENOSYS) {
+			supported = 0;
+			return false;
+		}
+
+		fd = open_tree(-EBADF, NULL, 0);
+		if (fd > 0 || errno == ENOSYS) {
+			supported = 0;
+			return false;
+		}
+
+		supported = 1;
+		TRACE("Kernel supports mount api");
+	}
+
+	return supported == 1;
+}
