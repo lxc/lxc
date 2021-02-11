@@ -96,4 +96,12 @@ __hidden extern char *read_file_at(int dfd, const char *fnam,
 __hidden extern ssize_t lxc_read_try_buf_at(int dfd, const char *path,
                                             void *buf, size_t count);
 
+/*
+ * Check if two fds refer to the same file.
+ * The function is "lax" in so far, as it doesn't care whether fda and fdb have
+ * the same flags or whether they share the same device context when they refer
+ * to devices.
+ */
+__hidden extern bool same_file_lax(int fda, int fdb);
+
 #endif /* __LXC_FILE_UTILS_H */
