@@ -209,8 +209,8 @@ static int lxc_terminal_rotate_log_file(struct lxc_terminal *terminal)
 	len = strlen(terminal->log_path) + sizeof(".1");
 	tmp = must_realloc(NULL, len);
 
-	ret = snprintf(tmp, len, "%s.1", terminal->log_path);
-	if (ret < 0 || (size_t)ret >= len)
+	ret = strnprintf(tmp, len, "%s.1", terminal->log_path);
+	if (ret < 0)
 		return -EFBIG;
 
 	close(terminal->log_fd);
