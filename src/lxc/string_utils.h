@@ -149,4 +149,27 @@ static inline bool strequal(const char *str, const char *eq)
 		__ret_strnprintf;                                                 \
 	})
 
+static inline const char *proc_self_fd(int fd)
+{
+	static const char *invalid_fd_path = "/proc/self/fd/-EBADF";
+	static char buf[LXC_PROC_SELF_FD_LEN] = "/proc/self/fd/";
+
+	if (strnprintf(buf + STRLITERALLEN("/proc/self/fd/"),
+		       INTTYPE_TO_STRLEN(int), "%d", fd) < 0)
+		return invalid_fd_path;
+
+	return buf;
+}
+
+static inline const char *fdstr(int fd)
+{
+	static const char *fdstr_invalid = "-EBADF";
+	static char buf[INTTYPE_TO_STRLEN(int)];
+
+	if (strnprintf(buf, sizeof(buf), "%d", fd) < 0)
+		return fdstr_invalid;
+
+	return buf;
+}
+
 #endif /* __LXC_STRING_UTILS_H */
