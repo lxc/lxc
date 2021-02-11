@@ -280,19 +280,19 @@ static int lxc_unix_epoch_to_utc(char *buf, size_t bufsize, const struct timespe
 	seconds = (time->tv_sec - d_in_s - h_in_s - (minutes * 60));
 
 	/* Make string from nanoseconds. */
-	ret = snprintf(nanosec, sizeof(nanosec), "%"PRId64, (int64_t)time->tv_nsec);
-	if (ret < 0 || (size_t)ret >= sizeof(nanosec))
+	ret = strnprintf(nanosec, sizeof(nanosec), "%"PRId64, (int64_t)time->tv_nsec);
+	if (ret < 0)
 		return ret_errno(EIO);
 
 	/*
 	 * Create final timestamp for the log and shorten nanoseconds to 3
 	 * digit precision.
 	 */
-	ret = snprintf(buf, bufsize,
+	ret = strnprintf(buf, bufsize,
 		       "%" PRId64 "%02" PRId64 "%02" PRId64 "%02" PRId64
 		       "%02" PRId64 "%02" PRId64 ".%.3s",
 		       year, month, day, hours, minutes, seconds, nanosec);
-	if (ret < 0 || (size_t)ret >= bufsize)
+	if (ret < 0)
 		return ret_errno(EIO);
 
 	return 0;
@@ -346,6 +346,10 @@ static int log_append_logfile(const struct lxc_log_appender *appender,
 	if (ret)
 		return ret;
 
+	/*
+	 * We allow truncation here which is why we use snprintf() directly
+	 * instead of strnprintf().
+	 */
 	n = snprintf(buffer, sizeof(buffer),
 		     "%s%s%s %s %-8s %s - %s:%s:%d - ",
 		     log_prefix,
@@ -572,10 +576,10 @@ static char *build_log_path(const char *name, const char *lxcpath)
 		return ret_set_errno(NULL, ENOMEM);
 
 	if (use_dir)
-		ret = snprintf(p, len, "%s/%s/%s.log", lxcpath, name, name);
+		ret = strnprintf(p, len, "%s/%s/%s.log", lxcpath, name, name);
 	else
-		ret = snprintf(p, len, "%s/%s.log", lxcpath, name);
-	if (ret < 0 || (size_t)ret >= len)
+		ret = strnprintf(p, len, "%s/%s.log", lxcpath, name);
+	if (ret < 0)
 		return ret_set_errno(NULL, EIO);
 
 	return move_ptr(p);
