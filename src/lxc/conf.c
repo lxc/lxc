@@ -844,7 +844,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						       "Failed to unlink %d(%s)",
 						       rootfs->dfd_dev, tty_name);
 
-			if (new_mount_api()) {
+			if (can_use_mount_api()) {
 				ret = fd_bind_mount(tty->pty, "",
 						    PROTECT_OPATH_FILE,
 						    PROTECT_LOOKUP_BENEATH_XDEV,
@@ -881,7 +881,7 @@ static int lxc_setup_ttys(struct lxc_conf *conf)
 						       "Failed to create tty mount target %d(%s)",
 						       rootfs->dfd_dev, rootfs->buf);
 
-			if (new_mount_api()) {
+			if (can_use_mount_api()) {
 				ret = fd_bind_mount(tty->pty, "",
 						    PROTECT_OPATH_FILE,
 						    PROTECT_LOOKUP_BENEATH_XDEV,
@@ -1074,7 +1074,7 @@ static int mount_autodev(const char *name, const struct lxc_rootfs *rootfs,
 		goto reset_umask;
 	}
 
-	if (new_mount_api()) {
+	if (can_use_mount_api()) {
 		fd_fs = fs_prepare("tmpfs", -EBADF, "", 0, 0);
 		if (fd_fs < 0)
 			return log_error_errno(-errno, errno, "Failed to prepare filesystem context for tmpfs");
@@ -1216,7 +1216,7 @@ static int lxc_fill_autodev(struct lxc_rootfs *rootfs)
 		if (ret < 0)
 			return ret_errno(EIO);
 
-		if (new_mount_api()) {
+		if (can_use_mount_api()) {
 			ret = fd_bind_mount(rootfs->dfd_host, rootfs->buf,
 					    PROTECT_OPATH_FILE,
 					    PROTECT_LOOKUP_BENEATH_XDEV,
@@ -1716,7 +1716,7 @@ static int lxc_setup_dev_console(struct lxc_rootfs *rootfs,
 	if (ret < 0)
 		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", S_IXUSR | S_IXGRP, console->name);
 
-	if (new_mount_api()) {
+	if (can_use_mount_api()) {
 		ret = lxc_bind_mount_console(console, rootfs->dfd_dev, "console");
 	} else {
 		ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/dev/console", rootfs_path);
@@ -1779,7 +1779,7 @@ static int lxc_setup_ttydir_console(struct lxc_rootfs *rootfs,
 		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", S_IXUSR | S_IXGRP, console->name);
 
 	/* bind mount console->name to '/dev/<ttydir>/console' */
-	if (new_mount_api()) {
+	if (can_use_mount_api()) {
 		ret = strnprintf(rootfs->buf, sizeof(rootfs->buf), "%s/console", ttydir);
 		if (ret < 0)
 			return ret;
@@ -1793,7 +1793,7 @@ static int lxc_setup_ttydir_console(struct lxc_rootfs *rootfs,
 	DEBUG("Mounted \"%s\" onto \"%s\"", console->name, lxcpath);
 
 	/* bind mount '/dev/<ttydir>/console'  to '/dev/console'  */
-	if (new_mount_api()) {
+	if (can_use_mount_api()) {
 		ret = fd_bind_mount(rootfs->dfd_dev, rootfs->buf,
 				    PROTECT_OPATH_FILE, PROTECT_LOOKUP_BENEATH_XDEV,
 				    rootfs->dfd_dev, "console",
