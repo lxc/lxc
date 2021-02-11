@@ -768,18 +768,17 @@ bool new_hwaddr(char *hwaddr)
 
 	seed = randseed(false);
 
-	ret = snprintf(hwaddr, 18, "00:16:3e:%02x:%02x:%02x", rand_r(&seed) % 255,
+	ret = strnprintf(hwaddr, 18, "00:16:3e:%02x:%02x:%02x", rand_r(&seed) % 255,
 		       rand_r(&seed) % 255, rand_r(&seed) % 255);
 #else
 
 	(void)randseed(true);
 
-	ret = snprintf(hwaddr, 18, "00:16:3e:%02x:%02x:%02x", rand() % 255,
+	ret = strnprintf(hwaddr, 18, "00:16:3e:%02x:%02x:%02x", rand() % 255,
 		       rand() % 255, rand() % 255);
 #endif
-	if (ret < 0 || ret >= 18) {
-		return log_error_errno(false, EIO, "Failed to call snprintf()");
-	}
+	if (ret < 0)
+		return log_error_errno(false, EIO, "Failed to call strnprintf()");
 
 	return true;
 }
