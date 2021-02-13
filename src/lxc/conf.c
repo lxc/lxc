@@ -380,7 +380,7 @@ int run_script_argv(const char *name, unsigned int hook_version,
 			return log_error_errno(-1, errno, "Failed to set environment variable: LXC_HOOK_SECTION=%s", section);
 		TRACE("Set environment variable: LXC_HOOK_SECTION=%s", section);
 
-		if (strcmp(section, "net") == 0) {
+		if (strequal(section, "net")) {
 			char *parent;
 
 			if (!argv || !argv[0])
@@ -393,17 +393,17 @@ int run_script_argv(const char *name, unsigned int hook_version,
 
 			parent = argv[1] ? argv[1] : "";
 
-			if (strcmp(argv[0], "macvlan") == 0) {
+			if (strequal(argv[0], "macvlan")) {
 				ret = setenv("LXC_NET_PARENT", parent, 1);
 				if (ret < 0)
 					return log_error_errno(-1, errno, "Failed to set environment variable: LXC_NET_PARENT=%s", parent);
 				TRACE("Set environment variable: LXC_NET_PARENT=%s", parent);
-			} else if (strcmp(argv[0], "phys") == 0) {
+			} else if (strequal(argv[0], "phys")) {
 				ret = setenv("LXC_NET_PARENT", parent, 1);
 				if (ret < 0)
 					return log_error_errno(-1, errno, "Failed to set environment variable: LXC_NET_PARENT=%s", parent);
 				TRACE("Set environment variable: LXC_NET_PARENT=%s", parent);
-			} else if (strcmp(argv[0], "veth") == 0) {
+			} else if (strequal(argv[0], "veth")) {
 				char *peer = argv[2] ? argv[2] : "";
 
 				ret = setenv("LXC_NET_PEER", peer, 1);
@@ -493,8 +493,8 @@ int lxc_rootfs_prepare(struct lxc_rootfs *rootfs, bool userns)
 
 	if (rootfs->path) {
 		if (rootfs->bdev_type &&
-		    (!strcmp(rootfs->bdev_type, "overlay") ||
-		     !strcmp(rootfs->bdev_type, "overlayfs")))
+		    (strequal(rootfs->bdev_type, "overlay") ||
+		     strequal(rootfs->bdev_type, "overlayfs")))
 			return log_trace_errno(0, EINVAL, "Not pinning on stacking filesystem");
 
 		dfd_path = open_at(-EBADF, rootfs->path, PROTECT_OPATH_FILE, 0, 0);
@@ -1356,10 +1356,10 @@ static int lxc_chroot(const struct lxc_rootfs *rootfs)
 			*slider2 = '\0';
 			*slider1 = '.';
 
-			if (strcmp(slider1 + 1, "/") == 0)
+			if (strequal(slider1 + 1, "/"))
 				continue;
 
-			if (strcmp(slider1 + 1, "/proc") == 0)
+			if (strequal(slider1 + 1, "/proc"))
 				continue;
 
 			ret = umount2(slider1, MNT_DETACH);
@@ -1640,7 +1640,7 @@ static int setup_personality(int persona)
 
 static inline bool wants_console(const struct lxc_terminal *terminal)
 {
-	return !terminal->path || strcmp(terminal->path, "none");
+	return !terminal->path || !strequal(terminal->path, "none");
 }
 
 static int lxc_bind_mount_console(const struct lxc_terminal *console,
@@ -2396,11 +2396,11 @@ static int parse_cap(const char *cap)
 	size_t end = sizeof(caps_opt) / sizeof(caps_opt[0]);
 	char *ptr = NULL;
 
-	if (strcmp(cap, "none") == 0)
+	if (strequal(cap, "none"))
 		return -2;
 
 	for (i = 0; i < end; i++) {
-		if (strcmp(cap, caps_opt[i].name))
+		if (!strequal(cap, caps_opt[i].name))
 			continue;
 
 		capid = caps_opt[i].value;
@@ -2519,7 +2519,7 @@ static int parse_resource(const char *res)
 	int resid = -1;
 
 	for (i = 0; i < sizeof(limit_opt) / sizeof(limit_opt[0]); ++i)
-		if (strcmp(res, limit_opt[i].name) == 0)
+		if (strequal(res, limit_opt[i].name))
 			return limit_opt[i].value;
 
 	/* Try to see if it's numeric, so the user may specify
@@ -3560,7 +3560,7 @@ int run_lxc_hooks(const char *name, char *hookname, struct lxc_conf *conf,
 	int which;
 
 	for (which = 0; which < NUM_LXC_HOOKS; which ++) {
-		if (strcmp(hookname, lxchook_names[which]) == 0)
+		if (strequal(hookname, lxchook_names[which]))
 			break;
 	}
 
@@ -3664,7 +3664,7 @@ int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version)
 		return -EINVAL;
 	}
 
-	if (strcmp(key, global_token) == 0)
+	if (strequal(key, global_token))
 		all = true;
 	else if (strncmp(key, namespaced_token, namespaced_token_len) == 0)
 		k += namespaced_token_len;
@@ -3674,7 +3674,7 @@ int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version)
 	lxc_list_for_each_safe (it, list, next) {
 		struct lxc_cgroup *cg = it->elem;
 
-		if (!all && strcmp(cg->subsystem, k) != 0)
+		if (!all && !strequal(cg->subsystem, k))
 			continue;
 
 		lxc_list_del(it);
@@ -3704,7 +3704,7 @@ int lxc_clear_limits(struct lxc_conf *c, const char *key)
 	const char *k = NULL;
 	bool all = false;
 
-	if (strcmp(key, "lxc.limit") == 0 || strcmp(key, "lxc.prlimit") == 0)
+	if (strequal(key, "lxc.limit") || strequal(key, "lxc.prlimit"))
 		all = true;
 	else if (strncmp(key, "lxc.limit.", STRLITERALLEN("lxc.limit.")) == 0)
 		k = key + STRLITERALLEN("lxc.limit.");
@@ -3716,7 +3716,7 @@ int lxc_clear_limits(struct lxc_conf *c, const char *key)
 	lxc_list_for_each_safe (it, &c->limits, next) {
 		struct lxc_limit *lim = it->elem;
 
-		if (!all && strcmp(lim->resource, k) != 0)
+		if (!all && !strequal(lim->resource, k))
 			continue;
 
 		lxc_list_del(it);
@@ -3734,7 +3734,7 @@ int lxc_clear_sysctls(struct lxc_conf *c, const char *key)
 	const char *k = NULL;
 	bool all = false;
 
-	if (strcmp(key, "lxc.sysctl") == 0)
+	if (strequal(key, "lxc.sysctl"))
 		all = true;
 	else if (strncmp(key, "lxc.sysctl.", STRLITERALLEN("lxc.sysctl.")) == 0)
 		k = key + STRLITERALLEN("lxc.sysctl.");
@@ -3744,7 +3744,7 @@ int lxc_clear_sysctls(struct lxc_conf *c, const char *key)
 	lxc_list_for_each_safe (it, &c->sysctls, next) {
 		struct lxc_sysctl *elem = it->elem;
 
-		if (!all && strcmp(elem->key, k) != 0)
+		if (!all && !strequal(elem->key, k))
 			continue;
 
 		lxc_list_del(it);
@@ -3763,7 +3763,7 @@ int lxc_clear_procs(struct lxc_conf *c, const char *key)
 	const char *k = NULL;
 	bool all = false;
 
-	if (strcmp(key, "lxc.proc") == 0)
+	if (strequal(key, "lxc.proc"))
 		all = true;
 	else if (strncmp(key, "lxc.proc.", STRLITERALLEN("lxc.proc.")) == 0)
 		k = key + STRLITERALLEN("lxc.proc.");
@@ -3773,7 +3773,7 @@ int lxc_clear_procs(struct lxc_conf *c, const char *key)
 	lxc_list_for_each_safe (it, &c->procs, next) {
 		struct lxc_proc *proc = it->elem;
 
-		if (!all && strcmp(proc->filename, k) != 0)
+		if (!all && !strequal(proc->filename, k))
 			continue;
 
 		lxc_list_del(it);
@@ -3838,7 +3838,7 @@ int lxc_clear_hooks(struct lxc_conf *c, const char *key)
 	const char *k = NULL;
 	bool all = false, done = false;
 
-	if (strcmp(key, "lxc.hook") == 0)
+	if (strequal(key, "lxc.hook"))
 		all = true;
 	else if (strncmp(key, "lxc.hook.", STRLITERALLEN("lxc.hook.")) == 0)
 		k = key + STRLITERALLEN("lxc.hook.");
@@ -3846,7 +3846,7 @@ int lxc_clear_hooks(struct lxc_conf *c, const char *key)
 		return -1;
 
 	for (i = 0; i < NUM_LXC_HOOKS; i++) {
-		if (all || strcmp(k, lxchook_names[i]) == 0) {
+		if (all || strequal(k, lxchook_names[i])) {
 			lxc_list_for_each_safe (it, &c->hooks[i], next) {
 				lxc_list_del(it);
 				free(it->elem);
@@ -4847,7 +4847,7 @@ void suggest_default_idmap(void)
 		*p = '\0';
 		p++;
 
-		if (strcmp(line, uname))
+		if (!strequal(line, uname))
 			continue;
 
 		p2 = strchr(p, ':');
@@ -4884,7 +4884,7 @@ void suggest_default_idmap(void)
 		*p = '\0';
 		p++;
 
-		if (strcmp(line, uname))
+		if (!strequal(line, uname))
 			continue;
 
 		p2 = strchr(p, ':');
@@ -4952,10 +4952,10 @@ struct lxc_list *sort_cgroup_settings(struct lxc_list *cgroup_settings)
 
 		item->elem = it->elem;
 		cg = it->elem;
-		if (strcmp(cg->subsystem, "memory.memsw.limit_in_bytes") == 0) {
+		if (strequal(cg->subsystem, "memory.memsw.limit_in_bytes")) {
 			/* Store the memsw_limit location */
 			memsw_limit = item;
-		} else if (strcmp(cg->subsystem, "memory.limit_in_bytes") == 0 &&
+		} else if (strequal(cg->subsystem, "memory.limit_in_bytes") &&
 			   memsw_limit != NULL) {
 			/* lxc.cgroup.memory.memsw.limit_in_bytes is found
 			 * before lxc.cgroup.memory.limit_in_bytes, swap these
