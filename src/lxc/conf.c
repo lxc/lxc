@@ -1840,7 +1840,7 @@ static int parse_mntopt(char *opt, unsigned long *flags, char **data, size_t siz
 		for (struct mount_opt *mo = &mount_opt[0]; mo->name != NULL; mo++) {
 			size_t mo_name_len = strlen(mo->name);
 
-			if (opt_len == mo_name_len && strncmp(opt, mo->name, mo_name_len) == 0) {
+			if (opt_len == mo_name_len && strnequal(opt, mo->name, mo_name_len)) {
 				if (mo->clear)
 					*flags &= ~mo->flag;
 				else
@@ -1900,7 +1900,7 @@ static void parse_propagationopt(char *opt, unsigned long *flags)
 
 	/* If opt is found in propagation_opt, set or clear flags. */
 	for (mo = &propagation_opt[0]; mo->name != NULL; mo++) {
-		if (strncmp(opt, mo->name, strlen(mo->name)) != 0)
+		if (!strnequal(opt, mo->name, strlen(mo->name)))
 			continue;
 
 		if (mo->clear)
@@ -2097,7 +2097,7 @@ static int mount_entry_create_dir_file(const struct mntent *mntent,
 	int ret;
 	char *p2;
 
-	if (strncmp(mntent->mnt_type, "overlay", 7) == 0) {
+	if (strnequal(mntent->mnt_type, "overlay", 7)) {
 		ret = ovl_mkdir(mntent, rootfs, lxc_name, lxc_path);
 		if (ret < 0)
 			return -1;
@@ -3667,7 +3667,7 @@ int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version)
 
 	if (strequal(key, global_token))
 		all = true;
-	else if (strncmp(key, namespaced_token, namespaced_token_len) == 0)
+	else if (strnequal(key, namespaced_token, namespaced_token_len))
 		k += namespaced_token_len;
 	else
 		return -EINVAL;
@@ -3707,9 +3707,9 @@ int lxc_clear_limits(struct lxc_conf *c, const char *key)
 
 	if (strequal(key, "lxc.limit") || strequal(key, "lxc.prlimit"))
 		all = true;
-	else if (strncmp(key, "lxc.limit.", STRLITERALLEN("lxc.limit.")) == 0)
+	else if (strnequal(key, "lxc.limit.", STRLITERALLEN("lxc.limit.")))
 		k = key + STRLITERALLEN("lxc.limit.");
-	else if (strncmp(key, "lxc.prlimit.", STRLITERALLEN("lxc.prlimit.")) == 0)
+	else if (strnequal(key, "lxc.prlimit.", STRLITERALLEN("lxc.prlimit.")))
 		k = key + STRLITERALLEN("lxc.prlimit.");
 	else
 		return -1;
@@ -3737,7 +3737,7 @@ int lxc_clear_sysctls(struct lxc_conf *c, const char *key)
 
 	if (strequal(key, "lxc.sysctl"))
 		all = true;
-	else if (strncmp(key, "lxc.sysctl.", STRLITERALLEN("lxc.sysctl.")) == 0)
+	else if (strnequal(key, "lxc.sysctl.", STRLITERALLEN("lxc.sysctl.")))
 		k = key + STRLITERALLEN("lxc.sysctl.");
 	else
 		return -1;
@@ -3766,7 +3766,7 @@ int lxc_clear_procs(struct lxc_conf *c, const char *key)
 
 	if (strequal(key, "lxc.proc"))
 		all = true;
-	else if (strncmp(key, "lxc.proc.", STRLITERALLEN("lxc.proc.")) == 0)
+	else if (strnequal(key, "lxc.proc.", STRLITERALLEN("lxc.proc.")))
 		k = key + STRLITERALLEN("lxc.proc.");
 	else
 		return -1;
@@ -3841,7 +3841,7 @@ int lxc_clear_hooks(struct lxc_conf *c, const char *key)
 
 	if (strequal(key, "lxc.hook"))
 		all = true;
-	else if (strncmp(key, "lxc.hook.", STRLITERALLEN("lxc.hook.")) == 0)
+	else if (strnequal(key, "lxc.hook.", STRLITERALLEN("lxc.hook.")))
 		k = key + STRLITERALLEN("lxc.hook.");
 	else
 		return -1;
