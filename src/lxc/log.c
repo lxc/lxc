@@ -670,7 +670,7 @@ int lxc_log_init(struct lxc_log *log)
 		log_vmname = strdup(log->name);
 
 	if (log->file) {
-		if (strcmp(log->file, "none") == 0)
+		if (strequal(log->file, "none"))
 			return 0;
 
 		ret = __lxc_log_set_file(log->file, 1);
@@ -689,7 +689,7 @@ int lxc_log_init(struct lxc_log *log)
 			log->lxcpath = LOGPATH;
 
 		/* try LOGPATH if lxcpath is the default for the privileged containers */
-		if (!geteuid() && strcmp(LXCPATH, log->lxcpath) == 0)
+		if (!geteuid() && strequal(LXCPATH, log->lxcpath))
 			ret = _lxc_log_set_file(log->name, NULL, 0);
 
 		/* try in lxcpath */
