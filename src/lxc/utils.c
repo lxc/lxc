@@ -709,7 +709,7 @@ bool detect_ramfs_rootfs(void)
 		if (strequal(p + 1, "/")) {
 			/* This is '/'. Is it the ramfs? */
 			p = strchr(p2 + 1, '-');
-			if (p && strncmp(p, "- rootfs ", 9) == 0)
+			if (p && strnequal(p, "- rootfs ", 9))
 				return true;
 		}
 	}
@@ -924,7 +924,7 @@ static bool is_subdir(const char *subdir, const char *dir, size_t len)
 	if (subdirlen < len)
 		return false;
 
-	if (strncmp(subdir, dir, len) != 0)
+	if (!strnequal(subdir, dir, len))
 		return false;
 
 	if (dir[len-1] == '/')
@@ -1276,7 +1276,7 @@ bool task_blocks_signal(pid_t pid, int signal)
 	while (getline(&line, &n, f) != -1) {
 		char *numstr;
 
-		if (strncmp(line, "SigBlk:", 7))
+		if (!strnequal(line, "SigBlk:", 7))
 			continue;
 
 		numstr = lxc_trim_whitespace_in_place(line + 7);
@@ -1382,7 +1382,7 @@ static int lxc_get_unused_loop_dev_legacy(char *loop_name)
 	}
 
 	while ((dp = readdir(dir))) {
-		if (strncmp(dp->d_name, "loop", 4) != 0)
+		if (!strnequal(dp->d_name, "loop", 4))
 			continue;
 
 		dfd = dirfd(dir);
@@ -1687,7 +1687,7 @@ static int process_dead(/* takes */ int status_fd)
 	while (getline(&line, &n, f) != -1) {
 		char *state;
 
-		if (strncmp(line, "State:", 6))
+		if (!strnequal(line, "State:", 6))
 			continue;
 
 		state = lxc_trim_whitespace_in_place(line + 6);
