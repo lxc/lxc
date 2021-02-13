@@ -2201,7 +2201,7 @@ static void do_clear_unexp_config_line(struct lxc_conf *conf, const char *key)
 		return clear_unexp_config_line(conf, key, true);
 
 	/* Clear a network with a specific index. */
-	if (!strncmp(key, "lxc.net.", 8)) {
+	if (strnequal(key, "lxc.net.", 8)) {
 		int ret;
 		const char *idx;
 
@@ -2615,7 +2615,7 @@ static int do_lxcapi_get_keys(struct lxc_container *c, const char *key, char *re
 	 * This is an intelligent result to show which keys are valid given the
 	 * type of nic it is.
 	 */
-	if (strncmp(key, "lxc.net.", 8) == 0)
+	if (strnequal(key, "lxc.net.", 8))
 		ret = lxc_list_net(c->lxc_conf, key, retv, inlen);
 	else
 		ret = lxc_list_subkeys(c->lxc_conf, key, retv, inlen);
@@ -3424,7 +3424,7 @@ static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
 			if (!fname) /* relative path - we don't support, but maybe we should */
 				return 0;
 
-			if (strncmp(hookname, cpath, len - 1) != 0) {
+			if (!strnequal(hookname, cpath, len - 1)) {
 				/* this hook is public - ignore */
 				continue;
 			}
@@ -5448,7 +5448,7 @@ int list_defined_containers(const char *lxcpath, char ***names, struct lxc_conta
 
 	while ((direntp = readdir(dir))) {
 		/* Ignore '.', '..' and any hidden directory. */
-		if (!strncmp(direntp->d_name, ".", 1))
+		if (strnequal(direntp->d_name, ".", 1))
 			continue;
 
 		if (!config_file_exists(lxcpath, direntp->d_name))
@@ -5553,9 +5553,9 @@ int list_active_containers(const char *lxcpath, char ***nret,
 
 		is_hashed = false;
 
-		if (strncmp(p, lxcpath, lxcpath_len) == 0) {
+		if (strnequal(p, lxcpath, lxcpath_len)) {
 			p += lxcpath_len;
-		} else if (strncmp(p, "lxc/", 4) == 0) {
+		} else if (strnequal(p, "lxc/", 4)) {
 			p += 4;
 			is_hashed = true;
 		} else {
@@ -5567,7 +5567,7 @@ int list_active_containers(const char *lxcpath, char ***nret,
 
 		/* Now p is the start of lxc_name. */
 		p2 = strchr(p, '/');
-		if (!p2 || strncmp(p2, "/command", 8) != 0)
+		if (!p2 || !strnequal(p2, "/command", 8))
 			continue;
 		*p2 = '\0';
 
@@ -5576,7 +5576,7 @@ int list_active_containers(const char *lxcpath, char ***nret,
 			if (!recvpath)
 				continue;
 
-			if (strncmp(lxcpath, recvpath, lxcpath_len) != 0) {
+			if (!strnequal(lxcpath, recvpath, lxcpath_len)) {
 				free(recvpath);
 				continue;
 			}
