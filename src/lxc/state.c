@@ -43,11 +43,12 @@ const char *lxc_state2str(lxc_state_t state)
 lxc_state_t lxc_str2state(const char *state)
 {
 	size_t len;
-	lxc_state_t i;
-	len = sizeof(strstate)/sizeof(strstate[0]);
-	for (i = 0; i < len; i++)
-		if (!strcmp(strstate[i], state))
+
+	len = sizeof(strstate) / sizeof(strstate[0]);
+	for (lxc_state_t i = 0; i < len; i++) {
+		if (strequal(strstate[i], state))
 			return i;
+	}
 
 	ERROR("invalid state '%s'", state);
 	return -1;
