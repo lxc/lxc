@@ -62,11 +62,10 @@ int lxc_namespace_2_cloneflag(const char *namespace)
 
 int lxc_namespace_2_ns_idx(const char *namespace)
 {
-	int i;
-
-	for (i = 0; i < LXC_NS_MAX; i++)
-		if (!strcmp(ns_info[i].proc_name, namespace))
+	for (int i = 0; i < LXC_NS_MAX; i++) {
+		if (strequal(ns_info[i].proc_name, namespace))
 			return i;
+	}
 
 	ERROR("Invalid namespace name \"%s\"", namespace);
 	return -EINVAL;
