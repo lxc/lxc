@@ -872,7 +872,7 @@ static int __instantiate_ns_common(struct lxc_netdev *netdev)
 	if (is_empty_string(netdev->name))
 		(void)strlcpy(netdev->name, "eth%d", IFNAMSIZ);
 
-	if (strcmp(netdev->created_name, netdev->name) != 0) {
+	if (!strequal(netdev->created_name, netdev->name)) {
 		int ret;
 
 		ret = lxc_netdev_rename_by_name(netdev->created_name, netdev->name);
