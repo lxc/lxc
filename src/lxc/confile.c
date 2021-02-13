@@ -280,7 +280,7 @@ struct lxc_config_t *lxc_get_config(const char *key)
 	size_t i;
 
 	for (i = 0; i < config_jump_table_size; i++)
-		if (!strncmp(config_jump_table[i].name, key, strlen(config_jump_table[i].name)))
+		if (strnequal(config_jump_table[i].name, key, strlen(config_jump_table[i].name)))
 			return &config_jump_table[i];
 
 	return NULL;
@@ -376,7 +376,7 @@ static int create_matched_ifnames(const char *value, struct lxc_conf *lxc_conf,
 		if (ifa->ifa_addr->sa_family != AF_PACKET)
 			continue;
 
-		if (!strncmp(value, ifa->ifa_name, strlen(value) - 1)) {
+		if (strnequal(value, ifa->ifa_name, strlen(value) - 1)) {
 			ret = set_config_net_type(type_key, tmpvalue, lxc_conf,
 						  netdev);
 			if (!ret) {
@@ -1024,7 +1024,7 @@ static int set_config_seccomp_notify_proxy(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return clr_config_seccomp_notify_proxy(key, lxc_conf, NULL);
 
-	if (strncmp(value, "unix:", 5) != 0)
+	if (!strnequal(value, "unix:", 5))
 		return ret_set_errno(-1, EINVAL);
 
 	offset = value + 5;
@@ -1623,7 +1623,7 @@ static int __set_config_cgroup_controller(const char *key, const char *value,
 		return ret_errno(EINVAL);
 	}
 
-	if (strncmp(key, token, token_len) != 0)
+	if (!strnequal(key, token, token_len))
 		return ret_errno(EINVAL);
 
 	subkey = key + token_len;
@@ -1717,7 +1717,7 @@ static bool parse_limit_value(const char **value, rlim_t *res)
 {
 	char *endptr = NULL;
 
-	if (strncmp(*value, "unlimited", STRLITERALLEN("unlimited")) == 0) {
+	if (strnequal(*value, "unlimited", STRLITERALLEN("unlimited"))) {
 		*res = RLIM_INFINITY;
 		*value += STRLITERALLEN("unlimited");
 		return true;
@@ -1745,7 +1745,7 @@ static int set_config_prlimit(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return lxc_clear_limits(lxc_conf, key);
 
-	if (strncmp(key, "lxc.prlimit.", STRLITERALLEN("lxc.prlimit.")) != 0)
+	if (!strnequal(key, "lxc.prlimit.", STRLITERALLEN("lxc.prlimit.")))
 		return ret_errno(EINVAL);
 
 	key += STRLITERALLEN("lxc.prlimit.");
@@ -1826,7 +1826,7 @@ static int set_config_sysctl(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return clr_config_sysctl(key, lxc_conf, NULL);
 
-	if (strncmp(key, "lxc.sysctl.", STRLITERALLEN("lxc.sysctl.")) != 0)
+	if (!strnequal(key, "lxc.sysctl.", STRLITERALLEN("lxc.sysctl.")))
 		return -1;
 
 	key += STRLITERALLEN("lxc.sysctl.");
@@ -1884,7 +1884,7 @@ static int set_config_proc(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return clr_config_proc(key, lxc_conf, NULL);
 
-	if (strncmp(key, "lxc.proc.", STRLITERALLEN("lxc.proc.")) != 0)
+	if (!strnequal(key, "lxc.proc.", STRLITERALLEN("lxc.proc.")))
 		return -1;
 
 	subkey = key + STRLITERALLEN("lxc.proc.");
@@ -2038,7 +2038,7 @@ static int set_config_mount_auto(const char *key, const char *value,
 				break;
 
 			if (strequal("shmounts:", allowed_auto_mounts[i].token) &&
-			    strncmp("shmounts:", token, STRLITERALLEN("shmounts:")) == 0) {
+			    strnequal("shmounts:", token, STRLITERALLEN("shmounts:"))) {
 				is_shmounts = true;
 				break;
 			}
@@ -2383,7 +2383,7 @@ static int do_includedir(const char *dirp, struct lxc_conf *lxc_conf)
 			continue;
 
 		len = strlen(fnam);
-		if (len < 6 || strncmp(fnam + len - 5, ".conf", 5) != 0)
+		if (len < 6 || !strnequal(fnam + len - 5, ".conf", 5))
 			continue;
 
 		len = strnprintf(path, sizeof(path), "%s/%s", dirp, fnam);
@@ -2633,7 +2633,7 @@ static int parse_line(char *buffer, void *data)
 		return 0;
 
 	/* martian option - don't add it to the config itself */
-	if (strncmp(line, "lxc.", 4))
+	if (!strnequal(line, "lxc.", 4))
 		return 0;
 
 	dot = strchr(line, '=');
@@ -2680,7 +2680,7 @@ static struct new_config_item *parse_new_conf_line(char *buffer)
 	line += lxc_char_left_gc(line, strlen(line));
 
 	/* martian option - don't add it to the config itself */
-	if (strncmp(line, "lxc.", 4))
+	if (!strnequal(line, "lxc.", 4))
 		return 0;
 
 	dot = strchr(line, '=');
@@ -2926,7 +2926,7 @@ void clear_unexp_config_line(struct lxc_conf *conf, const char *key,
 		else
 			lend++;
 
-		if (strncmp(lstart, key, strlen(key)) != 0) {
+		if (!strnequal(lstart, key, strlen(key))) {
 			lstart = lend;
 			continue;
 		}
@@ -2983,7 +2983,7 @@ bool clone_update_unexp_ovl_paths(struct lxc_conf *conf, const char *oldpath,
 		else
 			lend++;
 
-		if (strncmp(lstart, key, strlen(key)) != 0)
+		if (!strnequal(lstart, key, strlen(key)))
 			goto next;
 
 		p = strchr(lstart + strlen(key), '=');
@@ -3090,7 +3090,7 @@ bool clone_update_unexp_hooks(struct lxc_conf *conf, const char *oldpath,
 		else
 			lend++;
 
-		if (strncmp(lstart, key, strlen(key)) != 0)
+		if (!strnequal(lstart, key, strlen(key)))
 			goto next;
 
 		p = strchr(lstart + strlen(key), '=');
@@ -3104,7 +3104,7 @@ bool clone_update_unexp_hooks(struct lxc_conf *conf, const char *oldpath,
 		if (p >= lend)
 			goto next;
 
-		if (strncmp(p, olddir, strlen(olddir)) != 0)
+		if (!strnequal(p, olddir, strlen(olddir)))
 			goto next;
 
 		/* replace the olddir with newdir */
@@ -3441,7 +3441,7 @@ static int __get_config_cgroup_controller(const char *key, char *retv,
 
 	if (strequal(key, global_token))
 		get_all = true;
-	else if (strncmp(key, namespaced_token, namespaced_token_len) == 0)
+	else if (strnequal(key, namespaced_token, namespaced_token_len))
 		key += namespaced_token_len;
 	else
 		return ret_errno(EINVAL);
@@ -4032,7 +4032,7 @@ static int get_config_prlimit(const char *key, char *retv, int inlen,
 
 	if (strequal(key, "lxc.prlimit"))
 		get_all = true;
-	else if (strncmp(key, "lxc.prlimit.", 12) == 0)
+	else if (strnequal(key, "lxc.prlimit.", 12))
 		key += 12;
 	else
 		return ret_errno(EINVAL);
@@ -4090,7 +4090,7 @@ static int get_config_sysctl(const char *key, char *retv, int inlen,
 
 	if (strequal(key, "lxc.sysctl"))
 		get_all = true;
-	else if (strncmp(key, "lxc.sysctl.", STRLITERALLEN("lxc.sysctl.")) == 0)
+	else if (strnequal(key, "lxc.sysctl.", STRLITERALLEN("lxc.sysctl.")))
 		key += STRLITERALLEN("lxc.sysctl.");
 	else
 		return ret_errno(EINVAL);
@@ -4123,7 +4123,7 @@ static int get_config_proc(const char *key, char *retv, int inlen,
 
 	if (strequal(key, "lxc.proc"))
 		get_all = true;
-	else if (strncmp(key, "lxc.proc.", STRLITERALLEN("lxc.proc.")) == 0)
+	else if (strnequal(key, "lxc.proc.", STRLITERALLEN("lxc.proc.")))
 		key += STRLITERALLEN("lxc.proc.");
 	else
 		return ret_errno(EINVAL);
@@ -4705,7 +4705,7 @@ static struct lxc_config_t *get_network_config_ops(const char *key,
 	char *idx_start, *idx_end;
 
 	/* check that this is a sensible network key */
-	if (strncmp("lxc.net.", key, 8))
+	if (!strnequal("lxc.net.", key, 8))
 		return log_error_errno(NULL, EINVAL, "Invalid network configuration key \"%s\"", key);
 
 	copy = strdup(key);
