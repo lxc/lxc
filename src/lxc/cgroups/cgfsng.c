@@ -135,7 +135,7 @@ static void must_append_controller(char **klist, char **nlist, char ***clist,
 
 	newentry = append_null_to_list((void ***)clist);
 
-	if (strncmp(entry, "name=", 5) == 0)
+	if (strnequal(entry, "name=", 5))
 		copy = must_copy_string(entry);
 	else if (string_in_list(klist, entry))
 		copy = must_copy_string(entry);
@@ -630,7 +630,7 @@ static char **cg_hybrid_get_controllers(char **klist, char **nlist, char *line,
 	/* Note, if we change how mountinfo works, then our caller will need to
 	 * verify /sys/fs/cgroup/ in this field.
 	 */
-	if (strncmp(p, DEFAULT_CGROUP_MOUNTPOINT "/", 15) != 0)
+	if (!strnequal(p, DEFAULT_CGROUP_MOUNTPOINT "/", 15))
 		return log_warn(NULL, "Found hierarchy not under " DEFAULT_CGROUP_MOUNTPOINT ": \"%s\"", p);
 
 	p += 15;
@@ -729,7 +729,7 @@ static char *cg_hybrid_get_mountpoint(char *line)
 		p++;
 	}
 
-	if (strncmp(p, DEFAULT_CGROUP_MOUNTPOINT "/", 15) != 0)
+	if (!strnequal(p, DEFAULT_CGROUP_MOUNTPOINT "/", 15))
 		return NULL;
 
 	p2 = strchr(p + 15, ' ');
@@ -867,7 +867,7 @@ static int get_existing_subsystems(char ***klist, char ***nlist)
 		}
 
 		lxc_iterate_parts(tok, p, ",") {
-			if (strncmp(tok, "name=", 5) == 0)
+			if (strnequal(tok, "name=", 5))
 				must_append_string(nlist, tok);
 			else
 				must_append_string(klist, tok);
@@ -1807,7 +1807,7 @@ static int __cg_mount_direct(int type, struct hierarchy *h,
 
 		if (!is_unified_hierarchy(h)) {
 			for (const char **it = (const char **)h->controllers; it && *it; it++) {
-				if (strncmp(*it, "name=", STRLITERALLEN("name=")) == 0)
+				if (strnequal(*it, "name=", STRLITERALLEN("name=")))
 					ret = fs_set_property(fd_fs, "name", *it + STRLITERALLEN("name="));
 				else
 					ret = fs_set_property(fd_fs, *it, "");
@@ -2132,7 +2132,7 @@ static int freezer_cgroup_events_cb(int fd, uint32_t events, void *cbdata,
 		state_string = "frozen 0";
 
 	while (getline(&line, &len, f) != -1)
-		if (strncmp(line, state_string, STRLITERALLEN("frozen") + 2) == 0)
+		if (strnequal(line, state_string, STRLITERALLEN("frozen") + 2))
 			return LXC_MAINLOOP_CLOSE;
 
 	rewind(f);
@@ -2917,8 +2917,8 @@ __cgfsng_ops static bool cgfsng_setup_limits_legacy(struct cgroup_ops *ops,
 	lxc_list_for_each(iterator, sorted_cgroup_settings) {
 		cg = iterator->elem;
 
-		if (do_devices == !strncmp("devices", cg->subsystem, 7)) {
-			if (cg_legacy_set_data(ops, cg->subsystem, cg->value, strncmp("cpuset", cg->subsystem, 6) == 0)) {
+		if (do_devices == strnequal("devices", cg->subsystem, 7)) {
+			if (cg_legacy_set_data(ops, cg->subsystem, cg->value, strnequal("cpuset", cg->subsystem, 6))) {
 				if (do_devices && (errno == EACCES || errno == EPERM)) {
 					SYSWARN("Failed to set \"%s\" to \"%s\"", cg->subsystem, cg->value);
 					continue;
@@ -3002,7 +3002,7 @@ __cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
 		struct lxc_cgroup *cg = iterator->elem;
 		int ret;
 
-		if (strncmp("devices", cg->subsystem, 7) == 0)
+		if (strnequal("devices", cg->subsystem, 7))
 			ret = bpf_device_cgroup_prepare(ops, conf, cg->subsystem, cg->value);
 		else
 			ret = lxc_write_openat(h->container_limit_path, cg->subsystem, cg->value, strlen(cg->value));
@@ -3631,7 +3631,7 @@ int cgroup_set(const char *name, const char *lxcpath,
 	if (unified_fd < 0)
 		return ret_errno(ENOCGROUP2);
 
-	if (strncmp(filename, "devices.", STRLITERALLEN("devices.")) == 0) {
+	if (strnequal(filename, "devices.", STRLITERALLEN("devices."))) {
 		struct device_item device = {};
 
 		ret = device_cgroup_rule_parse(&device, filename, value);
