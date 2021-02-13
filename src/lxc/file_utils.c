@@ -363,22 +363,22 @@ FILE *fopen_cloexec(const char *path, const char *mode)
 	int open_mode = 0, step = 0;
 	FILE *f;
 
-	if (!strncmp(mode, "r+", 2)) {
+	if (strnequal(mode, "r+", 2)) {
 		open_mode = O_RDWR;
 		step = 2;
-	} else if (!strncmp(mode, "r", 1)) {
+	} else if (strnequal(mode, "r", 1)) {
 		open_mode = O_RDONLY;
 		step = 1;
-	} else if (!strncmp(mode, "w+", 2)) {
+	} else if (strnequal(mode, "w+", 2)) {
 		open_mode = O_RDWR | O_TRUNC | O_CREAT;
 		step = 2;
-	} else if (!strncmp(mode, "w", 1)) {
+	} else if (strnequal(mode, "w", 1)) {
 		open_mode = O_WRONLY | O_TRUNC | O_CREAT;
 		step = 1;
-	} else if (!strncmp(mode, "a+", 2)) {
+	} else if (strnequal(mode, "a+", 2)) {
 		open_mode = O_RDWR | O_CREAT | O_APPEND;
 		step = 2;
-	} else if (!strncmp(mode, "a", 1)) {
+	} else if (strnequal(mode, "a", 1)) {
 		open_mode = O_WRONLY | O_CREAT | O_APPEND;
 		step = 1;
 	}
