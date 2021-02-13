@@ -193,9 +193,9 @@ static bool match_dlog_fds(struct dirent *direntp)
 	else if (linklen >= PATH_MAX)
 		return log_error(false, "The name of link path is too long - \"%s\"", path);
 
-	if (strcmp(link, "/dev/log_main")	== 0 ||
-	    strcmp(link, "/dev/log_system")	== 0 ||
-	    strcmp(link, "/dev/log_radio")	== 0)
+	if (strequal(link, "/dev/log_main") ||
+	    strequal(link, "/dev/log_system") ||
+	    strequal(link, "/dev/log_radio"))
 		return true;
 
 	return false;
@@ -232,10 +232,10 @@ restart:
 		struct lxc_list *cur;
 		bool matched = false;
 
-		if (strcmp(direntp->d_name, ".") == 0)
+		if (strequal(direntp->d_name, "."))
 			continue;
 
-		if (strcmp(direntp->d_name, "..") == 0)
+		if (strequal(direntp->d_name, ".."))
 			continue;
 
 		ret = lxc_safe_int(direntp->d_name, &fd);
@@ -536,7 +536,7 @@ int lxc_poll(const char *name, struct lxc_handler *handler)
 	struct lxc_epoll_descr descr, descr_console;
 
 	if (handler->conf->console.path &&
-	    strcmp(handler->conf->console.path, "none") == 0)
+	    strequal(handler->conf->console.path, "none"))
 		has_console = false;
 
 	ret = lxc_mainloop_open(&descr);
