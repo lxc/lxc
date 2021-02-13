@@ -130,7 +130,7 @@ static pid_t pidfd_get_pid(int dfd_init_pid, int pidfd)
 		int pid = -ESRCH;
 		char *slider = line;
 
-		if (strncmp(slider, prefix, prefix_len))
+		if (!strnequal(slider, prefix, prefix_len))
 			continue;
 
 		slider += prefix_len;
