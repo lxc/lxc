@@ -80,8 +80,8 @@ static int _recursive_rmdir(const char *dirname, dev_t pdev,
 		int rc;
 		struct stat mystat;
 
-		if (!strcmp(direntp->d_name, ".") ||
-		    !strcmp(direntp->d_name, ".."))
+		if (strequal(direntp->d_name, ".") ||
+		    strequal(direntp->d_name, ".."))
 			continue;
 
 		rc = strnprintf(pathname, sizeof(pathname), "%s/%s", dirname, direntp->d_name);
@@ -91,7 +91,7 @@ static int _recursive_rmdir(const char *dirname, dev_t pdev,
 			continue;
 		}
 
-		if (!level && exclude && !strcmp(direntp->d_name, exclude)) {
+		if (!level && exclude && strequal(direntp->d_name, exclude)) {
 			ret = rmdir(pathname);
 			if (ret < 0) {
 				switch (errno) {
@@ -625,7 +625,7 @@ bool is_shared_mountpoint(const char *path)
 			continue;
 
 		*slider2 = '\0';
-		if (strcmp(slider1 + 1, path) == 0) {
+		if (strequal(slider1 + 1, path)) {
 			/* This is the path. Is it shared? */
 			slider1 = strchr(slider2 + 1, ' ');
 			if (slider1 && strstr(slider1, "shared:"))
@@ -706,7 +706,7 @@ bool detect_ramfs_rootfs(void)
 		if (!p2)
 			continue;
 		*p2 = '\0';
-		if (strcmp(p + 1, "/") == 0) {
+		if (strequal(p + 1, "/")) {
 			/* This is '/'. Is it the ramfs? */
 			p = strchr(p2 + 1, '-');
 			if (p && strncmp(p, "- rootfs ", 9) == 0)
@@ -1305,8 +1305,8 @@ int lxc_preserve_ns(const int pid, const char *ns)
 	 * string.
 	 */
 	ret = strnprintf(path, sizeof(path), "/proc/%d/ns%s%s", pid,
-			 !ns || strcmp(ns, "") == 0 ? "" : "/",
-			 !ns || strcmp(ns, "") == 0 ? "" : ns);
+			 !ns || strequal(ns, "") ? "" : "/",
+			 !ns || strequal(ns, "") ? "" : ns);
 	if (ret < 0)
 		return ret_errno(EIO);
 
@@ -1629,7 +1629,7 @@ bool lxc_nic_exists(char *nic)
 	int ret;
 	struct stat sb;
 
-	if (!strcmp(nic, "none"))
+	if (strequal(nic, "none"))
 		return true;
 
 	ret = strnprintf(path, sizeof(path), "/sys/class/net/%s", nic);
@@ -1740,8 +1740,8 @@ int lxc_rm_rf(const char *dirname)
 		__do_free char *pathname = NULL;
 		struct stat mystat;
 
-		if (!strcmp(direntp->d_name, ".") ||
-		    !strcmp(direntp->d_name, ".."))
+		if (strequal(direntp->d_name, ".") ||
+		    strequal(direntp->d_name, ".."))
 			continue;
 
 		pathname = must_make_path(dirname, direntp->d_name, NULL);
