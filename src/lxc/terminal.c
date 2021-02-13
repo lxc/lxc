@@ -970,10 +970,8 @@ int lxc_terminal_setup(struct lxc_conf *conf)
 	int ret;
 	struct lxc_terminal *terminal = &conf->console;
 
-	if (terminal->path && strcmp(terminal->path, "none") == 0) {
-		INFO("No terminal requested");
-		return 0;
-	}
+	if (terminal->path && strequal(terminal->path, "none"))
+		return log_info(0, "No terminal requested");
 
 	ret = lxc_terminal_create_foreign(conf, terminal);
 	if (ret < 0)
