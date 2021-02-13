@@ -16,6 +16,7 @@
 #include "initutils.h"
 #include "log.h"
 #include "start.h"
+#include "string_utils.h"
 
 lxc_log_define(cgroup, lxc);
 
@@ -105,7 +106,7 @@ void prune_init_scope(char *cg)
 	if (point < cg)
 		return;
 
-	if (strcmp(point, INIT_SCOPE) == 0) {
+	if (strequal(point, INIT_SCOPE)) {
 		if (point == cg)
 			*(point + 1) = '\0';
 		else
