@@ -88,7 +88,7 @@ const char *lxc_global_config_value(const char *option_name)
 		user_config_path = strdup(LXC_GLOBAL_CONF);
 		user_default_config_path = strdup(LXC_DEFAULT_CONFIG);
 		user_lxc_path = strdup(LXCPATH);
-		if (strcmp(DEFAULT_CGROUP_PATTERN, "") != 0)
+		if (!strequal(DEFAULT_CGROUP_PATTERN, ""))
 			user_cgroup_pattern = strdup(DEFAULT_CGROUP_PATTERN);
 	}
 
@@ -97,7 +97,7 @@ const char *lxc_global_config_value(const char *option_name)
 	FILE *fin = NULL;
 
 	for (i = 0, ptr = options; (*ptr)[0]; ptr++, i++) {
-		if (!strcmp(option_name, (*ptr)[0]))
+		if (strequal(option_name, (*ptr)[0]))
 			break;
 	}
 	if (!(*ptr)[0]) {
@@ -164,7 +164,7 @@ const char *lxc_global_config_value(const char *option_name)
 			if (!*slider1)
 				continue;
 
-			if (strcmp(option_name, "lxc.lxcpath") == 0) {
+			if (strequal(option_name, "lxc.lxcpath")) {
 				free(user_lxc_path);
 				user_lxc_path = copy_global_config_value(slider1);
 				remove_trailing_slashes(user_lxc_path);
@@ -178,12 +178,12 @@ const char *lxc_global_config_value(const char *option_name)
 	}
 
 	/* could not find value, use default */
-	if (strcmp(option_name, "lxc.lxcpath") == 0) {
+	if (strequal(option_name, "lxc.lxcpath")) {
 		remove_trailing_slashes(user_lxc_path);
 		values[i] = move_ptr(user_lxc_path);
-	} else if (strcmp(option_name, "lxc.default_config") == 0) {
+	} else if (strequal(option_name, "lxc.default_config")) {
 		values[i] = move_ptr(user_default_config_path);
-	} else if (strcmp(option_name, "lxc.cgroup.pattern") == 0) {
+	} else if (strequal(option_name, "lxc.cgroup.pattern")) {
 		values[i] = move_ptr(user_cgroup_pattern);
 	} else {
 		values[i] = (*ptr)[1];
