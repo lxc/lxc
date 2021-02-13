@@ -602,7 +602,7 @@ static bool file_is_yes(const char *path)
 	rd = lxc_read_nointr(fd, buf, sizeof(buf));
 	close(fd);
 
-	return rd >= 4 && strncmp(buf, "yes\n", 4) == 0;
+	return rd >= 4 && strnequal(buf, "yes\n", 4);
 }
 
 static bool apparmor_can_stack(void)
