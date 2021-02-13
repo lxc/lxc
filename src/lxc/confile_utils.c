@@ -712,18 +712,18 @@ bool lxc_config_net_is_hwaddr(const char *line)
 	unsigned index;
 	char tmp[7];
 
-	if (strncmp(line, "lxc.net", 7) != 0)
+	if (!strnequal(line, "lxc.net", 7))
 		return false;
 
-	if (strncmp(line, "lxc.net.hwaddr", 14) == 0)
+	if (strnequal(line, "lxc.net.hwaddr", 14))
 		return true;
 
-	if (strncmp(line, "lxc.network.hwaddr", 18) == 0)
+	if (strnequal(line, "lxc.network.hwaddr", 18))
 		return true;
 
 	if (sscanf(line, "lxc.net.%u.%6s", &index, tmp) == 2 ||
 	    sscanf(line, "lxc.network.%u.%6s", &index, tmp) == 2)
-		return strncmp(tmp, "hwaddr", 6) == 0;
+		return strnequal(tmp, "hwaddr", 6);
 
 	return false;
 }
