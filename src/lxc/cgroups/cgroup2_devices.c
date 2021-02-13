@@ -493,7 +493,7 @@ int bpf_list_add_device(struct lxc_conf *conf, struct device_item *device)
 			continue;
 		if (cur->minor != device->minor)
 			continue;
-		if (strcmp(cur->access, device->access))
+		if (!strequal(cur->access, device->access))
 			continue;
 
 		/*

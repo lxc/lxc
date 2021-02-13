@@ -86,7 +86,7 @@ static bool string_in_list(char **list, const char *entry)
 		return false;
 
 	for (int i = 0; list[i]; i++)
-		if (strcmp(list[i], entry) == 0)
+		if (strequal(list[i], entry))
 			return true;
 
 	return false;
@@ -167,12 +167,12 @@ static struct hierarchy *get_hierarchy(struct cgroup_ops *ops, const char *contr
 		 * from cgroup to cgroup2.
 		 */
 		if (pure_unified_layout(ops)) {
-			if (strcmp(controller, "devices") == 0) {
+			if (strequal(controller, "devices")) {
 				if (ops->unified->bpf_device_controller)
 					return ops->unified;
 
 				break;
-			} else if (strcmp(controller, "freezer") == 0) {
+			} else if (strequal(controller, "freezer")) {
 				if (ops->unified->freezer_controller)
 					return ops->unified;
 
@@ -782,7 +782,7 @@ static bool controller_in_clist(char *cgline, char *c)
 	tmp[len] = '\0';
 
 	lxc_iterate_parts(tok, tmp, ",")
-		if (strcmp(tok, c) == 0)
+		if (strequal(tok, c))
 			return true;
 
 	return false;
@@ -2618,12 +2618,12 @@ static int device_cgroup_rule_parse(struct device_item *device, const char *key,
 	int count, ret;
 	char temp[50];
 
-	if (strcmp("devices.allow", key) == 0)
+	if (strequal("devices.allow", key))
 		device->allow = 1;
 	else
 		device->allow = 0;
 
-	if (strcmp(val, "a") == 0) {
+	if (strequal(val, "a")) {
 		/* global rule */
 		device->type = 'a';
 		device->major = -1;
@@ -2722,7 +2722,7 @@ __cgfsng_ops static int cgfsng_set(struct cgroup_ops *ops,
 	if (p)
 		*p = '\0';
 
-	if (pure_unified_layout(ops) && strcmp(controller, "devices") == 0) {
+	if (pure_unified_layout(ops) && strequal(controller, "devices")) {
 		struct device_item device = {};
 
 		ret = device_cgroup_rule_parse(&device, key, value);
@@ -2862,7 +2862,7 @@ static int cg_legacy_set_data(struct cgroup_ops *ops, const char *filename,
 	if (p)
 		*p = '\0';
 
-	if (strcmp("devices.allow", filename) == 0 && value[0] == '/') {
+	if (strequal("devices.allow", filename) && value[0] == '/') {
 		int ret;
 
 		ret = convert_devpath(value, converted_value);
@@ -2952,7 +2952,7 @@ static int bpf_device_cgroup_prepare(struct cgroup_ops *ops,
 	struct device_item device_item = {};
 	int ret;
 
-	if (strcmp("devices.allow", key) == 0 && *val == '/')
+	if (strequal("devices.allow", key) && *val == '/')
 		ret = device_cgroup_rule_parse_devpath(&device_item, val);
 	else
 		ret = device_cgroup_rule_parse(&device_item, key, val);
@@ -3190,7 +3190,7 @@ static bool cgroup_use_wants_controllers(const struct cgroup_ops *ops,
 		bool found = false;
 
 		for (char **cur_use = ops->cgroup_use; cur_use && *cur_use; cur_use++) {
-			if (strcmp(*cur_use, *cur_ctrl) != 0)
+			if (!strequal(*cur_use, *cur_ctrl))
 				continue;
 
 			found = true;
@@ -3228,7 +3228,7 @@ static void cg_unified_delegate(char ***delegate)
 		 * We always need to chown this for both cgroup and
 		 * cgroup2.
 		 */
-		if (strcmp(token, "cgroup.procs") == 0)
+		if (strequal(token, "cgroup.procs"))
 			continue;
 
 		idx = append_null_to_list((void ***)delegate);
@@ -3503,7 +3503,7 @@ __cgfsng_ops static int cgfsng_data_init(struct cgroup_ops *ops)
 
 	/* copy system-wide cgroup information */
 	cgroup_pattern = lxc_global_config_value("lxc.cgroup.pattern");
-	if (cgroup_pattern && strcmp(cgroup_pattern, "") != 0)
+	if (cgroup_pattern && !strequal(cgroup_pattern, ""))
 		ops->cgroup_pattern = must_copy_string(cgroup_pattern);
 
 	return 0;
