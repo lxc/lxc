@@ -466,7 +466,7 @@ static bool apparmor_am_unconfined(struct lsm_ops *ops)
 {
 	char *p = apparmor_process_label_get(ops, lxc_raw_getpid());
 	bool ret = false;
-	if (!p || strcmp(p, "unconfined") == 0)
+	if (!p || strequal(p, "unconfined"))
 		ret = true;
 	free(p);
 	return ret;
@@ -476,9 +476,9 @@ static bool aa_needs_transition(char *curlabel)
 {
 	if (!curlabel)
 		return false;
-	if (strcmp(curlabel, "unconfined") == 0)
+	if (strequal(curlabel, "unconfined"))
 		return false;
-	if (strcmp(curlabel, "/usr/bin/lxc-start") == 0)
+	if (strequal(curlabel, "/usr/bin/lxc-start"))
 		return false;
 	return true;
 }
@@ -1052,13 +1052,13 @@ static int apparmor_prepare(struct lsm_ops *ops, struct lxc_conf *conf, const ch
 	label = conf->lsm_aa_profile;
 
 	/* user may request that we just ignore apparmor */
-	if (label && strcmp(label, AA_UNCHANGED) == 0) {
+	if (label && strequal(label, AA_UNCHANGED)) {
 		INFO("AppArmor profile unchanged per user request");
 		conf->lsm_aa_profile_computed = must_copy_string(label);
 		return 0;
 	}
 
-	if (label && strcmp(label, AA_GENERATED) == 0) {
+	if (label && strequal(label, AA_GENERATED)) {
 		if (!check_apparmor_parser_version(ops)) {
 			ERROR("Cannot use generated profile: apparmor_parser not available");
 			goto out;
@@ -1093,7 +1093,7 @@ static int apparmor_prepare(struct lsm_ops *ops, struct lxc_conf *conf, const ch
 	if (!ops->aa_can_stack && aa_needs_transition(curlabel)) {
 		/* we're already confined, and stacking isn't supported */
 
-		if (!label || strcmp(curlabel, label) == 0) {
+		if (!label || strequal(curlabel, label)) {
 			/* no change requested */
 			ret = 0;
 			goto out;
@@ -1110,7 +1110,7 @@ static int apparmor_prepare(struct lsm_ops *ops, struct lxc_conf *conf, const ch
 			label = AA_DEF_PROFILE;
 	}
 
-	if (!ops->aa_mount_features_enabled && strcmp(label, "unconfined") != 0) {
+	if (!ops->aa_mount_features_enabled && !strequal(label, "unconfined")) {
 		WARN("Incomplete AppArmor support in your kernel");
 		if (!conf->lsm_aa_allow_incomplete) {
 			ERROR("If you really want to start this container, set");
@@ -1209,10 +1209,10 @@ static int apparmor_process_label_set(struct lsm_ops *ops, const char *inlabel,
 		return log_error_errno(-EINVAL, EINVAL, "LSM wasn't prepared");
 
 	/* user may request that we just ignore apparmor */
-	if (strcmp(label, AA_UNCHANGED) == 0)
+	if (strequal(label, AA_UNCHANGED))
 		return log_info(0, "AppArmor profile unchanged per user request");
 
-	if (strcmp(label, "unconfined") == 0 && apparmor_am_unconfined(ops))
+	if (strequal(label, "unconfined") && apparmor_am_unconfined(ops))
 		return log_info(0, "AppArmor profile unchanged");
 
 	label_fd = apparmor_process_label_fd_get(ops, lxc_raw_gettid(), on_exec);

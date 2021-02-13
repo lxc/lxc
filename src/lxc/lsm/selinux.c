@@ -90,7 +90,7 @@ static int selinux_process_label_set(struct lsm_ops *ops, const char *inlabel,
 	if (!label)
 		label = DEFAULT_LABEL;
 
-	if (strcmp(label, "unconfined_t") == 0)
+	if (strequal(label, "unconfined_t"))
 		return 0;
 
 	if (on_exec)
