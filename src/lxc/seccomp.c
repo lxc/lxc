@@ -171,19 +171,19 @@ struct seccomp_v2_rule {
 
 static enum scmp_compare parse_v2_rule_op(char *s)
 {
-	if (strcmp(s, "SCMP_CMP_NE") == 0 || strcmp(s, "!=") == 0)
+	if (strequal(s, "SCMP_CMP_NE") || strequal(s, "!="))
 		return SCMP_CMP_NE;
-	else if (strcmp(s, "SCMP_CMP_LT") == 0 || strcmp(s, "<") == 0)
+	else if (strequal(s, "SCMP_CMP_LT") || strequal(s, "<"))
 		return SCMP_CMP_LT;
-	else if (strcmp(s, "SCMP_CMP_LE") == 0 || strcmp(s, "<=") == 0)
+	else if (strequal(s, "SCMP_CMP_LE") || strequal(s, "<="))
 		return SCMP_CMP_LE;
-	else if (strcmp(s, "SCMP_CMP_EQ") == 0 || strcmp(s, "==") == 0)
+	else if (strequal(s, "SCMP_CMP_EQ") || strequal(s, "=="))
 		return SCMP_CMP_EQ;
-	else if (strcmp(s, "SCMP_CMP_GE") == 0 || strcmp(s, ">=") == 0)
+	else if (strequal(s, "SCMP_CMP_GE") || strequal(s, ">="))
 		return SCMP_CMP_GE;
-	else if (strcmp(s, "SCMP_CMP_GT") == 0 || strcmp(s, ">") == 0)
+	else if (strequal(s, "SCMP_CMP_GT") || strequal(s, ">"))
 		return SCMP_CMP_GT;
-	else if (strcmp(s, "SCMP_CMP_MASKED_EQ") == 0 || strcmp(s, "&=") == 0)
+	else if (strequal(s, "SCMP_CMP_MASKED_EQ") || strequal(s, "&="))
 		return SCMP_CMP_MASKED_EQ;
 
 	return _SCMP_CMP_MAX;
@@ -326,10 +326,10 @@ static int get_hostarch(void)
 		return -1;
 	}
 
-	if (strcmp(uts.machine, "i686") == 0)
+	if (strequal(uts.machine, "i686"))
 		return lxc_seccomp_arch_i386;
 	/* no x32 kernels */
-	else if (strcmp(uts.machine, "x86_64") == 0)
+	else if (strequal(uts.machine, "x86_64"))
 		return lxc_seccomp_arch_amd64;
 	else if (strncmp(uts.machine, "armv7", 5) == 0)
 		return lxc_seccomp_arch_arm;
@@ -807,8 +807,8 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 		INFO("Processing \"%s\"", line);
 		if (line[0] == '[') {
 			/* Read the architecture for next set of rules. */
-			if (strcmp(line, "[x86]") == 0 ||
-			    strcmp(line, "[X86]") == 0) {
+			if (strequal(line, "[x86]") ||
+			    strequal(line, "[X86]")) {
 				if (native_arch != lxc_seccomp_arch_i386 &&
 				    native_arch != lxc_seccomp_arch_amd64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
@@ -816,29 +816,29 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 				}
 
 				cur_rule_arch = lxc_seccomp_arch_i386;
-			} else if (strcmp(line, "[x32]") == 0 ||
-				   strcmp(line, "[X32]") == 0) {
+			} else if (strequal(line, "[x32]") ||
+				   strequal(line, "[X32]")) {
 				if (native_arch != lxc_seccomp_arch_amd64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
 				}
 
 				cur_rule_arch = lxc_seccomp_arch_x32;
-			} else if (strcmp(line, "[X86_64]") == 0 ||
-				   strcmp(line, "[x86_64]") == 0) {
+			} else if (strequal(line, "[X86_64]") ||
+				   strequal(line, "[x86_64]")) {
 				if (native_arch != lxc_seccomp_arch_amd64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
 				}
 
 				cur_rule_arch = lxc_seccomp_arch_amd64;
-			} else if (strcmp(line, "[all]") == 0 ||
-				   strcmp(line, "[ALL]") == 0) {
+			} else if (strequal(line, "[all]") ||
+				   strequal(line, "[ALL]")) {
 				cur_rule_arch = lxc_seccomp_arch_all;
 			}
 #ifdef SCMP_ARCH_ARM
-			else if (strcmp(line, "[arm]") == 0 ||
-				 strcmp(line, "[ARM]") == 0) {
+			else if (strequal(line, "[arm]") ||
+				 strequal(line, "[ARM]")) {
 				if (native_arch != lxc_seccomp_arch_arm &&
 				    native_arch != lxc_seccomp_arch_arm64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
@@ -849,8 +849,8 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 			}
 #endif
 #ifdef SCMP_ARCH_AARCH64
-			else if (strcmp(line, "[arm64]") == 0 ||
-				 strcmp(line, "[ARM64]") == 0) {
+			else if (strequal(line, "[arm64]") ||
+				 strequal(line, "[ARM64]")) {
 				if (native_arch != lxc_seccomp_arch_arm64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
@@ -860,8 +860,8 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 			}
 #endif
 #ifdef SCMP_ARCH_PPC64LE
-			else if (strcmp(line, "[ppc64le]") == 0 ||
-				 strcmp(line, "[PPC64LE]") == 0) {
+			else if (strequal(line, "[ppc64le]") ||
+				 strequal(line, "[PPC64LE]")) {
 				if (native_arch != lxc_seccomp_arch_ppc64le) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
@@ -871,8 +871,8 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 			}
 #endif
 #ifdef SCMP_ARCH_PPC64
-			else if (strcmp(line, "[ppc64]") == 0 ||
-				 strcmp(line, "[PPC64]") == 0) {
+			else if (strequal(line, "[ppc64]") ||
+				 strequal(line, "[PPC64]")) {
 				if (native_arch != lxc_seccomp_arch_ppc64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
@@ -882,8 +882,8 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 			}
 #endif
 #ifdef SCMP_ARCH_PPC
-			else if (strcmp(line, "[ppc]") == 0 ||
-				 strcmp(line, "[PPC]") == 0) {
+			else if (strequal(line, "[ppc]") ||
+				 strequal(line, "[PPC]")) {
 				if (native_arch != lxc_seccomp_arch_ppc &&
 				    native_arch != lxc_seccomp_arch_ppc64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
@@ -894,24 +894,24 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 			}
 #endif
 #ifdef SCMP_ARCH_MIPS
-			else if (strcmp(line, "[mips64]") == 0 ||
-				 strcmp(line, "[MIPS64]") == 0) {
+			else if (strequal(line, "[mips64]") ||
+				 strequal(line, "[MIPS64]")) {
 				if (native_arch != lxc_seccomp_arch_mips64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
 				}
 
 				cur_rule_arch = lxc_seccomp_arch_mips64;
-			} else if (strcmp(line, "[mips64n32]") == 0 ||
-				   strcmp(line, "[MIPS64N32]") == 0) {
+			} else if (strequal(line, "[mips64n32]") ||
+				   strequal(line, "[MIPS64N32]")) {
 				if (native_arch != lxc_seccomp_arch_mips64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
 				}
 
 				cur_rule_arch = lxc_seccomp_arch_mips64n32;
-			} else if (strcmp(line, "[mips]") == 0 ||
-				   strcmp(line, "[MIPS]") == 0) {
+			} else if (strequal(line, "[mips]") ||
+				   strequal(line, "[MIPS]")) {
 				if (native_arch != lxc_seccomp_arch_mips &&
 				    native_arch != lxc_seccomp_arch_mips64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
@@ -919,24 +919,24 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 				}
 
 				cur_rule_arch = lxc_seccomp_arch_mips;
-			} else if (strcmp(line, "[mipsel64]") == 0 ||
-				   strcmp(line, "[MIPSEL64]") == 0) {
+			} else if (strequal(line, "[mipsel64]") ||
+				   strequal(line, "[MIPSEL64]")) {
 				if (native_arch != lxc_seccomp_arch_mipsel64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
 				}
 
 				cur_rule_arch = lxc_seccomp_arch_mipsel64;
-			} else if (strcmp(line, "[mipsel64n32]") == 0 ||
-				   strcmp(line, "[MIPSEL64N32]") == 0) {
+			} else if (strequal(line, "[mipsel64n32]") ||
+				   strequal(line, "[MIPSEL64N32]")) {
 				if (native_arch != lxc_seccomp_arch_mipsel64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
 				}
 
 				cur_rule_arch = lxc_seccomp_arch_mipsel64n32;
-			} else if (strcmp(line, "[mipsel]") == 0 ||
-				   strcmp(line, "[MIPSEL]") == 0) {
+			} else if (strequal(line, "[mipsel]") ||
+				   strequal(line, "[MIPSEL]")) {
 				if (native_arch != lxc_seccomp_arch_mipsel &&
 				    native_arch != lxc_seccomp_arch_mipsel64) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
@@ -947,8 +947,8 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 			}
 #endif
 #ifdef SCMP_ARCH_S390X
-			else if (strcmp(line, "[s390x]") == 0 ||
-				 strcmp(line, "[S390X]") == 0) {
+			else if (strequal(line, "[s390x]") ||
+				 strequal(line, "[S390X]")) {
 				if (native_arch != lxc_seccomp_arch_s390x) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
@@ -958,8 +958,8 @@ static int parse_config_v2(FILE *f, char *line, size_t *line_bufsz, struct lxc_c
 			}
 #endif
 #ifdef SCMP_ARCH_S390
-			else if (strcmp(line, "[s390]") == 0 ||
-				strcmp(line, "[S390]") == 0) {
+			else if (strequal(line, "[s390]") ||
+				 strequal(line, "[S390]")) {
 				if (native_arch != lxc_seccomp_arch_s390) {
 					cur_rule_arch = lxc_seccomp_arch_unknown;
 					continue;
