@@ -805,7 +805,7 @@ static int lxc_attach_set_environment(struct attach_context *ctx,
 						return -1;
 					}
 
-					if (strcmp(extra_keep[i], "PATH") == 0)
+					if (strequal(extra_keep[i], "PATH"))
 						path_kept = 1;
 				}
 			}
