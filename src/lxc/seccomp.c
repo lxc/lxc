@@ -101,9 +101,9 @@ static uint32_t get_v2_default_action(char *line)
 		line++;
 
 	/* After 'allowlist' or 'denylist' comes default behavior. */
-	if (strncmp(line, "kill", 4) == 0) {
+	if (strnequal(line, "kill", 4)) {
 		ret_action = SCMP_ACT_KILL;
-	} else if (strncmp(line, "errno", 5) == 0) {
+	} else if (strnequal(line, "errno", 5)) {
 		int e, ret;
 
 		ret = sscanf(line + 5, "%d", &e);
@@ -113,12 +113,12 @@ static uint32_t get_v2_default_action(char *line)
 		}
 
 		ret_action = SCMP_ACT_ERRNO(e);
-	} else if (strncmp(line, "allow", 5) == 0) {
+	} else if (strnequal(line, "allow", 5)) {
 		ret_action = SCMP_ACT_ALLOW;
-	} else if (strncmp(line, "trap", 4) == 0) {
+	} else if (strnequal(line, "trap", 4)) {
 		ret_action = SCMP_ACT_TRAP;
 #if HAVE_DECL_SECCOMP_NOTIFY_FD
-	} else if (strncmp(line, "notify", 6) == 0) {
+	} else if (strnequal(line, "notify", 6)) {
 		ret_action = SCMP_ACT_NOTIFY;
 #endif
 	} else if (line[0]) {
@@ -331,23 +331,23 @@ static int get_hostarch(void)
 	/* no x32 kernels */
 	else if (strequal(uts.machine, "x86_64"))
 		return lxc_seccomp_arch_amd64;
-	else if (strncmp(uts.machine, "armv7", 5) == 0)
+	else if (strnequal(uts.machine, "armv7", 5))
 		return lxc_seccomp_arch_arm;
-	else if (strncmp(uts.machine, "aarch64", 7) == 0)
+	else if (strnequal(uts.machine, "aarch64", 7))
 		return lxc_seccomp_arch_arm64;
-	else if (strncmp(uts.machine, "ppc64le", 7) == 0)
+	else if (strnequal(uts.machine, "ppc64le", 7))
 		return lxc_seccomp_arch_ppc64le;
-	else if (strncmp(uts.machine, "ppc64", 5) == 0)
+	else if (strnequal(uts.machine, "ppc64", 5))
 		return lxc_seccomp_arch_ppc64;
-	else if (strncmp(uts.machine, "ppc", 3) == 0)
+	else if (strnequal(uts.machine, "ppc", 3))
 		return lxc_seccomp_arch_ppc;
-	else if (strncmp(uts.machine, "mips64", 6) == 0)
+	else if (strnequal(uts.machine, "mips64", 6))
 		return MIPS_ARCH_N64;
-	else if (strncmp(uts.machine, "mips", 4) == 0)
+	else if (strnequal(uts.machine, "mips", 4))
 		return MIPS_ARCH_O32;
-	else if (strncmp(uts.machine, "s390x", 5) == 0)
+	else if (strnequal(uts.machine, "s390x", 5))
 		return lxc_seccomp_arch_s390x;
-	else if (strncmp(uts.machine, "s390", 4) == 0)
+	else if (strnequal(uts.machine, "s390", 4))
 		return lxc_seccomp_arch_s390;
 	return lxc_seccomp_arch_unknown;
 }
@@ -511,7 +511,7 @@ static enum lxc_seccomp_rule_status_t do_resolve_add_rule(uint32_t arch, char *l
 	if (p)
 		*p = '\0';
 
-	if (strncmp(line, "reject_force_umount", 19) == 0) {
+	if (strnequal(line, "reject_force_umount", 19)) {
 		ret = seccomp_rule_add_exact(ctx, SCMP_ACT_ERRNO(EACCES),
 					     SCMP_SYS(umount2), 1,
 					     SCMP_A1(SCMP_CMP_MASKED_EQ, MNT_FORCE, MNT_FORCE));
@@ -1159,7 +1159,7 @@ static bool use_seccomp(const struct lxc_conf *conf)
 		return true;
 
 	while (getline(&line, &line_bufsz, f) != -1) {
-		if (strncmp(line, "Seccomp:", 8) == 0) {
+		if (strnequal(line, "Seccomp:", 8)) {
 			found = true;
 
 			ret = sscanf(line + 8, "%d", &v);
