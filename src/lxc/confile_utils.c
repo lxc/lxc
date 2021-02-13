@@ -498,7 +498,7 @@ static struct lxc_veth_mode {
 int lxc_veth_mode_to_flag(int *mode, const char *value)
 {
 	for (size_t i = 0; i < sizeof(veth_mode) / sizeof(veth_mode[0]); i++) {
-		if (strcmp(veth_mode[i].name, value) != 0)
+		if (!strequal(veth_mode[i].name, value))
 			continue;
 
 		*mode = veth_mode[i].mode;
@@ -533,7 +533,7 @@ static struct lxc_macvlan_mode {
 int lxc_macvlan_mode_to_flag(int *mode, const char *value)
 {
 	for (size_t i = 0; i < sizeof(macvlan_mode) / sizeof(macvlan_mode[0]); i++) {
-		if (strcmp(macvlan_mode[i].name, value))
+		if (!strequal(macvlan_mode[i].name, value))
 			continue;
 
 		*mode = macvlan_mode[i].mode;
@@ -567,7 +567,7 @@ static struct lxc_ipvlan_mode {
 int lxc_ipvlan_mode_to_flag(int *mode, const char *value)
 {
 	for (size_t i = 0; i < sizeof(ipvlan_mode) / sizeof(ipvlan_mode[0]); i++) {
-		if (strcmp(ipvlan_mode[i].name, value) != 0)
+		if (!strequal(ipvlan_mode[i].name, value))
 			continue;
 
 		*mode = ipvlan_mode[i].mode;
@@ -601,7 +601,7 @@ static struct lxc_ipvlan_isolation {
 int lxc_ipvlan_isolation_to_flag(int *flag, const char *value)
 {
 	for (size_t i = 0; i < sizeof(ipvlan_isolation) / sizeof(ipvlan_isolation[0]); i++) {
-		if (strcmp(ipvlan_isolation[i].name, value) != 0)
+		if (!strequal(ipvlan_isolation[i].name, value))
 			continue;
 
 		*flag = ipvlan_isolation[i].flag;
