@@ -339,6 +339,24 @@
  */
 #define LXC_LSMATTRLEN (6 + INTTYPE_TO_STRLEN(pid_t) + 6 + 8 + 1)
 
+/* MAX_NS_PROC_NAME = MAX_NS_PROC_NAME
+ *                  +
+ * :                = 1
+ *                  +
+ * /proc/           = 6
+ *                  +
+ * <pid-as_str>     = INTTYPE_TO_STRLEN(pid_t)
+ *                  +
+ * /fd/             = 4
+ *                  +
+ * <int-as-str>     = INTTYPE_TO_STRLEN(int)
+ *                  +
+ * \0               = 1
+ */
+#define LXC_EXPOSE_NAMESPACE_LEN                                   \
+	(MAX_NS_PROC_NAME + 1 + 6 + INTTYPE_TO_STRLEN(pid_t) + 4 + \
+	 INTTYPE_TO_STRLEN(int) + 1)
+
 #define LXC_CMD_DATA_MAX (PATH_MAX * 2)
 
 /* loop devices */
