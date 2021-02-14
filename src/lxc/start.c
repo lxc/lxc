@@ -131,12 +131,15 @@ static int lxc_try_preserve_namespace(struct lxc_handler *handler,
 	ret = strnprintf(handler->nsfd_paths[idx],
 			 sizeof(handler->nsfd_paths[idx]), "%s:/proc/%d/fd/%d",
 			 ns_info[idx].proc_name, handler->monitor_pid, fd);
-
-	/* Legacy style argument passing as arguments to hooks. */
-	handler->hook_argv[handler->hook_argc] = handler->nsfd_paths[idx];
-	handler->hook_argc++;
 	if (ret < 0)
 		return ret_errno(EIO);
+
+	/*
+	 * In case LXC is configured for exposing information to hooks as
+	 * argv-style arguments prepare an argv array we can use.
+	 */
+	handler->hook_argv[handler->hook_argc] = handler->nsfd_paths[idx];
+	handler->hook_argc++;
 
 	DEBUG("Preserved %s namespace via fd %d and stashed path as %s",
 	      ns_info[idx].proc_name, fd, handler->nsfd_paths[idx]);
