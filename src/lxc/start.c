@@ -112,23 +112,37 @@ static void lxc_put_nsfds(struct lxc_handler *handler)
 	}
 }
 
-static int lxc_try_preserve_ns(const int pid, const char *ns)
+static int lxc_try_preserve_namespace(struct lxc_handler *handler,
+				      lxc_namespace_t idx, const char *ns)
 {
-	int fd;
+	__do_close int fd = -EBADF;
+	int ret;
 
-	fd = lxc_preserve_ns(pid, ns);
+	fd = lxc_preserve_ns(handler->pid, ns);
 	if (fd < 0) {
 		if (errno != ENOENT)
-			return log_error_errno(-EINVAL,
-					       errno, "Failed to preserve %s namespace",
-					       ns);
+			return log_error_errno(-EINVAL, errno,
+					       "Failed to preserve %s namespace", ns);
 
-		return log_warn_errno(-EOPNOTSUPP,
-				      errno, "Kernel does not support preserving %s namespaces",
-				      ns);
+		return log_warn_errno(-EOPNOTSUPP, errno,
+				      "Kernel does not support preserving %s namespaces", ns);
 	}
 
-	return fd;
+	ret = strnprintf(handler->nsfd_paths[idx],
+			 sizeof(handler->nsfd_paths[idx]), "%s:/proc/%d/fd/%d",
+			 ns_info[idx].proc_name, handler->monitor_pid, fd);
+
+	/* Legacy style argument passing as arguments to hooks. */
+	handler->hook_argv[handler->hook_argc] = handler->nsfd_paths[idx];
+	handler->hook_argc++;
+	if (ret < 0)
+		return ret_errno(EIO);
+
+	DEBUG("Preserved %s namespace via fd %d and stashed path as %s",
+	      ns_info[idx].proc_name, fd, handler->nsfd_paths[idx]);
+
+	handler->nsfd[idx] = move_fd(fd);
+	return 0;
 }
 
 /* lxc_try_preserve_namespaces: open /proc/@pid/ns/@ns for each namespace
@@ -136,35 +150,30 @@ static int lxc_try_preserve_ns(const int pid, const char *ns)
  * Return true on success, false on failure.
  */
 static bool lxc_try_preserve_namespaces(struct lxc_handler *handler,
-					int ns_clone_flags, pid_t pid)
+					int ns_clone_flags)
 {
-	int i;
+	for (lxc_namespace_t ns_idx = 0; ns_idx < LXC_NS_MAX; ns_idx++)
+		handler->nsfd[ns_idx] = -EBADF;
 
-	for (i = 0; i < LXC_NS_MAX; i++)
-		handler->nsfd[i] = -EBADF;
+	for (lxc_namespace_t ns_idx = 0; ns_idx < LXC_NS_MAX; ns_idx++) {
+		int ret;
 
-	for (i = 0; i < LXC_NS_MAX; i++) {
-		int fd;
-
-		if ((ns_clone_flags & ns_info[i].clone_flag) == 0)
+		if ((ns_clone_flags & ns_info[ns_idx].clone_flag) == 0)
 			continue;
 
-		fd = lxc_try_preserve_ns(pid, ns_info[i].proc_name);
-		if (fd < 0) {
+		ret = lxc_try_preserve_namespace(handler, ns_idx,
+						 ns_info[ns_idx].proc_name);
+		if (ret < 0) {
 			/* Do not fail to start container on kernels that do
 			 * not support interacting with namespaces through
 			 * /proc.
 			 */
-			if (fd == -EOPNOTSUPP)
+			if (ret == -EOPNOTSUPP)
 				continue;
 
 			lxc_put_nsfds(handler);
 			return false;
 		}
-
-		handler->nsfd[i] = fd;
-		DEBUG("Preserved %s namespace via fd %d", ns_info[i].proc_name,
-		      handler->nsfd[i]);
 	}
 
 	return true;
@@ -666,8 +675,18 @@ struct lxc_handler *lxc_init_handler(struct lxc_handler *old,
 	if (handler->conf->reboot == REBOOT_NONE)
 		lxc_list_init(&handler->conf->state_clients);
 
-	for (int i = 0; i < LXC_NS_MAX; i++)
-		handler->nsfd[i] = -EBADF;
+	for (lxc_namespace_t idx = 0; idx < LXC_NS_MAX; idx++) {
+		handler->nsfd[idx] = -EBADF;
+
+		if (handler->conf->reboot == REBOOT_NONE)
+			continue;
+
+		handler->nsfd_paths[idx][0] = '\0';
+		handler->hook_argv[idx] = NULL;
+
+		if (handler->hook_argc != 0)
+			handler->hook_argc = 0;
+	}
 
 	handler->name = name;
 	if (daemonize)
@@ -845,13 +864,30 @@ out_restore_sigmask:
 	return -1;
 }
 
+void lxc_expose_namespace_environment(const struct lxc_handler *handler)
+{
+	for (lxc_namespace_t i = 0; i < LXC_NS_MAX; i++) {
+		int ret;
+		const char *fd_path;
+
+		if (handler->nsfd[i] < 0)
+			continue;
+
+		fd_path = handler->nsfd_paths[i] + strcspn(handler->nsfd_paths[i], "/");
+		ret = setenv(ns_info[i].env_name, fd_path, 1);
+		if (ret < 0)
+			SYSERROR("Failed to set environment variable %s=%s",
+				 ns_info[i].env_name, fd_path);
+		else
+			TRACE("Set environment variable %s=%s",
+			      ns_info[i].env_name, fd_path);
+	}
+}
+
 void lxc_end(struct lxc_handler *handler)
 {
 	int ret;
-	pid_t self;
 	struct lxc_list *cur, *next;
-	char *namespaces[LXC_NS_MAX + 1];
-	size_t namespace_count = 0;
 	const char *name = handler->name;
 	struct cgroup_ops *cgroup_ops = handler->cgroup_ops;
 
@@ -860,39 +896,9 @@ void lxc_end(struct lxc_handler *handler)
 	 */
 	lxc_set_state(name, handler, STOPPING);
 
-	self = lxc_raw_getpid();
-	for (int i = 0; i < LXC_NS_MAX; i++) {
-		if (handler->nsfd[i] < 0)
-			continue;
-
-		if (handler->conf->hooks_version == 0)
-			ret = asprintf(&namespaces[namespace_count],
-				      "%s:/proc/%d/fd/%d", ns_info[i].proc_name,
-				      self, handler->nsfd[i]);
-		else
-			ret = asprintf(&namespaces[namespace_count],
-				      "/proc/%d/fd/%d", self, handler->nsfd[i]);
-		if (ret < 0) {
-			SYSERROR("Failed to allocate memory");
-			break;
-		}
-
-		if (handler->conf->hooks_version == 0) {
-			namespace_count++;
-			continue;
-		}
-
-		ret = setenv(ns_info[i].env_name, namespaces[namespace_count], 1);
-		if (ret < 0)
-			SYSERROR("Failed to set environment variable %s=%s",
-				 ns_info[i].env_name, namespaces[namespace_count]);
-		else
-			TRACE("Set environment variable %s=%s",
-			      ns_info[i].env_name, namespaces[namespace_count]);
-
-		namespace_count++;
-	}
-	namespaces[namespace_count] = NULL;
+	/* Passing information to hooks via environment variables. */
+	if (handler->conf->hooks_version > 0)
+		lxc_expose_namespace_environment(handler);
 
 	if (handler->conf->reboot > REBOOT_NONE) {
 		ret = setenv("LXC_TARGET", "reboot", 1);
@@ -907,14 +913,11 @@ void lxc_end(struct lxc_handler *handler)
 	}
 
 	if (handler->conf->hooks_version == 0)
-		ret = run_lxc_hooks(name, "stop", handler->conf, namespaces);
+		ret = run_lxc_hooks(name, "stop", handler->conf, handler->hook_argv);
 	else
 		ret = run_lxc_hooks(name, "stop", handler->conf, NULL);
 	if (ret < 0)
 		ERROR("Failed to run \"lxc.hook.stop\" hook");
-
-	while (namespace_count--)
-		free(namespaces[namespace_count]);
 
 	handler->lsm_ops->cleanup(handler->lsm_ops, handler->conf, handler->lxcpath);
 
@@ -1700,7 +1703,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		if (handler->ns_on_clone_flags & ns_info[i].clone_flag)
 			INFO("Cloned %s", ns_info[i].flag_name);
 
-	if (!lxc_try_preserve_namespaces(handler, handler->ns_on_clone_flags, handler->pid)) {
+	if (!lxc_try_preserve_namespaces(handler, handler->ns_on_clone_flags)) {
 		ERROR("Failed to preserve cloned namespaces for lxc.hook.stop");
 		goto out_delete_net;
 	}
@@ -1761,15 +1764,12 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 	/* If not done yet, we're now ready to preserve the network namespace */
 	if (handler->nsfd[LXC_NS_NET] < 0) {
-		ret = lxc_try_preserve_ns(handler->pid, "net");
+		ret = lxc_try_preserve_namespace(handler, LXC_NS_NET, "net");
 		if (ret < 0) {
 			if (ret != -EOPNOTSUPP) {
 				SYSERROR("Failed to preserve net namespace");
 				goto out_delete_net;
 			}
-		} else {
-			handler->nsfd[LXC_NS_NET] = ret;
-			DEBUG("Preserved net namespace via fd %d", ret);
 		}
 	}
 	ret = lxc_netns_set_nsid(handler->nsfd[LXC_NS_NET]);
@@ -1835,15 +1835,12 @@ static int lxc_spawn(struct lxc_handler *handler)
 
 	if (handler->ns_unshare_flags & CLONE_NEWCGROUP) {
 		/* Now we're ready to preserve the cgroup namespace */
-		ret = lxc_try_preserve_ns(handler->pid, "cgroup");
+		ret = lxc_try_preserve_namespace(handler, LXC_NS_CGROUP, "cgroup");
 		if (ret < 0) {
 			if (ret != -EOPNOTSUPP) {
 				SYSERROR("Failed to preserve cgroup namespace");
 				goto out_delete_net;
 			}
-		} else {
-			handler->nsfd[LXC_NS_CGROUP] = ret;
-			DEBUG("Preserved cgroup namespace via fd %d", ret);
 		}
 	}
 
