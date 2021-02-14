@@ -167,11 +167,10 @@ static bool lxc_try_preserve_namespaces(struct lxc_handler *handler,
 				continue;
 			}
 
-			/* Do not fail to start container on kernels that do
-			 * not support interacting with namespaces through
-			 * /proc.
+			/*
+			 * Handle kernels that do not support interacting with
+			 * namespaces through procfs.
 			 */
-
 			lxc_put_nsfds(handler);
 			return log_error_errno(false, errno, "Failed to preserve %s namespace", ns);
 		}
