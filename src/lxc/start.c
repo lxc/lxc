@@ -1909,7 +1909,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	TRACE("Finished setting up cgroups");
 
 	if (handler->ns_unshare_flags & CLONE_NEWTIME) {
-		/* Now we're ready to preserve the cgroup namespace */
+		/* Now we're ready to preserve the time namespace */
 		ret = lxc_try_preserve_namespace(handler, LXC_NS_TIME, "time");
 		if (ret < 0) {
 			if (ret != -ENOENT) {
