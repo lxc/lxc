@@ -119,14 +119,8 @@ static int lxc_try_preserve_namespace(struct lxc_handler *handler,
 	int ret;
 
 	fd = lxc_preserve_ns(handler->pid, ns);
-	if (fd < 0) {
-		if (errno != ENOENT)
-			return log_error_errno(-EINVAL, errno,
-					       "Failed to preserve %s namespace", ns);
-
-		return log_warn_errno(-EOPNOTSUPP, errno,
-				      "Kernel does not support preserving %s namespaces", ns);
-	}
+	if (fd < 0)
+		return -errno;
 
 	ret = strnprintf(handler->nsfd_paths[idx],
 			 sizeof(handler->nsfd_paths[idx]), "%s:/proc/%d/fd/%d",
@@ -160,6 +154,7 @@ static bool lxc_try_preserve_namespaces(struct lxc_handler *handler,
 
 	for (lxc_namespace_t ns_idx = 0; ns_idx < LXC_NS_MAX; ns_idx++) {
 		int ret;
+		const char *ns = ns_info[ns_idx].proc_name;
 
 		if ((ns_clone_flags & ns_info[ns_idx].clone_flag) == 0)
 			continue;
@@ -167,15 +162,18 @@ static bool lxc_try_preserve_namespaces(struct lxc_handler *handler,
 		ret = lxc_try_preserve_namespace(handler, ns_idx,
 						 ns_info[ns_idx].proc_name);
 		if (ret < 0) {
+			if (ret == -ENOENT) {
+				SYSERROR("Kernel does not support preserving %s namespaces", ns);
+				continue;
+			}
+
 			/* Do not fail to start container on kernels that do
 			 * not support interacting with namespaces through
 			 * /proc.
 			 */
-			if (ret == -EOPNOTSUPP)
-				continue;
 
 			lxc_put_nsfds(handler);
-			return false;
+			return log_error_errno(false, errno, "Failed to preserve %s namespace", ns);
 		}
 	}
 
@@ -1769,7 +1767,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 	if (handler->nsfd[LXC_NS_NET] < 0) {
 		ret = lxc_try_preserve_namespace(handler, LXC_NS_NET, "net");
 		if (ret < 0) {
-			if (ret != -EOPNOTSUPP) {
+			if (ret != -ENOENT) {
 				SYSERROR("Failed to preserve net namespace");
 				goto out_delete_net;
 			}
@@ -1840,7 +1838,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		/* Now we're ready to preserve the cgroup namespace */
 		ret = lxc_try_preserve_namespace(handler, LXC_NS_CGROUP, "cgroup");
 		if (ret < 0) {
-			if (ret != -EOPNOTSUPP) {
+			if (ret != -ENOENT) {
 				SYSERROR("Failed to preserve cgroup namespace");
 				goto out_delete_net;
 			}
