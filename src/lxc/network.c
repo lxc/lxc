@@ -3977,6 +3977,13 @@ void lxc_delete_network(struct lxc_handler *handler)
 {
 	bool bret;
 
+	/*
+	 * Always expose namespace fd paths to network down hooks via
+	 * environment variables. No need to complicate things by passing them
+	 * as additional hook arguments.
+	 */
+	lxc_expose_namespace_environment(handler);
+
 	if (handler->am_root)
 		bret = lxc_delete_network_priv(handler);
 	else
