@@ -156,7 +156,7 @@ char *lxc_string_replace(const char *needle, const char *replacement,
 bool lxc_string_in_array(const char *needle, const char **haystack)
 {
 	for (; haystack && *haystack; haystack++)
-		if (!strcmp(needle, *haystack))
+		if (strequal(needle, *haystack))
 			return true;
 
 	return false;
@@ -208,14 +208,14 @@ char **lxc_normalize_path(const char *path)
 
 	/* resolve '.' and '..' */
 	for (pos = 0; pos < components_len;) {
-		if (!strcmp(components[pos], ".") ||
-		    (!strcmp(components[pos], "..") && pos == 0)) {
+		if (strequal(components[pos], ".") ||
+		    (strequal(components[pos], "..") && pos == 0)) {
 			/* eat this element */
 			free(components[pos]);
 			memmove(&components[pos], &components[pos + 1],
 				sizeof(char *) * (components_len - pos));
 			components_len--;
-		} else if (!strcmp(components[pos], "..")) {
+		} else if (strequal(components[pos], "..")) {
 			/* eat this and the previous element */
 			free(components[pos - 1]);
 			free(components[pos]);
@@ -312,7 +312,7 @@ bool lxc_string_in_list(const char *needle, const char *haystack, char _sep)
 
 	str = must_copy_string(haystack);
 	lxc_iterate_parts(token, str, sep)
-		if (strcmp(needle, token) == 0)
+		if (strequal(needle, token))
 			return 1;
 
 	return 0;
@@ -904,7 +904,7 @@ int parse_byte_size_string(const char *s, int64_t *converted)
 	char dup[INTTYPE_TO_STRLEN(int64_t)];
 	char suffix[3] = {0};
 
-	if (!s || !strcmp(s, ""))
+	if (!s || strequal(s, ""))
 		return ret_errno(EINVAL);
 
 	end = stpncpy(dup, s, sizeof(dup) - 1);

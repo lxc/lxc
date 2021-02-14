@@ -369,7 +369,7 @@ static int setup_veth_native_bridge_vlan(char *veth1, struct lxc_netdev *netdev)
 
 	buf[rc - 1] = '\0';
 
-	if (strcmp(buf, "1") != 0)
+	if (!strequal(buf, "1"))
 		return log_error_errno(-1, EPERM, "vlan_filtering is not enabled on \"%s\"", netdev->link);
 
 	/* Get veth1 ifindex for use with netlink. */
@@ -1188,7 +1188,7 @@ static int __instantiate_ns_common(struct lxc_netdev *netdev)
 	if (is_empty_string(netdev->name))
 		(void)strlcpy(netdev->name, "eth%d", IFNAMSIZ);
 
-	if (strcmp(netdev->created_name, netdev->name) != 0) {
+	if (!strequal(netdev->created_name, netdev->name)) {
 		int ret;
 
 		ret = lxc_netdev_rename_by_name(netdev->created_name, netdev->name);

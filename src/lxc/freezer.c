@@ -56,8 +56,7 @@ static int do_freeze_thaw(bool freeze, struct lxc_conf *conf, const char *name,
 			return log_error(-1, "Failed to get freezer state of %s", name);
 
 		cur_state[lxc_char_right_gc(cur_state, strlen(cur_state))] = '\0';
-		ret = strncmp(cur_state, state, state_len);
-		if (ret == 0) {
+		if (strnequal(cur_state, state, state_len)) {
 			lxc_cmd_notify_state_listeners(name, lxcpath, new_state);
 			return 0;
 		}

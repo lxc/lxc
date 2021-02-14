@@ -33,7 +33,7 @@ bool is_cgroupfs_v1(char *line)
 	char *p = strstr(line, " - ");
 	if (!p)
 		return false;
-	return strncmp(p, " - cgroup ", 10) == 0;
+	return strnequal(p, " - cgroup ", 10);
 }
 
 bool is_cgroupfs_v2(char *line)
@@ -42,7 +42,7 @@ bool is_cgroupfs_v2(char *line)
 	if (!p)
 		return false;
 
-	return strncmp(p, " - cgroup2 ", 11) == 0;
+	return strnequal(p, " - cgroup2 ", 11);
 }
 
 bool test_writeable_v1(char *mountpoint, char *path)

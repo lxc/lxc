@@ -663,7 +663,7 @@ static bool do_lxcapi_load_config(struct lxc_container *c, const char *alt_file)
 	 * need to lock the in-memory container. If loading the container's
 	 * config file, take the disk lock.
 	 */
-	if (strcmp(fname, c->configfile) == 0)
+	if (strequal(fname, c->configfile))
 		need_disklock = true;
 
 	if (need_disklock)
@@ -744,10 +744,10 @@ static bool am_single_threaded(void)
 		return false;
 
 	while ((direntp = readdir(dir))) {
-		if (strcmp(direntp->d_name, ".") == 0)
+		if (strequal(direntp->d_name, "."))
 			continue;
 
-		if (strcmp(direntp->d_name, "..") == 0)
+		if (strequal(direntp->d_name, ".."))
 			continue;
 
 		count++;
@@ -1363,15 +1363,15 @@ static bool create_run_template(struct lxc_container *c, char *tpath,
 				SYSERROR("Failed to recursively turn root mount tree into dependent mount. Continuing...");
 		}
 
-		if (strcmp(bdev->type, "dir") != 0 && strcmp(bdev->type, "btrfs") != 0) {
+		if (!strequal(bdev->type, "dir") && !strequal(bdev->type, "btrfs")) {
 			if (euid != 0) {
 				ERROR("Unprivileged users can only create "
 				      "btrfs and directory-backed containers");
 				_exit(EXIT_FAILURE);
 			}
 
-			if (strcmp(bdev->type, "overlay") == 0 ||
-			    strcmp(bdev->type, "overlayfs") == 0) {
+			if (strequal(bdev->type, "overlay") ||
+			    strequal(bdev->type, "overlayfs")) {
 				/* If we create an overlay container we need to
 				 * rsync the contents into
 				 * <container-path>/<container-name>/rootfs.
@@ -2191,17 +2191,17 @@ out:
 
 static void do_clear_unexp_config_line(struct lxc_conf *conf, const char *key)
 {
-	if (!strcmp(key, "lxc.cgroup"))
+	if (strequal(key, "lxc.cgroup"))
 		return clear_unexp_config_line(conf, key, true);
 
-	if (!strcmp(key, "lxc.network"))
+	if (strequal(key, "lxc.network"))
 		return clear_unexp_config_line(conf, key, true);
 
-	if (!strcmp(key, "lxc.net"))
+	if (strequal(key, "lxc.net"))
 		return clear_unexp_config_line(conf, key, true);
 
 	/* Clear a network with a specific index. */
-	if (!strncmp(key, "lxc.net.", 8)) {
+	if (strnequal(key, "lxc.net.", 8)) {
 		int ret;
 		const char *idx;
 
@@ -2211,7 +2211,7 @@ static void do_clear_unexp_config_line(struct lxc_conf *conf, const char *key)
 			return clear_unexp_config_line(conf, key, true);
 	}
 
-	if (!strcmp(key, "lxc.hook"))
+	if (strequal(key, "lxc.hook"))
 		return clear_unexp_config_line(conf, key, true);
 
 	return clear_unexp_config_line(conf, key, false);
@@ -2480,12 +2480,12 @@ static char **do_lxcapi_get_ips(struct lxc_container *c, const char *interface,
 #pragma GCC diagnostic ignored "-Wcast-align"
 
 			if (ifa->ifa_addr->sa_family == AF_INET) {
-				if (family && strcmp(family, "inet"))
+				if (family && !strequal(family, "inet"))
 					continue;
 
 				address_ptr_tmp = &((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
 			} else {
-				if (family && strcmp(family, "inet6"))
+				if (family && !strequal(family, "inet6"))
 					continue;
 
 				if (((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_scope_id != scope)
@@ -2496,9 +2496,9 @@ static char **do_lxcapi_get_ips(struct lxc_container *c, const char *interface,
 
 #pragma GCC diagnostic pop
 
-			if (interface && strcmp(interface, ifa->ifa_name))
+			if (interface && !strequal(interface, ifa->ifa_name))
 				continue;
-			else if (!interface && strcmp("lo", ifa->ifa_name) == 0)
+			else if (!interface && strequal("lo", ifa->ifa_name))
 				continue;
 
 			address_ptr = (char *)inet_ntop(ifa->ifa_addr->sa_family, address_ptr_tmp,
@@ -2615,7 +2615,7 @@ static int do_lxcapi_get_keys(struct lxc_container *c, const char *key, char *re
 	 * This is an intelligent result to show which keys are valid given the
 	 * type of nic it is.
 	 */
-	if (strncmp(key, "lxc.net.", 8) == 0)
+	if (strnequal(key, "lxc.net.", 8))
 		ret = lxc_list_net(c->lxc_conf, key, retv, inlen);
 	else
 		ret = lxc_list_subkeys(c->lxc_conf, key, retv, inlen);
@@ -2655,7 +2655,7 @@ static bool do_lxcapi_save_config(struct lxc_container *c, const char *alt_file)
 	 * Otherwise just take the memlock to protect the struct lxc_container
 	 * while we're traversing it.
 	 */
-	if (strcmp(c->configfile, alt_file) == 0)
+	if (strequal(c->configfile, alt_file))
 		need_disklock = true;
 
 	if (need_disklock)
@@ -2905,10 +2905,10 @@ static bool has_snapshots(struct lxc_container *c)
 		return false;
 
 	while ((direntp = readdir(dir))) {
-		if (!strcmp(direntp->d_name, "."))
+		if (strequal(direntp->d_name, "."))
 			continue;
 
-		if (!strcmp(direntp->d_name, ".."))
+		if (strequal(direntp->d_name, ".."))
 			continue;
 		count++;
 		break;
@@ -3040,8 +3040,8 @@ static bool container_destroy(struct lxc_container *c,
 	/* For an overlay container the rootfs is considered immutable and
 	 * cannot be removed when restoring from a snapshot.
 	 */
-	if (storage && (!strcmp(storage->type, "overlay") ||
-			!strcmp(storage->type, "overlayfs")) &&
+	if (storage && (strequal(storage->type, "overlay") ||
+			strequal(storage->type, "overlayfs")) &&
 	    (storage->flags & LXC_STORAGE_INTERNAL_OVERLAY_RESTORE)) {
 		ret = strnprintf(path, len, "%s/%s/%s", p1, c->name, LXC_CONFIG_FNAME);
 		if (ret < 0)
@@ -3424,7 +3424,7 @@ static int copyhooks(struct lxc_container *oldc, struct lxc_container *c)
 			if (!fname) /* relative path - we don't support, but maybe we should */
 				return 0;
 
-			if (strncmp(hookname, cpath, len - 1) != 0) {
+			if (!strnequal(hookname, cpath, len - 1)) {
 				/* this hook is public - ignore */
 				continue;
 			}
@@ -3674,7 +3674,7 @@ static int clone_update_rootfs(struct clone_update_data *data)
 	if (!bdev)
 		return -1;
 
-	if (strcmp(bdev->type, "dir") != 0) {
+	if (!strequal(bdev->type, "dir")) {
 		if (unshare(CLONE_NEWNS) < 0) {
 			ERROR("error unsharing mounts");
 			storage_put(bdev);
@@ -4322,10 +4322,10 @@ static int do_lxcapi_snapshot_list(struct lxc_container *c, struct lxc_snapshot 
 	}
 
 	while ((direntp = readdir(dir))) {
-		if (!strcmp(direntp->d_name, "."))
+		if (strequal(direntp->d_name, "."))
 			continue;
 
-		if (!strcmp(direntp->d_name, ".."))
+		if (strequal(direntp->d_name, ".."))
 			continue;
 
 		ret = strnprintf(path2, sizeof(path2), "%s/%s/%s", snappath, direntp->d_name, LXC_CONFIG_FNAME);
@@ -4403,7 +4403,7 @@ static bool do_lxcapi_snapshot_restore(struct lxc_container *c, const char *snap
 	 * internal flag along to communicate this to various parts of the
 	 * codebase.
 	 */
-	if (!strcmp(bdev->type, "overlay") || !strcmp(bdev->type, "overlayfs"))
+	if (strequal(bdev->type, "overlay") || strequal(bdev->type, "overlayfs"))
 		bdev->flags |= LXC_STORAGE_INTERNAL_OVERLAY_RESTORE;
 
 	if (!newname)
@@ -4426,7 +4426,7 @@ static bool do_lxcapi_snapshot_restore(struct lxc_container *c, const char *snap
 		return false;
 	}
 
-	if (!strcmp(c->name, newname)) {
+	if (strequal(c->name, newname)) {
 		if (!container_destroy(c, bdev)) {
 			ERROR("Could not destroy existing container %s", newname);
 			lxc_container_put(snap);
@@ -4435,10 +4435,10 @@ static bool do_lxcapi_snapshot_restore(struct lxc_container *c, const char *snap
 		}
 	}
 
-	if (strcmp(bdev->type, "dir") != 0 && strcmp(bdev->type, "loop") != 0)
+	if (!strequal(bdev->type, "dir") && !strequal(bdev->type, "loop"))
 		flags = LXC_CLONE_SNAPSHOT | LXC_CLONE_MAYBE_SNAPSHOT;
 
-	if (!strcmp(bdev->type, "overlay") || !strcmp(bdev->type, "overlayfs"))
+	if (strequal(bdev->type, "overlay") || strequal(bdev->type, "overlayfs"))
 		flags |= LXC_STORAGE_INTERNAL_OVERLAY_RESTORE;
 
 	rest = lxcapi_clone(snap, newname, c->config_path, flags, bdev->type,
@@ -4494,10 +4494,10 @@ static bool remove_all_snapshots(const char *path)
 	}
 
 	while ((direntp = readdir(dir))) {
-		if (!strcmp(direntp->d_name, "."))
+		if (strequal(direntp->d_name, "."))
 			continue;
 
-		if (!strcmp(direntp->d_name, ".."))
+		if (strequal(direntp->d_name, ".."))
 			continue;
 
 		if (!do_snapshot_destroy(direntp->d_name, path)) {
@@ -5033,7 +5033,7 @@ static int do_lxcapi_mount(struct lxc_container *c, const char *source,
 	}
 
 	/* Create a temporary file / dir under the shared mountpoint */
-	if (!source || strcmp(source, "") == 0) {
+	if (!source || strequal(source, "")) {
 		/* If source is not specified, maybe we want to mount a filesystem? */
 		sb.st_mode = S_IFDIR;
 	} else {
@@ -5448,7 +5448,7 @@ int list_defined_containers(const char *lxcpath, char ***names, struct lxc_conta
 
 	while ((direntp = readdir(dir))) {
 		/* Ignore '.', '..' and any hidden directory. */
-		if (!strncmp(direntp->d_name, ".", 1))
+		if (strnequal(direntp->d_name, ".", 1))
 			continue;
 
 		if (!config_file_exists(lxcpath, direntp->d_name))
@@ -5553,9 +5553,9 @@ int list_active_containers(const char *lxcpath, char ***nret,
 
 		is_hashed = false;
 
-		if (strncmp(p, lxcpath, lxcpath_len) == 0) {
+		if (strnequal(p, lxcpath, lxcpath_len)) {
 			p += lxcpath_len;
-		} else if (strncmp(p, "lxc/", 4) == 0) {
+		} else if (strnequal(p, "lxc/", 4)) {
 			p += 4;
 			is_hashed = true;
 		} else {
@@ -5567,7 +5567,7 @@ int list_active_containers(const char *lxcpath, char ***nret,
 
 		/* Now p is the start of lxc_name. */
 		p2 = strchr(p, '/');
-		if (!p2 || strncmp(p2, "/command", 8) != 0)
+		if (!p2 || !strnequal(p2, "/command", 8))
 			continue;
 		*p2 = '\0';
 
@@ -5576,7 +5576,7 @@ int list_active_containers(const char *lxcpath, char ***nret,
 			if (!recvpath)
 				continue;
 
-			if (strncmp(lxcpath, recvpath, lxcpath_len) != 0) {
+			if (!strnequal(lxcpath, recvpath, lxcpath_len)) {
 				free(recvpath);
 				continue;
 			}
@@ -5767,7 +5767,7 @@ bool lxc_has_api_extension(const char *extension)
 		return true;
 
 	for (size_t i = 0; i < nr_api_extensions; i++)
-		if (strcmp(api_extensions[i], extension) == 0)
+		if (strequal(api_extensions[i], extension))
 			return true;
 
 	return false;

@@ -191,7 +191,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 	 * --enable-fs hugetlbfs --enable-fs tracefs --ext-mount-map console:/dev/pts/n
 	 * +1 for final NULL */
 
-	if (strcmp(opts->action, "dump") == 0 || strcmp(opts->action, "pre-dump") == 0) {
+	if (strequal(opts->action, "dump") || strequal(opts->action, "pre-dump")) {
 		/* -t pid --freeze-cgroup /lxc/ct */
 		static_args += 4;
 
@@ -204,7 +204,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 			static_args += 5;
 
 		/* --leave-running (only for final dump) */
-		if (strcmp(opts->action, "dump") == 0 && !opts->user->stop)
+		if (strequal(opts->action, "dump") && !opts->user->stop)
 			static_args++;
 
 		/* --external tty[88,4] */
@@ -218,7 +218,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		/* --ghost-limit 1024 */
 		if (opts->user->ghost_limit)
 			static_args += 2;
-	} else if (strcmp(opts->action, "restore") == 0) {
+	} else if (strequal(opts->action, "restore")) {
 		/* --root $(lxc_mount_point) --restore-detached
 		 * --restore-sibling
 		 * --lsm-profile apparmor:whatever
@@ -303,7 +303,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		 * the right cgroup is. if this is a restore, we can just use
 		 * the handler the restore task created.
 		 */
-		if (!strcmp(opts->action, "dump") || !strcmp(opts->action, "pre-dump")) {
+		if (strequal(opts->action, "dump") || strequal(opts->action, "pre-dump")) {
 			cgroup_base_path = lxc_cmd_get_limiting_cgroup_path(opts->c->name, opts->c->config_path, controllers_list[0]);
 			if (!cgroup_base_path)
 				return log_error_errno(-ENOENT, ENOENT, "Failed to retrieve limiting cgroup path for %s", controllers_list[0] ?: "(null)");
@@ -366,7 +366,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		if (!(flags & MS_BIND))
 			continue;
 
-		if (strcmp(opts->action, "dump") == 0)
+		if (strequal(opts->action, "dump"))
 			ret = strnprintf(arg, sizeof(arg), "/%s:%s", mntent.mnt_dir, mntent.mnt_dir);
 		else
 			ret = strnprintf(arg, sizeof(arg), "%s:%s", mntent.mnt_dir, mntent.mnt_fsname);
@@ -377,7 +377,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		DECLARE_ARG(arg);
 	}
 
-	if (strcmp(opts->action, "dump") == 0 || strcmp(opts->action, "pre-dump") == 0) {
+	if (strequal(opts->action, "dump") || strequal(opts->action, "pre-dump")) {
 		pid_t init_pid;
 		char init_pid_str[INTTYPE_TO_STRLEN(int)];
 		char *freezer_relative;
@@ -407,7 +407,7 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 			return log_error_errno(-EIO, EIO, "Failed to freezer cgroup entry");
 
 		if (!opts->user->disable_skip_in_flight &&
-				strcmp(opts->criu_version, CRIU_IN_FLIGHT_SUPPORT) >= 0)
+		    strcmp(opts->criu_version, CRIU_IN_FLIGHT_SUPPORT) >= 0)
 			DECLARE_ARG("--skip-in-flight");
 
 		DECLARE_ARG("--freeze-cgroup");
@@ -450,9 +450,9 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		}
 
 		/* only for final dump */
-		if (strcmp(opts->action, "dump") == 0 && !opts->user->stop)
+		if (strequal(opts->action, "dump") && !opts->user->stop)
 			DECLARE_ARG("--leave-running");
-	} else if (strcmp(opts->action, "restore") == 0) {
+	} else if (strequal(opts->action, "restore")) {
 		struct lxc_conf *lxc_conf = opts->c->lxc_conf;
 
 		DECLARE_ARG("--root");
@@ -1144,7 +1144,7 @@ static int save_tty_major_minor(char *directory, struct lxc_container *c, char *
 	int ret;
 	struct stat sb;
 
-	if (c->lxc_conf->console.path && !strcmp(c->lxc_conf->console.path, "none")) {
+	if (c->lxc_conf->console.path && strequal(c->lxc_conf->console.path, "none")) {
 		tty_id[0] = 0;
 		return 0;
 	}
