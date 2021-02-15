@@ -1767,15 +1767,15 @@ static int cg_legacy_mount_controllers(int cg_flags, struct hierarchy *h,
 	return 0;
 }
 
-/* __cg_mount_direct
+/* __cgroupfs_mount
  *
  * Mount cgroup hierarchies directly without using bind-mounts. The main
  * uses-cases are mounting cgroup hierarchies in cgroup namespaces and mounting
  * cgroups for the LXC_AUTO_CGROUP_FULL option.
  */
-static int __cg_mount_direct(int cg_flags, struct hierarchy *h,
-			     struct lxc_rootfs *rootfs,
-			     int dfd_mnt_cgroupfs, const char *hierarchy_mnt)
+static int __cgroupfs_mount(int cg_flags, struct hierarchy *h,
+			    struct lxc_rootfs *rootfs, int dfd_mnt_cgroupfs,
+			    const char *hierarchy_mnt)
 {
 	__do_close int fd_fs = -EBADF;
 	unsigned int flags = 0;
@@ -1851,7 +1851,7 @@ static inline int cgroupfs_mount(int cg_flags, struct hierarchy *h,
 				 struct lxc_rootfs *rootfs,
 				 int dfd_mnt_cgroupfs, const char *hierarchy_mnt)
 {
-	return __cg_mount_direct(cg_flags, h, rootfs, dfd_mnt_cgroupfs, hierarchy_mnt);
+	return __cgroupfs_mount(cg_flags, h, rootfs, dfd_mnt_cgroupfs, hierarchy_mnt);
 }
 
 static inline int cgroupfs_bind_mount(int cg_flags, struct hierarchy *h,
@@ -1863,7 +1863,7 @@ static inline int cgroupfs_bind_mount(int cg_flags, struct hierarchy *h,
 	    !(cg_flags & LXC_AUTO_CGROUP_FULL_MIXED))
 		return 0;
 
-	return __cg_mount_direct(cg_flags, h, rootfs, dfd_mnt_cgroupfs, hierarchy_mnt);
+	return __cgroupfs_mount(cg_flags, h, rootfs, dfd_mnt_cgroupfs, hierarchy_mnt);
 }
 
 __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
