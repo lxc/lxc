@@ -1791,7 +1791,8 @@ static int __cg_mount_direct(int cg_flags, struct hierarchy *h,
 	flags |= MOUNT_ATTR_NODEV;
 	flags |= MOUNT_ATTR_RELATIME;
 
-	if (cg_flags == LXC_AUTO_CGROUP_RO || cg_flags == LXC_AUTO_CGROUP_FULL_RO)
+	if ((cg_flags & LXC_AUTO_CGROUP_RO) ||
+	    (cg_flags & LXC_AUTO_CGROUP_FULL_RO))
 		flags |= MOUNT_ATTR_RDONLY;
 
 	if (is_unified_hierarchy(h)) {
@@ -1860,7 +1861,8 @@ static inline int cg_mount_cgroup_full(int cg_flags, struct hierarchy *h,
 				       int dfd_mnt_cgroupfs,
 				       const char *hierarchy_mnt)
 {
-	if (cg_flags < LXC_AUTO_CGROUP_FULL_RO || cg_flags > LXC_AUTO_CGROUP_FULL_MIXED)
+	if (!(cg_flags & LXC_AUTO_CGROUP_FULL_RO) &&
+	    !(cg_flags & LXC_AUTO_CGROUP_FULL_MIXED))
 		return 0;
 
 	return __cg_mount_direct(cg_flags, h, rootfs, dfd_mnt_cgroupfs, hierarchy_mnt);
@@ -1887,7 +1889,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		return ret_set_errno(false, EINVAL);
 
 	if ((cg_flags & LXC_AUTO_CGROUP_MASK) == 0)
-		return true;
+		return log_trace(true, "No cgroup mounts requested");
 
 	if (cg_flags & LXC_AUTO_CGROUP_FORCE)
 		wants_force_mount = true;
@@ -1914,9 +1916,13 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	if (in_cgroup_ns && !wants_force_mount)
 		return true;
 
-	if (cg_flags == LXC_AUTO_CGROUP_NOSPEC)
+	/*
+	 * Fallback to a mixed layout when the user did not specify what cgroup
+	 * layout they want.
+	 */
+	if ((cg_flags & LXC_AUTO_CGROUP_NOSPEC))
 		cg_flags = LXC_AUTO_CGROUP_MIXED;
-	else if (cg_flags == LXC_AUTO_CGROUP_FULL_NOSPEC)
+	else if (cg_flags & LXC_AUTO_CGROUP_FULL_NOSPEC)
 		cg_flags = LXC_AUTO_CGROUP_FULL_MIXED;
 
 	/* This is really the codepath that we want. */
