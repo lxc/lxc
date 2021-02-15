@@ -1848,10 +1848,9 @@ static int __cg_mount_direct(int cg_flags, struct hierarchy *h,
 	return 0;
 }
 
-static inline int cg_mount_in_cgroup_namespace(int cg_flags, struct hierarchy *h,
-					       struct lxc_rootfs *rootfs,
-					       int dfd_mnt_cgroupfs,
-					       const char *hierarchy_mnt)
+static inline int cgroupfs_mount(int cg_flags, struct hierarchy *h,
+				 struct lxc_rootfs *rootfs,
+				 int dfd_mnt_cgroupfs, const char *hierarchy_mnt)
 {
 	return __cg_mount_direct(cg_flags, h, rootfs, dfd_mnt_cgroupfs, hierarchy_mnt);
 }
@@ -1941,7 +1940,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		 * the cgroups manually.
 		 */
 		if (in_cgroup_ns && wants_force_mount)
-			ret = cg_mount_in_cgroup_namespace(cg_flags, ops->unified, rootfs, dfd_mnt_cgroupfs, "");
+			ret = cgroupfs_mount(cg_flags, ops->unified, rootfs, dfd_mnt_cgroupfs, "");
 		else
 			ret = cg_mount_cgroup_full(cg_flags, ops->unified, rootfs, dfd_mnt_cgroupfs, "");
 		if (ret < 0)
@@ -2013,7 +2012,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			 * will not have CAP_SYS_ADMIN after it has started we
 			 * need to mount the cgroups manually.
 			 */
-			ret = cg_mount_in_cgroup_namespace(cg_flags, h, rootfs, dfd_mnt_cgroupfs, controller);
+			ret = cgroupfs_mount(cg_flags, h, rootfs, dfd_mnt_cgroupfs, controller);
 			if (ret < 0)
 				return false;
 
