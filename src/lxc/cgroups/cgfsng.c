@@ -1924,7 +1924,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	}
 
 	if (in_cgroup_ns && !wants_force_mount)
-		return true;
+		return log_trace(true, "Mounting cgroups not requested or needed");
 
 	/*
 	 * Fallback to a mixed layout when the user did not specify what cgroup
