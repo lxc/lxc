@@ -1948,19 +1948,66 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		 * If cgroup namespaces are supported but the container will
 		 * not have CAP_SYS_ADMIN after it has started we need to mount
 		 * the cgroups manually.
+		 *
+		 * Note that here we know that wants_force_mount is true.
+		 * Otherwise we would've returned early above.
 		 */
-		if (in_cgroup_ns && wants_force_mount)
-			ret = cgroupfs_mount(cg_flags, ops->unified, rootfs, dfd_mnt_cgroupfs, "");
-		else
-			ret = cgroupfs_bind_mount(cg_flags, ops->unified, rootfs, dfd_mnt_cgroupfs, "");
-		if (ret < 0)
-			return syserrno(false, "Failed to%s mount cgroup filesystem%s",
-					wants_force_mount ? " force mount" : "",
-					in_cgroup_ns ? " in cgroup namespace" : "");
+		if (in_cgroup_ns) {
+			/*
+			 *  1. cgroup:rw:force    -> Mount the cgroup2 filesystem.
+			 *  2. cgroup:ro:force    -> Mount the cgroup2 filesystem read-only.
+			 *  3. cgroup:mixed:force -> See comment above how this
+			 *                           does not apply so
+			 *                           cgroup:mixed is equal to
+			 *                           cgroup:rw when cgroup
+			 *                           namespaces are supported.
 
-		return log_trace(true, "%s cgroup filesystem%s",
-				 wants_force_mount ? "Force mounted" : "Mounted",
-				 in_cgroup_ns ? " in cgroup namespace" : "");
+			 *  4. cgroup:rw    -> No-op; init system responsible for mounting.
+			 *  5. cgroup:ro    -> No-op; init system responsible for mounting.
+			 *  6. cgroup:mixed -> No-op; init system responsible for mounting.
+                         *
+			 *  7. cgroup-full:rw    -> Not supported.
+			 *  8. cgroup-full:ro    -> Not supported.
+			 *  9. cgroup-full:mixed -> Not supported.
+
+			 * 10. cgroup-full:rw:force    -> Not supported.
+			 * 11. cgroup-full:ro:force    -> Not supported.
+			 * 12. cgroup-full:mixed:force -> Not supported.
+			 */
+			ret = cgroupfs_mount(cg_flags, ops->unified, rootfs, dfd_mnt_cgroupfs, "");
+			if (ret < 0)
+				return syserrno(false, "Failed to force mount cgroup filesystem in cgroup namespace");
+
+			return log_trace(true, "Force mounted cgroup filesystem in new cgroup namespace");
+		} else {
+			/*
+			 * Either no cgroup namespace supported (highly
+			 * unlikely unless we're dealing with a Frankenkernel.
+			 * Or the user requested to keep the cgroup namespace
+			 * of the host or another container.
+			 */
+			if (wants_force_mount) {
+				/*
+				 * 1. cgroup:rw:force    -> Bind-mount the cgroup2 filesystem writable.
+				 * 2. cgroup:ro:force    -> Bind-mount the cgroup2 filesystem read-only.
+				 * 3. cgroup:mixed:force -> bind-mount the cgroup2 filesystem and
+				 *                          and make the parent directory of the
+				 *                          container's cgroup read-only but the
+				 *                          container's cgroup writable.
+                                 *
+				 * 10. cgroup-full:rw:force    ->
+				 * 11. cgroup-full:ro:force    ->
+				 * 12. cgroup-full:mixed:force ->
+				 */
+				errno = EOPNOTSUPP;
+				SYSWARN("Force-mounting the unified cgroup hierarchy without cgroup namespace support is currently not supported");
+			} else {
+				errno = EOPNOTSUPP;
+				SYSWARN("Mounting the unified cgroup hierarchy without cgroup namespace support is currently not supported");
+			}
+		}
+
+		return syserrno(false, "Failed to mount cgroups");
 	}
 
 	/*
