@@ -1726,7 +1726,7 @@ static int cg_legacy_mount_controllers(int cg_flags, struct hierarchy *h,
 	int ret, remount_flags;
 	int flags = MS_BIND;
 
-	if (cg_flags == LXC_AUTO_CGROUP_RO || cg_flags == LXC_AUTO_CGROUP_MIXED) {
+	if ((cg_flags & LXC_AUTO_CGROUP_RO) || (cg_flags & LXC_AUTO_CGROUP_MIXED)) {
 		ret = mount(controllerpath, controllerpath, "cgroup", MS_BIND, NULL);
 		if (ret < 0)
 			return log_error_errno(-1, errno, "Failed to bind mount \"%s\" onto \"%s\"",
@@ -1746,7 +1746,7 @@ static int cg_legacy_mount_controllers(int cg_flags, struct hierarchy *h,
 
 	sourcepath = must_make_path(h->mountpoint, h->container_base_path,
 				    container_cgroup, NULL);
-	if (cg_flags == LXC_AUTO_CGROUP_RO)
+	if ((cg_flags & LXC_AUTO_CGROUP_RO))
 		flags |= MS_RDONLY;
 
 	ret = mount(sourcepath, cgpath, "cgroup", flags, NULL);
