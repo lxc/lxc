@@ -1683,6 +1683,9 @@ static int set_config_cgroup_dir(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return clr_config_cgroup_dir(key, lxc_conf, NULL);
 
+	if (abspath(value))
+		return syserrno_set(-EINVAL, "%s paths may not be absolute", key);
+
 	if (dotdot(value))
 		return syserrno_set(-EINVAL, "%s paths may not walk upwards via \"../\"", key);
 
