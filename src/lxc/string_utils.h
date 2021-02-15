@@ -140,6 +140,11 @@ static inline bool strequal(const char *str, const char *eq)
 	return strcmp(str, eq) == 0;
 }
 
+static inline bool dotdot(const char *str)
+{
+	return !!strstr(str, "..");
+}
+
 #define strnprintf(buf, buf_size, ...)                                            \
 	({                                                                        \
 		int __ret_strnprintf;                                             \
