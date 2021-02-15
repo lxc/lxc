@@ -1854,10 +1854,10 @@ static inline int cgroupfs_mount(int cg_flags, struct hierarchy *h,
 	return __cg_mount_direct(cg_flags, h, rootfs, dfd_mnt_cgroupfs, hierarchy_mnt);
 }
 
-static inline int cg_mount_cgroup_full(int cg_flags, struct hierarchy *h,
-				       struct lxc_rootfs *rootfs,
-				       int dfd_mnt_cgroupfs,
-				       const char *hierarchy_mnt)
+static inline int cgroupfs_bind_mount(int cg_flags, struct hierarchy *h,
+				      struct lxc_rootfs *rootfs,
+				      int dfd_mnt_cgroupfs,
+				      const char *hierarchy_mnt)
 {
 	if (!(cg_flags & LXC_AUTO_CGROUP_FULL_RO) &&
 	    !(cg_flags & LXC_AUTO_CGROUP_FULL_MIXED))
@@ -1941,7 +1941,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		if (in_cgroup_ns && wants_force_mount)
 			ret = cgroupfs_mount(cg_flags, ops->unified, rootfs, dfd_mnt_cgroupfs, "");
 		else
-			ret = cg_mount_cgroup_full(cg_flags, ops->unified, rootfs, dfd_mnt_cgroupfs, "");
+			ret = cgroupfs_bind_mount(cg_flags, ops->unified, rootfs, dfd_mnt_cgroupfs, "");
 		if (ret < 0)
 			return syserrno(false, "Failed to%s mount cgroup filesystem%s",
 					wants_force_mount ? " force mount" : "",
@@ -2019,7 +2019,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		}
 
 		/* Here is where the ancient kernel section begins. */
-		ret = cg_mount_cgroup_full(cg_flags, h, rootfs, dfd_mnt_cgroupfs, controller);
+		ret = cgroupfs_bind_mount(cg_flags, h, rootfs, dfd_mnt_cgroupfs, controller);
 		if (ret < 0)
 			return false;
 
