@@ -1871,7 +1871,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 {
 	__do_close int dfd_mnt_cgroupfs = -EBADF, fd_fs = -EBADF;
 	__do_free char *cgroup_root = NULL;
-	bool has_cgns = false, wants_force_mount = false;
+	bool in_cgroup_ns = false, wants_force_mount = false;
 	struct lxc_conf *conf = handler->conf;
 	struct lxc_rootfs *rootfs = &conf->rootfs;
 	const char *rootfs_mnt = get_rootfs_mnt(rootfs);
@@ -1911,8 +1911,9 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			wants_force_mount = true;
 	}
 
-	has_cgns = cgns_supported();
-	if (has_cgns && !wants_force_mount)
+	if (cgns_supported() && container_uses_namespace(handler, CLONE_NEWCGROUP))
+		in_cgroup_ns = true;
+	if (in_cgroup_ns && !wants_force_mount)
 		return true;
 
 	if (type == LXC_AUTO_CGROUP_NOSPEC)
@@ -1930,7 +1931,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			return log_error_errno(-errno, errno, "Failed to open %d(%s)",
 					       rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
 
-		if (has_cgns && wants_force_mount) {
+		if (in_cgroup_ns && wants_force_mount) {
 			/*
 			 * If cgroup namespaces are supported but the container
 			 * will not have CAP_SYS_ADMIN after it has started we
@@ -1995,7 +1996,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		if (ret < 0)
 			return log_error_errno(false, errno, "Failed to create cgroup mountpoint %d(%s)", dfd_mnt_cgroupfs, controller);
 
-		if (has_cgns && wants_force_mount) {
+		if (in_cgroup_ns && wants_force_mount) {
 			/*
 			 * If cgroup namespaces are supported but the container
 			 * will not have CAP_SYS_ADMIN after it has started we
