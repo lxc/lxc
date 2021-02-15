@@ -180,4 +180,10 @@ __hidden extern int __lxc_start(struct lxc_handler *, struct lxc_operations *, v
 __hidden extern int resolve_clone_flags(struct lxc_handler *handler);
 __hidden extern void lxc_expose_namespace_environment(const struct lxc_handler *handler);
 
+static inline bool container_uses_namespace(const struct lxc_handler *handler,
+					    unsigned int ns_flag)
+{
+	return (handler->ns_clone_flags & ns_flag);
+}
+
 #endif
