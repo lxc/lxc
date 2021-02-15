@@ -635,7 +635,13 @@ int set_config_string_item_max(char **conf_item, const char *value, size_t max)
 
 int set_config_path_item(char **conf_item, const char *value)
 {
-	return set_config_string_item_max(conf_item, value, PATH_MAX);
+	__do_free char *normalized = NULL;
+
+	normalized = lxc_deslashify(value);
+	if (!normalized)
+		return syserrno(-errno, "Failed to normalize path config item");
+
+	return set_config_string_item_max(conf_item, normalized, PATH_MAX);
 }
 
 int set_config_bool_item(bool *conf_item, const char *value, bool empty_conf_action)
