@@ -1888,10 +1888,8 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	if ((cg_flags & LXC_AUTO_CGROUP_MASK) == 0)
 		return true;
 
-	if (cg_flags & LXC_AUTO_CGROUP_FORCE) {
-		cg_flags &= ~LXC_AUTO_CGROUP_FORCE;
+	if (cg_flags & LXC_AUTO_CGROUP_FORCE)
 		wants_force_mount = true;
-	}
 
 	if (!wants_force_mount) {
 		wants_force_mount = !lxc_wants_cap(CAP_SYS_ADMIN, conf);
