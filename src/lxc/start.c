@@ -27,7 +27,8 @@
 
 #include "af_unix.h"
 #include "caps.h"
-#include "cgroup.h"
+#include "cgroups/cgroup.h"
+#include "cgroups/cgroup_utils.h"
 #include "commands.h"
 #include "commands_utils.h"
 #include "compiler.h"

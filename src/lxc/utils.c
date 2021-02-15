@@ -747,11 +747,6 @@ char *on_path(const char *cmd, const char *rootfs)
 	return NULL;
 }
 
-bool cgns_supported(void)
-{
-	return file_exists("/proc/self/ns/cgroup");
-}
-
 /* historically lxc-init has been under /usr/lib/lxc and under
  * /usr/lib/$ARCH/lxc.  It now lives as $prefix/sbin/init.lxc.
  */
