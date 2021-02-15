@@ -1674,7 +1674,6 @@ static int set_config_cgroup2_controller(const char *key, const char *value,
 					      CGROUP2_SUPER_MAGIC);
 }
 
-
 static int set_config_cgroup_dir(const char *key, const char *value,
 				 struct lxc_conf *lxc_conf, void *data)
 {
@@ -1683,6 +1682,9 @@ static int set_config_cgroup_dir(const char *key, const char *value,
 
 	if (lxc_config_value_empty(value))
 		return clr_config_cgroup_dir(key, lxc_conf, NULL);
+
+	if (dotdot(value))
+		return syserrno_set(-EINVAL, "%s paths may not walk upwards via \"../\"", key);
 
 	return set_config_path_item(&lxc_conf->cgroup_meta.dir, value);
 }
