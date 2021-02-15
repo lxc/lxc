@@ -37,6 +37,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "cgroups/cgroup_utils.h"
 #include "lxctest.h"
 #include "namespace.h"
 #include "process_utils.h"

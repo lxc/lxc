@@ -564,7 +564,7 @@ static int add_shmount_to_list(struct lxc_conf *conf)
 	return add_elem_to_mount_list(new_mount, conf);
 }
 
-static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_handler *handler)
+static int lxc_mount_auto_mounts(struct lxc_handler *handler, int flags)
 {
 	int i, ret;
 	static struct {
@@ -608,6 +608,7 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 		{ LXC_AUTO_SYS_MASK,  LXC_AUTO_SYS_MIXED,  NULL,                                             "%r/sys/devices/virtual/net", NULL,    MS_REMOUNT|MS_BIND|MS_NOSUID|MS_NODEV|MS_NOEXEC, NULL, false },
 		{ 0,                  0,                   NULL,                                             NULL,                         NULL,    0,                                               NULL, false }
 	};
+	struct lxc_conf *conf = handler->conf;
         struct lxc_rootfs *rootfs = &conf->rootfs;
         bool has_cap_net_admin;
 
@@ -703,7 +704,7 @@ static int lxc_mount_auto_mounts(struct lxc_conf *conf, int flags, struct lxc_ha
 		if (flags & LXC_AUTO_CGROUP_FORCE)
 			cg_flags |= LXC_AUTO_CGROUP_FORCE;
 
-		if (!handler->cgroup_ops->mount(handler->cgroup_ops, conf, cg_flags))
+		if (!handler->cgroup_ops->mount(handler->cgroup_ops, handler, cg_flags))
 			return log_error_errno(-1, errno, "Failed to mount \"/sys/fs/cgroup\"");
 	}
 
@@ -3432,7 +3433,7 @@ int lxc_setup(struct lxc_handler *handler)
 	/* Do automatic mounts (mainly /proc and /sys), but exclude those that
 	 * need to wait until other stuff has finished.
 	 */
-	ret = lxc_mount_auto_mounts(lxc_conf, lxc_conf->auto_mounts & ~LXC_AUTO_CGROUP_MASK, handler);
+	ret = lxc_mount_auto_mounts(handler, lxc_conf->auto_mounts & ~LXC_AUTO_CGROUP_MASK);
 	if (ret < 0)
 		return log_error(-1, "Failed to setup first automatic mounts");
 
@@ -3473,7 +3474,7 @@ int lxc_setup(struct lxc_handler *handler)
 	 * mounted. It is guaranteed to be mounted now either through
 	 * automatically or via fstab entries.
 	 */
-	ret = lxc_mount_auto_mounts(lxc_conf, lxc_conf->auto_mounts & LXC_AUTO_CGROUP_MASK, handler);
+	ret = lxc_mount_auto_mounts(handler, lxc_conf->auto_mounts & LXC_AUTO_CGROUP_MASK);
 	if (ret < 0)
 		return log_error(-1, "Failed to setup remaining automatic mounts");
 

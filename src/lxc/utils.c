@@ -747,11 +747,6 @@ char *on_path(const char *cmd, const char *rootfs)
 	return NULL;
 }
 
-bool cgns_supported(void)
-{
-	return file_exists("/proc/self/ns/cgroup");
-}
-
 /* historically lxc-init has been under /usr/lib/lxc and under
  * /usr/lib/$ARCH/lxc.  It now lives as $prefix/sbin/init.lxc.
  */
@@ -1859,4 +1854,54 @@ bool multiply_overflow(int64_t base, uint64_t mult, int64_t *res)
 
 	*res = base * mult;
 	return true;
+}
+
+int print_r(int fd, const char *path)
+{
+	__do_close int dfd = -EBADF;
+	__do_closedir DIR *dir = NULL;
+	int ret = 0;
+	struct dirent *direntp;
+	struct stat st;
+
+	if (is_empty_string(path))
+		dfd = dup(fd);
+	else
+		dfd = openat(fd, path, O_CLOEXEC | O_DIRECTORY);
+	if (dfd < 0)
+		return -1;
+
+	dir = fdopendir(dfd);
+	if (!dir)
+		return -1;
+	/* Transfer ownership to fdopendir(). */
+	move_fd(dfd);
+
+	while ((direntp = readdir(dir))) {
+		if (!strcmp(direntp->d_name, ".") ||
+		    !strcmp(direntp->d_name, ".."))
+			continue;
+
+		ret = fstatat(dfd, direntp->d_name, &st, AT_SYMLINK_NOFOLLOW);
+		if (ret < 0 && errno != ENOENT)
+			break;
+
+		ret = 0;
+		if (S_ISDIR(st.st_mode))
+			ret = print_r(dfd, direntp->d_name);
+		else
+			INFO("mode(%o):uid(%d):gid(%d) -> %s/%s\n",
+			     (st.st_mode & ~S_IFMT), st.st_uid, st.st_gid, path,
+			     direntp->d_name);
+		if (ret < 0 && errno != ENOENT)
+			break;
+	}
+
+	ret = fstatat(fd, path, &st, AT_SYMLINK_NOFOLLOW);
+	if (ret)
+		return -1;
+	else
+		INFO("mode(%o):uid(%d):gid(%d) -> %s",
+		     (st.st_mode & ~S_IFMT), st.st_uid, st.st_gid, path);
+	return ret;
 }

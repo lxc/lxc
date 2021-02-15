@@ -138,7 +138,6 @@ __hidden extern bool is_shared_mountpoint(const char *path);
 __hidden extern int detect_shared_rootfs(void);
 __hidden extern bool detect_ramfs_rootfs(void);
 __hidden extern char *on_path(const char *cmd, const char *rootfs);
-__hidden extern bool cgns_supported(void);
 __hidden extern char *choose_init(const char *rootfs);
 __hidden extern bool switch_to_ns(pid_t pid, const char *ns);
 __hidden extern char *get_template_path(const char *t);
@@ -244,5 +243,6 @@ __hidden extern int safe_mount_beneath(const char *beneath, const char *src, con
 				       const char *fstype, unsigned int flags, const void *data);
 __hidden extern int safe_mount_beneath_at(int beneat_fd, const char *src, const char *dst,
 					  const char *fstype, unsigned int flags, const void *data);
+__hidden __lxc_unused int print_r(int fd, const char *path);
 
 #endif /* __LXC_UTILS_H */

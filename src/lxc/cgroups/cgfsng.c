@@ -1709,16 +1709,16 @@ __cgfsng_ops static void cgfsng_payload_finalize(struct cgroup_ops *ops)
 }
 
 /* cgroup-full:* is done, no need to create subdirs */
-static inline bool cg_mount_needs_subdirs(int type)
+static inline bool cg_mount_needs_subdirs(int cg_flags)
 {
-	return !(type >= LXC_AUTO_CGROUP_FULL_RO);
+	return !(cg_flags >= LXC_AUTO_CGROUP_FULL_RO);
 }
 
 /* After $rootfs/sys/fs/container/controller/the/cg/path has been created,
  * remount controller ro if needed and bindmount the cgroupfs onto
  * control/the/cg/path.
  */
-static int cg_legacy_mount_controllers(int type, struct hierarchy *h,
+static int cg_legacy_mount_controllers(int cg_flags, struct hierarchy *h,
 				       char *controllerpath, char *cgpath,
 				       const char *container_cgroup)
 {
@@ -1726,7 +1726,7 @@ static int cg_legacy_mount_controllers(int type, struct hierarchy *h,
 	int ret, remount_flags;
 	int flags = MS_BIND;
 
-	if (type == LXC_AUTO_CGROUP_RO || type == LXC_AUTO_CGROUP_MIXED) {
+	if ((cg_flags & LXC_AUTO_CGROUP_RO) || (cg_flags & LXC_AUTO_CGROUP_MIXED)) {
 		ret = mount(controllerpath, controllerpath, "cgroup", MS_BIND, NULL);
 		if (ret < 0)
 			return log_error_errno(-1, errno, "Failed to bind mount \"%s\" onto \"%s\"",
@@ -1746,7 +1746,7 @@ static int cg_legacy_mount_controllers(int type, struct hierarchy *h,
 
 	sourcepath = must_make_path(h->mountpoint, h->container_base_path,
 				    container_cgroup, NULL);
-	if (type == LXC_AUTO_CGROUP_RO)
+	if ((cg_flags & LXC_AUTO_CGROUP_RO))
 		flags |= MS_RDONLY;
 
 	ret = mount(sourcepath, cgpath, "cgroup", flags, NULL);
@@ -1768,15 +1768,15 @@ static int cg_legacy_mount_controllers(int type, struct hierarchy *h,
 	return 0;
 }
 
-/* __cg_mount_direct
+/* __cgroupfs_mount
  *
  * Mount cgroup hierarchies directly without using bind-mounts. The main
  * uses-cases are mounting cgroup hierarchies in cgroup namespaces and mounting
  * cgroups for the LXC_AUTO_CGROUP_FULL option.
  */
-static int __cg_mount_direct(int type, struct hierarchy *h,
-			     struct lxc_rootfs *rootfs,
-			     int dfd_mnt_cgroupfs, const char *hierarchy_mnt)
+static int __cgroupfs_mount(int cg_flags, struct hierarchy *h,
+			    struct lxc_rootfs *rootfs, int dfd_mnt_cgroupfs,
+			    const char *hierarchy_mnt)
 {
 	__do_close int fd_fs = -EBADF;
 	unsigned int flags = 0;
@@ -1791,7 +1791,8 @@ static int __cg_mount_direct(int type, struct hierarchy *h,
 	flags |= MOUNT_ATTR_NODEV;
 	flags |= MOUNT_ATTR_RELATIME;
 
-	if (type == LXC_AUTO_CGROUP_RO || type == LXC_AUTO_CGROUP_FULL_RO)
+	if ((cg_flags & LXC_AUTO_CGROUP_RO) ||
+	    (cg_flags & LXC_AUTO_CGROUP_FULL_RO))
 		flags |= MOUNT_ATTR_RDONLY;
 
 	if (is_unified_hierarchy(h)) {
@@ -1847,31 +1848,32 @@ static int __cg_mount_direct(int type, struct hierarchy *h,
 	return 0;
 }
 
-static inline int cg_mount_in_cgroup_namespace(int type, struct hierarchy *h,
-					       struct lxc_rootfs *rootfs,
-					       int dfd_mnt_cgroupfs,
-					       const char *hierarchy_mnt)
+static inline int cgroupfs_mount(int cg_flags, struct hierarchy *h,
+				 struct lxc_rootfs *rootfs,
+				 int dfd_mnt_cgroupfs, const char *hierarchy_mnt)
 {
-	return __cg_mount_direct(type, h, rootfs, dfd_mnt_cgroupfs, hierarchy_mnt);
+	return __cgroupfs_mount(cg_flags, h, rootfs, dfd_mnt_cgroupfs, hierarchy_mnt);
 }
 
-static inline int cg_mount_cgroup_full(int type, struct hierarchy *h,
-				       struct lxc_rootfs *rootfs,
-				       int dfd_mnt_cgroupfs,
-				       const char *hierarchy_mnt)
+static inline int cgroupfs_bind_mount(int cg_flags, struct hierarchy *h,
+				      struct lxc_rootfs *rootfs,
+				      int dfd_mnt_cgroupfs,
+				      const char *hierarchy_mnt)
 {
-	if (type < LXC_AUTO_CGROUP_FULL_RO || type > LXC_AUTO_CGROUP_FULL_MIXED)
+	if (!(cg_flags & LXC_AUTO_CGROUP_FULL_RO) &&
+	    !(cg_flags & LXC_AUTO_CGROUP_FULL_MIXED))
 		return 0;
 
-	return __cg_mount_direct(type, h, rootfs, dfd_mnt_cgroupfs, hierarchy_mnt);
+	return __cgroupfs_mount(cg_flags, h, rootfs, dfd_mnt_cgroupfs, hierarchy_mnt);
 }
 
 __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
-				      struct lxc_conf *conf, int type)
+				      struct lxc_handler *handler, int cg_flags)
 {
 	__do_close int dfd_mnt_cgroupfs = -EBADF, fd_fs = -EBADF;
 	__do_free char *cgroup_root = NULL;
-	bool has_cgns = false, wants_force_mount = false;
+	bool in_cgroup_ns = false, wants_force_mount = false;
+	struct lxc_conf *conf = handler->conf;
 	struct lxc_rootfs *rootfs = &conf->rootfs;
 	const char *rootfs_mnt = get_rootfs_mnt(rootfs);
 	int ret;
@@ -1885,13 +1887,11 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	if (!conf)
 		return ret_set_errno(false, EINVAL);
 
-	if ((type & LXC_AUTO_CGROUP_MASK) == 0)
-		return true;
+	if ((cg_flags & LXC_AUTO_CGROUP_MASK) == 0)
+		return log_trace(true, "No cgroup mounts requested");
 
-	if (type & LXC_AUTO_CGROUP_FORCE) {
-		type &= ~LXC_AUTO_CGROUP_FORCE;
+	if (cg_flags & LXC_AUTO_CGROUP_FORCE)
 		wants_force_mount = true;
-	}
 
 	if (!wants_force_mount) {
 		wants_force_mount = !lxc_wants_cap(CAP_SYS_ADMIN, conf);
@@ -1910,14 +1910,30 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			wants_force_mount = true;
 	}
 
-	has_cgns = cgns_supported();
-	if (has_cgns && !wants_force_mount)
-		return true;
+	if (cgns_supported() && container_uses_namespace(handler, CLONE_NEWCGROUP)) {
+		in_cgroup_ns = true;
+		/*
+		 * When cgroup namespaces are supported and used by the
+		 * container the LXC_AUTO_CGROUP_MIXED and
+		 * LXC_AUTO_CGROUP_FULL_MIXED auto mount options don't apply
+		 * since the parent directory of the container's cgroup is not
+		 * accessible to the container.
+		 */
+		cg_flags &= ~LXC_AUTO_CGROUP_MIXED;
+		cg_flags &= ~LXC_AUTO_CGROUP_FULL_MIXED;
+	}
 
-	if (type == LXC_AUTO_CGROUP_NOSPEC)
-		type = LXC_AUTO_CGROUP_MIXED;
-	else if (type == LXC_AUTO_CGROUP_FULL_NOSPEC)
-		type = LXC_AUTO_CGROUP_FULL_MIXED;
+	if (in_cgroup_ns && !wants_force_mount)
+		return log_trace(true, "Mounting cgroups not requested or needed");
+
+	/*
+	 * Fallback to a mixed layout when the user did not specify what cgroup
+	 * layout they want.
+	 */
+	if ((cg_flags & LXC_AUTO_CGROUP_NOSPEC))
+		cg_flags = LXC_AUTO_CGROUP_MIXED;
+	else if (cg_flags & LXC_AUTO_CGROUP_FULL_NOSPEC)
+		cg_flags = LXC_AUTO_CGROUP_FULL_MIXED;
 
 	/* This is really the codepath that we want. */
 	if (pure_unified_layout(ops)) {
@@ -1929,16 +1945,70 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			return log_error_errno(-errno, errno, "Failed to open %d(%s)",
 					       rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
 
-		if (has_cgns && wants_force_mount) {
+		/*
+		 * If cgroup namespaces are supported but the container will
+		 * not have CAP_SYS_ADMIN after it has started we need to mount
+		 * the cgroups manually.
+		 *
+		 * Note that here we know that wants_force_mount is true.
+		 * Otherwise we would've returned early above.
+		 */
+		if (in_cgroup_ns) {
 			/*
-			 * If cgroup namespaces are supported but the container
-			 * will not have CAP_SYS_ADMIN after it has started we
-			 * need to mount the cgroups manually.
+			 *  1. cgroup:rw:force    -> Mount the cgroup2 filesystem.
+			 *  2. cgroup:ro:force    -> Mount the cgroup2 filesystem read-only.
+			 *  3. cgroup:mixed:force -> See comment above how this
+			 *                           does not apply so
+			 *                           cgroup:mixed is equal to
+			 *                           cgroup:rw when cgroup
+			 *                           namespaces are supported.
+
+			 *  4. cgroup:rw    -> No-op; init system responsible for mounting.
+			 *  5. cgroup:ro    -> No-op; init system responsible for mounting.
+			 *  6. cgroup:mixed -> No-op; init system responsible for mounting.
+                         *
+			 *  7. cgroup-full:rw    -> Not supported.
+			 *  8. cgroup-full:ro    -> Not supported.
+			 *  9. cgroup-full:mixed -> Not supported.
+
+			 * 10. cgroup-full:rw:force    -> Not supported.
+			 * 11. cgroup-full:ro:force    -> Not supported.
+			 * 12. cgroup-full:mixed:force -> Not supported.
 			 */
-			return cg_mount_in_cgroup_namespace(type, ops->unified, rootfs, dfd_mnt_cgroupfs, "") == 0;
+			ret = cgroupfs_mount(cg_flags, ops->unified, rootfs, dfd_mnt_cgroupfs, "");
+			if (ret < 0)
+				return syserrno(false, "Failed to force mount cgroup filesystem in cgroup namespace");
+
+			return log_trace(true, "Force mounted cgroup filesystem in new cgroup namespace");
+		} else {
+			/*
+			 * Either no cgroup namespace supported (highly
+			 * unlikely unless we're dealing with a Frankenkernel.
+			 * Or the user requested to keep the cgroup namespace
+			 * of the host or another container.
+			 */
+			if (wants_force_mount) {
+				/*
+				 * 1. cgroup:rw:force    -> Bind-mount the cgroup2 filesystem writable.
+				 * 2. cgroup:ro:force    -> Bind-mount the cgroup2 filesystem read-only.
+				 * 3. cgroup:mixed:force -> bind-mount the cgroup2 filesystem and
+				 *                          and make the parent directory of the
+				 *                          container's cgroup read-only but the
+				 *                          container's cgroup writable.
+                                 *
+				 * 10. cgroup-full:rw:force    ->
+				 * 11. cgroup-full:ro:force    ->
+				 * 12. cgroup-full:mixed:force ->
+				 */
+				errno = EOPNOTSUPP;
+				SYSWARN("Force-mounting the unified cgroup hierarchy without cgroup namespace support is currently not supported");
+			} else {
+				errno = EOPNOTSUPP;
+				SYSWARN("Mounting the unified cgroup hierarchy without cgroup namespace support is currently not supported");
+			}
 		}
 
-		return cg_mount_cgroup_full(type, ops->unified, rootfs, dfd_mnt_cgroupfs, "") == 0;
+		return syserrno(false, "Failed to mount cgroups");
 	}
 
 	/*
@@ -1994,13 +2064,13 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		if (ret < 0)
 			return log_error_errno(false, errno, "Failed to create cgroup mountpoint %d(%s)", dfd_mnt_cgroupfs, controller);
 
-		if (has_cgns && wants_force_mount) {
+		if (in_cgroup_ns && wants_force_mount) {
 			/*
 			 * If cgroup namespaces are supported but the container
 			 * will not have CAP_SYS_ADMIN after it has started we
 			 * need to mount the cgroups manually.
 			 */
-			ret = cg_mount_in_cgroup_namespace(type, h, rootfs, dfd_mnt_cgroupfs, controller);
+			ret = cgroupfs_mount(cg_flags, h, rootfs, dfd_mnt_cgroupfs, controller);
 			if (ret < 0)
 				return false;
 
@@ -2008,11 +2078,11 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		}
 
 		/* Here is where the ancient kernel section begins. */
-		ret = cg_mount_cgroup_full(type, h, rootfs, dfd_mnt_cgroupfs, controller);
+		ret = cgroupfs_bind_mount(cg_flags, h, rootfs, dfd_mnt_cgroupfs, controller);
 		if (ret < 0)
 			return false;
 
-		if (!cg_mount_needs_subdirs(type))
+		if (!cg_mount_needs_subdirs(cg_flags))
 			continue;
 
 		controllerpath = must_make_path(cgroup_root, controller, NULL);
@@ -2024,7 +2094,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		if (ret < 0)
 			return false;
 
-		ret = cg_legacy_mount_controllers(type, h, controllerpath, path2, ops->container_cgroup);
+		ret = cg_legacy_mount_controllers(cg_flags, h, controllerpath, path2, ops->container_cgroup);
 		if (ret < 0)
 			return false;
 	}

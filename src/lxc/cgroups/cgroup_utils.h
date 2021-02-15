@@ -7,6 +7,7 @@
 #include <stdio.h>
 
 #include "compiler.h"
+#include "file_utils.h"
 
 /* Retrieve the cgroup version of a given entry from /proc/<pid>/mountinfo. */
 __hidden extern int get_cgroup_version(char *line);
@@ -31,5 +32,15 @@ __hidden extern bool test_writeable_v2(char *mountpoint, char *path);
 __hidden extern int unified_cgroup_hierarchy(void);
 
 __hidden extern int unified_cgroup_fd(int fd);
+
+static inline bool cgns_supported(void)
+{
+	static int supported = -1;
+
+	if (supported == -1)
+		supported = file_exists("/proc/self/ns/cgroup");
+
+	return supported == 1;
+}
 
 #endif /* __LXC_CGROUP_UTILS_H */

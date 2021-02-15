@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 #include "caps.h"
+#include "cgroups/cgroup_utils.h"
 #include "conf.h"
 #include "config.h"
 #include "initutils.h"
