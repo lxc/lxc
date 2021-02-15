@@ -1867,11 +1867,12 @@ static inline int cg_mount_cgroup_full(int type, struct hierarchy *h,
 }
 
 __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
-				      struct lxc_conf *conf, int type)
+				      struct lxc_handler *handler, int type)
 {
 	__do_close int dfd_mnt_cgroupfs = -EBADF, fd_fs = -EBADF;
 	__do_free char *cgroup_root = NULL;
 	bool has_cgns = false, wants_force_mount = false;
+	struct lxc_conf *conf = handler->conf;
 	struct lxc_rootfs *rootfs = &conf->rootfs;
 	const char *rootfs_mnt = get_rootfs_mnt(rootfs);
 	int ret;
