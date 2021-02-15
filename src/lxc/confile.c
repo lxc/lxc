@@ -1825,7 +1825,7 @@ static int set_config_cgroup_dir(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return clr_config_cgroup_dir(key, lxc_conf, NULL);
 
-	return set_config_string_item(&lxc_conf->cgroup_meta.dir, value);
+	return set_config_path_item(&lxc_conf->cgroup_meta.dir, value);
 }
 
 static int set_config_cgroup_monitor_dir(const char *key, const char *value,
@@ -1834,8 +1834,7 @@ static int set_config_cgroup_monitor_dir(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return clr_config_cgroup_monitor_dir(key, lxc_conf, NULL);
 
-	return set_config_string_item(&lxc_conf->cgroup_meta.monitor_dir,
-				      value);
+	return set_config_path_item(&lxc_conf->cgroup_meta.monitor_dir, value);
 }
 
 static int set_config_cgroup_monitor_pivot_dir(const char *key, const char *value,
@@ -1844,8 +1843,7 @@ static int set_config_cgroup_monitor_pivot_dir(const char *key, const char *valu
 	if (lxc_config_value_empty(value))
 		return clr_config_cgroup_monitor_pivot_dir(key, lxc_conf, NULL);
 
-	return set_config_string_item(&lxc_conf->cgroup_meta.monitor_pivot_dir,
-				      value);
+	return set_config_path_item(&lxc_conf->cgroup_meta.monitor_pivot_dir, value);
 }
 
 static int set_config_cgroup_container_dir(const char *key, const char *value,
@@ -1855,8 +1853,7 @@ static int set_config_cgroup_container_dir(const char *key, const char *value,
 	if (lxc_config_value_empty(value))
 		return clr_config_cgroup_container_dir(key, lxc_conf, NULL);
 
-	return set_config_string_item(&lxc_conf->cgroup_meta.container_dir,
-				      value);
+	return set_config_path_item(&lxc_conf->cgroup_meta.container_dir, value);
 }
 
 static int set_config_cgroup_container_inner_dir(const char *key,
