@@ -1931,16 +1931,23 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			return log_error_errno(-errno, errno, "Failed to open %d(%s)",
 					       rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
 
-		if (in_cgroup_ns && wants_force_mount) {
-			/*
-			 * If cgroup namespaces are supported but the container
-			 * will not have CAP_SYS_ADMIN after it has started we
-			 * need to mount the cgroups manually.
-			 */
-			return cg_mount_in_cgroup_namespace(type, ops->unified, rootfs, dfd_mnt_cgroupfs, "") == 0;
-		}
+		/*
+		 * If cgroup namespaces are supported but the container will
+		 * not have CAP_SYS_ADMIN after it has started we need to mount
+		 * the cgroups manually.
+		 */
+		if (in_cgroup_ns && wants_force_mount)
+			ret = cg_mount_in_cgroup_namespace(type, ops->unified, rootfs, dfd_mnt_cgroupfs, "");
+		else
+			ret = cg_mount_cgroup_full(type, ops->unified, rootfs, dfd_mnt_cgroupfs, "");
+		if (ret < 0)
+			return syserrno(false, "Failed to%s mount cgroup filesystem%s",
+					wants_force_mount ? " force mount" : "",
+					in_cgroup_ns ? " in cgroup namespace" : "");
 
-		return cg_mount_cgroup_full(type, ops->unified, rootfs, dfd_mnt_cgroupfs, "") == 0;
+		return log_trace(true, "%s cgroup filesystem%s",
+				 wants_force_mount ? "Force mounted" : "Mounted",
+				 in_cgroup_ns ? " in cgroup namespace" : "");
 	}
 
 	/*
