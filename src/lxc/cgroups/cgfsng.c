@@ -1709,16 +1709,16 @@ __cgfsng_ops static void cgfsng_payload_finalize(struct cgroup_ops *ops)
 }
 
 /* cgroup-full:* is done, no need to create subdirs */
-static inline bool cg_mount_needs_subdirs(int type)
+static inline bool cg_mount_needs_subdirs(int cg_flags)
 {
-	return !(type >= LXC_AUTO_CGROUP_FULL_RO);
+	return !(cg_flags >= LXC_AUTO_CGROUP_FULL_RO);
 }
 
 /* After $rootfs/sys/fs/container/controller/the/cg/path has been created,
  * remount controller ro if needed and bindmount the cgroupfs onto
  * control/the/cg/path.
  */
-static int cg_legacy_mount_controllers(int type, struct hierarchy *h,
+static int cg_legacy_mount_controllers(int cg_flags, struct hierarchy *h,
 				       char *controllerpath, char *cgpath,
 				       const char *container_cgroup)
 {
@@ -1726,7 +1726,7 @@ static int cg_legacy_mount_controllers(int type, struct hierarchy *h,
 	int ret, remount_flags;
 	int flags = MS_BIND;
 
-	if (type == LXC_AUTO_CGROUP_RO || type == LXC_AUTO_CGROUP_MIXED) {
+	if (cg_flags == LXC_AUTO_CGROUP_RO || cg_flags == LXC_AUTO_CGROUP_MIXED) {
 		ret = mount(controllerpath, controllerpath, "cgroup", MS_BIND, NULL);
 		if (ret < 0)
 			return log_error_errno(-1, errno, "Failed to bind mount \"%s\" onto \"%s\"",
@@ -1746,7 +1746,7 @@ static int cg_legacy_mount_controllers(int type, struct hierarchy *h,
 
 	sourcepath = must_make_path(h->mountpoint, h->container_base_path,
 				    container_cgroup, NULL);
-	if (type == LXC_AUTO_CGROUP_RO)
+	if (cg_flags == LXC_AUTO_CGROUP_RO)
 		flags |= MS_RDONLY;
 
 	ret = mount(sourcepath, cgpath, "cgroup", flags, NULL);
@@ -1774,7 +1774,7 @@ static int cg_legacy_mount_controllers(int type, struct hierarchy *h,
  * uses-cases are mounting cgroup hierarchies in cgroup namespaces and mounting
  * cgroups for the LXC_AUTO_CGROUP_FULL option.
  */
-static int __cg_mount_direct(int type, struct hierarchy *h,
+static int __cg_mount_direct(int cg_flags, struct hierarchy *h,
 			     struct lxc_rootfs *rootfs,
 			     int dfd_mnt_cgroupfs, const char *hierarchy_mnt)
 {
@@ -1791,7 +1791,7 @@ static int __cg_mount_direct(int type, struct hierarchy *h,
 	flags |= MOUNT_ATTR_NODEV;
 	flags |= MOUNT_ATTR_RELATIME;
 
-	if (type == LXC_AUTO_CGROUP_RO || type == LXC_AUTO_CGROUP_FULL_RO)
+	if (cg_flags == LXC_AUTO_CGROUP_RO || cg_flags == LXC_AUTO_CGROUP_FULL_RO)
 		flags |= MOUNT_ATTR_RDONLY;
 
 	if (is_unified_hierarchy(h)) {
@@ -1847,27 +1847,27 @@ static int __cg_mount_direct(int type, struct hierarchy *h,
 	return 0;
 }
 
-static inline int cg_mount_in_cgroup_namespace(int type, struct hierarchy *h,
+static inline int cg_mount_in_cgroup_namespace(int cg_flags, struct hierarchy *h,
 					       struct lxc_rootfs *rootfs,
 					       int dfd_mnt_cgroupfs,
 					       const char *hierarchy_mnt)
 {
-	return __cg_mount_direct(type, h, rootfs, dfd_mnt_cgroupfs, hierarchy_mnt);
+	return __cg_mount_direct(cg_flags, h, rootfs, dfd_mnt_cgroupfs, hierarchy_mnt);
 }
 
-static inline int cg_mount_cgroup_full(int type, struct hierarchy *h,
+static inline int cg_mount_cgroup_full(int cg_flags, struct hierarchy *h,
 				       struct lxc_rootfs *rootfs,
 				       int dfd_mnt_cgroupfs,
 				       const char *hierarchy_mnt)
 {
-	if (type < LXC_AUTO_CGROUP_FULL_RO || type > LXC_AUTO_CGROUP_FULL_MIXED)
+	if (cg_flags < LXC_AUTO_CGROUP_FULL_RO || cg_flags > LXC_AUTO_CGROUP_FULL_MIXED)
 		return 0;
 
-	return __cg_mount_direct(type, h, rootfs, dfd_mnt_cgroupfs, hierarchy_mnt);
+	return __cg_mount_direct(cg_flags, h, rootfs, dfd_mnt_cgroupfs, hierarchy_mnt);
 }
 
 __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
-				      struct lxc_handler *handler, int type)
+				      struct lxc_handler *handler, int cg_flags)
 {
 	__do_close int dfd_mnt_cgroupfs = -EBADF, fd_fs = -EBADF;
 	__do_free char *cgroup_root = NULL;
@@ -1886,11 +1886,11 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	if (!conf)
 		return ret_set_errno(false, EINVAL);
 
-	if ((type & LXC_AUTO_CGROUP_MASK) == 0)
+	if ((cg_flags & LXC_AUTO_CGROUP_MASK) == 0)
 		return true;
 
-	if (type & LXC_AUTO_CGROUP_FORCE) {
-		type &= ~LXC_AUTO_CGROUP_FORCE;
+	if (cg_flags & LXC_AUTO_CGROUP_FORCE) {
+		cg_flags &= ~LXC_AUTO_CGROUP_FORCE;
 		wants_force_mount = true;
 	}
 
@@ -1916,10 +1916,10 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	if (in_cgroup_ns && !wants_force_mount)
 		return true;
 
-	if (type == LXC_AUTO_CGROUP_NOSPEC)
-		type = LXC_AUTO_CGROUP_MIXED;
-	else if (type == LXC_AUTO_CGROUP_FULL_NOSPEC)
-		type = LXC_AUTO_CGROUP_FULL_MIXED;
+	if (cg_flags == LXC_AUTO_CGROUP_NOSPEC)
+		cg_flags = LXC_AUTO_CGROUP_MIXED;
+	else if (cg_flags == LXC_AUTO_CGROUP_FULL_NOSPEC)
+		cg_flags = LXC_AUTO_CGROUP_FULL_MIXED;
 
 	/* This is really the codepath that we want. */
 	if (pure_unified_layout(ops)) {
@@ -1937,9 +1937,9 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		 * the cgroups manually.
 		 */
 		if (in_cgroup_ns && wants_force_mount)
-			ret = cg_mount_in_cgroup_namespace(type, ops->unified, rootfs, dfd_mnt_cgroupfs, "");
+			ret = cg_mount_in_cgroup_namespace(cg_flags, ops->unified, rootfs, dfd_mnt_cgroupfs, "");
 		else
-			ret = cg_mount_cgroup_full(type, ops->unified, rootfs, dfd_mnt_cgroupfs, "");
+			ret = cg_mount_cgroup_full(cg_flags, ops->unified, rootfs, dfd_mnt_cgroupfs, "");
 		if (ret < 0)
 			return syserrno(false, "Failed to%s mount cgroup filesystem%s",
 					wants_force_mount ? " force mount" : "",
@@ -2009,7 +2009,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			 * will not have CAP_SYS_ADMIN after it has started we
 			 * need to mount the cgroups manually.
 			 */
-			ret = cg_mount_in_cgroup_namespace(type, h, rootfs, dfd_mnt_cgroupfs, controller);
+			ret = cg_mount_in_cgroup_namespace(cg_flags, h, rootfs, dfd_mnt_cgroupfs, controller);
 			if (ret < 0)
 				return false;
 
@@ -2017,11 +2017,11 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		}
 
 		/* Here is where the ancient kernel section begins. */
-		ret = cg_mount_cgroup_full(type, h, rootfs, dfd_mnt_cgroupfs, controller);
+		ret = cg_mount_cgroup_full(cg_flags, h, rootfs, dfd_mnt_cgroupfs, controller);
 		if (ret < 0)
 			return false;
 
-		if (!cg_mount_needs_subdirs(type))
+		if (!cg_mount_needs_subdirs(cg_flags))
 			continue;
 
 		controllerpath = must_make_path(cgroup_root, controller, NULL);
@@ -2033,7 +2033,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		if (ret < 0)
 			return false;
 
-		ret = cg_legacy_mount_controllers(type, h, controllerpath, path2, ops->container_cgroup);
+		ret = cg_legacy_mount_controllers(cg_flags, h, controllerpath, path2, ops->container_cgroup);
 		if (ret < 0)
 			return false;
 	}
