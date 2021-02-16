@@ -68,6 +68,9 @@ void cgroup_exit(struct cgroup_ops *ops)
 	if (ops->cgroup2_devices)
 		bpf_program_free(ops->cgroup2_devices);
 
+	if (ops->dfd_mnt_cgroupfs_host >= 0)
+		close(ops->dfd_mnt_cgroupfs_host);
+
 	for (struct hierarchy **it = ops->hierarchies; it && *it; it++) {
 		for (char **p = (*it)->controllers; p && *p; p++)
 			free(*p);
