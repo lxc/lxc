@@ -98,21 +98,13 @@ void cgroup_exit(struct cgroup_ops *ops)
 }
 
 #define INIT_SCOPE "/init.scope"
-void prune_init_scope(char *cg)
+char *prune_init_scope(char *cg)
 {
-	char *point;
+	if (is_empty_string(cg))
+		return NULL;
 
-	if (!cg)
-		return;
+	if (strnequal(cg, INIT_SCOPE, STRLITERALLEN(INIT_SCOPE)))
+		return cg + STRLITERALLEN(INIT_SCOPE);
 
-	point = cg + strlen(cg) - strlen(INIT_SCOPE);
-	if (point < cg)
-		return;
-
-	if (strequal(point, INIT_SCOPE)) {
-		if (point == cg)
-			*(point + 1) = '\0';
-		else
-			*point = '\0';
-	}
+	return cg;
 }
