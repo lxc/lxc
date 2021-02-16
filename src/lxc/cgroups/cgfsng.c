@@ -501,7 +501,7 @@ static int add_hierarchy(struct cgroup_ops *ops, char **clist, char *mountpoint,
 	__do_close int dfd_base = -EBADF, dfd_mnt = -EBADF;
 	__do_free struct hierarchy *new = NULL;
 	__do_free_string_list char **controllers = clist;
-	int newentry;
+	int idx;
 
 	if (abspath(container_base_path))
 		return syserrno(-errno, "Container base path must be relative to controller mount");
@@ -514,14 +514,13 @@ static int add_hierarchy(struct cgroup_ops *ops, char **clist, char *mountpoint,
 	if (dfd_mnt < 0)
 		return syserrno(-errno, "Failed to open %s", mountpoint);
 
-	if (is_empty_string(container_base_path))
-		dfd_base = dfd_mnt;
-	else
+	if (!is_empty_string(container_base_path)) {
 		dfd_base = open_at(dfd_mnt, container_base_path,
 				   PROTECT_OPATH_DIRECTORY,
 				   PROTECT_LOOKUP_BENEATH_XDEV, 0);
-	if (dfd_base < 0)
-		return syserrno(-errno, "Failed to open %d(%s)", dfd_base, container_base_path);
+		if (dfd_base < 0)
+			return syserrno(-errno, "Failed to open %d(%s)", dfd_base, container_base_path);
+	}
 
 	if (!controllers) {
 		/*
@@ -529,7 +528,10 @@ static int add_hierarchy(struct cgroup_ops *ops, char **clist, char *mountpoint,
 		* us and we are free to further delege all of the controllers listed
 		* in cgroup.controllers further down the hierarchy.
 		 */
-		controllers = cg_unified_get_controllers(dfd_base, "cgroup.controllers");
+		if (dfd_base < 0)
+			controllers = cg_unified_get_controllers(dfd_mnt, "cgroup.controllers");
+		else
+			controllers = cg_unified_get_controllers(dfd_base, "cgroup.controllers");
 		if (!controllers)
 			controllers = cg_unified_make_empty_controller();
 		if (!controllers[0])
@@ -557,12 +559,15 @@ static int add_hierarchy(struct cgroup_ops *ops, char **clist, char *mountpoint,
 	for (char *const *it = new->controllers; it && *it; it++)
 		TRACE("The detected hierarchy contains the %s controller", *it);
 
-	newentry = append_null_to_list((void ***)&ops->hierarchies);
+	idx = append_null_to_list((void ***)&ops->hierarchies);
+	if (dfd_base < 0)
+		new->dfd_base = dfd_mnt;
+	else
+		new->dfd_base = move_fd(dfd_base);
 	new->dfd_mnt = move_fd(dfd_mnt);
-	new->dfd_base = move_fd(dfd_base);
 	if (type == CGROUP2_SUPER_MAGIC)
 		ops->unified = new;
-	(ops->hierarchies)[newentry] = move_ptr(new);
+	(ops->hierarchies)[idx] = move_ptr(new);
 	return 0;
 }
 
