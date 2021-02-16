@@ -1095,9 +1095,8 @@ static int __cgroup_tree_create(int dfd_base, const char *path, mode_t mode,
 }
 
 static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
-			       struct hierarchy *h, const char *cgroup_tree,
-			       const char *cgroup_leaf, bool payload,
-			       const char *cgroup_limit_dir)
+			       struct hierarchy *h, const char *cgroup_leaf,
+			       bool payload, const char *cgroup_limit_dir)
 {
 	__do_close int fd_limit = -EBADF, fd_final = -EBADF;
 	__do_free char *path = NULL, *limit_path = NULL;
@@ -1290,8 +1289,7 @@ static bool check_cgroup_dir_config(struct lxc_conf *conf)
 
 __cgfsng_ops static bool cgfsng_monitor_create(struct cgroup_ops *ops, struct lxc_handler *handler)
 {
-	__do_free char *monitor_cgroup = NULL, *__cgroup_tree = NULL;
-	const char *cgroup_tree;
+	__do_free char *monitor_cgroup = NULL;
 	int idx = 0;
 	int i;
 	size_t len;
@@ -1316,25 +1314,23 @@ __cgfsng_ops static bool cgfsng_monitor_create(struct cgroup_ops *ops, struct lx
 		return false;
 
 	if (conf->cgroup_meta.monitor_dir) {
-		cgroup_tree = NULL;
 		monitor_cgroup = strdup(conf->cgroup_meta.monitor_dir);
 	} else if (conf->cgroup_meta.dir) {
-		cgroup_tree = conf->cgroup_meta.dir;
 		monitor_cgroup = must_concat(&len, conf->cgroup_meta.dir, "/",
 					     DEFAULT_MONITOR_CGROUP_PREFIX,
 					     handler->name,
 					     CGROUP_CREATE_RETRY, NULL);
 	} else if (ops->cgroup_pattern) {
-		__cgroup_tree = lxc_string_replace("%n", handler->name, ops->cgroup_pattern);
-		if (!__cgroup_tree)
+		__do_free char *cgroup_tree = NULL;
+
+		cgroup_tree = lxc_string_replace("%n", handler->name, ops->cgroup_pattern);
+		if (!cgroup_tree)
 			return ret_set_errno(false, ENOMEM);
 
-		cgroup_tree = __cgroup_tree;
 		monitor_cgroup = must_concat(&len, cgroup_tree, "/",
 					     DEFAULT_MONITOR_CGROUP,
 					     CGROUP_CREATE_RETRY, NULL);
 	} else {
-		cgroup_tree = NULL;
 		monitor_cgroup = must_concat(&len, DEFAULT_MONITOR_CGROUP_PREFIX,
 					     handler->name,
 					     CGROUP_CREATE_RETRY, NULL);
@@ -1352,8 +1348,8 @@ __cgfsng_ops static bool cgfsng_monitor_create(struct cgroup_ops *ops, struct lx
 
 		for (i = 0; ops->hierarchies[i]; i++) {
 			if (cgroup_tree_create(ops, handler->conf,
-				               ops->hierarchies[i], cgroup_tree,
-				               monitor_cgroup, false, NULL))
+					       ops->hierarchies[i],
+					       monitor_cgroup, false, NULL))
 				continue;
 
 			DEBUG("Failed to create cgroup \"%s\"", maybe_empty(ops->hierarchies[i]->monitor_full_path));
@@ -1378,10 +1374,7 @@ __cgfsng_ops static bool cgfsng_monitor_create(struct cgroup_ops *ops, struct lx
  */
 __cgfsng_ops static bool cgfsng_payload_create(struct cgroup_ops *ops, struct lxc_handler *handler)
 {
-	__do_free char *container_cgroup = NULL,
-		       *__cgroup_tree = NULL,
-		       *limiting_cgroup = NULL;
-	const char *cgroup_tree;
+	__do_free char *container_cgroup = NULL, *limiting_cgroup = NULL;
 	int idx = 0;
 	int i;
 	size_t len;
@@ -1406,8 +1399,6 @@ __cgfsng_ops static bool cgfsng_payload_create(struct cgroup_ops *ops, struct lx
 		return false;
 
 	if (conf->cgroup_meta.container_dir) {
-		cgroup_tree = NULL;
-
 		limiting_cgroup = strdup(conf->cgroup_meta.container_dir);
 		if (!limiting_cgroup)
 			return ret_set_errno(false, ENOMEM);
@@ -1421,22 +1412,21 @@ __cgfsng_ops static bool cgfsng_payload_create(struct cgroup_ops *ops, struct lx
 			container_cgroup = move_ptr(limiting_cgroup);
 		}
 	} else if (conf->cgroup_meta.dir) {
-		cgroup_tree = conf->cgroup_meta.dir;
-		container_cgroup = must_concat(&len, cgroup_tree, "/",
+		container_cgroup = must_concat(&len, conf->cgroup_meta.dir, "/",
 					     DEFAULT_PAYLOAD_CGROUP_PREFIX,
 					     handler->name,
 					     CGROUP_CREATE_RETRY, NULL);
 	} else if (ops->cgroup_pattern) {
-		__cgroup_tree = lxc_string_replace("%n", handler->name, ops->cgroup_pattern);
-		if (!__cgroup_tree)
+		__do_free char *cgroup_tree = NULL;
+
+		cgroup_tree = lxc_string_replace("%n", handler->name, ops->cgroup_pattern);
+		if (!cgroup_tree)
 			return ret_set_errno(false, ENOMEM);
 
-		cgroup_tree = __cgroup_tree;
 		container_cgroup = must_concat(&len, cgroup_tree, "/",
 					       DEFAULT_PAYLOAD_CGROUP,
 					       CGROUP_CREATE_RETRY, NULL);
 	} else {
-		cgroup_tree = NULL;
 		container_cgroup = must_concat(&len, DEFAULT_PAYLOAD_CGROUP_PREFIX,
 					     handler->name,
 					     CGROUP_CREATE_RETRY, NULL);
@@ -1454,7 +1444,7 @@ __cgfsng_ops static bool cgfsng_payload_create(struct cgroup_ops *ops, struct lx
 
 		for (i = 0; ops->hierarchies[i]; i++) {
 			if (cgroup_tree_create(ops, handler->conf,
-					       ops->hierarchies[i], cgroup_tree,
+					       ops->hierarchies[i],
 					       container_cgroup, true,
 					       limiting_cgroup))
 				continue;
