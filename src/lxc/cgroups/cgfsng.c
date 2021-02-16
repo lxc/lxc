@@ -696,6 +696,7 @@ static struct hierarchy *add_hierarchy(struct cgroup_ops *ops,
 				       char **clist, char *mountpoint,
 				       char *container_base_path, int type)
 {
+	__do_close int dfd_base = -EBADF, dfd_mnt = -EBADF;
 	__do_free struct hierarchy *new = NULL;
 	int newentry;
 
@@ -714,6 +715,16 @@ static struct hierarchy *add_hierarchy(struct cgroup_ops *ops,
 	new->cgfd_limit			= -EBADF;
 	new->cgfd_mon			= -EBADF;
 
+	dfd_mnt = open_at(-EBADF, mountpoint, PROTECT_OPATH_DIRECTORY,
+			  PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
+	if (dfd_mnt < 0)
+		return syserrno(NULL, "Failed to open %s", mountpoint);
+
+	dfd_base = open_at(dfd_mnt, container_base_path, PROTECT_OPATH_DIRECTORY,
+			   PROTECT_LOOKUP_BENEATH_XDEV, 0);
+	if (dfd_base < 0)
+		return syserrno(NULL, "Failed to open %d(%s)", dfd_base, container_base_path);
+
 	TRACE("Adding cgroup hierarchy with mountpoint %s and base cgroup %s %s",
 	      mountpoint, container_base_path,
 	      clist ? "with controllers " : "without any controllers");
@@ -721,6 +732,8 @@ static struct hierarchy *add_hierarchy(struct cgroup_ops *ops,
 		TRACE("%s", *it);
 
 	newentry = append_null_to_list((void ***)&ops->hierarchies);
+	new->dfd_mnt = move_fd(dfd_mnt);
+	new->dfd_base = move_fd(dfd_base);
 	(ops->hierarchies)[newentry] = new;
 	return move_ptr(new);
 }

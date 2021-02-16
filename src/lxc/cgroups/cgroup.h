@@ -103,6 +103,12 @@ struct hierarchy {
 
 	/* File descriptor for the monitor's cgroup @monitor_full_path. */
 	int cgfd_mon;
+
+	/* File descriptor for the controller's mountpoint @mountpoint. */
+	int dfd_mnt;
+
+	/* File descriptor for the controller's base cgroup path @container_base_path. */
+	int dfd_base;
 };
 
 struct cgroup_ops {
