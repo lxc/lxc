@@ -86,16 +86,34 @@ void cgroup_exit(struct cgroup_ops *ops)
 
 		free((*it)->mountpoint);
 		free((*it)->container_base_path);
-		free((*it)->container_full_path);
-		free((*it)->monitor_full_path);
-		if ((*it)->cgfd_con >= 0)
-			close((*it)->cgfd_con);
+
+		{
+			free((*it)->container_full_path);
+
+			if ((*it)->container_full_path != (*it)->container_limit_path)
+				free((*it)->monitor_full_path);
+		}
+
+		{
+			if ((*it)->cgfd_limit >= 0 && (*it)->cgfd_con != (*it)->cgfd_limit)
+				close((*it)->cgfd_limit);
+
+			if ((*it)->cgfd_con >= 0)
+				close((*it)->cgfd_con);
+
+		}
+
 		if ((*it)->cgfd_mon >= 0)
 			close((*it)->cgfd_mon);
-		if ((*it)->dfd_mnt >= 0)
-			close((*it)->dfd_mnt);
-		if ((*it)->dfd_base >= 0)
-			close((*it)->dfd_base);
+
+		{
+			if ((*it)->dfd_base >= 0 && (*it)->dfd_mnt != (*it)->dfd_base)
+				close((*it)->dfd_base);
+
+			if ((*it)->dfd_mnt >= 0)
+				close((*it)->dfd_mnt);
+		}
+
 		free(*it);
 	}
 	free(ops->hierarchies);
