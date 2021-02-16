@@ -143,6 +143,16 @@ static inline bool dotdot(const char *str)
 	return !!strstr(str, "..");
 }
 
+static inline bool abspath(const char *str)
+{
+	return *str == '/';
+}
+
+static inline char *deabs(char *str)
+{
+	return str + strspn(str, "/");
+}
+
 #define strnprintf(buf, buf_size, ...)                                            \
 	({                                                                        \
 		int __ret_strnprintf;                                             \
