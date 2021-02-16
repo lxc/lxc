@@ -645,9 +645,7 @@ static char *cg_hybrid_get_current_cgroup(bool relative, char *basecginfo,
 			if (abspath(base_cgroup))
 				base_cgroup = deabs(base_cgroup);
 
-			if (is_empty_string(base_cgroup))
-				base_cgroup = ".";
-
+			/* We're allowing base_cgroup to be "". */
 			return strdup(base_cgroup);
 		}
 
@@ -3447,9 +3445,7 @@ static char *cg_unified_get_current_cgroup(bool relative)
 	if (abspath(base_cgroup))
 		base_cgroup = deabs(base_cgroup);
 
-	if (is_empty_string(base_cgroup))
-		base_cgroup = ".";
-
+	/* We're allowing base_cgroup to be "". */
 	return strdup(base_cgroup);
 }
 
