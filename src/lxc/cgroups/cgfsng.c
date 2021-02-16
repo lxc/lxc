@@ -3537,7 +3537,7 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 	return CGROUP2_SUPER_MAGIC;
 }
 
-static int cg_init(struct cgroup_ops *ops, struct lxc_conf *conf)
+static int __cgroup_init(struct cgroup_ops *ops, struct lxc_conf *conf)
 {
 	int ret;
 	const char *tmp;
@@ -3590,7 +3590,7 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 
 	cgfsng_ops->cgroup_layout = CGROUP_LAYOUT_UNKNOWN;
 
-	if (cg_init(cgfsng_ops, conf))
+	if (__cgroup_init(cgfsng_ops, conf))
 		return NULL;
 
 	cgfsng_ops->data_init				= cgfsng_data_init;
