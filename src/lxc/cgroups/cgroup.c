@@ -92,6 +92,10 @@ void cgroup_exit(struct cgroup_ops *ops)
 			close((*it)->cgfd_con);
 		if ((*it)->cgfd_mon >= 0)
 			close((*it)->cgfd_mon);
+		if ((*it)->dfd_mnt >= 0)
+			close((*it)->dfd_mnt);
+		if ((*it)->dfd_base >= 0)
+			close((*it)->dfd_base);
 		free(*it);
 	}
 	free(ops->hierarchies);
