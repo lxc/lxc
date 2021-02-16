@@ -313,232 +313,9 @@ static ssize_t get_max_cpus(char *cpulist)
 	return cpus;
 }
 
-#define __ISOL_CPUS "/sys/devices/system/cpu/isolated"
-#define __OFFLINE_CPUS "/sys/devices/system/cpu/offline"
-static bool cg_legacy_filter_and_set_cpus(const char *parent_cgroup,
-					  char *child_cgroup, bool am_initialized)
-{
-	__do_free char *cpulist = NULL, *fpath = NULL, *isolcpus = NULL,
-		       *offlinecpus = NULL, *posscpus = NULL;
-	__do_free uint32_t *isolmask = NULL, *offlinemask = NULL,
-			   *possmask = NULL;
-	int ret;
-	ssize_t i;
-	ssize_t maxisol = 0, maxoffline = 0, maxposs = 0;
-	bool flipped_bit = false;
-
-	fpath = must_make_path(parent_cgroup, "cpuset.cpus", NULL);
-	posscpus = read_file_at(-EBADF, fpath, PROTECT_OPEN, 0);
-	if (!posscpus)
-		return log_error_errno(false, errno, "Failed to read file \"%s\"", fpath);
-
-	/* Get maximum number of cpus found in possible cpuset. */
-	maxposs = get_max_cpus(posscpus);
-	if (maxposs < 0 || maxposs >= INT_MAX - 1)
-		return false;
-
-	if (file_exists(__ISOL_CPUS)) {
-		isolcpus = read_file_at(-EBADF, __ISOL_CPUS, PROTECT_OPEN, 0);
-		if (!isolcpus)
-			return log_error_errno(false, errno, "Failed to read file \"%s\"", __ISOL_CPUS);
-
-		if (isdigit(isolcpus[0])) {
-			/* Get maximum number of cpus found in isolated cpuset. */
-			maxisol = get_max_cpus(isolcpus);
-			if (maxisol < 0 || maxisol >= INT_MAX - 1)
-				return false;
-		}
-
-		if (maxposs < maxisol)
-			maxposs = maxisol;
-		maxposs++;
-	} else {
-		TRACE("The path \""__ISOL_CPUS"\" to read isolated cpus from does not exist");
-	}
-
-	if (file_exists(__OFFLINE_CPUS)) {
-		offlinecpus = read_file_at(-EBADF, __OFFLINE_CPUS, PROTECT_OPEN, 0);
-		if (!offlinecpus)
-			return log_error_errno(false, errno, "Failed to read file \"%s\"", __OFFLINE_CPUS);
-
-		if (isdigit(offlinecpus[0])) {
-			/* Get maximum number of cpus found in offline cpuset. */
-			maxoffline = get_max_cpus(offlinecpus);
-			if (maxoffline < 0 || maxoffline >= INT_MAX - 1)
-				return false;
-		}
-
-		if (maxposs < maxoffline)
-			maxposs = maxoffline;
-		maxposs++;
-	} else {
-		TRACE("The path \""__OFFLINE_CPUS"\" to read offline cpus from does not exist");
-	}
-
-	if ((maxisol == 0) && (maxoffline == 0)) {
-		cpulist = move_ptr(posscpus);
-		goto copy_parent;
-	}
-
-	possmask = lxc_cpumask(posscpus, maxposs);
-	if (!possmask)
-		return log_error_errno(false, errno, "Failed to create cpumask for possible cpus");
-
-	if (maxisol > 0) {
-		isolmask = lxc_cpumask(isolcpus, maxposs);
-		if (!isolmask)
-			return log_error_errno(false, errno, "Failed to create cpumask for isolated cpus");
-	}
-
-	if (maxoffline > 0) {
-		offlinemask = lxc_cpumask(offlinecpus, maxposs);
-		if (!offlinemask)
-			return log_error_errno(false, errno, "Failed to create cpumask for offline cpus");
-	}
-
-	for (i = 0; i <= maxposs; i++) {
-		if ((isolmask && !is_set(i, isolmask)) ||
-		    (offlinemask && !is_set(i, offlinemask)) ||
-		    !is_set(i, possmask))
-			continue;
-
-		flipped_bit = true;
-		clear_bit(i, possmask);
-	}
-
-	if (!flipped_bit) {
-		cpulist = lxc_cpumask_to_cpulist(possmask, maxposs);
-		TRACE("No isolated or offline cpus present in cpuset");
-	} else {
-		cpulist = move_ptr(posscpus);
-		TRACE("Removed isolated or offline cpus from cpuset");
-	}
-	if (!cpulist)
-		return log_error_errno(false, errno, "Failed to create cpu list");
-
-copy_parent:
-	if (!am_initialized) {
-		ret = lxc_write_openat(child_cgroup, "cpuset.cpus", cpulist, strlen(cpulist));
-		if (ret < 0)
-			return log_error_errno(false,
-					       errno, "Failed to write cpu list to \"%s/cpuset.cpus\"",
-					       child_cgroup);
-
-		TRACE("Copied cpu settings of parent cgroup");
-	}
-
-	return true;
-}
-
-/* Copy contents of parent(@path)/@file to @path/@file */
-static bool copy_parent_file(const char *parent_cgroup,
-			     const char *child_cgroup, const char *file)
-{
-	__do_free char *parent_file = NULL, *value = NULL;
-	int len = 0;
-	int ret;
-
-	parent_file = must_make_path(parent_cgroup, file, NULL);
-	len = lxc_read_from_file(parent_file, NULL, 0);
-	if (len <= 0)
-		return log_error_errno(false, errno, "Failed to determine buffer size");
-
-	value = must_realloc(NULL, len + 1);
-	value[len] = '\0';
-	ret = lxc_read_from_file(parent_file, value, len);
-	if (ret != len)
-		return log_error_errno(false, errno, "Failed to read from parent file \"%s\"", parent_file);
-
-	ret = lxc_write_openat(child_cgroup, file, value, len);
-	if (ret < 0 && errno != EACCES)
-		return log_error_errno(false, errno, "Failed to write \"%s\" to file \"%s/%s\"",
-				       value, child_cgroup, file);
-	return true;
-}
-
 static inline bool is_unified_hierarchy(const struct hierarchy *h)
 {
 	return h->version == CGROUP2_SUPER_MAGIC;
-}
-
-/*
- * Initialize the cpuset hierarchy in first directory of @cgroup_leaf and set
- * cgroup.clone_children so that children inherit settings. Since the
- * h->base_path is populated by init or ourselves, we know it is already
- * initialized.
- *
- * returns -1 on error, 0 when we didn't created a cgroup, 1 if we created a
- * cgroup.
- */
-static int cg_legacy_handle_cpuset_hierarchy(struct hierarchy *h,
-					     const char *cgroup_leaf)
-{
-	__do_free char *parent_cgroup = NULL, *child_cgroup = NULL, *dup = NULL;
-	__do_close int cgroup_fd = -EBADF;
-	int fret = -1;
-	int ret;
-	char v;
-	char *leaf, *slash;
-
-	if (is_unified_hierarchy(h))
-		return 0;
-
-	if (!string_in_list(h->controllers, "cpuset"))
-		return 0;
-
-	if (!cgroup_leaf)
-		return ret_set_errno(-1, EINVAL);
-
-	dup = strdup(cgroup_leaf);
-	if (!dup)
-		return ret_set_errno(-1, ENOMEM);
-
-	parent_cgroup = must_make_path(h->mountpoint, h->container_base_path, NULL);
-
-	leaf = dup;
-	leaf += strspn(leaf, "/");
-	slash = strchr(leaf, '/');
-	if (slash)
-		*slash = '\0';
-	child_cgroup = must_make_path(parent_cgroup, leaf, NULL);
-	if (slash)
-		*slash = '/';
-
-	fret = 1;
-	ret = mkdir(child_cgroup, 0755);
-	if (ret < 0) {
-		if (errno != EEXIST)
-			return log_error_errno(-1, errno, "Failed to create directory \"%s\"", child_cgroup);
-
-		fret = 0;
-	}
-
-	cgroup_fd = lxc_open_dirfd(child_cgroup);
-	if (cgroup_fd < 0)
-		return -1;
-
-	ret = lxc_readat(cgroup_fd, "cgroup.clone_children", &v, 1);
-	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to read file \"%s/cgroup.clone_children\"", child_cgroup);
-
-	/* Make sure any isolated cpus are removed from cpuset.cpus. */
-	if (!cg_legacy_filter_and_set_cpus(parent_cgroup, child_cgroup, v == '1'))
-		return log_error_errno(-1, errno, "Failed to remove isolated cpus");
-
-	/* Already set for us by someone else. */
-	if (v == '1')
-		TRACE("\"cgroup.clone_children\" was already set to \"1\"");
-
-	/* copy parent's settings */
-	if (!copy_parent_file(parent_cgroup, child_cgroup, "cpuset.mems"))
-		return log_error_errno(-1, errno, "Failed to copy \"cpuset.mems\" settings");
-
-	/* Set clone_children so children inherit our settings */
-	ret = lxc_writeat(cgroup_fd, "cgroup.clone_children", "1", 1);
-	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to write 1 to \"%s/cgroup.clone_children\"", child_cgroup);
-
-	return fret;
 }
 
 /* Given two null-terminated lists of strings, return true if any string is in
@@ -1051,86 +828,161 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 		SYSWARN("Failed to destroy cgroups");
 }
 
-__cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
-						struct lxc_handler *handler)
+#define __ISOL_CPUS "/sys/devices/system/cpu/isolated"
+#define __OFFLINE_CPUS "/sys/devices/system/cpu/offline"
+static bool cpuset1_cpus_initialize(int dfd_parent, int dfd_child,
+				    bool am_initialized)
 {
-	int len;
-	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
-	const struct lxc_conf *conf;
+	__do_free char *cpulist = NULL, *fpath = NULL, *isolcpus = NULL,
+		       *offlinecpus = NULL, *posscpus = NULL;
+	__do_free uint32_t *isolmask = NULL, *offlinemask = NULL,
+			   *possmask = NULL;
+	int ret;
+	ssize_t i;
+	ssize_t maxisol = 0, maxoffline = 0, maxposs = 0;
+	bool flipped_bit = false;
 
-	if (!ops) {
-		ERROR("Called with uninitialized cgroup operations");
-		return;
+	posscpus = read_file_at(dfd_parent, "cpuset.cpus", PROTECT_OPEN, 0);
+	if (!posscpus)
+		return log_error_errno(false, errno, "Failed to read file \"%s\"", fpath);
+
+	/* Get maximum number of cpus found in possible cpuset. */
+	maxposs = get_max_cpus(posscpus);
+	if (maxposs < 0 || maxposs >= INT_MAX - 1)
+		return false;
+
+	if (file_exists(__ISOL_CPUS)) {
+		isolcpus = read_file_at(-EBADF, __ISOL_CPUS, PROTECT_OPEN, 0);
+		if (!isolcpus)
+			return log_error_errno(false, errno, "Failed to read file \"%s\"", __ISOL_CPUS);
+
+		if (isdigit(isolcpus[0])) {
+			/* Get maximum number of cpus found in isolated cpuset. */
+			maxisol = get_max_cpus(isolcpus);
+			if (maxisol < 0 || maxisol >= INT_MAX - 1)
+				return false;
+		}
+
+		if (maxposs < maxisol)
+			maxposs = maxisol;
+		maxposs++;
+	} else {
+		TRACE("The path \""__ISOL_CPUS"\" to read isolated cpus from does not exist");
 	}
 
-	if (!ops->hierarchies)
-		return;
+	if (file_exists(__OFFLINE_CPUS)) {
+		offlinecpus = read_file_at(-EBADF, __OFFLINE_CPUS, PROTECT_OPEN, 0);
+		if (!offlinecpus)
+			return log_error_errno(false, errno, "Failed to read file \"%s\"", __OFFLINE_CPUS);
 
-	if (!handler) {
-		ERROR("Called with uninitialized handler");
-		return;
+		if (isdigit(offlinecpus[0])) {
+			/* Get maximum number of cpus found in offline cpuset. */
+			maxoffline = get_max_cpus(offlinecpus);
+			if (maxoffline < 0 || maxoffline >= INT_MAX - 1)
+				return false;
+		}
+
+		if (maxposs < maxoffline)
+			maxposs = maxoffline;
+		maxposs++;
+	} else {
+		TRACE("The path \""__OFFLINE_CPUS"\" to read offline cpus from does not exist");
 	}
 
-	if (!handler->conf) {
-		ERROR("Called with uninitialized conf");
-		return;
+	if ((maxisol == 0) && (maxoffline == 0)) {
+		cpulist = move_ptr(posscpus);
+		goto copy_parent;
 	}
-	conf = handler->conf;
 
-	len = strnprintf(pidstr, sizeof(pidstr), "%d", handler->monitor_pid);
-	if (len < 0)
-		return;
+	possmask = lxc_cpumask(posscpus, maxposs);
+	if (!possmask)
+		return log_error_errno(false, errno, "Failed to create cpumask for possible cpus");
 
-	for (int i = 0; ops->hierarchies[i]; i++) {
-		__do_free char *pivot_path = NULL;
-		struct hierarchy *h = ops->hierarchies[i];
-		size_t offset;
-		int ret;
+	if (maxisol > 0) {
+		isolmask = lxc_cpumask(isolcpus, maxposs);
+		if (!isolmask)
+			return log_error_errno(false, errno, "Failed to create cpumask for isolated cpus");
+	}
 
-		if (!h->monitor_full_path)
+	if (maxoffline > 0) {
+		offlinemask = lxc_cpumask(offlinecpus, maxposs);
+		if (!offlinemask)
+			return log_error_errno(false, errno, "Failed to create cpumask for offline cpus");
+	}
+
+	for (i = 0; i <= maxposs; i++) {
+		if ((isolmask && !is_set(i, isolmask)) ||
+		    (offlinemask && !is_set(i, offlinemask)) ||
+		    !is_set(i, possmask))
 			continue;
 
-		/* Monitor might have died before we entered the cgroup. */
-		if (handler->monitor_pid <= 0) {
-			WARN("No valid monitor process found while destroying cgroups");
-			goto try_lxc_rm_rf;
-		}
+		flipped_bit = true;
+		clear_bit(i, possmask);
+	}
 
-		if (conf && conf->cgroup_meta.monitor_dir)
-			pivot_path = must_make_path(h->mountpoint, h->container_base_path,
-						    conf->cgroup_meta.monitor_dir, CGROUP_PIVOT, NULL);
-		else if (conf->cgroup_meta.dir)
-			pivot_path = must_make_path(h->mountpoint, h->container_base_path,
-						    conf->cgroup_meta.dir, CGROUP_PIVOT, NULL);
-		else
-			pivot_path = must_make_path(h->mountpoint, h->container_base_path,
-						    CGROUP_PIVOT, NULL);
+	if (!flipped_bit) {
+		cpulist = lxc_cpumask_to_cpulist(possmask, maxposs);
+		TRACE("No isolated or offline cpus present in cpuset");
+	} else {
+		cpulist = move_ptr(posscpus);
+		TRACE("Removed isolated or offline cpus from cpuset");
+	}
+	if (!cpulist)
+		return log_error_errno(false, errno, "Failed to create cpu list");
 
-		offset = strlen(h->mountpoint) + strlen(h->container_base_path);
-
-		if (cg_legacy_handle_cpuset_hierarchy(h, pivot_path + offset))
-			SYSWARN("Failed to initialize cpuset %s/" CGROUP_PIVOT, pivot_path);
-
-		ret = mkdir_p(pivot_path, 0755);
-		if (ret < 0 && errno != EEXIST) {
-			ERROR("Failed to create %s", pivot_path);
-			goto try_lxc_rm_rf;
-		}
-
-		ret = lxc_write_openat(pivot_path, "cgroup.procs", pidstr, len);
-		if (ret != 0) {
-			SYSWARN("Failed to move monitor %s to \"%s\"", pidstr, pivot_path);
-			continue;
-		}
-
-try_lxc_rm_rf:
-		ret = lxc_rm_rf(h->monitor_full_path);
+copy_parent:
+	if (!am_initialized) {
+		ret = lxc_writeat(dfd_child, "cpuset.cpus", cpulist, strlen(cpulist));
 		if (ret < 0)
-			WARN("Failed to destroy \"%s\"", h->monitor_full_path);
+			return log_error_errno(false, errno, "Failed to write cpu list to \"%d/cpuset.cpus\"", dfd_child);
+
+		TRACE("Copied cpu settings of parent cgroup");
 	}
+
+	return true;
 }
 
-static int __cgroup_tree_create(int dfd_base, const char *path, mode_t mode)
+static bool cpuset1_initialize(int dfd_base, int dfd_next)
+{
+	char mems[PATH_MAX];
+	ssize_t bytes;
+	char v;
+
+	/*
+	* Determine whether the base cgroup has cpuset
+	* inheritance turned on.
+	 */
+	bytes = lxc_readat(dfd_base, "cgroup.clone_children", &v, 1);
+	if (bytes < 0)
+		return syserrno(false, "Failed to read file %d(cgroup.clone_children)", dfd_base);
+
+	/*
+	* Initialize cpuset.cpus and make remove any isolated
+	* and offline cpus.
+	 */
+	if (!cpuset1_cpus_initialize(dfd_base, dfd_next, v == '1'))
+		return syserrno(false, "Failed to initialize cpuset.cpus");
+
+	/* Read cpuset.mems from parent... */
+	bytes = lxc_readat(dfd_base, "cpuset.mems", mems, sizeof(mems));
+	if (bytes < 0)
+		return syserrno(false, "Failed to read file %d(cpuset.mems)", dfd_base);
+
+	/* ... and copy to first cgroup in the tree... */
+	bytes = lxc_writeat(dfd_next, "cpuset.mems", mems, bytes);
+	if (bytes < 0)
+		return syserrno(false, "Failed to write %d(cpuset.mems)", dfd_next);
+
+	/* ... and finally turn on cpuset inheritance. */
+	bytes = lxc_writeat(dfd_next, "cgroup.clone_children", "1", 1);
+	if (bytes < 0)
+		return syserrno(false, "Failed to write %d(cgroup.clone_children)", dfd_next);
+
+	return log_trace(true, "Initialized cpuset in the legacy hierarchy");
+}
+
+static int __cgroup_tree_create(int dfd_base, const char *path, mode_t mode,
+				bool cpuset_v1, bool eexist_ignore)
 {
 	__do_close int dfd_final = -EBADF;
 	int dfd_cur = dfd_base;
@@ -1173,17 +1025,20 @@ static int __cgroup_tree_create(int dfd_base, const char *path, mode_t mode)
 					!ret ? " newly created" : "", dfd_base, cur);
 		if (dfd_cur != dfd_base)
 			close(dfd_cur);
-
+		else if (cpuset_v1 && !cpuset1_initialize(dfd_base, dfd_final))
+			return syserrno(-EINVAL, "Failed to initialize cpuset controller in the legacy hierarchy");
 		/*
-		 * Leave dfd_final pointing to the last fd we opened so it will
-		 * be automatically zapped if we return early.
+		 * Leave dfd_final pointing to the last fd we opened so
+		 * it will be automatically zapped if we return early.
 		 */
 		dfd_cur = dfd_final;
 	}
 
 	/* The final cgroup must be succesfully creatd by us. */
-	if (ret)
-		return syserrno_set(ret, "Creating the final cgroup %d(%s) failed", dfd_base, path);
+	if (ret) {
+		if (ret != -EEXIST || !eexist_ignore)
+			return syserrno_set(ret, "Creating the final cgroup %d(%s) failed", dfd_base, path);
+	}
 
 	return move_fd(dfd_final);
 }
@@ -1195,19 +1050,21 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 {
 	__do_close int fd_limit = -EBADF, fd_final = -EBADF;
 	__do_free char *path = NULL, *limit_path = NULL;
-	int ret_cpuset;
+	bool cpuset_v1 = false;
 
 	/* Don't bother with all the rest if the final cgroup already exists. */
 	if (exists_dir_at(h->dfd_base, cgroup_leaf))
 		return syswarn(false, "The %d(%s) cgroup already existed", h->dfd_base, cgroup_leaf);
 
-	ret_cpuset = cg_legacy_handle_cpuset_hierarchy(h, cgroup_leaf);
-	if (ret_cpuset < 0)
-		return log_error_errno(false, errno, "Failed to handle legacy cpuset controller");
+	/*
+	 * The legacy cpuset controller needs massaging in case inheriting
+	 * settings from its immediate ancestor cgroup hasn't been turned on.
+	 */
+	cpuset_v1 = !is_unified_hierarchy(h) && string_in_list(h->controllers, "cpuset");
 
 	if (payload && cgroup_limit_dir) {
 		/* With isolation both parts need to not already exist. */
-		fd_limit = __cgroup_tree_create(h->dfd_base, cgroup_limit_dir, 0755);
+		fd_limit = __cgroup_tree_create(h->dfd_base, cgroup_limit_dir, 0755, cpuset_v1, false);
 		if (fd_limit < 0)
 			return syserrno(false, "Failed to create limiting cgroup %d(%s)", h->dfd_base, cgroup_limit_dir);
 
@@ -1220,22 +1077,17 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		 * created.
 		 */
 		if (string_in_list(h->controllers, "devices")) {
+			int ret;
+
 			ret = ops->setup_limits_legacy(ops, conf, true);
 			if (ret < 0)
 				return ret;
 		}
 	}
 
-	fd_final = __cgroup_tree_create(h->dfd_base, cgroup_leaf, 0755);
-	if (fd_final < 0) {
-		/*
-		 * This is the cpuset controller and
-		 * cg_legacy_handle_cpuset_hierarchy() has created our target
-		 * directory for us to ensure correct initialization.
-		 */
-		if (ret_cpuset != 1 || cgroup_tree)
-			return sysdebug(false, "Failed to create payload cgroup %d(%s)", h->dfd_base, cgroup_leaf);
-	}
+	fd_final = __cgroup_tree_create(h->dfd_base, cgroup_leaf, 0755, cpuset_v1, false);
+	if (fd_final < 0)
+		return syserrno(false, "Failed to create %s cgroup %d(%s)", payload ? "payload" : "monitor", h->dfd_base, cgroup_limit_dir);
 
 	path = must_make_path(h->mountpoint, h->container_base_path, cgroup_leaf, NULL);
 	if (payload) {
@@ -1279,6 +1131,80 @@ static void cgroup_tree_leaf_remove(struct hierarchy *h, bool payload)
 		SYSWARN("Failed to rmdir(\"%s\") cgroup", full_path);
 	if (limit_path && rmdir(limit_path))
 		SYSWARN("Failed to rmdir(\"%s\") cgroup", limit_path);
+}
+
+__cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
+						struct lxc_handler *handler)
+{
+	int len;
+	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
+	const struct lxc_conf *conf;
+
+	if (!ops) {
+		ERROR("Called with uninitialized cgroup operations");
+		return;
+	}
+
+	if (!ops->hierarchies)
+		return;
+
+	if (!handler) {
+		ERROR("Called with uninitialized handler");
+		return;
+	}
+
+	if (!handler->conf) {
+		ERROR("Called with uninitialized conf");
+		return;
+	}
+	conf = handler->conf;
+
+	len = strnprintf(pidstr, sizeof(pidstr), "%d", handler->monitor_pid);
+	if (len < 0)
+		return;
+
+	for (int i = 0; ops->hierarchies[i]; i++) {
+		__do_close int fd_pivot = -EBADF;
+		__do_free char *pivot_path = NULL;
+		struct hierarchy *h = ops->hierarchies[i];
+		bool cpuset_v1 = false;
+		int ret;
+
+		if (!h->monitor_full_path)
+			continue;
+
+		/* Monitor might have died before we entered the cgroup. */
+		if (handler->monitor_pid <= 0) {
+			WARN("No valid monitor process found while destroying cgroups");
+			goto try_lxc_rm_rf;
+		}
+
+		if (conf->cgroup_meta.monitor_dir)
+			pivot_path = must_make_path(conf->cgroup_meta.monitor_dir, CGROUP_PIVOT, NULL);
+		else if (conf->cgroup_meta.dir)
+			pivot_path = must_make_path(conf->cgroup_meta.dir, CGROUP_PIVOT, NULL);
+		else
+			pivot_path = must_make_path(CGROUP_PIVOT, NULL);
+
+		cpuset_v1 = !is_unified_hierarchy(h) && string_in_list(h->controllers, "cpuset");
+
+		fd_pivot = __cgroup_tree_create(h->dfd_base, pivot_path, 0755, cpuset_v1, true);
+		if (fd_pivot < 0) {
+			SYSWARN("Failed to create pivot cgroup %d(%s)", h->dfd_base, pivot_path);
+			continue;
+		}
+
+		ret = lxc_writeat(fd_pivot, "cgroup.procs", pidstr, len);
+		if (ret != 0) {
+			SYSWARN("Failed to move monitor %s to \"%s\"", pidstr, pivot_path);
+			continue;
+		}
+
+try_lxc_rm_rf:
+		ret = lxc_rm_rf(h->monitor_full_path);
+		if (ret < 0)
+			WARN("Failed to destroy \"%s\"", h->monitor_full_path);
+	}
 }
 
 /*
