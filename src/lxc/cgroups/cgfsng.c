@@ -922,29 +922,6 @@ static int get_existing_subsystems(char ***klist, char ***nlist)
 	return 0;
 }
 
-static void lxc_cgfsng_print_hierarchies(struct cgroup_ops *ops)
-{
-	int i;
-	struct hierarchy **it;
-
-	if (!ops->hierarchies) {
-		TRACE("  No hierarchies found");
-		return;
-	}
-
-	TRACE("  Hierarchies:");
-	for (i = 0, it = ops->hierarchies; it && *it; it++, i++) {
-		int j;
-		char **cit;
-
-		TRACE("  %d: base_cgroup: %s", i, (*it)->container_base_path ? (*it)->container_base_path : "(null)");
-		TRACE("      mountpoint:  %s", (*it)->mountpoint ? (*it)->mountpoint : "(null)");
-		TRACE("      controllers:");
-		for (j = 0, cit = (*it)->controllers; cit && *cit; cit++, j++)
-			TRACE("      %d: %s", j, *cit);
-	}
-}
-
 static void lxc_cgfsng_print_basecg_debuginfo(char *basecginfo, char **klist,
 					      char **nlist)
 {
@@ -3464,9 +3441,6 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 			ops->unified = new;
 		}
 	}
-
-	TRACE("Writable cgroup hierarchies:");
-	lxc_cgfsng_print_hierarchies(ops);
 
 	/* verify that all controllers in cgroup.use and all crucial
 	 * controllers are accounted for
