@@ -504,7 +504,7 @@ static struct hierarchy *add_hierarchy(struct cgroup_ops *ops,
 
 	TRACE("Adding cgroup hierarchy with mountpoint %s and base cgroup %s %s",
 	      mountpoint, container_base_path,
-	      clist ? "with controllers " : "without any controllers");
+	      (clist && *clist) ? "with controllers " : "without any controllers");
 	for (char *const *it = clist; it && *it; it++)
 		TRACE("%s", *it);
 
