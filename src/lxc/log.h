@@ -501,6 +501,20 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 		__internal_ret__;                             \
 	})
 
+#define syswarn(__ret__, format, ...)                         \
+	({                                                    \
+		typeof(__ret__) __internal_ret__ = (__ret__); \
+		SYSWARN(format, ##__VA_ARGS__);               \
+		__internal_ret__;                             \
+	})
+
+#define sysdebug(__ret__, format, ...)                        \
+	({                                                    \
+		typeof(__ret__) __internal_ret__ = (__ret__); \
+		SYSDEBUG(format, ##__VA_ARGS__);              \
+		__internal_ret__;                             \
+	})
+
 #define syserrno_set(__ret__, format, ...)                    \
 	({                                                    \
 		typeof(__ret__) __internal_ret__ = (__ret__); \
