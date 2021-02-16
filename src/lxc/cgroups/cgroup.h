@@ -91,11 +91,17 @@ struct hierarchy {
 	unsigned int bpf_device_controller:1;
 	unsigned int freezer_controller:1;
 
-	/* container cgroup fd */
+	/* File descriptor for the container's cgroup @container_full_path. */
 	int cgfd_con;
-	/* limiting cgroup fd (may be equal to cgfd_con if not separated) */
+
+	/*
+	 * File descriptor for the container's limiting cgroup
+	 * @container_limit_path.
+	 * Will be equal to @cgfd_con if no limiting cgroup has been requested.
+	 */
 	int cgfd_limit;
-	/* monitor cgroup fd */
+
+	/* File descriptor for the monitor's cgroup @monitor_full_path. */
 	int cgfd_mon;
 };
 
