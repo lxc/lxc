@@ -469,50 +469,101 @@ static char **cg_unified_get_controllers(int dfd, const char *file)
 	return move_ptr(aret);
 }
 
-static struct hierarchy *add_hierarchy(struct cgroup_ops *ops,
-				       char **clist, char *mountpoint,
-				       char *container_base_path, int type)
+static bool cgroup_use_wants_controllers(const struct cgroup_ops *ops,
+				       char **controllers)
+{
+	if (!ops->cgroup_use)
+		return true;
+
+	for (char **cur_ctrl = controllers; cur_ctrl && *cur_ctrl; cur_ctrl++) {
+		bool found = false;
+
+		for (char **cur_use = ops->cgroup_use; cur_use && *cur_use; cur_use++) {
+			if (!strequal(*cur_use, *cur_ctrl))
+				continue;
+
+			found = true;
+			break;
+		}
+
+		if (found)
+			continue;
+
+		return false;
+	}
+
+	return true;
+}
+
+static int add_hierarchy(struct cgroup_ops *ops, char **clist, char *mountpoint,
+			 char *container_base_path, int type)
 {
 	__do_close int dfd_base = -EBADF, dfd_mnt = -EBADF;
 	__do_free struct hierarchy *new = NULL;
+	__do_free_string_list char **controllers = clist;
 	int newentry;
 
 	if (abspath(container_base_path))
-		return syserrno(NULL, "Container base path must be relative to controller mount");
+		return syserrno(-errno, "Container base path must be relative to controller mount");
+
+	if (!controllers && type != CGROUP2_SUPER_MAGIC)
+		return syserrno_set(-EINVAL, "Empty controller list for non-unified cgroup hierarchy passed");
+
+	dfd_mnt = open_at(-EBADF, mountpoint, PROTECT_OPATH_DIRECTORY,
+			  PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
+	if (dfd_mnt < 0)
+		return syserrno(-errno, "Failed to open %s", mountpoint);
+
+	if (is_empty_string(container_base_path))
+		dfd_base = dfd_mnt;
+	else
+		dfd_base = open_at(dfd_mnt, container_base_path,
+				   PROTECT_OPATH_DIRECTORY,
+				   PROTECT_LOOKUP_BENEATH_XDEV, 0);
+	if (dfd_base < 0)
+		return syserrno(-errno, "Failed to open %d(%s)", dfd_base, container_base_path);
+
+	if (!controllers) {
+		/*
+		* We assume that the cgroup we're currently in has been delegated to
+		* us and we are free to further delege all of the controllers listed
+		* in cgroup.controllers further down the hierarchy.
+		 */
+		controllers = cg_unified_get_controllers(dfd_base, "cgroup.controllers");
+		if (!controllers)
+			controllers = cg_unified_make_empty_controller();
+		if (!controllers[0])
+			TRACE("No controllers are enabled for delegation");
+	}
+
+	/* Exclude all controllers that cgroup use does not want. */
+	if (!cgroup_use_wants_controllers(ops, controllers))
+		return log_trace(0, "Skipping cgroup hiearchy with non-requested controllers");
 
 	new = zalloc(sizeof(*new));
 	if (!new)
-		return ret_set_errno(NULL, ENOMEM);
+		return ret_errno(ENOMEM);
 
 	new->version			= type;
-	new->controllers		= clist;
+	new->controllers		= move_ptr(controllers);
 	new->mountpoint			= mountpoint;
 	new->container_base_path	= container_base_path;
 	new->cgfd_con			= -EBADF;
 	new->cgfd_limit			= -EBADF;
 	new->cgfd_mon			= -EBADF;
 
-	dfd_mnt = open_at(-EBADF, mountpoint, PROTECT_OPATH_DIRECTORY,
-			  PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
-	if (dfd_mnt < 0)
-		return syserrno(NULL, "Failed to open %s", mountpoint);
-
-	dfd_base = open_at(dfd_mnt, container_base_path, PROTECT_OPATH_DIRECTORY,
-			   PROTECT_LOOKUP_BENEATH_XDEV, 0);
-	if (dfd_base < 0)
-		return syserrno(NULL, "Failed to open %d(%s)", dfd_base, container_base_path);
-
-	TRACE("Adding cgroup hierarchy with mountpoint %s and base cgroup %s %s",
-	      mountpoint, container_base_path,
-	      (clist && *clist) ? "with controllers " : "without any controllers");
-	for (char *const *it = clist; it && *it; it++)
-		TRACE("%s", *it);
+	TRACE("Adding cgroup hierarchy with mountpoint %s and base cgroup %s",
+	      mountpoint, container_base_path);
+	for (char *const *it = new->controllers; it && *it; it++)
+		TRACE("The detected hierarchy contains the %s controller", *it);
 
 	newentry = append_null_to_list((void ***)&ops->hierarchies);
 	new->dfd_mnt = move_fd(dfd_mnt);
 	new->dfd_base = move_fd(dfd_base);
-	(ops->hierarchies)[newentry] = new;
-	return move_ptr(new);
+	if (type == CGROUP2_SUPER_MAGIC)
+		ops->unified = new;
+	(ops->hierarchies)[newentry] = move_ptr(new);
+	return 0;
 }
 
 /* Get a copy of the mountpoint from @line, which is a line from
@@ -3222,32 +3273,6 @@ __cgfsng_ops static bool cgfsng_payload_delegate_controllers(struct cgroup_ops *
 	return __cgfsng_delegate_controllers(ops, ops->container_cgroup);
 }
 
-static bool cgroup_use_wants_controllers(const struct cgroup_ops *ops,
-				       char **controllers)
-{
-	if (!ops->cgroup_use)
-		return true;
-
-	for (char **cur_ctrl = controllers; cur_ctrl && *cur_ctrl; cur_ctrl++) {
-		bool found = false;
-
-		for (char **cur_use = ops->cgroup_use; cur_use && *cur_use; cur_use++) {
-			if (!strequal(*cur_use, *cur_ctrl))
-				continue;
-
-			found = true;
-			break;
-		}
-
-		if (found)
-			continue;
-
-		return false;
-	}
-
-	return true;
-}
-
 static void cg_unified_delegate(char ***delegate)
 {
 	__do_free char *buf = NULL;
@@ -3314,7 +3339,6 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 		__do_free_string_list char **controller_list = NULL;
 		int type;
 		bool writeable;
-		struct hierarchy *new;
 
 		type = get_cgroup_version(line);
 		if (type == 0)
@@ -3370,36 +3394,14 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 			continue;
 		}
 
-		if (type == CGROUP2_SUPER_MAGIC) {
-			char *cgv2_ctrl_path;
-
-			cgv2_ctrl_path = must_make_path(mountpoint, base_cgroup,
-							"cgroup.controllers",
-							NULL);
-
-			controller_list = cg_unified_get_controllers(-EBADF, cgv2_ctrl_path);
-			free(cgv2_ctrl_path);
-			if (!controller_list) {
-				controller_list = cg_unified_make_empty_controller();
-				TRACE("No controllers are enabled for "
-				      "delegation in the unified hierarchy");
-			}
-		}
-
-		/* Exclude all controllers that cgroup use does not want. */
-		if (!cgroup_use_wants_controllers(ops, controller_list)) {
-			TRACE("Skipping controller");
-			continue;
-		}
-
-		new = add_hierarchy(ops, move_ptr(controller_list), move_ptr(mountpoint), move_ptr(base_cgroup), type);
-		if (!new)
-			return log_error_errno(-1, errno, "Failed to add cgroup hierarchy");
-		if (type == CGROUP2_SUPER_MAGIC && !ops->unified) {
-			if (unprivileged)
-				cg_unified_delegate(&new->cgroup2_chown);
-			ops->unified = new;
-		}
+		if (type == CGROUP2_SUPER_MAGIC)
+			ret = add_hierarchy(ops, NULL, move_ptr(mountpoint), move_ptr(base_cgroup), type);
+		else
+			ret = add_hierarchy(ops, move_ptr(controller_list), move_ptr(mountpoint), move_ptr(base_cgroup), type);
+		if (ret)
+			return syserrno(ret, "Failed to add cgroup hierarchy");
+		if (ops->unified && unprivileged)
+			cg_unified_delegate(&(ops->unified)->cgroup2_chown);
 	}
 
 	/* verify that all controllers in cgroup.use and all crucial
@@ -3452,25 +3454,12 @@ static char *cg_unified_get_current_cgroup(bool relative)
 static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 			   bool unprivileged)
 {
-	__do_free char *base_cgroup = NULL, *controllers_path = NULL;
-	__do_free_string_list char **delegatable = NULL;
-	__do_free struct hierarchy *new = NULL;
+	__do_free char *base_cgroup = NULL;
+	int ret;
 
 	base_cgroup = cg_unified_get_current_cgroup(relative);
 	if (!base_cgroup)
 		return ret_errno(EINVAL);
-
-	/*
-	 * We assume that the cgroup we're currently in has been delegated to
-	 * us and we are free to further delege all of the controllers listed
-	 * in cgroup.controllers further down the hierarchy.
-	 */
-	controllers_path = must_make_path_relative(base_cgroup, "cgroup.controllers", NULL);
-	delegatable = cg_unified_get_controllers(ops->dfd_mnt_cgroupfs_host, controllers_path);
-	if (!delegatable)
-		delegatable = cg_unified_make_empty_controller();
-	if (!delegatable[0])
-		TRACE("No controllers are enabled for delegation");
 
 	/* TODO: If the user requested specific controllers via lxc.cgroup.use
 	 * we should verify here. The reason I'm not doing it right is that I'm
@@ -3479,23 +3468,19 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 	 * controllers per container.
 	 */
 
-	new = add_hierarchy(ops,
-			    move_ptr(delegatable),
+	ret = add_hierarchy(ops, NULL,
 			    must_copy_string(DEFAULT_CGROUP_MOUNTPOINT),
-			    move_ptr(base_cgroup),
-			    CGROUP2_SUPER_MAGIC);
-	if (!new)
-		return log_error_errno(-1, errno, "Failed to add unified cgroup hierarchy");
+			    move_ptr(base_cgroup), CGROUP2_SUPER_MAGIC);
+	if (ret)
+		return syserrno(ret, "Failed to add unified cgroup hierarchy");
 
 	if (unprivileged)
-		cg_unified_delegate(&new->cgroup2_chown);
+		cg_unified_delegate(&(ops->unified)->cgroup2_chown);
 
 	if (bpf_devices_cgroup_supported())
-		new->bpf_device_controller = 1;
+		ops->unified->bpf_device_controller = 1;
 
 	ops->cgroup_layout = CGROUP_LAYOUT_UNIFIED;
-	ops->unified = move_ptr(new);
-
 	return CGROUP2_SUPER_MAGIC;
 }
 
