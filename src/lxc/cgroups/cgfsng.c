@@ -46,6 +46,7 @@
 #include "memory_utils.h"
 #include "mount_utils.h"
 #include "storage/storage.h"
+#include "string_utils.h"
 #include "syscall_wrappers.h"
 #include "utils.h"
 
@@ -695,24 +696,33 @@ static struct hierarchy *add_hierarchy(struct cgroup_ops *ops,
 				       char **clist, char *mountpoint,
 				       char *container_base_path, int type)
 {
-	struct hierarchy *new;
+	__do_free struct hierarchy *new = NULL;
 	int newentry;
+
+	if (abspath(container_base_path))
+		return syserrno(NULL, "Container base path must be relative to controller mount");
 
 	new = zalloc(sizeof(*new));
 	if (!new)
 		return ret_set_errno(NULL, ENOMEM);
 
-	new->controllers = clist;
-	new->mountpoint = mountpoint;
-	new->container_base_path = container_base_path;
-	new->version = type;
-	new->cgfd_con = -EBADF;
-	new->cgfd_limit = -EBADF;
-	new->cgfd_mon = -EBADF;
+	new->version			= type;
+	new->controllers		= clist;
+	new->mountpoint			= mountpoint;
+	new->container_base_path	= container_base_path;
+	new->cgfd_con			= -EBADF;
+	new->cgfd_limit			= -EBADF;
+	new->cgfd_mon			= -EBADF;
+
+	TRACE("Adding cgroup hierarchy with mountpoint %s and base cgroup %s %s",
+	      mountpoint, container_base_path,
+	      clist ? "with controllers " : "without any controllers");
+	for (char *const *it = clist; it && *it; it++)
+		TRACE("%s", *it);
 
 	newentry = append_null_to_list((void ***)&ops->hierarchies);
 	(ops->hierarchies)[newentry] = new;
-	return new;
+	return move_ptr(new);
 }
 
 /* Get a copy of the mountpoint from @line, which is a line from
@@ -790,38 +800,71 @@ static bool controller_in_clist(char *cgline, char *c)
 	return false;
 }
 
+static inline char *trim(char *s)
+{
+	size_t len;
+
+	len = strlen(s);
+	while ((len > 1) && (s[len - 1] == '\n'))
+		s[--len] = '\0';
+
+	return s;
+}
+
 /* @basecginfo is a copy of /proc/$$/cgroup. Return the current cgroup for
  * @controller.
  */
-static char *cg_hybrid_get_current_cgroup(char *basecginfo, char *controller,
-					  int type)
+static char *cg_hybrid_get_current_cgroup(bool relative, char *basecginfo,
+					  char *controller, int type)
 {
-	char *p = basecginfo;
+	char *base_cgroup = basecginfo;
 
 	for (;;) {
 		bool is_cgv2_base_cgroup = false;
 
 		/* cgroup v2 entry in "/proc/<pid>/cgroup": "0::/some/path" */
-		if ((type == CGROUP2_SUPER_MAGIC) && (*p == '0'))
+		if ((type == CGROUP2_SUPER_MAGIC) && (*base_cgroup == '0'))
 			is_cgv2_base_cgroup = true;
 
-		p = strchr(p, ':');
-		if (!p)
+		base_cgroup = strchr(base_cgroup, ':');
+		if (!base_cgroup)
 			return NULL;
-		p++;
+		base_cgroup++;
 
-		if (is_cgv2_base_cgroup || (controller && controller_in_clist(p, controller))) {
-			p = strchr(p, ':');
-			if (!p)
+		if (is_cgv2_base_cgroup || (controller && controller_in_clist(base_cgroup, controller))) {
+			__do_free char *copy = NULL;
+
+			base_cgroup = strchr(base_cgroup, ':');
+			if (!base_cgroup)
 				return NULL;
-			p++;
-			return copy_to_eol(p);
+			base_cgroup++;
+
+			copy = copy_to_eol(base_cgroup);
+			if (!copy)
+				return NULL;
+			trim(copy);
+
+			if (!relative) {
+				base_cgroup = prune_init_scope(copy);
+				if (!base_cgroup)
+					return NULL;
+			} else {
+				base_cgroup = copy;
+			}
+
+			if (abspath(base_cgroup))
+				base_cgroup = deabs(base_cgroup);
+
+			if (is_empty_string(base_cgroup))
+				base_cgroup = ".";
+
+			return strdup(base_cgroup);
 		}
 
-		p = strchr(p, '\n');
-		if (!p)
+		base_cgroup = strchr(base_cgroup, '\n');
+		if (!base_cgroup)
 			return NULL;
-		p++;
+		base_cgroup++;
 	}
 }
 
@@ -877,17 +920,6 @@ static int get_existing_subsystems(char ***klist, char ***nlist)
 	}
 
 	return 0;
-}
-
-static char *trim(char *s)
-{
-	size_t len;
-
-	len = strlen(s);
-	while ((len > 1) && (s[len - 1] == '\n'))
-		s[--len] = '\0';
-
-	return s;
 }
 
 static void lxc_cgfsng_print_hierarchies(struct cgroup_ops *ops)
@@ -3384,16 +3416,14 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 		}
 
 		if (type == CGROUP_SUPER_MAGIC)
-			base_cgroup = cg_hybrid_get_current_cgroup(basecginfo, controller_list[0], CGROUP_SUPER_MAGIC);
+			base_cgroup = cg_hybrid_get_current_cgroup(relative, basecginfo, controller_list[0], CGROUP_SUPER_MAGIC);
 		else
-			base_cgroup = cg_hybrid_get_current_cgroup(basecginfo, NULL, CGROUP2_SUPER_MAGIC);
+			base_cgroup = cg_hybrid_get_current_cgroup(relative, basecginfo, NULL, CGROUP2_SUPER_MAGIC);
 		if (!base_cgroup) {
 			WARN("Failed to find current cgroup");
 			continue;
 		}
 
-		trim(base_cgroup);
-		prune_init_scope(base_cgroup);
 		if (type == CGROUP2_SUPER_MAGIC)
 			writeable = test_writeable_v2(mountpoint, base_cgroup);
 		else
@@ -3450,8 +3480,7 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 /* Get current cgroup from /proc/self/cgroup for the cgroupfs v2 hierarchy. */
 static char *cg_unified_get_current_cgroup(bool relative)
 {
-	__do_free char *basecginfo = NULL;
-	char *copy;
+	__do_free char *basecginfo = NULL, *copy = NULL;
 	char *base_cgroup;
 
 	if (!relative && (geteuid() == 0))
@@ -3469,8 +3498,23 @@ static char *cg_unified_get_current_cgroup(bool relative)
 	copy = copy_to_eol(base_cgroup);
 	if (!copy)
 		return NULL;
+	trim(copy);
 
-	return trim(copy);
+	if (!relative) {
+		base_cgroup = prune_init_scope(copy);
+		if (!base_cgroup)
+			return NULL;
+	} else {
+		base_cgroup = copy;
+	}
+
+	if (abspath(base_cgroup))
+		base_cgroup = deabs(base_cgroup);
+
+	if (is_empty_string(base_cgroup))
+		base_cgroup = ".";
+
+	return strdup(base_cgroup);
 }
 
 static int cg_unified_init(struct cgroup_ops *ops, bool relative,
@@ -3483,8 +3527,6 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 	base_cgroup = cg_unified_get_current_cgroup(relative);
 	if (!base_cgroup)
 		return ret_errno(EINVAL);
-	if (!relative)
-		prune_init_scope(base_cgroup);
 
 	/*
 	 * We assume that the cgroup we're currently in has been delegated to

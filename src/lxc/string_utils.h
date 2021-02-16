@@ -150,6 +150,11 @@ static inline bool abspath(const char *str)
 	return *str == '/';
 }
 
+static inline char *deabs(char *str)
+{
+	return str + strspn(str, "/");
+}
+
 #define strnprintf(buf, buf_size, ...)                                            \
 	({                                                                        \
 		int __ret_strnprintf;                                             \
