@@ -29,8 +29,6 @@ __hidden extern bool test_writeable_v1(char *mountpoint, char *path);
  */
 __hidden extern bool test_writeable_v2(char *mountpoint, char *path);
 
-__hidden extern int unified_cgroup_hierarchy(void);
-
 __hidden extern int unified_cgroup_fd(int fd);
 
 static inline bool cgns_supported(void)
