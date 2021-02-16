@@ -13,9 +13,12 @@
 #include "cgroup_utils.h"
 #include "config.h"
 #include "file_utils.h"
+#include "log.h"
 #include "macro.h"
 #include "memory_utils.h"
 #include "utils.h"
+
+lxc_log_define(cgroup_utils, lxc);
 
 int get_cgroup_version(char *line)
 {
@@ -94,4 +97,65 @@ int unified_cgroup_fd(int fd)
 		return true;
 
 	return false;
+}
+
+int cgroup_tree_prune(int dfd, const char *path)
+{
+	__do_close int dfd_disown = -EBADF, dfd_dup = -EBADF;
+	__do_closedir DIR *dir = NULL;
+	int ret;
+	struct dirent *direntp;
+
+	/*
+	 * The unlinkat() syscall doesn't work with empty paths, i.e. it isn't
+	 * possible to remove the fd itself.
+	 */
+	if (is_empty_string(path) || strequal(path, "."))
+		return ret_errno(EINVAL);
+
+	/*
+	 * Note that O_PATH file descriptors can't be used with getdents() and
+	 * therefore with readdir().
+	 */
+	dfd_disown = open_at(dfd, path, PROTECT_OPEN,
+			     PROTECT_LOOKUP_BENEATH_WITH_SYMLINKS, 0);
+	if (dfd_disown < 0)
+		return -errno;
+
+	dfd_dup = dup_cloexec(dfd_disown);
+	if (dfd_dup < 0)
+		return -errno;
+
+	dir = fdopendir(dfd_disown);
+	if (!dir)
+		return -errno;
+
+	/* Transfer ownership to fdopendir(). */
+	move_fd(dfd_disown);
+
+	while ((direntp = readdir(dir))) {
+		struct stat st;
+
+		if (strequal(direntp->d_name, ".") ||
+		    strequal(direntp->d_name, ".."))
+			continue;
+
+		ret = fstatat(dfd_dup, direntp->d_name, &st,
+			      AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW);
+		if (ret < 0)
+			continue;
+
+		if (!S_ISDIR(st.st_mode))
+			continue;
+
+		ret = cgroup_tree_prune(dfd_dup, direntp->d_name);
+		if (ret < 0)
+			return -errno;
+	}
+
+	ret = unlinkat(dfd, path, AT_REMOVEDIR);
+	if (ret < 0)
+		return -errno;
+
+	return 0;
 }

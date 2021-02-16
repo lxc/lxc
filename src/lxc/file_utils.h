@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 #include "compiler.h"
+#include "memory_utils.h"
 #include "syscall_wrappers.h"
 
 /* read and write whole files */

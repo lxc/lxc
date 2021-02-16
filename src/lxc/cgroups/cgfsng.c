@@ -782,9 +782,9 @@ static void lxc_cgfsng_print_basecg_debuginfo(char *basecginfo, char **klist,
 		TRACE("named subsystem %d: %s", k, *it);
 }
 
-static int cgroup_tree_remove(struct hierarchy **hierarchies, const char *container_cgroup)
+static int cgroup_tree_remove(struct hierarchy **hierarchies, const char *path_prune)
 {
-	if (!container_cgroup || !hierarchies)
+	if (!path_prune || !hierarchies)
 		return 0;
 
 	for (int i = 0; hierarchies[i]; i++) {
@@ -794,9 +794,11 @@ static int cgroup_tree_remove(struct hierarchy **hierarchies, const char *contai
 		if (!h->container_limit_path)
 			continue;
 
-		ret = lxc_rm_rf(h->container_limit_path);
+		ret = cgroup_tree_prune(h->dfd_base, path_prune);
 		if (ret < 0)
-			WARN("Failed to destroy \"%s\"", h->container_limit_path);
+			SYSWARN("Failed to destroy %d(%s)", h->dfd_base, path_prune);
+		else
+			TRACE("Removed cgroup tree %d(%s)", h->dfd_base, path_prune);
 
 		if (h->container_limit_path != h->container_full_path)
 			free_disarm(h->container_limit_path);
@@ -808,7 +810,7 @@ static int cgroup_tree_remove(struct hierarchy **hierarchies, const char *contai
 
 struct generic_userns_exec_data {
 	struct hierarchy **hierarchies;
-	const char *container_cgroup;
+	const char *path_prune;
 	struct lxc_conf *conf;
 	uid_t origuid; /* target uid in parent namespace */
 	char *path;
@@ -834,7 +836,7 @@ static int cgroup_tree_remove_wrapper(void *data)
 		return log_error_errno(-1, errno, "Failed to setresuid(%d, %d, %d)",
 				       (int)nsuid, (int)nsuid, (int)nsuid);
 
-	return cgroup_tree_remove(arg->hierarchies, arg->container_cgroup);
+	return cgroup_tree_remove(arg->hierarchies, arg->path_prune);
 }
 
 __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
@@ -869,14 +871,14 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 	if (!lxc_list_empty(&handler->conf->id_map)) {
 		struct generic_userns_exec_data wrap = {
 			.conf			= handler->conf,
-			.container_cgroup	= ops->container_cgroup,
+			.path_prune		= ops->container_limit_cgroup,
 			.hierarchies		= ops->hierarchies,
 			.origuid		= 0,
 		};
 		ret = userns_exec_1(handler->conf, cgroup_tree_remove_wrapper,
 				    &wrap, "cgroup_tree_remove_wrapper");
 	} else {
-		ret = cgroup_tree_remove(ops->hierarchies, ops->container_cgroup);
+		ret = cgroup_tree_remove(ops->hierarchies, ops->container_limit_cgroup);
 	}
 	if (ret < 0)
 		SYSWARN("Failed to destroy cgroups");
@@ -1230,7 +1232,7 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 		/* Monitor might have died before we entered the cgroup. */
 		if (handler->monitor_pid <= 0) {
 			WARN("No valid monitor process found while destroying cgroups");
-			goto try_lxc_rm_rf;
+			goto cgroup_prune_tree;
 		}
 
 		if (conf->cgroup_meta.monitor_dir)
@@ -1254,10 +1256,12 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 			continue;
 		}
 
-try_lxc_rm_rf:
-		ret = lxc_rm_rf(h->monitor_full_path);
+cgroup_prune_tree:
+		ret = cgroup_tree_prune(h->dfd_base, ops->monitor_cgroup);
 		if (ret < 0)
-			WARN("Failed to destroy \"%s\"", h->monitor_full_path);
+			SYSWARN("Failed to destroy %d(%s)", h->dfd_base, ops->monitor_cgroup);
+		else
+			TRACE("Removed cgroup tree %d(%s)", h->dfd_base, ops->monitor_cgroup);
 	}
 }
 
@@ -1475,6 +1479,10 @@ __cgfsng_ops static bool cgfsng_payload_create(struct cgroup_ops *ops, struct lx
 		return log_error_errno(false, ERANGE, "Failed to create container cgroup");
 
 	ops->container_cgroup = move_ptr(container_cgroup);
+	if (limiting_cgroup)
+		ops->container_limit_cgroup = move_ptr(limiting_cgroup);
+	else
+		ops->container_limit_cgroup = ops->container_cgroup;
 	INFO("The container process uses \"%s\" as cgroup", ops->container_cgroup);
 	return true;
 }

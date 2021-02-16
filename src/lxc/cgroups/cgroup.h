@@ -134,6 +134,7 @@ struct cgroup_ops {
 	char **cgroup_use;
 	char *cgroup_pattern;
 	char *container_cgroup;
+	char *container_limit_cgroup;
 	char *monitor_cgroup;
 
 	/* @hierarchies
