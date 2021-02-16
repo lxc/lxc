@@ -23,7 +23,7 @@ typedef enum lxc_namespace_t {
 
 __hidden extern const struct ns_info {
 #define MAX_NS_PROC_NAME 6
-	const char proc_name[MAX_NS_PROC_NAME];
+	const char proc_name[MAX_NS_PROC_NAME + 1];
 	const char *proc_path;
 	int clone_flag;
 	const char *flag_name;
