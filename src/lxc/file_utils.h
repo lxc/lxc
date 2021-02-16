@@ -104,4 +104,18 @@ __hidden extern ssize_t lxc_read_try_buf_at(int dfd, const char *path,
  */
 __hidden extern bool same_file_lax(int fda, int fdb);
 
+static inline int dup_cloexec(int fd)
+{
+	__do_close int fd_dup = -EBADF;
+
+	fd_dup = dup(fd);
+	if (fd_dup < 0)
+		return -errno;
+
+	if (fd_cloexec(fd_dup, true))
+		return -errno;
+
+	return move_fd(fd_dup);
+}
+
 #endif /* __LXC_FILE_UTILS_H */

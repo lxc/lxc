@@ -564,20 +564,6 @@ int fd_cloexec(int fd, bool cloexec)
 	return 0;
 }
 
-static inline int dup_cloexec(int fd)
-{
-	__do_close int fd_dup = -EBADF;
-
-	fd_dup = dup(fd);
-	if (fd_dup < 0)
-		return -errno;
-
-	if (fd_cloexec(fd_dup, true))
-		return -errno;
-
-	return move_fd(fd_dup);
-}
-
 FILE *fdopen_at(int dfd, const char *path, const char *mode,
 		unsigned int o_flags, unsigned int resolve_flags)
 {
