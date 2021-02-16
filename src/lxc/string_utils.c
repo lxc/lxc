@@ -768,6 +768,8 @@ char *must_make_path(const char *first, ...)
 	va_start(args, first);
 	while ((cur = va_arg(args, char *)) != NULL) {
 		buf_len = strlen(cur);
+		if (buf_len == 0)
+			continue;
 
 		full_len += buf_len;
 		if (cur[0] != '/')
