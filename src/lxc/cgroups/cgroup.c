@@ -33,10 +33,14 @@ struct cgroup_ops *cgroup_init(struct lxc_conf *conf)
 	if (!cgroup_ops)
 		return log_error_errno(NULL, errno, "Failed to initialize cgroup driver");
 
+	if (!cgroup_ops->hierarchies) {
+		cgroup_exit(cgroup_ops);
+		return log_error_errno(NULL, ENOENT, "No cgroup hierarchies found");
+	}
+
 	if (cgroup_ops->data_init(cgroup_ops)) {
 		cgroup_exit(cgroup_ops);
-		return log_error_errno(NULL, errno,
-				       "Failed to initialize cgroup data");
+		return log_error_errno(NULL, errno, "Failed to initialize cgroup data");
 	}
 
 	TRACE("Initialized cgroup driver %s", cgroup_ops->driver);
@@ -68,6 +72,9 @@ void cgroup_exit(struct cgroup_ops *ops)
 	if (ops->cgroup2_devices)
 		bpf_program_free(ops->cgroup2_devices);
 
+	if (ops->dfd_mnt_cgroupfs_host >= 0)
+		close(ops->dfd_mnt_cgroupfs_host);
+
 	for (struct hierarchy **it = ops->hierarchies; it && *it; it++) {
 		for (char **p = (*it)->controllers; p && *p; p++)
 			free(*p);
@@ -79,12 +86,34 @@ void cgroup_exit(struct cgroup_ops *ops)
 
 		free((*it)->mountpoint);
 		free((*it)->container_base_path);
-		free((*it)->container_full_path);
-		free((*it)->monitor_full_path);
-		if ((*it)->cgfd_con >= 0)
-			close((*it)->cgfd_con);
+
+		{
+			free((*it)->container_full_path);
+
+			if ((*it)->container_full_path != (*it)->container_limit_path)
+				free((*it)->monitor_full_path);
+		}
+
+		{
+			if ((*it)->cgfd_limit >= 0 && (*it)->cgfd_con != (*it)->cgfd_limit)
+				close((*it)->cgfd_limit);
+
+			if ((*it)->cgfd_con >= 0)
+				close((*it)->cgfd_con);
+
+		}
+
 		if ((*it)->cgfd_mon >= 0)
 			close((*it)->cgfd_mon);
+
+		{
+			if ((*it)->dfd_base >= 0 && (*it)->dfd_mnt != (*it)->dfd_base)
+				close((*it)->dfd_base);
+
+			if ((*it)->dfd_mnt >= 0)
+				close((*it)->dfd_mnt);
+		}
+
 		free(*it);
 	}
 	free(ops->hierarchies);
@@ -95,21 +124,13 @@ void cgroup_exit(struct cgroup_ops *ops)
 }
 
 #define INIT_SCOPE "/init.scope"
-void prune_init_scope(char *cg)
+char *prune_init_scope(char *cg)
 {
-	char *point;
+	if (is_empty_string(cg))
+		return NULL;
 
-	if (!cg)
-		return;
+	if (strnequal(cg, INIT_SCOPE, STRLITERALLEN(INIT_SCOPE)))
+		return cg + STRLITERALLEN(INIT_SCOPE);
 
-	point = cg + strlen(cg) - strlen(INIT_SCOPE);
-	if (point < cg)
-		return;
-
-	if (strequal(point, INIT_SCOPE)) {
-		if (point == cg)
-			*(point + 1) = '\0';
-		else
-			*point = '\0';
-	}
+	return cg;
 }

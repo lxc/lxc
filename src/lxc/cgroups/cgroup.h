@@ -91,12 +91,24 @@ struct hierarchy {
 	unsigned int bpf_device_controller:1;
 	unsigned int freezer_controller:1;
 
-	/* container cgroup fd */
+	/* File descriptor for the container's cgroup @container_full_path. */
 	int cgfd_con;
-	/* limiting cgroup fd (may be equal to cgfd_con if not separated) */
+
+	/*
+	 * File descriptor for the container's limiting cgroup
+	 * @container_limit_path.
+	 * Will be equal to @cgfd_con if no limiting cgroup has been requested.
+	 */
 	int cgfd_limit;
-	/* monitor cgroup fd */
+
+	/* File descriptor for the monitor's cgroup @monitor_full_path. */
 	int cgfd_mon;
+
+	/* File descriptor for the controller's mountpoint @mountpoint. */
+	int dfd_mnt;
+
+	/* File descriptor for the controller's base cgroup path @container_base_path. */
+	int dfd_base;
 };
 
 struct cgroup_ops {
@@ -105,6 +117,18 @@ struct cgroup_ops {
 
 	/* string constant */
 	const char *version;
+
+	/*
+	 * File descriptor for the host's cgroupfs mount.  On
+	 * CGROUP_LAYOUT_LEGACY or CGROUP_LAYOUT_HYBRID hybrid systems
+	 * @dfd_mnt_cgroupfs_host will be a tmpfs fd and the individual
+	 * controllers will be cgroupfs fds. On CGROUP_LAYOUT_UNIFIED it will
+	 * be a cgroupfs fd itself.
+	 *
+	 * So for CGROUP_LAYOUT_LEGACY or CGROUP_LAYOUT_HYBRID we allow
+	 * mountpoint crossing iff we cross from a tmpfs into a cgroupfs mount.
+	 * */
+	int dfd_mnt_cgroupfs_host;
 
 	/* What controllers is the container supposed to use. */
 	char **cgroup_use;
@@ -186,7 +210,7 @@ __hidden extern struct cgroup_ops *cgroup_init(struct lxc_conf *conf);
 __hidden extern void cgroup_exit(struct cgroup_ops *ops);
 define_cleanup_function(struct cgroup_ops *, cgroup_exit);
 
-__hidden extern void prune_init_scope(char *cg);
+__hidden extern char *prune_init_scope(char *cg);
 
 __hidden extern int cgroup_attach(const struct lxc_conf *conf, const char *name,
 				  const char *lxcpath, pid_t pid);
