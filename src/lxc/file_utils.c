@@ -31,15 +31,15 @@ int lxc_readat(int dirfd, const char *filename, void *buf, size_t count)
 	__do_close int fd = -EBADF;
 	ssize_t ret;
 
-	fd = openat(dirfd, filename, O_RDONLY | O_CLOEXEC);
+	fd = open_at(dirfd, filename, PROTECT_OPEN, PROTECT_LOOKUP_BENEATH, 0);
 	if (fd < 0)
-		return -1;
+		return -errno;
 
 	ret = lxc_read_nointr(fd, buf, count);
-	if (ret < 0 || (size_t)ret != count)
-		return -1;
+	if (ret < 0)
+		return -errno;
 
-	return 0;
+	return ret;
 }
 
 int lxc_writeat(int dirfd, const char *filename, const void *buf, size_t count)
