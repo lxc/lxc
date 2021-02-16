@@ -1133,32 +1133,62 @@ try_lxc_rm_rf:
 	}
 }
 
-static int mkdir_eexist_on_last(const char *dir, mode_t mode)
+static int __cgroup_tree_create(int dfd_base, const char *path, mode_t mode)
 {
-	const char *tmp = dir;
-	const char *orig = dir;
-	size_t orig_len;
+	__do_close int dfd_final = -EBADF;
+	int dfd_cur = dfd_base;
+	int ret = 0;
+	size_t len;
+	char *cur;
+	char buf[PATH_MAX];
 
-	orig_len = strlen(dir);
-	do {
-		__do_free char *makeme = NULL;
-		int ret;
-		size_t cur_len;
+	if (is_empty_string(path))
+		return ret_errno(-EINVAL);
 
-		dir = tmp + strspn(tmp, "/");
-		tmp = dir + strcspn(dir, "/");
+	len = strlcpy(buf, path, sizeof(buf));
+	if (len >= sizeof(buf))
+		return -E2BIG;
 
-		cur_len = dir - orig;
-		makeme = strndup(orig, cur_len);
-		if (!makeme)
-			return ret_set_errno(-1, ENOMEM);
+	lxc_iterate_parts(cur, buf, "/") {
+		/*
+		 * Even though we vetted the paths when we parsed the config
+		 * we're paranoid here and check that the path is neither
+		 * absolute nor walks upwards.
+		 */
+		if (abspath(buf))
+			return syserrno_set(-EINVAL, "No absolute paths allowed");
 
-		ret = mkdir(makeme, mode);
-		if (ret < 0 && ((errno != EEXIST) || (orig_len == cur_len)))
-			return log_warn_errno(-1, errno, "Failed to create directory \"%s\"", makeme);
-	} while (tmp != dir);
+		if (strnequal(buf, "..", STRLITERALLEN("..")))
+			return syserrno_set(-EINVAL, "No upward walking paths allowed");
 
-	return 0;
+		ret = mkdirat(dfd_cur, cur, mode);
+		if (ret < 0) {
+			if (errno != EEXIST)
+				return syserrno(-errno, "Failed to create %d(%s)", dfd_cur, cur);
+
+			ret = -EEXIST;
+		}
+		TRACE("%s %d(%s) cgroup", !ret ? "Created" : "Reusing", dfd_cur, cur);
+
+		dfd_final = open_at(dfd_cur, cur, PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH, 0);
+		if (dfd_final < 0)
+			return syserrno(-errno, "Fail to open%s directory %d(%s)",
+					!ret ? " newly created" : "", dfd_base, cur);
+		if (dfd_cur != dfd_base)
+			close(dfd_cur);
+
+		/*
+		 * Leave dfd_final pointing to the last fd we opened so it will
+		 * be automatically zapped if we return early.
+		 */
+		dfd_cur = dfd_final;
+	}
+
+	/* The final cgroup must be succesfully creatd by us. */
+	if (ret)
+		return syserrno_set(ret, "Creating the final cgroup %d(%s) failed", dfd_base, path);
+
+	return move_fd(dfd_final);
 }
 
 static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
@@ -1166,34 +1196,25 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 			       const char *cgroup_leaf, bool payload,
 			       const char *cgroup_limit_dir)
 {
+	__do_close int fd_limit = -EBADF, fd_final = -EBADF;
 	__do_free char *path = NULL, *limit_path = NULL;
-	int ret, ret_cpuset;
+	int ret_cpuset;
 
-	path = must_make_path(h->mountpoint, h->container_base_path, cgroup_leaf, NULL);
-	if (dir_exists(path))
-		return log_warn_errno(false, errno, "The %s cgroup already existed", path);
+	/* Don't bother with all the rest if the final cgroup already exists. */
+	if (exists_dir_at(h->dfd_base, cgroup_leaf))
+		return syswarn(false, "The %d(%s) cgroup already existed", h->dfd_base, cgroup_leaf);
 
 	ret_cpuset = cg_legacy_handle_cpuset_hierarchy(h, cgroup_leaf);
 	if (ret_cpuset < 0)
 		return log_error_errno(false, errno, "Failed to handle legacy cpuset controller");
 
 	if (payload && cgroup_limit_dir) {
-		/* with isolation both parts need to not already exist */
-		limit_path = must_make_path(h->mountpoint,
-					    h->container_base_path,
-					    cgroup_limit_dir, NULL);
+		/* With isolation both parts need to not already exist. */
+		fd_limit = __cgroup_tree_create(h->dfd_base, cgroup_limit_dir, 0755);
+		if (fd_limit < 0)
+			return syserrno(false, "Failed to create limiting cgroup %d(%s)", h->dfd_base, cgroup_limit_dir);
 
-		ret = mkdir_eexist_on_last(limit_path, 0755);
-		if (ret < 0)
-			return log_debug_errno(false,
-					      errno, "Failed to create %s limiting cgroup",
-					      limit_path);
-
-		h->cgfd_limit = lxc_open_dirfd(limit_path);
-		if (h->cgfd_limit < 0)
-			return log_error_errno(false, errno,
-					       "Failed to open %s", path);
-		h->container_limit_path = move_ptr(limit_path);
+		limit_path = must_make_path(h->mountpoint, h->container_base_path, cgroup_limit_dir, NULL);
 
 		/*
 		 * With isolation the devices legacy cgroup needs to be
@@ -1206,30 +1227,33 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 			return log_error(false, "Failed to setup legacy device limits");
 	}
 
-	ret = mkdir_eexist_on_last(path, 0755);
-	if (ret < 0) {
+	fd_final = __cgroup_tree_create(h->dfd_base, cgroup_leaf, 0755);
+	if (fd_final < 0) {
 		/*
 		 * This is the cpuset controller and
 		 * cg_legacy_handle_cpuset_hierarchy() has created our target
 		 * directory for us to ensure correct initialization.
 		 */
 		if (ret_cpuset != 1 || cgroup_tree)
-			return log_debug_errno(false, errno, "Failed to create %s cgroup", path);
+			return sysdebug(false, "Failed to create payload cgroup %d(%s)", h->dfd_base, cgroup_leaf);
 	}
 
+	path = must_make_path(h->mountpoint, h->container_base_path, cgroup_leaf, NULL);
 	if (payload) {
-		h->cgfd_con = lxc_open_dirfd(path);
-		if (h->cgfd_con < 0)
-			return log_error_errno(false, errno, "Failed to open %s", path);
+		h->cgfd_con = move_fd(fd_final);
 		h->container_full_path = move_ptr(path);
-		if (h->cgfd_limit < 0)
+
+		if (fd_limit < 0)
 			h->cgfd_limit = h->cgfd_con;
-		if (!h->container_limit_path)
+		else
+			h->cgfd_limit = move_fd(fd_limit);
+
+		if (!limit_path)
 			h->container_limit_path = h->container_full_path;
+		else
+			h->container_limit_path = move_ptr(limit_path);
 	} else {
-		h->cgfd_mon = lxc_open_dirfd(path);
-		if (h->cgfd_mon < 0)
-			return log_error_errno(false, errno, "Failed to open %s", path);
+		h->cgfd_mon = move_fd(fd_final);
 		h->monitor_full_path = move_ptr(path);
 	}
 
@@ -1356,7 +1380,7 @@ __cgfsng_ops static bool cgfsng_monitor_create(struct cgroup_ops *ops, struct lx
 				               monitor_cgroup, false, NULL))
 				continue;
 
-			DEBUG("Failed to create cgroup \"%s\"", ops->hierarchies[i]->monitor_full_path ?: "(null)");
+			DEBUG("Failed to create cgroup \"%s\"", maybe_empty(ops->hierarchies[i]->monitor_full_path));
 			for (int j = 0; j < i; j++)
 				cgroup_tree_leaf_remove(ops->hierarchies[j], false);
 

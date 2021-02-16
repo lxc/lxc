@@ -630,21 +630,31 @@ int timens_offset_write(clockid_t clk_id, int64_t s_offset, int64_t ns_offset)
 
 bool exists_dir_at(int dir_fd, const char *path)
 {
-	struct stat sb;
 	int ret;
+	struct stat sb;
 
 	ret = fstatat(dir_fd, path, &sb, 0);
 	if (ret < 0)
 		return false;
 
-	return S_ISDIR(sb.st_mode);
+	ret = S_ISDIR(sb.st_mode);
+	if (ret)
+		errno = EEXIST;
+	else
+		errno = ENOTDIR;
+
+	return ret;
 }
 
 bool exists_file_at(int dir_fd, const char *path)
 {
+	int ret;
 	struct stat sb;
 
-	return fstatat(dir_fd, path, &sb, 0) == 0;
+	ret = fstatat(dir_fd, path, &sb, 0);
+	if (ret == 0)
+		errno = EEXIST;
+	return ret == 0;
 }
 
 int open_at(int dfd, const char *path, unsigned int o_flags,
