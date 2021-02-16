@@ -3474,18 +3474,9 @@ static char *cg_unified_get_current_cgroup(bool relative)
 static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 			   bool unprivileged)
 {
-	__do_close int cgroup_root_fd = -EBADF;
 	__do_free char *base_cgroup = NULL, *controllers_path = NULL;
 	__do_free_string_list char **delegatable = NULL;
 	__do_free struct hierarchy *new = NULL;
-	int ret;
-
-	ret = unified_cgroup_hierarchy();
-	if (ret == -ENOMEDIUM)
-		return ret_errno(ENOMEDIUM);
-
-	if (ret != CGROUP2_SUPER_MAGIC)
-		return 0;
 
 	base_cgroup = cg_unified_get_current_cgroup(relative);
 	if (!base_cgroup)
@@ -3493,18 +3484,13 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 	if (!relative)
 		prune_init_scope(base_cgroup);
 
-	cgroup_root_fd = openat(-EBADF, DEFAULT_CGROUP_MOUNTPOINT,
-				O_NOCTTY | O_CLOEXEC | O_NOFOLLOW | O_DIRECTORY);
-	if (cgroup_root_fd < 0)
-		return -errno;
-
 	/*
 	 * We assume that the cgroup we're currently in has been delegated to
 	 * us and we are free to further delege all of the controllers listed
 	 * in cgroup.controllers further down the hierarchy.
 	 */
 	controllers_path = must_make_path_relative(base_cgroup, "cgroup.controllers", NULL);
-	delegatable = cg_unified_get_controllers(cgroup_root_fd, controllers_path);
+	delegatable = cg_unified_get_controllers(ops->dfd_mnt_cgroupfs_host, controllers_path);
 	if (!delegatable)
 		delegatable = cg_unified_make_empty_controller();
 	if (!delegatable[0])
@@ -3539,9 +3525,23 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 
 static int __cgroup_init(struct cgroup_ops *ops, struct lxc_conf *conf)
 {
+	__do_close int dfd = -EBADF;
+	bool relative = conf->cgroup_meta.relative;
 	int ret;
 	const char *tmp;
-	bool relative = conf->cgroup_meta.relative;
+
+	if (ops->dfd_mnt_cgroupfs_host >= 0)
+		return ret_errno(EINVAL);
+
+	/*
+	 * I don't see the need for allowing symlinks here. If users want to
+	 * have their hierarchy available in different locations I strongly
+	 * suggest bind-mounts.
+	 */
+	dfd = open_at(-EBADF, DEFAULT_CGROUP_MOUNTPOINT,
+			PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
+	if (dfd < 0)
+		return syserrno(-errno, "Failed to open " DEFAULT_CGROUP_MOUNTPOINT);
 
 	tmp = lxc_global_config_value("lxc.cgroup.use");
 	if (tmp) {
@@ -3555,14 +3555,23 @@ static int __cgroup_init(struct cgroup_ops *ops, struct lxc_conf *conf)
 			must_append_string(&ops->cgroup_use, cur);
 	}
 
-	ret = cg_unified_init(ops, relative, !lxc_list_empty(&conf->id_map));
+	/*
+	 * Keep dfd referenced by the cleanup function and actually move the fd
+	 * once we know the initialization succeeded. So if we fail we clean up
+	 * the dfd.
+	 */
+	ops->dfd_mnt_cgroupfs_host = dfd;
+
+	if (unified_cgroup_fd(dfd))
+		ret = cg_unified_init(ops, relative, !lxc_list_empty(&conf->id_map));
+	else
+		ret = cg_hybrid_init(ops, relative, !lxc_list_empty(&conf->id_map));
 	if (ret < 0)
-		return -1;
+		return syserrno(ret, "Failed to initialize cgroups");
 
-	if (ret == CGROUP2_SUPER_MAGIC)
-		return 0;
-
-	return cg_hybrid_init(ops, relative, !lxc_list_empty(&conf->id_map));
+	/* Transfer ownership to cgroup_ops. */
+	move_fd(dfd);
+	return 0;
 }
 
 __cgfsng_ops static int cgfsng_data_init(struct cgroup_ops *ops)
@@ -3589,6 +3598,7 @@ struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf)
 		return ret_set_errno(NULL, ENOMEM);
 
 	cgfsng_ops->cgroup_layout = CGROUP_LAYOUT_UNKNOWN;
+	cgfsng_ops->dfd_mnt_cgroupfs_host = -EBADF;
 
 	if (__cgroup_init(cgfsng_ops, conf))
 		return NULL;

@@ -106,6 +106,18 @@ struct cgroup_ops {
 	/* string constant */
 	const char *version;
 
+	/*
+	 * File descriptor for the host's cgroupfs mount.  On
+	 * CGROUP_LAYOUT_LEGACY or CGROUP_LAYOUT_HYBRID hybrid systems
+	 * @dfd_mnt_cgroupfs_host will be a tmpfs fd and the individual
+	 * controllers will be cgroupfs fds. On CGROUP_LAYOUT_UNIFIED it will
+	 * be a cgroupfs fd itself.
+	 *
+	 * So for CGROUP_LAYOUT_LEGACY or CGROUP_LAYOUT_HYBRID we allow
+	 * mountpoint crossing iff we cross from a tmpfs into a cgroupfs mount.
+	 * */
+	int dfd_mnt_cgroupfs_host;
+
 	/* What controllers is the container supposed to use. */
 	char **cgroup_use;
 	char *cgroup_pattern;
