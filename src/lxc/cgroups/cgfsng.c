@@ -1247,9 +1247,7 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 			goto cgroup_prune_tree;
 		}
 
-		if (conf->cgroup_meta.monitor_dir)
-			pivot_path = must_make_path(conf->cgroup_meta.monitor_dir, CGROUP_PIVOT, NULL);
-		else if (conf->cgroup_meta.dir)
+		if (conf->cgroup_meta.dir)
 			pivot_path = must_make_path(conf->cgroup_meta.dir, CGROUP_PIVOT, NULL);
 		else
 			pivot_path = must_make_path(CGROUP_PIVOT, NULL);
