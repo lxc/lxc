@@ -96,7 +96,7 @@ void cgroup_exit(struct cgroup_ops *ops)
 			free((*it)->container_full_path);
 
 			if ((*it)->container_full_path != (*it)->container_limit_path)
-				free((*it)->monitor_full_path);
+				free((*it)->container_limit_path);
 		}
 
 		{
