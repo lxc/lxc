@@ -2177,12 +2177,9 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			cgroup_root = must_make_path(rootfs_mnt, DEFAULT_CGROUP_MOUNTPOINT, NULL);
 
 		controllerpath = must_make_path(cgroup_root, controller, NULL);
-		if (dir_exists(controllerpath))
-			continue;
-
 		path2 = must_make_path(controllerpath, h->container_base_path, ops->container_cgroup, NULL);
 		ret = mkdir_p(path2, 0755);
-		if (ret < 0)
+		if (ret < 0 && (errno != EEXIST))
 			return false;
 
 		ret = cg_legacy_mount_controllers(cg_flags, h, controllerpath, path2, ops->container_cgroup);
