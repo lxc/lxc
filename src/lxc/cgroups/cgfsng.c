@@ -1989,16 +1989,16 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	else if (cg_flags & LXC_AUTO_CGROUP_FULL_NOSPEC)
 		cg_flags = LXC_AUTO_CGROUP_FULL_MIXED;
 
+	dfd_mnt_cgroupfs = open_at(rootfs->dfd_mnt,
+				   DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
+				   PROTECT_OPATH_DIRECTORY,
+				   PROTECT_LOOKUP_BENEATH_XDEV, 0);
+	if (dfd_mnt_cgroupfs < 0)
+		return syserrno(-errno, "Failed to open %d(%s)", rootfs->dfd_mnt,
+				DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
+
 	/* This is really the codepath that we want. */
 	if (pure_unified_layout(ops)) {
-		dfd_mnt_cgroupfs = open_at(rootfs->dfd_mnt,
-					   DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
-					   PROTECT_OPATH_DIRECTORY,
-					   PROTECT_LOOKUP_BENEATH_XDEV, 0);
-		if (dfd_mnt_cgroupfs < 0)
-			return log_error_errno(-errno, errno, "Failed to open %d(%s)",
-					       rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
-
 		/*
 		 * If cgroup namespaces are supported but the container will
 		 * not have CAP_SYS_ADMIN after it has started we need to mount
@@ -2096,14 +2096,6 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	if (ret < 0)
 		return log_error_errno(false, errno, "Failed to mount tmpfs on %s",
 				       DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
-
-	dfd_mnt_cgroupfs = open_at(rootfs->dfd_mnt,
-				   DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
-				   PROTECT_OPATH_DIRECTORY,
-				   PROTECT_LOOKUP_BENEATH_XDEV, 0);
-	if (dfd_mnt_cgroupfs < 0)
-		return log_error_errno(-errno, errno, "Failed to open %d(%s)",
-				       rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
 		__do_free char *controllerpath = NULL, *path2 = NULL;
