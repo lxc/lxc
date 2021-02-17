@@ -41,4 +41,6 @@ static inline bool cgns_supported(void)
 	return supported == 1;
 }
 
+__hidden extern int cgroup_tree_prune(int dfd, const char *path);
+
 #endif /* __LXC_CGROUP_UTILS_H */
