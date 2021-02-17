@@ -3210,15 +3210,17 @@ static bool __cgfsng_delegate_controllers(struct cgroup_ops *ops, const char *cg
 {
 	__do_close int dfd_final = -EBADF;
 	__do_free char *add_controllers = NULL, *copy = NULL;
-	struct hierarchy *unified = ops->unified;
-	int dfd_cur = unified->dfd_base;
-	int ret;
 	size_t full_len = 0;
+	struct hierarchy *unified;
+	int dfd_cur, ret;
 	char *cur;
 	char **it;
 
-	if (!ops->hierarchies || !pure_unified_layout(ops) ||
-	    !unified->controllers[0])
+	if (!ops->hierarchies || !pure_unified_layout(ops))
+		return true;
+
+	unified = ops->unified;
+	if (!unified->controllers[0])
 		return true;
 
 	/* For now we simply enable all controllers that we have detected by
@@ -3250,6 +3252,7 @@ static bool __cgfsng_delegate_controllers(struct cgroup_ops *ops, const char *cg
 	 * intentional because of the cgroup2 delegation model. It enforces
 	 * that leaf cgroups don't have any controllers enabled for delegation.
 	 */
+	dfd_cur = unified->dfd_base;
 	lxc_iterate_parts(cur, copy, "/") {
 		/*
 		 * Even though we vetted the paths when we parsed the config
