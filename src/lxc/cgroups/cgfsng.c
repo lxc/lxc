@@ -859,6 +859,11 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 		return;
 	}
 
+	if (!ops->container_limit_cgroup) {
+		WARN("Uninitialized limit cgroup");
+		return;
+	}
+
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
 	ret = bpf_program_cgroup_detach(handler->cgroup_ops->cgroup2_devices);
 	if (ret < 0)
@@ -1097,16 +1102,12 @@ static int __cgroup_tree_create(int dfd_base, const char *path, mode_t mode,
 }
 
 static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
-			       struct hierarchy *h, const char *cgroup_leaf,
-			       const char *cgroup_limit_dir, bool payload)
+			       struct hierarchy *h, const char *cgroup_limit_dir,
+			       const char *cgroup_leaf, bool payload)
 {
 	__do_close int fd_limit = -EBADF, fd_final = -EBADF;
 	__do_free char *path = NULL, *limit_path = NULL;
 	bool cpuset_v1 = false;
-
-	/* Don't bother with all the rest if the final cgroup already exists. */
-	if (exists_dir_at(h->dfd_base, cgroup_leaf))
-		return syswarn(false, "The %d(%s) cgroup already existed", h->dfd_base, cgroup_leaf);
 
 	/*
 	 * The legacy cpuset controller needs massaging in case inheriting
@@ -1114,13 +1115,14 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 	 */
 	cpuset_v1 = !is_unified_hierarchy(h) && string_in_list(h->controllers, "cpuset");
 
-	if (payload && cgroup_limit_dir) {
+	if (payload && cgroup_leaf) {
 		/* With isolation both parts need to not already exist. */
 		fd_limit = __cgroup_tree_create(h->dfd_base, cgroup_limit_dir, 0755, cpuset_v1, false);
 		if (fd_limit < 0)
 			return syserrno(false, "Failed to create limiting cgroup %d(%s)", h->dfd_base, cgroup_limit_dir);
 
-		limit_path = must_make_path(h->mountpoint, h->container_base_path, cgroup_limit_dir, NULL);
+		TRACE("Created limit cgroup %d->%d(%s)",
+		      fd_limit, h->dfd_base, cgroup_limit_dir);
 
 		/*
 		 * With isolation the devices legacy cgroup needs to be
@@ -1131,13 +1133,27 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		if (string_in_list(h->controllers, "devices") &&
 		    !ops->setup_limits_legacy(ops, conf, true))
 			return log_error(false, "Failed to setup legacy device limits");
-	}
 
-	fd_final = __cgroup_tree_create(h->dfd_base, cgroup_leaf, 0755, cpuset_v1, false);
+		limit_path = must_make_path(h->mountpoint, h->container_base_path, cgroup_limit_dir, NULL);
+		path = must_make_path(limit_path, cgroup_leaf, NULL);
+
+		/*
+		 * If we use a separate limit cgroup, the leaf cgroup, i.e. the
+		 * cgroup the container actually resides in, is below fd_limit.
+		 */
+		fd_final = __cgroup_tree_create(fd_limit, cgroup_leaf, 0755, cpuset_v1, false);
+		TRACE("Created container cgroup %d->%d(%s)",
+		      fd_final, fd_limit, cgroup_leaf);
+	} else {
+		fd_final = __cgroup_tree_create(h->dfd_base, cgroup_limit_dir, 0755, cpuset_v1, false);
+		TRACE("Created %s cgroup %d->%d(%s)", payload ? "payload" : "monitor",
+		      fd_final, h->dfd_base, cgroup_leaf);
+
+		path = must_make_path(h->mountpoint, h->container_base_path, cgroup_limit_dir, NULL);
+	}
 	if (fd_final < 0)
 		return syserrno(false, "Failed to create %s cgroup %d(%s)", payload ? "payload" : "monitor", h->dfd_base, cgroup_limit_dir);
 
-	path = must_make_path(h->mountpoint, h->container_base_path, cgroup_leaf, NULL);
 	if (payload) {
 		h->cgfd_con = move_fd(fd_final);
 		h->container_full_path = move_ptr(path);
@@ -1147,10 +1163,10 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		else
 			h->cgfd_limit = move_fd(fd_limit);
 
-		if (!limit_path)
-			h->container_limit_path = h->container_full_path;
-		else
+		if (limit_path)
 			h->container_limit_path = move_ptr(limit_path);
+		else
+			h->container_limit_path = h->container_full_path;
 	} else {
 		h->cgfd_mon = move_fd(fd_final);
 		h->monitor_full_path = move_ptr(path);
@@ -1379,7 +1395,8 @@ __cgfsng_ops static bool cgfsng_monitor_create(struct cgroup_ops *ops, struct lx
  */
 __cgfsng_ops static bool cgfsng_payload_create(struct cgroup_ops *ops, struct lxc_handler *handler)
 {
-	__do_free char *container_cgroup = NULL, *limiting_cgroup = NULL;
+	__do_free char *container_cgroup = NULL, *__limit_cgroup = NULL;
+	char *limit_cgroup;
 	int idx = 0;
 	int i;
 	size_t len;
@@ -1404,23 +1421,26 @@ __cgfsng_ops static bool cgfsng_payload_create(struct cgroup_ops *ops, struct lx
 		return false;
 
 	if (conf->cgroup_meta.container_dir) {
-		limiting_cgroup = strdup(conf->cgroup_meta.container_dir);
-		if (!limiting_cgroup)
+		__limit_cgroup = strdup(conf->cgroup_meta.container_dir);
+		if (!__limit_cgroup)
 			return ret_set_errno(false, ENOMEM);
 
 		if (conf->cgroup_meta.namespace_dir) {
-			container_cgroup = must_make_path(limiting_cgroup,
+			container_cgroup = must_make_path(__limit_cgroup,
 							  conf->cgroup_meta.namespace_dir,
 							  NULL);
+			limit_cgroup = __limit_cgroup;
 		} else {
 			/* explicit paths but without isolation */
-			container_cgroup = move_ptr(limiting_cgroup);
+			limit_cgroup = move_ptr(__limit_cgroup);
+			container_cgroup = limit_cgroup;
 		}
 	} else if (conf->cgroup_meta.dir) {
-		container_cgroup = must_concat(&len, conf->cgroup_meta.dir, "/",
-					     DEFAULT_PAYLOAD_CGROUP_PREFIX,
-					     handler->name,
-					     CGROUP_CREATE_RETRY, NULL);
+		limit_cgroup = must_concat(&len, conf->cgroup_meta.dir, "/",
+					   DEFAULT_PAYLOAD_CGROUP_PREFIX,
+					   handler->name,
+					   CGROUP_CREATE_RETRY, NULL);
+		container_cgroup = limit_cgroup;
 	} else if (ops->cgroup_pattern) {
 		__do_free char *cgroup_tree = NULL;
 
@@ -1428,15 +1448,17 @@ __cgfsng_ops static bool cgfsng_payload_create(struct cgroup_ops *ops, struct lx
 		if (!cgroup_tree)
 			return ret_set_errno(false, ENOMEM);
 
-		container_cgroup = must_concat(&len, cgroup_tree, "/",
-					       DEFAULT_PAYLOAD_CGROUP,
-					       CGROUP_CREATE_RETRY, NULL);
+		limit_cgroup = must_concat(&len, cgroup_tree, "/",
+					   DEFAULT_PAYLOAD_CGROUP,
+					   CGROUP_CREATE_RETRY, NULL);
+		container_cgroup = limit_cgroup;
 	} else {
-		container_cgroup = must_concat(&len, DEFAULT_PAYLOAD_CGROUP_PREFIX,
-					     handler->name,
-					     CGROUP_CREATE_RETRY, NULL);
+		limit_cgroup = must_concat(&len, DEFAULT_PAYLOAD_CGROUP_PREFIX,
+					   handler->name,
+					   CGROUP_CREATE_RETRY, NULL);
+		container_cgroup = limit_cgroup;
 	}
-	if (!container_cgroup)
+	if (!limit_cgroup)
 		return ret_set_errno(false, ENOMEM);
 
 	if (!conf->cgroup_meta.container_dir) {
@@ -1449,17 +1471,15 @@ __cgfsng_ops static bool cgfsng_payload_create(struct cgroup_ops *ops, struct lx
 
 		for (i = 0; ops->hierarchies[i]; i++) {
 			if (cgroup_tree_create(ops, handler->conf,
-					       ops->hierarchies[i],
-					       container_cgroup,
-					       limiting_cgroup,
+					       ops->hierarchies[i], limit_cgroup,
+					       conf->cgroup_meta.namespace_dir,
 					       true))
 				continue;
 
 			DEBUG("Failed to create cgroup \"%s\"", ops->hierarchies[i]->container_full_path ?: "(null)");
 			for (int j = 0; j <= i; j++)
 				cgroup_tree_prune_leaf(ops->hierarchies[j],
-						       limiting_cgroup ?: container_cgroup,
-						       true);
+						       limit_cgroup, true);
 
 			idx++;
 			break;
@@ -1470,11 +1490,12 @@ __cgfsng_ops static bool cgfsng_payload_create(struct cgroup_ops *ops, struct lx
 		return log_error_errno(false, ERANGE, "Failed to create container cgroup");
 
 	ops->container_cgroup = move_ptr(container_cgroup);
-	if (limiting_cgroup)
-		ops->container_limit_cgroup = move_ptr(limiting_cgroup);
+	if (__limit_cgroup)
+		ops->container_limit_cgroup = move_ptr(__limit_cgroup);
 	else
 		ops->container_limit_cgroup = ops->container_cgroup;
-	INFO("The container process uses \"%s\" as cgroup", ops->container_cgroup);
+	INFO("The container process uses \"%s\" as inner and \"%s\" as limit cgroup",
+	     ops->container_cgroup, ops->container_limit_cgroup);
 	return true;
 }
 
