@@ -1142,14 +1142,12 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		 * cgroup the container actually resides in, is below fd_limit.
 		 */
 		fd_final = __cgroup_tree_create(fd_limit, cgroup_leaf, 0755, cpuset_v1, false);
-		TRACE("Created container cgroup %d->%d(%s)",
-		      fd_final, fd_limit, cgroup_leaf);
+		if (fd_final < 0) /* Ensure we don't leave any garbage behind. */
+			cgroup_tree_prune(h->dfd_base, cgroup_limit_dir);
 	} else {
-		fd_final = __cgroup_tree_create(h->dfd_base, cgroup_limit_dir, 0755, cpuset_v1, false);
-		TRACE("Created %s cgroup %d->%d(%s)", payload ? "payload" : "monitor",
-		      fd_final, h->dfd_base, cgroup_leaf);
-
 		path = must_make_path(h->mountpoint, h->container_base_path, cgroup_limit_dir, NULL);
+
+		fd_final = __cgroup_tree_create(h->dfd_base, cgroup_limit_dir, 0755, cpuset_v1, false);
 	}
 	if (fd_final < 0)
 		return syserrno(false, "Failed to create %s cgroup %d(%s)", payload ? "payload" : "monitor", h->dfd_base, cgroup_limit_dir);
