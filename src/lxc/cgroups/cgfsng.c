@@ -1172,7 +1172,6 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 			h->container_limit_path = h->container_full_path;
 	} else {
 		h->cgfd_mon = move_fd(fd_final);
-		h->monitor_full_path = move_ptr(path);
 	}
 
 	return true;
@@ -1199,7 +1198,6 @@ static void cgroup_tree_prune_leaf(struct hierarchy *h, const char *path_prune,
 		if (h->cgfd_mon < 0)
 			prune = false;
 
-		free_disarm(h->monitor_full_path);
 		close_prot_errno_disarm(h->cgfd_mon);
 	}
 
@@ -1384,7 +1382,7 @@ __cgfsng_ops static bool cgfsng_monitor_create(struct cgroup_ops *ops, struct lx
 					       monitor_cgroup, NULL, false))
 				continue;
 
-			DEBUG("Failed to create cgroup \"%s\"", maybe_empty(ops->hierarchies[i]->monitor_full_path));
+			DEBUG("Failed to create cgroup %s)", monitor_cgroup);
 			for (int j = 0; j <= i; j++)
 				cgroup_tree_prune_leaf(ops->hierarchies[j],
 						       monitor_cgroup, false);
@@ -1546,18 +1544,18 @@ __cgfsng_ops static bool cgfsng_monitor_enter(struct cgroup_ops *ops,
 
 		ret = lxc_writeat(h->cgfd_mon, "cgroup.procs", monitor, monitor_len);
 		if (ret)
-			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", h->monitor_full_path);
+			return log_error_errno(false, errno, "Failed to enter cgroup %d", h->cgfd_mon);
 
-		TRACE("Moved monitor into %s cgroup via %d", h->monitor_full_path, h->cgfd_mon);
+		TRACE("Moved monitor into cgroup %d", h->cgfd_mon);
 
 		if (handler->transient_pid <= 0)
 			continue;
 
 		ret = lxc_writeat(h->cgfd_mon, "cgroup.procs", transient, transient_len);
 		if (ret)
-			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", h->monitor_full_path);
+			return log_error_errno(false, errno, "Failed to enter cgroup %d", h->cgfd_mon);
 
-		TRACE("Moved transient process into %s cgroup via %d", h->monitor_full_path, h->cgfd_mon);
+		TRACE("Moved transient process into cgroup %d", h->cgfd_mon);
 
 		/*
 		 * we don't keep the fds for non-unified hierarchies around

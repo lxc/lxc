@@ -62,9 +62,6 @@ typedef enum {
  * - The full path to the container's limiting cgroup. May simply point to
  *   container_full_path.
  *
- * @monitor_full_path
- * - The full path to the monitor's cgroup.
- *
  * @version
  * - legacy hierarchy
  *   If the hierarchy is a legacy hierarchy this will be set to
@@ -84,7 +81,6 @@ struct hierarchy {
 	char *container_base_path;
 	char *container_full_path;
 	char *container_limit_path;
-	char *monitor_full_path;
 	int version;
 
 	/* cgroup2 only */
@@ -101,7 +97,7 @@ struct hierarchy {
 	 */
 	int cgfd_limit;
 
-	/* File descriptor for the monitor's cgroup @monitor_full_path. */
+	/* File descriptor for the monitor's cgroup. */
 	int cgfd_mon;
 
 	/* File descriptor for the controller's mountpoint @mountpoint. */
