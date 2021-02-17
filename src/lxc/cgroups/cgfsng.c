@@ -1225,6 +1225,11 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 	}
 	conf = handler->conf;
 
+	if (!ops->monitor_cgroup) {
+		WARN("Uninitialized monitor cgroup");
+		return;
+	}
+
 	len = strnprintf(pidstr, sizeof(pidstr), "%d", handler->monitor_pid);
 	if (len < 0)
 		return;
@@ -1235,9 +1240,6 @@ __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
 		struct hierarchy *h = ops->hierarchies[i];
 		bool cpuset_v1 = false;
 		int ret;
-
-		if (!h->monitor_full_path)
-			continue;
 
 		/* Monitor might have died before we entered the cgroup. */
 		if (handler->monitor_pid <= 0) {
