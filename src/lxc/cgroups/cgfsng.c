@@ -1142,8 +1142,13 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		 * cgroup the container actually resides in, is below fd_limit.
 		 */
 		fd_final = __cgroup_tree_create(fd_limit, cgroup_leaf, 0755, cpuset_v1, false);
-		if (fd_final < 0) /* Ensure we don't leave any garbage behind. */
-			cgroup_tree_prune(h->dfd_base, cgroup_limit_dir);
+		if (fd_final < 0) {
+			/* Ensure we don't leave any garbage behind. */
+			if (cgroup_tree_prune(h->dfd_base, cgroup_limit_dir))
+				SYSWARN("Failed to destroy %d(%s)", h->dfd_base, cgroup_limit_dir);
+			else
+				TRACE("Removed cgroup tree %d(%s)", h->dfd_base, cgroup_limit_dir);
+		}
 	} else {
 		path = must_make_path(h->mountpoint, h->container_base_path, cgroup_limit_dir, NULL);
 
