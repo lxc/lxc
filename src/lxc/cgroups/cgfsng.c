@@ -1101,7 +1101,7 @@ static int __cgroup_tree_create(int dfd_base, const char *path, mode_t mode,
 
 static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 			       struct hierarchy *h, const char *cgroup_leaf,
-			       bool payload, const char *cgroup_limit_dir)
+			       const char *cgroup_limit_dir, bool payload)
 {
 	__do_close int fd_limit = -EBADF, fd_final = -EBADF;
 	__do_free char *path = NULL, *limit_path = NULL;
@@ -1356,7 +1356,7 @@ __cgfsng_ops static bool cgfsng_monitor_create(struct cgroup_ops *ops, struct lx
 		for (i = 0; ops->hierarchies[i]; i++) {
 			if (cgroup_tree_create(ops, handler->conf,
 					       ops->hierarchies[i],
-					       monitor_cgroup, false, NULL))
+					       monitor_cgroup, NULL, false))
 				continue;
 
 			DEBUG("Failed to create cgroup \"%s\"", maybe_empty(ops->hierarchies[i]->monitor_full_path));
@@ -1452,8 +1452,9 @@ __cgfsng_ops static bool cgfsng_payload_create(struct cgroup_ops *ops, struct lx
 		for (i = 0; ops->hierarchies[i]; i++) {
 			if (cgroup_tree_create(ops, handler->conf,
 					       ops->hierarchies[i],
-					       container_cgroup, true,
-					       limiting_cgroup))
+					       container_cgroup,
+					       limiting_cgroup,
+					       true))
 				continue;
 
 			DEBUG("Failed to create cgroup \"%s\"", ops->hierarchies[i]->container_full_path ?: "(null)");
