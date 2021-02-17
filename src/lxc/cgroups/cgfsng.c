@@ -2143,6 +2143,9 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		if (!cg_mount_needs_subdirs(cg_flags))
 			continue;
 
+		if (!cgroup_root)
+			cgroup_root = must_make_path(rootfs_mnt, DEFAULT_CGROUP_MOUNTPOINT, NULL);
+
 		controllerpath = must_make_path(cgroup_root, controller, NULL);
 		if (dir_exists(controllerpath))
 			continue;
