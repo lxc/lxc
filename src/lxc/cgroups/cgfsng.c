@@ -2014,18 +2014,8 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			wants_force_mount = true;
 	}
 
-	if (cgns_supported() && container_uses_namespace(handler, CLONE_NEWCGROUP)) {
+	if (cgns_supported() && container_uses_namespace(handler, CLONE_NEWCGROUP))
 		in_cgroup_ns = true;
-		/*
-		 * When cgroup namespaces are supported and used by the
-		 * container the LXC_AUTO_CGROUP_MIXED and
-		 * LXC_AUTO_CGROUP_FULL_MIXED auto mount options don't apply
-		 * since the parent directory of the container's cgroup is not
-		 * accessible to the container.
-		 */
-		cgroup_automount_type &= ~LXC_AUTO_CGROUP_MIXED;
-		cgroup_automount_type &= ~LXC_AUTO_CGROUP_FULL_MIXED;
-	}
 
 	if (in_cgroup_ns && !wants_force_mount)
 		return log_trace(true, "Mounting cgroups not requested or needed");
