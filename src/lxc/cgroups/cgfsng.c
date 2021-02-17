@@ -1949,8 +1949,33 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	if ((cg_flags & LXC_AUTO_CGROUP_MASK) == 0)
 		return log_trace(true, "No cgroup mounts requested");
 
-	if (cg_flags & LXC_AUTO_CGROUP_FORCE)
+	if (cg_flags & LXC_AUTO_CGROUP_FORCE) {
+		cg_flags &= ~LXC_AUTO_CGROUP_FORCE;
 		wants_force_mount = true;
+	}
+
+	switch (cg_flags) {
+	case LXC_AUTO_CGROUP_RO:
+		TRACE("Read-only cgroup mounts requested");
+		break;
+	case LXC_AUTO_CGROUP_RW:
+		TRACE("Read-write cgroup mounts requested");
+		break;
+	case LXC_AUTO_CGROUP_MIXED:
+		TRACE("Mixed cgroup mounts requested");
+		break;
+	case LXC_AUTO_CGROUP_FULL_RO:
+		TRACE("Full read-only cgroup mounts requested");
+		break;
+	case LXC_AUTO_CGROUP_FULL_RW:
+		TRACE("Full read-write cgroup mounts requested");
+		break;
+	case LXC_AUTO_CGROUP_FULL_MIXED:
+		TRACE("Full mixed cgroup mounts requested");
+		break;
+	default:
+		return log_error_errno(false, EINVAL, "Invalid cgroup mount options specified");
+	}
 
 	if (!wants_force_mount) {
 		wants_force_mount = !lxc_wants_cap(CAP_SYS_ADMIN, conf);
