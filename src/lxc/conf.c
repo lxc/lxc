@@ -687,7 +687,7 @@ static int lxc_mount_auto_mounts(struct lxc_handler *handler, int flags)
 		 * CAP_SYS_ADMIN, do only default to :mixed, because then the
 		 * container can't remount it read-write.
 		 */
-		if (cg_flags == LXC_AUTO_CGROUP_NOSPEC || cg_flags == LXC_AUTO_CGROUP_FULL_NOSPEC) {
+		if ((cg_flags == LXC_AUTO_CGROUP_NOSPEC) || (cg_flags == LXC_AUTO_CGROUP_FULL_NOSPEC)) {
 			int has_sys_admin = 0;
 
 			if (!lxc_list_empty(&conf->keepcaps))
