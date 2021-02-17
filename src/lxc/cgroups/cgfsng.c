@@ -791,9 +791,6 @@ static int cgroup_tree_remove(struct hierarchy **hierarchies, const char *path_p
 		struct hierarchy *h = hierarchies[i];
 		int ret;
 
-		if (!h->container_limit_path)
-			continue;
-
 		ret = cgroup_tree_prune(h->dfd_base, path_prune);
 		if (ret < 0)
 			SYSWARN("Failed to destroy %d(%s)", h->dfd_base, path_prune);
