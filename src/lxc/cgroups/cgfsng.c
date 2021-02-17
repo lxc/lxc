@@ -1987,15 +1987,6 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	if (in_cgroup_ns && !wants_force_mount)
 		return log_trace(true, "Mounting cgroups not requested or needed");
 
-	/*
-	 * Fallback to a mixed layout when the user did not specify what cgroup
-	 * layout they want.
-	 */
-	if ((cg_flags & LXC_AUTO_CGROUP_NOSPEC))
-		cg_flags = LXC_AUTO_CGROUP_MIXED;
-	else if (cg_flags & LXC_AUTO_CGROUP_FULL_NOSPEC)
-		cg_flags = LXC_AUTO_CGROUP_FULL_MIXED;
-
 	/* This is really the codepath that we want. */
 	if (pure_unified_layout(ops)) {
 		__do_close int dfd_mnt_unified = -EBADF;
