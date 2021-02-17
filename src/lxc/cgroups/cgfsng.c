@@ -1407,7 +1407,7 @@ __cgfsng_ops static bool cgfsng_payload_create(struct cgroup_ops *ops, struct lx
 	if (!ops->hierarchies)
 		return true;
 
-	if (ops->container_cgroup)
+	if (ops->container_cgroup || ops->container_limit_cgroup)
 		return ret_set_errno(false, EEXIST);
 
 	if (!handler || !handler->conf)
