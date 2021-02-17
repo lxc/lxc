@@ -1163,8 +1163,8 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 	return true;
 }
 
-static void cgroup_tree_leaf_remove(struct hierarchy *h, const char *path_prune,
-				    bool payload)
+static void cgroup_tree_prune_leaf(struct hierarchy *h, const char *path_prune,
+				   bool payload)
 {
 	int ret;
 
@@ -1359,9 +1359,9 @@ __cgfsng_ops static bool cgfsng_monitor_create(struct cgroup_ops *ops, struct lx
 				continue;
 
 			DEBUG("Failed to create cgroup \"%s\"", maybe_empty(ops->hierarchies[i]->monitor_full_path));
-			for (int j = 0; j < i; j++)
-				cgroup_tree_leaf_remove(ops->hierarchies[j],
-							monitor_cgroup, false);
+			for (int j = 0; j <= i; j++)
+				cgroup_tree_prune_leaf(ops->hierarchies[j],
+						       monitor_cgroup, false);
 
 			idx++;
 			break;
@@ -1458,10 +1458,10 @@ __cgfsng_ops static bool cgfsng_payload_create(struct cgroup_ops *ops, struct lx
 				continue;
 
 			DEBUG("Failed to create cgroup \"%s\"", ops->hierarchies[i]->container_full_path ?: "(null)");
-			for (int j = 0; j < i; j++)
-				cgroup_tree_leaf_remove(ops->hierarchies[j],
-							limiting_cgroup ?: container_cgroup,
-							true);
+			for (int j = 0; j <= i; j++)
+				cgroup_tree_prune_leaf(ops->hierarchies[j],
+						       limiting_cgroup ?: container_cgroup,
+						       true);
 
 			idx++;
 			break;
