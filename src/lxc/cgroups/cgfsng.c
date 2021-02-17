@@ -1060,10 +1060,10 @@ static int __cgroup_tree_create(int dfd_base, const char *path, mode_t mode,
 		 * we're paranoid here and check that the path is neither
 		 * absolute nor walks upwards.
 		 */
-		if (abspath(buf))
+		if (abspath(cur))
 			return syserrno_set(-EINVAL, "No absolute paths allowed");
 
-		if (strnequal(buf, "..", STRLITERALLEN("..")))
+		if (strnequal(cur, "..", STRLITERALLEN("..")))
 			return syserrno_set(-EINVAL, "No upward walking paths allowed");
 
 		ret = mkdirat(dfd_cur, cur, mode);
