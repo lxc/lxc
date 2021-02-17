@@ -1745,13 +1745,13 @@ static int lxc_spawn(struct lxc_handler *handler)
 		goto out_delete_net;
 	}
 
-	if (!cgroup_ops->payload_enter(cgroup_ops, handler)) {
-		ERROR("Failed to enter cgroups");
+	if (!cgroup_ops->payload_delegate_controllers(cgroup_ops)) {
+		ERROR("Failed to delegate controllers to payload cgroup");
 		goto out_delete_net;
 	}
 
-	if (!cgroup_ops->payload_delegate_controllers(cgroup_ops)) {
-		ERROR("Failed to delegate controllers to payload cgroup");
+	if (!cgroup_ops->payload_enter(cgroup_ops, handler)) {
+		ERROR("Failed to enter cgroups");
 		goto out_delete_net;
 	}
 
@@ -1955,14 +1955,14 @@ int __lxc_start(struct lxc_handler *handler, struct lxc_operations *ops,
 		goto out_abort;
 	}
 
-	if (!cgroup_ops->monitor_enter(cgroup_ops, handler)) {
-		ERROR("Failed to enter monitor cgroup");
+	if (!cgroup_ops->monitor_delegate_controllers(cgroup_ops)) {
+		ERROR("Failed to delegate controllers to monitor cgroup");
 		ret = -1;
 		goto out_abort;
 	}
 
-	if (!cgroup_ops->monitor_delegate_controllers(cgroup_ops)) {
-		ERROR("Failed to delegate controllers to monitor cgroup");
+	if (!cgroup_ops->monitor_enter(cgroup_ops, handler)) {
+		ERROR("Failed to enter monitor cgroup");
 		ret = -1;
 		goto out_abort;
 	}
