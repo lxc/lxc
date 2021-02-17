@@ -1846,17 +1846,32 @@ int fix_stdio_permissions(uid_t uid)
 
 int print_r(int fd, const char *path)
 {
-	__do_close int dfd = -EBADF;
+	__do_close int dfd = -EBADF, dfd_dup = -EBADF;
 	__do_closedir DIR *dir = NULL;
 	int ret = 0;
 	struct dirent *direntp;
 	struct stat st;
 
-	if (is_empty_string(path))
-		dfd = dup(fd);
-	else
-		dfd = openat(fd, path, O_CLOEXEC | O_DIRECTORY);
+	if (is_empty_string(path)) {
+		char buf[LXC_PROC_SELF_FD_LEN];
+
+		ret = strnprintf(buf, sizeof(buf), "/proc/self/fd/%d", fd);
+		if (ret < 0)
+			return ret_errno(EIO);
+
+		/*
+		 * O_PATH file descriptors can't be used so we need to re-open
+		 * just in case.
+		 */
+		dfd = openat(-EBADF, buf, O_CLOEXEC | O_DIRECTORY, 0);
+	} else {
+		dfd = openat(fd, path, O_CLOEXEC | O_DIRECTORY, 0);
+	}
 	if (dfd < 0)
+		return -1;
+
+	dfd_dup = dup_cloexec(dfd);
+	if (dfd_dup < 0)
 		return -1;
 
 	dir = fdopendir(dfd);
@@ -1870,26 +1885,29 @@ int print_r(int fd, const char *path)
 		    !strcmp(direntp->d_name, ".."))
 			continue;
 
-		ret = fstatat(dfd, direntp->d_name, &st, AT_SYMLINK_NOFOLLOW);
+		ret = fstatat(dfd_dup, direntp->d_name, &st, AT_SYMLINK_NOFOLLOW);
 		if (ret < 0 && errno != ENOENT)
 			break;
 
 		ret = 0;
 		if (S_ISDIR(st.st_mode))
-			ret = print_r(dfd, direntp->d_name);
+			ret = print_r(dfd_dup, direntp->d_name);
 		else
-			INFO("mode(%o):uid(%d):gid(%d) -> %s/%s\n",
-			     (st.st_mode & ~S_IFMT), st.st_uid, st.st_gid, path,
+			INFO("mode(%o):uid(%d):gid(%d) -> %d/%s\n",
+			     (st.st_mode & ~S_IFMT), st.st_uid, st.st_gid, dfd_dup,
 			     direntp->d_name);
 		if (ret < 0 && errno != ENOENT)
 			break;
 	}
 
-	ret = fstatat(fd, path, &st, AT_SYMLINK_NOFOLLOW);
+	if (is_empty_string(path))
+		ret = fstatat(fd, "", &st, AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW | AT_EMPTY_PATH);
+	else
+		ret = fstatat(fd, path, &st, AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW);
 	if (ret)
 		return -1;
 	else
 		INFO("mode(%o):uid(%d):gid(%d) -> %s",
-		     (st.st_mode & ~S_IFMT), st.st_uid, st.st_gid, path);
+		     (st.st_mode & ~S_IFMT), st.st_uid, st.st_gid, maybe_empty(path));
 	return ret;
 }
