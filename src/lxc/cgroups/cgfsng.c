@@ -1050,11 +1050,11 @@ static int __cgroup_tree_create(int dfd_base, const char *path, mode_t mode,
 	char buf[PATH_MAX];
 
 	if (is_empty_string(path))
-		return ret_errno(-EINVAL);
+		return ret_errno(EINVAL);
 
 	len = strlcpy(buf, path, sizeof(buf));
 	if (len >= sizeof(buf))
-		return -E2BIG;
+		return ret_errno(E2BIG);
 
 	lxc_iterate_parts(cur, buf, "/") {
 		/*
