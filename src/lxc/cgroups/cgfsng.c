@@ -1163,26 +1163,28 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 	return true;
 }
 
-static void cgroup_tree_leaf_remove(struct hierarchy *h, bool payload)
+static void cgroup_tree_leaf_remove(struct hierarchy *h, const char *path_prune,
+				    bool payload)
 {
-	__do_free char *full_path = NULL, *__limit_path = NULL;
-	char *limit_path = NULL;
+	int ret;
 
 	if (payload) {
-		__lxc_unused __do_close int fd = move_fd(h->cgfd_con);
-		full_path = move_ptr(h->container_full_path);
-		limit_path = move_ptr(h->container_limit_path);
-		if (limit_path != full_path)
-			__limit_path = limit_path;
+		if (h->container_full_path != h->container_limit_path)
+			free_disarm(h->container_limit_path);
+		free_disarm(h->container_full_path);
+
+		close_prot_errno_disarm(h->cgfd_con);
+		close_prot_errno_disarm(h->cgfd_limit);
 	} else {
-		__lxc_unused __do_close int fd = move_fd(h->cgfd_mon);
-		full_path = move_ptr(h->monitor_full_path);
+		free_disarm(h->monitor_full_path);
+		close_prot_errno_disarm(h->cgfd_mon);
 	}
 
-	if (full_path && rmdir(full_path))
-		SYSWARN("Failed to rmdir(\"%s\") cgroup", full_path);
-	if (limit_path && rmdir(limit_path))
-		SYSWARN("Failed to rmdir(\"%s\") cgroup", limit_path);
+	ret = cgroup_tree_prune(h->dfd_base, path_prune);
+	if (ret < 0)
+		SYSWARN("Failed to destroy %d(%s)", h->dfd_base, path_prune);
+	else
+		TRACE("Removed cgroup tree %d(%s)", h->dfd_base, path_prune);
 }
 
 __cgfsng_ops static void cgfsng_monitor_destroy(struct cgroup_ops *ops,
@@ -1358,7 +1360,8 @@ __cgfsng_ops static bool cgfsng_monitor_create(struct cgroup_ops *ops, struct lx
 
 			DEBUG("Failed to create cgroup \"%s\"", maybe_empty(ops->hierarchies[i]->monitor_full_path));
 			for (int j = 0; j < i; j++)
-				cgroup_tree_leaf_remove(ops->hierarchies[j], false);
+				cgroup_tree_leaf_remove(ops->hierarchies[j],
+							monitor_cgroup, false);
 
 			idx++;
 			break;
@@ -1456,7 +1459,9 @@ __cgfsng_ops static bool cgfsng_payload_create(struct cgroup_ops *ops, struct lx
 
 			DEBUG("Failed to create cgroup \"%s\"", ops->hierarchies[i]->container_full_path ?: "(null)");
 			for (int j = 0; j < i; j++)
-				cgroup_tree_leaf_remove(ops->hierarchies[j], true);
+				cgroup_tree_leaf_remove(ops->hierarchies[j],
+							limiting_cgroup ?: container_cgroup,
+							true);
 
 			idx++;
 			break;
