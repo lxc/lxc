@@ -17,6 +17,7 @@
 
 #include "cgroup2_devices.h"
 #include "config.h"
+#include "file_utils.h"
 #include "log.h"
 #include "macro.h"
 #include "memory_utils.h"
@@ -73,7 +74,7 @@ void bpf_program_free(struct bpf_program *prog)
 	if (prog->kernel_fd >= 0)
 		close(prog->kernel_fd);
 	free(prog->instructions);
-	free(prog->attached_path);
+	close_prot_errno_disarm(prog->fd_cgroup);
 	free(prog);
 }
 
@@ -185,6 +186,7 @@ struct bpf_program *bpf_program_new(uint32_t prog_type)
 
 	prog->prog_type = prog_type;
 	prog->kernel_fd = -EBADF;
+	prog->fd_cgroup = -EBADF;
 	/*
 	 * By default a allowlist is used unless the user tells us otherwise.
 	 */
@@ -360,21 +362,20 @@ static int bpf_program_load_kernel(struct bpf_program *prog)
 	return 0;
 }
 
-int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
-			      const char *path, uint32_t flags)
+int bpf_program_cgroup_attach(struct bpf_program *prog, int type, int fd_cgroup,
+			      uint32_t flags)
 {
-	__do_close int fd = -EBADF;
-	__do_free char *copy = NULL;
-	union bpf_attr *attr;
+	__do_close int fd_cgroup_dup = -EBADF;
 	int ret;
+	union bpf_attr *attr;
 
-	if (!path || !prog)
-		return ret_set_errno(-1, EINVAL);
+	if (fd_cgroup < 0)
+		return ret_errno(EBADF);
 
 	if (flags & ~(BPF_F_ALLOW_OVERRIDE | BPF_F_ALLOW_MULTI))
 		return log_error_errno(-1, EINVAL, "Invalid flags for bpf program");
 
-	if (prog->attached_path) {
+	if (prog->fd_cgroup >= 0) {
 		if (prog->attached_type != type)
 			return log_error_errno(-1, EBUSY, "Wrong type for bpf program");
 
@@ -382,24 +383,20 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
 			return log_error_errno(-1, EBUSY, "Wrong flags for bpf program");
 
 		if (flags != BPF_F_ALLOW_OVERRIDE)
-			return true;
+			return 0;
 	}
+
+	fd_cgroup_dup = dup_cloexec(fd_cgroup);
+	if (fd_cgroup_dup < 0)
+		return -errno;
 
 	ret = bpf_program_load_kernel(prog);
 	if (ret < 0)
 		return log_error_errno(-1, ret, "Failed to load bpf program");
 
-	copy = strdup(path);
-	if (!copy)
-		return log_error_errno(-1, ENOMEM, "Failed to duplicate cgroup path %s", path);
-
-	fd = open(path, O_DIRECTORY | O_RDONLY | O_CLOEXEC);
-	if (fd < 0)
-		return log_error_errno(-1, errno, "Failed to open cgroup path %s", path);
-
 	attr = &(union bpf_attr){
 		.attach_type	= type,
-		.target_fd	= fd,
+		.target_fd	= fd_cgroup_dup,
 		.attach_bpf_fd	= prog->kernel_fd,
 		.attach_flags	= flags,
 	};
@@ -408,49 +405,40 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to attach bpf program");
 
-	free_move_ptr(prog->attached_path, copy);
+	close_move_fd(prog->fd_cgroup, fd_cgroup_dup);
 	prog->attached_type = type;
 	prog->attached_flags = flags;
 
-	TRACE("Loaded and attached bpf program to cgroup %s", prog->attached_path);
+	TRACE("Loaded and attached bpf program to cgroup %d", prog->fd_cgroup);
 	return 0;
 }
 
 int bpf_program_cgroup_detach(struct bpf_program *prog)
 {
-	__do_close int fd = -EBADF;
 	int ret;
+	union bpf_attr *attr;
 
 	if (!prog)
 		return 0;
 
-	if (!prog->attached_path)
+	if (prog->fd_cgroup < 0)
 		return 0;
 
-	fd = open(prog->attached_path, O_DIRECTORY | O_RDONLY | O_CLOEXEC);
-	if (fd < 0) {
-		if (errno != ENOENT)
-			return log_error_errno(-1, errno, "Failed to open attach cgroup %s",
-					       prog->attached_path);
-	} else {
-		union bpf_attr *attr;
+	attr = &(union bpf_attr){
+		.attach_type = prog->attached_type,
+		.target_fd = prog->fd_cgroup,
+		.attach_bpf_fd = prog->kernel_fd,
+	};
 
-		attr = &(union bpf_attr){
-			.attach_type	= prog->attached_type,
-			.target_fd	= fd,
-			.attach_bpf_fd	= prog->kernel_fd,
-		};
+	ret = bpf(BPF_PROG_DETACH, attr, sizeof(*attr));
+	if (ret < 0)
+		return syserrno(-errno, "Failed to detach bpf program from cgroup %d",
+				prog->fd_cgroup);
 
-		ret = bpf(BPF_PROG_DETACH, attr, sizeof(*attr));
-		if (ret < 0)
-			return log_error_errno(-1, errno, "Failed to detach bpf program from cgroup %s",
-					       prog->attached_path);
-	}
+	TRACE("Detached bpf program from cgroup %d", prog->fd_cgroup);
+	close_prot_errno_disarm(prog->fd_cgroup);
 
-        TRACE("Detached bpf program from cgroup %s", prog->attached_path);
-        free_disarm(prog->attached_path);
-
-        return 0;
+	return 0;
 }
 
 void bpf_device_program_free(struct cgroup_ops *ops)

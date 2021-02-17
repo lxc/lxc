@@ -1222,6 +1222,9 @@ static int lxc_cmd_add_bpf_device_cgroup_callback(int fd, struct lxc_cmd_req *re
 	if (!unified)
 		goto respond;
 
+	if (unified->cgfd_mon < 0)
+		goto respond;
+
 	ret = bpf_list_add_device(conf, device);
 	if (ret < 0)
 		goto respond;
@@ -1247,8 +1250,7 @@ static int lxc_cmd_add_bpf_device_cgroup_callback(int fd, struct lxc_cmd_req *re
 		goto respond;
 
 	ret = bpf_program_cgroup_attach(devices, BPF_CGROUP_DEVICE,
-					unified->container_full_path,
-					BPF_F_ALLOW_MULTI);
+					unified->cgfd_mon, BPF_F_ALLOW_MULTI);
 	if (ret)
 		goto respond;
 
