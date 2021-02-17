@@ -3239,7 +3239,7 @@ static bool __cgfsng_delegate_controllers(struct cgroup_ops *ops, const char *cg
 		if (i >= 0) {
 			int fd_next;
 
-			fd_next = openat(fd_base, parts[i], PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH);
+			fd_next = open_at(fd_base, parts[i], PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH, 0);
 			if (fd_next < 0)
 				return log_error_errno(false, errno, "Failed to open %d(%s)", fd_next, parts[i]);
 			close_prot_errno_move(fd_base, fd_next);
