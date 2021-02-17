@@ -3185,13 +3185,14 @@ __cgfsng_ops static bool cgfsng_devices_activate(struct cgroup_ops *ops, struct 
 
 static bool __cgfsng_delegate_controllers(struct cgroup_ops *ops, const char *cgroup)
 {
-	__do_close int fd_base = -EBADF;
-	__do_free char *add_controllers = NULL, *base_path = NULL;
-	__do_free_string_list char **parts = NULL;
+	__do_close int dfd_final = -EBADF;
+	__do_free char *add_controllers = NULL, *copy = NULL;
 	struct hierarchy *unified = ops->unified;
-	ssize_t parts_len;
-	char **it;
+	int dfd_cur = unified->dfd_base;
+	int ret;
 	size_t full_len = 0;
+	char *cur;
+	char **it;
 
 	if (!ops->hierarchies || !pure_unified_layout(ops) ||
 	    !unified->controllers[0])
@@ -3217,42 +3218,43 @@ static bool __cgfsng_delegate_controllers(struct cgroup_ops *ops, const char *cg
 			(void)strlcat(add_controllers, " ", full_len + 1);
 	}
 
-	base_path = must_make_path(unified->mountpoint, unified->container_base_path, NULL);
-	fd_base = lxc_open_dirfd(base_path);
-	if (fd_base < 0)
+	copy = strdup(cgroup);
+	if (!copy)
 		return false;
 
-	if (!unified_cgroup_fd(fd_base))
-		return log_error_errno(false, EINVAL, "File descriptor does not refer to cgroup2 filesystem");
+	/*
+	 * Placing the write to cgroup.subtree_control before the open() is
+	 * intentional because of the cgroup2 delegation model. It enforces
+	 * that leaf cgroups don't have any controllers enabled for delegation.
+	 */
+	lxc_iterate_parts(cur, copy, "/") {
+		/*
+		 * Even though we vetted the paths when we parsed the config
+		 * we're paranoid here and check that the path is neither
+		 * absolute nor walks upwards.
+		 */
+		if (abspath(cur))
+			return syserrno_set(-EINVAL, "No absolute paths allowed");
 
-	parts = lxc_string_split(cgroup, '/');
-	if (!parts)
-		return false;
+		if (strnequal(cur, "..", STRLITERALLEN("..")))
+			return syserrno_set(-EINVAL, "No upward walking paths allowed");
 
-	parts_len = lxc_array_len((void **)parts);
-	if (parts_len > 0)
-		parts_len--;
-
-	for (ssize_t i = -1; i < parts_len; i++) {
-		int ret;
-
-		if (i >= 0) {
-			int fd_next;
-
-			fd_next = open_at(fd_base, parts[i], PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH, 0);
-			if (fd_next < 0)
-				return log_error_errno(false, errno, "Failed to open %d(%s)", fd_next, parts[i]);
-			close_prot_errno_move(fd_base, fd_next);
-		}
-
-		ret = lxc_writeat(fd_base, "cgroup.subtree_control", add_controllers, full_len);
+		ret = lxc_writeat(dfd_cur, "cgroup.subtree_control", add_controllers, full_len);
 		if (ret < 0)
-			return log_error_errno(false, errno,
-					       "Could not enable \"%s\" controllers in the unified cgroup %d(%s)",
-					       add_controllers, fd_base, (i >= 0) ? parts[i] : unified->container_base_path);
+			return syserrno(-errno, "Could not enable \"%s\" controllers in the unified cgroup %d", add_controllers, dfd_cur);
 
-		TRACE("Enable \"%s\" controllers in the unified cgroup %d(%s)",
-		      add_controllers, fd_base, (i >= 0) ? parts[i] : unified->container_base_path);
+		TRACE("Enabled \"%s\" controllers in the unified cgroup %d", add_controllers, dfd_cur);
+
+		dfd_final = open_at(dfd_cur, cur, PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH, 0);
+		if (dfd_final < 0)
+			return syserrno(-errno, "Fail to open directory %d(%s)", dfd_cur, cur);
+		if (dfd_cur != unified->dfd_base)
+			close(dfd_cur);
+		/*
+		 * Leave dfd_final pointing to the last fd we opened so
+		 * it will be automatically zapped if we return early.
+		 */
+		dfd_cur = dfd_final;
 	}
 
 	return true;
