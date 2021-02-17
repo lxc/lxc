@@ -1931,7 +1931,7 @@ static inline int cgroupfs_bind_mount(int cg_flags, struct hierarchy *h,
 __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 				      struct lxc_handler *handler, int cg_flags)
 {
-	__do_close int dfd_mnt_cgroupfs = -EBADF, fd_fs = -EBADF;
+	__do_close int dfd_mnt_tmpfs = -EBADF, fd_fs = -EBADF;
 	__do_free char *cgroup_root = NULL;
 	bool in_cgroup_ns = false, wants_force_mount = false;
 	struct lxc_conf *conf = handler->conf;
@@ -1996,16 +1996,15 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	else if (cg_flags & LXC_AUTO_CGROUP_FULL_NOSPEC)
 		cg_flags = LXC_AUTO_CGROUP_FULL_MIXED;
 
-	dfd_mnt_cgroupfs = open_at(rootfs->dfd_mnt,
-				   DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
-				   PROTECT_OPATH_DIRECTORY,
-				   PROTECT_LOOKUP_BENEATH_XDEV, 0);
-	if (dfd_mnt_cgroupfs < 0)
-		return syserrno(-errno, "Failed to open %d(%s)", rootfs->dfd_mnt,
-				DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
-
 	/* This is really the codepath that we want. */
 	if (pure_unified_layout(ops)) {
+		__do_close int dfd_mnt_unified = -EBADF;
+
+		dfd_mnt_unified = open_at(rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
+					  PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV, 0);
+		if (dfd_mnt_unified < 0)
+			return syserrno(-errno, "Failed to open %d(%s)", rootfs->dfd_mnt,
+					DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
 		/*
 		 * If cgroup namespaces are supported but the container will
 		 * not have CAP_SYS_ADMIN after it has started we need to mount
@@ -2036,7 +2035,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			 * 11. cgroup-full:ro:force    -> Not supported.
 			 * 12. cgroup-full:mixed:force -> Not supported.
 			 */
-			ret = cgroupfs_mount(cg_flags, ops->unified, rootfs, dfd_mnt_cgroupfs, "");
+			ret = cgroupfs_mount(cg_flags, ops->unified, rootfs, dfd_mnt_unified, "");
 			if (ret < 0)
 				return syserrno(false, "Failed to force mount cgroup filesystem in cgroup namespace");
 
@@ -2104,6 +2103,12 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		return log_error_errno(false, errno, "Failed to mount tmpfs on %s",
 				       DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
 
+	dfd_mnt_tmpfs = open_at(rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
+				PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV, 0);
+	if (dfd_mnt_tmpfs < 0)
+		return syserrno(-errno, "Failed to open %d(%s)", rootfs->dfd_mnt,
+				DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
+
 	for (int i = 0; ops->hierarchies[i]; i++) {
 		__do_free char *controllerpath = NULL, *path2 = NULL;
 		struct hierarchy *h = ops->hierarchies[i];
@@ -2113,9 +2118,9 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			continue;
 		controller++;
 
-		ret = mkdirat(dfd_mnt_cgroupfs, controller, 0000);
+		ret = mkdirat(dfd_mnt_tmpfs, controller, 0000);
 		if (ret < 0)
-			return log_error_errno(false, errno, "Failed to create cgroup mountpoint %d(%s)", dfd_mnt_cgroupfs, controller);
+			return log_error_errno(false, errno, "Failed to create cgroup mountpoint %d(%s)", dfd_mnt_tmpfs, controller);
 
 		if (in_cgroup_ns && wants_force_mount) {
 			/*
@@ -2123,7 +2128,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			 * will not have CAP_SYS_ADMIN after it has started we
 			 * need to mount the cgroups manually.
 			 */
-			ret = cgroupfs_mount(cg_flags, h, rootfs, dfd_mnt_cgroupfs, controller);
+			ret = cgroupfs_mount(cg_flags, h, rootfs, dfd_mnt_tmpfs, controller);
 			if (ret < 0)
 				return false;
 
@@ -2131,7 +2136,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		}
 
 		/* Here is where the ancient kernel section begins. */
-		ret = cgroupfs_bind_mount(cg_flags, h, rootfs, dfd_mnt_cgroupfs, controller);
+		ret = cgroupfs_bind_mount(cg_flags, h, rootfs, dfd_mnt_tmpfs, controller);
 		if (ret < 0)
 			return false;
 
