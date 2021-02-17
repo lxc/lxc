@@ -1770,7 +1770,16 @@ __cgfsng_ops static void cgfsng_payload_finalize(struct cgroup_ops *ops)
 /* cgroup-full:* is done, no need to create subdirs */
 static inline bool cg_mount_needs_subdirs(int cg_flags)
 {
-	return !(cg_flags >= LXC_AUTO_CGROUP_FULL_RO);
+	switch (cg_flags) {
+	case LXC_AUTO_CGROUP_RO:
+		return true;
+	case LXC_AUTO_CGROUP_RW:
+		return true;
+	case LXC_AUTO_CGROUP_MIXED:
+		return true;
+	}
+
+	return false;
 }
 
 /* After $rootfs/sys/fs/container/controller/the/cg/path has been created,
@@ -1785,7 +1794,7 @@ static int cg_legacy_mount_controllers(int cg_flags, struct hierarchy *h,
 	int ret, remount_flags;
 	int flags = MS_BIND;
 
-	if ((cg_flags & LXC_AUTO_CGROUP_RO) || (cg_flags & LXC_AUTO_CGROUP_MIXED)) {
+	if ((cg_flags == LXC_AUTO_CGROUP_RO) || (cg_flags == LXC_AUTO_CGROUP_MIXED)) {
 		ret = mount(controllerpath, controllerpath, "cgroup", MS_BIND, NULL);
 		if (ret < 0)
 			return log_error_errno(-1, errno, "Failed to bind mount \"%s\" onto \"%s\"",
@@ -1805,7 +1814,7 @@ static int cg_legacy_mount_controllers(int cg_flags, struct hierarchy *h,
 
 	sourcepath = must_make_path(h->mountpoint, h->container_base_path,
 				    container_cgroup, NULL);
-	if ((cg_flags & LXC_AUTO_CGROUP_RO))
+	if (cg_flags == LXC_AUTO_CGROUP_RO)
 		flags |= MS_RDONLY;
 
 	ret = mount(sourcepath, cgpath, "cgroup", flags, NULL);
@@ -1850,8 +1859,8 @@ static int __cgroupfs_mount(int cg_flags, struct hierarchy *h,
 	flags |= MOUNT_ATTR_NODEV;
 	flags |= MOUNT_ATTR_RELATIME;
 
-	if ((cg_flags & LXC_AUTO_CGROUP_RO) ||
-	    (cg_flags & LXC_AUTO_CGROUP_FULL_RO))
+	if ((cg_flags == LXC_AUTO_CGROUP_RO) ||
+	    (cg_flags == LXC_AUTO_CGROUP_FULL_RO))
 		flags |= MOUNT_ATTR_RDONLY;
 
 	if (is_unified_hierarchy(h)) {
@@ -1919,9 +1928,16 @@ static inline int cgroupfs_bind_mount(int cg_flags, struct hierarchy *h,
 				      int dfd_mnt_cgroupfs,
 				      const char *hierarchy_mnt)
 {
-	if (!(cg_flags & LXC_AUTO_CGROUP_FULL_RO) &&
-	    !(cg_flags & LXC_AUTO_CGROUP_FULL_MIXED))
+	switch (cg_flags) {
+	case LXC_AUTO_CGROUP_FULL_RO:
+		break;
+	case LXC_AUTO_CGROUP_FULL_RW:
+		break;
+	case LXC_AUTO_CGROUP_FULL_MIXED:
+		break;
+	default:
 		return 0;
+	}
 
 	return __cgroupfs_mount(cg_flags, h, rootfs, dfd_mnt_cgroupfs, hierarchy_mnt);
 }
