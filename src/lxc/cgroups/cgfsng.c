@@ -1178,9 +1178,13 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 static void cgroup_tree_prune_leaf(struct hierarchy *h, const char *path_prune,
 				   bool payload)
 {
-	int ret;
+	bool prune = true;
 
 	if (payload) {
+		/* Check whether we actually created the cgroup to prune. */
+		if (h->cgfd_limit < 0)
+			prune = false;
+
 		if (h->container_full_path != h->container_limit_path)
 			free_disarm(h->container_limit_path);
 		free_disarm(h->container_full_path);
@@ -1188,12 +1192,19 @@ static void cgroup_tree_prune_leaf(struct hierarchy *h, const char *path_prune,
 		close_prot_errno_disarm(h->cgfd_con);
 		close_prot_errno_disarm(h->cgfd_limit);
 	} else {
+		/* Check whether we actually created the cgroup to prune. */
+		if (h->cgfd_mon < 0)
+			prune = false;
+
 		free_disarm(h->monitor_full_path);
 		close_prot_errno_disarm(h->cgfd_mon);
 	}
 
-	ret = cgroup_tree_prune(h->dfd_base, path_prune);
-	if (ret < 0)
+	/* We didn't create this cgroup. */
+	if (!prune)
+		return;
+
+	if (cgroup_tree_prune(h->dfd_base, path_prune))
 		SYSWARN("Failed to destroy %d(%s)", h->dfd_base, path_prune);
 	else
 		TRACE("Removed cgroup tree %d(%s)", h->dfd_base, path_prune);
