@@ -49,7 +49,7 @@ struct bpf_program {
 	struct bpf_insn *instructions;
 #endif /* HAVE_STRUCT_BPF_CGROUP_DEV_CTX */
 
-	char *attached_path;
+	int fd_cgroup;
 	int attached_type;
 	uint32_t attached_flags;
 };
@@ -59,8 +59,8 @@ __hidden extern struct bpf_program *bpf_program_new(uint32_t prog_type);
 __hidden extern int bpf_program_init(struct bpf_program *prog);
 __hidden extern int bpf_program_append_device(struct bpf_program *prog, struct device_item *device);
 __hidden extern int bpf_program_finalize(struct bpf_program *prog);
-__hidden extern int bpf_program_cgroup_attach(struct bpf_program *prog, int type, const char *path,
-					      uint32_t flags);
+__hidden extern int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
+					      int fd_cgroup, uint32_t flags);
 __hidden extern int bpf_program_cgroup_detach(struct bpf_program *prog);
 __hidden extern void bpf_program_free(struct bpf_program *prog);
 __hidden extern void bpf_device_program_free(struct cgroup_ops *ops);
