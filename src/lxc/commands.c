@@ -1237,8 +1237,19 @@ static int lxc_cmd_add_bpf_device_cgroup_callback(int fd, struct lxc_cmd_req *re
 	if (ret)
 		goto respond;
 
+	bpf_device_set_type(devices, &conf->devices);
+	TRACE("Device bpf %s all devices by default",
+	      bpf_device_block_all(devices) ? "blocks" : "allows");
+
 	lxc_list_for_each(it, &conf->devices) {
 		struct device_item *cur = it->elem;
+
+		if (!bpf_device_add(devices, cur)) {
+			TRACE("Skipping type %c, major %d, minor %d, access %s, allow %d",
+			      cur->type, cur->major, cur->minor, cur->access,
+			      cur->allow);
+			continue;
+		}
 
 		ret = bpf_program_append_device(devices, cur);
 		if (ret)
