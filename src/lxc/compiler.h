@@ -19,7 +19,9 @@
 #endif
 #endif
 
-#ifndef __fallthrough
+#if __GNUC__ >= 7
+#define __fallthrough __attribute__((__fallthrough__))
+#else
 #define __fallthrough /* fall through */
 #endif
 
