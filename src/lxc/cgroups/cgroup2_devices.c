@@ -626,3 +626,87 @@ bool bpf_cgroup_devices_attach(struct cgroup_ops *ops, struct lxc_list *devices)
 	swap(prog, ops->cgroup2_devices);
 	return log_trace(true, "Attached bpf program");
 }
+
+bool bpf_cgroup_devices_update(struct cgroup_ops *ops,
+			       struct device_item *new,
+			       struct lxc_list *devices)
+{
+	__do_bpf_program_free struct bpf_program *prog = NULL;
+	static int can_use_bpf_replace = -1;
+	struct bpf_program *prog_old;
+	union bpf_attr *attr;
+	int ret;
+
+	if (!ops)
+		return ret_set_errno(false, EINVAL);
+
+	if (!pure_unified_layout(ops))
+		return ret_set_errno(false, EINVAL);
+
+	if (ops->unified->cgfd_limit < 0)
+		return ret_set_errno(false, EBADF);
+
+	ret = bpf_list_add_device(devices, new);
+	if (ret < 0)
+		return false;
+
+	/* No previous device program attached. */
+	prog_old = ops->cgroup2_devices;
+	if (!prog_old)
+		return bpf_cgroup_devices_attach(ops, devices);
+
+	prog = __bpf_cgroup_devices(devices);
+	if (!prog)
+		return syserrno(false, "Failed to create bpf program");
+
+	ret = bpf_program_load_kernel(prog);
+	if (ret < 0)
+		return syserrno(false, "Failed to load bpf program");
+
+	attr = &(union bpf_attr){
+		.attach_type	= prog_old->attached_type,
+		.target_fd	= prog_old->fd_cgroup,
+		.attach_bpf_fd	= prog->kernel_fd,
+	};
+
+	switch (can_use_bpf_replace) {
+	case 1:
+		attr->replace_bpf_fd = prog_old->kernel_fd;
+		attr->attach_flags = BPF_F_REPLACE | BPF_F_ALLOW_MULTI;
+
+		ret = bpf(BPF_PROG_ATTACH, attr, sizeof(*attr));
+		break;
+	case -1:
+		attr->replace_bpf_fd = prog_old->kernel_fd;
+		attr->attach_flags = BPF_F_REPLACE | BPF_F_ALLOW_MULTI;
+
+		can_use_bpf_replace = !bpf(BPF_PROG_ATTACH, attr, sizeof(*attr));
+		if (can_use_bpf_replace > 0)
+			break;
+
+		__fallthrough;
+	case 0:
+		attr->attach_flags = BPF_F_ALLOW_MULTI;
+		attr->replace_bpf_fd = 0;
+
+		ret = bpf(BPF_PROG_ATTACH, attr, sizeof(*attr));
+		break;
+	}
+	if (ret < 0)
+		return syserrno(false, "Failed to update bpf program");
+
+	if (can_use_bpf_replace > 0) {
+		/* The old program was automatically detached by the kernel. */
+		close_prot_errno_disarm(prog_old->kernel_fd);
+		/* The new bpf program now owns the cgroup fd. */
+		prog->fd_cgroup = move_fd(prog_old->fd_cgroup);
+		TRACE("Replaced existing bpf program");
+	} else {
+		TRACE("Appended bpf program");
+	}
+	prog->attached_type  = prog_old->attached_type;
+	prog->attached_flags = attr->attach_flags;
+	swap(prog, ops->cgroup2_devices);
+
+	return true;
+}
