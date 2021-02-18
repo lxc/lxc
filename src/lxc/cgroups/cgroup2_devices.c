@@ -365,7 +365,7 @@ static int bpf_program_load_kernel(struct bpf_program *prog)
 int bpf_program_cgroup_attach(struct bpf_program *prog, int type, int fd_cgroup,
 			      int replace_bpf_fd, __u32 flags)
 {
-	__do_close int fd_cgroup_dup = -EBADF;
+	__do_close int fd_attach = -EBADF;
 	int ret;
 	union bpf_attr *attr;
 
@@ -400,8 +400,8 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type, int fd_cgroup,
 	}
 
 	/* Leave the caller's fd alone. */
-	fd_cgroup_dup = dup_cloexec(fd_cgroup);
-	if (fd_cgroup_dup < 0)
+	fd_attach = dup_cloexec(fd_cgroup);
+	if (fd_attach < 0)
 		return -errno;
 
 	ret = bpf_program_load_kernel(prog);
@@ -410,7 +410,7 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type, int fd_cgroup,
 
 	attr = &(union bpf_attr){
 		.attach_type	= type,
-		.target_fd	= fd_cgroup_dup,
+		.target_fd	= fd_attach,
 		.attach_bpf_fd	= prog->kernel_fd,
 		.attach_flags	= flags,
 	};
@@ -422,7 +422,7 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type, int fd_cgroup,
 	if (ret < 0)
 		return syserrno_set(-errno, "Failed to attach bpf program");
 
-	close_move_fd(prog->fd_cgroup, fd_cgroup_dup);
+	swap(prog->fd_cgroup, fd_attach);
 	prog->attached_type = type;
 	prog->attached_flags = flags;
 
