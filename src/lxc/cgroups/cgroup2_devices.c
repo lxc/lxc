@@ -60,17 +60,6 @@ static int bpf_program_add_instructions(struct bpf_program *prog,
 	return 0;
 }
 
-void bpf_program_free(struct bpf_program *prog)
-{
-	if (!prog)
-		return;
-
-	(void)bpf_program_cgroup_detach(prog);
-
-	free(prog->instructions);
-	free(prog);
-}
-
 /* Memory load, dst_reg = *(uint *) (src_reg + off16) */
 #define BPF_LDX_MEM(SIZE, DST, SRC, OFF)                               \
 	((struct bpf_insn){.code = BPF_LDX | BPF_SIZE(SIZE) | BPF_MEM, \
@@ -442,7 +431,7 @@ void bpf_device_program_free(struct cgroup_ops *ops)
 {
 	if (ops->cgroup2_devices) {
 		(void)bpf_program_cgroup_detach(ops->cgroup2_devices);
-		(void)bpf_program_free(ops->cgroup2_devices);
+		bpf_program_free(ops->cgroup2_devices);
 		ops->cgroup2_devices = NULL;
 	}
 }

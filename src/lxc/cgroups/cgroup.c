@@ -71,8 +71,7 @@ void cgroup_exit(struct cgroup_ops *ops)
 
 	free_equal(ops->container_cgroup, ops->container_limit_cgroup);
 
-	if (ops->cgroup2_devices)
-		bpf_program_free(ops->cgroup2_devices);
+	bpf_device_program_free(ops);
 
 	if (ops->dfd_mnt_cgroupfs_host >= 0)
 		close(ops->dfd_mnt_cgroupfs_host);
