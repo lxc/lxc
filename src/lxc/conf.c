@@ -1713,7 +1713,7 @@ static int lxc_setup_dev_console(struct lxc_rootfs *rootfs,
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-errno, errno, "Failed to create console");
 
-	ret = fchmod(console->pty, S_IXUSR | S_IXGRP);
+	ret = fchmod(console->pty, 0620);
 	if (ret < 0)
 		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", S_IXUSR | S_IXGRP, console->name);
 
@@ -1775,7 +1775,7 @@ static int lxc_setup_ttydir_console(struct lxc_rootfs *rootfs,
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-errno, errno, "Failed to create console");
 
-	ret = fchmod(console->pty, S_IXUSR | S_IXGRP);
+	ret = fchmod(console->pty, 0620);
 	if (ret < 0)
 		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", S_IXUSR | S_IXGRP, console->name);
 
