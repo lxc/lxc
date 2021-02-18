@@ -864,11 +864,9 @@ __cgfsng_ops static void cgfsng_payload_destroy(struct cgroup_ops *ops,
 		return;
 	}
 
-#ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
 	ret = bpf_program_cgroup_detach(handler->cgroup_ops->cgroup2_devices);
 	if (ret < 0)
 		WARN("Failed to detach bpf program from cgroup");
-#endif
 
 	if (!lxc_list_empty(&handler->conf->id_map)) {
 		struct generic_userns_exec_data wrap = {
@@ -3104,7 +3102,6 @@ static int bpf_device_cgroup_prepare(struct cgroup_ops *ops,
 				     struct lxc_conf *conf, const char *key,
 				     const char *val)
 {
-#ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
 	struct device_item device_item = {};
 	int ret;
 
@@ -3118,7 +3115,6 @@ static int bpf_device_cgroup_prepare(struct cgroup_ops *ops,
 	ret = bpf_list_add_device(conf, &device_item);
 	if (ret < 0)
 		return -1;
-#endif
 	return 0;
 }
 
@@ -3172,7 +3168,6 @@ __cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
 
 __cgfsng_ops static bool cgfsng_devices_activate(struct cgroup_ops *ops, struct lxc_handler *handler)
 {
-#ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
 	__do_bpf_program_free struct bpf_program *prog = NULL;
 	int ret;
 	struct lxc_conf *conf;
@@ -3252,7 +3247,6 @@ __cgfsng_ops static bool cgfsng_devices_activate(struct cgroup_ops *ops, struct 
 	prog_old = move_ptr(ops->cgroup2_devices);
 	ops->cgroup2_devices = move_ptr(prog);
 	prog = move_ptr(prog_old);
-#endif
 	return true;
 }
 
