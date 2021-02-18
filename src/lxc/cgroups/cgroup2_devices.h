@@ -88,7 +88,6 @@ __hidden extern int bpf_program_init(struct bpf_program *prog);
 __hidden extern int bpf_program_append_device(struct bpf_program *prog, struct device_item *device);
 __hidden extern int bpf_program_finalize(struct bpf_program *prog);
 __hidden extern int bpf_program_cgroup_detach(struct bpf_program *prog);
-__hidden extern void bpf_program_free(struct bpf_program *prog);
 __hidden extern void bpf_device_program_free(struct cgroup_ops *ops);
 __hidden extern bool bpf_devices_cgroup_supported(void);
 
@@ -100,6 +99,14 @@ __hidden extern bool bpf_cgroup_devices_update(struct cgroup_ops *ops,
 					       struct device_item *new,
 					       struct lxc_list *devices);
 
+static inline void bpf_program_free(struct bpf_program *prog)
+{
+	if (prog) {
+		(void)bpf_program_cgroup_detach(prog);
+		free(prog->instructions);
+		free(prog);
+	}
+}
 define_cleanup_function(struct bpf_program *, bpf_program_free);
 #define __do_bpf_program_free call_cleaner(bpf_program_free)
 
