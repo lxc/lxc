@@ -22,10 +22,6 @@
 #include "macro.h"
 #include "memory_utils.h"
 
-#ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
-#include <linux/bpf.h>
-#include <linux/filter.h>
-
 lxc_log_define(cgroup2_devices, cgroup);
 
 #define BPF_LOG_BUF_SIZE (1 << 23) /* 8MB */
@@ -567,4 +563,3 @@ bool bpf_devices_cgroup_supported(void)
 
 	return log_trace(true, "The bpf device cgroup is supported");
 }
-#endif
