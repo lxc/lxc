@@ -1193,17 +1193,10 @@ static int lxc_cmd_add_bpf_device_cgroup_callback(int fd, struct lxc_cmd_req *re
 						  struct lxc_handler *handler,
 						  struct lxc_epoll_descr *descr)
 {
-	__do_bpf_program_free struct bpf_program *devices = NULL;
-	struct lxc_cmd_rsp rsp = {0};
-	struct lxc_conf *conf = handler->conf;
-	struct cgroup_ops *cgroup_ops = handler->cgroup_ops;
-	struct hierarchy *unified = cgroup_ops->unified;
-	int fd_replace = -EBADF;
-	__u32 flags = 0;
 	int ret;
-	struct lxc_list *it;
+	struct lxc_cmd_rsp rsp = {};
 	struct device_item *device;
-	struct bpf_program *devices_old;
+	struct lxc_conf *conf;
 
 	if (req->datalen <= 0)
 		return LXC_CMD_REAP_CLIENT_FD;
@@ -1213,81 +1206,14 @@ static int lxc_cmd_add_bpf_device_cgroup_callback(int fd, struct lxc_cmd_req *re
 
 	if (!req->data)
 		return LXC_CMD_REAP_CLIENT_FD;
+
 	device = (struct device_item *)req->data;
+	conf = handler->conf;
+	if (!bpf_cgroup_devices_update(handler->cgroup_ops, device, &conf->devices))
+		rsp.ret = -1;
+	else
+		rsp.ret = 0;
 
-	rsp.ret = -1;
-	if (!unified)
-		goto respond;
-
-	if (unified->cgfd_mon < 0)
-		goto respond;
-
-	ret = bpf_list_add_device(&conf->devices, device);
-	if (ret < 0)
-		goto respond;
-
-	devices = bpf_program_new(BPF_PROG_TYPE_CGROUP_DEVICE);
-	if (!devices)
-		goto respond;
-
-	ret = bpf_program_init(devices);
-	if (ret)
-		goto respond;
-
-	bpf_device_set_type(devices, &conf->devices);
-	TRACE("Device bpf %s all devices by default",
-	      bpf_device_block_all(devices) ? "blocks" : "allows");
-
-	lxc_list_for_each(it, &conf->devices) {
-		struct device_item *cur = it->elem;
-
-		if (!bpf_device_add(devices, cur)) {
-			TRACE("Skipping type %c, major %d, minor %d, access %s, allow %d",
-			      cur->type, cur->major, cur->minor, cur->access,
-			      cur->allow);
-			continue;
-		}
-
-		ret = bpf_program_append_device(devices, cur);
-		if (ret)
-			goto respond;
-	}
-
-	ret = bpf_program_finalize(devices);
-	if (ret)
-		goto respond;
-
-	flags |= BPF_F_ALLOW_MULTI;
-
-	devices_old = cgroup_ops->cgroup2_devices;
-	if (devices_old && devices_old->kernel_fd >= 0) {
-		flags |= BPF_F_REPLACE;
-		fd_replace = devices_old->kernel_fd;
-	}
-
-	ret = bpf_program_cgroup_attach(devices, BPF_CGROUP_DEVICE,
-					unified->cgfd_limit, fd_replace, flags);
-	if (ret)
-		goto respond;
-
-	/*
-	 * In case we replaced the current bpf program then we don't
-	 * need to detach anything. We simply need to close the old fd.
-	 */
-	if (devices_old && (flags & BPF_F_REPLACE)) {
-		close_prot_errno_disarm(devices_old->kernel_fd);
-		/* Technically not needed but better safe than segfaulted. */
-		fd_replace = -EBADF;
-	}
-
-	/* Replace old bpf program. */
-	devices_old = move_ptr(cgroup_ops->cgroup2_devices);
-	cgroup_ops->cgroup2_devices = move_ptr(devices);
-	devices = move_ptr(devices_old);
-
-	rsp.ret = 0;
-
-respond:
 	ret = lxc_cmd_rsp_send(fd, &rsp);
 	if (ret < 0)
 		return LXC_CMD_REAP_CLIENT_FD;
