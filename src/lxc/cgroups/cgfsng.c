@@ -3229,7 +3229,7 @@ __cgfsng_ops static bool cgfsng_devices_activate(struct cgroup_ops *ops, struct 
 		return log_error_errno(false, ENOMEM, "Failed to finalize bpf program");
 
 	ret = bpf_program_cgroup_attach(prog, BPF_CGROUP_DEVICE,
-					unified->cgfd_limit,
+					unified->cgfd_limit, -EBADF,
 					BPF_F_ALLOW_MULTI);
 	if (ret)
 		return log_error_errno(false, ENOMEM, "Failed to attach bpf program");
