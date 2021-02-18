@@ -19,6 +19,7 @@
 #include "compiler.h"
 #include "conf.h"
 #include "config.h"
+#include "macro.h"
 #include "memory_utils.h"
 #include "syscall_numbers.h"
 
@@ -72,41 +73,36 @@ __hidden extern int bpf_list_add_device(struct lxc_conf *conf, struct device_ite
 
 static inline struct bpf_program *bpf_program_new(uint32_t prog_type)
 {
-	errno = ENOSYS;
-	return NULL;
+	return ret_set_errno(NULL, ENOSYS);
 }
 
 static inline int bpf_program_init(struct bpf_program *prog)
 {
-	errno = ENOSYS;
-	return -1;
+	return ret_errno(ENOSYS);
 }
 
 static inline int bpf_program_append_device(struct bpf_program *prog, char type,
 					    int major, int minor,
 					    const char *access, int allow)
 {
-	errno = ENOSYS;
-	return -1;
+	return ret_errno(ENOSYS);
 }
 
 static inline int bpf_program_finalize(struct bpf_program *prog)
 {
-	errno = ENOSYS;
-	return -1;
+	return ret_errno(ENOSYS);
 }
 
 static inline int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
-					    const char *path, uint32_t flags)
+					    int fd_cgroup, int replace_bpf_fd,
+					    uint32_t flags)
 {
-	errno = ENOSYS;
-	return -1;
+	return ret_errno(ENOSYS);
 }
 
 static inline int bpf_program_cgroup_detach(struct bpf_program *prog)
 {
-	errno = ENOSYS;
-	return -1;
+	return ret_errno(ENOSYS);
 }
 
 static inline void bpf_program_free(struct bpf_program *prog)
@@ -119,14 +115,13 @@ static inline void bpf_device_program_free(struct cgroup_ops *ops)
 
 static inline bool bpf_devices_cgroup_supported(void)
 {
-	return false;
+	return ret_set_errno(false, ENOSYS);
 }
 
 static inline int bpf_list_add_device(struct lxc_conf *conf,
 				      struct device_item *device)
 {
-	errno = ENOSYS;
-	return -1;
+	return ret_errno(ENOSYS);
 }
 #endif /* !HAVE_STRUCT_BPF_CGROUP_DEV_CTX */
 
