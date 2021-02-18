@@ -1729,7 +1729,7 @@ static int lxc_setup_dev_console(struct lxc_rootfs *rootfs,
 	if (ret < 0)
 		return log_error_errno(ret, errno, "Failed to mount %d(%s) on \"%s\"", console->pty, console->name, rootfs->buf);
 
-	DEBUG("Mounted pty device %d(%s) onto \"%s\"", console->pty, console->name, rootfs->buf);
+	DEBUG("Mounted pty device %d(%s) onto \"/dev/console\"", console->pty, console->name);
 	return 0;
 }
 
