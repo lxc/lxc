@@ -269,11 +269,11 @@ struct lxc_state_client {
 	lxc_state_t states[MAX_STATE];
 };
 
-enum {
-	LXC_BPF_DEVICE_CGROUP_LOCAL_RULE = -1,
-	LXC_BPF_DEVICE_CGROUP_ALLOWLIST  =  0,
-	LXC_BPF_DEVICE_CGROUP_DENYLIST  =  1,
-};
+typedef enum lxc_bpf_devices_rule_t {
+	LXC_BPF_DEVICE_CGROUP_LOCAL_RULE	= -1,
+	LXC_BPF_DEVICE_CGROUP_ALLOWLIST		= 0,
+	LXC_BPF_DEVICE_CGROUP_DENYLIST		= 1,
+} lxc_bpf_devices_rule_t;
 
 struct device_item {
 	char type;
