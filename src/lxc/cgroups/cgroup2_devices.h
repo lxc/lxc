@@ -44,7 +44,7 @@ static inline int missing_bpf(int cmd, union bpf_attr *attr, size_t size)
 struct bpf_program {
 	int device_list_type;
 	int kernel_fd;
-	uint32_t prog_type;
+	__u32 prog_type;
 
 	size_t n_instructions;
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
@@ -53,7 +53,7 @@ struct bpf_program {
 
 	int fd_cgroup;
 	int attached_type;
-	uint32_t attached_flags;
+	__u32 attached_flags;
 };
 
 static inline bool bpf_device_block_all(const struct bpf_program *prog)
@@ -96,13 +96,14 @@ static inline void bpf_device_set_type(struct bpf_program *prog,
 }
 
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
-__hidden extern struct bpf_program *bpf_program_new(uint32_t prog_type);
+__hidden extern struct bpf_program *bpf_program_new(__u32 prog_type);
 __hidden extern int bpf_program_init(struct bpf_program *prog);
 __hidden extern int bpf_program_append_device(struct bpf_program *prog, struct device_item *device);
 __hidden extern int bpf_program_finalize(struct bpf_program *prog);
-__hidden extern int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
-					      int fd_cgroup, int replace_bpf_fd,
-					      uint32_t flags);
+__hidden extern int bpf_program_cgroup_attach(struct bpf_program *prog,
+					      int type, int fd_cgroup,
+					      __owns int replace_bpf_fd,
+					      __u32 flags);
 __hidden extern int bpf_program_cgroup_detach(struct bpf_program *prog);
 __hidden extern void bpf_program_free(struct bpf_program *prog);
 __hidden extern void bpf_device_program_free(struct cgroup_ops *ops);
@@ -112,7 +113,7 @@ __hidden extern int bpf_list_add_device(struct lxc_conf *conf, struct device_ite
 
 #else /* !HAVE_STRUCT_BPF_CGROUP_DEV_CTX */
 
-static inline struct bpf_program *bpf_program_new(uint32_t prog_type)
+static inline struct bpf_program *bpf_program_new(__u32 prog_type)
 {
 	return ret_set_errno(NULL, ENOSYS);
 }
@@ -136,7 +137,7 @@ static inline int bpf_program_finalize(struct bpf_program *prog)
 
 static inline int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
 					    int fd_cgroup, int replace_bpf_fd,
-					    uint32_t flags)
+					    __u32 flags)
 {
 	return ret_errno(ENOSYS);
 }
