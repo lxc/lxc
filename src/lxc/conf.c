@@ -1713,7 +1713,7 @@ static int lxc_setup_dev_console(struct lxc_rootfs *rootfs,
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-errno, errno, "Failed to create console");
 
-	ret = fchmod(console->pty, S_IXUSR | S_IXGRP);
+	ret = fchmod(console->pty, 0620);
 	if (ret < 0)
 		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", S_IXUSR | S_IXGRP, console->name);
 
@@ -1729,7 +1729,7 @@ static int lxc_setup_dev_console(struct lxc_rootfs *rootfs,
 	if (ret < 0)
 		return log_error_errno(ret, errno, "Failed to mount %d(%s) on \"%s\"", console->pty, console->name, rootfs->buf);
 
-	DEBUG("Mounted pty device %d(%s) onto \"%s\"", console->pty, console->name, rootfs->buf);
+	DEBUG("Mounted pty device %d(%s) onto \"/dev/console\"", console->pty, console->name);
 	return 0;
 }
 
@@ -1775,7 +1775,7 @@ static int lxc_setup_ttydir_console(struct lxc_rootfs *rootfs,
 	if (ret < 0 && errno != EEXIST)
 		return log_error_errno(-errno, errno, "Failed to create console");
 
-	ret = fchmod(console->pty, S_IXUSR | S_IXGRP);
+	ret = fchmod(console->pty, 0620);
 	if (ret < 0)
 		return log_error_errno(-errno, errno, "Failed to set mode \"0%o\" to \"%s\"", S_IXUSR | S_IXGRP, console->name);
 
@@ -1811,9 +1811,11 @@ static int lxc_setup_ttydir_console(struct lxc_rootfs *rootfs,
 	return 0;
 }
 
-static int lxc_setup_console(struct lxc_rootfs *rootfs,
+static int lxc_setup_console(const struct lxc_handler *handler,
+			     struct lxc_rootfs *rootfs,
 			     struct lxc_terminal *console, char *ttydir)
 {
+	__do_close int fd_pty = -EBADF;
 	int ret;
 
 	if (!wants_console(console))
@@ -1823,7 +1825,24 @@ static int lxc_setup_console(struct lxc_rootfs *rootfs,
 		ret = lxc_setup_ttydir_console(rootfs, console, ttydir);
 	else
 		ret = lxc_setup_dev_console(rootfs, console);
-	close_prot_errno_disarm(console->pty);
+	fd_pty = move_fd(console->pty);
+
+	/*
+	 * Some init's such as busybox will set sane tty settings on stdin,
+	 * stdout, stderr which it thinks is the console. We already set them
+	 * the way we wanted on the real terminal, and we want init to do its
+	 * setup on its console ie. the pty allocated in lxc_terminal_setup() so
+	 * make sure that that pty is stdin,stdout,stderr.
+	 */
+	if (fd_pty >= 0) {
+		if (handler->daemonize || !handler->conf->is_execute)
+			ret = set_stdfds(fd_pty);
+		else
+			ret = lxc_terminal_set_stdfds(fd_pty);
+		if (ret < 0)
+			return syserrno(-errno, "Failed to redirect std{in,out,err} to pty file descriptor %d", fd_pty);
+	}
+
 	return ret;
 }
 
@@ -2639,8 +2658,8 @@ struct lxc_conf *lxc_conf_init(void)
 	new->console.proxy.busy = -1;
 	new->console.proxy.ptx = -1;
 	new->console.proxy.pty = -1;
-	new->console.ptx = -1;
-	new->console.pty = -1;
+	new->console.ptx = -EBADF;
+	new->console.pty = -EBADF;
 	new->console.name[0] = '\0';
 	memset(&new->console.ringbuf, 0, sizeof(struct lxc_ringbuf));
 	new->maincmd_fd = -1;
@@ -3500,7 +3519,7 @@ int lxc_setup(struct lxc_handler *handler)
 	if (ret < 0)
 		return log_error(-1, "Failed to \"/proc\" LSMs");
 
-	ret = lxc_setup_console(&lxc_conf->rootfs, &lxc_conf->console,
+	ret = lxc_setup_console(handler, &lxc_conf->rootfs, &lxc_conf->console,
 				lxc_conf->ttys.dir);
 	if (ret < 0)
 		return log_error(-1, "Failed to setup console");
