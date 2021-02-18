@@ -425,9 +425,9 @@ int bpf_program_cgroup_detach(struct bpf_program *prog)
 		return 0;
 
 	attr = &(union bpf_attr){
-		.attach_type = prog->attached_type,
-		.target_fd = prog->fd_cgroup,
-		.attach_bpf_fd = prog->kernel_fd,
+		.attach_type	= prog->attached_type,
+		.target_fd	= prog->fd_cgroup,
+		.attach_bpf_fd	= prog->kernel_fd,
 	};
 
 	ret = bpf(BPF_PROG_DETACH, attr, sizeof(*attr));
