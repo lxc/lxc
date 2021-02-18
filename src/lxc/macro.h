@@ -694,4 +694,11 @@ enum {
 
 #define MAX_FILENO ~0U
 
+#define swap(a, b)                     \
+	do {                           \
+		typeof(a) __tmp = (a); \
+		(a) = (b);             \
+		(b) = __tmp;           \
+	} while (0)
+
 #endif /* __LXC_MACRO_H */
