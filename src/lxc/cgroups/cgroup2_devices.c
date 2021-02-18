@@ -355,22 +355,21 @@ static int bpf_program_load_kernel(struct bpf_program *prog)
 	return 0;
 }
 
-int bpf_program_cgroup_attach(struct bpf_program *prog, int type, int fd_cgroup,
-			      int replace_bpf_fd, __u32 flags)
+static int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
+				     int fd_cgroup, __u32 flags)
 {
 	__do_close int fd_attach = -EBADF;
 	int ret;
 	union bpf_attr *attr;
+
+	if (prog->fd_cgroup >= 0 || prog->kernel_fd >= 0)
+		return ret_errno(EBUSY);
 
 	if (fd_cgroup < 0)
 		return ret_errno(EBADF);
 
 	if (flags & ~(BPF_F_ALLOW_OVERRIDE | BPF_F_ALLOW_MULTI | BPF_F_REPLACE))
 		return syserrno_set(-EINVAL, "Invalid flags for bpf program");
-
-	if (((flags & BPF_F_REPLACE) && replace_bpf_fd < 0) ||
-	    (replace_bpf_fd >= 0 && !(flags & BPF_F_REPLACE)))
-		return syserrno_set(-EINVAL, "Requested to replace bpf program with invalid parameters");
 
 	/*
 	 * Don't allow the bpf program to be overwritten for now. If we ever
@@ -379,18 +378,6 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type, int fd_cgroup,
 	 */
 	if (flags & BPF_F_ALLOW_OVERRIDE)
 		INFO("Allowing to override bpf program");
-
-	if (prog->fd_cgroup >= 0) {
-		if (prog->attached_type != type)
-			return syserrno_set(-EBUSY, "Wrong type for bpf program");
-
-		/*
-		 * For BPF_F_ALLOW_OVERRIDE the flags of the new and old
-		 * program must match.
-		 */
-		if ((flags & BPF_F_ALLOW_OVERRIDE) && (prog->attached_flags != flags))
-			return syserrno_set(-EBUSY, "Wrong flags for bpf program");
-	}
 
 	/* Leave the caller's fd alone. */
 	fd_attach = dup_cloexec(fd_cgroup);
@@ -408,19 +395,15 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type, int fd_cgroup,
 		.attach_flags	= flags,
 	};
 
-	if (flags & BPF_F_REPLACE)
-		attr->replace_bpf_fd = replace_bpf_fd;
-
 	ret = bpf(BPF_PROG_ATTACH, attr, sizeof(*attr));
 	if (ret < 0)
 		return syserrno(-errno, "Failed to attach bpf program");
 
-	swap(prog->fd_cgroup, fd_attach);
-	prog->attached_type = type;
-	prog->attached_flags = flags;
+	prog->fd_cgroup		= move_fd(fd_attach);
+	prog->attached_type	= type;
+	prog->attached_flags	= flags;
 
-	TRACE("Attached bpf program to cgroup %d%s", prog->fd_cgroup,
-	      (flags & BPF_F_REPLACE) ? " and replaced old bpf program" : "");
+	TRACE("Attached bpf program to cgroup %d", prog->fd_cgroup);
 	return 0;
 }
 
@@ -614,7 +597,7 @@ bool bpf_cgroup_devices_attach(struct cgroup_ops *ops, struct lxc_list *devices)
 		return syserrno(false, "Failed to create bpf program");
 
 	ret = bpf_program_cgroup_attach(prog, BPF_CGROUP_DEVICE,
-					ops->unified->cgfd_limit, -EBADF,
+					ops->unified->cgfd_limit,
 					BPF_F_ALLOW_MULTI);
 	if (ret)
 		return syserrno(false, "Failed to attach bpf program");
