@@ -95,4 +95,21 @@ static inline void *memdup(const void *data, size_t len)
 		(a) = move_fd((b)); \
 	})
 
+#define close_equal(a, b)             \
+	({                            \
+		if (a >= 0 && a != b) \
+			close(a);     \
+		if (close >= 0)       \
+			close(b);     \
+		a = b = -EBADF;       \
+	})
+
+#define free_equal(a, b)         \
+	({                       \
+		if (a != b)      \
+			free(a); \
+		free(b);         \
+		a = b = NULL;    \
+	})
+
 #endif /* __LXC_MEMORY_UTILS_H */
