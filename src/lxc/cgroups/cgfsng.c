@@ -3204,8 +3204,49 @@ __cgfsng_ops static bool cgfsng_devices_activate(struct cgroup_ops *ops, struct 
 	if (ret)
 		return log_error_errno(false, ENOMEM, "Failed to initialize bpf program");
 
+	/* First pass, determine whether this is an allow- or denylist. */
+	lxc_list_for_each (it, &conf->devices) {
+		struct device_item *cur = it->elem;
+
+		if (cur->global_rule > LXC_BPF_DEVICE_CGROUP_LOCAL_RULE)
+			prog->device_list_type = cur->global_rule;
+	}
+
 	lxc_list_for_each(it, &conf->devices) {
 		struct device_item *cur = it->elem;
+
+		/* Nothing to be done. */
+		if (cur->global_rule > LXC_BPF_DEVICE_CGROUP_LOCAL_RULE)
+			continue;
+
+		switch (prog->device_list_type) {
+		case LXC_BPF_DEVICE_CGROUP_ALLOWLIST:
+			/* We're denying all devices so skip individual deny rules. */
+			if (!cur->allow) {
+				TRACE("Skipping deny rule in denylist bpf device program: type %c, major %d, minor %d, access %s, allow %d",
+				      cur->type,
+				      cur->major,
+				      cur->minor,
+				      cur->access,
+				      cur->allow);
+				continue;
+			}
+
+			break;
+		case LXC_BPF_DEVICE_CGROUP_DENYLIST:
+			/* We're allowing all devices so skip individual allow rules. */
+			if (cur->allow) {
+				TRACE("Skipping allow rule in allow bpf device program: type %c, major %d, minor %d, access %s, allow %d",
+				      cur->type,
+				      cur->major,
+				      cur->minor,
+				      cur->access,
+				      cur->allow);
+				continue;
+			}
+
+			break;
+		}
 
 		ret = bpf_program_append_device(prog, cur);
 		if (ret)
