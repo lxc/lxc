@@ -3110,7 +3110,7 @@ static int bpf_device_cgroup_prepare(struct cgroup_ops *ops,
 	if (ret < 0)
 		return log_error_errno(-1, EINVAL, "Failed to parse device string %s=%s", key, val);
 
-	ret = bpf_list_add_device(conf, &device_item);
+	ret = bpf_list_add_device(&conf->devices, &device_item);
 	if (ret < 0)
 		return -1;
 	return 0;

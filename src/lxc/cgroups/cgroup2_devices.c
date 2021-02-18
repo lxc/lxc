@@ -467,16 +467,16 @@ void bpf_device_program_free(struct cgroup_ops *ops)
 	}
 }
 
-int bpf_list_add_device(struct lxc_conf *conf, struct device_item *device)
+int bpf_list_add_device(struct lxc_list *devices, struct device_item *device)
 {
 	__do_free struct lxc_list *list_elem = NULL;
 	__do_free struct device_item *new_device = NULL;
 	struct lxc_list *it;
 
-	if (!conf || !device)
+	if (!devices || !device)
 		return ret_errno(EINVAL);
 
-	lxc_list_for_each(it, &conf->devices) {
+	lxc_list_for_each(it, devices) {
 		struct device_item *cur = it->elem;
 
 		if (cur->global_rule > LXC_BPF_DEVICE_CGROUP_LOCAL_RULE &&
@@ -527,7 +527,7 @@ int bpf_list_add_device(struct lxc_conf *conf, struct device_item *device)
 		return log_error_errno(-1, ENOMEM, "Failed to allocate new device item");
 
 	lxc_list_add_elem(list_elem, move_ptr(new_device));
-	lxc_list_add_tail(&conf->devices, move_ptr(list_elem));
+	lxc_list_add_tail(devices, move_ptr(list_elem));
 
 	return 0;
 }
