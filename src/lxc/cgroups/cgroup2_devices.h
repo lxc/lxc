@@ -87,10 +87,6 @@ __hidden extern struct bpf_program *bpf_program_new(__u32 prog_type);
 __hidden extern int bpf_program_init(struct bpf_program *prog);
 __hidden extern int bpf_program_append_device(struct bpf_program *prog, struct device_item *device);
 __hidden extern int bpf_program_finalize(struct bpf_program *prog);
-__hidden extern int bpf_program_cgroup_attach(struct bpf_program *prog,
-					      int type, int fd_cgroup,
-					      __owns int replace_bpf_fd,
-					      __u32 flags);
 __hidden extern int bpf_program_cgroup_detach(struct bpf_program *prog);
 __hidden extern void bpf_program_free(struct bpf_program *prog);
 __hidden extern void bpf_device_program_free(struct cgroup_ops *ops);
