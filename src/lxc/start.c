@@ -1284,24 +1284,6 @@ static int do_start(void *data)
 		DEBUG("Set PR_SET_NO_NEW_PRIVS to block execve() gainable privileges");
 	}
 
-	/* Some init's such as busybox will set sane tty settings on stdin,
-	 * stdout, stderr which it thinks is the console. We already set them
-	 * the way we wanted on the real terminal, and we want init to do its
-	 * setup on its console ie. the pty allocated in lxc_terminal_setup() so
-	 * make sure that that pty is stdin,stdout,stderr.
-	 */
-	 if (handler->conf->console.pty >= 0) {
-		 if (handler->daemonize || !handler->conf->is_execute)
-			 ret = set_stdfds(handler->conf->console.pty);
-		 else
-			 ret = lxc_terminal_set_stdfds(handler->conf->console.pty);
-		 if (ret < 0) {
-			ERROR("Failed to redirect std{in,out,err} to pty file descriptor %d",
-			      handler->conf->console.pty);
-			goto out_warn_father;
-		 }
-	 }
-
 	/* If we mounted a temporary proc, then unmount it now. */
 	tmp_proc_unmount(handler->conf);
 
