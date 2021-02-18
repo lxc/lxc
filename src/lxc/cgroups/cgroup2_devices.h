@@ -19,117 +19,94 @@
 #include "compiler.h"
 #include "conf.h"
 #include "config.h"
+#include "list.h"
+#include "macro.h"
 #include "memory_utils.h"
 #include "syscall_numbers.h"
 
-#ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
-#include <linux/bpf.h>
-#include <linux/filter.h>
-#endif
+#include "include/bpf.h"
+#include "include/bpf_common.h"
 
 #ifndef HAVE_BPF
-
-union bpf_attr;
-
-static inline int missing_bpf(int cmd, union bpf_attr *attr, size_t size)
+static inline int bpf_lxc(int cmd, union bpf_attr *attr, size_t size)
 {
 	return syscall(__NR_bpf, cmd, attr, size);
 }
-
-#define bpf missing_bpf
+#define bpf bpf_lxc
 #endif /* HAVE_BPF */
 
 struct bpf_program {
 	int device_list_type;
 	int kernel_fd;
-	uint32_t prog_type;
+	__u32 prog_type;
 
 	size_t n_instructions;
-#ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
 	struct bpf_insn *instructions;
-#endif /* HAVE_STRUCT_BPF_CGROUP_DEV_CTX */
 
-	char *attached_path;
+	int fd_cgroup;
 	int attached_type;
-	uint32_t attached_flags;
+	__u32 attached_flags;
 };
 
-#ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
-__hidden extern struct bpf_program *bpf_program_new(uint32_t prog_type);
+static inline bool bpf_device_block_all(const struct bpf_program *prog)
+{
+	/* LXC_BPF_DEVICE_CGROUP_ALLOWLIST  -> allowlist (deny all) */
+	return prog->device_list_type == LXC_BPF_DEVICE_CGROUP_ALLOWLIST;
+}
+
+static inline bool bpf_device_add(const struct bpf_program *prog,
+				  struct device_item *device)
+{
+	if (device->global_rule > LXC_BPF_DEVICE_CGROUP_LOCAL_RULE)
+		return false;
+
+	/* We're blocking all devices so skip individual deny rules. */
+	if (bpf_device_block_all(prog) && !device->allow)
+		return false;
+
+	/* We're allowing all devices so skip individual allow rules. */
+	if (!bpf_device_block_all(prog) && device->allow)
+		return false;
+	return true;
+}
+
+static inline void bpf_device_set_type(struct bpf_program *prog,
+				       struct lxc_list *devices)
+{
+	struct lxc_list *it;
+
+	lxc_list_for_each (it, devices) {
+		struct device_item *cur = it->elem;
+
+		if (cur->global_rule > LXC_BPF_DEVICE_CGROUP_LOCAL_RULE)
+			prog->device_list_type = cur->global_rule;
+	}
+}
+
+__hidden extern struct bpf_program *bpf_program_new(__u32 prog_type);
 __hidden extern int bpf_program_init(struct bpf_program *prog);
 __hidden extern int bpf_program_append_device(struct bpf_program *prog, struct device_item *device);
 __hidden extern int bpf_program_finalize(struct bpf_program *prog);
-__hidden extern int bpf_program_cgroup_attach(struct bpf_program *prog, int type, const char *path,
-					      uint32_t flags);
 __hidden extern int bpf_program_cgroup_detach(struct bpf_program *prog);
-__hidden extern void bpf_program_free(struct bpf_program *prog);
 __hidden extern void bpf_device_program_free(struct cgroup_ops *ops);
 __hidden extern bool bpf_devices_cgroup_supported(void);
 
-__hidden extern int bpf_list_add_device(struct lxc_conf *conf, struct device_item *device);
-
-#else /* !HAVE_STRUCT_BPF_CGROUP_DEV_CTX */
-
-static inline struct bpf_program *bpf_program_new(uint32_t prog_type)
-{
-	errno = ENOSYS;
-	return NULL;
-}
-
-static inline int bpf_program_init(struct bpf_program *prog)
-{
-	errno = ENOSYS;
-	return -1;
-}
-
-static inline int bpf_program_append_device(struct bpf_program *prog, char type,
-					    int major, int minor,
-					    const char *access, int allow)
-{
-	errno = ENOSYS;
-	return -1;
-}
-
-static inline int bpf_program_finalize(struct bpf_program *prog)
-{
-	errno = ENOSYS;
-	return -1;
-}
-
-static inline int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
-					    const char *path, uint32_t flags)
-{
-	errno = ENOSYS;
-	return -1;
-}
-
-static inline int bpf_program_cgroup_detach(struct bpf_program *prog)
-{
-	errno = ENOSYS;
-	return -1;
-}
+__hidden extern int bpf_list_add_device(struct lxc_list *devices,
+					struct device_item *device);
+__hidden extern bool bpf_cgroup_devices_attach(struct cgroup_ops *ops,
+					       struct lxc_list *devices);
+__hidden extern bool bpf_cgroup_devices_update(struct cgroup_ops *ops,
+					       struct device_item *new,
+					       struct lxc_list *devices);
 
 static inline void bpf_program_free(struct bpf_program *prog)
 {
+	if (prog) {
+		(void)bpf_program_cgroup_detach(prog);
+		free(prog->instructions);
+		free(prog);
+	}
 }
-
-static inline void bpf_device_program_free(struct cgroup_ops *ops)
-{
-}
-
-static inline bool bpf_devices_cgroup_supported(void)
-{
-	return false;
-}
-
-static inline int bpf_list_add_device(struct lxc_conf *conf,
-				      struct device_item *device)
-{
-	errno = ENOSYS;
-	return -1;
-}
-#endif /* !HAVE_STRUCT_BPF_CGROUP_DEV_CTX */
-
 define_cleanup_function(struct bpf_program *, bpf_program_free);
 #define __do_bpf_program_free call_cleaner(bpf_program_free)
 

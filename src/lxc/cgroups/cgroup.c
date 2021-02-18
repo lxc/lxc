@@ -14,6 +14,7 @@
 #include "conf.h"
 #include "config.h"
 #include "initutils.h"
+#include "memory_utils.h"
 #include "log.h"
 #include "start.h"
 #include "string_utils.h"
@@ -68,14 +69,9 @@ void cgroup_exit(struct cgroup_ops *ops)
 	free(ops->cgroup_pattern);
 	free(ops->monitor_cgroup);
 
-	{
-		if (ops->container_cgroup != ops->container_limit_cgroup)
-			free(ops->container_limit_cgroup);
-		free(ops->container_cgroup);
-	}
+	free_equal(ops->container_cgroup, ops->container_limit_cgroup);
 
-	if (ops->cgroup2_devices)
-		bpf_program_free(ops->cgroup2_devices);
+	bpf_device_program_free(ops);
 
 	if (ops->dfd_mnt_cgroupfs_host >= 0)
 		close(ops->dfd_mnt_cgroupfs_host);
@@ -92,32 +88,15 @@ void cgroup_exit(struct cgroup_ops *ops)
 		free((*it)->mountpoint);
 		free((*it)->container_base_path);
 
-		{
-			free((*it)->container_full_path);
+		free_equal((*it)->container_full_path,
+			   (*it)->container_limit_path);
 
-			if ((*it)->container_full_path != (*it)->container_limit_path)
-				free((*it)->monitor_full_path);
-		}
-
-		{
-			if ((*it)->cgfd_limit >= 0 && (*it)->cgfd_con != (*it)->cgfd_limit)
-				close((*it)->cgfd_limit);
-
-			if ((*it)->cgfd_con >= 0)
-				close((*it)->cgfd_con);
-
-		}
+		close_equal((*it)->cgfd_con, (*it)->cgfd_limit);
 
 		if ((*it)->cgfd_mon >= 0)
 			close((*it)->cgfd_mon);
 
-		{
-			if ((*it)->dfd_base >= 0 && (*it)->dfd_mnt != (*it)->dfd_base)
-				close((*it)->dfd_base);
-
-			if ((*it)->dfd_mnt >= 0)
-				close((*it)->dfd_mnt);
-		}
+		close_equal((*it)->dfd_base, (*it)->dfd_mnt);
 
 		free(*it);
 	}

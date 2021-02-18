@@ -2040,8 +2040,8 @@ static bool do_lxcapi_reboot2(struct lxc_container *c, int timeout)
 	else
 		killret = kill(pid, rebootsignal);
 	if (killret < 0)
-		return log_warn(false, "Failed to send signal %d to pid %d", rebootsignal, pid);
-	TRACE("Sent signal %d to pid %d", rebootsignal, pid);
+		return log_warn(false, "Failed to send signal %d to pidfd(%d)/pid(%d)", rebootsignal, pidfd, pid);
+	TRACE("Sent signal %d to pidfd(%d)/pid(%d)", rebootsignal, pidfd, pid);
 
 	if (timeout == 0)
 		return true;
