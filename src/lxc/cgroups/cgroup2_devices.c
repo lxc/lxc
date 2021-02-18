@@ -363,7 +363,7 @@ static int bpf_program_load_kernel(struct bpf_program *prog)
 }
 
 int bpf_program_cgroup_attach(struct bpf_program *prog, int type, int fd_cgroup,
-			      int replace_bpf_fd, uint32_t flags)
+			      int replace_bpf_fd, __u32 flags)
 {
 	__do_close int fd_cgroup_dup = -EBADF;
 	int ret;
