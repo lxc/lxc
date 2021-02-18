@@ -797,9 +797,7 @@ static int cgroup_tree_remove(struct hierarchy **hierarchies, const char *path_p
 		else
 			TRACE("Removed cgroup tree %d(%s)", h->dfd_base, path_prune);
 
-		if (h->container_limit_path != h->container_full_path)
-			free_disarm(h->container_limit_path);
-		free_disarm(h->container_full_path);
+		free_equal(h->container_limit_path, h->container_full_path);
 	}
 
 	return 0;
@@ -1185,12 +1183,8 @@ static void cgroup_tree_prune_leaf(struct hierarchy *h, const char *path_prune,
 		if (h->cgfd_limit < 0)
 			prune = false;
 
-		if (h->container_full_path != h->container_limit_path)
-			free_disarm(h->container_limit_path);
-		free_disarm(h->container_full_path);
-
-		close_prot_errno_disarm(h->cgfd_con);
-		close_prot_errno_disarm(h->cgfd_limit);
+		free_equal(h->container_full_path, h->container_limit_path);
+		close_equal(h->cgfd_con, h->cgfd_limit);
 	} else {
 		/* Check whether we actually created the cgroup to prune. */
 		if (h->cgfd_mon < 0)
