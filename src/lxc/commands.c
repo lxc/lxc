@@ -1203,6 +1203,8 @@ static int lxc_cmd_add_bpf_device_cgroup_callback(int fd, struct lxc_cmd_req *re
 	struct lxc_conf *conf = handler->conf;
 	struct cgroup_ops *cgroup_ops = handler->cgroup_ops;
 	struct hierarchy *unified = cgroup_ops->unified;
+	int fd_replace = -EBADF;
+	__u32 flags = 0;
 	int ret;
 	struct lxc_list *it;
 	struct device_item *device;
@@ -1260,21 +1262,28 @@ static int lxc_cmd_add_bpf_device_cgroup_callback(int fd, struct lxc_cmd_req *re
 	if (ret)
 		goto respond;
 
+	flags |= BPF_F_ALLOW_MULTI;
+
 	devices_old = cgroup_ops->cgroup2_devices;
-	if (devices_old && devices_old->kernel_fd >= 0)
-		ret = bpf_program_cgroup_attach(devices,
-						BPF_CGROUP_DEVICE,
-					        unified->cgfd_limit,
-						devices_old->kernel_fd,
-						BPF_F_ALLOW_MULTI | BPF_F_REPLACE);
-	else
-		ret = bpf_program_cgroup_attach(devices,
-						BPF_CGROUP_DEVICE,
-					        unified->cgfd_limit,
-						-EBADF,
-						BPF_F_ALLOW_MULTI);
+	if (devices_old && devices_old->kernel_fd >= 0) {
+		flags |= BPF_F_REPLACE;
+		fd_replace = devices_old->kernel_fd;
+	}
+
+	ret = bpf_program_cgroup_attach(devices, BPF_CGROUP_DEVICE,
+					unified->cgfd_limit, fd_replace, flags);
 	if (ret)
 		goto respond;
+
+	/*
+	 * In case we replaced the current bpf program then we don't
+	 * need to detach anything. We simply need to close the old fd.
+	 */
+	if (devices_old && (flags & BPF_F_REPLACE)) {
+		close_prot_errno_disarm(devices_old->kernel_fd);
+		/* Technically not needed but better safe than segfaulted. */
+		fd_replace = -EBADF;
+	}
 
 	/* Replace old bpf program. */
 	devices_old = move_ptr(cgroup_ops->cgroup2_devices);
