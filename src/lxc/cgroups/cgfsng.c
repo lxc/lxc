@@ -2770,18 +2770,21 @@ static int device_cgroup_rule_parse(struct device_item *device, const char *key,
 	char temp[50];
 
 	if (strequal("devices.allow", key))
-		device->allow = 1;
+		device->allow = 1; /* allow the device */
 	else
-		device->allow = 0;
+		device->allow = 0; /* deny the device */
 
 	if (strequal(val, "a")) {
 		/* global rule */
 		device->type = 'a';
 		device->major = -1;
 		device->minor = -1;
-		device->global_rule = device->allow
-					  ? LXC_BPF_DEVICE_CGROUP_DENYLIST
-					  : LXC_BPF_DEVICE_CGROUP_ALLOWLIST;
+
+		if (device->allow) /* allow all devices */
+			device->global_rule = LXC_BPF_DEVICE_CGROUP_DENYLIST;
+		else /* deny all devices */
+			device->global_rule = LXC_BPF_DEVICE_CGROUP_ALLOWLIST;
+
 		device->allow = -1;
 		return 0;
 	}
