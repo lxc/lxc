@@ -29,6 +29,18 @@
 #include <linux/filter.h>
 #endif
 
+#ifndef BPF_F_ALLOW_OVERRIDE
+#define BPF_F_ALLOW_OVERRIDE (1U << 0)
+#endif
+
+#ifndef BPF_F_ALLOW_MULTI
+#define BPF_F_ALLOW_MULTI (1U << 1)
+#endif
+
+#ifndef BPF_F_REPLACE
+#define BPF_F_REPLACE (1U << 2)
+#endif
+
 #ifndef HAVE_BPF
 
 union bpf_attr;
