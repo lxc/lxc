@@ -67,10 +67,7 @@ void bpf_program_free(struct bpf_program *prog)
 
 	(void)bpf_program_cgroup_detach(prog);
 
-	if (prog->kernel_fd >= 0)
-		close(prog->kernel_fd);
 	free(prog->instructions);
-	close_prot_errno_disarm(prog->fd_cgroup);
 	free(prog);
 }
 
@@ -437,8 +434,8 @@ int bpf_program_cgroup_detach(struct bpf_program *prog)
 		return 0;
 
 	/* Ensure that these fds are wiped. */
-	fd_cgroup = prog->fd_cgroup;
-	fd_kernel = prog->kernel_fd;
+	fd_cgroup = move_fd(prog->fd_cgroup);
+	fd_kernel = move_fd(prog->kernel_fd);
 
 	if (fd_cgroup < 0 || fd_kernel < 0)
 		return 0;
