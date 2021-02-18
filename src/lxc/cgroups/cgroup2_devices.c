@@ -433,28 +433,31 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type, int fd_cgroup,
 
 int bpf_program_cgroup_detach(struct bpf_program *prog)
 {
+	__do_close int fd_cgroup = -EBADF, fd_kernel = -EBADF;
 	int ret;
 	union bpf_attr *attr;
 
 	if (!prog)
 		return 0;
 
-	if (prog->fd_cgroup < 0)
+	/* Ensure that these fds are wiped. */
+	fd_cgroup = prog->fd_cgroup;
+	fd_kernel = prog->kernel_fd;
+
+	if (fd_cgroup < 0 || fd_kernel < 0)
 		return 0;
 
 	attr = &(union bpf_attr){
 		.attach_type	= prog->attached_type,
-		.target_fd	= prog->fd_cgroup,
-		.attach_bpf_fd	= prog->kernel_fd,
+		.target_fd	= fd_cgroup,
+		.attach_bpf_fd	= fd_kernel,
 	};
 
 	ret = bpf(BPF_PROG_DETACH, attr, sizeof(*attr));
 	if (ret < 0)
-		return syserrno(-errno, "Failed to detach bpf program from cgroup %d",
-				prog->fd_cgroup);
+		return syserrno(-errno, "Failed to detach bpf program from cgroup %d", fd_cgroup);
 
-	TRACE("Detached bpf program from cgroup %d", prog->fd_cgroup);
-	close_prot_errno_disarm(prog->fd_cgroup);
+	TRACE("Detached bpf program from cgroup %d", fd_cgroup);
 
 	return 0;
 }
