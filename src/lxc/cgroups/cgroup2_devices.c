@@ -563,3 +563,66 @@ bool bpf_devices_cgroup_supported(void)
 
 	return log_trace(true, "The bpf device cgroup is supported");
 }
+
+static struct bpf_program *__bpf_cgroup_devices(struct lxc_list *devices)
+{
+	__do_bpf_program_free struct bpf_program *prog = NULL;
+	int ret;
+	struct lxc_list *it;
+
+	prog = bpf_program_new(BPF_PROG_TYPE_CGROUP_DEVICE);
+	if (!prog)
+		return syserrno(NULL, "Failed to create new bpf program");
+
+	ret = bpf_program_init(prog);
+	if (ret)
+		return syserrno(NULL, "Failed to initialize bpf program");
+
+	bpf_device_set_type(prog, devices);
+	TRACE("Device bpf %s all devices by default",
+	      bpf_device_block_all(prog) ? "blocks" : "allows");
+
+	lxc_list_for_each(it, devices) {
+		struct device_item *cur = it->elem;
+
+		if (!bpf_device_add(prog, cur)) {
+			TRACE("Skipping rule: type %c, major %d, minor %d, access %s, allow %d",
+			      cur->type, cur->major, cur->minor, cur->access, cur->allow);
+			continue;
+		}
+
+		ret = bpf_program_append_device(prog, cur);
+		if (ret)
+			return syserrno(NULL, "Failed adding rule: type %c, major %d, minor %d, access %s, allow %d",
+					cur->type, cur->major, cur->minor, cur->access, cur->allow);
+
+		TRACE("Added rule to bpf device program: type %c, major %d, minor %d, access %s, allow %d",
+		      cur->type, cur->major, cur->minor, cur->access, cur->allow);
+	}
+
+	ret = bpf_program_finalize(prog);
+	if (ret)
+		return syserrno(NULL, "Failed to finalize bpf program");
+
+	return move_ptr(prog);
+}
+
+bool bpf_cgroup_devices_attach(struct cgroup_ops *ops, struct lxc_list *devices)
+{
+	__do_bpf_program_free struct bpf_program *prog = NULL;
+	int ret;
+
+	prog = __bpf_cgroup_devices(devices);
+	if (!prog)
+		return syserrno(false, "Failed to create bpf program");
+
+	ret = bpf_program_cgroup_attach(prog, BPF_CGROUP_DEVICE,
+					ops->unified->cgfd_limit, -EBADF,
+					BPF_F_ALLOW_MULTI);
+	if (ret)
+		return syserrno(false, "Failed to attach bpf program");
+
+	/* Replace old bpf program. */
+	swap(prog, ops->cgroup2_devices);
+	return log_trace(true, "Attached bpf program");
+}
