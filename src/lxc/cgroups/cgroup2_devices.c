@@ -385,14 +385,14 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type, int fd_cgroup,
 
 	if (prog->fd_cgroup >= 0) {
 		if (prog->attached_type != type)
-			return log_error_errno(-1, EBUSY, "Wrong type for bpf program");
+			return syserrno_set(-EBUSY, "Wrong type for bpf program");
 
 		/*
 		 * For BPF_F_ALLOW_OVERRIDE the flags of the new and old
 		 * program must match.
 		 */
 		if ((flags & BPF_F_ALLOW_OVERRIDE) && (prog->attached_flags != flags))
-			return log_error_errno(-1, EBUSY, "Wrong flags for bpf program");
+			return syserrno_set(-EBUSY, "Wrong flags for bpf program");
 	}
 
 	/* Leave the caller's fd alone. */
@@ -402,7 +402,7 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type, int fd_cgroup,
 
 	ret = bpf_program_load_kernel(prog);
 	if (ret < 0)
-		return log_error_errno(-1, ret, "Failed to load bpf program");
+		return syserrno(-errno, "Failed to load bpf program");
 
 	attr = &(union bpf_attr){
 		.attach_type	= type,
@@ -416,7 +416,7 @@ int bpf_program_cgroup_attach(struct bpf_program *prog, int type, int fd_cgroup,
 
 	ret = bpf(BPF_PROG_ATTACH, attr, sizeof(*attr));
 	if (ret < 0)
-		return syserrno_set(-errno, "Failed to attach bpf program");
+		return syserrno(-errno, "Failed to attach bpf program");
 
 	swap(prog->fd_cgroup, fd_attach);
 	prog->attached_type = type;
