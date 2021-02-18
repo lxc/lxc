@@ -97,6 +97,8 @@ __hidden extern void bpf_device_program_free(struct cgroup_ops *ops);
 __hidden extern bool bpf_devices_cgroup_supported(void);
 
 __hidden extern int bpf_list_add_device(struct lxc_conf *conf, struct device_item *device);
+__hidden extern bool bpf_cgroup_devices_attach(struct cgroup_ops *ops,
+					       struct lxc_list *devices);
 
 define_cleanup_function(struct bpf_program *, bpf_program_free);
 #define __do_bpf_program_free call_cleaner(bpf_program_free)
