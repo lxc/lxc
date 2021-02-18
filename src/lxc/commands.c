@@ -1250,7 +1250,7 @@ static int lxc_cmd_add_bpf_device_cgroup_callback(int fd, struct lxc_cmd_req *re
 		goto respond;
 
 	ret = bpf_program_cgroup_attach(devices, BPF_CGROUP_DEVICE,
-					unified->cgfd_mon, BPF_F_ALLOW_MULTI);
+					unified->cgfd_mon, -EBADF, BPF_F_ALLOW_MULTI);
 	if (ret)
 		goto respond;
 
