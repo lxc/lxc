@@ -19,6 +19,7 @@
 #include "compiler.h"
 #include "conf.h"
 #include "config.h"
+#include "list.h"
 #include "macro.h"
 #include "memory_utils.h"
 #include "syscall_numbers.h"
@@ -54,6 +55,45 @@ struct bpf_program {
 	int attached_type;
 	uint32_t attached_flags;
 };
+
+static inline bool bpf_device_block_all(const struct bpf_program *prog)
+{
+	/* LXC_BPF_DEVICE_CGROUP_ALLOWLIST  -> allowlist (deny all) */
+	return prog->device_list_type == LXC_BPF_DEVICE_CGROUP_ALLOWLIST;
+}
+
+static inline bool bpf_device_add(const struct bpf_program *prog,
+				  struct device_item *device)
+{
+#ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
+	if (device->global_rule > LXC_BPF_DEVICE_CGROUP_LOCAL_RULE)
+		return false;
+
+	/* We're blocking all devices so skip individual deny rules. */
+	if (bpf_device_block_all(prog) && !device->allow)
+		return false;
+
+	/* We're allowing all devices so skip individual allow rules. */
+	if (!bpf_device_block_all(prog) && device->allow)
+		return false;
+#endif
+	return true;
+}
+
+static inline void bpf_device_set_type(struct bpf_program *prog,
+				       struct lxc_list *devices)
+{
+#ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
+	struct lxc_list *it;
+
+	lxc_list_for_each (it, devices) {
+		struct device_item *cur = it->elem;
+
+		if (cur->global_rule > LXC_BPF_DEVICE_CGROUP_LOCAL_RULE)
+			prog->device_list_type = cur->global_rule;
+	}
+#endif
+}
 
 #ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
 __hidden extern struct bpf_program *bpf_program_new(uint32_t prog_type);
