@@ -504,7 +504,7 @@ static int add_hierarchy(struct cgroup_ops *ops, char **clist, char *mountpoint,
 	int idx;
 
 	if (abspath(container_base_path))
-		return syserrno(-errno, "Container base path must be relative to controller mount");
+		return syserrno_set(-EINVAL, "Container base path must be relative to controller mount");
 
 	if (!controllers && type != CGROUP2_SUPER_MAGIC)
 		return syserrno_set(-EINVAL, "Empty controller list for non-unified cgroup hierarchy passed");
