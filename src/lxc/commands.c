@@ -1168,7 +1168,6 @@ static int lxc_cmd_add_state_client_callback(__owns int fd, struct lxc_cmd_req *
 int lxc_cmd_add_bpf_device_cgroup(const char *name, const char *lxcpath,
 				  struct device_item *device)
 {
-#ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
 	int stopped = 0;
 	struct lxc_cmd_rr cmd = {
 		.req = {
@@ -1188,16 +1187,12 @@ int lxc_cmd_add_bpf_device_cgroup(const char *name, const char *lxcpath,
 		return log_error_errno(-1, errno, "Failed to add new bpf device cgroup rule");
 
 	return 0;
-#else
-	return ret_set_errno(-1, ENOSYS);
-#endif
 }
 
 static int lxc_cmd_add_bpf_device_cgroup_callback(int fd, struct lxc_cmd_req *req,
 						  struct lxc_handler *handler,
 						  struct lxc_epoll_descr *descr)
 {
-#ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
 	__do_bpf_program_free struct bpf_program *devices = NULL;
 	struct lxc_cmd_rsp rsp = {0};
 	struct lxc_conf *conf = handler->conf;
@@ -1298,9 +1293,6 @@ respond:
 		return LXC_CMD_REAP_CLIENT_FD;
 
 	return 0;
-#else
-	return ret_set_errno(-1, ENOSYS);
-#endif
 }
 
 int lxc_cmd_console_log(const char *name, const char *lxcpath,

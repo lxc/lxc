@@ -385,10 +385,6 @@ AM_COND_IF([ENABLE_CAP],
         AC_CHECK_LIB(cap,cap_get_file, AC_DEFINE(LIBCAP_SUPPORTS_FILE_CAPABILITIES,1,[Have cap_get_file]),[],[])
         AC_SUBST([CAP_LIBS], [-lcap])])
 
-AC_CHECK_HEADERS([linux/bpf.h], [
-	AC_CHECK_TYPES([struct bpf_cgroup_dev_ctx], [], [], [[#include <linux/bpf.h>]])
-], [], [])
-
 # Configuration examples
 AC_ARG_ENABLE([examples],
 	[AS_HELP_STRING([--enable-examples], [install examples [default=yes]])],

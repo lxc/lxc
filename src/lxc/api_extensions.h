@@ -34,9 +34,7 @@ static char *api_extensions[] = {
 	"network_gateway_device_route",
 	"network_phys_macvlan_mtu",
 	"network_veth_router",
-#ifdef HAVE_STRUCT_BPF_CGROUP_DEV_CTX
 	"cgroup2_devices",
-#endif
 	"cgroup2",
 	"pidfd",
 	"seccomp_allow_deny_syntax",
