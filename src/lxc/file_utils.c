@@ -455,12 +455,15 @@ int fd_to_buf(int fd, char **buf, size_t *length)
 
 		bytes_read = lxc_read_nointr(fd, chunk, sizeof(chunk));
 		if (bytes_read < 0)
-			return 0;
+			return -errno;
 
 		if (!bytes_read)
 			break;
 
-		copy = must_realloc(old, (*length + bytes_read) * sizeof(*old));
+		copy = realloc(old, (*length + bytes_read) * sizeof(*old));
+		if (!copy)
+			return ret_errno(ENOMEM);
+
 		memcpy(copy + *length, chunk, bytes_read);
 		*length += bytes_read;
 	}
