@@ -395,52 +395,43 @@ static int apparmor_enabled(struct lsm_ops *ops)
 	return 0;
 }
 
+static int __apparmor_process_label_open(struct lsm_ops *ops, pid_t pid, int o_flags, bool on_exec)
+{
+	int ret = -1;
+	int labelfd;
+	char path[LXC_LSMATTRLEN];
+
+	if (on_exec)
+		TRACE("On-exec not supported with AppArmor");
+
+	ret = snprintf(path, LXC_LSMATTRLEN, "/proc/%d/attr/current", pid);
+	if (ret < 0 || ret >= LXC_LSMATTRLEN)
+		return -1;
+
+	labelfd = open(path, o_flags);
+	if (labelfd < 0)
+		return log_error_errno(-errno, errno, "Unable to open AppArmor LSM label file descriptor");
+
+	return labelfd;
+}
+
 static char *apparmor_process_label_get(struct lsm_ops *ops, pid_t pid)
 {
-	char path[100], *space;
-	int ret;
-	char *buf = NULL, *newbuf;
-	int sz = 0;
-	FILE *f;
+	int label_fd;
+	__do_free char *label = NULL;
+	size_t len;
 
-	ret = snprintf(path, 100, "/proc/%d/attr/current", pid);
-	if (ret < 0 || ret >= 100) {
-		ERROR("path name too long");
+	label_fd = __apparmor_process_label_open(ops, pid, O_RDONLY, false);
+	if (label_fd < 0)
 		return NULL;
-	}
-again:
-	f = fopen_cloexec(path, "r");
-	if (!f) {
-		SYSERROR("opening %s", path);
-		free(buf);
-		return NULL;
-	}
-	sz += 1024;
-	newbuf = realloc(buf, sz);
-	if (!newbuf) {
-		free(buf);
-		ERROR("out of memory");
-		fclose(f);
-		return NULL;
-	}
-	buf = newbuf;
-	memset(buf, 0, sz);
-	ret = fread(buf, 1, sz - 1, f);
-	fclose(f);
-	if (ret < 0) {
-		ERROR("reading %s", path);
-		free(buf);
-		return NULL;
-	}
-	if (ret >= sz)
-		goto again;
-	space = strchr(buf, '\n');
-	if (space)
-		*space = '\0';
-	space = strchr(buf, ' ');
-	if (space)
-		*space = '\0';
-	return buf;
+
+	fd_to_buf(label_fd, &label, &len);
+
+	len = strcspn(label, "\n \t");
+	if (len)
+		label[len] = '\0';
+
+	return move_ptr(label);
 }
 
 static char *apparmor_process_label_get_at(struct lsm_ops *ops, int fd_pid)
@@ -1141,22 +1132,7 @@ static int apparmor_keyring_label_set(struct lsm_ops *ops, const char *label)
 
 static int apparmor_process_label_fd_get(struct lsm_ops *ops, pid_t pid, bool on_exec)
 {
-	int ret = -1;
-	int labelfd;
-	char path[LXC_LSMATTRLEN];
-
-	if (on_exec)
-		TRACE("On-exec not supported with AppArmor");
-
-	ret = snprintf(path, LXC_LSMATTRLEN, "/proc/%d/attr/current", pid);
-	if (ret < 0 || ret >= LXC_LSMATTRLEN)
-		return -1;
-
-	labelfd = open(path, O_RDWR);
-	if (labelfd < 0)
-		return log_error_errno(-errno, errno, "Unable to open AppArmor LSM label file descriptor");
-
-	return labelfd;
+	return __apparmor_process_label_open(ops, pid, O_RDWR, on_exec);
 }
 
 static int apparmor_process_label_set_at(struct lsm_ops *ops, int label_fd, const char *label, bool on_exec)
