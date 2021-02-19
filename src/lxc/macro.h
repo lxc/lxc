@@ -406,11 +406,6 @@ extern int __build_bug_on_failed;
 	} while (0)
 #endif
 
-#define lxc_iterate_parts(__iterator, __splitme, __separators)                  \
-	for (char *__p = NULL, *__it = strtok_r(__splitme, __separators, &__p); \
-	     (__iterator = __it);                                               \
-	     __iterator = __it = strtok_r(NULL, __separators, &__p))
-
 #define prctl_arg(x) ((unsigned long)x)
 
 /* networking */
