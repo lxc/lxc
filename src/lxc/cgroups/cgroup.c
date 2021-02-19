@@ -106,15 +106,3 @@ void cgroup_exit(struct cgroup_ops *ops)
 
 	return;
 }
-
-#define INIT_SCOPE "/init.scope"
-char *prune_init_scope(char *cg)
-{
-	if (is_empty_string(cg))
-		return NULL;
-
-	if (strnequal(cg, INIT_SCOPE, STRLITERALLEN(INIT_SCOPE)))
-		return cg + STRLITERALLEN(INIT_SCOPE);
-
-	return cg;
-}

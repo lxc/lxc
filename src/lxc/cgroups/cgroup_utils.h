@@ -43,4 +43,11 @@ static inline bool cgns_supported(void)
 
 __hidden extern int cgroup_tree_prune(int dfd, const char *path);
 
+/*
+ * This function can only be called on information parsed from
+ * /proc/<pid>/cgroup or on absolute paths and it will verify the latter and
+ * return NULL if a relative path is passed.
+ */
+__hidden extern char *prune_init_scope(char *path);
+
 #endif /* __LXC_CGROUP_UTILS_H */
