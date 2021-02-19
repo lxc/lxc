@@ -2678,7 +2678,9 @@ struct lxc_conf *lxc_conf_init(void)
 	new->logfd = -1;
 	lxc_list_init(&new->cgroup);
 	lxc_list_init(&new->cgroup2);
-	lxc_list_init(&new->devices);
+	/* Block ("allowlist") all devices by default. */
+	new->bpf_devices.list_type = LXC_BPF_DEVICE_CGROUP_ALLOWLIST;
+	lxc_list_init(&(new->bpf_devices).device_item);
 	lxc_list_init(&new->network);
 	lxc_list_init(&new->mount_list);
 	lxc_list_init(&new->caps);
@@ -3709,13 +3711,15 @@ int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version)
 
 static void lxc_clear_devices(struct lxc_conf *conf)
 {
-	struct lxc_list *list = &conf->devices;
+	struct lxc_list *list = &(conf->bpf_devices).device_item;
 	struct lxc_list *it, *next;
 
 	lxc_list_for_each_safe(it, list, next) {
 		lxc_list_del(it);
 		free(it);
 	}
+
+	lxc_list_init(&(conf->bpf_devices).device_item);
 }
 
 int lxc_clear_limits(struct lxc_conf *c, const char *key)

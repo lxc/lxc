@@ -1195,7 +1195,6 @@ static int lxc_cmd_add_bpf_device_cgroup_callback(int fd, struct lxc_cmd_req *re
 {
 	int ret;
 	struct lxc_cmd_rsp rsp = {};
-	struct device_item *device;
 	struct lxc_conf *conf;
 
 	if (req->datalen <= 0)
@@ -1207,9 +1206,10 @@ static int lxc_cmd_add_bpf_device_cgroup_callback(int fd, struct lxc_cmd_req *re
 	if (!req->data)
 		return LXC_CMD_REAP_CLIENT_FD;
 
-	device = (struct device_item *)req->data;
 	conf = handler->conf;
-	if (!bpf_cgroup_devices_update(handler->cgroup_ops, device, &conf->devices))
+	if (!bpf_cgroup_devices_update(handler->cgroup_ops,
+				       &conf->bpf_devices,
+				       (struct device_item *)req->data))
 		rsp.ret = -1;
 	else
 		rsp.ret = 0;

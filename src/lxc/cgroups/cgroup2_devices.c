@@ -211,12 +211,6 @@ int bpf_program_append_device(struct bpf_program *prog, struct device_item *devi
 	if (!prog || !device)
 		return ret_set_errno(-1, EINVAL);
 
-	/* This is a global rule so no need to append anything. */
-	if (device->global_rule > LXC_BPF_DEVICE_CGROUP_LOCAL_RULE) {
-		prog->device_list_type = device->global_rule;
-		return 0;
-	}
-
 	ret = bpf_access_mask(device->access, &access_mask);
 	if (ret < 0)
 		return log_error_errno(ret, -ret, "Invalid access mask specified %s", device->access);
@@ -296,10 +290,10 @@ int bpf_program_finalize(struct bpf_program *prog)
 	if (!prog)
 		return ret_set_errno(-1, EINVAL);
 
-	TRACE("Implementing %s bpf device cgroup program",
-	      prog->device_list_type == LXC_BPF_DEVICE_CGROUP_DENYLIST
-		  ? "denylist"
-		  : "allowlist");
+	TRACE("Device bpf program %s all devices by default",
+	      prog->device_list_type == LXC_BPF_DEVICE_CGROUP_ALLOWLIST
+		  ? "blocks"
+		  : "allows");
 
 	ins[0] = BPF_MOV64_IMM(BPF_REG_0, prog->device_list_type);
 	ins[1] = BPF_EXIT_INSN();
@@ -436,30 +430,34 @@ void bpf_device_program_free(struct cgroup_ops *ops)
 	}
 }
 
-int bpf_list_add_device(struct lxc_list *devices, struct device_item *device)
+int bpf_list_add_device(struct bpf_devices *bpf_devices,
+			struct device_item *device)
 {
 	__do_free struct lxc_list *list_elem = NULL;
 	__do_free struct device_item *new_device = NULL;
 	struct lxc_list *it;
 
-	if (!devices || !device)
+	if (!bpf_devices || !device)
 		return ret_errno(EINVAL);
 
-	lxc_list_for_each(it, devices) {
-		struct device_item *cur = it->elem;
-
-		if (cur->global_rule > LXC_BPF_DEVICE_CGROUP_LOCAL_RULE &&
-		    device->global_rule > LXC_BPF_DEVICE_CGROUP_LOCAL_RULE) {
-			TRACE("Switched from %s to %s",
-			      cur->global_rule == LXC_BPF_DEVICE_CGROUP_ALLOWLIST
-				  ? "allowlist"
-				  : "denylist",
-			      device->global_rule == LXC_BPF_DEVICE_CGROUP_ALLOWLIST
-				  ? "allowlist"
-				  : "denylist");
-			cur->global_rule = device->global_rule;
-			return 1;
+	/* Check whether this determines the list type. */
+	if (device->type == 'a' &&
+	    device->major < 0 &&
+	    device->minor < 0 &&
+	    is_empty_string(device->access)) {
+		if (device->allow) {
+			bpf_devices->list_type = LXC_BPF_DEVICE_CGROUP_DENYLIST;
+			TRACE("Device cgroup will allow (\"denylist\") all devices by default");
+		} else {
+			bpf_devices->list_type = LXC_BPF_DEVICE_CGROUP_ALLOWLIST;
+			TRACE("Device cgroup will deny (\"allowlist\") all devices by default");
 		}
+
+		return 0;
+	}
+
+	lxc_list_for_each(it, &bpf_devices->device_item) {
+		struct device_item *cur = it->elem;
 
 		if (cur->type != device->type)
 			continue;
@@ -476,27 +474,26 @@ int bpf_list_add_device(struct lxc_list *devices, struct device_item *device)
 		 */
 		if (cur->allow != device->allow) {
 			cur->allow = device->allow;
-			return log_trace(0, "Switched existing rule of bpf device program: type %c, major %d, minor %d, access %s, allow %d, global_rule %d",
-					 cur->type, cur->major, cur->minor,
-					 cur->access, cur->allow,
-					 cur->global_rule);
+			TRACE("Switched existing rule: type %c, major %d, minor %d, access %s, allow %d",
+			      cur->type, cur->major, cur->minor, cur->access, cur->allow);
+		} else {
+			TRACE("Reusing existing rule: type %c, major %d, minor %d, access %s, allow %d",
+			      cur->type, cur->major, cur->minor, cur->access, cur->allow);
 		}
 
-		return log_trace(1, "Reusing existing rule of bpf device program: type %c, major %d, minor %d, access %s, allow %d, global_rule %d",
-				 cur->type, cur->major, cur->minor, cur->access,
-				 cur->allow, cur->global_rule);
+		return 0;
 	}
 
 	list_elem = malloc(sizeof(*list_elem));
 	if (!list_elem)
-		return log_error_errno(-1, ENOMEM, "Failed to allocate new device list");
+		return syserrno_set(ENOMEM, "Failed to allocate new device list");
 
 	new_device = memdup(device, sizeof(struct device_item));
 	if (!new_device)
-		return log_error_errno(-1, ENOMEM, "Failed to allocate new device item");
+		return syserrno_set(ENOMEM, "Failed to allocate new device item");
 
 	lxc_list_add_elem(list_elem, move_ptr(new_device));
-	lxc_list_add_tail(devices, move_ptr(list_elem));
+	lxc_list_add_tail(&bpf_devices->device_item, move_ptr(list_elem));
 
 	return 0;
 }
@@ -533,7 +530,20 @@ bool bpf_devices_cgroup_supported(void)
 	return log_trace(true, "The bpf device cgroup is supported");
 }
 
-static struct bpf_program *__bpf_cgroup_devices(struct lxc_list *devices)
+static inline bool bpf_device_add(const struct bpf_program *prog,
+				  struct device_item *device)
+{
+	/* We're blocking all devices so skip individual deny rules. */
+	if (bpf_device_block_all(prog) && !device->allow)
+		return false;
+
+	/* We're allowing all devices so skip individual allow rules. */
+	if (!bpf_device_block_all(prog) && device->allow)
+		return false;
+	return true;
+}
+
+static struct bpf_program *__bpf_cgroup_devices(struct bpf_devices *bpf_devices)
 {
 	__do_bpf_program_free struct bpf_program *prog = NULL;
 	int ret;
@@ -547,11 +557,11 @@ static struct bpf_program *__bpf_cgroup_devices(struct lxc_list *devices)
 	if (ret)
 		return syserrno(NULL, "Failed to initialize bpf program");
 
-	bpf_device_set_type(prog, devices);
-	TRACE("Device bpf %s all devices by default",
+	prog->device_list_type = bpf_devices->list_type;
+	TRACE("Device cgroup %s all devices by default",
 	      bpf_device_block_all(prog) ? "blocks" : "allows");
 
-	lxc_list_for_each(it, devices) {
+	lxc_list_for_each(it, &bpf_devices->device_item) {
 		struct device_item *cur = it->elem;
 
 		if (!bpf_device_add(prog, cur)) {
@@ -565,7 +575,7 @@ static struct bpf_program *__bpf_cgroup_devices(struct lxc_list *devices)
 			return syserrno(NULL, "Failed adding rule: type %c, major %d, minor %d, access %s, allow %d",
 					cur->type, cur->major, cur->minor, cur->access, cur->allow);
 
-		TRACE("Added rule to bpf device program: type %c, major %d, minor %d, access %s, allow %d",
+		TRACE("Added rule: type %c, major %d, minor %d, access %s, allow %d",
 		      cur->type, cur->major, cur->minor, cur->access, cur->allow);
 	}
 
@@ -576,12 +586,13 @@ static struct bpf_program *__bpf_cgroup_devices(struct lxc_list *devices)
 	return move_ptr(prog);
 }
 
-bool bpf_cgroup_devices_attach(struct cgroup_ops *ops, struct lxc_list *devices)
+bool bpf_cgroup_devices_attach(struct cgroup_ops *ops,
+			       struct bpf_devices *bpf_devices)
 {
 	__do_bpf_program_free struct bpf_program *prog = NULL;
 	int ret;
 
-	prog = __bpf_cgroup_devices(devices);
+	prog = __bpf_cgroup_devices(bpf_devices);
 	if (!prog)
 		return syserrno(false, "Failed to create bpf program");
 
@@ -597,8 +608,8 @@ bool bpf_cgroup_devices_attach(struct cgroup_ops *ops, struct lxc_list *devices)
 }
 
 bool bpf_cgroup_devices_update(struct cgroup_ops *ops,
-			       struct device_item *new,
-			       struct lxc_list *devices)
+			       struct bpf_devices *bpf_devices,
+			       struct device_item *new)
 {
 	__do_bpf_program_free struct bpf_program *prog = NULL;
 	static int can_use_bpf_replace = -1;
@@ -615,16 +626,16 @@ bool bpf_cgroup_devices_update(struct cgroup_ops *ops,
 	if (ops->unified->cgfd_limit < 0)
 		return ret_set_errno(false, EBADF);
 
-	ret = bpf_list_add_device(devices, new);
+	ret = bpf_list_add_device(bpf_devices, new);
 	if (ret < 0)
 		return false;
 
 	/* No previous device program attached. */
 	prog_old = ops->cgroup2_devices;
 	if (!prog_old)
-		return bpf_cgroup_devices_attach(ops, devices);
+		return bpf_cgroup_devices_attach(ops, bpf_devices);
 
-	prog = __bpf_cgroup_devices(devices);
+	prog = __bpf_cgroup_devices(bpf_devices);
 	if (!prog)
 		return syserrno(false, "Failed to create bpf program");
 
