@@ -333,11 +333,13 @@
  *               +
  * /attr/        = 6
  *               +
+ * /apparmor/    = 10
+ *               +
  * /current      = 8
  *               +
  * \0            = 1
  */
-#define LXC_LSMATTRLEN (6 + INTTYPE_TO_STRLEN(pid_t) + 6 + 8 + 1)
+#define LXC_LSMATTRLEN (6 + INTTYPE_TO_STRLEN(pid_t) + 6 + 10 + 8 + 1)
 
 /* MAX_NS_PROC_NAME = MAX_NS_PROC_NAME
  *                  +
