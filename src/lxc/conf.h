@@ -570,4 +570,17 @@ static inline void put_lxc_rootfs(struct lxc_rootfs *rootfs, bool unpin)
 	}
 }
 
+static inline void lxc_clear_cgroup2_devices(struct bpf_devices *bpf_devices)
+{
+	struct lxc_list *list = &bpf_devices->device_item;
+	struct lxc_list *it, *next;
+
+	lxc_list_for_each_safe (it, list, next) {
+		lxc_list_del(it);
+		free(it);
+	}
+
+	lxc_list_init(&bpf_devices->device_item);
+}
+
 #endif /* __LXC_CONF_H */
