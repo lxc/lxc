@@ -3490,7 +3490,6 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 static int __cgroup_init(struct cgroup_ops *ops, struct lxc_conf *conf)
 {
 	__do_close int dfd = -EBADF;
-	bool relative = conf->cgroup_meta.relative;
 	int ret;
 	const char *tmp;
 
@@ -3527,9 +3526,11 @@ static int __cgroup_init(struct cgroup_ops *ops, struct lxc_conf *conf)
 	ops->dfd_mnt_cgroupfs_host = dfd;
 
 	if (unified_cgroup_fd(dfd))
-		ret = cg_unified_init(ops, relative, !lxc_list_empty(&conf->id_map));
+		ret = cg_unified_init(ops, conf->cgroup_meta.relative,
+				      !lxc_list_empty(&conf->id_map));
 	else
-		ret = cg_hybrid_init(ops, relative, !lxc_list_empty(&conf->id_map));
+		ret = cg_hybrid_init(ops, conf->cgroup_meta.relative,
+				     !lxc_list_empty(&conf->id_map));
 	if (ret < 0)
 		return syserrno(ret, "Failed to initialize cgroups");
 
