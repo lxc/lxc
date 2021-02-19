@@ -430,10 +430,29 @@ void bpf_device_program_free(struct cgroup_ops *ops)
 	}
 }
 
+static inline bool bpf_device_list_block_all(const struct bpf_devices *bpf_devices)
+{
+	/* LXC_BPF_DEVICE_CGROUP_ALLOWLIST  -> block ("allowlist") all devices. */
+	return bpf_devices->list_type == LXC_BPF_DEVICE_CGROUP_ALLOWLIST;
+}
+
+static inline bool bpf_device_add(const struct bpf_devices *bpf_devices,
+				  struct device_item *device)
+{
+	/* We're blocking all devices so skip individual deny rules. */
+	if (bpf_device_list_block_all(bpf_devices) && !device->allow)
+		return log_trace(false, "Device cgroup blocks all devices; skipping specific deny rules");
+
+	/* We're allowing all devices so skip individual allow rules. */
+	if (!bpf_device_list_block_all(bpf_devices) && device->allow)
+		return log_trace(false, "Device cgroup allows all devices; skipping specific allow rules");
+
+	return true;
+}
+
 int bpf_list_add_device(struct bpf_devices *bpf_devices,
 			struct device_item *device)
 {
-	int device_list_altered = 0;
 	__do_free struct lxc_list *list_elem = NULL;
 	__do_free struct device_item *new_device = NULL;
 	struct lxc_list *it;
@@ -447,23 +466,21 @@ int bpf_list_add_device(struct bpf_devices *bpf_devices,
 	    device->minor < 0 &&
 	    is_empty_string(device->access)) {
 		if (device->allow) {
-			if (bpf_devices->list_type != LXC_BPF_DEVICE_CGROUP_DENYLIST) {
-				bpf_devices->list_type = LXC_BPF_DEVICE_CGROUP_DENYLIST;
-				device_list_altered = 1;
-			}
-
+			bpf_devices->list_type = LXC_BPF_DEVICE_CGROUP_DENYLIST;
 			TRACE("Device cgroup will allow (\"denylist\") all devices by default");
 		} else {
-			if (bpf_devices->list_type != LXC_BPF_DEVICE_CGROUP_ALLOWLIST) {
-				bpf_devices->list_type = LXC_BPF_DEVICE_CGROUP_ALLOWLIST;
-				device_list_altered = 1;
-			}
-
+			bpf_devices->list_type = LXC_BPF_DEVICE_CGROUP_ALLOWLIST;
 			TRACE("Device cgroup will block (\"allowlist\") all devices by default");
 		}
 
-		return device_list_altered;
+		/* Reset the device list. */
+		lxc_clear_cgroup2_devices(bpf_devices);
+		TRACE("Resetting cgroup device list");
+		return 1; /* The device list was altered. */
 	}
+
+	TRACE("Processing new device rule: type %c, major %d, minor %d, access %s, allow %d",
+	      device->type, device->major, device->minor, device->access, device->allow);
 
 	lxc_list_for_each(it, &bpf_devices->device_item) {
 		struct device_item *cur = it->elem;
@@ -477,25 +494,23 @@ int bpf_list_add_device(struct bpf_devices *bpf_devices,
 		if (!strequal(cur->access, device->access))
 			continue;
 
+		if (!bpf_device_add(bpf_devices, cur))
+			continue;
+
 		/*
 		 * The rule is switched from allow to deny or vica versa so
 		 * don't bother allocating just flip the existing one.
 		 */
 		if (cur->allow != device->allow) {
 			cur->allow = device->allow;
-			device_list_altered = 1;
 
-			TRACE("Switched existing rule: type %c, major %d, minor %d, access %s, allow %d",
-			      cur->type, cur->major, cur->minor, cur->access, cur->allow);
-		} else {
-			TRACE("Reusing existing rule: type %c, major %d, minor %d, access %s, allow %d",
-			      cur->type, cur->major, cur->minor, cur->access, cur->allow);
+			return log_trace(1, "Switched existing device rule"); /* The device list was altered. */
 		}
 
-		return device_list_altered;
+
+		return log_trace(0, "Reused existing device rule"); /* The device list wasn't altered. */
 	}
 
-	device_list_altered = 1;
 	list_elem = malloc(sizeof(*list_elem));
 	if (!list_elem)
 		return syserrno_set(ENOMEM, "Failed to allocate new device list");
@@ -507,7 +522,7 @@ int bpf_list_add_device(struct bpf_devices *bpf_devices,
 	lxc_list_add_elem(list_elem, move_ptr(new_device));
 	lxc_list_add_tail(&bpf_devices->device_item, move_ptr(list_elem));
 
-	return device_list_altered;
+	return log_trace(1, "Added new device rule"); /* The device list was altered. */
 }
 
 bool bpf_devices_cgroup_supported(void)
@@ -542,19 +557,6 @@ bool bpf_devices_cgroup_supported(void)
 	return log_trace(true, "The bpf device cgroup is supported");
 }
 
-static inline bool bpf_device_add(const struct bpf_program *prog,
-				  struct device_item *device)
-{
-	/* We're blocking all devices so skip individual deny rules. */
-	if (bpf_device_block_all(prog) && !device->allow)
-		return false;
-
-	/* We're allowing all devices so skip individual allow rules. */
-	if (!bpf_device_block_all(prog) && device->allow)
-		return false;
-	return true;
-}
-
 static struct bpf_program *__bpf_cgroup_devices(struct bpf_devices *bpf_devices)
 {
 	__do_bpf_program_free struct bpf_program *prog = NULL;
@@ -571,29 +573,27 @@ static struct bpf_program *__bpf_cgroup_devices(struct bpf_devices *bpf_devices)
 
 	prog->device_list_type = bpf_devices->list_type;
 	TRACE("Device cgroup %s all devices by default",
-	      bpf_device_block_all(prog) ? "blocks" : "allows");
+	      bpf_device_list_block_all(bpf_devices) ? "blocks" : "allows");
 
 	lxc_list_for_each(it, &bpf_devices->device_item) {
 		struct device_item *cur = it->elem;
 
-		if (!bpf_device_add(prog, cur)) {
-			TRACE("Skipping rule: type %c, major %d, minor %d, access %s, allow %d",
-			      cur->type, cur->major, cur->minor, cur->access, cur->allow);
+		TRACE("Processing device rule: type %c, major %d, minor %d, access %s, allow %d",
+		      cur->type, cur->major, cur->minor, cur->access, cur->allow);
+
+		if (!bpf_device_add(bpf_devices, cur))
 			continue;
-		}
 
 		ret = bpf_program_append_device(prog, cur);
 		if (ret)
-			return syserrno(NULL, "Failed adding rule: type %c, major %d, minor %d, access %s, allow %d",
-					cur->type, cur->major, cur->minor, cur->access, cur->allow);
+			return syserrno(NULL, "Failed adding new device rule");
 
-		TRACE("Added rule: type %c, major %d, minor %d, access %s, allow %d",
-		      cur->type, cur->major, cur->minor, cur->access, cur->allow);
+		TRACE("Added new device rule");
 	}
 
 	ret = bpf_program_finalize(prog);
 	if (ret)
-		return syserrno(NULL, "Failed to finalize bpf program");
+		return syserrno(NULL, "Failed to finalize device program");
 
 	return move_ptr(prog);
 }
@@ -619,20 +619,6 @@ bool bpf_cgroup_devices_attach(struct cgroup_ops *ops,
 	return log_trace(true, "Attached bpf program");
 }
 
-/*
- * TODO: Clarify semantics.
- * Specifically, when a user switches the type of device program, i.e. switches
- * from blocking all devices by default to allowing all devices by default or
- * vica versa do we reactivate the devices we have recorded so far or not?
- * Specific example: The user configures a device program that blocks all
- * devices by default apart from a small list of devices such as /dev/zero and
- * /dev/null. Now the user switches to a device program that allows all devices
- * by default. Naturally we skip all specific devices since they are
- * encompassed in the global allow rule. But now assume the user switches back
- * to a device program that blocks all devices by default. Do we reactivate the
- * previously specific allowed devices, i.e. do we grant access to /dev/zero
- * and /dev/null? My gut feeling is no, but I'm not sure.
- */
 bool bpf_cgroup_devices_update(struct cgroup_ops *ops,
 			       struct bpf_devices *bpf_devices,
 			       struct device_item *new)
