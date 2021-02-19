@@ -619,6 +619,20 @@ bool bpf_cgroup_devices_attach(struct cgroup_ops *ops,
 	return log_trace(true, "Attached bpf program");
 }
 
+/*
+ * TODO: Clarify semantics.
+ * Specifically, when a user switches the type of device program, i.e. switches
+ * from blocking all devices by default to allowing all devices by default or
+ * vica versa do we reactivate the devices we have recorded so far or not?
+ * Specific example: The user configures a device program that blocks all
+ * devices by default apart from a small list of devices such as /dev/zero and
+ * /dev/null. Now the user switches to a device program that allows all devices
+ * by default. Naturally we skip all specific devices since they are
+ * encompassed in the global allow rule. But now assume the user switches back
+ * to a device program that blocks all devices by default. Do we reactivate the
+ * previously specific allowed devices, i.e. do we grant access to /dev/zero
+ * and /dev/null? My gut feeling is no, but I'm not sure.
+ */
 bool bpf_cgroup_devices_update(struct cgroup_ops *ops,
 			       struct bpf_devices *bpf_devices,
 			       struct device_item *new)
