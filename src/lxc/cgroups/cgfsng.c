@@ -3511,7 +3511,9 @@ static int __cgroup_init(struct cgroup_ops *ops, struct lxc_conf *conf)
 		__do_free char *pin = NULL;
 		char *chop, *cur;
 
-		pin = must_copy_string(tmp);
+		pin = strdup(tmp);
+		if (!pin)
+			return -errno;
 		chop = pin;
 
 		lxc_iterate_parts(cur, chop, ",")
