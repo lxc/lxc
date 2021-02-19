@@ -1524,7 +1524,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
       <variablelist>
         <varlistentry>
           <term>
-            <option>lxc.cgroup.[controller name]</option>
+            <option>lxc.cgroup.[controller name].[controller file]</option>
           </term>
           <listitem>
             <para>
@@ -1539,7 +1539,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         </varlistentry>
         <varlistentry>
           <term>
-            <option>lxc.cgroup2.[controller name]</option>
+            <option>lxc.cgroup2.[controller name].[controller file]</option>
           </term>
           <listitem>
             <para>
