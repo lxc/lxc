@@ -3491,7 +3491,7 @@ static int __cgroup_init(struct cgroup_ops *ops, struct lxc_conf *conf)
 {
 	__do_close int dfd = -EBADF;
 	int ret;
-	const char *tmp;
+	const char *controllers_use;
 
 	if (ops->dfd_mnt_cgroupfs_host >= 0)
 		return ret_errno(EINVAL);
@@ -3506,18 +3506,17 @@ static int __cgroup_init(struct cgroup_ops *ops, struct lxc_conf *conf)
 	if (dfd < 0)
 		return syserrno(-errno, "Failed to open " DEFAULT_CGROUP_MOUNTPOINT);
 
-	tmp = lxc_global_config_value("lxc.cgroup.use");
-	if (tmp) {
-		__do_free char *pin = NULL;
-		char *chop, *cur;
+	controllers_use = lxc_global_config_value("lxc.cgroup.use");
+	if (controllers_use) {
+		__do_free char *dup = NULL;
+		char *it;
 
-		pin = strdup(tmp);
-		if (!pin)
+		dup = strdup(controllers_use);
+		if (!dup)
 			return -errno;
-		chop = pin;
 
-		lxc_iterate_parts(cur, chop, ",")
-			must_append_string(&ops->cgroup_use, cur);
+		lxc_iterate_parts(it, dup, ",")
+			must_append_string(&ops->cgroup_use, it);
 	}
 
 	/*
