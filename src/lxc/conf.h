@@ -270,7 +270,6 @@ struct lxc_state_client {
 };
 
 typedef enum lxc_bpf_devices_rule_t {
-	LXC_BPF_DEVICE_CGROUP_LOCAL_RULE	= -1,
 	LXC_BPF_DEVICE_CGROUP_ALLOWLIST		= 0,
 	LXC_BPF_DEVICE_CGROUP_DENYLIST		= 1,
 } lxc_bpf_devices_rule_t;
@@ -281,12 +280,11 @@ struct device_item {
 	int minor;
 	char access[4];
 	int allow;
-	/*
-	 * LXC_BPF_DEVICE_CGROUP_LOCAL_RULE -> no global rule
-	 * LXC_BPF_DEVICE_CGROUP_ALLOWLIST  -> allowlist (deny all)
-	 * LXC_BPF_DEVICE_CGROUP_DENYLIST   -> denylist (allow all)
-	 */
-	int global_rule;
+};
+
+struct bpf_devices {
+	lxc_bpf_devices_rule_t list_type;
+	struct lxc_list device_item;
 };
 
 struct timens_offsets {
@@ -310,8 +308,7 @@ struct lxc_conf {
 	struct {
 		struct lxc_list cgroup;
 		struct lxc_list cgroup2;
-		/* This should be reimplemented as a hashmap. */
-		struct lxc_list devices;
+		struct bpf_devices bpf_devices;
 	};
 
 	struct {

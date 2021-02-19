@@ -54,35 +54,6 @@ static inline bool bpf_device_block_all(const struct bpf_program *prog)
 	return prog->device_list_type == LXC_BPF_DEVICE_CGROUP_ALLOWLIST;
 }
 
-static inline bool bpf_device_add(const struct bpf_program *prog,
-				  struct device_item *device)
-{
-	if (device->global_rule > LXC_BPF_DEVICE_CGROUP_LOCAL_RULE)
-		return false;
-
-	/* We're blocking all devices so skip individual deny rules. */
-	if (bpf_device_block_all(prog) && !device->allow)
-		return false;
-
-	/* We're allowing all devices so skip individual allow rules. */
-	if (!bpf_device_block_all(prog) && device->allow)
-		return false;
-	return true;
-}
-
-static inline void bpf_device_set_type(struct bpf_program *prog,
-				       struct lxc_list *devices)
-{
-	struct lxc_list *it;
-
-	lxc_list_for_each (it, devices) {
-		struct device_item *cur = it->elem;
-
-		if (cur->global_rule > LXC_BPF_DEVICE_CGROUP_LOCAL_RULE)
-			prog->device_list_type = cur->global_rule;
-	}
-}
-
 __hidden extern struct bpf_program *bpf_program_new(__u32 prog_type);
 __hidden extern int bpf_program_init(struct bpf_program *prog);
 __hidden extern int bpf_program_append_device(struct bpf_program *prog, struct device_item *device);
@@ -91,13 +62,13 @@ __hidden extern int bpf_program_cgroup_detach(struct bpf_program *prog);
 __hidden extern void bpf_device_program_free(struct cgroup_ops *ops);
 __hidden extern bool bpf_devices_cgroup_supported(void);
 
-__hidden extern int bpf_list_add_device(struct lxc_list *devices,
+__hidden extern int bpf_list_add_device(struct bpf_devices *bpf_devices,
 					struct device_item *device);
 __hidden extern bool bpf_cgroup_devices_attach(struct cgroup_ops *ops,
-					       struct lxc_list *devices);
+					       struct bpf_devices *bpf_devices);
 __hidden extern bool bpf_cgroup_devices_update(struct cgroup_ops *ops,
-					       struct device_item *new,
-					       struct lxc_list *devices);
+					       struct bpf_devices *bpf_devices,
+					       struct device_item *device);
 
 static inline void bpf_program_free(struct bpf_program *prog)
 {

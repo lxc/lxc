@@ -2773,18 +2773,8 @@ static int device_cgroup_rule_parse(struct device_item *device, const char *key,
 		device->type = 'a';
 		device->major = -1;
 		device->minor = -1;
-
-		if (device->allow) /* allow all devices */
-			device->global_rule = LXC_BPF_DEVICE_CGROUP_DENYLIST;
-		else /* deny all devices */
-			device->global_rule = LXC_BPF_DEVICE_CGROUP_ALLOWLIST;
-
-		device->allow = -1;
 		return 0;
 	}
-
-	/* local rule */
-	device->global_rule = LXC_BPF_DEVICE_CGROUP_LOCAL_RULE;
 
 	switch (*val) {
 	case 'a':
@@ -2968,7 +2958,6 @@ static int device_cgroup_rule_parse_devpath(struct device_item *device,
 	device->major = MAJOR(sb.st_rdev);
 	device->minor = MINOR(sb.st_rdev);
 	device->allow = 1;
-	device->global_rule = LXC_BPF_DEVICE_CGROUP_LOCAL_RULE;
 
 	return 0;
 }
@@ -3106,9 +3095,10 @@ static int bpf_device_cgroup_prepare(struct cgroup_ops *ops,
 	if (ret < 0)
 		return log_error_errno(-1, EINVAL, "Failed to parse device string %s=%s", key, val);
 
-	ret = bpf_list_add_device(&conf->devices, &device_item);
+	ret = bpf_list_add_device(&conf->bpf_devices, &device_item);
 	if (ret < 0)
 		return -1;
+
 	return 0;
 }
 
@@ -3180,10 +3170,11 @@ __cgfsng_ops static bool cgfsng_devices_activate(struct cgroup_ops *ops, struct 
 
 	unified = ops->unified;
 	if (!unified || !unified->bpf_device_controller ||
-	    !unified->container_full_path || lxc_list_empty(&conf->devices))
+	    !unified->container_full_path ||
+	    lxc_list_empty(&(conf->bpf_devices).device_item))
 		return true;
 
-	return bpf_cgroup_devices_attach(ops, &conf->devices);
+	return bpf_cgroup_devices_attach(ops, &conf->bpf_devices);
 }
 
 static bool __cgfsng_delegate_controllers(struct cgroup_ops *ops, const char *cgroup)
