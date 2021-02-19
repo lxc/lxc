@@ -3325,11 +3325,11 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 	else
 		basecginfo = read_file_at(-EBADF, "/proc/self/cgroup", PROTECT_OPEN, 0);
 	if (!basecginfo)
-		return ret_set_errno(-1, ENOMEM);
+		return ret_errno(ENOMEM);
 
 	ret = get_existing_subsystems(&klist, &nlist);
 	if (ret < 0)
-		return log_error_errno(-1, errno, "Failed to retrieve available legacy cgroup controllers");
+		return syserrno(-errno, "Failed to retrieve available legacy cgroup controllers");
 
 	f = fopen("/proc/self/mountinfo", "re");
 	if (!f)
@@ -3494,7 +3494,7 @@ static int __cgroup_init(struct cgroup_ops *ops, struct lxc_conf *conf)
 	const char *controllers_use;
 
 	if (ops->dfd_mnt_cgroupfs_host >= 0)
-		return ret_errno(EINVAL);
+		return ret_errno(EBUSY);
 
 	/*
 	 * I don't see the need for allowing symlinks here. If users want to
