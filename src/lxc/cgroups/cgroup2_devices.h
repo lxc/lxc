@@ -62,6 +62,11 @@ __hidden extern int bpf_program_cgroup_detach(struct bpf_program *prog);
 __hidden extern void bpf_device_program_free(struct cgroup_ops *ops);
 __hidden extern bool bpf_devices_cgroup_supported(void);
 
+/*
+ * Note that bpf_list_add_device() indicates whether or not it had to alter the
+ * current device list by return 1 and 0; both indicate success. A negative
+ * return value indicates and error.
+ */
 __hidden extern int bpf_list_add_device(struct bpf_devices *bpf_devices,
 					struct device_item *device);
 __hidden extern bool bpf_cgroup_devices_attach(struct cgroup_ops *ops,
