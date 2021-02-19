@@ -1518,7 +1518,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
     </refsect2>
 
     <refsect2>
-      <title>Control group</title>
+      <title>Control groups ("cgroups")</title>
       <para>
         The control group section contains the configuration for the
         different subsystem. <command>lxc</command> does not check the
