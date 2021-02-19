@@ -430,15 +430,21 @@ error:
 
 static char *apparmor_process_label_get(struct lsm_ops *ops, pid_t pid)
 {
-	int label_fd;
+	__do_close int fd_label = -EBADF;
 	__do_free char *label = NULL;
+	int ret;
 	size_t len;
 
-	label_fd = __apparmor_process_label_open(ops, pid, O_RDONLY, false);
-	if (label_fd < 0)
+	fd_label = __apparmor_process_label_open(ops, pid, O_RDONLY, false);
+	if (fd_label < 0)
 		return NULL;
 
-	fd_to_buf(label_fd, &label, &len);
+	ret = fd_to_buf(fd_label, &label, &len);
+	if (ret < 0)
+		return NULL;
+
+	if (len == 0)
+		return NULL;
 
 	len = strcspn(label, "\n \t");
 	if (len)
