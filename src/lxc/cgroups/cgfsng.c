@@ -3088,12 +3088,12 @@ static int bpf_device_cgroup_prepare(struct cgroup_ops *ops,
 	struct device_item device_item = {};
 	int ret;
 
-	if (strequal("devices.allow", key) && *val == '/')
+	if (strequal("devices.allow", key) && abspath(val))
 		ret = device_cgroup_rule_parse_devpath(&device_item, val);
 	else
 		ret = device_cgroup_rule_parse(&device_item, key, val);
 	if (ret < 0)
-		return log_error_errno(-1, EINVAL, "Failed to parse device string %s=%s", key, val);
+		return syserrno_set(EINVAL, "Failed to parse device rule %s=%s", key, val);
 
 	/*
 	 * Note that bpf_list_add_device() returns 1 if it altered the device
