@@ -159,3 +159,32 @@ int cgroup_tree_prune(int dfd, const char *path)
 
 	return 0;
 }
+
+#define INIT_SCOPE "/init.scope"
+char *prune_init_scope(char *path)
+{
+	char *slash = path;
+	size_t len;
+
+	/*
+	 * This function can only be called on information parsed from
+	 * /proc/<pid>/cgroup. The file displays the current cgroup of the
+	 * process as absolute paths. So if we are passed a non-absolute path
+	 * things are way wrong.
+	 */
+	if (!abspath(path))
+		return ret_set_errno(NULL, EINVAL);
+
+	len = strlen(path);
+	if (len < STRLITERALLEN(INIT_SCOPE))
+		return path;
+
+	slash += (len - STRLITERALLEN(INIT_SCOPE));
+	if (strequal(slash, INIT_SCOPE)) {
+		if (slash == path)
+			slash++;
+		*slash = '\0';
+	}
+
+	return path;
+}
