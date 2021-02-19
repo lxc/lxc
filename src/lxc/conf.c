@@ -3673,17 +3673,17 @@ int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version)
 	bool all = false;
 
 	if (version == CGROUP2_SUPER_MAGIC) {
-		global_token = "lxc.cgroup2";
-		namespaced_token = "lxc.cgroup2.";
-		namespaced_token_len = STRLITERALLEN("lxc.cgroup2.");
+		global_token		= "lxc.cgroup2";
+		namespaced_token	= "lxc.cgroup2.";
+		namespaced_token_len	= STRLITERALLEN("lxc.cgroup2.");
 		list = &c->cgroup2;
 	} else if (version == CGROUP_SUPER_MAGIC) {
-		global_token = "lxc.cgroup";
-		namespaced_token = "lxc.cgroup.";
-		namespaced_token_len = STRLITERALLEN("lxc.cgroup.");
+		global_token		= "lxc.cgroup";
+		namespaced_token	= "lxc.cgroup.";
+		namespaced_token_len	= STRLITERALLEN("lxc.cgroup.");
 		list = &c->cgroup;
 	} else {
-		return -EINVAL;
+		return ret_errno(EINVAL);
 	}
 
 	if (strequal(key, global_token))
@@ -3691,7 +3691,7 @@ int lxc_clear_cgroups(struct lxc_conf *c, const char *key, int version)
 	else if (strnequal(key, namespaced_token, namespaced_token_len))
 		k += namespaced_token_len;
 	else
-		return -EINVAL;
+		return ret_errno(EINVAL);
 
 	lxc_list_for_each_safe (it, list, next) {
 		struct lxc_cgroup *cg = it->elem;
