@@ -1527,6 +1527,191 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
         started, but has the advantage of permitting any future
         subsystem.
       </para>
+
+      <para>
+	The kernel implementation of cgroups has changed significantly over the
+	years. With Linux 4.5 support for a new cgroup filesystem was added
+	usually referred to as "cgroup2" or "unified hierarchy". Since then the
+	old cgroup filesystem is usually referred to as "cgroup1" or the
+	"legacy hierarchies". Please see the cgroups manual page for a detailed
+	explanation of the differences between the two versions.
+      </para>
+
+      <para>
+	LXC distinguishes settings for the legacy and the unified hierarchy by
+	using different configuration key prefixes. To alter settings for
+	controllers in a legacy hierarchy the key prefix
+	<option>lxc.cgroup.</option> must be used and in order to alter the
+	settings for a controller in the unified hierarchy the
+	<option>lxc.cgroup2.</option> key must be used. Note that LXC will
+	ignore <option>lxc.cgroup.</option> settings on systems that only use
+	the unified hierarchy. Conversely, it will ignore
+	<option>lxc.cgroup2.</option> options on systems that only use legacy
+	hierachies.
+      </para>
+
+      <para>
+	At its core a cgroup hierarchy is a way to hierarchically organize
+	processes. Usually a cgroup hierarchy will have one or more
+	"controllers" enabled. A "controller" in a cgroup hierarchy is usually
+	responsible for distributing a specific type of system resource along
+	the hierarchy. Controllers include the "pids" controller, the "cpu"
+	controller, the "memory" controller and others. Some controllers
+	however do not fall into the category of distributing a system
+	resource, instead they are often referred to as "utility" controllers.
+	One utility controller is the device controller. Instead of
+	distributing a system resource it allows to manage device access.
+      </para>
+
+      <para>
+	In the legacy hierarchy the device controller was implemented like most
+	other controllers as a set of files that could be written to. These
+	files where named "devices.allow" and "devices.deny". The legacy device
+	controller allowed the implementation of both "allowlists" and
+	"denylists".
+      </para>
+
+      <para>
+	An allowlist is a device program that by default blocks access to all
+	devices. In order to access specific devices "allow rules" for
+	particular devices or device classes must be specified. In contrast, a
+	denylist is a device program that by default allows access to all
+	devices. In order to restrict access to specific devices "deny rules"
+	for particular devices or device classes must be specified.
+      </para>
+
+      <para>
+	In the unified cgroup hierarchy the implementation of the device
+	controller has completely changed. Instead of files to read from and
+	write to a eBPF program of
+	<option>BPF_PROG_TYPE_CGROUP_DEVICE</option> can be attached to a
+	cgroup. Even though the kernel implementation has changed completely
+	LXC tries to allow for the same semantics to be followed in the legacy
+	device cgroup and the unified eBPF-based device controller. The
+	following paragraphs explain the semantics for the unified eBPF-based
+	device controller.
+      </para>
+
+      <para>
+	As mentioned the format for specifying device rules for the unified
+	eBPF-based device controller is the same as for the legacy cgroup
+	device controller; only the configuration key prefix has changed.
+	Specifically, device rules for the legacy cgroup device controller are
+	specified via <option>lxc.cgroup.devices.allow</option> and
+	<option>lxc.cgroup.devices.deny</option> whereas for the
+	cgroup2 eBPF-based device controller
+	<option>lxc.cgroup.devices.allow</option> and
+	<option>lxc.cgroup.devices.deny</option> must be used.
+      </para>
+      <para>
+        <itemizedlist>
+          <listitem>
+	    <para>
+	      A allowlist device rule
+              <programlisting>
+	        lxc.cgroup2.devices.deny = a
+              </programlisting>
+	      will cause LXC to instruct the kernel to block access to all
+	      devices by default. To grant access to devices allow device rules
+	      must be added via the <option>lxc.cgroup2.devices.allow</option>
+	      key. This is referred to as a "allowlist" device program.
+	    </para>
+	  </listitem>
+
+          <listitem>
+	    <para>
+	      A denylist device rule
+              <programlisting>
+	        lxc.cgroup2.devices.allow = a
+              </programlisting>
+	      will cause LXC to instruct the kernel to allow access to all
+	      devices by default. To deny access to devices deny device rules
+	      must be added via <option>lxc.cgroup2.devices.deny</option> key.
+	      This is referred to as a "denylist" device program.
+	    </para>
+	  </listitem>
+
+          <listitem>
+	    <para>
+	      Specifying any of the aformentioned two rules will cause all
+	      previous rules to be cleared, i.e. the device list will be reset.
+	    </para>
+	  </listitem>
+
+          <listitem>
+	    <para>
+	    When an allowlist program is requested, i.e. access to all devices
+	    is blocked by default, specific deny rules for individual devices
+	    or device classes are ignored.
+	    </para>
+	  </listitem>
+
+          <listitem>
+	    <para>
+	    When a denylist program is requested, i.e. access to all devices
+	    is allowed by default, specific allow rules for individual devices
+	    or device classes are ignored.
+	    </para>
+	  </listitem>
+        </itemizedlist>
+      </para>
+
+      <para>
+        For example the set of rules:
+        <programlisting>
+          lxc.cgroup2.devices.deny = a
+          lxc.cgroup2.devices.allow = c *:* m
+          lxc.cgroup2.devices.allow = b *:* m
+          lxc.cgroup2.devices.allow = c 1:3 rwm
+        </programlisting>
+	implements an allowlist device program, i.e. the kernel will block
+	access to all devices not specifically allowed in this list. This
+	particular program states that all character and block devices may be
+	created but only /dev/null might be read or written.
+      </para>
+
+      <para>
+        If we instead switch to the following set of rules:
+        <programlisting>
+          lxc.cgroup2.devices.allow = a
+          lxc.cgroup2.devices.deny = c *:* m
+          lxc.cgroup2.devices.deny = b *:* m
+          lxc.cgroup2.devices.deny = c 1:3 rwm
+        </programlisting>
+	 then LXC would instruct the kernel to implement a denylist, i.e. the
+	 kernel will allow access to all devices not specifically denied in
+	 this list. This particular program states that no character devices or
+	 block devices might be created and that /dev/null is not allow allowed
+	 to be read, written, or created.
+      </para>
+
+      <para>
+	 Now consider the same program but followed by a "global rule"
+	 which determines the type of device program (allowlist or
+	 denylist) as explained above:
+        <programlisting>
+          lxc.cgroup2.devices.allow = a
+          lxc.cgroup2.devices.deny = c *:* m
+          lxc.cgroup2.devices.deny = b *:* m
+          lxc.cgroup2.devices.deny = c 1:3 rwm
+          lxc.cgroup2.devices.allow = a
+        </programlisting>
+	The last line will cause LXC to reset the device list without changing
+	the type of device program.
+      </para>
+
+      <para>
+	If we specify:
+        <programlisting>
+          lxc.cgroup2.devices.allow = a
+          lxc.cgroup2.devices.deny = c *:* m
+          lxc.cgroup2.devices.deny = b *:* m
+          lxc.cgroup2.devices.deny = c 1:3 rwm
+          lxc.cgroup2.devices.deny = a
+        </programlisting>
+	instead then the last line will cause LXC to reset the device list and
+	switch from a allowlist program to a denylist program.
+      </para>
       <variablelist>
         <varlistentry>
           <term>
