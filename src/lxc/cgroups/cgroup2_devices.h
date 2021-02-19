@@ -48,12 +48,6 @@ struct bpf_program {
 	__u32 attached_flags;
 };
 
-static inline bool bpf_device_block_all(const struct bpf_program *prog)
-{
-	/* LXC_BPF_DEVICE_CGROUP_ALLOWLIST  -> allowlist (deny all) */
-	return prog->device_list_type == LXC_BPF_DEVICE_CGROUP_ALLOWLIST;
-}
-
 __hidden extern struct bpf_program *bpf_program_new(__u32 prog_type);
 __hidden extern int bpf_program_init(struct bpf_program *prog);
 __hidden extern int bpf_program_append_device(struct bpf_program *prog, struct device_item *device);
