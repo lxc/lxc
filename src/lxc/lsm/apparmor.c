@@ -404,15 +404,28 @@ static int __apparmor_process_label_open(struct lsm_ops *ops, pid_t pid, int o_f
 	if (on_exec)
 		TRACE("On-exec not supported with AppArmor");
 
+	/* first try the apparmor subdir */
+	ret = snprintf(path, LXC_LSMATTRLEN, "/proc/%d/attr/apparmor/current", pid);
+	if (ret < 0 || ret >= LXC_LSMATTRLEN)
+		return -1;
+
+	labelfd = open(path, o_flags);
+	if (labelfd >= 0)
+		return labelfd;
+	else if (errno != ENOENT)
+		goto error;
+
+	/* fallback to legacy global attr directory */
 	ret = snprintf(path, LXC_LSMATTRLEN, "/proc/%d/attr/current", pid);
 	if (ret < 0 || ret >= LXC_LSMATTRLEN)
 		return -1;
 
 	labelfd = open(path, o_flags);
-	if (labelfd < 0)
-		return log_error_errno(-errno, errno, "Unable to open AppArmor LSM label file descriptor");
+	if (labelfd >= 0)
+		return labelfd;
 
-	return labelfd;
+error:
+	return log_error_errno(-errno, errno, "Unable to open AppArmor LSM label file descriptor");
 }
 
 static char *apparmor_process_label_get(struct lsm_ops *ops, pid_t pid)
@@ -439,14 +452,16 @@ static char *apparmor_process_label_get_at(struct lsm_ops *ops, int fd_pid)
 	__do_free char *label = NULL;
 	size_t len;
 
-	label = read_file_at(fd_pid, "attr/current", PROTECT_OPEN, PROTECT_LOOKUP_BENEATH);
+	/* first try the apparmor subdir, then fall back to legacy interface */
+	label = read_file_at(fd_pid, "attr/apparmor/current", PROTECT_OPEN, PROTECT_LOOKUP_BENEATH);
+	if (!label && errno == ENOENT)
+		label = read_file_at(fd_pid, "attr/current", PROTECT_OPEN, PROTECT_LOOKUP_BENEATH);
 	if (!label)
 		return log_error_errno(NULL, errno, "Failed to get AppArmor context");
 
 	len = strcspn(label, "\n \t");
 	if (len)
 		label[len] = '\0';
-
 	return move_ptr(label);
 }
 
