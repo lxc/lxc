@@ -50,10 +50,12 @@ define_cleanup_function(FILE *, fclose);
 define_cleanup_function(DIR *, closedir);
 #define __do_closedir call_cleaner(closedir)
 
-#define free_disarm(ptr)    \
-	({                  \
-		free(ptr);  \
-		ptr = NULL; \
+#define free_disarm(ptr)                    \
+	({                                  \
+		if (!IS_ERR_OR_NULL(ptr)) { \
+			free(ptr);          \
+			ptr = NULL;         \
+		}                           \
 	})
 
 static inline void free_disarm_function(void *ptr)
@@ -64,7 +66,7 @@ static inline void free_disarm_function(void *ptr)
 
 static inline void free_string_list(char **list)
 {
-	if (list) {
+	if (list && !IS_ERR(list)) {
 		for (int i = 0; list[i]; i++)
 			free(list[i]);
 		free_disarm(list);
