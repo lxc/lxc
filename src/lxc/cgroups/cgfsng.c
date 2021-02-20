@@ -305,34 +305,50 @@ __lxc_unused static bool all_controllers_found(struct cgroup_ops *ops)
 	return true;
 }
 
-static char **__controller_list_empty(void)
+static char **list_new(void)
 {
-	__do_free_string_list char **aret = NULL;
-	int newentry;
+	__do_free_string_list char **list = NULL;
+	int idx;
 
-	newentry = list_add((void ***)&aret);
-	aret[newentry] = NULL;
-	return move_ptr(aret);
+	idx = list_add((void ***)&list);
+	if (idx < 0)
+		return NULL;
+
+	list[idx] = NULL;
+	return move_ptr(list);
 }
 
-static char **__controller_list(char *controllers)
+static int list_add_string(char ***list, char *entry)
 {
-	__do_free_string_list char **controller_list = NULL;
+	__do_free char *dup = NULL;
+	int idx;
+
+	dup = strdup(entry);
+	if (!dup)
+		return ret_errno(ENOMEM);
+
+	idx = list_add((void ***)list);
+	if (idx < 0)
+		return idx;
+
+	(*list)[idx] = move_ptr(dup);
+	return 0;
+}
+
+static char **list_add_controllers(char *controllers)
+{
+	__do_free_string_list char **list = NULL;
 	char *it;
 
 	lxc_iterate_parts(it, controllers, " \t\n") {
-		int idx;
+		int ret;
 
-		idx = list_add((void ***)&controller_list);
-		controller_list[idx] = strdup(it);
-		if (!controller_list[idx])
+		ret = list_add_string(&list, it);
+		if (ret < 0)
 			return NULL;
 	}
 
-	if (!controller_list)
-		return NULL;
-
-	return move_ptr(controller_list);
+	return move_ptr(list);
 }
 
 static char **unified_controllers(int dfd, const char *file)
@@ -343,7 +359,7 @@ static char **unified_controllers(int dfd, const char *file)
 	if (!buf)
 		return NULL;
 
-	return __controller_list(buf);
+	return list_add_controllers(buf);
 }
 
 static bool skip_hierarchy(const struct cgroup_ops *ops, char **controllers)
@@ -403,20 +419,14 @@ static int add_hierarchy(struct cgroup_ops *ops, int dfd_mnt, char *mnt,
 		TRACE("The hierarchy contains the %s controller", *it);
 
 	idx = list_add((void ***)&ops->hierarchies);
+	if (idx < 0)
+		return ret_errno(idx);
+
 	if (type == CGROUP2_SUPER_MAGIC)
 		ops->unified = new;
 	(ops->hierarchies)[idx] = move_ptr(new);
+
 	return 0;
-}
-
-static void must_append_string(char ***list, char *entry)
-{
-	int newentry;
-	char *copy;
-
-	newentry = list_add((void ***)list);
-	copy = must_copy_string(entry);
-	(*list)[newentry] = copy;
 }
 
 static int cgroup_tree_remove(struct hierarchy **hierarchies, const char *path_prune)
@@ -2352,7 +2362,10 @@ __cgfsng_ops static int cgfsng_get(struct cgroup_ops *ops, const char *filename,
 	if (!ops)
 		return ret_set_errno(-1, ENOENT);
 
-	controller = must_copy_string(filename);
+	controller = strdup(filename);
+	if (!controller)
+		return ret_errno(ENOMEM);
+
 	p = strchr(controller, '.');
 	if (p)
 		*p = '\0';
@@ -2496,7 +2509,10 @@ __cgfsng_ops static int cgfsng_set(struct cgroup_ops *ops,
 	    is_empty_string(name) || is_empty_string(lxcpath))
 		return ret_errno(EINVAL);
 
-	controller = must_copy_string(key);
+	controller = strdup(key);
+	if (!controller)
+		return ret_errno(ENOMEM);
+
 	p = strchr(controller, '.');
 	if (p)
 		*p = '\0';
@@ -2548,7 +2564,9 @@ static int device_cgroup_rule_parse_devpath(struct device_item *device,
 	char *p;
 	struct stat sb;
 
-	path = must_copy_string(devpath);
+	path = strdup(devpath);
+	if (!path)
+		return ret_errno(ENOMEM);
 
 	/*
 	 * Read path followed by mode. Ignore any trailing text.
@@ -2635,7 +2653,10 @@ static int cg_legacy_set_data(struct cgroup_ops *ops, const char *filename,
 	char converted_value[50];
 	struct hierarchy *h;
 
-	controller = must_copy_string(filename);
+	controller = strdup(filename);
+	if (!controller)
+		return ret_errno(ENOMEM);
+
 	p = strchr(controller, '.');
 	if (p)
 		*p = '\0';
@@ -2919,8 +2940,9 @@ __cgfsng_ops static bool cgfsng_payload_delegate_controllers(struct cgroup_ops *
 	return __cgfsng_delegate_controllers(ops, ops->container_cgroup);
 }
 
-static int cg_unified_delegate(char ***delegate)
+static int list_unified_delegation_files(char ***delegate)
 {
+	__do_free char **list = NULL;
 	__do_free char *buf = NULL;
 	char *standard[] = {
 		"cgroup.procs",
@@ -2930,15 +2952,17 @@ static int cg_unified_delegate(char ***delegate)
 		NULL,
 	};
 	char *token;
-	int idx;
+	int ret;
 
 	buf = read_file_at(-EBADF, "/sys/kernel/cgroup/delegate", PROTECT_OPEN, 0);
 	if (!buf) {
 		for (char **p = standard; p && *p; p++) {
-			idx = list_add((void ***)delegate);
-			(*delegate)[idx] = must_copy_string(*p);
+			ret = list_add_string(&list, *p);
+			if (ret < 0)
+				return ret;
 		}
 
+		*delegate = move_ptr(list);
 		return syswarn(0, "Failed to read /sys/kernel/cgroup/delegate");
 	}
 
@@ -2950,10 +2974,12 @@ static int cg_unified_delegate(char ***delegate)
 		if (strequal(token, "cgroup.procs"))
 			continue;
 
-		idx = list_add((void ***)delegate);
-		(*delegate)[idx] = must_copy_string(token);
+		ret = list_add_string(&list, token);
+		if (ret < 0)
+			return ret;
 	}
 
+	*delegate = move_ptr(list);
 	return 0;
 }
 
@@ -3057,11 +3083,13 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 			controller_list = unified_controllers(dfd, "cgroup.controllers");
 			if (!controller_list) {
 				TRACE("No controllers are enabled for delegation in the unified hierarchy");
-				controller_list = __controller_list_empty();
+				controller_list = list_new();
+				if (!controller_list)
+					return syserrno(-ENOMEM, "Failed to create empty controller list");
 			}
 
 			if (unprivileged) {
-				ret = cg_unified_delegate(&delegate);
+				ret = list_unified_delegation_files(&delegate);
 				if (ret < 0)
 					return syserrno(ret, "Failed to determine delegation requirements");
 
@@ -3148,9 +3176,9 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 			 * controllers because we would otherwise chop the
 			 * mountpoint.
 			 */
-			controller_list = __controller_list(__controllers);
-			if (IS_ERR(controller_list))
-				return PTR_ERR(controller_list);
+			controller_list = list_add_controllers(__controllers);
+			if (!controller_list)
+				return syserrno(-ENOMEM, "Failed to create controller list from %s", __controllers);
 
 			if (skip_hierarchy(ops, controller_list))
 				continue;
@@ -3215,8 +3243,11 @@ static int initialize_cgroups(struct cgroup_ops *ops, struct lxc_conf *conf)
 		if (!dup)
 			return -errno;
 
-		lxc_iterate_parts(it, dup, ",")
-			must_append_string(&ops->cgroup_use, it);
+		lxc_iterate_parts(it, dup, ",") {
+			ret = list_add_string(&ops->cgroup_use, it);
+			if (ret < 0)
+				return ret;
+		}
 	}
 
 	/*
@@ -3244,8 +3275,11 @@ __cgfsng_ops static int cgfsng_data_init(struct cgroup_ops *ops)
 
 	/* copy system-wide cgroup information */
 	cgroup_pattern = lxc_global_config_value("lxc.cgroup.pattern");
-	if (cgroup_pattern && !strequal(cgroup_pattern, ""))
-		ops->cgroup_pattern = must_copy_string(cgroup_pattern);
+	if (cgroup_pattern && !strequal(cgroup_pattern, "")) {
+		ops->cgroup_pattern = strdup(cgroup_pattern);
+		if (!ops->cgroup_pattern)
+			return ret_errno(ENOMEM);
+	}
 
 	return 0;
 }
