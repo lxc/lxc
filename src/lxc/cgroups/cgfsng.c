@@ -3417,41 +3417,39 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 }
 
 /* Get current cgroup from /proc/self/cgroup for the cgroupfs v2 hierarchy. */
-static char *cg_unified_get_current_cgroup(bool relative)
+static char *current_cgroup_unified(bool relative)
 {
-	__do_free char *basecginfo = NULL, *copy = NULL;
-	char *base_cgroup;
+	__do_free char *cgroup_info = NULL;
+	char *it;
 
 	if (!relative && (geteuid() == 0))
-		basecginfo = read_file_at(-EBADF, "/proc/1/cgroup", PROTECT_OPEN, 0);
+		cgroup_info = read_file_at(-EBADF, "/proc/1/cgroup", PROTECT_OPEN, 0);
 	else
-		basecginfo = read_file_at(-EBADF, "/proc/self/cgroup", PROTECT_OPEN, 0);
-	if (!basecginfo)
+		cgroup_info = read_file_at(-EBADF, "/proc/self/cgroup", PROTECT_OPEN, 0);
+	if (!cgroup_info)
 		return NULL;
 
-	base_cgroup = strstr(basecginfo, "0::/");
-	if (!base_cgroup)
-		return NULL;
+	lxc_iterate_parts(it, cgroup_info, "\n") {
+		if (*it != '0')
+			continue;
 
-	base_cgroup = base_cgroup + 3;
-	copy = copy_to_eol(base_cgroup);
-	if (!copy)
-		return NULL;
-	trim(copy);
+		it += STRLITERALLEN("0::");
 
-	if (!relative) {
-		base_cgroup = prune_init_scope(copy);
-		if (!base_cgroup)
-			return NULL;
-	} else {
-		base_cgroup = copy;
+		if (!abspath(it))
+			return log_error(NULL, "Corrupt cgroup info for %s process", relative ? "current" : "init");
+
+		/* remove init.scope */
+		if (!relative)
+			it = prune_init_scope(it);
+
+		/* create a relative path */
+		it = deabs(it);
+
+		return strdup(it);
 	}
 
-	if (abspath(base_cgroup))
-		base_cgroup = deabs(base_cgroup);
-
-	/* We're allowing base_cgroup to be "". */
-	return strdup(base_cgroup);
+	return log_error(NULL, "Failed to retrieve current cgroup for %s process",
+			 relative ? "current" : "init");
 }
 
 static int cg_unified_init(struct cgroup_ops *ops, bool relative,
@@ -3460,7 +3458,7 @@ static int cg_unified_init(struct cgroup_ops *ops, bool relative,
 	__do_free char *base_cgroup = NULL;
 	int ret;
 
-	base_cgroup = cg_unified_get_current_cgroup(relative);
+	base_cgroup = current_cgroup_unified(relative);
 	if (!base_cgroup)
 		return ret_errno(EINVAL);
 
