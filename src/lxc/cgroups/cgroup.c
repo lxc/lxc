@@ -21,7 +21,7 @@
 
 lxc_log_define(cgroup, lxc);
 
-__hidden extern struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf);
+__hidden extern struct cgroup_ops *cgroup_ops_init(struct lxc_conf *conf);
 
 struct cgroup_ops *cgroup_init(struct lxc_conf *conf)
 {
@@ -30,7 +30,7 @@ struct cgroup_ops *cgroup_init(struct lxc_conf *conf)
 	if (!conf)
 		return log_error_errno(NULL, EINVAL, "No valid conf given");
 
-	cgroup_ops = cgfsng_ops_init(conf);
+	cgroup_ops = cgroup_ops_init(conf);
 	if (!cgroup_ops)
 		return log_error_errno(NULL, errno, "Failed to initialize cgroup driver");
 
@@ -47,13 +47,13 @@ struct cgroup_ops *cgroup_init(struct lxc_conf *conf)
 	TRACE("Initialized cgroup driver %s", cgroup_ops->driver);
 
 	if (cgroup_ops->cgroup_layout == CGROUP_LAYOUT_LEGACY)
-		TRACE("Running with legacy cgroup layout");
+		TRACE("Legacy cgroup layout");
 	else if (cgroup_ops->cgroup_layout == CGROUP_LAYOUT_HYBRID)
-		TRACE("Running with hybrid cgroup layout");
+		TRACE("Hybrid cgroup layout");
 	else if (cgroup_ops->cgroup_layout == CGROUP_LAYOUT_UNIFIED)
-		TRACE("Running with unified cgroup layout");
+		TRACE("Unified cgroup layout");
 	else
-		WARN("Running with unknown cgroup layout");
+		WARN("Unsupported cgroup layout");
 
 	return cgroup_ops;
 }

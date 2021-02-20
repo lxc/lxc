@@ -230,4 +230,11 @@ static inline int cgroup_unified_fd(const struct cgroup_ops *ops)
 	return ops->unified->cgfd_con;
 }
 
+#define make_cgroup_path(__hierarchy, __first, ...)                        \
+	({                                                                 \
+		const struct hierarchy *__h = __hierarchy;                 \
+		must_make_path(DEFAULT_CGROUP_MOUNTPOINT, __h->mountpoint, \
+			       __first, __VA_ARGS__);                      \
+	})
+
 #endif /* __LXC_CGROUP_H */
