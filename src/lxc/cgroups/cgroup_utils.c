@@ -86,7 +86,7 @@ bool test_writeable_v2(char *mountpoint, char *path)
 	return (access(cgroup_threads_file, W_OK) == 0);
 }
 
-int unified_cgroup_fd(int fd)
+bool unified_cgroup_fd(int fd)
 {
 
 	int ret;
