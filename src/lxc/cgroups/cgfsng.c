@@ -3418,6 +3418,34 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 	return 0;
 }
 
+static inline bool __current_cgroup_unified_line(const char *line)
+{
+	return *line == '0';
+}
+
+static inline char *__current_cgroup_unified(bool relative, char *line)
+{
+	char *current_cgroup;
+
+	line += STRLITERALLEN("0::");
+
+	if (!abspath(line))
+		return ERR_PTR(-EINVAL);
+
+	/* remove init.scope */
+	if (!relative)
+		line = prune_init_scope(line);
+
+	/* create a relative path */
+	line = deabs(line);
+
+	current_cgroup = strdup(line);
+	if (!current_cgroup)
+		return ERR_PTR(-ENOMEM);
+
+	return current_cgroup;
+}
+
 /* Get current cgroup from /proc/self/cgroup for the cgroupfs v2 hierarchy. */
 static char *current_cgroup_unified(bool relative)
 {
@@ -3432,22 +3460,16 @@ static char *current_cgroup_unified(bool relative)
 		return NULL;
 
 	lxc_iterate_parts(it, cgroup_info, "\n") {
-		if (*it != '0')
+		char *current_cgroup;
+
+		if (!__current_cgroup_unified_line(it))
 			continue;
 
-		it += STRLITERALLEN("0::");
+		current_cgroup = __current_cgroup_unified(relative, it);
+		if (IS_ERR(current_cgroup))
+			return NULL;
 
-		if (!abspath(it))
-			return log_error(NULL, "Corrupt cgroup info for %s process", relative ? "current" : "init");
-
-		/* remove init.scope */
-		if (!relative)
-			it = prune_init_scope(it);
-
-		/* create a relative path */
-		it = deabs(it);
-
-		return strdup(it);
+		return current_cgroup;
 	}
 
 	return log_error(NULL, "Failed to retrieve current cgroup for %s process",
