@@ -3313,7 +3313,7 @@ static void cg_unified_delegate(char ***delegate)
  */
 static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileged)
 {
-	__do_free char *basecginfo = NULL, *line = NULL;
+	__do_free char *cgroup_info = NULL, *line = NULL;
 	__do_free_string_list char **klist = NULL, **nlist = NULL;
 	__do_fclose FILE *f = NULL;
 	int ret;
@@ -3323,10 +3323,10 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 	 * cgroups as our base in that case.
 	 */
 	if (!relative && (geteuid() == 0))
-		basecginfo = read_file_at(-EBADF, "/proc/1/cgroup", PROTECT_OPEN, 0);
+		cgroup_info = read_file_at(-EBADF, "/proc/1/cgroup", PROTECT_OPEN, 0);
 	else
-		basecginfo = read_file_at(-EBADF, "/proc/self/cgroup", PROTECT_OPEN, 0);
-	if (!basecginfo)
+		cgroup_info = read_file_at(-EBADF, "/proc/self/cgroup", PROTECT_OPEN, 0);
+	if (!cgroup_info)
 		return ret_errno(ENOMEM);
 
 	ret = get_existing_subsystems(&klist, &nlist);
@@ -3337,7 +3337,7 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 	if (!f)
 		return log_error_errno(-1, errno, "Failed to open \"/proc/self/mountinfo\"");
 
-	lxc_cgfsng_print_basecg_debuginfo(basecginfo, klist, nlist);
+	lxc_cgfsng_print_basecg_debuginfo(cgroup_info, klist, nlist);
 
 	while (getline(&line, &len, f) != -1) {
 		__do_free char *base_cgroup = NULL, *mountpoint = NULL;
@@ -3382,9 +3382,9 @@ static int cg_hybrid_init(struct cgroup_ops *ops, bool relative, bool unprivileg
 		}
 
 		if (type == CGROUP_SUPER_MAGIC)
-			base_cgroup = cg_hybrid_get_current_cgroup(relative, basecginfo, controller_list[0], CGROUP_SUPER_MAGIC);
+			base_cgroup = cg_hybrid_get_current_cgroup(relative, cgroup_info, controller_list[0], CGROUP_SUPER_MAGIC);
 		else
-			base_cgroup = cg_hybrid_get_current_cgroup(relative, basecginfo, NULL, CGROUP2_SUPER_MAGIC);
+			base_cgroup = cg_hybrid_get_current_cgroup(relative, cgroup_info, NULL, CGROUP2_SUPER_MAGIC);
 		if (!base_cgroup) {
 			WARN("Failed to find current cgroup");
 			continue;
