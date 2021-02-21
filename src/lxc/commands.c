@@ -1519,7 +1519,7 @@ static int lxc_cmd_get_cgroup2_fd_callback_do(int fd, struct lxc_cmd_req *req,
 		return lxc_cmd_rsp_send(fd, &rsp);
 
 	send_fd = limiting_cgroup ? ops->unified->cgfd_limit
-				  : ops->unified->cgfd_con;
+				  : ops->unified->dfd_con;
 
 	rsp.ret = 0;
 	ret = lxc_abstract_unix_send_fds(fd, &send_fd, 1, &rsp, sizeof(rsp));

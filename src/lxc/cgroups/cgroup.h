@@ -92,12 +92,12 @@ struct hierarchy {
 	unsigned int freezer_controller:1;
 
 	/* File descriptor for the container's cgroup @container_full_path. */
-	int cgfd_con;
+	int dfd_con;
 
 	/*
 	 * File descriptor for the container's limiting cgroup
 	 * @container_limit_path.
-	 * Will be equal to @cgfd_con if no limiting cgroup has been requested.
+	 * Will be equal to @dfd_con if no limiting cgroup has been requested.
 	 */
 	int cgfd_limit;
 
@@ -233,7 +233,7 @@ static inline int cgroup_unified_fd(const struct cgroup_ops *ops)
 	if (!ops->unified)
 		return -EBADF;
 
-	return ops->unified->cgfd_con;
+	return ops->unified->dfd_con;
 }
 
 #define make_cgroup_path(__hierarchy, __first, ...)                    \
