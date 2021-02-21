@@ -401,7 +401,7 @@ static int cgroup_hierarchy_add(struct cgroup_ops *ops, int dfd_mnt, char *mnt,
 	if (!new)
 		return ret_errno(ENOMEM);
 
-	new->cgfd_con		= -EBADF;
+	new->dfd_con		= -EBADF;
 	new->cgfd_limit		= -EBADF;
 	new->cgfd_mon		= -EBADF;
 
@@ -801,11 +801,11 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		return syserrno(false, "Failed to create %s cgroup %d(%s)", payload ? "payload" : "monitor", h->dfd_base, cgroup_limit_dir);
 
 	if (payload) {
-		h->cgfd_con = move_fd(fd_final);
+		h->dfd_con = move_fd(fd_final);
 		h->container_full_path = move_ptr(path);
 
 		if (fd_limit < 0)
-			h->cgfd_limit = h->cgfd_con;
+			h->cgfd_limit = h->dfd_con;
 		else
 			h->cgfd_limit = move_fd(fd_limit);
 
@@ -831,7 +831,7 @@ static void cgroup_tree_prune_leaf(struct hierarchy *h, const char *path_prune,
 			prune = false;
 
 		free_equal(h->container_full_path, h->container_limit_path);
-		close_equal(h->cgfd_con, h->cgfd_limit);
+		close_equal(h->dfd_con, h->cgfd_limit);
 	} else {
 		/* Check whether we actually created the cgroup to prune. */
 		if (h->cgfd_mon < 0)
@@ -1240,11 +1240,11 @@ __cgfsng_ops static bool cgfsng_payload_enter(struct cgroup_ops *ops,
 		    (handler->clone_flags & CLONE_INTO_CGROUP))
 			continue;
 
-		ret = lxc_writeat(h->cgfd_con, "cgroup.procs", pidstr, len);
+		ret = lxc_writeat(h->dfd_con, "cgroup.procs", pidstr, len);
 		if (ret != 0)
 			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", h->container_full_path);
 
-		TRACE("Moved container into %s cgroup via %d", h->container_full_path, h->cgfd_con);
+		TRACE("Moved container into %s cgroup via %d", h->container_full_path, h->dfd_con);
 	}
 
 	return true;
@@ -1304,7 +1304,7 @@ static int chown_cgroup_wrapper(void *data)
 		destuid = 0;
 
 	for (int i = 0; arg->hierarchies[i]; i++) {
-		int dirfd = arg->hierarchies[i]->cgfd_con;
+		int dirfd = arg->hierarchies[i]->dfd_con;
 
 		(void)fchowmodat(dirfd, "", destuid, nsgid, 0775);
 
@@ -1379,7 +1379,7 @@ __cgfsng_ops static void cgfsng_payload_finalize(struct cgroup_ops *ops)
 		 * lot of them.
 		 */
 		if (!is_unified_hierarchy(h))
-			close_prot_errno_disarm(h->cgfd_con);
+			close_prot_errno_disarm(h->dfd_con);
 	}
 
 	/*
@@ -1397,7 +1397,7 @@ __cgfsng_ops static void cgfsng_payload_finalize(struct cgroup_ops *ops)
 	 * for our container which means we check here.
 	 */
         if (pure_unified_layout(ops) &&
-            !faccessat(ops->unified->cgfd_con, "cgroup.freeze", F_OK,
+            !faccessat(ops->unified->dfd_con, "cgroup.freeze", F_OK,
                        AT_SYMLINK_NOFOLLOW)) {
 		TRACE("Unified hierarchy supports freezer");
 		ops->unified->freezer_controller = 1;
