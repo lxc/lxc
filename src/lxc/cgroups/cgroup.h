@@ -77,17 +77,7 @@ typedef enum {
  *   CGROUP2_SUPER_MAGIC.
  */
 struct hierarchy {
-	/*
-	 * cgroup2 only: what files need to be chowned to delegate a cgroup to
-	 * an unprivileged user.
-	 */
-	char **cgroup2_chown;
-	char **controllers;
 	cgroupfs_type_magic_t fs_type;
-
-	/* cgroup2 only */
-	unsigned int bpf_device_controller:1;
-	unsigned int freezer_controller:1;
 
 	/* File descriptor for the container's cgroup @path_con. */
 	int dfd_con;
@@ -111,6 +101,19 @@ struct hierarchy {
 	/* File descriptor for the controller's base cgroup path @at_base. */
 	int dfd_base;
 	char *at_base;
+
+	struct /* unified hierarchy specific */ {
+		/*
+		 * cgroup2 only: what files need to be chowned to delegate a
+		 * cgroup to an unprivileged user.
+		 */
+		char **cgroup2_chown;
+		/* cgroup2 only */
+		unsigned int bpf_device_controller : 1;
+		unsigned int freezer_controller : 1;
+	};
+
+	char **controllers;
 };
 
 struct cgroup_ops {
