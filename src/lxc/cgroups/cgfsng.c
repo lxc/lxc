@@ -401,17 +401,17 @@ static int cgroup_hierarchy_add(struct cgroup_ops *ops, int dfd_mnt, char *mnt,
 	if (!new)
 		return ret_errno(ENOMEM);
 
-	new->cgfd_con			= -EBADF;
-	new->cgfd_limit			= -EBADF;
-	new->cgfd_mon			= -EBADF;
+	new->cgfd_con		= -EBADF;
+	new->cgfd_limit		= -EBADF;
+	new->cgfd_mon		= -EBADF;
 
-	new->fs_type			= fs_type;
-	new->controllers		= controllers;
-	new->mountpoint			= mnt;
-	new->container_base_path	= base_cgroup;
+	new->fs_type		= fs_type;
+	new->controllers	= controllers;
+	new->mountpoint		= mnt;
+	new->at_base		= base_cgroup;
 
-	new->dfd_mnt			= dfd_mnt;
-	new->dfd_base			= dfd_base;
+	new->dfd_mnt		= dfd_mnt;
+	new->dfd_base		= dfd_base;
 
 	TRACE("Adding cgroup hierarchy mounted at %s and base cgroup %s",
 	      mnt, maybe_empty(base_cgroup));
@@ -777,7 +777,7 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		    !ops->setup_limits_legacy(ops, conf, true))
 			return log_error(false, "Failed to setup legacy device limits");
 
-		limit_path = make_cgroup_path(h, h->container_base_path, cgroup_limit_dir, NULL);
+		limit_path = make_cgroup_path(h, h->at_base, cgroup_limit_dir, NULL);
 		path = must_make_path(limit_path, cgroup_leaf, NULL);
 
 		/*
@@ -793,7 +793,7 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 				TRACE("Removed cgroup tree %d(%s)", h->dfd_base, cgroup_limit_dir);
 		}
 	} else {
-		path = make_cgroup_path(h, h->container_base_path, cgroup_limit_dir, NULL);
+		path = make_cgroup_path(h, h->at_base, cgroup_limit_dir, NULL);
 
 		fd_final = __cgroup_tree_create(h->dfd_base, cgroup_limit_dir, 0755, cpuset_v1, false);
 	}
@@ -1452,7 +1452,7 @@ static int cg_legacy_mount_controllers(int cgroup_automount_type, struct hierarc
 		INFO("Remounted %s read-only", hierarchy_mnt);
 	}
 
-	sourcepath = make_cgroup_path(h, h->container_base_path, container_cgroup, NULL);
+	sourcepath = make_cgroup_path(h, h->at_base, container_cgroup, NULL);
 	if (cgroup_automount_type == LXC_AUTO_CGROUP_RO)
 		flags |= MS_RDONLY;
 
@@ -1806,7 +1806,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			cgroup_root = must_make_path(rootfs_mnt, DEFAULT_CGROUP_MOUNTPOINT, NULL);
 
 		hierarchy_mnt = must_make_path(cgroup_root, h->mountpoint, NULL);
-		path2 = must_make_path(hierarchy_mnt, h->container_base_path,
+		path2 = must_make_path(hierarchy_mnt, h->at_base,
 				       ops->container_cgroup, NULL);
 		ret = mkdir_p(path2, 0755);
 		if (ret < 0 && (errno != EEXIST))
@@ -1843,7 +1843,7 @@ __cgfsng_ops static bool cgfsng_criu_escape(const struct cgroup_ops *ops,
 		int ret;
 
 		fullpath = make_cgroup_path(ops->hierarchies[i],
-					    ops->hierarchies[i]->container_base_path,
+					    ops->hierarchies[i]->at_base,
 					    "cgroup.procs", NULL);
 		ret = lxc_write_to_file(fullpath, "0", 2, false, 0666);
 		if (ret != 0)

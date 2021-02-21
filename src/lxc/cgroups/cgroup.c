@@ -86,7 +86,7 @@ void cgroup_exit(struct cgroup_ops *ops)
 		free((*it)->cgroup2_chown);
 
 		free((*it)->mountpoint);
-		free((*it)->container_base_path);
+		free((*it)->at_base);
 
 		free_equal((*it)->container_full_path,
 			   (*it)->container_limit_path);

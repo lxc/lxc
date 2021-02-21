@@ -56,7 +56,7 @@ typedef enum {
  *   depending on whether this is a hybrid cgroup layout (mix of legacy and
  *   unified hierarchies) or a pure unified cgroup layout.
  *
- * @container_base_path
+ * @at_base
  * - The cgroup under which the container cgroup path
  *   is created. This will be either the caller's cgroup (if not root), or
  *   init's cgroup (if root).
@@ -84,7 +84,6 @@ struct hierarchy {
 	char **cgroup2_chown;
 	char **controllers;
 	char *mountpoint;
-	char *container_base_path;
 	char *container_full_path;
 	char *container_limit_path;
 	cgroupfs_type_magic_t fs_type;
@@ -109,8 +108,9 @@ struct hierarchy {
 	/* File descriptor for the controller's mountpoint @mountpoint. */
 	int dfd_mnt;
 
-	/* File descriptor for the controller's base cgroup path @container_base_path. */
+	/* File descriptor for the controller's base cgroup path @at_base. */
 	int dfd_base;
+	char *at_base;
 };
 
 struct cgroup_ops {
