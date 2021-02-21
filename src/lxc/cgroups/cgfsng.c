@@ -275,7 +275,7 @@ static inline bool is_unified_hierarchy(const struct hierarchy *h)
 /* Return true if the controller @entry is found in the null-terminated list of
  * hierarchies @hlist.
  */
-static bool controller_found(struct hierarchy **hlist, char *entry)
+static bool controller_available(struct hierarchy **hlist, char *entry)
 {
 	if (!hlist)
 		return false;
@@ -287,10 +287,7 @@ static bool controller_found(struct hierarchy **hlist, char *entry)
 	return false;
 }
 
-/* Return true if all of the controllers which we require have been found.  The
- * required list is  freezer and anything in lxc.cgroup.use.
- */
-__lxc_unused static bool all_controllers_found(struct cgroup_ops *ops)
+static bool controllers_available(struct cgroup_ops *ops)
 {
 	struct hierarchy **hlist;
 
@@ -299,8 +296,8 @@ __lxc_unused static bool all_controllers_found(struct cgroup_ops *ops)
 
 	hlist = ops->hierarchies;
 	for (char **cur = ops->cgroup_use; cur && *cur; cur++)
-		if (!controller_found(hlist, *cur))
-			return log_error(false, "No %s controller mountpoint found", *cur);
+		if (!controller_available(hlist, *cur))
+			return log_error(false, "The %s controller found", *cur);
 
 	return true;
 }
@@ -3226,6 +3223,9 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 			ops->cgroup_layout = CGROUP_LAYOUT_UNIFIED;
 		}
 	}
+
+	if (!controllers_available(ops))
+		return syserrno_set(-ENOENT, "One or more requested controllers unavailable or not delegated");
 
 	return 0;
 }
