@@ -1303,6 +1303,9 @@ static int chown_cgroup_wrapper(void *data)
 	for (int i = 0; arg->hierarchies[i]; i++) {
 		int dirfd = arg->hierarchies[i]->dfd_con;
 
+		if (dirfd < 0)
+			return syserrno_set(-EBADF, "Invalid cgroup file descriptor");
+
 		(void)fchowmodat(dirfd, "", destuid, nsgid, 0775);
 
 		/*
