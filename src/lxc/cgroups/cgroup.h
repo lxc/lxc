@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <sys/types.h>
+#include <linux/magic.h>
 
 #include "compiler.h"
 #include "macro.h"
@@ -31,6 +32,11 @@ typedef enum {
         CGROUP_LAYOUT_HYBRID  =  1,
         CGROUP_LAYOUT_UNIFIED =  2,
 } cgroup_layout_t;
+
+typedef enum {
+	LEGACY_HIERARCHY = CGROUP_SUPER_MAGIC,
+	UNIFIED_HIERARCHY = CGROUP2_SUPER_MAGIC,
+} cgroupfs_type_magic_t;
 
 /* A descriptor for a mounted hierarchy
  *
@@ -81,7 +87,7 @@ struct hierarchy {
 	char *container_base_path;
 	char *container_full_path;
 	char *container_limit_path;
-	int version;
+	cgroupfs_type_magic_t fs_type;
 
 	/* cgroup2 only */
 	unsigned int bpf_device_controller:1;
