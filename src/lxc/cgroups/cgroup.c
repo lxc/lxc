@@ -73,8 +73,8 @@ void cgroup_exit(struct cgroup_ops *ops)
 
 	bpf_device_program_free(ops);
 
-	if (ops->dfd_mnt_cgroupfs_host >= 0)
-		close(ops->dfd_mnt_cgroupfs_host);
+	if (ops->dfd_mnt >= 0)
+		close(ops->dfd_mnt);
 
 	for (struct hierarchy **it = ops->hierarchies; it && *it; it++) {
 		for (char **p = (*it)->controllers; p && *p; p++)

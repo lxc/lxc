@@ -3082,11 +3082,11 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 			if (IS_ERR(current_cgroup))
 				return PTR_ERR(current_cgroup);
 
-			if (unified_cgroup_fd(ops->dfd_mnt_cgroupfs_host)) {
-				dfd_mnt = dup_cloexec(ops->dfd_mnt_cgroupfs_host);
+			if (unified_cgroup_fd(ops->dfd_mnt)) {
+				dfd_mnt = dup_cloexec(ops->dfd_mnt);
 				unified_mnt = "";
 			} else {
-				dfd_mnt = open_at(ops->dfd_mnt_cgroupfs_host,
+				dfd_mnt = open_at(ops->dfd_mnt,
 						  "unified",
 						  PROTECT_OPATH_DIRECTORY,
 						  PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
@@ -3094,7 +3094,7 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 			}
 			if (dfd_mnt < 0) {
 				if (errno != ENOENT)
-					return syserrno(-errno, "Failed to open %d/unified", ops->dfd_mnt_cgroupfs_host);
+					return syserrno(-errno, "Failed to open %d/unified", ops->dfd_mnt);
 
 				SYSTRACE("Unified cgroup not mounted");
 				continue;
@@ -3144,13 +3144,13 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 			if (!controllers)
 				return ret_errno(ENOMEM);
 
-			dfd_mnt = open_at(ops->dfd_mnt_cgroupfs_host,
+			dfd_mnt = open_at(ops->dfd_mnt,
 					  controllers, PROTECT_OPATH_DIRECTORY,
 					  PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
 			if (dfd_mnt < 0) {
 				if (errno != ENOENT)
 					return syserrno(-errno, "Failed to open %d/%s",
-							ops->dfd_mnt_cgroupfs_host, controllers);
+							ops->dfd_mnt, controllers);
 
 				SYSTRACE("%s not mounted", controllers);
 				continue;
@@ -3234,7 +3234,7 @@ static int initialize_cgroups(struct cgroup_ops *ops, struct lxc_conf *conf)
 	int ret;
 	const char *controllers_use;
 
-	if (ops->dfd_mnt_cgroupfs_host >= 0)
+	if (ops->dfd_mnt >= 0)
 		return ret_errno(EBUSY);
 
 	/*
@@ -3268,7 +3268,7 @@ static int initialize_cgroups(struct cgroup_ops *ops, struct lxc_conf *conf)
 	 * once we know the initialization succeeded. So if we fail we clean up
 	 * the dfd.
 	 */
-	ops->dfd_mnt_cgroupfs_host = dfd;
+	ops->dfd_mnt = dfd;
 
 	ret = __initialize_cgroups(ops, conf->cgroup_meta.relative, !lxc_list_empty(&conf->id_map));
 	if (ret < 0)
@@ -3306,7 +3306,7 @@ struct cgroup_ops *cgroup_ops_init(struct lxc_conf *conf)
 		return ret_set_errno(NULL, ENOMEM);
 
 	cgfsng_ops->cgroup_layout = CGROUP_LAYOUT_UNKNOWN;
-	cgfsng_ops->dfd_mnt_cgroupfs_host = -EBADF;
+	cgfsng_ops->dfd_mnt = -EBADF;
 
 	if (initialize_cgroups(cgfsng_ops, conf))
 		return NULL;
