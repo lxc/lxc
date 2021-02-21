@@ -387,9 +387,9 @@ static bool skip_hierarchy(const struct cgroup_ops *ops, char **controllers)
 	return false;
 }
 
-static int add_hierarchy(struct cgroup_ops *ops, int dfd_mnt, char *mnt,
-			 int dfd_base, char *base_cgroup, char **controllers,
-			 int type)
+static int cgroup_hierarchy_add(struct cgroup_ops *ops, int dfd_mnt, char *mnt,
+				int dfd_base, char *base_cgroup,
+				char **controllers, int type)
 {
 	__do_free struct hierarchy *new = NULL;
 	int idx;
@@ -3199,7 +3199,8 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 			ops->cgroup_layout = CGROUP_LAYOUT_LEGACY;
 		}
 
-		ret = add_hierarchy(ops, dfd_mnt, controllers, dfd, current_cgroup, controller_list, type);
+		ret = cgroup_hierarchy_add(ops, dfd_mnt, controllers, dfd,
+					   current_cgroup, controller_list, type);
 		if (ret < 0)
 			return syserrno(ret, "Failed to add %s hierarchy", controllers);
 
