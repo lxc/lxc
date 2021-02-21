@@ -89,7 +89,7 @@ void cgroup_exit(struct cgroup_ops *ops)
 		free((*it)->at_base);
 
 		free_equal((*it)->path_con,
-			   (*it)->container_limit_path);
+			   (*it)->path_lim);
 
 		close_equal((*it)->dfd_con, (*it)->dfd_lim);
 

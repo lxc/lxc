@@ -444,7 +444,7 @@ static int cgroup_tree_remove(struct hierarchy **hierarchies, const char *path_p
 		else
 			TRACE("Removed cgroup tree %d(%s)", h->dfd_base, path_prune);
 
-		free_equal(h->container_limit_path, h->path_con);
+		free_equal(h->path_lim, h->path_con);
 	}
 
 	return 0;
@@ -810,9 +810,9 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 			h->dfd_lim = move_fd(fd_limit);
 
 		if (limit_path)
-			h->container_limit_path = move_ptr(limit_path);
+			h->path_lim = move_ptr(limit_path);
 		else
-			h->container_limit_path = h->path_con;
+			h->path_lim = h->path_con;
 	} else {
 		h->dfd_mon = move_fd(fd_final);
 	}
@@ -830,7 +830,7 @@ static void cgroup_tree_prune_leaf(struct hierarchy *h, const char *path_prune,
 		if (h->dfd_lim < 0)
 			prune = false;
 
-		free_equal(h->path_con, h->container_limit_path);
+		free_equal(h->path_con, h->path_lim);
 		close_equal(h->dfd_con, h->dfd_lim);
 	} else {
 		/* Check whether we actually created the cgroup to prune. */
@@ -2039,7 +2039,7 @@ static const char *cgfsng_get_cgroup_do(struct cgroup_ops *ops,
 				      "Failed to find hierarchy for controller \"%s\"", maybe_empty(controller));
 
 	if (limiting)
-		path = h->container_limit_path;
+		path = h->path_lim;
 	else
 		path = h->path_con;
 	if (!path)
@@ -2681,7 +2681,7 @@ static int cg_legacy_set_data(struct cgroup_ops *ops, const char *filename,
 		if (ret)
 			return ret;
 	}
-	return lxc_write_openat(h->container_limit_path, filename, value, strlen(value));
+	return lxc_write_openat(h->path_lim, filename, value, strlen(value));
 }
 
 __cgfsng_ops static bool cgfsng_setup_limits_legacy(struct cgroup_ops *ops,
@@ -2809,7 +2809,7 @@ __cgfsng_ops static bool cgfsng_setup_limits(struct cgroup_ops *ops,
 		if (strnequal("devices", cg->subsystem, 7))
 			ret = bpf_device_cgroup_prepare(ops, conf, cg->subsystem, cg->value);
 		else
-			ret = lxc_write_openat(h->container_limit_path, cg->subsystem, cg->value, strlen(cg->value));
+			ret = lxc_write_openat(h->path_lim, cg->subsystem, cg->value, strlen(cg->value));
 		if (ret < 0)
 			return log_error_errno(false, errno, "Failed to set \"%s\" to \"%s\"", cg->subsystem, cg->value);
 
