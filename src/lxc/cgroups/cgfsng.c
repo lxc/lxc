@@ -1426,7 +1426,7 @@ static inline bool cg_mount_needs_subdirs(int cgroup_automount_type)
  * control/the/cg/path.
  */
 static int cg_legacy_mount_controllers(int cgroup_automount_type, struct hierarchy *h,
-				       char *controllerpath, char *cgpath,
+				       char *hierarchy_mnt, char *cgpath,
 				       const char *container_cgroup)
 {
 	__do_free char *sourcepath = NULL;
@@ -1435,21 +1435,21 @@ static int cg_legacy_mount_controllers(int cgroup_automount_type, struct hierarc
 
 	if ((cgroup_automount_type == LXC_AUTO_CGROUP_RO) ||
 	    (cgroup_automount_type == LXC_AUTO_CGROUP_MIXED)) {
-		ret = mount(controllerpath, controllerpath, "cgroup", MS_BIND, NULL);
+		ret = mount(hierarchy_mnt, hierarchy_mnt, "cgroup", MS_BIND, NULL);
 		if (ret < 0)
 			return log_error_errno(-1, errno, "Failed to bind mount \"%s\" onto \"%s\"",
-					       controllerpath, controllerpath);
+					       hierarchy_mnt, hierarchy_mnt);
 
-		remount_flags = add_required_remount_flags(controllerpath,
-							   controllerpath,
+		remount_flags = add_required_remount_flags(hierarchy_mnt,
+							   hierarchy_mnt,
 							   flags | MS_REMOUNT);
-		ret = mount(controllerpath, controllerpath, "cgroup",
+		ret = mount(hierarchy_mnt, hierarchy_mnt, "cgroup",
 			    remount_flags | MS_REMOUNT | MS_BIND | MS_RDONLY,
 			    NULL);
 		if (ret < 0)
-			return log_error_errno(-1, errno, "Failed to remount \"%s\" ro", controllerpath);
+			return log_error_errno(-1, errno, "Failed to remount \"%s\" ro", hierarchy_mnt);
 
-		INFO("Remounted %s read-only", controllerpath);
+		INFO("Remounted %s read-only", hierarchy_mnt);
 	}
 
 	sourcepath = make_cgroup_path(h, h->container_base_path, container_cgroup, NULL);
@@ -1772,17 +1772,12 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 				DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
-		__do_free char *controllerpath = NULL, *path2 = NULL;
+		__do_free char *hierarchy_mnt = NULL, *path2 = NULL;
 		struct hierarchy *h = ops->hierarchies[i];
-		char *controller = h->mountpoint;
 
-		if (!controller)
-			continue;
-		controller++;
-
-		ret = mkdirat(dfd_mnt_tmpfs, controller, 0000);
+		ret = mkdirat(dfd_mnt_tmpfs, h->mountpoint, 0000);
 		if (ret < 0)
-			return log_error_errno(false, errno, "Failed to create cgroup mountpoint %d(%s)", dfd_mnt_tmpfs, controller);
+			return syserrno(false, "Failed to create cgroup mountpoint %d(%s)", dfd_mnt_tmpfs, h->mountpoint);
 
 		if (in_cgroup_ns && wants_force_mount) {
 			/*
@@ -1790,7 +1785,8 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			 * will not have CAP_SYS_ADMIN after it has started we
 			 * need to mount the cgroups manually.
 			 */
-			ret = cgroupfs_mount(cgroup_automount_type, h, rootfs, dfd_mnt_tmpfs, controller);
+			ret = cgroupfs_mount(cgroup_automount_type, h, rootfs,
+					     dfd_mnt_tmpfs, h->mountpoint);
 			if (ret < 0)
 				return false;
 
@@ -1798,7 +1794,8 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		}
 
 		/* Here is where the ancient kernel section begins. */
-		ret = cgroupfs_bind_mount(cgroup_automount_type, h, rootfs, dfd_mnt_tmpfs, controller);
+		ret = cgroupfs_bind_mount(cgroup_automount_type, h, rootfs,
+					  dfd_mnt_tmpfs, h->mountpoint);
 		if (ret < 0)
 			return false;
 
@@ -1808,13 +1805,16 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		if (!cgroup_root)
 			cgroup_root = must_make_path(rootfs_mnt, DEFAULT_CGROUP_MOUNTPOINT, NULL);
 
-		controllerpath = must_make_path(cgroup_root, controller, NULL);
-		path2 = must_make_path(controllerpath, h->container_base_path, ops->container_cgroup, NULL);
+		hierarchy_mnt = must_make_path(cgroup_root, h->mountpoint, NULL);
+		path2 = must_make_path(hierarchy_mnt, h->container_base_path,
+				       ops->container_cgroup, NULL);
 		ret = mkdir_p(path2, 0755);
 		if (ret < 0 && (errno != EEXIST))
 			return false;
 
-		ret = cg_legacy_mount_controllers(cgroup_automount_type, h, controllerpath, path2, ops->container_cgroup);
+		ret = cg_legacy_mount_controllers(cgroup_automount_type, h,
+						  hierarchy_mnt, path2,
+						  ops->container_cgroup);
 		if (ret < 0)
 			return false;
 	}
