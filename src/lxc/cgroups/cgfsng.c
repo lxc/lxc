@@ -402,7 +402,7 @@ static int cgroup_hierarchy_add(struct cgroup_ops *ops, int dfd_mnt, char *mnt,
 		return ret_errno(ENOMEM);
 
 	new->dfd_con		= -EBADF;
-	new->cgfd_limit		= -EBADF;
+	new->dfd_lim		= -EBADF;
 	new->dfd_mon		= -EBADF;
 
 	new->fs_type		= fs_type;
@@ -805,9 +805,9 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		h->container_full_path = move_ptr(path);
 
 		if (fd_limit < 0)
-			h->cgfd_limit = h->dfd_con;
+			h->dfd_lim = h->dfd_con;
 		else
-			h->cgfd_limit = move_fd(fd_limit);
+			h->dfd_lim = move_fd(fd_limit);
 
 		if (limit_path)
 			h->container_limit_path = move_ptr(limit_path);
@@ -827,11 +827,11 @@ static void cgroup_tree_prune_leaf(struct hierarchy *h, const char *path_prune,
 
 	if (payload) {
 		/* Check whether we actually created the cgroup to prune. */
-		if (h->cgfd_limit < 0)
+		if (h->dfd_lim < 0)
 			prune = false;
 
 		free_equal(h->container_full_path, h->container_limit_path);
-		close_equal(h->dfd_con, h->cgfd_limit);
+		close_equal(h->dfd_con, h->dfd_lim);
 	} else {
 		/* Check whether we actually created the cgroup to prune. */
 		if (h->dfd_mon < 0)

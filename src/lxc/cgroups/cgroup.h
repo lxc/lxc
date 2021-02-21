@@ -99,7 +99,7 @@ struct hierarchy {
 	 * @container_limit_path.
 	 * Will be equal to @dfd_con if no limiting cgroup has been requested.
 	 */
-	int cgfd_limit;
+	int dfd_lim;
 
 	/* File descriptor for the monitor's cgroup. */
 	int dfd_mon;
