@@ -63,9 +63,9 @@ int lxc_write_openat(const char *dir, const char *filename, const void *buf,
 {
 	__do_close int dirfd = -EBADF;
 
-	dirfd = open(dir, O_DIRECTORY | O_RDONLY | O_CLOEXEC | O_NOCTTY | O_NOFOLLOW);
+	dirfd = open(dir, PROTECT_OPEN);
 	if (dirfd < 0)
-		return -1;
+		return -errno;
 
 	return lxc_writeat(dirfd, filename, buf, count);
 }
