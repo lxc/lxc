@@ -64,7 +64,7 @@ typedef enum {
  * @path_con
  * - The full path to the container's cgroup.
  *
- * @container_limit_path
+ * @path_lim
  * - The full path to the container's limiting cgroup. May simply point to
  *   path_con.
  *
@@ -83,7 +83,6 @@ struct hierarchy {
 	 */
 	char **cgroup2_chown;
 	char **controllers;
-	char *container_limit_path;
 	cgroupfs_type_magic_t fs_type;
 
 	/* cgroup2 only */
@@ -96,10 +95,11 @@ struct hierarchy {
 
 	/*
 	 * File descriptor for the container's limiting cgroup
-	 * @container_limit_path.
+	 * @path_lim.
 	 * Will be equal to @dfd_con if no limiting cgroup has been requested.
 	 */
 	int dfd_lim;
+	char *path_lim;
 
 	/* File descriptor for the monitor's cgroup. */
 	int dfd_mon;
