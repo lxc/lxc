@@ -1888,7 +1888,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	cgroup_ops->payload_finalize(cgroup_ops);
+	cgroup_ops->finalize(cgroup_ops);
 	TRACE("Finished setting up cgroups");
 
 	if (handler->ns_unshare_flags & CLONE_NEWTIME) {
