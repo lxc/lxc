@@ -218,7 +218,7 @@ struct cgroup_ops {
 				 struct lxc_handler *handler);
 	bool (*monitor_delegate_controllers)(struct cgroup_ops *ops);
 	bool (*payload_delegate_controllers)(struct cgroup_ops *ops);
-	void (*payload_finalize)(struct cgroup_ops *ops);
+	void (*finalize)(struct cgroup_ops *ops);
 	const char *(*get_limiting_cgroup)(struct cgroup_ops *ops, const char *controller);
 };
 

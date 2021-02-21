@@ -1362,13 +1362,22 @@ __cgfsng_ops static bool cgfsng_chown(struct cgroup_ops *ops,
 	return true;
 }
 
-__cgfsng_ops static void cgfsng_payload_finalize(struct cgroup_ops *ops)
+__cgfsng_ops static void cgfsng_finalize(struct cgroup_ops *ops)
 {
 	if (!ops)
 		return;
 
 	if (!ops->hierarchies)
 		return;
+
+	for (int i = 0; ops->hierarchies[i]; i++) {
+		struct hierarchy *h = ops->hierarchies[i];
+
+		/* Close all monitor cgroup file descriptors. */
+		close_prot_errno_disarm(h->dfd_mon);
+	}
+	/* Close the cgroup root file descriptor. */
+	close_prot_errno_disarm(ops->dfd_mnt);
 
 	/*
 	 * The checking for freezer support should obviously be done at cgroup
@@ -3311,7 +3320,7 @@ struct cgroup_ops *cgroup_ops_init(struct lxc_conf *conf)
 	cgfsng_ops->payload_delegate_controllers	= cgfsng_payload_delegate_controllers;
 	cgfsng_ops->payload_create			= cgfsng_payload_create;
 	cgfsng_ops->payload_enter			= cgfsng_payload_enter;
-	cgfsng_ops->payload_finalize			= cgfsng_payload_finalize;
+	cgfsng_ops->finalize				= cgfsng_finalize;
 	cgfsng_ops->get_cgroup				= cgfsng_get_cgroup;
 	cgfsng_ops->get					= cgfsng_get;
 	cgfsng_ops->set 				= cgfsng_set;
