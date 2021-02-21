@@ -1372,18 +1372,6 @@ __cgfsng_ops static void cgfsng_payload_finalize(struct cgroup_ops *ops)
 	if (!ops->hierarchies)
 		return;
 
-	for (int i = 0; ops->hierarchies[i]; i++) {
-		struct hierarchy *h = ops->hierarchies[i];
-		/*
-		 * we don't keep the fds for non-unified hierarchies around
-		 * mainly because we don't make use of them anymore after the
-		 * core cgroup setup is done but also because there are quite a
-		 * lot of them.
-		 */
-		if (!is_unified_hierarchy(h))
-			close_prot_errno_disarm(h->dfd_con);
-	}
-
 	/*
 	 * The checking for freezer support should obviously be done at cgroup
 	 * initialization time but that doesn't work reliable. The freezer
