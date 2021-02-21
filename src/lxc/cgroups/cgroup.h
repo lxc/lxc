@@ -102,7 +102,7 @@ struct hierarchy {
 	int cgfd_limit;
 
 	/* File descriptor for the monitor's cgroup. */
-	int cgfd_mon;
+	int dfd_mon;
 
 	/* File descriptor for the controller's mountpoint @at_mnt. */
 	int dfd_mnt;

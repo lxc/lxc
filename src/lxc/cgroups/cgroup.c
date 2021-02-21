@@ -93,8 +93,8 @@ void cgroup_exit(struct cgroup_ops *ops)
 
 		close_equal((*it)->dfd_con, (*it)->cgfd_limit);
 
-		if ((*it)->cgfd_mon >= 0)
-			close((*it)->cgfd_mon);
+		if ((*it)->dfd_mon >= 0)
+			close((*it)->dfd_mon);
 
 		close_equal((*it)->dfd_base, (*it)->dfd_mnt);
 

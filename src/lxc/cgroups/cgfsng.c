@@ -403,7 +403,7 @@ static int cgroup_hierarchy_add(struct cgroup_ops *ops, int dfd_mnt, char *mnt,
 
 	new->dfd_con		= -EBADF;
 	new->cgfd_limit		= -EBADF;
-	new->cgfd_mon		= -EBADF;
+	new->dfd_mon		= -EBADF;
 
 	new->fs_type		= fs_type;
 	new->controllers	= controllers;
@@ -814,7 +814,7 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		else
 			h->container_limit_path = h->container_full_path;
 	} else {
-		h->cgfd_mon = move_fd(fd_final);
+		h->dfd_mon = move_fd(fd_final);
 	}
 
 	return true;
@@ -834,10 +834,10 @@ static void cgroup_tree_prune_leaf(struct hierarchy *h, const char *path_prune,
 		close_equal(h->dfd_con, h->cgfd_limit);
 	} else {
 		/* Check whether we actually created the cgroup to prune. */
-		if (h->cgfd_mon < 0)
+		if (h->dfd_mon < 0)
 			prune = false;
 
-		close_prot_errno_disarm(h->cgfd_mon);
+		close_prot_errno_disarm(h->dfd_mon);
 	}
 
 	/* We didn't create this cgroup. */
@@ -1183,20 +1183,20 @@ __cgfsng_ops static bool cgfsng_monitor_enter(struct cgroup_ops *ops,
 		struct hierarchy *h = ops->hierarchies[i];
 		int ret;
 
-		ret = lxc_writeat(h->cgfd_mon, "cgroup.procs", monitor, monitor_len);
+		ret = lxc_writeat(h->dfd_mon, "cgroup.procs", monitor, monitor_len);
 		if (ret)
-			return log_error_errno(false, errno, "Failed to enter cgroup %d", h->cgfd_mon);
+			return log_error_errno(false, errno, "Failed to enter cgroup %d", h->dfd_mon);
 
-		TRACE("Moved monitor into cgroup %d", h->cgfd_mon);
+		TRACE("Moved monitor into cgroup %d", h->dfd_mon);
 
 		if (handler->transient_pid <= 0)
 			continue;
 
-		ret = lxc_writeat(h->cgfd_mon, "cgroup.procs", transient, transient_len);
+		ret = lxc_writeat(h->dfd_mon, "cgroup.procs", transient, transient_len);
 		if (ret)
-			return log_error_errno(false, errno, "Failed to enter cgroup %d", h->cgfd_mon);
+			return log_error_errno(false, errno, "Failed to enter cgroup %d", h->dfd_mon);
 
-		TRACE("Moved transient process into cgroup %d", h->cgfd_mon);
+		TRACE("Moved transient process into cgroup %d", h->dfd_mon);
 
 		/*
 		 * we don't keep the fds for non-unified hierarchies around
@@ -1205,7 +1205,7 @@ __cgfsng_ops static bool cgfsng_monitor_enter(struct cgroup_ops *ops,
 		 * lot of them.
 		 */
 		if (!is_unified_hierarchy(h))
-			close_prot_errno_disarm(h->cgfd_mon);
+			close_prot_errno_disarm(h->dfd_mon);
 	}
 	handler->transient_pid = -1;
 
