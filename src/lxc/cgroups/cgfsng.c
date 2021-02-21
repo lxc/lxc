@@ -1890,7 +1890,7 @@ __cgfsng_ops static bool cgfsng_criu_get_hierarchies(struct cgroup_ops *ops,
 	return true;
 }
 
-static bool cg_legacy_freeze(struct cgroup_ops *ops)
+static int cg_legacy_freeze(struct cgroup_ops *ops)
 {
 	struct hierarchy *h;
 
