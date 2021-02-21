@@ -91,7 +91,7 @@ void cgroup_exit(struct cgroup_ops *ops)
 		free_equal((*it)->container_full_path,
 			   (*it)->container_limit_path);
 
-		close_equal((*it)->dfd_con, (*it)->cgfd_limit);
+		close_equal((*it)->dfd_con, (*it)->dfd_lim);
 
 		if ((*it)->dfd_mon >= 0)
 			close((*it)->dfd_mon);
