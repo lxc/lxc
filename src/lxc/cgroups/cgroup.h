@@ -61,12 +61,12 @@ typedef enum {
  *   is created. This will be either the caller's cgroup (if not root), or
  *   init's cgroup (if root).
  *
- * @container_full_path
+ * @path_con
  * - The full path to the container's cgroup.
  *
  * @container_limit_path
  * - The full path to the container's limiting cgroup. May simply point to
- *   container_full_path.
+ *   path_con.
  *
  * @version
  * - legacy hierarchy
@@ -83,7 +83,6 @@ struct hierarchy {
 	 */
 	char **cgroup2_chown;
 	char **controllers;
-	char *container_full_path;
 	char *container_limit_path;
 	cgroupfs_type_magic_t fs_type;
 
@@ -91,8 +90,9 @@ struct hierarchy {
 	unsigned int bpf_device_controller:1;
 	unsigned int freezer_controller:1;
 
-	/* File descriptor for the container's cgroup @container_full_path. */
+	/* File descriptor for the container's cgroup @path_con. */
 	int dfd_con;
+	char *path_con;
 
 	/*
 	 * File descriptor for the container's limiting cgroup
