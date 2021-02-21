@@ -2940,7 +2940,42 @@ __cgfsng_ops static bool cgfsng_payload_delegate_controllers(struct cgroup_ops *
 	return __cgfsng_delegate_controllers(ops, ops->container_cgroup);
 }
 
-static int list_unified_delegation_files(char ***delegate)
+static inline bool unified_cgroup(const char *line)
+{
+	return *line == '0';
+}
+
+static inline char *current_unified_cgroup(bool relative, char *line)
+{
+	char *current_cgroup;
+
+	line += STRLITERALLEN("0::");
+
+	if (!abspath(line))
+		return ERR_PTR(-EINVAL);
+
+	/* remove init.scope */
+	if (!relative)
+		line = prune_init_scope(line);
+
+	/* create a relative path */
+	line = deabs(line);
+
+	current_cgroup = strdup(line);
+	if (!current_cgroup)
+		return ERR_PTR(-ENOMEM);
+
+	return current_cgroup;
+}
+
+static inline const char *unprefix(const char *controllers)
+{
+	if (strnequal(controllers, "name=", STRLITERALLEN("name=")))
+		return controllers + STRLITERALLEN("name=");
+	return controllers;
+}
+
+static int __list_cgroup_delegate(char ***delegate)
 {
 	__do_free char **list = NULL;
 	__do_free char *buf = NULL;
@@ -2983,39 +3018,32 @@ static int list_unified_delegation_files(char ***delegate)
 	return 0;
 }
 
-static inline bool unified_cgroup(const char *line)
+static bool unified_hierarchy_delegated(int dfd_base, char ***ret_files)
 {
-	return *line == '0';
+	__do_free_string_list char **list = NULL;
+	int ret;
+
+	ret = __list_cgroup_delegate(&list);
+	if (ret < 0)
+		return syserrno(ret, "Failed to determine unified cgroup delegation requirements");
+
+	for (char *const *s = list; s && *s; s++) {
+		if (!faccessat(dfd_base, *s, W_OK, 0) || errno == ENOENT)
+			continue;
+
+		return sysinfo(false, "The %s file is not writable, skipping unified hierarchy", *s);
+	}
+
+	*ret_files = move_ptr(list);
+	return true;
 }
 
-static inline char *current_unified_cgroup(bool relative, char *line)
+static bool legacy_hierarchy_delegated(int dfd_base)
 {
-	char *current_cgroup;
+	if (faccessat(dfd_base, "cgroup.procs", W_OK, 0) && errno != ENOENT)
+		return sysinfo(false, "The cgroup.procs file is not writable, skipping legacy hierarchy");
 
-	line += STRLITERALLEN("0::");
-
-	if (!abspath(line))
-		return ERR_PTR(-EINVAL);
-
-	/* remove init.scope */
-	if (!relative)
-		line = prune_init_scope(line);
-
-	/* create a relative path */
-	line = deabs(line);
-
-	current_cgroup = strdup(line);
-	if (!current_cgroup)
-		return ERR_PTR(-ENOMEM);
-
-	return current_cgroup;
-}
-
-static inline const char *unprefix(const char *controllers)
-{
-	if (strnequal(controllers, "name=", STRLITERALLEN("name=")))
-		return controllers + STRLITERALLEN("name=");
-	return controllers;
+	return true;
 }
 
 static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
@@ -3080,28 +3108,15 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 				dfd = dfd_base;
 			}
 
+			if (!unified_hierarchy_delegated(dfd, &delegate))
+				continue;
+
 			controller_list = unified_controllers(dfd, "cgroup.controllers");
 			if (!controller_list) {
 				TRACE("No controllers are enabled for delegation in the unified hierarchy");
 				controller_list = list_new();
 				if (!controller_list)
 					return syserrno(-ENOMEM, "Failed to create empty controller list");
-			}
-
-			if (unprivileged) {
-				ret = list_unified_delegation_files(&delegate);
-				if (ret < 0)
-					return syserrno(ret, "Failed to determine delegation requirements");
-
-				for (char *const *d = delegate; d && *d; d++) {
-					if (faccessat(dfd, *d, W_OK, 0)) {
-						if (errno == ENOENT)
-							continue;
-
-						SYSINFO("Lacking write access to %s, skipping unified cgroup", *d);
-						break;
-					}
-				}
 			}
 
 			type = CGROUP2_SUPER_MAGIC;
@@ -3163,13 +3178,8 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 				dfd = dfd_base;
 			}
 
-			if (faccessat(dfd, "cgroup.procs", W_OK, 0)) {
-				if (errno == ENOENT)
-					continue;
-
-				SYSINFO("Lacking write access to %s", controllers);
-				break;
-			}
+			if (!legacy_hierarchy_delegated(dfd))
+				continue;
 
 			/*
 			 * We intentionally pass __current_cgroup here and not
