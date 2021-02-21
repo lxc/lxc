@@ -407,7 +407,7 @@ static int cgroup_hierarchy_add(struct cgroup_ops *ops, int dfd_mnt, char *mnt,
 
 	new->fs_type		= fs_type;
 	new->controllers	= controllers;
-	new->mountpoint		= mnt;
+	new->at_mnt		= mnt;
 	new->at_base		= base_cgroup;
 
 	new->dfd_mnt		= dfd_mnt;
@@ -1775,9 +1775,9 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		__do_free char *hierarchy_mnt = NULL, *path2 = NULL;
 		struct hierarchy *h = ops->hierarchies[i];
 
-		ret = mkdirat(dfd_mnt_tmpfs, h->mountpoint, 0000);
+		ret = mkdirat(dfd_mnt_tmpfs, h->at_mnt, 0000);
 		if (ret < 0)
-			return syserrno(false, "Failed to create cgroup mountpoint %d(%s)", dfd_mnt_tmpfs, h->mountpoint);
+			return syserrno(false, "Failed to create cgroup at_mnt %d(%s)", dfd_mnt_tmpfs, h->at_mnt);
 
 		if (in_cgroup_ns && wants_force_mount) {
 			/*
@@ -1786,7 +1786,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			 * need to mount the cgroups manually.
 			 */
 			ret = cgroupfs_mount(cgroup_automount_type, h, rootfs,
-					     dfd_mnt_tmpfs, h->mountpoint);
+					     dfd_mnt_tmpfs, h->at_mnt);
 			if (ret < 0)
 				return false;
 
@@ -1795,7 +1795,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 
 		/* Here is where the ancient kernel section begins. */
 		ret = cgroupfs_bind_mount(cgroup_automount_type, h, rootfs,
-					  dfd_mnt_tmpfs, h->mountpoint);
+					  dfd_mnt_tmpfs, h->at_mnt);
 		if (ret < 0)
 			return false;
 
@@ -1805,7 +1805,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		if (!cgroup_root)
 			cgroup_root = must_make_path(rootfs_mnt, DEFAULT_CGROUP_MOUNTPOINT, NULL);
 
-		hierarchy_mnt = must_make_path(cgroup_root, h->mountpoint, NULL);
+		hierarchy_mnt = must_make_path(cgroup_root, h->at_mnt, NULL);
 		path2 = must_make_path(hierarchy_mnt, h->at_base,
 				       ops->container_cgroup, NULL);
 		ret = mkdir_p(path2, 0755);
@@ -2045,8 +2045,8 @@ static const char *cgfsng_get_cgroup_do(struct cgroup_ops *ops,
 	if (!path)
 		return NULL;
 
-	len = strlen(h->mountpoint);
-	if (!strnequal(h->mountpoint, DEFAULT_CGROUP_MOUNTPOINT,
+	len = strlen(h->at_mnt);
+	if (!strnequal(h->at_mnt, DEFAULT_CGROUP_MOUNTPOINT,
 		       STRLITERALLEN(DEFAULT_CGROUP_MOUNTPOINT))) {
 		path += STRLITERALLEN(DEFAULT_CGROUP_MOUNTPOINT);
 		path += strspn(path, "/");

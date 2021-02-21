@@ -46,8 +46,8 @@ typedef enum {
  * - unified hierarchy
  *   Either NULL, or a null-terminated list of all enabled controllers.
  *
- * @mountpoint
- * - The mountpoint we will use.
+ * @at_mnt
+ * - The at_mnt we will use.
  * - legacy hierarchy
  *   It will be either /sys/fs/cgroup/controller or
  *   /sys/fs/cgroup/controllerlist.
@@ -83,7 +83,6 @@ struct hierarchy {
 	 */
 	char **cgroup2_chown;
 	char **controllers;
-	char *mountpoint;
 	char *container_full_path;
 	char *container_limit_path;
 	cgroupfs_type_magic_t fs_type;
@@ -105,8 +104,9 @@ struct hierarchy {
 	/* File descriptor for the monitor's cgroup. */
 	int cgfd_mon;
 
-	/* File descriptor for the controller's mountpoint @mountpoint. */
+	/* File descriptor for the controller's mountpoint @at_mnt. */
 	int dfd_mnt;
+	char *at_mnt;
 
 	/* File descriptor for the controller's base cgroup path @at_base. */
 	int dfd_base;
@@ -236,11 +236,11 @@ static inline int cgroup_unified_fd(const struct cgroup_ops *ops)
 	return ops->unified->cgfd_con;
 }
 
-#define make_cgroup_path(__hierarchy, __first, ...)                        \
-	({                                                                 \
-		const struct hierarchy *__h = __hierarchy;                 \
-		must_make_path(DEFAULT_CGROUP_MOUNTPOINT, __h->mountpoint, \
-			       __first, __VA_ARGS__);                      \
+#define make_cgroup_path(__hierarchy, __first, ...)                    \
+	({                                                             \
+		const struct hierarchy *__h = __hierarchy;             \
+		must_make_path(DEFAULT_CGROUP_MOUNTPOINT, __h->at_mnt, \
+			       __first, __VA_ARGS__);                  \
 	})
 
 #endif /* __LXC_CGROUP_H */
