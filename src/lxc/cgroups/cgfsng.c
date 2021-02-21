@@ -444,7 +444,7 @@ static int cgroup_tree_remove(struct hierarchy **hierarchies, const char *path_p
 		else
 			TRACE("Removed cgroup tree %d(%s)", h->dfd_base, path_prune);
 
-		free_equal(h->container_limit_path, h->container_full_path);
+		free_equal(h->container_limit_path, h->path_con);
 	}
 
 	return 0;
@@ -802,7 +802,7 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 
 	if (payload) {
 		h->dfd_con = move_fd(fd_final);
-		h->container_full_path = move_ptr(path);
+		h->path_con = move_ptr(path);
 
 		if (fd_limit < 0)
 			h->dfd_lim = h->dfd_con;
@@ -812,7 +812,7 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		if (limit_path)
 			h->container_limit_path = move_ptr(limit_path);
 		else
-			h->container_limit_path = h->container_full_path;
+			h->container_limit_path = h->path_con;
 	} else {
 		h->dfd_mon = move_fd(fd_final);
 	}
@@ -830,7 +830,7 @@ static void cgroup_tree_prune_leaf(struct hierarchy *h, const char *path_prune,
 		if (h->dfd_lim < 0)
 			prune = false;
 
-		free_equal(h->container_full_path, h->container_limit_path);
+		free_equal(h->path_con, h->container_limit_path);
 		close_equal(h->dfd_con, h->dfd_lim);
 	} else {
 		/* Check whether we actually created the cgroup to prune. */
@@ -1127,7 +1127,7 @@ __cgfsng_ops static bool cgfsng_payload_create(struct cgroup_ops *ops, struct lx
 					       true))
 				continue;
 
-			DEBUG("Failed to create cgroup \"%s\"", ops->hierarchies[i]->container_full_path ?: "(null)");
+			DEBUG("Failed to create cgroup \"%s\"", ops->hierarchies[i]->path_con ?: "(null)");
 			for (int j = 0; j <= i; j++)
 				cgroup_tree_prune_leaf(ops->hierarchies[j],
 						       limit_cgroup, true);
@@ -1244,9 +1244,9 @@ __cgfsng_ops static bool cgfsng_payload_enter(struct cgroup_ops *ops,
 
 		ret = lxc_writeat(h->dfd_con, "cgroup.procs", pidstr, len);
 		if (ret != 0)
-			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", h->container_full_path);
+			return log_error_errno(false, errno, "Failed to enter cgroup \"%s\"", h->path_con);
 
-		TRACE("Moved container into %s cgroup via %d", h->container_full_path, h->dfd_con);
+		TRACE("Moved container into %s cgroup via %d", h->path_con, h->dfd_con);
 	}
 
 	return true;
@@ -1898,7 +1898,7 @@ static bool cg_legacy_freeze(struct cgroup_ops *ops)
 	if (!h)
 		return ret_set_errno(-1, ENOENT);
 
-	return lxc_write_openat(h->container_full_path, "freezer.state",
+	return lxc_write_openat(h->path_con, "freezer.state",
 				"FROZEN", STRLITERALLEN("FROZEN"));
 }
 
@@ -1945,13 +1945,13 @@ static int cg_unified_freeze_do(struct cgroup_ops *ops, int timeout,
 	if (!h)
 		return ret_set_errno(-1, ENOENT);
 
-	if (!h->container_full_path)
+	if (!h->path_con)
 		return ret_set_errno(-1, EEXIST);
 
 	if (timeout != 0) {
 		__do_free char *events_file = NULL;
 
-		events_file = must_make_path(h->container_full_path, "cgroup.events", NULL);
+		events_file = must_make_path(h->path_con, "cgroup.events", NULL);
 		fd = open(events_file, O_RDONLY | O_CLOEXEC);
 		if (fd < 0)
 			return log_error_errno(-1, errno, "Failed to open cgroup.events file");
@@ -1968,7 +1968,7 @@ static int cg_unified_freeze_do(struct cgroup_ops *ops, int timeout,
 			return log_error_errno(-1, errno, "Failed to add cgroup.events fd handler to mainloop");
 	}
 
-	ret = lxc_write_openat(h->container_full_path, "cgroup.freeze", state_string, 1);
+	ret = lxc_write_openat(h->path_con, "cgroup.freeze", state_string, 1);
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to open cgroup.freeze file");
 
@@ -2004,7 +2004,7 @@ static int cg_legacy_unfreeze(struct cgroup_ops *ops)
 	if (!h)
 		return ret_set_errno(-1, ENOENT);
 
-	return lxc_write_openat(h->container_full_path, "freezer.state",
+	return lxc_write_openat(h->path_con, "freezer.state",
 				"THAWED", STRLITERALLEN("THAWED"));
 }
 
@@ -2041,7 +2041,7 @@ static const char *cgfsng_get_cgroup_do(struct cgroup_ops *ops,
 	if (limiting)
 		path = h->container_limit_path;
 	else
-		path = h->container_full_path;
+		path = h->path_con;
 	if (!path)
 		return NULL;
 
@@ -2677,7 +2677,7 @@ static int cg_legacy_set_data(struct cgroup_ops *ops, const char *filename,
 		return log_error_errno(-ENOENT, ENOENT, "Failed to setup limits for the \"%s\" controller. The controller seems to be unused by \"cgfsng\" cgroup driver or not enabled on the cgroup hierarchy", controller);
 
 	if (is_cpuset) {
-		int ret = lxc_write_openat(h->container_full_path, filename, value, strlen(value));
+		int ret = lxc_write_openat(h->path_con, filename, value, strlen(value));
 		if (ret)
 			return ret;
 	}
@@ -2839,7 +2839,7 @@ __cgfsng_ops static bool cgfsng_devices_activate(struct cgroup_ops *ops, struct 
 
 	unified = ops->unified;
 	if (!unified || !unified->bpf_device_controller ||
-	    !unified->container_full_path ||
+	    !unified->path_con ||
 	    lxc_list_empty(&(conf->bpf_devices).device_item))
 		return true;
 
