@@ -38,6 +38,9 @@ typedef enum {
 	UNIFIED_HIERARCHY = CGROUP2_SUPER_MAGIC,
 } cgroupfs_type_magic_t;
 
+#define DEVICES_CONTROLLER (1U << 0)
+#define FREEZER_CONTROLLER (1U << 1)
+
 /* A descriptor for a mounted hierarchy
  *
  * @controllers
@@ -104,12 +107,25 @@ struct hierarchy {
 
 	struct /* unified hierarchy specific */ {
 		char **delegate;
-		unsigned int bpf_device_controller : 1;
-		unsigned int freezer_controller : 1;
+		unsigned int utilities;
 	};
 
 	char **controllers;
 };
+
+static inline bool device_utility_controller(const struct hierarchy *h)
+{
+	if (h->fs_type == UNIFIED_HIERARCHY && (h->utilities & DEVICES_CONTROLLER))
+		return true;
+	return false;
+}
+
+static inline bool freezer_utility_controller(const struct hierarchy *h)
+{
+	if (h->fs_type == UNIFIED_HIERARCHY && (h->utilities & FREEZER_CONTROLLER))
+		return true;
+	return false;
+}
 
 struct cgroup_ops {
 	/* string constant */
