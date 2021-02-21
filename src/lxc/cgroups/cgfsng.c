@@ -269,7 +269,7 @@ static ssize_t get_max_cpus(char *cpulist)
 
 static inline bool is_unified_hierarchy(const struct hierarchy *h)
 {
-	return h->version == CGROUP2_SUPER_MAGIC;
+	return h->fs_type == UNIFIED_HIERARCHY;
 }
 
 /* Return true if the controller @entry is found in the null-terminated list of
@@ -389,7 +389,7 @@ static bool skip_hierarchy(const struct cgroup_ops *ops, char **controllers)
 
 static int cgroup_hierarchy_add(struct cgroup_ops *ops, int dfd_mnt, char *mnt,
 				int dfd_base, char *base_cgroup,
-				char **controllers, int type)
+				char **controllers, cgroupfs_type_magic_t fs_type)
 {
 	__do_free struct hierarchy *new = NULL;
 	int idx;
@@ -405,7 +405,7 @@ static int cgroup_hierarchy_add(struct cgroup_ops *ops, int dfd_mnt, char *mnt,
 	new->cgfd_limit			= -EBADF;
 	new->cgfd_mon			= -EBADF;
 
-	new->version			= type;
+	new->fs_type			= fs_type;
 	new->controllers		= controllers;
 	new->mountpoint			= mnt;
 	new->container_base_path	= base_cgroup;
@@ -422,7 +422,7 @@ static int cgroup_hierarchy_add(struct cgroup_ops *ops, int dfd_mnt, char *mnt,
 	if (idx < 0)
 		return ret_errno(idx);
 
-	if (type == CGROUP2_SUPER_MAGIC)
+	if (fs_type == UNIFIED_HIERARCHY)
 		ops->unified = new;
 	(ops->hierarchies)[idx] = move_ptr(new);
 
@@ -1316,12 +1316,12 @@ static int chown_cgroup_wrapper(void *data)
 		 * files (which systemd in wily insists on doing).
 		 */
 
-		if (arg->hierarchies[i]->version == CGROUP_SUPER_MAGIC)
+		if (arg->hierarchies[i]->fs_type == LEGACY_HIERARCHY)
 			(void)fchowmodat(dirfd, "tasks", destuid, nsgid, 0664);
 
 		(void)fchowmodat(dirfd, "cgroup.procs", destuid, nsgid, 0664);
 
-		if (arg->hierarchies[i]->version != CGROUP2_SUPER_MAGIC)
+		if (arg->hierarchies[i]->fs_type != UNIFIED_HIERARCHY)
 			continue;
 
 		for (char **p = arg->hierarchies[i]->cgroup2_chown; p && *p; p++)
@@ -2321,7 +2321,7 @@ __cgfsng_ops static bool cgfsng_attach(struct cgroup_ops *ops,
 		__do_free char *fullpath = NULL, *path = NULL;
 		struct hierarchy *h = ops->hierarchies[i];
 
-		if (h->version == CGROUP2_SUPER_MAGIC) {
+		if (h->fs_type == UNIFIED_HIERARCHY) {
 			ret = __cg_unified_attach(h, conf, name, lxcpath, pid,
 						  h->controllers[0]);
 			if (ret < 0)
@@ -3076,6 +3076,8 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 		if (unified_cgroup(line)) {
 			char *unified_mnt;
 
+			type = UNIFIED_HIERARCHY;
+
 			current_cgroup = current_unified_cgroup(relative, line);
 			if (IS_ERR(current_cgroup))
 				return PTR_ERR(current_cgroup);
@@ -3119,12 +3121,13 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 					return syserrno(-ENOMEM, "Failed to create empty controller list");
 			}
 
-			type = CGROUP2_SUPER_MAGIC;
 			controllers = strdup(unified_mnt);
 			if (!controllers)
 				return ret_errno(ENOMEM);
 		} else {
 			char *__controllers, *__current_cgroup;
+
+			type = LEGACY_HIERARCHY;
 
 			__controllers = strchr(line, ':');
 			if (!__controllers)
@@ -3193,7 +3196,6 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 			if (skip_hierarchy(ops, controller_list))
 				continue;
 
-			type = CGROUP_SUPER_MAGIC;
 			ops->cgroup_layout = CGROUP_LAYOUT_LEGACY;
 		}
 
@@ -3208,7 +3210,7 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 		move_ptr(current_cgroup);
 		move_ptr(controllers);
 		move_ptr(controller_list);
-		if (type == CGROUP2_SUPER_MAGIC)
+		if (type == UNIFIED_HIERARCHY)
 			ops->unified->cgroup2_chown = move_ptr(delegate);
 	}
 
