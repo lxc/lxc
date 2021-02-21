@@ -123,12 +123,12 @@ static struct hierarchy *get_hierarchy(struct cgroup_ops *ops, const char *contr
 		 */
 		if (pure_unified_layout(ops)) {
 			if (strequal(controller, "devices")) {
-				if (ops->unified->bpf_device_controller)
+				if (device_utility_controller(ops->unified))
 					return ops->unified;
 
 				break;
 			} else if (strequal(controller, "freezer")) {
-				if (ops->unified->freezer_controller)
+				if (freezer_utility_controller(ops->unified))
 					return ops->unified;
 
 				break;
@@ -1400,7 +1400,7 @@ __cgfsng_ops static void cgfsng_payload_finalize(struct cgroup_ops *ops)
             !faccessat(ops->unified->dfd_con, "cgroup.freeze", F_OK,
                        AT_SYMLINK_NOFOLLOW)) {
 		TRACE("Unified hierarchy supports freezer");
-		ops->unified->freezer_controller = 1;
+		ops->unified->utilities |= FREEZER_CONTROLLER;
         }
 }
 
@@ -2836,7 +2836,7 @@ __cgfsng_ops static bool cgfsng_devices_activate(struct cgroup_ops *ops, struct 
 	conf = handler->conf;
 
 	unified = ops->unified;
-	if (!unified || !unified->bpf_device_controller ||
+	if (!unified || !device_utility_controller(unified) ||
 	    !unified->path_con ||
 	    lxc_list_empty(&(conf->bpf_devices).device_item))
 		return true;
@@ -3220,7 +3220,7 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 			ops->cgroup_layout = CGROUP_LAYOUT_HYBRID;
 		} else {
 			if (bpf_devices_cgroup_supported())
-				ops->unified->bpf_device_controller = 1;
+				ops->unified->utilities |= DEVICES_CONTROLLER;
 			ops->cgroup_layout = CGROUP_LAYOUT_UNIFIED;
 		}
 	}
