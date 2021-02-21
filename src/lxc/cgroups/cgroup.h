@@ -130,7 +130,7 @@ struct cgroup_ops {
 	 * So for CGROUP_LAYOUT_LEGACY or CGROUP_LAYOUT_HYBRID we allow
 	 * mountpoint crossing iff we cross from a tmpfs into a cgroupfs mount.
 	 * */
-	int dfd_mnt_cgroupfs_host;
+	int dfd_mnt;
 
 	/* What controllers is the container supposed to use. */
 	char **cgroup_use;
