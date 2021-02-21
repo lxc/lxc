@@ -103,12 +103,7 @@ struct hierarchy {
 	char *at_base;
 
 	struct /* unified hierarchy specific */ {
-		/*
-		 * cgroup2 only: what files need to be chowned to delegate a
-		 * cgroup to an unprivileged user.
-		 */
-		char **cgroup2_chown;
-		/* cgroup2 only */
+		char **delegate;
 		unsigned int bpf_device_controller : 1;
 		unsigned int freezer_controller : 1;
 	};

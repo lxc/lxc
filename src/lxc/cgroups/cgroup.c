@@ -81,9 +81,9 @@ void cgroup_exit(struct cgroup_ops *ops)
 			free(*p);
 		free((*it)->controllers);
 
-		for (char **p = (*it)->cgroup2_chown; p && *p; p++)
+		for (char **p = (*it)->delegate; p && *p; p++)
 			free(*p);
-		free((*it)->cgroup2_chown);
+		free((*it)->delegate);
 
 		free((*it)->at_mnt);
 		free((*it)->at_base);

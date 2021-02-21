@@ -1326,7 +1326,7 @@ static int chown_cgroup_wrapper(void *data)
 		if (arg->hierarchies[i]->fs_type != UNIFIED_HIERARCHY)
 			continue;
 
-		for (char **p = arg->hierarchies[i]->cgroup2_chown; p && *p; p++)
+		for (char **p = arg->hierarchies[i]->delegate; p && *p; p++)
 			(void)fchowmodat(dirfd, *p, destuid, nsgid, 0664);
 	}
 
@@ -3213,7 +3213,7 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 		move_ptr(controllers);
 		move_ptr(controller_list);
 		if (type == UNIFIED_HIERARCHY)
-			ops->unified->cgroup2_chown = move_ptr(delegate);
+			ops->unified->delegate = move_ptr(delegate);
 	}
 
 	/* determine cgroup layout */
