@@ -239,6 +239,17 @@ static inline int lxc_cmd_rsp_send_reap(int fd, struct lxc_cmd_rsp *rsp)
 	return LXC_CMD_REAP_CLIENT_FD;
 }
 
+static inline int rsp_one_fd(int fd, int fd_send, struct lxc_cmd_rsp *rsp)
+{
+	int ret;
+
+	ret = lxc_abstract_unix_send_fds(fd, &fd_send, 1, rsp, sizeof(*rsp));
+	if (ret < 0)
+		return ret;
+
+	return LXC_CMD_REAP_CLIENT_FD;
+}
+
 static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
 			const char *lxcpath, const char *hashed_sock_name)
 {
@@ -450,17 +461,12 @@ static int lxc_cmd_get_init_pidfd_callback(int fd, struct lxc_cmd_req *req,
 	struct lxc_cmd_rsp rsp = {
 	    .ret = -EBADF,
 	};
-	int ret;
 
 	if (handler->pidfd < 0)
 		return lxc_cmd_rsp_send_reap(fd, &rsp);
 
 	rsp.ret = 0;
-	ret = lxc_abstract_unix_send_fds(fd, &handler->pidfd, 1, &rsp, sizeof(rsp));
-	if (ret < 0)
-		return syserrno(ret, "Failed to send init pidfd");
-
-	return log_trace(LXC_CMD_REAP_CLIENT_FD, "Sent init pidfd");
+	return rsp_one_fd(fd, handler->pidfd, &rsp);
 }
 
 int lxc_cmd_get_devpts_fd(const char *name, const char *lxcpath)
@@ -489,17 +495,12 @@ static int lxc_cmd_get_devpts_fd_callback(int fd, struct lxc_cmd_req *req,
 	struct lxc_cmd_rsp rsp = {
 	    .ret = -EBADF,
 	};
-	int ret;
 
 	if (!handler->conf || handler->conf->devpts_fd < 0)
 		return lxc_cmd_rsp_send_reap(fd, &rsp);
 
 	rsp.ret = 0;
-	ret = lxc_abstract_unix_send_fds(fd, &handler->conf->devpts_fd, 1, &rsp, sizeof(rsp));
-	if (ret < 0)
-		return syserrno(ret, "Failed to send devpts fd");
-
-	return log_trace(LXC_CMD_REAP_CLIENT_FD, "Sent devpts fd");
+	return rsp_one_fd(fd, handler->conf->devpts_fd, &rsp);
 }
 
 int lxc_cmd_get_seccomp_notify_fd(const char *name, const char *lxcpath)
@@ -533,17 +534,12 @@ static int lxc_cmd_get_seccomp_notify_fd_callback(int fd, struct lxc_cmd_req *re
 	struct lxc_cmd_rsp rsp = {
 		.ret = -EBADF,
 	};
-	int ret;
 
 	if (!handler->conf || handler->conf->seccomp.notifier.notify_fd < 0)
 		return lxc_cmd_rsp_send_reap(fd, &rsp);
 
 	rsp.ret = 0;
-	ret = lxc_abstract_unix_send_fds(fd, &handler->conf->seccomp.notifier.notify_fd, 1, &rsp, sizeof(rsp));
-	if (ret < 0)
-		return syserrno(ret, "Failed to send seccomp notify fd");
-
-	return log_trace(LXC_CMD_REAP_CLIENT_FD, "Failed to send seccomp notify fd");
+	return rsp_one_fd(fd, handler->conf->seccomp.notifier.notify_fd, &rsp);
 #else
 	return syserrno_set(-EOPNOTSUPP, "Seccomp notifier not supported");
 #endif
@@ -1479,7 +1475,7 @@ static int lxc_cmd_get_cgroup2_fd_callback_do(int fd, struct lxc_cmd_req *req,
 		.ret = -EINVAL,
 	};
 	struct cgroup_ops *ops = handler->cgroup_ops;
-	int ret, send_fd;
+	int send_fd;
 
 	if (!pure_unified_layout(ops) || !ops->unified)
 		return lxc_cmd_rsp_send_reap(fd, &rsp);
@@ -1493,11 +1489,7 @@ static int lxc_cmd_get_cgroup2_fd_callback_do(int fd, struct lxc_cmd_req *req,
 	}
 
 	rsp.ret = 0;
-	ret = lxc_abstract_unix_send_fds(fd, &send_fd, 1, &rsp, sizeof(rsp));
-	if (ret < 0)
-		return syserrno(ret, "Failed to send cgroup2 fd");
-
-	return log_trace(LXC_CMD_REAP_CLIENT_FD, "Sent cgroup2 fd");
+	return rsp_one_fd(fd, send_fd, &rsp);
 }
 
 static int lxc_cmd_get_cgroup2_fd_callback(int fd, struct lxc_cmd_req *req,
