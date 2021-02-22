@@ -88,6 +88,7 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 		[LXC_CMD_GET_LIMITING_CGROUP2_FD]	= "get_limiting_cgroup2_fd",
 		[LXC_CMD_GET_DEVPTS_FD]			= "get_devpts_fd",
 		[LXC_CMD_GET_SECCOMP_NOTIFY_FD]		= "get_seccomp_notify_fd",
+		[LXC_CMD_GET_CGROUP_FD]			= "get_cgroup_fd",
 	};
 
 	if (cmd >= LXC_CMD_MAX)
@@ -115,19 +116,34 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
  */
 static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 {
-	call_cleaner(put_unix_fds) struct unix_fds *fds = NULL;
-	int ret;
+	call_cleaner(put_unix_fds) struct unix_fds *fds = &(struct unix_fds){};
 	struct lxc_cmd_rsp *rsp = &cmd->rsp;
+	int ret;
 
-	fds = &(struct unix_fds){
-		.fd_count_max = 1,
-	};
-
+	switch (cmd->req.cmd) {
+	case LXC_CMD_GET_CGROUP2_FD:
+		__fallthrough;
+	case LXC_CMD_GET_LIMITING_CGROUP2_FD:
+		__fallthrough;
+	case LXC_CMD_GET_INIT_PIDFD:
+		__fallthrough;
+	case LXC_CMD_GET_SECCOMP_NOTIFY_FD:
+		__fallthrough;
+	case LXC_CMD_GET_DEVPTS_FD:
+		__fallthrough;
+	case LXC_CMD_CONSOLE:
+		fds->fd_count_max = 1;
+		break;
+	case LXC_CMD_GET_CGROUP_FD:
+		fds->fd_count_max = KERNEL_SCM_MAX_FD;
+		break;
+	default:
+		fds->fd_count_max = 0;
+	}
 	ret = lxc_abstract_unix_recv_fds(sock, fds, rsp, sizeof(*rsp));
 	if (ret < 0)
-		return log_warn_errno(-1,
-				      errno, "Failed to receive response for command \"%s\"",
-				      lxc_cmd_str(cmd->req.cmd));
+		return syserrno(ret, "Failed to receive response for command \"%s\"",
+				lxc_cmd_str(cmd->req.cmd));
 	TRACE("Command \"%s\" received response", lxc_cmd_str(cmd->req.cmd));
 
 	if (cmd->req.cmd == LXC_CMD_CONSOLE) {
@@ -585,14 +601,20 @@ static int lxc_cmd_get_cgroup_fd_callback(int fd, struct lxc_cmd_req *req,
 					  struct lxc_handler *handler,
 					  struct lxc_epoll_descr *descr)
 {
+	struct lxc_cmd_rsp rsp = {
+		.ret = 0,
+	};
 	struct cgroup_ops *cgroup_ops = handler->cgroup_ops;
-	struct lxc_cmd_rsp rsp = {};
-	struct unix_fds fds = {};
+	struct unix_fds *fds = {};
+	int ret;
 
-	fds.fd_count_max = cgroup_fds(cgroup_ops, fds.fd);
-	if (fds.fd_count_max == 0)
-		rsp.ret = -ENOENT;
-	return rsp_many_fds(fd, &fds, &rsp);
+	fds->fd_count_max = cgroup_fds(cgroup_ops, fds->fd);
+	ret = lxc_abstract_unix_send_fds(fd, fds->fd, fds->fd_count_max,
+					 &rsp, sizeof(rsp));
+	if (ret < 0)
+		return log_error(ret, "Failed to send cgroup fds");
+
+	return log_trace(LXC_CMD_REAP_CLIENT_FD, "Sent cgroup fds");
 }
 
 /*
@@ -1590,6 +1612,7 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 		[LXC_CMD_GET_LIMITING_CGROUP2_FD]       = lxc_cmd_get_limiting_cgroup2_fd_callback,
 		[LXC_CMD_GET_DEVPTS_FD]			= lxc_cmd_get_devpts_fd_callback,
 		[LXC_CMD_GET_SECCOMP_NOTIFY_FD]		= lxc_cmd_get_seccomp_notify_fd_callback,
+		[LXC_CMD_GET_CGROUP_FD]			= lxc_cmd_get_cgroup_fd_callback,
 	};
 
 	if (req->cmd >= LXC_CMD_MAX)
