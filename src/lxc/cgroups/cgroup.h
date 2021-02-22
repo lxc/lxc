@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <linux/magic.h>
 
+#include "af_unix.h"
 #include "compiler.h"
 #include "macro.h"
 #include "memory_utils.h"
@@ -256,5 +257,16 @@ static inline int cgroup_unified_fd(const struct cgroup_ops *ops)
 		must_make_path(DEFAULT_CGROUP_MOUNTPOINT, __h->at_mnt, \
 			       __first, __VA_ARGS__);                  \
 	})
+
+static inline ssize_t cgroup_fds(struct cgroup_ops *ops,
+				 int dfds_con[KERNEL_SCM_MAX_FD])
+{
+	ssize_t num_dfds = 0;
+
+	for (num_dfds = 0; ops->hierarchies[num_dfds]; num_dfds++)
+		dfds_con[num_dfds] = ops->hierarchies[num_dfds]->dfd_con;
+
+	return num_dfds;
+}
 
 #endif /* __LXC_CGROUP_H */
