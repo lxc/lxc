@@ -1682,9 +1682,14 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 	}
 
 	ret = lxc_cmd_process(fd, &req, handler, descr);
-	if (ret) {
-		/* This is not an error, but only a request to close fd. */
+	if (ret < 0) {
+		DEBUG("Failed to process command %s; cleaning up client fd %d", lxc_cmd_str(req.cmd), fd);
 		goto out_close;
+	} else if (ret == LXC_CMD_REAP_CLIENT_FD) {
+		TRACE("Processed command %s; cleaning up client fd %d", lxc_cmd_str(req.cmd), fd);
+		goto out_close;
+	} else {
+		TRACE("Processed command %s; keeping client fd %d", lxc_cmd_str(req.cmd), fd);
 	}
 
 out:
