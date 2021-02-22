@@ -357,9 +357,9 @@ static int validate_string_request(int fd, const struct lxc_cmd_req *req)
 		return 0;
 
 	struct lxc_cmd_rsp rsp = {
-		.ret = -EINVAL,
-		.datalen = 0,
-		.data = NULL,
+		.ret		= -EINVAL,
+		.datalen	= 0,
+		.data		= NULL,
 	};
 
 	ret = lxc_cmd_rsp_send(fd, &rsp);
