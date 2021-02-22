@@ -210,24 +210,33 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
  *
  * Returns 0 on success, < 0 on failure
  */
-static int lxc_cmd_rsp_send(int fd, struct lxc_cmd_rsp *rsp)
+static int __lxc_cmd_rsp_send(int fd, struct lxc_cmd_rsp *rsp)
 {
 	ssize_t ret;
 
-	errno = EMSGSIZE;
 	ret = lxc_send_nointr(fd, rsp, sizeof(*rsp), MSG_NOSIGNAL);
 	if (ret < 0 || (size_t)ret != sizeof(*rsp))
-		return log_error_errno(-1, errno, "Failed to send command response %zd", ret);
+		return syserrno(-errno, "Failed to send command response %zd", ret);
 
 	if (!rsp->data || rsp->datalen <= 0)
 		return 0;
 
-	errno = EMSGSIZE;
 	ret = lxc_send_nointr(fd, rsp->data, rsp->datalen, MSG_NOSIGNAL);
 	if (ret < 0 || ret != (ssize_t)rsp->datalen)
-		return log_warn_errno(-1, errno, "Failed to send command response data %zd", ret);
+		return syswarn(-errno, "Failed to send command response %zd", ret);
 
 	return 0;
+}
+
+static inline int lxc_cmd_rsp_send_reap(int fd, struct lxc_cmd_rsp *rsp)
+{
+	int ret;
+
+	ret = __lxc_cmd_rsp_send(fd, rsp);
+	if (ret < 0)
+		return ret;
+
+	return LXC_CMD_REAP_CLIENT_FD;
 }
 
 static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
@@ -352,7 +361,6 @@ int lxc_try_cmd(const char *name, const char *lxcpath)
  */
 static int validate_string_request(int fd, const struct lxc_cmd_req *req)
 {
-	int ret;
 	size_t maxlen = req->datalen - 1;
 	const char *data = req->data;
 
@@ -365,11 +373,7 @@ static int validate_string_request(int fd, const struct lxc_cmd_req *req)
 		.data		= NULL,
 	};
 
-	ret = lxc_cmd_rsp_send(fd, &rsp);
-	if (ret < 0)
-		return LXC_CMD_REAP_CLIENT_FD;
-
-	return -1;
+	return lxc_cmd_rsp_send_reap(fd, &rsp);
 }
 
 /* Implementations of the commands and their callbacks */
@@ -413,16 +417,11 @@ static int lxc_cmd_get_init_pid_callback(int fd, struct lxc_cmd_req *req,
 					 struct lxc_handler *handler,
 					 struct lxc_epoll_descr *descr)
 {
-	int ret;
 	struct lxc_cmd_rsp rsp = {
-		.data = PID_TO_PTR(handler->pid)
+		.data = PID_TO_PTR(handler->pid),
 	};
 
-	ret = lxc_cmd_rsp_send(fd, &rsp);
-	if (ret < 0)
-		return LXC_CMD_REAP_CLIENT_FD;
-
-	return 0;
+	return lxc_cmd_rsp_send_reap(fd, &rsp);
 }
 
 int lxc_cmd_get_init_pidfd(const char *name, const char *lxcpath)
@@ -449,17 +448,19 @@ static int lxc_cmd_get_init_pidfd_callback(int fd, struct lxc_cmd_req *req,
 					   struct lxc_epoll_descr *descr)
 {
 	struct lxc_cmd_rsp rsp = {
-		.ret = 0,
+	    .ret = -EBADF,
 	};
 	int ret;
 
 	if (handler->pidfd < 0)
-		rsp.ret = -EBADF;
+		return lxc_cmd_rsp_send_reap(fd, &rsp);
+
+	rsp.ret = 0;
 	ret = lxc_abstract_unix_send_fds(fd, &handler->pidfd, 1, &rsp, sizeof(rsp));
 	if (ret < 0)
-		return log_error(LXC_CMD_REAP_CLIENT_FD, "Failed to send init pidfd");
+		return syserrno(ret, "Failed to send init pidfd");
 
-	return 0;
+	return log_trace(LXC_CMD_REAP_CLIENT_FD, "Sent init pidfd");
 }
 
 int lxc_cmd_get_devpts_fd(const char *name, const char *lxcpath)
@@ -486,20 +487,19 @@ static int lxc_cmd_get_devpts_fd_callback(int fd, struct lxc_cmd_req *req,
 					  struct lxc_epoll_descr *descr)
 {
 	struct lxc_cmd_rsp rsp = {
-		.ret = 0,
+	    .ret = -EBADF,
 	};
 	int ret;
 
-	if (!handler->conf || handler->conf->devpts_fd < 0) {
-		rsp.ret = -EBADF;
-		ret = lxc_abstract_unix_send_fds(fd, NULL, 0, &rsp, sizeof(rsp));
-	} else {
-		ret = lxc_abstract_unix_send_fds(fd, &handler->conf->devpts_fd, 1, &rsp, sizeof(rsp));
-	}
-	if (ret < 0)
-		return log_error(LXC_CMD_REAP_CLIENT_FD, "Failed to send devpts fd");
+	if (!handler->conf || handler->conf->devpts_fd < 0)
+		return lxc_cmd_rsp_send_reap(fd, &rsp);
 
-	return 0;
+	rsp.ret = 0;
+	ret = lxc_abstract_unix_send_fds(fd, &handler->conf->devpts_fd, 1, &rsp, sizeof(rsp));
+	if (ret < 0)
+		return syserrno(ret, "Failed to send devpts fd");
+
+	return log_trace(LXC_CMD_REAP_CLIENT_FD, "Sent devpts fd");
 }
 
 int lxc_cmd_get_seccomp_notify_fd(const char *name, const char *lxcpath)
@@ -531,19 +531,21 @@ static int lxc_cmd_get_seccomp_notify_fd_callback(int fd, struct lxc_cmd_req *re
 {
 #ifdef HAVE_SECCOMP_NOTIFY
 	struct lxc_cmd_rsp rsp = {
-		.ret = 0,
+		.ret = -EBADF,
 	};
 	int ret;
 
 	if (!handler->conf || handler->conf->seccomp.notifier.notify_fd < 0)
-		rsp.ret = -EBADF;
+		return lxc_cmd_rsp_send_reap(fd, &rsp);
+
+	rsp.ret = 0;
 	ret = lxc_abstract_unix_send_fds(fd, &handler->conf->seccomp.notifier.notify_fd, 1, &rsp, sizeof(rsp));
 	if (ret < 0)
-		return log_error(LXC_CMD_REAP_CLIENT_FD, "Failed to send seccomp notify fd");
+		return syserrno(ret, "Failed to send seccomp notify fd");
 
-	return 0;
+	return log_trace(LXC_CMD_REAP_CLIENT_FD, "Failed to send seccomp notify fd");
 #else
-	return ret_errno(EOPNOTSUPP);
+	return syserrno_set(-EOPNOTSUPP, "Seccomp notifier not supported");
 #endif
 }
 
@@ -575,16 +577,11 @@ static int lxc_cmd_get_clone_flags_callback(int fd, struct lxc_cmd_req *req,
 					    struct lxc_handler *handler,
 					    struct lxc_epoll_descr *descr)
 {
-	int ret;
 	struct lxc_cmd_rsp rsp = {
 		.data = INT_TO_PTR(handler->ns_clone_flags),
 	};
 
-	ret = lxc_cmd_rsp_send(fd, &rsp);
-	if (ret < 0)
-		return LXC_CMD_REAP_CLIENT_FD;
-
-	return 0;
+	return lxc_cmd_rsp_send_reap(fd, &rsp);
 }
 
 static char *lxc_cmd_get_cgroup_path_do(const char *name, const char *lxcpath,
@@ -704,11 +701,7 @@ static int lxc_cmd_get_cgroup_callback_do(int fd, struct lxc_cmd_req *req,
 	rsp.datalen = strlen(path) + 1;
 	rsp.data = (char *)path;
 
-	ret = lxc_cmd_rsp_send(fd, &rsp);
-	if (ret < 0)
-		return LXC_CMD_REAP_CLIENT_FD;
-
-	return 0;
+	return lxc_cmd_rsp_send_reap(fd, &rsp);
 }
 
 static int lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
@@ -787,11 +780,7 @@ static int lxc_cmd_get_config_item_callback(int fd, struct lxc_cmd_req *req,
 err1:
 	rsp.ret = -1;
 out:
-	cilen = lxc_cmd_rsp_send(fd, &rsp);
-	if (cilen < 0)
-		return LXC_CMD_REAP_CLIENT_FD;
-
-	return 0;
+	return lxc_cmd_rsp_send_reap(fd, &rsp);
 }
 
 /*
@@ -830,16 +819,11 @@ static int lxc_cmd_get_state_callback(int fd, struct lxc_cmd_req *req,
 				      struct lxc_handler *handler,
 				      struct lxc_epoll_descr *descr)
 {
-	int ret;
 	struct lxc_cmd_rsp rsp = {
 		.data = INT_TO_PTR(handler->state),
 	};
 
-	ret = lxc_cmd_rsp_send(fd, &rsp);
-	if (ret < 0)
-		return LXC_CMD_REAP_CLIENT_FD;
-
-	return 0;
+	return lxc_cmd_rsp_send_reap(fd, &rsp);
 }
 
 /*
@@ -912,11 +896,7 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 		rsp.ret = -errno;
 	}
 
-	ret = lxc_cmd_rsp_send(fd, &rsp);
-	if (ret < 0)
-		return LXC_CMD_REAP_CLIENT_FD;
-
-	return 0;
+	return lxc_cmd_rsp_send_reap(fd, &rsp);
 }
 
 /*
@@ -988,23 +968,24 @@ static int lxc_cmd_console_callback(int fd, struct lxc_cmd_req *req,
 				    struct lxc_epoll_descr *descr)
 {
 	int ptxfd, ret;
-	struct lxc_cmd_rsp rsp;
+	struct lxc_cmd_rsp rsp = {
+	    .ret = -EBADF,
+	};
 	int ttynum = PTR_TO_INT(req->data);
 
 	ptxfd = lxc_terminal_allocate(handler->conf, fd, &ttynum);
 	if (ptxfd < 0)
-		return LXC_CMD_REAP_CLIENT_FD;
+		return lxc_cmd_rsp_send_reap(fd, &rsp);
 
-	memset(&rsp, 0, sizeof(rsp));
+	rsp.ret = 0;
 	rsp.data = INT_TO_PTR(ttynum);
 	ret = lxc_abstract_unix_send_fds(fd, &ptxfd, 1, &rsp, sizeof(rsp));
 	if (ret < 0) {
 		lxc_terminal_free(handler->conf, fd);
-		return log_error_errno(LXC_CMD_REAP_CLIENT_FD, errno,
-				       "Failed to send tty to client");
+		return ret;
 	}
 
-	return 0;
+	return log_debug(0, "Send tty to client");
 }
 
 /*
@@ -1037,7 +1018,6 @@ static int lxc_cmd_get_name_callback(int fd, struct lxc_cmd_req *req,
 				     struct lxc_handler *handler,
 				     struct lxc_epoll_descr *descr)
 {
-	int ret;
 	struct lxc_cmd_rsp rsp;
 
 	memset(&rsp, 0, sizeof(rsp));
@@ -1046,11 +1026,7 @@ static int lxc_cmd_get_name_callback(int fd, struct lxc_cmd_req *req,
 	rsp.datalen = strlen(handler->name) + 1;
 	rsp.ret = 0;
 
-	ret = lxc_cmd_rsp_send(fd, &rsp);
-	if (ret < 0)
-		return LXC_CMD_REAP_CLIENT_FD;
-
-	return 0;
+	return lxc_cmd_rsp_send_reap(fd, &rsp);
 }
 
 /*
@@ -1083,18 +1059,13 @@ static int lxc_cmd_get_lxcpath_callback(int fd, struct lxc_cmd_req *req,
 					struct lxc_handler *handler,
 					struct lxc_epoll_descr *descr)
 {
-	int ret;
 	struct lxc_cmd_rsp rsp = {
 		.ret		= 0,
 		.data		= (char *)handler->lxcpath,
 		.datalen	= strlen(handler->lxcpath) + 1,
 	};
 
-	ret = lxc_cmd_rsp_send(fd, &rsp);
-	if (ret < 0)
-		return LXC_CMD_REAP_CLIENT_FD;
-
-	return 0;
+	return lxc_cmd_rsp_send_reap(fd, &rsp);
 }
 
 int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
@@ -1143,29 +1114,27 @@ static int lxc_cmd_add_state_client_callback(__owns int fd, struct lxc_cmd_req *
 					     struct lxc_handler *handler,
 					     struct lxc_epoll_descr *descr)
 {
-	int ret;
-	struct lxc_cmd_rsp rsp = {0};
+	struct lxc_cmd_rsp rsp = {
+		.ret = -EINVAL,
+	};
 
 	if (req->datalen < 0)
-		return LXC_CMD_REAP_CLIENT_FD;
+		goto out;
 
 	if (req->datalen != (sizeof(lxc_state_t) * MAX_STATE))
-		return LXC_CMD_REAP_CLIENT_FD;
+		goto out;
 
 	if (!req->data)
-		return LXC_CMD_REAP_CLIENT_FD;
+		goto out;
 
 	rsp.ret = lxc_add_state_client(fd, handler, (lxc_state_t *)req->data);
 	if (rsp.ret < 0)
-		return LXC_CMD_REAP_CLIENT_FD;
+		goto out;
 
 	rsp.data = INT_TO_PTR(rsp.ret);
 
-	ret = lxc_cmd_rsp_send(fd, &rsp);
-	if (ret < 0)
-		return LXC_CMD_REAP_CLIENT_FD;
-
-	return 0;
+out:
+	return lxc_cmd_rsp_send_reap(fd, &rsp);
 }
 
 int lxc_cmd_add_bpf_device_cgroup(const char *name, const char *lxcpath,
@@ -1196,18 +1165,19 @@ static int lxc_cmd_add_bpf_device_cgroup_callback(int fd, struct lxc_cmd_req *re
 						  struct lxc_handler *handler,
 						  struct lxc_epoll_descr *descr)
 {
-	int ret;
-	struct lxc_cmd_rsp rsp = {};
+	struct lxc_cmd_rsp rsp = {
+		.ret = -EINVAL,
+	};
 	struct lxc_conf *conf;
 
 	if (req->datalen <= 0)
-		return LXC_CMD_REAP_CLIENT_FD;
+		goto out;
 
 	if (req->datalen != sizeof(struct device_item))
-		return LXC_CMD_REAP_CLIENT_FD;
+		goto out;
 
 	if (!req->data)
-		return LXC_CMD_REAP_CLIENT_FD;
+		goto out;
 
 	conf = handler->conf;
 	if (!bpf_cgroup_devices_update(handler->cgroup_ops,
@@ -1217,11 +1187,8 @@ static int lxc_cmd_add_bpf_device_cgroup_callback(int fd, struct lxc_cmd_req *re
 	else
 		rsp.ret = 0;
 
-	ret = lxc_cmd_rsp_send(fd, &rsp);
-	if (ret < 0)
-		return LXC_CMD_REAP_CLIENT_FD;
-
-	return 0;
+out:
+	return lxc_cmd_rsp_send_reap(fd, &rsp);
 }
 
 int lxc_cmd_console_log(const char *name, const char *lxcpath,
@@ -1297,7 +1264,7 @@ static int lxc_cmd_console_log_callback(int fd, struct lxc_cmd_req *req,
 		lxc_ringbuf_move_read_addr(buf, rsp.datalen);
 
 out:
-	return lxc_cmd_rsp_send(fd, &rsp);
+	return lxc_cmd_rsp_send_reap(fd, &rsp);
 }
 
 int lxc_cmd_serve_state_clients(const char *name, const char *lxcpath,
@@ -1329,13 +1296,9 @@ static int lxc_cmd_serve_state_clients_callback(int fd, struct lxc_cmd_req *req,
 
 	ret = lxc_serve_state_clients(handler->name, handler, state);
 	if (ret < 0)
-		return LXC_CMD_REAP_CLIENT_FD;
+		return ret;
 
-	ret = lxc_cmd_rsp_send(fd, &rsp);
-	if (ret < 0)
-		return LXC_CMD_REAP_CLIENT_FD;
-
-	return 0;
+	return lxc_cmd_rsp_send_reap(fd, &rsp);
 }
 
 int lxc_cmd_seccomp_notify_add_listener(const char *name, const char *lxcpath,
@@ -1400,7 +1363,7 @@ out:
 	rsp.ret = -ENOSYS;
 
 #endif
-	return lxc_cmd_rsp_send(fd, &rsp);
+	return lxc_cmd_rsp_send_reap(fd, &rsp);
 }
 
 int lxc_cmd_freeze(const char *name, const char *lxcpath, int timeout)
@@ -1433,7 +1396,7 @@ static int lxc_cmd_freeze_callback(int fd, struct lxc_cmd_req *req,
 	if (pure_unified_layout(ops))
 		rsp.ret = ops->freeze(ops, timeout);
 
-	return lxc_cmd_rsp_send(fd, &rsp);
+	return lxc_cmd_rsp_send_reap(fd, &rsp);
 }
 
 int lxc_cmd_unfreeze(const char *name, const char *lxcpath, int timeout)
@@ -1466,7 +1429,7 @@ static int lxc_cmd_unfreeze_callback(int fd, struct lxc_cmd_req *req,
 	if (pure_unified_layout(ops))
 		rsp.ret = ops->unfreeze(ops, timeout);
 
-	return lxc_cmd_rsp_send(fd, &rsp);
+	return lxc_cmd_rsp_send_reap(fd, &rsp);
 }
 
 int lxc_cmd_get_cgroup2_fd(const char *name, const char *lxcpath)
@@ -1519,17 +1482,22 @@ static int lxc_cmd_get_cgroup2_fd_callback_do(int fd, struct lxc_cmd_req *req,
 	int ret, send_fd;
 
 	if (!pure_unified_layout(ops) || !ops->unified)
-		return lxc_cmd_rsp_send(fd, &rsp);
+		return lxc_cmd_rsp_send_reap(fd, &rsp);
 
 	send_fd = limiting_cgroup ? ops->unified->dfd_lim
 				  : ops->unified->dfd_con;
 
+	if (send_fd < 0) {
+		rsp.ret = -EBADF;
+		return lxc_cmd_rsp_send_reap(fd, &rsp);
+	}
+
 	rsp.ret = 0;
 	ret = lxc_abstract_unix_send_fds(fd, &send_fd, 1, &rsp, sizeof(rsp));
 	if (ret < 0)
-		return log_error(LXC_CMD_REAP_CLIENT_FD, "Failed to send cgroup2 fd");
+		return syserrno(ret, "Failed to send cgroup2 fd");
 
-	return 0;
+	return log_trace(LXC_CMD_REAP_CLIENT_FD, "Sent cgroup2 fd");
 }
 
 static int lxc_cmd_get_cgroup2_fd_callback(int fd, struct lxc_cmd_req *req,
@@ -1650,7 +1618,7 @@ static int lxc_cmd_handler(int fd, uint32_t events, void *data,
 				.ret = -EPERM,
 			};
 
-			lxc_cmd_rsp_send(fd, &rsp);
+			__lxc_cmd_rsp_send(fd, &rsp);
 		}
 
 		goto out_close;
