@@ -898,7 +898,7 @@ static int lxc_cmd_stop_callback(int fd, struct lxc_cmd_req *req,
 			TRACE("Sent signal %d to pidfd %d", stopsignal, handler->pid);
 
 		if (pure_unified_layout(cgroup_ops))
-			ret = __cgroup_unfreeze(cgroup_ops->unified->cgfd_limit, -1);
+			ret = __cgroup_unfreeze(cgroup_ops->unified->dfd_lim, -1);
 		else
 			ret = cgroup_ops->unfreeze(cgroup_ops, -1);
 		if (ret)
@@ -1518,8 +1518,8 @@ static int lxc_cmd_get_cgroup2_fd_callback_do(int fd, struct lxc_cmd_req *req,
 	if (!pure_unified_layout(ops) || !ops->unified)
 		return lxc_cmd_rsp_send(fd, &rsp);
 
-	send_fd = limiting_cgroup ? ops->unified->cgfd_limit
-				  : ops->unified->cgfd_con;
+	send_fd = limiting_cgroup ? ops->unified->dfd_lim
+				  : ops->unified->dfd_con;
 
 	rsp.ret = 0;
 	ret = lxc_abstract_unix_send_fds(fd, &send_fd, 1, &rsp, sizeof(rsp));

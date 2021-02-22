@@ -609,7 +609,7 @@ bool bpf_cgroup_devices_attach(struct cgroup_ops *ops,
 		return syserrno(false, "Failed to create bpf program");
 
 	ret = bpf_program_cgroup_attach(prog, BPF_CGROUP_DEVICE,
-					ops->unified->cgfd_limit,
+					ops->unified->dfd_lim,
 					BPF_F_ALLOW_MULTI);
 	if (ret)
 		return syserrno(false, "Failed to attach bpf program");
@@ -635,7 +635,7 @@ bool bpf_cgroup_devices_update(struct cgroup_ops *ops,
 	if (!pure_unified_layout(ops))
 		return ret_set_errno(false, EINVAL);
 
-	if (ops->unified->cgfd_limit < 0)
+	if (ops->unified->dfd_lim < 0)
 		return ret_set_errno(false, EBADF);
 
 	/*

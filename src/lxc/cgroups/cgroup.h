@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <sys/types.h>
+#include <linux/magic.h>
 
 #include "compiler.h"
 #include "macro.h"
@@ -32,6 +33,14 @@ typedef enum {
         CGROUP_LAYOUT_UNIFIED =  2,
 } cgroup_layout_t;
 
+typedef enum {
+	LEGACY_HIERARCHY = CGROUP_SUPER_MAGIC,
+	UNIFIED_HIERARCHY = CGROUP2_SUPER_MAGIC,
+} cgroupfs_type_magic_t;
+
+#define DEVICES_CONTROLLER (1U << 0)
+#define FREEZER_CONTROLLER (1U << 1)
+
 /* A descriptor for a mounted hierarchy
  *
  * @controllers
@@ -40,8 +49,8 @@ typedef enum {
  * - unified hierarchy
  *   Either NULL, or a null-terminated list of all enabled controllers.
  *
- * @mountpoint
- * - The mountpoint we will use.
+ * @at_mnt
+ * - The at_mnt we will use.
  * - legacy hierarchy
  *   It will be either /sys/fs/cgroup/controller or
  *   /sys/fs/cgroup/controllerlist.
@@ -50,17 +59,17 @@ typedef enum {
  *   depending on whether this is a hybrid cgroup layout (mix of legacy and
  *   unified hierarchies) or a pure unified cgroup layout.
  *
- * @container_base_path
+ * @at_base
  * - The cgroup under which the container cgroup path
  *   is created. This will be either the caller's cgroup (if not root), or
  *   init's cgroup (if root).
  *
- * @container_full_path
+ * @path_con
  * - The full path to the container's cgroup.
  *
- * @container_limit_path
+ * @path_lim
  * - The full path to the container's limiting cgroup. May simply point to
- *   container_full_path.
+ *   path_con.
  *
  * @version
  * - legacy hierarchy
@@ -71,41 +80,52 @@ typedef enum {
  *   CGROUP2_SUPER_MAGIC.
  */
 struct hierarchy {
-	/*
-	 * cgroup2 only: what files need to be chowned to delegate a cgroup to
-	 * an unprivileged user.
-	 */
-	char **cgroup2_chown;
-	char **controllers;
-	char *mountpoint;
-	char *container_base_path;
-	char *container_full_path;
-	char *container_limit_path;
-	int version;
+	cgroupfs_type_magic_t fs_type;
 
-	/* cgroup2 only */
-	unsigned int bpf_device_controller:1;
-	unsigned int freezer_controller:1;
-
-	/* File descriptor for the container's cgroup @container_full_path. */
-	int cgfd_con;
+	/* File descriptor for the container's cgroup @path_con. */
+	int dfd_con;
+	char *path_con;
 
 	/*
 	 * File descriptor for the container's limiting cgroup
-	 * @container_limit_path.
-	 * Will be equal to @cgfd_con if no limiting cgroup has been requested.
+	 * @path_lim.
+	 * Will be equal to @dfd_con if no limiting cgroup has been requested.
 	 */
-	int cgfd_limit;
+	int dfd_lim;
+	char *path_lim;
 
 	/* File descriptor for the monitor's cgroup. */
-	int cgfd_mon;
+	int dfd_mon;
 
-	/* File descriptor for the controller's mountpoint @mountpoint. */
+	/* File descriptor for the controller's mountpoint @at_mnt. */
 	int dfd_mnt;
+	char *at_mnt;
 
-	/* File descriptor for the controller's base cgroup path @container_base_path. */
+	/* File descriptor for the controller's base cgroup path @at_base. */
 	int dfd_base;
+	char *at_base;
+
+	struct /* unified hierarchy specific */ {
+		char **delegate;
+		unsigned int utilities;
+	};
+
+	char **controllers;
 };
+
+static inline bool device_utility_controller(const struct hierarchy *h)
+{
+	if (h->fs_type == UNIFIED_HIERARCHY && (h->utilities & DEVICES_CONTROLLER))
+		return true;
+	return false;
+}
+
+static inline bool freezer_utility_controller(const struct hierarchy *h)
+{
+	if (h->fs_type == UNIFIED_HIERARCHY && (h->utilities & FREEZER_CONTROLLER))
+		return true;
+	return false;
+}
 
 struct cgroup_ops {
 	/* string constant */
@@ -124,7 +144,7 @@ struct cgroup_ops {
 	 * So for CGROUP_LAYOUT_LEGACY or CGROUP_LAYOUT_HYBRID we allow
 	 * mountpoint crossing iff we cross from a tmpfs into a cgroupfs mount.
 	 * */
-	int dfd_mnt_cgroupfs_host;
+	int dfd_mnt;
 
 	/* What controllers is the container supposed to use. */
 	char **cgroup_use;
@@ -207,8 +227,6 @@ __hidden extern struct cgroup_ops *cgroup_init(struct lxc_conf *conf);
 __hidden extern void cgroup_exit(struct cgroup_ops *ops);
 define_cleanup_function(struct cgroup_ops *, cgroup_exit);
 
-__hidden extern char *prune_init_scope(char *cg);
-
 __hidden extern int cgroup_attach(const struct lxc_conf *conf, const char *name,
 				  const char *lxcpath, pid_t pid);
 __hidden extern int cgroup_get(const char *name, const char *lxcpath,
@@ -229,7 +247,14 @@ static inline int cgroup_unified_fd(const struct cgroup_ops *ops)
 	if (!ops->unified)
 		return -EBADF;
 
-	return ops->unified->cgfd_con;
+	return ops->unified->dfd_con;
 }
+
+#define make_cgroup_path(__hierarchy, __first, ...)                    \
+	({                                                             \
+		const struct hierarchy *__h = __hierarchy;             \
+		must_make_path(DEFAULT_CGROUP_MOUNTPOINT, __h->at_mnt, \
+			       __first, __VA_ARGS__);                  \
+	})
 
 #endif /* __LXC_CGROUP_H */

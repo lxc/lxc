@@ -21,7 +21,7 @@
 
 lxc_log_define(cgroup, lxc);
 
-__hidden extern struct cgroup_ops *cgfsng_ops_init(struct lxc_conf *conf);
+__hidden extern struct cgroup_ops *cgroup_ops_init(struct lxc_conf *conf);
 
 struct cgroup_ops *cgroup_init(struct lxc_conf *conf)
 {
@@ -30,7 +30,7 @@ struct cgroup_ops *cgroup_init(struct lxc_conf *conf)
 	if (!conf)
 		return log_error_errno(NULL, EINVAL, "No valid conf given");
 
-	cgroup_ops = cgfsng_ops_init(conf);
+	cgroup_ops = cgroup_ops_init(conf);
 	if (!cgroup_ops)
 		return log_error_errno(NULL, errno, "Failed to initialize cgroup driver");
 
@@ -47,13 +47,13 @@ struct cgroup_ops *cgroup_init(struct lxc_conf *conf)
 	TRACE("Initialized cgroup driver %s", cgroup_ops->driver);
 
 	if (cgroup_ops->cgroup_layout == CGROUP_LAYOUT_LEGACY)
-		TRACE("Running with legacy cgroup layout");
+		TRACE("Legacy cgroup layout");
 	else if (cgroup_ops->cgroup_layout == CGROUP_LAYOUT_HYBRID)
-		TRACE("Running with hybrid cgroup layout");
+		TRACE("Hybrid cgroup layout");
 	else if (cgroup_ops->cgroup_layout == CGROUP_LAYOUT_UNIFIED)
-		TRACE("Running with unified cgroup layout");
+		TRACE("Unified cgroup layout");
 	else
-		WARN("Running with unknown cgroup layout");
+		WARN("Unsupported cgroup layout");
 
 	return cgroup_ops;
 }
@@ -73,28 +73,28 @@ void cgroup_exit(struct cgroup_ops *ops)
 
 	bpf_device_program_free(ops);
 
-	if (ops->dfd_mnt_cgroupfs_host >= 0)
-		close(ops->dfd_mnt_cgroupfs_host);
+	if (ops->dfd_mnt >= 0)
+		close(ops->dfd_mnt);
 
 	for (struct hierarchy **it = ops->hierarchies; it && *it; it++) {
 		for (char **p = (*it)->controllers; p && *p; p++)
 			free(*p);
 		free((*it)->controllers);
 
-		for (char **p = (*it)->cgroup2_chown; p && *p; p++)
+		for (char **p = (*it)->delegate; p && *p; p++)
 			free(*p);
-		free((*it)->cgroup2_chown);
+		free((*it)->delegate);
 
-		free((*it)->mountpoint);
-		free((*it)->container_base_path);
+		free((*it)->at_mnt);
+		free((*it)->at_base);
 
-		free_equal((*it)->container_full_path,
-			   (*it)->container_limit_path);
+		free_equal((*it)->path_con,
+			   (*it)->path_lim);
 
-		close_equal((*it)->cgfd_con, (*it)->cgfd_limit);
+		close_equal((*it)->dfd_con, (*it)->dfd_lim);
 
-		if ((*it)->cgfd_mon >= 0)
-			close((*it)->cgfd_mon);
+		if ((*it)->dfd_mon >= 0)
+			close((*it)->dfd_mon);
 
 		close_equal((*it)->dfd_base, (*it)->dfd_mnt);
 
@@ -105,16 +105,4 @@ void cgroup_exit(struct cgroup_ops *ops)
 	free(ops);
 
 	return;
-}
-
-#define INIT_SCOPE "/init.scope"
-char *prune_init_scope(char *cg)
-{
-	if (is_empty_string(cg))
-		return NULL;
-
-	if (strnequal(cg, INIT_SCOPE, STRLITERALLEN(INIT_SCOPE)))
-		return cg + STRLITERALLEN(INIT_SCOPE);
-
-	return cg;
 }

@@ -21,6 +21,8 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include "compiler.h"
+
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
@@ -406,11 +408,6 @@ extern int __build_bug_on_failed;
 	} while (0)
 #endif
 
-#define lxc_iterate_parts(__iterator, __splitme, __separators)                  \
-	for (char *__p = NULL, *__it = strtok_r(__splitme, __separators, &__p); \
-	     (__iterator = __it);                                               \
-	     __iterator = __it = strtok_r(NULL, __separators, &__p))
-
 #define prctl_arg(x) ((unsigned long)x)
 
 /* networking */
@@ -702,5 +699,42 @@ enum {
 		(a) = (b);             \
 		(b) = __tmp;           \
 	} while (0)
+
+#define MAX_ERRNO 4095
+
+#define IS_ERR_VALUE(x) unlikely((x) >= (unsigned long)-MAX_ERRNO)
+
+static inline void *ERR_PTR(long error)
+{
+	return (void *)error;
+}
+
+static inline long PTR_ERR(const void *ptr)
+{
+	return (long)ptr;
+}
+
+static inline long IS_ERR(const void *ptr)
+{
+	return IS_ERR_VALUE((unsigned long)ptr);
+}
+
+static inline long IS_ERR_OR_NULL(const void *ptr)
+{
+	return !ptr || IS_ERR_VALUE((unsigned long)ptr);
+}
+
+static inline void *ERR_CAST(const void *ptr)
+{
+	return (void *)ptr;
+}
+
+static inline int PTR_RET(const void *ptr)
+{
+	if (IS_ERR(ptr))
+		return PTR_ERR(ptr);
+	else
+		return 0;
+}
 
 #endif /* __LXC_MACRO_H */

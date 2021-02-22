@@ -20,73 +20,7 @@
 
 lxc_log_define(cgroup_utils, lxc);
 
-int get_cgroup_version(char *line)
-{
-	if (is_cgroupfs_v1(line))
-		return CGROUP_SUPER_MAGIC;
-
-	if (is_cgroupfs_v2(line))
-		return CGROUP2_SUPER_MAGIC;
-
-	return 0;
-}
-
-bool is_cgroupfs_v1(char *line)
-{
-	char *p = strstr(line, " - ");
-	if (!p)
-		return false;
-	return strnequal(p, " - cgroup ", 10);
-}
-
-bool is_cgroupfs_v2(char *line)
-{
-	char *p = strstr(line, " - ");
-	if (!p)
-		return false;
-
-	return strnequal(p, " - cgroup2 ", 11);
-}
-
-bool test_writeable_v1(char *mountpoint, char *path)
-{
-	__do_free char *fullpath = must_make_path(mountpoint, path, NULL);
-	return (access(fullpath, W_OK) == 0);
-}
-
-bool test_writeable_v2(char *mountpoint, char *path)
-{
-	/* In order to move ourselves into an appropriate sub-cgroup we need to
-	 * have write access to the parent cgroup's "cgroup.procs" file, i.e. we
-	 * need to have write access to the our current cgroups's "cgroup.procs"
-	 * file.
-	 */
-	int ret;
-	__do_free char *cgroup_path = NULL, *cgroup_procs_file = NULL,
-		       *cgroup_threads_file = NULL;
-
-	cgroup_path = must_make_path(mountpoint, path, NULL);
-	cgroup_procs_file = must_make_path(cgroup_path, "cgroup.procs", NULL);
-
-	ret = access(cgroup_path, W_OK);
-	if (ret < 0)
-		return false;
-
-	ret = access(cgroup_procs_file, W_OK);
-	if (ret < 0)
-		return false;
-
-	/* Newer versions of cgroup2 now also require write access to the
-	 * "cgroup.threads" file.
-	 */
-	cgroup_threads_file = must_make_path(cgroup_path, "cgroup.threads", NULL);
-	if (!file_exists(cgroup_threads_file))
-		return true;
-
-	return (access(cgroup_threads_file, W_OK) == 0);
-}
-
-int unified_cgroup_fd(int fd)
+bool unified_cgroup_fd(int fd)
 {
 
 	int ret;
@@ -158,4 +92,33 @@ int cgroup_tree_prune(int dfd, const char *path)
 		return -errno;
 
 	return 0;
+}
+
+#define INIT_SCOPE "/init.scope"
+char *prune_init_scope(char *path)
+{
+	char *slash = path;
+	size_t len;
+
+	/*
+	 * This function can only be called on information parsed from
+	 * /proc/<pid>/cgroup. The file displays the current cgroup of the
+	 * process as absolute paths. So if we are passed a non-absolute path
+	 * things are way wrong.
+	 */
+	if (!abspath(path))
+		return ret_set_errno(NULL, EINVAL);
+
+	len = strlen(path);
+	if (len < STRLITERALLEN(INIT_SCOPE))
+		return path;
+
+	slash += (len - STRLITERALLEN(INIT_SCOPE));
+	if (strequal(slash, INIT_SCOPE)) {
+		if (slash == path)
+			slash++;
+		*slash = '\0';
+	}
+
+	return path;
 }
