@@ -2181,8 +2181,8 @@ static int cgroup_attach_move_into_leaf(const struct lxc_conf *conf,
 	size_t pidstr_len;
 	ssize_t ret;
 
-	ret = lxc_abstract_unix_recv_fds(sk, target_fds, 2, NULL, 0);
-	if (ret <= 0)
+	ret = lxc_abstract_unix_recv_two_fds(sk, target_fds);
+	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to receive target cgroup fd");
 	target_fd0 = target_fds[0];
 	target_fd1 = target_fds[1];

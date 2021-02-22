@@ -1509,8 +1509,10 @@ int lxc_setup_devpts_parent(struct lxc_handler *handler)
 	if (handler->conf->pty_max <= 0)
 		return 0;
 
-	ret = lxc_abstract_unix_recv_fds(handler->data_sock[1], &handler->conf->devpts_fd, 1,
-					 &handler->conf->devpts_fd, sizeof(handler->conf->devpts_fd));
+	ret = lxc_abstract_unix_recv_one_fd(handler->data_sock[1],
+					    &handler->conf->devpts_fd,
+					    &handler->conf->devpts_fd,
+					    sizeof(handler->conf->devpts_fd));
 	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to receive devpts fd from child");
 

@@ -164,7 +164,7 @@ static inline bool sync_wake_fd(int fd, int fd_send)
 
 static inline bool sync_wait_fd(int fd, int *fd_recv)
 {
-	return lxc_abstract_unix_recv_fds(fd, fd_recv, 1, NULL, 0) > 0;
+	return lxc_abstract_unix_recv_one_fd(fd, fd_recv, NULL, 0) > 0;
 }
 
 static bool attach_lsm(lxc_attach_options_t *options)
