@@ -115,11 +115,15 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
  */
 static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 {
-	__do_close int fd_rsp = -EBADF;
+	call_cleaner(put_unix_fds) struct unix_fds *fds = NULL;
 	int ret;
 	struct lxc_cmd_rsp *rsp = &cmd->rsp;
 
-	ret = lxc_abstract_unix_recv_fds(sock, &fd_rsp, 1, rsp, sizeof(*rsp));
+	fds = &(struct unix_fds){
+		.fd_count_max = 1,
+	};
+
+	ret = lxc_abstract_unix_recv_fds(sock, fds, rsp, sizeof(*rsp));
 	if (ret < 0)
 		return log_warn_errno(-1,
 				      errno, "Failed to receive response for command \"%s\"",
@@ -141,30 +145,29 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 					      ENOMEM, "Failed to receive response for command \"%s\"",
 					      lxc_cmd_str(cmd->req.cmd));
 
-		rspdata->ptxfd = move_fd(fd_rsp);
+		rspdata->ptxfd = move_fd(fds->fd[0]);
 		rspdata->ttynum = PTR_TO_INT(rsp->data);
 		rsp->data = rspdata;
 	}
 
 	if (cmd->req.cmd == LXC_CMD_GET_CGROUP2_FD ||
-	    cmd->req.cmd == LXC_CMD_GET_LIMITING_CGROUP2_FD)
-	{
-		int cgroup2_fd = move_fd(fd_rsp);
+	    cmd->req.cmd == LXC_CMD_GET_LIMITING_CGROUP2_FD) {
+		int cgroup2_fd = move_fd(fds->fd[0]);
 		rsp->data = INT_TO_PTR(cgroup2_fd);
 	}
 
 	if (cmd->req.cmd == LXC_CMD_GET_INIT_PIDFD) {
-		int init_pidfd = move_fd(fd_rsp);
+		int init_pidfd = move_fd(fds->fd[0]);
 		rsp->data = INT_TO_PTR(init_pidfd);
 	}
 
 	if (cmd->req.cmd == LXC_CMD_GET_DEVPTS_FD) {
-		int devpts_fd = move_fd(fd_rsp);
+		int devpts_fd = move_fd(fds->fd[0]);
 		rsp->data = INT_TO_PTR(devpts_fd);
 	}
 
 	if (cmd->req.cmd == LXC_CMD_GET_SECCOMP_NOTIFY_FD) {
-		int seccomp_notify_fd = move_fd(fd_rsp);
+		int seccomp_notify_fd = move_fd(fds->fd[0]);
 		rsp->data = INT_TO_PTR(seccomp_notify_fd);
 	}
 
@@ -1371,7 +1374,7 @@ static int lxc_cmd_seccomp_notify_add_listener_callback(int fd,
 	int ret;
 	__do_close int recv_fd = -EBADF;
 
-	ret = lxc_abstract_unix_recv_fds(fd, &recv_fd, 1, NULL, 0);
+	ret = lxc_abstract_unix_recv_one_fd(fd, &recv_fd, NULL, 0);
 	if (ret <= 0) {
 		rsp.ret = -errno;
 		goto out;
