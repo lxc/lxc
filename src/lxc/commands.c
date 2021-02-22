@@ -250,6 +250,18 @@ static inline int rsp_one_fd(int fd, int fd_send, struct lxc_cmd_rsp *rsp)
 	return LXC_CMD_REAP_CLIENT_FD;
 }
 
+static inline int rsp_many_fds(int fd, struct unix_fds *fds, struct lxc_cmd_rsp *rsp)
+{
+	int ret;
+
+	ret = lxc_abstract_unix_send_fds(fd, fds->fd, fds->fd_count_max,
+					 rsp, sizeof(*rsp));
+	if (ret < 0)
+		return ret;
+
+	return LXC_CMD_REAP_CLIENT_FD;
+}
+
 static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
 			const char *lxcpath, const char *hashed_sock_name)
 {
@@ -543,6 +555,44 @@ static int lxc_cmd_get_seccomp_notify_fd_callback(int fd, struct lxc_cmd_req *re
 #else
 	return syserrno_set(-EOPNOTSUPP, "Seccomp notifier not supported");
 #endif
+}
+
+int lxc_cmd_get_cgroup_fd(const char *name, const char *lxcpath,
+			  const char *controller, bool batch,
+			  struct unix_fds *ret_fds)
+{
+	int ret, stopped;
+	struct lxc_cmd_rr cmd = {
+		.req = {
+			.cmd = LXC_CMD_GET_CGROUP_FD,
+		},
+	};
+
+	if (batch && !is_empty_string(controller))
+		return ret_errno(EINVAL);
+
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
+	if (ret < 0)
+		return log_debug_errno(-1, errno, "Failed to process cgroup fd command");
+
+	if (cmd.rsp.ret < 0)
+		return log_debug_errno(-EBADF, errno, "Failed to receive cgroup fds");
+
+	return 0;
+}
+
+static int lxc_cmd_get_cgroup_fd_callback(int fd, struct lxc_cmd_req *req,
+					  struct lxc_handler *handler,
+					  struct lxc_epoll_descr *descr)
+{
+	struct cgroup_ops *cgroup_ops = handler->cgroup_ops;
+	struct lxc_cmd_rsp rsp = {};
+	struct unix_fds fds = {};
+
+	fds.fd_count_max = cgroup_fds(cgroup_ops, fds.fd);
+	if (fds.fd_count_max == 0)
+		rsp.ret = -ENOENT;
+	return rsp_many_fds(fd, &fds, &rsp);
 }
 
 /*
