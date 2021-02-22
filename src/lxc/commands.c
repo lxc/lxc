@@ -166,25 +166,25 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		rsp->data = rspdata;
 	}
 
-	if (cmd->req.cmd == LXC_CMD_GET_CGROUP2_FD ||
-	    cmd->req.cmd == LXC_CMD_GET_LIMITING_CGROUP2_FD) {
-		int cgroup2_fd = move_fd(fds->fd[0]);
-		rsp->data = INT_TO_PTR(cgroup2_fd);
-	}
-
-	if (cmd->req.cmd == LXC_CMD_GET_INIT_PIDFD) {
-		int init_pidfd = move_fd(fds->fd[0]);
-		rsp->data = INT_TO_PTR(init_pidfd);
-	}
-
-	if (cmd->req.cmd == LXC_CMD_GET_DEVPTS_FD) {
-		int devpts_fd = move_fd(fds->fd[0]);
-		rsp->data = INT_TO_PTR(devpts_fd);
-	}
-
-	if (cmd->req.cmd == LXC_CMD_GET_SECCOMP_NOTIFY_FD) {
-		int seccomp_notify_fd = move_fd(fds->fd[0]);
-		rsp->data = INT_TO_PTR(seccomp_notify_fd);
+	switch (cmd->req.cmd) {
+	case LXC_CMD_GET_CGROUP2_FD:
+		__fallthrough;
+	case LXC_CMD_GET_LIMITING_CGROUP2_FD:
+		__fallthrough;
+	case LXC_CMD_GET_INIT_PIDFD:
+		__fallthrough;
+	case LXC_CMD_GET_DEVPTS_FD:
+		__fallthrough;
+	case LXC_CMD_GET_SECCOMP_NOTIFY_FD:
+		rsp->data = INT_TO_PTR(move_fd(fds->fd[0]));
+		return log_debug(ret, "Finished processing \"%s\"", lxc_cmd_str(cmd->req.cmd));
+	case LXC_CMD_GET_CGROUP_FD:
+		rsp->data = move_ptr(fds);
+		rsp->datalen = sizeof(struct unix_fds);
+		return log_debug(ret, "Finished processing \"%s\"", lxc_cmd_str(cmd->req.cmd));
+		break;
+	default:
+		break;
 	}
 
 	if (rsp->datalen == 0)
@@ -593,6 +593,8 @@ int lxc_cmd_get_cgroup_fd(const char *name, const char *lxcpath,
 
 	if (cmd.rsp.ret < 0)
 		return log_debug_errno(-EBADF, errno, "Failed to receive cgroup fds");
+
+	*ret_fds = *(struct unix_fds *)cmd.rsp.data;
 
 	return 0;
 }

@@ -3343,23 +3343,14 @@ struct cgroup_ops *cgroup_ops_init(struct lxc_conf *conf)
 	return move_ptr(cgfsng_ops);
 }
 
-int cgroup_attach(const struct lxc_conf *conf, const char *name,
-		  const char *lxcpath, pid_t pid)
+static int __unified_attach_fd(const struct lxc_conf *conf, int fd_unified, pid_t pid)
 {
-	__do_close int unified_fd = -EBADF;
 	int ret;
-
-	if (!conf || is_empty_string(name) || is_empty_string(lxcpath) || pid <= 0)
-		return ret_errno(EINVAL);
-
-	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
-	if (unified_fd < 0)
-		return ret_errno(ENOCGROUP2);
 
 	if (!lxc_list_empty(&conf->id_map)) {
 		struct userns_exec_unified_attach_data args = {
 			.conf		= conf,
-			.unified_fd	= unified_fd,
+			.unified_fd	= fd_unified,
 			.pid		= pid,
 		};
 
@@ -3373,7 +3364,70 @@ int cgroup_attach(const struct lxc_conf *conf, const char *name,
 					  cgroup_unified_attach_child_wrapper,
 					  &args);
 	} else {
-		ret = cgroup_attach_leaf(conf, unified_fd, pid);
+		ret = cgroup_attach_leaf(conf, fd_unified, pid);
+	}
+
+	return ret;
+}
+
+static int __cgroup_attach_many(const struct lxc_conf *conf, const char *name,
+				const char *lxcpath, pid_t pid)
+{
+	call_cleaner(put_unix_fds) struct unix_fds *fds = &(struct unix_fds){};
+	int ret;
+	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
+	ssize_t pidstr_len;
+
+	ret = lxc_cmd_get_cgroup_fd(name, lxcpath, NULL, true, fds);
+	if (ret < 0)
+		return ret_errno(ENOSYS);
+
+	pidstr_len = strnprintf(pidstr, sizeof(pidstr), "%d", pid);
+	if (pidstr_len < 0)
+		return pidstr_len;
+
+	for (size_t idx = 0; idx < fds->fd_count_ret; idx++) {
+		int dfd_con = fds->fd[idx];
+
+		if (unified_cgroup_fd(dfd_con))
+			ret = __unified_attach_fd(conf, dfd_con, pid);
+		else
+			ret = lxc_writeat(dfd_con, "cgroup.procs", pidstr, pidstr_len);
+		if (ret)
+			return syserrno(ret, "Failed to attach to cgroup fd %d", dfd_con);
+		else
+			TRACE("Attached to cgroup fd %d", dfd_con);
+	}
+
+	return log_trace(0, "Attached to cgroups");
+}
+
+static int __cgroup_attach_unified(const struct lxc_conf *conf, const char *name,
+				   const char *lxcpath, pid_t pid)
+{
+	__do_close int dfd_unified = -EBADF;
+
+	if (!conf || is_empty_string(name) || is_empty_string(lxcpath) || pid <= 0)
+		return ret_errno(EINVAL);
+
+	dfd_unified = lxc_cmd_get_cgroup2_fd(name, lxcpath);
+	if (dfd_unified < 0)
+		return ret_errno(ENOCGROUP2);
+
+	return __unified_attach_fd(conf, dfd_unified, pid);
+}
+
+int cgroup_attach(const struct lxc_conf *conf, const char *name,
+		  const char *lxcpath, pid_t pid)
+{
+	int ret;
+
+	ret = __cgroup_attach_many(conf, name, lxcpath, pid);
+	if (ret < 0) {
+		if (ret != ENOSYS)
+			return ret;
+
+		ret = __cgroup_attach_unified(conf, name, lxcpath, pid);
 	}
 
 	return ret;
