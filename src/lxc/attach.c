@@ -513,7 +513,7 @@ static int same_ns(int dfd_pid1, int dfd_pid2, const char *ns_path)
 	if (ns_fd2 < 0) {
 		/* The kernel does not support this namespace. This is not an error. */
 		if (errno == ENOENT)
-			return -EINVAL;
+			return -ENOENT;
 		return log_error_errno(-errno, errno, "Failed to open %d(%s)",
 				       dfd_pid2, ns_path);
 	}
@@ -573,7 +573,7 @@ static int __prepare_namespaces_nsfd(struct attach_context *ctx,
 		if (ctx->ns_fd[i] >= 0)
 			continue;
 
-		if (ctx->ns_fd[i] == -EINVAL) {
+		if (ctx->ns_fd[i] == -ENOENT) {
 			ctx->ns_inherited &= ~ns_info[i].clone_flag;
 			continue;
 		}
