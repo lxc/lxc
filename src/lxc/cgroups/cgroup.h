@@ -5,9 +5,11 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <linux/types.h>
 #include <sys/types.h>
 #include <linux/magic.h>
 
+#include "af_unix.h"
 #include "compiler.h"
 #include "macro.h"
 #include "memory_utils.h"
@@ -33,6 +35,22 @@ typedef enum {
         CGROUP_LAYOUT_UNIFIED =  2,
 } cgroup_layout_t;
 
+static inline const char *cgroup_layout_name(cgroup_layout_t layout)
+{
+	switch (layout) {
+	case CGROUP_LAYOUT_LEGACY:
+		return "legacy";
+	case CGROUP_LAYOUT_HYBRID:
+		return "hybrid";
+	case CGROUP_LAYOUT_UNIFIED:
+		return "unified";
+	case CGROUP_LAYOUT_UNKNOWN:
+		break;
+	}
+
+	return "unknown";
+}
+
 typedef enum {
 	LEGACY_HIERARCHY = CGROUP_SUPER_MAGIC,
 	UNIFIED_HIERARCHY = CGROUP2_SUPER_MAGIC,
@@ -40,6 +58,17 @@ typedef enum {
 
 #define DEVICES_CONTROLLER (1U << 0)
 #define FREEZER_CONTROLLER (1U << 1)
+
+/* That's plenty of hierarchies. */
+#define CGROUP_CTX_MAX_FD 20
+// BUILD_BUG_ON(CGROUP_CTX_MAX_FD > KERNEL_SCM_MAX_FD);
+
+struct cgroup_ctx {
+	__s32 cgroup_layout;
+	__u32 utilities;
+	__u32 fd_len;
+	__s32 fd[CGROUP_CTX_MAX_FD];
+} __attribute__((aligned(8)));
 
 /* A descriptor for a mounted hierarchy
  *
@@ -218,7 +247,7 @@ struct cgroup_ops {
 				 struct lxc_handler *handler);
 	bool (*monitor_delegate_controllers)(struct cgroup_ops *ops);
 	bool (*payload_delegate_controllers)(struct cgroup_ops *ops);
-	void (*payload_finalize)(struct cgroup_ops *ops);
+	void (*finalize)(struct cgroup_ops *ops);
 	const char *(*get_limiting_cgroup)(struct cgroup_ops *ops, const char *controller);
 };
 
@@ -256,5 +285,37 @@ static inline int cgroup_unified_fd(const struct cgroup_ops *ops)
 		must_make_path(DEFAULT_CGROUP_MOUNTPOINT, __h->at_mnt, \
 			       __first, __VA_ARGS__);                  \
 	})
+
+static void put_cgroup_ctx(struct cgroup_ctx *ctx)
+{
+	if (!IS_ERR_OR_NULL(ctx)) {
+		for (__u32 idx = 0; idx < ctx->fd_len; idx++)
+			close_prot_errno_disarm(ctx->fd[idx]);
+	}
+}
+define_cleanup_function(struct cgroup_ctx *, put_cgroup_ctx);
+
+static inline int prepare_cgroup_ctx(struct cgroup_ops *ops,
+				     struct cgroup_ctx *ctx)
+{
+	__u32 idx;
+
+	for (idx = 0; ops->hierarchies[idx]; idx++) {
+		if (idx >= CGROUP_CTX_MAX_FD)
+			return ret_errno(E2BIG);
+
+		ctx->fd[idx] = ops->hierarchies[idx]->dfd_con;
+	}
+
+	if (idx == 0)
+		return ret_errno(ENOENT);
+
+	ctx->fd_len = idx;
+	ctx->cgroup_layout = ops->cgroup_layout;
+	if (ops->unified && ops->unified->dfd_con > 0)
+		ctx->utilities = ops->unified->utilities;
+
+	return 0;
+}
 
 #endif /* __LXC_CGROUP_H */

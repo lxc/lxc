@@ -36,7 +36,7 @@ static const char *const strstate[] = {
 const char *lxc_state2str(lxc_state_t state)
 {
 	if (state < STOPPED || state > MAX_STATE - 1)
-		return NULL;
+		return "INVALID STATE";
 	return strstate[state];
 }
 

@@ -101,7 +101,7 @@ static inline void *memdup(const void *data, size_t len)
 	({                            \
 		if (a >= 0 && a != b) \
 			close(a);     \
-		if (close >= 0)       \
+		if (b >= 0)           \
 			close(b);     \
 		a = b = -EBADF;       \
 	})

@@ -1305,6 +1305,9 @@ static int chown_cgroup_wrapper(void *data)
 	for (int i = 0; arg->hierarchies[i]; i++) {
 		int dirfd = arg->hierarchies[i]->dfd_con;
 
+		if (dirfd < 0)
+			return syserrno_set(-EBADF, "Invalid cgroup file descriptor");
+
 		(void)fchowmodat(dirfd, "", destuid, nsgid, 0775);
 
 		/*
@@ -1361,7 +1364,7 @@ __cgfsng_ops static bool cgfsng_chown(struct cgroup_ops *ops,
 	return true;
 }
 
-__cgfsng_ops static void cgfsng_payload_finalize(struct cgroup_ops *ops)
+__cgfsng_ops static void cgfsng_finalize(struct cgroup_ops *ops)
 {
 	if (!ops)
 		return;
@@ -1371,15 +1374,12 @@ __cgfsng_ops static void cgfsng_payload_finalize(struct cgroup_ops *ops)
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
 		struct hierarchy *h = ops->hierarchies[i];
-		/*
-		 * we don't keep the fds for non-unified hierarchies around
-		 * mainly because we don't make use of them anymore after the
-		 * core cgroup setup is done but also because there are quite a
-		 * lot of them.
-		 */
-		if (!is_unified_hierarchy(h))
-			close_prot_errno_disarm(h->dfd_con);
+
+		/* Close all monitor cgroup file descriptors. */
+		close_prot_errno_disarm(h->dfd_mon);
 	}
+	/* Close the cgroup root file descriptor. */
+	close_prot_errno_disarm(ops->dfd_mnt);
 
 	/*
 	 * The checking for freezer support should obviously be done at cgroup
@@ -2183,8 +2183,8 @@ static int cgroup_attach_move_into_leaf(const struct lxc_conf *conf,
 	size_t pidstr_len;
 	ssize_t ret;
 
-	ret = lxc_abstract_unix_recv_fds(sk, target_fds, 2, NULL, 0);
-	if (ret <= 0)
+	ret = lxc_abstract_unix_recv_two_fds(sk, target_fds);
+	if (ret < 0)
 		return log_error_errno(-1, errno, "Failed to receive target cgroup fd");
 	target_fd0 = target_fds[0];
 	target_fd1 = target_fds[1];
@@ -3322,7 +3322,7 @@ struct cgroup_ops *cgroup_ops_init(struct lxc_conf *conf)
 	cgfsng_ops->payload_delegate_controllers	= cgfsng_payload_delegate_controllers;
 	cgfsng_ops->payload_create			= cgfsng_payload_create;
 	cgfsng_ops->payload_enter			= cgfsng_payload_enter;
-	cgfsng_ops->payload_finalize			= cgfsng_payload_finalize;
+	cgfsng_ops->finalize				= cgfsng_finalize;
 	cgfsng_ops->get_cgroup				= cgfsng_get_cgroup;
 	cgfsng_ops->get					= cgfsng_get;
 	cgfsng_ops->set 				= cgfsng_set;
@@ -3345,23 +3345,14 @@ struct cgroup_ops *cgroup_ops_init(struct lxc_conf *conf)
 	return move_ptr(cgfsng_ops);
 }
 
-int cgroup_attach(const struct lxc_conf *conf, const char *name,
-		  const char *lxcpath, pid_t pid)
+static int __unified_attach_fd(const struct lxc_conf *conf, int fd_unified, pid_t pid)
 {
-	__do_close int unified_fd = -EBADF;
 	int ret;
-
-	if (!conf || is_empty_string(name) || is_empty_string(lxcpath) || pid <= 0)
-		return ret_errno(EINVAL);
-
-	unified_fd = lxc_cmd_get_cgroup2_fd(name, lxcpath);
-	if (unified_fd < 0)
-		return ret_errno(ENOCGROUP2);
 
 	if (!lxc_list_empty(&conf->id_map)) {
 		struct userns_exec_unified_attach_data args = {
 			.conf		= conf,
-			.unified_fd	= unified_fd,
+			.unified_fd	= fd_unified,
 			.pid		= pid,
 		};
 
@@ -3375,7 +3366,76 @@ int cgroup_attach(const struct lxc_conf *conf, const char *name,
 					  cgroup_unified_attach_child_wrapper,
 					  &args);
 	} else {
-		ret = cgroup_attach_leaf(conf, unified_fd, pid);
+		ret = cgroup_attach_leaf(conf, fd_unified, pid);
+	}
+
+	return ret;
+}
+
+static int __cgroup_attach_many(const struct lxc_conf *conf, const char *name,
+				const char *lxcpath, pid_t pid)
+{
+	call_cleaner(put_cgroup_ctx) struct cgroup_ctx *ctx = &(struct cgroup_ctx){};
+	int ret;
+	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
+	size_t idx;
+	ssize_t pidstr_len;
+
+	ret = lxc_cmd_get_cgroup_ctx(name, lxcpath, NULL, true,
+				     sizeof(struct cgroup_ctx), ctx);
+	if (ret < 0)
+		return ret_errno(ENOSYS);
+
+	pidstr_len = strnprintf(pidstr, sizeof(pidstr), "%d", pid);
+	if (pidstr_len < 0)
+		return pidstr_len;
+
+	for (idx = 0; idx < ctx->fd_len; idx++) {
+		int dfd_con = ctx->fd[idx];
+
+		if (unified_cgroup_fd(dfd_con))
+			ret = __unified_attach_fd(conf, dfd_con, pid);
+		else
+			ret = lxc_writeat(dfd_con, "cgroup.procs", pidstr, pidstr_len);
+		if (ret)
+			return syserrno(ret, "Failed to attach to cgroup fd %d", dfd_con);
+		else
+			TRACE("Attached to cgroup fd %d", dfd_con);
+	}
+
+	if (idx == 0)
+		return syserrno_set(-ENOENT, "Failed to attach to cgroups");
+
+	TRACE("Attached to %s cgroup layout", cgroup_layout_name(ctx->cgroup_layout));
+	return 0;
+}
+
+static int __cgroup_attach_unified(const struct lxc_conf *conf, const char *name,
+				   const char *lxcpath, pid_t pid)
+{
+	__do_close int dfd_unified = -EBADF;
+
+	if (!conf || is_empty_string(name) || is_empty_string(lxcpath) || pid <= 0)
+		return ret_errno(EINVAL);
+
+	dfd_unified = lxc_cmd_get_cgroup2_fd(name, lxcpath);
+	if (dfd_unified < 0)
+		return ret_errno(ENOCGROUP2);
+
+	return __unified_attach_fd(conf, dfd_unified, pid);
+}
+
+int cgroup_attach(const struct lxc_conf *conf, const char *name,
+		  const char *lxcpath, pid_t pid)
+{
+	int ret;
+
+	ret = __cgroup_attach_many(conf, name, lxcpath, pid);
+	if (ret < 0) {
+		if (ret != ENOSYS)
+			return ret;
+
+		ret = __cgroup_attach_unified(conf, name, lxcpath, pid);
 	}
 
 	return ret;

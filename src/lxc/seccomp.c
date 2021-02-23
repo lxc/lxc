@@ -1637,9 +1637,9 @@ int lxc_seccomp_recv_notifier_fd(struct lxc_seccomp *seccomp, int socket_fd)
 	if (seccomp->notifier.wants_supervision) {
 		int ret;
 
-		ret = lxc_abstract_unix_recv_fds(socket_fd,
-						 &seccomp->notifier.notify_fd,
-						 1, NULL, 0);
+		ret = lxc_abstract_unix_recv_one_fd(socket_fd,
+						    &seccomp->notifier.notify_fd,
+						    NULL, 0);
 		if (ret < 0)
 			return -1;
 	}

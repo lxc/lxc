@@ -1041,7 +1041,7 @@ static int do_start(void *data)
 
 	lxc_sync_fini_parent(handler);
 
-	if (lxc_abstract_unix_recv_fds(data_sock1, &status_fd, 1, NULL, 0) < 0) {
+	if (lxc_abstract_unix_recv_one_fd(data_sock1, &status_fd, NULL, 0) < 0) {
 		ERROR("Failed to receive status file descriptor to child process");
 		goto out_warn_father;
 	}
@@ -1460,7 +1460,7 @@ static int lxc_recv_ttys_from_child(struct lxc_handler *handler)
 	for (i = 0; i < conf->ttys.max; i++) {
 		int ttyfds[2];
 
-		ret = lxc_abstract_unix_recv_fds(sock, ttyfds, 2, NULL, 0);
+		ret = lxc_abstract_unix_recv_two_fds(sock, ttyfds);
 		if (ret < 0)
 			break;
 
@@ -1888,7 +1888,7 @@ static int lxc_spawn(struct lxc_handler *handler)
 		}
 	}
 
-	cgroup_ops->payload_finalize(cgroup_ops);
+	cgroup_ops->finalize(cgroup_ops);
 	TRACE("Finished setting up cgroups");
 
 	if (handler->ns_unshare_flags & CLONE_NEWTIME) {
