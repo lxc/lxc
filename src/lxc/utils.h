@@ -245,4 +245,22 @@ __hidden extern int safe_mount_beneath_at(int beneat_fd, const char *src, const 
 					  const char *fstype, unsigned int flags, const void *data);
 __hidden __lxc_unused int print_r(int fd, const char *path);
 
+static inline int copy_struct_from_client(__u32 server_size, void *dst,
+					  __u32 client_size, const void *src)
+{
+	__u32 size = min(server_size, client_size);
+	__u32 rest = min(server_size, client_size) - size;
+
+	/* Deal with trailing bytes. */
+	if (client_size < server_size) {
+		memset(dst + size, 0, rest);
+	} else if (client_size > server_size) {
+		/* TODO: Actually come up with a nice way to test for 0. */
+		return 0;
+	}
+
+	memcpy(dst, src, size);
+	return 0;
+}
+
 #endif /* __LXC_UTILS_H */
