@@ -609,6 +609,9 @@ int lxc_cmd_get_cgroup_ctx(const char *name, const char *lxcpath,
 			.datalen	= size_ret_ctx,
 			.data		= ret_ctx,
 		},
+		.rsp = {
+			.ret = -ENOSYS,
+		},
 	};
 	int ret, stopped;
 
@@ -617,7 +620,7 @@ int lxc_cmd_get_cgroup_ctx(const char *name, const char *lxcpath,
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
-		return log_debug_errno(-1, errno, "Failed to process cgroup fd command");
+		return log_debug_errno(-1, errno, "Failed to process cgroup context command");
 
 	if (cmd.rsp.ret < 0)
 		return log_debug_errno(-EBADF, errno, "Failed to receive cgroup fds");
@@ -1542,6 +1545,9 @@ int lxc_cmd_get_cgroup2_fd(const char *name, const char *lxcpath)
 		.req = {
 			.cmd = LXC_CMD_GET_CGROUP2_FD,
 		},
+		.rsp = {
+			ret = -ENOSYS,
+		},
 	};
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
@@ -1561,6 +1567,9 @@ int lxc_cmd_get_limiting_cgroup2_fd(const char *name, const char *lxcpath)
 		.req = {
 			.cmd = LXC_CMD_GET_LIMITING_CGROUP2_FD,
 		},
+		.rsp = {
+			.ret = -ENOSYS,
+		},
 	};
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
@@ -1568,7 +1577,7 @@ int lxc_cmd_get_limiting_cgroup2_fd(const char *name, const char *lxcpath)
 		return -1;
 
 	if (cmd.rsp.ret < 0)
-		return log_debug_errno(cmd.rsp.ret, -cmd.rsp.ret, "Failed to receive cgroup2 fd");
+		return syswarn_set(cmd.rsp.ret, "Failed to receive cgroup2 limit fd");
 
 	return PTR_TO_INT(cmd.rsp.data);
 }
