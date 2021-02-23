@@ -487,16 +487,16 @@ static int same_nsfd(int dfd_pid1, int dfd_pid2, const char *ns_path)
 
 	ret = fstatat(dfd_pid1, ns_path, &ns_st1, 0);
 	if (ret)
-		return -1;
+		return -errno;
 
 	ret = fstatat(dfd_pid2, ns_path, &ns_st2, 0);
 	if (ret)
-		return -1;
+		return -errno;
 
 	/* processes are in the same namespace */
 	if ((ns_st1.st_dev == ns_st2.st_dev) &&
 	    (ns_st1.st_ino == ns_st2.st_ino))
-		return -EINVAL;
+		return 1;
 
 	return 0;
 }
@@ -510,19 +510,23 @@ static int same_ns(int dfd_pid1, int dfd_pid2, const char *ns_path)
 			 (PROTECT_LOOKUP_BENEATH_WITH_MAGICLINKS &
 			  ~(RESOLVE_NO_XDEV | RESOLVE_BENEATH)), 0);
 	if (ns_fd2 < 0) {
-		/* The kernel does not support this namespace. This is not an error. */
 		if (errno == ENOENT)
 			return -ENOENT;
-		return log_error_errno(-errno, errno, "Failed to open %d(%s)",
-				       dfd_pid2, ns_path);
+		return syserrno(-errno, "Failed to open %d(%s)", dfd_pid2, ns_path);
 	}
 
 	ret = same_nsfd(dfd_pid1, dfd_pid2, ns_path);
-	if (ret < 0)
-		return ret;
+	switch (ret) {
+	case -ENOENT:
+		__fallthrough;
+	case 1:
+		return ret_errno(ENOENT);
+	case 0:
+		/* processes are in different namespaces */
+		return move_fd(ns_fd2);
+	}
 
-	/* processes are in different namespaces */
-	return move_fd(ns_fd2);
+	return ret;
 }
 
 static int __prepare_namespaces_pidfd(struct attach_context *ctx)
@@ -536,14 +540,19 @@ static int __prepare_namespaces_pidfd(struct attach_context *ctx)
 		ret = same_nsfd(ctx->dfd_self_pid,
 				ctx->dfd_init_pid,
 				ns_info[i].proc_path);
-		if (ret == -EINVAL)
+		switch (ret) {
+		case -ENOENT:
+			__fallthrough;
+		case 1:
 			ctx->ns_inherited &= ~ns_info[i].clone_flag;
-		else if (ret < 0)
-			return log_error_errno(-1, errno,
-					       "Failed to determine whether %s namespace is shared",
-					       ns_info[i].proc_name);
-		else
+			break;
+		case 0:
 			TRACE("Shared %s namespace needs attach", ns_info[i].proc_name);
+			break;
+		}
+
+		return syserrno(-errno, "Failed to determine whether %s namespace is shared",
+				ns_info[i].proc_name);
 	}
 
 	return 0;
