@@ -3432,7 +3432,7 @@ int cgroup_attach(const struct lxc_conf *conf, const char *name,
 
 	ret = __cgroup_attach_many(conf, name, lxcpath, pid);
 	if (ret < 0) {
-		if (ret != ENOSYS)
+		if (ret != -ENOSYS)
 			return ret;
 
 		ret = __cgroup_attach_unified(conf, name, lxcpath, pid);
