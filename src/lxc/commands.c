@@ -502,10 +502,15 @@ static int lxc_cmd_get_init_pid_callback(int fd, struct lxc_cmd_req *req,
 
 int lxc_cmd_get_init_pidfd(const char *name, const char *lxcpath)
 {
+	int pidfd;
 	int ret, stopped;
 	struct lxc_cmd_rr cmd = {
 		.req = {
 			.cmd = LXC_CMD_GET_INIT_PIDFD,
+		},
+		.rsp = {
+			.data = INT_TO_PTR(-EBADF),
+			.ret = ENOSYS,
 		},
 	};
 
@@ -514,9 +519,13 @@ int lxc_cmd_get_init_pidfd(const char *name, const char *lxcpath)
 		return log_debug_errno(-1, errno, "Failed to process init pidfd command");
 
 	if (cmd.rsp.ret < 0)
-		return log_debug_errno(-EBADF, errno, "Failed to receive init pidfd");
+		return syserrno_set(cmd.rsp.ret, "Failed to receive init pidfd");
 
-	return PTR_TO_INT(cmd.rsp.data);
+	pidfd = PTR_TO_INT(cmd.rsp.data);
+	if (pidfd < 0)
+		return syserrno_set(pidfd, "Failed to receive init pidfd");
+
+	return pidfd;
 }
 
 static int lxc_cmd_get_init_pidfd_callback(int fd, struct lxc_cmd_req *req,
