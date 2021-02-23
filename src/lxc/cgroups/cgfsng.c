@@ -3375,12 +3375,14 @@ static int __unified_attach_fd(const struct lxc_conf *conf, int fd_unified, pid_
 static int __cgroup_attach_many(const struct lxc_conf *conf, const char *name,
 				const char *lxcpath, pid_t pid)
 {
-	call_cleaner(put_unix_fds) struct unix_fds *fds = &(struct unix_fds){};
+	call_cleaner(put_cgroup_ctx) struct cgroup_ctx *ctx = &(struct cgroup_ctx){};
 	int ret;
 	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
+	size_t idx;
 	ssize_t pidstr_len;
 
-	ret = lxc_cmd_get_cgroup_fd(name, lxcpath, NULL, true, fds);
+	ret = lxc_cmd_get_cgroup_ctx(name, lxcpath, NULL, true,
+				     sizeof(struct cgroup_ctx), ctx);
 	if (ret < 0)
 		return ret_errno(ENOSYS);
 
@@ -3388,8 +3390,8 @@ static int __cgroup_attach_many(const struct lxc_conf *conf, const char *name,
 	if (pidstr_len < 0)
 		return pidstr_len;
 
-	for (size_t idx = 0; idx < fds->fd_count_ret; idx++) {
-		int dfd_con = fds->fd[idx];
+	for (idx = 0; idx < ctx->fd_len; idx++) {
+		int dfd_con = ctx->fd[idx];
 
 		if (unified_cgroup_fd(dfd_con))
 			ret = __unified_attach_fd(conf, dfd_con, pid);
@@ -3401,7 +3403,11 @@ static int __cgroup_attach_many(const struct lxc_conf *conf, const char *name,
 			TRACE("Attached to cgroup fd %d", dfd_con);
 	}
 
-	return log_trace(0, "Attached to cgroups");
+	if (idx == 0)
+		return syserrno_set(-ENOENT, "Failed to attach to cgroups");
+
+	TRACE("Attached to %s cgroup layout", cgroup_layout_name(ctx->cgroup_layout));
+	return 0;
 }
 
 static int __cgroup_attach_unified(const struct lxc_conf *conf, const char *name,

@@ -35,6 +35,22 @@ typedef enum {
         CGROUP_LAYOUT_UNIFIED =  2,
 } cgroup_layout_t;
 
+static inline const char *cgroup_layout_name(cgroup_layout_t layout)
+{
+	switch (layout) {
+	case CGROUP_LAYOUT_LEGACY:
+		return "legacy";
+	case CGROUP_LAYOUT_HYBRID:
+		return "hybrid";
+	case CGROUP_LAYOUT_UNIFIED:
+		return "unified";
+	case CGROUP_LAYOUT_UNKNOWN:
+		break;
+	}
+
+	return "unknown";
+}
+
 typedef enum {
 	LEGACY_HIERARCHY = CGROUP_SUPER_MAGIC,
 	UNIFIED_HIERARCHY = CGROUP2_SUPER_MAGIC,
