@@ -925,27 +925,25 @@ static int lxc_terminal_create_native(const char *name, const char *lxcpath, str
 
 	ret = unlockpt(terminal->ptx);
 	if (ret < 0) {
-		SYSERROR("Failed to unlock multiplexer device device");
+		SYSWARN("Failed to unlock multiplexer device device");
 		goto err;
 	}
 
 	terminal->pty = ioctl(terminal->ptx, TIOCGPTPEER, O_RDWR | O_NOCTTY | O_CLOEXEC);
 	if (terminal->pty < 0) {
-		SYSERROR("Failed to allocate new pty device");
+		SYSWARN("Failed to allocate new pty device");
 		goto err;
 	}
 
-	// ret = lxc_terminal_map_ids(conf, terminal);
-
 	ret = ttyname_r(terminal->pty, terminal->name, sizeof(terminal->name));
 	if (ret < 0) {
-		SYSERROR("Failed to retrieve name of terminal pty");
+		SYSWARN("Failed to retrieve name of terminal pty");
 		goto err;
 	}
 
 	ret = lxc_terminal_peer_default(terminal);
 	if (ret < 0) {
-		ERROR("Failed to allocate proxy terminal");
+		SYSWARN("Failed to allocate proxy terminal");
 		goto err;
 	}
 
@@ -956,8 +954,8 @@ err:
 	return -ENODEV;
 }
 
-int lxc_terminal_create(const char *name, const char *lxcpath, struct lxc_conf *conf,
-			struct lxc_terminal *terminal)
+int lxc_terminal_create(const char *name, const char *lxcpath,
+			struct lxc_conf *conf, struct lxc_terminal *terminal)
 {
 	if (!lxc_terminal_create_native(name, lxcpath, conf, terminal))
 		return 0;
