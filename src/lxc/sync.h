@@ -29,9 +29,6 @@ enum /* attach */ {
 	ATTACH_SYNC_CGROUP	= 0,
 };
 
-#define ATTACH_SYNC_PID(x) (x)
-#define ATTACH_SYNC_LSM(x) (x)
-
 __hidden extern bool lxc_sync_init(struct lxc_handler *handler);
 __hidden extern void lxc_sync_fini(struct lxc_handler *);
 __hidden extern void lxc_sync_fini_parent(struct lxc_handler *);
