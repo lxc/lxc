@@ -266,6 +266,17 @@ static inline int lxc_cmd_rsp_send_reap(int fd, struct lxc_cmd_rsp *rsp)
 	return LXC_CMD_REAP_CLIENT_FD;
 }
 
+static inline int lxc_cmd_rsp_send_keep(int fd, struct lxc_cmd_rsp *rsp)
+{
+	int ret;
+
+	ret = __lxc_cmd_rsp_send(fd, rsp);
+	if (ret < 0)
+		return ret;
+
+	return 0;
+}
+
 static inline int rsp_one_fd(int fd, int fd_send, struct lxc_cmd_rsp *rsp)
 {
 	int ret;
@@ -1225,21 +1236,23 @@ static int lxc_cmd_add_state_client_callback(__owns int fd, struct lxc_cmd_req *
 	};
 
 	if (req->datalen < 0)
-		goto out;
+		goto reap_fd;
 
 	if (req->datalen != (sizeof(lxc_state_t) * MAX_STATE))
-		goto out;
+		goto reap_fd;
 
 	if (!req->data)
-		goto out;
+		goto reap_fd;
 
 	rsp.ret = lxc_add_state_client(fd, handler, (lxc_state_t *)req->data);
 	if (rsp.ret < 0)
-		goto out;
+		goto reap_fd;
 
 	rsp.data = INT_TO_PTR(rsp.ret);
 
-out:
+	return lxc_cmd_rsp_send_keep(fd, &rsp);
+
+reap_fd:
 	return lxc_cmd_rsp_send_reap(fd, &rsp);
 }
 
