@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include "compiler.h"
+#include "cgroups/cgroup.h"
 #include "lxccontainer.h"
 #include "macro.h"
 #include "state.h"
@@ -43,7 +44,7 @@ typedef enum {
 	LXC_CMD_GET_LIMITING_CGROUP2_FD		= 20,
 	LXC_CMD_GET_DEVPTS_FD			= 21,
 	LXC_CMD_GET_SECCOMP_NOTIFY_FD		= 22,
-	LXC_CMD_GET_CGROUP_FD			= 23,
+	LXC_CMD_GET_CGROUP_CTX			= 23,
 	LXC_CMD_MAX,
 } lxc_cmd_t;
 
@@ -123,9 +124,11 @@ __hidden extern int lxc_try_cmd(const char *name, const char *lxcpath);
 __hidden extern int lxc_cmd_console_log(const char *name, const char *lxcpath,
 					struct lxc_console_log *log);
 __hidden extern int lxc_cmd_get_seccomp_notify_fd(const char *name, const char *lxcpath);
-__hidden extern int lxc_cmd_get_cgroup_fd(const char *name, const char *lxcpath,
-					  const char *controller, bool batch,
-					  struct unix_fds *ret_fds);
+__hidden extern int lxc_cmd_get_cgroup_ctx(const char *name, const char *lxcpath,
+					   const char *controller, bool batch,
+					   size_t size_ret_ctx,
+					   struct cgroup_ctx *ret_ctx)
+    __access_r(6, 5);
 __hidden extern int lxc_cmd_seccomp_notify_add_listener(const char *name, const char *lxcpath, int fd,
 							/* unused */ unsigned int command,
 							/* unused */ unsigned int flags);
