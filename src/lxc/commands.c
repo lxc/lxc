@@ -88,13 +88,26 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 		[LXC_CMD_GET_LIMITING_CGROUP2_FD]	= "get_limiting_cgroup2_fd",
 		[LXC_CMD_GET_DEVPTS_FD]			= "get_devpts_fd",
 		[LXC_CMD_GET_SECCOMP_NOTIFY_FD]		= "get_seccomp_notify_fd",
-		[LXC_CMD_GET_CGROUP_FD]			= "get_cgroup_fd",
+		[LXC_CMD_GET_CGROUP_CTX]		= "get_cgroup_ctx",
 	};
 
 	if (cmd >= LXC_CMD_MAX)
 		return "Invalid request";
 
 	return cmdname[cmd];
+}
+
+static int __transfer_cgroup_ctx_fds(struct unix_fds *fds, struct cgroup_ctx *ctx)
+{
+	/* This shouldn't be able to happen but better safe than sorry. */
+	if (ctx->fd_len != fds->fd_count_ret ||
+	    fds->fd_count_ret > CGROUP_CTX_MAX_FD)
+		return syswarn_set(-EINVAL, "Unexpected number of file descriptors received %u != %u",
+				   ctx->fd_len, fds->fd_count_ret);
+
+	memcpy(ctx->fd, fds->fd, ctx->fd_len * sizeof(__s32));
+	fds->fd_count_ret = 0;
+	return 0;
 }
 
 /*
@@ -118,6 +131,7 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 {
 	call_cleaner(put_unix_fds) struct unix_fds *fds = &(struct unix_fds){};
 	struct lxc_cmd_rsp *rsp = &cmd->rsp;
+	const char *reqstr = lxc_cmd_str(cmd->req.cmd);
 	int ret;
 
 	switch (cmd->req.cmd) {
@@ -134,17 +148,17 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 	case LXC_CMD_CONSOLE:
 		fds->fd_count_max = 1;
 		break;
-	case LXC_CMD_GET_CGROUP_FD:
-		fds->fd_count_max = KERNEL_SCM_MAX_FD;
+	case LXC_CMD_GET_CGROUP_CTX:
+		fds->fd_count_max = CGROUP_CTX_MAX_FD;
 		break;
 	default:
 		fds->fd_count_max = 0;
+		break;
 	}
 	ret = lxc_abstract_unix_recv_fds(sock, fds, rsp, sizeof(*rsp));
 	if (ret < 0)
-		return syserrno(ret, "Failed to receive response for command \"%s\"",
-				lxc_cmd_str(cmd->req.cmd));
-	TRACE("Command \"%s\" received response", lxc_cmd_str(cmd->req.cmd));
+		return syserrno(ret, "Failed to receive response for command \"%s\"", reqstr);
+	TRACE("Command \"%s\" received response with %u file descriptors", reqstr, fds->fd_count_ret);
 
 	if (cmd->req.cmd == LXC_CMD_CONSOLE) {
 		struct lxc_cmd_console_rsp_data *rspdata;
@@ -157,9 +171,7 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 
 		rspdata = malloc(sizeof(*rspdata));
 		if (!rspdata)
-			return log_warn_errno(-1,
-					      ENOMEM, "Failed to receive response for command \"%s\"",
-					      lxc_cmd_str(cmd->req.cmd));
+			return syserrno_set(-ENOMEM, "Failed to receive response for command \"%s\"", reqstr);
 
 		rspdata->ptxfd = move_fd(fds->fd[0]);
 		rspdata->ttynum = PTR_TO_INT(rsp->data);
@@ -177,43 +189,42 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		__fallthrough;
 	case LXC_CMD_GET_SECCOMP_NOTIFY_FD:
 		rsp->data = INT_TO_PTR(move_fd(fds->fd[0]));
-		return log_debug(ret, "Finished processing \"%s\"", lxc_cmd_str(cmd->req.cmd));
-	case LXC_CMD_GET_CGROUP_FD:
-		rsp->data = move_ptr(fds);
-		rsp->datalen = sizeof(struct unix_fds);
-		return log_debug(ret, "Finished processing \"%s\"", lxc_cmd_str(cmd->req.cmd));
+		return log_debug(ret, "Finished processing \"%s\"", reqstr);
+	case LXC_CMD_GET_CGROUP_CTX:
+		if (rsp->datalen > sizeof(struct cgroup_ctx))
+			return syserrno_set(-EINVAL, "Invalid response size from server for \"%s\"", reqstr);
+
+		/* Don't pointlessly allocate. */
+		rsp->data = (void *)cmd->req.data;
 		break;
 	default:
 		break;
 	}
 
 	if (rsp->datalen == 0)
-		return log_debug(ret,
-				 "Response data length for command \"%s\" is 0",
-				 lxc_cmd_str(cmd->req.cmd));
+		return log_debug(ret, "Response data length for command \"%s\" is 0", reqstr);
 
 	if ((rsp->datalen > LXC_CMD_DATA_MAX) &&
 	    (cmd->req.cmd != LXC_CMD_CONSOLE_LOG))
-		return log_error(-1, "Response data for command \"%s\" is too long: %d bytes > %d",
-				 lxc_cmd_str(cmd->req.cmd), rsp->datalen,
-				 LXC_CMD_DATA_MAX);
+		return syserrno_set(-E2BIG, "Response data for command \"%s\" is too long: %d bytes > %d",
+				    reqstr, rsp->datalen, LXC_CMD_DATA_MAX);
 
-	if (cmd->req.cmd == LXC_CMD_CONSOLE_LOG) {
-		rsp->data = malloc(rsp->datalen + 1);
-		((char *)rsp->data)[rsp->datalen] = '\0';
-	} else {
+	if (cmd->req.cmd == LXC_CMD_CONSOLE_LOG)
+		rsp->data = zalloc(rsp->datalen + 1);
+	else if (cmd->req.cmd != LXC_CMD_GET_CGROUP_CTX)
 		rsp->data = malloc(rsp->datalen);
-	}
 	if (!rsp->data)
-		return log_error_errno(-1,
-				       ENOMEM, "Failed to allocate response buffer for command \"%s\"",
-				       lxc_cmd_str(cmd->req.cmd));
+		return syserrno_set(-ENOMEM, "Failed to allocate response buffer for command \"%s\"", reqstr);
 
 	ret = lxc_recv_nointr(sock, rsp->data, rsp->datalen, 0);
 	if (ret != rsp->datalen)
-		return log_error_errno(-1,
-				       errno, "Failed to receive response data for command \"%s\"",
-				       lxc_cmd_str(cmd->req.cmd));
+		return syserrno(-errno, "Failed to receive response data for command \"%s\"", reqstr);
+
+	if (cmd->req.cmd == LXC_CMD_GET_CGROUP_CTX) {
+		ret = __transfer_cgroup_ctx_fds(fds, rsp->data);
+		if (ret < 0)
+			return syserrno(ret, "Failed to transfer file descriptors for \"%s\"", reqstr);
+	}
 
 	return ret;
 }
@@ -266,14 +277,29 @@ static inline int rsp_one_fd(int fd, int fd_send, struct lxc_cmd_rsp *rsp)
 	return LXC_CMD_REAP_CLIENT_FD;
 }
 
-static inline int rsp_many_fds(int fd, struct unix_fds *fds, struct lxc_cmd_rsp *rsp)
+static inline int rsp_many_fds(int fd, __u32 fds_len,
+			       const __s32 fds[KERNEL_SCM_MAX_FD],
+			       struct lxc_cmd_rsp *rsp)
 {
-	int ret;
+	ssize_t ret;
 
-	ret = lxc_abstract_unix_send_fds(fd, fds->fd, fds->fd_count_max,
-					 rsp, sizeof(*rsp));
+	if (fds_len > KERNEL_SCM_MAX_FD) {
+		rsp->ret = -E2BIG;
+		return lxc_cmd_rsp_send_reap(fd, rsp);
+	} else if (fds_len == 0) {
+		rsp->ret = -ENOENT;
+		return lxc_cmd_rsp_send_reap(fd, rsp);
+	}
+
+	ret = lxc_abstract_unix_send_fds(fd, fds, fds_len, rsp, sizeof(*rsp));
 	if (ret < 0)
 		return ret;
+
+	if (rsp->data && rsp->datalen > 0) {
+		ret = lxc_send_nointr(fd, rsp->data, rsp->datalen, MSG_NOSIGNAL);
+		if (ret < 0 || ret != (ssize_t)rsp->datalen)
+			return syswarn(-errno, "Failed to send command response %zd", ret);
+	}
 
 	return LXC_CMD_REAP_CLIENT_FD;
 }
@@ -573,16 +599,18 @@ static int lxc_cmd_get_seccomp_notify_fd_callback(int fd, struct lxc_cmd_req *re
 #endif
 }
 
-int lxc_cmd_get_cgroup_fd(const char *name, const char *lxcpath,
-			  const char *controller, bool batch,
-			  struct unix_fds *ret_fds)
+int lxc_cmd_get_cgroup_ctx(const char *name, const char *lxcpath,
+		const char *controller, bool batch,
+		size_t size_ret_ctx, struct cgroup_ctx *ret_ctx)
 {
-	int ret, stopped;
 	struct lxc_cmd_rr cmd = {
 		.req = {
-			.cmd = LXC_CMD_GET_CGROUP_FD,
+			.cmd		= LXC_CMD_GET_CGROUP_CTX,
+			.datalen	= size_ret_ctx,
+			.data		= ret_ctx,
 		},
 	};
+	int ret, stopped;
 
 	if (batch && !is_empty_string(controller))
 		return ret_errno(EINVAL);
@@ -594,29 +622,34 @@ int lxc_cmd_get_cgroup_fd(const char *name, const char *lxcpath,
 	if (cmd.rsp.ret < 0)
 		return log_debug_errno(-EBADF, errno, "Failed to receive cgroup fds");
 
-	*ret_fds = *(struct unix_fds *)cmd.rsp.data;
-
 	return 0;
 }
 
-static int lxc_cmd_get_cgroup_fd_callback(int fd, struct lxc_cmd_req *req,
-					  struct lxc_handler *handler,
-					  struct lxc_epoll_descr *descr)
+static int lxc_cmd_get_cgroup_ctx_callback(int fd, struct lxc_cmd_req *req,
+					   struct lxc_handler *handler,
+					   struct lxc_epoll_descr *descr)
 {
 	struct lxc_cmd_rsp rsp = {
-		.ret = 0,
+	    .ret = EINVAL,
 	};
 	struct cgroup_ops *cgroup_ops = handler->cgroup_ops;
-	struct unix_fds *fds = {};
+	struct cgroup_ctx ctx_server = {};
 	int ret;
 
-	fds->fd_count_max = cgroup_fds(cgroup_ops, fds->fd);
-	ret = lxc_abstract_unix_send_fds(fd, fds->fd, fds->fd_count_max,
-					 &rsp, sizeof(rsp));
+	ret = copy_struct_from_client(sizeof(struct cgroup_ctx), &ctx_server,
+				      req->datalen, req->data);
 	if (ret < 0)
-		return log_error(ret, "Failed to send cgroup fds");
+		return lxc_cmd_rsp_send_reap(fd, &rsp);
 
-	return log_trace(LXC_CMD_REAP_CLIENT_FD, "Sent cgroup fds");
+	ret = prepare_cgroup_ctx(cgroup_ops, &ctx_server);
+	if (ret < 0) {
+		rsp.ret = ret;
+		return lxc_cmd_rsp_send_reap(fd, &rsp);
+	}
+
+	rsp.data = &ctx_server;
+	rsp.datalen = min(sizeof(struct cgroup_ctx), (size_t)req->datalen);
+	return rsp_many_fds(fd, ctx_server.fd_len, ctx_server.fd, &rsp);
 }
 
 /*
@@ -1614,7 +1647,7 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 		[LXC_CMD_GET_LIMITING_CGROUP2_FD]       = lxc_cmd_get_limiting_cgroup2_fd_callback,
 		[LXC_CMD_GET_DEVPTS_FD]			= lxc_cmd_get_devpts_fd_callback,
 		[LXC_CMD_GET_SECCOMP_NOTIFY_FD]		= lxc_cmd_get_seccomp_notify_fd_callback,
-		[LXC_CMD_GET_CGROUP_FD]			= lxc_cmd_get_cgroup_fd_callback,
+		[LXC_CMD_GET_CGROUP_CTX]		= lxc_cmd_get_cgroup_ctx_callback,
 	};
 
 	if (req->cmd >= LXC_CMD_MAX)
