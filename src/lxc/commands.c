@@ -198,8 +198,8 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		rsp->data = INT_TO_PTR(move_fd(fds->fd[0]));
 		return log_debug(fret ?: ret, "Finished processing \"%s\"", reqstr);
 	case LXC_CMD_GET_CGROUP_CTX:
-		if (rsp->datalen > sizeof(struct cgroup_ctx))
-			return syserrno_set(-EINVAL, "Invalid response size from server for \"%s\"", reqstr);
+		if ((rsp->datalen == 0) || (rsp->datalen > sizeof(struct cgroup_ctx)))
+			return syserrno_set(fret ?: -EINVAL, "Invalid response size from server for \"%s\"", reqstr);
 
 		/* Don't pointlessly allocate. */
 		rsp->data = (void *)cmd->req.data;
