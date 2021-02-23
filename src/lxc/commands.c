@@ -131,11 +131,13 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 {
 	call_cleaner(put_unix_fds) struct unix_fds *fds = &(struct unix_fds){};
 	struct lxc_cmd_rsp *rsp = &cmd->rsp;
-	const char *reqstr = lxc_cmd_str(cmd->req.cmd);
+	int cur_cmd = cmd->req.cmd;
+	const char *cur_cmdstr;
 	int fret = 0;
 	int ret;
 
-	switch (cmd->req.cmd) {
+	cur_cmdstr = lxc_cmd_str(cur_cmd);
+	switch (cur_cmd) {
 	case LXC_CMD_GET_CGROUP2_FD:
 		__fallthrough;
 	case LXC_CMD_GET_LIMITING_CGROUP2_FD:
@@ -158,16 +160,16 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 	}
 	ret = lxc_abstract_unix_recv_fds(sock, fds, rsp, sizeof(*rsp));
 	if (ret < 0)
-		return syserrno(ret, "Failed to receive response for command \"%s\"", reqstr);
+		return syserrno(ret, "Failed to receive response for command \"%s\"", cur_cmdstr);
 
 	if (fds->fd_count_max == 0) {
-		TRACE("Command \"%s\" received response with %u file descriptors", reqstr, fds->fd_count_ret);
+		TRACE("Command \"%s\" received response with %u file descriptors", cur_cmdstr, fds->fd_count_ret);
 	} else if (fds->fd_count_ret == 0) {
-		WARN("Command \"%s\" received response without expected file descriptors", reqstr);
+		WARN("Command \"%s\" received response without expected file descriptors", cur_cmdstr);
 		fret = -EBADF;
 	}
 
-	if (cmd->req.cmd == LXC_CMD_CONSOLE) {
+	if (cur_cmd == LXC_CMD_CONSOLE) {
 		struct lxc_cmd_console_rsp_data *rspdata;
 
 		/* recv() returns 0 bytes when a tty cannot be allocated,
@@ -178,14 +180,14 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 
 		rspdata = malloc(sizeof(*rspdata));
 		if (!rspdata)
-			return syserrno_set(-ENOMEM, "Failed to receive response for command \"%s\"", reqstr);
+			return syserrno_set(-ENOMEM, "Failed to receive response for command \"%s\"", cur_cmdstr);
 
 		rspdata->ptxfd = move_fd(fds->fd[0]);
 		rspdata->ttynum = PTR_TO_INT(rsp->data);
 		rsp->data = rspdata;
 	}
 
-	switch (cmd->req.cmd) {
+	switch (cur_cmd) {
 	case LXC_CMD_GET_CGROUP2_FD:
 		__fallthrough;
 	case LXC_CMD_GET_LIMITING_CGROUP2_FD:
@@ -196,10 +198,10 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		__fallthrough;
 	case LXC_CMD_GET_SECCOMP_NOTIFY_FD:
 		rsp->data = INT_TO_PTR(move_fd(fds->fd[0]));
-		return log_debug(fret ?: ret, "Finished processing \"%s\"", reqstr);
+		return log_debug(fret ?: ret, "Finished processing \"%s\"", cur_cmdstr);
 	case LXC_CMD_GET_CGROUP_CTX:
 		if ((rsp->datalen == 0) || (rsp->datalen > sizeof(struct cgroup_ctx)))
-			return syserrno_set(fret ?: -EINVAL, "Invalid response size from server for \"%s\"", reqstr);
+			return syserrno_set(fret ?: -EINVAL, "Invalid response size from server for \"%s\"", cur_cmdstr);
 
 		/* Don't pointlessly allocate. */
 		rsp->data = (void *)cmd->req.data;
@@ -209,28 +211,28 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 	}
 
 	if (rsp->datalen == 0)
-		return log_debug(fret ?: ret, "Response data length for command \"%s\" is 0", reqstr);
+		return log_debug(fret ?: ret, "Response data length for command \"%s\" is 0", cur_cmdstr);
 
 	if ((rsp->datalen > LXC_CMD_DATA_MAX) &&
-	    (cmd->req.cmd != LXC_CMD_CONSOLE_LOG))
+	    (cur_cmd != LXC_CMD_CONSOLE_LOG))
 		return syserrno_set(-E2BIG, "Response data for command \"%s\" is too long: %d bytes > %d",
-				    reqstr, rsp->datalen, LXC_CMD_DATA_MAX);
+				    cur_cmdstr, rsp->datalen, LXC_CMD_DATA_MAX);
 
-	if (cmd->req.cmd == LXC_CMD_CONSOLE_LOG)
+	if (cur_cmd == LXC_CMD_CONSOLE_LOG)
 		rsp->data = zalloc(rsp->datalen + 1);
-	else if (cmd->req.cmd != LXC_CMD_GET_CGROUP_CTX)
+	else if (cur_cmd != LXC_CMD_GET_CGROUP_CTX)
 		rsp->data = malloc(rsp->datalen);
 	if (!rsp->data)
-		return syserrno_set(-ENOMEM, "Failed to allocate response buffer for command \"%s\"", reqstr);
+		return syserrno_set(-ENOMEM, "Failed to allocate response buffer for command \"%s\"", cur_cmdstr);
 
 	ret = lxc_recv_nointr(sock, rsp->data, rsp->datalen, 0);
 	if (ret != rsp->datalen)
-		return syserrno(-errno, "Failed to receive response data for command \"%s\"", reqstr);
+		return syserrno(-errno, "Failed to receive response data for command \"%s\"", cur_cmdstr);
 
-	if (cmd->req.cmd == LXC_CMD_GET_CGROUP_CTX) {
+	if (cur_cmd == LXC_CMD_GET_CGROUP_CTX) {
 		ret = __transfer_cgroup_ctx_fds(fds, rsp->data);
 		if (ret < 0)
-			return syserrno(ret, "Failed to transfer file descriptors for \"%s\"", reqstr);
+			return syserrno(ret, "Failed to transfer file descriptors for \"%s\"", cur_cmdstr);
 	}
 
 	return fret ?: ret;
