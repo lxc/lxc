@@ -263,4 +263,12 @@ static inline int copy_struct_from_client(__u32 server_size, void *dst,
 	return 0;
 }
 
+static inline __u32 copy_struct_to_client(__u32 client_size, void *dst,
+					  __u32 server_size, const void *src)
+{
+	__u32 size = min(server_size, client_size);
+	memcpy(dst, src, size);
+	return size;
+}
+
 #endif /* __LXC_UTILS_H */
