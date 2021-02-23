@@ -132,6 +132,7 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 	call_cleaner(put_unix_fds) struct unix_fds *fds = &(struct unix_fds){};
 	struct lxc_cmd_rsp *rsp = &cmd->rsp;
 	const char *reqstr = lxc_cmd_str(cmd->req.cmd);
+	int fret = 0;
 	int ret;
 
 	switch (cmd->req.cmd) {
@@ -158,7 +159,13 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 	ret = lxc_abstract_unix_recv_fds(sock, fds, rsp, sizeof(*rsp));
 	if (ret < 0)
 		return syserrno(ret, "Failed to receive response for command \"%s\"", reqstr);
-	TRACE("Command \"%s\" received response with %u file descriptors", reqstr, fds->fd_count_ret);
+
+	if (fds->fd_count_max == 0) {
+		TRACE("Command \"%s\" received response with %u file descriptors", reqstr, fds->fd_count_ret);
+	} else if (fds->fd_count_ret == 0) {
+		WARN("Command \"%s\" received response without expected file descriptors", reqstr);
+		fret = -EBADF;
+	}
 
 	if (cmd->req.cmd == LXC_CMD_CONSOLE) {
 		struct lxc_cmd_console_rsp_data *rspdata;
@@ -189,7 +196,7 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		__fallthrough;
 	case LXC_CMD_GET_SECCOMP_NOTIFY_FD:
 		rsp->data = INT_TO_PTR(move_fd(fds->fd[0]));
-		return log_debug(ret, "Finished processing \"%s\"", reqstr);
+		return log_debug(fret ?: ret, "Finished processing \"%s\"", reqstr);
 	case LXC_CMD_GET_CGROUP_CTX:
 		if (rsp->datalen > sizeof(struct cgroup_ctx))
 			return syserrno_set(-EINVAL, "Invalid response size from server for \"%s\"", reqstr);
@@ -202,7 +209,7 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 	}
 
 	if (rsp->datalen == 0)
-		return log_debug(ret, "Response data length for command \"%s\" is 0", reqstr);
+		return log_debug(fret ?: ret, "Response data length for command \"%s\" is 0", reqstr);
 
 	if ((rsp->datalen > LXC_CMD_DATA_MAX) &&
 	    (cmd->req.cmd != LXC_CMD_CONSOLE_LOG))
@@ -226,7 +233,7 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 			return syserrno(ret, "Failed to transfer file descriptors for \"%s\"", reqstr);
 	}
 
-	return ret;
+	return fret ?: ret;
 }
 
 /*
