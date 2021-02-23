@@ -201,6 +201,12 @@ again:
 	for (cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
                 if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
 			__u32 idx;
+			/*
+			 * This causes some compilers to complaing about
+			 * increased alignment requirements but I haven't found
+			 * a better way to deal with this yet. Suggestions
+			 * welcome!
+			 */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-align"
 			int *fds_raw = (int *)CMSG_DATA(cmsg);
