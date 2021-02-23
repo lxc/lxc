@@ -1615,6 +1615,16 @@ static int lxc_cmd_get_limiting_cgroup2_fd_callback(int fd,
 	return ret_errno(ENOSYS);
 }
 
+static int lxc_cmd_rsp_send_enosys(int fd, int id)
+{
+	struct lxc_cmd_rsp rsp = {
+		.ret = -ENOSYS,
+	};
+
+	__lxc_cmd_rsp_send(fd, &rsp);
+	return syserrno_set(-ENOSYS, "Invalid command id %d", id);
+}
+
 static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 			   struct lxc_handler *handler,
 			   struct lxc_epoll_descr *descr)
@@ -1650,7 +1660,7 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 	};
 
 	if (req->cmd >= LXC_CMD_MAX)
-		return log_trace_errno(-1, EINVAL, "Invalid command id %d", req->cmd);
+		return lxc_cmd_rsp_send_enosys(fd,  req->cmd);
 
 	return cb[req->cmd](fd, req, handler, descr);
 }
