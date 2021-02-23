@@ -218,7 +218,7 @@ again:
 			 * which exceeds the kernel limit we know about so
 			 * close them and return an error.
 			 */
-			if (num_raw > KERNEL_SCM_MAX_FD) {
+			if (num_raw >= KERNEL_SCM_MAX_FD) {
 				for (idx = 0; idx < num_raw; idx++)
 					close(fds_raw[idx]);
 
