@@ -400,7 +400,6 @@ static int get_attach_context(struct attach_context *ctx,
 		ctx->init_pid = pidfd_get_pid(ctx->dfd_self_pid, ctx->init_pidfd);
 	else
 		ctx->init_pid = lxc_cmd_get_init_pid(container->name, container->config_path);
-
 	if (ctx->init_pid < 0)
 		return log_error(-1, "Failed to get init pid");
 
