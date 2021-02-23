@@ -1127,7 +1127,7 @@ __noreturn static void do_attach(struct attach_payload *ap)
 {
 	lxc_attach_exec_t attach_function = move_ptr(ap->exec_function);
 	void *attach_function_args = move_ptr(ap->exec_payload);
-	int lsm_fd, ret;
+	int fd_lsm, ret;
 	lxc_attach_options_t* options = ap->options;
         struct attach_context *ctx = ap->ctx;
         struct lxc_conf *conf = ctx->container->lxc_conf;
@@ -1199,12 +1199,12 @@ __noreturn static void do_attach(struct attach_payload *ap)
 	 * set{g,u}id().
 	 */
 	if (attach_lsm(options) && ctx->lsm_label) {
-		if (!sync_wait_fd(ap->ipc_socket, ATTACH_SYNC_LSM(&lsm_fd))) {
+		if (!sync_wait_fd(ap->ipc_socket, &fd_lsm)) {
 			SYSERROR("Failed to receive lsm label fd");
 			goto on_error;
 		}
 
-		TRACE("Received LSM label file descriptor %d from parent", lsm_fd);
+		TRACE("Received LSM label file descriptor %d from parent", fd_lsm);
 	}
 
 	if (options->stdin_fd > 0 && isatty(options->stdin_fd)) {
@@ -1231,8 +1231,8 @@ __noreturn static void do_attach(struct attach_payload *ap)
 
 		/* Change into our new LSM profile. */
 		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? true : false;
-		ret = ctx->lsm_ops->process_label_set_at(ctx->lsm_ops, lsm_fd, ctx->lsm_label, on_exec);
-		close_prot_errno_disarm(lsm_fd);
+		ret = ctx->lsm_ops->process_label_set_at(ctx->lsm_ops, fd_lsm, ctx->lsm_label, on_exec);
+		close_prot_errno_disarm(fd_lsm);
 		if (ret < 0)
 			goto on_error;
 
@@ -1606,7 +1606,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 			lxc_attach_terminal_close_pts(&terminal);
 
 		/* Tell grandparent the pid of the pid of the newly created child. */
-		if (!sync_wake_pid(ipc_sockets[1], ATTACH_SYNC_PID(pid))) {
+		if (!sync_wake_pid(ipc_sockets[1], pid)) {
 			/* If this really happens here, this is very unfortunate, since
 			 * the parent will not know the pid of the attached process and
 			 * will not be able to wait for it (and we won't either due to
@@ -1641,8 +1641,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		ret = cgroup_attach(conf, name, lxcpath, pid);
 		if (ret) {
 			call_cleaner(cgroup_exit) struct cgroup_ops *cgroup_ops = NULL;
-
-			if (ret != -ENOCGROUP2) {
+			if (ret != -ENOCGROUP2 && ret != -ENOSYS) {
 				SYSERROR("Failed to attach cgroup");
 				goto on_error;
 			}
@@ -1691,7 +1690,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 	TRACE("Told transient process to start initializing");
 
 	/* Get pid of attached process from transient process. */
-	if (!sync_wait_pid(ipc_sockets[0], ATTACH_SYNC_PID(&attached_pid)))
+	if (!sync_wait_pid(ipc_sockets[0], &attached_pid))
 		goto close_mainloop;
 
 	TRACE("Received pid %d of attached process in parent pid namespace", attached_pid);
@@ -1714,23 +1713,23 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 
 	/* Open LSM fd and send it to child. */
 	if (attach_lsm(options) && ctx->lsm_label) {
-		__do_close int labelfd = -EBADF;
+		__do_close int fd_lsm = -EBADF;
 		bool on_exec;
 
 		on_exec = options->attach_flags & LXC_ATTACH_LSM_EXEC ? true : false;
-		labelfd = ctx->lsm_ops->process_label_fd_get(ctx->lsm_ops, attached_pid, on_exec);
-		if (labelfd < 0)
+		fd_lsm = ctx->lsm_ops->process_label_fd_get(ctx->lsm_ops, attached_pid, on_exec);
+		if (fd_lsm < 0)
 			goto close_mainloop;
 
-		TRACE("Opened LSM label file descriptor %d", labelfd);
+		TRACE("Opened LSM label file descriptor %d", fd_lsm);
 
 		/* Send child fd of the LSM security module to write to. */
-		if (!sync_wake_fd(ipc_sockets[0], ATTACH_SYNC_LSM(labelfd))) {
+		if (!sync_wake_fd(ipc_sockets[0], fd_lsm)) {
 			SYSERROR("Failed to send lsm label fd");
 			goto close_mainloop;
 		}
 
-		TRACE("Sent LSM label file descriptor %d to child", labelfd);
+		TRACE("Sent LSM label file descriptor %d to child", fd_lsm);
 	}
 
 	if (conf->seccomp.seccomp) {
