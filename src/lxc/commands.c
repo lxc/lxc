@@ -1818,16 +1818,6 @@ static int lxc_cmd_rsp_send_enosys(int fd, int id)
 	return syserrno_set(-ENOSYS, "Invalid command id %d", id);
 }
 
-static int lxc_cmd_rsp_send_enosys(int fd, int id)
-{
-	struct lxc_cmd_rsp rsp = {
-		.ret = -ENOSYS,
-	};
-
-	__lxc_cmd_rsp_send(fd, &rsp);
-	return syserrno_set(-ENOSYS, "Invalid command id %d", id);
-}
-
 static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 			   struct lxc_handler *handler,
 			   struct lxc_epoll_descr *descr)
