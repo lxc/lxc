@@ -112,8 +112,10 @@ __hidden extern int lxc_cmd_stop(const char *name, const char *lxcpath);
  *                                                 via socket fd
  *                                     < MAX_STATE current container state
  */
-__hidden extern int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
-					     lxc_state_t states[MAX_STATE], int *state_client_fd);
+__hidden __access_r_nosize(3) extern int lxc_cmd_add_state_client(const char *name,
+								  const char *lxcpath,
+								  lxc_state_t states[static MAX_STATE],
+								  int *state_client_fd);
 __hidden extern int lxc_cmd_serve_state_clients(const char *name, const char *lxcpath,
 						lxc_state_t state);
 
