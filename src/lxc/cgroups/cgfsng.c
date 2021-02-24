@@ -3406,7 +3406,7 @@ static int __cgroup_attach_many(const struct lxc_conf *conf, const char *name,
 	if (idx == 0)
 		return syserrno_set(-ENOENT, "Failed to attach to cgroups");
 
-	TRACE("Attached to %s cgroup layout", cgroup_layout_name(ctx->cgroup_layout));
+	TRACE("Attached to %s cgroup layout", cgroup_layout_name(ctx->layout));
 	return 0;
 }
 
