@@ -140,7 +140,8 @@ __hidden extern int lxc_cmd_freeze(const char *name, const char *lxcpath, int ti
 __hidden extern int lxc_cmd_unfreeze(const char *name, const char *lxcpath, int timeout);
 __hidden extern int lxc_cmd_get_cgroup2_fd(const char *name, const char *lxcpath);
 __hidden extern int lxc_cmd_get_cgroup_fd(const char *name, const char *lxcpath,
-					  const char *controller, cgroupfs_type_magic_t type);
+					  size_t size_ret_fd,
+					  struct cgroup_fd *ret_fd);
 __hidden extern char *lxc_cmd_get_limit_cgroup_path(const char *name,
 						    const char *lxcpath,
 						    const char *subsystem);
@@ -148,8 +149,8 @@ __hidden extern int lxc_cmd_get_limit_cgroup2_fd(const char *name,
 						 const char *lxcpath);
 __hidden extern int lxc_cmd_get_limit_cgroup_fd(const char *name,
 						const char *lxcpath,
-						const char *controller,
-						cgroupfs_type_magic_t type);
+						size_t size_ret_fd,
+						struct cgroup_fd *ret_fd);
 __hidden extern int lxc_cmd_get_devpts_fd(const char *name, const char *lxcpath);
 
 #endif /* __commands_h */
