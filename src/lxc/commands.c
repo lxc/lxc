@@ -685,6 +685,7 @@ static int lxc_cmd_get_cgroup_ctx_callback(int fd, struct lxc_cmd_req *req,
 		return lxc_cmd_rsp_send_reap(fd, &rsp);
 	}
 
+	rsp.ret = 0;
 	rsp.data = &ctx_server;
 	rsp.datalen = min(sizeof(struct cgroup_ctx), (size_t)req->datalen);
 	return rsp_many_fds(fd, ctx_server.fd_len, ctx_server.fd, &rsp);
