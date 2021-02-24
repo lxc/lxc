@@ -52,19 +52,44 @@ static inline const char *cgroup_layout_name(cgroup_layout_t layout)
 }
 
 typedef enum {
-	LEGACY_HIERARCHY = CGROUP_SUPER_MAGIC,
+	LEGACY_HIERARCHY  = CGROUP_SUPER_MAGIC,
 	UNIFIED_HIERARCHY = CGROUP2_SUPER_MAGIC,
 } cgroupfs_type_magic_t;
+
+static inline const char *cgroup_hierarchy_name(cgroupfs_type_magic_t type)
+{
+	switch (type) {
+	case LEGACY_HIERARCHY:
+		return "legacy";
+	case UNIFIED_HIERARCHY:
+		return "unified";
+	}
+
+	return "unknown";
+}
 
 #define DEVICES_CONTROLLER (1U << 0)
 #define FREEZER_CONTROLLER (1U << 1)
 
+/*
+ * This is the maximum length of a cgroup controller in the kernel.
+ * This includes the \0 byte.
+ */
+#define MAX_CGROUP_ROOT_NAMELEN 64
+
 /* That's plenty of hierarchies. */
 #define CGROUP_CTX_MAX_FD 20
-// BUILD_BUG_ON(CGROUP_CTX_MAX_FD > KERNEL_SCM_MAX_FD);
+
+struct cgroup_fd {
+	__s32 layout;
+	__u32 utilities;
+	__s32 type;
+	__s32 fd;
+	char controller[MAX_CGROUP_ROOT_NAMELEN];
+} __attribute__((aligned(8)));
 
 struct cgroup_ctx {
-	__s32 cgroup_layout;
+	__s32 layout;
 	__u32 utilities;
 	__u32 fd_len;
 	__s32 fd[CGROUP_CTX_MAX_FD];
@@ -248,7 +273,7 @@ struct cgroup_ops {
 	bool (*monitor_delegate_controllers)(struct cgroup_ops *ops);
 	bool (*payload_delegate_controllers)(struct cgroup_ops *ops);
 	void (*finalize)(struct cgroup_ops *ops);
-	const char *(*get_limiting_cgroup)(struct cgroup_ops *ops, const char *controller);
+	const char *(*get_limit_cgroup)(struct cgroup_ops *ops, const char *controller);
 };
 
 __hidden extern struct cgroup_ops *cgroup_init(struct lxc_conf *conf);
@@ -259,9 +284,9 @@ define_cleanup_function(struct cgroup_ops *, cgroup_exit);
 __hidden extern int cgroup_attach(const struct lxc_conf *conf, const char *name,
 				  const char *lxcpath, pid_t pid);
 __hidden extern int cgroup_get(const char *name, const char *lxcpath,
-                               const char *filename, char *buf, size_t len);
+                               const char *key, char *buf, size_t len);
 __hidden extern int cgroup_set(const char *name, const char *lxcpath,
-                               const char *filename, const char *value);
+			       const char *key, const char *value);
 __hidden extern int cgroup_freeze(const char *name, const char *lxcpath, int timeout);
 __hidden extern int cgroup_unfreeze(const char *name, const char *lxcpath, int timeout);
 __hidden extern int __cgroup_unfreeze(int unified_fd, int timeout);
@@ -311,11 +336,13 @@ static inline int prepare_cgroup_ctx(struct cgroup_ops *ops,
 		return ret_errno(ENOENT);
 
 	ctx->fd_len = idx;
-	ctx->cgroup_layout = ops->cgroup_layout;
+	ctx->layout = ops->cgroup_layout;
 	if (ops->unified && ops->unified->dfd_con > 0)
 		ctx->utilities = ops->unified->utilities;
 
 	return 0;
 }
+__hidden extern int prepare_cgroup_fd(const struct cgroup_ops *ops,
+				      struct cgroup_fd *fd, bool limit);
 
 #endif /* __LXC_CGROUP_H */

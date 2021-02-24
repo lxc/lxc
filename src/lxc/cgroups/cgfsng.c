@@ -40,6 +40,7 @@
 #include "commands_utils.h"
 #include "conf.h"
 #include "config.h"
+#include "error_utils.h"
 #include "log.h"
 #include "macro.h"
 #include "mainloop.h"
@@ -103,7 +104,7 @@ static bool string_in_list(char **list, const char *entry)
 /* Given a handler's cgroup data, return the struct hierarchy for the controller
  * @c, or NULL if there is none.
  */
-static struct hierarchy *get_hierarchy(struct cgroup_ops *ops, const char *controller)
+static struct hierarchy *get_hierarchy(const struct cgroup_ops *ops, const char *controller)
 {
 	if (!ops->hierarchies)
 		return log_trace_errno(NULL, errno, "There are no useable cgroup controllers");
@@ -145,6 +146,38 @@ static struct hierarchy *get_hierarchy(struct cgroup_ops *ops, const char *contr
 		WARN("There is no empty unified cgroup hierarchy");
 
 	return ret_set_errno(NULL, ENOENT);
+}
+
+int prepare_cgroup_fd(const struct cgroup_ops *ops, struct cgroup_fd *fd, bool limit)
+{
+	int dfd;
+	const struct hierarchy *h;
+
+	h = get_hierarchy(ops, fd->controller);
+	if (!h)
+		return ret_errno(ENOENT);
+
+	/*
+	 * The client requested that the controller must be in a specific
+	 * cgroup version.
+	 */
+	if (fd->type != 0 && fd->type != h->fs_type)
+		return ret_errno(EINVAL);
+
+	if (limit)
+		dfd = h->dfd_con;
+	else
+		dfd = h->dfd_lim;
+	if (dfd < 0)
+		return ret_errno(EBADF);
+
+	fd->layout = ops->cgroup_layout;
+	fd->type = h->fs_type;
+	if (fd->type == UNIFIED_HIERARCHY)
+		fd->utilities = h->utilities;
+	fd->fd = dfd;
+
+	return 0;
 }
 
 /* Taken over modified from the kernel sources. */
@@ -2057,8 +2090,8 @@ __cgfsng_ops static const char *cgfsng_get_cgroup(struct cgroup_ops *ops,
     return cgfsng_get_cgroup_do(ops, controller, false);
 }
 
-__cgfsng_ops static const char *cgfsng_get_limiting_cgroup(struct cgroup_ops *ops,
-							   const char *controller)
+__cgfsng_ops static const char *cgfsng_get_limit_cgroup(struct cgroup_ops *ops,
+							const char *controller)
 {
     return cgfsng_get_cgroup_do(ops, controller, true);
 }
@@ -2369,7 +2402,7 @@ __cgfsng_ops static int cgfsng_get(struct cgroup_ops *ops, const char *filename,
 	if (p)
 		*p = '\0';
 
-	path = lxc_cmd_get_limiting_cgroup_path(name, lxcpath, controller);
+	path = lxc_cmd_get_limit_cgroup_path(name, lxcpath, controller);
 	/* not running */
 	if (!path)
 		return -1;
@@ -2531,7 +2564,7 @@ __cgfsng_ops static int cgfsng_set(struct cgroup_ops *ops,
 		return 0;
 	}
 
-	path = lxc_cmd_get_limiting_cgroup_path(name, lxcpath, controller);
+	path = lxc_cmd_get_limit_cgroup_path(name, lxcpath, controller);
 	/* not running */
 	if (!path)
 		return -1;
@@ -3336,7 +3369,7 @@ struct cgroup_ops *cgroup_ops_init(struct lxc_conf *conf)
 	cgfsng_ops->chown				= cgfsng_chown;
 	cgfsng_ops->mount 				= cgfsng_mount;
 	cgfsng_ops->devices_activate			= cgfsng_devices_activate;
-	cgfsng_ops->get_limiting_cgroup			= cgfsng_get_limiting_cgroup;
+	cgfsng_ops->get_limit_cgroup			= cgfsng_get_limit_cgroup;
 
 	cgfsng_ops->criu_escape				= cgfsng_criu_escape;
 	cgfsng_ops->criu_num_hierarchies		= cgfsng_criu_num_hierarchies;
@@ -3377,12 +3410,11 @@ static int __cgroup_attach_many(const struct lxc_conf *conf, const char *name,
 {
 	call_cleaner(put_cgroup_ctx) struct cgroup_ctx *ctx = &(struct cgroup_ctx){};
 	int ret;
-	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
 	size_t idx;
 	ssize_t pidstr_len;
+	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
 
-	ret = lxc_cmd_get_cgroup_ctx(name, lxcpath, NULL, true,
-				     sizeof(struct cgroup_ctx), ctx);
+	ret = lxc_cmd_get_cgroup_ctx(name, lxcpath, sizeof(struct cgroup_ctx), ctx);
 	if (ret < 0)
 		return ret_errno(ENOSYS);
 
@@ -3406,7 +3438,7 @@ static int __cgroup_attach_many(const struct lxc_conf *conf, const char *name,
 	if (idx == 0)
 		return syserrno_set(-ENOENT, "Failed to attach to cgroups");
 
-	TRACE("Attached to %s cgroup layout", cgroup_layout_name(ctx->cgroup_layout));
+	TRACE("Attached to %s cgroup layout", cgroup_layout_name(ctx->layout));
 	return 0;
 }
 
@@ -3420,7 +3452,7 @@ static int __cgroup_attach_unified(const struct lxc_conf *conf, const char *name
 
 	dfd_unified = lxc_cmd_get_cgroup2_fd(name, lxcpath);
 	if (dfd_unified < 0)
-		return ret_errno(ENOCGROUP2);
+		return ret_errno(ENOSYS);
 
 	return __unified_attach_fd(conf, dfd_unified, pid);
 }
@@ -3432,65 +3464,117 @@ int cgroup_attach(const struct lxc_conf *conf, const char *name,
 
 	ret = __cgroup_attach_many(conf, name, lxcpath, pid);
 	if (ret < 0) {
-		if (ret != -ENOSYS)
+		if (!ERRNO_IS_NOT_SUPPORTED(ret))
 			return ret;
 
 		ret = __cgroup_attach_unified(conf, name, lxcpath, pid);
+		if (ret < 0 && ERRNO_IS_NOT_SUPPORTED(ret))
+			return ret_errno(ENOSYS);
 	}
 
 	return ret;
 }
 
 /* Connects to command socket therefore isn't callable from command handler. */
-int cgroup_get(const char *name, const char *lxcpath,
-	       const char *filename, char *buf, size_t len)
+int cgroup_get(const char *name, const char *lxcpath, const char *key, char *buf, size_t len)
 {
-	__do_close int unified_fd = -EBADF;
-	ssize_t ret;
+	__do_close int dfd = -EBADF;
+	struct cgroup_fd fd = {
+		.fd = -EBADF,
+	};
+	size_t len_controller;
+	int ret;
 
-	if (is_empty_string(filename) || is_empty_string(name) ||
-	    is_empty_string(lxcpath))
+	if (is_empty_string(name) || is_empty_string(lxcpath) ||
+	    is_empty_string(key))
 		return ret_errno(EINVAL);
 
 	if ((buf && !len) || (len && !buf))
 		return ret_errno(EINVAL);
 
-	unified_fd = lxc_cmd_get_limiting_cgroup2_fd(name, lxcpath);
-	if (unified_fd < 0)
-		return ret_errno(ENOCGROUP2);
+	len_controller = strcspn(key, ".");
+	len_controller++; /* Don't forget the \0 byte. */
+	if (len_controller >= MAX_CGROUP_ROOT_NAMELEN)
+		return ret_errno(EINVAL);
+	(void)strlcpy(fd.controller, key, len_controller);
 
-	ret = lxc_read_try_buf_at(unified_fd, filename, buf, len);
-	if (ret < 0)
-		SYSERROR("Failed to read cgroup value");
+	ret = lxc_cmd_get_limit_cgroup_fd(name, lxcpath, sizeof(struct cgroup_fd), &fd);
+	if (ret < 0) {
+		if (!ERRNO_IS_NOT_SUPPORTED(ret))
+			return ret;
+
+		dfd = lxc_cmd_get_limit_cgroup2_fd(name, lxcpath);
+		if (dfd < 0) {
+			if (!ERRNO_IS_NOT_SUPPORTED(ret))
+				return ret;
+
+			return ret_errno(ENOSYS);
+		}
+		fd.type = UNIFIED_HIERARCHY;
+		fd.fd = move_fd(dfd);
+	}
+	dfd = move_fd(fd.fd);
+
+	TRACE("Reading %s from %s cgroup hierarchy", key, cgroup_hierarchy_name(fd.type));
+
+	if (fd.type == UNIFIED_HIERARCHY && strequal(fd.controller, "devices"))
+		return ret_errno(EOPNOTSUPP);
+	else
+		ret = lxc_read_try_buf_at(dfd, key, buf, len);
 
 	return ret;
 }
 
 /* Connects to command socket therefore isn't callable from command handler. */
-int cgroup_set(const char *name, const char *lxcpath,
-	       const char *filename, const char *value)
+int cgroup_set(const char *name, const char *lxcpath, const char *key, const char *value)
 {
-	__do_close int unified_fd = -EBADF;
-	ssize_t ret;
+	__do_close int dfd = -EBADF;
+	struct cgroup_fd fd = {
+		.fd = -EBADF,
+	};
+	size_t len_controller;
+	int ret;
 
-	if (is_empty_string(filename) || is_empty_string(value) ||
-	    is_empty_string(name) || is_empty_string(lxcpath))
+	if (is_empty_string(name) || is_empty_string(lxcpath) ||
+	    is_empty_string(key) || is_empty_string(value))
 		return ret_errno(EINVAL);
 
-	unified_fd = lxc_cmd_get_limiting_cgroup2_fd(name, lxcpath);
-	if (unified_fd < 0)
-		return ret_errno(ENOCGROUP2);
+	len_controller = strcspn(key, ".");
+	len_controller++; /* Don't forget the \0 byte. */
+	if (len_controller >= MAX_CGROUP_ROOT_NAMELEN)
+		return ret_errno(EINVAL);
+	(void)strlcpy(fd.controller, key, len_controller);
 
-	if (strnequal(filename, "devices.", STRLITERALLEN("devices."))) {
+	ret = lxc_cmd_get_limit_cgroup_fd(name, lxcpath, sizeof(struct cgroup_fd), &fd);
+	if (ret < 0) {
+		if (!ERRNO_IS_NOT_SUPPORTED(ret))
+			return ret;
+
+		dfd = lxc_cmd_get_limit_cgroup2_fd(name, lxcpath);
+		if (dfd < 0) {
+			if (!ERRNO_IS_NOT_SUPPORTED(ret))
+				return ret;
+
+			return ret_errno(ENOSYS);
+		}
+		fd.type = UNIFIED_HIERARCHY;
+		fd.fd = move_fd(dfd);
+	}
+	dfd = move_fd(fd.fd);
+
+	TRACE("Setting %s to %s in %s cgroup hierarchy", key, value, cgroup_hierarchy_name(fd.type));
+
+	if (fd.type == UNIFIED_HIERARCHY && strequal(fd.controller, "devices")) {
 		struct device_item device = {};
 
-		ret = device_cgroup_rule_parse(&device, filename, value);
+		ret = device_cgroup_rule_parse(&device, key, value);
 		if (ret < 0)
-			return log_error_errno(-1, EINVAL, "Failed to parse device string %s=%s", filename, value);
+			return log_error_errno(-1, EINVAL, "Failed to parse device string %s=%s",
+					       key, value);
 
 		ret = lxc_cmd_add_bpf_device_cgroup(name, lxcpath, &device);
 	} else {
-		ret = lxc_writeat(unified_fd, filename, value, strlen(value));
+		ret = lxc_writeat(dfd, key, value, strlen(value));
 	}
 
 	return ret;
@@ -3553,7 +3637,7 @@ int cgroup_freeze(const char *name, const char *lxcpath, int timeout)
 	if (is_empty_string(name) || is_empty_string(lxcpath))
 		return ret_errno(EINVAL);
 
-	unified_fd = lxc_cmd_get_limiting_cgroup2_fd(name, lxcpath);
+	unified_fd = lxc_cmd_get_limit_cgroup2_fd(name, lxcpath);
 	if (unified_fd < 0)
 		return ret_errno(ENOCGROUP2);
 
@@ -3578,7 +3662,7 @@ int cgroup_unfreeze(const char *name, const char *lxcpath, int timeout)
 	if (is_empty_string(name) || is_empty_string(lxcpath))
 		return ret_errno(EINVAL);
 
-	unified_fd = lxc_cmd_get_limiting_cgroup2_fd(name, lxcpath);
+	unified_fd = lxc_cmd_get_limit_cgroup2_fd(name, lxcpath);
 	if (unified_fd < 0)
 		return ret_errno(ENOCGROUP2);
 

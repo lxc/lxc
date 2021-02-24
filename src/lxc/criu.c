@@ -304,19 +304,19 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		 * the handler the restore task created.
 		 */
 		if (strequal(opts->action, "dump") || strequal(opts->action, "pre-dump")) {
-			cgroup_base_path = lxc_cmd_get_limiting_cgroup_path(opts->c->name, opts->c->config_path, controllers_list[0]);
+			cgroup_base_path = lxc_cmd_get_limit_cgroup_path(opts->c->name, opts->c->config_path, controllers_list[0]);
 			if (!cgroup_base_path)
-				return log_error_errno(-ENOENT, ENOENT, "Failed to retrieve limiting cgroup path for %s", controllers_list[0] ?: "(null)");
+				return log_error_errno(-ENOENT, ENOENT, "Failed to retrieve limit cgroup path for %s", controllers_list[0] ?: "(null)");
 		} else {
 			const char *p;
 
-			p = cgroup_ops->get_limiting_cgroup(cgroup_ops, controllers_list[0]);
+			p = cgroup_ops->get_limit_cgroup(cgroup_ops, controllers_list[0]);
 			if (!p)
-				return log_error_errno(-ENOENT, ENOENT, "Failed to retrieve limiting cgroup path for %s", controllers_list[0] ?: "(null)");
+				return log_error_errno(-ENOENT, ENOENT, "Failed to retrieve limit cgroup path for %s", controllers_list[0] ?: "(null)");
 
 			cgroup_base_path = strdup(p);
 			if (!cgroup_base_path)
-				return log_error_errno(-ENOMEM, ENOMEM, "Failed to duplicate limiting cgroup path");
+				return log_error_errno(-ENOMEM, ENOMEM, "Failed to duplicate limit cgroup path");
 		}
 
 		tmp = lxc_deslashify(cgroup_base_path);
@@ -393,9 +393,9 @@ static int exec_criu(struct cgroup_ops *cgroup_ops, struct lxc_conf *conf,
 		DECLARE_ARG("-t");
 		DECLARE_ARG(init_pid_str);
 
-		freezer_relative = lxc_cmd_get_limiting_cgroup_path(opts->c->name,
-								    opts->c->config_path,
-								    "freezer");
+		freezer_relative = lxc_cmd_get_limit_cgroup_path(opts->c->name,
+								 opts->c->config_path,
+								 "freezer");
 		if (!freezer_relative)
 			return log_error_errno(-ENOENT, ENOENT, "Failed getting freezer path");
 

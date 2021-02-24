@@ -1641,7 +1641,7 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		ret = cgroup_attach(conf, name, lxcpath, pid);
 		if (ret) {
 			call_cleaner(cgroup_exit) struct cgroup_ops *cgroup_ops = NULL;
-			if (ret != -ENOCGROUP2 && ret != -ENOSYS) {
+			if (!ERRNO_IS_NOT_SUPPORTED(ret)) {
 				SYSERROR("Failed to attach cgroup");
 				goto on_error;
 			}

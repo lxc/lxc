@@ -21,7 +21,7 @@
 #define LXC_CMD_REAP_CLIENT_FD 1
 
 typedef enum {
-	LXC_CMD_CONSOLE				= 0,
+	LXC_CMD_GET_TTY_FD			= 0,
 	LXC_CMD_TERMINAL_WINCH			= 1,
 	LXC_CMD_STOP				= 2,
 	LXC_CMD_GET_STATE			= 3,
@@ -40,11 +40,13 @@ typedef enum {
 	LXC_CMD_UNFREEZE			= 16,
 	LXC_CMD_GET_CGROUP2_FD			= 17,
 	LXC_CMD_GET_INIT_PIDFD 			= 18,
-	LXC_CMD_GET_LIMITING_CGROUP		= 19,
-	LXC_CMD_GET_LIMITING_CGROUP2_FD		= 20,
+	LXC_CMD_GET_LIMIT_CGROUP		= 19,
+	LXC_CMD_GET_LIMIT_CGROUP2_FD		= 20,
 	LXC_CMD_GET_DEVPTS_FD			= 21,
 	LXC_CMD_GET_SECCOMP_NOTIFY_FD		= 22,
 	LXC_CMD_GET_CGROUP_CTX			= 23,
+	LXC_CMD_GET_CGROUP_FD			= 24,
+	LXC_CMD_GET_LIMIT_CGROUP_FD		= 25,
 	LXC_CMD_MAX,
 } lxc_cmd_t;
 
@@ -65,7 +67,7 @@ struct lxc_cmd_rr {
 	struct lxc_cmd_rsp rsp;
 };
 
-struct lxc_cmd_console_rsp_data {
+struct lxc_cmd_tty_rsp_data {
 	int ptxfd;
 	int ttynum;
 };
@@ -79,7 +81,8 @@ struct lxc_cmd_console_log {
 };
 
 __hidden extern int lxc_cmd_terminal_winch(const char *name, const char *lxcpath);
-__hidden extern int lxc_cmd_console(const char *name, int *ttynum, int *fd, const char *lxcpath);
+__hidden extern int lxc_cmd_get_tty_fd(const char *name, int *ttynum, int *fd,
+				       const char *lxcpath);
 /*
  * Get the 'real' cgroup path (as seen in /proc/self/cgroup) for a container
  * for a particular subsystem
@@ -125,7 +128,6 @@ __hidden extern int lxc_cmd_console_log(const char *name, const char *lxcpath,
 					struct lxc_console_log *log);
 __hidden extern int lxc_cmd_get_seccomp_notify_fd(const char *name, const char *lxcpath);
 __hidden extern int lxc_cmd_get_cgroup_ctx(const char *name, const char *lxcpath,
-					   const char *controller, bool batch,
 					   size_t size_ret_ctx,
 					   struct cgroup_ctx *ret_ctx);
 __hidden extern int lxc_cmd_seccomp_notify_add_listener(const char *name, const char *lxcpath, int fd,
@@ -138,9 +140,18 @@ __hidden extern int lxc_cmd_add_bpf_device_cgroup(const char *name, const char *
 __hidden extern int lxc_cmd_freeze(const char *name, const char *lxcpath, int timeout);
 __hidden extern int lxc_cmd_unfreeze(const char *name, const char *lxcpath, int timeout);
 __hidden extern int lxc_cmd_get_cgroup2_fd(const char *name, const char *lxcpath);
-__hidden extern char *lxc_cmd_get_limiting_cgroup_path(const char *name, const char *lxcpath,
-						       const char *subsystem);
-__hidden extern int lxc_cmd_get_limiting_cgroup2_fd(const char *name, const char *lxcpath);
+__hidden extern int lxc_cmd_get_cgroup_fd(const char *name, const char *lxcpath,
+					  size_t size_ret_fd,
+					  struct cgroup_fd *ret_fd);
+__hidden extern char *lxc_cmd_get_limit_cgroup_path(const char *name,
+						    const char *lxcpath,
+						    const char *subsystem);
+__hidden extern int lxc_cmd_get_limit_cgroup2_fd(const char *name,
+						 const char *lxcpath);
+__hidden extern int lxc_cmd_get_limit_cgroup_fd(const char *name,
+						const char *lxcpath,
+						size_t size_ret_fd,
+						struct cgroup_fd *ret_fd);
 __hidden extern int lxc_cmd_get_devpts_fd(const char *name, const char *lxcpath);
 
 #endif /* __commands_h */

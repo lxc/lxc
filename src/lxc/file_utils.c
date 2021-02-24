@@ -127,7 +127,7 @@ ssize_t lxc_read_try_buf_at(int dfd, const char *path, void *buf, size_t count)
 	__do_close int fd = -EBADF;
 	ssize_t ret;
 
-	fd = open_at(dfd, path, PROTECT_OPEN_W, PROTECT_LOOKUP_BENEATH, 0);
+	fd = open_at(dfd, path, PROTECT_OPEN, PROTECT_LOOKUP_BENEATH, 0);
 	if (fd < 0)
 		return -errno;
 
