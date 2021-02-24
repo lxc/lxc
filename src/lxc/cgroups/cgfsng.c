@@ -337,7 +337,7 @@ static char **list_add_controllers(char *controllers)
 	__do_free_string_list char **list = NULL;
 	char *it;
 
-	lxc_iterate_parts(it, controllers, " \t\n") {
+	lxc_iterate_parts(it, controllers, ", \t\n") {
 		int ret;
 
 		ret = list_add_string(&list, it);
