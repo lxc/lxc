@@ -376,9 +376,9 @@ static inline int rsp_one_fd(int fd, int fd_send, struct lxc_cmd_rsp *rsp)
 	return LXC_CMD_REAP_CLIENT_FD;
 }
 
-static inline int rsp_many_fds(int fd, __u32 fds_len,
-			       const __s32 fds[KERNEL_SCM_MAX_FD],
-			       struct lxc_cmd_rsp *rsp)
+__access_r(3, 2) static int rsp_many_fds(int fd, __u32 fds_len,
+					 const __s32 fds[static 2],
+					 struct lxc_cmd_rsp *rsp)
 {
 	ssize_t ret;
 
