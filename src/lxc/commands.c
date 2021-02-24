@@ -180,7 +180,7 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 
 		rspdata = malloc(sizeof(*rspdata));
 		if (!rspdata)
-			return syserrno_set(-ENOMEM, "Failed to receive response for command \"%s\"", cur_cmdstr);
+			return syserrno_set(fret ?: -ENOMEM, "Failed to receive response for command \"%s\"", cur_cmdstr);
 
 		rspdata->ptxfd = move_fd(fds->fd[0]);
 		rspdata->ttynum = PTR_TO_INT(rsp->data);
@@ -215,7 +215,7 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 
 	if ((rsp->datalen > LXC_CMD_DATA_MAX) &&
 	    (cur_cmd != LXC_CMD_CONSOLE_LOG))
-		return syserrno_set(-E2BIG, "Response data for command \"%s\" is too long: %d bytes > %d",
+		return syserrno_set(fret ?: -E2BIG, "Response data for command \"%s\" is too long: %d bytes > %d",
 				    cur_cmdstr, rsp->datalen, LXC_CMD_DATA_MAX);
 
 	if (cur_cmd == LXC_CMD_CONSOLE_LOG)
@@ -223,7 +223,7 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 	else if (cur_cmd != LXC_CMD_GET_CGROUP_CTX)
 		rsp->data = malloc(rsp->datalen);
 	if (!rsp->data)
-		return syserrno_set(-ENOMEM, "Failed to allocate response buffer for command \"%s\"", cur_cmdstr);
+		return syserrno_set(fret ?: -ENOMEM, "Failed to allocate response buffer for command \"%s\"", cur_cmdstr);
 
 	ret = lxc_recv_nointr(sock, rsp->data, rsp->datalen, 0);
 	if (ret != rsp->datalen)
