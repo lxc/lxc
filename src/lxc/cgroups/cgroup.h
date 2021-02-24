@@ -64,7 +64,7 @@ typedef enum {
 // BUILD_BUG_ON(CGROUP_CTX_MAX_FD > KERNEL_SCM_MAX_FD);
 
 struct cgroup_ctx {
-	__s32 cgroup_layout;
+	__s32 layout;
 	__u32 utilities;
 	__u32 fd_len;
 	__s32 fd[CGROUP_CTX_MAX_FD];
@@ -311,7 +311,7 @@ static inline int prepare_cgroup_ctx(struct cgroup_ops *ops,
 		return ret_errno(ENOENT);
 
 	ctx->fd_len = idx;
-	ctx->cgroup_layout = ops->cgroup_layout;
+	ctx->layout = ops->cgroup_layout;
 	if (ops->unified && ops->unified->dfd_con > 0)
 		ctx->utilities = ops->unified->utilities;
 
