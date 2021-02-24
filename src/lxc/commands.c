@@ -1280,7 +1280,7 @@ static int lxc_cmd_get_lxcpath_callback(int fd, struct lxc_cmd_req *req,
 }
 
 int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
-			     lxc_state_t states[MAX_STATE],
+			     lxc_state_t states[static MAX_STATE],
 			     int *state_client_fd)
 {
 	__do_close int clientfd = -EBADF;

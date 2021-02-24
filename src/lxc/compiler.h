@@ -60,6 +60,7 @@
 #define __cgfsng_ops
 
 /* access attribute */
+#define __access_r_nosize(x)
 #define __access_r(x, y)
 #define __access_w(x, y)
 #define __access_rw(x, y)
@@ -68,6 +69,9 @@
 #if __has_attribute(access)
 #undef __access_r
 #define __access_r(x, y) __attribute__((access(read_only, x, y)))
+
+#undef __access_r_nosize
+#define __access_r_nosize(x) __attribute__((access(read_only, x)))
 
 #undef __access_w
 #define __access_w(x, y) __attribute__((access(write_only, x, y)))
