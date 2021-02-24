@@ -40,8 +40,8 @@ typedef enum {
 	LXC_CMD_UNFREEZE			= 16,
 	LXC_CMD_GET_CGROUP2_FD			= 17,
 	LXC_CMD_GET_INIT_PIDFD 			= 18,
-	LXC_CMD_GET_LIMITING_CGROUP		= 19,
-	LXC_CMD_GET_LIMITING_CGROUP2_FD		= 20,
+	LXC_CMD_GET_LIMIT_CGROUP		= 19,
+	LXC_CMD_GET_LIMIT_CGROUP2_FD		= 20,
 	LXC_CMD_GET_DEVPTS_FD			= 21,
 	LXC_CMD_GET_SECCOMP_NOTIFY_FD		= 22,
 	LXC_CMD_GET_CGROUP_CTX			= 23,
@@ -137,9 +137,11 @@ __hidden extern int lxc_cmd_add_bpf_device_cgroup(const char *name, const char *
 __hidden extern int lxc_cmd_freeze(const char *name, const char *lxcpath, int timeout);
 __hidden extern int lxc_cmd_unfreeze(const char *name, const char *lxcpath, int timeout);
 __hidden extern int lxc_cmd_get_cgroup2_fd(const char *name, const char *lxcpath);
-__hidden extern char *lxc_cmd_get_limiting_cgroup_path(const char *name, const char *lxcpath,
-						       const char *subsystem);
-__hidden extern int lxc_cmd_get_limiting_cgroup2_fd(const char *name, const char *lxcpath);
+__hidden extern char *lxc_cmd_get_limit_cgroup_path(const char *name,
+						    const char *lxcpath,
+						    const char *subsystem);
+__hidden extern int lxc_cmd_get_limit_cgroup2_fd(const char *name,
+						 const char *lxcpath);
 __hidden extern int lxc_cmd_get_devpts_fd(const char *name, const char *lxcpath);
 
 #endif /* __commands_h */

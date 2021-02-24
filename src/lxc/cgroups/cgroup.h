@@ -248,7 +248,7 @@ struct cgroup_ops {
 	bool (*monitor_delegate_controllers)(struct cgroup_ops *ops);
 	bool (*payload_delegate_controllers)(struct cgroup_ops *ops);
 	void (*finalize)(struct cgroup_ops *ops);
-	const char *(*get_limiting_cgroup)(struct cgroup_ops *ops, const char *controller);
+	const char *(*get_limit_cgroup)(struct cgroup_ops *ops, const char *controller);
 };
 
 __hidden extern struct cgroup_ops *cgroup_init(struct lxc_conf *conf);
