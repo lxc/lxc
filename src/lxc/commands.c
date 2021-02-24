@@ -89,6 +89,8 @@ static const char *lxc_cmd_str(lxc_cmd_t cmd)
 		[LXC_CMD_GET_DEVPTS_FD]			= "get_devpts_fd",
 		[LXC_CMD_GET_SECCOMP_NOTIFY_FD]		= "get_seccomp_notify_fd",
 		[LXC_CMD_GET_CGROUP_CTX]		= "get_cgroup_ctx",
+		[LXC_CMD_GET_CGROUP_FD]			= "get_cgroup_fd",
+		[LXC_CMD_GET_LIMIT_CGROUP_FD]		= "get_limit_cgroup_fd",
 	};
 
 	if (cmd >= LXC_CMD_MAX)
@@ -138,6 +140,10 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 
 	cur_cmdstr = lxc_cmd_str(cur_cmd);
 	switch (cur_cmd) {
+	case LXC_CMD_GET_CGROUP_FD:
+		__fallthrough;
+	case LXC_CMD_GET_LIMIT_CGROUP_FD:
+		__fallthrough;
 	case LXC_CMD_GET_CGROUP2_FD:
 		__fallthrough;
 	case LXC_CMD_GET_LIMIT_CGROUP2_FD:
@@ -188,6 +194,10 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 	}
 
 	switch (cur_cmd) {
+	case LXC_CMD_GET_CGROUP_FD:
+		__fallthrough;
+	case LXC_CMD_GET_LIMIT_CGROUP_FD:
+		__fallthrough;
 	case LXC_CMD_GET_CGROUP2_FD:
 		__fallthrough;
 	case LXC_CMD_GET_LIMIT_CGROUP2_FD:
@@ -1565,6 +1575,94 @@ static int lxc_cmd_unfreeze_callback(int fd, struct lxc_cmd_req *req,
 	return lxc_cmd_rsp_send_reap(fd, &rsp);
 }
 
+int lxc_cmd_get_cgroup_fd(const char *name, const char *lxcpath,
+			  const char *controller, cgroupfs_type_magic_t type)
+{
+	int ret, stopped;
+	struct lxc_cmd_rr cmd = {
+		.req = {
+			.cmd = LXC_CMD_GET_CGROUP_FD,
+		},
+		.rsp = {
+			ret = -ENOSYS,
+		},
+	};
+
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
+	if (ret < 0)
+		return -1;
+
+	if (cmd.rsp.ret < 0)
+		return syserrno_set(cmd.rsp.ret, "Failed to receive cgroup fd");
+
+	return PTR_TO_INT(cmd.rsp.data);
+}
+
+int lxc_cmd_get_limit_cgroup_fd(const char *name, const char *lxcpath,
+				const char *controller,
+				cgroupfs_type_magic_t type)
+{
+	int ret, stopped;
+	struct lxc_cmd_rr cmd = {
+		.req = {
+			.cmd = LXC_CMD_GET_LIMIT_CGROUP_FD,
+		},
+		.rsp = {
+			ret = -ENOSYS,
+		},
+	};
+
+	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
+	if (ret < 0)
+		return -1;
+
+	if (cmd.rsp.ret < 0)
+		return syserrno_set(cmd.rsp.ret, "Failed to receive cgroup fd");
+
+	return PTR_TO_INT(cmd.rsp.data);
+}
+
+static int __lxc_cmd_get_cgroup_fd_callback(int fd, struct lxc_cmd_req *req,
+					    struct lxc_handler *handler,
+					    struct lxc_epoll_descr *descr,
+					    bool limiting_cgroup)
+{
+	struct lxc_cmd_rsp rsp = {
+		.ret = -EINVAL,
+	};
+	struct cgroup_ops *ops = handler->cgroup_ops;
+	int send_fd;
+
+	if (!pure_unified_layout(ops) || !ops->unified)
+		return lxc_cmd_rsp_send_reap(fd, &rsp);
+
+	/* FIXME */
+	send_fd = limiting_cgroup ? ops->unified->dfd_lim
+				  : ops->unified->dfd_con;
+
+	if (send_fd < 0) {
+		rsp.ret = -EBADF;
+		return lxc_cmd_rsp_send_reap(fd, &rsp);
+	}
+
+	rsp.ret = 0;
+	return rsp_one_fd(fd, send_fd, &rsp);
+}
+
+static int lxc_cmd_get_cgroup_fd_callback(int fd, struct lxc_cmd_req *req,
+					  struct lxc_handler *handler,
+					  struct lxc_epoll_descr *descr)
+{
+	return __lxc_cmd_get_cgroup_fd_callback(fd, req, handler, descr, false);
+}
+
+static int lxc_cmd_get_limit_cgroup_fd_callback(int fd, struct lxc_cmd_req *req,
+						struct lxc_handler *handler,
+						struct lxc_epoll_descr *descr)
+{
+	return __lxc_cmd_get_cgroup_fd_callback(fd, req, handler, descr, true);
+}
+
 int lxc_cmd_get_cgroup2_fd(const char *name, const char *lxcpath)
 {
 	int ret, stopped;
@@ -1693,6 +1791,8 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 		[LXC_CMD_GET_DEVPTS_FD]			= lxc_cmd_get_devpts_fd_callback,
 		[LXC_CMD_GET_SECCOMP_NOTIFY_FD]		= lxc_cmd_get_seccomp_notify_fd_callback,
 		[LXC_CMD_GET_CGROUP_CTX]		= lxc_cmd_get_cgroup_ctx_callback,
+		[LXC_CMD_GET_CGROUP_FD]			= lxc_cmd_get_cgroup_fd_callback,
+		[LXC_CMD_GET_LIMIT_CGROUP_FD]		= lxc_cmd_get_limit_cgroup_fd_callback,
 	};
 
 	if (req->cmd >= LXC_CMD_MAX)
