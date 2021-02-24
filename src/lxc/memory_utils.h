@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include "macro.h"
+#include "error_utils.h"
 
 #define define_cleanup_function(type, cleaner)           \
 	static inline void cleaner##_function(type *ptr) \

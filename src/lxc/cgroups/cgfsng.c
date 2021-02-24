@@ -40,6 +40,7 @@
 #include "commands_utils.h"
 #include "conf.h"
 #include "config.h"
+#include "error_utils.h"
 #include "log.h"
 #include "macro.h"
 #include "mainloop.h"

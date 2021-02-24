@@ -18,6 +18,7 @@ noinst_HEADERS = api_extensions.h \
 		 confile_utils.h \
 		 criu.h \
 		 error.h \
+		 error_utils.h \
 		 file_utils.h \
 		 ../include/netns_ifaddrs.h \
 		 initutils.h \
@@ -117,6 +118,7 @@ liblxc_la_SOURCES = af_unix.c af_unix.h \
 		    criu.c criu.h \
 		    error.c error.h \
 		    execute.c \
+		    error_utils.h \
 		    freezer.c \
 		    file_utils.c file_utils.h \
 		    ../include/netns_ifaddrs.c ../include/netns_ifaddrs.h \
