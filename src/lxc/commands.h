@@ -127,8 +127,7 @@ __hidden extern int lxc_cmd_get_seccomp_notify_fd(const char *name, const char *
 __hidden extern int lxc_cmd_get_cgroup_ctx(const char *name, const char *lxcpath,
 					   const char *controller, bool batch,
 					   size_t size_ret_ctx,
-					   struct cgroup_ctx *ret_ctx)
-    __access_r(6, 5);
+					   struct cgroup_ctx *ret_ctx);
 __hidden extern int lxc_cmd_seccomp_notify_add_listener(const char *name, const char *lxcpath, int fd,
 							/* unused */ unsigned int command,
 							/* unused */ unsigned int flags);
