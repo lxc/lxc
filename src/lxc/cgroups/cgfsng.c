@@ -3460,7 +3460,7 @@ int cgroup_get(const char *name, const char *lxcpath,
 
 	unified_fd = lxc_cmd_get_limiting_cgroup2_fd(name, lxcpath);
 	if (unified_fd < 0)
-		return ret_errno(ENOCGROUP2);
+		return ret_errno(ENOSYS);
 
 	ret = lxc_read_try_buf_at(unified_fd, filename, buf, len);
 	if (ret < 0)
@@ -3482,7 +3482,7 @@ int cgroup_set(const char *name, const char *lxcpath,
 
 	unified_fd = lxc_cmd_get_limiting_cgroup2_fd(name, lxcpath);
 	if (unified_fd < 0)
-		return ret_errno(ENOCGROUP2);
+		return ret_errno(ENOSYS);
 
 	if (strnequal(filename, "devices.", STRLITERALLEN("devices."))) {
 		struct device_item device = {};
