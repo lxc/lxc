@@ -1657,6 +1657,13 @@ int lxc_attach(struct lxc_container *container, lxc_attach_exec_t exec_function,
 		TRACE("Moved transient process %d into container cgroup", pid);
 	}
 
+	/*
+	 * Close sensitive file descriptors we don't need anymore. Even if
+	 * we're the parent.
+	 */
+	if (!attach_context_security_barrier(ctx))
+		goto on_error;
+
 	/* Setup /proc limits */
 	if (!lxc_list_empty(&conf->procs)) {
 		ret = setup_proc_filesystem(&conf->procs, pid);
