@@ -2058,8 +2058,8 @@ __cgfsng_ops static const char *cgfsng_get_cgroup(struct cgroup_ops *ops,
     return cgfsng_get_cgroup_do(ops, controller, false);
 }
 
-__cgfsng_ops static const char *cgfsng_get_limiting_cgroup(struct cgroup_ops *ops,
-							   const char *controller)
+__cgfsng_ops static const char *cgfsng_get_limit_cgroup(struct cgroup_ops *ops,
+							const char *controller)
 {
     return cgfsng_get_cgroup_do(ops, controller, true);
 }
@@ -2370,7 +2370,7 @@ __cgfsng_ops static int cgfsng_get(struct cgroup_ops *ops, const char *filename,
 	if (p)
 		*p = '\0';
 
-	path = lxc_cmd_get_limiting_cgroup_path(name, lxcpath, controller);
+	path = lxc_cmd_get_limit_cgroup_path(name, lxcpath, controller);
 	/* not running */
 	if (!path)
 		return -1;
@@ -2532,7 +2532,7 @@ __cgfsng_ops static int cgfsng_set(struct cgroup_ops *ops,
 		return 0;
 	}
 
-	path = lxc_cmd_get_limiting_cgroup_path(name, lxcpath, controller);
+	path = lxc_cmd_get_limit_cgroup_path(name, lxcpath, controller);
 	/* not running */
 	if (!path)
 		return -1;
@@ -3337,7 +3337,7 @@ struct cgroup_ops *cgroup_ops_init(struct lxc_conf *conf)
 	cgfsng_ops->chown				= cgfsng_chown;
 	cgfsng_ops->mount 				= cgfsng_mount;
 	cgfsng_ops->devices_activate			= cgfsng_devices_activate;
-	cgfsng_ops->get_limiting_cgroup			= cgfsng_get_limiting_cgroup;
+	cgfsng_ops->get_limit_cgroup			= cgfsng_get_limit_cgroup;
 
 	cgfsng_ops->criu_escape				= cgfsng_criu_escape;
 	cgfsng_ops->criu_num_hierarchies		= cgfsng_criu_num_hierarchies;
@@ -3457,7 +3457,7 @@ int cgroup_get(const char *name, const char *lxcpath,
 	if ((buf && !len) || (len && !buf))
 		return ret_errno(EINVAL);
 
-	unified_fd = lxc_cmd_get_limiting_cgroup2_fd(name, lxcpath);
+	unified_fd = lxc_cmd_get_limit_cgroup2_fd(name, lxcpath);
 	if (unified_fd < 0)
 		return ret_errno(ENOSYS);
 
@@ -3479,7 +3479,7 @@ int cgroup_set(const char *name, const char *lxcpath,
 	    is_empty_string(name) || is_empty_string(lxcpath))
 		return ret_errno(EINVAL);
 
-	unified_fd = lxc_cmd_get_limiting_cgroup2_fd(name, lxcpath);
+	unified_fd = lxc_cmd_get_limit_cgroup2_fd(name, lxcpath);
 	if (unified_fd < 0)
 		return ret_errno(ENOSYS);
 
@@ -3555,7 +3555,7 @@ int cgroup_freeze(const char *name, const char *lxcpath, int timeout)
 	if (is_empty_string(name) || is_empty_string(lxcpath))
 		return ret_errno(EINVAL);
 
-	unified_fd = lxc_cmd_get_limiting_cgroup2_fd(name, lxcpath);
+	unified_fd = lxc_cmd_get_limit_cgroup2_fd(name, lxcpath);
 	if (unified_fd < 0)
 		return ret_errno(ENOCGROUP2);
 
@@ -3580,7 +3580,7 @@ int cgroup_unfreeze(const char *name, const char *lxcpath, int timeout)
 	if (is_empty_string(name) || is_empty_string(lxcpath))
 		return ret_errno(EINVAL);
 
-	unified_fd = lxc_cmd_get_limiting_cgroup2_fd(name, lxcpath);
+	unified_fd = lxc_cmd_get_limit_cgroup2_fd(name, lxcpath);
 	if (unified_fd < 0)
 		return ret_errno(ENOCGROUP2);
 
