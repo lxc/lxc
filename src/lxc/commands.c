@@ -298,11 +298,17 @@ static inline int lxc_cmd_rsp_send_keep(int fd, struct lxc_cmd_rsp *rsp)
 
 static inline int rsp_one_fd(int fd, int fd_send, struct lxc_cmd_rsp *rsp)
 {
-	int ret;
+	ssize_t ret;
 
 	ret = lxc_abstract_unix_send_fds(fd, &fd_send, 1, rsp, sizeof(*rsp));
 	if (ret < 0)
 		return ret;
+
+	if (rsp->data && rsp->datalen > 0) {
+		ret = lxc_send_nointr(fd, rsp->data, rsp->datalen, MSG_NOSIGNAL);
+		if (ret < 0 || ret != (ssize_t)rsp->datalen)
+			return syswarn(-errno, "Failed to send command response %zd", ret);
+	}
 
 	return LXC_CMD_REAP_CLIENT_FD;
 }
