@@ -3419,7 +3419,7 @@ static int __cgroup_attach_unified(const struct lxc_conf *conf, const char *name
 
 	dfd_unified = lxc_cmd_get_cgroup2_fd(name, lxcpath);
 	if (dfd_unified < 0)
-		return ret_errno(ENOCGROUP2);
+		return ret_errno(ENOSYS);
 
 	return __unified_attach_fd(conf, dfd_unified, pid);
 }
@@ -3431,10 +3431,12 @@ int cgroup_attach(const struct lxc_conf *conf, const char *name,
 
 	ret = __cgroup_attach_many(conf, name, lxcpath, pid);
 	if (ret < 0) {
-		if (ret != -ENOSYS)
+		if (!ERRNO_IS_NOT_SUPPORTED(ret))
 			return ret;
 
 		ret = __cgroup_attach_unified(conf, name, lxcpath, pid);
+		if (ret < 0 && ERRNO_IS_NOT_SUPPORTED(ret))
+			return ret_errno(ENOSYS);
 	}
 
 	return ret;
