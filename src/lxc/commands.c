@@ -65,7 +65,7 @@ lxc_log_define(commands, lxc);
 static const char *lxc_cmd_str(lxc_cmd_t cmd)
 {
 	static const char *const cmdname[LXC_CMD_MAX] = {
-		[LXC_CMD_CONSOLE]			= "console",
+		[LXC_CMD_GET_TTY_FD]			= "get_tty_fd",
 		[LXC_CMD_TERMINAL_WINCH]      		= "terminal_winch",
 		[LXC_CMD_STOP]                		= "stop",
 		[LXC_CMD_GET_STATE]           		= "get_state",
@@ -131,14 +131,13 @@ static int __transfer_cgroup_fd(struct unix_fds *fds, struct cgroup_fd *fd)
  * the response data is <= a void * worth of data, it will be
  * stored directly in data and datalen will be 0.
  *
- * As a special case, the response for LXC_CMD_CONSOLE is created
- * here as it contains an fd for the ptx pty passed through the
- * unix socket.
+ * As a special case, the response for LXC_CMD_GET_TTY_FD is created here as
+ * it contains an fd for the ptx pty passed through the unix socket.
  */
 static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 {
 	__do_free void *__private_ptr = NULL;
-	struct lxc_cmd_console_rsp_data *data_console = NULL;
+	struct lxc_cmd_tty_rsp_data *data_console = NULL;
 	call_cleaner(put_unix_fds) struct unix_fds *fds = &(struct unix_fds){};
 	struct lxc_cmd_rsp *rsp = &cmd->rsp;
 	int cur_cmd = cmd->req.cmd, fret = 0;
@@ -165,7 +164,7 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		__fallthrough;
 	case LXC_CMD_GET_DEVPTS_FD:
 		__fallthrough;
-	case LXC_CMD_CONSOLE:
+	case LXC_CMD_GET_TTY_FD:
 		fds->fd_count_max = 1;
 		break;
 	case LXC_CMD_GET_CGROUP_CTX:
@@ -238,7 +237,7 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		/* Don't pointlessly allocate. */
 		rsp->data = (void *)cmd->req.data;
 		break;
-	case LXC_CMD_CONSOLE:			/* data */
+	case LXC_CMD_GET_TTY_FD:			/* data */
 		/*
 		 * recv() returns 0 bytes when a tty cannot be allocated,
 		 * rsp->ret is < 0 when the peer permission check failed
@@ -246,10 +245,10 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		if (ret == 0 || rsp->ret < 0)
 			return 0;
 
-		__private_ptr = malloc(sizeof(struct lxc_cmd_console_rsp_data));
+		__private_ptr = malloc(sizeof(struct lxc_cmd_tty_rsp_data));
 		if (!__private_ptr)
 			return syserrno_set(fret ?: -ENOMEM, "Failed to receive response for command \"%s\"", cur_cmdstr);
-		data_console = (struct lxc_cmd_console_rsp_data *)__private_ptr;
+		data_console = (struct lxc_cmd_tty_rsp_data *)__private_ptr;
 		data_console->ptxfd = move_fd(fds->fd[0]);
 		data_console->ttynum = PTR_TO_INT(rsp->data);
 
@@ -271,9 +270,9 @@ static int lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 	if (rsp->datalen == 0) {
 		DEBUG("Command \"%s\" requested no additional data", cur_cmdstr);
 		/*
-		 * Note that LXC_CMD_CONSOLE historically allocates memory to
-		 * return info to the caller. That's why we jump to no_data so
-		 * we ensure that the allocated data is wiped if we return
+		 * Note that LXC_CMD_GET_TTY_FD historically allocates memory
+		 * to return info to the caller. That's why we jump to no_data
+		 * so we ensure that the allocated data is wiped if we return
 		 * early here.
 		 */
 		goto no_data;
@@ -449,13 +448,13 @@ static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
  *
  * Returns the size of the response message on success, < 0 on failure
  *
- * Note that there is a special case for LXC_CMD_CONSOLE. For this command
- * the fd cannot be closed because it is used as a placeholder to indicate
- * that a particular tty slot is in use. The fd is also used as a signal to
- * the container that when the caller dies or closes the fd, the container
- * will notice the fd on its side of the socket in its mainloop select and
- * then free the slot with lxc_cmd_fd_cleanup(). The socket fd will be
- * returned in the cmd response structure.
+ * Note that there is a special case for LXC_CMD_GET_TTY_FD. For this command
+ * the fd cannot be closed because it is used as a placeholder to indicate that
+ * a particular tty slot is in use. The fd is also used as a signal to the
+ * container that when the caller dies or closes the fd, the container will
+ * notice the fd on its side of the socket in its mainloop select and then free
+ * the slot with lxc_cmd_fd_cleanup(). The socket fd will be returned in the
+ * cmd response structure.
  */
 static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 		   const char *lxcpath, const char *hashed_sock_name)
@@ -464,7 +463,7 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 	int ret = -1;
 	bool stay_connected = false;
 
-	if (cmd->req.cmd == LXC_CMD_CONSOLE ||
+	if (cmd->req.cmd == LXC_CMD_GET_TTY_FD ||
 	    cmd->req.cmd == LXC_CMD_ADD_STATE_CLIENT)
 		stay_connected = true;
 
@@ -1133,7 +1132,7 @@ static int lxc_cmd_terminal_winch_callback(int fd, struct lxc_cmd_req *req,
 }
 
 /*
- * lxc_cmd_console: Open an fd to a tty in the container
+ * lxc_cmd_get_tty_fd: Open an fd to a tty in the container
  *
  * @name           : name of container to connect to
  * @ttynum         : in:  the tty to open or -1 for next available
@@ -1143,13 +1142,13 @@ static int lxc_cmd_terminal_winch_callback(int fd, struct lxc_cmd_req *req,
  *
  * Returns fd holding tty allocated on success, < 0 on failure
  */
-int lxc_cmd_console(const char *name, int *ttynum, int *fd, const char *lxcpath)
+int lxc_cmd_get_tty_fd(const char *name, int *ttynum, int *fd, const char *lxcpath)
 {
-	__do_free struct lxc_cmd_console_rsp_data *rspdata = NULL;
+	__do_free struct lxc_cmd_tty_rsp_data *rspdata = NULL;
 	int ret, stopped;
 	struct lxc_cmd_rr cmd = {
 		.req = {
-			.cmd	= LXC_CMD_CONSOLE,
+			.cmd	= LXC_CMD_GET_TTY_FD,
 			.data	= INT_TO_PTR(*ttynum),
 		},
 	};
@@ -1175,9 +1174,9 @@ int lxc_cmd_console(const char *name, int *ttynum, int *fd, const char *lxcpath)
 	return log_info(ret, "Alloced fd %d for tty %d via socket %d", *fd, rspdata->ttynum, ret);
 }
 
-static int lxc_cmd_console_callback(int fd, struct lxc_cmd_req *req,
-				    struct lxc_handler *handler,
-				    struct lxc_epoll_descr *descr)
+static int lxc_cmd_get_tty_fd_callback(int fd, struct lxc_cmd_req *req,
+				       struct lxc_handler *handler,
+				       struct lxc_epoll_descr *descr)
 {
 	int ptxfd, ret;
 	struct lxc_cmd_rsp rsp = {
@@ -1845,7 +1844,7 @@ static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,
 				struct lxc_epoll_descr *);
 
 	callback cb[LXC_CMD_MAX] = {
-		[LXC_CMD_CONSOLE]			= lxc_cmd_console_callback,
+		[LXC_CMD_GET_TTY_FD]			= lxc_cmd_get_tty_fd_callback,
 		[LXC_CMD_TERMINAL_WINCH]              	= lxc_cmd_terminal_winch_callback,
 		[LXC_CMD_STOP]                        	= lxc_cmd_stop_callback,
 		[LXC_CMD_GET_STATE]                   	= lxc_cmd_get_state_callback,

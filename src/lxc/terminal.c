@@ -1078,7 +1078,7 @@ int lxc_terminal_ptx_cb(int fd, uint32_t events, void *cbdata,
 
 int lxc_terminal_getfd(struct lxc_container *c, int *ttynum, int *ptxfd)
 {
-	return lxc_cmd_console(c->name, ttynum, ptxfd, c->config_path);
+	return lxc_cmd_get_tty_fd(c->name, ttynum, ptxfd, c->config_path);
 }
 
 int lxc_console(struct lxc_container *c, int ttynum,
@@ -1094,7 +1094,7 @@ int lxc_console(struct lxc_container *c, int ttynum,
 	};
 	int istty = 0;
 
-	ttyfd = lxc_cmd_console(c->name, &ttynum, &ptxfd, c->config_path);
+	ttyfd = lxc_cmd_get_tty_fd(c->name, &ttynum, &ptxfd, c->config_path);
 	if (ttyfd < 0)
 		return -1;
 
