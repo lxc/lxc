@@ -629,8 +629,8 @@ static int lxc_cmd_get_seccomp_notify_fd_callback(int fd, struct lxc_cmd_req *re
 }
 
 int lxc_cmd_get_cgroup_ctx(const char *name, const char *lxcpath,
-		const char *controller, bool batch,
-		size_t size_ret_ctx, struct cgroup_ctx *ret_ctx)
+			   const char *controller, bool batch,
+			   size_t size_ret_ctx, struct cgroup_ctx *ret_ctx)
 {
 	struct lxc_cmd_rr cmd = {
 		.req = {
