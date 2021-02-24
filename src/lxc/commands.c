@@ -629,7 +629,6 @@ static int lxc_cmd_get_seccomp_notify_fd_callback(int fd, struct lxc_cmd_req *re
 }
 
 int lxc_cmd_get_cgroup_ctx(const char *name, const char *lxcpath,
-			   const char *controller, bool batch,
 			   size_t size_ret_ctx, struct cgroup_ctx *ret_ctx)
 {
 	struct lxc_cmd_rr cmd = {
@@ -643,9 +642,6 @@ int lxc_cmd_get_cgroup_ctx(const char *name, const char *lxcpath,
 		},
 	};
 	int ret, stopped;
-
-	if (batch && !is_empty_string(controller))
-		return ret_errno(EINVAL);
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)

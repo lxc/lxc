@@ -125,7 +125,6 @@ __hidden extern int lxc_cmd_console_log(const char *name, const char *lxcpath,
 					struct lxc_console_log *log);
 __hidden extern int lxc_cmd_get_seccomp_notify_fd(const char *name, const char *lxcpath);
 __hidden extern int lxc_cmd_get_cgroup_ctx(const char *name, const char *lxcpath,
-					   const char *controller, bool batch,
 					   size_t size_ret_ctx,
 					   struct cgroup_ctx *ret_ctx);
 __hidden extern int lxc_cmd_seccomp_notify_add_listener(const char *name, const char *lxcpath, int fd,

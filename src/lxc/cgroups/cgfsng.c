@@ -3382,8 +3382,7 @@ static int __cgroup_attach_many(const struct lxc_conf *conf, const char *name,
 	ssize_t pidstr_len;
 	char pidstr[INTTYPE_TO_STRLEN(pid_t)];
 
-	ret = lxc_cmd_get_cgroup_ctx(name, lxcpath, NULL, true,
-				     sizeof(struct cgroup_ctx), ctx);
+	ret = lxc_cmd_get_cgroup_ctx(name, lxcpath, sizeof(struct cgroup_ctx), ctx);
 	if (ret < 0)
 		return ret_errno(ENOSYS);
 
