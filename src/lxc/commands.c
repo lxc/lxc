@@ -922,13 +922,14 @@ char *lxc_cmd_get_config_item(const char *name, const char *item,
 			      const char *lxcpath)
 {
 	bool stopped = false;
-	struct lxc_cmd_rr cmd = {
-		.req = { .cmd = LXC_CMD_GET_CONFIG_ITEM,
-			 .data = item,
-			 .datalen = strlen(item) + 1,
-		       },
-	};
 	int ret;
+	struct lxc_cmd_rr cmd;
+
+	if (is_empty_string(item))
+		return NULL;
+
+	lxc_cmd_init(&cmd, LXC_CMD_GET_CONFIG_ITEM);
+	lxc_cmd_data(&cmd, strlen(item) + 1, item);
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
