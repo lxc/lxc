@@ -381,7 +381,7 @@ static inline int lxc_cmd_rsp_send_keep(int fd, struct lxc_cmd_rsp *rsp)
 	return 0;
 }
 
-static inline int rsp_one_fd(int fd, int fd_send, struct lxc_cmd_rsp *rsp)
+static inline int rsp_one_fd_reap(int fd, int fd_send, struct lxc_cmd_rsp *rsp)
 {
 	ssize_t ret;
 
@@ -402,16 +402,16 @@ static inline int rsp_one_fd_keep(int fd, int fd_send, struct lxc_cmd_rsp *rsp)
 {
 	int ret;
 
-	ret = rsp_one_fd(fd, fd_send, rsp);
+	ret = rsp_one_fd_reap(fd, fd_send, rsp);
 	if (ret == LXC_CMD_REAP_CLIENT_FD)
 		ret = LXC_CMD_KEEP_CLIENT_FD;
 
 	return ret;
 }
 
-__access_r(3, 2) static int rsp_many_fds(int fd, __u32 fds_len,
-					 const __s32 fds[static 2],
-					 struct lxc_cmd_rsp *rsp)
+__access_r(3, 2) static int rsp_many_fds_reap(int fd, __u32 fds_len,
+					      const __s32 fds[static 2],
+					      struct lxc_cmd_rsp *rsp)
 {
 	ssize_t ret;
 
@@ -653,7 +653,7 @@ static int lxc_cmd_get_init_pidfd_callback(int fd, struct lxc_cmd_req *req,
 		return lxc_cmd_rsp_send_reap(fd, &rsp);
 
 	rsp.ret = 0;
-	return rsp_one_fd(fd, handler->pidfd, &rsp);
+	return rsp_one_fd_reap(fd, handler->pidfd, &rsp);
 }
 
 int lxc_cmd_get_devpts_fd(const char *name, const char *lxcpath)
@@ -686,7 +686,7 @@ static int lxc_cmd_get_devpts_fd_callback(int fd, struct lxc_cmd_req *req,
 		return lxc_cmd_rsp_send_reap(fd, &rsp);
 
 	rsp.ret = 0;
-	return rsp_one_fd(fd, handler->conf->devpts_fd, &rsp);
+	return rsp_one_fd_reap(fd, handler->conf->devpts_fd, &rsp);
 }
 
 int lxc_cmd_get_seccomp_notify_fd(const char *name, const char *lxcpath)
@@ -724,7 +724,7 @@ static int lxc_cmd_get_seccomp_notify_fd_callback(int fd, struct lxc_cmd_req *re
 		return lxc_cmd_rsp_send_reap(fd, &rsp);
 
 	rsp.ret = 0;
-	return rsp_one_fd(fd, handler->conf->seccomp.notifier.notify_fd, &rsp);
+	return rsp_one_fd_reap(fd, handler->conf->seccomp.notifier.notify_fd, &rsp);
 #else
 	return syserrno_set(-EOPNOTSUPP, "Seccomp notifier not supported");
 #endif
@@ -775,7 +775,7 @@ static int lxc_cmd_get_cgroup_ctx_callback(int fd, struct lxc_cmd_req *req,
 	rsp.ret = 0;
 	rsp.data = &ctx_server;
 	rsp.datalen = min(sizeof(struct cgroup_ctx), (size_t)req->datalen);
-	return rsp_many_fds(fd, ctx_server.fd_len, ctx_server.fd, &rsp);
+	return rsp_many_fds_reap(fd, ctx_server.fd_len, ctx_server.fd, &rsp);
 }
 
 /*
@@ -1715,7 +1715,7 @@ static int __lxc_cmd_get_cgroup_fd_callback(int fd, struct lxc_cmd_req *req,
 	rsp.ret = 0;
 	rsp.data = &fd_server;
 	rsp.datalen = min(sizeof(struct cgroup_fd), (size_t)req->datalen);
-	return rsp_one_fd(fd, fd_server.fd, &rsp);
+	return rsp_one_fd_reap(fd, fd_server.fd, &rsp);
 }
 
 static int lxc_cmd_get_cgroup_fd_callback(int fd, struct lxc_cmd_req *req,
@@ -1791,7 +1791,7 @@ static int __lxc_cmd_get_cgroup2_fd_callback(int fd, struct lxc_cmd_req *req,
 	}
 
 	rsp.ret = 0;
-	return rsp_one_fd(fd, send_fd, &rsp);
+	return rsp_one_fd_reap(fd, send_fd, &rsp);
 }
 
 static int lxc_cmd_get_cgroup2_fd_callback(int fd, struct lxc_cmd_req *req,
