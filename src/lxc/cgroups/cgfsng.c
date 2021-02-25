@@ -744,7 +744,7 @@ static int __cgroup_tree_create(int dfd_base, const char *path, mode_t mode,
 		ret = mkdirat(dfd_cur, cur, mode);
 		if (ret < 0) {
 			if (errno != EEXIST)
-				return syserrno(-errno, "Failed to create %d(%s)", dfd_cur, cur);
+				return syserror("Failed to create %d(%s)", dfd_cur, cur);
 
 			ret = -EEXIST;
 		}
@@ -752,12 +752,12 @@ static int __cgroup_tree_create(int dfd_base, const char *path, mode_t mode,
 
 		dfd_final = open_at(dfd_cur, cur, PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH, 0);
 		if (dfd_final < 0)
-			return syserrno(-errno, "Fail to open%s directory %d(%s)",
+			return syserror("Fail to open%s directory %d(%s)",
 					!ret ? " newly created" : "", dfd_base, cur);
 		if (dfd_cur != dfd_base)
 			close(dfd_cur);
 		else if (cpuset_v1 && !cpuset1_initialize(dfd_base, dfd_final))
-			return syserrno(-EINVAL, "Failed to initialize cpuset controller in the legacy hierarchy");
+			return syserror_set(-EINVAL, "Failed to initialize cpuset controller in the legacy hierarchy");
 		/*
 		 * Leave dfd_final pointing to the last fd we opened so
 		 * it will be automatically zapped if we return early.
@@ -1693,7 +1693,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		dfd_mnt_unified = open_at(rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
 					  PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV, 0);
 		if (dfd_mnt_unified < 0)
-			return syserrno(-errno, "Failed to open %d(%s)", rootfs->dfd_mnt,
+			return syserrno(false, "Failed to open %d(%s)", rootfs->dfd_mnt,
 					DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
 		/*
 		 * If cgroup namespaces are supported but the container will
@@ -1796,7 +1796,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	dfd_mnt_tmpfs = open_at(rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
 				PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV, 0);
 	if (dfd_mnt_tmpfs < 0)
-		return syserrno(-errno, "Failed to open %d(%s)", rootfs->dfd_mnt,
+		return syserrno(false, "Failed to open %d(%s)", rootfs->dfd_mnt,
 				DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
@@ -2935,13 +2935,13 @@ static bool __cgfsng_delegate_controllers(struct cgroup_ops *ops, const char *cg
 
 		ret = lxc_writeat(dfd_cur, "cgroup.subtree_control", add_controllers, full_len);
 		if (ret < 0)
-			return syserrno(-errno, "Could not enable \"%s\" controllers in the unified cgroup %d", add_controllers, dfd_cur);
+			return syserror("Could not enable \"%s\" controllers in the unified cgroup %d", add_controllers, dfd_cur);
 
 		TRACE("Enabled \"%s\" controllers in the unified cgroup %d", add_controllers, dfd_cur);
 
 		dfd_final = open_at(dfd_cur, cur, PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH, 0);
 		if (dfd_final < 0)
-			return syserrno(-errno, "Fail to open directory %d(%s)", dfd_cur, cur);
+			return syserror("Fail to open directory %d(%s)", dfd_cur, cur);
 		if (dfd_cur != unified->dfd_base)
 			close(dfd_cur);
 		/*
@@ -3124,7 +3124,7 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 			}
 			if (dfd_mnt < 0) {
 				if (errno != ENOENT)
-					return syserrno(-errno, "Failed to open %d/unified", ops->dfd_mnt);
+					return syserror("Failed to open %d/unified", ops->dfd_mnt);
 
 				SYSTRACE("Unified cgroup not mounted");
 				continue;
@@ -3136,7 +3136,7 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 						   PROTECT_OPATH_DIRECTORY,
 						   PROTECT_LOOKUP_BENEATH_XDEV, 0);
 				if (dfd_base < 0)
-					return syserrno(-errno, "Failed to open %d/%s", dfd_mnt, current_cgroup);
+					return syserror("Failed to open %d/%s", dfd_mnt, current_cgroup);
 				dfd = dfd_base;
 			}
 
@@ -3148,7 +3148,7 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 				TRACE("No controllers are enabled for delegation in the unified hierarchy");
 				controller_list = list_new();
 				if (!controller_list)
-					return syserrno(-ENOMEM, "Failed to create empty controller list");
+					return syserror_set(-ENOMEM, "Failed to create empty controller list");
 			}
 
 			controllers = strdup(unified_mnt);
@@ -3179,7 +3179,7 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 					  PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
 			if (dfd_mnt < 0) {
 				if (errno != ENOENT)
-					return syserrno(-errno, "Failed to open %d/%s",
+					return syserror("Failed to open %d/%s",
 							ops->dfd_mnt, controllers);
 
 				SYSTRACE("%s not mounted", controllers);
@@ -3206,7 +3206,7 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 						   PROTECT_OPATH_DIRECTORY,
 						   PROTECT_LOOKUP_BENEATH_XDEV, 0);
 				if (dfd_base < 0)
-					return syserrno(-errno, "Failed to open %d/%s",
+					return syserror("Failed to open %d/%s",
 							dfd_mnt, current_cgroup);
 				dfd = dfd_base;
 			}
@@ -3221,7 +3221,7 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 			 */
 			controller_list = list_add_controllers(__controllers);
 			if (!controller_list)
-				return syserrno(-ENOMEM, "Failed to create controller list from %s", __controllers);
+				return syserror_set(-ENOMEM, "Failed to create controller list from %s", __controllers);
 
 			if (skip_hierarchy(ops, controller_list))
 				continue;
@@ -3278,7 +3278,7 @@ static int initialize_cgroups(struct cgroup_ops *ops, struct lxc_conf *conf)
 	dfd = open_at(-EBADF, DEFAULT_CGROUP_MOUNTPOINT,
 			PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_ABSOLUTE_XDEV, 0);
 	if (dfd < 0)
-		return syserrno(-errno, "Failed to open " DEFAULT_CGROUP_MOUNTPOINT);
+		return syserror("Failed to open " DEFAULT_CGROUP_MOUNTPOINT);
 
 	controllers_use = lxc_global_config_value("lxc.cgroup.use");
 	if (controllers_use) {

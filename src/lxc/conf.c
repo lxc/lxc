@@ -1842,7 +1842,7 @@ static int lxc_setup_console(const struct lxc_handler *handler,
 		else
 			ret = lxc_terminal_set_stdfds(fd_pty);
 		if (ret < 0)
-			return syserrno(-errno, "Failed to redirect std{in,out,err} to pty file descriptor %d", fd_pty);
+			return syserror("Failed to redirect std{in,out,err} to pty file descriptor %d", fd_pty);
 	}
 
 	return ret;
