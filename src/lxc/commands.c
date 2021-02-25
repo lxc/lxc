@@ -781,23 +781,16 @@ static int lxc_cmd_get_clone_flags_callback(int fd, struct lxc_cmd_req *req,
 }
 
 static char *lxc_cmd_get_cgroup_path_do(const char *name, const char *lxcpath,
-					const char *subsystem,
+					const char *controller,
 					lxc_cmd_t command)
 {
 	bool stopped = false;
-	struct lxc_cmd_rr cmd = {
-		.req = {
-			.cmd = command,
-			.data = subsystem,
-			.datalen = 0,
-		},
-	};
 	int ret;
+	struct lxc_cmd_rr cmd;
 
-	cmd.req.data = subsystem;
-	cmd.req.datalen = 0;
-	if (subsystem)
-		cmd.req.datalen = strlen(subsystem) + 1;
+	lxc_cmd_init(&cmd, command);
+	if (controller)
+		lxc_cmd_data(&cmd, strlen(controller) + 1, controller);
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
@@ -813,7 +806,7 @@ static char *lxc_cmd_get_cgroup_path_do(const char *name, const char *lxcpath,
 			 * socket, sending us an EOF.
 			 */
 			return lxc_cmd_get_cgroup_path_do(name, lxcpath,
-							  subsystem,
+							  controller,
 							  LXC_CMD_GET_CGROUP);
 		}
 		return NULL;
@@ -827,41 +820,41 @@ static char *lxc_cmd_get_cgroup_path_do(const char *name, const char *lxcpath,
 
 /*
  * lxc_cmd_get_cgroup_path: Calculate a container's cgroup path for a
- * particular subsystem. This is the cgroup path relative to the root
+ * particular controller. This is the cgroup path relative to the root
  * of the cgroup filesystem.
  *
  * @name      : name of container to connect to
  * @lxcpath   : the lxcpath in which the container is running
- * @subsystem : the subsystem being asked about
+ * @controller : the controller being asked about
  *
  * Returns the path on success, NULL on failure. The caller must free() the
  * returned path.
  */
 char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
-			      const char *subsystem)
+			      const char *controller)
 {
-	return lxc_cmd_get_cgroup_path_do(name, lxcpath, subsystem,
+	return lxc_cmd_get_cgroup_path_do(name, lxcpath, controller,
 					  LXC_CMD_GET_CGROUP);
 }
 
 /*
  * lxc_cmd_get_limit_cgroup_path: Calculate a container's limit cgroup
- * path for a particular subsystem. This is the cgroup path relative to the
+ * path for a particular controller. This is the cgroup path relative to the
  * root of the cgroup filesystem. This may be the same as the path returned by
  * lxc_cmd_get_cgroup_path if the container doesn't have a limit path prefix
  * set.
  *
  * @name      : name of container to connect to
  * @lxcpath   : the lxcpath in which the container is running
- * @subsystem : the subsystem being asked about
+ * @controller : the controller being asked about
  *
  * Returns the path on success, NULL on failure. The caller must free() the
  * returned path.
  */
 char *lxc_cmd_get_limit_cgroup_path(const char *name, const char *lxcpath,
-				    const char *subsystem)
+				    const char *controller)
 {
-	return lxc_cmd_get_cgroup_path_do(name, lxcpath, subsystem,
+	return lxc_cmd_get_cgroup_path_do(name, lxcpath, controller,
 					  LXC_CMD_GET_LIMIT_CGROUP);
 }
 
