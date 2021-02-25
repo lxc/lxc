@@ -398,6 +398,17 @@ static inline int rsp_one_fd(int fd, int fd_send, struct lxc_cmd_rsp *rsp)
 	return LXC_CMD_REAP_CLIENT_FD;
 }
 
+static inline int rsp_one_fd_keep(int fd, int fd_send, struct lxc_cmd_rsp *rsp)
+{
+	int ret;
+
+	ret = rsp_one_fd(fd, fd_send, rsp);
+	if (ret == LXC_CMD_REAP_CLIENT_FD)
+		ret = LXC_CMD_KEEP_CLIENT_FD;
+
+	return ret;
+}
+
 __access_r(3, 2) static int rsp_many_fds(int fd, __u32 fds_len,
 					 const __s32 fds[static 2],
 					 struct lxc_cmd_rsp *rsp)
@@ -1177,25 +1188,25 @@ static int lxc_cmd_get_tty_fd_callback(int fd, struct lxc_cmd_req *req,
 				       struct lxc_handler *handler,
 				       struct lxc_epoll_descr *descr)
 {
-	int ptxfd, ret;
 	struct lxc_cmd_rsp rsp = {
-	    .ret = -EBADF,
+		.ret = -EBADF,
 	};
-	int ttynum = PTR_TO_INT(req->data);
+	int ptxfd, ret, ttynum;
 
+	ttynum = PTR_TO_INT(req->data);
 	ptxfd = lxc_terminal_allocate(handler->conf, fd, &ttynum);
 	if (ptxfd < 0)
 		return lxc_cmd_rsp_send_reap(fd, &rsp);
 
 	rsp.ret = 0;
 	rsp.data = INT_TO_PTR(ttynum);
-	ret = lxc_abstract_unix_send_fds(fd, &ptxfd, 1, &rsp, sizeof(rsp));
+	ret = rsp_one_fd_keep(fd, ptxfd, &rsp);
 	if (ret < 0) {
 		lxc_terminal_free(handler->conf, fd);
 		return ret;
 	}
 
-	return log_debug(0, "Send tty to client");
+	return log_debug(ret, "Send tty to client");
 }
 
 /*
