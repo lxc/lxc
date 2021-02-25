@@ -326,7 +326,7 @@ static ssize_t lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 			err = 0;
 		}
 		if (err < 0)
-			return syserrno(err, "Failed to transfer file descriptors for command \"%s\"", cur_cmdstr);
+			return syserror_ret(err, "Failed to transfer file descriptors for command \"%s\"", cur_cmdstr);
 	}
 
 	move_ptr(__data);

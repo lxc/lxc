@@ -685,29 +685,29 @@ static bool cpuset1_initialize(int dfd_base, int dfd_next)
 	 */
 	bytes = lxc_readat(dfd_base, "cgroup.clone_children", &v, 1);
 	if (bytes < 0)
-		return syserrno(false, "Failed to read file %d(cgroup.clone_children)", dfd_base);
+		return syserror_ret(false, "Failed to read file %d(cgroup.clone_children)", dfd_base);
 
 	/*
 	* Initialize cpuset.cpus and make remove any isolated
 	* and offline cpus.
 	 */
 	if (!cpuset1_cpus_initialize(dfd_base, dfd_next, v == '1'))
-		return syserrno(false, "Failed to initialize cpuset.cpus");
+		return syserror_ret(false, "Failed to initialize cpuset.cpus");
 
 	/* Read cpuset.mems from parent... */
 	bytes = lxc_readat(dfd_base, "cpuset.mems", mems, sizeof(mems));
 	if (bytes < 0)
-		return syserrno(false, "Failed to read file %d(cpuset.mems)", dfd_base);
+		return syserror_ret(false, "Failed to read file %d(cpuset.mems)", dfd_base);
 
 	/* ... and copy to first cgroup in the tree... */
 	bytes = lxc_writeat(dfd_next, "cpuset.mems", mems, bytes);
 	if (bytes < 0)
-		return syserrno(false, "Failed to write %d(cpuset.mems)", dfd_next);
+		return syserror_ret(false, "Failed to write %d(cpuset.mems)", dfd_next);
 
 	/* ... and finally turn on cpuset inheritance. */
 	bytes = lxc_writeat(dfd_next, "cgroup.clone_children", "1", 1);
 	if (bytes < 0)
-		return syserrno(false, "Failed to write %d(cgroup.clone_children)", dfd_next);
+		return syserror_ret(false, "Failed to write %d(cgroup.clone_children)", dfd_next);
 
 	return log_trace(true, "Initialized cpuset in the legacy hierarchy");
 }
@@ -792,7 +792,7 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		/* With isolation both parts need to not already exist. */
 		fd_limit = __cgroup_tree_create(h->dfd_base, cgroup_limit_dir, 0755, cpuset_v1, false);
 		if (fd_limit < 0)
-			return syserrno(false, "Failed to create limiting cgroup %d(%s)", h->dfd_base, cgroup_limit_dir);
+			return syserror_ret(false, "Failed to create limiting cgroup %d(%s)", h->dfd_base, cgroup_limit_dir);
 
 		TRACE("Created limit cgroup %d->%d(%s)",
 		      fd_limit, h->dfd_base, cgroup_limit_dir);
@@ -828,7 +828,7 @@ static bool cgroup_tree_create(struct cgroup_ops *ops, struct lxc_conf *conf,
 		fd_final = __cgroup_tree_create(h->dfd_base, cgroup_limit_dir, 0755, cpuset_v1, false);
 	}
 	if (fd_final < 0)
-		return syserrno(false, "Failed to create %s cgroup %d(%s)", payload ? "payload" : "monitor", h->dfd_base, cgroup_limit_dir);
+		return syserror_ret(false, "Failed to create %s cgroup %d(%s)", payload ? "payload" : "monitor", h->dfd_base, cgroup_limit_dir);
 
 	if (payload) {
 		h->dfd_con = move_fd(fd_final);
@@ -1693,8 +1693,8 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 		dfd_mnt_unified = open_at(rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
 					  PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV, 0);
 		if (dfd_mnt_unified < 0)
-			return syserrno(false, "Failed to open %d(%s)", rootfs->dfd_mnt,
-					DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
+			return syserror_ret(false, "Failed to open %d(%s)",
+					    rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
 		/*
 		 * If cgroup namespaces are supported but the container will
 		 * not have CAP_SYS_ADMIN after it has started we need to mount
@@ -1727,7 +1727,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			 */
 			ret = cgroupfs_mount(cgroup_automount_type, ops->unified, rootfs, dfd_mnt_unified, "");
 			if (ret < 0)
-				return syserrno(false, "Failed to force mount cgroup filesystem in cgroup namespace");
+				return syserror_ret(false, "Failed to force mount cgroup filesystem in cgroup namespace");
 
 			return log_trace(true, "Force mounted cgroup filesystem in new cgroup namespace");
 		} else {
@@ -1758,7 +1758,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 			}
 		}
 
-		return syserrno(false, "Failed to mount cgroups");
+		return syserror_ret(false, "Failed to mount cgroups");
 	}
 
 	/*
@@ -1796,8 +1796,8 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 	dfd_mnt_tmpfs = open_at(rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE,
 				PROTECT_OPATH_DIRECTORY, PROTECT_LOOKUP_BENEATH_XDEV, 0);
 	if (dfd_mnt_tmpfs < 0)
-		return syserrno(false, "Failed to open %d(%s)", rootfs->dfd_mnt,
-				DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
+		return syserror_ret(false, "Failed to open %d(%s)",
+				    rootfs->dfd_mnt, DEFAULT_CGROUP_MOUNTPOINT_RELATIVE);
 
 	for (int i = 0; ops->hierarchies[i]; i++) {
 		__do_free char *hierarchy_mnt = NULL, *path2 = NULL;
@@ -1805,7 +1805,7 @@ __cgfsng_ops static bool cgfsng_mount(struct cgroup_ops *ops,
 
 		ret = mkdirat(dfd_mnt_tmpfs, h->at_mnt, 0000);
 		if (ret < 0)
-			return syserrno(false, "Failed to create cgroup at_mnt %d(%s)", dfd_mnt_tmpfs, h->at_mnt);
+			return syserror_ret(false, "Failed to create cgroup at_mnt %d(%s)", dfd_mnt_tmpfs, h->at_mnt);
 
 		if (in_cgroup_ns && wants_force_mount) {
 			/*
@@ -3055,7 +3055,7 @@ static bool unified_hierarchy_delegated(int dfd_base, char ***ret_files)
 
 	ret = __list_cgroup_delegate(&list);
 	if (ret < 0)
-		return syserrno(ret, "Failed to determine unified cgroup delegation requirements");
+		return syserror_ret(ret, "Failed to determine unified cgroup delegation requirements");
 
 	for (char *const *s = list; s && *s; s++) {
 		if (!faccessat(dfd_base, *s, W_OK, 0) || errno == ENOENT)
@@ -3232,7 +3232,7 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 		ret = cgroup_hierarchy_add(ops, dfd_mnt, controllers, dfd,
 					   current_cgroup, controller_list, type);
 		if (ret < 0)
-			return syserrno(ret, "Failed to add %s hierarchy", controllers);
+			return syserror_ret(ret, "Failed to add %s hierarchy", controllers);
 
 		/* Transfer ownership. */
 		move_fd(dfd_mnt);
@@ -3305,7 +3305,7 @@ static int initialize_cgroups(struct cgroup_ops *ops, struct lxc_conf *conf)
 
 	ret = __initialize_cgroups(ops, conf->cgroup_meta.relative, !lxc_list_empty(&conf->id_map));
 	if (ret < 0)
-		return syserrno(ret, "Failed to initialize cgroups");
+		return syserror_ret(ret, "Failed to initialize cgroups");
 
 	/* Transfer ownership to cgroup_ops. */
 	move_fd(dfd);
@@ -3428,7 +3428,7 @@ static int __cgroup_attach_many(const struct lxc_conf *conf, const char *name,
 		else
 			ret = lxc_writeat(dfd_con, "cgroup.procs", pidstr, pidstr_len);
 		if (ret)
-			return syserrno(ret, "Failed to attach to cgroup fd %d", dfd_con);
+			return syserror_ret(ret, "Failed to attach to cgroup fd %d", dfd_con);
 		else
 			TRACE("Attached to cgroup fd %d", dfd_con);
 	}
