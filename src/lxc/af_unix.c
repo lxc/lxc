@@ -113,7 +113,7 @@ int lxc_abstract_unix_connect(const char *path)
 }
 
 int lxc_abstract_unix_send_fds_iov(int fd, const int *sendfds, int num_sendfds,
-				   struct iovec *iov, size_t iovlen)
+				   struct iovec *const iov, size_t iovlen)
 {
 	__do_free char *cmsgbuf = NULL;
 	int ret;
@@ -176,6 +176,12 @@ static ssize_t lxc_abstract_unix_recv_fds_iov(int fd,
 	size_t cmsgbufsize = CMSG_SPACE(sizeof(struct ucred)) +
 			     CMSG_SPACE(ret_fds->fd_count_max * sizeof(int));
 
+	if (ret_fds->flags & ~UNIX_FDS_ACCEPT_MASK)
+		return ret_errno(EINVAL);
+
+	if (hweight32((ret_fds->flags & ~UNIX_FDS_ACCEPT_NONE)) > 1)
+		return ret_errno(EINVAL);
+
 	cmsgbuf = zalloc(cmsgbufsize);
 	if (!cmsgbuf)
 		return ret_errno(ENOMEM);
@@ -202,7 +208,7 @@ again:
                 if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
 			__u32 idx;
 			/*
-			 * This causes some compilers to complaing about
+			 * This causes some compilers to complain about
 			 * increased alignment requirements but I haven't found
 			 * a better way to deal with this yet. Suggestions
 			 * welcome!
@@ -225,7 +231,22 @@ again:
 				return syserrno_set(-EFBIG, "Received excessive number of file descriptors");
 			}
 
+			if (msg.msg_flags & MSG_CTRUNC) {
+				for (idx = 0; idx < num_raw; idx++)
+					close(fds_raw[idx]);
+
+				return syserrno_set(-EFBIG, "Control message was truncated; closing all fds and rejecting incomplete message");
+			}
+
 			if (ret_fds->fd_count_max > num_raw) {
+				if (!(ret_fds->flags & UNIX_FDS_ACCEPT_LESS)) {
+					for (idx = 0; idx < num_raw; idx++)
+						close(fds_raw[idx]);
+
+					return syserrno_set(-EINVAL, "Received fewer file descriptors than we expected %u != %u",
+							    ret_fds->fd_count_max, num_raw);
+				}
+
 				/*
 				 * Make sure any excess entries in the fd array
 				 * are set to -EBADF so our cleanup functions
@@ -234,22 +255,48 @@ again:
 				for (idx = num_raw; idx < ret_fds->fd_count_max; idx++)
 					ret_fds->fd[idx] = -EBADF;
 
-				WARN("Received fewer file descriptors than we expected %u != %u", ret_fds->fd_count_max, num_raw);
+				ret_fds->flags |= UNIX_FDS_RECEIVED_LESS;
 			} else if (ret_fds->fd_count_max < num_raw) {
+				if (!(ret_fds->flags & UNIX_FDS_ACCEPT_MORE)) {
+					for (idx = 0; idx < num_raw; idx++)
+						close(fds_raw[idx]);
+
+					return syserrno_set(-EINVAL, "Received more file descriptors than we expected %u != %u",
+							    ret_fds->fd_count_max, num_raw);
+				}
+
 				/* Make sure we close any excess fds we received. */
 				for (idx = ret_fds->fd_count_max; idx < num_raw; idx++)
 					close(fds_raw[idx]);
 
-				WARN("Received more file descriptors than we expected %u != %u", ret_fds->fd_count_max, num_raw);
-
 				/* Cap the number of received file descriptors. */
 				num_raw = ret_fds->fd_count_max;
+				ret_fds->flags |= UNIX_FDS_RECEIVED_MORE;
+			} else {
+				ret_fds->flags |= UNIX_FDS_RECEIVED_EXACT;
+			}
+
+			if (hweight32((ret_fds->flags & ~UNIX_FDS_ACCEPT_MASK)) > 1) {
+				for (idx = 0; idx < num_raw; idx++)
+					close(fds_raw[idx]);
+
+				return syserrno_set(-EINVAL, "Invalid flag combination; closing to not risk leaking fds %u != %u",
+						    ret_fds->fd_count_max, num_raw);
 			}
 
 			memcpy(ret_fds->fd, CMSG_DATA(cmsg), num_raw * sizeof(int));
 			ret_fds->fd_count_ret = num_raw;
 			break;
 		}
+	}
+
+	if (ret_fds->fd_count_ret == 0) {
+		ret_fds->flags |= UNIX_FDS_RECEIVED_NONE;
+
+		/* We expected to receive file descriptors. */
+		if ((ret_fds->flags & UNIX_FDS_ACCEPT_MASK) &&
+		    !(ret_fds->flags & UNIX_FDS_ACCEPT_NONE))
+			return syserrno_set(-EINVAL, "Received no file descriptors");
 	}
 
 	return ret;
