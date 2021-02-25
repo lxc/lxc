@@ -310,7 +310,7 @@ static ssize_t lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 
 		bytes_recv = lxc_recv_nointr(sock, rsp->data, rsp->datalen, 0);
 		if (bytes_recv != rsp->datalen)
-			return syserrno(-errno, "Failed to receive response data for command \"%s\": %zd != %d",
+			return syserror("Failed to receive response data for command \"%s\": %zd != %d",
 					cur_cmdstr, bytes_recv, rsp->datalen);
 
 		switch (cur_cmd) {
@@ -347,7 +347,7 @@ static int __lxc_cmd_rsp_send(int fd, struct lxc_cmd_rsp *rsp)
 
 	ret = lxc_send_nointr(fd, rsp, sizeof(*rsp), MSG_NOSIGNAL);
 	if (ret < 0 || (size_t)ret != sizeof(*rsp))
-		return syserrno(-errno, "Failed to send command response %zd", ret);
+		return syserror("Failed to send command response %zd", ret);
 
 	if (!rsp->data || rsp->datalen <= 0)
 		return 0;

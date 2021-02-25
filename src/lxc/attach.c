@@ -512,7 +512,7 @@ static int same_ns(int dfd_pid1, int dfd_pid2, const char *ns_path)
 	if (ns_fd2 < 0) {
 		if (errno == ENOENT)
 			return -ENOENT;
-		return syserrno(-errno, "Failed to open %d(%s)", dfd_pid2, ns_path);
+		return syserror("Failed to open %d(%s)", dfd_pid2, ns_path);
 	}
 
 	ret = same_nsfd(dfd_pid1, dfd_pid2, ns_path);
@@ -551,7 +551,7 @@ static int __prepare_namespaces_pidfd(struct attach_context *ctx)
 			break;
 		}
 
-		return syserrno(-errno, "Failed to determine whether %s namespace is shared",
+		return syserror("Failed to determine whether %s namespace is shared",
 				ns_info[i].proc_name);
 	}
 

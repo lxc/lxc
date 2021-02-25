@@ -198,7 +198,7 @@ again:
 		if (errno == EINTR)
 			goto again;
 
-		return syserrno(-errno, "Failed to receive response");
+		return syserror("Failed to receive response");
 	}
 	if (ret == 0)
 		return 0;

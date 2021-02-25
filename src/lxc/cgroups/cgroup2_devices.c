@@ -369,7 +369,7 @@ static int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
 
 	ret = bpf_program_load_kernel(prog);
 	if (ret < 0)
-		return syserrno(-errno, "Failed to load bpf program");
+		return syserror("Failed to load bpf program");
 
 	attr = &(union bpf_attr){
 		.attach_type	= type,
@@ -380,7 +380,7 @@ static int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
 
 	ret = bpf(BPF_PROG_ATTACH, attr, sizeof(*attr));
 	if (ret < 0)
-		return syserrno(-errno, "Failed to attach bpf program");
+		return syserror("Failed to attach bpf program");
 
 	prog->fd_cgroup		= move_fd(fd_attach);
 	prog->attached_type	= type;
@@ -414,7 +414,7 @@ int bpf_program_cgroup_detach(struct bpf_program *prog)
 
 	ret = bpf(BPF_PROG_DETACH, attr, sizeof(*attr));
 	if (ret < 0)
-		return syserrno(-errno, "Failed to detach bpf program from cgroup %d", fd_cgroup);
+		return syserror("Failed to detach bpf program from cgroup %d", fd_cgroup);
 
 	TRACE("Detached bpf program from cgroup %d", fd_cgroup);
 

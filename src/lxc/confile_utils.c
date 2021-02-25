@@ -654,7 +654,7 @@ int set_config_path_item(char **conf_item, const char *value)
 
 	normalized = lxc_deslashify(value);
 	if (!normalized)
-		return syserrno(-errno, "Failed to normalize path config item");
+		return syserror_set(-ENOMEM, "Failed to normalize path config item");
 
 	return set_config_string_item_max(conf_item, normalized, PATH_MAX);
 }
