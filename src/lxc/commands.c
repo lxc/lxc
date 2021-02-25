@@ -494,12 +494,10 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, bool *stopped,
 int lxc_try_cmd(const char *name, const char *lxcpath)
 {
 	bool stopped = false;
-	struct lxc_cmd_rr cmd = {
-		.req = {
-			.cmd = LXC_CMD_GET_INIT_PID,
-		},
-	};
 	int ret;
+	struct lxc_cmd_rr cmd;
+
+	lxc_cmd_init(&cmd, LXC_CMD_GET_INIT_PID);
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (stopped)
