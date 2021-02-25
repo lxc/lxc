@@ -3,6 +3,7 @@
 #ifndef __LXC_COMMANDS_H
 #define __LXC_COMMANDS_H
 
+#include <errno.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -56,6 +57,8 @@ struct lxc_cmd_req {
 	const void *data;
 };
 
+#define ENCODE_INTO_PTR_LEN 0
+
 struct lxc_cmd_rsp {
 	int ret; /* 0 on success, -errno on failure */
 	int datalen;
@@ -66,6 +69,20 @@ struct lxc_cmd_rr {
 	struct lxc_cmd_req req;
 	struct lxc_cmd_rsp rsp;
 };
+
+static inline void lxc_cmd_init(struct lxc_cmd_rr *cmd, lxc_cmd_t command)
+{
+	*cmd = (struct lxc_cmd_rr){
+		.req = {.cmd = command },
+		.rsp = {.ret = -ENOSYS },
+	};
+}
+
+static inline void lxc_cmd_data(struct lxc_cmd_rr *cmd, int len_data, const void *data)
+{
+	cmd->req.data = data;
+	cmd->req.datalen = len_data;
+}
 
 struct lxc_cmd_tty_rsp_data {
 	int ptxfd;
