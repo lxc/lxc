@@ -3,6 +3,7 @@
 #ifndef __LXC_COMMANDS_H
 #define __LXC_COMMANDS_H
 
+#include <errno.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -19,6 +20,7 @@
  * have specific reasons to keep the file descriptor alive.
  */
 #define LXC_CMD_REAP_CLIENT_FD 1
+#define LXC_CMD_KEEP_CLIENT_FD 2
 
 typedef enum {
 	LXC_CMD_GET_TTY_FD			= 0,
@@ -56,6 +58,8 @@ struct lxc_cmd_req {
 	const void *data;
 };
 
+#define ENCODE_INTO_PTR_LEN 0
+
 struct lxc_cmd_rsp {
 	int ret; /* 0 on success, -errno on failure */
 	int datalen;
@@ -66,6 +70,20 @@ struct lxc_cmd_rr {
 	struct lxc_cmd_req req;
 	struct lxc_cmd_rsp rsp;
 };
+
+static inline void lxc_cmd_init(struct lxc_cmd_rr *cmd, lxc_cmd_t command)
+{
+	*cmd = (struct lxc_cmd_rr){
+		.req = {.cmd = command },
+		.rsp = {.ret = -ENOSYS },
+	};
+}
+
+static inline void lxc_cmd_data(struct lxc_cmd_rr *cmd, int len_data, const void *data)
+{
+	cmd->req.data = data;
+	cmd->req.datalen = len_data;
+}
 
 struct lxc_cmd_tty_rsp_data {
 	int ptxfd;
@@ -85,10 +103,10 @@ __hidden extern int lxc_cmd_get_tty_fd(const char *name, int *ttynum, int *fd,
 				       const char *lxcpath);
 /*
  * Get the 'real' cgroup path (as seen in /proc/self/cgroup) for a container
- * for a particular subsystem
+ * for a particular controller
  */
 __hidden extern char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
-					      const char *subsystem);
+					      const char *controller);
 __hidden extern int lxc_cmd_get_clone_flags(const char *name, const char *lxcpath);
 __hidden extern char *lxc_cmd_get_config_item(const char *name, const char *item,
 					      const char *lxcpath);
@@ -122,7 +140,7 @@ __hidden extern int lxc_cmd_serve_state_clients(const char *name, const char *lx
 struct lxc_epoll_descr;
 struct lxc_handler;
 
-__hidden extern int lxc_cmd_init(const char *name, const char *lxcpath, const char *suffix);
+__hidden extern int lxc_server_init(const char *name, const char *lxcpath, const char *suffix);
 __hidden extern int lxc_cmd_mainloop_add(const char *name, struct lxc_epoll_descr *descr,
 					 struct lxc_handler *handler);
 __hidden extern int lxc_try_cmd(const char *name, const char *lxcpath);
@@ -147,7 +165,7 @@ __hidden extern int lxc_cmd_get_cgroup_fd(const char *name, const char *lxcpath,
 					  struct cgroup_fd *ret_fd);
 __hidden extern char *lxc_cmd_get_limit_cgroup_path(const char *name,
 						    const char *lxcpath,
-						    const char *subsystem);
+						    const char *controller);
 __hidden extern int lxc_cmd_get_limit_cgroup2_fd(const char *name,
 						 const char *lxcpath);
 __hidden extern int lxc_cmd_get_limit_cgroup_fd(const char *name,
