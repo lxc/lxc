@@ -12,15 +12,88 @@
 #include "macro.h"
 #include "memory_utils.h"
 
-/*
- * Technically 253 is the kernel limit but we want to the struct to be a
- * multiple of 8.
- */
-#define KERNEL_SCM_MAX_FD 252
+#define KERNEL_SCM_MAX_FD 253
 
+/* Allow the caller to set expectations. */
+
+/*
+ * UNIX_FDS_ACCEPT_EXACT will only succeed if the exact amount of fds has been
+ * received  (unless combined with UNIX_FDS_ACCEPT_NONE).
+ */
+#define UNIX_FDS_ACCEPT_EXACT ((__u32)(1 << 0)) /* default */
+
+/*
+ * UNIX_FDS_ACCEPT_LESS will also succeed if less than the requested number of
+ * fd has been received. If the UNIX_FDS_ACCEPT_NONE flag is not raised than at
+ * least one fd must be received.
+ * */
+#define UNIX_FDS_ACCEPT_LESS ((__u32)(1 << 1))
+
+/*
+ * UNIX_FDS_ACCEPT_MORE will also succeed if more than the requested number of
+ * fds have been received. Any additional fds will be silently closed.  If the
+ * UNIX_FDS_ACCEPT_NONE flag is not raised than at least one fd must be
+ * received.
+ */
+#define UNIX_FDS_ACCEPT_MORE ((__u32)(1 << 2)) /* wipe any extra fds */
+
+/*
+ * UNIX_FDS_ACCEPT_NONE can be specified with any of the above flags and
+ * indicates that the caller will accept no file descriptors to be received.
+ */
+#define UNIX_FDS_ACCEPT_NONE ((__u32)(1 << 3))
+
+/* UNIX_FDS_ACCEPT_MASK is the value of all the above flags or-ed together. */
+#define UNIX_FDS_ACCEPT_MASK (UNIX_FDS_ACCEPT_EXACT | UNIX_FDS_ACCEPT_LESS | UNIX_FDS_ACCEPT_MORE | UNIX_FDS_ACCEPT_NONE)
+
+/* Allow the callee to communicate reality. */
+
+/* UNIX_FDS_RECEIVED_EXACT indicates that the exact number of fds was received. */
+#define UNIX_FDS_RECEIVED_EXACT ((__u32)(1 << 16))
+
+/*
+ * UNIX_FDS_RECEIVED_LESS indicates that less than the requested number of fd
+ * has been received.
+ */
+#define UNIX_FDS_RECEIVED_LESS ((__u32)(1 << 17))
+
+/*
+ * UNIX_FDS_RECEIVED_MORE indicates that more than the requested number of fd
+ * has been received.
+ */
+#define UNIX_FDS_RECEIVED_MORE ((__u32)(1 << 18))
+
+/* UNIX_FDS_RECEIVED_NONE indicates that no fds have been received. */
+#define UNIX_FDS_RECEIVED_NONE ((__u32)(1 << 19))
+
+/**
+ * Defines a generic struct to receive file descriptors from unix sockets.
+ * @fd_count_max : Either the exact or maximum number of file descriptors the
+ *                 caller is willing to accept. Must be smaller than
+ *                 KERNEL_SCM_MAX_FDs; larger values will be rejected.
+ *                 Filled in by the caller.
+ * @fd_count_ret : The actually received number of file descriptors.
+ *                 Filled in by the callee.
+ * @flags        : Flags to negotiate expectations about the number of file
+ *                 descriptors to receive.
+ *                 Filled in by the caller and callee. The caller's flag space
+ *                 is UNIX_FDS_ACCEPT_* other values will be rejected. The
+ *                 caller may only set one of {EXACT, LESS, MORE}. In addition
+ *                 they can raise the NONE flag. Any combination of {EXACT,
+ *                 LESS, MORE} will be rejected.
+ *                 The callee's flag space is UNIX_FDS_RECEIVED_*. Only ever
+ *                 one of those values will be set.
+ * @fd           : Array to store received file descriptors into. Filled by the
+ *                 callee on success. If less file descriptors are received
+ *                 than requested in @fd_count_max the callee will ensure that
+ *                 all additional slots will be set to -EBADF. Nonetheless, the
+ *                 caller should only ever use @fd_count_ret to iterate through
+ *                 @fd after a successful receive.
+ */
 struct unix_fds {
 	__u32 fd_count_max;
 	__u32 fd_count_ret;
+	__u32 flags;
 	__s32 fd[KERNEL_SCM_MAX_FD];
 } __attribute__((aligned(8)));
 
