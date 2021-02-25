@@ -1584,13 +1584,11 @@ static int lxc_cmd_freeze_callback(int fd, struct lxc_cmd_req *req,
 int lxc_cmd_unfreeze(const char *name, const char *lxcpath, int timeout)
 {
 	bool stopped = false;
-	struct lxc_cmd_rr cmd = {
-		.req = {
-			.cmd = LXC_CMD_UNFREEZE,
-			.data = INT_TO_PTR(timeout),
-		},
-	};
+	struct lxc_cmd_rr cmd;
 	int ret;
+
+	lxc_cmd_init(&cmd, LXC_CMD_UNFREEZE);
+	lxc_cmd_data(&cmd, ENCODE_INTO_PTR_LEN, INT_TO_PTR(timeout));
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret <= 0 || cmd.rsp.ret < 0)
