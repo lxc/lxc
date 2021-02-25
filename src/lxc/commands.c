@@ -622,23 +622,27 @@ static int lxc_cmd_get_init_pid_callback(int fd, struct lxc_cmd_req *req,
 int lxc_cmd_get_init_pidfd(const char *name, const char *lxcpath)
 {
 	bool stopped = false;
-	int pidfd, ret;
+	int fd;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
 	lxc_cmd_init(&cmd, LXC_CMD_GET_INIT_PIDFD);
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
-		return sysdebug("Failed to process init pidfd command");
+		return sysdebug("Failed to process \"%s\"",
+				lxc_cmd_str(LXC_CMD_GET_INIT_PIDFD));
 
 	if (cmd.rsp.ret < 0)
-		return sysdebug_set(cmd.rsp.ret, "Failed to receive init pidfd");
+		return sysdebug_set(cmd.rsp.ret, "Failed to receive file descriptor for \"%s\"",
+				    lxc_cmd_str(LXC_CMD_GET_INIT_PIDFD));
 
-	pidfd = PTR_TO_INT(cmd.rsp.data);
-	if (pidfd < 0)
-		return sysdebug_set(pidfd, "Failed to receive init pidfd");
+	fd = PTR_TO_INT(cmd.rsp.data);
+	if (fd < 0)
+		return sysdebug_set(fd, "Received invalid file descriptor for \"%s\"",
+				    lxc_cmd_str(LXC_CMD_GET_INIT_PIDFD));
 
-	return pidfd;
+	return fd;
 }
 
 static int lxc_cmd_get_init_pidfd_callback(int fd, struct lxc_cmd_req *req,
@@ -659,6 +663,7 @@ static int lxc_cmd_get_init_pidfd_callback(int fd, struct lxc_cmd_req *req,
 int lxc_cmd_get_devpts_fd(const char *name, const char *lxcpath)
 {
 	bool stopped = false;
+	int fd;
 	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
@@ -666,12 +671,18 @@ int lxc_cmd_get_devpts_fd(const char *name, const char *lxcpath)
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
-		return log_debug_errno(-1, errno, "Failed to process devpts fd command");
+		return sysdebug("Failed to process \"%s\"",
+				lxc_cmd_str(LXC_CMD_GET_DEVPTS_FD));
 
 	if (cmd.rsp.ret < 0)
-		return log_debug_errno(-EBADF, errno, "Failed to receive devpts fd");
+		return sysdebug_set(cmd.rsp.ret, "Failed to receive file descriptor for \"%s\"",
+				    lxc_cmd_str(LXC_CMD_GET_DEVPTS_FD));
 
-	return PTR_TO_INT(cmd.rsp.data);
+	fd = PTR_TO_INT(cmd.rsp.data);
+	if (fd < 0)
+		return sysdebug_set(fd, "Received invalid file descriptor for \"%s\"",
+				    lxc_cmd_str(LXC_CMD_GET_DEVPTS_FD));
+	return fd;
 }
 
 static int lxc_cmd_get_devpts_fd_callback(int fd, struct lxc_cmd_req *req,
@@ -679,10 +690,10 @@ static int lxc_cmd_get_devpts_fd_callback(int fd, struct lxc_cmd_req *req,
 					  struct lxc_epoll_descr *descr)
 {
 	struct lxc_cmd_rsp rsp = {
-	    .ret = -EBADF,
+		.ret = -EBADF,
 	};
 
-	if (!handler->conf || handler->conf->devpts_fd < 0)
+	if (handler->conf->devpts_fd < 0)
 		return lxc_cmd_rsp_send_reap(fd, &rsp);
 
 	rsp.ret = 0;
@@ -693,6 +704,7 @@ int lxc_cmd_get_seccomp_notify_fd(const char *name, const char *lxcpath)
 {
 #ifdef HAVE_SECCOMP_NOTIFY
 	bool stopped = false;
+	int fd;
 	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
@@ -700,14 +712,20 @@ int lxc_cmd_get_seccomp_notify_fd(const char *name, const char *lxcpath)
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
-		return log_debug_errno(-1, errno, "Failed to process seccomp notify fd command");
+		return sysdebug("Failed to process \"%s\"",
+				lxc_cmd_str(LXC_CMD_GET_SECCOMP_NOTIFY_FD));
 
 	if (cmd.rsp.ret < 0)
-		return log_debug_errno(-EBADF, errno, "Failed to receive seccomp notify fd");
+		return sysdebug_set(cmd.rsp.ret, "Failed to receive file descriptor for \"%s\"",
+				    lxc_cmd_str(LXC_CMD_GET_SECCOMP_NOTIFY_FD));
 
-	return PTR_TO_INT(cmd.rsp.data);
+	fd = PTR_TO_INT(cmd.rsp.data);
+	if (fd < 0)
+		return sysdebug_set(fd, "Received invalid file descriptor for \"%s\"",
+				    lxc_cmd_str(LXC_CMD_GET_SECCOMP_NOTIFY_FD));
+	return fd;
 #else
-	return ret_errno(EOPNOTSUPP);
+	return ret_errno(ENOSYS);
 #endif
 }
 
@@ -720,7 +738,7 @@ static int lxc_cmd_get_seccomp_notify_fd_callback(int fd, struct lxc_cmd_req *re
 		.ret = -EBADF,
 	};
 
-	if (!handler->conf || handler->conf->seccomp.notifier.notify_fd < 0)
+	if (handler->conf->seccomp.notifier.notify_fd < 0)
 		return lxc_cmd_rsp_send_reap(fd, &rsp);
 
 	rsp.ret = 0;
@@ -742,10 +760,12 @@ int lxc_cmd_get_cgroup_ctx(const char *name, const char *lxcpath,
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
-		return log_debug_errno(-1, errno, "Failed to process cgroup context command");
+		return sysdebug("Failed to process \"%s\"",
+				lxc_cmd_str(LXC_CMD_GET_CGROUP_CTX));
 
 	if (cmd.rsp.ret < 0)
-		return log_debug_errno(-EBADF, errno, "Failed to receive cgroup fds");
+		return sysdebug_set(cmd.rsp.ret, "Failed to receive file descriptor for \"%s\"",
+				    lxc_cmd_str(LXC_CMD_GET_CGROUP_CTX));
 
 	return 0;
 }
@@ -755,7 +775,7 @@ static int lxc_cmd_get_cgroup_ctx_callback(int fd, struct lxc_cmd_req *req,
 					   struct lxc_epoll_descr *descr)
 {
 	struct lxc_cmd_rsp rsp = {
-	    .ret = EINVAL,
+		.ret = EINVAL,
 	};
 	struct cgroup_ops *cgroup_ops = handler->cgroup_ops;
 	struct cgroup_ctx ctx_server = {};
@@ -1140,7 +1160,7 @@ static int lxc_cmd_terminal_winch_callback(int fd, struct lxc_cmd_req *req,
 					   struct lxc_epoll_descr *descr)
 {
 	/* should never be called */
-	return log_error_errno(-1, ENOSYS, "Called lxc_cmd_terminal_winch_callback()");
+	return syserror_set(-ENOSYS, "Called lxc_cmd_terminal_winch_callback()");
 }
 
 /*
@@ -1166,7 +1186,8 @@ int lxc_cmd_get_tty_fd(const char *name, int *ttynum, int *fd, const char *lxcpa
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
-		return ret;
+		return sysdebug("Failed to process \"%s\"",
+				lxc_cmd_str(LXC_CMD_GET_TTY_FD));
 
 	rspdata = cmd.rsp.data;
 	if (cmd.rsp.ret < 0)
@@ -1178,11 +1199,12 @@ int lxc_cmd_get_tty_fd(const char *name, int *ttynum, int *fd, const char *lxcpa
 	if (rspdata->ptxfd < 0)
 		return log_error(-1, "Unable to allocate fd for tty %d", rspdata->ttynum);
 
-	ret = cmd.rsp.ret; /* socket fd */
-	*fd = rspdata->ptxfd;
+	ret	= cmd.rsp.ret; /* socket fd */
+	*fd	= rspdata->ptxfd;
 	*ttynum = rspdata->ttynum;
 
-	return log_info(ret, "Alloced fd %d for tty %d via socket %zd", *fd, rspdata->ttynum, ret);
+	INFO("Alloced fd %d for tty %d via socket %zd", *fd, rspdata->ttynum, ret);
+	return ret;
 }
 
 static int lxc_cmd_get_tty_fd_callback(int fd, struct lxc_cmd_req *req,
@@ -1207,7 +1229,8 @@ static int lxc_cmd_get_tty_fd_callback(int fd, struct lxc_cmd_req *req,
 		return ret;
 	}
 
-	return log_debug(ret, "Send tty to client");
+	DEBUG("Send tty to client");
+	return ret;
 }
 
 /*
@@ -1658,10 +1681,12 @@ int lxc_cmd_get_cgroup_fd(const char *name, const char *lxcpath,
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
-		return log_debug_errno(-1, errno, "Failed to process cgroup fd command");
+		return sysdebug("Failed to process \"%s\"",
+				lxc_cmd_str(LXC_CMD_GET_CGROUP_FD));
 
 	if (cmd.rsp.ret < 0)
-		return log_debug_errno(-EBADF, errno, "Failed to receive cgroup fd");
+		return sysdebug_set(cmd.rsp.ret, "Failed to receive file descriptor for \"%s\"",
+				    lxc_cmd_str(LXC_CMD_GET_CGROUP_FD));
 
 	return 0;
 }
@@ -1678,10 +1703,12 @@ int lxc_cmd_get_limit_cgroup_fd(const char *name, const char *lxcpath,
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
-		return log_debug_errno(-1, errno, "Failed to process limit cgroup fd command");
+		return sysdebug("Failed to process \"%s\"",
+				lxc_cmd_str(LXC_CMD_GET_CGROUP_FD));
 
 	if (cmd.rsp.ret < 0)
-		return log_debug_errno(-EBADF, errno, "Failed to receive limit cgroup fd");
+		return sysdebug_set(cmd.rsp.ret, "Failed to receive file descriptor for \"%s\"",
+				    lxc_cmd_str(LXC_CMD_GET_CGROUP_FD));
 
 	return 0;
 }
@@ -1712,9 +1739,9 @@ static int __lxc_cmd_get_cgroup_fd_callback(int fd, struct lxc_cmd_req *req,
 		return lxc_cmd_rsp_send_reap(fd, &rsp);
 	}
 
-	rsp.ret = 0;
-	rsp.data = &fd_server;
-	rsp.datalen = min(sizeof(struct cgroup_fd), (size_t)req->datalen);
+	rsp.ret		= 0;
+	rsp.data	= &fd_server;
+	rsp.datalen	= min(sizeof(struct cgroup_fd), (size_t)req->datalen);
 	return rsp_one_fd_reap(fd, fd_server.fd, &rsp);
 }
 
@@ -1735,6 +1762,7 @@ static int lxc_cmd_get_limit_cgroup_fd_callback(int fd, struct lxc_cmd_req *req,
 int lxc_cmd_get_cgroup2_fd(const char *name, const char *lxcpath)
 {
 	bool stopped = false;
+	int fd;
 	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
@@ -1742,17 +1770,24 @@ int lxc_cmd_get_cgroup2_fd(const char *name, const char *lxcpath)
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
-		return -1;
+		return sysdebug("Failed to process \"%s\"",
+				lxc_cmd_str(LXC_CMD_GET_CGROUP2_FD));
 
 	if (cmd.rsp.ret < 0)
-		return log_debug_errno(cmd.rsp.ret, -cmd.rsp.ret, "Failed to receive cgroup2 fd");
+		return sysdebug_set(cmd.rsp.ret, "Failed to receive file descriptor for \"%s\"",
+				    lxc_cmd_str(LXC_CMD_GET_CGROUP2_FD));
 
-	return PTR_TO_INT(cmd.rsp.data);
+	fd = PTR_TO_INT(cmd.rsp.data);
+	if (fd < 0)
+		return sysdebug_set(fd, "Received invalid file descriptor for \"%s\"",
+				    lxc_cmd_str(LXC_CMD_GET_CGROUP2_FD));
+	return fd;
 }
 
 int lxc_cmd_get_limit_cgroup2_fd(const char *name, const char *lxcpath)
 {
 	bool stopped = false;
+	int fd;
 	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
@@ -1760,12 +1795,18 @@ int lxc_cmd_get_limit_cgroup2_fd(const char *name, const char *lxcpath)
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
-		return -1;
+		return sysdebug("Failed to process \"%s\"",
+				lxc_cmd_str(LXC_CMD_GET_CGROUP2_FD));
 
 	if (cmd.rsp.ret < 0)
-		return syswarn_set(cmd.rsp.ret, "Failed to receive cgroup2 limit fd");
+		return sysdebug_set(cmd.rsp.ret, "Failed to receive file descriptor for \"%s\"",
+				    lxc_cmd_str(LXC_CMD_GET_CGROUP2_FD));
 
-	return PTR_TO_INT(cmd.rsp.data);
+	fd = PTR_TO_INT(cmd.rsp.data);
+	if (fd < 0)
+		return sysdebug_set(fd, "Received invalid file descriptor for \"%s\"",
+				    lxc_cmd_str(LXC_CMD_GET_CGROUP2_FD));
+	return fd;
 }
 
 static int __lxc_cmd_get_cgroup2_fd_callback(int fd, struct lxc_cmd_req *req,
