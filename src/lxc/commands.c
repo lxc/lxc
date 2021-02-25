@@ -471,7 +471,7 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, int *stopped,
 
 	client_fd = lxc_cmd_send(name, cmd, lxcpath, hashed_sock_name);
 	if (client_fd < 0) {
-		if (errno == ECONNREFUSED || errno == EPIPE)
+		if (IN_SET(errno, ECONNREFUSED, EPIPE))
 			*stopped = 1;
 
 		return log_trace_errno(-1, errno, "Command \"%s\" failed to connect command socket",
