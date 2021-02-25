@@ -1457,13 +1457,11 @@ int lxc_cmd_serve_state_clients(const char *name, const char *lxcpath,
 				lxc_state_t state)
 {
 	bool stopped = false;
-	struct lxc_cmd_rr cmd = {
-		.req = {
-			.cmd  = LXC_CMD_SERVE_STATE_CLIENTS,
-			.data = INT_TO_PTR(state)
-		},
-	};
 	ssize_t ret;
+	struct lxc_cmd_rr cmd;
+
+	lxc_cmd_init(&cmd, LXC_CMD_SERVE_STATE_CLIENTS);
+	lxc_cmd_data(&cmd, ENCODE_INTO_PTR_LEN, INT_TO_PTR(state));
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
