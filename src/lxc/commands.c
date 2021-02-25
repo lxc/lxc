@@ -555,16 +555,11 @@ static int validate_string_request(int fd, const struct lxc_cmd_req *req)
 pid_t lxc_cmd_get_init_pid(const char *name, const char *lxcpath)
 {
 	bool stopped = false;
-	pid_t pid = -1;
-	struct lxc_cmd_rr cmd = {
-		.req = {
-			.cmd = LXC_CMD_GET_INIT_PID
-		},
-		.rsp = {
-			.data = PID_TO_PTR(pid)
-		}
-	};
 	int ret;
+	pid_t pid;
+	struct lxc_cmd_rr cmd;
+
+	lxc_cmd_init(&cmd, LXC_CMD_GET_INIT_PID);
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
