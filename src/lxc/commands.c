@@ -1328,22 +1328,21 @@ int lxc_cmd_add_bpf_device_cgroup(const char *name, const char *lxcpath,
 				  struct device_item *device)
 {
 	bool stopped = false;
-	struct lxc_cmd_rr cmd = {
-		.req = {
-			.cmd     = LXC_CMD_ADD_BPF_DEVICE_CGROUP,
-			.data    = device,
-			.datalen = sizeof(struct device_item),
-		},
-	};
 	int ret;
+	struct lxc_cmd_rr cmd;
 
 	if (strlen(device->access) > STRLITERALLEN("rwm"))
-		return log_error_errno(-1, EINVAL, "Invalid access mode specified %s",
-				       device->access);
+		return syserrno_set(-EINVAL, "Invalid access mode specified %s", device->access);
+
+	lxc_cmd_init(&cmd, LXC_CMD_ADD_BPF_DEVICE_CGROUP);
+	lxc_cmd_data(&cmd, sizeof(struct device_item), device);
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
-	if (ret < 0 || cmd.rsp.ret < 0)
-		return log_error_errno(-1, errno, "Failed to add new bpf device cgroup rule");
+	if (ret < 0)
+		return syserrno_set(ret, "Failed to process new bpf device cgroup command");
+
+	if (cmd.rsp.ret < 0)
+		return syserrno_set(cmd.rsp.ret, "Failed to add new bpf device cgroup rule");
 
 	return 0;
 }
