@@ -1381,17 +1381,16 @@ int lxc_cmd_console_log(const char *name, const char *lxcpath,
 			struct lxc_console_log *log)
 {
 	bool stopped = false;
+	struct lxc_cmd_console_log data = {
+		.clear		= log->clear,
+		.read		= log->read,
+		.read_max	= *log->read_max,
+	};
 	int ret;
-	struct lxc_cmd_console_log data;
 	struct lxc_cmd_rr cmd;
 
-	data.clear = log->clear;
-	data.read = log->read;
-	data.read_max = *log->read_max;
-
-	cmd.req.cmd = LXC_CMD_CONSOLE_LOG;
-	cmd.req.data = &data;
-	cmd.req.datalen = sizeof(struct lxc_cmd_console_log);
+	lxc_cmd_init(&cmd, LXC_CMD_CONSOLE_LOG);
+	lxc_cmd_data(&cmd, sizeof(struct lxc_cmd_console_log), &data);
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
@@ -1409,8 +1408,8 @@ int lxc_cmd_console_log(const char *name, const char *lxcpath,
 	if (cmd.rsp.ret < 0)
 		return cmd.rsp.ret;
 
-	*log->read_max = cmd.rsp.datalen;
-	log->data = cmd.rsp.data;
+	*log->read_max	= cmd.rsp.datalen;
+	log->data	= cmd.rsp.data;
 
 	return 0;
 }
