@@ -508,13 +508,6 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 		__internal_ret__;                             \
 	})
 
-#define sysdebug(__ret__, format, ...)                        \
-	({                                                    \
-		typeof(__ret__) __internal_ret__ = (__ret__); \
-		SYSDEBUG(format, ##__VA_ARGS__);              \
-		__internal_ret__;                             \
-	})
-
 #define systrace(__ret__, format, ...)                        \
 	({                                                    \
 		typeof(__ret__) __internal_ret__ = (__ret__); \
@@ -542,6 +535,34 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 		typeof(__ret__) __internal_ret__ = (__ret__); \
 		errno = labs(__ret__);                        \
 		SYSWARN(format, ##__VA_ARGS__);               \
+		__internal_ret__;                             \
+	})
+
+#define syserror(format, ...)                    \
+	({                                       \
+		SYSERROR(format, ##__VA_ARGS__); \
+		(-errno);                        \
+	})
+
+#define syserror_set(__ret__, format, ...)                    \
+	({                                                    \
+		typeof(__ret__) __internal_ret__ = (__ret__); \
+		errno = labs(__ret__);                        \
+		SYSERROR(format, ##__VA_ARGS__);              \
+		__internal_ret__;                             \
+	})
+
+#define sysdebug(format, ...)                    \
+	({                                       \
+		SYSDEBUG(format, ##__VA_ARGS__); \
+		(-errno);                        \
+	})
+
+#define sysdebug_set(__ret__, format, ...)                    \
+	({                                                    \
+		typeof(__ret__) __internal_ret__ = (__ret__); \
+		errno = labs(__ret__);                        \
+		SYSDEBUG(format, ##__VA_ARGS__);              \
 		__internal_ret__;                             \
 	})
 
