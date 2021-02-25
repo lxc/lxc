@@ -1617,17 +1617,11 @@ int lxc_cmd_get_cgroup_fd(const char *name, const char *lxcpath,
 			  size_t size_ret_fd, struct cgroup_fd *ret_fd)
 {
 	bool stopped = false;
-	struct lxc_cmd_rr cmd = {
-		.req = {
-			.cmd = LXC_CMD_GET_CGROUP_FD,
-			.datalen = sizeof(struct cgroup_fd),
-			.data = ret_fd,
-		},
-		.rsp = {
-			.ret = -ENOSYS,
-		},
-	};
 	int ret;
+	struct lxc_cmd_rr cmd;
+
+	lxc_cmd_init(&cmd, LXC_CMD_GET_CGROUP_FD);
+	lxc_cmd_data(&cmd, sizeof(struct cgroup_fd), ret_fd);
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
