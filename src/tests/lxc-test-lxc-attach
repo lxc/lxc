@@ -45,17 +45,21 @@ set -e
 
 allocate_pty="nopty"
 
+ATTACH_LOG=$(mktemp --dry-run)
+
 FAIL() {
 	echo -n "Failed " >&2
 	echo "$*" >&2
+	cat "${ATTACH_LOG}"
+	rm -f "${ATTACH_LOG}" || true
         lxc-destroy -n busy -f
 	exit 1
 }
 
 # Create a container, start it and wait for it to be in running state.
-lxc-create -t busybox -n busy || FAIL "creating busybox container"
-lxc-start -n busy -d || FAIL "starting busybox container"
-lxc-wait -n busy -s RUNNING || FAIL "waiting for busybox container to run"
+lxc-create -t busybox -n busy -l trace -o "${ATTACH_LOG}" || FAIL "creating busybox container"
+lxc-start -n busy -d -l trace -o "${ATTACH_LOG}" || FAIL "starting busybox container"
+lxc-wait -n busy -s RUNNING -l trace -o "${ATTACH_LOG}" || FAIL "waiting for busybox container to run"
 
 if [ -t 0 ] && [ -t 1 ] && [ -t 2 ]; then
 	allocate_pty="pty"
@@ -68,7 +72,7 @@ fi
 # stdout --> attached to pty
 # stderr --> attached to pty
 for i in `seq 1 100`; do
-	attach=$(lxc-attach -n busy -- hostname || FAIL "to allocate or setup pty")
+	attach=$(lxc-attach -n busy -l trace -o "${ATTACH_LOG}" -- hostname || FAIL "to allocate or setup pty")
 	if [ "$attach" != "busy" ]; then
 		FAIL "lxc-attach -n busy -- hostname"
 	fi
@@ -77,7 +81,7 @@ done
 # stdin  --> /dev/null
 # stdout --> attached to pty
 # stderr --> attached to pty
-attach=$(lxc-attach -n busy -- hostname < /dev/null || FAIL "to allocate or setup pty")
+attach=$(lxc-attach -n busy -l trace -o "${ATTACH_LOG}" -- hostname < /dev/null || FAIL "to allocate or setup pty")
 if [ "$attach" != "busy" ]; then
         FAIL "lxc-attach -n busy -- hostname < /dev/null"
 fi
@@ -85,7 +89,7 @@ fi
 # stdin  --> attached to pty
 # stdout --> /dev/null
 # stderr --> attached to pty
-attach=$(lxc-attach -n busy -- hostname > /dev/null || FAIL "to allocate or setup pty")
+attach=$(lxc-attach -n busy -l trace -o "${ATTACH_LOG}" -- hostname > /dev/null || FAIL "to allocate or setup pty")
 if [ -n "$attach" ]; then
         FAIL "lxc-attach -n busy -- hostname > /dev/null"
 fi
@@ -93,7 +97,7 @@ fi
 # stdin  --> attached to pty
 # stdout --> attached to pty
 # stderr --> /dev/null
-attach=$(lxc-attach -n busy -- hostname 2> /dev/null || FAIL "to allocate or setup pty")
+attach=$(lxc-attach -n busy -l trace -o "${ATTACH_LOG}" -- hostname 2> /dev/null || FAIL "to allocate or setup pty")
 if [ "$attach" != "busy" ]; then
         FAIL "lxc-attach -n busy -- hostname 2> /dev/null < /dev/null"
 fi
@@ -101,7 +105,7 @@ fi
 # stdin  --> /dev/null
 # stdout --> attached to pty
 # stderr --> /dev/null
-attach=$(lxc-attach -n busy -- hostname 2> /dev/null < /dev/null || FAIL "to allocate or setup pty")
+attach=$(lxc-attach -n busy -l trace -o "${ATTACH_LOG}" -- hostname 2> /dev/null < /dev/null || FAIL "to allocate or setup pty")
 if [ "$attach" != "busy" ]; then
         FAIL "lxc-attach -n busy -- hostname 2> /dev/null < /dev/null"
 fi
@@ -114,7 +118,7 @@ fi
 # stdin  --> attached to pty
 # stdout --> /dev/null
 # stderr --> attached to pty
-attach=$( ( lxc-attach -n busy -- sh -c 'hostname >&2' > /dev/null ) 2>&1 || FAIL "to allocate or setup pty")
+attach=$( ( lxc-attach -n busy -l trace -o "${ATTACH_LOG}" -- sh -c 'hostname >&2' > /dev/null ) 2>&1 || FAIL "to allocate or setup pty")
 if [ "$attach" != "busy" ]; then
         FAIL "lxc-attach -n busy -- sh -c 'hostname >&2' > /dev/null"
 fi
@@ -126,7 +130,7 @@ fi
 # stdin  --> attached to pty
 # stdout --> attach to pty
 # stderr --> /dev/null
-attach=$( ( lxc-attach -n busy -- sh -c 'hostname >&2' 2> /dev/null ) 2>&1 || FAIL "to allocate or setup pty")
+attach=$( ( lxc-attach -n busy -l trace -o "${ATTACH_LOG}" -- sh -c 'hostname >&2' 2> /dev/null ) 2>&1 || FAIL "to allocate or setup pty")
 if [ -n "$attach" ]; then
         FAIL "lxc-attach -n busy -- sh -c 'hostname >&2' 2> /dev/null"
 fi
@@ -136,7 +140,7 @@ fi
 # stdout --> /dev/null
 # stderr --> attached to pty
 # (As we expect the exit code of the command to be 1 we ignore it.)
-attach=$(lxc-attach -n busy -- sh -c 'rm 2>&1' > /dev/null || true)
+attach=$(lxc-attach -n busy -l trace -o "${ATTACH_LOG}" -- sh -c 'rm 2>&1' > /dev/null || true)
 if [ -n "$attach" ]; then
         FAIL "lxc-attach -n busy -- sh -c 'rm 2>&1' > /dev/null"
 fi
@@ -146,7 +150,7 @@ fi
 # - stdout --> attached to pty
 # - stderr --> /dev/null
 # (As we expect the exit code of the command to be 1 we ignore it.)
-attach=$(lxc-attach -n busy -- sh -c 'rm 2>&1' 2> /dev/null || true)
+attach=$(lxc-attach -n busy -l trace -o "${ATTACH_LOG}" -- sh -c 'rm 2>&1' 2> /dev/null || true)
 if [ -z "$attach" ]; then
         FAIL "lxc-attach -n busy -- sh -c 'rm 2>&1' 2> /dev/null"
 fi
@@ -154,7 +158,7 @@ fi
 # stdin  --> $in
 # stdout --> attached to pty
 # stderr --> attached to pty
-attach=$(echo hostname | lxc-attach -n busy -- || FAIL "to allocate or setup pty")
+attach=$(echo hostname | lxc-attach -n busy -l trace -o "${ATTACH_LOG}" -- || FAIL "to allocate or setup pty")
 if [ "$attach" != "busy" ]; then
         FAIL "echo hostname | lxc-attach -n busy --"
 fi
@@ -165,7 +169,7 @@ fi
 out=$(mktemp /tmp/out_XXXX)
 err=$(mktemp /tmp/err_XXXX)
 trap "rm -f $out $err" EXIT INT QUIT PIPE
-lxc-attach -n busy -- sh -c 'echo OUT; echo ERR >&2' > $out 2> $err || FAIL "to allocate or setup pty"
+lxc-attach -n busy -l trace -o "${ATTACH_LOG}" -- sh -c 'echo OUT; echo ERR >&2' > $out 2> $err || FAIL "to allocate or setup pty"
 outcontent=$(cat $out)
 errcontent=$(cat $err)
 if [ "$outcontent" != "OUT" ] || [ "$errcontent" != "ERR" ]; then
@@ -181,7 +185,7 @@ rm -f $out $err
 out=$(mktemp /tmp/out_XXXX)
 err=$(mktemp /tmp/err_XXXX)
 trap "rm -f $out $err" EXIT INT QUIT PIPE
-echo "hostname; rm" | lxc-attach -n busy > $out 2> $err || true
+echo "hostname; rm" | lxc-attach -n busy -l trace -o "${ATTACH_LOG}" > $out 2> $err || true
 outcontent=$(cat $out)
 errcontent=$(cat $err)
 if [ "$outcontent" != "busy" ] || [ -z "$errcontent" ]; then
@@ -191,5 +195,6 @@ fi
 rm -f $out $err
 
 lxc-destroy -n busy -f
+rm -f "${ATTACH_LOG}" || true
 
 exit 0
