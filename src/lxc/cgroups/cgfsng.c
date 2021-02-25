@@ -3030,7 +3030,7 @@ static int __list_cgroup_delegate(char ***delegate)
 		}
 
 		*delegate = move_ptr(list);
-		return syswarn(0, "Failed to read /sys/kernel/cgroup/delegate");
+		return syswarn_ret(0, "Failed to read /sys/kernel/cgroup/delegate");
 	}
 
 	lxc_iterate_parts(token, buf, " \t\n") {
