@@ -646,7 +646,7 @@ static int lxc_cmd_get_init_pidfd_callback(int fd, struct lxc_cmd_req *req,
 					   struct lxc_epoll_descr *descr)
 {
 	struct lxc_cmd_rsp rsp = {
-	    .ret = -EBADF,
+		.ret = -EBADF,
 	};
 
 	if (handler->pidfd < 0)
