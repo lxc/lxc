@@ -1188,7 +1188,8 @@ static int __instantiate_ns_common(struct lxc_netdev *netdev)
 	if (is_empty_string(netdev->name))
 		(void)strlcpy(netdev->name, "eth%d", IFNAMSIZ);
 
-	if (!strequal(netdev->created_name, netdev->name)) {
+	/* Physical interfaces have already been renamed when they are moved into the container namespace */
+	if (netdev->type != LXC_NET_PHYS && !strequal(netdev->created_name, netdev->name)) {
 		int ret;
 
 		ret = lxc_netdev_rename_by_name(netdev->created_name, netdev->name);
@@ -3406,10 +3407,15 @@ int lxc_network_move_created_netdev_priv(struct lxc_handler *handler)
 		if (netdev->type == LXC_NET_PHYS)
 			physname = is_wlan(netdev->link);
 
-		if (physname)
+		if (physname) {
 			ret = lxc_netdev_move_wlan(physname, netdev->link, pid, NULL);
-		else
-			ret = lxc_netdev_move_by_index(netdev->ifindex, pid, NULL);
+		} else {
+			/* Physical interfaces need to be moved and renamed at the same time to prevent namespace collisions */
+			if (netdev->type == LXC_NET_PHYS)
+				ret = lxc_netdev_move_by_index(netdev->ifindex, pid, netdev->name);
+			else
+				ret = lxc_netdev_move_by_index(netdev->ifindex, pid, NULL);
+		}
 		if (ret)
 			return log_error_errno(-1, -ret, "Failed to move network device \"%s\" with ifindex %d to network namespace %d",
 					       netdev->created_name,
