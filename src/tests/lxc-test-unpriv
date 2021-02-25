@@ -87,6 +87,7 @@ cleanup() {
 		echo "FAIL"
 		exit 1
 	fi
+	rm -f "${UNPRIV_LOG}" || true
 	echo "PASS"
 }
 
