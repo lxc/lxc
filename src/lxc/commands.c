@@ -1227,12 +1227,10 @@ static int lxc_cmd_get_name_callback(int fd, struct lxc_cmd_req *req,
 char *lxc_cmd_get_lxcpath(const char *hashed_sock_name)
 {
 	bool stopped = false;
-	struct lxc_cmd_rr cmd = {
-		.req = {
-			.cmd = LXC_CMD_GET_LXCPATH,
-		},
-	};
 	int ret;
+	struct lxc_cmd_rr cmd;
+
+	lxc_cmd_init(&cmd, LXC_CMD_GET_LXCPATH);
 
 	ret = lxc_cmd(NULL, &cmd, &stopped, NULL, hashed_sock_name);
 	if (ret < 0)
