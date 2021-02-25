@@ -1493,13 +1493,11 @@ int lxc_cmd_seccomp_notify_add_listener(const char *name, const char *lxcpath,
 
 #ifdef HAVE_SECCOMP_NOTIFY
 	bool stopped = false;
-	struct lxc_cmd_rr cmd = {
-		.req = {
-			.cmd = LXC_CMD_SECCOMP_NOTIFY_ADD_LISTENER,
-			.data = INT_TO_PTR(fd),
-		},
-	};
 	int ret;
+	struct lxc_cmd_rr cmd;
+
+	lxc_cmd_init(&cmd, LXC_CMD_SECCOMP_NOTIFY_ADD_LISTENER);
+	lxc_cmd_data(&cmd, ENCODE_INTO_PTR_LEN, INT_TO_PTR(fd));
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
