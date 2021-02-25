@@ -3063,7 +3063,7 @@ static bool unified_hierarchy_delegated(int dfd_base, char ***ret_files)
 		if (!faccessat(dfd_base, *s, W_OK, 0) || errno == ENOENT)
 			continue;
 
-		return sysinfo(false, "The %s file is not writable, skipping unified hierarchy", *s);
+		return sysinfo_ret(false, "The %s file is not writable, skipping unified hierarchy", *s);
 	}
 
 	*ret_files = move_ptr(list);
@@ -3073,7 +3073,7 @@ static bool unified_hierarchy_delegated(int dfd_base, char ***ret_files)
 static bool legacy_hierarchy_delegated(int dfd_base)
 {
 	if (faccessat(dfd_base, "cgroup.procs", W_OK, 0) && errno != ENOENT)
-		return sysinfo(false, "The cgroup.procs file is not writable, skipping legacy hierarchy");
+		return sysinfo_ret(false, "The cgroup.procs file is not writable, skipping legacy hierarchy");
 
 	return true;
 }
