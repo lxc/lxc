@@ -1552,13 +1552,11 @@ out:
 int lxc_cmd_freeze(const char *name, const char *lxcpath, int timeout)
 {
 	bool stopped = false;
-	struct lxc_cmd_rr cmd = {
-		.req = {
-			.cmd = LXC_CMD_FREEZE,
-			.data = INT_TO_PTR(timeout),
-		},
-	};
 	int ret;
+	struct lxc_cmd_rr cmd;
+
+	lxc_cmd_init(&cmd, LXC_CMD_FREEZE);
+	lxc_cmd_data(&cmd, ENCODE_INTO_PTR_LEN, INT_TO_PTR(timeout));
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret <= 0 || cmd.rsp.ret < 0)
