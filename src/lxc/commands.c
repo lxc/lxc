@@ -456,12 +456,12 @@ static int lxc_cmd_send(const char *name, struct lxc_cmd_rr *cmd,
  * the slot with lxc_cmd_fd_cleanup(). The socket fd will be returned in the
  * cmd response structure.
  */
-static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, bool *stopped,
-		   const char *lxcpath, const char *hashed_sock_name)
+static ssize_t lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, bool *stopped,
+		       const char *lxcpath, const char *hashed_sock_name)
 {
 	__do_close int client_fd = -EBADF;
-	int ret = -1;
 	bool stay_connected = false;
+	ssize_t ret;
 
 	if (cmd->req.cmd == LXC_CMD_GET_TTY_FD ||
 	    cmd->req.cmd == LXC_CMD_ADD_STATE_CLIENT)
@@ -474,8 +474,7 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, bool *stopped,
 		if (IN_SET(errno, ECONNREFUSED, EPIPE))
 			*stopped = 1;
 
-		return log_trace_errno(-1, errno, "Command \"%s\" failed to connect command socket",
-				       lxc_cmd_str(cmd->req.cmd));
+		return systrace(-errno, "Command \"%s\" failed to connect command socket", lxc_cmd_str(cmd->req.cmd));
 	}
 
 	ret = lxc_cmd_rsp_recv(client_fd, cmd);
@@ -494,7 +493,7 @@ static int lxc_cmd(const char *name, struct lxc_cmd_rr *cmd, bool *stopped,
 int lxc_try_cmd(const char *name, const char *lxcpath)
 {
 	bool stopped = false;
-	int ret;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
 	lxc_cmd_init(&cmd, LXC_CMD_GET_INIT_PID);
@@ -555,7 +554,7 @@ static int validate_string_request(int fd, const struct lxc_cmd_req *req)
 pid_t lxc_cmd_get_init_pid(const char *name, const char *lxcpath)
 {
 	bool stopped = false;
-	int ret;
+	ssize_t ret;
 	pid_t pid;
 	struct lxc_cmd_rr cmd;
 
@@ -627,7 +626,7 @@ static int lxc_cmd_get_init_pidfd_callback(int fd, struct lxc_cmd_req *req,
 int lxc_cmd_get_devpts_fd(const char *name, const char *lxcpath)
 {
 	bool stopped = false;
-	int ret;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
 	lxc_cmd_init(&cmd, LXC_CMD_GET_DEVPTS_FD);
@@ -661,7 +660,7 @@ int lxc_cmd_get_seccomp_notify_fd(const char *name, const char *lxcpath)
 {
 #ifdef HAVE_SECCOMP_NOTIFY
 	bool stopped = false;
-	int ret;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
 	lxc_cmd_init(&cmd, LXC_CMD_GET_SECCOMP_NOTIFY_FD);
@@ -702,7 +701,7 @@ int lxc_cmd_get_cgroup_ctx(const char *name, const char *lxcpath,
 			   size_t size_ret_ctx, struct cgroup_ctx *ret_ctx)
 {
 	bool stopped = false;
-	int ret;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
 	lxc_cmd_init(&cmd, LXC_CMD_GET_CGROUP_CTX);
@@ -727,7 +726,7 @@ static int lxc_cmd_get_cgroup_ctx_callback(int fd, struct lxc_cmd_req *req,
 	};
 	struct cgroup_ops *cgroup_ops = handler->cgroup_ops;
 	struct cgroup_ctx ctx_server = {};
-	int ret;
+	ssize_t ret;
 
 	ret = copy_struct_from_client(sizeof(struct cgroup_ctx), &ctx_server,
 				      req->datalen, req->data);
@@ -757,7 +756,7 @@ static int lxc_cmd_get_cgroup_ctx_callback(int fd, struct lxc_cmd_req *req,
 int lxc_cmd_get_clone_flags(const char *name, const char *lxcpath)
 {
 	bool stopped = false;
-	int ret;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
 	lxc_cmd_init(&cmd, LXC_CMD_GET_CLONE_FLAGS);
@@ -785,7 +784,7 @@ static char *lxc_cmd_get_cgroup_path_do(const char *name, const char *lxcpath,
 					lxc_cmd_t command)
 {
 	bool stopped = false;
-	int ret;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
 	lxc_cmd_init(&cmd, command);
@@ -863,7 +862,7 @@ static int lxc_cmd_get_cgroup_callback_do(int fd, struct lxc_cmd_req *req,
 					  struct lxc_epoll_descr *descr,
 					  bool limiting_cgroup)
 {
-	int ret;
+	ssize_t ret;
 	const char *path;
 	const void *reqdata;
 	struct lxc_cmd_rsp rsp;
@@ -922,7 +921,7 @@ char *lxc_cmd_get_config_item(const char *name, const char *item,
 			      const char *lxcpath)
 {
 	bool stopped = false;
-	int ret;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
 	if (is_empty_string(item))
@@ -986,7 +985,7 @@ out:
 int lxc_cmd_get_state(const char *name, const char *lxcpath)
 {
 	bool stopped = false;
-	int ret;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
 	lxc_cmd_init(&cmd, LXC_CMD_GET_STATE);
@@ -1029,7 +1028,7 @@ static int lxc_cmd_get_state_callback(int fd, struct lxc_cmd_req *req,
 int lxc_cmd_stop(const char *name, const char *lxcpath)
 {
 	bool stopped = false;
-	int ret;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
 	lxc_cmd_init(&cmd, LXC_CMD_STOP);
@@ -1125,7 +1124,7 @@ int lxc_cmd_get_tty_fd(const char *name, int *ttynum, int *fd, const char *lxcpa
 {
 	__do_free struct lxc_cmd_tty_rsp_data *rspdata = NULL;
 	bool stopped = false;
-	int ret;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
 	lxc_cmd_init(&cmd, LXC_CMD_GET_TTY_FD);
@@ -1149,7 +1148,7 @@ int lxc_cmd_get_tty_fd(const char *name, int *ttynum, int *fd, const char *lxcpa
 	*fd = rspdata->ptxfd;
 	*ttynum = rspdata->ttynum;
 
-	return log_info(ret, "Alloced fd %d for tty %d via socket %d", *fd, rspdata->ttynum, ret);
+	return log_info(ret, "Alloced fd %d for tty %d via socket %zd", *fd, rspdata->ttynum, ret);
 }
 
 static int lxc_cmd_get_tty_fd_callback(int fd, struct lxc_cmd_req *req,
@@ -1187,7 +1186,7 @@ static int lxc_cmd_get_tty_fd_callback(int fd, struct lxc_cmd_req *req,
 char *lxc_cmd_get_name(const char *hashed_sock_name)
 {
 	bool stopped = false;
-	int ret;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
 	lxc_cmd_init(&cmd, LXC_CMD_GET_NAME);
@@ -1227,7 +1226,7 @@ static int lxc_cmd_get_name_callback(int fd, struct lxc_cmd_req *req,
 char *lxc_cmd_get_lxcpath(const char *hashed_sock_name)
 {
 	bool stopped = false;
-	int ret;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
 	lxc_cmd_init(&cmd, LXC_CMD_GET_LXCPATH);
@@ -1328,7 +1327,7 @@ int lxc_cmd_add_bpf_device_cgroup(const char *name, const char *lxcpath,
 				  struct device_item *device)
 {
 	bool stopped = false;
-	int ret;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
 	if (strlen(device->access) > STRLITERALLEN("rwm"))
@@ -1386,7 +1385,7 @@ int lxc_cmd_console_log(const char *name, const char *lxcpath,
 		.read		= log->read,
 		.read_max	= *log->read_max,
 	};
-	int ret;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
 	lxc_cmd_init(&cmd, LXC_CMD_CONSOLE_LOG);
@@ -1493,7 +1492,7 @@ int lxc_cmd_seccomp_notify_add_listener(const char *name, const char *lxcpath,
 
 #ifdef HAVE_SECCOMP_NOTIFY
 	bool stopped = false;
-	int ret;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
 	lxc_cmd_init(&cmd, LXC_CMD_SECCOMP_NOTIFY_ADD_LISTENER);
@@ -1552,7 +1551,7 @@ out:
 int lxc_cmd_freeze(const char *name, const char *lxcpath, int timeout)
 {
 	bool stopped = false;
-	int ret;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
 	lxc_cmd_init(&cmd, LXC_CMD_FREEZE);
@@ -1584,8 +1583,8 @@ static int lxc_cmd_freeze_callback(int fd, struct lxc_cmd_req *req,
 int lxc_cmd_unfreeze(const char *name, const char *lxcpath, int timeout)
 {
 	bool stopped = false;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
-	int ret;
 
 	lxc_cmd_init(&cmd, LXC_CMD_UNFREEZE);
 	lxc_cmd_data(&cmd, ENCODE_INTO_PTR_LEN, INT_TO_PTR(timeout));
@@ -1617,7 +1616,7 @@ int lxc_cmd_get_cgroup_fd(const char *name, const char *lxcpath,
 			  size_t size_ret_fd, struct cgroup_fd *ret_fd)
 {
 	bool stopped = false;
-	int ret;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
 	lxc_cmd_init(&cmd, LXC_CMD_GET_CGROUP_FD);
@@ -1637,7 +1636,7 @@ int lxc_cmd_get_limit_cgroup_fd(const char *name, const char *lxcpath,
 				size_t size_ret_fd, struct cgroup_fd *ret_fd)
 {
 	bool stopped = false;
-	int ret;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
 	lxc_cmd_init(&cmd, LXC_CMD_GET_LIMIT_CGROUP_FD);
@@ -1702,7 +1701,7 @@ static int lxc_cmd_get_limit_cgroup_fd_callback(int fd, struct lxc_cmd_req *req,
 int lxc_cmd_get_cgroup2_fd(const char *name, const char *lxcpath)
 {
 	bool stopped = false;
-	int ret;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
 	lxc_cmd_init(&cmd, LXC_CMD_GET_CGROUP2_FD);
@@ -1720,7 +1719,7 @@ int lxc_cmd_get_cgroup2_fd(const char *name, const char *lxcpath)
 int lxc_cmd_get_limit_cgroup2_fd(const char *name, const char *lxcpath)
 {
 	bool stopped = false;
-	int ret;
+	ssize_t ret;
 	struct lxc_cmd_rr cmd;
 
 	lxc_cmd_init(&cmd, LXC_CMD_GET_LIMIT_CGROUP2_FD);
