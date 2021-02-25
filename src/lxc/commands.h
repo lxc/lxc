@@ -20,6 +20,7 @@
  * have specific reasons to keep the file descriptor alive.
  */
 #define LXC_CMD_REAP_CLIENT_FD 1
+#define LXC_CMD_KEEP_CLIENT_FD 2
 
 typedef enum {
 	LXC_CMD_GET_TTY_FD			= 0,
