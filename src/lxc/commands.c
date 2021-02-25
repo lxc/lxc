@@ -168,8 +168,7 @@ static ssize_t lxc_cmd_rsp_recv_fds(int fd_sock, struct unix_fds *fds,
  */
 static ssize_t lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 {
-	__do_free void *__private_ptr = NULL;
-	struct lxc_cmd_tty_rsp_data *data_console = NULL;
+	__do_free void *__data = NULL;
 	call_cleaner(put_unix_fds) struct unix_fds *fds = &(struct unix_fds){
 		.fd[0 ... KERNEL_SCM_MAX_FD - 1] = -EBADF,
 	};
@@ -275,24 +274,25 @@ static ssize_t lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		if (bytes_recv == 0 || rsp->ret < 0)
 			return 0;
 
-		__private_ptr = malloc(sizeof(struct lxc_cmd_tty_rsp_data));
-		if (!__private_ptr)
-			return syserrno_set(-ENOMEM, "Failed to receive response for command \"%s\"", cur_cmdstr);
-		data_console = (struct lxc_cmd_tty_rsp_data *)__private_ptr;
-		data_console->ptxfd = move_fd(fds->fd[0]);
-		data_console->ttynum = PTR_TO_INT(rsp->data);
+		__data = malloc(sizeof(struct lxc_cmd_tty_rsp_data));
+		if (__data) {
+			struct lxc_cmd_tty_rsp_data *tty = __data;
 
-		rsp->datalen = 0;
-		rsp->data = data_console;
-		break;
+			tty->ptxfd	= move_fd(fds->fd[0]);
+			tty->ttynum	= PTR_TO_INT(rsp->data);
+			rsp->datalen	= 0;
+			rsp->data	= tty;
+			break;
+		}
+		return syserrno_set(-ENOMEM, "Failed to receive response for command \"%s\"", cur_cmdstr);
 	case LXC_CMD_CONSOLE_LOG:		/* data */
-		__private_ptr = zalloc(rsp->datalen + 1);
-		rsp->data = __private_ptr;
+		__data = zalloc(rsp->datalen + 1);
+		rsp->data = __data;
 		break;
 	default:				/* catch any additional command */
 		if (rsp->datalen > 0) {
-			__private_ptr = zalloc(rsp->datalen);
-			rsp->data = __private_ptr;
+			__data = zalloc(rsp->datalen);
+			rsp->data = __data;
 		}
 		break;
 	}
@@ -329,7 +329,7 @@ static ssize_t lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 			return syserrno(err, "Failed to transfer file descriptors for command \"%s\"", cur_cmdstr);
 	}
 
-	move_ptr(__private_ptr);
+	move_ptr(__data);
 	return bytes_recv;
 }
 
