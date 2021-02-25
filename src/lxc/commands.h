@@ -102,10 +102,10 @@ __hidden extern int lxc_cmd_get_tty_fd(const char *name, int *ttynum, int *fd,
 				       const char *lxcpath);
 /*
  * Get the 'real' cgroup path (as seen in /proc/self/cgroup) for a container
- * for a particular subsystem
+ * for a particular controller
  */
 __hidden extern char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
-					      const char *subsystem);
+					      const char *controller);
 __hidden extern int lxc_cmd_get_clone_flags(const char *name, const char *lxcpath);
 __hidden extern char *lxc_cmd_get_config_item(const char *name, const char *item,
 					      const char *lxcpath);
@@ -164,7 +164,7 @@ __hidden extern int lxc_cmd_get_cgroup_fd(const char *name, const char *lxcpath,
 					  struct cgroup_fd *ret_fd);
 __hidden extern char *lxc_cmd_get_limit_cgroup_path(const char *name,
 						    const char *lxcpath,
-						    const char *subsystem);
+						    const char *controller);
 __hidden extern int lxc_cmd_get_limit_cgroup2_fd(const char *name,
 						 const char *lxcpath);
 __hidden extern int lxc_cmd_get_limit_cgroup_fd(const char *name,
