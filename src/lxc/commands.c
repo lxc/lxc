@@ -629,14 +629,14 @@ int lxc_cmd_get_init_pidfd(const char *name, const char *lxcpath)
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
-		return log_debug_errno(-1, errno, "Failed to process init pidfd command");
+		return sysdebug("Failed to process init pidfd command");
 
 	if (cmd.rsp.ret < 0)
-		return syserrno_set(cmd.rsp.ret, "Failed to receive init pidfd");
+		return sysdebug_set(cmd.rsp.ret, "Failed to receive init pidfd");
 
 	pidfd = PTR_TO_INT(cmd.rsp.data);
 	if (pidfd < 0)
-		return syserrno_set(pidfd, "Failed to receive init pidfd");
+		return sysdebug_set(pidfd, "Failed to receive init pidfd");
 
 	return pidfd;
 }
