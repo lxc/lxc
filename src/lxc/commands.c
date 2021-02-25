@@ -354,7 +354,7 @@ static int __lxc_cmd_rsp_send(int fd, struct lxc_cmd_rsp *rsp)
 
 	ret = lxc_send_nointr(fd, rsp->data, rsp->datalen, MSG_NOSIGNAL);
 	if (ret < 0 || ret != (ssize_t)rsp->datalen)
-		return syswarn(-errno, "Failed to send command response %zd", ret);
+		return syswarn("Failed to send command response %zd", ret);
 
 	return 0;
 }
@@ -392,7 +392,7 @@ static inline int rsp_one_fd_reap(int fd, int fd_send, struct lxc_cmd_rsp *rsp)
 	if (rsp->data && rsp->datalen > 0) {
 		ret = lxc_send_nointr(fd, rsp->data, rsp->datalen, MSG_NOSIGNAL);
 		if (ret < 0 || ret != (ssize_t)rsp->datalen)
-			return syswarn(-errno, "Failed to send command response %zd", ret);
+			return syswarn("Failed to send command response %zd", ret);
 	}
 
 	return LXC_CMD_REAP_CLIENT_FD;
@@ -430,7 +430,7 @@ __access_r(3, 2) static int rsp_many_fds_reap(int fd, __u32 fds_len,
 	if (rsp->data && rsp->datalen > 0) {
 		ret = lxc_send_nointr(fd, rsp->data, rsp->datalen, MSG_NOSIGNAL);
 		if (ret < 0 || ret != (ssize_t)rsp->datalen)
-			return syswarn(-errno, "Failed to send command response %zd", ret);
+			return syswarn("Failed to send command response %zd", ret);
 	}
 
 	return LXC_CMD_REAP_CLIENT_FD;

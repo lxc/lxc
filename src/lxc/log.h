@@ -494,13 +494,6 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 		__internal_ret__;                             \
 	})
 
-#define syswarn(__ret__, format, ...)                         \
-	({                                                    \
-		typeof(__ret__) __internal_ret__ = (__ret__); \
-		SYSWARN(format, ##__VA_ARGS__);               \
-		__internal_ret__;                             \
-	})
-
 #define systrace(__ret__, format, ...)                        \
 	({                                                    \
 		typeof(__ret__) __internal_ret__ = (__ret__); \
@@ -512,14 +505,6 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 	({                                                    \
 		typeof(__ret__) __internal_ret__ = (__ret__); \
 		SYSINFO(format, ##__VA_ARGS__);               \
-		__internal_ret__;                             \
-	})
-
-#define syswarn_set(__ret__, format, ...)                     \
-	({                                                    \
-		typeof(__ret__) __internal_ret__ = (__ret__); \
-		errno = labs(__ret__);                        \
-		SYSWARN(format, ##__VA_ARGS__);               \
 		__internal_ret__;                             \
 	})
 
@@ -609,6 +594,27 @@ __lxc_unused static inline void LXC_##LEVEL(struct lxc_log_locinfo* locinfo,	\
 	({                                                    \
 		typeof(__ret__) __internal_ret__ = (__ret__); \
 		SYSERROR(format, ##__VA_ARGS__);              \
+		__internal_ret__;                             \
+	})
+
+#define syswarn(format, ...)                    \
+	({                                      \
+		SYSWARN(format, ##__VA_ARGS__); \
+		(-errno);                       \
+	})
+
+#define syswarn_set(__ret__, format, ...)                     \
+	({                                                    \
+		typeof(__ret__) __internal_ret__ = (__ret__); \
+		errno = labs(__ret__);                        \
+		SYSWARN(format, ##__VA_ARGS__);               \
+		__internal_ret__;                             \
+	})
+
+#define syswarn_ret(__ret__, format, ...)                     \
+	({                                                    \
+		typeof(__ret__) __internal_ret__ = (__ret__); \
+		SYSWARN(format, ##__VA_ARGS__);               \
 		__internal_ret__;                             \
 	})
 
