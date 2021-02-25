@@ -812,9 +812,10 @@ static int lxc_cmd_get_clone_flags_callback(int fd, struct lxc_cmd_req *req,
 	return lxc_cmd_rsp_send_reap(fd, &rsp);
 }
 
-static char *lxc_cmd_get_cgroup_path_do(const char *name, const char *lxcpath,
-					const char *controller,
-					lxc_cmd_t command)
+static char *lxc_cmd_get_cgroup_path_callback(const char *name,
+					      const char *lxcpath,
+					      const char *controller,
+					      lxc_cmd_t command)
 {
 	bool stopped = false;
 	ssize_t ret;
@@ -837,9 +838,9 @@ static char *lxc_cmd_get_cgroup_path_do(const char *name, const char *lxcpath,
 			 * it sees an unknown command and just closes the
 			 * socket, sending us an EOF.
 			 */
-			return lxc_cmd_get_cgroup_path_do(name, lxcpath,
-							  controller,
-							  LXC_CMD_GET_CGROUP);
+			return lxc_cmd_get_cgroup_path_callback(name, lxcpath,
+								controller,
+								LXC_CMD_GET_CGROUP);
 		}
 		return NULL;
 	}
@@ -865,8 +866,8 @@ static char *lxc_cmd_get_cgroup_path_do(const char *name, const char *lxcpath,
 char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
 			      const char *controller)
 {
-	return lxc_cmd_get_cgroup_path_do(name, lxcpath, controller,
-					  LXC_CMD_GET_CGROUP);
+	return lxc_cmd_get_cgroup_path_callback(name, lxcpath, controller,
+						LXC_CMD_GET_CGROUP);
 }
 
 /*
@@ -886,14 +887,14 @@ char *lxc_cmd_get_cgroup_path(const char *name, const char *lxcpath,
 char *lxc_cmd_get_limit_cgroup_path(const char *name, const char *lxcpath,
 				    const char *controller)
 {
-	return lxc_cmd_get_cgroup_path_do(name, lxcpath, controller,
-					  LXC_CMD_GET_LIMIT_CGROUP);
+	return lxc_cmd_get_cgroup_path_callback(name, lxcpath, controller,
+						LXC_CMD_GET_LIMIT_CGROUP);
 }
 
-static int lxc_cmd_get_cgroup_callback_do(int fd, struct lxc_cmd_req *req,
-					  struct lxc_handler *handler,
-					  struct lxc_epoll_descr *descr,
-					  bool limiting_cgroup)
+static int __lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
+					 struct lxc_handler *handler,
+					 struct lxc_epoll_descr *descr,
+					 bool limiting_cgroup)
 {
 	ssize_t ret;
 	const char *path;
@@ -930,14 +931,14 @@ static int lxc_cmd_get_cgroup_callback(int fd, struct lxc_cmd_req *req,
 				       struct lxc_handler *handler,
 				       struct lxc_epoll_descr *descr)
 {
-	return lxc_cmd_get_cgroup_callback_do(fd, req, handler, descr, false);
+	return __lxc_cmd_get_cgroup_callback(fd, req, handler, descr, false);
 }
 
 static int lxc_cmd_get_limit_cgroup_callback(int fd, struct lxc_cmd_req *req,
 					     struct lxc_handler *handler,
 					     struct lxc_epoll_descr *descr)
 {
-	return ret_errno(ENOSYS);
+	return __lxc_cmd_get_cgroup_callback(fd, req, handler, descr, true);
 }
 
 /*
@@ -1767,10 +1768,10 @@ int lxc_cmd_get_limit_cgroup2_fd(const char *name, const char *lxcpath)
 	return PTR_TO_INT(cmd.rsp.data);
 }
 
-static int lxc_cmd_get_cgroup2_fd_callback_do(int fd, struct lxc_cmd_req *req,
-					      struct lxc_handler *handler,
-					      struct lxc_epoll_descr *descr,
-					      bool limiting_cgroup)
+static int __lxc_cmd_get_cgroup2_fd_callback(int fd, struct lxc_cmd_req *req,
+					     struct lxc_handler *handler,
+					     struct lxc_epoll_descr *descr,
+					     bool limiting_cgroup)
 {
 	struct lxc_cmd_rsp rsp = {
 		.ret = -EINVAL,
@@ -1797,15 +1798,14 @@ static int lxc_cmd_get_cgroup2_fd_callback(int fd, struct lxc_cmd_req *req,
 					   struct lxc_handler *handler,
 					   struct lxc_epoll_descr *descr)
 {
-	return lxc_cmd_get_cgroup2_fd_callback_do(fd, req, handler, descr,
-						  false);
+	return __lxc_cmd_get_cgroup2_fd_callback(fd, req, handler, descr, false);
 }
 
 static int lxc_cmd_get_limit_cgroup2_fd_callback(int fd, struct lxc_cmd_req *req,
 						 struct lxc_handler *handler,
 						 struct lxc_epoll_descr *descr)
 {
-	return ret_errno(ENOSYS);
+	return __lxc_cmd_get_cgroup2_fd_callback(fd, req, handler, descr, true);
 }
 
 static int lxc_cmd_rsp_send_enosys(int fd, int id)
