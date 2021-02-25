@@ -352,7 +352,7 @@ static int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
 		return ret_errno(EBADF);
 
 	if (flags & ~(BPF_F_ALLOW_OVERRIDE | BPF_F_ALLOW_MULTI | BPF_F_REPLACE))
-		return syserrno_set(-EINVAL, "Invalid flags for bpf program");
+		return syserror_set(-EINVAL, "Invalid flags for bpf program");
 
 	/*
 	 * Don't allow the bpf program to be overwritten for now. If we ever
@@ -513,11 +513,11 @@ int bpf_list_add_device(struct bpf_devices *bpf_devices,
 
 	list_elem = malloc(sizeof(*list_elem));
 	if (!list_elem)
-		return syserrno_set(ENOMEM, "Failed to allocate new device list");
+		return syserror_set(ENOMEM, "Failed to allocate new device list");
 
 	new_device = memdup(device, sizeof(struct device_item));
 	if (!new_device)
-		return syserrno_set(ENOMEM, "Failed to allocate new device item");
+		return syserror_set(ENOMEM, "Failed to allocate new device item");
 
 	lxc_list_add_elem(list_elem, move_ptr(new_device));
 	lxc_list_add_tail(&bpf_devices->device_item, move_ptr(list_elem));

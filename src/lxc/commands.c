@@ -231,7 +231,7 @@ static ssize_t lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 	 */
 	if ((rsp->datalen > LXC_CMD_DATA_MAX) &&
 	    (cur_cmd != LXC_CMD_CONSOLE_LOG))
-		return syserrno_set(-E2BIG, "Response data for command \"%s\" is too long: %d bytes > %d",
+		return syserror_set(-E2BIG, "Response data for command \"%s\" is too long: %d bytes > %d",
 				    cur_cmdstr, rsp->datalen, LXC_CMD_DATA_MAX);
 
 	/*
@@ -254,14 +254,14 @@ static ssize_t lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		__fallthrough;
 	case LXC_CMD_GET_LIMIT_CGROUP_FD:	/* data */
 		if (rsp->datalen > sizeof(struct cgroup_fd))
-			return syserrno_set(-EINVAL, "Invalid response size from server for \"%s\"", cur_cmdstr);
+			return syserror_set(-EINVAL, "Invalid response size from server for \"%s\"", cur_cmdstr);
 
 		/* Don't pointlessly allocate. */
 		rsp->data = (void *)cmd->req.data;
 		break;
 	case LXC_CMD_GET_CGROUP_CTX:		/* data */
 		if (rsp->datalen > sizeof(struct cgroup_ctx))
-			return syserrno_set(-EINVAL, "Invalid response size from server for \"%s\"", cur_cmdstr);
+			return syserror_set(-EINVAL, "Invalid response size from server for \"%s\"", cur_cmdstr);
 
 		/* Don't pointlessly allocate. */
 		rsp->data = (void *)cmd->req.data;
@@ -284,7 +284,7 @@ static ssize_t lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 			rsp->data	= tty;
 			break;
 		}
-		return syserrno_set(-ENOMEM, "Failed to receive response for command \"%s\"", cur_cmdstr);
+		return syserror_set(-ENOMEM, "Failed to receive response for command \"%s\"", cur_cmdstr);
 	case LXC_CMD_CONSOLE_LOG:		/* data */
 		__data = zalloc(rsp->datalen + 1);
 		rsp->data = __data;
@@ -305,7 +305,7 @@ static ssize_t lxc_cmd_rsp_recv(int sock, struct lxc_cmd_rr *cmd)
 		 * Either static or allocated memory.
 		 */
 		if (!rsp->data)
-			return syserrno_set(-ENOMEM, "Failed to prepare response buffer for command \"%s\"",
+			return syserror_set(-ENOMEM, "Failed to prepare response buffer for command \"%s\"",
 					    cur_cmdstr);
 
 		bytes_recv = lxc_recv_nointr(sock, rsp->data, rsp->datalen, 0);
@@ -744,7 +744,7 @@ static int lxc_cmd_get_seccomp_notify_fd_callback(int fd, struct lxc_cmd_req *re
 	rsp.ret = 0;
 	return rsp_one_fd_reap(fd, handler->conf->seccomp.notifier.notify_fd, &rsp);
 #else
-	return syserrno_set(-EOPNOTSUPP, "Seccomp notifier not supported");
+	return syserror_set(-EOPNOTSUPP, "Seccomp notifier not supported");
 #endif
 }
 
@@ -1388,17 +1388,17 @@ int lxc_cmd_add_bpf_device_cgroup(const char *name, const char *lxcpath,
 	struct lxc_cmd_rr cmd;
 
 	if (strlen(device->access) > STRLITERALLEN("rwm"))
-		return syserrno_set(-EINVAL, "Invalid access mode specified %s", device->access);
+		return syserror_set(-EINVAL, "Invalid access mode specified %s", device->access);
 
 	lxc_cmd_init(&cmd, LXC_CMD_ADD_BPF_DEVICE_CGROUP);
 	lxc_cmd_data(&cmd, sizeof(struct device_item), device);
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
-		return syserrno_set(ret, "Failed to process new bpf device cgroup command");
+		return syserror_set(ret, "Failed to process new bpf device cgroup command");
 
 	if (cmd.rsp.ret < 0)
-		return syserrno_set(cmd.rsp.ret, "Failed to add new bpf device cgroup rule");
+		return syserror_set(cmd.rsp.ret, "Failed to add new bpf device cgroup rule");
 
 	return 0;
 }
@@ -1856,7 +1856,7 @@ static int lxc_cmd_rsp_send_enosys(int fd, int id)
 	};
 
 	__lxc_cmd_rsp_send(fd, &rsp);
-	return syserrno_set(-ENOSYS, "Invalid command id %d", id);
+	return syserror_set(-ENOSYS, "Invalid command id %d", id);
 }
 
 static int lxc_cmd_process(int fd, struct lxc_cmd_req *req,

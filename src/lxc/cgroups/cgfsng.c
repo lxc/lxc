@@ -425,7 +425,7 @@ static int cgroup_hierarchy_add(struct cgroup_ops *ops, int dfd_mnt, char *mnt,
 	int idx;
 
 	if (abspath(base_cgroup))
-		return syserrno_set(-EINVAL, "Container base path must be relative to controller mount");
+		return syserror_set(-EINVAL, "Container base path must be relative to controller mount");
 
 	new = zalloc(sizeof(*new));
 	if (!new)
@@ -736,10 +736,10 @@ static int __cgroup_tree_create(int dfd_base, const char *path, mode_t mode,
 		 * absolute nor walks upwards.
 		 */
 		if (abspath(cur))
-			return syserrno_set(-EINVAL, "No absolute paths allowed");
+			return syserror_set(-EINVAL, "No absolute paths allowed");
 
 		if (strnequal(cur, "..", STRLITERALLEN("..")))
-			return syserrno_set(-EINVAL, "No upward walking paths allowed");
+			return syserror_set(-EINVAL, "No upward walking paths allowed");
 
 		ret = mkdirat(dfd_cur, cur, mode);
 		if (ret < 0) {
@@ -768,7 +768,7 @@ static int __cgroup_tree_create(int dfd_base, const char *path, mode_t mode,
 	/* The final cgroup must be succesfully creatd by us. */
 	if (ret) {
 		if (ret != -EEXIST || !eexist_ignore)
-			return syserrno_set(ret, "Creating the final cgroup %d(%s) failed", dfd_base, path);
+			return syserror_set(ret, "Creating the final cgroup %d(%s) failed", dfd_base, path);
 	}
 
 	return move_fd(dfd_final);
@@ -1339,7 +1339,7 @@ static int chown_cgroup_wrapper(void *data)
 		int dirfd = arg->hierarchies[i]->dfd_con;
 
 		if (dirfd < 0)
-			return syserrno_set(-EBADF, "Invalid cgroup file descriptor");
+			return syserror_set(-EBADF, "Invalid cgroup file descriptor");
 
 		(void)fchowmodat(dirfd, "", destuid, nsgid, 0775);
 
@@ -2787,7 +2787,7 @@ static int bpf_device_cgroup_prepare(struct cgroup_ops *ops,
 	else
 		ret = device_cgroup_rule_parse(&device_item, key, val);
 	if (ret < 0)
-		return syserrno_set(EINVAL, "Failed to parse device rule %s=%s", key, val);
+		return syserror_set(EINVAL, "Failed to parse device rule %s=%s", key, val);
 
 	/*
 	 * Note that bpf_list_add_device() returns 1 if it altered the device
@@ -2930,10 +2930,10 @@ static bool __cgfsng_delegate_controllers(struct cgroup_ops *ops, const char *cg
 		 * absolute nor walks upwards.
 		 */
 		if (abspath(cur))
-			return syserrno_set(-EINVAL, "No absolute paths allowed");
+			return syserror_set(-EINVAL, "No absolute paths allowed");
 
 		if (strnequal(cur, "..", STRLITERALLEN("..")))
-			return syserrno_set(-EINVAL, "No upward walking paths allowed");
+			return syserror_set(-EINVAL, "No upward walking paths allowed");
 
 		ret = lxc_writeat(dfd_cur, "cgroup.subtree_control", add_controllers, full_len);
 		if (ret < 0)
@@ -3258,7 +3258,7 @@ static int __initialize_cgroups(struct cgroup_ops *ops, bool relative,
 	}
 
 	if (!controllers_available(ops))
-		return syserrno_set(-ENOENT, "One or more requested controllers unavailable or not delegated");
+		return syserror_set(-ENOENT, "One or more requested controllers unavailable or not delegated");
 
 	return 0;
 }
@@ -3436,7 +3436,7 @@ static int __cgroup_attach_many(const struct lxc_conf *conf, const char *name,
 	}
 
 	if (idx == 0)
-		return syserrno_set(-ENOENT, "Failed to attach to cgroups");
+		return syserror_set(-ENOENT, "Failed to attach to cgroups");
 
 	TRACE("Attached to %s cgroup layout", cgroup_layout_name(ctx->layout));
 	return 0;
