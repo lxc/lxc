@@ -702,17 +702,11 @@ int lxc_cmd_get_cgroup_ctx(const char *name, const char *lxcpath,
 			   size_t size_ret_ctx, struct cgroup_ctx *ret_ctx)
 {
 	bool stopped = false;
-	struct lxc_cmd_rr cmd = {
-		.req = {
-			.cmd		= LXC_CMD_GET_CGROUP_CTX,
-			.datalen	= size_ret_ctx,
-			.data		= ret_ctx,
-		},
-		.rsp = {
-			.ret = -ENOSYS,
-		},
-	};
 	int ret;
+	struct lxc_cmd_rr cmd;
+
+	lxc_cmd_init(&cmd, LXC_CMD_GET_CGROUP_CTX);
+	lxc_cmd_data(&cmd, size_ret_ctx, ret_ctx);
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (ret < 0)
