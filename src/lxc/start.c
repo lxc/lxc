@@ -715,7 +715,7 @@ struct lxc_handler *lxc_init_handler(struct lxc_handler *old,
 	}
 
 	if (handler->conf->reboot == REBOOT_NONE) {
-		handler->conf->maincmd_fd = lxc_cmd_init(name, lxcpath, "command");
+		handler->conf->maincmd_fd = lxc_server_init(name, lxcpath, "command");
 		if (handler->conf->maincmd_fd < 0) {
 			ERROR("Failed to set up command socket");
 			goto on_error;

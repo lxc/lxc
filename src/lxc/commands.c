@@ -2043,7 +2043,7 @@ static int lxc_cmd_accept(int fd, uint32_t events, void *data,
 	return ret;
 }
 
-int lxc_cmd_init(const char *name, const char *lxcpath, const char *suffix)
+int lxc_server_init(const char *name, const char *lxcpath, const char *suffix)
 {
 	__do_close int fd = -EBADF;
 	int ret;
