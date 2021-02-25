@@ -1261,15 +1261,12 @@ int lxc_cmd_add_state_client(const char *name, const char *lxcpath,
 {
 	__do_close int clientfd = -EBADF;
 	bool stopped = false;
-	struct lxc_cmd_rr cmd = {
-		.req = {
-			.cmd     = LXC_CMD_ADD_STATE_CLIENT,
-			.data    = states,
-			.datalen = (sizeof(lxc_state_t) * MAX_STATE)
-		},
-	};
 	int state;
 	ssize_t ret;
+	struct lxc_cmd_rr cmd;
+
+	lxc_cmd_init(&cmd, LXC_CMD_ADD_STATE_CLIENT);
+	lxc_cmd_data(&cmd, (sizeof(lxc_state_t) * MAX_STATE), states);
 
 	ret = lxc_cmd(name, &cmd, &stopped, lxcpath, NULL);
 	if (states[STOPPED] != 0 && stopped != 0)
