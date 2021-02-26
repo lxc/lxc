@@ -198,7 +198,7 @@ again:
 		if (errno == EINTR)
 			goto again;
 
-		return syserrno(-errno, "Failed to receive response");
+		return syserror("Failed to receive response");
 	}
 	if (ret == 0)
 		return 0;
@@ -228,14 +228,14 @@ again:
 				for (idx = 0; idx < num_raw; idx++)
 					close(fds_raw[idx]);
 
-				return syserrno_set(-EFBIG, "Received excessive number of file descriptors");
+				return syserror_set(-EFBIG, "Received excessive number of file descriptors");
 			}
 
 			if (msg.msg_flags & MSG_CTRUNC) {
 				for (idx = 0; idx < num_raw; idx++)
 					close(fds_raw[idx]);
 
-				return syserrno_set(-EFBIG, "Control message was truncated; closing all fds and rejecting incomplete message");
+				return syserror_set(-EFBIG, "Control message was truncated; closing all fds and rejecting incomplete message");
 			}
 
 			if (ret_fds->fd_count_max > num_raw) {
@@ -243,7 +243,7 @@ again:
 					for (idx = 0; idx < num_raw; idx++)
 						close(fds_raw[idx]);
 
-					return syserrno_set(-EINVAL, "Received fewer file descriptors than we expected %u != %u",
+					return syserror_set(-EINVAL, "Received fewer file descriptors than we expected %u != %u",
 							    ret_fds->fd_count_max, num_raw);
 				}
 
@@ -261,7 +261,7 @@ again:
 					for (idx = 0; idx < num_raw; idx++)
 						close(fds_raw[idx]);
 
-					return syserrno_set(-EINVAL, "Received more file descriptors than we expected %u != %u",
+					return syserror_set(-EINVAL, "Received more file descriptors than we expected %u != %u",
 							    ret_fds->fd_count_max, num_raw);
 				}
 
@@ -280,7 +280,7 @@ again:
 				for (idx = 0; idx < num_raw; idx++)
 					close(fds_raw[idx]);
 
-				return syserrno_set(-EINVAL, "Invalid flag combination; closing to not risk leaking fds %u != %u",
+				return syserror_set(-EINVAL, "Invalid flag combination; closing to not risk leaking fds %u != %u",
 						    ret_fds->fd_count_max, num_raw);
 			}
 
@@ -296,7 +296,7 @@ again:
 		/* We expected to receive file descriptors. */
 		if ((ret_fds->flags & UNIX_FDS_ACCEPT_MASK) &&
 		    !(ret_fds->flags & UNIX_FDS_ACCEPT_NONE))
-			return syserrno_set(-EINVAL, "Received no file descriptors");
+			return syserror_set(-EINVAL, "Received no file descriptors");
 	}
 
 	return ret;

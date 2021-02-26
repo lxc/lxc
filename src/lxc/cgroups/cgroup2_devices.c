@@ -352,7 +352,7 @@ static int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
 		return ret_errno(EBADF);
 
 	if (flags & ~(BPF_F_ALLOW_OVERRIDE | BPF_F_ALLOW_MULTI | BPF_F_REPLACE))
-		return syserrno_set(-EINVAL, "Invalid flags for bpf program");
+		return syserror_set(-EINVAL, "Invalid flags for bpf program");
 
 	/*
 	 * Don't allow the bpf program to be overwritten for now. If we ever
@@ -369,7 +369,7 @@ static int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
 
 	ret = bpf_program_load_kernel(prog);
 	if (ret < 0)
-		return syserrno(-errno, "Failed to load bpf program");
+		return syserror("Failed to load bpf program");
 
 	attr = &(union bpf_attr){
 		.attach_type	= type,
@@ -380,7 +380,7 @@ static int bpf_program_cgroup_attach(struct bpf_program *prog, int type,
 
 	ret = bpf(BPF_PROG_ATTACH, attr, sizeof(*attr));
 	if (ret < 0)
-		return syserrno(-errno, "Failed to attach bpf program");
+		return syserror("Failed to attach bpf program");
 
 	prog->fd_cgroup		= move_fd(fd_attach);
 	prog->attached_type	= type;
@@ -414,7 +414,7 @@ int bpf_program_cgroup_detach(struct bpf_program *prog)
 
 	ret = bpf(BPF_PROG_DETACH, attr, sizeof(*attr));
 	if (ret < 0)
-		return syserrno(-errno, "Failed to detach bpf program from cgroup %d", fd_cgroup);
+		return syserror("Failed to detach bpf program from cgroup %d", fd_cgroup);
 
 	TRACE("Detached bpf program from cgroup %d", fd_cgroup);
 
@@ -513,11 +513,11 @@ int bpf_list_add_device(struct bpf_devices *bpf_devices,
 
 	list_elem = malloc(sizeof(*list_elem));
 	if (!list_elem)
-		return syserrno_set(ENOMEM, "Failed to allocate new device list");
+		return syserror_set(ENOMEM, "Failed to allocate new device list");
 
 	new_device = memdup(device, sizeof(struct device_item));
 	if (!new_device)
-		return syserrno_set(ENOMEM, "Failed to allocate new device item");
+		return syserror_set(ENOMEM, "Failed to allocate new device item");
 
 	lxc_list_add_elem(list_elem, move_ptr(new_device));
 	lxc_list_add_tail(&bpf_devices->device_item, move_ptr(list_elem));
@@ -565,11 +565,11 @@ static struct bpf_program *__bpf_cgroup_devices(struct bpf_devices *bpf_devices)
 
 	prog = bpf_program_new(BPF_PROG_TYPE_CGROUP_DEVICE);
 	if (!prog)
-		return syserrno(NULL, "Failed to create new bpf program");
+		return syserror_ret(NULL, "Failed to create new bpf program");
 
 	ret = bpf_program_init(prog);
 	if (ret)
-		return syserrno(NULL, "Failed to initialize bpf program");
+		return syserror_ret(NULL, "Failed to initialize bpf program");
 
 	prog->device_list_type = bpf_devices->list_type;
 	TRACE("Device cgroup %s all devices by default",
@@ -586,14 +586,14 @@ static struct bpf_program *__bpf_cgroup_devices(struct bpf_devices *bpf_devices)
 
 		ret = bpf_program_append_device(prog, cur);
 		if (ret)
-			return syserrno(NULL, "Failed adding new device rule");
+			return syserror_ret(NULL, "Failed adding new device rule");
 
 		TRACE("Added new device rule");
 	}
 
 	ret = bpf_program_finalize(prog);
 	if (ret)
-		return syserrno(NULL, "Failed to finalize device program");
+		return syserror_ret(NULL, "Failed to finalize device program");
 
 	return move_ptr(prog);
 }
@@ -606,13 +606,13 @@ bool bpf_cgroup_devices_attach(struct cgroup_ops *ops,
 
 	prog = __bpf_cgroup_devices(bpf_devices);
 	if (!prog)
-		return syserrno(false, "Failed to create bpf program");
+		return syserror_ret(false, "Failed to create bpf program");
 
 	ret = bpf_program_cgroup_attach(prog, BPF_CGROUP_DEVICE,
 					ops->unified->dfd_lim,
 					BPF_F_ALLOW_MULTI);
 	if (ret)
-		return syserrno(false, "Failed to attach bpf program");
+		return syserror_ret(false, "Failed to attach bpf program");
 
 	/* Replace old bpf program. */
 	swap(prog, ops->cgroup2_devices);
@@ -657,11 +657,11 @@ bool bpf_cgroup_devices_update(struct cgroup_ops *ops,
 
 	prog = __bpf_cgroup_devices(bpf_devices);
 	if (!prog)
-		return syserrno(false, "Failed to create bpf program");
+		return syserror_ret(false, "Failed to create bpf program");
 
 	ret = bpf_program_load_kernel(prog);
 	if (ret < 0)
-		return syserrno(false, "Failed to load bpf program");
+		return syserror_ret(false, "Failed to load bpf program");
 
 	attr = &(union bpf_attr){
 		.attach_type	= prog_old->attached_type,
@@ -693,7 +693,7 @@ bool bpf_cgroup_devices_update(struct cgroup_ops *ops,
 		break;
 	}
 	if (ret < 0)
-		return syserrno(false, "Failed to update bpf program");
+		return syserror_ret(false, "Failed to update bpf program");
 
 	if (can_use_bpf_replace > 0) {
 		/* The old program was automatically detached by the kernel. */

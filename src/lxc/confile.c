@@ -1825,10 +1825,10 @@ static int set_config_cgroup_dir(const char *key, const char *value,
 		return clr_config_cgroup_dir(key, lxc_conf, NULL);
 
 	if (abspath(value))
-		return syserrno_set(-EINVAL, "%s paths may not be absolute", key);
+		return syserror_set(-EINVAL, "%s paths may not be absolute", key);
 
 	if (dotdot(value))
-		return syserrno_set(-EINVAL, "%s paths may not walk upwards via \"../\"", key);
+		return syserror_set(-EINVAL, "%s paths may not walk upwards via \"../\"", key);
 
 	return set_config_path_item(&lxc_conf->cgroup_meta.dir, value);
 }
@@ -1840,10 +1840,10 @@ static int set_config_cgroup_monitor_dir(const char *key, const char *value,
 		return clr_config_cgroup_monitor_dir(key, lxc_conf, NULL);
 
 	if (abspath(value))
-		return syserrno_set(-EINVAL, "%s paths may not be absolute", key);
+		return syserror_set(-EINVAL, "%s paths may not be absolute", key);
 
 	if (dotdot(value))
-		return syserrno_set(-EINVAL, "%s paths may not walk upwards via \"../\"", key);
+		return syserror_set(-EINVAL, "%s paths may not walk upwards via \"../\"", key);
 
 	return set_config_path_item(&lxc_conf->cgroup_meta.monitor_dir, value);
 }
@@ -1855,10 +1855,10 @@ static int set_config_cgroup_monitor_pivot_dir(const char *key, const char *valu
 		return clr_config_cgroup_monitor_pivot_dir(key, lxc_conf, NULL);
 
 	if (abspath(value))
-		return syserrno_set(-EINVAL, "%s paths may not be absolute", key);
+		return syserror_set(-EINVAL, "%s paths may not be absolute", key);
 
 	if (dotdot(value))
-		return syserrno_set(-EINVAL, "%s paths may not walk upwards via \"../\"", key);
+		return syserror_set(-EINVAL, "%s paths may not walk upwards via \"../\"", key);
 
 	return set_config_path_item(&lxc_conf->cgroup_meta.monitor_pivot_dir, value);
 }
@@ -1871,10 +1871,10 @@ static int set_config_cgroup_container_dir(const char *key, const char *value,
 		return clr_config_cgroup_container_dir(key, lxc_conf, NULL);
 
 	if (abspath(value))
-		return syserrno_set(-EINVAL, "%s paths may not be absolute", key);
+		return syserror_set(-EINVAL, "%s paths may not be absolute", key);
 
 	if (dotdot(value))
-		return syserrno_set(-EINVAL, "%s paths may not walk upwards via \"../\"", key);
+		return syserror_set(-EINVAL, "%s paths may not walk upwards via \"../\"", key);
 
 	return set_config_path_item(&lxc_conf->cgroup_meta.container_dir, value);
 }
@@ -1888,7 +1888,7 @@ static int set_config_cgroup_container_inner_dir(const char *key,
 		return clr_config_cgroup_container_inner_dir(key, lxc_conf, NULL);
 
 	if (abspath(value))
-		return syserrno_set(-EINVAL, "%s paths may not be absolute", key);
+		return syserror_set(-EINVAL, "%s paths may not be absolute", key);
 
 	if (strchr(value, '/') || strequal(value, ".") || strequal(value, ".."))
 		return log_error_errno(-EINVAL, EINVAL, "lxc.cgroup.dir.container.inner must be a single directory name");
