@@ -165,7 +165,7 @@ struct lxc_netdev *lxc_network_add(struct lxc_list *networks, int idx, bool tail
 	__do_free struct lxc_netdev *netdev = NULL;
 
 	/* network does not exist */
-	netdev = malloc(sizeof(*netdev));
+	netdev = zalloc(sizeof(*netdev));
 	if (!netdev)
 		return ret_set_errno(NULL, ENOMEM);
 
@@ -177,7 +177,7 @@ struct lxc_netdev *lxc_network_add(struct lxc_list *networks, int idx, bool tail
 	netdev->idx = idx;
 
 	/* prepare new list */
-	newlist = malloc(sizeof(*newlist));
+	newlist = zalloc(sizeof(*newlist));
 	if (!newlist)
 		return ret_set_errno(NULL, ENOMEM);
 
