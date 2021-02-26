@@ -548,6 +548,34 @@ extern int __build_bug_on_failed;
 #define IPVLAN_ISOLATION_VEPA 2
 #endif
 
+#ifndef BRIDGE_VLAN_NONE
+#define BRIDGE_VLAN_NONE -1 /* Bridge VLAN option set to "none". */
+#endif
+
+#ifndef BRIDGE_VLAN_ID_MAX
+#define BRIDGE_VLAN_ID_MAX 4094 /* Bridge VLAN MAX VLAN ID. */
+#endif
+
+#ifndef BRIDGE_FLAGS_MASTER
+#define BRIDGE_FLAGS_MASTER 1 /* Bridge command to/from parent */
+#endif
+
+#ifndef BRIDGE_VLAN_INFO_PVID
+#define BRIDGE_VLAN_INFO_PVID (1<<1) /* VLAN is PVID, ingress untagged */
+#endif
+
+#ifndef BRIDGE_VLAN_INFO_UNTAGGED
+#define BRIDGE_VLAN_INFO_UNTAGGED (1<<2) /* VLAN egresses untagged */
+#endif
+
+#ifndef IFLA_BRIDGE_FLAGS
+#define IFLA_BRIDGE_FLAGS 0
+#endif
+
+#ifndef IFLA_BRIDGE_VLAN_INFO
+#define IFLA_BRIDGE_VLAN_INFO 2
+#endif
+
 /* Attributes of RTM_NEWNSID/RTM_GETNSID messages */
 enum {
 	__LXC_NETNSA_NONE,
