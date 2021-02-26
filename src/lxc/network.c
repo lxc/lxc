@@ -523,7 +523,7 @@ static int netdev_configure_server_macvlan(struct lxc_handler *handler, struct l
 			goto on_error;
 	}
 
-	DEBUG("Instantiated macvlan \"%s\" with ifindex is %d and mode %d",
+	DEBUG("Instantiated macvlan \"%s\" with ifindex %d and mode %d",
 	      peer, netdev->ifindex, netdev->priv.macvlan_attr.mode);
 
 	return 0;
@@ -671,7 +671,7 @@ static int netdev_configure_server_ipvlan(struct lxc_handler *handler, struct lx
 			goto on_error;
 	}
 
-	DEBUG("Instantiated ipvlan \"%s\" with ifindex is %d and mode %d", peer,
+	DEBUG("Instantiated ipvlan \"%s\" with ifindex %d and mode %d", peer,
 	      netdev->ifindex, netdev->priv.macvlan_attr.mode);
 
 	return 0;
@@ -745,7 +745,7 @@ static int netdev_configure_server_vlan(struct lxc_handler *handler, struct lxc_
 		}
 	}
 
-	DEBUG("Instantiated vlan \"%s\" with ifindex is \"%d\"", peer,
+	DEBUG("Instantiated vlan \"%s\" with ifindex \"%d\"", peer,
 	      netdev->ifindex);
 
 	return 0;
@@ -819,7 +819,7 @@ static int netdev_configure_server_phys(struct lxc_handler *handler, struct lxc_
 			return -1;
 	}
 
-	DEBUG("Instantiated phys \"%s\" with ifindex is \"%d\"", netdev->link,
+	DEBUG("Instantiated phys \"%s\" with ifindex \"%d\"", netdev->link,
 	      netdev->ifindex);
 
 	return 0;
