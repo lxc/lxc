@@ -82,6 +82,7 @@ __hidden extern FILE *fdopen_at(int dfd, const char *path, const char *mode,
                                 unsigned int o_flags,
                                 unsigned int resolve_flags);
 __hidden extern FILE *fopen_cached(const char *path, const char *mode, void **caller_freed_buffer);
+__hidden extern int timens_offset_write(clockid_t clk_id, int64_t s_offset, int64_t ns_offset);
 __hidden extern bool exists_dir_at(int dir_fd, const char *path);
 __hidden extern bool exists_file_at(int dir_fd, const char *path);
 __hidden extern int open_at(int dfd, const char *path, unsigned int o_flags,

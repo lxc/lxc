@@ -45,6 +45,7 @@ const struct ns_info ns_info[LXC_NS_MAX] = {
 	[LXC_NS_IPC]    =  { "ipc",    "ns/ipc",    CLONE_NEWIPC,    "CLONE_NEWIPC",    "LXC_IPC_NS"     },
 	[LXC_NS_NET]    =  { "net",    "ns/net",    CLONE_NEWNET,    "CLONE_NEWNET",    "LXC_NET_NS"     },
 	[LXC_NS_CGROUP] =  { "cgroup", "ns/cgroup", CLONE_NEWCGROUP, "CLONE_NEWCGROUP", "LXC_CGROUP_NS"  },
+	[LXC_NS_TIME]	=  { "time",   "ns/time",   CLONE_NEWTIME,   "CLONE_NEWTIME",   "LXC_TIME_NS"    },
 };
 
 int lxc_namespace_2_cloneflag(const char *namespace)

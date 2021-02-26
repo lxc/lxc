@@ -2717,6 +2717,7 @@ struct lxc_conf *lxc_conf_init(void)
 	memset(&new->init_groups, 0, sizeof(lxc_groups_t));
 	memset(&new->cgroup_meta, 0, sizeof(struct lxc_cgroup));
 	memset(&new->ns_share, 0, sizeof(char *) * LXC_NS_MAX);
+	memset(&new->timens, 0, sizeof(struct timens_offsets));
 	seccomp_conf_init(new);
 
 	return new;
@@ -3967,6 +3968,10 @@ void lxc_conf_free(struct lxc_conf *conf)
 	lxc_clear_apparmor_raw(conf);
 	lxc_clear_namespace(conf);
 	free(conf->cgroup_meta.dir);
+	free(conf->cgroup_meta.monitor_dir);
+	free(conf->cgroup_meta.monitor_pivot_dir);
+	free(conf->cgroup_meta.container_dir);
+	free(conf->cgroup_meta.namespace_dir);
 	free(conf->cgroup_meta.controllers);
 	free(conf->shmount.path_host);
 	free(conf->shmount.path_cont);

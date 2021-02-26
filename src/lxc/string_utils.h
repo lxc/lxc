@@ -74,6 +74,8 @@ __hidden extern int lxc_safe_long(const char *numstr, long int *converted);
 __hidden extern int lxc_safe_long_long(const char *numstr, long long int *converted);
 __hidden extern int lxc_safe_ulong(const char *numstr, unsigned long *converted);
 __hidden extern int lxc_safe_uint64(const char *numstr, uint64_t *converted, int base);
+__hidden extern int lxc_safe_int64_residual(const char *numstr, int64_t *converted, int base,
+					    char *residual, size_t residual_len);
 /* Handles B, kb, MB, GB. Detects overflows and reports -ERANGE. */
 __hidden extern int parse_byte_size_string(const char *s, int64_t *converted);
 
