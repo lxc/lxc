@@ -3637,14 +3637,52 @@ static int lxc_network_setup_in_child_namespaces_common(struct lxc_netdev *netde
 	return 0;
 }
 
+/**
+ * Consider the following network layout:
+ *
+ *  lxc.net.0.type = phys
+ *  lxc.net.0.link = eth2
+ *  lxc.net.0.name = eth%d
+ *
+ *  lxc.net.1.type = phys
+ *  lxc.net.1.link = eth1
+ *  lxc.net.1.name = eth0
+ *
+ * If we simply follow this order and create the first network first the kernel
+ * will allocate eth0 for the first network but the second network requests
+ * that eth1 be renamed to eth0 in the container's network namespace which
+ * would lead to a clash.
+ *
+ * Note, we don't handle cases like:
+ *
+ *  lxc.net.0.type = phys
+ *  lxc.net.0.link = eth2
+ *  lxc.net.0.name = eth0
+ *
+ *  lxc.net.1.type = phys
+ *  lxc.net.1.link = eth1
+ *  lxc.net.1.name = eth0
+ *
+ * That'll brutally fail of course but there's nothing we can do about it.
+ */
 int lxc_setup_network_in_child_namespaces(const struct lxc_conf *conf,
 					  struct lxc_list *network)
 {
 	struct lxc_list *iterator;
+	bool needs_second_pass = false;
 
-	lxc_list_for_each (iterator, network) {
+	if (lxc_list_empty(network))
+		return 0;
+
+	/* Configure all devices that have a specific target name. */
+	lxc_list_for_each(iterator, network) {
 		struct lxc_netdev *netdev = iterator->elem;
 		int ret;
+
+		if (is_empty_string(netdev->name) || strequal(netdev->name, "eth%d")) {
+			needs_second_pass = true;
+			continue;
+		}
 
 		ret = netdev_configure_container[netdev->type](netdev);
 		if (!ret)
@@ -3652,9 +3690,25 @@ int lxc_setup_network_in_child_namespaces(const struct lxc_conf *conf,
 		if (ret)
 			return log_error_errno(-1, errno, "Failed to setup netdev");
 	}
+	INFO("Finished setting up network devices with caller assigned names");
 
-	if (!lxc_list_empty(network))
-		INFO("Network has been setup");
+	if (needs_second_pass) {
+		/* Configure all devices that have a kernel assigned name. */
+		lxc_list_for_each(iterator, network) {
+			struct lxc_netdev *netdev = iterator->elem;
+			int ret;
+
+			if (!is_empty_string(netdev->name) && !strequal(netdev->name, "eth%d"))
+				continue;
+
+			ret = netdev_configure_container[netdev->type](netdev);
+			if (!ret)
+				ret = lxc_network_setup_in_child_namespaces_common(netdev);
+			if (ret)
+				return log_error_errno(-1, errno, "Failed to setup netdev");
+		}
+		INFO("Finished setting up network devices with kernel assigned names");
+	}
 
 	return 0;
 }
