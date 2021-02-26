@@ -46,8 +46,10 @@
 
 lxc_log_define(network, lxc);
 
-typedef int (*instantiate_cb)(struct lxc_handler *, struct lxc_netdev *);
-typedef int (*instantiate_ns_cb)(struct lxc_netdev *);
+typedef int (*netdev_configure_server_cb)(struct lxc_handler *, struct lxc_netdev *);
+typedef int (*netdev_configure_container_cb)(struct lxc_netdev *);
+typedef int (*netdev_shutdown_server_cb)(struct lxc_handler *, struct lxc_netdev *);
+
 static const char loop_device[] = "lo";
 
 static int lxc_ip_route_dest(__u16 nlmsg_type, int family, int ifindex, void *dest, unsigned int netmask)
@@ -537,7 +539,7 @@ static int setup_veth_ovs_bridge_vlan(char *veth1, struct lxc_netdev *netdev)
 	return 0;
 }
 
-static int instantiate_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
+static int netdev_configure_server_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	int err;
 	unsigned int mtu = 1500;
@@ -771,7 +773,7 @@ out_delete:
 	return -1;
 }
 
-static int instantiate_macvlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
+static int netdev_configure_server_macvlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	char peer[IFNAMSIZ];
 	int err;
@@ -921,7 +923,7 @@ static int lxc_ipvlan_create(const char *parent, const char *name, int mode, int
 	return netlink_transaction(nlh_ptr, nlmsg, answer);
 }
 
-static int instantiate_ipvlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
+static int netdev_configure_server_ipvlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	char peer[IFNAMSIZ];
 	int err;
@@ -995,7 +997,7 @@ on_error:
 	return -1;
 }
 
-static int instantiate_vlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
+static int netdev_configure_server_vlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	char peer[IFNAMSIZ];
 	int err;
@@ -1069,7 +1071,7 @@ on_error:
 	return -1;
 }
 
-static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
+static int netdev_configure_server_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	int err, mtu_orig = 0;
 
@@ -1139,7 +1141,7 @@ static int instantiate_phys(struct lxc_handler *handler, struct lxc_netdev *netd
 	return 0;
 }
 
-static int instantiate_empty(struct lxc_handler *handler, struct lxc_netdev *netdev)
+static int netdev_configure_server_empty(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	int ret;
 	char *argv[] = {
@@ -1159,23 +1161,23 @@ static int instantiate_empty(struct lxc_handler *handler, struct lxc_netdev *net
 	return 0;
 }
 
-static int instantiate_none(struct lxc_handler *handler, struct lxc_netdev *netdev)
+static int netdev_configure_server_none(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	netdev->ifindex = 0;
 	return 0;
 }
 
-static  instantiate_cb netdev_conf[LXC_NET_MAXCONFTYPE + 1] = {
-	[LXC_NET_VETH]    = instantiate_veth,
-	[LXC_NET_MACVLAN] = instantiate_macvlan,
-	[LXC_NET_IPVLAN]  = instantiate_ipvlan,
-	[LXC_NET_VLAN]    = instantiate_vlan,
-	[LXC_NET_PHYS]    = instantiate_phys,
-	[LXC_NET_EMPTY]   = instantiate_empty,
-	[LXC_NET_NONE]    = instantiate_none,
+static netdev_configure_server_cb netdev_configure_server[LXC_NET_MAXCONFTYPE + 1] = {
+	[LXC_NET_VETH]    = netdev_configure_server_veth,
+	[LXC_NET_MACVLAN] = netdev_configure_server_macvlan,
+	[LXC_NET_IPVLAN]  = netdev_configure_server_ipvlan,
+	[LXC_NET_VLAN]    = netdev_configure_server_vlan,
+	[LXC_NET_PHYS]    = netdev_configure_server_phys,
+	[LXC_NET_EMPTY]   = netdev_configure_server_empty,
+	[LXC_NET_NONE]    = netdev_configure_server_none,
 };
 
-static int __instantiate_ns_common(struct lxc_netdev *netdev)
+static int __netdev_configure_container_common(struct lxc_netdev *netdev)
 {
 	char current_ifname[IFNAMSIZ];
 
@@ -1217,53 +1219,53 @@ static int __instantiate_ns_common(struct lxc_netdev *netdev)
 	return 0;
 }
 
-static int instantiate_ns_veth(struct lxc_netdev *netdev)
+static int netdev_configure_container_veth(struct lxc_netdev *netdev)
 {
 
-	return __instantiate_ns_common(netdev);
+	return __netdev_configure_container_common(netdev);
 }
 
-static int instantiate_ns_macvlan(struct lxc_netdev *netdev)
+static int netdev_configure_container_macvlan(struct lxc_netdev *netdev)
 {
-	return __instantiate_ns_common(netdev);
+	return __netdev_configure_container_common(netdev);
 }
 
-static int instantiate_ns_ipvlan(struct lxc_netdev *netdev)
+static int netdev_configure_container_ipvlan(struct lxc_netdev *netdev)
 {
-	return __instantiate_ns_common(netdev);
+	return __netdev_configure_container_common(netdev);
 }
 
-static int instantiate_ns_vlan(struct lxc_netdev *netdev)
+static int netdev_configure_container_vlan(struct lxc_netdev *netdev)
 {
-	return __instantiate_ns_common(netdev);
+	return __netdev_configure_container_common(netdev);
 }
 
-static int instantiate_ns_phys(struct lxc_netdev *netdev)
+static int netdev_configure_container_phys(struct lxc_netdev *netdev)
 {
-	return __instantiate_ns_common(netdev);
+	return __netdev_configure_container_common(netdev);
 }
 
-static int instantiate_ns_empty(struct lxc_netdev *netdev)
-{
-	return 0;
-}
-
-static int instantiate_ns_none(struct lxc_netdev *netdev)
+static int netdev_configure_container_empty(struct lxc_netdev *netdev)
 {
 	return 0;
 }
 
-static  instantiate_ns_cb netdev_ns_conf[LXC_NET_MAXCONFTYPE + 1] = {
-	[LXC_NET_VETH]    = instantiate_ns_veth,
-	[LXC_NET_MACVLAN] = instantiate_ns_macvlan,
-	[LXC_NET_IPVLAN]  = instantiate_ns_ipvlan,
-	[LXC_NET_VLAN]    = instantiate_ns_vlan,
-	[LXC_NET_PHYS]    = instantiate_ns_phys,
-	[LXC_NET_EMPTY]   = instantiate_ns_empty,
-	[LXC_NET_NONE]    = instantiate_ns_none,
+static int netdev_configure_container_none(struct lxc_netdev *netdev)
+{
+	return 0;
+}
+
+static netdev_configure_container_cb netdev_configure_container[LXC_NET_MAXCONFTYPE + 1] = {
+	[LXC_NET_VETH]    = netdev_configure_container_veth,
+	[LXC_NET_MACVLAN] = netdev_configure_container_macvlan,
+	[LXC_NET_IPVLAN]  = netdev_configure_container_ipvlan,
+	[LXC_NET_VLAN]    = netdev_configure_container_vlan,
+	[LXC_NET_PHYS]    = netdev_configure_container_phys,
+	[LXC_NET_EMPTY]   = netdev_configure_container_empty,
+	[LXC_NET_NONE]    = netdev_configure_container_none,
 };
 
-static int shutdown_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
+static int netdev_shutdown_server_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	int ret;
 	char *argv[] = {
@@ -1290,7 +1292,7 @@ static int shutdown_veth(struct lxc_handler *handler, struct lxc_netdev *netdev)
 	return 0;
 }
 
-static int shutdown_macvlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
+static int netdev_shutdown_server_macvlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	int ret;
 	char *argv[] = {
@@ -1310,7 +1312,7 @@ static int shutdown_macvlan(struct lxc_handler *handler, struct lxc_netdev *netd
 	return 0;
 }
 
-static int shutdown_ipvlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
+static int netdev_shutdown_server_ipvlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	int ret;
 	char *argv[] = {
@@ -1330,7 +1332,7 @@ static int shutdown_ipvlan(struct lxc_handler *handler, struct lxc_netdev *netde
 	return 0;
 }
 
-static int shutdown_vlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
+static int netdev_shutdown_server_vlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	int ret;
 	char *argv[] = {
@@ -1350,7 +1352,7 @@ static int shutdown_vlan(struct lxc_handler *handler, struct lxc_netdev *netdev)
 	return 0;
 }
 
-static int shutdown_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
+static int netdev_shutdown_server_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	int ret;
 	char *argv[] = {
@@ -1370,7 +1372,7 @@ static int shutdown_phys(struct lxc_handler *handler, struct lxc_netdev *netdev)
 	return 0;
 }
 
-static int shutdown_empty(struct lxc_handler *handler, struct lxc_netdev *netdev)
+static int netdev_shutdown_server_empty(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	int ret;
 	char *argv[] = {
@@ -1389,19 +1391,19 @@ static int shutdown_empty(struct lxc_handler *handler, struct lxc_netdev *netdev
 	return 0;
 }
 
-static int shutdown_none(struct lxc_handler *handler, struct lxc_netdev *netdev)
+static int netdev_shutdown_server_none(struct lxc_handler *handler, struct lxc_netdev *netdev)
 {
 	return 0;
 }
 
-static  instantiate_cb netdev_deconf[LXC_NET_MAXCONFTYPE + 1] = {
-	[LXC_NET_VETH]    = shutdown_veth,
-	[LXC_NET_MACVLAN] = shutdown_macvlan,
-	[LXC_NET_IPVLAN]  = shutdown_ipvlan,
-	[LXC_NET_VLAN]    = shutdown_vlan,
-	[LXC_NET_PHYS]    = shutdown_phys,
-	[LXC_NET_EMPTY]   = shutdown_empty,
-	[LXC_NET_NONE]    = shutdown_none,
+static netdev_shutdown_server_cb netdev_deconf[LXC_NET_MAXCONFTYPE + 1] = {
+	[LXC_NET_VETH]    = netdev_shutdown_server_veth,
+	[LXC_NET_MACVLAN] = netdev_shutdown_server_macvlan,
+	[LXC_NET_IPVLAN]  = netdev_shutdown_server_ipvlan,
+	[LXC_NET_VLAN]    = netdev_shutdown_server_vlan,
+	[LXC_NET_PHYS]    = netdev_shutdown_server_phys,
+	[LXC_NET_EMPTY]   = netdev_shutdown_server_empty,
+	[LXC_NET_NONE]    = netdev_shutdown_server_none,
 };
 
 static int lxc_netdev_move_by_index_fd(int ifindex, int fd, const char *ifname)
@@ -3379,7 +3381,7 @@ static int lxc_create_network_priv(struct lxc_handler *handler)
 				return log_error_errno(-1, errno, "Failed to setup l2proxy");
 		}
 
-		if (netdev_conf[netdev->type](handler, netdev))
+		if (netdev_configure_server[netdev->type](handler, netdev))
 			return log_error_errno(-1, errno, "Failed to create network device");
 	}
 
@@ -3843,7 +3845,7 @@ int lxc_setup_network_in_child_namespaces(const struct lxc_conf *conf,
 		struct lxc_netdev *netdev = iterator->elem;
 		int ret;
 
-		ret = netdev_ns_conf[netdev->type](netdev);
+		ret = netdev_configure_container[netdev->type](netdev);
 		if (!ret)
 			ret = lxc_network_setup_in_child_namespaces_common(netdev);
 		if (ret)
