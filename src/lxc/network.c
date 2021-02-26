@@ -50,6 +50,69 @@ typedef int (*netdev_configure_server_cb)(struct lxc_handler *, struct lxc_netde
 typedef int (*netdev_configure_container_cb)(struct lxc_netdev *);
 typedef int (*netdev_shutdown_server_cb)(struct lxc_handler *, struct lxc_netdev *);
 
+const struct lxc_network_info {
+	const char *name;
+	const char *template;
+} lxc_network_info[LXC_NET_MAXCONFTYPE + 1] = {
+	[LXC_NET_EMPTY]		= { "empty",		"emptXXXXXX"	},
+	[LXC_NET_VETH]    	= { "veth",		"vethXXXXXX"	},
+	[LXC_NET_MACVLAN] 	= { "macvlan",		"macvXXXXXX"	},
+	[LXC_NET_IPVLAN]  	= { "ipvlan",		"ipvlXXXXXX"	},
+	[LXC_NET_PHYS]    	= { "phys",		"physXXXXXX"	},
+	[LXC_NET_VLAN]    	= { "vlan",		"vlanXXXXXX"	},
+	[LXC_NET_NONE]    	= { "none",		"noneXXXXXX"	},
+	[LXC_NET_MAXCONFTYPE]	= { NULL,		NULL		}
+};
+
+const char *lxc_net_type_to_str(int type)
+{
+	if (type < 0 || type > LXC_NET_MAXCONFTYPE)
+		return NULL;
+
+	return lxc_network_info[type].name;
+}
+
+static const char padchar[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+char *lxc_ifname_alnum_case_sensitive(char *template)
+{
+	char name[IFNAMSIZ];
+	size_t i = 0;
+#ifdef HAVE_RAND_R
+	unsigned int seed;
+
+	seed = randseed(false);
+#else
+
+	(void)randseed(true);
+#endif
+
+	if (strlen(template) >= IFNAMSIZ)
+		return NULL;
+
+	/* Generate random names until we find one that doesn't exist. */
+	for (;;) {
+		name[0] = '\0';
+		(void)strlcpy(name, template, IFNAMSIZ);
+
+		for (i = 0; i < strlen(name); i++) {
+			if (name[i] == 'X') {
+#ifdef HAVE_RAND_R
+				name[i] = padchar[rand_r(&seed) % strlen(padchar)];
+#else
+				name[i] = padchar[rand() % strlen(padchar)];
+#endif
+			}
+		}
+
+		if (if_nametoindex(name) == 0)
+			break;
+	}
+
+	(void)strlcpy(template, name, strlen(template) + 1);
+
+	return template;
+}
 static const char loop_device[] = "lo";
 
 static int lxc_ip_route_dest(__u16 nlmsg_type, int family, int ifindex, void *dest, unsigned int netmask)
@@ -2418,66 +2481,6 @@ int lxc_bridge_attach(const char *bridge, const char *ifname)
 		err = -errno;
 
 	return err;
-}
-
-static const char *const lxc_network_types[LXC_NET_MAXCONFTYPE + 1] = {
-	[LXC_NET_EMPTY]   = "empty",
-	[LXC_NET_VETH]    = "veth",
-	[LXC_NET_MACVLAN] = "macvlan",
-	[LXC_NET_IPVLAN]  = "ipvlan",
-	[LXC_NET_PHYS]    = "phys",
-	[LXC_NET_VLAN]    = "vlan",
-	[LXC_NET_NONE]    = "none",
-};
-
-const char *lxc_net_type_to_str(int type)
-{
-	if (type < 0 || type > LXC_NET_MAXCONFTYPE)
-		return NULL;
-
-	return lxc_network_types[type];
-}
-
-static const char padchar[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-char *lxc_ifname_alnum_case_sensitive(char *template)
-{
-	char name[IFNAMSIZ];
-	size_t i = 0;
-#ifdef HAVE_RAND_R
-	unsigned int seed;
-
-	seed = randseed(false);
-#else
-
-	(void)randseed(true);
-#endif
-
-	if (strlen(template) >= IFNAMSIZ)
-		return NULL;
-
-	/* Generate random names until we find one that doesn't exist. */
-	for (;;) {
-		name[0] = '\0';
-		(void)strlcpy(name, template, IFNAMSIZ);
-
-		for (i = 0; i < strlen(name); i++) {
-			if (name[i] == 'X') {
-#ifdef HAVE_RAND_R
-				name[i] = padchar[rand_r(&seed) % strlen(padchar)];
-#else
-				name[i] = padchar[rand() % strlen(padchar)];
-#endif
-			}
-		}
-
-		if (if_nametoindex(name) == 0)
-			break;
-	}
-
-	(void)strlcpy(template, name, strlen(template) + 1);
-
-	return template;
 }
 
 int setup_private_host_hw_addr(char *veth1)
