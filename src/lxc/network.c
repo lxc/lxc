@@ -2861,8 +2861,10 @@ int lxc_find_gateway_addresses(struct lxc_handler *handler)
 }
 
 #define LXC_USERNIC_PATH LIBEXECDIR "/lxc/lxc-user-nic"
-static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcname,
-					  struct lxc_netdev *netdev, pid_t pid, unsigned int hooks_version)
+static int lxc_create_network_unpriv_exec(const char *lxcpath,
+					  const char *lxcname,
+					  struct lxc_netdev *netdev, pid_t pid,
+					  unsigned int hooks_version)
 {
 	int ret;
 	pid_t child;
@@ -2873,7 +2875,9 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	size_t retlen;
 
 	if (netdev->type != LXC_NET_VETH)
-		return log_error_errno(-1, errno, "Network type %d not support for unprivileged use", netdev->type);
+		return log_error_errno(-1, errno,
+				       "Network type %d not support for unprivileged use",
+				       netdev->type);
 
 	ret = pipe(pipefd);
 	if (ret < 0)
@@ -2915,8 +2919,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 		pidstr[sizeof(pidstr) - 1] = '\0';
 
 		INFO("Execing lxc-user-nic create %s %s %s veth %s %s", lxcpath,
-		     lxcname, pidstr, netdev_link,
-		     !is_empty_string(netdev->name) ? netdev->name : "(null)");
+		     lxcname, pidstr, netdev_link, !is_empty_string(netdev->name) ? netdev->name : "(null)");
 		if (!is_empty_string(netdev->name))
 			execlp(LXC_USERNIC_PATH, LXC_USERNIC_PATH, "create",
 			       lxcpath, lxcname, pidstr, "veth", netdev_link,
@@ -2943,7 +2946,8 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	ret = wait_for_pid(child);
 	close(pipefd[0]);
 	if (ret != 0 || bytes < 0)
-		return log_error(-1, "lxc-user-nic failed to configure requested network: %s", buffer[0] != '\0' ? buffer : "(null)");
+		return log_error(-1, "lxc-user-nic failed to configure requested network: %s",
+				 buffer[0] != '\0' ? buffer : "(null)");
 	TRACE("Received output \"%s\" from lxc-user-nic", buffer);
 
 	/* netdev->name */
@@ -2960,7 +2964,8 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 	if (retlen < IFNAMSIZ)
 		retlen = strlcpy(netdev->created_name, token, IFNAMSIZ);
 	if (retlen >= IFNAMSIZ)
-		return log_error_errno(-1, E2BIG, "Container side veth device name returned by lxc-user-nic is too long");
+		return log_error_errno(-1, E2BIG,
+				       "Container side veth device name returned by lxc-user-nic is too long");
 
 	/* netdev->ifindex */
 	token = strtok_r(NULL, ":", &saveptr);
@@ -2969,7 +2974,8 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 
 	ret = lxc_safe_int(token, &netdev->ifindex);
 	if (ret < 0)
-		return log_error_errno(-1, -ret, "Failed to convert string \"%s\" to integer", token);
+		return log_error_errno(-1, -ret,
+				       "Failed to convert string \"%s\" to integer", token);
 
 	/* netdev->priv.veth_attr.veth1 */
 	token = strtok_r(NULL, ":", &saveptr);
@@ -2978,7 +2984,8 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 
 	retlen = strlcpy(netdev->priv.veth_attr.veth1, token, IFNAMSIZ);
 	if (retlen >= IFNAMSIZ)
-		return log_error_errno(-1, E2BIG, "Host side veth device name returned by lxc-user-nic is too long");
+		return log_error_errno(-1, E2BIG,
+				       "Host side veth device name returned by lxc-user-nic is too long");
 
 	/* netdev->priv.veth_attr.ifindex */
 	token = strtok_r(NULL, ":", &saveptr);
@@ -2987,7 +2994,8 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 
 	ret = lxc_safe_int(token, &netdev->priv.veth_attr.ifindex);
 	if (ret < 0)
-		return log_error_errno(-1, -ret, "Failed to convert string \"%s\" to integer", token);
+		return log_error_errno(-1, -ret,
+				       "Failed to convert string \"%s\" to integer", token);
 
 	if (netdev->upscript) {
 		char *argv[] = {
@@ -3001,7 +3009,7 @@ static int lxc_create_network_unpriv_exec(const char *lxcpath, const char *lxcna
 				      netdev->upscript, "up", argv);
 		if (ret < 0)
 			return -1;
-    }
+	}
 
 	return 0;
 }
