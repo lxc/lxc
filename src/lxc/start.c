@@ -1239,7 +1239,7 @@ static int do_start(void *data)
 			}
 
 			ret = setns(timens_fd, CLONE_NEWTIME);
- 			if (ret) {
+			if (ret) {
 				SYSERROR("Failed to setns(%d(\"/proc/self/ns/time_for_children\"))", timens_fd);
 				goto out_warn_father;
 			}
