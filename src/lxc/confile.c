@@ -312,6 +312,7 @@ static int set_config_net_type(const char *key, const char *value,
 		netdev->type = LXC_NET_VETH;
 		lxc_list_init(&netdev->priv.veth_attr.ipv4_routes);
 		lxc_list_init(&netdev->priv.veth_attr.ipv6_routes);
+		lxc_list_init(&netdev->priv.veth_attr.vlan_tagged_ids);
 		if (!lxc_veth_flag_to_mode(netdev->priv.veth_attr.mode))
 			lxc_veth_mode_to_flag(&netdev->priv.veth_attr.mode, "bridge");
 	} else if (strequal(value, "macvlan")) {
