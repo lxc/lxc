@@ -165,6 +165,7 @@ struct lxc_netdev {
 	bool l2proxy;
 	char name[IFNAMSIZ];
 	char created_name[IFNAMSIZ];
+	char transient_name[IFNAMSIZ];
 	char *hwaddr;
 	char *mtu;
 	union netdev_p priv;
